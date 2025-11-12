@@ -12,4 +12,8 @@
 		<PackageReference Include="Microsoft.Extensions.Http" Version="10.0.0" />
 	</ItemGroup>
 
+	<ItemGroup>
+	  <PackageReference Update="Mud.ServiceCodeGenerator" Version="1.2.4" />
+	</ItemGroup>
+
 </Project>

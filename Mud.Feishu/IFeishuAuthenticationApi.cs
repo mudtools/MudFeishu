@@ -28,6 +28,18 @@ public interface IFeishuAuthenticationApi
     Task<ApiResult<object>> LogoutAsync([Header("Authorization")] string user_access_token, [Query("user_id_type")] string user_id_type, [Body] LogoutRequest logoutRequest);
 
     /// <summary>
+    /// 用于返回调用 JSAPI 临时调用凭证，使用该凭证调用 JSAPI 时，请求不会被拦截。
+    /// </summary>
+    /// <param name="tenant_access_token">
+    /// tenant_access_token
+    /// <para>值格式："Bearer access_token"</para>
+    /// <para>示例值："Bearer t-7f1bcd13fc57d46bac21793a18e560"</para>
+    /// </param>
+    /// <returns></returns>
+    [Post("https://open.feishu.cn/open-apis/jssdk/ticket/get")]
+    Task<ApiResult<TicketData>> GetJsTicketAsync([Header("Authorization")] string tenant_access_token);
+
+    /// <summary>
     /// 获取自建应用获取 tenant_access_token。
     /// </summary>
     /// <param name="credentials">应用唯一标识及应用秘钥信息</param>

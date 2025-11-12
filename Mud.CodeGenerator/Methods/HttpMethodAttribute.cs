@@ -4,7 +4,7 @@
 ///     HTTP 声明式请求方式特性
 /// </summary>
 [AttributeUsage(AttributeTargets.Method)]
-public class HttpMethodAttribute : Attribute
+internal class HttpMethodAttribute : Attribute
 {
     /// <summary>
     ///     <inheritdoc cref="HttpMethodAttribute" />

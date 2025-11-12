@@ -5,7 +5,7 @@ namespace Mud.CodeGenerator;
 ///     HTTP 声明式 GET 请求方式特性
 /// </summary>
 [AttributeUsage(AttributeTargets.Method)]
-public sealed class GetAttribute : HttpMethodAttribute
+internal sealed class GetAttribute : HttpMethodAttribute
 {
     /// <summary>
     ///     <inheritdoc cref="GetAttribute" />

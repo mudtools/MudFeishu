@@ -5,7 +5,7 @@ namespace Mud.CodeGenerator;
 /// HTTP 声明式请求内容特性
 /// </summary>
 [AttributeUsage(AttributeTargets.Parameter)]
-public sealed class BodyAttribute : Attribute
+internal sealed class BodyAttribute : Attribute
 {
     /// <summary>
     /// <inheritdoc cref="BodyAttribute" />

@@ -5,7 +5,7 @@ namespace Mud.CodeGenerator;
 ///     HTTP 声明式 HEAD 请求方式特性
 /// </summary>
 [AttributeUsage(AttributeTargets.Method)]
-public sealed class HeadAttribute : HttpMethodAttribute
+internal sealed class HeadAttribute : HttpMethodAttribute
 {
     /// <summary>
     ///     <inheritdoc cref="HeadAttribute" />

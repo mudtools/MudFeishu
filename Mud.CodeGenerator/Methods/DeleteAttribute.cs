@@ -4,7 +4,7 @@
 ///     HTTP 声明式 DELETE 请求方式特性
 /// </summary>
 [AttributeUsage(AttributeTargets.Method)]
-public sealed class DeleteAttribute : HttpMethodAttribute
+internal sealed class DeleteAttribute : HttpMethodAttribute
 {
     /// <summary>
     ///     <inheritdoc cref="DeleteAttribute" />

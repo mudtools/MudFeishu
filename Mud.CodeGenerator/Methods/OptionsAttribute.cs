@@ -4,7 +4,7 @@
 ///     HTTP 声明式 OPTIONS 请求方式特性
 /// </summary>
 [AttributeUsage(AttributeTargets.Method)]
-public sealed class OptionsAttribute : HttpMethodAttribute
+internal sealed class OptionsAttribute : HttpMethodAttribute
 {
     /// <summary>
     ///     <inheritdoc cref="OptionsAttribute" />

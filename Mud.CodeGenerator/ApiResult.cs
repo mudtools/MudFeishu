@@ -1,4 +1,4 @@
-﻿namespace Mud;
+﻿namespace Mud.Feishu;
 
 /// <summary>
 /// API响应结果模型

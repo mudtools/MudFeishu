@@ -6,7 +6,7 @@
 /// <remarks>支持多次指定。</remarks>
 [AttributeUsage(AttributeTargets.Method | AttributeTargets.Interface | AttributeTargets.Parameter,
     AllowMultiple = true)]
-public sealed class HeaderAttribute : Attribute
+internal sealed class HeaderAttribute : Attribute
 {
     /// <summary>
     ///     <inheritdoc cref="HeaderAttribute" />

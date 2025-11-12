@@ -1,7 +1,7 @@
 ﻿namespace Mud.CodeGenerator;
 
 [AttributeUsage(AttributeTargets.Interface, AllowMultiple = false)]
-public class HttpClientApiAttribute : Attribute
+internal class HttpClientApiAttribute : Attribute
 {
     public HttpClientApiAttribute()
     {

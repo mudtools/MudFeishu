@@ -5,7 +5,7 @@ namespace Mud.CodeGenerator;
 ///     HTTP 声明式 PUT 请求方式特性
 /// </summary>
 [AttributeUsage(AttributeTargets.Method)]
-public sealed class PutAttribute : HttpMethodAttribute
+internal sealed class PutAttribute : HttpMethodAttribute
 {
     /// <summary>
     ///     <inheritdoc cref="PutAttribute" />

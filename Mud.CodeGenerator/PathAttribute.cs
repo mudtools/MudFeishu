@@ -4,7 +4,7 @@
 /// HTTP 声明式路径参数特性
 /// </summary>
 [AttributeUsage(AttributeTargets.Parameter, AllowMultiple = false)]
-public sealed class PathAttribute : Attribute
+internal sealed class PathAttribute : Attribute
 {
     /// <summary>
     /// <inheritdoc cref="PathAttribute" />

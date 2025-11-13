@@ -1,32 +1,27 @@
 <Project>
-	<PropertyGroup>
-		<TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
-		<Version>1.0.0</Version>
-		<ImplicitUsings>enable</ImplicitUsings>
-		<Nullable>enable</Nullable>
-		<TreatWarningsAsErrors>false</TreatWarningsAsErrors>
-		<CodeAnalysisTreatWarningsAsErrors>false</CodeAnalysisTreatWarningsAsErrors>
-		<GenerateDocumentationFile>true</GenerateDocumentationFile>
-		<NoDefaultExcludes>true</NoDefaultExcludes>
-		<ImplicitUsings>enable</ImplicitUsings>
-		<Copyright>© 2019-2025 Mud Studio Co.,Ltd.</Copyright>
-		<Authors>Mud Studio</Authors>
-		<Company>Mud Studio</Company>
-		<LangVersion>13.0</LangVersion>
-	</PropertyGroup>
+  <PropertyGroup>
+    <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
+    <Version>1.0.0</Version>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <CodeAnalysisTreatWarningsAsErrors>false</CodeAnalysisTreatWarningsAsErrors>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoDefaultExcludes>true</NoDefaultExcludes>
+    <Copyright>© 2019-2025 Mud Studio Co.,Ltd.</Copyright>
+    <Authors>Mud Studio</Authors>
+    <Company>Mud Studio</Company>
+    <LangVersion>13.0</LangVersion>
+  </PropertyGroup>
 
-	<ItemGroup>
-		<PackageReference Include="Mud.ServiceCodeGenerator" Version="1.2.4" />
-		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.0" />
-		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.0" />
-		<PackageReference Include="Microsoft.Extensions.Options" Version="10.0.0" />
-	</ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Mud.ServiceCodeGenerator" Version="1.2.4" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.0" />
+  </ItemGroup>
 
-	<PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-		<DocumentationFile>bin\Debug\$(TargetFramework)\$(AssemblyName).xml</DocumentationFile>
-	</PropertyGroup>
-
-	<PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-		<DocumentationFile>bin\Release\$(TargetFramework)\$(AssemblyName).xml</DocumentationFile>
-	</PropertyGroup>
+  <PropertyGroup>
+    <DocumentationFile>bin/$(Configuration)/$(TargetFramework)/$(AssemblyName).xml</DocumentationFile>
+  </PropertyGroup>
 </Project>

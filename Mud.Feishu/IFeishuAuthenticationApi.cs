@@ -16,7 +16,7 @@ public interface IFeishuAuthenticationApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
     /// <returns></returns>
     [Get("https://open.feishu.cn/open-apis/authen/v1/user_info")]
-    Task<ApiResult<UserData>> GetUserInfoAsync([Header("Authorization")] string user_access_token, CancellationToken cancellationToken = default);
+    Task<ApiResult<GetUserDataResult>> GetUserInfoAsync([Header("Authorization")] string user_access_token, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 该接口用于退出用户的登录态
@@ -110,4 +110,6 @@ public interface IFeishuAuthenticationApi
        [Query] string? code_challenge = null,
        [Query] string? code_challenge_method = null,
        CancellationToken cancellationToken = default);
+
+
 }

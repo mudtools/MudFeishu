@@ -22,7 +22,7 @@ public class ApiResult
 /// API响应结果模型
 /// </summary>
 public class ApiResult<T> : ApiResult
-    where T : class, new()
+    where T : class
 {
     /// <summary>
     /// 响应结果数据对象。

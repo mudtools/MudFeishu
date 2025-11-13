@@ -19,7 +19,7 @@ public interface IFeishuUserApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
     /// <returns></returns>
     [Post("https://open.feishu.cn/open-apis/contact/v3/users")]
-    Task<ApiResult<CreateOrUpdateUserResult>> CreateUser(
+    Task<ApiResult<CreateOrUpdateUserResult>> CreateUserAsync(
         [Header("Authorization")] string user_access_token,
         [Body] CreateUserRequest userModel,
         [Query("user_id_type")] string? user_id_type = null,
@@ -38,7 +38,7 @@ public interface IFeishuUserApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
     /// <returns></returns>
     [Patch("https://open.feishu.cn/open-apis/contact/v3/users/{user_id}")]
-    Task<ApiResult<CreateOrUpdateUserResult>> UpdateUser(
+    Task<ApiResult<CreateOrUpdateUserResult>> UpdateUserAsync(
         [Header("Authorization")] string user_access_token,
         [Path] string user_id,
         [Body] UpdateUserRequest userModel,
@@ -56,5 +56,5 @@ public interface IFeishuUserApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
     /// <returns></returns>
     [Patch("https://open.feishu.cn/open-apis/contact/v3/users/{user_id}/update_user_id")]
-    Task<ApiResult<object>> UpdateUserId([Header("Authorization")] string user_access_token, [Path] string user_id, [Body] UpdateUserIdRequest updateUserId, [Query("user_id_type")] string? user_id_type = null, CancellationToken cancellationToken = default);
+    Task<ApiResult<object>> UpdateUserIdAsync([Header("Authorization")] string user_access_token, [Path] string user_id, [Body] UpdateUserIdRequest updateUserId, [Query("user_id_type")] string? user_id_type = null, CancellationToken cancellationToken = default);
 }

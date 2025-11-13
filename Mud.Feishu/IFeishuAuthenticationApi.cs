@@ -110,6 +110,4 @@ public interface IFeishuAuthenticationApi
        [Query] string? code_challenge = null,
        [Query] string? code_challenge_method = null,
        CancellationToken cancellationToken = default);
-
-
 }

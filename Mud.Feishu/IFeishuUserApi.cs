@@ -40,9 +40,21 @@ public interface IFeishuUserApi
     [Patch("https://open.feishu.cn/open-apis/contact/v3/users/{user_id}")]
     Task<ApiResult<CreateOrUpdateUserResult>> UpdateUser(
         [Header("Authorization")] string user_access_token,
-        [Path("user_id")] string user_id,
+        [Path] string user_id,
         [Body] UpdateUserRequest userModel,
         [Query("user_id_type")] string? user_id_type = null,
         [Query("department_id_type")] string? department_id_type = null,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 更新用户 ID
+    /// </summary>
+    /// <param name="user_access_token">应用调用 API 时，需要通过访问凭证（access_token）进行身份鉴权</param>
+    /// <param name="user_id">用户 ID，ID 类型与查询参数 user_id_type 的取值保持一致。</param>
+    /// <param name="updateUserId">自定义新的用户 user_id。长度不能超过 64 字符。</param>
+    /// /// <param name="user_id_type">用户 ID 类型</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
+    /// <returns></returns>
+    [Patch("https://open.feishu.cn/open-apis/contact/v3/users/{user_id}/update_user_id")]
+    Task<ApiResult<object>> UpdateUserId([Header("Authorization")] string user_access_token, [Path] string user_id, [Body] UpdateUserIdRequest updateUserId, [Query("user_id_type")] string? user_id_type = null, CancellationToken cancellationToken = default);
 }

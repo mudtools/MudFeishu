@@ -1,5 +1,8 @@
 ﻿namespace Mud.Feishu.DataModels.Users;
 
+/// <summary>
+/// 用户授权结果。
+/// </summary>
 public class AuthorizeResult
 {
     /// <summary>

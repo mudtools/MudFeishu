@@ -4,7 +4,7 @@ namespace Mud.Feishu.DataModels.Users;
 /// <summary>
 /// 用户基础数据模型，包含所有用户类共有的属性。
 /// </summary>
-public class UserData
+public abstract class UserData
 {
     /// <summary>
     /// 自定义用户的 user_id。长度不能超过 64 字符。

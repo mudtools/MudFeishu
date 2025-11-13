@@ -1,9 +1,9 @@
 ﻿namespace Mud.Feishu.DataModels.Users;
 
 /// <summary>
-/// 创建用户操作的结果。
+/// 创建或更新用户操作的结果。
 /// </summary>
-public class CreateUserResult
+public class CreateOrUpdateUserResult
 {
     /// <summary>
     /// 创建的用户详细信息。
@@ -138,7 +138,7 @@ public class CustomAttribute
 /// </summary>
 public class CustomAttributeValue
 {
-   
+
     /// <summary>
     /// 自定义字段类型为 TEXT 时，该参数必填，用于定义字段值。
     /// </summary>

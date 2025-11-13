@@ -19,11 +19,30 @@ public interface IFeishuUserApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
     /// <returns></returns>
     [Post("https://open.feishu.cn/open-apis/contact/v3/users")]
-    Task<ApiResult<CreateUserResult>> CreateUser(
+    Task<ApiResult<CreateOrUpdateUserResult>> CreateUser(
         [Header("Authorization")] string user_access_token,
         [Body] CreateUserRequest userModel,
         [Query("user_id_type")] string? user_id_type = null,
         [Query("department_id_type")] string? department_id_type = null,
         [Query("client_token")] string? client_token = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 调用该接口更新通讯录中指定用户的信息，包括名称、邮箱、手机号、所属部门以及自定义字段等信息。
+    /// </summary>
+    /// <param name="user_access_token">应用调用 API 时，需要通过访问凭证（access_token）进行身份鉴权</param>
+    /// <param name="user_id">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
+    /// <param name="userModel">用于更新的用户请求体。</param>
+    /// <param name="user_id_type">用户 ID 类型</param>
+    /// <param name="department_id_type">此次调用中使用的部门 ID 类型。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
+    /// <returns></returns>
+    [Patch("https://open.feishu.cn/open-apis/contact/v3/users/{user_id}")]
+    Task<ApiResult<CreateOrUpdateUserResult>> UpdateUser(
+        [Header("Authorization")] string user_access_token,
+        [Path("user_id")] string user_id,
+        [Body] UpdateUserRequest userModel,
+        [Query("user_id_type")] string? user_id_type = null,
+        [Query("department_id_type")] string? department_id_type = null,
         CancellationToken cancellationToken = default);
 }

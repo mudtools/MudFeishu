@@ -169,4 +169,23 @@ public interface IFeishuUserApi
        [Body] DeleteSettingsRequest deleteSettingsRequest,
        [Query("user_id_type")] string? user_id_type = null,
        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 用于恢复已删除用户（已离职的成员）。
+    /// </summary>
+    /// <param name="user_access_token">应用调用 API 时，需要通过访问凭证（access_token）进行身份鉴权</param>
+    /// <param name="user_id">用户 ID。</param>
+    /// <param name="user_id_type">用户 ID 类型</param>
+    /// <param name="resurrectUserRequest">恢复已删除用户操作的请求体。</param>
+    /// <param name="department_id_type">部门 ID，ID 类型与 department_id_type 的取值保持一致。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
+    /// <returns></returns>
+    [Post("https://open.feishu.cn/open-apis/contact/v3/users/{user_id}/resurrect")]
+    Task<ApiResult<object>> ResurrectUserByIdAsync(
+      [Header("Authorization")] string user_access_token,
+      [Path] string user_id,
+      [Body] ResurrectUserRequest resurrectUserRequest,
+      [Query("user_id_type")] string? user_id_type = null,
+      [Query("department_id_type")] string? department_id_type = null,
+      CancellationToken cancellationToken = default);
 }

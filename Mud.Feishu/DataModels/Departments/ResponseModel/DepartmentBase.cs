@@ -1,11 +1,11 @@
-﻿using Mud.Feishu.DataModels.Users;
+using Mud.Feishu.DataModels.Users;
 
 namespace Mud.Feishu.DataModels.Departments;
 
 /// <summary>
-/// 部门详细信息，包含部门的基本信息、配置和状态。
+/// 部门基础信息类，包含部门的基本信息和配置。
 /// </summary>
-public class DepartmentDetail
+public abstract class DepartmentBase
 {
     /// <summary>
     /// 部门名称。
@@ -78,10 +78,4 @@ public class DepartmentDetail
     /// </summary>
     [JsonPropertyName("leaders")]
     public List<DepartmentLeader> Leaders { get; set; } = new List<DepartmentLeader>();
-
-    /// <summary>
-    /// 部门HRBP列表。
-    /// </summary>
-    [JsonPropertyName("department_hrbps")]
-    public List<string> DepartmentHrbps { get; set; } = new List<string>();
 }

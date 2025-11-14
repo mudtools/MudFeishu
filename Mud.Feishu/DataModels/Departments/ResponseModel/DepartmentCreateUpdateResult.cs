@@ -3,7 +3,7 @@
 /// <summary>
 /// 部门创建结果，包含创建的部门详细信息。
 /// </summary>
-public class DepartmentCreateResult
+public class DepartmentCreateUpdateResult
 {
     /// <summary>
     /// 创建的部门信息。

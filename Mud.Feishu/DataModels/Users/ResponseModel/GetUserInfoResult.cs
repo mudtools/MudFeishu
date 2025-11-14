@@ -1,16 +1,6 @@
 ﻿namespace Mud.Feishu.DataModels.Users;
 
-/// <summary>
-/// 获取用户详细信息的返回结果数组
-/// </summary>
-public class GetUserInfosResult
-{
-    /// <summary>
-    /// 获取用户详细信息的返回结果数组。
-    /// </summary>
-    [JsonPropertyName("items")]
-    public GetUserInfoResult[] Items { get; set; }
-}
+
 
 /// <summary>
 /// 获取用户详细信息的返回结果。

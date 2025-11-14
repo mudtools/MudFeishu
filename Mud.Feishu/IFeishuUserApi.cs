@@ -82,16 +82,34 @@ public interface IFeishuUserApi
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 批量获取通讯录中用户的信息，包括用户 ID、名称、邮箱、手机号、状态以及所属部门等信息。
+    /// 获取指定部门直属的用户信息列表。用户信息包括用户 ID、名称、邮箱、手机号以及状态等信息。
     /// </summary>
     /// <param name="user_access_token">应用调用 API 时，需要通过访问凭证（access_token）进行身份鉴权</param>
-    /// <param name="user_ids">
-    /// 用户ID。ID 类型与查询参数 user_id_type 保持一致。
-    /// <para> 如需一次查询多个用户ID，可多次传递同一参数名，并且每次传递不同的参数值。例如：https://{url}?user_ids={user_id1}&user_ids={user_id2}。</para>
-    ///  </param>
     /// <param name="user_id_type">用户 ID 类型</param>
     /// <param name="department_id_type">此次调用中使用的部门 ID 类型。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
+    /// <param name="department_id">部门 ID，ID 类型与 department_id_type 的取值保持一致。</param>
+    /// <param name="page_size">分页大小，即本次请求所返回的用户信息列表内的最大条目数。默认值：10</param>
+    /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
+    /// <returns></returns>
+    [Get("https://open.feishu.cn/open-apis/contact/v3/users/find_by_department")]
+    Task<ApiResult<GetUserInfosResult>> GetUserByDepartmentIdAsync(
+     [Header("Authorization")] string user_access_token,
+     [Query("department_id")] string[] department_id,
+     [Query("page_size")] int page_size = 10,
+     [Query("page_token")] string? page_token = null,
+     [Query("user_id_type")] string? user_id_type = null,
+     [Query("department_id_type")] string? department_id_type = null,
+     CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 批量获取通讯录中用户的信息，包括用户 ID、名称、邮箱、手机号、状态以及所属部门等信息。
+    /// </summary>
+    /// <param name="user_access_token">应用调用 API 时，需要通过访问凭证（access_token）进行身份鉴权</param>
+    /// <param name="user_id_type">用户 ID 类型</param>
+    /// <param name="department_id_type">此次调用中使用的部门 ID 类型。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
+    /// <param name="user_ids">用户ID。ID 类型与查询参数 user_id_type 保持一致。如需一次查询多个用户ID，可多次传递同一参数名，并且每次传递不同的参数值。</param>
     /// <returns></returns>
     [Get("https://open.feishu.cn/open-apis/contact/v3/users/batch")]
     Task<ApiResult<GetUserInfosResult>> GetUserByIdsAsync(
@@ -101,5 +119,19 @@ public interface IFeishuUserApi
        [Query("department_id_type")] string? department_id_type = null,
        CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// 通过手机号或邮箱获取一个或多个用户的 ID （包括 user_id、open_id、union_id）与状态信息。
+    /// </summary>
+    /// <param name="user_access_token">应用调用 API 时，需要通过访问凭证（access_token）进行身份鉴权</param>
+    /// <param name="user_id_type">用户 ID 类型</param>
+    /// <param name="queryRequest">查询参数请求体。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
+    /// <returns></returns>
 
+    [Get("https://open.feishu.cn/open-apis/contact/v3/users/batch")]
+    Task<ApiResult<UserQueryListResult>> GetBatchUsersAsync(
+      [Header("Authorization")] string user_access_token,
+      [Body] UserQueryRequest queryRequest,
+      [Query("user_id_type")] string? user_id_type = null,
+      CancellationToken cancellationToken = default);
 }

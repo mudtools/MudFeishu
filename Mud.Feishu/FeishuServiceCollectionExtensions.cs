@@ -1,4 +1,5 @@
 ﻿
+using Microsoft.Extensions.Configuration;
 using Mud.Feishu;
 
 namespace Microsoft.Extensions.DependencyInjection;
@@ -12,8 +13,9 @@ public static class FeishuServiceCollectionExtensions
     /// 注册飞书 API 服务
     /// </summary>
     /// <param name="services"></param>
+    /// <param name="configuration"></param>
     /// <returns></returns>
-    public static IServiceCollection AddFeishuApiService(this IServiceCollection services)
+    public static IServiceCollection AddFeishuApiService(this IServiceCollection services, IConfiguration configuration)
     {
         return services.AddWebApiHttpClient();
     }

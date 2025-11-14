@@ -1,6 +1,5 @@
 ﻿namespace Mud.Feishu.DataModels.Users;
 
-
 /// <summary>
 /// 用户部门排序。
 /// </summary>

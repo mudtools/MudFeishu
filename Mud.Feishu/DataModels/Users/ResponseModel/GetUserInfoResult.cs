@@ -1,6 +1,18 @@
 ﻿namespace Mud.Feishu.DataModels.Users;
 
 /// <summary>
+/// 获取用户详细信息的返回结果数组
+/// </summary>
+public class GetUserInfosResult
+{
+    /// <summary>
+    /// 获取用户详细信息的返回结果数组。
+    /// </summary>
+    [JsonPropertyName("items")]
+    public GetUserInfoResult[] Items { get; set; }
+}
+
+/// <summary>
 /// 获取用户详细信息的返回结果。
 /// </summary>
 public class GetUserInfoResult : UserData
@@ -100,7 +112,7 @@ public class GetUserInfoResult : UserData
     /// 自定义字段。
     /// </summary>
     [JsonPropertyName("custom_attrs")]
-    public List<CustomAttribute> CustomAttrs { get; set; } = [];   
+    public List<CustomAttribute> CustomAttrs { get; set; } = [];
 
     /// <summary>
     /// 职务名称。字符数量上限为 255。

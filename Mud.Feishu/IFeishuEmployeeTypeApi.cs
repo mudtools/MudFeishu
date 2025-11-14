@@ -35,4 +35,34 @@ public interface IFeishuEmployeeTypeApi
         [Path] string enum_id,
         [Body] EmployeeTypeEnumRequest groupInfoRequest,
         CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 查询当前租户下所有的人员类型信息，包括选项 ID、类型、编号以及内容等。
+    /// </summary>
+    /// <param name="user_access_token">应用调用 API 时，通过访问凭证（access_token）进行身份鉴权</param>
+    /// <param name="page_size">分页大小，即本次请求所返回的用户信息列表内的最大条目数。默认值：10</param>
+    /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
+    /// <returns></returns>
+    [Get("https://open.feishu.cn/open-apis/contact/v3/employee_type_enums")]
+    Task<ApiResult<EmployeeTypeEnumListResult>> GetEmployeeTypesAsync(
+       [Header("Authorization")] string user_access_token,
+       [Query("page_size")] int page_size = 10,
+       [Query("page_token")] string? page_token = null,
+       CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 删除指定的自定义人员类型。
+    /// <para>仅支持删除自定义的人员类型。默认包含的正式、实习、外包、劳务、顾问五个选项不支持删除。</para>
+    /// </summary>
+    /// <param name="user_access_token">应用调用 API 时，通过访问凭证（access_token）进行身份鉴权</param>
+    /// <param name="enum_id">自定义人员类型的选项 ID。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
+    /// <returns></returns>
+    [Delete("https://open.feishu.cn/open-apis/contact/v3/employee_type_enums/{enum_id}")]
+    Task<NullDataApiResult> DeleteEmployeeTypeByIdAsync(
+         [Header("Authorization")] string user_access_token,
+         [Path] string enum_id,
+         CancellationToken cancellationToken = default);
 }

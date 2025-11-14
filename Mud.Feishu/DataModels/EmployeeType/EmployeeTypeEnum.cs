@@ -1,5 +1,8 @@
 ﻿namespace Mud.Feishu.DataModels.EmployeeType;
 
+/// <summary>
+/// 人员类型信息
+/// </summary>
 public class EmployeeTypeEnum
 {
     [JsonPropertyName("enum_id")]

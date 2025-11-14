@@ -100,7 +100,6 @@ public interface IFeishuUserGroupApi
     [Query("type")] int type = 1,
     CancellationToken cancellationToken = default);
 
-
     /// <summary>
     /// 删除指定用户组。
     /// </summary>

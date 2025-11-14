@@ -1,5 +1,4 @@
-﻿using Mud.Feishu.DataModels;
-using Mud.Feishu.DataModels.Users;
+﻿using Mud.Feishu.DataModels.Users;
 
 namespace Mud.Feishu;
 
@@ -27,7 +26,7 @@ public interface IFeishuAuthenticationApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
     /// <returns></returns>
     [Post("https://open.feishu.cn/open-apis/passport/v1/sessions/logout")]
-    Task<ApiResult<object>> LogoutAsync([Header("Authorization")] string user_access_token, [Query("user_id_type")] string user_id_type, [Body] LogoutRequest logoutRequest, CancellationToken cancellationToken = default);
+    Task<NullDataApiResult> LogoutAsync([Header("Authorization")] string user_access_token, [Query("user_id_type")] string user_id_type, [Body] LogoutRequest logoutRequest, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 用于返回调用 JSAPI 临时调用凭证，使用该凭证调用 JSAPI 时，请求不会被拦截。

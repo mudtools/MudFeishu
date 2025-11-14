@@ -35,11 +35,28 @@ public interface IFeishuUserGroupApi
     /// <param name="department_id_type">此次调用中的部门 ID 类型。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
     [Patch("https://open.feishu.cn/open-apis/contact/v3/group/{group_id}")]
-    Task<ApiResult<UserGroupCreateResult>> UpdateUserGroupAsync(
+    Task<NullDataApiResult> UpdateUserGroupAsync(
        [Header("Authorization")] string user_access_token,
        [Path] string group_id,
        [Body] UserGroupUpdateRequest groupUpdateRequest,
        [Query("user_id_type")] string? user_id_type = null,
        [Query("department_id_type")] string? department_id_type = null,
        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 通过用户组 ID 查询指定用户组的基本信息，包括用户组名称、成员数量和类型等。
+    /// </summary>
+    /// <param name="user_access_token">应用调用 API 时，通过访问凭证（access_token）进行身份鉴权</param>
+    /// <param name="group_id">用户组 ID。</param>
+    /// <param name="user_id_type">此次调用中的用户 ID 类型</param>
+    /// <param name="department_id_type">此次调用中的部门 ID 类型。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
+    /// <returns></returns>
+    [Get("https://open.feishu.cn/open-apis/contact/v3/group/{group_id}")]
+    Task<ApiResult<UserGroupQueryResult>> GetUserGroupByIdAsync(
+      [Header("Authorization")] string user_access_token,
+      [Path] string group_id,
+      [Query("user_id_type")] string? user_id_type = null,
+      [Query("department_id_type")] string? department_id_type = null,
+      CancellationToken cancellationToken = default);
 }

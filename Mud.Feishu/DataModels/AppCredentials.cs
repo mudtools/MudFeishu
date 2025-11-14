@@ -18,4 +18,5 @@ public class AppCredentials
     /// </summary>
     [JsonPropertyName("app_secret")]
     public required string AppSecret { get; set; }
+
 }

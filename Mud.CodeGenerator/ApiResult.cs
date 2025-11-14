@@ -30,3 +30,11 @@ public class ApiResult<T> : ApiResult
     [JsonPropertyName("data")]
     public T? Data { get; set; }
 }
+
+/// <summary>
+/// API响应结果中data数据为空的模型
+/// </summary>
+public class NullDataApiResult : ApiResult<object>
+{
+
+}

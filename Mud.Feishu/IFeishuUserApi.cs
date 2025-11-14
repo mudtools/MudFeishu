@@ -56,7 +56,7 @@ public interface IFeishuUserApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
     /// <returns></returns>
     [Patch("https://open.feishu.cn/open-apis/contact/v3/users/{user_id}/update_user_id")]
-    Task<ApiResult<object>> UpdateUserIdAsync(
+    Task<NullDataApiResult> UpdateUserIdAsync(
         [Header("Authorization")] string user_access_token,
         [Path] string user_id,
         [Body] UpdateUserIdRequest updateUserId,
@@ -163,7 +163,7 @@ public interface IFeishuUserApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
     /// <returns></returns>
     [Delete("https://open.feishu.cn/open-apis/contact/v3/users/{user_id}")]
-    Task<ApiResult<object>> DeleteUserByIdAsync(
+    Task<NullDataApiResult> DeleteUserByIdAsync(
        [Header("Authorization")] string user_access_token,
        [Path] string user_id,
        [Body] DeleteSettingsRequest deleteSettingsRequest,
@@ -181,7 +181,7 @@ public interface IFeishuUserApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
     /// <returns></returns>
     [Post("https://open.feishu.cn/open-apis/contact/v3/users/{user_id}/resurrect")]
-    Task<ApiResult<object>> ResurrectUserByIdAsync(
+    Task<NullDataApiResult> ResurrectUserByIdAsync(
       [Header("Authorization")] string user_access_token,
       [Path] string user_id,
       [Body] ResurrectUserRequest resurrectUserRequest,

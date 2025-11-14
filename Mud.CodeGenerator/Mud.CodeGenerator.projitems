@@ -10,6 +10,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="$(MSBuildThisFileDirectory)ApiResult.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)ListApiResult.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)BodyAttribute.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)HeaderAttribute.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)HttpClientApiAttribute.cs" />

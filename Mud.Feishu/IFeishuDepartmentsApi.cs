@@ -134,4 +134,5 @@ public interface IFeishuDepartmentsApi
           [Query("user_id_type")] string? user_id_type = null,
           [Query("department_id_type")] string? department_id_type = null,
           CancellationToken cancellationToken = default);
+
 }

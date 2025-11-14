@@ -71,11 +71,11 @@ public interface IFeishuUserGroupApi
     /// <returns></returns>
     [Get("https://open.feishu.cn/open-apis/contact/v3/group/simplelist")]
     Task<FeishuApiResult<UserGroupListDataResult>> GetUserGroupsAsync(
-     [Header("Authorization")] string user_access_token,
-     [Query("page_size")] int page_size = 10,
-     [Query("page_token")] string? page_token = null,
-     [Query("type")] int type = 1,
-     CancellationToken cancellationToken = default);
+         [Header("Authorization")] string user_access_token,
+         [Query("page_size")] int page_size = 10,
+         [Query("page_token")] string? page_token = null,
+         [Query("type")] int type = 1,
+         CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 查询指定用户所属的用户组列表。
@@ -91,14 +91,14 @@ public interface IFeishuUserGroupApi
     /// <returns></returns>
     [Get("https://open.feishu.cn/open-apis/contact/v3/group/member_belong")]
     Task<FeishuApiResult<UserBelongGroupListResult>> GetUserBelongGroupsAsync(
-    [Header("Authorization")] string user_access_token,
-    [Query("member_id")] string member_id,
-    [Query("member_id_type")] string? member_id_type = null,
-    [Query("group_type")] int? group_type = null,
-    [Query("page_size")] int page_size = 10,
-    [Query("page_token")] string? page_token = null,
-    [Query("type")] int type = 1,
-    CancellationToken cancellationToken = default);
+        [Header("Authorization")] string user_access_token,
+        [Query("member_id")] string member_id,
+        [Query("member_id_type")] string? member_id_type = null,
+        [Query("group_type")] int? group_type = null,
+        [Query("page_size")] int page_size = 10,
+        [Query("page_token")] string? page_token = null,
+        [Query("type")] int type = 1,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 删除指定用户组。

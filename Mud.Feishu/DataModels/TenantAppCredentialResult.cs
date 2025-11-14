@@ -3,7 +3,7 @@
 /// <summary>
 /// 自建应用租户认证响应结果
 /// </summary>
-public class TenantAppCredentialResult : ApiResult
+public class TenantAppCredentialResult : FeishuApiResult
 {
     /// <summary>
     /// token 的过期时间，单位为秒

@@ -9,7 +9,7 @@
     <Import_RootNamespace>Mud.CodeGenerator</Import_RootNamespace>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="$(MSBuildThisFileDirectory)ApiResult.cs" />
+    <Compile Include="..\Mud.CodeGenerator\FeishuApiResult.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)ListApiResult.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)BodyAttribute.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)HeaderAttribute.cs" />

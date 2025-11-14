@@ -3,7 +3,7 @@
 /// <summary>
 /// 获取 user_access_token 的响应结果
 /// </summary>
-public class OAuthCredentialsResult : ApiResult
+public class OAuthCredentialsResult : FeishuApiResult
 {
     /// <summary>
     /// user_access_token，仅在请求成功时返回

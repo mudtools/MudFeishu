@@ -16,7 +16,7 @@ public interface IFeishuEmployeeTypeApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
     /// <returns></returns>
     [Post("https://open.feishu.cn/open-apis/contact/v3/employee_type_enums")]
-    Task<ApiResult<EmployeeTypeEnumResult>> CreateEmployeeTypeAsync(
+    Task<FeishuApiResult<EmployeeTypeEnumResult>> CreateEmployeeTypeAsync(
         [Header("Authorization")] string user_access_token,
         [Body] EmployeeTypeEnumRequest groupInfoRequest,
         CancellationToken cancellationToken = default);
@@ -30,7 +30,7 @@ public interface IFeishuEmployeeTypeApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
     /// <returns></returns>
     [Put("https://open.feishu.cn/open-apis/contact/v3/employee_type_enums/{enum_id}")]
-    Task<ApiResult<EmployeeTypeEnumResult>> UpdateEmployeeTypeAsync(
+    Task<FeishuApiResult<EmployeeTypeEnumResult>> UpdateEmployeeTypeAsync(
         [Header("Authorization")] string user_access_token,
         [Path] string enum_id,
         [Body] EmployeeTypeEnumRequest groupInfoRequest,
@@ -46,7 +46,7 @@ public interface IFeishuEmployeeTypeApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
     /// <returns></returns>
     [Get("https://open.feishu.cn/open-apis/contact/v3/employee_type_enums")]
-    Task<ApiResult<EmployeeTypeEnumListResult>> GetEmployeeTypesAsync(
+    Task<FeishuApiResult<EmployeeTypeEnumListResult>> GetEmployeeTypesAsync(
        [Header("Authorization")] string user_access_token,
        [Query("page_size")] int page_size = 10,
        [Query("page_token")] string? page_token = null,
@@ -61,7 +61,7 @@ public interface IFeishuEmployeeTypeApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
     /// <returns></returns>
     [Delete("https://open.feishu.cn/open-apis/contact/v3/employee_type_enums/{enum_id}")]
-    Task<NullDataApiResult> DeleteEmployeeTypeByIdAsync(
+    Task<FeishuNullDataApiResult> DeleteEmployeeTypeByIdAsync(
          [Header("Authorization")] string user_access_token,
          [Path] string enum_id,
          CancellationToken cancellationToken = default);

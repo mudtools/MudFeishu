@@ -15,7 +15,7 @@ public interface IFeishuAuthenticationApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
     /// <returns></returns>
     [Get("https://open.feishu.cn/open-apis/authen/v1/user_info")]
-    Task<ApiResult<GetUserDataResult>> GetUserInfoAsync([Header("Authorization")] string user_access_token, CancellationToken cancellationToken = default);
+    Task<FeishuApiResult<GetUserDataResult>> GetUserInfoAsync([Header("Authorization")] string user_access_token, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 该接口用于退出用户的登录态
@@ -26,7 +26,7 @@ public interface IFeishuAuthenticationApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
     /// <returns></returns>
     [Post("https://open.feishu.cn/open-apis/passport/v1/sessions/logout")]
-    Task<NullDataApiResult> LogoutAsync([Header("Authorization")] string user_access_token, [Query("user_id_type")] string user_id_type, [Body] LogoutRequest logoutRequest, CancellationToken cancellationToken = default);
+    Task<FeishuNullDataApiResult> LogoutAsync([Header("Authorization")] string user_access_token, [Query("user_id_type")] string user_id_type, [Body] LogoutRequest logoutRequest, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 用于返回调用 JSAPI 临时调用凭证，使用该凭证调用 JSAPI 时，请求不会被拦截。
@@ -39,7 +39,7 @@ public interface IFeishuAuthenticationApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
     /// <returns></returns>
     [Post("https://open.feishu.cn/open-apis/jssdk/ticket/get")]
-    Task<ApiResult<TicketData>> GetJsTicketAsync([Header("Authorization")] string tenant_access_token, CancellationToken cancellationToken = default);
+    Task<FeishuApiResult<TicketData>> GetJsTicketAsync([Header("Authorization")] string tenant_access_token, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 获取自建应用获取 tenant_access_token。

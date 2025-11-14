@@ -19,7 +19,7 @@ public interface IFeishuUserApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
     /// <returns></returns>
     [Post("https://open.feishu.cn/open-apis/contact/v3/users")]
-    Task<ApiResult<CreateOrUpdateUserResult>> CreateUserAsync(
+    Task<FeishuApiResult<CreateOrUpdateUserResult>> CreateUserAsync(
         [Header("Authorization")] string user_access_token,
         [Body] CreateUserRequest userModel,
         [Query("user_id_type")] string? user_id_type = null,
@@ -38,7 +38,7 @@ public interface IFeishuUserApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
     /// <returns></returns>
     [Patch("https://open.feishu.cn/open-apis/contact/v3/users/{user_id}")]
-    Task<ApiResult<CreateOrUpdateUserResult>> UpdateUserAsync(
+    Task<FeishuApiResult<CreateOrUpdateUserResult>> UpdateUserAsync(
         [Header("Authorization")] string user_access_token,
         [Path] string user_id,
         [Body] UpdateUserRequest userModel,
@@ -56,7 +56,7 @@ public interface IFeishuUserApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
     /// <returns></returns>
     [Patch("https://open.feishu.cn/open-apis/contact/v3/users/{user_id}/update_user_id")]
-    Task<NullDataApiResult> UpdateUserIdAsync(
+    Task<FeishuNullDataApiResult> UpdateUserIdAsync(
         [Header("Authorization")] string user_access_token,
         [Path] string user_id,
         [Body] UpdateUserIdRequest updateUserId,
@@ -74,7 +74,7 @@ public interface IFeishuUserApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
     /// <returns></returns>
     [Get("https://open.feishu.cn/open-apis/contact/v3/users/{user_id}")]
-    Task<ApiResult<GetUserInfoResult>> GetUserByIdAsync(
+    Task<FeishuApiResult<GetUserInfoResult>> GetUserByIdAsync(
         [Header("Authorization")] string user_access_token,
         [Path] string user_id,
         [Query("user_id_type")] string? user_id_type = null,
@@ -91,7 +91,7 @@ public interface IFeishuUserApi
     /// <param name="user_ids">用户ID。ID 类型与查询参数 user_id_type 保持一致。如需一次查询多个用户ID，可多次传递同一参数名，并且每次传递不同的参数值。</param>
     /// <returns></returns>
     [Get("https://open.feishu.cn/open-apis/contact/v3/users/batch")]
-    Task<ApiResult<GetUserInfosResult>> GetUserByIdsAsync(
+    Task<FeishuApiResult<GetUserInfosResult>> GetUserByIdsAsync(
        [Header("Authorization")] string user_access_token,
        [Query("user_ids")] string[] user_ids,
        [Query("user_id_type")] string? user_id_type = null,
@@ -110,7 +110,7 @@ public interface IFeishuUserApi
     /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
     /// <returns></returns>
     [Get("https://open.feishu.cn/open-apis/contact/v3/users/find_by_department")]
-    Task<ApiResult<GetUserInfosResult>> GetUserByDepartmentIdAsync(
+    Task<FeishuApiResult<GetUserInfosResult>> GetUserByDepartmentIdAsync(
      [Header("Authorization")] string user_access_token,
      [Query("department_id")] string department_id,
      [Query("page_size")] int page_size = 10,
@@ -130,7 +130,7 @@ public interface IFeishuUserApi
     /// <returns></returns>
 
     [Post("https://open.feishu.cn/open-apis/contact/v3/users/batch_get_id")]
-    Task<ApiResult<UserQueryListResult>> GetBatchUsersAsync(
+    Task<FeishuApiResult<UserQueryListResult>> GetBatchUsersAsync(
       [Header("Authorization")] string user_access_token,
       [Body] UserQueryRequest queryRequest,
       [Query("user_id_type")] string? user_id_type = null,
@@ -146,7 +146,7 @@ public interface IFeishuUserApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
     /// <returns></returns>
     [Get("https://open.feishu.cn/open-apis/search/v1/user")]
-    Task<ApiResult<UserSearchListResult>> GetUsersByKeywordAsync(
+    Task<FeishuApiResult<UserSearchListResult>> GetUsersByKeywordAsync(
      [Header("Authorization")] string user_access_token,
      [Query("query")] string query,
      [Query("page_size")] int page_size = 10,
@@ -163,7 +163,7 @@ public interface IFeishuUserApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
     /// <returns></returns>
     [Delete("https://open.feishu.cn/open-apis/contact/v3/users/{user_id}")]
-    Task<NullDataApiResult> DeleteUserByIdAsync(
+    Task<FeishuNullDataApiResult> DeleteUserByIdAsync(
        [Header("Authorization")] string user_access_token,
        [Path] string user_id,
        [Body] DeleteSettingsRequest deleteSettingsRequest,
@@ -181,7 +181,7 @@ public interface IFeishuUserApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
     /// <returns></returns>
     [Post("https://open.feishu.cn/open-apis/contact/v3/users/{user_id}/resurrect")]
-    Task<NullDataApiResult> ResurrectUserByIdAsync(
+    Task<FeishuNullDataApiResult> ResurrectUserByIdAsync(
       [Header("Authorization")] string user_access_token,
       [Path] string user_id,
       [Body] ResurrectUserRequest resurrectUserRequest,

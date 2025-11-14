@@ -3,7 +3,7 @@
 /// <summary>
 /// API响应结果模型
 /// </summary>
-public class ApiResult
+public class FeishuApiResult
 {
     /// <summary>
     /// 错误码，0表示成功，非 0 取值表示失败
@@ -21,7 +21,7 @@ public class ApiResult
 /// <summary>
 /// API响应结果模型
 /// </summary>
-public class ApiResult<T> : ApiResult
+public class FeishuApiResult<T> : FeishuApiResult
     where T : class
 {
     /// <summary>
@@ -34,7 +34,7 @@ public class ApiResult<T> : ApiResult
 /// <summary>
 /// API响应结果中data数据为空的模型
 /// </summary>
-public class NullDataApiResult : ApiResult<object>
+public class FeishuNullDataApiResult : FeishuApiResult<object>
 {
 
 }

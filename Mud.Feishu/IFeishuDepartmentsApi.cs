@@ -90,9 +90,25 @@ public interface IFeishuDepartmentsApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
     [Get("https://open.feishu.cn/open-apis/contact/v3/departments/{department_id}")]
     Task<FeishuApiResult<GetDepartmentInfoResult>> GetDepartmentByIdAsync(
-     [Header("Authorization")] string user_access_token,
-     [Path] string department_id,
-     [Query("user_id_type")] string? user_id_type = null,
-     [Query("department_id_type")] string? department_id_type = null,
-     CancellationToken cancellationToken = default);
+         [Header("Authorization")] string user_access_token,
+         [Path] string department_id,
+         [Query("user_id_type")] string? user_id_type = null,
+         [Query("department_id_type")] string? department_id_type = null,
+         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 获取单个部门信息，包括部门名称、ID、父部门、负责人、状态以及成员个数等。
+    /// </summary>
+    /// <param name="user_access_token">应用调用 API 时，通过访问凭证（access_token）进行身份鉴权</param>
+    /// <param name="department_ids">部门 ID，ID 类型需要与查询参数 department_id_type 的取值保持一致。</param>
+    /// <param name="department_id_type">此次调用中的部门 ID 类型。</param>
+    /// <param name="user_id_type">用户 ID 类型</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
+    [Get("https://open.feishu.cn/open-apis/contact/v3/departments/batch")]
+    Task<FeishuApiResult<BatchGetDepartmentRequest>> GetDepartmentByIdsAsync(
+        [Header("Authorization")] string user_access_token,
+        [Query("department_ids")] string[] department_ids,
+        [Query("user_id_type")] string? user_id_type = null,
+        [Query("department_id_type")] string? department_id_type = null,
+        CancellationToken cancellationToken = default);
 }

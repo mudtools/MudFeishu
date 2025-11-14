@@ -99,4 +99,18 @@ public interface IFeishuUserGroupApi
     [Query("page_token")] string? page_token = null,
     [Query("type")] int type = 1,
     CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 删除指定用户组。
+    /// </summary>
+    /// <param name="user_access_token">应用调用 API 时，通过访问凭证（access_token）进行身份鉴权</param>
+    /// <param name="group_id">需删除的用户组 ID。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
+    /// <returns></returns>
+    [Delete("https://open.feishu.cn/open-apis/contact/v3/group/{group_id}")]
+    Task<NullDataApiResult> DeleteUserGroupByIdAsync(
+      [Header("Authorization")] string user_access_token,
+      [Path] string group_id,
+      CancellationToken cancellationToken = default);
 }

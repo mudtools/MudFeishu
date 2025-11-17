@@ -6,9 +6,9 @@ namespace Mud.Feishu.Test.Controllers;
 [Route("api/[controller]")]
 public class EmployeeTypeController : ControllerBase
 {
-    private readonly IFeishuEmployeeTypeApi _employeeTypeApi;
+    private readonly IFeishuEmployeeType _employeeTypeApi;
 
-    public EmployeeTypeController(IFeishuEmployeeTypeApi employeeTypeApi)
+    public EmployeeTypeController(IFeishuEmployeeType employeeTypeApi)
     {
         _employeeTypeApi = employeeTypeApi;
     }
@@ -23,7 +23,7 @@ public class EmployeeTypeController : ControllerBase
     {
         try
         {
-            var result = await _employeeTypeApi.GetEmployeeTypesAsync("", 10, pageToken);
+            var result = await _employeeTypeApi.GetEmployeeTypesAsync(10, pageToken);
             return Ok(result);
         }
         catch (Exception ex)

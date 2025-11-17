@@ -7,9 +7,9 @@ namespace Mud.Feishu.Test.Controllers;
 [Route("api/[controller]")]
 public class UserController : ControllerBase
 {
-    private readonly IFeishuUserApi _userApi;
+    private readonly IFeishuUser _userApi;
 
-    public UserController(IFeishuUserApi userApi)
+    public UserController(IFeishuUser userApi)
     {
         _userApi = userApi;
     }
@@ -25,7 +25,7 @@ public class UserController : ControllerBase
     {
         try
         {
-            var result = await _userApi.GetUserByIdAsync("", userId, userIdType);
+            var result = await _userApi.GetUserByIdAsync(userId, userIdType);
             return Ok(result.Data);
         }
         catch (Exception ex)
@@ -51,7 +51,7 @@ public class UserController : ControllerBase
     {
         try
         {
-            var result = await _userApi.GetUserByDepartmentIdAsync("", departmentId, pageSize, pageToken, userIdType);
+            var result = await _userApi.GetUserByDepartmentIdAsync(departmentId, pageSize, pageToken, userIdType);
             return Ok(result.Data);
         }
         catch (Exception ex)

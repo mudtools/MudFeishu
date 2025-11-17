@@ -6,9 +6,9 @@ namespace Mud.Feishu.Test.Controllers;
 [Route("api/[controller]")]
 public class DepartmentController : ControllerBase
 {
-    private readonly IFeishuDepartmentsApi _departmentApi;
+    private readonly IFeishuDepartments _departmentApi;
 
-    public DepartmentController(IFeishuDepartmentsApi departmentApi)
+    public DepartmentController(IFeishuDepartments departmentApi)
     {
         _departmentApi = departmentApi;
     }
@@ -24,7 +24,7 @@ public class DepartmentController : ControllerBase
     {
         try
         {
-            var result = await _departmentApi.GetDepartmentByIdAsync("", departmentId, null, departmentIdType);
+            var result = await _departmentApi.GetDepartmentByIdAsync(departmentId, null, departmentIdType);
             return Ok(result);
         }
         catch (Exception ex)
@@ -52,7 +52,7 @@ public class DepartmentController : ControllerBase
     {
         try
         {
-            var result = await _departmentApi.GetDepartmentsByParentIdAsync("", parentDepartmentId, false, pageSize, pageToken, departmentIdType, parentDepartmentId);
+            var result = await _departmentApi.GetDepartmentsByParentIdAsync(parentDepartmentId, false, pageSize, pageToken, departmentIdType, parentDepartmentId);
             return Ok(result);
         }
         catch (Exception ex)

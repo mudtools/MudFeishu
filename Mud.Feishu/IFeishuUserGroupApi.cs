@@ -1,12 +1,10 @@
-﻿using Mud.Feishu.DataModels.UserGroup;
-
-namespace Mud.Feishu;
+﻿namespace Mud.Feishu;
 
 /// <summary>
 /// 飞书用户组相关的API接口函数。
 /// </summary>
 [HttpClientApi]
-[HttpClientApiWrap(TokenManage = "ITokenManage", WrapInterface = "IFeishuUserGroup")]
+[HttpClientApiWrap(TokenManage = nameof(ITokenManage), WrapInterface = "IFeishuUserGroup")]
 public interface IFeishuUserGroupApi
 {
     /// <summary>

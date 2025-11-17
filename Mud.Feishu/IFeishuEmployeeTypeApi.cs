@@ -1,12 +1,10 @@
-﻿using Mud.Feishu.DataModels.EmployeeType;
-
-namespace Mud.Feishu;
+﻿namespace Mud.Feishu;
 
 /// <summary>
 /// 飞书人员类型相关的API接口函数。
 /// </summary>
 [HttpClientApi]
-[HttpClientApiWrap(TokenManage = "ITokenManage", WrapInterface = "IFeishuEmployeeType")]
+[HttpClientApiWrap(TokenManage = nameof(ITokenManage), WrapInterface = "IFeishuEmployeeType")]
 public interface IFeishuEmployeeTypeApi
 {
     /// <summary>

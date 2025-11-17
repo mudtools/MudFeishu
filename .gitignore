@@ -8,3 +8,8 @@
 /Mud.Feishu.Test/obj
 /Mud.Feishu.Test/bin/Debug/net10.0
 /Mud.Feishu.Test/bin/Debug
+/Mud.Feishu/bin/Release
+/Mud.Feishu.Test/.config
+/Mud.Feishu.Test/bin/Release
+/Mud.Feishu.Test/Properties/PublishProfiles
+*.user

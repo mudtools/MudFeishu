@@ -37,7 +37,7 @@ internal class TenantTokenManagerWithCache : ITokenManager
         // 尝试从缓存获取有效令牌
         if (TryGetValidTokenFromCache(out var cachedToken))
         {
-            return cachedToken;
+            return "Bearer " + cachedToken;
         }
 
         // 获取新令牌
@@ -50,7 +50,7 @@ internal class TenantTokenManagerWithCache : ITokenManager
         // 更新缓存
         UpdateTokenCache(newToken);
 
-        return newToken.TenantAccessToken;
+        return "Bearer " + newToken.TenantAccessToken;
     }
 
     /// <summary>
@@ -82,10 +82,10 @@ internal class TenantTokenManagerWithCache : ITokenManager
         return _options.AppType switch
         {
             FeishuAppType.SelfTenantBuiltApp =>
-                await _authenticationApi.GetAppAccessTokenAsync(credentials, cancellationToken),
+                await _authenticationApi.GetTenantAccessTokenAsync(credentials, cancellationToken),
 
             FeishuAppType.SelfBuiltApp =>
-                await _authenticationApi.GetTenantAccessTokenAsync(credentials, cancellationToken),
+                await _authenticationApi.GetAppAccessTokenAsync(credentials, cancellationToken),
 
             _ => throw new FeishuException(400, $"不支持的AppType: {_options.AppType}")
         };

@@ -18,14 +18,13 @@ public class UserController : ControllerBase
     /// 获取用户信息
     /// </summary>
     /// <param name="userId">用户ID</param>
-    /// <param name="userIdType">用户ID类型</param>
     /// <returns></returns>
     [HttpGet("{userId}")]
-    public async Task<IActionResult> GetUser(string userId, [FromQuery] string userIdType = "open_id")
+    public async Task<IActionResult> GetUser(string userId)
     {
         try
         {
-            var result = await _userApi.GetUserByIdAsync(userId, userIdType);
+            var result = await _userApi.GetUserByIdAsync(userId);
             return Ok(result.Data);
         }
         catch (Exception ex)

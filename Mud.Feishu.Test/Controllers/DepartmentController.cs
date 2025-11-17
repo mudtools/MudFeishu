@@ -20,11 +20,11 @@ public class DepartmentController : ControllerBase
     /// <param name="departmentIdType">部门ID类型</param>
     /// <returns></returns>
     [HttpGet("{departmentId}")]
-    public async Task<IActionResult> GetDepartment(string departmentId, [FromQuery] string departmentIdType = "department_id")
+    public async Task<IActionResult> GetDepartment(string departmentId)
     {
         try
         {
-            var result = await _departmentApi.GetDepartmentByIdAsync(departmentId, null, departmentIdType);
+            var result = await _departmentApi.GetDepartmentByIdAsync(departmentId, null);
             return Ok(result);
         }
         catch (Exception ex)
@@ -45,10 +45,10 @@ public class DepartmentController : ControllerBase
     /// <returns></returns>
     [HttpGet]
     public async Task<IActionResult> GetDepartments(
+        [FromQuery] string? parentDepartmentId,
         [FromQuery] int pageSize = 50,
         [FromQuery] string? pageToken = null,
-        [FromQuery] string departmentIdType = "department_id",
-        [FromQuery] string? parentDepartmentId = null)
+        [FromQuery] string departmentIdType = "department_id")
     {
         try
         {

@@ -9,4 +9,8 @@
 
 	<Import Project="..\Mud.CodeGenerator\Mud.CodeGenerator.projitems" Label="Shared" />
 
+	<ItemGroup>
+	  <PackageReference Update="Mud.ServiceCodeGenerator" Version="1.2.5" />
+	</ItemGroup>
+
 </Project>

@@ -6,6 +6,7 @@ namespace Mud.Feishu;
 /// 企业人员信息管理相关的API
 /// </summary>
 [HttpClientApi]
+[HttpClientApiWrap(TokenManage = "ITokenManage", WrapInterface = "IFeishuUser")]
 public interface IFeishuUserApi
 {
     /// <summary>
@@ -20,7 +21,7 @@ public interface IFeishuUserApi
     /// <returns></returns>
     [Post("https://open.feishu.cn/open-apis/contact/v3/users")]
     Task<FeishuApiResult<CreateOrUpdateUserResult>> CreateUserAsync(
-        [Header("Authorization")] string user_access_token,
+        [Token][Header("Authorization")] string user_access_token,
         [Body] CreateUserRequest userModel,
         [Query("user_id_type")] string? user_id_type = null,
         [Query("department_id_type")] string? department_id_type = null,
@@ -39,7 +40,7 @@ public interface IFeishuUserApi
     /// <returns></returns>
     [Patch("https://open.feishu.cn/open-apis/contact/v3/users/{user_id}")]
     Task<FeishuApiResult<CreateOrUpdateUserResult>> UpdateUserAsync(
-        [Header("Authorization")] string user_access_token,
+        [Token][Header("Authorization")] string user_access_token,
         [Path] string user_id,
         [Body] UpdateUserRequest userModel,
         [Query("user_id_type")] string? user_id_type = null,
@@ -57,7 +58,7 @@ public interface IFeishuUserApi
     /// <returns></returns>
     [Patch("https://open.feishu.cn/open-apis/contact/v3/users/{user_id}/update_user_id")]
     Task<FeishuNullDataApiResult> UpdateUserIdAsync(
-        [Header("Authorization")] string user_access_token,
+        [Token][Header("Authorization")] string user_access_token,
         [Path] string user_id,
         [Body] UpdateUserIdRequest updateUserId,
         [Query("user_id_type")] string? user_id_type = null,
@@ -75,7 +76,7 @@ public interface IFeishuUserApi
     /// <returns></returns>
     [Get("https://open.feishu.cn/open-apis/contact/v3/users/{user_id}")]
     Task<FeishuApiResult<GetUserInfoResult>> GetUserByIdAsync(
-        [Header("Authorization")] string user_access_token,
+        [Token][Header("Authorization")] string user_access_token,
         [Path] string user_id,
         [Query("user_id_type")] string? user_id_type = null,
         [Query("department_id_type")] string? department_id_type = null,
@@ -92,7 +93,7 @@ public interface IFeishuUserApi
     /// <returns></returns>
     [Get("https://open.feishu.cn/open-apis/contact/v3/users/batch")]
     Task<FeishuApiResult<GetUserInfosResult>> GetUserByIdsAsync(
-       [Header("Authorization")] string user_access_token,
+       [Token][Header("Authorization")] string user_access_token,
        [Query("user_ids")] string[] user_ids,
        [Query("user_id_type")] string? user_id_type = null,
        [Query("department_id_type")] string? department_id_type = null,
@@ -111,7 +112,7 @@ public interface IFeishuUserApi
     /// <returns></returns>
     [Get("https://open.feishu.cn/open-apis/contact/v3/users/find_by_department")]
     Task<FeishuApiResult<GetUserInfosResult>> GetUserByDepartmentIdAsync(
-     [Header("Authorization")] string user_access_token,
+     [Token][Header("Authorization")] string user_access_token,
      [Query("department_id")] string department_id,
      [Query("page_size")] int page_size = 10,
      [Query("page_token")] string? page_token = null,
@@ -131,7 +132,7 @@ public interface IFeishuUserApi
 
     [Post("https://open.feishu.cn/open-apis/contact/v3/users/batch_get_id")]
     Task<FeishuApiResult<UserQueryListResult>> GetBatchUsersAsync(
-      [Header("Authorization")] string user_access_token,
+      [Token][Header("Authorization")] string user_access_token,
       [Body] UserQueryRequest queryRequest,
       [Query("user_id_type")] string? user_id_type = null,
       CancellationToken cancellationToken = default);
@@ -147,7 +148,7 @@ public interface IFeishuUserApi
     /// <returns></returns>
     [Get("https://open.feishu.cn/open-apis/search/v1/user")]
     Task<FeishuApiResult<UserSearchListResult>> GetUsersByKeywordAsync(
-     [Header("Authorization")] string user_access_token,
+     [Token][Header("Authorization")] string user_access_token,
      [Query("query")] string query,
      [Query("page_size")] int page_size = 10,
      [Query("page_token")] string? page_token = null,
@@ -164,7 +165,7 @@ public interface IFeishuUserApi
     /// <returns></returns>
     [Delete("https://open.feishu.cn/open-apis/contact/v3/users/{user_id}")]
     Task<FeishuNullDataApiResult> DeleteUserByIdAsync(
-       [Header("Authorization")] string user_access_token,
+       [Token][Header("Authorization")] string user_access_token,
        [Path] string user_id,
        [Body] DeleteSettingsRequest deleteSettingsRequest,
        [Query("user_id_type")] string? user_id_type = null,
@@ -182,10 +183,44 @@ public interface IFeishuUserApi
     /// <returns></returns>
     [Post("https://open.feishu.cn/open-apis/contact/v3/users/{user_id}/resurrect")]
     Task<FeishuNullDataApiResult> ResurrectUserByIdAsync(
-      [Header("Authorization")] string user_access_token,
+      [Token][Header("Authorization")] string user_access_token,
       [Path] string user_id,
       [Body] ResurrectUserRequest resurrectUserRequest,
       [Query("user_id_type")] string? user_id_type = null,
       [Query("department_id_type")] string? department_id_type = null,
       CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 通过 user_access_token 获取相关用户信息。
+    /// </summary>
+    /// <param name="user_access_token">user_access_token 以登录用户身份调用 API，可读写的数据范围由用户可读写的数据范围决定。参考获取 user_access_token。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
+    /// <returns></returns>
+    [Get("https://open.feishu.cn/open-apis/authen/v1/user_info")]
+    Task<FeishuApiResult<GetUserDataResult>> GetUserInfoAsync([Header("Authorization")] string user_access_token, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 该接口用于退出用户的登录态
+    /// </summary>
+    /// <param name="user_access_token">user_access_token 以登录用户身份调用 API</param>
+    /// <param name="user_id_type">用户 ID 类型，非必填项。</param>
+    /// <param name="logoutRequest">退出登录请求体。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
+    /// <returns></returns>
+    [Post("https://open.feishu.cn/open-apis/passport/v1/sessions/logout")]
+    Task<FeishuNullDataApiResult> LogoutAsync([Header("Authorization")] string user_access_token, [Query("user_id_type")] string user_id_type, [Body] LogoutRequest logoutRequest, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 用于返回调用 JSAPI 临时调用凭证，使用该凭证调用 JSAPI 时，请求不会被拦截。
+    /// </summary>
+    /// <param name="tenant_access_token">
+    /// tenant_access_token
+    /// <para>值格式："Bearer access_token"</para>
+    /// <para>示例值："Bearer t-7f1bcd13fc57d46bac21793a18e560"</para>
+    /// </param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
+    /// <returns></returns>
+    [Post("https://open.feishu.cn/open-apis/jssdk/ticket/get")]
+    Task<FeishuApiResult<TicketData>> GetJsTicketAsync([Header("Authorization")] string tenant_access_token, CancellationToken cancellationToken = default);
+
 }

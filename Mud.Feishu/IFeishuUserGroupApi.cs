@@ -6,6 +6,7 @@ namespace Mud.Feishu;
 /// 飞书用户组相关的API接口函数。
 /// </summary>
 [HttpClientApi]
+[HttpClientApiWrap(TokenManage = "ITokenManage", WrapInterface = "IFeishuUserGroup")]
 public interface IFeishuUserGroupApi
 {
     /// <summary>
@@ -19,7 +20,7 @@ public interface IFeishuUserGroupApi
     /// <returns></returns>
     [Post("https://open.feishu.cn/open-apis/contact/v3/group")]
     Task<FeishuApiResult<UserGroupCreateResult>> CreateUserGroupAsync(
-        [Header("Authorization")] string user_access_token,
+        [Token][Header("Authorization")] string user_access_token,
         [Body] UserGroupInfoRequest groupInfoRequest,
         [Query("user_id_type")] string? user_id_type = null,
         [Query("department_id_type")] string? department_id_type = null,
@@ -36,7 +37,7 @@ public interface IFeishuUserGroupApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
     [Patch("https://open.feishu.cn/open-apis/contact/v3/group/{group_id}")]
     Task<FeishuNullDataApiResult> UpdateUserGroupAsync(
-       [Header("Authorization")] string user_access_token,
+       [Token][Header("Authorization")] string user_access_token,
        [Path] string group_id,
        [Body] UserGroupUpdateRequest groupUpdateRequest,
        [Query("user_id_type")] string? user_id_type = null,
@@ -54,7 +55,7 @@ public interface IFeishuUserGroupApi
     /// <returns></returns>
     [Get("https://open.feishu.cn/open-apis/contact/v3/group/{group_id}")]
     Task<FeishuApiResult<UserGroupQueryResult>> GetUserGroupByIdAsync(
-      [Header("Authorization")] string user_access_token,
+      [Token][Header("Authorization")] string user_access_token,
       [Path] string group_id,
       [Query("user_id_type")] string? user_id_type = null,
       [Query("department_id_type")] string? department_id_type = null,
@@ -71,7 +72,7 @@ public interface IFeishuUserGroupApi
     /// <returns></returns>
     [Get("https://open.feishu.cn/open-apis/contact/v3/group/simplelist")]
     Task<FeishuApiResult<UserGroupListDataResult>> GetUserGroupsAsync(
-     [Header("Authorization")] string user_access_token,
+     [Token][Header("Authorization")] string user_access_token,
      [Query("page_size")] int page_size = 10,
      [Query("page_token")] string? page_token = null,
      [Query("type")] int type = 1,
@@ -91,7 +92,7 @@ public interface IFeishuUserGroupApi
     /// <returns></returns>
     [Get("https://open.feishu.cn/open-apis/contact/v3/group/member_belong")]
     Task<FeishuApiResult<UserBelongGroupListResult>> GetUserBelongGroupsAsync(
-    [Header("Authorization")] string user_access_token,
+    [Token][Header("Authorization")] string user_access_token,
     [Query("member_id")] string member_id,
     [Query("member_id_type")] string? member_id_type = null,
     [Query("group_type")] int? group_type = null,
@@ -109,7 +110,7 @@ public interface IFeishuUserGroupApi
     /// <returns></returns>
     [Delete("https://open.feishu.cn/open-apis/contact/v3/group/{group_id}")]
     Task<FeishuNullDataApiResult> DeleteUserGroupByIdAsync(
-      [Header("Authorization")] string user_access_token,
+      [Token][Header("Authorization")] string user_access_token,
       [Path] string group_id,
       CancellationToken cancellationToken = default);
 }

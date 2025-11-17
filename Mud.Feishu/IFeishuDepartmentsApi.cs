@@ -6,6 +6,7 @@ namespace Mud.Feishu;
 /// 飞书组织机构部门相关的API接口函数。
 /// </summary>
 [HttpClientApi]
+[HttpClientApiWrap(TokenManage = "ITokenManage", WrapInterface = "IFeishuDepartments")]
 public interface IFeishuDepartmentsApi
 {
     /// <summary>
@@ -20,7 +21,7 @@ public interface IFeishuDepartmentsApi
     /// <returns></returns>
     [Post("https://open.feishu.cn/open-apis/contact/v3/departments")]
     Task<FeishuApiResult<DepartmentCreateUpdateResult>> CreateDepartmentAsync(
-           [Header("Authorization")] string user_access_token,
+           [Token][Header("Authorization")] string user_access_token,
            [Body] DepartmentCreateRequest departmentCreateRequest,
            [Query("user_id_type")] string? user_id_type = null,
            [Query("department_id_type")] string? department_id_type = null,
@@ -38,7 +39,7 @@ public interface IFeishuDepartmentsApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
     [Patch("https://open.feishu.cn/open-apis/contact/v3/departments/{department_id}")]
     Task<FeishuApiResult<DepartmentCreateUpdateResult>> UpdatePartDepartmentAsync(
-          [Header("Authorization")] string user_access_token,
+          [Token][Header("Authorization")] string user_access_token,
           [Path] string department_id,
           [Body] DepartmentPartUpdateRequest departmentCreateRequest,
           [Query("user_id_type")] string? user_id_type = null,
@@ -56,7 +57,7 @@ public interface IFeishuDepartmentsApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
     [Put("https://open.feishu.cn/open-apis/contact/v3/departments/{department_id}")]
     Task<FeishuApiResult<DepartmentUpdateResult>> UpdateDepartmentAsync(
-         [Header("Authorization")] string user_access_token,
+         [Token][Header("Authorization")] string user_access_token,
          [Path] string department_id,
          [Body] DepartmentUpdateRequest departmentCreateRequest,
          [Query("user_id_type")] string? user_id_type = null,
@@ -73,7 +74,7 @@ public interface IFeishuDepartmentsApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
     [Patch("https://open.feishu.cn/open-apis/contact/v3/departments/{department_id}/update_department_id")]
     Task<FeishuNullDataApiResult> UpdateDepartmentIdAsync(
-        [Header("Authorization")] string user_access_token,
+        [Token][Header("Authorization")] string user_access_token,
         [Path] string department_id,
         [Body] DepartMentUpdateIdRequest departMentUpdateIdRequest,
         [Query("department_id_type")] string? department_id_type = null,
@@ -90,7 +91,7 @@ public interface IFeishuDepartmentsApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
     [Get("https://open.feishu.cn/open-apis/contact/v3/departments/{department_id}")]
     Task<FeishuApiResult<GetDepartmentInfoResult>> GetDepartmentByIdAsync(
-     [Header("Authorization")] string user_access_token,
+     [Token][Header("Authorization")] string user_access_token,
      [Path] string department_id,
      [Query("user_id_type")] string? user_id_type = null,
      [Query("department_id_type")] string? department_id_type = null,

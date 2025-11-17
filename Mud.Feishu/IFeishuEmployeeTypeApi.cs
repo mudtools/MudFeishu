@@ -6,6 +6,7 @@ namespace Mud.Feishu;
 /// 飞书人员类型相关的API接口函数。
 /// </summary>
 [HttpClientApi]
+[HttpClientApiWrap(TokenManage = "ITokenManage", WrapInterface = "IFeishuEmployeeType")]
 public interface IFeishuEmployeeTypeApi
 {
     /// <summary>
@@ -17,7 +18,7 @@ public interface IFeishuEmployeeTypeApi
     /// <returns></returns>
     [Post("https://open.feishu.cn/open-apis/contact/v3/employee_type_enums")]
     Task<FeishuApiResult<EmployeeTypeEnumResult>> CreateEmployeeTypeAsync(
-        [Header("Authorization")] string user_access_token,
+        [Token][Header("Authorization")] string user_access_token,
         [Body] EmployeeTypeEnumRequest groupInfoRequest,
         CancellationToken cancellationToken = default);
 
@@ -31,7 +32,7 @@ public interface IFeishuEmployeeTypeApi
     /// <returns></returns>
     [Put("https://open.feishu.cn/open-apis/contact/v3/employee_type_enums/{enum_id}")]
     Task<FeishuApiResult<EmployeeTypeEnumResult>> UpdateEmployeeTypeAsync(
-        [Header("Authorization")] string user_access_token,
+        [Token][Header("Authorization")] string user_access_token,
         [Path] string enum_id,
         [Body] EmployeeTypeEnumRequest groupInfoRequest,
         CancellationToken cancellationToken = default);
@@ -47,7 +48,7 @@ public interface IFeishuEmployeeTypeApi
     /// <returns></returns>
     [Get("https://open.feishu.cn/open-apis/contact/v3/employee_type_enums")]
     Task<FeishuApiResult<EmployeeTypeEnumListResult>> GetEmployeeTypesAsync(
-       [Header("Authorization")] string user_access_token,
+       [Token][Header("Authorization")] string user_access_token,
        [Query("page_size")] int page_size = 10,
        [Query("page_token")] string? page_token = null,
        CancellationToken cancellationToken = default);
@@ -62,7 +63,7 @@ public interface IFeishuEmployeeTypeApi
     /// <returns></returns>
     [Delete("https://open.feishu.cn/open-apis/contact/v3/employee_type_enums/{enum_id}")]
     Task<FeishuNullDataApiResult> DeleteEmployeeTypeByIdAsync(
-         [Header("Authorization")] string user_access_token,
+         [Token][Header("Authorization")] string user_access_token,
          [Path] string enum_id,
          CancellationToken cancellationToken = default);
 }

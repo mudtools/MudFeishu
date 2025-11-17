@@ -17,6 +17,7 @@ public static class FeishuServiceCollectionExtensions
     /// <returns></returns>
     public static IServiceCollection AddFeishuApiService(this IServiceCollection services, IConfiguration configuration)
     {
-        return services.AddWebApiHttpClient();
+        return services.AddWebApiHttpClient()
+                       .AddWebApiHttpClientWrap();
     }
 }

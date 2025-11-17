@@ -6,7 +6,7 @@ using System.Collections.Concurrent;
 
 namespace Mud.Feishu;
 
-internal class TenantTokenManagerWithCache : ITokenManager
+internal class TokenManagerWithCache : ITokenManager
 {
     private class AppCredentialToken(long expire, string tenantAccessToken, string? appAccessToken)
     {
@@ -17,15 +17,15 @@ internal class TenantTokenManagerWithCache : ITokenManager
 
     private readonly FeishuOptions _options;
     private readonly IFeishuAuthenticationApi _authenticationApi;
-    private readonly ILogger<TenantTokenManagerWithCache> _logger;
+    private readonly ILogger<TokenManagerWithCache> _logger;
 
     // 使用并发字典处理应用令牌缓存
     private readonly ConcurrentDictionary<string, AppCredentialToken> _appTokenCache = new();
 
-    public TenantTokenManagerWithCache(
+    public TokenManagerWithCache(
         IFeishuAuthenticationApi authenticationApi,
         IOptions<FeishuOptions> options,
-        ILogger<TenantTokenManagerWithCache> logger)
+        ILogger<TokenManagerWithCache> logger)
     {
         _authenticationApi = authenticationApi ?? throw new ArgumentNullException(nameof(authenticationApi));
         _options = options?.Value ?? throw new ArgumentNullException(nameof(options));

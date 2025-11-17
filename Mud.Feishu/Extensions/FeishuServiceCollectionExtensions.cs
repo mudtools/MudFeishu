@@ -53,7 +53,7 @@ public static class FeishuServiceCollectionExtensions
     /// </summary>
     private static IServiceCollection AddFeishuApiService(this IServiceCollection services)
     {
-        services.AddSingleton<ITokenManager, TenantTokenManagerWithCache>();
+        services.AddSingleton<ITokenManager, TokenManagerWithCache>();
         return services.AddWebApiHttpClient()
                        .AddWebApiHttpClientWrap();
     }

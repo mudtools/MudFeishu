@@ -6,21 +6,29 @@ using System.Collections.Concurrent;
 
 namespace Mud.Feishu;
 
-internal class TokenManagerWithCache : ITokenManager
+internal class TokenManagerWithCache : ITokenManager, IDisposable
 {
-    private class AppCredentialToken(long expire, string tenantAccessToken, string? appAccessToken)
+    private class AppCredentialToken
     {
-        public long Expire { get; set; } = expire;
-        public string TenantAccessToken { get; set; } = tenantAccessToken;
-        public string? AppAccessToken { get; set; } = appAccessToken;
+        public string? Msg { get; init; }
+        public int Code { get; init; }
+        public required long Expire { get; init; }
+        public required string AccessToken { get; init; }
     }
 
     private readonly FeishuOptions _options;
     private readonly IFeishuAuthenticationApi _authenticationApi;
     private readonly ILogger<TokenManagerWithCache> _logger;
+    private readonly TimeSpan _tokenRefreshThreshold;
 
-    // 使用并发字典处理应用令牌缓存
+    // 使用 Lazy 和 AsyncLock 解决缓存击穿和竞态条件问题
+    private readonly ConcurrentDictionary<string, Lazy<Task<AppCredentialToken>>> _tokenLoadingTasks = new();
     private readonly ConcurrentDictionary<string, AppCredentialToken> _appTokenCache = new();
+    private readonly SemaphoreSlim _cacheLock = new(1, 1);
+
+    // 常量定义
+    private const int DefaultTokenExpirationSeconds = 7200;
+    private const int DefaultRefreshThresholdSeconds = 300; // 提前5分钟刷新
 
     public TokenManagerWithCache(
         IFeishuAuthenticationApi authenticationApi,
@@ -30,48 +38,140 @@ internal class TokenManagerWithCache : ITokenManager
         _authenticationApi = authenticationApi ?? throw new ArgumentNullException(nameof(authenticationApi));
         _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _tokenRefreshThreshold = TimeSpan.FromSeconds(DefaultRefreshThresholdSeconds);
     }
 
     public async Task<string?> GetTokenAsync(CancellationToken cancellationToken = default)
     {
-        // 尝试从缓存获取有效令牌
-        if (TryGetValidTokenFromCache(out var cachedToken))
-        {
-            return "Bearer " + cachedToken;
-        }
+        return await GetTokenInternalAsync(TokenType.TenantAccessToken, cancellationToken);
+    }
 
-        // 获取新令牌
-        var result = await GetNewTenantTokenAsync(cancellationToken);
-
-        // 验证并缓存令牌
-        ValidateTokenResult(result);
-        var newToken = CreateAppCredentialToken(result);
-
-        // 更新缓存
-        UpdateTokenCache(newToken);
-
-        return "Bearer " + newToken.TenantAccessToken;
+    public async Task<string?> GetUserTokenAsync(CancellationToken cancellationToken = default)
+    {
+        return await GetTokenInternalAsync(TokenType.UserAccessToken, cancellationToken);
     }
 
     /// <summary>
-    /// 尝试从缓存获取有效令牌
+    /// 统一的令牌获取方法
     /// </summary>
-    private bool TryGetValidTokenFromCache(out string? token)
+    private async Task<string?> GetTokenInternalAsync(TokenType tokenType, CancellationToken cancellationToken)
+    {
+        var cacheKey = GenerateCacheKey(tokenType);
+
+        // 尝试从缓存获取有效令牌
+        if (TryGetValidTokenFromCache(cacheKey, out var cachedToken))
+        {
+            _logger.LogDebug("Using cached token for {TokenType}", tokenType);
+            return FormatBearerToken(cachedToken);
+        }
+
+        try
+        {
+            // 使用 Lazy 防止缓存击穿，确保同一时刻只有一个请求在获取令牌
+            var lazyTask = _tokenLoadingTasks.GetOrAdd(cacheKey, _ => new Lazy<Task<AppCredentialToken>>(
+                () => AcquireTokenAsync(tokenType, cancellationToken),
+                LazyThreadSafetyMode.ExecutionAndPublication));
+
+            var token = await lazyTask.Value;
+            return FormatBearerToken(token.AccessToken);
+        }
+        finally
+        {
+            // 清理已完成的任务
+            _tokenLoadingTasks.TryRemove(cacheKey, out _);
+        }
+    }
+
+    /// <summary>
+    /// 获取新令牌的核心方法
+    /// </summary>
+    private async Task<AppCredentialToken> AcquireTokenAsync(TokenType tokenType, CancellationToken cancellationToken)
+    {
+        _logger.LogInformation("Acquiring new token for {TokenType}", tokenType);
+
+        // 实现重试机制
+        var retryCount = 0;
+        const int maxRetries = 2;
+
+        while (retryCount <= maxRetries)
+        {
+            try
+            {
+                var result = await (tokenType == TokenType.TenantAccessToken
+                    ? GetNewTenantTokenAsync(cancellationToken)
+                    : GetNewUserTokenAsync(cancellationToken));
+
+                ValidateTokenResult(result);
+                var newToken = CreateAppCredentialToken(result);
+
+                // 原子性地更新缓存
+                UpdateTokenCache(newToken, tokenType);
+
+                _logger.LogInformation("Successfully acquired new token for {TokenType}, expires at {ExpireTime}",
+                    tokenType, DateTimeOffset.FromUnixTimeMilliseconds(newToken.Expire));
+
+                return newToken;
+            }
+            catch (Exception ex) when (retryCount < maxRetries && !(ex is FeishuException))
+            {
+                retryCount++;
+                _logger.LogWarning(ex, "Failed to acquire token for {TokenType}, retry {RetryCount}/{MaxRetries}",
+                    tokenType, retryCount, maxRetries);
+
+                await Task.Delay(TimeSpan.FromSeconds(Math.Pow(2, retryCount)), cancellationToken);
+            }
+        }
+
+        throw new FeishuException(500, $"Failed to acquire {tokenType} after {maxRetries} retries");
+    }
+
+    /// <summary>
+    /// 尝试从缓存获取有效令牌（考虑刷新阈值）
+    /// </summary>
+    private bool TryGetValidTokenFromCache(string cacheKey, out string? token)
     {
         token = null;
-        if (_appTokenCache.TryGetValue(_options.AppId, out var cachedToken) &&
-            !IsTokenExpired(cachedToken.Expire))
+
+        if (_appTokenCache.TryGetValue(cacheKey, out var cachedToken) &&
+            !IsTokenExpiredOrNearExpiry(cachedToken.Expire))
         {
-            token = cachedToken.TenantAccessToken;
+            token = cachedToken.AccessToken;
             return true;
         }
+
         return false;
     }
 
     /// <summary>
-    /// 获取新的访问令牌
+    /// 判断令牌是否过期或即将过期
     /// </summary>
-    private async Task<TenantAppCredentialResult> GetNewTenantTokenAsync(CancellationToken cancellationToken)
+    private bool IsTokenExpiredOrNearExpiry(long expireTime)
+    {
+        var currentTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        var thresholdTime = currentTime + (long)_tokenRefreshThreshold.TotalMilliseconds;
+        return expireTime <= thresholdTime;
+    }
+
+    /// <summary>
+    /// 生成缓存键
+    /// </summary>
+    private string GenerateCacheKey(TokenType tokenType)
+    {
+        return $"{_options.AppId}:{tokenType}";
+    }
+
+    /// <summary>
+    /// 格式化 Bearer Token
+    /// </summary>
+    private static string FormatBearerToken(string token)
+    {
+        return $"Bearer {token}";
+    }
+
+    /// <summary>
+    /// 获取应用访问令牌
+    /// </summary>
+    private async Task<AppCredentialToken> GetNewTenantTokenAsync(CancellationToken cancellationToken)
     {
         var credentials = new AppCredentials
         {
@@ -79,13 +179,41 @@ internal class TokenManagerWithCache : ITokenManager
             AppSecret = _options.AppSecret
         };
 
-        return await _authenticationApi.GetTenantAccessTokenAsync(credentials, cancellationToken);
+        var res = await _authenticationApi.GetTenantAccessTokenAsync(credentials, cancellationToken);
+        return new AppCredentialToken
+        {
+            AccessToken = res.TenantAccessToken ?? string.Empty,
+            Expire = res.Expire,
+            Code = res.Code,
+            Msg = res.Msg
+        };
+    }
+
+    /// <summary>
+    /// 获取用户访问令牌
+    /// </summary>
+    private async Task<AppCredentialToken> GetNewUserTokenAsync(CancellationToken cancellationToken)
+    {
+        var credentials = new AppCredentials
+        {
+            AppId = _options.AppId,
+            AppSecret = _options.AppSecret
+        };
+
+        var res = await _authenticationApi.GetAppAccessTokenAsync(credentials, cancellationToken);
+        return new AppCredentialToken
+        {
+            AccessToken = res.AppAccessToken ?? string.Empty,
+            Expire = res.Expire,
+            Code = res.Code,
+            Msg = res.Msg
+        };
     }
 
     /// <summary>
     /// 验证令牌结果
     /// </summary>
-    private void ValidateTokenResult(TenantAppCredentialResult? result)
+    private void ValidateTokenResult(AppCredentialToken? result)
     {
         if (result == null)
         {
@@ -97,46 +225,35 @@ internal class TokenManagerWithCache : ITokenManager
             LogAndThrowException(result.Code, $"获取飞书访问令牌失败，错误码: {result.Code}, 消息: {result.Msg}");
         }
 
-        if (string.IsNullOrEmpty(result.TenantAccessToken))
+        if (string.IsNullOrEmpty(result.AccessToken))
         {
-            LogAndThrowException(443, "获取飞书访问令牌失败: TenantAccessToken为空");
+            LogAndThrowException(443, "获取飞书访问令牌失败: AccessToken为空");
         }
     }
 
     /// <summary>
     /// 创建应用凭证令牌
     /// </summary>
-    private AppCredentialToken CreateAppCredentialToken(TenantAppCredentialResult result)
+    private AppCredentialToken CreateAppCredentialToken(AppCredentialToken result)
     {
         var expireTime = CalculateExpireTime(result.Expire);
 
-        var token = new AppCredentialToken(
-            expireTime,
-            result.TenantAccessToken!,
-            (result as AppCredentialResult)?.AppAccessToken
-        );
-
-        return token;
+        return new AppCredentialToken
+        {
+            Expire = expireTime,
+            AccessToken = result.AccessToken,
+            Code = result.Code,
+            Msg = result.Msg
+        };
     }
 
     /// <summary>
     /// 更新令牌缓存
     /// </summary>
-    private void UpdateTokenCache(AppCredentialToken newToken)
+    private void UpdateTokenCache(AppCredentialToken newToken, TokenType tokenType)
     {
-        _appTokenCache.AddOrUpdate(
-            _options.AppId,
-            newToken,
-            (key, existingToken) => IsTokenExpired(existingToken.Expire) ? newToken : existingToken
-        );
-    }
-
-    /// <summary>
-    /// 判断令牌是否过期
-    /// </summary>
-    private bool IsTokenExpired(long expireTime)
-    {
-        return expireTime <= DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        var cacheKey = GenerateCacheKey(tokenType);
+        _appTokenCache.AddOrUpdate(cacheKey, newToken, (key, existing) => newToken);
     }
 
     /// <summary>
@@ -144,14 +261,15 @@ internal class TokenManagerWithCache : ITokenManager
     /// </summary>
     private static long CalculateExpireTime(long? expiresInSeconds)
     {
-        if (expiresInSeconds == null || expiresInSeconds <= 0)
+        var actualExpiresIn = expiresInSeconds ?? DefaultTokenExpirationSeconds;
+
+        if (actualExpiresIn <= 0)
         {
-            // 默认2小时过期
-            expiresInSeconds = 7200;
+            actualExpiresIn = DefaultTokenExpirationSeconds;
         }
 
         // 转换为毫秒并计算实际过期时间
-        return DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + (expiresInSeconds.Value * 1000);
+        return DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + (actualExpiresIn * 1000);
     }
 
     /// <summary>
@@ -164,19 +282,38 @@ internal class TokenManagerWithCache : ITokenManager
     }
 
     /// <summary>
-    /// 清理过期令牌（可选方法）
+    /// 清理过期令牌
     /// </summary>
     public void CleanExpiredTokens()
     {
-        var currentTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        var expiredKeys = _appTokenCache
+                        .Where(kvp => IsTokenExpiredOrNearExpiry(kvp.Value.Expire))
+                        .Select(kvp => kvp.Key)
+                        .ToList();
 
-        foreach (var cacheKey in _appTokenCache.Keys.ToArray())
+        foreach (var cacheKey in expiredKeys)
         {
-            if (_appTokenCache.TryGetValue(cacheKey, out var token) &&
-                IsTokenExpired(token.Expire))
-            {
-                _appTokenCache.TryRemove(cacheKey, out _);
-            }
+            _appTokenCache.TryRemove(cacheKey, out _);
         }
+
+        if (expiredKeys.Count > 0)
+        {
+            _logger.LogInformation("Cleaned {Count} expired tokens", expiredKeys.Count);
+        }
+    }
+
+    /// <summary>
+    /// 获取缓存统计信息（用于监控）
+    /// </summary>
+    public (int Total, int Expired) GetCacheStatistics()
+    {
+        var total = _appTokenCache.Count;
+        var expired = _appTokenCache.Count(kvp => IsTokenExpiredOrNearExpiry(kvp.Value.Expire));
+        return (total, expired);
+    }
+
+    public void Dispose()
+    {
+        _cacheLock?.Dispose();
     }
 }

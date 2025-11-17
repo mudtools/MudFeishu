@@ -16,5 +16,15 @@ public interface ITokenManager
     /// </summary>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
-    //Task<string?> GetUserTokenAsync(CancellationToken cancellationToken = default);
+    Task<string?> GetUserTokenAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 清理过期令牌（可选方法）
+    /// </summary>
+    void CleanExpiredTokens();
+
+    /// <summary>
+    /// 获取缓存统计信息（用于监控）
+    /// </summary>
+    (int Total, int Expired) GetCacheStatistics();
 }

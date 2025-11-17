@@ -4,7 +4,7 @@
 /// 飞书组织机构部门相关的API接口函数。
 /// </summary>
 [HttpClientApi]
-[HttpClientApiWrap(TokenManage = nameof(ITokenManage), WrapInterface = nameof(IFeishuDepartments))]
+[HttpClientApiWrap(TokenManage = nameof(ITokenManager), WrapInterface = nameof(IFeishuDepartments))]
 public interface IFeishuDepartmentsApi
 {
     /// <summary>

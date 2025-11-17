@@ -4,7 +4,7 @@
 /// 企业人员信息管理相关的API
 /// </summary>
 [HttpClientApi]
-[HttpClientApiWrap(TokenManage = nameof(ITokenManage), WrapInterface = nameof(IFeishuUser))]
+[HttpClientApiWrap(TokenManage = nameof(ITokenManager), WrapInterface = nameof(IFeishuUser))]
 public interface IFeishuUserApi
 {
     /// <summary>

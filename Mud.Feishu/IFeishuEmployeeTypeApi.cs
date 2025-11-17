@@ -4,7 +4,7 @@
 /// 飞书人员类型相关的API接口函数。
 /// </summary>
 [HttpClientApi]
-[HttpClientApiWrap(TokenManage = nameof(ITokenManage), WrapInterface = nameof(IFeishuEmployeeType))]
+[HttpClientApiWrap(TokenManage = nameof(ITokenManager), WrapInterface = nameof(IFeishuEmployeeType))]
 public interface IFeishuEmployeeTypeApi
 {
     /// <summary>

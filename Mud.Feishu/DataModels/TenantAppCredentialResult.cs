@@ -15,6 +15,4 @@ public class TenantAppCredentialResult : FeishuApiResult
     /// </summary>
     [JsonPropertyName("tenant_access_token")]
     public string? TenantAccessToken { get; set; }
-
-
 }

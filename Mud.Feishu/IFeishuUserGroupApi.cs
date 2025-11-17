@@ -4,7 +4,7 @@
 /// 飞书用户组相关的API接口函数。
 /// </summary>
 [HttpClientApi]
-[HttpClientApiWrap(TokenManage = nameof(ITokenManage), WrapInterface = nameof(IFeishuUserGroup))]
+[HttpClientApiWrap(TokenManage = nameof(ITokenManager), WrapInterface = nameof(IFeishuUserGroup))]
 public interface IFeishuUserGroupApi
 {
     /// <summary>

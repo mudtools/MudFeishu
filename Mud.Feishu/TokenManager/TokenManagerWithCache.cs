@@ -41,7 +41,7 @@ internal class TokenManagerWithCache : ITokenManager
         }
 
         // 获取新令牌
-        var result = await GetNewTokenAsync(cancellationToken);
+        var result = await GetNewTenantTokenAsync(cancellationToken);
 
         // 验证并缓存令牌
         ValidateTokenResult(result);
@@ -71,7 +71,7 @@ internal class TokenManagerWithCache : ITokenManager
     /// <summary>
     /// 获取新的访问令牌
     /// </summary>
-    private async Task<TenantAppCredentialResult> GetNewTokenAsync(CancellationToken cancellationToken)
+    private async Task<TenantAppCredentialResult> GetNewTenantTokenAsync(CancellationToken cancellationToken)
     {
         var credentials = new AppCredentials
         {
@@ -79,16 +79,7 @@ internal class TokenManagerWithCache : ITokenManager
             AppSecret = _options.AppSecret
         };
 
-        return _options.AppType switch
-        {
-            FeishuAppType.SelfTenantBuiltApp =>
-                await _authenticationApi.GetTenantAccessTokenAsync(credentials, cancellationToken),
-
-            FeishuAppType.SelfBuiltApp =>
-                await _authenticationApi.GetAppAccessTokenAsync(credentials, cancellationToken),
-
-            _ => throw new FeishuException(400, $"不支持的AppType: {_options.AppType}")
-        };
+        return await _authenticationApi.GetTenantAccessTokenAsync(credentials, cancellationToken);
     }
 
     /// <summary>

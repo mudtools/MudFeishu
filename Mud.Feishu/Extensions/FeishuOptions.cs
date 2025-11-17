@@ -16,25 +16,4 @@ public class FeishuOptions
     /// <para>示例值： "dskLLdkasdjlasdKK"</para>
     /// </summary>
     public required string AppSecret { get; set; }
-
-    /// <summary>
-    /// 飞书应用类型。
-    /// </summary>
-    public FeishuAppType AppType { get; set; } = FeishuAppType.SelfBuiltApp;
-}
-
-/// <summary>
-/// 飞书应用类型。
-/// </summary>
-public enum FeishuAppType
-{
-    /// <summary>
-    /// 自建应用。
-    /// </summary>
-    SelfBuiltApp = 0,
-    /// <summary>
-    /// 自建租户应用。
-    /// </summary>
-    SelfTenantBuiltApp = 1,
-
 }

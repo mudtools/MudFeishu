@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using System.ComponentModel.DataAnnotations;
 
 namespace Mud.Feishu.Test.Controllers;
 
@@ -45,14 +46,14 @@ public class DepartmentController : ControllerBase
     /// <returns></returns>
     [HttpGet]
     public async Task<IActionResult> GetDepartments(
-        [FromQuery] string? parentDepartmentId,
-        [FromQuery] int pageSize = 50,
+        [FromQuery][Required] string? parentDepartmentId,
+        [FromQuery] int pageSize = 10,
         [FromQuery] string? pageToken = null,
         [FromQuery] string departmentIdType = "department_id")
     {
         try
         {
-            var result = await _departmentApi.GetDepartmentsByParentIdAsync(parentDepartmentId, false, pageSize, pageToken, departmentIdType, parentDepartmentId);
+            var result = await _departmentApi.GetDepartmentsByParentIdAsync(parentDepartmentId, false, pageSize, pageToken, null, departmentIdType);
             return Ok(result);
         }
         catch (Exception ex)

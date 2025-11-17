@@ -1,6 +1,4 @@
-﻿using Mud.Feishu.DataModels.Departments;
-
-namespace Mud.Feishu;
+﻿namespace Mud.Feishu;
 
 /// <summary>
 /// 飞书组织机构部门相关的API接口函数。
@@ -91,7 +89,7 @@ public interface IFeishuDepartmentsApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
     [Get("https://open.feishu.cn/open-apis/contact/v3/departments/{department_id}")]
     Task<FeishuApiResult<GetDepartmentInfoResult>> GetDepartmentByIdAsync(
-         [Header("Authorization")] string user_access_token,
+         [Token][Header("Authorization")] string user_access_token,
          [Path] string department_id,
          [Query("user_id_type")] string? user_id_type = null,
          [Query("department_id_type")] string? department_id_type = null,
@@ -107,7 +105,7 @@ public interface IFeishuDepartmentsApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
     [Get("https://open.feishu.cn/open-apis/contact/v3/departments/batch")]
     Task<FeishuApiResult<BatchGetDepartmentRequest>> GetDepartmentByIdsAsync(
-        [Header("Authorization")] string user_access_token,
+        [Token][Header("Authorization")] string user_access_token,
         [Query("department_ids")] string[] department_ids,
         [Query("user_id_type")] string? user_id_type = null,
         [Query("department_id_type")] string? department_id_type = null,
@@ -127,7 +125,7 @@ public interface IFeishuDepartmentsApi
     /// <returns></returns>
     [Get("https://open.feishu.cn/open-apis/contact/v3/departments/{department_id}/children")]
     Task<FeishuApiResult<GetDepartmentListResult>> GetDepartmentsByParentIdAsync(
-          [Header("Authorization")] string user_access_token,
+          [Token][Header("Authorization")] string user_access_token,
           [Path] string department_id,
           [Query("fetch_child")] bool fetch_child = false,
           [Query("page_size")] int page_size = 10,

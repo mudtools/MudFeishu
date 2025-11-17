@@ -15,7 +15,7 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Mud.ServiceCodeGenerator" Version="1.2.4" />
+		<PackageReference Include="Mud.ServiceCodeGenerator" Version="1.2.5" />
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.0" />
 		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.0" />
 		<PackageReference Include="Microsoft.Extensions.Options" Version="10.0.0" />

@@ -11,6 +11,9 @@ internal class HttpClientApiAttribute : Attribute
     {
         BaseAddress = baseAddress;
     }
+
+    public string ContentType { get; set; } = "application/json; charset=utf-8";
+
     public string BaseAddress { get; set; }
 
     public int Timeout { get; set; } = 50;

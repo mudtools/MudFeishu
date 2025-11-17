@@ -16,6 +16,13 @@ public static class FeishuServiceCollectionExtensions
         IConfiguration configuration)
     {
         services.Configure<FeishuOptions>(configuration);
+        // 添加配置验证
+        services.AddOptions<FeishuOptions>()
+               .Validate(options =>
+                    !string.IsNullOrEmpty(options.AppId) &&
+                    !string.IsNullOrEmpty(options.AppSecret),
+                    "AppId and AppSecret are required for Feishu service")
+               .ValidateOnStart();
         return services.AddFeishuApiService();
     }
 
@@ -30,6 +37,14 @@ public static class FeishuServiceCollectionExtensions
             services.BuildServiceProvider()
                    .GetRequiredService<IConfiguration>()
                    .GetSection(configurationSection));
+
+        // 添加配置验证
+        services.AddOptions<FeishuOptions>()
+               .Validate(options =>
+                    !string.IsNullOrEmpty(options.AppId) &&
+                    !string.IsNullOrEmpty(options.AppSecret),
+                    "AppId and AppSecret are required for Feishu service")
+               .ValidateOnStart();
         return services.AddFeishuApiService();
     }
 
@@ -38,7 +53,8 @@ public static class FeishuServiceCollectionExtensions
     /// </summary>
     private static IServiceCollection AddFeishuApiService(this IServiceCollection services)
     {
+        services.AddSingleton<ITokenManager, TenantTokenManagerWithCache>();
         return services.AddWebApiHttpClient()
-                      .AddWebApiHttpClientWrap();
+                       .AddWebApiHttpClientWrap();
     }
 }

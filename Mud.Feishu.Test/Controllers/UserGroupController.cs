@@ -1,0 +1,167 @@
+using Microsoft.AspNetCore.Mvc;
+using Mud.Feishu.DataModels.UserGroup;
+
+namespace Mud.Feishu.Test.Controllers;
+
+/// <summary>
+/// 飞书用户组管理控制器
+/// 用于测试用户组相关的API接口
+/// </summary>
+[ApiController]
+[Route("api/[controller]")]
+public class UserGroupController : ControllerBase
+{
+    private readonly IFeishuUserGroup _userGroupApi;
+
+    public UserGroupController(IFeishuUserGroup userGroupApi)
+    {
+        _userGroupApi = userGroupApi;
+    }
+
+    /// <summary>
+    /// 创建用户组
+    /// </summary>
+    /// <param name="groupRequest">用户组创建请求体</param>
+    /// <param name="userIdType">用户ID类型</param>
+    /// <param name="departmentIdType">部门ID类型</param>
+    /// <returns></returns>
+    [HttpPost]
+    public async Task<IActionResult> CreateUserGroup(
+        [FromBody] UserGroupInfoRequest groupRequest,
+        [FromQuery] string? userIdType = null,
+        [FromQuery] string? departmentIdType = null)
+    {
+        try
+        {
+            var result = await _userGroupApi.CreateUserGroupAsync(groupRequest, userIdType, departmentIdType);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// 更新用户组
+    /// </summary>
+    /// <param name="groupId">用户组ID</param>
+    /// <param name="groupRequest">用户组更新请求体</param>
+    /// <param name="userIdType">用户ID类型</param>
+    /// <param name="departmentIdType">部门ID类型</param>
+    /// <returns></returns>
+    [HttpPatch("{groupId}")]
+    public async Task<IActionResult> UpdateUserGroup(
+        string groupId,
+        [FromBody] UserGroupUpdateRequest groupRequest,
+        [FromQuery] string? userIdType = null,
+        [FromQuery] string? departmentIdType = null)
+    {
+        try
+        {
+            var result = await _userGroupApi.UpdateUserGroupAsync(groupId, groupRequest, userIdType, departmentIdType);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// 获取用户组信息
+    /// </summary>
+    /// <param name="groupId">用户组ID</param>
+    /// <param name="userIdType">用户ID类型</param>
+    /// <param name="departmentIdType">部门ID类型</param>
+    /// <returns></returns>
+    [HttpGet("{groupId}")]
+    public async Task<IActionResult> GetUserGroup(
+        string groupId,
+        [FromQuery] string? userIdType = null,
+        [FromQuery] string? departmentIdType = null)
+    {
+        try
+        {
+            var result = await _userGroupApi.GetUserGroupInfoByIdAsync(groupId, userIdType, departmentIdType);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// 获取用户组列表
+    /// </summary>
+    /// <param name="pageSize">分页大小</param>
+    /// <param name="pageToken">分页标记</param>
+    /// <param name="type">用户组类型</param>
+    /// <returns></returns>
+    [HttpGet]
+    public async Task<IActionResult> GetUserGroups(
+        [FromQuery] int pageSize = 10,
+        [FromQuery] string? pageToken = null,
+        [FromQuery] int type = 1)
+    {
+        try
+        {
+            var result = await _userGroupApi.GetUserGroupsAsync(pageSize, pageToken, type);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// 获取用户所属的用户组列表
+    /// </summary>
+    /// <param name="memberId">成员ID</param>
+    /// <param name="memberIdType">成员ID类型</param>
+    /// <param name="groupType">用户组类型</param>
+    /// <param name="pageSize">分页大小</param>
+    /// <param name="pageToken">分页标记</param>
+    /// <param name="type">类型</param>
+    /// <returns></returns>
+    [HttpGet("member-belong/{memberId}")]
+    public async Task<IActionResult> GetUserBelongGroups(
+        string memberId,
+        [FromQuery] string? memberIdType = null,
+        [FromQuery] int? groupType = null,
+        [FromQuery] int pageSize = 10,
+        [FromQuery] string? pageToken = null,
+        [FromQuery] int type = 1)
+    {
+        try
+        {
+            var result = await _userGroupApi.GetUserBelongGroupsAsync(memberId, memberIdType, groupType, pageSize, pageToken, type);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// 删除用户组
+    /// </summary>
+    /// <param name="groupId">用户组ID</param>
+    /// <returns></returns>
+    [HttpDelete("{groupId}")]
+    public async Task<IActionResult> DeleteUserGroup(string groupId)
+    {
+        try
+        {
+            var result = await _userGroupApi.DeleteUserGroupByIdAsync(groupId);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+}

@@ -517,6 +517,36 @@ dotnet run --framework net10.0
 #### 人员类型
 - `GET /api/employeetype` - 获取人员类型列表
 
+#### 角色管理
+- `POST /api/role` - 创建角色
+- `PUT /api/role/{roleId}` - 更新角色
+- `DELETE /api/role/{roleId}` - 删除角色
+
+#### 单位管理
+- `POST /api/unit` - 创建单位
+- `PATCH /api/unit/{unitId}` - 更新单位名称
+- `GET /api/unit/{unitId}` - 获取单位信息
+- `GET /api/unit` - 获取单位列表
+- `GET /api/unit/{unitId}/departments` - 获取单位绑定的部门列表
+- `POST /api/unit/bind-department` - 绑定部门到单位
+- `POST /api/unit/unbind-department` - 解除部门与单位绑定
+- `DELETE /api/unit/{unitId}` - 删除单位
+
+#### 用户组管理
+- `POST /api/usergroup` - 创建用户组
+- `PATCH /api/usergroup/{groupId}` - 更新用户组
+- `GET /api/usergroup/{groupId}` - 获取用户组信息
+- `GET /api/usergroup` - 获取用户组列表
+- `GET /api/usergroup/member-belong/{memberId}` - 获取用户所属的用户组列表
+- `DELETE /api/usergroup/{groupId}` - 删除用户组
+
+#### 用户组成员管理
+- `POST /api/usergroupmember/{groupId}/add-member` - 添加用户组成员
+- `POST /api/usergroupmember/{groupId}/batch-add-member` - 批量添加用户组成员
+- `GET /api/usergroupmember/{groupId}/members` - 获取用户组成员列表
+- `POST /api/usergroupmember/{groupId}/remove-member` - 移除用户组成员
+- `POST /api/usergroupmember/{groupId}/batch-remove-member` - 批量移除用户组成员
+
 ### Swagger 文档访问
 
 启动测试项目后，访问 Swagger UI 进行交互式测试：

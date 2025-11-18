@@ -1,7 +1,7 @@
 ﻿namespace Mud.Feishu.DataModels.Departments;
 
 /// <summary>
-/// 批量获取部门信息的请求体。
+/// 获取部门信息的响结果
 /// 用于一次请求获取多个部门的信息。
 /// </summary>
 public class BatchGetDepartmentRequest

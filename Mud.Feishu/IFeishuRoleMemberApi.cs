@@ -1,4 +1,6 @@
-﻿namespace Mud.Feishu;
+﻿using Mud.Feishu.DataModels.RoleMembers;
+
+namespace Mud.Feishu;
 
 /// <summary>
 /// 角色成员是指角色内添加的一个或多个用户。

@@ -1,4 +1,6 @@
-﻿namespace Mud.Feishu;
+﻿using Mud.Feishu.DataModels.UserGroupMember;
+
+namespace Mud.Feishu;
 
 /// <summary>
 /// 用户组内可以添加部门或用户，部门和用户均属于用户组成员。使用用户组成员 API，可以在用户组内添加、移除、查询成员。

@@ -1,4 +1,6 @@
-﻿namespace Mud.Feishu;
+﻿using Mud.Feishu.DataModels.UserGroup;
+
+namespace Mud.Feishu;
 
 /// <summary>
 /// 用户组是飞书通讯录中基础实体之一，在用户组内可添加用户或部门资源。

@@ -1,4 +1,6 @@
-﻿namespace Mud.Feishu;
+﻿using Mud.Feishu.DataModels.Users;
+
+namespace Mud.Feishu;
 
 /// <summary>
 /// 飞书认证授权相关的API

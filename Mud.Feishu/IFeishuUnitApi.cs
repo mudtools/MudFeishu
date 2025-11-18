@@ -1,4 +1,6 @@
-﻿namespace Mud.Feishu;
+﻿using Mud.Feishu.DataModels.Units;
+
+namespace Mud.Feishu;
 
 /// <summary>
 /// 通讯录的单位用于代表企业中的“子公司”、“分支机构”这类组织实体。

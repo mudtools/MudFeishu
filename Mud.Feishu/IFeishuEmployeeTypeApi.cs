@@ -1,4 +1,6 @@
-﻿namespace Mud.Feishu;
+﻿using Mud.Feishu.DataModels.EmployeeType;
+
+namespace Mud.Feishu;
 
 /// <summary>
 /// 飞书人员类型是通讯录中一种特殊的用户属性字段，用于标记用户的身份类型。

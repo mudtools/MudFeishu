@@ -1,4 +1,6 @@
-﻿namespace Mud.Feishu;
+﻿using Mud.Feishu.DataModels.Users;
+
+namespace Mud.Feishu;
 
 /// <summary>
 /// 飞书用户是飞书通讯录中的基础资源，对应企业组织架构中的成员实体。

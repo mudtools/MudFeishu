@@ -52,12 +52,20 @@ var app = builder.Build();
 builder.Services.AddFeishuApiService("Feishu");
 ```
 
-#### 配置文件示例 (appsettings.json)
+##### 配置文件示例 (appsettings.json)
 ```json
 {
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "AllowedHosts": "*",
   "Feishu": {
     "AppId": "your_app_id",
-    "AppSecret": "your_app_secret"
+    "AppSecret": "your_app_secret",
+    "BaseUrl": "https://open.feishu.cn"
   }
 }
 ```
@@ -143,6 +151,76 @@ public class FeishuController : ControllerBase
 - `UpdateEmployeeTypeAsync()` - 更新人员类型
 - `GetEmployeeTypesAsync()` - 获取人员类型列表
 - `DeleteEmployeeTypeByIdAsync()` - 删除人员类型
+
+## 使用示例
+
+### 示例项目 (Mud.Feishu.Test)
+
+项目包含一个完整的测试演示项目 `Mud.Feishu.Test`，展示了所有 API 的实际使用方式：
+
+#### 配置文件示例 (appsettings.json)
+```json
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "AllowedHosts": "*",
+  "Feishu": {
+    "AppId": "Feishu AppId",
+    "AppSecret": "Feishu AppSecret",
+    "BaseUrl": "https://open.feishu.cn"
+  }
+}
+```
+
+#### 控制器注入示例
+```csharp
+// 使用 TokenManager 直接获取令牌
+public class AuthController : ControllerBase
+{
+    private readonly ITokenManager _tokenManager;
+
+    public AuthController(ITokenManager tokenManager)
+    {
+        _tokenManager = tokenManager;
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetToken()
+    {
+        var token = await _tokenManager.GetTokenAsync();
+        return Ok(token);
+    }
+}
+
+// 使用包装后的 API（自动处理令牌）
+public class UserController : ControllerBase
+{
+    private readonly IFeishuUser _userApi;
+
+    public UserController(IFeishuUser userApi)
+    {
+        _userApi = userApi;
+    }
+
+    [HttpGet("{userId}")]
+    public async Task<IActionResult> GetUser(string userId)
+    {
+        try
+        {
+            var result = await _userApi.GetUserByIdAsync(userId);
+            return Ok(result.Data);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+}
+```
 
 ## 使用示例（ASP.NET Core Controller）
 
@@ -379,7 +457,75 @@ public class FeishuException : Exception
 - **飞书开发者账号**和应用凭证
 - **Git** 版本控制
 
-## 开发工作流
+## 测试项目
+
+Mud.Feishu.Test 是一个完整的 ASP.NET Core Web API 项目，用于演示和测试库的所有功能。
+
+### 测试项目特性
+
+- **多框架支持**：同时支持 .NET 8.0、.NET 9.0、.NET 10.0
+- **Swagger 集成**：自动生成 API 文档，支持交互式测试
+- **完整示例**：包含所有 API 接口的实际使用示例
+- **配置完整**：包含真实的飞书应用配置示例
+
+### 测试项目结构
+
+```
+Mud.Feishu.Test/
+├── Controllers/
+│   ├── AuthController.cs          # 认证相关 API 测试
+│   ├── UserController.cs          # 用户管理 API 测试
+│   ├── DepartmentController.cs    # 部门管理 API 测试
+│   └── EmployeeTypeController.cs  # 人员类型 API 测试
+├── Properties/
+│   └── launchSettings.json       # 开发环境启动配置
+├── Program.cs                     # 应用程序入口
+├── appsettings.json              # 配置文件
+└── Mud.Feishu.Test.csproj        # 项目文件
+```
+
+### 运行测试项目
+
+```bash
+# 进入测试项目目录
+cd Mud.Feishu.Test
+
+# 运行测试项目（默认端口 60360/60361）
+dotnet run
+
+# 或者指定特定框架运行
+dotnet run --framework net8.0
+dotnet run --framework net9.0
+dotnet run --framework net10.0
+```
+
+### 测试 API 端点
+
+启动测试项目后，可以通过以下端点测试各项功能：
+
+#### 认证相关
+- `GET /api/auth` - 获取访问令牌（测试令牌管理器）
+
+#### 用户管理
+- `GET /api/user/{userId}` - 获取指定用户信息
+- `GET /api/user?departmentId=xxx` - 获取部门用户列表
+
+#### 部门管理
+- `GET /api/department/{departmentId}` - 获取指定部门信息
+- `GET /api/department?parentDepartmentId=xxx` - 获取子部门列表
+
+#### 人员类型
+- `GET /api/employeetype` - 获取人员类型列表
+
+### Swagger 文档访问
+
+启动测试项目后，访问 Swagger UI 进行交互式测试：
+
+```
+https://localhost:60360/swagger
+```
+
+### 开发工作流
 
 ### 克隆项目
 ```bash
@@ -398,11 +544,15 @@ dotnet build Mud.Feishu/Mud.Feishu.csproj
 
 ### 运行测试
 ```bash
-# 运行所有测试
+# 运行单元测试（如果有）
 dotnet test
 
-# 运行特定测试项目
-dotnet test Mud.Feishu.Test/Mud.Feishu.Test.csproj
+# 运行集成测试项目
+cd Mud.Feishu.Test
+dotnet run
+
+# 指定框架运行测试
+dotnet run --framework net8.0
 ```
 
 ### 打包发布
@@ -454,11 +604,11 @@ public class MyService
 ### 监控和调试
 ```csharp
 // 获取令牌缓存统计（TokenManagerWithCache）
- var (total, expired) = _tokenManager.GetCacheStatistics();
-    _logger.LogInformation("Token cache: {Total} total, {Expired} expired", total, expired);
+var (total, expired) = _tokenManager.GetCacheStatistics();
+ _logger.LogInformation("Token cache: {Total} total, {Expired} expired", total, expired);
     
-    // 清理过期令牌
-    cachedManager.CleanExpiredTokens();
+// 清理过期令牌
+cachedManager.CleanExpiredTokens();
 ```
 
 ## 性能优化建议
@@ -505,6 +655,26 @@ MudFeishu 遵循 [MIT 许可证](LICENSE)。
 - [NuGet 包管理器](https://www.nuget.org/)
 - [Mud.ServiceCodeGenerator](https://www.nuget.org/packages/Mud.ServiceCodeGenerator/)
 
+## 贡献指南
+
+我们欢迎社区贡献！请遵循以下指南：
+
+1. **Fork 项目**并创建特性分支
+2. **编写代码**并添加相应的单元测试
+3. **确保代码质量**：遵循项目编码规范，代码覆盖率不低于 80%
+4. **提交 Pull Request**：详细描述更改内容和测试结果
+
+### 代码规范
+- 使用 C# 13.0 语言特性
+- 遵循 Microsoft 编码规范
+- 所有公共 API 必须包含 XML 文档注释
+- 异步方法命名以 `Async` 结尾
+
+### 测试要求
+- 新功能必须在 `Mud.Feishu.Test` 项目中添加演示代码
+- 确保 Controller 示例能够正常工作
+- 添加相应的 Swagger 文档注释
+
 ## 更新日志
 
 ### v1.0.0 (2025-11-14)
@@ -512,3 +682,5 @@ MudFeishu 遵循 [MIT 许可证](LICENSE)。
 - 支持飞书认证、用户、部门、用户组、人员类型管理 API
 - 内置智能令牌管理和缓存机制
 - 支持 .NET 8.0/9.0/10.0
+- 包含完整的测试演示项目
+- 集成 Swagger 文档支持

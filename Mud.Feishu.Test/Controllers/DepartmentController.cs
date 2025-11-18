@@ -1,8 +1,14 @@
 using Microsoft.AspNetCore.Mvc;
+using Mud.Feishu.DataModels;
+using Mud.Feishu.DataModels.Departments;
 using System.ComponentModel.DataAnnotations;
 
 namespace Mud.Feishu.Test.Controllers;
 
+/// <summary>
+/// 飞书部门管理控制器
+/// 用于测试部门相关的API接口
+/// </summary>
 [ApiController]
 [Route("api/[controller]")]
 public class DepartmentController : ControllerBase
@@ -15,16 +21,23 @@ public class DepartmentController : ControllerBase
     }
 
     /// <summary>
-    /// 获取部门信息
+    /// 创建部门
     /// </summary>
-    /// <param name="departmentId">部门ID</param>
+    /// <param name="departmentCreateRequest">创建部门的请求体</param>
+    /// <param name="userIdType">用户ID类型</param>
+    /// <param name="departmentIdType">部门ID类型</param>
+    /// <param name="clientToken">用于幂等判断的客户端令牌</param>
     /// <returns></returns>
-    [HttpGet("{departmentId}")]
-    public async Task<IActionResult> GetDepartment(string departmentId)
+    [HttpPost]
+    public async Task<IActionResult> CreateDepartment(
+        [FromBody] DepartmentCreateRequest departmentCreateRequest,
+        [FromQuery] string? userIdType = null,
+        [FromQuery] string? departmentIdType = null,
+        [FromQuery] string? clientToken = null)
     {
         try
         {
-            var result = await _departmentApi.GetDepartmentInfoByIdAsync(departmentId, null);
+            var result = await _departmentApi.CreateDepartmentAsync(departmentCreateRequest, userIdType, departmentIdType, clientToken);
             return Ok(result);
         }
         catch (Exception ex)
@@ -33,27 +46,231 @@ public class DepartmentController : ControllerBase
         }
     }
 
-
-
     /// <summary>
-    /// 获取部门列表
+    /// 部分更新部门信息
     /// </summary>
-    /// <param name="pageSize">每页数量</param>
-    /// <param name="pageToken">分页标记</param>
+    /// <param name="departmentId">部门ID</param>
+    /// <param name="departmentPartUpdateRequest">部分更新部门的请求体</param>
+    /// <param name="userIdType">用户ID类型</param>
     /// <param name="departmentIdType">部门ID类型</param>
-    /// <param name="parentDepartmentId">父部门ID</param>
     /// <returns></returns>
-    [HttpGet]
-    public async Task<IActionResult> GetDepartments(
-        [FromQuery][Required] string? parentDepartmentId,
-        [FromQuery] int pageSize = 10,
-        [FromQuery] string? pageToken = null,
-        [FromQuery] string departmentIdType = "department_id")
+    [HttpPatch("{departmentId}")]
+    public async Task<IActionResult> UpdatePartDepartment(
+        string departmentId,
+        [FromBody] DepartmentPartUpdateRequest departmentPartUpdateRequest,
+        [FromQuery] string? userIdType = null,
+        [FromQuery] string? departmentIdType = null)
     {
         try
         {
-            var result = await _departmentApi.GetDepartmentsByParentIdAsync(parentDepartmentId, false, pageSize, pageToken, null, departmentIdType);
+            var result = await _departmentApi.UpdatePartDepartmentAsync(departmentId, departmentPartUpdateRequest, userIdType, departmentIdType);
             return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// 完全更新部门信息
+    /// </summary>
+    /// <param name="departmentId">部门ID</param>
+    /// <param name="departmentUpdateRequest">更新部门的请求体</param>
+    /// <param name="userIdType">用户ID类型</param>
+    /// <param name="departmentIdType">部门ID类型</param>
+    /// <returns></returns>
+    [HttpPut("{departmentId}")]
+    public async Task<IActionResult> UpdateDepartment(
+        string departmentId,
+        [FromBody] DepartmentUpdateRequest departmentUpdateRequest,
+        [FromQuery] string? userIdType = null,
+        [FromQuery] string? departmentIdType = null)
+    {
+        try
+        {
+            var result = await _departmentApi.UpdateDepartmentAsync(departmentId, departmentUpdateRequest, userIdType, departmentIdType);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// 更新部门ID
+    /// </summary>
+    /// <param name="departmentId">部门ID</param>
+    /// <param name="departMentUpdateIdRequest">更新部门ID的请求体</param>
+    /// <param name="departmentIdType">部门ID类型</param>
+    /// <returns></returns>
+    [HttpPatch("{departmentId}/update-department-id")]
+    public async Task<IActionResult> UpdateDepartmentId(
+        string departmentId,
+        [FromBody] DepartMentUpdateIdRequest departMentUpdateIdRequest,
+        [FromQuery] string? departmentIdType = null)
+    {
+        try
+        {
+            var result = await _departmentApi.UpdateDepartmentIdAsync(departmentId, departMentUpdateIdRequest, departmentIdType);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// 解绑部门群聊
+    /// </summary>
+    /// <param name="departmentRequest">部门请求体</param>
+    /// <param name="departmentIdType">部门ID类型</param>
+    /// <returns></returns>
+    [HttpPost("unbind-department-chat")]
+    public async Task<IActionResult> UnbindDepartmentChat(
+        [FromBody] DepartmentRequest departmentRequest,
+        [FromQuery] string? departmentIdType = null)
+    {
+        try
+        {
+            var result = await _departmentApi.UnbindDepartmentChatAsync(departmentRequest, departmentIdType);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// 获取部门信息
+    /// </summary>
+    /// <param name="departmentId">部门ID</param>
+    /// <param name="userIdType">用户ID类型</param>
+    /// <param name="departmentIdType">部门ID类型</param>
+    /// <returns></returns>
+    [HttpGet("{departmentId}")]
+    public async Task<IActionResult> GetDepartment(
+        string departmentId,
+        [FromQuery] string? userIdType = null,
+        [FromQuery] string? departmentIdType = null)
+    {
+        try
+        {
+            var result = await _departmentApi.GetDepartmentInfoByIdAsync(departmentId, userIdType, departmentIdType);
+            return Ok(result.Data);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// 批量获取部门信息
+    /// </summary>
+    /// <param name="departmentIds">部门ID数组</param>
+    /// <param name="userIdType">用户ID类型</param>
+    /// <param name="departmentIdType">部门ID类型</param>
+    /// <returns></returns>
+    [HttpGet("batch")]
+    public async Task<IActionResult> GetDepartmentsByIds(
+        [FromQuery][Required] string[] departmentIds,
+        [FromQuery] string? userIdType = null,
+        [FromQuery] string? departmentIdType = null)
+    {
+        try
+        {
+            var result = await _departmentApi.GetDepartmentsByIdsAsync(departmentIds, userIdType, departmentIdType);
+            return Ok(result.Data);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// 获取子部门列表
+    /// </summary>
+    /// <param name="departmentId">部门ID</param>
+    /// <param name="fetchChild">是否递归获取子部门</param>
+    /// <param name="pageSize">每页数量</param>
+    /// <param name="pageToken">分页标记</param>
+    /// <param name="userIdType">用户ID类型</param>
+    /// <param name="departmentIdType">部门ID类型</param>
+    /// <returns></returns>
+    [HttpGet("{departmentId}/children")]
+    public async Task<IActionResult> GetSubDepartments(
+        string departmentId,
+        [FromQuery] bool fetchChild = false,
+        [FromQuery] int pageSize = 10,
+        [FromQuery] string? pageToken = null,
+        [FromQuery] string? userIdType = null,
+        [FromQuery] string? departmentIdType = null)
+    {
+        try
+        {
+            var result = await _departmentApi.GetDepartmentsByParentIdAsync(departmentId, fetchChild, pageSize, pageToken, userIdType, departmentIdType);
+            return Ok(result.Data);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// 获取父部门列表
+    /// </summary>
+    /// <param name="departmentId">部门ID</param>
+    /// <param name="pageSize">每页数量</param>
+    /// <param name="pageToken">分页标记</param>
+    /// <param name="userIdType">用户ID类型</param>
+    /// <param name="departmentIdType">部门ID类型</param>
+    /// <returns></returns>
+    [HttpGet("{departmentId}/parents")]
+    public async Task<IActionResult> GetParentDepartments(
+        string departmentId,
+        [FromQuery] int pageSize = 10,
+        [FromQuery] string? pageToken = null,
+        [FromQuery] string? userIdType = null,
+        [FromQuery] string? departmentIdType = null)
+    {
+        try
+        {
+            var result = await _departmentApi.GetParentDepartmentsByIdAsync(departmentId, pageSize, pageToken, userIdType, departmentIdType);
+            return Ok(result.Data);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// 搜索部门
+    /// </summary>
+    /// <param name="searchRequest">搜索请求体</param>
+    /// <param name="pageSize">每页数量</param>
+    /// <param name="pageToken">分页标记</param>
+    /// <param name="userIdType">用户ID类型</param>
+    /// <param name="departmentIdType">部门ID类型</param>
+    /// <returns></returns>
+    [HttpPost("search")]
+    public async Task<IActionResult> SearchDepartments(
+        [FromBody] SearchRequest searchRequest,
+        [FromQuery] int pageSize = 10,
+        [FromQuery] string? pageToken = null,
+        [FromQuery] string? userIdType = null,
+        [FromQuery] string? departmentIdType = null)
+    {
+        try
+        {
+            var result = await _departmentApi.SearchDepartmentsAsync(searchRequest, pageSize, pageToken, userIdType, departmentIdType);
+            return Ok(result.Data);
         }
         catch (Exception ex)
         {

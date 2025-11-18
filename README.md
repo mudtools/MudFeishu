@@ -547,6 +547,20 @@ dotnet run --framework net10.0
 - `POST /api/usergroupmember/{groupId}/remove-member` - 移除用户组成员
 - `POST /api/usergroupmember/{groupId}/batch-remove-member` - 批量移除用户组成员
 
+#### 角色成员管理
+- `POST /api/rolemember/{roleId}/batch-add-member` - 批量添加角色成员
+- `POST /api/rolemember/{roleId}/set-member-scopes` - 批量设置角色成员管理范围
+- `GET /api/rolemember/{roleId}/members/{memberId}/scopes` - 获取角色成员的管理范围
+- `GET /api/rolemember/{roleId}/members` - 获取角色成员列表
+- `DELETE /api/rolemember/{roleId}/batch-delete-member` - 批量删除角色成员
+
+#### 职级管理
+- `POST /api/joblevel` - 创建职级
+- `PUT /api/joblevel/{jobLevelId}` - 更新职级
+- `GET /api/joblevel/{jobLevelId}` - 获取职级信息
+- `GET /api/joblevel` - 获取职级列表
+- `DELETE /api/joblevel/{jobLevelId}` - 删除职级
+
 ### Swagger 文档访问
 
 启动测试项目后，访问 Swagger UI 进行交互式测试：

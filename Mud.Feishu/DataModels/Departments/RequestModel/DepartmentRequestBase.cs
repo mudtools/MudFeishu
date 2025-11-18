@@ -1,5 +1,3 @@
-using Mud.Feishu.DataModels.Users;
-
 namespace Mud.Feishu.DataModels.Departments;
 
 /// <summary>

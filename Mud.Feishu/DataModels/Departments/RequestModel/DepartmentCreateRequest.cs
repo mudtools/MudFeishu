@@ -1,6 +1,4 @@
-﻿using Mud.Feishu.DataModels.Users;
-
-namespace Mud.Feishu.DataModels.Departments;
+﻿namespace Mud.Feishu.DataModels.Departments;
 
 /// <summary>
 /// 创建部门请求体。

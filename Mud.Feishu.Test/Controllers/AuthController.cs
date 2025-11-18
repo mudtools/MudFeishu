@@ -17,7 +17,7 @@ public class AuthController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetToken()
     {
-        var token = await _tokenManager.GetTokenAsync();
+        var token = await _tokenManager.GetUserAccessTokenAsync();
         return Ok(token);
     }
 }

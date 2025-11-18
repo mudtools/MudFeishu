@@ -41,12 +41,12 @@ internal class TokenManagerWithCache : ITokenManager, IDisposable
         _tokenRefreshThreshold = TimeSpan.FromSeconds(DefaultRefreshThresholdSeconds);
     }
 
-    public async Task<string?> GetTokenAsync(CancellationToken cancellationToken = default)
+    public async Task<string?> GetTenantAccessTokenAsync(CancellationToken cancellationToken = default)
     {
         return await GetTokenInternalAsync(TokenType.TenantAccessToken, cancellationToken);
     }
 
-    public async Task<string?> GetUserTokenAsync(CancellationToken cancellationToken = default)
+    public async Task<string?> GetUserAccessTokenAsync(CancellationToken cancellationToken = default)
     {
         return await GetTokenInternalAsync(TokenType.UserAccessToken, cancellationToken);
     }

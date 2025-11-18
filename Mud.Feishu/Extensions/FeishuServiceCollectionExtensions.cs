@@ -15,14 +15,13 @@ public static class FeishuServiceCollectionExtensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        services.Configure<FeishuOptions>(configuration);
-        // 添加配置验证
-        services.AddOptions<FeishuOptions>()
-               .Validate(options =>
+        services.Configure<FeishuOptions>(configuration)
+                .AddOptions<FeishuOptions>()
+                .Validate(options =>
                     !string.IsNullOrEmpty(options.AppId) &&
                     !string.IsNullOrEmpty(options.AppSecret),
                     "AppId and AppSecret are required for Feishu service")
-               .ValidateOnStart();
+                .ValidateOnStart();
         return services.AddFeishuApiService();
     }
 
@@ -36,10 +35,8 @@ public static class FeishuServiceCollectionExtensions
         services.Configure<FeishuOptions>(
             services.BuildServiceProvider()
                    .GetRequiredService<IConfiguration>()
-                   .GetSection(configurationSection));
-
-        // 添加配置验证
-        services.AddOptions<FeishuOptions>()
+                   .GetSection(configurationSection))
+               .AddOptions<FeishuOptions>()
                .Validate(options =>
                     !string.IsNullOrEmpty(options.AppId) &&
                     !string.IsNullOrEmpty(options.AppSecret),

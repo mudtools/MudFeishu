@@ -1,7 +1,8 @@
 ﻿namespace Mud.Feishu;
 
 /// <summary>
-/// 飞书人员类型相关的API接口函数。
+/// 飞书人员类型是通讯录中一种特殊的用户属性字段，用于标记用户的身份类型。
+/// <para>使用通讯录 API，可以对人员类型资源进行增删改查操作。</para>
 /// </summary>
 [HttpClientApi]
 [HttpClientApiWrap(TokenManage = nameof(ITokenManager), WrapInterface = nameof(IFeishuEmployeeType))]

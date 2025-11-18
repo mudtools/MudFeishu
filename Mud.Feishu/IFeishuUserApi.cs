@@ -1,7 +1,7 @@
 ﻿namespace Mud.Feishu;
 
 /// <summary>
-/// 企业人员信息管理相关的API
+/// 飞书用户是飞书通讯录中的基础资源，对应企业组织架构中的成员实体。
 /// </summary>
 [HttpClientApi]
 [HttpClientApiWrap(TokenManage = nameof(ITokenManager), WrapInterface = nameof(IFeishuUser))]
@@ -73,7 +73,7 @@ public interface IFeishuUserApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
     /// <returns></returns>
     [Get("https://open.feishu.cn/open-apis/contact/v3/users/{user_id}")]
-    Task<FeishuApiResult<GetUserInfoResult>> GetUserByIdAsync(
+    Task<FeishuApiResult<GetUserInfoResult>> GetUserInfoByIdAsync(
         [Token][Header("Authorization")] string user_access_token,
         [Path] string user_id,
         [Query("user_id_type")] string? user_id_type = null,

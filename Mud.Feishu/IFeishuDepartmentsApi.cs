@@ -1,7 +1,8 @@
 ﻿namespace Mud.Feishu;
 
 /// <summary>
-/// 飞书组织机构部门相关的API接口函数。
+/// 飞书组织机构部门是指企业组织架构树上的某一个节点。
+/// <para>在部门内部，可添加用户作为部门成员，也可添加新的部门作为子部门。</para>
 /// </summary>
 [HttpClientApi]
 [HttpClientApiWrap(TokenManage = nameof(ITokenManager), WrapInterface = nameof(IFeishuDepartments))]
@@ -102,7 +103,7 @@ public interface IFeishuDepartmentsApi
     /// <param name="user_id_type">用户 ID 类型</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
     [Get("https://open.feishu.cn/open-apis/contact/v3/departments/{department_id}")]
-    Task<FeishuApiResult<GetDepartmentInfoResult>> GetDepartmentByIdAsync(
+    Task<FeishuApiResult<GetDepartmentInfoResult>> GetDepartmentInfoByIdAsync(
          [Token][Header("Authorization")] string user_access_token,
          [Path] string department_id,
          [Query("user_id_type")] string? user_id_type = null,
@@ -118,7 +119,7 @@ public interface IFeishuDepartmentsApi
     /// <param name="user_id_type">用户 ID 类型</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
     [Get("https://open.feishu.cn/open-apis/contact/v3/departments/batch")]
-    Task<FeishuApiResult<BatchGetDepartmentRequest>> GetDepartmentByIdsAsync(
+    Task<FeishuApiResult<BatchGetDepartmentRequest>> GetDepartmentsByIdsAsync(
         [Token][Header("Authorization")] string tenant_access_token,
         [Query("department_ids")] string[] department_ids,
         [Query("user_id_type")] string? user_id_type = null,
@@ -204,7 +205,7 @@ public interface IFeishuDepartmentsApi
     [Delete("https://open.feishu.cn/open-apis/contact/v3/departments/{department_id}")]
     Task<FeishuNullDataApiResult> DeleteDepartmentByIdAsync(
        [Token(TokenType.UserAccessToken)][Header("Authorization")] string tenant_access_token,
-       [Path("department_id")] string department_id,
+       [Path] string department_id,
        [Query("department_id_type")] string? department_id_type = null,
        CancellationToken cancellationToken = default);
 }

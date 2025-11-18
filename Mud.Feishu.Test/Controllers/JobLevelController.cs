@@ -85,14 +85,14 @@ public class JobLevelController : ControllerBase
     /// <returns></returns>
     [HttpGet]
     public async Task<IActionResult> GetJobLevels(
-        [FromQuery] string? name = null,
+        [FromQuery] string name,
         [FromQuery] int pageSize = 10,
         [FromQuery] string? pageToken = null)
     {
         try
         {
             var result = await _jobLevelApi.GetJobLevelListAsync(name, pageSize, pageToken);
-            return Ok(result.Data.Items);
+            return Ok(result);
         }
         catch (Exception ex)
         {

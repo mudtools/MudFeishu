@@ -155,4 +155,42 @@ public interface IFeishuDepartmentsApi
          [Query("department_id_type")] string? department_id_type = null,
          CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// 以用户身份通过部门名称关键词查询可见部门的信息，包括部门的 ID、父部门、负责人以及状态等。。
+    /// </summary>
+    /// <param name="user_access_token">应用调用 API 时，需要通过访问凭证（access_token）进行身份鉴权</param>
+    /// <param name="searchRequest">
+    /// 搜索关键词，匹配字段为部门名称（不支持匹配部门国际化名称）。
+    /// <para>示例值："DemoName"</para>
+    /// </param>
+    /// <param name="user_id_type">用户 ID 类型</param>
+    /// <param name="department_id_type">此次调用中使用的部门 ID 类型。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
+    /// <param name="page_size">分页大小，即本次请求所返回的用户信息列表内的最大条目数。默认值：10</param>
+    /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
+    /// <returns></returns>
+    [Post("https://open.feishu.cn/open-apis/contact/v3/departments/search")]
+    Task<FeishuApiResult<GetDepartmentListResult>> SearchDepartmentsAsync(
+        [Token(TokenType.UserAccessToken)][Header("Authorization")] string user_access_token,
+        [Body] SearchRequest searchRequest,
+        [Query("page_size")] int page_size = 10,
+        [Query("page_token")] string? page_token = null,
+        [Query("user_id_type")] string? user_id_type = null,
+        [Query("department_id_type")] string? department_id_type = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 从通讯录中删除指定的部门。
+    /// </summary>
+    /// <param name="tenant_access_token">应用调用 API 时，需要通过访问凭证（access_token）进行身份鉴权</param>
+    /// <param name="department_id">部门 ID，ID 类型与 department_id_type 的取值保持一致。</param>
+    /// <param name="department_id_type">此次调用中使用的部门 ID 类型。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
+    /// <returns></returns>
+    [Delete("https://open.feishu.cn/open-apis/contact/v3/departments/{department_id}")]
+    Task<FeishuNullDataApiResult> DeleteDepartmentByIdAsync(
+       [Token(TokenType.UserAccessToken)][Header("Authorization")] string tenant_access_token,
+       [Path("department_id")] string department_id,
+       [Query("department_id_type")] string? department_id_type = null,
+       CancellationToken cancellationToken = default);
 }

@@ -78,6 +78,20 @@ public interface IFeishuDepartmentsApi
         [Query("department_id_type")] string? department_id_type = null,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// 将指定部门的部门群转为普通群。
+    /// </summary> 
+    /// <param name="departmentRequest">部门 ID，ID 类型需要与查询参数 department_id_type 的取值保持一致。</param>
+    /// <param name="tenant_access_token">应用调用 API 时，通过访问凭证（access_token）进行身份鉴权</param>
+    /// <param name="department_id_type">此次调用中的部门 ID 类型。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
+    [Post("https://open.feishu.cn/open-apis/contact/v3/departments/unbind_department_chat")]
+    Task<FeishuNullDataApiResult> UnbindDepartmentChatAsync(
+        [Token][Header("Authorization")] string tenant_access_token,
+        [Body] DepartmentRequest departmentRequest,
+        [Query("department_id_type")] string? department_id_type = null,
+        CancellationToken cancellationToken = default);
+
 
     /// <summary>
     /// 获取单个部门信息，包括部门名称、ID、父部门、负责人、状态以及成员个数等。

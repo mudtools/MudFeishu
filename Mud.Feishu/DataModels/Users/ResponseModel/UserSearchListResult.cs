@@ -3,7 +3,7 @@
 /// <summary>
 /// 用户查询结果列表。
 /// </summary>
-public class UserSearchListResult : ListApiResult
+public class UserSearchListResult : ApiListResult
 {
     /// <summary>
     /// 用户查询结果列表。

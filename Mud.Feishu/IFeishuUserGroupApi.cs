@@ -72,7 +72,7 @@ public interface IFeishuUserGroupApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
     /// <returns></returns>
     [Get("https://open.feishu.cn/open-apis/contact/v3/group/simplelist")]
-    Task<FeishuApiResult<UserGroupListDataResult>> GetUserGroupsAsync(
+    Task<FeishuApiResult<UserGroupListResult>> GetUserGroupsAsync(
      [Token][Header("Authorization")] string tenant_access_token,
      [Query("page_size")] int page_size = 10,
      [Query("page_token")] string? page_token = null,

@@ -4,7 +4,7 @@
 /// 单位部门列表响应结果，包含指定单位下的部门列表数据。
 /// 用于获取单位关联的部门信息时的响应数据格式。
 /// </summary>
-public class UnitDepartmentListResult : ListApiResult
+public class UnitDepartmentListResult : ApiListResult
 {
     /// <summary>
     /// 部门列表。

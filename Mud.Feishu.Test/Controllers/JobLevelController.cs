@@ -1,8 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
-using Mud.Feishu;
-using Mud.Feishu.DataModels.Departments;
 using Mud.Feishu.DataModels.JobLevel;
-using System.ComponentModel.DataAnnotations;
 
 namespace Mud.Feishu.Test.Controllers;
 
@@ -95,7 +92,7 @@ public class JobLevelController : ControllerBase
         try
         {
             var result = await _jobLevelApi.GetJobLevelListAsync(name, pageSize, pageToken);
-            return Ok(result);
+            return Ok(result.Data.Items);
         }
         catch (Exception ex)
         {

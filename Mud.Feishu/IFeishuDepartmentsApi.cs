@@ -141,7 +141,7 @@ public interface IFeishuDepartmentsApi
     /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
     /// <returns></returns>
     [Get("https://open.feishu.cn/open-apis/contact/v3/departments/{department_id}/children")]
-    Task<FeishuApiResult<GetDepartmentListResult>> GetDepartmentsByParentIdAsync(
+    Task<FeishuApiResult<ApiListResult<GetDepartmentInfo>>> GetDepartmentsByParentIdAsync(
           [Token][Header("Authorization")] string tenant_access_token,
           [Path] string department_id,
           [Query("fetch_child")] bool fetch_child = false,
@@ -163,7 +163,7 @@ public interface IFeishuDepartmentsApi
     /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
     /// <returns></returns>
     [Get("https://open.feishu.cn/open-apis/contact/v3/departments/parent")]
-    Task<FeishuApiResult<GetDepartmentListResult>> GetParentDepartmentsByIdAsync(
+    Task<FeishuApiResult<ApiListResult<GetDepartmentInfo>>> GetParentDepartmentsByIdAsync(
          [Token][Header("Authorization")] string tenant_access_token,
          [Query("department_id")] string department_id,
          [Query("page_size")] int page_size = 10,
@@ -187,7 +187,7 @@ public interface IFeishuDepartmentsApi
     /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
     /// <returns></returns>
     [Post("https://open.feishu.cn/open-apis/contact/v3/departments/search")]
-    Task<FeishuApiResult<GetDepartmentListResult>> SearchDepartmentsAsync(
+    Task<FeishuApiResult<ApiListResult<GetDepartmentInfo>>> SearchDepartmentsAsync(
         [Token(TokenType.UserAccessToken)][Header("Authorization")] string user_access_token,
         [Body] SearchRequest searchRequest,
         [Query("page_size")] int page_size = 10,

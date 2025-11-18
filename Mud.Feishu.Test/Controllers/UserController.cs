@@ -24,7 +24,7 @@ public class UserController : ControllerBase
     {
         try
         {
-            var result = await _userApi.GetUserByIdAsync(userId);
+            var result = await _userApi.GetUserInfoByIdAsync(userId);
             return Ok(result.Data);
         }
         catch (Exception ex)

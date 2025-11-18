@@ -18,14 +18,13 @@ public class DepartmentController : ControllerBase
     /// 获取部门信息
     /// </summary>
     /// <param name="departmentId">部门ID</param>
-    /// <param name="departmentIdType">部门ID类型</param>
     /// <returns></returns>
     [HttpGet("{departmentId}")]
     public async Task<IActionResult> GetDepartment(string departmentId)
     {
         try
         {
-            var result = await _departmentApi.GetDepartmentByIdAsync(departmentId, null);
+            var result = await _departmentApi.GetDepartmentInfoByIdAsync(departmentId, null);
             return Ok(result);
         }
         catch (Exception ex)

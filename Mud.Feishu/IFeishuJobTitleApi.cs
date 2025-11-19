@@ -47,7 +47,7 @@ public interface IFeishuJobTitleApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
     /// <returns></returns>
     [Get("https://open.feishu.cn/open-apis/contact/v3/job_titles/{job_title_id}")]
-    Task<FeishuApiResult<JobTitle>> GetTenantJobTitlesByIdAsync(
+    Task<FeishuApiResult<JobTitleResult>> GetTenantJobTitleByIdAsync(
       [Token][Header("Authorization")] string tenant_access_token,
       [Path] string job_title_id,
       CancellationToken cancellationToken = default);
@@ -55,13 +55,13 @@ public interface IFeishuJobTitleApi
     /// <summary>
     /// 获取指定职务的信息，包括职务的 ID、名称、多语言名称以及启用状态。
     /// </summary>
-    /// <param name="tenant_access_token">应用调用 API 时，需要通过访问凭证（access_token）进行身份鉴权</param>
+    /// <param name="user_access_token">应用调用 API 时，需要通过访问凭证（access_token）进行身份鉴权</param>
     /// <param name="job_title_id">职务 ID。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
     /// <returns></returns>
     [Get("https://open.feishu.cn/open-apis/contact/v3/job_titles/{job_title_id}")]
-    Task<FeishuApiResult<JobTitle>> GetUserJobTitlesByIdAsync(
-      [Token(TokenType.UserAccessToken)][Header("Authorization")] string tenant_access_token,
+    Task<FeishuApiResult<JobTitleResult>> GetUserJobTitleByIdAsync(
+      [Token(TokenType.UserAccessToken)][Header("Authorization")] string user_access_token,
       [Path] string job_title_id,
       CancellationToken cancellationToken = default);
 }

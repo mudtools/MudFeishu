@@ -46,6 +46,26 @@
 | GetMembers | `/api/rolemember/{roleId}/members` | GET | 获取角色成员列表 |
 | DeleteMembers | `/api/rolemember/{roleId}/batch-delete-member` | DELETE | 批量删除角色成员 |
 
+### 4. JobTitleController (飞书职务管理)
+覆盖了 `IFeishuJobTitleApi` 的所有接口：
+
+| 方法 | 路径 | HTTP方法 | 功能 |
+|------|------|----------|------|
+| GetTenantJobTitlesList | `/api/jobtitle/tenant/list` | GET | 获取当前租户下的职务列表 |
+| GetUserJobTitlesList | `/api/jobtitle/user/list` | GET | 获取当前登录用户下的职务列表 |
+| GetTenantJobTitleById | `/api/jobtitle/tenant/{jobTitleId}` | GET | 获取指定职务的信息（租户级别） |
+| GetUserJobTitleById | `/api/jobtitle/user/{jobTitleId}` | GET | 获取指定职务的信息（用户级别） |
+
+### 5. WorkCityController (飞书工作城市管理)
+覆盖了 `IFeishuWorkCityApi` 的所有接口：
+
+| 方法 | 路径 | HTTP方法 | 功能 |
+|------|------|----------|------|
+| GetTenantWorkCitiesList | `/api/workcity/tenant/list` | GET | 获取当前租户下所有工作城市列表 |
+| GetUserWorkCitiesList | `/api/workcity/user/list` | GET | 获取当前登录用户下所有工作城市列表 |
+| GetTenantWorkCityById | `/api/workcity/tenant/{workCityId}` | GET | 获取指定工作城市的信息（租户级别） |
+| GetUserWorkCityById | `/api/workcity/user/{workCityId}` | GET | 获取指定工作城市的信息（用户级别） |
+
 ## 特性
 
 ### 统一的错误处理

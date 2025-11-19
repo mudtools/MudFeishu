@@ -80,18 +80,18 @@ using Mud.Feishu;
 [Route("api/[controller]")]
 public class FeishuController : ControllerBase
 {
-    private readonly IFeishuAuthenticationApi _authApi;
-    private readonly IFeishuUserApi _userApi;
-    private readonly IFeishuDepartmentsApi _departmentsApi;
-    private readonly IFeishuUserGroupApi _userGroupApi;
-    private readonly IFeishuEmployeeTypeApi _employeeTypeApi;
+    private readonly IFeishuV3AuthenticationApi _authApi;
+    private readonly IFeishuV3UserApi _userApi;
+    private readonly IFeishuV3DepartmentsApi _departmentsApi;
+    private readonly IFeishuV3UserGroupApi _userGroupApi;
+    private readonly IFeishuV3EmployeeTypeApi _employeeTypeApi;
 
     public FeishuController(
-        IFeishuAuthenticationApi authApi, 
-        IFeishuUserApi userApi,
-        IFeishuDepartmentsApi departmentsApi,
-        IFeishuUserGroupApi userGroupApi,
-        IFeishuEmployeeTypeApi employeeTypeApi)
+        IFeishuV3AuthenticationApi authApi, 
+        IFeishuV3UserApi userApi,
+        IFeishuV3DepartmentsApi departmentsApi,
+        IFeishuV3UserGroupApi userGroupApi,
+        IFeishuV3EmployeeTypeApi employeeTypeApi)
     {
         _authApi = authApi;
         _userApi = userApi;
@@ -199,9 +199,9 @@ public class AuthController : ControllerBase
 // 使用包装后的 API（自动处理令牌）
 public class UserController : ControllerBase
 {
-    private readonly IFeishuUser _userApi;
+    private readonly IFeishuV3User _userApi;
 
-    public UserController(IFeishuUser userApi)
+    public UserController(IFeishuV3User userApi)
     {
         _userApi = userApi;
     }
@@ -236,9 +236,9 @@ using Mud.Feishu;
 [Route("api/[controller]")]
 public class AuthController : ControllerBase
 {
-    private readonly IFeishuAuthenticationApi _authApi;
+    private readonly IFeishuV3AuthenticationApi _authApi;
 
-    public AuthController(IFeishuAuthenticationApi authApi)
+    public AuthController(IFeishuV3AuthenticationApi authApi)
     {
         _authApi = authApi;
     }
@@ -281,10 +281,10 @@ using Mud.Feishu.DataModels.Users;
 [Route("api/[controller]")]
 public class UserController : ControllerBase
 {
-    private readonly IFeishuUserApi _userApi;
-    private readonly IFeishuAuthenticationApi _authApi;
+    private readonly IFeishuV3UserApi _userApi;
+    private readonly IFeishuV3AuthenticationApi _authApi;
 
-    public UserController(IFeishuUserApi userApi, IFeishuAuthenticationApi authApi)
+    public UserController(IFeishuV3UserApi userApi, IFeishuV3AuthenticationApi authApi)
     {
         _userApi = userApi;
         _authApi = authApi;

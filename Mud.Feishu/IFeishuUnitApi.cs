@@ -16,7 +16,7 @@ public interface IFeishuUnitApi
     /// </summary>
     /// <param name="tenant_access_token">以应用身份调用 API，可读写的数据范围由应用自身的 数据权限范围 决定。</param>
     /// <param name="groupInfoRequest">单位信息请求体</param>
-    /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Post("https://open.feishu.cn/open-apis/contact/v3/unit")]
     Task<FeishuApiResult<UnitCreateResult>> CreateUnitAsync(
@@ -30,7 +30,7 @@ public interface IFeishuUnitApi
     /// <param name="tenant_access_token">以应用身份调用 API，可读写的数据范围由应用自身的 数据权限范围 决定。</param>
     /// <param name="unit_id">单位 ID。</param>
     /// <param name="nameUpdateRequest">单位名称更新请求体</param>
-    /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Patch("https://open.feishu.cn/open-apis/contact/v3/unit/{unit_id}")]
     Task<FeishuNullDataApiResult> UpdateUnitAsync(
@@ -44,7 +44,7 @@ public interface IFeishuUnitApi
     /// </summary>
     /// <param name="tenant_access_token">以应用身份调用 API，可读写的数据范围由应用自身的 数据权限范围 决定。</param>
     /// <param name="unitBindDepartment">部门与单位的绑定关系请求体</param>
-    /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <remarks>
     /// <para>单个单位可关联的部门数量上限为 1,000。</para>
     /// <para>同一个部门只能关联一个单位。</para>
@@ -61,7 +61,7 @@ public interface IFeishuUnitApi
     /// </summary>
     /// <param name="tenant_access_token">以应用身份调用 API，可读写的数据范围由应用自身的 数据权限范围 决定。</param>
     /// <param name="unitBindDepartment">部门与单位的绑定关系请求体</param>
-    /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Post("https://open.feishu.cn/open-apis/contact/v3/unit/unbind_department")]
     Task<FeishuApiResult<UnitCreateResult>> UnBindDepartmentAsync(
@@ -75,7 +75,7 @@ public interface IFeishuUnitApi
     /// <param name="tenant_access_token">以应用身份调用 API，可读写的数据范围由应用自身的 数据权限范围 决定。</param>
     /// <param name="unit_id">单位 ID。</param>
     /// <param name="department_id_type">此次调用中使用的部门 ID 类型。</param>
-    /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <param name="page_size">分页大小，即本次请求所返回的用户信息列表内的最大条目数。默认值：10</param>
     /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
     /// <returns></returns>
@@ -93,7 +93,7 @@ public interface IFeishuUnitApi
     /// </summary>
     /// <param name="tenant_access_token">以应用身份调用 API，可读写的数据范围由应用自身的 数据权限范围 决定。</param>
     /// <param name="unit_id">单位 ID。</param>
-    /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Get("https://open.feishu.cn/open-apis/contact/v3/unit/{unit_id}")]
     Task<FeishuApiResult<UnitInfo>> GetUnitInfoAsync(
@@ -105,7 +105,7 @@ public interface IFeishuUnitApi
     /// 获取当前租户内的单位列表。列表内主要包含各单位的 ID、名字、类型信息。
     /// </summary>
     /// <param name="tenant_access_token">以应用身份调用 API，可读写的数据范围由应用自身的 数据权限范围 决定。</param>
-    /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <param name="page_size">分页大小，即本次请求所返回的用户信息列表内的最大条目数。默认值：10</param>
     /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
     /// <returns></returns>
@@ -121,7 +121,7 @@ public interface IFeishuUnitApi
     /// </summary>
     /// <param name="tenant_access_token">应用调用 API 时，通过访问凭证（access_token）进行身份鉴权</param>
     /// <param name="unit_id">需删除的单位 ID。</param>
-    /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Delete("https://open.feishu.cn/open-apis/contact/v3/unit/{unit_id}")]
     Task<FeishuNullDataApiResult> DeleteUnitByIdAsync(

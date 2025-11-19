@@ -17,7 +17,7 @@ public interface IFeishuJobLevelApi
     /// </summary>
     /// <param name="tenant_access_token">以应用身份调用 API，可读写的数据范围由应用自身的 数据权限范围 决定。</param>
     /// <param name="levelCreateRequest">创建职级请求体。</param>
-    /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Post("https://open.feishu.cn/open-apis/contact/v3/job_levels")]
     Task<FeishuApiResult<JobLevelResult>> CreateJobLevelAsync(
@@ -31,7 +31,7 @@ public interface IFeishuJobLevelApi
     /// <param name="tenant_access_token">以应用身份调用 API，可读写的数据范围由应用自身的 数据权限范围 决定。</param>
     /// <param name="levelCreateRequest">更新职级请求体。</param>
     /// <param name="job_level_id">职级 ID。</param>
-    /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Put("https://open.feishu.cn/open-apis/contact/v3/job_levels/{job_level_id}")]
     Task<FeishuApiResult<JobLevelResult>> UpdateJobLevelAsync(
@@ -45,7 +45,7 @@ public interface IFeishuJobLevelApi
     /// </summary>
     /// <param name="tenant_access_token">以应用身份调用 API，可读写的数据范围由应用自身的 数据权限范围 决定。</param>
     /// <param name="job_level_id">职级 ID。</param>
-    /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Get("https://open.feishu.cn/open-apis/contact/v3/job_levels/{job_level_id}")]
     Task<FeishuApiResult<JobLevelResult>> GetJobLevelByIdAsync(
@@ -60,7 +60,7 @@ public interface IFeishuJobLevelApi
     /// <param name="name">职级名称。示例值："高级专家"</param>
     /// <param name="page_size">分页大小，即本次请求所返回的用户信息列表内的最大条目数。默认值：10</param>
     /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
-    /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Get("https://open.feishu.cn/open-apis/contact/v3/job_levels")]
     Task<FeishuApiListResult<JobLevelResult>> GetJobLevelListAsync(
@@ -75,7 +75,7 @@ public interface IFeishuJobLevelApi
     /// </summary>
     /// <param name="tenant_access_token">以应用身份调用 API，可读写的数据范围由应用自身的 数据权限范围 决定。</param>
     /// <param name="job_level_id">职级 ID。</param>
-    /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Delete("https://open.feishu.cn/open-apis/contact/v3/job_levels/{job_level_id}")]
     Task<FeishuNullDataApiResult> DeleteJobLevelByIdAsync(

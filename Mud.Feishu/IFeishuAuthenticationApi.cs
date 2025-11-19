@@ -12,7 +12,7 @@ public interface IFeishuAuthenticationApi
     /// 获取自建应用获取 tenant_access_token。
     /// </summary>
     /// <param name="credentials">应用唯一标识及应用秘钥信息</param>
-    /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <remarks>
     /// <para>tenant_access_token 的最大有效期是 2 小时。</para>
     /// <para>剩余有效期小于 30 分钟时，调用本接口会返回一个新的 tenant_access_token，这会同时存在两个有效的 tenant_access_token。</para>
@@ -28,7 +28,7 @@ public interface IFeishuAuthenticationApi
     /// 自建应用获取 app_access_token
     /// </summary>
     /// <param name="credentials">应用唯一标识及应用秘钥信息</param>
-    /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <remarks>
     /// <para>app_access_token 的最大有效期是 2 小时。</para>
     /// <para>剩余有效期小于 30 分钟时，调用本接口会返回一个新的 app_access_token，这会同时存在两个有效的 app_access_token。</para>
@@ -44,7 +44,7 @@ public interface IFeishuAuthenticationApi
     /// 获取 user_access_token,OAuth 令牌接口，可用于获取 user_access_token 以及 refresh_token。user_access_token 为用户访问凭证，使用该凭证可以以用户身份调用 OpenAPI。refresh_token 为刷新凭证，可以用来获取新的 user_access_token。
     /// </summary>
     /// <param name="credentials">获取 user_access_token 的请求参数</param>
-    /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Post("https://open.feishu.cn/open-apis/authen/v2/oauth/token")]
     Task<OAuthCredentialsResult> GetOAuthenAccessTokenAsync(
@@ -55,7 +55,7 @@ public interface IFeishuAuthenticationApi
     /// 刷新 user_access_token
     /// </summary>
     /// <param name="credentials">OAuth 令牌接口，可用于刷新 user_access_token 以及获取新的 refresh_token。</param>
-    /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Post("https://open.feishu.cn/open-apis/authen/v2/oauth/token")]
     Task<OAuthCredentialsResult> GetOAuthenRefreshAccessTokenAsync(
@@ -72,7 +72,7 @@ public interface IFeishuAuthenticationApi
     /// <param name="state">用来维护请求和回调之间状态的附加字符串，在授权完成回调时会原样回传此参数。应用可以根据此字符串来判断上下文关系，同时该参数也可以用以防止 CSRF 攻击，请务必校验 state 参数前后是否一致。</param>
     /// <param name="code_challenge">用于通过 PKCE（Proof Key for Code Exchange）流程增强授权码的安全性。</param>
     /// <param name="code_challenge_method">生成 code_challenge 的方法。</param>
-    /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Get("https://accounts.feishu.cn/open-apis/authen/v1/authorize")]
     Task<AuthorizeResult> GetAuthorizeAsync(

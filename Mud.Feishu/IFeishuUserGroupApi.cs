@@ -17,7 +17,7 @@ public interface IFeishuUserGroupApi
     /// <param name="groupInfoRequest">创建用户组请求体。</param>
     /// <param name="user_id_type">用户 ID 类型</param>
     /// <param name="department_id_type">此次调用中的部门 ID 类型。</param>
-    /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Post("https://open.feishu.cn/open-apis/contact/v3/group")]
     Task<FeishuApiResult<UserGroupCreateResult>> CreateUserGroupAsync(
@@ -35,7 +35,7 @@ public interface IFeishuUserGroupApi
     /// <param name="group_id">用户组 ID。用户组 ID 可在创建用户组时从返回值中获取，你也可以调用查询用户组列表接口，获取用户组的 ID。</param>
     /// <param name="user_id_type">用户 ID 类型</param>
     /// <param name="department_id_type">此次调用中的部门 ID 类型。</param>
-    /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Patch("https://open.feishu.cn/open-apis/contact/v3/group/{group_id}")]
     Task<FeishuNullDataApiResult> UpdateUserGroupAsync(
        [Token][Header("Authorization")] string tenant_access_token,
@@ -52,7 +52,7 @@ public interface IFeishuUserGroupApi
     /// <param name="group_id">用户组 ID。</param>
     /// <param name="user_id_type">此次调用中的用户 ID 类型</param>
     /// <param name="department_id_type">此次调用中的部门 ID 类型。</param>
-    /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Get("https://open.feishu.cn/open-apis/contact/v3/group/{group_id}")]
     Task<FeishuApiResult<UserGroupQueryResult>> GetUserGroupInfoByIdAsync(
@@ -69,7 +69,7 @@ public interface IFeishuUserGroupApi
     /// <param name="page_size">分页大小，即本次请求所返回的用户信息列表内的最大条目数。默认值：10</param>
     /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
     /// <param name="type">用户组类型。可选值有：1：普通用户组 2：动态用户组 默认值：1</param>
-    /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Get("https://open.feishu.cn/open-apis/contact/v3/group/simplelist")]
     Task<FeishuApiResult<UserGroupListResult>> GetUserGroupsAsync(
@@ -89,7 +89,7 @@ public interface IFeishuUserGroupApi
     /// <param name="page_size">分页大小，即本次请求所返回的用户信息列表内的最大条目数。默认值：10</param>
     /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
     /// <param name="type"></param>
-    /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Get("https://open.feishu.cn/open-apis/contact/v3/group/member_belong")]
     Task<FeishuApiResult<UserBelongGroupListResult>> GetUserBelongGroupsAsync(
@@ -107,7 +107,7 @@ public interface IFeishuUserGroupApi
     /// </summary>
     /// <param name="tenant_access_token">应用调用 API 时，通过访问凭证（access_token）进行身份鉴权</param>
     /// <param name="group_id">需删除的用户组 ID。</param>
-    /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Delete("https://open.feishu.cn/open-apis/contact/v3/group/{group_id}")]
     Task<FeishuNullDataApiResult> DeleteUserGroupByIdAsync(

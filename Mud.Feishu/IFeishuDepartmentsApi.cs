@@ -18,7 +18,7 @@ public interface IFeishuDepartmentsApi
     /// <param name="user_id_type">用户 ID 类型</param>
     /// <param name="department_id_type">此次调用中的部门 ID 类型。</param>
     /// <param name="client_token">用于幂等判断是否为同一请求，避免重复创建。请参考参数示例值，传入自定义的 client_token。</param>
-    /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Post("https://open.feishu.cn/open-apis/contact/v3/departments")]
     Task<FeishuApiResult<DepartmentCreateUpdateResult>> CreateDepartmentAsync(
@@ -37,7 +37,7 @@ public interface IFeishuDepartmentsApi
     /// <param name="department_id">部门 ID，ID 类型需要与查询参数 department_id_type 的取值保持一致。</param>
     /// <param name="user_id_type">用户 ID 类型</param>
     /// <param name="department_id_type">此次调用中的部门 ID 类型。</param>
-    /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Patch("https://open.feishu.cn/open-apis/contact/v3/departments/{department_id}")]
     Task<FeishuApiResult<DepartmentCreateUpdateResult>> UpdatePartDepartmentAsync(
           [Token][Header("Authorization")] string tenant_access_token,
@@ -55,7 +55,7 @@ public interface IFeishuDepartmentsApi
     /// <param name="department_id">部门 ID，ID 类型需要与查询参数 department_id_type 的取值保持一致。</param>
     /// <param name="user_id_type">用户 ID 类型</param>
     /// <param name="department_id_type">此次调用中的部门 ID 类型。</param>
-    /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Put("https://open.feishu.cn/open-apis/contact/v3/departments/{department_id}")]
     Task<FeishuApiResult<DepartmentUpdateResult>> UpdateDepartmentAsync(
          [Token][Header("Authorization")] string tenant_access_token,
@@ -72,7 +72,7 @@ public interface IFeishuDepartmentsApi
     /// <param name="departMentUpdateIdRequest">更新部门ID的请求体。</param>
     /// <param name="department_id">部门 ID，ID 类型需要与查询参数 department_id_type 的取值保持一致。</param>
     /// <param name="department_id_type">此次调用中的部门 ID 类型。</param>
-    /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Patch("https://open.feishu.cn/open-apis/contact/v3/departments/{department_id}/update_department_id")]
     Task<FeishuNullDataApiResult> UpdateDepartmentIdAsync(
         [Token][Header("Authorization")] string tenant_access_token,
@@ -87,7 +87,7 @@ public interface IFeishuDepartmentsApi
     /// <param name="departmentRequest">部门 ID，ID 类型需要与查询参数 department_id_type 的取值保持一致。</param>
     /// <param name="tenant_access_token">应用调用 API 时，通过访问凭证（access_token）进行身份鉴权</param>
     /// <param name="department_id_type">此次调用中的部门 ID 类型。</param>
-    /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Post("https://open.feishu.cn/open-apis/contact/v3/departments/unbind_department_chat")]
     Task<FeishuNullDataApiResult> UnbindDepartmentChatAsync(
         [Token][Header("Authorization")] string tenant_access_token,
@@ -103,7 +103,7 @@ public interface IFeishuDepartmentsApi
     /// <param name="department_id">部门 ID，ID 类型需要与查询参数 department_id_type 的取值保持一致。</param>
     /// <param name="department_id_type">此次调用中的部门 ID 类型。</param>
     /// <param name="user_id_type">用户 ID 类型</param>
-    /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Get("https://open.feishu.cn/open-apis/contact/v3/departments/{department_id}")]
     Task<FeishuApiResult<GetDepartmentInfoResult>> GetDepartmentInfoByIdAsync(
          [Token][Header("Authorization")] string user_access_token,
@@ -119,7 +119,7 @@ public interface IFeishuDepartmentsApi
     /// <param name="department_ids">部门 ID，ID 类型需要与查询参数 department_id_type 的取值保持一致。</param>
     /// <param name="department_id_type">此次调用中的部门 ID 类型。</param>
     /// <param name="user_id_type">用户 ID 类型</param>
-    /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Get("https://open.feishu.cn/open-apis/contact/v3/departments/batch")]
     Task<FeishuApiResult<BatchGetDepartmentRequest>> GetDepartmentsByIdsAsync(
         [Token][Header("Authorization")] string tenant_access_token,
@@ -136,7 +136,7 @@ public interface IFeishuDepartmentsApi
     /// <param name="fetch_child"></param> 
     /// <param name="user_id_type">用户 ID 类型</param>
     /// <param name="department_id_type">此次调用中使用的部门 ID 类型。</param>
-    /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <param name="page_size">分页大小，即本次请求所返回的用户信息列表内的最大条目数。默认值：10</param>
     /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
     /// <returns></returns>
@@ -158,7 +158,7 @@ public interface IFeishuDepartmentsApi
     /// <param name="department_id">部门 ID，ID 类型与 department_id_type 的取值保持一致。</param>
     /// <param name="user_id_type">用户 ID 类型</param>
     /// <param name="department_id_type">此次调用中使用的部门 ID 类型。</param>
-    /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <param name="page_size">分页大小，即本次请求所返回的用户信息列表内的最大条目数。默认值：10</param>
     /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
     /// <returns></returns>
@@ -182,7 +182,7 @@ public interface IFeishuDepartmentsApi
     /// </param>
     /// <param name="user_id_type">用户 ID 类型</param>
     /// <param name="department_id_type">此次调用中使用的部门 ID 类型。</param>
-    /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <param name="page_size">分页大小，即本次请求所返回的用户信息列表内的最大条目数。默认值：10</param>
     /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
     /// <returns></returns>
@@ -202,7 +202,7 @@ public interface IFeishuDepartmentsApi
     /// <param name="tenant_access_token">应用调用 API 时，需要通过访问凭证（access_token）进行身份鉴权</param>
     /// <param name="department_id">部门 ID，ID 类型与 department_id_type 的取值保持一致。</param>
     /// <param name="department_id_type">此次调用中使用的部门 ID 类型。</param>
-    /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Delete("https://open.feishu.cn/open-apis/contact/v3/departments/{department_id}")]
     Task<FeishuNullDataApiResult> DeleteDepartmentByIdAsync(

@@ -1,5 +1,3 @@
-using Mud.Feishu;
-
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -15,7 +13,8 @@ builder.Services.AddOpenApi();
 #endif
 
 // 添加飞书服务
-builder.Services.AddFeishuApiService("Feishu");
+builder.Services.AddFeishuApiService("Feishu")
+                .AddLogging(option => option.AddConsole());
 
 var app = builder.Build();
 

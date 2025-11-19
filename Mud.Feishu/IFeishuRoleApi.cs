@@ -16,7 +16,7 @@ public interface IFeishuRoleApi
     /// </summary>
     /// <param name="tenant_access_token">应用调用 API 时，通过访问凭证（access_token）进行身份鉴权</param>
     /// <param name="roleRequest">创建角色请求体。</param>
-    /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Post("https://open.feishu.cn/open-apis/contact/v3/functional_roles")]
     Task<FeishuApiResult<RoleCreateResult>> CreateRoleAsync(
@@ -30,7 +30,7 @@ public interface IFeishuRoleApi
     /// <param name="tenant_access_token">应用调用 API 时，通过访问凭证（access_token）进行身份鉴权</param>
     /// <param name="role_id">角色 ID。</param>
     /// <param name="roleRequest">创建角色请求体。</param>
-    /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Put("https://open.feishu.cn/open-apis/contact/v3/functional_roles/{role_id}")]
     Task<FeishuNullDataApiResult> UpdateRoleAsync(
@@ -44,7 +44,7 @@ public interface IFeishuRoleApi
     /// </summary>
     /// <param name="tenant_access_token">应用调用 API 时，通过访问凭证（access_token）进行身份鉴权</param>
     /// <param name="role_id">角色 ID。</param>
-    /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Delete("https://open.feishu.cn/open-apis/contact/v3/functional_roles/{role_id}")]
     Task<FeishuNullDataApiResult> DeleteRoleByIdAsync(

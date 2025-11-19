@@ -7,8 +7,8 @@ namespace Mud.Feishu;
 /// <para>在部门内部，可添加用户作为部门成员，也可添加新的部门作为子部门。</para>
 /// </summary>
 [HttpClientApi]
-[HttpClientApiWrap(TokenManage = nameof(ITokenManager), WrapInterface = nameof(IFeishuDepartments))]
-public interface IFeishuDepartmentsApi
+[HttpClientApiWrap(TokenManage = nameof(ITokenManager), WrapInterface = nameof(IFeishuV3Departments))]
+public interface IFeishuV3DepartmentsApi
 {
     /// <summary>
     /// 在通讯录内创建一个部门。

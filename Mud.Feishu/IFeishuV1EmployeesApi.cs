@@ -44,7 +44,7 @@ public interface IFeishuV1EmployeesApi
     /// <param name="department_id_type">此次调用中的部门 ID 类型。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Post("https://open.feishu.cn/open-apis/directory/v1/employees/{employee_id}")]
+    [Patch("https://open.feishu.cn/open-apis/directory/v1/employees/{employee_id}")]
     Task<FeishuNullDataApiResult> UpdateEmployeeAsync(
        [Token(TokenType.Both)][Header("Authorization")] string access_token,
        [Path] string employee_id,
@@ -73,5 +73,21 @@ public interface IFeishuV1EmployeesApi
       [Query("employee_id_type")] string? employee_id_type = Consts.User_Id_Type,
       CancellationToken cancellationToken = default);
 
-
+    /// <summary>
+    /// 用于恢复已离职的成员，恢复已离职成员至在职状态。
+    /// </summary>
+    /// <param name="access_token">应用调用 API 时，需要通过访问凭证（access_token）进行身份鉴权</param>
+    /// <param name="employee_id">员工ID</param>
+    /// <param name="resurrectEmployeeRequest">恢复离职员工请求体。</param>
+    /// <param name="employee_id_type">用户 ID 类型</param>
+    /// <param name="department_id_type">此次调用中的部门 ID 类型。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Patch("https://open.feishu.cn/open-apis/directory/v1/employees/{employee_id}/resurrect")]
+    Task<FeishuNullDataApiResult> ResurrectEmployeeAsync(
+      [Token(TokenType.Both)][Header("Authorization")] string access_token,
+      [Path] string employee_id,
+      [Body] ResurrectEmployeeRequest resurrectEmployeeRequest,
+      [Query("employee_id_type")] string? employee_id_type = Consts.User_Id_Type,
+      [Query("department_id_type")] string? department_id_type = Consts.Department_Id_Type,
+      CancellationToken cancellationToken = default);
 }

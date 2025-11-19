@@ -8,43 +8,43 @@
 namespace Mud.Feishu.DataModels.Employees;
 
 /// <summary>
-/// 自定义字段
+/// 员工职位信息类，包含员工的具体职位信息
 /// </summary>
-public class CustomFieldValue
+public class EmployeePositionInfo
 {
     /// <summary>
-    /// 自定义字段类型 可选值有：1：多行文本 2：网页链接 3：枚举选项 4：人员 9：电话 10：多选枚举类型 11：人员列表
+    /// 职位编码
     /// </summary>
-    [JsonPropertyName("field_type")]
-    public string? FieldType { get; set; }
+    [JsonPropertyName("position_code")]
+    public string? PositionCode { get; set; }
 
     /// <summary>
-    /// 文本字段值
+    /// 职位名称
     /// </summary>
-    [JsonPropertyName("text_value")]
-    public I18nContent? TextValue { get; set; }
+    [JsonPropertyName("position_name")]
+    public string? PositionName { get; set; }
 
     /// <summary>
-    /// 网页链接字段值
+    /// 领导ID
     /// </summary>
-    [JsonPropertyName("url_value")]
-    public UrlValue? UrlValue { get; set; }
+    [JsonPropertyName("leader_id")]
+    public string? LeaderId { get; set; }
 
     /// <summary>
-    /// 枚举字段值
+    /// 领导职位编码
     /// </summary>
-    [JsonPropertyName("enum_value")]
-    public EnumValue? EnumValue { get; set; }
+    [JsonPropertyName("leader_position_code")]
+    public string? LeaderPositionCode { get; set; }
 
     /// <summary>
-    /// 人员字段值
+    /// 是否为主要职位
     /// </summary>
-    [JsonPropertyName("user_values")]
-    public List<UserValue>? UserValues { get; set; }
+    [JsonPropertyName("is_main_position")]
+    public bool? IsMainPosition { get; set; }
 
     /// <summary>
-    /// 自定义字段key
+    /// 部门ID
     /// </summary>
-    [JsonPropertyName("field_key")]
-    public string? FieldKey { get; set; }
+    [JsonPropertyName("department_id")]
+    public string? DepartmentId { get; set; }
 }

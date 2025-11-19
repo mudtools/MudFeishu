@@ -7,20 +7,21 @@
 
 namespace Mud.Feishu.DataModels.Employees;
 
+
 /// <summary>
-/// 枚举字段值
+/// 员工详细信息类，包含员工基本信息和工作信息
 /// </summary>
-public class EnumValue
+public class EmployeeDetail
 {
     /// <summary>
-    /// 选项结果ID  示例值：["1"]
+    /// 员工基本信息
     /// </summary>
-    [JsonPropertyName("enum_ids")]
-    public List<string> EnumIds { get; set; } = [];
+    [JsonPropertyName("base_info")]
+    public EmployeeBaseInfo? BaseInfo { get; set; }
 
     /// <summary>
-    /// 选项类型 可选值有：1：文本  2：图片
+    /// 员工工作信息
     /// </summary>
-    [JsonPropertyName("enum_type")]
-    public required string EnumType { get; set; }
+    [JsonPropertyName("work_info")]
+    public EmployeeWorkInfo? WorkInfo { get; set; }
 }

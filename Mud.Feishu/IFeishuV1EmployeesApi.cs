@@ -82,7 +82,7 @@ public interface IFeishuV1EmployeesApi
     /// <param name="employee_id_type">用户 ID 类型</param>
     /// <param name="department_id_type">此次调用中的部门 ID 类型。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
-    [Patch("https://open.feishu.cn/open-apis/directory/v1/employees/{employee_id}/resurrect")]
+    [Post("https://open.feishu.cn/open-apis/directory/v1/employees/{employee_id}/resurrect")]
     Task<FeishuNullDataApiResult> ResurrectEmployeeAsync(
       [Token(TokenType.Both)][Header("Authorization")] string access_token,
       [Path] string employee_id,
@@ -90,4 +90,58 @@ public interface IFeishuV1EmployeesApi
       [Query("employee_id_type")] string? employee_id_type = Consts.User_Id_Type,
       [Query("department_id_type")] string? department_id_type = Consts.Department_Id_Type,
       CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 用于为在职员工办理离职，将其更新为「待离职」状态。「待离职」员工不会自动离职，需要使用「离职员工」API操作离职和资源转交。
+    /// <para>使用user_access_token时默认为管理员用户，仅「人事管理模式」的管理员可操作。</para> 
+    /// </summary>
+    /// <param name="access_token">应用调用 API 时，需要通过访问凭证（access_token）进行身份鉴权</param>
+    /// <param name="employee_id">员工ID</param>
+    /// <param name="resignEmployeeRequest">在职员工流转到待离职请求体。</param>
+    /// <param name="employee_id_type">用户 ID 类型</param>
+    /// <param name="department_id_type">此次调用中的部门 ID 类型。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Patch("https://open.feishu.cn/open-apis/directory/v1/employees/{employee_id}/to_be_resigned")]
+    Task<FeishuNullDataApiResult> ResignedEmployeeAsync(
+     [Token(TokenType.Both)][Header("Authorization")] string access_token,
+     [Path] string employee_id,
+     [Body] ResignEmployeeRequest resignEmployeeRequest,
+     [Query("employee_id_type")] string? employee_id_type = Consts.User_Id_Type,
+     [Query("department_id_type")] string? department_id_type = Consts.Department_Id_Type,
+     CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 用于为待离职员工取消离职，将其更新为「在职」状态。取消离职时会清空离职信息。
+    /// <para>使用user_access_token时默认为管理员用户，仅「人事管理模式」的管理员可操作。</para> 
+    /// </summary>
+    /// <param name="access_token">应用调用 API 时，需要通过访问凭证（access_token）进行身份鉴权</param>
+    /// <param name="employee_id">员工ID</param>
+    /// <param name="employee_id_type">用户 ID 类型</param>
+    /// <param name="department_id_type">此次调用中的部门 ID 类型。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Patch("https://open.feishu.cn/open-apis/directory/v1/employees/{employee_id}/regular")]
+    Task<FeishuNullDataApiResult> RegularEmployeeAsync(
+         [Token(TokenType.Both)][Header("Authorization")] string access_token,
+         [Path] string employee_id,
+         [Query("employee_id_type")] string? employee_id_type = Consts.User_Id_Type,
+         [Query("department_id_type")] string? department_id_type = Consts.Department_Id_Type,
+         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 用于批量根据员工的ID查询员工的详情，比如员工姓名，手机号，邮箱，部门等信息。
+    /// <para>员工指飞书企业内身份为「Employee」的成员，等同于通讯录OpenAPI中的「User」</para> 
+    /// </summary>
+    /// <param name="access_token">应用调用 API 时，需要通过访问凭证（access_token）进行身份鉴权</param>
+    /// <param name="employeeQueryRequest">员工查询请求体。</param>
+    /// <param name="employee_id_type">用户 ID 类型</param>
+    /// <param name="department_id_type">此次调用中的部门 ID 类型。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Post("https://open.feishu.cn/open-apis/directory/v1/employees/mget")]
+    Task<FeishuApiResult<EmployeeListResult>> QueryEmployeesAsync(
+        [Token(TokenType.Both)][Header("Authorization")] string access_token,
+        [Body] EmployeeQueryRequest employeeQueryRequest,
+        [Query("employee_id_type")] string? employee_id_type = Consts.User_Id_Type,
+        [Query("department_id_type")] string? department_id_type = Consts.Department_Id_Type,
+        CancellationToken cancellationToken = default);
 }

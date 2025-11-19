@@ -5,37 +5,22 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-namespace Mud.Feishu.DataModels.Users;
-
+namespace Mud.Feishu.DataModels.Employees;
 
 /// <summary>
-/// 用户头像信息，包含不同尺寸的头像URL。
+/// 员工部门路径信息类，描述员工在组织结构中的部门路径
 /// </summary>
-public class AvatarInfo
+public class EmployeeDepartmentPathInfo
 {
     /// <summary>
-    /// 72x72像素的头像URL。
+    /// 部门ID
     /// </summary>
-    [JsonPropertyName("avatar_72")]
-    public string? Avatar72 { get; set; }
+    [JsonPropertyName("department_id")]
+    public string? DepartmentId { get; set; }
 
     /// <summary>
-    /// 240x240像素的头像URL。
+    /// 部门名称
     /// </summary>
-    [JsonPropertyName("avatar_240")]
-    public string? Avatar240 { get; set; }
-
-    /// <summary>
-    /// 640x640像素的头像URL。
-    /// </summary>
-    [JsonPropertyName("avatar_640")]
-    public string? Avatar640 { get; set; }
-
-    /// <summary>
-    /// 原始尺寸的头像URL。
-    /// </summary>
-    [JsonPropertyName("avatar_origin")]
-    public string? AvatarOrigin { get; set; }
+    [JsonPropertyName("department_name")]
+    public EmployeeI18nContent? DepartmentName { get; set; }
 }
-
-

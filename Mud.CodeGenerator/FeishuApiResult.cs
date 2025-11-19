@@ -32,6 +32,15 @@ public class FeishuApiResult<T> : FeishuApiResult
 }
 
 /// <summary>
+/// API列表响应结果模型
+/// </summary>
+/// <typeparam name="T"></typeparam>
+public class FeishuApiListResult<T> : FeishuApiResult<ApiListResult<T>>
+{
+
+}
+
+/// <summary>
 /// API响应结果中data数据为空的模型
 /// </summary>
 public class FeishuNullDataApiResult : FeishuApiResult<object>

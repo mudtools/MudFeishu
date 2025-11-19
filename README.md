@@ -10,7 +10,7 @@ MudFeishu 是一个现代化的 .NET 库，用于简化与飞书（Feishu）API 
 - **统一的响应处理**：基于 `ApiResult<T>` 的响应包装，简化错误处理
 - **依赖注入友好**：提供 `IServiceCollection` 扩展方法，易于集成到现代 .NET 应用
 - **多版本 .NET 支持**：支持 .NET 8.0、.NET 9.0、.NET 10.0，使用最新的 C# 13.0 语言特性
-- **完整的飞书 API 覆盖**：支持认证、用户管理、部门管理、用户组管理、人员类型管理
+- **完整的飞书 API 覆盖**：支持认证、用户管理、部门管理、用户组管理、人员类型管理、职级管理、职位序列管理
 - **高性能缓存机制**：解决缓存击穿和竞态条件，支持令牌自动刷新
 - **企业级错误处理**：统一的异常处理和日志记录
 
@@ -85,19 +85,25 @@ public class FeishuController : ControllerBase
     private readonly IFeishuV3DepartmentsApi _departmentsApi;
     private readonly IFeishuV3UserGroupApi _userGroupApi;
     private readonly IFeishuV3EmployeeTypeApi _employeeTypeApi;
+    private readonly IFeishuJobLevelApi _jobLevelApi;
+    private readonly IFeishuJobFamiliesApi _jobFamiliesApi;
 
     public FeishuController(
         IFeishuV3AuthenticationApi authApi, 
         IFeishuV3UserApi userApi,
         IFeishuV3DepartmentsApi departmentsApi,
         IFeishuV3UserGroupApi userGroupApi,
-        IFeishuV3EmployeeTypeApi employeeTypeApi)
+        IFeishuV3EmployeeTypeApi employeeTypeApi,
+        IFeishuJobLevelApi jobLevelApi,
+        IFeishuJobFamiliesApi jobFamiliesApi)
     {
         _authApi = authApi;
         _userApi = userApi;
         _departmentsApi = departmentsApi;
         _userGroupApi = userGroupApi;
         _employeeTypeApi = employeeTypeApi;
+        _jobLevelApi = jobLevelApi;
+        _jobFamiliesApi = jobFamiliesApi;
     }
 }
 ```
@@ -151,6 +157,22 @@ public class FeishuController : ControllerBase
 - `UpdateEmployeeTypeAsync()` - 更新人员类型
 - `GetEmployeeTypesAsync()` - 获取人员类型列表
 - `DeleteEmployeeTypeByIdAsync()` - 删除人员类型
+
+### 职级管理 API (`IFeishuJobLevelApi`)
+
+- `CreateJobLevelAsync()` - 创建职级
+- `UpdateJobLevelAsync()` - 更新职级
+- `GetJobLevelByIdAsync()` - 根据 ID 获取职级信息
+- `GetJobLevelsAsync()` - 获取职级列表
+- `DeleteJobLevelByIdAsync()` - 删除职级
+
+### 职位序列管理 API (`IFeishuJobFamiliesApi`)
+
+- `CreateJobFamilyAsync()` - 创建职位序列
+- `UpdateJobFamilyAsync()` - 更新职位序列
+- `GetJobFamilyByIdAsync()` - 根据 ID 获取职位序列信息
+- `GetJobFamilesListAsync()` - 获取职位序列列表
+- `DeleteJobFamilyByIdAsync()` - 删除职位序列
 
 ## 使用示例
 
@@ -385,6 +407,8 @@ Mud.Feishu/
 ├── IFeishuDepartmentsApi.cs             # 部门管理 API (7个方法)
 ├── IFeishuUserGroupApi.cs               # 用户组管理 API (6个方法)
 ├── IFeishuEmployeeTypeApi.cs             # 人员类型管理 API (4个方法)
+├── IFeishuJobLevelApi.cs                # 职级管理 API (5个方法)
+├── IFeishuJobFamiliesApi.cs              # 职位序列管理 API (5个方法)
 ├── FeishuServiceCollectionExtensions.cs  # 依赖注入扩展
 ├── Extensions/
 │   ├── FeishuOptions.cs                 # 配置选项
@@ -408,6 +432,8 @@ Mud.Feishu/
     │   ├── RequestModel/                 # 请求模型
     │   └── ResponseModel/                # 响应模型
     ├── EmployeeType/                    # 人员类型相关数据模型
+    ├── JobLevel/                        # 职级相关数据模型
+    ├── JobFamilies/                     # 职位序列相关数据模型
     ├── AppCredentials.cs                # 应用凭证
     ├── AppCredentialResult.cs           # 应用凭证结果
     ├── I18nName.cs                      # 国际化名称
@@ -476,7 +502,9 @@ Mud.Feishu.Test/
 │   ├── AuthController.cs          # 认证相关 API 测试
 │   ├── UserController.cs          # 用户管理 API 测试
 │   ├── DepartmentController.cs    # 部门管理 API 测试
-│   └── EmployeeTypeController.cs  # 人员类型 API 测试
+│   ├── EmployeeTypeController.cs  # 人员类型 API 测试
+│   ├── JobLevelController.cs      # 职级管理 API 测试
+│   ├── JobFamilyController.cs     # 职位序列管理 API 测试
 ├── Properties/
 │   └── launchSettings.json       # 开发环境启动配置
 ├── Program.cs                     # 应用程序入口
@@ -561,6 +589,15 @@ dotnet run --framework net10.0
 - `GET /api/joblevel` - 获取职级列表
 - `DELETE /api/joblevel/{jobLevelId}` - 删除职级
 
+#### 职位序列管理
+- `POST /api/jobfamily` - 创建职位序列
+- `PUT /api/jobfamily/{jobFamilyId}` - 更新职位序列
+- `GET /api/jobfamily/{jobFamilyId}` - 获取指定职位序列信息
+- `GET /api/jobfamily/list` - 获取职位序列列表
+- `DELETE /api/jobfamily/{jobFamilyId}` - 删除职位序列
+- `GET /api/jobfamily/list` - 获取职位序列列表
+- `DELETE /api/jobfamily/{jobFamilyId}` - 删除职位序列
+
 ### Swagger 文档访问
 
 启动测试项目后，访问 Swagger UI 进行交互式测试：
@@ -573,7 +610,7 @@ https://localhost:60360/swagger
 
 ### 克隆项目
 ```bash
-git clone https://github.com/your-repo/Mud.Feishu.git
+git clone https://gitee.com/mudtools/MudFeishu.git
 cd Mud.Feishu
 ```
 
@@ -697,7 +734,7 @@ MudFeishu 遵循 [MIT 许可证](LICENSE)。
 - [飞书开放平台文档](https://open.feishu.cn/document/)
 - [.NET 官方文档](https://docs.microsoft.com/dotnet/)
 - [NuGet 包管理器](https://www.nuget.org/)
-- [Mud.ServiceCodeGenerator](https://www.nuget.org/packages/Mud.ServiceCodeGenerator/)
+- [Mud.ServiceCodeGenerator](https://gitee.com/mudtools/mud-code-generator)
 
 ## 贡献指南
 
@@ -720,6 +757,13 @@ MudFeishu 遵循 [MIT 许可证](LICENSE)。
 - 添加相应的 Swagger 文档注释
 
 ## 更新日志
+
+### v1.1.0 (2025-11-14)
+- 新增职级管理 API (`IFeishuJobLevelApi`)
+- 新增职位序列管理 API (`IFeishuJobFamiliesApi`)
+- 完善数据模型 XML 注释
+- 优化测试项目，新增 JobFamilyController 测试控制器
+- 统一部门相关数据模型，消除重复代码
 
 ### v1.0.0 (2025-11-14)
 - 初始版本发布

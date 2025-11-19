@@ -85,7 +85,7 @@ public interface IFeishuV3UnitApi
          [Query("unit_id")] string unit_id,
          [Query("page_size")] int page_size = 10,
          [Query("page_token")] string? page_token = null,
-         [Query("department_id_type")] string? department_id_type = null,
+         [Query("department_id_type")] string? department_id_type = Consts.Department_Id_Type,
          CancellationToken cancellationToken = default);
 
     /// <summary>

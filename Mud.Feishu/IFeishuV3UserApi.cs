@@ -23,8 +23,8 @@ public interface IFeishuV3UserApi
     Task<FeishuApiResult<CreateOrUpdateUserResult>> CreateUserAsync(
         [Token][Header("Authorization")] string tenant_access_token,
         [Body] CreateUserRequest userModel,
-        [Query("user_id_type")] string? user_id_type = null,
-        [Query("department_id_type")] string? department_id_type = null,
+        [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
+        [Query("department_id_type")] string? department_id_type = Consts.Department_Id_Type,
         [Query("client_token")] string? client_token = null,
         CancellationToken cancellationToken = default);
 
@@ -43,8 +43,8 @@ public interface IFeishuV3UserApi
         [Token][Header("Authorization")] string user_access_token,
         [Path] string user_id,
         [Body] UpdateUserRequest userModel,
-        [Query("user_id_type")] string? user_id_type = null,
-        [Query("department_id_type")] string? department_id_type = null,
+        [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
+        [Query("department_id_type")] string? department_id_type = Consts.Department_Id_Type,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -61,7 +61,7 @@ public interface IFeishuV3UserApi
         [Token][Header("Authorization")] string user_access_token,
         [Path] string user_id,
         [Body] UpdateUserIdRequest updateUserId,
-        [Query("user_id_type")] string? user_id_type = null,
+        [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
         CancellationToken cancellationToken = default);
 
 
@@ -78,8 +78,8 @@ public interface IFeishuV3UserApi
     Task<FeishuApiResult<GetUserInfoResult>> GetUserInfoByIdAsync(
         [Token][Header("Authorization")] string user_access_token,
         [Path] string user_id,
-        [Query("user_id_type")] string? user_id_type = null,
-        [Query("department_id_type")] string? department_id_type = null,
+        [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
+        [Query("department_id_type")] string? department_id_type = Consts.Department_Id_Type,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -95,8 +95,8 @@ public interface IFeishuV3UserApi
     Task<FeishuApiResult<GetUserInfosResult>> GetUserByIdsAsync(
        [Token][Header("Authorization")] string user_access_token,
        [Query("user_ids")] string[] user_ids,
-       [Query("user_id_type")] string? user_id_type = null,
-       [Query("department_id_type")] string? department_id_type = null,
+       [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
+       [Query("department_id_type")] string? department_id_type = Consts.Department_Id_Type,
        CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -116,8 +116,8 @@ public interface IFeishuV3UserApi
      [Query("department_id")] string department_id,
      [Query("page_size")] int page_size = 10,
      [Query("page_token")] string? page_token = null,
-     [Query("user_id_type")] string? user_id_type = null,
-     [Query("department_id_type")] string? department_id_type = null,
+     [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
+     [Query("department_id_type")] string? department_id_type = Consts.Department_Id_Type,
      CancellationToken cancellationToken = default);
 
 
@@ -134,7 +134,7 @@ public interface IFeishuV3UserApi
     Task<FeishuApiResult<UserQueryListResult>> GetBatchUsersAsync(
       [Token][Header("Authorization")] string user_access_token,
       [Body] UserQueryRequest queryRequest,
-      [Query("user_id_type")] string? user_id_type = null,
+      [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
       CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -168,7 +168,7 @@ public interface IFeishuV3UserApi
        [Token][Header("Authorization")] string user_access_token,
        [Path] string user_id,
        [Body] DeleteSettingsRequest deleteSettingsRequest,
-       [Query("user_id_type")] string? user_id_type = null,
+       [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
        CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -186,8 +186,8 @@ public interface IFeishuV3UserApi
       [Token][Header("Authorization")] string user_access_token,
       [Path] string user_id,
       [Body] ResurrectUserRequest resurrectUserRequest,
-      [Query("user_id_type")] string? user_id_type = null,
-      [Query("department_id_type")] string? department_id_type = null,
+      [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
+      [Query("department_id_type")] string? department_id_type = Consts.Department_Id_Type,
       CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -212,8 +212,8 @@ public interface IFeishuV3UserApi
     [Post("https://open.feishu.cn/open-apis/passport/v1/sessions/logout")]
     Task<FeishuNullDataApiResult> LogoutAsync(
         [Token][Header("Authorization")] string user_access_token,
-        [Query("user_id_type")] string user_id_type,
         [Body] LogoutRequest logoutRequest,
+        [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
         CancellationToken cancellationToken = default);
 
     /// <summary>

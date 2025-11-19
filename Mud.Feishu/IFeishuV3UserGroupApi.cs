@@ -24,7 +24,7 @@ public interface IFeishuV3UserGroupApi
         [Token][Header("Authorization")] string tenant_access_token,
         [Body] UserGroupInfoRequest groupInfoRequest,
         [Query("user_id_type")] string? user_id_type = null,
-        [Query("department_id_type")] string? department_id_type = null,
+        [Query("department_id_type")] string? department_id_type = Consts.Department_Id_Type,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -42,7 +42,7 @@ public interface IFeishuV3UserGroupApi
        [Path] string group_id,
        [Body] UserGroupUpdateRequest groupUpdateRequest,
        [Query("user_id_type")] string? user_id_type = null,
-       [Query("department_id_type")] string? department_id_type = null,
+       [Query("department_id_type")] string? department_id_type = Consts.Department_Id_Type,
        CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -58,8 +58,8 @@ public interface IFeishuV3UserGroupApi
     Task<FeishuApiResult<UserGroupQueryResult>> GetUserGroupInfoByIdAsync(
       [Token][Header("Authorization")] string user_access_token,
       [Path] string group_id,
-      [Query("user_id_type")] string? user_id_type = null,
-      [Query("department_id_type")] string? department_id_type = null,
+      [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
+      [Query("department_id_type")] string? department_id_type = Consts.Department_Id_Type,
       CancellationToken cancellationToken = default);
 
     /// <summary>

@@ -27,7 +27,7 @@ public interface IFeishuV3RoleMemberApi
                  [Token][Header("Authorization")] string tenant_access_token,
                  [Path] string role_id,
                  [Body] RoleMembersRequest roleMembersRequest,
-                 [Query("user_id_type")] string? user_id_type = "open_id",
+                 [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
                  CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -45,8 +45,8 @@ public interface IFeishuV3RoleMemberApi
                [Token][Header("Authorization")] string tenant_access_token,
                [Path] string role_id,
                [Body] RoleMembersScopeRequest membersScopeRequest,
-               [Query("user_id_type")] string? user_id_type = "open_id",
-               [Query("department_id_type")] string? department_id_type = "open_department_id",
+               [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
+               [Query("department_id_type")] string? department_id_type = Consts.Department_Id_Type,
                CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -64,8 +64,8 @@ public interface IFeishuV3RoleMemberApi
               [Token][Header("Authorization")] string tenant_access_token,
               [Path] string role_id,
               [Path] string member_id,
-              [Query("user_id_type")] string? user_id_type = "open_id",
-              [Query("department_id_type")] string? department_id_type = "open_department_id",
+              [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
+              [Query("department_id_type")] string? department_id_type = Consts.Department_Id_Type,
               CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -84,8 +84,8 @@ public interface IFeishuV3RoleMemberApi
               [Path] string role_id,
               [Query("page_size")] int page_size = 10,
               [Query("page_token")] string? page_token = null,
-              [Query("user_id_type")] string? user_id_type = "open_id",
-              [Query("department_id_type")] string? department_id_type = "open_department_id",
+              [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
+              [Query("department_id_type")] string? department_id_type = Consts.Department_Id_Type,
               CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -102,6 +102,6 @@ public interface IFeishuV3RoleMemberApi
          [Token][Header("Authorization")] string tenant_access_token,
          [Path] string role_id,
          [Body] RoleMembersRequest roleMembersRequest,
-         [Query("user_id_type")] string? user_id_type = "open_id",
+         [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
          CancellationToken cancellationToken = default);
 }

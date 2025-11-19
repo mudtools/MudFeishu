@@ -55,7 +55,7 @@ public interface IFeishuV3UserGroupMemberApi
          [Path] string group_id,
          [Query("page_size")] int page_size = 10,
          [Query("page_token")] string? page_token = null,
-         [Query("member_id_type")] string? member_id_type = "open_id",
+         [Query("member_id_type")] string? member_id_type = Consts.User_Id_Type,
          [Query("member_type")] string? member_type = "user",
          CancellationToken cancellationToken = default);
 

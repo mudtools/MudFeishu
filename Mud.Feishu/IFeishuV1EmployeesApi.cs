@@ -20,11 +20,11 @@ public interface IFeishuV1EmployeesApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Post("https://open.feishu.cn/open-apis/directory/v1/employees")]
-    Task<FeishuApiResult<EmployeeCreateResult>> CreateEmployeeByTenantTokenAsync(
+    Task<FeishuApiResult<EmployeeCreateResult>> CreateTenantEmployeeAsync(
         [Token][Header("Authorization")] string tenant_access_token,
         [Body] EmployeeRequest userModel,
-        [Query("employee_id_type")] string? employee_id_type = "open_id",
-        [Query("department_id_type")] string? department_id_type = "open_department_id",
+        [Query("employee_id_type")] string? employee_id_type = Consts.User_Id_Type,
+        [Query("department_id_type")] string? department_id_type = Consts.Department_Id_Type,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -37,10 +37,10 @@ public interface IFeishuV1EmployeesApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Post("https://open.feishu.cn/open-apis/directory/v1/employees")]
-    Task<FeishuApiResult<EmployeeCreateResult>> CreateEmployeeByUserTokenAsync(
+    Task<FeishuApiResult<EmployeeCreateResult>> CreateUserEmployeeAsync(
         [Token][Header("Authorization")] string user_access_token,
         [Body] EmployeeRequest userModel,
-        [Query("employee_id_type")] string? employee_id_type = "open_id",
-        [Query("department_id_type")] string? department_id_type = "open_department_id",
+        [Query("employee_id_type")] string? employee_id_type = Consts.User_Id_Type,
+        [Query("department_id_type")] string? department_id_type = Consts.Department_Id_Type,
         CancellationToken cancellationToken = default);
 }

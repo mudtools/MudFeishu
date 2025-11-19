@@ -24,8 +24,8 @@ public interface IFeishuV3DepartmentsApi
     Task<FeishuApiResult<DepartmentCreateUpdateResult>> CreateDepartmentAsync(
            [Token][Header("Authorization")] string tenant_access_token,
            [Body] DepartmentCreateRequest departmentCreateRequest,
-           [Query("user_id_type")] string? user_id_type = null,
-           [Query("department_id_type")] string? department_id_type = null,
+           [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
+           [Query("department_id_type")] string? department_id_type = Consts.Department_Id_Type,
            [Query("client_token")] string? client_token = null,
            CancellationToken cancellationToken = default);
 
@@ -43,8 +43,8 @@ public interface IFeishuV3DepartmentsApi
           [Token][Header("Authorization")] string tenant_access_token,
           [Path] string department_id,
           [Body] DepartmentPartUpdateRequest departmentCreateRequest,
-          [Query("user_id_type")] string? user_id_type = null,
-          [Query("department_id_type")] string? department_id_type = null,
+          [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
+          [Query("department_id_type")] string? department_id_type = Consts.Department_Id_Type,
           CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -61,8 +61,8 @@ public interface IFeishuV3DepartmentsApi
          [Token][Header("Authorization")] string tenant_access_token,
          [Path] string department_id,
          [Body] DepartmentUpdateRequest departmentCreateRequest,
-         [Query("user_id_type")] string? user_id_type = null,
-         [Query("department_id_type")] string? department_id_type = null,
+         [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
+         [Query("department_id_type")] string? department_id_type = Consts.Department_Id_Type,
          CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -78,7 +78,7 @@ public interface IFeishuV3DepartmentsApi
         [Token][Header("Authorization")] string tenant_access_token,
         [Path] string department_id,
         [Body] DepartMentUpdateIdRequest departMentUpdateIdRequest,
-        [Query("department_id_type")] string? department_id_type = null,
+        [Query("department_id_type")] string? department_id_type = Consts.Department_Id_Type,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -92,7 +92,7 @@ public interface IFeishuV3DepartmentsApi
     Task<FeishuNullDataApiResult> UnbindDepartmentChatAsync(
         [Token][Header("Authorization")] string tenant_access_token,
         [Body] DepartmentRequest departmentRequest,
-        [Query("department_id_type")] string? department_id_type = null,
+        [Query("department_id_type")] string? department_id_type = Consts.Department_Id_Type,
         CancellationToken cancellationToken = default);
 
 
@@ -108,8 +108,8 @@ public interface IFeishuV3DepartmentsApi
     Task<FeishuApiResult<GetDepartmentInfoResult>> GetDepartmentInfoByIdAsync(
          [Token][Header("Authorization")] string user_access_token,
          [Path] string department_id,
-         [Query("user_id_type")] string? user_id_type = null,
-         [Query("department_id_type")] string? department_id_type = null,
+         [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
+         [Query("department_id_type")] string? department_id_type = Consts.Department_Id_Type,
          CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -124,8 +124,8 @@ public interface IFeishuV3DepartmentsApi
     Task<FeishuApiResult<BatchGetDepartmentRequest>> GetDepartmentsByIdsAsync(
         [Token][Header("Authorization")] string tenant_access_token,
         [Query("department_ids")] string[] department_ids,
-        [Query("user_id_type")] string? user_id_type = null,
-        [Query("department_id_type")] string? department_id_type = null,
+        [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
+        [Query("department_id_type")] string? department_id_type = Consts.Department_Id_Type,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -147,8 +147,8 @@ public interface IFeishuV3DepartmentsApi
           [Query("fetch_child")] bool fetch_child = false,
           [Query("page_size")] int page_size = 10,
           [Query("page_token")] string? page_token = null,
-          [Query("user_id_type")] string? user_id_type = null,
-          [Query("department_id_type")] string? department_id_type = null,
+          [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
+          [Query("department_id_type")] string? department_id_type = Consts.Department_Id_Type,
           CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -168,8 +168,8 @@ public interface IFeishuV3DepartmentsApi
          [Query("department_id")] string department_id,
          [Query("page_size")] int page_size = 10,
          [Query("page_token")] string? page_token = null,
-         [Query("user_id_type")] string? user_id_type = null,
-         [Query("department_id_type")] string? department_id_type = null,
+         [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
+         [Query("department_id_type")] string? department_id_type = Consts.Department_Id_Type,
          CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -192,8 +192,8 @@ public interface IFeishuV3DepartmentsApi
         [Body] SearchRequest searchRequest,
         [Query("page_size")] int page_size = 10,
         [Query("page_token")] string? page_token = null,
-        [Query("user_id_type")] string? user_id_type = null,
-        [Query("department_id_type")] string? department_id_type = null,
+        [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
+        [Query("department_id_type")] string? department_id_type = Consts.Department_Id_Type,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -208,6 +208,6 @@ public interface IFeishuV3DepartmentsApi
     Task<FeishuNullDataApiResult> DeleteDepartmentByIdAsync(
        [Token(TokenType.UserAccessToken)][Header("Authorization")] string tenant_access_token,
        [Path] string department_id,
-       [Query("department_id_type")] string? department_id_type = null,
+       [Query("department_id_type")] string? department_id_type = Consts.Department_Id_Type,
        CancellationToken cancellationToken = default);
 }

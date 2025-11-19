@@ -11,9 +11,7 @@ public static class FeishuServiceCollectionExtensions
     /// <summary>
     /// 注册飞书 API 服务（使用配置节）
     /// </summary>
-    public static IServiceCollection AddFeishuApiService(
-        this IServiceCollection services,
-        IConfiguration configuration)
+    public static IServiceCollection AddFeishuApiService(this IServiceCollection services, IConfiguration configuration)
     {
         services.Configure<FeishuOptions>(configuration)
                 .AddOptions<FeishuOptions>()
@@ -28,9 +26,7 @@ public static class FeishuServiceCollectionExtensions
     /// <summary>
     /// 注册飞书 API 服务（使用配置节名称）
     /// </summary>
-    public static IServiceCollection AddFeishuApiService(
-        this IServiceCollection services,
-        string configurationSection = "Feishu")
+    public static IServiceCollection AddFeishuApiService(this IServiceCollection services, string configurationSection = "Feishu")
     {
         services.Configure<FeishuOptions>(
             services.BuildServiceProvider()

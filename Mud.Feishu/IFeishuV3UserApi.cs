@@ -12,7 +12,7 @@ public interface IFeishuV3UserApi
     /// <summary>
     /// 向通讯录创建一个用户（该动作可以理解为员工入职）。成功创建用户后，系统会以短信或邮件的形式向用户发送邀请，用户在同意邀请后方可访问企业或团队。
     /// </summary>
-    /// <param name="user_access_token">tenant_access_token</param>
+    /// <param name="tenant_access_token">应用调用 API 时，需要通过访问凭证（access_token）进行身份鉴权</param>
     /// <param name="userModel">创建的用户请求体。</param>
     /// <param name="user_id_type">用户 ID 类型</param>
     /// <param name="department_id_type">此次调用中的部门 ID 类型。</param>
@@ -21,7 +21,7 @@ public interface IFeishuV3UserApi
     /// <returns></returns>
     [Post("https://open.feishu.cn/open-apis/contact/v3/users")]
     Task<FeishuApiResult<CreateOrUpdateUserResult>> CreateUserAsync(
-        [Token][Header("Authorization")] string user_access_token,
+        [Token][Header("Authorization")] string tenant_access_token,
         [Body] CreateUserRequest userModel,
         [Query("user_id_type")] string? user_id_type = null,
         [Query("department_id_type")] string? department_id_type = null,

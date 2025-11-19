@@ -1,4 +1,4 @@
-﻿namespace Mud.Feishu.DataModels.Users;
+﻿namespace Mud.Feishu.DataModels;
 
 public class I18nName
 {

@@ -1,7 +1,30 @@
-﻿namespace Mud.Feishu.DataModels.Employees;
+﻿// -----------------------------------------------------------------------
+//  作者：Mud Studio  版权所有 (c) Mud Studio 2025   
+//  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
+//  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
+//  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
+// -----------------------------------------------------------------------
 
+namespace Mud.Feishu.DataModels.Employees;
+
+/// <summary>
+/// 飞书员工创建操作结果模型
+/// </summary>
+/// <remarks>
+/// 该类用于封装飞书API中员工创建操作的返回结果。
+/// 当成功创建员工后，API将返回包含新员工唯一标识符的结果对象。
+/// 此模型主要用于处理员工创建接口的响应数据，提供新创建员工的基本标识信息。
+/// </remarks>
 public class EmployeeCreateResult
 {
+    /// <summary>
+    /// 员工ID
+    /// </summary>
+    /// <value>
+    /// 新创建员工的唯一标识符，用于后续对员工进行各种管理操作。
+    /// 该ID通常为系统生成的字符串格式，可用于获取、更新或删除员工信息。
+    /// 创建成功后，建议客户端保存此ID以便后续操作使用。
+    /// </value>
     [JsonPropertyName("employee_id")]
-    public string EmployeeId { get; set; }
+    public string? EmployeeId { get; set; }
 }

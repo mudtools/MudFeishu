@@ -3,7 +3,7 @@
 /// <summary>
 /// 用户组列表数据结果，包含用户组列表和分页信息。
 /// </summary>
-public class UserGroupListDataResult : ListApiResult
+public class UserGroupListResult : ApiListResult
 {
     /// <summary>
     /// 用户组列表。

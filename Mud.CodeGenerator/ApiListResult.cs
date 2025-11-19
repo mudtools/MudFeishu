@@ -3,7 +3,7 @@
 /// <summary>
 /// 列表数据响应结果。
 /// </summary>
-public class ListApiResult
+public class ApiListResult
 {
     /// <summary>
     /// 是否还有更多项
@@ -17,3 +17,17 @@ public class ListApiResult
     [JsonPropertyName("page_token")]
     public string? PageToken { get; set; }
 }
+
+/// <summary>
+/// 列表数据响应结果。
+/// </summary>
+/// <typeparam name="T">响应结果类型</typeparam>
+public class ApiListResult<T> : ApiListResult
+{
+    /// <summary>
+    /// 响应结果的列表数据集合。
+    /// </summary>
+    [JsonPropertyName("items")]
+    public List<T> Items { get; set; } = [];
+}
+

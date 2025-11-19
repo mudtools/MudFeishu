@@ -4,7 +4,7 @@
 /// <summary>
 /// 根据部门ID获取用户详细信息的返回结果数组
 /// </summary>
-public class GetDepartmentUserInfosResult : ListApiResult
+public class GetDepartmentUserInfosResult : ApiListResult
 {
     /// <summary>
     /// 获取用户详细信息列表。

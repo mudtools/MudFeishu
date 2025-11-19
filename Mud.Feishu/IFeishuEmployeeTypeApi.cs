@@ -48,7 +48,7 @@ public interface IFeishuEmployeeTypeApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
     /// <returns></returns>
     [Get("https://open.feishu.cn/open-apis/contact/v3/employee_type_enums")]
-    Task<FeishuApiResult<EmployeeTypeEnumListResult>> GetEmployeeTypesAsync(
+    Task<FeishuApiResult<ApiListResult<EmployeeTypeEnum>>> GetEmployeeTypesAsync(
        [Token][Header("Authorization")] string user_access_token,
        [Query("page_size")] int page_size = 10,
        [Query("page_token")] string? page_token = null,

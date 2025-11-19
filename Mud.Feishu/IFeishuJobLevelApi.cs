@@ -63,7 +63,7 @@ public interface IFeishuJobLevelApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>对象。</param>
     /// <returns></returns>
     [Get("https://open.feishu.cn/open-apis/contact/v3/job_levels")]
-    Task<FeishuApiResult<JobLevelListResult>> GetJobLevelListAsync(
+    Task<FeishuApiResult<ApiListResult<JobLevelResult>>> GetJobLevelListAsync(
          [Token][Header("Authorization")] string tenant_access_token,
          [Query("name")] string name,
          [Query("page_size")] int page_size = 10,

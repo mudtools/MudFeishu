@@ -37,7 +37,7 @@ public class WorkCityController : ControllerBase
     {
         try
         {
-            var result = await _workCityApi.GetTenantWorkCitesListAsync(pageSize, pageToken);
+            var result = await _workCityApi.GetWorkCitesList_Tenant_Async(pageSize, pageToken);
             return Ok(result.Data);
         }
         catch (Exception ex)
@@ -59,7 +59,7 @@ public class WorkCityController : ControllerBase
     {
         try
         {
-            var result = await _workCityApi.GetUserWorkCitesListAsync(pageSize, pageToken);
+            var result = await _workCityApi.GetWorkCitesList_User_Async(pageSize, pageToken);
             return Ok(result.Data);
         }
         catch (Exception ex)
@@ -78,7 +78,7 @@ public class WorkCityController : ControllerBase
     {
         try
         {
-            var result = await _workCityApi.GetTenantWorkCityByIdAsync(workCityId);
+            var result = await _workCityApi.GetWorkCityById_Tenant_Async(workCityId);
             return Ok(result.Data);
         }
         catch (Exception ex)
@@ -97,7 +97,7 @@ public class WorkCityController : ControllerBase
     {
         try
         {
-            var result = await _workCityApi.GetUserWorkCityByIdAsync(workCityId);
+            var result = await _workCityApi.GetWorkCityById_User_Async(workCityId);
             return Ok(result.Data);
         }
         catch (Exception ex)

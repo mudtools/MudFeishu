@@ -69,7 +69,7 @@ public class UserController : ControllerBase
     {
         try
         {
-            var result = await _userApi.UpdateUserAsync(userId, userModel, userIdType, departmentIdType);
+            var result = await _userApi.UpdateUser_Tenant_Async(userId, userModel, userIdType, departmentIdType);
             return Ok(result);
         }
         catch (Exception ex)
@@ -117,7 +117,7 @@ public class UserController : ControllerBase
     {
         try
         {
-            var result = await _userApi.GetUserInfoByIdAsync(userId, userIdType, departmentIdType);
+            var result = await _userApi.GetUserInfoById_Tenant_Async(userId, userIdType, departmentIdType);
             return Ok(result.Data);
         }
         catch (Exception ex)
@@ -141,7 +141,7 @@ public class UserController : ControllerBase
     {
         try
         {
-            var result = await _userApi.GetUserByIdsAsync(userIds, userIdType, departmentIdType);
+            var result = await _userApi.GetUserByIds_Tenant_Async(userIds, userIdType, departmentIdType);
             return Ok(result.Data);
         }
         catch (Exception ex)
@@ -169,7 +169,7 @@ public class UserController : ControllerBase
     {
         try
         {
-            var result = await _userApi.GetUserByDepartmentIdAsync(departmentId, pageSize, pageToken, userIdType, departmentIdType);
+            var result = await _userApi.GetUserByDepartmentId_Tenant_Async(departmentId, pageSize, pageToken, userIdType, departmentIdType);
             return Ok(result.Data);
         }
         catch (Exception ex)

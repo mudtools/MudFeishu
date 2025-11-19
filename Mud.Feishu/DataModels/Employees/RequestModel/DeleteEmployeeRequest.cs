@@ -8,19 +8,13 @@
 namespace Mud.Feishu.DataModels.Employees;
 
 /// <summary>
-/// 创建员工对象请求体。
+/// 离职员工请求体。
 /// </summary>
-public class EmployeeCreateRequest
+public class DeleteEmployeeRequest
 {
     /// <summary>
-    /// 待创建员工对象
-    /// </summary>
-    [JsonPropertyName("employee")]
-    public EmployeeCreateInfo Employee { get; set; } = new EmployeeCreateInfo();
-
-    /// <summary>
-    /// 接口拓展选项
+    /// 离职员工接口拓展选项
     /// </summary>
     [JsonPropertyName("options")]
-    public EmployeeCreateOptions? Options { get; set; }
+    public DeleteEmployeeOptions? Options { get; set; }
 }

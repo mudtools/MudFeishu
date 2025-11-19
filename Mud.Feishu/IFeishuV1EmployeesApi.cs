@@ -29,8 +29,49 @@ public interface IFeishuV1EmployeesApi
     [Post("https://open.feishu.cn/open-apis/directory/v1/employees")]
     Task<FeishuApiResult<EmployeeCreateResult>> CreateEmployeeAsync(
         [Token(TokenType.Both)][Header("Authorization")] string access_token,
-        [Body] EmployeeRequest userModel,
+        [Body] EmployeeCreateRequest userModel,
         [Query("employee_id_type")] string? employee_id_type = Consts.User_Id_Type,
         [Query("department_id_type")] string? department_id_type = Consts.Department_Id_Type,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 用于更新在职/离职员工的信息、冻结/恢复员工。未传递的参数不会进行更新。员工指飞书企业内身份为「Employee」的成员，等同于通讯录OpenAPI中的「User」。
+    /// </summary>
+    /// <param name="access_token">应用调用 API 时，需要通过访问凭证（access_token）进行身份鉴权</param>
+    /// <param name="employee_id">员工ID</param>
+    /// <param name="userModel">更新的员工请求体。</param>
+    /// <param name="employee_id_type">用户 ID 类型</param>
+    /// <param name="department_id_type">此次调用中的部门 ID 类型。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Post("https://open.feishu.cn/open-apis/directory/v1/employees/{employee_id}")]
+    Task<FeishuNullDataApiResult> UpdateEmployeeAsync(
+       [Token(TokenType.Both)][Header("Authorization")] string access_token,
+       [Path] string employee_id,
+       [Body] EmployeeUpdateRequest userModel,
+       [Query("employee_id_type")] string? employee_id_type = Consts.User_Id_Type,
+       [Query("department_id_type")] string? department_id_type = Consts.Department_Id_Type,
+       CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 用于离职员工。
+    /// <para>本接口支持tenant_access_token和user_access_token。</para>
+    /// <para>使用tenant_access_token时，只能在当前应用的通讯录授权范围内离职员工。</para>
+    /// <para>若员工归属于多个部门，应用需要有员工所有所属部门的权限，才能离职成功。</para>
+    /// <para>使用user_access_token 时，默认为管理员用户，将校验管理员管理范围。当用户有多个管理员身份均可离职员工时，管理员管理范围取最大集。</para>
+    /// </summary>
+    /// <param name="access_token">应用调用 API 时，需要通过访问凭证（access_token）进行身份鉴权</param>
+    /// <param name="employee_id">员工ID</param>
+    /// <param name="deleteEmployeeRequest">离职员工请求体。</param>
+    /// <param name="employee_id_type">用户 ID 类型</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Delete("https://open.feishu.cn/open-apis/directory/v1/employees/{employee_id}")]
+    Task<FeishuNullDataApiResult> DeleteEmployeeByIdAsync(
+      [Token(TokenType.Both)][Header("Authorization")] string access_token,
+      [Path] string employee_id,
+      [Body] DeleteEmployeeRequest deleteEmployeeRequest,
+      [Query("employee_id_type")] string? employee_id_type = Consts.User_Id_Type,
+      CancellationToken cancellationToken = default);
+
+
 }

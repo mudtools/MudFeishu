@@ -11,8 +11,6 @@
   <ItemGroup>
     <Compile Include="$(MSBuildThisFileDirectory)HttpClientApiWrapAttribute.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TokenAttribute.cs" />
-    <Compile Include="..\Mud.CodeGenerator\FeishuApiResult.cs" />
-    <Compile Include="..\Mud.CodeGenerator\ApiListResult.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)BodyAttribute.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)HeaderAttribute.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)HttpClientApiAttribute.cs" />

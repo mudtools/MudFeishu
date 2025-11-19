@@ -38,7 +38,7 @@ public interface IFeishuV3UserApi
     /// <summary>
     /// 更新通讯录中指定用户的信息，包括名称、邮箱、手机号、所属部门以及自定义字段等信息。
     /// </summary>
-    /// <param name="user_access_token">应用调用 API 时，需要通过访问凭证（access_token）进行身份鉴权</param>
+    /// <param name="access_token">应用调用 API 时，需要通过访问凭证（access_token）进行身份鉴权</param>
     /// <param name="user_id">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
     /// <param name="userModel">用于更新的用户请求体。</param>
     /// <param name="user_id_type">用户 ID 类型</param>
@@ -47,7 +47,7 @@ public interface IFeishuV3UserApi
     /// <returns></returns>
     [Patch("https://open.feishu.cn/open-apis/contact/v3/users/{user_id}")]
     Task<FeishuApiResult<CreateOrUpdateUserResult>> UpdateUserAsync(
-        [Token][Header("Authorization")] string user_access_token,
+        [Token(TokenType.Both)][Header("Authorization")] string access_token,
         [Path] string user_id,
         [Body] UpdateUserRequest userModel,
         [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
@@ -75,7 +75,7 @@ public interface IFeishuV3UserApi
     /// <summary>
     /// 获取通讯录中某一用户的信息，包括用户 ID、名称、邮箱、手机号、状态以及所属部门等信息。
     /// </summary>
-    /// <param name="user_access_token">应用调用 API 时，需要通过访问凭证（access_token）进行身份鉴权</param>
+    /// <param name="access_token">应用调用 API 时，需要通过访问凭证（access_token）进行身份鉴权</param>
     /// <param name="user_id">用户ID。ID 类型与查询参数 user_id_type 保持一致。</param>
     /// <param name="user_id_type">用户 ID 类型</param>
     /// <param name="department_id_type">此次调用中使用的部门 ID 类型。</param>
@@ -83,7 +83,7 @@ public interface IFeishuV3UserApi
     /// <returns></returns>
     [Get("https://open.feishu.cn/open-apis/contact/v3/users/{user_id}")]
     Task<FeishuApiResult<GetUserInfoResult>> GetUserInfoByIdAsync(
-        [Token][Header("Authorization")] string user_access_token,
+        [Token(TokenType.Both)][Header("Authorization")] string access_token,
         [Path] string user_id,
         [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
         [Query("department_id_type")] string? department_id_type = Consts.Department_Id_Type,
@@ -92,7 +92,7 @@ public interface IFeishuV3UserApi
     /// <summary>
     /// 批量获取通讯录中用户的信息，包括用户 ID、名称、邮箱、手机号、状态以及所属部门等信息。
     /// </summary>
-    /// <param name="user_access_token">应用调用 API 时，需要通过访问凭证（access_token）进行身份鉴权</param>
+    /// <param name="access_token">应用调用 API 时，需要通过访问凭证（access_token）进行身份鉴权</param>
     /// <param name="user_id_type">用户 ID 类型</param>
     /// <param name="department_id_type">此次调用中使用的部门 ID 类型。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
@@ -100,7 +100,7 @@ public interface IFeishuV3UserApi
     /// <returns></returns>
     [Get("https://open.feishu.cn/open-apis/contact/v3/users/batch")]
     Task<FeishuApiResult<GetUserInfosResult>> GetUserByIdsAsync(
-       [Token][Header("Authorization")] string user_access_token,
+       [Token(TokenType.Both)][Header("Authorization")] string access_token,
        [Query("user_ids")] string[] user_ids,
        [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
        [Query("department_id_type")] string? department_id_type = Consts.Department_Id_Type,
@@ -109,7 +109,7 @@ public interface IFeishuV3UserApi
     /// <summary>
     /// 获取指定部门直属的用户信息列表。用户信息包括用户 ID、名称、邮箱、手机号以及状态等信息。
     /// </summary>
-    /// <param name="user_access_token">应用调用 API 时，需要通过访问凭证（access_token）进行身份鉴权</param>
+    /// <param name="access_token">应用调用 API 时，需要通过访问凭证（access_token）进行身份鉴权</param>
     /// <param name="user_id_type">用户 ID 类型</param>
     /// <param name="department_id_type">此次调用中使用的部门 ID 类型。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
@@ -119,7 +119,7 @@ public interface IFeishuV3UserApi
     /// <returns></returns>
     [Get("https://open.feishu.cn/open-apis/contact/v3/users/find_by_department")]
     Task<FeishuApiResult<GetUserInfosResult>> GetUserByDepartmentIdAsync(
-     [Token][Header("Authorization")] string user_access_token,
+     [Token(TokenType.Both)][Header("Authorization")] string access_token,
      [Query("department_id")] string department_id,
      [Query("page_size")] int page_size = 10,
      [Query("page_token")] string? page_token = null,
@@ -131,7 +131,7 @@ public interface IFeishuV3UserApi
     /// <summary>
     /// 通过手机号或邮箱获取一个或多个用户的 ID （包括 user_id、open_id、union_id）与状态信息。
     /// </summary>
-    /// <param name="user_access_token">应用调用 API 时，需要通过访问凭证（access_token）进行身份鉴权</param>
+    /// <param name="tenant_access_token">应用调用 API 时，需要通过访问凭证（access_token）进行身份鉴权</param>
     /// <param name="user_id_type">用户 ID 类型</param>
     /// <param name="queryRequest">查询参数请求体。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
@@ -139,7 +139,7 @@ public interface IFeishuV3UserApi
 
     [Post("https://open.feishu.cn/open-apis/contact/v3/users/batch_get_id")]
     Task<FeishuApiResult<UserQueryListResult>> GetBatchUsersAsync(
-      [Token][Header("Authorization")] string user_access_token,
+      [Token][Header("Authorization")] string tenant_access_token,
       [Body] UserQueryRequest queryRequest,
       [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
       CancellationToken cancellationToken = default);
@@ -155,7 +155,7 @@ public interface IFeishuV3UserApi
     /// <returns></returns>
     [Get("https://open.feishu.cn/open-apis/search/v1/user")]
     Task<FeishuApiResult<UserSearchListResult>> GetUsersByKeywordAsync(
-     [Token][Header("Authorization")] string user_access_token,
+     [Token(TokenType.UserAccessToken)][Header("Authorization")] string user_access_token,
      [Query("query")] string query,
      [Query("page_size")] int page_size = 10,
      [Query("page_token")] string? page_token = null,
@@ -181,7 +181,7 @@ public interface IFeishuV3UserApi
     /// <summary>
     /// 用于恢复已删除用户（已离职的成员）。
     /// </summary>
-    /// <param name="user_access_token">应用调用 API 时，需要通过访问凭证（access_token）进行身份鉴权</param>
+    /// <param name="tenant_access_token">应用调用 API 时，需要通过访问凭证（access_token）进行身份鉴权</param>
     /// <param name="user_id">用户 ID。</param>
     /// <param name="user_id_type">用户 ID 类型</param>
     /// <param name="resurrectUserRequest">恢复已删除用户操作的请求体。</param>
@@ -190,7 +190,7 @@ public interface IFeishuV3UserApi
     /// <returns></returns>
     [Post("https://open.feishu.cn/open-apis/contact/v3/users/{user_id}/resurrect")]
     Task<FeishuNullDataApiResult> ResurrectUserByIdAsync(
-      [Token][Header("Authorization")] string user_access_token,
+      [Token][Header("Authorization")] string tenant_access_token,
       [Path] string user_id,
       [Body] ResurrectUserRequest resurrectUserRequest,
       [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
@@ -205,20 +205,20 @@ public interface IFeishuV3UserApi
     /// <returns></returns>
     [Get("https://open.feishu.cn/open-apis/authen/v1/user_info")]
     Task<FeishuApiResult<GetUserDataResult>> GetUserInfoAsync(
-        [Token][Header("Authorization")] string user_access_token,
+        [Token(TokenType.UserAccessToken)][Header("Authorization")] string user_access_token,
         CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 该接口用于退出用户的登录态
     /// </summary>
-    /// <param name="user_access_token">user_access_token 以登录用户身份调用 API</param>
+    /// <param name="tenant_access_token">user_access_token 以登录用户身份调用 API</param>
     /// <param name="user_id_type">用户 ID 类型，非必填项。</param>
     /// <param name="logoutRequest">退出登录请求体。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Post("https://open.feishu.cn/open-apis/passport/v1/sessions/logout")]
     Task<FeishuNullDataApiResult> LogoutAsync(
-        [Token][Header("Authorization")] string user_access_token,
+        [Token][Header("Authorization")] string tenant_access_token,
         [Body] LogoutRequest logoutRequest,
         [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
         CancellationToken cancellationToken = default);

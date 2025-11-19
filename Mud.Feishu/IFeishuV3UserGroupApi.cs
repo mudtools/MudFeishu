@@ -7,8 +7,8 @@ namespace Mud.Feishu;
 /// <para>各类业务权限管控可以与用户组关联，从而实现高效便捷的成员权限管控。</para>
 /// </summary>
 [HttpClientApi]
-[HttpClientApiWrap(TokenManage = nameof(ITokenManager), WrapInterface = nameof(IFeishuUserGroup))]
-public interface IFeishuUserGroupApi
+[HttpClientApiWrap(TokenManage = nameof(ITokenManager), WrapInterface = nameof(IFeishuV3UserGroup))]
+public interface IFeishuV3UserGroupApi
 {
     /// <summary>
     /// 创建用户组。用户组是飞书通讯录中基础实体之一，在用户组内可添加用户或部门资源。各类业务权限管控可以与用户组关联，从而实现高效便捷的成员权限管控。

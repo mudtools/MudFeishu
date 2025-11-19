@@ -6,7 +6,7 @@ namespace Mud.Feishu;
 /// 飞书认证授权相关的API
 /// </summary>
 [HttpClientApi]
-public interface IFeishuAuthenticationApi
+public interface IFeishuV3AuthenticationApi
 {
     /// <summary>
     /// 获取自建应用获取 tenant_access_token。

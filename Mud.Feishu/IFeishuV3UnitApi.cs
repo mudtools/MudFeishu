@@ -8,8 +8,8 @@ namespace Mud.Feishu;
 /// <para>目前单位资源的主要作用是在部分用户权限上实现“子公司”级别的权限隔离。</para>
 /// </summary>
 [HttpClientApi]
-[HttpClientApiWrap(TokenManage = nameof(ITokenManager), WrapInterface = nameof(IFeishuUnit))]
-public interface IFeishuUnitApi
+[HttpClientApiWrap(TokenManage = nameof(ITokenManager), WrapInterface = nameof(IFeishuV3Unit))]
+public interface IFeishuV3UnitApi
 {
     /// <summary>
     /// 创建一个单位。

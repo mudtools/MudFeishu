@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Mvc;
-using Mud.Feishu.DataModels.JobTitles;
 
 namespace Mud.Feishu.Test.Controllers;
 
@@ -11,9 +10,9 @@ namespace Mud.Feishu.Test.Controllers;
 [Route("api/[controller]")]
 public class JobTitleController : ControllerBase
 {
-    private readonly IFeishuJobTitle _jobTitleApi;
+    private readonly IFeishuV3JobTitle _jobTitleApi;
 
-    public JobTitleController(IFeishuJobTitle jobTitleApi)
+    public JobTitleController(IFeishuV3JobTitle jobTitleApi)
     {
         _jobTitleApi = jobTitleApi;
     }

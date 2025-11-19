@@ -1,8 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
-using Mud.Feishu;
-using Mud.Feishu.DataModels.Departments;
 using Mud.Feishu.DataModels.RoleMembers;
-using System.ComponentModel.DataAnnotations;
 
 namespace Mud.Feishu.Test.Controllers;
 
@@ -14,9 +11,9 @@ namespace Mud.Feishu.Test.Controllers;
 [Route("api/[controller]")]
 public class RoleMemberController : ControllerBase
 {
-    private readonly IFeishuRoleMember _roleMemberApi;
+    private readonly IFeishuV3RoleMember _roleMemberApi;
 
-    public RoleMemberController(IFeishuRoleMember roleMemberApi)
+    public RoleMemberController(IFeishuV3RoleMember roleMemberApi)
     {
         _roleMemberApi = roleMemberApi;
     }

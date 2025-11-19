@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Mvc;
-using Mud.Feishu.DataModels.WorkCites;
 
 namespace Mud.Feishu.Test.Controllers;
 
@@ -11,9 +10,9 @@ namespace Mud.Feishu.Test.Controllers;
 [Route("api/[controller]")]
 public class WorkCityController : ControllerBase
 {
-    private readonly IFeishuWorkCity _workCityApi;
+    private readonly IFeishuV3WorkCity _workCityApi;
 
-    public WorkCityController(IFeishuWorkCity workCityApi)
+    public WorkCityController(IFeishuV3WorkCity workCityApi)
     {
         _workCityApi = workCityApi;
     }

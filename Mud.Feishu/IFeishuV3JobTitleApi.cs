@@ -6,8 +6,8 @@ namespace Mud.Feishu;
 /// 职务是用户属性之一，通过职务 API 仅支持查询职务信息。
 /// </summary>
 [HttpClientApi]
-[HttpClientApiWrap(TokenManage = nameof(ITokenManager), WrapInterface = nameof(IFeishuJobTitle))]
-public interface IFeishuJobTitleApi
+[HttpClientApiWrap(TokenManage = nameof(ITokenManager), WrapInterface = nameof(IFeishuV3JobTitle))]
+public interface IFeishuV3JobTitleApi
 {
     /// <summary>
     /// 获取当前租户下的职务信息，包括职务的 ID、名称、多语言名称以及启用状态。

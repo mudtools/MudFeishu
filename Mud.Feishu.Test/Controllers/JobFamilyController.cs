@@ -11,9 +11,9 @@ namespace Mud.Feishu.Test.Controllers;
 [Route("api/[controller]")]
 public class JobFamilyController : ControllerBase
 {
-    private readonly IFeishuJobFamilies _jobFamiliesApi;
+    private readonly IFeishuV3JobFamilies _jobFamiliesApi;
 
-    public JobFamilyController(IFeishuJobFamilies jobFamiliesApi)
+    public JobFamilyController(IFeishuV3JobFamilies jobFamiliesApi)
     {
         _jobFamiliesApi = jobFamiliesApi;
     }
@@ -29,7 +29,7 @@ public class JobFamilyController : ControllerBase
     {
         try
         {
-            var result = await _jobFamiliesApi.CreateJobFamilyAsync( request);
+            var result = await _jobFamiliesApi.CreateJobFamilyAsync(request);
             return Ok(result);
         }
         catch (Exception ex)
@@ -51,7 +51,7 @@ public class JobFamilyController : ControllerBase
     {
         try
         {
-            var result = await _jobFamiliesApi.UpdateJobFamilyAsync( jobFamilyId, request);
+            var result = await _jobFamiliesApi.UpdateJobFamilyAsync(jobFamilyId, request);
             return Ok(result);
         }
         catch (Exception ex)
@@ -71,7 +71,7 @@ public class JobFamilyController : ControllerBase
     {
         try
         {
-            var result = await _jobFamiliesApi.GetJobFamilyByIdAsync( jobFamilyId);
+            var result = await _jobFamiliesApi.GetJobFamilyByIdAsync(jobFamilyId);
             return Ok(result.Data);
         }
         catch (Exception ex)
@@ -96,8 +96,8 @@ public class JobFamilyController : ControllerBase
         try
         {
             var result = await _jobFamiliesApi.GetJobFamilesListAsync(
-                name, 
-                pageSize, 
+                name,
+                pageSize,
                 pageToken);
             return Ok(result.Data);
         }
@@ -118,7 +118,7 @@ public class JobFamilyController : ControllerBase
     {
         try
         {
-            var result = await _jobFamiliesApi.DeleteJobFamilyByIdAsync( jobFamilyId);
+            var result = await _jobFamiliesApi.DeleteJobFamilyByIdAsync(jobFamilyId);
             return Ok(result);
         }
         catch (Exception ex)

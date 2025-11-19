@@ -7,8 +7,8 @@ namespace Mud.Feishu;
 /// <para>使用通讯录 API，可以对人员类型资源进行增删改查操作。</para>
 /// </summary>
 [HttpClientApi]
-[HttpClientApiWrap(TokenManage = nameof(ITokenManager), WrapInterface = nameof(IFeishuEmployeeType))]
-public interface IFeishuEmployeeTypeApi
+[HttpClientApiWrap(TokenManage = nameof(ITokenManager), WrapInterface = nameof(IFeishuV3EmployeeType))]
+public interface IFeishuV3EmployeeTypeApi
 {
     /// <summary>
     /// 新增一个自定义的人员类型。人员类型是用户属性之一，用于灵活标记用户的身份类型。

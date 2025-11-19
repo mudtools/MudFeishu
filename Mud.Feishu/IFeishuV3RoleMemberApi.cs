@@ -10,8 +10,8 @@ namespace Mud.Feishu;
 /// <para>同时，每一个角色成员都可以设置管理范围，以便指定不同成员管理不同的部门。</para>
 /// </remarks>
 [HttpClientApi]
-[HttpClientApiWrap(TokenManage = nameof(ITokenManager), WrapInterface = nameof(IFeishuRoleMember))]
-public interface IFeishuRoleMemberApi
+[HttpClientApiWrap(TokenManage = nameof(ITokenManager), WrapInterface = nameof(IFeishuV3RoleMember))]
+public interface IFeishuV3RoleMemberApi
 {
     /// <summary>
     /// 在指定角色内添加一个或多个成员。

@@ -17,7 +17,7 @@ internal class TokenManagerWithCache : ITokenManager, IDisposable
     }
 
     private readonly FeishuOptions _options;
-    private readonly IFeishuAuthenticationApi _authenticationApi;
+    private readonly IFeishuV3AuthenticationApi _authenticationApi;
     private readonly ILogger<TokenManagerWithCache> _logger;
     private readonly TimeSpan _tokenRefreshThreshold;
 
@@ -31,7 +31,7 @@ internal class TokenManagerWithCache : ITokenManager, IDisposable
     private const int DefaultRefreshThresholdSeconds = 300; // 提前5分钟刷新
 
     public TokenManagerWithCache(
-        IFeishuAuthenticationApi authenticationApi,
+        IFeishuV3AuthenticationApi authenticationApi,
         IOptions<FeishuOptions> options,
         ILogger<TokenManagerWithCache> logger)
     {

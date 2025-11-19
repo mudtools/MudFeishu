@@ -8,8 +8,8 @@ namespace Mud.Feishu;
 /// <para>使用职级 API，可以创建、更新、删除或查询职级。</para>
 /// </summary>
 [HttpClientApi]
-[HttpClientApiWrap(TokenManage = nameof(ITokenManager), WrapInterface = nameof(IFeishuJobLevel))]
-public interface IFeishuJobLevelApi
+[HttpClientApiWrap(TokenManage = nameof(ITokenManager), WrapInterface = nameof(IFeishuV3JobLevel))]
+public interface IFeishuV3JobLevelApi
 {
 
     /// <summary>

@@ -8,8 +8,8 @@ namespace Mud.Feishu;
 /// <para>例如，选择财务角色作为报销流程的审批人。这样做可以避免因成员离职变动导致的审批流失效的情况，角色内的其他成员可以继续完成审批，提高审批效率。</para> 
 /// </summary>
 [HttpClientApi]
-[HttpClientApiWrap(TokenManage = nameof(ITokenManager), WrapInterface = nameof(IFeishuRole))]
-public interface IFeishuRoleApi
+[HttpClientApiWrap(TokenManage = nameof(ITokenManager), WrapInterface = nameof(IFeishuV3Role))]
+public interface IFeishuV3RoleApi
 {
     /// <summary>
     /// 创建一个角色。

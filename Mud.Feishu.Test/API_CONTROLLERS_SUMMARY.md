@@ -66,6 +66,21 @@
 | GetTenantWorkCityById | `/api/workcity/tenant/{workCityId}` | GET | 获取指定工作城市的信息（租户级别） |
 | GetUserWorkCityById | `/api/workcity/user/{workCityId}` | GET | 获取指定工作城市的信息（用户级别） |
 
+### 6. V1EmployeeController (飞书V1员工管理)
+覆盖了 `IFeishuV1EmployeesApi` 的所有接口：
+
+| 方法 | 路径 | HTTP方法 | 功能 |
+|------|------|----------|------|
+| CreateEmployee | `/api/v1/employee` | POST | 创建员工 |
+| UpdateEmployee | `/api/v1/employee/{employeeId}` | PATCH | 更新员工信息 |
+| DeleteEmployee | `/api/v1/employee/{employeeId}` | DELETE | 离职员工 |
+| ResurrectEmployee | `/api/v1/employee/{employeeId}/resurrect` | POST | 恢复已离职的员工 |
+| ResignedEmployee | `/api/v1/employee/{employeeId}/to-be-resigned` | PATCH | 在职员工流转到待离职状态 |
+| RegularEmployee | `/api/v1/employee/{employeeId}/regular` | PATCH | 待离职员工取消离职，更新为在职状态 |
+| QueryEmployees | `/api/v1/employee/mget` | POST | 批量根据员工ID查询员工详情 |
+| QueryEmployeePageList | `/api/v1/employee/filter` | POST | 依据指定条件，分页批量获取符合条件的员工详情列表 |
+| SearchEmployeePageList | `/api/v1/employee/search` | POST | 搜索员工信息 |
+
 ## 特性
 
 ### 统一的错误处理

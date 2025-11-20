@@ -5,16 +5,28 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-namespace Mud.Feishu.DataModels.Departments;
+namespace Mud.Feishu.DataModels.Employees;
 
 /// <summary>
-/// 部门状态信息类，用于表示部门的当前状态
+/// 员工分页列表结果类，包含员工详细信息、分页信息和异常信息列表
 /// </summary>
-public class DepartmentStatus
+public class EmployeeListPageResult
 {
     /// <summary>
-    /// 获取或设置一个值，该值指示部门是否已被删除
+    /// 员工详细信息列表
     /// </summary>
-    [JsonPropertyName("is_deleted")]
-    public bool IsDeleted { get; set; }
+    [JsonPropertyName("employees")]
+    public List<EmployeeDetail> Employees { get; set; } = [];
+
+    /// <summary>
+    /// 分页结果。
+    /// </summary>
+    [JsonPropertyName("page_response")]
+    public ApiListResult? Page { get; set; }
+
+    /// <summary>
+    /// 异常信息列表
+    /// </summary>
+    [JsonPropertyName("abnormals")]
+    public List<AbnormalInfo> Abnormals { get; set; } = [];
 }

@@ -1,40 +1,50 @@
-# 飞书职务管理 API 文档
+# 职务管理
 
-## 概述
+## 接口名称：IFeishuV3JobTitleApi
 
-`IFeishuV3JobTitleApi` 接口提供了飞书职务管理的功能。职务是用户属性之一，通过职务 API 仅支持查询职务信息，包括职务的 ID、名称、多语言名称以及启用状态。
+## 功能描述
+职务是用户属性之一，通过职务 API 仅支持查询职务信息。该接口提供了获取租户下职务信息、用户职务信息以及根据ID获取特定职务详细信息的功能。支持使用租户访问令牌和用户访问令牌两种认证方式。
 
-**接口详细文档**：[飞书职务资源介绍](https://open.feishu.cn/document/contact-v3/job_title/job-title-resources-introduction)
+**接口详细文档**：[飞书开放平台文档](https://open.feishu.cn/document/contact-v3/job_title/job-title-resources-introduction)
 
----
+## 函数列表
 
-## 1. 获取当前租户下的职务信息
+| 函数名称 | HTTP方法 | 请求路径 | 认证方式 | 功能描述 |
+|---------|---------|---------|---------|---------|
+| GetTenantJobTitlesListAsync | GET | /open-apis/contact/v3/job_titles | 租户访问令牌 | 获取当前租户下的职务信息 |
+| GetUserJobTitlesListAsync | GET | /open-apis/contact/v3/job_titles | 用户访问令牌 | 获取当前登录用户下的职务信息 |
+| GetTenantJobTitleByIdAsync | GET | /open-apis/contact/v3/job_titles/{job_title_id} | 租户访问令牌 | 获取指定职务的信息（租户视角） |
+| GetUserJobTitleByIdAsync | GET | /open-apis/contact/v3/job_titles/{job_title_id} | 用户访问令牌 | 获取指定职务的信息（用户视角） |
 
-### 接口名称
-获取租户职务列表
+## 函数详细内容
 
-### 飞书接口URL
+### 函数名称：GetTenantJobTitlesListAsync
+
+**函数签名**：
+```csharp
+Task<FeishuApiListResult<JobTitle>> GetTenantJobTitlesListAsync(
+    [Token][Header("Authorization")] string tenant_access_token,
+    [Query("page_size")] int page_size = 10,
+    [Query("page_token")] string? page_token = null,
+    CancellationToken cancellationToken = default)
 ```
-https://open.feishu.cn/open-apis/contact/v3/job_titles
-```
 
-### 方法
-GET
+**认证**：
+- **必填**：tenant_access_token（租户访问凭证，用于身份鉴权）
+- **认证类型**：Bearer Token（租户级访问权限）
 
-### 认证
-**Tenant Access Token** (租户访问令牌)
-
-### 参数
+**参数**：
 
 | 参数名 | 类型 | 必填 | 默认值 | 说明 |
-|--------|------|------|--------|------|
-| tenant_access_token | string | 是 | - | 应用访问凭证，用于身份鉴权 |
+|-------|------|------|--------|------|
+| tenant_access_token | string | 是 | - | 租户访问凭证，具有租户级权限 |
 | page_size | int | 否 | 10 | 分页大小，本次请求返回的最大条目数 |
-| page_token | string | 否 | null | 分页标记，首次请求不填 |
+| page_token | string | 否 | null | 分页标记，第一次请求不填，表示从头开始遍历 |
+| cancellationToken | CancellationToken | 否 | default | 取消操作令牌对象 |
 
-### 响应
+**响应**：
 
-#### 成功响应示例
+**成功响应示例**：
 ```json
 {
   "code": 0,
@@ -42,34 +52,15 @@ GET
   "data": {
     "items": [
       {
-        "job_title_id": "6983456743213456789",
+        "job_title_id": "6729287797559891971",
         "name": "软件工程师",
-        "i18n_name": [
-          {
-            "locale": "zh_cn",
-            "text": "软件工程师"
-          },
-          {
-            "locale": "en_us",
-            "text": "Software Engineer"
-          }
-        ],
-        "status": true
-      },
-      {
-        "job_title_id": "6983456743213456790",
-        "name": "产品经理",
-        "i18n_name": [
-          {
-            "locale": "zh_cn",
-            "text": "产品经理"
-          },
-          {
-            "locale": "en_us",
-            "text": "Product Manager"
-          }
-        ],
-        "status": true
+        "i18n_name": {
+          "zh_cn": "软件工程师",
+          "en_us": "Software Engineer"
+        },
+        "status": {
+          "is_enabled": true
+        }
       }
     ],
     "page_token": "next_page_token_value",
@@ -78,50 +69,91 @@ GET
 }
 ```
 
-#### 错误响应示例
+**错误响应示例**：
 ```json
 {
   "code": 99991663,
-  "msg": "token not found",
+  "msg": "authentication failed",
   "data": {}
 }
 ```
 
-### 说明
-- 该接口使用租户访问令牌进行身份验证
-- 支持分页查询，通过 `page_token` 实现分页遍历
-- 只有启用状态的职务才能分配给用户
-- 响应中的 `i18n_name` 字段支持多语言显示
+**说明**：
+- 使用租户访问令牌，可以获取整个租户下的职务信息
+- 分页查询时，当还有更多数据时会返回新的 page_token 用于下一次请求
+- job_title_id 是职务的唯一标识符
+- 适用于需要管理或查看整个组织职务结构的应用场景
+
+**代码示例**：
+```csharp
+// 获取租户下所有职务列表
+var jobTitleApi = serviceProvider.GetService<IFeishuV3JobTitleApi>();
+string tenantAccessToken = "your_tenant_access_token_here";
+
+// 第一次请求获取职务列表
+var result = await jobTitleApi.GetTenantJobTitlesListAsync(tenantAccessToken, page_size: 50);
+
+if (result.Success)
+{
+    Console.WriteLine($"获取到 {result.Data.Items.Count} 个职务");
+    
+    // 遍历所有职务
+    foreach (var jobTitle in result.Data.Items)
+    {
+        Console.WriteLine($"职务ID: {jobTitle.JobTitleId}");
+        Console.WriteLine($"职务名称: {jobTitle.Name}");
+        Console.WriteLine($"中文名称: {jobTitle.I18NName.ZhCn}");
+        Console.WriteLine($"英文名称: {jobTitle.I18NName.EnUs}");
+        Console.WriteLine($"启用状态: {jobTitle.Status.IsEnabled}");
+        Console.WriteLine("---");
+    }
+    
+    // 如果还有更多数据，继续获取
+    if (result.Data.HasMore)
+    {
+        var nextPageResult = await jobTitleApi.GetTenantJobTitlesListAsync(
+            tenantAccessToken, 
+            page_size: 50, 
+            page_token: result.Data.PageToken
+        );
+        // 处理下一页数据...
+    }
+}
+else
+{
+    Console.WriteLine($"获取职务列表失败: {result.ErrorMsg}");
+}
+```
 
 ---
 
-## 2. 获取当前用户下的职务信息
+### 函数名称：GetUserJobTitlesListAsync
 
-### 接口名称
-获取用户职务列表
-
-### 飞书接口URL
+**函数签名**：
+```csharp
+Task<FeishuApiListResult<JobTitle>> GetUserJobTitlesListAsync(
+    [Token(TokenType.UserAccessToken)][Header("Authorization")] string user_access_token,
+    [Query("page_size")] int page_size = 10,
+    [Query("page_token")] string? page_token = null,
+    CancellationToken cancellationToken = default)
 ```
-https://open.feishu.cn/open-apis/contact/v3/job_titles
-```
 
-### 方法
-GET
+**认证**：
+- **必填**：user_access_token（用户访问凭证，用于身份鉴权）
+- **认证类型**：Bearer Token（用户级访问权限）
 
-### 认证
-**User Access Token** (用户访问令牌)
-
-### 参数
+**参数**：
 
 | 参数名 | 类型 | 必填 | 默认值 | 说明 |
-|--------|------|------|--------|------|
-| user_access_token | string | 是 | - | 用户访问凭证，用于身份鉴权 |
+|-------|------|------|--------|------|
+| user_access_token | string | 是 | - | 用户访问凭证，基于用户授权 |
 | page_size | int | 否 | 10 | 分页大小，本次请求返回的最大条目数 |
-| page_token | string | 否 | null | 分页标记，首次请求不填 |
+| page_token | string | 否 | null | 分页标记，第一次请求不填，表示从头开始遍历 |
+| cancellationToken | CancellationToken | 否 | default | 取消操作令牌对象 |
 
-### 响应
+**响应**：
 
-#### 成功响应示例
+**成功响应示例**：
 ```json
 {
   "code": 0,
@@ -129,19 +161,15 @@ GET
   "data": {
     "items": [
       {
-        "job_title_id": "6983456743213456789",
-        "name": "高级工程师",
-        "i18n_name": [
-          {
-            "locale": "zh_cn",
-            "text": "高级工程师"
-          },
-          {
-            "locale": "en_us",
-            "text": "Senior Engineer"
-          }
-        ],
-        "status": true
+        "job_title_id": "6729287797559891971",
+        "name": "高级软件工程师",
+        "i18n_name": {
+          "zh_cn": "高级软件工程师",
+          "en_us": "Senior Software Engineer"
+        },
+        "status": {
+          "is_enabled": true
+        }
       }
     ],
     "page_token": "",
@@ -150,233 +178,330 @@ GET
 }
 ```
 
-### 说明
-- 该接口使用用户访问令牌进行身份验证
-- 获取的是当前登录用户可访问的职务信息
-- 与租户接口的区别在于认证方式和数据范围不同
-
----
-
-## 3. 获取指定职务信息（租户认证）
-
-### 接口名称
-根据ID获取租户职务信息
-
-### 飞书接口URL
-```
-https://open.feishu.cn/open-apis/contact/v3/job_titles/{job_title_id}
-```
-
-### 方法
-GET
-
-### 认证
-**Tenant Access Token** (租户访问令牌)
-
-### 参数
-
-| 参数名 | 类型 | 必填 | 默认值 | 说明 |
-|--------|------|------|--------|------|
-| tenant_access_token | string | 是 | - | 应用访问凭证，用于身份鉴权 |
-| job_title_id | string | 是 | - | 职务ID，路径参数 |
-
-### 响应
-
-#### 成功响应示例
+**错误响应示例**：
 ```json
 {
-  "code": 0,
-  "msg": "success",
-  "data": {
-    "job_title": {
-      "job_title_id": "6983456743213456789",
-      "name": "技术总监",
-      "i18n_name": [
-        {
-          "locale": "zh_cn",
-          "text": "技术总监"
-        },
-        {
-          "locale": "en_us",
-          "text": "CTO"
-        }
-      ],
-      "status": true
-    }
-  }
-}
-```
-
-#### 错误响应示例
-```json
-{
-  "code": 2100059,
-  "msg": "职务不存在",
+  "code": 99991400,
+  "msg": "user access token invalid",
   "data": {}
 }
 ```
 
-### 说明
-- `job_title_id` 为路径参数，需要在URL中直接替换
-- 如果职务ID不存在或已被删除，会返回相应错误码
-- 响应数据被包装在 `job_title` 对象中
+**说明**：
+- 使用用户访问令牌，只能获取当前登录用户可见的职务信息
+- 返回的职务信息可能受到用户权限和可见性设置的限制
+- 适用于个人用户查看可选职务的场景，如个人资料设置
+
+**代码示例**：
+```csharp
+// 获取当前用户可见的职务列表（个人资料设置场景）
+var jobTitleApi = serviceProvider.GetService<IFeishuV3JobTitleApi>();
+string userAccessToken = "user_access_token_from_oauth";
+
+try
+{
+    var result = await jobTitleApi.GetUserJobTitlesListAsync(userAccessToken, page_size: 100);
+    
+    if (result.Success)
+    {
+        Console.WriteLine("您可以选择的职务列表：");
+        
+        // 为用户创建职务选择列表
+        var jobTitleOptions = new List<(string id, string name)>();
+        
+        foreach (var jobTitle in result.Data.Items)
+        {
+            if (jobTitle.Status.IsEnabled)
+            {
+                string displayName = jobTitle.I18NName?.ZhCn ?? jobTitle.Name;
+                jobTitleOptions.Add((jobTitle.JobTitleId, displayName));
+                Console.WriteLine($"{jobTitleOptions.Count}. {displayName}");
+            }
+        }
+        
+        // 用户可以从中选择职务更新个人资料
+        Console.WriteLine($"共找到 {jobTitleOptions.Count} 个可选职务");
+    }
+    else
+    {
+        Console.WriteLine($"获取您的职务列表失败: {result.ErrorMsg}");
+    }
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"获取职务信息时发生异常: {ex.Message}");
+}
+```
 
 ---
 
-## 4. 获取指定职务信息（用户认证）
+### 函数名称：GetTenantJobTitleByIdAsync
 
-### 接口名称
-根据ID获取用户职务信息
-
-### 飞书接口URL
+**函数签名**：
+```csharp
+Task<FeishuApiResult<JobTitleResult>> GetTenantJobTitleByIdAsync(
+    [Token][Header("Authorization")] string tenant_access_token,
+    [Path] string job_title_id,
+    CancellationToken cancellationToken = default)
 ```
-https://open.feishu.cn/open-apis/contact/v3/job_titles/{job_title_id}
-```
 
-### 方法
-GET
+**认证**：
+- **必填**：tenant_access_token（租户访问凭证，用于身份鉴权）
+- **认证类型**：Bearer Token（租户级访问权限）
 
-### 认证
-**User Access Token** (用户访问令牌)
-
-### 参数
+**参数**：
 
 | 参数名 | 类型 | 必填 | 默认值 | 说明 |
-|--------|------|------|--------|------|
-| user_access_token | string | 是 | - | 用户访问凭证，用于身份鉴权 |
-| job_title_id | string | 是 | - | 职务ID，路径参数 |
+|-------|------|------|--------|------|
+| tenant_access_token | string | 是 | - | 租户访问凭证，具有租户级权限 |
+| job_title_id | string | 是 | - | 职务ID（路径参数） |
+| cancellationToken | CancellationToken | 否 | default | 取消操作令牌对象 |
 
-### 响应
+**响应**：
 
-#### 成功响应示例
+**成功响应示例**：
 ```json
 {
   "code": 0,
   "msg": "success",
   "data": {
     "job_title": {
-      "job_title_id": "6983456743213456789",
-      "name": "前端开发工程师",
-      "i18n_name": [
-        {
-          "locale": "zh_cn",
-          "text": "前端开发工程师"
-        },
-        {
-          "locale": "en_us",
-          "text": "Frontend Developer"
-        }
-      ],
-      "status": true
+      "job_title_id": "6729287797559891971",
+      "name": "产品经理",
+      "i18n_name": {
+        "zh_cn": "产品经理",
+        "en_us": "Product Manager"
+      },
+      "status": {
+        "is_enabled": true
+      }
     }
   }
 }
 ```
 
-### 说明
-- 使用用户访问令牌进行身份验证
-- 只能获取当前用户有权限访问的职务信息
-- 与租户接口的主要区别在于认证方式和权限范围
-
----
-
-## 数据模型
-
-### JobTitle（职务信息模型）
-
-| 属性 | 类型 | 说明 |
-|------|------|------|
-| job_title_id | string | 职务的唯一标识符 |
-| name | string | 职务的显示名称（主要语言） |
-| i18n_name | List&lt;I18nContent&gt; | 职务的多语言名称列表 |
-| status | boolean | 职务启用状态，true=启用，false=禁用 |
-
-### JobTitleResult（职务结果包装类）
-
-| 属性 | 类型 | 说明 |
-|------|------|------|
-| job_title | JobTitle | 职务信息对象 |
-
----
-
-## 常见错误码
-
-| 错误码 | 说明 | 解决方案 |
-|--------|------|----------|
-| 99991663 | token not found | 检查访问令牌是否正确或已过期 |
-| 2100059 | 职务不存在 | 确认职务ID是否正确，职务是否已被删除 |
-| 99991400 | 参数错误 | 检查请求参数格式和必填参数 |
-| 99991668 | 无权限访问 | 检查应用权限配置和访问令牌权限范围 |
-
----
-
-## 最佳实践
-
-### 1. 分页查询优化
-```csharp
-// 推荐的分页查询方式
-var pageSize = 50;
-var pageToken = "";
-do {
-    var response = await feishuApi.GetTenantJobTitlesListAsync(
-        tenant_access_token, 
-        page_size: pageSize, 
-        page_token: string.IsNullOrEmpty(pageToken) ? null : pageToken
-    );
-    
-    // 处理返回的职务数据
-    foreach (var jobTitle in response.Data.Items) {
-        // 业务逻辑处理
-    }
-    
-    pageToken = response.Data.PageToken;
-} while (!string.IsNullOrEmpty(pageToken) && response.Data.HasMore);
-```
-
-### 2. 多语言处理
-```csharp
-// 智能多语言显示
-string GetDisplayName(JobTitle jobTitle, string preferredLocale = "zh_cn") {
-    var localized = jobTitle.I18nName.FirstOrDefault(x => x.Locale == preferredLocale);
-    return localized?.Text ?? jobTitle.Name ?? "Unknown";
+**错误响应示例**：
+```json
+{
+  "code": 1244006,
+  "msg": "job title not exist",
+  "data": {}
 }
 ```
 
-### 3. 错误处理
+**说明**：
+- job_title_id 参数需要从之前获取的职务列表中获得，或使用已知的职务ID
+- 如果指定的职务ID不存在，将返回错误代码 1244006
+- 返回的数据结构中包含完整的职务信息，包括多语言名称
+- 使用租户访问令牌可以获取租户内任何职务的详细信息
+
+**代码示例**：
 ```csharp
-try {
-    var result = await feishuApi.GetTenantJobTitleByIdAsync(token, jobTitleId);
-    if (result.Code == 0) {
-        // 处理成功响应
-        return result.Data.JobTitle;
-    } else {
-        // 处理业务错误
-        throw new FeishuApiException(result.Code, result.Msg);
+// 根据ID获取特定职务详细信息（组织管理场景）
+var jobTitleApi = serviceProvider.GetService<IFeishuV3JobTitleApi>();
+string tenantAccessToken = "your_tenant_access_token_here";
+string jobTitleId = "6729287797559891971"; // 产品经理的职务ID
+
+try
+{
+    var result = await jobTitleApi.GetTenantJobTitleByIdAsync(tenantAccessToken, jobTitleId);
+    
+    if (result.Success && result.Data.JobTitle != null)
+    {
+        var jobTitle = result.Data.JobTitle;
+        Console.WriteLine("职务详细信息：");
+        Console.WriteLine($"职务ID: {jobTitle.JobTitleId}");
+        Console.WriteLine($"职务名称: {jobTitle.Name}");
+        Console.WriteLine($"中文名称: {jobTitle.I18NName?.ZhCn}");
+        Console.WriteLine($"英文名称: {jobTitle.I18NName?.EnUs}");
+        Console.WriteLine($"启用状态: {(jobTitle.Status.IsEnabled ? "启用" : "禁用")}");
+        
+        // 在组织管理中使用该信息
+        if (jobTitle.Status.IsEnabled)
+        {
+            Console.WriteLine("该职务当前启用，可以分配给员工");
+        }
+        else
+        {
+            Console.WriteLine("该职务已禁用，需要先启用才能分配");
+        }
     }
-} catch (HttpRequestException ex) {
-    // 处理网络异常
-    throw new FeishuNetworkException("网络请求失败", ex);
+    else
+    {
+        Console.WriteLine($"获取职务详情失败: {result.ErrorMsg}");
+        Console.WriteLine($"错误代码: {result.Code}");
+    }
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"调用API时发生异常: {ex.Message}");
 }
 ```
 
-### 4. 缓存策略
-- 职务信息变化频率较低，建议实现客户端缓存
-- 缓存时间建议设置为 1-6 小时
-- 在职务信息更新时主动清除缓存
-
 ---
 
-## 更新记录
+### 函数名称：GetUserJobTitleByIdAsync
+
+**函数签名**：
+```csharp
+Task<FeishuApiResult<JobTitleResult>> GetUserJobTitleByIdAsync(
+    [Token(TokenType.UserAccessToken)][Header("Authorization")] string user_access_token,
+    [Path] string job_title_id,
+    CancellationToken cancellationToken = default)
+```
+
+**认证**：
+- **必填**：user_access_token（用户访问凭证，用于身份鉴权）
+- **认证类型**：Bearer Token（用户级访问权限）
+
+**参数**：
+
+| 参数名 | 类型 | 必填 | 默认值 | 说明 |
+|-------|------|------|--------|------|
+| user_access_token | string | 是 | - | 用户访问凭证，基于用户授权 |
+| job_title_id | string | 是 | - | 职务ID（路径参数） |
+| cancellationToken | CancellationToken | 否 | default | 取消操作令牌对象 |
+
+**响应**：
+
+**成功响应示例**：
+```json
+{
+  "code": 0,
+  "msg": "success",
+  "data": {
+    "job_title": {
+      "job_title_id": "6729287797559891971",
+      "name": "UI设计师",
+      "i18n_name": {
+        "zh_cn": "UI设计师",
+        "en_us": "UI Designer"
+      },
+      "status": {
+        "is_enabled": true
+      }
+    }
+  }
+}
+```
+
+**错误响应示例**：
+```json
+{
+  "code": 1244006,
+  "msg": "job title not exist or no permission",
+  "data": {}
+}
+```
+
+**说明**：
+- 使用用户访问令牌只能获取当前用户有权限查看的职务信息
+- 如果职务不存在或用户没有权限访问，将返回相应的错误
+- 适用于用户验证自己选择的职务信息或查看特定职务详情的场景
+
+**代码示例**：
+```csharp
+// 用户验证所选职务信息的场景
+public class UserProfileService
+{
+    private readonly IFeishuV3JobTitleApi _jobTitleApi;
+    private readonly string _userAccessToken;
+    
+    public UserProfileService(IFeishuV3JobTitleApi jobTitleApi, string userAccessToken)
+    {
+        _jobTitleApi = jobTitleApi;
+        _userAccessToken = userAccessToken;
+    }
+    
+    public async Task<bool> ValidateJobTitleSelectionAsync(string jobTitleId)
+    {
+        if (string.IsNullOrEmpty(jobTitleId))
+            return false;
+            
+        try
+        {
+            var result = await _jobTitleApi.GetUserJobTitleByIdAsync(_userAccessToken, jobTitleId);
+            
+            if (result.Success && result.Data.JobTitle != null)
+            {
+                var jobTitle = result.Data.JobTitle;
+                Console.WriteLine($"验证职务: {jobTitle.I18NName?.ZhCn ?? jobTitle.Name}");
+                
+                // 检查职务是否启用
+                return jobTitle.Status.IsEnabled;
+            }
+            else
+            {
+                Console.WriteLine($"职务验证失败: {result.ErrorMsg}");
+                return false;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"验证职务时发生异常: {ex.Message}");
+            return false;
+        }
+    }
+    
+    public async Task<string> GetJobTitleDisplayNameAsync(string jobTitleId)
+    {
+        if (string.IsNullOrEmpty(jobTitleId))
+            return "未设置";
+            
+        var result = await _jobTitleApi.GetUserJobTitleByIdAsync(_userAccessToken, jobTitleId);
+        
+        if (result.Success && result.Data.JobTitle != null)
+        {
+            // 优先显示中文名称
+            return result.Data.JobTitle.I18NName?.ZhCn ?? result.Data.JobTitle.Name;
+        }
+        
+        return "未知职务";
+    }
+}
+
+// 使用示例
+var userProfileService = new UserProfileService(jobTitleApi, userAccessToken);
+string selectedJobTitleId = "6729287797559891971";
+
+// 验证用户选择的职务
+bool isValid = await userProfileService.ValidateJobTitleSelectionAsync(selectedJobTitleId);
+if (isValid)
+{
+    string displayName = await userProfileService.GetJobTitleDisplayNameAsync(selectedJobTitleId);
+    Console.WriteLine($"您选择的职务是: {displayName}");
+}
+else
+{
+    Console.WriteLine("所选职务无效或不可用");
+}
+```
+
+## 应用场景对比
+
+### 租户级API vs 用户级API
+
+| 场景 | 推荐API | 说明 |
+|------|---------|------|
+| 组织管理后台 | GetTenantJobTitlesListAsync | 需要查看和管理整个组织的职务结构 |
+| 员工信息管理 | GetTenantJobTitleByIdAsync | 管理员查看员工职务详情 |
+| 个人资料设置 | GetUserJobTitlesListAsync | 用户选择自己的职务 |
+| 职务验证 | GetUserJobTitleByIdAsync | 验证用户选择的职务有效性 |
+
+## 版本记录
 
 | 版本 | 日期 | 更新内容 |
-|------|------|----------|
-| v1.0.0 | 2025-11-20 | 初始版本，包含职务查询相关接口文档 |
+|------|------|---------|
+| v1.0 | 2025-11-20 | 初始版本，包含职务查询相关接口文档 |
 
----
+## 注意事项
 
-## 相关文档
-
-- [飞书职务 API 官方文档](https://open.feishu.cn/document/contact-v3/job_title/job-title-resources-introduction)
-- [认证和权限管理文档](../Authentication-API-Documentation.md)
-- [员工管理 API 文档](../IFeishuV1EmployeesApi.md)
-- [部门管理 API 文档](../IFeishuV3DepartmentsApi.md)
+1. **权限差异**：租户级API可以访问整个租户的职务信息，用户级API只能访问当前用户可见的职务
+2. **认证选择**：
+   - 管理应用使用 `tenant_access_token`
+   - 用户个人应用使用 `user_access_token`
+3. **频率限制**：请遵循飞书API的调用频率限制，避免过于频繁的请求
+4. **错误处理**：建议在生产环境中对API调用进行完整的错误处理和重试机制
+5. **Token管理**：访问令牌具有有效期，需要定期刷新或使用TokenManager进行管理
+6. **数据缓存**：职务信息相对稳定，建议在应用启动时缓存以提高性能
+7. **多语言支持**：返回的职务信息包含多语言名称，建议根据用户语言偏好显示相应名称

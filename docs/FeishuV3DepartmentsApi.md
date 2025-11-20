@@ -1,337 +1,171 @@
-# 飞书部门管理 API 文档
+# 部门管理
 
-## 概述
+## 接口名称：IFeishuV3DepartmentsApi
 
-飞书组织机构部门是指企业组织架构树上的某一个节点。在部门内部，可添加用户作为部门成员，也可添加新的部门作为子部门。
+## 功能描述
+飞书组织机构部门是指企业组织架构树上的某一个节点。在部门内部，可添加用户作为部门成员，也可添加新的部门作为子部门。该API提供完整的部门管理功能，包括部门的创建、更新、查询、删除以及部门群管理等功能，支持层级化的组织架构管理。
 
-**版本**: v3  
-**基础URL**: `https://open.feishu.cn/open-apis/contact/v3/departments`  
-**完整文档**: [https://open.feishu.cn/document/server-docs/contact-v3/department/field-overview](https://open.feishu.cn/document/server-docs/contact-v3/department/field-overview)
+## 函数列表
 
----
+| 函数名称 | 功能描述 | 认证方式 | HTTP方法 |
+|---------|---------|---------|---------|
+| CreateDepartmentAsync | 在通讯录内创建一个部门 | tenant_access_token | POST |
+| UpdatePartDepartmentAsync | 更新指定部门的部分信息 | tenant_access_token | PATCH |
+| UpdateDepartmentAsync | 更新指定部门的信息 | tenant_access_token | PUT |
+| UpdateDepartmentIdAsync | 更新部门的自定义ID | tenant_access_token | PATCH |
+| UnbindDepartmentChatAsync | 将指定部门的部门群转为普通群 | tenant_access_token | POST |
+| GetDepartmentInfoByIdAsync | 获取单个部门信息 | user_access_token | GET |
+| GetDepartmentsByIdsAsync | 批量获取部门信息 | tenant_access_token | GET |
+| GetDepartmentsByParentIdAsync | 查询指定部门下的子部门列表 | tenant_access_token | GET |
+| GetParentDepartmentsByIdAsync | 递归获取指定部门的父部门信息 | tenant_access_token | GET |
+| SearchDepartmentsAsync | 通过部门名称关键词搜索部门 | user_access_token | POST |
+| DeleteDepartmentByIdAsync | 从通讯录中删除指定的部门 | tenant_access_token | DELETE |
 
-## 创建部门
+## 函数详细内容：
 
-### 接口名称
-在通讯录内创建一个部门。
+### **函数名称**：CreateDepartmentAsync
+**认证**：tenant_access_token  
+**参数**：
+- tenant_access_token (必填) - 应用访问令牌
+- departmentCreateRequest (必填) - 创建部门的请求体
+- user_id_type (可选) - 用户ID类型，默认为"user_id"
+- department_id_type (可选) - 部门ID类型，默认为"department_id"
+- client_token (可选) - 幂等性判断token
 
-### 飞书接口URL
-```
-https://open.feishu.cn/open-apis/contact/v3/departments
-```
-
-### 方法
-POST
-
-### 认证
-需要租户访问凭证（tenant_access_token）
-
-### 参数
-
-| 参数名 | 类型 | 位置 | 必填 | 说明 | 示例值 |
-|--------|------|------|------|------|--------|
-| tenant_access_token | string | Header | 是 | 应用访问凭证 | "cli_xxxxxxxxx" |
-| user_id_type | string | Query | 否 | 用户 ID 类型 | "open_id" |
-| department_id_type | string | Query | 否 | 部门 ID 类型 | "department_id" |
-| client_token | string | Query | 否 | 幂等性判断token | "create_dept_123" |
-| departmentCreateRequest | DepartmentCreateRequest | Body | 是 | 创建部门的请求体 | 见下方示例 |
-
-#### DepartmentCreateRequest 结构
-
+**响应**：
 ```json
-{
-  "name": "技术部",
-  "i18n_name": {
-    "zh_cn": "技术部",
-    "en_us": "Technology Department"
-  },
-  "parent_department_id": "0",
-  "leader_user_id": "ou_123456789",
-  "order": "1",
-  "create_group_chat": true,
-  "leaders": [
-    {
-      "user_id": "ou_123456789",
-      "type": 1
-    }
-  ],
-  "group_chat_employee_types": [1, 2],
-  "department_id": "custom_tech_dept_001",
-  "unit_ids": ["unit_001"],
-  "department_hrbps": ["ou_987654321"]
-}
-```
-
-### 响应
-
-#### 成功响应
-```json
+成功响应：
 {
   "code": 0,
-  "msg": "success",
   "data": {
     "department": {
       "name": "技术部",
-      "i18n_name": {
-        "zh_cn": "技术部",
-        "en_us": "Technology Department"
-      },
-      "parent_department_id": "0",
       "department_id": "od-4e6789c92a3c8e02dbe89d3f9b87c",
       "open_department_id": "od-4e6789c92a3c8e02dbe89d3f9b87c",
+      "parent_department_id": "0",
       "leader_user_id": "ou_123456789",
-      "order": "1",
-      "member_count": 0,
-      "status": {
-        "is_deleted": false
-      },
-      "leaders": [
-        {
-          "user_id": "ou_123456789",
-          "type": 1
-        }
-      ],
-      "department_hrbps": ["ou_987654321"],
-      "unit_ids": ["unit_001"]
+      "member_count": 10,
+      "status": { "is_deleted": false }
     }
   }
 }
-```
 
-#### 错误响应
-```json
+错误响应：
 {
-  "code": 99991401,
-  "msg": "access_token invalid"
+  "code": 400,
+  "msg": "部门名称已存在"
 }
 ```
 
-### 代码示例
+**说明**：
+- 部门名称不可包含斜杠（/）
+- 根部门的父部门ID为"0"
+- 支持创建部门群聊
+- HRBP列表和负责人信息可同时设置
 
+**代码示例**：
 ```csharp
+// 创建新部门示例
 var createRequest = new DepartmentCreateRequest
 {
-    Name = "技术部",
-    I18nName = new I18nName
-    {
-        ZhCn = "技术部",
-        EnUs = "Technology Department"
-    },
+    Name = "技术研发部",
     ParentDepartmentId = "0", // 根部门
     LeaderUserId = "ou_123456789",
     Order = "1",
     CreateGroupChat = true,
+    DepartmentId = "tech_dept_001",
     Leaders = new List<DepartmentLeader>
     {
-        new DepartmentLeader
-        {
-            UserId = "ou_123456789",
-            Type = 1
-        }
+        new DepartmentLeader { UserId = "ou_123456789", Type = 1 }
     },
-    GroupChatEmployeeTypes = new List<int> { 1, 2 },
-    DepartmentId = "custom_tech_dept_001",
-    UnitIds = new List<string> { "unit_001" },
-    DepartmentHrbps = new List<string> { "ou_987654321" }
+    DepartmentHrbps = new List<string> { "ou_hrbp_001" }
 };
 
-var result = await _departmentsApi.CreateDepartmentAsync(
-    tenant_access_token,
+var result = await _feishuApi.CreateDepartmentAsync(
+    tenantAccessToken,
     createRequest,
-    client_token: "create_dept_123"
-);
+    user_id_type: "user_id",
+    department_id_type: "department_id",
+    client_token: Guid.NewGuid().ToString());
 
-if (result.Code == 0)
+if (result.Success)
 {
-    var departmentId = result.Data?.Department?.DepartmentId;
-    Console.WriteLine($"部门创建成功，ID: {departmentId}");
+    var department = result.Data.Department;
+    Console.WriteLine($"部门创建成功：{department.Name} (ID: {department.DepartmentId})");
+}
+else
+{
+    Console.WriteLine($"创建失败：{result.Message}");
 }
 ```
-
-### 说明
-- 部门名称不可包含斜杠（/），不能与存量部门名称重复
-- `parent_department_id` 为 "0" 时表示在根部门下创建
-- `department_id_type` 支持：department_id、open_department_id、custom_id
-- `group_chat_employee_types`: 1-正式员工, 2-实习生, 3-外包, 4-劳务, 5-顾问
 
 ---
 
-## 部分更新部门
+### **函数名称**：UpdatePartDepartmentAsync
+**认证**：tenant_access_token  
+**参数**：
+- tenant_access_token (必填) - 应用访问令牌
+- department_id (必填) - 部门ID
+- departmentCreateRequest (必填) - 部分更新请求体
+- user_id_type (可选) - 用户ID类型
+- department_id_type (可选) - 部门ID类型
 
-### 接口名称
-更新指定部门的部分信息，包括名称、父部门、排序以及负责人等。
-
-### 飞书接口URL
-```
-https://open.feishu.cn/open-apis/contact/v3/departments/{department_id}
-```
-
-### 方法
-PATCH
-
-### 认证
-需要租户访问凭证（tenant_access_token）
-
-### 参数
-
-| 参数名 | 类型 | 位置 | 必填 | 说明 | 示例值 |
-|--------|------|------|------|------|--------|
-| tenant_access_token | string | Header | 是 | 应用访问凭证 | "cli_xxxxxxxxx" |
-| department_id | string | Path | 是 | 部门ID | "od-4e6789c92a3c8e02dbe89d3f9b87c" |
-| user_id_type | string | Query | 否 | 用户 ID 类型 | "open_id" |
-| department_id_type | string | Query | 否 | 部门 ID 类型 | "department_id" |
-| departmentCreateRequest | DepartmentPartUpdateRequest | Body | 是 | 部分更新部门的请求体 | 见下方示例 |
-
-#### DepartmentPartUpdateRequest 结构
-
+**响应**：
 ```json
-{
-  "name": "新技术部",
-  "i18n_name": {
-    "zh_cn": "新技术部",
-    "en_us": "New Technology Department"
-  },
-  "parent_department_id": "od-123456789",
-  "leader_user_id": "ou_987654321",
-  "order": "2",
-  "create_group_chat": false,
-  "leaders": [
-    {
-      "user_id": "ou_987654321",
-      "type": 1
-    }
-  ],
-  "group_chat_employee_types": [1],
-  "department_hrbps": ["ou_111111111"]
-}
-```
-
-### 响应
-
-#### 成功响应
-```json
+成功响应：
 {
   "code": 0,
-  "msg": "success",
   "data": {
     "department": {
-      "name": "新技术部",
+      "name": "更新后的技术部",
       "department_id": "od-4e6789c92a3c8e02dbe89d3f9b87c",
-      "parent_department_id": "od-123456789",
-      "leader_user_id": "ou_987654321",
-      "order": "2"
+      "leader_user_id": "ou_new_leader"
     }
   }
 }
 ```
 
-#### 错误响应
-```json
-{
-  "code": 404,
-  "msg": "department not found"
-}
-```
+**说明**：
+- 只更新传入的字段，其他字段保持不变
+- 支持更新名称、主管、排序等信息
 
-### 代码示例
-
+**代码示例**：
 ```csharp
+// 部分更新部门信息
 var updateRequest = new DepartmentPartUpdateRequest
 {
-    Name = "新技术部",
-    I18nName = new I18nName
-    {
-        ZhCn = "新技术部",
-        EnUs = "New Technology Department"
-    },
-    ParentDepartmentId = "od-123456789",
-    LeaderUserId = "ou_987654321",
-    Order = "2",
-    Leaders = new List<DepartmentLeader>
-    {
-        new DepartmentLeader
-        {
-            UserId = "ou_987654321",
-            Type = 1
-        }
-    },
-    DepartmentHrbps = new List<string> { "ou_111111111" }
+    Name = "技术研发部（更新）",
+    LeaderUserId = "ou_new_leader_123",
+    Order = "2"
 };
 
-var result = await _departmentsApi.UpdatePartDepartmentAsync(
-    tenant_access_token,
+var result = await _feishuApi.UpdatePartDepartmentAsync(
+    tenantAccessToken,
     "od-4e6789c92a3c8e02dbe89d3f9b87c",
-    updateRequest
-);
+    updateRequest);
 
-if (result.Code == 0)
+if (result.Success)
 {
-    Console.WriteLine("部门部分更新成功");
+    Console.WriteLine("部门信息更新成功");
 }
 ```
-
-### 说明
-- 部分更新接口只会更新传递的字段，未传递的字段保持原值
-- 不支持更新部门的自定义ID，需要使用专门的更新ID接口
 
 ---
 
-## 完整更新部门
+### **函数名称**：UpdateDepartmentAsync
+**认证**：tenant_access_token  
+**参数**：
+- tenant_access_token (必填) - 应用访问令牌
+- department_id (必填) - 部门ID
+- departmentCreateRequest (必填) - 完整更新请求体
+- user_id_type (可选) - 用户ID类型
+- department_id_type (可选) - 部门ID类型
 
-### 接口名称
-更新指定部门的信息，包括名称、父部门以及负责人等信息。
-
-### 飞书接口URL
-```
-https://open.feishu.cn/open-apis/contact/v3/departments/{department_id}
-```
-
-### 方法
-PUT
-
-### 认证
-需要租户访问凭证（tenant_access_token）
-
-### 参数
-
-| 参数名 | 类型 | 位置 | 必填 | 说明 | 示例值 |
-|--------|------|------|------|------|--------|
-| tenant_access_token | string | Header | 是 | 应用访问凭证 | "cli_xxxxxxxxx" |
-| department_id | string | Path | 是 | 部门ID | "od-4e6789c92a3c8e02dbe89d3f9b87c" |
-| user_id_type | string | Query | 否 | 用户 ID 类型 | "open_id" |
-| department_id_type | string | Query | 否 | 部门 ID 类型 | "department_id" |
-| departmentCreateRequest | DepartmentUpdateRequest | Body | 是 | 完整更新部门的请求体 | 见下方示例 |
-
-#### DepartmentUpdateRequest 结构
-
+**响应**：
 ```json
-{
-  "name": "完整更新的技术部",
-  "i18n_name": {
-    "zh_cn": "完整更新的技术部",
-    "en_us": "Fully Updated Technology Department"
-  },
-  "parent_department_id": "od-123456789",
-  "leader_user_id": "ou_987654321",
-  "order": "3",
-  "create_group_chat": true,
-  "leaders": [
-    {
-      "user_id": "ou_987654321",
-      "type": 1
-    }
-  ],
-  "group_chat_employee_types": [1, 2, 3]
-}
-```
-
-### 响应
-
-#### 成功响应
-```json
+成功响应：
 {
   "code": 0,
-  "msg": "success",
   "data": {
     "department": {
       "name": "完整更新的技术部",
@@ -341,903 +175,467 @@ PUT
 }
 ```
 
-#### 错误响应
-```json
-{
-  "code": 400,
-  "msg": "Invalid request parameters"
-}
-```
+**说明**：
+- 需要提供完整的部门信息
+- 未提供的字段会被清空
 
-### 代码示例
-
+**代码示例**：
 ```csharp
-var updateRequest = new DepartmentUpdateRequest
+// 完整更新部门信息
+var fullUpdateRequest = new DepartmentUpdateRequest
 {
-    Name = "完整更新的技术部",
-    I18nName = new I18nName
+    Name = "完整技术研发部",
+    ParentDepartmentId = "od_parent_001",
+    LeaderUserId = "ou_full_leader",
+    Order = "1",
+    CreateGroupChat = false,
+    Leaders = new List<DepartmentLeader>
     {
-        ZhCn = "完整更新的技术部",
-        EnUs = "Fully Updated Technology Department"
-    },
-    ParentDepartmentId = "od-123456789",
-    LeaderUserId = "ou_987654321",
-    Order = "3",
-    CreateGroupChat = true
+        new DepartmentLeader { UserId = "ou_full_leader", Type = 1 }
+    }
 };
 
-var result = await _departmentsApi.UpdateDepartmentAsync(
-    tenant_access_token,
+var result = await _feishuApi.UpdateDepartmentAsync(
+    tenantAccessToken,
     "od-4e6789c92a3c8e02dbe89d3f9b87c",
-    updateRequest
-);
-
-if (result.Code == 0)
-{
-    Console.WriteLine("部门完整更新成功");
-}
+    fullUpdateRequest);
 ```
-
-### 说明
-- PUT 接口会完整更新部门信息，未传递的字段可能会被重置为默认值
-- 建议使用 PATCH 接口进行部分更新，更加安全
 
 ---
 
-## 更新部门ID
+### **函数名称**：UpdateDepartmentIdAsync
+**认证**：tenant_access_token  
+**参数**：
+- tenant_access_token (必填) - 应用访问令牌
+- department_id (必填) - 原部门ID
+- departMentUpdateIdRequest (必填) - 更新ID请求体
+- department_id_type (可选) - 部门ID类型
 
-### 接口名称
-更新部门的自定义ID，即 department_id。
-
-### 飞书接口URL
-```
-https://open.feishu.cn/open-apis/contact/v3/departments/{department_id}/update_department_id
-```
-
-### 方法
-PATCH
-
-### 认证
-需要租户访问凭证（tenant_access_token）
-
-### 参数
-
-| 参数名 | 类型 | 位置 | 必填 | 说明 | 示例值 |
-|--------|------|------|------|------|--------|
-| tenant_access_token | string | Header | 是 | 应用访问凭证 | "cli_xxxxxxxxx" |
-| department_id | string | Path | 是 | 部门ID | "od-4e6789c92a3c8e02dbe89d3f9b87c" |
-| department_id_type | string | Query | 否 | 部门 ID 类型 | "department_id" |
-| departMentUpdateIdRequest | DepartMentUpdateIdRequest | Body | 是 | 更新部门ID的请求体 | 见下方示例 |
-
-#### DepartMentUpdateIdRequest 结构
-
+**响应**：
 ```json
-{
-  "new_department_id": "new_custom_tech_dept_001"
-}
-```
-
-### 响应
-
-#### 成功响应
-```json
+成功响应：
 {
   "code": 0,
   "msg": "success"
 }
 ```
 
-#### 错误响应
-```json
-{
-  "code": 400,
-  "msg": "Department ID already exists"
-}
-```
+**说明**：
+- 用于更新部门的自定义ID
+- 新ID必须唯一
 
-### 代码示例
-
+**代码示例**：
 ```csharp
+// 更新部门自定义ID
 var updateIdRequest = new DepartMentUpdateIdRequest
 {
-    NewDepartmentId = "new_custom_tech_dept_001"
+    NewDepartmentId = "new_tech_dept_2024"
 };
 
-var result = await _departmentsApi.UpdateDepartmentIdAsync(
-    tenant_access_token,
+var result = await _feishuApi.UpdateDepartmentIdAsync(
+    tenantAccessToken,
     "od-4e6789c92a3c8e02dbe89d3f9b87c",
-    updateIdRequest
-);
+    updateIdRequest);
 
-if (result.Code == 0)
+if (result.Success)
 {
     Console.WriteLine("部门ID更新成功");
 }
 ```
 
-### 说明
-- 新的自定义部门ID必须在企业内唯一
-- 更新部门ID不会影响其他部门信息
-
 ---
 
-## 解绑部门群聊
+### **函数名称**：UnbindDepartmentChatAsync
+**认证**：tenant_access_token  
+**参数**：
+- tenant_access_token (必填) - 应用访问令牌
+- departmentRequest (必填) - 部门请求体
+- department_id_type (可选) - 部门ID类型
 
-### 接口名称
-将指定部门的部门群转为普通群。
-
-### 飞书接口URL
-```
-https://open.feishu.cn/open-apis/contact/v3/departments/unbind_department_chat
-```
-
-### 方法
-POST
-
-### 认证
-需要租户访问凭证（tenant_access_token）
-
-### 参数
-
-| 参数名 | 类型 | 位置 | 必填 | 说明 | 示例值 |
-|--------|------|------|------|------|--------|
-| tenant_access_token | string | Header | 是 | 应用访问凭证 | "cli_xxxxxxxxx" |
-| department_id_type | string | Query | 否 | 部门 ID 类型 | "department_id" |
-| departmentRequest | DepartmentRequest | Body | 是 | 部门标识信息 | 见下方示例 |
-
-#### DepartmentRequest 结构
-
+**响应**：
 ```json
-{
-  "department_id": "od-4e6789c92a3c8e02dbe89d3f9b87c"
-}
-```
-
-### 响应
-
-#### 成功响应
-```json
+成功响应：
 {
   "code": 0,
   "msg": "success"
 }
 ```
 
-#### 错误响应
-```json
-{
-  "code": 404,
-  "msg": "Department chat not found"
-}
-```
+**说明**：
+- 将部门群转换为普通群
+- 转换后群聊不再与部门关联
 
-### 代码示例
-
+**代码示例**：
 ```csharp
-var departmentRequest = new DepartmentRequest
+// 解绑部门群聊
+var deptRequest = new DepartmentRequest
 {
     DepartmentId = "od-4e6789c92a3c8e02dbe89d3f9b87c"
 };
 
-var result = await _departmentsApi.UnbindDepartmentChatAsync(
-    tenant_access_token,
-    departmentRequest
-);
+var result = await _feishuApi.UnbindDepartmentChatAsync(
+    tenantAccessToken,
+    deptRequest);
 
-if (result.Code == 0)
+if (result.Success)
 {
-    Console.WriteLine("部门群聊解绑成功");
+    Console.WriteLine("部门群已解绑");
 }
 ```
 
-### 说明
-- 解绑后，原部门群聊将变为普通群聊
-- 群聊成员关系不会改变
-- 操作不可逆，请谨慎使用
-
 ---
 
-## 获取单个部门信息
+### **函数名称**：GetDepartmentInfoByIdAsync
+**认证**：user_access_token  
+**参数**：
+- user_access_token (必填) - 用户访问令牌
+- department_id (必填) - 部门ID
+- department_id_type (可选) - 部门ID类型
+- user_id_type (可选) - 用户ID类型
 
-### 接口名称
-获取单个部门信息，包括部门名称、ID、父部门、负责人、状态以及成员个数等。
-
-### 飞书接口URL
-```
-https://open.feishu.cn/open-apis/contact/v3/departments/{department_id}
-```
-
-### 方法
-GET
-
-### 认证
-需要用户访问凭证（user_access_token）
-
-### 参数
-
-| 参数名 | 类型 | 位置 | 必填 | 说明 | 示例值 |
-|--------|------|------|------|------|--------|
-| user_access_token | string | Header | 是 | 用户访问凭证 | "u_xxxxxxxxx" |
-| department_id | string | Path | 是 | 部门ID | "od-4e6789c92a3c8e02dbe89d3f9b87c" |
-| department_id_type | string | Query | 否 | 部门 ID 类型 | "department_id" |
-| user_id_type | string | Query | 否 | 用户 ID 类型 | "open_id" |
-
-### 响应
-
-#### 成功响应
+**响应**：
 ```json
+成功响应：
 {
   "code": 0,
-  "msg": "success",
   "data": {
     "department": {
       "name": "技术部",
-      "i18n_name": {
-        "zh_cn": "技术部",
-        "en_us": "Technology Department"
-      },
-      "parent_department_id": "0",
       "department_id": "od-4e6789c92a3c8e02dbe89d3f9b87c",
-      "open_department_id": "od-4e6789c92a3c8e02dbe89d3f9b87c",
+      "parent_department_id": "0",
       "leader_user_id": "ou_123456789",
-      "chat_id": "oc_xxxxxxxxx",
-      "order": "1",
-      "member_count": 25,
-      "primary_member_count": 20,
-      "status": {
-        "is_deleted": false
-      },
-      "leaders": [
-        {
-          "user_id": "ou_123456789",
-          "type": 1
-        }
-      ],
-      "department_hrbps": ["ou_987654321"],
-      "group_chat_employee_types": [1, 2],
-      "unit_ids": ["unit_001"]
+      "member_count": 10,
+      "primary_member_count": 8,
+      "department_hrbps": ["ou_hrbp_001"],
+      "group_chat_employee_types": [1, 2]
     }
   }
 }
 ```
 
-#### 错误响应
-```json
-{
-  "code": 404,
-  "msg": "Department not found"
-}
-```
+**说明**：
+- 获取部门的完整信息
+- 包含成员数量、HRBP等详细信息
 
-### 代码示例
-
+**代码示例**：
 ```csharp
-var result = await _departmentsApi.GetDepartmentInfoByIdAsync(
-    user_access_token,
-    "od-4e6789c92a3c8e02dbe89d3f9b87c"
-);
+// 获取部门详细信息
+var result = await _feishuApi.GetDepartmentInfoByIdAsync(
+    userAccessToken,
+    "od-4e6789c92a3c8e02dbe89d3f9b87c");
 
-if (result.Code == 0)
+if (result.Success)
 {
-    var department = result.Data?.Department;
-    Console.WriteLine($"部门名称：{department?.Name}");
-    Console.WriteLine($"成员数量：{department?.MemberCount}");
-    Console.WriteLine($"主要成员：{department?.PrimaryMemberCount}");
+    var dept = result.Data.Department;
+    Console.WriteLine($"部门：{dept.Name}");
+    Console.WriteLine($"成员数：{dept.MemberCount}");
+    Console.WriteLine($"主要负责人：{dept.LeaderUserId}");
+    
+    foreach (var hrbp in dept.DepartmentHrbps)
+    {
+        Console.WriteLine($"HRBP：{hrbp}");
+    }
 }
 ```
-
-### 说明
-- `member_count`: 部门总成员数量
-- `primary_member_count`: 主要成员数量（通常为正式员工）
-- `department_hrbps`: 部门HRBP列表
 
 ---
 
-## 批量获取部门信息
+### **函数名称**：GetDepartmentsByIdsAsync
+**认证**：tenant_access_token  
+**参数**：
+- tenant_access_token (必填) - 应用访问令牌
+- department_ids (必填) - 部门ID数组
+- user_id_type (可选) - 用户ID类型
+- department_id_type (可选) - 部门ID类型
 
-### 接口名称
-获取单个部门信息，包括部门名称、ID、父部门、负责人、状态以及成员个数等。
-
-### 飞书接口URL
-```
-https://open.feishu.cn/open-apis/contact/v3/departments/batch
-```
-
-### 方法
-GET
-
-### 认证
-需要租户访问凭证（tenant_access_token）
-
-### 参数
-
-| 参数名 | 类型 | 位置 | 必填 | 说明 | 示例值 |
-|--------|------|------|------|------|--------|
-| tenant_access_token | string | Header | 是 | 应用访问凭证 | "cli_xxxxxxxxx" |
-| department_ids | string[] | Query | 是 | 部门ID列表 | ["od-123", "od-456"] |
-| department_id_type | string | Query | 否 | 部门 ID 类型 | "department_id" |
-| user_id_type | string | Query | 否 | 用户 ID 类型 | "open_id" |
-
-### 响应
-
-#### 成功响应
+**响应**：
 ```json
+成功响应：
 {
   "code": 0,
-  "msg": "success",
   "data": {
     "items": [
       {
         "name": "技术部",
-        "department_id": "od-4e6789c92a3c8e02dbe89d3f9b87c",
-        "member_count": 25,
-        "status": {
-          "is_deleted": false
-        }
+        "department_id": "od-tech001",
+        "member_count": 15
       },
       {
-        "name": "产品部",
-        "department_id": "od-4e6789c92a3c8e02dbe89d3f9b87d",
-        "member_count": 15,
-        "status": {
-          "is_deleted": false
-        }
+        "name": "产品部", 
+        "department_id": "od-prod001",
+        "member_count": 8
       }
     ]
   }
 }
 ```
 
-#### 错误响应
-```json
-{
-  "code": 400,
-  "msg": "Invalid department_ids"
-}
-```
+**说明**：
+- 一次获取多个部门的信息
+- 最多支持50个部门ID
 
-### 代码示例
-
+**代码示例**：
 ```csharp
-var departmentIds = new string[] 
-{ 
-    "od-4e6789c92a3c8e02dbe89d3f9b87c", 
-    "od-4e6789c92a3c8e02dbe89d3f9b87d" 
-};
+// 批量获取部门信息
+var departmentIds = new[] { "od-tech001", "od-prod001", "od-sales001" };
 
-var result = await _departmentsApi.GetDepartmentsByIdsAsync(
-    tenant_access_token,
-    departmentIds
-);
+var result = await _feishuApi.GetDepartmentsByIdsAsync(
+    tenantAccessToken,
+    departmentIds);
 
-if (result.Code == 0)
+if (result.Success)
 {
-    foreach (var department in result.Data?.Items ?? [])
+    foreach (var dept in result.Data.Items)
     {
-        Console.WriteLine($"部门：{department.Name}，成员：{department.MemberCount}");
+        Console.WriteLine($"{dept.Name} - {dept.MemberCount}人");
     }
 }
 ```
 
-### 说明
-- 最多支持查询50个部门
-- 查询结果按请求顺序返回
-
 ---
 
-## 获取子部门列表
+### **函数名称**：GetDepartmentsByParentIdAsync
+**认证**：tenant_access_token  
+**参数**：
+- tenant_access_token (必填) - 应用访问令牌
+- department_id (必填) - 父部门ID
+- fetch_child (可选) - 是否递归获取子部门，默认false
+- page_size (可选) - 分页大小，默认10
+- page_token (可选) - 分页标记
+- user_id_type (可选) - 用户ID类型
+- department_id_type (可选) - 部门ID类型
 
-### 接口名称
-查询指定部门下的子部门列表，列表内包含部门的名称、ID、父部门、负责人以及状态等信息。
-
-### 飞书接口URL
-```
-https://open.feishu.cn/open-apis/contact/v3/departments/{department_id}/children
-```
-
-### 方法
-GET
-
-### 认证
-需要租户访问凭证（tenant_access_token）
-
-### 参数
-
-| 参数名 | 类型 | 位置 | 必填 | 说明 | 示例值 |
-|--------|------|------|------|------|--------|
-| tenant_access_token | string | Header | 是 | 应用访问凭证 | "cli_xxxxxxxxx" |
-| department_id | string | Path | 是 | 部门ID | "od-4e6789c92a3c8e02dbe89d3f9b87c" |
-| fetch_child | bool | Query | 否 | 是否递归获取子部门 | false |
-| page_size | int | Query | 否 | 分页大小 | 10 |
-| page_token | string | Query | 否 | 分页标记 | "" |
-| user_id_type | string | Query | 否 | 用户 ID 类型 | "open_id" |
-| department_id_type | string | Query | 否 | 部门 ID 类型 | "department_id" |
-
-### 响应
-
-#### 成功响应
+**响应**：
 ```json
+成功响应：
 {
   "code": 0,
-  "msg": "success",
   "data": {
     "items": [
       {
         "name": "前端组",
-        "department_id": "od-frontend-001",
-        "parent_department_id": "od-4e6789c92a3c8e02dbe89d3f9b87c",
-        "member_count": 8,
-        "status": {
-          "is_deleted": false
-        }
+        "department_id": "od-frontend",
+        "parent_department_id": "od-tech001"
       },
       {
         "name": "后端组",
-        "department_id": "od-backend-001",
-        "parent_department_id": "od-4e6789c92a3c8e02dbe89d3f9b87c",
-        "member_count": 12,
-        "status": {
-          "is_deleted": false
-        }
+        "department_id": "od-backend", 
+        "parent_department_id": "od-tech001"
       }
     ],
-    "page_token": "",
-    "has_more": false
+    "page_token": "next_page_token"
   }
 }
 ```
 
-#### 错误响应
-```json
-{
-  "code": 404,
-  "msg": "Department not found"
-}
-```
+**说明**：
+- 获取指定部门下的子部门列表
+- 支持递归获取所有层级的子部门
 
-### 代码示例
-
+**代码示例**：
 ```csharp
-var result = await _departmentsApi.GetDepartmentsByParentIdAsync(
-    tenant_access_token,
-    "od-4e6789c92a3c8e02dbe89d3f9b87c",
-    fetch_child: false,
-    page_size: 20
-);
+// 获取子部门列表（支持分页）
+var pageSize = 20;
+var pageToken = "";
 
-if (result.Code == 0)
+do
 {
-    Console.WriteLine($"找到 {result.Data?.Items?.Count} 个子部门");
-    foreach (var dept in result.Data?.Items ?? [])
-    {
-        Console.WriteLine($"子部门：{dept.Name}，成员：{dept.MemberCount}");
-    }
-}
-```
+    var result = await _feishuApi.GetDepartmentsByParentIdAsync(
+        tenantAccessToken,
+        "od-tech001",
+        fetch_child: false,
+        page_size: pageSize,
+        page_token: string.IsNullOrEmpty(pageToken) ? null : pageToken);
 
-### 说明
-- `fetch_child=true` 时会递归获取所有层级的子部门
-- 支持分页查询，使用 `page_token` 获取下一页
-- 部门ID为 "0" 时获取根部门的子部门
+    if (result.Success)
+    {
+        foreach (var dept in result.Data.Items)
+        {
+            Console.WriteLine($"{dept.Name} ({dept.DepartmentId})");
+        }
+
+        pageToken = result.Data.PageToken;
+    }
+} while (!string.IsNullOrEmpty(pageToken));
+```
 
 ---
 
-## 获取父部门列表
+### **函数名称**：GetParentDepartmentsByIdAsync
+**认证**：tenant_access_token  
+**参数**：
+- tenant_access_token (必填) - 应用访问令牌
+- department_id (必填) - 部门ID
+- page_size (可选) - 分页大小，默认10
+- page_token (可选) - 分页标记
+- user_id_type (可选) - 用户ID类型
+- department_id_type (可选) - 部门ID类型
 
-### 接口名称
-递归获取指定部门的父部门信息，包括部门名称、ID、负责人以及状态等。
-
-### 飞书接口URL
-```
-https://open.feishu.cn/open-apis/contact/v3/departments/parent
-```
-
-### 方法
-GET
-
-### 认证
-需要租户访问凭证（tenant_access_token）
-
-### 参数
-
-| 参数名 | 类型 | 位置 | 必填 | 说明 | 示例值 |
-|--------|------|------|------|------|--------|
-| tenant_access_token | string | Header | 是 | 应用访问凭证 | "cli_xxxxxxxxx" |
-| department_id | string | Query | 是 | 部门ID | "od-4e6789c92a3c8e02dbe89d3f9b87c" |
-| page_size | int | Query | 否 | 分页大小 | 10 |
-| page_token | string | Query | 否 | 分页标记 | "" |
-| user_id_type | string | Query | 否 | 用户 ID 类型 | "open_id" |
-| department_id_type | string | Query | 否 | 部门 ID 类型 | "department_id" |
-
-### 响应
-
-#### 成功响应
+**响应**：
 ```json
+成功响应：
 {
   "code": 0,
-  "msg": "success",
   "data": {
     "items": [
       {
         "name": "技术部",
-        "department_id": "od-4e6789c92a3c8e02dbe89d3f9b87c",
-        "parent_department_id": "0",
-        "leader_user_id": "ou_123456789",
-        "member_count": 25
+        "department_id": "od-tech001",
+        "parent_department_id": "0"
       },
       {
-        "name": "公司",
-        "department_id": "od-root-001",
-        "parent_department_id": "0",
-        "leader_user_id": "ou_admin_001",
-        "member_count": 100
+        "name": "公司总部",
+        "department_id": "0",
+        "parent_department_id": ""
       }
-    ],
-    "page_token": "",
-    "has_more": false
+    ]
   }
 }
 ```
 
-#### 错误响应
-```json
-{
-  "code": 404,
-  "msg": "Department not found"
-}
-```
+**说明**：
+- 递归获取所有父级部门信息
+- 从直接父部门到根部门的完整路径
 
-### 代码示例
-
+**代码示例**：
 ```csharp
-var result = await _departmentsApi.GetParentDepartmentsByIdAsync(
-    tenant_access_token,
-    "od-4e6789c92a3c8e02dbe89d3f9b87c",
-    page_size: 20
-);
+// 获取部门层级路径
+var result = await _feishuApi.GetParentDepartmentsByIdAsync(
+    tenantAccessToken,
+    "od-frontend-team");
 
-if (result.Code == 0)
+if (result.Success)
 {
-    Console.WriteLine($"部门层级路径：");
-    foreach (var dept in result.Data?.Items ?? [])
+    Console.WriteLine("部门层级路径：");
+    var path = new List<string>();
+    
+    foreach (var dept in result.Data.Items)
     {
-        Console.WriteLine($"-> {dept.Name} ({dept.DepartmentId})");
+        path.Add(dept.Name);
     }
+    
+    path.Reverse(); // 从根到子
+    Console.WriteLine(string.Join(" > ", path));
 }
 ```
-
-### 说明
-- 从直接父部门开始，逐级向上返回，直到根部门
-- 返回结果按层级从下到上排序
-- 支持分页查询
 
 ---
 
-## 搜索部门
+### **函数名称**：SearchDepartmentsAsync
+**认证**：user_access_token  
+**参数**：
+- user_access_token (必填) - 用户访问令牌
+- searchRequest (必填) - 搜索请求体
+- page_size (可选) - 分页大小，默认10
+- page_token (可选) - 分页标记
+- user_id_type (可选) - 用户ID类型
+- department_id_type (可选) - 部门ID类型
 
-### 接口名称
-以用户身份通过部门名称关键词查询可见部门的信息，包括部门的 ID、父部门、负责人以及状态等。
-
-### 飞书接口URL
-```
-https://open.feishu.cn/open-apis/contact/v3/departments/search
-```
-
-### 方法
-POST
-
-### 认证
-需要用户访问凭证（user_access_token）
-
-### 参数
-
-| 参数名 | 类型 | 位置 | 必填 | 说明 | 示例值 |
-|--------|------|------|------|------|--------|
-| user_access_token | string | Header | 是 | 用户访问凭证 | "u_xxxxxxxxx" |
-| searchRequest | SearchRequest | Body | 是 | 搜索请求 | 见下方示例 |
-| page_size | int | Query | 否 | 分页大小 | 10 |
-| page_token | string | Query | 否 | 分页标记 | "" |
-| user_id_type | string | Query | 否 | 用户 ID 类型 | "open_id" |
-| department_id_type | string | Query | 否 | 部门 ID 类型 | "department_id" |
-
-#### SearchRequest 结构
-
+**响应**：
 ```json
-{
-  "query": "技术"
-}
-```
-
-### 响应
-
-#### 成功响应
-```json
+成功响应：
 {
   "code": 0,
-  "msg": "success",
   "data": {
     "items": [
       {
-        "name": "技术部",
-        "department_id": "od-4e6789c92a3c8e02dbe89d3f9b87c",
-        "parent_department_id": "0",
-        "leader_user_id": "ou_123456789",
-        "member_count": 25,
-        "status": {
-          "is_deleted": false
-        }
-      },
-      {
-        "name": "技术支持部",
-        "department_id": "od-tech-support-001",
-        "parent_department_id": "od-4e6789c92a3c8e02dbe89d3f9b87c",
-        "leader_user_id": "ou_456789123",
-        "member_count": 10,
-        "status": {
-          "is_deleted": false
-        }
+        "name": "技术研发部",
+        "department_id": "od-tech001",
+        "parent_department_id": "0"
       }
     ],
-    "page_token": "",
-    "has_more": false
+    "page_token": "next_page_token"
   }
 }
 ```
 
-#### 错误响应
-```json
-{
-  "code": 400,
-  "msg": "Invalid query parameter"
-}
-```
+**说明**：
+- 通过部门名称关键词搜索
+- 只支持搜索可见的部门
+- 不支持搜索国际化名称
 
-### 代码示例
-
+**代码示例**：
 ```csharp
+// 搜索部门
 var searchRequest = new SearchRequest
 {
     Query = "技术"
 };
 
-var result = await _departmentsApi.SearchDepartmentsAsync(
-    user_access_token,
+var result = await _feishuApi.SearchDepartmentsAsync(
+    userAccessToken,
     searchRequest,
-    page_size: 20
-);
+    page_size: 20);
 
-if (result.Code == 0)
+if (result.Success)
 {
-    Console.WriteLine($"搜索到 {result.Data?.Items?.Count} 个部门");
-    foreach (var dept in result.Data?.Items ?? [])
+    Console.WriteLine($"找到 {result.Data.Items.Count} 个相关部门：");
+    foreach (var dept in result.Data.Items)
     {
-        Console.WriteLine($"部门：{dept.Name}，成员：{dept.MemberCount}");
+        Console.WriteLine($"- {dept.Name} ({dept.DepartmentId})");
     }
 }
 ```
 
-### 说明
-- 仅匹配部门名称，不支持国际化名称匹配
-- 只能搜索用户有权限查看的部门
-- 支持模糊搜索
-
 ---
 
-## 删除部门
+### **函数名称**：DeleteDepartmentByIdAsync
+**认证**：tenant_access_token  
+**参数**：
+- tenant_access_token (必填) - 应用访问令牌
+- department_id (必填) - 部门ID
+- department_id_type (可选) - 部门ID类型
 
-### 接口名称
-从通讯录中删除指定的部门。
-
-### 飞书接口URL
-```
-https://open.feishu.cn/open-apis/contact/v3/departments/{department_id}
-```
-
-### 方法
-DELETE
-
-### 认证
-需要用户访问凭证（user_access_token）
-
-### 参数
-
-| 参数名 | 类型 | 位置 | 必填 | 说明 | 示例值 |
-|--------|------|------|------|------|--------|
-| user_access_token | string | Header | 是 | 用户访问凭证 | "u_xxxxxxxxx" |
-| department_id | string | Path | 是 | 部门ID | "od-4e6789c92a3c8e02dbe89d3f9b87c" |
-| department_id_type | string | Query | 否 | 部门 ID 类型 | "department_id" |
-
-### 响应
-
-#### 成功响应
+**响应**：
 ```json
+成功响应：
 {
   "code": 0,
   "msg": "success"
 }
-```
 
-#### 错误响应
-```json
+错误响应：
 {
-  "code": 403,
-  "msg": "No permission to delete department"
+  "code": 400,
+  "msg": "部门下还有成员，无法删除"
 }
 ```
 
-### 代码示例
+**说明**：
+- 删除部门前需确保无子部门和无成员
+- 删除操作不可恢复
 
+**代码示例**：
 ```csharp
-var result = await _departmentsApi.DeleteDepartmentByIdAsync(
-    user_access_token,
-    "od-4e6789c92a3c8e02dbe89d3f9b87c"
-);
+// 删除部门（先检查是否可以删除）
+var checkResult = await _feishuApi.GetDepartmentsByParentIdAsync(
+    tenantAccessToken,
+    "od-dept-to-delete");
 
-if (result.Code == 0)
+if (checkResult.Success && checkResult.Data.Items.Any())
+{
+    Console.WriteLine("部门下还有子部门，无法删除");
+    return;
+}
+
+var deleteResult = await _feishuApi.DeleteDepartmentByIdAsync(
+    tenantAccessToken,
+    "od-dept-to-delete");
+
+if (deleteResult.Success)
 {
     Console.WriteLine("部门删除成功");
 }
-```
-
-### 说明
-- 删除部门会同时删除其所有子部门
-- 删除前请确认部门内没有成员
-- 删除操作不可恢复，请谨慎使用
-
----
-
-## 错误码说明
-
-| 错误码 | 说明 | 解决方案 |
-|--------|------|----------|
-| 0 | 成功 | - |
-| 99991401 | access_token 无效或已过期 | 重新获取 access_token |
-| 99991400 | 参数错误 | 检查请求参数格式和必填项 |
-| 403 | 无权限 | 检查应用权限和用户权限 |
-| 404 | 部门不存在 | 确认 department_id 是否正确 |
-| 400 | 请求参数无效 | 检查参数值是否符合规范 |
-| 429 | 请求频率超限 | 降低请求频率，使用限流策略 |
-| 500 | 服务器内部错误 | 稍后重试或联系技术支持 |
-
----
-
-## 最佳实践
-
-### 1. 部门层级管理
-```csharp
-public async Task<DepartmentTree> BuildDepartmentTreeAsync(string rootDepartmentId = "0")
+else
 {
-    var tree = new DepartmentTree();
-    
-    async Task BuildTreeRecursive(string parentId, DepartmentNode parentNode)
-    {
-        var result = await _departmentsApi.GetDepartmentsByParentIdAsync(
-            _token, 
-            parentId, 
-            fetch_child: false
-        );
-        
-        if (result.Code == 0 && result.Data?.Items != null)
-        {
-            foreach (var dept in result.Data.Items)
-            {
-                var node = new DepartmentNode
-                {
-                    Id = dept.DepartmentId,
-                    Name = dept.Name,
-                    MemberCount = dept.MemberCount
-                };
-                
-                parentNode.Children.Add(node);
-                await BuildTreeRecursive(dept.DepartmentId, node);
-            }
-        }
-    }
-    
-    var rootNode = new DepartmentNode { Id = rootDepartmentId, Name = "Root" };
-    await BuildTreeRecursive(rootDepartmentId, rootNode);
-    
-    return tree;
-}
-```
-
-### 2. 批量操作优化
-```csharp
-public async Task<List<GetDepartmentInfo>> GetAllDepartmentsAsync()
-{
-    var allDepartments = new List<GetDepartmentInfo>();
-    var departmentIds = await GetAllDepartmentIdsAsync();
-    
-    // 分批处理，每次最多50个
-    const int batchSize = 50;
-    for (int i = 0; i < departmentIds.Count; i += batchSize)
-    {
-        var batch = departmentIds.Skip(i).Take(batchSize).ToArray();
-        var result = await _departmentsApi.GetDepartmentsByIdsAsync(_token, batch);
-        
-        if (result.Code == 0 && result.Data?.Items != null)
-        {
-            allDepartments.AddRange(result.Data.Items);
-        }
-        
-        // 避免限流
-        await Task.Delay(100);
-    }
-    
-    return allDepartments;
-}
-```
-
-### 3. 缓存策略
-```csharp
-public async Task<GetDepartmentInfo> GetDepartmentWithCacheAsync(string departmentId)
-{
-    var cacheKey = $"department:{departmentId}";
-    
-    if (_cache.TryGetValue(cacheKey, out GetDepartmentInfo cachedDepartment))
-    {
-        return cachedDepartment;
-    }
-    
-    var result = await _departmentsApi.GetDepartmentInfoByIdAsync(_token, departmentId);
-    if (result.Code == 0 && result.Data?.Department != null)
-    {
-        var department = result.Data.Department;
-        _cache.Set(cacheKey, department, TimeSpan.FromMinutes(30));
-        return department;
-    }
-    
-    throw new Exception($"获取部门信息失败: {departmentId}");
-}
-```
-
-### 4. 权限检查
-```csharp
-public async Task<bool> HasDepartmentPermissionAsync(string departmentId, string userId)
-{
-    try
-    {
-        var result = await _departmentsApi.GetDepartmentInfoByIdAsync(_token, departmentId);
-        if (result.Code == 0 && result.Data?.Department != null)
-        {
-            var dept = result.Data.Department;
-            
-            // 检查是否为部门负责人
-            if (dept.LeaderUserId == userId)
-                return true;
-                
-            // 检查是否在负责人列表中
-            if (dept.Leaders.Any(l => l.UserId == userId))
-                return true;
-        }
-    }
-    catch
-    {
-        // 权限检查失败
-    }
-    
-    return false;
+    Console.WriteLine($"删除失败：{deleteResult.Message}");
 }
 ```
 
 ---
 
-## 版本更新记录
+## 版本记录
 
-| 版本 | 日期 | 更新内容 |
-|------|------|----------|
-| v1.0 | 2025-11-01 | 初始版本，支持部门基本CRUD操作 |
-
----
-
-## 支持与反馈
-
-如果您在使用过程中遇到问题，请通过以下方式获取帮助：
-
-1. 查看 [飞书开放平台文档](https://open.feishu.cn/document/server-docs/contact-v3/department/field-overview)
-2. 提交问题到项目的 Issues
-3. 联系技术支持团队
-
----
-
-*最后更新时间: 2025-11-20*
+| 版本 | 日期 | 说明 | 作者 |
+|-----|-----|-----|-----|
+| v1.0.0 | 2025-11-20 | 初始版本，包含所有部门管理API | Mud Studio |

@@ -1,568 +1,467 @@
-# 飞书员工管理 API 文档
+# 员工管理
 
-## 概述
+## 接口名称：IFeishuV1EmployeesApi
 
-员工指飞书企业内身份为「Employee」的成员，等同于通讯录OpenAPI中的「User」。员工在飞书的身份标识包括 employee_id、open_id 和 union_id，其中 employee_id 的值等同于通讯录中的 user_id，其余两个也和通讯录的 User 的值相同。
+## 功能描述
+该接口提供了飞书员工管理的完整功能，包括员工的创建、更新、查询、离职、恢复等操作。员工指飞书企业内身份为「Employee」的成员，等同于通讯录OpenAPI中的「User」。员工在飞书的身份标识包括employee_id、open_id和union_id，其中employee_id的值等同于通讯录中的user_id，其余两个也和通讯录的User的值相同。
 
-**版本**: v1  
-**基础URL**: `https://open.feishu.cn/open-apis/directory/v1`  
-**完整文档**: [https://open.feishu.cn/document/directory-v1/employee/overview](https://open.feishu.cn/document/directory-v1/employee/overview)
+接口详细文档请参见：[飞书官方文档](https://open.feishu.cn/document/directory-v1/employee/overview)
 
----
+## 函数列表
 
-## 创建员工
+| 函数名称 | HTTP方法 | 功能描述 |
+|---------|---------|---------|
+| CreateEmployeeAsync | POST | 创建员工 |
+| UpdateEmployeeAsync | PATCH | 更新员工信息 |
+| DeleteEmployeeByIdAsync | DELETE | 离职员工 |
+| ResurrectEmployeeAsync | POST | 恢复已离职员工 |
+| ResignedEmployeeAsync | PATCH | 在职员工流转到待离职状态 |
+| RegularEmployeeAsync | PATCH | 待离职员工取消离职 |
+| QueryEmployeesAsync | POST | 批量查询员工详情 |
+| QueryEmployeePageListAsync | POST | 分页查询员工列表 |
+| SearchEmployeePageListAsync | POST | 搜索员工信息 |
 
-### 接口名称
-用于在企业下创建员工。支持传入姓名、手机号等信息，生成在职状态的员工对象。
+## 函数详细内容
 
-### 飞飞书接口URL
+### **函数名称**：CreateEmployeeAsync
+```csharp
+Task<FeishuApiResult<EmployeeCreateResult>> CreateEmployeeAsync(
+    [Token(TokenType.Both)][Header("Authorization")] string access_token,
+    [Body] EmployeeCreateRequest userModel,
+    [Query("employee_id_type")] string? employee_id_type = Consts.User_Id_Type,
+    [Query("department_id_type")] string? department_id_type = Consts.Department_Id_Type,
+    CancellationToken cancellationToken = default);
 ```
-https://open.feishu.cn/open-apis/directory/v1/employees
-```
 
-### 方法
-POST
+**认证**：需要 tenant_access_token 或 user_access_token
 
-### 认证
-需要访问凭证（tenant_access_token 或 user_access_token）
+**参数**：
+- `access_token` (必填): 应用调用API时的访问凭证，用于身份鉴权
+- `userModel` (必填): 创建员工的请求体
+  - `employee`: 待创建员工对象
+    - `name`: 姓名信息（可选）
+    - `mobile`: 员工手机号（可选）
+    - `custom_employee_id`: 自定义员工ID（可选）
+    - `avatar_key`: 员工头像key（可选）
+    - `email`: 工作邮箱（可选）
+    - `enterprise_email`: 企业邮箱（可选）
+    - `gender`: 性别（可选：0未知，1男，2女，3其他）
+    - `leader_id`: 直属上级ID（可选）
+    - `dotted_line_leader_ids`: 虚线上级ID列表（可选）
+    - `work_country_or_region`: 工作地国家/地区码（可选）
+    - `work_place_id`: 工作地点ID（可选）
+    - `work_station`: 工位（可选）
+    - `job_number`: 工号（可选）
+    - `extension_number`: 分机号（可选）
+    - `join_date`: 入职日期（可选）
+    - `employment_type`: 员工类型（可选：1全职，2实习，3外包，4劳务，5顾问）
+    - `job_title_id`: 职务ID（可选）
+    - `custom_field_values`: 自定义字段（可选）
+  - `options`: 接口拓展选项（可选）
+- `employee_id_type` (可选): 用户ID类型
+- `department_id_type` (可选): 部门ID类型
+- `cancellationToken` (可选): 取消操作令牌
 
-### 参数
-
-| 参数名 | 类型 | 位置 | 必填 | 说明 | 示例值 |
-|--------|------|------|------|------|--------|
-| access_token | string | Header | 是 | 应用访问凭证 | "cli_xxxxxxxxx" |
-| employee_id_type | string | Query | 否 | 用户 ID 类型 | "open_id" |
-| department_id_type | string | Query | 否 | 部门 ID 类型 | "department_id" |
-| userModel | EmployeeCreateRequest | Body | 是 | 创建的员工请求体 | 见下方示例 |
-
-#### EmployeeCreateRequest 结构
-
+**响应**：
 ```json
-{
-  "name": {
-    "zh_cn": "张三",
-    "en_us": "Zhang San"
-  },
-  "mobile": "13800138000",
-  "email": "zhangsan@example.com",
-  "department_ids": ["od-12345678"],
-  "employee_type": 1,
-  "allow_duplicate_email": false
-}
-```
-
-### 响应
-
-#### 成功响应
-```json
+// 成功响应示例
 {
   "code": 0,
   "msg": "success",
   "data": {
-    "employee_id": "emp_123456789"
+    "employee_id": "7123456789012345678"
   }
 }
-```
 
-#### 错误响应
-```json
+// 错误响应示例
 {
-  "code": 99991401,
-  "msg": "access_token invalid"
+  "code": 400,
+  "msg": "参数错误：手机号已存在"
 }
 ```
 
-### 代码示例
+**说明**：用于在企业下创建员工，支持传入姓名、手机号等信息，生成在职状态的员工对象。创建成功后返回新员工的employee_id。
 
+**代码示例**：
 ```csharp
+// 创建新员工示例
 var createRequest = new EmployeeCreateRequest
 {
-    Name = new Dictionary<string, string>
+    Employee = new EmployeeCreateInfo
     {
-        ["zh_cn"] = "张三",
-        ["en_us"] = "Zhang San"
+        Name = new EmployeeName { I18n = new Dictionary<string, string> { ["zh_cn"] = "张三" } },
+        Mobile = "13800138000",
+        Email = "zhangsan@example.com",
+        EnterpriseEmail = "zhangsan@company.com",
+        Gender = 1,
+        JobNumber = "EMP001",
+        JoinDate = "2024-01-15",
+        EmploymentType = "1",
+        CustomEmployeeId = "custom_emp_001"
     },
-    Mobile = "13800138000",
-    Email = "zhangsan@example.com",
-    DepartmentIds = new List<string> { "od-12345678" },
-    EmployeeType = 1,
-    AllowDuplicateEmail = false
+    Options = new EmployeeCreateOptions
+    {
+        // 可选的创建选项
+    }
 };
 
-var result = await _employeesApi.CreateEmployeeAsync(
-    access_token,
-    createRequest
-);
+var result = await _employeeApi.CreateEmployeeAsync(
+    access_token: "your_access_token",
+    userModel: createRequest);
 
 if (result.Code == 0)
 {
-    var employeeId = result.Data?.EmployeeId;
-    Console.WriteLine($"员工创建成功，ID: {employeeId}");
+    Console.WriteLine($"员工创建成功，员工ID: {result.Data?.EmployeeId}");
+}
+else
+{
+    Console.WriteLine($"创建失败: {result.Msg}");
 }
 ```
-
-### 说明
-- 员工类型：1-正式员工，2-实习生，3-外包人员
-- 邮箱不能重复，除非设置 `allow_duplicate_email` 为 true
-- 支持多语言姓名，使用字典格式存储
 
 ---
 
-## 更新员工信息
-
-### 接口名称
-用于更新在职/离职员工的信息、冻结/恢复员工。未传递的参数不会进行更新。
-
-### 飞飞书接口URL
+### **函数名称**：UpdateEmployeeAsync
+```csharp
+Task<FeishuNullDataApiResult> UpdateEmployeeAsync(
+   [Token(TokenType.Both)][Header("Authorization")] string access_token,
+   [Path] string employee_id,
+   [Body] EmployeeUpdateRequest userModel,
+   [Query("employee_id_type")] string? employee_id_type = Consts.User_Id_Type,
+   [Query("department_id_type")] string? department_id_type = Consts.Department_Id_Type,
+   CancellationToken cancellationToken = default);
 ```
-https://open.feishu.cn/open-apis/directory/v1/employees/{employee_id}
-```
 
-### 方法
-PATCH
+**认证**：需要 tenant_access_token 或 user_access_token
 
-### 认证
-需要访问凭证（tenant_access_token 或 user_access_token）
+**参数**：
+- `access_token` (必填): 应用调用API时的访问凭证
+- `employee_id` (必填): 员工ID，用于指定要更新的员工
+- `userModel` (必填): 更新员工的请求体
+- `employee_id_type` (可选): 用户ID类型
+- `department_id_type` (可选): 部门ID类型
+- `cancellationToken` (可选): 取消操作令牌
 
-### 参数
-
-| 参数名 | 类型 | 位置 | 必填 | 说明 | 示例值 |
-|--------|------|------|------|------|--------|
-| access_token | string | Header | 是 | 应用访问凭证 | "cli_xxxxxxxxx" |
-| employee_id | string | Path | 是 | 员工ID | "emp_123456789" |
-| employee_id_type | string | Query | 否 | 用户 ID 类型 | "open_id" |
-| department_id_type | string | Query | 否 | 部门 ID 类型 | "department_id" |
-| userModel | EmployeeUpdateRequest | Body | 是 | 更新的员工请求体 | 见下方示例 |
-
-#### EmployeeUpdateRequest 结构
-
+**响应**：
 ```json
-{
-  "name": {
-    "zh_cn": "李四",
-    "en_us": "Li Si"
-  },
-  "mobile": "13900139000",
-  "email": "lisi@example.com",
-  "department_ids": ["od-12345678"],
-  "status": 2
-}
-```
-
-### 响应
-
-#### 成功响应
-```json
+// 成功响应示例
 {
   "code": 0,
   "msg": "success"
 }
 ```
 
-#### 错误响应
-```json
-{
-  "code": 400,
-  "msg": "Invalid employee_id"
-}
-```
+**说明**：用于更新在职/离职员工的信息、冻结/恢复员工。未传递的参数不会进行更新。
 
-### 代码示例
-
+**代码示例**：
 ```csharp
+// 更新员工信息示例
 var updateRequest = new EmployeeUpdateRequest
 {
-    Name = new Dictionary<string, string>
+    Employee = new EmployeeUpdateInfo
     {
-        ["zh_cn"] = "李四",
-        ["en_us"] = "Li Si"
-    },
-    Mobile = "13900139000",
-    Email = "lisi@example.com",
-    DepartmentIds = new List<string> { "od-12345678" },
-    Status = 2 // 冻结状态
+        Name = new EmployeeName { I18n = new Dictionary<string, string> { ["zh_cn"] = "张三丰" } },
+        Mobile = "13900139000",
+        Email = "zhangsanfeng@example.com"
+    }
 };
 
-var result = await _employeesApi.UpdateEmployeeAsync(
-    access_token,
-    "emp_123456789",
-    updateRequest
-);
+var result = await _employeeApi.UpdateEmployeeAsync(
+    access_token: "your_access_token",
+    employee_id: "7123456789012345678",
+    userModel: updateRequest);
 
 if (result.Code == 0)
 {
     Console.WriteLine("员工信息更新成功");
 }
-```
-
-### 说明
-- `status` 字段：1-正常，2-冻结，3-离职
-- 未传递的参数不会进行更新
-- 支持部分更新，只需传递需要修改的字段
-
----
-
-## 离职员工
-
-### 接口名称
-用于离职员工
-
-### 飞飞书接口URL
-```
-https://open.feishu.cn/open-apis/directory/v1/employees/{employee_id}
-```
-
-### 方法
-DELETE
-
-### 认证
-需要访问凭证（tenant_access_token 或 user_access_token）
-
-### 参数
-
-| 参数名 | 类型 | 位置 | 必填 | 说明 | 示例值 |
-|--------|------|------|------|------|--------|
-| access_token | string | Header | 是 | 应用访问凭证 | "cli_xxxxxxxxx" |
-| employee_id | string | Path | 是 | 员工ID | "emp_123456789" |
-| employee_id_type | string | Query | 否 | 用户 ID 类型 | "open_id" |
-| deleteEmployeeRequest | DeleteEmployeeRequest | Body | 是 | 离职员工请求体 | 见下方示例 |
-
-#### DeleteEmployeeRequest 结构
-
-```json
+else
 {
-  "transfer_groups_to": "emp_987654321",
-  "keep_groups_active": false,
-  "transfer_approvals_to": "emp_987654321",
-  "resend_welcome_email": false
+    Console.WriteLine($"更新失败: {result.Msg}");
 }
 ```
 
-### 响应
+---
 
-#### 成功响应
+### **函数名称**：DeleteEmployeeByIdAsync
+```csharp
+Task<FeishuNullDataApiResult> DeleteEmployeeByIdAsync(
+  [Token(TokenType.Both)][Header("Authorization")] string access_token,
+  [Path] string employee_id,
+  [Body] DeleteEmployeeRequest deleteEmployeeRequest,
+  [Query("employee_id_type")] string? employee_id_type = Consts.User_Id_Type,
+  CancellationToken cancellationToken = default);
+```
+
+**认证**：支持 tenant_access_token 和 user_access_token
+
+**参数**：
+- `access_token` (必填): 应用调用API时的访问凭证
+- `employee_id` (必填): 员工ID
+- `deleteEmployeeRequest` (必填): 离职员工请求体
+  - `options`: 离职员工接口拓展选项（可选）
+- `employee_id_type` (可选): 用户ID类型
+- `cancellationToken` (可选): 取消操作令牌
+
+**响应**：
 ```json
+// 成功响应示例
 {
   "code": 0,
   "msg": "success"
 }
 ```
 
-#### 错误响应
-```json
-{
-  "code": 403,
-  "msg": "No permission to delete employee"
-}
-```
+**说明**：
+- 本接口支持tenant_access_token和user_access_token
+- 使用tenant_access_token时，只能在当前应用的通讯录授权范围内离职员工
+- 若员工归属于多个部门，应用需要有员工所有所属部门的权限，才能离职成功
+- 使用user_access_token时，默认为管理员用户，将校验管理员管理范围
 
-### 代码示例
-
+**代码示例**：
 ```csharp
+// 员工离职示例
 var deleteRequest = new DeleteEmployeeRequest
 {
-    TransferGroupsTo = "emp_987654321",
-    KeepGroupsActive = false,
-    TransferApprovalsTo = "emp_987654321",
-    ResendWelcomeEmail = false
+    Options = new DeleteEmployeeOptions
+    {
+        // 离职选项配置
+    }
 };
 
-var result = await _employeesApi.DeleteEmployeeByIdAsync(
-    access_token,
-    "emp_123456789",
-    deleteRequest
-);
+var result = await _employeeApi.DeleteEmployeeByIdAsync(
+    access_token: "your_access_token",
+    employee_id: "7123456789012345678",
+    deleteEmployeeRequest: deleteRequest);
 
 if (result.Code == 0)
 {
     Console.WriteLine("员工离职成功");
 }
-```
-
-### 说明
-- 使用 tenant_access_token 时，只能在当前应用的通讯录授权范围内离职员工
-- 若员工归属于多个部门，应用需要有员工所有所属部门的权限
-- 支持资源转交，包括群组和审批权限
-
----
-
-## 恢复离职员工
-
-### 接口名称
-用于恢复已离职的成员，恢复已离职成员至在职状态
-
-### 飞飞书接口URL
-```
-https://open.feishu.cn/open-apis/directory/v1/employees/{employee_id}/resurrect
-```
-
-### 方法
-POST
-
-### 认证
-需要访问凭证（tenant_access_token 或 user_access_token）
-
-### 参数
-
-| 参数名 | 类型 | 位置 | 必填 | 说明 | 示例值 |
-|--------|------|------|------|------|--------|
-| access_token | string | Header | 是 | 应用访问凭证 | "cli_xxxxxxxxx" |
-| employee_id | string | Path | 是 | 员工ID | "emp_123456789" |
-| employee_id_type | string | Query | 否 | 用户 ID 类型 | "open_id" |
-| department_id_type | string | Query | 否 | 部门 ID 类型 | "department_id" |
-| resurrectEmployeeRequest | ResurrectEmployeeRequest | Body | 是 | 恢复离职员工请求体 | 见下方示例 |
-
-#### ResurrectEmployeeRequest 结构
-
-```json
+else
 {
-  "department_ids": ["od-12345678"],
-  "keep_original_departments": true
+    Console.WriteLine($"离职失败: {result.Msg}");
 }
 ```
 
-### 响应
+---
 
-#### 成功响应
+### **函数名称**：ResurrectEmployeeAsync
+```csharp
+Task<FeishuNullDataApiResult> ResurrectEmployeeAsync(
+  [Token(TokenType.Both)][Header("Authorization")] string access_token,
+  [Path] string employee_id,
+  [Body] ResurrectEmployeeRequest resurrectEmployeeRequest,
+  [Query("employee_id_type")] string? employee_id_type = Consts.User_Id_Type,
+  [Query("department_id_type")] string? department_id_type = Consts.Department_Id_Type,
+  CancellationToken cancellationToken = default);
+```
+
+**认证**：需要 tenant_access_token 或 user_access_token
+
+**参数**：
+- `access_token` (必填): 应用调用API时的访问凭证
+- `employee_id` (必填): 员工ID
+- `resurrectEmployeeRequest` (必填): 恢复离职员工请求体
+  - `employee`: 恢复员工选项参数
+    - `department_ids`: 恢复后所属部门ID列表
+    - `transfer_to_user_id`: 数据转移接收人ID（可选）
+- `employee_id_type` (可选): 用户ID类型
+- `department_id_type` (可选): 部门ID类型
+- `cancellationToken` (可选): 取消操作令牌
+
+**响应**：
 ```json
+// 成功响应示例
 {
   "code": 0,
   "msg": "success"
 }
 ```
 
-#### 错误响应
-```json
-{
-  "code": 404,
-  "msg": "Employee not found"
-}
-```
+**说明**：用于恢复已离职的成员，恢复已离职成员至在职状态。
 
-### 代码示例
-
+**代码示例**：
 ```csharp
+// 恢复离职员工示例
 var resurrectRequest = new ResurrectEmployeeRequest
 {
-    DepartmentIds = new List<string> { "od-12345678" },
-    KeepOriginalDepartments = true
+    Employee = new ResurrectEmployeeOptions
+    {
+        DepartmentIds = new List<string> { "od-dept-001" },
+        TransferToUserId = "ou_manager_001"
+    }
 };
 
-var result = await _employeesApi.ResurrectEmployeeAsync(
-    access_token,
-    "emp_123456789",
-    resurrectRequest
-);
+var result = await _employeeApi.ResurrectEmployeeAsync(
+    access_token: "your_access_token",
+    employee_id: "7123456789012345678",
+    resurrectEmployeeRequest: resurrectRequest);
 
 if (result.Code == 0)
 {
     Console.WriteLine("员工恢复成功");
 }
-```
-
-### 说明
-- 可以选择保留原有的部门归属或重新分配部门
-- 恢复后的员工状态为在职
-
----
-
-## 办理离职（待离职状态）
-
-### 接口名称
-用于为在职员工办理离职，将其更新为「待离职」状态
-
-### 飞飞书接口URL
-```
-https://open.feishu.cn/open-apis/directory/v1/employees/{employee_id}/to_be_resigned
-```
-
-### 方法
-PATCH
-
-### 认证
-需要访问凭证（tenant_access_token 或 user_access_token）
-
-### 参数
-
-| 参数名 | 类型 | 位置 | 必填 | 说明 | 示例值 |
-|--------|------|------|------|------|--------|
-| access_token | string | Header | 是 | 应用访问凭证 | "cli_xxxxxxxxx" |
-| employee_id | string | Path | 是 | 员工ID | "emp_123456789" |
-| employee_id_type | string | Query | 否 | 用户 ID 类型 | "open_id" |
-| department_id_type | string | Query | 否 | 部门 ID 类型 | "department_id" |
-| resignEmployeeRequest | ResignEmployeeRequest | Body | 是 | 在职员工流转到待离职请求体 | 见下方示例 |
-
-#### ResignEmployeeRequest 结构
-
-```json
+else
 {
-  "resign_reason": "个人原因",
-  "handover_to": "emp_987654321",
-  "disable_account_immediately": false
+    Console.WriteLine($"恢复失败: {result.Msg}");
 }
 ```
 
-### 响应
+---
 
-#### 成功响应
+### **函数名称**：ResignedEmployeeAsync
+```csharp
+Task<FeishuNullDataApiResult> ResignedEmployeeAsync(
+ [Token(TokenType.Both)][Header("Authorization")] string access_token,
+ [Path] string employee_id,
+ [Body] ResignEmployeeRequest resignEmployeeRequest,
+ [Query("employee_id_type")] string? employee_id_type = Consts.User_Id_Type,
+ [Query("department_id_type")] string? department_id_type = Consts.Department_Id_Type,
+ CancellationToken cancellationToken = default);
+```
+
+**认证**：需要 tenant_access_token 或 user_access_token
+
+**参数**：
+- `access_token` (必填): 应用调用API时的访问凭证
+- `employee_id` (必填): 员工ID
+- `resignEmployeeRequest` (必填): 在职员工流转到待离职请求体
+  - `employee`: 在职员工流转到待离职选项参数
+- `employee_id_type` (可选): 用户ID类型
+- `department_id_type` (可选): 部门ID类型
+- `cancellationToken` (可选): 取消操作令牌
+
+**响应**：
 ```json
+// 成功响应示例
 {
   "code": 0,
   "msg": "success"
 }
 ```
 
-#### 错误响应
-```json
-{
-  "code": 403,
-  "msg": "Only HR admin can perform this operation"
-}
-```
+**说明**：
+- 用于为在职员工办理离职，将其更新为「待离职」状态
+- 「待离职」员工不会自动离职，需要使用「离职员工」API操作离职和资源转交
+- 使用user_access_token时默认为管理员用户，仅「人事管理模式」的管理员可操作
 
-### 代码示例
-
+**代码示例**：
 ```csharp
+// 在职员工流转到待离职示例
 var resignRequest = new ResignEmployeeRequest
 {
-    ResignReason = "个人原因",
-    HandoverTo = "emp_987654321",
-    DisableAccountImmediately = false
+    Employee = new ResignEmployeeOption
+    {
+        // 待离职选项配置
+        ResignDate = "2024-12-31",
+        Reason = "个人原因"
+    }
 };
 
-var result = await _employeesApi.ResignedEmployeeAsync(
-    access_token,
-    "emp_123456789",
-    resignRequest
-);
+var result = await _employeeApi.ResignedEmployeeAsync(
+    access_token: "your_access_token",
+    employee_id: "7123456789012345678",
+    resignEmployeeRequest: resignRequest);
 
 if (result.Code == 0)
 {
-    Console.WriteLine("员工已设置为待离职状态");
+    Console.WriteLine("员工已转为待离职状态");
+}
+else
+{
+    Console.WriteLine($"操作失败: {result.Msg}");
 }
 ```
 
-### 说明
-- 使用 user_access_token 时默认为管理员用户，仅「人事管理模式」的管理员可操作
-- 「待离职」员工不会自动离职，需要使用「离职员工」API 操作离职和资源转交
-
 ---
 
-## 取消离职
-
-### 接口名称
-用于为待离职员工取消离职，将其更新为「在职」状态
-
-### 飞飞书接口URL
+### **函数名称**：RegularEmployeeAsync
+```csharp
+Task<FeishuNullDataApiResult> RegularEmployeeAsync(
+         [Token(TokenType.Both)][Header("Authorization")] string access_token,
+         [Path] string employee_id,
+         [Query("employee_id_type")] string? employee_id_type = Consts.User_Id_Type,
+         [Query("department_id_type")] string? department_id_type = Consts.Department_Id_Type,
+         CancellationToken cancellationToken = default);
 ```
-https://open.feishu.cn/open-apis/directory/v1/employees/{employee_id}/regular
-```
 
-### 方法
-PATCH
+**认证**：需要 tenant_access_token 或 user_access_token
 
-### 认证
-需要访问凭证（tenant_access_token 或 user_access_token）
+**参数**：
+- `access_token` (必填): 应用调用API时的访问凭证
+- `employee_id` (必填): 员工ID
+- `employee_id_type` (可选): 用户ID类型
+- `department_id_type` (可选): 部门ID类型
+- `cancellationToken` (可选): 取消操作令牌
 
-### 参数
-
-| 参数名 | 类型 | 位置 | 必填 | 说明 | 示例值 |
-|--------|------|------|------|------|--------|
-| access_token | string | Header | 是 | 应用访问凭证 | "cli_xxxxxxxxx" |
-| employee_id | string | Path | 是 | 员工ID | "emp_123456789" |
-| employee_id_type | string | Query | 否 | 用户 ID 类型 | "open_id" |
-| department_id_type | string | Query | 否 | 部门 ID 类型 | "department_id" |
-
-### 响应
-
-#### 成功响应
+**响应**：
 ```json
+// 成功响应示例
 {
   "code": 0,
   "msg": "success"
 }
 ```
 
-#### 错误响应
-```json
-{
-  "code": 400,
-  "msg": "Employee is not in to_be_resigned status"
-}
-```
+**说明**：
+- 用于为待离职员工取消离职，将其更新为「在职」状态
+- 取消离职时会清空离职信息
+- 使用user_access_token时默认为管理员用户，仅「人事管理模式」的管理员可操作
 
-### 代码示例
-
+**代码示例**：
 ```csharp
-var result = await _employeesApi.RegularEmployeeAsync(
-    access_token,
-    "emp_123456789"
-);
+// 取消员工待离职状态示例
+var result = await _employeeApi.RegularEmployeeAsync(
+    access_token: "your_access_token",
+    employee_id: "7123456789012345678");
 
 if (result.Code == 0)
 {
-    Console.WriteLine("员工取消离职成功");
+    Console.WriteLine("员工已恢复为在职状态");
+}
+else
+{
+    Console.WriteLine($"操作失败: {result.Msg}");
 }
 ```
-
-### 说明
-- 取消离职时会清空离职信息
-- 仅对「待离职」状态的员工有效
 
 ---
 
-## 批量查询员工
-
-### 接口名称
-用于批量根据员工的ID查询员工的详情，比如员工姓名，手机号，邮箱，部门等信息。
-
-### 飞飞书接口URL
+### **函数名称**：QueryEmployeesAsync
+```csharp
+Task<FeishuApiResult<EmployeeListResult>> QueryEmployeesAsync(
+    [Token(TokenType.Both)][Header("Authorization")] string access_token,
+    [Body] EmployeeQueryRequest employeeQueryRequest,
+    [Query("employee_id_type")] string? employee_id_type = Consts.User_Id_Type,
+    [Query("department_id_type")] string? department_id_type = Consts.Department_Id_Type,
+    CancellationToken cancellationToken = default);
 ```
-https://open.feishu.cn/open-apis/directory/v1/employees/mget
-```
 
-### 方法
-POST
+**认证**：需要 tenant_access_token 或 user_access_token
 
-### 认证
-需要访问凭证（tenant_access_token 或 user_access_token）
+**参数**：
+- `access_token` (必填): 应用调用API时的访问凭证
+- `employeeQueryRequest` (必填): 员工查询请求体
+  - `employee_ids`: 员工ID列表，与employee_id_type类型保持一致
+  - `required_fields`: 需要查询的字段列表，将按照传递的字段列表返回有权限的行、列数据
+- `employee_id_type` (可选): 用户ID类型
+- `department_id_type` (可选): 部门ID类型
+- `cancellationToken` (可选): 取消操作令牌
 
-### 参数
-
-| 参数名 | 类型 | 位置 | 必填 | 说明 | 示例值 |
-|--------|------|------|------|------|--------|
-| access_token | string | Header | 是 | 应用访问凭证 | "cli_xxxxxxxxx" |
-| employee_id_type | string | Query | 否 | 用户 ID 类型 | "open_id" |
-| department_id_type | string | Query | 否 | 部门 ID 类型 | "department_id" |
-| employeeQueryRequest | EmployeeQueryRequest | Body | 是 | 员工查询请求体 | 见下方示例 |
-
-#### EmployeeQueryRequest 结构
-
+**响应**：
 ```json
-{
-  "employee_ids": ["emp_123456789", "emp_987654321"],
-  "required_fields": ["name", "email", "mobile", "department_ids"]
-}
-```
-
-### 响应
-
-#### 成功响应
-```json
+// 成功响应示例
 {
   "code": 0,
   "msg": "success",
   "data": {
     "employees": [
       {
-        "employee_id": "emp_123456789",
-        "name": {
-          "zh_cn": "张三",
-          "en_us": "Zhang San"
-        },
-        "email": "zhangsan@example.com",
+        "employee_id": "7123456789012345678",
+        "name": "张三",
         "mobile": "13800138000",
-        "department_ids": ["od-12345678"]
+        "email": "zhangsan@example.com"
       }
     ],
     "abnormals": []
@@ -570,396 +469,242 @@ POST
 }
 ```
 
-#### 错误响应
-```json
-{
-  "code": 400,
-  "msg": "Invalid employee_ids"
-}
-```
+**说明**：用于批量根据员工的ID查询员工的详情，比如员工姓名、手机号、邮箱、部门等信息。
 
-### 代码示例
-
+**代码示例**：
 ```csharp
+// 批量查询员工详情示例
 var queryRequest = new EmployeeQueryRequest
 {
-    EmployeeIds = new List<string> { "emp_123456789", "emp_987654321" },
+    EmployeeIds = new List<string> 
+    { 
+        "7123456789012345678", 
+        "7123456789012345679" 
+    },
     RequiredFields = new List<string> 
     { 
+        "employee_id", 
         "name", 
-        "email", 
         "mobile", 
-        "department_ids" 
+        "email", 
+        "department_id" 
     }
 };
 
-var result = await _employeesApi.QueryEmployeesAsync(
-    access_token,
-    queryRequest
-);
+var result = await _employeeApi.QueryEmployeesAsync(
+    access_token: "your_access_token",
+    employeeQueryRequest: queryRequest);
 
 if (result.Code == 0)
 {
-    foreach (var employee in result.Data?.Employees ?? [])
+    foreach (var employee in result.Data?.Employees ?? new List<EmployeeDetail>())
     {
-        Console.WriteLine($"员工：{employee.Name}");
-        Console.WriteLine($"邮箱：{employee.Email}");
+        Console.WriteLine($"员工姓名: {employee.Name}, 手机号: {employee.Mobile}");
     }
 }
+else
+{
+    Console.WriteLine($"查询失败: {result.Msg}");
+}
 ```
-
-### 说明
-- 最多支持查询50个员工
-- `abnormals` 字段包含查询失败的员工信息
 
 ---
 
-## 分页查询员工
-
-### 接口名称
-用于依据指定条件，分页批量获取符合条件的员工详情列表
-
-### 飞飞书接口URL
+### **函数名称**：QueryEmployeePageListAsync
+```csharp
+Task<FeishuApiResult<EmployeeListPageResult>> QueryEmployeePageListAsync(
+   [Token(TokenType.Both)][Header("Authorization")] string access_token,
+   [Body] EmployeeSearchRequest employeeQueryRequest,
+   [Query("employee_id_type")] string? employee_id_type = Consts.User_Id_Type,
+   [Query("department_id_type")] string? department_id_type = Consts.Department_Id_Type,
+   CancellationToken cancellationToken = default);
 ```
-https://open.feishu.cn/open-apis/directory/v1/employees/filter
-```
 
-### 方法
-POST
+**认证**：需要 tenant_access_token 或 user_access_token
 
-### 认证
-需要访问凭证（tenant_access_token 或 user_access_token）
+**参数**：
+- `access_token` (必填): 应用调用API时的访问凭证
+- `employeeQueryRequest` (必填): 员工查询请求体
+  - `filter`: 查询条件，支持复杂的过滤条件
+  - `required_fields`: 需要查询的字段列表（可选）
+  - `page_request`: 分页参数
+    - `page_token`: 分页标记
+    - `page_size`: 页面大小
+- `employee_id_type` (可选): 用户ID类型
+- `department_id_type` (可选): 部门ID类型
+- `cancellationToken` (可选): 取消操作令牌
 
-### 参数
-
-| 参数名 | 类型 | 位置 | 必填 | 说明 | 示例值 |
-|--------|------|------|------|------|--------|
-| access_token | string | Header | 是 | 应用访问凭证 | "cli_xxxxxxxxx" |
-| employee_id_type | string | Query | 否 | 用户 ID 类型 | "open_id" |
-| department_id_type | string | Query | 否 | 部门 ID 类型 | "department_id" |
-| employeeQueryRequest | EmployeeSearchRequest | Body | 是 | 员工查询请求体 | 见下方示例 |
-
-#### EmployeeSearchRequest 结构
-
+**响应**：
 ```json
-{
-  "rules": [
-    {
-      "field": "employment_type",
-      "operator": "is",
-      "value": "formal"
-    },
-    {
-      "field": "department_ids",
-      "operator": "contains",
-      "value": ["od-12345678"]
-    }
-  ],
-  "page_request": {
-    "page_size": 20,
-    "page_token": ""
-  }
-}
-```
-
-### 响应
-
-#### 成功响应
-```json
+// 成功响应示例
 {
   "code": 0,
   "msg": "success",
   "data": {
     "employees": [
       {
-        "employee_id": "emp_123456789",
-        "name": {
-          "zh_cn": "张三",
-          "en_us": "Zhang San"
-        },
-        "employment_type": "formal",
-        "department_ids": ["od-12345678"]
+        "employee_id": "7123456789012345678",
+        "name": "张三",
+        "mobile": "13800138000"
       }
     ],
-    "page": {
-      "page_size": 20,
-      "page_token": "",
-      "has_more": false,
-      "total": "1"
-    }
+    "page_response": {
+      "page_token": "next_page_token",
+      "has_more": true,
+      "total": 100
+    },
+    "abnormals": []
   }
 }
 ```
 
-#### 错误响应
-```json
-{
-  "code": 400,
-  "msg": "Invalid filter rules"
-}
-```
+**说明**：用于依据指定条件，分页批量获取符合条件的员工详情列表。
 
-### 代码示例
-
+**代码示例**：
 ```csharp
+// 分页查询员工列表示例
 var searchRequest = new EmployeeSearchRequest
 {
-    Rules = new List<FilterRule>
+    Filter = new FieldFilter
     {
-        new FilterRule
+        // 构建查询条件，例如：查询技术部门的员工
+        Conditions = new List<FilterCondition>
         {
-            Field = "employment_type",
-            Operator = "is",
-            Value = "formal"
+            new FilterCondition
+            {
+                Field = "department_id",
+                Operator = "eq",
+                Value = "od-tech-dept"
+            }
         }
+    },
+    RequiredFields = new List<string> 
+    { 
+        "employee_id", 
+        "name", 
+        "mobile", 
+        "department_id" 
     },
     PageRequest = new PageRequest
     {
         PageSize = 20,
-        PageToken = ""
+        PageToken = "" // 第一页不传token
     }
 };
 
-var result = await _employeesApi.QueryEmployeePageListAsync(
-    access_token,
-    searchRequest
-);
+var result = await _employeeApi.QueryEmployeePageListAsync(
+    access_token: "your_access_token",
+    employeeQueryRequest: searchRequest);
 
 if (result.Code == 0)
 {
-    Console.WriteLine($"找到 {result.Data?.Employees?.Count} 个员工");
-    Console.WriteLine($"总计 {result.Data?.Page?.Total} 个员工");
+    var pageResult = result.Data;
+    Console.WriteLine($"查询到 {pageResult?.Employees.Count} 条记录");
+    
+    if (pageResult?.Page?.HasMore == true)
+    {
+        Console.WriteLine($"还有更多数据，下一页token: {pageResult.Page.PageToken}");
+    }
+}
+else
+{
+    Console.WriteLine($"查询失败: {result.Msg}");
 }
 ```
-
-### 说明
-- 支持复杂的过滤条件组合
-- 支持分页查询，使用 `page_token` 获取下一页
-- 支持多种操作符：is, contains, in, not_in 等
 
 ---
 
-## 搜索员工
-
-### 接口名称
-用于搜索员工信息，如通过关键词搜索员工的名称、手机号、邮箱等信息
-
-### 飞飞书接口URL
+### **函数名称**：SearchEmployeePageListAsync
+```csharp
+Task<FeishuApiResult<EmployeeListPageResult>> SearchEmployeePageListAsync(
+  [Token(TokenType.Both)][Header("Authorization")] string access_token,
+  [Body] EmployeePageQueryRequest employeeQueryRequest,
+  [Query("employee_id_type")] string? employee_id_type = Consts.User_Id_Type,
+  [Query("department_id_type")] string? department_id_type = Consts.Department_Id_Type,
+  CancellationToken cancellationToken = default);
 ```
-https://open.feishu.cn/open-apis/directory/v1/employees/search
-```
 
-### 方法
-POST
+**认证**：需要 tenant_access_token 或 user_access_token
 
-### 认证
-需要访问凭证（tenant_access_token 或 user_access_token）
+**参数**：
+- `access_token` (必填): 应用调用API时的访问凭证
+- `employeeQueryRequest` (必填): 员工查询请求体
+  - `query`: 搜索关键词
+  - `required_fields`: 需要查询的字段列表（可选）
+  - `page_request`: 分页参数
+- `employee_id_type` (可选): 用户ID类型
+- `department_id_type` (可选): 部门ID类型
+- `cancellationToken` (可选): 取消操作令牌
 
-### 参数
-
-| 参数名 | 类型 | 位置 | 必填 | 说明 | 示例值 |
-|--------|------|------|------|------|--------|
-| access_token | string | Header | 是 | 应用访问凭证 | "cli_xxxxxxxxx" |
-| employee_id_type | string | Query | 否 | 用户 ID 类型 | "open_id" |
-| department_id_type | string | Query | 否 | 部门 ID 类型 | "department_id" |
-| employeeQueryRequest | EmployeePageQueryRequest | Body | 是 | 员工查询请求体 | 见下方示例 |
-
-#### EmployeePageQueryRequest 结构
-
+**响应**：
 ```json
-{
-  "query": "张三",
-  "page_size": 20,
-  "page_token": ""
-}
-```
-
-### 响应
-
-#### 成功响应
-```json
+// 成功响应示例
 {
   "code": 0,
   "msg": "success",
   "data": {
     "employees": [
       {
-        "employee_id": "emp_123456789",
-        "name": {
-          "zh_cn": "张三",
-          "en_us": "Zhang San"
-        },
-        "email": "zhangsan@example.com",
+        "employee_id": "7123456789012345678",
+        "name": "张三",
         "mobile": "13800138000"
       }
     ],
-    "page": {
-      "page_size": 20,
-      "page_token": "",
+    "page_response": {
+      "page_token": "next_page_token",
       "has_more": false,
-      "total": "1"
-    }
+      "total": 1
+    },
+    "abnormals": []
   }
 }
 ```
 
-#### 错误响应
-```json
-{
-  "code": 400,
-  "msg": "Invalid query parameter"
-}
-```
+**说明**：用于搜索员工信息，如通过关键词搜索员工的名称、手机号、邮箱等信息。
 
-### 代码示例
-
+**代码示例**：
 ```csharp
+// 搜索员工信息示例
 var pageQueryRequest = new EmployeePageQueryRequest
 {
-    Query = "张三",
-    PageSize = 20,
-    PageToken = ""
+    Query = "张三", // 搜索关键词
+    RequiredFields = new List<string> 
+    { 
+        "employee_id", 
+        "name", 
+        "mobile", 
+        "email" 
+    },
+    PageRequest = new PageRequest
+    {
+        PageSize = 10,
+        PageToken = ""
+    }
 };
 
-var result = await _employeesApi.SearchEmployeePageListAsync(
-    access_token,
-    pageQueryRequest
-);
+var result = await _employeeApi.SearchEmployeePageListAsync(
+    access_token: "your_access_token",
+    employeeQueryRequest: pageQueryRequest);
 
 if (result.Code == 0)
 {
-    foreach (var employee in result.Data?.Employees ?? [])
+    var searchResult = result.Data;
+    Console.WriteLine($"搜索到 {searchResult?.Employees.Count} 条匹配记录");
+    
+    foreach (var employee in searchResult?.Employees ?? new List<EmployeeDetail>())
     {
-        Console.WriteLine($"找到员工：{employee.Name}");
+        Console.WriteLine($"找到员工: {employee.Name}, 手机: {employee.Mobile}");
     }
 }
-```
-
-### 说明
-- 支持模糊搜索，会搜索员工姓名、手机号、邮箱等字段
-- 支持分页查询
-- 搜索结果按相关性排序
-
----
-
-## 错误码说明
-
-| 错误码 | 说明 | 解决方案 |
-|--------|------|----------|
-| 0 | 成功 | - |
-| 99991401 | access_token 无效或已过期 | 重新获取 access_token |
-| 99991400 | 参数错误 | 检查请求参数格式和必填项 |
-| 403 | 无权限 | 检查应用权限和管理员范围 |
-| 404 | 员工不存在 | 确认 employee_id 是否正确 |
-| 400 | 请求参数无效 | 检查参数值是否符合规范 |
-| 429 | 请求频率超限 | 降低请求频率，使用限流策略 |
-
----
-
-## 最佳实践
-
-### 1. 错误处理
-```csharp
-public async Task<bool> HandleApiResult<T>(FeishuApiResult<T> result)
+else
 {
-    switch (result.Code)
-    {
-        case 0:
-            return true;
-        case 99991401:
-            // Token 过期，重新获取
-            await RefreshToken();
-            return false;
-        case 429:
-            // 限流，延迟重试
-            await Task.Delay(1000);
-            return false;
-        default:
-            // 其他错误，记录日志
-            _logger.LogError($"API调用失败: {result.Code} - {result.Msg}");
-            return false;
-    }
+    Console.WriteLine($"搜索失败: {result.Msg}");
 }
 ```
-
-### 2. 批量操作优化
-```csharp
-// 批量查询时使用分批处理
-public async Task<List<EmployeeDetail>> GetAllEmployeesAsync(List<string> employeeIds)
-{
-    var results = new List<EmployeeDetail>();
-    const int batchSize = 50;
-    
-    for (int i = 0; i < employeeIds.Count; i += batchSize)
-    {
-        var batch = employeeIds.Skip(i).Take(batchSize).ToList();
-        var query = new EmployeeQueryRequest
-        {
-            EmployeeIds = batch,
-            RequiredFields = new List<string> { "name", "email", "mobile" }
-        };
-        
-        var result = await _employeesApi.QueryEmployeesAsync(_token, query);
-        if (result.Code == 0 && result.Data?.Employees != null)
-        {
-            results.AddRange(result.Data.Employees);
-        }
-        
-        // 避免限流
-        await Task.Delay(100);
-    }
-    
-    return results;
-}
-```
-
-### 3. 缓存策略
-```csharp
-// 员工信息缓存
-public async Task<EmployeeDetail> GetEmployeeWithCacheAsync(string employeeId)
-{
-    var cacheKey = $"employee:{employeeId}";
-    
-    if (_cache.TryGetValue(cacheKey, out EmployeeDetail cachedEmployee))
-    {
-        return cachedEmployee;
-    }
-    
-    var query = new EmployeeQueryRequest
-    {
-        EmployeeIds = new List<string> { employeeId }
-    };
-    
-    var result = await _employeesApi.QueryEmployeesAsync(_token, query);
-    if (result.Code == 0 && result.Data?.Employees?.Count > 0)
-    {
-        var employee = result.Data.Employees[0];
-        _cache.Set(cacheKey, employee, TimeSpan.FromMinutes(30));
-        return employee;
-    }
-    
-    throw new Exception($"获取员工信息失败: {employeeId}");
-}
-```
-
----
 
 ## 版本更新记录
 
 | 版本 | 日期 | 更新内容 |
 |------|------|----------|
-| v1.0 | 2025-11-01 | 初始版本，支持员工基本CRUD操作 |
+| v1.0 | 2025-11-20 | 初始版本，包含完整的员工管理功能 |
 
----
-
-## 支持与反馈
-
-如果您在使用过程中遇到问题，请通过以下方式获取帮助：
-
-1. 查看 [飞书开放平台文档](https://open.feishu.cn/document/directory-v1/employee/overview)
-2. 提交问题到项目的 Issues
-3. 联系技术支持团队
-
----
-
-*最后更新时间: 2025-11-20*

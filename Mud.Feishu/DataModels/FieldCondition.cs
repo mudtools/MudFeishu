@@ -8,7 +8,7 @@
 namespace Mud.Feishu.DataModels;
 
 /// <summary>
-/// 比较表达式，具体如何使用请参见：https://open.feishu.cn/document/directory-v1/filter-usage
+/// 比较表达式，具体如何使用请参见：<see href="https://open.feishu.cn/document/directory-v1/filter-usage"/>
 /// </summary>
 public class FieldCondition
 {

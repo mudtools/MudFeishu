@@ -13,6 +13,7 @@ namespace Mud.Feishu;
 /// 通讯录的单位用于代表企业中的“子公司”、“分支机构”这类组织实体。
 /// <para>例如，你的企业下存在负责不同业务的两家子公司，那么你可以在同一个租户内，为两家子公司分别创建对应的单位资源。</para>
 /// <para>目前单位资源的主要作用是在部分用户权限上实现“子公司”级别的权限隔离。</para>
+/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/contact-v3/unit/overview"/></para>
 /// </summary>
 [HttpClientApi]
 [HttpClientApiWrap(TokenManage = nameof(ITokenManager), WrapInterface = nameof(IFeishuV3Unit))]

@@ -11,6 +11,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 用户组内可以添加部门或用户，部门和用户均属于用户组成员。使用用户组成员 API，可以在用户组内添加、移除、查询成员。
+/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/contact-v3/group-member/overview"/></para>
 /// </summary>
 [HttpClientApi]
 [HttpClientApiWrap(TokenManage = nameof(ITokenManager), WrapInterface = nameof(IFeishuV3UserGroupMember))]

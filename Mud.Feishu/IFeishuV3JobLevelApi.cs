@@ -13,6 +13,7 @@ namespace Mud.Feishu;
 /// 职级是用户属性之一，可以根据企业组织架构的需要，添加职级，例如 P1、P2、P3、P4。
 /// <para>后续在创建用户或者更新用户时，可以为用户设置指定的职级属性。</para>
 /// <para>使用职级 API，可以创建、更新、删除或查询职级。</para>
+/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/contact-v3/job_level/job-level-resources-introduction"/></para>
 /// </summary>
 [HttpClientApi]
 [HttpClientApiWrap(TokenManage = nameof(ITokenManager), WrapInterface = nameof(IFeishuV3JobLevel))]

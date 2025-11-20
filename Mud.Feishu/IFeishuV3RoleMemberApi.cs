@@ -15,6 +15,7 @@ namespace Mud.Feishu;
 /// <remarks>
 /// <para>可以将角色设置为审批流程的审批人，这样该角色内的成员均可处理审批。</para>
 /// <para>同时，每一个角色成员都可以设置管理范围，以便指定不同成员管理不同的部门。</para>
+/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/contact-v3/functional_role-member/resource-introduction"/></para>
 /// </remarks>
 [HttpClientApi]
 [HttpClientApiWrap(TokenManage = nameof(ITokenManager), WrapInterface = nameof(IFeishuV3RoleMember))]

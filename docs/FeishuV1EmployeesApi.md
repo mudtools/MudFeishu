@@ -15,7 +15,7 @@
 ### 接口名称
 用于在企业下创建员工。支持传入姓名、手机号等信息，生成在职状态的员工对象。
 
-### URL
+### 飞飞书接口URL
 ```
 https://open.feishu.cn/open-apis/directory/v1/employees
 ```
@@ -113,7 +113,7 @@ if (result.Code == 0)
 ### 接口名称
 用于更新在职/离职员工的信息、冻结/恢复员工。未传递的参数不会进行更新。
 
-### URL
+### 飞飞书接口URL
 ```
 https://open.feishu.cn/open-apis/directory/v1/employees/{employee_id}
 ```
@@ -207,7 +207,7 @@ if (result.Code == 0)
 ### 接口名称
 用于离职员工
 
-### URL
+### 飞飞书接口URL
 ```
 https://open.feishu.cn/open-apis/directory/v1/employees/{employee_id}
 ```
@@ -291,7 +291,7 @@ if (result.Code == 0)
 ### 接口名称
 用于恢复已离职的成员，恢复已离职成员至在职状态
 
-### URL
+### 飞飞书接口URL
 ```
 https://open.feishu.cn/open-apis/directory/v1/employees/{employee_id}/resurrect
 ```
@@ -371,7 +371,7 @@ if (result.Code == 0)
 ### 接口名称
 用于为在职员工办理离职，将其更新为「待离职」状态
 
-### URL
+### 飞飞书接口URL
 ```
 https://open.feishu.cn/open-apis/directory/v1/employees/{employee_id}/to_be_resigned
 ```
@@ -453,7 +453,7 @@ if (result.Code == 0)
 ### 接口名称
 用于为待离职员工取消离职，将其更新为「在职」状态
 
-### URL
+### 飞飞书接口URL
 ```
 https://open.feishu.cn/open-apis/directory/v1/employees/{employee_id}/regular
 ```
@@ -516,7 +516,7 @@ if (result.Code == 0)
 ### 接口名称
 用于批量根据员工的ID查询员工的详情，比如员工姓名，手机号，邮箱，部门等信息。
 
-### URL
+### 飞飞书接口URL
 ```
 https://open.feishu.cn/open-apis/directory/v1/employees/mget
 ```
@@ -619,7 +619,7 @@ if (result.Code == 0)
 ### 接口名称
 用于依据指定条件，分页批量获取符合条件的员工详情列表
 
-### URL
+### 飞飞书接口URL
 ```
 https://open.feishu.cn/open-apis/directory/v1/employees/filter
 ```
@@ -744,7 +744,7 @@ if (result.Code == 0)
 ### 接口名称
 用于搜索员工信息，如通过关键词搜索员工的名称、手机号、邮箱等信息
 
-### URL
+### 飞飞书接口URL
 ```
 https://open.feishu.cn/open-apis/directory/v1/employees/search
 ```
@@ -948,10 +948,7 @@ public async Task<EmployeeDetail> GetEmployeeWithCacheAsync(string employeeId)
 
 | 版本 | 日期 | 更新内容 |
 |------|------|----------|
-| v1.0 | 2024-01-01 | 初始版本，支持员工基本CRUD操作 |
-| v1.1 | 2024-03-15 | 新增待离职状态相关接口 |
-| v1.2 | 2024-06-20 | 优化批量查询性能，支持更多过滤条件 |
-| v1.3 | 2024-09-10 | 新增员工搜索功能，支持模糊查询 |
+| v1.0 | 2025-11-01 | 初始版本，支持员工基本CRUD操作 |
 
 ---
 

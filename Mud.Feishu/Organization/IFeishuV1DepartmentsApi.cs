@@ -85,4 +85,20 @@ public interface IFeishuV1DepartmentsApi
        [Query("department_id_type")] string? department_id_type = Consts.Department_Id_Type,
        CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// 用于依据指定条件，批量获取符合条件的部门详情列表。
+    /// </summary>
+    /// <param name="access_token">应用调用 API 时，需要通过访问凭证（access_token）进行身份鉴权</param>
+    /// <param name="filterSearchRequest">字段过滤查询条件请求体。</param>
+    /// <param name="employee_id_type">用户 ID 类型</param>
+    /// <param name="department_id_type">此次调用中的部门 ID 类型。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Post("https://open.feishu.cn/open-apis/directory/v1/departments/filter")]
+    Task<FeishuApiResult<DepartmentPageListResult>> QueryDepartmentsPageListAsync(
+       [Token(TokenType.Both)][Header("Authorization")] string access_token,
+       [Body] FilterSearchRequest filterSearchRequest,
+       [Query("employee_id_type")] string? employee_id_type = Consts.User_Id_Type,
+       [Query("department_id_type")] string? department_id_type = Consts.Department_Id_Type,
+       CancellationToken cancellationToken = default);
+
 }

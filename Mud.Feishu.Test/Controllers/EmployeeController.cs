@@ -208,7 +208,7 @@ public class EmployeeController : ControllerBase
     /// <returns></returns>
     [HttpPost("filter")]
     public async Task<IActionResult> QueryEmployeePageList(
-        [FromBody] EmployeeSearchRequest employeeQueryRequest,
+        [FromBody] FilterSearchRequest employeeQueryRequest,
         [FromQuery] string? employeeIdType = null,
         [FromQuery] string? departmentIdType = null)
     {

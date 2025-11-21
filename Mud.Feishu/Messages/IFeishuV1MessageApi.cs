@@ -168,4 +168,34 @@ public interface IFeishuV1MessageApi
      [Query("page_token")] string? page_token = null,
      [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
      CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 获取指定会话（包括单聊、群组）内的历史消息（即聊天记录）。
+    /// </summary>
+    /// <param name="tenant_access_token">应用调用 API 时，需要通过访问凭证（access_token）进行身份鉴权</param>
+    /// <param name="container_id_type">容器类型。示例值："chat"，可选值有：
+    /// <para>chat：包含单聊（p2p）和群聊（group） </para>
+    /// <para>thread：话题</para></param>
+    /// <param name="container_id">容器 ID。ID 类型与 container_id_type 取值一致。示例值："oc_234jsi43d3ssi993d43545f"</param>
+    /// <param name="start_time">待查询历史信息的起始时间，秒级时间戳。示例值："1608594809"</param>
+    /// <param name="end_time">待查询历史信息的结束时间，秒级时间戳。示例值："1609296809"</param>
+    /// <param name="sort_type">消息排序方式。示例值："ByCreateTimeAsc"，可选值有：
+    /// <para>ByCreateTimeAsc：按消息创建时间升序排列</para>
+    /// <para>ByCreateTimeDesc：按消息创建时间降序排列</para>
+    /// </param>
+    /// <param name="page_size">分页大小，即本次请求所返回的信息列表内的最大条目数。默认值：10</param>
+    /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Get("https://open.feishu.cn/open-apis/im/v1/messages")]
+    Task<FeishuApiListResult<HistoryMessageData>> GetHistoryMessageAsync(
+         [Token][Header("Authorization")] string tenant_access_token,
+         [Query("container_id_type")] string container_id_type,
+         [Query("container_id")] string container_id,
+         [Query("start_time")] string? start_time = null,
+         [Query("end_time")] string? end_time = null,
+         [Query("sort_type")] string? sort_type = "ByCreateTimeAsc",
+         [Query("page_size")] int page_size = 10,
+         [Query("page_token")] string? page_token = null,
+         CancellationToken cancellationToken = default);
 }

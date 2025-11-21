@@ -8,9 +8,9 @@
 namespace Mud.Feishu.DataModels.Messages;
 
 /// <summary>
-/// 线程消息结果
+/// 历史消息数据
 /// </summary>
-public class ThreadResult : BaseMessageResult
+public class HistoryMessageData : BaseMessageResult
 {
     /// <summary>
     /// 线程 ID，用于标识消息所属的线程
@@ -18,4 +18,18 @@ public class ThreadResult : BaseMessageResult
     /// </summary>
     [JsonPropertyName("thread_id")]
     public string? ThreadId { get; set; }
+
+    /// <summary>
+    /// 消息中提及的用户列表
+    /// <para>示例值：[{"user_id":"ou_7d8a6e6df7621556ce0d21922b676706ccs","name":"张三"}]</para>
+    /// </summary>
+    [JsonPropertyName("mentions")]
+    public List<MessageMention> Mentions { get; set; } = [];
+
+    /// <summary>
+    /// 上层消息 ID
+    /// <para>示例值："om_dc13264520392913993dd051dba21dcf"</para>
+    /// </summary>
+    [JsonPropertyName("upper_message_id")]
+    public string? UpperMessageId { get; set; }
 }

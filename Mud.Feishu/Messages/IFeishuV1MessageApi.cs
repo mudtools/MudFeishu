@@ -100,4 +100,23 @@ public interface IFeishuV1MessageApi
         [Query("receive_id_type")] string receive_id_type = Consts.User_Id_Type,
         [Query("uuid")] string? uuid = null,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 将话题转发至指定的用户、群聊或话题。
+    /// </summary>
+    /// <param name="tenant_access_token">应用调用 API 时，通过访问凭证（access_token）进行身份鉴权</param>
+    /// <param name="thread_id">要转发的话题ID。示例值："omt_dc132645203"</param>
+    /// <param name="receiveMessageRequest">转发消息请求体。</param>
+    /// <param name="receive_id_type">消息接收者 ID 类型。</param>
+    /// <param name="uuid">自定义设置的唯一字符串序列，用于在转发消息时请求去重。持有相同 uuid 的请求，在 1 小时内向同一目标的转发只可成功一次。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Post("https://open.feishu.cn/open-apis/im/v1/threads/{thread_id}/forward")]
+    Task<FeishuApiResult<ThreadResult>> ReceiveThreadsAsync(
+       [Token][Header("Authorization")] string tenant_access_token,
+       [Path] string thread_id,
+       [Body] ReceiveMessageRequest receiveMessageRequest,
+       [Query("receive_id_type")] string receive_id_type = Consts.User_Id_Type,
+       [Query("uuid")] string? uuid = null,
+       CancellationToken cancellationToken = default);
 }

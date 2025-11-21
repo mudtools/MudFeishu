@@ -668,7 +668,7 @@ MudFeishu 遵循 [MIT 许可证](LICENSE)。
 
 ## 更新日志
 
-### v1.1.0 (2025-11-14)
+### v1.0.1 (2025-11-20)
 - 新增角色管理 API (`IFeishuV3RoleApi`)
 - 新增角色成员管理 API (`IFeishuV3RoleMemberApi`)
 - 新增单位管理 API (`IFeishuV3UnitApi`)

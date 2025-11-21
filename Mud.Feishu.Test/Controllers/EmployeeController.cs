@@ -6,6 +6,7 @@
 // -----------------------------------------------------------------------
 
 using Microsoft.AspNetCore.Mvc;
+using Mud.Feishu.DataModels;
 using Mud.Feishu.DataModels.Employees;
 
 namespace Mud.Feishu.Test.Controllers;
@@ -232,7 +233,7 @@ public class EmployeeController : ControllerBase
     /// <returns></returns>
     [HttpPost("search")]
     public async Task<IActionResult> SearchEmployeePageList(
-        [FromBody] EmployeePageQueryRequest employeeQueryRequest,
+        [FromBody] PageSearchRequest employeeQueryRequest,
         [FromQuery] string? employeeIdType = null,
         [FromQuery] string? departmentIdType = null)
     {

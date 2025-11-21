@@ -1,25 +1,26 @@
-// -----------------------------------------------------------------------
+﻿// -----------------------------------------------------------------------
 //  作者：Mud Studio  版权所有 (c) Mud Studio 2025   
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-namespace Mud.Feishu.DataModels.Departments;
+namespace Mud.Feishu.DataModels.WsEndpoint;
+
 /// <summary>
-/// 表示部门领导者的数据模型
+/// 获取长连接响应结果。
 /// </summary>
-public class DepartmentLeader
+public class WsEndpointResult
 {
     /// <summary>
-    /// 领导者类型
+    /// 长连接地址
     /// </summary>
-    [JsonPropertyName("leaderType")]
-    public int LeaderType { get; set; }
+    [JsonPropertyName("url")]
+    public string Url { get; set; } = string.Empty;
 
     /// <summary>
-    /// 部门领导者的唯一标识符
+    /// 客户端配置信息。
     /// </summary>
-    [JsonPropertyName("leaderID")]
-    public string LeaderId { get; set; }
+    [JsonPropertyName("client_config")]
+    public ClientConfigInfo ClientConfig { get; set; } = new();
 }

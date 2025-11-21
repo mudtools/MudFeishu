@@ -6,6 +6,7 @@
 // -----------------------------------------------------------------------
 
 using Mud.Feishu.DataModels.Users;
+using Mud.Feishu.DataModels.WsEndpoint;
 
 namespace Mud.Feishu;
 
@@ -92,4 +93,14 @@ public interface IFeishuV3AuthenticationApi
        [Query] string? code_challenge = null,
        [Query] string? code_challenge_method = null,
        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 获取长连接地址及配置信息。
+    /// </summary>
+    /// <param name="appCredentials">应用唯一标识及应用秘钥信息</param>
+    /// <param name="cancellation_token">取消操作的令牌</param>
+    [Post("https://accounts.feishu.cn/callback/ws/endpoint")]
+    Task<FeishuApiResult<WsEndpointResult>> GetWebSocketEndpointAsync(
+        [Body] AppCredentials appCredentials,
+        CancellationToken cancellation_token = default);
 }

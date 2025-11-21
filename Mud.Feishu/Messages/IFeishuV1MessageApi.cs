@@ -12,10 +12,10 @@ namespace Mud.Feishu;
 /// <summary>
 /// 消息即飞书聊天中的一条消息。可以使用消息管理 API 对消息进行发送、回复、编辑、撤回、转发以及查询等操作。
 /// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/im-v1/message/intro"/></para>
-/// </summary>
+/// </summary> 
 [HttpClientApi(RegistryGroupName = "Message")]
-[HttpClientApiWrap(TokenManage = nameof(ITokenManager), WrapInterface = nameof(IFeishuMessage))]
-public interface IFeishuMessageApi
+[HttpClientApiWrap(TokenManage = nameof(ITokenManager), WrapInterface = nameof(IFeishuV1Message))]
+public interface IFeishuV1MessageApi
 {
     /// <summary>
     /// 向指定用户或者群聊发送消息。
@@ -38,7 +38,7 @@ public interface IFeishuMessageApi
     /// <para>回复的内容支持文本、富文本、卡片、群名片、个人名片、图片、视频、文件等多种类型。</para>
     /// </summary>
     /// <param name="tenant_access_token">应用调用 API 时，通过访问凭证（access_token）进行身份鉴权</param>
-    /// <param name="sendMessageRequest">回复消息请体求。</param>
+    /// <param name="replyMessageRequest">回复消息请体求。</param>
     /// <param name="message_id">待回复的消息的 ID。示例值："om_dc13264520392913993dd051dba21dcf"</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
@@ -46,6 +46,22 @@ public interface IFeishuMessageApi
     Task<FeishuApiResult<MessageDataResult>> ReplyMessageAsync(
          [Token][Header("Authorization")] string tenant_access_token,
          [Path] string message_id,
-         [Body] ReplyMessageRequest sendMessageRequest,
+         [Body] ReplyMessageRequest replyMessageRequest,
+         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 编辑已发送的消息内容，支持编辑文本、富文本消息。
+    /// <para>如需编辑卡片消息，请使用更新应用发送的消息卡片<see href="https://open.feishu.cn/document/server-docs/im-v1/message-card/patch"/>接口。</para>
+    /// </summary>
+    /// <param name="tenant_access_token">应用调用 API 时，通过访问凭证（access_token）进行身份鉴权</param>
+    /// <param name="editMessageRequest">编辑消息请求体。</param>
+    /// <param name="message_id">待编辑的消息的 ID。示例值："om_dc13264520392913993dd051dba21dcf"</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Put("https://open.feishu.cn/open-apis/im/v1/messages/{message_id}")]
+    Task<FeishuApiResult<MessageDataResult>> EditMessageAsync(
+         [Token][Header("Authorization")] string tenant_access_token,
+         [Path] string message_id,
+         [Body] EditMessageRequest editMessageRequest,
          CancellationToken cancellationToken = default);
 }

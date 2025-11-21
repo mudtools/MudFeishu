@@ -14,7 +14,7 @@ namespace Mud.Feishu;
 /// <para>使用通讯录 API，可以对人员类型资源进行增删改查操作。</para>
 /// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/contact-v3/employee_type_enum/overview"/></para>
 /// </summary>
-[HttpClientApi]
+[HttpClientApi(RegistryGroupName = "Organization")]
 [HttpClientApiWrap(TokenManage = nameof(ITokenManager), WrapInterface = nameof(IFeishuV3EmployeeType))]
 public interface IFeishuV3EmployeeTypeApi
 {

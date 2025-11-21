@@ -14,7 +14,7 @@ namespace Mud.Feishu;
 /// <para>部门在飞书的身份标识包括department_id、open_department_id。</para>
 /// 接口详细文档请参见：<see href="https://open.feishu.cn/document/directory-v1/department/overview"/>
 /// </summary>
-[HttpClientApi]
+[HttpClientApi(RegistryGroupName = "Organization")]
 [HttpClientApiWrap(TokenManage = nameof(ITokenManager), WrapInterface = nameof(IFeishuV1Departments))]
 public interface IFeishuV1DepartmentsApi
 {

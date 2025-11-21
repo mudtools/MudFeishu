@@ -14,7 +14,7 @@ namespace Mud.Feishu;
 /// <para>在部门内部，可添加用户作为部门成员，也可添加新的部门作为子部门。</para>
 /// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/contact-v3/department/field-overview"/></para>
 /// </summary>
-[HttpClientApi]
+[HttpClientApi(RegistryGroupName = "Organization")]
 [HttpClientApiWrap(TokenManage = nameof(ITokenManager), WrapInterface = nameof(IFeishuV3Departments))]
 public interface IFeishuV3DepartmentsApi
 {

@@ -13,7 +13,7 @@ namespace Mud.Feishu;
 /// 飞书用户是飞书通讯录中的基础资源，对应企业组织架构中的成员实体。
 /// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/contact-v3/user/field-overview"/></para>
 /// </summary>
-[HttpClientApi]
+[HttpClientApi(RegistryGroupName = "Organization")]
 [HttpClientApiWrap(TokenManage = nameof(ITokenManager), WrapInterface = nameof(IFeishuV3User))]
 public interface IFeishuV3UserApi
 {

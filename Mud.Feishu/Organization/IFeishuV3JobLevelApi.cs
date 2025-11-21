@@ -15,7 +15,7 @@ namespace Mud.Feishu;
 /// <para>使用职级 API，可以创建、更新、删除或查询职级。</para>
 /// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/contact-v3/job_level/job-level-resources-introduction"/></para>
 /// </summary>
-[HttpClientApi]
+[HttpClientApi(RegistryGroupName = "Organization")]
 [HttpClientApiWrap(TokenManage = nameof(ITokenManager), WrapInterface = nameof(IFeishuV3JobLevel))]
 public interface IFeishuV3JobLevelApi
 {

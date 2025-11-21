@@ -15,7 +15,7 @@ namespace Mud.Feishu;
 /// <para>通过序列 API，可以创建、更新、查询、删除序列信息。</para>
 /// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/contact-v3/job_family/job-family-resource-introduction"/></para>
 /// </summary>
-[HttpClientApi]
+[HttpClientApi(RegistryGroupName = "Organization")]
 [HttpClientApiWrap(TokenManage = nameof(ITokenManager), WrapInterface = nameof(IFeishuV3JobFamilies))]
 
 public interface IFeishuV3JobFamiliesApi

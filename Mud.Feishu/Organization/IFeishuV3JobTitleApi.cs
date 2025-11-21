@@ -13,7 +13,7 @@ namespace Mud.Feishu;
 /// 职务是用户属性之一，通过职务 API 仅支持查询职务信息。
 /// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/contact-v3/job_title/job-title-resources-introduction"/></para>
 /// </summary>
-[HttpClientApi]
+[HttpClientApi(RegistryGroupName = "Organization")]
 [HttpClientApiWrap(TokenManage = nameof(ITokenManager), WrapInterface = nameof(IFeishuV3JobTitle))]
 public interface IFeishuV3JobTitleApi
 {

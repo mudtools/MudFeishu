@@ -14,7 +14,7 @@ namespace Mud.Feishu;
 /// <para>员工在飞书的身份标识包括employee_id、open_id 和 union_id，其中employee_id的值等同于通讯录中的 user_id，其余两个也和通讯录的User的值相同。</para>
 /// 接口详细文档请参见：<see href="https://open.feishu.cn/document/directory-v1/employee/overview"/>
 /// </summary>
-[HttpClientApi]
+[HttpClientApi(RegistryGroupName = "Organization")]
 [HttpClientApiWrap(TokenManage = nameof(ITokenManager), WrapInterface = nameof(IFeishuV1Employees))]
 public interface IFeishuV1EmployeesApi
 {

@@ -14,7 +14,7 @@ namespace Mud.Feishu;
 /// <para>各类业务权限管控可以与用户组关联，从而实现高效便捷的成员权限管控。</para>
 /// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/contact-v3/group/overview"/></para>
 /// </summary>
-[HttpClientApi]
+[HttpClientApi(RegistryGroupName = "Organization")]
 [HttpClientApiWrap(TokenManage = nameof(ITokenManager), WrapInterface = nameof(IFeishuV3UserGroup))]
 public interface IFeishuV3UserGroupApi
 {

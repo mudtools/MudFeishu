@@ -17,7 +17,7 @@ namespace Mud.Feishu;
 /// <para>同时，每一个角色成员都可以设置管理范围，以便指定不同成员管理不同的部门。</para>
 /// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/contact-v3/functional_role-member/resource-introduction"/></para>
 /// </remarks>
-[HttpClientApi]
+[HttpClientApi(RegistryGroupName = "Organization")]
 [HttpClientApiWrap(TokenManage = nameof(ITokenManager), WrapInterface = nameof(IFeishuV3RoleMember))]
 public interface IFeishuV3RoleMemberApi
 {

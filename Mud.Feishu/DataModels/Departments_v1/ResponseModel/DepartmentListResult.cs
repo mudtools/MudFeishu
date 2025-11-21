@@ -5,22 +5,13 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-namespace Mud.Feishu.DataModels.Employees;
+namespace Mud.Feishu.DataModels.DepartmentsV1;
 
-/// <summary>
-/// 人员字段值
-/// </summary>
-public class UserValue
+public class DepartmentListResult
 {
-    /// <summary>
-    /// 人员ID
-    /// </summary>
-    [JsonPropertyName("ids")]
-    public List<string> Ids { get; set; } = [];
+    [JsonPropertyName("departments")]
+    public List<DepartmentDetail> Departments { get; set; }
 
-    /// <summary>
-    /// 用户类型。
-    /// </summary>
-    [JsonPropertyName("user_type")]
-    public string? UserType { get; set; }
+    [JsonPropertyName("abnormals")]
+    public List<AbnormalInfo> Abnormals { get; set; }
 }

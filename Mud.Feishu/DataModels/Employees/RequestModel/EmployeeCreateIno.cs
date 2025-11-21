@@ -89,7 +89,7 @@ public class EmployeeCreateInfo
     /// 工位
     /// </summary>
     [JsonPropertyName("work_station")]
-    public EmployeeI18nContent? WorkStation { get; set; }
+    public I18nContents? WorkStation { get; set; }
 
     /// <summary>
     /// 工号。企业内在职员工的工号不可重复。

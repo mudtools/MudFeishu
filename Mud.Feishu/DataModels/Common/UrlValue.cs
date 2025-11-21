@@ -5,28 +5,43 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-namespace Mud.Feishu.DataModels.Employees;
+namespace Mud.Feishu.DataModels;
 
 /// <summary>
-/// 异常信息类，包含数据异常的相关信息
+/// 网页链接字段值
 /// </summary>
-public class AbnormalInfo
+public class UrlValue
 {
     /// <summary>
-    /// 行错误码
+    /// 网页标题
     /// </summary>
-    [JsonPropertyName("row_error")]
-    public int RowError { get; set; }
+    [JsonPropertyName("link_text")]
+    public
+#if NET7_0_OR_GREATER
+        required
+#endif
+  I18nContent? LinkText
+    { get; set; }
 
     /// <summary>
-    /// 字段错误字典，键为字段名，值为错误码
+    /// 移动端网页链接
     /// </summary>
-    [JsonPropertyName("field_errors")]
-    public Dictionary<string, int> FieldErrors { get; set; } = [];
+    [JsonPropertyName("url")]
+    public
+#if NET7_0_OR_GREATER
+        required
+#endif
+  string? Url
+    { get; set; }
 
     /// <summary>
-    /// 异常记录ID
+    /// 桌面端网页链接
     /// </summary>
-    [JsonPropertyName("id")]
-    public string? Id { get; set; }
+    [JsonPropertyName("pcurl")]
+    public
+#if NET7_0_OR_GREATER
+        required
+#endif
+  string? PcUrl
+    { get; set; }
 }

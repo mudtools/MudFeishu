@@ -20,7 +20,7 @@ public class DepartmentInfo
     /// 部门名称，最多可输入 100 字
     /// </summary>
     [JsonPropertyName("name")]
-    public EmployeeI18nContent? Name { get; set; }
+    public I18nContents? Name { get; set; }
 
     /// <summary>
     /// 父部门ID，与department_id_type类型保持一致。如果父部门为根部门，该参数值为 “0”

@@ -69,4 +69,20 @@ public interface IFeishuV1DepartmentsApi
        [Query("department_id_type")] string? department_id_type = Consts.Department_Id_Type,
        CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// 支持传入多个部门ID，返回每个部门的详细信息（如名称、负责人、子部门等）。
+    /// </summary>
+    /// <param name="access_token">应用调用 API 时，通过访问凭证（access_token）进行身份鉴权</param>
+    /// <param name="departmentQueryRequest">部门查询参数请求体。</param>
+    /// <param name="employee_id_type">用户 ID 类型</param>
+    /// <param name="department_id_type">此次调用中的部门 ID 类型。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Post("https://open.feishu.cn/open-apis/directory/v1/departments/mget")]
+    Task<FeishuApiResult<DepartmentListResult>> QueryDepartmentsAsync(
+       [Token(TokenType.Both)][Header("Authorization")] string access_token,
+       [Body] DepartmentQueryRequest departmentQueryRequest,
+       [Query("employee_id_type")] string? employee_id_type = Consts.User_Id_Type,
+       [Query("department_id_type")] string? department_id_type = Consts.Department_Id_Type,
+       CancellationToken cancellationToken = default);
+
 }

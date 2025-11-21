@@ -22,7 +22,7 @@ public class EmployeeWorkPlace
     /// 地点名称
     /// </summary>
     [JsonPropertyName("place_name")]
-    public EmployeeI18nContent? PlaceName { get; set; }
+    public I18nContents? PlaceName { get; set; }
 
     /// <summary>
     /// 是否启用
@@ -34,5 +34,5 @@ public class EmployeeWorkPlace
     /// 地点描述信息
     /// </summary>
     [JsonPropertyName("description")]
-    public EmployeeI18nContent? Description { get; set; }
+    public I18nContents? Description { get; set; }
 }

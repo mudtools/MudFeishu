@@ -5,41 +5,33 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-namespace Mud.Feishu.DataModels.Employees;
-
+namespace Mud.Feishu.DataModels;
 
 /// <summary>
-/// 员工工作族信息类，包含员工所属工作族的相关信息
+/// 枚举字段值
 /// </summary>
-public class EmployeeJobFamilyInfo
+public class EnumValue
 {
     /// <summary>
-    /// 工作族描述信息
+    /// 选项结果ID  示例值：["1"]
     /// </summary>
-    [JsonPropertyName("description")]
-    public I18nContents? Description { get; set; }
+    [JsonPropertyName("enum_ids")]
+    public List<string> EnumIds { get; set; } = [];
 
     /// <summary>
-    /// 是否启用
+    /// 选项名
     /// </summary>
-    [JsonPropertyName("is_enabled")]
-    public bool IsEnabled { get; set; }
+    [JsonPropertyName("enum_name")]
+    public object? EnumName { get; set; }
 
     /// <summary>
-    /// 工作族ID
+    /// 选项类型 可选值有：1：文本  2：图片
     /// </summary>
-    [JsonPropertyName("job_family_id")]
-    public string? JobFamilyId { get; set; }
-
-    /// <summary>
-    /// 工作族名称
-    /// </summary>
-    [JsonPropertyName("job_family_name")]
-    public I18nContents? JobFamilyName { get; set; }
-
-    /// <summary>
-    /// 上级工作族ID
-    /// </summary>
-    [JsonPropertyName("parent_job_family_id")]
-    public string? ParentJobFamilyId { get; set; }
+    [JsonPropertyName("enum_type")]
+    public
+#if NET7_0_OR_GREATER
+        required
+#endif
+  string? EnumType
+    { get; set; }
 }

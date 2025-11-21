@@ -22,7 +22,7 @@ public class EmployeeJobTitleInfo
     /// 职务名称
     /// </summary>
     [JsonPropertyName("job_title_name")]
-    public EmployeeI18nContent? JobTitleName { get; set; }
+    public I18nContents? JobTitleName { get; set; }
 
     /// <summary>
     /// 是否启用
@@ -34,5 +34,5 @@ public class EmployeeJobTitleInfo
     /// 职务描述信息
     /// </summary>
     [JsonPropertyName("description")]
-    public EmployeeI18nContent? Description { get; set; }
+    public I18nContents? Description { get; set; }
 }

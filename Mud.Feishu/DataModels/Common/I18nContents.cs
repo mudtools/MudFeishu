@@ -5,43 +5,28 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-namespace Mud.Feishu.DataModels.Employees;
+namespace Mud.Feishu.DataModels;
 
 /// <summary>
-/// 网页链接字段值
+/// 员工国际化配置。
 /// </summary>
-public class UrlValue
+public class I18nContents
 {
     /// <summary>
-    /// 网页标题
+    /// 默认值最小长度：1字符
     /// </summary>
-    [JsonPropertyName("link_text")]
+    [JsonPropertyName("default_value")]
     public
 #if NET7_0_OR_GREATER
         required
 #endif
-  I18nContent? LinkText
+  string? DefaultValue
     { get; set; }
 
     /// <summary>
-    /// 移动端网页链接
+    /// 国际化值，key为zh_cn, ja_jp, en_us, value为对应的值。
     /// </summary>
-    [JsonPropertyName("url")]
-    public
-#if NET7_0_OR_GREATER
-        required
-#endif
-  string? Url
-    { get; set; }
-
-    /// <summary>
-    /// 桌面端网页链接
-    /// </summary>
-    [JsonPropertyName("pcurl")]
-    public
-#if NET7_0_OR_GREATER
-        required
-#endif
-  string? PcUrl
-    { get; set; }
+    [JsonPropertyName("i18n_value")]
+    public I18nName? I18nValue { get; set; }
 }
+

@@ -22,5 +22,5 @@ public class EmployeeDepartmentPathInfo
     /// 部门名称
     /// </summary>
     [JsonPropertyName("department_name")]
-    public EmployeeI18nContent? DepartmentName { get; set; }
+    public I18nContents? DepartmentName { get; set; }
 }

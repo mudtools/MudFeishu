@@ -28,7 +28,7 @@ public class EmployeeWorkInfo
     /// 工位信息
     /// </summary>
     [JsonPropertyName("work_station")]
-    public EmployeeI18nContent? WorkStation { get; set; }
+    public I18nContents? WorkStation { get; set; }
 
     /// <summary>
     /// 工号

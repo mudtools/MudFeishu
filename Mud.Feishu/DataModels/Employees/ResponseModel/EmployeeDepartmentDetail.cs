@@ -52,7 +52,7 @@ public class EmployeeDepartmentDetail
     /// 部门名称
     /// </summary>
     [JsonPropertyName("name")]
-    public EmployeeI18nContent? Name { get; set; }
+    public I18nContents? Name { get; set; }
 
     /// <summary>
     /// 排序权重

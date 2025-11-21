@@ -5,27 +5,12 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-namespace Mud.Feishu.DataModels.Employees;
-
-/// <summary>
-/// 员工姓名对象。
-/// </summary>
-public class EmployeeName
+namespace Mud.Feishu.DataModels.DepartmentsV1;
+public class DepartmentPathInfo
 {
-    /// <summary>
-    /// 员工的姓名，最多可输入 64 字。
-    /// </summary>
-    [JsonPropertyName("name")]
-    public
-#if NET7_0_OR_GREATER
-        required
-#endif
-  I18nContents? Name
-    { get; set; }
+    [JsonPropertyName("department_id")]
+    public string DepartmentId { get; set; }
 
-    /// <summary>
-    /// 别名，最多可输入 64 字
-    /// </summary>
-    [JsonPropertyName("another_name")]
-    public string? AnotherName { get; set; }
+    [JsonPropertyName("department_name")]
+    public I18nContent DepartmentName { get; set; }
 }

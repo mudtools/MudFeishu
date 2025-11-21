@@ -5,41 +5,28 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-namespace Mud.Feishu.DataModels.Employees;
-
+namespace Mud.Feishu.DataModels;
 
 /// <summary>
-/// 员工工作族信息类，包含员工所属工作族的相关信息
+/// 异常信息类，包含数据异常的相关信息
 /// </summary>
-public class EmployeeJobFamilyInfo
+public class AbnormalInfo
 {
     /// <summary>
-    /// 工作族描述信息
+    /// 行错误码
     /// </summary>
-    [JsonPropertyName("description")]
-    public I18nContents? Description { get; set; }
+    [JsonPropertyName("row_error")]
+    public int RowError { get; set; }
 
     /// <summary>
-    /// 是否启用
+    /// 字段错误字典，键为字段名，值为错误码
     /// </summary>
-    [JsonPropertyName("is_enabled")]
-    public bool IsEnabled { get; set; }
+    [JsonPropertyName("field_errors")]
+    public Dictionary<string, int> FieldErrors { get; set; } = [];
 
     /// <summary>
-    /// 工作族ID
+    /// 异常记录ID
     /// </summary>
-    [JsonPropertyName("job_family_id")]
-    public string? JobFamilyId { get; set; }
-
-    /// <summary>
-    /// 工作族名称
-    /// </summary>
-    [JsonPropertyName("job_family_name")]
-    public I18nContents? JobFamilyName { get; set; }
-
-    /// <summary>
-    /// 上级工作族ID
-    /// </summary>
-    [JsonPropertyName("parent_job_family_id")]
-    public string? ParentJobFamilyId { get; set; }
+    [JsonPropertyName("id")]
+    public string? Id { get; set; }
 }

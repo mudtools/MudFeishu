@@ -7,11 +7,21 @@
 
 namespace Mud.Feishu.DataModels.DepartmentsV1;
 
+/// <summary>
+/// 部门列表查询结果模型，用于表示部门批量查询的响应数据结构。
+/// 该模型包含正常部门列表和异常部门信息两部分，提供完整的查询结果。
+/// </summary>
 public class DepartmentListResult
 {
+    /// <summary>
+    /// 正常部门列表，包含查询到的所有有效部门详细信息。
+    /// </summary>
     [JsonPropertyName("departments")]
-    public List<DepartmentDetail> Departments { get; set; }
+    public List<DepartmentDetail> Departments { get; set; } = [];
 
+    /// <summary>
+    /// 异常部门信息列表，包含查询过程中发现的问题或异常情况。
+    /// </summary>
     [JsonPropertyName("abnormals")]
-    public List<AbnormalInfo> Abnormals { get; set; }
+    public List<AbnormalInfo> Abnormals { get; set; } = [];
 }

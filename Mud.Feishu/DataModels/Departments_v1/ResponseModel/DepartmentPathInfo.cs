@@ -6,11 +6,20 @@
 // -----------------------------------------------------------------------
 
 namespace Mud.Feishu.DataModels.DepartmentsV1;
+/// <summary>
+/// 表示部门路径信息的数据模型，用于描述部门在层级结构中的路径信息
+/// </summary>
 public class DepartmentPathInfo
 {
+    /// <summary>
+    /// 获取或设置部门ID
+    /// </summary>
     [JsonPropertyName("department_id")]
-    public string DepartmentId { get; set; }
+    public string? DepartmentId { get; set; }
 
+    /// <summary>
+    /// 获取或设置部门名称（支持国际化）
+    /// </summary>
     [JsonPropertyName("department_name")]
-    public I18nContent DepartmentName { get; set; }
+    public I18nContent? DepartmentName { get; set; }
 }

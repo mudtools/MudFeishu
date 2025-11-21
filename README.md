@@ -10,7 +10,7 @@ MudFeishu 是一个现代化的 .NET 库，用于简化与飞书（Feishu）API 
 - **统一的响应处理**：基于 `ApiResult<T>` 的响应包装，简化错误处理
 - **依赖注入友好**：提供 `IServiceCollection` 扩展方法，易于集成到现代 .NET 应用
 - **多版本 .NET 支持**：支持 .NET 8.0、.NET 9.0、.NET 10.0，使用最新的 C# 13.0 语言特性
-- **完整的飞书 API 覆盖**：支持认证、用户管理、部门管理、用户组管理、人员类型管理、职级管理、职位序列管理
+- **完整的飞书 API 覆盖**：支持认证、用户管理、部门管理、用户组管理、人员类型管理、职级管理、职位序列管理、角色管理、单位管理、职务管理、工作城市管理
 - **高性能缓存机制**：解决缓存击穿和竞态条件，支持令牌自动刷新
 - **企业级错误处理**：统一的异常处理和日志记录
 
@@ -110,7 +110,7 @@ public class FeishuController : ControllerBase
 
 ## API 接口
 
-### 认证授权 API (`IFeishuAuthenticationApi`)
+### 认证授权 API (`IFeishuV3AuthenticationApi`)
 
 - `GetUserInfoAsync()` - 通过 access_token 获取用户信息
 - `LogoutAsync()` - 用户退出登录
@@ -121,7 +121,7 @@ public class FeishuController : ControllerBase
 - `GetOAuthenRefreshAccessTokenAsync()` - 刷新用户访问令牌
 - `GetAuthorizeAsync()` - 发起用户授权
 
-### 用户管理 API (`IFeishuUserApi`)
+### 用户管理 API (`IFeishuV3UserApi`)
 
 - `CreateUserAsync()` - 创建企业用户
 - `UpdateUserAsync()` - 更新用户信息
@@ -134,7 +134,7 @@ public class FeishuController : ControllerBase
 - `DeleteUserByIdAsync()` - 删除用户
 - `ResurrectUserByIdAsync()` - 恢复已删除用户
 
-### 部门管理 API (`IFeishuDepartmentsApi`)
+### 部门管理 API (`IFeishuV3DepartmentsApi`)
 
 - `CreateDepartmentAsync()` - 创建部门
 - `UpdatePartDepartmentAsync()` - 部分更新部门信息
@@ -142,7 +142,7 @@ public class FeishuController : ControllerBase
 - `UpdateDepartmentIdAsync()` - 更新部门 ID
 - `GetDepartmentByIdAsync()` - 根据 ID 获取部门信息
 
-### 用户组管理 API (`IFeishuUserGroupApi`)
+### 用户组管理 API (`IFeishuV3UserGroupApi`)
 
 - `CreateUserGroupAsync()` - 创建用户组
 - `UpdateUserGroupAsync()` - 更新用户组
@@ -151,14 +151,14 @@ public class FeishuController : ControllerBase
 - `GetUserBelongGroupsAsync()` - 获取用户所属的用户组
 - `DeleteUserGroupByIdAsync()` - 删除用户组
 
-### 人员类型管理 API (`IFeishuEmployeeTypeApi`)
+### 人员类型管理 API (`IFeishuV3EmployeeTypeApi`)
 
 - `CreateEmployeeTypeAsync()` - 创建人员类型
 - `UpdateEmployeeTypeAsync()` - 更新人员类型
 - `GetEmployeeTypesAsync()` - 获取人员类型列表
 - `DeleteEmployeeTypeByIdAsync()` - 删除人员类型
 
-### 职级管理 API (`IFeishuJobLevelApi`)
+### 职级管理 API (`IFeishuV3JobLevelApi`)
 
 - `CreateJobLevelAsync()` - 创建职级
 - `UpdateJobLevelAsync()` - 更新职级
@@ -166,13 +166,57 @@ public class FeishuController : ControllerBase
 - `GetJobLevelsAsync()` - 获取职级列表
 - `DeleteJobLevelByIdAsync()` - 删除职级
 
-### 职位序列管理 API (`IFeishuJobFamiliesApi`)
+### 职位序列管理 API (`IFeishuV3JobFamiliesApi`)
 
 - `CreateJobFamilyAsync()` - 创建职位序列
 - `UpdateJobFamilyAsync()` - 更新职位序列
 - `GetJobFamilyByIdAsync()` - 根据 ID 获取职位序列信息
 - `GetJobFamilesListAsync()` - 获取职位序列列表
 - `DeleteJobFamilyByIdAsync()` - 删除职位序列
+
+### 角色管理 API (`IFeishuV3RoleApi`)
+
+- `CreateRoleAsync()` - 创建角色
+- `UpdateRoleAsync()` - 更新角色
+- `GetRoleByIdAsync()` - 根据 ID 获取角色信息
+- `GetRolesAsync()` - 获取角色列表
+- `DeleteRoleByIdAsync()` - 删除角色
+
+### 角色成员管理 API (`IFeishuV3RoleMemberApi`)
+
+- `AddRoleMemberAsync()` - 添加角色成员
+- `BatchAddRoleMemberAsync()` - 批量添加角色成员
+- `GetRoleMembersAsync()` - 获取角色成员列表
+- `GetRoleMemberScopesAsync()` - 获取角色成员管理范围
+- `BatchDeleteRoleMemberAsync()` - 批量删除角色成员
+
+### 单位管理 API (`IFeishuV3UnitApi`)
+
+- `CreateUnitAsync()` - 创建单位
+- `UpdateUnitNameAsync()` - 更新单位名称
+- `GetUnitByIdAsync()` - 根据 ID 获取单位信息
+- `GetUnitsAsync()` - 获取单位列表
+- `GetUnitDepartmentsAsync()` - 获取单位绑定的部门列表
+- `BindDepartmentToUnitAsync()` - 绑定部门到单位
+- `UnbindDepartmentFromUnitAsync()` - 解除部门与单位绑定
+- `DeleteUnitByIdAsync()` - 删除单位
+
+### 用户组成员管理 API (`IFeishuV3UserGroupMemberApi`)
+
+- `AddUserGroupMemberAsync()` - 添加用户组成员
+- `BatchAddUserGroupMemberAsync()` - 批量添加用户组成员
+- `GetUserGroupMembersAsync()` - 获取用户组成员列表
+- `RemoveUserGroupMemberAsync()` - 移除用户组成员
+- `BatchRemoveUserGroupMemberAsync()` - 批量移除用户组成员
+
+### 职务管理 API (`IFeishuV3JobTitleApi`)
+
+- `GetJobTitlesAsync()` - 获取职务信息列表
+
+### 工作城市管理 API (`IFeishuV3WorkCityApi`)
+
+- `GetWorkCitiesAsync()` - 获取工作城市列表
+- `GetWorkCityByIdAsync()` - 根据 ID 获取工作城市信息
 
 ## 使用示例
 
@@ -402,14 +446,23 @@ public class DepartmentController : ControllerBase
 
 ```
 Mud.Feishu/
-├── IFeishuAuthenticationApi.cs           # 认证授权 API (5个方法)
-├── IFeishuUserApi.cs                     # 用户管理 API (13个方法)
-├── IFeishuDepartmentsApi.cs             # 部门管理 API (7个方法)
-├── IFeishuUserGroupApi.cs               # 用户组管理 API (6个方法)
-├── IFeishuEmployeeTypeApi.cs             # 人员类型管理 API (4个方法)
-├── IFeishuJobLevelApi.cs                # 职级管理 API (5个方法)
-├── IFeishuJobFamiliesApi.cs              # 职位序列管理 API (5个方法)
-├── FeishuServiceCollectionExtensions.cs  # 依赖注入扩展
+├── IFeishuV3AuthenticationApi.cs         # 认证授权 API (5个方法)
+├── Organization/                         # 组织架构相关API
+│   ├── IFeishuV3UserApi.cs             # 用户管理 API (13个方法)
+│   ├── IFeishuV3DepartmentsApi.cs       # 部门管理 API (7个方法)
+│   ├── IFeishuV3UserGroupApi.cs         # 用户组管理 API (6个方法)
+│   ├── IFeishuV3UserGroupMemberApi.cs   # 用户组成员管理 API (5个方法)
+│   ├── IFeishuV3EmployeeTypeApi.cs     # 人员类型管理 API (4个方法)
+│   ├── IFeishuV3JobLevelApi.cs         # 职级管理 API (5个方法)
+│   ├── IFeishuV3JobFamiliesApi.cs      # 职位序列管理 API (5个方法)
+│   ├── IFeishuV3RoleApi.cs              # 角色管理 API (5个方法)
+│   ├── IFeishuV3RoleMemberApi.cs        # 角色成员管理 API (5个方法)
+│   ├── IFeishuV3UnitApi.cs             # 单位管理 API (8个方法)
+│   ├── IFeishuV3JobTitleApi.cs         # 职务管理 API (1个方法)
+│   └── IFeishuV3WorkCityApi.cs         # 工作城市管理 API (2个方法)
+├── Extensions/                            # 扩展组件
+│   ├── FeishuOptions.cs                  # 配置选项
+│   └── FeishuServiceCollectionExtensions.cs # 服务注册扩展
 ├── Extensions/
 │   ├── FeishuOptions.cs                 # 配置选项
 │   └── FeishuServiceCollectionExtensions.cs # 服务注册扩展
@@ -469,7 +522,7 @@ public class FeishuException : Exception
 
 ## 技术栈
 
-- **.NET 8.0/9.0/10.0** - 目标框架，使用 C# 13.0
+- **.NET 6.0/7.0/8.0/9.0/10.0** - 目标框架，使用 C# 13.0
 - **Mud.ServiceCodeGenerator v1.2.5** - HTTP 客户端代码生成器
 - **System.Text.Json** - 高性能 JSON 序列化
 - **Microsoft.Extensions.DependencyInjection** - 依赖注入支持
@@ -482,168 +535,6 @@ public class FeishuException : Exception
 - **.NET 8.0 SDK** 或更高版本
 - **飞书开发者账号**和应用凭证
 - **Git** 版本控制
-
-## 测试项目
-
-Mud.Feishu.Test 是一个完整的 ASP.NET Core Web API 项目，用于演示和测试库的所有功能。
-
-### 测试项目特性
-
-- **多框架支持**：同时支持 .NET 8.0、.NET 9.0、.NET 10.0
-- **Swagger 集成**：自动生成 API 文档，支持交互式测试
-- **完整示例**：包含所有 API 接口的实际使用示例
-- **配置完整**：包含真实的飞书应用配置示例
-
-### 测试项目结构
-
-```
-Mud.Feishu.Test/
-├── Controllers/
-│   ├── AuthController.cs          # 认证相关 API 测试
-│   ├── UserController.cs          # 用户管理 API 测试
-│   ├── DepartmentController.cs    # 部门管理 API 测试
-│   ├── EmployeeTypeController.cs  # 人员类型 API 测试
-│   ├── JobLevelController.cs      # 职级管理 API 测试
-│   ├── JobFamilyController.cs     # 职位序列管理 API 测试
-├── Properties/
-│   └── launchSettings.json       # 开发环境启动配置
-├── Program.cs                     # 应用程序入口
-├── appsettings.json              # 配置文件
-└── Mud.Feishu.Test.csproj        # 项目文件
-```
-
-### 运行测试项目
-
-```bash
-# 进入测试项目目录
-cd Mud.Feishu.Test
-
-# 运行测试项目（默认端口 60360/60361）
-dotnet run
-
-# 或者指定特定框架运行
-dotnet run --framework net8.0
-dotnet run --framework net9.0
-dotnet run --framework net10.0
-```
-
-### 测试 API 端点
-
-启动测试项目后，可以通过以下端点测试各项功能：
-
-#### 认证相关
-- `GET /api/auth` - 获取访问令牌（测试令牌管理器）
-
-#### 用户管理
-- `GET /api/user/{userId}` - 获取指定用户信息
-- `GET /api/user?departmentId=xxx` - 获取部门用户列表
-
-#### 部门管理
-- `GET /api/department/{departmentId}` - 获取指定部门信息
-- `GET /api/department?parentDepartmentId=xxx` - 获取子部门列表
-
-#### 人员类型
-- `GET /api/employeetype` - 获取人员类型列表
-
-#### 角色管理
-- `POST /api/role` - 创建角色
-- `PUT /api/role/{roleId}` - 更新角色
-- `DELETE /api/role/{roleId}` - 删除角色
-
-#### 单位管理
-- `POST /api/unit` - 创建单位
-- `PATCH /api/unit/{unitId}` - 更新单位名称
-- `GET /api/unit/{unitId}` - 获取单位信息
-- `GET /api/unit` - 获取单位列表
-- `GET /api/unit/{unitId}/departments` - 获取单位绑定的部门列表
-- `POST /api/unit/bind-department` - 绑定部门到单位
-- `POST /api/unit/unbind-department` - 解除部门与单位绑定
-- `DELETE /api/unit/{unitId}` - 删除单位
-
-#### 用户组管理
-- `POST /api/usergroup` - 创建用户组
-- `PATCH /api/usergroup/{groupId}` - 更新用户组
-- `GET /api/usergroup/{groupId}` - 获取用户组信息
-- `GET /api/usergroup` - 获取用户组列表
-- `GET /api/usergroup/member-belong/{memberId}` - 获取用户所属的用户组列表
-- `DELETE /api/usergroup/{groupId}` - 删除用户组
-
-#### 用户组成员管理
-- `POST /api/usergroupmember/{groupId}/add-member` - 添加用户组成员
-- `POST /api/usergroupmember/{groupId}/batch-add-member` - 批量添加用户组成员
-- `GET /api/usergroupmember/{groupId}/members` - 获取用户组成员列表
-- `POST /api/usergroupmember/{groupId}/remove-member` - 移除用户组成员
-- `POST /api/usergroupmember/{groupId}/batch-remove-member` - 批量移除用户组成员
-
-#### 角色成员管理
-- `POST /api/rolemember/{roleId}/batch-add-member` - 批量添加角色成员
-- `POST /api/rolemember/{roleId}/set-member-scopes` - 批量设置角色成员管理范围
-- `GET /api/rolemember/{roleId}/members/{memberId}/scopes` - 获取角色成员的管理范围
-- `GET /api/rolemember/{roleId}/members` - 获取角色成员列表
-- `DELETE /api/rolemember/{roleId}/batch-delete-member` - 批量删除角色成员
-
-#### 职级管理
-- `POST /api/joblevel` - 创建职级
-- `PUT /api/joblevel/{jobLevelId}` - 更新职级
-- `GET /api/joblevel/{jobLevelId}` - 获取职级信息
-- `GET /api/joblevel` - 获取职级列表
-- `DELETE /api/joblevel/{jobLevelId}` - 删除职级
-
-#### 职位序列管理
-- `POST /api/jobfamily` - 创建职位序列
-- `PUT /api/jobfamily/{jobFamilyId}` - 更新职位序列
-- `GET /api/jobfamily/{jobFamilyId}` - 获取指定职位序列信息
-- `GET /api/jobfamily/list` - 获取职位序列列表
-- `DELETE /api/jobfamily/{jobFamilyId}` - 删除职位序列
-- `GET /api/jobfamily/list` - 获取职位序列列表
-- `DELETE /api/jobfamily/{jobFamilyId}` - 删除职位序列
-
-### Swagger 文档访问
-
-启动测试项目后，访问 Swagger UI 进行交互式测试：
-
-```
-https://localhost:60360/swagger
-```
-
-### 开发工作流
-
-### 克隆项目
-```bash
-git clone https://gitee.com/mudtools/MudFeishu.git
-cd Mud.Feishu
-```
-
-### 构建项目
-```bash
-# 构建解决方案
-dotnet build
-
-# 构建特定项目
-dotnet build Mud.Feishu/Mud.Feishu.csproj
-```
-
-### 运行测试
-```bash
-# 运行单元测试（如果有）
-dotnet test
-
-# 运行集成测试项目
-cd Mud.Feishu.Test
-dotnet run
-
-# 指定框架运行测试
-dotnet run --framework net8.0
-```
-
-### 打包发布
-```bash
-# 创建 NuGet 包
-dotnet pack -c Release
-
-# 发布到本地 NuGet 源
-dotnet nuget push Mud.Feishu.*.nupkg --source Local
-```
 
 ## 高级用法
 
@@ -705,7 +596,7 @@ cachedManager.CleanExpiredTokens();
 A: 库内置了自动令牌刷新机制，会在令牌过期前自动获取新令牌，无需手动处理。
 
 ### Q: 支持哪些 .NET 版本？
-A: 支持 .NET 8.0、9.0、10.0，推荐使用 LTS 版本 8.0。
+A: 支持 .NET  6.0、7.0、8.0、9.0、10.0，推荐使用 LTS 8.0及以上子。
 
 ### Q: 如何配置多个飞书应用？
 A: 可以注册多个服务实例，每个实例使用不同的配置节名称。
@@ -750,6 +641,7 @@ MudFeishu 遵循 [MIT 许可证](LICENSE)。
 - 遵循 Microsoft 编码规范
 - 所有公共 API 必须包含 XML 文档注释
 - 异步方法命名以 `Async` 结尾
+- 所亦接口必须指定飞书API原始文档URL
 
 ### 测试要求
 - 新功能必须在 `Mud.Feishu.Test` 项目中添加演示代码
@@ -758,14 +650,24 @@ MudFeishu 遵循 [MIT 许可证](LICENSE)。
 
 ## 更新日志
 
-### v1.0.0 (2025-11-19)
+### v1.1.0 (2025-11-14)
+- 新增角色管理 API (`IFeishuV3RoleApi`)
+- 新增角色成员管理 API (`IFeishuV3RoleMemberApi`)
+- 新增单位管理 API (`IFeishuV3UnitApi`)
+- 新增职务管理 API (`IFeishuV3JobTitleApi`)
+- 新增工作城市管理 API (`IFeishuV3WorkCityApi`)
+- 新增职级管理 API (`IFeishuV3JobLevelApi`)
+- 新增职位序列管理 API (`IFeishuV3JobFamiliesApi`)
+- 完善数据模型 XML 注释
+- 优化测试项目，新增多个测试控制器
+- 统一部门相关数据模型，消除重复代码
+- 更新 README 文档，增加 API 完整覆盖说明
+- 支持 .NET 6.0/7.0/8.0/9.0/10.0
 
+### v1.0.0 (2025-11-14)
 - 初始版本发布
 - 支持飞书认证、用户、部门、用户组、人员类型管理 API
 - 内置智能令牌管理和缓存机制
 - 支持 .NET 8.0/9.0/10.0
 - 包含完整的测试演示项目
 - 集成 Swagger 文档支持
-- 完善数据模型 XML 注释
-- 优化测试项目，新增 JobFamilyController 测试控制器
-- 统一部门相关数据模型，消除重复代码

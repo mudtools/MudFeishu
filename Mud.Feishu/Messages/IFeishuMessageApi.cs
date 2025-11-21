@@ -32,4 +32,20 @@ public interface IFeishuMessageApi
        [Body] SendMessageRequest sendMessageRequest,
        [Query("receive_id_type")] string receive_id_type = Consts.User_Id_Type,
        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 回复指定消息。
+    /// <para>回复的内容支持文本、富文本、卡片、群名片、个人名片、图片、视频、文件等多种类型。</para>
+    /// </summary>
+    /// <param name="tenant_access_token">应用调用 API 时，通过访问凭证（access_token）进行身份鉴权</param>
+    /// <param name="sendMessageRequest">回复消息请体求。</param>
+    /// <param name="message_id">待回复的消息的 ID。示例值："om_dc13264520392913993dd051dba21dcf"</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Post("https://open.feishu.cn/open-apis/im/v1/messages/{message_id}/reply")]
+    Task<FeishuApiResult<MessageDataResult>> ReplyMessageAsync(
+         [Token][Header("Authorization")] string tenant_access_token,
+         [Path] string message_id,
+         [Body] ReplyMessageRequest sendMessageRequest,
+         CancellationToken cancellationToken = default);
 }

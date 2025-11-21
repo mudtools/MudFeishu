@@ -156,7 +156,7 @@ public interface IFeishuV1EmployeesApi
     /// <param name="department_id_type">此次调用中的部门 ID 类型。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Post("https://open.feishu.cn/open-apis/directory/v1/employees/filter")]
-    Task<FeishuApiResult<EmployeeListPageResult>> QueryEmployeePageListAsync(
+    Task<FeishuApiResult<EmployeePageListResult>> QueryEmployeePageListAsync(
        [Token(TokenType.Both)][Header("Authorization")] string access_token,
        [Body] FilterSearchRequest filterSearchRequest,
        [Query("employee_id_type")] string? employee_id_type = Consts.User_Id_Type,
@@ -168,14 +168,14 @@ public interface IFeishuV1EmployeesApi
     /// <para>员工指飞书企业内身份为「Employee」的成员，等同于通讯录OpenAPI中的「User」</para> 
     /// </summary>
     /// <param name="access_token">应用调用 API 时，需要通过访问凭证（access_token）进行身份鉴权</param>
-    /// <param name="employeeQueryRequest">员工查询请求体。</param>
+    /// <param name="pageSearchRequest">分页查询参数请求体。</param>
     /// <param name="employee_id_type">用户 ID 类型</param>
     /// <param name="department_id_type">此次调用中的部门 ID 类型。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Post("https://open.feishu.cn/open-apis/directory/v1/employees/search")]
-    Task<FeishuApiResult<EmployeeListPageResult>> SearchEmployeePageListAsync(
+    Task<FeishuApiResult<EmployeePageListResult>> SearchEmployeePageListAsync(
       [Token(TokenType.Both)][Header("Authorization")] string access_token,
-      [Body] EmployeePageQueryRequest employeeQueryRequest,
+      [Body] PageSearchRequest pageSearchRequest,
       [Query("employee_id_type")] string? employee_id_type = Consts.User_Id_Type,
       [Query("department_id_type")] string? department_id_type = Consts.Department_Id_Type,
       CancellationToken cancellationToken = default);

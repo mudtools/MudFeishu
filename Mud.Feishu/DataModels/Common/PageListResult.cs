@@ -8,19 +8,19 @@
 namespace Mud.Feishu.DataModels;
 
 /// <summary>
-/// 搜索请求基础模型，用于包含搜索查询参数。
+/// 分页查询输出结果。
 /// </summary>
-public class SearchRequest
+public class PageListResult
 {
     /// <summary>
-    /// 搜索关键词，匹配字段为部门名称（不支持匹配部门国际化名称）。
-    /// <para>示例值："DemoName"</para>
+    /// 分页结果。
     /// </summary>
-    [JsonPropertyName("query")]
-    public
-#if NET7_0_OR_GREATER
-        required
-#endif
-        string? Query
-    { get; set; } = string.Empty;
+    [JsonPropertyName("page_response")]
+    public ApiListResult? Page { get; set; }
+
+    /// <summary>
+    /// 异常信息列表
+    /// </summary>
+    [JsonPropertyName("abnormals")]
+    public List<AbnormalInfo> Abnormals { get; set; } = [];
 }

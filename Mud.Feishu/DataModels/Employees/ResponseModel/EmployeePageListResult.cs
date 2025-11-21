@@ -10,23 +10,11 @@ namespace Mud.Feishu.DataModels.Employees;
 /// <summary>
 /// 员工分页列表结果类，包含员工详细信息、分页信息和异常信息列表
 /// </summary>
-public class EmployeeListPageResult
+public class EmployeePageListResult : PageListResult
 {
     /// <summary>
     /// 员工详细信息列表
     /// </summary>
     [JsonPropertyName("employees")]
     public List<EmployeeDetail> Employees { get; set; } = [];
-
-    /// <summary>
-    /// 分页结果。
-    /// </summary>
-    [JsonPropertyName("page_response")]
-    public ApiListResult? Page { get; set; }
-
-    /// <summary>
-    /// 异常信息列表
-    /// </summary>
-    [JsonPropertyName("abnormals")]
-    public List<AbnormalInfo> Abnormals { get; set; } = [];
 }

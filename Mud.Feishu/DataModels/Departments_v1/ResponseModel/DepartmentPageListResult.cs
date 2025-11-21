@@ -10,20 +10,11 @@ namespace Mud.Feishu.DataModels.DepartmentsV1;
 /// <summary>
 /// 部门分页列表结果类，包含部门详细信息、分页信息和异常信息列表
 /// </summary>
-public class DepartmentPageListResult
+public class DepartmentPageListResult : PageListResult
 {
+    /// <summary>
+    /// 部门分页列表结果
+    /// </summary>
     [JsonPropertyName("departments")]
     public List<DepartmentDetail>? Departments { get; set; }
-
-    /// <summary>
-    /// 分页结果。
-    /// </summary>
-    [JsonPropertyName("page_response")]
-    public ApiListResult? Page { get; set; }
-
-    /// <summary>
-    /// 异常信息列表
-    /// </summary>
-    [JsonPropertyName("abnormals")]
-    public List<AbnormalInfo> Abnormals { get; set; } = [];
 }

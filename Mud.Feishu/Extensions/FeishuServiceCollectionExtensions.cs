@@ -15,48 +15,99 @@ namespace Microsoft.Extensions.DependencyInjection;
 /// </summary>
 public static class FeishuServiceCollectionExtensions
 {
+    private const string DefaultConfigurationSection = "Feishu";
+    private const string ValidationErrorMessage = "飞书服务需要在配置文件中正确配置 AppId 和 AppSecret。";
+
     /// <summary>
     /// 注册飞书 API 服务（使用配置节）
     /// </summary>
+    /// <param name="services">服务集合</param>
+    /// <param name="configuration">配置对象</param>
+    /// <returns>服务集合，支持链式调用</returns>
     public static IServiceCollection AddFeishuApiService(this IServiceCollection services, IConfiguration configuration)
     {
-        // 配置选项和验证
-        services.Configure<FeishuOptions>(configuration);
-        services.AddOptions<FeishuOptions>()
-                .Configure(options => configuration.Bind(options))
-                .Validate(options =>
-                    !string.IsNullOrEmpty(options.AppId) &&
-                    !string.IsNullOrEmpty(options.AppSecret),
-                    "AppId and AppSecret are required for Feishu service")
-                .ValidateOnStart();
-
-        return services.AddFeishuApiServiceCore();
+        return services.AddFeishuApiService(configuration, DefaultConfigurationSection);
     }
 
     /// <summary>
     /// 注册飞书 API 服务（使用配置节名称）
     /// </summary>
-    public static IServiceCollection AddFeishuApiService(this IServiceCollection services, string configurationSection = "Feishu")
+    /// <param name="services">服务集合</param>
+    /// <param name="configuration">配置对象</param>
+    /// <param name="configurationSection">配置节名称，默认为"Feishu"</param>
+    /// <returns>服务集合，支持链式调用</returns>
+    public static IServiceCollection AddFeishuApiService(this IServiceCollection services, IConfiguration configuration, string configurationSection)
     {
-        // 配置选项和验证
-        services.AddOptions<FeishuOptions>()
-                .BindConfiguration(configurationSection)
-                .Validate(options =>
-                    !string.IsNullOrEmpty(options.AppId) &&
-                    !string.IsNullOrEmpty(options.AppSecret),
-                    "AppId and AppSecret are required for Feishu service")
-                .ValidateOnStart();
+        services.ConfigureFeishuOptions(configuration, configurationSection);
+        services.ValidateFeishuOptions();
 
         return services.AddFeishuApiServiceCore();
     }
 
     /// <summary>
+    /// 注册飞书 API 服务（使用选项）
+    /// </summary>
+    /// <param name="services">服务集合</param>
+    /// <param name="configureOptions">配置选项的委托</param>
+    /// <returns>服务集合，支持链式调用</returns>
+    public static IServiceCollection AddFeishuApiService(this IServiceCollection services, Action<FeishuOptions> configureOptions)
+    {
+        if (configureOptions == null)
+            throw new ArgumentNullException(nameof(configureOptions));
+
+        services.Configure(configureOptions);
+        services.ValidateFeishuOptions();
+
+        return services.AddFeishuApiServiceCore();
+    }
+
+    /// <summary>
+    /// 配置飞书选项
+    /// </summary>
+    /// <param name="services">服务集合</param>
+    /// <param name="configuration">配置对象</param>
+    /// <param name="configurationSection">配置节名称</param>
+    private static IServiceCollection ConfigureFeishuOptions(this IServiceCollection services, IConfiguration configuration, string configurationSection)
+    {
+        services.Configure<FeishuOptions>(options =>
+        {
+            options.AppId = configuration[$"{configurationSection}:AppId"];
+            options.AppSecret = configuration[$"{configurationSection}:AppSecret"];
+        });
+
+        return services;
+    }
+
+    /// <summary>
+    /// 验证飞书选项
+    /// </summary>
+    /// <param name="services">服务集合</param>
+    /// <returns>服务集合，支持链式调用</returns>
+    private static IServiceCollection ValidateFeishuOptions(this IServiceCollection services)
+    {
+        services.AddOptions<FeishuOptions>()
+                .Validate(options => ValidateFeishuOptionsInternal(options), ValidationErrorMessage)
+                .ValidateOnStart();
+
+        return services;
+    }
+
+    /// <summary>
+    /// 内部验证飞书选项的方法
+    /// </summary>
+    /// <param name="options">飞书选项</param>
+    /// <returns>验证结果</returns>
+    private static bool ValidateFeishuOptionsInternal(FeishuOptions options) =>
+        !string.IsNullOrEmpty(options.AppId) && !string.IsNullOrEmpty(options.AppSecret);
+
+    /// <summary>
     /// 注册飞书 API 服务（核心方法）
     /// </summary>
-    private static IServiceCollection AddFeishuApiServiceCore(this IServiceCollection services)
-    {
-        return services.AddSingleton<ITokenManager, TokenManagerWithCache>()
-                       .AddWebApiHttpClient()
-                       .AddWebApiHttpClientWrap();
-    }
+    /// <param name="services">服务集合</param>
+    /// <returns>服务集合，支持链式调用</returns>
+    private static IServiceCollection AddFeishuApiServiceCore(this IServiceCollection services) =>
+        services
+            .AddSingleton<ITokenManager, TokenManagerWithCache>()
+            .AddWebApiHttpClient()
+            .AddWebApiHttpClientWrap();
 }

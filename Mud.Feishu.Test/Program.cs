@@ -20,7 +20,7 @@ builder.Services.AddOpenApi();
 #endif
 
 // 添加飞书服务
-builder.Services.AddFeishuApiService("Feishu")
+builder.Services.AddFeishuApiService(builder.Configuration, "Feishu")
                 .AddLogging(option => option.AddConsole());
 
 var app = builder.Build();

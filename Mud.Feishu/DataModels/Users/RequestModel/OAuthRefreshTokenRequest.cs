@@ -16,5 +16,10 @@ public class OAuthRefreshTokenRequest : OAuthTokenBaseRequest
     /// 刷新令牌，用于刷新 user_access_token 以及 refresh_token。
     ///</summary>
     [JsonPropertyName("refresh_token")]
-    public required string RefreshToken { get; set; }
+    public
+#if NET7_0_OR_GREATER
+        required
+#endif
+ string? RefreshToken
+    { get; set; }
 }

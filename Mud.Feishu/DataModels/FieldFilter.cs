@@ -16,5 +16,10 @@ public class FieldFilter
     /// 比较表达式列表
     /// </summary>
     [JsonPropertyName("conditions")]
-    public required List<FieldCondition> Conditions { get; set; } = [];
+    public
+#if NET7_0_OR_GREATER
+        required
+#endif
+ List<FieldCondition> Conditions
+    { get; set; } = [];
 }

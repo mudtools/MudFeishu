@@ -20,13 +20,23 @@ public class FieldCondition
     /// <para> work_info.job_number</para>
     /// </summary>
     [JsonPropertyName("field")]
-    public required string Field { get; set; }
+    public
+#if NET7_0_OR_GREATER
+        required
+#endif
+        string? Field
+    { get; set; }
 
     /// <summary>
     /// 比较操作符。可选值有：eq：等于，支持任何类型的左值  in：属于任一
     /// </summary>
     [JsonPropertyName("operator")]
-    public required string Operator { get; set; }
+    public
+#if NET7_0_OR_GREATER
+        required
+#endif
+ string? Operator
+    { get; set; }
 
     /// <summary>
     /// 筛选条件的右值，为转义后的json字符串。
@@ -36,5 +46,10 @@ public class FieldCondition
     /// <para>in匹配数字列表，使用 "[123]"</para>
     /// </summary>
     [JsonPropertyName("value")]
-    public required string Value { get; set; }
+    public
+#if NET7_0_OR_GREATER
+        required
+#endif
+ string? Value
+    { get; set; }
 }

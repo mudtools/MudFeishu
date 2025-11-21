@@ -16,7 +16,7 @@
 
 ## 函数详细内容
 
-### 函数名称：GetWorkCitesListAsync
+## GetWorkCitesListAsync
 
 **函数签名**：
 ```csharp
@@ -122,7 +122,7 @@ else
 
 ---
 
-### 函数名称：GetWorkCityByIdAsync
+## GetWorkCityByIdAsync
 
 **函数签名**：
 ```csharp

@@ -1,6 +1,4 @@
-# IFeishuV3JobLevelApi API文档
-
-## 接口名称：IFeishuV3JobLevelApi
+# 职级管理
 
 ## 功能描述
 职级是用户属性之一，可以根据企业组织架构的需要，添加职级，例如 P1、P2、P3、P4。后续在创建用户或者更新用户时，可以为用户设置指定的职级属性。该API提供完整的职级管理功能，支持创建、更新、查询和删除职级，满足企业职级体系管理的需求。
@@ -15,9 +13,7 @@
 | GetJobLevelListAsync | 获取当前租户下的职级信息列表 | tenant_access_token | GET |
 | DeleteJobLevelByIdAsync | 删除指定的职级 | tenant_access_token | DELETE |
 
-## 函数详细内容：
-
-### **函数名称**：CreateJobLevelAsync
+## CreateJobLevelAsync
 **认证**：tenant_access_token  
 **参数**：
 - tenant_access_token (必填) - 应用访问令牌
@@ -138,7 +134,7 @@ else
 
 ---
 
-### **函数名称**：UpdateJobLevelAsync
+## UpdateJobLevelAsync
 **认证**：tenant_access_token  
 **参数**：
 - tenant_access_token (必填) - 应用访问令牌
@@ -220,7 +216,7 @@ else
 
 ---
 
-### **函数名称**：GetJobLevelByIdAsync
+## GetJobLevelByIdAsync
 **认证**：tenant_access_token  
 **参数**：
 - tenant_access_token (必填) - 应用访问令牌
@@ -300,7 +296,7 @@ else
 
 ---
 
-### **函数名称**：GetJobLevelListAsync
+## GetJobLevelListAsync
 **认证**：tenant_access_token  
 **参数**：
 - tenant_access_token (必填) - 应用访问令牌
@@ -389,7 +385,7 @@ Console.WriteLine($"\n总共找到 {allJobLevels.Count} 个包含'{searchKeyword
 
 ---
 
-### **函数名称**：DeleteJobLevelByIdAsync
+## DeleteJobLevelByIdAsync
 **认证**：tenant_access_token  
 **参数**：
 - tenant_access_token (必填) - 应用访问令牌

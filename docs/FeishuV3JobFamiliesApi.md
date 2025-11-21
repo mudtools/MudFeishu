@@ -1,7 +1,5 @@
 # 职位序列管理
 
-## 接口名称：IFeishuV3JobFamiliesApi
-
 ## 功能描述
 序列是用户属性之一，用来为不同的用户定义不同的工作类型，例如产品、研发、测试、运营等。可以根据企业实际需要添加序列，后续在创建或更新用户时，为用户设置相匹配的序列。该API提供完整的职位序列管理功能，支持创建层级化的序列结构、序列信息的查询更新和删除，满足企业精细化的人员分类和岗位管理需求。
 
@@ -15,9 +13,7 @@
 | GetJobFamilesListAsync | 获取当前租户下的序列信息列表 | tenant_access_token | GET |
 | DeleteJobFamilyByIdAsync | 删除指定序列 | tenant_access_token | DELETE |
 
-## 函数详细内容：
-
-### **函数名称**：CreateJobFamilyAsync
+## CreateJobFamilyAsync
 **认证**：tenant_access_token  
 **参数**：
 - tenant_access_token (必填) - 应用访问令牌
@@ -138,7 +134,7 @@ else
 
 ---
 
-### **函数名称**：UpdateJobFamilyAsync
+## UpdateJobFamilyAsync
 **认证**：tenant_access_token  
 **参数**：
 - tenant_access_token (必填) - 应用访问令牌
@@ -221,7 +217,7 @@ else
 
 ---
 
-### **函数名称**：GetJobFamilyByIdAsync
+## GetJobFamilyByIdAsync
 **认证**：tenant_access_token  
 **参数**：
 - tenant_access_token (必填) - 应用访问令牌
@@ -308,7 +304,7 @@ else
 
 ---
 
-### **函数名称**：GetJobFamilesListAsync
+## GetJobFamilesListAsync
 **认证**：tenant_access_token  
 **参数**：
 - tenant_access_token (必填) - 应用访问令牌
@@ -400,7 +396,7 @@ Console.WriteLine($"\n总共找到 {allJobFamilies.Count} 个包含'{searchKeywo
 
 ---
 
-### **函数名称**：DeleteJobFamilyByIdAsync
+## DeleteJobFamilyByIdAsync
 **认证**：tenant_access_token  
 **参数**：
 - tenant_access_token (必填) - 应用访问令牌

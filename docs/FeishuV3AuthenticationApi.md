@@ -1,7 +1,5 @@
 # 认证授权
 
-## 接口名称：IFeishuV3AuthenticationApi
-
 ## 功能描述
 该接口提供了飞书认证授权相关的完整功能，包括获取租户访问凭证、应用访问凭证、用户访问凭证以及OAuth授权流程等。接口支持多种token类型，满足不同场景下的认证需求，是企业应用与飞书平台集成的核心认证接口。
 
@@ -17,9 +15,7 @@
 | GetOAuthenRefreshAccessTokenAsync | POST | 刷新用户访问凭证 |
 | GetAuthorizeAsync | GET | 发起用户授权 |
 
-## 函数详细内容
-
-### **函数名称**：GetTenantAccessTokenAsync
+## GetTenantAccessTokenAsync
 ```csharp
 Task<TenantAppCredentialResult> GetTenantAccessTokenAsync(
     [Body] AppCredentials credentials,
@@ -92,7 +88,7 @@ public async Task<string> GetTenantAccessToken()
 
 ---
 
-### **函数名称**：GetAppAccessTokenAsync
+## GetAppAccessTokenAsync
 ```csharp
 Task<AppCredentialResult> GetAppAccessTokenAsync(
     [Body] AppCredentials credentials,
@@ -179,7 +175,7 @@ private async Task CacheTokenAsync(AppCredentialResult result)
 
 ---
 
-### **函数名称**：GetOAuthenAccessTokenAsync
+## GetOAuthenAccessTokenAsync
 ```csharp
 Task<OAuthCredentialsResult> GetOAuthenAccessTokenAsync(
     [Body] OAuthTokenRequest credentials,
@@ -280,7 +276,7 @@ private async Task SaveUserTokenAsync(OAuthCredentialsResult result)
 
 ---
 
-### **函数名称**：GetOAuthenRefreshAccessTokenAsync
+## GetOAuthenRefreshAccessTokenAsync
 ```csharp
 Task<OAuthCredentialsResult> GetOAuthenRefreshAccessTokenAsync(
     [Body] OAuthRefreshTokenRequest credentials,
@@ -380,7 +376,7 @@ private async Task HandleRefreshFailure()
 
 ---
 
-### **函数名称**：GetAuthorizeAsync
+## GetAuthorizeAsync
 ```csharp
 Task<AuthorizeResult> GetAuthorizeAsync(
    [Query] string client_id,

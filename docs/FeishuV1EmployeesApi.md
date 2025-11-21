@@ -1,7 +1,5 @@
 # 员工管理
 
-## 接口名称：IFeishuV1EmployeesApi
-
 ## 功能描述
 该接口提供了飞书员工管理的完整功能，包括员工的创建、更新、查询、离职、恢复等操作。员工指飞书企业内身份为「Employee」的成员，等同于通讯录OpenAPI中的「User」。员工在飞书的身份标识包括employee_id、open_id和union_id，其中employee_id的值等同于通讯录中的user_id，其余两个也和通讯录的User的值相同。
 
@@ -21,9 +19,8 @@
 | QueryEmployeePageListAsync | POST | 分页查询员工列表 |
 | SearchEmployeePageListAsync | POST | 搜索员工信息 |
 
-## 函数详细内容
 
-### **函数名称**：CreateEmployeeAsync
+## CreateEmployeeAsync
 ```csharp
 Task<FeishuApiResult<EmployeeCreateResult>> CreateEmployeeAsync(
     [Token(TokenType.Both)][Header("Authorization")] string access_token,
@@ -121,7 +118,7 @@ else
 
 ---
 
-### **函数名称**：UpdateEmployeeAsync
+## UpdateEmployeeAsync
 ```csharp
 Task<FeishuNullDataApiResult> UpdateEmployeeAsync(
    [Token(TokenType.Both)][Header("Authorization")] string access_token,
@@ -183,7 +180,7 @@ else
 
 ---
 
-### **函数名称**：DeleteEmployeeByIdAsync
+## DeleteEmployeeByIdAsync
 ```csharp
 Task<FeishuNullDataApiResult> DeleteEmployeeByIdAsync(
   [Token(TokenType.Both)][Header("Authorization")] string access_token,
@@ -246,7 +243,7 @@ else
 
 ---
 
-### **函数名称**：ResurrectEmployeeAsync
+## ResurrectEmployeeAsync
 ```csharp
 Task<FeishuNullDataApiResult> ResurrectEmployeeAsync(
   [Token(TokenType.Both)][Header("Authorization")] string access_token,
@@ -310,7 +307,7 @@ else
 
 ---
 
-### **函数名称**：ResignedEmployeeAsync
+## ResignedEmployeeAsync
 ```csharp
 Task<FeishuNullDataApiResult> ResignedEmployeeAsync(
  [Token(TokenType.Both)][Header("Authorization")] string access_token,
@@ -376,7 +373,7 @@ else
 
 ---
 
-### **函数名称**：RegularEmployeeAsync
+## RegularEmployeeAsync
 ```csharp
 Task<FeishuNullDataApiResult> RegularEmployeeAsync(
          [Token(TokenType.Both)][Header("Authorization")] string access_token,
@@ -428,7 +425,7 @@ else
 
 ---
 
-### **函数名称**：QueryEmployeesAsync
+## QueryEmployeesAsync
 ```csharp
 Task<FeishuApiResult<EmployeeListResult>> QueryEmployeesAsync(
     [Token(TokenType.Both)][Header("Authorization")] string access_token,
@@ -510,7 +507,7 @@ else
 
 ---
 
-### **函数名称**：QueryEmployeePageListAsync
+## QueryEmployeePageListAsync
 ```csharp
 Task<FeishuApiResult<EmployeeListPageResult>> QueryEmployeePageListAsync(
    [Token(TokenType.Both)][Header("Authorization")] string access_token,
@@ -614,7 +611,7 @@ else
 
 ---
 
-### **函数名称**：SearchEmployeePageListAsync
+## SearchEmployeePageListAsync
 ```csharp
 Task<FeishuApiResult<EmployeeListPageResult>> SearchEmployeePageListAsync(
   [Token(TokenType.Both)][Header("Authorization")] string access_token,

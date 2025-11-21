@@ -1,7 +1,5 @@
 # 人员类型管理
 
-## 接口名称：IFeishuV3EmployeeTypeApi
-
 ## 功能描述
 飞书人员类型是通讯录中一种特殊的用户属性字段，用于标记用户的身份类型。系统默认包含正式、实习、外包、劳务、顾问五个预定义类型，同时支持创建自定义人员类型。该API提供完整的人员类型管理功能，包括创建、更新、查询和删除自定义人员类型，满足企业多样化的人员分类管理需求。
 
@@ -14,9 +12,7 @@
 | GetEmployeeTypesAsync | 查询当前租户下所有的人员类型信息 | user_access_token | GET |
 | DeleteEmployeeTypeByIdAsync | 删除指定的自定义人员类型 | user_access_token | DELETE |
 
-## 函数详细内容：
-
-### **函数名称**：CreateEmployeeTypeAsync
+## CreateEmployeeTypeAsync
 **认证**：user_access_token  
 **参数**：
 - user_access_token (必填) - 用户访问令牌
@@ -109,7 +105,7 @@ else
 
 ---
 
-### **函数名称**：UpdateEmployeeTypeAsync
+## UpdateEmployeeTypeAsync
 **认证**：user_access_token  
 **参数**：
 - user_access_token (必填) - 用户访问令牌
@@ -197,7 +193,7 @@ else
 
 ---
 
-### **函数名称**：GetEmployeeTypesAsync
+## GetEmployeeTypesAsync
 **认证**：user_access_token  
 **参数**：
 - user_access_token (必填) - 用户访问令牌
@@ -294,7 +290,7 @@ Console.WriteLine($"\n总共获取到 {allEmployeeTypes.Count} 种人员类型")
 
 ---
 
-### **函数名称**：DeleteEmployeeTypeByIdAsync
+## DeleteEmployeeTypeByIdAsync
 **认证**：user_access_token  
 **参数**：
 - user_access_token (必填) - 用户访问令牌

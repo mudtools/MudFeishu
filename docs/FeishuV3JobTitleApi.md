@@ -1,7 +1,5 @@
 # 职务管理
 
-## 接口名称：IFeishuV3JobTitleApi
-
 ## 功能描述
 职务是用户属性之一，通过职务 API 仅支持查询职务信息。该接口提供了获取租户下职务信息、用户职务信息以及根据ID获取特定职务详细信息的功能。支持使用租户访问令牌和用户访问令牌两种认证方式。
 
@@ -16,9 +14,7 @@
 | GetTenantJobTitleByIdAsync | GET | /open-apis/contact/v3/job_titles/{job_title_id} | 租户访问令牌 | 获取指定职务的信息（租户视角） |
 | GetUserJobTitleByIdAsync | GET | /open-apis/contact/v3/job_titles/{job_title_id} | 用户访问令牌 | 获取指定职务的信息（用户视角） |
 
-## 函数详细内容
-
-### 函数名称：GetTenantJobTitlesListAsync
+## GetTenantJobTitlesListAsync
 
 **函数签名**：
 ```csharp
@@ -127,7 +123,7 @@ else
 
 ---
 
-### 函数名称：GetUserJobTitlesListAsync
+## GetUserJobTitlesListAsync
 
 **函数签名**：
 ```csharp
@@ -235,7 +231,7 @@ catch (Exception ex)
 
 ---
 
-### 函数名称：GetTenantJobTitleByIdAsync
+## GetTenantJobTitleByIdAsync
 
 **函数签名**：
 ```csharp
@@ -340,7 +336,7 @@ catch (Exception ex)
 
 ---
 
-### 函数名称：GetUserJobTitleByIdAsync
+## GetUserJobTitleByIdAsync
 
 **函数签名**：
 ```csharp

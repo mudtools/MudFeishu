@@ -1,7 +1,5 @@
 # 部门管理
 
-## 接口名称：IFeishuV3DepartmentsApi
-
 ## 功能描述
 飞书组织机构部门是指企业组织架构树上的某一个节点。在部门内部，可添加用户作为部门成员，也可添加新的部门作为子部门。该API提供完整的部门管理功能，包括部门的创建、更新、查询、删除以及部门群管理等功能，支持层级化的组织架构管理。
 
@@ -21,9 +19,8 @@
 | SearchDepartmentsAsync | 通过部门名称关键词搜索部门 | user_access_token | POST |
 | DeleteDepartmentByIdAsync | 从通讯录中删除指定的部门 | tenant_access_token | DELETE |
 
-## 函数详细内容：
 
-### **函数名称**：CreateDepartmentAsync
+## CreateDepartmentAsync
 **认证**：tenant_access_token  
 **参数**：
 - tenant_access_token (必填) - 应用访问令牌
@@ -101,7 +98,7 @@ else
 
 ---
 
-### **函数名称**：UpdatePartDepartmentAsync
+## UpdatePartDepartmentAsync
 **认证**：tenant_access_token  
 **参数**：
 - tenant_access_token (必填) - 应用访问令牌
@@ -152,7 +149,7 @@ if (result.Success)
 
 ---
 
-### **函数名称**：UpdateDepartmentAsync
+## UpdateDepartmentAsync
 **认证**：tenant_access_token  
 **参数**：
 - tenant_access_token (必填) - 应用访问令牌
@@ -203,7 +200,7 @@ var result = await _feishuApi.UpdateDepartmentAsync(
 
 ---
 
-### **函数名称**：UpdateDepartmentIdAsync
+## UpdateDepartmentIdAsync
 **认证**：tenant_access_token  
 **参数**：
 - tenant_access_token (必填) - 应用访问令牌
@@ -245,7 +242,7 @@ if (result.Success)
 
 ---
 
-### **函数名称**：UnbindDepartmentChatAsync
+## UnbindDepartmentChatAsync
 **认证**：tenant_access_token  
 **参数**：
 - tenant_access_token (必填) - 应用访问令牌
@@ -285,7 +282,7 @@ if (result.Success)
 
 ---
 
-### **函数名称**：GetDepartmentInfoByIdAsync
+## GetDepartmentInfoByIdAsync
 **认证**：user_access_token  
 **参数**：
 - user_access_token (必填) - 用户访问令牌
@@ -340,7 +337,7 @@ if (result.Success)
 
 ---
 
-### **函数名称**：GetDepartmentsByIdsAsync
+## GetDepartmentsByIdsAsync
 **认证**：tenant_access_token  
 **参数**：
 - tenant_access_token (必填) - 应用访问令牌
@@ -394,7 +391,7 @@ if (result.Success)
 
 ---
 
-### **函数名称**：GetDepartmentsByParentIdAsync
+## GetDepartmentsByParentIdAsync
 **认证**：tenant_access_token  
 **参数**：
 - tenant_access_token (必填) - 应用访问令牌
@@ -461,7 +458,7 @@ do
 
 ---
 
-### **函数名称**：GetParentDepartmentsByIdAsync
+## GetParentDepartmentsByIdAsync
 **认证**：tenant_access_token  
 **参数**：
 - tenant_access_token (必填) - 应用访问令牌
@@ -521,7 +518,7 @@ if (result.Success)
 
 ---
 
-### **函数名称**：SearchDepartmentsAsync
+## SearchDepartmentsAsync
 **认证**：user_access_token  
 **参数**：
 - user_access_token (必填) - 用户访问令牌
@@ -579,7 +576,7 @@ if (result.Success)
 
 ---
 
-### **函数名称**：DeleteDepartmentByIdAsync
+## DeleteDepartmentByIdAsync
 **认证**：tenant_access_token  
 **参数**：
 - tenant_access_token (必填) - 应用访问令牌

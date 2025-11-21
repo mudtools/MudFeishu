@@ -7,7 +7,7 @@
 
 **接口详细文档请参见：**[飞书开放平台文档](https://open.feishu.cn/document/server-docs/contact-v3/functional_role-member/resource-introduction)
 
-## 函数列表：
+## 函数列表
 
 | 序号 | 函数名称 | HTTP方法 | 功能描述 |
 |------|----------|----------|----------|
@@ -17,11 +17,9 @@
 | 4 | GetMembersAsync | GET | 查询角色所有成员 |
 | 5 | DeleteMembersByRoleIdAsync | DELETE | 批量删除角色成员 |
 
-## 函数详细内容：
-
 ---
 
-### 1. 批量添加角色成员
+## 批量添加角色成员
 
 - **函数名称**：
 ```csharp
@@ -100,7 +98,7 @@ if (result.Code == 0)
 
 ---
 
-### 2. 批量设置成员管理范围
+## 批量设置成员管理范围
 
 - **函数名称**：
 ```csharp
@@ -185,7 +183,7 @@ if (result.Code == 0)
 
 ---
 
-### 3. 查询指定成员管理范围
+## 查询指定成员管理范围
 
 - **函数名称**：
 ```csharp
@@ -264,7 +262,7 @@ if (result.Code == 0)
 
 ---
 
-### 4. 查询角色所有成员
+## 查询角色所有成员
 
 - **函数名称**：
 ```csharp
@@ -378,7 +376,7 @@ Console.WriteLine($"总共获取到 {allMembers.Count} 个成员");
 
 ---
 
-### 5. 批量删除角色成员
+## 批量删除角色成员
 
 - **函数名称**：
 ```csharp

@@ -16,5 +16,10 @@ public class DepartMentUpdateIdRequest
     /// 新的自定义部门 ID
     /// </summary>
     [JsonPropertyName("new_department_id")]
-    public required string NewDepartmentId { get; set; }
+    public
+#if NET7_0_OR_GREATER
+        required
+#endif
+        string? NewDepartmentId
+    { get; set; }
 }

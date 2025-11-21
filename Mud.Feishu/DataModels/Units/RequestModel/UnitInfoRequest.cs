@@ -28,7 +28,12 @@ public class UnitInfoRequest
     /// <para>示例值："消费者事业部"</para>
     /// </remarks>
     [JsonPropertyName("name")]
-    public required string Name { get; set; }
+    public
+#if NET7_0_OR_GREATER
+        required
+#endif
+  string? Name
+    { get; set; }
 
     /// <summary>
     /// 自定义单位类型，创建后不可修改。
@@ -40,5 +45,10 @@ public class UnitInfoRequest
     /// <para>示例值："子公司"</para>
     /// </remarks>
     [JsonPropertyName("unit_type")]
-    public required string UnitType { get; set; }
+    public
+#if NET7_0_OR_GREATER
+        required
+#endif
+  string? UnitType
+    { get; set; }
 }

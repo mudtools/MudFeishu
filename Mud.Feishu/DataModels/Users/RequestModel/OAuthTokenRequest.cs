@@ -16,21 +16,36 @@ public class OAuthTokenBaseRequest
     /// 授权类型。固定值：authorization_code
     /// </summary>
     [JsonPropertyName("grant_type")]
-    public required string GrantType { get; set; }
+    public
+#if NET7_0_OR_GREATER
+        required
+#endif
+  string? GrantType
+    { get; set; }
 
     /// <summary>
     /// 应用的 App ID。
     /// <para>示例值：cli_a5ca35a685b0x26e</para>
     /// </summary>
     [JsonPropertyName("client_id")]
-    public required string ClientId { get; set; }
+    public
+#if NET7_0_OR_GREATER
+        required
+#endif
+  string? ClientId
+    { get; set; }
 
     /// <summary>
     /// 应用的 App Secret。
     /// <para>示例值：baBqE5um9LbFGDy3X7LcfxQX1sqpXlwy</para>
     /// </summary>
     [JsonPropertyName("client_secret")]
-    public required string ClientSecret { get; set; }
+    public
+#if NET7_0_OR_GREATER
+        required
+#endif
+  string? ClientSecret
+    { get; set; }
 }
 
 /// <summary>
@@ -44,7 +59,12 @@ public class OAuthTokenRequest : OAuthTokenBaseRequest
     /// <para>示例值：a61hb967bd094dge949h79bbexd16dfe</para>
     /// </summary>
     [JsonPropertyName("code")]
-    public required string Code { get; set; }
+    public
+#if NET7_0_OR_GREATER
+        required
+#endif
+  string? Code
+    { get; set; }
 
     /// <summary>
     /// 在构造授权页页面链接时所拼接的应用回调地址。

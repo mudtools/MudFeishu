@@ -22,7 +22,12 @@ public abstract class UserData
     /// 用户名。长度不能超过 255 字符。
     /// </summary>
     [JsonPropertyName("name")]
-    public required string Name { get; set; }
+    public
+#if NET7_0_OR_GREATER
+        required
+#endif
+  string? Name
+    { get; set; }
 
     /// <summary>
     /// 英文名。长度不能超过 255 字符。

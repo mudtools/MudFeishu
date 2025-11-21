@@ -20,14 +20,17 @@ public static class FeishuServiceCollectionExtensions
     /// </summary>
     public static IServiceCollection AddFeishuApiService(this IServiceCollection services, IConfiguration configuration)
     {
-        services.Configure<FeishuOptions>(configuration)
-                .AddOptions<FeishuOptions>()
+        // 配置选项和验证
+        services.Configure<FeishuOptions>(configuration);
+        services.AddOptions<FeishuOptions>()
+                .Configure(options => configuration.Bind(options))
                 .Validate(options =>
                     !string.IsNullOrEmpty(options.AppId) &&
                     !string.IsNullOrEmpty(options.AppSecret),
                     "AppId and AppSecret are required for Feishu service")
                 .ValidateOnStart();
-        return services.AddFeishuApiService();
+
+        return services.AddFeishuApiServiceCore();
     }
 
     /// <summary>
@@ -35,23 +38,22 @@ public static class FeishuServiceCollectionExtensions
     /// </summary>
     public static IServiceCollection AddFeishuApiService(this IServiceCollection services, string configurationSection = "Feishu")
     {
-        services.Configure<FeishuOptions>(
-            services.BuildServiceProvider()
-                   .GetRequiredService<IConfiguration>()
-                   .GetSection(configurationSection))
-               .AddOptions<FeishuOptions>()
-               .Validate(options =>
+        // 配置选项和验证
+        services.AddOptions<FeishuOptions>()
+                .BindConfiguration(configurationSection)
+                .Validate(options =>
                     !string.IsNullOrEmpty(options.AppId) &&
                     !string.IsNullOrEmpty(options.AppSecret),
                     "AppId and AppSecret are required for Feishu service")
-               .ValidateOnStart();
-        return services.AddFeishuApiService();
+                .ValidateOnStart();
+
+        return services.AddFeishuApiServiceCore();
     }
 
     /// <summary>
     /// 注册飞书 API 服务（核心方法）
     /// </summary>
-    private static IServiceCollection AddFeishuApiService(this IServiceCollection services)
+    private static IServiceCollection AddFeishuApiServiceCore(this IServiceCollection services)
     {
         return services.AddSingleton<ITokenManager, TokenManagerWithCache>()
                        .AddWebApiHttpClient()

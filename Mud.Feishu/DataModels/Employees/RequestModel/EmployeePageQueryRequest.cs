@@ -17,18 +17,33 @@ public class EmployeePageQueryRequest
     /// <para>其中员工ID、员工手机号支持精确搜索，员工名称、员工邮箱支持模糊搜索，员工名称支持国际化名称的搜索。</para>
     /// </summary>
     [JsonPropertyName("query")]
-    public required string Query { get; set; }
+    public
+#if NET7_0_OR_GREATER
+        required
+#endif
+        string? Query
+    { get; set; }
 
     /// <summary>
     /// 分页信息
     /// </summary>
     [JsonPropertyName("page_request")]
-    public required PageRequest PageRequest { get; set; } = new PageRequest();
+    public
+#if NET7_0_OR_GREATER
+        required
+#endif
+        PageRequest PageRequest
+    { get; set; } = new PageRequest();
 
     /// <summary>
     /// 需要查询的字段列表。将按照传递的字段列表返回有权限的行、列数据。不传则不会返回任何字段
     /// <para>示例值：["base_info.name.name"]</para>
     /// </summary>
     [JsonPropertyName("required_fields")]
-    public required List<string> RequiredFields { get; set; } = [];
+    public
+#if NET7_0_OR_GREATER
+        required
+#endif
+        List<string> RequiredFields
+    { get; set; } = [];
 }

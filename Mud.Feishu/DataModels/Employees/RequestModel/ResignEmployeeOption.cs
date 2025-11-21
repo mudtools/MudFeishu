@@ -16,19 +16,34 @@ public class ResignEmployeeOption
     /// 离职日期 示例值："2024-06-21"
     /// </summary>
     [JsonPropertyName("resign_date")]
-    public required string ResignDate { get; set; }
+    public
+#if NET7_0_OR_GREATER
+        required
+#endif
+        string? ResignDate
+    { get; set; }
 
     /// <summary>
     /// 离职原因 可选值有：1：薪酬不符合预期 2：工作时间过长 3：不满意工作内容 4：不认可上级或管理层 5：职业发展机会有限
     /// </summary>
     [JsonPropertyName("resign_reason")]
-    public required string ResignReason { get; set; }
+    public
+#if NET7_0_OR_GREATER
+        required
+#endif
+        string? ResignReason
+    { get; set; }
 
     /// <summary>
     /// 离职类型 可选值有：1：主动 2：被动 3：其他 
     /// </summary>
     [JsonPropertyName("resign_type")]
-    public required string ResignType { get; set; }
+    public
+#if NET7_0_OR_GREATER
+        required
+#endif
+        string? ResignType
+    { get; set; }
 
     /// <summary>
     /// 离职备注

@@ -16,5 +16,10 @@ public class RoleRequest
     /// 角色名称。在同一租户下角色名称唯一，不能重复创建。
     /// </summary>
     [JsonPropertyName("role_name")]
-    public required string RoleName { get; set; }
+    public
+#if NET7_0_OR_GREATER
+        required
+#endif
+  string? RoleName
+    { get; set; }
 }

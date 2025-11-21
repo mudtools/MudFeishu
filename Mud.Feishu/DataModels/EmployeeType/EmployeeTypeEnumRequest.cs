@@ -16,14 +16,24 @@ public class EmployeeTypeEnumRequest
     /// 人员类型的选项内容。
     /// </summary>
     [JsonPropertyName("content")]
-    public required string Content { get; set; }
+    public
+#if NET7_0_OR_GREATER
+        required
+#endif
+  string? Content
+    { get; set; }
 
     /// <summary>
     /// 人员类型的选项类型。新增人员类型时固定取值为 2 即可。
     /// <para>可选值有：1：内置类型，只读。新增人员类型时不支持选择该类型。2：自定义。</para>
     /// </summary>
     [JsonPropertyName("enum_type")]
-    public required int EnumType { get; set; }
+    public
+#if NET7_0_OR_GREATER
+        required
+#endif
+  int EnumType
+    { get; set; }
 
     /// <summary>
     /// 人员类型的选项激活状态。只有已激活的选项可以用于配置用户属性。

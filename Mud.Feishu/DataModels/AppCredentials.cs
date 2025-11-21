@@ -17,13 +17,23 @@ public class AppCredentials
     /// <para>示例值： "cli_slkdjalasdkjasd"</para>
     /// </summary>
     [JsonPropertyName("app_id")]
-    public required string AppId { get; set; }
+    public
+#if NET7_0_OR_GREATER
+        required
+#endif
+  string? AppId
+    { get; set; }
 
     /// <summary>
     /// <para>应用秘钥，创建应用后获得。有关 app_secret 的详细介绍，请参考通用参数介绍</para>
     /// <para>示例值： "dskLLdkasdjlasdKK"</para>
     /// </summary>
     [JsonPropertyName("app_secret")]
-    public required string AppSecret { get; set; }
+    public
+#if NET7_0_OR_GREATER
+        required
+#endif
+  string? AppSecret
+    { get; set; }
 
 }

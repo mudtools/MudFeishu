@@ -16,7 +16,12 @@ public class UserDepartmentOrder
     /// 排序信息对应的部门 ID。表示用户所在的、且需要排序的部门。
     /// </summary>
     [JsonPropertyName("department_id")]
-    public required string DepartmentId { get; set; }
+    public
+#if NET7_0_OR_GREATER
+        required
+#endif
+  string? DepartmentId
+    { get; set; }
 
     /// <summary>
     /// 用户在其直属部门内的排序。数值越大，排序越靠前。

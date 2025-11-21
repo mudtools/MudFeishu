@@ -16,11 +16,21 @@ public class EmployeeQueryRequest
     /// 员工ID，与employee_id_type类型保持一致
     /// </summary>
     [JsonPropertyName("employee_ids")]
-    public required List<string> EmployeeIds { get; set; } = [];
+    public
+#if NET7_0_OR_GREATER
+        required
+#endif
+        List<string> EmployeeIds
+    { get; set; } = [];
 
     /// <summary>
     /// 需要查询的字段列表。将按照传递的字段列表返回有权限的行、列数据。不传则不会返回任何字段。
     /// </summary>
     [JsonPropertyName("required_fields")]
-    public required List<string> RequiredFields { get; set; } = [];
+    public
+#if NET7_0_OR_GREATER
+        required
+#endif
+        List<string> RequiredFields
+    { get; set; } = [];
 }

@@ -16,5 +16,10 @@ public class UnitNameUpdateRequest
     /// 单位名字。
     /// </summary>
     [JsonPropertyName("name")]
-    public required string Name { get; set; }
+    public
+#if NET7_0_OR_GREATER
+        required
+#endif
+  string? Name
+    { get; set; }
 }

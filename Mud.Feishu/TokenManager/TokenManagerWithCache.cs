@@ -18,8 +18,18 @@ internal class TokenManagerWithCache : ITokenManager, IDisposable
     {
         public string? Msg { get; init; }
         public int Code { get; init; }
-        public required long Expire { get; init; }
-        public required string AccessToken { get; init; }
+        public
+#if NET7_0_OR_GREATER
+        required
+#endif
+  long Expire
+        { get; init; }
+        public
+#if NET7_0_OR_GREATER
+        required
+#endif
+  string? AccessToken
+        { get; init; }
     }
 
     private readonly FeishuOptions _options;

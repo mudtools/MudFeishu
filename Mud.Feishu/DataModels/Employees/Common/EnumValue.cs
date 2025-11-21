@@ -28,5 +28,10 @@ public class EnumValue
     /// 选项类型 可选值有：1：文本  2：图片
     /// </summary>
     [JsonPropertyName("enum_type")]
-    public required string EnumType { get; set; }
+    public
+#if NET7_0_OR_GREATER
+        required
+#endif
+  string? EnumType
+    { get; set; }
 }

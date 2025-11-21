@@ -16,5 +16,5 @@ public class ResignEmployeeRequest
     /// 在职员工流转到待离职选项参数
     /// </summary>
     [JsonPropertyName("employee")]
-    public ResignEmployeeOption Employee { get; set; }
+    public ResignEmployeeOption? Employee { get; set; }
 }

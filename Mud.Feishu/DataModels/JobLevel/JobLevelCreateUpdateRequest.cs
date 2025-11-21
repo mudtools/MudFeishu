@@ -17,7 +17,12 @@ public class JobLevelCreateUpdateRequest
     /// <para>示例值："高级专家"</para>
     /// </summary>
     [JsonPropertyName("name")]
-    public required string Name { get; set; }
+    public
+#if NET7_0_OR_GREATER
+        required
+#endif
+  string Name
+    { get; set; }
 
     /// <summary>
     /// 职级描述。字符长度上限 5,000。通用描述，如果未设置多语言描述，则默认展示该描述。

@@ -16,11 +16,21 @@ public class GenericUser
     /// 引用人员的用户 ID。
     /// </summary>
     [JsonPropertyName("id")]
-    public required string Id { get; set; }
+    public
+#if NET7_0_OR_GREATER
+        required
+#endif
+  string? Id
+    { get; set; }
 
     /// <summary>
     /// 用户类型。可选值有：1：用户
     /// </summary>
     [JsonPropertyName("type")]
-    public required int Type { get; set; } = 1;
+    public
+#if NET7_0_OR_GREATER
+        required
+#endif
+  int Type
+    { get; set; } = 1;
 }

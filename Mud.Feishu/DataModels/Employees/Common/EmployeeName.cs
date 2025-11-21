@@ -16,7 +16,12 @@ public class EmployeeName
     /// 员工的姓名，最多可输入 64 字。
     /// </summary>
     [JsonPropertyName("name")]
-    public required EmployeeI18nContent Name { get; set; }
+    public
+#if NET7_0_OR_GREATER
+        required
+#endif
+  EmployeeI18nContent? Name
+    { get; set; }
 
     /// <summary>
     /// 别名，最多可输入 64 字

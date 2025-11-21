@@ -16,7 +16,12 @@ public class EmployeeSearchRequest
     /// 查询条件，具体如何使用请参见：<see href="https://open.feishu.cn/document/directory-v1/filter-usage"/>
     /// </summary>
     [JsonPropertyName("filter")]
-    public required FieldFilter Filter { get; set; }
+    public
+#if NET7_0_OR_GREATER
+        required
+#endif
+        FieldFilter? Filter
+    { get; set; }
 
     /// <summary>
     /// 需要查询的字段列表。将按照传递的字段列表返回有权限的行、列数据。不传则不会返回任何字段。

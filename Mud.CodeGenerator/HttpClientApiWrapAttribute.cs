@@ -81,9 +81,8 @@ public class HttpClientApiWrapAttribute : Attribute
     /// <remarks>
     /// 该属性通常在需要将多个API接口包装到一个统一接口时使用。
     /// </remarks>
-    public string WrapInterface { get; set; } = string.Empty;
+    public string? WrapInterface { get; set; } = string.Empty;
 
-#if NET8_0_OR_GREATER
     /// <summary>
     /// 获取或设置令牌管理服务接口的名称。
     /// </summary>
@@ -98,19 +97,10 @@ public class HttpClientApiWrapAttribute : Attribute
     /// <exception cref="InvalidOperationException">
     /// 在 .NET 8.0 及更高版本中，如果未设置此属性则抛出此异常。
     /// </exception>
-    public required string TokenManage { get; set; }
-#else
-    /// <summary>
-    /// 获取或设置令牌管理服务接口的名称。
-    /// </summary>
-    /// <value>
-    /// 令牌管理服务接口的名称，该接口负责提供和管理访问令牌。
-    /// 必须实现令牌的获取、刷新和验证功能。
-    /// </value>
-    /// <remarks>
-    /// 在 .NET 8.0 之前的版本中，此属性为可选项，但建议始终设置以确保令牌管理功能正常工作。
-    /// 令牌管理服务需要实现获取令牌、刷新令牌和验证令牌有效性的方法。
-    /// </remarks>
-    public string TokenManage { get; set; }
+    public
+#if NET7_0_OR_GREATER
+        required
 #endif
+  string? TokenManage
+    { get; set; }
 }

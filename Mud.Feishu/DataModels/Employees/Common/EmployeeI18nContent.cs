@@ -16,7 +16,12 @@ public class EmployeeI18nContent
     /// 默认值最小长度：1字符
     /// </summary>
     [JsonPropertyName("default_value")]
-    public required string DefaultValue { get; set; }
+    public
+#if NET7_0_OR_GREATER
+        required
+#endif
+  string? DefaultValue
+    { get; set; }
 
     /// <summary>
     /// 国际化值，key为zh_cn, ja_jp, en_us, value为对应的值。

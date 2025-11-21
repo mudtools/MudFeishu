@@ -16,17 +16,32 @@ public class UrlValue
     /// 网页标题
     /// </summary>
     [JsonPropertyName("link_text")]
-    public required I18nContent LinkText { get; set; }
+    public
+#if NET7_0_OR_GREATER
+        required
+#endif
+  I18nContent? LinkText
+    { get; set; }
 
     /// <summary>
     /// 移动端网页链接
     /// </summary>
     [JsonPropertyName("url")]
-    public required string Url { get; set; }
+    public
+#if NET7_0_OR_GREATER
+        required
+#endif
+  string? Url
+    { get; set; }
 
     /// <summary>
     /// 桌面端网页链接
     /// </summary>
     [JsonPropertyName("pcurl")]
-    public required string PcUrl { get; set; }
+    public
+#if NET7_0_OR_GREATER
+        required
+#endif
+  string? PcUrl
+    { get; set; }
 }

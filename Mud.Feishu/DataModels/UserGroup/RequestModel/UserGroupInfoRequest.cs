@@ -16,7 +16,12 @@ public class UserGroupInfoRequest
     /// 用户组名字，长度不能超过 100 字符。
     /// </summary>
     [JsonPropertyName("name")]
-    public required string Name { get; set; }
+    public
+#if NET7_0_OR_GREATER
+        required
+#endif
+  string? Name
+    { get; set; }
 
     /// <summary>
     /// 用户组描述，长度不能超过 500 字符。

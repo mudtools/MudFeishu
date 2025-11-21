@@ -16,7 +16,12 @@ public class JobFamilyCreateUpdateRequest
     /// 序列名称，租户内唯一。取值支持中、英文及符号。
     /// </summary>
     [JsonPropertyName("name")]
-    public required string Name { get; set; }
+    public
+#if NET7_0_OR_GREATER
+        required
+#endif
+  string Name
+    { get; set; }
 
     /// <summary>
     /// 序列描述，描述序列详情信息。字符长度上限为 5,000。

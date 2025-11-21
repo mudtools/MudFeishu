@@ -9,6 +9,7 @@
     <Import_RootNamespace>Mud.CodeGenerator</Import_RootNamespace>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)FilePathAttribute.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)HttpClientApiWrapAttribute.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TokenAttribute.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)BodyAttribute.cs" />

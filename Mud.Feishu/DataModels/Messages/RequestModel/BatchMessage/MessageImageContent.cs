@@ -1,4 +1,4 @@
-﻿// -----------------------------------------------------------------------
+// -----------------------------------------------------------------------
 //  作者：Mud Studio  版权所有 (c) Mud Studio 2025   
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
@@ -7,8 +7,19 @@
 
 namespace Mud.Feishu.DataModels.Messages;
 
+/// <summary>
+/// 消息图片内容模型类，用于表示飞书消息中图片内容的相关信息
+/// </summary>
 public class MessageImageContent
 {
+    /// <summary>
+    /// 图片的唯一标识符，在飞书系统中用于定位和引用特定图片资源
+    /// </summary>
     [JsonPropertyName("image_key")]
-    public string ImageKey { get; set; }
+    public
+#if NET7_0_OR_GREATER
+        required
+#endif
+     string ImageKey
+    { get; set; }
 }

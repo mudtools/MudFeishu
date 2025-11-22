@@ -10,7 +10,7 @@ namespace Mud.Feishu.DataModels.Messages;
 /// <summary>
 /// 消息内容数据，继承自基础消息结果，扩展了额外的属性
 /// </summary>
-public class MessageContnetData : BaseMessageResult
+public class MessageContentData : BaseMessageResult
 {
     /// <summary>
     /// 线程 ID，用于标识消息串

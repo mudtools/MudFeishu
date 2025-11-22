@@ -1,4 +1,4 @@
-﻿// -----------------------------------------------------------------------
+// -----------------------------------------------------------------------
 //  作者：Mud Studio  版权所有 (c) Mud Studio 2025   
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
@@ -8,18 +8,19 @@
 namespace Mud.Feishu.DataModels.Messages;
 
 /// <summary>
-/// 文本消息内容。
+/// 批量消息处理进度结果类，包含发送进度和撤回进度信息
 /// </summary>
-public class MessageTextContent
+public class BatchMessageProgressResult
 {
     /// <summary>
-    /// 消息内容
+    /// 批量消息发送进度信息
     /// </summary>
-    [JsonPropertyName("text")]
-    public
-#if NET7_0_OR_GREATER
-        required
-#endif
-     string? Text
-    { get; set; }
+    [JsonPropertyName("batch_message_send_progress")]
+    public BatchMessageSendProgress? BatchMessageSendProgress { get; set; }
+
+    /// <summary>
+    /// 批量消息撤回进度信息
+    /// </summary>
+    [JsonPropertyName("batch_message_recall_progress")]
+    public BatchMessageRecallProgress? BatchMessageRecallProgress { get; set; }
 }

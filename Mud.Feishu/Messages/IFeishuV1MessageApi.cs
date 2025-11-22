@@ -258,7 +258,7 @@ public interface IFeishuV1MessageApi
     /// <param name="user_id_type">用户 ID 类型，示例值："open_id"，默认值：open_id</param>
     /// <returns></returns>
     [Get("https://open.feishu.cn/open-apis/im/v1/messages")]
-    Task<FeishuApiListResult<MessageContnetData>> GetContentListByMessageIdAsync(
+    Task<FeishuApiListResult<MessageContentData>> GetContentListByMessageIdAsync(
         [Token][Header("Authorization")] string tenant_access_token,
         [Path] string message_id,
         [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,

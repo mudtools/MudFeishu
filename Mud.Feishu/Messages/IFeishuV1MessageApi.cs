@@ -271,9 +271,9 @@ public interface IFeishuV1MessageApi
     /// 将本地文件上传至开放平台，支持上传音频、视频、文档等文件类型。
     /// <para>上传后接口会返回文件的 Key，使用该 Key 值可以调用其他 OpenAPI。例如，调用发送消息接口，发送文件。</para>
     /// </summary>
+    /// <param name="uploadFileRequest">文件上传请求体。</param>
     /// <param name="tenant_access_token">应用调用 API 时，需要通过访问凭证（access_token）进行身份鉴权</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
-    /// <param name="uploadFileRequest">文件上传请求体。</param>
     /// <returns></returns>
     Task<FeishuApiResult<FileUploadResult>> UploadFileAsync(
        [Token][Header("Authorization")] string tenant_access_token,
@@ -283,9 +283,9 @@ public interface IFeishuV1MessageApi
     /// <summary>
     /// 将图片上传至飞书开放平台，支持上传 JPG、JPEG、PNG、WEBP、GIF、BMP、ICO、TIFF、HEIC 格式的图片，但需要注意 TIFF、HEIC 上传后会被转为 JPG 格式。
     /// </summary>
+    /// <param name="uploadImageRequest">文件图片请求体。</param>
     /// <param name="tenant_access_token">应用调用 API 时，需要通过访问凭证（access_token）进行身份鉴权</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
-    /// <param name="uploadImageRequest">文件图片请求体。</param>
     /// <returns></returns>
     Task<FeishuApiResult<ImageUpdateResult>> UploadImageAsync(
       [Token][Header("Authorization")] string tenant_access_token,

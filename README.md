@@ -126,9 +126,9 @@ public class FeishuController : ControllerBase
 }
 ```
 
-## API 接口
+## API 服务接口
 
-### 认证授权 API (`IFeishuV3AuthenticationApi`)
+### 认证授权 API (`IFeishuV3AuthenticationService`)
 
 - `GetUserInfoAsync()` - 通过 access_token 获取用户信息
 - `LogoutAsync()` - 用户退出登录
@@ -139,7 +139,7 @@ public class FeishuController : ControllerBase
 - `GetOAuthenRefreshAccessTokenAsync()` - 刷新用户访问令牌
 - `GetAuthorizeAsync()` - 发起用户授权
 
-### 用户管理 API (`IFeishuV3UserApi`)
+### 用户管理服务 (`IFeishuV3UserService`)
 
 - `CreateUserAsync()` - 创建企业用户
 - `UpdateUserAsync()` - 更新用户信息
@@ -152,7 +152,7 @@ public class FeishuController : ControllerBase
 - `DeleteUserByIdAsync()` - 删除用户
 - `ResurrectUserByIdAsync()` - 恢复已删除用户
 
-### 部门管理 API (`IFeishuV3DepartmentsApi`)
+### 部门管理服务 (`IFeishuV3DepartmentsService`)
 
 - `CreateDepartmentAsync()` - 创建部门
 - `UpdatePartDepartmentAsync()` - 部分更新部门信息
@@ -160,7 +160,7 @@ public class FeishuController : ControllerBase
 - `UpdateDepartmentIdAsync()` - 更新部门 ID
 - `GetDepartmentByIdAsync()` - 根据 ID 获取部门信息
 
-### 用户组管理 API (`IFeishuV3UserGroupApi`)
+### 用户组管理服务 (`IFeishuV3UserGroupService`)
 
 - `CreateUserGroupAsync()` - 创建用户组
 - `UpdateUserGroupAsync()` - 更新用户组
@@ -169,14 +169,14 @@ public class FeishuController : ControllerBase
 - `GetUserBelongGroupsAsync()` - 获取用户所属的用户组
 - `DeleteUserGroupByIdAsync()` - 删除用户组
 
-### 人员类型管理 API (`IFeishuV3EmployeeTypeApi`)
+### 人员类型管理服务 (`IFeishuV3EmployeeTypeService`)
 
 - `CreateEmployeeTypeAsync()` - 创建人员类型
 - `UpdateEmployeeTypeAsync()` - 更新人员类型
 - `GetEmployeeTypesAsync()` - 获取人员类型列表
 - `DeleteEmployeeTypeByIdAsync()` - 删除人员类型
 
-### 职级管理 API (`IFeishuV3JobLevelApi`)
+### 职级管理服务 (`IFeishuV3JobLevelService`)
 
 - `CreateJobLevelAsync()` - 创建职级
 - `UpdateJobLevelAsync()` - 更新职级
@@ -184,7 +184,7 @@ public class FeishuController : ControllerBase
 - `GetJobLevelsAsync()` - 获取职级列表
 - `DeleteJobLevelByIdAsync()` - 删除职级
 
-### 职位序列管理 API (`IFeishuV3JobFamiliesApi`)
+### 职位序列管理服务 (`IFeishuV3JobFamiliesService`)
 
 - `CreateJobFamilyAsync()` - 创建职位序列
 - `UpdateJobFamilyAsync()` - 更新职位序列
@@ -192,7 +192,7 @@ public class FeishuController : ControllerBase
 - `GetJobFamilesListAsync()` - 获取职位序列列表
 - `DeleteJobFamilyByIdAsync()` - 删除职位序列
 
-### 角色管理 API (`IFeishuV3RoleApi`)
+### 角色管理服务 (`IFeishuV3RoleService`)
 
 - `CreateRoleAsync()` - 创建角色
 - `UpdateRoleAsync()` - 更新角色
@@ -200,7 +200,7 @@ public class FeishuController : ControllerBase
 - `GetRolesAsync()` - 获取角色列表
 - `DeleteRoleByIdAsync()` - 删除角色
 
-### 角色成员管理 API (`IFeishuV3RoleMemberApi`)
+### 角色成员管理服务 (`IFeishuV3RoleMemberService`)
 
 - `AddRoleMemberAsync()` - 添加角色成员
 - `BatchAddRoleMemberAsync()` - 批量添加角色成员
@@ -208,7 +208,7 @@ public class FeishuController : ControllerBase
 - `GetRoleMemberScopesAsync()` - 获取角色成员管理范围
 - `BatchDeleteRoleMemberAsync()` - 批量删除角色成员
 
-### 单位管理 API (`IFeishuV3UnitApi`)
+### 单位管理服务 (`IFeishuV3UnitService`)
 
 - `CreateUnitAsync()` - 创建单位
 - `UpdateUnitNameAsync()` - 更新单位名称
@@ -219,7 +219,7 @@ public class FeishuController : ControllerBase
 - `UnbindDepartmentFromUnitAsync()` - 解除部门与单位绑定
 - `DeleteUnitByIdAsync()` - 删除单位
 
-### 用户组成员管理 API (`IFeishuV3UserGroupMemberApi`)
+### 用户组成员管理服务 (`IFeishuV3UserGroupMemberService`)
 
 - `AddUserGroupMemberAsync()` - 添加用户组成员
 - `BatchAddUserGroupMemberAsync()` - 批量添加用户组成员
@@ -227,11 +227,11 @@ public class FeishuController : ControllerBase
 - `RemoveUserGroupMemberAsync()` - 移除用户组成员
 - `BatchRemoveUserGroupMemberAsync()` - 批量移除用户组成员
 
-### 职务管理 API (`IFeishuV3JobTitleApi`)
+### 职务管理服务 (`IFeishuV3JobTitleService`)
 
 - `GetJobTitlesAsync()` - 获取职务信息列表
 
-### 工作城市管理 API (`IFeishuV3WorkCityApi`)
+### 工作城市管理服务 (`IFeishuV3WorkCityService`)
 
 - `GetWorkCitiesAsync()` - 获取工作城市列表
 - `GetWorkCityByIdAsync()` - 根据 ID 获取工作城市信息
@@ -465,19 +465,19 @@ public class DepartmentController : ControllerBase
 ```
 Mud.Feishu/
 ├── IFeishuV3AuthenticationApi.cs         # 认证授权 API (5个方法)
-├── Organization/                         # 组织架构相关API
-│   ├── IFeishuV3UserApi.cs             # 用户管理 API (13个方法)
-│   ├── IFeishuV3DepartmentsApi.cs       # 部门管理 API (7个方法)
-│   ├── IFeishuV3UserGroupApi.cs         # 用户组管理 API (6个方法)
-│   ├── IFeishuV3UserGroupMemberApi.cs   # 用户组成员管理 API (5个方法)
-│   ├── IFeishuV3EmployeeTypeApi.cs     # 人员类型管理 API (4个方法)
-│   ├── IFeishuV3JobLevelApi.cs         # 职级管理 API (5个方法)
-│   ├── IFeishuV3JobFamiliesApi.cs      # 职位序列管理 API (5个方法)
-│   ├── IFeishuV3RoleApi.cs              # 角色管理 API (5个方法)
-│   ├── IFeishuV3RoleMemberApi.cs        # 角色成员管理 API (5个方法)
-│   ├── IFeishuV3UnitApi.cs             # 单位管理 API (8个方法)
-│   ├── IFeishuV3JobTitleApi.cs         # 职务管理 API (1个方法)
-│   └── IFeishuV3WorkCityApi.cs         # 工作城市管理 API (2个方法)
+├── Organization/                         # 组织架构相关服务
+│   ├── IFeishuV3UserService.cs             # 用户管理服务 (13个方法)
+│   ├── IFeishuV3DepartmentsService.cs       # 部门管理服务 (7个方法)
+│   ├── IFeishuV3UserGroupService.cs         # 用户组管理服务 (6个方法)
+│   ├── IFeishuV3UserGroupMemberService.cs   # 用户组成员管理服务 (5个方法)
+│   ├── IFeishuV3EmployeeTypeService.cs     # 人员类型管理服务 (4个方法)
+│   ├── IFeishuV3JobLevelService.cs         # 职级管理服务 (5个方法)
+│   ├── IFeishuV3JobFamiliesService.cs      # 职位序列管理服务 (5个方法)
+│   ├── IFeishuV3RoleService.cs              # 角色管理服务 (5个方法)
+│   ├── IFeishuV3RoleMemberService.cs        # 角色成员管理服务 (5个方法)
+│   ├── IFeishuV3UnitService.cs             # 单位管理服务 (8个方法)
+│   ├── IFeishuV3JobTitleService.cs         # 职务管理服务 (1个方法)
+│   └── IFeishuV3WorkCityService.cs         # 工作城市管理服务 (2个方法)
 ├── Extensions/                            # 扩展组件
 │   ├── FeishuOptions.cs                  # 配置选项
 │   └── FeishuServiceCollectionExtensions.cs # 服务注册扩展
@@ -669,13 +669,13 @@ MudFeishu 遵循 [MIT 许可证](LICENSE)。
 ## 更新日志
 
 ### v1.0.1 (2025-11-20)
-- 新增角色管理 API (`IFeishuV3RoleApi`)
-- 新增角色成员管理 API (`IFeishuV3RoleMemberApi`)
-- 新增单位管理 API (`IFeishuV3UnitApi`)
-- 新增职务管理 API (`IFeishuV3JobTitleApi`)
-- 新增工作城市管理 API (`IFeishuV3WorkCityApi`)
-- 新增职级管理 API (`IFeishuV3JobLevelApi`)
-- 新增职位序列管理 API (`IFeishuV3JobFamiliesApi`)
+- 新增角色管理服务 (`IFeishuV3RoleService`)
+- 新增角色成员管理服务 (`IFeishuV3RoleMemberService`)
+- 新增单位管理服务 (`IFeishuV3UnitService`)
+- 新增职务管理服务 (`IFeishuV3JobTitleService`)
+- 新增工作城市管理服务 (`IFeishuV3WorkCityService`)
+- 新增职级管理服务 (`IFeishuV3JobLevelService`)
+- 新增职位序列管理服务 (`IFeishuV3JobFamiliesService`)
 - 完善数据模型 XML 注释
 - 优化测试项目，新增多个测试控制器
 - 统一部门相关数据模型，消除重复代码
@@ -684,7 +684,7 @@ MudFeishu 遵循 [MIT 许可证](LICENSE)。
 
 ### v1.0.0 (2025-11-14)
 - 初始版本发布
-- 支持飞书认证、用户、部门、用户组、人员类型管理 API
+- 支持飞书认证、用户、部门、用户组、人员类型管理服务
 - 内置智能令牌管理和缓存机制
 - 支持 .NET 8.0/9.0/10.0
 - 包含完整的测试演示项目

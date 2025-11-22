@@ -198,4 +198,54 @@ public interface IFeishuV1MessageApi
          [Query("page_size")] int page_size = 10,
          [Query("page_token")] string? page_token = null,
          CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 获取指定消息内包含的资源文件，包括音频、视频、图片和文件。成功调用后，返回二进制文件流下载文件。
+    /// <para>注意：该函数适用于获取小文件。</para>
+    /// </summary>
+    /// <param name="tenant_access_token">应用调用 API 时，需要通过访问凭证（access_token）进行身份鉴权</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <param name="message_id">待查询的消息 ID。</param>
+    /// <param name="file_key">待查询资源的 Key。可以调用<see href="https://open.feishu.cn/document/server-docs/im-v1/message/get">获取指定消息的内容接口</see>，通过消息 ID 获取消息内容中的资源 Key。
+    /// <para>示例值："file_456a92d6-c6ea-4de4-ac3f-7afcf44ac78g"</para>
+    /// </param>
+    /// <param name="type">资源类型.
+    /// <para>可选值有：</para>
+    /// <para>image：对应消息中的图片或富文本消息中的图片。</para>
+    /// <para>file：对应消息中的文件、音频、视频（表情包除外）。</para>
+    /// </param>
+    /// <returns></returns>
+    [Get("https://open.feishu.cn/open-apis/im/v1/messages/{message_id}/resources/{file_key}")]
+    Task<byte[]> GetMessageFile(
+        [Token][Header("Authorization")] string tenant_access_token,
+        [Path] string message_id,
+        [Path] string file_key,
+        [Query("type")] string type,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 获取指定消息内包含的资源文件，包括音频、视频、图片和文件。成功调用后，返回二进制文件流下载文件。
+    /// <para>注意：该函数适用于获取大文件。</para>
+    /// </summary>
+    /// <param name="tenant_access_token">应用调用 API 时，需要通过访问凭证（access_token）进行身份鉴权</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <param name="message_id">待查询的消息 ID。</param>
+    /// <param name="file_key">待查询资源的 Key。可以调用<see href="https://open.feishu.cn/document/server-docs/im-v1/message/get">获取指定消息的内容接口</see>，通过消息 ID 获取消息内容中的资源 Key。
+    /// <para>示例值："file_456a92d6-c6ea-4de4-ac3f-7afcf44ac78g"</para>
+    /// </param>
+    /// <param name="type">资源类型.
+    /// <para>可选值有：</para>
+    /// <para>image：对应消息中的图片或富文本消息中的图片。</para>
+    /// <para>file：对应消息中的文件、音频、视频（表情包除外）。</para>
+    /// </param>
+    /// <param name="localFilePath">用于保存获取二进制文件的本地文件路径。</param>
+    /// <returns></returns>
+    [Get("https://open.feishu.cn/open-apis/im/v1/messages/{message_id}/resources/{file_key}")]
+    Task GetMessageLargeFile(
+        [Token][Header("Authorization")] string tenant_access_token,
+        [Path] string message_id,
+        [Path] string file_key,
+        [Query("type")] string type,
+        [FilePath] string localFilePath,
+        CancellationToken cancellationToken = default);
 }

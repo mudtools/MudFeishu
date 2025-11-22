@@ -8,7 +8,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Mud.Feishu.DataModels.Roles;
 
-namespace Mud.Feishu.Test.Controllers;
+namespace Mud.Feishu.Test.Controllers.Messages;
 
 /// <summary>
 /// 飞书角色管理控制器

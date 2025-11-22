@@ -7,7 +7,7 @@
 
 using Microsoft.AspNetCore.Mvc;
 
-namespace Mud.Feishu.Test.Controllers;
+namespace Mud.Feishu.Test.Controllers.Messages;
 
 [ApiController]
 [Route("api/[controller]")]

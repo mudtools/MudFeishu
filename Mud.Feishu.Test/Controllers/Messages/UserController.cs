@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 using Mud.Feishu.DataModels.Users;
 using System.ComponentModel.DataAnnotations;
 
-namespace Mud.Feishu.Test.Controllers;
+namespace Mud.Feishu.Test.Controllers.Messages;
 
 /// <summary>
 /// 飞书用户管理控制器

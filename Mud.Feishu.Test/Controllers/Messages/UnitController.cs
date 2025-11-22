@@ -8,7 +8,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Mud.Feishu.DataModels.Units;
 
-namespace Mud.Feishu.Test.Controllers;
+namespace Mud.Feishu.Test.Controllers.Messages;
 
 /// <summary>
 /// 飞书单位管理控制器

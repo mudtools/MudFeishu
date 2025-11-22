@@ -7,7 +7,6 @@
 
 using Microsoft.AspNetCore.Mvc;
 using Mud.Feishu.DataModels.Messages;
-using System.ComponentModel.DataAnnotations;
 
 namespace Mud.Feishu.Test.Controllers;
 
@@ -515,24 +514,24 @@ public class MessageController : ControllerBase
     /// <param name="messageId">待查询的消息ID</param>
     /// <param name="fileKey">待查询资源的Key</param>
     /// <param name="type">资源类型：image（图片）或file（文件、音频、视频）</param>
-    /// <param name="localFilePath">用于保存获取二进制文件的本地文件路径</param>
     /// <returns>下载结果</returns>
     [HttpPost("{messageId}/resources/{fileKey}/download")]
     public async Task<IActionResult> DownloadMessageLargeFileAsync(
         [FromRoute] string messageId,
         [FromRoute] string fileKey,
-        [FromQuery] string type,
-        [FromBody] string localFilePath)
+        [FromQuery] string type)
     {
         try
         {
+            string localFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, Guid.NewGuid().ToString() + ".tmp");
+
             await _messageApi.GetMessageLargeFile(messageId, fileKey, type, localFilePath);
 
-            return Ok(new 
-            { 
-                success = true, 
+            return Ok(new
+            {
+                success = true,
                 filePath = localFilePath,
-                message = "大文件下载成功" 
+                message = "大文件下载成功"
             });
         }
         catch (Exception ex)

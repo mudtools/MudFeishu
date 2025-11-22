@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 using Mud.Feishu.DataModels;
 using Mud.Feishu.DataModels.DepartmentsV1;
 
-namespace Mud.Feishu.Test.Controllers;
+namespace Mud.Feishu.Test.Controllers.Messages;
 
 /// <summary>
 /// 飞书部门管理控制器（V1版本）

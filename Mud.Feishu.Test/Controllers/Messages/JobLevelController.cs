@@ -6,37 +6,36 @@
 // -----------------------------------------------------------------------
 
 using Microsoft.AspNetCore.Mvc;
-using Mud.Feishu.DataModels.JobFamilies;
+using Mud.Feishu.DataModels.JobLevel;
 
-namespace Mud.Feishu.Test.Controllers;
+namespace Mud.Feishu.Test.Controllers.Messages;
 
 /// <summary>
-/// 飞书职位序列管理控制器
-/// 用于测试职位序列相关的API接口
+/// 飞书职级管理控制器
+/// 用于测试职级相关的API接口
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
-public class JobFamilyController : ControllerBase
+public class JobLevelController : ControllerBase
 {
-    private readonly IFeishuV3JobFamiliesService _jobFamiliesApi;
+    private readonly IFeishuV3JobLevelService _jobLevelApi;
 
-    public JobFamilyController(IFeishuV3JobFamiliesService jobFamiliesApi)
+    public JobLevelController(IFeishuV3JobLevelService jobLevelApi)
     {
-        _jobFamiliesApi = jobFamiliesApi;
+        _jobLevelApi = jobLevelApi;
     }
 
     /// <summary>
-    /// 创建职位序列
+    /// 创建职级
     /// </summary>
-    /// <param name="request">职位序列创建请求体</param>
+    /// <param name="levelRequest">职级创建请求体</param>
     /// <returns></returns>
     [HttpPost]
-    public async Task<IActionResult> CreateJobFamily(
-        [FromBody] JobFamilyCreateUpdateRequest request)
+    public async Task<IActionResult> CreateJobLevel([FromBody] JobLevelCreateUpdateRequest levelRequest)
     {
         try
         {
-            var result = await _jobFamiliesApi.CreateJobFamilyAsync(request);
+            var result = await _jobLevelApi.CreateJobLevelAsync(levelRequest);
             return Ok(result);
         }
         catch (Exception ex)
@@ -46,19 +45,17 @@ public class JobFamilyController : ControllerBase
     }
 
     /// <summary>
-    /// 更新职位序列
+    /// 更新职级
     /// </summary>
-    /// <param name="jobFamilyId">职位序列ID</param>
-    /// <param name="request">职位序列更新请求体</param>
+    /// <param name="jobLevelId">职级ID</param>
+    /// <param name="levelRequest">职级更新请求体</param>
     /// <returns></returns>
-    [HttpPut("{jobFamilyId}")]
-    public async Task<IActionResult> UpdateJobFamily(
-        string jobFamilyId,
-        [FromBody] JobFamilyCreateUpdateRequest request)
+    [HttpPut("{jobLevelId}")]
+    public async Task<IActionResult> UpdateJobLevel(string jobLevelId, [FromBody] JobLevelCreateUpdateRequest levelRequest)
     {
         try
         {
-            var result = await _jobFamiliesApi.UpdateJobFamilyAsync(jobFamilyId, request);
+            var result = await _jobLevelApi.UpdateJobLevelAsync(jobLevelId, levelRequest);
             return Ok(result);
         }
         catch (Exception ex)
@@ -68,18 +65,17 @@ public class JobFamilyController : ControllerBase
     }
 
     /// <summary>
-    /// 获取指定职位序列信息
+    /// 获取职级信息
     /// </summary>
-    /// <param name="jobFamilyId">职位序列ID</param>
+    /// <param name="jobLevelId">职级ID</param>
     /// <returns></returns>
-    [HttpGet("{jobFamilyId}")]
-    public async Task<IActionResult> GetJobFamily(
-        string jobFamilyId)
+    [HttpGet("{jobLevelId}")]
+    public async Task<IActionResult> GetJobLevel(string jobLevelId)
     {
         try
         {
-            var result = await _jobFamiliesApi.GetJobFamilyByIdAsync(jobFamilyId);
-            return Ok(result.Data);
+            var result = await _jobLevelApi.GetJobLevelByIdAsync(jobLevelId);
+            return Ok(result);
         }
         catch (Exception ex)
         {
@@ -88,25 +84,22 @@ public class JobFamilyController : ControllerBase
     }
 
     /// <summary>
-    /// 获取职位序列列表
+    /// 获取职级列表
     /// </summary>
-    /// <param name="name">序列名称</param>
-    /// <param name="pageSize">分页大小，默认值：10</param>
+    /// <param name="name">职级名称</param>
+    /// <param name="pageSize">分页大小</param>
     /// <param name="pageToken">分页标记</param>
     /// <returns></returns>
-    [HttpGet("list")]
-    public async Task<IActionResult> GetJobFamiliesList(
-        [FromQuery] string name = null,
+    [HttpGet]
+    public async Task<IActionResult> GetJobLevels(
+        [FromQuery] string name,
         [FromQuery] int pageSize = 10,
         [FromQuery] string? pageToken = null)
     {
         try
         {
-            var result = await _jobFamiliesApi.GetJobFamilesListAsync(
-                name,
-                pageSize,
-                pageToken);
-            return Ok(result.Data);
+            var result = await _jobLevelApi.GetJobLevelListAsync(name, pageSize, pageToken);
+            return Ok(result);
         }
         catch (Exception ex)
         {
@@ -115,17 +108,16 @@ public class JobFamilyController : ControllerBase
     }
 
     /// <summary>
-    /// 删除职位序列
+    /// 删除职级
     /// </summary>
-    /// <param name="jobFamilyId">职位序列ID</param>
+    /// <param name="jobLevelId">职级ID</param>
     /// <returns></returns>
-    [HttpDelete("{jobFamilyId}")]
-    public async Task<IActionResult> DeleteJobFamily(
-        string jobFamilyId)
+    [HttpDelete("{jobLevelId}")]
+    public async Task<IActionResult> DeleteJobLevel(string jobLevelId)
     {
         try
         {
-            var result = await _jobFamiliesApi.DeleteJobFamilyByIdAsync(jobFamilyId);
+            var result = await _jobLevelApi.DeleteJobLevelByIdAsync(jobLevelId);
             return Ok(result);
         }
         catch (Exception ex)

@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 using Mud.Feishu.DataModels;
 using Mud.Feishu.DataModels.Employees;
 
-namespace Mud.Feishu.Test.Controllers;
+namespace Mud.Feishu.Test.Controllers.Messages;
 
 /// <summary>
 /// 飞书V1员工管理控制器

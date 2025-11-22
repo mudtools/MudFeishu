@@ -7,7 +7,7 @@
 
 using Microsoft.AspNetCore.Mvc;
 
-namespace Mud.Feishu.Test.Controllers;
+namespace Mud.Feishu.Test.Controllers.Messages;
 
 /// <summary>
 /// 飞书工作城市管理控制器

@@ -18,9 +18,9 @@ namespace Mud.Feishu.Test.Controllers;
 [Route("api/[controller]")]
 public class RoleController : ControllerBase
 {
-    private readonly IFeishuV3Role _roleApi;
+    private readonly IFeishuV3RoleService _roleApi;
 
-    public RoleController(IFeishuV3Role roleApi)
+    public RoleController(IFeishuV3RoleService roleApi)
     {
         _roleApi = roleApi;
     }

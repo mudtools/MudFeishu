@@ -17,9 +17,9 @@ namespace Mud.Feishu.Test.Controllers;
 [Route("api/[controller]")]
 public class WorkCityController : ControllerBase
 {
-    private readonly IFeishuV3WorkCity _workCityApi;
+    private readonly IFeishuV3WorkCityService _workCityApi;
 
-    public WorkCityController(IFeishuV3WorkCity workCityApi)
+    public WorkCityController(IFeishuV3WorkCityService workCityApi)
     {
         _workCityApi = workCityApi;
     }

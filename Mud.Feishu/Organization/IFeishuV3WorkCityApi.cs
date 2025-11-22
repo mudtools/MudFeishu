@@ -14,7 +14,7 @@ namespace Mud.Feishu;
 /// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/contact-v3/work_city/work-city-resources-introduction"/></para>
 /// </summary>
 [HttpClientApi(RegistryGroupName = "Organization")]
-[HttpClientApiWrap(TokenManage = nameof(ITokenManager), WrapInterface = nameof(IFeishuV3WorkCity))]
+[HttpClientApiWrap(TokenManage = nameof(ITokenManager), WrapInterface = nameof(IFeishuV3WorkCityService))]
 public interface IFeishuV3WorkCityApi
 {
     /// <summary>

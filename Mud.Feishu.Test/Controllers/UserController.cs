@@ -19,9 +19,9 @@ namespace Mud.Feishu.Test.Controllers;
 [Route("api/[controller]")]
 public class UserController : ControllerBase
 {
-    private readonly IFeishuV3User _userApi;
+    private readonly IFeishuV3UserService _userApi;
 
-    public UserController(IFeishuV3User userApi)
+    public UserController(IFeishuV3UserService userApi)
     {
         _userApi = userApi;
     }

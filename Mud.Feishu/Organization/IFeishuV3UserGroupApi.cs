@@ -15,7 +15,7 @@ namespace Mud.Feishu;
 /// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/contact-v3/group/overview"/></para>
 /// </summary>
 [HttpClientApi(RegistryGroupName = "Organization")]
-[HttpClientApiWrap(TokenManage = nameof(ITokenManager), WrapInterface = nameof(IFeishuV3UserGroup))]
+[HttpClientApiWrap(TokenManage = nameof(ITokenManager), WrapInterface = nameof(IFeishuV3UserGroupService))]
 public interface IFeishuV3UserGroupApi
 {
     /// <summary>

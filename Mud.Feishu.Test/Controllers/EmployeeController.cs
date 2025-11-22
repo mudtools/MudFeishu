@@ -19,9 +19,9 @@ namespace Mud.Feishu.Test.Controllers;
 [Route("api/[controller]")]
 public class EmployeeController : ControllerBase
 {
-    private readonly IFeishuV1Employees _v1EmployeeApi;
+    private readonly IFeishuV1EmployeesService _v1EmployeeApi;
 
-    public EmployeeController(IFeishuV1Employees v1EmployeeApi)
+    public EmployeeController(IFeishuV1EmployeesService v1EmployeeApi)
     {
         _v1EmployeeApi = v1EmployeeApi;
     }

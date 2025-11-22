@@ -14,7 +14,7 @@ namespace Mud.Feishu;
 /// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/contact-v3/job_title/job-title-resources-introduction"/></para>
 /// </summary>
 [HttpClientApi(RegistryGroupName = "Organization")]
-[HttpClientApiWrap(TokenManage = nameof(ITokenManager), WrapInterface = nameof(IFeishuV3JobTitle))]
+[HttpClientApiWrap(TokenManage = nameof(ITokenManager), WrapInterface = nameof(IFeishuV3JobTitleService))]
 public interface IFeishuV3JobTitleApi
 {
     /// <summary>

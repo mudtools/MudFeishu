@@ -17,9 +17,9 @@ namespace Mud.Feishu.Test.Controllers;
 [Route("api/[controller]")]
 public class JobTitleController : ControllerBase
 {
-    private readonly IFeishuV3JobTitle _jobTitleApi;
+    private readonly IFeishuV3JobTitleService _jobTitleApi;
 
-    public JobTitleController(IFeishuV3JobTitle jobTitleApi)
+    public JobTitleController(IFeishuV3JobTitleService jobTitleApi)
     {
         _jobTitleApi = jobTitleApi;
     }

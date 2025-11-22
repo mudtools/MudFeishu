@@ -20,9 +20,9 @@ namespace Mud.Feishu.Test.Controllers;
 [Route("api/[controller]")]
 public class DepartmentController : ControllerBase
 {
-    private readonly IFeishuV3Departments _departmentApi;
+    private readonly IFeishuV3DepartmentsService _departmentApi;
 
-    public DepartmentController(IFeishuV3Departments departmentApi)
+    public DepartmentController(IFeishuV3DepartmentsService departmentApi)
     {
         _departmentApi = departmentApi;
     }

@@ -5,6 +5,8 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using Mud.Feishu.DataModels.Messages;
+
 namespace Mud.Feishu;
 
 /// <summary>
@@ -17,6 +19,59 @@ namespace Mud.Feishu;
 public interface IFeishuV1BatchMessageApi
 {
     /// <summary>
+    /// 给多个用户或者多个部门中的成员发送文本消息。
+    /// </summary>
+    /// <param name="tenant_access_token">应用调用 API 时，通过访问凭证（access_token）进行身份鉴权</param>
+    /// <param name="sendMessageRequest">批量发送文本消息请求体。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Post("https://open.feishu.cn/open-apis/message/v4/batch_send")]
+    Task<FeishuApiResult<BatchMessageResult>> BatchSendTextMessageAsync(
+      [Token][Header("Authorization")] string tenant_access_token,
+      [Body] BatchSenderTextMessageRequest sendMessageRequest,
+      CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 给多个用户或者多个部门中的成员发送富文本消息。
+    /// </summary>
+    /// <param name="tenant_access_token">应用调用 API 时，通过访问凭证（access_token）进行身份鉴权</param>
+    /// <param name="sendMessageRequest">批量发送富文本消息请求体。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Post("https://open.feishu.cn/open-apis/message/v4/batch_send")]
+    Task<FeishuApiResult<BatchMessageResult>> BatchSendRichTextMessageAsync(
+      [Token][Header("Authorization")] string tenant_access_token,
+      [Body] BatchSenderRichTextMessageRequest sendMessageRequest,
+      CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 给多个用户或者多个部门中的成员发送图片消息。
+    /// </summary>
+    /// <param name="tenant_access_token">应用调用 API 时，通过访问凭证（access_token）进行身份鉴权</param>
+    /// <param name="sendMessageRequest">批量发送图片消息请求体。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Post("https://open.feishu.cn/open-apis/message/v4/batch_send")]
+    Task<FeishuApiResult<BatchMessageResult>> BatchSendImageMessageAsync(
+      [Token][Header("Authorization")] string tenant_access_token,
+      [Body] BatchSenderMessageImageRequest sendMessageRequest,
+      CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 给多个用户或者多个部门中的成员发群分享消息。
+    /// </summary>
+    /// <param name="tenant_access_token">应用调用 API 时，通过访问凭证（access_token）进行身份鉴权</param>
+    /// <param name="sendMessageRequest">批量发送群分享消息请求体。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Post("https://open.feishu.cn/open-apis/message/v4/batch_send")]
+    Task<FeishuApiResult<BatchMessageResult>> BatchSendGroupShareMessageAsync(
+      [Token][Header("Authorization")] string tenant_access_token,
+      [Body] BatchSenderMessageGroupShareRequest sendMessageRequest,
+      CancellationToken cancellationToken = default);
+
+
+    /// <summary>
     /// 用于撤回通过批量发送消息接口发送的消息。
     /// </summary>
     /// <param name="access_token">应用调用 API 时，通过访问凭证（access_token）进行身份鉴权</param>
@@ -25,7 +80,7 @@ public interface IFeishuV1BatchMessageApi
     /// </param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Delete("https://open.feishu.cn/open-apis/im/v1/messages/{message_id}")]
+    [Delete("https://open.feishu.cn/open-apis/im/v1/batch_messages/{batch_message_id\r\n\r\n}")]
     Task<FeishuNullDataApiResult> RevokeMessageAsync(
         [Token][Header("Authorization")] string access_token,
         [Path] string batch_message_id,

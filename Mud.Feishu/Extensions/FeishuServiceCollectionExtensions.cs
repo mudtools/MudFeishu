@@ -108,6 +108,8 @@ public static class FeishuServiceCollectionExtensions
     private static IServiceCollection AddFeishuApiServiceCore(this IServiceCollection services) =>
         services
             .AddSingleton<ITokenManager, TokenManagerWithCache>()
-            .AddWebApiHttpClient()
-            .AddWebApiHttpClientWrap();
+            .AddOrganizationWebApiHttpClient()
+            .AddMessageWebApiHttpClient()
+            .AddOrganizationWebApiHttpClientWrap()
+            .AddMessageWebApiHttpClientWrap();
 }

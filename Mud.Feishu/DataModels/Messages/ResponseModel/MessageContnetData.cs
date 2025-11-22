@@ -7,47 +7,28 @@
 
 namespace Mud.Feishu.DataModels.Messages;
 
-public class MessageContnetData
+/// <summary>
+/// 消息内容数据，继承自基础消息结果，扩展了额外的属性
+/// </summary>
+public class MessageContnetData : BaseMessageResult
 {
-    [JsonPropertyName("message_id")]
-    public string MessageId { get; set; }
-
-    [JsonPropertyName("root_id")]
-    public string RootId { get; set; }
-
-    [JsonPropertyName("parent_id")]
-    public string ParentId { get; set; }
-
+    /// <summary>
+    /// 线程 ID，用于标识消息串
+    /// <para>示例值："thread_123456789"</para>
+    /// </summary>
     [JsonPropertyName("thread_id")]
-    public string ThreadId { get; set; }
+    public string? ThreadId { get; set; }
 
-    [JsonPropertyName("msg_type")]
-    public string MsgType { get; set; }
-
-    [JsonPropertyName("create_time")]
-    public string CreateTime { get; set; }
-
-    [JsonPropertyName("update_time")]
-    public string UpdateTime { get; set; }
-
-    [JsonPropertyName("deleted")]
-    public bool Deleted { get; set; }
-
-    [JsonPropertyName("updated")]
-    public bool Updated { get; set; }
-
-    [JsonPropertyName("chat_id")]
-    public string ChatId { get; set; }
-
-    [JsonPropertyName("sender")]
-    public MessageSender Sender { get; set; }
-
-    [JsonPropertyName("body")]
-    public MessageBody Body { get; set; }
-
+    /// <summary>
+    /// 消息中提及的用户列表
+    /// </summary>
     [JsonPropertyName("mentions")]
-    public List<MessageMention> Mentions { get; set; }
+    public List<MessageMention>? Mentions { get; set; }
 
+    /// <summary>
+    /// 上层消息 ID
+    /// <para>示例值："om_dc13264520392913993dd051dba21dcf"</para>
+    /// </summary>
     [JsonPropertyName("upper_message_id")]
-    public string UpperMessageId { get; set; }
+    public string? UpperMessageId { get; set; }
 }

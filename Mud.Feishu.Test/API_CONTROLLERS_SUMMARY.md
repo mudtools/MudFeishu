@@ -81,6 +81,37 @@
 | QueryEmployeePageList | `/api/v1/employee/filter` | POST | 依据指定条件，分页批量获取符合条件的员工详情列表 |
 | SearchEmployeePageList | `/api/v1/employee/search` | POST | 搜索员工信息 |
 
+### 7. MessageController (飞书消息管理)
+覆盖了 `IFeishuV1MessageApi` 的所有接口：
+
+| 方法 | 路径 | HTTP方法 | 功能 |
+|------|------|----------|------|
+| SendMessage | `/api/message/send` | POST | 发送消息 |
+| ReplyMessage | `/api/message/{messageId}/reply` | POST | 回复消息 |
+| EditMessage | `/api/message/{messageId}` | PUT | 编辑消息 |
+| ForwardMessage | `/api/message/{messageId}/forward` | POST | 转发消息 |
+| MergeForwardMessage | `/api/message/merge_forward` | POST | 合并转发消息 |
+| ForwardThread | `/api/message/threads/{threadId}/forward` | POST | 转发话题 |
+| RevokeMessage | `/api/message/{messageId}` | DELETE | 撤回消息 |
+| CreateMessageFollowUp | `/api/message/{messageId}/follow_up` | POST | 创建跟随气泡 |
+| GetMessageReadUsers | `/api/message/{messageId}/read_users` | GET | 查询消息已读用户 |
+| GetHistoryMessage | `/api/message/history` | GET | 获取历史消息 |
+| GetMessageContent | `/api/message/{messageId}/content` | GET | 获取消息内容 |
+| GetMessageFile | `/api/message/{messageId}/resources/{fileKey}` | GET | 获取消息资源文件（小文件） |
+| DownloadMessageLargeFile | `/api/message/{messageId}/resources/{fileKey}/download` | POST | 下载消息资源文件（大文件） |
+
+### 8. DepartmentV1Controller (飞书部门管理V1版本)
+覆盖了 `IFeishuV1DepartmentsApi` 的所有接口：
+
+| 方法 | 路径 | HTTP方法 | 功能 |
+|------|------|----------|------|
+| CreateDepartment | `/api/departmentv1` | POST | 创建部门 |
+| UpdateDepartment | `/api/departmentv1/{departmentId}` | PATCH | 更新部门 |
+| DeleteDepartment | `/api/departmentv1/{departmentId}` | DELETE | 删除部门 |
+| QueryDepartments | `/api/departmentv1/batch` | POST | 批量查询部门 |
+| QueryDepartmentsPageList | `/api/departmentv1/filter` | POST | 分页查询部门 |
+| SearchDepartments | `/api/departmentv1/search` | POST | 搜索部门 |
+
 ## 特性
 
 ### 统一的错误处理

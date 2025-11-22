@@ -11,7 +11,7 @@ namespace Mud.Feishu.DataModels.Units;
 /// 单位列表数据响应结果，包含单位列表的完整信息。
 /// 用于获取系统中的所有单位或指定条件下的单位列表。
 /// </summary>
-public class UnitListDataResult : ApiListResult
+public class UnitListDataResult : ApiPageListResult
 {
     /// <summary>
     /// 单位列表。

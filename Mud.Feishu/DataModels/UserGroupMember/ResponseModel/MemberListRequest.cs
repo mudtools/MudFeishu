@@ -13,7 +13,7 @@ namespace Mud.Feishu.DataModels.UserGroupMember;
 /// 成员列表请求/响应模型，包含用户组成员列表信息。
 /// 用于获取用户组成员列表或批量操作时的成员数据传输。
 /// </summary>
-public class MemberListRequest : ApiListResult
+public class MemberListRequest : ApiPageListResult
 {
     /// <summary>
     /// 成员列表。

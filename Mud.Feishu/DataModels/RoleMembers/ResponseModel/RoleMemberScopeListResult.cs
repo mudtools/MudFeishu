@@ -11,7 +11,7 @@ namespace Mud.Feishu.DataModels.RoleMembers;
 /// 角色成员权限范围列表响应结果，包含多个角色成员的权限范围信息。
 /// 用于批量获取或设置角色成员权限范围时的响应数据格式。
 /// </summary>
-public class RoleMemberScopeListResult : ApiListResult
+public class RoleMemberScopeListResult : ApiPageListResult
 {
     /// <summary>
     /// 角色成员权限范围列表。

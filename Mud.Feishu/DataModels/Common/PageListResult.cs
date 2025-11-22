@@ -16,7 +16,7 @@ public class PageListResult
     /// 分页结果。
     /// </summary>
     [JsonPropertyName("page_response")]
-    public ApiListResult? Page { get; set; }
+    public ApiPageListResult? Page { get; set; }
 
     /// <summary>
     /// 异常信息列表

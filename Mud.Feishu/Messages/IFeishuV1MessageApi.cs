@@ -161,7 +161,7 @@ public interface IFeishuV1MessageApi
     /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
     /// <returns></returns>
     [Get("https://open.feishu.cn/open-apis/im/v1/messages/{message_id}/read_users")]
-    Task<FeishuApiListResult<ReadMessageUser>> GetMessageReadUsesAsync(
+    Task<FeishuApiPageListResult<ReadMessageUser>> GetMessageReadUsesAsync(
      [Token][Header("Authorization")] string tenant_access_token,
      [Path] string message_id,
      [Query("page_size")] int page_size = 10,
@@ -188,7 +188,7 @@ public interface IFeishuV1MessageApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Get("https://open.feishu.cn/open-apis/im/v1/messages")]
-    Task<FeishuApiListResult<HistoryMessageData>> GetHistoryMessageAsync(
+    Task<FeishuApiPageListResult<HistoryMessageData>> GetHistoryMessageAsync(
          [Token][Header("Authorization")] string tenant_access_token,
          [Query("container_id_type")] string container_id_type,
          [Query("container_id")] string container_id,
@@ -230,7 +230,7 @@ public interface IFeishuV1MessageApi
     /// <param name="tenant_access_token">应用调用 API 时，需要通过访问凭证（access_token）进行身份鉴权</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <param name="message_id">待查询的消息 ID。</param>
-    /// <param name="file_key">待查询资源的 Key。可以调用<see href="https://open.feishu.cn/document/server-docs/im-v1/message/get">获取指定消息的内容接口</see>，通过消息 ID 获取消息内容中的资源 Key。
+    /// <param name="file_key">待查询资源的 Key。可以调用<see cref="GetContentListByMessageIdAsync">获取指定消息的内容接口</see>，通过消息 ID 获取消息内容中的资源 Key。
     /// <para>示例值："file_456a92d6-c6ea-4de4-ac3f-7afcf44ac78g"</para>
     /// </param>
     /// <param name="type">资源类型.
@@ -247,5 +247,20 @@ public interface IFeishuV1MessageApi
         [Path] string file_key,
         [Query("type")] string type,
         [FilePath] string localFilePath,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 通过消息的 message_id 查询指定消息的内容。
+    /// </summary>
+    /// <param name="tenant_access_token">应用调用 API 时，需要通过访问凭证（access_token）进行身份鉴权</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <param name="message_id">待查询的消息 ID。</param>  
+    /// <param name="user_id_type">用户 ID 类型，示例值："open_id"，默认值：open_id</param>
+    /// <returns></returns>
+    [Get("https://open.feishu.cn/open-apis/im/v1/messages")]
+    Task<FeishuApiListResult<MessageContnetData>> GetContentListByMessageIdAsync(
+        [Token][Header("Authorization")] string tenant_access_token,
+        [Path] string message_id,
+        [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
         CancellationToken cancellationToken = default);
 }

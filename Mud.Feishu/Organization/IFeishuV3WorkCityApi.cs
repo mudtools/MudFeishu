@@ -26,7 +26,7 @@ public interface IFeishuV3WorkCityApi
     /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
     /// <returns></returns>
     [Get("https://open.feishu.cn/open-apis/contact/v3/work_cities")]
-    Task<FeishuApiListResult<WorkCity>> GetWorkCitesListAsync(
+    Task<FeishuApiPageListResult<WorkCity>> GetWorkCitesListAsync(
          [Token(TokenType.Both)][Header("Authorization")] string access_token,
          [Query("page_size")] int page_size = 10,
          [Query("page_token")] string? page_token = null,

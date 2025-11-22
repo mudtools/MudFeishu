@@ -39,6 +39,15 @@ public class FeishuApiResult<T> : FeishuApiResult
 }
 
 /// <summary>
+/// API分页列表响应结果模型
+/// </summary>
+/// <typeparam name="T"></typeparam>
+public class FeishuApiPageListResult<T> : FeishuApiResult<ApiPageListResult<T>>
+{
+
+}
+
+/// <summary>
 /// API列表响应结果模型
 /// </summary>
 /// <typeparam name="T"></typeparam>

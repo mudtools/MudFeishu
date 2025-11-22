@@ -10,7 +10,7 @@ namespace Mud.Feishu.DataModels.UserGroup;
 /// <summary>
 /// 用户组列表数据结果，包含用户组列表和分页信息。
 /// </summary>
-public class UserGroupListResult : ApiListResult
+public class UserGroupListResult : ApiPageListResult
 {
     /// <summary>
     /// 用户组列表。

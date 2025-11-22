@@ -10,7 +10,7 @@ namespace Mud.Feishu.DataModels.Users;
 /// <summary>
 /// 用户查询结果列表。
 /// </summary>
-public class UserSearchListResult : ApiListResult
+public class UserSearchListResult : ApiPageListResult
 {
     /// <summary>
     /// 用户查询结果列表。

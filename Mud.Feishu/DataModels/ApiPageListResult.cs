@@ -8,9 +8,9 @@
 namespace Mud.Feishu.DataModels;
 
 /// <summary>
-/// 列表数据响应结果。
+/// 分页列表数据响应结果。
 /// </summary>
-public class ApiListResult
+public class ApiPageListResult
 {
     /// <summary>
     /// 是否还有更多项
@@ -26,10 +26,23 @@ public class ApiListResult
 }
 
 /// <summary>
+/// 分页列表数据响应结果。
+/// </summary>
+/// <typeparam name="T">响应结果类型</typeparam>
+public class ApiPageListResult<T> : ApiPageListResult
+{
+    /// <summary>
+    /// 响应结果的列表数据集合。
+    /// </summary>
+    [JsonPropertyName("items")]
+    public List<T> Items { get; set; } = [];
+}
+
+/// <summary>
 /// 列表数据响应结果。
 /// </summary>
 /// <typeparam name="T">响应结果类型</typeparam>
-public class ApiListResult<T> : ApiListResult
+public class ApiListResult<T>
 {
     /// <summary>
     /// 响应结果的列表数据集合。

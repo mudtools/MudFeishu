@@ -26,7 +26,7 @@ public interface IFeishuV3JobTitleApi
     /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
     /// <returns></returns>
     [Get("https://open.feishu.cn/open-apis/contact/v3/job_titles")]
-    Task<FeishuApiListResult<JobTitle>> GetTenantJobTitlesListAsync(
+    Task<FeishuApiPageListResult<JobTitle>> GetTenantJobTitlesListAsync(
        [Token][Header("Authorization")] string tenant_access_token,
        [Query("page_size")] int page_size = 10,
        [Query("page_token")] string? page_token = null,
@@ -41,7 +41,7 @@ public interface IFeishuV3JobTitleApi
     /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
     /// <returns></returns>
     [Get("https://open.feishu.cn/open-apis/contact/v3/job_titles")]
-    Task<FeishuApiListResult<JobTitle>> GetUserJobTitlesListAsync(
+    Task<FeishuApiPageListResult<JobTitle>> GetUserJobTitlesListAsync(
        [Token(TokenType.UserAccessToken)][Header("Authorization")] string user_access_token,
        [Query("page_size")] int page_size = 10,
        [Query("page_token")] string? page_token = null,

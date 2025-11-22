@@ -15,7 +15,6 @@ namespace Mud.Feishu;
 /// </summary> 
 [HttpClientApi(RegistryGroupName = "Message")]
 [HttpClientApiWrap(TokenManage = nameof(ITokenManager), WrapInterface = nameof(IFeishuV1BatchMessageService))]
-
 public interface IFeishuV1BatchMessageApi
 {
     /// <summary>
@@ -80,8 +79,23 @@ public interface IFeishuV1BatchMessageApi
     /// </param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Delete("https://open.feishu.cn/open-apis/im/v1/batch_messages/{batch_message_id\r\n\r\n}")]
+    [Delete("https://open.feishu.cn/open-apis/im/v1/batch_messages/{batch_message_id}")]
     Task<FeishuNullDataApiResult> RevokeMessageAsync(
+        [Token][Header("Authorization")] string access_token,
+        [Path] string batch_message_id,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 批量发送消息后，可通过该接口查询消息推送的总人数以及消息已读人数。
+    /// </summary>
+    /// <param name="access_token">应用调用 API 时，通过访问凭证（access_token）进行身份鉴权</param>
+    /// <param name="batch_message_id">待查询的批量消息任务 ID，该 ID 为批量发送消息接口返回值中的 message_id 字段，用于标识一次批量发送消息请求。
+    /// <para>示例值："om_dc13264520392913993dd051dba21dcf"</para>
+    /// </param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Get("https://open.feishu.cn/open-apis/im/v1/batch_messages/{batch_message_id}/read_user")]
+    Task<FeishuApiResult<BatchMessageReadStatusResult>> UserReadMessageInfosAsync(
         [Token][Header("Authorization")] string access_token,
         [Path] string batch_message_id,
         CancellationToken cancellationToken = default);

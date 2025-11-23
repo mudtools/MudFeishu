@@ -27,7 +27,7 @@ public interface IFeishuV3UnitApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Post("https://open.feishu.cn/open-apis/contact/v3/unit")]
-    Task<FeishuApiResult<UnitCreateResult>> CreateUnitAsync(
+    Task<FeishuApiResult<UnitCreateResult>?> CreateUnitAsync(
       [Token][Header("Authorization")] string tenant_access_token,
       [Body] UnitInfoRequest groupInfoRequest,
       CancellationToken cancellationToken = default);
@@ -41,7 +41,7 @@ public interface IFeishuV3UnitApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Patch("https://open.feishu.cn/open-apis/contact/v3/unit/{unit_id}")]
-    Task<FeishuNullDataApiResult> UpdateUnitAsync(
+    Task<FeishuNullDataApiResult?> UpdateUnitAsync(
          [Token][Header("Authorization")] string tenant_access_token,
          [Path] string unit_id,
          [Body] UnitNameUpdateRequest nameUpdateRequest,
@@ -59,7 +59,7 @@ public interface IFeishuV3UnitApi
     /// </remarks>
     /// <returns></returns>
     [Post("https://open.feishu.cn/open-apis/contact/v3/unit/bind_department")]
-    Task<FeishuApiResult<UnitCreateResult>> BindDepartmentAsync(
+    Task<FeishuApiResult<UnitCreateResult>?> BindDepartmentAsync(
           [Token][Header("Authorization")] string tenant_access_token,
           [Body] UnitBindDepartmentRequest unitBindDepartment,
           CancellationToken cancellationToken = default);
@@ -72,7 +72,7 @@ public interface IFeishuV3UnitApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Post("https://open.feishu.cn/open-apis/contact/v3/unit/unbind_department")]
-    Task<FeishuApiResult<UnitCreateResult>> UnBindDepartmentAsync(
+    Task<FeishuApiResult<UnitCreateResult>?> UnBindDepartmentAsync(
           [Token][Header("Authorization")] string tenant_access_token,
           [Body] UnitBindDepartmentRequest unitBindDepartment,
           CancellationToken cancellationToken = default);
@@ -88,7 +88,7 @@ public interface IFeishuV3UnitApi
     /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
     /// <returns></returns>
     [Get("https://open.feishu.cn/open-apis/contact/v3/unit/list_department")]
-    Task<FeishuApiResult<UnitDepartmentListResult>> GetDepartmentListAsync(
+    Task<FeishuApiResult<UnitDepartmentListResult>?> GetDepartmentListAsync(
          [Token][Header("Authorization")] string tenant_access_token,
          [Query("unit_id")] string unit_id,
          [Query("page_size")] int page_size = 10,
@@ -104,7 +104,7 @@ public interface IFeishuV3UnitApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Get("https://open.feishu.cn/open-apis/contact/v3/unit/{unit_id}")]
-    Task<FeishuApiResult<UnitInfo>> GetUnitInfoAsync(
+    Task<FeishuApiResult<UnitInfo>?> GetUnitInfoAsync(
         [Token][Header("Authorization")] string tenant_access_token,
         [Path] string unit_id,
         CancellationToken cancellationToken = default);
@@ -132,7 +132,7 @@ public interface IFeishuV3UnitApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Delete("https://open.feishu.cn/open-apis/contact/v3/unit/{unit_id}")]
-    Task<FeishuNullDataApiResult> DeleteUnitByIdAsync(
+    Task<FeishuNullDataApiResult?> DeleteUnitByIdAsync(
       [Token][Header("Authorization")] string tenant_access_token,
       [Path] string unit_id,
       CancellationToken cancellationToken = default);

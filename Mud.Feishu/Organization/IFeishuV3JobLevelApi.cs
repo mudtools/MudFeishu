@@ -28,7 +28,7 @@ public interface IFeishuV3JobLevelApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Post("https://open.feishu.cn/open-apis/contact/v3/job_levels")]
-    Task<FeishuApiResult<JobLevelResult>> CreateJobLevelAsync(
+    Task<FeishuApiResult<JobLevelResult>?> CreateJobLevelAsync(
        [Token][Header("Authorization")] string tenant_access_token,
        [Body] JobLevelCreateUpdateRequest levelCreateRequest,
        CancellationToken cancellationToken = default);
@@ -42,7 +42,7 @@ public interface IFeishuV3JobLevelApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Put("https://open.feishu.cn/open-apis/contact/v3/job_levels/{job_level_id}")]
-    Task<FeishuApiResult<JobLevelResult>> UpdateJobLevelAsync(
+    Task<FeishuApiResult<JobLevelResult>?> UpdateJobLevelAsync(
        [Token][Header("Authorization")] string tenant_access_token,
        [Path] string job_level_id,
        [Body] JobLevelCreateUpdateRequest levelCreateRequest,
@@ -56,7 +56,7 @@ public interface IFeishuV3JobLevelApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Get("https://open.feishu.cn/open-apis/contact/v3/job_levels/{job_level_id}")]
-    Task<FeishuApiResult<JobLevelResult>> GetJobLevelByIdAsync(
+    Task<FeishuApiResult<JobLevelResult>?> GetJobLevelByIdAsync(
            [Token][Header("Authorization")] string tenant_access_token,
            [Path] string job_level_id,
            CancellationToken cancellationToken = default);
@@ -71,7 +71,7 @@ public interface IFeishuV3JobLevelApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Get("https://open.feishu.cn/open-apis/contact/v3/job_levels")]
-    Task<FeishuApiPageListResult<JobLevelResult>> GetJobLevelListAsync(
+    Task<FeishuApiPageListResult<JobLevelResult>?> GetJobLevelListAsync(
          [Token][Header("Authorization")] string tenant_access_token,
          [Query("name")] string name,
          [Query("page_size")] int page_size = 10,
@@ -86,7 +86,7 @@ public interface IFeishuV3JobLevelApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Delete("https://open.feishu.cn/open-apis/contact/v3/job_levels/{job_level_id}")]
-    Task<FeishuNullDataApiResult> DeleteJobLevelByIdAsync(
+    Task<FeishuNullDataApiResult?> DeleteJobLevelByIdAsync(
             [Token][Header("Authorization")] string tenant_access_token,
             [Path] string job_level_id,
             CancellationToken cancellationToken = default);

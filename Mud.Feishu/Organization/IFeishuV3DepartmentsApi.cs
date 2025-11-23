@@ -29,7 +29,7 @@ public interface IFeishuV3DepartmentsApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Post("https://open.feishu.cn/open-apis/contact/v3/departments")]
-    Task<FeishuApiResult<DepartmentCreateUpdateResult>> CreateDepartmentAsync(
+    Task<FeishuApiResult<DepartmentCreateUpdateResult>?> CreateDepartmentAsync(
            [Token][Header("Authorization")] string tenant_access_token,
            [Body] DepartmentCreateRequest departmentCreateRequest,
            [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
@@ -47,7 +47,7 @@ public interface IFeishuV3DepartmentsApi
     /// <param name="department_id_type">此次调用中的部门 ID 类型。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Patch("https://open.feishu.cn/open-apis/contact/v3/departments/{department_id}")]
-    Task<FeishuApiResult<DepartmentCreateUpdateResult>> UpdatePartDepartmentAsync(
+    Task<FeishuApiResult<DepartmentCreateUpdateResult>?> UpdatePartDepartmentAsync(
           [Token][Header("Authorization")] string tenant_access_token,
           [Path] string department_id,
           [Body] DepartmentPartUpdateRequest departmentCreateRequest,
@@ -65,7 +65,7 @@ public interface IFeishuV3DepartmentsApi
     /// <param name="department_id_type">此次调用中的部门 ID 类型。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Put("https://open.feishu.cn/open-apis/contact/v3/departments/{department_id}")]
-    Task<FeishuApiResult<DepartmentUpdateResult>> UpdateDepartmentAsync(
+    Task<FeishuApiResult<DepartmentUpdateResult>?> UpdateDepartmentAsync(
          [Token][Header("Authorization")] string tenant_access_token,
          [Path] string department_id,
          [Body] DepartmentUpdateRequest departmentCreateRequest,
@@ -82,7 +82,7 @@ public interface IFeishuV3DepartmentsApi
     /// <param name="department_id_type">此次调用中的部门 ID 类型。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Patch("https://open.feishu.cn/open-apis/contact/v3/departments/{department_id}/update_department_id")]
-    Task<FeishuNullDataApiResult> UpdateDepartmentIdAsync(
+    Task<FeishuNullDataApiResult?> UpdateDepartmentIdAsync(
         [Token][Header("Authorization")] string tenant_access_token,
         [Path] string department_id,
         [Body] DepartMentUpdateIdRequest departMentUpdateIdRequest,
@@ -97,7 +97,7 @@ public interface IFeishuV3DepartmentsApi
     /// <param name="department_id_type">此次调用中的部门 ID 类型。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Post("https://open.feishu.cn/open-apis/contact/v3/departments/unbind_department_chat")]
-    Task<FeishuNullDataApiResult> UnbindDepartmentChatAsync(
+    Task<FeishuNullDataApiResult?> UnbindDepartmentChatAsync(
         [Token][Header("Authorization")] string tenant_access_token,
         [Body] DepartmentRequest departmentRequest,
         [Query("department_id_type")] string? department_id_type = Consts.Department_Id_Type,
@@ -113,7 +113,7 @@ public interface IFeishuV3DepartmentsApi
     /// <param name="user_id_type">用户 ID 类型</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Get("https://open.feishu.cn/open-apis/contact/v3/departments/{department_id}")]
-    Task<FeishuApiResult<GetDepartmentInfoResult>> GetDepartmentInfoByIdAsync(
+    Task<FeishuApiResult<GetDepartmentInfoResult>?> GetDepartmentInfoByIdAsync(
          [Token][Header("Authorization")] string user_access_token,
          [Path] string department_id,
          [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
@@ -129,7 +129,7 @@ public interface IFeishuV3DepartmentsApi
     /// <param name="user_id_type">用户 ID 类型</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Get("https://open.feishu.cn/open-apis/contact/v3/departments/batch")]
-    Task<FeishuApiResult<BatchGetDepartmentRequest>> GetDepartmentsByIdsAsync(
+    Task<FeishuApiResult<BatchGetDepartmentRequest>?> GetDepartmentsByIdsAsync(
         [Token][Header("Authorization")] string tenant_access_token,
         [Query("department_ids")] string[] department_ids,
         [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
@@ -149,7 +149,7 @@ public interface IFeishuV3DepartmentsApi
     /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
     /// <returns></returns>
     [Get("https://open.feishu.cn/open-apis/contact/v3/departments/{department_id}/children")]
-    Task<FeishuApiPageListResult<GetDepartmentInfo>> GetDepartmentsByParentIdAsync(
+    Task<FeishuApiPageListResult<GetDepartmentInfo>?> GetDepartmentsByParentIdAsync(
           [Token][Header("Authorization")] string tenant_access_token,
           [Path] string department_id,
           [Query("fetch_child")] bool fetch_child = false,
@@ -171,7 +171,7 @@ public interface IFeishuV3DepartmentsApi
     /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
     /// <returns></returns>
     [Get("https://open.feishu.cn/open-apis/contact/v3/departments/parent")]
-    Task<FeishuApiPageListResult<GetDepartmentInfo>> GetParentDepartmentsByIdAsync(
+    Task<FeishuApiPageListResult<GetDepartmentInfo>?> GetParentDepartmentsByIdAsync(
          [Token][Header("Authorization")] string tenant_access_token,
          [Query("department_id")] string department_id,
          [Query("page_size")] int page_size = 10,
@@ -195,7 +195,7 @@ public interface IFeishuV3DepartmentsApi
     /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
     /// <returns></returns>
     [Post("https://open.feishu.cn/open-apis/contact/v3/departments/search")]
-    Task<FeishuApiPageListResult<GetDepartmentInfo>> SearchDepartmentsAsync(
+    Task<FeishuApiPageListResult<GetDepartmentInfo>?> SearchDepartmentsAsync(
         [Token(TokenType.UserAccessToken)][Header("Authorization")] string user_access_token,
         [Body] SearchRequest searchRequest,
         [Query("page_size")] int page_size = 10,
@@ -213,7 +213,7 @@ public interface IFeishuV3DepartmentsApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Delete("https://open.feishu.cn/open-apis/contact/v3/departments/{department_id}")]
-    Task<FeishuNullDataApiResult> DeleteDepartmentByIdAsync(
+    Task<FeishuNullDataApiResult?> DeleteDepartmentByIdAsync(
        [Token(TokenType.UserAccessToken)][Header("Authorization")] string tenant_access_token,
        [Path] string department_id,
        [Query("department_id_type")] string? department_id_type = Consts.Department_Id_Type,

@@ -27,7 +27,7 @@ public interface IFeishuV3RoleApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Post("https://open.feishu.cn/open-apis/contact/v3/functional_roles")]
-    Task<FeishuApiResult<RoleCreateResult>> CreateRoleAsync(
+    Task<FeishuApiResult<RoleCreateResult>?> CreateRoleAsync(
         [Token][Header("Authorization")] string tenant_access_token,
         [Body] RoleRequest roleRequest,
         CancellationToken cancellationToken = default);
@@ -41,7 +41,7 @@ public interface IFeishuV3RoleApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Put("https://open.feishu.cn/open-apis/contact/v3/functional_roles/{role_id}")]
-    Task<FeishuNullDataApiResult> UpdateRoleAsync(
+    Task<FeishuNullDataApiResult?> UpdateRoleAsync(
       [Token][Header("Authorization")] string tenant_access_token,
       [Path] string role_id,
       [Body] RoleRequest roleRequest,
@@ -55,7 +55,7 @@ public interface IFeishuV3RoleApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Delete("https://open.feishu.cn/open-apis/contact/v3/functional_roles/{role_id}")]
-    Task<FeishuNullDataApiResult> DeleteRoleByIdAsync(
+    Task<FeishuNullDataApiResult?> DeleteRoleByIdAsync(
       [Token][Header("Authorization")] string tenant_access_token,
       [Path] string role_id,
       CancellationToken cancellationToken = default);

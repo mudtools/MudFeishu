@@ -31,7 +31,7 @@ public interface IFeishuV3RoleMemberApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Post("https://open.feishu.cn/open-apis/contact/v3/functional_roles/{role_id}/members/batch_create")]
-    Task<FeishuApiResult<RoleAssignmentResult>> BatchAddMemberAsync(
+    Task<FeishuApiResult<RoleAssignmentResult>?> BatchAddMemberAsync(
                  [Token][Header("Authorization")] string tenant_access_token,
                  [Path] string role_id,
                  [Body] RoleMembersRequest roleMembersRequest,
@@ -49,7 +49,7 @@ public interface IFeishuV3RoleMemberApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Post("https://open.feishu.cn/open-apis/contact/v3/functional_roles/{role_id}/members/scopes")]
-    Task<FeishuApiResult<RoleAssignmentResult>> BatchAddMembersSopesAsync(
+    Task<FeishuApiResult<RoleAssignmentResult>?> BatchAddMembersSopesAsync(
                [Token][Header("Authorization")] string tenant_access_token,
                [Path] string role_id,
                [Body] RoleMembersScopeRequest membersScopeRequest,
@@ -68,7 +68,7 @@ public interface IFeishuV3RoleMemberApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Get("https://open.feishu.cn/open-apis/contact/v3/functional_roles/{role_id}/members/{member_id}")]
-    Task<FeishuApiResult<RoleMemberScopeResult>> GetMembersSopesAsync(
+    Task<FeishuApiResult<RoleMemberScopeResult>?> GetMembersSopesAsync(
               [Token][Header("Authorization")] string tenant_access_token,
               [Path] string role_id,
               [Path] string member_id,
@@ -87,7 +87,7 @@ public interface IFeishuV3RoleMemberApi
     /// <param name="department_id_type">此次调用中的部门 ID 类型，默认值：open_department_id。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Get("https://open.feishu.cn/open-apis/contact/v3/functional_roles/{role_id}/members")]
-    Task<FeishuApiResult<RoleMemberScopeResult>> GetMembersAsync(
+    Task<FeishuApiResult<RoleMemberScopeResult>?> GetMembersAsync(
               [Token][Header("Authorization")] string tenant_access_token,
               [Path] string role_id,
               [Query("page_size")] int page_size = 10,
@@ -106,7 +106,7 @@ public interface IFeishuV3RoleMemberApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Delete("https://open.feishu.cn/open-apis/contact/v3/functional_roles/{role_id}/members/batch_delete")]
-    Task<FeishuApiResult<RoleAssignmentResult>> DeleteMembersByRoleIdAsync(
+    Task<FeishuApiResult<RoleAssignmentResult>?> DeleteMembersByRoleIdAsync(
          [Token][Header("Authorization")] string tenant_access_token,
          [Path] string role_id,
          [Body] RoleMembersRequest roleMembersRequest,

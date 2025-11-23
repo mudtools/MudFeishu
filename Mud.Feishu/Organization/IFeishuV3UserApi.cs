@@ -28,7 +28,7 @@ public interface IFeishuV3UserApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Post("https://open.feishu.cn/open-apis/contact/v3/users")]
-    Task<FeishuApiResult<CreateOrUpdateUserResult>> CreateUserAsync(
+    Task<FeishuApiResult<CreateOrUpdateUserResult>?> CreateUserAsync(
         [Token][Header("Authorization")] string tenant_access_token,
         [Body] CreateUserRequest userModel,
         [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
@@ -47,7 +47,7 @@ public interface IFeishuV3UserApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Patch("https://open.feishu.cn/open-apis/contact/v3/users/{user_id}")]
-    Task<FeishuApiResult<CreateOrUpdateUserResult>> UpdateUserAsync(
+    Task<FeishuApiResult<CreateOrUpdateUserResult>?> UpdateUserAsync(
         [Token(TokenType.Both)][Header("Authorization")] string access_token,
         [Path] string user_id,
         [Body] UpdateUserRequest userModel,
@@ -65,7 +65,7 @@ public interface IFeishuV3UserApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Patch("https://open.feishu.cn/open-apis/contact/v3/users/{user_id}/update_user_id")]
-    Task<FeishuNullDataApiResult> UpdateUserIdAsync(
+    Task<FeishuNullDataApiResult?> UpdateUserIdAsync(
         [Token][Header("Authorization")] string user_access_token,
         [Path] string user_id,
         [Body] UpdateUserIdRequest updateUserId,
@@ -100,7 +100,7 @@ public interface IFeishuV3UserApi
     /// <param name="user_ids">用户ID。ID 类型与查询参数 user_id_type 保持一致。如需一次查询多个用户ID，可多次传递同一参数名，并且每次传递不同的参数值。</param>
     /// <returns></returns>
     [Get("https://open.feishu.cn/open-apis/contact/v3/users/batch")]
-    Task<FeishuApiResult<GetUserInfosResult>> GetUserByIdsAsync(
+    Task<FeishuApiResult<GetUserInfosResult>?> GetUserByIdsAsync(
        [Token(TokenType.Both)][Header("Authorization")] string access_token,
        [Query("user_ids")] string[] user_ids,
        [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
@@ -119,7 +119,7 @@ public interface IFeishuV3UserApi
     /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
     /// <returns></returns>
     [Get("https://open.feishu.cn/open-apis/contact/v3/users/find_by_department")]
-    Task<FeishuApiResult<GetUserInfosResult>> GetUserByDepartmentIdAsync(
+    Task<FeishuApiResult<GetUserInfosResult>?> GetUserByDepartmentIdAsync(
      [Token(TokenType.Both)][Header("Authorization")] string access_token,
      [Query("department_id")] string department_id,
      [Query("page_size")] int page_size = 10,
@@ -139,7 +139,7 @@ public interface IFeishuV3UserApi
     /// <returns></returns>
 
     [Post("https://open.feishu.cn/open-apis/contact/v3/users/batch_get_id")]
-    Task<FeishuApiResult<UserQueryListResult>> GetBatchUsersAsync(
+    Task<FeishuApiResult<UserQueryListResult>?> GetBatchUsersAsync(
       [Token][Header("Authorization")] string tenant_access_token,
       [Body] UserQueryRequest queryRequest,
       [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
@@ -155,7 +155,7 @@ public interface IFeishuV3UserApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Get("https://open.feishu.cn/open-apis/search/v1/user")]
-    Task<FeishuApiResult<UserSearchListResult>> GetUsersByKeywordAsync(
+    Task<FeishuApiResult<UserSearchListResult>?> GetUsersByKeywordAsync(
      [Token(TokenType.UserAccessToken)][Header("Authorization")] string user_access_token,
      [Query("query")] string query,
      [Query("page_size")] int page_size = 10,
@@ -172,7 +172,7 @@ public interface IFeishuV3UserApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Delete("https://open.feishu.cn/open-apis/contact/v3/users/{user_id}")]
-    Task<FeishuNullDataApiResult> DeleteUserByIdAsync(
+    Task<FeishuNullDataApiResult?> DeleteUserByIdAsync(
        [Token][Header("Authorization")] string user_access_token,
        [Path] string user_id,
        [Body] DeleteSettingsRequest deleteSettingsRequest,
@@ -190,7 +190,7 @@ public interface IFeishuV3UserApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Post("https://open.feishu.cn/open-apis/contact/v3/users/{user_id}/resurrect")]
-    Task<FeishuNullDataApiResult> ResurrectUserByIdAsync(
+    Task<FeishuNullDataApiResult?> ResurrectUserByIdAsync(
       [Token][Header("Authorization")] string tenant_access_token,
       [Path] string user_id,
       [Body] ResurrectUserRequest resurrectUserRequest,
@@ -218,7 +218,7 @@ public interface IFeishuV3UserApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Post("https://open.feishu.cn/open-apis/passport/v1/sessions/logout")]
-    Task<FeishuNullDataApiResult> LogoutAsync(
+    Task<FeishuNullDataApiResult?> LogoutAsync(
         [Token][Header("Authorization")] string tenant_access_token,
         [Body] LogoutRequest logoutRequest,
         [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
@@ -235,7 +235,7 @@ public interface IFeishuV3UserApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Post("https://open.feishu.cn/open-apis/jssdk/ticket/get")]
-    Task<FeishuApiResult<TicketData>> GetJsTicketAsync(
+    Task<FeishuApiResult<TicketData>?> GetJsTicketAsync(
         [Token][Header("Authorization")] string tenant_access_token,
         CancellationToken cancellationToken = default);
 

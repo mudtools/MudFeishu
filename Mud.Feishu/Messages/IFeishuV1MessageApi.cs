@@ -28,7 +28,7 @@ public interface IFeishuV1MessageApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Post("https://open.feishu.cn/open-apis/im/v1/messages")]
-    Task<FeishuApiResult<MessageDataResult>> SendMessageAsync(
+    Task<FeishuApiResult<MessageDataResult>?> SendMessageAsync(
        [Token][Header("Authorization")] string tenant_access_token,
        [Body] SendMessageRequest sendMessageRequest,
        [Query("receive_id_type")] string receive_id_type = Consts.User_Id_Type,
@@ -44,7 +44,7 @@ public interface IFeishuV1MessageApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Post("https://open.feishu.cn/open-apis/im/v1/messages/{message_id}/reply")]
-    Task<FeishuApiResult<MessageDataResult>> ReplyMessageAsync(
+    Task<FeishuApiResult<MessageDataResult>?> ReplyMessageAsync(
          [Token][Header("Authorization")] string tenant_access_token,
          [Path] string message_id,
          [Body] ReplyMessageRequest replyMessageRequest,
@@ -60,7 +60,7 @@ public interface IFeishuV1MessageApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Put("https://open.feishu.cn/open-apis/im/v1/messages/{message_id}")]
-    Task<FeishuApiResult<MessageDataResult>> EditMessageAsync(
+    Task<FeishuApiResult<MessageDataResult>?> EditMessageAsync(
          [Token][Header("Authorization")] string tenant_access_token,
          [Path] string message_id,
          [Body] EditMessageRequest editMessageRequest,
@@ -77,7 +77,7 @@ public interface IFeishuV1MessageApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Post("https://open.feishu.cn/open-apis/im/v1/messages/{message_id}/forward")]
-    Task<FeishuApiResult<ReceiveMessageResult>> ReceiveMessageAsync(
+    Task<FeishuApiResult<ReceiveMessageResult>?> ReceiveMessageAsync(
         [Token][Header("Authorization")] string tenant_access_token,
         [Path] string message_id,
         [Body] ReceiveMessageRequest receiveMessageRequest,
@@ -95,7 +95,7 @@ public interface IFeishuV1MessageApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Post("https://open.feishu.cn/open-apis/im/v1/messages/merge_forward")]
-    Task<FeishuApiResult<MergeReceiveMessageResult>> MergeReceiveMessageAsync(
+    Task<FeishuApiResult<MergeReceiveMessageResult>?> MergeReceiveMessageAsync(
         [Token][Header("Authorization")] string tenant_access_token,
         [Body] MergeReceiveMessageRequest mergeReceiveMessageRequest,
         [Query("receive_id_type")] string receive_id_type = Consts.User_Id_Type,
@@ -113,7 +113,7 @@ public interface IFeishuV1MessageApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Post("https://open.feishu.cn/open-apis/im/v1/threads/{thread_id}/forward")]
-    Task<FeishuApiResult<ThreadResult>> ReceiveThreadsAsync(
+    Task<FeishuApiResult<ThreadResult>?> ReceiveThreadsAsync(
        [Token][Header("Authorization")] string tenant_access_token,
        [Path] string thread_id,
        [Body] ReceiveMessageRequest receiveMessageRequest,
@@ -131,7 +131,7 @@ public interface IFeishuV1MessageApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Delete("https://open.feishu.cn/open-apis/im/v1/messages/{message_id}")]
-    Task<FeishuNullDataApiResult> RevokeMessageAsync(
+    Task<FeishuNullDataApiResult?> RevokeMessageAsync(
         [Token(TokenType.Both)][Header("Authorization")] string access_token,
         [Path] string message_id,
         CancellationToken cancellationToken = default);
@@ -275,7 +275,7 @@ public interface IFeishuV1MessageApi
     /// <param name="tenant_access_token">应用调用 API 时，需要通过访问凭证（access_token）进行身份鉴权</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    Task<FeishuApiResult<FileUploadResult>> UploadFileAsync(
+    Task<FeishuApiResult<FileUploadResult>?> UploadFileAsync(
        [Token][Header("Authorization")] string tenant_access_token,
        [Body] UploadFileRequest uploadFileRequest,
        CancellationToken cancellationToken = default);
@@ -287,7 +287,7 @@ public interface IFeishuV1MessageApi
     /// <param name="tenant_access_token">应用调用 API 时，需要通过访问凭证（access_token）进行身份鉴权</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    Task<FeishuApiResult<ImageUpdateResult>> UploadImageAsync(
+    Task<FeishuApiResult<ImageUpdateResult>?> UploadImageAsync(
       [Token][Header("Authorization")] string tenant_access_token,
       [Body] UploadImageRequest uploadImageRequest,
       CancellationToken cancellationToken = default);

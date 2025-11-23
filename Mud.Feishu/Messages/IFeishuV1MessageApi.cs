@@ -426,5 +426,26 @@ public interface IFeishuV1MessageApi
      [Path] string message_id,
      [Body] ReactionRequest sendMessageRequest,
      CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 获取指定消息内的表情回复列表，支持仅获取特定类型的表情回复。
+    /// </summary>
+    /// <param name="tenant_access_token">应用调用 API 时，需要通过访问凭证（access_token）进行身份鉴权</param>
+    /// <param name="message_id">待查询的消息ID。</param>
+    /// <param name="reaction_type">待查询的表情类型，支持的枚举值参考表情文案说明中的 emoji_type 值。</param> 
+    /// <param name="user_id_type">用户 ID 类型</param>
+    /// <param name="page_size">分页大小，即本次请求所返回的用户信息列表内的最大条目数。默认值：10</param>
+    /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Get("https://open.feishu.cn/open-apis/im/v1/messages/{message_id}/reactions")]
+    Task<FeishuApiListResult<ReactionResult>?> GetMessageReactionsPageListAsync(
+    [Token(TokenType = TokenType.Both)][Header("Authorization")] string tenant_access_token,
+    [Path] string message_id,
+    [Query("reaction_type")] string reaction_type,
+    [Query("page_size")] int page_size = 10,
+    [Query("page_token")] string? page_token = null,
+    [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
+    CancellationToken cancellationToken = default);
     #endregion
 }

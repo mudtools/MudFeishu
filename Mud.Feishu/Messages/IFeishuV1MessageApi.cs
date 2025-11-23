@@ -411,4 +411,20 @@ public interface IFeishuV1MessageApi
       [Query("receive_id_type")] string user_id_type = Consts.User_Id_Type,
       CancellationToken cancellationToken = default);
     #endregion
+
+    #region 表情回复
+    /// <summary>
+    /// 给指定消息添加指定类型的表情回复。
+    /// </summary>
+    /// <param name="tenant_access_token">应用调用 API 时，通过访问凭证（access_token）进行身份鉴权</param>
+    /// <param name="sendMessageRequest">添加消息表情回复请求体。</param>
+    /// <param name="message_id">待添加表情回复的消息 ID。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Post("https://open.feishu.cn/open-apis/im/v1/messages/{message_id}/reactions")]
+    Task<FeishuApiResult<ReactionResult>?> AddMessageReactionsAsync(
+     [Token(TokenType = TokenType.Both)][Header("Authorization")] string tenant_access_token,
+     [Path] string message_id,
+     [Body] ReactionRequest sendMessageRequest,
+     CancellationToken cancellationToken = default);
+    #endregion
 }

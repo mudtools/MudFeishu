@@ -7,28 +7,52 @@
 
 namespace Mud.Feishu.Exceptions;
 
+/// <summary>
+/// 飞书异常处理类。
+/// </summary>
 public class FeishuException : Exception
 {
+    /// <summary>
+    /// 错误代码。
+    /// </summary>
     public int ErrorCode { get; set; }
 
+    /// <summary>
+    /// 默认构造函数。
+    /// </summary>
     public FeishuException() { }
 
+    /// <summary>
+    /// 默认构造函数。
+    /// </summary>
     public FeishuException(int errorCode) : this(errorCode, $"飞书API接口调用失败，错误代码 {errorCode} 。")
     {
     }
 
+    /// <summary>
+    /// 默认构造函数。
+    /// </summary>
     public FeishuException(int errorCode, string message) : base(message)
     {
         this.ErrorCode = errorCode;
     }
 
+    /// <summary>
+    /// 默认构造函数。
+    /// </summary>
     public FeishuException(int errorCode, string message, Exception inner) : base(message, inner)
     {
         this.ErrorCode = errorCode;
     }
 
+    /// <summary>
+    /// 默认构造函数。
+    /// </summary>
     public FeishuException(string message) : base(message) { }
 
+    /// <summary>
+    /// 默认构造函数。
+    /// </summary>
     public FeishuException(string message, Exception inner) : base(message, inner) { }
 
 }

@@ -275,6 +275,8 @@ public interface IFeishuV1MessageApi
     /// <param name="tenant_access_token">应用调用 API 时，需要通过访问凭证（access_token）进行身份鉴权</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
+    [Post("https://open.feishu.cn/open-apis/im/v1/files")]
+    [IgnoreImplement]
     Task<FeishuApiResult<FileUploadResult>?> UploadFileAsync(
        [Token][Header("Authorization")] string tenant_access_token,
        [Body] UploadFileRequest uploadFileRequest,
@@ -287,6 +289,8 @@ public interface IFeishuV1MessageApi
     /// <param name="tenant_access_token">应用调用 API 时，需要通过访问凭证（access_token）进行身份鉴权</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
+     [Post("https://open.feishu.cn/open-apis/im/v1/images")]
+     [IgnoreImplement]
     Task<FeishuApiResult<ImageUpdateResult>?> UploadImageAsync(
       [Token][Header("Authorization")] string tenant_access_token,
       [Body] UploadImageRequest uploadImageRequest,

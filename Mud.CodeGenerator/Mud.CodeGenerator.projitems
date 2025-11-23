@@ -24,7 +24,9 @@
     <Compile Include="$(MSBuildThisFileDirectory)Methods\PatchAttribute.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Methods\PutAttribute.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)PathAttribute.cs" />
-    <Compile Include="..\Mud.CodeGenerator\ArrayQueryAttribute.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)ArrayQueryAttribute.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)QueryAttribute.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)IgnoreImplementAttribute.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)IgnoreWrapInterfaceAttribute.cs" />
   </ItemGroup>
 </Project>

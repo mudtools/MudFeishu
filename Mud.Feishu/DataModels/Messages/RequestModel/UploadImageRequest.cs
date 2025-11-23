@@ -27,7 +27,7 @@ public class UploadImageRequest
 
     /// <summary>
     /// 文件全路径。
-    /// <para>示例值："C:\\temp\\测试视频.png"</para>
+    /// <para>示例值："C:\\temp\\测试图像.png"</para>
     /// </summary>
     public
 #if NET7_0_OR_GREATER

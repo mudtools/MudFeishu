@@ -268,6 +268,70 @@ public interface IFeishuV1MessageApi
 
     #region 文件管理
     /// <summary>
+    /// 通过已<see cref="UploadFileAsync">上传文件</see>的 Key 下载文件(此函数适应于下载1MB以内的小文件)。
+    /// </summary>
+    /// <param name="file_key">文件的 Key，通过上传文件接口上传文件后，从返回结果中获取。
+    /// <para>示例值："file_456a92d6-c6ea-4de4-ac3f-7afcf44ac78g"。</para>
+    /// </param>
+    /// <param name="tenant_access_token">应用调用 API 时，需要通过访问凭证（access_token）进行身份鉴权</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Get("https://open.feishu.cn/open-apis/im/v1/files/{file_key}")]
+    Task<byte[]?> DownFileAsync(
+       [Token][Header("Authorization")] string tenant_access_token,
+       [Path] string file_key,
+       CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 通过已<see cref="UploadFileAsync">上传文件</see>的 Key 下载文件(此函数适应于下载大于1MB的大文件)。
+    /// </summary>
+    /// <param name="file_key">文件的 Key，通过上传文件接口上传文件后，从返回结果中获取。
+    /// <para>示例值："file_456a92d6-c6ea-4de4-ac3f-7afcf44ac78g"。</para>
+    /// </param>
+    /// <param name="localFile">保存至本地的文件全路径。</param>
+    /// <param name="tenant_access_token">应用调用 API 时，需要通过访问凭证（access_token）进行身份鉴权</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Get("https://open.feishu.cn/open-apis/im/v1/files/{file_key}")]
+    Task DownLargeFileAsync(
+       [Token][Header("Authorization")] string tenant_access_token,
+       [Path] string file_key,
+       [FilePath] string localFile,
+       CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 通过已<see cref="UploadImageAsync">上传图片</see>的 Key 值下载图片。(此函数适应于下载1MB以内的小文件)。
+    /// </summary>
+    /// <param name="image_key">图片的 Key，通过上传图片接口上传图片后，在返回结果中获取。
+    /// <para>示例值："img_8d5181ca-0aed-40f0-b0d1-b1452132afbg"。</para>
+    /// </param>
+    /// <param name="tenant_access_token">应用调用 API 时，需要通过访问凭证（access_token）进行身份鉴权</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Get("https://open.feishu.cn/open-apis/im/v1/images/{image_key}")]
+    Task<byte[]?> DownImageAsync(
+       [Token][Header("Authorization")] string tenant_access_token,
+       [Path] string image_key,
+       CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 通过已<see cref="UploadImageAsync">上传图片</see>的 Key 值下载图片。(此函数适应于下载1MB以内的小文件)。
+    /// </summary>
+    /// <param name="image_key">图片的 Key，通过上传图片接口上传图片后，在返回结果中获取。
+    /// <para>示例值："img_8d5181ca-0aed-40f0-b0d1-b1452132afbg"。</para>
+    /// </param>
+    /// <param name="localFile">保存至本地的文件全路径。</param>
+    /// <param name="tenant_access_token">应用调用 API 时，需要通过访问凭证（access_token）进行身份鉴权</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Get("https://open.feishu.cn/open-apis/im/v1/images/{image_key}")]
+    Task DownLargeImageAsync(
+       [Token][Header("Authorization")] string tenant_access_token,
+       [Path] string image_key,
+       [FilePath] string localFile,
+       CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// 将本地文件上传至开放平台，支持上传音频、视频、文档等文件类型。
     /// <para>上传后接口会返回文件的 Key，使用该 Key 值可以调用其他 OpenAPI。例如，调用发送消息接口，发送文件。</para>
     /// </summary>
@@ -289,12 +353,12 @@ public interface IFeishuV1MessageApi
     /// <param name="tenant_access_token">应用调用 API 时，需要通过访问凭证（access_token）进行身份鉴权</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-     [Post("https://open.feishu.cn/open-apis/im/v1/images")]
-     [IgnoreImplement]
+    [Post("https://open.feishu.cn/open-apis/im/v1/images")]
+    [IgnoreImplement]
     Task<FeishuApiResult<ImageUpdateResult>?> UploadImageAsync(
-      [Token][Header("Authorization")] string tenant_access_token,
-      [Body] UploadImageRequest uploadImageRequest,
-      CancellationToken cancellationToken = default);
+     [Token][Header("Authorization")] string tenant_access_token,
+     [Body] UploadImageRequest uploadImageRequest,
+     CancellationToken cancellationToken = default);
 
     #endregion
 }

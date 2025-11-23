@@ -361,4 +361,54 @@ public interface IFeishuV1MessageApi
      CancellationToken cancellationToken = default);
 
     #endregion
+
+    #region 消息加急
+    /// <summary>
+    /// 把指定消息加急给目标用户，加急仅在飞书客户端内通知。
+    /// </summary>
+    /// <param name="tenant_access_token">应用调用 API 时，通过访问凭证（access_token）进行身份鉴权</param>
+    /// <param name="sendMessageRequest">消息加急请求体。</param>
+    /// <param name="message_id">待加急的消息 ID。</param>
+    /// <param name="user_id_type">用户 ID 类型 示例值："open_id"</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Patch("https://open.feishu.cn/open-apis/im/v1/messages/{message_id}/urgent_app")]
+    Task<FeishuApiResult<MessageUrgentResult>?> MessageUrgentAppAsync(
+      [Token][Header("Authorization")] string tenant_access_token,
+      [Path] string message_id,
+      [Body] MessageUrgentRequest sendMessageRequest,
+      [Query("receive_id_type")] string user_id_type = Consts.User_Id_Type,
+      CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 把指定消息加急给目标用户，加急将通过飞书客户端和短信进行通知。
+    /// </summary>
+    /// <param name="tenant_access_token">应用调用 API 时，通过访问凭证（access_token）进行身份鉴权</param>
+    /// <param name="sendMessageRequest">消息加急请求体。</param>
+    /// <param name="message_id">待加急的消息 ID。</param>
+    /// <param name="user_id_type">用户 ID 类型 示例值："open_id"</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Patch("https://open.feishu.cn/open-apis/im/v1/messages/{message_id}/urgent_sms")]
+    Task<FeishuApiResult<MessageUrgentResult>?> MessageUrgentSMSAsync(
+      [Token][Header("Authorization")] string tenant_access_token,
+      [Path] string message_id,
+      [Body] MessageUrgentRequest sendMessageRequest,
+      [Query("receive_id_type")] string user_id_type = Consts.User_Id_Type,
+      CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 把指定消息加急给目标用户，加急将通过飞书客户端和电话进行通知。
+    /// </summary>
+    /// <param name="tenant_access_token">应用调用 API 时，通过访问凭证（access_token）进行身份鉴权</param>
+    /// <param name="sendMessageRequest">消息加急请求体。</param>
+    /// <param name="message_id">待加急的消息 ID。</param>
+    /// <param name="user_id_type">用户 ID 类型 示例值："open_id"</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Patch("https://open.feishu.cn/open-apis/im/v1/messages/{message_id}/urgent_phone")]
+    Task<FeishuApiResult<MessageUrgentResult>?> MessageUrgentPhoneAsync(
+      [Token][Header("Authorization")] string tenant_access_token,
+      [Path] string message_id,
+      [Body] MessageUrgentRequest sendMessageRequest,
+      [Query("receive_id_type")] string user_id_type = Consts.User_Id_Type,
+      CancellationToken cancellationToken = default);
+    #endregion
 }

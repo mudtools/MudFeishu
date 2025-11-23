@@ -447,5 +447,19 @@ public interface IFeishuV1MessageApi
     [Query("page_token")] string? page_token = null,
     [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
     CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 删除指定消息的某一表情回复。
+    /// </summary>
+    /// <param name="tenant_access_token">应用调用 API 时，通过访问凭证（access_token）进行身份鉴权</param>
+    /// <param name="reaction_id">待删除的表情回复 ID。示例值："ZCaCIjUBVVWSrm5L-3ZTw*************sNa8dHVplEzzSfJVUVLMLcS_"</param>
+    /// <param name="message_id">待删除表情回复的消息 ID。示例值："om_8964d1b4*********2b31383276113"</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Delete("https://open.feishu.cn/open-apis/im/v1/messages/{message_id}/reactions/{reaction_id}")]
+    Task<FeishuApiResult<ReactionResult>?> DeleteMessageReactionsAsync(
+     [Token(TokenType = TokenType.Both)][Header("Authorization")] string tenant_access_token,
+     [Path] string message_id,
+     [Path] string reaction_id,
+     CancellationToken cancellationToken = default);
     #endregion
 }

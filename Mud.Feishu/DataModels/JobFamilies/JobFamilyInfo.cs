@@ -1,4 +1,4 @@
-﻿// -----------------------------------------------------------------------
+// -----------------------------------------------------------------------
 //  作者：Mud Studio  版权所有 (c) Mud Studio 2025   
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
@@ -7,27 +7,51 @@
 
 namespace Mud.Feishu.DataModels.JobFamilies;
 
+/// <summary>
+/// 表示职位族信息的数据模型类，用于存储和传输职位族相关数据
+/// </summary>
 public class JobFamilyInfo
 {
 
+    /// <summary>
+    /// 获取或设置职位族ID
+    /// </summary>
     [JsonPropertyName("job_family_id")]
-    public string JobFamilyId { get; set; }
+    public string? JobFamilyId { get; set; }
 
+    /// <summary>
+    /// 获取或设置职位族名称
+    /// </summary>
     [JsonPropertyName("name")]
-    public string Name { get; set; }
+    public string? Name { get; set; }
 
+    /// <summary>
+    /// 获取或设置职位族描述信息
+    /// </summary>
     [JsonPropertyName("description")]
-    public string Description { get; set; }
+    public string? Description { get; set; }
 
+    /// <summary>
+    /// 获取或设置父级职位族ID
+    /// </summary>
     [JsonPropertyName("parent_job_family_id")]
-    public string ParentJobFamilyId { get; set; }
+    public string? ParentJobFamilyId { get; set; }
 
+    /// <summary>
+    /// 获取或设置职位族状态，true表示启用，false表示禁用
+    /// </summary>
     [JsonPropertyName("status")]
     public bool Status { get; set; }
 
+    /// <summary>
+    /// 获取或设置职位族多语言名称列表
+    /// </summary>
     [JsonPropertyName("i18n_name")]
-    public List<I18nContent> I18nName { get; set; }
+    public List<I18nContent>? I18nName { get; set; }
 
+    /// <summary>
+    /// 获取或设置职位族多语言描述信息列表
+    /// </summary>
     [JsonPropertyName("i18n_description")]
-    public List<I18nContent> I18nDescription { get; set; }
+    public List<I18nContent>? I18nDescription { get; set; }
 }

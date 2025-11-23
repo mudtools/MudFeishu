@@ -7,11 +7,32 @@
 
 namespace Mud.Feishu.DataModels.DepartmentsV1;
 
+/// <summary>
+/// 批量获取部门信息请求体。
+/// </summary>
 public class DepartmentQueryRequest
 {
+    /// <summary>
+    /// 部门ID，与department_id_type类型保持一致。id获取方式：可通过管理后台查询。
+    /// <para> 示例值：["adqwea"]</para>
+    /// </summary>
     [JsonPropertyName("department_ids")]
-    public List<string> DepartmentIds { get; set; }
+    public
+#if NET7_0_OR_GREATER
+        required
+#endif
+        List<string> DepartmentIds
+    { get; set; } = [];
 
+    /// <summary>
+    /// 需要查询的<see href="https://open.feishu.cn/document/directory-v1/field-enumeration">字段列表</see>。将按照传递的字段列表返回有权限的行、列数据。不传则不会返回任何字段。
+    /// <para>示例值：["name"]</para>
+    /// </summary>
     [JsonPropertyName("required_fields")]
-    public List<string> RequiredFields { get; set; }
+    public
+#if NET7_0_OR_GREATER
+        required
+#endif
+        List<string> RequiredFields
+    { get; set; } = [];
 }

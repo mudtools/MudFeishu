@@ -13,6 +13,12 @@ namespace Mud.Feishu;
 public interface ITokenManager
 {
     /// <summary>
+    /// 获取应用身份访问令牌。
+    /// </summary>
+    /// <returns></returns>
+    Task<string?> GetTokenAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// 获取应用身份 (tenant_access_token)访问令牌。
     /// </summary>
     /// <returns></returns>

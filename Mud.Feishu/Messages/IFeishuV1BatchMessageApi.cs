@@ -25,7 +25,7 @@ public interface IFeishuV1BatchMessageApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Post("https://open.feishu.cn/open-apis/message/v4/batch_send")]
-    Task<FeishuApiResult<BatchMessageResult>> BatchSendTextMessageAsync(
+    Task<FeishuApiResult<BatchMessageResult>?> BatchSendTextMessageAsync(
       [Token][Header("Authorization")] string tenant_access_token,
       [Body] BatchSenderTextMessageRequest sendMessageRequest,
       CancellationToken cancellationToken = default);
@@ -38,7 +38,7 @@ public interface IFeishuV1BatchMessageApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Post("https://open.feishu.cn/open-apis/message/v4/batch_send")]
-    Task<FeishuApiResult<BatchMessageResult>> BatchSendRichTextMessageAsync(
+    Task<FeishuApiResult<BatchMessageResult>?> BatchSendRichTextMessageAsync(
       [Token][Header("Authorization")] string tenant_access_token,
       [Body] BatchSenderRichTextMessageRequest sendMessageRequest,
       CancellationToken cancellationToken = default);
@@ -51,7 +51,7 @@ public interface IFeishuV1BatchMessageApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Post("https://open.feishu.cn/open-apis/message/v4/batch_send")]
-    Task<FeishuApiResult<BatchMessageResult>> BatchSendImageMessageAsync(
+    Task<FeishuApiResult<BatchMessageResult>?> BatchSendImageMessageAsync(
       [Token][Header("Authorization")] string tenant_access_token,
       [Body] BatchSenderMessageImageRequest sendMessageRequest,
       CancellationToken cancellationToken = default);
@@ -64,7 +64,7 @@ public interface IFeishuV1BatchMessageApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Post("https://open.feishu.cn/open-apis/message/v4/batch_send")]
-    Task<FeishuApiResult<BatchMessageResult>> BatchSendGroupShareMessageAsync(
+    Task<FeishuApiResult<BatchMessageResult>?> BatchSendGroupShareMessageAsync(
       [Token][Header("Authorization")] string tenant_access_token,
       [Body] BatchSenderMessageGroupShareRequest sendMessageRequest,
       CancellationToken cancellationToken = default);
@@ -80,7 +80,7 @@ public interface IFeishuV1BatchMessageApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Delete("https://open.feishu.cn/open-apis/im/v1/batch_messages/{batch_message_id}")]
-    Task<FeishuNullDataApiResult> RevokeMessageAsync(
+    Task<FeishuNullDataApiResult?> RevokeMessageAsync(
         [Token][Header("Authorization")] string access_token,
         [Path] string batch_message_id,
         CancellationToken cancellationToken = default);
@@ -95,7 +95,7 @@ public interface IFeishuV1BatchMessageApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Get("https://open.feishu.cn/open-apis/im/v1/batch_messages/{batch_message_id}/read_user")]
-    Task<FeishuApiResult<BatchMessageReadStatusResult>> GetUserReadMessageInfosAsync(
+    Task<FeishuApiResult<BatchMessageReadStatusResult>?> GetUserReadMessageInfosAsync(
         [Token][Header("Authorization")] string access_token,
         [Path] string batch_message_id,
         CancellationToken cancellationToken = default);
@@ -110,7 +110,7 @@ public interface IFeishuV1BatchMessageApi
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Get("https://open.feishu.cn/open-apis/im/v1/batch_messages/{batch_message_id}/get_progress")]
-    Task<FeishuApiResult<BatchMessageProgressResult>> GetBatchMessageProgressAsync(
+    Task<FeishuApiResult<BatchMessageProgressResult>?> GetBatchMessageProgressAsync(
         [Token][Header("Authorization")] string access_token,
         [Path] string batch_message_id,
         CancellationToken cancellationToken = default);

@@ -57,6 +57,15 @@ internal class TokenManagerWithCache : ITokenManager, IDisposable
         _tokenRefreshThreshold = TimeSpan.FromSeconds(DefaultRefreshThresholdSeconds);
     }
 
+    /// <summary>
+    /// 获取应用身份访问令牌。
+    /// </summary>
+    /// <returns></returns>
+    public async Task<string?> GetTokenAsync(CancellationToken cancellationToken = default)
+    {
+        return await GetTokenInternalAsync(TokenType.TenantAccessToken, cancellationToken);
+    }
+
     public async Task<string?> GetTenantAccessTokenAsync(CancellationToken cancellationToken = default)
     {
         return await GetTokenInternalAsync(TokenType.TenantAccessToken, cancellationToken);

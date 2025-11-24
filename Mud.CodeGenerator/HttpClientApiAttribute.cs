@@ -74,4 +74,9 @@ internal class HttpClientApiAttribute : Attribute
     /// 可选属性，用于将生成的HTTP客户端服务分组注册到依赖注入容器中
     /// </remarks>
     public string? RegistryGroupName { get; set; }
+
+    /// <summary>
+    /// 获取或设置令牌管理服务接口的名称。
+    /// </summary>
+    public string? TokenManage { get; set; }
 }

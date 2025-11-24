@@ -50,7 +50,14 @@ internal sealed class QueryAttribute : Attribute
     /// </summary>
     public string? Name { get; set; }
 
-
+    /// <summary>
+    ///     别名
+    /// </summary>
+    /// <remarks>
+    ///     <para>特性用于参数时有效。</para>
+    ///     <para>该属性优先级高于 <see cref="Name" /> 属性设置的值。</para>
+    /// </remarks>
+    public string? AliasAs { get; set; }
 
     /// <summary>
     /// 参数值的格式化字符串。

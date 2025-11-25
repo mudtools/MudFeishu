@@ -1,6 +1,6 @@
 # MudFeishu
 
-MudFeishu 是一个现代化的 .NET 库，用于简化与飞书（Feishu）API 的集成。它基于特性驱动的 HTTP 客户端设计，提供了一套类型安全的接口和强类型化的数据模型，使开发人员能够轻松地在 .NET 应用程序中调用飞书 API。
+MudFeishu 是一个用于简化与飞书（Feishu）API 集成的现代化 .NET 库。它基于特性驱动的 HTTP 客户端设计，提供了一套类型安全的接口和强类型化的数据模型，使开发人员能够轻松地在 .NET 应用程序中调用飞书 API。
 
 ## 功能特性
 
@@ -444,7 +444,7 @@ builder.Services.AddFeishuApiService(builder.Configuration);
 // builder.Services.AddFeishuApiService("Feishu");
 
 // 添加自定义令牌管理器（可选）
-// builder.Services.AddSingleton<ITokenManager, CustomTokenManager>();
+// builder.Services.AddSingleton<IUserTokenManager, CustomTokenManager>();
 
 var app = builder.Build();
 
@@ -504,19 +504,6 @@ var newDept = await deptApi.CreateDepartmentAsync(new DepartmentCreateRequest
 {
     Name = "新部门",
     ParentDepartmentId = "parent_dept_123"
-});
-```
-
-### 🔐 认证授权
-```csharp
-// 获取用户令牌
-var userInfo = await authApi.GetUserInfoAsync("Bearer access_token_here");
-
-// 手动获取租户令牌
-var tokenResult = await authApi.GetTenantAccessTokenAsync(new AppCredentials
-{
-    AppId = "app_id",
-    AppSecret = "app_secret"
 });
 ```
 
@@ -780,7 +767,7 @@ public class FeishuException : Exception
 
 ## 开发环境要求
 
-- **Visual Studio 2022** 或更高版本
+- **Visual Studio Code 1.106** 或更高版本
 - **.NET 8.0 SDK** 或更高版本
 - **飞书开发者账号**和应用凭证
 - **Git** 版本控制

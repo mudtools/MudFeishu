@@ -99,21 +99,21 @@ using Mud.Feishu;
 public class FeishuController : ControllerBase
 {
     private readonly IFeishuV3AuthenticationApi _authApi;
-    private readonly IFeishuV3User_Tenant _userApi;
-    private readonly IFeishuV3Departments_Tenant _departmentsApi;
-    private readonly IFeishuV3UserGroup_Tenant _userGroupApi;
-    private readonly IFeishuV3EmployeeType_Tenant _employeeTypeApi;
-    private readonly IFeishuV3JobLevel_Tenant _jobLevelApi;
-    private readonly IFeishuV3JobFamilies_Tenant _jobFamiliesApi;
+    private readonly IFeishuTenantV3User _userApi;
+    private readonly IFeishuTenantV3Departments _departmentsApi;
+    private readonly IFeishuTenantV3UserGroup _userGroupApi;
+    private readonly IFeishuTenantV3EmployeeType _employeeTypeApi;
+    private readonly IFeishuTenantV3JobLevel _jobLevelApi;
+    private readonly IFeishuTenantV3JobFamilies _jobFamiliesApi;
 
     public FeishuController(
         IFeishuV3AuthenticationApi authApi, 
-        IFeishuV3User_Tenant userApi,
-        IFeishuV3Departments_Tenant departmentsApi,
-        IFeishuV3UserGroup_Tenant userGroupApi,
-        IFeishuV3EmployeeType_Tenant employeeTypeApi,
-        IFeishuV3JobLevel_Tenant jobLevelApi,
-        IFeishuV3JobFamilies_Tenant jobFamiliesApi)
+        IFeishuTenantV3User userApi,
+        IFeishuTenantV3Departments departmentsApi,
+        IFeishuTenantV3UserGroup userGroupApi,
+        IFeishuTenantV3EmployeeType employeeTypeApi,
+        IFeishuTenantV3JobLevel jobLevelApi,
+        IFeishuTenantV3JobFamilies jobFamiliesApi)
     {
         _authApi = authApi;
         _userApi = userApi;
@@ -163,7 +163,7 @@ Mud.Feishu 提供了完整的飞书 API 覆盖，主要包含以下接口类别�
 
  Mud.Feishu 提供了两种主要的使用方式：
 
-#### 方式一：自动令牌管理（推荐）
+#### 自动令牌管理（推荐）
 
 使用带 `[HttpClientApi]` 特性的接口，令牌自动管理：
 
@@ -171,12 +171,12 @@ Mud.Feishu 提供了完整的飞书 API 覆盖，主要包含以下接口类别�
 // 在 Controller 中注入服务
 public class UserController : ControllerBase
 {
-    private readonly IFeishuV3User_Tenant _userApi;
-    private readonly IFeishuV3Departments_Tenant _deptApi;
+    private readonly IFeishuTenantV3User _userApi;
+    private readonly IFeishuTenantV3Departments _deptApi;
 
     public UserController(
-        IFeishuV3User_Tenant userApi, 
-        IFeishuV3Departments_Tenant deptApi)
+        IFeishuTenantV3User userApi, 
+        IFeishuTenantV3Departments deptApi)
     {
         _userApi = userApi;
         _deptApi = deptApi;
@@ -198,41 +198,8 @@ public class UserController : ControllerBase
     [HttpGet("departments/{departmentId}/users")]
     public async Task<IActionResult> GetDepartmentUsers(string departmentId)
     {
-        var result = await _deptApi.GetDepartmentUsersAsync(departmentId);
+        var result = await _deptApi.GetUserByDepartmentIdAsync(departmentId);
         return Ok(result.Data);
-    }
-}
-```
-
-#### 方式二：手动令牌管理
-
-直接使用 TokenManager 获取令牌：
-
-```csharp
-public class TokenAuthController : ControllerBase
-{
-    private readonly ITokenManager _tokenManager;
-    private readonly IFeishuV3AuthenticationApi _authApi;
-
-    public TokenAuthController(ITokenManager tokenManager, IFeishuV3AuthenticationApi authApi)
-    {
-        _tokenManager = tokenManager;
-        _authApi = authApi;
-    }
-
-    [HttpGet("token")]
-    public async Task<IActionResult> GetToken()
-    {
-        var token = await _tokenManager.GetTokenAsync();
-        return Ok(new { token });
-    }
-
-    [HttpPost("user/{userId}")]
-    public async Task<IActionResult> GetUserWithToken(string userId)
-    {
-        var token = await _tokenManager.GetTokenAsync();
-        var result = await _authApi.GetUserInfoAsync(token);
-        return Ok(result);
     }
 }
 ```
@@ -244,14 +211,14 @@ public class TokenAuthController : ControllerBase
 ```csharp
 public class UserManagementService
 {
-    private readonly IFeishuV3User_Tenant _userApi;
-    private readonly IFeishuV3Departments_Tenant _deptApi;
-    private readonly IFeishuV3UserGroup_Tenant _groupApi;
+    private readonly IFeishuTenantV3User _userApi;
+    private readonly IFeishuTenantV3Departments _deptApi;
+    private readonly IFeishuTenantV3UserGroup _groupApi;
 
     public UserManagementService(
-        IFeishuV3User_Tenant userApi,
-        IFeishuV3Departments_Tenant deptApi,
-        IFeishuV3UserGroup_Tenant groupApi)
+        IFeishuTenantV3User userApi,
+        IFeishuTenantV3Departments deptApi,
+        IFeishuTenantV3UserGroup groupApi)
     {
         _userApi = userApi;
         _deptApi = deptApi;
@@ -376,12 +343,12 @@ public class NotificationService
 ```csharp
 public class OrganizationSyncService
 {
-    private readonly IFeishuV3Departments_Tenant _deptApi;
-    private readonly IFeishuV3User_Tenant _userApi;
+    private readonly IFeishuTenantV3Departments _deptApi;
+    private readonly IFeishuTenantV3User _userApi;
 
     public OrganizationSyncService(
-        IFeishuV3Departments_Tenant deptApi,
-        IFeishuV3User_Tenant userApi)
+        IFeishuTenantV3Departments deptApi,
+        IFeishuTenantV3User userApi)
     {
         _deptApi = deptApi;
         _userApi = userApi;
@@ -530,7 +497,7 @@ var users = await userApi.GetUserByIdsAsync(new[] { "user_1", "user_2", "user_3"
 var departments = await deptApi.GetDepartmentsByParentIdAsync("0", fetch_child: true);
 
 // 获取部门下的用户
-var users = await deptApi.GetDepartmentUsersAsync("dept_123");
+var users = await deptApi.GetUserByDepartmentIdAsync("dept_123");
 
 // 创建子部门
 var newDept = await deptApi.CreateDepartmentAsync(new DepartmentCreateRequest
@@ -668,36 +635,36 @@ Mud.Feishu/
 ├── IFeishuV3AuthenticationApi.cs         # 认证授权 API
 ├── Organization/                         # 组织架构相关服务
 │   ├── IFeishuV1Departments.cs           # V1部门管理基础接口
-│   ├── IFeishuV1Departments_Tenant.cs    # V1租户部门管理接口
-│   ├── IFeishuV1Departments_User.cs      # V1用户部门管理接口
+│   ├── IFeishuTenantV1Departments.cs     # V1租户部门管理接口
+│   ├── IFeishuUserV1Departments.cs       # V1用户部门管理接口
 │   ├── IFeishuV1Employees.cs             # V1员工管理基础接口
-│   ├── IFeishuV1Employees_Tenant.cs      # V1租户员工管理接口
-│   ├── IFeishuV1Employees_User.cs        # V1用户员工管理接口
+│   ├── IFeishuTenantV1Employees.cs      # V1租户员工管理接口
+│   ├── IFeishuUserV1Employees.cs        # V1用户员工管理接口
 │   ├── IFeishuV3Departments.cs           # V3部门管理基础接口
-│   ├── IFeishuV3Departments_Tenant.cs    # V3租户部门管理接口
-│   ├── IFeishuV3Departments_User.cs      # V3用户部门管理接口
-│   ├── IFeishuV3EmployeeType_Tenant.cs   # V3租户人员类型管理接口
-│   ├── IFeishuV3JobFamilies_Tenant.cs    # V3租户职位序列管理接口
-│   ├── IFeishuV3JobLevel_Tenant.cs       # V3租户职级管理接口
+│   ├── IFeishuTenantV3Departments.cs     # V3租户部门管理接口
+│   ├── IFeishuUserV3Departments.cs       # V3用户部门管理接口
+│   ├── IFeishuTenantV3EmployeeType.cs   # V3租户人员类型管理接口
+│   ├── IFeishuTenantV3JobFamilies.cs    # V3租户职位序列管理接口
+│   ├── IFeishuTenantV3JobLevel.cs       # V3租户职级管理接口
 │   ├── IFeishuV3JobTitle.cs              # V3职务管理基础接口
-│   ├── IFeishuV3JobTitle_Tenant.cs       # V3租户职务管理接口
-│   ├── IFeishuV3JobTitle_User.cs         # V3用户职务管理接口
-│   ├── IFeishuV3RoleMember_Tenant.cs     # V3租户角色成员管理接口
-│   ├── IFeishuV3Role_Tenant.cs           # V3租户角色管理接口
-│   ├── IFeishuV3Unit_Tenant.cs           # V3租户单位管理接口
+│   ├── IFeishuTenantV3JobTitle.cs       # V3租户职务管理接口
+│   ├── IFeishuUserV3JobTitle.cs         # V3用户职务管理接口
+│   ├── IFeishuTenantV3RoleMember.cs     # V3租户角色成员管理接口
+│   ├── IFeishuTenantV3Role.cs           # V3租户角色管理接口
+│   ├── IFeishuTenantV3Unit.cs           # V3租户单位管理接口
 │   ├── IFeishuV3User.cs                  # V3用户管理基础接口
-│   ├── IFeishuV3UserGroupMember_Tenant.cs # V3租户用户组成员管理接口
-│   ├── IFeishuV3UserGroup_Tenant.cs      # V3租户用户组管理接口
-│   ├── IFeishuV3User_Tenant.cs           # V3租户用户管理接口
-│   ├── IFeishuV3User_User.cs             # V3用户管理接口
+│   ├── IFeishuTenantV3UserGroupMember.cs # V3租户用户组成员管理接口
+│   ├── IFeishuTenantV3UserGroup.cs      # V3租户用户组管理接口
+│   ├── IFeishuTenantV3User.cs           # V3租户用户管理接口
+│   ├── IFeishuUserV3User.cs             # V3用户管理接口
 │   ├── IFeishuV3WorkCity.cs              # V3工作城市基础接口
-│   ├── IFeishuV3WorkCity_Tenant.cs       # V3租户工作城市管理接口
-│   └── IFeishuV3WorkCity_User.cs         # V3用户工作城市管理接口
+│   ├── IFeishuTenantV3WorkCity.cs       # V3租户工作城市管理接口
+│   └── IFeishuUserV3WorkCity.cs         # V3用户工作城市管理接口
 ├── Messages/                              # 消息相关服务
-│   ├── IFeishuV1BatchMessage_Tenant.cs   # V1租户批量消息接口
+│   ├── IFeishuTenantV1BatchMessage.cs   # V1租户批量消息接口
 │   ├── IFeishuV1Message.cs                # V1消息基础接口
-│   ├── IFeishuV1Message_Tenant.cs        # V1租户消息接口
-│   ├── IFeishuV1Message_User.cs          # V1用户消息接口
+│   ├── IFeishuTenantV1Message.cs        # V1租户消息接口
+│   ├── IFeishuUserV1Message.cs          # V1用户消息接口
 │   └── Imps/
 │       └── FeishuV1MessageApi.cs         # V1消息API实现
 ├── TokenManager/                          # 令牌管理
@@ -878,7 +845,7 @@ cachedManager.CleanExpiredTokens();
 A: 库内置了自动令牌刷新机制，会在令牌过期前自动获取新令牌，无需手动处理。
 
 ### Q: 支持哪些 .NET 版本？
-A: 支持 .NET  6.0、7.0、8.0、9.0、10.0，推荐使用 LTS 8.0及以上子。
+A: 支持 .NET  6.0、7.0、8.0、9.0、10.0，推荐使用 LTS 8.0及以上版本。
 
 ### Q: 如何配置多个飞书应用？
 A: 可以注册多个服务实例，每个实例使用不同的配置节名称。

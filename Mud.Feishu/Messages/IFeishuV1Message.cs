@@ -36,9 +36,9 @@ public interface IFeishuV1Message
     /// <param name="message_id">待添加表情回复的消息 ID。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Post("https://open.feishu.cn/open-apis/im/v1/messages/{message_id}/reactions")]
-    Task<FeishuApiResult<ReactionResult>?> AddMessageReactionsAsync(
+    Task<FeishuApiResult<EmojiReactionResult>?> AddMessageReactionsAsync(
      [Path] string message_id,
-     [Body] ReactionRequest sendMessageRequest,
+     [Body] EmojiReactionRequest sendMessageRequest,
      CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -52,13 +52,13 @@ public interface IFeishuV1Message
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Get("https://open.feishu.cn/open-apis/im/v1/messages/{message_id}/reactions")]
-    Task<FeishuApiListResult<ReactionResult>?> GetMessageReactionsPageListAsync(
-    [Path] string message_id,
-    [Query("reaction_type")] string reaction_type,
-    [Query("page_size")] int page_size = 10,
-    [Query("page_token")] string? page_token = null,
-    [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
-    CancellationToken cancellationToken = default);
+    Task<FeishuApiListResult<EmojiReactionResult>?> GetMessageReactionsPageListAsync(
+        [Path] string message_id,
+        [Query("reaction_type")] string reaction_type,
+        [Query("page_size")] int page_size = 10,
+        [Query("page_token")] string? page_token = null,
+        [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 删除指定消息的某一表情回复。
@@ -67,9 +67,52 @@ public interface IFeishuV1Message
     /// <param name="message_id">待删除表情回复的消息 ID。示例值："om_8964d1b4*********2b31383276113"</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Delete("https://open.feishu.cn/open-apis/im/v1/messages/{message_id}/reactions/{reaction_id}")]
-    Task<FeishuApiResult<ReactionResult>?> DeleteMessageReactionsAsync(
+    Task<FeishuApiResult<EmojiReactionResult>?> DeleteMessageReactionsAsync(
      [Path] string message_id,
      [Path] string reaction_id,
      CancellationToken cancellationToken = default);
+    #endregion
+
+    #region Pin
+    /// <summary>
+    /// Pin 一条指定的消息。
+    /// </summary>
+    /// <param name="messageRequest">Pin 消息请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Post("https://open.feishu.cn/open-apis/im/v1/pins")]
+    Task<FeishuApiResult<PinDataResult>?> PinMessageAsync(
+       [Body] MessageRequest messageRequest,
+       CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 移除一条指定消息的 Pin。
+    /// </summary>
+    /// <param name="message_id">待移除 Pin 的消息 ID。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Delete("https://open.feishu.cn/open-apis/im/v1/pins/{message_id}")]
+    Task<FeishuNullDataApiResult?> DeletePinMessageAsync(
+        [Path] string message_id,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 获取指定群、指定时间范围内的所有 Pin 消息。
+    /// </summary>
+    /// <param name="chat_id">待获取 Pin 消息的群组 ID。 示例值："oc_234jsi43d3ssi993d43545f"</param>
+    /// <param name="start_time">获取 Pin 消息的起始时间，毫秒级时间戳。 示例值："1658632251800"</param>
+    /// <param name="end_time">获取 Pin 消息的结束时间，毫秒级时间戳。 示例值："1658731646425"</param>
+    /// <param name="page_size">分页大小，即本次请求所返回的用户信息列表内的最大条目数。默认值：10</param>
+    /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Post("https://open.feishu.cn/open-apis/im/v1/pins")]
+    Task<FeishuApiPageListResult<PinInfo>?> GetPinMessagePageListAsync(
+        [Query("chat_id")] string chat_id,
+        [Query("start_time")] string? start_time,
+        [Query("end_time")] string? end_time,
+        [Query("page_size")] int? page_size = 10,
+        [Query("page_token")] string? page_token = null,
+        CancellationToken cancellationToken = default);
     #endregion
 }

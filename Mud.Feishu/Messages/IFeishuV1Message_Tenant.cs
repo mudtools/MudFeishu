@@ -356,5 +356,4 @@ public interface IFeishuTenantV1Message : IFeishuV1Message
       CancellationToken cancellationToken = default);
     #endregion
 
-
 }

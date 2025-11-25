@@ -11,7 +11,7 @@ namespace Mud.Feishu.DataModels.Messages;
 /// 表示飞书消息反应的结果信息
 /// 包含关于谁在何时添加或移除了哪种类型的表情反应的信息
 /// </summary>
-public class ReactionResult
+public class EmojiReactionResult
 {
     /// <summary>
     /// 获取或设置反应的唯一标识符

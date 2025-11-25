@@ -7,19 +7,8 @@
 
 namespace Mud.Feishu.DataModels.Messages;
 
-/// <summary>
-/// 消息请求体。
-/// </summary>
-public class MessageRequest
+public class PinDataResult
 {
-    /// <summary>
-    /// 消息 ID。
-    /// </summary>
-    [JsonPropertyName("message_id")]
-    public
-#if NET7_0_OR_GREATER
-        required
-#endif
-        string? MessageId
-    { get; set; }
+    [JsonPropertyName("pin")]
+    public PinInfo Pin { get; set; }
 }

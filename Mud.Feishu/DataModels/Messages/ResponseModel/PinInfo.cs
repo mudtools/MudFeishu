@@ -7,36 +7,20 @@
 
 namespace Mud.Feishu.DataModels.Messages;
 
-/// <summary>
-/// 添加消息表情回复请求体
-/// </summary>
-public class ReactionRequest
+public class PinInfo
 {
-    /// <summary>
-    /// 表情类型
-    /// </summary>
-    [JsonPropertyName("reaction_type")]
-    public
-#if NET7_0_OR_GREATER
-        required
-#endif
-        ReactionType? ReactionType
-    { get; set; }
-}
+    [JsonPropertyName("message_id")]
+    public string MessageId { get; set; }
 
-/// <summary>
-/// 表情类型
-/// </summary>
-public class ReactionType
-{
-    /// <summary>
-    /// emoji 类型。支持的表情与对应的 emoji_type 值参见<see href="https://open.feishu.cn/document/server-docs/im-v1/message-reaction/emojis-introduce">表情文案说明</see>。
-    /// </summary>
-    [JsonPropertyName("emoji_type")]
-    public
-#if NET7_0_OR_GREATER
-        required
-#endif
-        string? EmojiType
-    { get; set; }
+    [JsonPropertyName("chat_id")]
+    public string ChatId { get; set; }
+
+    [JsonPropertyName("operator_id")]
+    public string OperatorId { get; set; }
+
+    [JsonPropertyName("operator_id_type")]
+    public string OperatorIdType { get; set; }
+
+    [JsonPropertyName("create_time")]
+    public string CreateTime { get; set; }
 }

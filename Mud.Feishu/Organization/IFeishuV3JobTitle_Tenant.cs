@@ -9,6 +9,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 职务是用户属性之一，通过职务 API 仅支持查询职务信息。
+/// <para>当前接口使用租户令牌访问，适应于租户应用场景。</para>
 /// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/contact-v3/job_title/job-title-resources-introduction"/></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(ITenantTokenManager), RegistryGroupName = "Organization")]

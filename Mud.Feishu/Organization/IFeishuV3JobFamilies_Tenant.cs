@@ -11,6 +11,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 序列是用户属性之一，用来为不同的用户定义不同的工作类型，例如产品、研发、测试、运营。
+/// <para>当前接口使用租户令牌访问，适应于租户应用场景。</para>
 /// <para>可以根据企业实际需要添加序列，后续在创建或更新用户时，为用户设置相匹配的序列。</para>
 /// <para>通过序列 API，可以创建、更新、查询、删除序列信息。</para>
 /// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/contact-v3/job_family/job-family-resource-introduction"/></para>

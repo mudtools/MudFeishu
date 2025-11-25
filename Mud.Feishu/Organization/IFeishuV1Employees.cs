@@ -11,8 +11,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 员工指飞书企业内身份为「Employee」的成员，等同于通讯录OpenAPI中的「User」。
-/// <para>员工在飞书的身份标识包括employee_id、open_id 和 union_id，其中employee_id的值等同于通讯录中的 user_id，其余两个也和通讯录的User的值相同。</para>
-/// 接口详细文档请参见：<see href="https://open.feishu.cn/document/directory-v1/employee/overview"/>
+/// <para>当前接口不能直接调用，仅为子接口的公共方法抽象</para>
 /// </summary>
 public interface IFeishuV1Employees
 {

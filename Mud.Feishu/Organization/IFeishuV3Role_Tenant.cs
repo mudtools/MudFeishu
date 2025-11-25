@@ -11,6 +11,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 飞书角色指的是团队成员的专业分工类别，如人事、行政、财务等，一个角色可由一名或多名成员组成。
+/// <para>当前接口使用租户令牌访问，适应于租户应用场景。</para>
 /// <para>目前，角色主要用于应用审批场景。在审批管理后台，管理员可以选择某一角色作为审批人。</para> 
 /// <para>例如，选择财务角色作为报销流程的审批人。这样做可以避免因成员离职变动导致的审批流失效的情况，角色内的其他成员可以继续完成审批，提高审批效率。</para> 
 /// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/contact-v3/functional_role/resource-introduction"/></para>

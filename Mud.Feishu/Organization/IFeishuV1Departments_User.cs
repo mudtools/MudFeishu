@@ -9,6 +9,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 部门是飞书组织架构里的一个基础实体，每个员工都归属于一个或多个部门。
+/// <para>当前接口使用用户令牌访问，适应于用户应用场景。</para>
 /// <para>部门在飞书的身份标识包括department_id、open_department_id。</para>
 /// 接口详细文档请参见：<see href="https://open.feishu.cn/document/directory-v1/department/overview"/>
 /// </summary>

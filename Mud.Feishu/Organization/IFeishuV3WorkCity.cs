@@ -11,7 +11,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 工作城市是用户属性之一，通过工作城市 API 仅支持查询工作城市信息。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/contact-v3/work_city/work-city-resources-introduction"/></para>
+/// <para>当前接口不能直接调用，仅为子接口的公共方法抽象</para>
 /// </summary>
 public interface IFeishuV3WorkCity
 {

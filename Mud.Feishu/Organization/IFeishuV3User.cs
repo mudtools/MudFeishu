@@ -11,6 +11,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 飞书用户是飞书通讯录中的基础资源，对应企业组织架构中的成员实体。
+/// <para>当前接口不能直接调用，仅为子接口的公共方法抽象</para>
 /// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/contact-v3/user/field-overview"/></para>
 /// </summary>
 public interface IFeishuV3User

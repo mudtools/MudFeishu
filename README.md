@@ -37,6 +37,11 @@ MudFeishu 是一个用于简化与飞书（Feishu）API 集成的现代化 .NET 
 | 文档完善度 | 需要在飞书官方文档中查找各个接口的详细说明 | 提供完整的中文API文档和示例代码 | 降低学习成本，快速上手 |
 | 依赖管理 | 需要自行引入和管理各种第三方库 | 统一管理所有依赖，避免版本冲突 | 简化项目依赖管理 |
 
+## 模块概览
+
+| 模块 | 当前版本 | 下载 | 开源协议 |
+|---|---|---|---|
+| [![Mud.Feishu](https://img.shields.io/badge/Mud.Feishu-mudtools-success.svg)](https://gitee.com/mudtools/mud-code-generator) | [![Nuget](https://img.shields.io/nuget/v/Mud.Feishu.svg)](https://www.nuget.org/packages/Mud.Feishu/) | [![Nuget](https://img.shields.io/nuget/dt/Mud.Feishu.svg)](https://www.nuget.org/packages/Mud.Feishu/) | [![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://gitee.com/mudtools/mud-code-generator/blob/master/LICENSE)
 
 ## 快速开始
 
@@ -53,6 +58,7 @@ dotnet add package Mud.Feishu --version 1.0.2
 在 `Program.cs` 中注册服务：
 
 #### 方式一：使用配置文件
+
 ```csharp
 using Mud.Feishu;
 
@@ -65,12 +71,14 @@ var app = builder.Build();
 ```
 
 #### 方式二：使用配置节名称
+
 ```csharp
 // 注册飞书 API 服务，指定配置节
 builder.Services.AddFeishuApiService("Feishu");
 ```
 
 ##### 配置文件示例 (appsettings.json)
+
 ```json
 {
   "Logging": {
@@ -131,22 +139,26 @@ public class FeishuController : ControllerBase
 Mud.Feishu 提供了完整的飞书 API 覆盖，主要包含以下接口类别：
 
 ### 🔐 认证授权
+
 - 自动令牌管理和刷新
 - OAuth 授权流程支持
 - 多种令牌类型（应用、租户、用户）
 
 ### 📱 消息服务  
+
 - 丰富的消息类型支持（文本、图片、文件、卡片等）
 - 批量消息发送和状态追踪
 - 消息表情回复和互动功能
 
 ### 👥 组织架构管理
+
 - **用户管理**：创建、更新、查询、删除用户
 - **部门管理**：部门树形结构维护
 - **用户组管理**：用户组成员管理
 - **员工管理**：V1 版本员工相关功能
 
 ### 🏢 企业管理
+
 - **人员类型**：员工分类管理
 - **职级管理**：职级体系维护
 - **职位序列**：职业发展路径
@@ -413,6 +425,7 @@ public class OrganizationSyncService
 ### 🔧 配置文件示例
 
 #### appsettings.json
+
 ```json
 {
   "Logging": {
@@ -432,6 +445,7 @@ public class OrganizationSyncService
 ```
 
 #### Program.cs 服务注册
+
 ```csharp
 using Mud.Feishu;
 
@@ -459,6 +473,7 @@ app.Run();
 ## 🎯 常见使用场景快速参考
 
 ### 📧 消息通知
+
 ```csharp
 // 发送文本消息
 await messageApi.SendTextMessageAsync(new TextMessageRequest 
@@ -477,6 +492,7 @@ await batchMessageApi.BatchSendTextMessageAsync(new BatchSenderTextMessageReques
 ```
 
 ### 👤 用户管理
+
 ```csharp
 // 创建用户
 var userResult = await userApi.CreateUserAsync(new CreateUserRequest
@@ -492,6 +508,7 @@ var users = await userApi.GetUserByIdsAsync(new[] { "user_1", "user_2", "user_3"
 ```
 
 ### 🏢 组织架构
+
 ```csharp
 // 获取部门树
 var departments = await deptApi.GetDepartmentsByParentIdAsync("0", fetch_child: true);
@@ -508,6 +525,7 @@ var newDept = await deptApi.CreateDepartmentAsync(new DepartmentCreateRequest
 ```
 
 ### 🛠️ 令牌管理
+
 ```csharp
 // 直接获取有效令牌（自动处理刷新）
 var token = await tokenManager.GetTokenAsync();
@@ -523,6 +541,7 @@ tokenManager.CleanExpiredTokens();
 ## 🔄 错误处理最佳实践
 
 ### 统一错误处理
+
 ```csharp
 public class FeishuServiceBase
 {
@@ -567,6 +586,7 @@ public async Task<UserInfo> GetUserSafelyAsync(string userId)
 ```
 
 ### 分页处理
+
 ```csharp
 public async Task<List<T>> GetAllItemsAsync<T>(Func<string?, Task<FeishuApiPageListResult<T>>> pageFetcher)
 {
@@ -608,6 +628,7 @@ var allUsers = await GetAllItemsAsync(pageToken =>
 - **集成测试** - 端到端测试用例
 
 运行示例项目：
+
 ```bash
 cd Mud.Feishu.Test
 dotnet run
@@ -709,27 +730,32 @@ Mud.Feishu/
 ### 令牌管理器体系
 
 #### 基础令牌管理接口 (`ITokenManager`)
+
 - **统一接口**：定义令牌获取的基础方法 `GetTokenAsync()`
 - **异步操作**：所有方法均为异步，支持取消令牌
 - **可扩展性**：支持自定义令牌管理实现
 - **缓存管理**：提供 `CleanExpiredTokens()` 和 `GetCacheStatistics()` 方法
 
 #### 应用令牌管理器 (`IAppTokenManager`)
+
 - **应用级令牌**：管理应用访问令牌
 - **自动刷新**：令牌即将过期时自动刷新
 - **缓存机制**：内置缓存，减少API调用次数
 
 #### 租户令牌管理器 (`ITenantTokenManager`)
+
 - **租户级令牌**：管理租户访问令牌
 - **多租户支持**：支持多租户场景下的令牌管理
 - **隔离性**：不同租户的令牌完全隔离
 
 #### 用户令牌管理器 (`IUserTokenManager`)
+
 - **用户级令牌**：管理用户访问令牌
 - **OAuth支持**：支持OAuth授权流程
 - **刷新令牌**：支持通过刷新令牌获取新的访问令牌
 
 #### 带缓存的令牌管理器 (`TokenManagerWithCache`)
+
 - **智能缓存**：自动管理令牌缓存，支持多租户场景
 - **自动刷新**：令牌即将过期时自动刷新，提前5分钟触发
 - **并发安全**：使用 `ConcurrentDictionary` 和 `Lazy<Task>` 解决缓存击穿和竞态条件
@@ -739,6 +765,7 @@ Mud.Feishu/
 - **资源管理**：实现 `IDisposable` 接口，确保资源正确释放
 
 ### 配置选项 (`FeishuOptions`)
+
 ```csharp
 public class FeishuOptions
 {
@@ -748,6 +775,7 @@ public class FeishuOptions
 ```
 
 ### 异常处理 (`FeishuException`)
+
 ```csharp
 public class FeishuException : Exception
 {
@@ -775,6 +803,7 @@ public class FeishuException : Exception
 ## 高级用法
 
 ### 自定义令牌管理
+
 ```csharp
 // 自定义令牌管理器实现
 public class CustomTokenManager : ITokenManager
@@ -791,6 +820,7 @@ services.AddSingleton<ITokenManager, CustomTokenManager>();
 ```
 
 ### 手动令牌刷新
+
 ```csharp
 // 注入令牌管理器
 public class MyService
@@ -810,6 +840,7 @@ public class MyService
 ```
 
 ### 监控和调试
+
 ```csharp
 // 获取令牌缓存统计（TokenManagerWithCache）
 var (total, expired) = _tokenManager.GetCacheStatistics();
@@ -829,12 +860,15 @@ cachedManager.CleanExpiredTokens();
 ## 常见问题
 
 ### Q: 如何处理令牌过期？
+
 A: 库内置了自动令牌刷新机制，会在令牌过期前自动获取新令牌，无需手动处理。
 
 ### Q: 支持哪些 .NET 版本？
+
 A: 支持 .NET  6.0、7.0、8.0、9.0、10.0，推荐使用 LTS 8.0及以上版本。
 
 ### Q: 如何配置多个飞书应用？
+
 A: 可以注册多个服务实例，每个实例使用不同的配置节名称。
 
 ## 贡献指南
@@ -847,6 +881,7 @@ A: 可以注册多个服务实例，每个实例使用不同的配置节名称�
 4. **提交 Pull Request**：详细描述更改内容和测试结果
 
 ### 代码规范
+
 - 使用 C# 13.0 语言特性
 - 遵循 Microsoft 编码规范
 - 所有公共 API 必须包含 XML 文档注释
@@ -873,6 +908,7 @@ MudFeishu 遵循 [MIT 许可证](LICENSE)。
 4. **提交 Pull Request**：详细描述更改内容和测试结果
 
 ### 代码规范
+
 - 使用 C# 13.0 语言特性
 - 遵循 Microsoft 编码规范
 - 所有公共 API 必须包含 XML 文档注释
@@ -880,6 +916,7 @@ MudFeishu 遵循 [MIT 许可证](LICENSE)。
 - 所亦接口必须指定飞书API原始文档URL
 
 ### 测试要求
+
 - 新功能必须在 `Mud.Feishu.Test` 项目中添加演示代码
 - 确保 Controller 示例能够正常工作
 - 添加相应的 Swagger 文档注释

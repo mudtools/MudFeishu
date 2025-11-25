@@ -356,4 +356,16 @@ public interface IFeishuTenantV1Message : IFeishuV1Message
       CancellationToken cancellationToken = default);
     #endregion
 
+    #region URL 预览
+    /// <summary>
+    /// 更新 URL 预览
+    /// </summary>
+    /// <param name="urlPreviewRequest">更新 URL 预览请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Post("https://open.feishu.cn/open-apis/im/v2/url_previews/batch_update")]
+    Task<FeishuNullDataApiResult?> UpdateUrlPreviewAsync(
+       [Body] UrlPreviewRequest urlPreviewRequest,
+       CancellationToken cancellationToken = default);
+    #endregion
 }

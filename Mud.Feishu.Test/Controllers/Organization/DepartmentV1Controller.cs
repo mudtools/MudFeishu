@@ -19,9 +19,9 @@ namespace Mud.Feishu.Test.Controllers.Messages;
 [Route("api/[controller]")]
 public class DepartmentV1Controller : ControllerBase
 {
-    private readonly IFeishuV1DepartmentsService _departmentApi;
+    private readonly IFeishuTenantV1Departments _departmentApi;
 
-    public DepartmentV1Controller(IFeishuV1DepartmentsService departmentApi)
+    public DepartmentV1Controller(IFeishuTenantV1Departments departmentApi)
     {
         _departmentApi = departmentApi;
     }
@@ -42,7 +42,7 @@ public class DepartmentV1Controller : ControllerBase
     {
         try
         {
-            var result = await _departmentApi.CreateDepartment_Tenant_Async(
+            var result = await _departmentApi.CreateDepartmentAsync(
                 departmentCreateRequest,
                 employeeIdType,
                 departmentIdType);
@@ -85,7 +85,7 @@ public class DepartmentV1Controller : ControllerBase
     {
         try
         {
-            var result = await _departmentApi.UpdateDepartment_Tenant_Async(
+            var result = await _departmentApi.UpdateDepartmentAsync(
                 departmentId,
                 departmentUpdateRequest,
                 employeeIdType,
@@ -120,7 +120,7 @@ public class DepartmentV1Controller : ControllerBase
     {
         try
         {
-            var result = await _departmentApi.DeleteDepartmentById_Tenant_Async(
+            var result = await _departmentApi.DeleteDepartmentByIdAsync(
                 departmentId,
                 departmentIdType);
 
@@ -155,7 +155,7 @@ public class DepartmentV1Controller : ControllerBase
     {
         try
         {
-            var result = await _departmentApi.QueryDepartments_Tenant_Async(
+            var result = await _departmentApi.QueryDepartmentsAsync(
                 departmentQueryRequest,
                 employeeIdType,
                 departmentIdType);
@@ -196,7 +196,7 @@ public class DepartmentV1Controller : ControllerBase
     {
         try
         {
-            var result = await _departmentApi.QueryDepartmentsPageList_Tenant_Async(
+            var result = await _departmentApi.QueryDepartmentsPageListAsync(
                 filterSearchRequest,
                 employeeIdType,
                 departmentIdType);
@@ -237,7 +237,7 @@ public class DepartmentV1Controller : ControllerBase
     {
         try
         {
-            var result = await _departmentApi.SearchEmployeePageList_Tenant_Async(
+            var result = await _departmentApi.SearchEmployeePageListAsync(
                 pageSearchRequest,
                 employeeIdType,
                 departmentIdType);

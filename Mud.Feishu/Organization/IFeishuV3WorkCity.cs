@@ -24,7 +24,7 @@ public interface IFeishuV3WorkCity
     /// <returns></returns>
     [Get("https://open.feishu.cn/open-apis/contact/v3/work_cities")]
     Task<FeishuApiPageListResult<WorkCity>?> GetWorkCitesListAsync(
-         [Query("page_size")] int page_size = 10,
+         [Query("page_size")] int? page_size = 10,
          [Query("page_token")] string? page_token = null,
          CancellationToken cancellationToken = default);
 

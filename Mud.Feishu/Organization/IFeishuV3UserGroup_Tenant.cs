@@ -75,9 +75,9 @@ public interface IFeishuTenantV3UserGroup
     /// <returns></returns>
     [Get("https://open.feishu.cn/open-apis/contact/v3/group/simplelist")]
     Task<FeishuApiResult<UserGroupListResult>?> GetUserGroupsAsync(
-     [Query("page_size")] int page_size = 10,
+     [Query("page_size")] int? page_size = 10,
      [Query("page_token")] string? page_token = null,
-     [Query("type")] int type = 1,
+     [Query("type")] int? type = 1,
      CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -96,9 +96,9 @@ public interface IFeishuTenantV3UserGroup
         [Query("member_id")] string member_id,
         [Query("member_id_type")] string? member_id_type = null,
         [Query("group_type")] int? group_type = null,
-        [Query("page_size")] int page_size = 10,
+        [Query("page_size")] int? page_size = 10,
         [Query("page_token")] string? page_token = null,
-        [Query("type")] int type = 1,
+        [Query("type")] int? type = 1,
         CancellationToken cancellationToken = default);
 
     /// <summary>

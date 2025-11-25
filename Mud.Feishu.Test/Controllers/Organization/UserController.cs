@@ -19,11 +19,13 @@ namespace Mud.Feishu.Test.Controllers.Messages;
 [Route("api/[controller]")]
 public class UserController : ControllerBase
 {
-    private readonly IFeishuV3UserService _userApi;
+    private readonly IFeishuTenantV3User _user_tenantApi;
+    private readonly IFeishuUserV3User _user_Api;
 
-    public UserController(IFeishuV3UserService userApi)
+    public UserController(IFeishuTenantV3User userApi, IFeishuUserV3User user_Api)
     {
-        _userApi = userApi;
+        _user_tenantApi = userApi;
+        _user_Api = user_Api;
     }
 
     /// <summary>
@@ -43,7 +45,7 @@ public class UserController : ControllerBase
     {
         try
         {
-            var result = await _userApi.CreateUserAsync(userModel, userIdType, departmentIdType, clientToken);
+            var result = await _user_tenantApi.CreateUserAsync(userModel, userIdType, departmentIdType, clientToken);
             return Ok(result);
         }
         catch (Exception ex)
@@ -69,7 +71,7 @@ public class UserController : ControllerBase
     {
         try
         {
-            var result = await _userApi.UpdateUser_Tenant_Async(userId, userModel, userIdType, departmentIdType);
+            var result = await _user_tenantApi.UpdateUserAsync(userId, userModel, userIdType, departmentIdType);
             return Ok(result);
         }
         catch (Exception ex)
@@ -93,7 +95,7 @@ public class UserController : ControllerBase
     {
         try
         {
-            var result = await _userApi.UpdateUserIdAsync(userId, updateUserId, userIdType);
+            var result = await _user_tenantApi.UpdateUserIdAsync(userId, updateUserId, userIdType);
             return Ok(result);
         }
         catch (Exception ex)
@@ -117,7 +119,7 @@ public class UserController : ControllerBase
     {
         try
         {
-            var result = await _userApi.GetUserInfoById_Tenant_Async(userId, userIdType, departmentIdType);
+            var result = await _user_tenantApi.GetUserInfoByIdAsync(userId, userIdType, departmentIdType);
             return Ok(result.Data);
         }
         catch (Exception ex)
@@ -141,7 +143,7 @@ public class UserController : ControllerBase
     {
         try
         {
-            var result = await _userApi.GetUserByIds_Tenant_Async(userIds, userIdType, departmentIdType);
+            var result = await _user_tenantApi.GetUserByIdsAsync(userIds, userIdType, departmentIdType);
             return Ok(result.Data);
         }
         catch (Exception ex)
@@ -169,7 +171,7 @@ public class UserController : ControllerBase
     {
         try
         {
-            var result = await _userApi.GetUserByDepartmentId_Tenant_Async(departmentId, pageSize, pageToken, userIdType, departmentIdType);
+            var result = await _user_tenantApi.GetUserByDepartmentIdAsync(departmentId, pageSize, pageToken, userIdType, departmentIdType);
             return Ok(result.Data);
         }
         catch (Exception ex)
@@ -191,7 +193,7 @@ public class UserController : ControllerBase
     {
         try
         {
-            var result = await _userApi.GetBatchUsersAsync(queryRequest, userIdType);
+            var result = await _user_tenantApi.GetBatchUsersAsync(queryRequest, userIdType);
             return Ok(result.Data);
         }
         catch (Exception ex)
@@ -215,7 +217,7 @@ public class UserController : ControllerBase
     {
         try
         {
-            var result = await _userApi.GetUsersByKeywordAsync(query, pageSize, pageToken);
+            var result = await _user_tenantApi.GetUsersByKeywordAsync(query, pageSize, pageToken);
             return Ok(result.Data);
         }
         catch (Exception ex)
@@ -239,7 +241,7 @@ public class UserController : ControllerBase
     {
         try
         {
-            var result = await _userApi.DeleteUserByIdAsync(userId, deleteSettingsRequest, userIdType);
+            var result = await _user_tenantApi.DeleteUserByIdAsync(userId, deleteSettingsRequest, userIdType);
             return Ok(result);
         }
         catch (Exception ex)
@@ -265,7 +267,7 @@ public class UserController : ControllerBase
     {
         try
         {
-            var result = await _userApi.ResurrectUserByIdAsync(userId, resurrectUserRequest, userIdType, departmentIdType);
+            var result = await _user_tenantApi.ResurrectUserByIdAsync(userId, resurrectUserRequest, userIdType, departmentIdType);
             return Ok(result);
         }
         catch (Exception ex)
@@ -283,7 +285,7 @@ public class UserController : ControllerBase
     {
         try
         {
-            var result = await _userApi.GetUserInfoAsync();
+            var result = await _user_Api.GetUserInfoAsync();
             return Ok(result.Data);
         }
         catch (Exception ex)

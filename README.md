@@ -99,21 +99,21 @@ using Mud.Feishu;
 public class FeishuController : ControllerBase
 {
     private readonly IFeishuV3AuthenticationApi _authApi;
-    private readonly IFeishuV3UserApi _userApi;
-    private readonly IFeishuV3DepartmentsApi _departmentsApi;
-    private readonly IFeishuV3UserGroupApi _userGroupApi;
-    private readonly IFeishuV3EmployeeTypeApi _employeeTypeApi;
-    private readonly IFeishuJobLevelApi _jobLevelApi;
-    private readonly IFeishuJobFamiliesApi _jobFamiliesApi;
+    private readonly IFeishuV3User_Tenant _userApi;
+    private readonly IFeishuV3Departments_Tenant _departmentsApi;
+    private readonly IFeishuV3UserGroup_Tenant _userGroupApi;
+    private readonly IFeishuV3EmployeeType_Tenant _employeeTypeApi;
+    private readonly IFeishuV3JobLevel_Tenant _jobLevelApi;
+    private readonly IFeishuV3JobFamilies_Tenant _jobFamiliesApi;
 
     public FeishuController(
         IFeishuV3AuthenticationApi authApi, 
-        IFeishuV3UserApi userApi,
-        IFeishuV3DepartmentsApi departmentsApi,
-        IFeishuV3UserGroupApi userGroupApi,
-        IFeishuV3EmployeeTypeApi employeeTypeApi,
-        IFeishuJobLevelApi jobLevelApi,
-        IFeishuJobFamiliesApi jobFamiliesApi)
+        IFeishuV3User_Tenant userApi,
+        IFeishuV3Departments_Tenant departmentsApi,
+        IFeishuV3UserGroup_Tenant userGroupApi,
+        IFeishuV3EmployeeType_Tenant employeeTypeApi,
+        IFeishuV3JobLevel_Tenant jobLevelApi,
+        IFeishuV3JobFamilies_Tenant jobFamiliesApi)
     {
         _authApi = authApi;
         _userApi = userApi;
@@ -126,399 +126,663 @@ public class FeishuController : ControllerBase
 }
 ```
 
-## API 服务接口
+## API 接口概览
 
-### 认证授权 API (`IFeishuV3AuthenticationService`)
+Mud.Feishu 提供了完整的飞书 API 覆盖，主要包含以下接口类别：
 
-- `GetUserInfoAsync()` - 通过 access_token 获取用户信息
-- `LogoutAsync()` - 用户退出登录
-- `GetJsTicketAsync()` - 获取 JS SDK 临时调用凭证
-- `GetTenantAccessTokenAsync()` - 获取租户访问令牌
-- `GetAppAccessTokenAsync()` - 获取应用访问令牌
-- `GetOAuthenAccessTokenAsync()` - OAuth 授权获取用户访问令牌
-- `GetOAuthenRefreshAccessTokenAsync()` - 刷新用户访问令牌
-- `GetAuthorizeAsync()` - 发起用户授权
+### 🔐 认证授权
+- 自动令牌管理和刷新
+- OAuth 授权流程支持
+- 多种令牌类型（应用、租户、用户）
 
-### 用户管理服务 (`IFeishuV3UserService`)
+### 📱 消息服务  
+- 丰富的消息类型支持（文本、图片、文件、卡片等）
+- 批量消息发送和状态追踪
+- 消息表情回复和互动功能
 
-- `CreateUserAsync()` - 创建企业用户
-- `UpdateUserAsync()` - 更新用户信息
-- `UpdateUserIdAsync()` - 更新用户 ID
-- `GetUserByIdAsync()` - 根据 ID 获取用户信息
-- `GetUserByIdsAsync()` - 批量获取用户信息
-- `GetUserByDepartmentIdAsync()` - 获取部门下的用户列表
-- `GetBatchUsersAsync()` - 通过手机号或邮箱获取用户 ID
-- `GetUsersByKeywordAsync()` - 通过关键词搜索用户
-- `DeleteUserByIdAsync()` - 删除用户
-- `ResurrectUserByIdAsync()` - 恢复已删除用户
+### 👥 组织架构管理
+- **用户管理**：创建、更新、查询、删除用户
+- **部门管理**：部门树形结构维护
+- **用户组管理**：用户组成员管理
+- **员工管理**：V1 版本员工相关功能
 
-### 部门管理服务 (`IFeishuV3DepartmentsService`)
+### 🏢 企业管理
+- **人员类型**：员工分类管理
+- **职级管理**：职级体系维护
+- **职位序列**：职业发展路径
+- **职务管理**：具体职位定义
+- **角色管理**：权限角色体系
+- **单位管理**：组织单位设置
+- **工作城市**：办公地点管理
 
-- `CreateDepartmentAsync()` - 创建部门
-- `UpdatePartDepartmentAsync()` - 部分更新部门信息
-- `UpdateDepartmentAsync()` - 更新部门信息
-- `UpdateDepartmentIdAsync()` - 更新部门 ID
-- `GetDepartmentByIdAsync()` - 根据 ID 获取部门信息
-
-### 用户组管理服务 (`IFeishuV3UserGroupService`)
-
-- `CreateUserGroupAsync()` - 创建用户组
-- `UpdateUserGroupAsync()` - 更新用户组
-- `GetUserGroupByIdAsync()` - 根据 ID 获取用户组信息
-- `GetUserGroupsAsync()` - 获取用户组列表
-- `GetUserBelongGroupsAsync()` - 获取用户所属的用户组
-- `DeleteUserGroupByIdAsync()` - 删除用户组
-
-### 人员类型管理服务 (`IFeishuV3EmployeeTypeService`)
-
-- `CreateEmployeeTypeAsync()` - 创建人员类型
-- `UpdateEmployeeTypeAsync()` - 更新人员类型
-- `GetEmployeeTypesAsync()` - 获取人员类型列表
-- `DeleteEmployeeTypeByIdAsync()` - 删除人员类型
-
-### 职级管理服务 (`IFeishuV3JobLevelService`)
-
-- `CreateJobLevelAsync()` - 创建职级
-- `UpdateJobLevelAsync()` - 更新职级
-- `GetJobLevelByIdAsync()` - 根据 ID 获取职级信息
-- `GetJobLevelsAsync()` - 获取职级列表
-- `DeleteJobLevelByIdAsync()` - 删除职级
-
-### 职位序列管理服务 (`IFeishuV3JobFamiliesService`)
-
-- `CreateJobFamilyAsync()` - 创建职位序列
-- `UpdateJobFamilyAsync()` - 更新职位序列
-- `GetJobFamilyByIdAsync()` - 根据 ID 获取职位序列信息
-- `GetJobFamilesListAsync()` - 获取职位序列列表
-- `DeleteJobFamilyByIdAsync()` - 删除职位序列
-
-### 角色管理服务 (`IFeishuV3RoleService`)
-
-- `CreateRoleAsync()` - 创建角色
-- `UpdateRoleAsync()` - 更新角色
-- `GetRoleByIdAsync()` - 根据 ID 获取角色信息
-- `GetRolesAsync()` - 获取角色列表
-- `DeleteRoleByIdAsync()` - 删除角色
-
-### 角色成员管理服务 (`IFeishuV3RoleMemberService`)
-
-- `AddRoleMemberAsync()` - 添加角色成员
-- `BatchAddRoleMemberAsync()` - 批量添加角色成员
-- `GetRoleMembersAsync()` - 获取角色成员列表
-- `GetRoleMemberScopesAsync()` - 获取角色成员管理范围
-- `BatchDeleteRoleMemberAsync()` - 批量删除角色成员
-
-### 单位管理服务 (`IFeishuV3UnitService`)
-
-- `CreateUnitAsync()` - 创建单位
-- `UpdateUnitNameAsync()` - 更新单位名称
-- `GetUnitByIdAsync()` - 根据 ID 获取单位信息
-- `GetUnitsAsync()` - 获取单位列表
-- `GetUnitDepartmentsAsync()` - 获取单位绑定的部门列表
-- `BindDepartmentToUnitAsync()` - 绑定部门到单位
-- `UnbindDepartmentFromUnitAsync()` - 解除部门与单位绑定
-- `DeleteUnitByIdAsync()` - 删除单位
-
-### 用户组成员管理服务 (`IFeishuV3UserGroupMemberService`)
-
-- `AddUserGroupMemberAsync()` - 添加用户组成员
-- `BatchAddUserGroupMemberAsync()` - 批量添加用户组成员
-- `GetUserGroupMembersAsync()` - 获取用户组成员列表
-- `RemoveUserGroupMemberAsync()` - 移除用户组成员
-- `BatchRemoveUserGroupMemberAsync()` - 批量移除用户组成员
-
-### 职务管理服务 (`IFeishuV3JobTitleService`)
-
-- `GetJobTitlesAsync()` - 获取职务信息列表
-
-### 工作城市管理服务 (`IFeishuV3WorkCityService`)
-
-- `GetWorkCitiesAsync()` - 获取工作城市列表
-- `GetWorkCityByIdAsync()` - 根据 ID 获取工作城市信息
+> 💡 **提示**：所有接口都基于特性驱动设计，具有强类型支持和完整的数据模型。详细的方法说明请参考项目源码中的 XML 文档注释。
 
 ## 使用示例
 
-### 示例项目 (Mud.Feishu.Test)
+### 🚀 快速上手
 
-项目包含一个完整的测试演示项目 `Mud.Feishu.Test`，展示了所有 API 的实际使用方式：
+ Mud.Feishu 提供了两种主要的使用方式：
 
-#### 配置文件示例 (appsettings.json)
+#### 方式一：自动令牌管理（推荐）
+
+使用带 `[HttpClientApi]` 特性的接口，令牌自动管理：
+
+```csharp
+// 在 Controller 中注入服务
+public class UserController : ControllerBase
+{
+    private readonly IFeishuV3User_Tenant _userApi;
+    private readonly IFeishuV3Departments_Tenant _deptApi;
+
+    public UserController(
+        IFeishuV3User_Tenant userApi, 
+        IFeishuV3Departments_Tenant deptApi)
+    {
+        _userApi = userApi;
+        _deptApi = deptApi;
+    }
+
+    [HttpPost("users")]
+    public async Task<IActionResult> CreateUser([FromBody] CreateUserRequest request)
+    {
+        // 令牌自动处理，无需手动获取
+        var result = await _userApi.CreateUserAsync(request);
+        
+        if (result.Code == 0)
+        {
+            return Ok(new { success = true, userId = result.Data?.User?.UserId });
+        }
+        return BadRequest(new { error = result.Msg });
+    }
+
+    [HttpGet("departments/{departmentId}/users")]
+    public async Task<IActionResult> GetDepartmentUsers(string departmentId)
+    {
+        var result = await _deptApi.GetDepartmentUsersAsync(departmentId);
+        return Ok(result.Data);
+    }
+}
+```
+
+#### 方式二：手动令牌管理
+
+直接使用 TokenManager 获取令牌：
+
+```csharp
+public class TokenAuthController : ControllerBase
+{
+    private readonly ITokenManager _tokenManager;
+    private readonly IFeishuV3AuthenticationApi _authApi;
+
+    public TokenAuthController(ITokenManager tokenManager, IFeishuV3AuthenticationApi authApi)
+    {
+        _tokenManager = tokenManager;
+        _authApi = authApi;
+    }
+
+    [HttpGet("token")]
+    public async Task<IActionResult> GetToken()
+    {
+        var token = await _tokenManager.GetTokenAsync();
+        return Ok(new { token });
+    }
+
+    [HttpPost("user/{userId}")]
+    public async Task<IActionResult> GetUserWithToken(string userId)
+    {
+        var token = await _tokenManager.GetTokenAsync();
+        var result = await _authApi.GetUserInfoAsync(token);
+        return Ok(result);
+    }
+}
+```
+
+### 📋 完整业务场景示例
+
+#### 场景1：用户全生命周期管理
+
+```csharp
+public class UserManagementService
+{
+    private readonly IFeishuV3User_Tenant _userApi;
+    private readonly IFeishuV3Departments_Tenant _deptApi;
+    private readonly IFeishuV3UserGroup_Tenant _groupApi;
+
+    public UserManagementService(
+        IFeishuV3User_Tenant userApi,
+        IFeishuV3Departments_Tenant deptApi,
+        IFeishuV3UserGroup_Tenant groupApi)
+    {
+        _userApi = userApi;
+        _deptApi = deptApi;
+        _groupApi = groupApi;
+    }
+
+    // 创建新员工并加入指定部门和用户组
+    public async Task<string> OnboardNewEmployeeAsync(CreateUserRequest userRequest, string departmentId, string[] groupIds)
+    {
+        try
+        {
+            // 1. 创建用户
+            var userResult = await _userApi.CreateUserAsync(userRequest);
+            if (userResult.Code != 0)
+                throw new Exception($"创建用户失败: {userResult.Msg}");
+
+            var userId = userResult.Data!.User!.UserId;
+
+            // 2. 获取部门信息用于验证
+            var deptResult = await _deptApi.GetDepartmentInfoByIdAsync(departmentId);
+            if (deptResult.Code != 0)
+                throw new Exception($"部门不存在: {deptResult.Msg}");
+
+            // 3. 将用户加入用户组
+            foreach (var groupId in groupIds)
+            {
+                var addMemberResult = await _groupApi.AddUserGroupMemberAsync(new AddUserGroupMemberRequest
+                {
+                    UserGroupId = groupId,
+                    UserIds = new[] { userId }
+                });
+                
+                if (addMemberResult.Code != 0)
+                {
+                    // 记录警告但不中断流程
+                    Console.WriteLine($"加入用户组 {groupId} 失败: {addMemberResult.Msg}");
+                }
+            }
+
+            return userId;
+        }
+        catch (FeishuException ex)
+        {
+            // 记录飞书 API 错误
+            throw new Exception($"飞书 API 调用失败 (错误码: {ex.ErrorCode}): {ex.Message}");
+        }
+    }
+}
+```
+
+#### 场景2：批量消息发送
+
+```csharp
+public class NotificationService
+{
+    private readonly IFeishuTenantV1BatchMessage _batchMessageApi;
+
+    public NotificationService(IFeishuTenantV1BatchMessage batchMessageApi)
+    {
+        _batchMessageApi = batchMessageApi;
+    }
+
+    // 发送系统通知给多个部门
+    public async Task<string> SendSystemNotificationAsync(string[] departmentIds, string title, string content)
+    {
+        var request = new BatchSenderTextMessageRequest
+        {
+            DeptIds = departmentIds,
+            Content = new TextContent
+            {
+                Text = $"📢 {title}
+
+{content}"
+            }
+        };
+
+        var result = await _batchMessageApi.BatchSendTextMessageAsync(request);
+        
+        if (result.Code == 0)
+        {
+            var messageId = result.Data!.MessageId;
+            Console.WriteLine($"批量消息发送成功，任务ID: {messageId}");
+            
+            // 可以异步查询发送进度
+            _ = Task.Run(async () => await MonitorProgressAsync(messageId));
+            
+            return messageId;
+        }
+        
+        throw new Exception($"发送失败: {result.Msg}");
+    }
+
+    private async Task MonitorProgressAsync(string messageId)
+    {
+        var delay = TimeSpan.FromSeconds(5);
+        var maxAttempts = 20; // 最多等待100秒
+        
+        for (int i = 0; i < maxAttempts; i++)
+        {
+            var progress = await _batchMessageApi.GetBatchMessageProgressAsync(messageId);
+            
+            if (progress.Code == 0)
+            {
+                var progressData = progress.Data!;
+                Console.WriteLine($"发送进度: {progressData.SentCount}/{progressData.TotalCount}");
+                
+                if (progressData.IsFinished)
+                {
+                    Console.WriteLine($"发送完成！成功: {progressData.SentCount}, 失败: {progressData.FailedCount}");
+                    break;
+                }
+            }
+            
+            await Task.Delay(delay);
+        }
+    }
+}
+```
+
+#### 场景3：组织架构同步
+
+```csharp
+public class OrganizationSyncService
+{
+    private readonly IFeishuV3Departments_Tenant _deptApi;
+    private readonly IFeishuV3User_Tenant _userApi;
+
+    public OrganizationSyncService(
+        IFeishuV3Departments_Tenant deptApi,
+        IFeishuV3User_Tenant userApi)
+    {
+        _deptApi = deptApi;
+        _userApi = userApi;
+    }
+
+    // 同步组织架构数据到本地系统
+    public async Task SyncOrganizationAsync()
+    {
+        try
+        {
+            // 1. 获取根部门
+            var rootDeptResult = await _deptApi.GetDepartmentsByParentIdAsync("0");
+            if (rootDeptResult.Code != 0)
+                throw new Exception($"获取根部门失败: {rootDeptResult.Msg}");
+
+            var allDepartments = new List<DepartmentInfo>();
+            var allUsers = new List<UserInfo>();
+
+            // 2. 递归获取所有部门
+            foreach (var rootDept in rootDeptResult.Data!.Items!)
+            {
+                await LoadDepartmentTreeAsync(rootDept.DepartmentId!, allDepartments);
+            }
+
+            // 3. 获取所有用户
+            foreach (var dept in allDepartments)
+            {
+                var usersResult = await _userApi.GetUserByDepartmentIdAsync(dept.DepartmentId!);
+                if (usersResult.Code == 0 && usersResult.Data?.Items != null)
+                {
+                    allUsers.AddRange(usersResult.Data.Items);
+                }
+            }
+
+            Console.WriteLine($"同步完成: {allDepartments.Count} 个部门, {allUsers.Count} 个用户");
+            
+            // TODO: 保存到数据库
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"组织架构同步失败: {ex.Message}");
+            throw;
+        }
+    }
+
+    private async Task LoadDepartmentTreeAsync(string departmentId, List<DepartmentInfo> departments)
+    {
+        var result = await _deptApi.GetDepartmentsByParentIdAsync(departmentId, fetch_child: true);
+        
+        if (result.Code == 0 && result.Data?.Items != null)
+        {
+            foreach (var dept in result.Data.Items)
+            {
+                departments.Add(dept);
+                await LoadDepartmentTreeAsync(dept.DepartmentId!, departments);
+            }
+        }
+    }
+}
+```
+
+### 🔧 配置文件示例
+
+#### appsettings.json
 ```json
 {
   "Logging": {
     "LogLevel": {
       "Default": "Information",
-      "Microsoft.AspNetCore": "Warning"
+      "Microsoft.AspNetCore": "Warning",
+      "Mud.Feishu": "Debug"
     }
   },
   "AllowedHosts": "*",
   "Feishu": {
-    "AppId": "Feishu AppId",
-    "AppSecret": "Feishu AppSecret",
+    "AppId": "your_feishu_app_id",
+    "AppSecret": "your_feishu_app_secret",
     "BaseUrl": "https://open.feishu.cn"
   }
 }
 ```
 
-#### 控制器注入示例
+#### Program.cs 服务注册
 ```csharp
-// 使用 TokenManager 直接获取令牌
-public class AuthController : ControllerBase
+using Mud.Feishu;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// 注册飞书 API 服务（推荐方式）
+builder.Services.AddFeishuApiService(builder.Configuration);
+
+// 或者指定配置节名称
+// builder.Services.AddFeishuApiService("Feishu");
+
+// 添加自定义令牌管理器（可选）
+// builder.Services.AddSingleton<ITokenManager, CustomTokenManager>();
+
+var app = builder.Build();
+
+// 配置 Swagger
+app.UseSwagger();
+app.UseSwaggerUI();
+
+app.MapControllers();
+app.Run();
+```
+
+## 🎯 常见使用场景快速参考
+
+### 📧 消息通知
+```csharp
+// 发送文本消息
+await messageApi.SendTextMessageAsync(new TextMessageRequest 
 {
-    private readonly ITokenManager _tokenManager;
+    ReceiveIdType = "user_id",
+    ReceiveId = "user_123",
+    Content = new TextContent { Text = "Hello World!" }
+});
 
-    public AuthController(ITokenManager tokenManager)
-    {
-        _tokenManager = tokenManager;
-    }
-
-    [HttpGet]
-    public async Task<IActionResult> GetToken()
-    {
-        var token = await _tokenManager.GetTokenAsync();
-        return Ok(token);
-    }
-}
-
-// 使用包装后的 API（自动处理令牌）
-public class UserController : ControllerBase
+// 批量发送通知
+await batchMessageApi.BatchSendTextMessageAsync(new BatchSenderTextMessageRequest
 {
-    private readonly IFeishuV3User _userApi;
+    DeptIds = new[] { "dept_1", "dept_2" },
+    Content = new TextContent { Text = "系统通知：重要更新已发布" }
+});
+```
 
-    public UserController(IFeishuV3User userApi)
-    {
-        _userApi = userApi;
-    }
+### 👤 用户管理
+```csharp
+// 创建用户
+var userResult = await userApi.CreateUserAsync(new CreateUserRequest
+{
+    Name = "张三",
+    Mobile = "13800138000",
+    DepartmentIds = new[] { "dept_1" },
+    Emails = new[] { new EmailValue { Email = "zhangsan@company.com" } }
+});
 
-    [HttpGet("{userId}")]
-    public async Task<IActionResult> GetUser(string userId)
+// 批量获取用户信息
+var users = await userApi.GetUserByIdsAsync(new[] { "user_1", "user_2", "user_3" });
+```
+
+### 🏢 组织架构
+```csharp
+// 获取部门树
+var departments = await deptApi.GetDepartmentsByParentIdAsync("0", fetch_child: true);
+
+// 获取部门下的用户
+var users = await deptApi.GetDepartmentUsersAsync("dept_123");
+
+// 创建子部门
+var newDept = await deptApi.CreateDepartmentAsync(new DepartmentCreateRequest
+{
+    Name = "新部门",
+    ParentDepartmentId = "parent_dept_123"
+});
+```
+
+### 🔐 认证授权
+```csharp
+// 获取用户令牌
+var userInfo = await authApi.GetUserInfoAsync("Bearer access_token_here");
+
+// 手动获取租户令牌
+var tokenResult = await authApi.GetTenantAccessTokenAsync(new AppCredentials
+{
+    AppId = "app_id",
+    AppSecret = "app_secret"
+});
+```
+
+### 🛠️ 令牌管理
+```csharp
+// 直接获取有效令牌（自动处理刷新）
+var token = await tokenManager.GetTokenAsync();
+
+// 监控令牌缓存状态
+var (total, expired) = tokenManager.GetCacheStatistics();
+logger.LogInformation("令牌缓存状态: 总数 {Total}, 过期 {Expired}", total, expired);
+
+// 清理过期令牌
+tokenManager.CleanExpiredTokens();
+```
+
+## 🔄 错误处理最佳实践
+
+### 统一错误处理
+```csharp
+public class FeishuServiceBase
+{
+    protected async Task<T> ExecuteWithErrorHandling<T>(Func<Task<T>> operation, string operationName)
     {
         try
         {
-            var result = await _userApi.GetUserByIdAsync(userId);
-            return Ok(result.Data);
+            var result = await operation();
+            
+            if (result.Code != 0)
+            {
+                throw new FeishuServiceException(
+                    $"飞书 API 调用失败: {operationName}",
+                    result.Code,
+                    result.Msg);
+            }
+            
+            return result.Data!;
         }
-        catch (Exception ex)
+        catch (FeishuException ex)
         {
-            return BadRequest(new { error = ex.Message });
+            // 飞书 API 错误
+            logger.LogError(ex, "飞书 API 错误 (代码: {ErrorCode}): {Message}", ex.ErrorCode, ex.Message);
+            throw;
+        }
+        catch (HttpRequestException ex)
+        {
+            // 网络错误
+            logger.LogError(ex, "网络请求失败: {Message}", ex.Message);
+            throw new FeishuServiceException($"网络连接失败: {operationName}", -1, ex.Message);
         }
     }
 }
+
+// 使用示例
+public async Task<UserInfo> GetUserSafelyAsync(string userId)
+{
+    return await ExecuteWithErrorHandling(
+        () => userApi.GetUserInfoByIdAsync(userId),
+        "获取用户信息");
+}
 ```
 
-## 使用示例（ASP.NET Core Controller）
-
-以下示例展示了如何在 ASP.NET Core Controller 中使用飞书 API。
-
-### 获取租户访问令牌
-
+### 分页处理
 ```csharp
-using Microsoft.AspNetCore.Mvc;
-using Mud.Feishu;
-
-[ApiController]
-[Route("api/[controller]")]
-public class AuthController : ControllerBase
+public async Task<List<T>> GetAllItemsAsync<T>(Func<string?, Task<FeishuApiPageListResult<T>>> pageFetcher)
 {
-    private readonly IFeishuV3AuthenticationApi _authApi;
+    var allItems = new List<T>();
+    string? pageToken = null;
+    const int pageSize = 50;
 
-    public AuthController(IFeishuV3AuthenticationApi authApi)
+    do
     {
-        _authApi = authApi;
-    }
-
-    [HttpPost("tenant-token")]
-    public async Task<IActionResult> GetTenantAccessTokenAsync()
-    {
-        var credentials = new AppCredentials
+        var result = await pageFetcher(pageToken);
+        
+        if (result.Code == 0 && result.Data?.Items != null)
         {
-            AppId = "your_app_id",
-            AppSecret = "your_app_secret"
-        };
-
-        var tokenResult = await _authApi.GetTenantAccessTokenAsync(credentials);
-
-        if (tokenResult.Code == 0)
-        {
-            return Ok(new 
-            { 
-                token = tokenResult.TenantAccessToken,
-                expiresIn = tokenResult.Expire
-            });
+            allItems.AddRange(result.Data.Items);
+            pageToken = result.Data.PageToken;
         }
         else
         {
-            return BadRequest(new { error = tokenResult.Msg, code = tokenResult.Code });
+            break;
         }
-    }
+        
+    } while (!string.IsNullOrEmpty(pageToken));
+
+    return allItems;
 }
+
+// 使用示例
+var allUsers = await GetAllItemsAsync(pageToken => 
+    userApi.GetUserByDepartmentIdAsync("dept_123", page_size: 50, page_token: pageToken));
 ```
 
-### 创建企业用户
+## 📦 示例项目
 
-```csharp
-using Microsoft.AspNetCore.Mvc;
-using Mud.Feishu;
-using Mud.Feishu.DataModels.Users;
+项目包含完整的测试演示项目 `Mud.Feishu.Test`，展示了所有 API 的实际使用方式：
 
-[ApiController]
-[Route("api/[controller]")]
-public class UserController : ControllerBase
-{
-    private readonly IFeishuV3UserApi _userApi;
-    private readonly IFeishuV3AuthenticationApi _authApi;
+- **Controllers/** - 各种使用场景的控制器示例
+- **配置文件** - 完整的配置示例
+- **错误处理** - 最佳实践演示
+- **集成测试** - 端到端测试用例
 
-    public UserController(IFeishuV3UserApi userApi, IFeishuV3AuthenticationApi authApi)
-    {
-        _userApi = userApi;
-        _authApi = authApi;
-    }
-
-    [HttpPost]
-    public async Task<IActionResult> CreateUserAsync([FromBody] CreateUserRequest request)
-    {
-        // 首先获取访问令牌
-        var tokenResult = await _authApi.GetTenantAccessTokenAsync(new AppCredentials
-        {
-            AppId = "your_app_id",
-            AppSecret = "your_app_secret"
-        });
-
-        if (tokenResult.Code != 0)
-        {
-            return BadRequest(new { error = "获取访问令牌失败", details = tokenResult.Msg });
-        }
-
-        var result = await _userApi.CreateUserAsync(
-            $"Bearer {tokenResult.TenantAccessToken}",
-            request
-        );
-
-        if (result.Code == 0)
-        {
-            return Ok(new { 
-                success = true, 
-                userId = result.Data?.User?.UserId,
-                message = "用户创建成功" 
-            });
-        }
-        else
-        {
-            return BadRequest(new { error = result.Msg, code = result.Code });
-        }
-    }
-}
+运行示例项目：
+```bash
+cd Mud.Feishu.Test
+dotnet run
 ```
 
-### 查询部门信息
-
-```csharp
-using Microsoft.AspNetCore.Mvc;
-using Mud.Feishu;
-
-[ApiController]
-[Route("api/[controller]")]
-public class DepartmentController : ControllerBase
-{
-    private readonly IFeishuDepartmentsApi _departmentsApi;
-    private readonly IFeishuAuthenticationApi _authApi;
-
-    public DepartmentController(IFeishuDepartmentsApi departmentsApi, IFeishuAuthenticationApi authApi)
-    {
-        _departmentsApi = departmentsApi;
-        _authApi = authApi;
-    }
-
-    [HttpGet("{departmentId}")]
-    public async Task<IActionResult> GetDepartmentAsync(string departmentId)
-    {
-        var tokenResult = await _authApi.GetTenantAccessTokenAsync(new AppCredentials
-        {
-            AppId = "your_app_id",
-            AppSecret = "your_app_secret"
-        });
-
-        if (tokenResult.Code != 0)
-        {
-            return BadRequest(new { error = "获取访问令牌失败" });
-        }
-
-        var result = await _departmentsApi.GetDepartmentByIdAsync(
-            $"Bearer {tokenResult.TenantAccessToken}",
-            departmentId
-        );
-
-        if (result.Code == 0)
-        {
-            return Ok(result.Data);
-        }
-        else
-        {
-            return BadRequest(new { error = result.Msg });
-        }
-    }
-}
-```
+访问 Swagger UI: `http://localhost:5000/swagger`
 
 ## 项目结构
 
 ```
 Mud.Feishu/
-├── IFeishuV3AuthenticationApi.cs         # 认证授权 API (5个方法)
+├── IFeishuV3AuthenticationApi.cs         # 认证授权 API
 ├── Organization/                         # 组织架构相关服务
-│   ├── IFeishuV3UserService.cs             # 用户管理服务 (13个方法)
-│   ├── IFeishuV3DepartmentsService.cs       # 部门管理服务 (7个方法)
-│   ├── IFeishuV3UserGroupService.cs         # 用户组管理服务 (6个方法)
-│   ├── IFeishuV3UserGroupMemberService.cs   # 用户组成员管理服务 (5个方法)
-│   ├── IFeishuV3EmployeeTypeService.cs     # 人员类型管理服务 (4个方法)
-│   ├── IFeishuV3JobLevelService.cs         # 职级管理服务 (5个方法)
-│   ├── IFeishuV3JobFamiliesService.cs      # 职位序列管理服务 (5个方法)
-│   ├── IFeishuV3RoleService.cs              # 角色管理服务 (5个方法)
-│   ├── IFeishuV3RoleMemberService.cs        # 角色成员管理服务 (5个方法)
-│   ├── IFeishuV3UnitService.cs             # 单位管理服务 (8个方法)
-│   ├── IFeishuV3JobTitleService.cs         # 职务管理服务 (1个方法)
-│   └── IFeishuV3WorkCityService.cs         # 工作城市管理服务 (2个方法)
+│   ├── IFeishuV1Departments.cs           # V1部门管理基础接口
+│   ├── IFeishuV1Departments_Tenant.cs    # V1租户部门管理接口
+│   ├── IFeishuV1Departments_User.cs      # V1用户部门管理接口
+│   ├── IFeishuV1Employees.cs             # V1员工管理基础接口
+│   ├── IFeishuV1Employees_Tenant.cs      # V1租户员工管理接口
+│   ├── IFeishuV1Employees_User.cs        # V1用户员工管理接口
+│   ├── IFeishuV3Departments.cs           # V3部门管理基础接口
+│   ├── IFeishuV3Departments_Tenant.cs    # V3租户部门管理接口
+│   ├── IFeishuV3Departments_User.cs      # V3用户部门管理接口
+│   ├── IFeishuV3EmployeeType_Tenant.cs   # V3租户人员类型管理接口
+│   ├── IFeishuV3JobFamilies_Tenant.cs    # V3租户职位序列管理接口
+│   ├── IFeishuV3JobLevel_Tenant.cs       # V3租户职级管理接口
+│   ├── IFeishuV3JobTitle.cs              # V3职务管理基础接口
+│   ├── IFeishuV3JobTitle_Tenant.cs       # V3租户职务管理接口
+│   ├── IFeishuV3JobTitle_User.cs         # V3用户职务管理接口
+│   ├── IFeishuV3RoleMember_Tenant.cs     # V3租户角色成员管理接口
+│   ├── IFeishuV3Role_Tenant.cs           # V3租户角色管理接口
+│   ├── IFeishuV3Unit_Tenant.cs           # V3租户单位管理接口
+│   ├── IFeishuV3User.cs                  # V3用户管理基础接口
+│   ├── IFeishuV3UserGroupMember_Tenant.cs # V3租户用户组成员管理接口
+│   ├── IFeishuV3UserGroup_Tenant.cs      # V3租户用户组管理接口
+│   ├── IFeishuV3User_Tenant.cs           # V3租户用户管理接口
+│   ├── IFeishuV3User_User.cs             # V3用户管理接口
+│   ├── IFeishuV3WorkCity.cs              # V3工作城市基础接口
+│   ├── IFeishuV3WorkCity_Tenant.cs       # V3租户工作城市管理接口
+│   └── IFeishuV3WorkCity_User.cs         # V3用户工作城市管理接口
+├── Messages/                              # 消息相关服务
+│   ├── IFeishuV1BatchMessage_Tenant.cs   # V1租户批量消息接口
+│   ├── IFeishuV1Message.cs                # V1消息基础接口
+│   ├── IFeishuV1Message_Tenant.cs        # V1租户消息接口
+│   ├── IFeishuV1Message_User.cs          # V1用户消息接口
+│   └── Imps/
+│       └── FeishuV1MessageApi.cs         # V1消息API实现
+├── TokenManager/                          # 令牌管理
+│   ├── IAppTokenManager.cs               # 应用令牌管理器接口
+│   ├── ITenantTokenManager.cs            # 租户令牌管理器接口
+│   ├── ITokenManager.cs                  # 令牌管理器基础接口
+│   ├── IUserTokenManager.cs              # 用户令牌管理器接口
+│   ├── AppTokenManager.cs                # 应用令牌管理器实现
+│   ├── TenantTokenManager.cs             # 租户令牌管理器实现
+│   ├── UserTokenManager.cs               # 用户令牌管理器实现
+│   └── TokenManagerWithCache.cs          # 带缓存的令牌管理器实现
 ├── Extensions/                            # 扩展组件
 │   ├── FeishuOptions.cs                  # 配置选项
 │   └── FeishuServiceCollectionExtensions.cs # 服务注册扩展
-├── Extensions/
-│   ├── FeishuOptions.cs                 # 配置选项
-│   └── FeishuServiceCollectionExtensions.cs # 服务注册扩展
-├── TokenManager/
-│   ├── ITokenManager.cs                 # 令牌管理接口
-│   └── TokenManagerWithCache.cs          # 带缓存的令牌管理器
 ├── Exceptions/
 │   └── FeishuException.cs               # 飞书异常类
 ├── GlobalUsings.cs                      # 全局引用
-└── DataModels/
-    ├── Departments/                      # 部门相关数据模型
-    │   ├── RequestModel/                 # 请求模型
-    │   ├── ResponseModel/                # 响应模型
-    │   └── Common/                       # 通用模型
-    ├── Users/                           # 用户相关数据模型
-    │   ├── RequestModel/                 # 请求模型
-    │   ├── ResponseModel/                # 响应模型
-    │   └── Common/                       # 通用模型
-    ├── UserGroup/                       # 用户组相关数据模型
+└── DataModels/                           # 数据模型
+    ├── Common/                           # 通用数据模型
+    ├── Departments_v1/                   # V1部门相关数据模型
     │   ├── RequestModel/                 # 请求模型
     │   └── ResponseModel/                # 响应模型
-    ├── EmployeeType/                    # 人员类型相关数据模型
-    ├── JobLevel/                        # 职级相关数据模型
-    ├── JobFamilies/                     # 职位序列相关数据模型
-    ├── AppCredentials.cs                # 应用凭证
-    ├── AppCredentialResult.cs           # 应用凭证结果
-    ├── I18nName.cs                      # 国际化名称
-    └── OAuthCredentialsResult.cs        # OAuth 凭证结果
+    ├── Departments_v3/                   # V3部门相关数据模型
+    │   ├── RequestModel/                 # 请求模型
+    │   ├── ResponseModel/                # 响应模型
+    │   └── Common/                       # 通用模型
+    ├── Employees/                        # 员工相关数据模型
+    │   ├── RequestModel/                 # 请求模型
+    │   ├── ResponseModel/                # 响应模型
+    │   └── Common/                       # 通用模型
+    ├── EmployeeType/                     # 人员类型相关数据模型
+    ├── JobFamilies/                      # 职位序列相关数据模型
+    ├── JobLevel/                         # 职级相关数据模型
+    ├── JobTitles/                        # 职务相关数据模型
+    ├── Messages/                         # 消息相关数据模型
+    │   ├── RequestModel/                 # 请求模型
+    │   └── ResponseModel/                # 响应模型
+    ├── RoleMembers/                      # 角色成员相关数据模型
+    ├── Roles/                            # 角色相关数据模型
+    ├── Units/                            # 单位相关数据模型
+    ├── UserGroup/                        # 用户组相关数据模型
+    ├── UserGroupMember/                   # 用户组成员相关数据模型
+    ├── Users/                            # 用户相关数据模型
+    ├── WorkCites/                        # 工作城市相关数据模型
+    ├── WsEndpoint/                       # WebSocket端点相关数据模型
+    ├── AppCredentials.cs                 # 应用凭证
+    ├── AppCredentialResult.cs            # 应用凭证结果
+    ├── FeishuApiResult.cs                # 飞书API响应基础结果
+    ├── OAuthCredentialsResult.cs        # OAuth 凭证结果
+    └── TenantAppCredentialResult.cs      # 租户应用凭证结果
 ```
 
 ## 核心组件
 
-### 令牌管理器 (`TokenManagerWithCache`)
+### 令牌管理器体系
+
+#### 基础令牌管理接口 (`ITokenManager`)
+- **统一接口**：定义令牌获取的基础方法 `GetTokenAsync()`
+- **异步操作**：所有方法均为异步，支持取消令牌
+- **可扩展性**：支持自定义令牌管理实现
+- **缓存管理**：提供 `CleanExpiredTokens()` 和 `GetCacheStatistics()` 方法
+
+#### 应用令牌管理器 (`IAppTokenManager`)
+- **应用级令牌**：管理应用访问令牌
+- **自动刷新**：令牌即将过期时自动刷新
+- **缓存机制**：内置缓存，减少API调用次数
+
+#### 租户令牌管理器 (`ITenantTokenManager`)
+- **租户级令牌**：管理租户访问令牌
+- **多租户支持**：支持多租户场景下的令牌管理
+- **隔离性**：不同租户的令牌完全隔离
+
+#### 用户令牌管理器 (`IUserTokenManager`)
+- **用户级令牌**：管理用户访问令牌
+- **OAuth支持**：支持OAuth授权流程
+- **刷新令牌**：支持通过刷新令牌获取新的访问令牌
+
+#### 带缓存的令牌管理器 (`TokenManagerWithCache`)
 - **智能缓存**：自动管理令牌缓存，支持多租户场景
 - **自动刷新**：令牌即将过期时自动刷新，提前5分钟触发
-- **并发安全**：使用 `ConcurrentDictionary` 和 `Lazy<Task>` 解决缓存击穿
-- **重试机制**：内置重试逻辑，提高系统稳定性
+- **并发安全**：使用 `ConcurrentDictionary` 和 `Lazy<Task>` 解决缓存击穿和竞态条件
+- **重试机制**：内置重试逻辑，最多重试2次，提高系统稳定性
 - **性能监控**：提供缓存统计信息，便于监控和调试
+- **异常处理**：统一的异常处理和日志记录
+- **资源管理**：实现 `IDisposable` 接口，确保资源正确释放
 
 ### 配置选项 (`FeishuOptions`)
 ```csharp
@@ -665,27 +929,3 @@ MudFeishu 遵循 [MIT 许可证](LICENSE)。
 - 新功能必须在 `Mud.Feishu.Test` 项目中添加演示代码
 - 确保 Controller 示例能够正常工作
 - 添加相应的 Swagger 文档注释
-
-## 更新日志
-
-### v1.0.1 (2025-11-20)
-- 新增角色管理服务 (`IFeishuV3RoleService`)
-- 新增角色成员管理服务 (`IFeishuV3RoleMemberService`)
-- 新增单位管理服务 (`IFeishuV3UnitService`)
-- 新增职务管理服务 (`IFeishuV3JobTitleService`)
-- 新增工作城市管理服务 (`IFeishuV3WorkCityService`)
-- 新增职级管理服务 (`IFeishuV3JobLevelService`)
-- 新增职位序列管理服务 (`IFeishuV3JobFamiliesService`)
-- 完善数据模型 XML 注释
-- 优化测试项目，新增多个测试控制器
-- 统一部门相关数据模型，消除重复代码
-- 更新 README 文档，增加 API 完整覆盖说明
-- 支持 .NET 6.0/7.0/8.0/9.0/10.0
-
-### v1.0.0 (2025-11-14)
-- 初始版本发布
-- 支持飞书认证、用户、部门、用户组、人员类型管理服务
-- 内置智能令牌管理和缓存机制
-- 支持 .NET 8.0/9.0/10.0
-- 包含完整的测试演示项目
-- 集成 Swagger 文档支持

@@ -53,7 +53,7 @@ public interface IFeishuTenantV3EmployeeType
     /// <returns></returns>
     [Get("https://open.feishu.cn/open-apis/contact/v3/employee_type_enums")]
     Task<FeishuApiPageListResult<EmployeeTypeEnum>?> GetEmployeeTypesAsync(
-       [Query("page_size")] int page_size = 10,
+       [Query("page_size")] int? page_size = 10,
        [Query("page_token")] string? page_token = null,
        CancellationToken cancellationToken = default);
 

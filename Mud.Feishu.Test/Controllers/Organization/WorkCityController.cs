@@ -17,11 +17,13 @@ namespace Mud.Feishu.Test.Controllers.Messages;
 [Route("api/[controller]")]
 public class WorkCityController : ControllerBase
 {
-    private readonly IFeishuV3WorkCityService _workCityApi;
+    private readonly IFeishuTenantV3WorkCity _tenantWorkCityApi;
+    private readonly IFeishuUserV3WorkCity _userWorkCityApi;
 
-    public WorkCityController(IFeishuV3WorkCityService workCityApi)
+    public WorkCityController(IFeishuTenantV3WorkCity workCityApi, IFeishuUserV3WorkCity userWorkCityApi)
     {
-        _workCityApi = workCityApi;
+        _tenantWorkCityApi = workCityApi;
+        _userWorkCityApi = userWorkCityApi;
     }
 
     /// <summary>
@@ -37,7 +39,7 @@ public class WorkCityController : ControllerBase
     {
         try
         {
-            var result = await _workCityApi.GetWorkCitesList_Tenant_Async(pageSize, pageToken);
+            var result = await _tenantWorkCityApi.GetWorkCitesListAsync(pageSize, pageToken);
             return Ok(result.Data);
         }
         catch (Exception ex)
@@ -59,7 +61,7 @@ public class WorkCityController : ControllerBase
     {
         try
         {
-            var result = await _workCityApi.GetWorkCitesList_User_Async(pageSize, pageToken);
+            var result = await _userWorkCityApi.GetWorkCitesListAsync(pageSize, pageToken);
             return Ok(result.Data);
         }
         catch (Exception ex)
@@ -78,7 +80,7 @@ public class WorkCityController : ControllerBase
     {
         try
         {
-            var result = await _workCityApi.GetWorkCityById_Tenant_Async(workCityId);
+            var result = await _tenantWorkCityApi.GetWorkCityByIdAsync(workCityId);
             return Ok(result.Data);
         }
         catch (Exception ex)
@@ -97,7 +99,7 @@ public class WorkCityController : ControllerBase
     {
         try
         {
-            var result = await _workCityApi.GetWorkCityById_User_Async(workCityId);
+            var result = await _userWorkCityApi.GetWorkCityByIdAsync(workCityId);
             return Ok(result.Data);
         }
         catch (Exception ex)

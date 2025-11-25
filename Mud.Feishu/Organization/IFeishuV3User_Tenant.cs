@@ -16,7 +16,7 @@ namespace Mud.Feishu;
 /// </summary>
 [HttpClientApi(TokenManage = nameof(ITenantTokenManager), RegistryGroupName = "Organization")]
 [Header("Authorization")]
-public interface IFeishuTenantV3UserApi : IFeishuV3User
+public interface IFeishuTenantV3User : IFeishuV3User
 {
     /// <summary>
     /// 向通讯录创建一个用户（该动作可以理解为员工入职）。成功创建用户后，系统会以短信或邮件的形式向用户发送邀请，用户在同意邀请后方可访问企业或团队。

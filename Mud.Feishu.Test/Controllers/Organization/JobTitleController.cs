@@ -17,11 +17,13 @@ namespace Mud.Feishu.Test.Controllers.Messages;
 [Route("api/[controller]")]
 public class JobTitleController : ControllerBase
 {
-    private readonly IFeishuV3JobTitleService _jobTitleApi;
+    private readonly IFeishuTenantV3JobTitle _tenantJobTitleApi;
+    private readonly IFeishuUserV3JobTitle _userJobTitleApi;
 
-    public JobTitleController(IFeishuV3JobTitleService jobTitleApi)
+    public JobTitleController(IFeishuTenantV3JobTitle jobTitleApi, IFeishuUserV3JobTitle userJobTitleApi)
     {
-        _jobTitleApi = jobTitleApi;
+        _tenantJobTitleApi = jobTitleApi;
+        _userJobTitleApi = userJobTitleApi;
     }
 
     /// <summary>
@@ -37,7 +39,7 @@ public class JobTitleController : ControllerBase
     {
         try
         {
-            var result = await _jobTitleApi.GetTenantJobTitlesListAsync(pageSize, pageToken);
+            var result = await _tenantJobTitleApi.GetJobTitlesListAsync(pageSize, pageToken);
             return Ok(result.Data);
         }
         catch (Exception ex)
@@ -59,7 +61,7 @@ public class JobTitleController : ControllerBase
     {
         try
         {
-            var result = await _jobTitleApi.GetUserJobTitlesListAsync(pageSize, pageToken);
+            var result = await _userJobTitleApi.GetJobTitlesListAsync(pageSize, pageToken);
             return Ok(result.Data);
         }
         catch (Exception ex)
@@ -78,7 +80,7 @@ public class JobTitleController : ControllerBase
     {
         try
         {
-            var result = await _jobTitleApi.GetTenantJobTitleByIdAsync(jobTitleId);
+            var result = await _tenantJobTitleApi.GetJobTitleByIdAsync(jobTitleId);
             return Ok(result.Data);
         }
         catch (Exception ex)
@@ -97,7 +99,7 @@ public class JobTitleController : ControllerBase
     {
         try
         {
-            var result = await _jobTitleApi.GetUserJobTitleByIdAsync(jobTitleId);
+            var result = await _userJobTitleApi.GetJobTitleByIdAsync(jobTitleId);
             return Ok(result.Data);
         }
         catch (Exception ex)

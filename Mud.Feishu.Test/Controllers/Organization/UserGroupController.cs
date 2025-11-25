@@ -18,9 +18,9 @@ namespace Mud.Feishu.Test.Controllers.Messages;
 [Route("api/[controller]")]
 public class UserGroupController : ControllerBase
 {
-    private readonly IFeishuV3UserGroupService _userGroupApi;
+    private readonly IFeishuTenantV3UserGroup _userGroupApi;
 
-    public UserGroupController(IFeishuV3UserGroupService userGroupApi)
+    public UserGroupController(IFeishuTenantV3UserGroup userGroupApi)
     {
         _userGroupApi = userGroupApi;
     }

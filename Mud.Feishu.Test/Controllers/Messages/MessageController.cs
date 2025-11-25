@@ -18,9 +18,9 @@ namespace Mud.Feishu.Test.Controllers;
 [Route("api/[controller]")]
 public class MessageController : ControllerBase
 {
-    private readonly IFeishuV1MessageService _messageApi;
+    private readonly IFeishuTenantV1Message _messageApi;
 
-    public MessageController(IFeishuV1MessageService messageApi)
+    public MessageController(IFeishuTenantV1Message messageApi)
     {
         _messageApi = messageApi;
     }
@@ -282,7 +282,7 @@ public class MessageController : ControllerBase
     {
         try
         {
-            var result = await _messageApi.RevokeMessage_Tenant_Async(messageId);
+            var result = await _messageApi.RevokeMessageAsync(messageId);
 
             if (result.Code == 0)
             {

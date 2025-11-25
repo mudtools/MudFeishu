@@ -82,7 +82,7 @@ public interface IFeishuTenantV3Unit
     [Get("https://open.feishu.cn/open-apis/contact/v3/unit/list_department")]
     Task<FeishuApiResult<UnitDepartmentListResult>?> GetDepartmentListAsync(
          [Query("unit_id")] string unit_id,
-         [Query("page_size")] int page_size = 10,
+         [Query("page_size")] int? page_size = 10,
          [Query("page_token")] string? page_token = null,
          [Query("department_id_type")] string? department_id_type = Consts.Department_Id_Type,
          CancellationToken cancellationToken = default);
@@ -107,7 +107,7 @@ public interface IFeishuTenantV3Unit
     /// <returns></returns>
     [Get("https://open.feishu.cn/open-apis/contact/v3/unit")]
     Task<FeishuApiResult<UnitListDataResult>> GetUnitListAsync(
-       [Query("page_size")] int page_size = 10,
+       [Query("page_size")] int? page_size = 10,
        [Query("page_token")] string? page_token = null,
        CancellationToken cancellationToken = default);
 

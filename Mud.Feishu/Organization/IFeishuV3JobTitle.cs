@@ -24,7 +24,7 @@ public interface IFeishuV3JobTitle
     /// <returns></returns>
     [Get("https://open.feishu.cn/open-apis/contact/v3/job_titles")]
     Task<FeishuApiPageListResult<JobTitle>?> GetJobTitlesListAsync(
-       [Query("page_size")] int page_size = 10,
+       [Query("page_size")] int? page_size = 10,
        [Query("page_token")] string? page_token = null,
        CancellationToken cancellationToken = default);
 

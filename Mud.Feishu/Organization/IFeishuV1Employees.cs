@@ -68,7 +68,6 @@ public interface IFeishuV1Employees
     /// <summary>
     /// 用于恢复已离职的成员，恢复已离职成员至在职状态。
     /// </summary>
-    /// <param name="access_token">应用调用 API 时，需要通过访问凭证（access_token）进行身份鉴权</param>
     /// <param name="employee_id">员工ID</param>
     /// <param name="resurrectEmployeeRequest">恢复离职员工请求体。</param>
     /// <param name="employee_id_type">用户 ID 类型</param>

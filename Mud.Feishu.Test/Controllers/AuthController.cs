@@ -6,6 +6,7 @@
 // -----------------------------------------------------------------------
 
 using Microsoft.AspNetCore.Mvc;
+using Mud.Feishu.TokenManager;
 
 namespace Mud.Feishu.Test.Controllers;
 
@@ -14,9 +15,9 @@ namespace Mud.Feishu.Test.Controllers;
 [Route("api/[controller]")]
 public class AuthController : ControllerBase
 {
-    private readonly ITokenManager _tokenManager;
+    private readonly ITenantTokenManager _tokenManager;
 
-    public AuthController(ITokenManager tokenManager)
+    public AuthController(ITenantTokenManager tokenManager)
     {
         _tokenManager = tokenManager;
     }
@@ -24,7 +25,7 @@ public class AuthController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetToken()
     {
-        var token = await _tokenManager.GetUserAccessTokenAsync();
+        var token = await _tokenManager.GetTokenAsync();
         return Ok(token);
     }
 }

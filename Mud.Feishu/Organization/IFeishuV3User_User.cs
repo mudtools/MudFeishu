@@ -16,7 +16,7 @@ namespace Mud.Feishu;
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IUserTokenManager), RegistryGroupName = "Organization")]
 [Header("Authorization")]
-public interface IFeishuUserV3UserApi : IFeishuV3User
+public interface IFeishuUserV3User : IFeishuV3User
 {
     /// <summary>
     /// 通过用户名关键词搜索其他用户的信息，包括用户头像、用户名、用户所在部门、用户 user_id 以及 open_id。
@@ -29,7 +29,7 @@ public interface IFeishuUserV3UserApi : IFeishuV3User
     [Get("https://open.feishu.cn/open-apis/search/v1/user")]
     Task<FeishuApiResult<UserSearchListResult>?> GetUsersByKeywordAsync(
      [Query("query")] string query,
-     [Query("page_size")] int page_size = 10,
+     [Query("page_size")] int? page_size = 10,
      [Query("page_token")] string? page_token = null,
      CancellationToken cancellationToken = default);
 

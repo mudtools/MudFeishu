@@ -18,9 +18,9 @@ namespace Mud.Feishu.Test.Controllers.Messages;
 [Route("api/[controller]")]
 public class RoleMemberController : ControllerBase
 {
-    private readonly IFeishuV3RoleMemberService _roleMemberApi;
+    private readonly IFeishuTenantV3RoleMember _roleMemberApi;
 
-    public RoleMemberController(IFeishuV3RoleMemberService roleMemberApi)
+    public RoleMemberController(IFeishuTenantV3RoleMember roleMemberApi)
     {
         _roleMemberApi = roleMemberApi;
     }

@@ -13,9 +13,9 @@ namespace Mud.Feishu.Test.Controllers.Messages;
 [Route("api/[controller]")]
 public class EmployeeTypeController : ControllerBase
 {
-    private readonly IFeishuV3EmployeeTypeService _employeeTypeApi;
+    private readonly IFeishuTenantV3EmployeeType _employeeTypeApi;
 
-    public EmployeeTypeController(IFeishuV3EmployeeTypeService employeeTypeApi)
+    public EmployeeTypeController(IFeishuTenantV3EmployeeType employeeTypeApi)
     {
         _employeeTypeApi = employeeTypeApi;
     }

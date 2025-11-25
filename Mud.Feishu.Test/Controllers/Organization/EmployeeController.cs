@@ -19,9 +19,9 @@ namespace Mud.Feishu.Test.Controllers.Messages;
 [Route("api/[controller]")]
 public class EmployeeController : ControllerBase
 {
-    private readonly IFeishuV1EmployeesService _v1EmployeeApi;
+    private readonly IFeishuTenantV1Employees _v1EmployeeApi;
 
-    public EmployeeController(IFeishuV1EmployeesService v1EmployeeApi)
+    public EmployeeController(IFeishuTenantV1Employees v1EmployeeApi)
     {
         _v1EmployeeApi = v1EmployeeApi;
     }
@@ -41,7 +41,7 @@ public class EmployeeController : ControllerBase
     {
         try
         {
-            var result = await _v1EmployeeApi.CreateEmployee_Tenant_Async(userModel, employeeIdType, departmentIdType);
+            var result = await _v1EmployeeApi.CreateEmployeeAsync(userModel, employeeIdType, departmentIdType);
             return Ok(result.Data);
         }
         catch (Exception ex)
@@ -67,7 +67,7 @@ public class EmployeeController : ControllerBase
     {
         try
         {
-            var result = await _v1EmployeeApi.UpdateEmployee_Tenant_Async(employeeId, userModel, employeeIdType, departmentIdType);
+            var result = await _v1EmployeeApi.UpdateEmployeeAsync(employeeId, userModel, employeeIdType, departmentIdType);
             return Ok(result);
         }
         catch (Exception ex)
@@ -91,7 +91,7 @@ public class EmployeeController : ControllerBase
     {
         try
         {
-            var result = await _v1EmployeeApi.DeleteEmployeeById_Tenant_Async(employeeId, deleteEmployeeRequest, employeeIdType);
+            var result = await _v1EmployeeApi.DeleteEmployeeByIdAsync(employeeId, deleteEmployeeRequest, employeeIdType);
             return Ok(result);
         }
         catch (Exception ex)
@@ -117,7 +117,7 @@ public class EmployeeController : ControllerBase
     {
         try
         {
-            var result = await _v1EmployeeApi.ResurrectEmployee_Tenant_Async(employeeId, resurrectEmployeeRequest, employeeIdType, departmentIdType);
+            var result = await _v1EmployeeApi.ResurrectEmployeeAsync(employeeId, resurrectEmployeeRequest, employeeIdType, departmentIdType);
             return Ok(result);
         }
         catch (Exception ex)
@@ -143,7 +143,7 @@ public class EmployeeController : ControllerBase
     {
         try
         {
-            var result = await _v1EmployeeApi.ResignedEmployee_Tenant_Async(employeeId, resignEmployeeRequest, employeeIdType, departmentIdType);
+            var result = await _v1EmployeeApi.ResignedEmployeeAsync(employeeId, resignEmployeeRequest, employeeIdType, departmentIdType);
             return Ok(result);
         }
         catch (Exception ex)
@@ -167,7 +167,7 @@ public class EmployeeController : ControllerBase
     {
         try
         {
-            var result = await _v1EmployeeApi.RegularEmployee_Tenant_Async(employeeId, employeeIdType, departmentIdType);
+            var result = await _v1EmployeeApi.RegularEmployeeAsync(employeeId, employeeIdType, departmentIdType);
             return Ok(result);
         }
         catch (Exception ex)
@@ -191,7 +191,7 @@ public class EmployeeController : ControllerBase
     {
         try
         {
-            var result = await _v1EmployeeApi.QueryEmployees_Tenant_Async(employeeQueryRequest, employeeIdType, departmentIdType);
+            var result = await _v1EmployeeApi.QueryEmployeesAsync(employeeQueryRequest, employeeIdType, departmentIdType);
             return Ok(result.Data);
         }
         catch (Exception ex)
@@ -215,7 +215,7 @@ public class EmployeeController : ControllerBase
     {
         try
         {
-            var result = await _v1EmployeeApi.QueryEmployeePageList_Tenant_Async(employeeQueryRequest, employeeIdType, departmentIdType);
+            var result = await _v1EmployeeApi.QueryEmployeePageListAsync(employeeQueryRequest, employeeIdType, departmentIdType);
             return Ok(result.Data);
         }
         catch (Exception ex)
@@ -239,7 +239,7 @@ public class EmployeeController : ControllerBase
     {
         try
         {
-            var result = await _v1EmployeeApi.SearchEmployeePageList_Tenant_Async(employeeQueryRequest, employeeIdType, departmentIdType);
+            var result = await _v1EmployeeApi.SearchEmployeePageListAsync(employeeQueryRequest, employeeIdType, departmentIdType);
             return Ok(result.Data);
         }
         catch (Exception ex)

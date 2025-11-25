@@ -6,7 +6,6 @@
 // -----------------------------------------------------------------------
 
 using Microsoft.AspNetCore.Mvc;
-using Mud.Feishu.DataModels;
 using Mud.Feishu.DataModels.Departments;
 using System.ComponentModel.DataAnnotations;
 
@@ -20,11 +19,13 @@ namespace Mud.Feishu.Test.Controllers.Messages;
 [Route("api/[controller]")]
 public class DepartmentController : ControllerBase
 {
-    private readonly IFeishuV3DepartmentsService _departmentApi;
+    private readonly IFeishuTenantV3Departments _departmentApi;
+    private readonly IFeishuUserV3Departments _userV3Departments;
 
-    public DepartmentController(IFeishuV3DepartmentsService departmentApi)
+    public DepartmentController(IFeishuTenantV3Departments departmentApi, IFeishuUserV3Departments userV3Departments)
     {
         _departmentApi = departmentApi;
+        _userV3Departments = userV3Departments;
     }
 
     /// <summary>
@@ -249,34 +250,6 @@ public class DepartmentController : ControllerBase
         try
         {
             var result = await _departmentApi.GetParentDepartmentsByIdAsync(departmentId, pageSize, pageToken, userIdType, departmentIdType);
-            return Ok(result.Data);
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { error = ex.Message });
-        }
-    }
-
-    /// <summary>
-    /// 搜索部门
-    /// </summary>
-    /// <param name="searchRequest">搜索请求体</param>
-    /// <param name="pageSize">每页数量</param>
-    /// <param name="pageToken">分页标记</param>
-    /// <param name="userIdType">用户ID类型</param>
-    /// <param name="departmentIdType">部门ID类型</param>
-    /// <returns></returns>
-    [HttpPost("search")]
-    public async Task<IActionResult> SearchDepartments(
-        [FromBody] SearchRequest searchRequest,
-        [FromQuery] int pageSize = 10,
-        [FromQuery] string? pageToken = null,
-        [FromQuery] string? userIdType = null,
-        [FromQuery] string? departmentIdType = null)
-    {
-        try
-        {
-            var result = await _departmentApi.SearchDepartmentsAsync(searchRequest, pageSize, pageToken, userIdType, departmentIdType);
             return Ok(result.Data);
         }
         catch (Exception ex)

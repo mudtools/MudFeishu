@@ -5,26 +5,15 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-namespace Mud.Feishu.TokenManager;
+namespace Mud.Feishu;
 
 /// <summary>
-/// 全局令牌管理接口。
+/// 飞书组织机构部门是指企业组织架构树上的某一个节点。
+/// <para>在部门内部，可添加用户作为部门成员，也可添加新的部门作为子部门。</para>
+/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/contact-v3/department/field-overview"/></para>
 /// </summary>
-public interface ITokenManager
+[HttpClientApi(TokenManage = nameof(IUserTokenManager), RegistryGroupName = "Organization")]
+[Header("Authorization")]
+public interface IFeishuUserV3Departments : IFeishuV3Departments
 {
-    /// <summary>
-    /// 获取应用身份访问令牌。
-    /// </summary>
-    /// <returns></returns>
-    Task<string?> GetTokenAsync(CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// 清理过期令牌（可选方法）
-    /// </summary>
-    void CleanExpiredTokens();
-
-    /// <summary>
-    /// 获取缓存统计信息（用于监控）
-    /// </summary>
-    (int Total, int Expired) GetCacheStatistics();
 }

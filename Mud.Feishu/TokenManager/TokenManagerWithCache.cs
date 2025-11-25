@@ -10,11 +10,11 @@ using Microsoft.Extensions.Options;
 using Mud.Feishu.Exceptions;
 using System.Collections.Concurrent;
 
-namespace Mud.Feishu;
+namespace Mud.Feishu.TokenManager;
 
-internal class TokenManagerWithCache : ITokenManager, IDisposable
+public abstract class TokenManagerWithCache : ITokenManager, IDisposable
 {
-    private class AppCredentialToken
+    public class AppCredentialToken
     {
         public string? Msg { get; init; }
         public int Code { get; init; }
@@ -32,10 +32,11 @@ internal class TokenManagerWithCache : ITokenManager, IDisposable
         { get; init; }
     }
 
-    private readonly FeishuOptions _options;
-    private readonly IFeishuV3AuthenticationApi _authenticationApi;
-    private readonly ILogger<TokenManagerWithCache> _logger;
+    protected readonly FeishuOptions _options;
+    protected readonly IFeishuV3AuthenticationApi _authenticationApi;
+    protected readonly ILogger<TokenManagerWithCache> _logger;
     private readonly TimeSpan _tokenRefreshThreshold;
+    private readonly TokenType _tokeType;
 
     // 使用 Lazy 和 AsyncLock 解决缓存击穿和竞态条件问题
     private readonly ConcurrentDictionary<string, Lazy<Task<AppCredentialToken>>> _tokenLoadingTasks = new();
@@ -49,12 +50,14 @@ internal class TokenManagerWithCache : ITokenManager, IDisposable
     public TokenManagerWithCache(
         IFeishuV3AuthenticationApi authenticationApi,
         IOptions<FeishuOptions> options,
-        ILogger<TokenManagerWithCache> logger)
+        ILogger<TokenManagerWithCache> logger,
+        TokenType tokeType)
     {
         _authenticationApi = authenticationApi ?? throw new ArgumentNullException(nameof(authenticationApi));
         _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _tokenRefreshThreshold = TimeSpan.FromSeconds(DefaultRefreshThresholdSeconds);
+        _tokeType = tokeType;
     }
 
     /// <summary>
@@ -63,30 +66,20 @@ internal class TokenManagerWithCache : ITokenManager, IDisposable
     /// <returns></returns>
     public async Task<string?> GetTokenAsync(CancellationToken cancellationToken = default)
     {
-        return await GetTokenInternalAsync(TokenType.TenantAccessToken, cancellationToken);
-    }
-
-    public async Task<string?> GetTenantAccessTokenAsync(CancellationToken cancellationToken = default)
-    {
-        return await GetTokenInternalAsync(TokenType.TenantAccessToken, cancellationToken);
-    }
-
-    public async Task<string?> GetUserAccessTokenAsync(CancellationToken cancellationToken = default)
-    {
-        return await GetTokenInternalAsync(TokenType.UserAccessToken, cancellationToken);
+        return await GetTokenInternalAsync(cancellationToken);
     }
 
     /// <summary>
     /// 统一的令牌获取方法
     /// </summary>
-    private async Task<string?> GetTokenInternalAsync(TokenType tokenType, CancellationToken cancellationToken)
+    private async Task<string?> GetTokenInternalAsync(CancellationToken cancellationToken)
     {
-        var cacheKey = GenerateCacheKey(tokenType);
+        var cacheKey = GenerateCacheKey();
 
         // 尝试从缓存获取有效令牌
         if (TryGetValidTokenFromCache(cacheKey, out var cachedToken))
         {
-            _logger.LogDebug("Using cached token for {TokenType}", tokenType);
+            _logger.LogDebug("Using cached token for {TokenType}", _tokeType);
             return FormatBearerToken(cachedToken);
         }
 
@@ -94,7 +87,7 @@ internal class TokenManagerWithCache : ITokenManager, IDisposable
         {
             // 使用 Lazy 防止缓存击穿，确保同一时刻只有一个请求在获取令牌
             var lazyTask = _tokenLoadingTasks.GetOrAdd(cacheKey, _ => new Lazy<Task<AppCredentialToken>>(
-                () => AcquireTokenAsync(tokenType, cancellationToken),
+                () => AcquireTokenAsync(cancellationToken),
                 LazyThreadSafetyMode.ExecutionAndPublication));
 
             var token = await lazyTask.Value;
@@ -110,9 +103,14 @@ internal class TokenManagerWithCache : ITokenManager, IDisposable
     /// <summary>
     /// 获取新令牌的核心方法
     /// </summary>
-    private async Task<AppCredentialToken> AcquireTokenAsync(TokenType tokenType, CancellationToken cancellationToken)
+    protected abstract Task<AppCredentialToken> AcquireNewTokenAsync(CancellationToken cancellationToken);
+
+    /// <summary>
+    /// 获取新令牌的核心方法
+    /// </summary>
+    private async Task<AppCredentialToken> AcquireTokenAsync(CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Acquiring new token for {TokenType}", tokenType);
+        _logger.LogInformation("Acquiring new token for {TokenType}", _tokeType);
 
         // 实现重试机制
         var retryCount = 0;
@@ -122,18 +120,16 @@ internal class TokenManagerWithCache : ITokenManager, IDisposable
         {
             try
             {
-                var result = await (tokenType == TokenType.TenantAccessToken
-                    ? GetNewTenantTokenAsync(cancellationToken)
-                    : GetNewUserTokenAsync(cancellationToken));
+                var result = await AcquireNewTokenAsync(cancellationToken);
 
                 ValidateTokenResult(result);
                 var newToken = CreateAppCredentialToken(result);
 
                 // 原子性地更新缓存
-                UpdateTokenCache(newToken, tokenType);
+                UpdateTokenCache(newToken);
 
                 _logger.LogInformation("Successfully acquired new token for {TokenType}, expires at {ExpireTime}",
-                    tokenType, DateTimeOffset.FromUnixTimeMilliseconds(newToken.Expire));
+                    _tokeType, DateTimeOffset.FromUnixTimeMilliseconds(newToken.Expire));
 
                 return newToken;
             }
@@ -141,13 +137,13 @@ internal class TokenManagerWithCache : ITokenManager, IDisposable
             {
                 retryCount++;
                 _logger.LogWarning(ex, "Failed to acquire token for {TokenType}, retry {RetryCount}/{MaxRetries}",
-                    tokenType, retryCount, maxRetries);
+                    _tokeType, retryCount, maxRetries);
 
                 await Task.Delay(TimeSpan.FromSeconds(Math.Pow(2, retryCount)), cancellationToken);
             }
         }
 
-        throw new FeishuException(500, $"Failed to acquire {tokenType} after {maxRetries} retries");
+        throw new FeishuException(500, $"Failed to acquire {_tokeType} after {maxRetries} retries");
     }
 
     /// <summary>
@@ -180,9 +176,9 @@ internal class TokenManagerWithCache : ITokenManager, IDisposable
     /// <summary>
     /// 生成缓存键
     /// </summary>
-    private string GenerateCacheKey(TokenType tokenType)
+    private string GenerateCacheKey()
     {
-        return $"{_options.AppId}:{tokenType}";
+        return $"{_options.AppId}:{_tokeType}";
     }
 
     /// <summary>
@@ -191,48 +187,6 @@ internal class TokenManagerWithCache : ITokenManager, IDisposable
     private static string FormatBearerToken(string token)
     {
         return $"Bearer {token}";
-    }
-
-    /// <summary>
-    /// 获取应用访问令牌
-    /// </summary>
-    private async Task<AppCredentialToken> GetNewTenantTokenAsync(CancellationToken cancellationToken)
-    {
-        var credentials = new AppCredentials
-        {
-            AppId = _options.AppId,
-            AppSecret = _options.AppSecret
-        };
-
-        var res = await _authenticationApi.GetTenantAccessTokenAsync(credentials, cancellationToken);
-        return new AppCredentialToken
-        {
-            AccessToken = res.TenantAccessToken ?? string.Empty,
-            Expire = res.Expire,
-            Code = res.Code,
-            Msg = res.Msg
-        };
-    }
-
-    /// <summary>
-    /// 获取用户访问令牌
-    /// </summary>
-    private async Task<AppCredentialToken> GetNewUserTokenAsync(CancellationToken cancellationToken)
-    {
-        var credentials = new AppCredentials
-        {
-            AppId = _options.AppId,
-            AppSecret = _options.AppSecret
-        };
-
-        var res = await _authenticationApi.GetAppAccessTokenAsync(credentials, cancellationToken);
-        return new AppCredentialToken
-        {
-            AccessToken = res.AppAccessToken ?? string.Empty,
-            Expire = res.Expire,
-            Code = res.Code,
-            Msg = res.Msg
-        };
     }
 
     /// <summary>
@@ -275,9 +229,9 @@ internal class TokenManagerWithCache : ITokenManager, IDisposable
     /// <summary>
     /// 更新令牌缓存
     /// </summary>
-    private void UpdateTokenCache(AppCredentialToken newToken, TokenType tokenType)
+    private void UpdateTokenCache(AppCredentialToken newToken)
     {
-        var cacheKey = GenerateCacheKey(tokenType);
+        var cacheKey = GenerateCacheKey();
         _appTokenCache.AddOrUpdate(cacheKey, newToken, (key, existing) => newToken);
     }
 

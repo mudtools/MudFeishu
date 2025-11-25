@@ -5,26 +5,14 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-namespace Mud.Feishu.TokenManager;
+namespace Mud.Feishu;
 
 /// <summary>
-/// 全局令牌管理接口。
-/// </summary>
-public interface ITokenManager
+/// 消息即飞书聊天中的一条消息。可以使用消息管理 API 对消息进行发送、回复、编辑、撤回、转发以及查询等操作。
+/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/im-v1/message/intro"/></para>
+/// </summary> 
+[HttpClientApi(TokenManage = nameof(IUserTokenManager), RegistryGroupName = "Message")]
+[Header("Authorization")]
+public interface IFeishuUserV1Message : IFeishuV1Message
 {
-    /// <summary>
-    /// 获取应用身份访问令牌。
-    /// </summary>
-    /// <returns></returns>
-    Task<string?> GetTokenAsync(CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// 清理过期令牌（可选方法）
-    /// </summary>
-    void CleanExpiredTokens();
-
-    /// <summary>
-    /// 获取缓存统计信息（用于监控）
-    /// </summary>
-    (int Total, int Expired) GetCacheStatistics();
 }

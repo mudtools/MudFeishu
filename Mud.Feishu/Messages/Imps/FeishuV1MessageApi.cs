@@ -12,18 +12,22 @@ using System.Text.Json;
 
 namespace Mud.Feishu;
 
-partial class FeishuV1MessageApi
+partial class FeishuTenantV1Message
 {
     public async Task<FeishuApiResult<FileUploadResult>?> UploadFileAsync(
-      [Token][Header("Authorization")] string tenant_access_token,
       [Body] UploadFileRequest uploadFileRequest,
       CancellationToken cancellationToken = default)
     {
+        var access_token = await _tokenManager.GetTokenAsync();
+        if (string.IsNullOrEmpty(access_token))
+        {
+            throw new InvalidOperationException("无法获取访问令牌");
+        }
         var url = $"https://open.feishu.cn/open-apis/im/v1/files";
         _logger.LogDebug("开始HTTP Post请求: {Url}", url);
         using var request = new HttpRequestMessage(HttpMethod.Post, url);
-        if (!string.IsNullOrEmpty(tenant_access_token))
-            request.Headers.Add("Authorization", tenant_access_token);
+
+        request.Headers.Add("Authorization", access_token);
 
         ArgumentNullException.ThrowIfNull(uploadFileRequest, nameof(uploadFileRequest));
 
@@ -62,21 +66,25 @@ partial class FeishuV1MessageApi
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "HTTP请求异常: {{Url}}", url);
+            _logger.LogError(ex, "HTTP请求异常: {Url}", url);
             throw;
         }
     }
 
     public async Task<FeishuApiResult<ImageUpdateResult>?> UploadImageAsync(
-      [Token][Header("Authorization")] string tenant_access_token,
-      [Body] UploadImageRequest uploadImageRequest,
-      CancellationToken cancellationToken = default)
+             [Body] UploadImageRequest uploadImageRequest,
+             CancellationToken cancellationToken = default)
     {
+        var access_token = await _tokenManager.GetTokenAsync();
+        if (string.IsNullOrEmpty(access_token))
+        {
+            throw new InvalidOperationException("无法获取访问令牌");
+        }
         var url = $"https://open.feishu.cn/open-apis/im/v1/images";
         _logger.LogDebug("开始HTTP Post请求: {Url}", url);
         using var request = new HttpRequestMessage(HttpMethod.Post, url);
-        if (!string.IsNullOrEmpty(tenant_access_token))
-            request.Headers.Add("Authorization", tenant_access_token);
+
+        request.Headers.Add("Authorization", access_token);
 
         ArgumentNullException.ThrowIfNull(uploadImageRequest, nameof(uploadImageRequest));
 
@@ -113,7 +121,7 @@ partial class FeishuV1MessageApi
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "HTTP请求异常: {{Url}}", url);
+            _logger.LogError(ex, "HTTP请求异常: {Url}", url);
             throw;
         }
     }

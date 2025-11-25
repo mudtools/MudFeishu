@@ -38,10 +38,10 @@ internal sealed class TokenAttribute : Attribute
 /// <summary>
 /// 飞书Token类型。
 /// </summary>
-internal enum TokenType
+public enum TokenType
 {
     /// <summary>
-    /// 使用应用Token调用函数。
+    /// 使用租户Token调用函数。
     /// </summary>
     TenantAccessToken = 0,
     /// <summary>
@@ -49,7 +49,7 @@ internal enum TokenType
     /// </summary>
     UserAccessToken = 1,
     /// <summary>
-    /// 由用户决定使用何种Token调用函数。
+    /// 使用应用Token调用函数。
     /// </summary>
-    Both = 2,
+    AppAccessToken = 2,
 }

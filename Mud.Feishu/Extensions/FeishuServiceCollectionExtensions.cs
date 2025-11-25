@@ -107,9 +107,9 @@ public static class FeishuServiceCollectionExtensions
     /// <returns>服务集合，支持链式调用</returns>
     private static IServiceCollection AddFeishuApiServiceCore(this IServiceCollection services) =>
         services
-            .AddSingleton<ITokenManager, TokenManagerWithCache>()
+            .AddSingleton<ITenantTokenManager, TenantTokenManager>()
+            .AddSingleton<IAppTokenManager, AppTokenManager>()
+            .AddSingleton<IUserTokenManager, UserTokenManager>()
             .AddOrganizationWebApiHttpClient()
-            .AddMessageWebApiHttpClient()
-            .AddOrganizationWebApiHttpClientWrap()
-            .AddMessageWebApiHttpClientWrap();
+            .AddMessageWebApiHttpClient();
 }

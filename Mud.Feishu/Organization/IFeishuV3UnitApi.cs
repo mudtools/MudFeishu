@@ -15,9 +15,9 @@ namespace Mud.Feishu;
 /// <para>目前单位资源的主要作用是在部分用户权限上实现“子公司”级别的权限隔离。</para>
 /// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/contact-v3/unit/overview"/></para>
 /// </summary>
-[HttpClientApi(RegistryGroupName = "Organization", TokenManage = nameof(ITokenManager))]
+[HttpClientApi(TokenManage = nameof(ITenantTokenManager), RegistryGroupName = "Organization")]
 [Header("Authorization")]
-public interface IFeishuV3UnitApi
+public interface IFeishuTenantV3Unit
 {
     /// <summary>
     /// 创建一个单位。

@@ -5,26 +5,14 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-namespace Mud.Feishu.TokenManager;
+namespace Mud.Feishu;
 
 /// <summary>
-/// 全局令牌管理接口。
+/// 工作城市是用户属性之一，通过工作城市 API 仅支持查询工作城市信息。
+/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/contact-v3/work_city/work-city-resources-introduction"/></para>
 /// </summary>
-public interface ITokenManager
+[HttpClientApi(TokenManage = nameof(IUserTokenManager), RegistryGroupName = "Organization")]
+[Header("Authorization")]
+public interface IFeishuUserV3WorkCity : IFeishuV3WorkCity
 {
-    /// <summary>
-    /// 获取应用身份访问令牌。
-    /// </summary>
-    /// <returns></returns>
-    Task<string?> GetTokenAsync(CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// 清理过期令牌（可选方法）
-    /// </summary>
-    void CleanExpiredTokens();
-
-    /// <summary>
-    /// 获取缓存统计信息（用于监控）
-    /// </summary>
-    (int Total, int Expired) GetCacheStatistics();
 }

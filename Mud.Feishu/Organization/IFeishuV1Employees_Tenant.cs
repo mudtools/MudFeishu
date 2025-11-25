@@ -5,26 +5,15 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-namespace Mud.Feishu.TokenManager;
+namespace Mud.Feishu;
 
 /// <summary>
-/// 全局令牌管理接口。
+/// 员工指飞书企业内身份为「Employee」的成员，等同于通讯录OpenAPI中的「User」。
+/// <para>员工在飞书的身份标识包括employee_id、open_id 和 union_id，其中employee_id的值等同于通讯录中的 user_id，其余两个也和通讯录的User的值相同。</para>
+/// 接口详细文档请参见：<see href="https://open.feishu.cn/document/directory-v1/employee/overview"/>
 /// </summary>
-public interface ITokenManager
+[HttpClientApi(RegistryGroupName = "Organization", TokenManage = nameof(ITenantTokenManager))]
+[Header("Authorization")]
+public interface IFeishuTenantV1Employees : IFeishuV1Employees
 {
-    /// <summary>
-    /// 获取应用身份访问令牌。
-    /// </summary>
-    /// <returns></returns>
-    Task<string?> GetTokenAsync(CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// 清理过期令牌（可选方法）
-    /// </summary>
-    void CleanExpiredTokens();
-
-    /// <summary>
-    /// 获取缓存统计信息（用于监控）
-    /// </summary>
-    (int Total, int Expired) GetCacheStatistics();
 }

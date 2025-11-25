@@ -8,23 +8,8 @@
 namespace Mud.Feishu.TokenManager;
 
 /// <summary>
-/// 全局令牌管理接口。
+/// 用户令牌管理。
 /// </summary>
-public interface ITokenManager
+public interface IUserTokenManager : ITokenManager
 {
-    /// <summary>
-    /// 获取应用身份访问令牌。
-    /// </summary>
-    /// <returns></returns>
-    Task<string?> GetTokenAsync(CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// 清理过期令牌（可选方法）
-    /// </summary>
-    void CleanExpiredTokens();
-
-    /// <summary>
-    /// 获取缓存统计信息（用于监控）
-    /// </summary>
-    (int Total, int Expired) GetCacheStatistics();
 }

@@ -94,7 +94,7 @@ public interface IFeishuV1ChatGroup
       CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 获取当前 access_token 所代表的用户或者机器人所在的群列表。
+    /// 分页获取当前 access_token 所代表的用户或者机器人所在的群列表。
     /// </summary>
     /// <param name="user_id_type">用户 ID 类型，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
     /// <param name="sort_type">群组排序方式  示例值："ByCreateTimeAsc"
@@ -116,7 +116,7 @@ public interface IFeishuV1ChatGroup
        CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 获取当前身份（用户或机器人）可见的群列表，包括当前身份所在的群、对当前身份公开的群。支持关键词搜索、分页搜索。
+    /// 分页获取当前身份（用户或机器人）可见的群列表，包括当前身份所在的群、对当前身份公开的群。支持关键词搜索、分页搜索。
     /// </summary>
     /// <param name="query">关键词 示例值："abc"</param>
     /// <param name="user_id_type">用户 ID 类型，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
@@ -139,5 +139,34 @@ public interface IFeishuV1ChatGroup
        [Query("page_token")] string? page_token = null,
        CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// 分页获取指定群组的发言模式、可发言用户名单等信息。
+    /// </summary>
+    /// <param name="chat_id">群 ID。 示例值："oc_a0553eda9014c201e6969b478895c230"</param>/
+    /// <param name="user_id_type">用户 ID 类型，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
+    /// <param name="page_size">分页大小，即本次请求所返回的用户信息列表内的最大条目数。默认值：10</param>
+    /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Get("https://open.feishu.cn/open-apis/im/v1/chats/{chat_id}/moderation")]
+    Task<FeishuApiResult<ChatGroupModeratorPageListResult>?> GetChatGroupModeratorPageListByIdAsync(
+      [Path] string chat_id,
+      [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
+      [Query("page_size")] int? page_size = 10,
+      [Query("page_token")] string? page_token = null,
+      CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 获取指定群的分享链接，他人点击分享链接后可加入群组。
+    /// </summary>
+    /// <param name="chat_id">群 ID。 示例值："oc_a0553eda9014c201e6969b478895c230"</param>
+    /// <param name="shareLinkRequest">获取群分享链接群分享链接请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Get("https://open.feishu.cn/open-apis/im/v1/chats/{chat_id}/link")]
+    Task<FeishuApiResult<ShareLinkDataResult>?> GetChatGroupShareLinkByIdAsync(
+     [Path] string chat_id,
+     [Body] ShareLinkRequest shareLinkRequest,
+     CancellationToken cancellationToken = default);
 
 }

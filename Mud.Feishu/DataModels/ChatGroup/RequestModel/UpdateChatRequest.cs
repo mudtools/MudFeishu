@@ -7,59 +7,9 @@
 
 namespace Mud.Feishu.DataModels.ChatGroup;
 
-public class UpdateChatRequest
+/// <summary>
+/// 更新聊天群请求
+/// </summary>
+public class UpdateChatRequest : ChatGroupBase
 {
-    [JsonPropertyName("avatar")]
-    public string Avatar { get; set; }
-
-    [JsonPropertyName("name")]
-    public string Name { get; set; }
-
-    [JsonPropertyName("description")]
-    public string Description { get; set; }
-
-    [JsonPropertyName("i18n_names")]
-    public I18nName I18nNames { get; set; }
-
-    [JsonPropertyName("add_member_permission")]
-    public string AddMemberPermission { get; set; }
-
-    [JsonPropertyName("share_card_permission")]
-    public string ShareCardPermission { get; set; }
-
-    [JsonPropertyName("at_all_permission")]
-    public string AtAllPermission { get; set; }
-
-    [JsonPropertyName("edit_permission")]
-    public string EditPermission { get; set; }
-
-    [JsonPropertyName("owner_id")]
-    public string OwnerId { get; set; }
-
-    [JsonPropertyName("join_message_visibility")]
-    public string JoinMessageVisibility { get; set; }
-
-    [JsonPropertyName("leave_message_visibility")]
-    public string LeaveMessageVisibility { get; set; }
-
-    [JsonPropertyName("membership_approval")]
-    public string MembershipApproval { get; set; }
-
-    [JsonPropertyName("restricted_mode_setting")]
-    public RestrictedModeSetting RestrictedModeSetting { get; set; }
-
-    [JsonPropertyName("chat_type")]
-    public string ChatType { get; set; }
-
-    [JsonPropertyName("group_message_type")]
-    public string GroupMessageType { get; set; }
-
-    [JsonPropertyName("urgent_setting")]
-    public string UrgentSetting { get; set; }
-
-    [JsonPropertyName("video_conference_setting")]
-    public string VideoConferenceSetting { get; set; }
-
-    [JsonPropertyName("hide_member_count_setting")]
-    public string HideMemberCountSetting { get; set; }
 }

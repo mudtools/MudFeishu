@@ -10,42 +10,8 @@ namespace Mud.Feishu.DataModels.ChatGroup;
 /// <summary>
 /// 创建消息请求体。
 /// </summary>
-public class CreateChatRequest
+public class CreateChatRequest : ChatGroupBase
 {
-    /// <summary>
-    /// 群头像对应的 Image Key
-    /// <para>示例值："default-avatar_44ae0ca3-e140-494b-956f-78091e348435"</para>
-    /// </summary>
-    [JsonPropertyName("avatar")]
-    public string? Avatar { get; set; }
-
-    /// <summary>
-    /// 群名称
-    /// <para>示例值："测试群名称"</para>
-    /// </summary>
-    [JsonPropertyName("name")]
-    public string? Name { get; set; }
-
-    /// <summary>
-    /// 群描述，建议不超过 100 字符
-    /// <para>示例值："测试群描述"</para>
-    /// </summary>
-    [JsonPropertyName("description")]
-    public string? Description { get; set; }
-
-    /// <summary>
-    /// 群国际化名称
-    /// </summary>
-    [JsonPropertyName("i18n_names")]
-    public I18nName? I18nNames { get; set; }
-
-    /// <summary>
-    /// 创建群时指定的群主，不填时指定建群的机器人为群主。
-    /// <para>示例值："ou_7d8a6e6df7621556ce0d21922b676706ccs"</para>
-    /// </summary>
-    [JsonPropertyName("owner_id")]
-    public string? OwnerId { get; set; }
-
     /// <summary>
     /// 创建群时邀请的群成员，不填则不邀请成员。
     /// <para>示例值：["ou_7d8a6e6df7621556ce0d21922b676706ccs"]</para>
@@ -68,7 +34,7 @@ public class CreateChatRequest
     /// <para>thread：话题消息</para>
     /// </summary>
     [JsonPropertyName("group_message_type")]
-    public string? GroupMessageType { get; set; } = "chat";
+    public new string? GroupMessageType { get; set; } = "chat";
 
     /// <summary>
     /// 群模式
@@ -77,7 +43,7 @@ public class CreateChatRequest
     /// <para>示例值："group"</para>
     /// </summary>
     [JsonPropertyName("chat_mode")]
-    public string? ChatMode { get; set; } = "group";
+    public new string? ChatMode { get; set; } = "group";
 
     /// <summary>
     /// 群类型
@@ -87,7 +53,7 @@ public class CreateChatRequest
     /// <para>示例值："private"</para>
     /// </summary>
     [JsonPropertyName("chat_type")]
-    public string? ChatType { get; set; } = "private";
+    public new string? ChatType { get; set; } = "private";
 
     /// <summary>
     /// 成员入群提示消息的可见性
@@ -98,7 +64,7 @@ public class CreateChatRequest
     /// <para>示例值："all_members"</para>
     /// </summary>
     [JsonPropertyName("join_message_visibility")]
-    public string? JoinMessageVisibility { get; set; } = "all_members";
+    public new string? JoinMessageVisibility { get; set; } = "all_members";
 
     /// <summary>
     /// 成员退群提示消息的可见性
@@ -109,7 +75,7 @@ public class CreateChatRequest
     /// <para>示例值："all_members"</para>
     /// </summary>
     [JsonPropertyName("leave_message_visibility")]
-    public string? LeaveMessageVisibility { get; set; } = "all_members";
+    public new string? LeaveMessageVisibility { get; set; } = "all_members";
 
     /// <summary>
     /// 加群是否需要审批
@@ -119,14 +85,7 @@ public class CreateChatRequest
     /// <para>示例值："no_approval_required"</para>
     /// </summary>
     [JsonPropertyName("membership_approval")]
-    public string? MembershipApproval { get; set; } = "no_approval_required";
-
-    /// <summary>
-    /// 保密模式设置
-    /// <para>注意：保密模式适用于企业旗舰版。</para>
-    /// </summary>
-    [JsonPropertyName("restricted_mode_setting")]
-    public RestrictedModeSetting? RestrictedModeSetting { get; set; }
+    public new string? MembershipApproval { get; set; } = "no_approval_required";
 
     /// <summary>
     /// 谁可以加急
@@ -137,7 +96,7 @@ public class CreateChatRequest
     /// <para>all_members：所有成员</para>
     /// </summary>
     [JsonPropertyName("urgent_setting")]
-    public string? UrgentSetting { get; set; } = "all_members";
+    public new string? UrgentSetting { get; set; } = "all_members";
 
     /// <summary>
     /// 谁可以发起视频会议
@@ -148,7 +107,7 @@ public class CreateChatRequest
     /// <para>all_members：所有成员</para>
     /// </summary>
     [JsonPropertyName("video_conference_setting")]
-    public string? VideoConferenceSetting { get; set; } = "all_members";
+    public new string? VideoConferenceSetting { get; set; } = "all_members";
 
     /// <summary>
     /// 谁可以编辑群信息
@@ -159,7 +118,7 @@ public class CreateChatRequest
     /// <para>all_members：所有成员</para>
     /// </summary>
     [JsonPropertyName("edit_permission")]
-    public string? EditPermission { get; set; } = "all_members";
+    public new string? EditPermission { get; set; } = "all_members";
 
     /// <summary>
     /// 隐藏群成员人数设置
@@ -170,5 +129,5 @@ public class CreateChatRequest
     /// <para>only_owner：仅群主群管理员可见</para>
     /// </summary>
     [JsonPropertyName("hide_member_count_setting")]
-    public string? HideMemberCountSetting { get; set; } = "all_members";
+    public new string? HideMemberCountSetting { get; set; } = "all_members";
 }

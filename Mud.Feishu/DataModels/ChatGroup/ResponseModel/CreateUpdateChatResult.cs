@@ -7,80 +7,80 @@
 
 namespace Mud.Feishu.DataModels.ChatGroup;
 
-public class CreateChatResult
+public class CreateUpdateChatResult
 {
     [JsonPropertyName("chat_id")]
-    public string ChatId { get; set; }
+    public string? ChatId { get; set; }
 
     [JsonPropertyName("avatar")]
-    public string Avatar { get; set; }
+    public string? Avatar { get; set; }
 
     [JsonPropertyName("name")]
-    public string Name { get; set; }
+    public string? Name { get; set; }
 
     [JsonPropertyName("description")]
-    public string Description { get; set; }
+    public string? Description { get; set; }
 
     [JsonPropertyName("i18n_names")]
-    public I18nName I18nNames { get; set; }
+    public I18nName? I18nNames { get; set; }
 
     [JsonPropertyName("owner_id")]
-    public string OwnerId { get; set; }
+    public string? OwnerId { get; set; }
 
     [JsonPropertyName("owner_id_type")]
-    public string OwnerIdType { get; set; }
+    public string? OwnerIdType { get; set; }
 
     [JsonPropertyName("urgent_setting")]
-    public string UrgentSetting { get; set; }
+    public string? UrgentSetting { get; set; }
 
     [JsonPropertyName("video_conference_setting")]
-    public string VideoConferenceSetting { get; set; }
+    public string? VideoConferenceSetting { get; set; }
 
     [JsonPropertyName("add_member_permission")]
-    public string AddMemberPermission { get; set; }
+    public string? AddMemberPermission { get; set; }
 
     [JsonPropertyName("share_card_permission")]
-    public string ShareCardPermission { get; set; }
+    public string? ShareCardPermission { get; set; }
 
     [JsonPropertyName("at_all_permission")]
-    public string AtAllPermission { get; set; }
+    public string? AtAllPermission { get; set; }
 
     [JsonPropertyName("edit_permission")]
-    public string EditPermission { get; set; }
+    public string? EditPermission { get; set; }
 
     [JsonPropertyName("group_message_type")]
-    public string GroupMessageType { get; set; }
+    public string? GroupMessageType { get; set; }
 
     [JsonPropertyName("chat_mode")]
-    public string ChatMode { get; set; }
+    public string? ChatMode { get; set; }
 
     [JsonPropertyName("chat_type")]
-    public string ChatType { get; set; }
+    public string? ChatType { get; set; }
 
     [JsonPropertyName("chat_tag")]
-    public string ChatTag { get; set; }
+    public string? ChatTag { get; set; }
 
     [JsonPropertyName("external")]
-    public bool External { get; set; }
+    public bool? External { get; set; }
 
     [JsonPropertyName("tenant_key")]
-    public string TenantKey { get; set; }
+    public string? TenantKey { get; set; }
 
     [JsonPropertyName("join_message_visibility")]
-    public string JoinMessageVisibility { get; set; }
+    public string? JoinMessageVisibility { get; set; }
 
     [JsonPropertyName("leave_message_visibility")]
-    public string LeaveMessageVisibility { get; set; }
+    public string? LeaveMessageVisibility { get; set; }
 
     [JsonPropertyName("membership_approval")]
-    public string MembershipApproval { get; set; }
+    public string? MembershipApproval { get; set; }
 
     [JsonPropertyName("moderation_permission")]
-    public string ModerationPermission { get; set; }
+    public string? ModerationPermission { get; set; }
 
     [JsonPropertyName("restricted_mode_setting")]
-    public RestrictedModeSetting RestrictedModeSetting { get; set; }
+    public RestrictedModeSetting? RestrictedModeSetting { get; set; }
 
     [JsonPropertyName("hide_member_count_setting")]
-    public string HideMemberCountSetting { get; set; }
+    public string? HideMemberCountSetting { get; set; }
 }

@@ -23,7 +23,7 @@ public interface IFeishuV1ChatGroup
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Put("https://open.feishu.cn/open-apis/im/v1/chats/{chat_id}")]
-    Task<FeishuApiResult<CreateChatResult>?> UpdateChatGroupByIdAsync(
+    Task<FeishuApiResult<CreateUpdateChatResult>?> UpdateChatGroupByIdAsync(
         [Path] string chat_id,
         [Body] UpdateChatRequest updateChatRequest,
         [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
@@ -39,4 +39,59 @@ public interface IFeishuV1ChatGroup
     Task<FeishuNullDataApiResult?> DeleteChatGroupAsync(
        [Path] string chat_id,
        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 更新指定群组的发言权限，可设置为所有群成员可发言、仅群主或管理员可发言、指定群成员可发言。
+    /// </summary>
+    /// <param name="chat_id">群 ID。 示例值："oc_a0553eda9014c201e6969b478895c230"</param>
+    /// <param name="updateChatModerationRequest">更新群发言权限请求体。</param>
+    /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Put("https://open.feishu.cn/open-apis/im/v1/chats/{chat_id}/moderation")]
+    Task<FeishuNullDataApiResult?> UpdateChatModerationAsync(
+        [Path] string chat_id,
+        [Body] UpdateChatModerationRequest updateChatModerationRequest,
+        [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
+        CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 获取指定群的基本信息，包括群名称、群描述、群头像、群主 ID 以及群权限配置等。
+    /// </summary>
+    /// <param name="chat_id">群 ID。 示例值："oc_a0553eda9014c201e6969b478895c230"</param>
+    /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Get("https://open.feishu.cn/open-apis/im/v1/chats/{chat_id}")]
+    Task<FeishuApiResult<GetChatGroupInfoResult>?> GetChatGroupInoByIdAsync(
+       [Path] string chat_id,
+       [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
+       CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 更新群组中的群置顶信息，可以将群中的某一条消息，或群公告置顶展示。
+    /// </summary>
+    /// <param name="chat_id">群 ID。 示例值："oc_a0553eda9014c201e6969b478895c230"</param>
+    /// <param name="chatTopNoticeRequest">群置顶操作请求体。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Post("https://open.feishu.cn/open-apis/im/v1/chats/{chat_id}/top_notice/put_top_notice")]
+    Task<FeishuNullDataApiResult?> PutChatGroupTopNoticeAsync(
+      [Path] string chat_id,
+      [Body] ChatTopNoticeRequest chatTopNoticeRequest,
+      CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 撤销指定群组中的置顶消息或群公告。
+    /// </summary>
+    /// <param name="chat_id">群 ID。 示例值："oc_a0553eda9014c201e6969b478895c230"</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Post("https://open.feishu.cn/open-apis/im/v1/chats/{chat_id}/top_notice/delete_top_notice")]
+    Task<FeishuNullDataApiResult?> DeleteChatGroupTopNoticeAsync(
+      [Path] string chat_id,
+      CancellationToken cancellationToken = default);
+
+
 }

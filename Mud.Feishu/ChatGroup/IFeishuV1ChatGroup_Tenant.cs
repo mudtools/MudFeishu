@@ -30,7 +30,7 @@ public interface IFeishuTenantV1ChatGroup : IFeishuV1ChatGroup
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
     [Post("https://open.feishu.cn/open-apis/im/v1/chats")]
-    Task<FeishuApiResult<CreateChatResult>?> CreateChatGroupAsync(
+    Task<FeishuApiResult<CreateUpdateChatResult>?> CreateChatGroupAsync(
        [Body] CreateChatRequest createChatRequest,
        [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
        [Query("set_bot_manager")] bool? set_bot_manager = false,

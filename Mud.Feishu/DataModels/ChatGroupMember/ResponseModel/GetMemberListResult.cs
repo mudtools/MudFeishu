@@ -7,14 +7,26 @@
 
 namespace Mud.Feishu.DataModels.ChatGroupMember;
 
-/// <summary>
-/// 将用户或机器人拉入群聊请求体
-/// </summary>
-public class AddMemberRequest
+public class GetMemberPageListResult : ApiPageListResult
 {
-    /// <summary>
-    /// 成员 ID 列表。
-    /// </summary>
-    [JsonPropertyName("id_list")]
-    public List<string> IdList { get; set; } = [];
+    [JsonPropertyName("items")]
+    public List<ChatGroupMemberItem> Items { get; set; }
+
+    [JsonPropertyName("member_total")]
+    public int MemberTotal { get; set; }
+}
+
+public class ChatGroupMemberItem
+{
+    [JsonPropertyName("member_id_type")]
+    public string MemberIdType { get; set; }
+
+    [JsonPropertyName("member_id")]
+    public string MemberId { get; set; }
+
+    [JsonPropertyName("name")]
+    public string Name { get; set; }
+
+    [JsonPropertyName("tenant_key")]
+    public string TenantKey { get; set; }
 }

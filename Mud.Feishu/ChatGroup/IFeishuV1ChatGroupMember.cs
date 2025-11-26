@@ -23,7 +23,7 @@ public interface IFeishuV1ChatGroupMember
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Post("https://open.feishu.cn/open-apis/im/v1/chats/{chat_id}/managers/add_managers")]
-    Task<FeishuApiResult<GroupManagerResult>?> AddChatGroupManagersAsync(
+    Task<FeishuApiResult<GroupManagerResult>?> AddManagersAsync(
        [Path] string chat_id,
        [Body] GroupManagerRequest addGroupManagerRequest,
        [Query("member_id_type")] string member_id_type = Consts.User_Id_Type,
@@ -38,11 +38,11 @@ public interface IFeishuV1ChatGroupMember
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Post("https://open.feishu.cn/open-apis/im/v1/chats/{chat_id}/managers/delete_managers")]
-    Task<FeishuApiResult<GroupManagerResult>?> DeleteChatGroupManagersAsync(
-      [Path] string chat_id,
-      [Body] GroupManagerRequest deleteGroupManagerRequest,
-      [Query("member_id_type")] string member_id_type = Consts.User_Id_Type,
-      CancellationToken cancellationToken = default);
+    Task<FeishuApiResult<GroupManagerResult>?> DeleteManagersAsync(
+          [Path] string chat_id,
+          [Body] GroupManagerRequest deleteGroupManagerRequest,
+          [Query("member_id_type")] string member_id_type = Consts.User_Id_Type,
+          CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 把指定的用户或机器人拉入指定群聊内。
@@ -58,9 +58,9 @@ public interface IFeishuV1ChatGroupMember
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Post("https://open.feishu.cn/open-apis/im/v1/chats/{chat_id}/managers/delete_managers")]
-    Task<FeishuApiResult<AddMemberResult>?> AddChatGroupMemberAsync(
+    Task<FeishuApiResult<AddMemberResult>?> AddMemberAsync(
          [Path] string chat_id,
-         [Body] AddMemberRequest addMemberRequest,
+         [Body] MembersRequest addMemberRequest,
          [Query("member_id_type")] string member_id_type = Consts.User_Id_Type,
          [Query("succeed_type")] int succeed_type = 0,
          CancellationToken cancellationToken = default);
@@ -76,4 +76,47 @@ public interface IFeishuV1ChatGroupMember
         [Path] string chat_id,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// 将指定的用户或机器人从群聊中移出。
+    /// </summary>
+    /// <param name="chat_id">群 ID。示例值："oc_a0553eda9014c201e6969b478895c230"</param>
+    /// <param name="membersRequest">移除成员 ID 列表请求体</param>
+    /// <param name="member_id_type">用户 ID 类型，ID 类型需要与请求体参数中的 member_id_type 类型保持一致。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    /// <returns></returns>
+    [Delete("https://open.feishu.cn/open-apis/im/v1/chats/{chat_id}/members")]
+    Task<FeishuApiResult<RemoveMemberResult>?> RemoveMemberAsync(
+        [Path] string chat_id,
+        [Body] MembersRequest membersRequest,
+        [Query("member_id_type")] string member_id_type = Consts.User_Id_Type,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 分页获取指定群组的成员信息，包括成员名字与 ID。
+    /// </summary>
+    /// <param name="chat_id">群 ID。 示例值："oc_a0553eda9014c201e6969b478895c230"</param>/
+    /// <param name="user_id_type">用户 ID 类型，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
+    /// <param name="page_size">分页大小，即本次请求所返回的用户信息列表内的最大条目数。默认值：10</param>
+    /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Get("https://open.feishu.cn/open-apis/im/v1/chats/{chat_id}/members")]
+    Task<FeishuApiResult<GetMemberPageListResult>?> GetMemberPageListByIdAsync(
+         [Path] string chat_id,
+         [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
+         [Query("page_size")] int? page_size = 10,
+         [Query("page_token")] string? page_token = null,
+         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 根据使用的 access_token 判断对应的用户或者机器人是否在指定的群里。
+    /// </summary>
+    /// <param name="chat_id">群 ID。 示例值："oc_a0553eda9014c201e6969b478895c230"</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Get("https://open.feishu.cn/open-apis/im/v1/chats/{chat_id}/members/is_in_chat")]
+    Task<FeishuApiResult<GetMemberPageListResult>?> GetMemberInChatByIdAsync(
+       [Path] string chat_id,
+       CancellationToken cancellationToken = default);
 }

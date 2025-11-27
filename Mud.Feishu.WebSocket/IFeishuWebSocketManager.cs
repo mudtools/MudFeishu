@@ -72,4 +72,16 @@ public interface IFeishuWebSocketManager : IDisposable
     /// <param name="cancellationToken">取消令牌</param>
     /// <returns>重连任务</returns>
     Task ReconnectAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 获取连接统计信息
+    /// </summary>
+    /// <returns>连接统计信息</returns>
+    (TimeSpan Uptime, int ReconnectCount, Exception? LastError) GetConnectionStats();
+
+    /// <summary>
+    /// 获取连接状态详情
+    /// </summary>
+    /// <returns>连接状态详情</returns>
+    WebSocketConnectionState GetConnectionState();
 }

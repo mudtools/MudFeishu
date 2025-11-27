@@ -29,6 +29,11 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager
     private readonly SemaphoreSlim _startStopLock = new(1, 1);
     private bool _isRunning = false;
     private bool _disposed = false;
+    
+    // 令牌缓存
+    private string? _cachedAccessToken;
+    private DateTime _tokenExpiryTime = DateTime.MinValue;
+    private readonly object _tokenLock = new();
 
     /// <summary>
     /// 构造函数
@@ -60,6 +65,84 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager
         _webSocketClient.MessageReceived += OnClientMessageReceived;
         _webSocketClient.Error += OnClientError;
     }
+
+    /// <summary>
+    /// 获取有效的访问令牌（带缓存）
+    /// </summary>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>有效的访问令牌</returns>
+    private async Task<string> GetValidAccessTokenAsync(CancellationToken cancellationToken)
+    {
+        lock (_tokenLock)
+        {
+            if (_cachedAccessToken != null && DateTime.UtcNow < _tokenExpiryTime)
+            {
+                return _cachedAccessToken;
+            }
+        }
+
+        // 需要刷新令牌
+        var newToken = await _appTokenManager.GetTokenAsync(cancellationToken);
+        
+        if (string.IsNullOrEmpty(newToken))
+        {
+            throw new InvalidOperationException("获取的应用访问令牌为空");
+        }
+        
+        lock (_tokenLock)
+        {
+            _cachedAccessToken = newToken;
+            // 假设令牌有效期为2小时，提前5分钟刷新
+            _tokenExpiryTime = DateTime.UtcNow.AddHours(2).AddMinutes(-5);
+        }
+
+        return newToken;
+    }
+
+    /// <summary>
+    /// 使用指数退避策略重试操作
+    /// </summary>
+    /// <typeparam name="T">返回类型</typeparam>
+    /// <param name="operation">要重试的操作</param>
+    /// <param name="maxRetries">最大重试次数</param>
+    /// <param name="operationName">操作名称（用于日志）</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>操作结果</returns>
+    private async Task<T> RetryWithExponentialBackoffAsync<T>(
+        Func<Task<T>> operation,
+        int maxRetries,
+        string operationName,
+        CancellationToken cancellationToken)
+    {
+        for (int i = 0; i <= maxRetries; i++)
+        {
+            try
+            {
+                return await operation();
+            }
+            catch (Exception ex) when (i < maxRetries)
+            {
+                var delay = TimeSpan.FromMilliseconds(Math.Pow(2, i) * 1000); // 1s, 2s, 4s, 8s...
+                _logger.LogWarning(ex, "{OperationName}失败，将在{Delay}毫秒后重试 (尝试 {RetryCount}/{MaxRetries})",
+                    operationName, delay.TotalMilliseconds, i + 1, maxRetries + 1);
+                
+                await Task.Delay(delay, cancellationToken);
+            }
+        }
+
+        // 最后一次尝试，不捕获异常
+        _logger.LogError("{OperationName}失败，已达到最大重试次数 {MaxRetries}", operationName, maxRetries + 1);
+        
+        // 执行最后一次尝试
+        return await operation(); 
+    }
+
+    // 监控字段
+    private DateTime _connectedTime = DateTime.MinValue;
+    private int _reconnectCount = 0;
+    private Exception? _lastError;
+    private bool _isReconnecting = false;
+    private readonly object _stateLock = new();
 
     /// <summary>
     /// WebSocket客户端实例
@@ -121,11 +204,13 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager
 
             try
             {
-                var accessToken = await _appTokenManager.GetTokenAsync(combinedCts.Token);
+                var accessToken = await GetValidAccessTokenAsync(combinedCts.Token);
                 if (string.IsNullOrEmpty(accessToken))
                 {
-                    throw new InvalidOperationException("无法获取应用访问令牌");
+                    _logger.LogError("获取的应用访问令牌为空");
+                    throw new InvalidOperationException("无法获取有效的应用访问令牌");
                 }
+                _logger.LogDebug("成功获取应用访问令牌");
             }
             catch (OperationCanceledException) when (timeoutCts.Token.IsCancellationRequested)
             {
@@ -143,39 +228,20 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager
             // 使用重试策略获取WebSocket端点
             var maxRetries = _feishuOptions.RetryCount ?? 3;
             WsEndpointResult? wsEndpointData = null;
-            var retryCount = 0;
-            var success = false;
 
-            while (!success && retryCount <= maxRetries)
-            {
-                try
+            wsEndpointData = await RetryWithExponentialBackoffAsync(
+                async () =>
                 {
                     var wsEndpointResult = await _authenticationApi.GetWebSocketEndpointAsync(credentials, cancellationToken);
-                    if (wsEndpointResult?.Data != null)
+                    if (wsEndpointResult?.Data == null)
                     {
-                        wsEndpointData = wsEndpointResult.Data;
-                        success = true;
+                        throw new InvalidOperationException("获取的WebSocket端点信息为空");
                     }
-                    else
-                    {
-                        throw new InvalidOperationException("无法获取WebSocket端点信息");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    retryCount++;
-                    _logger.LogWarning(ex, "获取WebSocket端点失败，尝试次数: {RetryCount}/{MaxRetries}", retryCount, maxRetries);
-
-                    if (retryCount > maxRetries)
-                    {
-                        _logger.LogError(ex, "获取WebSocket端点失败，已达到最大重试次数");
-                        throw new InvalidOperationException($"获取WebSocket端点失败，已重试{maxRetries}次", ex);
-                    }
-
-                    // 等待一段时间再重试
-                    await Task.Delay(1000 * retryCount, cancellationToken);
-                }
-            }
+                    return wsEndpointResult.Data;
+                },
+                maxRetries,
+                "获取WebSocket端点",
+                cancellationToken);
 
             if (wsEndpointData == null)
             {
@@ -183,14 +249,26 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager
             }
 
             // 建立WebSocket连接并认证
-            var appAccessToken = await _appTokenManager.GetTokenAsync(combinedCts.Token);
+            var appAccessToken = await GetValidAccessTokenAsync(combinedCts.Token);
             await _webSocketClient.ConnectAsync(wsEndpointData, appAccessToken, cancellationToken);
 
             _isRunning = true;
+            
+            lock (_stateLock)
+            {
+                _connectedTime = DateTime.UtcNow;
+                _lastError = null;
+                _isReconnecting = false;
+            }
+            
             _logger.LogInformation("飞书WebSocket服务启动成功");
         }
         catch (Exception ex)
         {
+            lock (_stateLock)
+            {
+                _lastError = ex;
+            }
             _logger.LogError(ex, "启动飞书WebSocket服务失败");
             throw;
         }
@@ -221,10 +299,21 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager
             await _webSocketClient.DisconnectAsync(cancellationToken);
 
             _isRunning = false;
+            
+            lock (_stateLock)
+            {
+                _connectedTime = DateTime.MinValue;
+                _isReconnecting = false;
+            }
+            
             _logger.LogInformation("飞书WebSocket服务已停止");
         }
         catch (Exception ex)
         {
+            lock (_stateLock)
+            {
+                _lastError = ex;
+            }
             _logger.LogError(ex, "停止飞书WebSocket服务失败");
             throw;
         }
@@ -259,6 +348,11 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager
     {
         _logger.LogInformation("正在重新连接飞书WebSocket服务...");
 
+        lock (_stateLock)
+        {
+            _isReconnecting = true;
+        }
+
         try
         {
             // 先断开现有连接
@@ -270,12 +364,65 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager
             // 重新启动连接
             await StartAsync(cancellationToken);
 
+            lock (_stateLock)
+            {
+                _reconnectCount++;
+                _isReconnecting = false;
+            }
+
             _logger.LogInformation("飞书WebSocket服务重连成功");
         }
         catch (Exception ex)
         {
+            lock (_stateLock)
+            {
+                _lastError = ex;
+                _isReconnecting = false;
+            }
             _logger.LogError(ex, "飞书WebSocket服务重连失败");
             throw;
+        }
+    }
+
+    /// <summary>
+    /// 获取连接统计信息
+    /// </summary>
+    /// <returns>连接统计信息</returns>
+    public (TimeSpan Uptime, int ReconnectCount, Exception? LastError) GetConnectionStats()
+    {
+        lock (_stateLock)
+        {
+            var uptime = _connectedTime == DateTime.MinValue 
+                ? TimeSpan.Zero 
+                : DateTime.UtcNow - _connectedTime;
+                
+            return (uptime, _reconnectCount, _lastError);
+        }
+    }
+
+    /// <summary>
+    /// 获取连接状态详情
+    /// </summary>
+    /// <returns>连接状态详情</returns>
+    public WebSocketConnectionState GetConnectionState()
+    {
+        lock (_stateLock)
+        {
+            if (_isReconnecting)
+            {
+                return WebSocketConnectionState.Reconnecting with 
+                { 
+                    ReconnectCount = _reconnectCount,
+                    LastError = _lastError
+                };
+            }
+
+            if (IsConnected)
+            {
+                return WebSocketConnectionState.Connected(_connectedTime, _reconnectCount);
+            }
+
+            return WebSocketConnectionState.Disconnected(_lastError);
         }
     }
 
@@ -342,14 +489,40 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager
 
         try
         {
-            _startStopLock.Wait(TimeSpan.FromSeconds(5));
-            if (_isRunning)
+            // 同步等待锁，设置超时避免死锁
+            if (_startStopLock.Wait(TimeSpan.FromSeconds(5)))
             {
-                _ = StopAsync().ConfigureAwait(false);
+                try
+                {
+                    if (_isRunning)
+                    {
+                        // 同步等待停止操作完成，但不无限等待
+                        var stopTask = StopAsync();
+                        if (!stopTask.Wait(TimeSpan.FromSeconds(3)))
+                        {
+                            _logger.LogWarning("停止WebSocket服务超时，强制释放资源");
+                        }
+                    }
+                }
+                finally
+                {
+                    _startStopLock.Release();
+                }
+            }
+            else
+            {
+                _logger.LogWarning("获取启动停止锁超时，强制释放资源");
             }
 
-            _webSocketClient.Dispose();
-            _startStopLock.Dispose();
+            // 清理令牌缓存
+            lock (_tokenLock)
+            {
+                _cachedAccessToken = null;
+                _tokenExpiryTime = DateTime.MinValue;
+            }
+
+            _webSocketClient?.Dispose();
+            _startStopLock?.Dispose();
         }
         catch (Exception ex)
         {
@@ -359,5 +532,8 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager
         {
             _disposed = true;
         }
+        
+        // 调用 GC.SuppressFinalize 以防止终结器被调用
+        GC.SuppressFinalize(this);
     }
 }

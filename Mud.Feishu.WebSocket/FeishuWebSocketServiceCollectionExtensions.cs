@@ -68,7 +68,7 @@ public static class FeishuWebSocketServiceCollectionExtensions
     /// <returns>服务集合，支持链式调用</returns>
     /// <exception cref="InvalidOperationException">当没有注册任何事件处理器时抛出</exception>
     public static IServiceCollection AddFeishuWebSocketServiceWithSingleHandler(
-        this IServiceCollection services, 
+        this IServiceCollection services,
         Action<FeishuWebSocketOptions> configureOptions)
     {
         if (configureOptions == null)
@@ -91,7 +91,7 @@ public static class FeishuWebSocketServiceCollectionExtensions
     /// <param name="configureOptions">配置选项的委托</param>
     /// <returns>服务集合，支持链式调用</returns>
     public static IServiceCollection AddFeishuWebSocketServiceWithSingleHandler<THandler>(
-        this IServiceCollection services, 
+        this IServiceCollection services,
         Action<FeishuWebSocketOptions> configureOptions)
         where THandler : class, IFeishuEventHandler
     {
@@ -105,7 +105,7 @@ public static class FeishuWebSocketServiceCollectionExtensions
     /// <param name="configureOptions">配置选项的委托</param>
     /// <returns>服务集合，支持链式调用</returns>
     public static IServiceCollection AddFeishuWebSocketServiceWithSingleHandler<THandler, TDefaultHandler>(
-        this IServiceCollection services, 
+        this IServiceCollection services,
         Action<FeishuWebSocketOptions> configureOptions)
         where THandler : class, IFeishuEventHandler
         where TDefaultHandler : class, IFeishuEventHandler
@@ -140,7 +140,7 @@ public static class FeishuWebSocketServiceCollectionExtensions
     /// <returns>服务集合，支持链式调用</returns>
     /// <exception cref="InvalidOperationException">当没有注册任何事件处理器时抛出</exception>
     public static IServiceCollection AddFeishuWebSocketServiceWithMultiHandler(
-        this IServiceCollection services, 
+        this IServiceCollection services,
         Action<FeishuWebSocketOptions> configureOptions)
     {
         if (configureOptions == null)
@@ -163,7 +163,7 @@ public static class FeishuWebSocketServiceCollectionExtensions
     /// <param name="configureOptions">配置选项的委托</param>
     /// <returns>服务集合，支持链式调用</returns>
     public static IServiceCollection AddFeishuWebSocketServiceWithMultiHandler<THandler>(
-        this IServiceCollection services, 
+        this IServiceCollection services,
         Action<FeishuWebSocketOptions> configureOptions)
         where THandler : class, IFeishuEventHandler
     {
@@ -177,7 +177,7 @@ public static class FeishuWebSocketServiceCollectionExtensions
     /// <param name="configureOptions">配置选项的委托</param>
     /// <returns>服务集合，支持链式调用</returns>
     public static IServiceCollection AddFeishuWebSocketServiceWithMultiHandler<THandler, TDefaultHandler>(
-        this IServiceCollection services, 
+        this IServiceCollection services,
         Action<FeishuWebSocketOptions> configureOptions)
         where THandler : class, IFeishuEventHandler
         where TDefaultHandler : class, IFeishuEventHandler
@@ -216,7 +216,7 @@ public static class FeishuWebSocketServiceCollectionExtensions
         // 注册为单例
         services.AddSingleton<IFeishuEventHandler, THandler>();
         services.AddSingleton<THandler>();
-        
+
         return services;
     }
 
@@ -233,7 +233,7 @@ public static class FeishuWebSocketServiceCollectionExtensions
     {
         services.AddFeishuEventHandler<THandler1>();
         services.AddFeishuEventHandler<THandler2>();
-        
+
         return services;
     }
 
@@ -253,7 +253,7 @@ public static class FeishuWebSocketServiceCollectionExtensions
         services.AddFeishuEventHandler<THandler1>();
         services.AddFeishuEventHandler<THandler2>();
         services.AddFeishuEventHandler<THandler3>();
-        
+
         return services;
     }
 
@@ -264,13 +264,13 @@ public static class FeishuWebSocketServiceCollectionExtensions
     /// <param name="handlerImplementation">处理器实例工厂</param>
     /// <returns>服务集合，支持链式调用</returns>
     public static IServiceCollection AddFeishuEventHandler<THandler>(
-        this IServiceCollection services, 
+        this IServiceCollection services,
         Func<IServiceProvider, THandler> handlerImplementation)
         where THandler : class, IFeishuEventHandler
     {
         services.AddSingleton<IFeishuEventHandler>(handlerImplementation);
         services.AddSingleton<THandler>(handlerImplementation);
-        
+
         return services;
     }
 
@@ -281,7 +281,7 @@ public static class FeishuWebSocketServiceCollectionExtensions
     /// <param name="handlerInstance">处理器实例</param>
     /// <returns>服务集合，支持链式调用</returns>
     public static IServiceCollection AddFeishuEventHandler<THandler>(
-        this IServiceCollection services, 
+        this IServiceCollection services,
         THandler handlerInstance)
         where THandler : class, IFeishuEventHandler
     {
@@ -290,7 +290,7 @@ public static class FeishuWebSocketServiceCollectionExtensions
 
         services.AddSingleton<IFeishuEventHandler>(_ => handlerInstance);
         services.AddSingleton<THandler>(_ => handlerInstance);
-        
+
         return services;
     }
 
@@ -302,7 +302,7 @@ public static class FeishuWebSocketServiceCollectionExtensions
     /// <param name="configurationSection">配置节名称</param>
     private static IServiceCollection ConfigureFeishuWebSocketOptions(this IServiceCollection services, IConfiguration configuration, string configurationSection)
     {
-        services.Configure<FeishuWebSocketOptions>(configuration.GetSection(configurationSection));
+        services.Configure<FeishuWebSocketOptions>(options => configuration.GetSection(configurationSection));
         return services;
     }
 

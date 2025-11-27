@@ -1,13 +1,27 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
+	  <TargetFrameworks>net6.0;net7.0;net8.0;net9.0;net10.0</TargetFrameworks>
+	  <ImplicitUsings>enable</ImplicitUsings>
+	  <Nullable>enable</Nullable>
+	  <AssemblyName>Mud.Feishu.WebSocket</AssemblyName>
+	  <GenerateDocumentationFile>True</GenerateDocumentationFile>
+	  <RepositoryUrl>https://gitee.com/mudtools/MudFeishu</RepositoryUrl>
+	  <RepositoryType>git</RepositoryType>
+	  <PackageIcon>Icon.png</PackageIcon>
+	  <PackageReadmeFile>README.md</PackageReadmeFile>
+	  <Description>MudFeishu 是一个用于简化.NET与飞书（Feishu）API 集成的.NET 库。提供一组类型安全的客户端和服务，使开发人员能够轻松地在 .NET 应用程序中调用飞书 API。</Description>
+	  <PackageTags>飞书;飞书.net sdk;Feishu;Feishu.net;Feishu SDK;ASP.NET;ASP.NET Core;.NET;.NET Core;</PackageTags>
   </PropertyGroup>
 
-  <ItemGroup>
+  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0' or '$(TargetFramework)' == 'net9.0' or '$(TargetFramework)' == 'net8.0'">
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.0" />
+	<PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.0" />
+  </ItemGroup>
+	
+  <ItemGroup Condition="'$(TargetFramework)' == 'net7.0' or '$(TargetFramework)' == 'net6.0'">
+     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="9.0.3" />
+	 <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="9.0.3" />
   </ItemGroup>
 
   <ItemGroup>

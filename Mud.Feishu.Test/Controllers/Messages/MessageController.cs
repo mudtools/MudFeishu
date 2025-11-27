@@ -539,4 +539,283 @@ public class MessageController : ControllerBase
             return BadRequest(new { success = false, error = ex.Message });
         }
     }
+
+    #region 文件管理
+
+    /// <summary>
+    /// 下载文件（小文件）
+    /// 通过已上传文件的Key下载文件，适用于下载1MB以内的小文件
+    /// </summary>
+    /// <param name="fileKey">文件的Key</param>
+    /// <returns>文件二进制数据</returns>
+    [HttpGet("files/{fileKey}")]
+    public async Task<IActionResult> DownloadFileAsync([FromRoute] string fileKey)
+    {
+        try
+        {
+            var fileData = await _messageApi.DownFileAsync(fileKey);
+
+            if (fileData != null)
+            {
+                return File(fileData, "application/octet-stream");
+            }
+            else
+            {
+                return NotFound(new { success = false, error = "文件不存在" });
+            }
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { success = false, error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// 下载文件（大文件）
+    /// 通过已上传文件的Key下载文件，适用于下载大于1MB的大文件
+    /// </summary>
+    /// <param name="fileKey">文件的Key</param>
+    /// <returns>下载结果</returns>
+    [HttpPost("files/{fileKey}/download")]
+    public async Task<IActionResult> DownloadLargeFileAsync([FromRoute] string fileKey)
+    {
+        try
+        {
+            string localFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, Guid.NewGuid().ToString() + ".tmp");
+
+            await _messageApi.DownLargeFileAsync(fileKey, localFilePath);
+
+            return Ok(new
+            {
+                success = true,
+                filePath = localFilePath,
+                message = "大文件下载成功"
+            });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { success = false, error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// 下载图片（小文件）
+    /// 通过已上传图片的Key下载图片，适用于下载1MB以内的小文件
+    /// </summary>
+    /// <param name="imageKey">图片的Key</param>
+    /// <returns>图片二进制数据</returns>
+    [HttpGet("images/{imageKey}")]
+    public async Task<IActionResult> DownloadImageAsync([FromRoute] string imageKey)
+    {
+        try
+        {
+            var imageData = await _messageApi.DownImageAsync(imageKey);
+
+            if (imageData != null)
+            {
+                return File(imageData, "image/jpeg");
+            }
+            else
+            {
+                return NotFound(new { success = false, error = "图片不存在" });
+            }
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { success = false, error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// 下载图片（大文件）
+    /// 通过已上传图片的Key下载图片，适用于下载大于1MB的大文件
+    /// </summary>
+    /// <param name="imageKey">图片的Key</param>
+    /// <returns>下载结果</returns>
+    [HttpPost("images/{imageKey}/download")]
+    public async Task<IActionResult> DownloadLargeImageAsync([FromRoute] string imageKey)
+    {
+        try
+        {
+            string localFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, Guid.NewGuid().ToString() + ".jpg");
+
+            await _messageApi.DownLargeImageAsync(imageKey, localFilePath);
+
+            return Ok(new
+            {
+                success = true,
+                filePath = localFilePath,
+                message = "大图片下载成功"
+            });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { success = false, error = ex.Message });
+        }
+    }
+
+    #endregion
+
+    #region 消息加急
+
+    /// <summary>
+    /// 应用内消息加急
+    /// 把指定消息加急给目标用户，加急仅在飞书客户端内通知
+    /// </summary>
+    /// <param name="messageId">待加急的消息ID</param>
+    /// <param name="urgentRequest">消息加急请求体</param>
+    /// <param name="receiveIdType">接收者ID类型，默认为open_id</param>
+    /// <returns>加急结果</returns>
+    [HttpPatch("{messageId}/urgent/app")]
+    public async Task<IActionResult> MessageUrgentAppAsync(
+        [FromRoute] string messageId,
+        [FromBody] MessageUrgentRequest urgentRequest,
+        [FromQuery] string receiveIdType = "open_id")
+    {
+        try
+        {
+            var result = await _messageApi.MessageUrgentAppAsync(
+                messageId,
+                urgentRequest,
+                receiveIdType);
+
+            if (result.Code == 0)
+            {
+                return Ok(new
+                {
+                    success = true,
+                    result = result.Data,
+                    message = "应用内消息加急成功"
+                });
+            }
+            else
+            {
+                return BadRequest(new { success = false, error = result.Msg, code = result.Code });
+            }
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { success = false, error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// 短信消息加急
+    /// 把指定消息通过短信加急给目标用户
+    /// </summary>
+    /// <param name="messageId">待加急的消息ID</param>
+    /// <param name="urgentRequest">消息加急请求体</param>
+    /// <param name="receiveIdType">接收者ID类型，默认为open_id</param>
+    /// <returns>加急结果</returns>
+    [HttpPatch("{messageId}/urgent/sms")]
+    public async Task<IActionResult> MessageUrgentSMSAsync(
+        [FromRoute] string messageId,
+        [FromBody] MessageUrgentRequest urgentRequest,
+        [FromQuery] string receiveIdType = "open_id")
+    {
+        try
+        {
+            var result = await _messageApi.MessageUrgentSMSAsync(
+                messageId,
+                urgentRequest,
+                receiveIdType);
+
+            if (result.Code == 0)
+            {
+                return Ok(new
+                {
+                    success = true,
+                    result = result.Data,
+                    message = "短信消息加急成功"
+                });
+            }
+            else
+            {
+                return BadRequest(new { success = false, error = result.Msg, code = result.Code });
+            }
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { success = false, error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// 电话消息加急
+    /// 把指定消息通过电话加急给目标用户
+    /// </summary>
+    /// <param name="messageId">待加急的消息ID</param>
+    /// <param name="urgentRequest">消息加急请求体</param>
+    /// <param name="receiveIdType">接收者ID类型，默认为open_id</param>
+    /// <returns>加急结果</returns>
+    [HttpPatch("{messageId}/urgent/phone")]
+    public async Task<IActionResult> MessageUrgentPhoneAsync(
+        [FromRoute] string messageId,
+        [FromBody] MessageUrgentRequest urgentRequest,
+        [FromQuery] string receiveIdType = "open_id")
+    {
+        try
+        {
+            var result = await _messageApi.MessageUrgentPhoneAsync(
+                messageId,
+                urgentRequest,
+                receiveIdType);
+
+            if (result.Code == 0)
+            {
+                return Ok(new
+                {
+                    success = true,
+                    result = result.Data,
+                    message = "电话消息加急成功"
+                });
+            }
+            else
+            {
+                return BadRequest(new { success = false, error = result.Msg, code = result.Code });
+            }
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { success = false, error = ex.Message });
+        }
+    }
+
+    #endregion
+
+    #region URL 预览
+
+    /// <summary>
+    /// 更新URL预览
+    /// 批量更新URL的预览信息
+    /// </summary>
+    /// <param name="urlPreviewRequest">更新URL预览请求体</param>
+    /// <returns>更新结果</returns>
+    [HttpPost("url_previews/batch_update")]
+    public async Task<IActionResult> UpdateUrlPreviewAsync([FromBody] UrlPreviewRequest urlPreviewRequest)
+    {
+        try
+        {
+            var result = await _messageApi.UpdateUrlPreviewAsync(urlPreviewRequest);
+
+            if (result != null && result.Code == 0)
+            {
+                return Ok(new
+                {
+                    success = true,
+                    message = "URL预览更新成功"
+                });
+            }
+            else
+            {
+                return BadRequest(new { success = false, error = result?.Msg, code = result?.Code });
+            }
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { success = false, error = ex.Message });
+        }
+    }
+
+    #endregion
 }

@@ -99,8 +99,59 @@
 | GetMessageContent | `/api/message/{messageId}/content` | GET | 获取消息内容 |
 | GetMessageFile | `/api/message/{messageId}/resources/{fileKey}` | GET | 获取消息资源文件（小文件） |
 | DownloadMessageLargeFile | `/api/message/{messageId}/resources/{fileKey}/download` | POST | 下载消息资源文件（大文件） |
+| DownloadFile | `/api/message/files/{fileKey}` | GET | 下载文件（小文件） |
+| DownloadLargeFile | `/api/message/files/{fileKey}/download` | POST | 下载文件（大文件） |
+| DownloadImage | `/api/message/images/{imageKey}` | GET | 下载图片（小文件） |
+| DownloadLargeImage | `/api/message/images/{imageKey}/download` | POST | 下载图片（大文件） |
+| MessageUrgentApp | `/api/message/{messageId}/urgent/app` | PATCH | 应用内消息加急 |
+| MessageUrgentSMS | `/api/message/{messageId}/urgent/sms` | PATCH | 短信消息加急 |
+| MessageUrgentPhone | `/api/message/{messageId}/urgent/phone` | PATCH | 电话消息加急 |
+| UpdateUrlPreview | `/api/message/url_previews/batch_update` | POST | 更新URL预览 |
 
-### 8. DepartmentV1Controller (飞书部门管理V1版本)
+### 8. BatchMessageController (飞书批量消息管理)
+覆盖了 `IFeishuV1BatchMessageApi` 的所有接口：
+
+| 方法 | 路径 | HTTP方法 | 功能 |
+|------|------|----------|------|
+| BatchSendTextMessage | `/api/batchmessage/send/text` | POST | 批量发送文本消息 |
+| BatchSendRichTextMessage | `/api/batchmessage/send/richtext` | POST | 批量发送富文本消息 |
+| BatchSendImageMessage | `/api/batchmessage/send/image` | POST | 批量发送图片消息 |
+| BatchSendGroupShareMessage | `/api/batchmessage/send/group_share` | POST | 批量发送群分享消息 |
+| RevokeBatchMessage | `/api/batchmessage/{batchMessageId}` | DELETE | 撤回批量消息 |
+| GetBatchMessageReadStatus | `/api/batchmessage/{batchMessageId}/read_status` | GET | 查询批量消息已读状态 |
+| GetBatchMessageProgress | `/api/batchmessage/{batchMessageId}/progress` | GET | 查询批量消息进度 |
+
+### 9. ChatGroupController (飞书群组管理)
+覆盖了 `IFeishuV1ChatGroupApi` 的所有接口：
+
+| 方法 | 路径 | HTTP方法 | 功能 |
+|------|------|----------|------|
+| CreateChatGroup | `/api/chatgroup` | POST | 创建群聊 |
+| UpdateChatGroup | `/api/chatgroup/{chatId}` | PUT | 更新群信息 |
+| DeleteChatGroup | `/api/chatgroup/{chatId}` | DELETE | 解散群组 |
+| UpdateChatModeration | `/api/chatgroup/{chatId}/moderation` | PUT | 更新群发言权限 |
+| GetChatGroupInfo | `/api/chatgroup/{chatId}` | GET | 获取群信息 |
+| PutChatGroupTopNotice | `/api/chatgroup/{chatId}/top_notice` | POST | 设置群置顶 |
+| DeleteChatGroupTopNotice | `/api/chatgroup/{chatId}/top_notice` | DELETE | 取消群置顶 |
+| GetChatGroupPageList | `/api/chatgroup` | GET | 获取群列表 |
+| GetChatGroupPageListByKeyword | `/api/chatgroup/search` | GET | 搜索群列表 |
+| GetChatGroupModeratorPageList | `/api/chatgroup/{chatId}/moderation` | GET | 获取群发言权限信息 |
+| GetChatGroupShareLink | `/api/chatgroup/{chatId}/link` | POST | 获取群分享链接 |
+
+### 10. ChatGroupMemberController (飞书群成员管理)
+覆盖了 `IFeishuV1ChatGroupMemberApi` 的所有接口：
+
+| 方法 | 路径 | HTTP方法 | 功能 |
+|------|------|----------|------|
+| AddManagers | `/api/chatgroupmember/{chatId}/managers/add` | POST | 添加群管理员 |
+| DeleteManagers | `/api/chatgroupmember/{chatId}/managers/delete` | POST | 删除群管理员 |
+| AddMember | `/api/chatgroupmember/{chatId}/members` | POST | 添加群成员 |
+| MeJoinChatGroup | `/api/chatgroupmember/{chatId}/members/me_join` | PATCH | 当前用户加入群聊 |
+| RemoveMember | `/api/chatgroupmember/{chatId}/members` | DELETE | 移除群成员 |
+| GetMemberPageList | `/api/chatgroupmember/{chatId}/members` | GET | 获取群成员列表 |
+| GetMemberInChat | `/api/chatgroupmember/{chatId}/members/is_in_chat` | GET | 检查用户是否在群中 |
+
+### 11. DepartmentV1Controller (飞书部门管理V1版本)
 覆盖了 `IFeishuV1DepartmentsApi` 的所有接口：
 
 | 方法 | 路径 | HTTP方法 | 功能 |

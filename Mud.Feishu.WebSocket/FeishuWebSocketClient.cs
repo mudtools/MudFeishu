@@ -9,6 +9,7 @@
 using Microsoft.Extensions.Logging;
 using Mud.Feishu.DataModels.WsEndpoint;
 using Mud.Feishu.WebSocket.DataModels;
+using Mud.Feishu.WebSocket.Handlers;
 using Mud.Feishu.WebSocket.SocketEventArgs;
 using System.Collections.Concurrent;
 using System.Net.WebSockets;
@@ -24,6 +25,7 @@ public class FeishuWebSocketClient : IFeishuWebSocketClient
 {
     private readonly ILogger<FeishuWebSocketClient> _logger;
     private readonly FeishuWebSocketOptions _options;
+    private readonly FeishuEventHandlerFactory _eventHandlerFactory;
     private ClientWebSocket? _webSocket;
     private CancellationTokenSource? _cancellationTokenSource;
     private readonly SemaphoreSlim _connectionLock = new(1, 1);
@@ -37,10 +39,15 @@ public class FeishuWebSocketClient : IFeishuWebSocketClient
     /// 构造函数
     /// </summary>
     /// <param name="logger">日志记录器</param>
+    /// <param name="eventHandlerFactory">事件处理器工厂</param>
     /// <param name="options">WebSocket配置选项</param>
-    public FeishuWebSocketClient(ILogger<FeishuWebSocketClient> logger, FeishuWebSocketOptions? options = null)
+    public FeishuWebSocketClient(
+        ILogger<FeishuWebSocketClient> logger, 
+        FeishuEventHandlerFactory eventHandlerFactory,
+        FeishuWebSocketOptions? options = null)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _eventHandlerFactory = eventHandlerFactory ?? throw new ArgumentNullException(nameof(eventHandlerFactory));
         _options = options ?? new FeishuWebSocketOptions();
     }
 
@@ -363,7 +370,7 @@ public class FeishuWebSocketClient : IFeishuWebSocketClient
                                 _logger.LogDebug("接收到消息: {Message}", message);
 
                             // 处理消息类型
-                            await ProcessMessageByTypeAsync(message);
+                            await ProcessMessageByTypeAsync(message, cancellationToken);
 
                             // 触发消息接收事件
                             MessageReceived?.Invoke(this, new WebSocketMessageEventArgs
@@ -501,8 +508,9 @@ public class FeishuWebSocketClient : IFeishuWebSocketClient
     /// 根据消息类型处理消息
     /// </summary>
     /// <param name="message">接收到的消息</param>
+    /// <param name="cancellationToken">取消令牌</param>
     /// <returns>处理任务</returns>
-    private async Task ProcessMessageByTypeAsync(string message)
+    private async Task ProcessMessageByTypeAsync(string message, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -528,7 +536,7 @@ public class FeishuWebSocketClient : IFeishuWebSocketClient
                     break;
 
                 case "event":
-                    await HandleEventMessageAsync(message);
+                    await HandleEventMessageAsync(message, cancellationToken);
                     break;
 
                 case "auth":
@@ -631,8 +639,9 @@ public class FeishuWebSocketClient : IFeishuWebSocketClient
     /// 处理事件消息
     /// </summary>
     /// <param name="message">事件消息</param>
+    /// <param name="cancellationToken">取消令牌</param>
     /// <returns>处理任务</returns>
-    private async Task HandleEventMessageAsync(string message)
+    private async Task HandleEventMessageAsync(string message, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -649,34 +658,12 @@ public class FeishuWebSocketClient : IFeishuWebSocketClient
                 RawEvent = message
             });
 
-            // 这里可以添加事件处理的逻辑
-            // 例如：根据不同的事件类型进行不同的处理
-            if (eventMessage?.Data?.EventType == FeishuEventTypes.ReceiveMessage)
+            // 使用策略模式处理不同的事件类型
+            if (eventMessage?.Data != null)
             {
-                // 处理接收到的消息
-                await HandleReceiveMessageEventAsync(eventMessage.Data);
+                var handler = _eventHandlerFactory.GetHandler(eventMessage.Data.EventType);
+                await handler.HandleAsync(eventMessage.Data, cancellationToken);
             }
-            else if (eventMessage?.Data?.EventType == FeishuEventTypes.UserCreated)
-            {
-                // 处理用户创建事件
-                await HandleUserCreatedEventAsync(eventMessage.Data);
-            }
-            else if (eventMessage?.Data?.EventType == FeishuEventTypes.MessageRead)
-            {
-                // 处理消息已读事件
-                await HandleMessageReadEventAsync(eventMessage.Data);
-            }
-            else if (eventMessage?.Data?.EventType == FeishuEventTypes.UserAddedToGroup)
-            {
-                // 处理用户加入群聊事件
-                await HandleUserAddedToGroupEventAsync(eventMessage.Data);
-            }
-            else if (eventMessage?.Data?.EventType == FeishuEventTypes.UserRemovedFromGroup)
-            {
-                // 处理用户离开群聊事件
-                await HandleUserRemovedFromGroupEventAsync(eventMessage.Data);
-            }
-            // 可以继续添加其他事件类型的处理...
         }
         catch (Exception ex)
         {
@@ -731,76 +718,7 @@ public class FeishuWebSocketClient : IFeishuWebSocketClient
         }
     }
 
-    /// <summary>
-    /// 处理接收消息事件
-    /// </summary>
-    /// <param name="eventData">事件数据</param>
-    /// <returns>处理任务</returns>
-    private async Task HandleReceiveMessageEventAsync(EventData eventData)
-    {
-        if (_options.EnableLogging)
-            _logger.LogInformation("处理接收消息事件: {Event}", JsonSerializer.Serialize(eventData.Event));
 
-        // 这里可以添加具体的消息处理逻辑
-        // 例如：解析消息内容、存储到数据库、发送通知等
-        await Task.CompletedTask;
-    }
-
-    /// <summary>
-    /// 处理用户创建事件
-    /// </summary>
-    /// <param name="eventData">事件数据</param>
-    /// <returns>处理任务</returns>
-    private async Task HandleUserCreatedEventAsync(EventData eventData)
-    {
-        if (_options.EnableLogging)
-            _logger.LogInformation("处理用户创建事件: {Event}", JsonSerializer.Serialize(eventData.Event));
-
-        // 这里可以添加具体的用户创建处理逻辑
-        await Task.CompletedTask;
-    }
-
-    /// <summary>
-    /// 处理消息已读事件
-    /// </summary>
-    /// <param name="eventData">事件数据</param>
-    /// <returns>处理任务</returns>
-    private async Task HandleMessageReadEventAsync(EventData eventData)
-    {
-        if (_options.EnableLogging)
-            _logger.LogInformation("处理消息已读事件: {Event}", JsonSerializer.Serialize(eventData.Event));
-
-        // 这里可以添加具体的消息已读处理逻辑
-        await Task.CompletedTask;
-    }
-
-    /// <summary>
-    /// 处理用户加入群聊事件
-    /// </summary>
-    /// <param name="eventData">事件数据</param>
-    /// <returns>处理任务</returns>
-    private async Task HandleUserAddedToGroupEventAsync(EventData eventData)
-    {
-        if (_options.EnableLogging)
-            _logger.LogInformation("处理用户加入群聊事件: {Event}", JsonSerializer.Serialize(eventData.Event));
-
-        // 这里可以添加具体的用户加入群聊处理逻辑
-        await Task.CompletedTask;
-    }
-
-    /// <summary>
-    /// 处理用户离开群聊事件
-    /// </summary>
-    /// <param name="eventData">事件数据</param>
-    /// <returns>处理任务</returns>
-    private async Task HandleUserRemovedFromGroupEventAsync(EventData eventData)
-    {
-        if (_options.EnableLogging)
-            _logger.LogInformation("处理用户离开群聊事件: {Event}", JsonSerializer.Serialize(eventData.Event));
-
-        // 这里可以添加具体的用户离开群聊处理逻辑
-        await Task.CompletedTask;
-    }
 
     /// <summary>
     /// 进行WebSocket认证

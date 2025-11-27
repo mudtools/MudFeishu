@@ -10,6 +10,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Mud.Feishu.WebSocket.Handlers;
 
 namespace Mud.Feishu.WebSocket;
 
@@ -78,12 +79,30 @@ public static class FeishuWebSocketServiceCollectionExtensions
     /// <returns>服务集合，支持链式调用</returns>
     private static IServiceCollection AddFeishuWebSocketServiceCore(this IServiceCollection services)
     {
+        // 注册事件处理器
+        services.AddSingleton<ReceiveMessageEventHandler>();
+        services.AddSingleton<UserCreatedEventHandler>();
+        services.AddSingleton<MessageReadEventHandler>();
+        services.AddSingleton<UserAddedToGroupEventHandler>();
+        services.AddSingleton<UserRemovedFromGroupEventHandler>();
+        services.AddSingleton<DefaultFeishuEventHandlerImpl>();
+
+        // 注册事件处理器工厂
+        services.AddSingleton<FeishuEventHandlerFactory>(serviceProvider =>
+        {
+            var logger = serviceProvider.GetRequiredService<ILogger<FeishuEventHandlerFactory>>();
+            var handlers = serviceProvider.GetRequiredService<IEnumerable<IFeishuEventHandler>>();
+            var defaultHandler = serviceProvider.GetRequiredService<DefaultFeishuEventHandlerImpl>();
+            return new FeishuEventHandlerFactory(logger, handlers, defaultHandler);
+        });
+
         // 注册WebSocket客户端，确保FeishuWebSocketOptions正确传递
         services.AddSingleton<IFeishuWebSocketClient>(serviceProvider =>
         {
             var logger = serviceProvider.GetRequiredService<ILogger<FeishuWebSocketClient>>();
+            var eventHandlerFactory = serviceProvider.GetRequiredService<FeishuEventHandlerFactory>();
             var options = serviceProvider.GetRequiredService<IOptions<FeishuWebSocketOptions>>().Value;
-            return new FeishuWebSocketClient(logger, options);
+            return new FeishuWebSocketClient(logger, eventHandlerFactory, options);
         });
 
         // 注册WebSocket管理器

@@ -26,14 +26,14 @@
 
 ```csharp
 // 在 Program.cs 或 Startup.cs 中
-builder.Services.AddFeishuApiAndWebSocketService(builder.Configuration);
+builder.Services.AddFeishuWebSocketService(builder.Configuration);
 ```
 
 #### 使用代码配置
 
 ```csharp
 // 在 Program.cs 或 Startup.cs 中
-builder.Services.AddFeishuApiAndWebSocketService(
+builder.Services.AddFeishuWebSocketService(
     feishuOptions =>
     {
         feishuOptions.AppId = "your_app_id";
@@ -237,6 +237,40 @@ public class DistributedMessageHandler
 }
 ```
 
+## 性能优化建议
+
+### 1. 消息处理优化
+
+- **异步处理**: 确保所有消息处理逻辑都是异步的，避免阻塞WebSocket接收线程
+- **并行处理**: 利用消息处理器并行执行特性，对不同类型的消息使用不同的处理器
+- **批量处理**: 对于大量相似消息，考虑使用批量处理机制
+- **错误隔离**: 确保单个消息处理器的异常不会影响其他处理器
+
+```csharp
+// 示例：注册多个专用消息处理器
+webSocketManager.Client.RegisterMessageProcessor(HandleMessageEventAsync);
+webSocketManager.Client.RegisterMessageProcessor(HandleUserEventAsync);
+webSocketManager.Client.RegisterMessageProcessor(HandleApprovalEventAsync);
+```
+
+### 2. 连接管理优化
+
+- **心跳间隔**: 根据网络环境调整心跳间隔，通常建议15-30秒
+- **重连策略**: 合理设置重连延迟和最大重连次数，避免频繁重连
+- **连接池**: 在高并发场景下，考虑使用连接池管理多个WebSocket连接
+
+### 3. 内存管理
+
+- **消息队列**: 根据业务需求调整消息队列容量，避免内存溢出
+- **资源释放**: 确保在应用关闭时正确释放所有WebSocket资源
+- **定期清理**: 定期清理过期的消息和缓存数据
+
+### 4. 监控和日志
+
+- **性能监控**: 实现关键性能指标的监控，如消息处理延迟、队列大小等
+- **结构化日志**: 使用结构化日志记录关键事件和错误信息
+- **告警机制**: 设置关键错误的告警机制，及时发现和解决问题
+
 ## 常见问题
 
 ### 1. 连接频繁断开
@@ -312,10 +346,35 @@ if (pongMessage?.Timestamp > 0)
 // 事件类型常量
 public static class FeishuEventTypes
 {
+    // 消息相关事件
     public const string ReceiveMessage = "im.message.receive_v1";
-    public const string UserCreated = "contact.user.created_v3";
     public const string MessageRead = "im.message.message_read_v1";
-    // ... 更多事件类型
+
+    // 群聊相关事件
+    public const string UserAddedToGroup = "im.chat.member.user_added_v1";
+    public const string UserRemovedFromGroup = "im.chat.member.user_deleted_v1";
+    public const string GroupUpdated = "im.chat.updated_v1";
+
+    // 用户相关事件
+    public const string UserCreated = "contact.user.created_v3";
+    public const string UserUpdated = "contact.user.updated_v3";
+    public const string UserDeleted = "contact.user.deleted_v3";
+
+    // 部门相关事件
+    public const string DepartmentCreated = "contact.department.created_v3";
+    public const string DepartmentUpdated = "contact.department.updated_v3";
+    public const string DepartmentDeleted = "contact.department.deleted_v3";
+
+    // 审批相关事件
+    public const string ApprovalApproved = "approval.approval.approved_v1";
+    public const string ApprovalRejected = "approval.approval.rejected_v1";
+
+    // 日程相关事件
+    public const string CalendarEvent = "calendar.event.updated_v4";
+
+    // 会议相关事件
+    public const string MeetingStart = "meeting.meeting.started_v1";
+    public const string MeetingEnd = "meeting.meeting.ended_v1";
 }
 ```
 
@@ -370,6 +429,32 @@ private async Task ProcessMessageByTypeAsync(string message)
 - **重连计数**: 支持配置最大重连次数和重连延迟
 - **状态监控**: 定期检查连接状态，自动触发重连
 
+### 后台服务自动管理
+
+FeishuWebSocketHostedService 是一个后台服务，用于自动启动和管理WebSocket连接：
+
+- **自动启动**: 应用启动时自动建立WebSocket连接
+- **生命周期管理**: 随应用启动而启动，随应用停止而停止
+- **状态监控**: 定期检查连接状态，自动处理断线重连
+- **事件通知**: 提供连接状态变化的事件通知
+
+```csharp
+// 后台服务会自动注册，无需手动启动
+// 在应用启动时，后台服务会自动执行以下操作：
+// 1. 获取应用访问令牌
+// 2. 获取WebSocket端点
+// 3. 建立WebSocket连接并进行认证
+// 4. 启动心跳检测
+// 5. 开始监听消息
+```
+
+### 连接状态管理
+
+- **连接状态跟踪**: 实时跟踪WebSocket连接状态
+- **认证状态管理**: 管理WebSocket认证状态和令牌刷新
+- **错误恢复**: 自动处理连接错误并尝试恢复
+- **资源释放**: 应用关闭时正确释放WebSocket资源
+
 ### 消息缓冲区处理优化
 
 - **分片消息处理**: 正确处理 WebSocket 分片消息，避免消息截断
@@ -414,6 +499,43 @@ bool IsAuthenticated { get; }
 
 // 认证成功事件
 event EventHandler<EventArgs>? Authenticated;
+
+// WebSocket状态
+WebSocketState State { get; }
+
+// 事件
+event EventHandler<EventArgs>? Connected;
+event EventHandler<WebSocketCloseEventArgs>? Disconnected;
+event EventHandler<WebSocketMessageEventArgs>? MessageReceived;
+event EventHandler<WebSocketErrorEventArgs>? Error;
+event EventHandler<WebSocketPingEventArgs>? PingReceived;
+event EventHandler<WebSocketPongEventArgs>? PongReceived;
+event EventHandler<WebSocketFeishuEventArgs>? FeishuEventReceived;
+
+// 方法
+Task ConnectAsync(WsEndpointResult endpoint, CancellationToken cancellationToken = default);
+Task DisconnectAsync(CancellationToken cancellationToken = default);
+Task SendMessageAsync(string message, CancellationToken cancellationToken = default);
+```
+
+### IFeishuWebSocketManager 接口说明
+
+```csharp
+// 属性
+IFeishuWebSocketClient Client { get; }
+bool IsConnected { get; }
+
+// 事件
+event EventHandler<EventArgs>? Connected;
+event EventHandler<WebSocketCloseEventArgs>? Disconnected;
+event EventHandler<WebSocketMessageEventArgs>? MessageReceived;
+event EventHandler<WebSocketErrorEventArgs>? Error;
+
+// 方法
+Task StartAsync(CancellationToken cancellationToken = default);
+Task StopAsync(CancellationToken cancellationToken = default);
+Task SendMessageAsync(string message, CancellationToken cancellationToken = default);
+Task ReconnectAsync(CancellationToken cancellationToken = default);
 ```
 
 ### 增强的事件参数
@@ -425,7 +547,8 @@ public class WebSocketCloseEventArgs : EventArgs
     public DateTimeOffset Timestamp { get; set; } = DateTimeOffset.UtcNow;
     public bool IsServerInitiated { get; set; }
     public TimeSpan? ConnectionDuration { get; set; }
-    // 原有属性...
+    public WebSocketCloseStatus? CloseStatus { get; set; }
+    public string? CloseStatusDescription { get; set; }
 }
 ```
 
@@ -436,7 +559,9 @@ public class WebSocketMessageEventArgs : EventArgs
     public DateTimeOffset Timestamp { get; set; } = DateTimeOffset.UtcNow;
     public int MessageSize { get; set; }
     public int QueueCount { get; set; }
-    // 原有属性...
+    public string Message { get; set; } = string.Empty;
+    public WebSocketMessageType MessageType { get; set; }
+    public bool EndOfMessage { get; set; }
 }
 ```
 
@@ -449,7 +574,41 @@ public class WebSocketErrorEventArgs : EventArgs
     public WebSocketState ConnectionState { get; set; }
     public bool IsNetworkError { get; set; }
     public bool IsAuthError { get; set; }
-    // 原有属性...
+    public string ErrorMessage { get; set; } = string.Empty;
+    public Exception? Exception { get; set; }
+}
+```
+
+#### WebSocketPingEventArgs
+```csharp
+public class WebSocketPingEventArgs : EventArgs
+{
+    public DateTimeOffset Timestamp { get; set; } = DateTimeOffset.UtcNow;
+    public PingMessage? PingMessage { get; set; }
+}
+```
+
+#### WebSocketPongEventArgs
+```csharp
+public class WebSocketPongEventArgs : EventArgs
+{
+    public DateTimeOffset Timestamp { get; set; } = DateTimeOffset.UtcNow;
+    public PongMessage? PongMessage { get; set; }
+    public long? LatencyMs { get; set; }
+}
+```
+
+#### WebSocketFeishuEventArgs
+```csharp
+public class WebSocketFeishuEventArgs : EventArgs
+{
+    public DateTimeOffset Timestamp { get; set; } = DateTimeOffset.UtcNow;
+    public EventMessage? EventMessage { get; set; }
+    public EventData? EventData => EventMessage?.Data;
+    public string? EventType => EventData?.EventType;
+    public string? AppId => EventData?.AppId;
+    public string? TenantKey => EventData?.TenantKey;
+    public string? RawEvent { get; set; }
 }
 ```
 
@@ -459,7 +618,7 @@ public class WebSocketErrorEventArgs : EventArgs
 
 ```csharp
 // 注册服务
-builder.Services.AddFeishuApiAndWebSocketService(builder.Configuration);
+builder.Services.AddFeishuWebSocketService(builder.Configuration);
 
 // 在服务中使用
 public class MyWebSocketService
@@ -549,7 +708,7 @@ _webSocketManager.Client.RegisterMessageProcessor(processor.ProcessMessageAsync)
 
 ```csharp
 // 配置 WebSocket 选项
-builder.Services.AddFeishuApiAndWebSocketService(
+builder.Services.AddFeishuWebSocketService(
     feishuOptions =>
     {
         feishuOptions.AppId = "your_app_id";
@@ -570,5 +729,118 @@ builder.Services.AddFeishuApiAndWebSocketService(
 ```
 
 ## 示例项目
+
+### 完整示例项目
+
+以下是一个完整的示例项目，展示如何使用Mud.Feishu.WebSocket库处理飞书事件：
+
+```csharp
+// Program.cs
+var builder = WebApplication.CreateBuilder(args);
+
+// 注册飞书WebSocket服务
+builder.Services.AddFeishuWebSocketService(builder.Configuration);
+
+// 添加自定义消息处理器
+builder.Services.AddSingleton<CustomMessageHandler>();
+
+var app = builder.Build();
+
+// 启动应用
+app.Run();
+```
+
+```csharp
+// CustomMessageHandler.cs
+public class CustomMessageHandler
+{
+    private readonly ILogger<CustomMessageHandler> _logger;
+
+    public CustomMessageHandler(ILogger<CustomMessageHandler> logger, IFeishuWebSocketManager webSocketManager)
+    {
+        _logger = logger;
+
+        // 订阅WebSocket事件
+        webSocketManager.Connected += OnConnected;
+        webSocketManager.Disconnected += OnDisconnected;
+        webSocketManager.MessageReceived += OnMessageReceived;
+        webSocketManager.Error += OnError;
+        webSocketManager.Client.FeishuEventReceived += OnFeishuEventReceived;
+
+        // 注册消息处理器
+        webSocketManager.Client.RegisterMessageProcessor(ProcessMessageAsync);
+    }
+
+    private void OnConnected(object? sender, EventArgs e)
+    {
+        _logger.LogInformation("WebSocket连接已建立");
+    }
+
+    private void OnDisconnected(object? sender, WebSocketCloseEventArgs e)
+    {
+        _logger.LogInformation("WebSocket连接已断开: {Status} - {Description}", 
+            e.CloseStatus, e.CloseStatusDescription);
+    }
+
+    private void OnMessageReceived(object? sender, WebSocketMessageEventArgs e)
+    {
+        _logger.LogInformation("接收到消息: {Message}", e.Message);
+    }
+
+    private void OnError(object? sender, WebSocketErrorEventArgs e)
+    {
+        _logger.LogError(e.Exception, "WebSocket错误: {Message}", e.ErrorMessage);
+    }
+
+    private void OnFeishuEventReceived(object? sender, WebSocketFeishuEventArgs e)
+    {
+        _logger.LogInformation("接收到飞书事件: {EventType}, 应用ID: {AppId}", 
+            e.EventType, e.AppId);
+
+        // 根据事件类型处理
+        switch (e.EventType)
+        {
+            case FeishuEventTypes.ReceiveMessage:
+                HandleReceiveMessage(e);
+                break;
+            case FeishuEventTypes.UserCreated:
+                HandleUserCreated(e);
+                break;
+            // 其他事件处理...
+        }
+    }
+
+    private void HandleReceiveMessage(WebSocketFeishuEventArgs e)
+    {
+        // 处理接收到的消息
+        _logger.LogInformation("处理接收消息事件: {Event}", e.RawEvent);
+    }
+
+    private void HandleUserCreated(WebSocketFeishuEventArgs e)
+    {
+        // 处理用户创建事件
+        _logger.LogInformation("处理用户创建事件: {Event}", e.RawEvent);
+    }
+
+    private async Task ProcessMessageAsync(string message)
+    {
+        // 自定义消息处理逻辑
+        _logger.LogInformation("处理消息: {Message}", message);
+        await Task.CompletedTask;
+    }
+}
+```
+
+## 版本历史
+
+### v1.0.0
+- 初始版本发布
+- 实现基本的WebSocket连接和消息处理
+- 支持自动重连和心跳检测
+- 提供完整的事件订阅机制
+
+## 许可证
+
+本项目遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
 
 完整的示例项目可以在 `Mud.Feishu.Test` 中找到，其中包含了WebSocket客户端的使用示例和最佳实践。

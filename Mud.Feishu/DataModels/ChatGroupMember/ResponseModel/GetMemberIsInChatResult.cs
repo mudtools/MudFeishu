@@ -7,8 +7,18 @@
 
 namespace Mud.Feishu.DataModels.ChatGroupMember;
 
+/// <summary>
+/// 获取成员是否在群组中结果
+/// <para>表示指定用户是否在目标群组中的结果信息</para>
+/// </summary>
 public class GetMemberIsInChatResult
 {
+    /// <summary>
+    /// 是否在群组中
+    /// <para>标识指定用户是否在目标群组中</para>
+    /// <para>true：用户在群组中，具有群组成员身份</para>
+    /// <para>false：用户不在群组中，不是该群组的成员</para>
+    /// </summary>
     [JsonPropertyName("is_in_chat")]
     public bool IsInChat { get; set; }
 }

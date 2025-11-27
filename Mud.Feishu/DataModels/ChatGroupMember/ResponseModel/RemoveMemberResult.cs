@@ -7,8 +7,17 @@
 
 namespace Mud.Feishu.DataModels.ChatGroupMember;
 
+/// <summary>
+/// 移除成员结果
+/// <para>表示移除成员操作的结果信息</para>
+/// </summary>
 public class RemoveMemberResult
 {
+    /// <summary>
+    /// 无效ID列表
+    /// <para>包含格式不正确或无法解析的用户ID</para>
+    /// <para>这些ID无法被系统识别或处理，移除操作失败</para>
+    /// </summary>
     [JsonPropertyName("invalid_id_list")]
-    public List<string> InvalidIdList { get; set; }
+    public List<string>? InvalidIdList { get; set; }
 }

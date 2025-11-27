@@ -9,12 +9,23 @@ namespace Mud.Feishu.DataModels.ChatGroupMember;
 
 /// <summary>
 /// 群管理员相关操作的响应结果
+/// <para>表示群管理员相关操作的结果信息</para>
 /// </summary>
 public class GroupManagerResult
 {
+    /// <summary>
+    /// 群管理员列表
+    /// <para>包含具有群管理权限的用户ID列表</para>
+    /// <para>这些用户可以管理群组设置、成员等</para>
+    /// </summary>
     [JsonPropertyName("chat_managers")]
-    public List<string> ChatManagers { get; set; }
+    public List<string>? ChatManagers { get; set; }
 
+    /// <summary>
+    /// 群机器人管理员列表
+    /// <para>包含具有群管理权限的机器人ID列表</para>
+    /// <para>这些机器人可以执行群组管理相关的自动化任务</para>
+    /// </summary>
     [JsonPropertyName("chat_bot_managers")]
-    public List<string> ChatBotManagers { get; set; }
+    public List<string>? ChatBotManagers { get; set; }
 }

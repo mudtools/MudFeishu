@@ -13,3 +13,5 @@
 /Mud.Feishu.Test/bin/Release
 /Mud.Feishu.Test/Properties/PublishProfiles
 *.user
+/Mud.Feishu.WebSocket/bin/Debug/net10.0
+/Mud.Feishu.WebSocket/obj

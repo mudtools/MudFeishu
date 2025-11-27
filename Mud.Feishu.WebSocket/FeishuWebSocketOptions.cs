@@ -49,6 +49,21 @@ public class FeishuWebSocketOptions
     public bool EnableLogging { get; set; } = true;
 
     /// <summary>
+    /// 最大消息大小（字符数），默认为1MB
+    /// </summary>
+    public int MaxMessageSize { get; set; } = 1024 * 1024; // 1MB
+
+    /// <summary>
+    /// 启用多处理器模式，默认为false
+    /// </summary>
+    public bool EnableMultiHandlerMode { get; set; } = false;
+
+    /// <summary>
+    /// 多处理器模式下是否并行执行，默认为true
+    /// </summary>
+    public bool ParallelMultiHandlers { get; set; } = true;
+
+    /// <summary>
     /// 是否启用消息队列处理，默认为true
     /// </summary>
     public bool EnableMessageQueue { get; set; } = true;
@@ -57,4 +72,5 @@ public class FeishuWebSocketOptions
     /// 消息队列最大容量，默认为1000条
     /// </summary>
     public int MessageQueueCapacity { get; set; } = 1000;
+ 
 }

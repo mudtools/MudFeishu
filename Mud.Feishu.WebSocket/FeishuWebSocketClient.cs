@@ -15,6 +15,7 @@ using System.Collections.Concurrent;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Mud.Feishu.WebSocket;
 
@@ -25,7 +26,7 @@ public class FeishuWebSocketClient : IFeishuWebSocketClient
 {
     private readonly ILogger<FeishuWebSocketClient> _logger;
     private readonly FeishuWebSocketOptions _options;
-    private readonly FeishuEventHandlerFactory _eventHandlerFactory;
+    private readonly IFeishuEventHandlerFactory _eventHandlerFactory;
     private ClientWebSocket? _webSocket;
     private CancellationTokenSource? _cancellationTokenSource;
     private readonly SemaphoreSlim _connectionLock = new(1, 1);
@@ -43,7 +44,7 @@ public class FeishuWebSocketClient : IFeishuWebSocketClient
     /// <param name="options">WebSocket配置选项</param>
     public FeishuWebSocketClient(
         ILogger<FeishuWebSocketClient> logger, 
-        FeishuEventHandlerFactory eventHandlerFactory,
+        IFeishuEventHandlerFactory eventHandlerFactory,
         FeishuWebSocketOptions? options = null)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -111,6 +112,22 @@ public class FeishuWebSocketClient : IFeishuWebSocketClient
     {
         if (endpoint == null)
             throw new ArgumentNullException(nameof(endpoint));
+            
+        // URL验证
+        if (string.IsNullOrWhiteSpace(endpoint.Url))
+        {
+            throw new ArgumentException("WebSocket URL不能为空", nameof(endpoint));
+        }
+        
+        if (!Uri.TryCreate(endpoint.Url, UriKind.Absolute, out var uri))
+        {
+            throw new ArgumentException("无效的WebSocket URL格式", nameof(endpoint));
+        }
+        
+        if (uri.Scheme != "ws" && uri.Scheme != "wss")
+        {
+            throw new ArgumentException("WebSocket URL必须使用ws://或wss://协议", nameof(endpoint));
+        }
 
         await _connectionLock.WaitAsync(cancellationToken);
         try
@@ -253,6 +270,17 @@ public class FeishuWebSocketClient : IFeishuWebSocketClient
     /// <returns>发送任务</returns>
     public async Task SendMessageAsync(string message, CancellationToken cancellationToken = default)
     {
+        // 输入验证
+        if (string.IsNullOrWhiteSpace(message))
+        {
+            throw new ArgumentException("消息不能为空或仅包含空白字符", nameof(message));
+        }
+        
+        if (message.Length > _options.MaxMessageSize)
+        {
+            throw new ArgumentException($"消息大小超过限制 ({_options.MaxMessageSize} 字符)", nameof(message));
+        }
+        
         if (_webSocket == null || _webSocket.State != WebSocketState.Open)
         {
             throw new InvalidOperationException("WebSocket未连接，无法发送消息");
@@ -475,8 +503,20 @@ public class FeishuWebSocketClient : IFeishuWebSocketClient
                         {
                             Timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
                         };
-                        var heartbeatMessage = JsonSerializer.Serialize(pingMessage);
-                        await SendMessageAsync(heartbeatMessage, cancellationToken);
+                        
+                        // 使用紧凑的JSON序列化选项减少心跳消息大小
+                        var jsonOptions = new JsonSerializerOptions
+                        {
+                            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+                            WriteIndented = false
+                        };
+                        var heartbeatMessage = JsonSerializer.Serialize(pingMessage, jsonOptions);
+                        
+                        // 心跳消息添加超时保护
+                        using var pingCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                        pingCts.CancelAfter(TimeSpan.FromSeconds(10)); // 心跳10秒超时
+                        
+                        await SendMessageAsync(heartbeatMessage, pingCts.Token);
 
                         if (_options.EnableLogging)
                             _logger.LogDebug("已发送心跳");
@@ -514,8 +554,31 @@ public class FeishuWebSocketClient : IFeishuWebSocketClient
     {
         try
         {
-            // 解析消息基础信息
-            using var jsonDoc = JsonDocument.Parse(message);
+            // 输入验证
+            if (string.IsNullOrWhiteSpace(message))
+            {
+                if (_options.EnableLogging)
+                    _logger.LogWarning("收到空消息，忽略处理");
+                return;
+            }
+            
+            // 消息大小检查（防止DoS攻击）
+            if (message.Length > _options.MaxMessageSize)
+            {
+                if (_options.EnableLogging)
+                    _logger.LogWarning("消息大小超过限制，忽略处理: {Size} > {MaxSize}", 
+                        message.Length, _options.MaxMessageSize);
+                return;
+            }
+
+            // 安全的JSON解析，限制最大文档大小
+            var jsonOptions = new JsonDocumentOptions
+            {
+                MaxDepth = 32, // 限制嵌套深度
+                CommentHandling = JsonCommentHandling.Skip // 跳过注释
+            };
+            
+            using var jsonDoc = JsonDocument.Parse(message, jsonOptions);
             if (!jsonDoc.RootElement.TryGetProperty("type", out var typeElement))
             {
                 if (_options.EnableLogging)
@@ -661,8 +724,33 @@ public class FeishuWebSocketClient : IFeishuWebSocketClient
             // 使用策略模式处理不同的事件类型
             if (eventMessage?.Data != null)
             {
-                var handler = _eventHandlerFactory.GetHandler(eventMessage.Data.EventType);
-                await handler.HandleAsync(eventMessage.Data, cancellationToken);
+                if (_options.EnableMultiHandlerMode)
+                {
+                    // 多处理器模式
+                    if (_options.ParallelMultiHandlers)
+                    {
+                        // 并行执行所有处理器
+                        await _eventHandlerFactory.HandleEventParallelAsync(
+                            eventMessage.Data.EventType, 
+                            eventMessage.Data, 
+                            cancellationToken);
+                    }
+                    else
+                    {
+                        // 串行执行所有处理器
+                        var handlers = _eventHandlerFactory.GetHandlers(eventMessage.Data.EventType);
+                        foreach (var handler in handlers)
+                        {
+                            await handler.HandleAsync(eventMessage.Data, cancellationToken);
+                        }
+                    }
+                }
+                else
+                {
+                    // 单处理器模式（默认）
+                    var handler = _eventHandlerFactory.GetHandler(eventMessage.Data.EventType);
+                    await handler.HandleAsync(eventMessage.Data, cancellationToken);
+                }
             }
         }
         catch (Exception ex)
@@ -843,6 +931,9 @@ public class FeishuWebSocketClient : IFeishuWebSocketClient
     {
         try
         {
+            var processedMessages = 0;
+            const int maxMessagesBeforeYield = 100; // 每处理100条消息后主动让出CPU
+            
             while (!cancellationToken.IsCancellationRequested)
             {
                 if (_messageQueue.TryDequeue(out var message))
@@ -858,6 +949,14 @@ public class FeishuWebSocketClient : IFeishuWebSocketClient
                             ProcessMessageSafely(processor, message, cancellationToken));
 
                         await Task.WhenAll(processingTasks);
+                        
+                        processedMessages++;
+                        
+                        // 定期让出CPU，避免长时间占用
+                        if (processedMessages % maxMessagesBeforeYield == 0)
+                        {
+                            await Task.Yield();
+                        }
                     }
                     catch (Exception ex)
                     {
@@ -935,7 +1034,24 @@ public class FeishuWebSocketClient : IFeishuWebSocketClient
         try
         {
             _cancellationTokenSource?.Cancel();
-            _messageProcessingTask?.Wait(TimeSpan.FromSeconds(5));
+            
+            // 避免死锁：使用异步方式等待消息处理任务完成
+            var processingTask = _messageProcessingTask;
+            if (processingTask != null && !processingTask.IsCompleted)
+            {
+                try
+                {
+                    if (!Task.WaitAll(new[] { processingTask }, TimeSpan.FromSeconds(5)))
+                    {
+                        _logger.LogWarning("消息处理任务在5秒内未能完成，强制退出");
+                    }
+                }
+                catch (AggregateException ex)
+                {
+                    _logger.LogWarning(ex, "等待消息处理任务完成时发生异常");
+                }
+            }
+            
             _webSocket?.Dispose();
             _cancellationTokenSource?.Dispose();
             _connectionLock.Dispose();

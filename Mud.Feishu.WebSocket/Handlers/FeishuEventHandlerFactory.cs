@@ -13,7 +13,7 @@ namespace Mud.Feishu.WebSocket.Handlers;
 /// <summary>
 /// 飞书事件处理器工厂
 /// </summary>
-public class FeishuEventHandlerFactory
+public class FeishuEventHandlerFactory : IFeishuEventHandlerFactory
 {
     private readonly ILogger<FeishuEventHandlerFactory> _logger;
     private readonly Dictionary<string, IFeishuEventHandler> _handlers;
@@ -28,7 +28,7 @@ public class FeishuEventHandlerFactory
     public FeishuEventHandlerFactory(
         ILogger<FeishuEventHandlerFactory> logger,
         IEnumerable<IFeishuEventHandler> handlers,
-        DefaultFeishuEventHandler defaultHandler)
+        IFeishuEventHandler defaultHandler)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _defaultHandler = defaultHandler ?? throw new ArgumentNullException(nameof(defaultHandler));
@@ -74,6 +74,73 @@ public class FeishuEventHandlerFactory
 
         _logger.LogWarning("未找到事件类型 {EventType} 的处理器，使用默认处理器", eventType);
         return _defaultHandler;
+    }
+
+    /// <summary>
+    /// 根据事件类型获取所有事件处理器
+    /// </summary>
+    /// <param name="eventType">事件类型</param>
+    /// <returns>事件处理器列表，如果未找到则返回包含默认处理器的列表</returns>
+    public IReadOnlyList<IFeishuEventHandler> GetHandlers(string eventType)
+    {
+        if (string.IsNullOrEmpty(eventType))
+        {
+            _logger.LogWarning("事件类型为空，使用默认处理器");
+            return new List<IFeishuEventHandler> { _defaultHandler }.AsReadOnly();
+        }
+
+        if (_handlers.TryGetValue(eventType, out var handler))
+        {
+            _logger.LogDebug("找到事件处理器: {EventType}", eventType);
+            return new List<IFeishuEventHandler> { handler }.AsReadOnly();
+        }
+
+        _logger.LogWarning("未找到事件类型 {EventType} 的处理器，使用默认处理器", eventType);
+        return new List<IFeishuEventHandler> { _defaultHandler }.AsReadOnly();
+    }
+
+    /// <summary>
+    /// 并行处理事件（使用所有匹配的处理器）
+    /// </summary>
+    /// <param name="eventType">事件类型</param>
+    /// <param name="eventData">事件数据</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>处理任务</returns>
+    public async Task HandleEventParallelAsync(string eventType, EventData eventData, CancellationToken cancellationToken = default)
+    {
+        var handlers = GetHandlers(eventType);
+        
+        if (handlers.Count == 0 || (handlers.Count == 1 && handlers[0] == _defaultHandler))
+        {
+            await _defaultHandler.HandleAsync(eventData, cancellationToken);
+            return;
+        }
+
+        var tasks = handlers.Select(handler => 
+            ProcessHandlerSafely(handler, eventData, cancellationToken));
+        
+        await Task.WhenAll(tasks);
+    }
+
+    /// <summary>
+    /// 安全地处理事件（捕获单个处理器的异常）
+    /// </summary>
+    /// <param name="handler">事件处理器</param>
+    /// <param name="eventData">事件数据</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>处理任务</returns>
+    private async Task ProcessHandlerSafely(IFeishuEventHandler handler, EventData eventData, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await handler.HandleAsync(eventData, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "事件处理器 {HandlerType} 执行失败: {EventType}", 
+                handler.GetType().Name, eventData.EventType);
+            // 不重新抛出异常，避免影响其他处理器
+        }
     }
 
     /// <summary>

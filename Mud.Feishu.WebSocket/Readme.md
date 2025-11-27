@@ -15,15 +15,44 @@
 
 ### 1. 安装和注册服务
 
+#### 方式一：建造者模式（推荐）
+
 ```csharp
 // Program.cs
 var builder = WebApplication.CreateBuilder(args);
 
-// 注册飞书WebSocket服务
-builder.Services.AddFeishuWebSocketService(builder.Configuration);
+// 使用建造者模式注册飞书WebSocket服务
+builder.Services.AddFeishuWebSocketBuilder()
+    .ConfigureFrom(builder.Configuration)           // 从配置文件读取
+    .UseMultiHandler()                              // 启用多处理器模式
+    .AddHandler<ReceiveMessageEventHandler>()        // 添加消息处理器
+    .AddHandler<UserCreatedEventHandler>()           // 添加用户事件处理器
+    .Build();                                       // 构建服务注册
 
 var app = builder.Build();
 app.Run();
+```
+
+#### 方式二：简化注册
+
+```csharp
+// 单处理器模式
+builder.Services.AddFeishuWebSocketServiceWithSingleHandler<ReceiveMessageEventHandler>(
+    options => {
+        options.AutoReconnect = true;
+        options.MaxReconnectAttempts = 5;
+        options.HeartbeatIntervalMs = 30000;
+    });
+
+// 或多处理器模式
+builder.Services.AddFeishuWebSocketServiceWithMultiHandler<ReceiveMessageEventHandler, UserCreatedEventHandler>(
+    options => {
+        options.AutoReconnect = true;
+        options.EnableLogging = true;
+    });
+
+// 或从配置文件注册
+builder.Services.AddFeishuWebSocketService(builder.Configuration);
 ```
 
 ### 2. 配置文件
@@ -117,23 +146,49 @@ public class CustomEventHandler : IFeishuEventHandler
 
 ### 注册自定义处理器
 
+#### 使用建造者模式注册（推荐）
+
 ```csharp
-// 依赖注入注册
+// 注册多个自定义处理器
+builder.Services.AddFeishuWebSocketBuilder()
+    .ConfigureFrom(builder.Configuration)
+    .UseMultiHandler()
+    .AddHandler<CustomEventHandler>()                    // 类型注册
+    .AddHandler<AnotherEventHandler>()                    // 第二个处理器
+    .AddHandler(sp => new FactoryEventHandler(           // 工厂方法注册
+        sp.GetService<ILogger<FactoryEventHandler>>(),
+        sp.GetService<IConfiguration>()))
+    .AddHandler(new InstanceEventHandler())               // 实例注册
+    .Build();
+```
+
+#### 依赖注入注册
+
+```csharp
+// 注册处理器到 DI 容器
 builder.Services.AddSingleton<CustomEventHandler>();
 builder.Services.AddFeishuWebSocketService(builder.Configuration);
+```
 
-// 运行时动态注册
+#### 运行时动态注册
+
+```csharp
 public class ServiceManager
 {
-    private readonly FeishuEventHandlerFactory _factory;
+    private readonly IFeishuEventHandlerFactory _factory;
+    private readonly ILogger<ServiceManager> _logger;
     
-    public ServiceManager(FeishuEventHandlerFactory factory)
-        => _factory = factory;
+    public ServiceManager(IFeishuEventHandlerFactory factory, ILogger<ServiceManager> logger)
+    {
+        _factory = factory;
+        _logger = logger;
+    }
 
     public void RegisterHandler()
     {
-        var customHandler = new CustomEventHandler(logger);
+        var customHandler = new CustomEventHandler(_logger);
         _factory.RegisterHandler(customHandler);
+        _logger.LogInformation("已注册自定义处理器: {HandlerType}", typeof(CustomEventHandler).Name);
     }
 }
 ```
@@ -158,20 +213,114 @@ public class ServiceManager
 
 ### 代码配置
 
+#### 建造者模式配置（推荐）
+
 ```csharp
-builder.Services.AddFeishuWebSocketService(
-    feishuOptions =>
-    {
-        feishuOptions.AppId = "your_app_id";
-        feishuOptions.AppSecret = "your_app_secret";
-    },
-    webSocketOptions =>
-    {
-        webSocketOptions.AutoReconnect = true;
-        webSocketOptions.MaxReconnectAttempts = 10;
-        webSocketOptions.ReconnectDelayMs = 3000;
-        webSocketOptions.HeartbeatIntervalMs = 25000;
+builder.Services.AddFeishuWebSocketBuilder()
+    .ConfigureOptions(options => {
+        options.AppId = "your_app_id";
+        options.AppSecret = "your_app_secret";
+        options.AutoReconnect = true;
+        options.MaxReconnectAttempts = 10;
+        options.ReconnectDelayMs = 3000;
+        options.HeartbeatIntervalMs = 25000;
+    })
+    .UseMultiHandler()
+    .AddHandler<CustomHandler1>()
+    .AddHandler<CustomHandler2>()
+    .Build();
+```
+
+#### 简化配置
+
+```csharp
+// 单处理器模式
+builder.Services.AddFeishuWebSocketServiceWithSingleHandler<CustomHandler>(
+    options => {
+        options.AppId = "your_app_id";
+        options.AppSecret = "your_app_secret";
+        options.AutoReconnect = true;
+        options.MaxReconnectAttempts = 10;
+        options.ReconnectDelayMs = 3000;
+        options.HeartbeatIntervalMs = 25000;
     });
+
+// 多处理器模式
+builder.Services.AddFeishuWebSocketServiceWithMultiHandler<Handler1, Handler2>(
+    options => {
+        options.AppId = "your_app_id";
+        options.AppSecret = "your_app_secret";
+        options.AutoReconnect = true;
+        options.EnableLogging = true;
+    });
+```
+
+## 🎯 建造者模式高级用法
+
+### 灵活的配置组合
+
+```csharp
+// 场景1：多环境配置
+var builder = services.AddFeishuWebSocketBuilder();
+
+if (builder.Environment.IsDevelopment())
+{
+    builder.ConfigureOptions(options => {
+        options.EnableLogging = true;
+        options.HeartbeatIntervalMs = 15000;
+    });
+}
+else if (builder.Environment.IsProduction())
+{
+    builder.ConfigureFrom(configuration, "Production:WebSocket");
+}
+
+builder.UseMultiHandler()
+       .AddHandler<DevEventHandler>()
+       .AddHandler<ProdEventHandler>()
+       .Build();
+```
+
+### 条件性处理器注册
+
+```csharp
+services.AddFeishuWebSocketBuilder()
+    .ConfigureFrom(configuration)
+    .UseMultiHandler()
+    .AddHandler<BaseEventHandler>()
+    .Apply(builder => {
+        // 根据功能开关注册处理器
+        if (configuration.GetValue<bool>("Features:EnableAudit"))
+            builder.AddHandler<AuditEventHandler>();
+        
+        if (configuration.GetValue<bool>("Features:EnableAnalytics"))
+            builder.AddHandler<AnalyticsEventHandler>();
+    })
+    .Build();
+```
+
+### 服务注册最佳实践
+
+```csharp
+// 推荐：使用扩展方法封装复杂配置
+public static class FeishuWebSocketExtensions
+{
+    public static IServiceCollection AddFeishuWebSocketWithDefaultHandlers(
+        this IServiceCollection services, 
+        IConfiguration configuration)
+    {
+        return services.AddFeishuWebSocketBuilder()
+            .ConfigureFrom(configuration)
+            .UseMultiHandler()
+            .AddHandler<ReceiveMessageEventHandler>()
+            .AddHandler<UserCreatedEventHandler>()
+            .AddHandler<MessageReadEventHandler>()
+            .Build();
+    }
+}
+
+// 使用时更简洁
+builder.Services.AddFeishuWebSocketWithDefaultHandlers(builder.Configuration);
 ```
 
 ## 🔧 高级功能

@@ -5,12 +5,9 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-using Microsoft.AspNetCore.Builder;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Mud.Feishu.WebSocket;
 using Mud.Feishu.WebSocket.Demo.Handlers;
-using Mud.Feishu.WebSocket.Demo.Services;
+using Mud.Feishu.WebSocket.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -21,7 +18,7 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
-    c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
+    c.SwaggerDoc("v1", new Microsoft.OpenApi.OpenApiInfo
     {
         Title = "飞书WebSocket测试API",
         Version = "v1",

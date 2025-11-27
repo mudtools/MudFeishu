@@ -10,8 +10,8 @@
 	  <RepositoryType>git</RepositoryType>
 	  <PackageIcon>Icon.png</PackageIcon>
 	  <PackageReadmeFile>README.md</PackageReadmeFile>
-	  <Description>MudFeishu 是一个用于简化.NET与飞书（Feishu）API 集成的.NET 库。提供一组类型安全的客户端和服务，使开发人员能够轻松地在 .NET 应用程序中调用飞书 API。</Description>
-	  <PackageTags>飞书;飞书.net sdk;Feishu;Feishu.net;Feishu SDK;ASP.NET;ASP.NET Core;.NET;.NET Core;</PackageTags>
+	  <Description>Mud.Feishu.WebSocket 是 MudFeishu 库的 WebSocket 组件，专门用于处理飞书事件订阅。它提供了完整的 WebSocket 客户端实现，支持自动重连、心跳检测、事件分发和策略模式的事件处理机制，使开发人员能够轻松地在 .NET 应用程序中接收和处理飞书实时事件。</Description>
+	  <PackageTags>飞书;飞书.net sdk;Feishu;Feishu.net;Feishu SDK;WebSocket;事件订阅;实时事件;ASP.NET;ASP.NET Core;.NET;.NET Core;</PackageTags>
   </PropertyGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'net10.0' or '$(TargetFramework)' == 'net9.0' or '$(TargetFramework)' == 'net8.0'">

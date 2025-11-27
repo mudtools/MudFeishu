@@ -20,7 +20,7 @@ internal class UserTokenManager : TokenManagerWithCache, IUserTokenManager
 
     }
 
-    protected override async Task<AppCredentialToken> AcquireNewTokenAsync(CancellationToken cancellationToken)
+    protected override async Task<CredentialToken> AcquireNewTokenAsync(CancellationToken cancellationToken)
     {
         var credentials = new AppCredentials
         {
@@ -29,7 +29,7 @@ internal class UserTokenManager : TokenManagerWithCache, IUserTokenManager
         };
 
         var res = await _authenticationApi.GetAppAccessTokenAsync(credentials, cancellationToken);
-        return new AppCredentialToken
+        return new CredentialToken
         {
             AccessToken = res.AppAccessToken ?? string.Empty,
             Expire = res.Expire,

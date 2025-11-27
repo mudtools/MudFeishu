@@ -14,7 +14,7 @@ namespace Mud.Feishu.TokenManager;
 
 public abstract class TokenManagerWithCache : ITokenManager, IDisposable
 {
-    public class AppCredentialToken
+    public class CredentialToken
     {
         public string? Msg { get; init; }
         public int Code { get; init; }
@@ -39,8 +39,8 @@ public abstract class TokenManagerWithCache : ITokenManager, IDisposable
     private readonly TokenType _tokeType;
 
     // 使用 Lazy 和 AsyncLock 解决缓存击穿和竞态条件问题
-    private readonly ConcurrentDictionary<string, Lazy<Task<AppCredentialToken>>> _tokenLoadingTasks = new();
-    private readonly ConcurrentDictionary<string, AppCredentialToken> _appTokenCache = new();
+    private readonly ConcurrentDictionary<string, Lazy<Task<CredentialToken>>> _tokenLoadingTasks = new();
+    private readonly ConcurrentDictionary<string, CredentialToken> _appTokenCache = new();
     private readonly SemaphoreSlim _cacheLock = new(1, 1);
 
     // 常量定义
@@ -86,7 +86,7 @@ public abstract class TokenManagerWithCache : ITokenManager, IDisposable
         try
         {
             // 使用 Lazy 防止缓存击穿，确保同一时刻只有一个请求在获取令牌
-            var lazyTask = _tokenLoadingTasks.GetOrAdd(cacheKey, _ => new Lazy<Task<AppCredentialToken>>(
+            var lazyTask = _tokenLoadingTasks.GetOrAdd(cacheKey, _ => new Lazy<Task<CredentialToken>>(
                 () => AcquireTokenAsync(cancellationToken),
                 LazyThreadSafetyMode.ExecutionAndPublication));
 
@@ -103,12 +103,12 @@ public abstract class TokenManagerWithCache : ITokenManager, IDisposable
     /// <summary>
     /// 获取新令牌的核心方法
     /// </summary>
-    protected abstract Task<AppCredentialToken> AcquireNewTokenAsync(CancellationToken cancellationToken);
+    protected abstract Task<CredentialToken> AcquireNewTokenAsync(CancellationToken cancellationToken);
 
     /// <summary>
     /// 获取新令牌的核心方法
     /// </summary>
-    private async Task<AppCredentialToken> AcquireTokenAsync(CancellationToken cancellationToken)
+    private async Task<CredentialToken> AcquireTokenAsync(CancellationToken cancellationToken)
     {
         _logger.LogInformation("Acquiring new token for {TokenType}", _tokeType);
 
@@ -192,7 +192,7 @@ public abstract class TokenManagerWithCache : ITokenManager, IDisposable
     /// <summary>
     /// 验证令牌结果
     /// </summary>
-    private void ValidateTokenResult(AppCredentialToken? result)
+    private void ValidateTokenResult(CredentialToken? result)
     {
         if (result == null)
         {
@@ -213,11 +213,11 @@ public abstract class TokenManagerWithCache : ITokenManager, IDisposable
     /// <summary>
     /// 创建应用凭证令牌
     /// </summary>
-    private AppCredentialToken CreateAppCredentialToken(AppCredentialToken result)
+    private CredentialToken CreateAppCredentialToken(CredentialToken result)
     {
         var expireTime = CalculateExpireTime(result.Expire);
 
-        return new AppCredentialToken
+        return new CredentialToken
         {
             Expire = expireTime,
             AccessToken = result.AccessToken,
@@ -229,7 +229,7 @@ public abstract class TokenManagerWithCache : ITokenManager, IDisposable
     /// <summary>
     /// 更新令牌缓存
     /// </summary>
-    private void UpdateTokenCache(AppCredentialToken newToken)
+    private void UpdateTokenCache(CredentialToken newToken)
     {
         var cacheKey = GenerateCacheKey();
         _appTokenCache.AddOrUpdate(cacheKey, newToken, (key, existing) => newToken);

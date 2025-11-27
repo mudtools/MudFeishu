@@ -5,8 +5,6 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-using System.Text.Json.Serialization;
-
 namespace Mud.Feishu.DataModels.Messages;
 
 /// <summary>
@@ -18,17 +16,17 @@ public class RichTextMessageElement
     /// 元素标签类型，用于标识元素的类型（如文本、链接等）
     /// </summary>
     [JsonPropertyName("tag")]
-    public string Tag { get; set; }
+    public string? Tag { get; set; }
 
     /// <summary>
     /// 文本内容，当元素为文本类型时显示的文本内容
     /// </summary>
     [JsonPropertyName("text")]
-    public string Text { get; set; }
+    public string? Text { get; set; }
 
     /// <summary>
     /// 超链接地址，当元素为链接类型时指向的URL地址
     /// </summary>
     [JsonPropertyName("href")]
-    public string Href { get; set; }
+    public string? Href { get; set; }
 }

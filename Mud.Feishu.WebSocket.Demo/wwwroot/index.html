@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>飞书WebSocket测试客户端</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .status-connected { @apply text-green-600; }
+        .status-disconnected { @apply text-red-600; }
+        .status-connecting { @apply text-yellow-600; }
+        .log-entry { @apply p-2 border-b border-gray-200 hover:bg-gray-50; }
+        .log-info { @apply border-l-4 border-blue-500; }
+        .log-success { @apply border-l-4 border-green-500; }
+        .log-warning { @apply border-l-4 border-yellow-500; }
+        .log-error { @apply border-l-4 border-red-500; }
+        .event-card { @apply bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition-shadow; }
+        .stat-card { @apply bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg p-6; }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto p-6">
+        <!-- 标题 -->
+        <header class="mb-8 text-center">
+            <h1 class="text-4xl font-bold text-gray-800 mb-2">
+                <i class="fas fa-plug text-blue-600 mr-2"></i>
+                飞书WebSocket测试客户端
+            </h1>
+            <p class="text-gray-600">实时测试飞书WebSocket长连接功能</p>
+        </header>
+
+        <!-- 主要内容区域 -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+            <!-- 左侧：连接控制和统计 -->
+            <div class="lg:col-span-1 space-y-6">
+                <!-- 连接状态卡片 -->
+                <div class="event-card">
+                    <h2 class="text-xl font-semibold mb-4 text-gray-800">
+                        <i class="fas fa-wifi mr-2"></i>连接状态
+                    </h2>
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between">
+                            <span class="font-medium">状态:</span>
+                            <span id="connectionStatus" class="font-bold status-disconnected">
+                                <i class="fas fa-times-circle mr-1"></i>未连接
+                            </span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="font-medium">运行时间:</span>
+                            <span id="uptime" class="text-gray-600">--</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="font-medium">重连次数:</span>
+                            <span id="reconnectCount" class="text-gray-600">0</span>
+                        </div>
+                    </div>
+                    <div class="mt-4 space-x-2">
+                        <button id="connectBtn" onclick="connect()" 
+                            class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded transition-colors">
+                            <i class="fas fa-play mr-2"></i>连接
+                        </button>
+                        <button id="disconnectBtn" onclick="disconnect()" disabled
+                            class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded transition-colors disabled:opacity-50">
+                            <i class="fas fa-stop mr-2"></i>断开
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 统计卡片 -->
+                <div class="stat-card">
+                    <h3 class="text-lg font-semibold mb-3">
+                        <i class="fas fa-chart-bar mr-2"></i>事件统计
+                    </h3>
+                    <div class="grid grid-cols-3 gap-4 text-center">
+                        <div>
+                            <div id="userEventCount" class="text-2xl font-bold">0</div>
+                            <div class="text-sm opacity-90">用户事件</div>
+                        </div>
+                        <div>
+                            <div id="departmentEventCount" class="text-2xl font-bold">0</div>
+                            <div class="text-sm opacity-90">部门事件</div>
+                        </div>
+                        <div>
+                            <div id="approvalEventCount" class="text-2xl font-bold">0</div>
+                            <div class="text-sm opacity-90">审批事件</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 中间：实时日志 -->
+            <div class="lg:col-span-1">
+                <div class="event-card h-full">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-semibold text-gray-800">
+                            <i class="fas fa-terminal mr-2"></i>实时日志
+                        </h2>
+                        <button onclick="clearLogs()" 
+                            class="text-sm bg-gray-500 hover:bg-gray-600 text-white px-3 py-1 rounded transition-colors">
+                            <i class="fas fa-trash mr-1"></i>清空
+                        </button>
+                    </div>
+                    <div id="logContainer" class="h-96 overflow-y-auto bg-gray-50 rounded p-2 text-sm font-mono">
+                        <div class="text-gray-500 text-center p-4">等待日志...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右侧：事件记录 -->
+            <div class="lg:col-span-1">
+                <div class="event-card h-full">
+                    <h2 class="text-xl font-semibold mb-4 text-gray-800">
+                        <i class="fas fa-list mr-2"></i>最近事件
+                    </h2>
+                    <div id="eventsContainer" class="space-y-2 max-h-96 overflow-y-auto">
+                        <div class="text-gray-500 text-center p-4">暂无事件记录</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 控制按钮区域 -->
+        <div class="event-card mb-8">
+            <h2 class="text-xl font-semibold mb-4 text-gray-800">
+                <i class="fas fa-cogs mr-2"></i>测试控制
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="space-y-2">
+                    <h3 class="font-medium text-gray-700">用户事件</h3>
+                    <button onclick="generateUserEvent()" 
+                        class="w-full bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded transition-colors">
+                        <i class="fas fa-user-plus mr-2"></i>生成用户事件
+                    </button>
+                </div>
+                <div class="space-y-2">
+                    <h3 class="font-medium text-gray-700">部门事件</h3>
+                    <button onclick="generateDepartmentEvent()" 
+                        class="w-full bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded transition-colors">
+                        <i class="fas fa-building mr-2"></i>生成部门事件
+                    </button>
+                </div>
+                <div class="space-y-2">
+                    <h3 class="font-medium text-gray-700">审批事件</h3>
+                    <button onclick="generateApprovalEvent()" 
+                        class="w-full bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded transition-colors">
+                        <i class="fas fa-check-circle mr-2"></i>生成审批事件
+                    </button>
+                </div>
+            </div>
+            
+            <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+                <button onclick="refreshStatistics()" 
+                    class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded transition-colors">
+                    <i class="fas fa-sync mr-2"></i>刷新统计
+                </button>
+                <button onclick="clearEvents()" 
+                    class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded transition-colors">
+                    <i class="fas fa-trash mr-2"></i>清空事件
+                </button>
+                <button onclick="openSwagger()" 
+                    class="bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded transition-colors">
+                    <i class="fas fa-book mr-2"></i>API文档
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let connectionStartTime = null;
+        let uptimeInterval = null;
+        let reconnectCount = 0;
+
+        // 页面加载时初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            refreshStatus();
+            refreshStatistics();
+            setInterval(refreshStatus, 5000); // 每5秒刷新状态
+        });
+
+        // 连接WebSocket
+        async function connect() {
+            try {
+                updateStatus('connecting', '连接中...');
+                log('info', '正在连接WebSocket...');
+                
+                const response = await fetch('/api/websocketdemo/connect', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    log('success', 'WebSocket连接成功');
+                    connectionStartTime = new Date();
+                    updateUptime();
+                    updateStatus('connected', '已连接');
+                    document.getElementById('connectBtn').disabled = true;
+                    document.getElementById('disconnectBtn').disabled = false;
+                } else {
+                    throw new Error('连接失败');
+                }
+            } catch (error) {
+                log('error', `连接失败: ${error.message}`);
+                updateStatus('disconnected', '连接失败');
+            }
+        }
+
+        // 断开WebSocket连接
+        async function disconnect() {
+            try {
+                log('info', '正在断开WebSocket连接...');
+                
+                const response = await fetch('/api/websocketdemo/disconnect', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    log('warning', 'WebSocket连接已断开');
+                    connectionStartTime = null;
+                    if (uptimeInterval) clearInterval(uptimeInterval);
+                    updateStatus('disconnected', '已断开');
+                    document.getElementById('connectBtn').disabled = false;
+                    document.getElementById('disconnectBtn').disabled = true;
+                }
+            } catch (error) {
+                log('error', `断开连接失败: ${error.message}`);
+            }
+        }
+
+        // 生成用户事件
+        async function generateUserEvent() {
+            try {
+                const response = await fetch('/api/websocketdemo/generate-user-event', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    const event = await response.json();
+                    log('info', `生成用户事件: ${event.eventId}`);
+                    addEventToDisplay('用户', event);
+                }
+            } catch (error) {
+                log('error', `生成用户事件失败: ${error.message}`);
+            }
+        }
+
+        // 生成部门事件
+        async function generateDepartmentEvent() {
+            try {
+                const response = await fetch('/api/websocketdemo/generate-department-event', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    const event = await response.json();
+                    log('info', `生成部门事件: ${event.eventId}`);
+                    addEventToDisplay('部门', event);
+                }
+            } catch (error) {
+                log('error', `生成部门事件失败: ${error.message}`);
+            }
+        }
+
+        // 生成审批事件
+        async function generateApprovalEvent() {
+            try {
+                const response = await fetch('/api/websocketdemo/generate-approval-event', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    const event = await response.json();
+                    log('info', `生成审批事件: ${event.eventId}`);
+                    addEventToDisplay('审批', event);
+                }
+            } catch (error) {
+                log('error', `生成审批事件失败: ${error.message}`);
+            }
+        }
+
+        // 刷新状态
+        async function refreshStatus() {
+            try {
+                const response = await fetch('/api/websocketdemo/status');
+                if (response.ok) {
+                    const status = await response.json();
+                    updateStatus(status.isConnected ? 'connected' : 'disconnected', 
+                        status.isConnected ? '已连接' : '未连接');
+                    document.getElementById('reconnectCount').textContent = status.connectionState?.reconnectCount || 0;
+                    document.getElementById('connectBtn').disabled = status.isConnected;
+                    document.getElementById('disconnectBtn').disabled = !status.isConnected;
+                    
+                    if (status.isConnected && !connectionStartTime) {
+                        connectionStartTime = new Date();
+                        updateUptime();
+                    }
+                }
+            } catch (error) {
+                log('error', `刷新状态失败: ${error.message}`);
+            }
+        }
+
+        // 刷新统计信息
+        async function refreshStatistics() {
+            try {
+                const response = await fetch('/api/websocketdemo/statistics');
+                if (response.ok) {
+                    const stats = await response.json();
+                    document.getElementById('userEventCount').textContent = stats.userEventsCount || 0;
+                    document.getElementById('departmentEventCount').textContent = stats.departmentEventsCount || 0;
+                    document.getElementById('approvalEventCount').textContent = stats.approvalEventsCount || 0;
+                }
+                
+                // 同时刷新最近事件
+                const eventsResponse = await fetch('/api/websocketdemo/recent-events');
+                if (eventsResponse.ok) {
+                    const events = await eventsResponse.json();
+                    displayRecentEvents(events);
+                }
+            } catch (error) {
+                log('error', `刷新统计信息失败: ${error.message}`);
+            }
+        }
+
+        // 清空事件记录
+        async function clearEvents() {
+            if (!confirm('确定要清空所有事件记录吗？')) return;
+            
+            try {
+                const response = await fetch('/api/websocketdemo/clear-events', {
+                    method: 'DELETE'
+                });
+                
+                if (response.ok) {
+                    log('warning', '已清空所有事件记录');
+                    refreshStatistics();
+                }
+            } catch (error) {
+                log('error', `清空事件记录失败: ${error.message}`);
+            }
+        }
+
+        // 打开Swagger文档
+        function openSwagger() {
+            window.open('/swagger', '_blank');
+        }
+
+        // 更新连接状态显示
+        function updateStatus(status, text) {
+            const statusElement = document.getElementById('connectionStatus');
+            statusElement.className = `font-bold status-${status}`;
+            statusElement.innerHTML = `
+                <i class="fas fa-${status === 'connected' ? 'check-circle' : status === 'connecting' ? 'spinner fa-spin' : 'times-circle'} mr-1"></i>
+                ${text}
+            `;
+        }
+
+        // 更新运行时间
+        function updateUptime() {
+            if (uptimeInterval) clearInterval(uptimeInterval);
+            
+            uptimeInterval = setInterval(() => {
+                if (connectionStartTime) {
+                    const uptime = new Date() - connectionStartTime;
+                    const seconds = Math.floor(uptime / 1000);
+                    const minutes = Math.floor(seconds / 60);
+                    const hours = Math.floor(minutes / 60);
+                    
+                    const display = hours > 0 ? `${hours}小时${minutes % 60}分` : 
+                                    minutes > 0 ? `${minutes}分${seconds % 60}秒` : `${seconds}秒`;
+                    document.getElementById('uptime').textContent = display;
+                }
+            }, 1000);
+        }
+
+        // 添加日志
+        function log(level, message) {
+            const logContainer = document.getElementById('logContainer');
+            const timestamp = new Date().toLocaleTimeString();
+            
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry log-${level}`;
+            
+            const icon = level === 'success' ? 'check-circle' : 
+                         level === 'error' ? 'exclamation-circle' : 
+                         level === 'warning' ? 'exclamation-triangle' : 'info-circle';
+            
+            logEntry.innerHTML = `
+                <span class="text-gray-500">[${timestamp}]</span>
+                <i class="fas fa-${icon} ml-2 mr-1 text-${level}-500"></i>
+                <span class="ml-1">${message}</span>
+            `;
+            
+            // 如果是第一条日志，移除占位符
+            if (logContainer.querySelector('.text-gray-500')) {
+                logContainer.innerHTML = '';
+            }
+            
+            logContainer.appendChild(logEntry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        // 清空日志
+        function clearLogs() {
+            const logContainer = document.getElementById('logContainer');
+            logContainer.innerHTML = '<div class="text-gray-500 text-center p-4">日志已清空</div>';
+        }
+
+        // 添加事件到显示区域
+        function addEventToDisplay(type, event) {
+            const eventsContainer = document.getElementById('eventsContainer');
+            
+            // 如果是第一条事件，移除占位符
+            if (eventsContainer.querySelector('.text-gray-500')) {
+                eventsContainer.innerHTML = '';
+            }
+            
+            const eventCard = document.createElement('div');
+            eventCard.className = 'bg-white border-l-4 border-blue-500 p-3 rounded hover:shadow-md transition-shadow';
+            
+            const typeColors = {
+                '用户': 'border-green-500',
+                '部门': 'border-blue-500',
+                '审批': 'border-purple-500'
+            };
+            
+            eventCard.className = `bg-white border-l-4 ${typeColors[type] || 'border-gray-500'} p-3 rounded hover:shadow-md transition-shadow`;
+            
+            const time = new Date().toLocaleTimeString();
+            eventCard.innerHTML = `
+                <div class="flex justify-between items-start mb-1">
+                    <span class="font-medium text-gray-800">${type}事件</span>
+                    <span class="text-xs text-gray-500">${time}</span>
+                </div>
+                <div class="text-sm text-gray-600">ID: ${event.eventId}</div>
+                <div class="text-sm text-gray-600">类型: ${event.eventType}</div>
+            `;
+            
+            eventsContainer.insertBefore(eventCard, eventsContainer.firstChild);
+            
+            // 限制显示数量
+            while (eventsContainer.children.length > 10) {
+                eventsContainer.removeChild(eventsContainer.lastChild);
+            }
+        }
+
+        // 显示最近事件
+        function displayRecentEvents(events) {
+            const eventsContainer = document.getElementById('eventsContainer');
+            
+            if (events.recentUsers.length === 0 && events.recentDepartments.length === 0 && events.recentApprovals.length === 0) {
+                eventsContainer.innerHTML = '<div class="text-gray-500 text-center p-4">暂无事件记录</div>';
+                return;
+            }
+            
+            eventsContainer.innerHTML = '';
+            
+            // 添加用户事件
+            events.recentUsers.forEach(user => {
+                addEventToDisplay('用户', { 
+                    eventId: user.eventId || user.userId, 
+                    eventType: 'contact.user.created_v3' 
+                });
+            });
+            
+            // 添加部门事件
+            events.recentDepartments.forEach(dept => {
+                addEventToDisplay('部门', { 
+                    eventId: dept.eventId || dept.departmentId, 
+                    eventType: 'contact.department.created_v3' 
+                });
+            });
+            
+            // 添加审批事件
+            events.recentApprovals.forEach(approval => {
+                addEventToDisplay('审批', { 
+                    eventId: approval.eventId || approval.approvalId, 
+                    eventType: 'approval.approval.approved_v1' 
+                });
+            });
+        }
+    </script>
+</body>
+</html>

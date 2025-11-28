@@ -89,4 +89,10 @@ public class FeishuOptions
     /// <para>当API调用失败时的自动重试次数，提高请求的成功率和稳定性</para>
     /// </summary>
     public int? RetryCount { get; set; }
+
+
+    /// <summary>
+    /// 是否启用日志记录，默认为true
+    /// </summary>
+    public bool EnableLogging { get; set; } = true;
 }

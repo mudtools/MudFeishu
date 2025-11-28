@@ -5,11 +5,12 @@
 ## ✨ 核心特性
 
 - 🔄 **智能连接管理** - 自动重连、心跳检测、状态监控
+- 🫀 **心跳消息处理** - 支持飞书 heartbeat 消息类型，实时连接状态监控
 - 🚀 **高性能消息处理** - 异步处理、消息队列、并行执行
 - 🎯 **策略模式事件处理** - 可扩展的事件处理器架构
 - 🛡️ **企业级稳定性** - 完善的错误处理、资源管理、日志记录
 - ⚙️ **灵活配置** - 丰富的配置选项、依赖注入支持
-- 📊 **监控友好** - 详细的事件通知、性能指标
+- 📊 **监控友好** - 详细的事件通知、性能指标、心跳统计
 
 ## 🚀 快速开始
 
@@ -88,6 +89,7 @@ public class MessageService
         _webSocketManager.Connected += OnConnected;
         _webSocketManager.Disconnected += OnDisconnected;
         _webSocketManager.Error += OnError;
+        _webSocketManager.HeartbeatReceived += OnHeartbeatReceived;
     }
 
     private void OnConnected(object? sender, EventArgs e)
@@ -98,7 +100,80 @@ public class MessageService
 
     private void OnError(object? sender, WebSocketErrorEventArgs e)
         => Console.WriteLine($"❌ 错误: {e.ErrorMessage}");
+
+    private void OnHeartbeatReceived(object? sender, WebSocketHeartbeatEventArgs e)
+        => Console.WriteLine($"💗 心跳消息: {e.Timestamp}, 间隔: {e.Interval}s, 状态: {e.Status}");
 }
+```
+
+### 4. 心跳处理功能
+
+#### 心跳事件订阅
+
+```csharp
+public class HeartbeatMonitorService : IHostedService
+{
+    private readonly IFeishuWebSocketManager _webSocketManager;
+    private readonly List<DateTime> _heartbeatTimestamps = new();
+
+    public async Task StartAsync(CancellationToken cancellationToken)
+    {
+        // 订阅心跳事件
+        _webSocketManager.HeartbeatReceived += OnHeartbeatReceived;
+        
+        _logger.LogInformation("心跳监控服务已启动");
+    }
+
+    private void OnHeartbeatReceived(object? sender, WebSocketHeartbeatEventArgs e)
+    {
+        _heartbeatTimestamps.Add(DateTime.UtcNow);
+        
+        _logger.LogInformation("💗 心跳消息 - 时间戳: {Timestamp}, 间隔: {Interval}s, 状态: {Status}",
+            e.Timestamp, e.Interval, e.Status);
+    }
+}
+```
+
+#### 心跳数据模型
+
+```csharp
+// 心跳消息结构
+public class HeartbeatMessage : FeishuWebSocketMessage
+{
+    public HeartbeatData? Data { get; set; }
+}
+
+public class HeartbeatData
+{
+    public long Timestamp { get; set; }           // 心跳时间戳
+    public int? Interval { get; set; }           // 心跳间隔（秒）
+    public string? Status { get; set; }           // 心跳状态
+}
+
+// 心跳事件参数
+public class WebSocketHeartbeatEventArgs : EventArgs
+{
+    public HeartbeatMessage? HeartbeatMessage { get; set; }
+    public DateTimeOffset Timestamp { get; set; }
+    public int? Interval { get; set; }
+    public string? Status { get; set; }
+}
+```
+
+#### 心跳统计和分析
+
+```csharp
+public class HeartbeatStatistics
+{
+    public int TotalHeartbeats { get; set; }          // 总心跳次数
+    public List<HeartbeatInfo> RecentHeartbeats { get; set; }  // 最近心跳记录
+    public DateTime? LastHeartbeatTime { get; set; }   // 最后心跳时间
+    public double? AverageInterval { get; set; }       // 平均心跳间隔
+}
+
+// 获取心跳统计
+var statistics = heartbeatService.GetStatistics();
+Console.WriteLine($"总心跳: {statistics.TotalHeartbeats}, 平均间隔: {statistics.AverageInterval:F2}s");
 ```
 
 ## 🎯 事件处理器（策略模式）
@@ -325,6 +400,75 @@ builder.Services.AddFeishuWebSocketWithDefaultHandlers(builder.Configuration);
 
 ## 🔧 高级功能
 
+### 心跳监控服务
+
+```csharp
+public class HeartbeatMonitorService : IHostedService
+{
+    private readonly IFeishuWebSocketManager _webSocketManager;
+    private readonly List<DateTime> _heartbeatTimestamps = new();
+
+    public async Task StartAsync(CancellationToken cancellationToken)
+    {
+        // 订阅心跳事件
+        _webSocketManager.HeartbeatReceived += OnHeartbeatReceived;
+        
+        // 启动定时检查
+        _heartbeatCheckTimer = new Timer(CheckHeartbeatStatus, null, 
+            TimeSpan.Zero, TimeSpan.FromSeconds(30));
+    }
+
+    private void OnHeartbeatReceived(object? sender, WebSocketHeartbeatEventArgs e)
+    {
+        _heartbeatTimestamps.Add(DateTime.UtcNow);
+        
+        // 分析心跳模式
+        AnalyzeHeartbeatPattern();
+        
+        _logger.LogInformation("💗 收到心跳消息 - 时间戳: {Timestamp}, 间隔: {Interval}s, 状态: {Status}",
+            e.Timestamp, e.Interval, e.Status);
+    }
+
+    private void AnalyzeHeartbeatPattern()
+    {
+        var recentTimestamps = _heartbeatTimestamps.TakeLast(10).ToList();
+        var intervals = new List<double>();
+
+        for (int i = 1; i < recentTimestamps.Count; i++)
+        {
+            var interval = (recentTimestamps[i] - recentTimestamps[i - 1]).TotalSeconds;
+            intervals.Add(interval);
+        }
+
+        if (intervals.Any())
+        {
+            var averageInterval = intervals.Average();
+            var variance = intervals.Select(x => Math.Pow(x - averageInterval, 2)).Average();
+            var standardDeviation = Math.Sqrt(variance);
+
+            // 如果标准差过大，可能表示心跳不稳定
+            if (standardDeviation > 5.0)
+            {
+                _logger.LogWarning("检测到心跳间隔不稳定，可能存在连接问题");
+            }
+        }
+    }
+
+    public HeartbeatStatistics GetStatistics()
+    {
+        return new HeartbeatStatistics
+        {
+            TotalHeartbeats = _heartbeatTimestamps.Count,
+            RecentHeartbeats = _heartbeatTimestamps.TakeLast(20)
+                .Select((timestamp, index) => new HeartbeatInfo { Timestamp = timestamp })
+                .ToList(),
+            LastHeartbeatTime = _heartbeatTimestamps.LastOrDefault(),
+            AverageInterval = CalculateAverageInterval(_heartbeatTimestamps.TakeLast(20).ToList())
+        };
+    }
+}
+```
+
 ### 事件处理器工厂
 
 ```csharp
@@ -433,11 +577,30 @@ public class DistributedEventProcessor
 - 检查网络稳定性
 - 调整心跳间隔至30秒以内
 - 启用自动重连功能
+- 监控 heartbeat 消息的接收情况
 
 **Q: 认证失败？**
 - 验证AppId和AppSecret是否正确
 - 检查应用权限配置
 - 确认网络访问权限
+
+**Q: 没有收到心跳消息？**
+- 确认 WebSocket 连接已建立
+- 检查是否订阅了 HeartbeatReceived 事件
+- 验证飞书服务器是否支持 heartbeat 消息类型
+- 查看应用日志中的心跳相关错误
+
+### 心跳问题
+
+**Q: 心跳间隔不稳定？**
+- 检查网络延迟和稳定性
+- 使用心跳统计功能分析间隔模式
+- 考虑在网络波动时增加重试机制
+
+**Q: 如何使用心跳进行连接健康检查？**
+- 监控 HeartbeatReceived 事件触发频率
+- 设置心跳超时检测（如2分钟无心跳视为异常）
+- 结合连接状态进行综合判断
 
 ### 性能问题
 
@@ -445,13 +608,22 @@ public class DistributedEventProcessor
 - 优化事件处理器逻辑，使用异步操作
 - 增加消息队列容量
 - 使用多个消费者处理事件
+- 监控心跳统计以评估连接质量
 
 **Q: 内存占用过高？**
 - 及时处理积压的消息
 - 调整消息队列容量
 - 监控内存使用情况
+- 定期清理心跳统计数据
 
 ## 📋 支持的事件类型
+
+### WebSocket 消息类型
+- `ping` - 连接保活消息（自动响应 pong）
+- `pong` - 连接保活响应
+- `heartbeat` - 心跳消息（包含状态和间隔信息）
+- `event` - 业务事件消息
+- `auth` - 认证响应消息
 
 ### 消息事件
 - `im.message.receive_v1` - 接收消息
@@ -499,6 +671,7 @@ public interface IFeishuWebSocketManager
     event EventHandler<WebSocketCloseEventArgs>? Disconnected;
     event EventHandler<WebSocketMessageEventArgs>? MessageReceived;
     event EventHandler<WebSocketErrorEventArgs>? Error;
+    event EventHandler<WebSocketHeartbeatEventArgs>? HeartbeatReceived;  // 心跳事件
     
     // 方法
     Task StartAsync(CancellationToken cancellationToken = default);

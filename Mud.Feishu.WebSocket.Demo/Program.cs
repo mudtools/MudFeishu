@@ -7,6 +7,7 @@
 
 using Mud.Feishu.WebSocket;
 using Mud.Feishu.WebSocket.Demo.Handlers;
+using Mud.Feishu.WebSocket.Demo.Services;
 using Mud.Feishu.WebSocket.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -38,6 +39,7 @@ builder.Services.AddFeishuWebSocketBuilder()
 // 配置演示服务
 builder.Services.AddSingleton<DemoEventService>();
 builder.Services.AddHostedService<DemoEventBackgroundService>();
+builder.Services.AddHostedService<HeartbeatMonitorService>();
 
 // 配置CORS
 builder.Services.AddCors(options =>

@@ -63,9 +63,15 @@ public interface IFeishuWebSocketClient : IDisposable
     event EventHandler<WebSocketPongEventArgs>? PongReceived;
 
     /// <summary>
+    /// 接收到心跳事件
+    /// </summary>
+    event EventHandler<WebSocketHeartbeatEventArgs>? HeartbeatReceived;
+
+    /// <summary>
     /// 接收到飞书事件
     /// </summary>
     event EventHandler<WebSocketFeishuEventArgs>? FeishuEventReceived;
+
 
     /// <summary>
     /// 建立WebSocket连接

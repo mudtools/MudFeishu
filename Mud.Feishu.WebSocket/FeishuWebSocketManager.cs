@@ -63,6 +63,7 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager
         _webSocketClient.Disconnected += OnClientDisconnected;
         _webSocketClient.MessageReceived += OnClientMessageReceived;
         _webSocketClient.Error += OnClientError;
+        _webSocketClient.HeartbeatReceived += OnClientHeartbeatReceived;
     }
 
     /// <summary>
@@ -172,6 +173,11 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager
     /// 连接错误事件
     /// </summary>
     public event EventHandler<WebSocketErrorEventArgs>? Error;
+
+    /// <summary>
+    /// 接收到心跳事件
+    /// </summary>
+    public event EventHandler<WebSocketHeartbeatEventArgs>? HeartbeatReceived;
 
     /// <summary>
     /// 启动WebSocket连接
@@ -476,6 +482,18 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager
         _logger.LogError(e.Exception, "飞书WebSocket发生错误: {Message} (类型: {ErrorType}, 状态: {State}, 网络: {IsNetwork}, 认证: {IsAuth}, 时间: {Timestamp})",
             e.ErrorMessage, e.ErrorType, e.ConnectionState, e.IsNetworkError, e.IsAuthError, e.Timestamp);
         Error?.Invoke(this, e);
+    }
+
+    /// <summary>
+    /// 客户端心跳事件处理
+    /// </summary>
+    /// <param name="sender">事件发送者</param>
+    /// <param name="e">事件参数</param>
+    private void OnClientHeartbeatReceived(object? sender, WebSocketHeartbeatEventArgs e)
+    {
+        _logger.LogDebug("飞书WebSocket心跳消息 - 时间戳: {Timestamp}, 间隔: {Interval}s, 状态: {Status}",
+            e.Timestamp, e.Interval, e.Status);
+        HeartbeatReceived?.Invoke(this, e);
     }
 
     /// <summary>

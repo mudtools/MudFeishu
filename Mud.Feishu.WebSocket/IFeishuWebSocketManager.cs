@@ -45,6 +45,11 @@ public interface IFeishuWebSocketManager : IDisposable
     event EventHandler<WebSocketErrorEventArgs>? Error;
 
     /// <summary>
+    /// 接收到心跳事件
+    /// </summary>
+    event EventHandler<WebSocketHeartbeatEventArgs>? HeartbeatReceived;
+
+    /// <summary>
     /// 启动WebSocket连接
     /// </summary>
     /// <param name="cancellationToken">取消令牌</param>

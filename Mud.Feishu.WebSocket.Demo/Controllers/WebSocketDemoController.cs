@@ -8,6 +8,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Mud.Feishu.WebSocket.DataModels;
 using Mud.Feishu.WebSocket.Services;
+using Mud.Feishu.WebSocket.SocketEventArgs;
 
 namespace Mud.Feishu.WebSocket.Demo.Controllers;
 
@@ -22,6 +23,7 @@ public class WebSocketDemoController : ControllerBase
     private readonly ILogger<WebSocketDemoController> _logger;
     private readonly IServiceProvider _serviceProvider;
     private readonly DemoEventService _demoEventService;
+    private readonly List<HeartbeatInfo> _heartbeatHistory = new();
 
     public WebSocketDemoController(
         ILogger<WebSocketDemoController> logger,
@@ -291,6 +293,46 @@ public class WebSocketDemoController : ControllerBase
             return StatusCode(500, new { error = "重新连接失败", message = ex.Message });
         }
     }
+
+    /// <summary>
+    /// 获取心跳统计信息
+    /// </summary>
+    [HttpGet("heartbeat-statistics")]
+    public ActionResult<HeartbeatStatistics> GetHeartbeatStatisticsAsync()
+    {
+        try
+        {
+            var recentHeartbeats = _heartbeatHistory.TakeLast(20).ToList();
+            var statistics = new HeartbeatStatistics
+            {
+                TotalHeartbeats = _heartbeatHistory.Count,
+                RecentHeartbeats = recentHeartbeats,
+                LastHeartbeatTime = recentHeartbeats.LastOrDefault()?.Timestamp,
+                AverageInterval = CalculateAverageInterval(recentHeartbeats)
+            };
+
+            return Ok(statistics);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "获取心跳统计信息失败");
+            return StatusCode(500, new { error = "获取心跳统计信息失败", message = ex.Message });
+        }
+    }
+
+    private static double? CalculateAverageInterval(List<HeartbeatInfo> heartbeats)
+    {
+        if (heartbeats.Count < 2) return null;
+
+        var intervals = new List<double>();
+        for (int i = 1; i < heartbeats.Count; i++)
+        {
+            var interval = (heartbeats[i].Timestamp - heartbeats[i - 1].Timestamp).TotalSeconds;
+            intervals.Add(interval);
+        }
+
+        return intervals.Average();
+    }
 }
 
 /// <summary>
@@ -310,4 +352,40 @@ public class WebSocketStatus
 public class SendMessageRequest
 {
     public string Message { get; init; } = string.Empty;
+}
+
+/// <summary>
+/// 心跳信息
+/// </summary>
+public class HeartbeatInfo
+{
+    public DateTime Timestamp { get; set; }
+    public int? Interval { get; set; }
+    public string? Status { get; set; }
+}
+
+/// <summary>
+/// 心跳统计信息
+/// </summary>
+public class HeartbeatStatistics
+{
+    /// <summary>
+    /// 总心跳次数
+    /// </summary>
+    public int TotalHeartbeats { get; set; }
+
+    /// <summary>
+    /// 最近的心跳记录
+    /// </summary>
+    public List<HeartbeatInfo> RecentHeartbeats { get; set; } = new();
+
+    /// <summary>
+    /// 最后一次心跳时间
+    /// </summary>
+    public DateTime? LastHeartbeatTime { get; set; }
+
+    /// <summary>
+    /// 平均心跳间隔（秒）
+    /// </summary>
+    public double? AverageInterval { get; set; }
 }

@@ -31,7 +31,7 @@ internal class TenantTokenManager : TokenManagerWithCache, ITenantTokenManager
         var res = await _authenticationApi.GetTenantAccessTokenAsync(credentials, cancellationToken);
         return new CredentialToken
         {
-            AccessToken = res.TenantAccessToken ?? string.Empty,
+            AccessToken = res?.TenantAccessToken ?? string.Empty,
             Expire = res.Expire,
             Code = res.Code,
             Msg = res.Msg

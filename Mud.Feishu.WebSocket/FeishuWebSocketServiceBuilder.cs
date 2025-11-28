@@ -45,6 +45,7 @@ public class FeishuWebSocketServiceBuilder
 
         var section = sectionName ?? "Feishu:WebSocket";
         _services.Configure<FeishuWebSocketOptions>(options => configuration.GetSection(section).Bind(options));
+        _services.AddFeishuApiService(configuration, "Feishu");
         return this;
     }
 
@@ -91,6 +92,8 @@ public class FeishuWebSocketServiceBuilder
         where THandler : class, IFeishuEventHandler
     {
         _handlerTypes.Add(typeof(THandler));
+        _services.AddSingleton<IFeishuEventHandler, THandler>();
+        _services.AddSingleton<THandler>();
         return this;
     }
 

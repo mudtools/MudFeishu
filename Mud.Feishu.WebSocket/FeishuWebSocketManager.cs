@@ -8,7 +8,6 @@
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Mud.Feishu.DataModels;
 using Mud.Feishu.DataModels.WsEndpoint;
 using Mud.Feishu.TokenManager;
 using Mud.Feishu.WebSocket.SocketEventArgs;
@@ -29,7 +28,7 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager
     private readonly SemaphoreSlim _startStopLock = new(1, 1);
     private bool _isRunning = false;
     private bool _disposed = false;
-    
+
     // 令牌缓存
     private string? _cachedAccessToken;
     private DateTime _tokenExpiryTime = DateTime.MinValue;
@@ -83,12 +82,12 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager
 
         // 需要刷新令牌
         var newToken = await _appTokenManager.GetTokenAsync(cancellationToken);
-        
+
         if (string.IsNullOrEmpty(newToken))
         {
             throw new InvalidOperationException("获取的应用访问令牌为空");
         }
-        
+
         lock (_tokenLock)
         {
             _cachedAccessToken = newToken;
@@ -125,16 +124,16 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager
                 var delay = TimeSpan.FromMilliseconds(Math.Pow(2, i) * 1000); // 1s, 2s, 4s, 8s...
                 _logger.LogWarning(ex, "{OperationName}失败，将在{Delay}毫秒后重试 (尝试 {RetryCount}/{MaxRetries})",
                     operationName, delay.TotalMilliseconds, i + 1, maxRetries + 1);
-                
+
                 await Task.Delay(delay, cancellationToken);
             }
         }
 
         // 最后一次尝试，不捕获异常
         _logger.LogError("{OperationName}失败，已达到最大重试次数 {MaxRetries}", operationName, maxRetries + 1);
-        
+
         // 执行最后一次尝试
-        return await operation(); 
+        return await operation();
     }
 
     // 监控字段
@@ -219,7 +218,7 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager
             }
 
             // 获取WebSocket端点
-            var credentials = new AppCredentials
+            var credentials = new WsAppCredentials
             {
                 AppId = _feishuOptions.AppId,
                 AppSecret = _feishuOptions.AppSecret
@@ -253,14 +252,14 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager
             await _webSocketClient.ConnectAsync(wsEndpointData, appAccessToken, cancellationToken);
 
             _isRunning = true;
-            
+
             lock (_stateLock)
             {
                 _connectedTime = DateTime.UtcNow;
                 _lastError = null;
                 _isReconnecting = false;
             }
-            
+
             _logger.LogInformation("飞书WebSocket服务启动成功");
         }
         catch (Exception ex)
@@ -299,13 +298,13 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager
             await _webSocketClient.DisconnectAsync(cancellationToken);
 
             _isRunning = false;
-            
+
             lock (_stateLock)
             {
                 _connectedTime = DateTime.MinValue;
                 _isReconnecting = false;
             }
-            
+
             _logger.LogInformation("飞书WebSocket服务已停止");
         }
         catch (Exception ex)
@@ -392,10 +391,10 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager
     {
         lock (_stateLock)
         {
-            var uptime = _connectedTime == DateTime.MinValue 
-                ? TimeSpan.Zero 
+            var uptime = _connectedTime == DateTime.MinValue
+                ? TimeSpan.Zero
                 : DateTime.UtcNow - _connectedTime;
-                
+
             return (uptime, _reconnectCount, _lastError);
         }
     }
@@ -410,8 +409,8 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager
         {
             if (_isReconnecting)
             {
-                return WebSocketConnectionState.Reconnecting with 
-                { 
+                return WebSocketConnectionState.Reconnecting with
+                {
                     ReconnectCount = _reconnectCount,
                     LastError = _lastError
                 };
@@ -532,7 +531,7 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager
         {
             _disposed = true;
         }
-        
+
         // 调用 GC.SuppressFinalize 以防止终结器被调用
         GC.SuppressFinalize(this);
     }

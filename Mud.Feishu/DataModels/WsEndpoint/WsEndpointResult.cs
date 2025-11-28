@@ -15,12 +15,12 @@ public class WsEndpointResult
     /// <summary>
     /// 长连接地址
     /// </summary>
-    [JsonPropertyName("url")]
+    [JsonPropertyName("URL")]
     public string Url { get; set; } = string.Empty;
 
     /// <summary>
     /// 客户端配置信息。
     /// </summary>
-    [JsonPropertyName("client_config")]
+    [JsonPropertyName("ClientConfig")]
     public ClientConfigInfo ClientConfig { get; set; } = new();
 }

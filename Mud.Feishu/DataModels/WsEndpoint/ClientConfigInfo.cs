@@ -18,7 +18,7 @@ public class ClientConfigInfo
     /// <para>当达到此限制后，将停止自动重连，需要手动触发重新连接。</para>
     /// <para>默认值：3次</para>
     /// </summary>
-    [JsonPropertyName("reconnect_count")]
+    [JsonPropertyName("ReconnectCount")]
     public int ReconnectCount { get; set; }
 
     /// <summary>
@@ -27,7 +27,7 @@ public class ClientConfigInfo
     /// <para>建议设置在1000-5000毫秒之间，根据网络状况调整。</para>
     /// <para>默认值：3000毫秒</para>
     /// </summary>
-    [JsonPropertyName("reconnect_interval")]
+    [JsonPropertyName("ReconnectInterval")]
     public int ReconnectInterval { get; set; }
 
     /// <summary>
@@ -36,7 +36,7 @@ public class ClientConfigInfo
     /// <para>系统会在重连间隔基础上增加0到此值的随机毫秒数。</para>
     /// <para>默认值：1000毫秒</para>
     /// </summary>
-    [JsonPropertyName("reconnect_nonce")]
+    [JsonPropertyName("ReconnectNonce")]
     public int ReconnectNonce { get; set; }
 
     /// <summary>
@@ -46,6 +46,6 @@ public class ClientConfigInfo
     /// <para>建议设置在30000-60000毫秒之间。</para>
     /// <para>默认值：30000毫秒</para>
     /// </summary>
-    [JsonPropertyName("ping_interval")]
+    [JsonPropertyName("PingInterval")]
     public int PingInterval { get; set; }
 }

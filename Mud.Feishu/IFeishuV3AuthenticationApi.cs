@@ -99,8 +99,8 @@ public interface IFeishuV3AuthenticationApi
     /// </summary>
     /// <param name="appCredentials">应用唯一标识及应用秘钥信息</param>
     /// <param name="cancellation_token">取消操作的令牌</param>
-    [Post("https://accounts.feishu.cn/callback/ws/endpoint")]
+    [Post("https://open.feishu.cn/callback/ws/endpoint")]
     Task<FeishuApiResult<WsEndpointResult>?> GetWebSocketEndpointAsync(
-        [Body] AppCredentials appCredentials,
+        [Body] WsAppCredentials appCredentials,
         CancellationToken cancellation_token = default);
 }

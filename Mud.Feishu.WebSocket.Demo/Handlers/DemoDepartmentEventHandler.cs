@@ -33,7 +33,7 @@ public class DemoDepartmentEventHandler : IFeishuEventHandler
         if (eventData == null)
             throw new ArgumentNullException(nameof(eventData));
 
-        _logger.LogInformation("🏢 [部门事件] 开始处理部门创建事件: {EventId}", eventData.EventId);
+        //_logger.LogInformation("🏢 [部门事件] 开始处理部门创建事件: {EventId}", eventData.EventId);
 
         try
         {
@@ -51,7 +51,7 @@ public class DemoDepartmentEventHandler : IFeishuEventHandler
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "❌ [部门事件] 处理部门创建事件失败: {EventId}", eventData.EventId);
+            //_logger.LogError(ex, "❌ [部门事件] 处理部门创建事件失败: {EventId}", eventData.EventId);
             throw;
         }
     }
@@ -60,7 +60,7 @@ public class DemoDepartmentEventHandler : IFeishuEventHandler
     {
         try
         {
-            var jsonElement = JsonSerializer.Deserialize<JsonElement>(eventData.Data?.ToString() ?? "{}");
+            var jsonElement = JsonSerializer.Deserialize<JsonElement>(eventData.Event?.ToString() ?? "{}");
 
             // 尝试从不同的JSON结构中解析部门信息
             var deptElement = jsonElement.GetProperty("department");

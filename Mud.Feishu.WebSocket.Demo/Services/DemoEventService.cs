@@ -136,9 +136,7 @@ public class DemoEventService
         return new EventData
         {
             EventType = "contact.user.created_v3",
-            EventId = Guid.NewGuid().ToString(),
-            EventTime = DateTime.UtcNow,
-            Data = new
+            Event = new
             {
                 user = new
                 {
@@ -149,11 +147,6 @@ public class DemoEventService
                     phone = $"138{random.Next(10000000, 99999999)}",
                     avatar = $"https://example.com/avatar/{userId}.jpg"
                 }
-            },
-            Headers = new Dictionary<string, string>
-            {
-                ["X-Request-ID"] = Guid.NewGuid().ToString(),
-                ["Content-Type"] = "application/json"
             }
         };
     }
@@ -170,9 +163,7 @@ public class DemoEventService
         return new EventData
         {
             EventType = "contact.department.created_v3",
-            EventId = Guid.NewGuid().ToString(),
-            EventTime = DateTime.UtcNow,
-            Data = new
+            Event = new
             {
                 department = new
                 {
@@ -187,11 +178,6 @@ public class DemoEventService
                     member_count = random.Next(5, 50)
                 }
             },
-            Headers = new Dictionary<string, string>
-            {
-                ["X-Request-ID"] = Guid.NewGuid().ToString(),
-                ["Content-Type"] = "application/json"
-            }
         };
     }
 
@@ -210,9 +196,7 @@ public class DemoEventService
         return new EventData
         {
             EventType = "approval.approval.approved_v1",
-            EventId = Guid.NewGuid().ToString(),
-            EventTime = DateTime.UtcNow,
-            Data = new
+            Event = new
             {
                 approval = new
                 {
@@ -226,15 +210,10 @@ public class DemoEventService
                     approval_type = type,
                     priority = random.Next(1, 4),
                     comment = status == "rejected" ? "不满足审批条件" : (status == "approved" ? "审批通过" : "等待审批"),
-                    approved_at = status == "pending" ? null : DateTime.UtcNow.AddDays(-random.Next(1, 7)),
+                    approved_at = status == "pending" ? DateTime.MinValue : DateTime.UtcNow.AddDays(-random.Next(1, 7)),
                     created_at = DateTime.UtcNow.AddDays(-random.Next(7, 30)),
                     updated_at = DateTime.UtcNow
                 }
-            },
-            Headers = new Dictionary<string, string>
-            {
-                ["X-Request-ID"] = Guid.NewGuid().ToString(),
-                ["Content-Type"] = "application/json"
             }
         };
     }

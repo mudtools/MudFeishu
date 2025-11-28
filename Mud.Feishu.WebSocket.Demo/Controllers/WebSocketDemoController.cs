@@ -163,7 +163,7 @@ public class WebSocketDemoController : ControllerBase
         {
             var eventData = _demoEventService.GenerateMockUserEvent();
 
-            _logger.LogInformation("👤 [API] 生成用户事件: {EventId}", eventData.EventId);
+            //_logger.LogInformation("👤 [API] 生成用户事件: {EventId}", eventData.EventId);
             return Ok(eventData);
         }
         catch (Exception ex)
@@ -183,7 +183,7 @@ public class WebSocketDemoController : ControllerBase
         {
             var eventData = _demoEventService.GenerateMockDepartmentEvent();
 
-            _logger.LogInformation("🏢 [API] 生成部门事件: {EventId}", eventData.EventId);
+            //_logger.LogInformation("🏢 [API] 生成部门事件: {EventId}", eventData.EventId);
             return Ok(eventData);
         }
         catch (Exception ex)
@@ -203,7 +203,7 @@ public class WebSocketDemoController : ControllerBase
         {
             var eventData = _demoEventService.GenerateMockApprovalEvent();
 
-            _logger.LogInformation("✅ [API] 生成审批事件: {EventId}", eventData.EventId);
+            //_logger.LogInformation("✅ [API] 生成审批事件: {EventId}", eventData.EventId);
             return Ok(eventData);
         }
         catch (Exception ex)

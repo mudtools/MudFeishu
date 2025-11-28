@@ -33,7 +33,7 @@ public class DemoApprovalEventHandler : IFeishuEventHandler
         if (eventData == null)
             throw new ArgumentNullException(nameof(eventData));
 
-        _logger.LogInformation("✅ [审批事件] 开始处理审批事件: {EventId}", eventData.EventId);
+        //_logger.LogInformation("✅ [审批事件] 开始处理审批事件: {EventId}", eventData.EventId);
 
         try
         {
@@ -51,7 +51,7 @@ public class DemoApprovalEventHandler : IFeishuEventHandler
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "❌ [审批事件] 处理审批事件失败: {EventId}", eventData.EventId);
+            //_logger.LogError(ex, "❌ [审批事件] 处理审批事件失败: {EventId}", eventData.EventId);
             throw;
         }
     }
@@ -60,7 +60,7 @@ public class DemoApprovalEventHandler : IFeishuEventHandler
     {
         try
         {
-            var jsonElement = JsonSerializer.Deserialize<JsonElement>(eventData.Data?.ToString() ?? "{}");
+            var jsonElement = JsonSerializer.Deserialize<JsonElement>(eventData.Event?.ToString() ?? "{}");
 
             // 尝试从不同的JSON结构中解析审批信息
             var approvalElement = jsonElement.GetProperty("approval");
@@ -203,8 +203,7 @@ public class DemoApprovalEventHandler : IFeishuEventHandler
                 return DateTimeOffset.FromUnixTimeSeconds(timestamp).DateTime;
 
             // 尝试解析字符串日期时间
-            if (value.TryGetString(out var dateString) &&
-                DateTime.TryParse(dateString, out var parsedDate))
+            if (DateTime.TryParse(value.GetString(), out var parsedDate))
                 return parsedDate;
         }
 

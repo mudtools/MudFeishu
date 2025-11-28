@@ -98,14 +98,14 @@ public class DemoEventBackgroundService : BackgroundService
                 _ => "未知事件"
             };
 
-            _logger.LogInformation("🎯 [后台服务] 生成{eventType}事件: {EventId}", eventTypeName, mockEvent.EventId);
+            //_logger.LogInformation("🎯 [后台服务] 生成{eventType}事件: {EventId}", eventTypeName, mockEvent.EventId);
 
             // 模拟事件处理
             await Task.Delay(100, stoppingToken);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "❌ [后台服务] 处理模拟事件失败: {EventId}", mockEvent.EventId);
+            //_logger.LogError(ex, "❌ [后台服务] 处理模拟事件失败: {EventId}", mockEvent.EventId);
         }
     }
 

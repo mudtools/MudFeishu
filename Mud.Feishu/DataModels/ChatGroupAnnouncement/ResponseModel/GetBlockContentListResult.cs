@@ -5,15 +5,17 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-namespace Mud.Feishu;
+namespace Mud.Feishu.DataModels.ChatGroupNotice;
 
 /// <summary>
-/// 群公告是群组中的公告文档，采用飞书云文档承载，每个群组只有一个群公告，每篇群公告都有唯一的 chat_id作为标识。
-/// <para>当前接口使用用户令牌访问，适应于用户应用场景。</para>
-/// 接口详细文档请参见：<see href="https://open.feishu.cn/document/group/upgraded-group-announcement/group-announcement-overview"/>
+/// 获取群公告块的内容 响应体
 /// </summary>
-[HttpClientApi(RegistryGroupName = "ChatGroup", TokenManage = nameof(IUserTokenManager))]
-[Header("Authorization")]
-public interface IFeishuUserV1ChatGroupNotice : IFeishuV1ChatGroupNotice
+public class GetBlockContentListResult
 {
+    /// <summary>
+    /// <para>查询的 Block 的信息</para>
+    /// <para>必填：否</para>
+    /// </summary>
+    [JsonPropertyName("block")]
+    public AnnouncementBlock? Block { get; set; }
 }

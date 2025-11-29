@@ -5,15 +5,22 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-namespace Mud.Feishu;
+namespace Mud.Feishu.DataModels.ChatGroupNotice;
 
 /// <summary>
-/// 飞书群成员包括用户和机器人。在飞书群组内，支持添加用户或者机器人作为群成员，同时支持将用户或者机器人设置为群管理员。
-/// <para>当前接口使用用户令牌访问，适应于用户应用场景。</para>
-/// 接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/group/chat-member/intro"/>
+/// 删除群公告中的块 响应体
 /// </summary>
-[HttpClientApi(RegistryGroupName = "ChatGroup", TokenManage = nameof(IUserTokenManager))]
-[Header("Authorization")]
-public interface IFeishuUserV1ChatGroupMember : IFeishuV1ChatGroupMember
+public class DeleteAnnouncementBlockResult
 {
+    /// <summary>
+    /// <para>当前删除操作成功后群公告的版本号</para>
+    /// </summary>
+    [JsonPropertyName("revision_id")]
+    public int? RevisionId { get; set; }
+
+    /// <summary>
+    /// <para>操作的唯一标识，更新请求中使用此值表示幂等的进行此次更新</para>
+    /// </summary>
+    [JsonPropertyName("client_token")]
+    public string? ClientToken { get; set; }
 }

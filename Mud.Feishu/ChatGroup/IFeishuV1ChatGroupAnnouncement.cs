@@ -12,7 +12,7 @@ namespace Mud.Feishu;
 /// <summary>
 /// 群公告是群组中的公告文档，采用飞书云文档承载，每个群组只有一个群公告，每篇群公告都有唯一的 chat_id作为标识。
 /// </summary>
-public interface IFeishuV1ChatGroupNotice
+public interface IFeishuV1ChatGroupAnnouncement
 {
     /// <summary>
     /// 获取指定群组中的群公告基本信息。
@@ -30,7 +30,7 @@ public interface IFeishuV1ChatGroupNotice
     /// <summary>
     /// 获取群公告所有块的富文本内容并分页返回。
     /// </summary>
-    /// <param name="chat_id">群 ID。 示例值："oc_a0553eda9014c201e6969b478895c230"</param>/
+    /// <param name="chat_id">群 ID。 示例值："oc_a0553eda9014c201e6969b478895c230"</param>
     /// <param name="user_id_type">用户 ID 类型，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
     /// <param name="page_size">分页大小，即本次请求所返回的用户信息列表内的最大条目数。默认值：10</param>
     /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
@@ -92,4 +92,64 @@ public interface IFeishuV1ChatGroupNotice
           [Query("client_token")] string? client_token = null,
           [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
           CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 获取群公告块的富文本内容
+    /// </summary>
+    /// <param name="chat_id">群 ID。 示例值："oc_a0553eda9014c201e6969b478895c230"</param>
+    /// <param name="block_id">Block 的唯一标识。 示例值："doxcnO6UW6wAw2qIcYf4hZabcef"</param>
+    /// <param name="revision_id">要操作的群公告版本。-1 表示群公告最新版本。群公告创建后，版本为 1。</param>
+    /// <param name="user_id_type">用户 ID 类型 示例值："open_id"</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Get("https://open.feishu.cn/open-apis/docx/v1/chats/{chat_id}/announcement/blocks/{block_id}")]
+    Task<FeishuApiResult<GetBlockContentListResult>?> GetBlockContentByIdAsync(
+        [Path] string chat_id,
+        [Path] string block_id,
+        [Query("revision_id")] int? revision_id = -1,
+        [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 获取群公告所有块的富文本内容并分页返回。
+    /// </summary>
+    /// <param name="chat_id">群 ID。 示例值："oc_a0553eda9014c201e6969b478895c230"</param>
+    /// <param name="block_id">Block 的唯一标识。 示例值："doxcnO6UW6wAw2qIcYf4hZabcef"</param>
+    /// <param name="user_id_type">用户 ID 类型，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
+    /// <param name="page_size">分页大小，即本次请求所返回的用户信息列表内的最大条目数。默认值：10</param>
+    /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
+    /// <param name="revision_id">查询的群公告版本，-1 表示群公告最新版本。
+    /// <para>群公告创建后，版本为 1。若查询的版本为群公告最新版本，则需要持有群公告的阅读权限；</para> 
+    /// <para>若查询的版本为群公告的历史版本，则需要持有群公告的编辑权限。</para>
+    /// <para>默认值：-1</para></param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Get("https://open.feishu.cn/open-apis/docx/v1/chats/{chat_id}/announcement/blocks/{block_id}/children")]
+    Task<FeishuApiPageListResult<AnnouncementBlock>?> GetBlockContentPageListByIdAsync(
+        [Path] string chat_id,
+        [Path] string block_id,
+        [Query("page_size")] int? page_size = 10,
+        [Query("page_token")] string? page_token = null,
+        [Query("revision_id")] int? revision_id = -1,
+        [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 指定需要操作的块，删除其指定范围的子块。如果操作成功，接口将返回应用删除操作后的群公告版本号。
+    /// </summary>
+    /// <param name="chat_id">群 ID。 示例值："oc_a0553eda9014c201e6969b478895c230"</param>
+    /// <param name="block_id">Block 的唯一标识。 示例值："doxcnO6UW6wAw2qIcYf4hZabcef"</param>
+    /// <param name="deleteRequest"></param>
+    /// <param name="user_id_type">用户 ID 类型，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
+    /// <param name="client_token">操作的唯一标识，与接口返回值的 client_token 相对应，用于幂等的进行更新操作。此值为空表示将发起一次新的请求，此值非空表示幂等的进行更新操作。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Delete("https://open.feishu.cn/open-apis/docx/v1/chats/{chat_id}/announcement/blocks/{block_id}/children/batch_delete")]
+    Task<FeishuApiResult<DeleteAnnouncementBlockResult>?> DeleteBlockByIdAsync(
+       [Path] string chat_id,
+       [Path] string block_id,
+       [Body] DeleteAnnouncementBlockRequest deleteRequest,
+       [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
+       [Query("client_token")] string? client_token = null,
+       CancellationToken cancellationToken = default);
 }

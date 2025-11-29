@@ -343,7 +343,7 @@ public abstract class TokenManagerWithCache : ITokenManager, IDisposable
     /// <remarks>
     /// 在令牌前添加"Bearer "前缀，符合HTTP认证标准格式。
     /// </remarks>
-    private static string FormatBearerToken(string token)
+    private static string FormatBearerToken(string? token)
     {
         return $"Bearer {token}";
     }

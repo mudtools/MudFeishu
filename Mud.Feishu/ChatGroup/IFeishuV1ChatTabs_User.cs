@@ -8,12 +8,12 @@
 namespace Mud.Feishu;
 
 /// <summary>
-/// 飞书群成员包括用户和机器人。在飞书群组内，支持添加用户或者机器人作为群成员，同时支持将用户或者机器人设置为群管理员。
+/// 会话标签页是指飞书客户端某一会话顶部的标签页，通过 OpenAPI 支持添加、删除、更新以及获取会话标签页等操作。
 /// <para>当前接口使用用户令牌访问，适应于用户应用场景。</para>
-/// 接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/group/chat-member/intro"/>
+/// 接口详细文档请参见：<see href="https://open.feishu.cn/document/group/chat-tab/chat-tab-overview"/>
 /// </summary>
 [HttpClientApi(RegistryGroupName = "ChatGroup", TokenManage = nameof(IUserTokenManager))]
 [Header("Authorization")]
-public interface IFeishuUserV1ChatGroupMember : IFeishuV1ChatGroupMember
+public interface IFeishuUserV1ChatTabs : IFeishuV1ChatTabs
 {
 }

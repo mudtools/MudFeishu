@@ -8,12 +8,12 @@
 namespace Mud.Feishu;
 
 /// <summary>
-/// 飞书群成员包括用户和机器人。在飞书群组内，支持添加用户或者机器人作为群成员，同时支持将用户或者机器人设置为群管理员。
+/// 群公告是群组中的公告文档，采用飞书云文档承载，每个群组只有一个群公告，每篇群公告都有唯一的 chat_id作为标识。
 /// <para>当前接口使用用户令牌访问，适应于用户应用场景。</para>
-/// 接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/group/chat-member/intro"/>
+/// 接口详细文档请参见：<see href="https://open.feishu.cn/document/group/upgraded-group-announcement/group-announcement-overview"/>
 /// </summary>
 [HttpClientApi(RegistryGroupName = "ChatGroup", TokenManage = nameof(IUserTokenManager))]
 [Header("Authorization")]
-public interface IFeishuUserV1ChatGroupMember : IFeishuV1ChatGroupMember
+public interface IFeishuUserV1ChatGroupAnnouncement : IFeishuV1ChatGroupAnnouncement
 {
 }

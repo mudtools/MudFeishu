@@ -8,12 +8,12 @@
 namespace Mud.Feishu;
 
 /// <summary>
-/// 群公告是群组中的公告文档，采用飞书云文档承载，每个群组只有一个群公告，每篇群公告都有唯一的 chat_id作为标识。
+/// 会话标签页是指飞书客户端某一会话顶部的标签页，通过 OpenAPI 支持添加、删除、更新以及获取会话标签页等操作。
 /// <para>当前接口使用租户令牌访问，适应于租户应用场景。</para>
-/// 接口详细文档请参见：<see href="https://open.feishu.cn/document/group/upgraded-group-announcement/group-announcement-overview"/>
+/// 接口详细文档请参见：<see href="https://open.feishu.cn/document/group/chat-tab/chat-tab-overview"/>
 /// </summary>
 [HttpClientApi(RegistryGroupName = "ChatGroup", TokenManage = nameof(ITenantTokenManager))]
 [Header("Authorization")]
-public interface IFeishuTenantV1ChatGroupNotice : IFeishuV1ChatGroupNotice
+public interface IFeishuTenantV1ChatTabs : IFeishuV1ChatTabs
 {
 }

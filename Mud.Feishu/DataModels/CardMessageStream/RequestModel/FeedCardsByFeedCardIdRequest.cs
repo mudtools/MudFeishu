@@ -5,16 +5,35 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-namespace Mud.CodeGenerator;
+namespace Mud.Feishu.DataModels.CardMessageStream;
 
 /// <summary>
-/// 声明用于保存下载远程服务二进制文件的文件路径参数特性
+/// 即时提醒请求体
 /// </summary>
-[AttributeUsage(AttributeTargets.Parameter, AllowMultiple = false)]
-internal sealed class FilePathAttribute : Attribute
+public class FeedCardsByFeedCardIdRequest
 {
     /// <summary>
-    /// 文件读取时的缓冲区大小。
+    /// <para>即时提醒状态（设置为 true 后，卡片在消息列表临时置顶；设置为 false，消息卡片不置顶）</para>
+    /// <para>必填：是</para>
+    /// <para>示例值：true</para>
     /// </summary>
-    public int BufferSize { get; set; } = 81920;
+    [JsonPropertyName("time_sensitive")]
+    public
+#if NET7_0_OR_GREATER
+        required
+#endif
+        bool TimeSensitive
+    { get; set; }
+
+    /// <summary>
+    /// <para>用户 ID 列表</para>
+    /// <para>必填：是</para>
+    /// </summary>
+    [JsonPropertyName("user_ids")]
+    public
+#if NET7_0_OR_GREATER
+        required
+#endif
+        string[] UserIds
+    { get; set; } = [];
 }

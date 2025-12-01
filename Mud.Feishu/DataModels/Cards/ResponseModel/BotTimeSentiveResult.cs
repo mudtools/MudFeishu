@@ -5,16 +5,42 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-namespace Mud.CodeGenerator;
+namespace Mud.Feishu.DataModels.Cards;
 
 /// <summary>
-/// 声明用于保存下载远程服务二进制文件的文件路径参数特性
+/// 机器人单聊即时提醒响应体
 /// </summary>
-[AttributeUsage(AttributeTargets.Parameter, AllowMultiple = false)]
-internal sealed class FilePathAttribute : Attribute
+public class BotTimeSentiveResult
+{
+
+    /// <summary>
+    /// <para>失败原因</para>
+    /// </summary>
+    [JsonPropertyName("failed_user_reasons")]
+    public TimeSentiveFailedReason[]? FailedUserReasons { get; set; }
+
+}
+
+/// <summary>
+/// <para>失败原因</para>
+/// </summary>
+public class TimeSentiveFailedReason
 {
     /// <summary>
-    /// 文件读取时的缓冲区大小。
+    /// <para>错误码</para>
     /// </summary>
-    public int BufferSize { get; set; } = 81920;
+    [JsonPropertyName("error_code")]
+    public int? ErrorCode { get; set; }
+
+    /// <summary>
+    /// <para>错误信息</para>
+    /// </summary>
+    [JsonPropertyName("error_message")]
+    public string? ErrorMessage { get; set; }
+
+    /// <summary>
+    /// <para>用户id</para>
+    /// </summary>
+    [JsonPropertyName("user_id")]
+    public string? UserId { get; set; }
 }

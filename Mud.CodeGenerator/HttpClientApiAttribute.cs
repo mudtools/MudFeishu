@@ -88,5 +88,5 @@ internal class HttpClientApiAttribute : Attribute
     /// <summary>
     /// 生成的客户端类继承自哪个类
     /// </summary>
-    public string InheritedFrom { get; set; }
+    public string? InheritedFrom { get; set; }
 }

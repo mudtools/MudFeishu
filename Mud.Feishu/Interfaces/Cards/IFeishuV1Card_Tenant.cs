@@ -7,7 +7,7 @@
 
 using Mud.Feishu.DataModels.Cards;
 
-namespace Mud.Feishu.Cards;
+namespace Mud.Feishu;
 
 /// <summary>
 /// 飞书卡片是应用的一种能力，包括构建卡片内容所需的组件和发送卡片所需的能力，并提供了可视化搭建工具。
@@ -30,4 +30,42 @@ public interface IFeishuTenantV1Card
          [Body] CreateCardRequest createCardRequest,
          CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// 更新指定卡片实体的配置，支持卡片配置 config 字段和卡片跳转链接 card_link 字段。
+    /// </summary>
+    /// <param name="updateCardRequest">更新卡片实体配置请求体</param>
+    /// <param name="card_id">卡片实体 ID。示例值："7355372766134157313"</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Patch("https://open.feishu.cn/open-apis/cardkit/v1/cards/{card_id}/settings")]
+    Task<FeishuNullDataApiResult?> UpdateCardSettingsByIdAsync(
+        [Path] string card_id,
+        [Body] UpdateCardSettingsRequest updateCardRequest,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 更新卡片实体局部内容，包括配置和组件。支持同时对多个组件进行增删改等不同操作。
+    /// </summary>
+    /// <param name="partialUpdateCardRequest">局部更新卡片实体配置请求体</param>
+    /// <param name="card_id">卡片实体 ID。示例值："7355372766134157313"</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Post("https://open.feishu.cn/open-apis/cardkit/v1/cards/{card_id}/batch_update")]
+    Task<FeishuNullDataApiResult?> PartialUpdateCardByIdAsync(
+        [Path] string card_id,
+        [Body] PartialUpdateCardRequest partialUpdateCardRequest,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 传入新的卡片 JSON 代码，覆盖更新指定的卡片实体的所有内容。
+    /// </summary>
+    /// <param name="card_id">卡片实体 ID。示例值："7355372766134157313"</param>
+    /// <param name="updateCardRequest">全量更新卡片实体请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Patch("https://open.feishu.cn/open-apis/cardkit/v1/cards/{card_id}")]
+    Task<FeishuNullDataApiResult?> UpdateCardByIdAsync(
+       [Path] string card_id,
+       [Body] UpdateCardRequest updateCardRequest,
+       CancellationToken cancellationToken = default);
 }

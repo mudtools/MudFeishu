@@ -5,12 +5,19 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-namespace Mud.CodeGenerator;
+namespace Mud.Feishu.DataModels.Cards;
 
 /// <summary>
-/// 忽略生成函数的实现代码。
+/// 创建卡片实体 响应体
+/// <para>基于卡片 JSON 代码或卡片搭建工具搭建的卡片，创建卡片实体。用于后续通过卡片实体 ID（card_id）发送卡片、更新卡片等。</para>
 /// </summary>
-[AttributeUsage(AttributeTargets.Method, AllowMultiple = false)]
-internal class IgnoreImplementAttribute : Attribute
+public class CreateCardResult
 {
+    /// <summary>
+    /// <para>创建的卡片实体 ID。</para>
+    /// <para>必填：是</para>
+    /// <para>示例值：7355372766134157313</para>
+    /// </summary>
+    [JsonPropertyName("card_id")]
+    public string CardId { get; set; } = string.Empty;
 }

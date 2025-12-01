@@ -27,7 +27,7 @@ namespace Mud.CodeGenerator;
 /// </code>
 /// </example>
 [AttributeUsage(AttributeTargets.Interface, AllowMultiple = false)]
-public class HttpClientApiWrapAttribute : Attribute
+internal class HttpClientApiWrapAttribute : Attribute
 {
     /// <summary>
     /// 初始化 <see cref="HttpClientApiWrapAttribute"/> 类的新实例。

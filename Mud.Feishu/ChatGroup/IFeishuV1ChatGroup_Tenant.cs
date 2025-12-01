@@ -27,7 +27,7 @@ public interface IFeishuTenantV1ChatGroup : IFeishuV1ChatGroup
     ///  <para>示例值：false</para>
     /// </param>
     /// <param name="uuid">由开发者生成的唯一字符串序列，用于创建群组请求去重；持有相同 uuid + owner_id（若有） 的请求 10 小时内只可成功创建 1 个群聊。不传值表示不进行请求去重，每一次请求成功后都会创建一个群聊。</param>
-    /// <param name="cancellationToken"></param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Post("https://open.feishu.cn/open-apis/im/v1/chats")]
     Task<FeishuApiResult<CreateUpdateChatResult>?> CreateChatGroupAsync(

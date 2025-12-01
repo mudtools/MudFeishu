@@ -17,22 +17,25 @@ public class ChatGroupMenuResult
     /// <para>必填：否</para>
     /// </summary>
     [JsonPropertyName("menu_tree")]
-    public ChatMenuTree? MenuTree { get; set; }
+    public ChatMenuTreeInfo? MenuTree { get; set; }
 
-    /// <summary>
-    /// <para>添加群菜单后，该群组内所有群菜单的信息。</para>
-    /// </summary>
-    public class ChatMenuTree
-    {
-        /// <summary>
-        /// <para>一级菜单列表</para>
-        /// <para>必填：否</para>
-        /// </summary>
-        [JsonPropertyName("chat_menu_top_levels")]
-        public ChatMenuTopLevelInfo[]? ChatMenuTopLevels { get; set; }
-
-    }
 }
+
+/// <summary>
+/// <para>添加群菜单后，该群组内所有群菜单的信息。</para>
+/// </summary>
+public class ChatMenuTreeInfo
+{
+    /// <summary>
+    /// <para>一级菜单列表</para>
+    /// <para>必填：否</para>
+    /// </summary>
+    [JsonPropertyName("chat_menu_top_levels")]
+    public ChatMenuTopLevelInfo[]? ChatMenuTopLevels { get; set; }
+
+}
+
+
 
 /// <summary>
 /// <para>一级菜单列表</para>

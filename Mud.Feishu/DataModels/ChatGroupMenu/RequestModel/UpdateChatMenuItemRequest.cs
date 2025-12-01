@@ -8,37 +8,40 @@
 namespace Mud.Feishu.DataModels.ChatGroupMenu;
 
 /// <summary>
-/// 添加群菜单请求体
-/// <para>在指定群组中添加一个或多个群菜单。成功调用后接口会返回当前群组内所有群菜单信息。</para>
+/// 修改群菜单元信息请求体
+/// <para>修改指定群组内的某个一级菜单或者二级菜单的元信息，包括图标、名称、国际化名称和跳转链接。</para>
 /// </summary>
-public class AddChatGroupMenuRequest
+public class UpdateChatMenuItemRequest
 {
     /// <summary>
-    /// <para>要向群内追加的菜单</para>
+    /// <para>要修改的元信息</para>
     /// <para>必填：是</para>
+    /// <para>示例值：["ICON"]</para>
+    /// <para>可选值：<list type="bullet">
+    /// <item>ICON：图标</item>
+    /// <item>NAME：名称</item>
+    /// <item>I18N_NAME：国际化名称</item>
+    /// <item>REDIRECT_LINK：跳转链接</item>
+    /// </list></para>
     /// </summary>
-    [JsonPropertyName("menu_tree")]
+    [JsonPropertyName("update_fields")]
     public
 #if NET7_0_OR_GREATER
         required
 #endif
-        ChatMenuTree MenuTree
-    { get; set; } = new();
+        string[] UpdateFields
+    { get; set; } = [];
 
-}
-
-/// <summary>
-/// <para>要向群内追加的菜单</para>
-/// </summary>
-public class ChatMenuTree
-{
     /// <summary>
-    /// <para>一级菜单列表</para>
-    /// <para>**注意**：一个群内最多有 3 个一级菜单。</para>
+    /// <para>群菜单的元信息</para>
     /// <para>必填：是</para>
     /// </summary>
-    [JsonPropertyName("chat_menu_top_levels")]
-    public ChatMenuTopLevel[] ChatMenuTopLevels { get; set; } = [];
-
+    [JsonPropertyName("chat_menu_item")]
+    public
+#if NET7_0_OR_GREATER
+        required
+#endif
+        ChatMenuItem ChatMenuItem
+    { get; set; } = new();
 
 }

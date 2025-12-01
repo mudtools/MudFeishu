@@ -19,7 +19,12 @@ public class CreateChatTabsRequest
     /// <para>必填：是</para>
     /// </summary>
     [JsonPropertyName("chat_tabs")]
-    public ChatTabData[] ChatTabs { get; set; } = Array.Empty<ChatTabData>();
+    public
+#if NET7_0_OR_GREATER
+        required
+#endif
+        ChatTabCreateData[] ChatTabs
+    { get; set; } = [];
 
 }
 
@@ -27,7 +32,7 @@ public class CreateChatTabsRequest
 /// <para>会话标签页</para>
 /// <para>**注意**：一个会话内最多只允许添加 20 个自定义会话标签页</para>
 /// </summary>
-public class ChatTabData
+public class ChatTabCreateData
 {
     /// <summary>
     /// <para>会话标签页名称</para>
@@ -58,7 +63,12 @@ public class ChatTabData
     /// </list></para>
     /// </summary>
     [JsonPropertyName("tab_type")]
-    public string TabType { get; set; } = string.Empty;
+    public
+#if NET7_0_OR_GREATER
+        required
+#endif
+        string TabType
+    { get; set; } = string.Empty;
 
     /// <summary>
     /// <para>会话标签页的内容</para>

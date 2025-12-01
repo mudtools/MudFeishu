@@ -5,40 +5,36 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-namespace Mud.Feishu.DataModels.Messages;
+namespace Mud.Feishu.DataModels.ChatTabs;
+
+
 
 /// <summary>
-/// 表示飞书消息置顶信息的响应模型
+/// <para>会话标签页内容</para>
 /// </summary>
-public class PinInfo
+public class ChatTabContentInfo
 {
     /// <summary>
-    /// 获取或设置被置顶消息的唯一标识符
+    /// <para>url 类型标签页对应的 URL 地址</para>
     /// </summary>
-    [JsonPropertyName("message_id")]
-    public string? MessageId { get; set; }
+    [JsonPropertyName("url")]
+    public string? Url { get; set; }
 
     /// <summary>
-    /// 获取或设置消息所在会话的唯一标识符
+    /// <para>文档类型标签页对应的云文档链接</para>
     /// </summary>
-    [JsonPropertyName("chat_id")]
-    public string? ChatId { get; set; }
+    [JsonPropertyName("doc")]
+    public string? Doc { get; set; }
 
     /// <summary>
-    /// 获取或设置执行置顶操作的操作者用户ID
+    /// <para>会议纪要类型标签页对应的会议纪要地址</para>
     /// </summary>
-    [JsonPropertyName("operator_id")]
-    public string? OperatorId { get; set; }
+    [JsonPropertyName("meeting_minute")]
+    public string? MeetingMinute { get; set; }
 
     /// <summary>
-    /// 获取或设置操作者ID的类型（如：user_id、open_id等）
+    /// <para>任务</para>
     /// </summary>
-    [JsonPropertyName("operator_id_type")]
-    public string? OperatorIdType { get; set; }
-
-    /// <summary>
-    /// 获取或设置置顶操作的创建时间戳
-    /// </summary>
-    [JsonPropertyName("create_time")]
-    public string? CreateTime { get; set; }
+    [JsonPropertyName("task")]
+    public string? Task { get; set; }
 }

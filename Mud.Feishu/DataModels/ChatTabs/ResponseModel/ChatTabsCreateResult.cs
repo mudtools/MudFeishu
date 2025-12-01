@@ -5,16 +5,19 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-namespace Mud.Feishu.DataModels.Messages;
+namespace Mud.Feishu.DataModels.ChatTabs;
 
 /// <summary>
-/// 表示飞书消息置顶数据结果的响应模型
+/// 添加会话标签页 响应体
+/// <para>在指定会话内添加自定义会话标签页，仅支持添加文档类型（doc）或 URL （url）类型的标签页。</para>
 /// </summary>
-public class PinDataResult
+public class ChatTabsCreateResult
 {
     /// <summary>
-    /// 获取或设置置顶信息的详细信息
+    /// <para>会话标签页</para>
     /// </summary>
-    [JsonPropertyName("pin")]
-    public PinInfo? Pin { get; set; }
+    [JsonPropertyName("chat_tabs")]
+    public ChatTabInfo[]? ChatTabs { get; set; }
+
 }
+

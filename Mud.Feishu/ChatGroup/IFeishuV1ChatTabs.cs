@@ -26,14 +26,63 @@ public interface IFeishuV1ChatTabs
     ///  <para>示例值：false</para>
     /// </param>
     /// <param name="uuid">由开发者生成的唯一字符串序列，用于创建群组请求去重；持有相同 uuid + owner_id（若有） 的请求 10 小时内只可成功创建 1 个群聊。不传值表示不进行请求去重，每一次请求成功后都会创建一个群聊。</param>
-    /// <param name="cancellationToken"></param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Post("https://open.feishu.cn/open-apis/im/v1/chats/{chat_id}/chat_tabs")]
-    Task<FeishuApiResult<ChatTabsResult>?> CreateChatTabsAsync(
+    Task<FeishuApiResult<ChatTabsCreateResult>?> CreateChatTabsByIdAsync(
           [Path] string chat_id,
           [Body] CreateChatTabsRequest createChatTabsRequest,
           [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
           [Query("set_bot_manager")] bool? set_bot_manager = false,
           [Query("uuid")] string? uuid = null,
           CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 更新指定的会话标签页信息，包括名称、类型以及内容等。仅支持更新文档类型（doc）或 URL （url）类型的标签页。
+    /// </summary>
+    /// <param name="chat_id">群 ID。 示例值："oc_a0553eda9014c201e6969b478895c230"</param>
+    /// <param name="updateChatTabsRequest">更新会话标签页请求体。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Post("https://open.feishu.cn/open-apis/im/v1/chats/{chat_id}/chat_tabs/update_tabs")]
+    Task<FeishuApiResult<ChatTabsUpdateResult>?> UpdateChatTabsByIdAsync(
+         [Path] string chat_id,
+         [Body] UpdateChatTabsRequest updateChatTabsRequest,
+         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 删除指定会话内的一个或多个会话标签页。
+    /// </summary>
+    /// <param name="chat_id">群 ID。 示例值："oc_a0553eda9014c201e6969b478895c230"</param>
+    /// <param name="deleteChatTabsRequest">删除会话标签页请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Delete("https://open.feishu.cn/open-apis/im/v1/chats/{chat_id}/chat_tabs/delete_tabs")]
+    Task<FeishuApiResult<DeleteTabsResult>?> DeleteChatTabsByIdAsync(
+      [Path] string chat_id,
+      [Body] ChatTabsIdsRequest deleteChatTabsRequest,
+      CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 调整指定会话内的多个会话标签页排列顺序。
+    /// </summary>
+    /// <param name="chat_id">群 ID。 示例值："oc_a0553eda9014c201e6969b478895c230"</param>
+    /// <param name="chatTabsSortRequest">排序会话标签页请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Post("https://open.feishu.cn/open-apis/im/v1/chats/{chat_id}/chat_tabs/sort_tabs")]
+    Task<FeishuApiResult<ChatTabsSortResult>?> ChatTabsSortByIdAsync(
+     [Path] string chat_id,
+     [Body] ChatTabsIdsRequest chatTabsSortRequest,
+     CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 获取指定会话内的会话标签页信息，包括 ID、名称、类型以及内容等。
+    /// </summary>
+    /// <param name="chat_id">群 ID。 示例值："oc_a0553eda9014c201e6969b478895c230"</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Post("https://open.feishu.cn/open-apis/im/v1/chats/{chat_id}/chat_tabs/list_tabs")]
+    Task<FeishuApiResult<GetChatTabsResult>?> GetChatTabsListByIdAsync(
+    [Path] string chat_id,
+    CancellationToken cancellationToken = default);
 }

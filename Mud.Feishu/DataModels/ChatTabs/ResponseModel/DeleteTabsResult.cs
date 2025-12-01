@@ -8,16 +8,21 @@
 namespace Mud.Feishu.DataModels.ChatTabs;
 
 /// <summary>
-/// 添加会话标签页 响应体
-/// <para>在指定会话内添加自定义会话标签页，仅支持添加文档类型（doc）或 URL （url）类型的标签页。</para>
+/// 删除会话标签页 响应体
 /// </summary>
-public class ChatTabsResult
+public class DeleteTabsResult
 {
     /// <summary>
     /// <para>会话标签页</para>
     /// </summary>
     [JsonPropertyName("chat_tabs")]
-    public ChatTabInfo[]? ChatTabs { get; set; }
+    public ChatTabDeleteResult[]? ChatTabs { get; set; }
+
+    /// <summary>
+    /// <para>会话标签页配置</para>
+    /// </summary>
+    [JsonPropertyName("tab_config")]
+    public ChatTabConfigDeleteResult? TabConfig { get; set; }
 
 }
 
@@ -25,17 +30,17 @@ public class ChatTabsResult
 /// <summary>
 /// <para>会话标签页</para>
 /// </summary>
-public class ChatTabInfo
+public class ChatTabDeleteResult
 {
     /// <summary>
-    /// <para>会话标签页 ID，建议你保存该 ID，后续更新、删除、排序标签页时需要基于该 ID 进行操作。</para>
+    /// <para>会话标签页 ID</para>
+    /// <para>示例值：7101214603622940671</para>
     /// </summary>
     [JsonPropertyName("tab_id")]
     public string? TabId { get; set; }
 
     /// <summary>
     /// <para>会话标签页名称</para>
-    /// <para>必填：否</para>
     /// <para>示例值：文档</para>
     /// </summary>
     [JsonPropertyName("tab_name")]
@@ -43,8 +48,6 @@ public class ChatTabInfo
 
     /// <summary>
     /// <para>会话标签页类型</para>
-    /// <para>必填：是</para>
-    /// <para>示例值：doc</para>
     /// <para>可选值：<list type="bullet">
     /// <item>message：消息类型</item>
     /// <item>doc_list：云文档列表</item>
@@ -64,26 +67,19 @@ public class ChatTabInfo
 
     /// <summary>
     /// <para>会话标签页内容</para>
-    /// <para>必填：否</para>
     /// </summary>
     [JsonPropertyName("tab_content")]
-    public ChatTabContentInfo? TabContent { get; set; }
-
-
-    /// <summary>
-    /// <para>会话标签页配置</para>
-    /// <para>必填：否</para>
-    /// </summary>
-    [JsonPropertyName("tab_config")]
-    public ChatTabConfigInfo? TabConfig { get; set; }
+    public ChatTabContentDeleteResult? TabContent { get; set; }
 
 }
+
+
 
 
 /// <summary>
 /// <para>会话标签页内容</para>
 /// </summary>
-public class ChatTabContentInfo
+public class ChatTabContentDeleteResult
 {
     /// <summary>
     /// <para>url 类型标签页对应的 URL 地址</para>
@@ -104,19 +100,18 @@ public class ChatTabContentInfo
     public string? MeetingMinute { get; set; }
 
     /// <summary>
-    /// <para>任务</para>
+    /// <para>任务类型标签页对应的任务地址</para>
     /// </summary>
     [JsonPropertyName("task")]
     public string? Task { get; set; }
 }
-
 /// <summary>
 /// <para>会话标签页配置</para>
 /// </summary>
-public class ChatTabConfigInfo
+public class ChatTabConfigDeleteResult
 {
     /// <summary>
-    /// <para>会话标签页图标。可调用[下载图片](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/im-v1/image/get)（只能下载由当前机器人上传的图片），将图标下载至本地查看</para>
+    /// <para>会话标签页图标</para>
     /// </summary>
     [JsonPropertyName("icon_key")]
     public string? IconKey { get; set; }

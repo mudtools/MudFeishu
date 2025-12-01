@@ -5,16 +5,23 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-namespace Mud.Feishu.DataModels.Messages;
+namespace Mud.Feishu.DataModels.ChatTabs;
 
 /// <summary>
-/// 表示飞书消息置顶数据结果的响应模型
+/// 多个会话标签页操作请求体
 /// </summary>
-public class PinDataResult
+public class ChatTabsIdsRequest
 {
     /// <summary>
-    /// 获取或设置置顶信息的详细信息
+    /// <para>会话标签页 ID 列表。</para>
+    /// <para>必填：是</para>
+    /// <para>示例值：["7101214603622940671", "7101214603622940672"]</para>
     /// </summary>
-    [JsonPropertyName("pin")]
-    public PinInfo? Pin { get; set; }
+    [JsonPropertyName("tab_ids")]
+    public
+#if NET7_0_OR_GREATER
+        required
+#endif
+        string[] TabIds
+    { get; set; } = [];
 }

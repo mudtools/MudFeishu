@@ -16,12 +16,6 @@
 	</PropertyGroup>
 
 	<Import Project="..\Mud.CodeGenerator\Mud.CodeGenerator.projitems" Label="Shared" />
-
-	<ItemGroup>
-	  <Compile Remove="Examples\**" />
-	  <EmbeddedResource Remove="Examples\**" />
-	  <None Remove="Examples\**" />
-	</ItemGroup>
 	<ItemGroup>
 		<CompilerVisibleProperty Include="HttpClientOptionsName" />
 	</ItemGroup>

@@ -7,7 +7,7 @@
 
 using Mud.Feishu.DataModels.CardElements;
 
-namespace Mud.Feishu.Interfaces.Cards;
+namespace Mud.Feishu;
 
 /// <summary>
 /// 飞书卡片是应用的一种能力，包括构建卡片内容所需的组件和发送卡片所需的能力，并提供了可视化搭建工具。

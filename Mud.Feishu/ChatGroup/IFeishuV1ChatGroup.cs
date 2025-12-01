@@ -12,6 +12,7 @@ namespace Mud.Feishu;
 /// <summary>
 /// 飞书群组 OpenAPI 提供了群组管理能力，包括创建群、解散群、更新群信息、获取群信息、管理群置顶以及获取群分享链接等。
 /// </summary>
+[HttpClientApi(TokenManage = nameof(ITokenManager), IsAbstract = true)]
 public interface IFeishuV1ChatGroup
 {
     /// <summary>

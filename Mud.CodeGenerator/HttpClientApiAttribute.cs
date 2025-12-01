@@ -79,4 +79,14 @@ internal class HttpClientApiAttribute : Attribute
     /// 获取或设置令牌管理服务接口的名称。
     /// </summary>
     public string? TokenManage { get; set; }
+
+    /// <summary>
+    /// 生成的客户端类是否为抽象类
+    /// </summary>
+    public bool IsAbstract { get; set; }
+
+    /// <summary>
+    /// 生成的客户端类继承自哪个类
+    /// </summary>
+    public string InheritedFrom { get; set; }
 }

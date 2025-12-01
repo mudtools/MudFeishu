@@ -12,7 +12,7 @@ namespace Mud.Feishu;
 /// <para>当前接口使用用户令牌访问，适应于用户应用场景。</para>
 /// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/contact-v3/job_title/job-title-resources-introduction"/></para>
 /// </summary>
-[HttpClientApi(TokenManage = nameof(ITenantTokenManager), RegistryGroupName = "Organization")]
+[HttpClientApi(TokenManage = nameof(ITenantTokenManager), RegistryGroupName = "Organization", InheritedFrom = nameof(FeishuV3JobTitle))]
 [Header("Authorization")]
 public interface IFeishuUserV3JobTitle : IFeishuV3JobTitle
 {

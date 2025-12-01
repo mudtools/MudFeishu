@@ -11,7 +11,7 @@ namespace Mud.Feishu;
 /// 消息即飞书聊天中的一条消息。可以使用消息管理 API 对消息进行发送、回复、编辑、撤回、转发以及查询等操作。
 /// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/im-v1/message/intro"/></para>
 /// </summary> 
-[HttpClientApi(TokenManage = nameof(IUserTokenManager), RegistryGroupName = "Message")]
+[HttpClientApi(TokenManage = nameof(IUserTokenManager), RegistryGroupName = "Message", InheritedFrom = nameof(FeishuV1Message))]
 [Header("Authorization")]
 public interface IFeishuUserV1Message : IFeishuV1Message
 {

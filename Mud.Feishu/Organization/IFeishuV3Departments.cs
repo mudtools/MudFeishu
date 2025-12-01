@@ -13,6 +13,8 @@ namespace Mud.Feishu;
 /// 飞书组织机构部门是指企业组织架构树上的某一个节点。
 /// <para>当前接口不能直接调用，仅为子接口的公共方法抽象</para>
 /// </summary>
+[HttpClientApi(TokenManage = nameof(ITokenManager), IsAbstract = true)]
+[Header("Authorization")]
 public interface IFeishuV3Departments
 {
     /// <summary>

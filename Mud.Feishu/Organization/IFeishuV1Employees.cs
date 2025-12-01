@@ -13,6 +13,8 @@ namespace Mud.Feishu;
 /// 员工指飞书企业内身份为「Employee」的成员，等同于通讯录OpenAPI中的「User」。
 /// <para>当前接口不能直接调用，仅为子接口的公共方法抽象</para>
 /// </summary>
+[HttpClientApi(TokenManage = nameof(ITokenManager), IsAbstract = true)]
+[Header("Authorization")]
 public interface IFeishuV1Employees
 {
     /// <summary>

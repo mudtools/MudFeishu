@@ -13,6 +13,7 @@
 		<PackageTags>飞书;飞书.net sdk;Feishu;Feishu.net;Feishu SDK;ASP.NET;ASP.NET Core;.NET;.NET Core;</PackageTags>
 		<!-- HttpClient配置选项类名称 -->
 		<HttpClientOptionsName>FeishuOptions</HttpClientOptionsName>
+		<BaseOutputPath>..\bin</BaseOutputPath>
 	</PropertyGroup>
 
 	<Import Project="..\Mud.CodeGenerator\Mud.CodeGenerator.projitems" Label="Shared" />

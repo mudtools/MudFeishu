@@ -13,9 +13,10 @@
 /Mud.Feishu.Test/bin/Release
 /Mud.Feishu.Test/Properties/PublishProfiles
 *.user
+/Mud.Feishu.WebSocket/bin/Debug
 /Mud.Feishu.WebSocket/bin/Debug/net10.0
 /Mud.Feishu.WebSocket/obj
-/Mud.Feishu.WebSocket/bin/Debug
+/Mud.Feishu.WebSocket.Demo/bin
 /Mud.Feishu.WebSocket.Demo/obj
 /Mud.Feishu.WebSocket.Demo/bin/Debug/net8.0
 /bin/Debug

@@ -7,7 +7,7 @@
 
 using Mud.Feishu.DataModels.CardMessageStream;
 
-namespace Mud.Feishu.Interfaces.Cards;
+namespace Mud.Feishu;
 
 /// <summary>
 /// 应用消息流卡片是飞书为应用提供的消息触达能力，让应用可以直接在消息流发送消息，重要消息能更快触达用户。

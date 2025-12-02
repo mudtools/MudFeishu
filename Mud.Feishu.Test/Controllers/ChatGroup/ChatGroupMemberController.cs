@@ -31,20 +31,17 @@ public class ChatGroupMemberController : ControllerBase
     /// </summary>
     /// <param name="chatId">群ID</param>
     /// <param name="addGroupManagerRequest">添加群管理员请求体</param>
-    /// <param name="memberIdType">成员ID类型，默认为open_id</param>
     /// <returns>添加结果</returns>
     [HttpPost("{chatId}/managers/add")]
     public async Task<IActionResult> AddManagersAsync(
         [FromRoute] string chatId,
-        [FromBody] GroupManagerRequest addGroupManagerRequest,
-        [FromQuery] string memberIdType = "open_id")
+        [FromBody] GroupManagerRequest addGroupManagerRequest)
     {
         try
         {
             var result = await _chatGroupMemberApi.AddManagersAsync(
                 chatId,
-                addGroupManagerRequest,
-                memberIdType);
+                addGroupManagerRequest);
 
             if (result.Code == 0)
             {
@@ -72,20 +69,17 @@ public class ChatGroupMemberController : ControllerBase
     /// </summary>
     /// <param name="chatId">群ID</param>
     /// <param name="deleteGroupManagerRequest">删除群管理员请求体</param>
-    /// <param name="memberIdType">成员ID类型，默认为open_id</param>
     /// <returns>删除结果</returns>
     [HttpPost("{chatId}/managers/delete")]
     public async Task<IActionResult> DeleteManagersAsync(
         [FromRoute] string chatId,
-        [FromBody] GroupManagerRequest deleteGroupManagerRequest,
-        [FromQuery] string memberIdType = "open_id")
+        [FromBody] GroupManagerRequest deleteGroupManagerRequest)
     {
         try
         {
             var result = await _chatGroupMemberApi.DeleteManagersAsync(
                 chatId,
-                deleteGroupManagerRequest,
-                memberIdType);
+                deleteGroupManagerRequest);
 
             if (result.Code == 0)
             {
@@ -113,23 +107,17 @@ public class ChatGroupMemberController : ControllerBase
     /// </summary>
     /// <param name="chatId">群ID</param>
     /// <param name="addMemberRequest">添加成员请求体</param>
-    /// <param name="memberIdType">成员ID类型，默认为open_id</param>
-    /// <param name="succeedType">出现不可用ID后的处理方式：0-不可用ID拉群失败，1-拉入可用ID并展示不可用ID，2-任一不可用ID都拉群失败</param>
     /// <returns>添加结果</returns>
     [HttpPost("{chatId}/members")]
     public async Task<IActionResult> AddMemberAsync(
         [FromRoute] string chatId,
-        [FromBody] MembersRequest addMemberRequest,
-        [FromQuery] string memberIdType = "open_id",
-        [FromQuery] int succeedType = 0)
+        [FromBody] MembersRequest addMemberRequest)
     {
         try
         {
             var result = await _chatGroupMemberApi.AddMemberAsync(
                 chatId,
-                addMemberRequest,
-                memberIdType,
-                succeedType);
+                addMemberRequest);
 
             if (result.Code == 0)
             {
@@ -185,20 +173,17 @@ public class ChatGroupMemberController : ControllerBase
     /// </summary>
     /// <param name="chatId">群ID</param>
     /// <param name="membersRequest">移除成员请求体</param>
-    /// <param name="memberIdType">成员ID类型，默认为open_id</param>
     /// <returns>移除结果</returns>
     [HttpDelete("{chatId}/members")]
     public async Task<IActionResult> RemoveMemberAsync(
         [FromRoute] string chatId,
-        [FromBody] MembersRequest membersRequest,
-        [FromQuery] string memberIdType = "open_id")
+        [FromBody] MembersRequest membersRequest)
     {
         try
         {
             var result = await _chatGroupMemberApi.RemoveMemberAsync(
                 chatId,
-                membersRequest,
-                memberIdType);
+                membersRequest);
 
             if (result.Code == 0)
             {
@@ -225,14 +210,12 @@ public class ChatGroupMemberController : ControllerBase
     /// 分页获取指定群组的成员信息，包括成员名字与ID
     /// </summary>
     /// <param name="chatId">群ID</param>
-    /// <param name="userIdType">用户ID类型，默认为open_id</param>
     /// <param name="pageSize">分页大小，默认为10</param>
     /// <param name="pageToken">分页标记，第一次请求不填</param>
     /// <returns>成员列表</returns>
     [HttpGet("{chatId}/members")]
     public async Task<IActionResult> GetMemberPageListAsync(
         [FromRoute] string chatId,
-        [FromQuery] string userIdType = "open_id",
         [FromQuery] int pageSize = 10,
         [FromQuery] string? pageToken = null)
     {
@@ -240,9 +223,8 @@ public class ChatGroupMemberController : ControllerBase
         {
             var result = await _chatGroupMemberApi.GetMemberPageListByIdAsync(
                 chatId,
-                userIdType,
-                pageSize,
-                pageToken);
+               page_size: pageSize,
+              page_token: pageToken);
 
             if (result.Code == 0)
             {

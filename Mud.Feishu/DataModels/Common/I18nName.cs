@@ -30,3 +30,65 @@ public class I18nName
     [JsonPropertyName("en_us")]
     public string? EnUs { get; set; }
 }
+
+
+
+/// <summary>
+/// <para>任务导入来源的名称，用于在任务中心详情页展示。需提供多语言版本。</para>
+/// </summary>
+public class I18nText : I18nName
+{
+    /// <summary>
+    /// <para>中文（香港地区）</para>
+    /// </summary>
+    [JsonPropertyName("zh_hk")]
+    public string? ZhHk { get; set; }
+
+    /// <summary>
+    /// <para>中文（台湾地区）</para>
+    /// </summary>
+    [JsonPropertyName("zh_tw")]
+    public string? ZhTw { get; set; }
+
+    /// <summary>
+    /// <para>法语</para>
+    /// </summary>
+    [JsonPropertyName("fr_fr")]
+    public string? FrFr { get; set; }
+
+    /// <summary>
+    /// <para>意大利语</para>
+    /// </summary>
+    [JsonPropertyName("it_it")]
+    public string? ItIt { get; set; }
+
+    /// <summary>
+    /// <para>德语</para>
+    /// </summary>
+    [JsonPropertyName("de_de")]
+    public string? DeDe { get; set; }
+
+    /// <summary>
+    /// <para>俄语</para>
+    /// </summary>
+    [JsonPropertyName("ru_ru")]
+    public string? RuRu { get; set; }
+
+    /// <summary>
+    /// <para>泰语</para>
+    /// </summary>
+    [JsonPropertyName("th_th")]
+    public string? ThTh { get; set; }
+
+    /// <summary>
+    /// <para>西班牙语</para>
+    /// </summary>
+    [JsonPropertyName("es_es")]
+    public string? EsEs { get; set; }
+
+    /// <summary>
+    /// <para>韩语</para>
+    /// </summary>
+    [JsonPropertyName("ko_kr")]
+    public string? KoKr { get; set; }
+}

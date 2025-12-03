@@ -1,0 +1,31 @@
+﻿// -----------------------------------------------------------------------
+//  作者：Mud Studio  版权所有 (c) Mud Studio 2025   
+//  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
+//  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
+//  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
+// -----------------------------------------------------------------------
+
+namespace Mud.Feishu.DataModels.Task;
+
+
+/// <summary>
+/// <para>任务关联的第三方平台来源信息，用于来源信息在飞书任务界面的展示。只能创建任务时设置，一旦设置后就不可变更。详见[功能概述](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/task-v2/overview)中的“ 如何使用Origin? ”章节。</para>
+/// </summary>
+public class TaskOriginSrcData
+{
+    /// <summary>
+    /// <para>任务导入来源的名称，用于在任务中心详情页展示。需提供多语言版本。</para>
+    /// <para>必填：否</para>
+    /// </summary>
+    [JsonPropertyName("platform_i18n_name")]
+    public I18nText? PlatformI18nName { get; set; }
+
+
+    /// <summary>
+    /// <para>任务关联的来源平台详情页链接</para>
+    /// <para>必填：否</para>
+    /// </summary>
+    [JsonPropertyName("href")]
+    public TasksOriginHref? Href { get; set; }
+
+}

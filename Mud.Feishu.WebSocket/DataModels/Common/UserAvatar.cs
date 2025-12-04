@@ -7,15 +7,34 @@
 
 using System.Text.Json.Serialization;
 
-namespace Mud.Feishu.WebSocket.DataModels.DepartmentCreatedEvent;
+namespace Mud.Feishu.WebSocket.DataModels;
+
 /// <summary>
-/// 部门状态信息类，用于表示部门是否被删除的状态
+/// 用户头像信息类，包含不同尺寸的用户头像URL
 /// </summary>
-public class DepartmentStatus
+public class UserAvatar
 {
     /// <summary>
-    /// 获取或设置部门是否被删除的标识
+    /// 72x72像素大小的用户头像URL
     /// </summary>
-    [JsonPropertyName("is_deleted")]
-    public bool IsDeleted { get; set; }
+    [JsonPropertyName("avatar_72")]
+    public string? Avatar72 { get; set; }
+
+    /// <summary>
+    /// 240x240像素大小的用户头像URL
+    /// </summary>
+    [JsonPropertyName("avatar_240")]
+    public string? Avatar240 { get; set; }
+
+    /// <summary>
+    /// 640x640像素大小的用户头像URL
+    /// </summary>
+    [JsonPropertyName("avatar_640")]
+    public string? Avatar640 { get; set; }
+
+    /// <summary>
+    /// 原始尺寸的用户头像URL
+    /// </summary>
+    [JsonPropertyName("avatar_origin")]
+    public string? AvatarOrigin { get; set; }
 }

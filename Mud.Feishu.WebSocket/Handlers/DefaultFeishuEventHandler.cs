@@ -7,13 +7,15 @@
 
 using Microsoft.Extensions.Logging;
 using Mud.Feishu.WebSocket.DataModels;
+using System.Text.Json;
 
 namespace Mud.Feishu.WebSocket.Handlers;
 
 /// <summary>
 /// 默认的飞书事件处理器（用于处理未注册的事件类型）
 /// </summary>
-public abstract class DefaultFeishuEventHandler : IFeishuEventHandler
+public abstract class DefaultFeishuEventHandler<T> : IFeishuEventHandler
+    where T : IEventResult, new()
 {
     /// <summary>
     /// 日志记录器。
@@ -51,7 +53,9 @@ public abstract class DefaultFeishuEventHandler : IFeishuEventHandler
             _logger.LogWarning("收到未处理的事件类型: {EventType}, 应用ID: {AppId}, 租户: {TenantKey}",
                 eventData.EventType, eventData.AppId, eventData.TenantKey);
 
-            await ProcessBusinessLogicAsync(eventData, cancellationToken);
+            var eventEntity = JsonSerializer.Deserialize<T>(eventData.Event!.ToString()!);
+
+            await ProcessBusinessLogicAsync(eventData, eventEntity, cancellationToken);
         }
         catch (Exception ex)
         {
@@ -63,8 +67,9 @@ public abstract class DefaultFeishuEventHandler : IFeishuEventHandler
     /// <summary>
     /// 处理业务逻辑。
     /// </summary>
-    /// <param name="eventData"></param>
-    /// <param name="cancellationToken"></param>
+    /// <param name="eventData">完整的事件原始数据。</param>
+    /// <param name="eventEntity">事件实体数据。</param>
+    /// <param name="cancellationToken">取消操作<see cref="CancellationToken"/>令牌</param>
     /// <returns></returns>
-    public abstract Task ProcessBusinessLogicAsync(EventData eventData, CancellationToken cancellationToken = default);
+    public abstract Task ProcessBusinessLogicAsync(EventData eventData, T? eventEntity, CancellationToken cancellationToken = default);
 }

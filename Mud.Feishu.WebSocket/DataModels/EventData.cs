@@ -15,6 +15,12 @@ namespace Mud.Feishu.WebSocket.DataModels;
 public class EventData
 {
     /// <summary>
+    /// 事件ID
+    /// </summary>
+    [JsonPropertyName("event_id")]
+    public string EventId { get; set; } = string.Empty;
+
+    /// <summary>
     /// 事件类型
     /// </summary>
     [JsonPropertyName("event_type")]
@@ -31,6 +37,12 @@ public class EventData
     /// </summary>
     [JsonPropertyName("tenant_key")]
     public string TenantKey { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 事件创建时间（毫秒时间戳）
+    /// </summary>
+    [JsonPropertyName("create_time")]
+    public long CreateTime { get; set; }
 
     /// <summary>
     /// 事件内容

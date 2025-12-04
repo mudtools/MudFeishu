@@ -38,7 +38,7 @@ public static class FeishuEventTypes
     public const string GroupUpdated = "im.chat.updated_v1";
 
     /// <summary>
-    /// 用户创建事件
+    /// 员工入职事件
     /// </summary>
     public const string UserCreated = "contact.user.created_v3";
 

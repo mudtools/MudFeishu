@@ -6,6 +6,7 @@
 // -----------------------------------------------------------------------
 
 using Mud.Feishu.WebSocket.DataModels;
+using Mud.Feishu.WebSocket.DataModels.DepartmentCreatedEvent;
 using Mud.Feishu.WebSocket.Demo.Handlers;
 using System.Collections.Concurrent;
 
@@ -18,7 +19,7 @@ public class DemoEventService
 {
     private readonly ILogger<DemoEventService> _logger;
     private readonly ConcurrentBag<UserData> _userEvents = new();
-    private readonly ConcurrentBag<DepartmentData> _departmentEvents = new();
+    private readonly ConcurrentBag<DepartmentCreatedEventResult> _departmentEvents = new();
     private readonly ConcurrentBag<ApprovalData> _approvalEvents = new();
 
     private int _userCount = 0;
@@ -43,11 +44,11 @@ public class DemoEventService
     /// <summary>
     /// 记录部门事件
     /// </summary>
-    public async Task RecordDepartmentEventAsync(DepartmentData departmentData, CancellationToken cancellationToken = default)
+    public async Task RecordDepartmentEventAsync(DepartmentCreatedEventResult departmentData, CancellationToken cancellationToken = default)
     {
         _departmentEvents.Add(departmentData);
         _logger.LogInformation("📊 [统计] 记录部门事件: {DepartmentId} - {DepartmentName}",
-            departmentData.DepartmentId, departmentData.DepartmentName);
+            departmentData.DepartmentId, departmentData.Name);
         await Task.CompletedTask;
     }
 
@@ -102,7 +103,7 @@ public class DemoEventService
         return new RecentEvents
         {
             RecentUsers = _userEvents.OrderByDescending(u => u.ProcessedAt).Take(count).ToList(),
-            RecentDepartments = _departmentEvents.OrderByDescending(d => d.ProcessedAt).Take(count).ToList(),
+            RecentDepartments = _departmentEvents.OrderByDescending(d => d.Order).Take(count).ToList(),
             RecentApprovals = _approvalEvents.OrderByDescending(a => a.ProcessedAt).Take(count).ToList()
         };
     }
@@ -251,6 +252,6 @@ public class EventStatistics
 public class RecentEvents
 {
     public List<UserData> RecentUsers { get; init; } = new();
-    public List<DepartmentData> RecentDepartments { get; init; } = new();
+    public List<DepartmentCreatedEventResult> RecentDepartments { get; init; } = new();
     public List<ApprovalData> RecentApprovals { get; init; } = new();
 }

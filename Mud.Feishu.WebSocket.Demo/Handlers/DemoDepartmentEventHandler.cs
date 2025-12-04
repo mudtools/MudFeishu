@@ -6,39 +6,35 @@
 // -----------------------------------------------------------------------
 
 using Mud.Feishu.WebSocket.DataModels;
-using Mud.Feishu.WebSocket.Handlers;
+using Mud.Feishu.WebSocket.DataModels.DepartmentCreatedEvent;
+using Mud.Feishu.WebSocket.EventHandlers;
 using Mud.Feishu.WebSocket.Services;
-using System.Text.Json;
 
 namespace Mud.Feishu.WebSocket.Demo.Handlers;
 
 /// <summary>
 /// 演示部门事件处理器
 /// </summary>
-public class DemoDepartmentEventHandler : IFeishuEventHandler
+public class DemoDepartmentEventHandler : DepartmentCreatedEventHandler
 {
     private readonly ILogger<DemoDepartmentEventHandler> _logger;
     private readonly DemoEventService _eventService;
 
-    public DemoDepartmentEventHandler(ILogger<DemoDepartmentEventHandler> logger, DemoEventService eventService)
+    public DemoDepartmentEventHandler(ILogger<DemoDepartmentEventHandler> logger, DemoEventService eventService) : base(logger)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _eventService = eventService ?? throw new ArgumentNullException(nameof(eventService));
     }
 
-    public string SupportedEventType => "contact.department.created_v3";
-
-    public async Task HandleAsync(EventData eventData, CancellationToken cancellationToken = default)
+    public override async Task ProcessBusinessLogicAsync(EventData eventData, DepartmentCreatedEventResult? departmentData, CancellationToken cancellationToken = default)
     {
         if (eventData == null)
             throw new ArgumentNullException(nameof(eventData));
 
-        //_logger.LogInformation("🏢 [部门事件] 开始处理部门创建事件: {EventId}", eventData.EventId);
+        _logger.LogInformation("[部门事件] 开始处理部门创建事件: {EventId}", eventData.EventId);
 
         try
         {
-            // 解析部门数据
-            var departmentData = ParseDepartmentData(eventData);
 
             // 记录事件到服务
             await _eventService.RecordDepartmentEventAsync(departmentData, cancellationToken);
@@ -46,48 +42,17 @@ public class DemoDepartmentEventHandler : IFeishuEventHandler
             // 模拟业务处理
             await ProcessDepartmentEventAsync(departmentData, cancellationToken);
 
-            _logger.LogInformation("✅ [部门事件] 部门创建事件处理完成: 部门ID {DepartmentId}, 部门名 {DepartmentName}",
-                departmentData.DepartmentId, departmentData.DepartmentName);
+            _logger.LogInformation("[部门事件] 部门创建事件处理完成: 部门ID {DepartmentId}, 部门名 {DepartmentName}",
+                departmentData.DepartmentId, departmentData.Name);
         }
         catch (Exception ex)
         {
-            //_logger.LogError(ex, "❌ [部门事件] 处理部门创建事件失败: {EventId}", eventData.EventId);
+            _logger.LogError(ex, "[部门事件] 处理部门创建事件失败: {EventId}", eventData.EventId);
             throw;
         }
     }
 
-    private DepartmentData ParseDepartmentData(EventData eventData)
-    {
-        try
-        {
-            var jsonElement = JsonSerializer.Deserialize<JsonElement>(eventData.Event?.ToString() ?? "{}");
-
-            // 尝试从不同的JSON结构中解析部门信息
-            var deptElement = jsonElement.GetProperty("department");
-
-            return new DepartmentData
-            {
-                DepartmentId = deptElement.GetProperty("department_id").GetString() ?? "",
-                DepartmentName = deptElement.GetProperty("name").GetString() ?? "",
-                ParentDepartmentId = TryGetProperty(deptElement, "parent_department_id"),
-                DepartmentLevel = TryGetIntProperty(deptElement, "department_level", 1),
-                Status = TryGetProperty(deptElement, "status") ?? "active",
-                Description = TryGetProperty(deptElement, "description") ?? "",
-                LeaderUserId = TryGetProperty(deptElement, "leader_user_id"),
-                CreatedBy = TryGetProperty(deptElement, "created_by") ?? "",
-                MemberCount = TryGetIntProperty(deptElement, "member_count", 0),
-                CreatedAt = DateTime.UtcNow,
-                ProcessedAt = DateTime.UtcNow
-            };
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "解析部门数据失败");
-            throw new InvalidOperationException("无法解析部门数据", ex);
-        }
-    }
-
-    private async Task ProcessDepartmentEventAsync(DepartmentData departmentData, CancellationToken cancellationToken)
+    private async Task ProcessDepartmentEventAsync(DepartmentCreatedEventResult departmentData, CancellationToken cancellationToken)
     {
         _logger.LogDebug("🔄 [部门事件] 开始处理部门数据: {DepartmentId}", departmentData.DepartmentId);
 
@@ -100,18 +65,13 @@ public class DemoDepartmentEventHandler : IFeishuEventHandler
             throw new ArgumentException("部门ID不能为空");
         }
 
-        if (departmentData.DepartmentLevel < 0)
-        {
-            throw new ArgumentException("部门层级不能为负数");
-        }
-
         // 模拟权限初始化
-        _logger.LogInformation("🔐 [部门事件] 初始化部门权限: {DepartmentName}", departmentData.DepartmentName);
+        _logger.LogInformation("[部门事件] 初始化部门权限: {DepartmentName}", departmentData.Name);
 
         // 模拟通知部门主管
         if (!string.IsNullOrWhiteSpace(departmentData.LeaderUserId))
         {
-            _logger.LogInformation("📧 [部门事件] 通知部门主管: {LeaderUserId}", departmentData.LeaderUserId);
+            _logger.LogInformation("[部门事件] 通知部门主管: {LeaderUserId}", departmentData.LeaderUserId);
         }
 
         // 模拟更新统计信息
@@ -120,38 +80,10 @@ public class DemoDepartmentEventHandler : IFeishuEventHandler
         // 模拟层级关系处理
         if (!string.IsNullOrWhiteSpace(departmentData.ParentDepartmentId))
         {
-            _logger.LogInformation("🌳 [部门事件] 建立层级关系: {DepartmentId} -> {ParentDepartmentId}",
+            _logger.LogInformation("[部门事件] 建立层级关系: {DepartmentId} -> {ParentDepartmentId}",
                 departmentData.DepartmentId, departmentData.ParentDepartmentId);
         }
 
         await Task.CompletedTask;
     }
-
-    private static string? TryGetProperty(JsonElement element, string propertyName)
-    {
-        return element.TryGetProperty(propertyName, out var value) ? value.GetString() : null;
-    }
-
-    private static int TryGetIntProperty(JsonElement element, string propertyName, int defaultValue)
-    {
-        return element.TryGetProperty(propertyName, out var value) ? value.GetInt32() : defaultValue;
-    }
-}
-
-/// <summary>
-/// 部门数据模型
-/// </summary>
-public class DepartmentData
-{
-    public string DepartmentId { get; init; } = string.Empty;
-    public string DepartmentName { get; init; } = string.Empty;
-    public string? ParentDepartmentId { get; init; }
-    public int DepartmentLevel { get; init; } = 1;
-    public string Status { get; init; } = "active";
-    public string Description { get; init; } = string.Empty;
-    public string? LeaderUserId { get; init; }
-    public string CreatedBy { get; init; } = string.Empty;
-    public int MemberCount { get; init; } = 0;
-    public DateTime CreatedAt { get; init; }
-    public DateTime ProcessedAt { get; init; }
 }

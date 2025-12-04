@@ -8,9 +8,7 @@
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
-using Mud.Feishu.WebSocket.Handlers;
 
 namespace Mud.Feishu.WebSocket;
 
@@ -204,14 +202,10 @@ public static class ServiceCollectionExtensions
     /// <returns>服务集合，支持链式调用</returns>
     private static IServiceCollection AddFeishuWebSocketServiceCore(this IServiceCollection services)
     {
-        // 注册默认事件处理器（如果没有任何处理器被注册）
-        services.TryAddEnumerable(ServiceDescriptor.Singleton<IFeishuEventHandler, DefaultFeishuEventHandler>());
-
         // 使用建造者模式注册核心服务
         return services
             .AddFeishuWebSocketBuilder()
             .UseMultiHandler() // 默认使用多处理器模式
-            .AddHandler<DefaultFeishuEventHandler>()
             .Build();
     }
 

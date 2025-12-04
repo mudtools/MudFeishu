@@ -163,14 +163,44 @@ public class EventMessageHandler : JsonMessageHandler
             using var jsonDoc = JsonDocument.Parse(rawMessage);
             var root = jsonDoc.RootElement;
 
-            if (root.TryGetProperty("data", out var dataElement))
+            // v2.0格式：事件数据在event属性中
+            if (root.TryGetProperty("event", out var eventElement))
             {
-                var eventDataJson = dataElement.GetRawText();
-                var eventData = SafeDeserialize<EventData>(eventDataJson);
-                if (eventData != null)
+                // 提取header信息
+                var eventData = new EventData
                 {
-                    eventData.EventType = eventType; // 确保事件类型正确
+                    EventType = eventType
+                };
+
+                // 从header中提取元数据
+                if (root.TryGetProperty("header", out var headerElement))
+                {
+                    if (headerElement.TryGetProperty("event_id", out var eventIdElement))
+                    {
+                        eventData.EventId = eventIdElement.GetString() ?? string.Empty;
+                    }
+                    if (headerElement.TryGetProperty("tenant_key", out var tenantKeyElement))
+                    {
+                        eventData.TenantKey = tenantKeyElement.GetString() ?? string.Empty;
+                    }
+                    if (headerElement.TryGetProperty("app_id", out var appIdElement))
+                    {
+                        eventData.AppId = appIdElement.GetString() ?? string.Empty;
+                    }
                 }
+
+                // 处理事件对象数据，将JSON内容保存为字符串避免JsonElement生命周期问题
+                if (eventElement.TryGetProperty("object", out var objectElement))
+                {
+                    // 将object内容序列化为JSON字符串
+                    eventData.Event = objectElement.GetRawText();
+                }
+                else if (eventElement.ValueKind == JsonValueKind.Object)
+                {
+                    // 如果没有object属性，直接使用整个event内容的JSON字符串
+                    eventData.Event = eventElement.GetRawText();
+                }
+
                 return eventData;
             }
         }

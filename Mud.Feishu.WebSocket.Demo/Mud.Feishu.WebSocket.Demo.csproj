@@ -16,6 +16,10 @@
     <ProjectReference Include="..\Mud.Feishu.WebSocket\Mud.Feishu.WebSocket.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Test\" />
+  </ItemGroup>
+
 	<!--<ItemGroup>
 		<PackageReference Include="Mud.Feishu.WebSocket" Version="1.0.4" />
 	</ItemGroup>-->

@@ -5,7 +5,7 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-namespace Mud.Feishu.WebSocket.DataModels.UserCreateEvent;
+namespace Mud.Feishu.WebSocket.DataModels;
 
 /// <summary>
 /// 用户自定义属性值类，用于表示飞书平台中用户自定义字段的各种可能值
@@ -13,50 +13,51 @@ namespace Mud.Feishu.WebSocket.DataModels.UserCreateEvent;
 public class UserCustomAttrValue
 {
     /// <summary>
-    /// 文本类型的属性值
+    /// <para>- 字段类型为 TEXT 时，该参数返回定义的字段值。</para>
+    /// <para>- 字段类型为 HREF 时，该参数返回定义的网页标题。</para>
     /// </summary>
     [JsonPropertyName("text")]
     public string? Text { get; set; }
 
     /// <summary>
-    /// URL链接类型的属性值，用于默认跳转链接
+    /// <para>字段类型为 HREF 时，该参数返回定义的默认 URL。</para>
     /// </summary>
     [JsonPropertyName("url")]
     public string? Url { get; set; }
 
     /// <summary>
-    /// PC端专用URL链接类型的属性值
+    /// <para>字段类型为 HREF 时，如果为 PC 端设置了 URL，则该参数返回定义的 PC 端 URL。</para>
     /// </summary>
     [JsonPropertyName("pc_url")]
     public string? PcUrl { get; set; }
 
     /// <summary>
-    /// 枚举选项的ID值，用于枚举或图片枚举类型的属性
+    /// <para>字段类型为 `ENUMERATION` 或 `PICTURE_ENUM` 时，该参数返回定义的选项 ID。</para>
     /// </summary>
     [JsonPropertyName("option_id")]
     public string? OptionId { get; set; }
 
     /// <summary>
-    /// 枚举选项的值，用于枚举或图片枚举类型的属性
+    /// <para>选项类型的值，即用户详情或自定义字段中选中的选项值。</para>
     /// </summary>
     [JsonPropertyName("option_value")]
     public string? OptionValue { get; set; }
 
     /// <summary>
-    /// 名称属性值
+    /// <para>选项类型为图片时，图片的名称。</para>
     /// </summary>
     [JsonPropertyName("name")]
     public string? Name { get; set; }
 
     /// <summary>
-    /// 图片URL链接，用于图片或图片枚举类型的属性
+    /// <para>选项类型为图片时，图片的链接。</para>
     /// </summary>
     [JsonPropertyName("picture_url")]
     public string? PictureUrl { get; set; }
 
     /// <summary>
-    /// 通用用户引用对象，用于人员类型的属性值
+    /// <para>字段类型为 `GENERIC_USER` 时，该参数返回定义的引用人员信息。</para>
     /// </summary>
     [JsonPropertyName("generic_user")]
-    public GenericUser? GenericUser { get; set; }
+    public CustomAttrGenericUser? GenericUser { get; set; }
 }

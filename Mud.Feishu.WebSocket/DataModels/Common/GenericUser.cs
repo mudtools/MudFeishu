@@ -5,28 +5,24 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-namespace Mud.Feishu.WebSocket.DataModels.UserCreateEvent;
+namespace Mud.Feishu.WebSocket.DataModels;
 
 /// <summary>
-/// 用户自定义属性类，用于表示飞书平台中用户的自定义属性信息
+/// 通用用户信息类，用于表示飞书事件中的用户基本信息
 /// </summary>
-public class UserCustomAttr
+public class CustomAttrGenericUser
 {
     /// <summary>
-    /// 获取或设置属性类型
-    /// </summary>
-    [JsonPropertyName("type")]
-    public string? Type { get; set; }
-
-    /// <summary>
-    /// 获取或设置属性标识符
+    /// <para>引用人员的 user_id。关于用户 ID 的具体说明可参见[用户相关的 ID 概念](https://open.feishu.cn/document/home/user-identity-introduction/introduction)。</para>
+    /// <para>必填：否</para>
     /// </summary>
     [JsonPropertyName("id")]
     public string? Id { get; set; }
 
     /// <summary>
-    /// 获取或设置属性值
+    /// <para>用户类型。目前固定取值为 1，表示用户。</para>
+    /// <para>必填：否</para>
     /// </summary>
-    [JsonPropertyName("value")]
-    public UserCustomAttrValue? Value { get; set; }
+    [JsonPropertyName("type")]
+    public int? Type { get; set; }
 }

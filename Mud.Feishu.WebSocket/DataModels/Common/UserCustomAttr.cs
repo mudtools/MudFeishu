@@ -5,40 +5,35 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-namespace Mud.Feishu.WebSocket.DataModels.UserCreateEvent;
+namespace Mud.Feishu.WebSocket.DataModels;
 
 /// <summary>
-/// 用户状态信息类，用于表示飞书用户的各类状态标志
+/// 用户自定义属性类，用于表示飞书平台中用户的自定义属性信息
 /// </summary>
-public class UserStatus
+public class UserCustomAttr
 {
     /// <summary>
-    /// 获取或设置用户是否被冻结的状态
+    /// <para>自定义字段类型。</para>
+    /// <para>**可能值有：**</para>
+    /// <para>- `TEXT`：文本</para>
+    /// <para>- `HREF`：网页</para>
+    /// <para>- `ENUMERATION`：枚举</para>
+    /// <para>- `PICTURE_ENUM`：图片</para>
+    /// <para>- `GENERIC_USER`：用户</para>
     /// </summary>
-    [JsonPropertyName("is_frozen")]
-    public bool IsFrozen { get; set; }
+    [JsonPropertyName("type")]
+    public string? Type { get; set; }
 
     /// <summary>
-    /// 获取或设置用户是否已离职的状态
+    /// <para>自定义字段 ID。</para>
+    /// <para>必填：否</para>
     /// </summary>
-    [JsonPropertyName("is_resigned")]
-    public bool IsResigned { get; set; }
+    [JsonPropertyName("id")]
+    public string? Id { get; set; }
 
     /// <summary>
-    /// 获取或设置用户是否已激活的状态
+    /// <para>自定义字段取值。</para>
     /// </summary>
-    [JsonPropertyName("is_activated")]
-    public bool IsActivated { get; set; }
-
-    /// <summary>
-    /// 获取或设置用户是否已退出的状态
-    /// </summary>
-    [JsonPropertyName("is_exited")]
-    public bool IsExited { get; set; }
-
-    /// <summary>
-    /// 获取或设置用户是否未加入的状态
-    /// </summary>
-    [JsonPropertyName("is_unjoin")]
-    public bool IsUnjoin { get; set; }
+    [JsonPropertyName("value")]
+    public UserCustomAttrValue? Value { get; set; }
 }

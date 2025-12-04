@@ -5,22 +5,23 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-namespace Mud.Feishu.WebSocket.DataModels.UserCreateEvent;
+using Microsoft.Extensions.Logging;
+
+namespace Mud.Feishu.WebSocket.Handlers;
 
 /// <summary>
-/// 通用用户信息类，用于表示飞书事件中的用户基本信息
+/// 飞书对象事件处理器基类，用于处理具有特定结果类型的飞书事件
 /// </summary>
-public class GenericUser
+/// <typeparam name="T">事件结果对象的类型，必须是引用类型且具有无参构造函数</typeparam>
+public abstract class DefaultFeishuObjectEventHandler<T> : DefaultFeishuEventHandler<ObjectEventResult<T>>
+    where T : class, new()
 {
     /// <summary>
-    /// 获取或设置用户的唯一标识符
+    /// 初始化 DefaultFeishuObjectEventHandler 类的新实例
     /// </summary>
-    [JsonPropertyName("id")]
-    public string? Id { get; set; }
+    /// <param name="logger">用于记录日志的 ILogger 实例</param>
+    public DefaultFeishuObjectEventHandler(ILogger logger) : base(logger)
+    {
 
-    /// <summary>
-    /// 获取或设置用户类型
-    /// </summary>
-    [JsonPropertyName("type")]
-    public int Type { get; set; }
+    }
 }

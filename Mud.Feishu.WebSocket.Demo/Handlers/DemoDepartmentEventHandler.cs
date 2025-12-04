@@ -26,7 +26,8 @@ public class DemoDepartmentEventHandler : DepartmentCreatedEventHandler
         _eventService = eventService ?? throw new ArgumentNullException(nameof(eventService));
     }
 
-    public override async Task ProcessBusinessLogicAsync(EventData eventData, DepartmentCreatedEventResult? departmentData, CancellationToken cancellationToken = default)
+
+    protected override async Task ProcessBusinessLogicAsync(EventData eventData, ObjectEventResult<DepartmentCreatedEventResult>? departmentData, CancellationToken cancellationToken = default)
     {
         if (eventData == null)
             throw new ArgumentNullException(nameof(eventData));
@@ -37,13 +38,13 @@ public class DemoDepartmentEventHandler : DepartmentCreatedEventHandler
         {
 
             // 记录事件到服务
-            await _eventService.RecordDepartmentEventAsync(departmentData, cancellationToken);
+            await _eventService.RecordDepartmentEventAsync(departmentData.Object, cancellationToken);
 
             // 模拟业务处理
-            await ProcessDepartmentEventAsync(departmentData, cancellationToken);
+            await ProcessDepartmentEventAsync(departmentData.Object, cancellationToken);
 
             _logger.LogInformation("[部门事件] 部门创建事件处理完成: 部门ID {DepartmentId}, 部门名 {DepartmentName}",
-                departmentData.DepartmentId, departmentData.Name);
+                departmentData.Object.DepartmentId, departmentData.Object.Name);
         }
         catch (Exception ex)
         {

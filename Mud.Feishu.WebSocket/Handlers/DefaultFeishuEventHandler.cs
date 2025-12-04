@@ -71,5 +71,5 @@ public abstract class DefaultFeishuEventHandler<T> : IFeishuEventHandler
     /// <param name="eventEntity">事件实体数据。</param>
     /// <param name="cancellationToken">取消操作<see cref="CancellationToken"/>令牌</param>
     /// <returns></returns>
-    public abstract Task ProcessBusinessLogicAsync(EventData eventData, T? eventEntity, CancellationToken cancellationToken = default);
+    protected abstract Task ProcessBusinessLogicAsync(EventData eventData, T? eventEntity, CancellationToken cancellationToken = default);
 }

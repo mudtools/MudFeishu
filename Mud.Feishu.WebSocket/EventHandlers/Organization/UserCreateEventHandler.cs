@@ -18,7 +18,7 @@ namespace Mud.Feishu.WebSocket.EventHandlers;
 /// <para>事件类型:contact.user.created_v3</para>
 /// <para>订阅该事件详细文档：<see href="https://open.feishu.cn/document/server-docs/contact-v3/user/events/created"/></para>
 /// </summary>
-public abstract class UserCreateEventHandler : DefaultFeishuEventHandler<UserCreateResult>
+public abstract class UserCreateEventHandler : DefaultFeishuObjectEventHandler<UserCreateResult>
 {
     /// <summary>
     /// 默认构造函数

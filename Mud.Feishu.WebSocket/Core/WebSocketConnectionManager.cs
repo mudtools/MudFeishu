@@ -9,7 +9,7 @@ using Microsoft.Extensions.Logging;
 using Mud.Feishu.WebSocket.SocketEventArgs;
 using System.Net.WebSockets;
 
-namespace Mud.Feishu.WebSocket.Core;
+namespace Mud.Feishu.WebSocket;
 
 /// <summary>
 /// WebSocket连接管理器

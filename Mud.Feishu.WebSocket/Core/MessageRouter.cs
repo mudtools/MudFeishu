@@ -6,9 +6,8 @@
 // -----------------------------------------------------------------------
 
 using Microsoft.Extensions.Logging;
-using Mud.Feishu.WebSocket.Handlers;
 
-namespace Mud.Feishu.WebSocket.Core;
+namespace Mud.Feishu.WebSocket;
 
 /// <summary>
 /// 消息路由器 - 负责将消息分发给合适的处理器
@@ -100,7 +99,7 @@ public class MessageRouter
                 return;
             }
 
-            _logger.LogDebug("将消息路由到处理器: {HandlerType} (来源: {SourceType}, 消息类型: {MessageType})", 
+            _logger.LogDebug("将消息路由到处理器: {HandlerType} (来源: {SourceType}, 消息类型: {MessageType})",
                 handler.GetType().Name, sourceType, messageType);
             await handler.HandleAsync(message, cancellationToken);
         }

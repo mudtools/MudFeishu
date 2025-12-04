@@ -9,9 +9,8 @@ using Microsoft.Extensions.Logging;
 using Mud.Feishu.WebSocket.DataModels;
 using Mud.Feishu.WebSocket.SocketEventArgs;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 
-namespace Mud.Feishu.WebSocket.Core;
+namespace Mud.Feishu.WebSocket;
 
 /// <summary>
 /// 认证管理器 - 处理WebSocket认证相关逻辑

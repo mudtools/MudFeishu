@@ -8,7 +8,7 @@
 using Microsoft.Extensions.Logging;
 using Mud.Feishu.WebSocket.SocketEventArgs;
 
-namespace Mud.Feishu.WebSocket.Core;
+namespace Mud.Feishu.WebSocket;
 
 /// <summary>
 /// 二进制消息处理器 - 负责处理二进制数据的增量接收和解析

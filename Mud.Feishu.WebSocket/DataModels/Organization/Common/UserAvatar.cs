@@ -5,24 +5,34 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-using System.Text.Json.Serialization;
-
-namespace Mud.Feishu.WebSocket.DataModels.DepartmentCreatedEvent;
+namespace Mud.Feishu.WebSocket.DataModels.Organization;
 
 /// <summary>
-/// 部门领导者信息类
+/// 用户头像信息类，包含不同尺寸的用户头像URL
 /// </summary>
-public class DepartmentLeader
+public class UserAvatar
 {
     /// <summary>
-    /// 领导者类型
+    /// 72x72像素大小的用户头像URL
     /// </summary>
-    [JsonPropertyName("leaderType")]
-    public int LeaderType { get; set; }
+    [JsonPropertyName("avatar_72")]
+    public string? Avatar72 { get; set; }
 
     /// <summary>
-    /// 领导者ID
+    /// 240x240像素大小的用户头像URL
     /// </summary>
-    [JsonPropertyName("leaderID")]
-    public string? LeaderID { get; set; }
+    [JsonPropertyName("avatar_240")]
+    public string? Avatar240 { get; set; }
+
+    /// <summary>
+    /// 640x640像素大小的用户头像URL
+    /// </summary>
+    [JsonPropertyName("avatar_640")]
+    public string? Avatar640 { get; set; }
+
+    /// <summary>
+    /// 原始尺寸的用户头像URL
+    /// </summary>
+    [JsonPropertyName("avatar_origin")]
+    public string? AvatarOrigin { get; set; }
 }

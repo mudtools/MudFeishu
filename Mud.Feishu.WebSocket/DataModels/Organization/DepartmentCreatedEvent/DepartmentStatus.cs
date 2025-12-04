@@ -5,36 +5,15 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-using System.Text.Json.Serialization;
-
-namespace Mud.Feishu.WebSocket.DataModels;
-
+namespace Mud.Feishu.WebSocket.DataModels.Organization.DepartmentCreatedEvent;
 /// <summary>
-/// 用户头像信息类，包含不同尺寸的用户头像URL
+/// 部门状态信息类，用于表示部门是否被删除的状态
 /// </summary>
-public class UserAvatar
+public class DepartmentStatus
 {
     /// <summary>
-    /// 72x72像素大小的用户头像URL
+    /// 获取或设置部门是否被删除的标识
     /// </summary>
-    [JsonPropertyName("avatar_72")]
-    public string? Avatar72 { get; set; }
-
-    /// <summary>
-    /// 240x240像素大小的用户头像URL
-    /// </summary>
-    [JsonPropertyName("avatar_240")]
-    public string? Avatar240 { get; set; }
-
-    /// <summary>
-    /// 640x640像素大小的用户头像URL
-    /// </summary>
-    [JsonPropertyName("avatar_640")]
-    public string? Avatar640 { get; set; }
-
-    /// <summary>
-    /// 原始尺寸的用户头像URL
-    /// </summary>
-    [JsonPropertyName("avatar_origin")]
-    public string? AvatarOrigin { get; set; }
+    [JsonPropertyName("is_deleted")]
+    public bool IsDeleted { get; set; }
 }

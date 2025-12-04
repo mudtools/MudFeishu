@@ -6,7 +6,7 @@
 // -----------------------------------------------------------------------
 
 using Mud.Feishu.WebSocket.DataModels;
-using Mud.Feishu.WebSocket.DataModels.DepartmentCreatedEvent;
+using Mud.Feishu.WebSocket.DataModels.Organization.DepartmentCreatedEvent;
 using Mud.Feishu.WebSocket.EventHandlers;
 using Mud.Feishu.WebSocket.Services;
 

@@ -5,9 +5,7 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-using Mud.Feishu.WebSocket.DataModels.UserCreateEvent;
-
-namespace Mud.Feishu.WebSocket.DataModels;
+namespace Mud.Feishu.WebSocket.DataModels.Organization;
 
 /// <summary>
 /// 用户操作结果信息类，包含飞书平台中用户的详细信息

@@ -7,7 +7,7 @@
 
 using Microsoft.Extensions.Logging;
 using Mud.Feishu.WebSocket.DataModels;
-using Mud.Feishu.WebSocket.DataModels.UserDeleteEvent;
+using Mud.Feishu.WebSocket.DataModels.Organization.UserDeleteEvent;
 using Mud.Feishu.WebSocket.Handlers;
 
 namespace Mud.Feishu.WebSocket.EventHandlers;

@@ -9,7 +9,6 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Mud.Feishu.DataModels.WsEndpoint;
-using Mud.Feishu.TokenManager;
 using Mud.Feishu.WebSocket.SocketEventArgs;
 
 namespace Mud.Feishu.WebSocket;

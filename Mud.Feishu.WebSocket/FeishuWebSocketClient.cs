@@ -15,14 +15,13 @@ using System.Collections.Concurrent;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 
 namespace Mud.Feishu.WebSocket;
 
 /// <summary>
 /// 飞书WebSocket客户端 - 采用组件化设计提高可维护性
 /// </summary>
-public class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
+public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
 {
     private readonly ILogger<FeishuWebSocketClient> _logger;
     private readonly FeishuWebSocketOptions _options;

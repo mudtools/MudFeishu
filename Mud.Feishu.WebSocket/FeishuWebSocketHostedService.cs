@@ -16,12 +16,12 @@ namespace Mud.Feishu.WebSocket;
 /// <summary>
 /// 飞书WebSocket后台服务，用于自动启动和管理WebSocket连接
 /// </summary>
-public class FeishuWebSocketHostedService : BackgroundService, IDisposable
+public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposable
 {
     private readonly ILogger<FeishuWebSocketHostedService> _logger;
     private readonly IFeishuWebSocketManager _webSocketManager;
     private readonly FeishuWebSocketOptions _options;
-    
+
     // 心跳和健康检查
     private Timer? _heartbeatTimer;
     private bool _disposed = false;
@@ -171,9 +171,9 @@ public class FeishuWebSocketHostedService : BackgroundService, IDisposable
     private void OnConnected(object? sender, System.EventArgs e)
     {
         var state = _webSocketManager.GetConnectionState();
-        _logger.LogInformation("飞书WebSocket连接已建立 (时间: {Time}, 重连次数: {ReconnectCount})", 
+        _logger.LogInformation("飞书WebSocket连接已建立 (时间: {Time}, 重连次数: {ReconnectCount})",
             DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss"), state.ReconnectCount);
-        
+
         // 启动心跳检测
         StartHeartbeat();
     }
@@ -191,7 +191,7 @@ public class FeishuWebSocketHostedService : BackgroundService, IDisposable
             _logger.LogInformation("飞书WebSocket连接已断开: {Status} - {Description} (持续时间: {Duration})",
                 e.CloseStatus, e.CloseStatusDescription, stats.Uptime);
         }
-        
+
         // 停止心跳检测
         StopHeartbeat();
     }
@@ -213,11 +213,11 @@ public class FeishuWebSocketHostedService : BackgroundService, IDisposable
     private void StartHeartbeat()
     {
         StopHeartbeat(); // 确保没有重复的心跳定时器
-        
+
         if (_options.HeartbeatIntervalMs > 0)
         {
-            _heartbeatTimer = new Timer(HeartbeatCallback, null, 
-                TimeSpan.FromMilliseconds(_options.HeartbeatIntervalMs), 
+            _heartbeatTimer = new Timer(HeartbeatCallback, null,
+                TimeSpan.FromMilliseconds(_options.HeartbeatIntervalMs),
                 TimeSpan.FromMilliseconds(_options.HeartbeatIntervalMs));
         }
     }
@@ -245,7 +245,7 @@ public class FeishuWebSocketHostedService : BackgroundService, IDisposable
             // 发送心跳消息（这里可以自定义心跳消息格式）
             var heartbeatMessage = "{\"type\":\"heartbeat\",\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeSeconds() + "}";
             await _webSocketManager.SendMessageAsync(heartbeatMessage);
-            
+
             if (_options.EnableLogging)
                 _logger.LogDebug("心跳检测成功");
         }
@@ -287,7 +287,7 @@ public class FeishuWebSocketHostedService : BackgroundService, IDisposable
     /// 重写Dispose方法，确保资源正确释放
     /// </summary>
     /// <param name="disposing">是否正在释放托管资源</param>
-    protected  void Dispose(bool disposing)
+    protected void Dispose(bool disposing)
     {
         if (_disposed)
             return;
@@ -314,6 +314,4 @@ public class FeishuWebSocketHostedService : BackgroundService, IDisposable
 
         _disposed = true;
     }
-
-
 }

@@ -420,6 +420,9 @@ public class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
         }
     }
 
+    /// <summary>
+    /// <inheritdoc/>
+    /// </summary>
     public void Dispose()
     {
         if (_disposed)

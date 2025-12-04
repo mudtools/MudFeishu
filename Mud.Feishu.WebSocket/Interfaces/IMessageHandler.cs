@@ -9,7 +9,7 @@ using Microsoft.Extensions.Logging;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace Mud.Feishu.WebSocket.Handlers;
+namespace Mud.Feishu.WebSocket;
 
 /// <summary>
 /// 消息处理器接口
@@ -50,7 +50,10 @@ public abstract class JsonMessageHandler : IMessageHandler
         };
     }
 
+    /// <inheritdoc/>
     public abstract bool CanHandle(string messageType);
+
+    /// <inheritdoc/>
     public abstract Task HandleAsync(string message, CancellationToken cancellationToken = default);
 
     /// <summary>

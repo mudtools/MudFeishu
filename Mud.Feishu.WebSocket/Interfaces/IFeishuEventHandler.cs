@@ -7,7 +7,7 @@
 
 using Mud.Feishu.WebSocket.DataModels;
 
-namespace Mud.Feishu.WebSocket.Handlers;
+namespace Mud.Feishu.WebSocket;
 
 /// <summary>
 /// 飞书事件处理器接口

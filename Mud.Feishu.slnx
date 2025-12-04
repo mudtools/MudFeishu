@@ -1,7 +1,7 @@
 <Solution>
   <Project Path="Mud.CodeGenerator/Mud.CodeGenerator.shproj" />
   <Project Path="Mud.Feishu.Test/Mud.Feishu.Test.csproj" />
-  <Project Path="Mud.Feishu/Mud.Feishu.csproj" />
-  <Project Path="Mud.Feishu.WebSocket/Mud.Feishu.WebSocket.csproj" />
   <Project Path="Mud.Feishu.WebSocket.Demo/Mud.Feishu.WebSocket.Demo.csproj" />
+  <Project Path="Mud.Feishu.WebSocket/Mud.Feishu.WebSocket.csproj" />
+  <Project Path="Mud.Feishu/Mud.Feishu.csproj" />
 </Solution>

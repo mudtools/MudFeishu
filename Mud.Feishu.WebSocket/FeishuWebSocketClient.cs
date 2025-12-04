@@ -36,6 +36,11 @@ public class FeishuWebSocketClient : IFeishuWebSocketClient
     private bool _disposed = false;
     private bool _isAuthenticated = false;
 
+    // 二进制数据增量接收相关字段
+    private MemoryStream? _binaryDataStream;
+    private readonly object _binaryDataStreamLock = new object();
+    private DateTime _binaryDataReceiveStartTime = DateTime.MinValue;
+
     /// <summary>
     /// 构造函数
     /// </summary>
@@ -106,6 +111,11 @@ public class FeishuWebSocketClient : IFeishuWebSocketClient
     /// 接收到飞书事件
     /// </summary>
     public event EventHandler<WebSocketFeishuEventArgs>? FeishuEventReceived;
+
+    /// <summary>
+    /// 接收到二进制消息
+    /// </summary>
+    public event EventHandler<WebSocketBinaryMessageEventArgs>? BinaryMessageReceived;
 
     /// <summary>
     /// 建立WebSocket连接
@@ -428,11 +438,17 @@ public class FeishuWebSocketClient : IFeishuWebSocketClient
                             }
                         }
                     }
-                    else if (result.MessageType == WebSocketMessageType.Binary)
+                    else if (result.MessageType == WebSocketMessageType.Binary && _options.EnableBinaryMessageProcessing)
                     {
-                        // 处理二进制消息，如果需要的话
+                        // 增量接收二进制数据
+                        var receivedData = new byte[result.Count];
+                        Array.Copy(buffer, 0, receivedData, 0, result.Count);
+
+                        ProcessBinaryMessageAsync(receivedData, result.EndOfMessage, cancellationToken);
+
                         if (_options.EnableLogging)
-                            _logger.LogDebug("接收到二进制消息，长度: {Length}", result.Count);
+                            _logger.LogDebug("接收到二进制消息片段，长度: {Length}, 是否结束: {EndOfMessage}",
+                                result.Count, result.EndOfMessage);
                     }
                 }
                 catch (WebSocketException ex)
@@ -722,7 +738,7 @@ public class FeishuWebSocketClient : IFeishuWebSocketClient
             var heartbeatMessage = JsonSerializer.Deserialize<HeartbeatMessage>(message);
 
             if (_options.EnableLogging)
-                _logger.LogDebug("收到心跳消息，时间戳: {Timestamp}, 状态: {Status}", 
+                _logger.LogDebug("收到心跳消息，时间戳: {Timestamp}, 状态: {Status}",
                     heartbeatMessage?.Data?.Timestamp, heartbeatMessage?.Data?.Status);
 
             // 触发心跳接收事件
@@ -1069,6 +1085,241 @@ public class FeishuWebSocketClient : IFeishuWebSocketClient
     }
 
     /// <summary>
+    /// 处理二进制消息（支持增量接收）
+    /// </summary>
+    /// <param name="data">接收到的二进制数据片段</param>
+    /// <param name="endOfMessage">是否为消息的结束</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>处理任务</returns>
+    private void ProcessBinaryMessageAsync(byte[] data, bool endOfMessage, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            lock (_binaryDataStreamLock)
+            {
+                // 如果是新消息的开始，初始化内存流
+                if (_binaryDataStream == null)
+                {
+                    _binaryDataStream = new MemoryStream();
+                    _binaryDataReceiveStartTime = DateTime.UtcNow;
+
+                    if (_options.EnableLogging)
+                        _logger.LogDebug("开始接收新的二进制消息");
+                }
+
+                // 写入数据片段
+                _binaryDataStream.Write(data, 0, data.Length);
+
+                // 检查数据大小限制
+                if (_binaryDataStream.Length > _options.MaxBinaryMessageSize)
+                {
+                    var errorMessage = $"二进制消息大小超过限制 ({_binaryDataStream.Length} > {_options.MaxBinaryMessageSize})";
+                    if (_options.EnableLogging)
+                        _logger.LogError(errorMessage);
+
+                    // 清理当前数据流
+                    _binaryDataStream.Dispose();
+                    _binaryDataStream = null;
+
+                    // 触发错误事件
+                    Error?.Invoke(this, new WebSocketErrorEventArgs
+                    {
+                        ErrorMessage = errorMessage,
+                        ErrorType = "MessageSizeExceeded",
+                        ConnectionState = _webSocket?.State ?? WebSocketState.None,
+                        IsNetworkError = false
+                    });
+
+                    return;
+                }
+
+                // 如果消息接收完成
+                if (endOfMessage)
+                {
+                    var completeData = _binaryDataStream.ToArray();
+                    var receiveDuration = DateTime.UtcNow - _binaryDataReceiveStartTime;
+
+                    if (_options.EnableLogging)
+                        _logger.LogInformation("二进制消息接收完成，大小: {Size} 字节，耗时: {Duration}ms",
+                            completeData.Length, receiveDuration.TotalMilliseconds);
+
+                    // 异步处理完整的二进制消息
+                    _ = Task.Run(async () =>
+                    {
+                        await ProcessCompleteBinaryMessageAsync(completeData, cancellationToken);
+
+                    },
+                        cancellationToken);
+
+                    // 清理资源
+                    _binaryDataStream.Dispose();
+                    _binaryDataStream = null;
+                }
+                else
+                {
+                    if (_options.EnableLogging)
+                        _logger.LogDebug("已接收二进制消息片段，当前总大小: {Size} 字节", _binaryDataStream.Length);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            // 发生异常时清理资源
+            lock (_binaryDataStreamLock)
+            {
+                _binaryDataStream?.Dispose();
+                _binaryDataStream = null;
+            }
+
+            if (_options.EnableLogging)
+                _logger.LogError(ex, "处理二进制消息时发生错误");
+
+            Error?.Invoke(this, new WebSocketErrorEventArgs
+            {
+                Exception = ex,
+                ErrorMessage = $"处理二进制消息时发生错误: {ex.Message}",
+                ErrorType = ex.GetType().Name,
+                ConnectionState = _webSocket?.State ?? WebSocketState.None,
+                IsNetworkError = ex is IOException || ex is WebSocketException
+            });
+        }
+    }
+
+    /// <summary>
+    /// 处理完整的二进制消息
+    /// </summary>
+    /// <param name="completeData">完整的二进制数据</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>处理任务</returns>
+    private async Task ProcessCompleteBinaryMessageAsync(byte[] completeData, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var eventArgs = new WebSocketBinaryMessageEventArgs
+            {
+                Data = completeData ?? Array.Empty<byte>(),
+                ReceiveEndTime = DateTime.UtcNow,
+                QueueCount = _messageQueue.Count
+            };
+
+            if (completeData == null || completeData.Length == 0)
+            {
+                if (_options.EnableLogging)
+                    _logger.LogWarning("接收到空的二进制消息");
+
+                eventArgs.ParseError = "接收到空的二进制消息";
+                BinaryMessageReceived?.Invoke(this, eventArgs);
+                return;
+            }
+
+            // 尝试解析为 Frame 对象（需要确保项目中引用了 ProtoBuf）
+            try
+            {
+                // 这里取消注释并实现您的 Frame 反序列化逻辑
+                if (_options.EnableLogging)
+                    _logger.LogDebug("尝试使用 ProtoBuf 反序列化二进制消息为 Frame 对象");
+                var frame = ProtoBuf.Serializer.Deserialize<EventProtoData>(new MemoryStream(completeData));
+                if (_options.EnableLogging)
+                    _logger.LogDebug("成功反序列化为 Frame 对象: Service={Service}, Method={Method}, PayloadType={PayloadType}",
+                        frame.Service, frame.Method, frame.PayloadType);
+
+                if (frame?.Payload != null)
+                {
+                    // 解析 JSON payload
+                    var jsonPayload = Encoding.UTF8.GetString(frame.Payload);
+                    await ProcessJsonPayloadAsync(jsonPayload, cancellationToken);
+                    eventArgs.JsonContent = jsonPayload;
+                    eventArgs.MessageType = "Frame";
+                }
+                else
+                {
+                    if (_options.EnableLogging)
+                        _logger.LogWarning("Frame 解析成功但 Payload 为空");
+                    eventArgs.ParseError = "Frame 解析成功但 Payload 为空";
+                }
+            }
+            catch (ProtoBuf.ProtoException ex)
+            {
+                if (_options.EnableLogging)
+                    _logger.LogError(ex, "ProtoBuf 反序列化失败，尝试直接解析为 JSON");
+
+                eventArgs.ParseError = $"ProtoBuf 反序列化失败: {ex.Message}";
+
+                // 如果 ProtoBuf 解析失败，尝试直接解析为 JSON
+                var jsonString = Encoding.UTF8.GetString(completeData);
+                if (!string.IsNullOrWhiteSpace(jsonString))
+                {
+                    await ProcessMessageByTypeAsync(jsonString, cancellationToken);
+                    eventArgs.JsonContent = jsonString;
+                    eventArgs.MessageType = "JSON_Fallback";
+                }
+            }
+            catch (Exception ex)
+            {
+                if (_options.EnableLogging)
+                    _logger.LogError(ex, "处理完整二进制消息时发生错误");
+
+                eventArgs.ParseError = $"处理完整二进制消息时发生错误: {ex.Message}";
+            }
+
+            // 触发二进制消息接收事件
+            BinaryMessageReceived?.Invoke(this, eventArgs);
+        }
+        catch (Exception ex)
+        {
+            if (_options.EnableLogging)
+                _logger.LogError(ex, "处理完整二进制消息时发生未知错误");
+
+            Error?.Invoke(this, new WebSocketErrorEventArgs
+            {
+                Exception = ex,
+                ErrorMessage = $"处理完整二进制消息时发生未知错误: {ex.Message}",
+                ErrorType = ex.GetType().Name,
+                ConnectionState = _webSocket?.State ?? WebSocketState.None
+            });
+        }
+    }
+
+    /// <summary>
+    /// 处理 JSON Payload（从 EventProtoData 中解析的 JSON 数据）
+    /// </summary>
+    /// <param name="jsonPayload">JSON payload 字符串</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>处理任务</returns>
+    private async Task ProcessJsonPayloadAsync(string jsonPayload, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            if (_options.EnableLogging)
+                _logger.LogDebug("处理 JSON Payload: {Payload}", jsonPayload);
+
+            // 验证 JSON 格式
+            if (string.IsNullOrWhiteSpace(jsonPayload))
+            {
+                if (_options.EnableLogging)
+                    _logger.LogWarning("JSON Payload 为空");
+                return;
+            }
+
+            // 使用消息处理逻辑
+            await ProcessMessageByTypeAsync(jsonPayload, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            if (_options.EnableLogging)
+                _logger.LogError(ex, "处理 JSON Payload 时发生错误: {Payload}", jsonPayload);
+
+            Error?.Invoke(this, new WebSocketErrorEventArgs
+            {
+                Exception = ex,
+                ErrorMessage = $"处理 JSON Payload 时发生错误: {ex.Message}",
+                ErrorType = ex.GetType().Name,
+                ConnectionState = _webSocket?.State ?? WebSocketState.None
+            });
+        }
+    }
+
+    /// <summary>
     /// 释放资源
     /// </summary>
     public void Dispose()
@@ -1100,6 +1351,13 @@ public class FeishuWebSocketClient : IFeishuWebSocketClient
             _webSocket?.Dispose();
             _cancellationTokenSource?.Dispose();
             _connectionLock.Dispose();
+
+            // 清理二进制数据流
+            lock (_binaryDataStreamLock)
+            {
+                _binaryDataStream?.Dispose();
+                _binaryDataStream = null;
+            }
         }
         catch (Exception ex)
         {

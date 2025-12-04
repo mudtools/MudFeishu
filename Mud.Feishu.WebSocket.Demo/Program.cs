@@ -27,6 +27,11 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
+builder.Services.AddFeishuServicesBuilder(builder.Configuration)
+                .AddAuthenticationApi()
+                .AddTokenManagers()
+                .Build();
+
 // 配置飞书WebSocket服务
 builder.Services.AddFeishuWebSocketBuilder()
     .ConfigureFrom(builder.Configuration)

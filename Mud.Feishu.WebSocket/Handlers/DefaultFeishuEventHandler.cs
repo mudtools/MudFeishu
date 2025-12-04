@@ -15,6 +15,9 @@ namespace Mud.Feishu.WebSocket.Handlers;
 /// </summary>
 public abstract class DefaultFeishuEventHandler : IFeishuEventHandler
 {
+    /// <summary>
+    /// 日志记录器。
+    /// </summary>
     protected readonly ILogger _logger;
 
     /// <summary>

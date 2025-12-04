@@ -72,5 +72,20 @@ public class FeishuWebSocketOptions
     /// 消息队列最大容量，默认为1000条
     /// </summary>
     public int MessageQueueCapacity { get; set; } = 1000;
+
+    /// <summary>
+    /// 最大二进制消息大小（字节），默认为10MB
+    /// </summary>
+    public long MaxBinaryMessageSize { get; set; } = 10 * 1024 * 1024; // 10MB
+
+    /// <summary>
+    /// 二进制消息接收超时时间（毫秒），默认为30000毫秒
+    /// </summary>
+    public int BinaryMessageTimeoutMs { get; set; } = 30000;
+
+    /// <summary>
+    /// 是否启用二进制消息处理，默认为true
+    /// </summary>
+    public bool EnableBinaryMessageProcessing { get; set; } = true;
  
 }

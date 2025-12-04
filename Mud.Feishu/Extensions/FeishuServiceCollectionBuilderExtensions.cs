@@ -6,7 +6,6 @@
 // -----------------------------------------------------------------------
 
 using Microsoft.Extensions.Configuration;
-using Mud.Feishu;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
@@ -32,7 +31,7 @@ public static class FeishuServiceCollectionBuilderExtensions
     /// <param name="configuration">配置对象</param>
     /// <param name="sectionName">配置节名称，默认为"Feishu"</param>
     /// <returns>飞书服务建造者实例</returns>
-    public static FeishuServiceBuilder AddFeishuServices(this IServiceCollection services, IConfiguration configuration, string sectionName = "Feishu")
+    public static FeishuServiceBuilder AddFeishuServicesBuilder(this IServiceCollection services, IConfiguration configuration, string sectionName = "Feishu")
     {
         if (configuration == null)
             throw new ArgumentNullException(nameof(configuration));
@@ -46,7 +45,7 @@ public static class FeishuServiceCollectionBuilderExtensions
     /// <param name="services">服务集合</param>
     /// <param name="configureOptions">配置选项的委托</param>
     /// <returns>飞书服务建造者实例</returns>
-    public static FeishuServiceBuilder AddFeishuServices(this IServiceCollection services, Action<FeishuOptions> configureOptions)
+    public static FeishuServiceBuilder AddFeishuServicesBuilder(this IServiceCollection services, Action<FeishuOptions> configureOptions)
     {
         if (configureOptions == null)
             throw new ArgumentNullException(nameof(configureOptions));
@@ -63,7 +62,7 @@ public static class FeishuServiceCollectionBuilderExtensions
     /// <returns>服务集合，支持链式调用</returns>
     public static IServiceCollection AddFeishuTokenManagers(this IServiceCollection services, IConfiguration configuration, string sectionName = "Feishu")
     {
-        return services.AddFeishuServices(configuration, sectionName)
+        return services.AddFeishuServicesBuilder(configuration, sectionName)
                      .AddTokenManagers()
                      .Build();
     }
@@ -77,7 +76,7 @@ public static class FeishuServiceCollectionBuilderExtensions
     /// <returns>服务集合，支持链式调用</returns>
     public static IServiceCollection AddFeishuOrganizationApi(this IServiceCollection services, IConfiguration configuration, string sectionName = "Feishu")
     {
-        return services.AddFeishuServices(configuration, sectionName)
+        return services.AddFeishuServicesBuilder(configuration, sectionName)
                      .AddOrganizationApi()
                      .Build();
     }
@@ -91,7 +90,7 @@ public static class FeishuServiceCollectionBuilderExtensions
     /// <returns>服务集合，支持链式调用</returns>
     public static IServiceCollection AddFeishuMessageApi(this IServiceCollection services, IConfiguration configuration, string sectionName = "Feishu")
     {
-        return services.AddFeishuServices(configuration, sectionName)
+        return services.AddFeishuServicesBuilder(configuration, sectionName)
                      .AddMessageApi()
                      .Build();
     }
@@ -105,7 +104,7 @@ public static class FeishuServiceCollectionBuilderExtensions
     /// <returns>服务集合，支持链式调用</returns>
     public static IServiceCollection AddFeishuChatGroupApi(this IServiceCollection services, IConfiguration configuration, string sectionName = "Feishu")
     {
-        return services.AddFeishuServices(configuration, sectionName)
+        return services.AddFeishuServicesBuilder(configuration, sectionName)
                      .AddChatGroupApi()
                      .Build();
     }
@@ -119,7 +118,7 @@ public static class FeishuServiceCollectionBuilderExtensions
     /// <returns>服务集合，支持链式调用</returns>
     public static IServiceCollection AddFeishuAllServices(this IServiceCollection services, IConfiguration configuration, string sectionName = "Feishu")
     {
-        return services.AddFeishuServices(configuration, sectionName)
+        return services.AddFeishuServicesBuilder(configuration, sectionName)
                      .AddAllApis()
                      .Build();
     }
@@ -137,7 +136,7 @@ public static class FeishuServiceCollectionBuilderExtensions
         if (modules == null || modules.Length == 0)
             throw new ArgumentException("至少需要指定一个模块", nameof(modules));
 
-        return services.AddFeishuServices(configuration, sectionName)
+        return services.AddFeishuServicesBuilder(configuration, sectionName)
                      .AddModules(modules)
                      .Build();
     }
@@ -162,7 +161,7 @@ public static class FeishuServiceCollectionBuilderExtensions
     /// <returns>服务集合，支持链式调用</returns>
     public static IServiceCollection AddFeishuApiService(this IServiceCollection services, Action<FeishuOptions> configureOptions)
     {
-        return services.AddFeishuServices(configureOptions)
+        return services.AddFeishuServicesBuilder(configureOptions)
                      .AddAllApis()
                      .Build();
     }

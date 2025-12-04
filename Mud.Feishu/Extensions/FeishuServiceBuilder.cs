@@ -6,7 +6,6 @@
 // -----------------------------------------------------------------------
 
 using Microsoft.Extensions.Configuration;
-using Mud.Feishu;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
@@ -197,7 +196,7 @@ public class FeishuServiceBuilder
     {
         if (!_configuration.AuthenticationApiAdded)
         {
-            _services.AddSingleton<IFeishuV3AuthenticationApi, FeishuV3AuthenticationApi>();
+            _services.AddHttpClient<IFeishuV3AuthenticationApi, FeishuV3AuthenticationApi>();
             _configuration.AuthenticationApiAdded = true;
         }
         return this;

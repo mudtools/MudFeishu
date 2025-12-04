@@ -60,13 +60,35 @@ public class MessageRouter
             return;
         }
 
+        await RouteMessageInternalAsync(message, "Text", cancellationToken);
+    }
+
+    /// <summary>
+    /// 路由从二进制消息转换而来的JSON消息到合适的处理器
+    /// </summary>
+    public async Task RouteBinaryMessageAsync(string jsonContent, string messageType, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(jsonContent))
+        {
+            _logger.LogWarning("收到空的二进制转换消息，跳过路由");
+            return;
+        }
+
+        await RouteMessageInternalAsync(jsonContent, $"Binary_{messageType}", cancellationToken);
+    }
+
+    /// <summary>
+    /// 内部消息路由处理
+    /// </summary>
+    private async Task RouteMessageInternalAsync(string message, string sourceType, CancellationToken cancellationToken)
+    {
         try
         {
             // 提取消息类型
             var messageType = ExtractMessageType(message);
             if (string.IsNullOrEmpty(messageType))
             {
-                _logger.LogWarning("无法提取消息类型: {Message}", message);
+                _logger.LogWarning("无法提取消息类型 (来源: {SourceType}): {Message}", sourceType, message);
                 return;
             }
 
@@ -74,16 +96,17 @@ public class MessageRouter
             var handler = _handlers.FirstOrDefault(h => h.CanHandle(messageType));
             if (handler == null)
             {
-                _logger.LogWarning("未找到能处理消息类型 {MessageType} 的处理器", messageType);
+                _logger.LogWarning("未找到能处理消息类型 {MessageType} 的处理器 (来源: {SourceType})", messageType, sourceType);
                 return;
             }
 
-            _logger.LogDebug("将消息路由到处理器: {HandlerType}", handler.GetType().Name);
+            _logger.LogDebug("将消息路由到处理器: {HandlerType} (来源: {SourceType}, 消息类型: {MessageType})", 
+                handler.GetType().Name, sourceType, messageType);
             await handler.HandleAsync(message, cancellationToken);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "路由消息时发生错误: {Message}", message);
+            _logger.LogError(ex, "路由消息时发生错误 (来源: {SourceType}): {Message}", sourceType, message);
         }
     }
 

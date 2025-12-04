@@ -12,7 +12,7 @@ namespace Mud.Feishu.WebSocket.SocketEventArgs;
 /// <summary>
 /// WebSocket消息事件参数
 /// </summary>
-public class WebSocketMessageEventArgs : System.EventArgs
+public class WebSocketMessageEventArgs : EventArgs
 {
     /// <summary>
     /// 接收到的消息内容

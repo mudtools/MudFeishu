@@ -32,11 +32,13 @@ public class EventMessageHandler : JsonMessageHandler
         _sendAckCallback = sendAckCallback ?? throw new ArgumentNullException(nameof(sendAckCallback));
     }
 
+    /// <inheritdoc/>
     public override bool CanHandle(string messageType)
     {
         return messageType.ToLowerInvariant() == "event";
     }
 
+    /// <inheritdoc/>
     public override async Task HandleAsync(string message, CancellationToken cancellationToken = default)
     {
         try
@@ -176,7 +178,7 @@ public class EventMessageHandler : JsonMessageHandler
         {
             _logger.LogError(ex, "提取v2.0事件数据失败: EventType={EventType}", eventType);
         }
-        
+
         // 如果无法提取，创建基本的事件数据
         return new EventData
         {

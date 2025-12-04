@@ -21,6 +21,7 @@ public class BinaryMessageProcessor : IDisposable
     private readonly object _binaryDataStreamLock = new object();
     private DateTime _binaryDataReceiveStartTime = DateTime.MinValue;
     private bool _disposed = false;
+    private readonly MessageRouter? _messageRouter;
 
     public event EventHandler<WebSocketBinaryMessageEventArgs>? BinaryMessageReceived;
     public event EventHandler<WebSocketErrorEventArgs>? Error;
@@ -31,6 +32,16 @@ public class BinaryMessageProcessor : IDisposable
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _options = options ?? new FeishuWebSocketOptions();
+    }
+
+    public BinaryMessageProcessor(
+        ILogger<BinaryMessageProcessor> logger,
+        FeishuWebSocketOptions options,
+        MessageRouter messageRouter)
+    {
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _options = options ?? new FeishuWebSocketOptions();
+        _messageRouter = messageRouter ?? throw new ArgumentNullException(nameof(messageRouter));
     }
 
     /// <summary>
@@ -149,6 +160,13 @@ public class BinaryMessageProcessor : IDisposable
 
                     // 触发事件，让外部处理JSON payload
                     BinaryMessageReceived?.Invoke(this, eventArgs);
+
+                    // 如果设置了MessageRouter，则路由JSON内容
+                    if (_messageRouter != null)
+                    {
+                        _logger.LogDebug("路由二进制转换的JSON消息到MessageRouter");
+                        await _messageRouter.RouteBinaryMessageAsync(jsonPayload, "Frame", cancellationToken);
+                    }
                 }
                 else
                 {
@@ -170,6 +188,13 @@ public class BinaryMessageProcessor : IDisposable
                     eventArgs.JsonContent = jsonString;
                     eventArgs.MessageType = "JSON_Fallback";
                     BinaryMessageReceived?.Invoke(this, eventArgs);
+
+                    // 如果设置了MessageRouter，则路由JSON内容
+                    if (_messageRouter != null)
+                    {
+                        _logger.LogDebug("路由二进制转换的JSON消息到MessageRouter (Fallback模式)");
+                        await _messageRouter.RouteBinaryMessageAsync(jsonString, "JSON_Fallback", cancellationToken);
+                    }
                 }
             }
             catch (Exception ex)

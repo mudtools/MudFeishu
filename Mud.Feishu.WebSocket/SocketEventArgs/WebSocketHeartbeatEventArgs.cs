@@ -12,7 +12,7 @@ namespace Mud.Feishu.WebSocket.SocketEventArgs;
 /// <summary>
 /// WebSocket 心跳事件参数
 /// </summary>
-public class WebSocketHeartbeatEventArgs : System.EventArgs
+public class WebSocketHeartbeatEventArgs : EventArgs
 {
     /// <summary>
     /// 心跳消息

@@ -67,7 +67,7 @@ public class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
         _connectionManager = new WebSocketConnectionManager(_loggerFactory.CreateLogger<WebSocketConnectionManager>(), _options);
         _authManager = new AuthenticationManager(_loggerFactory.CreateLogger<AuthenticationManager>(), (message) => SendMessageAsync(message));
         _messageRouter = new MessageRouter(_loggerFactory.CreateLogger<MessageRouter>());
-        _binaryProcessor = new BinaryMessageProcessor(_loggerFactory.CreateLogger<BinaryMessageProcessor>(), _options);
+        _binaryProcessor = new BinaryMessageProcessor(_loggerFactory.CreateLogger<BinaryMessageProcessor>(), _options, _messageRouter);
 
         // 订阅组件事件
         SubscribeToComponentEvents();

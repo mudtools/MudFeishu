@@ -12,7 +12,7 @@ namespace Mud.Feishu.WebSocket.SocketEventArgs;
 /// <summary>
 /// WebSocket Ping 事件参数
 /// </summary>
-public class WebSocketPingEventArgs : System.EventArgs
+public class WebSocketPingEventArgs : EventArgs
 {
     /// <summary>
     /// Ping 消息

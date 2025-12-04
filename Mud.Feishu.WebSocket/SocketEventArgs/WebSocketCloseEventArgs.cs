@@ -12,7 +12,7 @@ namespace Mud.Feishu.WebSocket.SocketEventArgs;
 /// <summary>
 /// WebSocket连接关闭事件参数
 /// </summary>
-public class WebSocketCloseEventArgs : System.EventArgs
+public class WebSocketCloseEventArgs : EventArgs
 {
     /// <summary>
     /// 关闭状态码

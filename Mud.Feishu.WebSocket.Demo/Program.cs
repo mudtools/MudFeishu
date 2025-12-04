@@ -6,8 +6,8 @@
 // -----------------------------------------------------------------------
 
 using Mud.Feishu.WebSocket;
-using Mud.Feishu.WebSocket.Demo.Handlers;
 using Mud.Feishu.WebSocket.Demo.Services;
+using Mud.Feishu.WebSocket.Handlers;
 using Mud.Feishu.WebSocket.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -36,9 +36,11 @@ builder.Services.AddFeishuServicesBuilder(builder.Configuration)
 builder.Services.AddFeishuWebSocketBuilder()
     .ConfigureFrom(builder.Configuration)
     .UseMultiHandler()
-    .AddHandler<DemoUserEventHandler>()
-    .AddHandler<DemoDepartmentEventHandler>()
-    .AddHandler<DemoApprovalEventHandler>()
+    //.AddHandler<DemoUserEventHandler>()
+    //.AddHandler<DemoDepartmentEventHandler>()
+    //.AddHandler<DepartmentCreatedEventHandler>()
+    //.AddHandler<DemoApprovalEventHandler>()
+    .AddHandler<DepartmentCreatedEventHandler>()
     .Build();
 
 // 配置演示服务

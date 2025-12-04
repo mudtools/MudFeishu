@@ -15,27 +15,47 @@ namespace Mud.Feishu.WebSocket.SocketEventArgs;
 public class WebSocketFeishuEventArgs : System.EventArgs
 {
     /// <summary>
-    /// 事件消息
+    /// 事件消息（v1.0版本）
     /// </summary>
     public EventMessage? EventMessage { get; set; }
 
     /// <summary>
-    /// 事件数据
+    /// 是否为v2.0版本消息
+    /// </summary>
+    public bool IsV2Message { get; set; } = false;
+
+    /// <summary>
+    /// 事件数据（v1.0版本）
     /// </summary>
     public EventData? EventData => EventMessage?.Data;
 
     /// <summary>
-    /// 事件类型
+    /// 事件类型（兼容v1.0和v2.0版本）
     /// </summary>
-    public string? EventType => EventData?.EventType;
+    public string? EventType => IsV2Message ? EventTypeV2 : EventData?.EventType;
 
     /// <summary>
-    /// 应用ID
+    /// v2.0版本的事件类型
+    /// </summary>
+    public string? EventTypeV2 { get; set; }
+
+    /// <summary>
+    /// 事件ID（兼容v1.0和v2.0版本）
+    /// </summary>
+    public string? EventId => IsV2Message ? EventIdV2 : null; // v1.0版本的EventId需要从外部获取
+
+    /// <summary>
+    /// v2.0版本的事件ID
+    /// </summary>
+    public string? EventIdV2 { get; set; }
+
+    /// <summary>
+    /// 应用ID（v1.0版本）
     /// </summary>
     public string? AppId => EventData?.AppId;
 
     /// <summary>
-    /// 租户ID
+    /// 租户ID（v1.0版本）
     /// </summary>
     public string? TenantKey => EventData?.TenantKey;
 

@@ -234,9 +234,10 @@ public class FeishuWebSocketServiceBuilder
         _services.AddSingleton<IFeishuWebSocketClient>(serviceProvider =>
         {
             var logger = serviceProvider.GetRequiredService<ILogger<FeishuWebSocketClient>>();
+            var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
             var eventHandlerFactory = serviceProvider.GetRequiredService<IFeishuEventHandlerFactory>();
             var options = serviceProvider.GetRequiredService<IOptions<FeishuWebSocketOptions>>().Value;
-            return new FeishuWebSocketClient(logger, eventHandlerFactory, options);
+            return new FeishuWebSocketClient(logger, eventHandlerFactory, loggerFactory, options);
         });
 
         // 注册WebSocket管理器

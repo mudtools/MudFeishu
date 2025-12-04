@@ -37,12 +37,6 @@ MudFeishu 是一个用于简化与飞书（Feishu）API 集成的现代化 .NET 
 | 文档完善度 | 需要在飞书官方文档中查找各个接口的详细说明 | 提供完整的中文API文档和示例代码 | 降低学习成本，快速上手 |
 | 依赖管理 | 需要自行引入和管理各种第三方库 | 统一管理所有依赖，避免版本冲突 | 简化项目依赖管理 |
 
-## 模块概览
-
-| 模块 | 当前版本 | 下载 | 开源协议 |
-|---|---|---|---|
-| [![Mud.Feishu](https://img.shields.io/badge/Mud.Feishu-mudtools-success.svg)](https://gitee.com/mudtools/mud-code-generator) | [![Nuget](https://img.shields.io/nuget/v/Mud.Feishu.svg)](https://www.nuget.org/packages/Mud.Feishu/) | [![Nuget](https://img.shields.io/nuget/dt/Mud.Feishu.svg)](https://www.nuget.org/packages/Mud.Feishu/) | [![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://gitee.com/mudtools/mud-code-generator/blob/master/LICENSE)
-
 ## 快速开始
 
 ### 安装

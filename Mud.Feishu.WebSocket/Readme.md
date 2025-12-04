@@ -76,6 +76,64 @@ builder.Services.AddFeishuWebSocketService(builder.Configuration);
 
 ### 3. 基本使用
 
+#### 方式一：使用WebSocket客户端（推荐）
+
+```csharp
+public class MessageService
+{
+    private readonly FeishuWebSocketClient _webSocketClient;
+
+    public MessageService(
+        ILogger<MessageService> logger,
+        IFeishuEventHandlerFactory eventHandlerFactory,
+        ILoggerFactory loggerFactory)
+    {
+        // 配置选项
+        var options = new FeishuWebSocketOptions
+        {
+            EnableLogging = true,
+            EnableBinaryMessageProcessing = true,
+            EnableAutoAck = true,
+            HeartbeatIntervalMs = 30000,
+            EnableMessageQueue = true
+        };
+
+        // 创建WebSocket客户端
+        _webSocketClient = new FeishuWebSocketClient(
+            logger,
+            eventHandlerFactory,
+            loggerFactory,
+            options);
+        
+        // 订阅连接事件
+        _webSocketClient.Connected += OnConnected;
+        _webSocketClient.Disconnected += OnDisconnected;
+        _webSocketClient.Error += OnError;
+        _webSocketClient.FeishuEventReceived += OnFeishuEventReceived;
+    }
+
+    // 连接到飞书WebSocket
+    public async Task ConnectAsync(WsEndpointResult endpoint, string appAccessToken)
+    {
+        await _webSocketClient.ConnectAsync(endpoint, appAccessToken);
+    }
+
+    private void OnConnected(object? sender, EventArgs e)
+        => Console.WriteLine("🚀 WebSocket连接已建立");
+
+    private void OnDisconnected(object? sender, WebSocketCloseEventArgs e)
+        => Console.WriteLine($"🔌 连接已断开: {e.CloseStatusDescription}");
+
+    private void OnError(object? sender, WebSocketErrorEventArgs e)
+        => Console.WriteLine($"❌ 错误: {e.ErrorMessage}");
+
+    private void OnFeishuEventReceived(object? sender, WebSocketFeishuEventArgs e)
+        => Console.WriteLine($"📨 收到飞书事件: {e.EventType}");
+}
+```
+
+#### 方式二：使用管理器
+
 ```csharp
 public class MessageService
 {
@@ -175,6 +233,80 @@ public class HeartbeatStatistics
 var statistics = heartbeatService.GetStatistics();
 Console.WriteLine($"总心跳: {statistics.TotalHeartbeats}, 平均间隔: {statistics.AverageInterval:F2}s");
 ```
+
+## 🏗️ 架构设计
+
+### 组件化架构
+
+飞书WebSocket客户端采用组件化设计，将复杂功能拆分为专门的组件，提高代码的可维护性和扩展性。
+
+### 架构设计
+
+#### 核心组件
+
+| 组件 | 职责 | 特性 |
+|------|------|------|
+| **WebSocketConnectionManager** | 连接管理器 | 连接建立、断开、状态管理、重连机制 |
+| **AuthenticationManager** | 认证管理器 | WebSocket认证流程、状态管理、认证事件 |
+| **MessageRouter** | 消息路由器 | 消息路由、版本检测(v1.0/v2.0)、处理器管理 |
+| **BinaryMessageProcessor** | 二进制消息处理器 | 增量接收、ProtoBuf/JSON解析、内存优化 |
+
+#### 消息处理器
+
+| 处理器 | 说明 |
+|---------|------|
+| **IMessageHandler** | 消息处理器接口，提供通用反序列化功能 |
+| **EventMessageHandler** | 事件消息处理器，支持v1.0和v2.0版本 |
+| **BasicMessageHandler** | 基础消息处理器(Ping/Pong、认证、心跳) |
+| **FeishuWebSocketClient** | 主客户端，组合所有组件 |
+
+### 架构优势
+
+- **🎯 单一职责** - 每个组件专注特定功能，代码清晰易懂
+- **🔧 代码复用性提升** - 组件化设计，各组件可独立使用
+- **🧪 测试友好** - 每个组件可独立测试，依赖清晰
+- **🚀 扩展性提升** - 新功能通过添加组件实现，配置灵活
+
+### 自定义消息处理器
+
+```csharp
+// 创建自定义消息处理器
+public class CustomMessageHandler : JsonMessageHandler
+{
+    public override bool CanHandle(string messageType)
+        => messageType == "custom_type";
+
+    public override async Task HandleAsync(string message, CancellationToken cancellationToken = default)
+    {
+        var data = SafeDeserialize<CustomMessage>(message);
+        // 处理逻辑...
+    }
+}
+
+// 注册到消息路由器
+client.RegisterMessageProcessor(customMessageHandler);
+```
+
+### 文件结构
+
+```
+Mud.Feishu.WebSocket/
+├── Core/                           # 核心组件
+│   ├── WebSocketConnectionManager.cs  # 连接管理
+│   ├── AuthenticationManager.cs      # 认证管理  
+│   ├── MessageRouter.cs             # 消息路由
+│   └── BinaryMessageProcessor.cs    # 二进制处理
+├── Handlers/                       # 消息处理器
+│   ├── IMessageHandler.cs          # 处理器接口
+│   ├── EventMessageHandler.cs       # 事件消息处理
+│   └── BasicMessageHandler.cs     # 基础消息处理
+├── SocketEventArgs/                # 事件参数类
+├── DataModels/                    # 数据模型
+├── FeishuWebSocketClient.cs       # 主客户端
+└── Examples/                      # 使用示例
+```
+
+---
 
 ## 🎯 事件处理器（策略模式）
 
@@ -571,6 +703,8 @@ public class DistributedEventProcessor
 
 ## 🐛 常见问题
 
+
+
 ### 连接问题
 
 **Q: 连接频繁断开？**
@@ -655,10 +789,6 @@ public class DistributedEventProcessor
 - `meeting.meeting.started_v1` - 会议开始
 - `meeting.meeting.ended_v1` - 会议结束
 
-## 🔄 API 参考
-
-### IFeishuWebSocketManager
-
 ```csharp
 public interface IFeishuWebSocketManager
 {
@@ -688,6 +818,57 @@ public interface IFeishuEventHandler
 {
     string SupportedEventType { get; }
     Task HandleAsync(EventData eventData, CancellationToken cancellationToken = default);
+}
+```
+
+### FeishuWebSocketClient（主客户端）
+
+```csharp
+public class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
+{
+    // 构造函数
+    public FeishuWebSocketClient(
+        ILogger<FeishuWebSocketClient> logger,
+        IFeishuEventHandlerFactory eventHandlerFactory,
+        ILoggerFactory loggerFactory,
+        FeishuWebSocketOptions? options = null);
+
+    // 属性
+    public WebSocketState State { get; }
+    public bool IsAuthenticated { get; }
+
+    // 事件
+    public event EventHandler<EventArgs>? Connected;
+    public event EventHandler<WebSocketCloseEventArgs>? Disconnected;
+    public event EventHandler<WebSocketMessageEventArgs>? MessageReceived;
+    public event EventHandler<WebSocketErrorEventArgs>? Error;
+    public event EventHandler<EventArgs>? Authenticated;
+    public event EventHandler<WebSocketPingEventArgs>? PingReceived;
+    public event EventHandler<WebSocketPongEventArgs>? PongReceived;
+    public event EventHandler<WebSocketHeartbeatEventArgs>? HeartbeatReceived;
+    public event EventHandler<WebSocketFeishuEventArgs>? FeishuEventReceived;
+    public event EventHandler<WebSocketBinaryMessageEventArgs>? BinaryMessageReceived;
+
+    // 主要方法
+    public Task ConnectAsync(WsEndpointResult endpoint, CancellationToken cancellationToken = default);
+    public Task ConnectAsync(WsEndpointResult endpoint, string appAccessToken, CancellationToken cancellationToken = default);
+    public Task DisconnectAsync(CancellationToken cancellationToken = default);
+    public Task SendMessageAsync(string message, CancellationToken cancellationToken = default);
+    public Task StartReceivingAsync(CancellationToken cancellationToken);
+    
+    // 自定义消息处理器管理
+    public void RegisterMessageProcessor(Func<string, Task> processor);
+    public bool UnregisterMessageProcessor(Func<string, Task> processor);
+}
+```
+
+### IMessageHandler（消息处理器接口）
+
+```csharp
+public interface IMessageHandler
+{
+    bool CanHandle(string messageType);
+    Task HandleAsync(string message, CancellationToken cancellationToken = default);
 }
 ```
 

@@ -87,5 +87,10 @@ public class FeishuWebSocketOptions
     /// 是否启用二进制消息处理，默认为true
     /// </summary>
     public bool EnableBinaryMessageProcessing { get; set; } = true;
+
+    /// <summary>
+    /// 是否启用自动ACK回复，默认为true
+    /// </summary>
+    public bool EnableAutoAck { get; set; } = true;
  
 }

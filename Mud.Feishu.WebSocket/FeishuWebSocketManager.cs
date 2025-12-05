@@ -123,7 +123,7 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager
             {
                 var delay = TimeSpan.FromMilliseconds(Math.Pow(2, i) * 1000); // 1s, 2s, 4s, 8s...
                 _logger.LogWarning(ex, "{OperationName}失败，将在{Delay}毫秒后重试 (尝试 {RetryCount}/{MaxRetries})",
-                    operationName, delay.TotalMilliseconds, i + 1, maxRetries + 1);
+                         operationName, delay.TotalMilliseconds, i + 1, maxRetries + 1);
 
                 await Task.Delay(delay, cancellationToken);
             }
@@ -193,7 +193,6 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager
                 _logger.LogWarning("WebSocket服务已在运行中");
                 return;
             }
-
             _logger.LogInformation("正在启动飞书WebSocket服务...");
 
             // 获取应用访问令牌，使用配置的超时时间
@@ -214,7 +213,8 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager
                     _logger.LogError("获取的应用访问令牌为空");
                     throw new InvalidOperationException("无法获取有效的应用访问令牌");
                 }
-                _logger.LogDebug("成功获取应用访问令牌");
+                if (_webSocketOptions.EnableLogging)
+                    _logger.LogDebug("成功获取应用访问令牌");
             }
             catch (OperationCanceledException) when (timeoutCts.Token.IsCancellationRequested)
             {
@@ -265,7 +265,7 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager
                 _isReconnecting = false;
             }
 
-            _logger.LogInformation("飞书WebSocket服务启动成功");
+            _logger.LogInformation("--------------飞书WebSocket服务启动成功--------------");
         }
         catch (Exception ex)
         {
@@ -273,7 +273,7 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager
             {
                 _lastError = ex;
             }
-            _logger.LogError(ex, "启动飞书WebSocket服务失败");
+            _logger.LogError(ex, "--------------!!!启动飞书WebSocket服务失败!!!--------------");
             throw;
         }
         finally
@@ -294,11 +294,12 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager
         {
             if (!_isRunning)
             {
+
                 _logger.LogWarning("WebSocket服务未在运行");
                 return;
             }
 
-            _logger.LogInformation("正在停止飞书WebSocket服务...");
+            _logger.LogWarning("正在停止飞书WebSocket服务...");
 
             await _webSocketClient.DisconnectAsync(cancellationToken);
 
@@ -310,7 +311,7 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager
                 _isReconnecting = false;
             }
 
-            _logger.LogInformation("飞书WebSocket服务已停止");
+            _logger.LogWarning("飞书WebSocket服务已停止");
         }
         catch (Exception ex)
         {
@@ -350,6 +351,7 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager
     /// <returns>重连任务</returns>
     public async Task ReconnectAsync(CancellationToken cancellationToken = default)
     {
+
         _logger.LogInformation("正在重新连接飞书WebSocket服务...");
 
         lock (_stateLock)
@@ -373,7 +375,6 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager
                 _reconnectCount++;
                 _isReconnecting = false;
             }
-
             _logger.LogInformation("飞书WebSocket服务重连成功");
         }
         catch (Exception ex)
@@ -448,12 +449,14 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager
     /// <param name="e">事件参数</param>
     private void OnClientDisconnected(object? sender, WebSocketCloseEventArgs e)
     {
-        _logger.LogInformation("飞书WebSocket连接已断开: {Status} - {Description} (服务器端: {IsServerInitiated}, 时间: {Timestamp})",
-            e.CloseStatus, e.CloseStatusDescription, e.IsServerInitiated, e.Timestamp);
+        if (_webSocketOptions.EnableLogging)
+            _logger.LogInformation("飞书WebSocket连接已断开: {Status} - {Description} (服务器端: {IsServerInitiated}, 时间: {Timestamp})",
+                e.CloseStatus, e.CloseStatusDescription, e.IsServerInitiated, e.Timestamp);
 
         if (e.ConnectionDuration.HasValue)
         {
-            _logger.LogInformation("连接持续时间: {Duration}", e.ConnectionDuration);
+            if (_webSocketOptions.EnableLogging)
+                _logger.LogInformation("连接持续时间: {Duration}", e.ConnectionDuration);
         }
 
         Disconnected?.Invoke(this, e);
@@ -466,8 +469,9 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager
     /// <param name="e">事件参数</param>
     private void OnClientMessageReceived(object? sender, WebSocketMessageEventArgs e)
     {
-        _logger.LogDebug("接收到飞书WebSocket消息: {Message} (大小: {Size}字节, 队列: {Queue}条, 时间: {Timestamp})",
-            e.Message, e.MessageSize, e.QueueCount, e.Timestamp);
+        if (_webSocketOptions.EnableLogging)
+            _logger.LogDebug("接收到飞书WebSocket消息: {Message} (大小: {Size}字节, 队列: {Queue}条, 时间: {Timestamp})",
+                e.Message, e.MessageSize, e.QueueCount, e.Timestamp);
         MessageReceived?.Invoke(this, e);
     }
 
@@ -490,8 +494,9 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager
     /// <param name="e">事件参数</param>
     private void OnClientHeartbeatReceived(object? sender, WebSocketHeartbeatEventArgs e)
     {
-        _logger.LogDebug("飞书WebSocket心跳消息 - 时间戳: {Timestamp}, 间隔: {Interval}s, 状态: {Status}",
-            e.Timestamp, e.Interval, e.Status);
+        if (_webSocketOptions.EnableLogging)
+            _logger.LogDebug("飞书WebSocket心跳消息 - 时间戳: {Timestamp}, 间隔: {Interval}s, 状态: {Status}",
+                e.Timestamp, e.Interval, e.Status);
         HeartbeatReceived?.Invoke(this, e);
     }
 

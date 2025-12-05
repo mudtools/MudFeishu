@@ -131,8 +131,7 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
                 }
             });
 
-        var heartbeatHandler = new HeartbeatMessageHandler(
-            _loggerFactory.CreateLogger<HeartbeatMessageHandler>());
+        var heartbeatHandler = new HeartbeatMessageHandler(_loggerFactory.CreateLogger<HeartbeatMessageHandler>(), _options);
 
         _messageRouter.RegisterHandler(pingPongHandler);
         _messageRouter.RegisterHandler(authHandler);

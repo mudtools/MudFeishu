@@ -318,5 +318,6 @@ public class WebSocketConnectionManager : IDisposable
         {
             _disposed = true;
         }
+        GC.SuppressFinalize(this);
     }
 }

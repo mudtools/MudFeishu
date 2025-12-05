@@ -301,12 +301,12 @@ public class BinaryMessageProcessor : IDisposable
         }
         catch (Exception ex)
         {
-            if (_options.EnableLogging)
-                _logger.LogError(ex, "释放二进制处理器资源时发生错误");
+            _logger.LogError(ex, "释放二进制处理器资源时发生错误");
         }
         finally
         {
             _disposed = true;
         }
+        GC.SuppressFinalize(this);
     }
 }

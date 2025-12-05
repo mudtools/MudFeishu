@@ -37,7 +37,6 @@ public class AuthMessageHandler : JsonMessageHandler
 
         if (authResponse?.Code == 0)
         {
-            _logger.LogInformation("WebSocket认证成功: {Message}", authResponse.Message);
             _onAuthResult(true);
         }
         else

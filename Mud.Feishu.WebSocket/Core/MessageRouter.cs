@@ -34,10 +34,7 @@ public class MessageRouter
             throw new ArgumentNullException(nameof(handler));
 
         _handlers.Add(handler);
-        if (_options.EnableLogging)
-        {
-            _logger.LogDebug("已注册消息处理器: {HandlerType}", handler.GetType().Name);
-        }
+        _logger.LogDebug("已注册消息处理器: {HandlerType}", handler.GetType().Name);
     }
 
     /// <summary>
@@ -101,10 +98,8 @@ public class MessageRouter
             var messageType = ExtractMessageType(message);
             if (string.IsNullOrEmpty(messageType))
             {
-                if (_options.EnableLogging)
-                {
-                    _logger.LogWarning("无法提取消息类型 (来源: {SourceType}): {Message}", sourceType, message);
-                }
+                _logger.LogWarning("无法提取消息类型 (来源: {SourceType}): {Message}", sourceType, message);
+
                 return;
             }
 
@@ -112,18 +107,11 @@ public class MessageRouter
             var handler = _handlers.FirstOrDefault(h => h.CanHandle(messageType));
             if (handler == null)
             {
-                if (_options.EnableLogging)
-                {
-                    _logger.LogWarning("未找到能处理消息类型 {MessageType} 的处理器 (来源: {SourceType})", messageType, sourceType);
-                }
+                _logger.LogWarning("未找到能处理消息类型 {MessageType} 的处理器 (来源: {SourceType})", messageType, sourceType);
                 return;
             }
-
-            if (_options.EnableLogging)
-            {
-                _logger.LogDebug("将消息路由到处理器: {HandlerType} (来源: {SourceType}, 消息类型: {MessageType})",
+            _logger.LogDebug("将消息路由到处理器: {HandlerType} (来源: {SourceType}, 消息类型: {MessageType})",
                     handler.GetType().Name, sourceType, messageType);
-            }
             await handler.HandleAsync(message, cancellationToken);
         }
         catch (Exception ex)
@@ -163,7 +151,7 @@ public class MessageRouter
         }
         catch (System.Text.Json.JsonException ex)
         {
-           _logger.LogError(ex, "解析消息JSON失败: {Message}", message);
+            _logger.LogError(ex, "解析消息JSON失败: {Message}", message);
             return string.Empty;
         }
     }

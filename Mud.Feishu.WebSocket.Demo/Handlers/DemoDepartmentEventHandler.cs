@@ -7,7 +7,7 @@
 
 using Mud.Feishu.Abstractions;
 using Mud.Feishu.Abstractions.DataModels.Organization;
-using Mud.Feishu.Abstractions.EventHandlers.Organization;
+using Mud.Feishu.Abstractions.EventHandlers;
 using Mud.Feishu.WebSocket.Services;
 
 namespace Mud.Feishu.WebSocket.Demo.Handlers;

@@ -61,3 +61,4 @@ public class UserCustomAttrValue
     [JsonPropertyName("generic_user")]
     public CustomAttrGenericUser? GenericUser { get; set; }
 }
+

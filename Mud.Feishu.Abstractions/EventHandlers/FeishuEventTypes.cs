@@ -53,6 +53,11 @@ public static class FeishuEventTypes
     public const string UserDeleted = "contact.user.deleted_v3";
 
     /// <summary>
+    /// 成员字段变更事件
+    /// </summary>
+    public const string CustomAttrUpdated = "contact.custom_attr_event.updated_v3";
+
+    /// <summary>
     /// 部门创建事件
     /// </summary>
     public const string DepartmentCreated = "contact.department.created_v3";

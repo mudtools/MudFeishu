@@ -8,31 +8,19 @@
 namespace Mud.Feishu.Abstractions.DataModels.Organization;
 
 /// <summary>
-/// 用户自定义属性类，用于表示飞书平台中用户的自定义属性信息
+/// 通用用户信息类，用于表示飞书事件中的用户基本信息
 /// </summary>
-public class UserCustomAttr
+public class CustomAttrGenericUser
 {
     /// <summary>
-    /// <para>自定义字段类型。</para>
-    /// <para>**可能值有：**</para>
-    /// <para>- `TEXT`：文本</para>
-    /// <para>- `HREF`：网页</para>
-    /// <para>- `ENUMERATION`：枚举</para>
-    /// <para>- `PICTURE_ENUM`：图片</para>
-    /// <para>- `GENERIC_USER`：用户</para>
-    /// </summary>
-    [JsonPropertyName("type")]
-    public string? Type { get; set; }
-
-    /// <summary>
-    /// <para>自定义字段 ID。</para>
+    /// <para>引用人员的 user_id。</para>
     /// </summary>
     [JsonPropertyName("id")]
     public string? Id { get; set; }
 
     /// <summary>
-    /// <para>自定义字段取值。</para>
+    /// <para>用户类型。目前固定取值为 1，表示用户。</para>
     /// </summary>
-    [JsonPropertyName("value")]
-    public UserCustomAttrValue? Value { get; set; }
+    [JsonPropertyName("type")]
+    public int? Type { get; set; }
 }

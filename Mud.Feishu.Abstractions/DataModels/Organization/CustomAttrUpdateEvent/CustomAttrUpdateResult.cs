@@ -1,4 +1,4 @@
-// -----------------------------------------------------------------------
+﻿// -----------------------------------------------------------------------
 //  作者：Mud Studio  版权所有 (c) Mud Studio 2025   
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
@@ -8,21 +8,20 @@
 namespace Mud.Feishu.Abstractions.DataModels.Organization;
 
 /// <summary>
-/// 通用用户信息类，用于表示飞书事件中的用户基本信息
+/// 成员字段变更 事件体
+/// <para>当成员字段发生变更时（变更动作包括「打开/关闭」开关、「增加/删除」成员字段），会触发该事件。事件体的 old_object 展示字段的原始值，object 展示字段的更新值。{使用示例}(url=/api/tools/api_explore/api_explore_config?project=contact&amp;version=v3&amp;resource=custom_attr_event&amp;event=updated)</para>
 /// </summary>
-public class CustomAttrGenericUser
+public class CustomAttrUpdateResult : IEventResult
 {
     /// <summary>
-    /// <para>引用人员的 user_id。关于用户 ID 的具体说明可参见[用户相关的 ID 概念](https://open.feishu.cn/document/home/user-identity-introduction/introduction)。</para>
-    /// <para>必填：否</para>
+    /// <para>变更后信息</para>
     /// </summary>
-    [JsonPropertyName("id")]
-    public string? Id { get; set; }
+    [JsonPropertyName("object")]
+    public CustomAttrInfo? Object { get; set; }
 
     /// <summary>
-    /// <para>用户类型。目前固定取值为 1，表示用户。</para>
-    /// <para>必填：否</para>
+    /// <para>变更前信息</para>
     /// </summary>
-    [JsonPropertyName("type")]
-    public int? Type { get; set; }
+    [JsonPropertyName("old_object")]
+    public CustomAttrInfo? OldObject { get; set; }
 }

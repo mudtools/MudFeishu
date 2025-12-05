@@ -10,18 +10,19 @@ using Mud.Feishu.Abstractions.DataModels.Organization;
 namespace Mud.Feishu.Abstractions.EventHandlers;
 
 /// <summary>
-/// 员工入职事件处理器
-/// <para>当应用订阅该事件后，如果有新员工入职（例如，通过管理后台添加成员、调用创建用户 API），则会触发该事件。</para>
-/// <para>事件类型:contact.user.created_v3</para>
-/// <para>订阅该事件详细文档：<see href="https://open.feishu.cn/document/server-docs/contact-v3/user/events/created"/></para>
+/// 成员字段变更
+/// <para>应用订阅该事件后，当成员字段发生变更时（变更动作包括「打开/关闭」开关、「增加/删除」成员字段），会触发该事件。</para>
+/// <para>事件体的 old_object 展示字段的原始值，object 展示字段的更新值。</para>
+/// <para>事件类型:contact.custom_attr_event.updated_v3</para>
+/// <para>文档地址：https://open.feishu.cn/document/server-docs/contact-v3/custom_attr/events/updated</para>
 /// </summary>
-public abstract class UserCreateEventHandler : DefaultFeishuObjectEventHandler<UserCreateResult>
+public abstract class CustomAttrUpdateEventHandler : DefaultFeishuEventHandler<CustomAttrUpdateResult>
 {
     /// <summary>
     /// 默认构造函数
     /// </summary>
     /// <param name="logger"></param>
-    public UserCreateEventHandler(ILogger logger)
+    public CustomAttrUpdateEventHandler(ILogger logger)
         : base(logger)
     {
     }
@@ -29,5 +30,5 @@ public abstract class UserCreateEventHandler : DefaultFeishuObjectEventHandler<U
     /// <summary>
     /// 支持的事件类型
     /// </summary>
-    public override string SupportedEventType => FeishuEventTypes.UserCreated;
+    public override string SupportedEventType => FeishuEventTypes.CustomAttrUpdated;
 }

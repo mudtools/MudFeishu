@@ -10,18 +10,19 @@ using Mud.Feishu.Abstractions.DataModels.Organization;
 namespace Mud.Feishu.Abstractions.EventHandlers;
 
 /// <summary>
-/// 员工入职事件处理器
-/// <para>当应用订阅该事件后，如果有新员工入职（例如，通过管理后台添加成员、调用创建用户 API），则会触发该事件。</para>
-/// <para>事件类型:contact.user.created_v3</para>
-/// <para>订阅该事件详细文档：<see href="https://open.feishu.cn/document/server-docs/contact-v3/user/events/created"/></para>
+/// 员工信息被修改事件
+/// <para>应用订阅该事件后，当员工信息（包括：ID、用户名、英文名、别名、邮箱、企业邮箱、职务、手机号、性别、头像、状态、所属部门、直属主管、城市、国家、工位、入职时间、工号、类型、排序、自定义字段、职级、序列、虚线上级）被修改时将会触发该事件。</para>
+/// <para>可以在事件的 old_object 字段中查看修改前的用户信息；在事件的 object 字段中可以查看修改后的用户信息。</para>
+/// <para>事件类型:contact.user.updated_v3</para>
+/// <para>文档地址：https://open.feishu.cn/document/server-docs/contact-v3/user/events/updated</para>
 /// </summary>
-public abstract class UserCreateEventHandler : DefaultFeishuObjectEventHandler<UserCreateResult>
+public abstract class UserUpdateEventHandler : DefaultFeishuEventHandler<UserUpdateResult>
 {
     /// <summary>
     /// 默认构造函数
     /// </summary>
     /// <param name="logger"></param>
-    public UserCreateEventHandler(ILogger logger)
+    public UserUpdateEventHandler(ILogger logger)
         : base(logger)
     {
     }
@@ -29,5 +30,5 @@ public abstract class UserCreateEventHandler : DefaultFeishuObjectEventHandler<U
     /// <summary>
     /// 支持的事件类型
     /// </summary>
-    public override string SupportedEventType => FeishuEventTypes.UserCreated;
+    public override string SupportedEventType => FeishuEventTypes.UserUpdated;
 }

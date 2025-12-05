@@ -7,7 +7,7 @@
 
 using Mud.Feishu.Abstractions.DataModels.Organization;
 
-namespace Mud.Feishu.Abstractions.EventHandlers.Organization;
+namespace Mud.Feishu.Abstractions.EventHandlers;
 
 /// <summary>
 /// 部门创建事件处理器

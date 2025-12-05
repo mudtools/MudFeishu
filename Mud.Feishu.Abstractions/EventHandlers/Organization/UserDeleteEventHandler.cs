@@ -7,7 +7,7 @@
 
 using Mud.Feishu.Abstractions.DataModels.Organization;
 
-namespace Mud.Feishu.Abstractions.EventHandlers.Organization;
+namespace Mud.Feishu.Abstractions.EventHandlers;
 
 /// <summary>
 /// 员工离职事件处理器

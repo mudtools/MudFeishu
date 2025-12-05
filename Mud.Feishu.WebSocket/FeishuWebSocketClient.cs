@@ -78,7 +78,7 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
         _connectionManager = new WebSocketConnectionManager(_loggerFactory.CreateLogger<WebSocketConnectionManager>(), _options);
         _authManager = new AuthenticationManager(_loggerFactory.CreateLogger<AuthenticationManager>(), (message) => SendMessageAsync(message));
         _messageRouter = new MessageRouter(_loggerFactory.CreateLogger<MessageRouter>());
-        _binaryProcessor = new BinaryMessageProcessor(_loggerFactory.CreateLogger<BinaryMessageProcessor>(), _options, _messageRouter);
+        _binaryProcessor = new BinaryMessageProcessor(_loggerFactory.CreateLogger<BinaryMessageProcessor>(), _connectionManager, _options, _messageRouter);
 
         // 订阅组件事件
         SubscribeToComponentEvents();
@@ -399,6 +399,8 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
         if (!_options.EnableAutoAck || string.IsNullOrEmpty(eventType))
             return;
 
+        return;
+
         try
         {
             var ackMessage = new
@@ -421,6 +423,7 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
             };
 
             var ackJson = JsonSerializer.Serialize(ackMessage, jsonOptions);
+
             await SendMessageAsync(ackJson, cancellationToken);
 
             _logger.LogInformation("已发送ACK确认消息: EventType={EventType}, EventId={EventId}", eventType, eventId);

@@ -46,6 +46,8 @@ public abstract class DefaultFeishuEventHandler<T> : IFeishuEventHandler
         if (eventData == null)
             throw new ArgumentNullException(nameof(eventData));
 
+        _logger.LogInformation("当前事件数据类型：{typeName}", typeof(T).FullName);
+
         try
         {
             _logger.LogWarning("收到未处理的事件类型: {EventType}, 应用ID: {AppId}, 租户: {TenantKey}",

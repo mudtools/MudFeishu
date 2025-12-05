@@ -24,6 +24,7 @@ public class DemoEventService
 
     private int _userCount = 0;
     private int _departmentCount = 0;
+    private int _departmentDeleteCount = 0;
     private int _approvalCount = 0;
 
     public DemoEventService(ILogger<DemoEventService> logger)
@@ -74,6 +75,11 @@ public class DemoEventService
     public void IncrementDepartmentCount() => Interlocked.Increment(ref _departmentCount);
 
     /// <summary>
+    /// 增加部门删除计数
+    /// </summary>
+    public void IncrementDepartmentDeleteCount() => Interlocked.Increment(ref _departmentDeleteCount);
+
+    /// <summary>
     /// 增加审批计数
     /// </summary>
     public void IncrementApprovalCount() => Interlocked.Increment(ref _approvalCount);
@@ -90,6 +96,7 @@ public class DemoEventService
             ApprovalEventsCount = _approvalEvents.Count,
             TotalProcessedUsers = _userCount,
             TotalProcessedDepartments = _departmentCount,
+            TotalProcessedDepartmentDeletes = _departmentDeleteCount,
             TotalProcessedApprovals = _approvalCount,
             LastUpdated = DateTime.UtcNow
         };
@@ -119,6 +126,7 @@ public class DemoEventService
 
         Interlocked.Exchange(ref _userCount, 0);
         Interlocked.Exchange(ref _departmentCount, 0);
+        Interlocked.Exchange(ref _departmentDeleteCount, 0);
         Interlocked.Exchange(ref _approvalCount, 0);
 
         _logger.LogInformation("🗑️ [统计] 已清空所有事件记录");
@@ -239,9 +247,11 @@ public class EventStatistics
 {
     public int UserEventsCount { get; init; }
     public int DepartmentEventsCount { get; init; }
+    public int DepartmentDeleteEventsCount { get; init; }
     public int ApprovalEventsCount { get; init; }
     public int TotalProcessedUsers { get; init; }
     public int TotalProcessedDepartments { get; init; }
+    public int TotalProcessedDepartmentDeletes { get; init; }
     public int TotalProcessedApprovals { get; init; }
     public DateTime LastUpdated { get; init; }
 }

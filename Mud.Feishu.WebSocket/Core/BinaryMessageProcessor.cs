@@ -7,6 +7,8 @@
 
 using Microsoft.Extensions.Logging;
 using Mud.Feishu.WebSocket.SocketEventArgs;
+using System.Text;
+using System.Text.Json;
 
 namespace Mud.Feishu.WebSocket;
 
@@ -22,25 +24,23 @@ public class BinaryMessageProcessor : IDisposable
     private DateTime _binaryDataReceiveStartTime = DateTime.MinValue;
     private bool _disposed = false;
     private readonly MessageRouter? _messageRouter;
+    private readonly WebSocketConnectionManager? _connectionManager;
 
     public event EventHandler<WebSocketBinaryMessageEventArgs>? BinaryMessageReceived;
     public event EventHandler<WebSocketErrorEventArgs>? Error;
 
+    /// <summary>
+    /// 默认构造函数
+    /// </summary>
     public BinaryMessageProcessor(
         ILogger<BinaryMessageProcessor> logger,
-        FeishuWebSocketOptions options)
-    {
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _options = options ?? new FeishuWebSocketOptions();
-    }
-
-    public BinaryMessageProcessor(
-        ILogger<BinaryMessageProcessor> logger,
+        WebSocketConnectionManager? webSocketConnectionManager,
         FeishuWebSocketOptions options,
         MessageRouter messageRouter)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _options = options ?? new FeishuWebSocketOptions();
+        _connectionManager = webSocketConnectionManager ?? throw new ArgumentNullException(nameof(_connectionManager));
         _messageRouter = messageRouter ?? throw new ArgumentNullException(nameof(messageRouter));
     }
 
@@ -167,12 +167,15 @@ public class BinaryMessageProcessor : IDisposable
                         _logger.LogDebug("路由二进制转换的JSON消息到MessageRouter");
                         await _messageRouter.RouteBinaryMessageAsync(jsonPayload, "Frame", cancellationToken);
                     }
+
+                    await SendAckMessageAsync(frame, true, cancellationToken);
                 }
                 else
                 {
                     _logger.LogWarning("Frame 解析成功但 Payload 为空");
                     eventArgs.ParseError = "Frame 解析成功但 Payload 为空";
                     BinaryMessageReceived?.Invoke(this, eventArgs);
+                    await SendAckMessageAsync(frame, false, cancellationToken);
                 }
             }
             catch (ProtoBuf.ProtoException ex)
@@ -182,7 +185,7 @@ public class BinaryMessageProcessor : IDisposable
                 eventArgs.ParseError = $"ProtoBuf 反序列化失败: {ex.Message}";
 
                 // 如果 ProtoBuf 解析失败，尝试直接解析为 JSON
-                var jsonString = System.Text.Encoding.UTF8.GetString(completeData);
+                var jsonString = Encoding.UTF8.GetString(completeData);
                 if (!string.IsNullOrWhiteSpace(jsonString))
                 {
                     eventArgs.JsonContent = jsonString;
@@ -213,6 +216,48 @@ public class BinaryMessageProcessor : IDisposable
             _logger.LogError(ex, "处理完整二进制消息时发生未知错误");
             OnError($"处理完整二进制消息时发生未知错误: {ex.Message}", ex.GetType().Name);
         }
+    }
+
+    private async Task SendAckMessageAsync(EventProtoData? eventProtoData, bool sucess, CancellationToken cancellationToken)
+    {
+        if (eventProtoData == null)
+            return;
+        var jsonOptions = new JsonSerializerOptions
+        {
+            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+            WriteIndented = false
+        };
+        var data = new
+        {
+            status = sucess ? "success" : "failure",
+            timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+        };
+        var dto_string = JsonSerializer.Serialize(data, jsonOptions);
+        var ackMessage = new
+        {
+            code = 200,
+            data = Encoding.UTF8.GetBytes(dto_string)
+        };
+
+        try
+        {
+            var ackJson = JsonSerializer.Serialize(ackMessage, jsonOptions);
+            using var messageStream = new MemoryStream();
+            eventProtoData.Payload = Encoding.UTF8.GetBytes(ackJson);
+            ProtoBuf.Serializer.Serialize(messageStream, eventProtoData);
+
+            if (messageStream.TryGetBuffer(out var arraySegment) && _connectionManager != null)
+            {
+                await _connectionManager.SendBinaryMessageAsync(arraySegment, cancellationToken);
+                _logger.LogDebug("----已发送ACK消息: {AckJson}", ackJson);
+            }
+        }
+        catch (Exception x)
+        {
+            _logger.LogError(x, "发送ACK消息时发生错误");
+            OnError($"发送ACK消息时发生错误: {x.Message}", x.GetType().Name);
+        }
+
     }
 
     /// <summary>

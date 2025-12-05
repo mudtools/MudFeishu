@@ -36,10 +36,8 @@ builder.Services.AddFeishuServicesBuilder(builder.Configuration)
 builder.Services.AddFeishuWebSocketBuilder()
     .ConfigureFrom(builder.Configuration)
     .UseMultiHandler()
-    //.AddHandler<DemoUserEventHandler>()
     .AddHandler<DemoDepartmentEventHandler>()
-    //.AddHandler<DepartmentCreatedEventHandler>()
-    //.AddHandler<DemoApprovalEventHandler>()
+    .AddHandler<DemoDepartmentDeleteEventHandler>()
     .Build();
 
 // 配置演示服务

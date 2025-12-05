@@ -11,7 +11,7 @@ namespace Mud.CodeGenerator;
 /// 事件处理器代码生成特性
 /// </summary>
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
-public class EventHandlerAttribute : Attribute
+internal class EventHandlerAttribute : Attribute
 {
     /// <summary>
     /// 默认构造函数

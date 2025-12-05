@@ -133,6 +133,45 @@ public class WebSocketConnectionManager : IDisposable
     }
 
     /// <summary>
+    /// 发送二进制消息
+    /// </summary>
+    public async Task SendBinaryMessageAsync(byte[] data, CancellationToken cancellationToken = default)
+    {
+        await SendBinaryMessageAsync(new ArraySegment<byte>(data), cancellationToken);
+    }
+
+    /// <summary>
+    /// 发送二进制消息
+    /// </summary>
+    /// <param name="data"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    /// <exception cref="ArgumentException"></exception>
+    /// <exception cref="InvalidOperationException"></exception>
+    public async Task SendBinaryMessageAsync(ArraySegment<byte> data, CancellationToken cancellationToken = default)
+    {
+        if (data == null || data.Count == 0)
+            throw new ArgumentException("二进制数据不能为空", nameof(data));
+        if (_webSocket == null || _webSocket.State != WebSocketState.Open)
+            throw new InvalidOperationException("WebSocket未连接，无法发送消息");
+        try
+        {
+            await _webSocket.SendAsync(
+                data,
+                WebSocketMessageType.Binary,
+                true,
+                cancellationToken);
+            _logger.LogDebug("已发送二进制消息，大小: {Size} 字节", data.Count);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "发送二进制消息时发生错误");
+            OnError(ex, "发送二进制消息错误");
+            throw;
+        }
+    }
+
+    /// <summary>
     /// 发送消息
     /// </summary>
     public async Task SendMessageAsync(string message, CancellationToken cancellationToken = default)

@@ -23,5 +23,5 @@ public class ObjectEventResult<T> : IEventResult
     /// 获取事件处理后返回的对象
     /// </summary>
     [JsonPropertyName("object")]
-    public T? Object { get; }
+    public T? Object { get; set; }
 }

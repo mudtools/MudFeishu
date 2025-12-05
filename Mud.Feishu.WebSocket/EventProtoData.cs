@@ -15,7 +15,7 @@ namespace Mud.Feishu.WebSocket;
 /// <para>常用于消息类型标识、认证信息等</para>
 /// </summary>
 [ProtoContract]
-internal class ProtoHeader
+public class ProtoHeader
 {
     /// <summary>
     /// 头部信息的键名
@@ -41,7 +41,7 @@ internal class ProtoHeader
 /// <para>包含消息序号、服务信息、头部元数据、有效载荷等完整信息</para>
 /// </summary>
 [ProtoContract]
-internal class EventProtoData
+public class EventProtoData
 {
     /// <summary>
     /// 消息序列号

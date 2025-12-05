@@ -10,10 +10,11 @@ using System.Text.Json;
 namespace Mud.Feishu.Abstractions.EventHandlers;
 
 /// <summary>
-/// 默认的飞书事件处理器（用于处理未注册的事件类型）
+/// 飞书事件处理器基类，提供默认的事件消息反序列化功能。
 /// </summary>
+/// <typeparam name="T">事件实体类型</typeparam>
 public abstract class DefaultFeishuEventHandler<T> : IFeishuEventHandler
-    where T : IEventResult, new()
+    where T : class, IEventResult, new()
 {
     /// <summary>
     /// 日志记录器。
@@ -21,10 +22,10 @@ public abstract class DefaultFeishuEventHandler<T> : IFeishuEventHandler
     protected readonly ILogger _logger;
 
     /// <summary>
-    /// 默认构造函数。
+    /// 构造函数。
     /// </summary>
-    /// <param name="logger"></param>
-    /// <exception cref="ArgumentNullException"></exception>
+    /// <param name="logger">日志记录器</param>
+    /// <exception cref="ArgumentNullException">当logger为null时抛出</exception>
     public DefaultFeishuEventHandler(ILogger logger)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -41,25 +42,68 @@ public abstract class DefaultFeishuEventHandler<T> : IFeishuEventHandler
     /// <param name="eventData">事件数据</param>
     /// <param name="cancellationToken">取消令牌</param>
     /// <returns>处理任务</returns>
+    /// <exception cref="ArgumentNullException">当eventData为null时抛出</exception>
+    /// <exception cref="InvalidOperationException">当事件数据无效时抛出</exception>
     public async Task HandleAsync(EventData eventData, CancellationToken cancellationToken = default)
     {
-        if (eventData == null)
-            throw new ArgumentNullException(nameof(eventData));
+        ArgumentNullException.ThrowIfNull(eventData, nameof(eventData));
 
-        _logger.LogInformation("当前事件数据类型：{typeName}", typeof(T).FullName);
+        _logger.LogInformation("开始处理事件，事件类型: {EventType}, 应用ID: {AppId}, 租户: {TenantKey}",
+            eventData.EventType, eventData.AppId, eventData.TenantKey);
 
         try
         {
-            _logger.LogWarning("收到未处理的事件类型: {EventType}, 应用ID: {AppId}, 租户: {TenantKey}",
-                eventData.EventType, eventData.AppId, eventData.TenantKey);
-
-            var eventEntity = JsonSerializer.Deserialize<T>(eventData.Event!.ToString()!);
-
+            var eventEntity = DeserializeEvent(eventData);
             await ProcessBusinessLogicAsync(eventData, eventEntity, cancellationToken);
         }
-        catch (Exception ex)
+        catch (JsonException ex)
         {
-            _logger.LogError(ex, "处理默认事件时发生错误");
+            _logger.LogError(ex, "事件数据反序列化失败，事件类型: {EventType}, 原始数据: {RawData}",
+                eventData.EventType, eventData.Event?.ToString());
+            throw new InvalidOperationException("事件数据格式无效", ex);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogError(ex, "处理事件时发生错误，事件类型: {EventType}", eventData.EventType);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// 反序列化事件数据
+    /// </summary>
+    /// <param name="eventData">事件数据</param>
+    /// <returns>反序列化后的事件实体</returns>
+    /// <exception cref="InvalidOperationException">当事件数据为空或反序列化失败时抛出</exception>
+    private T? DeserializeEvent(EventData eventData)
+    {
+        if (eventData.Event == null)
+        {
+            _logger.LogWarning("事件数据为空，事件ID：{EventId}，事件类型: {EventType}", eventData.EventId, eventData.EventType);
+            return default;
+        }
+
+        try
+        {
+            var eventJson = eventData.Event?.ToString();
+            if (string.IsNullOrWhiteSpace(eventJson))
+            {
+                _logger.LogWarning("事件JSON数据为空，事件ID：{EventId}，事件类型: {EventType}", eventData.EventId, eventData.EventType);
+                return default;
+            }
+
+            var options = new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true,
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+            };
+
+            var result = JsonSerializer.Deserialize<T>(eventJson, options);
+            return result ?? default;
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "反序列化事件数据失败，事件ID：{EventId}，事件类型: {EventType}", eventData.EventId, eventData.EventType);
             throw;
         }
     }
@@ -69,7 +113,10 @@ public abstract class DefaultFeishuEventHandler<T> : IFeishuEventHandler
     /// </summary>
     /// <param name="eventData">完整的事件原始数据。</param>
     /// <param name="eventEntity">事件实体数据。</param>
-    /// <param name="cancellationToken">取消操作<see cref="CancellationToken"/>令牌</param>
-    /// <returns></returns>
-    protected abstract Task ProcessBusinessLogicAsync(EventData eventData, T? eventEntity, CancellationToken cancellationToken = default);
+    /// <param name="cancellationToken">取消操作令牌</param>
+    /// <returns>处理任务</returns>
+    protected abstract Task ProcessBusinessLogicAsync(
+        EventData eventData,
+        T? eventEntity,
+        CancellationToken cancellationToken = default);
 }

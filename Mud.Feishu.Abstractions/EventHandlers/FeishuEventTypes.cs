@@ -80,6 +80,11 @@ public static class FeishuEventTypes
     public const string ReceiveMessage = "im.message.receive_v1";
 
     /// <summary>
+    /// 消息撤回事件
+    /// </summary>
+    public const string MessageRecalled = "im.message.recalled_v1";
+
+    /// <summary>
     /// 消息已读事件
     /// </summary>
     public const string MessageRead = "im.message.message_read_v1";

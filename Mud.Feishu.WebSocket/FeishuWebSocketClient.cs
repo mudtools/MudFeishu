@@ -35,22 +35,35 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
     private ILoggerFactory _loggerFactory;
     private bool _disposed = false;
     private CancellationTokenSource? _cancellationTokenSource;
-
+    /// <inheritdoc/>
     public WebSocketState State => _connectionManager.State;
+    /// <inheritdoc/>
     public bool IsAuthenticated => _authManager.IsAuthenticated;
 
-    // 事件委托
+    /// <inheritdoc/>
     public event EventHandler<EventArgs>? Connected;
+    /// <inheritdoc/>
     public event EventHandler<WebSocketCloseEventArgs>? Disconnected;
+    /// <inheritdoc/>
     public event EventHandler<WebSocketMessageEventArgs>? MessageReceived;
+    /// <inheritdoc/>
     public event EventHandler<WebSocketErrorEventArgs>? Error;
+    /// <inheritdoc/>
     public event EventHandler<EventArgs>? Authenticated;
+    /// <inheritdoc/>
     public event EventHandler<WebSocketPingEventArgs>? PingReceived;
+    /// <inheritdoc/>
     public event EventHandler<WebSocketPongEventArgs>? PongReceived;
+    /// <inheritdoc/>
     public event EventHandler<WebSocketHeartbeatEventArgs>? HeartbeatReceived;
+    /// <inheritdoc/>
     public event EventHandler<WebSocketFeishuEventArgs>? FeishuEventReceived;
+    /// <inheritdoc/>
     public event EventHandler<WebSocketBinaryMessageEventArgs>? BinaryMessageReceived;
 
+    /// <summary>
+    /// 默认构造函数
+    /// </summary>
     public FeishuWebSocketClient(
         ILogger<FeishuWebSocketClient> logger,
         IFeishuEventHandlerFactory eventHandlerFactory,

@@ -5,26 +5,29 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-using Mud.Feishu.Abstractions;
+using Mud.Feishu.Abstractions.DataModels.Organization.DepartmentCreatedEvent;
 
-namespace Mud.Feishu.WebSocket.DataModels;
+namespace Mud.Feishu.Abstractions.EventHandlers.Organization;
 
 /// <summary>
-/// 飞书WebSocket事件消息
+/// 部门创建事件处理器
+/// <para>当应用订阅该事件后，如果通讯录内有部门被创建，则会触发该事件。</para>
+/// <para>事件类型:contact.department.created_v3</para>
+/// <para>订阅该事件详细文档：<see href="https://open.feishu.cn/document/server-docs/contact-v3/user/events/created"/></para>
 /// </summary>
-public class EventMessage : FeishuWebSocketMessage
+public abstract class DepartmentCreatedEventHandler : DefaultFeishuObjectEventHandler<DepartmentCreatedEventResult>
 {
     /// <summary>
-    /// 构造函数
+    /// 默认构造函数
     /// </summary>
-    public EventMessage()
+    /// <param name="logger"></param>
+    public DepartmentCreatedEventHandler(ILogger logger)
+        : base(logger)
     {
-        Type = "event";
     }
 
     /// <summary>
-    /// 事件数据
+    /// 支持的事件类型
     /// </summary>
-    [JsonPropertyName("data")]
-    public EventData? Data { get; set; }
+    public override string SupportedEventType => FeishuEventTypes.DepartmentCreated;
 }

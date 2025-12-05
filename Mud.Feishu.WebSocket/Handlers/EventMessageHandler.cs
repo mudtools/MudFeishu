@@ -20,6 +20,7 @@ public class EventMessageHandler : JsonMessageHandler
     private readonly FeishuWebSocketOptions _options;
     private readonly Func<string?, string?, CancellationToken, Task> _sendAckCallback;
 
+    /// <inheritdoc/>
     public EventMessageHandler(
         ILogger<EventMessageHandler> logger,
         IFeishuEventHandlerFactory eventHandlerFactory,

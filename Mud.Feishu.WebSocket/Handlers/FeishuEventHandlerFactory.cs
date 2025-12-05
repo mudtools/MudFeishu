@@ -6,7 +6,6 @@
 // -----------------------------------------------------------------------
 
 using Microsoft.Extensions.Logging;
-using Mud.Feishu.WebSocket.DataModels;
 
 namespace Mud.Feishu.WebSocket.Handlers;
 
@@ -32,9 +31,9 @@ public class FeishuEventHandlerFactory : IFeishuEventHandlerFactory
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _defaultHandler = defaultHandler ?? throw new ArgumentNullException(nameof(defaultHandler));
-        
+
         _handlers = new Dictionary<string, IFeishuEventHandler>();
-        
+
         // 注册所有事件处理器
         foreach (var handler in handlers)
         {
@@ -44,12 +43,12 @@ public class FeishuEventHandlerFactory : IFeishuEventHandlerFactory
                 {
                     _logger.LogWarning("事件类型 {EventType} 的处理器已存在，将被覆盖", handler.SupportedEventType);
                 }
-                
+
                 _handlers[handler.SupportedEventType] = handler;
                 _logger.LogDebug("已注册事件处理器: {EventType}", handler.SupportedEventType);
             }
         }
-        
+
         _logger.LogInformation("事件处理器工厂初始化完成，共注册 {Count} 个事件处理器", _handlers.Count);
     }
 
@@ -109,16 +108,16 @@ public class FeishuEventHandlerFactory : IFeishuEventHandlerFactory
     public async Task HandleEventParallelAsync(string eventType, EventData eventData, CancellationToken cancellationToken = default)
     {
         var handlers = GetHandlers(eventType);
-        
+
         if (handlers.Count == 0 || (handlers.Count == 1 && handlers[0] == _defaultHandler))
         {
             await _defaultHandler.HandleAsync(eventData, cancellationToken);
             return;
         }
 
-        var tasks = handlers.Select(handler => 
+        var tasks = handlers.Select(handler =>
             ProcessHandlerSafely(handler, eventData, cancellationToken));
-        
+
         await Task.WhenAll(tasks);
     }
 
@@ -137,7 +136,7 @@ public class FeishuEventHandlerFactory : IFeishuEventHandlerFactory
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "事件处理器 {HandlerType} 执行失败: {EventType}", 
+            _logger.LogError(ex, "事件处理器 {HandlerType} 执行失败: {EventType}",
                 handler.GetType().Name, eventData.EventType);
             // 不重新抛出异常，避免影响其他处理器
         }
@@ -173,7 +172,7 @@ public class FeishuEventHandlerFactory : IFeishuEventHandlerFactory
             return false;
 
         var result = _handlers.Remove(eventType);
-        
+
         if (result)
         {
             _logger.LogInformation("已取消注册事件处理器: {EventType}", eventType);

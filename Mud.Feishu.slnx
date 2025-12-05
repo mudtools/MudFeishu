@@ -1,5 +1,11 @@
 <Solution>
+  <Folder Name="/解决方案项/">
+    <File Path="CHANGELOG.md" />
+    <File Path="Directory.Build.props" />
+    <File Path="README.md" />
+  </Folder>
   <Project Path="Mud.CodeGenerator/Mud.CodeGenerator.shproj" />
+  <Project Path="Mud.Feishu.Abstractions/Mud.Feishu.Abstractions.csproj" Id="b04973d2-c477-49a7-a00f-04288a8cabac" />
   <Project Path="Mud.Feishu.Test/Mud.Feishu.Test.csproj" />
   <Project Path="Mud.Feishu.WebSocket.Demo/Mud.Feishu.WebSocket.Demo.csproj" />
   <Project Path="Mud.Feishu.WebSocket/Mud.Feishu.WebSocket.csproj" />

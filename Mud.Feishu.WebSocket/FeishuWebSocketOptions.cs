@@ -92,5 +92,5 @@ public class FeishuWebSocketOptions
     /// 是否启用自动ACK回复，默认为true
     /// </summary>
     public bool EnableAutoAck { get; set; } = true;
- 
+
 }

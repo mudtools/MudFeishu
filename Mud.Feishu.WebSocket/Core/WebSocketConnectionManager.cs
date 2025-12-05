@@ -23,7 +23,7 @@ public class WebSocketConnectionManager : IDisposable
     private CancellationTokenSource? _cancellationTokenSource;
     private bool _disposed = false;
 
-    public event EventHandler<System.EventArgs>? Connected;
+    public event EventHandler<EventArgs>? Connected;
     public event EventHandler<WebSocketCloseEventArgs>? Disconnected;
     public event EventHandler<WebSocketErrorEventArgs>? Error;
 

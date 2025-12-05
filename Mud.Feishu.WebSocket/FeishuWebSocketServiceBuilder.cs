@@ -9,6 +9,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Mud.Feishu.Abstractions;
 using Mud.Feishu.WebSocket.Handlers;
 
 namespace Mud.Feishu.WebSocket;

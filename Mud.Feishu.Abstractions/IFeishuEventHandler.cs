@@ -5,26 +5,23 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-using Mud.Feishu.Abstractions;
-
-namespace Mud.Feishu.WebSocket.DataModels;
+namespace Mud.Feishu.Abstractions;
 
 /// <summary>
-/// 飞书WebSocket事件消息
+/// 飞书事件处理器接口
 /// </summary>
-public class EventMessage : FeishuWebSocketMessage
+public interface IFeishuEventHandler
 {
     /// <summary>
-    /// 构造函数
+    /// 支持的事件类型
     /// </summary>
-    public EventMessage()
-    {
-        Type = "event";
-    }
+    string SupportedEventType { get; }
 
     /// <summary>
-    /// 事件数据
+    /// 处理事件
     /// </summary>
-    [JsonPropertyName("data")]
-    public EventData? Data { get; set; }
+    /// <param name="eventData">事件数据</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>处理任务</returns>
+    Task HandleAsync(EventData eventData, CancellationToken cancellationToken = default);
 }

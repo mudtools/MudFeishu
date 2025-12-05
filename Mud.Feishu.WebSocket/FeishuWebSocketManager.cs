@@ -265,7 +265,7 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager
                 _isReconnecting = false;
             }
 
-            _logger.LogInformation("--------------飞书WebSocket服务启动成功--------------");
+            _logger.LogInformation("--------------Mud飞书WebSocket服务启动成功--------------");
         }
         catch (Exception ex)
         {
@@ -273,7 +273,7 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager
             {
                 _lastError = ex;
             }
-            _logger.LogError(ex, "--------------!!!启动飞书WebSocket服务失败!!!--------------");
+            _logger.LogError(ex, "--------------!!!启动Mud飞书WebSocket服务失败!!!--------------");
             throw;
         }
         finally
@@ -299,7 +299,7 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager
                 return;
             }
 
-            _logger.LogWarning("正在停止飞书WebSocket服务...");
+            _logger.LogWarning("正在停止Mud飞书WebSocket服务...");
 
             await _webSocketClient.DisconnectAsync(cancellationToken);
 
@@ -311,7 +311,7 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager
                 _isReconnecting = false;
             }
 
-            _logger.LogWarning("飞书WebSocket服务已停止");
+            _logger.LogWarning("Mud飞书WebSocket服务已停止");
         }
         catch (Exception ex)
         {
@@ -319,7 +319,7 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager
             {
                 _lastError = ex;
             }
-            _logger.LogError(ex, "停止飞书WebSocket服务失败");
+            _logger.LogError(ex, "停止Mud飞书WebSocket服务失败");
             throw;
         }
         finally
@@ -352,7 +352,7 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager
     public async Task ReconnectAsync(CancellationToken cancellationToken = default)
     {
 
-        _logger.LogInformation("正在重新连接飞书WebSocket服务...");
+        _logger.LogInformation("正在重新连接Mud飞书WebSocket服务...");
 
         lock (_stateLock)
         {
@@ -375,7 +375,7 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager
                 _reconnectCount++;
                 _isReconnecting = false;
             }
-            _logger.LogInformation("飞书WebSocket服务重连成功");
+            _logger.LogInformation("Mud飞书WebSocket服务重连成功");
         }
         catch (Exception ex)
         {
@@ -384,7 +384,7 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager
                 _lastError = ex;
                 _isReconnecting = false;
             }
-            _logger.LogError(ex, "飞书WebSocket服务重连失败");
+            _logger.LogError(ex, "Mud飞书WebSocket服务重连失败");
             throw;
         }
     }
@@ -438,7 +438,7 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager
     /// <param name="e">事件参数</param>
     private void OnClientConnected(object? sender, EventArgs e)
     {
-        _logger.LogInformation("飞书WebSocket连接已建立");
+        _logger.LogInformation("Mud 飞书WebSocket连接已建立");
         Connected?.Invoke(this, e);
     }
 
@@ -450,7 +450,7 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager
     private void OnClientDisconnected(object? sender, WebSocketCloseEventArgs e)
     {
         if (_webSocketOptions.EnableLogging)
-            _logger.LogInformation("飞书WebSocket连接已断开: {Status} - {Description} (服务器端: {IsServerInitiated}, 时间: {Timestamp})",
+            _logger.LogInformation("Mud飞书WebSocket连接已断开: {Status} - {Description} (服务器端: {IsServerInitiated}, 时间: {Timestamp})",
                 e.CloseStatus, e.CloseStatusDescription, e.IsServerInitiated, e.Timestamp);
 
         if (e.ConnectionDuration.HasValue)
@@ -470,7 +470,7 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager
     private void OnClientMessageReceived(object? sender, WebSocketMessageEventArgs e)
     {
         if (_webSocketOptions.EnableLogging)
-            _logger.LogDebug("接收到飞书WebSocket消息: {Message} (大小: {Size}字节, 队列: {Queue}条, 时间: {Timestamp})",
+            _logger.LogDebug("接收到Mud 飞书WebSocket消息: {Message} (大小: {Size}字节, 队列: {Queue}条, 时间: {Timestamp})",
                 e.Message, e.MessageSize, e.QueueCount, e.Timestamp);
         MessageReceived?.Invoke(this, e);
     }
@@ -482,7 +482,7 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager
     /// <param name="e">事件参数</param>
     private void OnClientError(object? sender, WebSocketErrorEventArgs e)
     {
-        _logger.LogError(e.Exception, "飞书WebSocket发生错误: {Message} (类型: {ErrorType}, 状态: {State}, 网络: {IsNetwork}, 认证: {IsAuth}, 时间: {Timestamp})",
+        _logger.LogError(e.Exception, "Mud 飞书WebSocket发生错误: {Message} (类型: {ErrorType}, 状态: {State}, 网络: {IsNetwork}, 认证: {IsAuth}, 时间: {Timestamp})",
             e.ErrorMessage, e.ErrorType, e.ConnectionState, e.IsNetworkError, e.IsAuthError, e.Timestamp);
         Error?.Invoke(this, e);
     }

@@ -11,6 +11,7 @@ namespace Mud.Feishu.Abstractions.DataModels.Organization;
 /// 员工离职事件处理器
 /// <para>当应用订阅该事件后，如果有员工离职（例如，通过管理后台离职成员、调用删除用户 API），则会触发该事件。</para>
 /// <para>事件类型:contact.user.deleted_v3</para>
+/// <para>使用时请继承：<see cref="UserDeleteEventHandler"/></para>
 /// <para>文档地址：https://open.feishu.cn/document/server-docs/contact-v3/user/events/deleted</para>
 /// </summary>
 [EventHandler(EventType = FeishuEventTypes.UserDeleted, HandlerNamespace = Consts.HandlerNamespace,

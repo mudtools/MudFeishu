@@ -12,6 +12,7 @@ namespace Mud.Feishu.Abstractions.DataModels.Organization;
 /// <para>应用订阅该事件后，当员工信息（包括：ID、用户名、英文名、别名、邮箱、企业邮箱、职务、手机号、性别、头像、状态、所属部门、直属主管、城市、国家、工位、入职时间、工号、类型、排序、自定义字段、职级、序列、虚线上级）被修改时将会触发该事件。</para>
 /// <para>可以在事件的 old_object 字段中查看修改前的用户信息；在事件的 object 字段中可以查看修改后的用户信息。</para>
 /// <para>事件类型:contact.user.updated_v3</para>
+/// <para>使用时请继承：<see cref="UserUpdateEventHandler"/></para>
 /// <para>文档地址：https://open.feishu.cn/document/server-docs/contact-v3/user/events/updated</para>
 /// </summary>
 [EventHandler(EventType = FeishuEventTypes.UserUpdated, HandlerNamespace = Consts.HandlerNamespace,

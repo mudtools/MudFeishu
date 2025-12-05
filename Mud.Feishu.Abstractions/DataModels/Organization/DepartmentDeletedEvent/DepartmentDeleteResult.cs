@@ -7,21 +7,28 @@
 
 namespace Mud.Feishu.Abstractions.DataModels.Organization;
 
+
 /// <summary>
-/// 新建人员类型事件处理器
-/// <para>当应用订阅该事件后，如果新增了人员类型中的选项，则会触发该事件。</para>
-/// <para>事件类型:contact.employee_type_enum.created_v3</para>
-/// <para>使用时请继承：<see cref="EmployeeTypeEnumCreatedEventHandler"/></para>
-/// <para>文档地址：<see href="https://open.feishu.cn/document/server-docs/contact-v3/employee_type_enum/events/created"/> </para>
+/// 部门被删除事件处理器
+/// <para>应用订阅该事件后，如果通讯录内有部门被删除，则会触发该事件。</para>
+/// <para>事件类型:contact.department.deleted_v3</para>
+/// <para>使用时请继承：<see cref="DepartmentDeleteEventHandler"/></para>
+/// <para>订阅该事件详细文档：<see href="https://open.feishu.cn/document/server-docs/contact-v3/department/events/deleted"/></para>
 /// </summary>
-[EventHandler(EventType = FeishuEventTypes.EmployeeTypeEnumCreated, HandlerNamespace = Consts.HandlerNamespace,
+[EventHandler(EventType = FeishuEventTypes.DepartmentDeleted, HandlerNamespace = Consts.HandlerNamespace,
               InheritedFrom = Consts.InheritedFrom)]
-public class EmployeeTypeEnumCreatedResult : IEventResult
+public class DepartmentDeleteResult : IEventResult
 {
     /// <summary>
-    /// <para>新建的人员类型选项信息。</para>
-    /// <para>必填：否</para>
+    /// <para>部门信息。</para>
     /// </summary>
-    [JsonPropertyName("new_enum")]
-    public EmployeeTypeEnum? NewEnum { get; set; }
+    [JsonPropertyName("object")]
+    public DepartmentResultInfo? Object { get; set; }
+
+
+    /// <summary>
+    /// <para>部门被删除前的信息。</para>
+    /// </summary>
+    [JsonPropertyName("old_object")]
+    public OldDepartmentObject? OldObject { get; set; }
 }

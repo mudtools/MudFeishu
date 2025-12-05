@@ -1,4 +1,4 @@
-// -----------------------------------------------------------------------
+﻿// -----------------------------------------------------------------------
 //  作者：Mud Studio  版权所有 (c) Mud Studio 2025   
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
@@ -6,29 +6,31 @@
 // -----------------------------------------------------------------------
 
 namespace Mud.Feishu.Abstractions.DataModels.Organization;
+
 /// <summary>
-/// 部门HRBP（人力资源业务合作伙伴）信息类
-/// 用于存储和传输飞书平台中与部门相关的人力资源业务合作伙伴的信息
+/// 用户 ID
 /// </summary>
-public class DepartmentHrbp
+public record UserIdInfo
 {
     /// <summary>
-    /// 用户在飞书平台的唯一标识（Union ID）
-    /// 用于跨应用识别用户身份的全局唯一标识符
+    /// <para>用户的 union id</para>
+    /// <para>必填：否</para>
     /// </summary>
     [JsonPropertyName("union_id")]
     public string? UnionId { get; set; }
 
     /// <summary>
-    /// 用户在当前企业内的用户ID
-    /// 用于在当前企业内标识用户的唯一标识符
+    /// <para>用户的 user id</para>
+    /// <para>**字段权限要求**：</para>
+    /// <para>- contact:user.employee_id:readonly : 获取用户 user ID</para>
+    /// <para>必填：否</para>
     /// </summary>
     [JsonPropertyName("user_id")]
     public string? UserId { get; set; }
 
     /// <summary>
-    /// 用户在当前应用中的开放ID
-    /// 用于在当前应用范围内标识用户的唯一标识符
+    /// <para>用户的 open id</para>
+    /// <para>必填：否</para>
     /// </summary>
     [JsonPropertyName("open_id")]
     public string? OpenId { get; set; }

@@ -12,6 +12,7 @@ namespace Mud.Feishu.Abstractions.DataModels.Organization;
 /// <para>应用订阅该事件后，当成员字段发生变更时（变更动作包括「打开/关闭」开关、「增加/删除」成员字段），会触发该事件。</para>
 /// <para>事件体的 old_object 展示字段的原始值，object 展示字段的更新值。</para>
 /// <para>事件类型:contact.custom_attr_event.updated_v3</para>
+/// <para>使用时请继承：<see cref="CustomAttrUpdateEventHandler"/></para>
 /// <para>文档地址：https://open.feishu.cn/document/server-docs/contact-v3/custom_attr/events/updated</para>
 /// </summary>
 [EventHandler(EventType = FeishuEventTypes.CustomAttrUpdated, HandlerNamespace = Consts.HandlerNamespace,

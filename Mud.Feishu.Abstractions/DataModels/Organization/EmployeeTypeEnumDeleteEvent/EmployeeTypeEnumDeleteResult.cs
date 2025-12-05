@@ -10,7 +10,8 @@ namespace Mud.Feishu.Abstractions.DataModels.Organization;
 /// <summary>
 /// 修改人员类型名称事件处理器
 /// <para>当应用订阅该事件后，若果更新了人员类型的选项内容（包括默认内容 content 参数和国际化内容 i18n_content），则会触发该事件。</para>
-/// <para>事件类型:contact.employee_type_enum.updated_v3</para>
+/// <para>事件类型:contact.employee_type_enum.deleted_v3</para>
+/// <para>使用时请继承：<see cref="EmployeeTypeEnumDeleteEventHandler"/></para>
 /// <para>文档地址：<see href="https://open.feishu.cn/document/server-docs/contact-v3/employee_type_enum/events/updated"/> </para>
 /// </summary>
 [EventHandler(EventType = FeishuEventTypes.EmployeeTypeEnumDelete, HandlerNamespace = Consts.HandlerNamespace,

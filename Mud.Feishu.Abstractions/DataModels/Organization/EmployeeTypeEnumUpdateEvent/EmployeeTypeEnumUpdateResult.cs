@@ -10,6 +10,9 @@ namespace Mud.Feishu.Abstractions.DataModels.Organization;
 /// <summary>
 /// 修改人员类型名称 事件体
 /// <para>当应用订阅该事件后，若果更新了人员类型的选项内容（包括默认内容 content 参数和国际化内容 i18n_content），则会触发该事件。</para>
+/// <para>事件类型:contact.employee_type_enum.updated_v3</para>
+/// <para>使用时请继承：<see cref="EmployeeTypeEnumUpdateEventHandler"/></para>
+/// <para>文档地址：<see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/contact-v3/employee_type_enum/events/updated"/> </para>
 /// </summary>
 [EventHandler(EventType = FeishuEventTypes.EmployeeTypeEnumUpdated, HandlerNamespace = Consts.HandlerNamespace,
               InheritedFrom = Consts.InheritedFrom)]

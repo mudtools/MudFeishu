@@ -5,8 +5,10 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-global using Microsoft.Extensions.Logging;
-global using Mud.CodeGenerator;
-global using Mud.Feishu.Abstractions.EventHandlers;
-global using System.Text.Json.Serialization;
-
+namespace Mud.Feishu.Abstractions;
+internal class Consts
+{
+    public const string HandlerNamespace = "Mud.Feishu.Abstractions.EventHandlers";
+    public const string InheritedFrom = "DefaultFeishuEventHandler";
+    public const string InheritedFromObject = "DefaultFeishuObjectEventHandler";
+}

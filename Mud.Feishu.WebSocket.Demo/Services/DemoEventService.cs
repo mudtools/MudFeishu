@@ -19,7 +19,7 @@ public class DemoEventService
 {
     private readonly ILogger<DemoEventService> _logger;
     private readonly ConcurrentBag<UserData> _userEvents = new();
-    private readonly ConcurrentBag<DepartmentCreatedEventResult> _departmentEvents = new();
+    private readonly ConcurrentBag<DepartmentCreatedResult> _departmentEvents = new();
     private readonly ConcurrentBag<ApprovalData> _approvalEvents = new();
 
     private int _userCount = 0;
@@ -44,7 +44,7 @@ public class DemoEventService
     /// <summary>
     /// 记录部门事件
     /// </summary>
-    public async Task RecordDepartmentEventAsync(DepartmentCreatedEventResult departmentData, CancellationToken cancellationToken = default)
+    public async Task RecordDepartmentEventAsync(DepartmentCreatedResult departmentData, CancellationToken cancellationToken = default)
     {
         _departmentEvents.Add(departmentData);
         _logger.LogInformation("📊 [统计] 记录部门事件: {DepartmentId} - {DepartmentName}",
@@ -252,6 +252,6 @@ public class EventStatistics
 public class RecentEvents
 {
     public List<UserData> RecentUsers { get; init; } = new();
-    public List<DepartmentCreatedEventResult> RecentDepartments { get; init; } = new();
+    public List<DepartmentCreatedResult> RecentDepartments { get; init; } = new();
     public List<ApprovalData> RecentApprovals { get; init; } = new();
 }

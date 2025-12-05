@@ -17,17 +17,15 @@ namespace Mud.Feishu.WebSocket.Demo.Handlers;
 /// </summary>
 public class DemoDepartmentEventHandler : DepartmentCreatedEventHandler
 {
-    private readonly ILogger<DemoDepartmentEventHandler> _logger;
     private readonly DemoEventService _eventService;
 
     public DemoDepartmentEventHandler(ILogger<DemoDepartmentEventHandler> logger, DemoEventService eventService) : base(logger)
     {
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _eventService = eventService ?? throw new ArgumentNullException(nameof(eventService));
     }
 
 
-    protected override async Task ProcessBusinessLogicAsync(EventData eventData, ObjectEventResult<DepartmentCreatedEventResult>? departmentData, CancellationToken cancellationToken = default)
+    protected override async Task ProcessBusinessLogicAsync(EventData eventData, ObjectEventResult<DepartmentCreatedResult>? departmentData, CancellationToken cancellationToken = default)
     {
         if (eventData == null)
             throw new ArgumentNullException(nameof(eventData));
@@ -53,7 +51,7 @@ public class DemoDepartmentEventHandler : DepartmentCreatedEventHandler
         }
     }
 
-    private async Task ProcessDepartmentEventAsync(DepartmentCreatedEventResult departmentData, CancellationToken cancellationToken)
+    private async Task ProcessDepartmentEventAsync(DepartmentCreatedResult departmentData, CancellationToken cancellationToken)
     {
         _logger.LogDebug("🔄 [部门事件] 开始处理部门数据: {DepartmentId}", departmentData.DepartmentId);
 

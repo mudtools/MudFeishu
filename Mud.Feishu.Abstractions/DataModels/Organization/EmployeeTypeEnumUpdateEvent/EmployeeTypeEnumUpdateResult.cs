@@ -8,25 +8,22 @@
 namespace Mud.Feishu.Abstractions.DataModels.Organization;
 
 /// <summary>
-/// 成员字段变更事件处理器
-/// <para>应用订阅该事件后，当成员字段发生变更时（变更动作包括「打开/关闭」开关、「增加/删除」成员字段），会触发该事件。</para>
-/// <para>事件体的 old_object 展示字段的原始值，object 展示字段的更新值。</para>
-/// <para>事件类型:contact.custom_attr_event.updated_v3</para>
-/// <para>文档地址：https://open.feishu.cn/document/server-docs/contact-v3/custom_attr/events/updated</para>
+/// 修改人员类型名称 事件体
+/// <para>当应用订阅该事件后，若果更新了人员类型的选项内容（包括默认内容 content 参数和国际化内容 i18n_content），则会触发该事件。</para>
 /// </summary>
-[EventHandler(EventType = FeishuEventTypes.CustomAttrUpdated, HandlerNamespace = Consts.HandlerNamespace,
+[EventHandler(EventType = FeishuEventTypes.EmployeeTypeEnumUpdated, HandlerNamespace = Consts.HandlerNamespace,
               InheritedFrom = Consts.InheritedFrom)]
-public class CustomAttrUpdateResult : IEventResult
+public class EmployeeTypeEnumUpdateResult : IEventResult
 {
     /// <summary>
-    /// <para>变更后信息</para>
+    /// <para>更新前的人员类型信息。</para>
     /// </summary>
-    [JsonPropertyName("object")]
-    public CustomAttrInfo? Object { get; set; }
+    [JsonPropertyName("old_enum")]
+    public EmployeeTypeEnum? OldEnum { get; set; }
 
     /// <summary>
-    /// <para>变更前信息</para>
+    /// <para>更新后的人员类型信息。</para>
     /// </summary>
-    [JsonPropertyName("old_object")]
-    public CustomAttrInfo? OldObject { get; set; }
+    [JsonPropertyName("new_enum")]
+    public EmployeeTypeEnum? NewEnum { get; set; }
 }

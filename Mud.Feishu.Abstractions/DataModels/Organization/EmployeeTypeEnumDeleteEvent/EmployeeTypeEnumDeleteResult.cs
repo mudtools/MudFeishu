@@ -8,26 +8,18 @@
 namespace Mud.Feishu.Abstractions.DataModels.Organization;
 
 /// <summary>
-/// 启用人员类型事件处理器
-/// <para>当应用订阅该事件后，如果将未激活的人员类型更新为激活状态，则会触发该事件。</para>
-/// <para>事件类型:contact.employee_type_enum.actived_v3</para>
-/// <para>文档地址：<see href="https://open.feishu.cn/document/server-docs/contact-v3/employee_type_enum/events/actived"/> </para>
+/// 修改人员类型名称事件处理器
+/// <para>当应用订阅该事件后，若果更新了人员类型的选项内容（包括默认内容 content 参数和国际化内容 i18n_content），则会触发该事件。</para>
+/// <para>事件类型:contact.employee_type_enum.updated_v3</para>
+/// <para>文档地址：<see href="https://open.feishu.cn/document/server-docs/contact-v3/employee_type_enum/events/updated"/> </para>
 /// </summary>
-[EventHandler(EventType = FeishuEventTypes.EmployeeTypeEnumActived, HandlerNamespace = Consts.HandlerNamespace,
+[EventHandler(EventType = FeishuEventTypes.EmployeeTypeEnumDelete, HandlerNamespace = Consts.HandlerNamespace,
               InheritedFrom = Consts.InheritedFrom)]
-public class EmployeeTypeEnumActivedResult : IEventResult
+public class EmployeeTypeEnumDeleteResult : IEventResult
 {
     /// <summary>
-    /// <para>更新前的人员类型信息。</para>
-    /// <para>必填：否</para>
+    /// <para>人员类型删除前的信息。</para>
     /// </summary>
     [JsonPropertyName("old_enum")]
     public EmployeeTypeEnum? OldEnum { get; set; }
-
-    /// <summary>
-    /// <para>更新后的人员类型信息。</para>
-    /// <para>必填：否</para>
-    /// </summary>
-    [JsonPropertyName("new_enum")]
-    public EmployeeTypeEnum? NewEnum { get; set; }
 }

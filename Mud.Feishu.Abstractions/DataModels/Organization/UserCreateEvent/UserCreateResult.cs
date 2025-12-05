@@ -8,8 +8,13 @@
 namespace Mud.Feishu.Abstractions.DataModels.Organization;
 
 /// <summary>
-/// 用户创建事件结果类，用于表示飞书平台中用户创建事件的相关信息
+/// 员工入职事件处理器
+/// <para>当应用订阅该事件后，如果有新员工入职（例如，通过管理后台添加成员、调用创建用户 API），则会触发该事件。</para>
+/// <para>事件类型:contact.user.created_v3</para>
+/// <para>订阅该事件详细文档：<see href="https://open.feishu.cn/document/server-docs/contact-v3/user/events/created"/></para>
 /// </summary>
+[EventHandler(EventType = FeishuEventTypes.UserCreated, HandlerNamespace = Consts.HandlerNamespace,
+              InheritedFrom = Consts.InheritedFromObject)]
 public class UserCreateResult : UserResultInfo, IEventResult
 {
 

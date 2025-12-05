@@ -8,9 +8,14 @@
 namespace Mud.Feishu.Abstractions.DataModels.Organization;
 
 /// <summary>
-/// 部门创建事件结果类，用于表示飞书部门创建事件的相关信息
+/// 部门创建事件处理器
+/// <para>当应用订阅该事件后，如果通讯录内有部门被创建，则会触发该事件。</para>
+/// <para>事件类型:contact.department.created_v3</para>
+/// <para>订阅该事件详细文档：<see href="https://open.feishu.cn/document/server-docs/contact-v3/user/events/created"/></para>
 /// </summary>
-public class DepartmentCreatedEventResult : IEventResult
+[EventHandler(EventType = FeishuEventTypes.DepartmentCreated, HandlerNamespace = Consts.HandlerNamespace,
+              InheritedFrom = Consts.InheritedFromObject)]
+public class DepartmentCreatedResult : IEventResult
 {
     /// <summary>
     /// 部门名称

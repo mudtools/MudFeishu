@@ -58,6 +58,16 @@ public static class FeishuEventTypes
     public const string CustomAttrUpdated = "contact.custom_attr_event.updated_v3";
 
     /// <summary>
+    /// 人员类型创建事件
+    /// </summary>
+    public const string EmployeeTypeEnumCreated = "contact.employee_type_enum.created_v3";
+
+    /// <summary>
+    /// 人员类型启用事件
+    /// </summary>
+    public const string EmployeeTypeEnumActived = "contact.employee_type_enum.actived_v3";
+
+    /// <summary>
     /// 部门创建事件
     /// </summary>
     public const string DepartmentCreated = "contact.department.created_v3";

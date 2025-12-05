@@ -20,3 +20,5 @@
 /Mud.Feishu.WebSocket.Demo/obj
 /Mud.Feishu.WebSocket.Demo/bin/Debug/net8.0
 /bin/Debug
+/Mud.Feishu.Abstractions/bin/Debug
+/Mud.Feishu.Abstractions/obj

@@ -10,7 +10,6 @@ using Mud.Feishu.WebSocket.DataModels;
 
 namespace Mud.Feishu.WebSocket.Handlers;
 
-
 /// <summary>
 /// 认证消息处理器
 /// </summary>

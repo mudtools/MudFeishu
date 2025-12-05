@@ -111,12 +111,6 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
     /// </summary>
     private void RegisterMessageHandlers()
     {
-        var eventHandler = new EventMessageHandler(
-            _loggerFactory.CreateLogger<EventMessageHandler>(),
-            _eventHandlerFactory,
-            _options,
-            SendAckMessageAsync);
-
         var pingPongHandler = new PingPongMessageHandler(
             _loggerFactory.CreateLogger<PingPongMessageHandler>(),
             (message) => SendMessageAsync(message));
@@ -139,7 +133,6 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
         var heartbeatHandler = new HeartbeatMessageHandler(
             _loggerFactory.CreateLogger<HeartbeatMessageHandler>());
 
-        _messageRouter.RegisterHandler(eventHandler);
         _messageRouter.RegisterHandler(pingPongHandler);
         _messageRouter.RegisterHandler(authHandler);
         _messageRouter.RegisterHandler(heartbeatHandler);
@@ -388,49 +381,6 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "消息处理器执行失败: {Message}", message);
-        }
-    }
-
-    /// <summary>
-    /// 发送ACK确认消息
-    /// </summary>
-    private async Task SendAckMessageAsync(string? eventType, string? eventId, CancellationToken cancellationToken)
-    {
-        if (!_options.EnableAutoAck || string.IsNullOrEmpty(eventType))
-            return;
-
-        return;
-
-        try
-        {
-            var ackMessage = new
-            {
-                code = 200,
-                type = "ack",
-                data = new
-                {
-                    event_type = eventType,
-                    event_id = eventId,
-                    status = "success",
-                    timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
-                }
-            };
-
-            var jsonOptions = new JsonSerializerOptions
-            {
-                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-                WriteIndented = false
-            };
-
-            var ackJson = JsonSerializer.Serialize(ackMessage, jsonOptions);
-
-            await SendMessageAsync(ackJson, cancellationToken);
-
-            _logger.LogInformation("已发送ACK确认消息: EventType={EventType}, EventId={EventId}", eventType, eventId);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "发送ACK确认消息时发生错误: EventType={EventType}, EventId={EventId}", eventType, eventId);
         }
     }
 

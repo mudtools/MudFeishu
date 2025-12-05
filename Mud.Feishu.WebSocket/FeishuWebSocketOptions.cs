@@ -78,19 +78,4 @@ public class FeishuWebSocketOptions
     /// </summary>
     public long MaxBinaryMessageSize { get; set; } = 10 * 1024 * 1024; // 10MB
 
-    /// <summary>
-    /// 二进制消息接收超时时间（毫秒），默认为30000毫秒
-    /// </summary>
-    public int BinaryMessageTimeoutMs { get; set; } = 30000;
-
-    /// <summary>
-    /// 是否启用二进制消息处理，默认为true
-    /// </summary>
-    public bool EnableBinaryMessageProcessing { get; set; } = true;
-
-    /// <summary>
-    /// 是否启用自动ACK回复，默认为true
-    /// </summary>
-    public bool EnableAutoAck { get; set; } = true;
-
 }

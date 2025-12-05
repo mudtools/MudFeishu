@@ -20,7 +20,7 @@ public class AuthenticationManager
     private readonly ILogger<AuthenticationManager> _logger;
     private readonly Func<string, Task> _sendMessageCallback;
     private bool _isAuthenticated = false;
-
+    private readonly FeishuWebSocketOptions _options;
     public event EventHandler<EventArgs>? Authenticated;
     public event EventHandler<WebSocketErrorEventArgs>? AuthenticationFailed;
 
@@ -28,10 +28,12 @@ public class AuthenticationManager
 
     public AuthenticationManager(
         ILogger<AuthenticationManager> logger,
+        FeishuWebSocketOptions options,
         Func<string, Task> sendMessageCallback)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _sendMessageCallback = sendMessageCallback ?? throw new ArgumentNullException(nameof(sendMessageCallback));
+        _options = options;
     }
 
     /// <summary>
@@ -44,7 +46,7 @@ public class AuthenticationManager
 
         try
         {
-            _logger.LogInformation("正在进行WebSocket认证...");
+           _logger.LogInformation("正在进行WebSocket认证...");
             _isAuthenticated = false; // 重置认证状态
 
             // 创建认证消息
@@ -66,12 +68,15 @@ public class AuthenticationManager
             var authJson = JsonSerializer.Serialize(authMessage, jsonOptions);
             await _sendMessageCallback(authJson);
 
-            _logger.LogInformation("已发送认证消息，等待响应...");
+            if (_options.EnableLogging)
+            {
+                _logger.LogInformation("已发送认证消息，等待响应...");
+            }
         }
         catch (Exception ex)
         {
             _isAuthenticated = false;
-            _logger.LogError(ex, "WebSocket认证失败");
+           _logger.LogError(ex, "WebSocket认证失败");
 
             var errorArgs = new WebSocketErrorEventArgs
             {
@@ -98,13 +103,14 @@ public class AuthenticationManager
             if (authResponse?.Code == 0)
             {
                 _isAuthenticated = true;
-                _logger.LogInformation("WebSocket认证成功: {Message}", authResponse.Message);
+                 _logger.LogInformation("WebSocket认证成功: {Message}", authResponse.Message);
                 Authenticated?.Invoke(this, EventArgs.Empty);
             }
             else
             {
                 _isAuthenticated = false;
                 _logger.LogError("WebSocket认证失败: {Code} - {Message}", authResponse?.Code, authResponse?.Message);
+                
 
                 var errorArgs = new WebSocketErrorEventArgs
                 {
@@ -133,7 +139,7 @@ public class AuthenticationManager
         catch (Exception ex)
         {
             _isAuthenticated = false;
-            _logger.LogError(ex, "处理认证响应时发生错误");
+           _logger.LogError(ex, "处理认证响应时发生错误");
 
             var errorArgs = new WebSocketErrorEventArgs
             {
@@ -153,6 +159,6 @@ public class AuthenticationManager
     public void ResetAuthentication()
     {
         _isAuthenticated = false;
-        _logger.LogDebug("已重置认证状态");
+       _logger.LogDebug("已重置认证状态");
     }
 }

@@ -17,13 +17,16 @@ namespace Mud.Feishu.WebSocket.Handlers;
 public class PingPongMessageHandler : JsonMessageHandler
 {
     private readonly Func<string, Task> _sendMessageCallback;
+    private readonly FeishuWebSocketOptions _options;
     /// <inheritdoc/>
     public PingPongMessageHandler(
         ILogger<PingPongMessageHandler> logger,
+        FeishuWebSocketOptions options,
         Func<string, Task> sendMessageCallback)
         : base(logger)
     {
         _sendMessageCallback = sendMessageCallback ?? throw new ArgumentNullException(nameof(sendMessageCallback));
+        _options = options;
     }
     /// <inheritdoc/>
     public override bool CanHandle(string messageType)
@@ -49,7 +52,8 @@ public class PingPongMessageHandler : JsonMessageHandler
     private async Task HandlePingAsync(string message)
     {
         var pingMessage = SafeDeserialize<PingMessage>(message);
-        _logger.LogDebug("收到Ping消息，时间戳: {Timestamp}", pingMessage?.Timestamp);
+        if (_options.EnableLogging)
+            _logger.LogDebug("收到Ping消息，时间戳: {Timestamp}", pingMessage?.Timestamp);
 
         // 发送Pong响应
         var pongMessage = new PongMessage
@@ -60,13 +64,15 @@ public class PingPongMessageHandler : JsonMessageHandler
         var pongJson = JsonSerializer.Serialize(pongMessage, _jsonOptions);
         await _sendMessageCallback(pongJson);
 
-        _logger.LogDebug("已发送Pong响应");
+        if (_options.EnableLogging)
+            _logger.LogDebug("已发送Pong响应");
     }
 
     private async Task HandlePongAsync(string message)
     {
         var pongMessage = SafeDeserialize<PongMessage>(message);
-        _logger.LogDebug("收到Pong消息，时间戳: {Timestamp}", pongMessage?.Timestamp);
+        if (_options.EnableLogging)
+            _logger.LogDebug("收到Pong消息，时间戳: {Timestamp}", pongMessage?.Timestamp);
 
         // 计算延迟
         long? latencyMs = null;
@@ -76,7 +82,8 @@ public class PingPongMessageHandler : JsonMessageHandler
             latencyMs = (currentTime - pongMessage.Timestamp) * 1000;
         }
 
-        _logger.LogDebug("Pong延迟: {Latency}ms", latencyMs);
+        if (_options.EnableLogging)
+            _logger.LogDebug("Pong延迟: {Latency}ms", latencyMs);
         await Task.CompletedTask;
     }
 

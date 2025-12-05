@@ -15,9 +15,12 @@ namespace Mud.Feishu.WebSocket.Handlers;
 /// </summary>
 public class HeartbeatMessageHandler : JsonMessageHandler
 {
+    private readonly FeishuWebSocketOptions _options;
+
     /// <inheritdoc/>
-    public HeartbeatMessageHandler(ILogger<HeartbeatMessageHandler> logger) : base(logger)
+    public HeartbeatMessageHandler(ILogger<HeartbeatMessageHandler> logger, FeishuWebSocketOptions options) : base(logger)
     {
+        _options = options;
     }
 
     /// <inheritdoc/>
@@ -30,8 +33,9 @@ public class HeartbeatMessageHandler : JsonMessageHandler
     {
         var heartbeatMessage = SafeDeserialize<HeartbeatMessage>(message);
 
-        _logger.LogDebug("收到心跳消息，时间戳: {Timestamp}, 状态: {Status}",
-            heartbeatMessage?.Data?.Timestamp, heartbeatMessage?.Data?.Status);
+        if (_options.EnableLogging)
+            _logger.LogDebug("收到心跳消息，时间戳: {Timestamp}, 状态: {Status}",
+                heartbeatMessage?.Data?.Timestamp, heartbeatMessage?.Data?.Status);
 
         return Task.CompletedTask;
     }

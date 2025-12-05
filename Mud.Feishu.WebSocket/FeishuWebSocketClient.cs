@@ -76,8 +76,8 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
         _loggerFactory = loggerFactory;
         // 初始化组件
         _connectionManager = new WebSocketConnectionManager(_loggerFactory.CreateLogger<WebSocketConnectionManager>(), _options);
-        _authManager = new AuthenticationManager(_loggerFactory.CreateLogger<AuthenticationManager>(), (message) => SendMessageAsync(message));
-        _messageRouter = new MessageRouter(_loggerFactory.CreateLogger<MessageRouter>());
+        _authManager = new AuthenticationManager(_loggerFactory.CreateLogger<AuthenticationManager>(), _options, (message) => SendMessageAsync(message));
+        _messageRouter = new MessageRouter(_loggerFactory.CreateLogger<MessageRouter>(), _options);
         _binaryProcessor = new BinaryMessageProcessor(_loggerFactory.CreateLogger<BinaryMessageProcessor>(), _connectionManager, _options, _messageRouter);
 
         // 订阅组件事件
@@ -113,6 +113,7 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
     {
         var pingPongHandler = new PingPongMessageHandler(
             _loggerFactory.CreateLogger<PingPongMessageHandler>(),
+            _options,
             (message) => SendMessageAsync(message));
 
         var authHandler = new AuthMessageHandler(
@@ -310,7 +311,8 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
                         var heartbeatMessage = JsonSerializer.Serialize(pingMessage, jsonOptions);
                         await SendMessageAsync(heartbeatMessage, cancellationToken);
 
-                        _logger.LogDebug("已发送心跳");
+                        if (_options.EnableLogging)
+                            _logger.LogDebug("已发送心跳");
                     }
                     catch (Exception ex)
                     {
@@ -380,7 +382,8 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "消息处理器执行失败: {Message}", message);
+            if (_options.EnableLogging)
+                _logger.LogWarning(ex, "消息处理器执行失败: {Message}", message);
         }
     }
 

@@ -76,7 +76,10 @@ public class WebSocketConnectionManager : IDisposable
             {
                 await _webSocket.ConnectAsync(uri, combinedCts.Token);
 
-                _logger.LogInformation("已连接到飞书WebSocket服务: {Url}", url);
+                if (_options.EnableLogging)
+                {
+                    _logger.LogInformation("已连接到飞书WebSocket服务: {Url}", url);
+                }
                 Connected?.Invoke(this, EventArgs.Empty);
             }
             catch (OperationCanceledException) when (timeoutCts.Token.IsCancellationRequested)
@@ -112,7 +115,10 @@ public class WebSocketConnectionManager : IDisposable
                     cancellationToken);
             }
 
-            _logger.LogInformation("已断开飞书WebSocket连接");
+            if (_options.EnableLogging)
+            {
+                _logger.LogInformation("已断开飞书WebSocket连接");
+            }
 
             Disconnected?.Invoke(this, new WebSocketCloseEventArgs
             {
@@ -161,7 +167,10 @@ public class WebSocketConnectionManager : IDisposable
                 WebSocketMessageType.Binary,
                 true,
                 cancellationToken);
-            _logger.LogDebug("已发送二进制消息，大小: {Size} 字节", data.Count);
+            if (_options.EnableLogging)
+            {
+                _logger.LogDebug("已发送二进制消息，大小: {Size} 字节", data.Count);
+            }
         }
         catch (Exception ex)
         {
@@ -194,7 +203,10 @@ public class WebSocketConnectionManager : IDisposable
                 true,
                 cancellationToken);
 
-            _logger.LogDebug("已发送消息: {Message}", message);
+            if (_options.EnableLogging)
+            {
+                _logger.LogDebug("已发送消息: {Message}", message);
+            }
         }
         catch (Exception ex)
         {
@@ -245,8 +257,11 @@ public class WebSocketConnectionManager : IDisposable
     /// </summary>
     private async Task HandleCloseMessageAsync(WebSocketReceiveResult result)
     {
-        _logger.LogInformation("服务器请求关闭连接: {Status} - {Description}",
-            result.CloseStatus, result.CloseStatusDescription);
+        if (_options.EnableLogging)
+        {
+            _logger.LogInformation("服务器请求关闭连接: {Status} - {Description}",
+                result.CloseStatus, result.CloseStatusDescription);
+        }
 
         Disconnected?.Invoke(this, new WebSocketCloseEventArgs
         {
@@ -258,7 +273,10 @@ public class WebSocketConnectionManager : IDisposable
         if (_options.AutoReconnect)
         {
             // 触发重连逻辑，这里简化处理
-            _logger.LogInformation("准备自动重连...");
+            if (_options.EnableLogging)
+            {
+                _logger.LogInformation("准备自动重连...");
+            }
         }
     }
 

@@ -59,7 +59,8 @@ public class BinaryMessageProcessor : IDisposable
                     _binaryDataStream = new MemoryStream();
                     _binaryDataReceiveStartTime = DateTime.UtcNow;
 
-                    _logger.LogDebug("开始接收新的二进制消息");
+                    if (_options.EnableLogging)
+                        _logger.LogDebug("开始接收新的二进制消息");
                 }
 
                 // 写入数据片段
@@ -86,8 +87,9 @@ public class BinaryMessageProcessor : IDisposable
                     var completeData = _binaryDataStream.ToArray();
                     var receiveDuration = DateTime.UtcNow - _binaryDataReceiveStartTime;
 
-                    _logger.LogInformation("二进制消息接收完成，大小: {Size} 字节，耗时: {Duration}ms",
-                        completeData.Length, receiveDuration.TotalMilliseconds);
+                    if (_options.EnableLogging)
+                        _logger.LogInformation("二进制消息接收完成，大小: {Size} 字节，耗时: {Duration}ms",
+                            completeData.Length, receiveDuration.TotalMilliseconds);
 
                     // 异步处理完整的二进制消息
                     _ = Task.Run(async () =>
@@ -101,7 +103,8 @@ public class BinaryMessageProcessor : IDisposable
                 }
                 else
                 {
-                    _logger.LogDebug("已接收二进制消息片段，当前总大小: {Size} 字节", _binaryDataStream.Length);
+                    if (_options.EnableLogging)
+                        _logger.LogDebug("已接收二进制消息片段，当前总大小: {Size} 字节", _binaryDataStream.Length);
                 }
             }
         }
@@ -114,7 +117,8 @@ public class BinaryMessageProcessor : IDisposable
                 _binaryDataStream = null;
             }
 
-            _logger.LogError(ex, "处理二进制消息时发生错误");
+            if (_options.EnableLogging)
+                _logger.LogError(ex, "处理二进制消息时发生错误");
             OnError($"处理二进制消息时发生错误: {ex.Message}", ex.GetType().Name);
         }
     }
@@ -134,7 +138,8 @@ public class BinaryMessageProcessor : IDisposable
 
             if (completeData == null || completeData.Length == 0)
             {
-                _logger.LogWarning("接收到空的二进制消息");
+                if (_options.EnableLogging)
+                    _logger.LogWarning("接收到空的二进制消息");
                 eventArgs.ParseError = "接收到空的二进制消息";
                 BinaryMessageReceived?.Invoke(this, eventArgs);
                 return;
@@ -143,11 +148,13 @@ public class BinaryMessageProcessor : IDisposable
             // 尝试解析为 Frame 对象
             try
             {
-                _logger.LogDebug("尝试使用 ProtoBuf 反序列化二进制消息");
+                if (_options.EnableLogging)
+                    _logger.LogDebug("尝试使用 ProtoBuf 反序列化二进制消息");
                 var frame = ProtoBuf.Serializer.Deserialize<EventProtoData>(new MemoryStream(completeData));
 
-                _logger.LogDebug("成功反序列化为 Frame 对象: Service={Service}, Method={Method}, PayloadType={PayloadType}",
-                    frame.Service, frame.Method, frame.PayloadType);
+                if (_options.EnableLogging)
+                    _logger.LogDebug("成功反序列化为 Frame 对象: Service={Service}, Method={Method}, PayloadType={PayloadType}",
+                        frame.Service, frame.Method, frame.PayloadType);
 
                 if (frame?.Payload != null)
                 {
@@ -156,7 +163,8 @@ public class BinaryMessageProcessor : IDisposable
                     eventArgs.JsonContent = jsonPayload;
                     eventArgs.MessageType = "Frame";
 
-                    _logger.LogDebug("成功解析 Frame Payload 为 JSON 内容:{jsonPayload}", jsonPayload);
+                    if (_options.EnableLogging)
+                        _logger.LogDebug("成功解析 Frame Payload 为 JSON 内容:{jsonPayload}", jsonPayload);
 
                     // 触发事件，让外部处理JSON payload
                     BinaryMessageReceived?.Invoke(this, eventArgs);
@@ -164,7 +172,8 @@ public class BinaryMessageProcessor : IDisposable
                     // 如果设置了MessageRouter，则路由JSON内容
                     if (_messageRouter != null)
                     {
-                        _logger.LogDebug("路由二进制转换的JSON消息到MessageRouter");
+                        if (_options.EnableLogging)
+                            _logger.LogDebug("路由二进制转换的JSON消息到MessageRouter");
                         await _messageRouter.RouteBinaryMessageAsync(jsonPayload, "Frame", cancellationToken);
                     }
 
@@ -172,7 +181,8 @@ public class BinaryMessageProcessor : IDisposable
                 }
                 else
                 {
-                    _logger.LogWarning("Frame 解析成功但 Payload 为空");
+                    if (_options.EnableLogging)
+                        _logger.LogWarning("Frame 解析成功但 Payload 为空");
                     eventArgs.ParseError = "Frame 解析成功但 Payload 为空";
                     BinaryMessageReceived?.Invoke(this, eventArgs);
                     await SendAckMessageAsync(frame, false, cancellationToken);
@@ -195,7 +205,8 @@ public class BinaryMessageProcessor : IDisposable
                     // 如果设置了MessageRouter，则路由JSON内容
                     if (_messageRouter != null)
                     {
-                        _logger.LogDebug("路由二进制转换的JSON消息到MessageRouter (Fallback模式)");
+                        if (_options.EnableLogging)
+                            _logger.LogDebug("路由二进制转换的JSON消息到MessageRouter (Fallback模式)");
                         await _messageRouter.RouteBinaryMessageAsync(jsonString, "JSON_Fallback", cancellationToken);
                     }
                 }
@@ -249,7 +260,8 @@ public class BinaryMessageProcessor : IDisposable
             if (messageStream.TryGetBuffer(out var arraySegment) && _connectionManager != null)
             {
                 await _connectionManager.SendBinaryMessageAsync(arraySegment, cancellationToken);
-                _logger.LogDebug("----已发送ACK消息: {AckJson}", ackJson);
+                if (_options.EnableLogging)
+                    _logger.LogDebug("已发送ACK消息: {AckJson}", ackJson);
             }
         }
         catch (Exception x)
@@ -289,7 +301,8 @@ public class BinaryMessageProcessor : IDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "释放二进制处理器资源时发生错误");
+            if (_options.EnableLogging)
+                _logger.LogError(ex, "释放二进制处理器资源时发生错误");
         }
         finally
         {

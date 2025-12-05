@@ -6,7 +6,7 @@
 // -----------------------------------------------------------------------
 
 using Mud.Feishu.Abstractions;
-using Mud.Feishu.Abstractions.DataModels.Organization.DepartmentCreatedEvent;
+using Mud.Feishu.Abstractions.DataModels.Organization;
 using Mud.Feishu.Abstractions.EventHandlers.Organization;
 using Mud.Feishu.WebSocket.Services;
 

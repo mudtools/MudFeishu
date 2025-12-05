@@ -12,31 +12,7 @@ namespace Mud.Feishu.Abstractions.EventHandlers;
 /// </summary>
 public static class FeishuEventTypes
 {
-    /// <summary>
-    /// 接收消息事件
-    /// </summary>
-    public const string ReceiveMessage = "im.message.receive_v1";
-
-    /// <summary>
-    /// 消息已读事件
-    /// </summary>
-    public const string MessageRead = "im.message.message_read_v1";
-
-    /// <summary>
-    /// 用户加入群聊事件
-    /// </summary>
-    public const string UserAddedToGroup = "im.chat.member.user_added_v1";
-
-    /// <summary>
-    /// 用户离开群聊事件
-    /// </summary>
-    public const string UserRemovedFromGroup = "im.chat.member.user_deleted_v1";
-
-    /// <summary>
-    /// 群聊信息更新事件
-    /// </summary>
-    public const string GroupUpdated = "im.chat.updated_v1";
-
+    #region Organization Events
     /// <summary>
     /// 员工入职事件
     /// </summary>
@@ -82,7 +58,6 @@ public static class FeishuEventTypes
     /// </summary>
     public const string EmployeeTypeEnumDeActived = "contact.employee_type_enum.deactivated_v3";
 
-
     /// <summary>
     /// 部门创建事件
     /// </summary>
@@ -97,6 +72,34 @@ public static class FeishuEventTypes
     /// 部门删除事件
     /// </summary>
     public const string DepartmentDeleted = "contact.department.deleted_v3";
+    #endregion
+
+    /// <summary>
+    /// 接收消息事件
+    /// </summary>
+    public const string ReceiveMessage = "im.message.receive_v1";
+
+    /// <summary>
+    /// 消息已读事件
+    /// </summary>
+    public const string MessageRead = "im.message.message_read_v1";
+
+    /// <summary>
+    /// 用户加入群聊事件
+    /// </summary>
+    public const string UserAddedToGroup = "im.chat.member.user_added_v1";
+
+    /// <summary>
+    /// 用户离开群聊事件
+    /// </summary>
+    public const string UserRemovedFromGroup = "im.chat.member.user_deleted_v1";
+
+    /// <summary>
+    /// 群聊信息更新事件
+    /// </summary>
+    public const string GroupUpdated = "im.chat.updated_v1";
+
+
 
     /// <summary>
     /// 审批通过事件

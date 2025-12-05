@@ -5,33 +5,31 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-namespace Mud.Feishu.Abstractions.DataModels.Organization;
+namespace Mud.Feishu.Abstractions.DataModels.Message;
 
 /// <summary>
-/// 用户 ID
+/// 消息发送者
 /// </summary>
-public record UserIdInfo
+public class MessageSender
 {
     /// <summary>
-    /// <para>用户的 union id</para>
+    /// <para>用户 ID。</para>
     /// <para>必填：否</para>
     /// </summary>
-    [JsonPropertyName("union_id")]
-    public string? UnionId { get; set; }
+    [JsonPropertyName("sender_id")]
+    public UserIdInfo? SenderId { get; set; }
 
     /// <summary>
-    /// <para>用户的 user id</para>
-    /// <para>**字段权限要求**：</para>
-    /// <para>- contact:user.employee_id:readonly : 获取用户 user ID</para>
+    /// <para>消息发送者类型。目前只支持用户(user)发送的消息。</para>
     /// <para>必填：否</para>
     /// </summary>
-    [JsonPropertyName("user_id")]
-    public string? UserId { get; set; }
+    [JsonPropertyName("sender_type")]
+    public string? SenderType { get; set; }
 
     /// <summary>
-    /// <para>用户的 open id</para>
+    /// <para>tenant key，为租户在飞书上的唯一标识，用来换取对应的tenant_access_token，也可以用作租户在应用里面的唯一标识</para>
     /// <para>必填：否</para>
     /// </summary>
-    [JsonPropertyName("open_id")]
-    public string? OpenId { get; set; }
+    [JsonPropertyName("tenant_key")]
+    public string? TenantKey { get; set; }
 }

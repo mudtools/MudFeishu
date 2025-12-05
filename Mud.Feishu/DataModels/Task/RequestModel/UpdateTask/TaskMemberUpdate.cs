@@ -11,32 +11,25 @@ namespace Mud.Feishu.DataModels.Task;
 /// <summary>
 /// <para>人员类型的自定义字段值。可以设置1个或多个用户的id（遵循member格式，只支持user类型）。当字段设为只不能多选时只能输入一个值。设为空数组表示设为空。</para>
 /// </summary>
-public class TaskMember
+public class TaskMemberUpdate
 {
     /// <summary>
     /// <para>表示member的id</para>
-    /// <para>必填：是</para>
+    /// <para>必填：否</para>
     /// <para>示例值：ou_2cefb2f014f8d0c6c2d2eb7bafb0e54f</para>
+    /// <para>最大长度：100</para>
     /// </summary>
     [JsonPropertyName("id")]
-    public string Id { get; set; } = string.Empty;
+    public string? Id { get; set; }
 
     /// <summary>
-    /// <para>成员的类型，可以是user或者app。</para>
+    /// <para>成员的类型</para>
     /// <para>必填：否</para>
     /// <para>示例值：user</para>
     /// <para>默认值：user</para>
     /// </summary>
     [JsonPropertyName("type")]
     public string? Type { get; set; }
-
-    /// <summary>
-    /// <para>成员角色，可以是"assignee"或者"follower"。</para>
-    /// <para>必填：是</para>
-    /// <para>示例值：assignee</para>
-    /// </summary>
-    [JsonPropertyName("role")]
-    public string? Role { get; set; }
 
     /// <summary>
     /// <para>成员名称</para>
@@ -46,4 +39,3 @@ public class TaskMember
     [JsonPropertyName("name")]
     public string? Name { get; set; }
 }
-

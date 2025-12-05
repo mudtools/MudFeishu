@@ -14,14 +14,12 @@ public class CustomAttrInfo
 {
     /// <summary>
     /// <para>通讯录字段键值</para>
-    /// <para>必填：否</para>
     /// </summary>
     [JsonPropertyName("contact_field_key")]
     public string[]? ContactFieldKey { get; set; }
 
     /// <summary>
     /// <para>开关是否打开</para>
-    /// <para>必填：否</para>
     /// </summary>
     [JsonPropertyName("allow_open_query")]
     public bool? AllowOpenQuery { get; set; }

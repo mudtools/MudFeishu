@@ -33,4 +33,19 @@ public interface IFeishuV2Task
       [Body] CreateTaskRequest createTaskRequest,
       [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
       CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// <para>用于修改任务的标题、描述、截止时间等信息。</para>
+    /// </summary>
+    /// <param name="task_guid">要更新的任务全局唯一ID。 示例值："e297ddff-06ca-4166-b917-4ce57cd3a7a0"</param>
+    /// <param name="updateTaskRequest">更新任务请求体。</param>
+    /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Post("https://open.feishu.cn/open-apis/task/v2/tasks/{task_guid}")]
+    Task<FeishuApiResult<UpdateTaskResult>?> UpdateTaskAsync(
+        [Path] string task_guid,
+        [Body] UpdateTaskRequest updateTaskRequest,
+        [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
+        CancellationToken cancellationToken = default);
 }

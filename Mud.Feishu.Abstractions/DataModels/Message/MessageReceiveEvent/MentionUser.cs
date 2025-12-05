@@ -15,28 +15,24 @@ public class MentionUser
 
     /// <summary>
     /// <para>被提及用户序号。例如，第 3 个被 @ 到的成员，取值为 `@_user_3`</para>
-    /// <para>必填：否</para>
     /// </summary>
     [JsonPropertyName("key")]
     public string? Key { get; set; }
 
     /// <summary>
     /// <para>被提及用户 ID。</para>
-    /// <para>必填：否</para>
     /// </summary>
     [JsonPropertyName("id")]
     public UserIdInfo? Id { get; set; }
 
     /// <summary>
     /// <para>被提及用户姓名</para>
-    /// <para>必填：否</para>
     /// </summary>
     [JsonPropertyName("name")]
     public string? Name { get; set; }
 
     /// <summary>
     /// <para>tenant key，为租户在飞书上的唯一标识，用来换取对应的tenant_access_token，也可以用作租户在应用里面的唯一标识</para>
-    /// <para>必填：否</para>
     /// </summary>
     [JsonPropertyName("tenant_key")]
     public string? TenantKey { get; set; }

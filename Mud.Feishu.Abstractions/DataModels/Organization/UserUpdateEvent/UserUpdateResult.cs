@@ -20,15 +20,13 @@ namespace Mud.Feishu.Abstractions.DataModels.Organization;
 public class UserUpdateResult : IEventResult
 {
     /// <summary>
-    /// <para>变更后的用户信息。</para>
-    /// <para>必填：否</para>
+    /// <para>变更后的用户信息。</para>    
     /// </summary>
     [JsonPropertyName("object")]
     public UserResultInfo? Object { get; set; }
 
     /// <summary>
-    /// <para>变更前的用户信息，只包含有变更的字段数据。</para>
-    /// <para>必填：否</para>
+    /// <para>变更前的用户信息，只包含有变更的字段数据。</para>    
     /// </summary>
     [JsonPropertyName("old_object")]
     public UserResultInfo? OldObject { get; set; }

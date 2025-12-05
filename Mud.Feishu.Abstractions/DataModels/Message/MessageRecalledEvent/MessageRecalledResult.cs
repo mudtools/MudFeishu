@@ -19,22 +19,19 @@ namespace Mud.Feishu.Abstractions.DataModels.Message;
 public class MessageRecalledResult : IEventResult
 {
     /// <summary>
-    /// <para>被撤回的消息 ID。</para>
-    /// <para>必填：否</para>
+    /// <para>被撤回的消息 ID。</para>    
     /// </summary>
     [JsonPropertyName("message_id")]
     public string? MessageId { get; set; }
 
     /// <summary>
-    /// <para>消息所在的群组 ID。</para>
-    /// <para>必填：否</para>
+    /// <para>消息所在的群组 ID。</para>    
     /// </summary>
     [JsonPropertyName("chat_id")]
     public string? ChatId { get; set; }
 
     /// <summary>
-    /// <para>撤回的时间，毫秒级时间戳。</para>
-    /// <para>必填：否</para>
+    /// <para>撤回的时间，毫秒级时间戳。</para>    
     /// </summary>
     [JsonPropertyName("recall_time")]
     public string? RecallTime { get; set; }
@@ -43,7 +40,6 @@ public class MessageRecalledResult : IEventResult
     /// <para>撤回类型</para>
     /// <para>**可选值有**：</para>
     /// <para>message_owner:消息发送者撤回,group_owner:群主撤回,group_manager:群管理员撤回,enterprise_manager:企业管理员撤回</para>
-    /// <para>必填：否</para>
     /// <para>可选值：<list type="bullet">
     /// <item>message_owner：消息发送者撤回</item>
     /// <item>group_owner：群主撤回</item>

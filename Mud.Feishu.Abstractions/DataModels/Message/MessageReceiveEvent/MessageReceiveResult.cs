@@ -20,14 +20,12 @@ public class MessageReceiveResult : IEventResult
 {
     /// <summary>
     /// <para>事件的发送者</para>
-    /// <para>必填：否</para>
     /// </summary>
     [JsonPropertyName("sender")]
     public MessageSender? Sender { get; set; }
 
     /// <summary>
     /// <para>事件中包含的消息内容</para>
-    /// <para>必填：否</para>
     /// </summary>
     [JsonPropertyName("message")]
     public MessageContent? Message { get; set; }

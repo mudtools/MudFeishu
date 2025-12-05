@@ -109,7 +109,6 @@ public class UserResultInfo
     /// <para>- contact:user.gender:readonly : 获取用户性别</para>
     /// <para>- contact:contact:access_as_app : 以应用身份访问通讯录</para>
     /// <para>- contact:contact:readonly : 读取通讯录</para>
-    /// <para>必填：否</para>
     /// <para>可选值：<list type="bullet">
     /// <item>0：未知</item>
     /// <item>1：男</item>
@@ -235,7 +234,6 @@ public class UserResultInfo
     /// <para>- contact:user.employee:readonly : 获取用户受雇信息</para>
     /// <para>- contact:contact:access_as_app : 以应用身份访问通讯录</para>
     /// <para>- contact:contact:readonly : 读取通讯录</para>
-    /// <para>必填：否</para>
     /// <para>可选值：<list type="bullet">
     /// <item>1：正式员工</item>
     /// <item>2：实习生</item>
@@ -265,7 +263,6 @@ public class UserResultInfo
     /// <para>- contact:user.employee:readonly : 获取用户受雇信息</para>
     /// <para>- contact:contact:access_as_app : 以应用身份访问通讯录</para>
     /// <para>- contact:contact:readonly : 读取通讯录</para>
-    /// <para>必填：否</para>
     /// </summary>
     [JsonPropertyName("custom_attrs")]
     public UserCustomAttr[]? CustomAttrs { get; set; }

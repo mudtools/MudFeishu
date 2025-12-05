@@ -18,15 +18,13 @@ public class OldUserObject
     /// <para>- contact:contact:readonly_as_app : 以应用身份读取通讯录</para>
     /// <para>- contact:user.department:readonly : 获取用户组织架构信息</para>
     /// <para>- contact:contact:access_as_app : 以应用身份访问通讯录</para>
-    /// <para>- contact:contact:readonly : 读取通讯录</para>
-    /// <para>必填：否</para>
+    /// <para>- contact:contact:readonly : 读取通讯录</para>    
     /// </summary>
     [JsonPropertyName("department_ids")]
     public string[]? DepartmentIds { get; set; }
 
     /// <summary>
     /// <para>用户的 open_id，应用内用户的唯一标识。不同用户 ID 的说明参见 [用户相关的 ID 概念](https://open.feishu.cn/document/home/user-identity-introduction/introduction)。</para>
-    /// <para>必填：否</para>
     /// </summary>
     [JsonPropertyName("open_id")]
     public string? OpenId { get; set; }

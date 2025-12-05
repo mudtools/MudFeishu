@@ -19,15 +19,13 @@ namespace Mud.Feishu.Abstractions.DataModels.Organization;
 public class UserDeleteResult : IEventResult
 {
     /// <summary>
-    /// <para>员工信息。</para>
-    /// <para>必填：否</para>
+    /// <para>员工信息。</para>    
     /// </summary>
     [JsonPropertyName("object")]
     public UserResultInfo? Object { get; set; }
 
     /// <summary>
-    /// <para>删除前信息</para>
-    /// <para>必填：否</para>
+    /// <para>删除前信息</para>    
     /// </summary>
     [JsonPropertyName("old_object")]
     public OldUserObject? OldObject { get; set; }

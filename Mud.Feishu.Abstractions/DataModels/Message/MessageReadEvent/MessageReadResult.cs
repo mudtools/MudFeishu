@@ -26,7 +26,6 @@ public class MessageReadResult : IEventResult
 
     /// <summary>
     /// <para>消息 ID 列表。</para>
-    /// <para>必填：否</para>
     /// </summary>
     [JsonPropertyName("message_id_list")]
     public string[]? MessageIdList { get; set; }

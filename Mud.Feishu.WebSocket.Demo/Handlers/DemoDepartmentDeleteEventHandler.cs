@@ -16,7 +16,6 @@ namespace Mud.Feishu.WebSocket.Demo.Handlers;
 /// </summary>
 public class DemoDepartmentDeleteEventHandler : DepartmentDeleteEventHandler
 {
-
     public DemoDepartmentDeleteEventHandler(ILogger<DepartmentDeleteEventHandler> logger) : base(logger)
     {
     }

@@ -20,7 +20,6 @@ public class EmployeeTypeEnumCreatedResult : IEventResult
 {
     /// <summary>
     /// <para>新建的人员类型选项信息。</para>
-    /// <para>必填：否</para>
     /// </summary>
     [JsonPropertyName("new_enum")]
     public EmployeeTypeEnum? NewEnum { get; set; }

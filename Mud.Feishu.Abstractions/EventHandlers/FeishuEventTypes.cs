@@ -90,6 +90,11 @@ public static class FeishuEventTypes
     public const string MessageRead = "im.message.message_read_v1";
 
     /// <summary>
+    /// 新增消息表情回复事件
+    /// </summary>
+    public const string MessageReactionCreated = "im.message.reaction.created_v1";
+
+    /// <summary>
     /// 用户加入群聊事件
     /// </summary>
     public const string UserAddedToGroup = "im.chat.member.user_added_v1";

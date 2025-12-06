@@ -5,33 +5,16 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-namespace Mud.Feishu.Abstractions.DataModels;
+namespace Mud.Feishu.Abstractions.DataModels.Message;
 
 /// <summary>
-/// 用户 ID
+/// 表情回复的资源类型
 /// </summary>
-public record UserIdInfo
+public class Emoji
 {
     /// <summary>
-    /// <para>用户的 union id</para>
-    
+    /// <para>emoji 类型。</para>    
     /// </summary>
-    [JsonPropertyName("union_id")]
-    public string? UnionId { get; set; }
-
-    /// <summary>
-    /// <para>用户的 user id</para>
-    /// <para>**字段权限要求**：</para>
-    /// <para>- contact:user.employee_id:readonly : 获取用户 user ID</para>
-    
-    /// </summary>
-    [JsonPropertyName("user_id")]
-    public string? UserId { get; set; }
-
-    /// <summary>
-    /// <para>用户的 open id</para>
-    
-    /// </summary>
-    [JsonPropertyName("open_id")]
-    public string? OpenId { get; set; }
+    [JsonPropertyName("emoji_type")]
+    public string? EmojiType { get; set; }
 }

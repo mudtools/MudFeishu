@@ -36,7 +36,6 @@ public class EmployeeTypeEnum
     /// <para>人员类型的选项类型。</para>
     /// <para>**可选值有**：</para>
     /// <para>1:内置类型,2:自定义</para>
-    /// <para>必填：否</para>
     /// <para>可选值：<list type="bullet">
     /// <item>1：内置类型</item>
     /// <item>2：自定义</item>
@@ -49,7 +48,6 @@ public class EmployeeTypeEnum
     /// <para>人员类型的选项激活状态。</para>
     /// <para>**可选值有**：</para>
     /// <para>1:激活,2:未激活</para>
-    /// <para>必填：否</para>
     /// <para>可选值：<list type="bullet">
     /// <item>1：激活</item>
     /// <item>2：未激活</item>

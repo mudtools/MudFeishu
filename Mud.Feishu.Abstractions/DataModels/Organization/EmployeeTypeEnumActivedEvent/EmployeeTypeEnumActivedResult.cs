@@ -20,14 +20,12 @@ public class EmployeeTypeEnumActivedResult : IEventResult
 {
     /// <summary>
     /// <para>更新前的人员类型信息。</para>
-    /// <para>必填：否</para>
     /// </summary>
     [JsonPropertyName("old_enum")]
     public EmployeeTypeEnum? OldEnum { get; set; }
 
     /// <summary>
     /// <para>更新后的人员类型信息。</para>
-    /// <para>必填：否</para>
     /// </summary>
     [JsonPropertyName("new_enum")]
     public EmployeeTypeEnum? NewEnum { get; set; }

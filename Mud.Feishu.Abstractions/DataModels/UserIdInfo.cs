@@ -13,8 +13,7 @@ namespace Mud.Feishu.Abstractions.DataModels;
 public record UserIdInfo
 {
     /// <summary>
-    /// <para>用户的 union id</para>
-    
+    /// <para>用户的 union id</para>    
     /// </summary>
     [JsonPropertyName("union_id")]
     public string? UnionId { get; set; }
@@ -22,15 +21,13 @@ public record UserIdInfo
     /// <summary>
     /// <para>用户的 user id</para>
     /// <para>**字段权限要求**：</para>
-    /// <para>- contact:user.employee_id:readonly : 获取用户 user ID</para>
-    
+    /// <para>- contact:user.employee_id:readonly : 获取用户 user ID</para>    
     /// </summary>
     [JsonPropertyName("user_id")]
     public string? UserId { get; set; }
 
     /// <summary>
-    /// <para>用户的 open id</para>
-    
+    /// <para>用户的 open id</para>    
     /// </summary>
     [JsonPropertyName("open_id")]
     public string? OpenId { get; set; }

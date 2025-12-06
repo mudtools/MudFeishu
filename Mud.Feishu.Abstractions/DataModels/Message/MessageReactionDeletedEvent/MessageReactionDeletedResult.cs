@@ -8,17 +8,15 @@
 namespace Mud.Feishu.Abstractions.DataModels.Message;
 
 /// <summary>
-/// 新增消息表情回复事件处理器
-/// <para>应用订阅该事件后，消息被添加表情回复时会触发此事件。</para>
+/// 删除消息表情回复事件处理器
+/// <para>应用订阅该事件后，消息被删除表情回复时会触发此事件。</para>
 /// <para>事件体包含被添加表情回复的消息 message_id、添加表情回复的操作人 ID、表情类型、添加时间等信息。</para>
-/// <para>事件类型:im.message.reaction.created_v1</para>
-/// <para>使用时请继承：<see cref="MessageReactionCreatedEventHandler"/></para>
-/// <para>文档地址：<see href="https://open.feishu.cn/document/server-docs/im-v1/message-reaction/event/created"/> </para>
+/// <para>事件类型:im.message.reaction.deleted_v1</para>
+/// <para>使用时请继承：<see cref="MessageReactionDeletedEventHandler"/></para>
+/// <para>文档地址：<see href="https://open.feishu.cn/document/server-docs/im-v1/message-reaction/event/deleted"/> </para>
 /// </summary>
-[EventHandler(EventType = FeishuEventTypes.MessageReactionCreated, HandlerNamespace = Consts.HandlerNamespace,
+[EventHandler(EventType = FeishuEventTypes.MessageReactionDeleted, HandlerNamespace = Consts.HandlerNamespace,
               InheritedFrom = Consts.InheritedFrom)]
-public class MessageReactionCreatedResult : MessageReactionInfo, IEventResult
+public class MessageReactionDeletedResult : MessageReactionInfo, IEventResult
 {
-
 }
-

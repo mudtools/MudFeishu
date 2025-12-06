@@ -50,7 +50,6 @@ public class MessageContent
 
     /// <summary>
     /// <para>消息所属的话题 ID（不返回说明该消息非话题消息）。</para>
-
     /// </summary>
     [JsonPropertyName("thread_id")]
     public string? ThreadId { get; set; }
@@ -66,7 +65,6 @@ public class MessageContent
 
     /// <summary>
     /// <para>消息类型，可能返回的消息类型以及详细介绍，参见[接收消息内容](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/im-v1/message/events/message_content)。</para>
-
     /// </summary>
     [JsonPropertyName("message_type")]
     public string? MessageType { get; set; }

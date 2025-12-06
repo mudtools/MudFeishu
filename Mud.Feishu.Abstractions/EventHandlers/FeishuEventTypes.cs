@@ -74,6 +74,7 @@ public static class FeishuEventTypes
     public const string DepartmentDeleted = "contact.department.deleted_v3";
     #endregion
 
+    #region IM Events
     /// <summary>
     /// 接收消息事件
     /// </summary>
@@ -95,6 +96,12 @@ public static class FeishuEventTypes
     public const string MessageReactionCreated = "im.message.reaction.created_v1";
 
     /// <summary>
+    /// 删除消息表情回复事件
+    /// </summary>
+    public const string MessageReactionDeleted = "im.message.reaction.deleted_v1";
+    #endregion
+
+    /// <summary>
     /// 用户加入群聊事件
     /// </summary>
     public const string UserAddedToGroup = "im.chat.member.user_added_v1";
@@ -108,8 +115,6 @@ public static class FeishuEventTypes
     /// 群聊信息更新事件
     /// </summary>
     public const string GroupUpdated = "im.chat.updated_v1";
-
-
 
     /// <summary>
     /// 审批通过事件

@@ -5,16 +5,28 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-namespace Mud.Feishu.Abstractions.DataModels.Message;
+namespace Mud.Feishu.Abstractions.DataModels.IM;
 
 /// <summary>
-/// 表情回复的资源类型
+/// 消息发送者
 /// </summary>
-public class Emoji
+public class MessageSender
 {
     /// <summary>
-    /// <para>emoji 类型。</para>    
+    /// <para>用户 ID。</para>    
     /// </summary>
-    [JsonPropertyName("emoji_type")]
-    public string? EmojiType { get; set; }
+    [JsonPropertyName("sender_id")]
+    public UserIdInfo? SenderId { get; set; }
+
+    /// <summary>
+    /// <para>消息发送者类型。目前只支持用户(user)发送的消息。</para>    
+    /// </summary>
+    [JsonPropertyName("sender_type")]
+    public string? SenderType { get; set; }
+
+    /// <summary>
+    /// <para>tenant key，为租户在飞书上的唯一标识，用来换取对应的tenant_access_token，也可以用作租户在应用里面的唯一标识</para>
+    /// </summary>
+    [JsonPropertyName("tenant_key")]
+    public string? TenantKey { get; set; }
 }

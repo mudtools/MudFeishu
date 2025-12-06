@@ -5,18 +5,20 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-namespace Mud.Feishu.Abstractions.DataModels.Message;
+namespace Mud.Feishu.Abstractions.DataModels.IM;
 
 /// <summary>
-/// 删除消息表情回复事件处理器
-/// <para>应用订阅该事件后，消息被删除表情回复时会触发此事件。</para>
+/// 新增消息表情回复事件处理器
+/// <para>应用订阅该事件后，消息被添加表情回复时会触发此事件。</para>
 /// <para>事件体包含被添加表情回复的消息 message_id、添加表情回复的操作人 ID、表情类型、添加时间等信息。</para>
-/// <para>事件类型:im.message.reaction.deleted_v1</para>
-/// <para>使用时请继承：<see cref="MessageReactionDeletedEventHandler"/></para>
-/// <para>文档地址：<see href="https://open.feishu.cn/document/server-docs/im-v1/message-reaction/event/deleted"/> </para>
+/// <para>事件类型:im.message.reaction.created_v1</para>
+/// <para>使用时请继承：<see cref="MessageReactionCreatedEventHandler"/></para>
+/// <para>文档地址：<see href="https://open.feishu.cn/document/server-docs/im-v1/message-reaction/event/created"/> </para>
 /// </summary>
-[EventHandler(EventType = FeishuEventTypes.MessageReactionDeleted, HandlerNamespace = Consts.HandlerNamespace,
+[EventHandler(EventType = FeishuEventTypes.MessageReactionCreated, HandlerNamespace = Consts.HandlerNamespace,
               InheritedFrom = Consts.InheritedFrom)]
-public class MessageReactionDeletedResult : MessageReactionInfo, IEventResult
+public class MessageReactionCreatedResult : MessageReactionInfo, IEventResult
 {
+
 }
+

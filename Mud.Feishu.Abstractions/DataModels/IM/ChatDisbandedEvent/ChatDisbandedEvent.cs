@@ -7,6 +7,50 @@
 
 namespace Mud.Feishu.Abstractions.DataModels.IM;
 
+/// <summary>
+/// 群解散事件处理器
+/// <para>群组被解散后触发此事件，在该群组内的、已订阅当前事件的应用机器人将会收到事件通知。</para>
+/// <para>事件类型:im.chat.disbanded_v1</para>
+/// <para>使用时请继承：<see cref="ChatDisbandedEventHandler"/></para>
+/// <para>文档地址：<see href="https://open.feishu.cn/document/server-docs/group/chat/events/disbanded"/> </para>
+/// </summary>
+[EventHandler(EventType = FeishuEventTypes.ChatDisbanded, HandlerNamespace = Consts.HandlerNamespace,
+              InheritedFrom = Consts.InheritedFrom)]
 public class ChatDisbandedResult : IEventResult
 {
+    /// <summary>
+    /// <para>群组 ID。</para>    
+    /// </summary>
+    [JsonPropertyName("chat_id")]
+    public string? ChatId { get; set; }
+
+    /// <summary>
+    /// <para>解散群的操作者的 ID 信息。</para>    
+    /// </summary>
+    [JsonPropertyName("operator_id")]
+    public UserIdInfo? OperatorId { get; set; }
+
+    /// <summary>
+    /// <para>被解散的群是否是外部群</para>    
+    /// </summary>
+    [JsonPropertyName("external")]
+    public bool? External { get; set; }
+
+    /// <summary>
+    /// <para>操作者的租户 Key，为租户在飞书上的唯一标识，用来换取对应的tenant_access_token，也可以用作租户在应用中的唯一标识。</para>
+    /// </summary>
+    [JsonPropertyName("operator_tenant_key")]
+    public string? OperatorTenantKey { get; set; }
+
+    /// <summary>
+    /// <para>群名称</para>    
+    /// </summary>
+    [JsonPropertyName("name")]
+    public string? Name { get; set; }
+
+    /// <summary>
+    /// <para>群国际化名称</para>    
+    /// </summary>
+    [JsonPropertyName("i18n_names")]
+    public I18nNames? I18nNames { get; set; }
 }

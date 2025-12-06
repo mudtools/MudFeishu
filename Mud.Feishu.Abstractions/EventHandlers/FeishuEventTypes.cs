@@ -99,6 +99,11 @@ public static class FeishuEventTypes
     /// 删除消息表情回复事件
     /// </summary>
     public const string MessageReactionDeleted = "im.message.reaction.deleted_v1";
+
+    /// <summary>
+    /// 群解散事件
+    /// </summary>
+    public const string ChatDisbanded = "im.chat.disbanded_v1";
     #endregion
 
     /// <summary>

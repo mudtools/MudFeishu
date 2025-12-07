@@ -129,6 +129,11 @@ public static class FeishuEventTypes
     /// 机器人进群事件
     /// </summary>
     public const string ChatMemberBotAdded = "im.chat.member.bot.added_v1";
+
+    /// <summary>
+    /// 机器人被移出群事件
+    /// </summary>
+    public const string ChatMemberBotDeleted = "im.chat.member.bot.deleted_v1";
     #endregion
 
     /// <summary>

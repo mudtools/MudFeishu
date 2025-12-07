@@ -104,6 +104,11 @@ public static class FeishuEventTypes
     /// 群解散事件
     /// </summary>
     public const string ChatDisbanded = "im.chat.disbanded_v1";
+
+    /// <summary>
+    /// 群配置修改事件
+    /// </summary>
+    public const string ChatUpdated = "im.chat.updated_v1";
     #endregion
 
     /// <summary>

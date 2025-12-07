@@ -114,6 +114,11 @@ public static class FeishuEventTypes
     /// 用户进群事件
     /// </summary>
     public const string ChatMemberUserAdd = "im.chat.member.user.added_v1";
+
+    /// <summary>
+    /// 用户出群
+    /// </summary>
+    public const string ChatMemberUserDelete = "im.chat.member.user.deleted_v1";
     #endregion
 
     /// <summary>

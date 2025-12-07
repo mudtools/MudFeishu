@@ -8,15 +8,15 @@
 namespace Mud.Feishu.Abstractions.DataModels.IM;
 
 /// <summary>
-/// 用户进群事件处理器
-/// <para>新用户进群（包含话题群）时触发此事件，在群组内的、已订阅该事件的机器人会收到事件数据。</para>
-/// <para>事件类型:im.chat.member.user.added_v1</para>
-/// <para>使用时请继承：<see cref="ChatMemberUserAddedEventHandler"/></para>
-/// <para>文档地址：<see href="https://open.feishu.cn/document/server-docs/group/chat-member/event/added"/> </para>
+/// 用户出群事件处理器
+/// <para>用户主动退出群聊或被移出群聊时推触发此事件，在群组内的、已订阅该事件的机器人会收到事件数据。</para>
+/// <para>事件类型:im.chat.member.user.deleted_v1</para>
+/// <para>使用时请继承：<see cref="ChatMemberUserDeletedEventHandler"/></para>
+/// <para>文档地址：<see href="https://open.feishu.cn/document/server-docs/group/chat-member/event/deleted-2"/> </para>
 /// </summary>
-[EventHandler(EventType = FeishuEventTypes.ChatMemberUserAdd, HandlerNamespace = Consts.HandlerNamespace,
+[EventHandler(EventType = FeishuEventTypes.ChatMemberUserDelete, HandlerNamespace = Consts.HandlerNamespace,
               InheritedFrom = Consts.InheritedFrom)]
-public class ChatMemberUserAddedResult : ChatMemberUserInfo, IEventResult
+public class ChatMemberUserDeletedResult : ChatMemberUserInfo, IEventResult
 {
 
 }

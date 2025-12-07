@@ -19,12 +19,12 @@
     <PackageReference Include="Swashbuckle.AspNetCore" Version="10.0.1" />
   </ItemGroup>
 
-  <ItemGroup>
+  <!--<ItemGroup>
     <ProjectReference Include="..\Mud.Feishu.WebSocket\Mud.Feishu.WebSocket.csproj" />
-  </ItemGroup>
+  </ItemGroup>-->
 
-	<!--<ItemGroup>
-		<PackageReference Include="Mud.Feishu.WebSocket" Version="1.0.4" />
-	</ItemGroup>-->
+	<ItemGroup>
+		<PackageReference Include="Mud.Feishu.WebSocket" Version="1.0.5" />
+	</ItemGroup>
 
 </Project>

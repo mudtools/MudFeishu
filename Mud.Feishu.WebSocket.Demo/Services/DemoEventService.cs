@@ -20,7 +20,6 @@ public class DemoEventService
     private readonly ILogger<DemoEventService> _logger;
     private readonly ConcurrentBag<UserData> _userEvents = new();
     private readonly ConcurrentBag<DepartmentCreatedResult> _departmentEvents = new();
-    private readonly ConcurrentBag<ApprovalData> _approvalEvents = new();
 
     private int _userCount = 0;
     private int _departmentCount = 0;
@@ -53,16 +52,6 @@ public class DemoEventService
         await Task.CompletedTask;
     }
 
-    /// <summary>
-    /// 记录审批事件
-    /// </summary>
-    public async Task RecordApprovalEventAsync(ApprovalData approvalData, CancellationToken cancellationToken = default)
-    {
-        _approvalEvents.Add(approvalData);
-        _logger.LogInformation("📊 [统计] 记录审批事件: {ApprovalId} - {ApprovalTitle} ({Status})",
-            approvalData.ApprovalId, approvalData.ApprovalTitle, approvalData.ApprovalStatus);
-        await Task.CompletedTask;
-    }
 
     /// <summary>
     /// 增加用户计数
@@ -93,7 +82,6 @@ public class DemoEventService
         {
             UserEventsCount = _userEvents.Count,
             DepartmentEventsCount = _departmentEvents.Count,
-            ApprovalEventsCount = _approvalEvents.Count,
             TotalProcessedUsers = _userCount,
             TotalProcessedDepartments = _departmentCount,
             TotalProcessedDepartmentDeletes = _departmentDeleteCount,
@@ -111,7 +99,6 @@ public class DemoEventService
         {
             RecentUsers = _userEvents.OrderByDescending(u => u.ProcessedAt).Take(count).ToList(),
             RecentDepartments = _departmentEvents.OrderByDescending(d => d.Order).Take(count).ToList(),
-            RecentApprovals = _approvalEvents.OrderByDescending(a => a.ProcessedAt).Take(count).ToList()
         };
     }
 
@@ -122,7 +109,6 @@ public class DemoEventService
     {
         while (_userEvents.TryTake(out _)) { }
         while (_departmentEvents.TryTake(out _)) { }
-        while (_approvalEvents.TryTake(out _)) { }
 
         Interlocked.Exchange(ref _userCount, 0);
         Interlocked.Exchange(ref _departmentCount, 0);
@@ -263,5 +249,4 @@ public class RecentEvents
 {
     public List<UserData> RecentUsers { get; init; } = new();
     public List<DepartmentCreatedResult> RecentDepartments { get; init; } = new();
-    public List<ApprovalData> RecentApprovals { get; init; } = new();
 }

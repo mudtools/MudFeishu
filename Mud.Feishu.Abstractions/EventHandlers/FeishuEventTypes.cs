@@ -109,6 +109,11 @@ public static class FeishuEventTypes
     /// 群配置修改事件
     /// </summary>
     public const string ChatUpdated = "im.chat.updated_v1";
+
+    /// <summary>
+    /// 用户进群事件
+    /// </summary>
+    public const string ChatMemberUserAdd = "im.chat.member.user.added_v1";
     #endregion
 
     /// <summary>

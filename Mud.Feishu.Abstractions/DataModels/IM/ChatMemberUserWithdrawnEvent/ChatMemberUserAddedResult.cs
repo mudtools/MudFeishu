@@ -8,13 +8,15 @@
 namespace Mud.Feishu.Abstractions.DataModels.IM;
 
 /// <summary>
-/// 群成员用户信息
+/// 撤销拉用户进群事件处理器
+/// <para>撤销拉用户进群后触发此事件，在群组内的、已订阅该事件的机器人会收到事件消息。撤销操作是指如下图所示的群内 撤销邀请。</para>
+/// <para>事件类型:im.chat.member.user.withdrawn_v1</para>
+/// <para>使用时请继承：<see cref="ChatMemberUserWithdrawnEventHandler"/></para>
+/// <para>文档地址：<see href="https://open.feishu.cn/document/server-docs/group/chat-member/event/withdrawn"/> </para>
 /// </summary>
-public class ChatMemberUserInfo : ChatMemberBaseInfo
+[EventHandler(EventType = FeishuEventTypes.ChatMemberUserWithdrawn, HandlerNamespace = Consts.HandlerNamespace,
+              InheritedFrom = Consts.InheritedFrom)]
+public class ChatMemberUserWithdrawnResult : ChatMemberUserInfo, IEventResult
 {
-    /// <summary>
-    /// <para>被添加的用户列表</para>    
-    /// </summary>
-    [JsonPropertyName("users")]
-    public ChatMemberUser[]? Users { get; set; }
+
 }

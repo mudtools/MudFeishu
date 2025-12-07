@@ -116,9 +116,19 @@ public static class FeishuEventTypes
     public const string ChatMemberUserAdd = "im.chat.member.user.added_v1";
 
     /// <summary>
-    /// 用户出群
+    /// 用户出群事件
     /// </summary>
     public const string ChatMemberUserDelete = "im.chat.member.user.deleted_v1";
+
+    /// <summary>
+    /// 撤销拉用户进群事件
+    /// </summary>
+    public const string ChatMemberUserWithdrawn = "im.chat.member.user.withdrawn_v1";
+
+    /// <summary>
+    /// 机器人进群事件
+    /// </summary>
+    public const string ChatMemberBotAdded = "im.chat.member.bot.added_v1";
     #endregion
 
     /// <summary>

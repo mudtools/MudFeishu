@@ -7,14 +7,16 @@
 
 namespace Mud.Feishu.Abstractions.DataModels.IM;
 
+
 /// <summary>
-/// 群成员用户信息
+/// 机器人进群事件处理器
+/// <para>机器人被用户添加至群聊时触发此事件，在群组内的、已订阅该事件的机器人会收到事件消息。</para>
+/// <para>事件类型:im.chat.member.bot.added_v1</para>
+/// <para>使用时请继承：<see cref="ChatMemberBotAddedEventHandler"/></para>
+/// <para>文档地址：<see href="https://open.feishu.cn/document/server-docs/group/chat-member/event/added-2"/> </para>
 /// </summary>
-public class ChatMemberUserInfo : ChatMemberBaseInfo
+[EventHandler(EventType = FeishuEventTypes.ChatMemberBotAdded, HandlerNamespace = Consts.HandlerNamespace,
+              InheritedFrom = Consts.InheritedFrom)]
+public class ChatMemberBotAddedResult : ChatMemberBaseInfo, IEventResult
 {
-    /// <summary>
-    /// <para>被添加的用户列表</para>    
-    /// </summary>
-    [JsonPropertyName("users")]
-    public ChatMemberUser[]? Users { get; set; }
 }

@@ -29,7 +29,7 @@ public interface IFeishuV2Task
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Post("https://open.feishu.cn/open-apis/task/v2/tasks")]
-    Task<FeishuApiResult<CreateTaskResult>?> CreateTaskAsync(
+    Task<FeishuApiResult<TaskOperationResult>?> CreateTaskAsync(
       [Body] CreateTaskRequest createTaskRequest,
       [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
       CancellationToken cancellationToken = default);
@@ -43,9 +43,66 @@ public interface IFeishuV2Task
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Patch("https://open.feishu.cn/open-apis/task/v2/tasks/{task_guid}")]
-    Task<FeishuApiResult<UpdateTaskResult>?> UpdateTaskAsync(
+    Task<FeishuApiResult<TaskOperationResult>?> UpdateTaskAsync(
         [Path] string task_guid,
         [Body] UpdateTaskRequest updateTaskRequest,
         [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// <para>用于获取任务详情，包括任务标题、描述、时间、成员等信息。</para>
+    /// </summary>
+    /// <param name="task_guid">要获取的任务全局唯一ID。 示例值："e297ddff-06ca-4166-b917-4ce57cd3a7a0"</param>
+    /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Get("https://open.feishu.cn/open-apis/task/v2/tasks/{task_guid}")]
+    Task<FeishuApiResult<TaskOperationResult>?> GetTaskByIdAsync(
+        [Path] string task_guid,
+        [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// <para>删除一个任务。删除后任务无法再被获取到。</para>
+    /// </summary>
+    /// <param name="task_guid">要删除的任务全局唯一ID。 示例值："e297ddff-06ca-4166-b917-4ce57cd3a7a0"</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Delete("https://open.feishu.cn/open-apis/task/v2/tasks/{task_guid}")]
+    Task<FeishuNullDataApiResult?> DeleteTaskByIdAsync(
+       [Path] string task_guid,
+       CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// <para>添加任务成员</para>
+    /// <para>添加任务的负责人或者关注人。一次性可以添加多个成员。返回任务的实体中会返回最终任务成员的列表。</para>
+    /// </summary>
+    /// <param name="task_guid">要获取的任务全局唯一ID。 示例值："e297ddff-06ca-4166-b917-4ce57cd3a7a0"</param>
+    /// <param name="addMembersRequest">添加任务成员请求体。</param>
+    /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Post("https://open.feishu.cn/open-apis/task/v2/tasks/{task_guid}/add_members")]
+    Task<FeishuApiResult<TaskOperationResult>?> AddMembersByIdAsync(
+       [Path] string task_guid,
+       [Body] AddMembersRequest addMembersRequest,
+       [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
+       CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// <para>移除任务成员</para>
+    /// <para>移除任务成员。一次性可以移除多个成员。可以移除任务的负责人或者关注人。</para>
+    /// <para>移除时，如果要移除的成员不是任务成员，会被自动忽略。本接口返回移除成员后的任务数据，包含移除后的任务成员列表。</para>
+    /// </summary>
+    /// <param name="task_guid">要获取的任务全局唯一ID。 示例值："e297ddff-06ca-4166-b917-4ce57cd3a7a0"</param>
+    /// <param name="removeMembersRequest">移除任务成员请求体。</param>
+    /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Post("https://open.feishu.cn/open-apis/task/v2/tasks/{task_guid}/remove_members")]
+    Task<FeishuApiResult<TaskOperationResult>?> RemoveMembersByIdAsync(
+      [Path] string task_guid,
+      [Body] RemoveMembersRequest removeMembersRequest,
+      [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
+      CancellationToken cancellationToken = default);
 }

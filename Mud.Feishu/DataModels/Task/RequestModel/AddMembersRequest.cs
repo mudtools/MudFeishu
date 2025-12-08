@@ -8,13 +8,24 @@
 namespace Mud.Feishu.DataModels.Task;
 
 /// <summary>
-/// 更新任务的结果
+/// 添加任务成员请求体
 /// </summary>
-public class UpdateTaskResult
+public class AddMembersRequest
 {
     /// <summary>
-    /// <para>产生的任务</para>
+    /// <para>要添加的members列表，单请求支持最大50个成员（去重后)。关于member的格式。</para>
+    /// <para>必填：是</para>
     /// </summary>
-    [JsonPropertyName("task")]
-    public TaskInfo? Task { get; set; }
+    [JsonPropertyName("members")]
+    public TaskMember[] Members { get; set; } = [];
+
+    /// <summary>
+    /// <para>幂等token，如果提供则实现幂等行为。</para>
+    /// <para>必填：否</para>
+    /// <para>示例值：6d99f59c-4d7d-4452-98d6-3d0556393cf6</para>
+    /// <para>最大长度：100</para>
+    /// <para>最小长度：10</para>
+    /// </summary>
+    [JsonPropertyName("client_token")]
+    public string? ClientToken { get; set; }
 }

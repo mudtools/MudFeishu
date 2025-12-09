@@ -606,9 +606,9 @@ public class HeartbeatMonitorService : IHostedService
 ```csharp
 public class EventHandlerManager
 {
-    private readonly FeishuEventHandlerFactory _factory;
+    private readonly IFeishuEventHandlerFactory _factory;
 
-    public EventHandlerManager(FeishuEventHandlerFactory factory)
+    public EventHandlerManager(IFeishuEventHandlerFactory factory)
         => _factory = factory;
 
     // 获取处理器

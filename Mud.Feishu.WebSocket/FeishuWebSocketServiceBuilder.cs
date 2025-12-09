@@ -10,6 +10,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Mud.Feishu.Abstractions;
+using Mud.Feishu.Abstractions.EventHandlers;
 using Mud.Feishu.WebSocket.Handlers;
 
 namespace Mud.Feishu.WebSocket;
@@ -216,12 +217,12 @@ public class FeishuWebSocketServiceBuilder
         {
             _services.AddSingleton<IFeishuEventHandlerFactory>(serviceProvider =>
             {
-                var logger = serviceProvider.GetRequiredService<ILogger<FeishuEventHandlerFactory>>();
+                var logger = serviceProvider.GetRequiredService<ILogger<DefaultFeishuEventHandlerFactory>>();
                 var handlers = serviceProvider.GetRequiredService<IEnumerable<IFeishuEventHandler>>()
                     .Where(h => _handlerTypes.Contains(h.GetType()))
                     .ToList();
                 var defaultHandler = serviceProvider.GetRequiredService(defaultHandlerType) as IFeishuEventHandler;
-                return new FeishuEventHandlerFactory(logger, handlers, defaultHandler);
+                return new DefaultFeishuEventHandlerFactory(logger, handlers, defaultHandler);
             });
         }
     }

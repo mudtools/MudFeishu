@@ -7,7 +7,6 @@
 
 using Mud.Feishu.Abstractions;
 using Mud.Feishu.Webbook.Configuration;
-using Mud.Feishu.Webbook.Services;
 
 namespace Mud.Feishu.Webbook;
 
@@ -145,93 +144,5 @@ public static class ServiceCollectionExtensions
             .ConfigureOptions(configureOptions)
             .AddHandler<THandler>()
             .Build();
-    }
-}
-
-/// <summary>
-/// 应用程序构建器扩展方法
-/// </summary>
-public static class ApplicationBuilderExtensions
-{
-    /// <summary>
-    /// 使用飞书 Webbook 中间件
-    /// </summary>
-    /// <param name="builder">应用程序构建器</param>
-    /// <param name="configureOptions">配置选项</param>
-    /// <returns>应用程序构建器</returns>
-    public static IApplicationBuilder UseFeishuWebbook(
-        this IApplicationBuilder builder,
-        Action<FeishuWebbookOptions>? configureOptions = null)
-    {
-        // 如果提供了配置选项，则应用它们
-        if (configureOptions != null)
-        {
-            var webbookOptions = builder.ApplicationServices.GetRequiredService<IOptions<FeishuWebbookOptions>>();
-            configureOptions(webbookOptions.Value);
-        }
-
-        var appOptions = builder.ApplicationServices.GetRequiredService<IOptions<FeishuWebbookOptions>>().Value;
-
-        if (appOptions.AutoRegisterEndpoint)
-        {
-            // 使用反射来获取中间件类型
-            var middlewareType = Type.GetType("Mud.Feishu.Webbook.Middleware.FeishuWebbookMiddleware, Mud.Feishu.Webbook");
-            if (middlewareType != null)
-            {
-                var useMiddlewareMethod = typeof(Microsoft.AspNetCore.Builder.UseMiddlewareExtensions)
-                    .GetMethods()
-                    .FirstOrDefault(m => m.Name == "UseMiddleware" && m.GetParameters().Length == 2);
-
-                if (useMiddlewareMethod != null)
-                {
-                    var genericMethod = useMiddlewareMethod.MakeGenericMethod(middlewareType);
-                    genericMethod.Invoke(null, new object[] { builder });
-                }
-            }
-        }
-
-        return builder;
-    }
-
-    /// <summary>
-    /// 使用飞书 Webbook 中间件并映射路由
-    /// </summary>
-    /// <param name="builder">应用程序构建器</param>
-    /// <returns>应用程序构建器</returns>
-    public static IApplicationBuilder UseFeishuWebbookWithRouting(this IApplicationBuilder builder)
-    {
-        // 简化实现，直接委托给UseFeishuWebbook
-        return builder.UseFeishuWebbook();
-    }
-}
-
-/// <summary>
-/// 飞书 Webbook 健康检查
-/// </summary>
-public class FeishuWebbookHealthCheck : Microsoft.Extensions.Diagnostics.HealthChecks.IHealthCheck
-{
-    private readonly IFeishuWebbookService _webbookService;
-
-    public FeishuWebbookHealthCheck(IFeishuWebbookService webbookService)
-    {
-        _webbookService = webbookService;
-    }
-
-    public async Task<Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult> CheckHealthAsync(
-        Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckContext context,
-        CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            // 这里可以添加具体的健康检查逻辑
-            // 例如检查服务是否正常运行，依赖项是否可用等
-
-            return Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Healthy("飞书 Webbook 服务运行正常");
-        }
-        catch (Exception ex)
-        {
-            return Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Unhealthy(
-                "飞书 Webbook 服务异常", ex);
-        }
     }
 }

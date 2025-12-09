@@ -23,6 +23,7 @@ public class FeishuWebbookService : IFeishuWebbookService
     private readonly ILogger<FeishuWebbookService> _logger;
     private readonly MetricsCollector _metrics;
 
+    /// <inheritdoc />
     public FeishuWebbookService(
         IOptions<FeishuWebbookOptions> options,
         IFeishuEventValidator validator,
@@ -60,7 +61,7 @@ public class FeishuWebbookService : IFeishuWebbookService
             };
 
             _logger.LogInformation("事件订阅验证成功，返回挑战码: {Challenge}", request.Challenge);
-            return response;
+            return await Task.FromResult(response);
         }
         catch (Exception ex)
         {

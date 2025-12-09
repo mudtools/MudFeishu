@@ -16,6 +16,7 @@ public class FeishuEventValidator : IFeishuEventValidator
 {
     private readonly ILogger<FeishuEventValidator> _logger;
 
+    /// <inheritdoc />
     public FeishuEventValidator(ILogger<FeishuEventValidator> logger)
     {
         _logger = logger;

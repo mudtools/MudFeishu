@@ -16,6 +16,7 @@ public class FeishuEventDecryptor : IFeishuEventDecryptor
 {
     private readonly ILogger<FeishuEventDecryptor> _logger;
 
+    /// <inheritdoc />
     public FeishuEventDecryptor(ILogger<FeishuEventDecryptor> logger)
     {
         _logger = logger;

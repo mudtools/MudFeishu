@@ -8,7 +8,7 @@
 using Mud.Feishu.Abstractions;
 using Mud.Feishu.Webbook.Configuration;
 
-namespace Mud.Feishu.Webbook.Services;
+namespace Mud.Feishu.Webbook;
 
 /// <summary>
 /// 飞书 Webbook 服务接口
@@ -45,52 +45,4 @@ public interface IFeishuWebbookService
     /// <param name="cancellationToken">取消令牌</param>
     /// <returns>解密后的事件数据</returns>
     Task<EventData?> DecryptEventAsync(string encryptedData, CancellationToken cancellationToken = default);
-}
-
-/// <summary>
-/// 飞书事件验证服务接口
-/// </summary>
-public interface IFeishuEventValidator
-{
-    /// <summary>
-    /// 验证事件订阅请求
-    /// </summary>
-    /// <param name="request">验证请求</param>
-    /// <param name="expectedToken">期望的验证 Token</param>
-    /// <returns>是否验证通过</returns>
-    bool ValidateSubscriptionRequest(EventVerificationRequest request, string expectedToken);
-
-    /// <summary>
-    /// 验证请求签名
-    /// </summary>
-    /// <param name="timestamp">时间戳</param>
-    /// <param name="nonce">随机数</param>
-    /// <param name="encrypt">加密数据</param>
-    /// <param name="signature">签名</param>
-    /// <param name="encryptKey">加密密钥</param>
-    /// <returns>是否验证通过</returns>
-    bool ValidateSignature(long timestamp, string nonce, string encrypt, string signature, string encryptKey);
-
-    /// <summary>
-    /// 验证时间戳是否在有效范围内
-    /// </summary>
-    /// <param name="timestamp">时间戳</param>
-    /// <param name="toleranceSeconds">容错秒数</param>
-    /// <returns>是否有效</returns>
-    bool ValidateTimestamp(long timestamp, int toleranceSeconds = 300);
-}
-
-/// <summary>
-/// 飞书事件解密服务接口
-/// </summary>
-public interface IFeishuEventDecryptor
-{
-    /// <summary>
-    /// 解密事件数据
-    /// </summary>
-    /// <param name="encryptedData">加密数据</param>
-    /// <param name="encryptKey">加密密钥</param>
-    /// <param name="cancellationToken">取消令牌</param>
-    /// <returns>解密后的事件数据</returns>
-    Task<EventData?> DecryptAsync(string encryptedData, string encryptKey, CancellationToken cancellationToken = default);
 }

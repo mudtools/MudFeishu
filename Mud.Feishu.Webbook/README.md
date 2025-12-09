@@ -26,28 +26,126 @@ dotnet add package Mud.Feishu.Webbook
 
 ### 2. 配置服务
 
-在 `Program.cs` 中添加服务配置：
+#### 方式一：建造者模式（推荐）
 
 ```csharp
 using Mud.Feishu.Webbook.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 添加飞书 Webbook 服务
-builder.Services.AddFeishuWebbook(options =>
-{
-    options.VerificationToken = "your_verification_token_here";
-    options.EncryptKey = "your_encrypt_key_here";
-    options.RoutePrefix = "feishu/webbook";
-    options.EnableRequestLogging = true;
-});
-
-// 添加自定义事件处理器
-builder.Services.AddFeishuEventHandler<YourCustomEventHandler>();
+// 使用建造者模式配置飞书 Webbook 服务
+builder.Services.AddFeishuWebbookBuilder()
+    .ConfigureFrom(builder.Configuration)                    // 从配置文件读取
+    .EnableControllers()                                   // 启用控制器支持
+    .EnableHealthChecks()                                  // 启用健康检查
+    .EnableMetrics()                                       // 启用性能指标
+    .AddHandler<MessageReceiveEventHandler>()                 // 添加消息处理器
+    .AddHandler<UserCreatedEventHandler>()                  // 添加用户事件处理器
+    .Build();                                           // 构建服务注册
 
 var app = builder.Build();
 
 // 添加飞书 Webbook 中间件
+app.UseFeishuWebbook();
+
+app.Run();
+```
+
+### 3. 配置文件
+
+```json
+{
+  "FeishuWebbook": {
+    "VerificationToken": "your_verification_token",
+    "EncryptKey": "your_encrypt_key",
+    "RoutePrefix": "feishu/webbook",
+    "AutoRegisterEndpoint": true,
+    "EnableRequestLogging": true,
+    "EnableExceptionHandling": true,
+    "EventHandlingTimeoutMs": 30000,
+    "MaxConcurrentEvents": 10,
+    "EnablePerformanceMonitoring": false,
+    "AllowedHttpMethods": [ "POST" ],
+    "MaxRequestBodySize": 10485760,
+    "ValidateSourceIP": false,
+    "AllowedSourceIPs": []
+  }
+}
+```
+
+## 🏗️ 建造者模式详细用法
+
+### 基础配置
+
+```csharp
+builder.Services.AddFeishuWebbookBuilder()
+    .ConfigureFrom(configuration, "CustomSection")          // 指定配置节
+    .ConfigureOptions(options => {                           // 代码配置
+        options.VerificationToken = "token";
+        options.EncryptKey = "key";
+        options.RoutePrefix = "webhook";
+    })
+    .Build();
+```
+
+### 处理器管理
+
+```csharp
+builder.Services.AddFeishuWebbookBuilder()
+    .ConfigureFrom(configuration)
+    // 添加类型注册
+    .AddHandler<MessageEventHandler>()
+    .AddHandler<UserEventHandler>()
+    // 添加实例注册
+    .AddHandler(new CustomEventHandler())
+    // 添加工厂注册
+    .AddHandler(sp => new FactoryEventHandler(
+        sp.GetService<ILogger<FactoryEventHandler>>(),
+        sp.GetService<IConfiguration>()))
+    .Build();
+```
+
+### 功能开关
+
+```csharp
+builder.Services.AddFeishuWebbookBuilder()
+    .ConfigureFrom(configuration)
+    .EnableControllers()          // 启用控制器支持
+    .EnableHealthChecks()         // 启用健康检查
+    .EnableMetrics()              // 启用性能监控
+    .EnableAutoEndpoint()         // 自动注册端点（默认启用）
+    // 或者禁用特定功能
+    .DisableControllers()
+    .DisableHealthChecks()
+    .DisableMetrics()
+    .DisableAutoEndpoint()
+    .Build();
+```
+
+### 条件性配置
+
+```csharp
+var builder = services.AddFeishuWebbookBuilder()
+    .ConfigureFrom(configuration);
+
+if (builder.Environment.IsDevelopment())
+{
+    builder.EnableMetrics()
+           .ConfigureOptions(options => options.EnableRequestLogging = true);
+}
+else if (builder.Environment.IsProduction())
+{
+    builder.ConfigureFrom(configuration, "Production:Webbook");
+}
+
+builder.AddHandler<DevEventHandler>()
+       .Apply(webbookBuilder => {
+           // 根据功能开关注册处理器
+           if (configuration.GetValue<bool>("Features:EnableAudit"))
+               webbookBuilder.AddHandler<AuditEventHandler>();
+       })
+       .Build();
+```
 app.UseFeishuWebbook();
 
 app.Run();

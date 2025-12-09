@@ -47,8 +47,7 @@ public class FeishuEventDecryptor : IFeishuEventDecryptor
             // 反序列化为 EventData
             var eventData = JsonSerializer.Deserialize<EventData>(decryptedJson, new JsonSerializerOptions
             {
-                PropertyNameCaseInsensitive = true,
-                PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower
+                PropertyNameCaseInsensitive = true
             });
 
             if (eventData != null)

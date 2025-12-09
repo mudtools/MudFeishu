@@ -6,12 +6,12 @@
 // -----------------------------------------------------------------------
 
 using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using Mud.Feishu.Abstractions;
 using Mud.Feishu.Webbook.Configuration;
-
 using Mud.Feishu.Webbook.Services;
 using Mud.Feishu.Webbook.Models;
 
@@ -23,7 +23,34 @@ namespace Mud.Feishu.Webbook.Extensions;
 public static class ServiceCollectionExtensions
 {
     /// <summary>
-    /// 添加飞书 Webbook 事件接收与处理服务
+    /// 使用建造者模式注册飞书 Webbook 事件接收与处理服务
+    /// </summary>
+    /// <param name="services">服务集合</param>
+    /// <returns>Webbook 服务建造者</returns>
+    public static FeishuWebbookServiceBuilder AddFeishuWebbookBuilder(this IServiceCollection services)
+    {
+        return new FeishuWebbookServiceBuilder(services);
+    }
+
+    /// <summary>
+    /// 添加飞书 Webbook 事件接收与处理服务（使用配置节）
+    /// </summary>
+    /// <param name="services">服务集合</param>
+    /// <param name="configuration">配置对象</param>
+    /// <param name="sectionName">配置节名称，默认为"FeishuWebbook"</param>
+    /// <returns>服务集合，支持链式调用</returns>
+    public static IServiceCollection AddFeishuWebbook(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        string? sectionName = null)
+    {
+        return services.AddFeishuWebbookBuilder()
+            .ConfigureFrom(configuration, sectionName)
+            .Build();
+    }
+
+    /// <summary>
+    /// 添加飞书 Webbook 事件接收与处理服务（使用选项委托）- 兼容性方法
     /// </summary>
     /// <param name="services">服务集合</param>
     /// <param name="configureOptions">配置选项</param>
@@ -32,64 +59,14 @@ public static class ServiceCollectionExtensions
         this IServiceCollection services,
         Action<FeishuWebbookOptions>? configureOptions = null)
     {
-        // 配置选项
-        if (configureOptions != null)
-        {
-            services.Configure(configureOptions);
-        }
-        else
-        {
-            // 尝试从配置文件中读取
-            services.Configure<FeishuWebbookOptions>(options =>
-            {
-                // 默认配置
-                options.RoutePrefix = "feishu/webbook";
-                options.AutoRegisterEndpoint = true;
-                options.EnableRequestLogging = true;
-                options.EnableExceptionHandling = true;
-                options.EventHandlingTimeoutMs = 30000;
-                options.MaxConcurrentEvents = 10;
-                options.EnablePerformanceMonitoring = false;
-                options.AllowedHttpMethods = new HashSet<string> { "POST" };
-                options.MaxRequestBodySize = 10 * 1024 * 1024; // 10MB
-                options.ValidateSourceIP = false;
-                options.AllowedSourceIPs = new HashSet<string>();
-            });
-        }
-
-        // 注册核心服务
-        services.TryAddScoped<IFeishuEventValidator, FeishuEventValidator>();
-        services.TryAddScoped<IFeishuEventDecryptor, FeishuEventDecryptor>();
-        services.TryAddScoped<IFeishuWebbookService, FeishuWebbookService>();
-        
-        // 注册性能监控组件
-        services.TryAddSingleton<MetricsCollector>();
-
-        // 注册事件处理器工厂（使用抽象层的统一实现）
-        services.TryAddScoped<IFeishuEventHandlerFactory>(provider =>
-        {
-            var handlers = provider.GetServices<IFeishuEventHandler>();
-            var defaultHandler = new DefaultFeishuEventHandler();
-            var logger = provider.GetRequiredService<Microsoft.Extensions.Logging.ILogger<Mud.Feishu.Webbook.Services.FeishuWebbookEventHandlerFactory>>();
-            return new Mud.Feishu.Webbook.Services.DefaultFeishuEventHandlerFactory(logger, handlers, defaultHandler);
-        });
-
-        // 添加控制器支持（可选）
-        if (services.Any(s => s.ServiceType == typeof(Microsoft.AspNetCore.Mvc.Infrastructure.IActionDescriptorCollectionProvider)))
-        {
-            services.AddControllers()
-                .AddApplicationPart(typeof(FeishuWebbookController).Assembly);
-        }
-
-        // 添加健康检查支持
-        services.AddHealthChecks()
-            .AddCheck<FeishuWebbookHealthCheck>("feishu-webbook");
-
-        return services;
+        // 使用建造者模式注册核心服务
+        return services.AddFeishuWebbookBuilder()
+            .ConfigureOptions(configureOptions)
+            .Build();
     }
 
     /// <summary>
-    /// 添加飞书 Webbook 事件接收与处理服务（带配置节）
+    /// 添加飞书 Webbook 事件接收与处理服务（带配置节）- 兼容性方法
     /// </summary>
     /// <param name="services">服务集合</param>
     /// <param name="sectionName">配置节名称</param>
@@ -98,14 +75,9 @@ public static class ServiceCollectionExtensions
         this IServiceCollection services,
         string sectionName = "FeishuWebbook")
     {
-        services.Configure<FeishuWebbookOptions>(options =>
-        {
-            // 从配置文件绑定
-            var configuration = services.BuildServiceProvider().GetRequiredService<Microsoft.Extensions.Configuration.IConfiguration>();
-            configuration.GetSection(sectionName).Bind(options);
-        });
-
-        return services.AddFeishuWebbook(null);
+        // 从服务集合中获取配置
+        var configuration = services.BuildServiceProvider().GetRequiredService<IConfiguration>();
+        return services.AddFeishuWebbook(configuration, sectionName);
     }
 
     /// <summary>
@@ -145,6 +117,41 @@ public static class ServiceCollectionExtensions
 
         return services;
     }
+
+    /// <summary>
+    /// 注册单处理器模式的飞书Webbook服务（简化版本）
+    /// </summary>
+    /// <param name="services">服务集合</param>
+    /// <param name="configureOptions">配置选项的委托</param>
+    /// <returns>服务集合，支持链式调用</returns>
+    public static IServiceCollection AddFeishuWebbookWithSingleHandler(
+        this IServiceCollection services,
+        Action<FeishuWebbookOptions> configureOptions)
+    {
+        return services
+            .AddFeishuWebbookBuilder()
+            .ConfigureOptions(configureOptions)
+            .Build();
+    }
+
+    /// <summary>
+    /// 注册单处理器模式的飞书Webbook服务（带处理器类型）
+    /// </summary>
+    /// <typeparam name="THandler">处理器类型</typeparam>
+    /// <param name="services">服务集合</param>
+    /// <param name="configureOptions">配置选项的委托</param>
+    /// <returns>服务集合，支持链式调用</returns>
+    public static IServiceCollection AddFeishuWebbookWithSingleHandler<THandler>(
+        this IServiceCollection services,
+        Action<FeishuWebbookOptions> configureOptions)
+        where THandler : class, IFeishuEventHandler
+    {
+        return services
+            .AddFeishuWebbookBuilder()
+            .ConfigureOptions(configureOptions)
+            .AddHandler<THandler>()
+            .Build();
+    }
 }
 
 /// <summary>
@@ -165,15 +172,28 @@ public static class ApplicationBuilderExtensions
         // 如果提供了配置选项，则应用它们
         if (configureOptions != null)
         {
-            var options = builder.ApplicationServices.GetRequiredService<IOptions<FeishuWebbookOptions>>();
-            configureOptions(options.Value);
+            var webbookOptions = builder.ApplicationServices.GetRequiredService<IOptions<FeishuWebbookOptions>>();
+            configureOptions(webbookOptions.Value);
         }
 
-        var options = builder.ApplicationServices.GetRequiredService<IOptions<FeishuWebbookOptions>>().Value;
+        var appOptions = builder.ApplicationServices.GetRequiredService<IOptions<FeishuWebbookOptions>>().Value;
 
-        if (options.AutoRegisterEndpoint)
+        if (appOptions.AutoRegisterEndpoint)
         {
-            builder.UseMiddleware<FeishuWebbookMiddleware>();
+            // 使用反射来获取中间件类型
+            var middlewareType = Type.GetType("Mud.Feishu.Webbook.Middleware.FeishuWebbookMiddleware, Mud.Feishu.Webbook");
+            if (middlewareType != null)
+            {
+                var useMiddlewareMethod = typeof(Microsoft.AspNetCore.Builder.UseMiddlewareExtensions)
+                    .GetMethods()
+                    .FirstOrDefault(m => m.Name == "UseMiddleware" && m.GetParameters().Length == 2);
+                
+                if (useMiddlewareMethod != null)
+                {
+                    var genericMethod = useMiddlewareMethod.MakeGenericMethod(middlewareType);
+                    genericMethod.Invoke(null, new object[] { builder });
+                }
+            }
         }
 
         return builder;
@@ -186,28 +206,8 @@ public static class ApplicationBuilderExtensions
     /// <returns>应用程序构建器</returns>
     public static IApplicationBuilder UseFeishuWebbookWithRouting(this IApplicationBuilder builder)
     {
-        var options = builder.ApplicationServices.GetRequiredService<IOptions<FeishuWebbookOptions>>().Value;
-
-        builder.Use(async (context, next) =>
-        {
-            if (context.Request.Path.StartsWithSegments($"/{options.RoutePrefix}", StringComparison.OrdinalIgnoreCase))
-            {
-                // 创建中间件实例
-                var middleware = new FeishuWebbookMiddleware(
-                    next,
-                    builder.ApplicationServices.GetRequiredService<IFeishuWebbookService>(),
-                    builder.ApplicationServices.GetRequiredService<Microsoft.Extensions.Logging.ILogger<FeishuWebbookMiddleware>>(),
-                    builder.ApplicationServices.GetRequiredService<IOptions<FeishuWebbookOptions>>());
-
-                await middleware.InvokeAsync(context);
-            }
-            else
-            {
-                await next();
-            }
-        });
-
-        return builder;
+        // 简化实现，直接委托给UseFeishuWebbook
+        return builder.UseFeishuWebbook();
     }
 }
 

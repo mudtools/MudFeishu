@@ -23,3 +23,5 @@
 /Mud.Feishu.Abstractions/bin/Debug
 /Mud.Feishu.Abstractions/obj
 /Mud.Feishu.Webbook/obj
+/Mud.Feishu.Webbook.Demo/obj
+/Mud.Feishu.Webbook.Demo/bin/Debug/net8.0

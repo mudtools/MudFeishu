@@ -7,36 +7,38 @@
 
 namespace Mud.Feishu.DataModels.Task;
 
-
 /// <summary>
-/// <para>产生的任务</para>
+/// <para>返回的任务列表</para>
 /// </summary>
-public class TaskInfo
+public class ListTaskInfo
 {
     /// <summary>
-    /// <para>任务guid，任务的唯一ID</para>
+    /// <para>任务guid，任务的唯一ID</para>   
+    /// <para>示例值：83912691-2e43-47fc-94a4-d512e03984fa</para>
     /// </summary>
     [JsonPropertyName("guid")]
     public string? Guid { get; set; }
 
     /// <summary>
-    /// <para>任务标题</para>
+    /// <para>任务标题</para>   
+    /// <para>示例值：进行销售年中总结</para>
     /// </summary>
     [JsonPropertyName("summary")]
     public string? Summary { get; set; }
 
     /// <summary>
-    /// <para>任务备注</para>
+    /// <para>任务备注</para>   
+    /// <para>示例值：进行销售年中总结</para>
     /// </summary>
     [JsonPropertyName("description")]
     public string? Description { get; set; }
 
     /// <summary>
-    /// <para>任务截止时间。</para>
+    /// <para>任务截止时间</para>   
+    /// <para>示例值：1675742789470</para>
     /// </summary>
     [JsonPropertyName("due")]
     public TaskDueTime? Due { get; set; }
-
 
     /// <summary>
     /// <para>任务的提醒配置列表。目前每个任务最多有1个。</para>
@@ -44,21 +46,22 @@ public class TaskInfo
     [JsonPropertyName("reminders")]
     public TaskReminderInfo[]? Reminders { get; set; }
 
-
     /// <summary>
     /// <para>任务创建者</para>
     /// </summary>
     [JsonPropertyName("creator")]
-    public TaskMemberInfo? Creator { get; set; }
+    public TaskMember? Creator { get; set; }
 
     /// <summary>
     /// <para>任务成员列表</para>
     /// </summary>
     [JsonPropertyName("members")]
-    public TaskMemberInfo[]? Members { get; set; }
+    public TaskMember[]? Members { get; set; }
 
     /// <summary>
     /// <para>任务完成的时间戳(ms)</para>
+    /// <para>示例值：1675742789470</para>
+    /// <para>最大长度：20</para>
     /// </summary>
     [JsonPropertyName("completed_at")]
     public string? CompletedAt { get; set; }
@@ -69,15 +72,16 @@ public class TaskInfo
     [JsonPropertyName("attachments")]
     public TaskAttachment[]? Attachments { get; set; }
 
-
     /// <summary>
     /// <para>任务关联的第三方平台来源信息。创建是设置后就不可更改。</para>
     /// </summary>
     [JsonPropertyName("origin")]
-    public TaskOriginSrcData? Origin { get; set; }
+    public TaskOrigin? Origin { get; set; }
 
     /// <summary>
     /// <para>任务附带的自定义数据。</para>
+    /// <para>示例值：dGVzdA==</para>
+    /// <para>最大长度：65536</para>
     /// </summary>
     [JsonPropertyName("extra")]
     public string? Extra { get; set; }
@@ -88,27 +92,30 @@ public class TaskInfo
     [JsonPropertyName("tasklists")]
     public TaskInTaskListInfo[]? Tasklists { get; set; }
 
-
     /// <summary>
-    /// <para>任务的重复规则。</para>
+    /// <para>如果任务为重复任务，返回重复任务的配置</para>
+    /// <para>示例值：FREQ=WEEKLY;INTERVAL=1;BYDAY=MO,TU,WE,TH,FR</para>
     /// </summary>
     [JsonPropertyName("repeat_rule")]
     public string? RepeatRule { get; set; }
 
     /// <summary>
     /// <para>如果当前任务为某个任务的子任务，返回父任务的guid</para>
+    /// <para>示例值：e297ddff-06ca-4166-b917-4ce57cd3a7a0</para>
     /// </summary>
     [JsonPropertyName("parent_task_guid")]
     public string? ParentTaskGuid { get; set; }
 
     /// <summary>
     /// <para>任务的模式。1 - 会签任务；2 - 或签任务</para>
+    /// <para>示例值：2</para>
     /// </summary>
     [JsonPropertyName("mode")]
     public int? Mode { get; set; }
 
     /// <summary>
     /// <para>任务创建的来源</para>
+    /// <para>示例值：6</para>
     /// <para>可选值：<list type="bullet">
     /// <item>0：未知来源</item>
     /// <item>1：任务中心</item>
@@ -129,30 +136,36 @@ public class TaskInfo
 
     /// <summary>
     /// <para>任务界面上的代码</para>
+    /// <para>示例值：t6272302</para>
+    /// <para>最大长度：20</para>
     /// </summary>
     [JsonPropertyName("task_id")]
     public string? TaskId { get; set; }
 
     /// <summary>
     /// <para>任务创建时间戳(ms)</para>
+    /// <para>示例值：1675742789470</para>
     /// </summary>
     [JsonPropertyName("created_at")]
     public string? CreatedAt { get; set; }
 
     /// <summary>
     /// <para>任务最后一次更新的时间戳(ms)</para>
+    /// <para>示例值：1675742789470</para>
     /// </summary>
     [JsonPropertyName("updated_at")]
     public string? UpdatedAt { get; set; }
 
     /// <summary>
     /// <para>任务的状态，支持"todo"和"done"两种状态</para>
+    /// <para>示例值：todo</para>
+    /// <para>最大长度：20</para>
     /// </summary>
     [JsonPropertyName("status")]
     public string? Status { get; set; }
 
     /// <summary>
-    /// <para>任务的分享链接。飞书中点击该链接可以直接打开任务详情。</para>
+    /// <para>任务的分享链接</para>
     /// </summary>
     [JsonPropertyName("url")]
     public string? Url { get; set; }
@@ -163,39 +176,33 @@ public class TaskInfo
     [JsonPropertyName("start")]
     public TasksStartTime? Start { get; set; }
 
+
     /// <summary>
     /// <para>该任务的子任务的个数。</para>
+    /// <para>示例值：1</para>
     /// </summary>
     [JsonPropertyName("subtask_count")]
     public int? SubtaskCount { get; set; }
 
     /// <summary>
     /// <para>是否是里程碑任务</para>
+
+    /// <para>示例值：false</para>
     /// </summary>
     [JsonPropertyName("is_milestone")]
     public bool? IsMilestone { get; set; }
 
     /// <summary>
     /// <para>任务的自定义字段值</para>
+
     /// </summary>
     [JsonPropertyName("custom_fields")]
     public CustomFieldValue[]? CustomFields { get; set; }
+
 
     /// <summary>
     /// <para>任务依赖</para>
     /// </summary>
     [JsonPropertyName("dependencies")]
     public TaskDependency[]? Dependencies { get; set; }
-
-    /// <summary>
-    /// <para>任务执行者相关信息，如会签任务各执行者完成时间等</para>
-    /// </summary>
-    [JsonPropertyName("assignee_related")]
-    public TaskAssignee[]? AssigneeRelateds { get; set; }
-
-    /// <summary>
-    /// <para>正数协议任务提醒</para>
-    /// </summary>
-    [JsonPropertyName("positive_reminders")]
-    public TaskReminderInfo[]? PositiveReminders { get; set; }
 }

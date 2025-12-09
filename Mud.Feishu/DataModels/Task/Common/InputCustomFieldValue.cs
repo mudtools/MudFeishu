@@ -43,7 +43,7 @@ public class InputCustomFieldValue
     /// <para>最大长度：50</para>
     /// </summary>
     [JsonPropertyName("member_value")]
-    public TaskMember[]? MemberValues { get; set; }
+    public TaskMemberInfo[]? MemberValues { get; set; }
 
     /// <summary>
     /// <para>日期类型自定义字段值，可以输入一个表示日期的以毫秒为单位的时间戳字符串。设为空字符串表示设为空。</para>

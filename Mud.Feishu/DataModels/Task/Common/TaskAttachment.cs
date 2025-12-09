@@ -46,7 +46,7 @@ public class TaskAttachment
     /// <para>附件上传者</para>
     /// </summary>
     [JsonPropertyName("uploader")]
-    public TaskMember? Uploader { get; set; }
+    public TaskMemberInfo? Uploader { get; set; }
 
     /// <summary>
     /// <para>是否是封面图</para>

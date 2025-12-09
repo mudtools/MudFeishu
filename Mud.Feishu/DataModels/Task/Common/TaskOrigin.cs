@@ -8,14 +8,19 @@
 namespace Mud.Feishu.DataModels.Task;
 
 /// <summary>
-/// 移除任务成员请求体
+/// <para>任务关联的第三方平台来源信息。创建是设置后就不可更改。</para>
 /// </summary>
-public class RemoveMembersRequest
+public class TaskOrigin
 {
     /// <summary>
-    /// <para>要移除的member列表。</para>
-    /// <para>必填：是</para>
+    /// <para>任务导入来源的名称，用于在任务中心详情页展示。需提供多语言版本。</para>
     /// </summary>
-    [JsonPropertyName("members")]
-    public TaskMemberInfo[] Members { get; set; } = [];
+    [JsonPropertyName("platform_i18n_name")]
+    public I18nText? PlatformI18nName { get; set; }
+
+    /// <summary>
+    /// <para>任务关联的来源平台详情页链接</para>
+    /// </summary>
+    [JsonPropertyName("href")]
+    public TasksOriginHref? Href { get; set; }
 }

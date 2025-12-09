@@ -105,4 +105,29 @@ public interface IFeishuV2Task
       [Body] RemoveMembersRequest removeMembersRequest,
       [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
       CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 列取一个任务所在的所有清单的信息，包括清单的GUID和所在自定义分组的GUID。
+    /// </summary>
+    /// <param name="task_guid">要获取的任务全局唯一ID。 示例值："e297ddff-06ca-4166-b917-4ce57cd3a7a0"</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Get("https://open.feishu.cn/open-apis/task/v2/tasks/{task_guid}/tasklists")]
+    Task<FeishuApiResult<TaskGuidTaskListsResult>?> GetTaskListsByIdAsync(
+     [Path] string task_guid,
+     CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 将一个任务加入清单。返回任务的详细信息，包括任务所在的所有清单信息。
+    /// <para>如果任务已经在该清单，接口将返回成功。</para>
+    /// </summary>
+    /// <param name="addTasklistRequest">任务加入清单请求体</param>
+    /// <param name="task_guid">要获取的任务全局唯一ID。 示例值："e297ddff-06ca-4166-b917-4ce57cd3a7a0"</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Get("https://open.feishu.cn/open-apis/task/v2/tasks/{task_guid}/add_tasklist")]
+    Task<FeishuApiResult<AddTaskListResult>?> AddTaskListsByIdAsync(
+       [Path] string task_guid,
+       [Body] AddTasklistRequest addTasklistRequest,
+       CancellationToken cancellationToken = default);
 }

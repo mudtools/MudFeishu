@@ -8,14 +8,14 @@
 namespace Mud.Feishu.DataModels.Task;
 
 /// <summary>
-/// 移除任务成员请求体
+/// 列取任务所在清单 响应体
+/// <para>列取一个任务所在的所有清单的信息，包括清单的GUID和所在自定义分组的GUID。</para>
 /// </summary>
-public class RemoveMembersRequest
+public class TaskGuidTaskListsResult
 {
     /// <summary>
-    /// <para>要移除的member列表。</para>
-    /// <para>必填：是</para>
+    /// <para>任务所在清单的摘要信息</para>
     /// </summary>
-    [JsonPropertyName("members")]
-    public TaskMemberInfo[] Members { get; set; } = [];
+    [JsonPropertyName("tasklists")]
+    public TaskInTaskListInfo[]? Tasklists { get; set; }
 }

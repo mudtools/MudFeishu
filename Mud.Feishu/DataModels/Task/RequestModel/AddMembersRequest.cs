@@ -17,7 +17,7 @@ public class AddMembersRequest
     /// <para>必填：是</para>
     /// </summary>
     [JsonPropertyName("members")]
-    public TaskMember[] Members { get; set; } = [];
+    public TaskMemberInfo[] Members { get; set; } = [];
 
     /// <summary>
     /// <para>幂等token，如果提供则实现幂等行为。</para>

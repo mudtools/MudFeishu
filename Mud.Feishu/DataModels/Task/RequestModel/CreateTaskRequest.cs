@@ -67,7 +67,7 @@ public class CreateTaskRequest
     /// <para>必填：否</para>
     /// </summary>
     [JsonPropertyName("members")]
-    public TaskMember[]? Members { get; set; }
+    public TaskMemberInfo[]? Members { get; set; }
 
     /// <summary>
     /// <para>重复任务规则。如果设置，则该任务为“重复任务”。</para>

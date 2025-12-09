@@ -2,6 +2,8 @@
 
 飞书事件订阅与处理的 Webbook 组件，提供完整的飞书事件接收、验证、解密和分发功能。
 
+**🚀 新特性：极简API** - 一行代码完成服务注册，开箱即用！
+
 ## 功能特性
 
 - ✅ **极简API**：一行代码完成服务注册，开箱即用
@@ -35,7 +37,7 @@ using Mud.Feishu.Webbook.Extensions;
 var builder = WebApplication.CreateBuilder(args);
 
 // 一行代码注册Webbook服务
-builder.Services.AddFeishuWebbook(builder.Configuration);
+builder.Services.AddFeishuWebbook(builder.Configuration).Build();;
 
 var app = builder.Build();
 app.UseFeishuWebbook(); // 添加中间件
@@ -48,7 +50,8 @@ app.Run();
 builder.Services.AddFeishuWebbook(builder.Configuration)
     .AddHandler<MessageEventHandler>()
     .AddHandler<UserEventHandler>()
-    .EnableControllers();
+    .EnableControllers()
+    .Build();;
 
 var app = builder.Build();
 app.UseFeishuWebbook();
@@ -56,59 +59,7 @@ app.MapControllers(); // 控制器路由
 app.Run();
 ```
 
-### 4. 详细配置选项
-
-#### 方式一：从配置文件注册（推荐）
-
-```csharp
-using Mud.Feishu.Webbook.Extensions;
-
-var builder = WebApplication.CreateBuilder(args);
-
-// 从配置文件注册飞书 Webbook 服务
-builder.Services.AddFeishuWebbook(builder.Configuration)
-    .AddHandler<MessageReceiveEventHandler>()               // 添加消息处理器
-    .AddHandler<UserCreatedEventHandler>()                // 添加用户事件处理器
-    .EnableControllers();                                  // 启用控制器支持
-
-var app = builder.Build();
-
-// 添加飞书 Webbook 中间件
-app.UseFeishuWebbook();
-
-app.Run();
-```
-
-#### 方式二：代码配置
-
-```csharp
-// 使用代码配置飞书 Webbook 服务
-builder.Services.AddFeishuWebbook(options =>
-{
-    options.VerificationToken = "your_verification_token";
-    options.EncryptKey = "your_encrypt_key";
-    options.RoutePrefix = "feishu/webbook";
-})
-.AddHandler<MessageReceiveEventHandler>()
-.AddHandler<UserCreatedEventHandler>()
-.EnableControllers();
-```
-
-#### 方式三：建造者模式（高级用法）
-
-```csharp
-// 使用建造者模式进行复杂配置
-builder.Services.AddFeishuWebbookBuilder()
-    .ConfigureFrom(builder.Configuration)                    // 从配置文件读取
-    .EnableControllers()                                   // 启用控制器支持
-    .EnableHealthChecks()                                  // 启用健康检查
-    .EnableMetrics()                                       // 启用性能指标
-    .AddHandler<MessageReceiveEventHandler>()                 // 添加消息处理器
-    .AddHandler<UserCreatedEventHandler>()                  // 添加用户事件处理器
-    .Build();                                           // 构建服务注册
-```
-
-### 3. 配置文件
+### 4. 配置文件
 
 ```json
 {
@@ -130,78 +81,70 @@ builder.Services.AddFeishuWebbookBuilder()
 }
 ```
 
-## 🏗️ 服务注册方式详解
+## 🏗️ 服务注册方式
 
-### 从配置文件注册
-
-最简单的方式，直接从 `appsettings.json` 读取配置：
+### 🚀 从配置文件注册（推荐）
 
 ```csharp
-// 使用默认配置节 "FeishuWebbook"
+// 一行代码完成基础配置
 builder.Services.AddFeishuWebbook(builder.Configuration);
-
-// 使用自定义配置节
-builder.Services.AddFeishuWebbook(builder.Configuration, "CustomSection");
 
 // 添加事件处理器
 builder.Services.AddFeishuWebbook(builder.Configuration)
     .AddHandler<MessageReceiveEventHandler>()
-    .AddHandler<UserCreatedEventHandler>();
+    .AddHandler<UserCreatedEventHandler>()
+    .EnableControllers();
 ```
 
-### 代码配置
-
-直接在代码中配置选项：
+### ⚙️ 代码配置
 
 ```csharp
 builder.Services.AddFeishuWebbook(options =>
 {
     options.VerificationToken = "your_verification_token";
     options.EncryptKey = "your_encrypt_key";
-    options.RoutePrefix = "webhook";
+    options.RoutePrefix = "feishu/webbook";
     options.EnableRequestLogging = true;
-    options.MaxConcurrentEvents = 20;
 });
 ```
 
-### 高级建造者模式
-
-对于复杂的配置需求，可以使用建造者模式：
+### 🔧 高级建造者模式
 
 ```csharp
-var webbookBuilder = builder.Services.AddFeishuWebbookBuilder()
-    .ConfigureFrom(configuration, "CustomSection")          // 指定配置节
-    .ConfigureOptions(options => {                           // 代码配置
-        options.VerificationToken = "token";
-        options.EncryptKey = "key";
-        options.RoutePrefix = "webhook";
-    });
-
-// 添加不同类型的处理器
-webbookBuilder
-    .AddHandler<MessageEventHandler>()                      // 类型注册
-    .AddHandler<UserEventHandler>()                         // 类型注册
-    .AddHandler(new CustomEventHandler())                   // 实例注册
-    .AddHandler(sp => new FactoryEventHandler(               // 工厂注册
-        sp.GetService<ILogger<FactoryEventHandler>>(),
-        sp.GetService<IConfiguration>()));
-
-// 启用可选功能
-webbookBuilder
-    .EnableControllers()          // 启用控制器支持
-    .EnableHealthChecks()         // 启用健康检查
-    .EnableMetrics()              // 启用性能监控
-    .EnableAutoEndpoint();        // 自动注册端点
-
-// 构建服务注册
-webbookBuilder.Build();
+builder.Services.AddFeishuWebbookBuilder()
+    .ConfigureFrom(configuration)
+    .EnableControllers()
+    .EnableHealthChecks()
+    .EnableMetrics()
+    .AddHandler<MessageReceiveEventHandler>()
+    .Build();
 ```
-app.UseFeishuWebbook();
 
+## 使用模式
+
+### 中间件模式（推荐）
+
+```csharp
+builder.Services.AddFeishuWebbook(builder.Configuration);
+
+var app = builder.Build();
+app.UseFeishuWebbook(); // 自动处理路由前缀下的请求
 app.Run();
 ```
 
-### 3. 创建事件处理器
+### 控制器模式
+
+```csharp
+builder.Services.AddFeishuWebbook(builder.Configuration)
+    .EnableControllers(); // 启用控制器支持
+
+var app = builder.Build();
+app.UseFeishuWebbook();  // 可以同时使用中间件和控制器
+app.MapControllers(); // 使用控制器路由
+app.Run();
+```
+
+## 创建事件处理器
 
 ```csharp
 using Microsoft.Extensions.Logging;
@@ -268,108 +211,7 @@ public class MessageEventHandler : IFeishuEventHandler
 | `EnableRequestLogging` | bool | true | 是否启用请求日志记录 |
 | `EnableExceptionHandling` | bool | true | 是否启用异常处理 |
 
-## 使用模式
-
-### 中间件模式（推荐）
-
-```csharp
-// Program.cs
-builder.Services.AddFeishuWebbook(builder.Configuration);
-
-var app = builder.Build();
-app.UseFeishuWebbook(); // 自动处理路由前缀下的请求
-app.Run();
-```
-
-### 控制器模式
-
-```csharp
-// Program.cs
-builder.Services.AddFeishuWebbook(builder.Configuration)
-    .EnableControllers(); // 启用控制器支持
-
-var app = builder.Build();
-app.UseFeishuWebbook();  // 可以同时使用中间件和控制器
-app.MapControllers();     // 使用控制器路由
-app.Run();
-```
-
-### 配置文件模式
-
-在 `appsettings.json` 中：
-
-```json
-{
-  "FeishuWebbook": {
-    "VerificationToken": "your_verification_token_here",
-    "EncryptKey": "your_encrypt_key_here",
-    "RoutePrefix": "feishu/webbook",
-    "EnableRequestLogging": true,
-    "EnablePerformanceMonitoring": true,
-    "MaxConcurrentEvents": 20
-  }
-}
-```
-
-在代码中：
-
-```csharp
-// 简单注册，使用默认配置节
-builder.Services.AddFeishuWebbook(builder.Configuration);
-
-// 使用自定义配置节
-builder.Services.AddFeishuWebbook(builder.Configuration, "CustomSection");
-
-// 添加事件处理器
-builder.Services.AddFeishuWebbook(builder.Configuration)
-    .AddHandler<MessageEventHandler>()
-    .AddHandler<UserEventHandler>();
-```
-
-## 事件处理
-
-### 支持的事件类型
-
-库支持所有飞书事件类型，包括但不限于：
-
-- `im.message.receive_v1` - 接收消息
-- `im.chat.member_user_added_v1` - 用户加入群聊
-- `im.chat.member_user_deleted_v1` - 用户离开群聊
-- `contact.user.created_v3` - 用户创建
-- `contact.user.updated_v3` - 用户更新
-- `contact.user.deleted_v3` - 用户删除
-
-### 创建处理器
-
-```csharp
-// 简单处理器
-public class SimpleEventHandler : IFeishuEventHandler
-{
-    public string SupportedEventType => FeishuEventTypes.IMMessageReceiveV1;
-    
-    public async Task HandleAsync(EventData eventData, CancellationToken cancellationToken = default)
-    {
-        // 处理逻辑
-        await Task.CompletedTask;
-    }
-}
-
-// 继承基类处理器
-public abstract class BaseFeishuEventHandler : IFeishuEventHandler
-{
-    public abstract string SupportedEventType { get; }
-    
-    public virtual async Task HandleAsync(EventData eventData, CancellationToken cancellationToken = default)
-    {
-        // 基础处理逻辑
-        await HandleEventInternalAsync(eventData, cancellationToken);
-    }
-    
-    protected abstract Task HandleEventInternalAsync(EventData eventData, CancellationToken cancellationToken);
-}
-```
-
-### 注册处理器
+## 注册处理器
 
 ```csharp
 // 使用链式调用添加处理器
@@ -386,6 +228,17 @@ builder.Services.AddFeishuWebbookBuilder()
     .EnableControllers()
     .Build();
 ```
+
+## 支持的事件类型
+
+库支持所有飞书事件类型，包括但不限于：
+
+- `im.message.receive_v1` - 接收消息
+- `im.chat.member_user_added_v1` - 用户加入群聊
+- `im.chat.member_user_deleted_v1` - 用户离开群聊
+- `contact.user.created_v3` - 用户创建
+- `contact.user.updated_v3` - 用户更新
+- `contact.user.deleted_v3` - 用户删除
 
 ## 飞书平台配置
 
@@ -469,7 +322,7 @@ public class RobustEventHandler : IFeishuEventHandler
 {
     private readonly ILogger<RobustEventHandler> _logger;
 
-    public string SupportedEventType => FeishuEventTypes.IMMessageReceiveV1;
+    public string SupportedEventType => "im.message.receive_v1";
 
     public async Task HandleAsync(EventData eventData, CancellationToken cancellationToken = default)
     {
@@ -496,33 +349,6 @@ public async Task HandleAsync(EventData eventData, CancellationToken cancellatio
     
     // 避免阻塞调用
     // 不要使用 .Result 或 .Wait()
-}
-```
-
-### 3. 资源管理
-
-```csharp
-public class ResourceAwareHandler : IFeishuEventHandler, IDisposable
-{
-    private readonly SemaphoreSlim _semaphore = new(5, 5); // 限制并发数
-
-    public async Task HandleAsync(EventData eventData, CancellationToken cancellationToken = default)
-    {
-        await _semaphore.WaitAsync(cancellationToken);
-        try
-        {
-            // 处理逻辑
-        }
-        finally
-        {
-            _semaphore.Release();
-        }
-    }
-
-    public void Dispose()
-    {
-        _semaphore.Dispose();
-    }
 }
 ```
 
@@ -561,6 +387,34 @@ builder.Services.AddFeishuWebbook(options =>
 });
 ```
 
-## 许可证
+## 快速参考
 
-本项目采用 MIT 许可证。详见 [LICENSE](../../../LICENSE-MIT) 文件。
+### 最常用的注册方式
+
+```csharp
+// 方式一：最简化
+builder.Services.AddFeishuWebbook(configuration);
+
+// 方式二：简化 + 处理器
+builder.Services.AddFeishuWebbook(configuration)
+    .AddHandler<MessageReceiveEventHandler>()
+    .EnableControllers();
+
+// 方式三：代码配置
+builder.Services.AddFeishuWebbook(options => {
+    options.VerificationToken = "your_token";
+    options.EncryptKey = "your_key";
+});
+
+// 方式四：建造者模式（复杂配置）
+builder.Services.AddFeishuWebbookBuilder()
+    .ConfigureFrom(configuration)
+    .UseMultiHandler()
+    .EnableMetrics()
+    .AddHandler<Handler>()
+    .Build();
+```
+
+---
+
+**🚀 立即开始使用飞书Webbook，构建稳定可靠的事件处理系统！**

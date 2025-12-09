@@ -142,18 +142,13 @@ Mud.Feishu.WebSocket/
 └── Examples/                      # 使用示例
 ```
 
-## 🏗️ 服务注册方式详解
+## 🏗️ 服务注册方式
 
-### 从配置文件注册（最简单）
-
-最简单的方式，直接从配置文件读取：
+### 🚀 最简注册（推荐）
 
 ```csharp
-// 使用默认配置节 "Feishu:WebSocket"
+// 一行代码完成基础配置
 builder.Services.AddFeishuWebSocketServiceBuilder(builder.Configuration);
-
-// 使用自定义配置节
-builder.Services.AddFeishuWebSocketServiceBuilder(builder.Configuration, "CustomSection");
 
 // 添加事件处理器
 builder.Services.AddFeishuWebSocketServiceBuilder(builder.Configuration)
@@ -162,9 +157,7 @@ builder.Services.AddFeishuWebSocketServiceBuilder(builder.Configuration)
     .UseMultiHandler();
 ```
 
-### 代码配置
-
-直接在代码中配置选项：
+### ⚙️ 代码配置
 
 ```csharp
 builder.Services.AddFeishuWebSocketServiceBuilder(options =>
@@ -172,58 +165,19 @@ builder.Services.AddFeishuWebSocketServiceBuilder(options =>
     options.AppId = "your_app_id";
     options.AppSecret = "your_app_secret";
     options.AutoReconnect = true;
-    options.MaxReconnectAttempts = 5;
     options.HeartbeatIntervalMs = 30000;
 });
 ```
 
-### 高级建造者模式
-
-对于复杂的配置需求：
+### 🔧 高级配置（建造者模式）
 
 ```csharp
-var webSocketBuilder = builder.Services.AddFeishuWebSocketServiceBuilder()
-    .ConfigureFrom(configuration, "Feishu:WebSocket")
-    .ConfigureOptions(options => {
-        options.AppId = "your_app_id";
-        options.AppSecret = "your_app_secret";
-    });
-
-// 添加不同类型的处理器
-webSocketBuilder
+builder.Services.AddFeishuWebSocketBuilder()
+    .ConfigureFrom(configuration)
+    .UseMultiHandler()
+    .EnableMetrics()
     .AddHandler<ReceiveMessageEventHandler>()
-    .AddHandler<UserCreatedEventHandler>()
-    .AddHandler(sp => new FactoryEventHandler(
-        sp.GetService<ILogger<FactoryEventHandler>>(),
-        sp.GetService<IConfiguration>()));
-
-// 启用功能
-webSocketBuilder
-    .UseMultiHandler()         // 启用多处理器模式
-    .EnableMetrics()           // 启用性能监控
-    .EnableHealthChecks();     // 启用健康检查
-
-// 构建服务注册
-webSocketBuilder.Build();
-```
-
-### 简化的处理器注册
-
-```csharp
-// 快速注册多个处理器
-builder.Services.AddFeishuWebSocketServiceBuilder(configuration)
-    .AddHandler<ReceiveMessageEventHandler>()
-    .AddHandler<UserCreatedEventHandler>()
-    .AddHandler<MessageReadEventHandler>()
-    .UseMultiHandler();
-
-// 链式调用配置
-builder.Services.AddFeishuWebSocketServiceBuilder(configuration)
-    .AddHandler<ReceiveMessageEventHandler>()
-    .ConfigureOptions(options => {
-        options.HeartbeatIntervalMs = 25000;
-        options.EnableLogging = true;
-    });
+    .Build();
 ```
 
 ---
@@ -273,39 +227,20 @@ public class CustomEventHandler : IFeishuEventHandler
 
 ### 注册自定义处理器
 
-#### 使用简化方式注册（推荐）
-
 ```csharp
-// 注册多个自定义处理器
+// 注册处理器（多种方式）
 builder.Services.AddFeishuWebSocketServiceBuilder(builder.Configuration)
     .UseMultiHandler()
     .AddHandler<CustomEventHandler>()                    // 类型注册
-    .AddHandler<AnotherEventHandler>()                    // 第二个处理器
-    .AddHandler(sp => new FactoryEventHandler(           // 工厂方法注册
-        sp.GetService<ILogger<FactoryEventHandler>>(),
-        sp.GetService<IConfiguration>()))
+    .AddHandler(sp => new FactoryEventHandler(           // 工厂注册
+        sp.GetService<ILogger<FactoryEventHandler>>()))
     .AddHandler(new InstanceEventHandler());               // 实例注册
-```
 
-#### 使用建造者模式注册（高级用法）
-
-```csharp
-// 复杂配置场景
+// 或使用建造者模式
 builder.Services.AddFeishuWebSocketBuilder()
-    .ConfigureFrom(builder.Configuration)
     .UseMultiHandler()
     .AddHandler<CustomEventHandler>()
-    .AddHandler<AnotherEventHandler>()
-    .EnableMetrics()
     .Build();
-```
-
-#### 依赖注入注册
-
-```csharp
-// 注册处理器到 DI 容器
-builder.Services.AddSingleton<CustomEventHandler>();
-builder.Services.AddFeishuWebSocketServiceBuilder(builder.Configuration);
 ```
 
 #### 运行时动态注册
@@ -348,78 +283,24 @@ public class ServiceManager
 | `MessageQueueCapacity` | int | 1000 | 消息队列容量 |
 | `ParallelMultiHandlers` | bool | true | 多处理器并行执行 |
 
-### 代码配置
+## ⚙️ 配置选项
 
-#### 简化配置（推荐）
+### 主要配置项
 
-```csharp
-// 从代码配置选项
-builder.Services.AddFeishuWebSocketServiceBuilder(options =>
-{
-    options.AppId = "your_app_id";
-    options.AppSecret = "your_app_secret";
-    options.AutoReconnect = true;
-    options.MaxReconnectAttempts = 10;
-    options.ReconnectDelayMs = 3000;
-    options.HeartbeatIntervalMs = 25000;
-})
-.AddHandler<ReceiveMessageEventHandler>()
-.UseMultiHandler();
-```
+| 选项 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| `AutoReconnect` | bool | true | 自动重连 |
+| `MaxReconnectAttempts` | int | 5 | 最大重连次数 |
+| `ReconnectDelayMs` | int | 5000 | 重连延迟(ms) |
+| `HeartbeatIntervalMs` | int | 30000 | 心跳间隔(ms) |
+| `EnableLogging` | bool | true | 启用日志 |
+| `EnableMessageQueue` | bool | true | 启用消息队列 |
 
-#### 建造者模式配置（高级用法）
-
-```csharp
-// 复杂配置使用建造者模式
-builder.Services.AddFeishuWebSocketBuilder()
-    .ConfigureOptions(options => {
-        options.AppId = "your_app_id";
-        options.AppSecret = "your_app_secret";
-        options.AutoReconnect = true;
-        options.MaxReconnectAttempts = 10;
-        options.ReconnectDelayMs = 3000;
-        options.HeartbeatIntervalMs = 25000;
-    })
-    .UseMultiHandler()
-    .EnableMetrics()
-    .AddHandler<CustomHandler1>()
-    .AddHandler<CustomHandler2>()
-    .Build();
-```
-
-#### 多种注册方式对比
-
-```csharp
-// 方式一：最简化
-builder.Services.AddFeishuWebSocketServiceBuilder(configuration);
-
-// 方式二：简化 + 处理器
-builder.Services.AddFeishuWebSocketServiceBuilder(configuration)
-    .AddHandler<ReceiveMessageEventHandler>()
-    .UseMultiHandler();
-
-// 方式三：代码配置
-builder.Services.AddFeishuWebSocketServiceBuilder(options =>
-{
-    options.AppId = "your_app_id";
-    options.AppSecret = "your_app_secret";
-});
-
-// 方式四：建造者模式（复杂配置）
-builder.Services.AddFeishuWebSocketBuilder()
-    .ConfigureFrom(configuration)
-    .UseMultiHandler()
-    .EnableMetrics()
-    .AddHandler<Handler>()
-    .Build();
-```
-
-## 🎯 高级配置用法
+## 🎯 高级用法
 
 ### 多环境配置
 
 ```csharp
-// 场景1：多环境配置
 var webSocketBuilder = builder.Services.AddFeishuWebSocketServiceBuilder(configuration);
 
 if (builder.Environment.IsDevelopment())
@@ -429,13 +310,12 @@ if (builder.Environment.IsDevelopment())
         options.HeartbeatIntervalMs = 15000;
     });
 }
-else if (builder.Environment.IsProduction())
+else
 {
     webSocketBuilder.ConfigureFrom(configuration, "Production:WebSocket");
 }
 
-webSocketBuilder
-    .UseMultiHandler()
+webSocketBuilder.UseMultiHandler()
     .AddHandler<DevEventHandler>()
     .AddHandler<ProdEventHandler>()
     .Build();
@@ -448,7 +328,6 @@ builder.Services.AddFeishuWebSocketServiceBuilder(configuration)
     .UseMultiHandler()
     .AddHandler<BaseEventHandler>()
     .Apply(webSocketBuilder => {
-        // 根据功能开关注册处理器
         if (configuration.GetValue<bool>("Features:EnableAudit"))
             webSocketBuilder.AddHandler<AuditEventHandler>();
         
@@ -458,214 +337,53 @@ builder.Services.AddFeishuWebSocketServiceBuilder(configuration)
     .Build();
 ```
 
-### 服务注册最佳实践
-
-```csharp
-// 推荐：使用扩展方法封装复杂配置
-public static class FeishuWebSocketExtensions
-{
-    public static IServiceCollection AddFeishuWebSocketWithDefaultHandlers(
-        this IServiceCollection services, 
-        IConfiguration configuration)
-    {
-        return services.AddFeishuWebSocketServiceBuilder(configuration)
-            .UseMultiHandler()
-            .AddHandler<ReceiveMessageEventHandler>()
-            .AddHandler<UserCreatedEventHandler>()
-            .AddHandler<MessageReadEventHandler>()
-            .Build();
-    }
-}
-
-// 使用时更简洁
-builder.Services.AddFeishuWebSocketWithDefaultHandlers(builder.Configuration);
-```
-
-### 使用建造者模式的高级功能
-
-```csharp
-// 当需要复杂配置时使用建造者模式
-builder.Services.AddFeishuWebSocketBuilder()
-    .ConfigureFrom(configuration, "Feishu:WebSocket")
-    .ConfigureOptions(options => {
-        options.AppId = "your_app_id";
-        options.AppSecret = "your_app_secret";
-    })
-    .UseMultiHandler()
-    .EnableMetrics()
-    .EnableHealthChecks()
-    .AddHandler<ReceiveMessageEventHandler>()
-    .AddHandler<UserCreatedEventHandler>()
-    .AddHandler(sp => new CustomEventHandler(
-        sp.GetService<ILogger<CustomEventHandler>>()))
-    .Build();
-```
-
 ## 🔧 高级功能
-
-### 心跳监控服务
-
-```csharp
-public class HeartbeatMonitorService : IHostedService
-{
-    private readonly IFeishuWebSocketManager _webSocketManager;
-    private readonly List<DateTime> _heartbeatTimestamps = new();
-
-    public async Task StartAsync(CancellationToken cancellationToken)
-    {
-        // 订阅心跳事件
-        _webSocketManager.HeartbeatReceived += OnHeartbeatReceived;
-        
-        // 启动定时检查
-        _heartbeatCheckTimer = new Timer(CheckHeartbeatStatus, null, 
-            TimeSpan.Zero, TimeSpan.FromSeconds(30));
-    }
-
-    private void OnHeartbeatReceived(object? sender, WebSocketHeartbeatEventArgs e)
-    {
-        _heartbeatTimestamps.Add(DateTime.UtcNow);
-        
-        // 分析心跳模式
-        AnalyzeHeartbeatPattern();
-        
-        _logger.LogInformation("💗 收到心跳消息 - 时间戳: {Timestamp}, 间隔: {Interval}s, 状态: {Status}",
-            e.Timestamp, e.Interval, e.Status);
-    }
-
-    private void AnalyzeHeartbeatPattern()
-    {
-        var recentTimestamps = _heartbeatTimestamps.TakeLast(10).ToList();
-        var intervals = new List<double>();
-
-        for (int i = 1; i < recentTimestamps.Count; i++)
-        {
-            var interval = (recentTimestamps[i] - recentTimestamps[i - 1]).TotalSeconds;
-            intervals.Add(interval);
-        }
-
-        if (intervals.Any())
-        {
-            var averageInterval = intervals.Average();
-            var variance = intervals.Select(x => Math.Pow(x - averageInterval, 2)).Average();
-            var standardDeviation = Math.Sqrt(variance);
-
-            // 如果标准差过大，可能表示心跳不稳定
-            if (standardDeviation > 5.0)
-            {
-                _logger.LogWarning("检测到心跳间隔不稳定，可能存在连接问题");
-            }
-        }
-    }
-
-    public HeartbeatStatistics GetStatistics()
-    {
-        return new HeartbeatStatistics
-        {
-            TotalHeartbeats = _heartbeatTimestamps.Count,
-            RecentHeartbeats = _heartbeatTimestamps.TakeLast(20)
-                .Select((timestamp, index) => new HeartbeatInfo { Timestamp = timestamp })
-                .ToList(),
-            LastHeartbeatTime = _heartbeatTimestamps.LastOrDefault(),
-            AverageInterval = CalculateAverageInterval(_heartbeatTimestamps.TakeLast(20).ToList())
-        };
-    }
-}
-```
-
-### 事件处理器工厂
-
-```csharp
-public class EventHandlerManager
-{
-    private readonly IFeishuEventHandlerFactory _factory;
-
-    public EventHandlerManager(IFeishuEventHandlerFactory factory)
-        => _factory = factory;
-
-    // 获取处理器
-    public IFeishuEventHandler GetHandler(string eventType)
-        => _factory.GetHandler(eventType);
-
-    // 注册处理器
-    public void RegisterHandler(IFeishuEventHandler handler)
-        => _factory.RegisterHandler(handler);
-
-    // 检查注册状态
-    public bool IsRegistered(string eventType)
-        => _factory.IsHandlerRegistered(eventType);
-
-    // 获取所有事件类型
-    public IReadOnlyList<string> GetAllEventTypes()
-        => _factory.GetRegisteredEventTypes();
-}
-```
 
 ### 手动连接控制
 
 ```csharp
-public class ConnectionController
+public class ConnectionService
 {
     private readonly IFeishuWebSocketManager _manager;
 
-    public ConnectionController(IFeishuWebSocketManager manager)
+    public ConnectionService(IFeishuWebSocketManager manager)
         => _manager = manager;
 
-    // 启动连接
-    public async Task StartAsync()
-        => await _manager.StartAsync();
-
-    // 发送消息
-    public async Task SendMessageAsync(string message)
+    // 连接管理
+    public async Task StartAsync() => await _manager.StartAsync();
+    public async Task StopAsync() => await _manager.StopAsync();
+    public async Task ReconnectAsync() => await _manager.ReconnectAsync();
+    
+    // 消息操作
+    public async Task SendMessageAsync(string message) 
         => await _manager.SendMessageAsync(message);
-
-    // 重新连接
-    public async Task ReconnectAsync()
-        => await _manager.ReconnectAsync();
-
-    // 停止连接
-    public async Task StopAsync()
-        => await _manager.StopAsync();
+    
+    // 事件订阅
+    public void SubscribeEvents()
+    {
+        _manager.Connected += OnConnected;
+        _manager.Disconnected += OnDisconnected;
+        _manager.HeartbeatReceived += OnHeartbeat;
+    }
 }
 ```
 
 ## 📋 支持的事件类型
 
 ### WebSocket 消息类型
-- `ping` - 连接保活消息（自动响应 pong）
-- `pong` - 连接保活响应
-- `heartbeat` - 心跳消息（包含状态和间隔信息）
-- `event` - 业务事件消息
-- `auth` - 认证响应消息
+- `ping` / `pong` - 连接保活
+- `heartbeat` - 心跳消息
+- `event` - 业务事件
+- `auth` - 认证响应
 
-### 消息事件
-- `im.message.receive_v1` - 接收消息
-- `im.message.message_read_v1` - 消息已读
-
-### 群聊事件
-- `im.chat.member.user_added_v1` - 用户加入群聊
-- `im.chat.member.user_deleted_v1` - 用户离开群聊
-- `im.chat.updated_v1` - 群聊信息更新
-
-### 用户事件
-- `contact.user.created_v3` - 用户创建
-- `contact.user.updated_v3` - 用户更新
-- `contact.user.deleted_v3` - 用户删除
-
-### 部门事件
-- `contact.department.created_v3` - 部门创建
-- `contact.department.updated_v3` - 部门更新
-- `contact.department.deleted_v3` - 部门删除
-
-### 审批事件
-- `approval.approval.approved_v1` - 审批通过
-- `approval.approval.rejected_v1` - 审批拒绝
-
-### 日程事件
-- `calendar.event.updated_v4` - 日程事件
-
-### 会议事件
-- `meeting.meeting.started_v1` - 会议开始
-- `meeting.meeting.ended_v1` - 会议结束
+### 主要业务事件
+- **消息**: `im.message.receive_v1`, `im.message.message_read_v1`
+- **群聊**: `im.chat.member.user_added_v1`, `im.chat.member.user_deleted_v1`
+- **用户**: `contact.user.created_v3`, `contact.user.updated_v3`, `contact.user.deleted_v3`
+- **部门**: `contact.department.*_v3`
+- **审批**: `approval.approval.*_v1`
+- **日程**: `calendar.event.updated_v4`
+- **会议**: `meeting.meeting.*_v1`
 
 ## 📄 许可证
 

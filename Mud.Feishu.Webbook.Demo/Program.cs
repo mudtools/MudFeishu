@@ -18,7 +18,7 @@ builder.Services.AddRazorPages();
 builder.Services.AddSingleton<DemoEventService>();
 
 // 注册飞书Webbook服务
-builder.Services.AddFeishuWebbook(builder.Configuration, "FeishuWebbook")
+builder.Services.AddFeishuWebbookServiceBuilder(builder.Configuration, "FeishuWebbook")
                 .AddHandler<DemoDepartmentEventHandler>()
                 .AddHandler<DemoDepartmentDeleteEventHandler>()
                 .EnableControllers()// 启用控制器支持

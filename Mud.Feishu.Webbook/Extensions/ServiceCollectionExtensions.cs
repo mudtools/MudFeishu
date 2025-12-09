@@ -31,7 +31,7 @@ public static class ServiceCollectionExtensions
     /// <param name="configuration">配置对象</param>
     /// <param name="sectionName">配置节名称，默认为"FeishuWebbook"</param>
     /// <returns>服务集合，支持链式调用</returns>
-    public static FeishuWebbookServiceBuilder AddFeishuWebbook(
+    public static FeishuWebbookServiceBuilder AddFeishuWebbookServiceBuilder(
         this IServiceCollection services,
         IConfiguration configuration,
         string? sectionName = null)
@@ -46,7 +46,7 @@ public static class ServiceCollectionExtensions
     /// <param name="services">服务集合</param>
     /// <param name="configureOptions">配置选项</param>
     /// <returns>服务集合</returns>
-    public static FeishuWebbookServiceBuilder AddFeishuWebbook(
+    public static FeishuWebbookServiceBuilder AddFeishuWebbookServiceBuilder(
         this IServiceCollection services,
         Action<FeishuWebbookOptions>? configureOptions = null)
     {
@@ -61,13 +61,13 @@ public static class ServiceCollectionExtensions
     /// <param name="services">服务集合</param>
     /// <param name="sectionName">配置节名称</param>
     /// <returns>服务集合</returns>
-    public static FeishuWebbookServiceBuilder AddFeishuWebbook(
+    public static FeishuWebbookServiceBuilder AddFeishuWebbookServiceBuilder(
         this IServiceCollection services,
         string sectionName = "FeishuWebbook")
     {
         // 从服务集合中获取配置
         var configuration = services.BuildServiceProvider()
                                     .GetRequiredService<IConfiguration>();
-        return services.AddFeishuWebbook(configuration, sectionName);
+        return services.AddFeishuWebbookServiceBuilder(configuration, sectionName);
     }
 }

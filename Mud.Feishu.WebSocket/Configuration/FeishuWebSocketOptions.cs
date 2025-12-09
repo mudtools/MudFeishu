@@ -54,11 +54,6 @@ public class FeishuWebSocketOptions
     public int MaxMessageSize { get; set; } = 1024 * 1024; // 1MB
 
     /// <summary>
-    /// 启用多处理器模式，默认为false
-    /// </summary>
-    public bool EnableMultiHandlerMode { get; set; } = false;
-
-    /// <summary>
     /// 多处理器模式下是否并行执行，默认为true
     /// </summary>
     public bool ParallelMultiHandlers { get; set; } = true;

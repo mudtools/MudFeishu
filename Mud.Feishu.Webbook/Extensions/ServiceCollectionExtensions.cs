@@ -5,7 +5,6 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-using Mud.Feishu.Abstractions;
 using Mud.Feishu.Webbook.Configuration;
 
 namespace Mud.Feishu.Webbook;
@@ -26,123 +25,49 @@ public static class ServiceCollectionExtensions
     }
 
     /// <summary>
-    /// 添加飞书 Webbook 事件接收与处理服务（使用配置节）
+    /// 添加飞书 Webbook 事件接收与处理服务
     /// </summary>
     /// <param name="services">服务集合</param>
     /// <param name="configuration">配置对象</param>
     /// <param name="sectionName">配置节名称，默认为"FeishuWebbook"</param>
     /// <returns>服务集合，支持链式调用</returns>
-    public static IServiceCollection AddFeishuWebbook(
+    public static FeishuWebbookServiceBuilder AddFeishuWebbook(
         this IServiceCollection services,
         IConfiguration configuration,
         string? sectionName = null)
     {
         return services.AddFeishuWebbookBuilder()
-            .ConfigureFrom(configuration, sectionName)
-            .Build();
+                       .ConfigureFrom(configuration, sectionName);
     }
 
     /// <summary>
-    /// 添加飞书 Webbook 事件接收与处理服务（使用选项委托）- 兼容性方法
+    /// 添加飞书 Webbook 事件接收与处理服务
     /// </summary>
     /// <param name="services">服务集合</param>
     /// <param name="configureOptions">配置选项</param>
     /// <returns>服务集合</returns>
-    public static IServiceCollection AddFeishuWebbook(
+    public static FeishuWebbookServiceBuilder AddFeishuWebbook(
         this IServiceCollection services,
         Action<FeishuWebbookOptions>? configureOptions = null)
     {
         // 使用建造者模式注册核心服务
         return services.AddFeishuWebbookBuilder()
-            .ConfigureOptions(configureOptions)
-            .Build();
+                       .ConfigureOptions(configureOptions);
     }
 
     /// <summary>
-    /// 添加飞书 Webbook 事件接收与处理服务（带配置节）- 兼容性方法
+    /// 添加飞书 Webbook 事件接收与处理服务
     /// </summary>
     /// <param name="services">服务集合</param>
     /// <param name="sectionName">配置节名称</param>
     /// <returns>服务集合</returns>
-    public static IServiceCollection AddFeishuWebbook(
+    public static FeishuWebbookServiceBuilder AddFeishuWebbook(
         this IServiceCollection services,
         string sectionName = "FeishuWebbook")
     {
         // 从服务集合中获取配置
-        var configuration = services.BuildServiceProvider().GetRequiredService<IConfiguration>();
+        var configuration = services.BuildServiceProvider()
+                                    .GetRequiredService<IConfiguration>();
         return services.AddFeishuWebbook(configuration, sectionName);
-    }
-
-    /// <summary>
-    /// 添加自定义事件处理器
-    /// </summary>
-    /// <typeparam name="THandler">事件处理器类型</typeparam>
-    /// <param name="services">服务集合</param>
-    /// <returns>服务集合</returns>
-    public static IServiceCollection AddFeishuEventHandler<THandler>(this IServiceCollection services)
-        where THandler : class, IFeishuEventHandler
-    {
-        services.TryAddScoped<IFeishuEventHandler, THandler>();
-        return services;
-    }
-
-    /// <summary>
-    /// 添加多个自定义事件处理器
-    /// </summary>
-    /// <param name="services">服务集合</param>
-    /// <param name="handlerTypes">事件处理器类型列表</param>
-    /// <returns>服务集合</returns>
-    public static IServiceCollection AddFeishuEventHandlers(
-        this IServiceCollection services,
-        params Type[] handlerTypes)
-    {
-        foreach (var handlerType in handlerTypes)
-        {
-            if (typeof(IFeishuEventHandler).IsAssignableFrom(handlerType))
-            {
-                services.TryAddScoped(typeof(IFeishuEventHandler), handlerType);
-            }
-            else
-            {
-                throw new ArgumentException($"Type {handlerType.Name} does not implement IFeishuEventHandler");
-            }
-        }
-
-        return services;
-    }
-
-    /// <summary>
-    /// 注册单处理器模式的飞书Webbook服务（简化版本）
-    /// </summary>
-    /// <param name="services">服务集合</param>
-    /// <param name="configureOptions">配置选项的委托</param>
-    /// <returns>服务集合，支持链式调用</returns>
-    public static IServiceCollection AddFeishuWebbookWithSingleHandler(
-        this IServiceCollection services,
-        Action<FeishuWebbookOptions> configureOptions)
-    {
-        return services
-            .AddFeishuWebbookBuilder()
-            .ConfigureOptions(configureOptions)
-            .Build();
-    }
-
-    /// <summary>
-    /// 注册单处理器模式的飞书Webbook服务（带处理器类型）
-    /// </summary>
-    /// <typeparam name="THandler">处理器类型</typeparam>
-    /// <param name="services">服务集合</param>
-    /// <param name="configureOptions">配置选项的委托</param>
-    /// <returns>服务集合，支持链式调用</returns>
-    public static IServiceCollection AddFeishuWebbookWithSingleHandler<THandler>(
-        this IServiceCollection services,
-        Action<FeishuWebbookOptions> configureOptions)
-        where THandler : class, IFeishuEventHandler
-    {
-        return services
-            .AddFeishuWebbookBuilder()
-            .ConfigureOptions(configureOptions)
-            .AddHandler<THandler>()
-            .Build();
     }
 }

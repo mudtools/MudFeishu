@@ -6,7 +6,6 @@
 // -----------------------------------------------------------------------
 
 using Mud.Feishu.Webbook.Configuration;
-using Mud.Feishu.Webbook.Services;
 using System.Diagnostics;
 
 namespace Mud.Feishu.Webbook.Middleware;
@@ -223,7 +222,7 @@ public class FeishuWebbookMiddleware(
             error = new
             {
                 code = statusCode,
-                message = message
+                message
             }
         };
 

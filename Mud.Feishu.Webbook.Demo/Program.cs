@@ -5,10 +5,26 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using Mud.Feishu.Webbook;
+using Mud.Feishu.Webbook.Demo.Handlers;
+using Mud.Feishu.Webbook.Demo.Services;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddRazorPages();
+
+// 注册演示服务
+builder.Services.AddSingleton<DemoEventService>();
+
+// 注册飞书Webbook服务
+builder.Services.AddFeishuWebbook(builder.Configuration, "FeishuWebbook")
+                .AddHandler<DemoDepartmentEventHandler>()
+                .AddHandler<DemoDepartmentDeleteEventHandler>()
+                .EnableControllers()// 启用控制器支持
+                .Build();
+// 配置演示服务
+builder.Services.AddSingleton<DemoEventService>();
 
 var app = builder.Build();
 
@@ -29,4 +45,7 @@ app.UseAuthorization();
 
 app.MapRazorPages();
 
-app.Run();
+app.MapControllers(); // 添加控制器路由映射
+
+// 添加飞书Webbook中间件（如果已启用端点自动注册）
+app.UseFeishuWebbook();

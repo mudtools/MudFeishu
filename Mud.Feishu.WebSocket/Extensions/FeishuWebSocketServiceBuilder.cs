@@ -9,7 +9,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Mud.Feishu.Abstractions.EventHandlers;
 using Mud.Feishu.WebSocket.Handlers;
 
 namespace Mud.Feishu.WebSocket;
@@ -21,7 +20,6 @@ public class FeishuWebSocketServiceBuilder
 {
     private readonly IServiceCollection _services;
     private readonly List<Type> _handlerTypes = new();
-    private bool _multiHandlerMode = true;
     private bool _configured = false;
 
     /// <summary>
@@ -63,26 +61,6 @@ public class FeishuWebSocketServiceBuilder
             throw new ArgumentNullException(nameof(configureOptions));
 
         _services.Configure(configureOptions);
-        return this;
-    }
-
-    /// <summary>
-    /// 启用单处理器模式
-    /// </summary>
-    /// <returns>建造者实例，支持链式调用</returns>
-    public FeishuWebSocketServiceBuilder UseSingleHandler()
-    {
-        _multiHandlerMode = false;
-        return this;
-    }
-
-    /// <summary>
-    /// 启用多处理器模式
-    /// </summary>
-    /// <returns>建造者实例，支持链式调用</returns>
-    public FeishuWebSocketServiceBuilder UseMultiHandler()
-    {
-        _multiHandlerMode = true;
         return this;
     }
 
@@ -183,9 +161,6 @@ public class FeishuWebSocketServiceBuilder
     /// </summary>
     private void RegisterServices()
     {
-        // 配置处理器模式
-        _services.Configure<FeishuWebSocketOptions>(options => options.EnableMultiHandlerMode = _multiHandlerMode);
-
         // 注册事件处理器工厂
         RegisterEventHandlerFactory();
 
@@ -200,30 +175,15 @@ public class FeishuWebSocketServiceBuilder
     {
         var defaultHandlerType = _handlerTypes.First();
 
-        if (_multiHandlerMode)
+        _services.AddSingleton<IFeishuEventHandlerFactory>(serviceProvider =>
         {
-            _services.AddSingleton<IFeishuEventHandlerFactory>(serviceProvider =>
-            {
-                var logger = serviceProvider.GetRequiredService<ILogger<FeishuWebSocketEventHandlerFactory>>();
-                var handlers = serviceProvider.GetRequiredService<IEnumerable<IFeishuEventHandler>>()
-                    .Where(h => _handlerTypes.Contains(h.GetType()))
-                    .ToList();
-                var defaultHandler = serviceProvider.GetRequiredService(defaultHandlerType) as IFeishuEventHandler;
-                return new FeishuWebSocketEventHandlerFactory(logger, handlers, defaultHandler);
-            });
-        }
-        else
-        {
-            _services.AddSingleton<IFeishuEventHandlerFactory>(serviceProvider =>
-            {
-                var logger = serviceProvider.GetRequiredService<ILogger<DefaultFeishuEventHandlerFactory>>();
-                var handlers = serviceProvider.GetRequiredService<IEnumerable<IFeishuEventHandler>>()
-                    .Where(h => _handlerTypes.Contains(h.GetType()))
-                    .ToList();
-                var defaultHandler = serviceProvider.GetRequiredService(defaultHandlerType) as IFeishuEventHandler;
-                return new DefaultFeishuEventHandlerFactory(logger, handlers, defaultHandler);
-            });
-        }
+            var logger = serviceProvider.GetRequiredService<ILogger<FeishuWebSocketEventHandlerFactory>>();
+            var handlers = serviceProvider.GetRequiredService<IEnumerable<IFeishuEventHandler>>()
+                .Where(h => _handlerTypes.Contains(h.GetType()))
+                .ToList();
+            var defaultHandler = serviceProvider.GetRequiredService(defaultHandlerType) as IFeishuEventHandler;
+            return new FeishuWebSocketEventHandlerFactory(logger, handlers, defaultHandler);
+        });
     }
 
     /// <summary>

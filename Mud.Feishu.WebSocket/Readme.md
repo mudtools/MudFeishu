@@ -415,7 +415,6 @@ public class ServiceManager
 | `EnableLogging` | bool | true | 启用日志 |
 | `EnableMessageQueue` | bool | true | 启用消息队列 |
 | `MessageQueueCapacity` | int | 1000 | 消息队列容量 |
-| `EnableMultiHandlerMode` | bool | false | 启用多处理器模式 |
 | `ParallelMultiHandlers` | bool | true | 多处理器并行执行 |
 
 ### 代码配置

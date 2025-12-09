@@ -122,7 +122,6 @@ app.Run();
         "EnableLogging": true,
         "EnableMessageQueue": true,
         "MessageQueueCapacity": 1000,
-        "EnableMultiHandlerMode": true,
         "ParallelMultiHandlers": true
         }
     }

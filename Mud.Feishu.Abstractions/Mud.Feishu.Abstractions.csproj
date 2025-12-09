@@ -10,8 +10,8 @@
 	  <RepositoryType>git</RepositoryType>
 	  <PackageIcon>Icon.png</PackageIcon>
 	  <PackageReadmeFile>README.md</PackageReadmeFile>
-	  <Description>Mud.Feishu.Abstractions 是 MudFeishu 库 WebSocket 事件订阅组件和 Http 事件订阅组件抽象层，专门用于处理飞书事件订阅。它提供了完整的事件订阅策略模式的事件处理机制，使开发人员能够轻松地在 .NET 应用程序中接收和处理飞书实时事件。</Description>
-	  <PackageTags>飞书;飞书.net sdk;Feishu;Feishu.net;Feishu SDK;WebSocket;事件订阅;实时事件;ASP.NET;ASP.NET Core;.NET;.NET Core;</PackageTags>
+	  <Description>Mud.Feishu.Abstractions 是 MudFeishu 库的 WebSocket 事件订阅和 Webhook 事件订阅组件抽象层，专门用于处理飞书事件订阅。它提供了基于策略模式的完整事件处理机制，使开发人员能够轻松地在 .NET 应用程序中接收和处理飞书实时事件。</Description>
+	  <PackageTags>飞书;飞书.net sdk;Feishu;Feishu.net;Feishu SDK;WebSocket;Webhook;事件订阅;实时事件;抽象层;策略模式;.NET;.NET Core;ASP.NET Core;MudFeishu</PackageTags>
 	  <BaseOutputPath>..\bin</BaseOutputPath>
   </PropertyGroup>
 

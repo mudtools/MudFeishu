@@ -8,7 +8,6 @@
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 
 namespace Mud.Feishu.WebSocket;
 
@@ -25,22 +24,9 @@ public static class ServiceCollectionExtensions
     /// <param name="services">服务集合</param>
     /// <param name="configuration">配置对象</param>
     /// <returns>服务集合，支持链式调用</returns>
-    public static IServiceCollection AddFeishuWebSocketService(this IServiceCollection services, IConfiguration configuration)
+    public static FeishuWebSocketServiceBuilder AddFeishuWebSocketServiceBuilder(this IServiceCollection services, IConfiguration configuration)
     {
-        return services.AddFeishuWebSocketService(configuration, DefaultConfigurationSection);
-    }
-
-    /// <summary>
-    /// 注册飞书WebSocket服务（使用配置节名称）
-    /// </summary>
-    /// <param name="services">服务集合</param>
-    /// <param name="configuration">配置对象</param>
-    /// <param name="configurationSection">配置节名称，默认为"Feishu:WebSocket"</param>
-    /// <returns>服务集合，支持链式调用</returns>
-    public static IServiceCollection AddFeishuWebSocketService(this IServiceCollection services, IConfiguration configuration, string configurationSection)
-    {
-        services.ConfigureFeishuWebSocketOptions(configuration, configurationSection);
-        return services.AddFeishuWebSocketServiceCore();
+        return services.AddFeishuWebSocketServiceBuilder(configuration, DefaultConfigurationSection);
     }
 
     /// <summary>
@@ -49,175 +35,25 @@ public static class ServiceCollectionExtensions
     /// <param name="services">服务集合</param>
     /// <param name="configureOptions">配置选项的委托</param>
     /// <returns>服务集合，支持链式调用</returns>
-    public static IServiceCollection AddFeishuWebSocketService(this IServiceCollection services, Action<FeishuWebSocketOptions> configureOptions)
+    public static FeishuWebSocketServiceBuilder AddFeishuWebSocketServiceBuilder(this IServiceCollection services, Action<FeishuWebSocketOptions> configureOptions)
     {
         if (configureOptions == null)
             throw new ArgumentNullException(nameof(configureOptions));
 
-        services.Configure(configureOptions);
-        return services.AddFeishuWebSocketServiceCore();
+        var builder = new FeishuWebSocketServiceBuilder(services);
+        return builder.ConfigureOptions(configureOptions);
     }
 
     /// <summary>
     /// 使用建造者模式注册飞书WebSocket服务
     /// </summary>
     /// <param name="services">服务集合</param>
-    /// <returns>WebSocket服务建造者</returns>
-    public static FeishuWebSocketServiceBuilder AddFeishuWebSocketBuilder(this IServiceCollection services)
-    {
-        return new FeishuWebSocketServiceBuilder(services);
-    }
-
-    /// <summary>
-    /// 注册单处理器模式的飞书WebSocket服务（简化版本）
-    /// </summary>
-    /// <param name="services">服务集合</param>
-    /// <param name="configureOptions">配置选项的委托</param>
-    /// <returns>服务集合，支持链式调用</returns>
-    public static IServiceCollection AddFeishuWebSocketServiceWithSingleHandler(
-        this IServiceCollection services,
-        Action<FeishuWebSocketOptions> configureOptions)
-    {
-        return services
-            .AddFeishuWebSocketBuilder()
-            .ConfigureOptions(configureOptions)
-            .UseSingleHandler()
-            .Build();
-    }
-
-    /// <summary>
-    /// 注册单处理器模式的飞书WebSocket服务（带处理器类型）
-    /// </summary>
-    /// <typeparam name="THandler">处理器类型</typeparam>
-    /// <param name="services">服务集合</param>
-    /// <param name="configureOptions">配置选项的委托</param>
-    /// <returns>服务集合，支持链式调用</returns>
-    public static IServiceCollection AddFeishuWebSocketServiceWithSingleHandler<THandler>(
-        this IServiceCollection services,
-        Action<FeishuWebSocketOptions> configureOptions)
-        where THandler : class, IFeishuEventHandler
-    {
-        return services
-            .AddFeishuWebSocketBuilder()
-            .ConfigureOptions(configureOptions)
-            .UseSingleHandler()
-            .AddHandler<THandler>()
-            .Build();
-    }
-
-    /// <summary>
-    /// 注册多处理器模式的飞书WebSocket服务（简化版本）
-    /// </summary>
-    /// <param name="services">服务集合</param>
-    /// <param name="configureOptions">配置选项的委托</param>
-    /// <returns>服务集合，支持链式调用</returns>
-    public static IServiceCollection AddFeishuWebSocketServiceWithMultiHandler(
-        this IServiceCollection services,
-        Action<FeishuWebSocketOptions> configureOptions)
-    {
-        return services
-            .AddFeishuWebSocketBuilder()
-            .ConfigureOptions(configureOptions)
-            .UseMultiHandler()
-            .Build();
-    }
-
-    /// <summary>
-    /// 注册多处理器模式的飞书WebSocket服务（带处理器类型）
-    /// </summary>
-    /// <typeparam name="THandler">处理器类型</typeparam>
-    /// <param name="services">服务集合</param>
-    /// <param name="configureOptions">配置选项的委托</param>
-    /// <returns>服务集合，支持链式调用</returns>
-    public static IServiceCollection AddFeishuWebSocketServiceWithMultiHandler<THandler>(
-        this IServiceCollection services,
-        Action<FeishuWebSocketOptions> configureOptions)
-        where THandler : class, IFeishuEventHandler
-    {
-        return services
-            .AddFeishuWebSocketBuilder()
-            .ConfigureOptions(configureOptions)
-            .UseMultiHandler()
-            .AddHandler<THandler>()
-            .Build();
-    }
-
-    /// <summary>
-    /// 注册用户自定义事件处理器（泛型版本）
-    /// </summary>
-    /// <typeparam name="THandler">处理器类型，必须实现IFeishuEventHandler接口</typeparam>
-    /// <param name="services">服务集合</param>
-    /// <returns>服务集合，支持链式调用</returns>
-    public static IServiceCollection AddFeishuEventHandler<THandler>(this IServiceCollection services)
-        where THandler : class, IFeishuEventHandler
-    {
-        // 注册为单例
-        services.AddSingleton<IFeishuEventHandler, THandler>();
-        services.AddSingleton<THandler>();
-
-        return services;
-    }
-
-    /// <summary>
-    /// 注册事件处理器实例
-    /// </summary>
-    /// <param name="services">服务集合</param>
-    /// <param name="handlerImplementation">处理器实例工厂</param>
-    /// <returns>服务集合，支持链式调用</returns>
-    public static IServiceCollection AddFeishuEventHandler<THandler>(
-        this IServiceCollection services,
-        Func<IServiceProvider, THandler> handlerImplementation)
-        where THandler : class, IFeishuEventHandler
-    {
-        services.AddSingleton<IFeishuEventHandler>(handlerImplementation);
-        services.AddSingleton<THandler>(handlerImplementation);
-
-        return services;
-    }
-
-    /// <summary>
-    /// 注册事件处理器实例（无依赖注入版本）
-    /// </summary>
-    /// <param name="services">服务集合</param>
-    /// <param name="handlerInstance">处理器实例</param>
-    /// <returns>服务集合，支持链式调用</returns>
-    public static IServiceCollection AddFeishuEventHandler<THandler>(
-        this IServiceCollection services,
-        THandler handlerInstance)
-        where THandler : class, IFeishuEventHandler
-    {
-        if (handlerInstance == null)
-            throw new ArgumentNullException(nameof(handlerInstance));
-
-        services.AddSingleton<IFeishuEventHandler>(_ => handlerInstance);
-        services.AddSingleton<THandler>(_ => handlerInstance);
-
-        return services;
-    }
-
-    /// <summary>
-    /// 注册飞书WebSocket核心服务
-    /// </summary>
-    /// <param name="services">服务集合</param>
-    /// <returns>服务集合，支持链式调用</returns>
-    private static IServiceCollection AddFeishuWebSocketServiceCore(this IServiceCollection services)
-    {
-        // 使用建造者模式注册核心服务
-        return services
-            .AddFeishuWebSocketBuilder()
-            .UseMultiHandler() // 默认使用多处理器模式
-            .Build();
-    }
-
-    /// <summary>
-    /// 配置飞书WebSocket选项
-    /// </summary>
-    /// <param name="services">服务集合</param>
     /// <param name="configuration">配置对象</param>
-    /// <param name="configurationSection">配置节名称</param>
-    private static IServiceCollection ConfigureFeishuWebSocketOptions(this IServiceCollection services, IConfiguration configuration, string configurationSection)
+    /// <param name="sectionName">配置节名称，默认为"WebSocket"</param>
+    /// <returns>WebSocket服务建造者</returns>
+    public static FeishuWebSocketServiceBuilder AddFeishuWebSocketServiceBuilder(this IServiceCollection services, IConfiguration configuration, string? sectionName = null)
     {
-        services.Configure<FeishuWebSocketOptions>(options => configuration.GetSection(configurationSection).Bind(options));
-        return services;
+        var builder = new FeishuWebSocketServiceBuilder(services);
+        return builder.ConfigureFrom(configuration, sectionName);
     }
 }

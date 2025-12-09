@@ -1,36 +1,36 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-	  <TargetFrameworks>net6.0;net7.0;net8.0;net9.0;net10.0</TargetFrameworks>
-	  <ImplicitUsings>enable</ImplicitUsings>
-	  <Nullable>enable</Nullable>
-	  <AssemblyName>Mud.Feishu.WebSocket</AssemblyName>
-	  <GenerateDocumentationFile>True</GenerateDocumentationFile>
-	  <RepositoryUrl>https://gitee.com/mudtools/MudFeishu</RepositoryUrl>
-	  <RepositoryType>git</RepositoryType>
-	  <PackageIcon>Icon.png</PackageIcon>
-	  <PackageReadmeFile>README.md</PackageReadmeFile>
-	  <Description>Mud.Feishu.WebSocket 是 MudFeishu 库的 WebSocket 组件，专门用于处理飞书事件订阅。它提供了完整的 WebSocket 客户端实现，支持自动重连、心跳检测、事件分发和策略模式的事件处理机制，使开发人员能够轻松地在 .NET 应用程序中接收和处理飞书实时事件。</Description>
-	  <PackageTags>飞书;飞书.net sdk;Feishu;Feishu.net;Feishu SDK;WebSocket;事件订阅;实时事件;ASP.NET;ASP.NET Core;.NET;.NET Core;</PackageTags>
-	  <BaseOutputPath>..\bin</BaseOutputPath>
-  </PropertyGroup>
+	<PropertyGroup>
+		<TargetFrameworks>net6.0;net7.0;net8.0;net9.0;net10.0</TargetFrameworks>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<AssemblyName>Mud.Feishu.WebSocket</AssemblyName>
+		<GenerateDocumentationFile>True</GenerateDocumentationFile>
+		<RepositoryUrl>https://gitee.com/mudtools/MudFeishu</RepositoryUrl>
+		<RepositoryType>git</RepositoryType>
+		<PackageIcon>Icon.png</PackageIcon>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<Description>Mud.Feishu.WebSocket 是 MudFeishu 库的 WebSocket 组件，专为飞书事件订阅设计。提供完整的 WebSocket 客户端实现，支持自动重连、心跳检测、事件分发和策略模式的事件处理机制，便于在 .NET 应用中接收和处理飞书实时事件。</Description>
+		<PackageTags>飞书;飞书.net sdk;Feishu;Feishu.net;Feishu SDK;WebSocket;事件订阅;实时事件;.NET;.NET Core;ASP.NET Core;MudFeishu;</PackageTags>
+		<BaseOutputPath>..\bin</BaseOutputPath>
+	</PropertyGroup>
 
-  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0' or '$(TargetFramework)' == 'net9.0' or '$(TargetFramework)' == 'net8.0'">
-    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.0" />
-	  <PackageReference Include="protobuf-net" Version="3.2.56" />
-  </ItemGroup>
-	
-  <ItemGroup Condition="'$(TargetFramework)' == 'net7.0' or '$(TargetFramework)' == 'net6.0'">
-     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.1" />
-     <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="8.0.2" />
-	  <PackageReference Include="protobuf-net" Version="3.2.56" />
-  </ItemGroup>
+	<ItemGroup Condition="'$(TargetFramework)' == 'net10.0' or '$(TargetFramework)' == 'net9.0' or '$(TargetFramework)' == 'net8.0'">
+		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.0" />
+		<PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.0" />
+		<PackageReference Include="protobuf-net" Version="3.2.56" />
+	</ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\Mud.Feishu.Abstractions\Mud.Feishu.Abstractions.csproj" />
-    <ProjectReference Include="..\Mud.Feishu\Mud.Feishu.csproj" />
-  </ItemGroup>
+	<ItemGroup Condition="'$(TargetFramework)' == 'net7.0' or '$(TargetFramework)' == 'net6.0'">
+		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.1" />
+		<PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="8.0.2" />
+		<PackageReference Include="protobuf-net" Version="3.2.56" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\Mud.Feishu.Abstractions\Mud.Feishu.Abstractions.csproj" />
+		<ProjectReference Include="..\Mud.Feishu\Mud.Feishu.csproj" />
+	</ItemGroup>
 	<ItemGroup>
 		<None Include=".\README.md" Pack="true" PackagePath="\" />
 		<None Include="..\Icon.png" Pack="true" PackagePath="\" />

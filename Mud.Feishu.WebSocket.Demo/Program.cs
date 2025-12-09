@@ -33,12 +33,10 @@ builder.Services.AddFeishuServicesBuilder(builder.Configuration)
                 .Build();
 
 // 配置飞书WebSocket服务
-builder.Services.AddFeishuWebSocketBuilder()
-    .ConfigureFrom(builder.Configuration)
-    .UseMultiHandler()
-    .AddHandler<DemoDepartmentEventHandler>()
-    .AddHandler<DemoDepartmentDeleteEventHandler>()
-    .Build();
+builder.Services.AddFeishuWebSocketServiceBuilder(builder.Configuration)
+                .AddHandler<DemoDepartmentEventHandler>()
+                .AddHandler<DemoDepartmentDeleteEventHandler>()
+                .Build();
 
 // 配置演示服务
 builder.Services.AddSingleton<DemoEventService>();

@@ -49,7 +49,6 @@ dotnet run
       "MaxReconnectAttempts": 5,
       "ReconnectDelayMs": 5000,
       "HeartbeatIntervalMs": 30000,
-      "EnableMultiHandlerMode": true,
       "EnableLogging": true
     }
   },

@@ -1,27 +1,45 @@
 # MudFeishu
 
-现代化的 .NET 飞书 API 集成库，提供完整的 HTTP API 和 WebSocket 实时事件订阅解决方案。
+现代化的 .NET 飞书 API 集成库，提供完整的 HTTP API、WebSocket 实时事件订阅和 Webbook 事件处理解决方案。
 
 ## 📦 项目概览
 
 | 组件 | 描述 | NuGet |
 |-----|------|-------|
-| **Mud.Feishu** | 核心飞书 API 客户端库，支持组织架构、消息、群聊等功能 | [![Nuget](https://img.shields.io/nuget/v/Mud.Feishu.svg)](https://www.nuget.org/packages/Mud.Feishu/) |
-| **Mud.Feishu.WebSocket** | 飞书事件订阅 WebSocket 客户端，支持实时事件处理 | [![Nuget](https://img.shields.io/nuget/v/Mud.Feishu.WebSocket.svg)](https://www.nuget.org/packages/Mud.Feishu.WebSocket/) |
+| **Mud.Feishu.Abstractions** | 事件订阅抽象层，提供策略模式和工厂模式的事件处理架构 | [![Nuget](https://img.shields.io/nuget/v/Mud.Feishu.Abstractions.svg)](https://www.nuget.org/packages/Mud.Feishu.Abstractions/) |
+| **Mud.Feishu** | 核心 HTTP API 客户端库，支持组织架构、消息、群聊等完整飞书功能 | [![Nuget](https://img.shields.io/nuget/v/Mud.Feishu.svg)](https://www.nuget.org/packages/Mud.Feishu/) |
+| **Mud.Feishu.WebSocket** | 飞书 WebSocket 客户端，支持实时事件订阅和自动重连 | [![Nuget](https://img.shields.io/nuget/v/Mud.Feishu.WebSocket.svg)](https://www.nuget.org/packages/Mud.Feishu.WebSocket/) |
+| **Mud.Feishu.Webbook** | 飞书 Webbook 事件处理组件，支持 HTTP 回调事件接收和处理 | [![Nuget](https://img.shields.io/nuget/v/Mud.Feishu.Webbook.svg)](https://www.nuget.org/packages/Mud.Feishu.Webbook/) |
 
 ## ✨ 核心特性
 
-| 特性类别 | Mud.Feishu (HTTP API) | Mud.Feishu.WebSocket |
-|---------|----------------------|-------------------|
-| **🎯 核心功能** | HTTP API 客户端，支持 RESTful 调用 | WebSocket 客户端，支持实时事件订阅 |
-| **🔧 设计模式** | 特性驱动设计，自动生成 HTTP 客户端 | 策略模式架构，可扩展事件处理器 |
-| **🛡️ 类型安全** | 完整的数据模型，编译时类型检查 | 强类型事件消息，智能反序列化 |
-| **🔐 令牌管理** | 自动缓存刷新，支持租户/应用/用户令牌 | 继承 HTTP API 的令牌管理能力 |
-| **📦 服务注册** | 模块化注册，支持构造者模式 | 建造者模式配置，灵活的处理器管理 |
-| **🚀 性能优化** | 连接池管理，智能重试机制 | 异步消息处理，内置消息队列 |
-| **🛠️ 企业级特性** | 统一异常处理，性能监控 | 自动重连，心跳检测，状态监控 |
+| 特性类别 | Mud.Feishu.Abstractions | Mud.Feishu (HTTP API) | Mud.Feishu.WebSocket | Mud.Feishu.Webbook |
+|---------|----------------------|----------------------|-------------------|-------------------|
+| **🎯 核心功能** | 事件订阅抽象层和策略模式 | HTTP API 客户端，RESTful 调用 | WebSocket 客户端，实时事件订阅 | Webbook HTTP 回调事件处理 |
+| **🔧 设计模式** | 策略模式、工厂模式、抽象基类 | 特性驱动设计，自动生成 HTTP 客户端 | 建造者模式，可扩展事件处理器 | 中间件模式，自动事件路由 |
+| **🛡️ 类型安全** | 强类型事件数据模型，默认基类 | 完整的数据模型，编译时类型检查 | 强类型事件消息，智能反序列化 | 类型安全的事件解密和验证 |
+| **🔐 令牌管理** | - | 自动缓存刷新，多类型令牌支持 | 继承 HTTP API 的令牌管理能力 | 继承 HTTP API 的令牌管理能力 |
+| **📦 服务注册** | - | 模块化注册，支持构造者模式 | 建造者模式配置，灵活的处理器管理 | 一行代码注册，自动中间件配置 |
+| **🚀 性能优化** | 异步事件处理，并行执行 | 连接池管理，智能重试机制 | 异步消息处理，内置消息队列 | 异步事件处理，并发控制 |
+| **🛠️ 企业级特性** | 可扩展架构，异常处理基类 | 统一异常处理，性能监控 | 自动重连，心跳检测，状态监控 | 安全验证，加密解密，健康检查 |
 
 ## 📊 主要功能
+
+### 🏛️ Mud.Feishu.Abstractions - 事件处理抽象层
+
+#### 🎯 事件处理架构
+- **策略模式** - 可扩展的事件处理器架构，支持多种事件类型处理
+- **工厂模式** - 内置事件处理器工厂，支持动态注册和发现
+- **抽象基类** - 提供 `DefaultFeishuEventHandler<T>` 等基类简化开发
+- **类型安全** - 强类型事件数据模型，编译时类型检查
+- **异步处理** - 完全异步的事件处理，支持并行执行
+- **可扩展性** - 易于扩展新的事件类型和处理器
+
+#### 📋 丰富事件类型支持
+- **组织管理事件** - 用户创建/更新/删除、部门变更等
+- **消息事件** - 消息接收、发送状态、阅读状态等
+- **应用事件** - 应用授权、权限变更等应用级事件
+- **自定义事件** - 支持企业自定义事件类型
 
 ### 🌐 Mud.Feishu - HTTP API 客户端功能
 
@@ -31,6 +49,23 @@
 - **智能令牌刷新** - 令牌即将过期时自动刷新，确保服务连续性
 - **多租户支持** - 支持多租户场景下的令牌隔离和管理
 - **OAuth流程** - 完整的OAuth授权流程支持，安全获取用户令牌
+
+#### 🏢 组织架构管理
+- **用户管理** - V1/V3 双版本用户API，创建、更新、查询、删除、批量操作
+- **部门管理** - V1/V3 部门树形结构维护，多层级部门管理
+- **员工管理** - V1 员工档案和详细信息管理
+- **职级管理** - 企业职级体系维护，职级增删改查
+- **职位序列** - 职业发展路径管理，职位序列定义
+- **角色权限** - 企业权限角色体系，角色成员管理
+- **用户组管理** - 用户组成员管理，灵活的用户分组
+- **工作城市管理** - 多城市工作地点维护
+
+#### 📱 消息服务
+- **消息发送** - V1 消息API，支持文本、图片、文件、卡片等丰富类型
+- **批量消息** - V1 批量消息API，向多用户/部门批量发送
+- **群聊管理** - 群聊创建、成员管理、群聊信息维护
+- **消息互动** - 消息表情回复、引用回复等互动功能
+- **任务管理** - 任务创建、更新、状态管理等协作功能
 
 #### 🛠️ 企业级特性
 - **统一异常处理** - 完善的异常处理机制，统一错误响应格式
@@ -64,23 +99,53 @@
 - **告警支持** - 异常情况自动告警通知
 - **详细审计日志** - 完整的事件处理审计记录
 
+### 🌐 Mud.Feishu.Webbook - HTTP 回调事件处理功能
+
+#### 🔒 安全验证与解密
+- **事件订阅验证** - 支持飞书 URL 验证流程
+- **请求签名验证** - 验证飞书事件请求的签名真实性
+- **时间戳验证** - 防止重放攻击的时间戳检查
+- **AES-256-CBC解密** - 内置解密功能，自动处理加密事件
+- **来源IP验证** - 可配置的IP白名单验证
+
+#### 🚀 事件处理架构
+- **中间件模式** - 无缝集成到 ASP.NET Core 管道
+- **自动事件路由** - 根据事件类型自动分发到对应处理器
+- **多种使用模式** - 支持中间件模式、控制器模式和混合模式
+- **异步处理** - 完全异步的事件处理机制
+- **并发控制** - 可配置的并发事件处理数量限制
+
+#### 📊 监控与运维
+- **性能监控** - 可选的性能指标收集和监控
+- **健康检查** - 内置健康检查端点
+- **异常处理** - 完善的异常处理和日志记录
+- **请求日志** - 详细的请求处理日志记录
+
 
 ## 🚀 快速开始
 
 ### 安装
 
 ```bash
+# 事件处理抽象层
+dotnet add package Mud.Feishu.Abstractions
+
 # HTTP API 客户端
 dotnet add package Mud.Feishu
 
 # WebSocket 实时事件订阅
 dotnet add package Mud.Feishu.WebSocket
+
+# Webbook HTTP 回调事件处理
+dotnet add package Mud.Feishu.Webbook
 ```
 
 ### 基础配置
 
 ```csharp
 using Mud.Feishu;
+using Mud.Feishu.WebSocket;
+using Mud.Feishu.Webbook.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -101,7 +166,17 @@ builder.Services.AddFeishuWebSocketBuilder()
     .AddHandler<MessageEventHandler>()
     .Build();
 
+// 注册 Webbook HTTP 回调事件服务
+builder.Services.AddFeishuWebbook(builder.Configuration)
+    .AddHandler<UserCreatedEventHandler>()
+    .AddHandler<MessageReceiveEventHandler>()
+    .Build();
+
 var app = builder.Build();
+
+// 添加 Webbook 中间件
+app.UseFeishuWebbook();
+
 app.Run();
 ```
 
@@ -112,54 +187,37 @@ app.Run();
     "Feishu": {
         "AppId": "demo_app_id",
         "AppSecret": "demo_app_secret",
+        "BaseUrl": "https://open.feishu.cn",
         "WebSocket": {
-        "AutoReconnect": true,
-        "MaxReconnectAttempts": 5,
-        "ReconnectDelayMs": 5000,
-        "HeartbeatIntervalMs": 30000,
-        "ConnectionTimeoutMs": 10000,
-        "ReceiveBufferSize": 4096,
-        "EnableLogging": true,
-        "EnableMessageQueue": true,
-        "MessageQueueCapacity": 1000,
-        "ParallelMultiHandlers": true
+            "AutoReconnect": true,
+            "MaxReconnectAttempts": 5,
+            "ReconnectDelayMs": 5000,
+            "HeartbeatIntervalMs": 30000,
+            "ConnectionTimeoutMs": 10000,
+            "ReceiveBufferSize": 4096,
+            "EnableLogging": true,
+            "EnableMessageQueue": true,
+            "MessageQueueCapacity": 1000,
+            "ParallelMultiHandlers": true
+        },
+        "Webbook": {
+            "RoutePrefix": "feishu/webbook",
+            "AutoRegisterEndpoint": true,
+            "VerificationToken": "your_verification_token",
+            "EncryptKey": "your_encrypt_key",
+            "EnableRequestLogging": true,
+            "EnableExceptionHandling": true,
+            "EventHandlingTimeoutMs": 30000,
+            "MaxConcurrentEvents": 10,
+            "EnablePerformanceMonitoring": false,
+            "AllowedHttpMethods": ["POST"],
+            "MaxRequestBodySize": 10485760,
+            "ValidateSourceIP": false,
+            "AllowedSourceIPs": []
         }
     }
 }
 ```
-
-## 📋 主要功能
-
-### 🏢 组织架构管理
-全面覆盖飞书组织架构的各个层面：
-
-- **用户管理** - 用户创建、更新、查询、删除，支持批量操作和详细信息同步
-- **部门管理** - 部门树形结构维护，支持多层级部门的创建和管理
-- **员工管理** - V1 版本员工相关功能，包含员工档案和详细信息管理
-- **职级管理** - 企业职级体系维护，支持职级的增删改查和层级关系
-- **职位序列** - 职业发展路径管理，支持职位序列的定义和管理
-- **角色权限** - 企业权限角色体系，支持角色成员管理和权限分配
-- **用户组管理** - 用户组成员管理，支持灵活的用户分组和权限控制
-- **工作城市管理** - 办公地点管理，支持多城市工作地点的维护
-
-### 📱 消息服务
-提供丰富的消息发送和管理功能，满足各种业务场景：
-
-- **多类型消息支持** - 文本、图片、文件、卡片等丰富的消息类型
-- **批量消息发送** - 支持向多个用户或部门批量发送消息，提供发送进度监控
-- **消息状态追踪** - 实时跟踪消息发送状态和送达情况
-- **群聊管理** - 群聊创建、成员管理、群聊信息维护
-- **消息互动** - 支持消息的表情回复、引用回复等互动功能
-
-### 🔄 实时事件订阅
-基于 WebSocket 的实时事件处理，支持飞书所有事件类型：
-
-- **用户生命周期事件** - 用户创建、更新、删除、激活、禁用等状态变化
-- **组织架构事件** - 部门变更、职级调整、角色分配等组织变化
-- **消息事件** - 消息接收、发送状态、撤回、阅读状态等实时通知
-- **应用事件** - 应用授权、权限变更、配置修改等应用级别事件
-- **心跳监控** - 实时连接状态监控、连接质量评估、自动故障恢复
-- **自定义事件** - 支持企业自定义事件类型的处理和业务逻辑集成
 
 ## 🎯 使用场景
 
@@ -386,10 +444,100 @@ public class UserEventHandler : IFeishuWebSocketEventHandler
 }
 ```
 
+#### Webbook 事件处理示例
+
+```csharp
+// 用户创建事件处理器
+public class UserCreatedEventHandler : IFeishuWebbookEventHandler
+{
+    private readonly ILogger<UserCreatedEventHandler> _logger;
+    private readonly IUserSyncService _syncService;
+    
+    public UserCreatedEventHandler(
+        ILogger<UserCreatedEventHandler> logger,
+        IUserSyncService syncService)
+    {
+        _logger = logger;
+        _syncService = syncService;
+    }
+    
+    public async Task<bool> CanHandleAsync(string eventType)
+    {
+        return eventType == "contact.user.created_v3";
+    }
+    
+    public async Task HandleAsync(FeishuWebbookRequest request)
+    {
+        try
+        {
+            var eventData = await DecryptEventAsync(request);
+            var userEvent = JsonSerializer.Deserialize<UserCreatedEvent>(eventData);
+            
+            _logger.LogInformation($"新用户创建: {userEvent.User.Name} ({userEvent.User.UserId})");
+            
+            // 同步用户到本地数据库
+            await _syncService.SyncUserToDatabaseAsync(userEvent.User);
+            
+            // 发送欢迎消息
+            await SendWelcomeMessageAsync(userEvent.User.UserId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "处理用户创建事件失败");
+            throw;
+        }
+    }
+}
+
+// 消息接收事件处理器
+public class MessageReceiveEventHandler : IFeishuWebbookEventHandler
+{
+    private readonly ILogger<MessageReceiveEventHandler> _logger;
+    private readonly IFeishuTenantV1Message _messageApi;
+    
+    public MessageReceiveEventHandler(
+        ILogger<MessageReceiveEventHandler> logger,
+        IFeishuTenantV1Message messageApi)
+    {
+        _logger = logger;
+        _messageApi = messageApi;
+    }
+    
+    public async Task<bool> CanHandleAsync(string eventType)
+    {
+        return eventType == "im.message.receive_v1";
+    }
+    
+    public async Task HandleAsync(FeishuWebbookRequest request)
+    {
+        try
+        {
+            var eventData = await DecryptEventAsync(request);
+            var messageEvent = JsonSerializer.Deserialize<MessageReceiveEvent>(eventData);
+            
+            _logger.LogInformation($"收到消息 - 发送者: {messageEvent.Sender.Id}, 内容: {messageEvent.Message.Content}");
+            
+            // 智能回复逻辑
+            if (messageEvent.Message.Content.Contains("帮助"))
+            {
+                await SendHelpMessageAsync(messageEvent.Sender.Id);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "处理消息接收事件失败");
+            throw;
+        }
+    }
+}
+```
+
 ## 📖 详细文档
 
+- [Mud.Feishu.Abstractions 详细文档](./Mud.Feishu.Abstractions/README.md) - 事件处理抽象层使用指南
 - [Mud.Feishu 详细文档](./Mud.Feishu/README.md) - HTTP API 完整使用指南
-- [Mud.Feishu.WebSocket 详细文档](./Mud.Feishu.WebSocket/Readme.md) - WebSocket 事件订阅指南
+- [Mud.Feishu.WebSocket 详细文档](./Mud.Feishu.WebSocket/Readme.md) - WebSocket 实时事件订阅指南
+- [Mud.Feishu.Webbook 详细文档](./Mud.Feishu.Webbook/README.md) - Webbook HTTP 回调事件处理指南
 
 ## 🛠️ 技术栈
 
@@ -433,8 +581,10 @@ public class UserEventHandler : IFeishuWebSocketEventHandler
 - [NuGet 包管理器](https://www.nuget.org/) - .NET 包管理官方平台
 
 ### 📦 NuGet 包
+- [Mud.Feishu.Abstractions](https://www.nuget.org/packages/Mud.Feishu.Abstractions/) - 事件处理抽象层
 - [Mud.Feishu](https://www.nuget.org/packages/Mud.Feishu/) - 核心 HTTP API 客户端库
 - [Mud.Feishu.WebSocket](https://www.nuget.org/packages/Mud.Feishu.WebSocket/) - WebSocket 实时事件订阅库
+- [Mud.Feishu.Webbook](https://www.nuget.org/packages/Mud.Feishu.Webbook/) - Webbook HTTP 回调事件处理库
 
 ### 🛠️ 开发资源
 - [项目仓库](https://gitee.com/mudtools/MudFeishu) - 源代码和开发文档

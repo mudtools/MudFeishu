@@ -8,13 +8,29 @@
 namespace Mud.Feishu.DataModels.Task;
 
 /// <summary>
-/// 移除任务清单结果
+/// 添加任务提醒请求体
 /// </summary>
-public class RemoveTaskListResult
+public class AddTaskReminderRequest
 {
     /// <summary>
-    /// <para>添加后的任务详情</para>
+    /// <para>要添加的reminder的列表，目前1个任务只支持一个提醒。</para>
+    /// <para>必填：是</para>
     /// </summary>
-    [JsonPropertyName("task")]
-    public AddListTaskInfo? Task { get; set; }
+    [JsonPropertyName("reminders")]
+    public AddTaskReminder[] Reminders { get; set; } = [];
+}
+
+
+/// <summary>
+/// <para>要添加的reminder的列表，目前1个任务只支持一个提醒。</para>
+/// </summary>
+public class AddTaskReminder
+{
+    /// <summary>
+    /// <para>相对于截止时间的提醒时间分钟数。例如30表示截止时间前30分钟提醒；0表示截止时提醒。</para>
+    /// <para>不支持负数。</para>
+    /// <para>必填：是</para>
+    /// </summary>
+    [JsonPropertyName("relative_fire_minute")]
+    public int RelativeFireMinute { get; set; }
 }

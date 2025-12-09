@@ -8,12 +8,13 @@
 namespace Mud.Feishu.DataModels.Task;
 
 /// <summary>
-/// 移除任务清单结果
+/// 添加任务提醒结果
 /// </summary>
-public class RemoveTaskListResult
+public class AddTaskReminderResult
 {
     /// <summary>
     /// <para>添加后的任务详情</para>
+    /// <para>必填：否</para>
     /// </summary>
     [JsonPropertyName("task")]
     public AddListTaskInfo? Task { get; set; }

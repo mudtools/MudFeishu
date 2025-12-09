@@ -186,7 +186,6 @@ public class ListTaskInfo
 
     /// <summary>
     /// <para>是否是里程碑任务</para>
-
     /// <para>示例值：false</para>
     /// </summary>
     [JsonPropertyName("is_milestone")]
@@ -194,7 +193,6 @@ public class ListTaskInfo
 
     /// <summary>
     /// <para>任务的自定义字段值</para>
-
     /// </summary>
     [JsonPropertyName("custom_fields")]
     public CustomFieldValue[]? CustomFields { get; set; }

@@ -148,4 +148,36 @@ public interface IFeishuV2Task
       [Body] RemoveTasklistRequest removeTasklistRequest,
       [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
       CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 为一个任务添加提醒。提醒是基于任务的截止时间计算得到的一个时刻。
+    /// <para>为了设置提醒，任务必须首先拥有截止时间(due)。可以在创建任务时设置截止时间，或者通过更新任务设置一个截止时间。</para>
+    /// </summary>
+    /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
+    /// <param name="addTaskReminderRequest">添加任务提醒请求体</param>
+    /// <param name="task_guid">要获取的任务全局唯一ID。 示例值："e297ddff-06ca-4166-b917-4ce57cd3a7a0"</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Post("https://open.feishu.cn/open-apis/task/v2/tasks/{task_guid}/add_reminders")]
+    Task<FeishuApiResult<AddTaskReminderResult>?> AddTaskReminderByIdAsync(
+      [Path] string task_guid,
+      [Body] AddTaskReminderRequest addTaskReminderRequest,
+      [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
+      CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 将一个提醒从任务中移除。
+    /// <para>如果要移除的提醒本来就不存在，本接口将直接返回成功。</para>
+    /// </summary>
+    /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
+    /// <param name="removeReminderRequest">移除任务提醒请求体</param>
+    /// <param name="task_guid">要获取的任务全局唯一ID。 示例值："e297ddff-06ca-4166-b917-4ce57cd3a7a0"</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Post("https://open.feishu.cn/open-apis/task/v2/tasks/{task_guid}/remove_reminders")]
+    Task<FeishuApiResult<RemoveTaskReminderResult>?> RemoveTaskReminderByIdAsync(
+     [Path] string task_guid,
+     [Body] RemoveReminderRequest removeReminderRequest,
+     [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
+     CancellationToken cancellationToken = default);
 }

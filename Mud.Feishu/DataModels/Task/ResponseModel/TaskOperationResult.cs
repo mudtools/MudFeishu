@@ -8,23 +8,13 @@
 namespace Mud.Feishu.DataModels.Task;
 
 /// <summary>
-/// <para>任务截止时间。</para>
+/// 任务操作响应结果
 /// </summary>
-public class TaskDueTime
+public class TaskOperationResult
 {
     /// <summary>
-    /// <para>截止时间/日期的时间戳，距1970-01-01 00:00:00 UTC的毫秒数。如果截止时间是一个日期，需要把日期转换成时间戳，并设置 is_all_day=true</para>
-    /// <para>必填：否</para>
-    /// <para>示例值：1675454764000</para>
+    /// <para>产生的任务</para>
     /// </summary>
-    [JsonPropertyName("timestamp")]
-    public string? Timestamp { get; set; }
-
-    /// <summary>
-    /// <para>是否截止到一个日期。如果设为true，timestamp中只有日期的部分会被解析和存储。</para>
-    /// <para>必填：否</para>
-    /// <para>示例值：true</para>
-    /// </summary>
-    [JsonPropertyName("is_all_day")]
-    public bool? IsAllDay { get; set; }
+    [JsonPropertyName("task")]
+    public TaskInfo? Task { get; set; }
 }

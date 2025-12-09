@@ -30,7 +30,7 @@ public class UpdateTaskData
     public string? Description { get; set; }
 
     /// <summary>
-    /// <para>任务截止时间。详见[功能概述](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/task-v2/overview)中的“ 如何使用开始时间和截止时间？”章节。</para>
+    /// <para>任务截止时间。</para>
     /// <para>必填：否</para>
     /// <para>示例值：1675742789470</para>
     /// </summary>

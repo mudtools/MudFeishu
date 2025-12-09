@@ -48,9 +48,11 @@ public static class ServiceCollectionExtensions
     /// <returns>服务集合</returns>
     public static FeishuWebbookServiceBuilder AddFeishuWebbookServiceBuilder(
         this IServiceCollection services,
-        Action<FeishuWebbookOptions>? configureOptions = null)
+        Action<FeishuWebbookOptions> configureOptions)
     {
-        // 使用建造者模式注册核心服务
+        if (configureOptions == null)
+            throw new ArgumentNullException(nameof(configureOptions));
+
         return services.AddFeishuWebbookBuilder()
                        .ConfigureOptions(configureOptions);
     }

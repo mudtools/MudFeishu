@@ -7,7 +7,12 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Mud.Feishu.Webbook\Mud.Feishu.Webbook.csproj" />
+    <PackageReference Include="Mud.Feishu.Abstractions" Version="1.0.6" />
+    <PackageReference Include="Mud.Feishu.Webbook" Version="1.0.6" />
   </ItemGroup>
+
+  <!--<ItemGroup>
+    <ProjectReference Include="..\Mud.Feishu.Webbook\Mud.Feishu.Webbook.csproj" />
+  </ItemGroup>-->
 
 </Project>

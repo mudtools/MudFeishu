@@ -5,10 +5,7 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-using Microsoft.Extensions.Logging;
 using Mud.Feishu.Webbook.Configuration;
-using System.Security.Cryptography;
-using System.Text;
 
 namespace Mud.Feishu.Webbook.Services;
 
@@ -77,7 +74,7 @@ public class FeishuEventValidator : IFeishuEventValidator
 
             // 构建签名字符串
             var signString = $"{timestamp}\n{nonce}\n{encrypt}";
-            
+
             // 使用 HMAC-SHA256 计算签名
             using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(encryptKey));
             var hashBytes = hmac.ComputeHash(Encoding.UTF8.GetBytes(signString));
@@ -85,7 +82,7 @@ public class FeishuEventValidator : IFeishuEventValidator
 
             // 比较签名
             var isValid = computedSignature == signature;
-            
+
             if (!isValid)
             {
                 _logger.LogWarning("签名验证失败: 计算 {ComputedSignature}, 期望 {ExpectedSignature}", computedSignature, signature);
@@ -114,10 +111,10 @@ public class FeishuEventValidator : IFeishuEventValidator
             var diff = Math.Abs((now - requestTime).TotalSeconds);
 
             var isValid = diff <= toleranceSeconds;
-            
+
             if (!isValid)
             {
-                _logger.LogWarning("时间戳超出容错范围: 请求时间 {RequestTime}, 当前时间 {CurrentTime}, 差异 {Diff}秒", 
+                _logger.LogWarning("时间戳超出容错范围: 请求时间 {RequestTime}, 当前时间 {CurrentTime}, 差异 {Diff}秒",
                     requestTime, now, diff);
             }
 

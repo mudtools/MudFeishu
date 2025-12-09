@@ -5,17 +5,11 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-using Microsoft.AspNetCore.Builder;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Options;
 using Mud.Feishu.Abstractions;
 using Mud.Feishu.Webbook.Configuration;
 using Mud.Feishu.Webbook.Services;
-using Mud.Feishu.Webbook.Models;
 
-namespace Mud.Feishu.Webbook.Extensions;
+namespace Mud.Feishu.Webbook;
 
 /// <summary>
 /// 服务集合扩展方法
@@ -187,7 +181,7 @@ public static class ApplicationBuilderExtensions
                 var useMiddlewareMethod = typeof(Microsoft.AspNetCore.Builder.UseMiddlewareExtensions)
                     .GetMethods()
                     .FirstOrDefault(m => m.Name == "UseMiddleware" && m.GetParameters().Length == 2);
-                
+
                 if (useMiddlewareMethod != null)
                 {
                     var genericMethod = useMiddlewareMethod.MakeGenericMethod(middlewareType);
@@ -231,7 +225,7 @@ public class FeishuWebbookHealthCheck : Microsoft.Extensions.Diagnostics.HealthC
         {
             // 这里可以添加具体的健康检查逻辑
             // 例如检查服务是否正常运行，依赖项是否可用等
-            
+
             return Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Healthy("飞书 Webbook 服务运行正常");
         }
         catch (Exception ex)

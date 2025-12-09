@@ -5,16 +5,9 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-using Microsoft.AspNetCore.Builder;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Diagnostics.HealthChecks;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Mud.Feishu.Abstractions;
 using Mud.Feishu.Abstractions.EventHandlers;
 using Mud.Feishu.Webbook.Configuration;
-using Mud.Feishu.Webbook.Middleware;
 using Mud.Feishu.Webbook.Models;
 using Mud.Feishu.Webbook.Services;
 
@@ -294,20 +287,20 @@ public class FeishuWebbookServiceBuilder
         {
             // 设置默认值
             options.AutoRegisterEndpoint = _autoRegisterEndpoint;
-            
+
             // 如果用户没有配置，使用默认配置
             if (string.IsNullOrEmpty(options.RoutePrefix))
                 options.RoutePrefix = "feishu/webbook";
-            
+
             if (options.AllowedHttpMethods == null || !options.AllowedHttpMethods.Any())
                 options.AllowedHttpMethods = new HashSet<string> { "POST" };
-            
+
             if (options.MaxRequestBodySize == 0)
                 options.MaxRequestBodySize = 10 * 1024 * 1024; // 10MB
-            
+
             if (options.EventHandlingTimeoutMs == 0)
                 options.EventHandlingTimeoutMs = 30000;
-            
+
             if (options.MaxConcurrentEvents == 0)
                 options.MaxConcurrentEvents = 10;
         });
@@ -361,11 +354,11 @@ public class FeishuWebbookServiceBuilder
             // 动态添加控制器支持
             var controllerBuilderType = Type.GetType("Microsoft.Extensions.DependencyInjection.MvcServiceCollectionExtensions, Microsoft.AspNetCore.Mvc");
             var addControllersMethod = controllerBuilderType?.GetMethod("AddControllers");
-            
+
             if (addControllersMethod != null)
             {
                 var builder = addControllersMethod.Invoke(null, new object[] { _services });
-                
+
                 // 尝试添加应用程序部件
                 var addApplicationPartMethod = builder?.GetType().GetMethod("AddApplicationPart");
                 if (addApplicationPartMethod != null)

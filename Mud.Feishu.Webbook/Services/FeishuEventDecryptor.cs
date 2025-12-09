@@ -5,11 +5,7 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-using Microsoft.Extensions.Logging;
 using Mud.Feishu.Abstractions;
-using System.Security.Cryptography;
-using System.Text;
-using System.Text.Json;
 
 namespace Mud.Feishu.Webbook.Services;
 
@@ -34,10 +30,10 @@ public class FeishuEventDecryptor : IFeishuEventDecryptor
 
             // Base64 解码
             var encryptedBytes = Convert.FromBase64String(encryptedData);
-            
+
             // 使用 AES-256-CBC 解密
             var decryptedJson = await DecryptAes256CbcAsync(encryptedBytes, encryptKey, cancellationToken);
-            
+
             if (string.IsNullOrEmpty(decryptedJson))
             {
                 _logger.LogError("事件数据解密失败");
@@ -52,7 +48,7 @@ public class FeishuEventDecryptor : IFeishuEventDecryptor
 
             if (eventData != null)
             {
-                _logger.LogInformation("事件数据解密成功，事件类型: {EventType}, 事件ID: {EventId}", 
+                _logger.LogInformation("事件数据解密成功，事件类型: {EventType}, 事件ID: {EventId}",
                     eventData.EventType, eventData.EventId);
             }
 
@@ -86,17 +82,17 @@ public class FeishuEventDecryptor : IFeishuEventDecryptor
             // 从加密数据中提取 IV（前16字节）
             var iv = new byte[16];
             var actualEncryptedData = new byte[encryptedBytes.Length - 16];
-            
+
             Array.Copy(encryptedBytes, 0, iv, 0, 16);
             Array.Copy(encryptedBytes, 16, actualEncryptedData, 0, actualEncryptedData.Length);
-            
+
             aes.IV = iv;
 
             using var decryptor = aes.CreateDecryptor();
             using var msDecrypt = new MemoryStream(actualEncryptedData);
             using var csDecrypt = new CryptoStream(msDecrypt, decryptor, CryptoStreamMode.Read);
             using var srDecrypt = new StreamReader(csDecrypt, Encoding.UTF8);
-            
+
             return srDecrypt.ReadToEnd();
         }
         catch (Exception ex)

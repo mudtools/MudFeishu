@@ -205,12 +205,12 @@ public class FeishuWebSocketServiceBuilder
         {
             _services.AddSingleton<IFeishuEventHandlerFactory>(serviceProvider =>
             {
-                var logger = serviceProvider.GetRequiredService<ILogger<MultiFeishuEventHandlerFactory>>();
+                var logger = serviceProvider.GetRequiredService<ILogger<FeishuWebSocketEventHandlerFactory>>();
                 var handlers = serviceProvider.GetRequiredService<IEnumerable<IFeishuEventHandler>>()
                     .Where(h => _handlerTypes.Contains(h.GetType()))
                     .ToList();
                 var defaultHandler = serviceProvider.GetRequiredService(defaultHandlerType) as IFeishuEventHandler;
-                return new MultiFeishuEventHandlerFactory(logger, handlers, defaultHandler);
+                return new FeishuWebSocketEventHandlerFactory(logger, handlers, defaultHandler);
             });
         }
         else

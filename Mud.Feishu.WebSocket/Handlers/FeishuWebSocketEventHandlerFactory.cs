@@ -7,19 +7,19 @@
 
 // 注意：此文件已迁移到 Mud.Feishu.Abstractions 项目
 // 为了向后兼容，保留此文件并重新导出抽象层的实现
+using Microsoft.Extensions.Logging;
+using Mud.Feishu.Abstractions.EventHandlers;
 
-using Mud.Feishu.Abstractions;
-
-namespace Mud.Feishu.Webbook.Services;
+namespace Mud.Feishu.WebSocket.Handlers;
 
 /// <summary>
-/// Webbook 项目的默认事件处理器工厂实现
+/// WebSocket 项目的多处理器事件处理器工厂实现
 /// 继承自抽象层的统一实现，提供向后兼容性
 /// </summary>
-public class DefaultFeishuEventHandlerFactory(
-    ILogger<DefaultFeishuEventHandlerFactory> logger,
+public class FeishuWebSocketEventHandlerFactory(
+    ILogger<FeishuWebSocketEventHandlerFactory> logger,
     IEnumerable<IFeishuEventHandler> handlers,
     IFeishuEventHandler defaultHandler)
-    : Abstractions.EventHandlers.DefaultFeishuEventHandlerFactory(logger, handlers, defaultHandler)
+    : DefaultFeishuEventHandlerFactory(logger, handlers, defaultHandler)
 {
 }

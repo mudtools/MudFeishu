@@ -70,7 +70,7 @@ public static class ServiceCollectionExtensions
         {
             var handlers = provider.GetServices<IFeishuEventHandler>();
             var defaultHandler = new DefaultFeishuEventHandler();
-            var logger = provider.GetRequiredService<Microsoft.Extensions.Logging.ILogger<Mud.Feishu.Webbook.Services.DefaultFeishuEventHandlerFactory>>();
+            var logger = provider.GetRequiredService<Microsoft.Extensions.Logging.ILogger<Mud.Feishu.Webbook.Services.FeishuWebbookEventHandlerFactory>>();
             return new Mud.Feishu.Webbook.Services.DefaultFeishuEventHandlerFactory(logger, handlers, defaultHandler);
         });
 

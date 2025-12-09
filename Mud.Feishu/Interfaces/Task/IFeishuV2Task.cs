@@ -121,13 +121,31 @@ public interface IFeishuV2Task
     /// 将一个任务加入清单。返回任务的详细信息，包括任务所在的所有清单信息。
     /// <para>如果任务已经在该清单，接口将返回成功。</para>
     /// </summary>
+    /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
     /// <param name="addTasklistRequest">任务加入清单请求体</param>
     /// <param name="task_guid">要获取的任务全局唯一ID。 示例值："e297ddff-06ca-4166-b917-4ce57cd3a7a0"</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Get("https://open.feishu.cn/open-apis/task/v2/tasks/{task_guid}/add_tasklist")]
+    [Post("https://open.feishu.cn/open-apis/task/v2/tasks/{task_guid}/add_tasklist")]
     Task<FeishuApiResult<AddTaskListResult>?> AddTaskListsByIdAsync(
        [Path] string task_guid,
        [Body] AddTasklistRequest addTasklistRequest,
+       [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 将任务从一个清单中移出。返回任务详情。
+    /// <para>如果任务不在清单中，接口将返回成功。</para>
+    /// </summary>
+    /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
+    /// <param name="removeTasklistRequest">移除任务清单请求体</param>
+    /// <param name="task_guid">要获取的任务全局唯一ID。 示例值："e297ddff-06ca-4166-b917-4ce57cd3a7a0"</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Post("https://open.feishu.cn/open-apis/task/v2/tasks/{task_guid}/remove_tasklist")]
+    Task<FeishuApiResult<RemoveTaskListResult>?> RemoveTaskListsByIdAsync(
+      [Path] string task_guid,
+      [Body] RemoveTasklistRequest removeTasklistRequest,
+      [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
+      CancellationToken cancellationToken = default);
 }

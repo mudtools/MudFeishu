@@ -11,8 +11,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using Mud.Feishu.Abstractions;
 using Mud.Feishu.Webbook.Configuration;
-using Mud.Feishu.Webbook.Controllers;
-using Mud.Feishu.Webbook.Middleware;
+
 using Mud.Feishu.Webbook.Services;
 using Mud.Feishu.Webbook.Models;
 
@@ -66,8 +65,14 @@ public static class ServiceCollectionExtensions
         // 注册性能监控组件
         services.TryAddSingleton<MetricsCollector>();
 
-        // 注册事件处理器工厂（从抽象层）
-        services.TryAddScoped<IFeishuEventHandlerFactory, DefaultFeishuEventHandlerFactory>();
+        // 注册事件处理器工厂（使用抽象层的统一实现）
+        services.TryAddScoped<IFeishuEventHandlerFactory>(provider =>
+        {
+            var handlers = provider.GetServices<IFeishuEventHandler>();
+            var defaultHandler = new DefaultFeishuEventHandler();
+            var logger = provider.GetRequiredService<Microsoft.Extensions.Logging.ILogger<Mud.Feishu.Webbook.Services.DefaultFeishuEventHandlerFactory>>();
+            return new Mud.Feishu.Webbook.Services.DefaultFeishuEventHandlerFactory(logger, handlers, defaultHandler);
+        });
 
         // 添加控制器支持（可选）
         if (services.Any(s => s.ServiceType == typeof(Microsoft.AspNetCore.Mvc.Infrastructure.IActionDescriptorCollectionProvider)))

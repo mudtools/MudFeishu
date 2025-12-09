@@ -14,24 +14,16 @@ namespace Mud.Feishu.Webbook.Middleware;
 /// <summary>
 /// 飞书 Webbook 中间件
 /// </summary>
-public class FeishuWebbookMiddleware
+public class FeishuWebbookMiddleware(
+    RequestDelegate next,
+    IFeishuWebbookService webbookService,
+    ILogger<FeishuWebbookMiddleware> logger,
+    IOptions<FeishuWebbookOptions> options)
 {
-    private readonly RequestDelegate _next;
-    private readonly IFeishuWebbookService _webbookService;
-    private readonly ILogger<FeishuWebbookMiddleware> _logger;
-    private readonly FeishuWebbookOptions _options;
-
-    public FeishuWebbookMiddleware(
-        RequestDelegate next,
-        IFeishuWebbookService webbookService,
-        ILogger<FeishuWebbookMiddleware> logger,
-        IOptions<FeishuWebbookOptions> options)
-    {
-        _next = next;
-        _webbookService = webbookService;
-        _logger = logger;
-        _options = options.Value;
-    }
+    private readonly RequestDelegate _next = next;
+    private readonly IFeishuWebbookService _webbookService = webbookService;
+    private readonly ILogger<FeishuWebbookMiddleware> _logger = logger;
+    private readonly FeishuWebbookOptions _options = options.Value;
 
     /// <summary>
     /// 处理 HTTP 请求

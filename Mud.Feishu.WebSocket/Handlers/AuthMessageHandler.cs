@@ -17,7 +17,11 @@ public class AuthMessageHandler : JsonMessageHandler
 {
     private readonly Action<bool> _onAuthResult;
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// 初始化认证消息处理器
+    /// </summary>
+    /// <param name="logger">日志记录器</param>
+    /// <param name="onAuthResult">认证结果回调</param>
     public AuthMessageHandler(
         ILogger<AuthMessageHandler> logger,
         Action<bool> onAuthResult)

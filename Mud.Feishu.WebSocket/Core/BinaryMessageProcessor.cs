@@ -26,7 +26,14 @@ public class BinaryMessageProcessor : IDisposable
     private readonly MessageRouter? _messageRouter;
     private readonly WebSocketConnectionManager? _connectionManager;
 
+    /// <summary>
+    /// 二进制消息接收事件
+    /// </summary>
     public event EventHandler<WebSocketBinaryMessageEventArgs>? BinaryMessageReceived;
+
+    /// <summary>
+    /// 错误事件
+    /// </summary>
     public event EventHandler<WebSocketErrorEventArgs>? Error;
 
     /// <summary>

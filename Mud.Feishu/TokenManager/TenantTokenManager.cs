@@ -10,6 +10,9 @@ using Microsoft.Extensions.Options;
 
 namespace Mud.Feishu.TokenManager;
 
+/// <summary>
+/// 租户令牌管理。
+/// </summary>
 internal class TenantTokenManager : TokenManagerWithCache, ITenantTokenManager
 {
     public TenantTokenManager(

@@ -18,6 +18,11 @@ public class MessageRouter
     private readonly List<IMessageHandler> _handlers;
     private readonly FeishuWebSocketOptions _options;
 
+    /// <summary>
+    /// 初始化消息路由器
+    /// </summary>
+    /// <param name="logger">日志记录器</param>
+    /// <param name="options">FeishuWebSocketOptions</param>
     public MessageRouter(ILogger<MessageRouter> logger, FeishuWebSocketOptions options)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));

@@ -18,7 +18,13 @@ public class PingPongMessageHandler : JsonMessageHandler
 {
     private readonly Func<string, Task> _sendMessageCallback;
     private readonly FeishuWebSocketOptions _options;
-    /// <inheritdoc/>
+   
+    /// <summary>
+    /// 初始化Ping/Pong消息处理器
+    /// </summary>
+    /// <param name="logger">日志记录器</param>
+    /// <param name="options">WebSocket配置选项</param>
+    /// <param name="sendMessageCallback">发送消息回调函数</param>
     public PingPongMessageHandler(
         ILogger<PingPongMessageHandler> logger,
         FeishuWebSocketOptions options,

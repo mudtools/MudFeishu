@@ -21,11 +21,29 @@ public class AuthenticationManager
     private readonly Func<string, Task> _sendMessageCallback;
     private bool _isAuthenticated = false;
     private readonly FeishuWebSocketOptions _options;
+
+    /// <summary>
+    /// 认证成功事件
+    /// </summary>
     public event EventHandler<EventArgs>? Authenticated;
+
+    /// <summary>
+    /// 认证失败事件
+    /// </summary>
     public event EventHandler<WebSocketErrorEventArgs>? AuthenticationFailed;
 
+    /// <summary>
+    /// 获取当前认证状态
+    /// </summary>
+    /// <returns>如果已认证返回true，否则返回false</returns>
     public bool IsAuthenticated => _isAuthenticated;
 
+    /// <summary>
+    /// 初始化认证管理器实例
+    /// </summary>
+    /// <param name="logger">日志记录器实例</param>
+    /// <param name="options">WebSocket配置选项</param>
+    /// <param name="sendMessageCallback">发送消息回调函数</param>
     public AuthenticationManager(
         ILogger<AuthenticationManager> logger,
         FeishuWebSocketOptions options,

@@ -62,8 +62,12 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
     public event EventHandler<WebSocketBinaryMessageEventArgs>? BinaryMessageReceived;
 
     /// <summary>
-    /// 默认构造函数
+    /// 初始化飞书WebSocket客户端
     /// </summary>
+    /// <param name="logger">日志记录器</param>
+    /// <param name="eventHandlerFactory">事件处理器工厂</param>
+    /// <param name="loggerFactory">日志记录器工厂</param>
+    /// <param name="options">WebSocket配置选项</param>
     public FeishuWebSocketClient(
         ILogger<FeishuWebSocketClient> logger,
         IFeishuEventHandlerFactory eventHandlerFactory,

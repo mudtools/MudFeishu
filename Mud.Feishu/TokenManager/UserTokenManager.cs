@@ -10,6 +10,9 @@ using Microsoft.Extensions.Options;
 
 namespace Mud.Feishu.TokenManager;
 
+/// <summary>
+/// 用户令牌管理器。
+/// </summary>
 internal class UserTokenManager : TokenManagerWithCache, IUserTokenManager
 {
     public UserTokenManager(

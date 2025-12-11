@@ -10,6 +10,9 @@ using Microsoft.Extensions.Options;
 
 namespace Mud.Feishu.TokenManager;
 
+/// <summary>
+/// 应用令牌管理器
+/// </summary>
 internal class AppTokenManager : TokenManagerWithCache, IAppTokenManager
 {
     public AppTokenManager(

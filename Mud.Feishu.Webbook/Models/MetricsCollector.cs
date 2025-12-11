@@ -18,6 +18,9 @@ public class MetricsCollector
     private readonly object _lock = new();
     private readonly Dictionary<string, long> _counters = new();
 
+    /// <summary>
+    /// 性能指标收集器
+    /// </summary>
     public MetricsCollector()
     {
         _activitySource = new ActivitySource("Mud.Feishu.Webbook");

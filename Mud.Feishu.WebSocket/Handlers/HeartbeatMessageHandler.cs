@@ -17,7 +17,11 @@ public class HeartbeatMessageHandler : JsonMessageHandler
 {
     private readonly FeishuWebSocketOptions _options;
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// 初始化心跳消息处理器
+    /// </summary>
+    /// <param name="logger">日志记录器</param>
+    /// <param name="options">FeishuWebSocketOptions</param>
     public HeartbeatMessageHandler(ILogger<HeartbeatMessageHandler> logger, FeishuWebSocketOptions options) : base(logger)
     {
         _options = options;

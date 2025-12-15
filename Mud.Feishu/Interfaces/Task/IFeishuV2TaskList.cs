@@ -86,4 +86,19 @@ public interface IFeishuV2TaskList
        [Body] AddTaskListMemberRequest addTaskListMemberRequest,
        [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 移除清单的一个或多个协作成员。通过设置members字段表示要移除的成员信息。
+    /// </summary>
+    /// <param name="tasklist_guid">清单全局唯一GUID，示例值："d300a75f-c56a-4be9-80d1-e47653028ceb"。</param>
+    /// <param name="removeTaskListMemberRequest">移除清单成员请求体</param>
+    /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Post("https://open.feishu.cn/open-apis/task/v2/tasklists/{tasklist_guid}/remove_members")]
+    Task<FeishuApiResult<TaskListOperationResult>?> RemoveTaskListMemberByIdAsync(
+         [Path] string tasklist_guid,
+         [Body] RemoveTaskListMemberRequest removeTaskListMemberRequest,
+         [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
+         CancellationToken cancellationToken = default);
 }

@@ -8,9 +8,9 @@
 namespace Mud.Feishu.DataModels.TaskList;
 
 /// <summary>
-/// 创建清单响应体
+/// 清单操作响应体
 /// </summary>
-public class CreateTaskListResult
+public class TaskListOperationResult
 {
     /// <summary>
     /// <para>创建的清单数据</para>

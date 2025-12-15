@@ -25,8 +25,21 @@ public interface IFeishuV2TaskList
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Post("https://open.feishu.cn/open-apis/task/v2/tasklists")]
-    Task<FeishuApiResult<CreateTaskListResult>?> CreateTaskListAsync(
-    [Body] CreateTaskListRequest createTaskListRequest,
-    [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
-    CancellationToken cancellationToken = default);
+    Task<FeishuApiResult<TaskListOperationResult>?> CreateTaskListAsync(
+        [Body] CreateTaskListRequest createTaskListRequest,
+        [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// <para>获取一个清单的详细信息，包括清单名，所有者，清单成员等。</para>
+    /// </summary>
+    /// <param name="tasklist_guid">清单全局唯一GUID，示例值："d300a75f-c56a-4be9-80d1-e47653028ceb"。</param>
+    /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Get("https://open.feishu.cn/open-apis/task/v2/tasklists/{tasklist_guid}")]
+    Task<FeishuApiResult<TaskListOperationResult>?> GetTaskListByIdAsync(
+        [Path] string tasklist_guid,
+        [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
+        CancellationToken cancellationToken = default);
 }

@@ -8,7 +8,7 @@
 namespace Mud.Feishu.DataModels.Task;
 
 /// <summary>
-/// <para>任务截止时间。</para>
+/// <para>任务时间数据结构。</para>
 /// </summary>
 public class TaskTime
 {

@@ -5,12 +5,27 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using Mud.Feishu.DataModels.Task;
+
 namespace Mud.Feishu.DataModels.TaskList;
 
 /// <summary>
-/// 创建任务列表请求体。
+/// 任务列表数据
 /// </summary>
-public class CreateTaskListRequest : TaskListData
+public class TaskListData
 {
+    /// <summary>
+    /// <para>清单名称，必填。最多100个字符。</para>
+    /// <para>必填：是</para>
+    /// <para>示例值：年会工作任务清单</para>
+    /// </summary>
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = string.Empty;
 
+    /// <summary>
+    /// <para>清单的成员列表。</para>
+    /// <para>必填：否</para>
+    /// </summary>
+    [JsonPropertyName("members")]
+    public TaskMember[]? Members { get; set; }
 }

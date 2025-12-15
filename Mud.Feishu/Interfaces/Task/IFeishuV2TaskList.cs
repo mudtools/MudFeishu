@@ -30,6 +30,7 @@ public interface IFeishuV2TaskList
         [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
         CancellationToken cancellationToken = default);
 
+
     /// <summary>
     /// <para>获取一个清单的详细信息，包括清单名，所有者，清单成员等。</para>
     /// </summary>
@@ -42,4 +43,47 @@ public interface IFeishuV2TaskList
         [Path] string tasklist_guid,
         [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// <para>更新清单，可以更新清单的名字和所有者。</para>
+    /// <para>更新清单时，将update_fields字段中填写所有要修改的清单字段名，同时在tasklist字段中填写要修改的字段的新值即可。</para>
+    /// </summary>
+    /// <param name="tasklist_guid">清单全局唯一GUID，示例值："d300a75f-c56a-4be9-80d1-e47653028ceb"。</param>
+    /// <param name="updateTaskListRequest">更新任务列表请求体</param>
+    /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Patch("https://open.feishu.cn/open-apis/task/v2/tasklists/{tasklist_guid}")]
+    Task<FeishuApiResult<TaskListOperationResult>?> UpdateTaskListByIdAsync(
+        [Path] string tasklist_guid,
+        [Body] UpdateTaskListRequest updateTaskListRequest,
+        [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// <para>删除一个清单。删除清单后，不可对该清单做任何操作，也无法再访问到清单。清单被删除后不可恢复。</para>
+    /// </summary>
+    /// <param name="tasklist_guid">清单全局唯一GUID，示例值："d300a75f-c56a-4be9-80d1-e47653028ceb"。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Delete("https://open.feishu.cn/open-apis/task/v2/tasklists/{tasklist_guid}")]
+    Task<FeishuNullDataApiResult?> DeleteTaskListByIdAsync(
+         [Path] string tasklist_guid,
+         CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 向一个清单添加1个或多个协作成员。成员信息通过设置members字段实现。
+    /// </summary>
+    /// <param name="tasklist_guid">清单全局唯一GUID，示例值："d300a75f-c56a-4be9-80d1-e47653028ceb"。</param>
+    /// <param name="addTaskListMemberRequest">添加清单成员请求体</param>
+    /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Post("https://open.feishu.cn/open-apis/task/v2/tasklists/{tasklist_guid}/add_members")]
+    Task<FeishuApiResult<TaskListOperationResult>?> AddTaskListMemberByIdAsync(
+       [Path] string tasklist_guid,
+       [Body] AddTaskListMemberRequest addTaskListMemberRequest,
+       [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
+       CancellationToken cancellationToken = default);
 }

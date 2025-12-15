@@ -8,7 +8,7 @@
 namespace Mud.Feishu.DataModels.Task;
 
 /// <summary>
-/// <para>人员类型的自定义字段值。可以设置1个或多个用户的id（遵循member格式，只支持user类型）。当字段设为只不能多选时只能输入一个值。设为空数组表示设为空。</para>
+/// <para>任务成员数据结构。遵循member格式，只支持user类型）。</para>
 /// </summary>
 public class TaskMember
 {
@@ -40,7 +40,7 @@ public class TaskMember
 
 
 /// <summary>
-/// <para>人员类型的自定义字段值。可以设置1个或多个用户的id（遵循member格式，只支持user类型）。当字段设为只不能多选时只能输入一个值。设为空数组表示设为空。</para>
+/// <para>任务成员数据结构。遵循member格式，只支持user类型）。</para>
 /// </summary>
 public class TaskMemberInfo : TaskMember
 {

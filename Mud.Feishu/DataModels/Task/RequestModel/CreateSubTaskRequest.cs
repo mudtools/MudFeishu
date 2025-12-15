@@ -7,22 +7,22 @@
 
 namespace Mud.Feishu.DataModels.Task;
 
-
 /// <summary>
-/// <para>要更新的任务数据，只需要设置出现在`update_fields`中的字段即可。如果`update_fields`设置了要变更一个字段名，但是`task`里没设置新的值，则表示将该字段清空。</para>
+/// 创建子任务请求体
 /// </summary>
-public class UpdateTaskData
+public class CreateSubTaskRequest
 {
     /// <summary>
-    /// <para>任务标题。如更新标题，不可将任务标题设为空。标题最大支持3000个utf8 字符。</para>
-    /// <para>必填：否</para>
+    /// <para>任务标题</para>
+    /// <para>必填：是</para>
     /// <para>示例值：针对全年销售进行一次复盘</para>
+    /// <para>最大长度：10000</para>
     /// </summary>
     [JsonPropertyName("summary")]
-    public string? Summary { get; set; }
+    public string Summary { get; set; } = string.Empty;
 
     /// <summary>
-    /// <para>任务描述。描述最大支持3000个utf8字符。</para>
+    /// <para>任务摘要</para>
     /// <para>必填：否</para>
     /// <para>示例值：需要事先阅读复盘总结文档</para>
     /// </summary>
@@ -30,12 +30,19 @@ public class UpdateTaskData
     public string? Description { get; set; }
 
     /// <summary>
-    /// <para>任务截止时间。</para>
+    /// <para>任务截止时间戳(ms)，截止时间戳和截止日期选择一个填写。</para>
     /// <para>必填：否</para>
     /// <para>示例值：1675742789470</para>
     /// </summary>
     [JsonPropertyName("due")]
     public TaskTime? Due { get; set; }
+
+    /// <summary>
+    /// <para>任务关联的第三方平台来源信息。</para>
+    /// <para>必填：否</para>
+    /// </summary>
+    [JsonPropertyName("origin")]
+    public TaskOriginSrcData? Origin { get; set; }
 
     /// <summary>
     /// <para>调用者可以传入的任意附带到任务上的数据。在获取任务详情时会原样返回。</para>
@@ -50,14 +57,21 @@ public class UpdateTaskData
     /// <para>任务的完成时刻时间戳(ms)</para>
     /// <para>必填：否</para>
     /// <para>示例值：1675742789470</para>
-    /// <para>最大长度：20</para>
     /// <para>默认值：0</para>
     /// </summary>
     [JsonPropertyName("completed_at")]
     public string? CompletedAt { get; set; }
 
     /// <summary>
-    /// <para>如果设置，则该任务为“重复任务”。</para>
+    /// <para>任务成员列表</para>
+    /// <para>必填：否</para>
+    /// </summary>
+    [JsonPropertyName("members")]
+    public TaskMember[]? Members { get; set; }
+
+
+    /// <summary>
+    /// <para>如果设置，则该任务为“重复任务”。该字段表示了重复任务的重复规则。详见[功能概述](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/task-v2/overview)中的“如何使用重复任务？”章节。</para>
     /// <para>必填：否</para>
     /// <para>示例值：FREQ=WEEKLY;INTERVAL=1;BYDAY=MO,TU,WE,TH,FR</para>
     /// <para>最大长度：1000</para>
@@ -66,48 +80,39 @@ public class UpdateTaskData
     public string? RepeatRule { get; set; }
 
     /// <summary>
-    /// <para>任务自定义完成配置。</para>
+    /// <para>任务自定义完成规则。</para>
     /// <para>必填：否</para>
     /// </summary>
     [JsonPropertyName("custom_complete")]
     public TaskPlatformCompleteData? CustomComplete { get; set; }
 
     /// <summary>
-    /// <para>任务的开始时间(ms)。</para>
+    /// <para>任务所在清单的信息。如果设置，则表示创建的任务要直接加入到指定清单。</para>
+    /// <para>必填：否</para>
+    /// </summary>
+    [JsonPropertyName("tasklists")]
+    public TaskInTaskListInfo[]? Tasklists { get; set; }
+
+    /// <summary>
+    /// <para>幂等token。如果提供则触发后端实现幂等行为。</para>
+    /// <para>必填：否</para>
+    /// <para>示例值：daa2237f-8310-4707-a83b-52c8a81e0fb7</para>
+    /// </summary>
+    [JsonPropertyName("client_token")]
+    public string? ClientToken { get; set; }
+
+    /// <summary>
+    /// <para>任务的开始时间(ms)</para>
     /// <para>必填：否</para>
     /// </summary>
     [JsonPropertyName("start")]
-    public TasksStartTime? Start { get; set; }
+    public TaskTime? Start { get; set; }
 
     /// <summary>
-    /// <para>任务的完成模式。1 - 会签任务；2 - 或签任务</para>
+    /// <para>任务提醒</para>
     /// <para>必填：否</para>
-    /// <para>示例值：2</para>
-    /// <para>最大值：2</para>
-    /// <para>最小值：1</para>
     /// </summary>
-    [JsonPropertyName("mode")]
-    public int? Mode { get; set; }
+    [JsonPropertyName("reminders")]
+    public SubTaskReminder[]? Reminders { get; set; }
 
-    /// <summary>
-    /// <para>是否是里程碑任务</para>
-    /// <para>必填：否</para>
-    /// <para>示例值：false</para>
-    /// </summary>
-    [JsonPropertyName("is_milestone")]
-    public bool? IsMilestone { get; set; }
-
-    /// <summary>
-    /// <para>自定义字段值。</para>
-    /// <para>如要更新，每个字段的值根据字段类型填写相应的字段。</para>
-    /// <para>* 当`type`为"number"时，应使用`number_value`字段，表示数字类型自定义字段的值；</para>
-    /// <para>* 当`type`为"member"时，应使用`member_value`字段，表示人员类型自定义字段的值；</para>
-    /// <para>* 当`type`为"datetime"时，应使用`datetime_value`字段，表示日期类型自定义字段的值；</para>
-    /// <para>* 当`type`为"single_select"时，应使用`single_select_value`字段，表示单选类型自定义字段的值；</para>
-    /// <para>* 当`type`为"multi_select"时，应使用`multi_select_value`字段，表示多选类型自定义字段的值；</para>
-    /// <para>* 当`type`为"text"时，应使用`text_value`字段，表示文本类型自定义字段的值。</para>
-    /// <para>必填：否</para>
-    /// </summary>
-    [JsonPropertyName("custom_fields")]
-    public InputCustomFieldValueUpdate[]? CustomFields { get; set; }
 }

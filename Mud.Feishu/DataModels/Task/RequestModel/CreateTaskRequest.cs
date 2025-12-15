@@ -34,7 +34,7 @@ public class CreateTaskRequest
     /// <para>示例值：1675742789470</para>
     /// </summary>
     [JsonPropertyName("due")]
-    public TaskDueTime? Due { get; set; }
+    public TaskTime? Due { get; set; }
 
 
     /// <summary>

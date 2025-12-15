@@ -8,31 +8,23 @@
 namespace Mud.Feishu.DataModels.Task;
 
 /// <summary>
-/// <para>任务提醒。要设置提醒必须同时设置任务的截止时间。一个任务最多只能设置1个提醒。</para>
+/// <para>任务截止时间。</para>
 /// </summary>
-public class TaskReminder
+public class TaskTime
 {
     /// <summary>
-    /// <para>相对于截止时间的提醒时间分钟数，取值必须大于等于0（调用本接口只能设置截止日期前的提醒时间）。例如30表示截止时间前30分钟提醒；0表示截止时提醒。</para>
-    /// <para>必填：是</para>
-    /// <para>示例值：30</para>
-    /// </summary>
-    [JsonPropertyName("relative_fire_minute")]
-    public int RelativeFireMinute { get; set; }
-}
-
-
-/// <summary>
-/// <para>任务的提醒配置列表。目前每个任务最多有1个。</para>
-/// </summary>
-public class TaskReminderInfo : TaskReminder
-{
-    /// <summary>
-    /// <para>提醒时间设置的 ID</para>
+    /// <para>截止时间/日期的时间戳，距1970-01-01 00:00:00 UTC的毫秒数。如果截止时间是一个日期，需要把日期转换成时间戳，并设置 is_all_day=true</para>
     /// <para>必填：否</para>
-    /// <para>示例值：10</para>
-    /// <para>最大长度：20</para>
+    /// <para>示例值：1675454764000</para>
     /// </summary>
-    [JsonPropertyName("id")]
-    public string? Id { get; set; }
+    [JsonPropertyName("timestamp")]
+    public string? Timestamp { get; set; }
+
+    /// <summary>
+    /// <para>是否截止到一个日期。如果设为true，timestamp中只有日期的部分会被解析和存储。</para>
+    /// <para>必填：否</para>
+    /// <para>示例值：true</para>
+    /// </summary>
+    [JsonPropertyName("is_all_day")]
+    public bool? IsAllDay { get; set; }
 }

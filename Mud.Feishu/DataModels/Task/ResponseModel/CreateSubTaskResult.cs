@@ -8,19 +8,15 @@
 namespace Mud.Feishu.DataModels.Task;
 
 /// <summary>
-/// <para>任务关联的第三方平台来源信息。创建是设置后就不可更改。</para>
+/// 创建子任务响应体
 /// </summary>
-public class TaskOrigin
+public class CreateSubTaskResult
 {
     /// <summary>
-    /// <para>任务导入来源的名称，用于在任务中心详情页展示。需提供多语言版本。</para>
+    /// <para>创建的任务</para>
+    /// <para>必填：否</para>
     /// </summary>
-    [JsonPropertyName("platform_i18n_name")]
-    public I18nText? PlatformI18nName { get; set; }
+    [JsonPropertyName("subtask")]
+    public SubTaskInfo? Subtask { get; set; }
 
-    /// <summary>
-    /// <para>任务关联的来源平台详情页链接</para>
-    /// </summary>
-    [JsonPropertyName("href")]
-    public TasksOriginHref? Href { get; set; }
 }

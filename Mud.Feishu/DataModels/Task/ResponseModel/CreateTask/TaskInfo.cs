@@ -35,7 +35,7 @@ public class TaskInfo
     /// <para>任务截止时间。</para>
     /// </summary>
     [JsonPropertyName("due")]
-    public TaskDueTime? Due { get; set; }
+    public TaskTime? Due { get; set; }
 
 
     /// <summary>

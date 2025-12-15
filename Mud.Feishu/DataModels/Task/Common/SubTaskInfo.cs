@@ -8,9 +8,9 @@
 namespace Mud.Feishu.DataModels.Task;
 
 /// <summary>
-/// 添加后的任务详情信息
+/// <para>创建的子任务</para>
 /// </summary>
-public class AddListTaskInfo
+public class SubTaskInfo
 {
     /// <summary>
     /// <para>任务guid，任务的唯一ID</para>
@@ -60,6 +60,7 @@ public class AddListTaskInfo
     [JsonPropertyName("creator")]
     public TaskMember? Creator { get; set; }
 
+
     /// <summary>
     /// <para>任务成员列表</para>
     /// <para>必填：否</para>
@@ -105,7 +106,6 @@ public class AddListTaskInfo
     /// </summary>
     [JsonPropertyName("tasklists")]
     public TaskInTaskListInfo[]? Tasklists { get; set; }
-
 
     /// <summary>
     /// <para>如果任务为重复任务，返回重复任务的配置</para>
@@ -194,39 +194,19 @@ public class AddListTaskInfo
     /// <summary>
     /// <para>任务的分享链接</para>
     /// <para>必填：否</para>
-    /// <para>示例值：https://applink.feishu.cn/client/todo/detail?guid=70577c8f-91ab-4c91-b359-a21a751054e8&amp;suite_entity_num=t192012</para>
+    /// <para>示例值：https://applink.feishu.cn/client/todo/detail?guid=70588c8f-91ab-4c91-b359-a21a751054e8&amp;suite_entity_num=t192012</para>
     /// </summary>
     [JsonPropertyName("url")]
     public string? Url { get; set; }
 
     /// <summary>
-    /// <para>任务的开始时间</para>
+    /// <para>任务的开始时间。</para>
+    /// <para>如果同时设置任务的开始时间和截止时间，开始时间必须&lt;=截止时间，并且开始/截止时间的is_all_day设置必须相同。</para>
     /// <para>必填：否</para>
     /// </summary>
     [JsonPropertyName("start")]
-    public PostTaskV2TasksByTaskGuidAddTasklistResponseDtoTaskStart? Start { get; set; }
+    public TaskTime? Start { get; set; }
 
-    /// <summary>
-    /// <para>任务的开始时间</para>
-    /// </summary>
-    public record PostTaskV2TasksByTaskGuidAddTasklistResponseDtoTaskStart
-    {
-        /// <summary>
-        /// <para>开始时间/日期的时间戳，距1970-01-01 00:00:00的毫秒数。如果开始时间是一个日期，需要把日期转换成时间戳，并设置 is_all_day=true</para>
-        /// <para>必填：否</para>
-        /// <para>示例值：1675454764000</para>
-        /// </summary>
-        [JsonPropertyName("timestamp")]
-        public string? Timestamp { get; set; }
-
-        /// <summary>
-        /// <para>是否开始于一个日期。如果设为true，timestamp中只有日期的部分会被解析和存储。</para>
-        /// <para>必填：否</para>
-        /// <para>示例值：true</para>
-        /// </summary>
-        [JsonPropertyName("is_all_day")]
-        public bool? IsAllDay { get; set; }
-    }
 
     /// <summary>
     /// <para>该任务的子任务的个数。</para>

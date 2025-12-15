@@ -38,7 +38,7 @@ public class ListTaskInfo
     /// <para>示例值：1675742789470</para>
     /// </summary>
     [JsonPropertyName("due")]
-    public TaskDueTime? Due { get; set; }
+    public TaskTime? Due { get; set; }
 
     /// <summary>
     /// <para>任务的提醒配置列表。目前每个任务最多有1个。</para>
@@ -76,7 +76,7 @@ public class ListTaskInfo
     /// <para>任务关联的第三方平台来源信息。创建是设置后就不可更改。</para>
     /// </summary>
     [JsonPropertyName("origin")]
-    public TaskOrigin? Origin { get; set; }
+    public TaskOriginSrcData? Origin { get; set; }
 
     /// <summary>
     /// <para>任务附带的自定义数据。</para>

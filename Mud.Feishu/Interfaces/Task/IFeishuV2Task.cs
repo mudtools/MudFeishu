@@ -209,5 +209,36 @@ public interface IFeishuV2Task
          [Body] RemoveTaskDependenciesRequest removeTaskDependenciesRequest,
          CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// <para>给一个任务创建一个子任务。</para>
+    /// <para>接口功能除了额外需要输入父任务的GUID之外，和创建任务接口功能完全一致。</para>
+    /// </summary>
+    /// <param name="createSubTaskRequest">创建子任务请求体。</param>
+    /// <param name="task_guid">任务全局唯一ID。 示例值："e297ddff-06ca-4166-b917-4ce57cd3a7a0"</param>
+    /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Post("https://open.feishu.cn/open-apis/task/v2/tasks/{task_guid}/subtasks")]
+    Task<FeishuApiResult<CreateSubTaskResult>?> CreateSubTaskAsync(
+        [Path] string task_guid,
+        [Body] CreateSubTaskRequest createSubTaskRequest,
+        [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
+        CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// <para>分页获取一个任务的子任务列表。</para>
+    /// </summary>
+    /// <param name="task_guid">任务全局唯一ID。 示例值："e297ddff-06ca-4166-b917-4ce57cd3a7a0"</param>
+    /// <param name="page_size">分页大小，即本次请求所返回的用户信息列表内的最大条目数。默认值：10</param>
+    /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
+    /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Get("https://open.feishu.cn/open-apis/task/v2/tasks")]
+    Task<FeishuApiPageListResult<SubTaskInfo>?> GetSubTasksPageListByIdAsync(
+          [Path] string task_guid,
+          [Query("page_size")] int page_size = 10,
+          [Query("page_token")] string? page_token = null,
+          [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
+          CancellationToken cancellationToken = default);
 }

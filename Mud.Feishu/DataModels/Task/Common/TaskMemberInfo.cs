@@ -7,6 +7,7 @@
 
 namespace Mud.Feishu.DataModels.Task;
 
+
 /// <summary>
 /// <para>任务成员数据结构。遵循member格式，只支持user类型）。</para>
 /// </summary>

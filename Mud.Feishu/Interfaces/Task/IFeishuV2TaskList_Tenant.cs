@@ -13,6 +13,6 @@ namespace Mud.Feishu;
 /// </summary> 
 [HttpClientApi(TokenManage = nameof(ITenantTokenManager), RegistryGroupName = "Task", InheritedFrom = nameof(FeishuV2TaskList))]
 [Header("Authorization")]
-public interface IFeishuTenantV2TaskList
+public interface IFeishuTenantV2TaskList : IFeishuV2TaskList
 {
 }

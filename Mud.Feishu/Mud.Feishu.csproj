@@ -4,7 +4,9 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 		<AssemblyName>Mud.Feishu</AssemblyName>
+		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
 		<GenerateDocumentationFile>True</GenerateDocumentationFile>
+		<PackageProjectUrl>http://www.mudtools.cn/</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/mudtools/MudFeishu</RepositoryUrl>
 		<RepositoryType>git</RepositoryType>
 		<PackageIcon>Icon.png</PackageIcon>

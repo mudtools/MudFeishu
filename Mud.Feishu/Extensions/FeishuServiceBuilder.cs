@@ -168,6 +168,36 @@ public class FeishuServiceBuilder
     }
 
     /// <summary>
+    /// 添加任务管理 API 服务
+    /// </summary>
+    /// <returns>建造者实例，支持链式调用</returns>
+    public FeishuServiceBuilder AddTaskApi()
+    {
+        if (!_configuration.TaskApiAdded)
+        {
+            AddTokenManagers();
+            _services.AddTaskWebApiHttpClient();
+            _configuration.TaskApiAdded = true;
+        }
+        return this;
+    }
+
+    /// <summary>
+    /// 添加卡片管理 API 服务
+    /// </summary>
+    /// <returns>建造者实例，支持链式调用</returns>
+    public FeishuServiceBuilder AddCardApi()
+    {
+        if (!_configuration.CardApiAdded)
+        {
+            AddTokenManagers();
+            _services.AddCardsWebApiHttpClient();
+            _configuration.CardApiAdded = true;
+        }
+        return this;
+    }
+
+    /// <summary>
     /// 添加所有 API 服务
     /// </summary>
     /// <returns>建造者实例，支持链式调用</returns>
@@ -176,7 +206,9 @@ public class FeishuServiceBuilder
         return AddTokenManagers()
                .AddOrganizationApi()
                .AddMessageApi()
-               .AddChatGroupApi();
+               .AddChatGroupApi()
+               .AddTaskApi()
+               .AddCardApi();
     }
 
     /// <summary>
@@ -321,6 +353,8 @@ internal class FeishuServiceConfiguration
     public bool OrganizationApiAdded { get; set; }
     public bool MessageApiAdded { get; set; }
     public bool ChatGroupApiAdded { get; set; }
+    public bool CardApiAdded { get; set; }
+    public bool TaskApiAdded { get; set; }
     public bool AuthenticationApiAdded { get; set; }
 
     /// <summary>

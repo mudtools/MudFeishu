@@ -6,7 +6,7 @@
 		<RootNamespace>Mud.Feishu.Test</RootNamespace>
 	</PropertyGroup>
 	<ItemGroup>
-	  <PackageReference Include="Mud.Feishu" Version="1.0.6" />
+	  <PackageReference Include="Mud.Feishu" Version="1.0.7" />
 	</ItemGroup>
 	<!--<ItemGroup>
 		<ProjectReference Include="..\Mud.Feishu\Mud.Feishu.csproj" />

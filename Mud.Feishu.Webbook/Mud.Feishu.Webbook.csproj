@@ -5,7 +5,7 @@
 		<Nullable>enable</Nullable>
 		<AssemblyName>Mud.Feishu.Webbook</AssemblyName>
 		<GenerateDocumentationFile>True</GenerateDocumentationFile>
-		<RepositoryUrl>https://gitee.com/mudtools/MudFeishu</RepositoryUrl>
+		<RepositoryUrl>https://github.com/mudtools/MudFeishu</RepositoryUrl>
 		<RepositoryType>git</RepositoryType>
 		<PackageIcon>Icon.png</PackageIcon>
 		<PackageReadmeFile>README.md</PackageReadmeFile>

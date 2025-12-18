@@ -287,7 +287,7 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
     /// 重写Dispose方法，确保资源正确释放
     /// </summary>
     /// <param name="disposing">是否正在释放托管资源</param>
-    protected void Dispose(bool disposing)
+    private void Dispose(bool disposing)
     {
         if (_disposed)
             return;

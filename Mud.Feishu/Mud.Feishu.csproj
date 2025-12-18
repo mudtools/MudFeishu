@@ -9,7 +9,7 @@
 		<RepositoryType>git</RepositoryType>
 		<PackageIcon>Icon.png</PackageIcon>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
-		<Description>MudFeishu 用于简化.NET与飞书（Feishu）API 集成。提供一组类型安全的客户端和服务，便于在 .NET 应用程序中调用飞书 API。</Description>
+		<Description>飞书服务端 SDK 的 .NET 适配版，全面支持 .NET 6 至 .NET 10 平台。该版本提供类型安全的 API 封装，让开发者能够在 .NET 应用程序中便捷、高效地集成飞书服务端功能。</Description>
 		<PackageTags>飞书;飞书.net sdk;Feishu;Feishu.net;Feishu SDK;Feishu .net SDK;API;SDK;.NET;.NET Core;ASP.NET Core;MudFeishu;开放平台</PackageTags>
 		<!-- HttpClient配置选项类名称 -->
 		<HttpClientOptionsName>FeishuOptions</HttpClientOptionsName>

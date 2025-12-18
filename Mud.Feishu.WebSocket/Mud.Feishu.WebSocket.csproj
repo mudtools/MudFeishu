@@ -10,7 +10,7 @@
 		<RepositoryType>git</RepositoryType>
 		<PackageIcon>Icon.png</PackageIcon>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
-		<Description>Mud.Feishu.WebSocket 是 MudFeishu 库的 WebSocket 组件，专为飞书事件订阅设计。提供完整的 WebSocket 客户端实现，支持自动重连、心跳检测、事件分发和策略模式的事件处理机制，便于在 .NET 应用中接收和处理飞书实时事件。</Description>
+		<Description>适用于 .NET 平台的飞书 WebSocket 长连接事件订阅组件，提供开箱即用的客户端实现，支持自动重连、心跳检测与事件分发，并基于策略模式构建可扩展的事件处理机制，帮助开发者在 .NET 应用中便捷、可靠地接收和处理飞书实时事件。</Description>
 		<PackageTags>飞书;飞书.net sdk;Feishu;Feishu.net;Feishu SDK;WebSocket;事件订阅;实时事件;.NET;.NET Core;ASP.NET Core;MudFeishu;</PackageTags>
 		<BaseOutputPath>..\bin</BaseOutputPath>
 	</PropertyGroup>

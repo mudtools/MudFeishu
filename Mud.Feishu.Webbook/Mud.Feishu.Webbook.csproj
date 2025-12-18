@@ -9,7 +9,7 @@
 		<RepositoryType>git</RepositoryType>
 		<PackageIcon>Icon.png</PackageIcon>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
-		<Description>Mud.Feishu.Webbook 是 MudFeishu 库的飞书事件接收与处理组件，专为飞书平台的事件订阅和 Webhook 回调设计。提供完整的 HTTP 事件接收端点，支持自动事件分发、安全验证、数据解密、依赖注入集成、中间件支持和高并发处理，使开发人员能够在 ASP.NET Core 应用中快速构建生产级的飞书机器人应用。</Description>
+		<Description>适用于 .NET 平台的飞书 Webbook 事件订阅组件，提供开箱即用的客户端实现，基于策略模式构建可扩展的事件处理机制，帮助开发者在 .NET 应用中便捷、可靠地接收和处理飞书实时事件。</Description>
 		<PackageTags>飞书;飞书.net sdk;Feishu;Feishu.net;Feishu SDK;Webbook;事件订阅;实时事件;.NET;.NET Core;ASP.NET Core;MudFeishu;</PackageTags>
 		<BaseOutputPath>..\bin</BaseOutputPath>
 	</PropertyGroup>

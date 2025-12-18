@@ -1,21 +1,23 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-	  <TargetFrameworks>net6.0;net7.0;net8.0;net9.0;net10.0</TargetFrameworks>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-	  <AssemblyName>Mud.Feishu.Abstractions</AssemblyName>
-	  <GenerateDocumentationFile>True</GenerateDocumentationFile>
-	  <RepositoryUrl>https://github.com/mudtools/MudFeishu</RepositoryUrl>
-	  <RepositoryType>git</RepositoryType>
-	  <PackageIcon>Icon.png</PackageIcon>
-	  <PackageReadmeFile>README.md</PackageReadmeFile>
-	  <Description>适用于 .NET 平台的飞书事件订阅组件抽象层，提供 WebSocket 与 Webhook 双模式支持，专用于处理飞书事件订阅。该组件基于策略模式构建了完整的事件处理机制，使开发者能够便捷、高效地在 .NET 应用中接收和处理飞书实时事件。</Description>
-	  <PackageTags>飞书;飞书.net sdk;Feishu;Feishu.net;Feishu SDK;WebSocket;Webhook;事件订阅;实时事件;抽象层;策略模式;.NET;.NET Core;ASP.NET Core;MudFeishu</PackageTags>
-	  <BaseOutputPath>..\bin</BaseOutputPath>
-  </PropertyGroup>
+	<PropertyGroup>
+		<TargetFrameworks>net6.0;net7.0;net8.0;net9.0;net10.0</TargetFrameworks>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<AssemblyName>Mud.Feishu.Abstractions</AssemblyName>
+		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+		<GenerateDocumentationFile>True</GenerateDocumentationFile>
+		<PackageProjectUrl>http://www.mudtools.cn/</PackageProjectUrl>
+		<RepositoryUrl>https://github.com/mudtools/MudFeishu</RepositoryUrl>
+		<RepositoryType>git</RepositoryType>
+		<PackageIcon>Icon.png</PackageIcon>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<Description>适用于 .NET 平台的飞书事件订阅组件抽象层，提供 WebSocket 与 Webhook 双模式支持，专用于处理飞书事件订阅。该组件基于策略模式构建了完整的事件处理机制，使开发者能够便捷、高效地在 .NET 应用中接收和处理飞书实时事件。</Description>
+		<PackageTags>飞书;飞书.net sdk;Feishu;Feishu.net;Feishu SDK;WebSocket;Webhook;事件订阅;实时事件;抽象层;策略模式;.NET;.NET Core;ASP.NET Core;MudFeishu</PackageTags>
+		<BaseOutputPath>..\bin</BaseOutputPath>
+	</PropertyGroup>
 
-  <Import Project="..\Mud.CodeGenerator\Mud.CodeGenerator.projitems" Label="Shared" />
+	<Import Project="..\Mud.CodeGenerator\Mud.CodeGenerator.projitems" Label="Shared" />
 	<ItemGroup>
 		<PackageReference Include="Mud.ServiceCodeGenerator" Version="1.4.1"  OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
 		<None Include=".\README.md" Pack="true" PackagePath="\" />

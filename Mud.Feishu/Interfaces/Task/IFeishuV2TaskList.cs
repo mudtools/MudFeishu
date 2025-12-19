@@ -103,7 +103,7 @@ public interface IFeishuV2TaskList
          CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// <para>分页获取一个任务的子任务列表。</para>
+    /// <para>分页获取一个清单的任务列表，返回任务的摘要信息。</para>
     /// </summary>
     /// <param name="completed">特定完成状态的任务，填写“true”表示返回已经完成的任务；“false”表示只返回未完成的任务；不填写表示不按完成状态过滤。</param>
     /// <param name="created_from">任务创建的起始时间戳（ms），闭区间，不填写默认为首个任务的创建时间戳，示例值：1675742789470</param>
@@ -126,7 +126,7 @@ public interface IFeishuV2TaskList
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// <para>分页获取一个任务的子任务列表。</para>
+    /// <para>获取调用身份所有可读取的清单列表。</para>
     /// </summary>
     /// <param name="tasklist_guid">任务清单全局唯一GUID。 示例值："e297ddff-06ca-4166-b917-4ce57cd3a7a0"</param>
     /// <param name="page_size">分页大小，即本次请求所返回的用户信息列表内的最大条目数。默认值：10</param>
@@ -135,7 +135,7 @@ public interface IFeishuV2TaskList
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Get("https://open.feishu.cn/open-apis/task/v2/tasklists/{tasklist_guid}/tasks")]
-    Task<FeishuApiListResult<TaskListInfo>?> GetTaskListPageListByIdAsync(
+    Task<FeishuApiPageListResult<TaskListInfo>?> GetTaskListPageListByIdAsync(
        [Path] string tasklist_guid,
        [Query("page_size")] int page_size = 10,
        [Query("page_token")] string? page_token = null,

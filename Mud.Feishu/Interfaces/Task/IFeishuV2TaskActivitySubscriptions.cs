@@ -46,4 +46,19 @@ public interface IFeishuV2TaskActivitySubscriptions
        [Path] string activity_subscription_guid,
        [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// <para>给定一个清单的GUID，获取其所有的订阅信息。结果按照订阅的创建时间排序。</para>
+    /// </summary>
+    /// <param name="limit">返回结果的最大数量，默认值：50</param>
+    /// <param name="tasklist_guid">任务清单全局唯一GUID，示例值："d300a75f-c56a-4be9-80d1-e47653028ceb"。</param>
+    /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+
+    [Get("https://open.feishu.cn/open-apis/task/v2/tasklists/{tasklist_guid}/activity_subscriptions")]
+    Task<FeishuApiListResult<TasklistActivitySubscriptionInfo>?> GetActivitySubscriptionsListByIdAsync(
+       [Path] string tasklist_guid,
+       [Query("limit")] int limit = 50,
+       [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
+       CancellationToken cancellationToken = default);
 }

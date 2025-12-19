@@ -61,4 +61,22 @@ public interface IFeishuV2TaskActivitySubscriptions
        [Query("limit")] int limit = 50,
        [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// <para>提供一个清单的GUID和一个动态订阅的GUID，对其进行更新。</para>
+    /// <para>更新时，将update_fields字段中填写所有要修改的字段名，同时在activity_subscription字段中填写要修改的字段的新值即可。</para>
+    /// </summary>
+    /// <param name="updateActivitySubscriptionsRequest">更新动态订阅请求体</param>
+    /// <param name="activity_subscription_guid">订阅GUID。可以通过创建动态订阅接口创建，或者通过列取动态订阅查询得到。示例值："33991879-704f-444f-81d7-55a6aa7be80c"</param>
+    /// <param name="tasklist_guid">任务清单全局唯一GUID，示例值："d300a75f-c56a-4be9-80d1-e47653028ceb"。</param>
+    /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Patch("https://open.feishu.cn/open-apis/task/v2/tasklists/{tasklist_guid}/activity_subscriptions/{activity_subscription_guid}")]
+    Task<FeishuApiListResult<TasklistActivitySubscriptionResult>?> UpdateActivitySubscriptionsByIdAsync(
+          [Path] string tasklist_guid,
+          [Path] string activity_subscription_guid,
+          [Body] UpdateActivitySubscriptionsRequest updateActivitySubscriptionsRequest,
+          [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
+          CancellationToken cancellationToken = default);
 }

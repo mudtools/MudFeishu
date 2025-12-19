@@ -30,11 +30,13 @@
 	<ItemGroup>
 		<PackageReference Include="Microsoft.AspNetCore.Http" Version="2.3.0" />
 		<PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.3.0" />
+		<PackageReference Include="Mud.Feishu" Version="1.0.7" />
+		<PackageReference Include="Mud.Feishu.Abstractions" Version="1.0.7" />
 	</ItemGroup>
-	<ItemGroup>
+	<!--<ItemGroup>
 		<ProjectReference Include="..\Mud.Feishu.Abstractions\Mud.Feishu.Abstractions.csproj" />
 		<ProjectReference Include="..\Mud.Feishu\Mud.Feishu.csproj" />
-	</ItemGroup>
+	</ItemGroup>-->
 	<ItemGroup>
 		<None Include=".\README.md" Pack="true" PackagePath="\" />
 		<None Include="..\Icon.png" Pack="true" PackagePath="\" />

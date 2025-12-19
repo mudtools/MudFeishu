@@ -20,6 +20,6 @@ public class MessageImageContent
 #if NET7_0_OR_GREATER
         required
 #endif
-     string ImageKey
+     string? ImageKey
     { get; set; }
 }

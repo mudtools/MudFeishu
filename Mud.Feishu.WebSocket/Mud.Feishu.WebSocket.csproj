@@ -30,8 +30,10 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\Mud.Feishu.Abstractions\Mud.Feishu.Abstractions.csproj" />
-		<ProjectReference Include="..\Mud.Feishu\Mud.Feishu.csproj" />
+		<PackageReference Include="Mud.Feishu" Version="1.0.7" />
+		<PackageReference Include="Mud.Feishu.Abstractions" Version="1.0.7" />
+		<!--<ProjectReference Include="..\Mud.Feishu.Abstractions\Mud.Feishu.Abstractions.csproj" />
+		<ProjectReference Include="..\Mud.Feishu\Mud.Feishu.csproj" />-->
 	</ItemGroup>
 	<ItemGroup>
 		<None Include=".\README.md" Pack="true" PackagePath="\" />

@@ -79,4 +79,19 @@ public interface IFeishuV2TaskActivitySubscriptions
           [Body] UpdateActivitySubscriptionsRequest updateActivitySubscriptionsRequest,
           [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
           CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// <para>给定一个清单的GUID和一个订阅的GUID，将其删除。删除后的数据不可恢复。</para>
+    /// </summary>
+    /// <param name="activity_subscription_guid">订阅GUID。可以通过创建动态订阅接口创建，或者通过列取动态订阅查询得到。示例值："33991879-704f-444f-81d7-55a6aa7be80c"</param>
+    /// <param name="tasklist_guid">任务清单全局唯一GUID，示例值："d300a75f-c56a-4be9-80d1-e47653028ceb"。</param>
+    /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Delete("https://open.feishu.cn/open-apis/task/v2/tasklists/{tasklist_guid}/activity_subscriptions/{activity_subscription_guid}")]
+    Task<FeishuNullDataApiResult?> DeleteActivitySubscriptionsByIdAsync(
+      [Path] string tasklist_guid,
+      [Path] string activity_subscription_guid,
+      [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
+      CancellationToken cancellationToken = default);
 }

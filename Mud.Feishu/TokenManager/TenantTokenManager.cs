@@ -23,7 +23,7 @@ internal class TenantTokenManager : TokenManagerWithCache, ITenantTokenManager
 
     }
 
-    protected override async Task<CredentialToken> AcquireNewTokenAsync(CancellationToken cancellationToken)
+    protected override async Task<CredentialToken?> AcquireNewTokenAsync(CancellationToken cancellationToken)
     {
         var credentials = new AppCredentials
         {
@@ -32,6 +32,8 @@ internal class TenantTokenManager : TokenManagerWithCache, ITenantTokenManager
         };
 
         var res = await _authenticationApi.GetTenantAccessTokenAsync(credentials, cancellationToken);
+        if (res == null)
+            return null;
         return new CredentialToken
         {
             AccessToken = res?.TenantAccessToken ?? string.Empty,

@@ -234,7 +234,7 @@ public abstract class TokenManagerWithCache : ITokenManager, IDisposable
     /// <remarks>
     /// 由具体实现类重写，定义不同类型令牌的获取逻辑。
     /// </remarks>
-    protected abstract Task<CredentialToken> AcquireNewTokenAsync(CancellationToken cancellationToken);
+    protected abstract Task<CredentialToken?> AcquireNewTokenAsync(CancellationToken cancellationToken);
 
     /// <summary>
     /// 获取新令牌的核心方法

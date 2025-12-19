@@ -21,7 +21,7 @@ public class JobLevelCreateUpdateRequest
 #if NET7_0_OR_GREATER
         required
 #endif
-  string Name
+  string? Name
     { get; set; }
 
     /// <summary>

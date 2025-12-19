@@ -110,7 +110,7 @@ public interface IFeishuV1Employees
     /// <param name="department_id_type">此次调用中的部门 ID 类型。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Patch("https://open.feishu.cn/open-apis/directory/v1/employees/{employee_id}/regular")]
-    Task<FeishuNullDataApiResult> RegularEmployeeAsync(
+    Task<FeishuNullDataApiResult?> RegularEmployeeAsync(
          [Path] string employee_id,
          [Query("employee_id_type")] string? employee_id_type = Consts.User_Id_Type,
          [Query("department_id_type")] string? department_id_type = Consts.Department_Id_Type,

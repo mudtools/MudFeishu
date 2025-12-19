@@ -45,7 +45,7 @@ public interface IFeishuV3User
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Get("https://open.feishu.cn/open-apis/contact/v3/users/{user_id}")]
-    Task<FeishuApiResult<GetUserInfoResult>> GetUserInfoByIdAsync(
+    Task<FeishuApiResult<GetUserInfoResult>?> GetUserInfoByIdAsync(
         [Path] string user_id,
         [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
         [Query("department_id_type")] string? department_id_type = Consts.Department_Id_Type,

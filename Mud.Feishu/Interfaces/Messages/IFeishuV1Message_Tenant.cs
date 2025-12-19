@@ -119,7 +119,7 @@ public interface IFeishuTenantV1Message : IFeishuV1Message
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Post("https://open.feishu.cn/open-apis/im/v1/messages/{message_id}/push_follow_up")]
-    Task<FeishuNullDataApiResult> CreateMessageFollowUpAsync(
+    Task<FeishuNullDataApiResult?> CreateMessageFollowUpAsync(
       [Path] string message_id,
       [Body] MessageFollowUpRequest messageFollowUpRequest,
       CancellationToken cancellationToken = default);
@@ -134,7 +134,7 @@ public interface IFeishuTenantV1Message : IFeishuV1Message
     /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
     /// <returns></returns>
     [Get("https://open.feishu.cn/open-apis/im/v1/messages/{message_id}/read_users")]
-    Task<FeishuApiPageListResult<ReadMessageUser>> GetMessageReadUsesAsync(
+    Task<FeishuApiPageListResult<ReadMessageUser>?> GetMessageReadUsesAsync(
      [Path] string message_id,
      [Query("page_size")] int page_size = 10,
      [Query("page_token")] string? page_token = null,
@@ -159,7 +159,7 @@ public interface IFeishuTenantV1Message : IFeishuV1Message
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Get("https://open.feishu.cn/open-apis/im/v1/messages")]
-    Task<FeishuApiPageListResult<HistoryMessageData>> GetHistoryMessageAsync(
+    Task<FeishuApiPageListResult<HistoryMessageData>?> GetHistoryMessageAsync(
          [Query("container_id_type")] string container_id_type,
          [Query("container_id")] string container_id,
          [Query("start_time")] string? start_time = null,
@@ -185,7 +185,7 @@ public interface IFeishuTenantV1Message : IFeishuV1Message
     /// </param>
     /// <returns></returns>
     [Get("https://open.feishu.cn/open-apis/im/v1/messages/{message_id}/resources/{file_key}")]
-    Task<byte[]> GetMessageFile(
+    Task<byte[]?> GetMessageFile(
         [Path] string message_id,
         [Path] string file_key,
         [Query("type")] string type,
@@ -223,7 +223,7 @@ public interface IFeishuTenantV1Message : IFeishuV1Message
     /// <param name="user_id_type">用户 ID 类型，示例值："open_id"，默认值：open_id</param>
     /// <returns></returns>
     [Get("https://open.feishu.cn/open-apis/im/v1/messages")]
-    Task<FeishuApiListResult<MessageContentData>> GetContentListByMessageIdAsync(
+    Task<FeishuApiListResult<MessageContentData>?> GetContentListByMessageIdAsync(
         [Path] string message_id,
         [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
         CancellationToken cancellationToken = default);

@@ -21,5 +21,5 @@ public class DepartmentLeader
     /// 部门领导者的唯一标识符
     /// </summary>
     [JsonPropertyName("leaderID")]
-    public string LeaderId { get; set; }
+    public string? LeaderId { get; set; }
 }

@@ -16,11 +16,11 @@ public class I18nRichTextMessageContent
     /// 中文（简体）富文本消息内容
     /// </summary>
     [JsonPropertyName("zh_cn")]
-    public RichTextMessageLocalContent ZhCn { get; set; }
+    public RichTextMessageLocalContent? ZhCn { get; set; }
 
     /// <summary>
     /// 英文（美国）富文本消息内容
     /// </summary>
     [JsonPropertyName("en_us")]
-    public RichTextMessageLocalContent EnUs { get; set; }
+    public RichTextMessageLocalContent? EnUs { get; set; }
 }

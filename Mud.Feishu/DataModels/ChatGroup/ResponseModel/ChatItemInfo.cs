@@ -20,42 +20,42 @@ public class ChatItemInfo
     /// <para>群组的唯一标识符，用于API调用和群组识别</para>
     /// </summary>
     [JsonPropertyName("chat_id")]
-    public string ChatId { get; set; }
+    public string? ChatId { get; set; }
 
     /// <summary>
     /// 群组头像
     /// <para>群组头像的URL或图片标识</para>
     /// </summary>
     [JsonPropertyName("avatar")]
-    public string Avatar { get; set; }
+    public string? Avatar { get; set; }
 
     /// <summary>
     /// 群组名称
     /// <para>群组的显示名称，用户在客户端看到的群组名</para>
     /// </summary>
     [JsonPropertyName("name")]
-    public string Name { get; set; }
+    public string? Name { get; set; }
 
     /// <summary>
     /// 群组描述
     /// <para>群组的详细描述信息，通常用于说明群组的用途或规则</para>
     /// </summary>
     [JsonPropertyName("description")]
-    public string Description { get; set; }
+    public string? Description { get; set; }
 
     /// <summary>
     /// 群主ID
     /// <para>群组创建者或当前群主的唯一标识符</para>
     /// </summary>
     [JsonPropertyName("owner_id")]
-    public string OwnerId { get; set; }
+    public string? OwnerId { get; set; }
 
     /// <summary>
     /// 群主ID类型
     /// <para>标识群主ID的类型，如：user_id、open_id、union_id等</para>
     /// </summary>
     [JsonPropertyName("owner_id_type")]
-    public string OwnerIdType { get; set; }
+    public string? OwnerIdType { get; set; }
 
     /// <summary>
     /// 是否为外部群组
@@ -70,12 +70,12 @@ public class ChatItemInfo
     /// <para>标识群组所属的租户，用于多租户环境下的群组管理</para>
     /// </summary>
     [JsonPropertyName("tenant_key")]
-    public string TenantKey { get; set; }
+    public string? TenantKey { get; set; }
 
     /// <summary>
     /// 聊天状态
     /// <para>表示群组的当前状态，如：active（活跃）、archived（已归档）等</para>
     /// </summary>
     [JsonPropertyName("chat_status")]
-    public string ChatStatus { get; set; }
+    public string? ChatStatus { get; set; }
 }

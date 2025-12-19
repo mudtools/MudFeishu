@@ -16,11 +16,11 @@ public class RichTextMessageLocalContent
     /// 消息标题
     /// </summary>
     [JsonPropertyName("title")]
-    public string Title { get; set; }
+    public string? Title { get; set; }
 
     /// <summary>
     /// 消息内容，由多行富文本元素组成，每行可以包含多个不同类型的元素
     /// </summary>
     [JsonPropertyName("content")]
-    public List<List<RichTextMessageElement>> Content { get; set; }
+    public List<List<RichTextMessageElement>>? Content { get; set; }
 }

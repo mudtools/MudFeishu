@@ -25,3 +25,6 @@
 /Mud.Feishu.Webbook/obj
 /Mud.Feishu.Webbook.Demo/obj
 /Mud.Feishu.Webbook.Demo/bin/Debug/net8.0
+/Mud.Feishu.Webhook/obj
+/Mud.Feishu.Webhook.Demo/bin/Debug/net8.0
+/Mud.Feishu.Webhook.Demo/obj

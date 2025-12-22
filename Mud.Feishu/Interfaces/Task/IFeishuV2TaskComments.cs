@@ -90,12 +90,12 @@ public interface IFeishuV2TaskComments
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Get("https://open.feishu.cn/open-apis/task/v2/comments")]
-    Task<FeishuApiPageListResult<TaskCommentInfo>?> GetCommentPageListByIdAsync(
+    Task<FeishuApiPageListResult<TaskCommentInfo>?> GetCommentPageListAsync(
+         [Query("resource_id")] string? resource_id = null,
+         [Query("resource_type")] string? resource_type = null,
+         [Query("direction")] string? direction = null,
          [Query("page_size")] int page_size = 10,
          [Query("page_token")] string? page_token = null,
-         [Query("resource_type")] string? resource_type = null,
-         [Query("resource_id")] string? resource_id = null,
-         [Query("direction")] string? direction = null,
          [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
          CancellationToken cancellationToken = default);
 }

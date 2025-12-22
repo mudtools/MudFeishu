@@ -16,16 +16,13 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Mud.Feishu.Abstractions" Version="1.0.7" />
+    <PackageReference Include="Mud.Feishu.Abstractions" Version="1.0.8" />
+    <PackageReference Include="Mud.Feishu.WebSocket" Version="1.0.8" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="10.0.1" />
   </ItemGroup>
 
   <!--<ItemGroup>
     <ProjectReference Include="..\Mud.Feishu.WebSocket\Mud.Feishu.WebSocket.csproj" />
   </ItemGroup>-->
-
-	<ItemGroup>
-		<PackageReference Include="Mud.Feishu.WebSocket" Version="1.0.7" />
-	</ItemGroup>
 
 </Project>

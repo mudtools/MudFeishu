@@ -68,4 +68,18 @@ public interface IFeishuV2TaskAttachments
         [Path] string attachment_guid,
         [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
         CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 提供一个附件GUID，删除该附件。删除后该附件不可再恢复。
+    /// </summary>
+    /// <param name="attachment_guid">删除的附件GUID。示例值："b59aa7a3-e98c-4830-8273-cbb29f89b837"</param>
+    /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Delete("https://open.feishu.cn/open-apis/task/v2/attachments/{attachment_guid}")]
+    Task<FeishuNullDataApiResult?> DeleteAttachmentByIdAsync(
+          [Path] string attachment_guid,
+          [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
+          CancellationToken cancellationToken = default);
 }

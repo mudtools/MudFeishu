@@ -58,4 +58,44 @@ public interface IFeishuV2TaskComments
          [Body] UpdateCommentRequest updateCommentRequest,
          [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
          CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// <para>删除一条评论。</para>
+    /// <para>评论被删除后，将无法进行任何操作，也无法恢复。</para>
+    /// </summary>
+    /// <param name="comment_id">要删除评论详情的评论ID。示例值："7198104824246747156"</param>
+    /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Delete("https://open.feishu.cn/open-apis/task/v2/comments/{comment_id}")]
+    Task<FeishuNullDataApiResult?> DeleteCommentByIdAsync(
+       [Path] string comment_id,
+       [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
+       CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 给定一个资源，返回该资源的评论列表。
+    /// <para>支持分页。评论可以按照创建时间的正序（asc, 从最老到最新），或者逆序（desc，从最老到最新），返回数据。</para>
+    /// </summary>
+    /// <param name="direction">返回数据的排序方式。"asc"表示从最老到最新顺序返回；"desc"表示从最新到最老顺序返回。默认为"asc"。</param>
+    /// <param name="resource_id">要获取评论的资源ID。例如要获取任务的评论列表，此处应该填写任务全局唯一ID
+    /// <para>示例值："d300a75f-c56a-4be9-80d1-e47653028ceb"</para></param>
+    /// <param name="resource_type">要获取评论列表的资源类型，目前只支持"task"，默认为"task"。
+    /// <para>示例值："task"</para></param>
+    /// <param name="page_size">分页大小，即本次请求所返回的用户信息列表内的最大条目数。默认值：10</param>
+    /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
+    /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Get("https://open.feishu.cn/open-apis/task/v2/comments")]
+    Task<FeishuApiPageListResult<TaskCommentInfo>?> GetCommentPageListByIdAsync(
+         [Query("page_size")] int page_size = 10,
+         [Query("page_token")] string? page_token = null,
+         [Query("resource_type")] string? resource_type = null,
+         [Query("resource_id")] string? resource_id = null,
+         [Query("direction")] string? direction = null,
+         [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
+         CancellationToken cancellationToken = default);
 }

@@ -1,6 +1,6 @@
 # MudFeishu
 
-现代化的 .NET 飞书 API 集成库，提供完整的 HTTP API、WebSocket 实时事件订阅和 Webbook 事件处理解决方案。
+现代化的 .NET 飞书 API 集成库，提供完整的 HTTP API、WebSocket 实时事件订阅和 Webhook 事件处理解决方案。
 
 ## 📦 项目概览
 
@@ -9,13 +9,13 @@
 | **Mud.Feishu.Abstractions** | 事件订阅抽象层，提供策略模式和工厂模式的事件处理架构 | [![Nuget](https://img.shields.io/nuget/v/Mud.Feishu.Abstractions.svg)](https://www.nuget.org/packages/Mud.Feishu.Abstractions/) |
 | **Mud.Feishu** | 核心 HTTP API 客户端库，支持组织架构、消息、群聊等完整飞书功能 | [![Nuget](https://img.shields.io/nuget/v/Mud.Feishu.svg)](https://www.nuget.org/packages/Mud.Feishu/) |
 | **Mud.Feishu.WebSocket** | 飞书 WebSocket 客户端，支持实时事件订阅和自动重连 | [![Nuget](https://img.shields.io/nuget/v/Mud.Feishu.WebSocket.svg)](https://www.nuget.org/packages/Mud.Feishu.WebSocket/) |
-| **Mud.Feishu.Webbook** | 飞书 Webbook 事件处理组件，支持 HTTP 回调事件接收和处理 | [![Nuget](https://img.shields.io/nuget/v/Mud.Feishu.Webbook.svg)](https://www.nuget.org/packages/Mud.Feishu.Webbook/) |
+| **Mud.Feishu.Webhook** | 飞书 Webhook 事件处理组件，支持 HTTP 回调事件接收和处理 | [![Nuget](https://img.shields.io/nuget/v/Mud.Feishu.Webhook.svg)](https://www.nuget.org/packages/Mud.Feishu.Webhook/) |
 
 ## ✨ 核心特性
 
-| 特性类别 | Mud.Feishu.Abstractions | Mud.Feishu (HTTP API) | Mud.Feishu.WebSocket | Mud.Feishu.Webbook |
+| 特性类别 | Mud.Feishu.Abstractions | Mud.Feishu (HTTP API) | Mud.Feishu.WebSocket | Mud.Feishu.Webhook |
 |---------|----------------------|----------------------|-------------------|-------------------|
-| **🎯 核心功能** | 事件订阅抽象层和策略模式 | HTTP API 客户端，RESTful 调用 | WebSocket 客户端，实时事件订阅 | Webbook HTTP 回调事件处理 |
+| **🎯 核心功能** | 事件订阅抽象层和策略模式 | HTTP API 客户端，RESTful 调用 | WebSocket 客户端，实时事件订阅 | Webhook HTTP 回调事件处理 |
 | **🔧 设计模式** | 策略模式、工厂模式、抽象基类 | 特性驱动设计，自动生成 HTTP 客户端 | 建造者模式，可扩展事件处理器 | 中间件模式，自动事件路由 |
 | **🛡️ 类型安全** | 强类型事件数据模型，默认基类 | 完整的数据模型，编译时类型检查 | 强类型事件消息，智能反序列化 | 类型安全的事件解密和验证 |
 | **🔐 令牌管理** | - | 自动缓存刷新，多类型令牌支持 | 继承 HTTP API 的令牌管理能力 | 继承 HTTP API 的令牌管理能力 |
@@ -99,7 +99,7 @@
 - **告警支持** - 异常情况自动告警通知
 - **详细审计日志** - 完整的事件处理审计记录
 
-### 🌐 Mud.Feishu.Webbook - HTTP 回调事件处理功能
+### 🌐 Mud.Feishu.Webhook - HTTP 回调事件处理功能
 
 #### 🔒 安全验证与解密
 - **事件订阅验证** - 支持飞书 URL 验证流程
@@ -136,8 +136,8 @@ dotnet add package Mud.Feishu
 # WebSocket 实时事件订阅
 dotnet add package Mud.Feishu.WebSocket
 
-# Webbook HTTP 回调事件处理
-dotnet add package Mud.Feishu.Webbook
+# Webhook HTTP 回调事件处理
+dotnet add package Mud.Feishu.Webhook
 ```
 
 ### 基础配置
@@ -145,7 +145,7 @@ dotnet add package Mud.Feishu.Webbook
 ```csharp
 using Mud.Feishu;
 using Mud.Feishu.WebSocket;
-using Mud.Feishu.Webbook.Extensions;
+using Mud.Feishu.Webhook.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -166,16 +166,16 @@ builder.Services.AddFeishuWebSocketBuilder()
     .AddHandler<MessageEventHandler>()
     .Build();
 
-// 注册 Webbook HTTP 回调事件服务
-builder.Services.AddFeishuWebbook(builder.Configuration)
+// 注册 Webhook HTTP 回调事件服务
+builder.Services.AddFeishuWebhook(builder.Configuration)
     .AddHandler<UserCreatedEventHandler>()
     .AddHandler<MessageReceiveEventHandler>()
     .Build();
 
 var app = builder.Build();
 
-// 添加 Webbook 中间件
-app.UseFeishuWebbook();
+// 添加 Webhook 中间件
+app.UseFeishuWebhook();
 
 app.Run();
 ```
@@ -200,8 +200,8 @@ app.Run();
             "MessageQueueCapacity": 1000,
             "ParallelMultiHandlers": true
         },
-        "Webbook": {
-            "RoutePrefix": "feishu/webbook",
+        "Webhook": {
+            "RoutePrefix": "feishu/Webhook",
             "AutoRegisterEndpoint": true,
             "VerificationToken": "your_verification_token",
             "EncryptKey": "your_encrypt_key",
@@ -444,11 +444,11 @@ public class UserEventHandler : IFeishuWebSocketEventHandler
 }
 ```
 
-#### Webbook 事件处理示例
+#### Webhook 事件处理示例
 
 ```csharp
 // 用户创建事件处理器
-public class UserCreatedEventHandler : IFeishuWebbookEventHandler
+public class UserCreatedEventHandler : IFeishuWebhookEventHandler
 {
     private readonly ILogger<UserCreatedEventHandler> _logger;
     private readonly IUserSyncService _syncService;
@@ -466,7 +466,7 @@ public class UserCreatedEventHandler : IFeishuWebbookEventHandler
         return eventType == "contact.user.created_v3";
     }
     
-    public async Task HandleAsync(FeishuWebbookRequest request)
+    public async Task HandleAsync(FeishuWebhookRequest request)
     {
         try
         {
@@ -490,7 +490,7 @@ public class UserCreatedEventHandler : IFeishuWebbookEventHandler
 }
 
 // 消息接收事件处理器
-public class MessageReceiveEventHandler : IFeishuWebbookEventHandler
+public class MessageReceiveEventHandler : IFeishuWebhookEventHandler
 {
     private readonly ILogger<MessageReceiveEventHandler> _logger;
     private readonly IFeishuTenantV1Message _messageApi;
@@ -508,7 +508,7 @@ public class MessageReceiveEventHandler : IFeishuWebbookEventHandler
         return eventType == "im.message.receive_v1";
     }
     
-    public async Task HandleAsync(FeishuWebbookRequest request)
+    public async Task HandleAsync(FeishuWebhookRequest request)
     {
         try
         {
@@ -537,7 +537,7 @@ public class MessageReceiveEventHandler : IFeishuWebbookEventHandler
 - [Mud.Feishu.Abstractions 详细文档](./Mud.Feishu.Abstractions/README.md) - 事件处理抽象层使用指南
 - [Mud.Feishu 详细文档](./Mud.Feishu/README.md) - HTTP API 完整使用指南
 - [Mud.Feishu.WebSocket 详细文档](./Mud.Feishu.WebSocket/Readme.md) - WebSocket 实时事件订阅指南
-- [Mud.Feishu.Webbook 详细文档](./Mud.Feishu.Webbook/README.md) - Webbook HTTP 回调事件处理指南
+- [Mud.Feishu.Webhook 详细文档](./Mud.Feishu.Webhook/README.md) - Webhook HTTP 回调事件处理指南
 
 ## 🛠️ 技术栈
 
@@ -584,7 +584,7 @@ public class MessageReceiveEventHandler : IFeishuWebbookEventHandler
 - [Mud.Feishu.Abstractions](https://www.nuget.org/packages/Mud.Feishu.Abstractions/) - 事件处理抽象层
 - [Mud.Feishu](https://www.nuget.org/packages/Mud.Feishu/) - 核心 HTTP API 客户端库
 - [Mud.Feishu.WebSocket](https://www.nuget.org/packages/Mud.Feishu.WebSocket/) - WebSocket 实时事件订阅库
-- [Mud.Feishu.Webbook](https://www.nuget.org/packages/Mud.Feishu.Webbook/) - Webbook HTTP 回调事件处理库
+- [Mud.Feishu.Webhook](https://www.nuget.org/packages/Mud.Feishu.Webhook/) - Webhook HTTP 回调事件处理库
 
 ### 🛠️ 开发资源
 - [项目仓库](https://gitee.com/mudtools/MudFeishu) - 源代码和开发文档

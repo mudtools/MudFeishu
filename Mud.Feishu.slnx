@@ -1,7 +1,7 @@
 <Solution>
   <Folder Name="/Samples/">
     <Project Path="Mud.Feishu.Test/Mud.Feishu.Test.csproj" />
-    <Project Path="Mud.Feishu.Webbook.Demo/Mud.Feishu.Webbook.Demo.csproj" Id="33cbe001-6cfc-489d-8f5b-12dea3b659ed" />
+    <Project Path="Mud.Feishu.Webhook.Demo/Mud.Feishu.Webhook.Demo.csproj" Id="33cbe001-6cfc-489d-8f5b-12dea3b659ed" />
     <Project Path="Mud.Feishu.WebSocket.Demo/Mud.Feishu.WebSocket.Demo.csproj" />
   </Folder>
   <Folder Name="/Solution/">
@@ -12,7 +12,7 @@
   </Folder>
   <Project Path="Mud.CodeGenerator/Mud.CodeGenerator.shproj" />
   <Project Path="Mud.Feishu.Abstractions/Mud.Feishu.Abstractions.csproj" Id="b04973d2-c477-49a7-a00f-04288a8cabac" />
-  <Project Path="Mud.Feishu.Webbook/Mud.Feishu.Webbook.csproj" Id="af227868-515f-4af0-9ccb-37a44995c7a4" />
+  <Project Path="Mud.Feishu.Webhook/Mud.Feishu.Webhook.csproj" />
   <Project Path="Mud.Feishu.WebSocket/Mud.Feishu.WebSocket.csproj" />
   <Project Path="Mud.Feishu/Mud.Feishu.csproj" />
 </Solution>

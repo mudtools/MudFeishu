@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Mud.Feishu.Abstractions" Version="1.0.7" />
+    <PackageReference Include="Mud.Feishu.Webhook" Version="1.0.7" />
+  </ItemGroup>
+
+  <!--<ItemGroup>
+    <ProjectReference Include="..\Mud.Feishu.Webhook\Mud.Feishu.Webhook.csproj" />
+  </ItemGroup>-->
+
+</Project>

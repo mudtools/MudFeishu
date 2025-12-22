@@ -54,4 +54,18 @@ public interface IFeishuV2TaskAttachments
          [Query("page_token")] string? page_token = null,
          [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
          CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 提供一个附件GUID，返回附件的详细信息，包括GUID，名称，大小，上传时间，临时可下载链接等。
+    /// </summary>
+    /// <param name="attachment_guid">获取详情的附件GUID。示例值："b59aa7a3-e98c-4830-8273-cbb29f89b837"</param>
+    /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Get("https://open.feishu.cn/open-apis/task/v2/attachments/{attachment_guid}")]
+    Task<FeishuApiResult<GetAttachmentsInfoResult>?> GetAttachmentByIdAsync(
+        [Path] string attachment_guid,
+        [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
+        CancellationToken cancellationToken = default);
 }

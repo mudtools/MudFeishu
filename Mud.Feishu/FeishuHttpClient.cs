@@ -1,4 +1,4 @@
-﻿// -----------------------------------------------------------------------
+// -----------------------------------------------------------------------
 //  作者：Mud Studio  版权所有 (c) Mud Studio 2025   
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
@@ -10,8 +10,18 @@ using Mud.Feishu.Extensions;
 
 namespace Mud.Feishu;
 
+/// <summary>
+/// 飞书HTTP客户端接口，用于发送飞书相关的HTTP请求
+/// </summary>
 public interface IFeishuHttpClient
 {
+    /// <summary>
+    /// 发送飞书请求并返回指定类型的结果
+    /// </summary>
+    /// <typeparam name="TResult">期望的返回结果类型，必须是类类型并具有无参构造函数</typeparam>
+    /// <param name="request">要发送的HTTP请求消息</param>
+    /// <param name="cancellationToken">用于取消操作的取消令牌，默认为default</param>
+    /// <returns>返回类型为TResult的异步任务，可能为null</returns>
     Task<TResult?> SendFeishuRequest<TResult>(
        HttpRequestMessage request,
        CancellationToken cancellationToken = default)

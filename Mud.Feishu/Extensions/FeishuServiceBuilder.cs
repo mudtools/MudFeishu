@@ -6,6 +6,9 @@
 // -----------------------------------------------------------------------
 
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
+using Polly;
+using System.Net;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
@@ -59,6 +62,32 @@ public class FeishuServiceBuilder
 
         _services.Configure(configureOptions);
         _configuration.IsConfigured = true;
+        return this;
+    }
+
+    /// <summary>
+    /// 添加飞书HttpClient注册代码。
+    /// </summary>
+    /// <returns></returns>
+    public FeishuServiceBuilder AddFeishuHttpClient()
+    {
+        if (_configuration.IsFeishuHttpClient) return this;
+
+        _services.AddHttpClient<IFeishuHttpClient, FeishuHttpClient>((serviceProvider, client) =>
+        {
+            var options = serviceProvider.GetRequiredService<IOptions<FeishuOptions>>().Value;
+            client.BaseAddress = new Uri(options.BaseUrl ?? "https://open.feishu.cn");
+            client.DefaultRequestHeaders.Add("User-Agent", "MudFeishuClient/1.0");
+            int timeOut = 60;
+            if (!string.IsNullOrEmpty(options.TimeOut) && int.TryParse(options.TimeOut, out int t))
+                timeOut = t;
+            client.Timeout = TimeSpan.FromSeconds(timeOut);
+        }).ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+        {
+            AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate,
+        }).AddTransientHttpErrorPolicy(policyBuilder =>
+               policyBuilder.WaitAndRetryAsync(3, retryAttempt =>
+               TimeSpan.FromSeconds(Math.Pow(2, retryAttempt))));
         return this;
     }
 
@@ -130,6 +159,7 @@ public class FeishuServiceBuilder
     {
         if (!_configuration.OrganizationApiAdded)
         {
+            AddFeishuHttpClient();
             AddTokenManagers(); // Organization API 通常需要令牌管理
             _services.AddOrganizationWebApiHttpClient();
             _configuration.OrganizationApiAdded = true;
@@ -145,6 +175,7 @@ public class FeishuServiceBuilder
     {
         if (!_configuration.MessageApiAdded)
         {
+            AddFeishuHttpClient();
             AddTokenManagers(); // Message API 通常需要令牌管理
             _services.AddMessageWebApiHttpClient();
             _configuration.MessageApiAdded = true;
@@ -160,6 +191,7 @@ public class FeishuServiceBuilder
     {
         if (!_configuration.ChatGroupApiAdded)
         {
+            AddFeishuHttpClient();
             AddTokenManagers(); // ChatGroup API 通常需要令牌管理
             _services.AddChatGroupWebApiHttpClient();
             _configuration.ChatGroupApiAdded = true;
@@ -175,6 +207,7 @@ public class FeishuServiceBuilder
     {
         if (!_configuration.TaskApiAdded)
         {
+            AddFeishuHttpClient();
             AddTokenManagers();
             _services.AddTaskWebApiHttpClient();
             _configuration.TaskApiAdded = true;
@@ -190,6 +223,7 @@ public class FeishuServiceBuilder
     {
         if (!_configuration.CardApiAdded)
         {
+            AddFeishuHttpClient();
             AddTokenManagers();
             _services.AddCardsWebApiHttpClient();
             _configuration.CardApiAdded = true;
@@ -203,7 +237,8 @@ public class FeishuServiceBuilder
     /// <returns>建造者实例，支持链式调用</returns>
     public FeishuServiceBuilder AddAllApis()
     {
-        return AddTokenManagers()
+        return AddFeishuHttpClient()
+               .AddTokenManagers()
                .AddOrganizationApi()
                .AddMessageApi()
                .AddChatGroupApi()
@@ -217,7 +252,8 @@ public class FeishuServiceBuilder
     /// <returns>建造者实例，支持链式调用</returns>
     public FeishuServiceBuilder AddCoreServices()
     {
-        return AddTokenManagers();
+        return AddFeishuHttpClient().
+               AddTokenManagers();
     }
 
     /// <summary>
@@ -346,6 +382,7 @@ public enum FeishuModule
 internal class FeishuServiceConfiguration
 {
     public bool IsConfigured { get; set; }
+    public bool IsFeishuHttpClient { get; set; }
     public bool TokenManagersAdded { get; set; }
     public bool TenantTokenManagerAdded { get; set; }
     public bool AppTokenManagerAdded { get; set; }

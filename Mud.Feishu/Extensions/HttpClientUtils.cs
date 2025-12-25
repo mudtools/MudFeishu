@@ -32,7 +32,6 @@ public static class HttpClientExtensions
         JsonSerializerOptions? jsonSerializerOptions = null,
         ILogger? logger = null,
         CancellationToken cancellationToken = default)
-        where TResult : class, new()
     {
         if (client == null) throw new ArgumentNullException(nameof(client));
         if (httpRequestMessage == null) throw new ArgumentNullException(nameof(httpRequestMessage));
@@ -66,6 +65,98 @@ public static class HttpClientExtensions
                 stream,
                 jsonSerializerOptions ?? new JsonSerializerOptions(),
                 cancellationToken);
+        }
+        catch (Exception ex) when (logger != null)
+        {
+            logger.LogError(ex, "HTTP请求异常: {Url}", httpRequestMessage.RequestUri);
+            throw;
+        }
+    }
+
+
+    /// <summary>
+    /// 下载文件内容并以字节数组形式返回
+    /// </summary>
+    /// <param name="client">HttpClient实例</param>
+    /// <param name="httpRequestMessage">HTTP请求消息</param>
+    /// <param name="logger">日志记录器（可选）</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>文件内容的字节数组，如果请求失败则返回null</returns>
+    /// <exception cref="ArgumentNullException">当client或httpRequestMessage为null时抛出</exception>
+    /// <exception cref="HttpRequestException">当HTTP请求失败时抛出</exception>
+    public static async Task<byte[]?> DownloadFile(
+       this HttpClient client,
+       HttpRequestMessage httpRequestMessage,
+       ILogger? logger = null,
+       CancellationToken cancellationToken = default)
+    {
+        if (client == null) throw new ArgumentNullException(nameof(client));
+        if (httpRequestMessage == null) throw new ArgumentNullException(nameof(httpRequestMessage));
+
+        try
+        {
+            using var response = await client.SendAsync(httpRequestMessage, cancellationToken);
+
+            // 检查响应状态码是否表示成功
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
+                logger?.LogError("HTTP请求失败: {StatusCode}, 响应: {Response}",
+                    (int)response.StatusCode, errorContent);
+
+                throw new HttpRequestException(
+                    $"HTTP请求失败: {(int)response.StatusCode} - {errorContent}");
+            }
+
+            return await response.Content.ReadAsByteArrayAsync(cancellationToken);
+        }
+        catch (Exception ex) when (logger != null)
+        {
+            logger.LogError(ex, "HTTP请求异常: {Url}", httpRequestMessage.RequestUri);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// 下载大文件并保存到指定路径
+    /// </summary>
+    /// <param name="client">HttpClient实例</param>
+    /// <param name="httpRequestMessage">HTTP请求消息</param>
+    /// <param name="largeFileName">保存大文件的完整路径</param>
+    /// <param name="logger">日志记录器（可选）</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>异步操作任务</returns>
+    /// <exception cref="ArgumentNullException">当client或httpRequestMessage为null时抛出</exception>
+    /// <exception cref="HttpRequestException">当HTTP请求失败时抛出</exception>
+    public static async Task DownloadLargeFile(
+      this HttpClient client,
+      HttpRequestMessage httpRequestMessage,
+      string largeFileName,
+      ILogger? logger = null,
+      CancellationToken cancellationToken = default)
+    {
+        if (client == null) throw new ArgumentNullException(nameof(client));
+        if (httpRequestMessage == null) throw new ArgumentNullException(nameof(httpRequestMessage));
+
+        try
+        {
+            using var response = await client.SendAsync(httpRequestMessage, cancellationToken);
+
+            // 检查响应状态码是否表示成功
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
+                logger?.LogError("HTTP请求失败: {StatusCode}, 响应: {Response}",
+                    (int)response.StatusCode, errorContent);
+
+                throw new HttpRequestException(
+                    $"HTTP请求失败: {(int)response.StatusCode} - {errorContent}");
+            }
+
+            // 将响应内容流复制到文件流中
+            using Stream stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+            using FileStream fileStream = File.Create(largeFileName);
+            await stream.CopyToAsync(fileStream, 81920, cancellationToken);
         }
         catch (Exception ex) when (logger != null)
         {

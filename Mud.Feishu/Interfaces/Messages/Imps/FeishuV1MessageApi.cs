@@ -5,10 +5,8 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-using Microsoft.Extensions.Logging;
 using Mud.Feishu.DataModels.Messages;
 using System.Net.Http.Headers;
-using System.Text.Json;
 
 namespace Mud.Feishu;
 
@@ -24,7 +22,6 @@ partial class FeishuTenantV1Message
             throw new InvalidOperationException("无法获取访问令牌");
         }
         var url = $"https://open.feishu.cn/open-apis/im/v1/files";
-        _logger.LogDebug("开始HTTP Post请求: {Url}", url);
         using var request = new HttpRequestMessage(HttpMethod.Post, url);
 
         request.Headers.Add("Authorization", access_token);
@@ -42,33 +39,9 @@ partial class FeishuTenantV1Message
         fileContent.Headers.ContentType = MediaTypeHeaderValue.Parse("application/octet-stream");
         formData.Add(fileContent, "file", Path.GetFileName(uploadFileRequest.FullName));
         request.Content = fileContent;
-        try
-        {
-            _httpClient.Timeout = TimeSpan.FromMinutes(10);
-            using var response = await _httpClient.SendAsync(request, cancellationToken);
-            _logger.LogDebug("HTTP请求完成: {StatusCode}", (int)response.StatusCode);
 
-            if (!response.IsSuccessStatusCode)
-            {
-                var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
-                _logger.LogError("HTTP请求失败: {StatusCode}, 响应: {Response}", (int)response.StatusCode, errorContent);
-                throw new HttpRequestException($"HTTP请求失败: {(int)response.StatusCode}");
-            }
-            using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+        return await _feishuHttpClient.SendFeishuRequestAsync<FeishuApiResult<FileUploadResult>>(request, cancellationToken);
 
-            if (stream.Length == 0)
-            {
-                return default;
-            }
-
-            var result = await JsonSerializer.DeserializeAsync<FeishuApiResult<FileUploadResult>>(stream, _jsonSerializerOptions, cancellationToken);
-            return result;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "HTTP请求异常: {Url}", url);
-            throw;
-        }
     }
 
     public async Task<FeishuApiResult<ImageUpdateResult>?> UploadImageAsync(
@@ -81,7 +54,6 @@ partial class FeishuTenantV1Message
             throw new InvalidOperationException("无法获取访问令牌");
         }
         var url = $"https://open.feishu.cn/open-apis/im/v1/images";
-        _logger.LogDebug("开始HTTP Post请求: {Url}", url);
         using var request = new HttpRequestMessage(HttpMethod.Post, url);
 
         request.Headers.Add("Authorization", access_token);
@@ -97,33 +69,8 @@ partial class FeishuTenantV1Message
         fileContent.Headers.ContentType = MediaTypeHeaderValue.Parse(contentType);
         formData.Add(fileContent, "image", Path.GetFileName(uploadImageRequest.FullName));
         request.Content = fileContent;
-        try
-        {
-            _httpClient.Timeout = TimeSpan.FromMinutes(10);
-            using var response = await _httpClient.SendAsync(request, cancellationToken);
-            _logger.LogDebug("HTTP请求完成: {StatusCode}", (int)response.StatusCode);
+        return await _feishuHttpClient.SendFeishuRequestAsync<FeishuApiResult<ImageUpdateResult>>(request, cancellationToken);
 
-            if (!response.IsSuccessStatusCode)
-            {
-                var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
-                _logger.LogError("HTTP请求失败: {StatusCode}, 响应: {Response}", (int)response.StatusCode, errorContent);
-                throw new HttpRequestException($"HTTP请求失败: {(int)response.StatusCode}");
-            }
-            using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-
-            if (stream.Length == 0)
-            {
-                return default;
-            }
-
-            var result = await JsonSerializer.DeserializeAsync<FeishuApiResult<ImageUpdateResult>>(stream, _jsonSerializerOptions, cancellationToken);
-            return result;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "HTTP请求异常: {Url}", url);
-            throw;
-        }
     }
 
     // 根据文件扩展名获取对应的 Content-Type

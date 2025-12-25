@@ -22,7 +22,7 @@ partial class FeishuV2TaskAttachments
         {
             throw new InvalidOperationException("无法获取访问令牌");
         }
-        var url = $"https://open.feishu.cn/open-apis/task/v2/attachments/upload";
+        var url = $"/open-apis/task/v2/attachments/upload";
         using var request = new HttpRequestMessage(HttpMethod.Post, url);
 
         request.Headers.Add("Authorization", access_token);

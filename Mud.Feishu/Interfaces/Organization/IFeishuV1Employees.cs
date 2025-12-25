@@ -25,7 +25,7 @@ public interface IFeishuV1Employees
     /// <param name="department_id_type">此次调用中的部门 ID 类型。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Post("https://open.feishu.cn/open-apis/directory/v1/employees")]
+    [Post("/open-apis/directory/v1/employees")]
     Task<FeishuApiResult<EmployeeCreateResult>?> CreateEmployeeAsync(
         [Body] EmployeeCreateRequest userModel,
         [Query("employee_id_type")] string? employee_id_type = Consts.User_Id_Type,
@@ -41,7 +41,7 @@ public interface IFeishuV1Employees
     /// <param name="department_id_type">此次调用中的部门 ID 类型。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Patch("https://open.feishu.cn/open-apis/directory/v1/employees/{employee_id}")]
+    [Patch("/open-apis/directory/v1/employees/{employee_id}")]
     Task<FeishuNullDataApiResult?> UpdateEmployeeAsync(
        [Path] string employee_id,
        [Body] EmployeeUpdateRequest userModel,
@@ -60,7 +60,7 @@ public interface IFeishuV1Employees
     /// <param name="deleteEmployeeRequest">离职员工请求体。</param>
     /// <param name="employee_id_type">用户 ID 类型</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
-    [Delete("https://open.feishu.cn/open-apis/directory/v1/employees/{employee_id}")]
+    [Delete("/open-apis/directory/v1/employees/{employee_id}")]
     Task<FeishuNullDataApiResult?> DeleteEmployeeByIdAsync(
       [Path] string employee_id,
       [Body] DeleteEmployeeRequest deleteEmployeeRequest,
@@ -75,7 +75,7 @@ public interface IFeishuV1Employees
     /// <param name="employee_id_type">用户 ID 类型</param>
     /// <param name="department_id_type">此次调用中的部门 ID 类型。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
-    [Post("https://open.feishu.cn/open-apis/directory/v1/employees/{employee_id}/resurrect")]
+    [Post("/open-apis/directory/v1/employees/{employee_id}/resurrect")]
     Task<FeishuNullDataApiResult?> ResurrectEmployeeAsync(
       [Path] string employee_id,
       [Body] ResurrectEmployeeRequest resurrectEmployeeRequest,
@@ -92,7 +92,7 @@ public interface IFeishuV1Employees
     /// <param name="employee_id_type">用户 ID 类型</param>
     /// <param name="department_id_type">此次调用中的部门 ID 类型。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
-    [Patch("https://open.feishu.cn/open-apis/directory/v1/employees/{employee_id}/to_be_resigned")]
+    [Patch("/open-apis/directory/v1/employees/{employee_id}/to_be_resigned")]
     Task<FeishuNullDataApiResult?> ResignedEmployeeAsync(
      [Path] string employee_id,
      [Body] ResignEmployeeRequest resignEmployeeRequest,
@@ -109,7 +109,7 @@ public interface IFeishuV1Employees
     /// <param name="employee_id_type">用户 ID 类型</param>
     /// <param name="department_id_type">此次调用中的部门 ID 类型。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
-    [Patch("https://open.feishu.cn/open-apis/directory/v1/employees/{employee_id}/regular")]
+    [Patch("/open-apis/directory/v1/employees/{employee_id}/regular")]
     Task<FeishuNullDataApiResult?> RegularEmployeeAsync(
          [Path] string employee_id,
          [Query("employee_id_type")] string? employee_id_type = Consts.User_Id_Type,
@@ -124,7 +124,7 @@ public interface IFeishuV1Employees
     /// <param name="employee_id_type">用户 ID 类型</param>
     /// <param name="department_id_type">此次调用中的部门 ID 类型。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
-    [Post("https://open.feishu.cn/open-apis/directory/v1/employees/mget")]
+    [Post("/open-apis/directory/v1/employees/mget")]
     Task<FeishuApiResult<EmployeeListResult>?> QueryEmployeesAsync(
         [Body] EmployeeQueryRequest employeeQueryRequest,
         [Query("employee_id_type")] string? employee_id_type = Consts.User_Id_Type,
@@ -139,7 +139,7 @@ public interface IFeishuV1Employees
     /// <param name="employee_id_type">用户 ID 类型</param>
     /// <param name="department_id_type">此次调用中的部门 ID 类型。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
-    [Post("https://open.feishu.cn/open-apis/directory/v1/employees/filter")]
+    [Post("/open-apis/directory/v1/employees/filter")]
     Task<FeishuApiResult<EmployeePageListResult>?> QueryEmployeePageListAsync(
        [Body] FilterSearchRequest filterSearchRequest,
        [Query("employee_id_type")] string? employee_id_type = Consts.User_Id_Type,
@@ -154,7 +154,7 @@ public interface IFeishuV1Employees
     /// <param name="employee_id_type">用户 ID 类型</param>
     /// <param name="department_id_type">此次调用中的部门 ID 类型。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
-    [Post("https://open.feishu.cn/open-apis/directory/v1/employees/search")]
+    [Post("/open-apis/directory/v1/employees/search")]
     Task<FeishuApiResult<EmployeePageListResult>?> SearchEmployeePageListAsync(
       [Body] PageSearchRequest pageSearchRequest,
       [Query("employee_id_type")] string? employee_id_type = Consts.User_Id_Type,

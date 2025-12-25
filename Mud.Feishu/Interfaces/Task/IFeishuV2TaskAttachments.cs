@@ -25,7 +25,7 @@ public interface IFeishuV2TaskAttachments
     /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Post("https://open.feishu.cn/open-apis/task/v2/attachments/upload")]
+    [Post("/open-apis/task/v2/attachments/upload")]
     [IgnoreImplement]
     Task<FeishuApiResult<TaskAttachmentsUploadResult>?> UploadAttachmentAsync(
          [Body] UploadTaskAttachmentsRequest uploadFileRequest,
@@ -46,7 +46,7 @@ public interface IFeishuV2TaskAttachments
     /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Get("https://open.feishu.cn/open-apis/task/v2/attachments")]
+    [Get("/open-apis/task/v2/attachments")]
     Task<FeishuApiPageListResult<AttachmentResultInfo>?> GetAttachmentPageListAsync(
          [Query("resource_id")] string? resource_id = null,
          [Query("resource_type")] string? resource_type = "task",
@@ -63,7 +63,7 @@ public interface IFeishuV2TaskAttachments
     /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Get("https://open.feishu.cn/open-apis/task/v2/attachments/{attachment_guid}")]
+    [Get("/open-apis/task/v2/attachments/{attachment_guid}")]
     Task<FeishuApiResult<GetAttachmentsInfoResult>?> GetAttachmentByIdAsync(
         [Path] string attachment_guid,
         [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
@@ -77,7 +77,7 @@ public interface IFeishuV2TaskAttachments
     /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Delete("https://open.feishu.cn/open-apis/task/v2/attachments/{attachment_guid}")]
+    [Delete("/open-apis/task/v2/attachments/{attachment_guid}")]
     Task<FeishuNullDataApiResult?> DeleteAttachmentByIdAsync(
           [Path] string attachment_guid,
           [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,

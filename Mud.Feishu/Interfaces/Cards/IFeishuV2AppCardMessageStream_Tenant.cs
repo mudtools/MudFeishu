@@ -26,7 +26,7 @@ public interface IFeishuTenantV2AppCardMessageStream
     /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Post("https://open.feishu.cn/open-apis/im/v2/app_feed_card")]
+    [Post("/open-apis/im/v2/app_feed_card")]
     Task<FeishuApiResult<CreateAppCardMessageStreamResult>?> CreateCardMessageStreamAsync(
        [Body] CreateAppCardMessageStreamRequest appCardMessageStreamRequest,
        [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
@@ -39,7 +39,7 @@ public interface IFeishuTenantV2AppCardMessageStream
     /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Put("https://open.feishu.cn/open-apis/im/v2/app_feed_card/batch")]
+    [Put("/open-apis/im/v2/app_feed_card/batch")]
     Task<FeishuApiResult<UpdateAppCardMessageStreamResult>?> UpdateCardMessageStreamAsync(
           [Body] UpdateAppCardMessageStreamRequest appCardMessageStreamRequest,
           [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
@@ -52,7 +52,7 @@ public interface IFeishuTenantV2AppCardMessageStream
     /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Delete("https://open.feishu.cn/open-apis/im/v2/app_feed_card/batch")]
+    [Delete("/open-apis/im/v2/app_feed_card/batch")]
     Task<FeishuApiResult<DeleteAppCardMessageStreamResult>?> DeleteCardMessageStreamAsync(
          [Body] DeleteAppCardMessageStreamRequest appCardMessageStreamRequest,
          [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
@@ -66,7 +66,7 @@ public interface IFeishuTenantV2AppCardMessageStream
     /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Patch("https://open.feishu.cn/open-apis/im/v2/feed_cards/bot_time_sentive")]
+    [Patch("/open-apis/im/v2/feed_cards/bot_time_sentive")]
     Task<FeishuApiResult<BotTimeSentiveResult>?> BotTimeSentiveAsync(
              [Body] BotTimeSentiveRequest timeSentiveRequest,
              [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
@@ -79,7 +79,7 @@ public interface IFeishuTenantV2AppCardMessageStream
     /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Put("https://open.feishu.cn/open-apis/im/v2/chat_button")]
+    [Put("/open-apis/im/v2/chat_button")]
     Task<FeishuApiResult<BotTimeSentiveResult>?> UpdateCardMessageStreamButtonAsync(
              [Body] UpdateCardMessageStreamButtonRequest updateCardMessageStreamButtonRequest,
              [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
@@ -94,7 +94,7 @@ public interface IFeishuTenantV2AppCardMessageStream
     /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Patch("https://open.feishu.cn/open-apis/im/v2/feed_cards/{feed_card_id}")]
+    [Patch("/open-apis/im/v2/feed_cards/{feed_card_id}")]
     Task<FeishuApiResult<BotTimeSentiveResult>?> FeedCardsByFeedCardIdAsync(
            [Path] string feed_card_id,
            [Body] FeedCardsByFeedCardIdRequest feedCardsByFeedCardIdRequest,

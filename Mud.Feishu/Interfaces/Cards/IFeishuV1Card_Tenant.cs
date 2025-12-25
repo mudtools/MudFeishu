@@ -25,7 +25,7 @@ public interface IFeishuTenantV1Card
     /// <param name="createCardRequest">创建卡片实体请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Post("https://open.feishu.cn/open-apis/cardkit/v1/cards")]
+    [Post("/open-apis/cardkit/v1/cards")]
     Task<FeishuApiResult<CreateCardResult>?> CreateCardAsync(
          [Body] CreateCardRequest createCardRequest,
          CancellationToken cancellationToken = default);
@@ -37,7 +37,7 @@ public interface IFeishuTenantV1Card
     /// <param name="card_id">卡片实体 ID。示例值："7355372766134157313"</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Patch("https://open.feishu.cn/open-apis/cardkit/v1/cards/{card_id}/settings")]
+    [Patch("/open-apis/cardkit/v1/cards/{card_id}/settings")]
     Task<FeishuNullDataApiResult?> UpdateCardSettingsByIdAsync(
         [Path] string card_id,
         [Body] UpdateCardSettingsRequest updateCardRequest,
@@ -50,7 +50,7 @@ public interface IFeishuTenantV1Card
     /// <param name="card_id">卡片实体 ID。示例值："7355372766134157313"</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Post("https://open.feishu.cn/open-apis/cardkit/v1/cards/{card_id}/batch_update")]
+    [Post("/open-apis/cardkit/v1/cards/{card_id}/batch_update")]
     Task<FeishuNullDataApiResult?> PartialUpdateCardByIdAsync(
         [Path] string card_id,
         [Body] PartialUpdateCardRequest partialUpdateCardRequest,
@@ -63,7 +63,7 @@ public interface IFeishuTenantV1Card
     /// <param name="updateCardRequest">全量更新卡片实体请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Patch("https://open.feishu.cn/open-apis/cardkit/v1/cards/{card_id}")]
+    [Patch("/open-apis/cardkit/v1/cards/{card_id}")]
     Task<FeishuNullDataApiResult?> UpdateCardByIdAsync(
        [Path] string card_id,
        [Body] UpdateCardRequest updateCardRequest,

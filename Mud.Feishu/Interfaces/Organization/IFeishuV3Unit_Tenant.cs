@@ -26,7 +26,7 @@ public interface IFeishuTenantV3Unit
     /// <param name="groupInfoRequest">单位信息请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Post("https://open.feishu.cn/open-apis/contact/v3/unit")]
+    [Post("/open-apis/contact/v3/unit")]
     Task<FeishuApiResult<UnitCreateResult>?> CreateUnitAsync(
       [Body] UnitInfoRequest groupInfoRequest,
       CancellationToken cancellationToken = default);
@@ -38,7 +38,7 @@ public interface IFeishuTenantV3Unit
     /// <param name="nameUpdateRequest">单位名称更新请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Patch("https://open.feishu.cn/open-apis/contact/v3/unit/{unit_id}")]
+    [Patch("/open-apis/contact/v3/unit/{unit_id}")]
     Task<FeishuNullDataApiResult?> UpdateUnitAsync(
          [Path] string unit_id,
          [Body] UnitNameUpdateRequest nameUpdateRequest,
@@ -54,7 +54,7 @@ public interface IFeishuTenantV3Unit
     /// <para>同一个部门只能关联一个单位。</para>
     /// </remarks>
     /// <returns></returns>
-    [Post("https://open.feishu.cn/open-apis/contact/v3/unit/bind_department")]
+    [Post("/open-apis/contact/v3/unit/bind_department")]
     Task<FeishuApiResult<UnitCreateResult>?> BindDepartmentAsync(
           [Body] UnitBindDepartmentRequest unitBindDepartment,
           CancellationToken cancellationToken = default);
@@ -65,7 +65,7 @@ public interface IFeishuTenantV3Unit
     /// <param name="unitBindDepartment">部门与单位的绑定关系请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Post("https://open.feishu.cn/open-apis/contact/v3/unit/unbind_department")]
+    [Post("/open-apis/contact/v3/unit/unbind_department")]
     Task<FeishuApiResult<UnitCreateResult>?> UnBindDepartmentAsync(
           [Body] UnitBindDepartmentRequest unitBindDepartment,
           CancellationToken cancellationToken = default);
@@ -79,7 +79,7 @@ public interface IFeishuTenantV3Unit
     /// <param name="page_size">分页大小，即本次请求所返回的用户信息列表内的最大条目数。默认值：10</param>
     /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
     /// <returns></returns>
-    [Get("https://open.feishu.cn/open-apis/contact/v3/unit/list_department")]
+    [Get("/open-apis/contact/v3/unit/list_department")]
     Task<FeishuApiResult<UnitDepartmentListResult>?> GetDepartmentListAsync(
          [Query("unit_id")] string unit_id,
          [Query("page_size")] int? page_size = 10,
@@ -93,7 +93,7 @@ public interface IFeishuTenantV3Unit
     /// <param name="unit_id">单位 ID。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Get("https://open.feishu.cn/open-apis/contact/v3/unit/{unit_id}")]
+    [Get("/open-apis/contact/v3/unit/{unit_id}")]
     Task<FeishuApiResult<UnitInfo>?> GetUnitInfoAsync(
         [Path] string unit_id,
         CancellationToken cancellationToken = default);
@@ -105,7 +105,7 @@ public interface IFeishuTenantV3Unit
     /// <param name="page_size">分页大小，即本次请求所返回的用户信息列表内的最大条目数。默认值：10</param>
     /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
     /// <returns></returns>
-    [Get("https://open.feishu.cn/open-apis/contact/v3/unit")]
+    [Get("/open-apis/contact/v3/unit")]
     Task<FeishuApiResult<UnitListDataResult>?> GetUnitListAsync(
        [Query("page_size")] int? page_size = 10,
        [Query("page_token")] string? page_token = null,
@@ -117,7 +117,7 @@ public interface IFeishuTenantV3Unit
     /// <param name="unit_id">需删除的单位 ID。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Delete("https://open.feishu.cn/open-apis/contact/v3/unit/{unit_id}")]
+    [Delete("/open-apis/contact/v3/unit/{unit_id}")]
     Task<FeishuNullDataApiResult?> DeleteUnitByIdAsync(
       [Path] string unit_id,
       CancellationToken cancellationToken = default);

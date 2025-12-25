@@ -26,7 +26,7 @@ public interface IFeishuTenantV1ChatGroupMenu
     /// <param name="addChatGroupMenuRequest">添加群菜单请求体。</param>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
-    [Post("https://open.feishu.cn/open-apis/im/v1/chats/{chat_id}/menu_tree")]
+    [Post("/open-apis/im/v1/chats/{chat_id}/menu_tree")]
     Task<FeishuApiResult<ChatGroupMenuResult>?> AddMenuByIdAsync(
          [Path] string chat_id,
          [Body] AddChatGroupMenuRequest addChatGroupMenuRequest,
@@ -40,7 +40,7 @@ public interface IFeishuTenantV1ChatGroupMenu
     /// <param name="updateChatMenuItemRequest">更新群菜单请求体。</param>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
-    [Patch("https://open.feishu.cn/open-apis/im/v1/chats/{chat_id}/menu_items/{menu_item_id}")]
+    [Patch("/open-apis/im/v1/chats/{chat_id}/menu_items/{menu_item_id}")]
     Task<FeishuApiResult<UpdateChatMenuItemResult>?> UpdateMenuByIdAsync(
          [Path] string chat_id,
          [Path] string menu_item_id,
@@ -54,7 +54,7 @@ public interface IFeishuTenantV1ChatGroupMenu
     /// <param name="deleteMenuIdsRequest">删除群内的一级菜单请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Delete("https://open.feishu.cn/open-apis/im/v1/chats/{chat_id}/menu_tree")]
+    [Delete("/open-apis/im/v1/chats/{chat_id}/menu_tree")]
     Task<FeishuApiResult<ChatGroupMenuResult>?> DeleteMenuByIdAsync(
       [Path] string chat_id,
       [Body] ChartMenuIdsRequest deleteMenuIdsRequest,
@@ -67,7 +67,7 @@ public interface IFeishuTenantV1ChatGroupMenu
     /// <param name="sortMenuRequest">菜单项目排序请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Post("https://open.feishu.cn/open-apis/im/v1/chats/{chat_id}/menu_tree/sort")]
+    [Post("/open-apis/im/v1/chats/{chat_id}/menu_tree/sort")]
     Task<FeishuApiResult<ChatGroupMenuResult>?> SortMenuByIdAsync(
        [Path] string chat_id,
        [Body] ChartMenuIdsRequest sortMenuRequest,
@@ -79,7 +79,7 @@ public interface IFeishuTenantV1ChatGroupMenu
     /// <param name="chat_id">群 ID。 示例值："oc_a0553eda9014c201e6969b478895c230"</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Get("https://open.feishu.cn/open-apis/im/v1/chats/{chat_id}/menu_tree")]
+    [Get("/open-apis/im/v1/chats/{chat_id}/menu_tree")]
     Task<FeishuApiResult<ChatGroupMenuResult>?> GetMenuByIdAsync(
        [Path] string chat_id,
        CancellationToken cancellationToken = default);

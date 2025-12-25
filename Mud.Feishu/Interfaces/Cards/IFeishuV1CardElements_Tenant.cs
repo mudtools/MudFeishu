@@ -26,7 +26,7 @@ public interface IFeishuTenantV1CardElements
     /// <param name="cardElementRequest">新增卡片组件请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Post("https://open.feishu.cn/open-apis/cardkit/v1/cards/{card_id}/elements")]
+    [Post("/open-apis/cardkit/v1/cards/{card_id}/elements")]
     Task<FeishuNullDataApiResult?> CreateCardElementAsync(
          [Path] string card_id,
          [Body] CreateCardElementRequest cardElementRequest,
@@ -41,7 +41,7 @@ public interface IFeishuTenantV1CardElements
     /// <param name="cardElementRequest">更新卡片组件请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Put("https://open.feishu.cn/open-apis/cardkit/v1/cards/{card_id}/elements/{element_id}")]
+    [Put("/open-apis/cardkit/v1/cards/{card_id}/elements/{element_id}")]
     Task<FeishuNullDataApiResult?> UpdateCardElementByIdAsync(
         [Path] string card_id,
         [Path] string element_id,
@@ -55,7 +55,7 @@ public interface IFeishuTenantV1CardElements
     /// <param name="element_id">要更新的组件 ID。对应卡片 JSON 中组件的 element_id 属性，由开发者自定义。示例值："markdown_1"</param>
     /// <param name="cardElementRequest">更新卡片组件属性请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
-    [Patch("https://open.feishu.cn/open-apis/cardkit/v1/cards/{card_id}/elements/{element_id}")]
+    [Patch("/open-apis/cardkit/v1/cards/{card_id}/elements/{element_id}")]
     Task<FeishuNullDataApiResult?> UpdateCardElementAttributeByIdAsync(
        [Path] string card_id,
        [Path] string element_id,
@@ -69,7 +69,7 @@ public interface IFeishuTenantV1CardElements
     /// <param name="element_id">要更新的组件 ID。对应卡片 JSON 中组件的 element_id 属性，由开发者自定义。示例值："markdown_1"</param>
     /// <param name="cardElementRequest">流式更新文本请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
-    [Put("https://open.feishu.cn/open-apis/cardkit/v1/cards/{card_id}/elements/{element_id}/content")]
+    [Put("/open-apis/cardkit/v1/cards/{card_id}/elements/{element_id}/content")]
     Task<FeishuNullDataApiResult?> StreamUpdateCardTextByIdAsync(
       [Path] string card_id,
       [Path] string element_id,
@@ -83,7 +83,7 @@ public interface IFeishuTenantV1CardElements
     /// <param name="element_id">要更新的组件 ID。对应卡片 JSON 中组件的 element_id 属性，由开发者自定义。示例值："markdown_1"</param>
     /// <param name="cardElementRequest">删除卡片组件请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
-    [Delete("https://open.feishu.cn/open-apis/cardkit/v1/cards/{card_id}/elements/{element_id}")]
+    [Delete("/open-apis/cardkit/v1/cards/{card_id}/elements/{element_id}")]
     Task<FeishuNullDataApiResult?> DeleteCardElementByIdAsync(
     [Path] string card_id,
     [Path] string element_id,

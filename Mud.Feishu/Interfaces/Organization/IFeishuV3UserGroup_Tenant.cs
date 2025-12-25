@@ -27,7 +27,7 @@ public interface IFeishuTenantV3UserGroup
     /// <param name="department_id_type">此次调用中的部门 ID 类型。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Post("https://open.feishu.cn/open-apis/contact/v3/group")]
+    [Post("/open-apis/contact/v3/group")]
     Task<FeishuApiResult<UserGroupCreateResult>?> CreateUserGroupAsync(
         [Body] UserGroupInfoRequest groupInfoRequest,
         [Query("user_id_type")] string? user_id_type = null,
@@ -42,7 +42,7 @@ public interface IFeishuTenantV3UserGroup
     /// <param name="user_id_type">用户 ID 类型</param>
     /// <param name="department_id_type">此次调用中的部门 ID 类型。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
-    [Patch("https://open.feishu.cn/open-apis/contact/v3/group/{group_id}")]
+    [Patch("/open-apis/contact/v3/group/{group_id}")]
     Task<FeishuNullDataApiResult?> UpdateUserGroupAsync(
        [Path] string group_id,
        [Body] UserGroupUpdateRequest groupUpdateRequest,
@@ -58,7 +58,7 @@ public interface IFeishuTenantV3UserGroup
     /// <param name="department_id_type">此次调用中的部门 ID 类型。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Get("https://open.feishu.cn/open-apis/contact/v3/group/{group_id}")]
+    [Get("/open-apis/contact/v3/group/{group_id}")]
     Task<FeishuApiResult<UserGroupQueryResult>?> GetUserGroupInfoByIdAsync(
       [Path] string group_id,
       [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
@@ -73,7 +73,7 @@ public interface IFeishuTenantV3UserGroup
     /// <param name="type">用户组类型。可选值有：1：普通用户组 2：动态用户组 默认值：1</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Get("https://open.feishu.cn/open-apis/contact/v3/group/simplelist")]
+    [Get("/open-apis/contact/v3/group/simplelist")]
     Task<FeishuApiResult<UserGroupListResult>?> GetUserGroupsAsync(
      [Query("page_size")] int? page_size = 10,
      [Query("page_token")] string? page_token = null,
@@ -91,7 +91,7 @@ public interface IFeishuTenantV3UserGroup
     /// <param name="type"></param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Get("https://open.feishu.cn/open-apis/contact/v3/group/member_belong")]
+    [Get("/open-apis/contact/v3/group/member_belong")]
     Task<FeishuApiResult<UserBelongGroupListResult>?> GetUserBelongGroupsAsync(
         [Query("member_id")] string member_id,
         [Query("member_id_type")] string? member_id_type = null,
@@ -107,7 +107,7 @@ public interface IFeishuTenantV3UserGroup
     /// <param name="group_id">需删除的用户组 ID。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Delete("https://open.feishu.cn/open-apis/contact/v3/group/{group_id}")]
+    [Delete("/open-apis/contact/v3/group/{group_id}")]
     Task<FeishuNullDataApiResult?> DeleteUserGroupByIdAsync(
       [Path] string group_id,
       CancellationToken cancellationToken = default);

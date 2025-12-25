@@ -25,7 +25,7 @@ public interface IFeishuV1Message
     /// <param name="message_id">待撤回的消息 ID。示例值："om_dc13264520392913993dd051dba21dcf"</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Delete("https://open.feishu.cn/open-apis/im/v1/messages/{message_id}")]
+    [Delete("/open-apis/im/v1/messages/{message_id}")]
     Task<FeishuNullDataApiResult?> RevokeMessageAsync(
         [Path] string message_id,
         CancellationToken cancellationToken = default);
@@ -37,7 +37,7 @@ public interface IFeishuV1Message
     /// <param name="sendMessageRequest">添加消息表情回复请求体。</param>
     /// <param name="message_id">待添加表情回复的消息 ID。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
-    [Post("https://open.feishu.cn/open-apis/im/v1/messages/{message_id}/reactions")]
+    [Post("/open-apis/im/v1/messages/{message_id}/reactions")]
     Task<FeishuApiResult<EmojiReactionResult>?> AddMessageReactionsAsync(
      [Path] string message_id,
      [Body] EmojiReactionRequest sendMessageRequest,
@@ -53,7 +53,7 @@ public interface IFeishuV1Message
     /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Get("https://open.feishu.cn/open-apis/im/v1/messages/{message_id}/reactions")]
+    [Get("/open-apis/im/v1/messages/{message_id}/reactions")]
     Task<FeishuApiListResult<EmojiReactionResult>?> GetMessageReactionsPageListAsync(
         [Path] string message_id,
         [Query("reaction_type")] string reaction_type,
@@ -68,7 +68,7 @@ public interface IFeishuV1Message
     /// <param name="reaction_id">待删除的表情回复 ID。示例值："ZCaCIjUBVVWSrm5L-3ZTw*************sNa8dHVplEzzSfJVUVLMLcS_"</param>
     /// <param name="message_id">待删除表情回复的消息 ID。示例值："om_8964d1b4*********2b31383276113"</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
-    [Delete("https://open.feishu.cn/open-apis/im/v1/messages/{message_id}/reactions/{reaction_id}")]
+    [Delete("/open-apis/im/v1/messages/{message_id}/reactions/{reaction_id}")]
     Task<FeishuApiResult<EmojiReactionResult>?> DeleteMessageReactionsAsync(
      [Path] string message_id,
      [Path] string reaction_id,
@@ -82,7 +82,7 @@ public interface IFeishuV1Message
     /// <param name="messageRequest">Pin 消息请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Post("https://open.feishu.cn/open-apis/im/v1/pins")]
+    [Post("/open-apis/im/v1/pins")]
     Task<FeishuApiResult<PinDataResult>?> PinMessageAsync(
        [Body] MessageRequest messageRequest,
        CancellationToken cancellationToken = default);
@@ -93,7 +93,7 @@ public interface IFeishuV1Message
     /// <param name="message_id">待移除 Pin 的消息 ID。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Delete("https://open.feishu.cn/open-apis/im/v1/pins/{message_id}")]
+    [Delete("/open-apis/im/v1/pins/{message_id}")]
     Task<FeishuNullDataApiResult?> DeletePinMessageAsync(
         [Path] string message_id,
         CancellationToken cancellationToken = default);
@@ -108,7 +108,7 @@ public interface IFeishuV1Message
     /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Post("https://open.feishu.cn/open-apis/im/v1/pins")]
+    [Post("/open-apis/im/v1/pins")]
     Task<FeishuApiPageListResult<PinInfo>?> GetPinMessagePageListAsync(
         [Query("chat_id")] string chat_id,
         [Query("start_time")] string? start_time,

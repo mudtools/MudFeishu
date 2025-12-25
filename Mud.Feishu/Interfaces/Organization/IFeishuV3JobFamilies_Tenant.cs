@@ -26,7 +26,7 @@ public interface IFeishuTenantV3JobFamilies
     /// <param name="familyCreateRequest">职位序列创建请求体。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Post("https://open.feishu.cn/open-apis/contact/v3/job_families")]
+    [Post("/open-apis/contact/v3/job_families")]
     Task<FeishuApiResult<JobFamilyResult>?> CreateJobFamilyAsync(
           [Body] JobFamilyCreateUpdateRequest familyCreateRequest,
           CancellationToken cancellationToken = default);
@@ -38,7 +38,7 @@ public interface IFeishuTenantV3JobFamilies
     /// <param name="job_family_id">序列 ID。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Put("https://open.feishu.cn/open-apis/contact/v3/job_families/{job_family_id}")]
+    [Put("/open-apis/contact/v3/job_families/{job_family_id}")]
     Task<FeishuApiResult<JobFamilyResult>?> UpdateJobFamilyAsync(
          [Path] string job_family_id,
          [Body] JobFamilyCreateUpdateRequest familyCreateRequest,
@@ -50,7 +50,7 @@ public interface IFeishuTenantV3JobFamilies
     /// <param name="job_family_id">序列 ID。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Get("https://open.feishu.cn/open-apis/contact/v3/job_families/{job_family_id}")]
+    [Get("/open-apis/contact/v3/job_families/{job_family_id}")]
     Task<FeishuApiResult<JobFamilyResult>?> GetJobFamilyByIdAsync(
         [Path] string job_family_id,
         CancellationToken cancellationToken = default);
@@ -63,7 +63,7 @@ public interface IFeishuTenantV3JobFamilies
     /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Get("https://open.feishu.cn/open-apis/contact/v3/job_levels")]
+    [Get("/open-apis/contact/v3/job_levels")]
     Task<FeishuApiPageListResult<JobFamilyInfo>?> GetJobFamilesListAsync(
          [Query("name")] string name,
          [Query("page_size")] int? page_size = 10,
@@ -79,7 +79,7 @@ public interface IFeishuTenantV3JobFamilies
     /// <param name="job_family_id">序列 ID。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Delete("https://open.feishu.cn/open-apis/contact/v3/job_families/{job_family_id}")]
+    [Delete("/open-apis/contact/v3/job_families/{job_family_id}")]
     Task<FeishuNullDataApiResult?> DeleteJobFamilyByIdAsync(
             [Path] string job_family_id,
             CancellationToken cancellationToken = default);

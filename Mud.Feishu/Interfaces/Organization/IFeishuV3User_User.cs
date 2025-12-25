@@ -26,7 +26,7 @@ public interface IFeishuUserV3User : IFeishuV3User
     /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Get("https://open.feishu.cn/open-apis/search/v1/user")]
+    [Get("/open-apis/search/v1/user")]
     Task<FeishuApiResult<UserSearchListResult>?> GetUsersByKeywordAsync(
      [Query("query")] string query,
      [Query("page_size")] int? page_size = 10,
@@ -39,7 +39,7 @@ public interface IFeishuUserV3User : IFeishuV3User
     /// </summary>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Get("https://open.feishu.cn/open-apis/authen/v1/user_info")]
+    [Get("/open-apis/authen/v1/user_info")]
     Task<FeishuApiResult<GetUserDataResult>?> GetUserInfoAsync(
         CancellationToken cancellationToken = default);
 }

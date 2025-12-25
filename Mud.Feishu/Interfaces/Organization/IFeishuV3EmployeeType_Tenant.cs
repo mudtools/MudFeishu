@@ -25,7 +25,7 @@ public interface IFeishuTenantV3EmployeeType
     /// <param name="groupInfoRequest">新增人员类型请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Post("https://open.feishu.cn/open-apis/contact/v3/employee_type_enums")]
+    [Post("/open-apis/contact/v3/employee_type_enums")]
     Task<FeishuApiResult<EmployeeTypeEnumResult>?> CreateEmployeeTypeAsync(
         [Body] EmployeeTypeEnumRequest groupInfoRequest,
         CancellationToken cancellationToken = default);
@@ -37,7 +37,7 @@ public interface IFeishuTenantV3EmployeeType
     /// <param name="groupInfoRequest">新增人员类型请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Put("https://open.feishu.cn/open-apis/contact/v3/employee_type_enums/{enum_id}")]
+    [Put("/open-apis/contact/v3/employee_type_enums/{enum_id}")]
     Task<FeishuApiResult<EmployeeTypeEnumResult>?> UpdateEmployeeTypeAsync(
         [Path] string enum_id,
         [Body] EmployeeTypeEnumRequest groupInfoRequest,
@@ -51,7 +51,7 @@ public interface IFeishuTenantV3EmployeeType
     /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Get("https://open.feishu.cn/open-apis/contact/v3/employee_type_enums")]
+    [Get("/open-apis/contact/v3/employee_type_enums")]
     Task<FeishuApiPageListResult<EmployeeTypeEnum>?> GetEmployeeTypesAsync(
        [Query("page_size")] int? page_size = 10,
        [Query("page_token")] string? page_token = null,
@@ -64,7 +64,7 @@ public interface IFeishuTenantV3EmployeeType
     /// <param name="enum_id">自定义人员类型的选项 ID。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Delete("https://open.feishu.cn/open-apis/contact/v3/employee_type_enums/{enum_id}")]
+    [Delete("/open-apis/contact/v3/employee_type_enums/{enum_id}")]
     Task<FeishuNullDataApiResult?> DeleteEmployeeTypeByIdAsync(
          [Path] string enum_id,
          CancellationToken cancellationToken = default);

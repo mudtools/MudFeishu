@@ -23,7 +23,7 @@ public interface IFeishuTenantV1BatchMessage
     /// <param name="sendMessageRequest">批量发送文本消息请求体。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Post("https://open.feishu.cn/open-apis/message/v4/batch_send")]
+    [Post("/open-apis/message/v4/batch_send")]
     Task<FeishuApiResult<BatchMessageResult>?> BatchSendTextMessageAsync(
       [Body] BatchSenderTextMessageRequest sendMessageRequest,
       CancellationToken cancellationToken = default);
@@ -34,7 +34,7 @@ public interface IFeishuTenantV1BatchMessage
     /// <param name="sendMessageRequest">批量发送富文本消息请求体。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Post("https://open.feishu.cn/open-apis/message/v4/batch_send")]
+    [Post("/open-apis/message/v4/batch_send")]
     Task<FeishuApiResult<BatchMessageResult>?> BatchSendRichTextMessageAsync(
       [Body] BatchSenderRichTextMessageRequest sendMessageRequest,
       CancellationToken cancellationToken = default);
@@ -45,7 +45,7 @@ public interface IFeishuTenantV1BatchMessage
     /// <param name="sendMessageRequest">批量发送图片消息请求体。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Post("https://open.feishu.cn/open-apis/message/v4/batch_send")]
+    [Post("/open-apis/message/v4/batch_send")]
     Task<FeishuApiResult<BatchMessageResult>?> BatchSendImageMessageAsync(
       [Body] BatchSenderMessageImageRequest sendMessageRequest,
       CancellationToken cancellationToken = default);
@@ -56,7 +56,7 @@ public interface IFeishuTenantV1BatchMessage
     /// <param name="sendMessageRequest">批量发送群分享消息请求体。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Post("https://open.feishu.cn/open-apis/message/v4/batch_send")]
+    [Post("/open-apis/message/v4/batch_send")]
     Task<FeishuApiResult<BatchMessageResult>?> BatchSendGroupShareMessageAsync(
       [Body] BatchSenderMessageGroupShareRequest sendMessageRequest,
       CancellationToken cancellationToken = default);
@@ -70,7 +70,7 @@ public interface IFeishuTenantV1BatchMessage
     /// </param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Delete("https://open.feishu.cn/open-apis/im/v1/batch_messages/{batch_message_id}")]
+    [Delete("/open-apis/im/v1/batch_messages/{batch_message_id}")]
     Task<FeishuNullDataApiResult?> RevokeMessageAsync(
         [Path] string batch_message_id,
         CancellationToken cancellationToken = default);
@@ -83,7 +83,7 @@ public interface IFeishuTenantV1BatchMessage
     /// </param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Get("https://open.feishu.cn/open-apis/im/v1/batch_messages/{batch_message_id}/read_user")]
+    [Get("/open-apis/im/v1/batch_messages/{batch_message_id}/read_user")]
     Task<FeishuApiResult<BatchMessageReadStatusResult>?> GetUserReadMessageInfosAsync(
         [Path] string batch_message_id,
         CancellationToken cancellationToken = default);
@@ -96,7 +96,7 @@ public interface IFeishuTenantV1BatchMessage
     /// </param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Get("https://open.feishu.cn/open-apis/im/v1/batch_messages/{batch_message_id}/get_progress")]
+    [Get("/open-apis/im/v1/batch_messages/{batch_message_id}/get_progress")]
     Task<FeishuApiResult<BatchMessageProgressResult>?> GetBatchMessageProgressAsync(
         [Path] string batch_message_id,
         CancellationToken cancellationToken = default);

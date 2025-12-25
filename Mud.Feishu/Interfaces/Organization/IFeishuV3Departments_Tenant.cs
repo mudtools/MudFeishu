@@ -28,7 +28,7 @@ public interface IFeishuTenantV3Departments : IFeishuV3Departments
     /// <param name="client_token">用于幂等判断是否为同一请求，避免重复创建。请参考参数示例值，传入自定义的 client_token。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Post("https://open.feishu.cn/open-apis/contact/v3/departments")]
+    [Post("/open-apis/contact/v3/departments")]
     Task<FeishuApiResult<DepartmentCreateUpdateResult>?> CreateDepartmentAsync(
            [Body] DepartmentCreateRequest departmentCreateRequest,
            [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
@@ -44,7 +44,7 @@ public interface IFeishuTenantV3Departments : IFeishuV3Departments
     /// <param name="user_id_type">用户 ID 类型</param>
     /// <param name="department_id_type">此次调用中的部门 ID 类型。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
-    [Patch("https://open.feishu.cn/open-apis/contact/v3/departments/{department_id}")]
+    [Patch("/open-apis/contact/v3/departments/{department_id}")]
     Task<FeishuApiResult<DepartmentCreateUpdateResult>?> UpdatePartDepartmentAsync(
           [Path] string department_id,
           [Body] DepartmentPartUpdateRequest departmentCreateRequest,
@@ -60,7 +60,7 @@ public interface IFeishuTenantV3Departments : IFeishuV3Departments
     /// <param name="user_id_type">用户 ID 类型</param>
     /// <param name="department_id_type">此次调用中的部门 ID 类型。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
-    [Put("https://open.feishu.cn/open-apis/contact/v3/departments/{department_id}")]
+    [Put("/open-apis/contact/v3/departments/{department_id}")]
     Task<FeishuApiResult<DepartmentUpdateResult>?> UpdateDepartmentAsync(
          [Path] string department_id,
          [Body] DepartmentUpdateRequest departmentCreateRequest,
@@ -75,7 +75,7 @@ public interface IFeishuTenantV3Departments : IFeishuV3Departments
     /// <param name="department_id">部门 ID，ID 类型需要与查询参数 department_id_type 的取值保持一致。</param>
     /// <param name="department_id_type">此次调用中的部门 ID 类型。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
-    [Patch("https://open.feishu.cn/open-apis/contact/v3/departments/{department_id}/update_department_id")]
+    [Patch("/open-apis/contact/v3/departments/{department_id}/update_department_id")]
     Task<FeishuNullDataApiResult?> UpdateDepartmentIdAsync(
         [Path] string department_id,
         [Body] DepartMentUpdateIdRequest departMentUpdateIdRequest,
@@ -88,7 +88,7 @@ public interface IFeishuTenantV3Departments : IFeishuV3Departments
     /// <param name="departmentRequest">部门 ID，ID 类型需要与查询参数 department_id_type 的取值保持一致。</param>
     /// <param name="department_id_type">此次调用中的部门 ID 类型。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
-    [Post("https://open.feishu.cn/open-apis/contact/v3/departments/unbind_department_chat")]
+    [Post("/open-apis/contact/v3/departments/unbind_department_chat")]
     Task<FeishuNullDataApiResult?> UnbindDepartmentChatAsync(
         [Body] DepartmentRequest departmentRequest,
         [Query("department_id_type")] string? department_id_type = Consts.Department_Id_Type,
@@ -101,7 +101,7 @@ public interface IFeishuTenantV3Departments : IFeishuV3Departments
     /// <param name="department_id_type">此次调用中使用的部门 ID 类型。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Delete("https://open.feishu.cn/open-apis/contact/v3/departments/{department_id}")]
+    [Delete("/open-apis/contact/v3/departments/{department_id}")]
     Task<FeishuNullDataApiResult?> DeleteDepartmentByIdAsync(
        [Path] string department_id,
        [Query("department_id_type")] string? department_id_type = Consts.Department_Id_Type,

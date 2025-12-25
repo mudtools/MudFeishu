@@ -21,7 +21,7 @@ partial class FeishuTenantV1Message
         {
             throw new InvalidOperationException("无法获取访问令牌");
         }
-        var url = $"https://open.feishu.cn/open-apis/im/v1/files";
+        var url = $"/open-apis/im/v1/files";
         using var request = new HttpRequestMessage(HttpMethod.Post, url);
 
         request.Headers.Add("Authorization", access_token);
@@ -53,7 +53,7 @@ partial class FeishuTenantV1Message
         {
             throw new InvalidOperationException("无法获取访问令牌");
         }
-        var url = $"https://open.feishu.cn/open-apis/im/v1/images";
+        var url = $"/open-apis/im/v1/images";
         using var request = new HttpRequestMessage(HttpMethod.Post, url);
 
         request.Headers.Add("Authorization", access_token);

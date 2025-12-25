@@ -26,7 +26,7 @@ public interface IFeishuTenantV3Role
     /// <param name="roleRequest">创建角色请求体。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Post("https://open.feishu.cn/open-apis/contact/v3/functional_roles")]
+    [Post("/open-apis/contact/v3/functional_roles")]
     Task<FeishuApiResult<RoleCreateResult>?> CreateRoleAsync(
         [Body] RoleRequest roleRequest,
         CancellationToken cancellationToken = default);
@@ -38,7 +38,7 @@ public interface IFeishuTenantV3Role
     /// <param name="roleRequest">创建角色请求体。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Put("https://open.feishu.cn/open-apis/contact/v3/functional_roles/{role_id}")]
+    [Put("/open-apis/contact/v3/functional_roles/{role_id}")]
     Task<FeishuNullDataApiResult?> UpdateRoleAsync(
       [Path] string role_id,
       [Body] RoleRequest roleRequest,
@@ -50,7 +50,7 @@ public interface IFeishuTenantV3Role
     /// <param name="role_id">角色 ID。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Delete("https://open.feishu.cn/open-apis/contact/v3/functional_roles/{role_id}")]
+    [Delete("/open-apis/contact/v3/functional_roles/{role_id}")]
     Task<FeishuNullDataApiResult?> DeleteRoleByIdAsync(
       [Path] string role_id,
       CancellationToken cancellationToken = default);

@@ -28,7 +28,7 @@ public interface IFeishuV1ChatTabs
     /// <param name="uuid">由开发者生成的唯一字符串序列，用于创建群组请求去重；持有相同 uuid + owner_id（若有） 的请求 10 小时内只可成功创建 1 个群聊。不传值表示不进行请求去重，每一次请求成功后都会创建一个群聊。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Post("https://open.feishu.cn/open-apis/im/v1/chats/{chat_id}/chat_tabs")]
+    [Post("/open-apis/im/v1/chats/{chat_id}/chat_tabs")]
     Task<FeishuApiResult<ChatTabsCreateResult>?> CreateChatTabsByIdAsync(
           [Path] string chat_id,
           [Body] CreateChatTabsRequest createChatTabsRequest,
@@ -43,7 +43,7 @@ public interface IFeishuV1ChatTabs
     /// <param name="chat_id">群 ID。 示例值："oc_a0553eda9014c201e6969b478895c230"</param>
     /// <param name="updateChatTabsRequest">更新会话标签页请求体。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
-    [Post("https://open.feishu.cn/open-apis/im/v1/chats/{chat_id}/chat_tabs/update_tabs")]
+    [Post("/open-apis/im/v1/chats/{chat_id}/chat_tabs/update_tabs")]
     Task<FeishuApiResult<ChatTabsUpdateResult>?> UpdateChatTabsByIdAsync(
          [Path] string chat_id,
          [Body] UpdateChatTabsRequest updateChatTabsRequest,
@@ -56,7 +56,7 @@ public interface IFeishuV1ChatTabs
     /// <param name="deleteChatTabsRequest">删除会话标签页请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Delete("https://open.feishu.cn/open-apis/im/v1/chats/{chat_id}/chat_tabs/delete_tabs")]
+    [Delete("/open-apis/im/v1/chats/{chat_id}/chat_tabs/delete_tabs")]
     Task<FeishuApiResult<DeleteTabsResult>?> DeleteChatTabsByIdAsync(
       [Path] string chat_id,
       [Body] ChatTabsIdsRequest deleteChatTabsRequest,
@@ -69,7 +69,7 @@ public interface IFeishuV1ChatTabs
     /// <param name="chatTabsSortRequest">排序会话标签页请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Post("https://open.feishu.cn/open-apis/im/v1/chats/{chat_id}/chat_tabs/sort_tabs")]
+    [Post("/open-apis/im/v1/chats/{chat_id}/chat_tabs/sort_tabs")]
     Task<FeishuApiResult<ChatTabsSortResult>?> ChatTabsSortByIdAsync(
      [Path] string chat_id,
      [Body] ChatTabsIdsRequest chatTabsSortRequest,
@@ -81,7 +81,7 @@ public interface IFeishuV1ChatTabs
     /// <param name="chat_id">群 ID。 示例值："oc_a0553eda9014c201e6969b478895c230"</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Post("https://open.feishu.cn/open-apis/im/v1/chats/{chat_id}/chat_tabs/list_tabs")]
+    [Post("/open-apis/im/v1/chats/{chat_id}/chat_tabs/list_tabs")]
     Task<FeishuApiResult<GetChatTabsResult>?> GetChatTabsListByIdAsync(
     [Path] string chat_id,
     CancellationToken cancellationToken = default);

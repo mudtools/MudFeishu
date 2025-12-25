@@ -28,7 +28,7 @@ public interface IFeishuV2Task
     /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Post("https://open.feishu.cn/open-apis/task/v2/tasks")]
+    [Post("/open-apis/task/v2/tasks")]
     Task<FeishuApiResult<TaskOperationResult>?> CreateTaskAsync(
       [Body] CreateTaskRequest createTaskRequest,
       [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
@@ -42,7 +42,7 @@ public interface IFeishuV2Task
     /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Patch("https://open.feishu.cn/open-apis/task/v2/tasks/{task_guid}")]
+    [Patch("/open-apis/task/v2/tasks/{task_guid}")]
     Task<FeishuApiResult<TaskOperationResult>?> UpdateTaskAsync(
         [Path] string task_guid,
         [Body] UpdateTaskRequest updateTaskRequest,
@@ -56,7 +56,7 @@ public interface IFeishuV2Task
     /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Get("https://open.feishu.cn/open-apis/task/v2/tasks/{task_guid}")]
+    [Get("/open-apis/task/v2/tasks/{task_guid}")]
     Task<FeishuApiResult<TaskOperationResult>?> GetTaskByIdAsync(
         [Path] string task_guid,
         [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
@@ -68,7 +68,7 @@ public interface IFeishuV2Task
     /// <param name="task_guid">要删除的任务全局唯一ID。 示例值："e297ddff-06ca-4166-b917-4ce57cd3a7a0"</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Delete("https://open.feishu.cn/open-apis/task/v2/tasks/{task_guid}")]
+    [Delete("/open-apis/task/v2/tasks/{task_guid}")]
     Task<FeishuNullDataApiResult?> DeleteTaskByIdAsync(
        [Path] string task_guid,
        CancellationToken cancellationToken = default);
@@ -82,7 +82,7 @@ public interface IFeishuV2Task
     /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Post("https://open.feishu.cn/open-apis/task/v2/tasks/{task_guid}/add_members")]
+    [Post("/open-apis/task/v2/tasks/{task_guid}/add_members")]
     Task<FeishuApiResult<TaskOperationResult>?> AddMembersByIdAsync(
        [Path] string task_guid,
        [Body] AddMembersRequest addMembersRequest,
@@ -99,7 +99,7 @@ public interface IFeishuV2Task
     /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Post("https://open.feishu.cn/open-apis/task/v2/tasks/{task_guid}/remove_members")]
+    [Post("/open-apis/task/v2/tasks/{task_guid}/remove_members")]
     Task<FeishuApiResult<TaskOperationResult>?> RemoveMembersByIdAsync(
       [Path] string task_guid,
       [Body] RemoveMembersRequest removeMembersRequest,
@@ -112,7 +112,7 @@ public interface IFeishuV2Task
     /// <param name="task_guid">任务全局唯一ID。 示例值："e297ddff-06ca-4166-b917-4ce57cd3a7a0"</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Get("https://open.feishu.cn/open-apis/task/v2/tasks/{task_guid}/tasklists")]
+    [Get("/open-apis/task/v2/tasks/{task_guid}/tasklists")]
     Task<FeishuApiResult<TaskGuidTaskListsResult>?> GetTaskListsByIdAsync(
      [Path] string task_guid,
      CancellationToken cancellationToken = default);
@@ -126,7 +126,7 @@ public interface IFeishuV2Task
     /// <param name="task_guid">任务全局唯一ID。 示例值："e297ddff-06ca-4166-b917-4ce57cd3a7a0"</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Post("https://open.feishu.cn/open-apis/task/v2/tasks/{task_guid}/add_tasklist")]
+    [Post("/open-apis/task/v2/tasks/{task_guid}/add_tasklist")]
     Task<FeishuApiResult<AddTaskListResult>?> AddTaskListsByIdAsync(
        [Path] string task_guid,
        [Body] AddTasklistRequest addTasklistRequest,
@@ -142,7 +142,7 @@ public interface IFeishuV2Task
     /// <param name="task_guid">任务全局唯一ID。 示例值："e297ddff-06ca-4166-b917-4ce57cd3a7a0"</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Post("https://open.feishu.cn/open-apis/task/v2/tasks/{task_guid}/remove_tasklist")]
+    [Post("/open-apis/task/v2/tasks/{task_guid}/remove_tasklist")]
     Task<FeishuApiResult<RemoveTaskListResult>?> RemoveTaskListsByIdAsync(
       [Path] string task_guid,
       [Body] RemoveTasklistRequest removeTasklistRequest,
@@ -158,7 +158,7 @@ public interface IFeishuV2Task
     /// <param name="task_guid">任务全局唯一ID。 示例值："e297ddff-06ca-4166-b917-4ce57cd3a7a0"</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Post("https://open.feishu.cn/open-apis/task/v2/tasks/{task_guid}/add_reminders")]
+    [Post("/open-apis/task/v2/tasks/{task_guid}/add_reminders")]
     Task<FeishuApiResult<AddTaskReminderResult>?> AddTaskReminderByIdAsync(
       [Path] string task_guid,
       [Body] AddTaskReminderRequest addTaskReminderRequest,
@@ -174,7 +174,7 @@ public interface IFeishuV2Task
     /// <param name="task_guid">任务全局唯一ID。 示例值："e297ddff-06ca-4166-b917-4ce57cd3a7a0"</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Post("https://open.feishu.cn/open-apis/task/v2/tasks/{task_guid}/remove_reminders")]
+    [Post("/open-apis/task/v2/tasks/{task_guid}/remove_reminders")]
     Task<FeishuApiResult<RemoveTaskReminderResult>?> RemoveTaskReminderByIdAsync(
      [Path] string task_guid,
      [Body] RemoveReminderRequest removeReminderRequest,
@@ -189,7 +189,7 @@ public interface IFeishuV2Task
     /// <param name="task_guid">任务全局唯一ID。 示例值："e297ddff-06ca-4166-b917-4ce57cd3a7a0"</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Post("https://open.feishu.cn/open-apis/task/v2/tasks/{task_guid}/add_dependencies")]
+    [Post("/open-apis/task/v2/tasks/{task_guid}/add_dependencies")]
     Task<FeishuApiResult<TaskDependenciesOpreationResult>?> AddTaskDependenciesByIdAsync(
       [Path] string task_guid,
       [Body] AddTaskDependenciesRequest addTaskReminderRequest,
@@ -203,7 +203,7 @@ public interface IFeishuV2Task
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
 
-    [Post("https://open.feishu.cn/open-apis/task/v2/tasks/{task_guid}/remove_dependencies")]
+    [Post("/open-apis/task/v2/tasks/{task_guid}/remove_dependencies")]
     Task<FeishuApiResult<TaskDependenciesOpreationResult>?> RemoveTaskDependenciesByIdAsync(
          [Path] string task_guid,
          [Body] RemoveTaskDependenciesRequest removeTaskDependenciesRequest,
@@ -218,7 +218,7 @@ public interface IFeishuV2Task
     /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Post("https://open.feishu.cn/open-apis/task/v2/tasks/{task_guid}/subtasks")]
+    [Post("/open-apis/task/v2/tasks/{task_guid}/subtasks")]
     Task<FeishuApiResult<CreateSubTaskResult>?> CreateSubTaskAsync(
         [Path] string task_guid,
         [Body] CreateSubTaskRequest createSubTaskRequest,
@@ -234,7 +234,7 @@ public interface IFeishuV2Task
     /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Get("https://open.feishu.cn/open-apis/task/v2/tasks")]
+    [Get("/open-apis/task/v2/tasks")]
     Task<FeishuApiPageListResult<SubTaskInfo>?> GetSubTasksPageListByIdAsync(
           [Path] string task_guid,
           [Query("page_size")] int page_size = 10,

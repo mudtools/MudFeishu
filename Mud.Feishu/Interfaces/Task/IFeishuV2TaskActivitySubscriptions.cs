@@ -26,7 +26,7 @@ public interface IFeishuV2TaskActivitySubscriptions
     /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Post("https://open.feishu.cn/open-apis/task/v2/tasklists/{tasklist_guid}/activity_subscriptions")]
+    [Post("/open-apis/task/v2/tasklists/{tasklist_guid}/activity_subscriptions")]
     Task<FeishuApiResult<TasklistActivitySubscriptionResult>?> CreateActivitySubscriptionsAsync(
         [Path] string tasklist_guid,
         [Body] CreateActivitySubscriptionsRequest createActivitySubscriptionsRequest,
@@ -40,7 +40,7 @@ public interface IFeishuV2TaskActivitySubscriptions
     /// <param name="tasklist_guid">任务清单全局唯一GUID，示例值："d300a75f-c56a-4be9-80d1-e47653028ceb"。</param>
     /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
-    [Get("https://open.feishu.cn/open-apis/task/v2/tasklists/{tasklist_guid}/activity_subscriptions/{activity_subscription_guid}")]
+    [Get("/open-apis/task/v2/tasklists/{tasklist_guid}/activity_subscriptions/{activity_subscription_guid}")]
     Task<FeishuApiResult<TasklistActivitySubscriptionResult>?> GetActivitySubscriptionsByIdAsync(
        [Path] string tasklist_guid,
        [Path] string activity_subscription_guid,
@@ -55,7 +55,7 @@ public interface IFeishuV2TaskActivitySubscriptions
     /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
 
-    [Get("https://open.feishu.cn/open-apis/task/v2/tasklists/{tasklist_guid}/activity_subscriptions")]
+    [Get("/open-apis/task/v2/tasklists/{tasklist_guid}/activity_subscriptions")]
     Task<FeishuApiListResult<TasklistActivitySubscriptionInfo>?> GetActivitySubscriptionsListByIdAsync(
        [Path] string tasklist_guid,
        [Query("limit")] int limit = 50,
@@ -72,7 +72,7 @@ public interface IFeishuV2TaskActivitySubscriptions
     /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Patch("https://open.feishu.cn/open-apis/task/v2/tasklists/{tasklist_guid}/activity_subscriptions/{activity_subscription_guid}")]
+    [Patch("/open-apis/task/v2/tasklists/{tasklist_guid}/activity_subscriptions/{activity_subscription_guid}")]
     Task<FeishuApiListResult<TasklistActivitySubscriptionResult>?> UpdateActivitySubscriptionsByIdAsync(
           [Path] string tasklist_guid,
           [Path] string activity_subscription_guid,
@@ -88,7 +88,7 @@ public interface IFeishuV2TaskActivitySubscriptions
     /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Delete("https://open.feishu.cn/open-apis/task/v2/tasklists/{tasklist_guid}/activity_subscriptions/{activity_subscription_guid}")]
+    [Delete("/open-apis/task/v2/tasklists/{tasklist_guid}/activity_subscriptions/{activity_subscription_guid}")]
     Task<FeishuNullDataApiResult?> DeleteActivitySubscriptionsByIdAsync(
       [Path] string tasklist_guid,
       [Path] string activity_subscription_guid,

@@ -27,7 +27,7 @@ public interface IFeishuTenantV3User : IFeishuV3User
     /// <param name="client_token">用于幂等判断是否为同一请求，避免重复创建。请参考参数示例值，传入自定义的 client_token。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Post("https://open.feishu.cn/open-apis/contact/v3/users")]
+    [Post("/open-apis/contact/v3/users")]
     Task<FeishuApiResult<CreateOrUpdateUserResult>?> CreateUserAsync(
         [Body] CreateUserRequest userModel,
         [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
@@ -43,7 +43,7 @@ public interface IFeishuTenantV3User : IFeishuV3User
     /// <param name="user_id_type">用户 ID 类型</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Patch("https://open.feishu.cn/open-apis/contact/v3/users/{user_id}/update_user_id")]
+    [Patch("/open-apis/contact/v3/users/{user_id}/update_user_id")]
     Task<FeishuNullDataApiResult?> UpdateUserIdAsync(
         [Path] string user_id,
         [Body] UpdateUserIdRequest updateUserId,
@@ -58,7 +58,7 @@ public interface IFeishuTenantV3User : IFeishuV3User
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
 
-    [Post("https://open.feishu.cn/open-apis/contact/v3/users/batch_get_id")]
+    [Post("/open-apis/contact/v3/users/batch_get_id")]
     Task<FeishuApiResult<UserQueryListResult>?> GetBatchUsersAsync(
       [Body] UserQueryRequest queryRequest,
       [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
@@ -72,7 +72,7 @@ public interface IFeishuTenantV3User : IFeishuV3User
     /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Get("https://open.feishu.cn/open-apis/search/v1/user")]
+    [Get("/open-apis/search/v1/user")]
     Task<FeishuApiResult<UserSearchListResult>?> GetUsersByKeywordAsync(
      [Query("query")] string query,
      [Query("page_size")] int page_size = 10,
@@ -87,7 +87,7 @@ public interface IFeishuTenantV3User : IFeishuV3User
     /// <param name="deleteSettingsRequest">用户删除参数请求体。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Delete("https://open.feishu.cn/open-apis/contact/v3/users/{user_id}")]
+    [Delete("/open-apis/contact/v3/users/{user_id}")]
     Task<FeishuNullDataApiResult?> DeleteUserByIdAsync(
        [Path] string user_id,
        [Body] DeleteSettingsRequest deleteSettingsRequest,
@@ -103,7 +103,7 @@ public interface IFeishuTenantV3User : IFeishuV3User
     /// <param name="department_id_type">部门 ID，ID 类型与 department_id_type 的取值保持一致。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Post("https://open.feishu.cn/open-apis/contact/v3/users/{user_id}/resurrect")]
+    [Post("/open-apis/contact/v3/users/{user_id}/resurrect")]
     Task<FeishuNullDataApiResult?> ResurrectUserByIdAsync(
       [Path] string user_id,
       [Body] ResurrectUserRequest resurrectUserRequest,
@@ -118,7 +118,7 @@ public interface IFeishuTenantV3User : IFeishuV3User
     /// <param name="logoutRequest">退出登录请求体。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Post("https://open.feishu.cn/open-apis/passport/v1/sessions/logout")]
+    [Post("/open-apis/passport/v1/sessions/logout")]
     Task<FeishuNullDataApiResult?> LogoutAsync(
         [Body] LogoutRequest logoutRequest,
         [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
@@ -129,7 +129,7 @@ public interface IFeishuTenantV3User : IFeishuV3User
     /// </summary>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Post("https://open.feishu.cn/open-apis/jssdk/ticket/get")]
+    [Post("/open-apis/jssdk/ticket/get")]
     Task<FeishuApiResult<TicketData>?> GetJsTicketAsync(CancellationToken cancellationToken = default);
 
 }

@@ -30,7 +30,7 @@ public interface IFeishuUserV2Task : IFeishuV2Task
     /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Get("https://open.feishu.cn/open-apis/task/v2/tasks")]
+    [Get("/open-apis/task/v2/tasks")]
     Task<FeishuApiPageListResult<ListTaskInfo>?> GetTasksPageListByIdAsync(
       [Query("page_size")] int page_size = 10,
       [Query("page_token")] string? page_token = null,

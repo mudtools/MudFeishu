@@ -264,7 +264,7 @@ public class FeishuServiceBuilder
     {
         if (!_configuration.AuthenticationApiAdded)
         {
-            _services.AddHttpClient<IFeishuV3AuthenticationApi, FeishuV3AuthenticationApi>();
+            _services.AddTransient<IFeishuV3AuthenticationApi, FeishuV3AuthenticationApi>();
             _configuration.AuthenticationApiAdded = true;
         }
         return this;

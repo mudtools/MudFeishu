@@ -28,7 +28,7 @@ public interface IFeishuV3AuthenticationApi
     /// <para>剩余有效期大于等于 30 分钟时，调用本接口会返回原有的 tenant_access_token。</para>
     /// </remarks>
     /// <returns></returns>
-    [Post("https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal")]
+    [Post("/open-apis/auth/v3/tenant_access_token/internal")]
     Task<TenantAppCredentialResult?> GetTenantAccessTokenAsync(
         [Body] AppCredentials credentials,
         CancellationToken cancellationToken = default);
@@ -44,7 +44,7 @@ public interface IFeishuV3AuthenticationApi
     /// <para>剩余有效期大于等于 30 分钟时，调用本接口会返回原有的 app_access_token。</para>
     /// </remarks>
     /// <returns></returns>
-    [Post("https://open.feishu.cn/open-apis/auth/v3/app_access_token/internal")]
+    [Post("/open-apis/auth/v3/app_access_token/internal")]
     Task<AppCredentialResult?> GetAppAccessTokenAsync(
         [Body] AppCredentials credentials,
         CancellationToken cancellationToken = default);
@@ -55,7 +55,7 @@ public interface IFeishuV3AuthenticationApi
     /// <param name="credentials">获取 user_access_token 的请求参数</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Post("https://open.feishu.cn/open-apis/authen/v2/oauth/token")]
+    [Post("/open-apis/authen/v2/oauth/token")]
     Task<OAuthCredentialsResult?> GetOAuthenAccessTokenAsync(
         [Body] OAuthTokenRequest credentials,
         CancellationToken cancellationToken = default);
@@ -66,7 +66,7 @@ public interface IFeishuV3AuthenticationApi
     /// <param name="credentials">OAuth 令牌接口，可用于刷新 user_access_token 以及获取新的 refresh_token。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Post("https://open.feishu.cn/open-apis/authen/v2/oauth/token")]
+    [Post("/open-apis/authen/v2/oauth/token")]
     Task<OAuthCredentialsResult?> GetOAuthenRefreshAccessTokenAsync(
         [Body] OAuthRefreshTokenRequest credentials,
         CancellationToken cancellationToken = default);
@@ -99,7 +99,7 @@ public interface IFeishuV3AuthenticationApi
     /// </summary>
     /// <param name="appCredentials">应用唯一标识及应用秘钥信息</param>
     /// <param name="cancellation_token">取消操作的令牌</param>
-    [Post("https://open.feishu.cn/callback/ws/endpoint")]
+    [Post("/callback/ws/endpoint")]
     Task<FeishuApiResult<WsEndpointResult>?> GetWebSocketEndpointAsync(
         [Body] WsAppCredentials appCredentials,
         CancellationToken cancellation_token = default);

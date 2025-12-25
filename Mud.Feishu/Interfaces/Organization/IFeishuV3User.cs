@@ -28,7 +28,7 @@ public interface IFeishuV3User
     /// <param name="department_id_type">此次调用中使用的部门 ID 类型。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Patch("https://open.feishu.cn/open-apis/contact/v3/users/{user_id}")]
+    [Patch("/open-apis/contact/v3/users/{user_id}")]
     Task<FeishuApiResult<CreateOrUpdateUserResult>?> UpdateUserAsync(
         [Path] string user_id,
         [Body] UpdateUserRequest userModel,
@@ -44,7 +44,7 @@ public interface IFeishuV3User
     /// <param name="department_id_type">此次调用中使用的部门 ID 类型。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Get("https://open.feishu.cn/open-apis/contact/v3/users/{user_id}")]
+    [Get("/open-apis/contact/v3/users/{user_id}")]
     Task<FeishuApiResult<GetUserInfoResult>?> GetUserInfoByIdAsync(
         [Path] string user_id,
         [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
@@ -59,7 +59,7 @@ public interface IFeishuV3User
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <param name="user_ids">用户ID。ID 类型与查询参数 user_id_type 保持一致。如需一次查询多个用户ID，可多次传递同一参数名，并且每次传递不同的参数值。</param>
     /// <returns></returns>
-    [Get("https://open.feishu.cn/open-apis/contact/v3/users/batch")]
+    [Get("/open-apis/contact/v3/users/batch")]
     Task<FeishuApiResult<GetUserInfosResult>?> GetUserByIdsAsync(
        [Query("user_ids")] string[] user_ids,
        [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
@@ -76,7 +76,7 @@ public interface IFeishuV3User
     /// <param name="page_size">分页大小，即本次请求所返回的用户信息列表内的最大条目数。默认值：10</param>
     /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
     /// <returns></returns>
-    [Get("https://open.feishu.cn/open-apis/contact/v3/users/find_by_department")]
+    [Get("/open-apis/contact/v3/users/find_by_department")]
     Task<FeishuApiResult<GetUserInfosResult>?> GetUserByDepartmentIdAsync(
      [Query("department_id")] string department_id,
      [Query("page_size")] int page_size = 10,

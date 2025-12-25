@@ -24,7 +24,7 @@ public interface IFeishuV1ChatGroup
     /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Put("https://open.feishu.cn/open-apis/im/v1/chats/{chat_id}")]
+    [Put("/open-apis/im/v1/chats/{chat_id}")]
     Task<FeishuApiResult<CreateUpdateChatResult>?> UpdateChatGroupByIdAsync(
         [Path] string chat_id,
         [Body] UpdateChatRequest updateChatRequest,
@@ -37,7 +37,7 @@ public interface IFeishuV1ChatGroup
     /// <param name="chat_id">群 ID。示例值："oc_a0553eda9014c201e6969b478895c230"</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Delete("https://open.feishu.cn/open-apis/im/v1/chats/{chat_id}")]
+    [Delete("/open-apis/im/v1/chats/{chat_id}")]
     Task<FeishuNullDataApiResult?> DeleteChatGroupAsync(
        [Path] string chat_id,
        CancellationToken cancellationToken = default);
@@ -50,7 +50,7 @@ public interface IFeishuV1ChatGroup
     /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Put("https://open.feishu.cn/open-apis/im/v1/chats/{chat_id}/moderation")]
+    [Put("/open-apis/im/v1/chats/{chat_id}/moderation")]
     Task<FeishuNullDataApiResult?> UpdateChatModerationAsync(
         [Path] string chat_id,
         [Body] UpdateChatModerationRequest updateChatModerationRequest,
@@ -65,7 +65,7 @@ public interface IFeishuV1ChatGroup
     /// <param name="user_id_type">用户 ID 类型，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Get("https://open.feishu.cn/open-apis/im/v1/chats/{chat_id}")]
+    [Get("/open-apis/im/v1/chats/{chat_id}")]
     Task<FeishuApiResult<GetChatGroupInfoResult>?> GetChatGroupInoByIdAsync(
        [Path] string chat_id,
        [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
@@ -78,7 +78,7 @@ public interface IFeishuV1ChatGroup
     /// <param name="chatTopNoticeRequest">群置顶操作请求体。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Post("https://open.feishu.cn/open-apis/im/v1/chats/{chat_id}/top_notice/put_top_notice")]
+    [Post("/open-apis/im/v1/chats/{chat_id}/top_notice/put_top_notice")]
     Task<FeishuNullDataApiResult?> PutChatGroupTopNoticeAsync(
       [Path] string chat_id,
       [Body] ChatTopNoticeRequest chatTopNoticeRequest,
@@ -90,7 +90,7 @@ public interface IFeishuV1ChatGroup
     /// <param name="chat_id">群 ID。 示例值："oc_a0553eda9014c201e6969b478895c230"</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Post("https://open.feishu.cn/open-apis/im/v1/chats/{chat_id}/top_notice/delete_top_notice")]
+    [Post("/open-apis/im/v1/chats/{chat_id}/top_notice/delete_top_notice")]
     Task<FeishuNullDataApiResult?> DeleteChatGroupTopNoticeAsync(
       [Path] string chat_id,
       CancellationToken cancellationToken = default);
@@ -109,7 +109,7 @@ public interface IFeishuV1ChatGroup
     /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Get("https://open.feishu.cn/open-apis/im/v1/chats")]
+    [Get("/open-apis/im/v1/chats")]
     Task<FeishuApiPageListResult<ChatItemInfo>?> GetChatGroupPageListAsync(
        [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
        [Query("sort_type")] string sort_type = "ByCreateTimeAsc",
@@ -132,7 +132,7 @@ public interface IFeishuV1ChatGroup
     /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Get("https://open.feishu.cn/open-apis/im/v1/chats")]
+    [Get("/open-apis/im/v1/chats")]
     Task<FeishuApiPageListResult<ChatItemInfo>?> GetChatGroupPageListByKeywordAsync(
        [Query("query")] string? query = "",
        [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
@@ -150,7 +150,7 @@ public interface IFeishuV1ChatGroup
     /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Get("https://open.feishu.cn/open-apis/im/v1/chats/{chat_id}/moderation")]
+    [Get("/open-apis/im/v1/chats/{chat_id}/moderation")]
     Task<FeishuApiResult<ChatGroupModeratorPageListResult>?> GetChatGroupModeratorPageListByIdAsync(
       [Path] string chat_id,
       [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
@@ -165,7 +165,7 @@ public interface IFeishuV1ChatGroup
     /// <param name="shareLinkRequest">获取群分享链接群分享链接请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Get("https://open.feishu.cn/open-apis/im/v1/chats/{chat_id}/link")]
+    [Get("/open-apis/im/v1/chats/{chat_id}/link")]
     Task<FeishuApiResult<ShareLinkDataResult>?> GetChatGroupShareLinkByIdAsync(
      [Path] string chat_id,
      [Body] ShareLinkRequest shareLinkRequest,

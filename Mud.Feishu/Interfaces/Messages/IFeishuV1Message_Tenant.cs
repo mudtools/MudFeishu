@@ -26,7 +26,7 @@ public interface IFeishuTenantV1Message : IFeishuV1Message
     /// <param name="receive_id_type">用户 ID 类型</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Post("https://open.feishu.cn/open-apis/im/v1/messages")]
+    [Post("/open-apis/im/v1/messages")]
     Task<FeishuApiResult<MessageDataResult>?> SendMessageAsync(
        [Body] SendMessageRequest sendMessageRequest,
        [Query("receive_id_type")] string receive_id_type = Consts.User_Id_Type,
@@ -40,7 +40,7 @@ public interface IFeishuTenantV1Message : IFeishuV1Message
     /// <param name="message_id">待回复的消息的 ID。示例值："om_dc13264520392913993dd051dba21dcf"</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Post("https://open.feishu.cn/open-apis/im/v1/messages/{message_id}/reply")]
+    [Post("/open-apis/im/v1/messages/{message_id}/reply")]
     Task<FeishuApiResult<MessageDataResult>?> ReplyMessageAsync(
          [Path] string message_id,
          [Body] ReplyMessageRequest replyMessageRequest,
@@ -48,13 +48,13 @@ public interface IFeishuTenantV1Message : IFeishuV1Message
 
     /// <summary>
     /// 编辑已发送的消息内容，支持编辑文本、富文本消息。
-    /// <para>如需编辑卡片消息，请使用更新应用发送的消息卡片<see href="https://open.feishu.cn/document/server-docs/im-v1/message-card/patch"/>接口。</para>
+    /// <para>如需编辑卡片消息，请使用更新应用发送的消息卡片<see href="/document/server-docs/im-v1/message-card/patch"/>接口。</para>
     /// </summary>
     /// <param name="editMessageRequest">编辑消息请求体。</param>
     /// <param name="message_id">待编辑的消息的 ID。示例值："om_dc13264520392913993dd051dba21dcf"</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Put("https://open.feishu.cn/open-apis/im/v1/messages/{message_id}")]
+    [Put("/open-apis/im/v1/messages/{message_id}")]
     Task<FeishuApiResult<MessageDataResult>?> EditMessageAsync(
          [Path] string message_id,
          [Body] EditMessageRequest editMessageRequest,
@@ -69,7 +69,7 @@ public interface IFeishuTenantV1Message : IFeishuV1Message
     /// <param name="uuid">自定义设置的唯一字符串序列，用于在转发消息时请求去重。持有相同 uuid 的请求，在 1 小时内向同一目标的转发只可成功一次。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Post("https://open.feishu.cn/open-apis/im/v1/messages/{message_id}/forward")]
+    [Post("/open-apis/im/v1/messages/{message_id}/forward")]
     Task<FeishuApiResult<ReceiveMessageResult>?> ReceiveMessageAsync(
         [Path] string message_id,
         [Body] ReceiveMessageRequest receiveMessageRequest,
@@ -85,7 +85,7 @@ public interface IFeishuTenantV1Message : IFeishuV1Message
     /// <param name="uuid">自定义设置的唯一字符串序列，用于在转发消息时请求去重。持有相同 uuid 的请求，在 1 小时内向同一目标的转发只可成功一次。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Post("https://open.feishu.cn/open-apis/im/v1/messages/merge_forward")]
+    [Post("/open-apis/im/v1/messages/merge_forward")]
     Task<FeishuApiResult<MergeReceiveMessageResult>?> MergeReceiveMessageAsync(
         [Body] MergeReceiveMessageRequest mergeReceiveMessageRequest,
         [Query("receive_id_type")] string receive_id_type = Consts.User_Id_Type,
@@ -101,7 +101,7 @@ public interface IFeishuTenantV1Message : IFeishuV1Message
     /// <param name="uuid">自定义设置的唯一字符串序列，用于在转发消息时请求去重。持有相同 uuid 的请求，在 1 小时内向同一目标的转发只可成功一次。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Post("https://open.feishu.cn/open-apis/im/v1/threads/{thread_id}/forward")]
+    [Post("/open-apis/im/v1/threads/{thread_id}/forward")]
     Task<FeishuApiResult<ThreadResult>?> ReceiveThreadsAsync(
        [Path] string thread_id,
        [Body] ReceiveMessageRequest receiveMessageRequest,
@@ -118,7 +118,7 @@ public interface IFeishuTenantV1Message : IFeishuV1Message
     /// <param name="messageFollowUpRequest">跟随气泡请求体。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Post("https://open.feishu.cn/open-apis/im/v1/messages/{message_id}/push_follow_up")]
+    [Post("/open-apis/im/v1/messages/{message_id}/push_follow_up")]
     Task<FeishuNullDataApiResult?> CreateMessageFollowUpAsync(
       [Path] string message_id,
       [Body] MessageFollowUpRequest messageFollowUpRequest,
@@ -133,7 +133,7 @@ public interface IFeishuTenantV1Message : IFeishuV1Message
     /// <param name="page_size">分页大小，即本次请求所返回的用户信息列表内的最大条目数。默认值：10</param>
     /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
     /// <returns></returns>
-    [Get("https://open.feishu.cn/open-apis/im/v1/messages/{message_id}/read_users")]
+    [Get("/open-apis/im/v1/messages/{message_id}/read_users")]
     Task<FeishuApiPageListResult<ReadMessageUser>?> GetMessageReadUsesAsync(
      [Path] string message_id,
      [Query("page_size")] int page_size = 10,
@@ -158,7 +158,7 @@ public interface IFeishuTenantV1Message : IFeishuV1Message
     /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Get("https://open.feishu.cn/open-apis/im/v1/messages")]
+    [Get("/open-apis/im/v1/messages")]
     Task<FeishuApiPageListResult<HistoryMessageData>?> GetHistoryMessageAsync(
          [Query("container_id_type")] string container_id_type,
          [Query("container_id")] string container_id,
@@ -175,7 +175,7 @@ public interface IFeishuTenantV1Message : IFeishuV1Message
     /// </summary>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <param name="message_id">待查询的消息 ID。</param>
-    /// <param name="file_key">待查询资源的 Key。可以调用<see href="https://open.feishu.cn/document/server-docs/im-v1/message/get">获取指定消息的内容接口</see>，通过消息 ID 获取消息内容中的资源 Key。
+    /// <param name="file_key">待查询资源的 Key。可以调用<see href="/document/server-docs/im-v1/message/get">获取指定消息的内容接口</see>，通过消息 ID 获取消息内容中的资源 Key。
     /// <para>示例值："file_456a92d6-c6ea-4de4-ac3f-7afcf44ac78g"</para>
     /// </param>
     /// <param name="type">资源类型.
@@ -184,7 +184,7 @@ public interface IFeishuTenantV1Message : IFeishuV1Message
     /// <para>file：对应消息中的文件、音频、视频（表情包除外）。</para>
     /// </param>
     /// <returns></returns>
-    [Get("https://open.feishu.cn/open-apis/im/v1/messages/{message_id}/resources/{file_key}")]
+    [Get("/open-apis/im/v1/messages/{message_id}/resources/{file_key}")]
     Task<byte[]?> GetMessageFile(
         [Path] string message_id,
         [Path] string file_key,
@@ -207,7 +207,7 @@ public interface IFeishuTenantV1Message : IFeishuV1Message
     /// </param>
     /// <param name="localFilePath">用于保存获取二进制文件的本地文件路径。</param>
     /// <returns></returns>
-    [Get("https://open.feishu.cn/open-apis/im/v1/messages/{message_id}/resources/{file_key}")]
+    [Get("/open-apis/im/v1/messages/{message_id}/resources/{file_key}")]
     Task GetMessageLargeFile(
         [Path] string message_id,
         [Path] string file_key,
@@ -222,7 +222,7 @@ public interface IFeishuTenantV1Message : IFeishuV1Message
     /// <param name="message_id">待查询的消息 ID。</param>  
     /// <param name="user_id_type">用户 ID 类型，示例值："open_id"，默认值：open_id</param>
     /// <returns></returns>
-    [Get("https://open.feishu.cn/open-apis/im/v1/messages")]
+    [Get("/open-apis/im/v1/messages")]
     Task<FeishuApiListResult<MessageContentData>?> GetContentListByMessageIdAsync(
         [Path] string message_id,
         [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
@@ -238,7 +238,7 @@ public interface IFeishuTenantV1Message : IFeishuV1Message
     /// </param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Get("https://open.feishu.cn/open-apis/im/v1/files/{file_key}")]
+    [Get("/open-apis/im/v1/files/{file_key}")]
     Task<byte[]?> DownFileAsync(
        [Path] string file_key,
        CancellationToken cancellationToken = default);
@@ -252,7 +252,7 @@ public interface IFeishuTenantV1Message : IFeishuV1Message
     /// <param name="localFile">保存至本地的文件全路径。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Get("https://open.feishu.cn/open-apis/im/v1/files/{file_key}")]
+    [Get("/open-apis/im/v1/files/{file_key}")]
     Task DownLargeFileAsync(
        [Path] string file_key,
        [FilePath] string localFile,
@@ -266,7 +266,7 @@ public interface IFeishuTenantV1Message : IFeishuV1Message
     /// </param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Get("https://open.feishu.cn/open-apis/im/v1/images/{image_key}")]
+    [Get("/open-apis/im/v1/images/{image_key}")]
     Task<byte[]?> DownImageAsync(
        [Path] string image_key,
        CancellationToken cancellationToken = default);
@@ -280,7 +280,7 @@ public interface IFeishuTenantV1Message : IFeishuV1Message
     /// <param name="localFile">保存至本地的文件全路径。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Get("https://open.feishu.cn/open-apis/im/v1/images/{image_key}")]
+    [Get("/open-apis/im/v1/images/{image_key}")]
     Task DownLargeImageAsync(
        [Path] string image_key,
        [FilePath] string localFile,
@@ -293,7 +293,7 @@ public interface IFeishuTenantV1Message : IFeishuV1Message
     /// <param name="uploadFileRequest">文件上传请求体。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Post("https://open.feishu.cn/open-apis/im/v1/files")]
+    [Post("/open-apis/im/v1/files")]
     [IgnoreImplement]
     Task<FeishuApiResult<FileUploadResult>?> UploadFileAsync(
        [Body] UploadFileRequest uploadFileRequest,
@@ -305,7 +305,7 @@ public interface IFeishuTenantV1Message : IFeishuV1Message
     /// <param name="uploadImageRequest">文件图片请求体。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Post("https://open.feishu.cn/open-apis/im/v1/images")]
+    [Post("/open-apis/im/v1/images")]
     [IgnoreImplement]
     Task<FeishuApiResult<ImageUpdateResult>?> UploadImageAsync(
      [Body] UploadImageRequest uploadImageRequest,
@@ -321,7 +321,7 @@ public interface IFeishuTenantV1Message : IFeishuV1Message
     /// <param name="message_id">待加急的消息 ID。</param>
     /// <param name="user_id_type">用户 ID 类型 示例值："open_id"</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
-    [Patch("https://open.feishu.cn/open-apis/im/v1/messages/{message_id}/urgent_app")]
+    [Patch("/open-apis/im/v1/messages/{message_id}/urgent_app")]
     Task<FeishuApiResult<MessageUrgentResult>?> MessageUrgentAppAsync(
       [Path] string message_id,
       [Body] MessageUrgentRequest sendMessageRequest,
@@ -334,7 +334,7 @@ public interface IFeishuTenantV1Message : IFeishuV1Message
     /// <param name="message_id">待加急的消息 ID。</param>
     /// <param name="user_id_type">用户 ID 类型 示例值："open_id"</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
-    [Patch("https://open.feishu.cn/open-apis/im/v1/messages/{message_id}/urgent_sms")]
+    [Patch("/open-apis/im/v1/messages/{message_id}/urgent_sms")]
     Task<FeishuApiResult<MessageUrgentResult>?> MessageUrgentSMSAsync(
       [Path] string message_id,
       [Body] MessageUrgentRequest sendMessageRequest,
@@ -348,7 +348,7 @@ public interface IFeishuTenantV1Message : IFeishuV1Message
     /// <param name="message_id">待加急的消息 ID。</param>
     /// <param name="user_id_type">用户 ID 类型 示例值："open_id"</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
-    [Patch("https://open.feishu.cn/open-apis/im/v1/messages/{message_id}/urgent_phone")]
+    [Patch("/open-apis/im/v1/messages/{message_id}/urgent_phone")]
     Task<FeishuApiResult<MessageUrgentResult>?> MessageUrgentPhoneAsync(
       [Path] string message_id,
       [Body] MessageUrgentRequest sendMessageRequest,
@@ -363,7 +363,7 @@ public interface IFeishuTenantV1Message : IFeishuV1Message
     /// <param name="urlPreviewRequest">更新 URL 预览请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Post("https://open.feishu.cn/open-apis/im/v2/url_previews/batch_update")]
+    [Post("/open-apis/im/v2/url_previews/batch_update")]
     Task<FeishuNullDataApiResult?> UpdateUrlPreviewAsync(
        [Body] UrlPreviewRequest urlPreviewRequest,
        CancellationToken cancellationToken = default);

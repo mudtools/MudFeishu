@@ -40,6 +40,6 @@ partial class FeishuV2TaskAttachments
         formData.Add(fileContent, "file", Path.GetFileName(uploadFileRequest.File));
         request.Content = fileContent;
 
-        return await _feishuHttpClient.SendFeishuRequestAsync<FeishuApiResult<TaskAttachmentsUploadResult>>(request, cancellationToken);
+        return await _httpClient.SendAsync<FeishuApiResult<TaskAttachmentsUploadResult>>(request, cancellationToken);
     }
 }

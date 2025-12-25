@@ -40,7 +40,7 @@ partial class FeishuTenantV1Message
         formData.Add(fileContent, "file", Path.GetFileName(uploadFileRequest.FullName));
         request.Content = fileContent;
 
-        return await _feishuHttpClient.SendFeishuRequestAsync<FeishuApiResult<FileUploadResult>>(request, cancellationToken);
+        return await _httpClient.SendAsync<FeishuApiResult<FileUploadResult>>(request, cancellationToken);
 
     }
 
@@ -69,7 +69,7 @@ partial class FeishuTenantV1Message
         fileContent.Headers.ContentType = MediaTypeHeaderValue.Parse(contentType);
         formData.Add(fileContent, "image", Path.GetFileName(uploadImageRequest.FullName));
         request.Content = fileContent;
-        return await _feishuHttpClient.SendFeishuRequestAsync<FeishuApiResult<ImageUpdateResult>>(request, cancellationToken);
+        return await _httpClient.SendAsync<FeishuApiResult<ImageUpdateResult>>(request, cancellationToken);
 
     }
 

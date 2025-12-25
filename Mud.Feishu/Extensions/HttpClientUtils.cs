@@ -6,14 +6,19 @@
 // -----------------------------------------------------------------------
 
 using Microsoft.Extensions.Logging;
+using System.Text;
 using System.Text.Json;
 
 namespace Mud.Feishu.Extensions;
+
 /// <summary>
 /// 为HttpClient提供扩展方法的工具类
 /// </summary>
 public static class HttpClientExtensions
 {
+    // 默认缓冲区大小（80KB）- 比默认的80K稍大，适合文件下载
+    private const int DefaultBufferSize = 81920;
+
     /// <summary>
     /// 发送HTTP请求并反序列化响应结果
     /// </summary>
@@ -26,53 +31,48 @@ public static class HttpClientExtensions
     /// <returns>反序列化后的响应结果，如果响应内容为空则返回默认值</returns>
     /// <exception cref="ArgumentNullException">当client或httpRequestMessage为null时抛出</exception>
     /// <exception cref="HttpRequestException">当HTTP请求失败时抛出</exception>
-    public static async Task<TResult?> SendRequest<TResult>(
+    public static async Task<TResult?> SendRequestAsync<TResult>(
         this HttpClient client,
         HttpRequestMessage httpRequestMessage,
         JsonSerializerOptions? jsonSerializerOptions = null,
         ILogger? logger = null,
         CancellationToken cancellationToken = default)
     {
-        if (client == null) throw new ArgumentNullException(nameof(client));
-        if (httpRequestMessage == null) throw new ArgumentNullException(nameof(httpRequestMessage));
+        ArgumentNullException.ThrowIfNull(client);
+        ArgumentNullException.ThrowIfNull(httpRequestMessage);
+
+        string? requestUri = httpRequestMessage.RequestUri?.ToString();
 
         try
         {
-            using var response = await client.SendAsync(httpRequestMessage, cancellationToken);
+            using var response = await client.SendAsync(httpRequestMessage,
+                HttpCompletionOption.ResponseHeadersRead,
+                cancellationToken);
 
-            // 检查响应状态码是否表示成功
-            if (!response.IsSuccessStatusCode)
+            await EnsureSuccessStatusCodeAsync(response, logger, cancellationToken);
+
+            // 直接检查Content-Length头，避免不必要的流操作
+            var contentLength = response.Content.Headers.ContentLength;
+            if (contentLength == 0)
             {
-                var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
-                logger?.LogError("HTTP请求失败: {StatusCode}, 响应: {Response}",
-                    (int)response.StatusCode, errorContent);
-
-                throw new HttpRequestException(
-                    $"HTTP请求失败: {(int)response.StatusCode} - {errorContent}");
-            }
-
-            // 从响应内容读取为流
-            await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-
-            // 如果响应流为空，则返回默认值
-            if (stream.Length == 0)
-            {
+                logger?.LogDebug("响应内容为空，返回默认值: {Url}", requestUri);
                 return default;
             }
 
-            // 反序列化流为指定类型的结果
-            return await JsonSerializer.DeserializeAsync<TResult>(
-                stream,
-                jsonSerializerOptions ?? new JsonSerializerOptions(),
-                cancellationToken);
+            // 使用StreamReader包装流以提高性能
+            await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+
+            // 使用默认的序列化选项如果未提供
+            var options = jsonSerializerOptions ?? GetDefaultJsonSerializerOptions();
+
+            return await JsonSerializer.DeserializeAsync<TResult>(stream, options, cancellationToken);
         }
-        catch (Exception ex) when (logger != null)
+        catch (Exception ex) when (ex is not HttpRequestException)
         {
-            logger.LogError(ex, "HTTP请求异常: {Url}", httpRequestMessage.RequestUri);
-            throw;
+            logger?.LogError(ex, "HTTP请求处理异常: {Url}", requestUri);
+            throw new HttpRequestException($"HTTP请求处理失败: {ex.Message}", ex);
         }
     }
-
 
     /// <summary>
     /// 下载文件内容并以字节数组形式返回
@@ -84,36 +84,39 @@ public static class HttpClientExtensions
     /// <returns>文件内容的字节数组，如果请求失败则返回null</returns>
     /// <exception cref="ArgumentNullException">当client或httpRequestMessage为null时抛出</exception>
     /// <exception cref="HttpRequestException">当HTTP请求失败时抛出</exception>
-    public static async Task<byte[]?> DownloadFile(
+    public static async Task<byte[]?> DownloadFileAsync(
        this HttpClient client,
        HttpRequestMessage httpRequestMessage,
        ILogger? logger = null,
        CancellationToken cancellationToken = default)
     {
-        if (client == null) throw new ArgumentNullException(nameof(client));
-        if (httpRequestMessage == null) throw new ArgumentNullException(nameof(httpRequestMessage));
+        ArgumentNullException.ThrowIfNull(client);
+        ArgumentNullException.ThrowIfNull(httpRequestMessage);
+
+        string? requestUri = httpRequestMessage.RequestUri?.ToString();
 
         try
         {
-            using var response = await client.SendAsync(httpRequestMessage, cancellationToken);
+            using var response = await client.SendAsync(httpRequestMessage,
+                HttpCompletionOption.ResponseHeadersRead,
+                cancellationToken);
 
-            // 检查响应状态码是否表示成功
-            if (!response.IsSuccessStatusCode)
+            await EnsureSuccessStatusCodeAsync(response, logger, cancellationToken);
+
+            // 检查Content-Length头，如果太大可以考虑使用流式处理
+            var contentLength = response.Content.Headers.ContentLength;
+            if (contentLength > 10 * 1024 * 1024) // 10MB警告
             {
-                var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
-                logger?.LogError("HTTP请求失败: {StatusCode}, 响应: {Response}",
-                    (int)response.StatusCode, errorContent);
-
-                throw new HttpRequestException(
-                    $"HTTP请求失败: {(int)response.StatusCode} - {errorContent}");
+                logger?.LogWarning("下载文件较大: {Url}, 大小: {Size}MB",
+                    requestUri, contentLength / (1024.0 * 1024.0));
             }
 
             return await response.Content.ReadAsByteArrayAsync(cancellationToken);
         }
-        catch (Exception ex) when (logger != null)
+        catch (Exception ex) when (ex is not HttpRequestException)
         {
-            logger.LogError(ex, "HTTP请求异常: {Url}", httpRequestMessage.RequestUri);
-            throw;
+            logger?.LogError(ex, "文件下载异常: {Url}", requestUri);
+            throw new HttpRequestException($"文件下载失败: {ex.Message}", ex);
         }
     }
 
@@ -122,46 +125,187 @@ public static class HttpClientExtensions
     /// </summary>
     /// <param name="client">HttpClient实例</param>
     /// <param name="httpRequestMessage">HTTP请求消息</param>
-    /// <param name="largeFileName">保存大文件的完整路径</param>
+    /// <param name="filePath">保存文件的完整路径</param>
+    /// <param name="bufferSize">缓冲区大小（字节），可选</param>
+    /// <param name="overwrite">是否覆盖已存在的文件，默认为true</param>
     /// <param name="logger">日志记录器（可选）</param>
     /// <param name="cancellationToken">取消令牌</param>
-    /// <returns>异步操作任务</returns>
+    /// <returns>下载的文件信息</returns>
     /// <exception cref="ArgumentNullException">当client或httpRequestMessage为null时抛出</exception>
+    /// <exception cref="ArgumentException">当filePath无效时抛出</exception>
     /// <exception cref="HttpRequestException">当HTTP请求失败时抛出</exception>
-    public static async Task DownloadLargeFile(
+    /// <exception cref="IOException">当文件操作失败时抛出</exception>
+    public static async Task<FileInfo> DownloadLargeFileAsync(
       this HttpClient client,
       HttpRequestMessage httpRequestMessage,
-      string largeFileName,
+      string filePath,
+      int bufferSize = DefaultBufferSize,
+      bool overwrite = true,
       ILogger? logger = null,
       CancellationToken cancellationToken = default)
     {
-        if (client == null) throw new ArgumentNullException(nameof(client));
-        if (httpRequestMessage == null) throw new ArgumentNullException(nameof(httpRequestMessage));
+        ArgumentNullException.ThrowIfNull(client);
+        ArgumentNullException.ThrowIfNull(httpRequestMessage);
+
+        if (string.IsNullOrWhiteSpace(filePath))
+            throw new ArgumentException("文件路径不能为空", nameof(filePath));
+
+        if (bufferSize <= 0)
+            throw new ArgumentException("缓冲区大小必须大于0", nameof(bufferSize));
+
+        string? requestUri = httpRequestMessage.RequestUri?.ToString();
+        string directoryPath = Path.GetDirectoryName(filePath)!;
 
         try
         {
-            using var response = await client.SendAsync(httpRequestMessage, cancellationToken);
+            // 确保目录存在
+            if (!string.IsNullOrEmpty(directoryPath))
+                Directory.CreateDirectory(directoryPath);
 
-            // 检查响应状态码是否表示成功
-            if (!response.IsSuccessStatusCode)
+            // 检查文件是否已存在
+            if (File.Exists(filePath))
             {
-                var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
-                logger?.LogError("HTTP请求失败: {StatusCode}, 响应: {Response}",
-                    (int)response.StatusCode, errorContent);
-
-                throw new HttpRequestException(
-                    $"HTTP请求失败: {(int)response.StatusCode} - {errorContent}");
+                if (overwrite)
+                {
+                    logger?.LogInformation("文件已存在，将被覆盖: {FilePath}", filePath);
+                }
+                else
+                {
+                    throw new IOException($"文件已存在: {filePath}");
+                }
             }
 
-            // 将响应内容流复制到文件流中
-            using Stream stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-            using FileStream fileStream = File.Create(largeFileName);
-            await stream.CopyToAsync(fileStream, 81920, cancellationToken);
+            using var response = await client.SendAsync(httpRequestMessage,
+                HttpCompletionOption.ResponseHeadersRead,
+                cancellationToken);
+
+            await EnsureSuccessStatusCodeAsync(response, logger, cancellationToken);
+
+            // 获取文件大小信息
+            var contentLength = response.Content.Headers.ContentLength;
+            logger?.LogInformation("开始下载文件: {Url}, 大小: {Size}MB, 保存到: {FilePath}",
+                requestUri,
+                contentLength.HasValue ? contentLength.Value / (1024.0 * 1024.0) : "未知",
+                filePath);
+
+            // 使用FileStream异步模式，指定缓冲区大小
+            await using var fileStream = new FileStream(
+                filePath,
+                FileMode.Create,
+                FileAccess.Write,
+                FileShare.None,
+                bufferSize: bufferSize,
+                useAsync: true);
+
+            await using var contentStream = await response.Content.ReadAsStreamAsync(cancellationToken);
+
+            // 使用CopyToAsync并指定缓冲区大小
+            await contentStream.CopyToAsync(fileStream, bufferSize, cancellationToken);
+
+            await fileStream.FlushAsync(cancellationToken);
+
+            var fileInfo = new FileInfo(filePath);
+            logger?.LogInformation("文件下载完成: {FilePath}, 大小: {Size}MB",
+                filePath, fileInfo.Length / (1024.0 * 1024.0));
+
+            return fileInfo;
         }
-        catch (Exception ex) when (logger != null)
+        catch (Exception ex) when (ex is not HttpRequestException and not ArgumentException)
         {
-            logger.LogError(ex, "HTTP请求异常: {Url}", httpRequestMessage.RequestUri);
-            throw;
+            // 清理部分下载的文件
+            try
+            {
+                if (File.Exists(filePath))
+                    File.Delete(filePath);
+            }
+            catch (Exception cleanupEx)
+            {
+                logger?.LogWarning(cleanupEx, "清理部分下载的文件失败: {FilePath}", filePath);
+            }
+
+            logger?.LogError(ex, "大文件下载异常: {Url}, 文件路径: {FilePath}", requestUri, filePath);
+            throw new HttpRequestException($"大文件下载失败: {ex.Message}", ex);
         }
+    }
+
+    /// <summary>
+    /// 确保HTTP响应状态码表示成功，否则抛出异常
+    /// </summary>
+    private static async Task EnsureSuccessStatusCodeAsync(
+        HttpResponseMessage response,
+        ILogger? logger,
+        CancellationToken cancellationToken)
+    {
+        if (response.IsSuccessStatusCode)
+            return;
+
+        var statusCode = (int)response.StatusCode;
+        string errorContent = string.Empty;
+
+        try
+        {
+            errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            logger?.LogWarning(ex, "读取错误响应内容失败");
+            errorContent = "[无法读取错误内容]";
+        }
+
+        string errorMessage = $"HTTP请求失败: {statusCode} {response.StatusCode} - {errorContent}";
+        logger?.LogError("HTTP请求失败: {StatusCode}, 响应: {Response}", statusCode, errorContent);
+
+        // 尝试释放响应内容
+        response.Content.Dispose();
+
+        throw new HttpRequestException(errorMessage, null, response.StatusCode);
+    }
+
+    /// <summary>
+    /// 获取默认的JSON序列化选项
+    /// </summary>
+    private static JsonSerializerOptions GetDefaultJsonSerializerOptions()
+    {
+        return new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true,
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            WriteIndented = false,
+            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+        };
+    }
+
+    /// <summary>
+    /// 发送简单的GET请求并反序列化响应
+    /// </summary>
+    public static async Task<TResult?> GetAsync<TResult>(
+        this HttpClient client,
+        string requestUri,
+        JsonSerializerOptions? jsonSerializerOptions = null,
+        ILogger? logger = null,
+        CancellationToken cancellationToken = default)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, requestUri);
+        return await client.SendRequestAsync<TResult>(request, jsonSerializerOptions, logger, cancellationToken);
+    }
+
+    /// <summary>
+    /// 发送JSON POST请求并反序列化响应
+    /// </summary>
+    public static async Task<TResult?> PostAsJsonAsync<TRequest, TResult>(
+        this HttpClient client,
+        string requestUri,
+        TRequest requestData,
+        JsonSerializerOptions? jsonSerializerOptions = null,
+        ILogger? logger = null,
+        CancellationToken cancellationToken = default)
+    {
+        var content = JsonSerializer.Serialize(requestData, jsonSerializerOptions ?? GetDefaultJsonSerializerOptions());
+        using var request = new HttpRequestMessage(HttpMethod.Post, requestUri)
+        {
+            Content = new StringContent(content, Encoding.UTF8, "application/json")
+        };
+
+        return await client.SendRequestAsync<TResult>(request, jsonSerializerOptions, logger, cancellationToken);
     }
 }

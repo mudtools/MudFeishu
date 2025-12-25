@@ -73,7 +73,7 @@ public class FeishuServiceBuilder
     {
         if (_configuration.IsFeishuHttpClient) return this;
 
-        _services.AddHttpClient<IFeishuHttpClient, FeishuHttpClient>((serviceProvider, client) =>
+        _services.AddHttpClient<IEnhancedHttpClient, FeishuHttpClient>((serviceProvider, client) =>
         {
             var options = serviceProvider.GetRequiredService<IOptions<FeishuOptions>>().Value;
             client.BaseAddress = new Uri(options.BaseUrl ?? "https://open.feishu.cn");

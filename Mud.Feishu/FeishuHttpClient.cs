@@ -6,143 +6,146 @@
 // -----------------------------------------------------------------------
 
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Mud.Feishu.Extensions;
 
 namespace Mud.Feishu;
 
-/// <summary>
-/// 飞书HTTP客户端接口，用于发送飞书相关的HTTP请求
-/// </summary>
-public interface IFeishuHttpClient
-{
-    /// <summary>
-    /// 发送飞书请求并返回指定类型的结果
-    /// </summary>
-    /// <typeparam name="TResult">期望的返回结果类型，必须是类类型并具有无参构造函数</typeparam>
-    /// <param name="request">要发送的HTTP请求消息</param>
-    /// <param name="cancellationToken">用于取消操作的取消令牌，默认为default</param>
-    /// <returns>返回类型为TResult的异步任务，可能为null</returns>
-    Task<TResult?> SendFeishuRequestAsync<TResult>(HttpRequestMessage request, CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// 发送飞书请求并返回指定类型的结果
-    /// </summary>
-    /// <typeparam name="TResult">期望的返回结果类型，必须是类类型并具有无参构造函数</typeparam>
-    /// <param name="request">要发送的HTTP请求消息</param>
-    /// <returns>返回类型为TResult的异步任务，可能为null</returns>
-    Task<TResult?> SendFeishuRequestAsync<TResult>(HttpRequestMessage request);
-
-    /// <summary>
-    /// 下载文件内容并以字节数组形式返回
-    /// </summary>
-    /// <param name="request">要发送的HTTP请求消息</param>
-    /// <param name="cancellationToken">用于取消操作的取消令牌，默认为default</param>
-    /// <returns>返回字节数组的异步任务，可能为null</returns>
-    Task<byte[]?> DownloadFileRequestAsync(HttpRequestMessage request, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// 下载文件内容并以字节数组形式返回（不带取消令牌的重载方法）
-    /// </summary>
-    /// <param name="request">要发送的HTTP请求消息</param>
-    /// <returns>返回字节数组的异步任务，可能为null</returns>
-    Task<byte[]?> DownloadFileRequestAsync(HttpRequestMessage request);
-
-    /// <summary>
-    /// 异步下载大文件并保存到指定路径
-    /// </summary>
-    /// <param name="request">要发送的HTTP请求消息</param>
-    /// <param name="largeFile">用于保存大文件的本地路径</param>
-    /// <param name="cancellationToken">用于取消操作的取消令牌，默认为default</param>
-    /// <returns>表示异步操作的任务</returns>
-    Task DownloadLargeFileRequestAsync(HttpRequestMessage request, string largeFile, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// 异步下载大文件并保存到指定路径（不带取消令牌的重载方法）
-    /// </summary>
-    /// <param name="request">要发送的HTTP请求消息</param>
-    /// <param name="largeFile">用于保存大文件的本地路径</param>
-    /// <returns>表示异步操作的任务</returns>
-    Task DownloadLargeFileRequestAsync(HttpRequestMessage request, string largeFile);
-}
-
-internal class FeishuHttpClient : IFeishuHttpClient
+internal class FeishuHttpClient : IEnhancedHttpClient
 {
     private readonly HttpClient _httpClient;
-    private readonly ILogger _logger;
-    private readonly FeishuOptions _options;
+    private readonly ILogger<FeishuHttpClient> _logger;
+    private readonly FeishuOptions _feishuOptions;
 
-    public FeishuHttpClient(HttpClient httpClient, ILogger<FeishuHttpClient> logger, FeishuOptions options)
+    public FeishuHttpClient(
+        HttpClient httpClient,
+        ILogger<FeishuHttpClient> logger,
+        IOptions<FeishuOptions> options)
     {
-        _httpClient = httpClient;
-        _logger = logger;
-        _options = options;
+        _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+
+        _feishuOptions = options?.Value ?? throw new ArgumentNullException(nameof(options));
+
+        // 配置HttpClient的基础地址（如果有）
+        if (!string.IsNullOrEmpty(_feishuOptions.BaseUrl))
+        {
+            _httpClient.BaseAddress = new Uri(_feishuOptions.BaseUrl);
+        }
     }
 
-    public async Task<TResult?> SendFeishuRequestAsync<TResult>(HttpRequestMessage request) => await SendFeishuRequestAsync<TResult>(request, default);
-
-    public async Task<TResult?> SendFeishuRequestAsync<TResult>(
+    public async Task<TResult?> SendAsync<TResult>(
         HttpRequestMessage request,
         CancellationToken cancellationToken = default)
     {
-        if (_options.EnableLogging)
-        {
-            _logger.LogDebug("开始发送飞书请求: {Url}", request.RequestUri);
-        }
+        ArgumentNullException.ThrowIfNull(request);
 
-        var result = await _httpClient.SendRequest<TResult>(
-            request,
-            logger: _options.EnableLogging ? _logger : null,
-            cancellationToken: cancellationToken);
+        var uri = request.RequestUri?.ToString() ?? "[No URI]";
 
-        if (_options.EnableLogging)
+        try
         {
-            _logger.LogDebug("飞书请求完成: {Url}", request.RequestUri);
+            LogRequestStart("发送请求", uri);
+
+            var result = await _httpClient.SendRequestAsync<TResult>(
+                request,
+                logger: _feishuOptions.EnableLogging ? _logger : null,
+                cancellationToken: cancellationToken);
+
+            LogRequestComplete("请求完成", uri);
+            return result;
         }
-        return result;
+        catch (Exception ex) when (LogRequestError("发送请求失败", uri, ex))
+        {
+            throw;
+        }
     }
 
-    public async Task<byte[]?> DownloadFileRequestAsync(HttpRequestMessage request) => await DownloadFileRequestAsync(request, default);
-
-    public async Task<byte[]?> DownloadFileRequestAsync(
-     HttpRequestMessage request,
-     CancellationToken cancellationToken = default)
+    public async Task<byte[]?> DownloadAsync(
+        HttpRequestMessage request,
+        CancellationToken cancellationToken = default)
     {
-        if (_options.EnableLogging)
-        {
-            _logger.LogDebug("开始发送飞书请求: {Url}", request.RequestUri);
-        }
+        ArgumentNullException.ThrowIfNull(request);
 
-        var result = await _httpClient.DownloadFile(
-                    request,
-                    logger: _options.EnableLogging ? _logger : null,
-                    cancellationToken: cancellationToken);
+        var uri = request.RequestUri?.ToString() ?? "[No URI]";
 
-        if (_options.EnableLogging)
+        try
         {
-            _logger.LogDebug("飞书请求完成: {Url}", request.RequestUri);
+            LogRequestStart("下载文件", uri);
+
+            var result = await _httpClient.DownloadFileAsync(
+                request,
+                logger: _feishuOptions.EnableLogging ? _logger : null,
+                cancellationToken: cancellationToken);
+
+            LogRequestComplete("文件下载完成", uri);
+            return result;
         }
-        return result;
+        catch (Exception ex) when (LogRequestError("文件下载失败", uri, ex))
+        {
+            throw;
+        }
     }
 
-    public async Task DownloadLargeFileRequestAsync(HttpRequestMessage request, string largeFile) => await DownloadLargeFileRequestAsync(request, largeFile, default);
-
-
-    public async Task DownloadLargeFileRequestAsync(HttpRequestMessage request, string largeFile, CancellationToken cancellationToken = default)
+    public async Task<FileInfo> DownloadLargeAsync(
+        HttpRequestMessage request,
+        string filePath,
+        bool overwrite = true,
+        CancellationToken cancellationToken = default)
     {
-        if (_options.EnableLogging)
+        ArgumentNullException.ThrowIfNull(request);
+
+        if (string.IsNullOrWhiteSpace(filePath))
+            throw new ArgumentException("文件路径不能为空", nameof(filePath));
+
+        var uri = request.RequestUri?.ToString() ?? "[No URI]";
+
+        try
         {
-            _logger.LogDebug("开始发送飞书请求: {Url}", request.RequestUri);
+            LogRequestStart($"下载大文件到: {filePath}", uri);
+
+            var fileInfo = await _httpClient.DownloadLargeFileAsync(
+                request,
+                filePath,
+                overwrite: overwrite,
+                logger: _feishuOptions.EnableLogging ? _logger : null,
+                cancellationToken: cancellationToken);
+
+            LogRequestComplete($"大文件下载完成: {filePath}", uri);
+            return fileInfo;
         }
-
-        await _httpClient.DownloadLargeFile(
-                   request,
-                   largeFile,
-                   logger: _options.EnableLogging ? _logger : null,
-                   cancellationToken: cancellationToken);
-
-        if (_options.EnableLogging)
+        catch (Exception ex) when (LogRequestError($"大文件下载失败: {filePath}", uri, ex))
         {
-            _logger.LogDebug("飞书请求完成: {Url}", request.RequestUri);
+            throw;
         }
     }
+
+    #region 私有辅助方法
+
+    private void LogRequestStart(string operation, string uri)
+    {
+        if (_feishuOptions.EnableLogging && _logger.IsEnabled(LogLevel.Debug))
+        {
+            _logger.LogDebug("[Feishu] {Operation}: {Uri}", operation, uri);
+        }
+    }
+
+    private void LogRequestComplete(string operation, string uri)
+    {
+        if (_feishuOptions.EnableLogging && _logger.IsEnabled(LogLevel.Debug))
+        {
+            _logger.LogDebug("[Feishu] {Operation}: {Uri}", operation, uri);
+        }
+    }
+
+    private bool LogRequestError(string errorMessage, string uri, Exception ex)
+    {
+        if (_feishuOptions.EnableLogging && _logger.IsEnabled(LogLevel.Error))
+        {
+            _logger.LogError(ex, "[Feishu] {ErrorMessage}: {Uri}", errorMessage, uri);
+        }
+        return false; // 始终返回false，异常会被重新抛出
+    }
+
+    #endregion
 }

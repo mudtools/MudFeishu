@@ -381,8 +381,8 @@ public class WebSocketConnectionManager : IDisposable
             ErrorType = ex.GetType().Name,
             ConnectionState = _webSocket?.State ?? WebSocketState.None,
             IsNetworkError = ex is WebSocketException || ex is IOException,
-            IsAuthError = ex.Message.Contains("auth", StringComparison.OrdinalIgnoreCase) ||
-                          ex.Message.Contains("认证", StringComparison.OrdinalIgnoreCase)
+            IsAuthError = ex.Message.Contains("auth") ||
+                          ex.Message.Contains("认证")
         });
     }
 

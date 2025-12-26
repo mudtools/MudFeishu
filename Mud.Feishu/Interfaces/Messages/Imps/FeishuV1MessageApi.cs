@@ -6,6 +6,7 @@
 // -----------------------------------------------------------------------
 
 using Mud.Feishu.DataModels.Messages;
+using Mud.Feishu.Extensions;
 using System.Net.Http.Headers;
 
 namespace Mud.Feishu;
@@ -26,7 +27,7 @@ partial class FeishuTenantV1Message
 
         request.Headers.Add("Authorization", access_token);
 
-        ArgumentNullException.ThrowIfNull(uploadFileRequest, nameof(uploadFileRequest));
+        ExceptionUtils.ThrowIfNull(uploadFileRequest, nameof(uploadFileRequest));
 
         using var formData = new MultipartFormDataContent
         {
@@ -58,7 +59,7 @@ partial class FeishuTenantV1Message
 
         request.Headers.Add("Authorization", access_token);
 
-        ArgumentNullException.ThrowIfNull(uploadImageRequest, nameof(uploadImageRequest));
+        ExceptionUtils.ThrowIfNull(uploadImageRequest, nameof(uploadImageRequest));
 
         using var formData = new MultipartFormDataContent
         {

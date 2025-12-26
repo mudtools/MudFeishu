@@ -46,7 +46,7 @@ public abstract class DefaultFeishuEventHandler<T> : IFeishuEventHandler
     /// <exception cref="InvalidOperationException">当事件数据无效时抛出</exception>
     public async Task HandleAsync(EventData eventData, CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(eventData, nameof(eventData));
+        ExceptionUtils.ThrowIfNull(eventData, nameof(eventData));
 
         _logger.LogInformation("开始处理事件，事件类型: {EventType}, 应用ID: {AppId}, 租户: {TenantKey}",
             eventData.EventType, eventData.AppId, eventData.TenantKey);

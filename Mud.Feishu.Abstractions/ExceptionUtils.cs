@@ -5,31 +5,13 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-namespace Mud.CodeGenerator;
+namespace Mud.Feishu.Abstractions;
 
-/// <summary>
-///     HTTP 声明式 PUT 请求方式特性
-/// </summary>
-[AttributeUsage(AttributeTargets.Method)]
-internal sealed class PatchAttribute : HttpMethodAttribute
+internal static class ExceptionUtils
 {
-#if NETSTANDARD2_0
-    /// <summary>
-    ///     <inheritdoc cref="PatchAttribute" />
-    /// </summary>
-    /// <param name="requestUri">请求地址</param>
-    public PatchAttribute(string? requestUri = null)
-        : base(new HttpMethod("PATCH"), requestUri)
+    public static void ThrowIfNull(this object? argument, string? paramName = null)
     {
+        if (argument == null)
+            throw new ArgumentNullException(paramName);
     }
-#else
-    /// <summary>
-    ///     <inheritdoc cref="PatchAttribute" />
-    /// </summary>
-    /// <param name="requestUri">请求地址</param>
-    public PatchAttribute(string? requestUri = null)
-        : base(HttpMethod.Patch, requestUri)
-    {
-    }
-#endif
 }

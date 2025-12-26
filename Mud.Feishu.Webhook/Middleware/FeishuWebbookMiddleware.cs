@@ -131,7 +131,11 @@ public class FeishuWebhookMiddleware(
     {
         request.EnableBuffering();
 
+#if NETSTANDARD2_0
+        using var reader = new StreamReader(request.Body, Encoding.UTF8, true);
+#else
         using var reader = new StreamReader(request.Body, Encoding.UTF8, leaveOpen: true);
+#endif
         var body = await reader.ReadToEndAsync();
 
         request.Body.Position = 0;

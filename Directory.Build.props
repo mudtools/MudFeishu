@@ -1,6 +1,6 @@
 <Project>
 	<PropertyGroup>
-		<Version>1.0.8</Version>
+		<Version>1.0.9</Version>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 		<TreatWarningsAsErrors>false</TreatWarningsAsErrors>
@@ -20,11 +20,14 @@
 		<PackageReference Include="Microsoft.Extensions.Http" Version="10.0.1" />
 		<PackageReference Include="Microsoft.Extensions.Http.Polly" Version="10.0.1" />
 	</ItemGroup>
-	<ItemGroup Condition="'$(TargetFramework)' == 'net7.0' or '$(TargetFramework)' == 'net6.0'">
+	<ItemGroup Condition="'$(TargetFramework)' == 'net6.0'or '$(TargetFramework)' == 'netstandard2.0'">
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.2" />
 		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.3" />
 		<PackageReference Include="Microsoft.Extensions.Options" Version="8.0.2" />
 		<PackageReference Include="Microsoft.Extensions.Http" Version="8.0.1" />
 		<PackageReference Include="Microsoft.Extensions.Http.Polly" Version="8.0.2" />
 	</ItemGroup>
+	<ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
+		<PackageReference Include="System.Text.Json" Version="10.0.1" />
+	</ItemGroup>	
 </Project>

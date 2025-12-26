@@ -6,6 +6,7 @@
 // -----------------------------------------------------------------------
 
 using Mud.Feishu.DataModels.TaskAttachments;
+using Mud.Feishu.Extensions;
 using System.Net.Http.Headers;
 
 namespace Mud.Feishu;
@@ -27,7 +28,7 @@ partial class FeishuV2TaskAttachments
 
         request.Headers.Add("Authorization", access_token);
 
-        ArgumentNullException.ThrowIfNull(uploadFileRequest, nameof(uploadFileRequest));
+        ExceptionUtils.ThrowIfNull(uploadFileRequest, nameof(uploadFileRequest));
 
         using var formData = new MultipartFormDataContent
         {

@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<TargetFrameworks>net6.0;net7.0;net8.0;net9.0;net10.0</TargetFrameworks>
+		<TargetFrameworks>netstandard2.0;net6.0;net8.0;net10.0</TargetFrameworks>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 		<AssemblyName>Mud.Feishu.WebSocket</AssemblyName>
@@ -17,21 +17,21 @@
 		<BaseOutputPath>..\bin</BaseOutputPath>
 	</PropertyGroup>
 
-	<ItemGroup Condition="'$(TargetFramework)' == 'net10.0' or '$(TargetFramework)' == 'net9.0' or '$(TargetFramework)' == 'net8.0'">
+	<ItemGroup Condition="'$(TargetFramework)' == 'net10.0' or '$(TargetFramework)' == 'net8.0'">
 		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.1" />
 		<PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.1" />
 		<PackageReference Include="protobuf-net" Version="3.2.56" />
 	</ItemGroup>
 
-	<ItemGroup Condition="'$(TargetFramework)' == 'net7.0' or '$(TargetFramework)' == 'net6.0'">
+	<ItemGroup Condition="'$(TargetFramework)' == 'net6.0' or '$(TargetFramework)' == 'netstandard2.0'">
 		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.1" />
 		<PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="8.0.2" />
 		<PackageReference Include="protobuf-net" Version="3.2.56" />
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Mud.Feishu" Version="1.0.8" />
-		<PackageReference Include="Mud.Feishu.Abstractions" Version="1.0.8" />
+		<PackageReference Include="Mud.Feishu" Version="1.0.9" />
+		<PackageReference Include="Mud.Feishu.Abstractions" Version="1.0.9" />
 		<!--<ProjectReference Include="..\Mud.Feishu.Abstractions\Mud.Feishu.Abstractions.csproj" />
 		<ProjectReference Include="..\Mud.Feishu\Mud.Feishu.csproj" />-->
 	</ItemGroup>

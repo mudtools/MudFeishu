@@ -1,6 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
-		<TargetFrameworks>net6.0;net7.0;net8.0;net9.0;net10.0</TargetFrameworks>
+		<TargetFrameworks>netstandard2.0;net6.0;net8.0;net10.0</TargetFrameworks>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 		<AssemblyName>Mud.Feishu.Webhook</AssemblyName>
@@ -15,13 +15,13 @@
 		<PackageTags>飞书;飞书.net sdk;Feishu;Feishu.net;Feishu SDK;Webbook;事件订阅;实时事件;.NET;.NET Core;ASP.NET Core;MudFeishu;</PackageTags>
 		<BaseOutputPath>..\bin</BaseOutputPath>
 	</PropertyGroup>
-	<ItemGroup Condition="'$(TargetFramework)' == 'net10.0' or '$(TargetFramework)' == 'net9.0' or '$(TargetFramework)' == 'net8.0'">
+	<ItemGroup Condition="'$(TargetFramework)' == 'net10.0' or '$(TargetFramework)' == 'net8.0'">
 		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.1" />
 		<PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.1" />
 		<PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" Version="10.0.1" />
 	</ItemGroup>
 
-	<ItemGroup Condition="'$(TargetFramework)' == 'net7.0' or '$(TargetFramework)' == 'net6.0'">
+	<ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0' or '$(TargetFramework)' == 'net6.0'">
 		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.1" />
 		<PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="8.0.2" />
 		<PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" Version="8.0.1" />
@@ -30,8 +30,8 @@
 	<ItemGroup>
 		<PackageReference Include="Microsoft.AspNetCore.Http" Version="2.3.0" />
 		<PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.3.0" />
-		<PackageReference Include="Mud.Feishu" Version="1.0.8" />
-		<PackageReference Include="Mud.Feishu.Abstractions" Version="1.0.8" />
+		<PackageReference Include="Mud.Feishu" Version="1.0.9" />
+		<PackageReference Include="Mud.Feishu.Abstractions" Version="1.0.9" />
 	</ItemGroup>
 	<!--<ItemGroup>
 		<ProjectReference Include="..\Mud.Feishu.Abstractions\Mud.Feishu.Abstractions.csproj" />

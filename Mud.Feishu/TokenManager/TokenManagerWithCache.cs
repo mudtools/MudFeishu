@@ -35,7 +35,7 @@ public abstract class TokenManagerWithCache : ITokenManager, IDisposable
         /// <remarks>
         /// API返回的错误消息或成功消息，null表示无消息。
         /// </remarks>
-        public string? Msg { get; init; }
+        public string? Msg { get; set; }
 
         /// <summary>
         /// 响应状态码
@@ -43,7 +43,7 @@ public abstract class TokenManagerWithCache : ITokenManager, IDisposable
         /// <remarks>
         /// 0表示成功，非0表示错误状态码。
         /// </remarks>
-        public int Code { get; init; }
+        public int Code { get; set; }
 
         /// <summary>
         /// 令牌过期时间戳（毫秒）
@@ -56,7 +56,7 @@ public abstract class TokenManagerWithCache : ITokenManager, IDisposable
         required
 #endif
   long Expire
-        { get; init; }
+        { get; set; }
 
         /// <summary>
         /// 访问令牌
@@ -69,7 +69,7 @@ public abstract class TokenManagerWithCache : ITokenManager, IDisposable
         required
 #endif
   string? AccessToken
-        { get; init; }
+        { get; set; }
     }
 
     /// <summary>

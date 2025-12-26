@@ -39,7 +39,7 @@ internal class FeishuHttpClient : IEnhancedHttpClient
         HttpRequestMessage request,
         CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(request);
+        ExceptionUtils.ThrowIfNull(request);
 
         var uri = request.RequestUri?.ToString() ?? "[No URI]";
 
@@ -65,7 +65,7 @@ internal class FeishuHttpClient : IEnhancedHttpClient
         HttpRequestMessage request,
         CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(request);
+        ExceptionUtils.ThrowIfNull(request);
 
         var uri = request.RequestUri?.ToString() ?? "[No URI]";
 
@@ -93,7 +93,7 @@ internal class FeishuHttpClient : IEnhancedHttpClient
         bool overwrite = true,
         CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(request);
+        ExceptionUtils.ThrowIfNull(request);
 
         if (string.IsNullOrWhiteSpace(filePath))
             throw new ArgumentException("文件路径不能为空", nameof(filePath));

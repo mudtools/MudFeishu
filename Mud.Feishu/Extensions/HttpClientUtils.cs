@@ -14,7 +14,7 @@ namespace Mud.Feishu.Extensions;
 /// <summary>
 /// 为HttpClient提供扩展方法的工具类
 /// </summary>
-public static class HttpClientExtensions
+internal static class HttpClientExtensions
 {
     // 默认缓冲区大小（80KB）- 比默认的80K稍大，适合文件下载
     private const int DefaultBufferSize = 81920;
@@ -38,8 +38,8 @@ public static class HttpClientExtensions
         ILogger? logger = null,
         CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(client);
-        ArgumentNullException.ThrowIfNull(httpRequestMessage);
+        ExceptionUtils.ThrowIfNull(client);
+        ExceptionUtils.ThrowIfNull(httpRequestMessage);
 
         string? requestUri = httpRequestMessage.RequestUri?.ToString();
 
@@ -60,7 +60,11 @@ public static class HttpClientExtensions
             }
 
             // 使用StreamReader包装流以提高性能
+#if NETSTANDARD2_0
+            using var stream = await response.Content.ReadAsStreamAsync();
+#else
             await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+#endif
 
             // 使用默认的序列化选项如果未提供
             var options = jsonSerializerOptions ?? GetDefaultJsonSerializerOptions();
@@ -90,8 +94,8 @@ public static class HttpClientExtensions
        ILogger? logger = null,
        CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(client);
-        ArgumentNullException.ThrowIfNull(httpRequestMessage);
+        ExceptionUtils.ThrowIfNull(client);
+        ExceptionUtils.ThrowIfNull(httpRequestMessage);
 
         string? requestUri = httpRequestMessage.RequestUri?.ToString();
 
@@ -110,8 +114,11 @@ public static class HttpClientExtensions
                 logger?.LogWarning("下载文件较大: {Url}, 大小: {Size}MB",
                     requestUri, contentLength / (1024.0 * 1024.0));
             }
-
+#if NETSTANDARD2_0
+            return await response.Content.ReadAsByteArrayAsync();
+#else
             return await response.Content.ReadAsByteArrayAsync(cancellationToken);
+#endif
         }
         catch (Exception ex) when (ex is not HttpRequestException)
         {
@@ -144,8 +151,8 @@ public static class HttpClientExtensions
       ILogger? logger = null,
       CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(client);
-        ArgumentNullException.ThrowIfNull(httpRequestMessage);
+        ExceptionUtils.ThrowIfNull(client);
+        ExceptionUtils.ThrowIfNull(httpRequestMessage);
 
         if (string.IsNullOrWhiteSpace(filePath))
             throw new ArgumentException("文件路径不能为空", nameof(filePath));
@@ -188,6 +195,18 @@ public static class HttpClientExtensions
                 contentLength.HasValue ? contentLength.Value / (1024.0 * 1024.0) : "未知",
                 filePath);
 
+
+#if NETSTANDARD2_0
+            using var contentStream = await response.Content.ReadAsStreamAsync();
+            using var fileStream = new FileStream(
+                filePath,
+                FileMode.Create,
+                FileAccess.Write,
+                FileShare.None,
+                bufferSize: bufferSize,
+                useAsync: true);
+#else
+            await using var contentStream = await response.Content.ReadAsStreamAsync(cancellationToken);
             // 使用FileStream异步模式，指定缓冲区大小
             await using var fileStream = new FileStream(
                 filePath,
@@ -196,9 +215,7 @@ public static class HttpClientExtensions
                 FileShare.None,
                 bufferSize: bufferSize,
                 useAsync: true);
-
-            await using var contentStream = await response.Content.ReadAsStreamAsync(cancellationToken);
-
+#endif
             // 使用CopyToAsync并指定缓冲区大小
             await contentStream.CopyToAsync(fileStream, bufferSize, cancellationToken);
 
@@ -244,7 +261,11 @@ public static class HttpClientExtensions
 
         try
         {
+#if NETSTANDARD2_0
+            errorContent = await response.Content.ReadAsStringAsync();
+#else
             errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
+#endif
         }
         catch (Exception ex)
         {
@@ -257,8 +278,11 @@ public static class HttpClientExtensions
 
         // 尝试释放响应内容
         response.Content.Dispose();
-
+#if NETSTANDARD2_0
+        throw new HttpRequestException(errorMessage, null);
+#else
         throw new HttpRequestException(errorMessage, null, response.StatusCode);
+#endif
     }
 
     /// <summary>

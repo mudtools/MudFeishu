@@ -21,12 +21,7 @@ public class CreateCardRequest
     /// <para>示例值：card_json</para>
     /// </summary>
     [JsonPropertyName("type")]
-    public
-#if NET7_0_OR_GREATER
-        required
-#endif
-        string Type
-    { get; set; } = string.Empty;
+    public string Type { get; set; } = string.Empty;
 
     /// <summary>
     /// <para>卡片数据。需要与 `type` 指定的类型一致：</para>
@@ -35,10 +30,5 @@ public class CreateCardRequest
     /// <para>必填：是</para>
     /// </summary>
     [JsonPropertyName("data")]
-    public
-#if NET7_0_OR_GREATER
-        required
-#endif
-        string Data
-    { get; set; } = string.Empty;
+    public string Data { get; set; } = string.Empty;
 }

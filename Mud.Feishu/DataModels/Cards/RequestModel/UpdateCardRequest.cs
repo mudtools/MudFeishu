@@ -17,12 +17,7 @@ public class UpdateCardRequest
     /// <para>必填：是</para>
     /// </summary>
     [JsonPropertyName("card")]
-    public
-#if NET7_0_OR_GREATER
-        required
-#endif
-        CardData Card
-    { get; set; } = new() { Type = "card_json" };
+    public CardData Card { get; set; } = new() { Type = "card_json" };
 
 
 
@@ -42,12 +37,7 @@ public class UpdateCardRequest
     /// <para>示例值：1</para>
     /// </summary>
     [JsonPropertyName("sequence")]
-    public
-#if NET7_0_OR_GREATER
-        required
-#endif
-        int Sequence
-    { get; set; }
+    public int Sequence { get; set; }
 }
 
 
@@ -65,11 +55,7 @@ public class CardData
     /// </list></para>
     /// </summary>
     [JsonPropertyName("type")]
-    public
-#if NET7_0_OR_GREATER
-        required
-#endif
-        string Type
+    public string Type
     { get; set; } = string.Empty;
 
     /// <summary>

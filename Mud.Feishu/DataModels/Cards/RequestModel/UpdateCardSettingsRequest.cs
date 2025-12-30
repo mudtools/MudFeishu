@@ -18,12 +18,7 @@ public class UpdateCardSettingsRequest
     /// <para>示例值：{\"config\":{\"streaming_mode\":true,\"streaming_config\":{\"print_frequency_ms\":{\"default\":70,\"android\":70,\"ios\":70,\"pc\":70},\"print_step\":{\"default\":1,\"android\":1,\"ios\":1,\"pc\":1},\"print_strategy\":\"fast\"}}}</para>
     /// </summary>
     [JsonPropertyName("settings")]
-    public
-#if NET7_0_OR_GREATER
-        required
-#endif
-        string Settings
-    { get; set; } = string.Empty;
+    public string Settings { get; set; } = string.Empty;
 
     /// <summary>
     /// <para>幂等 ID，可通过传入唯一的 UUID 以保证相同批次的操作只进行一次。</para>
@@ -39,10 +34,5 @@ public class UpdateCardSettingsRequest
     /// <para>示例值：1</para>
     /// </summary>
     [JsonPropertyName("sequence")]
-    public
-#if NET7_0_OR_GREATER
-        required
-#endif
-        int Sequence
-    { get; set; }
+    public int Sequence { get; set; }
 }

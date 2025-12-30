@@ -136,6 +136,13 @@ public static class FeishuEventTypes
     public const string ChatMemberBotDeleted = "im.chat.member.bot.deleted_v1";
     #endregion
 
+    #region Task Events
+    /// <summary>
+    /// 任务信息变更（租户维度）事件
+    /// </summary>
+    public const string TaskUpdateTenant = "task.task.update_tenant_v1";
+    #endregion
+
     /// <summary>
     /// 用户加入群聊事件
     /// </summary>

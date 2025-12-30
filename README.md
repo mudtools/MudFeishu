@@ -43,6 +43,60 @@
 
 ### 🌐 Mud.Feishu - HTTP API 客户端功能
 
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           Mud.Feishu HTTP API 客户端                         │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌───────────────────────────────────────────────────────────────────────┐  │
+│  │                     🔐 认证与令牌管理                                  │  │
+│  │  ┌─────────────────┬─────────────────┬─────────────────┐              │  │
+│  │  │   应用令牌      │    租户令牌     │    用户令牌     │              │  │
+│  │  └─────────────────┴─────────────────┴─────────────────┘              │  │
+│  │  ✓ 自动缓存  ✓ 智能刷新  ✓ OAuth流程  ✓ 多租户支持                     │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
+│                                   ↕                                        │
+│  ┌───────────────────────────────────────────────────────────────────────┐  │
+│  │                    🏢 组织架构管理 (V1/V3)                            │  │
+│  │  ┌─────────┬──────────┬──────────┬──────────┬────────────┐            │  │
+│  │  │ 用户管理│ 部门管理 │ 员工管理 │ 职级管理 │ 职位序列 │            │  │
+│  │  ├─────────┼──────────┼──────────┼──────────┼────────────┤            │  │
+│  │  │ 角色权限│ 用户组   │ 工作城市 │ 企业标签 │ ...       │            │  │
+│  │  └─────────┴──────────┴──────────┴──────────┴────────────┘            │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
+│                                   ↕                                        │
+│  ┌───────────────────────────────────────────────────────────────────────┐  │
+│  │                     📱 消息服务 (V1/V2)                                │  │
+│  │  ┌──────────────┬──────────────┬──────────────┬──────────────────┐    │  │
+│  │  │   消息发送   │   批量消息   │   群聊管理   │    消息互动      │    │  │
+│  │  ├──────────────┼──────────────┼──────────────┼──────────────────┤    │  │
+│  │  │ 文本/图片/   │ 多用户/部门  │ 群聊创建/    │ 表情回复/        │    │  │
+│  │  │ 文件/卡片    │ 批量通知     │ 成员管理/    │ 引用回复/        │    │  │
+│  │  │ 富文本/...   │              │ 信息维护     │ 消息撤回/...     │    │  │
+│  │  └──────────────┴──────────────┴──────────────┴──────────────────┘    │  │
+│  │                          ↕                                             │  │
+│  │  ┌────────────────────────────────────────────────────────────────┐  │  │
+│  │  │                     📋 任务管理                                  │  │  │
+│  │  │  任务创建/更新/删除  任务状态管理  任务分配  任务提醒             │  │  │
+│  │  └────────────────────────────────────────────────────────────────┘  │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
+│                                   ↕                                        │
+│  ┌───────────────────────────────────────────────────────────────────────┐  │
+│  │                    🛠️ 企业级特性                                       │  │
+│  │  ┌──────────────────┬──────────────────┬──────────────────┐          │  │
+│  │  │  统一异常处理     │  智能重试机制     │  高性能缓存      │          │  │
+│  │  ├──────────────────┼──────────────────┼──────────────────┤          │  │
+│  │  │  连接池管理       │  异步编程支持     │  详细日志记录     │          │  │
+│  │  └──────────────────┴──────────────────┴──────────────────┘          │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
+│                                                                             │
+│  飞书 API 基础服务：                                                         │
+│  ┌──────────┬──────────┬──────────┬──────────┬──────────┬──────────┐       │
+│  │  应用管理 │  审批流  │  日历    │  文档    │  考勤    │  ...     │       │
+│  └──────────┴──────────┴──────────┴──────────┴──────────┴──────────┘       │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
 #### 🔐 认证与令牌管理
 - **多类型令牌支持** - 支持应用令牌、租户令牌、用户令牌三种类型
 - **自动令牌缓存** - 内置令牌缓存机制，减少API调用次数
@@ -319,165 +373,246 @@ public class NotificationService
 #### WebSocket 事件处理示例
 
 ```csharp
-// 消息事件处理器
-public class MessageEventHandler : IFeishuWebSocketEventHandler
+using Mud.Feishu.Abstractions;
+using System.Text.Json;
+
+/// <summary>
+/// 用户事件处理器 - 实现 IFeishuEventHandler 接口
+/// </summary>
+public class DemoUserEventHandler : IFeishuEventHandler
 {
-    private readonly ILogger<MessageEventHandler> _logger;
-    private readonly IFeishuTenantV1Message _messageApi;
-    
-    public MessageEventHandler(
-        ILogger<MessageEventHandler> logger,
-        IFeishuTenantV1Message messageApi)
+    private readonly ILogger<DemoUserEventHandler> _logger;
+    private readonly IUserSyncService _syncService;
+
+    public DemoUserEventHandler(ILogger<DemoUserEventHandler> logger, IUserSyncService syncService)
     {
-        _logger = logger;
-        _messageApi = messageApi;
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _syncService = syncService ?? throw new ArgumentNullException(nameof(syncService));
     }
-    
-    public async Task HandleAsync(FeishuWebSocketMessage message)
+
+    public string SupportedEventType => "contact.user.created_v3";
+
+    public async Task HandleAsync(EventData eventData, CancellationToken cancellationToken = default)
     {
+        if (eventData == null)
+            throw new ArgumentNullException(nameof(eventData));
+
         try
         {
-            switch (message.Type)
-            {
-                case "message.receive_v1":
-                    await HandleMessageReceivedAsync(message);
-                    break;
-                    
-                case "im.message.message_read_v1":
-                    await HandleMessageReadAsync(message);
-                    break;
-                    
-                default:
-                    _logger.LogInformation($"收到未处理的消息类型: {message.Type}");
-                    break;
-            }
+            // 解析用户数据
+            var userData = ParseUserData(eventData);
+
+            // 记录事件到服务
+            await _syncService.RecordUserEventAsync(userData, cancellationToken);
+
+            // 模拟业务处理
+            await ProcessUserEventAsync(userData, cancellationToken);
+
+            _logger.LogInformation("用户创建事件处理完成: 用户ID {UserId}, 用户名 {UserName}",
+                userData.UserId, userData.UserName);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, $"处理消息事件失败: {message.Type}");
+            _logger.LogError(ex, "处理用户创建事件失败: {EventId}", eventData.EventId);
+            throw;
         }
     }
-    
-    private async Task HandleMessageReceivedAsync(FeishuWebSocketMessage message)
+
+    private UserData ParseUserData(EventData eventData)
     {
-        var data = JsonSerializer.Deserialize<MessageReceiveEvent>(message.Data.ToString());
-        _logger.LogInformation($"收到消息 - 发送者: {data.Sender.Id}, 内容: {data.Message.Content}");
-        
-        // 可以在这里添加业务逻辑，比如自动回复、消息转发等
-        if (data.Message.Content.Contains("帮助"))
+        var jsonElement = JsonSerializer.Deserialize<JsonElement>(eventData.Event?.ToString() ?? "{}");
+        var userElement = jsonElement.GetProperty("user");
+
+        return new UserData
         {
-            await SendHelpMessageAsync(data.Sender.Id);
-        }
+            UserId = userElement.GetProperty("user_id").GetString() ?? "",
+            UserName = userElement.GetProperty("name").GetString() ?? "",
+            Email = TryGetProperty(userElement, "email") ?? "",
+            Department = TryGetProperty(userElement, "department") ?? "",
+            Phone = TryGetProperty(userElement, "phone") ?? "",
+            Avatar = TryGetProperty(userElement, "avatar") ?? "",
+            CreatedAt = DateTime.UtcNow,
+            ProcessedAt = DateTime.UtcNow
+        };
     }
-    
-    private async Task HandleMessageReadAsync(FeishuWebSocketMessage message)
+
+    private async Task ProcessUserEventAsync(UserData userData, CancellationToken cancellationToken)
     {
-        var data = JsonSerializer.Deserialize<MessageReadEvent>(message.Data.ToString());
-        _logger.LogInformation($"消息已读 - 用户: {data.Reader.Id}, 消息ID: {data.MessageId}");
-        
-        // 更新数据库中的消息阅读状态等
-        await UpdateMessageReadStatusAsync(data.MessageId, data.Reader.Id);
+        _logger.LogDebug("开始处理用户数据: {UserId}", userData.UserId);
+
+        // 模拟异步业务操作
+        await Task.Delay(100, cancellationToken);
+
+        // 模拟用户数据处理：数据库存储、缓存更新、通知发送等
+        if (string.IsNullOrWhiteSpace(userData.UserId))
+        {
+            throw new ArgumentException("用户ID不能为空");
+        }
+
+        // 模拟发送欢迎通知
+        _logger.LogInformation("发送欢迎通知给用户: {UserName} ({Email})",
+            userData.UserName, userData.Email);
+
+        // 模拟更新统计信息
+        _syncService.IncrementUserCount();
+
+        await Task.CompletedTask;
+    }
+
+    private static string? TryGetProperty(JsonElement element, string propertyName)
+    {
+        return element.TryGetProperty(propertyName, out var value) ? value.GetString() : null;
     }
 }
 
-// 用户事件处理器
-public class UserEventHandler : IFeishuWebSocketEventHandler
+/// <summary>
+/// 部门事件处理器 - 继承 DepartmentCreatedEventHandler 基类
+/// </summary>
+public class DemoDepartmentEventHandler : DepartmentCreatedEventHandler
 {
-    private readonly ILogger<UserEventHandler> _logger;
-    private readonly IUserSyncService _syncService;
-    
-    public UserEventHandler(
-        ILogger<UserEventHandler> logger,
-        IUserSyncService syncService)
+    private readonly IDepartmentSyncService _syncService;
+
+    public DemoDepartmentEventHandler(ILogger<DemoDepartmentEventHandler> logger, IDepartmentSyncService syncService)
+        : base(logger)
     {
-        _logger = logger;
-        _syncService = syncService;
+        _syncService = syncService ?? throw new ArgumentNullException(nameof(syncService));
     }
-    
-    public async Task HandleAsync(FeishuWebSocketMessage message)
+
+    protected override async Task ProcessBusinessLogicAsync(
+        EventData eventData,
+        ObjectEventResult<DepartmentCreatedResult>? departmentData,
+        CancellationToken cancellationToken = default)
     {
-        switch (message.Type)
+        if (eventData == null)
+            throw new ArgumentNullException(nameof(eventData));
+
+        _logger.LogInformation("开始处理部门创建事件: {EventId}", eventData.EventId);
+
+        try
         {
-            case "contact.user.created_v3":
-                await HandleUserCreatedAsync(message);
-                break;
-                
-            case "contact.user.updated_v3":
-                await HandleUserUpdatedAsync(message);
-                break;
-                
-            case "contact.user.deleted_v3":
-                await HandleUserDeletedAsync(message);
-                break;
+            // 记录事件到服务
+            await _syncService.RecordDepartmentEventAsync(departmentData.Object, cancellationToken);
+
+            // 模拟业务处理
+            await ProcessDepartmentEventAsync(departmentData.Object, cancellationToken);
+
+            _logger.LogInformation("部门创建事件处理完成: 部门ID {DepartmentId}, 部门名 {DepartmentName}",
+                departmentData.Object.DepartmentId, departmentData.Object.Name);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "处理部门创建事件失败: {EventId}", eventData.EventId);
+            throw;
         }
     }
-    
-    private async Task HandleUserCreatedAsync(FeishuWebSocketMessage message)
+
+    private async Task ProcessDepartmentEventAsync(DepartmentCreatedResult departmentData, CancellationToken cancellationToken)
     {
-        var userEvent = JsonSerializer.Deserialize<UserCreatedEvent>(message.Data.ToString());
-        _logger.LogInformation($"新用户创建: {userEvent.User.Name} ({userEvent.User.UserId})");
-        
-        // 同步用户到本地数据库
-        await _syncService.SyncUserToDatabaseAsync(userEvent.User);
-        
-        // 发送欢迎消息
-        await SendWelcomeMessageAsync(userEvent.User.UserId);
+        _logger.LogDebug("开始处理部门数据: {DepartmentId}", departmentData.DepartmentId);
+
+        // 模拟异步业务操作
+        await Task.Delay(100, cancellationToken);
+
+        // 模拟验证逻辑
+        if (string.IsNullOrWhiteSpace(departmentData.DepartmentId))
+        {
+            throw new ArgumentException("部门ID不能为空");
+        }
+
+        // 模拟权限初始化
+        _logger.LogInformation("初始化部门权限: {DepartmentName}", departmentData.Name);
+
+        // 模拟通知部门主管
+        if (!string.IsNullOrWhiteSpace(departmentData.LeaderUserId))
+        {
+            _logger.LogInformation("通知部门主管: {LeaderUserId}", departmentData.LeaderUserId);
+        }
+
+        // 模拟更新统计信息
+        _syncService.IncrementDepartmentCount();
+
+        // 模拟层级关系处理
+        if (!string.IsNullOrWhiteSpace(departmentData.ParentDepartmentId))
+        {
+            _logger.LogInformation("建立层级关系: {DepartmentId} -> {ParentDepartmentId}",
+                departmentData.DepartmentId, departmentData.ParentDepartmentId);
+        }
+
+        await Task.CompletedTask;
     }
-    
-    private async Task HandleUserUpdatedAsync(FeishuWebSocketMessage message)
+}
+
+/// <summary>
+/// 部门删除事件处理器 - 继承 DepartmentDeleteEventHandler 基类
+/// </summary>
+public class DemoDepartmentDeleteEventHandler : DepartmentDeleteEventHandler
+{
+    public DemoDepartmentDeleteEventHandler(ILogger<DepartmentDeleteEventHandler> logger)
+        : base(logger)
     {
-        var userEvent = JsonSerializer.Deserialize<UserUpdatedEvent>(message.Data.ToString());
-        _logger.LogInformation($"用户信息更新: {userEvent.User.Name}");
-        
-        // 更新本地数据库中的用户信息
-        await _syncService.UpdateUserInDatabaseAsync(userEvent.User);
     }
-    
-    private async Task HandleUserDeletedAsync(FeishuWebSocketMessage message)
+
+    protected override async Task ProcessBusinessLogicAsync(
+        EventData eventData,
+        DepartmentDeleteResult? eventEntity,
+        CancellationToken cancellationToken = default)
     {
-        var userEvent = JsonSerializer.Deserialize<UserDeletedEvent>(message.Data.ToString());
-        _logger.LogInformation($"用户已删除: {userEvent.UserId}");
-        
-        // 从本地数据库中删除用户
-        await _syncService.DeleteUserFromDatabaseAsync(userEvent.UserId);
+        if (eventData == null)
+            throw new ArgumentNullException(nameof(eventData));
+
+        if (eventEntity == null)
+        {
+            _logger.LogWarning("部门删除事件实体为空，跳过处理");
+            return;
+        }
+
+        _logger.LogInformation("开始处理部门删除事件: EventId={EventId}, AppId={AppId}, TenantKey={TenantKey}",
+            eventData.EventId, eventData.AppId, eventData.TenantKey);
+
+        _logger.LogDebug("部门删除事件详情: {@EventEntity}", eventEntity);
+
+        // 执行部门删除相关的业务逻辑
+        // 例如：清理部门缓存、更新统计数据、通知相关人员等
+
+        await Task.CompletedTask;
     }
 }
 ```
 
 #### Webhook 事件处理示例
 
+Webhook 事件处理器与 WebSocket 事件处理器使用相同的 `IFeishuEventHandler` 接口，因此代码可以复用。
+
 ```csharp
-// 用户创建事件处理器
-public class UserCreatedEventHandler : IFeishuWebhookEventHandler
+// 用户创建事件处理器 - Webhook 和 WebSocket 都可以使用
+public class UserCreatedEventHandler : IFeishuEventHandler
 {
     private readonly ILogger<UserCreatedEventHandler> _logger;
     private readonly IUserSyncService _syncService;
-    
+
     public UserCreatedEventHandler(
         ILogger<UserCreatedEventHandler> logger,
         IUserSyncService syncService)
     {
-        _logger = logger;
-        _syncService = syncService;
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _syncService = syncService ?? throw new ArgumentNullException(nameof(syncService));
     }
-    
-    public async Task<bool> CanHandleAsync(string eventType)
-    {
-        return eventType == "contact.user.created_v3";
-    }
-    
-    public async Task HandleAsync(FeishuWebhookRequest request)
+
+    public string SupportedEventType => "contact.user.created_v3";
+
+    public async Task HandleAsync(EventData eventData, CancellationToken cancellationToken = default)
     {
         try
         {
-            var eventData = await DecryptEventAsync(request);
-            var userEvent = JsonSerializer.Deserialize<UserCreatedEvent>(eventData);
-            
-            _logger.LogInformation($"新用户创建: {userEvent.User.Name} ({userEvent.User.UserId})");
-            
+            // 解析用户事件数据
+            var userEvent = JsonSerializer.Deserialize<UserCreatedEvent>(eventData.Event?.ToString() ?? "{}");
+
+            _logger.LogInformation("新用户创建: {UserName} ({UserId})",
+                userEvent.User.Name, userEvent.User.UserId);
+
             // 同步用户到本地数据库
-            await _syncService.SyncUserToDatabaseAsync(userEvent.User);
-            
+            await _syncService.SyncUserToDatabaseAsync(userEvent.User, cancellationToken);
+
             // 发送欢迎消息
             await SendWelcomeMessageAsync(userEvent.User.UserId);
         }
@@ -490,33 +625,30 @@ public class UserCreatedEventHandler : IFeishuWebhookEventHandler
 }
 
 // 消息接收事件处理器
-public class MessageReceiveEventHandler : IFeishuWebhookEventHandler
+public class MessageReceiveEventHandler : IFeishuEventHandler
 {
     private readonly ILogger<MessageReceiveEventHandler> _logger;
     private readonly IFeishuTenantV1Message _messageApi;
-    
+
     public MessageReceiveEventHandler(
         ILogger<MessageReceiveEventHandler> logger,
         IFeishuTenantV1Message messageApi)
     {
-        _logger = logger;
-        _messageApi = messageApi;
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _messageApi = messageApi ?? throw new ArgumentNullException(nameof(messageApi));
     }
-    
-    public async Task<bool> CanHandleAsync(string eventType)
-    {
-        return eventType == "im.message.receive_v1";
-    }
-    
-    public async Task HandleAsync(FeishuWebhookRequest request)
+
+    public string SupportedEventType => "im.message.receive_v1";
+
+    public async Task HandleAsync(EventData eventData, CancellationToken cancellationToken = default)
     {
         try
         {
-            var eventData = await DecryptEventAsync(request);
-            var messageEvent = JsonSerializer.Deserialize<MessageReceiveEvent>(eventData);
-            
-            _logger.LogInformation($"收到消息 - 发送者: {messageEvent.Sender.Id}, 内容: {messageEvent.Message.Content}");
-            
+            var messageEvent = JsonSerializer.Deserialize<MessageReceiveEvent>(eventData.Event?.ToString() ?? "{}");
+
+            _logger.LogInformation("收到消息 - 发送者: {SenderId}, 内容: {Content}",
+                messageEvent.Sender.Id, messageEvent.Message.Content);
+
             // 智能回复逻辑
             if (messageEvent.Message.Content.Contains("帮助"))
             {

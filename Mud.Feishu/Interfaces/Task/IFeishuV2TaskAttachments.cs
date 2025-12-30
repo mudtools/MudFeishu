@@ -7,7 +7,7 @@
 
 using Mud.Feishu.DataModels.TaskAttachments;
 
-namespace Mud.Feishu;
+namespace Mud.Feishu.Interfaces;
 
 /// <summary>
 /// 任务可以拥有附件。一个附件可以是任意类型的文件，如图片，PDF文档，zip文件等。

@@ -7,7 +7,7 @@
 
 using Mud.Feishu.DataModels.DepartmentsV1;
 
-namespace Mud.Feishu;
+namespace Mud.Feishu.Interfaces;
 
 /// <summary>
 /// 部门是飞书组织架构里的一个基础实体，每个员工都归属于一个或多个部门。

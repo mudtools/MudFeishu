@@ -7,7 +7,7 @@
 
 using Mud.Feishu.DataModels.Departments;
 
-namespace Mud.Feishu;
+namespace Mud.Feishu.Interfaces;
 
 /// <summary>
 /// 飞书组织机构部门是指企业组织架构树上的某一个节点。

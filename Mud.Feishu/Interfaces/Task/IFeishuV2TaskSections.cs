@@ -7,7 +7,7 @@
 
 using Mud.Feishu.DataModels.TaskSections;
 
-namespace Mud.Feishu;
+namespace Mud.Feishu.Interfaces;
 
 /// <summary>
 /// 飞书自定义分组可以方便的在我负责的和清单中对任务进行自定义归类。通过自定义分组。

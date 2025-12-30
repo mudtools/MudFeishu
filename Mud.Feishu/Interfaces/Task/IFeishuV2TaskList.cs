@@ -7,7 +7,7 @@
 
 using Mud.Feishu.DataModels.TaskList;
 
-namespace Mud.Feishu;
+namespace Mud.Feishu.Interfaces;
 
 /// <summary>
 /// <para>飞书清单可以用于组织和管理属于同一个项目的多个任务。</para>

@@ -7,7 +7,7 @@
 
 using Mud.Feishu.DataModels.WorkCites;
 
-namespace Mud.Feishu;
+namespace Mud.Feishu.Interfaces;
 
 /// <summary>
 /// 工作城市是用户属性之一，通过工作城市 API 仅支持查询工作城市信息。

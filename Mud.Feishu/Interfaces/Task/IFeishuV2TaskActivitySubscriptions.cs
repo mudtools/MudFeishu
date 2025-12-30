@@ -7,7 +7,7 @@
 
 using Mud.Feishu.DataModels.TaskActivitySubscriptions;
 
-namespace Mud.Feishu;
+namespace Mud.Feishu.Interfaces;
 
 /// <summary>
 /// 任务清单动态订阅

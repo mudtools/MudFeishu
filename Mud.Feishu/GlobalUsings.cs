@@ -8,6 +8,7 @@
 global using Mud.CodeGenerator;
 global using Mud.Feishu;
 global using Mud.Feishu.DataModels;
+global using Mud.Feishu.Interfaces;
 global using Mud.Feishu.TokenManager;
 global using System.Text.Json.Serialization;
 

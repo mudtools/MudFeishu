@@ -7,7 +7,7 @@
 
 using Mud.Feishu.DataModels.TaskComments;
 
-namespace Mud.Feishu;
+namespace Mud.Feishu.Interfaces;
 
 /// <summary>
 /// 评论接口可以实现评论创建、回复、更新、删除、获取详情等功能。

@@ -7,7 +7,7 @@
 
 using Mud.Feishu.DataModels.Task;
 
-namespace Mud.Feishu;
+namespace Mud.Feishu.Interfaces;
 
 /// <summary>
 /// <para>飞书任务是一款飞书自带的通用任务/项目管理工具，拥有强大的协作能力。</para>

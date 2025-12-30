@@ -7,7 +7,7 @@
 
 using Mud.Feishu.DataModels.JobTitles;
 
-namespace Mud.Feishu;
+namespace Mud.Feishu.Interfaces;
 
 /// <summary>
 /// 职务是用户属性之一，通过职务 API 仅支持查询职务信息。

@@ -7,7 +7,7 @@
 
 using Mud.Feishu.DataModels.TaskCustomFields;
 
-namespace Mud.Feishu;
+namespace Mud.Feishu.Interfaces;
 
 /// <summary>
 /// 任务功能支持在任务中扩充自定义字段，更清晰地添加任务关键信息，高效管理任务，辅助协作推进。

@@ -7,7 +7,7 @@
 
 using Mud.Feishu.DataModels.Employees;
 
-namespace Mud.Feishu;
+namespace Mud.Feishu.Interfaces;
 
 /// <summary>
 /// 员工指飞书企业内身份为「Employee」的成员，等同于通讯录OpenAPI中的「User」。

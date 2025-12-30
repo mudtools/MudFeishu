@@ -9,7 +9,7 @@ using Mud.Feishu.DataModels.TaskAttachments;
 using Mud.Feishu.Extensions;
 using System.Net.Http.Headers;
 
-namespace Mud.Feishu;
+namespace Mud.Feishu.Interfaces;
 
 partial class FeishuV2TaskAttachments
 {

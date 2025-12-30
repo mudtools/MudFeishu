@@ -319,7 +319,7 @@ internal static class HttpClientExtensions
     /// <summary>
     /// 获取默认的JSON序列化选项
     /// </summary>
-    private static JsonSerializerOptions GetDefaultJsonSerializerOptions()
+    internal static JsonSerializerOptions GetDefaultJsonSerializerOptions()
     {
         return new JsonSerializerOptions
         {

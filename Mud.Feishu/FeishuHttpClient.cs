@@ -8,6 +8,7 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Mud.Feishu.Extensions;
+using System.Text.Json;
 
 namespace Mud.Feishu;
 
@@ -17,16 +18,19 @@ internal class FeishuHttpClient : IEnhancedHttpClient
     private readonly HttpClient _httpClient;
     private readonly ILogger<FeishuHttpClient> _logger;
     private readonly FeishuOptions _feishuOptions;
+    private readonly JsonSerializerOptions _jsonSerializerOptions;
 
     public FeishuHttpClient(
         HttpClient httpClient,
         ILogger<FeishuHttpClient> logger,
-        IOptions<FeishuOptions> options)
+        IOptions<FeishuOptions> options,
+        IOptions<JsonSerializerOptions> serializerOptions)
     {
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
         _feishuOptions = options?.Value ?? throw new ArgumentNullException(nameof(options));
+        _jsonSerializerOptions = serializerOptions?.Value ?? HttpClientExtensions.GetDefaultJsonSerializerOptions();
 
         // 配置HttpClient的基础地址（如果有）
         if (!string.IsNullOrEmpty(_feishuOptions.BaseUrl))
@@ -49,6 +53,7 @@ internal class FeishuHttpClient : IEnhancedHttpClient
 
             var result = await _httpClient.SendRequestAsync<TResult>(
                 request,
+                jsonSerializerOptions: _jsonSerializerOptions,
                 logger: _feishuOptions.EnableLogging ? _logger : null,
                 cancellationToken: cancellationToken);
 

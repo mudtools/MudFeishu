@@ -10,7 +10,7 @@
 		<RepositoryType>git</RepositoryType>
 		<PackageIcon>Icon.png</PackageIcon>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
-		<Description>飞书服务端 SDK 的 .NET 适配版，支持.NET4.6+、.NET 6 至 .NET 10 平台。提供类型安全的 API 封装，让开发者能够在 .NET 应用程序中便捷、高效地集成飞书服务端功能。</Description>
+		<Description>飞书服务端 SDK 的 .NET 适配版，支持.NET4.6+、.NET 5 至 .NET 10 平台。提供类型安全的 API 封装，让开发者能够在 .NET 应用程序中便捷、高效地集成飞书服务端功能。</Description>
 		<PackageTags>飞书;飞书.net sdk;Feishu;Feishu.net;Feishu SDK;Feishu .net SDK;API;SDK;.NET;.NET Core;ASP.NET Core;MudFeishu;开放平台</PackageTags>
 		<!-- HttpClient配置选项类名称 -->
 		<HttpClientOptionsName>FeishuOptions</HttpClientOptionsName>

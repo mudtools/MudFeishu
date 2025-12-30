@@ -19,6 +19,13 @@ internal static class HttpClientExtensions
     // 默认缓冲区大小（80KB）- 比默认的80K稍大，适合文件下载
     private const int DefaultBufferSize = 81920;
 
+    /// <summary>
+    /// 验证URL的有效性并检查HttpClient配置是否支持该URL
+    /// </summary>
+    /// <param name="url">要验证的URL，可以是绝对URL或相对URL</param>
+    /// <param name="client">用于发送请求的HttpClient实例</param>
+    /// <exception cref="ArgumentException">当URL格式无效时抛出</exception>
+    /// <exception cref="InvalidOperationException">当使用相对URL但HttpClient未配置BaseAddress时抛出</exception>
     private static void ValidateUrl(string? url, HttpClient client)
     {
         if (url is null)

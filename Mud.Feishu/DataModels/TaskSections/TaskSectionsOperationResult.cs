@@ -8,9 +8,9 @@
 namespace Mud.Feishu.DataModels.TaskSections;
 
 /// <summary>
-/// 创建自定义分组响应体
+/// 自定义分组业务操作响应体
 /// </summary>
-public class TaskSectionsResult
+public class TaskSectionsOperationResult
 {
     /// <summary>
     /// <para>创建的自定义分组数据</para>

@@ -13,43 +13,6 @@
 
 ## ✨ 核心特性
 
-```mermaid
-mindmap
-  root((MudFeishu<br/>核心特性))
-    Abstractions[Mud.Feishu.Abstractions<br/>事件处理抽象层]
-      Core["🎯 核心功能: 事件订阅抽象层和策略模式"]
-      Design["🔧 设计模式: 策略模式、工厂模式、抽象基类"]
-      Type["🛡️ 类型安全: 强类型事件数据模型，默认基类"]
-      Perf["🚀 性能优化: 异步事件处理，并行执行"]
-      Ent["🛠️ 企业级特性: 可扩展架构，异常处理基类"]
-    HTTP[Mud.Feishu<br/>HTTP API 客户端]
-      Core["🎯 核心功能: HTTP API 客户端，RESTful 调用"]
-      Design["🔧 设计模式: 特性驱动设计，自动生成 HTTP 客户端"]
-      Type["🛡️ 类型安全: 完整的数据模型，编译时类型检查"]
-      Token["🔐 令牌管理: 自动缓存刷新，多类型令牌支持"]
-      Register["📦 服务注册: 模块化注册，支持构造者模式"]
-      Perf["🚀 性能优化: 连接池管理，智能重试机制"]
-      Ent["🛠️ 企业级特性: 统一异常处理，性能监控"]
-    WebSocket[Mud.Feishu.WebSocket<br/>实时事件订阅]
-      Core["🎯 核心功能: WebSocket 客户端，实时事件订阅"]
-      Design["🔧 设计模式: 建造者模式，可扩展事件处理器"]
-      Type["🛡️ 类型安全: 强类型事件消息，智能反序列化"]
-      Token["🔐 令牌管理: 继承 HTTP API 的令牌管理能力"]
-      Register["📦 服务注册: 建造者模式配置，灵活的处理器管理"]
-      Perf["🚀 性能优化: 异步消息处理，内置消息队列"]
-      Ent["🛠️ 企业级特性: 自动重连，心跳检测，状态监控"]
-    Webhook[Mud.Feishu.Webhook<br/>Webhook 事件处理]
-      Core["🎯 核心功能: Webhook HTTP 回调事件处理"]
-      Design["🔧 设计模式: 中间件模式，自动事件路由"]
-      Type["🛡️ 类型安全: 类型安全的事件解密和验证"]
-      Token["🔐 令牌管理: 继承 HTTP API 的令牌管理能力"]
-      Register["📦 服务注册: 一行代码注册，自动中间件配置"]
-      Perf["🚀 性能优化: 异步事件处理，并发控制"]
-      Ent["🛠️ 企业级特性: 安全验证，加密解密，健康检查"]
-```
-
-**核心特性对比表**
-
 | 特性类别 | Mud.Feishu.Abstractions | Mud.Feishu (HTTP API) | Mud.Feishu.WebSocket | Mud.Feishu.Webhook |
 |---------|----------------------|----------------------|-------------------|-------------------|
 | **🎯 核心功能** | 事件订阅抽象层和策略模式 | HTTP API 客户端，RESTful 调用 | WebSocket 客户端，实时事件订阅 | Webhook HTTP 回调事件处理 |
@@ -61,6 +24,27 @@ mindmap
 | **🛠️ 企业级特性** | 可扩展架构，异常处理基类 | 统一异常处理，性能监控 | 自动重连，心跳检测，状态监控 | 安全验证，加密解密，健康检查 |
 
 ## 📊 主要功能
+
+```mermaid
+mindmap
+  root((MudFeishu<br/>主要功能))
+    Abstractions[🏛️ Mud.Feishu.Abstractions<br/>事件处理抽象层]
+      Arch["🎯 事件处理架构<br/>策略模式、工厂模式、抽象基类"]
+      Events["📋 丰富事件类型<br/>组织、消息、应用、自定义事件"]
+    HTTP[🌐 Mud.Feishu<br/>HTTP API 客户端]
+      Token["🔐 认证与令牌管理<br/>多类型令牌、自动缓存、智能刷新"]
+      Org["🏢 组织架构管理<br/>用户、部门、员工、职级、角色等"]
+      Msg["📱 消息服务<br/>消息发送、批量消息、群聊、互动、任务"]
+      Ent["🛠️ 企业级特性<br/>异常处理、重试、缓存、连接池"]
+    WebSocket[🔄 Mud.Feishu.WebSocket<br/>实时事件订阅]
+      Handler["🤖 事件处理架构<br/>策略模式、多处理器、自定义"]
+      Conn["🫀 连接管理<br/>WebSocket、自动重连、心跳、负载均衡"]
+      Monitor["📈 监控与运维<br/>状态监控、统计、性能、健康检查"]
+    Webhook[🌐 Mud.Feishu.Webhook<br/>Webhook 事件处理]
+      Security["🔒 安全验证与解密<br/>签名、时间戳、AES解密、IP验证"]
+      Handler2["🚀 事件处理架构<br/>中间件、自动路由、异步、并发"]
+      Monitor2["📊 监控与运维<br/>性能监控、健康检查、日志"]
+```
 
 ### 🏛️ Mud.Feishu.Abstractions - 事件处理抽象层
 
@@ -79,66 +63,6 @@ mindmap
 - **自定义事件** - 支持企业自定义事件类型
 
 ### 🌐 Mud.Feishu - HTTP API 客户端功能
-
-```mermaid
-graph TB
-    subgraph MudFeishu["Mud.Feishu HTTP API 客户端"]
-        
-        subgraph Auth["🔐 认证与令牌管理"]
-            AppToken["应用令牌"]
-            TenantToken["租户令牌"]
-            UserToken["用户令牌"]
-            Features["✓ 自动缓存<br/>✓ 智能刷新<br/>✓ OAuth流程<br/>✓ 多租户支持"]
-        end
-        
-        subgraph Org["🏢 组织架构管理 V1/V3"]
-            UserMgmt["用户管理"]
-            DeptMgmt["部门管理"]
-            EmpMgmt["员工管理"]
-            RankMgmt["职级管理"]
-            RoleMgmt["角色权限"]
-            UserGroup["用户组管理"]
-            CityMgmt["工作城市管理"]
-        end
-        
-        subgraph Msg["📱 消息服务 V1/V2"]
-            MsgSend["消息发送<br/>文本/图片/文件/卡片/富文本"]
-            BatchMsg["批量消息<br/>多用户/部门批量通知"]
-            GroupMgmt["群聊管理<br/>创建/成员/信息维护"]
-            MsgInteract["消息互动<br/>表情/引用/撤回"]
-            TaskMgmt["任务管理<br/>创建/状态/分配/提醒"]
-        end
-        
-        subgraph Enterprise["🛠️ 企业级特性"]
-            Exception["统一异常处理"]
-            Retry["智能重试机制"]
-            Cache["高性能缓存"]
-            Pool["连接池管理"]
-            Async["异步编程支持"]
-            Logging["详细日志记录"]
-        end
-        
-        Auth --> Org
-        Org --> Msg
-        Msg --> Enterprise
-        
-        subgraph BaseServices["飞书 API 基础服务"]
-            AppMgmt["应用管理"]
-            Approval["审批流"]
-            Calendar["日历"]
-            Doc["文档"]
-            Attendance["考勤"]
-            Etc["..."]
-        end
-    end
-    
-    style MudFeishu fill:#e3f2fd,stroke:#1565c0,stroke-width:2px
-    style Auth fill:#fff3e0,stroke:#e65100
-    style Org fill:#e8f5e9,stroke:#1b5e20
-    style Msg fill:#f3e5f5,stroke:#4a148c
-    style Enterprise fill:#fce4ec,stroke:#880e4f
-    style BaseServices fill:#e0f7fa,stroke:#006064
-```
 
 #### 🔐 认证与令牌管理
 - **多类型令牌支持** - 支持应用令牌、租户令牌、用户令牌三种类型

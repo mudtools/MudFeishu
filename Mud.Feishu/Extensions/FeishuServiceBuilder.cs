@@ -197,6 +197,22 @@ public class FeishuServiceBuilder
     }
 
     /// <summary>
+    /// 添加流程审批管理 API 服务
+    /// </summary>
+    /// <returns>建造者实例，支持链式调用</returns>
+    public FeishuServiceBuilder AddApprovalApi()
+    {
+        if (!_configuration.ApprovalApiAdded)
+        {
+            AddFeishuHttpClient();
+            AddTokenManagers(); // Approval API 通常需要令牌管理
+            _services.AddApprovalWebApiHttpClient();
+            _configuration.ApprovalApiAdded = true;
+        }
+        return this;
+    }
+
+    /// <summary>
     /// 添加任务管理 API 服务
     /// </summary>
     /// <returns>建造者实例，支持链式调用</returns>
@@ -239,6 +255,7 @@ public class FeishuServiceBuilder
                .AddOrganizationApi()
                .AddMessageApi()
                .AddChatGroupApi()
+               .AddApprovalApi()
                .AddTaskApi()
                .AddCardApi();
     }
@@ -289,6 +306,9 @@ public class FeishuServiceBuilder
                     break;
                 case FeishuModule.ChatGroup:
                     AddChatGroupApi();
+                    break;
+                case FeishuModule.Approval:
+                    AddApprovalApi();
                     break;
                 case FeishuModule.Authentication:
                     AddAuthenticationApi();
@@ -368,6 +388,11 @@ public enum FeishuModule
     Authentication,
 
     /// <summary>
+    /// 流程审批管理
+    /// </summary>
+    Approval,
+
+    /// <summary>
     /// 所有功能
     /// </summary>
     All
@@ -387,6 +412,7 @@ internal class FeishuServiceConfiguration
     public bool OrganizationApiAdded { get; set; }
     public bool MessageApiAdded { get; set; }
     public bool ChatGroupApiAdded { get; set; }
+    public bool ApprovalApiAdded { get; set; }
     public bool CardApiAdded { get; set; }
     public bool TaskApiAdded { get; set; }
     public bool AuthenticationApiAdded { get; set; }

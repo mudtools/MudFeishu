@@ -11,18 +11,6 @@
 | **Mud.Feishu.WebSocket** | 飞书 WebSocket 客户端，支持实时事件订阅和自动重连 | [![Nuget](https://img.shields.io/nuget/v/Mud.Feishu.WebSocket.svg)](https://www.nuget.org/packages/Mud.Feishu.WebSocket/) |
 | **Mud.Feishu.Webhook** | 飞书 Webhook 事件处理组件，支持 HTTP 回调事件接收和处理 | [![Nuget](https://img.shields.io/nuget/v/Mud.Feishu.Webhook.svg)](https://www.nuget.org/packages/Mud.Feishu.Webhook/) |
 
-## ✨ 核心特性
-
-| 特性类别 | Mud.Feishu.Abstractions | Mud.Feishu (HTTP API) | Mud.Feishu.WebSocket | Mud.Feishu.Webhook |
-|---------|----------------------|----------------------|-------------------|-------------------|
-| **🎯 核心功能** | 事件订阅抽象层和策略模式 | HTTP API 客户端，RESTful 调用 | WebSocket 客户端，实时事件订阅 | Webhook HTTP 回调事件处理 |
-| **🔧 设计模式** | 策略模式、工厂模式、抽象基类 | 特性驱动设计，自动生成 HTTP 客户端 | 建造者模式，可扩展事件处理器 | 中间件模式，自动事件路由 |
-| **🛡️ 类型安全** | 强类型事件数据模型，默认基类 | 完整的数据模型，编译时类型检查 | 强类型事件消息，智能反序列化 | 类型安全的事件解密和验证 |
-| **🔐 令牌管理** | - | 自动缓存刷新，多类型令牌支持 | 继承 HTTP API 的令牌管理能力 | 继承 HTTP API 的令牌管理能力 |
-| **📦 服务注册** | - | 模块化注册，支持构造者模式 | 建造者模式配置，灵活的处理器管理 | 一行代码注册，自动中间件配置 |
-| **🚀 性能优化** | 异步事件处理，并行执行 | 连接池管理，智能重试机制 | 异步消息处理，内置消息队列 | 异步事件处理，并发控制 |
-| **🛠️ 企业级特性** | 可扩展架构，异常处理基类 | 统一异常处理，性能监控 | 自动重连，心跳检测，状态监控 | 安全验证，加密解密，健康检查 |
-
 ## 📊 主要功能
 
 ### 🏛️ Mud.Feishu.Abstractions - 事件处理抽象层

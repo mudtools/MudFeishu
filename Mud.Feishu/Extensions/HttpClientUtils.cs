@@ -19,6 +19,36 @@ internal static class HttpClientExtensions
     // 默认缓冲区大小（80KB）- 比默认的80K稍大，适合文件下载
     private const int DefaultBufferSize = 81920;
 
+    private static void ValidateUrl(string? url, HttpClient client)
+    {
+        if (url is null)
+            throw new ArgumentNullException(nameof(url), "URL不能为空");
+
+        if (string.IsNullOrWhiteSpace(url))
+            throw new ArgumentNullException("URL不能为空", nameof(url));
+        ExceptionUtils.ThrowIfNull(client, nameof(client));
+
+
+        if (Uri.IsWellFormedUriString(url, UriKind.Absolute))
+        {
+            return;
+        }
+
+        if (Uri.IsWellFormedUriString(url, UriKind.Relative))
+        {
+            if (client.BaseAddress is null)
+            {
+                throw new InvalidOperationException(
+                    "HttpClient未配置BaseAddress，无法使用相对URL");
+            }
+            return;
+        }
+
+        throw new ArgumentException(
+            $"URL格式不正确: '{url}'。必须是有效的绝对URL或相对URL。",
+            nameof(url));
+    }
+
     /// <summary>
     /// 发送HTTP请求并反序列化响应结果
     /// </summary>
@@ -43,6 +73,7 @@ internal static class HttpClientExtensions
 
         string? requestUri = httpRequestMessage.RequestUri?.ToString();
 
+        ValidateUrl(requestUri, client);
         try
         {
             using var response = await client.SendAsync(httpRequestMessage,
@@ -98,7 +129,7 @@ internal static class HttpClientExtensions
         ExceptionUtils.ThrowIfNull(httpRequestMessage);
 
         string? requestUri = httpRequestMessage.RequestUri?.ToString();
-
+        ValidateUrl(requestUri, client);
         try
         {
             using var response = await client.SendAsync(httpRequestMessage,
@@ -162,7 +193,7 @@ internal static class HttpClientExtensions
 
         string? requestUri = httpRequestMessage.RequestUri?.ToString();
         string directoryPath = Path.GetDirectoryName(filePath)!;
-
+        ValidateUrl(requestUri, client);
         try
         {
             // 确保目录存在

@@ -8,53 +8,17 @@
 namespace Mud.Feishu.DataModels.TaskCustomFields;
 
 /// <summary>
-/// 创建自定义字段请求体
+/// 自定义字段数据
 /// </summary>
-public class CreateCustomFieldsRequest
+public class CustomFieldsData
 {
-
     /// <summary>
-    /// <para>字段名称，最大50个字符。</para>
-    /// <para>必填：是</para>
+    /// <para>字段名称，支持最大50个字符。</para>
+    /// <para>必填：否</para>
     /// <para>示例值：优先级</para>
     /// </summary>
     [JsonPropertyName("name")]
-    public string Name { get; set; } = string.Empty;
-
-    /// <summary>
-    /// <para>自定义字段要归属的资源类型，支持"tasklist"</para>
-    /// <para>必填：是</para>
-    /// <para>示例值：tasklist</para>
-    /// <para>默认值：tasklist</para>
-    /// </summary>
-    [JsonPropertyName("resource_type")]
-    public string ResourceType { get; set; } = string.Empty;
-
-    /// <summary>
-    /// <para>自定义字段要归属的资源ID，当`resource_type`为"tasklist"时必须填写清单的GUID。</para>
-    /// <para>必填：是</para>
-    /// <para>示例值：ec5ed63d-a4a9-44de-a935-7ba243471c0a</para>
-    /// <para>最大长度：100</para>
-    /// </summary>
-    [JsonPropertyName("resource_id")]
-    public string ResourceId { get; set; } = string.Empty;
-
-
-    /// <summary>
-    /// <para>自定义字段类型。</para>
-    /// <para>必填：是</para>
-    /// <para>示例值：number</para>
-    /// <para>可选值：<list type="bullet">
-    /// <item>number：数字</item>
-    /// <item>datetime：日期</item>
-    /// <item>member：成员</item>
-    /// <item>single_select：单选</item>
-    /// <item>multi_select：多选</item>
-    /// <item>text：文本</item>
-    /// </list></para>
-    /// </summary>
-    [JsonPropertyName("type")]
-    public string Type { get; set; } = string.Empty;
+    public string? Name { get; set; }
 
     /// <summary>
     /// <para>数字类型的字段设置</para>
@@ -77,13 +41,12 @@ public class CreateCustomFieldsRequest
     [JsonPropertyName("datetime_setting")]
     public DatetimeSettingData? DatetimeSetting { get; set; }
 
-
     /// <summary>
     /// <para>单选设置</para>
     /// <para>必填：否</para>
     /// </summary>
     [JsonPropertyName("single_select_setting")]
-    public SelectSettingData? SingleSelectSetting { get; set; }
+    public SelectSettingInfo? SingleSelectSetting { get; set; }
 
 
     /// <summary>
@@ -91,10 +54,10 @@ public class CreateCustomFieldsRequest
     /// <para>必填：否</para>
     /// </summary>
     [JsonPropertyName("multi_select_setting")]
-    public SelectSettingData? MultiSelectSetting { get; set; }
+    public SelectSettingInfo? MultiSelectSetting { get; set; }
 
     /// <summary>
-    /// <para>文本类型设置（目前文本类型没有可设置项）</para>
+    /// <para>文本类型设置</para>
     /// <para>必填：否</para>
     /// </summary>
     [JsonPropertyName("text_setting")]

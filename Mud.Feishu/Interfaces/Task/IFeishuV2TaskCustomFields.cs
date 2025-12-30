@@ -31,16 +31,37 @@ public interface IFeishuV2TaskCustomFields
         [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
         CancellationToken cancellationToken = default);
 
+
     /// <summary>
-    /// <para>根据一个自定义字段的GUID，获取其详细的设置信息。</para>
+    /// <para>创建一个自定义字段，并将其加入一个资源上（目前资源只支持清单）。</para>
+    /// <para>创建自定义字段必须提供字段名称，类型和相应类型的设置。</para>
+    /// </summary>
+    /// <param name="custom_field_guid">自定义字段GUID。示例值：5ffbe0ca-6600-41e0-a634-2b38cbcf13b8</param>
+    /// <param name="updateTaskSectionsRequest">更新自定义字段请求体。</param>
+    /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Patch("/open-apis/task/v2/custom_fields/{custom_field_guid}")]
+    Task<FeishuApiResult<CustomFieldsResult>?> UpdateCustomFieldsAsync(
+     [Path] string custom_field_guid,
+     [Body] UpdateCustomFieldsRequest updateTaskSectionsRequest,
+     [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
+     CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// <para>更新一个自定义字段的名称和设定。</para>
+    /// <para>更新时，将update_fields字段中填写所有要修改的任务字段名，同时在custom_field字段中填写要修改的字段的新值即可。</para>
+    /// <para>自定义字段不允许修改类型，只能根据类型修改其设置。</para>
     /// </summary>
     /// <param name="custom_field_guid">自定义字段GUID。示例值：5ffbe0ca-6600-41e0-a634-2b38cbcf13b8</param>
     /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Get("/open-apis/task/v2/custom_fields/{custom_field_guid}")]
-    Task<FeishuApiResult<CustomFieldsResult>?> GetTaskSectionsByIdAsync(
+    Task<FeishuApiResult<CustomFieldsResult>?> GetCustomFieldsByIdAsync(
           [Path] string custom_field_guid,
           [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
           CancellationToken cancellationToken = default);
+
+
 }

@@ -76,4 +76,22 @@ public interface IFeishuV2TaskSections
         CancellationToken cancellationToken = default);
 
 
+    /// <summary>
+    /// <para>分页获取自定义分组列表。</para>
+    /// </summary>
+    /// <param name="resource_id">如resource_type为"tasklist"，这里需要填写要列取自定义分组的清单的GUID。示例值："caef228f-2342-23c1-c36d-91186414dc64"</param>
+    /// <param name="resource_type">自定义分组所属的资源类型。支持my_tasks(我负责的）和tasklist（清单）。当使用tasklist时，需要用resource_id提供清单的全局唯一ID。示例值："tasklist"</param>
+    /// <param name="page_size">分页大小，即本次请求所返回的用户信息列表内的最大条目数。默认值：10</param>
+    /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
+    /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Get("/open-apis/task/v2/sections")]
+    Task<FeishuApiPageListResult<SectionSummaryInfo>?> GetTaskSectionsPageListByIdAsync(
+         [Query("page_size")] int page_size = 10,
+         [Query("page_token")] string? page_token = null,
+         [Query("resource_id")] string? resource_id = null,
+         [Query("resource_type")] string? resource_type = null,
+         [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
+         CancellationToken cancellationToken = default);
 }

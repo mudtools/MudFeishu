@@ -87,11 +87,35 @@ public interface IFeishuV2TaskSections
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Get("/open-apis/task/v2/sections")]
-    Task<FeishuApiPageListResult<SectionSummaryInfo>?> GetTaskSectionsPageListByIdAsync(
+    Task<FeishuApiPageListResult<SectionSummaryInfo>?> GetTaskSectionsPageListAsync(
+         [Query("resource_type")] string resource_type,
+         [Query("resource_id")] string? resource_id = null,
          [Query("page_size")] int page_size = 10,
          [Query("page_token")] string? page_token = null,
-         [Query("resource_id")] string? resource_id = null,
-         [Query("resource_type")] string? resource_type = null,
          [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
          CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// <para>获取自定义分组任务列表。</para>
+    /// <para>列取一个自定义分组里的所有任务。支持分页。任务按照自定义排序的顺序返回。本接口支持简单的过滤。</para>
+    /// </summary>
+    /// <param name="section_guid">要获取的自定义分组GUID。示例值："9842501a-9f47-4ff5-a622-d319eeecb97f"</param>
+    /// <param name="completed">按照任务状态过滤，如果不填写则表示不按完成状态过滤，示例值：true</param>
+    /// <param name="created_from">按照创建时间筛选的起始时间戳（ms)，如不填写则为首个任务的创建时刻，示例值："1675742789470"</param>
+    /// <param name="created_to">按照创建时间筛选的起始时间戳（ms)，如不填写则为最后任务的创建时刻，示例值："1675742789470"</param>
+    /// <param name="page_size">分页大小，即本次请求所返回的用户信息列表内的最大条目数。默认值：10</param>
+    /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
+    /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Get("/open-apis/task/v2/sections/{section_guid}/tasks")]
+    Task<FeishuApiPageListResult<TaskSummary>?> GetTaskSectionsPageListByIdAsync(
+        [Path] string section_guid,
+        [Query("completed")] bool? completed = null,
+        [Query("created_from")] string? created_from = null,
+        [Query("created_to")] string? created_to = null,
+        [Query("page_size")] int page_size = 10,
+        [Query("page_token")] string? page_token = null,
+        [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
+        CancellationToken cancellationToken = default);
 }

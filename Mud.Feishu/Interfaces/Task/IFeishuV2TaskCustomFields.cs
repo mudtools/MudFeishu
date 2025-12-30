@@ -64,4 +64,36 @@ public interface IFeishuV2TaskCustomFields
           CancellationToken cancellationToken = default);
 
 
+    /// <summary>
+    /// <para>分页列取用户可访问的自定义字段列表。如果不提供resource_type和resource_id参数，则返回用户可访问的所有自定义字段。</para>
+    /// </summary>
+    /// <param name="resource_id">要查询自定义字段的归属resource_id。示例值："caef228f-2342-23c1-c36d-91186414dc64"</param>
+    /// <param name="resource_type">资源类型，如提供表示仅查询特定资源下的自定义字段。目前只支持tasklist。示例值："tasklist"</param>
+    /// <param name="page_size">分页大小，即本次请求所返回的用户信息列表内的最大条目数。默认值：10</param>
+    /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
+    /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Get("/open-apis/task/v2/custom_fields")]
+    Task<FeishuApiPageListResult<CustomFieldsResult>?> GetCustomFieldsPageListAsync(
+        [Query("resource_type")] string? resource_type = null,
+        [Query("resource_id")] string? resource_id = null,
+        [Query("page_size")] int page_size = 10,
+        [Query("page_token")] string? page_token = null,
+        [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// <para>将自定义字段加入一个资源。目前资源类型支持清单tasklist。一个自定义字段可以加入多个清单中。</para>
+    /// <para>加入后，该清单可以展示任务的该字段的值，同时基于该字段实现筛选，分组等功能。</para>
+    /// </summary>
+    /// <param name="custom_field_guid">自定义字段GUID。示例值：5ffbe0ca-6600-41e0-a634-2b38cbcf13b8</param>
+    /// <param name="customFieldsToResourceRequest">将自定义字段加入资源请求体。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Post("/open-apis/task/v2/custom_fields/{custom_field_guid}/add")]
+    Task<FeishuNullDataApiResult?> AddCustomFieldsToResourceAsync(
+               [Path] string custom_field_guid,
+               [Body] AddCustomFieldsToResourceRequest customFieldsToResourceRequest,
+               CancellationToken cancellationToken = default);
 }

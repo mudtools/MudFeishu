@@ -12,7 +12,8 @@ namespace Mud.Feishu.DataModels.TaskSections;
 /// <summary>
 /// <para>自定义分组数据</para>
 /// </summary>
-public class TaskSectionsInfo
+public class TaskSectionsInfo<T>
+    where T : TaskMember
 {
     /// <summary>
     /// <para>自定义分组的guid</para>
@@ -46,7 +47,7 @@ public class TaskSectionsInfo
     /// <para>自定义分组的创建者</para>
     /// </summary>
     [JsonPropertyName("creator")]
-    public TaskMember? Creator { get; set; }
+    public T? Creator { get; set; }
 
     /// <summary>
     /// <para>如果该分组归属于清单，展示清单的简要信息</para>
@@ -70,4 +71,19 @@ public class TaskSectionsInfo
     /// </summary>
     [JsonPropertyName("updated_at")]
     public string? UpdatedAt { get; set; }
+}
+
+/// <summary>
+/// <para>自定义分组数据</para>
+/// </summary>
+public class TaskSectionsInfo : TaskSectionsInfo<TaskMember>
+{
+}
+
+/// <summary>
+/// <para>自定义分组更新结果数据</para>
+/// </summary>
+public class TaskSectionsUpdateInfo : TaskSectionsInfo<TaskMemberInfo>
+{
+
 }

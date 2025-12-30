@@ -14,7 +14,7 @@ namespace Mud.Feishu;
 /// 接口详细文档请参见：<see href="https://open.feishu.cn/document/directory-v1/employee/overview"/>
 /// </summary>
 [HttpClientApi(RegistryGroupName = "Organization", TokenManage = nameof(ITenantTokenManager), InheritedFrom = nameof(FeishuV1Employees))]
-[Header("Authorization")]
+[Header(Consts.Authorization)]
 public interface IFeishuTenantV1Employees : IFeishuV1Employees
 {
 }

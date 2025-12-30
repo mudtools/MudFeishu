@@ -16,7 +16,7 @@ namespace Mud.Feishu;
 /// 接口详细文档请参见：<see href="https://open.feishu.cn/document/im-v2/overview"/>
 /// </summary>
 [HttpClientApi(RegistryGroupName = "Cards", TokenManage = nameof(ITenantTokenManager))]
-[Header("Authorization")]
+[Header(Consts.Authorization)]
 public interface IFeishuTenantV2AppCardMessageStream
 {
     /// <summary>

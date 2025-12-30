@@ -13,7 +13,7 @@ namespace Mud.Feishu;
 /// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/contact-v3/job_title/job-title-resources-introduction"/></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(ITenantTokenManager), RegistryGroupName = "Organization", InheritedFrom = nameof(FeishuV3JobTitle))]
-[Header("Authorization")]
+[Header(Consts.Authorization)]
 public interface IFeishuUserV3JobTitle : IFeishuV3JobTitle
 {
 }

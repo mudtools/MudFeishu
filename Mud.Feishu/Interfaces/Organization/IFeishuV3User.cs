@@ -15,7 +15,7 @@ namespace Mud.Feishu;
 /// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/contact-v3/user/field-overview"/></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(ITokenManager), IsAbstract = true)]
-[Header("Authorization")]
+[Header(Consts.Authorization)]
 public interface IFeishuV3User
 {
 

@@ -13,7 +13,7 @@ namespace Mud.Feishu;
 /// 评论接口可以实现评论创建、回复、更新、删除、获取详情等功能。
 /// </summary>
 [HttpClientApi(TokenManage = nameof(ITokenManager), IsAbstract = true)]
-[Header("Authorization")]
+[Header(Consts.Authorization)]
 public interface IFeishuV2TaskComments
 {
     /// <summary>

@@ -18,4 +18,9 @@ internal sealed class Consts
     /// 部门ID类型的默认值。
     /// </summary>
     public const string Department_Id_Type = "open_department_id";
+
+    /// <summary>
+    /// 授权Header名称。
+    /// </summary>
+    public const string Authorization = "Authorization";
 }

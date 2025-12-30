@@ -12,7 +12,7 @@ namespace Mud.Feishu;
 /// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/task-v2/comment/overview"/></para>
 /// </summary> 
 [HttpClientApi(TokenManage = nameof(IUserTokenManager), RegistryGroupName = "Task", InheritedFrom = nameof(FeishuV2TaskComments))]
-[Header("Authorization")]
+[Header(Consts.Authorization)]
 public interface IFeishuUserV2TaskComments : IFeishuV2TaskComments
 {
 

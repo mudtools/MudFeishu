@@ -13,7 +13,7 @@ namespace Mud.Feishu;
 /// 任务清单动态订阅
 /// </summary>
 [HttpClientApi(TokenManage = nameof(ITokenManager), IsAbstract = true)]
-[Header("Authorization")]
+[Header(Consts.Authorization)]
 public interface IFeishuV2TaskActivitySubscriptions
 {
     /// <summary>

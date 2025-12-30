@@ -13,7 +13,7 @@ namespace Mud.Feishu;
 /// <para>飞书清单可以用于组织和管理属于同一个项目的多个任务。</para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(ITokenManager), IsAbstract = true)]
-[Header("Authorization")]
+[Header(Consts.Authorization)]
 public interface IFeishuV2TaskList
 {
     /// <summary>

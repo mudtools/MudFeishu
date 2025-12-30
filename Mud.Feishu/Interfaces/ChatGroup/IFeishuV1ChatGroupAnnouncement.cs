@@ -13,7 +13,7 @@ namespace Mud.Feishu;
 /// 群公告是群组中的公告文档，采用飞书云文档承载，每个群组只有一个群公告，每篇群公告都有唯一的 chat_id作为标识。
 /// </summary>
 [HttpClientApi(TokenManage = nameof(ITokenManager), IsAbstract = true)]
-[Header("Authorization")]
+[Header(Consts.Authorization)]
 public interface IFeishuV1ChatGroupAnnouncement
 {
     /// <summary>

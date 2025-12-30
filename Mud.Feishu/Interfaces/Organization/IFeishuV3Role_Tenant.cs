@@ -17,7 +17,7 @@ namespace Mud.Feishu;
 /// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/contact-v3/functional_role/resource-introduction"/></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(ITenantTokenManager), RegistryGroupName = "Organization")]
-[Header("Authorization")]
+[Header(Consts.Authorization)]
 public interface IFeishuTenantV3Role
 {
     /// <summary>

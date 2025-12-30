@@ -12,7 +12,7 @@ namespace Mud.Feishu;
 /// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/task-v2/tasklist-activity_subscription/create"/></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IUserTokenManager), RegistryGroupName = "Task", InheritedFrom = nameof(FeishuV2TaskActivitySubscriptions))]
-[Header("Authorization")]
+[Header(Consts.Authorization)]
 public interface IFeishuUserV2TaskActivitySubscriptions : IFeishuV2TaskActivitySubscriptions
 {
 }

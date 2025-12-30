@@ -16,7 +16,7 @@ namespace Mud.Feishu;
 /// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/contact-v3/department/field-overview"/></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(ITenantTokenManager), RegistryGroupName = "Organization", InheritedFrom = nameof(FeishuV3Departments))]
-[Header("Authorization")]
+[Header(Consts.Authorization)]
 public interface IFeishuTenantV3Departments : IFeishuV3Departments
 {
     /// <summary>

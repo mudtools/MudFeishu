@@ -15,7 +15,7 @@ namespace Mud.Feishu;
 /// <para>关联附件的资源类型只有任务。因为附件不可单独存在，因此为新任务添加附件时，必须先调用创建任务接口，完成任务创建，再调用上传附件接口上传文件，并关联到新建的任务上。</para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(ITokenManager), IsAbstract = true)]
-[Header("Authorization")]
+[Header(Consts.Authorization)]
 public interface IFeishuV2TaskAttachments
 {
     /// <summary>

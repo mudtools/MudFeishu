@@ -13,7 +13,7 @@ namespace Mud.Feishu;
 /// 接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/group/chat-member/intro"/>
 /// </summary>
 [HttpClientApi(RegistryGroupName = "ChatGroup", TokenManage = nameof(ITenantTokenManager), InheritedFrom = nameof(FeishuV1ChatGroupMember))]
-[Header("Authorization")]
+[Header(Consts.Authorization)]
 public interface IFeishuTenantV1ChatGroupMember : IFeishuV1ChatGroupMember
 {
 }

@@ -44,6 +44,10 @@ public class FeishuServiceBuilder
         {
             options.AppId = configuration[$"{sectionName}:AppId"];
             options.AppSecret = configuration[$"{sectionName}:AppSecret"];
+            options.BaseUrl = configuration[$"{sectionName}:BaseUrl"];
+            options.TimeOut = configuration[$"{sectionName}:TimeOut"];
+            if (int.TryParse(configuration[$"{sectionName}:RetryCount"], out var i))
+                options.RetryCount = i;
         });
 
         _configuration.IsConfigured = true;

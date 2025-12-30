@@ -33,7 +33,13 @@ if (app.Environment.IsDevelopment())
 {
 #if net8 || net9
     app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseSwaggerUI(options =>
+    {
+        options.RoutePrefix = "swagger";
+    });
+
+    // 重定向根路径到 Swagger UI
+    app.MapGet("/", () => Results.Redirect("/swagger/index.html"));
 #endif
 }
 

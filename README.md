@@ -25,27 +25,6 @@
 
 ## 📊 主要功能
 
-```mermaid
-mindmap
-  root((MudFeishu<br/>主要功能))
-    Abstractions[🏛️ Mud.Feishu.Abstractions<br/>事件处理抽象层]
-      Arch["🎯 事件处理架构<br/>策略模式、工厂模式、抽象基类"]
-      Events["📋 丰富事件类型<br/>组织、消息、应用、自定义事件"]
-    HTTP[🌐 Mud.Feishu<br/>HTTP API 客户端]
-      Token["🔐 认证与令牌管理<br/>多类型令牌、自动缓存、智能刷新"]
-      Org["🏢 组织架构管理<br/>用户、部门、员工、职级、角色等"]
-      Msg["📱 消息服务<br/>消息发送、批量消息、群聊、互动、任务"]
-      Ent["🛠️ 企业级特性<br/>异常处理、重试、缓存、连接池"]
-    WebSocket[🔄 Mud.Feishu.WebSocket<br/>实时事件订阅]
-      Handler["🤖 事件处理架构<br/>策略模式、多处理器、自定义"]
-      Conn["🫀 连接管理<br/>WebSocket、自动重连、心跳、负载均衡"]
-      Monitor["📈 监控与运维<br/>状态监控、统计、性能、健康检查"]
-    Webhook[🌐 Mud.Feishu.Webhook<br/>Webhook 事件处理]
-      Security["🔒 安全验证与解密<br/>签名、时间戳、AES解密、IP验证"]
-      Handler2["🚀 事件处理架构<br/>中间件、自动路由、异步、并发"]
-      Monitor2["📊 监控与运维<br/>性能监控、健康检查、日志"]
-```
-
 ### 🏛️ Mud.Feishu.Abstractions - 事件处理抽象层
 
 #### 🎯 事件处理架构

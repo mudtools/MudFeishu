@@ -62,4 +62,18 @@ public interface IFeishuV2TaskSections
            [Path] string section_guid,
            [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
            CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// <para>删除一个自定义分组。</para>
+    /// <para>删除后该自定义分组中的任务会被移动到被删除自定义分组所属资源的默认自定义分组中。不能删除默认的自定义分组。</para>
+    /// </summary>
+    /// <param name="section_guid">要删除的自定义分组GUID。示例值："9842501a-9f47-4ff5-a622-d319eeecb97f"</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Delete("/open-apis/task/v2/sections/{section_guid}")]
+    Task<FeishuNullDataApiResult?> DeleteTaskSectionsByIdAsync(
+        [Path] string section_guid,
+        CancellationToken cancellationToken = default);
+
+
 }

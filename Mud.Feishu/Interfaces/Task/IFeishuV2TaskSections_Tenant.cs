@@ -5,31 +5,17 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-using Mud.Feishu.DataModels.TaskSections;
-
-namespace Mud.Feishu;
+namespace Mud.Feishu.Interfaces.Task;
 
 /// <summary>
 /// 飞书自定义分组可以方便的在我负责的和清单中对任务进行自定义归类。通过自定义分组。
 /// <para>可以：<list type="bullet">按状态分组，待启动-进行中-已完成
 /// <item>按优先级分组，P0-重要且紧急，P1-重要但不紧急，...</item>
 /// <item>按类别分组，市场相关、人事相关，...</item></list></para>
-/// </summary>
-[HttpClientApi(TokenManage = nameof(ITokenManager), IsAbstract = true)]
+/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/task-v2/section/section-feature-overview"/></para>
+/// </summary> 
+[HttpClientApi(TokenManage = nameof(ITenantTokenManager), RegistryGroupName = "Task", InheritedFrom = nameof(FeishuV2TaskSections))]
 [Header(Consts.Authorization)]
-public interface IFeishuV2TaskSections
+public interface IFeishuTenantV2TaskSections : IFeishuV2TaskSections
 {
-    /// <summary>
-    /// <para>为清单或我负责的任务列表创建一个自定义分组。</para>
-    /// <para>创建时可以需要提供名称和可选的配置。如果不指定位置，新分组会放到指定resource的自定义分组列表的最后。</para>
-    /// </summary>
-    /// <param name="createTaskSectionsRequest">创建自定义分组请求体。</param>
-    /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
-    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
-    /// <returns></returns>
-    [Post("/open-apis/task/v2/sections")]
-    Task<FeishuApiResult<TaskSectionsResult>?> CreateTaskSectionsAsync(
-          [Body] CreateTaskSectionsRequest createTaskSectionsRequest,
-          [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
-          CancellationToken cancellationToken = default);
 }

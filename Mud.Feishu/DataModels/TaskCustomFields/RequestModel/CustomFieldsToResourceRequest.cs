@@ -10,7 +10,7 @@ namespace Mud.Feishu.DataModels.TaskCustomFields;
 /// <summary>
 /// 将自定义字段加入资源请求体
 /// </summary>
-public class AddCustomFieldsToResourceRequest
+public class CustomFieldsToResourceRequest
 {
     /// <summary>
     /// <para>要将自定义字段添加到一个资源的资源类型。目前只支持tasklist</para>

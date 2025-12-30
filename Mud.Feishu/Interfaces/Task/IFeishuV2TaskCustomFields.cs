@@ -92,8 +92,23 @@ public interface IFeishuV2TaskCustomFields
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Post("/open-apis/task/v2/custom_fields/{custom_field_guid}/add")]
-    Task<FeishuNullDataApiResult?> AddCustomFieldsToResourceAsync(
+    Task<FeishuNullDataApiResult?> AddCustomFieldsByIdAsync(
                [Path] string custom_field_guid,
-               [Body] AddCustomFieldsToResourceRequest customFieldsToResourceRequest,
+               [Body] CustomFieldsToResourceRequest customFieldsToResourceRequest,
                CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// <para>将自定义字段从资源中移出。移除后，该资源将无法再使用该字段。目前资源的类型支持"tasklist"。</para>
+    /// <para>如果要移除自定义字段本来就不存在于资源，本接口将正常返回。</para>
+    /// </summary>
+    /// <param name="custom_field_guid">自定义字段GUID。示例值：5ffbe0ca-6600-41e0-a634-2b38cbcf13b8</param>
+    /// <param name="customFieldsToResourceRequest">将自定义字段移出资源请求体。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Post("/open-apis/task/v2/custom_fields/{custom_field_guid}/remove")]
+    Task<FeishuNullDataApiResult?> RemoveCustomFieldsByIdAsync(
+              [Path] string custom_field_guid,
+              [Body] CustomFieldsToResourceRequest customFieldsToResourceRequest,
+              CancellationToken cancellationToken = default);
 }

@@ -30,4 +30,17 @@ public interface IFeishuV2TaskCustomFields
         [Body] CreateCustomFieldsRequest createCustomFieldsRequest,
         [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// <para>根据一个自定义字段的GUID，获取其详细的设置信息。</para>
+    /// </summary>
+    /// <param name="custom_field_guid">自定义字段GUID。示例值：5ffbe0ca-6600-41e0-a634-2b38cbcf13b8</param>
+    /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Get("/open-apis/task/v2/custom_fields/{custom_field_guid}")]
+    Task<FeishuApiResult<CustomFieldsResult>?> GetTaskSectionsByIdAsync(
+          [Path] string custom_field_guid,
+          [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
+          CancellationToken cancellationToken = default);
 }

@@ -11,13 +11,13 @@ namespace Mud.Feishu.Abstractions.DataModels.Task;
 /// 任务信息变更（租户维度） 事件体
 /// <para>APP 订阅此事件后可接收到该 APP 所在租户的所有来源接口创建的任务的变更事件。</para>
 /// <para>事件体为发生变更任务的相关用户的 open_id，可用此 open_id ，通过 获取任务列表接口获取与该用户相关的所有任务。</para>
-/// <para>事件类型:contact.user.updated_v3</para>
+/// <para>事件类型:task.task.update_tenant_v1</para>
 /// <para>使用时请继承：<see cref="TaskUpdateTenantEventHandler"/></para>
 /// <para>文档地址：https://open.feishu.cn/document/server-docs/task-v1/task/events/update_tenant</para>
 /// </summary>
 [EventHandler(EventType = FeishuEventTypes.TaskUpdateTenant, HandlerNamespace = Consts.HandlerNamespace,
               InheritedFrom = Consts.InheritedFrom)]
-public class TaskUpdateTenantResult
+public class TaskUpdateTenantResult : IEventResult
 {
 
     /// <summary>

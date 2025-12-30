@@ -137,10 +137,16 @@ public static class FeishuEventTypes
     #endregion
 
     #region Task Events
+
     /// <summary>
     /// 任务信息变更（租户维度）事件
     /// </summary>
     public const string TaskUpdateTenant = "task.task.update_tenant_v1";
+
+    /// <summary>
+    /// 任务信息变更事件
+    /// </summary>
+    public const string TaskUpdate = "task.task.updated_v1";
     #endregion
 
     /// <summary>

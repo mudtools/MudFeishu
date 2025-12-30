@@ -146,7 +146,12 @@ public static class FeishuEventTypes
     /// <summary>
     /// 任务信息变更事件
     /// </summary>
-    public const string TaskUpdate = "task.task.updated_v1";
+    public const string TaskUpdated = "task.task.updated_v1";
+
+    /// <summary>
+    /// 任务评论信息变更事件
+    /// </summary>
+    public const string TaskCommentUpdated = "task.task.comment.updated_v1";
     #endregion
 
     /// <summary>

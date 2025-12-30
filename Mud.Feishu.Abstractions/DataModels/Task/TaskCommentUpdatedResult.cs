@@ -8,15 +8,15 @@
 namespace Mud.Feishu.Abstractions.DataModels.Task;
 
 /// <summary>
-/// 任务信息变更（应用维度） 事件体
-/// <para>当 APP 订阅此事件后可以接收到由该 APP 创建的任务发生的变更，包括任务标题、描述、截止时间、协作者、关注者、提醒时间、状态（完成或取消完成）。</para>
-/// <para>事件类型:task.task.updated_v1</para>
-/// <para>使用时请继承：<see cref="TaskUpdatedEventHandler"/></para>
-/// <para>文档地址：https://open.feishu.cn/document/server-docs/task-v1/task/events/updated</para>
+/// 任务评论信息变更事件体
+/// <para>当 APP 创建的任务评论信息发生变更时触发此事件，包括任务评论的创建、回复、更新、删除。</para>
+/// <para>事件类型:task.task.comment.updated_v1</para>
+/// <para>使用时请继承：<see cref="TaskCommentUpdatedEventHandler"/></para>
+/// <para>文档地址：https://open.feishu.cn/document/server-docs/task-v1/task-comment/events/updated</para>
 /// </summary>
-[EventHandler(EventType = FeishuEventTypes.TaskUpdated, HandlerNamespace = Consts.HandlerNamespace,
+[EventHandler(EventType = FeishuEventTypes.TaskCommentUpdated, HandlerNamespace = Consts.HandlerNamespace,
               InheritedFrom = Consts.InheritedFrom)]
-public class TaskUpdatedResult : IEventResult
+public class TaskCommentUpdatedResult : IEventResult
 {
     /// <summary>
     /// <para>任务ID</para>
@@ -25,7 +25,19 @@ public class TaskUpdatedResult : IEventResult
     public string? TaskId { get; set; }
 
     /// <summary>
-    /// <para>通知类型（1：任务详情发生变化，2：任务协作者发生变化，3：任务关注者发生变化，4：任务提醒时间发生变化，5：任务完成，6：任务取消完成，7：任务删除）</para>
+    /// <para>任务评论ID</para>
+    /// </summary>
+    [JsonPropertyName("comment_id")]
+    public string? CommentId { get; set; }
+
+    /// <summary>
+    /// <para>任务评论父ID</para>
+    /// </summary>
+    [JsonPropertyName("parent_id")]
+    public string? ParentId { get; set; }
+
+    /// <summary>
+    /// <para>通知类型（1：创建评论，2：回复评论，3：更新评论，4：删除评论）</para>
     /// </summary>
     [JsonPropertyName("obj_type")]
     public int? ObjType { get; set; }

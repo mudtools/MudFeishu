@@ -126,7 +126,7 @@ dotnet add package Mud.Feishu.Webhook
 ```csharp
 using Mud.Feishu;
 using Mud.Feishu.WebSocket;
-using Mud.Feishu.Webhook.Extensions;
+using Mud.Feishu.Webhook;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -141,14 +141,12 @@ builder.Services.AddFeishuApiService(builder.Configuration);
 //     .Build();
 
 // 注册 WebSocket 事件订阅服务
-builder.Services.AddFeishuWebSocketBuilder()
-    .ConfigureFrom(builder.Configuration)
-    .UseMultiHandler()
+builder.Services.AddFeishuWebSocketServiceBuilder(builder.Configuration)
     .AddHandler<MessageEventHandler>()
     .Build();
 
 // 注册 Webhook HTTP 回调事件服务
-builder.Services.AddFeishuWebhook(builder.Configuration)
+builder.Services.AddFeishuWebhookServiceBuilder(builder.Configuration)
     .AddHandler<UserCreatedEventHandler>()
     .AddHandler<MessageReceiveEventHandler>()
     .Build();

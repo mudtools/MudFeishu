@@ -32,8 +32,10 @@ using Mud.Feishu.WebSocket;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 一行代码注册WebSocket服务
-builder.Services.AddFeishuWebSocketServiceBuilder(builder.Configuration);
+// 一行代码注册WebSocket服务（需要至少一个事件处理器）
+builder.Services.AddFeishuWebSocketServiceBuilder(builder.Configuration)
+    .AddHandler<ReceiveMessageEventHandler>()
+    .Build();
 
 var app = builder.Build();
 app.Run();
@@ -46,7 +48,7 @@ app.Run();
 builder.Services.AddFeishuWebSocketServiceBuilder(builder.Configuration)
     .AddHandler<ReceiveMessageEventHandler>()
     .AddHandler<UserCreatedEventHandler>()
-    .UseMultiHandler();
+    .Build();
 
 var app = builder.Build();
 app.Run();
@@ -172,10 +174,7 @@ builder.Services.AddFeishuWebSocketServiceBuilder(options =>
 ### 🔧 高级配置（建造者模式）
 
 ```csharp
-builder.Services.AddFeishuWebSocketBuilder()
-    .ConfigureFrom(configuration)
-    .UseMultiHandler()
-    .EnableMetrics()
+builder.Services.AddFeishuWebSocketServiceBuilder(configuration)
     .AddHandler<ReceiveMessageEventHandler>()
     .Build();
 ```
@@ -425,15 +424,13 @@ public class CustomEventHandler : IFeishuEventHandler
 ```csharp
 // 注册处理器（多种方式）
 builder.Services.AddFeishuWebSocketServiceBuilder(builder.Configuration)
-    .UseMultiHandler()
     .AddHandler<CustomEventHandler>()                    // 类型注册
     .AddHandler(sp => new FactoryEventHandler(           // 工厂注册
-        sp.GetService<ILogger<FactoryEventHandler>>()))
+        sp.GetRequiredService<ILogger<FactoryEventHandler>>()))
     .AddHandler(new InstanceEventHandler());               // 实例注册
 
 // 或使用建造者模式
-builder.Services.AddFeishuWebSocketBuilder()
-    .UseMultiHandler()
+builder.Services.AddFeishuWebSocketServiceBuilder(builder.Configuration)
     .AddHandler<CustomEventHandler>()
     .Build();
 ```
@@ -510,8 +507,7 @@ else
     webSocketBuilder.ConfigureFrom(configuration, "Production:WebSocket");
 }
 
-webSocketBuilder.UseMultiHandler()
-    .AddHandler<DevEventHandler>()
+webSocketBuilder.AddHandler<DevEventHandler>()
     .AddHandler<ProdEventHandler>()
     .Build();
 ```
@@ -520,7 +516,6 @@ webSocketBuilder.UseMultiHandler()
 
 ```csharp
 builder.Services.AddFeishuWebSocketServiceBuilder(configuration)
-    .UseMultiHandler()
     .AddHandler<BaseEventHandler>()
     .Apply(webSocketBuilder => {
         if (configuration.GetValue<bool>("Features:EnableAudit"))

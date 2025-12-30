@@ -32,12 +32,14 @@ dotnet add package Mud.Feishu.Webhook
 在 `Program.cs` 中：
 
 ```csharp
-using Mud.Feishu.Webhook.Extensions;
+using Mud.Feishu.Webhook;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 一行代码注册Webhook服务
-builder.Services.AddFeishuWebhook(builder.Configuration).Build();;
+// 一行代码注册Webhook服务（需要至少一个事件处理器）
+builder.Services.AddFeishuWebhookServiceBuilder(builder.Configuration)
+    .AddHandler<MessageEventHandler>()
+    .Build();
 
 var app = builder.Build();
 app.UseFeishuWebhook(); // 添加中间件
@@ -47,11 +49,11 @@ app.Run();
 ### 3. 完整配置（添加事件处理器）
 
 ```csharp
-builder.Services.AddFeishuWebhook(builder.Configuration)
+builder.Services.AddFeishuWebhookServiceBuilder(builder.Configuration)
     .AddHandler<MessageEventHandler>()
     .AddHandler<UserEventHandler>()
     .EnableControllers()
-    .Build();;
+    .Build();
 
 var app = builder.Build();
 app.UseFeishuWebhook();
@@ -86,26 +88,30 @@ app.Run();
 ### 🚀 从配置文件注册（推荐）
 
 ```csharp
-// 一行代码完成基础配置
-builder.Services.AddFeishuWebhook(builder.Configuration);
+// 一行代码完成基础配置（需要至少一个事件处理器）
+builder.Services.AddFeishuWebhookServiceBuilder(builder.Configuration)
+    .AddHandler<MessageReceiveEventHandler>()
+    .Build();
 
 // 添加事件处理器
-builder.Services.AddFeishuWebhook(builder.Configuration)
+builder.Services.AddFeishuWebhookServiceBuilder(builder.Configuration)
     .AddHandler<MessageReceiveEventHandler>()
     .AddHandler<UserCreatedEventHandler>()
-    .EnableControllers();
+    .EnableControllers()
+    .Build();
 ```
 
 ### ⚙️ 代码配置
 
 ```csharp
-builder.Services.AddFeishuWebhook(options =>
+builder.Services.AddFeishuWebhookServiceBuilder(options =>
 {
     options.VerificationToken = "your_verification_token";
     options.EncryptKey = "your_encrypt_key";
     options.RoutePrefix = "feishu/Webhook";
     options.EnableRequestLogging = true;
-});
+}).AddHandler<MessageEventHandler>()
+    .Build();
 ```
 
 ### 🔧 高级建造者模式
@@ -125,7 +131,9 @@ builder.Services.AddFeishuWebhookBuilder()
 ### 中间件模式（推荐）
 
 ```csharp
-builder.Services.AddFeishuWebhook(builder.Configuration);
+builder.Services.AddFeishuWebhookServiceBuilder(builder.Configuration)
+    .AddHandler<MessageEventHandler>()
+    .Build();
 
 var app = builder.Build();
 app.UseFeishuWebhook(); // 自动处理路由前缀下的请求
@@ -135,8 +143,10 @@ app.Run();
 ### 控制器模式
 
 ```csharp
-builder.Services.AddFeishuWebhook(builder.Configuration)
-    .EnableControllers(); // 启用控制器支持
+builder.Services.AddFeishuWebhookServiceBuilder(builder.Configuration)
+    .AddHandler<MessageEventHandler>()
+    .EnableControllers() // 启用控制器支持
+    .Build();
 
 var app = builder.Build();
 app.UseFeishuWebhook();  // 可以同时使用中间件和控制器
@@ -215,10 +225,11 @@ public class MessageEventHandler : IFeishuEventHandler
 
 ```csharp
 // 使用链式调用添加处理器
-builder.Services.AddFeishuWebhook(builder.Configuration)
+builder.Services.AddFeishuWebhookServiceBuilder(builder.Configuration)
     .AddHandler<MessageEventHandler>()
     .AddHandler<UserEventHandler>()
-    .AddHandler<DepartmentEventHandler>();
+    .AddHandler<DepartmentEventHandler>()
+    .Build();
 
 // 使用建造者模式进行复杂配置
 builder.Services.AddFeishuWebhookBuilder()
@@ -276,10 +287,11 @@ builder.Services.AddFeishuWebhookBuilder()
     .Build();
 
 // 方式二：通过配置选项启用
-builder.Services.AddFeishuWebhook(options =>
+builder.Services.AddFeishuWebhookServiceBuilder(options =>
 {
     options.EnablePerformanceMonitoring = true; // 启用性能监控
-});
+}).AddHandler<MessageEventHandler>()
+    .Build();
 ```
 
 ### 健康检查
@@ -380,11 +392,12 @@ builder.Logging.AddConsole();
 builder.Logging.SetMinimumLevel(LogLevel.Debug);
 
 // 启用请求日志记录
-builder.Services.AddFeishuWebhook(options =>
+builder.Services.AddFeishuWebhookServiceBuilder(options =>
 {
     options.EnableRequestLogging = true;
     options.EnablePerformanceMonitoring = true;
-});
+}).AddHandler<MessageEventHandler>()
+    .Build();
 ```
 
 ## 快速参考
@@ -392,24 +405,27 @@ builder.Services.AddFeishuWebhook(options =>
 ### 最常用的注册方式
 
 ```csharp
-// 方式一：最简化
-builder.Services.AddFeishuWebhook(configuration);
+// 方式一：最简化（需要至少一个事件处理器）
+builder.Services.AddFeishuWebhookServiceBuilder(configuration)
+    .AddHandler<MessageReceiveEventHandler>()
+    .Build();
 
 // 方式二：简化 + 处理器
-builder.Services.AddFeishuWebhook(configuration)
+builder.Services.AddFeishuWebhookServiceBuilder(configuration)
     .AddHandler<MessageReceiveEventHandler>()
-    .EnableControllers();
+    .EnableControllers()
+    .Build();
 
 // 方式三：代码配置
-builder.Services.AddFeishuWebhook(options => {
+builder.Services.AddFeishuWebhookServiceBuilder(options => {
     options.VerificationToken = "your_token";
     options.EncryptKey = "your_key";
-});
+}).AddHandler<MessageEventHandler>()
+    .Build();
 
 // 方式四：建造者模式（复杂配置）
 builder.Services.AddFeishuWebhookBuilder()
     .ConfigureFrom(configuration)
-    .UseMultiHandler()
     .EnableMetrics()
     .AddHandler<Handler>()
     .Build();

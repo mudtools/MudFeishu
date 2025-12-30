@@ -40,15 +40,8 @@ public class FeishuServiceBuilder
         if (configuration == null)
             throw new ArgumentNullException(nameof(configuration));
 
-        _services.Configure<FeishuOptions>(options =>
-        {
-            options.AppId = configuration[$"{sectionName}:AppId"];
-            options.AppSecret = configuration[$"{sectionName}:AppSecret"];
-            options.BaseUrl = configuration[$"{sectionName}:BaseUrl"];
-            options.TimeOut = configuration[$"{sectionName}:TimeOut"];
-            if (int.TryParse(configuration[$"{sectionName}:RetryCount"], out var i))
-                options.RetryCount = i;
-        });
+        var section = sectionName ?? "Feishu";
+        _services.Configure<FeishuOptions>(options => configuration.GetSection(sectionName).Bind(options));
 
         _configuration.IsConfigured = true;
         return this;

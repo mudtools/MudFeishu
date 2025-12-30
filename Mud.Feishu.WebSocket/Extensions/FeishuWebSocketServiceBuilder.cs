@@ -37,7 +37,7 @@ public class FeishuWebSocketServiceBuilder
     /// <param name="configuration">配置对象</param>
     /// <param name="sectionName">配置节名称，默认为"Feishu:WebSocket"</param>
     /// <returns>建造者实例，支持链式调用</returns>
-    public FeishuWebSocketServiceBuilder ConfigureFrom(IConfiguration configuration, string? sectionName = null)
+    public FeishuWebSocketServiceBuilder ConfigureFrom(IConfiguration configuration, string? sectionName = "Feishu:WebSocket")
     {
         if (configuration == null)
             throw new ArgumentNullException(nameof(configuration));

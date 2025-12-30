@@ -5,22 +5,26 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-namespace Mud.Feishu.Extensions;
+namespace Mud.Feishu.DataModels.TaskCustomFields;
 
-internal static class ExceptionUtils
+/// <summary>
+/// 要更新的option数据
+/// </summary>
+public class UpdateSelectOptionData : SelectOptionData
 {
-    public static void ThrowIfNull(this object? argument, string? paramName = null)
-    {
-        if (argument == null)
-            throw new ArgumentNullException(paramName);
-    }
+    /// <summary>
+    /// <para>要放到某个option之前的option_guid</para>
+    /// <para>必填：否</para>
+    /// <para>示例值：2bd905f8-ef38-408b-aa1f-2b2ad33b2913</para>
+    /// </summary>
+    [JsonPropertyName("insert_before")]
+    public string? InsertBefore { get; set; }
 
-    public static void ThrowIfNullOrEmpty(this string? argument, string? paramName = null)
-    {
-        if (argument == null)
-            throw new ArgumentNullException(paramName);
-
-        if (string.IsNullOrEmpty(argument))
-            throw new ArgumentNullException(paramName);
-    }
+    /// <summary>
+    /// <para>要放到某个option之后的option_guid</para>
+    /// <para>必填：否</para>
+    /// <para>示例值：b13adf3c-cad6-4e02-8929-550c112b5633</para>
+    /// </summary>
+    [JsonPropertyName("insert_after")]
+    public string? InsertAfter { get; set; }
 }

@@ -111,4 +111,34 @@ public interface IFeishuV2TaskCustomFields
               [Path] string custom_field_guid,
               [Body] CustomFieldsToResourceRequest customFieldsToResourceRequest,
               CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// <para>为单选或多选字段添加一个自定义选项。一个单选/多选字段最大支持100个选项。</para>
+    /// <para>新添加的选项如果不隐藏，其名字不能和已存在的不隐藏选项的名字重复。</para>
+    /// </summary>
+    /// <param name="custom_field_guid">自定义字段GUID。示例值：5ffbe0ca-6600-41e0-a634-2b38cbcf13b8</param>
+    /// <param name="createCustomFieldsOptionsRequest">创建自定义任务选项请求体。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Post("/open-apis/task/v2/custom_fields/{custom_field_guid}/options")]
+    Task<FeishuApiResult<CustomFieldsOptionsResult>?> CreateCustomFieldsOptionsAsync(
+             [Path] string custom_field_guid,
+             [Body] CreateCustomFieldsOptionsRequest createCustomFieldsOptionsRequest,
+             CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// <para>根据一个自定义字段的GUID和其选项的GUID，更新该选项的数据。</para>
+    /// <para>要更新的字段必须是单选或者多选类型，且要更新的字段必须归属于该字段。</para>
+    /// </summary>
+    /// <param name="custom_field_guid">要更新的选项的自定义字段GUID。示例值：5ffbe0ca-6600-41e0-a634-2b38cbcf13b8</param>
+    /// <param name="option_guid">要更新的选项的GUID。示例值：d4f1e8b3-5f4e-4c3a-8f7b-2e2f4e5c6d7e</param>
+    /// <param name="updateCustomFieldsOptionsRequest">更新自定义任务选项请求体。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Post("/open-apis/task/v2/custom_fields/{custom_field_guid}/options/{option_guid}")]
+    Task<FeishuApiResult<CustomFieldsOptionsResult>?> UpdateCustomFieldsOptionsAsync(
+            [Path] string custom_field_guid,
+            [Path] string option_guid,
+            [Body] UpdateCustomFieldsOptionsRequest updateCustomFieldsOptionsRequest,
+            CancellationToken cancellationToken = default);
 }

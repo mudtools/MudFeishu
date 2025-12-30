@@ -28,6 +28,8 @@ partial class FeishuTenantV1Message
         request.Headers.Add("Authorization", access_token);
 
         ExceptionUtils.ThrowIfNull(uploadFileRequest, nameof(uploadFileRequest));
+        ExceptionUtils.ThrowIfNullOrEmpty(uploadFileRequest.FileType, nameof(uploadFileRequest.FileType));
+        ExceptionUtils.ThrowIfNullOrEmpty(uploadFileRequest.FileName, nameof(uploadFileRequest.FileName));
 
         using var formData = new MultipartFormDataContent
         {

@@ -1,4 +1,4 @@
-# Mud.Feishu 更新日志
+﻿# Mud.Feishu 更新日志
 
 ## 1.1.0 (2025-12-31)
 
@@ -301,18 +301,29 @@
 ### 📦 技术栈
 
 #### 框架支持
+- **.NET Standard 2.0** - 兼容 .NET Framework 4.6.1+
 - **.NET 6.0** - LTS 长期支持版本
-- **.NET 7.0** - 稳定版本
-- **.NET 8.0** - LTS 长期支持版本 (推荐)
-- **.NET 9.0** - 稳定版本
+- **.NET 8.0** - LTS 长期支持版本 
 - **.NET 10.0** - LTS 长期支持版本
 
 #### 核心依赖
-- **Mud.ServiceCodeGenerator v1.2.5** - HTTP 客户端代码生成器
-- **System.Text.Json** - 高性能 JSON 序列化
+- **Mud.ServiceCodeGenerator v1.4.5.3** - HTTP 客户端代码生成器
+- **System.Text.Json v10.0.1** - 高性能 JSON 序列化 (.NET Standard 2.0)
 - **Microsoft.Extensions.Http** - HTTP 客户端工厂
+  - .NET 6.0 / .NET Standard 2.0: v8.0.1
+  - .NET 8.0 / .NET 10.0: v10.0.1
+- **Microsoft.Extensions.Http.Polly** - 弹性和瞬态故障处理
+  - .NET 6.0 / .NET Standard 2.0: v8.0.2
+  - .NET 8.0 / .NET 10.0: v10.0.1
 - **Microsoft.Extensions.DependencyInjection** - 依赖注入
+  - .NET 6.0 / .NET Standard 2.0: v8.0.2
+  - .NET 8.0 / .NET 10.0: v10.0.1
 - **Microsoft.Extensions.Logging** - 日志记录
+  - .NET 6.0 / .NET Standard 2.0: v8.0.3
+  - .NET 8.0 / .NET 10.0: v10.0.1
+- **Microsoft.Extensions.Configuration.Binder** - 配置绑定
+  - .NET 6.0 / .NET Standard 2.0: v8.0.2
+  - .NET 8.0 / .NET 10.0: v10.0.1
 
 ## 🔗 相关链接
 

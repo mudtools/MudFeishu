@@ -599,16 +599,24 @@ public class MessageReceiveEventHandler : IFeishuEventHandler
 
 ## 🛠️ 技术栈
 
-### 📚 核心技术依赖
-- **.NET 6.0+** - 全面支持 .NET 6.0/7.0/8.0/9.0/10.0，使用最新的 C# 语言特性
-- **ASP.NET Core** - 原生依赖注入、配置系统、日志框架，完美集成现代 .NET 应用
-- **Mud.ServiceCodeGenerator v1.3.3** - 特性驱动的 HTTP 客户端代码生成器，自动生成类型安全的 API 客户端
-
-### 🔧 系统组件
-- **System.Text.Json** - 高性能 JSON 序列化/反序列化，内置优化和流式处理
-- **Microsoft.Extensions.Http** - HTTP 客户端工厂，自动管理连接池和生命周期
-- **Microsoft.Extensions.Hosting.Abstractions** - 托管服务抽象，支持后台服务和生命周期管理
-- **Microsoft.Extensions.Configuration.Binder** - 强类型配置绑定，简化配置管理
+#### 核心依赖
+- **Mud.ServiceCodeGenerator v1.4.5.3** - HTTP 客户端代码生成器
+- **System.Text.Json v10.0.1** - 高性能 JSON 序列化 (.NET Standard 2.0)
+- **Microsoft.Extensions.Http** - HTTP 客户端工厂
+  - .NET 6.0 / .NET Standard 2.0: v8.0.1
+  - .NET 8.0 / .NET 10.0: v10.0.1
+- **Microsoft.Extensions.Http.Polly** - 弹性和瞬态故障处理
+  - .NET 6.0 / .NET Standard 2.0: v8.0.2
+  - .NET 8.0 / .NET 10.0: v10.0.1
+- **Microsoft.Extensions.DependencyInjection** - 依赖注入
+  - .NET 6.0 / .NET Standard 2.0: v8.0.2
+  - .NET 8.0 / .NET 10.0: v10.0.1
+- **Microsoft.Extensions.Logging** - 日志记录
+  - .NET 6.0 / .NET Standard 2.0: v8.0.3
+  - .NET 8.0 / .NET 10.0: v10.0.1
+- **Microsoft.Extensions.Configuration.Binder** - 配置绑定
+  - .NET 6.0 / .NET Standard 2.0: v8.0.2
+  - .NET 8.0 / .NET 10.0: v10.0.1
 
 ## 📄 许可证
 

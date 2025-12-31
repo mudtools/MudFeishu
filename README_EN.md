@@ -599,16 +599,30 @@ public class MessageReceiveEventHandler : IFeishuEventHandler
 
 ## 🛠️ Technology Stack
 
-### 📚 Core Technology Dependencies
-- **.NET 6.0+** - Full support for .NET 6.0/7.0/8.0/9.0/10.0 with latest C# language features
-- **ASP.NET Core** - Native dependency injection, configuration system, logging framework, seamless integration with modern .NET applications
-- **Mud.ServiceCodeGenerator v1.3.3** - Attribute-driven HTTP client code generator, automatically generates type-safe API clients
+### 📚 Framework Support
+- **.NET Standard 2.0** - Compatible with .NET Framework 4.6.1+
+- **.NET 6.0** - LTS long-term support version
+- **.NET 8.0** - LTS long-term support version (recommended)
+- **.NET 10.0** - LTS long-term support version
 
-### 🔧 System Components
-- **System.Text.Json** - High-performance JSON serialization/deserialization with built-in optimization and streaming processing
-- **Microsoft.Extensions.Http** - HTTP client factory with automatic connection pool and lifecycle management
-- **Microsoft.Extensions.Hosting.Abstractions** - Hosting service abstractions supporting background services and lifecycle management
-- **Microsoft.Extensions.Configuration.Binder** - Strong-typed configuration binding for simplified configuration management
+### 🔧 Core Dependencies
+- **Mud.ServiceCodeGenerator v1.4.5.3** - HTTP client code generator
+- **System.Text.Json v10.0.1** - High-performance JSON serialization (.NET Standard 2.0)
+- **Microsoft.Extensions.Http** - HTTP client factory
+  - .NET 6.0 / .NET Standard 2.0: v8.0.1
+  - .NET 8.0 / .NET 10.0: v10.0.1
+- **Microsoft.Extensions.Http.Polly** - Resilience and transient fault handling
+  - .NET 6.0 / .NET Standard 2.0: v8.0.2
+  - .NET 8.0 / .NET 10.0: v10.0.1
+- **Microsoft.Extensions.DependencyInjection** - Dependency injection
+  - .NET 6.0 / .NET Standard 2.0: v8.0.2
+  - .NET 8.0 / .NET 10.0: v10.0.1
+- **Microsoft.Extensions.Logging** - Logging
+  - .NET 6.0 / .NET Standard 2.0: v8.0.3
+  - .NET 8.0 / .NET 10.0: v10.0.1
+- **Microsoft.Extensions.Configuration.Binder** - Configuration binding
+  - .NET 6.0 / .NET Standard 2.0: v8.0.2
+  - .NET 8.0 / .NET 10.0: v10.0.1
 
 ## 📄 License
 

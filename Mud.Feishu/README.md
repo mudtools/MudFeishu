@@ -44,7 +44,7 @@ MudFeishu 是一个用于简化与飞书（Feishu）API 集成的现代化 .NET 
 你可以通过 NuGet 安装 MudFeishu：
 
 ```bash
-dotnet add package Mud.Feishu --version 1.0.2
+dotnet add package Mud.Feishu --version 1.1.0
 ```
 
 ### 配置依赖注入（ASP.NET Core）

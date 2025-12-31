@@ -5,6 +5,8 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using Mud.Feishu.DataModels.Approval;
+
 namespace Mud.Feishu;
 
 /// <summary>
@@ -16,4 +18,18 @@ namespace Mud.Feishu;
 public interface IFeishuTenantV4Approval
 {
 
+    /// <summary>
+    /// 用于创建审批定义，可以灵活指定审批定义的基础信息、表单和流程等。
+    /// </summary>
+    /// <param name="createCardRequest">创建审批定义请求体。</param>
+    /// <param name="user_id_type">用户 ID 类型</param>
+    /// <param name="department_id_type">此次调用中的部门 ID 类型。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Post("/open-apis/approval/v4/approvals")]
+    Task<FeishuApiResult<CreateApprovalResult>?> CreateApprovalAsync(
+        [Body] CreateApprovalRequest createCardRequest,
+        [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
+        [Query("department_id_type")] string? department_id_type = Consts.Department_Id_Type,
+        CancellationToken cancellationToken = default);
 }

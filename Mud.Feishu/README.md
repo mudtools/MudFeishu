@@ -601,7 +601,9 @@ MudFeishu 遵循 [MIT 许可证](LICENSE)。
 
 ## 相关链接
 
-- [飞书开放平台文档](https://open.feishu.cn/document/)
-- [.NET 官方文档](https://docs.microsoft.com/dotnet/)
-- [NuGet 包管理器](https://www.nuget.org/)
-- [Mud.ServiceCodeGenerator](https://gitee.com/mudtools/mud-code-generator)
+- [项目Gitee主页](https://gitee.com/mudtools/MudFeishu)
+- [项目Github主页](https://github.com/mudtools/MudFeishu)
+- [NuGet 包](https://www.nuget.org/packages/Mud.Feishu/)
+- [文档网站](https://www.mudtools.cn/documents/guides/feishu/)
+- [飞书开放平台](https://open.feishu.cn/document/)
+- [问题反馈](https://gitee.com/mudtools/MudFeishu/issues)

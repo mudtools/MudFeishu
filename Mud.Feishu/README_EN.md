@@ -601,7 +601,9 @@ MudFeishu follows the [MIT License](LICENSE).
 
 ## Related Links
 
-- [Feishu Open Platform Documentation](https://open.feishu.cn/document/)
-- [.NET Official Documentation](https://docs.microsoft.com/dotnet/)
-- [NuGet Package Manager](https://www.nuget.org/)
-- [Mud.ServiceCodeGenerator](https://gitee.com/mudtools/mud-code-generator)
+- [Project Gitee Homepage](https://gitee.com/mudtools/MudFeishu)
+- [Project GitHub Homepage](https://github.com/mudtools/MudFeishu)
+- [NuGet Package](https://www.nuget.org/packages/Mud.Feishu/)
+- [Documentation Site](https://www.mudtools.cn/documents/guides/feishu/)
+- [Feishu Open Platform](https://open.feishu.cn/document/)
+- [Issue Tracker](https://gitee.com/mudtools/MudFeishu/issues)

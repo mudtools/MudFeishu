@@ -1,5 +1,118 @@
 # Mud.Feishu 更新日志
 
+## 1.1.0 (2025-12-31)
+
+**FEATURES**
+
+### 🔧 核心优化与重构
+
+- 📦 **多框架支持**: 支持 .NET Standard 2.0、.NET 6.0、.NET 8.0、.NET 10.0
+  - 提供跨平台兼容性，支持从 .NET Framework 4.6+ 到 .NET 10.0
+  - 统一 API 接口，不同框架版本使用相同的编程模型
+  - 自动编译时条件处理，充分利用各平台特性
+
+- 🏗️ **响应类型统一**: 更新所有 API 响应类型为 `FeishuApiResult<T>` 系列
+  - `FeishuApiResult<T>` - 通用响应类型
+  - `FeishuApiPageListResult<T>` - 分页列表响应
+  - `FeishuApiListResult<T>` - 列表响应
+  - `FeishuNullDataApiResult` - 空数据响应
+
+- 🔧 **消息发送接口重构**: 统一消息发送接口设计
+  - `SendMessageRequest` 替代 `TextMessageRequest`，支持所有消息类型
+  - `MessageTextContent` 替代 `TextContent`，保持类型一致性
+  - 改进 Content 字段序列化机制
+
+### 📋 新增审批 API 支持
+
+- ✅ **审批定义管理**
+  - `IFeishuV4Approval` - V4 审批基础接口
+  - `IFeishuTenantV4Approval` - V4 租户审批接口
+  - 支持创建审批定义、查询审批实例等核心功能
+
+### 📝 任务管理增强
+
+- 🎯 **自定义字段管理**
+  - 创建、更新、查询自定义字段
+  - 自定义字段选项管理
+  - 自定义字段资源绑定
+  - 分页查询自定义字段列表
+
+- 📊 **任务分组管理**
+  - 创建、更新、删除任务分组
+  - 查询任务分组列表
+  - 任务分组资源绑定
+
+### 🔄 WebSocket 实时事件订阅
+
+- 🌐 **飞书 WebSocket 客户端** (`Mud.Feishu.WebSocket`)
+  - 支持飞书 WebSocket 实时事件订阅
+  - 自动重连机制，保证连接稳定性
+  - 心跳检测，及时发现连接异常
+  - 二进制消息解析，支持完整事件类型
+
+### 📡 Webhook 事件处理
+
+- 🎭 **事件处理器抽象层** (`Mud.Feishu.Abstractions`)
+  - 策略模式架构，灵活扩展事件处理器
+  - 工厂模式管理，自动发现和注册处理器
+  - 完整的飞书事件类型覆盖：
+    - 用户事件：创建、更新、离职、状态变更
+    - 部门事件：创建、更新、删除
+    - 员工事件：入职、离职、信息变更
+    - 消息事件：接收、发送状态、阅读状态
+    - 任务事件：创建、更新、删除、状态变更
+    - 审批事件：提交、通过、拒绝、撤销
+
+### 🎨 消息和卡片增强
+
+- 📰 **消息流卡片 API**
+  - 应用消息流卡片完整接口支持
+  - 卡片实体组件管理
+  - 卡片内容更新和删除
+
+- 💬 **群组功能增强**
+  - 群公告管理
+  - 会话标签页管理
+  - 群组自定义菜单设置
+
+### 🛠️ 配置和工具优化
+
+- ⚙️ **配置增强**
+  - 添加 `FeishuOptions` 配置类
+  - 支持配置文件绑定
+  - 日志配置选项
+
+- 🔒 **安全增强**
+  - URL 验证功能，防止恶意请求
+  - Authorization 头常量统一管理
+
+**REFACTOR**
+
+- 📁 **命名空间统一**
+  - 统一接口命名空间结构
+  - 全局引用导入，简化代码
+
+- 🧹 **代码清理**
+  - 移除废弃的 TaskSectionsResult 类
+  - 移除无效的类和接口
+  - 统一服务注册 API，移除废弃的 `UseMultiHandler` 方法
+
+**BUG FIX**
+
+- 🔧 **修复 HttpClient 配置问题**
+- 🔧 **修复 API 端点 URL 格式问题**
+- 🔧 **修复消息和任务附件 API 实现**
+
+**DOCS**
+
+- 📚 **文档更新**
+  - 更新 README 文档结构
+  - 移除冗余的架构设计和性能特性文档
+  - 添加部门事件处理器文档和使用示例
+  - 优化项目描述和功能说明
+
+---
+
 ## 1.0.2 (2025-11-26)
 
 **FEATURES**
@@ -203,11 +316,12 @@
 
 ## 🔗 相关链接
 
-- [项目主页](https://gitee.com/mudtools/mud-code-generator)
+- [项目Gitee主页](https://gitee.com/mudtools/MudFeishu)
+- [项目Github主页](https://github.com/mudtools/MudFeishu)
 - [NuGet 包](https://www.nuget.org/packages/Mud.Feishu/)
-- [文档网站](https://mudtools.github.io/Mud.Feishu/)
+- [文档网站](https://www.mudtools.cn/documents/guides/feishu/)
 - [飞书开放平台](https://open.feishu.cn/document/)
-- [问题反馈](https://gitee.com/mudtools/mud-code-generator/issues)
+- [问题反馈](https://gitee.com/mudtools/MudFeishu/issues)
 
 ---
 

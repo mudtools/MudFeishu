@@ -9,7 +9,7 @@ using Mud.Feishu.DataModels.Messages;
 using Mud.Feishu.Extensions;
 using System.Net.Http.Headers;
 
-namespace Mud.Feishu;
+namespace Mud.Feishu.Internal;
 
 partial class FeishuTenantV1Message
 {

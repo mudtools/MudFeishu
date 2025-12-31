@@ -7,11 +7,9 @@
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Mud.Feishu.Extensions;
 using System.Text.Json;
 
-namespace Mud.Feishu;
-
+namespace Mud.Feishu.Extensions;
 
 internal class FeishuHttpClient : IEnhancedHttpClient
 {
@@ -43,7 +41,7 @@ internal class FeishuHttpClient : IEnhancedHttpClient
         HttpRequestMessage request,
         CancellationToken cancellationToken = default)
     {
-        ExceptionUtils.ThrowIfNull(request);
+        request.ThrowIfNull();
 
         var uri = request.RequestUri?.ToString() ?? "[No URI]";
 
@@ -70,7 +68,7 @@ internal class FeishuHttpClient : IEnhancedHttpClient
         HttpRequestMessage request,
         CancellationToken cancellationToken = default)
     {
-        ExceptionUtils.ThrowIfNull(request);
+        request.ThrowIfNull();
 
         var uri = request.RequestUri?.ToString() ?? "[No URI]";
 
@@ -98,7 +96,7 @@ internal class FeishuHttpClient : IEnhancedHttpClient
         bool overwrite = true,
         CancellationToken cancellationToken = default)
     {
-        ExceptionUtils.ThrowIfNull(request);
+        request.ThrowIfNull();
 
         if (string.IsNullOrWhiteSpace(filePath))
             throw new ArgumentException("文件路径不能为空", nameof(filePath));

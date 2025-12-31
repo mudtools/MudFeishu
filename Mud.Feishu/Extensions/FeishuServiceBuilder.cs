@@ -7,6 +7,7 @@
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
+using Mud.Feishu.Extensions;
 using Polly;
 using System.Net;
 
@@ -83,8 +84,10 @@ public class FeishuServiceBuilder
         {
             AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate,
         }).AddTransientHttpErrorPolicy(policyBuilder =>
-               policyBuilder.WaitAndRetryAsync(3, retryAttempt =>
-               TimeSpan.FromSeconds(Math.Pow(2, retryAttempt))));
+        {
+            return policyBuilder.WaitAndRetryAsync(3, retryAttempt =>
+               TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)));
+        });
         return this;
     }
 

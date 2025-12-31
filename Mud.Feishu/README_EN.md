@@ -7,7 +7,7 @@ MudFeishu is a modern .NET library for simplified integration with the Feishu (L
 - **Attribute-driven HTTP Client**: Automatically generate HTTP clients using the `[HttpClientApi]` attribute, simplifying API calls
 - **Strongly-typed Data Models**: Complete Feishu API data models with detailed XML documentation comments
 - **Intelligent Token Management**: Built-in automatic token caching and refresh mechanism, supporting tenant tokens and user tokens
-- **Unified Response Handling**: Response wrapping based on `ApiResult<T>` for simplified error handling
+- **Unified Response Handling**: Response wrapping based on `FeishuApiResult<T>` for simplified error handling
 - **Dependency Injection Friendly**: Provides `IServiceCollection` extension methods for easy integration with modern .NET applications
 - **Multi-version .NET Support**: Supports .NET Framework 4.6+, .NET 6.0, .NET 7.0, .NET 8.0, .NET 9.0, .NET 10.0, using the latest C# 13.0 language features
 - **Complete Feishu API Coverage**: Supports authentication, user management, department management, user group management, personnel type management, job level management, job family management, role management, unit management, position management, work city management
@@ -106,30 +106,30 @@ using Mud.Feishu;
 [Route("api/[controller]")]
 public class FeishuController : ControllerBase
 {
-    private readonly IFeishuV3AuthenticationApi _authApi;
     private readonly IFeishuTenantV3User _userApi;
     private readonly IFeishuTenantV3Departments _departmentsApi;
     private readonly IFeishuTenantV3UserGroup _userGroupApi;
     private readonly IFeishuTenantV3EmployeeType _employeeTypeApi;
     private readonly IFeishuTenantV3JobLevel _jobLevelApi;
     private readonly IFeishuTenantV3JobFamilies _jobFamiliesApi;
+    private readonly IFeishuTenantV1Message _messageApi;
 
     public FeishuController(
-        IFeishuV3AuthenticationApi authApi,
         IFeishuTenantV3User userApi,
         IFeishuTenantV3Departments departmentsApi,
         IFeishuTenantV3UserGroup userGroupApi,
         IFeishuTenantV3EmployeeType employeeTypeApi,
         IFeishuTenantV3JobLevel jobLevelApi,
-        IFeishuTenantV3JobFamilies jobFamiliesApi)
+        IFeishuTenantV3JobFamilies jobFamiliesApi,
+        IFeishuTenantV1Message messageApi)
     {
-        _authApi = authApi;
         _userApi = userApi;
         _departmentsApi = departmentsApi;
         _userGroupApi = userGroupApi;
         _employeeTypeApi = employeeTypeApi;
         _jobLevelApi = jobLevelApi;
         _jobFamiliesApi = jobFamiliesApi;
+        _messageApi = messageApi;
     }
 }
 ```
@@ -163,7 +163,7 @@ public class UserController : ControllerBase
     {
         // Token automatically handled, no need to manually obtain
         var result = await _userApi.CreateUserAsync(request);
-        
+
         if (result.Code == 0)
         {
             return Ok(new { success = true, userId = result.Data?.User?.UserId });
@@ -391,18 +391,20 @@ public class OrganizationSyncService
 ### 📧 Message Notifications
 ```csharp
 // Send text message
-await messageApi.SendTextMessageAsync(new TextMessageRequest 
+var textContent = new MessageTextContent { Text = "Hello World!" };
+await messageApi.SendMessageAsync(new SendMessageRequest
 {
-    ReceiveIdType = "user_id",
     ReceiveId = "user_123",
-    Content = new TextContent { Text = "Hello World!" }
-});
+    MsgType = "text",
+    Content = JsonSerializer.Serialize(textContent)
+}, receive_id_type: "user_id");
 
 // Send batch notifications
+var batchContent = new MessageTextContent { Text = "System notification: Important update released" };
 await batchMessageApi.BatchSendTextMessageAsync(new BatchSenderTextMessageRequest
 {
     DeptIds = new[] { "dept_1", "dept_2" },
-    Content = new TextContent { Text = "System notification: Important update released" }
+    Content = batchContent
 });
 ```
 

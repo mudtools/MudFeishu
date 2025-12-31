@@ -262,33 +262,34 @@ public class NotificationService
         _messageApi = messageApi;
         _batchMessageApi = batchMessageApi;
     }
-    
+
     // Send text message to user
     public async Task<string> SendTextMessageAsync(string userId, string content)
     {
-        var request = new TextMessageRequest
+        var textContent = new MessageTextContent { Text = content };
+        var request = new SendMessageRequest
         {
-            ReceiveIdType = "user_id",
             ReceiveId = userId,
-            Content = new TextContent { Text = content }
+            MsgType = "text",
+            Content = JsonSerializer.Serialize(textContent)
         };
-        
-        var result = await _messageApi.SendTextMessageAsync(request);
+
+        var result = await _messageApi.SendMessageAsync(request, receive_id_type: "user_id");
         return result.Code == 0 ? result.Data?.MessageId : null;
     }
-    
+
     // Send system notification in batch
     public async Task<string> SendSystemNotificationAsync(string[] departmentIds, string title, string content)
     {
         var request = new BatchSenderTextMessageRequest
         {
             DeptIds = departmentIds,
-            Content = new TextContent 
-            { 
+            Content = new MessageTextContent
+            {
                 Text = $"📢 {title}\n\n{content}"
             }
         };
-        
+
         var result = await _batchMessageApi.BatchSendTextMessageAsync(request);
         return result.Code == 0 ? result.Data?.MessageId : null;
     }

@@ -7,7 +7,7 @@ MudFeishu 是一个用于简化与飞书（Feishu）API 集成的现代化 .NET 
 - **特性驱动的 HTTP 客户端**：使用 `[HttpClientApi]` 特性自动生成 HTTP 客户端，简化 API 调用
 - **强类型数据模型**：完整的飞书 API 数据模型，包含详细的 XML 文档注释
 - **智能令牌管理**：内置自动令牌缓存和刷新机制，支持租户令牌和用户令牌
-- **统一的响应处理**：基于 `ApiResult<T>` 的响应包装，简化错误处理
+- **统一的响应处理**：基于 `FeishuApiResult<T>` 的响应包装，简化错误处理
 - **依赖注入友好**：提供 `IServiceCollection` 扩展方法，易于集成到现代 .NET 应用
 - **多版本 .NET 支持**：支持.NET4.6+、.NET 6.0、.NET 7.0、.NET 8.0、.NET 9.0、.NET 10.0，使用最新的 C# 13.0 语言特性
 - **完整的飞书 API 覆盖**：支持认证、用户管理、部门管理、用户组管理、人员类型管理、职级管理、职位序列管理、角色管理、单位管理、职务管理、工作城市管理
@@ -106,30 +106,30 @@ using Mud.Feishu;
 [Route("api/[controller]")]
 public class FeishuController : ControllerBase
 {
-    private readonly IFeishuV3AuthenticationApi _authApi;
     private readonly IFeishuTenantV3User _userApi;
     private readonly IFeishuTenantV3Departments _departmentsApi;
     private readonly IFeishuTenantV3UserGroup _userGroupApi;
     private readonly IFeishuTenantV3EmployeeType _employeeTypeApi;
     private readonly IFeishuTenantV3JobLevel _jobLevelApi;
     private readonly IFeishuTenantV3JobFamilies _jobFamiliesApi;
+    private readonly IFeishuTenantV1Message _messageApi;
 
     public FeishuController(
-        IFeishuV3AuthenticationApi authApi, 
         IFeishuTenantV3User userApi,
         IFeishuTenantV3Departments departmentsApi,
         IFeishuTenantV3UserGroup userGroupApi,
         IFeishuTenantV3EmployeeType employeeTypeApi,
         IFeishuTenantV3JobLevel jobLevelApi,
-        IFeishuTenantV3JobFamilies jobFamiliesApi)
+        IFeishuTenantV3JobFamilies jobFamiliesApi,
+        IFeishuTenantV1Message messageApi)
     {
-        _authApi = authApi;
         _userApi = userApi;
         _departmentsApi = departmentsApi;
         _userGroupApi = userGroupApi;
         _employeeTypeApi = employeeTypeApi;
         _jobLevelApi = jobLevelApi;
         _jobFamiliesApi = jobFamiliesApi;
+        _messageApi = messageApi;
     }
 }
 ```
@@ -151,7 +151,7 @@ public class UserController : ControllerBase
     private readonly IFeishuTenantV3Departments _deptApi;
 
     public UserController(
-        IFeishuTenantV3User userApi, 
+        IFeishuTenantV3User userApi,
         IFeishuTenantV3Departments deptApi)
     {
         _userApi = userApi;
@@ -163,7 +163,7 @@ public class UserController : ControllerBase
     {
         // 令牌自动处理，无需手动获取
         var result = await _userApi.CreateUserAsync(request);
-        
+
         if (result.Code == 0)
         {
             return Ok(new { success = true, userId = result.Data?.User?.UserId });
@@ -226,7 +226,7 @@ public class UserManagementService
                     UserGroupId = groupId,
                     UserIds = new[] { userId }
                 });
-                
+
                 if (addMemberResult.Code != 0)
                 {
                     // 记录警告但不中断流程
@@ -272,18 +272,18 @@ public class NotificationService
         };
 
         var result = await _batchMessageApi.BatchSendTextMessageAsync(request);
-        
+
         if (result.Code == 0)
         {
             var messageId = result.Data!.MessageId;
             Console.WriteLine($"批量消息发送成功，任务ID: {messageId}");
-            
+
             // 可以异步查询发送进度
             _ = Task.Run(async () => await MonitorProgressAsync(messageId));
-            
+
             return messageId;
         }
-        
+
         throw new Exception($"发送失败: {result.Msg}");
     }
 
@@ -360,7 +360,7 @@ public class OrganizationSyncService
             }
 
             Console.WriteLine($"同步完成: {allDepartments.Count} 个部门, {allUsers.Count} 个用户");
-            
+
             // TODO: 保存到数据库
         }
         catch (Exception ex)
@@ -373,7 +373,7 @@ public class OrganizationSyncService
     private async Task LoadDepartmentTreeAsync(string departmentId, List<DepartmentInfo> departments)
     {
         var result = await _deptApi.GetDepartmentsByParentIdAsync(departmentId, fetch_child: true);
-        
+
         if (result.Code == 0 && result.Data?.Items != null)
         {
             foreach (var dept in result.Data.Items)
@@ -391,18 +391,20 @@ public class OrganizationSyncService
 ### 📧 消息通知
 ```csharp
 // 发送文本消息
-await messageApi.SendTextMessageAsync(new TextMessageRequest 
+var textContent = new MessageTextContent { Text = "Hello World!" };
+await messageApi.SendMessageAsync(new SendMessageRequest
 {
-    ReceiveIdType = "user_id",
     ReceiveId = "user_123",
-    Content = new TextContent { Text = "Hello World!" }
-});
+    MsgType = "text",
+    Content = JsonSerializer.Serialize(textContent)
+}, receive_id_type: "user_id");
 
 // 批量发送通知
+var batchContent = new MessageTextContent { Text = "系统通知：重要更新已发布" };
 await batchMessageApi.BatchSendTextMessageAsync(new BatchSenderTextMessageRequest
 {
     DeptIds = new[] { "dept_1", "dept_2" },
-    Content = new TextContent { Text = "系统通知：重要更新已发布" }
+    Content = batchContent
 });
 ```
 

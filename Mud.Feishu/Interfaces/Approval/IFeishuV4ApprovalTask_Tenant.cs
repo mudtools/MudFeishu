@@ -71,4 +71,16 @@ public interface IFeishuTenantV4ApprovalTask
        [Body] RollbackApprovalInstancesRequest rollbackApprovalInstancesRequest,
        [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
        CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 对单个审批任务进行加签操作。
+    /// </summary>
+    /// <param name="instancesAddSignRequest">审批任务加签请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Post("/open-apis/approval/v4/instances/add_sign")]
+    Task<FeishuNullDataApiResult?> InstancesAddSignAsync(
+         [Body] InstancesAddSignRequest instancesAddSignRequest,
+         CancellationToken cancellationToken = default);
 }

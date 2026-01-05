@@ -30,4 +30,18 @@ public interface IFeishuTenantV4ApprovalTask
         [Body] AgreeApprovalTasksRequest agreeApprovalTasksRequest,
         [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
         CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 对单个审批任务进行拒绝操作。拒绝后审批流程结束。
+    /// </summary>
+    /// <param name="rejectApprovalTaskRequest">拒绝审批任务请求体</param>
+    /// <param name="user_id_type">用户 ID 类型</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Post("/open-apis/approval/v4/tasks/reject")]
+    Task<FeishuNullDataApiResult?> RejectApprovalAsync(
+      [Body] RejectApprovalTaskRequest rejectApprovalTaskRequest,
+      [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
+      CancellationToken cancellationToken = default);
 }

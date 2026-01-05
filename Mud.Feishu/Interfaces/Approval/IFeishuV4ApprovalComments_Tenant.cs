@@ -64,4 +64,23 @@ public interface IFeishuTenantV4ApprovalComments
       [Query("user_id")] string user_id,
       [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
       CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 根据审批实例 Code 获取某个审批实例下，全部评论与评论回复（不包含审批同意、拒绝、转交等附加的理由或意见）。
+    /// </summary>
+    /// <param name="instance_id">审批实例 Code。说明：支持传入自定义审批实例 ID。示例值："6A123516-FB88-470D-A428-9AF58B71B3C0"</param>
+    /// <param name="user_id">用户 ID，ID 类型与 user_id_type 取值一致。示例值："e5286g26"</param>
+    /// <param name="page_size">分页大小，即本次请求所返回的用户信息列表内的最大条目数。默认值：10</param>
+    /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
+    /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Get("/open-apis/approval/v4/instances/{instance_id}/comments")]
+    Task<FeishuApiResult<CommentsPageListResult>?> GetCommentsPageListByIdAsync(
+      [Path] string instance_id,
+      [Query("user_id")] string user_id,
+      [Query("page_size")] int page_size = 10,
+      [Query("page_token")] string? page_token = null,
+      [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
+      CancellationToken cancellationToken = default);
 }

@@ -27,7 +27,7 @@ public interface IFeishuTenantV4ApprovalComments
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Post("/open-apis/approval/v4/instances/{instance_id}/comments")]
-    Task<FeishuApiResult<CreateCommentResult>?> CreateCommentAsync(
+    Task<FeishuApiResult<CommentOperationResult>?> CreateCommentAsync(
         [Path] string instance_id,
         [Query("user_id")] string user_id,
         [Body] CreateCommentRequest createApprovalRequest,
@@ -43,10 +43,25 @@ public interface IFeishuTenantV4ApprovalComments
     /// <param name="user_id_type">用户 ID 类型</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Delete("/open-apis/approval/v4/instances/{instance_id}/comments/{comment_id}")]
-    Task<FeishuNullDataApiResult?> DeleteCommentByIdAsync(
+    Task<FeishuApiResult<CommentOperationResult>?> DeleteCommentByIdAsync(
        [Path] string instance_id,
        [Path] string comment_id,
        [Query("user_id")] string user_id,
        [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
        CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 清空某审批实例下的全部评论与评论回复，包括显示为已删除的评论。
+    /// </summary>
+    /// <param name="instance_id">审批实例 Code。说明：支持传入自定义审批实例 ID。示例值："6A123516-FB88-470D-A428-9AF58B71B3C0"</param>
+    /// <param name="user_id">用户 ID，ID 类型与 user_id_type 取值一致。示例值："e5286g26"</param>
+    /// <param name="user_id_type">用户 ID 类型</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Post("/open-apis/approval/v4/instances/{instance_id}/comments/remove")]
+    Task<FeishuApiResult<CommentsRemoveResult>?> RemoveCommentsAsync(
+      [Path] string instance_id,
+      [Query("user_id")] string user_id,
+      [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
+      CancellationToken cancellationToken = default);
 }

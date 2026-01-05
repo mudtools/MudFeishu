@@ -8,9 +8,9 @@
 namespace Mud.Feishu.DataModels.ApprovalComments;
 
 /// <summary>
-/// 创建评论响应体
+/// 评论业务操作响应体
 /// </summary>
-public class CreateCommentResult
+public class CommentOperationResult
 {
     /// <summary>
     /// <para>评论 ID。</para>

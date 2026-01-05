@@ -44,4 +44,17 @@ public interface IFeishuTenantV4ApprovalTask
       [Body] RejectApprovalTaskRequest rejectApprovalTaskRequest,
       [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
       CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 对单个审批任务进行转交操作。转交后审批流程流转给被转交人。
+    /// </summary>
+    /// <param name="transferApprovalTasksRequest">转交审批任务请求体</param>
+    /// <param name="user_id_type">用户 ID 类型</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Post("/open-apis/approval/v4/tasks/transfer")]
+    Task<FeishuNullDataApiResult?> TransferApprovalAsync(
+        [Body] TransferApprovalTasksRequest transferApprovalTasksRequest,
+        [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
+        CancellationToken cancellationToken = default);
 }

@@ -83,4 +83,17 @@ public interface IFeishuTenantV4ApprovalTask
     Task<FeishuNullDataApiResult?> InstancesAddSignAsync(
          [Body] InstancesAddSignRequest instancesAddSignRequest,
          CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 对于退回到发起人的审批任务进行重新发起操作。发起后审批流程会流转到下一个审批人。
+    /// </summary>
+    /// <param name="instancesAddSignRequest">重新提交审批任务请求体</param>
+    /// <param name="user_id_type">用户 ID 类型</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Post("/open-apis/approval/v4/tasks/resubmit")]
+    Task<FeishuNullDataApiResult?> ResubmitApprovalAsync(
+        [Body] ResubmitApprovalRequest instancesAddSignRequest,
+        [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
+        CancellationToken cancellationToken = default);
 }

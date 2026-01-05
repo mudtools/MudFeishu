@@ -1,0 +1,63 @@
+﻿// -----------------------------------------------------------------------
+//  作者：Mud Studio  版权所有 (c) Mud Studio 2025   
+//  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
+//  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
+//  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
+// -----------------------------------------------------------------------
+
+namespace Mud.Feishu.DataModels.ApprovalTask;
+
+/// <summary>
+/// 同意审批任务请求体
+/// </summary>
+public class AgreeApprovalTasksRequest
+{
+    /// <summary>
+    /// <para>审批定义 Code。</para>
+    /// <para>必填：是</para>
+    /// <para>示例值：7C468A54-8745-2245-9675-08B7C63E7A85</para>
+    /// </summary>
+    [JsonPropertyName("approval_code")]
+    public string ApprovalCode { get; set; } = string.Empty;
+
+    /// <summary>
+    /// <para>审批实例 Code</para>
+    /// <para>必填：是</para>
+    /// <para>示例值：81D31358-93AF-92D6-7425-01A5D67C4E71</para>
+    /// </summary>
+    [JsonPropertyName("instance_code")]
+    public string InstanceCode { get; set; } = string.Empty;
+
+    /// <summary>
+    /// <para>审批人的用户 ID，ID 类型与查询参数 user_id_type 取值一致。</para>
+    /// <para>必填：是</para>
+    /// <para>示例值：f7cb567e</para>
+    /// </summary>
+    [JsonPropertyName("user_id")]
+    public string UserId { get; set; } = string.Empty;
+
+    /// <summary>
+    /// <para>审批意见</para>
+    /// <para>必填：否</para>
+    /// <para>示例值：OK</para>
+    /// </summary>
+    [JsonPropertyName("comment")]
+    public string? Comment { get; set; }
+
+    /// <summary>
+    /// <para>审批任务 ID。</para>
+    /// <para>必填：是</para>
+    /// <para>示例值：12345</para>
+    /// </summary>
+    [JsonPropertyName("task_id")]
+    public string TaskId { get; set; } = string.Empty;
+
+    /// <summary>
+    /// <para>如果审批定义的流程设计中添加了条件分支，则需要传入条件分支所需的控件数据（JSON 数组），否则会影响后续的分支条件流转。</para>
+    /// <para>**说明**：传值时需要将 JSON 序列化为字符串。参数示例值未进行转义，正确的传值示例可参见下文 **请求体示例**。</para>
+    /// <para>必填：否</para>
+    /// <para>示例值：[{\"id\":\"111\", \"type\": \"input\", \"value\":\"test\"}]</para>
+    /// </summary>
+    [JsonPropertyName("form")]
+    public string? Form { get; set; }
+}

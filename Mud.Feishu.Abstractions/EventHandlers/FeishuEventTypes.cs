@@ -194,6 +194,16 @@ public static class FeishuEventTypes
     /// 换班审批事件
     /// </summary>
     public const string ShiftApproval = "shift_approval";
+
+    /// <summary>
+    /// 加班审批事件
+    /// </summary>
+    public const string WorkApproval = "work_approval";
+
+    /// <summary>
+    /// 加班审批通过并撤销事件
+    /// </summary>
+    public const string WorkApprovalRevert = "work_approval_revert";
     #endregion
 
     /// <summary>

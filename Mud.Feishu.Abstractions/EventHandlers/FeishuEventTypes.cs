@@ -204,6 +204,21 @@ public static class FeishuEventTypes
     /// 加班审批通过并撤销事件
     /// </summary>
     public const string WorkApprovalRevert = "work_approval_revert";
+
+    /// <summary>
+    /// 请假审批事件
+    /// </summary>
+    public const string LeaveApproval = "leave_approval";
+
+    /// <summary>
+    /// 请假审批事件
+    /// </summary>
+    public const string LeaveApprovalV2 = "leave_approvalV2";
+
+    /// <summary>
+    /// 请假审批通过并撤销事件
+    /// </summary>
+    public const string LeaveApprovalRevert = "leave_approval_revert";
     #endregion
 
     /// <summary>

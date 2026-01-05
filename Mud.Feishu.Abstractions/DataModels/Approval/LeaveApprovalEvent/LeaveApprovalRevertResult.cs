@@ -9,17 +9,16 @@ namespace Mud.Feishu.Abstractions.DataModels.Approval;
 
 
 /// <summary>
-/// 加班审批通过并撤销事件体
-/// <para>审批定义的表单包含 加班控件组 时，该定义下的审批实例在 通过 或者 通过并撤销 时，会触发该事件。</para>
-/// <para>事件类型:work_approval_revert</para>
-/// <para>使用时请继承：<see cref="WorkApprovalRevertEventHandler"/></para>
-/// <para>文档地址：https://open.feishu.cn/document/server-docs/approval-v4/event/common-event/approval-task-event</para>
+/// 请假审批通过并撤销事件体
+/// <para>审批定义的表单包含 请假控件组 时，该定义下的审批实例在 通过 或者 通过并撤销 时，会触发该事件。</para>
+/// <para>事件类型:leave_approval_revert</para>
+/// <para>使用时请继承：<see cref="LeaveApprovalRevertEventHandler"/></para>
+/// <para>文档地址：https://open.feishu.cn/document/server-docs/approval-v4/event/special-event/leave</para>
 /// </summary>
-[EventHandler(EventType = FeishuEventTypes.WorkApprovalRevert, HandlerNamespace = Consts.HandlerNamespace,
+[EventHandler(EventType = FeishuEventTypes.LeaveApprovalRevert, HandlerNamespace = Consts.HandlerNamespace,
               InheritedFrom = Consts.InheritedFrom)]
-public class WorkApprovalRevertResult : IEventResult
+public class LeaveApprovalRevertResult : IEventResult
 {
-
     /// <summary>
     /// <para>应用的 App ID。</para>
     /// <para>必填：否</para>
@@ -56,7 +55,7 @@ public class WorkApprovalRevertResult : IEventResult
     public string? TenantKey { get; set; }
 
     /// <summary>
-    /// <para>事件类型。固定值 `work_approval_revert`</para>
+    /// <para>事件类型。固定值 `leave_approval_revert`</para>
     /// <para>必填：否</para>
     /// </summary>
     [JsonPropertyName("type")]

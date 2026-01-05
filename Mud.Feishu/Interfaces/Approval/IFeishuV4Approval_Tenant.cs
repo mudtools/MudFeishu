@@ -89,4 +89,18 @@ public interface IFeishuTenantV4Approval
       [Body] CarbonCopyInstanceRequest ccInstanceRequest,
       [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
       CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 在创建审批实例之前，可调用本接口预览审批流程数据。在创建审批实例之后，可调用本接口预览某一审批节点的后续流程数据。
+    /// </summary>
+    /// <param name="previewInstanceRequest">预览审批流程请求体</param>
+    /// <param name="user_id_type">用户 ID 类型</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Post("/open-apis/approval/v4/instances/preview")]
+    Task<FeishuApiResult<PreviewNodeResult>?> PreviewInstanceAsync(
+         [Body] PreviewInstanceRequest previewInstanceRequest,
+         [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
+         CancellationToken cancellationToken = default);
 }

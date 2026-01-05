@@ -12,6 +12,9 @@ namespace Mud.Feishu.DataModels.ApprovalForm;
 /// </summary>
 public class AmountWidget() : WidgetBase<double>("amount")
 {
+    /// <summary>
+    /// 获取或设置 货币类型，默认为 CNY 人民币
+    /// </summary>
     [JsonPropertyName("currency")]
-    public string Currency { get; set; }
+    public string? Currency { get; set; }
 }

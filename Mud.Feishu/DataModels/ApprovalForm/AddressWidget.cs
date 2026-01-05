@@ -14,11 +14,20 @@ public class AddressWidget() : WidgetBase<List<AddressValue>>("address")
 {
 }
 
+/// <summary>
+/// 表示地址信息的值对象
+/// </summary>
 public class AddressValue
 {
+    /// <summary>
+    /// 地址的唯一标识符
+    /// </summary>
     [JsonPropertyName("id")]
-    public string Id { get; set; }
+    public string Id { get; set; } = string.Empty;
 
+    /// <summary>
+    /// 详细地址信息
+    /// </summary>
     [JsonPropertyName("detailAddress")]
-    public string DetailAddress { get; set; }
+    public string DetailAddress { get; set; } = string.Empty;
 }

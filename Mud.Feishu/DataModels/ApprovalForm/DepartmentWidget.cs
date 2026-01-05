@@ -14,6 +14,7 @@ public class DepartmentWidget() : WidgetBase<List<DepartmentValue>>("department"
 {
 }
 
+
 public class DepartmentValue
 {
     [JsonPropertyName("open_id")]

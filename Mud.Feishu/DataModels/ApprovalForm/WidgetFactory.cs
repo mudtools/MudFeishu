@@ -15,9 +15,29 @@ namespace Mud.Feishu.DataModels.ApprovalForm;
 public class WidgetFactory
 {
     /// <summary>
+    /// 泛型版本：创建组件实例
+    /// </summary>
+    /// <typeparam name="TWidget">组件类型</typeparam>
+    /// <returns>指定类型的组件实例</returns>
+    public static TWidget CreateWidget<TWidget>(string? id = null)
+        where TWidget : IWidget, new()
+    {
+        var widget = new TWidget();
+        string rId = "";
+        if (string.IsNullOrEmpty(id))
+        {
+            var random = new Random();
+            rId = random.Next(100000, 999999).ToString();
+        }
+        widget.Id = id ?? widget.Type + "_" + rId;
+        return widget;
+    }
+
+
+    /// <summary>
     /// 根据类型枚举创建组件实例
     /// </summary>
-    public static IWidget CreateWidget(WidgetType type, string id = null)
+    public static IWidget CreateWidget(WidgetType type, string? id = null)
     {
         string rId = "";
         if (string.IsNullOrEmpty(id))

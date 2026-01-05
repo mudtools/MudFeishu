@@ -154,6 +154,33 @@ public static class FeishuEventTypes
     public const string TaskCommentUpdated = "task.task.comment.updated_v1";
     #endregion
 
+    #region Approval Events
+    /// <summary>
+    /// 审批定义更新事件
+    /// </summary>
+    public const string ApprovalApprovalUpdated = "approval.approval.updated_v4";
+
+    /// <summary>
+    /// 审批抄送状态变更事件
+    /// </summary>
+    public const string ApprovalCc = "approval_cc";
+
+    /// <summary>
+    /// 审批任务状态变更事件
+    /// </summary>
+    public const string ApprovalTask = "approval_task";
+
+    /// <summary>
+    /// 审批实例状态变更事件
+    /// </summary>
+    public const string ApprovalInstance = "approval_instance";
+
+    /// <summary>
+    /// 外出审批事件
+    /// </summary>
+    public const string OutApproval = "out_approval";
+    #endregion
+
     /// <summary>
     /// 用户加入群聊事件
     /// </summary>
@@ -168,16 +195,6 @@ public static class FeishuEventTypes
     /// 群聊信息更新事件
     /// </summary>
     public const string GroupUpdated = "im.chat.updated_v1";
-
-    /// <summary>
-    /// 审批通过事件
-    /// </summary>
-    public const string ApprovalApproved = "approval.approval.approved_v1";
-
-    /// <summary>
-    /// 审批拒绝事件
-    /// </summary>
-    public const string ApprovalRejected = "approval.approval.rejected_v1";
 
     /// <summary>
     /// 日程事件

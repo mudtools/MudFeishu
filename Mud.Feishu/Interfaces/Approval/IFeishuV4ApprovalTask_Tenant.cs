@@ -57,4 +57,18 @@ public interface IFeishuTenantV4ApprovalTask
         [Body] TransferApprovalTasksRequest transferApprovalTasksRequest,
         [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
         CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 从当前审批任务，退回到已审批的一个或多个任务节点。退回后，已审批节点重新生成审批任务。
+    /// </summary>
+    /// <param name="rollbackApprovalInstancesRequest">退回审批任务请求体</param>
+    /// <param name="user_id_type">用户 ID 类型</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Post("/open-apis/approval/v4/instances/specified_rollback")]
+    Task<FeishuNullDataApiResult?> RollbackApprovalAsync(
+       [Body] RollbackApprovalInstancesRequest rollbackApprovalInstancesRequest,
+       [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
+       CancellationToken cancellationToken = default);
 }

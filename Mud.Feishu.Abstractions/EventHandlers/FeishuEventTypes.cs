@@ -179,6 +179,21 @@ public static class FeishuEventTypes
     /// 外出审批事件
     /// </summary>
     public const string OutApproval = "out_approval";
+
+    /// <summary>
+    /// 出差审批事件
+    /// </summary>
+    public const string ApprovalInstanceTripGroupUpdate = "approval.instance.trip_group_update_v4";
+
+    /// <summary>
+    /// 补卡审批事件
+    /// </summary>
+    public const string ApprovalInstanceRemedyGroupUpdate = "approval.instance.remedy_group_update_v4";
+
+    /// <summary>
+    /// 换班审批事件
+    /// </summary>
+    public const string ShiftApproval = "shift_approval";
     #endregion
 
     /// <summary>

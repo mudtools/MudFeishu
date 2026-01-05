@@ -1,0 +1,78 @@
+﻿// -----------------------------------------------------------------------
+//  作者：Mud Studio  版权所有 (c) Mud Studio 2025   
+//  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
+//  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
+//  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
+// -----------------------------------------------------------------------
+
+namespace Mud.Feishu.Abstractions.DataModels.Approval;
+
+
+/// <summary>
+/// 出差事件详细信息。
+/// </summary>
+public class TripObjectSuffix
+{
+    /// <summary>
+    /// <para>审批实例 Code。</para>
+    /// <para>必填：否</para>
+    /// </summary>
+    [JsonPropertyName("instance_code")]
+    public string? InstanceCode { get; set; }
+
+    /// <summary>
+    /// <para>审批开始时间，秒级时间戳。</para>
+    /// <para>必填：否</para>
+    /// </summary>
+    [JsonPropertyName("start_time")]
+    public int? StartTime { get; set; }
+
+    /// <summary>
+    /// <para>审批结束时间，秒级时间戳。</para>
+    /// <para>必填：否</para>
+    /// </summary>
+    [JsonPropertyName("end_time")]
+    public int? EndTime { get; set; }
+
+    /// <summary>
+    /// <para>出差详细信息。</para>
+    /// <para>必填：否</para>
+    /// </summary>
+    [JsonPropertyName("schedules")]
+    public Schedule[]? Schedules { get; set; }
+
+    /// <summary>
+    /// <para>审批提交人的信息。</para>
+    /// <para>必填：否</para>
+    /// </summary>
+    [JsonPropertyName("start_user")]
+    public TripUser? StartUser { get; set; }
+
+    /// <summary>
+    /// <para>出差时长。单位：秒</para>
+    /// <para>必填：否</para>
+    /// </summary>
+    [JsonPropertyName("trip_interval")]
+    public string? TripInterval { get; set; }
+
+    /// <summary>
+    /// <para>出差原因。</para>
+    /// <para>必填：否</para>
+    /// </summary>
+    [JsonPropertyName("trip_reason")]
+    public string? TripReason { get; set; }
+
+    /// <summary>
+    /// <para>固定值 `APPROVED`</para>
+    /// <para>必填：否</para>
+    /// </summary>
+    [JsonPropertyName("type")]
+    public string? Type { get; set; }
+
+    /// <summary>
+    /// <para>出差同行人信息。</para>
+    /// <para>必填：否</para>
+    /// </summary>
+    [JsonPropertyName("trip_peers")]
+    public TripUser[]? TripPeers { get; set; }
+}

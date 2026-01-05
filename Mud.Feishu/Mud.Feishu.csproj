@@ -26,7 +26,4 @@
 		<None Include=".\README.md" Pack="true" PackagePath="\" />
 		<None Include="..\Icon.png" Pack="true" PackagePath="\" />
 	</ItemGroup>
-	<ItemGroup>
-	  <Folder Include="DataModels\ApprovalTask\ResponseModel\" />
-	</ItemGroup>
 </Project>

@@ -103,4 +103,21 @@ public interface IFeishuTenantV4Approval
          [Body] PreviewInstanceRequest previewInstanceRequest,
          [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
          CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 通过审批实例 Code 获取指定审批实例的详细信息，包括审批实例的名称、创建时间、发起审批的用户、状态以及任务列表等信息。
+    /// </summary>
+    /// <param name="instance_id">审批实例 Code。示例值："7C468A54-8745-2245-9675-08B7C63E7A85"</param>
+    /// <param name="user_id_type">用户 ID 类型</param>
+    /// <param name="locale">语言可选值，默认为审批定义配置的默认语言。示例值："zh-CN"</param>
+    /// <param name="user_id">发起审批的用户 ID，ID 类型由 user_id_type 参数指定。示例值："f7cb567e"</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Get("/open-apis/approval/v4/instances/{instance_id}")]
+    Task<FeishuApiResult<GetApprovalInstanceResult>?> GetInstanceByIdAsync(
+       [Path] string instance_id,
+       [Query("locale")] string? locale = null,
+       [Query("user_id")] bool? user_id = null,
+       [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
+       CancellationToken cancellationToken = default);
 }

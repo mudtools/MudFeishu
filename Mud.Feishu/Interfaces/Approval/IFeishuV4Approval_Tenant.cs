@@ -60,4 +60,33 @@ public interface IFeishuTenantV4Approval
     Task<FeishuApiResult<CreateInstancesResult>?> CreateInstanceAsync(
         [Body] CreateInstanceRequest createInstanceRequest,
         CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 撤回审批实例
+    /// <para>管理员在审批后台的某一审批定义的 更多设置 中，勾选了 允许撤销审批中的申请 或者 允许撤销 x 天内通过的审批，则在符合撤销规则的情况下，你可以调用本接口将指定提交人的审批实例撤回。</para>
+    /// </summary>
+    /// <param name="cancelInstancesRequest">撤回审批实例请求体</param>
+    /// <param name="user_id_type">用户 ID 类型</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Post("/open-apis/approval/v4/instances/cancel")]
+    Task<FeishuNullDataApiResult?> CancelInstanceAsync(
+        [Body] CancelInstancesRequest cancelInstancesRequest,
+        [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 将当前审批实例抄送给指定用户。被抄送的用户可以查看审批实例详情。
+    /// <para>例如，在飞书客户端的 工作台 > 审批 > 审批中心 > 抄送我 列表中查看到审批实例。</para>
+    /// </summary>
+    /// <param name="ccInstanceRequest">抄送审批实例请求体</param>
+    /// <param name="user_id_type">用户 ID 类型</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Post("/open-apis/approval/v4/instances/cc")]
+    Task<FeishuNullDataApiResult?> CarbonCopyInstanceAsync(
+      [Body] CarbonCopyInstanceRequest ccInstanceRequest,
+      [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
+      CancellationToken cancellationToken = default);
 }

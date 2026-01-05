@@ -34,4 +34,17 @@ public interface IFeishuTenantV4ApprovalExternal
       [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
       [Query("department_id_type")] string? department_id_type = Consts.Department_Id_Type,
       CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 通过三方审批定义 Code 获取审批定义的详细数据，包括三方审批定义的名称、说明、三方审批发起链接、回调 URL 以及审批定义可见人列表等信息。
+    /// </summary>
+    /// <param name="approval_code">三方审批定义 Code。示例值："7C468A54-8745-2245-9675-08B7C63E7A85"。</param>
+    /// <param name="user_id_type">用户 ID 类型</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Get("/open-apis/approval/v4/external_approvals/{approval_code}")]
+    Task<FeishuApiResult<GetApprovalExternalResult>?> GetApprovalByCodeAsync(
+       [Path] string approval_code,
+       [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
+       CancellationToken cancellationToken = default);
 }

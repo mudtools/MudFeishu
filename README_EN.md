@@ -13,97 +13,6 @@ An enterprise-grade .NET SDK for Feishu (Lark) API integration, providing compre
 
 ## 🚀 Quick Start
 
-## 📊 Key Features
-
-### 🏛️ Mud.Feishu.Abstractions - Event Handling Abstraction Layer
-
-#### 🎯 Event Handling Architecture
-
-| Feature | Description | Event Types |
-|---------|-------------|-------------|
-| **Strategy Pattern** | Extensible event handler architecture supporting multiple event type processing | - |
-| **Factory Pattern** | Built-in event handler factory with dynamic registration and discovery | - |
-| **Abstract Base Classes** | Provides base classes like `DefaultFeishuEventHandler<T>` to simplify development | - |
-| **Type Safety** | Strong-typed event data models with compile-time type checking | - |
-| **Async Processing** | Fully asynchronous event processing with parallel execution support | - |
-| **Extensibility** | Easy to extend with new event types and handlers | - |
-| **Organization Events** | User change events, department organizational structure changes | User create/update/delete, department change |
-| **Message Events** | Receive new messages, send status notifications, read status changes | Message receive, send status, read status |
-| **Application Events** | App authorization events, permission level adjustment events | App authorization, permission change |
-| **Custom Events** | Supports enterprise custom event types | Enterprise custom |
-
-### 🌐 Mud.Feishu - HTTP API Client Features
-
-| Module Category | Main Features | API Version | Description |
-|----------------|---------------|-------------|-------------|
-| **🔐 Authentication & Token Management** | Multi-type token support | - | Supports app token, tenant token, and user token types |
-|  | Auto token caching | - | Built-in token caching mechanism to reduce API calls |
-|  | Smart token refresh | - | Automatically refreshes tokens before expiration to ensure service continuity |
-|  | Multi-tenant support | - | Supports token isolation and management in multi-tenant scenarios |
-|  | OAuth flow | - | Complete OAuth authorization flow support for secure user token acquisition |
-| **🏢 Organization Management** | User management | V1/V3 | Create, update, query, delete, and batch operate users |
-|  | Department management | V1/V3 | Department tree structure maintenance, multi-level department management |
-|  | Employee management | V1 | Employee profile and detailed information management |
-|  | Job level management | - | Enterprise job hierarchy maintenance, CRUD operations |
-|  | Job family management | - | Career path management, job family definition |
-|  | Role permissions | - | Enterprise permission role system, role member management |
-|  | User group management | - | User group member management, flexible user grouping |
-|  | Work city management | - | Multi-city work location maintenance |
-| **📱 Message Service** | Message sending | V1 | Supports rich message types: text, image, file, card, etc. |
-|  | Batch messaging | V1 | Send messages to multiple users/departments in batch |
-|  | Group chat management | - | Group chat creation, member management, group info maintenance |
-|  | Message interactions | - | Message emoji reactions, quote replies, and other interactive features |
-|  | Task management | - | Task creation, updates, status management, and collaboration features |
-| **🛠️ Enterprise Features** | Unified exception handling | - | Comprehensive exception handling mechanism with unified error response format |
-|  | Smart retry mechanism | - | Automatic retry for network failures and temporary errors, improving stability |
-|  | High-performance caching | - | Resolves cache stampede and race conditions, supports automatic token refresh |
-|  | Connection pool management | - | HTTP connection pool reuse, improving API call efficiency |
-|  | Async programming support | - | Full async/await support with non-blocking I/O operations |
-|  | Detailed logging | - | Structured logging for monitoring and troubleshooting |
-
-> 💡 **Note**: The above only shows feature module examples. For more details, please refer to [Mud.Feishu Detailed Documentation](./Mud.Feishu/README.md)
-
-### 🔄 Mud.Feishu.WebSocket - Real-time Event Subscription Features
-
-| Feature Category | Main Features | Description |
-|------------------|----------------|-------------|
-| **🤖 Event Handling Architecture** | Strategy pattern design | Extensible event handler architecture supporting custom business logic |
-|  | Multi-handler support | Register multiple event handlers to process different event types in parallel |
-|  | Single handler mode | Suitable for simple event handling scenarios with single functionality |
-|  | Custom handlers | Fully customizable for business requirements, supporting complex scenarios |
-|  | Event replay | Supports event replay and recovery mechanisms to ensure data consistency |
-| **🫀 Connection Management** | WebSocket connection management | Persistent connection maintenance and monitoring |
-|  | Auto reconnection mechanism | Automatically reconnects on disconnection to ensure service continuity |
-|  | Heartbeat monitoring | Periodic heartbeat detection to ensure connection is active |
-|  | Connection load balancing | Load distribution across multiple connection instances for improved processing capacity |
-|  | Graceful shutdown | Supports graceful connection shutdown and resource cleanup |
-| **📈 Monitoring & Operations** | Connection status monitoring | Real-time connection count and status monitoring |
-|  | Event processing statistics | Event reception count and processing time statistics |
-|  | Performance metrics collection | Message processing throughput and latency monitoring |
-|  | Health checks | Real-time service health status checking |
-|  | Alert support | Automatic alert notifications for abnormal situations |
-|  | Detailed audit logs | Complete event processing audit records |
-
-### 🌐 Mud.Feishu.Webhook - HTTP Callback Event Handling Features
-
-| Feature Category | Main Features | Description |
-|------------------|----------------|-------------|
-| **🔒 Security Verification & Decryption** | Event subscription verification | Supports Feishu URL verification flow |
-|  | Request signature verification | Verifies authenticity of Feishu event request signatures |
-|  | Timestamp verification | Timestamp check to prevent replay attacks |
-|  | AES-256-CBC decryption | Built-in decryption functionality for automatic encrypted event handling |
-|  | Source IP verification | Configurable IP whitelist verification |
-| **🚀 Event Handling Architecture** | Middleware mode | Seamless integration with ASP.NET Core pipeline |
-|  | Auto event routing | Automatically distributes events to corresponding handlers based on event type |
-|  | Multiple usage modes | Supports middleware mode, controller mode, and hybrid mode |
-|  | Async processing | Fully asynchronous event handling mechanism |
-|  | Concurrency control | Configurable concurrent event processing limit |
-| **📊 Monitoring & Operations** | Performance monitoring | Optional performance metrics collection and monitoring |
-|  | Health checks | Built-in health check endpoints |
-|  | Exception handling | Comprehensive exception handling and logging |
-|  | Request logging | Detailed request processing logging |
-
-
 ### Installation
 
 ```bash
@@ -216,6 +125,97 @@ app.Run();
     }
 }
 ```
+
+## 📊 Key Features
+
+### 🏛️ Mud.Feishu.Abstractions - Event Handling Abstraction Layer
+
+#### 🎯 Event Handling Architecture
+
+| Feature | Description | Event Types |
+|---------|-------------|-------------|
+| **Strategy Pattern** | Extensible event handler architecture supporting multiple event type processing | - |
+| **Factory Pattern** | Built-in event handler factory with dynamic registration and discovery | - |
+| **Abstract Base Classes** | Provides base classes like `DefaultFeishuEventHandler<T>` to simplify development | - |
+| **Type Safety** | Strong-typed event data models with compile-time type checking | - |
+| **Async Processing** | Fully asynchronous event processing with parallel execution support | - |
+| **Extensibility** | Easy to extend with new event types and handlers | - |
+| **Organization Events** | User change events, department organizational structure changes | User create/update/delete, department change |
+| **Message Events** | Receive new messages, send status notifications, read status changes | Message receive, send status, read status |
+| **Application Events** | App authorization events, permission level adjustment events | App authorization, permission change |
+| **Custom Events** | Supports enterprise custom event types | Enterprise custom |
+
+### 🌐 Mud.Feishu - HTTP API Client Features
+
+| Module Category | Main Features | API Version | Description |
+|----------------|---------------|-------------|-------------|
+| **🔐 Authentication & Token Management** | Multi-type token support | - | Supports app token, tenant token, and user token types |
+|  | Auto token caching | - | Built-in token caching mechanism to reduce API calls |
+|  | Smart token refresh | - | Automatically refreshes tokens before expiration to ensure service continuity |
+|  | Multi-tenant support | - | Supports token isolation and management in multi-tenant scenarios |
+|  | OAuth flow | - | Complete OAuth authorization flow support for secure user token acquisition |
+| **🏢 Organization Management** | User management | V1/V3 | Create, update, query, delete, and batch operate users |
+|  | Department management | V1/V3 | Department tree structure maintenance, multi-level department management |
+|  | Employee management | V1 | Employee profile and detailed information management |
+|  | Job level management | - | Enterprise job hierarchy maintenance, CRUD operations |
+|  | Job family management | - | Career path management, job family definition |
+|  | Role permissions | - | Enterprise permission role system, role member management |
+|  | User group management | - | User group member management, flexible user grouping |
+|  | Work city management | - | Multi-city work location maintenance |
+| **📱 Message Service** | Message sending | V1 | Supports rich message types: text, image, file, card, etc. |
+|  | Batch messaging | V1 | Send messages to multiple users/departments in batch |
+|  | Group chat management | - | Group chat creation, member management, group info maintenance |
+|  | Message interactions | - | Message emoji reactions, quote replies, and other interactive features |
+|  | Task management | - | Task creation, updates, status management, and collaboration features |
+| **🛠️ Enterprise Features** | Unified exception handling | - | Comprehensive exception handling mechanism with unified error response format |
+|  | Smart retry mechanism | - | Automatic retry for network failures and temporary errors, improving stability |
+|  | High-performance caching | - | Resolves cache stampede and race conditions, supports automatic token refresh |
+|  | Connection pool management | - | HTTP connection pool reuse, improving API call efficiency |
+|  | Async programming support | - | Full async/await support with non-blocking I/O operations |
+|  | Detailed logging | - | Structured logging for monitoring and troubleshooting |
+
+> 💡 **Note**: The above only shows feature module examples. For more details, please refer to [Mud.Feishu Detailed Documentation](./Mud.Feishu/README.md)
+
+### 🔄 Mud.Feishu.WebSocket - Real-time Event Subscription Features
+
+| Feature Category | Main Features | Description |
+|------------------|----------------|-------------|
+| **🤖 Event Handling Architecture** | Strategy pattern design | Extensible event handler architecture supporting custom business logic |
+|  | Multi-handler support | Register multiple event handlers to process different event types in parallel |
+|  | Single handler mode | Suitable for simple event handling scenarios with single functionality |
+|  | Custom handlers | Fully customizable for business requirements, supporting complex scenarios |
+|  | Event replay | Supports event replay and recovery mechanisms to ensure data consistency |
+| **🫀 Connection Management** | WebSocket connection management | Persistent connection maintenance and monitoring |
+|  | Auto reconnection mechanism | Automatically reconnects on disconnection to ensure service continuity |
+|  | Heartbeat monitoring | Periodic heartbeat detection to ensure connection is active |
+|  | Connection load balancing | Load distribution across multiple connection instances for improved processing capacity |
+|  | Graceful shutdown | Supports graceful connection shutdown and resource cleanup |
+| **📈 Monitoring & Operations** | Connection status monitoring | Real-time connection count and status monitoring |
+|  | Event processing statistics | Event reception count and processing time statistics |
+|  | Performance metrics collection | Message processing throughput and latency monitoring |
+|  | Health checks | Real-time service health status checking |
+|  | Alert support | Automatic alert notifications for abnormal situations |
+|  | Detailed audit logs | Complete event processing audit records |
+
+### 🌐 Mud.Feishu.Webhook - HTTP Callback Event Handling Features
+
+| Feature Category | Main Features | Description |
+|------------------|----------------|-------------|
+| **🔒 Security Verification & Decryption** | Event subscription verification | Supports Feishu URL verification flow |
+|  | Request signature verification | Verifies authenticity of Feishu event request signatures |
+|  | Timestamp verification | Timestamp check to prevent replay attacks |
+|  | AES-256-CBC decryption | Built-in decryption functionality for automatic encrypted event handling |
+|  | Source IP verification | Configurable IP whitelist verification |
+| **🚀 Event Handling Architecture** | Middleware mode | Seamless integration with ASP.NET Core pipeline |
+|  | Auto event routing | Automatically distributes events to corresponding handlers based on event type |
+|  | Multiple usage modes | Supports middleware mode, controller mode, and hybrid mode |
+|  | Async processing | Fully asynchronous event handling mechanism |
+|  | Concurrency control | Configurable concurrent event processing limit |
+| **📊 Monitoring & Operations** | Performance monitoring | Optional performance metrics collection and monitoring |
+|  | Health checks | Built-in health check endpoints |
+|  | Exception handling | Comprehensive exception handling and logging |
+|  | Request logging | Detailed request processing logging |
+
 
 ## 🎯 Usage Scenarios
 

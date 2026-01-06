@@ -67,11 +67,12 @@ public class FeishuServiceBuilder
     /// 添加飞书HttpClient注册代码。
     /// </summary>
     /// <returns></returns>
-    public FeishuServiceBuilder AddFeishuHttpClient()
+    public FeishuServiceBuilder AddFeishuHttpClient<TImplementation>()
+        where TImplementation : class, IEnhancedHttpClient
     {
         if (_configuration.IsFeishuHttpClient) return this;
 
-        _services.AddHttpClient<IEnhancedHttpClient, FeishuHttpClient>((serviceProvider, client) =>
+        _services.AddHttpClient<IEnhancedHttpClient, TImplementation>((serviceProvider, client) =>
         {
             var options = serviceProvider.GetRequiredService<IOptions<FeishuOptions>>().Value;
             client.BaseAddress = new Uri(options.BaseUrl ?? "https://open.feishu.cn");
@@ -90,6 +91,13 @@ public class FeishuServiceBuilder
         });
         return this;
     }
+
+    /// <summary>
+    /// 添加飞书HttpClient注册代码。
+    /// </summary>
+    /// <returns></returns>
+    public FeishuServiceBuilder AddFeishuHttpClient() => AddFeishuHttpClient<FeishuHttpClient>();
+
 
     /// <summary>
     /// 添加令牌管理服务

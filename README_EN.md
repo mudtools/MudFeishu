@@ -11,6 +11,8 @@ An enterprise-grade .NET SDK for Feishu (Lark) API integration, providing compre
 | **Mud.Feishu.WebSocket** | Feishu WebSocket client supporting real-time event subscription and automatic reconnection | [![Nuget](https://img.shields.io/nuget/v/Mud.Feishu.WebSocket.svg)](https://www.nuget.org/packages/Mud.Feishu.WebSocket/) |
 | **Mud.Feishu.Webhook** | Feishu Webhook event handling component for HTTP callback event reception and processing | [![Nuget](https://img.shields.io/nuget/v/Mud.Feishu.Webhook.svg)](https://www.nuget.org/packages/Mud.Feishu.Webhook/) |
 
+## 🚀 Quick Start
+
 ## 📊 Key Features
 
 ### 🏛️ Mud.Feishu.Abstractions - Event Handling Abstraction Layer
@@ -61,7 +63,6 @@ An enterprise-grade .NET SDK for Feishu (Lark) API integration, providing compre
 
 > 💡 **Note**: The above only shows feature module examples. For more details, please refer to [Mud.Feishu Detailed Documentation](./Mud.Feishu/README.md)
 
-
 ### 🔄 Mud.Feishu.WebSocket - Real-time Event Subscription Features
 
 | Feature Category | Main Features | Description |
@@ -102,8 +103,6 @@ An enterprise-grade .NET SDK for Feishu (Lark) API integration, providing compre
 |  | Exception handling | Comprehensive exception handling and logging |
 |  | Request logging | Detailed request processing logging |
 
-
-## 🚀 Quick Start
 
 ### Installation
 

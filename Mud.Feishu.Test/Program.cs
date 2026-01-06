@@ -27,7 +27,8 @@ builder.Services.AddFeishuServicesBuilder(builder.Configuration, "Feishu")
                 .AddAuthenticationApi()
                 .AddTenantTokenManager()
                 .AddModules()
-                .Build().AddLogging(option => option.AddConsole());
+                .Build()
+                .AddLogging(option => option.AddConsole());
 
 var app = builder.Build();
 

@@ -58,8 +58,30 @@ using Mud.Feishu;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Register all Feishu API services with one line of code
-builder.Services.AddFeishuApiService(builder.Configuration);
+// Register all Feishu API services with one line of code (Lazy mode)
+builder.Services.AddFeishuServices(builder.Configuration);
+
+// Register services flexibly as needed (Builder pattern)
+builder.Services.AddFeishuServicesBuilder(builder.Configuration)
+    .AddTokenManagers()                   // Token management
+    .AddOrganizationApi()                 // Organization structure
+    .AddMessageApi()                      // Message service
+    .AddChatGroupApi()                    // Group service
+    .Build();
+
+// Quick single module registration
+builder.Services.AddFeishuTokenManagers(builder.Configuration);     // Token management
+builder.Services.AddFeishuOrganizationApi(builder.Configuration);  // Organization structure
+builder.Services.AddFeishuMessageApi(builder.Configuration);       // Message service
+
+// Modular registration
+builder.Services.AddFeishuModules(builder.Configuration, new[]
+{
+    FeishuModule.TokenManagement,
+    FeishuModule.Organization,
+    FeishuModule.Message,
+    FeishuModule.ChatGroup
+});
 
 var app = builder.Build();
 ```
@@ -265,9 +287,7 @@ public class NotificationService
             DeptIds = departmentIds,
             Content = new TextContent
             {
-                Text = $"📢 {title}
-
-{content}"
+                Text = $"📢 {title}-{content}"
             }
         };
 
@@ -389,6 +409,7 @@ public class OrganizationSyncService
 ## 🎯 Quick Reference for Common Operations
 
 ### 📧 Message Notifications
+
 ```csharp
 // Send text message
 var textContent = new MessageTextContent { Text = "Hello World!" };
@@ -409,6 +430,7 @@ await batchMessageApi.BatchSendTextMessageAsync(new BatchSenderTextMessageReques
 ```
 
 ### 👤 User Management
+
 ```csharp
 // Create user
 var userResult = await userApi.CreateUserAsync(new CreateUserRequest
@@ -424,6 +446,7 @@ var users = await userApi.GetUserByIdsAsync(new[] { "user_1", "user_2", "user_3"
 ```
 
 ### 🏢 Organization Structure
+
 ```csharp
 // Get department tree
 var departments = await deptApi.GetDepartmentsByParentIdAsync("0", fetch_child: true);
@@ -440,6 +463,7 @@ var newDept = await deptApi.CreateDepartmentAsync(new DepartmentCreateRequest
 ```
 
 ### 🛠️ Token Management
+
 ```csharp
 // Get valid token directly (automatically handles refresh)
 var token = await tokenManager.GetTokenAsync();

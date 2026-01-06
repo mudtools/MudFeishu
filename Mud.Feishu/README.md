@@ -58,8 +58,30 @@ using Mud.Feishu;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 一行代码注册所有飞书 API 服务
-builder.Services.AddFeishuApiService(builder.Configuration);
+// 一行代码注册所有飞书 API 服务（懒人模式）
+builder.Services.AddFeishuServices(builder.Configuration);
+
+// 按需灵活注册服务（构造者模式）
+builder.Services.AddFeishuServicesBuilder(builder.Configuration)
+    .AddTokenManagers()                   // 令牌管理
+    .AddOrganizationApi()                 // 组织架构
+    .AddMessageApi()                      // 消息服务
+    .AddChatGroupApi()                    // 群组服务
+    .Build();
+
+// 快速单模块注册
+builder.Services.AddFeishuTokenManagers(builder.Configuration);     // 令牌管理
+builder.Services.AddFeishuOrganizationApi(builder.Configuration);  // 组织架构
+builder.Services.AddFeishuMessageApi(builder.Configuration);       // 消息服务
+
+// 模块化注册
+builder.Services.AddFeishuModules(builder.Configuration, new[]
+{
+    FeishuModule.TokenManagement,
+    FeishuModule.Organization,
+    FeishuModule.Message,
+    FeishuModule.ChatGroup
+});
 
 var app = builder.Build();
 ```
@@ -265,9 +287,7 @@ public class NotificationService
             DeptIds = departmentIds,
             Content = new TextContent
             {
-                Text = $"📢 {title}
-
-{content}"
+                Text = $"📢 {title}-{content}"
             }
         };
 
@@ -389,6 +409,7 @@ public class OrganizationSyncService
 ## 🎯 常见操作快速参考
 
 ### 📧 消息通知
+
 ```csharp
 // 发送文本消息
 var textContent = new MessageTextContent { Text = "Hello World!" };
@@ -409,6 +430,7 @@ await batchMessageApi.BatchSendTextMessageAsync(new BatchSenderTextMessageReques
 ```
 
 ### 👤 用户管理
+
 ```csharp
 // 创建用户
 var userResult = await userApi.CreateUserAsync(new CreateUserRequest
@@ -424,6 +446,7 @@ var users = await userApi.GetUserByIdsAsync(new[] { "user_1", "user_2", "user_3"
 ```
 
 ### 🏢 组织架构
+
 ```csharp
 // 获取部门树
 var departments = await deptApi.GetDepartmentsByParentIdAsync("0", fetch_child: true);
@@ -440,6 +463,7 @@ var newDept = await deptApi.CreateDepartmentAsync(new DepartmentCreateRequest
 ```
 
 ### 🛠️ 令牌管理
+
 ```csharp
 // 直接获取有效令牌（自动处理刷新）
 var token = await tokenManager.GetTokenAsync();

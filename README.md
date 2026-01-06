@@ -130,15 +130,35 @@ using Mud.Feishu.Webhook;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 注册 HTTP API 服务（方式一：传统方法）
-builder.Services.AddFeishuApiService(builder.Configuration);
+// 注册 HTTP API 服务（方式一：懒人模式 - 注册所有服务）
+builder.Services.AddFeishuServices(builder.Configuration);
 
-// 注册 HTTP API 服务（方式二：构造者模式）
-// builder.Services.AddFeishuServices()
-//     .ConfigureFrom(builder.Configuration)
-//     .AddOrganizationApi()
-//     .AddMessageApi()
-//     .Build();
+// 注册 HTTP API 服务（方式二：构造者模式 - 按需注册）
+builder.Services.AddFeishuServicesBuilder(builder.Configuration)
+    .AddOrganizationApi()
+    .AddMessageApi()
+    .AddChatGroupApi()
+    .Build();
+
+// 注册 HTTP API 服务（方式三：按模块注册）
+builder.Services.AddFeishuModules(builder.Configuration, new[] {
+    FeishuModule.Organization,
+    FeishuModule.Message,
+    FeishuModule.ChatGroup
+});
+
+// 注册 HTTP API 服务（方式四：仅令牌管理服务）
+builder.Services.AddFeishuTokenManagers(builder.Configuration);
+
+// 注册 HTTP API 服务（方式五：代码配置）
+builder.Services.AddFeishuServicesBuilder(options =>
+{
+    options.AppId = "your_app_id";
+    options.AppSecret = "your_app_secret";
+    options.BaseUrl = "https://open.feishu.cn";
+})
+.AddAllApis()
+.Build();
 
 // 注册 WebSocket 事件订阅服务
 builder.Services.AddFeishuWebSocketServiceBuilder(builder.Configuration)
@@ -600,7 +620,7 @@ public class MessageReceiveEventHandler : IFeishuEventHandler
 ## 🛠️ 技术栈
 
 #### 核心依赖
-- **Mud.ServiceCodeGenerator v1.4.5.3** - HTTP 客户端代码生成器
+- **Mud.ServiceCodeGenerator v1.4.6** - HTTP 客户端代码生成器
 - **System.Text.Json v10.0.1** - 高性能 JSON 序列化 (.NET Standard 2.0)
 - **Microsoft.Extensions.Http** - HTTP 客户端工厂
   - .NET 6.0 / .NET Standard 2.0: v8.0.1

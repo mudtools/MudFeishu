@@ -25,7 +25,7 @@ public static class FeishuServiceCollectionBuilderExtensions
     }
 
     /// <summary>
-    /// 快速注册飞书所有服务（全功能注册）
+    /// 快速注册飞书所有服务（懒人模式全功能注册）
     /// </summary>
     /// <param name="services">服务集合</param>
     /// <param name="configuration">配置对象</param>

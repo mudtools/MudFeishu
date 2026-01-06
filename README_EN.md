@@ -130,15 +130,35 @@ using Mud.Feishu.Webhook;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Register HTTP API service (Method 1: Traditional)
-builder.Services.AddFeishuApiService(builder.Configuration);
+// Register HTTP API service (Method 1: Lazy mode - register all services)
+builder.Services.AddFeishuServices(builder.Configuration);
 
-// Register HTTP API service (Method 2: Builder pattern)
-// builder.Services.AddFeishuServices()
-//     .ConfigureFrom(builder.Configuration)
-//     .AddOrganizationApi()
-//     .AddMessageApi()
-//     .Build();
+// Register HTTP API service (Method 2: Builder pattern - on-demand registration)
+builder.Services.AddFeishuServicesBuilder(builder.Configuration)
+    .AddOrganizationApi()
+    .AddMessageApi()
+    .AddChatGroupApi()
+    .Build();
+
+// Register HTTP API service (Method 3: Module-based registration)
+builder.Services.AddFeishuModules(builder.Configuration, new[] {
+    FeishuModule.Organization,
+    FeishuModule.Message,
+    FeishuModule.ChatGroup
+});
+
+// Register HTTP API service (Method 4: Token management services only)
+builder.Services.AddFeishuTokenManagers(builder.Configuration);
+
+// Register HTTP API service (Method 5: Code-based configuration)
+builder.Services.AddFeishuServicesBuilder(options =>
+{
+    options.AppId = "your_app_id";
+    options.AppSecret = "your_app_secret";
+    options.BaseUrl = "https://open.feishu.cn";
+})
+.AddAllApis()
+.Build();
 
 // Register WebSocket event subscription service
 builder.Services.AddFeishuWebSocketServiceBuilder(builder.Configuration)

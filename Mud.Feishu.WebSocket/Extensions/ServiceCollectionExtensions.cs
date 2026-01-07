@@ -24,9 +24,9 @@ public static class ServiceCollectionExtensions
     /// <param name="services">服务集合</param>
     /// <param name="configuration">配置对象</param>
     /// <returns>服务集合，支持链式调用</returns>
-    public static FeishuWebSocketServiceBuilder AddFeishuWebSocketServiceBuilder(this IServiceCollection services, IConfiguration configuration)
+    public static FeishuWebSocketServiceBuilder CreateFeishuWebSocketServiceBuilder(this IServiceCollection services, IConfiguration configuration)
     {
-        return services.AddFeishuWebSocketServiceBuilder(configuration, DefaultConfigurationSection);
+        return services.CreateFeishuWebSocketServiceBuilder(configuration, DefaultConfigurationSection);
     }
 
     /// <summary>
@@ -35,7 +35,7 @@ public static class ServiceCollectionExtensions
     /// <param name="services">服务集合</param>
     /// <param name="configureOptions">配置选项的委托</param>
     /// <returns>服务集合，支持链式调用</returns>
-    public static FeishuWebSocketServiceBuilder AddFeishuWebSocketServiceBuilder(this IServiceCollection services, Action<FeishuWebSocketOptions> configureOptions)
+    public static FeishuWebSocketServiceBuilder CreateFeishuWebSocketServiceBuilder(this IServiceCollection services, Action<FeishuWebSocketOptions> configureOptions)
     {
         if (configureOptions == null)
             throw new ArgumentNullException(nameof(configureOptions));
@@ -51,7 +51,7 @@ public static class ServiceCollectionExtensions
     /// <param name="configuration">配置对象</param>
     /// <param name="sectionName">配置节名称，默认为"WebSocket"</param>
     /// <returns>WebSocket服务建造者</returns>
-    public static FeishuWebSocketServiceBuilder AddFeishuWebSocketServiceBuilder(this IServiceCollection services, IConfiguration configuration, string? sectionName = null)
+    public static FeishuWebSocketServiceBuilder CreateFeishuWebSocketServiceBuilder(this IServiceCollection services, IConfiguration configuration, string? sectionName = null)
     {
         var builder = new FeishuWebSocketServiceBuilder(services);
         return builder.ConfigureFrom(configuration, sectionName);

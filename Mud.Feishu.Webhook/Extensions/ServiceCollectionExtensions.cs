@@ -19,7 +19,7 @@ public static class ServiceCollectionExtensions
     /// </summary>
     /// <param name="services">服务集合</param>
     /// <returns>Webhook 服务建造者</returns>
-    public static FeishuWebhookServiceBuilder AddFeishuWebhookBuilder(this IServiceCollection services)
+    private static FeishuWebhookServiceBuilder CreateFeishuWebhookBuilder(this IServiceCollection services)
     {
         return new FeishuWebhookServiceBuilder(services);
     }
@@ -31,12 +31,12 @@ public static class ServiceCollectionExtensions
     /// <param name="configuration">配置对象</param>
     /// <param name="sectionName">配置节名称，默认为"FeishuWebhook"</param>
     /// <returns>服务集合，支持链式调用</returns>
-    public static FeishuWebhookServiceBuilder AddFeishuWebhookServiceBuilder(
+    public static FeishuWebhookServiceBuilder CreateFeishuWebhookServiceBuilder(
         this IServiceCollection services,
         IConfiguration configuration,
         string? sectionName = null)
     {
-        return services.AddFeishuWebhookBuilder()
+        return services.CreateFeishuWebhookBuilder()
                        .ConfigureFrom(configuration, sectionName);
     }
 
@@ -46,14 +46,14 @@ public static class ServiceCollectionExtensions
     /// <param name="services">服务集合</param>
     /// <param name="configureOptions">配置选项</param>
     /// <returns>服务集合</returns>
-    public static FeishuWebhookServiceBuilder AddFeishuWebhookServiceBuilder(
+    public static FeishuWebhookServiceBuilder CreateFeishuWebhookServiceBuilder(
         this IServiceCollection services,
         Action<FeishuWebhookOptions> configureOptions)
     {
         if (configureOptions == null)
             throw new ArgumentNullException(nameof(configureOptions));
 
-        return services.AddFeishuWebhookBuilder()
+        return services.CreateFeishuWebhookBuilder()
                        .ConfigureOptions(configureOptions);
     }
 
@@ -63,13 +63,13 @@ public static class ServiceCollectionExtensions
     /// <param name="services">服务集合</param>
     /// <param name="sectionName">配置节名称</param>
     /// <returns>服务集合</returns>
-    public static FeishuWebhookServiceBuilder AddFeishuWebhookServiceBuilder(
+    public static FeishuWebhookServiceBuilder CreateFeishuWebhookServiceBuilder(
         this IServiceCollection services,
         string sectionName = "FeishuWebhook")
     {
         // 从服务集合中获取配置
         var configuration = services.BuildServiceProvider()
                                     .GetRequiredService<IConfiguration>();
-        return services.AddFeishuWebhookServiceBuilder(configuration, sectionName);
+        return services.CreateFeishuWebhookServiceBuilder(configuration, sectionName);
     }
 }

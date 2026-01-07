@@ -24,6 +24,23 @@ public static class FeishuServiceCollectionBuilderExtensions
         return new FeishuServiceBuilder(services);
     }
 
+
+    /// <summary>
+    /// 使用配置文件创建飞书服务建造者
+    /// </summary>
+    /// <param name="services">服务集合</param>
+    /// <param name="configuration">配置对象</param>
+    /// <param name="sectionName">配置节名称，默认为"Feishu"</param>
+    /// <returns>飞书服务建造者实例</returns>
+    public static FeishuServiceBuilder CreateFeishuServicesBuilder(this IServiceCollection services, IConfiguration configuration, string sectionName = "Feishu")
+    {
+        if (configuration == null)
+            throw new ArgumentNullException(nameof(configuration));
+
+        return services.CreateFeishuServicesBuilder()
+                       .ConfigureFrom(configuration, sectionName);
+    }
+
     /// <summary>
     /// 快速注册飞书所有服务（懒人模式全功能注册）
     /// </summary>
@@ -33,26 +50,11 @@ public static class FeishuServiceCollectionBuilderExtensions
     /// <returns>服务集合，支持链式调用</returns>
     public static IServiceCollection AddFeishuServices(this IServiceCollection services, IConfiguration configuration, string sectionName = "Feishu")
     {
-        return services.AddFeishuServicesBuilder(configuration, sectionName)
+        return services.CreateFeishuServicesBuilder(configuration, sectionName)
                        .AddAllApis()
                        .Build();
     }
 
-    /// <summary>
-    /// 使用配置文件创建飞书服务建造者
-    /// </summary>
-    /// <param name="services">服务集合</param>
-    /// <param name="configuration">配置对象</param>
-    /// <param name="sectionName">配置节名称，默认为"Feishu"</param>
-    /// <returns>飞书服务建造者实例</returns>
-    public static FeishuServiceBuilder AddFeishuServicesBuilder(this IServiceCollection services, IConfiguration configuration, string sectionName = "Feishu")
-    {
-        if (configuration == null)
-            throw new ArgumentNullException(nameof(configuration));
-
-        return services.CreateFeishuServicesBuilder()
-                       .ConfigureFrom(configuration, sectionName);
-    }
 
     /// <summary>
     /// 使用代码配置创建飞书服务建造者
@@ -77,7 +79,7 @@ public static class FeishuServiceCollectionBuilderExtensions
     /// <returns>服务集合，支持链式调用</returns>
     public static IServiceCollection AddFeishuTokenManagers(this IServiceCollection services, IConfiguration configuration, string sectionName = "Feishu")
     {
-        return services.AddFeishuServicesBuilder(configuration, sectionName)
+        return services.CreateFeishuServicesBuilder(configuration, sectionName)
                        .AddTokenManagers()
                        .Build();
     }
@@ -96,7 +98,7 @@ public static class FeishuServiceCollectionBuilderExtensions
         if (modules == null || modules.Length == 0)
             throw new ArgumentException("至少需要指定一个模块", nameof(modules));
 
-        return services.AddFeishuServicesBuilder(configuration, sectionName)
+        return services.CreateFeishuServicesBuilder(configuration, sectionName)
                        .AddModules(modules)
                        .Build();
     }

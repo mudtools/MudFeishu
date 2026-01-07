@@ -42,14 +42,14 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddFeishuServices(builder.Configuration);
 
 // Register HTTP API service (Method 2: Builder pattern - on-demand registration)
-builder.Services.AddFeishuServicesBuilder(builder.Configuration)
+builder.Services.CreateFeishuServicesBuilder(builder.Configuration)
     .AddOrganizationApi()
     .AddMessageApi()
     .AddChatGroupApi()
     .Build();
 
 // Register HTTP API service (Method 3: Module-based registration)
-builder.Services.AddFeishuModules(builder.Configuration, new[] {
+builder.Services.AddFeishuServices(builder.Configuration, new[] {
     FeishuModule.Organization,
     FeishuModule.Message,
     FeishuModule.ChatGroup
@@ -59,7 +59,7 @@ builder.Services.AddFeishuModules(builder.Configuration, new[] {
 builder.Services.AddFeishuTokenManagers(builder.Configuration);
 
 // Register HTTP API service (Method 5: Code-based configuration)
-builder.Services.AddFeishuServicesBuilder(options =>
+builder.Services.CreateFeishuServicesBuilder(options =>
 {
     options.AppId = "your_app_id";
     options.AppSecret = "your_app_secret";

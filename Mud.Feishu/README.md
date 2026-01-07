@@ -62,7 +62,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddFeishuServices(builder.Configuration);
 
 // 按需灵活注册服务（构造者模式）
-builder.Services.AddFeishuServicesBuilder(builder.Configuration)
+builder.Services.CreateFeishuServicesBuilder(builder.Configuration)
     .AddTokenManagers()                   // 令牌管理
     .AddOrganizationApi()                 // 组织架构
     .AddMessageApi()                      // 消息服务
@@ -71,11 +71,17 @@ builder.Services.AddFeishuServicesBuilder(builder.Configuration)
 
 // 快速单模块注册
 builder.Services.AddFeishuTokenManagers(builder.Configuration);     // 令牌管理
-builder.Services.AddFeishuOrganizationApi(builder.Configuration);  // 组织架构
-builder.Services.AddFeishuMessageApi(builder.Configuration);       // 消息服务
+builder.Services.CreateFeishuServicesBuilder(builder.Configuration)
+    .AddOrganizationApi()                 // 组织架构
+    .AddMessageApi()                      // 消息服务
+    .AddChatGroupApi()                    // 群组服务
+    .AddApprovalApi()                     // 流程审批
+    .AddTaskApi()                         // 任务管理
+    .AddCardApi()                         // 卡片管理
+    .Build();
 
 // 模块化注册
-builder.Services.AddFeishuModules(builder.Configuration, new[]
+builder.Services.AddFeishuServices(builder.Configuration, new[]
 {
     FeishuModule.TokenManagement,
     FeishuModule.Organization,
@@ -89,9 +95,24 @@ var app = builder.Build();
 #### 🔧 构造者模式（推荐高级用户）
 
 ```csharp
-// 按需灵活注册服务
-builder.Services.AddFeishuServices()
-    .ConfigureFrom(builder.Configuration)
+// 按需灵活注册服务（使用配置文件）
+builder.Services.CreateFeishuServicesBuilder(builder.Configuration)
+    .AddTokenManagers()                   // 令牌管理
+    .AddOrganizationApi()                 // 组织架构
+    .AddMessageApi()                      // 消息服务
+    .Build();
+
+// 按需灵活注册服务（使用代码配置）
+builder.Services.CreateFeishuServicesBuilder(options =>
+{
+    options.AppId = "your_app_id";
+    options.AppSecret = "your_app_secret";
+    options.BaseUrl = "https://open.feishu.cn";
+})
+    .AddTokenManagers()                   // 令牌管理
+    .AddOrganizationApi()                 // 组织架构
+    .AddMessageApi()                      // 消息服务
+    .Build();
     .AddTokenManagers()                   // 令牌管理
     .AddOrganizationApi()                 // 组织架构
     .AddMessageApi()                      // 消息服务
@@ -102,9 +123,11 @@ builder.Services.AddFeishuServices()
 
 ```csharp
 // 只注册需要的服务
-builder.Services.AddFeishuOrganizationApi(builder.Configuration);  // 组织架构
-builder.Services.AddFeishuMessageApi(builder.Configuration);        // 消息服务
-builder.Services.AddFeishuTokenManagers(builder.Configuration);     // 令牌管理
+builder.Services.CreateFeishuServicesBuilder(builder.Configuration)
+    .AddOrganizationApi()                 // 组织架构
+    .AddMessageApi()                      // 消息服务
+    .AddTokenManagers()                   // 令牌管理
+    .Build();
 ```
 
 #### 📦 模块化注册
@@ -506,7 +529,7 @@ using Mud.Feishu;
 var builder = WebApplication.CreateBuilder(args);
 
 // 选择注册方式
-builder.Services.AddFeishuApiService(builder.Configuration);
+builder.Services.AddFeishuServices(builder.Configuration);
 
 var app = builder.Build();
 

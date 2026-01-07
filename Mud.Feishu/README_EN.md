@@ -62,7 +62,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddFeishuServices(builder.Configuration);
 
 // Register services flexibly as needed (Builder pattern)
-builder.Services.AddFeishuServicesBuilder(builder.Configuration)
+builder.Services.CreateFeishuServicesBuilder(builder.Configuration)
     .AddTokenManagers()                   // Token management
     .AddOrganizationApi()                 // Organization structure
     .AddMessageApi()                      // Message service
@@ -71,11 +71,17 @@ builder.Services.AddFeishuServicesBuilder(builder.Configuration)
 
 // Quick single module registration
 builder.Services.AddFeishuTokenManagers(builder.Configuration);     // Token management
-builder.Services.AddFeishuOrganizationApi(builder.Configuration);  // Organization structure
-builder.Services.AddFeishuMessageApi(builder.Configuration);       // Message service
+builder.Services.CreateFeishuServicesBuilder(builder.Configuration)
+    .AddOrganizationApi()                 // Organization structure
+    .AddMessageApi()                      // Message service
+    .AddChatGroupApi()                    // Group service
+    .AddApprovalApi()                     // Approval service
+    .AddTaskApi()                         // Task service
+    .AddCardApi()                         // Card service
+    .Build();
 
 // Modular registration
-builder.Services.AddFeishuModules(builder.Configuration, new[]
+builder.Services.AddFeishuServices(builder.Configuration, new[]
 {
     FeishuModule.TokenManagement,
     FeishuModule.Organization,
@@ -89,9 +95,24 @@ var app = builder.Build();
 #### 🔧 Builder Pattern (Recommended for Advanced Users)
 
 ```csharp
-// Register services flexibly as needed
-builder.Services.AddFeishuServices()
-    .ConfigureFrom(builder.Configuration)
+// Register services flexibly as needed (using configuration file)
+builder.Services.CreateFeishuServicesBuilder(builder.Configuration)
+    .AddTokenManagers()                   // Token management
+    .AddOrganizationApi()                 // Organization structure
+    .AddMessageApi()                      // Message service
+    .Build();
+
+// Register services flexibly as needed (using code configuration)
+builder.Services.CreateFeishuServicesBuilder(options =>
+{
+    options.AppId = "your_app_id";
+    options.AppSecret = "your_app_secret";
+    options.BaseUrl = "https://open.feishu.cn";
+})
+    .AddTokenManagers()                   // Token management
+    .AddOrganizationApi()                 // Organization structure
+    .AddMessageApi()                      // Message service
+    .Build();
     .AddTokenManagers()                   // Token management
     .AddOrganizationApi()                 // Organization structure
     .AddMessageApi()                      // Message service
@@ -102,9 +123,11 @@ builder.Services.AddFeishuServices()
 
 ```csharp
 // Register only the services you need
-builder.Services.AddFeishuOrganizationApi(builder.Configuration);  // Organization structure
-builder.Services.AddFeishuMessageApi(builder.Configuration);        // Message service
-builder.Services.AddFeishuTokenManagers(builder.Configuration);     // Token management
+builder.Services.CreateFeishuServicesBuilder(builder.Configuration)
+    .AddOrganizationApi()                 // Organization structure
+    .AddMessageApi()                      // Message service
+    .AddTokenManagers()                   // Token management
+    .Build();
 ```
 
 #### 📦 Modular Registration
@@ -506,7 +529,7 @@ using Mud.Feishu;
 var builder = WebApplication.CreateBuilder(args);
 
 // Choose registration method
-builder.Services.AddFeishuApiService(builder.Configuration);
+builder.Services.AddFeishuServices(builder.Configuration);
 
 var app = builder.Build();
 

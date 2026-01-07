@@ -44,9 +44,10 @@ public class FeishuWebSocketServiceBuilder
 
         var section = sectionName ?? "Feishu:WebSocket";
         _services.Configure<FeishuWebSocketOptions>(options => configuration.GetSection(section).Bind(options));
-        _services.AddFeishuServicesBuilder(configuration, "Feishu")
+        _services.CreateFeishuServicesBuilder(configuration, "Feishu")
                  .AddTenantTokenManager()
-                 .AddAuthenticationApi();
+                 .AddAuthenticationApi()
+                 .Build();
         return this;
     }
 

@@ -41,6 +41,23 @@ public static class FeishuServiceCollectionBuilderExtensions
                        .ConfigureFrom(configuration, sectionName);
     }
 
+
+    /// <summary>
+    /// 使用代码配置创建飞书服务建造者
+    /// </summary>
+    /// <param name="services">服务集合</param>
+    /// <param name="configureOptions">配置选项的委托</param>
+    /// <returns>飞书服务建造者实例</returns>
+    public static FeishuServiceBuilder CreateFeishuServicesBuilder(this IServiceCollection services, Action<FeishuOptions> configureOptions)
+    {
+        if (configureOptions == null)
+            throw new ArgumentNullException(nameof(configureOptions));
+
+        return services.CreateFeishuServicesBuilder()
+                       .ConfigureOptions(configureOptions);
+    }
+
+
     /// <summary>
     /// 快速注册飞书所有服务（懒人模式全功能注册）
     /// </summary>
@@ -55,20 +72,26 @@ public static class FeishuServiceCollectionBuilderExtensions
                        .Build();
     }
 
+    
 
     /// <summary>
-    /// 使用代码配置创建飞书服务建造者
+    /// 根据模块注册飞书服务
     /// </summary>
     /// <param name="services">服务集合</param>
-    /// <param name="configureOptions">配置选项的委托</param>
-    /// <returns>飞书服务建造者实例</returns>
-    public static FeishuServiceBuilder AddFeishuServicesBuilder(this IServiceCollection services, Action<FeishuOptions> configureOptions)
+    /// <param name="configuration">配置对象</param>
+    /// <param name="modules">要注册的模块</param>
+    /// <param name="sectionName">配置节名称，默认为"Feishu"</param>
+    /// <returns>服务集合，支持链式调用</returns>
+    public static IServiceCollection AddFeishuServices(this IServiceCollection services, IConfiguration configuration, FeishuModule[] modules, string sectionName = "Feishu")
     {
-        if (configureOptions == null)
-            throw new ArgumentNullException(nameof(configureOptions));
+        if (modules == null || modules.Length == 0)
+            throw new ArgumentException("至少需要指定一个模块", nameof(modules));
 
-        return services.CreateFeishuServicesBuilder().ConfigureOptions(configureOptions);
+        return services.CreateFeishuServicesBuilder(configuration, sectionName)
+                       .AddModules(modules)
+                       .Build();
     }
+
 
     /// <summary>
     /// 快速注册飞书令牌管理服务（单模块注册）
@@ -84,22 +107,4 @@ public static class FeishuServiceCollectionBuilderExtensions
                        .Build();
     }
 
-
-    /// <summary>
-    /// 根据模块注册飞书服务
-    /// </summary>
-    /// <param name="services">服务集合</param>
-    /// <param name="configuration">配置对象</param>
-    /// <param name="modules">要注册的模块</param>
-    /// <param name="sectionName">配置节名称，默认为"Feishu"</param>
-    /// <returns>服务集合，支持链式调用</returns>
-    public static IServiceCollection AddFeishuModules(this IServiceCollection services, IConfiguration configuration, FeishuModule[] modules, string sectionName = "Feishu")
-    {
-        if (modules == null || modules.Length == 0)
-            throw new ArgumentException("至少需要指定一个模块", nameof(modules));
-
-        return services.CreateFeishuServicesBuilder(configuration, sectionName)
-                       .AddModules(modules)
-                       .Build();
-    }
 }

@@ -28,7 +28,7 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 // 配置飞书基础令牌服务
-builder.Services.AddFeishuServicesBuilder(builder.Configuration)
+builder.Services.CreateFeishuServicesBuilder(builder.Configuration)
                 .AddAuthenticationApi()
                 .AddTokenManagers()
                 .Build();

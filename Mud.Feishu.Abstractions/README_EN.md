@@ -290,7 +290,7 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 // Configure Feishu services
-builder.Services.AddFeishuServicesBuilder(builder.Configuration)
+builder.Services.CreateFeishuServicesBuilder(builder.Configuration)
                 .AddAuthenticationApi()
                 .AddTokenManagers()
                 .Build();

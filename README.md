@@ -42,24 +42,29 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddFeishuServices(builder.Configuration);
 
 // 注册 HTTP API 服务（方式二：构造者模式 - 按需注册）
-builder.Services.AddFeishuServicesBuilder(builder.Configuration)
+builder.Services.CreateFeishuServicesBuilder(builder.Configuration)
     .AddOrganizationApi()
     .AddMessageApi()
     .AddChatGroupApi()
+    .AddApprovalApi()
+    .AddTaskApi()
+    .AddCardApi()
     .Build();
 
 // 注册 HTTP API 服务（方式三：按模块注册）
-builder.Services.AddFeishuModules(builder.Configuration, new[] {
+builder.Services.AddFeishuServices(builder.Configuration, new[] {
     FeishuModule.Organization,
     FeishuModule.Message,
-    FeishuModule.ChatGroup
+    FeishuModule.ChatGroup,
+    FeishuModule.Approval,
+    FeishuModule.Authentication
 });
 
 // 注册 HTTP API 服务（方式四：仅令牌管理服务）
 builder.Services.AddFeishuTokenManagers(builder.Configuration);
 
 // 注册 HTTP API 服务（方式五：代码配置）
-builder.Services.AddFeishuServicesBuilder(options =>
+builder.Services.CreateFeishuServicesBuilder(options =>
 {
     options.AppId = "your_app_id";
     options.AppSecret = "your_app_secret";

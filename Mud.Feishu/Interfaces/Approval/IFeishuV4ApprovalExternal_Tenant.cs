@@ -58,4 +58,15 @@ public interface IFeishuTenantV4ApprovalExternal
     Task<FeishuApiResult<SyncExternalInstancesResult>?> SyncApprovalInstancesAsync(
         [Body] SyncApprovalInstancesRequest syncApprovalInstancesRequest,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 校验三方审批实例数据，用于判断服务端数据是否为最新的。
+    /// <para>请求时提交实例最新更新时间，如果服务端不存在该实例，或者服务端实例更新时间不是最新的，则返回对应实例 ID。</para>
+    /// </summary>
+    /// <param name="checkExternalInstancesRequest">校验三方审批实例请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Post("/open-apis/approval/v4/external_instances/check")]
+    Task<FeishuApiResult<SyncExternalInstancesResult>?> CheckApprovalInstancesAsync(
+        [Body] CheckExternalInstancesRequest checkExternalInstancesRequest,
+        CancellationToken cancellationToken = default);
 }

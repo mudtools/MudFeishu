@@ -55,7 +55,7 @@ public interface IFeishuTenantV4ApprovalExternal
     /// <param name="syncApprovalInstancesRequest">同步三方审批实例请求体。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Post("/open-apis/approval/v4/external_instances")]
-    Task<FeishuApiResult<SyncExternalInstancesResult>?> SyncApprovalInstancesAsync(
+    Task<FeishuApiResult<SyncExternalInstancesResult>?> SyncInstancesAsync(
         [Body] SyncApprovalInstancesRequest syncApprovalInstancesRequest,
         CancellationToken cancellationToken = default);
 
@@ -66,7 +66,21 @@ public interface IFeishuTenantV4ApprovalExternal
     /// <param name="checkExternalInstancesRequest">校验三方审批实例请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Post("/open-apis/approval/v4/external_instances/check")]
-    Task<FeishuApiResult<SyncExternalInstancesResult>?> CheckApprovalInstancesAsync(
+    Task<FeishuApiResult<SyncExternalInstancesResult>?> CheckInstancesAsync(
         [Body] CheckExternalInstancesRequest checkExternalInstancesRequest,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 用于分布获取三方审批的状态。用户传入查询条件，接口返回满足条件的审批实例的状态。
+    /// </summary>
+    /// <param name="getExternalInstancesStateRequest">获取三方审批实例状态列表请求体。</param>
+    /// <param name="page_size">分页大小。默认值：10。</param>
+    /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Get("/open-apis/approval/v4/external_tasks")]
+    Task<FeishuApiResult<GetInstancesStateResult>?> GetInstancesStatePageListAsync(
+           [Body] GetExternalInstancesStateRequest getExternalInstancesStateRequest,
+           [Query("page_size")] int page_size = 10,
+           [Query("page_token")] string? page_token = null,
+           CancellationToken cancellationToken = default);
 }

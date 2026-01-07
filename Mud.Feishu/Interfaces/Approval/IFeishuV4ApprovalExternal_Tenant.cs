@@ -75,7 +75,7 @@ public interface IFeishuTenantV4ApprovalExternal
     /// </summary>
     /// <param name="getExternalInstancesStateRequest">获取三方审批实例状态列表请求体。</param>
     /// <param name="page_size">分页大小。默认值：10。</param>
-    /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该</param>
+    /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该分页标记</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Get("/open-apis/approval/v4/external_tasks")]
     Task<FeishuApiResult<GetInstancesStateResult>?> GetInstancesStatePageListAsync(

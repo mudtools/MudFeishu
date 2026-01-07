@@ -47,4 +47,15 @@ public interface IFeishuTenantV4ApprovalExternal
        [Path] string approval_code,
        [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 用于把三方系统在审批流转后生成的审批实例、审批任务、审批抄送数据同步到审批中心。
+    /// <para>审批中心不负责审批的流转，审批的流转在三方系统。</para>
+    /// </summary>
+    /// <param name="syncApprovalInstancesRequest">同步三方审批实例请求体。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Post("/open-apis/approval/v4/external_instances")]
+    Task<FeishuApiResult<SyncExternalInstancesResult>?> SyncApprovalInstancesAsync(
+        [Body] SyncApprovalInstancesRequest syncApprovalInstancesRequest,
+        CancellationToken cancellationToken = default);
 }

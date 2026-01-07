@@ -79,7 +79,7 @@ builder.Services.AddFeishuWebSocketServiceBuilder(builder.Configuration)
     .Build();
 
 // 注册 Webhook HTTP 回调事件服务
-builder.Services.AddFeishuWebhookServiceBuilder(builder.Configuration)
+builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
     .AddHandler<UserCreatedEventHandler>()
     .AddHandler<MessageReceiveEventHandler>()
     .Build();

@@ -74,7 +74,7 @@ builder.Services.AddFeishuWebSocketServiceBuilder(builder.Configuration)
     .Build();
 
 // Register Webhook HTTP callback event service
-builder.Services.AddFeishuWebhookServiceBuilder(builder.Configuration)
+builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
     .AddHandler<UserCreatedEventHandler>()
     .AddHandler<MessageReceiveEventHandler>()
     .Build();

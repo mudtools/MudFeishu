@@ -37,7 +37,7 @@ using Mud.Feishu.Webhook;
 var builder = WebApplication.CreateBuilder(args);
 
 // One line to register Webhook service (requires at least one event handler)
-builder.Services.AddFeishuWebhookServiceBuilder(builder.Configuration)
+builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
     .AddHandler<MessageEventHandler>()
     .Build();
 
@@ -49,7 +49,7 @@ app.Run();
 ### 3. Complete Configuration (Add Event Handlers)
 
 ```csharp
-builder.Services.AddFeishuWebhookServiceBuilder(builder.Configuration)
+builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
     .AddHandler<MessageEventHandler>()
     .AddHandler<UserEventHandler>()
     .EnableControllers()
@@ -89,12 +89,12 @@ app.Run();
 
 ```csharp
 // One line to complete basic configuration (requires at least one event handler)
-builder.Services.AddFeishuWebhookServiceBuilder(builder.Configuration)
+builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
     .AddHandler<MessageReceiveEventHandler>()
     .Build();
 
 // Add event handlers
-builder.Services.AddFeishuWebhookServiceBuilder(builder.Configuration)
+builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
     .AddHandler<MessageReceiveEventHandler>()
     .AddHandler<UserCreatedEventHandler>()
     .EnableControllers()
@@ -287,7 +287,7 @@ builder.Services.AddFeishuWebhookBuilder()
     .Build();
 
 // Method 2: Enable via configuration options
-builder.Services.AddFeishuWebhookServiceBuilder(options =>
+builder.Services.CreateFeishuWebhookServiceBuilder(options =>
 {
     options.EnablePerformanceMonitoring = true; // Enable performance monitoring
 }).AddHandler<MessageEventHandler>()
@@ -298,7 +298,7 @@ builder.Services.AddFeishuWebhookServiceBuilder(options =>
 
 ```csharp
 // Enable health checks using builder pattern
-builder.Services.AddFeishuWebhookBuilder()
+builder.Services.CreateFeishuWebhookBuilder()
     .ConfigureFrom(configuration)
     .EnableHealthChecks()
     .Build();
@@ -392,7 +392,7 @@ builder.Logging.AddConsole();
 builder.Logging.SetMinimumLevel(LogLevel.Debug);
 
 // Enable request logging
-builder.Services.AddFeishuWebhookServiceBuilder(options =>
+builder.Services.CreateFeishuWebhookServiceBuilder(options =>
 {
     options.EnableRequestLogging = true;
     options.EnablePerformanceMonitoring = true;
@@ -406,25 +406,25 @@ builder.Services.AddFeishuWebhookServiceBuilder(options =>
 
 ```csharp
 // Method 1: Minimal (requires at least one event handler)
-builder.Services.AddFeishuWebhookServiceBuilder(configuration)
+builder.Services.CreateFeishuWebhookServiceBuilder(configuration)
     .AddHandler<MessageReceiveEventHandler>()
     .Build();
 
 // Method 2: Minimal + Handlers
-builder.Services.AddFeishuWebhookServiceBuilder(configuration)
+builder.Services.CreateFeishuWebhookServiceBuilder(configuration)
     .AddHandler<MessageReceiveEventHandler>()
     .EnableControllers()
     .Build();
 
 // Method 3: Code Configuration
-builder.Services.AddFeishuWebhookServiceBuilder(options => {
+builder.Services.CreateFeishuWebhookServiceBuilder(options => {
     options.VerificationToken = "your_token";
     options.EncryptKey = "your_key";
 }).AddHandler<MessageEventHandler>()
     .Build();
 
 // Method 4: Builder Pattern (complex configuration)
-builder.Services.AddFeishuWebhookBuilder()
+builder.Services.CreateFeishuWebhookBuilder()
     .ConfigureFrom(configuration)
     .EnableMetrics()
     .AddHandler<Handler>()

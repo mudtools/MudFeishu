@@ -18,13 +18,11 @@ builder.Services.AddRazorPages();
 builder.Services.AddSingleton<DemoEventService>();
 
 // 注册飞书Webhook服务
-builder.Services.AddFeishuWebhookServiceBuilder(builder.Configuration, "FeishuWebhook")
+builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration, "FeishuWebhook")
                 .AddHandler<DemoDepartmentEventHandler>()
                 .AddHandler<DemoDepartmentDeleteEventHandler>()
                 .EnableControllers()// 启用控制器支持
                 .Build();
-// 配置演示服务
-builder.Services.AddSingleton<DemoEventService>();
 
 var app = builder.Build();
 

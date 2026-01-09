@@ -25,6 +25,7 @@ public class BinaryMessageProcessor : IDisposable
     private bool _disposed = false;
     private readonly MessageRouter? _messageRouter;
     private readonly WebSocketConnectionManager? _connectionManager;
+    private readonly List<Task> _activeProcessingTasks = new();
 
     /// <summary>
     /// 二进制消息接收事件
@@ -98,11 +99,25 @@ public class BinaryMessageProcessor : IDisposable
                         _logger.LogInformation("二进制消息接收完成，大小: {Size} 字节，耗时: {Duration}ms",
                             completeData.Length, receiveDuration.TotalMilliseconds);
 
-                    // 异步处理完整的二进制消息
-                    _ = Task.Run(async () =>
+                    // 异步处理完整的二进制消息并跟踪任务
+                    var processingTask = Task.Run(async () =>
                     {
                         await ProcessCompleteBinaryMessageAsync(completeData, cancellationToken);
                     }, cancellationToken);
+
+                    lock (_activeProcessingTasks)
+                    {
+                        _activeProcessingTasks.Add(processingTask);
+                    }
+
+                    // 清理完成后从列表中移除
+                    _ = processingTask.ContinueWith(t =>
+                    {
+                        lock (_activeProcessingTasks)
+                        {
+                            _activeProcessingTasks.Remove(t);
+                        }
+                    }, CancellationToken.None);
 
                     // 清理资源
                     _binaryDataStream.Dispose();
@@ -240,17 +255,13 @@ public class BinaryMessageProcessor : IDisposable
     {
         if (eventProtoData == null)
             return;
-        var jsonOptions = new JsonSerializerOptions
-        {
-            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-            WriteIndented = false
-        };
+
         var data = new
         {
             status = sucess ? "success" : "failure",
             timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
         };
-        var dto_string = JsonSerializer.Serialize(data, jsonOptions);
+        var dto_string = JsonSerializer.Serialize(data, JsonOptions.Default);
         var ackMessage = new
         {
             code = 200,
@@ -259,7 +270,7 @@ public class BinaryMessageProcessor : IDisposable
 
         try
         {
-            var ackJson = JsonSerializer.Serialize(ackMessage, jsonOptions);
+            var ackJson = JsonSerializer.Serialize(ackMessage, JsonOptions.Default);
             using var messageStream = new MemoryStream();
             eventProtoData.Payload = Encoding.UTF8.GetBytes(ackJson);
             ProtoBuf.Serializer.Serialize(messageStream, eventProtoData);
@@ -300,10 +311,24 @@ public class BinaryMessageProcessor : IDisposable
 
         try
         {
+            // 等待所有处理任务完成
+            Task[] tasksToWait;
+            lock (_activeProcessingTasks)
+            {
+                tasksToWait = _activeProcessingTasks.ToArray();
+            }
+
+            Task.WaitAll(tasksToWait, TimeSpan.FromSeconds(5));
+
             lock (_binaryDataStreamLock)
             {
                 _binaryDataStream?.Dispose();
                 _binaryDataStream = null;
+            }
+
+            lock (_activeProcessingTasks)
+            {
+                _activeProcessingTasks.Clear();
             }
         }
         catch (Exception ex)

@@ -77,13 +77,7 @@ public class AuthenticationManager
                 }
             };
 
-            var jsonOptions = new JsonSerializerOptions
-            {
-                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-                WriteIndented = false
-            };
-
-            var authJson = JsonSerializer.Serialize(authMessage, jsonOptions);
+            var authJson = JsonSerializer.Serialize(authMessage, JsonOptions.Default);
             await _sendMessageCallback(authJson);
 
             if (_options.EnableLogging)

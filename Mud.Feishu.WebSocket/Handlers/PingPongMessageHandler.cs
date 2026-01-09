@@ -67,7 +67,7 @@ public class PingPongMessageHandler : JsonMessageHandler
             Timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
         };
 
-        var pongJson = JsonSerializer.Serialize(pongMessage, _jsonOptions);
+        var pongJson = JsonSerializer.Serialize(pongMessage, JsonOptions.Default);
         await _sendMessageCallback(pongJson);
 
         if (_options.EnableLogging)

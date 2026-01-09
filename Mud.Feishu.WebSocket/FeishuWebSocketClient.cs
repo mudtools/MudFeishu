@@ -32,7 +32,7 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
     private readonly ConcurrentQueue<string> _messageQueue = new();
     private readonly List<Func<string, Task>> _messageProcessors = new();
     private Task? _messageProcessingTask;
-    private ILoggerFactory _loggerFactory;
+    private readonly ILoggerFactory _loggerFactory;
     private bool _disposed = false;
     private CancellationTokenSource? _cancellationTokenSource;
     /// <inheritdoc/>
@@ -305,13 +305,7 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
                             Timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
                         };
 
-                        var jsonOptions = new JsonSerializerOptions
-                        {
-                            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-                            WriteIndented = false
-                        };
-
-                        var heartbeatMessage = JsonSerializer.Serialize(pingMessage, jsonOptions);
+                        var heartbeatMessage = JsonSerializer.Serialize(pingMessage, JsonOptions.Default);
                         await SendMessageAsync(heartbeatMessage, cancellationToken);
 
                         if (_options.EnableLogging)
@@ -377,7 +371,7 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
     /// <summary>
     /// 安全地处理消息
     /// </summary>
-    private async Task ProcessMessageSafely(Func<string, Task> processor, string message, CancellationToken cancellationToken)
+    private async Task ProcessMessageSafely(Func<string, Task> processor, string message, CancellationToken _)
     {
         try
         {
@@ -401,6 +395,7 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
         try
         {
             _cancellationTokenSource?.Cancel();
+            UnsubscribeFromComponentEvents();
             _connectionManager?.Dispose();
             _binaryProcessor?.Dispose();
         }
@@ -411,6 +406,34 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
         finally
         {
             _disposed = true;
+        }
+    }
+
+    /// <summary>
+    /// 取消组件事件订阅
+    /// </summary>
+    private void UnsubscribeFromComponentEvents()
+    {
+        // 取消连接管理器事件订阅
+        if (_connectionManager != null)
+        {
+            _connectionManager.Connected -= (s, e) => Connected?.Invoke(this, e);
+            _connectionManager.Disconnected -= (s, e) => Disconnected?.Invoke(this, e);
+            _connectionManager.Error -= (s, e) => Error?.Invoke(this, e);
+        }
+
+        // 取消认证管理器事件订阅
+        if (_authManager != null)
+        {
+            _authManager.Authenticated -= (s, e) => Authenticated?.Invoke(this, e);
+            _authManager.AuthenticationFailed -= (s, e) => Error?.Invoke(this, e);
+        }
+
+        // 取消二进制处理器事件订阅
+        if (_binaryProcessor != null)
+        {
+            _binaryProcessor.BinaryMessageReceived -= (s, e) => BinaryMessageReceived?.Invoke(this, e);
+            _binaryProcessor.Error -= (s, e) => Error?.Invoke(this, e);
         }
     }
 }

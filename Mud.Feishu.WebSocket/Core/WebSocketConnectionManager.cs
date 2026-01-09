@@ -26,6 +26,7 @@ public class WebSocketConnectionManager : IDisposable
     private ClientWebSocket? _webSocket;
     private CancellationTokenSource? _cancellationTokenSource;
     private bool _disposed = false;
+    private byte[]? _receiveBuffer;
 
     /// <summary>
     /// WebSocket连接成功建立时触发的事件
@@ -259,28 +260,36 @@ public class WebSocketConnectionManager : IDisposable
         if (message.Length > _options.MaxMessageSize)
             throw new ArgumentException($"消息大小超过限制 ({_options.MaxMessageSize} 字符)", nameof(message));
 
-        if (_webSocket == null || _webSocket.State != WebSocketState.Open)
-            throw new InvalidOperationException("WebSocket未连接，无法发送消息");
-
+        await _connectionLock.WaitAsync(cancellationToken);
         try
         {
-            var buffer = System.Text.Encoding.UTF8.GetBytes(message);
-            await _webSocket.SendAsync(
-                new ArraySegment<byte>(buffer),
-                WebSocketMessageType.Text,
-                true,
-                cancellationToken);
+            if (_webSocket == null || _webSocket.State != WebSocketState.Open)
+                throw new InvalidOperationException("WebSocket未连接，无法发送消息");
 
-            if (_options.EnableLogging)
+            try
             {
-                _logger.LogDebug("已发送消息: {Message}", message);
+                var buffer = System.Text.Encoding.UTF8.GetBytes(message);
+                await _webSocket.SendAsync(
+                    new ArraySegment<byte>(buffer),
+                    WebSocketMessageType.Text,
+                    true,
+                    cancellationToken);
+
+                if (_options.EnableLogging)
+                {
+                    _logger.LogDebug("已发送消息: {Message}", MessageSanitizer.Sanitize(message));
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "发送消息时发生错误");
+                OnError(ex, "发送消息错误");
+                throw;
             }
         }
-        catch (Exception ex)
+        finally
         {
-            _logger.LogError(ex, "发送消息时发生错误");
-            OnError(ex, "发送消息错误");
-            throw;
+            _connectionLock.Release();
         }
     }
 
@@ -301,14 +310,15 @@ public class WebSocketConnectionManager : IDisposable
         if (_webSocket == null)
             throw new InvalidOperationException("WebSocket未初始化");
 
-        var buffer = new byte[_options.ReceiveBufferSize];
+        // 复用缓冲区以减少GC压力
+        _receiveBuffer ??= new byte[_options.ReceiveBufferSize];
 
         try
         {
             while (_webSocket.State == WebSocketState.Open && !cancellationToken.IsCancellationRequested)
             {
-                var result = await _webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), cancellationToken);
-                await messageHandler(new ArraySegment<byte>(buffer, 0, result.Count), result);
+                var result = await _webSocket.ReceiveAsync(new ArraySegment<byte>(_receiveBuffer), cancellationToken);
+                await messageHandler(new ArraySegment<byte>(_receiveBuffer, 0, result.Count), result);
 
                 if (result.MessageType == WebSocketMessageType.Close)
                 {
@@ -405,6 +415,7 @@ public class WebSocketConnectionManager : IDisposable
             _webSocket?.Dispose();
             _cancellationTokenSource?.Dispose();
             _connectionLock.Dispose();
+            _receiveBuffer = null;
         }
         catch (Exception ex)
         {

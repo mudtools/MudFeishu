@@ -34,7 +34,7 @@ builder.Services.CreateFeishuServicesBuilder(builder.Configuration)
                 .Build();
 
 // 配置飞书WebSocket服务
-builder.Services.AddFeishuWebSocketServiceBuilder(builder.Configuration)
+builder.Services.CreateFeishuWebSocketServiceBuilder(builder.Configuration)
                 .AddHandler<DemoDepartmentEventHandler>()
                 .AddHandler<DemoDepartmentDeleteEventHandler>()
                 .Build();

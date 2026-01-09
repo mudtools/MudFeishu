@@ -10,6 +10,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Mud.Feishu.WebSocket.SocketEventArgs;
+using System.Text.Json;
 
 namespace Mud.Feishu.WebSocket;
 
@@ -242,8 +243,12 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
 
         try
         {
-            // 发送心跳消息（这里可以自定义心跳消息格式）
-            var heartbeatMessage = "{\"type\":\"heartbeat\",\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeSeconds() + "}";
+            // 发送心跳消息
+            var heartbeatMessage = JsonSerializer.Serialize(new
+            {
+                type = "heartbeat",
+                timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+            });
             await _webSocketManager.SendMessageAsync(heartbeatMessage);
 
             if (_options.EnableLogging)

@@ -20,7 +20,7 @@ namespace Mud.Feishu;
 ///     "AppId": "cli_a1b2c3d4e5f6g7h8",
 ///     "AppSecret": "dskLLdkasdjlasdKK",
 ///     "BaseUrl": "https://open.feishu.cn",
-///     "TimeOut": "30",
+///     "TimeOut": 30,
 ///     "RetryCount": 3
 ///   }
 /// }
@@ -72,27 +72,60 @@ public class FeishuOptions
     /// </summary>
     public string? BaseUrl { get; set; }
 
+    private int _timeOut = 30;
+
     /// <summary>
     /// HTTP 请求超时时间（秒）。
     /// <para>默认值：30秒</para>
+    /// <para>范围：1-300秒</para>
     /// <para>用于设置API调用的超时时间，网络环境较差时可适当增加此值</para>
-    /// <para>建议值：10-120秒，根据网络环境调整</para>
     /// </summary>
-    /// <remarks>
-    /// 注意：此值目前使用字符串类型以便于配置文件读取，内部会自动转换为整数。
-    /// </remarks>
-    public string? TimeOut { get; set; }
+    public int TimeOut
+    {
+        get => _timeOut;
+        set => _timeOut = Math.Max(1, Math.Min(value, 300));
+    }
+
+    private int _retryCount = 3;
 
     /// <summary>
     /// 失败重试次数。
     /// <para>默认值：3次</para>
+    /// <para>范围：0-10次</para>
     /// <para>当API调用失败时的自动重试次数，提高请求的成功率和稳定性</para>
     /// </summary>
-    public int? RetryCount { get; set; }
+    public int RetryCount
+    {
+        get => _retryCount;
+        set => _retryCount = Math.Max(0, Math.Min(value, 10));
+    }
 
 
     /// <summary>
     /// 是否启用日志记录，默认为true
     /// </summary>
     public bool EnableLogging { get; set; } = true;
+
+    /// <summary>
+    /// 验证配置项的有效性
+    /// </summary>
+    /// <exception cref="InvalidOperationException">当配置项无效时抛出</exception>
+    public void Validate()
+    {
+        if (TimeOut < 1 || TimeOut > 300)
+            throw new InvalidOperationException("TimeOut必须在1-300秒之间");
+
+        if (RetryCount < 0 || RetryCount > 10)
+            throw new InvalidOperationException("RetryCount必须在0-10次之间");
+
+        if (!string.IsNullOrEmpty(BaseUrl) && !Uri.TryCreate(BaseUrl, UriKind.Absolute, out var uriResult))
+            throw new InvalidOperationException("BaseUrl必须是有效的URI格式");
+
+        if (!string.IsNullOrEmpty(BaseUrl))
+        {
+            var uri = new Uri(BaseUrl);
+            if (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps)
+                throw new InvalidOperationException("BaseUrl必须是HTTP或HTTPS协议");
+        }
+    }
 }

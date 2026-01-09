@@ -30,11 +30,6 @@ internal class FeishuHttpClient : IEnhancedHttpClient
         _feishuOptions = options?.Value ?? throw new ArgumentNullException(nameof(options));
         _jsonSerializerOptions = serializerOptions?.Value ?? HttpClientExtensions.GetDefaultJsonSerializerOptions();
 
-        // 配置HttpClient的基础地址（如果有）
-        if (!string.IsNullOrEmpty(_feishuOptions.BaseUrl))
-        {
-            _httpClient.BaseAddress = new Uri(_feishuOptions.BaseUrl);
-        }
     }
 
     public async Task<TResult?> SendAsync<TResult>(

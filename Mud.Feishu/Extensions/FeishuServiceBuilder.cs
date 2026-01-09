@@ -77,18 +77,18 @@ public class FeishuServiceBuilder
             var options = serviceProvider.GetRequiredService<IOptions<FeishuOptions>>().Value;
             client.BaseAddress = new Uri(options.BaseUrl ?? "https://open.feishu.cn");
             client.DefaultRequestHeaders.Add("User-Agent", "MudFeishuClient/1.0");
-            int timeOut = 60;
-            if (!string.IsNullOrEmpty(options.TimeOut) && int.TryParse(options.TimeOut, out int t))
-                timeOut = t;
-            client.Timeout = TimeSpan.FromSeconds(timeOut);
+            client.Timeout = TimeSpan.FromSeconds(options.TimeOut);
         }).ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
         {
             AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate,
-        }).AddTransientHttpErrorPolicy(policyBuilder =>
+        }).AddTransientHttpErrorPolicy(builder =>
         {
-            return policyBuilder.WaitAndRetryAsync(3, retryAttempt =>
-               TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)));
+            return builder.WaitAndRetryAsync(
+                3,
+                retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)));
         });
+
+        _configuration.IsFeishuHttpClient = true;
         return this;
     }
 
@@ -356,6 +356,12 @@ public class FeishuServiceBuilder
                 .Validate(options => ValidateFeishuOptionsInternal(options),
                     "飞书服务需要在配置文件中正确配置 AppId 和 AppSecret。")
                 .ValidateOnStart();
+
+        // 添加配置后验证
+        _services.PostConfigure<FeishuOptions>(options =>
+        {
+            options.Validate();
+        });
 
         return _services;
     }

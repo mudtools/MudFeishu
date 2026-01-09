@@ -1,5 +1,3 @@
-
-
 // -----------------------------------------------------------------------
 //  作者：Mud Studio  版权所有 (c) Mud Studio 2025
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
@@ -80,6 +78,7 @@ public class FeishuWebSocketOptions
 
     /// <summary>
     /// 多处理器模式下是否并行执行，默认为true
+    /// 注意：此配置项暂未使用，预留用于未来功能扩展
     /// </summary>
     public bool ParallelMultiHandlers { get; set; } = true;
 
@@ -92,15 +91,6 @@ public class FeishuWebSocketOptions
     /// 消息队列最大容量，默认为1000条
     /// </summary>
     public int MessageQueueCapacity { get; set; } = 1000;
-
-    /// <summary>
-    /// 消息队列处理批量大小，默认为100条
-    /// </summary>
-    public int MessageProcessBatchSize
-    {
-        get => _messageProcessBatchSize;
-        set => _messageProcessBatchSize = Math.Max(1, value);
-    }
 
     /// <summary>
     /// 空队列检查间隔（毫秒），默认为100毫秒
@@ -155,14 +145,8 @@ public class FeishuWebSocketOptions
         if (MessageQueueCapacity < 1)
             throw new InvalidOperationException("MessageQueueCapacity必须至少为1");
 
-        if (MessageProcessBatchSize < 1)
-            throw new InvalidOperationException("MessageProcessBatchSize必须至少为1");
-
         if (MaxBinaryMessageSize < 1024)
             throw new InvalidOperationException("MaxBinaryMessageSize必须至少为1024字节");
-
-        if (HealthCheckIntervalMs < 1000)
-            throw new InvalidOperationException("HealthCheckIntervalMs必须至少为1000毫秒");
     }
 }
 

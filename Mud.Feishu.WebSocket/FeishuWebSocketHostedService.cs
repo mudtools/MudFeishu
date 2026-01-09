@@ -56,10 +56,10 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
     /// <returns>是否重连成功</returns>
     private async Task<bool> TryReconnectWithBackoffAsync(int attempt, CancellationToken cancellationToken)
     {
-        // 指数退避：delay = baseDelay * (2^attempt)，最大不超过30秒
+        // 指数退避：delay = baseDelay * (2^attempt)，最大不超过配置的MaxReconnectDelayMs
         var baseDelay = TimeSpan.FromMilliseconds(_options.ReconnectDelayMs);
         var exponentialDelay = TimeSpan.FromMilliseconds(baseDelay.TotalMilliseconds * Math.Pow(2, attempt));
-        var maxDelay = TimeSpan.FromSeconds(30);
+        var maxDelay = TimeSpan.FromMilliseconds(_options.MaxReconnectDelayMs);
         var delay = exponentialDelay > maxDelay ? maxDelay : exponentialDelay;
 
         _logger.LogInformation("等待 {Delay}毫秒后进行第 {Attempt} 次重连尝试", delay.TotalMilliseconds, attempt + 1);
@@ -96,8 +96,8 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
             {
                 try
                 {
-                    // 每隔一段时间检查连接状态
-                    await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
+                    // 使用配置的健康检查间隔检查连接状态
+                    await Task.Delay(TimeSpan.FromMilliseconds(_options.HealthCheckIntervalMs), stoppingToken);
 
                     // 如果连接断开且启用自动重连，则尝试重连
                     if (!_webSocketManager.IsConnected && _options.AutoReconnect)

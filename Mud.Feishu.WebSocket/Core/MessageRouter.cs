@@ -149,7 +149,13 @@ public class MessageRouter
             // v1.0版本处理
             if (root.TryGetProperty("type", out var typeElement))
             {
-                return typeElement.GetString()?.ToLowerInvariant() ?? string.Empty;
+                var typeValue = typeElement.GetString()?.ToLowerInvariant() ?? string.Empty;
+                // v1.0版本的event_callback也映射为"event"
+                if (typeValue == "event_callback")
+                {
+                    return "event";
+                }
+                return typeValue;
             }
 
             return string.Empty;

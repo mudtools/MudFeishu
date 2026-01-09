@@ -37,6 +37,7 @@ public class FeishuEventMessageHandler : JsonMessageHandler
     public override bool CanHandle(string messageType)
     {
         return messageType.Equals("event", StringComparison.OrdinalIgnoreCase) ||
+               messageType.Equals("event_callback", StringComparison.OrdinalIgnoreCase) ||
                messageType.Equals("binary_event", StringComparison.OrdinalIgnoreCase);
     }
 

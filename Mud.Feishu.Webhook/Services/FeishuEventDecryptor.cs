@@ -6,6 +6,7 @@
 // -----------------------------------------------------------------------
 
 using Mud.Feishu.Abstractions;
+using System.Text.Json;
 
 namespace Mud.Feishu.Webhook.Services;
 
@@ -41,13 +42,31 @@ public class FeishuEventDecryptor : IFeishuEventDecryptor
                 return null;
             }
 
-            // 反序列化为 EventData
-            var eventData = JsonSerializer.Deserialize<EventData>(decryptedJson, new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true
-            });
+            // 解析事件数据（支持 v1.0 和 v2.0 版本）
+            EventData eventData;
 
-            if (eventData != null)
+            using (var jsonDoc = JsonDocument.Parse(decryptedJson))
+            {
+                var root = jsonDoc.RootElement;
+
+                // 检查是否为v2.0版本
+                if (root.TryGetProperty("schema", out var schemaElement) &&
+                    schemaElement.GetString() == "2.0")
+                {
+                    // v2.0版本解析
+                    eventData = ParseV2Event(root);
+                }
+                else
+                {
+                    // v1.0版本：直接反序列化
+                    eventData = JsonSerializer.Deserialize<EventData>(decryptedJson, new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true
+                    }) ?? new EventData();
+                }
+            }
+
+            if (!string.IsNullOrEmpty(eventData.EventType))
             {
                 _logger.LogInformation("事件数据解密成功，事件类型: {EventType}, 事件ID: {EventId}",
                     eventData.EventType, eventData.EventId);
@@ -60,6 +79,52 @@ public class FeishuEventDecryptor : IFeishuEventDecryptor
             _logger.LogError(ex, "解密事件数据时发生错误");
             return null;
         }
+    }
+
+    /// <summary>
+    /// 解析v2.0版本的事件
+    /// </summary>
+    private EventData ParseV2Event(JsonElement root)
+    {
+        var eventData = new EventData();
+
+        // 解析header
+        if (root.TryGetProperty("header", out var headerElement))
+        {
+            if (headerElement.TryGetProperty("event_id", out var eventIdElement))
+                eventData.EventId = eventIdElement.GetString() ?? string.Empty;
+
+            if (headerElement.TryGetProperty("event_type", out var eventTypeElement))
+                eventData.EventType = eventTypeElement.GetString() ?? string.Empty;
+
+            if (headerElement.TryGetProperty("create_time", out var createTimeElement))
+            {
+                if (createTimeElement.ValueKind == JsonValueKind.String &&
+                    long.TryParse(createTimeElement.GetString(), out var createTimeLong))
+                {
+                    eventData.CreateTime = createTimeLong / 1000; // 转换为秒
+                }
+                else if (createTimeElement.TryGetInt64(out var createTimeInt))
+                {
+                    eventData.CreateTime = createTimeInt / 1000;
+                }
+            }
+
+            if (headerElement.TryGetProperty("tenant_key", out var tenantKeyElement))
+                eventData.TenantKey = tenantKeyElement.GetString() ?? string.Empty;
+
+            if (headerElement.TryGetProperty("app_id", out var appIdElement))
+                eventData.AppId = appIdElement.GetString() ?? string.Empty;
+        }
+
+        // 解析event
+        if (root.TryGetProperty("event", out var eventElement))
+        {
+            // 将event对象转换为JsonElement供后续使用
+            eventData.Event = eventElement;
+        }
+
+        return eventData;
     }
 
     /// <summary>
@@ -101,5 +166,51 @@ public class FeishuEventDecryptor : IFeishuEventDecryptor
             _logger.LogError(ex, "AES 解密时发生错误");
             return null;
         }
+    }
+
+    /// <summary>
+    /// 解析v2.0版本的事件
+    /// </summary>
+    private EventData ParseV2Event(JsonElement root)
+    {
+        var eventData = new EventData();
+
+        // 解析header
+        if (root.TryGetProperty("header", out var headerElement))
+        {
+            if (headerElement.TryGetProperty("event_id", out var eventIdElement))
+                eventData.EventId = eventIdElement.GetString() ?? string.Empty;
+
+            if (headerElement.TryGetProperty("event_type", out var eventTypeElement))
+                eventData.EventType = eventTypeElement.GetString() ?? string.Empty;
+
+            if (headerElement.TryGetProperty("create_time", out var createTimeElement))
+            {
+                if (createTimeElement.ValueKind == JsonValueKind.String &&
+                    long.TryParse(createTimeElement.GetString(), out var createTimeLong))
+                {
+                    eventData.CreateTime = createTimeLong / 1000; // 转换为秒
+                }
+                else if (createTimeElement.TryGetInt64(out var createTimeInt))
+                {
+                    eventData.CreateTime = createTimeInt / 1000;
+                }
+            }
+
+            if (headerElement.TryGetProperty("tenant_key", out var tenantKeyElement))
+                eventData.TenantKey = tenantKeyElement.GetString() ?? string.Empty;
+
+            if (headerElement.TryGetProperty("app_id", out var appIdElement))
+                eventData.AppId = appIdElement.GetString() ?? string.Empty;
+        }
+
+        // 解析event
+        if (root.TryGetProperty("event", out var eventElement))
+        {
+            // 将event对象转换为JsonElement供后续使用
+            eventData.Event = eventElement;
+        }
+
+        return eventData;
     }
 }

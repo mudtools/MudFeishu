@@ -59,7 +59,7 @@ public class ExternalInstanceTaskNode
     /// <para>必填：是</para>
     /// </summary>
     [JsonPropertyName("links")]
-    public ExternalInstanceLink Links { get; set; } = new();
+    public InstanceLink Links { get; set; } = new();
 
     /// <summary>
     /// <para>任务状态</para>

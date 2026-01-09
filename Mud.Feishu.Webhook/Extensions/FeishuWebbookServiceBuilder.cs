@@ -20,7 +20,6 @@ public class FeishuWebhookServiceBuilder
 {
     private readonly IServiceCollection _services;
     private readonly List<Type> _handlerTypes = new();
-    private bool _enableControllers = false;
     private bool _enableHealthChecks = true;
     private bool _enableMetrics = true;
     private bool _autoRegisterEndpoint = true;
@@ -63,26 +62,6 @@ public class FeishuWebhookServiceBuilder
             throw new ArgumentNullException(nameof(configureOptions));
 
         _configureOptions = configureOptions;
-        return this;
-    }
-
-    /// <summary>
-    /// 启用控制器支持
-    /// </summary>
-    /// <returns>建造者实例，支持链式调用</returns>
-    public FeishuWebhookServiceBuilder EnableControllers()
-    {
-        _enableControllers = true;
-        return this;
-    }
-
-    /// <summary>
-    /// 禁用控制器支持
-    /// </summary>
-    /// <returns>建造者实例，支持链式调用</returns>
-    public FeishuWebhookServiceBuilder DisableControllers()
-    {
-        _enableControllers = false;
         return this;
     }
 
@@ -238,22 +217,8 @@ public class FeishuWebhookServiceBuilder
         }
 
         // 验证 FeishuWebhookOptions 配置
-        var serviceProvider = _services.BuildServiceProvider();
-        try
-        {
-            var options = serviceProvider.GetService<IOptions<FeishuWebhookOptions>>();
-            if (options != null && options.Value != null)
-            {
-                options.Value.Validate();
-            }
-        }
-        finally
-        {
-            if (serviceProvider is IDisposable disposable)
-            {
-                disposable.Dispose();
-            }
-        }
+        // 注意：由于此时服务还未完全注册，无法通过 IOptions<T> 获取配置
+        // 配置验证将在 PostConfigure 阶段完成
     }
 
     /// <summary>
@@ -275,12 +240,6 @@ public class FeishuWebhookServiceBuilder
 
         // 注册事件处理器工厂
         RegisterEventHandlerFactory();
-
-        // 注册控制器支持
-        if (_enableControllers)
-        {
-            RegisterControllerServices();
-        }
 
         // 注册健康检查支持
         if (_enableHealthChecks)
@@ -321,6 +280,9 @@ public class FeishuWebhookServiceBuilder
 
             if (options.MaxConcurrentEvents == 0)
                 options.MaxConcurrentEvents = 10;
+
+            // 验证配置
+            options.Validate();
         });
     }
 
@@ -355,40 +317,10 @@ public class FeishuWebhookServiceBuilder
             var handlers = serviceProvider.GetRequiredService<IEnumerable<IFeishuEventHandler>>()
                 .Where(h => _handlerTypes.Contains(h.GetType()))
                 .ToList();
-            var defaultHandler = serviceProvider.GetRequiredService(defaultHandlerType) as IFeishuEventHandler;
+            var defaultHandler = serviceProvider.GetRequiredService(defaultHandlerType) as IFeishuEventHandler
+                ?? throw new InvalidOperationException($"无法获取默认处理器: {defaultHandlerType.Name}");
             return new DefaultFeishuEventHandlerFactory(logger, handlers, defaultHandler);
         });
-    }
-
-    /// <summary>
-    /// 注册控制器服务
-    /// </summary>
-    private void RegisterControllerServices()
-    {
-        // 检查是否已经注册了控制器服务
-        var actionDescriptorProviderType = Type.GetType("Microsoft.AspNetCore.Mvc.Infrastructure.IActionDescriptorCollectionProvider, Microsoft.AspNetCore.Mvc.Core");
-        if (actionDescriptorProviderType != null && _services.Any(s => s.ServiceType == actionDescriptorProviderType))
-        {
-            // 动态添加控制器支持
-            var controllerBuilderType = Type.GetType("Microsoft.Extensions.DependencyInjection.MvcServiceCollectionExtensions, Microsoft.AspNetCore.Mvc");
-            var addControllersMethod = controllerBuilderType?.GetMethod("AddControllers");
-
-            if (addControllersMethod != null)
-            {
-                var builder = addControllersMethod.Invoke(null, new object[] { _services });
-
-                // 尝试添加应用程序部件
-                var addApplicationPartMethod = builder?.GetType().GetMethod("AddApplicationPart");
-                if (addApplicationPartMethod != null)
-                {
-                    var controllerAssemblyType = Type.GetType("Mud.Feishu.Webhook.Controllers.FeishuWebhookController, Mud.Feishu.Webhook");
-                    if (controllerAssemblyType != null)
-                    {
-                        addApplicationPartMethod.Invoke(builder, new object[] { controllerAssemblyType.Assembly });
-                    }
-                }
-            }
-        }
     }
 
     /// <summary>

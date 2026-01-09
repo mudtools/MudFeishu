@@ -11,9 +11,6 @@ using Mud.Feishu.Webhook.Demo.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-builder.Services.AddRazorPages();
-
 // 注册演示服务
 builder.Services.AddSingleton<DemoEventService>();
 
@@ -21,29 +18,11 @@ builder.Services.AddSingleton<DemoEventService>();
 builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration, "FeishuWebhook")
                 .AddHandler<DemoDepartmentEventHandler>()
                 .AddHandler<DemoDepartmentDeleteEventHandler>()
-                .EnableControllers()// 启用控制器支持
                 .Build();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-if (!app.Environment.IsDevelopment())
-{
-    app.UseExceptionHandler("/Error");
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
-    app.UseHsts();
-}
-
-app.UseHttpsRedirection();
-app.UseStaticFiles();
-
-app.UseRouting();
-
-app.UseAuthorization();
-
-app.MapRazorPages();
-
-app.MapControllers(); // 添加控制器路由映射
-
 // 添加飞书Webhook中间件（如果已启用端点自动注册）
 app.UseFeishuWebhook();
+
+app.Run();

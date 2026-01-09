@@ -11,7 +11,7 @@ A webhook component for Feishu event subscription and handling, providing comple
 - ✅ **Automatic Event Routing**: Automatically distributes events to corresponding handlers based on event type
 - ✅ **Security Validation**: Supports event subscription validation, request signature validation, and timestamp validation
 - ✅ **Encryption/Decryption**: Built-in AES-256-CBC decryption, automatically handles Feishu encrypted events
-- ✅ **Multiple Usage Modes**: Supports middleware mode, controller mode, and hybrid mode
+- ✅ **Usage Mode**: Supports middleware mode
 - ✅ **Dependency Injection**: Fully integrated with .NET dependency injection container
 - ✅ **Exception Handling**: Comprehensive exception handling and logging
 - ✅ **Performance Monitoring**: Optional performance metrics collection and monitoring
@@ -52,12 +52,10 @@ app.Run();
 builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
     .AddHandler<MessageEventHandler>()
     .AddHandler<UserEventHandler>()
-    .EnableControllers()
     .Build();
 
 var app = builder.Build();
 app.UseFeishuWebhook();
-app.MapControllers(); // Controller routing
 app.Run();
 ```
 
@@ -92,13 +90,6 @@ app.Run();
 builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
     .AddHandler<MessageReceiveEventHandler>()
     .Build();
-
-// Add event handlers
-builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
-    .AddHandler<MessageReceiveEventHandler>()
-    .AddHandler<UserCreatedEventHandler>()
-    .EnableControllers()
-    .Build();
 ```
 
 ### ⚙️ Code Configuration
@@ -117,9 +108,8 @@ builder.Services.AddFeishuWebhookServiceBuilder(options =>
 ### 🔧 Advanced Builder Pattern
 
 ```csharp
-builder.Services.AddFeishuWebhookBuilder()
+builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
     .ConfigureFrom(configuration)
-    .EnableControllers()
     .EnableHealthChecks()
     .EnableMetrics()
     .AddHandler<MessageReceiveEventHandler>()
@@ -128,10 +118,10 @@ builder.Services.AddFeishuWebhookBuilder()
 
 ## Usage Modes
 
-### Middleware Mode (Recommended)
+### Middleware Mode
 
 ```csharp
-builder.Services.AddFeishuWebhookServiceBuilder(builder.Configuration)
+builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
     .AddHandler<MessageEventHandler>()
     .Build();
 
@@ -140,19 +130,7 @@ app.UseFeishuWebhook(); // Automatically handles requests under route prefix
 app.Run();
 ```
 
-### Controller Mode
-
-```csharp
-builder.Services.AddFeishuWebhookServiceBuilder(builder.Configuration)
-    .AddHandler<MessageEventHandler>()
-    .EnableControllers() // Enable controller support
-    .Build();
-
-var app = builder.Build();
-app.UseFeishuWebhook();  // Can use both middleware and controllers
-app.MapControllers(); // Use controller routing
-app.Run();
-```
+> 💡 **Note**: Webhook service currently only supports middleware mode. Customize the route path by configuring `RoutePrefix`.
 
 ## Creating Event Handlers
 
@@ -232,11 +210,10 @@ builder.Services.AddFeishuWebhookServiceBuilder(builder.Configuration)
     .Build();
 
 // Use builder pattern for complex configuration
-builder.Services.AddFeishuWebhookBuilder()
+builder.Services.CreateFeishuWebhookServiceBuilder(configuration)
     .ConfigureFrom(configuration)
     .AddHandler<MessageEventHandler>()
     .AddHandler<UserEventHandler>()
-    .EnableControllers()
     .Build();
 ```
 
@@ -413,7 +390,6 @@ builder.Services.CreateFeishuWebhookServiceBuilder(configuration)
 // Method 2: Minimal + Handlers
 builder.Services.CreateFeishuWebhookServiceBuilder(configuration)
     .AddHandler<MessageReceiveEventHandler>()
-    .EnableControllers()
     .Build();
 
 // Method 3: Code Configuration
@@ -424,7 +400,7 @@ builder.Services.CreateFeishuWebhookServiceBuilder(options => {
     .Build();
 
 // Method 4: Builder Pattern (complex configuration)
-builder.Services.CreateFeishuWebhookBuilder()
+builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
     .ConfigureFrom(configuration)
     .EnableMetrics()
     .AddHandler<Handler>()

@@ -11,7 +11,7 @@
 - ✅ **自动事件路由**：根据事件类型自动分发到对应的处理器
 - ✅ **安全验证**：支持事件订阅验证、请求签名验证和时间戳验证
 - ✅ **加密解密**：内置 AES-256-CBC 解密功能，自动处理飞书加密事件
-- ✅ **多种使用模式**：支持中间件模式、控制器模式和混合模式
+- ✅ **使用模式**：支持中间件模式
 - ✅ **依赖注入**：完全集成 .NET 依赖注入容器
 - ✅ **异常处理**：完善的异常处理和日志记录
 - ✅ **性能监控**：可选的性能指标收集和监控
@@ -46,18 +46,18 @@ app.UseFeishuWebhook(); // 添加中间件
 app.Run();
 ```
 
+> 💡 **说明**：Webhook 服务使用中间件模式，通过 `app.UseFeishuWebhook()` 自动注册端点。
+
 ### 3. 完整配置（添加事件处理器）
 
 ```csharp
 builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
     .AddHandler<MessageEventHandler>()
     .AddHandler<UserEventHandler>()
-    .EnableControllers()
     .Build();
 
 var app = builder.Build();
 app.UseFeishuWebhook();
-app.MapControllers(); // 控制器路由
 app.Run();
 ```
 
@@ -92,13 +92,6 @@ app.Run();
 builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
     .AddHandler<MessageReceiveEventHandler>()
     .Build();
-
-// 添加事件处理器
-builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
-    .AddHandler<MessageReceiveEventHandler>()
-    .AddHandler<UserCreatedEventHandler>()
-    .EnableControllers()
-    .Build();
 ```
 
 ### ⚙️ 代码配置
@@ -117,9 +110,8 @@ builder.Services.AddFeishuWebhookServiceBuilder(options =>
 ### 🔧 高级建造者模式
 
 ```csharp
-builder.Services.AddFeishuWebhookBuilder()
+builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
     .ConfigureFrom(configuration)
-    .EnableControllers()
     .EnableHealthChecks()
     .EnableMetrics()
     .AddHandler<MessageReceiveEventHandler>()
@@ -128,7 +120,7 @@ builder.Services.AddFeishuWebhookBuilder()
 
 ## 使用模式
 
-### 中间件模式（推荐）
+### 中间件模式
 
 ```csharp
 builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
@@ -140,19 +132,7 @@ app.UseFeishuWebhook(); // 自动处理路由前缀下的请求
 app.Run();
 ```
 
-### 控制器模式
-
-```csharp
-builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
-    .AddHandler<MessageEventHandler>()
-    .EnableControllers() // 启用控制器支持
-    .Build();
-
-var app = builder.Build();
-app.UseFeishuWebhook();  // 可以同时使用中间件和控制器
-app.MapControllers(); // 使用控制器路由
-app.Run();
-```
+> 💡 **说明**：Webhook 服务目前仅支持中间件模式，通过配置 `RoutePrefix` 来自定义路由路径。
 
 ## 创建事件处理器
 
@@ -232,11 +212,10 @@ builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
     .Build();
 
 // 使用建造者模式进行复杂配置
-builder.Services.AddFeishuWebhookBuilder()
+builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
     .ConfigureFrom(configuration)
     .AddHandler<MessageEventHandler>()
     .AddHandler<UserEventHandler>()
-    .EnableControllers()
     .Build();
 ```
 
@@ -281,7 +260,7 @@ builder.Services.AddFeishuWebhookBuilder()
 
 ```csharp
 // 方式一：通过建造者模式启用
-builder.Services.AddFeishuWebhookBuilder()
+builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
     .ConfigureFrom(configuration)
     .EnableMetrics()
     .Build();
@@ -298,7 +277,7 @@ builder.Services.CreateFeishuWebhookServiceBuilder(options =>
 
 ```csharp
 // 使用建造者模式启用健康检查
-builder.Services.AddFeishuWebhookBuilder()
+builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
     .ConfigureFrom(configuration)
     .EnableHealthChecks()
     .Build();
@@ -413,7 +392,6 @@ builder.Services.CreateFeishuWebhookServiceBuilder(configuration)
 // 方式二：简化 + 处理器
 builder.Services.CreateFeishuWebhookServiceBuilder(configuration)
     .AddHandler<MessageReceiveEventHandler>()
-    .EnableControllers()
     .Build();
 
 // 方式三：代码配置
@@ -424,7 +402,7 @@ builder.Services.CreateFeishuWebhookServiceBuilder(options => {
     .Build();
 
 // 方式四：建造者模式（复杂配置）
-builder.Services.CreateFeishuWebhookBuilder()
+builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
     .ConfigureFrom(configuration)
     .EnableMetrics()
     .AddHandler<Handler>()

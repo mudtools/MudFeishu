@@ -15,12 +15,12 @@ namespace Mud.Feishu.Webhook.Middleware;
 /// </summary>
 public class FeishuWebhookMiddleware(
     RequestDelegate next,
-    IFeishuWebhookService WebhookService,
+    IServiceScopeFactory scopeFactory,
     ILogger<FeishuWebhookMiddleware> logger,
     IOptions<FeishuWebhookOptions> options)
 {
     private readonly RequestDelegate _next = next;
-    private readonly IFeishuWebhookService _WebhookService = WebhookService;
+    private readonly IServiceScopeFactory _scopeFactory = scopeFactory;
     private readonly ILogger<FeishuWebhookMiddleware> _logger = logger;
     private readonly FeishuWebhookOptions _options = options.Value;
 
@@ -148,6 +148,9 @@ public class FeishuWebhookMiddleware(
     /// </summary>
     private async Task ProcessWebhookRequest(HttpContext context, string requestBody)
     {
+        using var scope = _scopeFactory.CreateScope();
+        var webhookService = scope.ServiceProvider.GetRequiredService<IFeishuWebhookService>();
+
         try
         {
             // 尝试反序列化为验证请求
@@ -160,7 +163,7 @@ public class FeishuWebhookMiddleware(
             if (verificationRequest?.Type == "url_verification")
             {
                 // 处理验证请求
-                var verificationResponse = await _WebhookService.VerifyEventSubscriptionAsync(verificationRequest);
+                var verificationResponse = await webhookService.VerifyEventSubscriptionAsync(verificationRequest);
                 if (verificationResponse != null)
                 {
                     await WriteJsonResponse(context, 200, verificationResponse);
@@ -178,7 +181,7 @@ public class FeishuWebhookMiddleware(
             if (eventRequest != null)
             {
                 // 处理事件请求
-                var success = await _WebhookService.HandleEventAsync(eventRequest);
+                var success = await webhookService.HandleEventAsync(eventRequest);
                 if (success)
                 {
                     await WriteJsonResponse(context, 200, new { success = true, message = "Event processed successfully" });

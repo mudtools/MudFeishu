@@ -75,7 +75,7 @@ public interface IFeishuTenantV3User : IFeishuV3User
     [Get("/open-apis/search/v1/user")]
     Task<FeishuApiResult<UserSearchListResult>?> GetUsersByKeywordAsync(
      [Query("query")] string query,
-     [Query("page_size")] int page_size = 10,
+     [Query("page_size")] int page_size = Consts.PageSize,
      [Query("page_token")] string? page_token = null,
      CancellationToken cancellationToken = default);
 

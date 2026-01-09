@@ -315,7 +315,7 @@ public class TenantTaskListController : ControllerBase
     [HttpGet("{tasklist_guid}/tasks")]
     public async Task<IActionResult> GetTaskListPageListByIdAsync(
         [FromRoute] string tasklist_guid,
-        [FromQuery] int page_size = 10,
+        [FromQuery] int page_size = Consts.PageSize,
         [FromQuery] string? page_token = null,
         [FromQuery] bool? completed = null,
         [FromQuery] string? created_from = null,

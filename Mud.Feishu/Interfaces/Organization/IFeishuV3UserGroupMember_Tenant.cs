@@ -56,7 +56,7 @@ public interface IFeishuTenantV3UserGroupMember
     [Get("/open-apis/contact/v3/group/{group_id}/member/simplelist")]
     Task<FeishuApiResult<MemberListRequest>?> GetMemberListByGroupIdAsync(
          [Path] string group_id,
-         [Query("page_size")] int? page_size = 10,
+         [Query("page_size")] int? page_size = Consts.PageSize,
          [Query("page_token")] string? page_token = null,
          [Query("member_id_type")] string? member_id_type = Consts.User_Id_Type,
          [Query("member_type")] string? member_type = "user",

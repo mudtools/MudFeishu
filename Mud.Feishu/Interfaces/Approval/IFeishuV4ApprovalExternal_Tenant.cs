@@ -80,7 +80,7 @@ public interface IFeishuTenantV4ApprovalExternal
     [Get("/open-apis/approval/v4/external_tasks")]
     Task<FeishuApiResult<GetInstancesStateResult>?> GetInstancesStatePageListAsync(
            [Body] GetExternalInstancesStateRequest getExternalInstancesStateRequest,
-           [Query("page_size")] int page_size = 10,
+           [Query("page_size")] int page_size = Consts.PageSize,
            [Query("page_token")] string? page_token = null,
            CancellationToken cancellationToken = default);
 }

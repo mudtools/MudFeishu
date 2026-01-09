@@ -66,7 +66,7 @@ public interface IFeishuTenantV3JobFamilies
     [Get("/open-apis/contact/v3/job_levels")]
     Task<FeishuApiPageListResult<JobFamilyInfo>?> GetJobFamilesListAsync(
          [Query("name")] string name,
-         [Query("page_size")] int? page_size = 10,
+         [Query("page_size")] int? page_size = Consts.PageSize,
          [Query("page_token")] string? page_token = null,
          CancellationToken cancellationToken = default);
 

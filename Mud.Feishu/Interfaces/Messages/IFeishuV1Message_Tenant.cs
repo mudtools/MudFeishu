@@ -136,7 +136,7 @@ public interface IFeishuTenantV1Message : IFeishuV1Message
     [Get("/open-apis/im/v1/messages/{message_id}/read_users")]
     Task<FeishuApiPageListResult<ReadMessageUser>?> GetMessageReadUsesAsync(
      [Path] string message_id,
-     [Query("page_size")] int page_size = 10,
+     [Query("page_size")] int page_size = Consts.PageSize,
      [Query("page_token")] string? page_token = null,
      [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
      CancellationToken cancellationToken = default);
@@ -165,7 +165,7 @@ public interface IFeishuTenantV1Message : IFeishuV1Message
          [Query("start_time")] string? start_time = null,
          [Query("end_time")] string? end_time = null,
          [Query("sort_type")] string? sort_type = "ByCreateTimeAsc",
-         [Query("page_size")] int page_size = 10,
+         [Query("page_size")] int page_size = Consts.PageSize,
          [Query("page_token")] string? page_token = null,
          CancellationToken cancellationToken = default);
 

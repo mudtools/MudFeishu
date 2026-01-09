@@ -107,7 +107,7 @@ public interface IFeishuV1ChatGroupMember
     Task<FeishuApiResult<GetMemberPageListResult>?> GetMemberPageListByIdAsync(
          [Path] string chat_id,
          [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
-         [Query("page_size")] int? page_size = 10,
+         [Query("page_size")] int? page_size = Consts.PageSize,
          [Query("page_token")] string? page_token = null,
          CancellationToken cancellationToken = default);
 

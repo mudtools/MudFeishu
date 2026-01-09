@@ -60,7 +60,7 @@ public interface IFeishuV3Departments
     Task<FeishuApiPageListResult<GetDepartmentInfo>?> GetDepartmentsByParentIdAsync(
           [Path] string department_id,
           [Query("fetch_child")] bool fetch_child = false,
-          [Query("page_size")] int? page_size = 10,
+          [Query("page_size")] int? page_size = Consts.PageSize,
           [Query("page_token")] string? page_token = null,
           [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
           [Query("department_id_type")] string? department_id_type = Consts.Department_Id_Type,
@@ -79,7 +79,7 @@ public interface IFeishuV3Departments
     [Get("/open-apis/contact/v3/departments/parent")]
     Task<FeishuApiPageListResult<GetDepartmentInfo>?> GetParentDepartmentsByIdAsync(
          [Query("department_id")] string department_id,
-         [Query("page_size")] int? page_size = 10,
+         [Query("page_size")] int? page_size = Consts.PageSize,
          [Query("page_token")] string? page_token = null,
          [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
          [Query("department_id_type")] string? department_id_type = Consts.Department_Id_Type,

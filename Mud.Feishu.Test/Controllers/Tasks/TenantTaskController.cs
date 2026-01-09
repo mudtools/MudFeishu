@@ -679,7 +679,7 @@ public class TenantTaskController : ControllerBase
     [HttpGet("subtasks/{task_guid}")]
     public async Task<IActionResult> GetSubTasksPageListByIdAsync(
         [FromRoute] string task_guid,
-        [FromQuery] int page_size = 10,
+        [FromQuery] int page_size = Consts.PageSize,
         [FromQuery] string? page_token = null,
         [FromQuery] string user_id_type = "open_id")
     {

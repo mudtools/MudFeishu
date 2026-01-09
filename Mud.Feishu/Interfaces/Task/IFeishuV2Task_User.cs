@@ -32,7 +32,7 @@ public interface IFeishuUserV2Task : IFeishuV2Task
     /// <returns></returns>
     [Get("/open-apis/task/v2/tasks")]
     Task<FeishuApiPageListResult<ListTaskInfo>?> GetTasksPageListByIdAsync(
-      [Query("page_size")] int page_size = 10,
+      [Query("page_size")] int page_size = Consts.PageSize,
       [Query("page_token")] string? page_token = null,
       [Query("completed")] bool? completed = null,
       [Query("type")] string? type = "my_tasks",

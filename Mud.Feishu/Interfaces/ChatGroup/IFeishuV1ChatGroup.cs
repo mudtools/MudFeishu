@@ -113,7 +113,7 @@ public interface IFeishuV1ChatGroup
     Task<FeishuApiPageListResult<ChatItemInfo>?> GetChatGroupPageListAsync(
        [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
        [Query("sort_type")] string sort_type = "ByCreateTimeAsc",
-       [Query("page_size")] int? page_size = 10,
+       [Query("page_size")] int? page_size = Consts.PageSize,
        [Query("page_token")] string? page_token = null,
        CancellationToken cancellationToken = default);
 
@@ -137,7 +137,7 @@ public interface IFeishuV1ChatGroup
        [Query("query")] string? query = "",
        [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
        [Query("sort_type")] string sort_type = "ByCreateTimeAsc",
-       [Query("page_size")] int? page_size = 10,
+       [Query("page_size")] int? page_size = Consts.PageSize,
        [Query("page_token")] string? page_token = null,
        CancellationToken cancellationToken = default);
 
@@ -154,7 +154,7 @@ public interface IFeishuV1ChatGroup
     Task<FeishuApiResult<ChatGroupModeratorPageListResult>?> GetChatGroupModeratorPageListByIdAsync(
       [Path] string chat_id,
       [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
-      [Query("page_size")] int? page_size = 10,
+      [Query("page_size")] int? page_size = Consts.PageSize,
       [Query("page_token")] string? page_token = null,
       CancellationToken cancellationToken = default);
 

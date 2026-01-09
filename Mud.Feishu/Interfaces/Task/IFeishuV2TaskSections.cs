@@ -90,7 +90,7 @@ public interface IFeishuV2TaskSections
     Task<FeishuApiPageListResult<SectionSummaryInfo>?> GetTaskSectionsPageListAsync(
          [Query("resource_type")] string resource_type,
          [Query("resource_id")] string? resource_id = null,
-         [Query("page_size")] int page_size = 10,
+         [Query("page_size")] int page_size = Consts.PageSize,
          [Query("page_token")] string? page_token = null,
          [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
          CancellationToken cancellationToken = default);
@@ -114,7 +114,7 @@ public interface IFeishuV2TaskSections
         [Query("completed")] bool? completed = null,
         [Query("created_from")] string? created_from = null,
         [Query("created_to")] string? created_to = null,
-        [Query("page_size")] int page_size = 10,
+        [Query("page_size")] int page_size = Consts.PageSize,
         [Query("page_token")] string? page_token = null,
         [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
         CancellationToken cancellationToken = default);

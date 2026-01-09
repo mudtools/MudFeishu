@@ -45,7 +45,7 @@ public interface IFeishuV1ChatGroupAnnouncement
     [Get("/open-apis/docx/v1/chats/{chat_id}/announcement/blocks")]
     Task<FeishuApiPageListResult<AnnouncementBlock>?> GetNoticeBlocksListByIdAsync(
       [Path] string chat_id,
-      [Query("page_size")] int? page_size = 10,
+      [Query("page_size")] int? page_size = Consts.PageSize,
       [Query("page_token")] string? page_token = null,
       [Query("revision_id")] int? revision_id = -1,
       [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
@@ -130,7 +130,7 @@ public interface IFeishuV1ChatGroupAnnouncement
     Task<FeishuApiPageListResult<AnnouncementBlock>?> GetBlockContentPageListByIdAsync(
         [Path] string chat_id,
         [Path] string block_id,
-        [Query("page_size")] int? page_size = 10,
+        [Query("page_size")] int? page_size = Consts.PageSize,
         [Query("page_token")] string? page_token = null,
         [Query("revision_id")] int? revision_id = -1,
         [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,

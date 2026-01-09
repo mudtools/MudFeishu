@@ -14,7 +14,6 @@ public class FeishuWebSocketOptions
 {
     private int _heartbeatIntervalMs = 30000;
     private int _reconnectDelayMs = 5000;
-    private int _messageProcessBatchSize = 100;
     private int _emptyQueueCheckIntervalMs = 100;
     private int _maxReconnectDelayMs = 30000;
     private int _healthCheckIntervalMs = 60000;

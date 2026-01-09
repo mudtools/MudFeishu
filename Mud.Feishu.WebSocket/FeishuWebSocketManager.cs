@@ -190,11 +190,7 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager
             _logger.LogInformation("正在启动飞书WebSocket服务...");
 
             // 获取应用访问令牌，使用配置的超时时间
-            int timeoutSeconds = 30; // 默认超时时间
-            if (!string.IsNullOrEmpty(_feishuOptions.TimeOut) && int.TryParse(_feishuOptions.TimeOut, out int configuredTimeout))
-            {
-                timeoutSeconds = configuredTimeout;
-            }
+            int timeoutSeconds = _feishuOptions.TimeOut;
 
             using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSeconds));
             using var combinedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
@@ -224,7 +220,7 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager
             };
 
             // 使用重试策略获取WebSocket端点
-            var maxRetries = _feishuOptions.RetryCount ?? 3;
+            var maxRetries = _feishuOptions.RetryCount;
             WsEndpointResult? wsEndpointData = null;
 
             wsEndpointData = await RetryWithExponentialBackoffAsync(

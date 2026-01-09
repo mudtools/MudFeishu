@@ -37,7 +37,7 @@ public class DemoEventService
     public async Task RecordUserEventAsync(UserData userData, CancellationToken cancellationToken = default)
     {
         _userEvents.Add(userData);
-        _logger.LogInformation("📊 [统计] 记录用户事件: {UserId} - {UserName}", userData.UserId, userData.UserName);
+        _logger.LogInformation(">> [统计] 记录用户事件: {UserId} - {UserName}", userData.UserId, userData.UserName);
         await Task.CompletedTask;
     }
 
@@ -47,7 +47,7 @@ public class DemoEventService
     public async Task RecordDepartmentEventAsync(DepartmentCreatedResult departmentData, CancellationToken cancellationToken = default)
     {
         _departmentEvents.Add(departmentData);
-        _logger.LogInformation("📊 [统计] 记录部门事件: {DepartmentId} - {DepartmentName}",
+        _logger.LogInformation(">> [统计] 记录部门事件: {DepartmentId} - {DepartmentName}",
             departmentData.DepartmentId, departmentData.Name);
         await Task.CompletedTask;
     }
@@ -115,7 +115,7 @@ public class DemoEventService
         Interlocked.Exchange(ref _departmentDeleteCount, 0);
         Interlocked.Exchange(ref _approvalCount, 0);
 
-        _logger.LogInformation("🗑️ [统计] 已清空所有事件记录");
+        _logger.LogInformation(">> [统计] 已清空所有事件记录");
     }
 
     /// <summary>

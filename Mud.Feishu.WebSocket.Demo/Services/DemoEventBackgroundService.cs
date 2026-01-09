@@ -31,14 +31,14 @@ public class DemoEventBackgroundService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _logger.LogInformation("🚀 [后台服务] 演示事件服务已启动");
+        _logger.LogInformation(">> [后台服务] 演示事件服务已启动");
 
         var enableMockEvents = _configuration.GetValue<bool>("DemoSettings:EnableMockEvents", false);
         var mockEventInterval = _configuration.GetValue<int>("DemoSettings:MockEventIntervalMs", 10000);
 
         if (!enableMockEvents)
         {
-            _logger.LogInformation("⚠️ [后台服务] 模拟事件功能已禁用");
+            _logger.LogInformation(">> [后台服务] 模拟事件功能已禁用");
             return;
         }
 
@@ -54,12 +54,12 @@ public class DemoEventBackgroundService : BackgroundService
             }
             catch (OperationCanceledException)
             {
-                _logger.LogInformation("⏹️ [后台服务] 演示事件服务已停止");
+                _logger.LogInformation(">> [后台服务] 演示事件服务已停止");
                 break;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ [后台服务] 生成模拟事件时发生错误");
+                _logger.LogError(ex, ">> [后台服务] 生成模拟事件时发生错误");
                 await Task.Delay(5000, stoppingToken);
             }
         }
@@ -74,7 +74,7 @@ public class DemoEventBackgroundService : BackgroundService
         // 检查WebSocket连接状态
         if (!webSocketManager.IsConnected)
         {
-            _logger.LogWarning("⚠️ [后台服务] WebSocket未连接，跳过事件生成");
+            _logger.LogWarning(">> [后台服务] WebSocket未连接，跳过事件生成");
             return;
         }
 
@@ -111,7 +111,7 @@ public class DemoEventBackgroundService : BackgroundService
 
     public override Task StopAsync(CancellationToken cancellationToken)
     {
-        _logger.LogInformation("🛑 [后台服务] 正在停止演示事件服务");
+        _logger.LogInformation(">> [后台服务] 正在停止演示事件服务");
         return base.StopAsync(cancellationToken);
     }
 }

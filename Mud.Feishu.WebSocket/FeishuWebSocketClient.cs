@@ -35,6 +35,15 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
     private readonly ILoggerFactory _loggerFactory;
     private bool _disposed = false;
     private CancellationTokenSource? _cancellationTokenSource;
+
+    // 保存事件处理器委托引用，用于正确的取消订阅，避免内存泄漏
+    private readonly EventHandler<EventArgs> _onConnected;
+    private readonly EventHandler<WebSocketCloseEventArgs> _onDisconnected;
+    private readonly EventHandler<EventArgs> _onAuthenticated;
+    private readonly EventHandler<WebSocketErrorEventArgs> _onErrorFromConnectionManager;
+    private readonly EventHandler<WebSocketErrorEventArgs> _onErrorFromAuth;
+    private readonly EventHandler<WebSocketBinaryMessageEventArgs> _onBinaryMessageReceived;
+    private readonly EventHandler<WebSocketErrorEventArgs> _onErrorFromBinary;
     /// <inheritdoc/>
     public WebSocketState State => _connectionManager.State;
     /// <inheritdoc/>
@@ -50,14 +59,6 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
     public event EventHandler<WebSocketErrorEventArgs>? Error;
     /// <inheritdoc/>
     public event EventHandler<EventArgs>? Authenticated;
-    /// <inheritdoc/>
-    public event EventHandler<WebSocketPingEventArgs>? PingReceived;
-    /// <inheritdoc/>
-    public event EventHandler<WebSocketPongEventArgs>? PongReceived;
-    /// <inheritdoc/>
-    public event EventHandler<WebSocketHeartbeatEventArgs>? HeartbeatReceived;
-    /// <inheritdoc/>
-    public event EventHandler<WebSocketFeishuEventArgs>? FeishuEventReceived;
     /// <inheritdoc/>
     public event EventHandler<WebSocketBinaryMessageEventArgs>? BinaryMessageReceived;
 
@@ -78,6 +79,16 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
         _eventHandlerFactory = eventHandlerFactory ?? throw new ArgumentNullException(nameof(eventHandlerFactory));
         _options = options ?? new FeishuWebSocketOptions();
         _loggerFactory = loggerFactory;
+
+        // 初始化事件处理器委托，保存引用以便正确取消订阅
+        _onConnected = (s, e) => Connected?.Invoke(this, e);
+        _onDisconnected = (s, e) => Disconnected?.Invoke(this, e);
+        _onAuthenticated = (s, e) => Authenticated?.Invoke(this, e);
+        _onErrorFromConnectionManager = (s, e) => Error?.Invoke(this, e);
+        _onErrorFromAuth = (s, e) => Error?.Invoke(this, e);
+        _onBinaryMessageReceived = (s, e) => BinaryMessageReceived?.Invoke(this, e);
+        _onErrorFromBinary = (s, e) => Error?.Invoke(this, e);
+
         // 初始化组件
         _connectionManager = new WebSocketConnectionManager(_loggerFactory.CreateLogger<WebSocketConnectionManager>(), _options);
         _authManager = new AuthenticationManager(_loggerFactory.CreateLogger<AuthenticationManager>(), _options, (message) => SendMessageAsync(message));
@@ -96,18 +107,18 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
     /// </summary>
     private void SubscribeToComponentEvents()
     {
-        // 连接管理器事件
-        _connectionManager.Connected += (s, e) => Connected?.Invoke(this, e);
-        _connectionManager.Disconnected += (s, e) => Disconnected?.Invoke(this, e);
-        _connectionManager.Error += (s, e) => Error?.Invoke(this, e);
+        // 连接管理器事件 - 使用保存的委托引用
+        _connectionManager.Connected += _onConnected;
+        _connectionManager.Disconnected += _onDisconnected;
+        _connectionManager.Error += _onErrorFromConnectionManager;
 
-        // 认证管理器事件
-        _authManager.Authenticated += (s, e) => Authenticated?.Invoke(this, e);
-        _authManager.AuthenticationFailed += (s, e) => Error?.Invoke(this, e);
+        // 认证管理器事件 - 使用保存的委托引用
+        _authManager.Authenticated += _onAuthenticated;
+        _authManager.AuthenticationFailed += _onErrorFromAuth;
 
-        // 二进制处理器事件
-        _binaryProcessor.BinaryMessageReceived += (s, e) => BinaryMessageReceived?.Invoke(this, e);
-        _binaryProcessor.Error += (s, e) => Error?.Invoke(this, e);
+        // 二进制处理器事件 - 使用保存的委托引用
+        _binaryProcessor.BinaryMessageReceived += _onBinaryMessageReceived;
+        _binaryProcessor.Error += _onErrorFromBinary;
     }
 
     /// <summary>
@@ -419,26 +430,26 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
     /// </summary>
     private void UnsubscribeFromComponentEvents()
     {
-        // 取消连接管理器事件订阅
+        // 取消连接管理器事件订阅 - 使用保存的委托引用
         if (_connectionManager != null)
         {
-            _connectionManager.Connected -= (s, e) => Connected?.Invoke(this, e);
-            _connectionManager.Disconnected -= (s, e) => Disconnected?.Invoke(this, e);
-            _connectionManager.Error -= (s, e) => Error?.Invoke(this, e);
+            _connectionManager.Connected -= _onConnected;
+            _connectionManager.Disconnected -= _onDisconnected;
+            _connectionManager.Error -= _onErrorFromConnectionManager;
         }
 
-        // 取消认证管理器事件订阅
+        // 取消认证管理器事件订阅 - 使用保存的委托引用
         if (_authManager != null)
         {
-            _authManager.Authenticated -= (s, e) => Authenticated?.Invoke(this, e);
-            _authManager.AuthenticationFailed -= (s, e) => Error?.Invoke(this, e);
+            _authManager.Authenticated -= _onAuthenticated;
+            _authManager.AuthenticationFailed -= _onErrorFromAuth;
         }
 
-        // 取消二进制处理器事件订阅
+        // 取消二进制处理器事件订阅 - 使用保存的委托引用
         if (_binaryProcessor != null)
         {
-            _binaryProcessor.BinaryMessageReceived -= (s, e) => BinaryMessageReceived?.Invoke(this, e);
-            _binaryProcessor.Error -= (s, e) => Error?.Invoke(this, e);
+            _binaryProcessor.BinaryMessageReceived -= _onBinaryMessageReceived;
+            _binaryProcessor.Error -= _onErrorFromBinary;
         }
     }
 }

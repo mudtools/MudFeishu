@@ -53,24 +53,9 @@ public interface IFeishuWebSocketClient : IDisposable
     event EventHandler<EventArgs>? Authenticated;
 
     /// <summary>
-    /// 接收到Ping事件
+    /// 接收到二进制消息事件
     /// </summary>
-    event EventHandler<WebSocketPingEventArgs>? PingReceived;
-
-    /// <summary>
-    /// 接收到Pong事件
-    /// </summary>
-    event EventHandler<WebSocketPongEventArgs>? PongReceived;
-
-    /// <summary>
-    /// 接收到心跳事件
-    /// </summary>
-    event EventHandler<WebSocketHeartbeatEventArgs>? HeartbeatReceived;
-
-    /// <summary>
-    /// 接收到飞书事件
-    /// </summary>
-    event EventHandler<WebSocketFeishuEventArgs>? FeishuEventReceived;
+    event EventHandler<WebSocketBinaryMessageEventArgs>? BinaryMessageReceived;
 
 
     /// <summary>

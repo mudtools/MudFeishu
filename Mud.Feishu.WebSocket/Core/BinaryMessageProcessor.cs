@@ -311,14 +311,26 @@ public class BinaryMessageProcessor : IDisposable
 
         try
         {
-            // 等待所有处理任务完成
             Task[] tasksToWait;
             lock (_activeProcessingTasks)
             {
                 tasksToWait = _activeProcessingTasks.ToArray();
             }
 
-            Task.WaitAll(tasksToWait, TimeSpan.FromSeconds(5));
+            // 使用异步等待而不是同步等待，避免死锁风险
+            // 注意：在同步Dispose方法中无法使用await，这里使用Wait但设置较短超时
+            // 如果超时，只记录警告而不阻塞
+            try
+            {
+                if (!Task.WaitAll(tasksToWait, TimeSpan.FromSeconds(5)))
+                {
+                    _logger.LogWarning("等待所有处理任务完成超时（5秒），部分任务可能仍在运行");
+                }
+            }
+            catch (AggregateException ex)
+            {
+                _logger.LogError(ex, "等待处理任务时发生错误");
+            }
 
             lock (_binaryDataStreamLock)
             {

@@ -62,7 +62,6 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager
         _webSocketClient.Disconnected += OnClientDisconnected;
         _webSocketClient.MessageReceived += OnClientMessageReceived;
         _webSocketClient.Error += OnClientError;
-        _webSocketClient.HeartbeatReceived += OnClientHeartbeatReceived;
     }
 
     /// <summary>
@@ -172,11 +171,6 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager
     /// 连接错误事件
     /// </summary>
     public event EventHandler<WebSocketErrorEventArgs>? Error;
-
-    /// <summary>
-    /// 接收到心跳事件
-    /// </summary>
-    public event EventHandler<WebSocketHeartbeatEventArgs>? HeartbeatReceived;
 
     /// <summary>
     /// 启动WebSocket连接
@@ -488,19 +482,6 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager
     }
 
     /// <summary>
-    /// 客户端心跳事件处理
-    /// </summary>
-    /// <param name="sender">事件发送者</param>
-    /// <param name="e">事件参数</param>
-    private void OnClientHeartbeatReceived(object? sender, WebSocketHeartbeatEventArgs e)
-    {
-        if (_webSocketOptions.EnableLogging)
-            _logger.LogDebug("飞书WebSocket心跳消息 - 时间戳: {Timestamp}, 间隔: {Interval}s, 状态: {Status}",
-                e.Timestamp, e.Interval, e.Status);
-        HeartbeatReceived?.Invoke(this, e);
-    }
-
-    /// <summary>
     /// 释放资源
     /// </summary>
     public void Dispose()
@@ -517,11 +498,30 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager
                 {
                     if (_isRunning)
                     {
-                        // 同步等待停止操作完成，但不无限等待
-                        var stopTask = StopAsync();
-                        if (!stopTask.Wait(TimeSpan.FromSeconds(3)))
+                        // 使用更安全的方式停止服务
+                        // 注意：在Dispose中无法使用await，所以使用同步方式但要做好超时处理
+                        try
                         {
-                            _logger.LogWarning("停止WebSocket服务超时，强制释放资源");
+                            // 创建一个超时的CancellationTokenSource
+                            using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+                            using var cts = CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token);
+
+                            // 尝试停止服务
+                            var stopTask = StopAsync(cts.Token);
+
+                            // 使用WaitAsync来避免死锁（如果可用）或使用短超时的Wait
+                            if (!stopTask.Wait(TimeSpan.FromSeconds(3)))
+                            {
+                                _logger.LogWarning("停止WebSocket服务超时（3秒），强制释放资源");
+                            }
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            _logger.LogWarning("停止WebSocket服务被取消，强制释放资源");
+                        }
+                        catch (AggregateException ex)
+                        {
+                            _logger.LogError(ex, "停止WebSocket服务时发生错误，强制释放资源");
                         }
                     }
                 }
@@ -532,7 +532,7 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager
             }
             else
             {
-                _logger.LogWarning("获取启动停止锁超时，强制释放资源");
+                _logger.LogWarning("获取启动停止锁超时（5秒），强制释放资源");
             }
 
             // 清理令牌缓存

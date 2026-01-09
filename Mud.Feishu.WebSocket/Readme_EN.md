@@ -467,13 +467,18 @@ public class ServiceManager
 | `AutoReconnect` | bool | true | Auto reconnect |
 | `MaxReconnectAttempts` | int | 5 | Max reconnect attempts |
 | `ReconnectDelayMs` | int | 5000 | Reconnect delay (ms) |
+| `MaxReconnectDelayMs` | int | 30000 | Max reconnect delay (ms) |
 | `HeartbeatIntervalMs` | int | 30000 | Heartbeat interval (ms) |
 | `ConnectionTimeoutMs` | int | 10000 | Connection timeout (ms) |
 | `ReceiveBufferSize` | int | 4096 | Receive buffer size |
+| `MaxMessageSize` | int | 1048576 | Max message size (characters) |
 | `EnableLogging` | bool | true | Enable logging |
 | `EnableMessageQueue` | bool | true | Enable message queue |
 | `MessageQueueCapacity` | int | 1000 | Message queue capacity |
-| `ParallelMultiHandlers` | bool | true | Parallel execution for multiple handlers |
+| `EmptyQueueCheckIntervalMs` | int | 100 | Empty queue check interval (ms) |
+| `MaxBinaryMessageSize` | long | 10485760 | Max binary message size (bytes) |
+| `HealthCheckIntervalMs` | int | 60000 | Health check interval (ms) |
+| `ParallelMultiHandlers` | bool | true | Parallel execution for multiple handlers *Not currently used* |
 
 ## ⚙️ Configuration Options
 
@@ -484,9 +489,18 @@ public class ServiceManager
 | `AutoReconnect` | bool | true | Auto reconnect |
 | `MaxReconnectAttempts` | int | 5 | Max reconnect attempts |
 | `ReconnectDelayMs` | int | 5000 | Reconnect delay (ms) |
+| `MaxReconnectDelayMs` | int | 30000 | Max reconnect delay (ms) |
 | `HeartbeatIntervalMs` | int | 30000 | Heartbeat interval (ms) |
+| `ConnectionTimeoutMs` | int | 10000 | Connection timeout (ms) |
+| `ReceiveBufferSize` | int | 4096 | Receive buffer size |
+| `MaxMessageSize` | int | 1048576 | Max message size (characters) |
 | `EnableLogging` | bool | true | Enable logging |
 | `EnableMessageQueue` | bool | true | Enable message queue |
+| `MessageQueueCapacity` | int | 1000 | Message queue capacity |
+| `EmptyQueueCheckIntervalMs` | int | 100 | Empty queue check interval (ms) |
+| `MaxBinaryMessageSize` | long | 10485760 | Max binary message size (bytes) |
+| `HealthCheckIntervalMs` | int | 60000 | Health check interval (ms) |
+| `ParallelMultiHandlers` | bool | true | Parallel execution for multiple handlers *Not currently used* |
 
 ## 🎯 Advanced Usage
 

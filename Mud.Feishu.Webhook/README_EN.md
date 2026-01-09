@@ -211,7 +211,7 @@ public class MessageEventHandler : IFeishuEventHandler
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `MaxConcurrentEvents` | int | 10 | Max concurrent events |
-| `EventHandlingTimeoutMs` | int | 30000 | Event handling timeout (milliseconds) |
+| `EventHandlingTimeoutMs` | int | 30000 | Event handling timeout (milliseconds) *Not currently used* |
 | `EnablePerformanceMonitoring` | bool | false | Whether to enable performance monitoring |
 
 ### Logging Configuration

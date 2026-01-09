@@ -467,13 +467,18 @@ public class ServiceManager
 | `AutoReconnect` | bool | true | 自动重连 |
 | `MaxReconnectAttempts` | int | 5 | 最大重连次数 |
 | `ReconnectDelayMs` | int | 5000 | 重连延迟(ms) |
+| `MaxReconnectDelayMs` | int | 30000 | 最大重连延迟(ms) |
 | `HeartbeatIntervalMs` | int | 30000 | 心跳间隔(ms) |
 | `ConnectionTimeoutMs` | int | 10000 | 连接超时(ms) |
 | `ReceiveBufferSize` | int | 4096 | 接收缓冲区大小 |
+| `MaxMessageSize` | int | 1048576 | 最大消息大小(字符) |
 | `EnableLogging` | bool | true | 启用日志 |
 | `EnableMessageQueue` | bool | true | 启用消息队列 |
 | `MessageQueueCapacity` | int | 1000 | 消息队列容量 |
-| `ParallelMultiHandlers` | bool | true | 多处理器并行执行 |
+| `EmptyQueueCheckIntervalMs` | int | 100 | 空队列检查间隔(ms) |
+| `MaxBinaryMessageSize` | long | 10485760 | 最大二进制消息大小(字节) |
+| `HealthCheckIntervalMs` | int | 60000 | 健康检查间隔(ms) |
+| `ParallelMultiHandlers` | bool | true | 多处理器并行执行 *暂未使用* |
 
 ## ⚙️ 配置选项
 
@@ -484,9 +489,18 @@ public class ServiceManager
 | `AutoReconnect` | bool | true | 自动重连 |
 | `MaxReconnectAttempts` | int | 5 | 最大重连次数 |
 | `ReconnectDelayMs` | int | 5000 | 重连延迟(ms) |
+| `MaxReconnectDelayMs` | int | 30000 | 最大重连延迟(ms) |
 | `HeartbeatIntervalMs` | int | 30000 | 心跳间隔(ms) |
+| `ConnectionTimeoutMs` | int | 10000 | 连接超时(ms) |
+| `ReceiveBufferSize` | int | 4096 | 接收缓冲区大小 |
+| `MaxMessageSize` | int | 1048576 | 最大消息大小(字符) |
 | `EnableLogging` | bool | true | 启用日志 |
 | `EnableMessageQueue` | bool | true | 启用消息队列 |
+| `MessageQueueCapacity` | int | 1000 | 消息队列容量 |
+| `EmptyQueueCheckIntervalMs` | int | 100 | 空队列检查间隔(ms) |
+| `MaxBinaryMessageSize` | long | 10485760 | 最大二进制消息大小(字节) |
+| `HealthCheckIntervalMs` | int | 60000 | 健康检查间隔(ms) |
+| `ParallelMultiHandlers` | bool | true | 多处理器并行执行 *暂未使用* |
 
 ## 🎯 高级用法
 

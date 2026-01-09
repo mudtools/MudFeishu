@@ -516,7 +516,10 @@ tokenManager.CleanExpiredTokens();
   "Feishu": {
     "AppId": "your_feishu_app_id",
     "AppSecret": "your_feishu_app_secret",
-    "BaseUrl": "https://open.feishu.cn"
+    "BaseUrl": "https://open.feishu.cn",
+    "TimeOut": 30,
+    "RetryCount": 3,
+    "EnableLogging": true
   }
 }
 ```
@@ -538,6 +541,34 @@ app.UseSwaggerUI();
 app.MapControllers();
 app.Run();
 ```
+
+## ⚙️ 配置选项
+
+### FeishuOptions 配置项
+
+| 选项 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| `AppId` | string | - | 飞书应用唯一标识（必填） |
+| `AppSecret` | string | - | 飞书应用秘钥（必填） |
+| `BaseUrl` | string | "https://open.feishu.cn" | 飞书 API 基础地址 |
+| `TimeOut` | int | 30 | HTTP 请求超时时间（秒），范围：1-300 |
+| `RetryCount` | int | 3 | 失败重试次数，范围：0-10 |
+| `EnableLogging` | bool | true | 是否启用日志记录 |
+
+### 配置验证
+
+`FeishuOptions` 提供了 `Validate()` 方法用于验证配置项的有效性：
+
+- `TimeOut` 必须在 1-300 秒之间
+- `RetryCount` 必须在 0-10 次之间
+- `BaseUrl` 必须是有效的 HTTP/HTTPS URL 格式
+
+### 安全建议
+
+- `AppId` 和 `AppSecret` 是飞书应用的身份凭证，请妥善保管
+- 建议使用环境变量或安全的配置管理系统来存储敏感信息
+- 不要在代码中硬编码敏感信息
+- 在生产环境中，建议使用 HTTPS 协议以确保通信安全
 
 ## 🔄 错误处理最佳实践
 

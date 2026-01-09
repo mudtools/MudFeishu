@@ -211,7 +211,7 @@ public class MessageEventHandler : IFeishuEventHandler
 | 选项 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
 | `MaxConcurrentEvents` | int | 10 | 最大并发事件数 |
-| `EventHandlingTimeoutMs` | int | 30000 | 事件处理超时时间（毫秒） |
+| `EventHandlingTimeoutMs` | int | 30000 | 事件处理超时时间（毫秒）*暂未实际使用* |
 | `EnablePerformanceMonitoring` | bool | false | 是否启用性能监控 |
 
 ### 日志配置

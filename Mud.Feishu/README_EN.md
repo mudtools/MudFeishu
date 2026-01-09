@@ -516,7 +516,10 @@ tokenManager.CleanExpiredTokens();
   "Feishu": {
     "AppId": "your_feishu_app_id",
     "AppSecret": "your_feishu_app_secret",
-    "BaseUrl": "https://open.feishu.cn"
+    "BaseUrl": "https://open.feishu.cn",
+    "TimeOut": 30,
+    "RetryCount": 3,
+    "EnableLogging": true
   }
 }
 ```
@@ -538,6 +541,34 @@ app.UseSwaggerUI();
 app.MapControllers();
 app.Run();
 ```
+
+## ⚙️ Configuration Options
+
+### FeishuOptions Configuration Items
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `AppId` | string | - | Feishu application unique identifier (required) |
+| `AppSecret` | string | - | Feishu application secret (required) |
+| `BaseUrl` | string | "https://open.feishu.cn" | Feishu API base URL |
+| `TimeOut` | int | 30 | HTTP request timeout (seconds), range: 1-300 |
+| `RetryCount` | int | 3 | Retry count on failure, range: 0-10 |
+| `EnableLogging` | bool | true | Enable logging |
+
+### Configuration Validation
+
+`FeishuOptions` provides a `Validate()` method for validating configuration items:
+
+- `TimeOut` must be between 1-300 seconds
+- `RetryCount` must be between 0-10 times
+- `BaseUrl` must be a valid HTTP/HTTPS URL format
+
+### Security Recommendations
+
+- `AppId` and `AppSecret` are the credentials for your Feishu application, please keep them safe
+- Recommend using environment variables or secure configuration management systems to store sensitive information
+- Do not hardcode sensitive information in your code
+- In production environments, recommend using HTTPS protocol to ensure communication security
 
 ## 🔄 Error Handling Best Practices
 

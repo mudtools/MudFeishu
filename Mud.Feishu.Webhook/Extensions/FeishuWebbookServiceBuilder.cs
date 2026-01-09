@@ -236,6 +236,24 @@ public class FeishuWebhookServiceBuilder
             throw new InvalidOperationException(
                 "至少需要注册一个事件处理器。请使用 AddHandler<T>() 方法添加处理器。");
         }
+
+        // 验证 FeishuWebhookOptions 配置
+        var serviceProvider = _services.BuildServiceProvider();
+        try
+        {
+            var options = serviceProvider.GetService<IOptions<FeishuWebhookOptions>>();
+            if (options != null && options.Value != null)
+            {
+                options.Value.Validate();
+            }
+        }
+        finally
+        {
+            if (serviceProvider is IDisposable disposable)
+            {
+                disposable.Dispose();
+            }
+        }
     }
 
     /// <summary>

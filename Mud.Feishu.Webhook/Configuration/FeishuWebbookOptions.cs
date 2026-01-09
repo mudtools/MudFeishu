@@ -46,6 +46,7 @@ public class FeishuWebhookOptions
 
     /// <summary>
     /// 事件处理超时时间（毫秒）
+    /// 注意：此配置项暂未实际使用，预留用于未来超时控制功能
     /// </summary>
     public int EventHandlingTimeoutMs { get; set; } = 30000;
 
@@ -78,6 +79,34 @@ public class FeishuWebhookOptions
     /// 允许的源 IP 地址列表
     /// </summary>
     public HashSet<string> AllowedSourceIPs { get; set; } = new();
+
+    /// <summary>
+    /// 验证配置项的有效性
+    /// </summary>
+    /// <exception cref="InvalidOperationException">当配置项无效时抛出</exception>
+    public void Validate()
+    {
+        if (string.IsNullOrEmpty(VerificationToken))
+            throw new InvalidOperationException("VerificationToken不能为空");
+
+        if (string.IsNullOrEmpty(EncryptKey))
+            throw new InvalidOperationException("EncryptKey不能为空");
+
+        if (string.IsNullOrEmpty(RoutePrefix))
+            throw new InvalidOperationException("RoutePrefix不能为空");
+
+        if (EventHandlingTimeoutMs < 1000)
+            throw new InvalidOperationException("EventHandlingTimeoutMs必须至少为1000毫秒");
+
+        if (MaxConcurrentEvents < 1)
+            throw new InvalidOperationException("MaxConcurrentEvents必须至少为1");
+
+        if (MaxRequestBodySize < 1024)
+            throw new InvalidOperationException("MaxRequestBodySize必须至少为1024字节");
+
+        if (AllowedHttpMethods == null || !AllowedHttpMethods.Any())
+            throw new InvalidOperationException("AllowedHttpMethods不能为空");
+    }
 }
 
 /// <summary>

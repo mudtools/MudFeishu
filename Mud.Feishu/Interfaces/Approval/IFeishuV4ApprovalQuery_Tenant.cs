@@ -10,8 +10,8 @@ using Mud.Feishu.DataModels.ApprovalQuery;
 namespace Mud.Feishu;
 
 /// <summary>
-/// 通过不同条件查询审批系统中符合条件的审批实例、审批抄送、审批抄送列表。
-/// 接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/approval-v4/approval-search/query-2"/>
+/// 通过不同条件查询审批系统中符合条件的审批实例、审批抄送、审批抄送列表(适用于原生审批及三方审批)。
+/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/approval-v4/approval-search/query-2"/></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(ITenantTokenManager), RegistryGroupName = "Approval")]
 [Header(Consts.Authorization)]
@@ -33,4 +33,21 @@ public interface IFeishuTenantV4ApprovalQuery
          [Query("page_token")] string? page_token = null,
          [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
          CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 通过不同条件查询审批系统中符合条件的审批抄送列表。
+    /// </summary>
+    /// <param name="approvalInstancesCcQueryReques">查询抄送列表请求体</param>
+    /// <param name="page_size">分页大小，即本次请求所返回的用户信息列表内的最大条目数。默认值：10</param>
+    /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
+    /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Post("/open-apis/approval/v4/instances/search_cc")]
+    Task<FeishuApiResult<ApprovalInstancesCcQueryResult>?> GetCarbonCopyPageListAsync(
+        [Body] ApprovalInstancesCcQueryRequest approvalInstancesCcQueryReques,
+        [Query("page_size")] int page_size = 10,
+        [Query("page_token")] string? page_token = null,
+        [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
+        CancellationToken cancellationToken = default);
 }

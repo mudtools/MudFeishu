@@ -11,7 +11,7 @@ namespace Mud.Feishu.DataModels.ApprovalQuery;
 /// <summary>
 /// <para>审批定义分组</para>
 /// </summary>
-public record InstanceSearchGroup
+public class InstanceSearchGroup
 {
     /// <summary>
     /// <para>审批定义分组的第三方 ID</para>

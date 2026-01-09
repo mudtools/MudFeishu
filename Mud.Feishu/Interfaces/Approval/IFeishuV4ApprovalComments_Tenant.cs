@@ -11,7 +11,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 原生审批实例内，支持员工进行评论、回复评论。评论内容支持文本、@用户以及添加附件。
-/// 接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/approval-v4/instance-comment/overview"/>
+/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/approval-v4/instance-comment/overview"/></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(ITenantTokenManager), RegistryGroupName = "Approval")]
 [Header(Consts.Authorization)]

@@ -5,23 +5,41 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using Mud.Feishu.DataModels.ApprovalExternal;
+
 namespace Mud.Feishu.DataModels.ApprovalQuery;
 
 /// <summary>
-/// 查询实例列表响应体
+/// 审批抄送列表
 /// </summary>
-public class ApprovalInstancesQueryResult : ApiPageListResult
+public class InstancesCcSearchItem
 {
     /// <summary>
-    /// <para>查询结果中包含的审批实例总数</para>
-    /// <para>示例值：10</para>
+    /// <para>审批定义信息</para>
+    /// <para>必填：否</para>
     /// </summary>
-    [JsonPropertyName("count")]
-    public int? Count { get; set; }
+    [JsonPropertyName("approval")]
+    public InstanceSearchApproval? Approval { get; set; }
 
     /// <summary>
-    /// <para>审批实例列表</para>
+    /// <para>审批定义分组</para>
+    /// <para>必填：否</para>
     /// </summary>
-    [JsonPropertyName("instance_list")]
-    public InstanceSearchItem[]? InstanceLists { get; set; }
+    [JsonPropertyName("group")]
+    public InstanceSearchGroup? Group { get; set; }
+
+    /// <summary>
+    /// <para>审批实例信息</para>
+    /// <para>必填：否</para>
+    /// </summary>
+    [JsonPropertyName("instance")]
+    public InstanceSearchNode? Instance { get; set; }
+
+    /// <summary>
+    /// <para>审批抄送信息</para>
+    /// <para>必填：否</para>
+    /// </summary>
+    [JsonPropertyName("cc")]
+    public CcSearchNode? Cc { get; set; }
+
 }

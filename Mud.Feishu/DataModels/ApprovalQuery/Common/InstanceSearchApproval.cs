@@ -11,7 +11,7 @@ namespace Mud.Feishu.DataModels.ApprovalQuery;
 /// <summary>
 /// <para>审批定义信息</para>
 /// </summary>
-public record InstanceSearchApproval
+public class InstanceSearchApproval
 {
     /// <summary>
     /// <para>审批定义 Code</para>

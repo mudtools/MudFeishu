@@ -8,20 +8,21 @@
 namespace Mud.Feishu.DataModels.ApprovalQuery;
 
 /// <summary>
-/// 查询实例列表响应体
+/// 查询抄送列表响应体
 /// </summary>
-public class ApprovalInstancesQueryResult : ApiPageListResult
+public class ApprovalInstancesCcQueryResult : ApiPageListResult
 {
     /// <summary>
-    /// <para>查询结果中包含的审批实例总数</para>
+    /// <para>查询结果中包含的审批抄送总数</para>
     /// <para>示例值：10</para>
     /// </summary>
     [JsonPropertyName("count")]
     public int? Count { get; set; }
 
     /// <summary>
-    /// <para>审批实例列表</para>
+    /// <para>审批抄送列表</para>
+    /// <para>必填：否</para>
     /// </summary>
-    [JsonPropertyName("instance_list")]
-    public InstanceSearchItem[]? InstanceLists { get; set; }
+    [JsonPropertyName("cc_list")]
+    public InstancesCcSearchItem[]? CcLists { get; set; }
 }

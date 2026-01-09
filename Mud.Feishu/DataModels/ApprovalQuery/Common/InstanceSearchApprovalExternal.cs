@@ -12,7 +12,7 @@ namespace Mud.Feishu.DataModels.ApprovalQuery;
 /// <summary>
 /// <para>第三方审批信息</para>
 /// </summary>
-public record InstanceSearchApprovalExternal
+public class InstanceSearchApprovalExternal
 {
     /// <summary>
     /// <para>是否支持批量读</para>

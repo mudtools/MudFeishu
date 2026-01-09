@@ -7,25 +7,9 @@
 
 using Mud.Feishu.WebSocket;
 using Mud.Feishu.WebSocket.Demo.Handlers;
-using Mud.Feishu.WebSocket.Demo.Services;
 using Mud.Feishu.WebSocket.Services;
 
 var builder = WebApplication.CreateBuilder(args);
-
-// 配置服务
-builder.Services.AddControllers();
-
-// 配置Swagger
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(c =>
-{
-    c.SwaggerDoc("v1", new Microsoft.OpenApi.OpenApiInfo
-    {
-        Title = "飞书WebSocket测试API",
-        Version = "v1",
-        Description = "用于测试飞书WebSocket长连接功能的演示API"
-    });
-});
 
 // 配置飞书基础令牌服务
 builder.Services.CreateFeishuServicesBuilder(builder.Configuration)
@@ -37,48 +21,13 @@ builder.Services.CreateFeishuServicesBuilder(builder.Configuration)
 builder.Services.CreateFeishuWebSocketServiceBuilder(builder.Configuration)
                 .AddHandler<DemoDepartmentEventHandler>()
                 .AddHandler<DemoDepartmentDeleteEventHandler>()
+                .AddHandler<DemoDepartmentUpdateEventHandler>()
                 .Build();
 
 // 配置演示服务
 builder.Services.AddSingleton<DemoEventService>();
 builder.Services.AddHostedService<DemoEventBackgroundService>();
-builder.Services.AddHostedService<HeartbeatMonitorService>();
-
-// 配置CORS
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("AllowAll", policy =>
-    {
-        policy.AllowAnyOrigin()
-              .AllowAnyMethod()
-              .AllowAnyHeader();
-    });
-});
 
 var app = builder.Build();
-
-// 配置中间件
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI(c =>
-    {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "飞书WebSocket测试API v1");
-        c.RoutePrefix = "swagger";
-    });
-}
-
-app.UseHttpsRedirection();
-app.UseCors("AllowAll");
-app.UseStaticFiles();
-app.UseRouting();
-app.MapControllers();
-
-// 默认路由到测试页面
-app.MapGet("/", context =>
-{
-    context.Response.Redirect("/index.html");
-    return Task.CompletedTask;
-});
 
 app.Run();

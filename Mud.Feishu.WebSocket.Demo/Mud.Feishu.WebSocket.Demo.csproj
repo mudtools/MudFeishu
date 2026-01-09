@@ -25,4 +25,8 @@
     <ProjectReference Include="..\Mud.Feishu.WebSocket\Mud.Feishu.WebSocket.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Properties\" />
+  </ItemGroup>
+
 </Project>

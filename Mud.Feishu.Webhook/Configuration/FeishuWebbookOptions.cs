@@ -44,7 +44,7 @@ public class FeishuWebhookOptions
 
     /// <summary>
     /// 事件处理超时时间（毫秒）
-    /// 注意：此配置项暂未实际使用，预留用于未来超时控制功能
+    /// 超过此时间仍未完成的请求将被取消并返回超时错误
     /// </summary>
     public int EventHandlingTimeoutMs { get; set; } = 30000;
 
@@ -83,6 +83,13 @@ public class FeishuWebhookOptions
     /// 如果 Middleware 中已验证 X-Lark-Signature 请求头，可禁用此选项以避免重复验证
     /// </summary>
     public bool EnableBodySignatureValidation { get; set; } = true;
+
+    /// <summary>
+    /// 是否强制验证 X-Lark-Signature 请求头签名
+    /// 当设置为 true 时，如果请求头中缺少签名将拒绝请求
+    /// 生产环境建议设置为 true 以提高安全性
+    /// </summary>
+    public bool EnforceHeaderSignatureValidation { get; set; } = true;
 
     /// <summary>
     /// 验证配置项的有效性

@@ -18,6 +18,8 @@
 - ✅ **健康检查**：内置健康检查端点
 - ✅ **异步处理**：完全异步的事件处理机制
 - ✅ **并发控制**：可配置的并发事件处理数量限制
+- ✅ **分布式支持**：提供分布式去重接口，支持 Redis 等外部存储
+- ✅ **配置热更新**：支持运行时配置变更，无需重启服务
 
 ## 快速开始
 
@@ -185,13 +187,15 @@ public class MessageEventHandler : IFeishuEventHandler
 | `AllowedSourceIPs` | HashSet\<string\> | - | 允许的源 IP 地址列表 |
 | `AllowedHttpMethods` | HashSet\<string\> | ["POST"] | 允许的 HTTP 方法 |
 | `MaxRequestBodySize` | long | 10MB | 最大请求体大小 |
+| `EnforceHeaderSignatureValidation` | bool | true | 是否强制验证请求头签名 |
+| `EnableBodySignatureValidation` | bool | true | 是否在服务层再次验证请求体签名 |
 
 ### 性能配置
 
 | 选项 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
-| `MaxConcurrentEvents` | int | 10 | 最大并发事件数 |
-| `EventHandlingTimeoutMs` | int | 30000 | 事件处理超时时间（毫秒）*暂未实际使用* |
+| `MaxConcurrentEvents` | int | 10 | 最大并发事件数，支持热更新 |
+| `EventHandlingTimeoutMs` | int | 30000 | 事件处理超时时间（毫秒） |
 | `EnablePerformanceMonitoring` | bool | false | 是否启用性能监控 |
 
 ### 日志配置
@@ -358,10 +362,19 @@ public async Task HandleAsync(EventData eventData, CancellationToken cancellatio
 3. **签名验证失败**
    - 检查时间同步
    - 确认请求没有被代理服务器修改
+   - 生产环境确保 `EnforceHeaderSignatureValidation` 设置为 true
 
 4. **事件处理失败**
    - 检查事件处理器是否正确注册
    - 查看日志中的详细错误信息
+
+5. **分布式部署事件重复**
+   - 默认使用内存去重，多实例部署需要实现分布式去重
+   - 参考 `IFeishuWebhookDistributedDeduplicator` 接口自定义 Redis 实现
+
+6. **超时处理**
+   - 检查 `EventHandlingTimeoutMs` 配置是否合理
+   - 确保事件处理逻辑支持取消令牌
 
 ### 调试技巧
 

@@ -6,7 +6,6 @@
 // -----------------------------------------------------------------------
 
 using Mud.Feishu.Webhook.Configuration;
-using Mud.Feishu.Webhook.Middleware;
 
 namespace Mud.Feishu.Webhook;
 

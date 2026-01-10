@@ -8,7 +8,7 @@
 using Mud.Feishu.Webhook.Configuration;
 using System.Diagnostics;
 
-namespace Mud.Feishu.Webhook.Middleware;
+namespace Mud.Feishu.Webhook;
 
 /// <summary>
 /// 飞书 Webhook 中间件

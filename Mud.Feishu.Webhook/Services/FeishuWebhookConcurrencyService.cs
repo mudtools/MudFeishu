@@ -15,12 +15,12 @@ namespace Mud.Feishu.Webhook.Services;
 /// </summary>
 public class FeishuWebhookConcurrencyService : IAsyncDisposable
 {
-    private readonly SemaphoreSlim _semaphore;
     private readonly IOptionsMonitor<FeishuWebhookOptions> _optionsMonitor;
     private readonly ILogger<FeishuWebhookConcurrencyService> _logger;
-    private readonly object _semaphoreLock = new();
+    private readonly SemaphoreSlim _semaphoreLock = new(1, 1);
+    private SemaphoreSlim _semaphore;
     private bool _disposed;
-    private int _currentMaxConcurrentEvents;
+    private volatile int _currentMaxConcurrentEvents;
 
     /// <summary>
     /// 构造函数
@@ -51,7 +51,10 @@ public class FeishuWebhookConcurrencyService : IAsyncDisposable
     /// </summary>
     private void UpdateSemaphore(int newMaxConcurrent)
     {
-        lock (_semaphoreLock)
+        // 使用信号量确保只有一个线程在更新配置
+        _semaphoreLock.Wait();
+
+        try
         {
             if (_disposed || newMaxConcurrent == _currentMaxConcurrentEvents)
                 return;
@@ -62,9 +65,19 @@ public class FeishuWebhookConcurrencyService : IAsyncDisposable
             _logger.LogInformation("并发控制配置已更新，最大并发数: {OldMax} -> {NewMax}",
                 oldMax, newMaxConcurrent);
 
-            // 由于 SemaphoreSlim 的初始计数不能动态修改，
-            // 新配置将在下一次创建信号量时生效
-            // 这里的处理是合理的，因为配置变更应该谨慎处理
+            // 创建新的信号量
+            var oldSemaphore = _semaphore;
+            _semaphore = new SemaphoreSlim(_currentMaxConcurrentEvents, _currentMaxConcurrentEvents);
+
+            _logger.LogInformation("信号量已重新创建，新的最大并发数: {NewMax}", newMaxConcurrent);
+
+            // 注意：旧的信号量不会被立即释放，因为可能还有等待者
+            // 旧信号量的 Dispose 会延迟到对象被 GC 回收
+            // 这是设计上的权衡：配置变更即时生效，但旧请求仍使用旧配置
+        }
+        finally
+        {
+            _semaphoreLock.Release();
         }
     }
 
@@ -80,11 +93,21 @@ public class FeishuWebhookConcurrencyService : IAsyncDisposable
     /// <returns>信号量租约，使用完成后应释放</returns>
     public async Task<IDisposable> AcquireAsync(CancellationToken cancellationToken = default)
     {
-        await _semaphore.WaitAsync(cancellationToken);
+        // 获取当前信号量的引用（快照）
+        var currentSemaphore = GetCurrentSemaphore();
+        await currentSemaphore.WaitAsync(cancellationToken);
 
-        _logger.LogDebug("获取信号量成功，当前可用: {AvailableSlots}", _semaphore.CurrentCount + 1);
+        _logger.LogDebug("获取信号量成功，当前可用: {AvailableSlots}", currentSemaphore.CurrentCount + 1);
 
-        return new SemaphoreLease(_semaphore, _logger);
+        return new SemaphoreLease(currentSemaphore, _logger);
+    }
+
+    /// <summary>
+    /// 获取当前信号量的快照
+    /// </summary>
+    private SemaphoreSlim GetCurrentSemaphore()
+    {
+        return Volatile.Read(ref _semaphore);
     }
 
     /// <summary>

@@ -16,14 +16,17 @@ public class FeishuEventValidator : IFeishuEventValidator
 {
     private readonly ILogger<FeishuEventValidator> _logger;
     private readonly FeishuWebhookNonceDeduplicator _nonceDeduplicator;
+    private readonly IOptions<FeishuWebhookOptions> _options;
 
     /// <inheritdoc />
     public FeishuEventValidator(
         ILogger<FeishuEventValidator> logger,
-        FeishuWebhookNonceDeduplicator nonceDeduplicator)
+        FeishuWebhookNonceDeduplicator nonceDeduplicator,
+        IOptions<FeishuWebhookOptions> options)
     {
         _logger = logger;
         _nonceDeduplicator = nonceDeduplicator;
+        _options = options;
     }
 
     /// <inheritdoc />
@@ -118,9 +121,17 @@ public class FeishuEventValidator : IFeishuEventValidator
     {
         try
         {
-            // 如果请求头中没有签名，跳过验证（兼容旧版本）
+            // 检查请求头签名是否为空
             if (string.IsNullOrEmpty(headerSignature))
             {
+                // 如果配置为强制验证，则拒绝请求
+                if (_options.Value.EnforceHeaderSignatureValidation)
+                {
+                    _logger.LogWarning("请求头中缺少 X-Lark-Signature，拒绝请求（配置为强制验证）");
+                    return false;
+                }
+
+                // 否则跳过验证（兼容旧版本）
                 _logger.LogDebug("请求头中未包含 X-Lark-Signature，跳过头部签名验证");
                 return true;
             }

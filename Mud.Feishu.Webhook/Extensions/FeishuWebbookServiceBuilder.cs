@@ -291,12 +291,19 @@ public class FeishuWebhookServiceBuilder
     /// </summary>
     private void RegisterCoreServices()
     {
+        // 单实例服务
         _services.TryAddSingleton<FeishuWebhookNonceDeduplicator>();
+        _services.TryAddSingleton<FeishuWebhookConcurrencyService>();
+        _services.TryAddSingleton<FeishuWebhookEventDeduplicator>();
+
+        // 分布式去重器（默认使用内存实现）
+        _services.TryAddSingleton<IFeishuWebhookDistributedDeduplicator, FeishuWebhookDistributedDeduplicator>();
+        _services.TryAddSingleton<IFeishuWebhookDistributedNonceDeduplicator, FeishuWebhookDistributedNonceDeduplicator>();
+
+        // 作用域服务
         _services.TryAddScoped<IFeishuEventValidator, FeishuEventValidator>();
         _services.TryAddScoped<IFeishuEventDecryptor, FeishuEventDecryptor>();
         _services.TryAddScoped<IFeishuWebhookService, FeishuWebhookService>();
-        _services.TryAddSingleton<FeishuWebhookConcurrencyService>();
-        _services.TryAddSingleton<FeishuWebhookEventDeduplicator>();
     }
 
     /// <summary>

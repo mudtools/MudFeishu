@@ -14,7 +14,7 @@ namespace Mud.Feishu.Webhook.Services;
 public class FeishuWebhookNonceDeduplicator : IAsyncDisposable
 {
     private readonly ILogger<FeishuWebhookNonceDeduplicator> _logger;
-    private readonly HashSet<string> _nonceCache;
+    private readonly Dictionary<string, DateTimeOffset> _nonceCache;
     private readonly Timer _cleanupTimer;
     private readonly TimeSpan _nonceTtl;
     private readonly TimeSpan _cleanupInterval;
@@ -30,7 +30,7 @@ public class FeishuWebhookNonceDeduplicator : IAsyncDisposable
         TimeSpan? cleanupInterval = null)
     {
         _logger = logger;
-        _nonceCache = new HashSet<string>();
+        _nonceCache = new Dictionary<string, DateTimeOffset>();
         _nonceTtl = nonceTtl ?? TimeSpan.FromMinutes(5); // 默认 nonce 有效期为 5 分钟
         _cleanupInterval = cleanupInterval ?? TimeSpan.FromMinutes(1); // 默认每 1 分钟清理一次
 
@@ -56,15 +56,24 @@ public class FeishuWebhookNonceDeduplicator : IAsyncDisposable
 
         lock (_lock)
         {
-            // 检查 nonce 是否已存在
-            if (_nonceCache.Contains(nonce))
+            // 先清理已过期的 nonce
+            CleanupExpiredNoncesLocked();
+
+            // 检查 nonce 是否已存在且未过期
+            if (_nonceCache.TryGetValue(nonce, out var createdAt))
             {
-                _logger.LogWarning("Nonce {Nonce} 已使用过，拒绝重放攻击", nonce);
-                return true; // 已使用
+                // 检查是否已过期
+                if (DateTimeOffset.UtcNow - createdAt <= _nonceTtl)
+                {
+                    _logger.LogWarning("Nonce {Nonce} 已使用过，拒绝重放攻击", nonce);
+                    return true; // 已使用且未过期
+                }
+                // 已过期，删除并继续处理
+                _nonceCache.Remove(nonce);
             }
 
-            // 标记新 nonce
-            _nonceCache.Add(nonce);
+            // 标记新 nonce（使用当前时间）
+            _nonceCache[nonce] = DateTimeOffset.UtcNow;
 
             _logger.LogDebug("Nonce {Nonce} 标记为已使用", nonce);
             return false; // 未使用
@@ -86,7 +95,11 @@ public class FeishuWebhookNonceDeduplicator : IAsyncDisposable
 
         lock (_lock)
         {
-            return _nonceCache.Contains(nonce);
+            if (!_nonceCache.TryGetValue(nonce, out var createdAt))
+                return false;
+
+            // 检查是否已过期
+            return (DateTimeOffset.UtcNow - createdAt) <= _nonceTtl;
         }
     }
 
@@ -118,23 +131,42 @@ public class FeishuWebhookNonceDeduplicator : IAsyncDisposable
 
     /// <summary>
     /// 清理过期的 nonce
-    /// 注意：由于 HashSet 不存储过期时间，这里我们使用基于时间的重建策略
+    /// 使用 Dictionary&lt;string, DateTimeOffset&gt; 存储创建时间，精确清理过期条目
     /// </summary>
     private void CleanupExpiredNonces(object? state)
     {
         lock (_lock)
         {
-            // 简单策略：如果缓存数量过大，清空缓存
-            // 更好的实现是使用 ConcurrentDictionary<DateTimeOffset, HashSet<string>> 或类似结构
-            // 但为了性能考虑，我们定期重建缓存
-            var oldCache = _nonceCache;
-            
-            if (oldCache.Count > 10000)
-            {
-                // 如果缓存超过 10000 个，清空并重建
-                _nonceCache.Clear();
-                _logger.LogInformation("Nonce 缓存数量过多 ({Count})，已清空", oldCache.Count);
-            }
+            CleanupExpiredNoncesLocked();
+        }
+    }
+
+    /// <summary>
+    /// 清理过期的 nonce（内部方法，需要在锁内调用）
+    /// </summary>
+    private void CleanupExpiredNoncesLocked()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var expiredKeys = _nonceCache
+            .Where(kvp => (now - kvp.Value) > _nonceTtl)
+            .Select(kvp => kvp.Key)
+            .ToList();
+
+        foreach (var key in expiredKeys)
+        {
+            _nonceCache.Remove(key);
+        }
+
+        if (expiredKeys.Count > 0)
+        {
+            _logger.LogDebug("清理了 {Count} 个过期的 Nonce 缓存条目", expiredKeys.Count);
+        }
+
+        // 记录当前缓存统计
+        if (_nonceCache.Count > 1000)
+        {
+            _logger.LogInformation("Nonce 缓存当前有 {Count} 个条目，TTL: {Ttl}",
+                _nonceCache.Count, _nonceTtl);
         }
     }
 

@@ -17,6 +17,8 @@ public class FeishuWebSocketOptions
     private int _emptyQueueCheckIntervalMs = 100;
     private int _maxReconnectDelayMs = 30000;
     private int _healthCheckIntervalMs = 60000;
+    private int _eventDeduplicationCacheExpirationMs = 30 * 60 * 1000;
+    private int _eventDeduplicationCleanupIntervalMs = 5 * 60 * 1000;
 
     /// <summary>
     /// 自动重连，默认为true
@@ -115,6 +117,34 @@ public class FeishuWebSocketOptions
     }
 
     /// <summary>
+    /// 是否启用事件去重，默认为true
+    /// </summary>
+    public bool EnableEventDeduplication { get; set; } = true;
+
+    /// <summary>
+    /// 是否启用分布式去重（需配置 IFeishuEventDistributedDeduplicator），默认为false
+    /// </summary>
+    public bool EnableDistributedDeduplication { get; set; } = false;
+
+    /// <summary>
+    /// 事件去重缓存过期时间（毫秒），默认为30分钟
+    /// </summary>
+    public int EventDeduplicationCacheExpirationMs
+    {
+        get => _eventDeduplicationCacheExpirationMs;
+        set => _eventDeduplicationCacheExpirationMs = Math.Max(60000, value);
+    }
+
+    /// <summary>
+    /// 事件去重缓存清理间隔（毫秒），默认为5分钟
+    /// </summary>
+    public int EventDeduplicationCleanupIntervalMs
+    {
+        get => _eventDeduplicationCleanupIntervalMs;
+        set => _eventDeduplicationCleanupIntervalMs = Math.Max(60000, value);
+    }
+
+    /// <summary>
     /// 验证配置项的有效性
     /// </summary>
     /// <exception cref="InvalidOperationException">当配置项无效时抛出</exception>
@@ -146,6 +176,12 @@ public class FeishuWebSocketOptions
 
         if (MaxBinaryMessageSize < 1024)
             throw new InvalidOperationException("MaxBinaryMessageSize必须至少为1024字节");
+
+        if (EventDeduplicationCacheExpirationMs < 60000)
+            throw new InvalidOperationException("EventDeduplicationCacheExpirationMs必须至少为60000毫秒");
+
+        if (EventDeduplicationCleanupIntervalMs < 60000)
+            throw new InvalidOperationException("EventDeduplicationCleanupIntervalMs必须至少为60000毫秒");
     }
 }
 

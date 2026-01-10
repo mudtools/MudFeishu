@@ -150,7 +150,10 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
 
         var eventHandler = new FeishuEventMessageHandler(
             _loggerFactory.CreateLogger<FeishuEventMessageHandler>(),
-            _eventHandlerFactory);
+            _eventHandlerFactory,
+            null,
+            null,
+            _options);
 
         _messageRouter.RegisterHandler(pingPongHandler);
         _messageRouter.RegisterHandler(authHandler);

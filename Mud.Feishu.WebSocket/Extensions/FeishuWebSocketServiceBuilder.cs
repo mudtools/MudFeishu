@@ -9,6 +9,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Mud.Feishu.Abstractions.Services;
 using Mud.Feishu.WebSocket.Handlers;
 
 namespace Mud.Feishu.WebSocket;
@@ -209,6 +210,22 @@ public class FeishuWebSocketServiceBuilder
     /// </summary>
     private void RegisterCoreServices()
     {
+        // 注册事件去重服务（单例，如果未手动注册分布式去重则使用内存实现）
+        if (!_services.Any(s => s.ServiceType == typeof(IFeishuEventDeduplicator)))
+        {
+            _services.AddSingleton<IFeishuEventDeduplicator>(serviceProvider =>
+            {
+                var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
+                var options = serviceProvider.GetRequiredService<IOptions<FeishuWebSocketOptions>>().Value;
+                var logger = loggerFactory.CreateLogger<FeishuEventDeduplicator>();
+
+                return new FeishuEventDeduplicator(
+                    logger,
+                    TimeSpan.FromMilliseconds(options.EventDeduplicationCacheExpirationMs),
+                    TimeSpan.FromMilliseconds(options.EventDeduplicationCleanupIntervalMs));
+            });
+        }
+
         // 注册WebSocket客户端
         _services.AddSingleton<IFeishuWebSocketClient>(serviceProvider =>
         {

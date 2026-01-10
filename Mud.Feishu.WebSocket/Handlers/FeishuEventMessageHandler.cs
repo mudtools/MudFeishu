@@ -6,8 +6,7 @@
 // -----------------------------------------------------------------------
 
 using Microsoft.Extensions.Logging;
-using Mud.Feishu.Abstractions;
-using Mud.Feishu.Abstractions.EventHandlers;
+using Mud.Feishu.Abstractions.Services;
 using Mud.Feishu.WebSocket.DataModels;
 using System.Text.Json;
 
@@ -19,18 +18,30 @@ namespace Mud.Feishu.WebSocket.Handlers;
 public class FeishuEventMessageHandler : JsonMessageHandler
 {
     private readonly IFeishuEventHandlerFactory _eventHandlerFactory;
+    private readonly IFeishuEventDeduplicator? _deduplicator;
+    private readonly IFeishuEventDistributedDeduplicator? _distributedDeduplicator;
+    private readonly FeishuWebSocketOptions _options;
 
     /// <summary>
     /// 初始化飞书事件消息处理器
     /// </summary>
     /// <param name="logger">日志记录器</param>
     /// <param name="eventHandlerFactory">事件处理器工厂</param>
+    /// <param name="deduplicator">事件去重服务（可选）</param>
+    /// <param name="distributedDeduplicator">分布式事件去重服务（可选）</param>
+    /// <param name="options">WebSocket 配置选项</param>
     public FeishuEventMessageHandler(
         ILogger<FeishuEventMessageHandler> logger,
-        IFeishuEventHandlerFactory eventHandlerFactory)
+        IFeishuEventHandlerFactory eventHandlerFactory,
+        IFeishuEventDeduplicator? deduplicator,
+        IFeishuEventDistributedDeduplicator? distributedDeduplicator,
+        FeishuWebSocketOptions options)
         : base(logger)
     {
         _eventHandlerFactory = eventHandlerFactory ?? throw new ArgumentNullException(nameof(eventHandlerFactory));
+        _deduplicator = deduplicator;
+        _distributedDeduplicator = distributedDeduplicator;
+        _options = options ?? throw new ArgumentNullException(nameof(options));
     }
 
     /// <inheritdoc/>
@@ -85,6 +96,29 @@ public class FeishuEventMessageHandler : JsonMessageHandler
 
             _logger.LogInformation("收到飞书事件: {EventType}, EventId: {EventId}",
                 eventData.EventType, eventData.EventId);
+
+            // 去重检查
+            bool isDuplicate = false;
+            if (_options.EnableDistributedDeduplication && _distributedDeduplicator != null)
+            {
+                // 优先使用分布式去重
+                isDuplicate = await _distributedDeduplicator.TryMarkAsProcessedAsync(eventData.EventId, cancellationToken: cancellationToken);
+                if (isDuplicate)
+                {
+                    _logger.LogDebug("事件 {EventId} 已处理过（分布式去重），跳过", eventData.EventId);
+                    return;
+                }
+            }
+            else if (_options.EnableEventDeduplication && _deduplicator != null)
+            {
+                // 使用内存去重
+                isDuplicate = _deduplicator.TryMarkAsProcessed(eventData.EventId);
+                if (isDuplicate)
+                {
+                    _logger.LogDebug("事件 {EventId} 已处理过（内存去重），跳过", eventData.EventId);
+                    return;
+                }
+            }
 
             // 使用事件处理器工厂并行处理事件
             await _eventHandlerFactory.HandleEventParallelAsync(eventData.EventType, eventData, cancellationToken);

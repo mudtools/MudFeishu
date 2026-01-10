@@ -34,15 +34,17 @@ public class DemoDepartmentEventHandler : DepartmentCreatedEventHandler
 
         try
         {
-
             // 记录事件到服务
-            await _eventService.RecordDepartmentEventAsync(departmentData.Object, cancellationToken);
+            await _eventService.RecordDepartmentEventAsync(departmentData?.Object, cancellationToken);
 
             // 模拟业务处理
-            await ProcessDepartmentEventAsync(departmentData.Object, cancellationToken);
+            if (departmentData?.Object != null)
+            {
+                await ProcessDepartmentEventAsync(departmentData.Object, cancellationToken);
+            }
 
             _logger.LogInformation(">> [部门事件] 部门创建事件处理完成: 部门ID {DepartmentId}, 部门名 {DepartmentName}",
-                departmentData.Object.DepartmentId, departmentData.Object.Name);
+                departmentData?.Object.DepartmentId, departmentData?.Object.Name);
         }
         catch (Exception ex)
         {

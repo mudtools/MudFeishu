@@ -16,28 +16,45 @@ namespace Mud.Feishu.Webhook.Services;
 /// </summary>
 public class FeishuWebhookService : IFeishuWebhookService
 {
-    private readonly FeishuWebhookOptions _options;
+    private readonly IOptionsMonitor<FeishuWebhookOptions> _optionsMonitor;
     private readonly IFeishuEventValidator _validator;
     private readonly IFeishuEventDecryptor _decryptor;
     private readonly IFeishuEventHandlerFactory _handlerFactory;
     private readonly ILogger<FeishuWebhookService> _logger;
     private readonly MetricsCollector _metrics;
+    private readonly FeishuWebhookConcurrencyService _concurrencyService;
+    private readonly FeishuWebhookEventDeduplicator _deduplicator;
+
+    /// <summary>
+    /// 获取当前配置选项（支持热更新）
+    /// </summary>
+    private FeishuWebhookOptions Options => _optionsMonitor.CurrentValue;
 
     /// <inheritdoc />
     public FeishuWebhookService(
-        IOptions<FeishuWebhookOptions> options,
+        IOptionsMonitor<FeishuWebhookOptions> optionsMonitor,
         IFeishuEventValidator validator,
         IFeishuEventDecryptor decryptor,
         IFeishuEventHandlerFactory handlerFactory,
         ILogger<FeishuWebhookService> logger,
-        MetricsCollector metrics)
+        MetricsCollector metrics,
+        FeishuWebhookConcurrencyService concurrencyService,
+        FeishuWebhookEventDeduplicator deduplicator)
     {
-        _options = options.Value;
+        _optionsMonitor = optionsMonitor;
         _validator = validator;
         _decryptor = decryptor;
         _handlerFactory = handlerFactory;
         _logger = logger;
         _metrics = metrics;
+        _concurrencyService = concurrencyService;
+        _deduplicator = deduplicator;
+
+        // 监听配置变更
+        _optionsMonitor.OnChange((newOptions, name) =>
+        {
+            _logger.LogInformation("飞书 Webhook 配置已更新，来源: {ChangeSource}", name);
+        });
     }
 
     /// <inheritdoc />
@@ -47,7 +64,7 @@ public class FeishuWebhookService : IFeishuWebhookService
         {
             _logger.LogInformation("开始验证飞书事件订阅请求");
 
-            if (!_validator.ValidateSubscriptionRequest(request, _options.VerificationToken))
+            if (!_validator.ValidateSubscriptionRequest(request, Options.VerificationToken))
             {
                 _logger.LogWarning("事件订阅验证失败");
                 return null;
@@ -71,9 +88,9 @@ public class FeishuWebhookService : IFeishuWebhookService
     }
 
     /// <inheritdoc />
-    public async Task<bool> HandleEventAsync(FeishuWebhookRequest request, CancellationToken cancellationToken = default)
+    public async Task<(bool Success, string? ErrorReason)> HandleEventAsync(FeishuWebhookRequest request, CancellationToken cancellationToken = default)
     {
-        if (_options.EnablePerformanceMonitoring)
+        if (Options.EnablePerformanceMonitoring)
         {
             using var activity = _metrics.StartEventHandlingActivity();
             return await HandleEventInternalAsync(request, cancellationToken);
@@ -87,7 +104,7 @@ public class FeishuWebhookService : IFeishuWebhookService
     /// <summary>
     /// 内部事件处理方法
     /// </summary>
-    private async Task<bool> HandleEventInternalAsync(FeishuWebhookRequest request, CancellationToken cancellationToken)
+    private async Task<(bool Success, string? ErrorReason)> HandleEventInternalAsync(FeishuWebhookRequest request, CancellationToken cancellationToken)
     {
         try
         {
@@ -98,59 +115,72 @@ public class FeishuWebhookService : IFeishuWebhookService
             {
                 _logger.LogWarning("请求签名验证失败");
                 _metrics.IncrementSignatureValidationFailures();
-                return false;
+                return (false, "Signature validation failed");
             }
 
             // 解密事件数据
             if (string.IsNullOrEmpty(request.Encrypt))
             {
                 _logger.LogError("请求中缺少加密数据");
-                return false;
+                return (false, "Missing encrypted data");
             }
 
-            var eventData = await DecryptEventAsync(request.Encrypt, cancellationToken);
+            var eventData = await DecryptEventAsync(request.Encrypt!, cancellationToken);
             if (eventData == null)
             {
                 _logger.LogError("事件数据解密失败");
                 _metrics.IncrementDecryptionFailures();
-                return false;
+                return (false, "Decryption failed");
             }
 
-            // 使用信号量控制并发
-            using var semaphore = new SemaphoreSlim(_options.MaxConcurrentEvents);
-            await semaphore.WaitAsync(cancellationToken);
+            // 检查事件是否已处理（幂等性）
+            if (_deduplicator.TryMarkAsProcessed(eventData.EventId))
+            {
+                _logger.LogInformation("事件 {EventId} 已处理过，跳过（幂等性）", eventData.EventId);
+                return (true, null); // 已处理，返回成功避免飞书重试
+            }
+
+            // 使用全局并发控制服务
+            using var concurrencyLock = await _concurrencyService.AcquireAsync(cancellationToken);
+
+            // 添加超时控制
+            using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            timeoutCts.CancelAfter(Options.EventHandlingTimeoutMs);
 
             try
             {
                 // 分发事件到处理器
-                await _handlerFactory.HandleEventParallelAsync(eventData.EventType, eventData, cancellationToken);
+                await _handlerFactory.HandleEventParallelAsync(eventData.EventType, eventData, timeoutCts.Token);
 
                 _metrics.IncrementSuccessfulEvents();
                 _logger.LogInformation("事件处理完成: {EventType}, 事件ID: {EventId}",
                     eventData.EventType, eventData.EventId);
 
-                return true;
+                return (true, null);
             }
-            finally
+            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
             {
-                semaphore.Release();
+                _logger.LogWarning("事件处理超时: {EventType}, 事件ID: {EventId}, 超时时间: {TimeoutMs}ms",
+                    eventData.EventType, eventData.EventId, Options.EventHandlingTimeoutMs);
+                _metrics.IncrementFailedEvents();
+                return (false, "Event handling timeout");
             }
         }
         catch (OperationCanceledException)
         {
             _logger.LogWarning("事件处理被取消");
             _metrics.IncrementCancelledEvents();
-            return false;
+            return (false, "Operation cancelled");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "处理飞书事件时发生错误");
             _metrics.IncrementFailedEvents();
 
-            if (_options.EnableExceptionHandling)
+            if (Options.EnableExceptionHandling)
             {
                 // 记录异常但不抛出，避免影响整体服务
-                return false;
+                return (false, "Internal server error");
             }
 
             throw;
@@ -173,9 +203,9 @@ public class FeishuWebhookService : IFeishuWebhookService
             return _validator.ValidateSignature(
                 request.Timestamp,
                 request.Nonce,
-                request.Encrypt,
+                request.Encrypt!,
                 request.Signature,
-                _options.EncryptKey);
+                Options.EncryptKey);
         }
         catch (Exception ex)
         {
@@ -189,7 +219,7 @@ public class FeishuWebhookService : IFeishuWebhookService
     {
         try
         {
-            return await _decryptor.DecryptAsync(encryptedData, _options.EncryptKey, cancellationToken);
+            return await _decryptor.DecryptAsync(encryptedData, Options.EncryptKey, cancellationToken);
         }
         catch (Exception ex)
         {

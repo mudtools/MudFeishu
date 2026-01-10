@@ -121,7 +121,24 @@ public class FeishuWebhookMiddleware(
             return true;
         }
 
-        return _options.AllowedSourceIPs.Contains(remoteIpAddress);
+        return _options.AllowedSourceIPs.Contains(remoteIpAddress!);
+    }
+
+    /// <summary>
+    /// 验证请求头签名
+    /// </summary>
+    private bool ValidateHeaderSignature(HttpContext context, string requestBody, FeishuWebhookRequest eventRequest, IFeishuEventValidator validator)
+    {
+        // 获取 X-Lark-Signature 请求头
+        var headerSignature = context.Request.Headers["X-Lark-Signature"].FirstOrDefault();
+
+        // 验证请求头签名
+        return validator.ValidateHeaderSignature(
+            eventRequest.Timestamp,
+            eventRequest.Nonce,
+            requestBody,
+            headerSignature,
+            _options.EncryptKey);
     }
 
     /// <summary>
@@ -150,6 +167,7 @@ public class FeishuWebhookMiddleware(
     {
         using var scope = _scopeFactory.CreateScope();
         var webhookService = scope.ServiceProvider.GetRequiredService<IFeishuWebhookService>();
+        var validator = scope.ServiceProvider.GetRequiredService<IFeishuEventValidator>();
 
         try
         {
@@ -180,13 +198,31 @@ public class FeishuWebhookMiddleware(
 
             if (eventRequest != null)
             {
-                // 处理事件请求
-                var success = await webhookService.HandleEventAsync(eventRequest);
-                if (success)
+                // 验证 X-Lark-Signature 请求头签名
+                if (!ValidateHeaderSignature(context, requestBody, eventRequest, validator))
                 {
-                    await WriteJsonResponse(context, 200, new { success = true, message = "Event processed successfully" });
+                    await WriteErrorResponse(context, 401, "Unauthorized: Invalid X-Lark-Signature");
                     return;
                 }
+
+                // 处理事件请求
+                var (success, errorReason) = await webhookService.HandleEventAsync(eventRequest);
+                if (success)
+                {
+                    await WriteJsonResponse(context, 200, new { });
+                    return;
+                }
+
+                // 根据错误原因返回不同的状态码
+                if (errorReason == "Signature validation failed")
+                {
+                    await WriteErrorResponse(context, 401, "Unauthorized: Invalid signature");
+                    return;
+                }
+
+                // 其他错误返回 400
+                await WriteErrorResponse(context, 400, $"Bad Request: {errorReason}");
+                return;
             }
 
             await WriteErrorResponse(context, 400, "Bad Request: Invalid request format");

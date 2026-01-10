@@ -45,7 +45,7 @@ public class FeishuEventDecryptor : IFeishuEventDecryptor
             // 解析事件数据（支持 v1.0 和 v2.0 版本）
             EventData eventData;
 
-            using (var jsonDoc = JsonDocument.Parse(decryptedJson))
+            using (var jsonDoc = JsonDocument.Parse(decryptedJson!))
             {
                 var root = jsonDoc.RootElement;
 
@@ -59,7 +59,7 @@ public class FeishuEventDecryptor : IFeishuEventDecryptor
                 else
                 {
                     // v1.0版本：直接反序列化
-                    eventData = JsonSerializer.Deserialize<EventData>(decryptedJson, new JsonSerializerOptions
+                    eventData = JsonSerializer.Deserialize<EventData>(decryptedJson!, new JsonSerializerOptions
                     {
                         PropertyNameCaseInsensitive = true
                     }) ?? new EventData();
@@ -136,35 +136,50 @@ public class FeishuEventDecryptor : IFeishuEventDecryptor
     /// <returns>解密后的字符串</returns>
     private async Task<string?> DecryptAes256CbcAsync(byte[] encryptedBytes, string key, CancellationToken cancellationToken = default)
     {
-        await Task.CompletedTask; // 使方法保持异步签名
-
-        try
+        // 使用 Task.Run 将 CPU 密集型操作放到线程池执行，避免阻塞请求线程
+        return await Task.Run(() =>
         {
-            using var aes = Aes.Create();
-            aes.Key = Encoding.UTF8.GetBytes(key);
-            aes.Padding = PaddingMode.PKCS7;
-            aes.Mode = CipherMode.CBC;
+            try
+            {
+                // 检查取消令牌
+                cancellationToken.ThrowIfCancellationRequested();
 
-            // 从加密数据中提取 IV（前16字节）
-            var iv = new byte[16];
-            var actualEncryptedData = new byte[encryptedBytes.Length - 16];
+                using var aes = Aes.Create();
+                aes.Key = Encoding.UTF8.GetBytes(key);
+                aes.Padding = PaddingMode.PKCS7;
+                aes.Mode = CipherMode.CBC;
 
-            Array.Copy(encryptedBytes, 0, iv, 0, 16);
-            Array.Copy(encryptedBytes, 16, actualEncryptedData, 0, actualEncryptedData.Length);
+                // 从加密数据中提取 IV（前16字节）
+                var iv = new byte[16];
+                var actualEncryptedData = new byte[encryptedBytes.Length - 16];
 
-            aes.IV = iv;
+                Array.Copy(encryptedBytes, 0, iv, 0, 16);
+                Array.Copy(encryptedBytes, 16, actualEncryptedData, 0, actualEncryptedData.Length);
 
-            using var decryptor = aes.CreateDecryptor();
-            using var msDecrypt = new MemoryStream(actualEncryptedData);
-            using var csDecrypt = new CryptoStream(msDecrypt, decryptor, CryptoStreamMode.Read);
-            using var srDecrypt = new StreamReader(csDecrypt, Encoding.UTF8);
+                aes.IV = iv;
 
-            return srDecrypt.ReadToEnd();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "AES 解密时发生错误");
-            return null;
-        }
+                using var decryptor = aes.CreateDecryptor();
+                using var msDecrypt = new MemoryStream(actualEncryptedData);
+                using var csDecrypt = new CryptoStream(msDecrypt, decryptor, CryptoStreamMode.Read);
+                using var srDecrypt = new StreamReader(csDecrypt, Encoding.UTF8);
+
+                var result = srDecrypt.ReadToEnd();
+
+                // 再次检查取消令牌
+                cancellationToken.ThrowIfCancellationRequested();
+
+                return result;
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogWarning("AES 解密操作被取消");
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "AES 解密时发生错误");
+                return null;
+            }
+        }, cancellationToken);
     }
 }

@@ -29,7 +29,7 @@ public interface IFeishuWebhookService
     /// <param name="request">Webhook 请求</param>
     /// <param name="cancellationToken">取消令牌</param>
     /// <returns>处理结果</returns>
-    Task<bool> HandleEventAsync(FeishuWebhookRequest request, CancellationToken cancellationToken = default);
+    Task<(bool Success, string? ErrorReason)> HandleEventAsync(FeishuWebhookRequest request, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 验证请求签名

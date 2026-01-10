@@ -15,11 +15,15 @@ namespace Mud.Feishu.Webhook.Services;
 public class FeishuEventValidator : IFeishuEventValidator
 {
     private readonly ILogger<FeishuEventValidator> _logger;
+    private readonly FeishuWebhookNonceDeduplicator _nonceDeduplicator;
 
     /// <inheritdoc />
-    public FeishuEventValidator(ILogger<FeishuEventValidator> logger)
+    public FeishuEventValidator(
+        ILogger<FeishuEventValidator> logger,
+        FeishuWebhookNonceDeduplicator nonceDeduplicator)
     {
         _logger = logger;
+        _nonceDeduplicator = nonceDeduplicator;
     }
 
     /// <inheritdoc />
@@ -66,6 +70,13 @@ public class FeishuEventValidator : IFeishuEventValidator
     {
         try
         {
+            // 检查 nonce 是否已使用（防止重放攻击）
+            if (_nonceDeduplicator.TryMarkAsUsed(nonce))
+            {
+                _logger.LogWarning("Nonce {Nonce} 已使用过，拒绝重放攻击", nonce);
+                return false;
+            }
+
             // 验证时间戳
             if (!ValidateTimestamp(timestamp))
             {
@@ -98,6 +109,61 @@ public class FeishuEventValidator : IFeishuEventValidator
         catch (Exception ex)
         {
             _logger.LogError(ex, "验证签名时发生错误");
+            return false;
+        }
+    }
+
+    /// <inheritdoc />
+    public bool ValidateHeaderSignature(long timestamp, string nonce, string body, string? headerSignature, string encryptKey)
+    {
+        try
+        {
+            // 如果请求头中没有签名，跳过验证（兼容旧版本）
+            if (string.IsNullOrEmpty(headerSignature))
+            {
+                _logger.LogDebug("请求头中未包含 X-Lark-Signature，跳过头部签名验证");
+                return true;
+            }
+
+            // 检查 nonce 是否已使用（防止重放攻击）
+            if (_nonceDeduplicator.TryMarkAsUsed(nonce))
+            {
+                _logger.LogWarning("Nonce {Nonce} 已使用过，拒绝重放攻击", nonce);
+                return false;
+            }
+
+            // 验证时间戳
+            if (!ValidateTimestamp(timestamp))
+            {
+                _logger.LogWarning("请求时间戳无效: {Timestamp}", timestamp);
+                return false;
+            }
+
+            // 构建签名字符串：timestamp\nnonce\nbody
+            var signString = $"{timestamp}\n{nonce}\n{body}";
+
+            // 使用 HMAC-SHA256 计算签名
+            using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(encryptKey));
+            var hashBytes = hmac.ComputeHash(Encoding.UTF8.GetBytes(signString));
+            var computedSignature = Convert.ToBase64String(hashBytes);
+
+            // 比较签名
+            var isValid = computedSignature == headerSignature;
+
+            if (!isValid)
+            {
+                _logger.LogWarning("请求头签名验证失败: 计算 {ComputedSignature}, 期望 {ExpectedSignature}", computedSignature, headerSignature);
+            }
+            else
+            {
+                _logger.LogDebug("请求头签名验证成功");
+            }
+
+            return isValid;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "验证请求头签名时发生错误");
             return false;
         }
     }

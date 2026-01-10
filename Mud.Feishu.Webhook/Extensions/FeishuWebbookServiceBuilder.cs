@@ -291,9 +291,12 @@ public class FeishuWebhookServiceBuilder
     /// </summary>
     private void RegisterCoreServices()
     {
+        _services.TryAddSingleton<FeishuWebhookNonceDeduplicator>();
         _services.TryAddScoped<IFeishuEventValidator, FeishuEventValidator>();
         _services.TryAddScoped<IFeishuEventDecryptor, FeishuEventDecryptor>();
         _services.TryAddScoped<IFeishuWebhookService, FeishuWebhookService>();
+        _services.TryAddSingleton<FeishuWebhookConcurrencyService>();
+        _services.TryAddSingleton<FeishuWebhookEventDeduplicator>();
     }
 
     /// <summary>

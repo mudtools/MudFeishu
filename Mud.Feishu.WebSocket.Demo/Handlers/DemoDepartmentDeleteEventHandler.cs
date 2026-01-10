@@ -34,14 +34,14 @@ public class DemoDepartmentDeleteEventHandler : DepartmentDeleteEventHandler
 
         if (eventEntity == null)
         {
-            _logger.LogWarning("部门删除事件实体为空，跳过处理");
+            _logger.LogWarning(">> [部门删除事件] 部门删除事件实体为空，跳过处理");
             return;
         }
 
-        _logger.LogInformation("🗑️ [部门删除事件] 开始处理部门删除事件: EventId={EventId}, AppId={AppId}, TenantKey={TenantKey}",
-            eventData.EventId, eventData.AppId, eventData.TenantKey);
+        _logger.LogInformation(">> [部门删除事件] 开始处理部门删除事件: EventId={EventId}, AppId={AppId}, TenantKey={TenantKey},DepartmentId={DeptId}",
+            eventData.EventId, eventData.AppId, eventData.TenantKey, eventEntity?.Object?.DepartmentId);
 
-        _logger.LogDebug("部门删除事件详情: {@EventEntity}", eventEntity);
+        _logger.LogDebug(">> [部门删除事件] 部门删除事件详情: {@EventEntity}", eventEntity);
 
         await Task.CompletedTask;
     }

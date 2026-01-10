@@ -41,12 +41,12 @@ public class DemoDepartmentEventHandler : DepartmentCreatedEventHandler
             // 模拟业务处理
             await ProcessDepartmentEventAsync(departmentData.Object, cancellationToken);
 
-            _logger.LogInformation("[部门事件] 部门创建事件处理完成: 部门ID {DepartmentId}, 部门名 {DepartmentName}",
+            _logger.LogInformation(">> [部门事件] 部门创建事件处理完成: 部门ID {DepartmentId}, 部门名 {DepartmentName}",
                 departmentData.Object.DepartmentId, departmentData.Object.Name);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[部门事件] 处理部门创建事件失败: {EventId}", eventData.EventId);
+            _logger.LogError(ex, ">> [部门事件] 处理部门创建事件失败: {EventId}", eventData.EventId);
             throw;
         }
     }

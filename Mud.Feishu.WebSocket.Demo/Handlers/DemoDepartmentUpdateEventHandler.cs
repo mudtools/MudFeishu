@@ -29,17 +29,17 @@ public class DemoDepartmentUpdateEventHandler : DepartmentUpdateEventHandler
         if (eventData == null)
             throw new ArgumentNullException(nameof(eventData));
 
-        _logger.LogInformation("[部门事件] 开始处理部门更新事件: {EventId}", eventData.EventId);
+        _logger.LogInformation(">> [部门事件] 开始处理部门更新事件: {EventId}", eventData.EventId);
 
         try
         {
 
-            _logger.LogInformation("[部门事件] 部门更新事件处理完成: 部门ID {DepartmentId}, 部门名 {DepartmentName}",
+            _logger.LogInformation(">> [部门事件] 部门更新事件处理完成: 部门ID {DepartmentId}, 部门名 {DepartmentName}",
                 eventEntity.Object.DepartmentId, eventEntity.Object.Name);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[部门事件] 处理部门更新事件失败: {EventId}", eventData.EventId);
+            _logger.LogError(ex, ">> [部门事件] 处理部门更新事件失败: {EventId}", eventData.EventId);
             throw;
         }
     }

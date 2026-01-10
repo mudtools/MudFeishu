@@ -5,8 +5,6 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-using System.Text.Json.Serialization;
-
 namespace Mud.Feishu.Webhook.Configuration;
 
 /// <summary>
@@ -79,6 +77,12 @@ public class FeishuWebhookOptions
     /// 允许的源 IP 地址列表
     /// </summary>
     public HashSet<string> AllowedSourceIPs { get; set; } = new();
+
+    /// <summary>
+    /// 是否在服务层再次验证请求体签名
+    /// 如果 Middleware 中已验证 X-Lark-Signature 请求头，可禁用此选项以避免重复验证
+    /// </summary>
+    public bool EnableBodySignatureValidation { get; set; } = true;
 
     /// <summary>
     /// 验证配置项的有效性

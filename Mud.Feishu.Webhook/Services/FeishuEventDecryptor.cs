@@ -6,7 +6,6 @@
 // -----------------------------------------------------------------------
 
 using Mud.Feishu.Abstractions;
-using System.Text.Json;
 
 namespace Mud.Feishu.Webhook.Services;
 

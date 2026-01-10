@@ -76,7 +76,8 @@ public class FeishuWebhookNonceDeduplicator : IAsyncDisposable
     /// </summary>
     /// <param name="nonce">随机数</param>
     /// <returns>如果 nonce 已使用返回 true，否则返回 false</returns>
-    public bool IsUsed(string nonce)
+    /// <remarks>此方法内部使用，不对外暴露</remarks>
+    internal bool IsUsed(string nonce)
     {
         if (string.IsNullOrEmpty(nonce))
         {
@@ -92,7 +93,8 @@ public class FeishuWebhookNonceDeduplicator : IAsyncDisposable
     /// <summary>
     /// 获取缓存统计信息
     /// </summary>
-    public int GetCacheCount()
+    /// <remarks>此方法内部使用，不对外暴露</remarks>
+    internal int GetCacheCount()
     {
         lock (_lock)
         {
@@ -103,7 +105,8 @@ public class FeishuWebhookNonceDeduplicator : IAsyncDisposable
     /// <summary>
     /// 清空缓存
     /// </summary>
-    public void ClearCache()
+    /// <remarks>此方法内部使用，不对外暴露</remarks>
+    internal void ClearCache()
     {
         lock (_lock)
         {

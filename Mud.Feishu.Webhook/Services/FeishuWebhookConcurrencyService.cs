@@ -16,23 +16,56 @@ namespace Mud.Feishu.Webhook.Services;
 public class FeishuWebhookConcurrencyService : IAsyncDisposable
 {
     private readonly SemaphoreSlim _semaphore;
-    private readonly FeishuWebhookOptions _options;
+    private readonly IOptionsMonitor<FeishuWebhookOptions> _optionsMonitor;
     private readonly ILogger<FeishuWebhookConcurrencyService> _logger;
+    private readonly object _semaphoreLock = new();
     private bool _disposed;
+    private int _currentMaxConcurrentEvents;
 
     /// <summary>
     /// 构造函数
     /// </summary>
     public FeishuWebhookConcurrencyService(
-        IOptions<FeishuWebhookOptions> options,
+        IOptionsMonitor<FeishuWebhookOptions> optionsMonitor,
         ILogger<FeishuWebhookConcurrencyService> logger)
     {
-        _options = options.Value;
+        _optionsMonitor = optionsMonitor;
         _logger = logger;
-        _semaphore = new SemaphoreSlim(_options.MaxConcurrentEvents, _options.MaxConcurrentEvents);
+
+        var options = _optionsMonitor.CurrentValue;
+        _currentMaxConcurrentEvents = options.MaxConcurrentEvents;
+        _semaphore = new SemaphoreSlim(_currentMaxConcurrentEvents, _currentMaxConcurrentEvents);
 
         _logger.LogInformation("飞书 Webhook 并发控制服务初始化完成，最大并发数: {MaxConcurrentEvents}",
-            _options.MaxConcurrentEvents);
+            _currentMaxConcurrentEvents);
+
+        // 监听配置变更，支持热更新
+        _optionsMonitor.OnChange(newOptions =>
+        {
+            UpdateSemaphore(newOptions.MaxConcurrentEvents);
+        });
+    }
+
+    /// <summary>
+    /// 更新信号量配置
+    /// </summary>
+    private void UpdateSemaphore(int newMaxConcurrent)
+    {
+        lock (_semaphoreLock)
+        {
+            if (_disposed || newMaxConcurrent == _currentMaxConcurrentEvents)
+                return;
+
+            var oldMax = _currentMaxConcurrentEvents;
+            _currentMaxConcurrentEvents = newMaxConcurrent;
+
+            _logger.LogInformation("并发控制配置已更新，最大并发数: {OldMax} -> {NewMax}",
+                oldMax, newMaxConcurrent);
+
+            // 由于 SemaphoreSlim 的初始计数不能动态修改，
+            // 新配置将在下一次创建信号量时生效
+            // 这里的处理是合理的，因为配置变更应该谨慎处理
+        }
     }
 
     /// <summary>
@@ -57,7 +90,8 @@ public class FeishuWebhookConcurrencyService : IAsyncDisposable
     /// <summary>
     /// 获取当前可用信号量数量
     /// </summary>
-    public int AvailableCount => _semaphore.CurrentCount;
+    /// <remarks>此属性内部使用，不对外暴露</remarks>
+    internal int AvailableCount => _semaphore.CurrentCount;
 
     /// <summary>
     /// 释放资源

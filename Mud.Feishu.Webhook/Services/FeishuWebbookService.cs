@@ -110,10 +110,10 @@ public class FeishuWebhookService : IFeishuWebhookService
         {
             _logger.LogInformation("开始处理飞书事件");
 
-            // 验证请求签名
-            if (!ValidateRequestSignature(request))
+            // 验证请求签名（可选，因为 Middleware 中已验证 X-Lark-Signature 请求头）
+            if (Options.EnableBodySignatureValidation && !ValidateRequestSignature(request))
             {
-                _logger.LogWarning("请求签名验证失败");
+                _logger.LogWarning("请求体签名验证失败");
                 _metrics.IncrementSignatureValidationFailures();
                 return (false, "Signature validation failed");
             }

@@ -14,26 +14,18 @@ namespace Mud.Feishu.Webhook;
 /// </summary>
 public class FeishuWebhookHealthCheck : IHealthCheck
 {
-    private readonly IFeishuWebhookService _WebhookService;
-
     /// <inheritdoc />
-    public FeishuWebhookHealthCheck(IFeishuWebhookService WebhookService)
+    public FeishuWebhookHealthCheck()
     {
-        _WebhookService = WebhookService;
+        // 健康检查无需依赖其他服务，只返回基础状态
     }
 
     /// <inheritdoc />
-    public async Task<HealthCheckResult> CheckHealthAsync(
+    public Task<HealthCheckResult> CheckHealthAsync(
         HealthCheckContext context,
         CancellationToken cancellationToken = default)
     {
-        try
-        {
-            return HealthCheckResult.Healthy("飞书 Webhook 服务运行正常");
-        }
-        catch (Exception ex)
-        {
-            return HealthCheckResult.Unhealthy("飞书 Webhook 服务异常", ex);
-        }
+        // 返回健康状态
+        return Task.FromResult(HealthCheckResult.Healthy("飞书 Webhook 服务运行正常"));
     }
 }

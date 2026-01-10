@@ -80,7 +80,8 @@ public class FeishuWebhookEventDeduplicator : IAsyncDisposable
     /// </summary>
     /// <param name="eventId">事件ID</param>
     /// <returns>如果事件已处理返回 true，否则返回 false</returns>
-    public bool IsProcessed(string eventId)
+    /// <remarks>此方法内部使用，不对外暴露</remarks>
+    internal bool IsProcessed(string eventId)
     {
         if (string.IsNullOrEmpty(eventId))
         {
@@ -96,14 +97,15 @@ public class FeishuWebhookEventDeduplicator : IAsyncDisposable
     /// <summary>
     /// 获取缓存统计信息
     /// </summary>
-    public (int TotalCached, int ExpiredCount) GetCacheStats()
+    /// <remarks>此方法内部使用，不对外暴露</remarks>
+    internal (int TotalCached, int ExpiredCount) GetCacheStats()
     {
         lock (_lock)
         {
             var now = DateTimeOffset.UtcNow;
-            var expiredCount = _eventCache.Values.Count(e => 
+            var expiredCount = _eventCache.Values.Count(e =>
                 (now - e.ProcessedAt) > _cacheExpiration);
-            
+
             return (_eventCache.Count, expiredCount);
         }
     }
@@ -136,7 +138,8 @@ public class FeishuWebhookEventDeduplicator : IAsyncDisposable
     /// <summary>
     /// 清空缓存
     /// </summary>
-    public void ClearCache()
+    /// <remarks>此方法内部使用，不对外暴露</remarks>
+    internal void ClearCache()
     {
         lock (_lock)
         {

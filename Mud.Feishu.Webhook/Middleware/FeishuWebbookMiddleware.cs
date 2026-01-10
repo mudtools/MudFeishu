@@ -216,7 +216,7 @@ public class FeishuWebhookMiddleware(
                 // 根据错误原因返回不同的状态码
                 if (errorReason == "Signature validation failed")
                 {
-                    await WriteErrorResponse(context, 401, "Unauthorized: Invalid signature");
+                    await WriteErrorResponse(context, 401, "Unauthorized: Invalid body signature");
                     return;
                 }
 

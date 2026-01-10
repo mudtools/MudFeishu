@@ -87,7 +87,8 @@ public class MetricsCollector
     /// 获取所有计数器值
     /// </summary>
     /// <returns>计数器字典</returns>
-    public Dictionary<string, long> GetAllCounters()
+    /// <remarks>此方法内部使用，不对外暴露</remarks>
+    internal Dictionary<string, long> GetAllCounters()
     {
         lock (_lock)
         {
@@ -98,7 +99,8 @@ public class MetricsCollector
     /// <summary>
     /// 重置所有计数器
     /// </summary>
-    public void ResetCounters()
+    /// <remarks>此方法内部使用，不对外暴露</remarks>
+    internal void ResetCounters()
     {
         lock (_lock)
         {

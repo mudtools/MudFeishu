@@ -331,10 +331,10 @@ public class FeishuWebhookServiceBuilder
     /// </summary>
     private void RegisterHealthCheckServices()
     {
-        // 暂时简化健康检查实现，避免复杂反射
         try
         {
-            _services.AddHealthChecks();
+            _services.AddHealthChecks()
+                .AddCheck<FeishuWebhookHealthCheck>("feishu-webhook");
         }
         catch (Exception ex)
         {

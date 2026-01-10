@@ -6,6 +6,7 @@
 // -----------------------------------------------------------------------
 
 using Mud.Feishu.Abstractions;
+using Mud.Feishu.Abstractions.Services;
 using Mud.Feishu.Webhook.Configuration;
 using Mud.Feishu.Webhook.Models;
 
@@ -23,7 +24,7 @@ public class FeishuWebhookService : IFeishuWebhookService
     private readonly ILogger<FeishuWebhookService> _logger;
     private readonly MetricsCollector _metrics;
     private readonly FeishuWebhookConcurrencyService _concurrencyService;
-    private readonly FeishuWebhookEventDeduplicator _deduplicator;
+    private readonly IFeishuEventDeduplicator _deduplicator;
 
     /// <summary>
     /// 获取当前配置选项（支持热更新）
@@ -39,7 +40,7 @@ public class FeishuWebhookService : IFeishuWebhookService
         ILogger<FeishuWebhookService> logger,
         MetricsCollector metrics,
         FeishuWebhookConcurrencyService concurrencyService,
-        FeishuWebhookEventDeduplicator deduplicator)
+        IFeishuEventDeduplicator deduplicator)
     {
         _optionsMonitor = optionsMonitor;
         _validator = validator;
@@ -111,7 +112,7 @@ public class FeishuWebhookService : IFeishuWebhookService
             _logger.LogInformation("开始处理飞书事件");
 
             // 验证请求签名（可选，因为 Middleware 中已验证 X-Lark-Signature 请求头）
-            if (Options.EnableBodySignatureValidation && !ValidateRequestSignature(request))
+            if (Options.EnableBodySignatureValidation && !await ValidateRequestSignature(request))
             {
                 _logger.LogWarning("请求体签名验证失败");
                 _metrics.IncrementSignatureValidationFailures();
@@ -188,7 +189,7 @@ public class FeishuWebhookService : IFeishuWebhookService
     }
 
     /// <inheritdoc />
-    public bool ValidateRequestSignature(FeishuWebhookRequest request)
+    public async Task<bool> ValidateRequestSignature(FeishuWebhookRequest request)
     {
         try
         {
@@ -200,7 +201,7 @@ public class FeishuWebhookService : IFeishuWebhookService
                 return false;
             }
 
-            return _validator.ValidateSignature(
+            return await _validator.ValidateSignatureAsync(
                 request.Timestamp,
                 request.Nonce,
                 request.Encrypt!,

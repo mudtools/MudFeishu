@@ -7,6 +7,7 @@
 
 using Mud.Feishu.Abstractions;
 using Mud.Feishu.Abstractions.EventHandlers;
+using Mud.Feishu.Abstractions.Services;
 using Mud.Feishu.Webhook.Configuration;
 using Mud.Feishu.Webhook.Models;
 using Mud.Feishu.Webhook.Services;
@@ -292,13 +293,13 @@ public class FeishuWebhookServiceBuilder
     private void RegisterCoreServices()
     {
         // 单实例服务
-        _services.TryAddSingleton<FeishuWebhookNonceDeduplicator>();
+        _services.TryAddSingleton<IFeishuNonceDistributedDeduplicator, FeishuNonceDistributedDeduplicator>();
         _services.TryAddSingleton<FeishuWebhookConcurrencyService>();
-        _services.TryAddSingleton<FeishuWebhookEventDeduplicator>();
+        _services.TryAddSingleton<IFeishuEventDeduplicator, FeishuEventDeduplicator>();
 
         // 分布式去重器（默认使用内存实现）
-        _services.TryAddSingleton<IFeishuWebhookDistributedDeduplicator, FeishuWebhookDistributedDeduplicator>();
-        _services.TryAddSingleton<IFeishuWebhookDistributedNonceDeduplicator, FeishuWebhookDistributedNonceDeduplicator>();
+        _services.TryAddSingleton<IFeishuEventDistributedDeduplicator, FeishuEventDistributedDeduplicator>();
+        _services.TryAddSingleton<IFeishuNonceDistributedDeduplicator, FeishuNonceDistributedDeduplicator>();
 
         // 作用域服务
         _services.TryAddScoped<IFeishuEventValidator, FeishuEventValidator>();

@@ -5,6 +5,7 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using Mud.Feishu.Abstractions.Services;
 using Mud.Feishu.Webhook.Configuration;
 
 namespace Mud.Feishu.Webhook.Services;
@@ -15,13 +16,13 @@ namespace Mud.Feishu.Webhook.Services;
 public class FeishuEventValidator : IFeishuEventValidator
 {
     private readonly ILogger<FeishuEventValidator> _logger;
-    private readonly FeishuWebhookNonceDeduplicator _nonceDeduplicator;
+    private readonly IFeishuNonceDistributedDeduplicator _nonceDeduplicator;
     private readonly IOptions<FeishuWebhookOptions> _options;
 
     /// <inheritdoc />
     public FeishuEventValidator(
         ILogger<FeishuEventValidator> logger,
-        FeishuWebhookNonceDeduplicator nonceDeduplicator,
+        IFeishuNonceDistributedDeduplicator nonceDeduplicator,
         IOptions<FeishuWebhookOptions> options)
     {
         _logger = logger;
@@ -69,12 +70,12 @@ public class FeishuEventValidator : IFeishuEventValidator
     }
 
     /// <inheritdoc />
-    public bool ValidateSignature(long timestamp, string nonce, string encrypt, string signature, string encryptKey)
+    public async Task<bool> ValidateSignatureAsync(long timestamp, string nonce, string encrypt, string signature, string encryptKey)
     {
         try
         {
             // 检查 nonce 是否已使用（防止重放攻击）
-            if (_nonceDeduplicator.TryMarkAsUsed(nonce))
+            if (await _nonceDeduplicator.TryMarkAsUsedAsync(nonce))
             {
                 _logger.LogWarning("Nonce {Nonce} 已使用过，拒绝重放攻击", nonce);
                 return false;
@@ -117,7 +118,7 @@ public class FeishuEventValidator : IFeishuEventValidator
     }
 
     /// <inheritdoc />
-    public bool ValidateHeaderSignature(long timestamp, string nonce, string body, string? headerSignature, string encryptKey)
+    public async Task<bool> ValidateHeaderSignatureAsync(long timestamp, string nonce, string body, string? headerSignature, string encryptKey)
     {
         try
         {
@@ -137,7 +138,7 @@ public class FeishuEventValidator : IFeishuEventValidator
             }
 
             // 检查 nonce 是否已使用（防止重放攻击）
-            if (_nonceDeduplicator.TryMarkAsUsed(nonce))
+            if (await _nonceDeduplicator.TryMarkAsUsedAsync(nonce))
             {
                 _logger.LogWarning("Nonce {Nonce} 已使用过，拒绝重放攻击", nonce);
                 return false;

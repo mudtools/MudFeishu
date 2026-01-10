@@ -31,7 +31,7 @@ public interface IFeishuEventValidator
     /// <param name="signature">签名</param>
     /// <param name="encryptKey">加密密钥</param>
     /// <returns>是否验证通过</returns>
-    bool ValidateSignature(long timestamp, string nonce, string encrypt, string signature, string encryptKey);
+    Task<bool> ValidateSignatureAsync(long timestamp, string nonce, string encrypt, string signature, string encryptKey);
 
     /// <summary>
     /// 验证请求头中的签名（X-Lark-Signature）
@@ -42,7 +42,7 @@ public interface IFeishuEventValidator
     /// <param name="headerSignature">请求头中的签名</param>
     /// <param name="encryptKey">加密密钥</param>
     /// <returns>是否验证通过</returns>
-    bool ValidateHeaderSignature(long timestamp, string nonce, string body, string? headerSignature, string encryptKey);
+    Task<bool> ValidateHeaderSignatureAsync(long timestamp, string nonce, string body, string? headerSignature, string encryptKey);
 
     /// <summary>
     /// 验证时间戳是否在有效范围内

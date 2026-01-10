@@ -36,7 +36,7 @@ public interface IFeishuWebhookService
     /// </summary>
     /// <param name="request">Webhook 请求</param>
     /// <returns>是否验证通过</returns>
-    bool ValidateRequestSignature(FeishuWebhookRequest request);
+    Task<bool> ValidateRequestSignature(FeishuWebhookRequest request);
 
     /// <summary>
     /// 解密事件数据

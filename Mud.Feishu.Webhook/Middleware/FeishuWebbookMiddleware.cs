@@ -127,13 +127,13 @@ public class FeishuWebhookMiddleware(
     /// <summary>
     /// 验证请求头签名
     /// </summary>
-    private bool ValidateHeaderSignature(HttpContext context, string requestBody, FeishuWebhookRequest eventRequest, IFeishuEventValidator validator)
+    private async Task<bool> ValidateHeaderSignature(HttpContext context, string requestBody, FeishuWebhookRequest eventRequest, IFeishuEventValidator validator)
     {
         // 获取 X-Lark-Signature 请求头
         var headerSignature = context.Request.Headers["X-Lark-Signature"].FirstOrDefault();
 
         // 验证请求头签名
-        return validator.ValidateHeaderSignature(
+        return await validator.ValidateHeaderSignatureAsync(
             eventRequest.Timestamp,
             eventRequest.Nonce,
             requestBody,
@@ -199,7 +199,7 @@ public class FeishuWebhookMiddleware(
             if (eventRequest != null)
             {
                 // 验证 X-Lark-Signature 请求头签名
-                if (!ValidateHeaderSignature(context, requestBody, eventRequest, validator))
+                if (!await ValidateHeaderSignature(context, requestBody, eventRequest, validator))
                 {
                     await WriteErrorResponse(context, 401, "Unauthorized: Invalid X-Lark-Signature");
                     return;

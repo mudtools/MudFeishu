@@ -28,3 +28,5 @@
 /Mud.Feishu.Webhook/obj
 /Mud.Feishu.Webhook.Demo/bin/Debug/net8.0
 /Mud.Feishu.Webhook.Demo/obj
+/docs
+/Mud.Feishu.Redis/obj

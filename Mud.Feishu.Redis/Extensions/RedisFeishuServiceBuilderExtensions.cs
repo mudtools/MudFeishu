@@ -19,7 +19,7 @@ namespace Mud.Feishu.Redis.Extensions;
 public static class RedisFeishuServiceBuilderExtensions
 {
     /// <summary>
-    /// 注册 Redis 连接服务并添加分布式去重服务
+    /// 注册 Redis 连接服务
     /// </summary>
     /// <param name="services">服务集合</param>
     /// <returns>服务集合</returns>
@@ -66,90 +66,72 @@ public static class RedisFeishuServiceBuilderExtensions
     }
 
     /// <summary>
-    /// 注册 Redis 分布式事件去重服务（使用 Options 配置）
+    /// 注册 Redis 分布式事件去重服务
     /// </summary>
     /// <param name="services">服务集合</param>
-    /// <param name="redis">Redis 连接多路复用器（可选，如果不提供则从 DI 容器获取）</param>
-    /// <param name="cacheExpiration">缓存过期时间，默认从 Options 读取</param>
-    /// <param name="keyPrefix">Redis 键前缀，默认从 Options 读取</param>
     /// <returns>服务集合</returns>
     public static IServiceCollection AddFeishuRedisEventDeduplicator(
-        this IServiceCollection services,
-        IConnectionMultiplexer? redis = null,
-        TimeSpan? cacheExpiration = null,
-        string? keyPrefix = null)
+        this IServiceCollection services)
     {
         services.AddSingleton<IFeishuEventDistributedDeduplicator>(sp =>
         {
-            var redisInstance = redis ?? sp.GetRequiredService<IConnectionMultiplexer>();
-            var options = sp.GetService<RedisOptions>();
+            var redis = sp.GetRequiredService<IConnectionMultiplexer>();
+            var options = sp.GetRequiredService<RedisOptions>();
             var logger = sp.GetService<ILogger<RedisFeishuEventDistributedDeduplicator>>();
 
             return new RedisFeishuEventDistributedDeduplicator(
-                redisInstance,
+                redis,
                 logger,
-                cacheExpiration ?? options?.EventCacheExpiration,
-                keyPrefix ?? options?.EventKeyPrefix);
+                options.EventCacheExpiration,
+                options.EventKeyPrefix);
         });
 
         return services;
     }
 
     /// <summary>
-    /// 注册 Redis 分布式 Nonce 去重服务（使用 Options 配置）
+    /// 注册 Redis 分布式 Nonce 去重服务
     /// </summary>
     /// <param name="services">服务集合</param>
-    /// <param name="redis">Redis 连接多路复用器（可选，如果不提供则从 DI 容器获取）</param>
-    /// <param name="nonceTtl">Nonce 有效期，默认从 Options 读取</param>
-    /// <param name="keyPrefix">Redis 键前缀，默认从 Options 读取</param>
     /// <returns>服务集合</returns>
     public static IServiceCollection AddFeishuRedisNonceDeduplicator(
-        this IServiceCollection services,
-        IConnectionMultiplexer? redis = null,
-        TimeSpan? nonceTtl = null,
-        string? keyPrefix = null)
+        this IServiceCollection services)
     {
         services.AddSingleton<IFeishuNonceDistributedDeduplicator>(sp =>
         {
-            var redisInstance = redis ?? sp.GetRequiredService<IConnectionMultiplexer>();
-            var options = sp.GetService<RedisOptions>();
+            var redis = sp.GetRequiredService<IConnectionMultiplexer>();
+            var options = sp.GetRequiredService<RedisOptions>();
             var logger = sp.GetService<ILogger<RedisFeishuNonceDistributedDeduplicator>>();
 
             return new RedisFeishuNonceDistributedDeduplicator(
-                redisInstance,
+                redis,
                 logger,
-                nonceTtl ?? options?.NonceTtl,
-                keyPrefix ?? options?.NonceKeyPrefix);
+                options.NonceTtl,
+                options.NonceKeyPrefix);
         });
 
         return services;
     }
 
     /// <summary>
-    /// 注册 Redis 分布式 SeqID 去重服务（使用 Options 配置）
+    /// 注册 Redis 分布式 SeqID 去重服务
     /// </summary>
     /// <param name="services">服务集合</param>
-    /// <param name="redis">Redis 连接多路复用器（可选，如果不提供则从 DI 容器获取）</param>
-    /// <param name="cacheExpiration">缓存过期时间，默认从 Options 读取</param>
-    /// <param name="keyPrefix">Redis 键前缀，默认从 Options 读取</param>
     /// <returns>服务集合</returns>
     public static IServiceCollection AddFeishuRedisSeqIDDeduplicator(
-        this IServiceCollection services,
-        IConnectionMultiplexer? redis = null,
-        TimeSpan? cacheExpiration = null,
-        string? keyPrefix = null)
+        this IServiceCollection services)
     {
         services.AddSingleton<IFeishuSeqIDDeduplicator>(sp =>
         {
-            var redisInstance = redis ?? sp.GetRequiredService<IConnectionMultiplexer>();
-            var options = sp.GetService<RedisOptions>();
+            var redis = sp.GetRequiredService<IConnectionMultiplexer>();
+            var options = sp.GetRequiredService<RedisOptions>();
             var logger = sp.GetService<ILogger<RedisFeishuSeqIDDeduplicator>>();
 
             return new RedisFeishuSeqIDDeduplicator(
-                redisInstance,
+                redis,
                 logger,
-                cacheExpiration ?? options?.SeqIdCacheExpiration,
-                keyPrefix ?? options?.SeqIdKeyPrefix);
+                options.SeqIdCacheExpiration,
+                options.SeqIdKeyPrefix);
         });
 
         return services;
@@ -159,15 +141,13 @@ public static class RedisFeishuServiceBuilderExtensions
     /// 注册所有 Redis 分布式去重服务（事件去重、Nonce 去重、SeqID 去重）
     /// </summary>
     /// <param name="services">服务集合</param>
-    /// <param name="redis">Redis 连接多路复用器（可选，如果不提供则从 DI 容器获取）</param>
     /// <returns>服务集合</returns>
     public static IServiceCollection AddFeishuRedisDeduplicators(
-        this IServiceCollection services,
-        IConnectionMultiplexer? redis = null)
+        this IServiceCollection services)
     {
-        services.AddFeishuRedisEventDeduplicator(redis);
-        services.AddFeishuRedisNonceDeduplicator(redis);
-        services.AddFeishuRedisSeqIDDeduplicator(redis);
+        services.AddFeishuRedisEventDeduplicator();
+        services.AddFeishuRedisNonceDeduplicator();
+        services.AddFeishuRedisSeqIDDeduplicator();
 
         return services;
     }

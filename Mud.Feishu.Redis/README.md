@@ -19,9 +19,7 @@ dotnet add package Mud.Feishu.Redis
 
 ## 快速开始
 
-### 方式一：使用配置文件（推荐）
-
-#### 1. 配置 Redis 连接
+### 配置 Redis 连接
 
 在 `appsettings.json` 中添加配置：
 
@@ -45,7 +43,9 @@ dotnet add package Mud.Feishu.Redis
 }
 ```
 
-#### 2. 注册服务
+### 注册服务
+
+#### 注册所有去重服务
 
 ```csharp
 using Mud.Feishu.Redis.Extensions;
@@ -56,83 +56,34 @@ builder.Services
     .AddFeishuRedisDeduplicators();
 ```
 
-### 方式二：手动创建连接
+#### 单独注册服务
 
 ```csharp
-using Mud.Feishu.Redis.Extensions;
-using StackExchange.Redis;
+// 只注册事件去重服务
+builder.Services
+    .AddFeishuRedis()
+    .AddFeishuRedisEventDeduplicator();
 
-// 创建 Redis 连接
-var redis = ConnectionMultiplexer.Connect("localhost:6379");
+// 只注册 Nonce 去重服务
+builder.Services
+    .AddFeishuRedis()
+    .AddFeishuRedisNonceDeduplicator();
 
-// 注册服务
-services.AddFeishuRedisDeduplicators(redis);
-```
-
-### 单独注册
-
-#### 1. 事件去重服务
-
-```csharp
-services.AddFeishuRedisEventDeduplicator(
-    redis,
-    cacheExpiration: TimeSpan.FromHours(24),
-    keyPrefix: "feishu:event:"
-);
-```
-
-#### 2. Nonce 去重服务
-
-```csharp
-services.AddFeishuRedisNonceDeduplicator(
-    redis,
-    nonceTtl: TimeSpan.FromMinutes(5),
-    keyPrefix: "feishu:nonce:"
-);
-```
-
-#### 3. SeqID 去重服务
-
-```csharp
-services.AddFeishuRedisSeqIDDeduplicator(
-    redis,
-    cacheExpiration: TimeSpan.FromHours(24),
-    keyPrefix: "feishu:seqid:"
-);
+// 只注册 SeqID 去重服务
+builder.Services
+    .AddFeishuRedis()
+    .AddFeishuRedisSeqIDDeduplicator();
 ```
 
 ### 完整示例
 
-#### 使用配置文件（推荐）
-
 ```csharp
 var builder = WebApplication.CreateBuilder(args);
 
-// 方式 1：自动从配置文件读取并注册
+// 注册 Redis 服务（从配置文件读取）
 builder.Services
     .AddFeishuRedis()
     .AddFeishuRedisDeduplicators()
-    .AddFeishuWebSocket(options =>
-    {
-        options.AppId = builder.Configuration["Feishu:AppId"];
-        options.AppSecret = builder.Configuration["Feishu:AppSecret"];
-    });
-
-var app = builder.Build();
-app.Run();
-```
-
-#### 手动创建连接
-
-```csharp
-var builder = WebApplication.CreateBuilder(args);
-
-// 方式 2：手动创建 Redis 连接
-var redis = ConnectionMultiplexer.Connect(builder.Configuration.GetConnectionString("Redis"));
-
-// 注册飞书服务
-builder.Services
-    .AddFeishuRedisDeduplicators(redis)
     .AddFeishuWebSocket(options =>
     {
         options.AppId = builder.Configuration["Feishu:AppId"];
@@ -160,30 +111,6 @@ app.Run();
 | `SyncTimeout` | int | 5000ms | 同步超时时间 |
 | `Ssl` | bool | false | 是否启用 TLS/SSL |
 | `AllowAdmin` | bool | true | 是否允许管理员操作 |
-
-### 事件去重参数
-
-| 参数 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `redis` | IConnectionMultiplexer? | 从DI获取 | Redis 连接多路复用器（可选） |
-| `cacheExpiration` | TimeSpan? | 从Options读取 | 缓存过期时间 |
-| `keyPrefix` | string? | 从Options读取 | Redis 键前缀 |
-
-### Nonce 去重参数
-
-| 参数 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `redis` | IConnectionMultiplexer? | 从DI获取 | Redis 连接多路复用器（可选） |
-| `nonceTtl` | TimeSpan? | 从Options读取 | Nonce 有效期 |
-| `keyPrefix` | string? | 从Options读取 | Redis 键前缀 |
-
-### SeqID 去重参数
-
-| 参数 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `redis` | IConnectionMultiplexer? | 从DI获取 | Redis 连接多路复用器（可选） |
-| `cacheExpiration` | TimeSpan? | 从Options读取 | 缓存过期时间 |
-| `keyPrefix` | string? | 从Options读取 | Redis 键前缀 |
 
 ## Redis 数据结构
 
@@ -213,31 +140,48 @@ app.Run();
 
 ### 1. 如何更改默认的缓存过期时间？
 
-在注册服务时传入自定义的 `cacheExpiration` 参数：
+在配置文件中修改：
 
-```csharp
-services.AddFeishuRedisEventDeduplicator(
-    redis,
-    cacheExpiration: TimeSpan.FromDays(7)
-);
+```json
+{
+  "Feishu": {
+    "Redis": {
+      "EventCacheExpiration": "7.00:00:00",
+      "NonceTtl": "00:10:00",
+      "SeqIdCacheExpiration": "7.00:00:00"
+    }
+  }
+}
 ```
 
 ### 2. 多个环境如何隔离数据？
 
-使用不同的 `keyPrefix` 前缀：
+通过配置文件设置不同的键前缀：
 
-```csharp
-// 开发环境
-services.AddFeishuRedisEventDeduplicator(
-    redis,
-    keyPrefix: "dev:feishu:event:"
-);
+开发环境 `appsettings.Development.json`:
+```json
+{
+  "Feishu": {
+    "Redis": {
+      "EventKeyPrefix": "dev:feishu:event:",
+      "NonceKeyPrefix": "dev:feishu:nonce:",
+      "SeqIdKeyPrefix": "dev:feishu:seqid:"
+    }
+  }
+}
+```
 
-// 生产环境
-services.AddFeishuRedisEventDeduplicator(
-    redis,
-    keyPrefix: "prod:feishu:event:"
-);
+生产环境 `appsettings.Production.json`:
+```json
+{
+  "Feishu": {
+    "Redis": {
+      "EventKeyPrefix": "prod:feishu:event:",
+      "NonceKeyPrefix": "prod:feishu:nonce:",
+      "SeqIdKeyPrefix": "prod:feishu:seqid:"
+    }
+  }
+}
 ```
 
 ### 3. 如何监控 Redis 去重状态？
@@ -248,6 +192,33 @@ services.AddFeishuRedisEventDeduplicator(
 // 获取已处理的事件数量
 var deduplicator = serviceProvider.GetRequiredService<IFeishuEventDistributedDeduplicator>();
 var count = await deduplicator.GetCachedCountAsync();
+```
+
+### 4. 如何使用 TLS/SSL 连接 Redis？
+
+在配置文件中启用 SSL：
+
+```json
+{
+  "Feishu": {
+    "Redis": {
+      "ConnectionString": "secure.redis.com:6380,password=xxx",
+      "Ssl": true
+    }
+  }
+}
+```
+
+或使用 `rediss://` 协议：
+
+```json
+{
+  "Feishu": {
+    "Redis": {
+      "ConnectionString": "rediss://secure.redis.com:6380"
+    }
+  }
+}
 ```
 
 ## 许可证

@@ -32,7 +32,7 @@ public class FeishuEventDistributedDeduplicator : IFeishuEventDistributedDedupli
     {
         _logger = logger;
         _eventCache = new Dictionary<string, EventCacheEntry>();
-        _cacheExpiration = cacheExpiration ?? TimeSpan.FromMinutes(30); // 默认缓存30分钟
+        _cacheExpiration = cacheExpiration ?? TimeSpan.FromHours(24); // 默认缓存24小时
         _cleanupInterval = cleanupInterval ?? TimeSpan.FromMinutes(5); // 默认每5分钟清理一次
 
         // 启动定期清理任务

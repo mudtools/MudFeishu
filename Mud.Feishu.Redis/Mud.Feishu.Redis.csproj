@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFrameworks>net6.0;net8.0;net10.0</TargetFrameworks>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<AssemblyName>Mud.Feishu.Redis</AssemblyName>
+		<GenerateDocumentationFile>True</GenerateDocumentationFile>
+		<PackageProjectUrl>http://www.mudtools.cn/</PackageProjectUrl>
+		<RepositoryUrl>https://github.com/mudtools/MudFeishu</RepositoryUrl>
+		<RepositoryType>git</RepositoryType>
+		<PackageIcon>..\Icon.png</PackageIcon>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<Description>飞书事件订阅组件 Redis 分布式去重扩展，提供基于 Redis 的事件去重、Nonce 去重和 SeqID 去重功能，适用于多实例分布式部署场景。</Description>
+		<PackageTags>飞书;Feishu;Redis;分布式去重;SeqID;Nonce;Distributed Deduplication;StackExchange.Redis</PackageTags>
+		<BaseOutputPath>..\bin</BaseOutputPath>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="StackExchange.Redis" Version="2.10.1" />
+		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.0" />
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.0" />
+		<None Include="README.md" Pack="true" PackagePath="\" />
+		<None Include="..\Icon.png" Pack="true" PackagePath="\" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\Mud.Feishu.Abstractions\Mud.Feishu.Abstractions.csproj" />
+	</ItemGroup>
+</Project>

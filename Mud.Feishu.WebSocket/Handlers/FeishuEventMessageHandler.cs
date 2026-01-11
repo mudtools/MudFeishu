@@ -20,6 +20,7 @@ public class FeishuEventMessageHandler : JsonMessageHandler
     private readonly IFeishuEventHandlerFactory _eventHandlerFactory;
     private readonly IFeishuEventDeduplicator? _deduplicator;
     private readonly IFeishuEventDistributedDeduplicator? _distributedDeduplicator;
+    private readonly IFeishuSeqIDDeduplicator? _seqIdDeduplicator;
     private readonly FeishuWebSocketOptions _options;
 
     /// <summary>
@@ -29,18 +30,21 @@ public class FeishuEventMessageHandler : JsonMessageHandler
     /// <param name="eventHandlerFactory">事件处理器工厂</param>
     /// <param name="deduplicator">事件去重服务（可选）</param>
     /// <param name="distributedDeduplicator">分布式事件去重服务（可选）</param>
+    /// <param name="seqIdDeduplicator">SeqID 去重服务（可选）</param>
     /// <param name="options">WebSocket 配置选项</param>
     public FeishuEventMessageHandler(
         ILogger<FeishuEventMessageHandler> logger,
         IFeishuEventHandlerFactory eventHandlerFactory,
         IFeishuEventDeduplicator? deduplicator,
         IFeishuEventDistributedDeduplicator? distributedDeduplicator,
+        IFeishuSeqIDDeduplicator? seqIdDeduplicator,
         FeishuWebSocketOptions options)
         : base(logger)
     {
         _eventHandlerFactory = eventHandlerFactory ?? throw new ArgumentNullException(nameof(eventHandlerFactory));
         _deduplicator = deduplicator;
         _distributedDeduplicator = distributedDeduplicator;
+        _seqIdDeduplicator = seqIdDeduplicator;
         _options = options ?? throw new ArgumentNullException(nameof(options));
     }
 
@@ -97,31 +101,50 @@ public class FeishuEventMessageHandler : JsonMessageHandler
             _logger.LogInformation("收到飞书事件: {EventType}, EventId: {EventId}",
                 eventData.EventType, eventData.EventId);
 
-            // 去重检查
-            bool isDuplicate = false;
+            // 去重检查 - 使用处理中状态机制
+            bool isProcessing = false;
+            bool shouldSkip = false;
+
             if (_options.EnableDistributedDeduplication && _distributedDeduplicator != null)
             {
                 // 优先使用分布式去重
-                isDuplicate = await _distributedDeduplicator.TryMarkAsProcessedAsync(eventData.EventId, cancellationToken: cancellationToken);
-                if (isDuplicate)
-                {
-                    _logger.LogDebug("事件 {EventId} 已处理过（分布式去重），跳过", eventData.EventId);
-                    return;
-                }
+                isProcessing = await _distributedDeduplicator.TryMarkAsProcessedAsync(eventData.EventId, cancellationToken: cancellationToken);
             }
             else if (_options.EnableEventDeduplication && _deduplicator != null)
             {
-                // 使用内存去重
-                isDuplicate = _deduplicator.TryMarkAsProcessed(eventData.EventId);
-                if (isDuplicate)
-                {
-                    _logger.LogDebug("事件 {EventId} 已处理过（内存去重），跳过", eventData.EventId);
-                    return;
-                }
+                // 使用内存去重 - 标记为处理中
+                isProcessing = _deduplicator.TryMarkAsProcessing(eventData.EventId);
             }
 
-            // 使用事件处理器工厂并行处理事件
-            await _eventHandlerFactory.HandleEventParallelAsync(eventData.EventType, eventData, cancellationToken);
+            if (isProcessing)
+            {
+                _logger.LogDebug("事件 {EventId} 已在处理中或已处理，跳过", eventData.EventId);
+                shouldSkip = true;
+            }
+
+            if (!shouldSkip)
+            {
+                try
+                {
+                    // 使用事件处理器工厂并行处理事件
+                    await _eventHandlerFactory.HandleEventParallelAsync(eventData.EventType, eventData, cancellationToken);
+
+                    // 处理成功，标记为已完成
+                    if (_options.EnableEventDeduplication && _deduplicator != null)
+                    {
+                        _deduplicator.MarkAsCompleted(eventData.EventId);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // 处理失败，回滚处理中状态
+                    if (_options.EnableEventDeduplication && _deduplicator != null)
+                    {
+                        _deduplicator.RollbackProcessing(eventData.EventId);
+                    }
+                    throw;
+                }
+            }
         }
         catch (Exception ex)
         {

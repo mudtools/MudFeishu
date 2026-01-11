@@ -44,7 +44,7 @@ public abstract class DefaultFeishuEventHandler<T> : IFeishuEventHandler
     /// <returns>处理任务</returns>
     /// <exception cref="ArgumentNullException">当eventData为null时抛出</exception>
     /// <exception cref="InvalidOperationException">当事件数据无效时抛出</exception>
-    public async Task HandleAsync(EventData eventData, CancellationToken cancellationToken = default)
+    public virtual async Task HandleAsync(EventData eventData, CancellationToken cancellationToken = default)
     {
         ExceptionUtils.ThrowIfNull(eventData, nameof(eventData));
 

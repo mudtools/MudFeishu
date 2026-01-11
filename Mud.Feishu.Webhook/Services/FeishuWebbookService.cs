@@ -25,6 +25,7 @@ public class FeishuWebhookService : IFeishuWebhookService
     private readonly MetricsCollector _metrics;
     private readonly FeishuWebhookConcurrencyService _concurrencyService;
     private readonly IFeishuEventDeduplicator _deduplicator;
+    private readonly IFeishuEventDistributedDeduplicator? _distributedDeduplicator;
 
     /// <summary>
     /// 获取当前配置选项（支持热更新）
@@ -40,7 +41,8 @@ public class FeishuWebhookService : IFeishuWebhookService
         ILogger<FeishuWebhookService> logger,
         MetricsCollector metrics,
         FeishuWebhookConcurrencyService concurrencyService,
-        IFeishuEventDeduplicator deduplicator)
+        IFeishuEventDeduplicator deduplicator,
+        IFeishuEventDistributedDeduplicator? distributedDeduplicator = null)
     {
         _optionsMonitor = optionsMonitor;
         _validator = validator;
@@ -50,6 +52,7 @@ public class FeishuWebhookService : IFeishuWebhookService
         _metrics = metrics;
         _concurrencyService = concurrencyService;
         _deduplicator = deduplicator;
+        _distributedDeduplicator = distributedDeduplicator;
 
         // 监听配置变更
         _optionsMonitor.OnChange((newOptions, name) =>
@@ -107,6 +110,8 @@ public class FeishuWebhookService : IFeishuWebhookService
     /// </summary>
     private async Task<(bool Success, string? ErrorReason)> HandleEventInternalAsync(FeishuWebhookRequest request, CancellationToken cancellationToken)
     {
+        EventData? eventData = null;
+
         try
         {
             _logger.LogInformation("开始处理飞书事件");
@@ -126,7 +131,7 @@ public class FeishuWebhookService : IFeishuWebhookService
                 return (false, "Missing encrypted data");
             }
 
-            var eventData = await DecryptEventAsync(request.Encrypt!, cancellationToken);
+            eventData = await DecryptEventAsync(request.Encrypt!, cancellationToken);
             if (eventData == null)
             {
                 _logger.LogError("事件数据解密失败");
@@ -134,10 +139,23 @@ public class FeishuWebhookService : IFeishuWebhookService
                 return (false, "Decryption failed");
             }
 
-            // 检查事件是否已处理（幂等性）
-            if (_deduplicator.TryMarkAsProcessed(eventData.EventId))
+            // 去重检查 - 优先使用分布式去重
+            bool isProcessing = false;
+
+            if (_distributedDeduplicator != null)
             {
-                _logger.LogInformation("事件 {EventId} 已处理过，跳过（幂等性）", eventData.EventId);
+                // 使用分布式去重
+                isProcessing = await _distributedDeduplicator.TryMarkAsProcessedAsync(eventData.EventId, cancellationToken: cancellationToken);
+            }
+            else
+            {
+                // 使用内存去重 - 标记为处理中
+                isProcessing = _deduplicator.TryMarkAsProcessing(eventData.EventId);
+            }
+
+            if (isProcessing)
+            {
+                _logger.LogInformation("事件 {EventId} 已在处理中或已处理，跳过（幂等性）", eventData.EventId);
                 return (true, null); // 已处理，返回成功避免飞书重试
             }
 
@@ -153,6 +171,12 @@ public class FeishuWebhookService : IFeishuWebhookService
                 // 分发事件到处理器
                 await _handlerFactory.HandleEventParallelAsync(eventData.EventType, eventData, timeoutCts.Token);
 
+                // 处理成功，标记为已完成（仅内存去重需要）
+                if (_distributedDeduplicator == null)
+                {
+                    _deduplicator.MarkAsCompleted(eventData.EventId);
+                }
+
                 _metrics.IncrementSuccessfulEvents();
                 _logger.LogInformation("事件处理完成: {EventType}, 事件ID: {EventId}",
                     eventData.EventType, eventData.EventId);
@@ -161,6 +185,12 @@ public class FeishuWebhookService : IFeishuWebhookService
             }
             catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
             {
+                // 处理超时，回滚处理中状态（仅内存去重需要）
+                if (_distributedDeduplicator == null)
+                {
+                    _deduplicator.RollbackProcessing(eventData.EventId);
+                }
+
                 _logger.LogWarning("事件处理超时: {EventType}, 事件ID: {EventId}, 超时时间: {TimeoutMs}ms",
                     eventData.EventType, eventData.EventId, Options.EventHandlingTimeoutMs);
                 _metrics.IncrementFailedEvents();
@@ -169,12 +199,24 @@ public class FeishuWebhookService : IFeishuWebhookService
         }
         catch (OperationCanceledException)
         {
+            // 处理被取消，回滚处理中状态（仅内存去重需要）
+            if (eventData != null && _distributedDeduplicator == null)
+            {
+                _deduplicator.RollbackProcessing(eventData.EventId);
+            }
+
             _logger.LogWarning("事件处理被取消");
             _metrics.IncrementCancelledEvents();
             return (false, "Operation cancelled");
         }
         catch (Exception ex)
         {
+            // 处理失败，回滚处理中状态（仅内存去重需要）
+            if (eventData != null && _distributedDeduplicator == null)
+            {
+                _deduplicator.RollbackProcessing(eventData.EventId);
+            }
+
             _logger.LogError(ex, "处理飞书事件时发生错误");
             _metrics.IncrementFailedEvents();
 

@@ -58,6 +58,11 @@ public class WebSocketBinaryMessageEventArgs : EventArgs
     public string? ParseError { get; set; }
 
     /// <summary>
+    /// 跳过处理的原因（如果因去重而跳过）
+    /// </summary>
+    public string? SkipReason { get; set; }
+
+    /// <summary>
     /// 是否成功解析
     /// </summary>
     public bool IsParseSuccess => string.IsNullOrEmpty(ParseError);

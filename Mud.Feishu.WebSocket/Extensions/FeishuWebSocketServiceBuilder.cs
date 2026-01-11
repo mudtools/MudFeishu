@@ -226,6 +226,12 @@ public class FeishuWebSocketServiceBuilder
             });
         }
 
+        // 注册SeqID去重服务（单例，如果未手动注册则使用内存实现）
+        if (!_services.Any(s => s.ServiceType == typeof(IFeishuSeqIDDeduplicator)))
+        {
+            _services.AddSingleton<IFeishuSeqIDDeduplicator, FeishuSeqIDDeduplicator>();
+        }
+
         // 注册WebSocket客户端
         _services.AddSingleton<IFeishuWebSocketClient>(serviceProvider =>
         {
@@ -233,7 +239,8 @@ public class FeishuWebSocketServiceBuilder
             var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
             var eventHandlerFactory = serviceProvider.GetRequiredService<IFeishuEventHandlerFactory>();
             var options = serviceProvider.GetRequiredService<IOptions<FeishuWebSocketOptions>>().Value;
-            return new FeishuWebSocketClient(logger, eventHandlerFactory, loggerFactory, options);
+            var seqIdDeduplicator = serviceProvider.GetService<IFeishuSeqIDDeduplicator>();
+            return new FeishuWebSocketClient(logger, eventHandlerFactory, loggerFactory, options, seqIdDeduplicator);
         });
 
         // 注册WebSocket管理器

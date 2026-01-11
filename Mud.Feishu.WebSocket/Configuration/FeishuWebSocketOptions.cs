@@ -17,7 +17,7 @@ public class FeishuWebSocketOptions
     private int _emptyQueueCheckIntervalMs = 100;
     private int _maxReconnectDelayMs = 30000;
     private int _healthCheckIntervalMs = 60000;
-    private int _eventDeduplicationCacheExpirationMs = 30 * 60 * 1000;
+    private int _eventDeduplicationCacheExpirationMs = 24 * 60 * 60 * 1000; // 默认 24 小时
     private int _eventDeduplicationCleanupIntervalMs = 5 * 60 * 1000;
 
     /// <summary>
@@ -127,7 +127,8 @@ public class FeishuWebSocketOptions
     public bool EnableDistributedDeduplication { get; set; } = false;
 
     /// <summary>
-    /// 事件去重缓存过期时间（毫秒），默认为30分钟
+    /// 事件去重缓存过期时间（毫秒），默认为24小时
+    /// <para>建议设置为与飞书官方事件重试窗口期一致，避免长延时场景下的重复处理</para>
     /// </summary>
     public int EventDeduplicationCacheExpirationMs
     {
@@ -182,6 +183,14 @@ public class FeishuWebSocketOptions
 
         if (EventDeduplicationCleanupIntervalMs < 60000)
             throw new InvalidOperationException("EventDeduplicationCleanupIntervalMs必须至少为60000毫秒");
+
+        // 去重配置保护
+        if (!EnableEventDeduplication && !EnableDistributedDeduplication)
+        {
+            throw new InvalidOperationException(
+                "警告：事件去重未启用！生产环境强烈建议启用至少一种去重机制（内存去重或分布式去重）。" +
+                "请设置 EnableEventDeduplication=true 或 EnableDistributedDeduplication=true");
+        }
     }
 }
 

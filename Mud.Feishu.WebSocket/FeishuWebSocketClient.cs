@@ -6,6 +6,7 @@
 // -----------------------------------------------------------------------
 
 using Microsoft.Extensions.Logging;
+using Mud.Feishu.Abstractions.Services;
 using Mud.Feishu.DataModels.WsEndpoint;
 using Mud.Feishu.WebSocket.DataModels;
 using Mud.Feishu.WebSocket.Handlers;
@@ -35,6 +36,7 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
     private readonly ILoggerFactory _loggerFactory;
     private bool _disposed = false;
     private CancellationTokenSource? _cancellationTokenSource;
+    private readonly IFeishuSeqIDDeduplicator? _seqIdDeduplicator;
 
     // 保存事件处理器委托引用，用于正确的取消订阅，避免内存泄漏
     private readonly EventHandler<EventArgs> _onConnected;
@@ -69,16 +71,19 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
     /// <param name="eventHandlerFactory">事件处理器工厂</param>
     /// <param name="loggerFactory">日志记录器工厂</param>
     /// <param name="options">WebSocket配置选项</param>
+    /// <param name="seqIdDeduplicator">SeqID去重服务（可选）</param>
     public FeishuWebSocketClient(
         ILogger<FeishuWebSocketClient> logger,
         IFeishuEventHandlerFactory eventHandlerFactory,
         ILoggerFactory loggerFactory,
-        FeishuWebSocketOptions? options = null)
+        FeishuWebSocketOptions? options = null,
+        IFeishuSeqIDDeduplicator? seqIdDeduplicator = null)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _eventHandlerFactory = eventHandlerFactory ?? throw new ArgumentNullException(nameof(eventHandlerFactory));
         _options = options ?? new FeishuWebSocketOptions();
         _loggerFactory = loggerFactory;
+        _seqIdDeduplicator = seqIdDeduplicator;
 
         // 初始化事件处理器委托，保存引用以便正确取消订阅
         _onConnected = (s, e) => Connected?.Invoke(this, e);
@@ -93,7 +98,7 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
         _connectionManager = new WebSocketConnectionManager(_loggerFactory.CreateLogger<WebSocketConnectionManager>(), _options);
         _authManager = new AuthenticationManager(_loggerFactory.CreateLogger<AuthenticationManager>(), _options, (message) => SendMessageAsync(message));
         _messageRouter = new MessageRouter(_loggerFactory.CreateLogger<MessageRouter>(), _options);
-        _binaryProcessor = new BinaryMessageProcessor(_loggerFactory.CreateLogger<BinaryMessageProcessor>(), _connectionManager, _options, _messageRouter);
+        _binaryProcessor = new BinaryMessageProcessor(_loggerFactory.CreateLogger<BinaryMessageProcessor>(), _connectionManager, _options, _messageRouter, _seqIdDeduplicator);
 
         // 订阅组件事件
         SubscribeToComponentEvents();
@@ -153,6 +158,7 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
             _eventHandlerFactory,
             null,
             null,
+            _seqIdDeduplicator,
             _options);
 
         _messageRouter.RegisterHandler(pingPongHandler);

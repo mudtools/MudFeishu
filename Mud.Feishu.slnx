@@ -12,6 +12,7 @@
   </Folder>
   <Project Path="Mud.CodeGenerator/Mud.CodeGenerator.shproj" />
   <Project Path="Mud.Feishu.Abstractions/Mud.Feishu.Abstractions.csproj" Id="b04973d2-c477-49a7-a00f-04288a8cabac" />
+  <Project Path="Mud.Feishu.Redis/Mud.Feishu.Redis.csproj" />
   <Project Path="Mud.Feishu.Webhook/Mud.Feishu.Webhook.csproj" />
   <Project Path="Mud.Feishu.WebSocket/Mud.Feishu.WebSocket.csproj" />
   <Project Path="Mud.Feishu/Mud.Feishu.csproj" />

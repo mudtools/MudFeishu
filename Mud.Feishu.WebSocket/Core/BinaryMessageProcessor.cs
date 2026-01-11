@@ -6,6 +6,7 @@
 // -----------------------------------------------------------------------
 
 using Microsoft.Extensions.Logging;
+using Mud.Feishu.Abstractions.Services;
 using Mud.Feishu.WebSocket.SocketEventArgs;
 using System.Text;
 using System.Text.Json;
@@ -26,6 +27,7 @@ public class BinaryMessageProcessor : IDisposable
     private readonly MessageRouter? _messageRouter;
     private readonly WebSocketConnectionManager? _connectionManager;
     private readonly List<Task> _activeProcessingTasks = new();
+    private readonly IFeishuSeqIDDeduplicator? _seqIdDeduplicator;
 
     /// <summary>
     /// 二进制消息接收事件
@@ -44,12 +46,14 @@ public class BinaryMessageProcessor : IDisposable
         ILogger<BinaryMessageProcessor> logger,
         WebSocketConnectionManager? webSocketConnectionManager,
         FeishuWebSocketOptions options,
-        MessageRouter messageRouter)
+        MessageRouter messageRouter,
+        IFeishuSeqIDDeduplicator? seqIdDeduplicator = null)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _options = options ?? new FeishuWebSocketOptions();
         _connectionManager = webSocketConnectionManager ?? throw new ArgumentNullException(nameof(_connectionManager));
         _messageRouter = messageRouter ?? throw new ArgumentNullException(nameof(messageRouter));
+        _seqIdDeduplicator = seqIdDeduplicator;
     }
 
     /// <summary>
@@ -175,8 +179,19 @@ public class BinaryMessageProcessor : IDisposable
                 var frame = ProtoBuf.Serializer.Deserialize<EventProtoData>(new MemoryStream(completeData));
 
                 if (_options.EnableLogging)
-                    _logger.LogDebug("成功反序列化为 Frame 对象: Service={Service}, Method={Method}, PayloadType={PayloadType}",
-                        frame.Service, frame.Method, frame.PayloadType);
+                    _logger.LogDebug("成功反序列化为 Frame 对象: Service={Service}, Method={Method}, PayloadType={PayloadType}, SeqID={SeqID}",
+                        frame.Service, frame.Method, frame.PayloadType, frame.SeqID);
+
+                // SeqID 去重检查
+                if (_seqIdDeduplicator != null && _seqIdDeduplicator.TryMarkAsProcessed(frame.SeqID))
+                {
+                    if (_options.EnableLogging)
+                        _logger.LogDebug("SeqID {SeqID} 已处理过，跳过", frame.SeqID);
+                    eventArgs.SkipReason = $"SeqID {frame.SeqID} 已处理过";
+                    BinaryMessageReceived?.Invoke(this, eventArgs);
+                    await SendAckMessageAsync(frame, true, cancellationToken);
+                    return;
+                }
 
                 if (frame?.Payload != null)
                 {

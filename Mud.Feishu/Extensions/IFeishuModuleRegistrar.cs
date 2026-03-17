@@ -8,57 +8,18 @@
 namespace Microsoft.Extensions.DependencyInjection;
 
 /// <summary>
-/// 飞书功能模块枚举
+/// 飞书模块注册器接口，定义模块注册的契约
 /// </summary>
-public enum FeishuModule
+public interface IFeishuModuleRegistrar
 {
     /// <summary>
-    /// 组织管理
+    /// 获取模块类型
     /// </summary>
-    Organization,
+    FeishuModule Module { get; }
 
     /// <summary>
-    /// 消息管理
+    /// 注册模块相关服务
     /// </summary>
-    Message,
-
-    /// <summary>
-    /// 群聊管理
-    /// </summary>
-    ChatGroup,
-
-    /// <summary>
-    /// 流程审批管理
-    /// </summary>
-    Approval,
-
-    /// <summary>
-    /// 任务管理
-    /// </summary>
-    Task,
-
-    /// <summary>
-    /// 卡片管理
-    /// </summary>
-    Card,
-
-    /// <summary>
-    /// 考勤管理
-    /// </summary>
-    Attendance,
-
-    /// <summary>
-    /// 飞书云盘管理
-    /// </summary>
-    Drive,
-
-    /// <summary>
-    /// 飞书知识库管理
-    /// </summary>
-    Wiki,
-
-    /// <summary>
-    /// 所有功能
-    /// </summary>
-    All
+    /// <param name="services">服务集合</param>
+    void Register(IServiceCollection services);
 }

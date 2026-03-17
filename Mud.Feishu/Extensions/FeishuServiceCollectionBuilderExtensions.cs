@@ -28,7 +28,7 @@ public static class FeishuServiceCollectionBuilderExtensions
     /// <param name="services">服务集合</param>
     /// <param name="modules">要注册的模块</param>
     /// <returns>服务集合，支持链式调用</returns>
-    public static IServiceCollection AddFeishuServices(this IServiceCollection services, FeishuModule[] modules)
+    public static IServiceCollection AddFeishuServices(this IServiceCollection services, params FeishuModule[] modules)
     {
         if (modules == null || modules.Length == 0)
             throw new ArgumentException("至少需要指定一个模块", nameof(modules));
@@ -36,5 +36,21 @@ public static class FeishuServiceCollectionBuilderExtensions
         return services.CreateFeishuServicesBuilder()
                        .AddModules(modules)
                        .Build();
+    }
+
+    /// <summary>
+    /// 使用自定义注册器注册飞书服务
+    /// </summary>
+    /// <param name="services">服务集合</param>
+    /// <param name="configure">配置建造者的委托</param>
+    /// <returns>服务集合，支持链式调用</returns>
+    public static IServiceCollection AddFeishuServices(this IServiceCollection services, Action<FeishuServiceBuilder> configure)
+    {
+        if (configure == null)
+            throw new ArgumentNullException(nameof(configure));
+
+        var builder = services.CreateFeishuServicesBuilder();
+        configure(builder);
+        return builder.Build();
     }
 }

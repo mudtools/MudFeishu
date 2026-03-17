@@ -14,6 +14,7 @@ public class FeishuServiceBuilder
 {
     private readonly IServiceCollection _services;
     private readonly FeishuServiceConfiguration _configuration = new();
+    private readonly Dictionary<FeishuModule, IFeishuModuleRegistrar> _registrars;
 
     /// <summary>
     /// 构造函数
@@ -22,133 +23,82 @@ public class FeishuServiceBuilder
     internal FeishuServiceBuilder(IServiceCollection services)
     {
         _services = services ?? throw new ArgumentNullException(nameof(services));
+        _registrars = InitializeRegistrars();
+    }
+
+    /// <summary>
+    /// 初始化模块注册器
+    /// </summary>
+    /// <returns>模块注册器字典</returns>
+    private static Dictionary<FeishuModule, IFeishuModuleRegistrar> InitializeRegistrars()
+    {
+        return new Dictionary<FeishuModule, IFeishuModuleRegistrar>
+        {
+            [FeishuModule.Organization] = new OrganizationModuleRegistrar(),
+            [FeishuModule.Message] = new MessageModuleRegistrar(),
+            [FeishuModule.ChatGroup] = new ChatGroupModuleRegistrar(),
+            [FeishuModule.Approval] = new ApprovalModuleRegistrar(),
+            [FeishuModule.Task] = new TaskModuleRegistrar(),
+            [FeishuModule.Card] = new CardModuleRegistrar(),
+            [FeishuModule.Attendance] = new AttendanceModuleRegistrar(),
+            [FeishuModule.Drive] = new DriveModuleRegistrar(),
+            [FeishuModule.Wiki] = new WikiModuleRegistrar()
+        };
     }
 
     /// <summary>
     /// 添加组织管理 API 服务
     /// </summary>
     /// <returns>建造者实例，支持链式调用</returns>
-    public FeishuServiceBuilder AddOrganizationApi()
-    {
-        if (!_configuration.OrganizationApiAdded)
-        {
-            _services.AddOrganizationWebApiHttpClient();
-            _configuration.OrganizationApiAdded = true;
-        }
-        return this;
-    }
+    public FeishuServiceBuilder AddOrganizationApi() => AddModule(FeishuModule.Organization);
 
     /// <summary>
     /// 添加消息管理 API 服务
     /// </summary>
     /// <returns>建造者实例，支持链式调用</returns>
-    public FeishuServiceBuilder AddMessageApi()
-    {
-        if (!_configuration.MessageApiAdded)
-        {
-            _services.AddMessageWebApiHttpClient();
-            _configuration.MessageApiAdded = true;
-        }
-        return this;
-    }
+    public FeishuServiceBuilder AddMessageApi() => AddModule(FeishuModule.Message);
 
     /// <summary>
     /// 添加群聊管理 API 服务
     /// </summary>
     /// <returns>建造者实例，支持链式调用</returns>
-    public FeishuServiceBuilder AddChatGroupApi()
-    {
-        if (!_configuration.ChatGroupApiAdded)
-        {
-            _services.AddChatGroupWebApiHttpClient();
-            _configuration.ChatGroupApiAdded = true;
-        }
-        return this;
-    }
+    public FeishuServiceBuilder AddChatGroupApi() => AddModule(FeishuModule.ChatGroup);
 
     /// <summary>
     /// 添加流程审批管理 API 服务
     /// </summary>
     /// <returns>建造者实例，支持链式调用</returns>
-    public FeishuServiceBuilder AddApprovalApi()
-    {
-        if (!_configuration.ApprovalApiAdded)
-        {
-            _services.AddApprovalWebApiHttpClient();
-            _configuration.ApprovalApiAdded = true;
-        }
-        return this;
-    }
+    public FeishuServiceBuilder AddApprovalApi() => AddModule(FeishuModule.Approval);
 
     /// <summary>
     /// 添加任务管理 API 服务
     /// </summary>
     /// <returns>建造者实例，支持链式调用</returns>
-    public FeishuServiceBuilder AddTaskApi()
-    {
-        if (!_configuration.TaskApiAdded)
-        {
-            _services.AddTaskWebApiHttpClient();
-            _configuration.TaskApiAdded = true;
-        }
-        return this;
-    }
+    public FeishuServiceBuilder AddTaskApi() => AddModule(FeishuModule.Task);
 
     /// <summary>
     /// 添加卡片管理 API 服务
     /// </summary>
     /// <returns>建造者实例，支持链式调用</returns>
-    public FeishuServiceBuilder AddCardApi()
-    {
-        if (!_configuration.CardApiAdded)
-        {
-            _services.AddCardsWebApiHttpClient();
-            _configuration.CardApiAdded = true;
-        }
-        return this;
-    }
+    public FeishuServiceBuilder AddCardApi() => AddModule(FeishuModule.Card);
 
     /// <summary>
     /// 添加考勤管理 API 服务
     /// </summary>
     /// <returns>建造者实例，支持链式调用</returns>
-    public FeishuServiceBuilder AddAttendanceApi()
-    {
-        if (!_configuration.AttendanceAdded)
-        {
-            _services.AddAttendanceWebApiHttpClient();
-            _configuration.AttendanceAdded = true;
-        }
-        return this;
-    }
+    public FeishuServiceBuilder AddAttendanceApi() => AddModule(FeishuModule.Attendance);
 
     /// <summary>
     /// 添加知识库 API 服务
     /// </summary>
     /// <returns>建造者实例，支持链式调用</returns>
-    public FeishuServiceBuilder AddWikiApi()
-    {
-        if (!_configuration.WikeApiAdded)
-        {
-            _services.AddWikiWebApiHttpClient();
-            _configuration.WikeApiAdded = true;
-        }
-        return this;
-    }
+    public FeishuServiceBuilder AddWikiApi() => AddModule(FeishuModule.Wiki);
 
     /// <summary>
     /// 添加飞书云盘管理 API 服务
     /// </summary>
     /// <returns>建造者实例，支持链式调用</returns>
-    public FeishuServiceBuilder AddDriveApi()
-    {
-        if (!_configuration.DriveApiAdded)
-        {
-            _services.AddDriveWebApiHttpClient();
-            _configuration.DriveApiAdded = true;
-        }
-        return this;
-    }
+    public FeishuServiceBuilder AddDriveApi() => AddModule(FeishuModule.Drive);
 
     /// <summary>
     /// 添加所有 API 服务
@@ -174,35 +124,51 @@ public class FeishuServiceBuilder
     /// <returns>建造者实例，支持链式调用</returns>
     public FeishuServiceBuilder AddModules(params FeishuModule[] modules)
     {
+        if (modules == null || modules.Length == 0)
+            return this;
+
         foreach (var module in modules)
         {
-            switch (module)
+            if (module == FeishuModule.All)
             {
-                case FeishuModule.Organization:
-                    AddOrganizationApi();
-                    break;
-                case FeishuModule.Message:
-                    AddMessageApi();
-                    break;
-                case FeishuModule.ChatGroup:
-                    AddChatGroupApi();
-                    break;
-                case FeishuModule.Approval:
-                    AddApprovalApi();
-                    break;
-                case FeishuModule.Attendance:
-                    AddAttendanceApi();
-                    break;
-                case FeishuModule.Drive:
-                    AddDriveApi();
-                    break;
-                case FeishuModule.Wiki:
-                    AddWikiApi();
-                    break;
-                case FeishuModule.All:
-                    AddAllApis();
-                    break;
+                AddAllApis();
             }
+            else
+            {
+                AddModule(module);
+            }
+        }
+        return this;
+    }
+
+    /// <summary>
+    /// 添加单个模块（核心方法）
+    /// </summary>
+    /// <param name="module">模块类型</param>
+    /// <returns>建造者实例，支持链式调用</returns>
+    private FeishuServiceBuilder AddModule(FeishuModule module)
+    {
+        if (_configuration.TryAdd(module) && _registrars.TryGetValue(module, out var registrar))
+        {
+            registrar.Register(_services);
+        }
+        return this;
+    }
+
+    /// <summary>
+    /// 注册自定义模块
+    /// </summary>
+    /// <param name="registrar">模块注册器</param>
+    /// <returns>建造者实例，支持链式调用</returns>
+    public FeishuServiceBuilder RegisterModule(IFeishuModuleRegistrar registrar)
+    {
+        if (registrar == null)
+            throw new ArgumentNullException(nameof(registrar));
+
+        if (_configuration.TryAdd(registrar.Module))
+        {
+            registrar.Register(_services);
+            _registrars[registrar.Module] = registrar;
         }
         return this;
     }

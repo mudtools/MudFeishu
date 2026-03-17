@@ -8,57 +8,13 @@
 namespace Microsoft.Extensions.DependencyInjection;
 
 /// <summary>
-/// 飞书功能模块枚举
+/// 任务管理模块注册器
 /// </summary>
-public enum FeishuModule
+internal sealed class TaskModuleRegistrar : IFeishuModuleRegistrar
 {
-    /// <summary>
-    /// 组织管理
-    /// </summary>
-    Organization,
+    /// <inheritdoc />
+    public FeishuModule Module => FeishuModule.Task;
 
-    /// <summary>
-    /// 消息管理
-    /// </summary>
-    Message,
-
-    /// <summary>
-    /// 群聊管理
-    /// </summary>
-    ChatGroup,
-
-    /// <summary>
-    /// 流程审批管理
-    /// </summary>
-    Approval,
-
-    /// <summary>
-    /// 任务管理
-    /// </summary>
-    Task,
-
-    /// <summary>
-    /// 卡片管理
-    /// </summary>
-    Card,
-
-    /// <summary>
-    /// 考勤管理
-    /// </summary>
-    Attendance,
-
-    /// <summary>
-    /// 飞书云盘管理
-    /// </summary>
-    Drive,
-
-    /// <summary>
-    /// 飞书知识库管理
-    /// </summary>
-    Wiki,
-
-    /// <summary>
-    /// 所有功能
-    /// </summary>
-    All
+    /// <inheritdoc />
+    public void Register(IServiceCollection services) => services.AddTaskWebApiHttpClient();
 }

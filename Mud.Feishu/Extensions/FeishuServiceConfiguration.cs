@@ -8,37 +8,35 @@
 namespace Microsoft.Extensions.DependencyInjection;
 
 /// <summary>
-/// 飞书服务配置内部状态
+/// 飞书服务配置内部状态，跟踪已注册的模块
 /// </summary>
 internal class FeishuServiceConfiguration
 {
-    public bool OrganizationApiAdded { get; set; }
-    public bool MessageApiAdded { get; set; }
-    public bool ChatGroupApiAdded { get; set; }
-    public bool ApprovalApiAdded { get; set; }
-    public bool CardApiAdded { get; set; }
-    public bool TaskApiAdded { get; set; }
-    public bool AuthenticationApiAdded { get; set; }
-    public bool AttendanceAdded { get; set; }
-    public bool DriveApiAdded { get; set; }
-    public bool WikeApiAdded { get; set; }
+    private readonly HashSet<FeishuModule> _registeredModules = new();
+
+    /// <summary>
+    /// 尝试添加模块到已注册集合
+    /// </summary>
+    /// <param name="module">要添加的模块</param>
+    /// <returns>如果模块之前未注册则返回 true，否则返回 false</returns>
+    public bool TryAdd(FeishuModule module) => _registeredModules.Add(module);
+
+    /// <summary>
+    /// 检查模块是否已注册
+    /// </summary>
+    /// <param name="module">要检查的模块</param>
+    /// <returns>如果模块已注册则返回 true</returns>
+    public bool IsRegistered(FeishuModule module) => _registeredModules.Contains(module);
 
     /// <summary>
     /// 检查是否添加了任何服务
     /// </summary>
     /// <returns>是否添加了服务</returns>
-    public bool HasAnyService()
-    {
-        return
-               OrganizationApiAdded ||
-               MessageApiAdded ||
-               ChatGroupApiAdded ||
-               AuthenticationApiAdded ||
-               AttendanceAdded ||
-               TaskApiAdded ||
-               CardApiAdded ||
-               ApprovalApiAdded ||
-               WikeApiAdded ||
-               DriveApiAdded;
-    }
+    public bool HasAnyService() => _registeredModules.Count > 0;
+
+    /// <summary>
+    /// 获取所有已注册的模块
+    /// </summary>
+    /// <returns>已注册模块的只读集合</returns>
+    public IReadOnlyCollection<FeishuModule> GetRegisteredModules() => _registeredModules;
 }

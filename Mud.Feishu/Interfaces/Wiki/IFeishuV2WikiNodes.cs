@@ -125,4 +125,56 @@ public interface IFeishuV2WikiNodes : IFeishuAppContextSwitcher
         [Path] string node_token,
         [Body] MoveSpaceNodeRequest moveSpaceNodeRequest,
         CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// <para>更新知识空间节点标题</para>
+    /// </summary>
+    /// <param name="space_id">
+    /// <para>路径参数</para>
+    /// <para>必填：是</para>
+    /// <para>知识空间 ID。</para>
+    /// <para>示例值：6870403571079249922</para>
+    /// </param>
+    /// <param name="node_token">
+    /// <para>路径参数</para>
+    /// <para>必填：是</para>
+    /// <para>需要迁移的节点token</para>
+    /// <para>示例值：wikbcd6ydSUyOEzbdlt1BfpA5Yc</para>
+    /// </param>
+    /// <param name="updateTitleSpaceNodeRequest">更新知识空间节点标题请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Post("/wiki/v2/spaces/{space_id}/nodes/{node_token}/update_title")]
+    Task<FeishuNullDataApiResult?> UpdateTitleSpaceNodeAsync(
+       [Path] string space_id,
+       [Path] string node_token,
+       [Body] UpdateTitleSpaceNodeRequest updateTitleSpaceNodeRequest,
+       CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// <para>用于在知识空间创建节点副本到指定位置。</para>
+    /// </summary>
+    /// <param name="space_id">
+    /// <para>路径参数</para>
+    /// <para>必填：是</para>
+    /// <para>知识空间 ID。</para>
+    /// <para>示例值：6870403571079249922</para>
+    /// </param>
+    /// <param name="node_token">
+    /// <para>路径参数</para>
+    /// <para>必填：是</para>
+    /// <para>需要迁移的节点token</para>
+    /// <para>示例值：wikbcd6ydSUyOEzbdlt1BfpA5Yc</para>
+    /// </param>
+    /// <param name="copySpaceNodeRequest">移动知识空间节点请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Post("/open-apis/wiki/v2/spaces/{space_id}/nodes/{node_token}/copy")]
+    Task<FeishuApiResult<SpaceNodeResult>?> CopySpaceNodeAsync(
+         [Path] string space_id,
+         [Path] string node_token,
+         [Body] CopySpaceNodeRequest copySpaceNodeRequest,
+         CancellationToken cancellationToken = default);
 }

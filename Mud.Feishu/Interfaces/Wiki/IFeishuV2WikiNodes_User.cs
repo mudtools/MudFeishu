@@ -26,7 +26,7 @@ public interface IFeishuUserV2WikiNodes : IFeishuV2WikiNodes, ICurrentUserId
     /// <param name="page_size">分页大小，即本次请求所返回的用户信息列表内的最大条目数。默认值：10</param>
     /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
-    [Get("/open-apis/wiki/v2/nodes/search")]
+    [Post("/open-apis/wiki/v2/nodes/search")]
     Task<FeishuApiPageListResult<WikiSearchResult>?> SearchPageListAsync(
          [Body] WikiSearchRequest wikiSearchRequest,
          [Query("page_size")] int page_size = Consts.PageSize,

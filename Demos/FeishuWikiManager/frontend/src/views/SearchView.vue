@@ -38,7 +38,21 @@ async function handleSearch() {
   }
 }
 
-function getObjTypeIcon(objType: string) {
+// ObjType 映射（飞书 API 返回的是数字）
+const objTypeMap: Record<number, { icon: string; label: string; tagType: string }> = {
+  1: { icon: 'Document', label: '文档', tagType: 'primary' },      // docx
+  2: { icon: 'Grid', label: '表格', tagType: 'success' },         // sheet
+  3: { icon: 'Table', label: '多维表格', tagType: 'warning' },    // bitable
+  4: { icon: 'PictureFilled', label: '演示文稿', tagType: 'danger' }, // slides
+  5: { icon: 'Share', label: '思维笔记', tagType: 'info' },       // mindnote
+  6: { icon: 'Document', label: '文件', tagType: '' }             // file
+}
+
+function getObjTypeIcon(objType: number | string): string {
+  if (typeof objType === 'number') {
+    return objTypeMap[objType]?.icon || 'Document'
+  }
+  // 兼容字符串类型
   const icons: Record<string, string> = {
     docx: 'Document',
     sheet: 'Grid',
@@ -48,6 +62,61 @@ function getObjTypeIcon(objType: string) {
     file: 'Document'
   }
   return icons[objType] || 'Document'
+}
+
+function getObjTypeLabel(objType: number | string): string {
+  if (typeof objType === 'number') {
+    return objTypeMap[objType]?.label || '文档'
+  }
+  // 兼容字符串类型
+  const labels: Record<string, string> = {
+    docx: '文档',
+    sheet: '表格',
+    bitable: '多维表格',
+    slides: '演示文稿',
+    mindnote: '思维笔记',
+    file: '文件'
+  }
+  return labels[objType] || '文档'
+}
+
+function getObjTypeTagType(objType: number | string): string {
+  if (typeof objType === 'number') {
+    return objTypeMap[objType]?.tagType || 'info'
+  }
+  // 兼容字符串类型
+  const types: Record<string, string> = {
+    docx: 'primary',
+    sheet: 'success',
+    bitable: 'warning',
+    slides: 'danger',
+    mindnote: 'info',
+    file: ''
+  }
+  return types[objType] || 'info'
+}
+
+function getDomainFromUrl(url: string): string {
+  try {
+    const urlObj = new URL(url)
+    return urlObj.hostname.replace('www.', '')
+  } catch {
+    return '飞书文档'
+  }
+}
+
+function handleResultClick(result: any) {
+  // 优先使用飞书提供的 url
+  if (result.url) {
+    window.open(result.url, '_blank')
+  } else if (result.objToken) {
+    const url = `https://www.feishu.cn/docs/${result.objToken}`
+    window.open(url, '_blank')
+  } else if (result.nodeId && result.spaceId) {
+    router.push(`/spaces/${result.spaceId}/nodes/${result.nodeId}`)
+  } else {
+    ElMessage.warning('无法打开该文档')
+  }
 }
 
 async function handleLogout() {
@@ -100,19 +169,20 @@ async function handleLogout() {
           
           <el-card 
             v-for="result in searchResults" 
-            :key="result.nodeToken" 
+            :key="result.nodeId || result.objToken" 
             class="result-card"
             shadow="hover"
+            @click="handleResultClick(result)"
           >
             <div class="result-item">
               <el-icon :size="20" class="result-icon">
                 <component :is="getObjTypeIcon(result.objType)" />
               </el-icon>
               <div class="result-content">
-                <div class="result-title">{{ result.title }}</div>
+                <div class="result-title">{{ result.title || '无标题' }}</div>
                 <div class="result-meta">
-                  <el-tag size="small" type="info">{{ result.objType }}</el-tag>
-                  <span v-if="result.spaceName" class="result-space">{{ result.spaceName }}</span>
+                  <el-tag size="small" :type="getObjTypeTagType(result.objType)">{{ getObjTypeLabel(result.objType) }}</el-tag>
+                  <span v-if="result.url" class="result-url">{{ getDomainFromUrl(result.url) }}</span>
                 </div>
               </div>
             </div>
@@ -207,5 +277,16 @@ async function handleLogout() {
 .result-space {
   color: var(--text-secondary);
   font-size: 12px;
+}
+
+.result-url {
+  color: var(--text-tertiary);
+  font-size: 12px;
+}
+
+.result-url::before {
+  content: '•';
+  margin: 0 6px;
+  color: var(--text-tertiary);
 }
 </style>

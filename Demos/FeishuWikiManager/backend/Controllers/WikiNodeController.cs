@@ -314,22 +314,3 @@ public class WikiNodeController : ControllerBase
         }
     }
 }
-
-public class UpdateTitleRequest
-{
-    public string Title { get; set; } = string.Empty;
-}
-
-public class MoveNodeRequest
-{
-    public string? TargetParentToken { get; set; }
-}
-
-public class AddFavoriteRequest
-{
-    public string SpaceId { get; set; } = string.Empty;
-    public string NodeToken { get; set; } = string.Empty;
-    public string Title { get; set; } = string.Empty;
-    public string? ObjToken { get; set; }
-    public string? ObjType { get; set; }
-}

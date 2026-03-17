@@ -72,7 +72,7 @@ public class WikiController : ControllerBase
     }
 
     [HttpPost("spaces")]
-    public async Task<IActionResult> CreateSpace([FromBody] CreateSpaceRequest request)
+    public async Task<IActionResult> CreateSpace([FromBody] CreateSpaceRequestModel request)
     {
         try
         {
@@ -103,10 +103,4 @@ public class WikiController : ControllerBase
             });
         }
     }
-}
-
-public class CreateSpaceRequest
-{
-    public string Title { get; set; } = string.Empty;
-    public string? Description { get; set; }
 }

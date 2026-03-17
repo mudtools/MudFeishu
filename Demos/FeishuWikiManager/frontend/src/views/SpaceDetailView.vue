@@ -4,71 +4,39 @@ import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useWikiStore } from '@/stores/wiki'
 import { useFavoriteStore } from '@/stores/favorite'
+import { useNodeTree } from '@/composables/useNodeTree'
 import AppHeader from '@/components/common/AppHeader.vue'
 import AppSidebar from '@/components/common/AppSidebar.vue'
 import NodeTree from '@/components/wiki/NodeTree.vue'
+import CreateDialog from '@/components/wiki/CreateDialog.vue'
 import type { Node } from '@/types'
 
 const route = useRoute()
 const wikiStore = useWikiStore()
 const favoriteStore = useFavoriteStore()
-const loading = ref(false)
-const createDialogVisible = ref(false)
-const newDocTitle = ref('')
-const newDocType = ref('docx')
-const selectedParentToken = ref<string | undefined>()
-const creating = ref(false)
-
 const spaceId = ref(route.params.spaceId as string)
+
+const { 
+  rootNodes, 
+  loading, 
+  fetchRootNodes, 
+  fetchChildNodes 
+} = useNodeTree(spaceId.value)
+
+const createDialogVisible = ref(false)
+const selectedParentToken = ref<string | undefined>()
 
 async function loadSpaceData() {
   if (!spaceId.value) return
   
-  loading.value = true
   try {
     await Promise.all([
       wikiStore.fetchSpaceInfo(spaceId.value),
-      wikiStore.fetchNodeTree(spaceId.value, undefined, true),
+      fetchRootNodes(),
       favoriteStore.fetchFavorites()
     ])
   } catch (error: any) {
     ElMessage.error(error.message || '加载失败')
-  } finally {
-    loading.value = false
-  }
-}
-
-async function loadChildNodes(parentToken: string) {
-  try {
-    await wikiStore.fetchNodeTree(spaceId.value, parentToken)
-  } catch (error: any) {
-    ElMessage.error(error.message || '加载子节点失败')
-  }
-}
-
-async function handleCreateDoc() {
-  if (!newDocTitle.value.trim()) {
-    ElMessage.warning('请输入文档标题')
-    return
-  }
-
-  try {
-    creating.value = true
-    const { wikiApi } = await import('@/api')
-    await wikiApi.createNode(spaceId.value, {
-      spaceId: spaceId.value,
-      parentNodeToken: selectedParentToken.value,
-      title: newDocTitle.value,
-      objType: newDocType.value
-    })
-    ElMessage.success('创建成功')
-    createDialogVisible.value = false
-    newDocTitle.value = ''
-    await wikiStore.fetchNodeTree(spaceId.value, selectedParentToken.value, true)
-  } catch (error: any) {
-    ElMessage.error(error.message || '创建失败')
-  } finally {
-    creating.value = false
   }
 }
 
@@ -78,7 +46,7 @@ function handleNodeClick(node: Node) {
 
 function handleNodeExpand(node: Node) {
   if (node.hasChildren) {
-    loadChildNodes(node.nodeToken)
+    fetchChildNodes(node.nodeToken)
   }
 }
 
@@ -102,6 +70,15 @@ async function handleToggleFavorite(node: Node) {
   }
 }
 
+function handleCreateDoc(parentToken?: string) {
+  selectedParentToken.value = parentToken
+  createDialogVisible.value = true
+}
+
+async function handleCreated() {
+  await fetchRootNodes()
+}
+
 watch(() => route.params.spaceId, (newId) => {
   if (newId) {
     spaceId.value = newId as string
@@ -121,7 +98,7 @@ onMounted(() => {
     <el-container>
       <AppHeader>
         <template #extra>
-          <el-button type="primary" @click="createDialogVisible = true">
+          <el-button type="primary" @click="handleCreateDoc()">
             <el-icon><Plus /></el-icon>
             新建文档
           </el-button>
@@ -139,7 +116,7 @@ onMounted(() => {
         
         <el-card v-loading="loading">
           <NodeTree
-            :nodes="wikiStore.nodeTree.get('root') || []"
+            :nodes="rootNodes"
             :favorites="favoriteStore.favorites"
             @node-click="handleNodeClick"
             @node-expand="handleNodeExpand"
@@ -149,28 +126,12 @@ onMounted(() => {
       </el-main>
     </el-container>
     
-    <el-dialog v-model="createDialogVisible" title="新建文档" width="480px">
-      <el-form label-width="80px">
-        <el-form-item label="文档类型">
-          <el-select v-model="newDocType" style="width: 100%">
-            <el-option label="文档" value="docx" />
-            <el-option label="表格" value="sheet" />
-            <el-option label="多维表格" value="bitable" />
-            <el-option label="幻灯片" value="slides" />
-            <el-option label="思维导图" value="mindnote" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="标题" required>
-          <el-input v-model="newDocTitle" placeholder="请输入文档标题" />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="createDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="creating" @click="handleCreateDoc">
-          创建
-        </el-button>
-      </template>
-    </el-dialog>
+    <CreateDialog
+      v-model:visible="createDialogVisible"
+      :space-id="spaceId"
+      :parent-token="selectedParentToken"
+      @created="handleCreated"
+    />
   </el-container>
 </template>
 

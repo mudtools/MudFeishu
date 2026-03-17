@@ -6,6 +6,7 @@
 // -----------------------------------------------------------------------
 
 using FeishuWikiManager.Data;
+using FeishuWikiManager.Filters;
 using FeishuWikiManager.Models;
 using FeishuWikiManager.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -18,7 +19,10 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Configuration.AddJsonFile("appsettings.local.json", optional: true, reloadOnChange: true);
 
-builder.Services.AddControllers();
+builder.Services.AddControllers(options =>
+{
+    options.Filters.Add<SetUserContextFilter>();
+});
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddOpenApi();
 
@@ -74,6 +78,9 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IWikiService, WikiService>();
+
+builder.Services.AddSingleton<ICurrentUserContext, CurrentUserContext>();
+builder.Services.AddScoped<SetUserContextFilter>();
 
 builder.Services.AddFeishuApp(builder.Configuration, "FeishuApps");
 

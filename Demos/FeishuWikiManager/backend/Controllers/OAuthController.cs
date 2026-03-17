@@ -14,9 +14,8 @@ using Mud.Feishu.Abstractions;
 
 namespace FeishuWikiManager.Controllers;
 
-[ApiController]
 [Route("api/[controller]")]
-public class OAuthController : ControllerBase
+public class OAuthController : BaseController
 {
     private readonly IFeishuAppManager _feishuAppManager;
     private readonly IConfiguration _configuration;
@@ -56,11 +55,7 @@ public class OAuthController : ControllerBase
 
             if (string.IsNullOrEmpty(appId) || string.IsNullOrEmpty(redirectUri))
             {
-                return BadRequest(new AuthUrlResponse
-                {
-                    Success = false,
-                    Message = "飞书应用配置不完整"
-                });
+                return BadRequestResult("飞书应用配置不完整");
             }
 
             var state = _stateStorageService.GenerateState();
@@ -97,11 +92,7 @@ public class OAuthController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "生成飞书授权URL失败");
-            return StatusCode(500, new AuthUrlResponse
-            {
-                Success = false,
-                Message = $"生成授权URL失败: {ex.Message}"
-            });
+            return ServerError("生成授权URL失败", ex);
         }
     }
 
@@ -114,21 +105,13 @@ public class OAuthController : ControllerBase
 
             if (string.IsNullOrEmpty(request.Code) || string.IsNullOrEmpty(request.State))
             {
-                return BadRequest(new LoginResponse
-                {
-                    Success = false,
-                    Message = "缺少必要参数"
-                });
+                return BadRequestResult("缺少必要参数");
             }
 
             if (!_stateStorageService.ValidateState(request.State))
             {
                 _logger.LogWarning("State验证失败: {State}", request.State);
-                return BadRequest(new LoginResponse
-                {
-                    Success = false,
-                    Message = "State验证失败，可能存在CSRF攻击"
-                });
+                return BadRequestResult("State验证失败，可能存在CSRF攻击");
             }
 
             _stateStorageService.RemoveState(request.State);
@@ -140,23 +123,16 @@ public class OAuthController : ControllerBase
             if (tokenResult == null || tokenResult.Code != 0)
             {
                 _logger.LogError("获取用户访问令牌失败: {Message}", tokenResult?.Msg ?? "未知错误");
-                return BadRequest(new LoginResponse
-                {
-                    Success = false,
-                    Message = $"获取用户访问令牌失败: {tokenResult?.Msg ?? "未知错误"}"
-                });
+                return BadRequestResult($"获取用户访问令牌失败: {tokenResult?.Msg ?? "未知错误"}");
             }
+
             _feishuUserApi.CurrentUserId = tokenResult.UserId;
             var userInfoResult = await _feishuUserApi.GetUserInfoAsync();
 
             if (userInfoResult?.Data == null)
             {
                 _logger.LogError("获取用户信息失败: {Message}", userInfoResult?.Msg ?? "未知错误");
-                return BadRequest(new LoginResponse
-                {
-                    Success = false,
-                    Message = $"获取用户信息失败: {userInfoResult?.Msg ?? "未知错误"}"
-                });
+                return BadRequestResult($"获取用户信息失败: {userInfoResult?.Msg ?? "未知错误"}");
             }
 
             var feishuUser = userInfoResult.Data;
@@ -202,11 +178,7 @@ public class OAuthController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "处理飞书OAuth回调失败");
-            return StatusCode(500, new LoginResponse
-            {
-                Success = false,
-                Message = $"登录失败: {ex.Message}"
-            });
+            return ServerError("登录失败", ex);
         }
     }
 
@@ -214,163 +186,164 @@ public class OAuthController : ControllerBase
     [Authorize]
     public async Task<IActionResult> GetTokenStatus()
     {
-        var openId = User.FindFirst("open_id")?.Value;
-
-        if (string.IsNullOrEmpty(openId))
+        try
         {
-            return Unauthorized(new TokenStatusResponse
+            var openId = CurrentOpenId;
+
+            if (string.IsNullOrEmpty(openId))
             {
-                Success = false,
-                Message = "未授权"
-            });
-        }
-
-        var user = await _userService.GetUserByOpenIdAsync(openId);
-
-        if (user == null)
-        {
-            return NotFound(new TokenStatusResponse
-            {
-                Success = false,
-                Message = "用户不存在"
-            });
-        }
-
-        var hasValidToken = !string.IsNullOrEmpty(user.FeishuAccessToken) &&
-                           user.TokenExpiresAt.HasValue &&
-                           user.TokenExpiresAt.Value > DateTime.UtcNow;
-
-        var canRefresh = !string.IsNullOrEmpty(user.FeishuRefreshToken);
-
-        return Ok(new TokenStatusResponse
-        {
-            Success = true,
-            HasValidToken = hasValidToken,
-            CanRefresh = canRefresh,
-            TokenInfo = new TokenExpirationInfo
-            {
-                AccessTokenExpiresAt = user.TokenExpiresAt,
-                AccessTokenExpired = user.TokenExpiresAt.HasValue && user.TokenExpiresAt.Value <= DateTime.UtcNow,
-                RefreshTokenExpired = false
+                return UnauthorizedResult();
             }
-        });
+
+            var user = await _userService.GetUserByOpenIdAsync(openId);
+
+            if (user == null)
+            {
+                return NotFoundResult("用户不存在");
+            }
+
+            var hasValidToken = !string.IsNullOrEmpty(user.FeishuAccessToken) &&
+                               user.TokenExpiresAt.HasValue &&
+                               user.TokenExpiresAt.Value > DateTime.UtcNow;
+
+            var canRefresh = !string.IsNullOrEmpty(user.FeishuRefreshToken);
+
+            return Ok(new TokenStatusResponse
+            {
+                Success = true,
+                HasValidToken = hasValidToken,
+                CanRefresh = canRefresh,
+                TokenInfo = new TokenExpirationInfo
+                {
+                    AccessTokenExpiresAt = user.TokenExpiresAt,
+                    AccessTokenExpired = user.TokenExpiresAt.HasValue && user.TokenExpiresAt.Value <= DateTime.UtcNow,
+                    RefreshTokenExpired = false
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "获取Token状态失败");
+            return ServerError("获取Token状态失败", ex);
+        }
     }
 
     [HttpPost("refresh")]
     [Authorize]
     public async Task<IActionResult> RefreshToken()
     {
-        var openId = User.FindFirst("open_id")?.Value;
-
-        if (string.IsNullOrEmpty(openId))
+        try
         {
-            return Unauthorized(new RefreshTokenResponse
+            var openId = CurrentOpenId;
+
+            if (string.IsNullOrEmpty(openId))
             {
-                Success = false,
-                Message = "未授权"
+                return UnauthorizedResult();
+            }
+
+            var user = await _userService.GetUserByOpenIdAsync(openId);
+
+            if (user == null)
+            {
+                return UnauthorizedResult("用户不存在");
+            }
+
+            var canRefresh = await _userTokenManager.CanRefreshTokenAsync(openId);
+
+            if (!canRefresh)
+            {
+                return BadRequestResult("无法刷新Token，请重新登录");
+            }
+
+            var newToken = await _userTokenManager.RefreshUserTokenAsync(openId);
+
+            if (newToken == null)
+            {
+                return BadRequestResult("刷新Token失败");
+            }
+
+            await _userService.UpdateUserTokenAsync(
+                user.Id,
+                newToken.AccessToken,
+                newToken.RefreshToken,
+                newToken.AccessTokenExpireTime > 0
+                    ? DateTimeOffset.FromUnixTimeMilliseconds(newToken.AccessTokenExpireTime).DateTime
+                    : null
+            );
+
+            _logger.LogInformation("Token刷新成功: {OpenId}", openId);
+
+            return Ok(new RefreshTokenResponse
+            {
+                Success = true,
+                Message = "Token刷新成功",
+                AccessToken = newToken.AccessToken,
+                RefreshToken = newToken.RefreshToken
             });
         }
-
-        var user = await _userService.GetUserByOpenIdAsync(openId);
-
-        if (user == null)
+        catch (Exception ex)
         {
-            return Unauthorized(new RefreshTokenResponse
-            {
-                Success = false,
-                Message = "用户不存在"
-            });
+            _logger.LogError(ex, "刷新Token失败");
+            return ServerError("刷新Token失败", ex);
         }
-
-        var canRefresh = await _userTokenManager.CanRefreshTokenAsync(openId);
-
-        if (!canRefresh)
-        {
-            return BadRequest(new RefreshTokenResponse
-            {
-                Success = false,
-                Message = "无法刷新Token，请重新登录"
-            });
-        }
-
-        var newToken = await _userTokenManager.RefreshUserTokenAsync(openId);
-
-        if (newToken == null)
-        {
-            return BadRequest(new RefreshTokenResponse
-            {
-                Success = false,
-                Message = "刷新Token失败"
-            });
-        }
-
-        await _userService.UpdateUserTokenAsync(
-            user.Id,
-            newToken.AccessToken,
-            newToken.RefreshToken,
-            newToken.AccessTokenExpireTime > 0
-                ? DateTimeOffset.FromUnixTimeMilliseconds(newToken.AccessTokenExpireTime).DateTime
-                : null
-        );
-
-        _logger.LogInformation("Token刷新成功: {OpenId}", openId);
-
-        return Ok(new RefreshTokenResponse
-        {
-            Success = true,
-            Message = "Token刷新成功",
-            AccessToken = newToken.AccessToken,
-            RefreshToken = newToken.RefreshToken
-        });
     }
 
     [HttpPost("logout")]
     [Authorize]
     public async Task<IActionResult> Logout()
     {
-        var openId = User.FindFirst("open_id")?.Value;
-
-        if (!string.IsNullOrEmpty(openId))
+        try
         {
-            var user = await _userService.GetUserByOpenIdAsync(openId);
-            if (user != null)
+            var openId = CurrentOpenId;
+
+            if (!string.IsNullOrEmpty(openId))
             {
-                await _userService.UpdateUserTokenAsync(user.Id, null, null, null);
+                await _userService.ClearUserTokenAsync(openId);
+                _logger.LogInformation("用户登出成功: {OpenId}", openId);
             }
-        }
 
-        return Ok(new LogoutResponse
+            return Success("登出成功");
+        }
+        catch (Exception ex)
         {
-            Success = true,
-            Message = "登出成功"
-        });
+            _logger.LogError(ex, "登出失败");
+            return ServerError("登出失败", ex);
+        }
     }
 
     [HttpGet("me")]
     [Authorize]
     public async Task<IActionResult> GetCurrentUser()
     {
-        var openId = User.FindFirst("open_id")?.Value;
-
-        if (string.IsNullOrEmpty(openId))
+        try
         {
-            return Unauthorized();
+            var openId = CurrentOpenId;
+
+            if (string.IsNullOrEmpty(openId))
+            {
+                return UnauthorizedResult();
+            }
+
+            var user = await _userService.GetUserByOpenIdAsync(openId);
+
+            if (user == null)
+            {
+                return NotFoundResult("用户不存在");
+            }
+
+            return Success(new UserInfoResponse
+            {
+                OpenId = user.OpenId,
+                UnionId = user.UnionId,
+                Name = user.Name,
+                Avatar = user.Avatar,
+                Email = user.Email
+            });
         }
-
-        var user = await _userService.GetUserByOpenIdAsync(openId);
-
-        if (user == null)
+        catch (Exception ex)
         {
-            return NotFound();
+            _logger.LogError(ex, "获取用户信息失败");
+            return ServerError("获取用户信息失败", ex);
         }
-
-        return Ok(new UserInfoResponse
-        {
-            OpenId = user.OpenId,
-            UnionId = user.UnionId ?? string.Empty,
-            Name = user.Name,
-            Avatar = user.Avatar,
-            Email = user.Email ?? string.Empty
-        });
     }
 }

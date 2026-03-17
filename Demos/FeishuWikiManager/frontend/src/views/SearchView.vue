@@ -1,10 +1,14 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { ElMessage } from 'element-plus'
-import { wikiApi } from '@/api'
+import { useRouter } from 'vue-router'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { useUserStore } from '@/stores/user'
+import { wikiApi, authApi } from '@/api'
 import AppHeader from '@/components/common/AppHeader.vue'
 import AppSidebar from '@/components/common/AppSidebar.vue'
 
+const router = useRouter()
+const userStore = useUserStore()
 const searchQuery = ref('')
 const searchResults = ref<any[]>([])
 const loading = ref(false)
@@ -45,14 +49,31 @@ function getObjTypeIcon(objType: string) {
   }
   return icons[objType] || 'Document'
 }
+
+async function handleLogout() {
+  try {
+    await ElMessageBox.confirm('确定要退出登录吗？', '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    
+    await authApi.logout()
+    userStore.logout()
+    ElMessage.success('已退出登录')
+    router.push('/login')
+  } catch (error) {
+    // 用户取消
+  }
+}
 </script>
 
 <template>
-  <el-container class="main-layout">
-    <AppSidebar />
+  <el-container class="main-layout" direction="vertical">
+    <AppHeader @logout="handleLogout" />
     
     <el-container>
-      <AppHeader />
+      <AppSidebar @logout="handleLogout" />
       
       <el-main class="main-content">
         <div class="search-section">
@@ -113,28 +134,47 @@ function getObjTypeIcon(objType: string) {
 }
 
 .main-content {
-  background-color: #f5f7fa;
-  padding: 24px;
+  background-color: var(--bg-color);
+  padding: 32px;
+  transition: background-color var(--transition-normal);
 }
 
 .search-section {
-  max-width: 600px;
-  margin: 0 auto 32px;
+  max-width: 640px;
+  margin: 0 auto 40px;
+  animation: slideUp var(--transition-normal);
+}
+
+.search-section :deep(.el-input__wrapper) {
+  border-radius: var(--border-radius-lg);
+  padding: 8px 16px;
+}
+
+.search-section :deep(.el-input__inner) {
+  font-size: 16px;
 }
 
 .results-section {
   max-width: 800px;
   margin: 0 auto;
+  animation: slideUp var(--transition-slow);
 }
 
 .results-section h3 {
-  margin-bottom: 16px;
-  color: #303133;
+  margin-bottom: 20px;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
 .result-card {
-  margin-bottom: 12px;
+  margin-bottom: 16px;
   cursor: pointer;
+  transition: all var(--transition-normal);
+}
+
+.result-card:hover {
+  transform: translateX(4px);
 }
 
 .result-item {
@@ -143,8 +183,8 @@ function getObjTypeIcon(objType: string) {
 }
 
 .result-icon {
-  margin-right: 12px;
-  color: #3370ff;
+  margin-right: 16px;
+  color: var(--primary-color);
 }
 
 .result-content {
@@ -153,18 +193,19 @@ function getObjTypeIcon(objType: string) {
 
 .result-title {
   font-size: 15px;
-  color: #303133;
-  margin-bottom: 4px;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-bottom: 6px;
 }
 
 .result-meta {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
 .result-space {
-  color: #909399;
+  color: var(--text-secondary);
   font-size: 12px;
 }
 </style>

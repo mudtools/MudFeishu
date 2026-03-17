@@ -48,17 +48,32 @@ function getVisibilityLabel(visibility: string) {
 <style scoped>
 .space-card {
   cursor: pointer;
-  transition: all 0.3s;
-  margin-bottom: 16px;
+  transition: all var(--transition-normal);
+  margin-bottom: 20px;
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
+  border-radius: var(--border-radius-lg);
 }
 
 .space-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-xl);
+  border-color: var(--primary-color);
 }
 
 .space-icon {
-  margin-bottom: 12px;
+  width: 56px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--primary-bg);
+  border-radius: var(--border-radius);
+  margin-bottom: 16px;
+}
+
+.space-icon .el-icon {
+  color: var(--primary-color);
 }
 
 .space-content {
@@ -67,6 +82,7 @@ function getVisibilityLabel(visibility: string) {
 
 .space-name {
   font-size: 16px;
+  font-weight: 600;
   color: var(--text-primary);
   margin: 0 0 8px 0;
   overflow: hidden;
@@ -77,7 +93,7 @@ function getVisibilityLabel(visibility: string) {
 .space-desc {
   font-size: 13px;
   color: var(--text-secondary);
-  margin: 0 0 12px 0;
+  margin: 0 0 16px 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

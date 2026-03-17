@@ -71,6 +71,19 @@ public class UserService : IUserService
         }
     }
 
+    public async Task ClearUserTokenAsync(string openId)
+    {
+        var user = await _dbContext.Users.FirstOrDefaultAsync(u => u.OpenId == openId);
+        if (user != null)
+        {
+            user.FeishuAccessToken = null;
+            user.FeishuRefreshToken = null;
+            user.TokenExpiresAt = null;
+            await _dbContext.SaveChangesAsync();
+            _logger.LogInformation("清除用户Token: {UserId}", user.Id);
+        }
+    }
+
     public async Task<UserPreference?> GetPreferenceAsync(string userId, string key)
     {
         return await _dbContext.UserPreferences

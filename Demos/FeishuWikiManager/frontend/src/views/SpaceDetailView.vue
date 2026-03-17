@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
-import { useRoute } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { useRoute, useRouter } from 'vue-router'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { useUserStore } from '@/stores/user'
 import { useWikiStore } from '@/stores/wiki'
 import { useFavoriteStore } from '@/stores/favorite'
 import { useNodeTree } from '@/composables/useNodeTree'
+import { authApi } from '@/api'
 import AppHeader from '@/components/common/AppHeader.vue'
 import AppSidebar from '@/components/common/AppSidebar.vue'
 import NodeTree from '@/components/wiki/NodeTree.vue'
@@ -12,6 +14,8 @@ import CreateDialog from '@/components/wiki/CreateDialog.vue'
 import type { Node } from '@/types'
 
 const route = useRoute()
+const router = useRouter()
+const userStore = useUserStore()
 const wikiStore = useWikiStore()
 const favoriteStore = useFavoriteStore()
 const spaceId = ref(route.params.spaceId as string)
@@ -75,6 +79,23 @@ async function handleCreated() {
   await fetchRootNodes()
 }
 
+async function handleLogout() {
+  try {
+    await ElMessageBox.confirm('确定要退出登录吗？', '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    
+    await authApi.logout()
+    userStore.logout()
+    ElMessage.success('已退出登录')
+    router.push('/login')
+  } catch (error) {
+    // 用户取消
+  }
+}
+
 watch(() => route.params.spaceId, (newId) => {
   if (newId) {
     spaceId.value = newId as string
@@ -88,18 +109,18 @@ onMounted(() => {
 </script>
 
 <template>
-  <el-container class="main-layout">
-    <AppSidebar />
+  <el-container class="main-layout" direction="vertical">
+    <AppHeader @logout="handleLogout">
+      <template #extra>
+        <el-button type="primary" @click="handleCreateDoc()">
+          <el-icon><Plus /></el-icon>
+          新建文档
+        </el-button>
+      </template>
+    </AppHeader>
     
     <el-container>
-      <AppHeader>
-        <template #extra>
-          <el-button type="primary" @click="handleCreateDoc()">
-            <el-icon><Plus /></el-icon>
-            新建文档
-          </el-button>
-        </template>
-      </AppHeader>
+      <AppSidebar @logout="handleLogout" />
       
       <el-main class="main-content">
         <div class="page-header">
@@ -137,22 +158,30 @@ onMounted(() => {
 }
 
 .main-content {
-  background-color: #f5f7fa;
-  padding: 24px;
+  background-color: var(--bg-color);
+  padding: 32px;
+  transition: background-color var(--transition-normal);
 }
 
 .page-header {
-  margin-bottom: 24px;
+  margin-bottom: 32px;
+  animation: slideUp var(--transition-normal);
 }
 
 .page-header h1 {
-  font-size: 24px;
-  color: #303133;
+  font-size: 28px;
+  font-weight: 600;
+  color: var(--text-primary);
   margin: 0 0 8px 0;
 }
 
 .page-header p {
-  color: #909399;
+  color: var(--text-secondary);
   margin: 0;
+  font-size: 15px;
+}
+
+.el-card {
+  animation: slideUp var(--transition-slow);
 }
 </style>

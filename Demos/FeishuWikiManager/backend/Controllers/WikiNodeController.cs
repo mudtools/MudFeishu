@@ -1,15 +1,20 @@
+// -----------------------------------------------------------------------
+//  作者：Mud Studio  版权所有 (c) Mud Studio 2025   
+//  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
+//  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
+//  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
+// -----------------------------------------------------------------------
+
 using FeishuWikiManager.Models;
 using FeishuWikiManager.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;
 
 namespace FeishuWikiManager.Controllers;
 
-[ApiController]
 [Route("api/wiki/nodes")]
 [Authorize]
-public class WikiNodeController : ControllerBase
+public class WikiNodeController : BaseController
 {
     private readonly IWikiService _wikiService;
     private readonly IUserService _userService;
@@ -35,16 +40,12 @@ public class WikiNodeController : ControllerBase
         try
         {
             var result = await _wikiService.GetNodeTreeAsync(spaceId, parentNodeToken, pageSize, pageToken);
-            return Ok(result);
+            return PagedSuccess(result.Items, result.HasMore, result.PageToken);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "获取节点树失败: {SpaceId}", spaceId);
-            return StatusCode(500, new ApiResponse<object>
-            {
-                Success = false,
-                Message = $"获取节点树失败: {ex.Message}"
-            });
+            return ServerError("获取节点树失败", ex);
         }
     }
 
@@ -56,26 +57,14 @@ public class WikiNodeController : ControllerBase
             var result = await _wikiService.GetNodeInfoAsync(token);
             if (result == null)
             {
-                return NotFound(new ApiResponse<NodeTreeViewModel>
-                {
-                    Success = false,
-                    Message = "节点不存在"
-                });
+                return NotFoundResult("节点不存在");
             }
-            return Ok(new ApiResponse<NodeTreeViewModel>
-            {
-                Success = true,
-                Data = result
-            });
+            return Success(result);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "获取节点信息失败: {Token}", token);
-            return StatusCode(500, new ApiResponse<object>
-            {
-                Success = false,
-                Message = $"获取节点信息失败: {ex.Message}"
-            });
+            return ServerError("获取节点信息失败", ex);
         }
     }
 
@@ -88,28 +77,16 @@ public class WikiNodeController : ControllerBase
             var result = await _wikiService.CreateNodeAsync(spaceId, request);
             if (result == null)
             {
-                return BadRequest(new ApiResponse<NodeTreeViewModel>
-                {
-                    Success = false,
-                    Message = "创建节点失败"
-                });
+                return BadRequestResult("创建节点失败");
             }
 
             _logger.LogInformation("创建节点成功: {NodeToken}", result.NodeToken);
-            return Ok(new ApiResponse<NodeTreeViewModel>
-            {
-                Success = true,
-                Data = result
-            });
+            return Success(result, "创建节点成功");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "创建节点失败: {SpaceId}", spaceId);
-            return StatusCode(500, new ApiResponse<object>
-            {
-                Success = false,
-                Message = $"创建节点失败: {ex.Message}"
-            });
+            return ServerError("创建节点失败", ex);
         }
     }
 
@@ -124,26 +101,14 @@ public class WikiNodeController : ControllerBase
             var success = await _wikiService.UpdateNodeTitleAsync(spaceId, nodeToken, request.Title);
             if (!success)
             {
-                return BadRequest(new ApiResponse<object>
-                {
-                    Success = false,
-                    Message = "更新节点标题失败"
-                });
+                return BadRequestResult("更新节点标题失败");
             }
-            return Ok(new ApiResponse<object>
-            {
-                Success = true,
-                Message = "更新成功"
-            });
+            return Success("更新成功");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "更新节点标题失败: {NodeToken}", nodeToken);
-            return StatusCode(500, new ApiResponse<object>
-            {
-                Success = false,
-                Message = $"更新节点标题失败: {ex.Message}"
-            });
+            return ServerError("更新节点标题失败", ex);
         }
     }
 
@@ -158,26 +123,14 @@ public class WikiNodeController : ControllerBase
             var result = await _wikiService.MoveNodeAsync(spaceId, nodeToken, request.TargetParentToken);
             if (result == null)
             {
-                return BadRequest(new ApiResponse<NodeTreeViewModel>
-                {
-                    Success = false,
-                    Message = "移动节点失败"
-                });
+                return BadRequestResult("移动节点失败");
             }
-            return Ok(new ApiResponse<NodeTreeViewModel>
-            {
-                Success = true,
-                Data = result
-            });
+            return Success(result);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "移动节点失败: {NodeToken}", nodeToken);
-            return StatusCode(500, new ApiResponse<object>
-            {
-                Success = false,
-                Message = $"移动节点失败: {ex.Message}"
-            });
+            return ServerError("移动节点失败", ex);
         }
     }
 
@@ -187,16 +140,12 @@ public class WikiNodeController : ControllerBase
         try
         {
             var result = await _wikiService.SearchAsync(request.Query, request.SpaceId, request.PageSize);
-            return Ok(result);
+            return PagedSuccess(result.Items, result.HasMore, result.PageToken);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "搜索失败: {Query}", request.Query);
-            return StatusCode(500, new ApiResponse<object>
-            {
-                Success = false,
-                Message = $"搜索失败: {ex.Message}"
-            });
+            return ServerError("搜索失败", ex);
         }
     }
 
@@ -205,33 +154,24 @@ public class WikiNodeController : ControllerBase
     {
         try
         {
-            var openId = User.FindFirst("open_id")?.Value;
-            if (string.IsNullOrEmpty(openId))
-            {
-                return Unauthorized();
-            }
-
+            var openId = GetRequiredOpenId();
             var user = await _userService.GetUserByOpenIdAsync(openId);
             if (user == null)
             {
-                return Unauthorized();
+                return UnauthorizedResult();
             }
 
             var favorites = await _wikiService.GetFavoritesAsync(user.Id);
-            return Ok(new ApiResponse<List<FavoriteNode>>
-            {
-                Success = true,
-                Data = favorites
-            });
+            return Success(favorites);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return UnauthorizedResult();
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "获取收藏列表失败");
-            return StatusCode(500, new ApiResponse<object>
-            {
-                Success = false,
-                Message = $"获取收藏列表失败: {ex.Message}"
-            });
+            return ServerError("获取收藏列表失败", ex);
         }
     }
 
@@ -240,16 +180,11 @@ public class WikiNodeController : ControllerBase
     {
         try
         {
-            var openId = User.FindFirst("open_id")?.Value;
-            if (string.IsNullOrEmpty(openId))
-            {
-                return Unauthorized();
-            }
-
+            var openId = GetRequiredOpenId();
             var user = await _userService.GetUserByOpenIdAsync(openId);
             if (user == null)
             {
-                return Unauthorized();
+                return UnauthorizedResult();
             }
 
             await _wikiService.AddFavoriteAsync(
@@ -261,20 +196,16 @@ public class WikiNodeController : ControllerBase
                 request.ObjType
             );
 
-            return Ok(new ApiResponse<object>
-            {
-                Success = true,
-                Message = "收藏成功"
-            });
+            return Success("收藏成功");
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return UnauthorizedResult();
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "添加收藏失败");
-            return StatusCode(500, new ApiResponse<object>
-            {
-                Success = false,
-                Message = $"添加收藏失败: {ex.Message}"
-            });
+            return ServerError("添加收藏失败", ex);
         }
     }
 
@@ -283,34 +214,25 @@ public class WikiNodeController : ControllerBase
     {
         try
         {
-            var openId = User.FindFirst("open_id")?.Value;
-            if (string.IsNullOrEmpty(openId))
-            {
-                return Unauthorized();
-            }
-
+            var openId = GetRequiredOpenId();
             var user = await _userService.GetUserByOpenIdAsync(openId);
             if (user == null)
             {
-                return Unauthorized();
+                return UnauthorizedResult();
             }
 
             await _wikiService.RemoveFavoriteAsync(user.Id, nodeToken);
 
-            return Ok(new ApiResponse<object>
-            {
-                Success = true,
-                Message = "取消收藏成功"
-            });
+            return Success("取消收藏成功");
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return UnauthorizedResult();
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "取消收藏失败");
-            return StatusCode(500, new ApiResponse<object>
-            {
-                Success = false,
-                Message = $"取消收藏失败: {ex.Message}"
-            });
+            return ServerError("取消收藏失败", ex);
         }
     }
 }

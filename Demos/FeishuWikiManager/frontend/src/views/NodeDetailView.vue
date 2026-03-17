@@ -2,14 +2,16 @@
 import { ref, onMounted, watch, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { useUserStore } from '@/stores/user'
 import { useFavoriteStore } from '@/stores/favorite'
-import { wikiApi } from '@/api'
+import { wikiApi, authApi } from '@/api'
 import AppHeader from '@/components/common/AppHeader.vue'
 import AppSidebar from '@/components/common/AppSidebar.vue'
 import type { Node } from '@/types'
 
 const route = useRoute()
 const router = useRouter()
+const userStore = useUserStore()
 const favoriteStore = useFavoriteStore()
 
 const spaceId = ref(route.params.spaceId as string)
@@ -119,6 +121,23 @@ function goBack() {
   router.push(`/spaces/${spaceId.value}`)
 }
 
+async function handleLogout() {
+  try {
+    await ElMessageBox.confirm('确定要退出登录吗？', '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    
+    await authApi.logout()
+    userStore.logout()
+    ElMessage.success('已退出登录')
+    router.push('/login')
+  } catch (error) {
+    // 用户取消
+  }
+}
+
 watch(() => route.params.nodeToken, (newToken) => {
   if (newToken) {
     nodeToken.value = newToken as string
@@ -133,28 +152,28 @@ onMounted(() => {
 </script>
 
 <template>
-  <el-container class="main-layout">
-    <AppSidebar />
+  <el-container class="main-layout" direction="vertical">
+    <AppHeader @logout="handleLogout">
+      <template #extra>
+        <el-button-group>
+          <el-button :type="isFavorite ? 'warning' : 'default'" @click="handleToggleFavorite">
+            <el-icon><Star /></el-icon>
+            {{ isFavorite ? '已收藏' : '收藏' }}
+          </el-button>
+          <el-button @click="handleEdit">
+            <el-icon><Edit /></el-icon>
+            编辑
+          </el-button>
+          <el-button type="primary" @click="openInFeishu">
+            <el-icon><Link /></el-icon>
+            在飞书中打开
+          </el-button>
+        </el-button-group>
+      </template>
+    </AppHeader>
     
     <el-container>
-      <AppHeader>
-        <template #extra>
-          <el-button-group>
-            <el-button :type="isFavorite ? 'warning' : 'default'" @click="handleToggleFavorite">
-              <el-icon><Star /></el-icon>
-              {{ isFavorite ? '已收藏' : '收藏' }}
-            </el-button>
-            <el-button @click="handleEdit">
-              <el-icon><Edit /></el-icon>
-              编辑
-            </el-button>
-            <el-button type="primary" @click="openInFeishu">
-              <el-icon><Link /></el-icon>
-              在飞书中打开
-            </el-button>
-          </el-button-group>
-        </template>
-      </AppHeader>
+      <AppSidebar @logout="handleLogout" />
       
       <el-main class="main-content">
         <div class="page-header">
@@ -238,29 +257,44 @@ onMounted(() => {
 }
 
 .main-content {
-  background-color: #f5f7fa;
-  padding: 24px;
+  background-color: var(--bg-color);
+  padding: 32px;
+  transition: background-color var(--transition-normal);
 }
 
 .page-header {
-  margin-bottom: 16px;
+  margin-bottom: 20px;
+  animation: slideUp var(--transition-normal);
+}
+
+.page-header .el-button {
+  font-weight: 500;
+}
+
+.el-card {
+  animation: slideUp var(--transition-slow);
 }
 
 .node-header {
   display: flex;
   align-items: flex-start;
   gap: 24px;
+  padding: 8px 0;
 }
 
 .node-icon {
   flex-shrink: 0;
-  width: 64px;
-  height: 64px;
+  width: 72px;
+  height: 72px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #f0f5ff;
-  border-radius: 12px;
+  background: var(--primary-bg);
+  border-radius: var(--border-radius-lg);
+}
+
+.node-icon .el-icon {
+  color: var(--primary-color);
 }
 
 .node-info {
@@ -268,8 +302,9 @@ onMounted(() => {
 }
 
 .node-info h1 {
-  font-size: 24px;
-  color: #303133;
+  font-size: 26px;
+  font-weight: 600;
+  color: var(--text-primary);
   margin: 0 0 12px 0;
 }
 
@@ -282,7 +317,11 @@ onMounted(() => {
 
 .meta-item {
   font-size: 13px;
-  color: #909399;
+  color: var(--text-secondary);
+}
+
+.el-divider {
+  border-color: var(--border-color);
 }
 
 .node-content {
@@ -295,5 +334,6 @@ onMounted(() => {
 .node-actions {
   display: flex;
   justify-content: flex-end;
+  padding-top: 8px;
 }
 </style>

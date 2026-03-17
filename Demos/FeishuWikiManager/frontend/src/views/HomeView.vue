@@ -34,11 +34,11 @@ function toggleSidebar() {
 </script>
 
 <template>
-  <el-container class="main-layout">
-    <AppSidebar :collapsed="collapsed" @logout="handleLogout" />
+  <el-container class="main-layout" direction="vertical">
+    <AppHeader @toggle="toggleSidebar" @logout="handleLogout" />
     
     <el-container>
-      <AppHeader @toggle="toggleSidebar" @logout="handleLogout" />
+      <AppSidebar :collapsed="collapsed" @logout="handleLogout" />
       
       <el-main class="main-content">
         <div class="welcome-section">
@@ -82,46 +82,72 @@ function toggleSidebar() {
 }
 
 .main-content {
-  background-color: #f5f7fa;
-  padding: 24px;
+  background-color: var(--bg-color);
+  padding: 32px;
+  transition: background-color var(--transition-normal);
 }
 
 .welcome-section {
-  margin-bottom: 32px;
+  margin-bottom: 40px;
+  animation: slideUp var(--transition-normal);
 }
 
 .welcome-section h1 {
-  font-size: 24px;
-  color: #303133;
+  font-size: 28px;
+  font-weight: 600;
+  color: var(--text-primary);
   margin: 0 0 8px 0;
 }
 
 .welcome-section p {
-  color: #909399;
+  color: var(--text-secondary);
   margin: 0;
+  font-size: 15px;
+}
+
+.quick-actions {
+  animation: slideUp var(--transition-slow);
 }
 
 .action-card {
   cursor: pointer;
   text-align: center;
-  padding: 24px;
-  transition: all 0.3s;
+  padding: 32px 24px;
+  transition: all var(--transition-normal);
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
 }
 
 .action-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  transform: translateY(-6px);
+  box-shadow: var(--shadow-xl);
+  border-color: var(--primary-color);
+}
+
+.action-card :deep(.el-card__body) {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.action-card .el-icon {
+  transition: transform var(--transition-normal);
+}
+
+.action-card:hover .el-icon {
+  transform: scale(1.1);
 }
 
 .action-card h3 {
-  margin: 16px 0 8px 0;
+  margin: 20px 0 8px 0;
   font-size: 16px;
-  color: #303133;
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
 .action-card p {
   margin: 0;
-  color: #909399;
+  color: var(--text-secondary);
   font-size: 13px;
 }
 </style>

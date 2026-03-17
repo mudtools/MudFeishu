@@ -1,14 +1,17 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { useUserStore } from '@/stores/user'
 import { useWikiStore } from '@/stores/wiki'
+import { authApi } from '@/api'
 import AppHeader from '@/components/common/AppHeader.vue'
 import AppSidebar from '@/components/common/AppSidebar.vue'
 import SpaceCard from '@/components/wiki/SpaceCard.vue'
 import type { Space } from '@/types'
 
 const router = useRouter()
+const userStore = useUserStore()
 const wikiStore = useWikiStore()
 const createDialogVisible = ref(false)
 const newSpaceName = ref('')
@@ -49,24 +52,41 @@ function handleSpaceClick(space: Space) {
   router.push(`/spaces/${space.spaceId}`)
 }
 
+async function handleLogout() {
+  try {
+    await ElMessageBox.confirm('确定要退出登录吗？', '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    
+    await authApi.logout()
+    userStore.logout()
+    ElMessage.success('已退出登录')
+    router.push('/login')
+  } catch (error) {
+    // 用户取消
+  }
+}
+
 onMounted(() => {
   loadSpaces()
 })
 </script>
 
 <template>
-  <el-container class="main-layout">
-    <AppSidebar />
+  <el-container class="main-layout" direction="vertical">
+    <AppHeader @logout="handleLogout">
+      <template #extra>
+        <el-button type="primary" @click="createDialogVisible = true">
+          <el-icon><Plus /></el-icon>
+          新建空间
+        </el-button>
+      </template>
+    </AppHeader>
     
     <el-container>
-      <AppHeader>
-        <template #extra>
-          <el-button type="primary" @click="createDialogVisible = true">
-            <el-icon><Plus /></el-icon>
-            新建空间
-          </el-button>
-        </template>
-      </AppHeader>
+      <AppSidebar @logout="handleLogout" />
       
       <el-main class="main-content">
         <div class="page-header">
@@ -125,22 +145,26 @@ onMounted(() => {
 }
 
 .main-content {
-  background-color: #f5f7fa;
-  padding: 24px;
+  background-color: var(--bg-color);
+  padding: 32px;
+  transition: background-color var(--transition-normal);
 }
 
 .page-header {
-  margin-bottom: 24px;
+  margin-bottom: 32px;
+  animation: slideUp var(--transition-normal);
 }
 
 .page-header h1 {
-  font-size: 24px;
-  color: #303133;
+  font-size: 28px;
+  font-weight: 600;
+  color: var(--text-primary);
   margin: 0 0 8px 0;
 }
 
 .page-header p {
-  color: #909399;
+  color: var(--text-secondary);
   margin: 0;
+  font-size: 15px;
 }
 </style>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useUserStore } from '@/stores/user'
+import ThemeSwitch from './ThemeSwitch.vue'
 
 defineEmits<{
   toggle: []
@@ -12,14 +13,21 @@ const userStore = useUserStore()
 <template>
   <el-header class="app-header">
     <div class="header-left">
-      <el-button text @click="$emit('toggle')">
-        <el-icon :size="20"><Expand /></el-icon>
-      </el-button>
-      <span class="header-title">飞书知识库管理</span>
+      <div class="logo">
+        <el-icon :size="28" class="logo-icon"><Notebook /></el-icon>
+      </div>
+      <div class="header-title-group">
+        <span class="header-title">飞书知识库管理</span>
+        <span class="header-subtitle">Feishu Wiki Manager</span>
+      </div>
     </div>
     
     <div class="header-right">
       <slot name="extra" />
+      
+      <ThemeSwitch />
+      
+      <el-divider direction="vertical" />
       
       <el-dropdown trigger="click">
         <div class="user-info">
@@ -47,45 +55,82 @@ const userStore = useUserStore()
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: white;
-  border-bottom: 1px solid var(--border-color);
-  padding: 0 16px;
+  background: var(--header-bg);
+  border-bottom: 1px solid var(--header-border);
+  padding: 0 24px;
   height: var(--header-height);
+  transition: background-color var(--transition-normal), border-color var(--transition-normal);
 }
 
 .header-left {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
+}
+
+.logo {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-color-dark) 100%);
+  border-radius: var(--border-radius);
+  box-shadow: 0 2px 8px rgba(51, 112, 255, 0.3);
+}
+
+.logo-icon {
+  color: white;
+}
+
+.header-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .header-title {
   font-size: 16px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.header-subtitle {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
 }
 
 .header-right {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
+}
+
+.header-right .el-divider {
+  height: 24px;
+  margin: 0 4px;
+  border-color: var(--border-color);
 }
 
 .user-info {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   cursor: pointer;
-  padding: 4px 8px;
-  border-radius: 4px;
-  transition: background-color 0.2s;
+  padding: 6px 10px;
+  border-radius: var(--border-radius);
+  transition: all var(--transition-fast);
 }
 
 .user-info:hover {
-  background-color: #f0f2f5;
+  background-color: var(--bg-hover);
 }
 
 .user-name {
   color: var(--text-primary);
+  font-weight: 500;
 }
 </style>

@@ -24,11 +24,6 @@ function handleMenuSelect(index: string) {
 
 <template>
   <el-aside :width="collapsed ? '64px' : 'var(--sidebar-width)'" class="app-sidebar">
-    <div class="sidebar-header">
-      <el-icon :size="24" color="#3370ff"><Notebook /></el-icon>
-      <span v-if="!collapsed" class="sidebar-title">知识库</span>
-    </div>
-    
     <el-menu
       :default-active="activeMenu"
       :collapse="collapsed"
@@ -79,68 +74,64 @@ function handleMenuSelect(index: string) {
 
 <style scoped>
 .app-sidebar {
-  background: white;
-  border-right: 1px solid var(--border-color);
+  background: var(--sidebar-bg);
+  border-right: 1px solid var(--sidebar-border);
   display: flex;
   flex-direction: column;
-  transition: width 0.3s;
-}
-
-.sidebar-header {
-  height: var(--header-height);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  border-bottom: 1px solid var(--border-color);
-}
-
-.sidebar-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--text-primary);
+  transition: width var(--transition-normal), background-color var(--transition-normal), border-color var(--transition-normal);
 }
 
 .el-menu {
   border-right: none;
   flex: 1;
+  padding: 12px 0;
+}
+
+.el-menu-item {
+  margin: 4px 12px;
+  border-radius: var(--border-radius);
+  height: 44px;
+  line-height: 44px;
 }
 
 .favorites-section {
-  padding: 12px;
+  padding: 16px;
   border-top: 1px solid var(--border-color);
 }
 
 .section-title {
   font-size: 12px;
-  color: var(--text-secondary);
-  margin-bottom: 8px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 12px;
 }
 
 .favorite-item {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px;
-  border-radius: 4px;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--border-radius);
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: all var(--transition-fast);
 }
 
 .favorite-item:hover {
-  background-color: #f0f2f5;
+  background-color: var(--bg-hover);
 }
 
 .favorite-title {
   font-size: 13px;
-  color: var(--text-regular);
+  color: var(--text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .sidebar-footer {
-  padding: 12px;
+  padding: 16px;
   border-top: 1px solid var(--border-color);
 }
 
@@ -148,6 +139,13 @@ function handleMenuSelect(index: string) {
   display: flex;
   align-items: center;
   gap: 12px;
+  padding: 8px;
+  border-radius: var(--border-radius);
+  transition: background-color var(--transition-fast);
+}
+
+.user-card:hover {
+  background-color: var(--bg-hover);
 }
 
 .user-info {
@@ -157,6 +155,7 @@ function handleMenuSelect(index: string) {
 
 .user-name {
   font-size: 14px;
+  font-weight: 500;
   color: var(--text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -165,9 +164,10 @@ function handleMenuSelect(index: string) {
 
 .user-email {
   font-size: 12px;
-  color: var(--text-secondary);
+  color: var(--text-tertiary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  margin-top: 2px;
 }
 </style>

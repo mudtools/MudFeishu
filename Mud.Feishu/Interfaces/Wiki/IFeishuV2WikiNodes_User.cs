@@ -5,6 +5,8 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using Mud.Feishu.DataModels.Wiki;
+
 namespace Mud.Feishu;
 
 /// <summary>
@@ -17,4 +19,17 @@ namespace Mud.Feishu;
 [Token(TokenType.UserAccessToken)]
 public interface IFeishuUserV2WikiNodes : IFeishuV2WikiNodes, ICurrentUserId
 {
+    /// <summary>
+    /// <para>搜索 Wiki，用户通过关键词查询 Wiki，只能查找自己可见的 wiki</para>
+    /// <para>**注：** Wiki 存在，但用户搜索不到并不一定是搜索有问题，可能是用户没有查看该 Wiki 的权限</para>  /// </summary>
+    /// <param name="wikiSearchRequest">搜索 Wiki 请求体</param>
+    /// <param name="page_size">分页大小，即本次请求所返回的用户信息列表内的最大条目数。默认值：10</param>
+    /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Get("/open-apis/wiki/v2/nodes/search")]
+    Task<FeishuApiPageListResult<WikiSearchResult>?> SearchPageListAsync(
+         [Body] WikiSearchRequest wikiSearchRequest,
+         [Query("page_size")] int page_size = Consts.PageSize,
+         [Query("page_token")] string? page_token = null,
+         CancellationToken cancellationToken = default);
 }

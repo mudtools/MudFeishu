@@ -179,7 +179,7 @@ public interface IFeishuV2WikiNodes : IFeishuAppContextSwitcher
          CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// <para>移动云空间文档至知识空间，并挂载在指定位置。</para>
+    /// <para>移动云空间文档至知识空间，并挂载在指定位置。注意：该接口为异步接口。</para>
     /// </summary>
     /// <param name="space_id">
     /// <para>路径参数</para>
@@ -195,4 +195,31 @@ public interface IFeishuV2WikiNodes : IFeishuAppContextSwitcher
          [Path] string space_id,
          [Body] MoveDocsToWikiSpaceNodeRequest moveDocsToWikiSpaceNode,
          CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// <para>用于获取wiki异步任务的结果。</para>
+    /// </summary>
+    /// <param name="task_id">
+    /// <para>路径参数</para>
+    /// <para>必填：是</para>
+    /// <para>任务id</para>
+    /// <para>示例值：7037044037068177428-075c9481e6a0007c1df689dfbe5b55a08b6b06f7</para>
+    /// </param>
+    /// <param name="task_type">
+    /// <para>必填：是</para>
+    /// <para>任务类型</para>
+    /// <para>示例值：move</para>
+    /// <list type="bullet">
+    /// <item>move：[移动云空间文档至知识空间]任务</item>
+    /// </list>
+    /// </param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Get("/open-apis/wiki/v2/tasks/{task_id}")]
+    Task<FeishuApiResult<GetTaskResult>?> GetTaskByIdAsync(
+         [Path] string task_id,
+         [Query("task_type")] string task_type = "move",
+         CancellationToken cancellationToken = default);
+
+
 }

@@ -346,4 +346,65 @@ public class OAuthController : BaseController
             return ServerError("获取用户信息失败", ex);
         }
     }
+
+    [HttpGet("me/detail")]
+    [Authorize]
+    public async Task<IActionResult> GetCurrentUserDetail()
+    {
+        try
+        {
+            var openId = CurrentOpenId;
+
+            if (string.IsNullOrEmpty(openId))
+            {
+                return UnauthorizedResult();
+            }
+
+            // 从飞书获取详细用户信息
+            var feishuUser = await _userService.GetDetailedUserInfoFromFeishuAsync(openId);
+
+            if (feishuUser == null)
+            {
+                // 如果无法从飞书获取，返回本地数据库中的基本信息
+                var localUser = await _userService.GetUserByOpenIdAsync(openId);
+                if (localUser == null)
+                {
+                    return NotFoundResult("用户不存在");
+                }
+
+                return Success(new DetailedUserInfoResponse
+                {
+                    OpenId = localUser.OpenId,
+                    UnionId = localUser.UnionId,
+                    Name = localUser.Name,
+                    Avatar = localUser.Avatar,
+                    Email = localUser.Email
+                });
+            }
+
+            return Success(new DetailedUserInfoResponse
+            {
+                OpenId = feishuUser.OpenId ?? string.Empty,
+                UnionId = feishuUser.UnionId ?? string.Empty,
+                UserId = feishuUser.UserId ?? string.Empty,
+                Name = feishuUser.Name ?? string.Empty,
+                EnName = feishuUser.EnName,
+                Nickname = feishuUser.Nickname,
+                Avatar = feishuUser.AvatarUrl,
+                AvatarThumb = feishuUser.AvatarThumb,
+                AvatarMiddle = feishuUser.AvatarMiddle,
+                AvatarBig = feishuUser.AvatarBig,
+                Email = feishuUser.Email,
+                Mobile = feishuUser.Mobile,
+                EnterpriseEmail = feishuUser.EnterpriseEmail,
+                EmployeeNo = feishuUser.EmployeeNo,
+                TenantKey = feishuUser.TenantKey
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "获取详细用户信息失败");
+            return ServerError("获取详细用户信息失败", ex);
+        }
+    }
 }

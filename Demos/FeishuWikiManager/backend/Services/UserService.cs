@@ -1,6 +1,9 @@
 using FeishuWikiManager.Data;
 using FeishuWikiManager.Models;
 using Microsoft.EntityFrameworkCore;
+using Mud.Feishu;
+using Mud.Feishu.Abstractions;
+using Mud.Feishu.DataModels;
 
 namespace FeishuWikiManager.Services;
 
@@ -8,11 +11,15 @@ public class UserService : IUserService
 {
     private readonly AppDbContext _dbContext;
     private readonly ILogger<UserService> _logger;
+    private readonly IFeishuUserV3User _feishuUserApi;
+    private readonly IFeishuAppManager _feishuAppManager;
 
-    public UserService(AppDbContext dbContext, ILogger<UserService> logger)
+    public UserService(AppDbContext dbContext, ILogger<UserService> logger, IFeishuUserV3User feishuUserApi, IFeishuAppManager feishuAppManager)
     {
         _dbContext = dbContext;
         _logger = logger;
+        _feishuUserApi = feishuUserApi;
+        _feishuAppManager = feishuAppManager;
     }
 
     public async Task<string> GetOrCreateUserAsync(string openId, string unionId, string name, string? avatar, string? email)
@@ -113,5 +120,45 @@ public class UserService : IUserService
         }
 
         await _dbContext.SaveChangesAsync();
+    }
+
+    public async Task<GetUserDataResult?> GetDetailedUserInfoFromFeishuAsync(string openId)
+    {
+        try
+        {
+            var user = await _dbContext.Users.FirstOrDefaultAsync(u => u.OpenId == openId);
+            if (user == null)
+            {
+                _logger.LogWarning("用户不存在: {OpenId}", openId);
+                return null;
+            }
+
+            // 检查 Token 是否有效
+            if (string.IsNullOrEmpty(user.FeishuAccessToken))
+            {
+                _logger.LogWarning("用户Token为空: {OpenId}", openId);
+                return null;
+            }
+
+            // 设置当前用户 ID，用于调用飞书 API
+            _feishuUserApi.CurrentUserId = openId;
+            
+            // 调用飞书 API 获取详细用户信息
+            var result = await _feishuUserApi.GetUserInfoAsync();
+            
+            if (result?.Code != 0 || result.Data == null)
+            {
+                _logger.LogError("从飞书获取用户信息失败: {Message}", result?.Msg ?? "未知错误");
+                return null;
+            }
+
+            _logger.LogInformation("成功获取用户详细信息: {OpenId}", openId);
+            return result.Data;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "获取详细用户信息失败: {OpenId}", openId);
+            return null;
+        }
     }
 }

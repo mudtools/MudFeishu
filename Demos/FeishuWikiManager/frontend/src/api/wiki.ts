@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { User, Space, Node, FavoriteNode, PagedResponse, ApiResponse, LoginResponse, AuthUrlResponse, SearchRequest, CreateDocumentRequest } from '@/types'
+import type { User, UserDetail, Space, Node, FavoriteNode, PagedResponse, ApiResponse, LoginResponse, AuthUrlResponse, SearchRequest, CreateDocumentRequest } from '@/types'
 
 const api = axios.create({
   baseURL: '/api',
@@ -80,6 +80,7 @@ export const authApi = {
   callback: (code: string, state: string) => 
     api.post<LoginResponse>('/oauth/feishu/callback', { code, state }),
   getMe: () => api.get<User>('/oauth/me'),
+  getMeDetail: () => api.get<ApiResponse<UserDetail>>('/oauth/me/detail'),
   logout: () => api.post<ApiResponse<void>>('/oauth/logout'),
   getStatus: () => api.get<ApiResponse<{ hasValidToken: boolean; canRefresh: boolean }>>('/oauth/status'),
   refreshToken: () => api.post<ApiResponse<{ accessToken: string }>>('/oauth/refresh'),

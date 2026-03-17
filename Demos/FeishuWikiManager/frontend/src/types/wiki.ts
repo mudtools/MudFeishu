@@ -6,6 +6,24 @@ export interface User {
   email?: string
 }
 
+export interface UserDetail {
+  openId: string
+  unionId: string
+  userId: string
+  name: string
+  enName?: string
+  nickname?: string
+  avatar?: string
+  avatarThumb?: string
+  avatarMiddle?: string
+  avatarBig?: string
+  email?: string
+  mobile?: string
+  enterpriseEmail?: string
+  employeeNo?: string
+  tenantKey?: string
+}
+
 export interface Space {
   spaceId: string
   name: string

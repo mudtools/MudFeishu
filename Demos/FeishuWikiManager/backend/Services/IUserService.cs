@@ -1,4 +1,5 @@
 using FeishuWikiManager.Models;
+using Mud.Feishu.DataModels;
 
 namespace FeishuWikiManager.Services;
 
@@ -11,4 +12,5 @@ public interface IUserService
     Task ClearUserTokenAsync(string openId);
     Task<UserPreference?> GetPreferenceAsync(string userId, string key);
     Task SetPreferenceAsync(string userId, string key, string? value);
+    Task<GetUserDataResult?> GetDetailedUserInfoFromFeishuAsync(string openId);
 }

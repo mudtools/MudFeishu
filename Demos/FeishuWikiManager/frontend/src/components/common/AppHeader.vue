@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/stores/user'
 import ThemeSwitch from './ThemeSwitch.vue'
@@ -11,6 +11,13 @@ defineEmits<{
 
 const userStore = useUserStore()
 const userInfoDialogVisible = ref(false)
+
+// 监听对话框显示，加载详细用户信息
+watch(userInfoDialogVisible, (visible) => {
+  if (visible && !userStore.userDetail) {
+    userStore.fetchUserDetail()
+  }
+})
 
 function showUserInfo() {
   userInfoDialogVisible.value = true
@@ -78,49 +85,115 @@ async function copyToClipboard(text: string | undefined) {
       <el-dialog
         v-model="userInfoDialogVisible"
         title="用户信息"
-        width="420px"
+        width="720px"
         :close-on-click-modal="true"
         class="user-info-dialog"
         append-to-body
       >
-        <div class="user-info-content">
-          <div class="user-avatar-section">
-            <el-avatar :size="80" :src="userStore.user?.avatar">
-              {{ userStore.user?.name?.charAt(0) }}
-            </el-avatar>
-            <span class="user-status-dot"></span>
+        <div v-if="userStore.detailLoading" class="user-info-loading">
+          <el-skeleton :rows="4" animated />
+        </div>
+        <div v-else class="user-info-content">
+          <!-- 顶部头像和状态 -->
+          <div class="user-header-section">
+            <div class="user-avatar-section">
+              <el-avatar :size="64" :src="userStore.userDetail?.avatarBig || userStore.userDetail?.avatar || userStore.user?.avatar">
+                {{ (userStore.userDetail?.name || userStore.user?.name)?.charAt(0) }}
+              </el-avatar>
+              <span class="user-status-dot"></span>
+            </div>
+            <div class="user-header-info">
+              <div class="user-name">{{ userStore.userDetail?.name || userStore.user?.name || '-' }}</div>
+              <div class="user-status-text">
+                <span class="status-dot"></span>
+                在线
+              </div>
+            </div>
           </div>
-          <div class="user-status-text">在线</div>
           
-          <div class="user-details">
-            <div class="detail-item">
-              <span class="detail-label">姓名</span>
-              <span class="detail-value">{{ userStore.user?.name || '-' }}</span>
+          <!-- 两栏信息展示 -->
+          <div class="user-details-two-column">
+            <!-- 左栏 -->
+            <div class="detail-column">
+              <div class="detail-section">
+                <div class="detail-section-title">基本信息</div>
+                <div class="detail-item">
+                  <span class="detail-label">姓名</span>
+                  <span class="detail-value">{{ userStore.userDetail?.name || userStore.user?.name || '-' }}</span>
+                </div>
+                <div v-if="userStore.userDetail?.enName" class="detail-item">
+                  <span class="detail-label">英文名</span>
+                  <span class="detail-value">{{ userStore.userDetail.enName }}</span>
+                </div>
+                <div v-if="userStore.userDetail?.nickname" class="detail-item">
+                  <span class="detail-label">别名</span>
+                  <span class="detail-value">{{ userStore.userDetail.nickname }}</span>
+                </div>
+                <div v-if="userStore.userDetail?.employeeNo" class="detail-item">
+                  <span class="detail-label">工号</span>
+                  <span class="detail-value">{{ userStore.userDetail.employeeNo }}</span>
+                </div>
+              </div>
+              
+              <div class="detail-section">
+                <div class="detail-section-title">联系信息</div>
+                <div class="detail-item">
+                  <span class="detail-label">邮箱</span>
+                  <span class="detail-value">{{ userStore.userDetail?.email || userStore.user?.email || '-' }}</span>
+                </div>
+                <div v-if="userStore.userDetail?.enterpriseEmail" class="detail-item">
+                  <span class="detail-label">企业邮箱</span>
+                  <span class="detail-value">{{ userStore.userDetail.enterpriseEmail }}</span>
+                </div>
+                <div v-if="userStore.userDetail?.mobile" class="detail-item">
+                  <span class="detail-label">手机号</span>
+                  <span class="detail-value">{{ userStore.userDetail.mobile }}</span>
+                </div>
+              </div>
             </div>
-            <div class="detail-item">
-              <span class="detail-label">邮箱</span>
-              <span class="detail-value">{{ userStore.user?.email || '-' }}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">OpenID</span>
-              <span class="detail-value copyable" :title="userStore.user?.openId" @click="copyToClipboard(userStore.user?.openId)">
-                {{ formatId(userStore.user?.openId) }}
-                <el-icon class="copy-icon"><CopyDocument /></el-icon>
-              </span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">UnionID</span>
-              <span class="detail-value copyable" :title="userStore.user?.unionId" @click="copyToClipboard(userStore.user?.unionId)">
-                {{ formatId(userStore.user?.unionId) }}
-                <el-icon class="copy-icon"><CopyDocument /></el-icon>
-              </span>
+            
+            <!-- 右栏 -->
+            <div class="detail-column">
+              <div class="detail-section">
+                <div class="detail-section-title">系统标识</div>
+                <div class="detail-item">
+                  <span class="detail-label">User ID</span>
+                  <span class="detail-value copyable" :title="userStore.userDetail?.userId" @click="copyToClipboard(userStore.userDetail?.userId)">
+                    {{ formatId(userStore.userDetail?.userId) }}
+                    <el-icon class="copy-icon"><CopyDocument /></el-icon>
+                  </span>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-label">OpenID</span>
+                  <span class="detail-value copyable" :title="userStore.userDetail?.openId || userStore.user?.openId" @click="copyToClipboard(userStore.userDetail?.openId || userStore.user?.openId)">
+                    {{ formatId(userStore.userDetail?.openId || userStore.user?.openId) }}
+                    <el-icon class="copy-icon"><CopyDocument /></el-icon>
+                  </span>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-label">UnionID</span>
+                  <span class="detail-value copyable" :title="userStore.userDetail?.unionId || userStore.user?.unionId" @click="copyToClipboard(userStore.userDetail?.unionId || userStore.user?.unionId)">
+                    {{ formatId(userStore.userDetail?.unionId || userStore.user?.unionId) }}
+                    <el-icon class="copy-icon"><CopyDocument /></el-icon>
+                  </span>
+                </div>
+                <div v-if="userStore.userDetail?.tenantKey" class="detail-item">
+                  <span class="detail-label">Tenant Key</span>
+                  <span class="detail-value copyable" :title="userStore.userDetail.tenantKey" @click="copyToClipboard(userStore.userDetail.tenantKey)">
+                    {{ formatId(userStore.userDetail.tenantKey) }}
+                    <el-icon class="copy-icon"><CopyDocument /></el-icon>
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
         
         <template #footer>
-          <el-button type="primary" @click="userInfoDialogVisible = false">
-            确定
+          <el-button @click="userInfoDialogVisible = false">关闭</el-button>
+          <el-button type="primary" :loading="userStore.detailLoading" @click="userStore.fetchUserDetail()">
+            <el-icon><Refresh /></el-icon>
+            刷新
           </el-button>
         </template>
       </el-dialog>
@@ -214,15 +287,22 @@ async function copyToClipboard(text: string | undefined) {
 
 /* 用户信息对话框样式 */
 .user-info-content {
+  padding: 8px 0;
+}
+
+/* 顶部头像区域 */
+.user-header-section {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  padding: 16px 0;
+  gap: 16px;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .user-avatar-section {
   position: relative;
-  margin-bottom: 8px;
+  flex-shrink: 0;
 }
 
 .user-avatar-section .el-avatar {
@@ -232,42 +312,76 @@ async function copyToClipboard(text: string | undefined) {
 
 .user-status-dot {
   position: absolute;
-  bottom: 4px;
-  right: 4px;
-  width: 18px;
-  height: 18px;
+  bottom: 2px;
+  right: 2px;
+  width: 16px;
+  height: 16px;
   background: #22c55e;
-  border: 3px solid var(--card-bg);
+  border: 2px solid var(--card-bg);
   border-radius: 50%;
+}
+
+.user-header-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.user-name {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
 .user-status-text {
   font-size: 13px;
   color: #22c55e;
   font-weight: 500;
-  margin-bottom: 16px;
   display: flex;
   align-items: center;
   gap: 6px;
 }
 
-.user-status-text::before {
-  content: '';
-  width: 6px;
-  height: 6px;
+.status-dot {
+  width: 8px;
+  height: 8px;
   background: #22c55e;
   border-radius: 50%;
 }
 
-.user-details {
-  width: 100%;
+/* 两栏布局 */
+.user-details-two-column {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+.detail-column {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.detail-section {
+  background: var(--bg-tertiary);
+  border-radius: var(--border-radius-lg);
+  padding: 12px 16px;
+}
+
+.detail-section-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 12px;
 }
 
 .detail-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 0;
+  padding: 8px 0;
   border-bottom: 1px solid var(--border-color);
 }
 
@@ -276,15 +390,20 @@ async function copyToClipboard(text: string | undefined) {
 }
 
 .detail-label {
-  font-size: 14px;
+  font-size: 13px;
   color: var(--text-secondary);
   font-weight: 500;
 }
 
 .detail-value {
-  font-size: 14px;
+  font-size: 13px;
   color: var(--text-primary);
   font-weight: 500;
+  max-width: 60%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: right;
 }
 
 .detail-value.copyable {
@@ -292,7 +411,7 @@ async function copyToClipboard(text: string | undefined) {
   align-items: center;
   gap: 6px;
   cursor: pointer;
-  padding: 4px 8px;
+  padding: 2px 6px;
   border-radius: var(--border-radius);
   transition: all var(--transition-fast);
 }
@@ -303,11 +422,17 @@ async function copyToClipboard(text: string | undefined) {
 }
 
 .copy-icon {
-  font-size: 14px;
+  font-size: 12px;
   opacity: 0.6;
+  flex-shrink: 0;
 }
 
 .detail-value.copyable:hover .copy-icon {
   opacity: 1;
+}
+
+/* 加载状态 */
+.user-info-loading {
+  padding: 20px;
 }
 </style>

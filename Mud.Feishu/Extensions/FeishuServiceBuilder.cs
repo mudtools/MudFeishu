@@ -193,6 +193,12 @@ public class FeishuServiceBuilder
                 case FeishuModule.Attendance:
                     AddAttendanceApi();
                     break;
+                case FeishuModule.Drive:
+                    AddDriveApi();
+                    break;
+                case FeishuModule.Wiki:
+                    AddWikiApi();
+                    break;
                 case FeishuModule.All:
                     AddAllApis();
                     break;

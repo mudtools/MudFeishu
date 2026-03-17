@@ -224,6 +224,37 @@ a:hover {
   box-shadow: 0 0 0 3px var(--primary-bg);
 }
 
+/* 输入框组 - 搜索框按钮样式 */
+.el-input-group__append {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+  border-radius: 0 var(--border-radius-lg) var(--border-radius-lg) 0;
+  box-shadow: none;
+  padding: 0;
+}
+
+.el-input-group__append:hover {
+  background-color: var(--primary-color-light);
+  border-color: var(--primary-color-light);
+}
+
+.el-input-group__append .el-button {
+  margin: 0;
+  border: none;
+  background: transparent;
+  color: #fff;
+  font-weight: 500;
+}
+
+.el-input-group__append .el-button:hover {
+  background: transparent;
+  color: #fff;
+}
+
+.el-input-group--append .el-input__wrapper {
+  border-radius: var(--border-radius-lg) 0 0 var(--border-radius-lg);
+}
+
 /* 卡片 */
 .el-card {
   border-radius: var(--border-radius-lg);
@@ -472,6 +503,17 @@ a:hover {
   background-color: var(--bg-secondary);
   border-color: var(--border-color);
   color: var(--text-primary);
+}
+
+/* 输入框组 - 搜索框按钮暗色模式 */
+:root.dark .el-input-group__append {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+:root.dark .el-input-group__append:hover {
+  background-color: var(--primary-color-light);
+  border-color: var(--primary-color-light);
 }
 
 /* 菜单 */

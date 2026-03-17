@@ -22,6 +22,13 @@ builder.Configuration.AddJsonFile("appsettings.local.json", optional: true, relo
 builder.Services.AddControllers(options =>
 {
     options.Filters.Add<SetUserContextFilter>();
+})
+.AddJsonOptions(options =>
+{
+    // 使用 camelCase 命名策略
+    options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+    // 允许反序列化时不区分大小写
+    options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
 });
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddOpenApi();

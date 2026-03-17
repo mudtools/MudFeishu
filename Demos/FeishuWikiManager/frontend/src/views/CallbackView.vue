@@ -74,15 +74,15 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #f5f7fa;
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-color-dark) 100%);
 }
 
 .callback-card {
   text-align: center;
-  padding: 40px;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  padding: 48px 40px;
+  background: var(--card-bg);
+  border-radius: var(--border-radius-xl);
+  box-shadow: var(--shadow-xl);
 }
 
 .loading-icon {
@@ -102,5 +102,10 @@ onMounted(() => {
 .error-message {
   color: var(--danger-color);
   margin: 16px 0;
+}
+
+p {
+  color: var(--text-primary);
+  margin-top: 16px;
 }
 </style>

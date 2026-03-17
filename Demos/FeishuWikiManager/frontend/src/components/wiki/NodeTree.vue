@@ -1,18 +1,20 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 import type { Node, FavoriteNode } from '@/types'
 
 const props = defineProps<{
   nodes: Node[]
   favorites?: FavoriteNode[]
+  spaceId?: string
 }>()
 
 const emit = defineEmits<{
-  nodeClick: [node: Node]
   nodeExpand: [node: Node]
   toggleFavorite: [node: Node]
 }>()
 
+const router = useRouter()
 const expandedKeys = ref<Set<string>>(new Set())
 
 function getObjTypeIcon(objType: string) {
@@ -32,7 +34,9 @@ function isFavorite(nodeToken: string) {
 }
 
 function handleNodeClick(node: Node) {
-  emit('nodeClick', node)
+  if (props.spaceId) {
+    router.push(`/spaces/${props.spaceId}/nodes/${node.nodeToken}`)
+  }
 }
 
 function handleExpand(node: Node) {

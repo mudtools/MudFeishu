@@ -6,6 +6,18 @@ const api = axios.create({
   timeout: 30000,
 })
 
+let isRefreshing = false
+let refreshSubscribers: ((token: string) => void)[] = []
+
+function subscribeTokenRefresh(callback: (token: string) => void) {
+  refreshSubscribers.push(callback)
+}
+
+function onTokenRefreshed(token: string) {
+  refreshSubscribers.forEach(callback => callback(token))
+  refreshSubscribers = []
+}
+
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token')
@@ -19,11 +31,46 @@ api.interceptors.request.use(
 
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
+    const originalRequest = error.config
+    
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      if (isRefreshing) {
+        return new Promise((resolve) => {
+          subscribeTokenRefresh((token) => {
+            originalRequest.headers.Authorization = `Bearer ${token}`
+            resolve(api(originalRequest))
+          })
+        })
+      }
+      
+      originalRequest._retry = true
+      isRefreshing = true
+      
+      try {
+        const response = await api.post('/oauth/refresh')
+        
+        if (response.data.success) {
+          const newToken = response.data.accessToken
+          localStorage.setItem('token', newToken)
+          onTokenRefreshed(newToken)
+          originalRequest.headers.Authorization = `Bearer ${newToken}`
+          return api(originalRequest)
+        }
+      } catch (refreshError) {
+        localStorage.removeItem('token')
+        window.location.href = '/login'
+        return Promise.reject(refreshError)
+      } finally {
+        isRefreshing = false
+      }
+    }
+    
     if (error.response?.status === 401) {
       localStorage.removeItem('token')
       window.location.href = '/login'
     }
+    
     return Promise.reject(error)
   }
 )
@@ -35,6 +82,7 @@ export const authApi = {
   getMe: () => api.get<User>('/oauth/me'),
   logout: () => api.post<ApiResponse<void>>('/oauth/logout'),
   getStatus: () => api.get<ApiResponse<{ hasValidToken: boolean; canRefresh: boolean }>>('/oauth/status'),
+  refreshToken: () => api.post<ApiResponse<{ accessToken: string }>>('/oauth/refresh'),
 }
 
 export const wikiApi = {

@@ -236,6 +236,74 @@ public class OAuthController : ControllerBase
         });
     }
 
+    [HttpPost("refresh")]
+    [Authorize]
+    public async Task<IActionResult> RefreshToken()
+    {
+        var openId = User.FindFirst("open_id")?.Value;
+
+        if (string.IsNullOrEmpty(openId))
+        {
+            return Unauthorized(new RefreshTokenResponse
+            {
+                Success = false,
+                Message = "未授权"
+            });
+        }
+
+        var user = await _userService.GetUserByOpenIdAsync(openId);
+
+        if (user == null)
+        {
+            return Unauthorized(new RefreshTokenResponse
+            {
+                Success = false,
+                Message = "用户不存在"
+            });
+        }
+
+        var canRefresh = await _userTokenManager.CanRefreshTokenAsync(openId);
+
+        if (!canRefresh)
+        {
+            return BadRequest(new RefreshTokenResponse
+            {
+                Success = false,
+                Message = "无法刷新Token，请重新登录"
+            });
+        }
+
+        var newToken = await _userTokenManager.RefreshUserTokenAsync(openId);
+
+        if (newToken == null)
+        {
+            return BadRequest(new RefreshTokenResponse
+            {
+                Success = false,
+                Message = "刷新Token失败"
+            });
+        }
+
+        await _userService.UpdateUserTokenAsync(
+            user.Id,
+            newToken.AccessToken,
+            newToken.RefreshToken,
+            newToken.Expire > 0
+                ? DateTimeOffset.FromUnixTimeMilliseconds(newToken.Expire).DateTime
+                : null
+        );
+
+        _logger.LogInformation("Token刷新成功: {OpenId}", openId);
+
+        return Ok(new RefreshTokenResponse
+        {
+            Success = true,
+            Message = "Token刷新成功",
+            AccessToken = newToken.AccessToken,
+            RefreshToken = newToken.RefreshToken
+        });
+    }
+
     [HttpPost("logout")]
     [Authorize]
     public async Task<IActionResult> Logout()

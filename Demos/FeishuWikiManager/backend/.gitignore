@@ -4,3 +4,4 @@ obj/
 *.db-shm
 *.db-wal
 appsettings.Development.json
+appsettings.local.json

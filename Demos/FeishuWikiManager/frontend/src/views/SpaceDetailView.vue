@@ -40,10 +40,6 @@ async function loadSpaceData() {
   }
 }
 
-function handleNodeClick(node: Node) {
-  console.log('Node clicked:', node)
-}
-
 function handleNodeExpand(node: Node) {
   if (node.hasChildren) {
     fetchChildNodes(node.nodeToken)
@@ -117,8 +113,8 @@ onMounted(() => {
         <el-card v-loading="loading">
           <NodeTree
             :nodes="rootNodes"
+            :space-id="spaceId"
             :favorites="favoriteStore.favorites"
-            @node-click="handleNodeClick"
             @node-expand="handleNodeExpand"
             @toggle-favorite="handleToggleFavorite"
           />

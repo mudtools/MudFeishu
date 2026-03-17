@@ -35,6 +35,12 @@ const router = createRouter({
       meta: { requiresAuth: true }
     },
     {
+      path: '/spaces/:spaceId/nodes/:nodeToken',
+      name: 'NodeDetail',
+      component: () => import('@/views/NodeDetailView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
       path: '/search',
       name: 'Search',
       component: () => import('@/views/SearchView.vue'),

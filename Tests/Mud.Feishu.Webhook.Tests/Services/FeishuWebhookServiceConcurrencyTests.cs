@@ -356,11 +356,27 @@ public class FeishuWebhookServiceConcurrencyTests
         var service = CreateService();
         var tasks = new List<Task<bool>>();
         var appKeys = new[] { "app1", "app2", "app3" };
+        var encryptKeys = new Dictionary<string, string>
+        {
+            ["app1"] = "encrypt_key_32_bytes_for_app1___",
+            ["app2"] = "encrypt_key_32_bytes_for_app2___",
+            ["app3"] = "encrypt_key_32_bytes_for_app3___"
+        };
 
         // 创建并发任务
         for (int i = 0; i < 30; i++)
         {
             var appKey = appKeys[i % appKeys.Length];
+            var encryptKey = encryptKeys[appKey];
+            var nonce = $"nonce_{i}";
+            var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            var body = $"{{\"encrypt\":\"encrypted_{i}\"}}";
+
+            // 计算正确的签名
+            var signString = $"{timestamp}{nonce}{encryptKey}{body}";
+            using var sha256 = System.Security.Cryptography.SHA256.Create();
+            var hashBytes = sha256.ComputeHash(System.Text.Encoding.UTF8.GetBytes(signString));
+            var computedSignature = BitConverter.ToString(hashBytes).Replace("-", "").ToLower();
 
             var task = Task.Run(async () =>
             {
@@ -368,13 +384,11 @@ public class FeishuWebhookServiceConcurrencyTests
 
                 var request = new FeishuWebhookRequest
                 {
-                    Timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
-                    Nonce = $"nonce_{i}",
+                    Timestamp = timestamp,
+                    Nonce = nonce,
                     Encrypt = $"encrypted_{i}",
-                    Signature = $"signature_{i}"
+                    Signature = computedSignature
                 };
-
-                var body = $"{{\"encrypt\":\"encrypted_{i}\",\"signature\":\"signature_{i}\",\"nonce\":\"nonce_{i}\",\"timestamp\":\"{request.Timestamp}\"}}";
 
                 return await service.HandleEventAsync(request, body);
             });

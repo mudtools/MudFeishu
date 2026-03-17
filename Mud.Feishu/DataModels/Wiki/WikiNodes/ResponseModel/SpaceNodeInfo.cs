@@ -10,7 +10,7 @@ namespace Mud.Feishu.DataModels.Wiki;
 /// <summary>
 /// <para>节点</para>
 /// </summary>
-public record SpaceNodeInfo
+public class SpaceNodeInfo
 {
     /// <summary>
     /// <para>知识空间id</para>

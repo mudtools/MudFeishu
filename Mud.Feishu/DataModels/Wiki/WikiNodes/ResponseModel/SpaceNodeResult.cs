@@ -8,9 +8,9 @@
 namespace Mud.Feishu.DataModels.Wiki;
 
 /// <summary>
-/// 创建知识空间节点响应体
+/// 知识空间节点响应体
 /// </summary>
-public class CreateSpaceNodeResult
+public class SpaceNodeResult
 {
     /// <summary>
     /// <para>节点</para>

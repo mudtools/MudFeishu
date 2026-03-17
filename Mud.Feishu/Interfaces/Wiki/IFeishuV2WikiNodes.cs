@@ -31,8 +31,98 @@ public interface IFeishuV2WikiNodes : IFeishuAppContextSwitcher
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Post("/open-apis/wiki/v2/spaces/{space_id}/nodes")]
-    Task<FeishuApiResult<CreateSpaceNodeResult>?> CreateSpaceNodeAsync(
+    Task<FeishuApiResult<SpaceNodeResult>?> CreateSpaceNodeAsync(
          [Path] string space_id,
          [Body] CreateSpaceNodeRequest createSpaceNodeRequest,
          CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 获取知识空间节点信息。
+    /// </summary>
+    /// <param name="token">
+    /// <para>必填：是</para>
+    /// <para>知识库节点或对应云文档的实际 token。</para>
+    /// <para>- 知识库节点 token：如果 URL 链接中 token 前为 wiki，该 token 为知识库的节点 token。</para>
+    /// <para>- 云文档实际 token：如果 URL 链接中 token 前为 docx、base、sheets 等非 wiki 类型，则说明该 token 是当前云文档的实际 token。</para>
+    /// <para>**注意**：</para>
+    /// <para>使用云文档 token 查询时，需要对 obj_type 参数传入文档对应的类型。</para>
+    /// <para>示例值：wikcnKQ1k3p******8Vabcef</para>
+    /// </param>
+    /// <param name="obj_type">
+    /// <para>必填：否</para>
+    /// <para>文档类型。不传时默认以 wiki 类型查询。</para>
+    /// <para>示例值：docx</para>
+    /// <list type="bullet">
+    /// <item>doc：旧版文档</item>
+    /// <item>docx：新版文档</item>
+    /// <item>sheet：表格</item>
+    /// <item>mindnote：思维导图</item>
+    /// <item>bitable：多维表格</item>
+    /// <item>file：文件</item>
+    /// <item>slides：幻灯片</item>
+    /// <item>wiki：知识库节点</item>
+    /// </list>
+    /// <para>默认值：wiki</para>
+    /// </param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Get("/open-apis/wiki/v2/spaces/get_node")]
+    Task<FeishuApiResult<SpaceNodeResult>?> GetNodeSpaceInfoAsync(
+         [Query("token")] string token,
+         [Query("obj_type")] string? obj_type = "wiki",
+         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// <para>用于分页获取Wiki节点的子节点列表。</para>
+    /// <para>此接口为分页接口。由于权限过滤，可能返回列表为空，但分页标记（has_more）为true，可以继续分页请求。</para>
+    /// </summary>
+    /// <param name="space_id">
+    /// <para>路径参数</para>
+    /// <para>必填：是</para>
+    /// <para>知识空间 ID。</para>
+    /// <para>示例值：6870403571079249922</para>
+    /// </param>
+    /// <param name="parent_node_token">
+    /// <para>必填：否</para>
+    /// <para>父节点token</para>
+    /// <para>示例值：wikcnKQ1k3p******8Vabce</para>
+    /// <para>默认值：null</para>
+    /// </param>
+    /// <param name="page_size">分页大小，即本次请求所返回的用户信息列表内的最大条目数。默认值：10</param>
+    /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Get("/open-apis/wiki/v2/spaces/{space_id}/nodes")]
+    Task<FeishuApiPageListResult<SpaceNodeInfo>?> GetSpaceNodesPageListAsync(
+         [Path] string space_id,
+         [Query("parent_node_token")] string? parent_node_token = null,
+         [Query("page_size")] int page_size = Consts.PageSize,
+         [Query("page_token")] string? page_token = null,
+         CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// <para>移动知识空间节点</para>
+    /// 用于在Wiki内移动节点，支持跨知识空间移动。如果有子节点，会携带子节点一起移动。
+    /// </summary>
+    /// <param name="space_id">
+    /// <para>路径参数</para>
+    /// <para>必填：是</para>
+    /// <para>知识空间 ID。</para>
+    /// <para>示例值：6870403571079249922</para>
+    /// </param>
+    /// <param name="node_token">
+    /// <para>路径参数</para>
+    /// <para>必填：是</para>
+    /// <para>需要迁移的节点token</para>
+    /// <para>示例值：wikbcd6ydSUyOEzbdlt1BfpA5Yc</para>
+    /// </param>
+    /// <param name="moveSpaceNodeRequest">移动知识空间节点请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Post("/open-apis/wiki/v2/spaces/{space_id}/nodes/{node_token}/move")]
+    Task<FeishuApiResult<SpaceNodeResult>?> MoveSpaceNodeAsync(
+        [Path] string space_id,
+        [Path] string node_token,
+        [Body] MoveSpaceNodeRequest moveSpaceNodeRequest,
+        CancellationToken cancellationToken = default);
 }

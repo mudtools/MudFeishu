@@ -229,17 +229,24 @@ public class FeishuWebhookServiceTests
     public async Task HandleEventAsync_WithFeishuWebhookRequest_ShouldValidateSignatureSuccessfully()
     {
         // Arrange
+        var nonce = "test_nonce_12345";
+        var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        var encryptKey = "test_key_32_characters_long____";
+        var body = "{\"encrypt\":\"encrypted_data\"}";
+
+        // 计算正确的签名
+        var signString = $"{timestamp}{nonce}{encryptKey}{body}";
+        using var sha256 = System.Security.Cryptography.SHA256.Create();
+        var hashBytes = sha256.ComputeHash(System.Text.Encoding.UTF8.GetBytes(signString));
+        var computedSignature = BitConverter.ToString(hashBytes).Replace("-", "").ToLower();
+
         var request = new FeishuWebhookRequest
         {
             Encrypt = "encrypted_data",
-            Signature = "test_signature",
-            Nonce = "test_nonce_12345",
-            Timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+            Signature = computedSignature,
+            Nonce = nonce,
+            Timestamp = timestamp
         };
-
-        var body = "{\"encrypt\":\"encrypted_data\",\"signature\":\"test_signature\",\"nonce\":\"test_nonce_12345\",\"timestamp\":\"" + request.Timestamp + "\"}";
-
-        var encryptKey = "test_key_32_characters_long____";
 
         var service = CreateService();
         service.SetCurrentAppKey("test-app");

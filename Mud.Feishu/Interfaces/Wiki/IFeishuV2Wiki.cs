@@ -71,7 +71,7 @@ public interface IFeishuV2Wiki : IFeishuAppContextSwitcher
     /// </param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Get("/open-apis/wiki/v2/spaces/{space_id}")]
-    Task<FeishuApiResult<SpaceInfoResult>?> GettSpaceInfoAsync(
+    Task<FeishuApiResult<SpaceInfoResult>?> GetSpaceInfoAsync(
          [Path] string space_id,
          [Query("lang")] string? lang = "en",
          CancellationToken cancellationToken = default);

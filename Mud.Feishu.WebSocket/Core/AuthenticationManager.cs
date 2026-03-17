@@ -438,6 +438,7 @@ public class AuthenticationManager
 
         switch (errorCode.Value)
         {
+            // ===== 认证相关错误码 =====
             case 10009: // Token 过期
                 _logger.LogWarning("应用访问令牌已过期，请更新令牌");
                 break;
@@ -459,8 +460,62 @@ public class AuthenticationManager
             case 10015: // Session ID 无效
                 _logger.LogWarning("Session ID 无效，将重新建立会话");
                 break;
+
+            // ===== 飞书常见业务错误码 =====
+            case 99991663: // 机器人被禁用
+                _logger.LogError("机器人已被禁用，请检查飞书应用状态");
+                break;
+            case 99991664: // 机器人不在群聊中
+                _logger.LogWarning("机器人不在目标群聊中");
+                break;
+            case 99991665: // 机器人被移除
+                _logger.LogWarning("机器人已被移出群聊");
+                break;
+
+            // ===== 服务端错误码 =====
+            case 12340001: // 请求参数错误
+                _logger.LogError("请求参数错误: {Message}", errorMessage);
+                break;
+            case 12340002: // 请求体过大
+                _logger.LogError("请求体过大，请减少消息内容");
+                break;
+            case 12340003: // 文件上传失败
+                _logger.LogError("文件上传失败: {Message}", errorMessage);
+                break;
+
+            // ===== 服务端内部错误 =====
+            case 12350001: // 服务端内部错误
+                _logger.LogError("飞书服务端内部错误，建议稍后重试");
+                break;
+            case 12350002: // 服务端超时
+                _logger.LogWarning("飞书服务端响应超时，建议稍后重试");
+                break;
+            case 12350003: // 服务端限流
+                _logger.LogWarning("触发飞书服务端限流，建议降低请求频率");
+                break;
+
+            // ===== 网络相关错误码 =====
+            case 12360001: // 网络连接失败
+                _logger.LogError("网络连接失败，请检查网络");
+                break;
+            case 12360002: // 服务不可用
+                _logger.LogWarning("飞书服务暂时不可用，建议稍后重试");
+                break;
+
             default:
-                _logger.LogWarning("未知的认证错误码: {Code}, 消息: {Message}", errorCode.Value, errorMessage);
+                // 根据错误码范围判断错误类型
+                if (errorCode.Value >= 10000 && errorCode.Value < 20000)
+                {
+                    _logger.LogWarning("认证/授权相关错误码: {Code}, 消息: {Message}", errorCode.Value, errorMessage);
+                }
+                else if (errorCode.Value >= 99990000 && errorCode.Value < 100000000)
+                {
+                    _logger.LogWarning("机器人相关错误码: {Code}, 消息: {Message}", errorCode.Value, errorMessage);
+                }
+                else
+                {
+                    _logger.LogWarning("未知的认证错误码: {Code}, 消息: {Message}", errorCode.Value, errorMessage);
+                }
                 break;
         }
 

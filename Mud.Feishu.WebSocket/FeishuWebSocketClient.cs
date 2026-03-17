@@ -57,12 +57,100 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
     private DateTime _lastPongTime = DateTime.MinValue;
     private int _heartbeatMissedCount = 0;
 
+    // 连接状态线程安全保护
+    private int _connectionState = 0; // 0=未连接, 1=已连接, 2=连接中, 3=重连中
+    private readonly object _connectionStateLock = new();
+
+    // 重连总次数和时间限制 (防止无限重连)
+    private int _totalReconnectAttempts = 0;
+    private DateTime _firstReconnectAttempt = DateTime.MinValue;
+    private const int MaxTotalReconnectAttempts = 20; // 总最大重连次数
+    private static readonly TimeSpan MaxReconnectTotalTime = TimeSpan.FromMinutes(30); // 最大重连总时间
+
     // 处理器引用
     private PingPongMessageHandler? _pingPongHandler;
     /// <inheritdoc/>
-    public WebSocketState State => _connectionManager.State;
+    public WebSocketState State
+    {
+        get
+        {
+            lock (_connectionStateLock)
+            {
+                return _connectionManager.State;
+            }
+        }
+    }
+
+    /// <inheritdoc/>
+    public bool IsConnected
+    {
+        get
+        {
+            lock (_connectionStateLock)
+            {
+                return _connectionState == 1 && _connectionManager.IsConnected;
+            }
+        }
+    }
+
     /// <inheritdoc/>
     public bool IsAuthenticated => _authManager.IsAuthenticated;
+
+    /// <summary>
+    /// 检查是否超过最大重连次数限制
+    /// </summary>
+    private bool IsMaxReconnectAttemptsReached()
+    {
+        lock (_connectionStateLock)
+        {
+            // 检查总重连次数
+            if (_totalReconnectAttempts >= MaxTotalReconnectAttempts)
+            {
+                _logger.LogError("已达到最大重连总次数 {MaxAttempts}，停止重连", MaxTotalReconnectAttempts);
+                return true;
+            }
+
+            // 检查重连总时间
+            if (_firstReconnectAttempt != DateTime.MinValue)
+            {
+                var totalReconnectTime = DateTime.UtcNow - _firstReconnectAttempt;
+                if (totalReconnectTime >= MaxReconnectTotalTime)
+                {
+                    _logger.LogError("已达到最大重连总时间 {MaxTime} 分钟，停止重连", MaxReconnectTotalTime.TotalMinutes);
+                    return true;
+                }
+            }
+
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// 重置重连计数器
+    /// </summary>
+    private void ResetReconnectCounter()
+    {
+        lock (_connectionStateLock)
+        {
+            _totalReconnectAttempts = 0;
+            _firstReconnectAttempt = DateTime.MinValue;
+        }
+    }
+
+    /// <summary>
+    /// 增加重连计数
+    /// </summary>
+    private void IncrementReconnectAttempt()
+    {
+        lock (_connectionStateLock)
+        {
+            if (_firstReconnectAttempt == DateTime.MinValue)
+            {
+                _firstReconnectAttempt = DateTime.UtcNow;
+            }
+            _totalReconnectAttempts++;
+        }
+    }
 
     /// <inheritdoc/>
     public event EventHandler<EventArgs>? Connected;
@@ -223,9 +311,24 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
         if (endpoint == null)
             throw new ArgumentNullException(nameof(endpoint));
 
+        // 设置连接状态为连接中
+        lock (_connectionStateLock)
+        {
+            _connectionState = 2; // 连接中
+        }
+
+        // 重置重连计数器（连接建立时重置）
+        ResetReconnectCounter();
+
         using (FeishuMetricsHelper.RecordHttpRequest("GET", endpoint.Url))
         {
             await _connectionManager.ConnectAsync(endpoint.Url, cancellationToken);
+        }
+
+        // 设置连接状态为已连接
+        lock (_connectionStateLock)
+        {
+            _connectionState = 1; // 已连接
         }
 
         // 启动消息接收
@@ -458,30 +561,68 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
                     QueueCount = _messageQueue.Count
                 });
 
-                // 路由消息到处理器并记录指标
-                using (FeishuMetricsHelper.RecordEventHandling("websocket_message", "text"))
-                using (FeishuMetricsHelper.RecordWebSocketMessageProcessing())
+                // 使用 Task.Run 将消息处理隔离到独立线程池，避免阻塞接收管道
+                // 捕获异常确保不会影响消息接收循环
+                _ = Task.Run(async () =>
                 {
-                    await _messageRouter.RouteMessageAsync(message, cancellationToken);
-                }
-
-                // 加入消息队列
-                if (_options.EnableMessageQueue)
-                {
-                    while (_messageQueue.Count >= _options.MessageQueueCapacity)
+                    try
                     {
-                        _messageQueue.TryDequeue(out _);
+                        // 路由消息到处理器并记录指标
+                        using (FeishuMetricsHelper.RecordEventHandling("websocket_message", "text"))
+                        using (FeishuMetricsHelper.RecordWebSocketMessageProcessing())
+                        {
+                            await _messageRouter.RouteMessageAsync(message, cancellationToken);
+                        }
+
+                        // 加入消息队列
+                        if (_options.EnableMessageQueue)
+                        {
+                            while (_messageQueue.Count >= _options.MessageQueueCapacity)
+                            {
+                                _messageQueue.TryDequeue(out _);
+                            }
+                            _messageQueue.Enqueue(message);
+                        }
                     }
-                    _messageQueue.Enqueue(message);
-                }
+                    catch (Exception ex)
+                    {
+                        // 隔离处理消息处理异常，避免影响接收管道
+                        _logger.LogError(ex, "消息处理任务执行失败，不影响接收管道");
+                        Error?.Invoke(this, new WebSocketErrorEventArgs
+                        {
+                            Exception = ex,
+                            ErrorMessage = $"消息处理错误: {ex.Message}",
+                            ErrorType = "MessageProcessingError",
+                            IsRecoverable = true
+                        });
+                    }
+                }, cancellationToken);
             }
             else if (result.MessageType == WebSocketMessageType.Binary)
             {
-                using (FeishuMetricsHelper.RecordEventHandling("websocket_message", "binary"))
-                using (FeishuMetricsHelper.RecordWebSocketMessageProcessing())
+                // 二进制消息处理同样隔离到独立任务
+                _ = Task.Run(async () =>
                 {
-                    await _binaryProcessor.ProcessBinaryDataAsync(buffer.Array!, buffer.Offset, buffer.Count, result.EndOfMessage, cancellationToken);
-                }
+                    try
+                    {
+                        using (FeishuMetricsHelper.RecordEventHandling("websocket_message", "binary"))
+                        using (FeishuMetricsHelper.RecordWebSocketMessageProcessing())
+                        {
+                            await _binaryProcessor.ProcessBinaryDataAsync(buffer.Array!, buffer.Offset, buffer.Count, result.EndOfMessage, cancellationToken);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "二进制消息处理任务执行失败，不影响接收管道");
+                        Error?.Invoke(this, new WebSocketErrorEventArgs
+                        {
+                            Exception = ex,
+                            ErrorMessage = $"二进制消息处理错误: {ex.Message}",
+                            ErrorType = "BinaryMessageProcessingError",
+                            IsRecoverable = true
+                        });
+                    }
+                }, cancellationToken);
             }
         }
         catch (JsonException jsonEx)
@@ -546,7 +687,15 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
                 {
                     if (_options.AutoReconnect)
                     {
-                        _logger.LogDebug("连接已断开，触发重连事件...");
+                        // 检查是否超过最大重连次数，避免无限重连
+                        if (IsMaxReconnectAttemptsReached())
+                        {
+                            _logger.LogError("已达到最大重连限制，停止重连。连接状态: {State}", _connectionManager.State);
+                            break;
+                        }
+
+                        IncrementReconnectAttempt();
+                        _logger.LogDebug("连接已断开，触发重连事件... (第 {Attempt} 次)", _totalReconnectAttempts);
                         // 触发断开事件，让 HostedService 处理重连逻辑
                         Disconnected?.Invoke(this, new SocketEventArgs.WebSocketCloseEventArgs
                         {
@@ -615,7 +764,15 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
             // 如果连续多次超时，触发重连
             if (_heartbeatMissedCount >= 3 && _options.AutoReconnect)
             {
-                _logger.LogError("连续 {MissedCount} 次心跳超时，触发重连", _heartbeatMissedCount);
+                // 检查是否超过最大重连次数，避免无限重连
+                if (IsMaxReconnectAttemptsReached())
+                {
+                    _logger.LogError("已达到最大重连限制，停止重连");
+                    return;
+                }
+
+                IncrementReconnectAttempt();
+                _logger.LogError("连续 {MissedCount} 次心跳超时，触发重连 (第 {Attempt} 次)", _heartbeatMissedCount, _totalReconnectAttempts);
                 await TriggerReconnectAsync(cancellationToken);
             }
         }

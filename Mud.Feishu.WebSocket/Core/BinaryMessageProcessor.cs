@@ -78,13 +78,12 @@ public class BinaryMessageProcessor : IDisposable
                         _logger.LogDebug("开始接收新的二进制消息");
                 }
 
-                // 写入数据片段
-                _binaryDataStream.Write(data, offset, count);
-
-                // 检查数据大小限制
-                if (_binaryDataStream.Length > _options.MessageSizeLimits.MaxBinaryMessageSize)
+                // 预先检查数据大小限制（写入前检查，防止内存溢出）
+                var currentLength = _binaryDataStream.Length;
+                var newLength = currentLength + count;
+                if (newLength > _options.MessageSizeLimits.MaxBinaryMessageSize)
                 {
-                    var errorMessage = $"二进制消息大小超过限制 ({_binaryDataStream.Length} > {_options.MessageSizeLimits.MaxBinaryMessageSize})";
+                    var errorMessage = $"二进制消息大小超过限制 ({newLength} > {_options.MessageSizeLimits.MaxBinaryMessageSize})";
                     _logger.LogError(errorMessage);
 
                     // 清理当前数据流
@@ -95,6 +94,9 @@ public class BinaryMessageProcessor : IDisposable
                     OnError(errorMessage, "MessageSizeExceeded");
                     return;
                 }
+
+                // 写入数据片段
+                _binaryDataStream.Write(data, offset, count);
 
                 // 如果消息接收完成
                 if (endOfMessage)

@@ -82,7 +82,7 @@ public class FeishuAppContext : IFeishuAppContext, IMudAppContext, IDisposable
     /// 用于获取和管理用户访问令牌（User Access Token）。
     /// 用户令牌通过OAuth授权流程获取，需要用户授权。
     /// </remarks>
-    public IUserTokenManager UserTokenManager { get; }
+    public IFeishuUserTokenManager UserTokenManager { get; }
 
     /// <summary>
     /// 认证API客户端
@@ -116,7 +116,7 @@ public class FeishuAppContext : IFeishuAppContext, IMudAppContext, IDisposable
         FeishuAppConfig config,
         ITenantTokenManager tenantTokenManager,
         IAppTokenManager appTokenManager,
-        IUserTokenManager userTokenManager,
+        IFeishuUserTokenManager userTokenManager,
         IFeishuAuthentication authenticationApi,
         ITokenCache tokenCache,
         IEnhancedHttpClient httpClient)

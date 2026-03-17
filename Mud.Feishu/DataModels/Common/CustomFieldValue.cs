@@ -36,6 +36,9 @@ public class CustomFieldValue
     [JsonPropertyName("enum_value")]
     public EnumValue? EnumValue { get; set; }
 
+    /// <summary>
+    /// 电话号码值。
+    /// </summary>
     [JsonPropertyName("phone_value")]
     public PhoneValue? PhoneValue { get; set; }
 

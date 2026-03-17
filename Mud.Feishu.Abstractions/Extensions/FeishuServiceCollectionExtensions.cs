@@ -69,6 +69,7 @@ public static class FeishuServiceCollectionExtensions
     /// 注册多应用所需的基础服务（内部使用）
     /// </summary>
     /// <param name="services">服务集合</param>
+    /// <param name="configs">飞书配置列表</param>
     /// <returns>服务集合实例。支持链式调用</returns>
     /// <remarks>
     /// 此方法用于多应用系统，注册了基础依赖项但不注册全局TokenManager。

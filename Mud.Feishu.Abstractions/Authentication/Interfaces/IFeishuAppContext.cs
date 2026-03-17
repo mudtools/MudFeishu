@@ -37,4 +37,31 @@ public interface IFeishuAppContext : IMudAppContext, IDisposable
     /// 用于调用飞书认证相关API的服务接口。
     /// </remarks>
     IFeishuAuthentication Authentication { get; }
+
+    /// <summary>
+    /// 租户令牌管理器
+    /// </summary>
+    /// <remarks>
+    /// 用于获取和管理租户访问令牌（Tenant Access Token）。
+    /// 租户令牌用于租户级别的权限验证。
+    /// </remarks>
+    ITenantTokenManager TenantTokenManager { get; }
+
+    /// <summary>
+    /// 应用令牌管理器
+    /// </summary>
+    /// <remarks>
+    /// 用于获取和管理应用身份访问令牌（App Access Token）。
+    /// 应用令牌用于应用级别的权限验证。
+    /// </remarks>
+    IAppTokenManager AppTokenManager { get; }
+
+    /// <summary>
+    /// 用户令牌管理器
+    /// </summary>
+    /// <remarks>
+    /// 用于获取和管理用户访问令牌（User Access Token）。
+    /// 用户令牌通过OAuth授权流程获取，需要用户授权。
+    /// </remarks>
+    IFeishuUserTokenManager UserTokenManager { get; }
 }

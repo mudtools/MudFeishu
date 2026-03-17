@@ -97,6 +97,41 @@ internal class FeishuAppManager : IFeishuAppManager
     }
 
 
+    /// <summary>
+    /// 租户令牌管理器
+    /// </summary>
+    /// <remarks>
+    /// 用于获取和管理租户访问令牌（Tenant Access Token）。
+    /// 租户令牌用于租户级别的权限验证。
+    /// </remarks>
+    public ITenantTokenManager DefaultTenantTokenManager => GetDefaultApp().TenantTokenManager;
+
+    /// <summary>
+    /// 应用令牌管理器
+    /// </summary>
+    /// <remarks>
+    /// 用于获取和管理应用身份访问令牌（App Access Token）。
+    /// 应用令牌用于应用级别的权限验证。
+    /// </remarks>
+    public IAppTokenManager DefaultAppTokenManager => GetDefaultApp().AppTokenManager;
+
+    /// <summary>
+    /// 用户令牌管理器
+    /// </summary>
+    /// <remarks>
+    /// 用于获取和管理用户访问令牌（User Access Token）。
+    /// 用户令牌通过OAuth授权流程获取，需要用户授权。
+    /// </remarks>
+    public IFeishuUserTokenManager DefaultUserTokenManager => GetDefaultApp().UserTokenManager;
+
+
+    /// <summary>
+    /// 应用配置
+    /// </summary>
+    /// <remarks>
+    /// 包含此应用的所有配置信息，如AppId、AppSecret、BaseUrl等。
+    /// </remarks>
+    public FeishuAppConfig DefaultConfig => GetDefaultApp().Config;
 
     /// <summary>
     /// 获取默认应用上下文
@@ -239,7 +274,6 @@ internal class FeishuAppManager : IFeishuAppManager
             options,
             userTokenManagerLogger,
             prefixedUserTokenCache);
-
 
         var context = new FeishuAppContext(
             config,

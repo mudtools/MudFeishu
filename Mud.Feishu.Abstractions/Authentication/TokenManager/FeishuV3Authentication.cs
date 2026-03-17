@@ -6,7 +6,6 @@
 // -----------------------------------------------------------------------
 
 using Microsoft.Extensions.Options;
-using Mud.Feishu.Abstractions.Utilities;
 using Mud.Feishu.DataModels.WsEndpoint;
 using System.Net.Http.Headers;
 using System.Text;

@@ -25,7 +25,7 @@ namespace Mud.Feishu.TokenManager;
 ///   <item><description>防止缓存击穿的 Lazy 加载</description></item>
 /// </list>
 /// </remarks>
-internal class UserTokenManager : IUserTokenManager
+internal class UserTokenManager : IFeishuUserTokenManager
 {
     private readonly IFeishuAuthentication _authenticationApi;
     private readonly FeishuAppConfig _options;
@@ -98,7 +98,7 @@ internal class UserTokenManager : IUserTokenManager
         return await _userTokenCache.GetAsync(cacheKey, cancellationToken);
     }
 
-    public async Task<CredentialToken?> GetUserTokenWithCodeAsync(
+    public async Task<UserTokenInfo?> GetUserTokenWithCodeAsync(
         string code,
         string redirectUri,
         CancellationToken cancellationToken = default)
@@ -110,7 +110,7 @@ internal class UserTokenManager : IUserTokenManager
 
         _logger.LogInformation("Getting user token with authorization code");
 
-        var credentials = new DataModels.OAuthTokenRequest
+        var credentials = new OAuthTokenRequest
         {
             GrantType = "authorization_code",
             ClientId = _options.AppId,
@@ -128,13 +128,13 @@ internal class UserTokenManager : IUserTokenManager
 
         var token = CreateCredentialTokenFromResult(res);
 
-        if (token.Code != 0)
+        if (res.Code != 0)
         {
-            _logger.LogWarning("Failed to get user token: {Code} - {Msg}", token.Code, token.Msg);
+            _logger.LogWarning("Failed to get user token: {Code} - {Msg}", res.Code, res.Msg);
             return token;
         }
 
-        var userInfo = await _authenticationApi.GetUserInfoAsync(FormatBearerToken(token.AccessToken), cancellationToken);
+        var userInfo = await _authenticationApi.GetUserInfoAsync(token.AccessToken, cancellationToken);
         var openId = userInfo?.Data?.OpenId;
         var unionId = userInfo?.Data?.UnionId;
 
@@ -152,13 +152,13 @@ internal class UserTokenManager : IUserTokenManager
 
         _logger.LogInformation("User token acquired for user {UserId}, access token expires at {ExpireTime}, refresh token expires at {RefreshExpireTime}",
             userId,
-            DateTimeOffset.FromUnixTimeMilliseconds(token.Expire),
-            token.RefreshTokenExpire > 0 ? DateTimeOffset.FromUnixTimeMilliseconds(token.RefreshTokenExpire) : "N/A");
+            DateTimeOffset.FromUnixTimeMilliseconds(token.AccessTokenExpireTime),
+            token.RefreshTokenExpireTime > 0 ? DateTimeOffset.FromUnixTimeMilliseconds(token.RefreshTokenExpireTime) : "N/A");
 
-        return token;
+        return tokenInfo;
     }
 
-    public async Task<CredentialToken?> RefreshUserTokenAsync(
+    public async Task<UserTokenInfo?> RefreshUserTokenAsync(
         string userId,
         CancellationToken cancellationToken = default)
     {
@@ -195,7 +195,7 @@ internal class UserTokenManager : IUserTokenManager
             _logger.LogInformation("Refreshing user token for user {UserId}", userId);
             FeishuMetricsHelper.RecordTokenRefresh("UserAccessToken");
 
-            var credentials = new DataModels.OAuthRefreshTokenRequest
+            var credentials = new OAuthRefreshTokenRequest
             {
                 GrantType = "refresh_token",
                 ClientId = _options.AppId,
@@ -212,9 +212,9 @@ internal class UserTokenManager : IUserTokenManager
 
             var newToken = CreateCredentialTokenFromResult(res);
 
-            if (newToken.Code != 0)
+            if (res.Code != 0)
             {
-                _logger.LogWarning("Failed to refresh user token: {Code} - {Msg}", newToken.Code, newToken.Msg);
+                _logger.LogWarning("Failed to refresh user token: {Code} - {Msg}", res.Code, res.Msg);
                 return newToken;
             }
 
@@ -222,9 +222,9 @@ internal class UserTokenManager : IUserTokenManager
             await _userTokenCache.SetAsync(cacheKey, tokenInfo, cancellationToken);
 
             _logger.LogInformation("User token refreshed for user {UserId}, new access token expires at {ExpireTime}",
-                userId, DateTimeOffset.FromUnixTimeMilliseconds(newToken.Expire));
+                userId, DateTimeOffset.FromUnixTimeMilliseconds(newToken.AccessTokenExpireTime));
 
-            return newToken;
+            return tokenInfo;
         }
         finally
         {
@@ -296,7 +296,7 @@ internal class UserTokenManager : IUserTokenManager
             _logger.LogInformation("Access token expired, attempting to refresh for user {UserId}", userId);
 
             var newToken = await RefreshUserTokenAsync(userId, cancellationToken);
-            if (newToken != null && newToken.Code == 0)
+            if (newToken != null && !string.IsNullOrEmpty(newToken.AccessToken))
             {
                 return FormatBearerToken(newToken.AccessToken);
             }
@@ -314,18 +314,18 @@ internal class UserTokenManager : IUserTokenManager
         return await _userTokenCache.GetAsync(cacheKey, cancellationToken);
     }
 
-    private CredentialToken CreateCredentialTokenFromResult(DataModels.OAuthCredentialsResult res)
+    private UserTokenInfo CreateCredentialTokenFromResult(OAuthCredentialsResult res)
     {
         var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         var accessTokenExpire = now + ((res.ExpiresIn > 0 ? res.ExpiresIn : DefaultAccessTokenExpirationSeconds) * 1000L);
         var refreshTokenExpire = now + ((res.RefreshTokenExpiresIn > 0 ? res.RefreshTokenExpiresIn : DefaultRefreshTokenExpirationSeconds) * 1000L);
 
-        return new CredentialToken
+        return new UserTokenInfo
         {
             AccessToken = res.AccessToken,
-            Expire = accessTokenExpire,
+            AccessTokenExpireTime = accessTokenExpire,
             RefreshToken = res.RefreshToken,
-            RefreshTokenExpire = refreshTokenExpire,
+            RefreshTokenExpireTime = refreshTokenExpire,
             Scope = res.Scope,
             Code = res.Code,
             Msg = res.ErrorDescription ?? (res.Code == 0 ? "Success" : "Unknown error")

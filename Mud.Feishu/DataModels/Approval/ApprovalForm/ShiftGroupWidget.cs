@@ -35,5 +35,5 @@ public class ShiftGroupValue
     /// 获取或设置换班原因
     /// </summary>
     [JsonPropertyName("reason")]
-    public string Reason { get; set; }
+    public string? Reason { get; set; }
 }

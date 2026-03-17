@@ -15,11 +15,11 @@ public interface IWidget
     /// <summary>
     /// 获取或设置控件的唯一标识符
     /// </summary>
-    string Id { get; set; }
+    string? Id { get; set; }
     /// <summary>
     /// 获取或设置控件的类型
     /// </summary>
-    string Type { get; set; }
+    string? Type { get; set; }
 }
 
 /// <summary>
@@ -30,7 +30,7 @@ public interface IWidget<TValue> : IWidget
     /// <summary>
     /// 获取或设置控件的值
     /// </summary>
-    TValue Value { get; set; }
+    TValue? Value { get; set; }
 }
 
 /// <summary>
@@ -43,17 +43,17 @@ public abstract class WidgetBase<TValue>(string type) : IWidget<TValue>
     /// 获取或设置控件的唯一标识符
     /// </summary>
     [JsonPropertyName("id")]
-    public string Id { get; set; } = string.Empty;
+    public string? Id { get; set; } = string.Empty;
 
     /// <summary>
     /// 获取或设置控件的类型
     /// </summary>
     [JsonPropertyName("type")]
-    public string Type { get; set; } = type;
+    public string? Type { get; set; } = type;
 
     /// <summary>
     /// 获取或设置控件的值
     /// </summary>
     [JsonPropertyName("value")]
-    public TValue Value { get; set; } = default;
+    public TValue? Value { get; set; } = default;
 }

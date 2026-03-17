@@ -9,7 +9,6 @@ using FeishuWikiManager.Data;
 using FeishuWikiManager.Models;
 using Microsoft.EntityFrameworkCore;
 using Mud.Feishu;
-using Mud.Feishu.Abstractions;
 using Mud.Feishu.DataModels.Wiki;
 
 namespace FeishuWikiManager.Services;
@@ -187,7 +186,8 @@ public class WikiService : IWikiService
         {
             ObjType = request.ObjType,
             Title = request.Title,
-            ParentNodeToken = request.ParentNodeToken
+            ParentNodeToken = request.ParentNodeToken,
+            NodeType = "origin"
         };
 
         var result = await _nodeApi.CreateSpaceNodeAsync(spaceId, nodeRequest);

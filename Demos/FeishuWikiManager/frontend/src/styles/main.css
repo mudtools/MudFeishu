@@ -241,14 +241,15 @@ a:hover {
 .el-input-group__append .el-button {
   margin: 0;
   border: none;
-  background: transparent;
-  color: #fff;
-  font-weight: 500;
+  background: transparent !important;
+  color: #fff !important;
 }
 
-.el-input-group__append .el-button:hover {
-  background: transparent;
-  color: #fff;
+.el-input-group__append .el-button:hover,
+.el-input-group__append .el-button--primary:hover {
+  background: transparent !important;
+  color: #fff !important;
+  border: none;
 }
 
 .el-input-group--append .el-input__wrapper {
@@ -516,6 +517,13 @@ a:hover {
   border-color: var(--primary-color-light);
 }
 
+:root.dark .el-input-group__append .el-button:hover,
+:root.dark .el-input-group__append .el-button--primary:hover {
+  background: transparent !important;
+  color: #fff !important;
+  border: none;
+}
+
 /* 菜单 */
 :root.dark .el-menu {
   background-color: transparent;
@@ -607,6 +615,18 @@ a:hover {
 :root.dark .el-button:hover {
   border-color: var(--primary-color);
   color: var(--primary-color);
+}
+
+:root.dark .el-button--primary {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+  color: #fff;
+}
+
+:root.dark .el-button--primary:hover {
+  background-color: var(--primary-color-light);
+  border-color: var(--primary-color-light);
+  color: #fff;
 }
 
 :root.dark .el-button--default {

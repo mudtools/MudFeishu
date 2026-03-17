@@ -14,9 +14,15 @@ export const useFavoriteStore = defineStore('favorite', () => {
       if (response.data.success && response.data.data) {
         favorites.value = response.data.data
       }
-    } catch (error) {
-      console.error('Failed to fetch favorites:', error)
-      throw error
+    } catch (error: any) {
+      // 超时错误不抛出，避免阻塞页面其他功能
+      if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+        console.warn('获取收藏列表超时，使用缓存数据')
+        // 保持现有的 favorites 数据不变
+      } else {
+        console.error('Failed to fetch favorites:', error)
+      }
+      // 不抛出错误，让页面继续加载
     } finally {
       loading.value = false
     }

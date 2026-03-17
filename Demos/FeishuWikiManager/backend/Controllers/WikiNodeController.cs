@@ -152,6 +152,7 @@ public class WikiNodeController : BaseController
     [HttpGet("favorites")]
     public async Task<IActionResult> GetFavorites()
     {
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
         try
         {
             var openId = GetRequiredOpenId();
@@ -161,7 +162,11 @@ public class WikiNodeController : BaseController
                 return UnauthorizedResult();
             }
 
+            _logger.LogInformation("开始获取收藏列表，用户: {UserId}", user.Id);
             var favorites = await _wikiService.GetFavoritesAsync(user.Id);
+            stopwatch.Stop();
+            _logger.LogInformation("获取收藏列表成功，用户: {UserId}，数量: {Count}，耗时: {ElapsedMs}ms", 
+                user.Id, favorites.Count, stopwatch.ElapsedMilliseconds);
             return Success(favorites);
         }
         catch (UnauthorizedAccessException)
@@ -170,7 +175,8 @@ public class WikiNodeController : BaseController
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "获取收藏列表失败");
+            stopwatch.Stop();
+            _logger.LogError(ex, "获取收藏列表失败，耗时: {ElapsedMs}ms", stopwatch.ElapsedMilliseconds);
             return ServerError("获取收藏列表失败", ex);
         }
     }

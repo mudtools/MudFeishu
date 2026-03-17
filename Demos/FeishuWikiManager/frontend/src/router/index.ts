@@ -49,7 +49,7 @@ const router = createRouter({
   ]
 })
 
-router.beforeEach(async (to, _from, next) => {
+router.beforeEach(async (to, _from) => {
   const userStore = useUserStore()
   
   // 如果有 token 但还在加载用户信息，等待加载完成
@@ -73,12 +73,13 @@ router.beforeEach(async (to, _from, next) => {
   const isLoggedIn = !!userStore.token && !!userStore.user
   
   if (to.meta.requiresAuth && !isLoggedIn) {
-    next({ name: 'Login', query: { redirect: to.fullPath } })
+    return { name: 'Login', query: { redirect: to.fullPath } }
   } else if (to.name === 'Login' && isLoggedIn) {
-    next({ name: 'Home' })
-  } else {
-    next()
+    return { name: 'Home' }
   }
+  
+  // 允许导航继续
+  return true
 })
 
 export default router

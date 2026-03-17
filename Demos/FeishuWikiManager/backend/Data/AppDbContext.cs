@@ -31,7 +31,9 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<FavoriteNode>(entity =>
         {
             entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.UserId);
             entity.HasIndex(e => new { e.UserId, e.NodeToken }).IsUnique();
+            entity.HasIndex(e => e.CreatedAt);
         });
     }
 }

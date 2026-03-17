@@ -33,14 +33,35 @@ const selectedParentToken = ref<string | undefined>()
 async function loadSpaceData() {
   if (!spaceId.value) return
   
+  // 分别加载数据，favorites 失败不影响其他功能
+  const errors: string[] = []
+  
+  // 加载空间信息
   try {
-    await Promise.all([
-      wikiStore.fetchSpaceInfo(spaceId.value),
-      fetchRootNodes(),
-      favoriteStore.fetchFavorites()
-    ])
+    await wikiStore.fetchSpaceInfo(spaceId.value)
   } catch (error: any) {
-    ElMessage.error(error.message || '加载失败')
+    errors.push('加载空间信息失败')
+    console.error('Failed to load space info:', error)
+  }
+  
+  // 加载节点树
+  try {
+    await fetchRootNodes()
+  } catch (error: any) {
+    errors.push('加载节点列表失败')
+    console.error('Failed to load nodes:', error)
+  }
+  
+  // 加载收藏列表（失败不显示错误）
+  try {
+    await favoriteStore.fetchFavorites()
+  } catch (error: any) {
+    console.warn('Failed to load favorites:', error)
+  }
+  
+  // 显示主要错误
+  if (errors.length > 0) {
+    ElMessage.error(errors.join('，'))
   }
 }
 

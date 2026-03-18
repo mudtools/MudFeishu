@@ -164,4 +164,36 @@ public interface IFeishuV1DocxBlocks : IFeishuAppContextSwitcher
       [Query("client_token")] string? client_token = null,
       [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
       CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// <para>获取文档中指定块的所有子块的富文本内容并分页返回。文档版本号可选。</para>
+    /// </summary>
+    /// <param name="document_id">文档的唯一标识。</param>
+    /// <param name="block_id">父块的block_id，表示为其创建一批子块。如果需要对文档树根节点创建子块，可将 document_id 填入此处。</param>
+    /// <param name="document_revision_id">
+    /// <para>必填：否</para>
+    /// <para>查询的文档版本，-1表示文档最新版本。若此时查询的版本为文档最新版本，则需要持有文档的阅读权限；若此时查询的版本为文档的历史版本，则需要持有文档的编辑权限。</para>
+    /// <para>示例值：-1</para>
+    /// <para>默认值：-1</para>
+    /// </param>
+    /// <param name="client_token">
+    /// <para>操作的唯一标识，与接口返回值的 client_token 相对应，用于幂等的进行更新操作。此值为空表示将发起一次新的请求，此值非空表示幂等的进行更新操作。</para>
+    /// <para>示例值：fe599b60-450f-46ff-b2ef-9f6675625b97</para>
+    /// <para>默认值：null</para>
+    /// </param>
+    /// <param name="page_size">分页大小，即本次请求所返回的信息列表内的最大条目数。默认值：500</param>
+    /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
+    /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Get("/open-apis/docx/v1/documents/{document_id}/blocks/{block_id}/children")]
+    Task<FeishuApiPageListResult<Block>?> GetChildrenBlocksPageListAsync(
+         [Path] string document_id,
+         [Path] string block_id,
+         [Query("document_revision_id")] int? document_revision_id = -1,
+         [Query("client_token")] string? client_token = null,
+         [Query("page_size")] int page_size = 500,
+         [Query("page_token")] string? page_token = null,
+         [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
+         CancellationToken cancellationToken = default);
 }

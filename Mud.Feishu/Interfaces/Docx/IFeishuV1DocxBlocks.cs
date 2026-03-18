@@ -49,4 +49,15 @@ public interface IFeishuV1DocxBlocks : IFeishuAppContextSwitcher
          [Query("client_token")] string? client_token = null,
          [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
          CancellationToken cancellationToken = default);
+
+
+    [Post("/open-apis/docx/v1/documents/{document_id}/blocks/{block_id}/descendant")]
+    Task<FeishuApiResult<CreateDescendantBlockResult>?> CreateDescendantBlockAsync(
+        [Path] string document_id,
+        [Path] string block_id,
+        [Body] CreateDescendantBlockRequest createDescendantBlockRequest,
+        [Query("document_revision_id")] int? document_revision_id = -1,
+        [Query("client_token")] string? client_token = null,
+        [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
+        CancellationToken cancellationToken = default);
 }

@@ -6,7 +6,7 @@
 // -----------------------------------------------------------------------
 
 using Mud.Feishu.DataModels;
-using Mud.Feishu.TokenManager;
+using Mud.HttpUtils;
 
 namespace Mud.Feishu.Tests.Authentication.TokenManager;
 

@@ -9,11 +9,7 @@ using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Mud.Feishu.Abstractions;
-using Mud.Feishu.Abstractions.Services;
-using Mud.Feishu.WebSocket.Configuration;
-using Mud.Feishu.WebSocket.DataModels;
 using Mud.Feishu.WebSocket.Handlers;
-using System.Text.Json;
 
 namespace Mud.Feishu.WebSocket.Tests.Handlers;
 

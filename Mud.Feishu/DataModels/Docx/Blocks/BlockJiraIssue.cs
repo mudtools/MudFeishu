@@ -1,4 +1,4 @@
-﻿// -----------------------------------------------------------------------
+// -----------------------------------------------------------------------
 //  作者：Mud Studio  版权所有 (c) Mud Studio 2025   
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
@@ -8,15 +8,23 @@
 namespace Mud.Feishu.DataModels.Docx;
 
 /// <summary>
-/// 创建文档响应体
+/// <para>Jira Issue</para>
 /// </summary>
-public class CreateDocumentResult
+public class BlockJiraIssue
 {
     /// <summary>
-    /// <para>新建文档的文档信息</para>
+    /// <para>Jira issue ID</para>
     /// <para>必填：否</para>
+    /// <para>示例值：12345</para>
     /// </summary>
-    [JsonPropertyName("document")]
-    public DocumentInfo? Document { get; set; }
+    [JsonPropertyName("id")]
+    public string? Id { get; set; }
 
+    /// <summary>
+    /// <para>Jira issue key</para>
+    /// <para>必填：否</para>
+    /// <para>示例值：Project-123</para>
+    /// </summary>
+    [JsonPropertyName("key")]
+    public string? Key { get; set; }
 }

@@ -224,4 +224,19 @@ public interface IFeishuV1DocxBlocks : IFeishuAppContextSwitcher
        [Query("document_revision_id")] int? document_revision_id = -1,
        [Query("client_token")] string? client_token = null,
        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// <para>将 Markdown/HTML 格式的内容转换为文档块，以便于将 Markdown/HTML 格式的内容插入到文档中。</para>
+    /// <para>目前支持转换为的块类型包含文本、一到九级标题、无序列表、有序列表、代码块、引用、待办事项、图片、表格、表格单元格。</para>
+    /// </summary>
+    /// <param name="convertContentRequest">内容转换请求体</param>
+    /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Post("/open-apis/docx/v1/documents/blocks/convert")]
+    Task<FeishuApiResult<ContentConvertResult>?> ContentConvertAsync(
+       [Body] ConvertContentRequest convertContentRequest,
+       [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
+       CancellationToken cancellationToken = default);
+
 }

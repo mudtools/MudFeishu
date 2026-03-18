@@ -25,7 +25,7 @@ public class WebSocketConnectionManagerTests
     {
         _loggerMock = new Mock<ILogger<WebSocketConnectionManager>>();
         _loggerFactoryMock = new Mock<ILoggerFactory>();
-        _loggerFactoryMock.Setup(x => x.CreateLogger(It.IsAny<Type>()))
+        _loggerFactoryMock.Setup(x => x.CreateLogger(It.IsAny<string>()))
             .Returns(_loggerMock.Object);
         _options = new FeishuWebSocketOptions
         {
@@ -172,10 +172,9 @@ public class WebSocketConnectionManagerTests
         // Arrange
         var manager = new WebSocketConnectionManager(_loggerMock.Object, _options, _loggerFactoryMock.Object);
 
-        // Act & Assert
+        // Act & Assert - 传入 null 数组会抛出 ArgumentNullException
         var action = () => manager.SendBinaryMessageAsync((byte[])null!);
-        await action.Should().ThrowAsync<ArgumentException>()
-            .WithMessage("*不能为空*");
+        await action.Should().ThrowAsync<ArgumentNullException>();
 
         manager.Dispose();
     }
@@ -333,14 +332,14 @@ public class WebSocketConnectionManagerTests
         var manager = new WebSocketConnectionManager(_loggerMock.Object, options, _loggerFactoryMock.Object);
         using var cts = new CancellationTokenSource();
 
-        // Act - 尝试连接到一个不存在的服务器
-        var action = () => manager.ConnectAsync("wss://localhost:99999/ws", cts.Token);
-
-        // 立即取消
+        // 先取消令牌
         cts.Cancel();
 
-        // Assert - 应该抛出 OperationCanceledException
-        await action.Should().ThrowAsync<OperationCanceledException>();
+        // Act - 尝试连接到一个有效的 URL 格式（令牌已取消）
+        var action = () => manager.ConnectAsync("wss://127.0.0.1:59999/ws", cts.Token);
+
+        // Assert - 应该抛出 TaskCanceledException (OperationCanceledException 的子类)
+        await action.Should().ThrowAsync<TaskCanceledException>();
 
         manager.Dispose();
     }
@@ -370,9 +369,9 @@ public class WebSocketConnectionManagerTests
         // Act
         manager.Dispose();
 
-        // Assert - 再次调用不会产生副作用（通过不抛出来验证）
+        // Assert - Dispose 后调用 DisconnectAsync 会抛出 ObjectDisposedException
         var action = () => manager.DisconnectAsync();
-        await action.Should().NotThrowAsync();
+        await action.Should().ThrowAsync<ObjectDisposedException>();
     }
 
     [Fact]

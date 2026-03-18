@@ -58,6 +58,11 @@ public enum FeishuModule
     Wiki,
 
     /// <summary>
+    /// 飞书文档管理
+    /// </summary>
+    Docx,
+
+    /// <summary>
     /// 所有功能
     /// </summary>
     All

@@ -42,7 +42,7 @@ public interface IFeishuV1Docx : IFeishuAppContextSwitcher
     /// <returns></returns>
     [Get("/open-apis/docx/v1/documents/{document_id}")]
     Task<FeishuApiResult<DocumentInfoResult>?> GetDocumentInfoAsync(
-        [Path] string? document_id,
+        [Path] string document_id,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -68,7 +68,7 @@ public interface IFeishuV1Docx : IFeishuAppContextSwitcher
     /// <returns></returns>
     [Get("/open-apis/docx/v1/documents/{document_id}/raw_content")]
     Task<FeishuApiResult<DocumentRawContentResult>?> GetDocumentRawContentAsync(
-       [Path] string? document_id,
+       [Path] string document_id,
        [Query("lang")] int? lang = 0,
        CancellationToken cancellationToken = default);
 
@@ -89,10 +89,10 @@ public interface IFeishuV1Docx : IFeishuAppContextSwitcher
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Get("/open-apis/docx/v1/documents/{document_id}/blocks")]
     Task<FeishuApiPageListResult<Block>?> GetDocumentBlocksPageListAsync(
-        [Path] string? document_id,
+        [Path] string document_id,
         [Query("document_revision_id")] int? document_revision_id = -1,
         [Query("page_size")] int page_size = 500,
         [Query("page_token")] string? page_token = null,
-        [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
+        [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
         CancellationToken cancellationToken = default);
 }

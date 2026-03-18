@@ -42,7 +42,8 @@ public class FeishuServiceBuilder
             [FeishuModule.Card] = new CardModuleRegistrar(),
             [FeishuModule.Attendance] = new AttendanceModuleRegistrar(),
             [FeishuModule.Drive] = new DriveModuleRegistrar(),
-            [FeishuModule.Wiki] = new WikiModuleRegistrar()
+            [FeishuModule.Wiki] = new WikiModuleRegistrar(),
+            [FeishuModule.Docx] = new DocxModuleRegistrar(),
         };
     }
 
@@ -95,6 +96,12 @@ public class FeishuServiceBuilder
     public FeishuServiceBuilder AddWikiApi() => AddModule(FeishuModule.Wiki);
 
     /// <summary>
+    /// 添加文档管理 API 服务
+    /// </summary>
+    /// <returns>建造者实例，支持链式调用</returns>
+    public FeishuServiceBuilder AddDocxApi() => AddModule(FeishuModule.Docx);
+
+    /// <summary>
     /// 添加飞书云盘管理 API 服务
     /// </summary>
     /// <returns>建造者实例，支持链式调用</returns>
@@ -114,6 +121,7 @@ public class FeishuServiceBuilder
                .AddCardApi()
                .AddDriveApi()
                .AddWikiApi()
+               .AddDocxApi()
                .AddAttendanceApi();
     }
 

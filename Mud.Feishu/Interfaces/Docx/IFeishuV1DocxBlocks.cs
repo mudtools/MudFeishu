@@ -85,7 +85,26 @@ public interface IFeishuV1DocxBlocks : IFeishuAppContextSwitcher
         [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
         CancellationToken cancellationToken = default);
 
-
+    /// <summary>
+    /// <para>更新指定块的内容。如果操作成功，接口将返回更新后的块的富文本内容。</para>
+    /// </summary>
+    /// <param name="document_id">文档的唯一标识。</param>
+    /// <param name="block_id">父块的block_id，表示为其创建一批子块。如果需要对文档树根节点创建子块，可将 document_id 填入此处。</param>
+    /// <param name="document_revision_id">
+    /// <para>必填：否</para>
+    /// <para>查询的文档版本，-1表示文档最新版本。若此时查询的版本为文档最新版本，则需要持有文档的阅读权限；若此时查询的版本为文档的历史版本，则需要持有文档的编辑权限。</para>
+    /// <para>示例值：-1</para>
+    /// <para>默认值：-1</para>
+    /// </param>
+    /// <param name="client_token">
+    /// <para>操作的唯一标识，与接口返回值的 client_token 相对应，用于幂等的进行更新操作。此值为空表示将发起一次新的请求，此值非空表示幂等的进行更新操作。</para>
+    /// <para>示例值：fe599b60-450f-46ff-b2ef-9f6675625b97</para>
+    /// <para>默认值：null</para>
+    /// </param>
+    /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
+    /// <param name="updateBlockRequest">更新块的内容请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
     [Patch("/open-apis/docx/v1/documents/{document_id}/blocks/{block_id}")]
     Task<FeishuApiResult<BlockOpResult>?> UpdateBlockAsync(
        [Path] string document_id,
@@ -95,4 +114,54 @@ public interface IFeishuV1DocxBlocks : IFeishuAppContextSwitcher
        [Query("client_token")] string? client_token = null,
        [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// <para>指定块的 block id 获取指定块的富文本内容数据。</para>
+    /// </summary>
+    /// <param name="document_id">文档的唯一标识。</param>
+    /// <param name="block_id">父块的block_id，表示为其创建一批子块。如果需要对文档树根节点创建子块，可将 document_id 填入此处。</param>
+    /// <param name="document_revision_id">
+    /// <para>必填：否</para>
+    /// <para>查询的文档版本，-1表示文档最新版本。若此时查询的版本为文档最新版本，则需要持有文档的阅读权限；若此时查询的版本为文档的历史版本，则需要持有文档的编辑权限。</para>
+    /// <para>示例值：-1</para>
+    /// <para>默认值：-1</para>
+    /// </param>
+    /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Get("/open-apis/docx/v1/documents/{document_id}/blocks/{block_id}")]
+    Task<FeishuApiResult<GetBlockInfoResult>?> GetBlockInfoAsync(
+       [Path] string document_id,
+       [Path] string block_id,
+       [Query("document_revision_id")] int? document_revision_id = -1,
+       [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
+       CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// <para>批量更新块的富文本内容。</para>
+    /// </summary>
+    /// <param name="document_id">文档的唯一标识。</param>
+    /// <param name="document_revision_id">
+    /// <para>必填：否</para>
+    /// <para>查询的文档版本，-1表示文档最新版本。若此时查询的版本为文档最新版本，则需要持有文档的阅读权限；若此时查询的版本为文档的历史版本，则需要持有文档的编辑权限。</para>
+    /// <para>示例值：-1</para>
+    /// <para>默认值：-1</para>
+    /// </param>
+    /// <param name="client_token">
+    /// <para>操作的唯一标识，与接口返回值的 client_token 相对应，用于幂等的进行更新操作。此值为空表示将发起一次新的请求，此值非空表示幂等的进行更新操作。</para>
+    /// <para>示例值：fe599b60-450f-46ff-b2ef-9f6675625b97</para>
+    /// <para>默认值：null</para>
+    /// </param>
+    /// <param name="updateBlockRequest">批量更新块的内容请求体</param>
+    /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Patch("/open-apis/docx/v1/documents/{document_id}/blocks/batch_update")]
+    Task<FeishuApiResult<BatchUpdateBlocksResult>?> BatchUpdateBlocksAsync(
+      [Path] string document_id,
+      [Body] BatchUpdateBlocksRequest updateBlockRequest,
+      [Query("document_revision_id")] int? document_revision_id = -1,
+      [Query("client_token")] string? client_token = null,
+      [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
+      CancellationToken cancellationToken = default);
 }

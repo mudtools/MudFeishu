@@ -8,9 +8,9 @@
 namespace Mud.Feishu.DataModels.Docx;
 
 /// <summary>
-/// 创建块响应体
+/// 块操作结果响应体
 /// </summary>
-public class CreateBlockResult
+public class BlockOpResult
 {
     /// <summary>
     /// <para>所添加的孩子的 Block 信息</para>

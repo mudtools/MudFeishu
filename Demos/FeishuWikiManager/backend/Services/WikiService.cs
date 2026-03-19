@@ -49,7 +49,6 @@ public class WikiService : IWikiService
 
     public async Task<PagedResponse<SpaceViewModel>> GetSpacesAsync(int pageSize = 20, string? pageToken = null)
     {
-        EnsureUserContext();
         var result = await _wikiApi.GetSpacesPageListAsync(pageSize, pageToken);
 
         if (result?.Data?.Items == null)
@@ -76,7 +75,6 @@ public class WikiService : IWikiService
 
     public async Task<SpaceViewModel?> GetSpaceInfoAsync(string spaceId)
     {
-        EnsureUserContext();
         var result = await _wikiApi.GetSpaceInfoAsync(spaceId, "zh");
 
         if (result?.Data?.Space == null)
@@ -97,7 +95,6 @@ public class WikiService : IWikiService
 
     public async Task<SpaceViewModel?> CreateSpaceAsync(string name, string? description = null)
     {
-        EnsureUserContext();
         var request = new CreateSpaceRequest
         {
             Name = name,
@@ -129,7 +126,6 @@ public class WikiService : IWikiService
         int pageSize = 50,
         string? pageToken = null)
     {
-        EnsureUserContext();
         var result = await _nodeApi.GetSpaceNodesPageListAsync(spaceId, parentNodeToken, pageSize, pageToken);
 
         if (result?.Data?.Items == null)
@@ -160,7 +156,6 @@ public class WikiService : IWikiService
 
     public async Task<NodeTreeViewModel?> GetNodeInfoAsync(string nodeToken)
     {
-        EnsureUserContext();
         var result = await _nodeApi.GetNodeSpaceInfoAsync(nodeToken, "wiki");
 
         if (result?.Data?.Node == null)
@@ -182,7 +177,6 @@ public class WikiService : IWikiService
 
     public async Task<NodeTreeViewModel?> CreateNodeAsync(string spaceId, CreateDocumentRequest request)
     {
-        EnsureUserContext();
         var nodeRequest = new CreateSpaceNodeRequest
         {
             ObjType = request.ObjType,
@@ -213,7 +207,6 @@ public class WikiService : IWikiService
 
     public async Task<bool> UpdateNodeTitleAsync(string spaceId, string nodeToken, string title)
     {
-        EnsureUserContext();
         var request = new UpdateTitleSpaceNodeRequest { Title = title };
         var result = await _nodeApi.UpdateTitleSpaceNodeAsync(spaceId, nodeToken, request);
         return result?.Code == 0;
@@ -221,7 +214,6 @@ public class WikiService : IWikiService
 
     public async Task<NodeTreeViewModel?> MoveNodeAsync(string spaceId, string nodeToken, string? targetParentToken = null)
     {
-        EnsureUserContext();
         var request = new MoveSpaceNodeRequest
         {
             TargetParentToken = targetParentToken
@@ -252,7 +244,6 @@ public class WikiService : IWikiService
         int pageSize = 20,
         string? pageToken = null)
     {
-        EnsureUserContext();
         var request = new WikiSearchRequest
         {
             Query = query,

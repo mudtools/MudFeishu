@@ -7,6 +7,7 @@
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Mud.Feishu.Abstractions;
 using System.Diagnostics;
 using System.Security.Claims;
@@ -43,13 +44,16 @@ namespace Mud.Feishu.Authentication;
 /// 初始化中间件
 /// </remarks>
 /// <param name="next">下一个中间件委托</param>
+/// <param name="options">配置选项</param>
 /// <param name="logger">日志记录器</param>
 /// <exception cref="ArgumentNullException">当参数为 null 时抛出</exception>
 public class FeishuUserAuthenticationMiddleware(
     RequestDelegate next,
+    IOptions<FeishuUserAuthenticationOptions> options,
     ILogger<FeishuUserAuthenticationMiddleware> logger)
 {
     private readonly RequestDelegate _next = next ?? throw new ArgumentNullException(nameof(next));
+    private readonly FeishuUserAuthenticationOptions _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
     private readonly ILogger<FeishuUserAuthenticationMiddleware> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
     /// <summary>
@@ -60,29 +64,40 @@ public class FeishuUserAuthenticationMiddleware(
     public async Task InvokeAsync(HttpContext context, ICurrentUserContext userContext)
     {
         // 使用 Activity 进行分布式追踪
-        using var activity = FeishuUserAuthenticationActivitySource.Source.StartActivity("FeishuUserAuthentication");
+        using var activity = _options.EnableDistributedTracing
+            ? FeishuUserAuthenticationActivitySource.Source.StartActivity("FeishuUserAuthentication", ActivityKind.Internal)
+            : null;
 
         var user = context.User;
 
         if (user?.Identity?.IsAuthenticated == true)
         {
-            // 提取用户信息
-            var openId = ExtractClaimValue(user, "open_id", ClaimTypes.NameIdentifier);
-            var unionId = ExtractClaimValue(user, "union_id");
-            var userId = ExtractClaimValue(user, "user_id");
-            var name = ExtractClaimValue(user, ClaimTypes.Name);
+            // 提取用户信息（使用配置的 Claim 类型）
+            var openId = ExtractClaimValue(user, _options.OpenIdClaimType, _options.OpenIdFallbackClaimType);
+            var unionId = ExtractClaimValue(user, _options.UnionIdClaimType);
+            var userId = ExtractClaimValue(user, _options.UserIdClaimType);
+            var name = ExtractClaimValue(user, _options.NameClaimType);
 
             if (!string.IsNullOrEmpty(openId))
             {
                 // 设置用户上下文
-                userContext.SetUser(openId, unionId, userId, name);
+                userContext.SetUser(openId!, unionId, userId, name);
 
                 // 设置 Activity 标签
                 activity?.SetTag("user.open_id", openId);
                 activity?.SetTag("user.union_id", unionId ?? "N/A");
 
-                _logger.LogDebug("用户上下文已设置: OpenId={OpenId}, UnionId={UnionId}, UserId={UserId}",
-                    openId, unionId ?? "N/A", userId ?? "N/A");
+                // 根据配置决定是否记录敏感信息
+                if (_options.EnableSensitiveLog)
+                {
+                    _logger.LogDebug("用户上下文已设置: OpenId={OpenId}, UnionId={UnionId}, UserId={UserId}",
+                        openId, unionId ?? "N/A", userId ?? "N/A");
+                }
+                else
+                {
+                    _logger.LogDebug("用户上下文已设置: OpenId={OpenId}, UserId={UserId}",
+                        MaskSensitiveInfo(openId), userId ?? "N/A");
+                }
             }
             else
             {
@@ -99,8 +114,15 @@ public class FeishuUserAuthenticationMiddleware(
         finally
         {
             // 确保请求结束后清理用户上下文
-            userContext.Clear();
-            _logger.LogDebug("用户上下文已清理");
+            try
+            {
+                userContext.Clear();
+                _logger.LogDebug("用户上下文已清理");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "清理用户上下文时发生异常");
+            }
         }
     }
 
@@ -121,6 +143,27 @@ public class FeishuUserAuthenticationMiddleware(
             }
         }
         return null;
+    }
+
+    /// <summary>
+    /// 脱敏处理敏感信息
+    /// </summary>
+    /// <param name="value">原始值</param>
+    /// <returns>脱敏后的值</returns>
+    private static string MaskSensitiveInfo(string value)
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            return "N/A";
+        }
+
+        // 保留前3位和后3位，中间用***代替
+        if (value.Length <= 6)
+        {
+            return "***";
+        }
+
+        return $"{value.Substring(0, 3)}***{value.Substring(value.Length - 3)}";
     }
 
     /// <summary>

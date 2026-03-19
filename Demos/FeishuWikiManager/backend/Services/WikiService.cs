@@ -9,7 +9,6 @@ using FeishuWikiManager.Data;
 using FeishuWikiManager.Models;
 using Microsoft.EntityFrameworkCore;
 using Mud.Feishu;
-using Mud.Feishu.Abstractions;
 using Mud.Feishu.DataModels.Wiki;
 
 namespace FeishuWikiManager.Services;
@@ -18,34 +17,21 @@ public class WikiService : IWikiService
 {
     private readonly IFeishuUserV2Wiki _wikiApi;
     private readonly IFeishuUserV2WikiNodes _nodeApi;
-    private readonly ICurrentUserContext _userContext;
     private readonly AppDbContext _dbContext;
     private readonly ILogger<WikiService> _logger;
 
     public WikiService(
         IFeishuUserV2Wiki wikiApi,
         IFeishuUserV2WikiNodes nodeApi,
-        ICurrentUserContext userContext,
         AppDbContext dbContext,
         ILogger<WikiService> logger)
     {
         _wikiApi = wikiApi;
         _nodeApi = nodeApi;
-        _userContext = userContext;
         _dbContext = dbContext;
         _logger = logger;
     }
 
-    private void EnsureUserContext()
-    {
-        if (!_userContext.IsAuthenticated)
-        {
-            throw new UnauthorizedAccessException("用户未登录");
-        }
-
-        _wikiApi.CurrentUserId = _userContext.OpenId;
-        _nodeApi.CurrentUserId = _userContext.OpenId;
-    }
 
     public async Task<PagedResponse<SpaceViewModel>> GetSpacesAsync(int pageSize = 20, string? pageToken = null)
     {

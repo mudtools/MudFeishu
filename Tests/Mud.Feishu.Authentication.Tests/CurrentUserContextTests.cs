@@ -71,6 +71,16 @@ public class CurrentUserContextTests
         Assert.Throws<ArgumentException>(() => context.SetUser(null!));
     }
 
+    [Fact]
+    public void SetUser_WhitespaceOpenId_ThrowsArgumentException()
+    {
+        // Arrange
+        var context = new CurrentUserContext();
+
+        // Act & Assert
+        Assert.Throws<ArgumentException>(() => context.SetUser("   "));
+    }
+
     #endregion
 
     #region Clear Tests

@@ -8,9 +8,11 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Moq;
 using Mud.Feishu.Abstractions;
 using Mud.Feishu.Authentication;
+using System.Security.Claims;
 using Xunit;
 
 namespace Mud.Feishu.Authentication.Tests.Extensions;
@@ -81,6 +83,82 @@ public class FeishuUserAuthenticationExtensionsTests
 
         // Assert
         Assert.Same(context1, context2);
+    }
+
+    [Fact]
+    public void AddFeishuUserContext_TryAddSingleton_DoesNotOverrideExistingRegistration()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        var customContext = new Mock<ICurrentUserContext>().Object;
+        services.AddSingleton<ICurrentUserContext>(customContext);
+
+        // Act
+        services.AddFeishuUserContext();
+        var serviceProvider = services.BuildServiceProvider();
+
+        // Assert - Should still return the custom implementation
+        var context = serviceProvider.GetService<ICurrentUserContext>();
+        Assert.Same(customContext, context);
+    }
+
+    #endregion
+
+    #region AddFeishuUserContext with Options Tests
+
+    [Fact]
+    public void AddFeishuUserContext_WithOptions_RegistersOptions()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+
+        // Act
+        services.AddFeishuUserContext(options =>
+        {
+            options.OpenIdClaimType = "custom_open_id";
+            options.EnableSensitiveLog = true;
+        });
+        var serviceProvider = services.BuildServiceProvider();
+
+        // Assert
+        var options = serviceProvider.GetService<IOptions<FeishuUserAuthenticationOptions>>();
+        Assert.NotNull(options);
+        Assert.Equal("custom_open_id", options.Value.OpenIdClaimType);
+        Assert.True(options.Value.EnableSensitiveLog);
+    }
+
+    [Fact]
+    public void AddFeishuUserContext_WithOptions_ReturnsServiceCollection()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+
+        // Act
+        var result = services.AddFeishuUserContext(_ => { });
+
+        // Assert
+        Assert.Same(services, result);
+    }
+
+    [Fact]
+    public void AddFeishuUserContext_DefaultOptions_HasCorrectDefaults()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        services.AddFeishuUserContext();
+        var serviceProvider = services.BuildServiceProvider();
+
+        // Act
+        var options = serviceProvider.GetRequiredService<IOptions<FeishuUserAuthenticationOptions>>().Value;
+
+        // Assert
+        Assert.Equal("open_id", options.OpenIdClaimType);
+        Assert.Equal(ClaimTypes.NameIdentifier, options.OpenIdFallbackClaimType);
+        Assert.Equal("union_id", options.UnionIdClaimType);
+        Assert.Equal("user_id", options.UserIdClaimType);
+        Assert.Equal(ClaimTypes.Name, options.NameClaimType);
+        Assert.True(options.EnableDistributedTracing);
+        Assert.False(options.EnableSensitiveLog);
     }
 
     #endregion
@@ -173,6 +251,24 @@ public class FeishuUserAuthenticationExtensionsTests
         // Assert
         var testClass = serviceProvider.GetRequiredService<TestClass>();
         Assert.NotNull(testClass.UserContext);
+    }
+
+    [Fact]
+    public void Integration_WithOptions_MiddlewareReceivesOptions()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        services.AddFeishuUserContext(options =>
+        {
+            options.OpenIdClaimType = "my_open_id";
+        });
+        var serviceProvider = services.BuildServiceProvider();
+
+        // Act
+        var options = serviceProvider.GetRequiredService<IOptions<FeishuUserAuthenticationOptions>>();
+
+        // Assert
+        Assert.Equal("my_open_id", options.Value.OpenIdClaimType);
     }
 
     #endregion

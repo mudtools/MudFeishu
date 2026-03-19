@@ -48,9 +48,9 @@ public class CurrentUserContext : ICurrentUserContext
     /// <inheritdoc />
     public void SetUser(string openId, string? unionId = null, string? userId = null, string? name = null)
     {
-        if (string.IsNullOrEmpty(openId))
+        if (string.IsNullOrWhiteSpace(openId))
         {
-            throw new ArgumentException("OpenId cannot be null or empty.", nameof(openId));
+            throw new ArgumentException("OpenId cannot be null, empty or whitespace.", nameof(openId));
         }
 
         _currentUser.Value = new UserInfo

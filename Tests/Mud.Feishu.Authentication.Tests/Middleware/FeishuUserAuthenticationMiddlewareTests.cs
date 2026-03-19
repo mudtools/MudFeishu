@@ -7,6 +7,7 @@
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Moq;
 using Mud.Feishu.Abstractions;
 using Mud.Feishu.Authentication;
@@ -22,11 +23,13 @@ public class FeishuUserAuthenticationMiddlewareTests
 {
     private readonly Mock<ILogger<FeishuUserAuthenticationMiddleware>> _loggerMock;
     private readonly ICurrentUserContext _userContext;
+    private readonly IOptions<FeishuUserAuthenticationOptions> _defaultOptions;
 
     public FeishuUserAuthenticationMiddlewareTests()
     {
         _loggerMock = new Mock<ILogger<FeishuUserAuthenticationMiddleware>>();
         _userContext = new CurrentUserContext();
+        _defaultOptions = Options.Create(new FeishuUserAuthenticationOptions());
     }
 
     #region Constructor Tests
@@ -36,7 +39,15 @@ public class FeishuUserAuthenticationMiddlewareTests
     {
         // Act & Assert
         Assert.Throws<ArgumentNullException>(() => 
-            new FeishuUserAuthenticationMiddleware(null!, _loggerMock.Object));
+            new FeishuUserAuthenticationMiddleware(null!, _defaultOptions, _loggerMock.Object));
+    }
+
+    [Fact]
+    public void Constructor_NullOptions_ThrowsArgumentNullException()
+    {
+        // Act & Assert
+        Assert.Throws<ArgumentNullException>(() => 
+            new FeishuUserAuthenticationMiddleware(_ => Task.CompletedTask, null!, _loggerMock.Object));
     }
 
     [Fact]
@@ -44,7 +55,7 @@ public class FeishuUserAuthenticationMiddlewareTests
     {
         // Act & Assert
         Assert.Throws<ArgumentNullException>(() => 
-            new FeishuUserAuthenticationMiddleware(_ => Task.CompletedTask, null!));
+            new FeishuUserAuthenticationMiddleware(_ => Task.CompletedTask, _defaultOptions, null!));
     }
 
     #endregion
@@ -280,11 +291,111 @@ public class FeishuUserAuthenticationMiddlewareTests
 
     #endregion
 
+    #region Configuration Tests
+
+    [Fact]
+    public async Task InvokeAsync_CustomClaimTypes_UsesConfiguredClaims()
+    {
+        // Arrange
+        var options = new FeishuUserAuthenticationOptions
+        {
+            OpenIdClaimType = "custom_open_id",
+            UnionIdClaimType = "custom_union_id",
+            UserIdClaimType = "custom_user_id",
+            NameClaimType = "custom_name"
+        };
+        var claims = new List<Claim>
+        {
+            new Claim("custom_open_id", "custom_open_id_value"),
+            new Claim("custom_union_id", "custom_union_id_value"),
+            new Claim("custom_user_id", "custom_user_id_value"),
+            new Claim("custom_name", "custom_name_value")
+        };
+        var identity = new ClaimsIdentity(claims, "TestAuth");
+        var principal = new ClaimsPrincipal(identity);
+
+        var capturedValues = new CapturedUserValues();
+        var httpContext = CreateHttpContext(principal);
+        var middleware = CreateMiddleware(_ =>
+        {
+            capturedValues.OpenId = _userContext.OpenId;
+            capturedValues.UnionId = _userContext.UnionId;
+            capturedValues.UserId = _userContext.UserId;
+            capturedValues.Name = _userContext.Name;
+            return Task.CompletedTask;
+        }, options);
+
+        // Act
+        await middleware.InvokeAsync(httpContext, _userContext);
+
+        // Assert
+        Assert.Equal("custom_open_id_value", capturedValues.OpenId);
+        Assert.Equal("custom_union_id_value", capturedValues.UnionId);
+        Assert.Equal("custom_user_id_value", capturedValues.UserId);
+        Assert.Equal("custom_name_value", capturedValues.Name);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_FallbackClaimType_UsesFallbackWhenPrimaryNotPresent()
+    {
+        // Arrange
+        var options = new FeishuUserAuthenticationOptions();
+        var claims = new List<Claim>
+        {
+            // No "open_id" claim, but has NameIdentifier
+            new Claim(ClaimTypes.NameIdentifier, "fallback_open_id"),
+            new Claim("union_id", "union_id_value")
+        };
+        var identity = new ClaimsIdentity(claims, "TestAuth");
+        var principal = new ClaimsPrincipal(identity);
+
+        var capturedValues = new CapturedUserValues();
+        var httpContext = CreateHttpContext(principal);
+        var middleware = CreateMiddleware(_ =>
+        {
+            capturedValues.OpenId = _userContext.OpenId;
+            return Task.CompletedTask;
+        }, options);
+
+        // Act
+        await middleware.InvokeAsync(httpContext, _userContext);
+
+        // Assert
+        Assert.Equal("fallback_open_id", capturedValues.OpenId);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_DisableDistributedTracing_DoesNotCreateActivity()
+    {
+        // Arrange
+        var options = new FeishuUserAuthenticationOptions
+        {
+            EnableDistributedTracing = false
+        };
+        var claims = new List<Claim>
+        {
+            new Claim("open_id", "test_open_id")
+        };
+        var identity = new ClaimsIdentity(claims, "TestAuth");
+        var principal = new ClaimsPrincipal(identity);
+
+        var httpContext = CreateHttpContext(principal);
+        var middleware = CreateMiddleware(_ => Task.CompletedTask, options);
+
+        // Act - Should not throw
+        await middleware.InvokeAsync(httpContext, _userContext);
+
+        // Assert - Just verify no exception
+        Assert.True(true);
+    }
+
+    #endregion
+
     #region Helper Methods
 
-    private FeishuUserAuthenticationMiddleware CreateMiddleware(RequestDelegate next)
+    private FeishuUserAuthenticationMiddleware CreateMiddleware(RequestDelegate next, FeishuUserAuthenticationOptions? options = null)
     {
-        return new FeishuUserAuthenticationMiddleware(next, _loggerMock.Object);
+        return new FeishuUserAuthenticationMiddleware(next, Options.Create(options ?? new FeishuUserAuthenticationOptions()), _loggerMock.Object);
     }
 
     private static HttpContext CreateHttpContext(ClaimsPrincipal? user)

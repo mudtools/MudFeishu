@@ -6,10 +6,14 @@
 // -----------------------------------------------------------------------
 
 using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Mud.Feishu.Abstractions;
 using Mud.Feishu.Authentication;
 
+
 namespace Microsoft.Extensions.DependencyInjection;
+
 
 /// <summary>
 /// 飞书用户认证服务扩展方法
@@ -27,7 +31,8 @@ public static class FeishuUserAuthenticationExtensions
     /// <remarks>
     /// <para>注册内容：</para>
     /// <list type="bullet">
-    ///   <item><description>ICurrentUserContext - 注册为 Singleton</description></item>
+    ///   <item><description>ICurrentUserContext - 注册为 Singleton（使用 TryAddSingleton 允许覆盖）</description></item>
+    ///   <item><description>FeishuUserAuthenticationOptions - 配置选项</description></item>
     /// </list>
     /// <para>使用示例：</para>
     /// <code>
@@ -36,7 +41,38 @@ public static class FeishuUserAuthenticationExtensions
     /// </remarks>
     public static IServiceCollection AddFeishuUserContext(this IServiceCollection services)
     {
-        services.AddSingleton<ICurrentUserContext, CurrentUserContext>();
+        return services.AddFeishuUserContext(_ => { });
+    }
+
+    /// <summary>
+    /// 添加飞书用户上下文服务并配置选项
+    /// </summary>
+    /// <param name="services">服务集合</param>
+    /// <param name="configure">配置委托</param>
+    /// <returns>服务集合实例，支持链式调用</returns>
+    /// <remarks>
+    /// <para>注册内容：</para>
+    /// <list type="bullet">
+    ///   <item><description>ICurrentUserContext - 注册为 Singleton（使用 TryAddSingleton 允许覆盖）</description></item>
+    ///   <item><description>FeishuUserAuthenticationOptions - 配置选项</description></item>
+    /// </list>
+    /// <para>使用示例：</para>
+    /// <code>
+    /// services.AddFeishuUserContext(options =>
+    /// {
+    ///     options.OpenIdClaimType = "custom_open_id";
+    ///     options.EnableSensitiveLog = false;
+    /// });
+    /// </code>
+    /// </remarks>
+    public static IServiceCollection AddFeishuUserContext(this IServiceCollection services, Action<FeishuUserAuthenticationOptions> configure)
+    {
+        // 注册配置选项
+        services.Configure(configure);
+
+        // 使用 TryAddSingleton 允许用户自定义实现
+        services.TryAddSingleton<ICurrentUserContext, CurrentUserContext>();
+
         return services;
     }
 

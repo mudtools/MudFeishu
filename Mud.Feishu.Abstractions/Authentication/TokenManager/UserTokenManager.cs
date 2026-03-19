@@ -55,14 +55,10 @@ internal class UserTokenManager : IFeishuUserTokenManager
     public async Task<string> GetTokenAsync(CancellationToken cancellationToken = default)
     {
         if (_currentUserContext == null)
-        {
             throw new InvalidOperationException("CurrentUserContext is not available. Cannot get user token.");
-        }
 
-        if (string.IsNullOrEmpty(_currentUserContext.OpenId))
-        {
-            throw new InvalidOperationException("Current user is not authenticated. OpenId is required to get user token.");
-        }
+        if (!_currentUserContext.IsAuthenticated)
+            throw new InvalidOperationException("Current user is not authenticated. Cannot get user token.");
 
         return await GetTokenAsync(_currentUserContext.UserId, cancellationToken) ?? throw new InvalidOperationException("Failed to obtain user token.");
     }

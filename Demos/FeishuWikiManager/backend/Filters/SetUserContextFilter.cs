@@ -6,7 +6,7 @@
 // -----------------------------------------------------------------------
 
 using Microsoft.AspNetCore.Mvc.Filters;
-using Mud.Feishu.Authentication;
+using Mud.Feishu.Abstractions;
 
 namespace FeishuWikiManager.Filters;
 
@@ -42,7 +42,7 @@ public class SetUserContextFilter : IAsyncActionFilter
         {
             var openId = _userContext.OpenId;
             var dbUser = await _userService.GetUserByOpenIdAsync(openId);
-            
+
             if (dbUser != null)
             {
                 // 更新用户上下文，添加业务系统用户ID

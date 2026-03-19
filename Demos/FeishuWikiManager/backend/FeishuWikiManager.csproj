@@ -17,6 +17,9 @@
 	<ItemGroup>
 		<PackageReference Include="Mud.Feishu" Version="2.0.4" />
 	</ItemGroup>
+	<ItemGroup>
+	  <ProjectReference Include="..\..\..\Mud.Feishu.Authentication\Mud.Feishu.Authentication.csproj" />
+	</ItemGroup>
 	<!--<ItemGroup>
 		<ProjectReference Include="..\..\..\Mud.Feishu\Mud.Feishu.csproj" />
 	</ItemGroup>-->

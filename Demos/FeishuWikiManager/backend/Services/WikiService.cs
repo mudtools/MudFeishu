@@ -9,6 +9,7 @@ using FeishuWikiManager.Data;
 using FeishuWikiManager.Models;
 using Microsoft.EntityFrameworkCore;
 using Mud.Feishu;
+using Mud.Feishu.Abstractions;
 using Mud.Feishu.DataModels.Wiki;
 
 namespace FeishuWikiManager.Services;

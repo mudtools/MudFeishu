@@ -51,8 +51,10 @@
 /Tests/Mud.Feishu.Webhook.Tests/obj
 /Tests/Mud.Feishu.WebSocket.Tests/bin/Debug
 /Tests/Mud.Feishu.WebSocket.Tests/obj
+/Tests/Mud.Feishu.Authentication.Tests/bin
+/Tests/Mud.Feishu.Authentication.Tests/obj
+/Tests/Mud.Feishu.Authentication.Tests/TestResults
 node_modules
-
 ################################################################################
 # 敏感配置文件
 ################################################################################

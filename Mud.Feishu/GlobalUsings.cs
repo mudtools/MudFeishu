@@ -7,7 +7,6 @@
 
 global using Mud.Feishu;
 global using Mud.Feishu.Abstractions;
-global using Mud.Feishu.Abstractions.Utilities;
 global using Mud.Feishu.DataModels;
 global using Mud.Feishu.Interfaces;
 global using Mud.Feishu.Interfaces.Internal;

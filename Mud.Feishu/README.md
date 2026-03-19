@@ -93,6 +93,10 @@ graph TD
 审批流程          │    ✅     │    ✅     │    ✅    │     ✅
 任务管理          │    ✅     │    ✅     │    ✅    │     ✅
 卡片管理          │    ✅     │    ✅     │    ✅    │     ✅
+文档管理          │    ✅     │    -      │    -     │     -
+知识库            │    ✅     │    -      │    -     │     -
+云盘管理          │    ✅     │    -      │    -     │     -
+考勤管理          │    ✅     │    -      │    -     │     -
 ```
 
 ---
@@ -622,6 +626,99 @@ public class DepartmentCreatedEventHandler :
 
 ---
 
+## 📋 API 模块详情
+
+### 📄 文档管理 (Docx)
+
+飞书文档 API 接口，支持文档创建、编辑、块操作等。
+
+| 接口 | 版本 | 说明 |
+|------|------|------|
+| `IFeishuV1Docx` | V1 | 文档基础操作 |
+| `IFeishuV1DocxBlocks` | V1 | 文档块操作 |
+| `IFeishuV1Docx_Tenant` | V1 | 租户级文档操作 |
+| `IFeishuV1Docx_User` | V1 | 用户级文档操作 |
+
+### 📚 知识库 (Wiki)
+
+知识空间和节点管理 API 接口。
+
+| 接口 | 版本 | 说明 |
+|------|------|------|
+| `IFeishuV2Wiki` | V2 | 知识空间管理 |
+| `IFeishuV2WikiNodes` | V2 | 知识节点管理 |
+| `IFeishuV2Wiki_Tenant` | V2 | 租户级知识库操作 |
+| `IFeishuV2Wiki_User` | V2 | 用户级知识库操作 |
+
+### ☁️ 云盘管理 (Drive)
+
+云空间文件和文件夹管理 API 接口。
+
+| 接口 | 版本 | 说明 |
+|------|------|------|
+| `IFeishuV1DriveFiles` | V1 | 文件操作 |
+| `IFeishuV1DriveFolder` | V1 | 文件夹操作 |
+| `IFeishuV1DriveFilesVersions` | V1 | 文件版本管理 |
+| `IFeishuV1DriveMedia` | V1 | 媒体文件操作 |
+
+### ⏰ 考勤管理 (Attendance)
+
+企业考勤全流程管理 API 接口。
+
+| 接口 | 版本 | 说明 |
+|------|------|------|
+| `IFeishuV1AttendanceGroups` | V1 | 考勤组管理 |
+| `IFeishuV1AttendanceUserFlows` | V1 | 打卡流水 |
+| `IFeishuV1AttendanceStats` | V1 | 考勤统计 |
+| `IFeishuV1AttendanceShifts` | V1 | 班次管理 |
+| `IFeishuV1AttendanceLeave` | V1 | 请假管理 |
+| `IFeishuV1AttendanceRemedys` | V1 | 补卡管理 |
+| `IFeishuV1AttendanceArchives` | V1 | 归档报表 |
+| `IFeishuV1AttendanceApprovals` | V1 | 审批管理 |
+
+### 📋 审批流程 (Approval)
+
+企业审批全流程管理 API 接口。
+
+| 接口 | 版本 | 说明 |
+|------|------|------|
+| `IFeishuV4Approval` | V4 | 审批定义和实例 |
+| `IFeishuV4ApprovalTask` | V4 | 审批任务管理 |
+| `IFeishuV4ApprovalComments` | V4 | 审批评论 |
+| `IFeishuV4ApprovalQuery` | V4 | 审批查询 |
+| `IFeishuV4ApprovalExternal` | V4 | 第三方审批 |
+| `IFeishuV1ApprovalMessage` | V1 | 审批消息 |
+
+### 📝 任务管理 (Task)
+
+飞书任务全功能 API 接口。
+
+| 接口 | 版本 | 说明 |
+|------|------|------|
+| `IFeishuV2Task` | V2 | 任务管理 |
+| `IFeishuV2TaskList` | V2 | 任务列表 |
+| `IFeishuV2TaskSections` | V2 | 任务分组 |
+| `IFeishuV2TaskComments` | V2 | 任务评论 |
+| `IFeishuV2TaskAttachments` | V2 | 任务附件 |
+| `IFeishuV2TaskCustomFields` | V2 | 自定义字段 |
+| `IFeishuV2TaskActivitySubscriptions` | V2 | 活动订阅 |
+
+### 👥 组织架构 (Organization)
+
+完整的组织架构管理 API 接口。
+
+| 接口 | 版本 | 说明 |
+|------|------|------|
+| `IFeishuTenantV3User` | V3 | 用户管理 |
+| `IFeishuTenantV3Departments` | V3 | 部门管理 |
+| `IFeishuTenantV3UserGroup` | V3 | 用户组管理 |
+| `IFeishuTenantV3JobLevel` | V3 | 职级管理 |
+| `IFeishuTenantV3JobFamilies` | V3 | 职务管理 |
+| `IFeishuTenantV3EmployeeType` | V3 | 员工类型 |
+| `IFeishuTenantV3Role` | V3 | 角色管理 |
+
+---
+
 ## 🎯 常见操作快速参考
 
 ### 令牌管理
@@ -753,8 +850,21 @@ public async Task<UserInfo> GetUserSafelyAsync(string userId)
 - **消息服务**：消息发送、批量消息
 - **群聊管理**：群组、成员、菜单、会话标签
 - **审批流程**：审批实例、审批任务、审批评论
-- **任务管理**：任务、任务列表、任务评论
+- **任务管理**：任务、任务列表、任务评论、自定义字段
 - **卡片服务**：卡片管理、卡片元素、消息流卡片
+- **文档管理**：飞书文档、文档块操作、内容转换
+- **知识库**：知识空间管理、节点操作、文档移动
+- **云盘管理**：文件上传下载、文件夹管理、版本控制
+- **考勤管理**：考勤组、打卡记录、请假审批、统计报表
+
+### FeishuWikiManager
+
+飞书知识库管理 Demo（Vue3 + .NET），展示：
+
+- 飞书 OAuth 2.0 登录集成
+- 知识空间浏览和管理
+- 文档搜索和收藏
+- 用户信息和权限管理
 
 ### Mud.Feishu.Webhook.Demo
 

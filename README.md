@@ -15,7 +15,7 @@
 
 **完整的 HTTP API、WebSocket 实时事件订阅和 Webhook 事件处理解决方案**
 
-[快速开始](#-快速开始) • [架构说明](#-项目架构) • [功能特性](#-核心功能) • [使用示例](#-使用示例) • [文档](#-详细文档)
+[快速开始](#-快速开始) • [API 模块](#-api-模块) • [使用示例](#-使用示例) • [文档](#-详细文档)
 
 </div>
 
@@ -33,72 +33,6 @@ MudFeishu 是一套现代化的企业级 .NET 飞书 API 集成 SDK，提供完�
 - 🛡️ **企业级稳定** - 统一异常处理、智能重试、详细日志
 - 🎯 **事件驱动** - 策略模式事件处理，灵活扩展
 - 📊 **多框架支持** - .NET Standard 2.0、.NET 6.0、.NET 8.0、.NET 10.0
-
----
-
-## 🏗️ 项目架构
-
-### 整体架构图
-
-```mermaid
-graph TB
-    %% 简化的节点命名
-    App["业务应用<br/>(Web/移动/微服务)"]
-    Core["Mud.Feishu<br/>核心API客户端"]
-    WebSocket["Mud.Feishu.WebSocket<br/>实时事件"]
-    Webhook["Mud.Feishu.Webhook<br/>HTTP回调"]
-    RedisExt["Mud.Feishu.Redis<br/>分布式去重"]
-    Abstraction["Mud.Feishu.Abstractions<br/>事件抽象层"]
-    Feishu[飞书开放平台]
-    Config[配置]
-    Logging[日志]
-
-    %% 主要关系
-    App --> Core
-    App --> WebSocket
-    App --> Webhook
-    Webhook --> RedisExt
-
-    %% SDK内部依赖
-    Core --> Abstraction
-    WebSocket --> Abstraction
-    Webhook --> Abstraction
-    RedisExt --> Abstraction
-
-    %% 通信关系
-    Core --> Feishu
-    WebSocket --> Feishu
-    Feishu --> Webhook
-
-    %% 公共依赖
-    Config -.-> Core
-    Config -.-> WebSocket
-    Config -.-> Webhook
-    Config -.-> RedisExt
-
-    Core -.-> Logging
-    WebSocket -.-> Logging
-    Webhook -.-> Logging
-    RedisExt -.-> Logging
-
-    %% 布局调整
-    classDef app fill:#f9f,stroke:#333,stroke-width:2px;
-    classDef sdk fill:#bbf,stroke:#333,stroke-width:2px;
-    classDef infra fill:#bfb,stroke:#333,stroke-width:2px;
-
-    class App app;
-    class Core,WebSocket,Webhook,RedisExt,Abstraction sdk;
-    class Feishu,Config,Logging infra;
-```
-
-### 模块功能对比
-
-| 模块                     | 核心功能      | 通信方式         | 实时性        | 适用场景           |
-| ------------------------ | ------------- | ---------------- | ------------- | ------------------ |
-| **Mud.Feishu**           | HTTP API 调用 | HTTP 请求        | 低 (主动查询) | 数据查询、操作管理 |
-| **Mud.Feishu.WebSocket** | 实时事件订阅  | WebSocket 长连接 | 高 (实时推送) | 实时通知、即时响应 |
-| **Mud.Feishu.Webhook**   | HTTP 回调处理 | HTTP 回调        | 中 (被动接收) | 事件触发、异步处理 |
-| **Mud.Feishu.Redis**     | 分布式去重    | Redis            | -             | 多实例部署、防重复 |
 
 ---
 
@@ -283,20 +217,263 @@ public class TestController : ControllerBase
 
 ---
 
+## 🎯 API 模块
+
+Mud.Feishu 提供完整的飞书 HTTP API 覆盖，支持以下模块：
+
+### 📋 API 模块总览
+
+| 模块分类 | API版本 | 主要功能 |
+|---------|--------|---------|
+| **🔐 认证授权** | V3 | 应用令牌、租户令牌、用户令牌、OAuth 2.0、多应用管理 |
+| **👥 组织架构** | V1/V3 | 用户、部门、员工、用户组、职级、职务、角色 |
+| **💬 消息服务** | V1 | 文本/图片/卡片消息、批量发送、群聊管理 |
+| **📋 审批流程** | V4 | 审批定义、审批实例、审批任务、审批消息、审批统计 |
+| **📝 任务管理** | V2 | 任务创建、更新、分组、附件、评论、自定义字段 |
+| **📅 日程会议** | V4 | 日程事件、会议管理 |
+| **📄 文档管理** | V1 | 飞书文档、文档块、内容转换、知识库 |
+| **📚 知识库** | V2 | 知识空间、节点管理、节点复制移动 |
+| **☁️ 云盘管理** | V1 | 云空间、文件夹、文件上传、版本管理 |
+| **⏰ 考勤管理** | V1 | 考勤组、打卡记录、请假审批、考勤统计 |
+| **🎴 卡片管理** | V1/V2 | 卡片管理、卡片元素、消息流卡片 |
+
+### 📄 文档管理 (Docx)
+
+飞书文档 API，支持文档创建、编辑、块操作等。
+
+```csharp
+public interface IFeishuV1Docx
+{
+    // 文档基础操作
+}
+
+public interface IFeishuV1DocxBlocks
+{
+    // 文档块操作
+}
+```
+
+**功能列表**：
+- 文档创建和获取
+- 文档块读取和更新
+- 批量操作文档块
+- 内容转换
+
+### 📚 知识库 (Wiki)
+
+知识空间和节点管理 API。
+
+```csharp
+public interface IFeishuV2Wiki
+{
+    // 知识空间管理
+}
+
+public interface IFeishuV2WikiNodes
+{
+    // 知识节点管理
+}
+```
+
+**功能列表**：
+- 知识空间创建和查询
+- 节点树结构管理
+- 节点复制和移动
+- 文档导入知识库
+
+### ☁️ 云盘管理 (Drive)
+
+云空间文件和文件夹管理 API。
+
+```csharp
+public interface IFeishuV1DriveFiles
+{
+    // 文件操作
+}
+
+public interface IFeishuV1DriveFolder
+{
+    // 文件夹操作
+}
+
+public interface IFeishuV1DriveFilesVersions
+{
+    // 文件版本管理
+}
+```
+
+**功能列表**：
+- 文件上传和下载
+- 文件夹创建和管理
+- 文件版本控制
+- 文件权限管理
+- 媒体文件处理
+
+### ⏰ 考勤管理 (Attendance)
+
+企业考勤全流程管理 API。
+
+```csharp
+public interface IFeishuV1AttendanceGroups
+{
+    // 考勤组管理
+}
+
+public interface IFeishuV1AttendanceUserFlows
+{
+    // 打卡流水
+}
+
+public interface IFeishuV1AttendanceStats
+{
+    // 考勤统计
+}
+```
+
+**功能列表**：
+- 考勤组配置管理
+- 打卡记录查询
+- 班次管理
+- 请假审批
+- 补卡申请
+- 考勤统计报表
+
+### 📋 审批流程 (Approval)
+
+企业审批全流程管理 API。
+
+```csharp
+public interface IFeishuV4Approval
+{
+    // 审批定义和实例
+}
+
+public interface IFeishuV4ApprovalTask
+{
+    // 审批任务管理
+}
+```
+
+**功能列表**：
+- 审批定义创建
+- 审批实例发起
+- 审批任务处理
+- 审批评论
+- 第三方审批集成
+
+### 📝 任务管理 (Task)
+
+飞书任务全功能 API。
+
+```csharp
+public interface IFeishuV2Task
+{
+    // 任务管理
+}
+
+public interface IFeishuV2TaskCustomFields
+{
+    // 自定义字段
+}
+```
+
+**功能列表**：
+- 任务创建和更新
+- 任务列表管理
+- 任务分组
+- 任务评论和附件
+- 自定义字段
+
+### 👥 组织架构 (Organization)
+
+完整的组织架构管理 API。
+
+```csharp
+public interface IFeishuTenantV3User
+{
+    // 用户管理
+}
+
+public interface IFeishuTenantV3Departments
+{
+    // 部门管理
+}
+```
+
+**功能列表**：
+- 用户 CRUD 操作
+- 部门树管理
+- 用户组管理
+- 职级职务管理
+- 角色权限管理
+
+### 💬 消息服务 (Messages)
+
+消息发送和批量消息 API。
+
+```csharp
+public interface IFeishuV1Message
+{
+    // 消息发送
+}
+
+public interface IFeishuV1BatchMessage
+{
+    // 批量消息
+}
+```
+
+**功能列表**：
+- 文本/图片/卡片消息
+- 批量发送
+- 消息撤回
+- 已读状态查询
+
+### 🎴 卡片管理 (Cards)
+
+卡片和消息流卡片 API。
+
+```csharp
+public interface IFeishuV1Card
+{
+    // 卡片管理
+}
+
+public interface IFeishuV1CardElements
+{
+    // 卡片元素
+}
+```
+
+**功能列表**：
+- 卡片创建和更新
+- 卡片元素管理
+- 消息流卡片
+
+### 🏢 群聊管理 (ChatGroup)
+
+群组和会话管理 API。
+
+```csharp
+public interface IFeishuTenantV3ChatGroup
+{
+    // 群组管理
+}
+```
+
+**功能列表**：
+- 群组创建和管理
+- 群成员管理
+- 群公告
+- 会话标签
+
+---
+
 ## 🎯 核心功能
 
 ### 🏛️ Mud.Feishu.Abstractions - 事件处理抽象层
 
 **统一的事件处理架构，WebSocket 和 Webhook 共享相同的处理器接口**
-
-```mermaid
-graph LR
-    A[事件源] --> B{事件类型}
-    B -->|用户事件| C[UserEventHandler]
-    B -->|部门事件| D[DepartmentEventHandler]
-    B -->|消息事件| E[MessageEventHandler]
-    B -->|未知事件| F[DefaultEventHandler]
-```
 
 | 功能特性       | 说明                       |
 | -------------- | -------------------------- |
@@ -307,33 +484,12 @@ graph LR
 | **事件拦截器** | 支持事件处理前后的拦截逻辑 |
 | **基类处理器** | 简化开发的专用基类         |
 
-**支持的基类处理器**：
-
-- `DepartmentCreatedEventHandler` - 部门创建
-- `DepartmentDeleteEventHandler` - 部门删除
-- `DefaultFeishuEventHandler<T>` - 通用处理器
-
 **新增工具类**：
 
 - `UrlValidator` - URL 白名单验证和 SSRF 防护
 - `HttpRetryPolicyBuilder` - HTTP 重试策略构建器（支持指数退避和抖动）
 
 ### 🌐 Mud.Feishu - HTTP API 客户端
-
-**完整的飞书 API 覆盖，自动令牌管理**
-
-| 模块分类        | API版本 | 主要功能                                   |
-| --------------- | ------- | ------------------------------------------ |
-| **🔐 认证授权** | V3      | 应用令牌、租户令牌、用户令牌、OAuth 2.0、多应用管理 |
-| **👥 组织架构** | V1/V3   | 用户、部门、员工、用户组、职级、职务、角色 |
-| **💬 消息服务** | V1      | 文本/图片/卡片消息、批量发送、群聊管理     |
-| **📋 审批流程** | V4      | 审批定义、审批实例、审批任务、审批消息、审批统计 |
-| **📝 任务管理** | V2      | 任务创建、更新、分组、附件、评论、自定义字段 |
-| **📅 日程会议** | V4      | 日程事件、会议管理                         |
-| **📄 文档管理** | V1      | 飞书文档、文档块、内容转换、知识库        |
-| **📚 知识库**   | V2      | 知识空间、节点管理、节点复制移动          |
-| **☁️ 云盘管理** | V1      | 云空间、文件夹、文件上传、版本管理        |
-| **⏰ 考勤管理** | V1      | 考勤组、打卡记录、请假审批、考勤统计      |
 
 **企业级特性**：
 
@@ -348,110 +504,6 @@ graph LR
 
 > 💡 **提示**：[查看完整 API 文档](./Mud.Feishu/README.md)
 
-### 🔄 Mud.Feishu.WebSocket - 实时事件订阅
-
-**基于 WebSocket 长连接的实时事件推送，支持智能连接管理和错误分类处理**
-
-```mermaid
-sequenceDiagram
-    participant Client as 你的应用
-    participant WS as Mud.Feishu.WebSocket
-    participant Feishu as 飞书服务器
-
-    Client->>WS: 1. 订阅事件
-    WS->>Feishu: 2. 建立 WebSocket 连接
-    Feishu-->>WS: 3. 认证成功
-    loop 实时推送
-        Feishu-->>WS: 4. 事件消息
-        WS->>WS: 5. 路由到处理器
-        WS->>Client: 6. 处理完成
-    end
-```
-
-| 功能分类     | 特性                                       |
-| ------------ | ------------------------------------------ |
-| **连接管理** | 自动重连、心跳检测、连接监控、错误分类处理 |
-| **事件处理** | 策略模式、多处理器并行、事件重放           |
-| **消息类型** | ping/pong、heartbeat、event、auth          |
-| **监控运维** | 连接状态、处理统计、健康检查、审计日志     |
-
-**错误分类处理**：
-
-- ✅ **可恢复错误** - 网络波动、临时故障等
-- ✅ **不可恢复错误** - 认证失败、权限不足等
-- ✅ **详细的错误日志和错误类型标识** - 帮助快速定位问题
-
-**认证失败处理**：
-
-- ✅ **按错误码分类认证失败原因**
-- ✅ **统计总失败次数和失败时间**
-- ✅ **提供针对性修复建议**
-
-**性能指标监控**：
-
-- ✅ **连接数统计** - 实时 WebSocket 连接数
-- ✅ **事件处理指标** - 认证、事件处理计数和耗时
-- ✅ **内置 Meter 支持** - 集成 .NET 性能计数器
-
-### 🌐 Mud.Feishu.Webhook - HTTP 回调事件处理
-
-**基于中间件模式的事件接收和分发，具备企业级安全防护和性能优化**
-
-```mermaid
-sequenceDiagram
-    participant Feishu as 飞书服务器
-    participant Webhook as Mud.Feishu.Webhook
-    participant Middleware as 中间件
-    participant Handler as 事件处理器
-
-    Feishu->>Middleware: 1. POST /feishu/{AppKey}
-    Middleware->>Middleware: 2. 验证签名
-    Middleware->>Middleware: 3. 解密内容
-    Middleware->>Webhook: 4. 路由事件
-    Webhook->>Handler: 5. 调用处理器
-    Handler-->>Middleware: 6. 处理完成
-    Middleware-->>Feishu: 7. 返回响应
-```
-
-| 功能分类     | 特性                                                                 |
-| ------------ | -------------------------------------------------------------------- |
-| **安全验证** | 签名验证、时间戳验证、AES-256-CBC 解密、IP 白名单、Content-Type 验证、SSRF 防护、URL 白名单验证 |
-| **事件处理** | 中间件模式、自动路由、策略模式、异步处理、事件拦截器、失败事件重试   |
-| **高级功能** | 多机器人支持、后台处理、并发控制（支持热更新）、断路器模式           |
-| **监控运维** | 性能监控、健康检查、请求日志、异常处理、安全审计日志               |
-| **安全加固** | 滑动窗口限流、威胁检测、安全审计、密钥验证、JSON 深度限制、私网 IP 检测 |
-| **性能优化** | 流式请求体读取、源生成器序列化、内存管理优化、信号量并发控制         |
-
-**安全增强特性**：
-
-- ✅ **Content-Type 验证** - 仅接受 `application/json` 请求
-- ✅ **JSON 深度限制** - 防止深度嵌套 JSON 导致 DoS 攻击
-- ✅ **流式请求体读取** - 防止伪造 Content-Length 的 DoS 攻击
-- ✅ **Nonce 过期清理** - 防止内存泄漏
-- ✅ **断路器模式** - 使用 Polly 实现熔断机制
-- ✅ **失败事件重试** - 后台自动重试失败事件
-- ✅ **SSRF 防护** - 自动检测和阻止内网 IP 访问请求
-- ✅ **URL 白名单验证** - 支持配置允许的 URL 域名和路径
-- ✅ **私网 IP 检测** - 自动识别 127.0.0.1、192.168.x.x 等内网地址
-- ✅ **安全审计日志** - 记录所有安全相关事件（成功/失败）
-
-**性能优化**：
-
-- ✅ **源生成器序列化** - 提升序列化性能约 20-30%
-- ✅ **限流内存管理** - LRU 淘汰机制，最大 10 万条目
-- ✅ **日志脱敏** - 自动脱敏敏感字段防止信息泄露
-- ✅ **信号量并发控制** - 使用 SemaphoreSlim 控制最大并发数，支持配置热更新
-- ✅ **HTTP 重试策略** - 智能指数退避和抖动算法
-
-**核心服务**：
-
-- `FeishuWebhookConcurrencyService` - 并发控制服务，支持配置热更新
-- `FailedEventRetryService` - 失败事件重试服务，后台自动重试
-- `SecurityAuditService` - 安全审计服务，记录安全事件
-- `ThreatDetectionService` - 威胁检测服务，识别异常请求模式
-- `LoggingEventInterceptor` - 日志事件拦截器
-- `TelemetryEventInterceptor` - 遥测事件拦截器
-
 ---
 
 ## 💡 快速开始示例
@@ -463,16 +515,13 @@ sequenceDiagram
 [HttpPost("users")]
 public async Task<IActionResult> CreateUser([FromBody] CreateUserRequest request)
 {
-    _userApi.UseApp("hr-app");// 多应用场景下切换到 hr-app 应用，单应用场景下可省略
+    _userApi.UseApp("hr-app");// 多应用场景下切换应用
     var result = await _userApi.CreateUserAsync(request);
-    _userApi.UseDefaultApp();// 多应用场景下切换回默认应用, 单应用场景下可省略
+    _userApi.UseDefaultApp();
     return result.Code == 0 ? Ok(result.Data) : BadRequest(result.Msg);
 }
 
-// 构造函数注入IFeishuAppManager接口。
-private readonly IFeishuAppManager _feishuAppManager;
-
-// 使用IFeishuAppManager获取API接口对象，灵活切换飞书应用。
+// 多应用场景下使用 IFeishuAppManager
 var tenantJobTitleApi = _feishuAppManager.GetFeishuApi<IFeishuTenantV3JobTitle>("hr-app");
 var result = await tenantJobTitleApi.GetJobTitlesListAsync(10, null);
 
@@ -480,129 +529,25 @@ var result = await tenantJobTitleApi.GetJobTitlesListAsync(10, null);
 var contextSwitcher = _feishuAppManager.GetAppContextSwitcher();
 using (contextSwitcher.UseApp("hr-app"))
 {
-    // 此范围内的所有 API 调用都使用 hr-app 应用
     var userApi = _feishuAppManager.GetFeishuApi<IFeishuTenantV3User>();
     var userResult = await userApi.GetUserInfoByIdAsync("user_123");
 }
-
-// 单应用模式下发送消息，无须应用。
-var textContent = new MessageTextContent { Text = "Hello World!" };
-var result = await messageApi.SendMessageAsync(new SendMessageRequest
-{
-    ReceiveId = "user_123",
-    MsgType = "text",
-    Content = JsonSerializer.Serialize(textContent)
-}, receive_id_type: "user_id");
 ```
 
-### WebSocket 事件处理
+### 事件处理
 
 ```csharp
-// 实现事件处理器
-public class MessageHandler : IFeishuEventHandler
-{
-    public string SupportedEventType => "im.message.receive_v1";
-
-    public async Task HandleAsync(EventData eventData, CancellationToken cancellationToken = default)
-    {
-        var messageEvent = JsonSerializer.Deserialize<MessageReceiveEvent>(
-            eventData.Event?.ToString() ?? "{}");
-
-        Console.WriteLine($"收到消息: {messageEvent.Message.Content}");
-    }
-}
-
-// 注册处理器
+// WebSocket 实时事件订阅
 builder.Services.CreateFeishuWebSocketServiceBuilder(builder.Configuration)
-    .AddHandler<MessageHandler>()
+    .AddHandler<MessageEventHandler>()
     .Build();
-```
 
-### Webhook 事件处理
-
-```csharp
-// 部门创建事件处理器（继承基类）
-public class DepartmentCreatedHandler : DepartmentCreatedEventHandler
-{
-    protected override async Task ProcessBusinessLogicAsync(
-        EventData eventData,
-        DepartmentCreatedResult? departmentData,
-        CancellationToken cancellationToken = default)
-    {
-        // 同步到本地数据库
-        await SyncToDatabaseAsync(departmentData);
-    }
-}
-
-// 注册处理器
+// Webhook HTTP 回调事件处理
 builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
-    .AddHandler<DepartmentCreatedHandler>()
+    .AddHandler<DepartmentCreatedEventHandler>()
     .Build();
 
-// 添加中间件
 app.UseFeishuWebhook();
-```
-
-### 性能指标监控
-
-```csharp
-// 获取 WebSocket 实时连接数
-var connectionCountProvider = app.Services.GetRequiredService<IWebSocketConnectionCountProvider>();
-var connectionCount = await connectionCountProvider.GetConnectionCountAsync();
-
-// 使用 FeishuMetrics 记录自定义指标
-FeishuMetrics.RecordTokenRefresh("default", true);
-FeishuMetrics.RecordHttpRequest("default", "user.get", 200, TimeSpan.FromMilliseconds(150));
-```
-
-### URL 白名单和 SSRF 防护
-
-```csharp
-// 配置 URL 白名单
-var options = new FeishuWebhookOptions
-{
-    SsrfProtection = new SsrfProtectionOptions
-    {
-        Enabled = true,
-        BlockPrivateIps = true,
-        AllowList = new[]
-        {
-            "https://open.feishu.cn",
-            "https://*.example.com"
-        }
-    }
-};
-
-// 验证 URL
-UrlValidator.ValidateBaseUrl("https://open.feishu.cn/api", true);
-```
-
-### 事件拦截器
-
-```csharp
-// 创建日志拦截器
-public class CustomLoggingInterceptor : LoggingEventInterceptor
-{
-    public CustomLoggingInterceptor(ILogger<CustomLoggingInterceptor> logger)
-        : base(logger)
-    {
-    }
-
-    protected override Task LogBeforeHandleAsync(
-        string eventType,
-        string? eventId,
-        CancellationToken cancellationToken)
-    {
-        _logger.LogInformation("开始处理事件: {EventType}, EventId: {EventId}", eventType, eventId);
-        return Task.CompletedTask;
-    }
-}
-
-// 注册拦截器
-builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
-    .AddInterceptor<CustomLoggingInterceptor>()
-    .AddHandler<DepartmentCreatedHandler>()
-    .Build();
 ```
 
 ---

@@ -1,43 +1,107 @@
 # MudFeishu
 
-MudFeishu is a modern .NET library for simplified integration with the Feishu (Lark) API. Built on an attribute-driven HTTP client design, it provides a type-safe interface and strongly-typed data models, enabling developers to easily call Feishu APIs in .NET applications.
+<div align="center">
 
-## Features
+![NuGet](https://img.shields.io/nuget/v/Mud.Feishu)
+![NuGet](https://img.shields.io/nuget/dt/Mud.Feishu)
+![.NET](https://img.shields.io/badge/.NET-6.0%20%7C%207.0%20%7C%208.0%20%7C%209.0%20%7C%2010.0-purple)
+![License](https://img.shields.io/badge/license-MIT-blue)
 
-- **Attribute-driven HTTP Client**: Automatically generate HTTP clients using the `[HttpClientApi]` attribute, simplifying API calls
-- **Strongly-typed Data Models**: Complete Feishu API data models with detailed XML documentation comments
-- **Intelligent Token Management**: Built-in automatic token caching and refresh mechanism, supporting tenant tokens and user tokens
-- **Unified Response Handling**: Response wrapping based on `FeishuApiResult<T>` for simplified error handling
-- **Dependency Injection Friendly**: Provides `IServiceCollection` extension methods for easy integration with modern .NET applications
-- **Multi-version .NET Support**: Supports .NET Framework 4.6+, .NET 6.0, .NET 7.0, .NET 8.0, .NET 9.0, .NET 10.0, using the latest C# 13.0 language features
-- **Complete Feishu API Coverage**: Supports authentication, user management, department management, user group management, personnel type management, job level management, job family management, role management, unit management, position management, work city management
-- **High-performance Caching Mechanism**: Resolves cache stampede and race conditions, supports automatic token refresh
-- **Enterprise-grade Error Handling**: Unified exception handling and logging
+**Modern .NET SDK for Feishu (Lark) API Integration**
 
-## Supported .NET Versions
+Minimal API · Type Safety · Enterprise Features · Event-Driven
 
-- **.NET 6.0** - LTS Long-term support version
-- **.NET 7.0** - Stable version
-- **.NET 8.0** - LTS Long-term support version
-- **.NET 9.0** - Stable version
-- **.NET 10.0** - LTS Long-term support version
+[Quick Start](#quick-start) · [Documentation](https://www.mudtools.cn/documents/guides/feishu/) · [Examples](#example-projects) · [Contributing](#contributing-guidelines)
 
-## Comparison with Native Feishu SDK
+</div>
 
-The following table clearly demonstrates the advantages of Mud.Feishu components over the native SDK:
+---
 
-| Comparison Dimension | Native SDK Call | Mud.Feishu Components | Advantage Description |
-|---------------------|-----------------|----------------------|---------------------|
-| Development Efficiency | Requires manually constructing HTTP requests, handling responses, parsing JSON, and other boilerplate code | Just call concise interface methods, complete operations with one line of code | Significantly reduce code volume, improve development efficiency |
-| Type Safety | Manual JSON serialization/deserialization, prone to type conversion errors | Provides complete strong-typing support, discover type errors at compile time | Improve code robustness, reduce runtime errors |
-| Token Management | Need to manually obtain, refresh, and manage access tokens | Automatically handles token acquisition and refresh mechanism | Reduce developer burden, avoid token management errors |
-| Exception Handling | Need to manually handle various network exceptions and business exceptions | Provides unified exception handling mechanism and clear exception types | Simplify exception handling logic, improve code readability |
-| Retry Mechanism | Need to manually implement retry logic | Built-in intelligent retry mechanism, automatically handles network jitter and other issues | Improve system stability |
-| Testability | Directly calling HTTP interfaces, difficult to unit test | Interface-based design, easy to mock test | Improve code quality and maintainability |
-| Documentation Completeness | Need to look up detailed documentation of each interface in Feishu official documentation | Provides complete Chinese API documentation and example code | Reduce learning cost, quick start |
-| Dependency Management | Need to manually introduce and manage various third-party libraries | Unified management of all dependencies, avoid version conflicts | Simplify project dependency management |
+## 📖 Introduction
 
-## Quick Start
+MudFeishu is a modern enterprise-grade .NET SDK for Feishu (Lark) API integration, providing complete HTTP API calls, WebSocket real-time event subscription, and Webhook event processing capabilities. The SDK is designed using Strategy and Factory patterns with built-in automatic token management, intelligent retry mechanisms, and high-performance caching.
+
+### ✨ Core Features
+
+- **Minimal API** - One-line service registration
+- **Type Safety** - Complete strongly-typed data models with compile-time checking
+- **Automatic Token Management** - Smart caching and auto-refresh mechanism
+- **Enterprise Stability** - Unified exception handling, intelligent retry, high-performance caching
+- **Event-Driven Architecture** - WebSocket + Webhook dual-mode support
+- **Multi-Framework Support** - .NET Standard 2.0 / .NET 6.0 / .NET 8.0 / .NET 10.0
+- **Distributed Support** - Redis distributed deduplication, multi-instance deployment
+- **Security Enhancement** - Signature verification, timestamp validation, IP whitelist
+
+---
+
+## 🏗️ Architecture Overview
+
+```mermaid
+graph TD
+    subgraph Mud_Feishu_SDK[Mud.Feishu SDK]
+        direction TB
+
+        HTTP_API[HTTP API Client]
+        WebSocket[WebSocket Events]
+        Webhook[Webhook Handler]
+
+        Event_Handler[Event Handler<br/>Abstraction Layer]
+
+        Token_Management[Token Management<br/>Smart Cache & Auto Refresh]
+
+        Distributed_Deduplication[Distributed Deduplication<br/>Redis Support]
+
+        HTTP_API --> Event_Handler
+        WebSocket --> Event_Handler
+        Webhook --> Event_Handler
+        Event_Handler --> Token_Management
+        Token_Management --> Distributed_Deduplication
+
+        style Mud_Feishu_SDK fill:#e1f5ff
+        style HTTP_API fill:#4caf50,color:#fff
+        style WebSocket fill:#2196f3,color:#fff
+        style Webhook fill:#ff9800,color:#fff
+        style Event_Handler fill:#9c27b0,color:#fff
+        style Token_Management fill:#00bcd4,color:#fff
+        style Distributed_Deduplication fill:#f44336,color:#fff
+    end
+```
+
+---
+
+## 📦 Modules
+
+| Module | NuGet Package | Description |
+|--------|---------------|-------------|
+| **Mud.Feishu.Abstractions** | `Mud.Feishu.Abstractions` | Event processing abstraction layer with unified handler interfaces and data models |
+| **Mud.Feishu** | `Mud.Feishu` | HTTP API client core, supporting organization, messaging, approval, tasks, documents, wiki, drive, attendance |
+| **Mud.Feishu.WebSocket** | `Mud.Feishu.WebSocket` | Real-time event subscription with auto-reconnect, heartbeat, message queue |
+| **Mud.Feishu.Webhook** | `Mud.Feishu.Webhook` | HTTP callback event handling with signature verification, encryption/decryption |
+| **Mud.Feishu.Redis** | `Mud.Feishu.Redis` | Distributed deduplication extension for multi-instance deployment |
+
+### Feature Coverage Matrix
+
+```
+Module            │ HTTP API │ WebSocket │ Webhook │ Redis Extension
+─────────────────┼──────────┼──────────┼─────────┼────────────────
+Authentication    │    ✅     │    ✅     │    ✅    │     ✅
+Organization      │    ✅     │    ✅     │    ✅    │     ✅
+User Management   │    ✅     │    ✅     │    ✅    │     ✅
+Department        │    ✅     │    ✅     │    ✅    │     ✅
+Messaging         │    ✅     │    ✅     │    ✅    │     ✅
+Chat Groups       │    ✅     │    ✅     │    ✅    │     ✅
+Approvals         │    ✅     │    ✅     │    ✅    │     ✅
+Tasks             │    ✅     │    ✅     │    ✅    │     ✅
+Cards             │    ✅     │    ✅     │    ✅    │     ✅
+Documents         │    ✅     │    -      │    -     │     -
+Wiki              │    ✅     │    -      │    -     │     -
+Drive             │    ✅     │    -      │    -     │     -
+Attendance        │    ✅     │    -      │    -     │     -
+```
+
+---
+
+## 🚀 Quick Start
 
 ### Installation
 
@@ -630,9 +694,182 @@ var allUsers = await GetAllItemsAsync(pageToken =>
     userApi.GetUserByDepartmentIdAsync("dept_123", page_size: 50, page_token: pageToken));
 ```
 
-## Contributing Guidelines
+---
 
-We welcome community contributions! Please follow these guidelines:
+## 📋 API Module Details
+
+### 📄 Document Management (Docx)
+
+Feishu document API interfaces supporting document creation, editing, block operations, etc.
+
+| Interface | Version | Description |
+|-----------|---------|-------------|
+| `IFeishuV1Docx` | V1 | Document basic operations |
+| `IFeishuV1DocxBlocks` | V1 | Document block operations |
+| `IFeishuV1Docx_Tenant` | V1 | Tenant-level document operations |
+| `IFeishuV1Docx_User` | V1 | User-level document operations |
+
+### 📚 Wiki
+
+Knowledge space and node management API interfaces.
+
+| Interface | Version | Description |
+|-----------|---------|-------------|
+| `IFeishuV2Wiki` | V2 | Knowledge space management |
+| `IFeishuV2WikiNodes` | V2 | Knowledge node management |
+| `IFeishuV2Wiki_Tenant` | V2 | Tenant-level wiki operations |
+| `IFeishuV2Wiki_User` | V2 | User-level wiki operations |
+
+### ☁️ Drive Management
+
+Cloud storage file and folder management API interfaces.
+
+| Interface | Version | Description |
+|-----------|---------|-------------|
+| `IFeishuV1DriveFiles` | V1 | File operations |
+| `IFeishuV1DriveFolder` | V1 | Folder operations |
+| `IFeishuV1DriveFilesVersions` | V1 | File version management |
+| `IFeishuV1DriveMedia` | V1 | Media file operations |
+
+### ⏰ Attendance Management
+
+Complete enterprise attendance management API interfaces.
+
+| Interface | Version | Description |
+|-----------|---------|-------------|
+| `IFeishuV1AttendanceGroups` | V1 | Attendance group management |
+| `IFeishuV1AttendanceUserFlows` | V1 | Check-in records |
+| `IFeishuV1AttendanceStats` | V1 | Attendance statistics |
+| `IFeishuV1AttendanceShifts` | V1 | Shift management |
+| `IFeishuV1AttendanceLeave` | V1 | Leave management |
+| `IFeishuV1AttendanceRemedys` | V1 | Remediation management |
+| `IFeishuV1AttendanceArchives` | V1 | Archive reports |
+| `IFeishuV1AttendanceApprovals` | V1 | Approval management |
+
+### 📋 Approval Workflow
+
+Complete enterprise approval workflow API interfaces.
+
+| Interface | Version | Description |
+|-----------|---------|-------------|
+| `IFeishuV4Approval` | V4 | Approval definitions and instances |
+| `IFeishuV4ApprovalTask` | V4 | Approval task management |
+| `IFeishuV4ApprovalComments` | V4 | Approval comments |
+| `IFeishuV4ApprovalQuery` | V4 | Approval queries |
+| `IFeishuV4ApprovalExternal` | V4 | Third-party approvals |
+| `IFeishuV1ApprovalMessage` | V1 | Approval messages |
+
+### 📝 Task Management
+
+Complete Feishu task API interfaces.
+
+| Interface | Version | Description |
+|-----------|---------|-------------|
+| `IFeishuV2Task` | V2 | Task management |
+| `IFeishuV2TaskList` | V2 | Task lists |
+| `IFeishuV2TaskSections` | V2 | Task sections |
+| `IFeishuV2TaskComments` | V2 | Task comments |
+| `IFeishuV2TaskAttachments` | V2 | Task attachments |
+| `IFeishuV2TaskCustomFields` | V2 | Custom fields |
+| `IFeishuV2TaskActivitySubscriptions` | V2 | Activity subscriptions |
+
+### 👥 Organization
+
+Complete organization management API interfaces.
+
+| Interface | Version | Description |
+|-----------|---------|-------------|
+| `IFeishuTenantV3User` | V3 | User management |
+| `IFeishuTenantV3Departments` | V3 | Department management |
+| `IFeishuTenantV3UserGroup` | V3 | User group management |
+| `IFeishuTenantV3JobLevel` | V3 | Job level management |
+| `IFeishuTenantV3JobFamilies` | V3 | Job family management |
+| `IFeishuTenantV3EmployeeType` | V3 | Employee type |
+| `IFeishuTenantV3Role` | V3 | Role management |
+
+---
+
+## 📁 Example Projects
+
+### Mud.Feishu.Test
+
+Complete HTTP API functional testing with demo code for all modules:
+
+- **Organization**: Users, departments, employees, user groups, positions, job levels
+- **Messaging**: Message sending, batch messages
+- **Chat Groups**: Groups, members, menus, session tabs
+- **Approvals**: Approval instances, tasks, comments
+- **Tasks**: Tasks, task lists, comments, custom fields
+- **Cards**: Card management, elements, message stream cards
+- **Documents**: Feishu docs, block operations, content conversion
+- **Wiki**: Knowledge space management, node operations, document moves
+- **Drive**: File upload/download, folder management, version control
+- **Attendance**: Attendance groups, check-in records, leave approvals, statistics
+
+### FeishuWikiManager
+
+Feishu Wiki Management Demo (Vue3 + .NET), demonstrating:
+
+- Feishu OAuth 2.0 login integration
+- Knowledge space browsing and management
+- Document search and favorites
+- User information and permission management
+
+---
+
+## ⚙️ Configuration Options
+
+### FeishuAppConfig Configuration Items
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `AppKey` | string | - | Application unique identifier (required), used to reference this app in code |
+| `AppId` | string | - | Feishu application unique identifier (required) |
+| `AppSecret` | string | - | Feishu application secret (required) |
+| `BaseUrl` | string | "https://open.feishu.cn" | Feishu API base URL |
+| `TimeOut` | int | 30 | HTTP request timeout (seconds), range: 1-300 |
+| `RetryCount` | int | 3 | Retry count on failure, range: 0-10 |
+| `RetryDelayMs` | int | 1000 | Retry delay (milliseconds), range: 100-60000 |
+| `TokenRefreshThreshold` | int | 300 | Token refresh threshold (seconds), range: 60-3600 |
+| `EnableLogging` | bool | true | Enable logging |
+| `IsDefault` | bool | false | Whether it's the default app (supports auto-inference) |
+
+### Configuration Validation
+
+`FeishuAppConfig` provides a `Validate()` method for validating configuration items:
+
+- `TimeOut` must be between 1-300 seconds
+- `RetryCount` must be between 0-10 times
+- `RetryDelayMs` must be between 100-60000 milliseconds
+- `TokenRefreshThreshold` must be between 60-3600 seconds
+- `BaseUrl` must be a valid HTTP/HTTPS URL format
+- `AppId` must start with `cli_` or `app_` and be at least 20 characters
+- `AppSecret` must be at least 16 characters
+
+### Security Recommendations
+
+- `AppId` and `AppSecret` are the credentials for your Feishu application, please keep them safe
+- Recommend using environment variables or secure configuration management systems to store sensitive information
+- Do not hardcode sensitive information in your code
+- In production environments, recommend using HTTPS protocol to ensure communication security
+- Production environment must enable signature verification and timestamp validation
+
+---
+
+## 📚 Supported .NET Versions
+
+| .NET Version | Status | Description |
+|--------------|--------|-------------|
+| .NET Standard 2.0 | ✅ | Compatibility version |
+| .NET 6.0 | ✅ LTS | Long-term support version |
+| .NET 7.0 | ✅ | Stable version |
+| .NET 8.0 | ✅ LTS | Long-term support version |
+| .NET 9.0 | ✅ | Stable version |
+| .NET 10.0 | ✅ LTS | Long-term support version |
+
+---
+
+## 🤝 Contributing Guidelines
 
 1. **Fork the project** and create a feature branch
 2. **Write code** and add corresponding unit tests
@@ -665,3 +902,13 @@ MudFeishu follows the [MIT License](LICENSE).
 - [Documentation Site](https://www.mudtools.cn/documents/guides/feishu/)
 - [Feishu Open Platform](https://open.feishu.cn/document/)
 - [Issue Tracker](https://gitee.com/mudtools/MudFeishu/issues)
+
+---
+
+<div align="center">
+
+**Made with ❤️ by MudTools**
+
+If you find this project helpful, please give us a ⭐️ Star!
+
+</div>

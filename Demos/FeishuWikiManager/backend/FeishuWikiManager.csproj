@@ -14,8 +14,10 @@
 		<PackageReference Include="Scalar.AspNetCore" Version="1.2.40" />
 		<PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.15.0" />
 	</ItemGroup>
-
 	<ItemGroup>
-		<ProjectReference Include="..\..\..\Mud.Feishu\Mud.Feishu.csproj" />
+		<PackageReference Include="Mud.Feishu" Version="2.0.4" />
 	</ItemGroup>
+	<!--<ItemGroup>
+		<ProjectReference Include="..\..\..\Mud.Feishu\Mud.Feishu.csproj" />
+	</ItemGroup>-->
 </Project>

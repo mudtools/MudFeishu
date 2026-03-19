@@ -67,13 +67,18 @@ public interface ICurrentUserContext
     /// <summary>
     /// 设置用户信息
     /// </summary>
-    /// <param name="openId">飞书用户 OpenId（必需）</param>
+    /// <param name="openId">飞书用户 OpenId（必需，不能为 null、空字符串或纯空白字符）</param>
     /// <param name="unionId">飞书用户 UnionId（可选）</param>
     /// <param name="userId">业务系统用户ID（可选）</param>
     /// <param name="name">用户名称（可选）</param>
     /// <remarks>
     /// 通常由中间件自动调用，业务代码不应直接调用此方法。
+    /// <para>参数验证：</para>
+    /// <list type="bullet">
+    ///   <item><description>openId 不能为 null、空字符串或纯空白字符，否则抛出 ArgumentException</description></item>
+    /// </list>
     /// </remarks>
+    /// <exception cref="ArgumentException">当 openId 为 null、空字符串或纯空白字符时抛出</exception>
     void SetUser(string openId, string? unionId = null, string? userId = null, string? name = null);
 
     /// <summary>

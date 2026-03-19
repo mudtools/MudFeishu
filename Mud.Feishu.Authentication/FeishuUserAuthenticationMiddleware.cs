@@ -31,13 +31,12 @@ namespace Mud.Feishu.Authentication;
 /// app.UseFeishuUserAuthentication();  // 此中间件
 /// app.UseAuthorization();
 /// </code>
-/// <para>支持的 Claims 类型：</para>
+/// <para>默认 Claims 类型（可通过 FeishuUserAuthenticationOptions 自定义）：</para>
 /// <list type="bullet">
-///   <item><description>open_id - 飞书用户 OpenId</description></item>
+///   <item><description>open_id - 飞书用户 OpenId（备选：ClaimTypes.NameIdentifier）</description></item>
 ///   <item><description>union_id - 飞书用户 UnionId</description></item>
 ///   <item><description>user_id - 业务系统用户ID</description></item>
 ///   <item><description>ClaimTypes.Name - 用户名称</description></item>
-///   <item><description>ClaimTypes.NameIdentifier - 备用 OpenId 来源</description></item>
 /// </list>
 /// </remarks>
 /// <remarks>
@@ -95,8 +94,8 @@ public class FeishuUserAuthenticationMiddleware(
                 }
                 else
                 {
-                    _logger.LogDebug("用户上下文已设置: OpenId={OpenId}, UserId={UserId}",
-                        MaskSensitiveInfo(openId), userId ?? "N/A");
+                    _logger.LogDebug("用户上下文已设置: OpenId={OpenId}, UnionId={UnionId}, UserId={UserId}",
+                        MaskSensitiveInfo(openId), unionId != null ? MaskSensitiveInfo(unionId) : "N/A", userId ?? "N/A");
                 }
             }
             else

@@ -19,10 +19,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Configuration.AddJsonFile("appsettings.local.json", optional: true, reloadOnChange: true);
 
-builder.Services.AddControllers(options =>
-{
-    options.Filters.Add<SetUserContextFilter>();
-})
+builder.Services.AddControllers()
 .AddJsonOptions(options =>
 {
     // 使用 camelCase 命名策略
@@ -86,7 +83,8 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IWikiService, WikiService>();
 
-builder.Services.AddSingleton<ICurrentUserContext, CurrentUserContext>();
+// 使用 Mud.Feishu.Abstractions 中的用户上下文服务
+builder.Services.AddFeishuUserContext();
 builder.Services.AddScoped<SetUserContextFilter>();
 
 builder.Services.AddFeishuApp(builder.Configuration, "FeishuApps");
@@ -120,6 +118,8 @@ app.UseHttpsRedirection();
 app.UseCors("AllowVueDev");
 
 app.UseAuthentication();
+// 使用飞书用户认证中间件
+app.UseFeishuUserAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();

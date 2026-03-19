@@ -5,21 +5,28 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-using FeishuWikiManager.Services;
 using Microsoft.AspNetCore.Mvc.Filters;
-using System.Security.Claims;
+using Mud.Feishu.Authentication;
 
 namespace FeishuWikiManager.Filters;
 
+/// <summary>
+/// 用户上下文增强过滤器
+/// 负责从数据库获取用户ID并更新到用户上下文中
+/// </summary>
+/// <remarks>
+/// 注意：基础的 open_id、union_id、name 已由 FeishuUserAuthenticationMiddleware 中间件设置。
+/// 此过滤器仅负责查询数据库获取业务系统的用户ID。
+/// </remarks>
 public class SetUserContextFilter : IAsyncActionFilter
 {
     private readonly ICurrentUserContext _userContext;
-    private readonly IUserService _userService;
+    private readonly Services.IUserService _userService;
     private readonly ILogger<SetUserContextFilter> _logger;
 
     public SetUserContextFilter(
         ICurrentUserContext userContext,
-        IUserService userService,
+        Services.IUserService userService,
         ILogger<SetUserContextFilter> logger)
     {
         _userContext = userContext;
@@ -29,26 +36,21 @@ public class SetUserContextFilter : IAsyncActionFilter
 
     public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
     {
-        var user = context.HttpContext.User;
-
-        if (user?.Identity?.IsAuthenticated == true)
+        // 中间件已设置 open_id、union_id、name
+        // 此处仅从数据库获取用户ID并更新上下文
+        if (_userContext.IsAuthenticated && !string.IsNullOrEmpty(_userContext.OpenId))
         {
-            var openId = user.FindFirst("open_id")?.Value;
-            var unionId = user.FindFirst("union_id")?.Value;
-            var name = user.FindFirst(ClaimTypes.Name)?.Value;
-
-            if (!string.IsNullOrEmpty(openId))
+            var openId = _userContext.OpenId;
+            var dbUser = await _userService.GetUserByOpenIdAsync(openId);
+            
+            if (dbUser != null)
             {
-                var dbUser = await _userService.GetUserByOpenIdAsync(openId);
-                var userId = dbUser?.Id;
-
-                _userContext.SetUser(openId, unionId, userId, name);
-                _logger.LogDebug("设置用户上下文: OpenId={OpenId}, UserId={UserId}", openId, userId);
+                // 更新用户上下文，添加业务系统用户ID
+                _userContext.SetUser(openId, _userContext.UnionId, dbUser.Id, _userContext.Name);
+                _logger.LogDebug("用户上下文增强: OpenId={OpenId}, UserId={UserId}", openId, dbUser.Id);
             }
         }
 
         await next();
-
-        _userContext.Clear();
     }
 }

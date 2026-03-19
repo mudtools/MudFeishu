@@ -1,4 +1,4 @@
-﻿// -----------------------------------------------------------------------
+// -----------------------------------------------------------------------
 //  作者：Mud Studio  版权所有 (c) Mud Studio 2025
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
@@ -27,6 +27,7 @@ namespace Mud.Feishu.TokenManager;
 /// </remarks>
 internal class UserTokenManager : IFeishuUserTokenManager
 {
+    private readonly ICurrentUserContext? _currentUserContext;
     private readonly IFeishuAuthentication _authenticationApi;
     private readonly FeishuAppConfig _options;
     private readonly ILogger<UserTokenManager> _logger;
@@ -39,11 +40,13 @@ internal class UserTokenManager : IFeishuUserTokenManager
 
     public UserTokenManager(
         IFeishuAuthentication authenticationApi,
+        ICurrentUserContext? currentUserContext,
         IOptions<FeishuAppConfig> options,
         ILogger<UserTokenManager> logger,
         IUserTokenCache userTokenCache)
     {
         _authenticationApi = authenticationApi ?? throw new ArgumentNullException(nameof(authenticationApi));
+        _currentUserContext = currentUserContext ?? throw new ArgumentNullException(nameof(currentUserContext));
         _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _userTokenCache = userTokenCache ?? throw new ArgumentNullException(nameof(userTokenCache));
@@ -51,7 +54,17 @@ internal class UserTokenManager : IFeishuUserTokenManager
 
     public async Task<string> GetTokenAsync(CancellationToken cancellationToken = default)
     {
-        throw new InvalidOperationException("用户令牌需要指定 userId，请使用 GetTokenAsync(userId) 方法");
+        if (_currentUserContext == null)
+        {
+            throw new InvalidOperationException("CurrentUserContext is not available. Cannot get user token.");
+        }
+
+        if (string.IsNullOrEmpty(_currentUserContext.OpenId))
+        {
+            throw new InvalidOperationException("Current user is not authenticated. OpenId is required to get user token.");
+        }
+
+        return await GetTokenAsync(_currentUserContext.UserId, cancellationToken) ?? throw new InvalidOperationException("Failed to obtain user token.");
     }
 
     public async Task<string?> GetTokenAsync(string? userId, CancellationToken cancellationToken = default)

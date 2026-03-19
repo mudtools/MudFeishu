@@ -3,6 +3,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\Mud.Feishu.Abstractions\Mud.Feishu.Abstractions.csproj" />
     <ProjectReference Include="..\..\Mud.Feishu\Mud.Feishu.csproj" />
+    <ProjectReference Include="..\..\Mud.Feishu.Authentication\Mud.Feishu.Authentication.csproj" />
   </ItemGroup>
 
 </Project>

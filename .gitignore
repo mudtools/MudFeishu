@@ -32,6 +32,8 @@
 /Mud.Feishu.Webhook/obj
 /Mud.Feishu.Webhook.Demo/bin/Debug/net8.0
 /Mud.Feishu.Webhook.Demo/obj
+/Mud.Feishu.Authentication/bin/Debug
+/Mud.Feishu.Authentication/obj
 /docs
 /Mud.Feishu.Redis/obj
 /Mud.Feishu.Webhook.Demo/bin/Release/net8.0

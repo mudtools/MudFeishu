@@ -206,7 +206,8 @@ builder.Services.AddFeishuApp(configure =>
     {
         opt.TimeOut = 45;
         opt.RetryCount = 5;
-        opt.RetryDelayMs = 2000; // 新增：自定义重试延迟
+        opt.RetryDelayMs = 2000; // 自定义重试延迟
+        opt.TokenRefreshThreshold = 300; // Token 刷新阈值（秒）
     });
 });
 
@@ -323,13 +324,16 @@ graph LR
 
 | 模块分类        | API版本 | 主要功能                                   |
 | --------------- | ------- | ------------------------------------------ |
-| **🔐 认证授权** | V3      | 应用令牌、租户令牌、用户令牌、OAuth 2.0    |
+| **🔐 认证授权** | V3      | 应用令牌、租户令牌、用户令牌、OAuth 2.0、多应用管理 |
 | **👥 组织架构** | V1/V3   | 用户、部门、员工、用户组、职级、职务、角色 |
 | **💬 消息服务** | V1      | 文本/图片/卡片消息、批量发送、群聊管理     |
-| **📋 审批流程** | V4      | 审批定义、审批实例、审批操作               |
-| **📝 任务管理** | V2      | 任务创建、更新、分组、附件、评论           |
+| **📋 审批流程** | V4      | 审批定义、审批实例、审批任务、审批消息、审批统计 |
+| **📝 任务管理** | V2      | 任务创建、更新、分组、附件、评论、自定义字段 |
 | **📅 日程会议** | V4      | 日程事件、会议管理                         |
-| **...** | ..      | ....                         |
+| **📄 文档管理** | V1      | 飞书文档、文档块、内容转换、知识库        |
+| **📚 知识库**   | V2      | 知识空间、节点管理、节点复制移动          |
+| **☁️ 云盘管理** | V1      | 云空间、文件夹、文件上传、版本管理        |
+| **⏰ 考勤管理** | V1      | 考勤组、打卡记录、请假审批、考勤统计      |
 
 **企业级特性**：
 
@@ -340,6 +344,7 @@ graph LR
 - ✅ 连接池管理
 - ✅ 详细日志记录
 - ✅ 多应用上下文切换支持
+- ✅ 性能指标监控（内置 Meter 指标收集）
 
 > 💡 **提示**：[查看完整 API 文档](./Mud.Feishu/README.md)
 
@@ -381,6 +386,12 @@ sequenceDiagram
 - ✅ **按错误码分类认证失败原因**
 - ✅ **统计总失败次数和失败时间**
 - ✅ **提供针对性修复建议**
+
+**性能指标监控**：
+
+- ✅ **连接数统计** - 实时 WebSocket 连接数
+- ✅ **事件处理指标** - 认证、事件处理计数和耗时
+- ✅ **内置 Meter 支持** - 集成 .NET 性能计数器
 
 ### 🌐 Mud.Feishu.Webhook - HTTP 回调事件处理
 
@@ -465,6 +476,14 @@ private readonly IFeishuAppManager _feishuAppManager;
 var tenantJobTitleApi = _feishuAppManager.GetFeishuApi<IFeishuTenantV3JobTitle>("hr-app");
 var result = await tenantJobTitleApi.GetJobTitlesListAsync(10, null);
 
+// 使用应用上下文切换器
+var contextSwitcher = _feishuAppManager.GetAppContextSwitcher();
+using (contextSwitcher.UseApp("hr-app"))
+{
+    // 此范围内的所有 API 调用都使用 hr-app 应用
+    var userApi = _feishuAppManager.GetFeishuApi<IFeishuTenantV3User>();
+    var userResult = await userApi.GetUserInfoByIdAsync("user_123");
+}
 
 // 单应用模式下发送消息，无须应用。
 var textContent = new MessageTextContent { Text = "Hello World!" };
@@ -524,6 +543,18 @@ builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
 app.UseFeishuWebhook();
 ```
 
+### 性能指标监控
+
+```csharp
+// 获取 WebSocket 实时连接数
+var connectionCountProvider = app.Services.GetRequiredService<IWebSocketConnectionCountProvider>();
+var connectionCount = await connectionCountProvider.GetConnectionCountAsync();
+
+// 使用 FeishuMetrics 记录自定义指标
+FeishuMetrics.RecordTokenRefresh("default", true);
+FeishuMetrics.RecordHttpRequest("default", "user.get", 200, TimeSpan.FromMilliseconds(150));
+```
+
 ### URL 白名单和 SSRF 防护
 
 ```csharp
@@ -573,6 +604,36 @@ builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
     .AddHandler<DepartmentCreatedHandler>()
     .Build();
 ```
+
+---
+
+## 📸 演示界面展示
+
+以下是 **FeishuWikiManager**（飞书知识库管理 Demo）的实际运行界面截图，展示了 SDK 在实际项目中的应用效果：
+
+### 用户认证与登录
+
+| 飞书 OAuth 授权 | 系统登录界面 |
+|:--|:--|
+| ![飞书认证授权](./Images/wiki飞书认证授权界面.png) | ![登录界面](./Images/飞书云文档管理登陆界面.png) |
+
+### 知识库管理核心功能
+
+| 主界面 | 知识空间 |
+|:--|:--|
+| ![知识库主界面](./Images/Wiki知识库主界面.png) | ![知识空间](./Images/Wiki知识空间界面.png) |
+
+| 搜索功能 | 云空间同步 |
+|:--|:--|
+| ![搜索界面](./Images/Wiki知识库搜索界面.png) | ![云空间同步](./Images/飞书云文档管理云空间同步功能.png) |
+
+### 云文档管理
+
+| 文档管理主界面 | 文件上传 |
+|:--|:--|
+| ![文档管理主界面](./Images/飞书云文档管理主界面.png) | ![文件上传](./Images/飞书云文档管理文件上传界面.png) |
+
+> 💡 **提示**：以上界面均基于 **Mud.Feishu** SDK 开发，完整展示了飞书 OAuth 认证、知识库管理、文档搜索、云空间同步等核心功能。[查看 Demo 源码](./Demos/FeishuWikiManager)
 
 ---
 
@@ -636,6 +697,9 @@ builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
 - [项目仓库](https://gitee.com/mudtools/MudFeishu) - 源代码和开发文档
 - [Mud.ServiceCodeGenerator](https://gitee.com/mudtools/mud-code-generator) - HTTP 客户端代码生成器
 - [示例项目](./Demos) - 完整的使用示例和演示代码
+  - [FeishuWikiManager](./Demos/FeishuWikiManager) - 飞书知识库管理 Demo（Vue3 + .NET）
+  - [Webhook Demo](./Demos/Mud.Feishu.Webhook.Demo) - Webhook 事件处理演示
+  - [WebSocket Demo](./Demos/Mud.Feishu.WebSocket.Demo) - WebSocket 实时事件演示
 - [测试项目](./Tests) - 完整的单元测试和集成测试
 
 ### 🤝 社区支持

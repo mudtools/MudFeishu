@@ -76,7 +76,21 @@ export const useUserStore = defineStore('user', () => {
     localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(newUser))
   }
 
-  function logout() {
+  async function logout(skipApiCall = false) {
+    // 如果有token且不需要跳过API调用，则通知后端
+    if (token.value && !skipApiCall) {
+      try {
+        await authApi.logout()
+      } catch (error: any) {
+        // 401表示token已过期，也视为退出成功；其他错误记录到控制台
+        if (error.response?.status !== 401) {
+          console.error('Logout API call failed:', error)
+        }
+        // 即使 API 调用失败，也要继续清除本地状态
+      }
+    }
+    
+    // 清除本地状态
     user.value = null
     userDetail.value = null
     token.value = null

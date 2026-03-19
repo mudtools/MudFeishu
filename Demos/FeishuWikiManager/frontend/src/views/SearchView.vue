@@ -3,7 +3,7 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '@/stores/user'
-import { wikiApi, authApi } from '@/api'
+import { wikiApi } from '@/api'
 import AppHeader from '@/components/common/AppHeader.vue'
 import AppSidebar from '@/components/common/AppSidebar.vue'
 
@@ -127,11 +127,16 @@ async function handleLogout() {
       type: 'warning'
     })
     
-    await authApi.logout()
-    userStore.logout()
+    await userStore.logout()
     ElMessage.success('已退出登录')
     router.push('/login')
-  } catch (error) {
+  } catch (error: any) {
+    // 如果是401错误，说明token已过期，直接清理状态
+    if (error?.response?.status === 401) {
+      await userStore.logout(true)
+      router.push('/login')
+      return
+    }
     // 用户取消
   }
 }

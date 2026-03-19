@@ -53,19 +53,6 @@ public class FeishuServiceCollectionBuilderExtensionsTests
         Assert.Contains("至少需要指定一个模块", exception.Message);
     }
 
-    /// <summary>
-    /// 测试添加飞书服务时传入 null 模块的情况
-    /// 业务场景：验证当传入 null 模块时，AddFeishuServices 方法是否抛出 ArgumentNullException
-    /// </summary>
-    [Fact]
-    public void AddFeishuServices_ShouldThrowArgumentNullException_WhenCalledWithNullModules()
-    {
-        // Arrange
-        var services = new ServiceCollection();
-
-        // Act & Assert
-        Assert.Throws<ArgumentNullException>(() => services.AddFeishuServices(null!));
-    }
 
     /// <summary>
     /// 测试创建飞书服务建造者

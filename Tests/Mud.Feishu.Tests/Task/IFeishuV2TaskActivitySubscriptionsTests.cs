@@ -6,7 +6,7 @@
 // -----------------------------------------------------------------------
 
 using Mud.Feishu.Abstractions.Utilities;
-using Mud.Feishu.DataModels.TaskActivitySubscriptions;
+using Mud.Feishu.DataModels.TasksActivitySubscriptions;
 using System.Text.Json;
 using Xunit;
 

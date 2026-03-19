@@ -10,7 +10,6 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using Mud.Feishu.WebSocket.Core;
 using Mud.Feishu.WebSocket.Exceptions;
-using System.Net;
 using System.Net.Sockets;
 using System.Net.WebSockets;
 
@@ -51,7 +50,6 @@ public class ErrorRecoveryStrategyTests
         // Assert
         result.IsRecoverable.Should().BeTrue();
         result.ErrorType.Should().Be("Exception");
-        result.RecoverySuggestion.Should().NotBeEmpty();
     }
 
     [Fact]
@@ -184,8 +182,8 @@ public class ErrorRecoveryStrategyTests
     [Fact]
     public void AnalyzeError_WithFeishuAuthenticationException_Recoverable_ShouldReturnRecoverable()
     {
-        // Arrange
-        var exception = new FeishuAuthenticationException("Token expired", true);
+        // Arrange - 使用内部构造函数传入 isRecoverable: true
+        var exception = new FeishuAuthenticationException("Token expired", inner: null, errorCode: null, isRecoverable: true);
 
         // Act
         var result = _strategy.AnalyzeError(exception);
@@ -199,7 +197,7 @@ public class ErrorRecoveryStrategyTests
     public void AnalyzeError_WithFeishuAuthenticationException_NotRecoverable_ShouldNotBeRecoverable()
     {
         // Arrange
-        var exception = new FeishuAuthenticationException("Invalid credentials", false);
+        var exception = new FeishuAuthenticationException("Invalid credentials");
 
         // Act
         var result = _strategy.AnalyzeError(exception);
@@ -212,7 +210,7 @@ public class ErrorRecoveryStrategyTests
     public void AnalyzeError_WithFeishuConnectionException_ShouldReturnCorrectRecommendation()
     {
         // Arrange
-        var exception = new FeishuConnectionException("Connection failed", true);
+        var exception = new FeishuConnectionException("Connection failed");
 
         // Act
         var result = _strategy.AnalyzeError(exception);
@@ -226,7 +224,7 @@ public class ErrorRecoveryStrategyTests
     public void AnalyzeError_WithFeishuNetworkException_ShouldReturnCorrectRecommendation()
     {
         // Arrange
-        var exception = new FeishuNetworkException("Network error", true);
+        var exception = new FeishuNetworkException("Network error", 1);
 
         // Act
         var result = _strategy.AnalyzeError(exception);

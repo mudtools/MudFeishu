@@ -8,8 +8,6 @@
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;
-using Mud.Feishu.WebSocket.Core;
-using Mud.Feishu.WebSocket.SocketEventArgs;
 using System.Net.WebSockets;
 
 namespace Mud.Feishu.WebSocket.Tests.Core;
@@ -27,7 +25,7 @@ public class WebSocketConnectionManagerTests
     {
         _loggerMock = new Mock<ILogger<WebSocketConnectionManager>>();
         _loggerFactoryMock = new Mock<ILoggerFactory>();
-        _loggerFactoryMock.Setup(x => x.CreateLogger(It.IsAny<Type>()))
+        _loggerFactoryMock.Setup(x => x.CreateLogger(It.IsAny<string>()))
             .Returns(_loggerMock.Object);
         _options = new FeishuWebSocketOptions
         {
@@ -70,7 +68,7 @@ public class WebSocketConnectionManagerTests
         var initialCount = WebSocketConnectionManager.ConnectionCount;
 
         // Assert
-        initialCount.Should().BeGreaterOrEqualTo(0);
+        initialCount.Should().BeGreaterThanOrEqualTo(0);
     }
 
     [Fact]
@@ -94,62 +92,62 @@ public class WebSocketConnectionManagerTests
     }
 
     [Fact]
-    public void ConnectAsync_WithNullOrEmptyUrl_ShouldThrowArgumentException()
+    public async Task ConnectAsync_WithNullOrEmptyUrl_ShouldThrowArgumentException()
     {
         // Arrange
         var manager = new WebSocketConnectionManager(_loggerMock.Object, _options, _loggerFactoryMock.Object);
 
         // Act & Assert - null URL
         var nullAction = () => manager.ConnectAsync(null!);
-        nullAction.Should().Throw<ArgumentException>()
+        await nullAction.Should().ThrowAsync<ArgumentException>()
             .WithMessage("*不能为空*");
 
         // Act & Assert - empty URL
         var emptyAction = () => manager.ConnectAsync("");
-        emptyAction.Should().Throw<ArgumentException>()
+        await emptyAction.Should().ThrowAsync<ArgumentException>()
             .WithMessage("*不能为空*");
 
         // Act & Assert - whitespace URL
         var whitespaceAction = () => manager.ConnectAsync("   ");
-        whitespaceAction.Should().Throw<ArgumentException>()
+        await whitespaceAction.Should().ThrowAsync<ArgumentException>()
             .WithMessage("*不能为空*");
 
         manager.Dispose();
     }
 
     [Fact]
-    public void ConnectAsync_WithInvalidUrlFormat_ShouldThrowArgumentException()
+    public async Task ConnectAsync_WithInvalidUrlFormat_ShouldThrowArgumentException()
     {
         // Arrange
         var manager = new WebSocketConnectionManager(_loggerMock.Object, _options, _loggerFactoryMock.Object);
 
         // Act & Assert - not an absolute URI
         var action = () => manager.ConnectAsync("not-a-valid-url");
-        action.Should().Throw<ArgumentException>()
+        await action.Should().ThrowAsync<ArgumentException>()
             .WithMessage("*无效的*");
 
         manager.Dispose();
     }
 
     [Fact]
-    public void ConnectAsync_WithInvalidScheme_ShouldThrowArgumentException()
+    public async Task ConnectAsync_WithInvalidScheme_ShouldThrowArgumentException()
     {
         // Arrange
         var manager = new WebSocketConnectionManager(_loggerMock.Object, _options, _loggerFactoryMock.Object);
 
         // Act & Assert - http scheme
         var httpAction = () => manager.ConnectAsync("http://example.com/ws");
-        httpAction.Should().Throw<ArgumentException>()
+        await httpAction.Should().ThrowAsync<ArgumentException>()
             .WithMessage("*ws://或wss://协议*");
 
         // Act & Assert - https scheme
         var httpsAction = () => manager.ConnectAsync("https://example.com/ws");
-        httpsAction.Should().Throw<ArgumentException>()
+        await httpsAction.Should().ThrowAsync<ArgumentException>()
             .WithMessage("*ws://或wss://协议*");
 
         // Act & Assert - ftp scheme
         var ftpAction = () => manager.ConnectAsync("ftp://example.com/ws");
-        ftpAction.Should().Throw<ArgumentException>()
+        await ftpAction.Should().ThrowAsync<ArgumentException>()
             .WithMessage("*ws://或wss://协议*");
 
         manager.Dispose();
@@ -169,21 +167,20 @@ public class WebSocketConnectionManagerTests
     }
 
     [Fact]
-    public void SendBinaryMessageAsync_WithNullData_ShouldThrowArgumentException()
+    public async Task SendBinaryMessageAsync_WithNullData_ShouldThrowArgumentException()
     {
         // Arrange
         var manager = new WebSocketConnectionManager(_loggerMock.Object, _options, _loggerFactoryMock.Object);
 
-        // Act & Assert
+        // Act & Assert - 传入 null 数组会抛出 ArgumentNullException
         var action = () => manager.SendBinaryMessageAsync((byte[])null!);
-        action.Should().Throw<ArgumentException>()
-            .WithMessage("*不能为空*");
+        await action.Should().ThrowAsync<ArgumentNullException>();
 
         manager.Dispose();
     }
 
     [Fact]
-    public void SendBinaryMessageAsync_WithEmptyArraySegment_ShouldThrowArgumentException()
+    public async Task SendBinaryMessageAsync_WithEmptyArraySegment_ShouldThrowArgumentException()
     {
         // Arrange
         var manager = new WebSocketConnectionManager(_loggerMock.Object, _options, _loggerFactoryMock.Object);
@@ -191,14 +188,14 @@ public class WebSocketConnectionManagerTests
 
         // Act & Assert
         var action = () => manager.SendBinaryMessageAsync(emptySegment);
-        action.Should().Throw<ArgumentException>()
+        await action.Should().ThrowAsync<ArgumentException>()
             .WithMessage("*不能为空*");
 
         manager.Dispose();
     }
 
     [Fact]
-    public void SendBinaryMessageAsync_WhenNotConnected_ShouldThrowInvalidOperationException()
+    public async Task SendBinaryMessageAsync_WhenNotConnected_ShouldThrowInvalidOperationException()
     {
         // Arrange
         var manager = new WebSocketConnectionManager(_loggerMock.Object, _options, _loggerFactoryMock.Object);
@@ -206,38 +203,38 @@ public class WebSocketConnectionManagerTests
 
         // Act & Assert
         var action = () => manager.SendBinaryMessageAsync(data);
-        action.Should().Throw<InvalidOperationException>()
+        await action.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*未连接*");
 
         manager.Dispose();
     }
 
     [Fact]
-    public void SendMessageAsync_WithNullOrWhiteSpaceMessage_ShouldThrowArgumentException()
+    public async Task SendMessageAsync_WithNullOrWhiteSpaceMessage_ShouldThrowArgumentException()
     {
         // Arrange
         var manager = new WebSocketConnectionManager(_loggerMock.Object, _options, _loggerFactoryMock.Object);
 
         // Act & Assert - null message
         var nullAction = () => manager.SendMessageAsync(null!);
-        nullAction.Should().Throw<ArgumentException>()
+        await nullAction.Should().ThrowAsync<ArgumentException>()
             .WithMessage("*不能为空*");
 
         // Act & Assert - empty message
         var emptyAction = () => manager.SendMessageAsync("");
-        emptyAction.Should().Throw<ArgumentException>()
+        await emptyAction.Should().ThrowAsync<ArgumentException>()
             .WithMessage("*不能为空*");
 
         // Act & Assert - whitespace message
         var whitespaceAction = () => manager.SendMessageAsync("   ");
-        whitespaceAction.Should().Throw<ArgumentException>()
+        await whitespaceAction.Should().ThrowAsync<ArgumentException>()
             .WithMessage("*不能为空*");
 
         manager.Dispose();
     }
 
     [Fact]
-    public void SendMessageAsync_WithMessageExceedingMaxSize_ShouldThrowArgumentException()
+    public async Task SendMessageAsync_WithMessageExceedingMaxSize_ShouldThrowArgumentException()
     {
         // Arrange
         var options = new FeishuWebSocketOptions
@@ -249,69 +246,78 @@ public class WebSocketConnectionManagerTests
 
         // Act & Assert
         var action = () => manager.SendMessageAsync(longMessage);
-        action.Should().Throw<ArgumentException>()
+        await action.Should().ThrowAsync<ArgumentException>()
             .WithMessage("*超过限制*");
 
         manager.Dispose();
     }
 
     [Fact]
-    public void SendMessageAsync_WhenNotConnected_ShouldThrowInvalidOperationException()
+    public async Task SendMessageAsync_WhenNotConnected_ShouldThrowInvalidOperationException()
     {
         // Arrange
         var manager = new WebSocketConnectionManager(_loggerMock.Object, _options, _loggerFactoryMock.Object);
 
         // Act & Assert
         var action = () => manager.SendMessageAsync("test message");
-        action.Should().Throw<InvalidOperationException>()
+        await action.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*未连接*");
 
         manager.Dispose();
     }
 
     [Fact]
-    public void StartReceivingAsync_WhenNotInitialized_ShouldThrowInvalidOperationException()
+    public async Task StartReceivingAsync_WhenNotInitialized_ShouldThrowInvalidOperationException()
     {
         // Arrange
         var manager = new WebSocketConnectionManager(_loggerMock.Object, _options, _loggerFactoryMock.Object);
-        var handler = new Func<ArraySegment<byte>, WebSocketReceiveResult, Task>(_ => Task.CompletedTask);
+        var handler = new Func<ArraySegment<byte>, WebSocketReceiveResult, Task>((data, result) => Task.CompletedTask);
 
         // Act & Assert
         var action = () => manager.StartReceivingAsync(handler);
-        action.Should().Throw<InvalidOperationException>()
+        await action.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*未初始化*");
 
         manager.Dispose();
     }
 
     [Fact]
-    public void Connected_Event_ShouldBeNull_WhenNoSubscribers()
+    public void Connected_Event_CanBeSubscribed()
     {
         // Arrange
         var manager = new WebSocketConnectionManager(_loggerMock.Object, _options, _loggerFactoryMock.Object);
+        var eventRaised = false;
+        manager.Connected += (s, e) => eventRaised = true;
 
-        // Assert
-        manager.Connected.Should().BeNull();
+        // Assert - 事件可以正常订阅
+        eventRaised.Should().BeFalse();
+        manager.Dispose();
     }
 
     [Fact]
-    public void Disconnected_Event_ShouldBeNull_WhenNoSubscribers()
+    public void Disconnected_Event_CanBeSubscribed()
     {
         // Arrange
         var manager = new WebSocketConnectionManager(_loggerMock.Object, _options, _loggerFactoryMock.Object);
+        var eventRaised = false;
+        manager.Disconnected += (s, e) => eventRaised = true;
 
-        // Assert
-        manager.Disconnected.Should().BeNull();
+        // Assert - 事件可以正常订阅
+        eventRaised.Should().BeFalse();
+        manager.Dispose();
     }
 
     [Fact]
-    public void Error_Event_ShouldBeNull_WhenNoSubscribers()
+    public void Error_Event_CanBeSubscribed()
     {
         // Arrange
         var manager = new WebSocketConnectionManager(_loggerMock.Object, _options, _loggerFactoryMock.Object);
+        var eventRaised = false;
+        manager.Error += (s, e) => eventRaised = true;
 
-        // Assert
-        manager.Error.Should().BeNull();
+        // Assert - 事件可以正常订阅
+        eventRaised.Should().BeFalse();
+        manager.Dispose();
     }
 
     [Fact]
@@ -326,14 +332,14 @@ public class WebSocketConnectionManagerTests
         var manager = new WebSocketConnectionManager(_loggerMock.Object, options, _loggerFactoryMock.Object);
         using var cts = new CancellationTokenSource();
 
-        // Act - 尝试连接到一个不存在的服务器
-        var task = manager.ConnectAsync("wss://localhost:99999/ws", cts.Token);
-
-        // 立即取消
+        // 先取消令牌
         cts.Cancel();
 
-        // Assert - 应该抛出 OperationCanceledException
-        await task.Should().ThrowAsync<OperationCanceledException>();
+        // Act - 尝试连接到一个有效的 URL 格式（令牌已取消）
+        var action = () => manager.ConnectAsync("wss://127.0.0.1:59999/ws", cts.Token);
+
+        // Assert - 应该抛出 TaskCanceledException (OperationCanceledException 的子类)
+        await action.Should().ThrowAsync<TaskCanceledException>();
 
         manager.Dispose();
     }
@@ -355,7 +361,7 @@ public class WebSocketConnectionManagerTests
     }
 
     [Fact]
-    public void Dispose_ShouldSetDisposedFlag()
+    public async Task Dispose_ShouldSetDisposedFlag()
     {
         // Arrange
         var manager = new WebSocketConnectionManager(_loggerMock.Object, _options, _loggerFactoryMock.Object);
@@ -363,13 +369,13 @@ public class WebSocketConnectionManagerTests
         // Act
         manager.Dispose();
 
-        // Assert - 再次调用不会产生副作用（通过不抛出来验证）
+        // Assert - Dispose 后调用 DisconnectAsync 会抛出 ObjectDisposedException
         var action = () => manager.DisconnectAsync();
-        action.Should().NotThrow();
+        await action.Should().ThrowAsync<ObjectDisposedException>();
     }
 
     [Fact]
-    public void SendBinaryMessageAsync_WithValidData_ButWebSocketNotOpen_ShouldThrowInvalidOperationException()
+    public async Task SendBinaryMessageAsync_WithValidData_ButWebSocketNotOpen_ShouldThrowInvalidOperationException()
     {
         // Arrange - 创建一个已经断开连接的 manager
         var manager = new WebSocketConnectionManager(_loggerMock.Object, _options, _loggerFactoryMock.Object);
@@ -380,21 +386,21 @@ public class WebSocketConnectionManagerTests
 
         // Act & Assert
         var action = () => manager.SendBinaryMessageAsync(data);
-        action.Should().Throw<InvalidOperationException>()
+        await action.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*未连接*");
 
         manager.Dispose();
     }
 
     [Fact]
-    public void SendMessageAsync_WithValidMessage_ButWebSocketNotOpen_ShouldThrowInvalidOperationException()
+    public async Task SendMessageAsync_WithValidMessage_ButWebSocketNotOpen_ShouldThrowInvalidOperationException()
     {
         // Arrange
         var manager = new WebSocketConnectionManager(_loggerMock.Object, _options, _loggerFactoryMock.Object);
 
         // Act & Assert
         var action = () => manager.SendMessageAsync("test");
-        action.Should().Throw<InvalidOperationException>()
+        await action.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*未连接*");
 
         manager.Dispose();

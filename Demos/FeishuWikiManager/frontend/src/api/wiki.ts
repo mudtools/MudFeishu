@@ -34,7 +34,11 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config
     
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // 跳过登录/退出相关接口的token刷新
+    const skipRefreshUrls = ['/oauth/logout', '/oauth/login']
+    const shouldSkipRefresh = skipRefreshUrls.some(url => originalRequest.url?.includes(url))
+    
+    if (error.response?.status === 401 && !originalRequest._retry && !shouldSkipRefresh) {
       if (isRefreshing) {
         return new Promise((resolve) => {
           subscribeTokenRefresh((token) => {
@@ -66,7 +70,8 @@ api.interceptors.response.use(
       }
     }
     
-    if (error.response?.status === 401) {
+    // logout接口返回401时不重定向，让调用方处理
+    if (error.response?.status === 401 && !shouldSkipRefresh) {
       localStorage.removeItem('token')
       window.location.href = '/login'
     }

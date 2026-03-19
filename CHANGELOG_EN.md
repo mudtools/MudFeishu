@@ -1,5 +1,56 @@
 # Mud.Feishu Change Log
 
+## [2.0.4] - 2026-03-19
+
+### ✨ Added
+
+- **Document Management**: Added Feishu document management module support
+  - Added Feishu document interfaces and data models
+  - Added document block models and interface support
+  - Added interfaces and models for getting and batch updating document blocks
+  - Added interface for getting paginated list of document block children
+  - Added batch delete blocks functionality and related models
+  - Added content conversion functionality support
+- **Wiki**: Added wiki management functionality
+  - Added knowledge space and node management interfaces
+  - Added node title update and copy functionality
+  - Added node management interfaces and tests
+  - Added functionality to move cloud documents to knowledge space
+- **Drive Management**: Added Feishu drive management API service support
+  - Added drive space folder related interfaces and data models
+  - Added drive space file interfaces and metadata models
+  - Added file version management functionality
+  - Added file upload functionality support
+  - Added file import/export task related data models and interfaces
+  - Added create file shortcut related models and interfaces
+  - Added search cloud documents functionality and related data models
+  - Added get cloud document likers list interface
+- **Task Module**: Added task and card modules and refactored service registration logic
+- **Authentication Enhancement**: Added recoverable flag constructor for FeishuAuthenticationException
+- **Enum Configuration**: Extracted enums and configuration classes to independent files
+
+### 🔧 Changed
+
+- **Project Refactoring**: Refactored request and response model file structure
+  - Refactored document block model file structure, moved block models to Common directory and deleted original Blocks directory
+  - Refactored file operation interface and model naming
+  - Refactored code to optimize file upload request models and HTTP client
+- **Test Optimization**: Unified data model namespaces in tests and optimized test code
+- **Database Optimization**: Added indexes for favorite nodes to improve query performance
+
+### 🐛 Fixed
+
+- **Message Sending**: Fixed issue with request.Content value when sending Multipart/form-data requests
+- **Webhook**: Fixed issue where Feishu callback configuration couldn't pass, specified EventType in FeishuEventDecryptor
+
+### 📦 Build & Config
+
+- **Dependency Update**: Updated dependency versions for multiple projects
+
+### 🧪 Tests
+
+- **New Tests**: Added unit tests for Feishu Webhook module
+
 ## [2.0.3] - 2026-02-26
 
 ### ✨ Added

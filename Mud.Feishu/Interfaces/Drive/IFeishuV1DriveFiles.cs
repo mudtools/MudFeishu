@@ -323,7 +323,6 @@ public interface IFeishuV1DriveFiles : IFeishuAppContextSwitcher
     /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
     /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
-
     [Get("/open-apis/drive/v2/files/{file_token}/likes")]
     Task<FeishuApiPageListResult<FileLikeInfo>?> GetFileLikePageListByFileTokenAsync(
        [Path] string? file_token,

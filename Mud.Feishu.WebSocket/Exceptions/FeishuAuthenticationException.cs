@@ -27,4 +27,12 @@ public class FeishuAuthenticationException : FeishuWebSocketException
         : base("AuthenticationError", message, innerException, errorCode, isRecoverable: false)
     {
     }
+
+    /// <summary>
+    /// 初始化 <see cref="FeishuAuthenticationException"/> 的新实例（带可恢复标志）
+    /// </summary>
+    public FeishuAuthenticationException(string message, Exception? inner, int? errorCode, bool isRecoverable)
+        : base("AuthenticationError", message, inner, errorCode, isRecoverable)
+    {
+    }
 }

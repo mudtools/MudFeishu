@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { ElMessageBox } from 'element-plus'
 import { useUserStore } from '@/stores/user'
 import { useFavoriteStore } from '@/stores/favorite'
 
@@ -8,7 +9,7 @@ defineProps<{
   collapsed?: boolean
 }>()
 
-defineEmits<{
+const emit = defineEmits<{
   logout: []
 }>()
 
@@ -19,6 +20,23 @@ const activeMenu = ref(router.currentRoute.value.path)
 
 function handleMenuSelect(index: string) {
   router.push(index)
+}
+
+async function handleLogout() {
+  try {
+    await ElMessageBox.confirm('确定要退出登录吗？', '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    emit('logout')
+  } catch (error: any) {
+    // 如果是401错误，说明token已过期，直接清理状态
+    if (error?.response?.status === 401) {
+      emit('logout')
+    }
+    // 用户取消或其他错误不处理
+  }
 }
 </script>
 
@@ -67,6 +85,30 @@ function handleMenuSelect(index: string) {
           <div class="user-name">{{ userStore.user?.name }}</div>
           <div class="user-email">{{ userStore.user?.email || '未设置邮箱' }}</div>
         </div>
+        <el-tooltip content="退出登录" placement="top">
+          <el-button
+            type="danger"
+            link
+            size="small"
+            @click="handleLogout"
+            class="logout-btn"
+          >
+            <el-icon><SwitchButton /></el-icon>
+          </el-button>
+        </el-tooltip>
+      </div>
+      <!-- 折叠状态下的退出按钮 -->
+      <div v-else class="collapsed-logout">
+        <el-tooltip content="退出登录" placement="right">
+          <el-button
+            type="danger"
+            link
+            @click="handleLogout"
+            class="collapsed-logout-btn"
+          >
+            <el-icon><SwitchButton /></el-icon>
+          </el-button>
+        </el-tooltip>
       </div>
     </div>
   </el-aside>
@@ -169,5 +211,30 @@ function handleMenuSelect(index: string) {
   text-overflow: ellipsis;
   white-space: nowrap;
   margin-top: 2px;
+}
+
+.logout-btn {
+  margin-left: 8px;
+  padding: 4px 8px;
+}
+
+.logout-btn:hover {
+  background-color: var(--danger-color-light, #fef0f0);
+}
+
+/* 折叠状态下的退出按钮 */
+.collapsed-logout {
+  display: flex;
+  justify-content: center;
+  padding: 8px 0;
+}
+
+.collapsed-logout-btn {
+  padding: 8px;
+}
+
+.collapsed-logout-btn:hover {
+  background-color: var(--danger-color-light, #fef0f0);
+  border-radius: var(--border-radius);
 }
 </style>

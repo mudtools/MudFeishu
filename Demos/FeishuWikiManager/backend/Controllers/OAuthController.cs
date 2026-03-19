@@ -306,7 +306,7 @@ public class OAuthController : BaseController
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "登出失败");
+            _logger.LogError(ex, "登出失败: {Message}", ex.Message);
             return ServerError("登出失败", ex);
         }
     }

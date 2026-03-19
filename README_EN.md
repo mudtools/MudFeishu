@@ -269,9 +269,21 @@ graph LR
 | **Factory Pattern**    | Dynamic registration and discovery of handlers        |
 | **Type Safety**        | Strongly-typed data models with compile-time checking |
 | **Auto Deduplication** | Built-in event ID deduplication mechanism             |
+| **Event Interceptors** | Support for pre/post event processing interception    |
 | **Base Handlers**      | Specialized base classes to simplify development      |
 
 **Supported Base Handlers**:
+
+- `DepartmentCreatedEventHandler` - Department creation
+- `DepartmentDeleteEventHandler` - Department deletion
+- `DefaultFeishuEventHandler<T>` - Generic handler
+
+**New Utility Classes**:
+
+- `UrlValidator` - URL whitelist validation and SSRF protection
+- `HttpRetryPolicyBuilder` - HTTP retry policy builder (supports exponential backoff and jitter)
+
+### 🌐 Mud.Feishu - HTTP API Client
 
 - `DepartmentCreatedEventHandler` - Department creation
 - `DepartmentDeleteEventHandler` - Department deletion
@@ -283,21 +295,27 @@ graph LR
 
 | Module Category       | API Version | Main Features                                                            |
 | --------------------- | ----------- | ------------------------------------------------------------------------ |
-| **🔐 Authentication** | V3          | App token, tenant token, user token, OAuth 2.0                           |
+| **🔐 Authentication** | V3          | App token, tenant token, user token, OAuth 2.0, multi-app management |
 | **👥 Organization**   | V1/V3       | Users, departments, employees, user groups, job levels, positions, roles |
-| **💬 Messaging**      | V1          | Text/image/card messages, batch sending, group chat management           |
-| **📋 Approvals**      | V4          | Approval definitions, instances, operations                              |
-| **📝 Tasks**          | V2          | Task creation, updates, groups, attachments, comments                    |
-| **📅 Calendar**       | V4          | Calendar events, meeting management                                      |
+| **💬 Messaging**      | V1          | Text/image/card messages, batch sending, group chat management |
+| **📋 Approvals**      | V4          | Approval definitions, instances, tasks, messages, statistics |
+| **📝 Tasks**          | V2          | Task creation, updates, groups, attachments, comments, custom fields |
+| **📅 Calendar**       | V4          | Calendar events, meeting management |
+| **📄 Documents**      | V1          | Feishu docs, document blocks, content conversion, wiki |
+| **📚 Wiki**           | V2          | Knowledge spaces, node management, node copy and move |
+| **☁️ Drive**          | V1          | Cloud space, folders, file upload, version management |
+| **⏰ Attendance**     | V1          | Attendance groups, check-in records, leave approval, statistics |
 
 **Enterprise Features**:
 
 - ✅ Automatic token caching and refresh
-- ✅ Intelligent retry mechanism (configurable retry count)
+- ✅ Intelligent retry mechanism (configurable retry count and delay)
 - ✅ High-performance caching (resolves cache stampede)
 - ✅ Unified exception handling
 - ✅ Connection pool management
 - ✅ Detailed logging
+- ✅ Multi-app context switching support
+- ✅ Performance monitoring (built-in Meter metrics collection)
 
 > 💡 **Tip**: [View complete API documentation](./Mud.Feishu/README.md)
 
@@ -323,10 +341,28 @@ sequenceDiagram
 
 | Category                  | Features                                                            |
 | ------------------------- | ------------------------------------------------------------------- |
-| **Connection Management** | Auto reconnect, heartbeat detection, connection monitoring          |
+| **Connection Management** | Auto reconnect, heartbeat detection, connection monitoring, error classification |
 | **Event Processing**      | Strategy pattern, multi-handler parallel, event replay              |
 | **Message Types**         | ping/pong, heartbeat, event, auth                                   |
 | **Monitoring**            | Connection status, processing statistics, health checks, audit logs |
+
+**Error Classification Handling**:
+
+- ✅ **Recoverable Errors** - Network fluctuations, temporary failures, etc.
+- ✅ **Non-recoverable Errors** - Authentication failure, insufficient permissions, etc.
+- ✅ **Detailed Error Logs and Error Type Identification** - Helps quickly locate issues
+
+**Authentication Failure Handling**:
+
+- ✅ **Classify authentication failure reasons by error code**
+- ✅ **Track total failure count and failure time**
+- ✅ **Provide targeted repair suggestions**
+
+**Performance Monitoring**:
+
+- ✅ **Connection Statistics** - Real-time WebSocket connection count
+- ✅ **Event Processing Metrics** - Authentication, event processing count and latency
+- ✅ **Built-in Meter Support** - Integrated .NET performance counter
 
 **Supported Event Types**:
 
@@ -355,13 +391,44 @@ sequenceDiagram
     Middleware-->>Feishu: 7. Return response
 ```
 
-| Category               | Features                                                                             |
-| ---------------------- | ------------------------------------------------------------------------------------ |
-| **Security**           | Signature verification, timestamp verification, AES-256-CBC decryption, IP whitelist |
-| **Event Processing**   | Middleware mode, auto routing, strategy pattern, async processing                    |
-| **Advanced**           | Multi-bot support, background processing, concurrency control, hot reload config     |
-| **Monitoring**         | Performance monitoring, health checks, request logs, exception handling              |
-| **Security Hardening** | Sliding window rate limiting, threat detection, security audit, key validation       |
+| Category               | Features                                                                                   |
+| ---------------------- | ------------------------------------------------------------------------------------------ |
+| **Security**           | Signature verification, timestamp verification, AES-256-CBC decryption, IP whitelist, Content-Type validation, SSRF protection, URL whitelist |
+| **Event Processing**   | Middleware mode, auto routing, strategy pattern, async processing, event interceptors, failed event retry |
+| **Advanced**           | Multi-bot support, background processing, concurrency control (hot reload supported), circuit breaker pattern |
+| **Monitoring**         | Performance monitoring, health checks, request logs, exception handling, security audit logs |
+| **Security Hardening** | Sliding window rate limiting, threat detection, security audit, key validation, JSON depth limit, private IP detection |
+| **Performance**        | Streaming request body reading, source generator serialization, memory optimization, semaphore concurrency control |
+
+**Security Enhancement Features**:
+
+- ✅ **Content-Type Validation** - Only accepts `application/json` requests
+- ✅ **JSON Depth Limit** - Prevents DoS attacks from deeply nested JSON
+- ✅ **Streaming Request Body Reading** - Prevents DoS attacks with forged Content-Length
+- ✅ **Nonce Expiration Cleanup** - Prevents memory leaks
+- ✅ **Circuit Breaker Pattern** - Implemented with Polly for circuit breaking
+- ✅ **Failed Event Retry** - Background automatic retry of failed events
+- ✅ **SSRF Protection** - Automatically detects and blocks private IP access requests
+- ✅ **URL Whitelist Validation** - Supports configuring allowed URL domains and paths
+- ✅ **Private IP Detection** - Automatically identifies 127.0.0.1, 192.168.x.x and other private addresses
+- ✅ **Security Audit Logs** - Records all security-related events (success/failure)
+
+**Performance Optimization**:
+
+- ✅ **Source Generator Serialization** - Improves serialization performance by ~20-30%
+- ✅ **Rate Limiter Memory Management** - LRU eviction mechanism, max 100k entries
+- ✅ **Log Sanitization** - Automatically sanitizes sensitive fields to prevent information leakage
+- ✅ **Semaphore Concurrency Control** - Uses SemaphoreSlim to control max concurrency, supports hot config reload
+- ✅ **HTTP Retry Policy** - Intelligent exponential backoff and jitter algorithm
+
+**Core Services**:
+
+- `FeishuWebhookConcurrencyService` - Concurrency control service with hot config reload
+- `FailedEventRetryService` - Failed event retry service, automatic background retry
+- `SecurityAuditService` - Security audit service, records security events
+- `ThreatDetectionService` - Threat detection service, identifies abnormal request patterns
+- `LoggingEventInterceptor` - Logging event interceptor
+- `TelemetryEventInterceptor` - Telemetry event interceptor
 
 ### 💾 Mud.Feishu.Redis - Distributed Deduplication Extension
 
@@ -399,13 +466,31 @@ sequenceDiagram
 [HttpPost("users")]
 public async Task<IActionResult> CreateUser([FromBody] CreateUserRequest request)
 {
+    _userApi.UseApp("hr-app");// Switch to hr-app in multi-app scenario, can be omitted in single-app scenario
     var result = await _userApi.CreateUserAsync(request);
+    _userApi.UseDefaultApp();// Switch back to default app in multi-app scenario, can be omitted in single-app scenario
     return result.Code == 0 ? Ok(result.Data) : BadRequest(result.Msg);
 }
 
-// Send message
+// Constructor injection of IFeishuAppManager interface
+private readonly IFeishuAppManager _feishuAppManager;
+
+// Use IFeishuAppManager to get API interface objects and flexibly switch between Feishu apps
+var tenantJobTitleApi = _feishuAppManager.GetFeishuApi<IFeishuTenantV3JobTitle>("hr-app");
+var result = await tenantJobTitleApi.GetJobTitlesListAsync(10, null);
+
+// Use app context switcher
+var contextSwitcher = _feishuAppManager.GetAppContextSwitcher();
+using (contextSwitcher.UseApp("hr-app"))
+{
+    // All API calls within this scope use hr-app
+    var userApi = _feishuAppManager.GetFeishuApi<IFeishuTenantV3User>();
+    var userResult = await userApi.GetUserInfoByIdAsync("user_123");
+}
+
+// Send message in single-app mode, no app switching needed
 var textContent = new MessageTextContent { Text = "Hello World!" };
-var result = await _messageApi.SendMessageAsync(new SendMessageRequest
+var result = await messageApi.SendMessageAsync(new SendMessageRequest
 {
     ReceiveId = "user_123",
     MsgType = "text",
@@ -461,6 +546,98 @@ builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
 app.UseFeishuWebhook();
 ```
 
+### Performance Monitoring
+
+```csharp
+// Get real-time WebSocket connection count
+var connectionCountProvider = app.Services.GetRequiredService<IWebSocketConnectionCountProvider>();
+var connectionCount = await connectionCountProvider.GetConnectionCountAsync();
+
+// Use FeishuMetrics to record custom metrics
+FeishuMetrics.RecordTokenRefresh("default", true);
+FeishuMetrics.RecordHttpRequest("default", "user.get", 200, TimeSpan.FromMilliseconds(150));
+```
+
+### URL Whitelist and SSRF Protection
+
+```csharp
+// Configure URL whitelist
+var options = new FeishuWebhookOptions
+{
+    SsrfProtection = new SsrfProtectionOptions
+    {
+        Enabled = true,
+        BlockPrivateIps = true,
+        AllowList = new[]
+        {
+            "https://open.feishu.cn",
+            "https://*.example.com"
+        }
+    }
+};
+
+// Validate URL
+UrlValidator.ValidateBaseUrl("https://open.feishu.cn/api", true);
+```
+
+### Event Interceptors
+
+```csharp
+// Create logging interceptor
+public class CustomLoggingInterceptor : LoggingEventInterceptor
+{
+    public CustomLoggingInterceptor(ILogger<CustomLoggingInterceptor> logger)
+        : base(logger)
+    {
+    }
+
+    protected override Task LogBeforeHandleAsync(
+        string eventType,
+        string? eventId,
+        CancellationToken cancellationToken)
+    {
+        _logger.LogInformation("Start processing event: {EventType}, EventId: {EventId}", eventType, eventId);
+        return Task.CompletedTask;
+    }
+}
+
+// Register interceptor
+builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
+    .AddInterceptor<CustomLoggingInterceptor>()
+    .AddHandler<DepartmentCreatedHandler>()
+    .Build();
+```
+
+---
+
+## 📸 Demo Screenshots
+
+Below are actual screenshots of **FeishuWikiManager** (Feishu Wiki Management Demo), demonstrating the SDK in a real project:
+
+### User Authentication & Login
+
+| Feishu OAuth | System Login |
+|:--|:--|
+| ![Feishu OAuth](./Images/wiki飞书认证授权界面.png) | ![Login](./Images/飞书云文档管理登陆界面.png) |
+
+### Wiki Management Core Features
+
+| Main Interface | Knowledge Space |
+|:--|:--|
+| ![Wiki Main](./Images/Wiki知识库主界面.png) | ![Knowledge Space](./Images/Wiki知识空间界面.png) |
+
+| Search | Cloud Sync |
+|:--|:--|
+| ![Search](./Images/Wiki知识库搜索界面.png) | ![Cloud Sync](./Images/飞书云文档管理云空间同步功能.png) |
+
+### Document Management
+
+| Document Manager | File Upload |
+|:--|:--|
+| ![Doc Manager](./Images/飞书云文档管理主界面.png) | ![Upload](./Images/飞书云文档管理文件上传界面.png) |
+
+> 💡 **Tip**: All interfaces are built with **Mud.Feishu** SDK, demonstrating Feishu OAuth, wiki management, document search, cloud sync and other core features. [View Demo Source](./Demos/FeishuWikiManager)
+
 ---
 
 ## 📖 Detailed Documentation
@@ -470,6 +647,7 @@ app.UseFeishuWebhook();
 - [Mud.Feishu.WebSocket Documentation](./Mud.Feishu.WebSocket/Readme_EN.md) - WebSocket real-time event subscription guide
 - [Mud.Feishu.Webhook Documentation](./Mud.Feishu.Webhook/README_EN.md) - Webhook HTTP callback event processing guide
 - [Mud.Feishu.Redis Documentation](./Mud.Feishu.Redis/README.md) - Redis distributed deduplication extension guide
+- [Security Enhancements](./docs/SECURITY_IMPROVEMENTS.md) - SSRF protection, URL validation and other security features
 
 ## 🛠️ Technology Stack
 
@@ -519,7 +697,11 @@ This project is licensed under the [MIT License](./LICENSE), allowing both comme
 
 - [Project Repository](https://gitee.com/mudtools/MudFeishu) - Source code and development documentation
 - [Mud.ServiceCodeGenerator](https://gitee.com/mudtools/mud-code-generator) - HTTP client code generator
-- [Example Projects](./Mud.Feishu.Test) - Complete usage examples and demo code
+- [Example Projects](./Demos) - Complete usage examples and demo code
+  - [FeishuWikiManager](./Demos/FeishuWikiManager) - Feishu Wiki Management Demo (Vue3 + .NET)
+  - [Webhook Demo](./Demos/Mud.Feishu.Webhook.Demo) - Webhook event processing demo
+  - [WebSocket Demo](./Demos/Mud.Feishu.WebSocket.Demo) - WebSocket real-time event demo
+- [Test Projects](./Tests) - Complete unit tests and integration tests
 
 ### 🤝 Community Support
 

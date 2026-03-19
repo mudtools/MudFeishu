@@ -60,7 +60,7 @@ internal class UserTokenManager : IFeishuUserTokenManager
         if (!_currentUserContext.IsAuthenticated)
             throw new InvalidOperationException("Current user is not authenticated. Cannot get user token.");
 
-        return await GetTokenAsync(_currentUserContext.UserId, cancellationToken) ?? throw new InvalidOperationException("Failed to obtain user token.");
+        return await GetTokenAsync(_currentUserContext.OpenId, cancellationToken) ?? throw new InvalidOperationException("Failed to obtain user token.");
     }
 
     public async Task<string?> GetTokenAsync(string? userId, CancellationToken cancellationToken = default)

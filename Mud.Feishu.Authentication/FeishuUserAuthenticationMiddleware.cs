@@ -28,7 +28,7 @@ namespace Mud.Feishu.Authentication;
 /// 应放在 AuthenticationMiddleware 之后、AuthorizationMiddleware 之前：
 /// <code>
 /// app.UseAuthentication();
-/// app.UseFeishuUserAuthentication();  // 此中间件
+/// app.UseFeishuUserAuthentication();  // 此飞书用户认证中间件
 /// app.UseAuthorization();
 /// </code>
 /// <para>默认 Claims 类型（可通过 FeishuUserAuthenticationOptions 自定义）：</para>

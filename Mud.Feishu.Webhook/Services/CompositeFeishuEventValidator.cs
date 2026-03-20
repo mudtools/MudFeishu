@@ -7,6 +7,7 @@
 
 using Mud.Feishu.Webhook.Configuration;
 using Mud.Feishu.Webhook.Models;
+using Mud.Feishu.Webhook.Utilities;
 
 namespace Mud.Feishu.Webhook.Services;
 
@@ -23,6 +24,7 @@ public class CompositeFeishuEventValidator : ValidatorBase, IFeishuEventValidato
     private readonly ISubscriptionValidator _subscriptionValidator;
     private readonly ILogger<CompositeFeishuEventValidator> _logger;
     private readonly IOptions<FeishuWebhookOptions> _options;
+    private readonly IEnvironmentService _environmentService;
 
     /// <summary>
     /// 初始化组合验证器
@@ -33,13 +35,15 @@ public class CompositeFeishuEventValidator : ValidatorBase, IFeishuEventValidato
     /// <param name="subscriptionValidator">订阅验证器</param>
     /// <param name="logger">日志记录器</param>
     /// <param name="options">Webhook 配置选项</param>
+    /// <param name="environmentService">环境服务</param>
     public CompositeFeishuEventValidator(
         ISignatureValidator signatureValidator,
         ITimestampValidator timestampValidator,
         INonceValidator nonceValidator,
         ISubscriptionValidator subscriptionValidator,
         ILogger<CompositeFeishuEventValidator> logger,
-        IOptions<FeishuWebhookOptions> options)
+        IOptions<FeishuWebhookOptions> options,
+        IEnvironmentService? environmentService = null)
     {
         _signatureValidator = signatureValidator ?? throw new ArgumentNullException(nameof(signatureValidator));
         _timestampValidator = timestampValidator ?? throw new ArgumentNullException(nameof(timestampValidator));
@@ -47,6 +51,7 @@ public class CompositeFeishuEventValidator : ValidatorBase, IFeishuEventValidato
         _subscriptionValidator = subscriptionValidator ?? throw new ArgumentNullException(nameof(subscriptionValidator));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _options = options ?? throw new ArgumentNullException(nameof(options));
+        _environmentService = environmentService ?? new EnvironmentService();
     }
 
     /// <inheritdoc />
@@ -84,10 +89,7 @@ public class CompositeFeishuEventValidator : ValidatorBase, IFeishuEventValidato
             }
 
             // 2. 然后验证 Nonce（防重放攻击）
-            var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production";
-            var isProductionEnvironment = string.Equals(environment, "Production", StringComparison.OrdinalIgnoreCase);
-
-            if (!await _nonceValidator.ValidateNonceAsync(nonce, isProductionEnvironment))
+            if (!await _nonceValidator.ValidateNonceAsync(nonce, _environmentService.IsProduction))
             {
                 _logger.LogWarning("Nonce 验证失败");
                 return false;
@@ -126,10 +128,7 @@ public class CompositeFeishuEventValidator : ValidatorBase, IFeishuEventValidato
             }
 
             // 2. 然后验证 Nonce（防重放攻击）
-            var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production";
-            var isProductionEnvironment = string.Equals(environment, "Production", StringComparison.OrdinalIgnoreCase);
-
-            if (!await _nonceValidator.ValidateNonceAsync(nonce, isProductionEnvironment))
+            if (!await _nonceValidator.ValidateNonceAsync(nonce, _environmentService.IsProduction))
             {
                 _logger.LogWarning("Nonce 验证失败");
                 return false;

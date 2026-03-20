@@ -6,6 +6,7 @@
 // -----------------------------------------------------------------------
 
 using Mud.Feishu.Webhook.Configuration;
+using Mud.Feishu.Webhook.Utilities;
 
 namespace Mud.Feishu.Webhook.Services;
 
@@ -16,14 +17,19 @@ namespace Mud.Feishu.Webhook.Services;
 public class ConfigurationValidationService
 {
     private readonly ILogger<ConfigurationValidationService> _logger;
+    private readonly IEnvironmentService _environmentService;
 
     /// <summary>
     /// 初始化配置验证服务
     /// </summary>
     /// <param name="logger">日志记录器</param>
-    public ConfigurationValidationService(ILogger<ConfigurationValidationService> logger)
+    /// <param name="environmentService">环境服务</param>
+    public ConfigurationValidationService(
+        ILogger<ConfigurationValidationService> logger,
+        IEnvironmentService? environmentService = null)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _environmentService = environmentService ?? new EnvironmentService();
     }
 
     /// <summary>
@@ -162,7 +168,7 @@ public class ConfigurationValidationService
     /// <summary>
     /// 验证安全配置
     /// </summary>
-    private static void ValidateSecurityConfiguration(FeishuWebhookOptions options, ConfigurationValidationResult result)
+    private void ValidateSecurityConfiguration(FeishuWebhookOptions options, ConfigurationValidationResult result)
     {
         // 验证时间戳容错范围
         if (options.TimestampToleranceSeconds < 0)
@@ -179,15 +185,12 @@ public class ConfigurationValidationService
         }
 
         // 验证签名验证配置
-        var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production";
-        var isProduction = string.Equals(environment, "Production", StringComparison.OrdinalIgnoreCase);
-
-        if (!options.EnforceHeaderSignatureValidation && isProduction)
+        if (!options.EnforceHeaderSignatureValidation && _environmentService.IsProduction)
         {
             result.AddError("生产环境必须启用请求头签名验证");
         }
 
-        if (!options.EnableBodySignatureValidation && isProduction)
+        if (!options.EnableBodySignatureValidation && _environmentService.IsProduction)
         {
             result.AddWarning("生产环境建议启用请求体签名验证");
         }
@@ -201,10 +204,9 @@ public class ConfigurationValidationService
                 {
                     result.AddError("IP 白名单中不能包含空值");
                 }
-                // 这里可以添加更详细的 IP 格式验证
             }
         }
-        else if (isProduction)
+        else if (_environmentService.IsProduction)
         {
             result.AddWarning("生产环境建议配置 IP 白名单以提高安全性");
         }
@@ -238,9 +240,6 @@ public class ConfigurationValidationService
         {
             result.AddWarning("最大并发事件数过大，可能影响系统稳定性");
         }
-
-        // 注意：CircuitBreaker 功能已被移除，不再验证相关配置
-
     }
 
     /// <summary>

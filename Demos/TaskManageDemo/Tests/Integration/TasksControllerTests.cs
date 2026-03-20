@@ -213,9 +213,9 @@ public class TasksControllerTests : IClassFixture<IntegrationTestFactory>
 
     private async Task<string> GetTestTokenAsync()
     {
-        // 返回测试令牌
-        // 在实际项目中，应该调用登录 API 或使用模拟令牌
-        return "test-token";
+        // 测试认证处理器会自动认证所有请求
+        // 返回任意非空字符串即可
+        return await Task.FromResult("test-token");
     }
 }
 

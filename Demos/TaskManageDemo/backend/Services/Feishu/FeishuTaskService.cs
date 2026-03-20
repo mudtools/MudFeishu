@@ -5,9 +5,10 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-using System.Text.Json;
+using Mud.Feishu;
 using Mud.Feishu.DataModels.Tasks;
-using TaskManageDemo.Backend.Models.Entities;
+using Mud.Feishu.DataModels.TasksList;
+using System.Text.Json;
 
 namespace TaskManageDemo.Backend.Services.Feishu;
 
@@ -80,6 +81,14 @@ public interface IFeishuTaskService
         string taskGuid,
         int relativeFireMinute,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 获取清单下的所有任务
+    /// </summary>
+    Task<List<TaskSummary>> GetTaskListTasksAsync(
+        string taskListGuid,
+        bool? completed = null,
+        CancellationToken cancellationToken = default);
 }
 
 /// <summary>
@@ -87,15 +96,20 @@ public interface IFeishuTaskService
 /// </summary>
 public class FeishuTaskService : IFeishuTaskService
 {
-    private readonly IFeishuV2Task _taskApi;
+    private readonly IFeishuTenantV2Task _taskApi;
+    private readonly IFeishuTenantV2TaskList _taskListApi;
     private readonly ILogger<FeishuTaskService> _logger;
 
     /// <summary>
     /// 初始化飞书任务服务
     /// </summary>
-    public FeishuTaskService(IFeishuV2Task taskApi, ILogger<FeishuTaskService> logger)
+    public FeishuTaskService(
+        IFeishuTenantV2Task taskApi,
+        IFeishuTenantV2TaskList taskListApi,
+        ILogger<FeishuTaskService> logger)
     {
         _taskApi = taskApi;
+        _taskListApi = taskListApi;
         _logger = logger;
     }
 
@@ -381,5 +395,37 @@ public class FeishuTaskService : IFeishuTaskService
 
         _logger.LogWarning("任务提醒添加失败: {TaskGuid}", taskGuid);
         return false;
+    }
+
+    /// <summary>
+    /// 获取清单下的所有任务
+    /// </summary>
+    public async Task<List<TaskSummary>> GetTaskListTasksAsync(
+        string taskListGuid,
+        bool? completed = null,
+        CancellationToken cancellationToken = default)
+    {
+        var tasks = new List<TaskSummary>();
+        string? pageToken = null;
+
+        do
+        {
+            var result = await _taskListApi.GetTaskListPageListByIdAsync(
+                taskListGuid,
+                page_size: 50,
+                page_token: pageToken,
+                completed: completed,
+                cancellationToken: cancellationToken);
+
+            if (result?.Data?.Items != null)
+            {
+                tasks.AddRange(result.Data.Items);
+            }
+
+            pageToken = result?.Data?.PageToken;
+        } while (!string.IsNullOrEmpty(pageToken));
+
+        _logger.LogInformation("获取清单任务列表成功: {TaskListGuid}, 数量: {Count}", taskListGuid, tasks.Count);
+        return tasks;
     }
 }

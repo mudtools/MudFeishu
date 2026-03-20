@@ -19,7 +19,13 @@ export const taskApi = {
   },
 
   async createTask(request: CreateTaskRequest): Promise<Task> {
-    const response = await apiClient.post<Task>('/tasks', request)
+    // 字段映射：前端 assignees -> 后端 assigneeIds
+    const backendRequest = {
+      ...request,
+      assigneeIds: request.assignees,
+    }
+    delete (backendRequest as Record<string, unknown>).assignees
+    const response = await apiClient.post<Task>('/tasks', backendRequest)
     return response.data
   },
 

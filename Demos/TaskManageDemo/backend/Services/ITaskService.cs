@@ -15,14 +15,14 @@ namespace TaskManageDemo.Backend.Services;
 public interface ITaskService
 {
     /// <summary>
-    /// 获取任务列表
+    /// 获取任务列表（分页查询）
     /// </summary>
     Task<PagedResponse<TaskDto>> GetTasksAsync(
-        TaskSearchRequest request,
+        TaskQueryParameters parameters,
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 根据ID获取任务
+    /// 根据ID获取任务详情
     /// </summary>
     Task<TaskDto?> GetTaskByIdAsync(
         int taskId,
@@ -51,5 +51,21 @@ public interface ITaskService
     Task<bool> DeleteTaskAsync(
         int taskId,
         string userId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 分配任务成员
+    /// </summary>
+    Task<bool> AssignTaskAsync(
+        int taskId,
+        AssignTaskRequest request,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 更新任务状态
+    /// </summary>
+    Task<bool> UpdateTaskStatusAsync(
+        int taskId,
+        bool isCompleted,
         CancellationToken cancellationToken = default);
 }

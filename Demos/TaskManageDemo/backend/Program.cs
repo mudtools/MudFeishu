@@ -194,3 +194,6 @@ app.MapHealthChecks("/health", new Microsoft.AspNetCore.Diagnostics.HealthChecks
 });
 
 app.Run();
+
+// 使 Program 类对测试项目可见
+public partial class Program { }

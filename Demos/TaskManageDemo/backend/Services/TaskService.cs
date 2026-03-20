@@ -8,8 +8,11 @@
 using Microsoft.EntityFrameworkCore;
 using TaskManageDemo.Backend.Data;
 using TaskManageDemo.Backend.Models.DTOs;
-using TaskManageDemo.Backend.Services.Caching;
+using TaskManageDemo.Backend.Models.Entities;
 using TaskManageDemo.Backend.Services.Feishu;
+using TaskManageDemo.Backend.Services.History;
+using TaskManageDemo.Backend.Services.Sync;
+using TaskManageDemo.Backend.Services.Transaction;
 
 namespace TaskManageDemo.Backend.Services;
 
@@ -20,21 +23,41 @@ public class TaskService : ITaskService
 {
     private readonly TaskManageDbContext _dbContext;
     private readonly IFeishuTaskService _feishuTaskService;
+    private readonly ITaskSyncService _taskSyncService;
+    private readonly IFeishuNotificationService _notificationService;
+    private readonly ITransactionService _transactionService;
+    private readonly ITaskHistoryService _taskHistoryService;
     private readonly ILogger<TaskService> _logger;
 
+    /// <summary>
+    /// 初始化任务服务
+    /// </summary>
     public TaskService(
         TaskManageDbContext dbContext,
         IFeishuTaskService feishuTaskService,
+        ITaskSyncService taskSyncService,
+        IFeishuNotificationService notificationService,
+        ITransactionService transactionService,
+        ITaskHistoryService taskHistoryService,
         ILogger<TaskService> logger)
     {
         _dbContext = dbContext;
         _feishuTaskService = feishuTaskService;
+        _taskSyncService = taskSyncService;
+        _notificationService = notificationService;
+        _transactionService = transactionService;
+        _taskHistoryService = taskHistoryService;
         _logger = logger;
     }
 
+    #region 查询任务
+
+    /// <summary>
+    /// 获取任务列表（分页）
+    /// </summary>
     public async Task<PagedResponse<TaskDto>> GetTasksAsync(
-        TaskSearchRequest request,
-        CancellationToken cancellationToken = default)
+        TaskQueryParameters parameters,
+        CancellationToken cancellationToken)
     {
         var query = _dbContext.Tasks
             .Include(t => t.Members)
@@ -42,40 +65,56 @@ public class TaskService : ITaskService
             .AsQueryable();
 
         // 应用搜索条件
-        if (!string.IsNullOrWhiteSpace(request.Keyword))
+        if (parameters.IsCompleted.HasValue)
         {
-            query = query.Where(t =>
-                t.Summary.Contains(request.Keyword) ||
-                (t.Description != null && t.Description.Contains(request.Keyword)));
+            query = query.Where(t => t.IsCompleted == parameters.IsCompleted.Value);
         }
 
-        if (!string.IsNullOrWhiteSpace(request.Status))
+        if (parameters.Priority.HasValue)
         {
-            query = request.Status.ToLower() switch
-            {
-                "completed" => query.Where(t => t.IsCompleted),
-                "pending" => query.Where(t => !t.IsCompleted),
-                _ => query
-            };
+            query = query.Where(t => t.Priority == parameters.Priority.Value);
         }
 
-        if (request.Priority.HasValue)
+        if (!string.IsNullOrEmpty(parameters.AssigneeId))
         {
-            query = query.Where(t => t.Priority == request.Priority.Value);
+            query = query.Where(t => t.Members.Any(m => m.User != null && m.User.FeishuId == parameters.AssigneeId && m.Role == "assignee"));
         }
 
-        if (request.AssigneeId.HasValue)
+        if (!string.IsNullOrEmpty(parameters.Keyword))
         {
-            query = query.Where(t =>
-                t.Members.Any(m => m.UserId == request.AssigneeId.Value && m.Role == "assignee"));
+            query = query.Where(t => t.Summary.Contains(parameters.Keyword) ||
+                                     (t.Description != null && t.Description.Contains(parameters.Keyword)));
         }
+
+        if (parameters.DueTimeFrom.HasValue)
+        {
+            query = query.Where(t => t.DueTime >= parameters.DueTimeFrom.Value);
+        }
+
+        if (parameters.DueTimeTo.HasValue)
+        {
+            query = query.Where(t => t.DueTime <= parameters.DueTimeTo.Value);
+        }
+
+        if (!string.IsNullOrEmpty(parameters.TaskListGuid))
+        {
+            query = query.Where(t => t.TaskListGuid == parameters.TaskListGuid);
+        }
+
+        // 排序
+        query = parameters.SortBy?.ToLower() switch
+        {
+            "duedate" => parameters.IsDescending ? query.OrderByDescending(t => t.DueTime) : query.OrderBy(t => t.DueTime),
+            "priority" => parameters.IsDescending ? query.OrderByDescending(t => t.Priority) : query.OrderBy(t => t.Priority),
+            "createdat" => parameters.IsDescending ? query.OrderByDescending(t => t.CreatedAt) : query.OrderBy(t => t.CreatedAt),
+            _ => parameters.IsDescending ? query.OrderByDescending(t => t.UpdatedAt) : query.OrderBy(t => t.UpdatedAt)
+        };
 
         var total = await query.CountAsync(cancellationToken);
 
         var items = await query
-            .OrderByDescending(t => t.UpdatedAt)
-            .Skip((request.Page - 1) * request.PageSize)
-            .Take(request.PageSize)
+            .Skip((parameters.Page - 1) * parameters.PageSize)
+            .Take(parameters.PageSize)
             .Select(t => new TaskDto
             {
                 Id = t.Id,
@@ -105,14 +144,17 @@ public class TaskService : ITaskService
         {
             Items = items,
             Total = total,
-            Page = request.Page,
-            PageSize = request.PageSize
+            Page = parameters.Page,
+            PageSize = parameters.PageSize
         };
     }
 
+    /// <summary>
+    /// 获取任务详情
+    /// </summary>
     public async Task<TaskDto?> GetTaskByIdAsync(
         int taskId,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         var task = await _dbContext.Tasks
             .Include(t => t.Members)
@@ -124,35 +166,20 @@ public class TaskService : ITaskService
             return null;
         }
 
-        return new TaskDto
-        {
-            Id = task.Id,
-            TaskGuid = task.TaskGuid,
-            Summary = task.Summary,
-            Description = task.Description,
-            Status = task.Status,
-            IsCompleted = task.IsCompleted,
-            Priority = task.Priority,
-            StartTime = task.StartTime,
-            DueTime = task.DueTime,
-            CompletedTime = task.CompletedTime,
-            CreatedAt = task.CreatedAt,
-            CreatorId = task.CreatorId,
-            TaskListGuid = task.TaskListGuid,
-            Members = task.Members.Where(m => m.User != null).Select(m => new TaskMemberDto
-            {
-                FeishuId = m.User!.FeishuId,
-                Name = m.User.Name,
-                AvatarUrl = m.User.AvatarUrl,
-                Role = m.Role
-            }).ToList()
-        };
+        return MapToTaskDto(task);
     }
 
+    #endregion
+
+    #region 任务操作
+
+    /// <summary>
+    /// 创建任务
+    /// </summary>
     public async Task<TaskDto> CreateTaskAsync(
         CreateTaskRequest request,
         string userId,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         // 在飞书创建任务
         var taskGuid = await _feishuTaskService.CreateTaskAsync(
@@ -167,49 +194,55 @@ public class TaskService : ITaskService
             throw new InvalidOperationException("创建任务失败：飞书 API 返回空值");
         }
 
-        // 同步到本地数据库
-        var task = await _dbContext.Tasks
-            .Include(t => t.Members)
-            .ThenInclude(m => m.User)
-            .FirstOrDefaultAsync(t => t.TaskGuid == taskGuid, cancellationToken);
+        _logger.LogInformation("飞书任务创建成功，TaskGuid: {TaskGuid}", taskGuid);
 
-        if (task == null)
+        // 使用事务同步到本地数据库
+        var result = await _transactionService.ExecuteAsync(async () =>
         {
-            throw new InvalidOperationException("任务同步到本地数据库失败");
+            var syncedTask = await _taskSyncService.SyncTaskAsync(taskGuid!, cancellationToken);
+            if (syncedTask == null)
+            {
+                throw new InvalidOperationException("任务同步到本地数据库失败");
+            }
+            return syncedTask;
+        }, cancellationToken);
+
+        // 发送通知
+        if (request.AssigneeIds != null && request.AssigneeIds.Count > 0)
+        {
+            foreach (var assigneeId in request.AssigneeIds)
+            {
+                try
+                {
+                    await _notificationService.SendTaskAssignedNotificationAsync(
+                        assigneeId,
+                        request.Summary,
+                        taskGuid,
+                        cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "发送任务分配通知失败，AssigneeId: {AssigneeId}", assigneeId);
+                }
+            }
         }
 
-        return new TaskDto
-        {
-            Id = task.Id,
-            TaskGuid = task.TaskGuid,
-            Summary = task.Summary,
-            Description = task.Description,
-            Status = task.Status,
-            IsCompleted = task.IsCompleted,
-            Priority = task.Priority,
-            StartTime = task.StartTime,
-            DueTime = task.DueTime,
-            CompletedTime = task.CompletedTime,
-            CreatedAt = task.CreatedAt,
-            CreatorId = task.CreatorId,
-            TaskListGuid = task.TaskListGuid,
-            Members = task.Members.Where(m => m.User != null).Select(m => new TaskMemberDto
-            {
-                FeishuId = m.User!.FeishuId,
-                Name = m.User.Name,
-                AvatarUrl = m.User.AvatarUrl,
-                Role = m.Role
-            }).ToList()
-        };
+        // 记录任务创建历史
+        await _taskHistoryService.RecordTaskCreatedAsync(result.Id, userId, cancellationToken);
+
+        return MapToTaskDto(result);
     }
 
+    /// <summary>
+    /// 更新任务
+    /// </summary>
     public async Task<TaskDto?> UpdateTaskAsync(
         int taskId,
         UpdateTaskRequest request,
         string userId,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
-        var task = await _dbContext.Tasks.FindAsync([taskId], cancellationToken);
+        var task = await _dbContext.Tasks.FindAsync(new object[] { taskId }, cancellationToken);
         if (task == null)
         {
             return null;
@@ -229,48 +262,31 @@ public class TaskService : ITaskService
             throw new InvalidOperationException("更新任务失败：飞书 API 返回失败");
         }
 
-        // 重新获取更新后的任务
-        var updatedTask = await _dbContext.Tasks
-            .Include(t => t.Members)
-            .ThenInclude(m => m.User)
-            .FirstOrDefaultAsync(t => t.Id == taskId, cancellationToken);
+        _logger.LogInformation("飞书任务更新成功，TaskGuid: {TaskGuid}", task.TaskGuid);
 
-        if (updatedTask == null)
+        // 使用事务同步到本地数据库
+        var result = await _transactionService.ExecuteAsync(async () =>
         {
-            return null;
-        }
-
-        return new TaskDto
-        {
-            Id = updatedTask.Id,
-            TaskGuid = updatedTask.TaskGuid,
-            Summary = updatedTask.Summary,
-            Description = updatedTask.Description,
-            Status = updatedTask.Status,
-            IsCompleted = updatedTask.IsCompleted,
-            Priority = updatedTask.Priority,
-            StartTime = updatedTask.StartTime,
-            DueTime = updatedTask.DueTime,
-            CompletedTime = updatedTask.CompletedTime,
-            CreatedAt = updatedTask.CreatedAt,
-            CreatorId = updatedTask.CreatorId,
-            TaskListGuid = updatedTask.TaskListGuid,
-            Members = updatedTask.Members.Where(m => m.User != null).Select(m => new TaskMemberDto
+            var syncedTask = await _taskSyncService.SyncTaskAsync(task.TaskGuid, cancellationToken);
+            if (syncedTask == null)
             {
-                FeishuId = m.User!.FeishuId,
-                Name = m.User.Name,
-                AvatarUrl = m.User.AvatarUrl,
-                Role = m.Role
-            }).ToList()
-        };
+                throw new InvalidOperationException("任务同步到本地数据库失败");
+            }
+            return syncedTask;
+        }, cancellationToken);
+
+        return MapToTaskDto(result);
     }
 
+    /// <summary>
+    /// 删除任务
+    /// </summary>
     public async Task<bool> DeleteTaskAsync(
         int taskId,
         string userId,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
-        var task = await _dbContext.Tasks.FindAsync([taskId], cancellationToken);
+        var task = await _dbContext.Tasks.FindAsync(new object[] { taskId }, cancellationToken);
         if (task == null)
         {
             return false;
@@ -280,13 +296,189 @@ public class TaskService : ITaskService
         var success = await _feishuTaskService.DeleteTaskAsync(task.TaskGuid, cancellationToken);
         if (!success)
         {
-            return false;
+            throw new InvalidOperationException("删除任务失败：飞书 API 返回失败");
         }
 
-        // 删除本地记录
-        _dbContext.Tasks.Remove(task);
-        await _dbContext.SaveChangesAsync(cancellationToken);
+        _logger.LogInformation("飞书任务删除成功，TaskGuid: {TaskGuid}", task.TaskGuid);
+
+        // 使用事务删除本地数据库记录
+        await _transactionService.ExecuteAsync(async () =>
+        {
+            _dbContext.Tasks.Remove(task);
+            await _dbContext.SaveChangesAsync(cancellationToken);
+        }, cancellationToken);
 
         return true;
     }
+
+    /// <summary>
+    /// 分配任务成员
+    /// </summary>
+    public async Task<bool> AssignTaskAsync(
+        int taskId,
+        AssignTaskRequest request,
+        CancellationToken cancellationToken)
+    {
+        var task = await _dbContext.Tasks
+            .Include(t => t.Members)
+            .ThenInclude(m => m.User)
+            .FirstOrDefaultAsync(t => t.Id == taskId, cancellationToken);
+
+        if (task == null)
+        {
+            return false;
+        }
+
+        // 在飞书添加成员
+        var success = await _feishuTaskService.AddMembersAsync(
+            task.TaskGuid,
+            request.AssigneeIds,
+            request.FollowerIds,
+            cancellationToken);
+
+        if (!success)
+        {
+            throw new InvalidOperationException("添加任务成员失败");
+        }
+
+        // 同步成员到本地数据库
+        await SyncTaskMembersAsync(task.Id, request.AssigneeIds, "assignee", cancellationToken);
+        await SyncTaskMembersAsync(task.Id, request.FollowerIds, "follower", cancellationToken);
+
+        // 发送通知
+        foreach (var assigneeId in request.AssigneeIds)
+        {
+            try
+            {
+                await _notificationService.SendTaskAssignedNotificationAsync(
+                    assigneeId,
+                    task.Summary,
+                    task.TaskGuid,
+                    cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "发送任务分配通知失败，AssigneeId: {AssigneeId}", assigneeId);
+            }
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// 更新任务状态
+    /// </summary>
+    public async Task<bool> UpdateTaskStatusAsync(
+        int taskId,
+        bool isCompleted,
+        CancellationToken cancellationToken)
+    {
+        var task = await _dbContext.Tasks.FindAsync(new object[] { taskId }, cancellationToken);
+        if (task == null)
+        {
+            return false;
+        }
+
+        // 在飞书更新任务状态
+        var success = await _feishuTaskService.UpdateTaskAsync(
+            task.TaskGuid,
+            null,
+            null,
+            isCompleted,
+            null,
+            cancellationToken);
+
+        if (!success)
+        {
+            throw new InvalidOperationException("更新任务状态失败");
+        }
+
+        // 同步到本地数据库
+        await _taskSyncService.SyncTaskAsync(task.TaskGuid, cancellationToken);
+
+        return true;
+    }
+
+    #endregion
+
+    #region 私有方法
+
+    /// <summary>
+    /// 将 TaskSync 实体映射为 TaskDto
+    /// </summary>
+    private TaskDto MapToTaskDto(TaskSync task)
+    {
+        return new TaskDto
+        {
+            Id = task.Id,
+            TaskGuid = task.TaskGuid,
+            Summary = task.Summary,
+            Description = task.Description,
+            Status = task.Status,
+            IsCompleted = task.IsCompleted,
+            Priority = task.Priority,
+            StartTime = task.StartTime,
+            DueTime = task.DueTime,
+            CompletedTime = task.CompletedTime,
+            CreatedAt = task.CreatedAt,
+            CreatorId = task.CreatorId,
+            TaskListGuid = task.TaskListGuid,
+            Members = task.Members.Where(m => m.User != null).Select(m => new TaskMemberDto
+            {
+                FeishuId = m.User!.FeishuId,
+                Name = m.User.Name,
+                AvatarUrl = m.User.AvatarUrl,
+                Role = m.Role
+            }).ToList()
+        };
+    }
+
+    /// <summary>
+    /// 同步任务成员到本地数据库
+    /// </summary>
+    private async Task SyncTaskMembersAsync(
+        int taskId,
+        List<string> feishuIds,
+        string role,
+        CancellationToken cancellationToken)
+    {
+        foreach (var feishuId in feishuIds)
+        {
+            // 获取或创建用户
+            var user = await _dbContext.Users.FirstOrDefaultAsync(u => u.FeishuId == feishuId, cancellationToken);
+            if (user == null)
+            {
+                user = new User
+                {
+                    FeishuId = feishuId,
+                    Name = feishuId,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow,
+                    LastSyncedAt = DateTime.UtcNow
+                };
+                _dbContext.Users.Add(user);
+                await _dbContext.SaveChangesAsync(cancellationToken);
+            }
+
+            // 检查成员是否已存在
+            var existingMember = await _dbContext.TaskMembers
+                .FirstOrDefaultAsync(m => m.TaskSyncId == taskId && m.UserId == user.Id && m.Role == role, cancellationToken);
+
+            if (existingMember == null)
+            {
+                var member = new TaskMemberEntity
+                {
+                    TaskSyncId = taskId,
+                    UserId = user.Id,
+                    Role = role,
+                    JoinedAt = DateTime.UtcNow
+                };
+                _dbContext.TaskMembers.Add(member);
+            }
+        }
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    #endregion
 }

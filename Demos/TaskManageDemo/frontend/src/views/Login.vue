@@ -167,7 +167,7 @@ const handleFeishuCallback = async (code: string, _state?: string) => {
     } else {
       // 使用登录返回的基本用户信息
       authStore.setUser({
-        id: 0,
+        id: parseInt(user.userId) || 0,
         feishuId: user.feishuId,
         name: user.userName,
         email: undefined,

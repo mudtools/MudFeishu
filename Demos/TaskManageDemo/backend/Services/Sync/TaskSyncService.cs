@@ -86,7 +86,28 @@ public class TaskSyncService : ITaskSyncService
     public async Task<int> SyncTaskListTasksAsync(string taskListGuid, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("开始同步清单任务: {TaskListGuid}", taskListGuid);
-        return 0;
+
+        var taskSummaries = await _feishuTaskService.GetTaskListTasksAsync(taskListGuid, cancellationToken: cancellationToken);
+        var syncCount = 0;
+
+        foreach (var taskSummary in taskSummaries)
+        {
+            if (string.IsNullOrEmpty(taskSummary.Guid))
+            {
+                continue;
+            }
+
+            var taskData = await _feishuTaskService.GetTaskByIdAsync(taskSummary.Guid, cancellationToken);
+            if (taskData != null)
+            {
+                taskData.TaskListGuid = taskListGuid;
+                await SaveTaskAsync(taskData, cancellationToken);
+                syncCount++;
+            }
+        }
+
+        _logger.LogInformation("同步清单任务完成: {TaskListGuid}, 同步数量: {Count}", taskListGuid, syncCount);
+        return syncCount;
     }
 
     /// <summary>

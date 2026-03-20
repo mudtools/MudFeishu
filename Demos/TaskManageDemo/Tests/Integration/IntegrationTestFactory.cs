@@ -5,11 +5,17 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using System.Security.Claims;
+using System.Text.Encodings.Web;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using TaskManageDemo.Backend.Data;
+using TaskManageDemo.Backend.Models.Entities;
 
 namespace TaskManageDemo.Backend.Tests.Integration;
 
@@ -18,6 +24,10 @@ namespace TaskManageDemo.Backend.Tests.Integration;
 /// </summary>
 public class IntegrationTestFactory : WebApplicationFactory<Program>
 {
+    public const string TestUserId = "test-user-id";
+    public const string TestUserFeishuId = "test-feishu-id";
+    public const string TestUserName = "Test User";
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.ConfigureServices(services =>
@@ -36,6 +46,10 @@ public class IntegrationTestFactory : WebApplicationFactory<Program>
                 options.UseInMemoryDatabase("TestDatabase");
             });
 
+            // 添加测试认证
+            services.AddAuthentication("Test")
+                .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>("Test", _ => { });
+
             // 构建服务提供者
             var serviceProvider = services.BuildServiceProvider();
 
@@ -43,8 +57,58 @@ public class IntegrationTestFactory : WebApplicationFactory<Program>
             using var scope = serviceProvider.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<TaskManageDbContext>();
             db.Database.EnsureCreated();
+
+            // 创建测试用户
+            var testUser = new User
+            {
+                FeishuId = TestUserFeishuId,
+                Name = TestUserName,
+                Email = "test@example.com",
+                Role = "user",
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                LastSyncedAt = DateTime.UtcNow
+            };
+            db.Users.Add(testUser);
+            db.SaveChanges();
         });
 
         builder.UseEnvironment("Testing");
+    }
+}
+
+/// <summary>
+/// 测试认证处理器
+/// </summary>
+public class TestAuthHandler : AuthenticationHandler<AuthenticationSchemeOptions>
+{
+    public TestAuthHandler(
+        IOptionsMonitor<AuthenticationSchemeOptions> options,
+        ILoggerFactory logger,
+        UrlEncoder encoder)
+        : base(options, logger, encoder)
+    {
+    }
+
+    protected override Task<AuthenticateResult> HandleAuthenticateAsync()
+    {
+        var claims = new List<Claim>
+        {
+            new(ClaimTypes.NameIdentifier, IntegrationTestFactory.TestUserId),
+            new(ClaimTypes.Name, IntegrationTestFactory.TestUserName),
+            new("feishu_id", IntegrationTestFactory.TestUserFeishuId),
+            new("role", "user"),
+            new("permission", "task:read"),
+            new("permission", "task:create"),
+            new("permission", "task:update"),
+            new("permission", "task:delete")
+        };
+
+        var identity = new ClaimsIdentity(claims, "Test");
+        var principal = new ClaimsPrincipal(identity);
+        var ticket = new AuthenticationTicket(principal, "Test");
+
+        return Task.FromResult(AuthenticateResult.Success(ticket));
     }
 }

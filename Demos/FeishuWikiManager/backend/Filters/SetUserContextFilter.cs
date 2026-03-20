@@ -5,6 +5,7 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using FeishuWikiManager.Services;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Mud.Feishu.Abstractions;
 
@@ -21,12 +22,12 @@ namespace FeishuWikiManager.Filters;
 public class SetUserContextFilter : IAsyncActionFilter
 {
     private readonly ICurrentUserContext _userContext;
-    private readonly Services.IUserService _userService;
+    private readonly IUserService _userService;
     private readonly ILogger<SetUserContextFilter> _logger;
 
     public SetUserContextFilter(
         ICurrentUserContext userContext,
-        Services.IUserService userService,
+        IUserService userService,
         ILogger<SetUserContextFilter> logger)
     {
         _userContext = userContext;

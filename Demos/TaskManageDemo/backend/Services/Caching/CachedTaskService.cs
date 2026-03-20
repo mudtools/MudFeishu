@@ -7,7 +7,6 @@
 
 using Microsoft.Extensions.Caching.Memory;
 using TaskManageDemo.Backend.Models.DTOs;
-using TaskManageDemo.Backend.Services;
 
 namespace TaskManageDemo.Backend.Services.Caching;
 
@@ -34,10 +33,10 @@ public class CachedTaskService : ITaskService
     }
 
     public async Task<PagedResponse<TaskDto>> GetTasksAsync(
-        TaskSearchRequest request,
+        TaskQueryParameters parameters,
         CancellationToken cancellationToken = default)
     {
-        var cacheKey = $"tasks_{request.GetHashCode()}";
+        var cacheKey = $"tasks_{parameters.GetHashCode()}";
 
         if (_cache.TryGetValue(cacheKey, out PagedResponse<TaskDto>? cached))
         {
@@ -45,7 +44,7 @@ public class CachedTaskService : ITaskService
             return cached!;
         }
 
-        var result = await _innerService.GetTasksAsync(request, cancellationToken);
+        var result = await _innerService.GetTasksAsync(parameters, cancellationToken);
 
         _cache.Set(cacheKey, result, new MemoryCacheEntryOptions
         {
@@ -84,10 +83,10 @@ public class CachedTaskService : ITaskService
         CancellationToken cancellationToken = default)
     {
         var result = await _innerService.CreateTaskAsync(request, userId, cancellationToken);
-        
+
         // 使任务列表缓存失效
         InvalidateTaskListCache();
-        
+
         return result;
     }
 
@@ -98,7 +97,7 @@ public class CachedTaskService : ITaskService
         CancellationToken cancellationToken = default)
     {
         var result = await _innerService.UpdateTaskAsync(taskId, request, userId, cancellationToken);
-        
+
         if (result != null)
         {
             // 使单个任务缓存失效
@@ -115,7 +114,39 @@ public class CachedTaskService : ITaskService
         CancellationToken cancellationToken = default)
     {
         var result = await _innerService.DeleteTaskAsync(taskId, userId, cancellationToken);
-        
+
+        if (result)
+        {
+            _cache.Remove($"task_{taskId}");
+            InvalidateTaskListCache();
+        }
+
+        return result;
+    }
+
+    public async Task<bool> AssignTaskAsync(
+        int taskId,
+        AssignTaskRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await _innerService.AssignTaskAsync(taskId, request, cancellationToken);
+
+        if (result)
+        {
+            _cache.Remove($"task_{taskId}");
+            InvalidateTaskListCache();
+        }
+
+        return result;
+    }
+
+    public async Task<bool> UpdateTaskStatusAsync(
+        int taskId,
+        bool isCompleted,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await _innerService.UpdateTaskStatusAsync(taskId, isCompleted, cancellationToken);
+
         if (result)
         {
             _cache.Remove($"task_{taskId}");

@@ -5,9 +5,9 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-using Mud.Feishu.DataModels.TasksList;
+using Mud.Feishu;
 using Mud.Feishu.DataModels.Tasks;
-using TaskManageDemo.Backend.Models.Entities;
+using Mud.Feishu.DataModels.TasksList;
 
 namespace TaskManageDemo.Backend.Services.Feishu;
 
@@ -65,13 +65,13 @@ public interface IFeishuTaskListService
 /// </summary>
 public class FeishuTaskListService : IFeishuTaskListService
 {
-    private readonly IFeishuV2TaskList _taskListApi;
+    private readonly IFeishuTenantV2TaskList _taskListApi;
     private readonly ILogger<FeishuTaskListService> _logger;
 
     /// <summary>
     /// 初始化飞书任务清单服务
     /// </summary>
-    public FeishuTaskListService(IFeishuV2TaskList taskListApi, ILogger<FeishuTaskListService> logger)
+    public FeishuTaskListService(IFeishuTenantV2TaskList taskListApi, ILogger<FeishuTaskListService> logger)
     {
         _taskListApi = taskListApi;
         _logger = logger;

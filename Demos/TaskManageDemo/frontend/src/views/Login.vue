@@ -1,7 +1,23 @@
 <template>
   <div class="login-page" :class="{ dark: isDark }">
-    <!-- 星空背景 -->
-    <div class="stars-container">
+    <!-- 亮色模式浮动几何图形背景 -->
+    <div class="floating-shapes-container" v-show="!isDark">
+      <div class="floating-shape shape-1"></div>
+      <div class="floating-shape shape-2"></div>
+      <div class="floating-shape shape-3"></div>
+      <div class="floating-shape shape-4"></div>
+      <div class="floating-shape shape-5"></div>
+      <div class="floating-shape shape-6"></div>
+      <div class="floating-shape shape-7"></div>
+      <div class="floating-shape shape-8"></div>
+      <div class="floating-shape shape-9"></div>
+      <div class="floating-shape shape-10"></div>
+      <div class="floating-shape shape-11"></div>
+      <div class="floating-shape shape-12"></div>
+    </div>
+
+    <!-- 暗色模式星空背景 -->
+    <div class="stars-container" v-show="isDark">
       <div class="stars"></div>
       <div class="stars2"></div>
       <div class="stars3"></div>
@@ -459,6 +475,157 @@ const handleLoginSuccess = async (data: LoginResponse) => {
   }
 }
 
+.floating-shapes-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.floating-shape {
+  position: absolute;
+  border-radius: 50%;
+  opacity: 0.15;
+  animation: float-up linear infinite;
+}
+
+.shape-1 {
+  width: 80px;
+  height: 80px;
+  background: linear-gradient(135deg, #94a3b8 0%, #64748b 100%);
+  left: 10%;
+  animation-duration: 20s;
+  animation-delay: 0s;
+}
+
+.shape-2 {
+  width: 60px;
+  height: 60px;
+  background: linear-gradient(135deg, #cbd5e1 0%, #94a3b8 100%);
+  left: 20%;
+  animation-duration: 25s;
+  animation-delay: 2s;
+  border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%;
+}
+
+.shape-3 {
+  width: 100px;
+  height: 100px;
+  background: linear-gradient(135deg, #64748b 0%, #475569 100%);
+  left: 30%;
+  animation-duration: 22s;
+  animation-delay: 4s;
+  border-radius: 50% 50% 30% 70% / 50% 70% 30% 50%;
+}
+
+.shape-4 {
+  width: 50px;
+  height: 50px;
+  background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%);
+  left: 40%;
+  animation-duration: 18s;
+  animation-delay: 1s;
+}
+
+.shape-5 {
+  width: 90px;
+  height: 90px;
+  background: linear-gradient(135deg, #94a3b8 0%, #64748b 100%);
+  left: 50%;
+  animation-duration: 24s;
+  animation-delay: 3s;
+  border-radius: 40% 60% 60% 40% / 60% 40% 60% 40%;
+}
+
+.shape-6 {
+  width: 70px;
+  height: 70px;
+  background: linear-gradient(135deg, #cbd5e1 0%, #94a3b8 100%);
+  left: 60%;
+  animation-duration: 21s;
+  animation-delay: 5s;
+}
+
+.shape-7 {
+  width: 110px;
+  height: 110px;
+  background: linear-gradient(135deg, #64748b 0%, #475569 100%);
+  left: 70%;
+  animation-duration: 26s;
+  animation-delay: 2.5s;
+  border-radius: 60% 40% 40% 60% / 40% 60% 40% 60%;
+}
+
+.shape-8 {
+  width: 55px;
+  height: 55px;
+  background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%);
+  left: 80%;
+  animation-duration: 19s;
+  animation-delay: 1.5s;
+  border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%;
+}
+
+.shape-9 {
+  width: 85px;
+  height: 85px;
+  background: linear-gradient(135deg, #94a3b8 0%, #64748b 100%);
+  left: 90%;
+  animation-duration: 23s;
+  animation-delay: 4.5s;
+}
+
+.shape-10 {
+  width: 65px;
+  height: 65px;
+  background: linear-gradient(135deg, #cbd5e1 0%, #94a3b8 100%);
+  left: 15%;
+  animation-duration: 27s;
+  animation-delay: 6s;
+  border-radius: 50% 50% 30% 70% / 50% 70% 30% 50%;
+}
+
+.shape-11 {
+  width: 95px;
+  height: 95px;
+  background: linear-gradient(135deg, #64748b 0%, #475569 100%);
+  left: 45%;
+  animation-duration: 20s;
+  animation-delay: 3.5s;
+  border-radius: 40% 60% 60% 40% / 60% 40% 60% 40%;
+}
+
+.shape-12 {
+  width: 75px;
+  height: 75px;
+  background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%);
+  left: 75%;
+  animation-duration: 22s;
+  animation-delay: 0.5s;
+  border-radius: 60% 40% 40% 60% / 40% 60% 40% 60%;
+}
+
+@keyframes float-up {
+  0% {
+    transform: translateY(100vh) rotate(0deg) scale(0.8);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.15;
+  }
+  90% {
+    opacity: 0.15;
+  }
+  100% {
+    transform: translateY(-100px) rotate(360deg) scale(1);
+    opacity: 0;
+  }
+}
+
 .stars-container {
   position: fixed;
   top: 0;
@@ -467,12 +634,6 @@ const handleLoginSuccess = async (data: LoginResponse) => {
   height: 100%;
   pointer-events: none;
   z-index: 0;
-  opacity: 0;
-  transition: opacity 0.5s ease;
-}
-
-.login-page.dark .stars-container {
-  opacity: 1;
 }
 
 .stars {

@@ -48,56 +48,24 @@
           <p>请登录您的账号以继续</p>
         </div>
 
-        <el-form ref="formRef" :model="loginForm" :rules="rules" class="login-form" @keyup.enter="handleLogin">
-          <el-form-item prop="username">
-            <el-input v-model="loginForm.username" placeholder="用户名" size="large" class="login-input">
-              <template #prefix>
-                <el-icon>
-                  <User />
-                </el-icon>
-              </template>
-            </el-input>
-          </el-form-item>
-
-          <el-form-item prop="password">
-            <el-input v-model="loginForm.password" type="password" placeholder="密码" size="large" class="login-input" show-password>
-              <template #prefix>
-                <el-icon>
-                  <Lock />
-                </el-icon>
-              </template>
-            </el-input>
-          </el-form-item>
-
-          <div class="login-options">
-            <el-checkbox v-model="rememberMe">记住我</el-checkbox>
-            <el-button link type="primary" size="small">忘记密码？</el-button>
-          </div>
-
-          <el-form-item>
-            <el-button type="primary" size="large" :loading="loading" class="login-button" @click="handleLogin">
-              <el-icon v-if="!loading">
-                <ArrowRight />
-              </el-icon>
-              <span>登录</span>
-            </el-button>
-          </el-form-item>
-        </el-form>
-
-        <div class="login-divider">
-          <span>或使用以下方式登录</span>
+        <div class="login-description">
+          <p>请使用飞书账号登录以继续</p>
         </div>
 
         <div class="social-login">
-          <el-button class="social-btn feishu" @click="handleFeishuLogin">
+          <el-button class="social-btn feishu" size="large" :loading="loading" @click="handleFeishuLogin">
             <img src="https://www.feishu.cn/favicon.ico" alt="Feishu" class="social-icon" />
-            <span>飞书登录</span>
+            <span>{{ loading ? '登录中...' : '飞书登录' }}</span>
           </el-button>
+        </div>
+
+        <div class="login-tips">
+          <el-alert title="提示" description="首次登录将自动创建账号" type="info" :closable="false" show-icon />
         </div>
       </el-card>
 
       <div class="login-footer">
-        <p>还没有账号？ <el-button link type="primary">立即注册</el-button></p>
+        <p>使用飞书登录即表示您同意我们的服务条款</p>
       </div>
     </div>
 
@@ -114,84 +82,152 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed } from "vue"
+import { ref, computed, onMounted } from "vue"
 import { useRouter, useRoute } from "vue-router"
 import { ElMessage } from "element-plus"
-import type { FormInstance, FormRules } from "element-plus"
-import {
-  User,
-  Lock,
-  ArrowRight,
-  List,
-  Sunny,
-  Moon,
-} from "@element-plus/icons-vue"
+import { List, Sunny, Moon } from "@element-plus/icons-vue"
 import { useThemeStore } from "../stores/theme"
+import { useAuthStore } from "../stores/auth"
+import {
+  getOAuthUrl,
+  loginWithCode,
+  getCurrentUser,
+  buildFeishuCallbackUrl,
+  generateState,
+} from "../api"
 
 const router = useRouter()
 const route = useRoute()
 const themeStore = useThemeStore()
+const authStore = useAuthStore()
 
-const formRef = ref<FormInstance>()
 const loading = ref(false)
-const rememberMe = ref(false)
 
 const isDark = computed(() => themeStore.isDark())
 
-const loginForm = reactive({
-  username: "",
-  password: "",
-})
+// 检查是否是飞书回调
+onMounted(() => {
+  const code = route.query.code as string
+  const state = route.query.state as string
 
-const rules: FormRules = {
-  username: [
-    { required: true, message: "请输入用户名", trigger: "blur" },
-    { min: 3, message: "用户名至少3个字符", trigger: "blur" },
-  ],
-  password: [
-    { required: true, message: "请输入密码", trigger: "blur" },
-    { min: 6, message: "密码至少6个字符", trigger: "blur" },
-  ],
-}
+  if (code) {
+    handleFeishuCallback(code, state)
+  }
+})
 
 const toggleTheme = () => {
   themeStore.toggleTheme()
 }
 
-const handleLogin = async () => {
-  if (!formRef.value) return
+/**
+ * 处理飞书登录回调
+ */
+const handleFeishuCallback = async (code: string, _state?: string) => {
+  loading.value = true
 
-  await formRef.value.validate(async (valid) => {
-    if (!valid) return
+  try {
+    // 调用登录接口
+    const response = await loginWithCode({ code })
 
-    loading.value = true
-    try {
-      // TODO: 调用实际的登录API
-      const mockToken = "mock-jwt-token-" + Date.now()
-      localStorage.setItem("token", mockToken)
-      localStorage.setItem("username", loginForm.username)
-
-      if (rememberMe.value) {
-        localStorage.setItem("rememberMe", "true")
-      }
-
-      ElMessage.success({
-        message: "登录成功，欢迎回来！",
-        duration: 2000,
-      })
-
-      const redirect = route.query.redirect as string
-      router.push(redirect || "/tasks")
-    } catch {
-      ElMessage.error("登录失败，请检查用户名和密码")
-    } finally {
-      loading.value = false
+    if (!response.success || !response.data) {
+      ElMessage.error(response.message || "登录失败")
+      return
     }
-  })
+
+    const { accessToken, user, isFirstLogin } = response.data
+
+    // 保存 token
+    authStore.setToken(accessToken)
+
+    // 获取完整用户信息
+    const userResponse = await getCurrentUser()
+    if (userResponse.success && userResponse.data) {
+      authStore.setUser({
+        id: userResponse.data.id,
+        feishuId: userResponse.data.feishuId,
+        name: userResponse.data.name,
+        englishName: userResponse.data.englishName,
+        email: userResponse.data.email,
+        avatarUrl: userResponse.data.avatarUrl,
+        departmentId: userResponse.data.departmentId,
+        department: userResponse.data.departmentName
+          ? {
+              id: userResponse.data.departmentId || 0,
+              feishuId: "",
+              name: userResponse.data.departmentName,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            }
+          : undefined,
+        role: userResponse.data.role,
+        permissions: userResponse.data.permissions,
+        createdAt: userResponse.data.createdAt,
+        updatedAt: userResponse.data.createdAt,
+      })
+    } else {
+      // 使用登录返回的基本用户信息
+      authStore.setUser({
+        id: 0,
+        feishuId: user.feishuId,
+        name: user.userName,
+        email: undefined,
+        avatarUrl: undefined,
+        role: user.role,
+        permissions: user.permissions,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      })
+    }
+
+    // 显示欢迎消息
+    const welcomeMessage = isFirstLogin
+      ? `欢迎首次使用，${user.userName}！`
+      : `欢迎回来，${user.userName}！`
+
+    ElMessage.success({
+      message: welcomeMessage,
+      duration: 2000,
+    })
+
+    // 清除 URL 中的 code 参数
+    const redirect = route.query.redirect as string
+    router.replace(redirect || "/tasks")
+  } catch (error) {
+    console.error("飞书登录失败:", error)
+    ElMessage.error("登录失败，请稍后重试")
+  } finally {
+    loading.value = false
+  }
 }
 
-const handleFeishuLogin = () => {
-  ElMessage.info("飞书登录功能开发中...")
+/**
+ * 处理飞书登录
+ */
+const handleFeishuLogin = async () => {
+  loading.value = true
+
+  try {
+    const redirectUri = buildFeishuCallbackUrl()
+    const state = generateState()
+
+    // 保存 state 用于验证
+    sessionStorage.setItem("feishu_oauth_state", state)
+
+    // 获取飞书 OAuth URL
+    const response = await getOAuthUrl({ redirectUri, state })
+
+    if (response.success && response.data) {
+      // 跳转到飞书授权页面
+      window.location.href = response.data.url
+    } else {
+      ElMessage.error(response.message || "获取授权链接失败")
+    }
+  } catch (error) {
+    console.error("获取飞书授权链接失败:", error)
+    ElMessage.error("获取授权链接失败，请稍后重试")
+  } finally {
+    loading.value = false
+  }
 }
 </script>
 
@@ -815,6 +851,7 @@ const handleFeishuLogin = () => {
 .social-login {
   display: flex;
   justify-content: center;
+  padding: 12px 0;
 }
 
 .social-btn {

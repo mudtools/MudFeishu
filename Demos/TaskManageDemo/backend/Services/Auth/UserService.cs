@@ -58,6 +58,16 @@ public interface IUserService
     Task<CurrentUserInfo?> GetCurrentUserAsync(string feishuId, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// 根据 OpenId 获取用户
+    /// </summary>
+    Task<UserDto?> GetUserByOpenIdAsync(string openId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 清除用户令牌
+    /// </summary>
+    Task ClearUserTokenAsync(string openId, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// 同步飞书用户信息到本地
     /// </summary>
     Task<UserDto?> SyncFeishuUserAsync(string feishuId, CancellationToken cancellationToken = default);
@@ -247,7 +257,7 @@ public class UserService : IUserService
     public async Task<CurrentUserInfo?> GetCurrentUserAsync(string feishuId, CancellationToken cancellationToken = default)
     {
         var user = await _dbContext.Users
-            .FirstOrDefaultAsync(u => u.FeishuId == feishuId, cancellationToken);
+            .FirstOrDefaultAsync(u => u.FeishuId == feishuId || u.OpenId == feishuId, cancellationToken);
 
         if (user == null) return null;
 
@@ -264,6 +274,28 @@ public class UserService : IUserService
             DepartmentName = user.DepartmentId, // 这里可以从部门表获取名称
             Position = user.Position
         };
+    }
+
+    public async Task<UserDto?> GetUserByOpenIdAsync(string openId, CancellationToken cancellationToken = default)
+    {
+        var user = await _dbContext.Users
+            .FirstOrDefaultAsync(u => u.OpenId == openId, cancellationToken);
+        if (user == null) return null;
+
+        return MapToDto(user);
+    }
+
+    public async Task ClearUserTokenAsync(string openId, CancellationToken cancellationToken = default)
+    {
+        var user = await _dbContext.Users.FirstOrDefaultAsync(u => u.OpenId == openId, cancellationToken);
+        if (user != null)
+        {
+            user.FeishuAccessToken = null;
+            user.FeishuRefreshToken = null;
+            user.TokenExpiresAt = null;
+            await _dbContext.SaveChangesAsync(cancellationToken);
+            _logger.LogInformation("清除用户Token: {UserId}", user.Id);
+        }
     }
 
     public async Task<UserDto?> SyncFeishuUserAsync(string feishuId, CancellationToken cancellationToken = default)

@@ -98,6 +98,26 @@ public class User
     public DateTime? LastLoginAt { get; set; }
 
     /// <summary>
+    /// 飞书访问令牌
+    /// </summary>
+    public string? FeishuAccessToken { get; set; }
+
+    /// <summary>
+    /// 飞书刷新令牌
+    /// </summary>
+    public string? FeishuRefreshToken { get; set; }
+
+    /// <summary>
+    /// 令牌过期时间
+    /// </summary>
+    public DateTime? TokenExpiresAt { get; set; }
+
+    /// <summary>
+    /// 租户密钥
+    /// </summary>
+    public string? TenantKey { get; set; }
+
+    /// <summary>
     /// 用户参与的任务
     /// </summary>
     public ICollection<TaskMemberEntity> TaskMembers { get; set; } = new List<TaskMemberEntity>();

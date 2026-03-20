@@ -91,6 +91,21 @@ public class UserDto
     /// 最后登录时间
     /// </summary>
     public DateTime? LastLoginAt { get; set; }
+
+    /// <summary>
+    /// 飞书访问令牌
+    /// </summary>
+    public string? FeishuAccessToken { get; set; }
+
+    /// <summary>
+    /// 飞书刷新令牌
+    /// </summary>
+    public string? FeishuRefreshToken { get; set; }
+
+    /// <summary>
+    /// 令牌过期时间
+    /// </summary>
+    public DateTime? TokenExpiresAt { get; set; }
 }
 
 /// <summary>
@@ -102,6 +117,11 @@ public class LoginRequest
     /// 飞书授权码
     /// </summary>
     public string Code { get; set; } = string.Empty;
+
+    /// <summary>
+    /// State 参数（用于防止 CSRF 攻击）
+    /// </summary>
+    public string State { get; set; } = string.Empty;
 
     /// <summary>
     /// 授权类型：authorization_code
@@ -283,4 +303,47 @@ public class UserQueryParameters
     /// 是否激活
     /// </summary>
     public bool? IsActive { get; set; }
+}
+
+/// <summary>
+/// Token 状态响应
+/// </summary>
+public class TokenStatusResponse
+{
+    public bool HasValidToken { get; set; }
+    public bool CanRefresh { get; set; }
+    public TokenExpirationInfo? TokenInfo { get; set; }
+}
+
+/// <summary>
+/// Token 过期信息
+/// </summary>
+public class TokenExpirationInfo
+{
+    public DateTime? AccessTokenExpiresAt { get; set; }
+    public DateTime? RefreshTokenExpiresAt { get; set; }
+    public bool AccessTokenExpired { get; set; }
+    public bool RefreshTokenExpired { get; set; }
+}
+
+/// <summary>
+/// 飞书用户详细响应
+/// </summary>
+public class FeishuUserDetailResponse
+{
+    public string OpenId { get; set; } = string.Empty;
+    public string UnionId { get; set; } = string.Empty;
+    public string UserId { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string? EnName { get; set; }
+    public string? Nickname { get; set; }
+    public string? Avatar { get; set; }
+    public string? AvatarThumb { get; set; }
+    public string? AvatarMiddle { get; set; }
+    public string? AvatarBig { get; set; }
+    public string? Email { get; set; }
+    public string? Mobile { get; set; }
+    public string? EnterpriseEmail { get; set; }
+    public string? EmployeeNo { get; set; }
+    public string? TenantKey { get; set; }
 }

@@ -5,12 +5,17 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Mud.Feishu.Authentication;
 using Serilog;
 using Serilog.Events;
+using System.Text;
 using TaskManageDemo.Backend.Data;
 using TaskManageDemo.Backend.Extensions;
 using TaskManageDemo.Backend.Middleware;
+using TaskManageDemo.Backend.Models.DTOs;
 using TaskManageDemo.Backend.Services.Auth;
 using FluentValidation;
 using FluentValidation.AspNetCore;
@@ -40,10 +45,49 @@ builder.Configuration
     .AddJsonFile("appsettings.local.json", optional: true, reloadOnChange: true)
     .AddEnvironmentVariables();
 
+// 配置 OAuth 选项
+builder.Services.Configure<OAuthOptions>(builder.Configuration.GetSection("OAuth"));
+
+// 配置 JWT 认证
+var oauthOptions = builder.Configuration.GetSection("OAuth").Get<OAuthOptions>() ?? new OAuthOptions();
+var jwtSecret = oauthOptions.Jwt.Secret;
+if (string.IsNullOrEmpty(jwtSecret))
+{
+    throw new InvalidOperationException("JWT密钥未配置，请在 appsettings.json 中配置 OAuth:Jwt:Secret");
+}
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = oauthOptions.Jwt.Issuer,
+            ValidAudience = oauthOptions.Jwt.Audience,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
+            ClockSkew = TimeSpan.Zero
+        };
+    });
+
+builder.Services.AddAuthorization();
+
 builder.Services.AddDatabaseServices(builder.Configuration);
 builder.Services.AddFeishuServices(builder.Configuration);
 builder.Services.AddWebhookServices(builder.Configuration);
-builder.Services.AddBusinessServices();
+builder.Services.AddBusinessServices(builder.Configuration);
+
+// 添加飞书用户上下文服务
+builder.Services.AddFeishuUserContext(o =>
+{
+    o.OpenIdClaimType = "open_id";
+    o.UnionIdClaimType = "union_id";
+    o.UserIdClaimType = "user_id";
+    o.NameClaimType = "name";
+    o.EnableSensitiveLog = true;
+});
 
 // 添加 FluentValidation
 builder.Services.AddValidatorsFromAssembly(typeof(Program).Assembly);
@@ -115,6 +159,13 @@ app.UseRateLimiting(new RateLimitOptions
     Enabled = !app.Environment.IsDevelopment()
 });
 app.UseGlobalExceptionHandler();
+
+// 认证和授权中间件
+app.UseAuthentication();
+app.UseFeishuUserAuthentication(); // 飞书用户认证中间件
+app.UseAuthorization();
+
+// 原有的飞书认证中间件（保留用于向后兼容）
 app.UseFeishuAuthentication();
 app.UseFeishuAuthorization();
 

@@ -174,3 +174,67 @@ export interface Statistics {
   tasksByStatus: { status: string; count: number }[];
   recentTasks: Task[];
 }
+
+// ==================== 认证相关类型 ====================
+
+/**
+ * 登录请求
+ */
+export interface LoginRequest {
+  code: string;
+}
+
+/**
+ * 登录响应
+ */
+export interface LoginResponse {
+  accessToken: string;
+  refreshToken: string;
+  expiresIn: number;
+  user: UserInfo;
+  isFirstLogin: boolean;
+}
+
+/**
+ * 用户信息（登录后返回）
+ */
+export interface UserInfo {
+  userId: string;
+  userName: string;
+  feishuId: string;
+  departmentId?: string;
+  role: string;
+  permissions: string[];
+}
+
+/**
+ * 当前登录用户信息
+ */
+export interface CurrentUserInfo {
+  id: number;
+  feishuId: string;
+  name: string;
+  englishName?: string;
+  email?: string;
+  avatarUrl?: string;
+  departmentId?: number;
+  departmentName?: string;
+  role: string;
+  permissions: string[];
+  createdAt: string;
+}
+
+/**
+ * OAuth URL 请求
+ */
+export interface OAuthUrlRequest {
+  redirectUri: string;
+  state?: string;
+}
+
+/**
+ * OAuth URL 响应
+ */
+export interface OAuthUrlResponse {
+  url: string;
+}

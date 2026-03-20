@@ -213,17 +213,17 @@ public class PermissionService : IPermissionService
             new Permission { Code = Permissions.TaskUpdate, Name = "更新任务", Group = "任务管理", Description = "更新任务信息的权限" },
             new Permission { Code = Permissions.TaskDelete, Name = "删除任务", Group = "任务管理", Description = "删除任务的权限" },
             new Permission { Code = Permissions.TaskAssign, Name = "分配任务", Group = "任务管理", Description = "分配任务给其他人的权限" },
-            
+
             new Permission { Code = Permissions.TaskListCreate, Name = "创建任务清单", Group = "任务清单", Description = "创建新任务清单的权限" },
             new Permission { Code = Permissions.TaskListRead, Name = "查看任务清单", Group = "任务清单", Description = "查看任务清单的权限" },
             new Permission { Code = Permissions.TaskListUpdate, Name = "更新任务清单", Group = "任务清单", Description = "更新任务清单的权限" },
             new Permission { Code = Permissions.TaskListDelete, Name = "删除任务清单", Group = "任务清单", Description = "删除任务清单的权限" },
-            
+
             new Permission { Code = Permissions.TemplateCreate, Name = "创建模板", Group = "模板管理", Description = "创建任务模板的权限" },
             new Permission { Code = Permissions.TemplateRead, Name = "查看模板", Group = "模板管理", Description = "查看任务模板的权限" },
             new Permission { Code = Permissions.TemplateUpdate, Name = "更新模板", Group = "模板管理", Description = "更新任务模板的权限" },
             new Permission { Code = Permissions.TemplateDelete, Name = "删除模板", Group = "模板管理", Description = "删除任务模板的权限" },
-            
+
             new Permission { Code = Permissions.StatisticsView, Name = "查看统计", Group = "统计分析", Description = "查看统计数据的权限" },
             new Permission { Code = Permissions.UserManage, Name = "用户管理", Group = "系统管理", Description = "管理用户的权限" },
             new Permission { Code = Permissions.DepartmentManage, Name = "部门管理", Group = "系统管理", Description = "管理部门的权限" }

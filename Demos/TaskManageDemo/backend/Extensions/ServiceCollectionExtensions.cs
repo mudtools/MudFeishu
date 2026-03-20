@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using TaskManageDemo.Backend.Data;
 using TaskManageDemo.Backend.EventHandlers;
+using TaskManageDemo.Backend.Models.DTOs;
 using TaskManageDemo.Backend.Services;
 using TaskManageDemo.Backend.Services.Approval;
 using TaskManageDemo.Backend.Services.Auth;
@@ -80,7 +81,7 @@ public static class ServiceCollectionExtensions
     /// <summary>
     /// 添加业务服务
     /// </summary>
-    public static IServiceCollection AddBusinessServices(this IServiceCollection services)
+    public static IServiceCollection AddBusinessServices(this IServiceCollection services, IConfiguration configuration)
     {
         // 飞书服务
         services.AddScoped<IFeishuTaskService, FeishuTaskService>();
@@ -116,6 +117,20 @@ public static class ServiceCollectionExtensions
             var logger = sp.GetRequiredService<ILogger<CachedTaskService>>();
             return new CachedTaskService(innerService, cache, logger);
         });
+
+        // OAuth 和 JWT 服务
+        var oauthOptions = configuration.GetSection("OAuth").Get<OAuthOptions>() ?? new OAuthOptions();
+        services.AddSingleton<IStateStorageService>(_ =>
+            new StateStorageService(TimeSpan.FromMinutes(oauthOptions.StateExpirationMinutes)));
+
+        services.AddSingleton<IJwtTokenService>(sp =>
+        {
+            var options = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<OAuthOptions>>().Value;
+            return new JwtTokenService(options.Jwt);
+        });
+
+        // 注册后台服务
+        services.AddHostedService<StateCleanupService>();
 
         services.AddScheduledTasks();
 

@@ -28,9 +28,9 @@ public abstract class BaseController : ControllerBase
     /// <summary>
     /// 返回失败响应
     /// </summary>
-    protected ActionResult<ApiResponse<T>> Fail<T>(string message)
+    protected ActionResult<ApiResponse<T>> Fail<T>(string message, int statusCode = 400)
     {
-        return ApiResponse<T>.Fail(message);
+        return StatusCode(statusCode, ApiResponse<T>.Fail(message));
     }
 
     /// <summary>

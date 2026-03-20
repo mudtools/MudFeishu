@@ -258,24 +258,17 @@ public class SignatureValidatorTests
     public async Task ValidateSignatureAsync_WithEmptyNonce_InProduction_ShouldReturnFalse(string? nonce)
     {
         // Arrange
-        Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Production");
+        _environmentServiceMock.Setup(x => x.IsProduction).Returns(true);
         var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         var encrypt = "test-encrypt-data";
         var encryptKey = "test-encrypt-key-32-bytes-long!!";
         var signature = "test-signature";
 
-        try
-        {
-            // Act
-            var result = await _validator.ValidateSignatureAsync(timestamp, nonce!, encrypt, signature, encryptKey);
+        // Act
+        var result = await _validator.ValidateSignatureAsync(timestamp, nonce!, encrypt, signature, encryptKey);
 
-            // Assert
-            Assert.False(result);
-        }
-        finally
-        {
-            Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", null);
-        }
+        // Assert
+        Assert.False(result);
     }
 
     [Theory]
@@ -284,24 +277,17 @@ public class SignatureValidatorTests
     public async Task ValidateSignatureAsync_WithEmptyNonce_InDevelopment_ShouldReturnTrue(string? nonce)
     {
         // Arrange
-        Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Development");
+        _environmentServiceMock.Setup(x => x.IsProduction).Returns(false);
         var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         var encrypt = "test-encrypt-data";
         var encryptKey = "test-encrypt-key-32-bytes-long!!";
         var signature = "test-signature";
 
-        try
-        {
-            // Act
-            var result = await _validator.ValidateSignatureAsync(timestamp, nonce!, encrypt, signature, encryptKey);
+        // Act
+        var result = await _validator.ValidateSignatureAsync(timestamp, nonce!, encrypt, signature, encryptKey);
 
-            // Assert
-            Assert.True(result);
-        }
-        finally
-        {
-            Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", null);
-        }
+        // Assert
+        Assert.True(result);
     }
 
     [Fact]

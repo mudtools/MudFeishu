@@ -93,7 +93,16 @@ if (app.Environment.IsDevelopment())
 
 app.UseRequestLogging();
 app.UseRequestValidation();
+app.UseApiVersioning();
+app.UseRateLimiting(new RateLimitOptions
+{
+    Window = TimeSpan.FromMinutes(1),
+    MaxRequests = 200,
+    Enabled = !app.Environment.IsDevelopment()
+});
 app.UseGlobalExceptionHandler();
+app.UseFeishuAuthentication();
+app.UseFeishuAuthorization();
 
 app.UseCors();
 app.UseFeishuWebhook();

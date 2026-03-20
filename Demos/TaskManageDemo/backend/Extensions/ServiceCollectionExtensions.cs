@@ -8,6 +8,8 @@
 using Microsoft.EntityFrameworkCore;
 using TaskManageDemo.Backend.Data;
 using TaskManageDemo.Backend.EventHandlers;
+using TaskManageDemo.Backend.Services.Approval;
+using TaskManageDemo.Backend.Services.Auth;
 using TaskManageDemo.Backend.Services.Background;
 using TaskManageDemo.Backend.Services.Feishu;
 using TaskManageDemo.Backend.Services.Search;
@@ -83,6 +85,9 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ITaskSearchService, TaskSearchService>();
         services.AddScoped<ITaskTemplateService, TaskTemplateService>();
         services.AddScoped<IStatisticsService, StatisticsService>();
+        services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<IApprovalService, ApprovalService>();
+        services.AddScoped<IDepartmentSyncService, DepartmentSyncService>();
 
         services.AddScheduledTasks();
 

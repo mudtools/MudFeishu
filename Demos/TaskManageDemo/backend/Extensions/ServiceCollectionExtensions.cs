@@ -11,6 +11,7 @@ using TaskManageDemo.Backend.EventHandlers;
 using TaskManageDemo.Backend.Services.Background;
 using TaskManageDemo.Backend.Services.Feishu;
 using TaskManageDemo.Backend.Services.Search;
+using TaskManageDemo.Backend.Services.Statistics;
 using TaskManageDemo.Backend.Services.Sync;
 using TaskManageDemo.Backend.Services.Templates;
 
@@ -81,6 +82,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IEventProcessService, EventProcessService>();
         services.AddScoped<ITaskSearchService, TaskSearchService>();
         services.AddScoped<ITaskTemplateService, TaskTemplateService>();
+        services.AddScoped<IStatisticsService, StatisticsService>();
 
         services.AddScheduledTasks();
 

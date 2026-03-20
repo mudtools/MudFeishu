@@ -42,6 +42,12 @@ builder.Services.AddFeishuServices(builder.Configuration);
 builder.Services.AddWebhookServices(builder.Configuration);
 builder.Services.AddBusinessServices();
 
+builder.Services.AddHealthChecks()
+    .AddSqlite(
+        builder.Configuration.GetConnectionString("DefaultConnection") ?? "Data Source=TaskManage.db",
+        name: "database",
+        tags: new[] { "db", "sqlite" });
+
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
@@ -92,5 +98,25 @@ app.UseGlobalExceptionHandler();
 app.UseCors();
 app.UseFeishuWebhook();
 app.MapControllers();
+app.MapHealthChecks("/health", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+{
+    ResponseWriter = async (context, report) =>
+    {
+        context.Response.ContentType = "application/json; charset=utf-8";
+        var response = new
+        {
+            status = report.Status.ToString(),
+            checks = report.Entries.Select(e => new
+            {
+                name = e.Key,
+                status = e.Value.Status.ToString(),
+                description = e.Value.Description,
+                duration = e.Value.Duration.TotalMilliseconds
+            }),
+            totalDuration = report.TotalDuration.TotalMilliseconds
+        };
+        await context.Response.WriteAsJsonAsync(response);
+    }
+});
 
 app.Run();

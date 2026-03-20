@@ -84,7 +84,7 @@ public class ExceptionHandlingMiddleware
         var errorResponse = new ApiResponse<object?>
         {
             Success = false,
-            Message = message,
+            Message = message ?? "服务器内部错误",
             Data = errorData
         };
 

@@ -11,6 +11,7 @@ using Moq;
 using Mud.Feishu.Webhook;
 using Mud.Feishu.Webhook.Configuration;
 using Mud.Feishu.Webhook.Services;
+using Mud.Feishu.Webhook.Utilities;
 using System.Security.Cryptography;
 using System.Text;
 using Xunit;
@@ -25,6 +26,7 @@ public class SignatureValidatorTests
     private readonly Mock<ILogger<SignatureValidator>> _loggerMock;
     private readonly Mock<ISecurityAuditService> _auditServiceMock;
     private readonly Mock<IOptionsMonitor<FeishuWebhookOptions>> _optionsMonitorMock;
+    private readonly Mock<IEnvironmentService> _environmentServiceMock;
     private readonly FeishuWebhookOptions _options;
     private readonly SignatureValidator _validator;
 
@@ -33,6 +35,7 @@ public class SignatureValidatorTests
         _loggerMock = new Mock<ILogger<SignatureValidator>>();
         _auditServiceMock = new Mock<ISecurityAuditService>();
         _optionsMonitorMock = new Mock<IOptionsMonitor<FeishuWebhookOptions>>();
+        _environmentServiceMock = new Mock<IEnvironmentService>();
 
         _options = new FeishuWebhookOptions
         {
@@ -41,7 +44,11 @@ public class SignatureValidatorTests
         };
 
         _optionsMonitorMock.Setup(x => x.CurrentValue).Returns(_options);
-        _validator = new SignatureValidator(_loggerMock.Object, _optionsMonitorMock.Object, _auditServiceMock.Object);
+        _validator = new SignatureValidator(
+            _loggerMock.Object,
+            _optionsMonitorMock.Object,
+            _auditServiceMock.Object,
+            _environmentServiceMock.Object);
     }
 
     [Fact]
@@ -111,59 +118,45 @@ public class SignatureValidatorTests
     public async Task ValidateSignatureAsync_WithEmptyTimestamp_InProduction_ShouldReturnFalse()
     {
         // Arrange
-        Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Production");
+        _environmentServiceMock.Setup(x => x.IsProduction).Returns(true);
         var timestamp = 0L;
         var nonce = "test-nonce";
         var encrypt = "test-encrypt-data";
         var encryptKey = "test-encrypt-key-32-bytes-long!!";
         var signature = "test-signature";
 
-        try
-        {
-            // Act
-            var result = await _validator.ValidateSignatureAsync(timestamp, nonce, encrypt, signature, encryptKey);
+        // Act
+        var result = await _validator.ValidateSignatureAsync(timestamp, nonce, encrypt, signature, encryptKey);
 
-            // Assert
-            Assert.False(result);
+        // Assert
+        Assert.False(result);
 
-            // 验证安全审计日志被调用
-            _auditServiceMock.Verify(x => x.LogSecurityFailureAsync(
-                SecurityEventType.SignatureValidation,
-                "unknown",
-                "SignatureValidator",
-                It.IsAny<string>(),
-                "",
-                null), Times.Once);
-        }
-        finally
-        {
-            Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", null);
-        }
+        // 验证安全审计日志被调用
+        _auditServiceMock.Verify(x => x.LogSecurityFailureAsync(
+            SecurityEventType.SignatureValidation,
+            "unknown",
+            "SignatureValidator",
+            It.IsAny<string>(),
+            "",
+            null), Times.Once);
     }
 
     [Fact]
     public async Task ValidateSignatureAsync_WithEmptyTimestamp_InDevelopment_ShouldReturnTrue()
     {
         // Arrange
-        Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Development");
+        _environmentServiceMock.Setup(x => x.IsProduction).Returns(false);
         var timestamp = 0L;
         var nonce = "test-nonce";
         var encrypt = "test-encrypt-data";
         var encryptKey = "test-encrypt-key-32-bytes-long!!";
         var signature = "test-signature";
 
-        try
-        {
-            // Act
-            var result = await _validator.ValidateSignatureAsync(timestamp, nonce, encrypt, signature, encryptKey);
+        // Act
+        var result = await _validator.ValidateSignatureAsync(timestamp, nonce, encrypt, signature, encryptKey);
 
-            // Assert
-            Assert.True(result);
-        }
-        finally
-        {
-            Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", null);
-        }
+        // Assert
+        Assert.True(result);
     }
 
     [Fact]

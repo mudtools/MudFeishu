@@ -141,7 +141,7 @@ public abstract class TokenManagerWithCache : ITokenManager, IDisposable
             // 记录缓存命中指标
             using var _ = FeishuMetricsHelper.RecordTokenFetch(_tokenType.ToString(), fromCache: true);
             // 确保返回的token格式统一：Bearer {token}
-            return FormatBearerToken(cachedToken);
+            return TokenUtils.FormatBearerToken(cachedToken);
         }
 
         try
@@ -157,7 +157,7 @@ public abstract class TokenManagerWithCache : ITokenManager, IDisposable
             var token = await lazyTask.Value;
             // UpdateTokenCacheAsync 已经处理了缓存存储（移除Bearer前缀）
             // 这里需要从原始token中移除可能的前缀后格式化返回
-            return FormatBearerToken(RemoveBearerPrefix(token.AccessToken));
+            return TokenUtils.FormatBearerToken(TokenUtils.RemoveBearerPrefix(token.AccessToken));
         }
         finally
         {
@@ -290,35 +290,6 @@ public abstract class TokenManagerWithCache : ITokenManager, IDisposable
         return $"{_options.AppId}:{_tokenType}";
     }
 
-    /// <summary>
-    /// 格式化 Bearer Token
-    /// </summary>
-    /// <param name="token">原始访问令牌（不带 Bearer 前缀）</param>
-    /// <returns>格式化后的Bearer令牌字符串</returns>
-    /// <remarks>
-    /// 在令牌前添加"Bearer "前缀，符合HTTP认证标准格式。
-    /// 注意：输入参数应为原始token（不带Bearer前缀），本方法会统一添加前缀。
-    /// </remarks>
-    protected string FormatBearerToken(string? token)
-    {
-        return TokenUtils.FormatBearerToken(token);
-    }
-
-    /// <summary>
-    /// 移除 Bearer 前缀
-    /// </summary>
-    /// <param name="token">可能包含Bearer前缀的令牌</param>
-    /// <returns>不包含Bearer前缀的原始令牌</returns>
-    /// <remarks>
-    /// 确保缓存中存储的是原始token值，不包含"Bearer "前缀。
-    /// </remarks>
-    protected static string? RemoveBearerPrefix(string? token)
-    {
-        if (string.IsNullOrEmpty(token))
-            return token;
-
-        return token.StartsWith("Bearer ") ? token.Substring(7) : token;
-    }
 
     /// <summary>
     /// 验证令牌结果
@@ -392,7 +363,7 @@ public abstract class TokenManagerWithCache : ITokenManager, IDisposable
 
         // 移除可能的 Bearer 前缀，只存储原始 token
         // 使用 null-forgiving operator 消除编译器警告，因为 newToken.AccessToken 在此上下文中不会为 null
-        var rawToken = RemoveBearerPrefix(newToken.AccessToken!) ?? string.Empty;
+        var rawToken = TokenUtils.RemoveBearerPrefix(newToken.AccessToken!) ?? string.Empty;
         await _tokenCache.SetAsync(cacheKey, rawToken, expiresIn, cancellationToken);
     }
 

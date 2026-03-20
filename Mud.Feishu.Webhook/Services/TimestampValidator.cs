@@ -6,6 +6,7 @@
 // -----------------------------------------------------------------------
 
 using Mud.Feishu.Webhook.Configuration;
+using Mud.Feishu.Webhook.Utilities;
 
 namespace Mud.Feishu.Webhook.Services;
 
@@ -13,15 +14,10 @@ namespace Mud.Feishu.Webhook.Services;
 /// 飞书事件时间戳验证器实现
 /// 支持秒级和毫秒级时间戳的自动识别和验证
 /// </summary>
-public class TimestampValidator : ITimestampValidator
+public class TimestampValidator : ValidatorBase, ITimestampValidator
 {
     private readonly ILogger<TimestampValidator> _logger;
     private readonly IOptionsMonitor<FeishuWebhookOptions> _optionsMonitor;
-
-    /// <summary>
-    /// 当前应用键（多应用场景）
-    /// </summary>
-    private string? _currentAppKey;
 
     /// <summary>
     /// 初始化时间戳验证器
@@ -34,15 +30,6 @@ public class TimestampValidator : ITimestampValidator
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _optionsMonitor = optionsMonitor ?? throw new ArgumentNullException(nameof(optionsMonitor));
-    }
-
-    /// <summary>
-    /// 设置当前应用键（多应用场景）
-    /// </summary>
-    /// <param name="appKey">应用键</param>
-    public void SetCurrentAppKey(string appKey)
-    {
-        _currentAppKey = appKey;
     }
 
     /// <inheritdoc />
@@ -93,22 +80,11 @@ public class TimestampValidator : ITimestampValidator
                 effectiveToleranceSeconds = 300;
             }
 
-            // 判断时间戳是秒级还是毫秒级
-            // 飞书 X-Lark-Request-Timestamp 请求头使用秒级时间戳（10位）
-            // 飞书事件数据中的 create_time 使用毫秒级时间戳（13位）
-            DateTimeOffset requestTime;
-            if (timestamp < 10000000000) // 小于 100 亿，认为是秒级时间戳
-            {
-                requestTime = DateTimeOffset.FromUnixTimeSeconds(timestamp);
-                _logger.LogDebug("识别为秒级时间戳: {Timestamp} -> {RequestTime}, AppKey: {AppKey}",
-                    timestamp, requestTime, _currentAppKey ?? "null");
-            }
-            else // 大于等于 100 亿，认为是毫秒级时间戳
-            {
-                requestTime = DateTimeOffset.FromUnixTimeMilliseconds(timestamp);
-                _logger.LogDebug("识别为毫秒级时间戳: {Timestamp} -> {RequestTime}, AppKey: {AppKey}",
-                    timestamp, requestTime, _currentAppKey ?? "null");
-            }
+            // 使用 TimestampHelper 转换时间戳
+            var requestTime = TimestampHelper.ToDateTimeOffset(timestamp);
+            var timestampType = TimestampHelper.IsMilliseconds(timestamp) ? "毫秒级" : "秒级";
+            _logger.LogDebug("识别为{TimestampType}时间戳: {Timestamp} -> {RequestTime}, AppKey: {AppKey}",
+                timestampType, timestamp, requestTime, _currentAppKey ?? "null");
 
             var now = DateTimeOffset.UtcNow;
             var diff = Math.Abs((now - requestTime).TotalSeconds);

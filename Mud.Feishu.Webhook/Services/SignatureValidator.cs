@@ -6,6 +6,7 @@
 // -----------------------------------------------------------------------
 
 using Mud.Feishu.Webhook.Configuration;
+using Mud.Feishu.Webhook.Utilities;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -15,16 +16,12 @@ namespace Mud.Feishu.Webhook.Services;
 /// 飞书事件签名验证器实现
 /// 支持 HMAC-SHA256 和 SHA-256 两种签名算法
 /// </summary>
-public class SignatureValidator : ISignatureValidator
+public class SignatureValidator : ValidatorBase, ISignatureValidator
 {
     private readonly ILogger<SignatureValidator> _logger;
     private readonly IOptionsMonitor<FeishuWebhookOptions> _options;
     private readonly ISecurityAuditService? _securityAuditService;
-
-    /// <summary>
-    /// 当前应用键（多应用场景）
-    /// </summary>
-    private string? _currentAppKey;
+    private readonly IEnvironmentService _environmentService;
 
     /// <summary>
     /// 初始化签名验证器
@@ -32,20 +29,45 @@ public class SignatureValidator : ISignatureValidator
     /// <param name="logger">日志记录器</param>
     /// <param name="options">Webhook 配置选项</param>
     /// <param name="securityAuditService">安全审计服务</param>
+    /// <param name="environmentService">环境服务</param>
     public SignatureValidator(
         ILogger<SignatureValidator> logger,
         IOptionsMonitor<FeishuWebhookOptions> options,
-        ISecurityAuditService? securityAuditService = null)
+        ISecurityAuditService? securityAuditService = null,
+        IEnvironmentService? environmentService = null)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _options = options ?? throw new ArgumentNullException(nameof(options));
         _securityAuditService = securityAuditService;
+        _environmentService = environmentService ?? new EnvironmentService();
     }
 
-    /// <inheritdoc />
-    public void SetCurrentAppKey(string appKey)
+    /// <summary>
+    /// 记录安全审计失败日志
+    /// </summary>
+    private void LogSecurityFailure(string message)
     {
-        _currentAppKey = appKey;
+        _ = _securityAuditService?.LogSecurityFailureAsync(
+            SecurityEventType.SignatureValidation,
+            "unknown",
+            "SignatureValidator",
+            message,
+            "",
+            _currentAppKey);
+    }
+
+    /// <summary>
+    /// 记录安全审计成功日志
+    /// </summary>
+    private void LogSecuritySuccess(string message)
+    {
+        _ = _securityAuditService?.LogSecuritySuccessAsync(
+            SecurityEventType.SignatureValidation,
+            "unknown",
+            "SignatureValidator",
+            message,
+            "",
+            _currentAppKey);
     }
 
     /// <inheritdoc />
@@ -56,23 +78,14 @@ public class SignatureValidator : ISignatureValidator
             // 检查必要参数
             if (timestamp == 0 || string.IsNullOrEmpty(nonce))
             {
-                var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production";
-                var isProduction = string.Equals(environment, "Production", StringComparison.OrdinalIgnoreCase);
-
-                if (isProduction)
+                if (_environmentService.IsProduction)
                 {
                     _logger.LogError(
                         "时间戳或 nonce 为空（Timestamp: {Timestamp}, Nonce: {Nonce}），拒绝请求（生产环境不允许跳过签名验证）",
                         timestamp, nonce);
 
                     // 记录安全审计日志
-                    _ = _securityAuditService?.LogSecurityFailureAsync(
-                        SecurityEventType.SignatureValidation,
-                        "unknown",
-                        "SignatureValidator",
-                        $"时间戳或 nonce 为空（Timestamp: {timestamp}, Nonce: {nonce}），拒绝请求",
-                        "",
-                        _currentAppKey);
+                    LogSecurityFailure($"时间戳或 nonce 为空（Timestamp: {timestamp}, Nonce: {nonce}），拒绝请求");
 
                     return false; // 生产环境拒绝请求
                 }
@@ -82,13 +95,7 @@ public class SignatureValidator : ISignatureValidator
                     timestamp, nonce);
 
                 // 记录安全审计日志
-                _ = _securityAuditService?.LogSecurityFailureAsync(
-                    SecurityEventType.SignatureValidation,
-                    "unknown",
-                    "SignatureValidator",
-                    $"开发环境：时间戳或 nonce 为空（Timestamp: {timestamp}, Nonce: {nonce}），跳过签名验证",
-                    "",
-                    _currentAppKey);
+                LogSecurityFailure($"开发环境：时间戳或 nonce 为空（Timestamp: {timestamp}, Nonce: {nonce}），跳过签名验证");
 
                 return true; // 开发环境允许跳过
             }
@@ -116,26 +123,14 @@ public class SignatureValidator : ISignatureValidator
                     _currentAppKey ?? "null");
 
                 // 记录安全审计日志
-                _ = _securityAuditService?.LogSecurityFailureAsync(
-                    SecurityEventType.SignatureValidation,
-                    "unknown",
-                    "SignatureValidator",
-                    $"签名验证失败: 计算 {computedPrefix}..., 期望 {signaturePrefix}...",
-                    "",
-                    _currentAppKey);
+                LogSecurityFailure($"签名验证失败: 计算 {computedPrefix}..., 期望 {signaturePrefix}...");
             }
             else
             {
                 _logger.LogDebug("签名验证成功, AppKey: {AppKey}", _currentAppKey ?? "null");
 
                 // 记录安全审计日志
-                _ = _securityAuditService?.LogSecuritySuccessAsync(
-                    SecurityEventType.SignatureValidation,
-                    "unknown",
-                    "SignatureValidator",
-                    $"签名验证成功, AppKey: {_currentAppKey ?? "null"}",
-                    "",
-                    _currentAppKey);
+                LogSecuritySuccess($"签名验证成功, AppKey: {_currentAppKey ?? "null"}");
             }
 
             return isValid;
@@ -183,15 +178,9 @@ public class SignatureValidator : ISignatureValidator
                         environment);
 
                     // 记录安全审计日志
-                    _ = _securityAuditService?.LogSecurityFailureAsync(
-                        SecurityEventType.SignatureValidation,
-                        "unknown",
-                        "SignatureValidator",
-                        isProduction
-                            ? "生产环境：请求头缺少 X-Lark-Signature，拒绝请求"
-                            : "非生产环境：请求头缺少 X-Lark-Signature（警告：此配置存在安全风险）",
-                        "",
-                        _currentAppKey);
+                    LogSecurityFailure(isProduction
+                        ? "生产环境：请求头缺少 X-Lark-Signature，拒绝请求"
+                        : "非生产环境：请求头缺少 X-Lark-Signature（警告：此配置存在安全风险）");
 
                     return false;
                 }
@@ -206,23 +195,14 @@ public class SignatureValidator : ISignatureValidator
             // 检查必要参数
             if (timestamp == 0 || string.IsNullOrEmpty(nonce))
             {
-                var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production";
-                var isProduction = string.Equals(environment, "Production", StringComparison.OrdinalIgnoreCase);
-
-                if (isProduction)
+                if (_environmentService.IsProduction)
                 {
                     _logger.LogError(
                         "时间戳或 nonce 为空（Timestamp: {Timestamp}, Nonce: {Nonce}），拒绝请求（生产环境不允许跳过签名验证）",
                         timestamp, nonce);
 
                     // 记录安全审计日志
-                    _ = _securityAuditService?.LogSecurityFailureAsync(
-                        SecurityEventType.SignatureValidation,
-                        "unknown",
-                        "SignatureValidator",
-                        $"时间戳或 nonce 为空（Timestamp: {timestamp}, Nonce: {nonce}），拒绝请求",
-                        "",
-                        _currentAppKey);
+                    LogSecurityFailure($"时间戳或 nonce 为空（Timestamp: {timestamp}, Nonce: {nonce}），拒绝请求");
 
                     return false; // 生产环境拒绝请求
                 }
@@ -232,13 +212,7 @@ public class SignatureValidator : ISignatureValidator
                     timestamp, nonce);
 
                 // 记录安全审计日志
-                _ = _securityAuditService?.LogSecurityFailureAsync(
-                    SecurityEventType.SignatureValidation,
-                    "unknown",
-                    "SignatureValidator",
-                    $"开发环境：时间戳或 nonce 为空（Timestamp: {timestamp}, Nonce: {nonce}），跳过签名验证",
-                    "",
-                    _currentAppKey);
+                LogSecurityFailure($"开发环境：时间戳或 nonce 为空（Timestamp: {timestamp}, Nonce: {nonce}），跳过签名验证");
 
                 return true; // 开发环境允许跳过
             }

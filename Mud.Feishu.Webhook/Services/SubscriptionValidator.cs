@@ -14,15 +14,10 @@ namespace Mud.Feishu.Webhook.Services;
 /// 飞书事件订阅验证器实现
 /// 负责验证飞书事件订阅请求的有效性
 /// </summary>
-public class SubscriptionValidator : ISubscriptionValidator
+public class SubscriptionValidator : ValidatorBase, ISubscriptionValidator
 {
     private readonly ILogger<SubscriptionValidator> _logger;
     private readonly IOptionsMonitor<FeishuWebhookOptions> _optionsMonitor;
-
-    /// <summary>
-    /// 当前应用键（多应用场景）
-    /// </summary>
-    private string? _currentAppKey;
 
     /// <summary>
     /// 初始化订阅验证器
@@ -35,12 +30,6 @@ public class SubscriptionValidator : ISubscriptionValidator
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _optionsMonitor = optionsMonitor ?? throw new ArgumentNullException(nameof(optionsMonitor));
-    }
-
-    /// <inheritdoc />
-    public void SetCurrentAppKey(string appKey)
-    {
-        _currentAppKey = appKey;
     }
 
     /// <inheritdoc />

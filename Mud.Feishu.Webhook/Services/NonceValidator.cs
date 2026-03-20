@@ -13,15 +13,10 @@ namespace Mud.Feishu.Webhook.Services;
 /// 飞书事件 Nonce 验证器实现
 /// 负责防重放攻击的 Nonce 去重验证，支持多应用场景下的隔离
 /// </summary>
-public class NonceValidator : INonceValidator
+public class NonceValidator : ValidatorBase, INonceValidator
 {
     private readonly ILogger<NonceValidator> _logger;
     private readonly IFeishuNonceDistributedDeduplicator _nonceDeduplicator;
-
-    /// <summary>
-    /// 当前应用键（多应用场景）
-    /// </summary>
-    private string? _currentAppKey;
 
     /// <summary>
     /// 初始化 Nonce 验证器
@@ -34,12 +29,6 @@ public class NonceValidator : INonceValidator
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _nonceDeduplicator = nonceDeduplicator ?? throw new ArgumentNullException(nameof(nonceDeduplicator));
-    }
-
-    /// <inheritdoc />
-    public void SetCurrentAppKey(string appKey)
-    {
-        _currentAppKey = appKey;
     }
 
     /// <inheritdoc />

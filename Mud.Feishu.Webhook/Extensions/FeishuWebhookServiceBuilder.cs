@@ -11,6 +11,7 @@ using Mud.Feishu.Abstractions.Services;
 using Mud.Feishu.Webhook;
 using Mud.Feishu.Webhook.Configuration;
 using Mud.Feishu.Webhook.Services;
+using Mud.Feishu.Webhook.Utilities;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
@@ -447,6 +448,9 @@ public class FeishuWebhookServiceBuilder
         // 注册多应用注册表（单例，所有应用共享）
         _services.TryAddSingleton<FeishuWebhookHandlerRegistry>();
         _services.TryAddSingleton<FeishuWebhookInterceptorRegistry>();
+
+        // 注册工具服务（单例）
+        _services.TryAddSingleton<IEnvironmentService, EnvironmentService>();
 
         // 注册专门的验证器（作用域服务）
         _services.TryAddScoped<ISignatureValidator, SignatureValidator>();

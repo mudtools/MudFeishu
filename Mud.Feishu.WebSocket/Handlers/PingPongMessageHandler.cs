@@ -98,8 +98,6 @@ public class PingPongMessageHandler : JsonMessageHandler, IPongHandler
         
         // 触发PongReceived事件，通知客户端更新最后一次Pong时间
         PongReceived?.Invoke(this, EventArgs.Empty);
-        
-        await Task.CompletedTask;
     }
 
     private string ExtractMessageType(string message)

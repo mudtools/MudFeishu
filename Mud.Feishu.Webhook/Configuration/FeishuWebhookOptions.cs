@@ -109,13 +109,6 @@ public class FeishuWebhookOptions
     public bool EnableBackgroundProcessing { get; set; } = false;
 
     /// <summary>
-    /// 是否启用断路器模式
-    /// 注意：CircuitBreaker 功能已被移除，此配置项已废弃
-    /// </summary>
-    [Obsolete("CircuitBreaker 功能已被移除，此配置项已废弃", true)]
-    public bool EnableCircuitBreaker { get; set; } = false;
-
-    /// <summary>
     /// 失败事件重试配置
     /// </summary>
     public FailedEventRetryOptions Retry { get; set; } = new();

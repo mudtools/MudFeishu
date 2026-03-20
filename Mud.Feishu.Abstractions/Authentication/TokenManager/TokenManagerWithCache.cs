@@ -8,6 +8,7 @@
 using Microsoft.Extensions.Options;
 using Mud.Feishu.Abstractions;
 using Mud.Feishu.Abstractions.Metrics;
+using Mud.Feishu.Abstractions.Utilities;
 using Mud.Feishu.Exceptions;
 using System.Collections.Concurrent;
 
@@ -300,11 +301,7 @@ public abstract class TokenManagerWithCache : ITokenManager, IDisposable
     /// </remarks>
     protected string FormatBearerToken(string? token)
     {
-        // 如果token已经包含Bearer前缀，则不再添加
-        if (string.IsNullOrEmpty(token))
-            return "Bearer ";
-
-        return token.StartsWith("Bearer ") ? token : $"Bearer {token}";
+        return TokenUtils.FormatBearerToken(token);
     }
 
     /// <summary>

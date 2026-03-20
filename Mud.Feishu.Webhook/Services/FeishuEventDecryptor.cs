@@ -95,6 +95,23 @@ public class FeishuEventDecryptor : IFeishuEventDecryptor
     }
 
     /// <summary>
+    /// 解析时间戳字段（支持字符串和数字格式，自动转换为秒）
+    /// </summary>
+    private static long ParseCreateTime(JsonElement element)
+    {
+        if (element.ValueKind == JsonValueKind.String &&
+            long.TryParse(element.GetString(), out var timeLong))
+        {
+            return timeLong / 1000; // 转换为秒
+        }
+        if (element.TryGetInt64(out var timeInt))
+        {
+            return timeInt / 1000;
+        }
+        return 0;
+    }
+
+    /// <summary>
     /// 解析v2.0版本的事件
     /// </summary>
     private EventData ParseV2Event(JsonElement root)
@@ -112,15 +129,7 @@ public class FeishuEventDecryptor : IFeishuEventDecryptor
 
             if (headerElement.TryGetProperty("create_time", out var createTimeElement))
             {
-                if (createTimeElement.ValueKind == JsonValueKind.String &&
-                    long.TryParse(createTimeElement.GetString(), out var createTimeLong))
-                {
-                    eventData.CreateTime = createTimeLong / 1000; // 转换为秒
-                }
-                else if (createTimeElement.TryGetInt64(out var createTimeInt))
-                {
-                    eventData.CreateTime = createTimeInt / 1000;
-                }
+                eventData.CreateTime = ParseCreateTime(createTimeElement);
             }
 
             if (headerElement.TryGetProperty("tenant_key", out var tenantKeyElement))
@@ -157,15 +166,7 @@ public class FeishuEventDecryptor : IFeishuEventDecryptor
 
         if (root.TryGetProperty("create_time", out var createTimeElement))
         {
-            if (createTimeElement.ValueKind == JsonValueKind.String &&
-                long.TryParse(createTimeElement.GetString(), out var createTimeLong))
-            {
-                eventData.CreateTime = createTimeLong / 1000; // 转换为秒
-            }
-            else if (createTimeElement.TryGetInt64(out var createTimeInt))
-            {
-                eventData.CreateTime = createTimeInt / 1000;
-            }
+            eventData.CreateTime = ParseCreateTime(createTimeElement);
         }
 
         if (root.TryGetProperty("tenant_key", out var tenantKeyElement))

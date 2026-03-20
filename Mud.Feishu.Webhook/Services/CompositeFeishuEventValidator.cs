@@ -15,7 +15,7 @@ namespace Mud.Feishu.Webhook.Services;
 /// 实现原有 IFeishuEventValidator 接口，委托给各个专门的验证器
 /// 保持向后兼容性的同时提供单一职责的验证器架构
 /// </summary>
-public class CompositeFeishuEventValidator : IFeishuEventValidator
+public class CompositeFeishuEventValidator : ValidatorBase, IFeishuEventValidator
 {
     private readonly ISignatureValidator _signatureValidator;
     private readonly ITimestampValidator _timestampValidator;
@@ -50,8 +50,9 @@ public class CompositeFeishuEventValidator : IFeishuEventValidator
     }
 
     /// <inheritdoc />
-    public void SetCurrentAppKey(string appKey)
+    public override void SetCurrentAppKey(string appKey)
     {
+        base.SetCurrentAppKey(appKey);
         _logger.LogDebug("设置当前应用键: {AppKey}", appKey);
 
         // 将应用键传播到所有支持多应用的验证器

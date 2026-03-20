@@ -606,19 +606,16 @@ app.UseFeishuWebhook();
 - **.NET Standard 2.0** - 兼容 .NET Framework 4.6.1+
 - **.NET 6.0** - LTS 长期支持版本
 - **.NET 8.0** - LTS 长期支持版本（推荐）
-- **.NET 10.0** - LTS 长期支持版本
+- **.NET 10.0** - LTS 长期支持版本（推荐）
 
 ### 核心依赖
 
 | 包                                            | 版本             | 说明                  |
 | --------------------------------------------- | ---------------- | --------------------- |
-| **Mud.ServiceCodeGenerator**                  | v1.4.6           | HTTP 客户端代码生成器 |
-| **System.Text.Json**                          | v10.0.1          | 高性能 JSON 序列化    |
-| **Microsoft.Extensions.Http**                 | v8.0.1 / v10.0.1 | HTTP 客户端工厂       |
-| **Microsoft.Extensions.Http.Polly**           | v8.0.2 / v10.0.1 | 弹性和瞬态故障处理    |
-| **Microsoft.Extensions.DependencyInjection**  | v8.0.2 / v10.0.1 | 依赖注入              |
-| **Microsoft.Extensions.Logging**              | v8.0.3 / v10.0.1 | 日志记录              |
-| **Microsoft.Extensions.Configuration.Binder** | v8.0.2 / v10.0.1 | 配置绑定              |
+| **Mud.HttpUtils**                             | v1.6.2           | HTTP 客户端工具类 |
+| **Mud.HttpUtils.Generator**                   | v1.6.2           | HTTP 客户端代码生成器（编译时） |
+| **Microsoft.Extensions.Http**                 | v8.0.1 / v10.0.4 | HTTP 客户端工厂       |
+| **Microsoft.Extensions.Http.Polly**           | v8.0.2 / v10.0.4 | 弹性和瞬态故障处理    |
 
 ---
 

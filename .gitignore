@@ -43,6 +43,11 @@
 /Demos/Mud.Feishu.Webhook.Demo/obj
 /Demos/Mud.Feishu.WebSocket.Demo/bin/Debug/net8.0
 /Demos/Mud.Feishu.WebSocket.Demo/obj
+/Demos/TaskManageDemo/backend/logs
+/Demos/TaskManageDemo/backend/obj
+/Demos/TaskManageDemo/backend/bin
+/Demos/TaskManageDemo/tests/obj
+/Demos/TaskManageDemo/tests/bin
 /Tests/Mud.Feishu.Abstractions.Tests/bin/Debug
 /Tests/Mud.Feishu.Abstractions.Tests/obj
 /Tests/Mud.Feishu.Redis.Tests/bin/Debug

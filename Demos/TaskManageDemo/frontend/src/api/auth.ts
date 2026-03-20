@@ -9,6 +9,11 @@ import type {
   CurrentUserInfo,
   OAuthUrlRequest,
   OAuthUrlResponse,
+  PasswordLoginRequest,
+  RegisterRequest,
+  BindFeishuRequest,
+  BindFeishuResponse,
+  FeishuAuthCheckResponse,
 } from '../types'
 
 /**
@@ -36,6 +41,50 @@ export async function loginWithCode(
   request: LoginRequest
 ): Promise<ApiResponse<LoginResponse>> {
   return apiClient.post<LoginResponse>('/auth/login', request)
+}
+
+/**
+ * 用户名密码登录
+ * @param request 登录请求
+ * @returns 登录响应
+ */
+export async function passwordLogin(
+  request: PasswordLoginRequest
+): Promise<ApiResponse<LoginResponse>> {
+  return apiClient.post<LoginResponse>('/auth/login', request)
+}
+
+/**
+ * 用户注册
+ * @param request 注册请求
+ * @returns 登录响应
+ */
+export async function register(
+  request: RegisterRequest
+): Promise<ApiResponse<LoginResponse>> {
+  return apiClient.post<LoginResponse>('/auth/register', request)
+}
+
+/**
+ * 检查飞书授权状态
+ * @param request 请求参数
+ * @returns 飞书授权检查响应
+ */
+export async function checkFeishuAuth(
+  request: LoginRequest
+): Promise<ApiResponse<FeishuAuthCheckResponse>> {
+  return apiClient.post<FeishuAuthCheckResponse>('/auth/feishu/check', request)
+}
+
+/**
+ * 绑定飞书账号
+ * @param request 绑定请求
+ * @returns 绑定响应
+ */
+export async function bindFeishu(
+  request: BindFeishuRequest
+): Promise<ApiResponse<BindFeishuResponse>> {
+  return apiClient.post<BindFeishuResponse>('/auth/feishu/bind', request)
 }
 
 /**

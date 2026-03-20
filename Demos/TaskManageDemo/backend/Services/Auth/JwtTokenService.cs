@@ -24,6 +24,21 @@ public interface IJwtTokenService
     string GenerateToken(string openId, string unionId, string name, int userId);
 
     /// <summary>
+    /// 生成 JWT Token（带权限）
+    /// </summary>
+    string GenerateToken(string userId, string username, string openId, string role, List<string> permissions);
+
+    /// <summary>
+    /// 生成临时 Token（用于注册流程）
+    /// </summary>
+    string GenerateTempToken(string feishuId, string name);
+
+    /// <summary>
+    /// 验证临时 Token
+    /// </summary>
+    (string feishuId, string name)? ValidateTempToken(string token);
+
+    /// <summary>
     /// 验证 JWT Token
     /// </summary>
     bool ValidateToken(string token, out ClaimsPrincipal? principal);
@@ -73,6 +88,113 @@ public class JwtTokenService : IJwtTokenService
         );
 
         return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+
+    public string GenerateToken(string userId, string username, string openId, string role, List<string> permissions)
+    {
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_options.Secret));
+        var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+        var claims = new List<Claim>
+        {
+            new Claim(JwtRegisteredClaimNames.Sub, userId),
+            new Claim(JwtRegisteredClaimNames.UniqueName, username),
+            new Claim(ClaimTypes.Name, username),
+            new Claim("open_id", openId),
+            new Claim("user_id", userId),
+            new Claim(ClaimTypes.Role, role),
+            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+            new Claim(JwtRegisteredClaimNames.Iat, DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(), ClaimValueTypes.Integer64)
+        };
+
+        foreach (var permission in permissions)
+        {
+            claims.Add(new Claim("permission", permission));
+        }
+
+        var token = new JwtSecurityToken(
+            issuer: _options.Issuer,
+            audience: _options.Audience,
+            claims: claims,
+            expires: DateTime.UtcNow.AddMinutes(_options.ExpirationMinutes),
+            signingCredentials: credentials
+        );
+
+        return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+
+    public string GenerateTempToken(string feishuId, string name)
+    {
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_options.Secret));
+        var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+        var claims = new[]
+        {
+            new Claim(JwtRegisteredClaimNames.Sub, feishuId),
+            new Claim(ClaimTypes.Name, name),
+            new Claim("feishu_id", feishuId),
+            new Claim("token_type", "temp"),
+            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+            new Claim(JwtRegisteredClaimNames.Iat, DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(), ClaimValueTypes.Integer64)
+        };
+
+        var token = new JwtSecurityToken(
+            issuer: _options.Issuer,
+            audience: _options.Audience,
+            claims: claims,
+            expires: DateTime.UtcNow.AddMinutes(30),
+            signingCredentials: credentials
+        );
+
+        return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+
+    public (string feishuId, string name)? ValidateTempToken(string token)
+    {
+        try
+        {
+            var tokenHandler = new JwtSecurityTokenHandler();
+            var key = Encoding.UTF8.GetBytes(_options.Secret);
+
+            var validationParameters = new TokenValidationParameters
+            {
+                ValidateIssuer = true,
+                ValidateAudience = true,
+                ValidateLifetime = true,
+                ValidateIssuerSigningKey = true,
+                ValidIssuer = _options.Issuer,
+                ValidAudience = _options.Audience,
+                IssuerSigningKey = new SymmetricSecurityKey(key),
+                ClockSkew = TimeSpan.Zero
+            };
+
+            var principal = tokenHandler.ValidateToken(token, validationParameters, out var validatedToken);
+            var jwtToken = validatedToken as JwtSecurityToken;
+
+            if (jwtToken == null)
+            {
+                return null;
+            }
+
+            var tokenType = jwtToken.Claims.FirstOrDefault(c => c.Type == "token_type")?.Value;
+            if (tokenType != "temp")
+            {
+                return null;
+            }
+
+            var feishuId = jwtToken.Claims.FirstOrDefault(c => c.Type == "feishu_id")?.Value;
+            var name = jwtToken.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Name)?.Value;
+
+            if (!string.IsNullOrEmpty(feishuId) && !string.IsNullOrEmpty(name))
+            {
+                return (feishuId, name);
+            }
+        }
+        catch
+        {
+        }
+
+        return null;
     }
 
     public bool ValidateToken(string token, out ClaimsPrincipal? principal)

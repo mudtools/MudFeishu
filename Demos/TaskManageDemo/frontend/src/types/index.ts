@@ -182,6 +182,77 @@ export interface Statistics {
  */
 export interface LoginRequest {
   code: string;
+  state?: string;
+}
+
+/**
+ * 用户名密码登录请求
+ */
+export interface PasswordLoginRequest {
+  username: string;
+  password: string;
+}
+
+/**
+ * 用户注册请求
+ */
+export interface RegisterRequest {
+  username: string;
+  password: string;
+  confirmPassword: string;
+  feishuCode?: string;
+  feishuState?: string;
+}
+
+/**
+ * 绑定飞书请求
+ */
+export interface BindFeishuRequest {
+  code: string;
+  state: string;
+}
+
+/**
+ * 绑定飞书响应
+ */
+export interface BindFeishuResponse {
+  success: boolean;
+  feishuName?: string;
+  feishuAvatar?: string;
+  message?: string;
+}
+
+/**
+ * 修改密码请求
+ */
+export interface ChangePasswordRequest {
+  oldPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+}
+
+/**
+ * 飞书用户信息（用于注册流程）
+ */
+export interface FeishuUserInfo {
+  feishuId: string;
+  openId?: string;
+  name: string;
+  englishName?: string;
+  avatarUrl?: string;
+  email?: string;
+  mobile?: string;
+  departmentId?: string;
+}
+
+/**
+ * 飞书授权检查响应
+ */
+export interface FeishuAuthCheckResponse {
+  userExists: boolean;
+  isFeishuBound: boolean;
+  feishuUser?: FeishuUserInfo;
+  tempToken?: string;
 }
 
 /**

@@ -36,6 +36,11 @@ public interface IFeishuAuthService
     /// 获取飞书用户详细信息
     /// </summary>
     Task<FeishuUserDetail?> GetUserDetailAsync(string openId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 根据授权码获取飞书用户信息（用于注册流程）
+    /// </summary>
+    Task<FeishuUserInfoForRegistration?> GetUserInfoByCodeAsync(string code, CancellationToken cancellationToken = default);
 }
 
 /// <summary>
@@ -308,6 +313,54 @@ public class FeishuAuthService : IFeishuAuthService
         }
     }
 
+    public async Task<FeishuUserInfoForRegistration?> GetUserInfoByCodeAsync(string code, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var redirectUri = _configuration["OAuth:RedirectUri"];
+
+            var tokenResult = await _userTokenManager.GetUserTokenWithCodeAsync(code, redirectUri ?? string.Empty);
+
+            if (tokenResult == null || tokenResult.Code != 0)
+            {
+                _logger.LogError("获取用户访问令牌失败: {Message}", tokenResult?.Msg ?? "未知错误");
+                return null;
+            }
+
+            _feishuUserApi.CurrentUserId = tokenResult.UserId;
+
+            var userInfoResult = await _feishuUserApi.GetUserInfoAsync();
+
+            if (userInfoResult?.Data == null)
+            {
+                _logger.LogError("获取用户信息失败: {Message}", userInfoResult?.Msg ?? "未知错误");
+                return null;
+            }
+
+            var feishuUser = userInfoResult.Data;
+
+            _logger.LogInformation("成功获取飞书用户信息用于注册: {OpenId}", feishuUser.OpenId);
+
+            return new FeishuUserInfoForRegistration
+            {
+                FeishuId = feishuUser.OpenId ?? string.Empty,
+                OpenId = feishuUser.OpenId,
+                UnionId = feishuUser.UnionId,
+                Name = feishuUser.Name ?? "未知用户",
+                EnglishName = feishuUser.EnName,
+                AvatarUrl = feishuUser.AvatarUrl,
+                Email = feishuUser.Email,
+                Mobile = feishuUser.Mobile,
+                DepartmentId = null
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "根据授权码获取飞书用户信息失败");
+            return null;
+        }
+    }
+
     private async Task<(User user, bool isFirstLogin)> GetOrCreateUserAsync(
         string openId,
         string unionId,
@@ -389,4 +442,20 @@ public class TokenRefreshResponse
     public string AccessToken { get; set; } = string.Empty;
     public string RefreshToken { get; set; } = string.Empty;
     public int ExpiresIn { get; set; }
+}
+
+/// <summary>
+/// 飞书用户信息（用于注册流程）
+/// </summary>
+public class FeishuUserInfoForRegistration
+{
+    public string FeishuId { get; set; } = string.Empty;
+    public string? OpenId { get; set; }
+    public string? UnionId { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string? EnglishName { get; set; }
+    public string? AvatarUrl { get; set; }
+    public string? Email { get; set; }
+    public string? Mobile { get; set; }
+    public string? DepartmentId { get; set; }
 }

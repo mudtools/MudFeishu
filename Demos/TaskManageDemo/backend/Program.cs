@@ -145,6 +145,10 @@ using (var scope = app.Services.CreateScope())
     // 初始化默认角色
     var roleService = scope.ServiceProvider.GetRequiredService<IRoleService>();
     await roleService.InitializeDefaultRolesAsync();
+
+    // 初始化管理员账号
+    var localAuthService = scope.ServiceProvider.GetRequiredService<ILocalAuthService>();
+    await localAuthService.InitializeAdminAccountAsync();
 }
 
 if (app.Environment.IsDevelopment())

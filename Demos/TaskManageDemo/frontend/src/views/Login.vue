@@ -6,18 +6,11 @@
       <div class="stars2"></div>
       <div class="stars3"></div>
       <div class="stars4"></div>
-      <!-- 多方向流星 -->
-      <!-- translateX为负(向左运动)的需要tail-reverse -->
       <div class="shooting-star star-tr-bl tail-reverse"></div>
-      <!-- translateX为正(向右运动)的默认 -->
       <div class="shooting-star star-tl-br"></div>
-      <!-- translateX为负(向左运动)的需要tail-reverse -->
       <div class="shooting-star star-top-right tail-reverse"></div>
-      <!-- translateX为正(向右运动)的默认 -->
       <div class="shooting-star star-left-top"></div>
-      <!-- translateX为正(向右运动)的默认 -->
       <div class="shooting-star star-diagonal-1"></div>
-      <!-- translateX为负(向左运动)的需要tail-reverse -->
       <div class="shooting-star star-diagonal-2 tail-reverse"></div>
     </div>
 
@@ -38,7 +31,7 @@
             <List />
           </el-icon>
         </div>
-        <h1 class="brand-name">TaskFlow</h1>
+        <h1 class="brand-name">Mud 任务管理</h1>
         <p class="brand-slogan">高效协作，轻松管理</p>
       </div>
 
@@ -48,24 +41,60 @@
           <p>请登录您的账号以继续</p>
         </div>
 
-        <div class="login-description">
-          <p>请使用飞书账号登录以继续</p>
-        </div>
+        <!-- 登录表单 -->
+        <el-form v-if="loginMode === 'password'" ref="loginFormRef" :model="loginForm" :rules="loginRules" @submit.prevent="handlePasswordLogin">
+          <el-form-item prop="username">
+            <el-input v-model="loginForm.username" placeholder="用户名" size="large" prefix-icon="User" />
+          </el-form-item>
+          <el-form-item prop="password">
+            <el-input v-model="loginForm.password" type="password" placeholder="密码" size="large" prefix-icon="Lock" show-password />
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" size="large" :loading="loading" class="login-btn" native-type="submit">
+              {{ loading ? '登录中...' : '登录' }}
+            </el-button>
+          </el-form-item>
+        </el-form>
 
-        <div class="social-login">
+        <!-- 飞书登录 -->
+        <div v-if="loginMode === 'feishu'" class="feishu-login">
+          <div class="login-description">
+            <p>请使用飞书账号登录以继续</p>
+          </div>
           <el-button class="social-btn feishu" size="large" :loading="loading" @click="handleFeishuLogin">
             <img src="https://www.feishu.cn/favicon.ico" alt="Feishu" class="social-icon" />
             <span>{{ loading ? '登录中...' : '飞书登录' }}</span>
           </el-button>
         </div>
 
+        <!-- 切换登录方式 -->
+        <div class="login-switch">
+          <el-divider>
+            <span class="divider-text">或</span>
+          </el-divider>
+          <div class="switch-buttons">
+            <el-button v-if="loginMode === 'feishu'" text type="primary" @click="loginMode = 'password'">
+              <el-icon>
+                <Key />
+              </el-icon>
+              用户名密码登录
+            </el-button>
+            <el-button v-if="loginMode === 'password'" text type="primary" @click="loginMode = 'feishu'">
+              <img src="https://www.feishu.cn/favicon.ico" alt="Feishu" class="switch-icon" />
+              飞书登录
+            </el-button>
+          </div>
+        </div>
+
+        <!-- 注册提示 -->
         <div class="login-tips">
-          <el-alert title="提示" description="首次登录将自动创建账号" type="info" :closable="false" show-icon />
+          <el-alert v-if="loginMode === 'password'" title="首次使用？" description="如果您没有账号，请使用飞书登录进行注册" type="info" :closable="false" show-icon />
+          <el-alert v-if="loginMode === 'feishu'" title="提示" description="首次登录将自动创建账号" type="info" :closable="false" show-icon />
         </div>
       </el-card>
 
       <div class="login-footer">
-        <p>使用飞书登录即表示您同意我们的服务条款</p>
+        <p>使用本系统即表示您同意我们的服务条款</p>
       </div>
     </div>
 
@@ -84,17 +113,19 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue"
 import { useRouter, useRoute } from "vue-router"
-import { ElMessage } from "element-plus"
-import { List, Sunny, Moon } from "@element-plus/icons-vue"
+import { ElMessage, type FormInstance, type FormRules } from "element-plus"
+import { List, Sunny, Moon, Key } from "@element-plus/icons-vue"
 import { useThemeStore } from "../stores/theme"
 import { useAuthStore } from "../stores/auth"
 import {
   getOAuthUrl,
-  loginWithCode,
   getCurrentUser,
   buildFeishuCallbackUrl,
   generateState,
+  passwordLogin,
+  checkFeishuAuth,
 } from "../api"
+import type { LoginResponse } from "../types"
 
 const router = useRouter()
 const route = useRoute()
@@ -102,10 +133,21 @@ const themeStore = useThemeStore()
 const authStore = useAuthStore()
 
 const loading = ref(false)
+const loginMode = ref<"password" | "feishu">("password")
+const loginFormRef = ref<FormInstance>()
+
+const loginForm = ref({
+  username: "",
+  password: "",
+})
+
+const loginRules: FormRules = {
+  username: [{ required: true, message: "请输入用户名", trigger: "blur" }],
+  password: [{ required: true, message: "请输入密码", trigger: "blur" }],
+}
 
 const isDark = computed(() => themeStore.isDark())
 
-// 检查是否是飞书回调
 onMounted(() => {
   const code = route.query.code as string
   const state = route.query.state as string
@@ -119,90 +161,32 @@ const toggleTheme = () => {
   themeStore.toggleTheme()
 }
 
-/**
- * 处理飞书登录回调
- */
-const handleFeishuCallback = async (code: string, _state?: string) => {
+const handlePasswordLogin = async () => {
+  const valid = await loginFormRef.value?.validate()
+  if (!valid) return
+
   loading.value = true
 
   try {
-    // 调用登录接口
-    const response = await loginWithCode({ code })
+    const response = await passwordLogin({
+      username: loginForm.value.username,
+      password: loginForm.value.password,
+    })
 
     if (!response.success || !response.data) {
       ElMessage.error(response.message || "登录失败")
       return
     }
 
-    const { accessToken, user, isFirstLogin } = response.data
-
-    // 保存 token
-    authStore.setToken(accessToken)
-
-    // 获取完整用户信息
-    const userResponse = await getCurrentUser()
-    if (userResponse.success && userResponse.data) {
-      authStore.setUser({
-        id: userResponse.data.id,
-        feishuId: userResponse.data.feishuId,
-        name: userResponse.data.name,
-        englishName: userResponse.data.englishName,
-        email: userResponse.data.email,
-        avatarUrl: userResponse.data.avatarUrl,
-        departmentId: userResponse.data.departmentId,
-        department: userResponse.data.departmentName
-          ? {
-              id: userResponse.data.departmentId || 0,
-              feishuId: "",
-              name: userResponse.data.departmentName,
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-            }
-          : undefined,
-        role: userResponse.data.role,
-        permissions: userResponse.data.permissions,
-        createdAt: userResponse.data.createdAt,
-        updatedAt: userResponse.data.createdAt,
-      })
-    } else {
-      // 使用登录返回的基本用户信息
-      authStore.setUser({
-        id: parseInt(user.userId) || 0,
-        feishuId: user.feishuId,
-        name: user.userName,
-        email: undefined,
-        avatarUrl: undefined,
-        role: user.role,
-        permissions: user.permissions,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      })
-    }
-
-    // 显示欢迎消息
-    const welcomeMessage = isFirstLogin
-      ? `欢迎首次使用，${user.userName}！`
-      : `欢迎回来，${user.userName}！`
-
-    ElMessage.success({
-      message: welcomeMessage,
-      duration: 2000,
-    })
-
-    // 清除 URL 中的 code 参数
-    const redirect = route.query.redirect as string
-    router.replace(redirect || "/tasks")
+    await handleLoginSuccess(response.data)
   } catch (error) {
-    console.error("飞书登录失败:", error)
+    console.error("登录失败:", error)
     ElMessage.error("登录失败，请稍后重试")
   } finally {
     loading.value = false
   }
 }
 
-/**
- * 处理飞书登录
- */
 const handleFeishuLogin = async () => {
   loading.value = true
 
@@ -210,14 +194,11 @@ const handleFeishuLogin = async () => {
     const redirectUri = buildFeishuCallbackUrl()
     const state = generateState()
 
-    // 保存 state 用于验证
     sessionStorage.setItem("feishu_oauth_state", state)
 
-    // 获取飞书 OAuth URL
     const response = await getOAuthUrl({ redirectUri, state })
 
     if (response.success && response.data) {
-      // 跳转到飞书授权页面
       window.location.href = response.data.url
     } else {
       ElMessage.error(response.message || "获取授权链接失败")
@@ -229,6 +210,98 @@ const handleFeishuLogin = async () => {
     loading.value = false
   }
 }
+
+const handleFeishuCallback = async (code: string, _state?: string) => {
+  loading.value = true
+
+  try {
+    const checkResponse = await checkFeishuAuth({ code, state: _state || "" })
+
+    if (!checkResponse.success || !checkResponse.data) {
+      ElMessage.error(checkResponse.message || "飞书授权失败")
+      return
+    }
+
+    const { userExists, isFeishuBound, feishuUser, tempToken } =
+      checkResponse.data
+
+    if (userExists && isFeishuBound && tempToken) {
+      authStore.setToken(tempToken)
+      const userResponse = await getCurrentUser()
+      if (userResponse.success && userResponse.data) {
+        authStore.setUser({
+          id: userResponse.data.id,
+          feishuId: userResponse.data.feishuId,
+          name: userResponse.data.name,
+          email: userResponse.data.email,
+          avatarUrl: userResponse.data.avatarUrl,
+          role: userResponse.data.role,
+          permissions: userResponse.data.permissions,
+          createdAt: userResponse.data.createdAt,
+          updatedAt: userResponse.data.createdAt,
+        })
+      }
+
+      ElMessage.success({
+        message: `欢迎回来，${feishuUser?.name || "用户"}！`,
+        duration: 2000,
+      })
+
+      const redirect = route.query.redirect as string
+      router.replace(redirect || "/tasks")
+    } else if (feishuUser && tempToken) {
+      sessionStorage.setItem("temp_token", tempToken)
+      sessionStorage.setItem("feishu_user", JSON.stringify(feishuUser))
+
+      router.replace({
+        path: "/register",
+        query: { from: "feishu" },
+      })
+    } else {
+      ElMessage.error("无法获取用户信息")
+    }
+  } catch (error) {
+    console.error("飞书登录失败:", error)
+    ElMessage.error("登录失败，请稍后重试")
+  } finally {
+    loading.value = false
+  }
+}
+
+const handleLoginSuccess = async (data: LoginResponse) => {
+  authStore.setToken(data.accessToken)
+
+  if (data.user) {
+    authStore.setUser({
+      id: parseInt(data.user.userId) || 0,
+      feishuId: data.user.feishuId,
+      name: data.user.userName,
+      email: undefined,
+      avatarUrl: undefined,
+      role: data.user.role,
+      permissions: data.user.permissions,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    })
+  }
+
+  localStorage.setItem(
+    "permissions",
+    JSON.stringify(data.user.permissions || [])
+  )
+
+  const welcomeMessage = data.isFirstLogin
+    ? `欢迎首次使用，${data.user.userName}！请绑定飞书账号以获得完整功能。`
+    : `欢迎回来，${data.user.userName}！`
+
+  ElMessage.success({
+    message: welcomeMessage,
+    duration: 2000,
+  })
+
+  const redirect = route.query.redirect as string
+  router.replace(redirect || "/tasks")
+}
 </script>
 
 <style scoped>
@@ -239,15 +312,28 @@ const handleFeishuLogin = async () => {
   justify-content: center;
   position: relative;
   overflow: hidden;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  transition: background var(--transition-normal);
+  background: linear-gradient(
+    135deg,
+    #f8fafc 0%,
+    #e2e8f0 25%,
+    #cbd5e1 50%,
+    #94a3b8 75%,
+    #64748b 100%
+  );
+  transition: all 0.5s ease;
 }
 
 .login-page.dark {
-  background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
+  background: linear-gradient(
+    135deg,
+    #1e293b 0%,
+    #1e3a5f 25%,
+    #1e40af 50%,
+    #3730a3 75%,
+    #312e81 100%
+  );
 }
 
-/* 背景装饰 */
 .login-background {
   position: absolute;
   inset: 0;
@@ -258,86 +344,121 @@ const handleFeishuLogin = async () => {
 .bg-circle {
   position: absolute;
   border-radius: 50%;
-  opacity: 0.1;
-  filter: blur(60px);
+  filter: blur(80px);
+  transition: all 0.5s ease;
 }
 
 .circle-1 {
   width: 600px;
   height: 600px;
-  background: #fff;
+  background: rgba(100, 116, 139, 0.15);
   top: -200px;
   right: -200px;
+}
+
+.login-page.dark .circle-1 {
+  background: rgba(99, 102, 241, 0.12);
 }
 
 .circle-2 {
   width: 400px;
   height: 400px;
-  background: #f093fb;
+  background: rgba(148, 163, 184, 0.15);
   bottom: -100px;
   left: -100px;
+}
+
+.login-page.dark .circle-2 {
+  background: rgba(139, 92, 246, 0.1);
 }
 
 .circle-3 {
   width: 300px;
   height: 300px;
-  background: #4facfe;
+  background: rgba(71, 85, 105, 0.12);
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
+}
+
+.login-page.dark .circle-3 {
+  background: rgba(59, 130, 246, 0.08);
 }
 
 .bg-grid {
   position: absolute;
   inset: 0;
   background-image: linear-gradient(
-      rgba(255, 255, 255, 0.03) 1px,
+      rgba(100, 116, 139, 0.08) 1px,
       transparent 1px
     ),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    linear-gradient(90deg, rgba(100, 116, 139, 0.08) 1px, transparent 1px);
   background-size: 50px 50px;
 }
 
-/* 星云效果 */
+.login-page.dark .bg-grid {
+  background-image: linear-gradient(
+      rgba(99, 102, 241, 0.06) 1px,
+      transparent 1px
+    ),
+    linear-gradient(90deg, rgba(99, 102, 241, 0.06) 1px, transparent 1px);
+}
+
 .nebula {
   position: absolute;
   width: 100%;
   height: 100%;
   background: radial-gradient(
       ellipse at 20% 80%,
-      rgba(120, 119, 198, 0.3) 0%,
+      rgba(100, 116, 139, 0.12) 0%,
       transparent 50%
     ),
     radial-gradient(
       ellipse at 80% 20%,
-      rgba(255, 119, 198, 0.3) 0%,
+      rgba(148, 163, 184, 0.1) 0%,
       transparent 50%
     ),
     radial-gradient(
       ellipse at 40% 40%,
-      rgba(99, 102, 241, 0.2) 0%,
+      rgba(71, 85, 105, 0.08) 0%,
       transparent 50%
     );
   animation: nebula-move 20s ease-in-out infinite;
+  opacity: 0.6;
+}
+
+.login-page.dark .nebula {
+  background: radial-gradient(
+      ellipse at 20% 80%,
+      rgba(99, 102, 241, 0.15) 0%,
+      transparent 50%
+    ),
+    radial-gradient(
+      ellipse at 80% 20%,
+      rgba(139, 92, 246, 0.12) 0%,
+      transparent 50%
+    ),
+    radial-gradient(
+      ellipse at 40% 40%,
+      rgba(59, 130, 246, 0.1) 0%,
+      transparent 50%
+    );
+  opacity: 0.8;
 }
 
 @keyframes nebula-move {
   0%,
   100% {
     transform: translate(0, 0) scale(1);
-    opacity: 0.5;
   }
   33% {
     transform: translate(30px, -30px) scale(1.1);
-    opacity: 0.7;
   }
   66% {
     transform: translate(-20px, 20px) scale(0.9);
-    opacity: 0.4;
   }
 }
 
-/* 星空背景 */
 .stars-container {
   position: fixed;
   top: 0;
@@ -346,132 +467,113 @@ const handleFeishuLogin = async () => {
   height: 100%;
   pointer-events: none;
   z-index: 0;
+  opacity: 0;
+  transition: opacity 0.5s ease;
 }
 
-/* 星星动画 - 大量随机分布的小星星 */
+.login-page.dark .stars-container {
+  opacity: 1;
+}
+
 .stars {
   width: 1px;
   height: 1px;
   background: transparent;
-  box-shadow:
-    /* 第一组 - 随机分布 */ 3vw 15vh #fff, 7vw 8vh #fff,
-    12vw 23vh #fff, 18vw 5vh #fff, 24vw 31vh #fff, 29vw 12vh #fff,
-    35vw 28vh #fff, 41vw 3vh #fff, 47vw 19vh #fff, 53vw 35vh #fff, 58vw 7vh #fff,
-    64vw 25vh #fff, 70vw 11vh #fff, 76vw 33vh #fff, 82vw 6vh #fff,
-    88vw 22vh #fff, 94vw 38vh #fff, 9vw 42vh #fff, 15vw 58vh #fff,
-    21vw 45vh #fff, 27vw 62vh #fff, 33vw 48vh #fff, 39vw 67vh #fff,
-    45vw 52vh #fff, 51vw 71vh #fff, 57vw 55vh #fff, 63vw 74vh #fff,
-    69vw 59vh #fff, 75vw 78vh #fff, 81vw 63vh #fff, 87vw 82vh #fff,
-    93vw 68vh #fff, 6vw 85vh #fff, 14vw 92vh #fff, 22vw 77vh #fff,
-    30vw 88vh #fff, 38vw 73vh #fff, 46vw 95vh #fff, 54vw 80vh #fff,
-    62vw 97vh #fff, 70vw 83vh #fff, 78vw 91vh #fff, 86vw 76vh #fff,
-    94vw 87vh #fff, 2vw 98vh #fff, /* 第二组 - 更随机 */ 5vw 3vh #fff,
-    11vw 18vh #fff, 17vw 36vh #fff, 23vw 9vh #fff, 29vw 44vh #fff,
-    37vw 15vh #fff, 43vw 53vh #fff, 49vw 27vh #fff, 55vw 64vh #fff,
-    61vw 41vh #fff, 67vw 8vh #fff, 73vw 56vh #fff, 79vw 29vh #fff,
-    85vw 72vh #fff, 91vw 47vh #fff, 97vw 14vh #fff, 4vw 69vh #fff,
-    10vw 34vh #fff, 16vw 89vh #fff, 26vw 50vh #fff, 32vw 17vh #fff,
-    40vw 75vh #fff, 48vw 40vh #fff, 56vw 6vh #fff, 62vw 84vh #fff,
-    68vw 37vh #fff, 74vw 93vh #fff, 80vw 20vh #fff, 86vw 60vh #fff,
-    92vw 2vh #fff, 98vw 54vh #fff, 1vw 79vh #fff, 8vw 46vh #fff, 19vw 10vh #fff,
-    25vw 66vh #fff, 31vw 30vh #fff, 44vw 86vh #fff, 50vw 13vh #fff,
-    59vw 57vh #fff, 65vw 39vh #fff, 71vw 96vh #fff, 77vw 24vh #fff,
-    83vw 70vh #fff, 89vw 49vh #fff, 95vw 4vh #fff,
-    /* 第三组 - 填充 */ 2vw 26vh #fff, 13vw 61vh #fff, 20vw 94vh #fff,
-    28vw 16vh #fff, 36vw 43vh #fff, 42vw 81vh #fff, 52vw 32vh #fff,
-    60vw 7vh #fff, 66vw 54vh #fff, 72vw 21vh #fff, 78vw 90vh #fff,
-    84vw 65vh #fff, 90vw 11vh #fff, 96vw 48vh #fff, 4vw 75vh #fff,
-    12vw 51vh #fff, 21vw 2vh #fff, 27vw 38vh #fff, 34vw 84vh #fff,
-    44vw 19vh #fff, 51vw 99vh #fff, 57vw 44vh #fff, 63vw 8vh #fff,
-    69vw 62vh #fff, 76vw 28vh #fff, 82vw 95vh #fff, 88vw 53vh #fff,
-    91vw 1vh #fff, 99vw 36vh #fff, 6vw 64vh #fff, 15vw 80vh #fff, 23vw 5vh #fff,
-    31vw 72vh #fff, 39vw 25vh #fff, 48vw 57vh #fff, 54vw 12vh #fff,
-    60vw 87vh #fff, 67vw 33vh #fff, 74vw 9vh #fff, 80vw 50vh #fff;
+  box-shadow: 3vw 15vh rgba(255, 255, 255, 0.8),
+    7vw 8vh rgba(255, 255, 255, 0.6), 12vw 23vh rgba(255, 255, 255, 0.7),
+    18vw 5vh rgba(255, 255, 255, 0.5), 24vw 31vh rgba(255, 255, 255, 0.8),
+    29vw 12vh rgba(255, 255, 255, 0.6), 35vw 28vh rgba(255, 255, 255, 0.7),
+    41vw 3vh rgba(255, 255, 255, 0.5), 47vw 19vh rgba(255, 255, 255, 0.8),
+    53vw 35vh rgba(255, 255, 255, 0.6), 58vw 7vh rgba(255, 255, 255, 0.7),
+    64vw 25vh rgba(255, 255, 255, 0.5), 70vw 11vh rgba(255, 255, 255, 0.8),
+    76vw 33vh rgba(255, 255, 255, 0.6), 82vw 6vh rgba(255, 255, 255, 0.7),
+    88vw 22vh rgba(255, 255, 255, 0.5), 94vw 38vh rgba(255, 255, 255, 0.8),
+    9vw 42vh rgba(255, 255, 255, 0.6), 15vw 58vh rgba(255, 255, 255, 0.7),
+    21vw 45vh rgba(255, 255, 255, 0.5), 27vw 62vh rgba(255, 255, 255, 0.8),
+    33vw 48vh rgba(255, 255, 255, 0.6), 39vw 67vh rgba(255, 255, 255, 0.7),
+    45vw 52vh rgba(255, 255, 255, 0.5), 51vw 71vh rgba(255, 255, 255, 0.8),
+    57vw 55vh rgba(255, 255, 255, 0.6), 63vw 74vh rgba(255, 255, 255, 0.7),
+    69vw 59vh rgba(255, 255, 255, 0.5), 75vw 78vh rgba(255, 255, 255, 0.8),
+    81vw 63vh rgba(255, 255, 255, 0.6), 87vw 82vh rgba(255, 255, 255, 0.7),
+    93vw 68vh rgba(255, 255, 255, 0.5), 6vw 85vh rgba(255, 255, 255, 0.8),
+    14vw 92vh rgba(255, 255, 255, 0.6), 22vw 77vh rgba(255, 255, 255, 0.7),
+    30vw 88vh rgba(255, 255, 255, 0.5), 38vw 73vh rgba(255, 255, 255, 0.8),
+    46vw 95vh rgba(255, 255, 255, 0.6), 54vw 80vh rgba(255, 255, 255, 0.7),
+    62vw 97vh rgba(255, 255, 255, 0.5), 70vw 83vh rgba(255, 255, 255, 0.8),
+    78vw 91vh rgba(255, 255, 255, 0.6), 86vw 76vh rgba(255, 255, 255, 0.7),
+    94vw 87vh rgba(255, 255, 255, 0.5), 2vw 98vh rgba(255, 255, 255, 0.8);
   animation: animate-stars 50s linear infinite;
 }
 
-/* 中等星星 */
 .stars2 {
   width: 2px;
   height: 2px;
   background: transparent;
-  box-shadow: 4vw 12vh #fff, 9vw 28vh #fff, 14vw 5vh #fff, 19vw 41vh #fff,
-    26vw 18vh #fff, 32vw 55vh #fff, 38vw 8vh #fff, 44vw 36vh #fff,
-    50vw 62vh #fff, 56vw 15vh #fff, 62vw 48vh #fff, 68vw 3vh #fff,
-    74vw 70vh #fff, 80vw 25vh #fff, 86vw 58vh #fff, 92vw 11vh #fff,
-    98vw 44vh #fff, 3vw 67vh #fff, 11vw 32vh #fff, 17vw 89vh #fff,
-    24vw 52vh #fff, 30vw 7vh #fff, 36vw 75vh #fff, 42vw 20vh #fff,
-    49vw 83vh #fff, 55vw 38vh #fff, 61vw 95vh #fff, 67vw 14vh #fff,
-    73vw 61vh #fff, 79vw 30vh #fff, 85vw 78vh #fff, 91vw 43vh #fff,
-    97vw 6vh #fff, 6vw 54vh #fff, 13vw 21vh #fff, 22vw 86vh #fff, 28vw 47vh #fff,
-    35vw 2vh #fff, 41vw 69vh #fff, 47vw 34vh #fff, 53vw 97vh #fff,
-    59vw 10vh #fff, 65vw 56vh #fff, 71vw 23vh #fff, 77vw 81vh #fff,
-    83vw 40vh #fff, 89vw 5vh #fff, 95vw 72vh #fff, 2vw 37vh #fff, 8vw 94vh #fff,
-    16vw 16vh #fff, 25vw 63vh #fff, 33vw 29vh #fff, 40vw 77vh #fff,
-    46vw 1vh #fff, 52vw 50vh #fff, 58vw 85vh #fff, 64vw 22vh #fff,
-    70vw 66vh #fff, 76vw 9vh #fff, 82vw 45vh #fff, 88vw 91vh #fff,
-    94vw 26vh #fff, 7vw 74vh #fff, 15vw 49vh #fff, 23vw 4vh #fff, 31vw 59vh #fff,
-    37vw 31vh #fff, 43vw 88vh #fff, 51vw 13vh #fff, 57vw 76vh #fff,
-    63vw 35vh #fff, 69vw 8vh #fff, 75vw 53vh #fff, 81vw 99vh #fff,
-    87vw 17vh #fff, 93vw 64vh #fff, 99vw 42vh #fff, 5vw 80vh #fff,
-    12vw 24vh #fff, 20vw 71vh #fff, 28vw 46vh #fff, 34vw 93vh #fff,
-    42vw 6vh #fff, 48vw 39vh #fff;
+  box-shadow: 4vw 12vh rgba(255, 255, 255, 0.9),
+    9vw 28vh rgba(255, 255, 255, 0.7), 14vw 5vh rgba(255, 255, 255, 0.8),
+    19vw 41vh rgba(255, 255, 255, 0.6), 26vw 18vh rgba(255, 255, 255, 0.9),
+    32vw 55vh rgba(255, 255, 255, 0.7), 38vw 8vh rgba(255, 255, 255, 0.8),
+    44vw 36vh rgba(255, 255, 255, 0.6), 50vw 62vh rgba(255, 255, 255, 0.9),
+    56vw 15vh rgba(255, 255, 255, 0.7), 62vw 48vh rgba(255, 255, 255, 0.8),
+    68vw 3vh rgba(255, 255, 255, 0.6), 74vw 70vh rgba(255, 255, 255, 0.9),
+    80vw 25vh rgba(255, 255, 255, 0.7), 86vw 58vh rgba(255, 255, 255, 0.8),
+    92vw 11vh rgba(255, 255, 255, 0.6), 98vw 44vh rgba(255, 255, 255, 0.9),
+    3vw 67vh rgba(255, 255, 255, 0.7), 11vw 32vh rgba(255, 255, 255, 0.8),
+    17vw 89vh rgba(255, 255, 255, 0.6), 24vw 52vh rgba(255, 255, 255, 0.9),
+    30vw 7vh rgba(255, 255, 255, 0.7), 36vw 75vh rgba(255, 255, 255, 0.8),
+    42vw 20vh rgba(255, 255, 255, 0.6), 49vw 83vh rgba(255, 255, 255, 0.9),
+    55vw 38vh rgba(255, 255, 255, 0.7), 61vw 95vh rgba(255, 255, 255, 0.8),
+    67vw 14vh rgba(255, 255, 255, 0.6), 73vw 61vh rgba(255, 255, 255, 0.9),
+    79vw 30vh rgba(255, 255, 255, 0.7), 85vw 78vh rgba(255, 255, 255, 0.8),
+    91vw 43vh rgba(255, 255, 255, 0.6), 97vw 6vh rgba(255, 255, 255, 0.9);
   animation: animate-stars 100s linear infinite;
 }
 
-/* 大星星 */
 .stars3 {
   width: 3px;
   height: 3px;
   background: transparent;
-  box-shadow: 6vw 20vh #fff, 13vw 45vh #fff, 21vw 8vh #fff, 28vw 72vh #fff,
-    36vw 33vh #fff, 43vw 58vh #fff, 51vw 15vh #fff, 58vw 88vh #fff,
-    66vw 40vh #fff, 73vw 67vh #fff, 81vw 3vh #fff, 88vw 50vh #fff,
-    96vw 25vh #fff, 4vw 82vh #fff, 11vw 55vh #fff, 19vw 12vh #fff,
-    26vw 78vh #fff, 34vw 30vh #fff, 41vw 95vh #fff, 49vw 7vh #fff,
-    56vw 62vh #fff, 64vw 18vh #fff, 71vw 85vh #fff, 79vw 43vh #fff,
-    86vw 10vh #fff, 94vw 70vh #fff, 2vw 37vh #fff, 9vw 98vh #fff, 17vw 52vh #fff,
-    24vw 23vh #fff, 32vw 75vh #fff, 39vw 5vh #fff, 47vw 66vh #fff,
-    54vw 28vh #fff, 62vw 91vh #fff, 69vw 48vh #fff, 77vw 14vh #fff,
-    84vw 80vh #fff, 92vw 35vh #fff, 7vw 60vh #fff, 15vw 2vh #fff, 22vw 56vh #fff,
-    30vw 87vh #fff, 38vw 21vh #fff, 45vw 74vh #fff, 53vw 9vh #fff,
-    61vw 42vh #fff, 68vw 97vh #fff, 76vw 19vh #fff, 83vw 63vh #fff,
-    91vw 32vh #fff, 5vw 84vh #fff, 14vw 47vh #fff, 23vw 11vh #fff,
-    31vw 69vh #fff, 40vw 26vh #fff, 48vw 93vh #fff, 55vw 4vh #fff,
-    63vw 54vh #fff, 72vw 16vh #fff, 80vw 77vh #fff, 89vw 38vh #fff,
-    95vw 1vh #fff, 3vw 65vh #fff, 10vw 29vh #fff, 18vw 90vh #fff, 27vw 53vh #fff,
-    35vw 6vh #fff, 44vw 79vh #fff, 52vw 22vh #fff, 60vw 46vh #fff,
-    67vw 100vh #fff, 75vw 13vh #fff, 82vw 59vh #fff, 90vw 31vh #fff,
-    98vw 86vh #fff, 1vw 41vh #fff, 8vw 96vh #fff, 16vw 17vh #fff, 25vw 73vh #fff;
+  box-shadow: 6vw 20vh rgba(255, 255, 255, 1),
+    13vw 45vh rgba(255, 255, 255, 0.8), 21vw 8vh rgba(255, 255, 255, 0.9),
+    28vw 72vh rgba(255, 255, 255, 0.7), 36vw 33vh rgba(255, 255, 255, 1),
+    43vw 58vh rgba(255, 255, 255, 0.8), 51vw 15vh rgba(255, 255, 255, 0.9),
+    58vw 88vh rgba(255, 255, 255, 0.7), 66vw 40vh rgba(255, 255, 255, 1),
+    73vw 67vh rgba(255, 255, 255, 0.8), 81vw 3vh rgba(255, 255, 255, 0.9),
+    88vw 50vh rgba(255, 255, 255, 0.7), 96vw 25vh rgba(255, 255, 255, 1),
+    4vw 82vh rgba(255, 255, 255, 0.8), 11vw 55vh rgba(255, 255, 255, 0.9),
+    19vw 12vh rgba(255, 255, 255, 0.7), 26vw 78vh rgba(255, 255, 255, 1),
+    34vw 30vh rgba(255, 255, 255, 0.8), 41vw 95vh rgba(255, 255, 255, 0.9),
+    49vw 7vh rgba(255, 255, 255, 0.7), 56vw 62vh rgba(255, 255, 255, 1),
+    64vw 18vh rgba(255, 255, 255, 0.8), 71vw 85vh rgba(255, 255, 255, 0.9),
+    79vw 43vh rgba(255, 255, 255, 0.7), 86vw 10vh rgba(255, 255, 255, 1),
+    94vw 70vh rgba(255, 255, 255, 0.8), 2vw 37vh rgba(255, 255, 255, 0.9),
+    9vw 98vh rgba(255, 255, 255, 0.7), 17vw 52vh rgba(255, 255, 255, 1),
+    24vw 23vh rgba(255, 255, 255, 0.8), 32vw 75vh rgba(255, 255, 255, 0.9),
+    39vw 5vh rgba(255, 255, 255, 0.7), 47vw 66vh rgba(255, 255, 255, 1),
+    54vw 28vh rgba(255, 255, 255, 0.8), 62vw 91vh rgba(255, 255, 255, 0.9),
+    69vw 48vh rgba(255, 255, 255, 0.7), 77vw 14vh rgba(255, 255, 255, 1),
+    84vw 80vh rgba(255, 255, 255, 0.8), 92vw 35vh rgba(255, 255, 255, 0.9),
+    7vw 60vh rgba(255, 255, 255, 0.7), 15vw 2vh rgba(255, 255, 255, 1),
+    22vw 56vh rgba(255, 255, 255, 0.8), 30vw 87vh rgba(255, 255, 255, 0.9),
+    38vw 21vh rgba(255, 255, 255, 0.7), 45vw 74vh rgba(255, 255, 255, 1),
+    53vw 9vh rgba(255, 255, 255, 0.8), 61vw 42vh rgba(255, 255, 255, 0.9),
+    68vw 97vh rgba(255, 255, 255, 0.7), 76vw 19vh rgba(255, 255, 255, 1),
+    83vw 63vh rgba(255, 255, 255, 0.8), 91vw 32vh rgba(255, 255, 255, 0.9);
   animation: animate-stars 150s linear infinite;
 }
 
-/* 闪烁的星星 */
 .stars4 {
   width: 1px;
   height: 1px;
   background: transparent;
-  box-shadow: 2vw 10vh #fff, 8vw 35vh #fff, 15vw 60vh #fff, 22vw 85vh #fff,
-    29vw 20vh #fff, 36vw 45vh #fff, 43vw 70vh #fff, 50vw 95vh #fff,
-    57vw 15vh #fff, 64vw 40vh #fff, 71vw 65vh #fff, 78vw 90vh #fff,
-    85vw 5vh #fff, 92vw 30vh #fff, 99vw 55vh #fff, 5vw 80vh #fff, 12vw 25vh #fff,
-    19vw 50vh #fff, 26vw 75vh #fff, 33vw 100vh #fff, 40vw 12vh #fff,
-    47vw 37vh #fff, 54vw 62vh #fff, 61vw 87vh #fff, 68vw 8vh #fff,
-    75vw 33vh #fff, 82vw 58vh #fff, 89vw 83vh #fff, 96vw 18vh #fff,
-    3vw 43vh #fff, 10vw 68vh #fff, 17vw 93vh #fff, 24vw 3vh #fff, 31vw 28vh #fff,
-    38vw 53vh #fff, 45vw 78vh #fff, 52vw 100vh #fff, 59vw 22vh #fff,
-    66vw 47vh #fff, 73vw 72vh #fff, 80vw 97vh #fff, 87vw 14vh #fff,
-    94vw 39vh #fff, 7vw 64vh #fff, 14vw 89vh #fff, 21vw 6vh #fff, 28vw 31vh #fff,
-    35vw 56vh #fff, 42vw 81vh #fff, 49vw 100vh #fff, 56vw 17vh #fff,
-    63vw 42vh #fff, 70vw 67vh #fff, 77vw 92vh #fff, 84vw 11vh #fff,
-    91vw 36vh #fff, 98vw 61vh #fff, 4vw 86vh #fff, 13vw 1vh #fff, 20vw 26vh #fff,
-    27vw 51vh #fff, 34vw 76vh #fff, 41vw 100vh #fff, 48vw 19vh #fff,
-    55vw 44vh #fff, 62vw 69vh #fff, 69vw 94vh #fff, 76vw 9vh #fff,
-    83vw 34vh #fff, 90vw 59vh #fff, 97vw 84vh #fff, 6vw 100vh #fff,
-    11vw 23vh #fff, 18vw 48vh #fff, 25vw 73vh #fff, 32vw 98vh #fff,
-    39vw 13vh #fff, 46vw 38vh #fff, 53vw 63vh #fff, 60vw 88vh #fff,
-    67vw 4vh #fff, 74vw 29vh #fff, 81vw 54vh #fff, 88vw 79vh #fff,
-    95vw 100vh #fff;
+  box-shadow: 2vw 10vh rgba(255, 255, 255, 0.6),
+    8vw 35vh rgba(255, 255, 255, 0.4), 15vw 60vh rgba(255, 255, 255, 0.5),
+    22vw 85vh rgba(255, 255, 255, 0.3), 29vw 20vh rgba(255, 255, 255, 0.6),
+    36vw 45vh rgba(255, 255, 255, 0.4), 43vw 70vh rgba(255, 255, 255, 0.5),
+    50vw 95vh rgba(255, 255, 255, 0.3), 57vw 15vh rgba(255, 255, 255, 0.6),
+    64vw 40vh rgba(255, 255, 255, 0.4), 71vw 65vh rgba(255, 255, 255, 0.5),
+    78vw 90vh rgba(255, 255, 255, 0.3), 85vw 5vh rgba(255, 255, 255, 0.6),
+    92vw 30vh rgba(255, 255, 255, 0.4), 99vw 55vh rgba(255, 255, 255, 0.5);
   animation: twinkle 3s ease-in-out infinite alternate;
 }
 
@@ -493,32 +595,17 @@ const handleFeishuLogin = async () => {
   }
 }
 
-/* 闪烁效果 */
-.stars::after,
-.stars2::after,
-.stars3::after {
-  content: " ";
-  position: absolute;
-  top: 100vh;
-  width: inherit;
-  height: inherit;
-  background: inherit;
-  box-shadow: inherit;
-}
-
-/* 流星效果 - 多方向 */
 .shooting-star {
   position: absolute;
   width: 4px;
   height: 4px;
-  background: #fff;
+  background: rgba(255, 255, 255, 0.9);
   border-radius: 50%;
   box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.1),
-    0 0 0 8px rgba(255, 255, 255, 0.1), 0 0 20px rgba(255, 255, 255, 1);
+    0 0 0 8px rgba(255, 255, 255, 0.05), 0 0 20px rgba(255, 255, 255, 0.8);
   opacity: 0;
 }
 
-/* 流星尾迹 - 使用旋转后的坐标系，尾迹始终指向运动的反方向 */
 .shooting-star::before {
   content: "";
   position: absolute;
@@ -527,17 +614,15 @@ const handleFeishuLogin = async () => {
   transform: translateY(-50%);
   width: 300px;
   height: 1px;
-  background: linear-gradient(90deg, #fff, transparent);
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.8), transparent);
 }
 
-/* 向左运动的流星需要反转尾迹方向 */
 .shooting-star.tail-reverse::before {
   left: auto;
   right: 0;
-  background: linear-gradient(90deg, transparent, #fff);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.8));
 }
 
-/* 右上到左下 (原角度 315deg) */
 .star-tr-bl {
   top: 10%;
   left: 90%;
@@ -545,7 +630,6 @@ const handleFeishuLogin = async () => {
   animation-delay: 0s;
 }
 
-/* 左上到右下 (角度 45deg) */
 .star-tl-br {
   top: 5%;
   left: 10%;
@@ -553,7 +637,6 @@ const handleFeishuLogin = async () => {
   animation-delay: 1s;
 }
 
-/* 顶部偏右到左下 (角度 290deg) */
 .star-top-right {
   top: 0%;
   left: 70%;
@@ -561,7 +644,6 @@ const handleFeishuLogin = async () => {
   animation-delay: 2s;
 }
 
-/* 左侧到右上 (角度 60deg) */
 .star-left-top {
   top: 60%;
   left: 0%;
@@ -569,7 +651,6 @@ const handleFeishuLogin = async () => {
   animation-delay: 0.5s;
 }
 
-/* 对角线1 (角度 30deg) */
 .star-diagonal-1 {
   top: 15%;
   left: 5%;
@@ -577,7 +658,6 @@ const handleFeishuLogin = async () => {
   animation-delay: 3s;
 }
 
-/* 对角线2 (角度 120deg) */
 .star-diagonal-2 {
   top: 80%;
   left: 85%;
@@ -585,7 +665,6 @@ const handleFeishuLogin = async () => {
   animation-delay: 1.5s;
 }
 
-/* 右上到左下 */
 @keyframes shoot-tr-bl {
   0% {
     transform: rotate(315deg) translateX(0);
@@ -600,7 +679,6 @@ const handleFeishuLogin = async () => {
   }
 }
 
-/* 左上到右下 */
 @keyframes shoot-tl-br {
   0% {
     transform: rotate(45deg) translateX(0);
@@ -615,7 +693,6 @@ const handleFeishuLogin = async () => {
   }
 }
 
-/* 顶部到左下 */
 @keyframes shoot-top-right {
   0% {
     transform: rotate(290deg) translateX(0);
@@ -630,7 +707,6 @@ const handleFeishuLogin = async () => {
   }
 }
 
-/* 左侧到右上 */
 @keyframes shoot-left-top {
   0% {
     transform: rotate(60deg) translateX(0);
@@ -645,7 +721,6 @@ const handleFeishuLogin = async () => {
   }
 }
 
-/* 对角线1 - 浅角度 */
 @keyframes shoot-diagonal-1 {
   0% {
     transform: rotate(30deg) translateX(0);
@@ -660,7 +735,6 @@ const handleFeishuLogin = async () => {
   }
 }
 
-/* 对角线2 - 陡峭角度 */
 @keyframes shoot-diagonal-2 {
   0% {
     transform: rotate(120deg) translateX(0);
@@ -675,7 +749,6 @@ const handleFeishuLogin = async () => {
   }
 }
 
-/* 登录容器 */
 .login-container {
   position: relative;
   z-index: 1;
@@ -684,7 +757,6 @@ const handleFeishuLogin = async () => {
   padding: 20px;
 }
 
-/* 品牌区域 */
 .login-brand {
   text-align: center;
   margin-bottom: 32px;
@@ -694,182 +766,235 @@ const handleFeishuLogin = async () => {
   width: 80px;
   height: 80px;
   margin: 0 auto 16px;
-  background: rgba(255, 255, 255, 0.2);
+  background: linear-gradient(135deg, #64748b 0%, #475569 100%);
   backdrop-filter: blur(10px);
   border-radius: var(--radius-xl);
   display: flex;
   align-items: center;
   justify-content: center;
   color: #fff;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 24px rgba(100, 116, 139, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.3s ease;
+}
+
+.login-page.dark .brand-logo {
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  box-shadow: 0 8px 32px rgba(99, 102, 241, 0.25);
+  border: 1px solid rgba(99, 102, 241, 0.3);
 }
 
 .brand-name {
   font-size: 32px;
   font-weight: 700;
-  color: #fff;
+  color: #1e293b;
   margin: 0 0 8px;
   letter-spacing: -0.5px;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.login-page.dark .brand-name {
+  color: #e0e7ff;
+  text-shadow: 0 2px 20px rgba(99, 102, 241, 0.3);
 }
 
 .brand-slogan {
   font-size: 16px;
-  color: rgba(255, 255, 255, 0.8);
+  color: #475569;
   margin: 0;
+  text-shadow: 0 1px 5px rgba(0, 0, 0, 0.05);
 }
 
-/* 登录卡片 */
+.login-page.dark .brand-slogan {
+  color: #cbd5e1;
+}
+
 .login-card {
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: var(--radius-xl);
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  box-shadow: 0 20px 60px rgba(71, 85, 105, 0.1),
+    0 0 0 1px rgba(71, 85, 105, 0.05);
+  transition: all 0.3s ease;
 }
 
-.dark .login-card {
-  background: rgba(31, 41, 55, 0.95);
-  border-color: rgba(255, 255, 255, 0.1);
-}
-
-.login-card :deep(.el-card__body) {
-  padding: 32px;
+.login-page.dark .login-card {
+  background: rgba(30, 41, 59, 0.95);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3), 0 0 40px rgba(99, 102, 241, 0.1);
 }
 
 .login-header {
   text-align: center;
-  margin-bottom: 28px;
+  margin-bottom: 24px;
 }
 
 .login-header h2 {
   font-size: 24px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: #1e293b;
   margin: 0 0 8px;
+  transition: color 0.3s ease;
+}
+
+.login-page.dark .login-header h2 {
+  color: #e0e7ff;
 }
 
 .login-header p {
   font-size: 14px;
-  color: var(--text-secondary);
+  color: #64748b;
   margin: 0;
+  transition: color 0.3s ease;
 }
 
-/* 登录表单 */
-.login-form {
-  margin-bottom: 24px;
+.login-page.dark .login-header p {
+  color: #94a3b8;
 }
 
-.login-input :deep(.el-input__wrapper) {
-  border-radius: var(--radius-lg);
-  padding: 4px 16px;
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  border: 1px solid var(--border-color);
-  transition: all var(--transition-fast);
-}
-
-.login-input :deep(.el-input__wrapper:hover) {
-  border-color: var(--primary-color);
-}
-
-.login-input :deep(.el-input__wrapper.is-focus) {
-  border-color: var(--primary-color);
-  box-shadow: 0 0 0 3px var(--primary-bg);
-}
-
-.login-input :deep(.el-input__inner) {
+.login-btn {
+  width: 100%;
   height: 44px;
-  font-size: 15px;
+  font-size: 16px;
+  font-weight: 500;
+  background: linear-gradient(135deg, #64748b 0%, #475569 100%);
+  border: none;
+  border-radius: var(--radius-lg);
+  transition: all 0.3s ease;
 }
 
-.login-input :deep(.el-input__prefix) {
-  color: var(--text-muted);
-  margin-right: 10px;
+.login-btn:hover {
+  background: linear-gradient(135deg, #475569 0%, #334155 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 15px rgba(71, 85, 105, 0.3);
 }
 
-.login-options {
+.login-page.dark .login-btn {
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+}
+
+.login-page.dark .login-btn:hover {
+  background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+  box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+}
+
+.login-switch {
+  margin-top: 20px;
+}
+
+.divider-text {
+  font-size: 12px;
+  color: #94a3b8;
+  padding: 0 16px;
+  transition: color 0.3s ease;
+}
+
+.login-page.dark .divider-text {
+  color: #64748b;
+}
+
+.switch-buttons {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin: -8px 0 20px;
+  justify-content: center;
+  gap: 16px;
 }
 
-.login-button {
+.switch-buttons .el-button {
+  color: #6366f1;
+  transition: color 0.3s ease;
+}
+
+.login-page.dark .switch-buttons .el-button {
+  color: #a5b4fc;
+}
+
+.switch-buttons .el-button:hover {
+  color: #4f46e5;
+}
+
+.login-page.dark .switch-buttons .el-button:hover {
+  color: #c4b5fd;
+}
+
+.switch-icon {
+  width: 16px;
+  height: 16px;
+  margin-right: 4px;
+}
+
+.login-tips {
+  margin-top: 20px;
+}
+
+.login-tips :deep(.el-alert) {
+  background: rgba(71, 85, 105, 0.08);
+  border: 1px solid rgba(71, 85, 105, 0.15);
+  transition: all 0.3s ease;
+}
+
+.login-page.dark .login-tips :deep(.el-alert) {
+  background: rgba(99, 102, 241, 0.1);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+}
+
+.login-tips :deep(.el-alert__title) {
+  color: #475569;
+}
+
+.login-page.dark .login-tips :deep(.el-alert__title) {
+  color: #cbd5e1;
+}
+
+.login-tips :deep(.el-alert__description) {
+  color: #64748b;
+}
+
+.login-page.dark .login-tips :deep(.el-alert__description) {
+  color: #94a3b8;
+}
+
+.feishu-login {
+  text-align: center;
+}
+
+.login-description {
+  margin-bottom: 20px;
+}
+
+.login-description p {
+  font-size: 14px;
+  color: #6366f1;
+  margin: 0;
+  transition: color 0.3s ease;
+}
+
+.login-page.dark .login-description p {
+  color: #a5b4fc;
+}
+
+.social-btn {
   width: 100%;
   height: 48px;
-  border-radius: var(--radius-lg);
   font-size: 16px;
   font-weight: 500;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  background: linear-gradient(
-    135deg,
-    var(--primary-color) 0%,
-    var(--primary-light) 100%
-  );
+  transition: all 0.3s ease;
+}
+
+.social-btn.feishu {
+  background: linear-gradient(135deg, #3370ff 0%, #2b5ce6 100%);
   border: none;
-  box-shadow: 0 4px 14px 0 rgba(79, 70, 229, 0.39);
-  transition: all var(--transition-fast);
+  color: white;
 }
 
-.login-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(79, 70, 229, 0.23);
-}
-
-.login-button:active {
-  transform: translateY(0);
-}
-
-/* 分隔线 */
-.login-divider {
-  position: relative;
-  text-align: center;
-  margin: 24px 0;
-}
-
-.login-divider::before {
-  content: "";
-  position: absolute;
-  top: 50%;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: var(--border-color);
-}
-
-.login-divider span {
-  position: relative;
-  background: var(--bg-card);
-  padding: 0 16px;
-  font-size: 13px;
-  color: var(--text-muted);
-}
-
-/* 社交登录 */
-.social-login {
-  display: flex;
-  justify-content: center;
-  padding: 12px 0;
-}
-
-.social-btn {
-  width: 100%;
-  height: 44px;
-  border-radius: var(--radius-lg);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  border: 1px solid var(--border-color);
-  background: var(--bg-secondary);
-  transition: all var(--transition-fast);
-}
-
-.social-btn:hover {
-  background: var(--bg-tertiary);
-  border-color: var(--border-dark);
+.social-btn.feishu:hover {
+  background: linear-gradient(135deg, #2b5ce6 0%, #1f4cd4 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 15px rgba(51, 112, 255, 0.4);
 }
 
 .social-icon {
@@ -877,58 +1002,52 @@ const handleFeishuLogin = async () => {
   height: 20px;
 }
 
-/* 登录页脚 */
 .login-footer {
   text-align: center;
   margin-top: 24px;
-  color: rgba(255, 255, 255, 0.8);
-  font-size: 14px;
 }
 
-.login-footer :deep(.el-button) {
-  color: #fff;
-  font-weight: 500;
+.login-footer p {
+  font-size: 12px;
+  color: #64748b;
+  margin: 0;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  transition: color 0.3s ease;
 }
 
-/* 主题切换 */
+.login-page.dark .login-footer p {
+  color: #94a3b8;
+}
+
 .theme-toggle {
   position: fixed;
-  top: 20px;
-  right: 20px;
-  z-index: 10;
+  top: 24px;
+  right: 24px;
+  z-index: 100;
 }
 
-.theme-toggle :deep(.el-button) {
-  background: rgba(255, 255, 255, 0.2);
+.theme-toggle .el-button {
+  background: rgba(255, 255, 255, 0.9);
   backdrop-filter: blur(10px);
-  border: none;
-  color: #fff;
-  width: 44px;
-  height: 44px;
-  font-size: 20px;
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  color: #475569;
+  transition: all 0.3s ease;
 }
 
-.theme-toggle :deep(.el-button:hover) {
-  background: rgba(255, 255, 255, 0.3);
+.theme-toggle .el-button:hover {
+  background: rgba(255, 255, 255, 1);
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(71, 85, 105, 0.15);
 }
 
-/* 响应式 */
-@media (max-width: 480px) {
-  .login-container {
-    padding: 16px;
-  }
+.login-page.dark .theme-toggle .el-button {
+  background: rgba(30, 41, 59, 0.9);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  color: #e0e7ff;
+}
 
-  .login-card :deep(.el-card__body) {
-    padding: 24px;
-  }
-
-  .brand-logo {
-    width: 64px;
-    height: 64px;
-  }
-
-  .brand-name {
-    font-size: 28px;
-  }
+.login-page.dark .theme-toggle .el-button:hover {
+  background: rgba(30, 41, 59, 1);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
 }
 </style>

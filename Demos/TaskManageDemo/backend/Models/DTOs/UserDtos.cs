@@ -347,3 +347,211 @@ public class FeishuUserDetailResponse
     public string? EmployeeNo { get; set; }
     public string? TenantKey { get; set; }
 }
+
+/// <summary>
+/// 用户名密码登录请求
+/// </summary>
+public class PasswordLoginRequest
+{
+    /// <summary>
+    /// 用户名
+    /// </summary>
+    public string Username { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 密码
+    /// </summary>
+    public string Password { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// 用户注册请求（飞书授权后设置账户名和密码）
+/// </summary>
+public class RegisterRequest
+{
+    /// <summary>
+    /// 用户名
+    /// </summary>
+    public string Username { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 密码
+    /// </summary>
+    public string Password { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 确认密码
+    /// </summary>
+    public string ConfirmPassword { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 飞书授权码（用于绑定飞书账号）
+    /// </summary>
+    public string? FeishuCode { get; set; }
+
+    /// <summary>
+    /// 飞书 State 参数
+    /// </summary>
+    public string? FeishuState { get; set; }
+}
+
+/// <summary>
+/// 绑定飞书请求
+/// </summary>
+public class BindFeishuRequest
+{
+    /// <summary>
+    /// 飞书授权码
+    /// </summary>
+    public string Code { get; set; } = string.Empty;
+
+    /// <summary>
+    /// State 参数
+    /// </summary>
+    public string State { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// 绑定飞书响应
+/// </summary>
+public class BindFeishuResponse
+{
+    /// <summary>
+    /// 是否绑定成功
+    /// </summary>
+    public bool Success { get; set; }
+
+    /// <summary>
+    /// 飞书用户名
+    /// </summary>
+    public string? FeishuName { get; set; }
+
+    /// <summary>
+    /// 飞书头像
+    /// </summary>
+    public string? FeishuAvatar { get; set; }
+
+    /// <summary>
+    /// 消息
+    /// </summary>
+    public string? Message { get; set; }
+}
+
+/// <summary>
+/// 修改密码请求
+/// </summary>
+public class ChangePasswordRequest
+{
+    /// <summary>
+    /// 旧密码
+    /// </summary>
+    public string OldPassword { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 新密码
+    /// </summary>
+    public string NewPassword { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 确认新密码
+    /// </summary>
+    public string ConfirmPassword { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// 用户注册状态
+/// </summary>
+public class UserRegistrationStatus
+{
+    /// <summary>
+    /// 是否需要注册
+    /// </summary>
+    public bool NeedRegistration { get; set; }
+
+    /// <summary>
+    /// 是否需要绑定飞书
+    /// </summary>
+    public bool NeedFeishuBinding { get; set; }
+
+    /// <summary>
+    /// 飞书用户信息（如果已授权）
+    /// </summary>
+    public FeishuUserInfo? FeishuUser { get; set; }
+
+    /// <summary>
+    /// 临时Token（用于注册流程）
+    /// </summary>
+    public string? TempToken { get; set; }
+}
+
+/// <summary>
+/// 飞书用户信息（用于注册流程）
+/// </summary>
+public class FeishuUserInfo
+{
+    /// <summary>
+    /// 飞书用户ID
+    /// </summary>
+    public string FeishuId { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Open ID
+    /// </summary>
+    public string? OpenId { get; set; }
+
+    /// <summary>
+    /// 用户姓名
+    /// </summary>
+    public string Name { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 英文名
+    /// </summary>
+    public string? EnglishName { get; set; }
+
+    /// <summary>
+    /// 头像URL
+    /// </summary>
+    public string? AvatarUrl { get; set; }
+
+    /// <summary>
+    /// 邮箱
+    /// </summary>
+    public string? Email { get; set; }
+
+    /// <summary>
+    /// 手机号
+    /// </summary>
+    public string? Mobile { get; set; }
+
+    /// <summary>
+    /// 部门ID
+    /// </summary>
+    public string? DepartmentId { get; set; }
+}
+
+/// <summary>
+/// 飞书授权检查响应
+/// </summary>
+public class FeishuAuthCheckResponse
+{
+    /// <summary>
+    /// 用户是否已存在
+    /// </summary>
+    public bool UserExists { get; set; }
+
+    /// <summary>
+    /// 是否已绑定飞书
+    /// </summary>
+    public bool IsFeishuBound { get; set; }
+
+    /// <summary>
+    /// 飞书用户信息
+    /// </summary>
+    public FeishuUserInfo? FeishuUser { get; set; }
+
+    /// <summary>
+    /// 临时Token（用于注册流程）
+    /// </summary>
+    public string? TempToken { get; set; }
+}

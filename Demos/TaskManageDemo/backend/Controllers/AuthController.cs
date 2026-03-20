@@ -24,6 +24,7 @@ public class AuthController : BaseController
     private readonly IFeishuAuthService _feishuAuthService;
     private readonly IUserService _userService;
     private readonly IStateStorageService _stateStorageService;
+    private readonly ILocalAuthService _localAuthService;
     private readonly ILogger<AuthController> _logger;
 
     /// <summary>
@@ -33,11 +34,13 @@ public class AuthController : BaseController
         IFeishuAuthService feishuAuthService,
         IUserService userService,
         IStateStorageService stateStorageService,
+        ILocalAuthService localAuthService,
         ILogger<AuthController> logger)
     {
         _feishuAuthService = feishuAuthService;
         _userService = userService;
         _stateStorageService = stateStorageService;
+        _localAuthService = localAuthService;
         _logger = logger;
     }
 
@@ -295,6 +298,190 @@ public class AuthController : BaseController
         {
             _logger.LogError(ex, "登出失败");
             return Fail<bool>("登出失败");
+        }
+    }
+
+    /// <summary>
+    /// 用户名密码登录
+    /// </summary>
+    [HttpPost("login")]
+    public async Task<ActionResult<ApiResponse<LoginResponse>>> PasswordLogin(
+        [FromBody] PasswordLoginRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(request.Username) || string.IsNullOrEmpty(request.Password))
+            {
+                return BadRequestResult<LoginResponse>("用户名和密码不能为空");
+            }
+
+            var response = await _localAuthService.PasswordLoginAsync(request.Username, request.Password, cancellationToken);
+
+            if (response == null)
+            {
+                return Fail<LoginResponse>("用户名或密码错误", 401);
+            }
+
+            var message = response.IsFirstLogin ? "登录成功，请绑定飞书账号" : "登录成功";
+            return Success(response, message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "用户名密码登录失败");
+            return Fail<LoginResponse>("登录失败");
+        }
+    }
+
+    /// <summary>
+    /// 用户注册
+    /// </summary>
+    [HttpPost("register")]
+    public async Task<ActionResult<ApiResponse<LoginResponse>>> Register(
+        [FromBody] RegisterRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(request.Username) || string.IsNullOrEmpty(request.Password))
+            {
+                return BadRequestResult<LoginResponse>("用户名和密码不能为空");
+            }
+
+            if (request.Password != request.ConfirmPassword)
+            {
+                return BadRequestResult<LoginResponse>("两次输入的密码不一致");
+            }
+
+            if (request.Password.Length < 6)
+            {
+                return BadRequestResult<LoginResponse>("密码长度至少6位");
+            }
+
+            var response = await _localAuthService.RegisterAsync(request, cancellationToken);
+
+            if (response == null)
+            {
+                return Fail<LoginResponse>("注册失败，用户名可能已存在");
+            }
+
+            return Success(response, "注册成功");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "用户注册失败");
+            return Fail<LoginResponse>("注册失败");
+        }
+    }
+
+    /// <summary>
+    /// 检查飞书授权状态
+    /// </summary>
+    [HttpPost("feishu/check")]
+    public async Task<ActionResult<ApiResponse<FeishuAuthCheckResponse>>> CheckFeishuAuth(
+        [FromBody] LoginRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(request.Code) || string.IsNullOrEmpty(request.State))
+            {
+                return BadRequestResult<FeishuAuthCheckResponse>("缺少必要参数");
+            }
+
+            if (!_stateStorageService.ValidateState(request.State))
+            {
+                _logger.LogWarning("State验证失败: {State}", request.State);
+                return BadRequestResult<FeishuAuthCheckResponse>("State验证失败");
+            }
+
+            var response = await _localAuthService.CheckFeishuAuthAsync(request.Code, request.State, cancellationToken);
+            return Success(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "检查飞书授权状态失败");
+            return Fail<FeishuAuthCheckResponse>("检查飞书授权状态失败");
+        }
+    }
+
+    /// <summary>
+    /// 绑定飞书账号
+    /// </summary>
+    [HttpPost("feishu/bind")]
+    [Authorize]
+    public async Task<ActionResult<ApiResponse<BindFeishuResponse>>> BindFeishu(
+        [FromBody] BindFeishuRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var userIdClaim = User.FindFirst("user_id")?.Value;
+            if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+            {
+                return Fail<BindFeishuResponse>("无法获取用户信息", 401);
+            }
+
+            if (string.IsNullOrEmpty(request.Code) || string.IsNullOrEmpty(request.State))
+            {
+                return BadRequestResult<BindFeishuResponse>("缺少必要参数");
+            }
+
+            var response = await _localAuthService.BindFeishuAsync(userId, request.Code, request.State, cancellationToken);
+            return Success(response, response.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "绑定飞书账号失败");
+            return Fail<BindFeishuResponse>("绑定飞书账号失败");
+        }
+    }
+
+    /// <summary>
+    /// 修改密码
+    /// </summary>
+    [HttpPost("password/change")]
+    [Authorize]
+    public async Task<ActionResult<ApiResponse<bool>>> ChangePassword(
+        [FromBody] ChangePasswordRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var userIdClaim = User.FindFirst("user_id")?.Value;
+            if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+            {
+                return Fail<bool>("无法获取用户信息", 401);
+            }
+
+            if (string.IsNullOrEmpty(request.OldPassword) || string.IsNullOrEmpty(request.NewPassword))
+            {
+                return BadRequestResult<bool>("密码不能为空");
+            }
+
+            if (request.NewPassword != request.ConfirmPassword)
+            {
+                return BadRequestResult<bool>("两次输入的新密码不一致");
+            }
+
+            if (request.NewPassword.Length < 6)
+            {
+                return BadRequestResult<bool>("密码长度至少6位");
+            }
+
+            var success = await _localAuthService.ChangePasswordAsync(userId, request.OldPassword, request.NewPassword, cancellationToken);
+
+            if (!success)
+            {
+                return Fail<bool>("原密码错误");
+            }
+
+            return Success(true, "密码修改成功");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "修改密码失败");
+            return Fail<bool>("修改密码失败");
         }
     }
 }

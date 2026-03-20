@@ -100,6 +100,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IApprovalService, ApprovalService>();
         services.AddScoped<IDepartmentSyncService, DepartmentSyncService>();
         services.AddScoped<ICommentService, CommentService>();
+        services.AddScoped<ILocalAuthService, LocalAuthService>();
 
         // HttpClient
         services.AddHttpClient();

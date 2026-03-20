@@ -18,6 +18,16 @@ public class User
     public int Id { get; set; }
 
     /// <summary>
+    /// 用户名（用于本地登录）
+    /// </summary>
+    public string? Username { get; set; }
+
+    /// <summary>
+    /// 密码哈希（用于本地登录）
+    /// </summary>
+    public string? PasswordHash { get; set; }
+
+    /// <summary>
     /// 飞书用户ID
     /// </summary>
     public string FeishuId { get; set; } = string.Empty;
@@ -78,6 +88,16 @@ public class User
     public bool IsActive { get; set; } = true;
 
     /// <summary>
+    /// 是否已绑定飞书
+    /// </summary>
+    public bool IsFeishuBound { get; set; }
+
+    /// <summary>
+    /// 是否首次登录（需要修改密码或绑定飞书）
+    /// </summary>
+    public bool IsFirstLogin { get; set; } = true;
+
+    /// <summary>
     /// 创建时间
     /// </summary>
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
@@ -121,4 +141,9 @@ public class User
     /// 用户参与的任务
     /// </summary>
     public ICollection<TaskMemberEntity> TaskMembers { get; set; } = new List<TaskMemberEntity>();
+
+    /// <summary>
+    /// 用户角色关联
+    /// </summary>
+    public ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
 }

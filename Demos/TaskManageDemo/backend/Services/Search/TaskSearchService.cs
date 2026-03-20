@@ -8,6 +8,7 @@
 using Microsoft.EntityFrameworkCore;
 using TaskManageDemo.Backend.Data;
 using TaskManageDemo.Backend.Models.DTOs;
+using TaskManageDemo.Backend.Models.Entities;
 
 namespace TaskManageDemo.Backend.Services.Search;
 
@@ -195,7 +196,7 @@ public class TaskSearchService : ITaskSearchService
         if (!string.IsNullOrEmpty(parameters.AssigneeId))
         {
             query = query.Where(t => t.Members.Any(m =>
-                m.User != null && m.User.FeishuId == parameters.AssigneeId && m.Role == "assignee"));
+                m.User != null && m.User.FeishuId == parameters.AssigneeId && m.Role == TaskMemberRoles.Assignee));
         }
 
         if (parameters.Priorities != null && parameters.Priorities.Count > 0)
@@ -301,7 +302,7 @@ public class TaskSearchService : ITaskSearchService
         if (parameters.AssigneeIds != null && parameters.AssigneeIds.Count > 0)
         {
             query = query.Where(t => t.Members.Any(m =>
-                m.User != null && parameters.AssigneeIds.Contains(m.User.FeishuId) && m.Role == "assignee"));
+                m.User != null && parameters.AssigneeIds.Contains(m.User.FeishuId) && m.Role == TaskMemberRoles.Assignee));
         }
 
         if (parameters.TaskListGuids != null && parameters.TaskListGuids.Count > 0)

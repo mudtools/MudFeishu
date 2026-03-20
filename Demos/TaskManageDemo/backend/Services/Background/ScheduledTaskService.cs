@@ -7,6 +7,7 @@
 
 using TaskManageDemo.Backend.Data;
 using TaskManageDemo.Backend.EventHandlers;
+using TaskManageDemo.Backend.Models.Entities;
 using TaskManageDemo.Backend.Services.Feishu;
 using TaskManageDemo.Backend.Services.Sync;
 
@@ -85,7 +86,7 @@ public class ScheduledTaskService : IScheduledTaskService
         foreach (var task in dueTasks)
         {
             var assignees = task.Members
-                .Where(m => m.Role == "assignee" && m.User != null)
+                .Where(m => m.Role == TaskMemberRoles.Assignee && m.User != null)
                 .Select(m => m.User!.FeishuId)
                 .ToList();
 

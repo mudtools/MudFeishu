@@ -96,8 +96,10 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IPermissionService, PermissionService>();
+        services.AddScoped<IRoleService, RoleService>();
         services.AddScoped<IApprovalService, ApprovalService>();
         services.AddScoped<IDepartmentSyncService, DepartmentSyncService>();
+        services.AddScoped<ICommentService, CommentService>();
 
         // HttpClient
         services.AddHttpClient();

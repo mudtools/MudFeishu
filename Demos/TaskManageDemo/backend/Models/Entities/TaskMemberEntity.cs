@@ -8,6 +8,27 @@
 namespace TaskManageDemo.Backend.Models.Entities;
 
 /// <summary>
+/// 任务成员角色常量
+/// </summary>
+public static class TaskMemberRoles
+{
+    /// <summary>
+    /// 创建者
+    /// </summary>
+    public const string Creator = "creator";
+
+    /// <summary>
+    /// 负责人
+    /// </summary>
+    public const string Assignee = "assignee";
+
+    /// <summary>
+    /// 关注人
+    /// </summary>
+    public const string Follower = "follower";
+}
+
+/// <summary>
 /// 任务成员实体 - 存储任务的负责人和关注人
 /// </summary>
 public class TaskMemberEntity
@@ -38,9 +59,9 @@ public class TaskMemberEntity
     public User? User { get; set; }
 
     /// <summary>
-    /// 成员角色 (assignee: 负责人, follower: 关注人)
+    /// 成员角色 (assignee: 负责人, follower: 关注人, creator: 创建者)
     /// </summary>
-    public string Role { get; set; } = "assignee";
+    public string Role { get; set; } = TaskMemberRoles.Assignee;
 
     /// <summary>
     /// 加入时间

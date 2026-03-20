@@ -357,16 +357,6 @@ public class UserService : IUserService
 }
 
 /// <summary>
-/// 用户角色常量
-/// </summary>
-public static class UserRoles
-{
-    public const string Admin = "Admin";
-    public const string Manager = "Manager";
-    public const string User = "User";
-}
-
-/// <summary>
 /// 用户统计数据
 /// </summary>
 public class UserStatisticsDto

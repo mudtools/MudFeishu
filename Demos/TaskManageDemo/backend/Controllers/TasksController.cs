@@ -46,19 +46,6 @@ public class TasksController : BaseController
     }
 
     /// <summary>
-    /// 搜索任务
-    /// </summary>
-    [HttpGet("search")]
-    [RequirePermission("task:read")]
-    public async Task<ActionResult<ApiResponse<PagedResponse<TaskDto>>>> SearchTasks(
-        [FromQuery] TaskQueryParameters parameters,
-        CancellationToken cancellationToken)
-    {
-        var result = await _taskService.GetTasksAsync(parameters, cancellationToken);
-        return Success(result);
-    }
-
-    /// <summary>
     /// 获取任务详情
     /// </summary>
     [HttpGet("{id}")]

@@ -6,7 +6,6 @@
 // -----------------------------------------------------------------------
 
 using System.Collections.Concurrent;
-using System.Text.Json;
 using TaskManageDemo.Backend.Models.DTOs;
 
 namespace TaskManageDemo.Backend.Middleware;
@@ -21,6 +20,8 @@ public class RateLimitingMiddleware
     private readonly RateLimitOptions _options;
 
     private static readonly ConcurrentDictionary<string, RateLimitCounter> Counters = new();
+    private static DateTime _lastCleanup = DateTime.UtcNow;
+    private static readonly object CleanupLock = new();
 
     public RateLimitingMiddleware(
         RequestDelegate next,
@@ -34,6 +35,8 @@ public class RateLimitingMiddleware
 
     public async Task InvokeAsync(HttpContext context)
     {
+        TryCleanupExpiredCounters();
+
         var clientId = GetClientIdentifier(context);
         var endpoint = GetEndpointKey(context);
 
@@ -84,6 +87,46 @@ public class RateLimitingMiddleware
         }
 
         await _next(context);
+    }
+
+    private void TryCleanupExpiredCounters()
+    {
+        var now = DateTime.UtcNow;
+        var cleanupInterval = _options.Window.Add(TimeSpan.FromMinutes(5));
+
+        if (now - _lastCleanup < cleanupInterval)
+        {
+            return;
+        }
+
+        lock (CleanupLock)
+        {
+            if (now - _lastCleanup < cleanupInterval)
+            {
+                return;
+            }
+
+            var expiredKeys = Counters
+                .Where(kvp => now > kvp.Value.WindowStart.Add(_options.Window))
+                .Select(kvp => kvp.Key)
+                .ToList();
+
+            var removedCount = 0;
+            foreach (var key in expiredKeys)
+            {
+                if (Counters.TryRemove(key, out _))
+                {
+                    removedCount++;
+                }
+            }
+
+            if (removedCount > 0)
+            {
+                _logger.LogDebug("清理过期限流计数器: {Count} 个", removedCount);
+            }
+
+            _lastCleanup = now;
+        }
     }
 
     private string GetClientIdentifier(HttpContext context)

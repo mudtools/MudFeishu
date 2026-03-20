@@ -3,81 +3,120 @@
     <el-aside width="260px" class="app-aside">
       <div class="logo">
         <div class="logo-icon">
-          <el-icon :size="32"><DocumentChecked /></el-icon>
+          <el-icon :size="32">
+            <DocumentChecked />
+          </el-icon>
         </div>
         <div class="logo-text">
           <h1>TaskMaster</h1>
           <span>任务管理系统</span>
         </div>
       </div>
-      
+
       <div class="nav-section">
         <div class="nav-title">主菜单</div>
         <el-menu :default-active="activeMenu" class="app-menu" router :collapse="isCollapsed">
           <el-menu-item index="/tasks">
-            <el-icon><Document /></el-icon>
+            <el-icon>
+              <Document />
+            </el-icon>
             <template #title>
               <span>任务列表</span>
               <el-badge v-if="taskStats.pending > 0" :value="taskStats.pending" class="menu-badge" />
             </template>
           </el-menu-item>
           <el-menu-item index="/kanban">
-            <el-icon><Grid /></el-icon>
+            <el-icon>
+              <Grid />
+            </el-icon>
             <template #title>
               <span>任务看板</span>
             </template>
           </el-menu-item>
           <el-menu-item index="/tasklists">
-            <el-icon><Folder /></el-icon>
+            <el-icon>
+              <Folder />
+            </el-icon>
             <template #title>
               <span>任务清单</span>
             </template>
           </el-menu-item>
         </el-menu>
       </div>
-      
+
       <div class="nav-section">
         <div class="nav-title">工具</div>
         <el-menu :default-active="activeMenu" class="app-menu" router :collapse="isCollapsed">
           <el-menu-item index="/templates">
-            <el-icon><DocumentCopy /></el-icon>
+            <el-icon>
+              <DocumentCopy />
+            </el-icon>
             <template #title>
               <span>任务模板</span>
             </template>
           </el-menu-item>
           <el-menu-item index="/statistics">
-            <el-icon><DataAnalysis /></el-icon>
+            <el-icon>
+              <DataAnalysis />
+            </el-icon>
             <template #title>
               <span>统计报表</span>
             </template>
           </el-menu-item>
         </el-menu>
       </div>
-      
+
+      <div class="nav-section" v-if="hasUserManagePermission">
+        <div class="nav-title">系统管理</div>
+        <el-menu :default-active="activeMenu" class="app-menu" router :collapse="isCollapsed">
+          <el-menu-item index="/users">
+            <el-icon>
+              <User />
+            </el-icon>
+            <template #title>
+              <span>用户管理</span>
+            </template>
+          </el-menu-item>
+          <el-menu-item index="/roles">
+            <el-icon>
+              <Key />
+            </el-icon>
+            <template #title>
+              <span>角色权限</span>
+            </template>
+          </el-menu-item>
+        </el-menu>
+      </div>
+
       <div class="sidebar-footer">
         <div class="quick-actions">
           <el-tooltip content="新建任务" placement="top">
             <el-button type="primary" circle @click="showCreateTaskDialog">
-              <el-icon><Plus /></el-icon>
+              <el-icon>
+                <Plus />
+              </el-icon>
             </el-button>
           </el-tooltip>
         </div>
       </div>
     </el-aside>
-    
+
     <el-container>
       <el-header class="app-header">
         <div class="header-left">
           <el-button text @click="toggleSidebar">
-            <el-icon :size="20"><Fold v-if="!isCollapsed" /><Expand v-else /></el-icon>
+            <el-icon :size="20">
+              <Fold v-if="!isCollapsed" />
+              <Expand v-else />
+            </el-icon>
           </el-button>
           <breadcrumb-nav />
         </div>
-        
+
         <div class="header-center">
           <global-search />
         </div>
-        
+
         <div class="header-right">
           <el-tooltip :content="themeStore.isDark() ? '切换到亮色模式' : '切换到暗色模式'">
             <el-button text circle @click="themeStore.toggleTheme()">
@@ -87,14 +126,16 @@
               </el-icon>
             </el-button>
           </el-tooltip>
-          
+
           <el-tooltip content="通知" placement="bottom">
             <el-button text circle class="notification-btn">
-              <el-icon :size="18"><Bell /></el-icon>
+              <el-icon :size="18">
+                <Bell />
+              </el-icon>
               <el-badge v-if="notificationCount > 0" :value="notificationCount" class="notification-badge" />
             </el-button>
           </el-tooltip>
-          
+
           <el-dropdown trigger="click">
             <div class="user-info">
               <el-avatar :size="36" :src="userAvatar" class="user-avatar">
@@ -104,7 +145,9 @@
                 <span class="user-name">{{ userName }}</span>
                 <span class="user-role">管理员</span>
               </div>
-              <el-icon><ArrowDown /></el-icon>
+              <el-icon>
+                <ArrowDown />
+              </el-icon>
             </div>
             <template #dropdown>
               <el-dropdown-menu class="user-dropdown">
@@ -118,15 +161,21 @@
                   </div>
                 </div>
                 <el-dropdown-item divided>
-                  <el-icon><User /></el-icon>
+                  <el-icon>
+                    <User />
+                  </el-icon>
                   个人设置
                 </el-dropdown-item>
                 <el-dropdown-item>
-                  <el-icon><Setting /></el-icon>
+                  <el-icon>
+                    <Setting />
+                  </el-icon>
                   系统设置
                 </el-dropdown-item>
                 <el-dropdown-item divided @click="handleLogout">
-                  <el-icon><SwitchButton /></el-icon>
+                  <el-icon>
+                    <SwitchButton />
+                  </el-icon>
                   退出登录
                 </el-dropdown-item>
               </el-dropdown-menu>
@@ -134,7 +183,7 @@
           </el-dropdown>
         </div>
       </el-header>
-      
+
       <el-main class="app-main">
         <router-view v-slot="{ Component }">
           <transition name="fade-transform" mode="out-in">
@@ -144,7 +193,7 @@
       </el-main>
     </el-container>
   </el-container>
-  
+
   <!-- 新建任务对话框 -->
   <create-task-dialog v-model="createTaskVisible" />
 </template>
@@ -169,6 +218,7 @@ import {
   Expand,
   ArrowDown,
   DocumentChecked,
+  Key,
 } from "@element-plus/icons-vue"
 import { useThemeStore } from "../stores/theme"
 import BreadcrumbNav from "../components/BreadcrumbNav.vue"
@@ -184,13 +234,18 @@ const createTaskVisible = ref(false)
 const notificationCount = ref(3)
 const userName = ref(localStorage.getItem("username") || "用户")
 const userAvatar = ref("")
+const userPermissions = ref<string[]>([])
 
 const taskStats = ref({
   pending: 5,
-  total: 12
+  total: 12,
 })
 
 const activeMenu = computed(() => route.path)
+
+const hasUserManagePermission = computed(() => {
+  return userPermissions.value.includes("user:manage")
+})
 
 const toggleSidebar = () => {
   isCollapsed.value = !isCollapsed.value
@@ -207,7 +262,14 @@ const handleLogout = () => {
 }
 
 onMounted(() => {
-  // 可以在这里加载用户信息和通知数量
+  const permissionsStr = localStorage.getItem("permissions")
+  if (permissionsStr) {
+    try {
+      userPermissions.value = JSON.parse(permissionsStr)
+    } catch {
+      userPermissions.value = []
+    }
+  }
 })
 </script>
 
@@ -218,7 +280,11 @@ onMounted(() => {
 }
 
 .app-aside {
-  background: linear-gradient(180deg, var(--bg-card) 0%, var(--bg-secondary) 100%);
+  background: linear-gradient(
+    180deg,
+    var(--bg-card) 0%,
+    var(--bg-secondary) 100%
+  );
   border-right: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
@@ -237,7 +303,11 @@ onMounted(() => {
 .logo-icon {
   width: 44px;
   height: 44px;
-  background: linear-gradient(135deg, var(--primary-color) 0%, var(--accent-color) 100%);
+  background: linear-gradient(
+    135deg,
+    var(--primary-color) 0%,
+    var(--accent-color) 100%
+  );
   border-radius: var(--radius-lg);
   display: flex;
   align-items: center;
@@ -299,7 +369,11 @@ onMounted(() => {
 }
 
 .app-menu :deep(.el-menu-item.is-active) {
-  background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 100%);
+  background: linear-gradient(
+    135deg,
+    var(--primary-color) 0%,
+    var(--primary-light) 100%
+  );
   color: white;
   box-shadow: var(--shadow-md);
 }
@@ -327,7 +401,11 @@ onMounted(() => {
 .quick-actions .el-button {
   width: 48px;
   height: 48px;
-  background: linear-gradient(135deg, var(--primary-color) 0%, var(--accent-color) 100%);
+  background: linear-gradient(
+    135deg,
+    var(--primary-color) 0%,
+    var(--accent-color) 100%
+  );
   border: none;
   box-shadow: var(--shadow-lg);
 }
@@ -393,7 +471,11 @@ onMounted(() => {
 }
 
 .user-avatar {
-  background: linear-gradient(135deg, var(--primary-color) 0%, var(--accent-color) 100%);
+  background: linear-gradient(
+    135deg,
+    var(--primary-color) 0%,
+    var(--accent-color) 100%
+  );
   color: white;
   font-weight: 600;
 }

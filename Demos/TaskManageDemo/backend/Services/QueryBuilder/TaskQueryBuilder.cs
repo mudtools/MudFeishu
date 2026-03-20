@@ -74,7 +74,7 @@ public class TaskQueryBuilder
         if (assigneeId.HasValue)
         {
             _query = _query.Where(t => 
-                t.Members.Any(m => m.UserId == assigneeId.Value && m.Role == "assignee"));
+                t.Members.Any(m => m.UserId == assigneeId.Value && m.Role == TaskMemberRoles.Assignee));
         }
         return this;
     }

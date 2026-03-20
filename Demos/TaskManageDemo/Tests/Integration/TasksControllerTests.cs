@@ -82,7 +82,7 @@ public class TasksControllerTests : IClassFixture<IntegrationTestFactory>
         var token = await GetTestTokenAsync();
         var request = new CreateTaskRequest
         {
-            Summary = "", // 无效
+            Summary = "",
             Priority = 1,
         };
 
@@ -103,8 +103,7 @@ public class TasksControllerTests : IClassFixture<IntegrationTestFactory>
     {
         // Arrange
         var token = await GetTestTokenAsync();
-        
-        // 先创建任务
+
         var createRequest = new CreateTaskRequest
         {
             Summary = "Test Task for Get",
@@ -137,8 +136,7 @@ public class TasksControllerTests : IClassFixture<IntegrationTestFactory>
     {
         // Arrange
         var token = await GetTestTokenAsync();
-        
-        // 先创建任务
+
         var createRequest = new CreateTaskRequest
         {
             Summary = "Test Task for Update",
@@ -180,8 +178,7 @@ public class TasksControllerTests : IClassFixture<IntegrationTestFactory>
     {
         // Arrange
         var token = await GetTestTokenAsync();
-        
-        // 先创建任务
+
         var createRequest = new CreateTaskRequest
         {
             Summary = "Test Task for Delete",
@@ -204,7 +201,6 @@ public class TasksControllerTests : IClassFixture<IntegrationTestFactory>
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        // 验证已删除
         var getHttpRequest = new HttpRequestMessage(HttpMethod.Get, $"/api/tasks/{taskId}");
         getHttpRequest.Headers.Add("Authorization", $"Bearer {token}");
         var getResponse = await _client.SendAsync(getHttpRequest);
@@ -213,47 +209,6 @@ public class TasksControllerTests : IClassFixture<IntegrationTestFactory>
 
     private async Task<string> GetTestTokenAsync()
     {
-        // 测试认证处理器会自动认证所有请求
-        // 返回任意非空字符串即可
         return await Task.FromResult("test-token");
     }
-}
-
-// 辅助类型
-public record ApiResponse<T>
-{
-    public bool Success { get; init; }
-    public string Message { get; init; } = string.Empty;
-    public T Data { get; init; } = default!;
-}
-
-public record PagedResponse<T>
-{
-    public List<T> Items { get; init; } = [];
-    public int Total { get; init; }
-    public int Page { get; init; }
-    public int PageSize { get; init; }
-}
-
-public record TaskDto
-{
-    public int Id { get; init; }
-    public string Summary { get; init; } = string.Empty;
-    public string? Description { get; init; }
-    public int Priority { get; init; }
-    public bool IsCompleted { get; init; }
-}
-
-public record CreateTaskRequest
-{
-    public string Summary { get; init; } = string.Empty;
-    public string? Description { get; init; }
-    public int Priority { get; init; }
-}
-
-public record UpdateTaskRequest
-{
-    public string? Summary { get; init; }
-    public string? Description { get; init; }
-    public int? Priority { get; init; }
 }

@@ -238,3 +238,137 @@ export interface OAuthUrlRequest {
 export interface OAuthUrlResponse {
   url: string;
 }
+
+// ==================== 用户管理类型 ====================
+
+/**
+ * 用户查询参数
+ */
+export interface UserQueryParameters {
+  page?: number;
+  pageSize?: number;
+  keyword?: string;
+  role?: string;
+  departmentId?: string;
+  isActive?: boolean;
+}
+
+/**
+ * 更新用户请求
+ */
+export interface UpdateUserRequest {
+  name?: string;
+  englishName?: string;
+  mobile?: string;
+  role?: string;
+  isActive?: boolean;
+}
+
+/**
+ * 用户统计数据
+ */
+export interface UserStatisticsDto {
+  totalUsers: number;
+  activeUsers: number;
+  adminUsers: number;
+  newUsersThisMonth: number;
+}
+
+// ==================== 角色管理类型 ====================
+
+/**
+ * 角色
+ */
+export interface Role {
+  id: number;
+  code: string;
+  name: string;
+  description?: string;
+  isSystem: boolean;
+  isEnabled: boolean;
+  sortOrder: number;
+  permissions?: Permission[];
+  userCount?: number;
+  createdAt: string;
+}
+
+/**
+ * 权限
+ */
+export interface Permission {
+  id: number;
+  code: string;
+  name: string;
+  description?: string;
+  group: string;
+  isEnabled: boolean;
+}
+
+/**
+ * 权限分组
+ */
+export interface PermissionGroup {
+  group: string;
+  permissions: Permission[];
+}
+
+/**
+ * 角色查询参数
+ */
+export interface RoleQueryParameters {
+  page?: number;
+  pageSize?: number;
+  keyword?: string;
+  isEnabled?: boolean;
+}
+
+/**
+ * 创建角色请求
+ */
+export interface CreateRoleRequest {
+  code: string;
+  name: string;
+  description?: string;
+  sortOrder?: number;
+  permissionIds?: number[];
+}
+
+/**
+ * 更新角色请求
+ */
+export interface UpdateRoleRequest {
+  name?: string;
+  description?: string;
+  isEnabled?: boolean;
+  sortOrder?: number;
+  permissionIds?: number[];
+}
+
+/**
+ * 分配角色请求
+ */
+export interface AssignRoleRequest {
+  userId: number;
+  roleIds: number[];
+}
+
+/**
+ * 分配权限请求
+ */
+export interface AssignPermissionRequest {
+  userId: number;
+  permissionCodes: string[];
+  isGranted: boolean;
+}
+
+/**
+ * 用户权限详情
+ */
+export interface UserPermissionDetail {
+  userId: number;
+  userName: string;
+  roles: Role[];
+  grantedPermissions: Permission[];
+  revokedPermissions: Permission[];
+  effectivePermissions: string[];
+}

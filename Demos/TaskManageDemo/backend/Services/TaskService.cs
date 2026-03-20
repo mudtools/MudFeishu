@@ -57,7 +57,7 @@ public class TaskService : ITaskService
     /// </summary>
     public async Task<PagedResponse<TaskDto>> GetTasksAsync(
         TaskQueryParameters parameters,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken = default)
     {
         var query = _dbContext.Tasks
             .Include(t => t.Members)
@@ -77,7 +77,7 @@ public class TaskService : ITaskService
 
         if (!string.IsNullOrEmpty(parameters.AssigneeId))
         {
-            query = query.Where(t => t.Members.Any(m => m.User != null && m.User.FeishuId == parameters.AssigneeId && m.Role == "assignee"));
+            query = query.Where(t => t.Members.Any(m => m.User != null && m.User.FeishuId == parameters.AssigneeId && m.Role == TaskMemberRoles.Assignee));
         }
 
         if (!string.IsNullOrEmpty(parameters.Keyword))
@@ -154,7 +154,7 @@ public class TaskService : ITaskService
     /// </summary>
     public async Task<TaskDto?> GetTaskByIdAsync(
         int taskId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken = default)
     {
         var task = await _dbContext.Tasks
             .Include(t => t.Members)
@@ -179,7 +179,7 @@ public class TaskService : ITaskService
     public async Task<TaskDto> CreateTaskAsync(
         CreateTaskRequest request,
         string userId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken = default)
     {
         // 在飞书创建任务
         var taskGuid = await _feishuTaskService.CreateTaskAsync(
@@ -240,7 +240,7 @@ public class TaskService : ITaskService
         int taskId,
         UpdateTaskRequest request,
         string userId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken = default)
     {
         var task = await _dbContext.Tasks.FindAsync(new object[] { taskId }, cancellationToken);
         if (task == null)
@@ -284,7 +284,7 @@ public class TaskService : ITaskService
     public async Task<bool> DeleteTaskAsync(
         int taskId,
         string userId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken = default)
     {
         var task = await _dbContext.Tasks.FindAsync(new object[] { taskId }, cancellationToken);
         if (task == null)
@@ -317,7 +317,7 @@ public class TaskService : ITaskService
     public async Task<bool> AssignTaskAsync(
         int taskId,
         AssignTaskRequest request,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken = default)
     {
         var task = await _dbContext.Tasks
             .Include(t => t.Members)
@@ -342,8 +342,8 @@ public class TaskService : ITaskService
         }
 
         // 同步成员到本地数据库
-        await SyncTaskMembersAsync(task.Id, request.AssigneeIds, "assignee", cancellationToken);
-        await SyncTaskMembersAsync(task.Id, request.FollowerIds, "follower", cancellationToken);
+        await SyncTaskMembersAsync(task.Id, request.AssigneeIds, TaskMemberRoles.Assignee, cancellationToken);
+        await SyncTaskMembersAsync(task.Id, request.FollowerIds, TaskMemberRoles.Follower, cancellationToken);
 
         // 发送通知
         foreach (var assigneeId in request.AssigneeIds)
@@ -371,7 +371,7 @@ public class TaskService : ITaskService
     public async Task<bool> UpdateTaskStatusAsync(
         int taskId,
         bool isCompleted,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken = default)
     {
         var task = await _dbContext.Tasks.FindAsync(new object[] { taskId }, cancellationToken);
         if (task == null)
@@ -440,7 +440,7 @@ public class TaskService : ITaskService
         int taskId,
         List<string> feishuIds,
         string role,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken = default)
     {
         foreach (var feishuId in feishuIds)
         {

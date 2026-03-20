@@ -5,6 +5,8 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using TaskManageDemo.Backend.Models.DTOs;
+
 namespace TaskManageDemo.Backend.Services.Auth;
 
 /// <summary>
@@ -56,4 +58,19 @@ public interface IPermissionService
     /// 为新用户初始化默认权限
     /// </summary>
     Task InitializeDefaultPermissionsAsync(int userId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 获取所有权限列表
+    /// </summary>
+    Task<List<PermissionDto>> GetAllPermissionsAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 获取权限分组列表
+    /// </summary>
+    Task<List<PermissionGroupDto>> GetPermissionGroupsAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 获取用户权限详情
+    /// </summary>
+    Task<UserPermissionDetailDto?> GetUserPermissionDetailAsync(int userId, CancellationToken cancellationToken = default);
 }

@@ -141,6 +141,10 @@ using (var scope = app.Services.CreateScope())
     // 初始化权限数据
     var permissionService = scope.ServiceProvider.GetRequiredService<IPermissionService>();
     await permissionService.InitializePermissionsAsync();
+
+    // 初始化默认角色
+    var roleService = scope.ServiceProvider.GetRequiredService<IRoleService>();
+    await roleService.InitializeDefaultRolesAsync();
 }
 
 if (app.Environment.IsDevelopment())

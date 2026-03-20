@@ -8,6 +8,7 @@
 using Microsoft.EntityFrameworkCore;
 using TaskManageDemo.Backend.Data;
 using TaskManageDemo.Backend.Models.DTOs;
+using TaskManageDemo.Backend.Models.Entities;
 
 namespace TaskManageDemo.Backend.Services.Statistics;
 
@@ -140,7 +141,7 @@ public class StatisticsService : IStatisticsService
         var query = _dbContext.TaskMembers
             .Include(m => m.User)
             .Include(m => m.Task)
-            .Where(m => m.Role == "assignee");
+            .Where(m => m.Role == TaskMemberRoles.Assignee);
 
         if (startDate.HasValue)
         {

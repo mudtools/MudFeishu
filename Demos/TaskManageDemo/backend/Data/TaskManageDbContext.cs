@@ -7,6 +7,7 @@
 
 using Microsoft.EntityFrameworkCore;
 using TaskManageDemo.Backend.EventHandlers;
+using TaskManageDemo.Backend.Models.Entities;
 using TaskManageDemo.Backend.Services.Templates;
 
 namespace TaskManageDemo.Backend.Data;
@@ -78,6 +79,26 @@ public class TaskManageDbContext : DbContext
     /// 用户权限表
     /// </summary>
     public DbSet<UserPermission> UserPermissions => Set<UserPermission>();
+
+    /// <summary>
+    /// 任务评论表
+    /// </summary>
+    public DbSet<TaskComment> TaskComments => Set<TaskComment>();
+
+    /// <summary>
+    /// 角色表
+    /// </summary>
+    public DbSet<Role> Roles => Set<Role>();
+
+    /// <summary>
+    /// 角色权限关联表
+    /// </summary>
+    public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
+
+    /// <summary>
+    /// 用户角色关联表
+    /// </summary>
+    public DbSet<UserRole> UserRoles => Set<UserRole>();
 
     /// <summary>
     /// 配置实体关系
@@ -212,6 +233,74 @@ public class TaskManageDbContext : DbContext
             entity.HasOne(e => e.User)
                 .WithMany()
                 .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<TaskComment>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.TaskId);
+            entity.HasIndex(e => e.UserId);
+            entity.HasIndex(e => e.ParentCommentId);
+            entity.HasIndex(e => e.CreatedAt);
+
+            entity.Property(e => e.Content).IsRequired().HasMaxLength(2000);
+
+            entity.HasOne(e => e.Task)
+                .WithMany()
+                .HasForeignKey(e => e.TaskId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.ParentComment)
+                .WithMany(e => e.Replies)
+                .HasForeignKey(e => e.ParentCommentId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<Role>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.Code).IsUnique();
+
+            entity.Property(e => e.Code).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Description).HasMaxLength(500);
+        });
+
+        modelBuilder.Entity<RolePermission>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.RoleId, e.PermissionId }).IsUnique();
+
+            entity.HasOne(e => e.Role)
+                .WithMany(r => r.RolePermissions)
+                .HasForeignKey(e => e.RoleId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.Permission)
+                .WithMany()
+                .HasForeignKey(e => e.PermissionId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<UserRole>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.UserId, e.RoleId }).IsUnique();
+
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.Role)
+                .WithMany(r => r.UserRoles)
+                .HasForeignKey(e => e.RoleId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
     }

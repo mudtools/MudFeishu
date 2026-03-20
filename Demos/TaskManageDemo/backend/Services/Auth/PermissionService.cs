@@ -7,6 +7,7 @@
 
 using TaskManageDemo.Backend.Data;
 using TaskManageDemo.Backend.Models.DTOs;
+using TaskManageDemo.Backend.Models.Entities;
 
 namespace TaskManageDemo.Backend.Services.Auth;
 
@@ -184,7 +185,7 @@ public class PermissionService : IPermissionService
         var taskMember = await _dbContext.TaskMembers
             .FirstOrDefaultAsync(tm => tm.TaskSyncId == taskId && tm.UserId == userId, cancellationToken);
 
-        if (taskMember != null && (taskMember.Role == "creator" || taskMember.Role == "assignee"))
+        if (taskMember != null && (taskMember.Role == TaskMemberRoles.Creator || taskMember.Role == TaskMemberRoles.Assignee))
         {
             return true;
         }
@@ -248,5 +249,111 @@ public class PermissionService : IPermissionService
         // 这里可以添加一些特定的新用户初始化逻辑，如欢迎通知等
         _logger.LogInformation("为用户 {UserId} 初始化默认权限", userId);
         await Task.CompletedTask;
+    }
+
+    public async Task<List<PermissionDto>> GetAllPermissionsAsync(CancellationToken cancellationToken = default)
+    {
+        var permissions = await _dbContext.Permissions
+            .Where(p => p.IsEnabled)
+            .OrderBy(p => p.Group)
+            .ThenBy(p => p.Id)
+            .Select(p => new PermissionDto
+            {
+                Id = p.Id,
+                Code = p.Code,
+                Name = p.Name,
+                Description = p.Description,
+                Group = p.Group,
+                IsEnabled = p.IsEnabled
+            })
+            .ToListAsync(cancellationToken);
+
+        return permissions;
+    }
+
+    public async Task<List<PermissionGroupDto>> GetPermissionGroupsAsync(CancellationToken cancellationToken = default)
+    {
+        var permissions = await GetAllPermissionsAsync(cancellationToken);
+
+        var groups = permissions
+            .GroupBy(p => p.Group)
+            .Select(g => new PermissionGroupDto
+            {
+                Group = g.Key,
+                Permissions = g.ToList()
+            })
+            .ToList();
+
+        return groups;
+    }
+
+    public async Task<UserPermissionDetailDto?> GetUserPermissionDetailAsync(int userId, CancellationToken cancellationToken = default)
+    {
+        var user = await _dbContext.Users
+            .Include(u => u.TaskMembers)
+            .FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
+
+        if (user == null) return null;
+
+        var userRoles = await _dbContext.UserRoles
+            .Include(ur => ur.Role)
+            .ThenInclude(r => r.RolePermissions)
+            .ThenInclude(rp => rp.Permission)
+            .Where(ur => ur.UserId == userId)
+            .ToListAsync(cancellationToken);
+
+        var userPermissions = await _dbContext.UserPermissions
+            .Include(up => up.User)
+            .Where(up => up.UserId == userId)
+            .ToListAsync(cancellationToken);
+
+        var effectivePermissions = await GetUserPermissionsAsync(userId, cancellationToken);
+
+        var grantedPermissions = userPermissions
+            .Where(up => up.IsGranted)
+            .Select(up => new PermissionDto
+            {
+                Code = up.PermissionCode,
+                Name = up.PermissionCode
+            })
+            .ToList();
+
+        var revokedPermissions = userPermissions
+            .Where(up => !up.IsGranted)
+            .Select(up => new PermissionDto
+            {
+                Code = up.PermissionCode,
+                Name = up.PermissionCode
+            })
+            .ToList();
+
+        return new UserPermissionDetailDto
+        {
+            UserId = userId,
+            UserName = user.Name,
+            Roles = userRoles.Select(ur => new RoleDto
+            {
+                Id = ur.Role.Id,
+                Code = ur.Role.Code,
+                Name = ur.Role.Name,
+                Description = ur.Role.Description,
+                IsSystem = ur.Role.IsSystem,
+                IsEnabled = ur.Role.IsEnabled,
+                Permissions = ur.Role.RolePermissions?
+                    .Select(rp => new PermissionDto
+                    {
+                        Id = rp.Permission.Id,
+                        Code = rp.Permission.Code,
+                        Name = rp.Permission.Name,
+                        Description = rp.Permission.Description,
+                        Group = rp.Permission.Group,
+                        IsEnabled = rp.Permission.IsEnabled
+                    })
+                    .ToList() ?? new List<PermissionDto>()
+            }).ToList(),
+            GrantedPermissions = grantedPermissions,
+            RevokedPermissions = revokedPermissions,
+            EffectivePermissions = effectivePermissions
+        };
     }
 }

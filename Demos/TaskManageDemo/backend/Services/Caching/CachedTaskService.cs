@@ -5,6 +5,9 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
 using Microsoft.Extensions.Caching.Memory;
 using TaskManageDemo.Backend.Models.DTOs;
 
@@ -22,6 +25,8 @@ public class CachedTaskService : ITaskService
     private static readonly TimeSpan DefaultCacheDuration = TimeSpan.FromMinutes(5);
     private static readonly TimeSpan ShortCacheDuration = TimeSpan.FromMinutes(1);
 
+    private const string TaskListCacheVersionKey = "task_list_cache_version";
+
     public CachedTaskService(
         ITaskService innerService,
         IMemoryCache cache,
@@ -36,7 +41,7 @@ public class CachedTaskService : ITaskService
         TaskQueryParameters parameters,
         CancellationToken cancellationToken = default)
     {
-        var cacheKey = $"tasks_{parameters.GetHashCode()}";
+        var cacheKey = GenerateTaskListCacheKey(parameters);
 
         if (_cache.TryGetValue(cacheKey, out PagedResponse<TaskDto>? cached))
         {
@@ -59,7 +64,7 @@ public class CachedTaskService : ITaskService
         int taskId,
         CancellationToken cancellationToken = default)
     {
-        var cacheKey = $"task_{taskId}";
+        var cacheKey = GenerateTaskCacheKey(taskId);
 
         if (_cache.TryGetValue(cacheKey, out TaskDto? cached))
         {
@@ -84,7 +89,6 @@ public class CachedTaskService : ITaskService
     {
         var result = await _innerService.CreateTaskAsync(request, userId, cancellationToken);
 
-        // 使任务列表缓存失效
         InvalidateTaskListCache();
 
         return result;
@@ -100,8 +104,7 @@ public class CachedTaskService : ITaskService
 
         if (result != null)
         {
-            // 使单个任务缓存失效
-            _cache.Remove($"task_{taskId}");
+            InvalidateTaskCache(taskId);
             InvalidateTaskListCache();
         }
 
@@ -117,7 +120,7 @@ public class CachedTaskService : ITaskService
 
         if (result)
         {
-            _cache.Remove($"task_{taskId}");
+            InvalidateTaskCache(taskId);
             InvalidateTaskListCache();
         }
 
@@ -133,7 +136,7 @@ public class CachedTaskService : ITaskService
 
         if (result)
         {
-            _cache.Remove($"task_{taskId}");
+            InvalidateTaskCache(taskId);
             InvalidateTaskListCache();
         }
 
@@ -149,20 +152,62 @@ public class CachedTaskService : ITaskService
 
         if (result)
         {
-            _cache.Remove($"task_{taskId}");
+            InvalidateTaskCache(taskId);
             InvalidateTaskListCache();
         }
 
         return result;
     }
 
-    /// <summary>
-    /// 使任务列表缓存失效
-    /// </summary>
+    private string GenerateTaskCacheKey(int taskId)
+    {
+        return $"task_{taskId}";
+    }
+
+    private string GenerateTaskListCacheKey(TaskQueryParameters parameters)
+    {
+        var version = GetCacheVersion();
+        var parametersJson = JsonSerializer.Serialize(parameters);
+        var hash = ComputeHash(parametersJson);
+        return $"tasks_v{version}_{hash}";
+    }
+
+    private int GetCacheVersion()
+    {
+        if (_cache.TryGetValue(TaskListCacheVersionKey, out int version))
+        {
+            return version;
+        }
+
+        version = 1;
+        _cache.Set(TaskListCacheVersionKey, version, TimeSpan.FromDays(1));
+        return version;
+    }
+
+    private void IncrementCacheVersion()
+    {
+        var currentVersion = GetCacheVersion();
+        var newVersion = currentVersion + 1;
+        _cache.Set(TaskListCacheVersionKey, newVersion, TimeSpan.FromDays(1));
+        _logger.LogDebug("缓存版本已更新: {OldVersion} -> {NewVersion}", currentVersion, newVersion);
+    }
+
+    private void InvalidateTaskCache(int taskId)
+    {
+        var cacheKey = GenerateTaskCacheKey(taskId);
+        _cache.Remove(cacheKey);
+        _logger.LogDebug("任务缓存已失效: {Key}", cacheKey);
+    }
+
     private void InvalidateTaskListCache()
     {
-        // 在实际实现中，可以使用更精细的缓存失效策略
-        // 例如使用缓存标签或前缀
+        IncrementCacheVersion();
         _logger.LogDebug("任务列表缓存已失效");
+    }
+
+    private static string ComputeHash(string input)
+    {
+        var bytes = MD5.HashData(Encoding.UTF8.GetBytes(input));
+        return Convert.ToHexString(bytes)[..8];
     }
 }

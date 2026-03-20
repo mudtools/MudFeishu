@@ -51,6 +51,18 @@ const routes: RouteRecordRaw[] = [
         component: () => import('../views/Statistics.vue'),
         meta: { title: '统计报表', icon: 'DataAnalysis' },
       },
+      {
+        path: 'users',
+        name: 'Users',
+        component: () => import('../views/Users.vue'),
+        meta: { title: '用户管理', icon: 'User', permission: 'user:manage' },
+      },
+      {
+        path: 'roles',
+        name: 'Roles',
+        component: () => import('../views/Roles.vue'),
+        meta: { title: '角色权限', icon: 'Key', permission: 'user:manage' },
+      },
     ],
   },
   {

@@ -11,6 +11,9 @@ using Serilog.Events;
 using TaskManageDemo.Backend.Data;
 using TaskManageDemo.Backend.Extensions;
 using TaskManageDemo.Backend.Middleware;
+using TaskManageDemo.Backend.Services.Auth;
+using FluentValidation;
+using FluentValidation.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -41,6 +44,13 @@ builder.Services.AddDatabaseServices(builder.Configuration);
 builder.Services.AddFeishuServices(builder.Configuration);
 builder.Services.AddWebhookServices(builder.Configuration);
 builder.Services.AddBusinessServices();
+
+// 添加 FluentValidation
+builder.Services.AddValidatorsFromAssembly(typeof(Program).Assembly);
+builder.Services.AddFluentValidationAutoValidation();
+
+// 添加内存缓存
+builder.Services.AddMemoryCache();
 
 builder.Services.AddHealthChecks()
     .AddSqlite(
@@ -83,6 +93,10 @@ using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<TaskManageDbContext>();
     dbContext.Database.EnsureCreated();
+
+    // 初始化权限数据
+    var permissionService = scope.ServiceProvider.GetRequiredService<IPermissionService>();
+    await permissionService.InitializePermissionsAsync();
 }
 
 if (app.Environment.IsDevelopment())

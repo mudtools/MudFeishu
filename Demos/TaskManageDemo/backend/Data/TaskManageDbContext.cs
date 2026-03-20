@@ -70,6 +70,16 @@ public class TaskManageDbContext : DbContext
     public DbSet<EventProcessRecord> EventProcessRecords => Set<EventProcessRecord>();
 
     /// <summary>
+    /// 权限定义表
+    /// </summary>
+    public DbSet<Permission> Permissions => Set<Permission>();
+
+    /// <summary>
+    /// 用户权限表
+    /// </summary>
+    public DbSet<UserPermission> UserPermissions => Set<UserPermission>();
+
+    /// <summary>
     /// 配置实体关系
     /// </summary>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -180,6 +190,29 @@ public class TaskManageDbContext : DbContext
 
             entity.Property(e => e.EventId).IsRequired().HasMaxLength(200);
             entity.Property(e => e.EventType).IsRequired().HasMaxLength(100);
+        });
+
+        modelBuilder.Entity<Permission>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.Code).IsUnique();
+
+            entity.Property(e => e.Code).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.Group).IsRequired().HasMaxLength(100);
+        });
+
+        modelBuilder.Entity<UserPermission>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.UserId, e.PermissionCode }).IsUnique();
+
+            entity.Property(e => e.PermissionCode).IsRequired().HasMaxLength(100);
+
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

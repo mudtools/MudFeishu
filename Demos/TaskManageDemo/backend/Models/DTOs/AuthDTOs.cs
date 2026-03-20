@@ -56,6 +56,11 @@ public static class UserRoles
     public const string Admin = "admin";
 
     /// <summary>
+    /// 经理/主管
+    /// </summary>
+    public const string Manager = "manager";
+
+    /// <summary>
     /// 普通用户
     /// </summary>
     public const string User = "user";
@@ -88,6 +93,7 @@ public static class Permissions
     public const string TemplateDelete = "template:delete";
 
     public const string StatisticsView = "statistics:view";
+    public const string UserRead = "user:read";
     public const string UserManage = "user:manage";
     public const string DepartmentManage = "department:manage";
 }

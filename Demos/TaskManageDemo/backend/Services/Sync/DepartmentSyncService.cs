@@ -40,6 +40,47 @@ public interface IDepartmentSyncService
     /// 同步部门用户
     /// </summary>
     Task<int> SyncDepartmentUsersAsync(string departmentId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 全量同步组织架构（包括所有部门和用户）
+    /// </summary>
+    Task<OrganizationSyncResult> SyncOrganizationAsync(CancellationToken cancellationToken = default);
+}
+
+/// <summary>
+/// 组织架构同步结果
+/// </summary>
+public class OrganizationSyncResult
+{
+    /// <summary>
+    /// 同步的部门数量
+    /// </summary>
+    public int DepartmentCount { get; set; }
+
+    /// <summary>
+    /// 同步的用户数量
+    /// </summary>
+    public int UserCount { get; set; }
+
+    /// <summary>
+    /// 同步失败的部门数量
+    /// </summary>
+    public int FailedDepartmentCount { get; set; }
+
+    /// <summary>
+    /// 同步失败的用户数量
+    /// </summary>
+    public int FailedUserCount { get; set; }
+
+    /// <summary>
+    /// 同步耗时（毫秒）
+    /// </summary>
+    public long DurationMs { get; set; }
+
+    /// <summary>
+    /// 错误信息
+    /// </summary>
+    public List<string> Errors { get; set; } = new();
 }
 
 /// <summary>
@@ -118,7 +159,7 @@ public class DepartmentSyncService : IDepartmentSyncService
         }
 
         department.Name = deptData.Name ?? string.Empty;
-        department.ParentId = deptData.ParentDepartmentId;
+        department.ParentDepartmentId = deptData.ParentDepartmentId;
         department.LeaderId = deptData.LeaderUserId;
         department.Order = deptData.DepartmentId == "0" ? 0 : int.TryParse(deptData.DepartmentId, out var order) ? order : 0;
         department.UpdatedAt = DateTime.UtcNow;
@@ -132,7 +173,7 @@ public class DepartmentSyncService : IDepartmentSyncService
             .OrderBy(d => d.Order)
             .ToListAsync(cancellationToken);
 
-        var rootDepartments = departments.Where(d => string.IsNullOrEmpty(d.ParentId) || d.ParentId == "0").ToList();
+        var rootDepartments = departments.Where(d => string.IsNullOrEmpty(d.ParentDepartmentId) || d.ParentDepartmentId == "0").ToList();
 
         return rootDepartments.Select(d => BuildDepartmentTree(d, departments)).ToList();
     }
@@ -140,7 +181,7 @@ public class DepartmentSyncService : IDepartmentSyncService
     private static DepartmentTreeNode BuildDepartmentTree(Department department, List<Department> allDepartments)
     {
         var children = allDepartments
-            .Where(d => d.ParentId == department.FeishuId)
+            .Where(d => d.ParentDepartmentId == department.FeishuId)
             .Select(d => BuildDepartmentTree(d, allDepartments))
             .ToList();
 
@@ -210,6 +251,90 @@ public class DepartmentSyncService : IDepartmentSyncService
         _logger.LogInformation("部门用户同步完成，共同步 {Count} 个用户", syncedCount);
 
         return syncedCount;
+    }
+
+    public async Task<OrganizationSyncResult> SyncOrganizationAsync(CancellationToken cancellationToken = default)
+    {
+        var startTime = DateTime.UtcNow;
+        var result = new OrganizationSyncResult();
+
+        try
+        {
+            _logger.LogInformation("开始全量同步组织架构...");
+
+            // 1. 同步所有部门
+            var departmentIds = new List<string>();
+            var pageToken = string.Empty;
+
+            do
+            {
+                var deptResult = await _departmentApi.GetDepartmentListAsync(
+                    "0",
+                    fetchChild: true,
+                    pageSize: 50,
+                    pageToken: pageToken,
+                    cancellationToken: cancellationToken);
+
+                if (deptResult?.Data?.Items == null || deptResult.Data.Items.Count == 0)
+                {
+                    _logger.LogWarning("未获取到部门数据");
+                    break;
+                }
+
+                foreach (var deptData in deptResult.Data.Items)
+                {
+                    try
+                    {
+                        await SyncSingleDepartmentAsync(deptData, cancellationToken);
+                        departmentIds.Add(deptData.DepartmentId ?? string.Empty);
+                        result.DepartmentCount++;
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "同步部门失败: {DepartmentId}", deptData.DepartmentId);
+                        result.FailedDepartmentCount++;
+                        result.Errors.Add($"部门同步失败: {deptData.DepartmentId} - {ex.Message}");
+                    }
+                }
+
+                pageToken = deptResult.Data.PageToken ?? string.Empty;
+
+            } while (!string.IsNullOrEmpty(pageToken));
+
+            await _dbContext.SaveChangesAsync(cancellationToken);
+            _logger.LogInformation("部门同步完成，成功: {Success}, 失败: {Failed}", result.DepartmentCount, result.FailedDepartmentCount);
+
+            // 2. 同步所有部门的用户
+            foreach (var deptId in departmentIds)
+            {
+                try
+                {
+                    var userCount = await SyncDepartmentUsersAsync(deptId, cancellationToken);
+                    result.UserCount += userCount;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "同步部门用户失败: {DepartmentId}", deptId);
+                    result.FailedUserCount++;
+                    result.Errors.Add($"部门用户同步失败: {deptId} - {ex.Message}");
+                }
+
+                // 避免 API 限流
+                await Task.Delay(100, cancellationToken);
+            }
+
+            _logger.LogInformation("用户同步完成，成功: {Success}, 失败: {Failed}", result.UserCount, result.FailedUserCount);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "全量同步组织架构失败");
+            result.Errors.Add($"同步失败: {ex.Message}");
+        }
+
+        result.DurationMs = (long)(DateTime.UtcNow - startTime).TotalMilliseconds;
+        _logger.LogInformation("组织架构同步完成，耗时: {Duration}ms", result.DurationMs);
+
+        return result;
     }
 }
 

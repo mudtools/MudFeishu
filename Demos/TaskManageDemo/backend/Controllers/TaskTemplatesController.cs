@@ -5,7 +5,7 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-using Microsoft.AspNetCore.Mvc;
+using TaskManageDemo.Backend.Middleware;
 using TaskManageDemo.Backend.Models.DTOs;
 using TaskManageDemo.Backend.Services.Templates;
 
@@ -16,7 +16,7 @@ namespace TaskManageDemo.Backend.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
-public class TaskTemplatesController : ControllerBase
+public class TaskTemplatesController : BaseController
 {
     private readonly ITaskTemplateService _templateService;
     private readonly ILogger<TaskTemplatesController> _logger;
@@ -36,43 +36,47 @@ public class TaskTemplatesController : ControllerBase
     /// 获取所有模板
     /// </summary>
     [HttpGet]
+    [RequirePermission("template:read")]
     public async Task<ActionResult<ApiResponse<List<TaskTemplateDto>>>> GetAllTemplates(CancellationToken cancellationToken)
     {
         var templates = await _templateService.GetAllTemplatesAsync(cancellationToken);
-        return ApiResponse<List<TaskTemplateDto>>.Ok(templates);
+        return Success(templates);
     }
 
     /// <summary>
     /// 获取模板详情
     /// </summary>
     [HttpGet("{id}")]
+    [RequirePermission("template:read")]
     public async Task<ActionResult<ApiResponse<TaskTemplateDto>>> GetTemplate(int id, CancellationToken cancellationToken)
     {
         var template = await _templateService.GetTemplateByIdAsync(id, cancellationToken);
         if (template == null)
         {
-            return ApiResponse<TaskTemplateDto>.Fail("模板不存在");
+            return NotFoundResult<TaskTemplateDto>("模板不存在");
         }
 
-        return ApiResponse<TaskTemplateDto>.Ok(template);
+        return Success(template);
     }
 
     /// <summary>
     /// 创建模板
     /// </summary>
     [HttpPost]
+    [RequirePermission("template:create")]
     public async Task<ActionResult<ApiResponse<TaskTemplateDto>>> CreateTemplate(
         [FromBody] CreateTaskTemplateRequest request,
         CancellationToken cancellationToken)
     {
         var template = await _templateService.CreateTemplateAsync(request, cancellationToken);
-        return ApiResponse<TaskTemplateDto>.Ok(template, "模板创建成功");
+        return Created(template, "模板创建成功");
     }
 
     /// <summary>
     /// 更新模板
     /// </summary>
     [HttpPut("{id}")]
+    [RequirePermission("template:update")]
     public async Task<ActionResult<ApiResponse<TaskTemplateDto>>> UpdateTemplate(
         int id,
         [FromBody] UpdateTaskTemplateRequest request,
@@ -81,31 +85,33 @@ public class TaskTemplatesController : ControllerBase
         var template = await _templateService.UpdateTemplateAsync(id, request, cancellationToken);
         if (template == null)
         {
-            return ApiResponse<TaskTemplateDto>.Fail("模板不存在");
+            return NotFoundResult<TaskTemplateDto>("模板不存在");
         }
 
-        return ApiResponse<TaskTemplateDto>.Ok(template, "模板更新成功");
+        return Updated(template, "模板更新成功");
     }
 
     /// <summary>
     /// 删除模板
     /// </summary>
     [HttpDelete("{id}")]
+    [RequirePermission("template:delete")]
     public async Task<ActionResult<ApiResponse<bool>>> DeleteTemplate(int id, CancellationToken cancellationToken)
     {
         var success = await _templateService.DeleteTemplateAsync(id, cancellationToken);
         if (!success)
         {
-            return ApiResponse<bool>.Fail("模板不存在");
+            return NotFoundResult<bool>("模板不存在");
         }
 
-        return ApiResponse<bool>.Ok(true, "模板删除成功");
+        return Deleted("模板删除成功");
     }
 
     /// <summary>
     /// 从模板创建任务
     /// </summary>
     [HttpPost("{id}/tasks")]
+    [RequirePermission("task:create")]
     public async Task<ActionResult<ApiResponse<TaskDto>>> CreateTaskFromTemplate(
         int id,
         [FromBody] CreateTaskFromTemplateRequest request,
@@ -114,9 +120,9 @@ public class TaskTemplatesController : ControllerBase
         var task = await _templateService.CreateTaskFromTemplateAsync(id, request, cancellationToken);
         if (task == null)
         {
-            return ApiResponse<TaskDto>.Fail("从模板创建任务失败");
+            return Fail<TaskDto>("从模板创建任务失败");
         }
 
-        return ApiResponse<TaskDto>.Ok(task, "任务创建成功");
+        return Created(task, "任务创建成功");
     }
 }

@@ -7,8 +7,10 @@
 
 using Microsoft.EntityFrameworkCore;
 using TaskManageDemo.Backend.Data;
+using TaskManageDemo.Backend.Middleware;
 using TaskManageDemo.Backend.Models.DTOs;
 using TaskManageDemo.Backend.Services.Feishu;
+using TaskManageDemo.Backend.Services.Transaction;
 
 namespace TaskManageDemo.Backend.Controllers;
 
@@ -17,10 +19,11 @@ namespace TaskManageDemo.Backend.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
-public class TaskListsController : ControllerBase
+public class TaskListsController : BaseController
 {
     private readonly TaskManageDbContext _dbContext;
     private readonly IFeishuTaskListService _taskListService;
+    private readonly ITransactionService _transactionService;
     private readonly ILogger<TaskListsController> _logger;
 
     /// <summary>
@@ -29,10 +32,12 @@ public class TaskListsController : ControllerBase
     public TaskListsController(
         TaskManageDbContext dbContext,
         IFeishuTaskListService taskListService,
+        ITransactionService transactionService,
         ILogger<TaskListsController> logger)
     {
         _dbContext = dbContext;
         _taskListService = taskListService;
+        _transactionService = transactionService;
         _logger = logger;
     }
 
@@ -40,6 +45,7 @@ public class TaskListsController : ControllerBase
     /// 获取任务清单列表
     /// </summary>
     [HttpGet]
+    [RequirePermission("tasklist:read")]
     public async Task<ActionResult<ApiResponse<PagedResponse<TaskListDto>>>> GetTaskLists(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
@@ -53,7 +59,7 @@ public class TaskListsController : ControllerBase
         var total = await query.CountAsync(cancellationToken);
 
         var items = await query
-            .OrderByDescending(t => t.CreatedAt)
+            .OrderBy(t => t.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .Select(t => new TaskListDto
@@ -73,21 +79,14 @@ public class TaskListsController : ControllerBase
             })
             .ToListAsync(cancellationToken);
 
-        var response = new PagedResponse<TaskListDto>
-        {
-            Items = items,
-            Total = total,
-            Page = page,
-            PageSize = pageSize
-        };
-
-        return ApiResponse<PagedResponse<TaskListDto>>.Ok(response);
+        return Paged(items, total, page, pageSize);
     }
 
     /// <summary>
     /// 获取任务清单详情
     /// </summary>
     [HttpGet("{id}")]
+    [RequirePermission("tasklist:read")]
     public async Task<ActionResult<ApiResponse<TaskListDto>>> GetTaskList(int id, CancellationToken cancellationToken)
     {
         var taskList = await _dbContext.TaskLists
@@ -97,7 +96,7 @@ public class TaskListsController : ControllerBase
 
         if (taskList == null)
         {
-            return ApiResponse<TaskListDto>.Fail("任务清单不存在");
+            return NotFoundResult<TaskListDto>("任务清单不存在");
         }
 
         var dto = new TaskListDto
@@ -116,55 +115,91 @@ public class TaskListsController : ControllerBase
             }).ToList()
         };
 
-        return ApiResponse<TaskListDto>.Ok(dto);
+        return Success(dto);
     }
 
     /// <summary>
     /// 创建任务清单
     /// </summary>
     [HttpPost]
+    [RequirePermission("tasklist:create")]
     public async Task<ActionResult<ApiResponse<TaskListDto>>> CreateTaskList(
         [FromBody] CreateTaskListRequest request,
         CancellationToken cancellationToken)
     {
-        var taskListGuid = await _taskListService.CreateTaskListAsync(
-            request.Name,
-            request.Description,
-            cancellationToken);
+        string? taskListGuid = null;
 
-        if (string.IsNullOrEmpty(taskListGuid))
+        try
         {
-            return ApiResponse<TaskListDto>.Fail("创建任务清单失败");
+            // 在飞书创建任务清单
+            taskListGuid = await _taskListService.CreateTaskListAsync(
+                request.Name,
+                request.Description,
+                cancellationToken);
+
+            if (string.IsNullOrEmpty(taskListGuid))
+            {
+                return Fail<TaskListDto>("创建任务清单失败：飞书 API 返回空值");
+            }
+
+            _logger.LogInformation("飞书任务清单创建成功，TaskListGuid: {TaskListGuid}", taskListGuid);
+
+            // 使用事务同步到本地数据库
+            var result = await _transactionService.ExecuteAsync(async () =>
+            {
+                var taskList = new Models.Entities.TaskList
+                {
+                    TaskListGuid = taskListGuid!,
+                    Name = request.Name,
+                    Description = request.Description,
+                    CreatedAt = DateTime.UtcNow,
+                    LastSyncedAt = DateTime.UtcNow
+                };
+
+                _dbContext.TaskLists.Add(taskList);
+                await _dbContext.SaveChangesAsync(cancellationToken);
+
+                return taskList;
+            }, cancellationToken);
+
+            var dto = new TaskListDto
+            {
+                Id = result.Id,
+                TaskListGuid = result.TaskListGuid,
+                Name = result.Name,
+                Description = result.Description,
+                CreatedAt = result.CreatedAt
+            };
+
+            return Created(dto, "任务清单创建成功");
         }
-
-        var taskList = new Models.Entities.TaskList
+        catch (Exception ex)
         {
-            TaskListGuid = taskListGuid,
-            Name = request.Name,
-            Description = request.Description,
-            CreatedAt = DateTime.UtcNow,
-            LastSyncedAt = DateTime.UtcNow
-        };
+            _logger.LogError(ex, "创建任务清单失败，TaskListGuid: {TaskListGuid}", taskListGuid);
 
-        _dbContext.TaskLists.Add(taskList);
-        await _dbContext.SaveChangesAsync(cancellationToken);
+            // 如果飞书任务清单已创建但本地同步失败，尝试清理飞书任务清单
+            if (!string.IsNullOrEmpty(taskListGuid))
+            {
+                try
+                {
+                    await _taskListService.DeleteTaskListAsync(taskListGuid, cancellationToken);
+                    _logger.LogWarning("已回滚删除飞书任务清单: {TaskListGuid}", taskListGuid);
+                }
+                catch (Exception deleteEx)
+                {
+                    _logger.LogError(deleteEx, "回滚删除飞书任务清单失败，TaskListGuid: {TaskListGuid}，需要手动清理", taskListGuid);
+                }
+            }
 
-        var dto = new TaskListDto
-        {
-            Id = taskList.Id,
-            TaskListGuid = taskList.TaskListGuid,
-            Name = taskList.Name,
-            Description = taskList.Description,
-            CreatedAt = taskList.CreatedAt
-        };
-
-        return ApiResponse<TaskListDto>.Ok(dto, "任务清单创建成功");
+            return Fail<TaskListDto>($"创建任务清单失败: {ex.Message}");
+        }
     }
 
     /// <summary>
     /// 更新任务清单
     /// </summary>
     [HttpPut("{id}")]
+    [RequirePermission("tasklist:update")]
     public async Task<ActionResult<ApiResponse<TaskListDto>>> UpdateTaskList(
         int id,
         [FromBody] UpdateTaskListRequest request,
@@ -173,65 +208,102 @@ public class TaskListsController : ControllerBase
         var taskList = await _dbContext.TaskLists.FindAsync([id], cancellationToken);
         if (taskList == null)
         {
-            return ApiResponse<TaskListDto>.Fail("任务清单不存在");
+            return NotFoundResult<TaskListDto>("任务清单不存在");
         }
 
-        var success = await _taskListService.UpdateTaskListAsync(
-            taskList.TaskListGuid,
-            request.Name,
-            request.Description,
-            cancellationToken);
-
-        if (!success)
+        try
         {
-            return ApiResponse<TaskListDto>.Fail("更新任务清单失败");
+            // 在飞书更新任务清单
+            var success = await _taskListService.UpdateTaskListAsync(
+                taskList.TaskListGuid,
+                request.Name,
+                request.Description,
+                cancellationToken);
+
+            if (!success)
+            {
+                return Fail<TaskListDto>("更新任务清单失败：飞书 API 返回失败");
+            }
+
+            _logger.LogInformation("飞书任务清单更新成功，TaskListGuid: {TaskListGuid}", taskList.TaskListGuid);
+
+            // 使用事务更新本地数据库
+            var result = await _transactionService.ExecuteAsync(async () =>
+            {
+                taskList.Name = request.Name ?? taskList.Name;
+                taskList.Description = request.Description ?? taskList.Description;
+                taskList.LastSyncedAt = DateTime.UtcNow;
+                await _dbContext.SaveChangesAsync(cancellationToken);
+                return taskList;
+            }, cancellationToken);
+
+            var dto = new TaskListDto
+            {
+                Id = result.Id,
+                TaskListGuid = result.TaskListGuid,
+                Name = result.Name,
+                Description = result.Description,
+                CreatedAt = result.CreatedAt
+            };
+
+            return Updated(dto, "任务清单更新成功");
         }
-
-        taskList.Name = request.Name ?? taskList.Name;
-        taskList.Description = request.Description ?? taskList.Description;
-        taskList.LastSyncedAt = DateTime.UtcNow;
-        await _dbContext.SaveChangesAsync(cancellationToken);
-
-        var dto = new TaskListDto
+        catch (Exception ex)
         {
-            Id = taskList.Id,
-            TaskListGuid = taskList.TaskListGuid,
-            Name = taskList.Name,
-            Description = taskList.Description,
-            CreatedAt = taskList.CreatedAt
-        };
-
-        return ApiResponse<TaskListDto>.Ok(dto, "任务清单更新成功");
+            _logger.LogError(ex, "更新任务清单失败，TaskListId: {TaskListId}, TaskListGuid: {TaskListGuid}", id, taskList.TaskListGuid);
+            return Fail<TaskListDto>($"更新任务清单失败: {ex.Message}");
+        }
     }
 
     /// <summary>
     /// 删除任务清单
     /// </summary>
     [HttpDelete("{id}")]
+    [RequirePermission("tasklist:delete")]
     public async Task<ActionResult<ApiResponse<bool>>> DeleteTaskList(int id, CancellationToken cancellationToken)
     {
         var taskList = await _dbContext.TaskLists.FindAsync([id], cancellationToken);
         if (taskList == null)
         {
-            return ApiResponse<bool>.Fail("任务清单不存在");
+            return NotFoundResult<bool>("任务清单不存在");
         }
 
-        var success = await _taskListService.DeleteTaskListAsync(taskList.TaskListGuid, cancellationToken);
-        if (!success)
+        try
         {
-            return ApiResponse<bool>.Fail("删除任务清单失败");
+            // 在飞书删除任务清单
+            var success = await _taskListService.DeleteTaskListAsync(taskList.TaskListGuid, cancellationToken);
+            if (!success)
+            {
+                return Fail<bool>("删除任务清单失败：飞书 API 返回失败");
+            }
+
+            _logger.LogInformation("飞书任务清单删除成功，TaskListGuid: {TaskListGuid}", taskList.TaskListGuid);
+
+            // 使用事务删除本地数据库记录
+            await _transactionService.ExecuteAsync(async () =>
+            {
+                _dbContext.TaskLists.Remove(taskList);
+                await _dbContext.SaveChangesAsync(cancellationToken);
+            }, cancellationToken);
+
+            return Deleted("任务清单删除成功");
         }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "删除任务清单失败，TaskListId: {TaskListId}, TaskListGuid: {TaskListGuid}", id, taskList.TaskListGuid);
 
-        _dbContext.TaskLists.Remove(taskList);
-        await _dbContext.SaveChangesAsync(cancellationToken);
+            // 注意：飞书任务清单已删除，无法回滚，记录警告日志
+            _logger.LogWarning("飞书任务清单已删除但本地数据库操作失败，TaskListGuid: {TaskListGuid}，需要手动清理", taskList.TaskListGuid);
 
-        return ApiResponse<bool>.Ok(true, "任务清单删除成功");
+            return Fail<bool>($"删除任务清单失败: {ex.Message}");
+        }
     }
 
     /// <summary>
     /// 添加清单成员
     /// </summary>
     [HttpPost("{id}/members")]
+    [RequirePermission("tasklist:update")]
     public async Task<ActionResult<ApiResponse<bool>>> AddMembers(
         int id,
         [FromBody] AddTaskListMembersRequest request,
@@ -240,7 +312,7 @@ public class TaskListsController : ControllerBase
         var taskList = await _dbContext.TaskLists.FindAsync([id], cancellationToken);
         if (taskList == null)
         {
-            return ApiResponse<bool>.Fail("任务清单不存在");
+            return NotFoundResult<bool>("任务清单不存在");
         }
 
         var success = await _taskListService.AddMembersAsync(
@@ -250,16 +322,17 @@ public class TaskListsController : ControllerBase
 
         if (!success)
         {
-            return ApiResponse<bool>.Fail("添加成员失败");
+            return Fail<bool>("添加成员失败");
         }
 
-        return ApiResponse<bool>.Ok(true, "成员添加成功");
+        return Success(true, "成员添加成功");
     }
 
     /// <summary>
     /// 移除清单成员
     /// </summary>
     [HttpDelete("{id}/members")]
+    [RequirePermission("tasklist:update")]
     public async Task<ActionResult<ApiResponse<bool>>> RemoveMembers(
         int id,
         [FromBody] RemoveTaskListMembersRequest request,
@@ -268,7 +341,7 @@ public class TaskListsController : ControllerBase
         var taskList = await _dbContext.TaskLists.FindAsync([id], cancellationToken);
         if (taskList == null)
         {
-            return ApiResponse<bool>.Fail("任务清单不存在");
+            return NotFoundResult<bool>("任务清单不存在");
         }
 
         var success = await _taskListService.RemoveMembersAsync(
@@ -278,16 +351,17 @@ public class TaskListsController : ControllerBase
 
         if (!success)
         {
-            return ApiResponse<bool>.Fail("移除成员失败");
+            return Fail<bool>("移除成员失败");
         }
 
-        return ApiResponse<bool>.Ok(true, "成员移除成功");
+        return Success(true, "成员移除成功");
     }
 
     /// <summary>
     /// 获取清单内的任务
     /// </summary>
     [HttpGet("{id}/tasks")]
+    [RequirePermission("task:read")]
     public async Task<ActionResult<ApiResponse<PagedResponse<TaskDto>>>> GetTaskListTasks(
         int id,
         [FromQuery] int page = 1,
@@ -297,7 +371,7 @@ public class TaskListsController : ControllerBase
         var taskList = await _dbContext.TaskLists.FindAsync([id], cancellationToken);
         if (taskList == null)
         {
-            return ApiResponse<PagedResponse<TaskDto>>.Fail("任务清单不存在");
+            return NotFoundResult<PagedResponse<TaskDto>>("任务清单不存在");
         }
 
         var query = _dbContext.Tasks
@@ -336,14 +410,6 @@ public class TaskListsController : ControllerBase
             })
             .ToListAsync(cancellationToken);
 
-        var response = new PagedResponse<TaskDto>
-        {
-            Items = items,
-            Total = total,
-            Page = page,
-            PageSize = pageSize
-        };
-
-        return ApiResponse<PagedResponse<TaskDto>>.Ok(response);
+        return Paged(items, total, page, pageSize);
     }
 }

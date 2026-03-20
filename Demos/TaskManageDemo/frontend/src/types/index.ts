@@ -1,5 +1,6 @@
 export interface ApiResponse<T> {
   success: boolean;
+  code?: number;
   message: string;
   data: T;
 }
@@ -17,6 +18,7 @@ export interface Task {
   taskGuid: string;
   taskListId?: number;
   taskListGuid?: string;
+  taskListName?: string;
   summary: string;
   description?: string;
   priority: number;
@@ -29,6 +31,8 @@ export interface Task {
   source: number;
   createdAt: string;
   updatedAt: string;
+  creatorName?: string;
+  tags?: string[];
   members?: TaskMember[];
   checkItems?: TaskCheckItem[];
 }
@@ -38,6 +42,9 @@ export interface TaskMember {
   taskId: number;
   userId: number;
   role: string;
+  feishuId?: string;
+  name?: string;
+  avatarUrl?: string;
   user?: User;
 }
 
@@ -58,6 +65,8 @@ export interface User {
   avatarUrl?: string;
   departmentId?: number;
   department?: Department;
+  role?: string;
+  permissions?: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -120,6 +129,7 @@ export interface TaskSearchParams {
 
 export interface CreateTaskRequest {
   taskListGuid?: string;
+  taskListId?: string;
   summary: string;
   description?: string;
   priority?: number;

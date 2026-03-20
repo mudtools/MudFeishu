@@ -22,6 +22,7 @@ public class UserChangedEventHandler : IFeishuEventHandler
     public string SupportedEventType => "contact.user.created_v3";
 
     private readonly TaskManageDbContext _dbContext;
+    private readonly IEventProcessService _eventProcessService;
     private readonly ILogger<UserChangedEventHandler> _logger;
 
     /// <summary>
@@ -29,9 +30,11 @@ public class UserChangedEventHandler : IFeishuEventHandler
     /// </summary>
     public UserChangedEventHandler(
         TaskManageDbContext dbContext,
+        IEventProcessService eventProcessService,
         ILogger<UserChangedEventHandler> logger)
     {
         _dbContext = dbContext;
+        _eventProcessService = eventProcessService;
         _logger = logger;
     }
 
@@ -52,38 +55,59 @@ public class UserChangedEventHandler : IFeishuEventHandler
         }
 
         var user = userEvent.User;
-        var existingUser = await _dbContext.Users
-            .FirstOrDefaultAsync(u => u.FeishuId == user.UserId, cancellationToken);
+        var eventId = $"{eventData.EventType}_{user.UserId}_{eventData.EventId}";
 
-        if (existingUser == null)
+        // 检查幂等性
+        if (await _eventProcessService.IsProcessedAsync(eventId, cancellationToken))
         {
-            existingUser = new User
+            _logger.LogWarning("用户变更事件已处理: {EventId}", eventId);
+            return;
+        }
+
+        var record = await _eventProcessService.StartProcessAsync(eventId, eventData.EventType, cancellationToken);
+
+        try
+        {
+            var existingUser = await _dbContext.Users
+                .FirstOrDefaultAsync(u => u.FeishuId == user.UserId, cancellationToken);
+
+            if (existingUser == null)
             {
-                FeishuId = user.UserId ?? string.Empty,
-                Name = user.Name ?? string.Empty,
-                Email = user.Email,
-                Mobile = user.Mobile,
-                Position = user.Position,
-                DepartmentId = user.DepartmentId,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow,
-                LastSyncedAt = DateTime.UtcNow
-            };
-            _dbContext.Users.Add(existingUser);
-        }
-        else
-        {
-            existingUser.Name = user.Name ?? existingUser.Name;
-            existingUser.Email = user.Email ?? existingUser.Email;
-            existingUser.Mobile = user.Mobile ?? existingUser.Mobile;
-            existingUser.Position = user.Position ?? existingUser.Position;
-            existingUser.DepartmentId = user.DepartmentId ?? existingUser.DepartmentId;
-            existingUser.UpdatedAt = DateTime.UtcNow;
-            existingUser.LastSyncedAt = DateTime.UtcNow;
-        }
+                existingUser = new User
+                {
+                    FeishuId = user.UserId ?? string.Empty,
+                    Name = user.Name ?? string.Empty,
+                    Email = user.Email,
+                    Mobile = user.Mobile,
+                    Position = user.Position,
+                    DepartmentId = user.DepartmentId,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow,
+                    LastSyncedAt = DateTime.UtcNow
+                };
+                _dbContext.Users.Add(existingUser);
+            }
+            else
+            {
+                existingUser.Name = user.Name ?? existingUser.Name;
+                existingUser.Email = user.Email ?? existingUser.Email;
+                existingUser.Mobile = user.Mobile ?? existingUser.Mobile;
+                existingUser.Position = user.Position ?? existingUser.Position;
+                existingUser.DepartmentId = user.DepartmentId ?? existingUser.DepartmentId;
+                existingUser.UpdatedAt = DateTime.UtcNow;
+                existingUser.LastSyncedAt = DateTime.UtcNow;
+            }
 
-        await _dbContext.SaveChangesAsync(cancellationToken);
-        _logger.LogInformation("用户同步完成: {UserId}", user.UserId);
+            await _dbContext.SaveChangesAsync(cancellationToken);
+            await _eventProcessService.MarkSuccessAsync(record.Id, cancellationToken);
+            _logger.LogInformation("用户同步完成: {UserId}", user.UserId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "处理用户变更事件失败: {EventId}", eventId);
+            await _eventProcessService.MarkFailedAsync(record.Id, ex.Message, cancellationToken);
+            throw;
+        }
     }
 }
 

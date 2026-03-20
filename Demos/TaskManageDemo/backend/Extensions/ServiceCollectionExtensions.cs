@@ -6,16 +6,21 @@
 // -----------------------------------------------------------------------
 
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using TaskManageDemo.Backend.Data;
 using TaskManageDemo.Backend.EventHandlers;
+using TaskManageDemo.Backend.Services;
 using TaskManageDemo.Backend.Services.Approval;
 using TaskManageDemo.Backend.Services.Auth;
 using TaskManageDemo.Backend.Services.Background;
+using TaskManageDemo.Backend.Services.Caching;
 using TaskManageDemo.Backend.Services.Feishu;
 using TaskManageDemo.Backend.Services.Search;
 using TaskManageDemo.Backend.Services.Statistics;
 using TaskManageDemo.Backend.Services.Sync;
 using TaskManageDemo.Backend.Services.Templates;
+using TaskManageDemo.Backend.Services.Transaction;
+using TaskManageDemo.Backend.Services.History;
 
 namespace TaskManageDemo.Backend.Extensions;
 
@@ -77,17 +82,40 @@ public static class ServiceCollectionExtensions
     /// </summary>
     public static IServiceCollection AddBusinessServices(this IServiceCollection services)
     {
+        // 飞书服务
         services.AddScoped<IFeishuTaskService, FeishuTaskService>();
         services.AddScoped<IFeishuTaskListService, FeishuTaskListService>();
         services.AddScoped<IFeishuNotificationService, FeishuNotificationService>();
+        services.AddScoped<IFeishuAuthService, FeishuAuthService>();
         services.AddScoped<ITaskSyncService, TaskSyncService>();
         services.AddScoped<IEventProcessService, EventProcessService>();
         services.AddScoped<ITaskSearchService, TaskSearchService>();
         services.AddScoped<ITaskTemplateService, TaskTemplateService>();
         services.AddScoped<IStatisticsService, StatisticsService>();
         services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<IUserService, UserService>();
+        services.AddScoped<IPermissionService, PermissionService>();
         services.AddScoped<IApprovalService, ApprovalService>();
         services.AddScoped<IDepartmentSyncService, DepartmentSyncService>();
+
+        // HttpClient
+        services.AddHttpClient();
+
+        // 事务服务
+        services.AddScoped<ITransactionService, TransactionService>();
+
+        // 任务历史服务
+        services.AddScoped<ITaskHistoryService, TaskHistoryService>();
+
+        // 任务服务（带缓存装饰器）
+        services.AddScoped<TaskService>();
+        services.AddScoped<ITaskService>(sp =>
+        {
+            var innerService = sp.GetRequiredService<TaskService>();
+            var cache = sp.GetRequiredService<IMemoryCache>();
+            var logger = sp.GetRequiredService<ILogger<CachedTaskService>>();
+            return new CachedTaskService(innerService, cache, logger);
+        });
 
         services.AddScheduledTasks();
 

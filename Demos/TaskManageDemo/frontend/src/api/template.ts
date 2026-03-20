@@ -3,27 +3,27 @@ import type { TaskTemplate, CreateTaskTemplateRequest, Task } from '../types'
 
 export const templateApi = {
   async getTemplates(): Promise<TaskTemplate[]> {
-    const response = await apiClient.get<TaskTemplate[]>('/templates')
+    const response = await apiClient.get<TaskTemplate[]>('/tasktemplates')
     return response.data
   },
 
   async getTemplate(id: number): Promise<TaskTemplate> {
-    const response = await apiClient.get<TaskTemplate>(`/templates/${id}`)
+    const response = await apiClient.get<TaskTemplate>(`/tasktemplates/${id}`)
     return response.data
   },
 
   async createTemplate(request: CreateTaskTemplateRequest): Promise<TaskTemplate> {
-    const response = await apiClient.post<TaskTemplate>('/templates', request)
+    const response = await apiClient.post<TaskTemplate>('/tasktemplates', request)
     return response.data
   },
 
   async updateTemplate(id: number, request: CreateTaskTemplateRequest): Promise<TaskTemplate> {
-    const response = await apiClient.put<TaskTemplate>(`/templates/${id}`, request)
+    const response = await apiClient.put<TaskTemplate>(`/tasktemplates/${id}`, request)
     return response.data
   },
 
   async deleteTemplate(id: number): Promise<void> {
-    await apiClient.delete(`/templates/${id}`)
+    await apiClient.delete(`/tasktemplates/${id}`)
   },
 
   async createTaskFromTemplate(
@@ -31,7 +31,7 @@ export const templateApi = {
     summary?: string,
     assignees?: string[]
   ): Promise<Task> {
-    const response = await apiClient.post<Task>(`/templates/${templateId}/create-task`, {
+    const response = await apiClient.post<Task>(`/tasktemplates/${templateId}/tasks`, {
       summary,
       assignees,
     })

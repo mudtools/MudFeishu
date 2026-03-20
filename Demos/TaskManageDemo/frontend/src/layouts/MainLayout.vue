@@ -1,152 +1,470 @@
 <template>
   <el-container class="app-layout">
-    <el-aside width="220px" class="app-aside">
+    <el-aside width="260px" class="app-aside">
       <div class="logo">
-        <h1>任务管理系统</h1>
+        <div class="logo-icon">
+          <el-icon :size="32"><DocumentChecked /></el-icon>
+        </div>
+        <div class="logo-text">
+          <h1>TaskMaster</h1>
+          <span>任务管理系统</span>
+        </div>
       </div>
-      <el-menu :default-active="activeMenu" class="app-menu" router>
-        <el-menu-item index="/tasks">
-          <el-icon>
-            <Document />
-          </el-icon>
-          <span>任务列表</span>
-        </el-menu-item>
-        <el-menu-item index="/kanban">
-          <el-icon>
-            <Grid />
-          </el-icon>
-          <span>任务看板</span>
-        </el-menu-item>
-        <el-menu-item index="/tasklists">
-          <el-icon>
-            <Folder />
-          </el-icon>
-          <span>任务清单</span>
-        </el-menu-item>
-        <el-menu-item index="/templates">
-          <el-icon>
-            <DocumentCopy />
-          </el-icon>
-          <span>任务模板</span>
-        </el-menu-item>
-        <el-menu-item index="/statistics">
-          <el-icon>
-            <DataAnalysis />
-          </el-icon>
-          <span>统计报表</span>
-        </el-menu-item>
-      </el-menu>
+      
+      <div class="nav-section">
+        <div class="nav-title">主菜单</div>
+        <el-menu :default-active="activeMenu" class="app-menu" router :collapse="isCollapsed">
+          <el-menu-item index="/tasks">
+            <el-icon><Document /></el-icon>
+            <template #title>
+              <span>任务列表</span>
+              <el-badge v-if="taskStats.pending > 0" :value="taskStats.pending" class="menu-badge" />
+            </template>
+          </el-menu-item>
+          <el-menu-item index="/kanban">
+            <el-icon><Grid /></el-icon>
+            <template #title>
+              <span>任务看板</span>
+            </template>
+          </el-menu-item>
+          <el-menu-item index="/tasklists">
+            <el-icon><Folder /></el-icon>
+            <template #title>
+              <span>任务清单</span>
+            </template>
+          </el-menu-item>
+        </el-menu>
+      </div>
+      
+      <div class="nav-section">
+        <div class="nav-title">工具</div>
+        <el-menu :default-active="activeMenu" class="app-menu" router :collapse="isCollapsed">
+          <el-menu-item index="/templates">
+            <el-icon><DocumentCopy /></el-icon>
+            <template #title>
+              <span>任务模板</span>
+            </template>
+          </el-menu-item>
+          <el-menu-item index="/statistics">
+            <el-icon><DataAnalysis /></el-icon>
+            <template #title>
+              <span>统计报表</span>
+            </template>
+          </el-menu-item>
+        </el-menu>
+      </div>
+      
+      <div class="sidebar-footer">
+        <div class="quick-actions">
+          <el-tooltip content="新建任务" placement="top">
+            <el-button type="primary" circle @click="showCreateTaskDialog">
+              <el-icon><Plus /></el-icon>
+            </el-button>
+          </el-tooltip>
+        </div>
+      </div>
     </el-aside>
+    
     <el-container>
       <el-header class="app-header">
+        <div class="header-left">
+          <el-button text @click="toggleSidebar">
+            <el-icon :size="20"><Fold v-if="!isCollapsed" /><Expand v-else /></el-icon>
+          </el-button>
+          <breadcrumb-nav />
+        </div>
+        
+        <div class="header-center">
+          <global-search />
+        </div>
+        
         <div class="header-right">
-          <el-dropdown>
-            <span class="user-info">
-              <el-avatar :size="32">U</el-avatar>
-              <span class="user-name">用户</span>
-            </span>
+          <el-tooltip :content="themeStore.isDark() ? '切换到亮色模式' : '切换到暗色模式'">
+            <el-button text circle @click="themeStore.toggleTheme()">
+              <el-icon :size="18">
+                <Sunny v-if="themeStore.isDark()" />
+                <Moon v-else />
+              </el-icon>
+            </el-button>
+          </el-tooltip>
+          
+          <el-tooltip content="通知" placement="bottom">
+            <el-button text circle class="notification-btn">
+              <el-icon :size="18"><Bell /></el-icon>
+              <el-badge v-if="notificationCount > 0" :value="notificationCount" class="notification-badge" />
+            </el-button>
+          </el-tooltip>
+          
+          <el-dropdown trigger="click">
+            <div class="user-info">
+              <el-avatar :size="36" :src="userAvatar" class="user-avatar">
+                {{ userName.charAt(0).toUpperCase() }}
+              </el-avatar>
+              <div class="user-details">
+                <span class="user-name">{{ userName }}</span>
+                <span class="user-role">管理员</span>
+              </div>
+              <el-icon><ArrowDown /></el-icon>
+            </div>
             <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item>个人设置</el-dropdown-item>
-                <el-dropdown-item divided>退出登录</el-dropdown-item>
+              <el-dropdown-menu class="user-dropdown">
+                <div class="dropdown-header">
+                  <el-avatar :size="48" :src="userAvatar">
+                    {{ userName.charAt(0).toUpperCase() }}
+                  </el-avatar>
+                  <div class="dropdown-user-info">
+                    <span class="dropdown-user-name">{{ userName }}</span>
+                    <span class="dropdown-user-email">user@example.com</span>
+                  </div>
+                </div>
+                <el-dropdown-item divided>
+                  <el-icon><User /></el-icon>
+                  个人设置
+                </el-dropdown-item>
+                <el-dropdown-item>
+                  <el-icon><Setting /></el-icon>
+                  系统设置
+                </el-dropdown-item>
+                <el-dropdown-item divided @click="handleLogout">
+                  <el-icon><SwitchButton /></el-icon>
+                  退出登录
+                </el-dropdown-item>
               </el-dropdown-menu>
             </template>
           </el-dropdown>
         </div>
       </el-header>
+      
       <el-main class="app-main">
-        <router-view />
+        <router-view v-slot="{ Component }">
+          <transition name="fade-transform" mode="out-in">
+            <component :is="Component" />
+          </transition>
+        </router-view>
       </el-main>
     </el-container>
   </el-container>
+  
+  <!-- 新建任务对话框 -->
+  <create-task-dialog v-model="createTaskVisible" />
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue"
-import { useRoute } from "vue-router"
+import { ref, computed, onMounted } from "vue"
+import { useRoute, useRouter } from "vue-router"
 import {
   Document,
   Grid,
   Folder,
   DocumentCopy,
   DataAnalysis,
+  Sunny,
+  Moon,
+  Plus,
+  Bell,
+  User,
+  Setting,
+  SwitchButton,
+  Fold,
+  Expand,
+  ArrowDown,
+  DocumentChecked,
 } from "@element-plus/icons-vue"
+import { useThemeStore } from "../stores/theme"
+import BreadcrumbNav from "../components/BreadcrumbNav.vue"
+import GlobalSearch from "../components/GlobalSearch.vue"
+import CreateTaskDialog from "../components/CreateTaskDialog.vue"
 
 const route = useRoute()
+const router = useRouter()
+const themeStore = useThemeStore()
+
+const isCollapsed = ref(false)
+const createTaskVisible = ref(false)
+const notificationCount = ref(3)
+const userName = ref(localStorage.getItem("username") || "用户")
+const userAvatar = ref("")
+
+const taskStats = ref({
+  pending: 5,
+  total: 12
+})
+
 const activeMenu = computed(() => route.path)
+
+const toggleSidebar = () => {
+  isCollapsed.value = !isCollapsed.value
+}
+
+const showCreateTaskDialog = () => {
+  createTaskVisible.value = true
+}
+
+const handleLogout = () => {
+  localStorage.removeItem("token")
+  localStorage.removeItem("username")
+  router.push("/login")
+}
+
+onMounted(() => {
+  // 可以在这里加载用户信息和通知数量
+})
 </script>
 
 <style scoped>
 .app-layout {
   height: 100vh;
+  background: var(--bg-secondary);
 }
 
 .app-aside {
-  background: #001529;
-  overflow: hidden;
+  background: linear-gradient(180deg, var(--bg-card) 0%, var(--bg-secondary) 100%);
+  border-right: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  transition: all 0.3s ease;
 }
 
 .logo {
-  height: 60px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--border-light);
+  gap: 12px;
+}
+
+.logo-icon {
+  width: 44px;
+  height: 44px;
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--accent-color) 100%);
+  border-radius: var(--radius-lg);
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #002140;
+  color: white;
+  box-shadow: var(--shadow-md);
 }
 
-.logo h1 {
-  color: #fff;
+.logo-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.logo-text h1 {
   font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
   margin: 0;
-  white-space: nowrap;
+  line-height: 1.2;
+}
+
+.logo-text span {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.nav-section {
+  padding: 16px 12px;
+}
+
+.nav-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  padding: 0 12px 8px;
+  margin-bottom: 4px;
 }
 
 .app-menu {
   border-right: none;
-  background: #001529;
+  background: transparent;
 }
 
-.app-menu .el-menu-item {
-  color: rgba(255, 255, 255, 0.65);
+.app-menu :deep(.el-menu-item) {
+  height: 44px;
+  line-height: 44px;
+  margin: 4px 0;
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  color: var(--text-secondary);
 }
 
-.app-menu .el-menu-item:hover {
-  background: #1890ff;
-  color: #fff;
+.app-menu :deep(.el-menu-item:hover) {
+  background: var(--primary-bg);
+  color: var(--primary-color);
 }
 
-.app-menu .el-menu-item.is-active {
-  background: #1890ff;
-  color: #fff;
+.app-menu :deep(.el-menu-item.is-active) {
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 100%);
+  color: white;
+  box-shadow: var(--shadow-md);
+}
+
+.app-menu :deep(.el-icon) {
+  font-size: 18px;
+}
+
+.menu-badge :deep(.el-badge__content) {
+  background: var(--accent-color);
+  border: none;
+}
+
+.sidebar-footer {
+  margin-top: auto;
+  padding: 16px;
+  border-top: 1px solid var(--border-light);
+}
+
+.quick-actions {
+  display: flex;
+  justify-content: center;
+}
+
+.quick-actions .el-button {
+  width: 48px;
+  height: 48px;
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--accent-color) 100%);
+  border: none;
+  box-shadow: var(--shadow-lg);
+}
+
+.quick-actions .el-button:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-xl);
 }
 
 .app-header {
-  background: #fff;
-  box-shadow: 0 1px 4px rgba(0, 21, 41, 0.08);
+  height: 70px;
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border-color);
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  padding: 0 20px;
+  justify-content: space-between;
+  padding: 0 24px;
+  box-shadow: var(--shadow-sm);
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.header-center {
+  flex: 1;
+  max-width: 500px;
+  margin: 0 24px;
 }
 
 .header-right {
   display: flex;
   align-items: center;
+  gap: 8px;
+}
+
+.notification-btn {
+  position: relative;
+}
+
+.notification-badge :deep(.el-badge__content) {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: var(--danger-color);
+  border: none;
 }
 
 .user-info {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
+  padding: 6px 12px;
+  border-radius: var(--radius-lg);
   cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.user-info:hover {
+  background: var(--bg-tertiary);
+}
+
+.user-avatar {
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--accent-color) 100%);
+  color: white;
+  font-weight: 600;
+}
+
+.user-details {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.3;
 }
 
 .user-name {
   font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.user-role {
+  font-size: 12px;
+  color: var(--text-muted);
 }
 
 .app-main {
-  background: #f0f2f5;
+  background: var(--bg-secondary);
   overflow: auto;
+  padding: 24px;
+}
+
+/* Dropdown styles */
+.user-dropdown {
+  min-width: 240px;
+}
+
+.dropdown-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: linear-gradient(135deg, var(--primary-bg) 0%, transparent 100%);
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+}
+
+.dropdown-user-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.dropdown-user-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.dropdown-user-email {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* Transitions */
+.fade-transform-enter-active,
+.fade-transform-leave-active {
+  transition: all 0.3s ease;
+}
+
+.fade-transform-enter-from {
+  opacity: 0;
+  transform: translateX(-20px);
+}
+
+.fade-transform-leave-to {
+  opacity: 0;
+  transform: translateX(20px);
 }
 </style>

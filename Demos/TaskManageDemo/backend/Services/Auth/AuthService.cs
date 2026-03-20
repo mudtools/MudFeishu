@@ -44,36 +44,16 @@ public interface IAuthService
 public class AuthService : IAuthService
 {
     private readonly TaskManageDbContext _dbContext;
+    private readonly IPermissionService _permissionService;
     private readonly ILogger<AuthService> _logger;
 
-    private static readonly Dictionary<string, List<string>> RolePermissions = new()
-    {
-        [UserRoles.Admin] = new List<string>
-        {
-            Permissions.TaskCreate, Permissions.TaskRead, Permissions.TaskUpdate, Permissions.TaskDelete, Permissions.TaskAssign,
-            Permissions.TaskListCreate, Permissions.TaskListRead, Permissions.TaskListUpdate, Permissions.TaskListDelete,
-            Permissions.TemplateCreate, Permissions.TemplateRead, Permissions.TemplateUpdate, Permissions.TemplateDelete,
-            Permissions.StatisticsView, Permissions.UserManage, Permissions.DepartmentManage
-        },
-        [UserRoles.DepartmentAdmin] = new List<string>
-        {
-            Permissions.TaskCreate, Permissions.TaskRead, Permissions.TaskUpdate, Permissions.TaskDelete, Permissions.TaskAssign,
-            Permissions.TaskListCreate, Permissions.TaskListRead, Permissions.TaskListUpdate, Permissions.TaskListDelete,
-            Permissions.TemplateCreate, Permissions.TemplateRead, Permissions.TemplateUpdate, Permissions.TemplateDelete,
-            Permissions.StatisticsView
-        },
-        [UserRoles.User] = new List<string>
-        {
-            Permissions.TaskCreate, Permissions.TaskRead, Permissions.TaskUpdate,
-            Permissions.TaskListCreate, Permissions.TaskListRead, Permissions.TaskListUpdate,
-            Permissions.TemplateCreate, Permissions.TemplateRead, Permissions.TemplateUpdate,
-            Permissions.StatisticsView
-        }
-    };
-
-    public AuthService(TaskManageDbContext dbContext, ILogger<AuthService> logger)
+    public AuthService(
+        TaskManageDbContext dbContext,
+        IPermissionService permissionService,
+        ILogger<AuthService> logger)
     {
         _dbContext = dbContext;
+        _permissionService = permissionService;
         _logger = logger;
     }
 
@@ -87,7 +67,7 @@ public class AuthService : IAuthService
             return null;
         }
 
-        var permissions = await GetUserPermissionsAsync(user.Id.ToString(), cancellationToken);
+        var permissions = await _permissionService.GetUserPermissionsAsync(user.Id, cancellationToken);
 
         return new UserInfo
         {
@@ -138,8 +118,12 @@ public class AuthService : IAuthService
 
     public async Task<bool> HasPermissionAsync(string userId, string permission, CancellationToken cancellationToken = default)
     {
-        var permissions = await GetUserPermissionsAsync(userId, cancellationToken);
-        return permissions.Contains(permission);
+        if (!int.TryParse(userId, out var id))
+        {
+            return false;
+        }
+
+        return await _permissionService.HasPermissionAsync(id, permission, cancellationToken);
     }
 
     public async Task<List<string>> GetUserPermissionsAsync(string userId, CancellationToken cancellationToken = default)
@@ -149,15 +133,6 @@ public class AuthService : IAuthService
             return new List<string>();
         }
 
-        var user = await _dbContext.Users.FindAsync([id], cancellationToken);
-        if (user == null)
-        {
-            return new List<string>();
-        }
-
-        var role = user.Role ?? UserRoles.User;
-        return RolePermissions.TryGetValue(role, out var permissions)
-            ? permissions
-            : RolePermissions[UserRoles.User];
+        return await _permissionService.GetUserPermissionsAsync(id, cancellationToken);
     }
 }

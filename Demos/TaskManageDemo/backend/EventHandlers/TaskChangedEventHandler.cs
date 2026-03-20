@@ -24,6 +24,7 @@ public class TaskChangedEventHandler : IFeishuEventHandler
 
     private readonly TaskManageDbContext _dbContext;
     private readonly ITaskSyncService _taskSyncService;
+    private readonly IEventProcessService _eventProcessService;
     private readonly ILogger<TaskChangedEventHandler> _logger;
 
     /// <summary>
@@ -32,10 +33,12 @@ public class TaskChangedEventHandler : IFeishuEventHandler
     public TaskChangedEventHandler(
         TaskManageDbContext dbContext,
         ITaskSyncService taskSyncService,
+        IEventProcessService eventProcessService,
         ILogger<TaskChangedEventHandler> logger)
     {
         _dbContext = dbContext;
         _taskSyncService = taskSyncService;
+        _eventProcessService = eventProcessService;
         _logger = logger;
     }
 
@@ -56,9 +59,29 @@ public class TaskChangedEventHandler : IFeishuEventHandler
         }
 
         var taskGuid = taskEvent.Task.TaskId;
-        await _taskSyncService.SyncTaskAsync(taskGuid, cancellationToken);
+        var eventId = $"{eventData.EventType}_{taskGuid}_{eventData.EventId}";
 
-        _logger.LogInformation("任务同步完成: {TaskGuid}", taskGuid);
+        // 检查幂等性
+        if (await _eventProcessService.IsProcessedAsync(eventId, cancellationToken))
+        {
+            _logger.LogWarning("任务变更事件已处理: {EventId}", eventId);
+            return;
+        }
+
+        var record = await _eventProcessService.StartProcessAsync(eventId, eventData.EventType, cancellationToken);
+
+        try
+        {
+            await _taskSyncService.SyncTaskAsync(taskGuid, cancellationToken);
+            await _eventProcessService.MarkSuccessAsync(record.Id, cancellationToken);
+            _logger.LogInformation("任务同步完成: {TaskGuid}", taskGuid);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "处理任务变更事件失败: {EventId}", eventId);
+            await _eventProcessService.MarkFailedAsync(record.Id, ex.Message, cancellationToken);
+            throw;
+        }
     }
 }
 

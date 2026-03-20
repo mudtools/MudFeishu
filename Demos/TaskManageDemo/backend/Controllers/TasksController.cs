@@ -5,11 +5,13 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-using Microsoft.EntityFrameworkCore;
 using TaskManageDemo.Backend.Data;
+using TaskManageDemo.Backend.Middleware;
 using TaskManageDemo.Backend.Models.DTOs;
 using TaskManageDemo.Backend.Services.Feishu;
+using TaskManageDemo.Backend.Services.History;
 using TaskManageDemo.Backend.Services.Sync;
+using TaskManageDemo.Backend.Services.Transaction;
 
 namespace TaskManageDemo.Backend.Controllers;
 
@@ -18,12 +20,14 @@ namespace TaskManageDemo.Backend.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
-public class TasksController : ControllerBase
+public class TasksController : BaseController
 {
     private readonly TaskManageDbContext _dbContext;
     private readonly IFeishuTaskService _feishuTaskService;
     private readonly ITaskSyncService _taskSyncService;
     private readonly IFeishuNotificationService _notificationService;
+    private readonly ITransactionService _transactionService;
+    private readonly ITaskHistoryService _taskHistoryService;
     private readonly ILogger<TasksController> _logger;
 
     /// <summary>
@@ -34,12 +38,16 @@ public class TasksController : ControllerBase
         IFeishuTaskService feishuTaskService,
         ITaskSyncService taskSyncService,
         IFeishuNotificationService notificationService,
+        ITransactionService transactionService,
+        ITaskHistoryService taskHistoryService,
         ILogger<TasksController> logger)
     {
         _dbContext = dbContext;
         _feishuTaskService = feishuTaskService;
         _taskSyncService = taskSyncService;
         _notificationService = notificationService;
+        _transactionService = transactionService;
+        _taskHistoryService = taskHistoryService;
         _logger = logger;
     }
 
@@ -47,6 +55,7 @@ public class TasksController : ControllerBase
     /// 获取任务列表
     /// </summary>
     [HttpGet]
+    [RequirePermission("task:read")]
     public async Task<ActionResult<ApiResponse<PagedResponse<TaskDto>>>> GetTasks(
         [FromQuery] TaskQueryParameters parameters,
         CancellationToken cancellationToken)
@@ -125,21 +134,14 @@ public class TasksController : ControllerBase
             })
             .ToListAsync(cancellationToken);
 
-        var response = new PagedResponse<TaskDto>
-        {
-            Items = items,
-            Total = total,
-            Page = parameters.Page,
-            PageSize = parameters.PageSize
-        };
-
-        return ApiResponse<PagedResponse<TaskDto>>.Ok(response);
+        return Paged(items, total, parameters.Page, parameters.PageSize);
     }
 
     /// <summary>
     /// 获取任务详情
     /// </summary>
     [HttpGet("{id}")]
+    [RequirePermission("task:read")]
     public async Task<ActionResult<ApiResponse<TaskDto>>> GetTask(int id, CancellationToken cancellationToken)
     {
         var task = await _dbContext.Tasks
@@ -149,7 +151,7 @@ public class TasksController : ControllerBase
 
         if (task == null)
         {
-            return ApiResponse<TaskDto>.Fail("任务不存在");
+            return NotFoundResult<TaskDto>("任务不存在");
         }
 
         var dto = new TaskDto
@@ -176,70 +178,117 @@ public class TasksController : ControllerBase
             }).ToList()
         };
 
-        return ApiResponse<TaskDto>.Ok(dto);
+        return Success(dto);
     }
 
     /// <summary>
     /// 创建任务
     /// </summary>
     [HttpPost]
+    [RequirePermission("task:create")]
     public async Task<ActionResult<ApiResponse<TaskDto>>> CreateTask(
         [FromBody] CreateTaskRequest request,
         CancellationToken cancellationToken)
     {
-        var taskGuid = await _feishuTaskService.CreateTaskAsync(
-            request.Summary,
-            request.Description,
-            request.AssigneeIds,
-            request.DueTime,
-            cancellationToken);
+        string? taskGuid = null;
 
-        if (string.IsNullOrEmpty(taskGuid))
+        try
         {
-            return ApiResponse<TaskDto>.Fail("创建任务失败");
-        }
+            // 在飞书创建任务
+            taskGuid = await _feishuTaskService.CreateTaskAsync(
+                request.Summary,
+                request.Description,
+                request.AssigneeIds,
+                request.DueTime,
+                cancellationToken);
 
-        var syncedTask = await _taskSyncService.SyncTaskAsync(taskGuid, cancellationToken);
-        if (syncedTask == null)
-        {
-            return ApiResponse<TaskDto>.Fail("任务同步失败");
-        }
-
-        if (request.AssigneeIds != null && request.AssigneeIds.Count > 0)
-        {
-            foreach (var assigneeId in request.AssigneeIds)
+            if (string.IsNullOrEmpty(taskGuid))
             {
-                await _notificationService.SendTaskAssignedNotificationAsync(
-                    assigneeId,
-                    request.Summary,
-                    taskGuid,
-                    cancellationToken);
+                return Fail<TaskDto>("创建任务失败：飞书 API 返回空值");
             }
+
+            _logger.LogInformation("飞书任务创建成功，TaskGuid: {TaskGuid}", taskGuid);
+
+            // 使用事务同步到本地数据库
+            var result = await _transactionService.ExecuteAsync(async () =>
+            {
+                var syncedTask = await _taskSyncService.SyncTaskAsync(taskGuid!, cancellationToken);
+                if (syncedTask == null)
+                {
+                    throw new InvalidOperationException("任务同步到本地数据库失败");
+                }
+                return syncedTask;
+            }, cancellationToken);
+
+            // 发送通知
+            if (request.AssigneeIds != null && request.AssigneeIds.Count > 0)
+            {
+                foreach (var assigneeId in request.AssigneeIds)
+                {
+                    try
+                    {
+                        await _notificationService.SendTaskAssignedNotificationAsync(
+                            assigneeId,
+                            request.Summary,
+                            taskGuid,
+                            cancellationToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "发送任务分配通知失败，AssigneeId: {AssigneeId}", assigneeId);
+                    }
+                }
+            }
+
+            var dto = new TaskDto
+            {
+                Id = result.Id,
+                TaskGuid = result.TaskGuid,
+                Summary = result.Summary,
+                Description = result.Description,
+                Status = result.Status,
+                IsCompleted = result.IsCompleted,
+                Priority = result.Priority,
+                StartTime = result.StartTime,
+                DueTime = result.DueTime,
+                CreatedAt = result.CreatedAt,
+                CreatorId = result.CreatorId,
+                TaskListGuid = result.TaskListGuid
+            };
+
+            // 记录任务创建历史
+            var userId = GetCurrentUserId();
+            await _taskHistoryService.RecordTaskCreatedAsync(result.Id, userId, cancellationToken);
+
+            return Created(dto, "任务创建成功");
         }
-
-        var dto = new TaskDto
+        catch (Exception ex)
         {
-            Id = syncedTask.Id,
-            TaskGuid = syncedTask.TaskGuid,
-            Summary = syncedTask.Summary,
-            Description = syncedTask.Description,
-            Status = syncedTask.Status,
-            IsCompleted = syncedTask.IsCompleted,
-            Priority = syncedTask.Priority,
-            StartTime = syncedTask.StartTime,
-            DueTime = syncedTask.DueTime,
-            CreatedAt = syncedTask.CreatedAt,
-            CreatorId = syncedTask.CreatorId,
-            TaskListGuid = syncedTask.TaskListGuid
-        };
+            _logger.LogError(ex, "创建任务失败，TaskGuid: {TaskGuid}", taskGuid);
 
-        return ApiResponse<TaskDto>.Ok(dto, "任务创建成功");
+            // 如果飞书任务已创建但本地同步失败，尝试清理飞书任务
+            if (!string.IsNullOrEmpty(taskGuid))
+            {
+                try
+                {
+                    await _feishuTaskService.DeleteTaskAsync(taskGuid, cancellationToken);
+                    _logger.LogWarning("已回滚删除飞书任务: {TaskGuid}", taskGuid);
+                }
+                catch (Exception deleteEx)
+                {
+                    _logger.LogError(deleteEx, "回滚删除飞书任务失败，TaskGuid: {TaskGuid}，需要手动清理", taskGuid);
+                }
+            }
+
+            return Fail<TaskDto>($"创建任务失败: {ex.Message}");
+        }
     }
 
     /// <summary>
     /// 更新任务
     /// </summary>
     [HttpPut("{id}")]
+    [RequirePermission("task:update")]
     public async Task<ActionResult<ApiResponse<TaskDto>>> UpdateTask(
         int id,
         [FromBody] UpdateTaskRequest request,
@@ -248,76 +297,113 @@ public class TasksController : ControllerBase
         var task = await _dbContext.Tasks.FindAsync([id], cancellationToken);
         if (task == null)
         {
-            return ApiResponse<TaskDto>.Fail("任务不存在");
+            return NotFoundResult<TaskDto>("任务不存在");
         }
 
-        var success = await _feishuTaskService.UpdateTaskAsync(
-            task.TaskGuid,
-            request.Summary,
-            request.Description,
-            request.IsCompleted,
-            request.DueTime,
-            cancellationToken);
-
-        if (!success)
+        try
         {
-            return ApiResponse<TaskDto>.Fail("更新任务失败");
+            // 在飞书更新任务
+            var success = await _feishuTaskService.UpdateTaskAsync(
+                task.TaskGuid,
+                request.Summary,
+                request.Description,
+                request.IsCompleted,
+                request.DueTime,
+                cancellationToken);
+
+            if (!success)
+            {
+                return Fail<TaskDto>("更新任务失败：飞书 API 返回失败");
+            }
+
+            _logger.LogInformation("飞书任务更新成功，TaskGuid: {TaskGuid}", task.TaskGuid);
+
+            // 使用事务同步到本地数据库
+            var result = await _transactionService.ExecuteAsync(async () =>
+            {
+                var syncedTask = await _taskSyncService.SyncTaskAsync(task.TaskGuid, cancellationToken);
+                if (syncedTask == null)
+                {
+                    throw new InvalidOperationException("任务同步到本地数据库失败");
+                }
+                return syncedTask;
+            }, cancellationToken);
+
+            var dto = new TaskDto
+            {
+                Id = result.Id,
+                TaskGuid = result.TaskGuid,
+                Summary = result.Summary,
+                Description = result.Description,
+                Status = result.Status,
+                IsCompleted = result.IsCompleted,
+                Priority = result.Priority,
+                StartTime = result.StartTime,
+                DueTime = result.DueTime,
+                CompletedTime = result.CompletedTime,
+                CreatedAt = result.CreatedAt,
+                CreatorId = result.CreatorId,
+                TaskListGuid = result.TaskListGuid
+            };
+
+            return Updated(dto, "任务更新成功");
         }
-
-        var syncedTask = await _taskSyncService.SyncTaskAsync(task.TaskGuid, cancellationToken);
-        if (syncedTask == null)
+        catch (Exception ex)
         {
-            return ApiResponse<TaskDto>.Fail("任务同步失败");
+            _logger.LogError(ex, "更新任务失败，TaskId: {TaskId}, TaskGuid: {TaskGuid}", id, task.TaskGuid);
+            return Fail<TaskDto>($"更新任务失败: {ex.Message}");
         }
-
-        var dto = new TaskDto
-        {
-            Id = syncedTask.Id,
-            TaskGuid = syncedTask.TaskGuid,
-            Summary = syncedTask.Summary,
-            Description = syncedTask.Description,
-            Status = syncedTask.Status,
-            IsCompleted = syncedTask.IsCompleted,
-            Priority = syncedTask.Priority,
-            StartTime = syncedTask.StartTime,
-            DueTime = syncedTask.DueTime,
-            CompletedTime = syncedTask.CompletedTime,
-            CreatedAt = syncedTask.CreatedAt,
-            CreatorId = syncedTask.CreatorId,
-            TaskListGuid = syncedTask.TaskListGuid
-        };
-
-        return ApiResponse<TaskDto>.Ok(dto, "任务更新成功");
     }
 
     /// <summary>
     /// 删除任务
     /// </summary>
     [HttpDelete("{id}")]
+    [RequirePermission("task:delete")]
     public async Task<ActionResult<ApiResponse<bool>>> DeleteTask(int id, CancellationToken cancellationToken)
     {
         var task = await _dbContext.Tasks.FindAsync([id], cancellationToken);
         if (task == null)
         {
-            return ApiResponse<bool>.Fail("任务不存在");
+            return NotFoundResult<bool>("任务不存在");
         }
 
-        var success = await _feishuTaskService.DeleteTaskAsync(task.TaskGuid, cancellationToken);
-        if (!success)
+        try
         {
-            return ApiResponse<bool>.Fail("删除任务失败");
+            // 在飞书删除任务
+            var success = await _feishuTaskService.DeleteTaskAsync(task.TaskGuid, cancellationToken);
+            if (!success)
+            {
+                return Fail<bool>("删除任务失败：飞书 API 返回失败");
+            }
+
+            _logger.LogInformation("飞书任务删除成功，TaskGuid: {TaskGuid}", task.TaskGuid);
+
+            // 使用事务删除本地数据库记录
+            await _transactionService.ExecuteAsync(async () =>
+            {
+                _dbContext.Tasks.Remove(task);
+                await _dbContext.SaveChangesAsync(cancellationToken);
+            }, cancellationToken);
+
+            return Deleted("任务删除成功");
         }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "删除任务失败，TaskId: {TaskId}, TaskGuid: {TaskGuid}", id, task.TaskGuid);
 
-        _dbContext.Tasks.Remove(task);
-        await _dbContext.SaveChangesAsync(cancellationToken);
+            // 注意：飞书任务已删除，无法回滚，记录警告日志
+            _logger.LogWarning("飞书任务已删除但本地数据库操作失败，TaskGuid: {TaskGuid}，需要手动清理", task.TaskGuid);
 
-        return ApiResponse<bool>.Ok(true, "任务删除成功");
+            return Fail<bool>($"删除任务失败: {ex.Message}");
+        }
     }
 
     /// <summary>
     /// 分配任务
     /// </summary>
     [HttpPost("{id}/assign")]
+    [RequirePermission("task:update")]
     public async Task<ActionResult<ApiResponse<bool>>> AssignTask(
         int id,
         [FromBody] AssignTaskRequest request,
@@ -330,7 +416,7 @@ public class TasksController : ControllerBase
 
         if (task == null)
         {
-            return ApiResponse<bool>.Fail("任务不存在");
+            return NotFoundResult<bool>("任务不存在");
         }
 
         var success = await _feishuTaskService.AddMembersAsync(
@@ -341,7 +427,7 @@ public class TasksController : ControllerBase
 
         if (!success)
         {
-            return ApiResponse<bool>.Fail("分配任务失败");
+            return Fail<bool>("分配任务失败");
         }
 
         foreach (var assigneeId in request.AssigneeIds)
@@ -353,13 +439,14 @@ public class TasksController : ControllerBase
                 cancellationToken);
         }
 
-        return ApiResponse<bool>.Ok(true, "任务分配成功");
+        return Success(true, "任务分配成功");
     }
 
     /// <summary>
     /// 更新任务状态
     /// </summary>
     [HttpPut("{id}/status")]
+    [RequirePermission("task:update")]
     public async Task<ActionResult<ApiResponse<bool>>> UpdateTaskStatus(
         int id,
         [FromBody] UpdateTaskStatusRequest request,
@@ -368,7 +455,7 @@ public class TasksController : ControllerBase
         var task = await _dbContext.Tasks.FindAsync([id], cancellationToken);
         if (task == null)
         {
-            return ApiResponse<bool>.Fail("任务不存在");
+            return NotFoundResult<bool>("任务不存在");
         }
 
         var success = await _feishuTaskService.UpdateTaskAsync(
@@ -381,11 +468,11 @@ public class TasksController : ControllerBase
 
         if (!success)
         {
-            return ApiResponse<bool>.Fail("更新状态失败");
+            return Fail<bool>("更新状态失败");
         }
 
         await _taskSyncService.SyncTaskAsync(task.TaskGuid, cancellationToken);
 
-        return ApiResponse<bool>.Ok(true, "状态更新成功");
+        return Success(true, "状态更新成功");
     }
 }

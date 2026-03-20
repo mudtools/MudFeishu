@@ -1,61 +1,72 @@
-import { createRouter, createWebHistory } from "vue-router";
-import type { RouteRecordRaw } from "vue-router";
-import MainLayout from "../layouts/MainLayout.vue";
+import { createRouter, createWebHistory } from 'vue-router'
+import type { RouteRecordRaw } from 'vue-router'
+import MainLayout from '../layouts/MainLayout.vue'
+import { setupRouterGuards } from './guards'
 
 const routes: RouteRecordRaw[] = [
   {
-    path: "/",
+    path: '/login',
+    name: 'Login',
+    component: () => import('../views/Login.vue'),
+    meta: { title: '登录', public: true },
+  },
+  {
+    path: '/',
     component: MainLayout,
-    redirect: "/tasks",
+    redirect: '/tasks',
     children: [
       {
-        path: "tasks",
-        name: "TaskList",
-        component: () => import("../views/TaskList.vue"),
-        meta: { title: "任务列表" },
+        path: 'tasks',
+        name: 'TaskList',
+        component: () => import('../views/TaskList.vue'),
+        meta: { title: '任务列表', icon: 'List' },
       },
       {
-        path: "tasks/:id",
-        name: "TaskDetail",
-        component: () => import("../views/TaskDetail.vue"),
-        meta: { title: "任务详情" },
+        path: 'tasks/:id',
+        name: 'TaskDetail',
+        component: () => import('../views/TaskDetail.vue'),
+        meta: { title: '任务详情' },
       },
       {
-        path: "kanban",
-        name: "Kanban",
-        component: () => import("../views/Kanban.vue"),
-        meta: { title: "任务看板" },
+        path: 'kanban',
+        name: 'Kanban',
+        component: () => import('../views/Kanban.vue'),
+        meta: { title: '任务看板', icon: 'Grid' },
       },
       {
-        path: "tasklists",
-        name: "TaskLists",
-        component: () => import("../views/TaskLists.vue"),
-        meta: { title: "任务清单" },
+        path: 'tasklists',
+        name: 'TaskLists',
+        component: () => import('../views/TaskLists.vue'),
+        meta: { title: '任务清单', icon: 'Folder' },
       },
       {
-        path: "templates",
-        name: "Templates",
-        component: () => import("../views/Templates.vue"),
-        meta: { title: "任务模板" },
+        path: 'templates',
+        name: 'Templates',
+        component: () => import('../views/Templates.vue'),
+        meta: { title: '任务模板', icon: 'Document' },
       },
       {
-        path: "statistics",
-        name: "Statistics",
-        component: () => import("../views/Statistics.vue"),
-        meta: { title: "统计报表" },
+        path: 'statistics',
+        name: 'Statistics',
+        component: () => import('../views/Statistics.vue'),
+        meta: { title: '统计报表', icon: 'DataAnalysis' },
       },
     ],
   },
-];
+  {
+    path: '/:pathMatch(.*)*',
+    name: 'NotFound',
+    component: () => import('../views/NotFound.vue'),
+    meta: { title: '页面不存在', public: true },
+  },
+]
 
 const router = createRouter({
   history: createWebHistory(),
   routes,
-});
+})
 
-router.beforeEach((to, _from, next) => {
-  document.title = `${to.meta.title || "任务管理"} - TaskManage`;
-  next();
-});
+// 设置路由守卫
+setupRouterGuards(router)
 
-export default router;
+export default router

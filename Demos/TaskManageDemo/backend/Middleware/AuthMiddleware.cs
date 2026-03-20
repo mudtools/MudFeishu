@@ -154,42 +154,73 @@ public class AuthorizationMiddleware
             return;
         }
 
-        var requiredPermissions = endpoint.Metadata
-            .GetMetadata<RequirePermissionAttribute>()?.Permissions;
+        // 检查角色要求
+        var requireRoleAttributes = endpoint.Metadata
+            .GetOrderedMetadata<RequireRoleAttribute>();
 
-        if (requiredPermissions == null || requiredPermissions.Length == 0)
+        if (requireRoleAttributes != null && requireRoleAttributes.Count > 0)
         {
-            await _next(context);
-            return;
+            var userRoles = context.User.Claims
+                .Where(c => c.Type == ClaimTypes.Role)
+                .Select(c => c.Value)
+                .ToHashSet();
+
+            var requiredRoles = requireRoleAttributes
+                .SelectMany(a => a.Roles)
+                .ToHashSet();
+
+            if (requiredRoles.Count > 0 && !requiredRoles.Any(r => userRoles.Contains(r)))
+            {
+                _logger.LogWarning("用户 {UserId} 缺少所需角色: {Roles}",
+                    context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value,
+                    string.Join(", ", requiredRoles));
+
+                await WriteForbiddenResponse(context, "权限不足：缺少所需角色");
+                return;
+            }
         }
 
-        var userPermissions = context.User.Claims
-            .Where(c => c.Type == "Permission")
-            .Select(c => c.Value)
-            .ToHashSet();
+        // 检查权限要求
+        var requirePermissionAttributes = endpoint.Metadata
+            .GetOrderedMetadata<RequirePermissionAttribute>();
 
-        var hasPermission = requiredPermissions.Any(p => userPermissions.Contains(p));
-
-        if (!hasPermission)
+        if (requirePermissionAttributes != null && requirePermissionAttributes.Count > 0)
         {
-            _logger.LogWarning("用户 {UserId} 缺少所需权限: {Permissions}",
-                context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value,
-                string.Join(", ", requiredPermissions));
+            var userPermissions = context.User.Claims
+                .Where(c => c.Type == "Permission")
+                .Select(c => c.Value)
+                .ToHashSet();
 
-            context.Response.StatusCode = StatusCodes.Status403Forbidden;
-            context.Response.ContentType = "application/json; charset=utf-8";
+            var requiredPermissions = requirePermissionAttributes
+                .SelectMany(a => a.Permissions)
+                .ToHashSet();
 
-            var response = new ApiResponse<object>
+            if (requiredPermissions.Count > 0 && !requiredPermissions.Any(p => userPermissions.Contains(p)))
             {
-                Success = false,
-                Message = "权限不足"
-            };
+                _logger.LogWarning("用户 {UserId} 缺少所需权限: {Permissions}",
+                    context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value,
+                    string.Join(", ", requiredPermissions));
 
-            await context.Response.WriteAsJsonAsync(response);
-            return;
+                await WriteForbiddenResponse(context, "权限不足：缺少所需权限");
+                return;
+            }
         }
 
         await _next(context);
+    }
+
+    private static async Task WriteForbiddenResponse(HttpContext context, string message)
+    {
+        context.Response.StatusCode = StatusCodes.Status403Forbidden;
+        context.Response.ContentType = "application/json; charset=utf-8";
+
+        var response = new ApiResponse<object>
+        {
+            Success = false,
+            Message = message
+        };
+
+        await context.Response.WriteAsJsonAsync(response);
     }
 }
 

@@ -100,4 +100,14 @@ public abstract class BaseController : ControllerBase
     {
         return ApiResponse<T>.Fail(message);
     }
+
+    /// <summary>
+    /// 获取当前用户ID
+    /// </summary>
+    protected string GetCurrentUserId()
+    {
+        return User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+            ?? User.FindFirst("FeishuId")?.Value
+            ?? "system";
+    }
 }

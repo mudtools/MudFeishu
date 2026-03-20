@@ -6,6 +6,7 @@
 // -----------------------------------------------------------------------
 
 using Microsoft.AspNetCore.Mvc;
+using TaskManageDemo.Backend.Middleware;
 using TaskManageDemo.Backend.Models.DTOs;
 using TaskManageDemo.Backend.Services.Statistics;
 
@@ -33,6 +34,7 @@ public class StatisticsController : BaseController
     /// 获取任务统计概览
     /// </summary>
     [HttpGet("tasks")]
+    [RequirePermission("statistics:read")]
     public async Task<ActionResult<ApiResponse<TaskStatisticsDto>>> GetTaskStatistics(
         CancellationToken cancellationToken)
     {
@@ -44,6 +46,7 @@ public class StatisticsController : BaseController
     /// 获取用户工作量统计
     /// </summary>
     [HttpGet("user-workload")]
+    [RequirePermission("statistics:read")]
     public async Task<ActionResult<ApiResponse<List<UserWorkloadDto>>>> GetUserWorkload(
         [FromQuery] DateTime? startDate,
         [FromQuery] DateTime? endDate,
@@ -60,6 +63,7 @@ public class StatisticsController : BaseController
     /// 获取任务完成趋势
     /// </summary>
     [HttpGet("task-trend")]
+    [RequirePermission("statistics:read")]
     public async Task<ActionResult<ApiResponse<List<TaskTrendDto>>>> GetTaskTrend(
         [FromQuery] DateTime? startDate,
         [FromQuery] DateTime? endDate,

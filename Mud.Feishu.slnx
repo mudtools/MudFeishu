@@ -7,6 +7,7 @@
     <Project Path="Demos/Mud.Feishu.Demo/Mud.Feishu.Demo.csproj" />
     <Project Path="Demos/Mud.Feishu.Webhook.Demo/Mud.Feishu.Webhook.Demo.csproj" Id="33cbe001-6cfc-489d-8f5b-12dea3b659ed" />
     <Project Path="Demos/Mud.Feishu.WebSocket.Demo/Mud.Feishu.WebSocket.Demo.csproj" />
+    <Project Path="Demos/TaskManageDemo/backend/TaskManageDemo.Backend.csproj" />
   </Folder>
   <Folder Name="/Solution/">
     <File Path="CHANGELOG.md" />
@@ -27,8 +28,8 @@
     <Project Path="Tests/Mud.Feishu.Abstractions.Tests/Mud.Feishu.Abstractions.Tests.csproj" />
     <Project Path="Tests/Mud.Feishu.Authentication.Tests/Mud.Feishu.Authentication.Tests.csproj" />
     <Project Path="Tests/Mud.Feishu.Redis.Tests/Mud.Feishu.Redis.Tests.csproj" />
+    <Project Path="Tests/Mud.Feishu.Tests/Mud.Feishu.Tests.csproj" />
     <Project Path="Tests/Mud.Feishu.Webhook.Tests/Mud.Feishu.Webhook.Tests.csproj" />
     <Project Path="Tests/Mud.Feishu.WebSocket.Tests/Mud.Feishu.WebSocket.Tests.csproj" />
-    <Project Path="Tests/Mud.Feishu.Tests/Mud.Feishu.Tests.csproj" />
   </Folder>
 </Solution>

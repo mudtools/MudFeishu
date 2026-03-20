@@ -33,12 +33,12 @@ export const taskApi = {
   },
 
   async completeTask(id: number): Promise<Task> {
-    const response = await apiClient.put<Task>(`/tasks/${id}/complete`)
+    const response = await apiClient.put<Task>(`/tasks/${id}/status`, { isCompleted: true })
     return response.data
   },
 
-  async assignTask(id: number, userIds: number[]): Promise<Task> {
-    const response = await apiClient.post<Task>(`/tasks/${id}/assign`, { userIds })
+  async assignTask(id: number, assigneeIds: string[], followerIds?: string[]): Promise<boolean> {
+    const response = await apiClient.post<boolean>(`/tasks/${id}/assign`, { assigneeIds, followerIds })
     return response.data
   },
 

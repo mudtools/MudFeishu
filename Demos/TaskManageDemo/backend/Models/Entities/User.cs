@@ -68,6 +68,11 @@ public class User
     public string? Position { get; set; }
 
     /// <summary>
+    /// 用户角色
+    /// </summary>
+    public string? Role { get; set; }
+
+    /// <summary>
     /// 是否激活
     /// </summary>
     public bool IsActive { get; set; } = true;
@@ -86,6 +91,11 @@ public class User
     /// 最后同步时间
     /// </summary>
     public DateTime LastSyncedAt { get; set; } = DateTime.UtcNow;
+
+    /// <summary>
+    /// 最后登录时间
+    /// </summary>
+    public DateTime? LastLoginAt { get; set; }
 
     /// <summary>
     /// 用户参与的任务

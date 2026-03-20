@@ -84,7 +84,16 @@ builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IWikiService, WikiService>();
 
 // 使用 Mud.Feishu.Abstractions 中的用户上下文服务
-builder.Services.AddFeishuUserContext();
+builder.Services.AddFeishuUserContext(o =>
+{
+    o.OpenIdClaimType = "open_id"; // 根据飞书的用户信息调整
+    o.UnionIdClaimType = "union_id"; // 根据飞书的用户信息调整
+    o.UserIdClaimType = "user_id";
+    o.NameClaimType = "name";
+    o.EnableSensitiveLog = true;
+});
+
+
 builder.Services.AddScoped<SetUserContextFilter>();
 
 builder.Services.AddFeishuApp(builder.Configuration, "FeishuApps");

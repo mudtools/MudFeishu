@@ -11,6 +11,7 @@ Enterprise-Grade .NET SDK for Feishu (Lark) API Integration
 [![NuGet](https://img.shields.io/nuget/v/Mud.Feishu.WebSocket.svg)](https://www.nuget.org/packages/Mud.Feishu.WebSocket/)
 [![NuGet](https://img.shields.io/nuget/v/Mud.Feishu.Webhook.svg)](https://www.nuget.org/packages/Mud.Feishu.Webhook/)
 [![NuGet](https://img.shields.io/nuget/v/Mud.Feishu.Abstractions.svg)](https://www.nuget.org/packages/Mud.Feishu.Abstractions/)
+[![NuGet](https://img.shields.io/nuget/v/Mud.Feishu.Authentication.svg)](https://www.nuget.org/packages/Mud.Feishu.Authentication/)
 [![NuGet](https://img.shields.io/nuget/v/Mud.Feishu.Redis.svg)](https://www.nuget.org/packages/Mud.Feishu.Redis/)
 
 **Complete HTTP API, WebSocket Real-time Event Subscription, and Webhook Event Processing Solution**
@@ -96,6 +97,7 @@ graph TB
 | --------------------------- | --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
 | **Mud.Feishu.Abstractions** | Event subscription abstraction layer with Strategy and Factory pattern event handling architecture                    | [![Nuget](https://img.shields.io/nuget/v/Mud.Feishu.Abstractions.svg)](https://www.nuget.org/packages/Mud.Feishu.Abstractions/) | ![Nuget](https://img.shields.io/nuget/dt/Mud.Feishu.Abstractions.svg) |
 | **Mud.Feishu**              | Core HTTP API client library with full Feishu capabilities including organization, messaging, and group chat features | [![Nuget](https://img.shields.io/nuget/v/Mud.Feishu.svg)](https://www.nuget.org/packages/Mud.Feishu/)                           | ![Nuget](https://img.shields.io/nuget/dt/Mud.Feishu.svg)              |
+| **Mud.Feishu.Authentication** | Feishu user authentication middleware with thread-safe user context management based on AsyncLocal | [![Nuget](https://img.shields.io/nuget/v/Mud.Feishu.Authentication.svg)](https://www.nuget.org/packages/Mud.Feishu.Authentication/) | ![Nuget](https://img.shields.io/nuget/dt/Mud.Feishu.Authentication.svg) |
 | **Mud.Feishu.WebSocket**    | Feishu WebSocket client supporting real-time event subscription and automatic reconnection                            | [![Nuget](https://img.shields.io/nuget/v/Mud.Feishu.WebSocket.svg)](https://www.nuget.org/packages/Mud.Feishu.WebSocket/)       | ![Nuget](https://img.shields.io/nuget/dt/Mud.Feishu.WebSocket.svg)    |
 | **Mud.Feishu.Webhook**      | Feishu Webhook event handling component for HTTP callback event reception and processing                              | [![Nuget](https://img.shields.io/nuget/v/Mud.Feishu.Webhook.svg)](https://www.nuget.org/packages/Mud.Feishu.Webhook/)           | ![Nuget](https://img.shields.io/nuget/dt/Mud.Feishu.Webhook.svg)      |
 | **Mud.Feishu.Redis**        | Redis distributed deduplication extension supporting event deduplication in multi-instance deployment scenarios       | [![Nuget](https://img.shields.io/nuget/v/Mud.Feishu.Redis.svg)](https://www.nuget.org/packages/Mud.Feishu.Redis/)               | ![Nuget](https://img.shields.io/nuget/dt/Mud.Feishu.Redis.svg)        |
@@ -118,6 +120,9 @@ dotnet add package Mud.Feishu.WebSocket
 
 # Webhook HTTP Callback Event Processing (Optional)
 dotnet add package Mud.Feishu.Webhook
+
+# User Authentication Middleware (Optional)
+dotnet add package Mud.Feishu.Authentication
 
 # Redis Distributed Deduplication Extension (Optional)
 dotnet add package Mud.Feishu.Redis
@@ -646,6 +651,7 @@ Below are actual screenshots of **FeishuWikiManager** (Feishu Wiki Management De
 - [Mud.Feishu Documentation](./Mud.Feishu/README_EN.md) - HTTP API complete usage guide
 - [Mud.Feishu.WebSocket Documentation](./Mud.Feishu.WebSocket/Readme_EN.md) - WebSocket real-time event subscription guide
 - [Mud.Feishu.Webhook Documentation](./Mud.Feishu.Webhook/README_EN.md) - Webhook HTTP callback event processing guide
+- [Mud.Feishu.Authentication Documentation](./Mud.Feishu.Authentication/README.md) - Feishu user authentication middleware guide
 - [Mud.Feishu.Redis Documentation](./Mud.Feishu.Redis/README.md) - Redis distributed deduplication extension guide
 - [Security Enhancements](./docs/SECURITY_IMPROVEMENTS.md) - SSRF protection, URL validation and other security features
 
@@ -691,6 +697,7 @@ This project is licensed under the [MIT License](./LICENSE), allowing both comme
 - [Mud.Feishu](https://www.nuget.org/packages/Mud.Feishu/) - Core HTTP API client library
 - [Mud.Feishu.WebSocket](https://www.nuget.org/packages/Mud.Feishu.WebSocket/) - WebSocket real-time event subscription library
 - [Mud.Feishu.Webhook](https://www.nuget.org/packages/Mud.Feishu.Webhook/) - Webhook HTTP callback event processing library
+- [Mud.Feishu.Authentication](https://www.nuget.org/packages/Mud.Feishu.Authentication/) - Feishu user authentication middleware library
 - [Mud.Feishu.Redis](https://www.nuget.org/packages/Mud.Feishu.Redis/) - Redis distributed deduplication extension library
 
 ### 🛠️ Development Resources

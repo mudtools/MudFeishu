@@ -19,5 +19,4 @@ namespace Mud.Feishu;
 public interface IFeishuUserV1AttendanceArchives : IFeishuV1AttendanceArchives, ICurrentUserId
 {
 
-
 }

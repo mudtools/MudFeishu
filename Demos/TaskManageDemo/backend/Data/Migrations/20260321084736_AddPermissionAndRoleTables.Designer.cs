@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using TaskManageDemo.Backend.Data;
 
@@ -10,9 +11,11 @@ using TaskManageDemo.Backend.Data;
 namespace TaskManageDemo.Backend.Data.Migrations
 {
     [DbContext(typeof(TaskManageDbContext))]
-    partial class TaskManageDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260321084736_AddPermissionAndRoleTables")]
+    partial class AddPermissionAndRoleTables
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.11");

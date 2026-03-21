@@ -24,6 +24,7 @@ public interface IFeishuTaskService
         string? description,
         List<string>? assignees,
         DateTime? dueTime,
+        DateTime? startTime = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>

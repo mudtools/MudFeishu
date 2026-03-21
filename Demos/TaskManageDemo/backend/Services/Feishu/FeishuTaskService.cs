@@ -42,6 +42,7 @@ public class FeishuTaskService : IFeishuTaskService
         string? description,
         List<string>? assignees,
         DateTime? dueTime,
+        DateTime? startTime = null,
         CancellationToken cancellationToken = default)
     {
         var request = new CreateTaskRequest
@@ -50,6 +51,9 @@ public class FeishuTaskService : IFeishuTaskService
             Description = description,
             Due = dueTime.HasValue
                 ? new TaskTime { Timestamp = ((DateTimeOffset)dueTime.Value).ToUnixTimeMilliseconds().ToString() }
+                : null,
+            Start = startTime.HasValue
+                ? new TasksStartTime { Timestamp = ((DateTimeOffset)startTime.Value).ToUnixTimeMilliseconds().ToString() }
                 : null,
             Members = assignees?.Select(a => new TaskMemberInfo
             {

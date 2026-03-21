@@ -157,6 +157,7 @@ public class TaskTemplateService : ITaskTemplateService
             description,
             assigneeIds,
             dueTime,
+            null,
             cancellationToken);
 
         if (string.IsNullOrEmpty(taskGuid))

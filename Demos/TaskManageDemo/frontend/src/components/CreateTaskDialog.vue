@@ -168,7 +168,6 @@ const form = ref({
 
 const rules: FormRules = {
   summary: [{ required: true, message: '请输入任务标题', trigger: 'blur' }],
-  taskListId: [{ required: true, message: '请选择任务清单', trigger: 'change' }],
   priority: [{ required: true, message: '请选择优先级', trigger: 'change' }]
 }
 
@@ -213,15 +212,22 @@ const handleSubmit = async () => {
       loading.value = true
       try {
         const selectedList = taskLists.value.find(l => l.id === form.value.taskListId)
-        await taskApi.createTask({
+        const requestData: Record<string, unknown> = {
           summary: form.value.summary,
           description: form.value.description,
-          taskListGuid: selectedList?.taskListGuid || '',
           priority: form.value.priority,
-          startTime: form.value.startTime?.toISOString(),
-          dueTime: form.value.dueTime?.toISOString(),
           assignees: form.value.assignees
-        })
+        }
+        if (selectedList?.taskListGuid) {
+          requestData.taskListGuid = selectedList.taskListGuid
+        }
+        if (form.value.startTime) {
+          requestData.startTime = form.value.startTime.toISOString()
+        }
+        if (form.value.dueTime) {
+          requestData.dueTime = form.value.dueTime.toISOString()
+        }
+        await taskApi.createTask(requestData as CreateTaskRequest)
         ElMessage.success('任务创建成功')
         visible.value = false
         emit('success')

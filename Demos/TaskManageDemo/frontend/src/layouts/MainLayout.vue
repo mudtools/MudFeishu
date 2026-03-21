@@ -221,6 +221,7 @@ import {
   Key,
 } from "@element-plus/icons-vue"
 import { useThemeStore } from "../stores/theme"
+import { useAuthStore } from "../stores/auth"
 import BreadcrumbNav from "../components/BreadcrumbNav.vue"
 import GlobalSearch from "../components/GlobalSearch.vue"
 import CreateTaskDialog from "../components/CreateTaskDialog.vue"
@@ -228,6 +229,7 @@ import CreateTaskDialog from "../components/CreateTaskDialog.vue"
 const route = useRoute()
 const router = useRouter()
 const themeStore = useThemeStore()
+const authStore = useAuthStore()
 
 const isCollapsed = ref(false)
 const createTaskVisible = ref(false)
@@ -256,8 +258,8 @@ const showCreateTaskDialog = () => {
 }
 
 const handleLogout = () => {
-  localStorage.removeItem("token")
-  localStorage.removeItem("username")
+  authStore.logout()
+  localStorage.removeItem("permissions")
   router.push("/login")
 }
 

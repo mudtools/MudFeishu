@@ -224,6 +224,16 @@ app.UseRateLimiting(new RateLimitOptions
 });
 app.UseGlobalExceptionHandler();
 
+// CORS 中间件必须在认证之前
+if (app.Environment.IsDevelopment())
+{
+    app.UseCors("DevelopmentPolicy");
+}
+else
+{
+    app.UseCors("ProductionPolicy");
+}
+
 // 认证和授权中间件
 app.UseAuthentication();
 
@@ -241,15 +251,6 @@ if (!isTesting)
     app.UseFeishuAuthorization();
 }
 
-// 根据环境使用不同的CORS策略
-if (app.Environment.IsDevelopment())
-{
-    app.UseCors("DevelopmentPolicy");
-}
-else
-{
-    app.UseCors("ProductionPolicy");
-}
 app.UseFeishuWebhook();
 app.MapControllers();
 app.MapHealthChecks("/health", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions

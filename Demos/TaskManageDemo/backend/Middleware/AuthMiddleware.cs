@@ -25,7 +25,9 @@ public class AuthenticationMiddleware
         "/health",
         "/swagger",
         "/api/auth/login",
+        "/api/auth/register",
         "/api/auth/callback",
+        "/api/auth/feishu/url",
         "/webhook/feishu"
     };
 
@@ -45,6 +47,15 @@ public class AuthenticationMiddleware
             return;
         }
 
+        // 如果用户已经通过 JWT Bearer 认证，直接放行
+        // JWT 认证由 ASP.NET Core 的 JWT Bearer 中间件处理
+        if (context.User?.Identity?.IsAuthenticated == true)
+        {
+            await _next(context);
+            return;
+        }
+
+        // 仅处理非 JWT 认证的情况（如 X-Feishu-Id header）
         var feishuId = ExtractFeishuId(context);
         if (string.IsNullOrEmpty(feishuId))
         {
@@ -186,8 +197,9 @@ public class AuthorizationMiddleware
 
         if (requirePermissionAttributes != null && requirePermissionAttributes.Count > 0)
         {
+            // 同时检查 "permission"（JWT token）和 "Permission"（自定义认证）
             var userPermissions = context.User.Claims
-                .Where(c => c.Type == "Permission")
+                .Where(c => string.Equals(c.Type, "permission", StringComparison.OrdinalIgnoreCase))
                 .Select(c => c.Value)
                 .ToHashSet();
 

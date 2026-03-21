@@ -2,26 +2,28 @@
  * 路由守卫
  */
 import type { Router } from 'vue-router'
-import { useAuthStore } from '../stores/auth'
 
 /**
  * 设置路由守卫
  */
 export function setupRouterGuards(router: Router) {
   // 全局前置守卫
-  router.beforeEach((to, _from, next) => {
+  router.beforeEach(async (to, _from, next) => {
     // 设置页面标题
     const title = to.meta.title as string | undefined
     document.title = title ? `${title} - TaskManage` : 'TaskManage'
 
-    const authStore = useAuthStore()
+    // 直接检查 localStorage 中的 token，避免 Pinia store 初始化问题
+    const token = localStorage.getItem('token')
+    const isAuthenticated = !!token
+
     const isPublic = to.meta.public === true
     const requiresAuth = to.meta.requiresAuth !== false // 默认需要认证
 
     // 公开页面直接放行
     if (isPublic) {
       // 已登录用户访问登录页，重定向到首页
-      if (to.name === 'Login' && authStore.isAuthenticated) {
+      if (to.name === 'Login' && isAuthenticated) {
         next({ name: 'TaskList' })
         return
       }
@@ -30,7 +32,7 @@ export function setupRouterGuards(router: Router) {
     }
 
     // 需要认证的页面
-    if (requiresAuth && !authStore.isAuthenticated) {
+    if (requiresAuth && !isAuthenticated) {
       // 未登录，重定向到登录页
       next({
         name: 'Login',
@@ -43,26 +45,6 @@ export function setupRouterGuards(router: Router) {
     if (to.name === 'BindFeishu') {
       // 如果用户信息中没有 isFeishuBound 字段，需要从其他地方判断
       // 这里暂时不做限制，让用户可以访问绑定页面
-    }
-
-    // 检查权限
-    const permissions = to.meta.permissions as string[] | undefined
-    if (permissions && permissions.length > 0) {
-      const hasPermission = permissions.some((p) => authStore.hasPermission(p))
-      if (!hasPermission) {
-        next({ name: 'TaskList' })
-        return
-      }
-    }
-
-    // 检查角色
-    const roles = to.meta.roles as string[] | undefined
-    if (roles && roles.length > 0) {
-      const hasRole = roles.some((r) => authStore.hasRole(r))
-      if (!hasRole) {
-        next({ name: 'TaskList' })
-        return
-      }
     }
 
     next()

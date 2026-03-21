@@ -32,5 +32,30 @@ public interface IFeishuV3Spreadsheets : IFeishuAppContextSwitcher
        [Body] CreateSpreadsheetRequest createSpreadsheetRequest,
        CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// 修改电子表格属性
+    /// <para>用于修改电子表格的属性。目前支持修改电子表格标题。</para>
+    /// </summary>
+    /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
+    /// <param name="patchSpreadsheetRequest">修改电子表格属性请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Post("/open-apis/sheets/v3/spreadsheets")]
+    [Patch("/open-apis/sheets/v3/spreadsheets/{spreadsheet_token}")]
+    Task<FeishuNullDataApiResult?> PatchSpreadsheetAsync(
+      [Path] string spreadsheet_token,
+      [Body] PatchSpreadsheetRequest patchSpreadsheetRequest,
+      CancellationToken cancellationToken = default);
 
+
+    /// <summary>
+    /// 根据电子表格 token 获取电子表格的基础信息，包括电子表格的所有者、URL 链接等。
+    /// </summary>
+    /// <param name="spreadsheet_token">文件夹的 token。</param>
+    /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Get("/open-apis/sheets/v3/spreadsheets/{spreadsheet_token}")]
+    Task<FeishuApiResult<GetSpreadsheetResult>?> GetSpreadsheetByTokenAsync(
+        [Path] string? spreadsheet_token,
+        [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
+        CancellationToken cancellationToken = default);
 }

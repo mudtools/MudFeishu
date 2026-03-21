@@ -1,20 +1,20 @@
 <template>
   <el-container class="app-layout">
-    <el-aside width="260px" class="app-aside">
+    <el-aside :width="isCollapsed ? '64px' : '260px'" class="app-aside" :class="{ 'is-collapsed': isCollapsed }">
       <div class="logo">
         <div class="logo-icon">
           <el-icon :size="32">
             <DocumentChecked />
           </el-icon>
         </div>
-        <div class="logo-text">
+        <div v-show="!isCollapsed" class="logo-text">
           <h1>TaskMaster</h1>
           <span>任务管理系统</span>
         </div>
       </div>
 
       <div class="nav-section">
-        <div class="nav-title">主菜单</div>
+        <div v-show="!isCollapsed" class="nav-title">主菜单</div>
         <el-menu :default-active="activeMenu" class="app-menu" router :collapse="isCollapsed">
           <el-menu-item index="/tasks">
             <el-icon>
@@ -45,7 +45,7 @@
       </div>
 
       <div class="nav-section">
-        <div class="nav-title">工具</div>
+        <div v-show="!isCollapsed" class="nav-title">工具</div>
         <el-menu :default-active="activeMenu" class="app-menu" router :collapse="isCollapsed">
           <el-menu-item index="/templates">
             <el-icon>
@@ -67,7 +67,7 @@
       </div>
 
       <div class="nav-section" v-if="hasUserManagePermission">
-        <div class="nav-title">系统管理</div>
+        <div v-show="!isCollapsed" class="nav-title">系统管理</div>
         <el-menu :default-active="activeMenu" class="app-menu" router :collapse="isCollapsed">
           <el-menu-item index="/users">
             <el-icon>
@@ -90,7 +90,7 @@
 
       <div class="sidebar-footer">
         <div class="quick-actions">
-          <el-tooltip content="新建任务" placement="top">
+          <el-tooltip :content="isCollapsed ? '新建任务' : ''" placement="top">
             <el-button type="primary" circle @click="showCreateTaskDialog">
               <el-icon>
                 <Plus />
@@ -291,6 +291,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   transition: all 0.3s ease;
+  overflow: hidden;
 }
 
 .logo {
@@ -302,9 +303,15 @@ onMounted(() => {
   gap: 12px;
 }
 
+.app-aside.is-collapsed .logo {
+  padding: 0 10px;
+  justify-content: center;
+}
+
 .logo-icon {
   width: 44px;
   height: 44px;
+  min-width: 44px;
   background: linear-gradient(
     135deg,
     var(--primary-color) 0%,
@@ -395,6 +402,10 @@ onMounted(() => {
   border-top: 1px solid var(--border-light);
 }
 
+.app-aside.is-collapsed .sidebar-footer {
+  padding: 16px 8px;
+}
+
 .quick-actions {
   display: flex;
   justify-content: center;
@@ -410,6 +421,10 @@ onMounted(() => {
   );
   border: none;
   box-shadow: var(--shadow-lg);
+}
+
+.app-aside.is-collapsed .nav-section {
+  padding: 8px 0;
 }
 
 .quick-actions .el-button:hover {

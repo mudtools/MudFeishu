@@ -263,6 +263,11 @@ public class TaskDto
     public string? CreatorId { get; set; }
 
     /// <summary>
+    /// 创建者名称
+    /// </summary>
+    public string? CreatorName { get; set; }
+
+    /// <summary>
     /// 所属清单ID
     /// </summary>
     public string? TaskListGuid { get; set; }

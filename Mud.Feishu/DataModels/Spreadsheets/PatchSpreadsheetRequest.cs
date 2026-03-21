@@ -8,15 +8,15 @@
 namespace Mud.Feishu.DataModels.Spreadsheets;
 
 /// <summary>
-/// 创建电子表格响应体
+/// 修改电子表格属性请求体
 /// </summary>
-public class CreateSpreadsheetResult
+public class PatchSpreadsheetRequest
 {
     /// <summary>
-    /// <para>电子表格的基础信息</para>
+    /// <para>新的电子表格标题。参数为空时，表格标题将显示为“未命名表格”或本地语言环境对应内容。</para>
     /// <para>必填：否</para>
+    /// <para>示例值：Sales sheet</para>
     /// </summary>
-    [JsonPropertyName("spreadsheet")]
-    public SpreadsheetBaseInfo? Spreadsheet { get; set; }
-
+    [JsonPropertyName("title")]
+    public string? Title { get; set; }
 }

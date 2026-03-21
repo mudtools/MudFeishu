@@ -142,6 +142,25 @@ public class TaskService : ITaskService
             })
             .ToListAsync(cancellationToken);
 
+        // 查询创建者信息
+        var creatorIds = items
+            .Where(t => !string.IsNullOrEmpty(t.CreatorId))
+            .Select(t => t.CreatorId!)
+            .Distinct()
+            .ToList();
+
+        var creators = await _dbContext.Users
+            .Where(u => creatorIds.Contains(u.FeishuId))
+            .ToDictionaryAsync(u => u.FeishuId, u => u.Name, cancellationToken);
+
+        foreach (var item in items)
+        {
+            if (!string.IsNullOrEmpty(item.CreatorId) && creators.TryGetValue(item.CreatorId, out var name))
+            {
+                item.CreatorName = name;
+            }
+        }
+
         return new PagedResponse<TaskDto>
         {
             Items = items,
@@ -168,7 +187,7 @@ public class TaskService : ITaskService
             return null;
         }
 
-        return MapToTaskDto(task);
+        return await MapToTaskDto(task);
     }
 
     #endregion
@@ -232,7 +251,7 @@ public class TaskService : ITaskService
         // 记录任务创建历史
         await _taskHistoryService.RecordTaskCreatedAsync(result.Id, userId, cancellationToken);
 
-        return MapToTaskDto(result);
+        return await MapToTaskDto(result);
     }
 
     /// <summary>
@@ -293,25 +312,25 @@ public class TaskService : ITaskService
         if (request.IsCompleted.HasValue && request.IsCompleted != oldIsCompleted)
         {
             await _taskHistoryService.RecordTaskStatusChangedAsync(
-                result.Id, 
-                userId, 
-                oldIsCompleted ? "completed" : "pending", 
-                request.IsCompleted.Value ? "completed" : "pending", 
+                result.Id,
+                userId,
+                oldIsCompleted ? "completed" : "pending",
+                request.IsCompleted.Value ? "completed" : "pending",
                 cancellationToken);
         }
 
         if (request.DueTime != oldDueTime)
         {
             await _taskHistoryService.RecordTaskUpdatedAsync(
-                result.Id, 
-                userId, 
-                "DueTime", 
-                oldDueTime?.ToString("yyyy-MM-dd HH:mm:ss"), 
-                request.DueTime?.ToString("yyyy-MM-dd HH:mm:ss"), 
+                result.Id,
+                userId,
+                "DueTime",
+                oldDueTime?.ToString("yyyy-MM-dd HH:mm:ss"),
+                request.DueTime?.ToString("yyyy-MM-dd HH:mm:ss"),
                 cancellationToken);
         }
 
-        return MapToTaskDto(result);
+        return await MapToTaskDto(result);
     }
 
     /// <summary>
@@ -469,8 +488,15 @@ public class TaskService : ITaskService
     /// <summary>
     /// 将 TaskSync 实体映射为 TaskDto
     /// </summary>
-    private TaskDto MapToTaskDto(TaskSync task)
+    private async Task<TaskDto> MapToTaskDto(TaskSync task)
     {
+        string? creatorName = null;
+        if (!string.IsNullOrEmpty(task.CreatorId))
+        {
+            var creator = await _dbContext.Users.FirstOrDefaultAsync(u => u.FeishuId == task.CreatorId);
+            creatorName = creator?.Name;
+        }
+
         return new TaskDto
         {
             Id = task.Id,
@@ -485,6 +511,7 @@ public class TaskService : ITaskService
             CompletedTime = task.CompletedTime,
             CreatedAt = task.CreatedAt,
             CreatorId = task.CreatorId,
+            CreatorName = creatorName,
             TaskListGuid = task.TaskListGuid,
             Members = task.Members.Where(m => m.User != null).Select(m => new TaskMemberDto
             {

@@ -135,8 +135,8 @@
       </TableContainer>
     </el-card>
 
-    <!-- 创建/编辑对话框 -->
-    <el-dialog v-model="createDialogVisible" :title="editingTask ? '编辑任务' : '新建任务'" width="600px" destroy-on-close class="task-dialog">
+    <!-- 编辑对话框 -->
+    <el-dialog v-model="editDialogVisible" title="编辑任务" width="600px" destroy-on-close class="task-dialog">
       <el-form ref="taskFormRef" :model="taskForm" :rules="taskRules" label-position="top" class="task-form">
         <el-form-item label="任务标题" prop="summary">
           <el-input v-model="taskForm.summary" placeholder="请输入任务标题" size="large" />
@@ -160,13 +160,16 @@
       </el-form>
       <template #footer>
         <div class="dialog-footer">
-          <el-button @click="createDialogVisible = false">取消</el-button>
-          <el-button type="primary" :loading="submitting" @click="handleSubmit">
-            {{ editingTask ? '保存' : '创建' }}
+          <el-button @click="editDialogVisible = false">取消</el-button>
+          <el-button type="primary" :loading="submitting" @click="handleEditSubmit">
+            保存
           </el-button>
         </div>
       </template>
     </el-dialog>
+
+    <!-- 新建任务对话框 -->
+    <CreateTaskDialog v-model="createDialogVisible" @success="handleCreateSuccess" />
   </div>
 </template>
 
@@ -179,10 +182,10 @@ import { useTaskStore } from "../stores/task"
 import type {
   Task,
   TaskSearchParams,
-  CreateTaskRequest,
   UpdateTaskRequest,
 } from "../types"
 import { TaskSearchForm, TableContainer, TaskTable } from "../components"
+import CreateTaskDialog from "../components/CreateTaskDialog.vue"
 import dayjs from "dayjs"
 import {
   Plus,
@@ -211,11 +214,12 @@ const pageSize = ref(20)
 const viewMode = ref<"list" | "grid">("list")
 
 const createDialogVisible = ref(false)
+const editDialogVisible = ref(false)
 const editingTask = ref<Task | null>(null)
 const submitting = ref(false)
 const taskFormRef = ref<FormInstance>()
 
-const taskForm = reactive<CreateTaskRequest & { id?: number }>({
+const taskForm = reactive({
   summary: "",
   description: "",
   priority: 2,
@@ -276,29 +280,25 @@ const handleRowClick = (row: Task) => {
 }
 
 const showCreateDialog = () => {
-  editingTask.value = null
-  Object.assign(taskForm, {
-    summary: "",
-    description: "",
-    priority: 2,
-    dueTime: "",
-  })
   createDialogVisible.value = true
+}
+
+const handleCreateSuccess = () => {
+  taskStore.fetchTasks(searchForm)
 }
 
 const handleEdit = (task: Task) => {
   editingTask.value = task
   Object.assign(taskForm, {
-    id: task.id,
     summary: task.summary,
     description: task.description || "",
     priority: task.priority,
     dueTime: task.dueTime || "",
   })
-  createDialogVisible.value = true
+  editDialogVisible.value = true
 }
 
-const handleSubmit = async () => {
+const handleEditSubmit = async () => {
   if (!taskFormRef.value) return
   await taskFormRef.value.validate(async (valid) => {
     if (!valid) return
@@ -314,19 +314,10 @@ const handleSubmit = async () => {
         }
         await taskStore.updateTask(editingTask.value.id, request)
         ElMessage.success("任务更新成功")
-      } else {
-        const request: CreateTaskRequest = {
-          summary: taskForm.summary,
-          description: taskForm.description,
-          priority: taskForm.priority,
-          dueTime: taskForm.dueTime || undefined,
-        }
-        await taskStore.createTask(request)
-        ElMessage.success("任务创建成功")
       }
-      createDialogVisible.value = false
+      editDialogVisible.value = false
     } catch {
-      ElMessage.error(editingTask.value ? "任务更新失败" : "任务创建失败")
+      ElMessage.error("任务更新失败")
     } finally {
       submitting.value = false
     }

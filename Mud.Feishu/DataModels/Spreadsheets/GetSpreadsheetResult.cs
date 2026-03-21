@@ -8,15 +8,15 @@
 namespace Mud.Feishu.DataModels.Spreadsheets;
 
 /// <summary>
-/// 创建电子表格响应体
+/// 获取电子表格信息响应体
 /// </summary>
-public class CreateSpreadsheetResult
+public class GetSpreadsheetResult
 {
     /// <summary>
     /// <para>电子表格的基础信息</para>
     /// <para>必填：否</para>
     /// </summary>
     [JsonPropertyName("spreadsheet")]
-    public SpreadsheetBaseInfo? Spreadsheet { get; set; }
+    public Spreadsheetnfo? Spreadsheet { get; set; }
 
 }

@@ -10,7 +10,7 @@ namespace Mud.Feishu.DataModels.Spreadsheets;
 /// <summary>
 /// 电子表格的基础信息
 /// </summary>
-public class SpreadsheetInfo
+public class SpreadsheetBaseInfo
 {
     /// <summary>
     /// <para>电子表格标题</para>

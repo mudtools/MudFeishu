@@ -31,6 +31,7 @@ export interface Task {
   source: number;
   createdAt: string;
   updatedAt: string;
+  creatorId?: string;
   creatorName?: string;
   tags?: string[];
   members?: TaskMember[];

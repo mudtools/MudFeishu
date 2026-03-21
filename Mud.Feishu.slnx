@@ -1,5 +1,5 @@
 <Solution>
-  <Folder Name="/Samples/">
+  <Folder Name="/Demos/">
     <File Path="Demos/Directory.Build.props" />
     <Project Path="Demos/FeishuFileServer/backend/FeishuFileServer.csproj" />
     <Project Path="Demos/FeishuOAuthDemo/backend/FeishuOAuthDemo.csproj" />

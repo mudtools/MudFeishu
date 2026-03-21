@@ -3,8 +3,8 @@ import type { TaskList, CreateTaskListRequest, Task, PagedResponse } from '../ty
 
 export const taskListApi = {
   async getTaskLists(): Promise<TaskList[]> {
-    const response = await apiClient.get<TaskList[]>('/tasklists')
-    return response.data
+    const response = await apiClient.get<PagedResponse<TaskList>>('/tasklists')
+    return response.data.items
   },
 
   async getTaskList(id: number): Promise<TaskList> {

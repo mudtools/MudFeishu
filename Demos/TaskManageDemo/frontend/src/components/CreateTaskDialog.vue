@@ -134,6 +134,8 @@ import { ref, computed, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 import { taskApi } from '../api/task'
+import { taskListApi } from '../api/taskList'
+import { getUsers } from '../api/user'
 import type { TaskList, User } from '../types'
 
 const props = defineProps<{
@@ -174,12 +176,14 @@ const taskLists = ref<TaskList[]>([])
 const users = ref<User[]>([])
 const availableTags = ref(['重要', '紧急', '设计', '开发', '测试', '文档'])
 
-// 加载数据
 const loadData = async () => {
   try {
-    // 这里应该调用API加载任务清单和用户列表
-    // taskLists.value = await taskListApi.getTaskLists()
-    // users.value = await userApi.getUsers()
+    const [listsRes, usersRes] = await Promise.all([
+      taskListApi.getTaskLists(),
+      getUsers({ page: 1, pageSize: 100 })
+    ])
+    taskLists.value = listsRes
+    users.value = usersRes.data?.items || []
   } catch (error) {
     console.error('加载数据失败:', error)
   }
@@ -188,7 +192,6 @@ const loadData = async () => {
 watch(visible, (val) => {
   if (val) {
     loadData()
-    // 重置表单
     form.value = {
       summary: '',
       description: '',

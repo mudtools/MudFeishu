@@ -118,6 +118,17 @@ public class FeishuAuthService : IFeishuAuthService
                 feishuUser.Email,
                 cancellationToken);
 
+            // 保存飞书用户的 Token
+            user.FeishuAccessToken = tokenResult.AccessToken;
+            user.FeishuRefreshToken = tokenResult.RefreshToken;
+            user.TokenExpiresAt = tokenResult.AccessTokenExpireTime > 0
+                ? DateTimeOffset.FromUnixTimeMilliseconds(tokenResult.AccessTokenExpireTime).DateTime
+                : null;
+            await _dbContext.SaveChangesAsync(cancellationToken);
+
+            _logger.LogInformation("飞书用户Token已保存: {OpenId}, 过期时间: {ExpiresAt}",
+                user.OpenId, user.TokenExpiresAt);
+
             // 生成JWT Token
             var token = _jwtTokenService.GenerateToken(
                 user.OpenId ?? string.Empty,

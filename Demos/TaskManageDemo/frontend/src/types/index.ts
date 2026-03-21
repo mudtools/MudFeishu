@@ -275,6 +275,8 @@ export interface UserInfo {
   id: number;
   name: string;
   feishuId: string;
+  email?: string;
+  avatarUrl?: string;
   departmentId?: string;
   role: string;
   permissions: string[];

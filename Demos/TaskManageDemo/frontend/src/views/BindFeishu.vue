@@ -78,29 +78,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from "vue"
-import { useRouter, useRoute } from "vue-router"
+import { ref, computed } from "vue"
+import { useRouter } from "vue-router"
 import { ElMessage, ElMessageBox } from "element-plus"
 import { Link, Sunny, Moon } from "@element-plus/icons-vue"
 import { useThemeStore } from "../stores/theme"
-import { getOAuthUrl, bindFeishu, buildFeishuCallbackUrl, generateState } from "../api"
+import { getOAuthUrl, generateState } from "../api"
 
 const router = useRouter()
-const route = useRoute()
 const themeStore = useThemeStore()
 
 const loading = ref(false)
 
 const isDark = computed(() => themeStore.isDark())
-
-onMounted(() => {
-  const code = route.query.code as string
-  const state = route.query.state as string
-
-  if (code && state) {
-    handleFeishuCallback(code, state)
-  }
-})
 
 const toggleTheme = () => {
   themeStore.toggleTheme()
@@ -110,7 +100,7 @@ const handleBindFeishu = async () => {
   loading.value = true
 
   try {
-    const redirectUri = buildFeishuCallbackUrl()
+    const redirectUri = `${window.location.origin}/auth/callback`
     const state = generateState()
 
     sessionStorage.setItem("feishu_bind_state", state)
@@ -125,40 +115,6 @@ const handleBindFeishu = async () => {
   } catch (error) {
     console.error("获取飞书授权链接失败:", error)
     ElMessage.error("获取授权链接失败，请稍后重试")
-  } finally {
-    loading.value = false
-  }
-}
-
-const handleFeishuCallback = async (code: string, state: string) => {
-  loading.value = true
-
-  try {
-    const storedState = sessionStorage.getItem("feishu_bind_state")
-    if (storedState !== state) {
-      ElMessage.error("State验证失败，请重新绑定")
-      router.replace("/bind-feishu")
-      return
-    }
-
-    sessionStorage.removeItem("feishu_bind_state")
-
-    const response = await bindFeishu({ code, state })
-
-    if (!response.success || !response.data?.success) {
-      ElMessage.error(response.data?.message || response.message || "绑定失败")
-      return
-    }
-
-    ElMessage.success({
-      message: `飞书账号绑定成功！欢迎，${response.data.feishuName || "用户"}！`,
-      duration: 2000,
-    })
-
-    router.replace("/tasks")
-  } catch (error) {
-    console.error("绑定飞书账号失败:", error)
-    ElMessage.error("绑定失败，请稍后重试")
   } finally {
     loading.value = false
   }

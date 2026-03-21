@@ -87,6 +87,8 @@ function shouldShowError(config: InternalAxiosRequestConfig | undefined): boolea
 
 class ApiClient {
   private client: AxiosInstance
+  private isRefreshing = false
+  private refreshSubscribers: ((token: string) => void)[] = []
 
   constructor() {
     this.client = axios.create({
@@ -99,6 +101,21 @@ class ApiClient {
 
     this.setupRequestInterceptor()
     this.setupResponseInterceptor()
+  }
+
+  /**
+   * 订阅 Token 刷新
+   */
+  private subscribeTokenRefresh(callback: (token: string) => void) {
+    this.refreshSubscribers.push(callback)
+  }
+
+  /**
+   * 通知所有订阅者 Token 已刷新
+   */
+  private onTokenRefreshed(token: string) {
+    this.refreshSubscribers.forEach((callback) => callback(token))
+    this.refreshSubscribers = []
   }
 
   /**
@@ -141,17 +158,67 @@ class ApiClient {
         }
         return response
       },
-      (error: AxiosError) => {
+      async (error: AxiosError) => {
         // 忽略取消请求的错误
         if (isCanceledError(error)) {
           return Promise.reject(error)
         }
 
         const message = getErrorMessage(error)
-        const config = error.config as InternalAxiosRequestConfig | undefined
+        const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean }
 
-        // 401 未授权 - 跳转登录
-        if (error.response?.status === 401) {
+        // 跳过登录/退出/刷新相关接口的token刷新
+        const skipRefreshUrls = ['/auth/login', '/auth/logout', '/auth/refresh', '/auth/feishu']
+        const shouldSkipRefresh = skipRefreshUrls.some((url) => originalRequest?.url?.includes(url))
+
+        // 401 未授权 - 尝试刷新 Token
+        if (error.response?.status === 401 && !originalRequest._retry && !shouldSkipRefresh) {
+          // 如果正在刷新，等待刷新完成
+          if (this.isRefreshing) {
+            return new Promise((resolve) => {
+              this.subscribeTokenRefresh((token) => {
+                originalRequest.headers.Authorization = `Bearer ${token}`
+                resolve(this.client(originalRequest))
+              })
+            })
+          }
+
+          originalRequest._retry = true
+          this.isRefreshing = true
+
+          try {
+            // 尝试刷新 Token
+            const response = await this.client.post<ApiResponse<{ AccessToken: string; RefreshToken: string; ExpiresIn: number }>>('/auth/refresh')
+
+            if (response.data.success && response.data.data?.AccessToken) {
+              const newToken = response.data.data.AccessToken
+              localStorage.setItem('token', newToken)
+              this.onTokenRefreshed(newToken)
+              originalRequest.headers.Authorization = `Bearer ${newToken}`
+              return this.client(originalRequest)
+            }
+          } catch (refreshError) {
+            // 刷新失败，清除登录状态
+            localStorage.removeItem('token')
+            localStorage.removeItem('user')
+
+            // 避免在登录页面重复跳转
+            if (window.location.pathname !== '/login') {
+              ElNotification.warning({
+                title: '登录已过期',
+                message: '请重新登录',
+                duration: 3000,
+              })
+              window.location.href = '/login'
+            }
+            return Promise.reject(refreshError)
+          } finally {
+            this.isRefreshing = false
+          }
+        }
+
+        // 401 但无法刷新 - 跳转登录
+        if (error.response?.status === 401 && !shouldSkipRefresh) {
           localStorage.removeItem('token')
           localStorage.removeItem('user')
 
@@ -167,7 +234,7 @@ class ApiClient {
         }
         // 403 禁止访问
         else if (error.response?.status === 403) {
-          if (shouldShowError(config)) {
+          if (shouldShowError(originalRequest)) {
             ElNotification.error({
               title: '权限不足',
               message: '您没有权限访问此资源',
@@ -177,7 +244,7 @@ class ApiClient {
         }
         // 500+ 服务器错误
         else if (error.response?.status && error.response.status >= 500) {
-          if (shouldShowError(config)) {
+          if (shouldShowError(originalRequest)) {
             ElNotification.error({
               title: '服务器错误',
               message: '服务器暂时无法处理请求，请稍后重试',
@@ -187,7 +254,7 @@ class ApiClient {
         }
         // 网络错误
         else if (isNetworkError(error)) {
-          if (shouldShowError(config)) {
+          if (shouldShowError(originalRequest)) {
             ElNotification.error({
               title: '网络错误',
               message: '无法连接到服务器，请检查网络连接',
@@ -196,7 +263,7 @@ class ApiClient {
           }
         }
         // 其他错误
-        else if (shouldShowError(config)) {
+        else if (shouldShowError(originalRequest)) {
           ElMessage.error(message)
         }
 

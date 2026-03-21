@@ -133,14 +133,7 @@ import { ElMessage, type FormInstance, type FormRules } from "element-plus"
 import { List, Sunny, Moon, Key } from "@element-plus/icons-vue"
 import { useThemeStore } from "../stores/theme"
 import { useAuthStore } from "../stores/auth"
-import {
-  getOAuthUrl,
-  getCurrentUser,
-  buildFeishuCallbackUrl,
-  generateState,
-  passwordLogin,
-  checkFeishuAuth,
-} from "../api"
+import { getOAuthUrl, generateState, passwordLogin } from "../api"
 import type { LoginResponse } from "../types"
 
 const router = useRouter()
@@ -165,12 +158,7 @@ const loginRules: FormRules = {
 const isDark = computed(() => themeStore.isDark())
 
 onMounted(() => {
-  const code = route.query.code as string
-  const state = route.query.state as string
-
-  if (code) {
-    handleFeishuCallback(code, state)
-  }
+  // 飞书回调现在由 CallbackView.vue 处理
 })
 
 const toggleTheme = () => {
@@ -207,7 +195,7 @@ const handleFeishuLogin = async () => {
   loading.value = true
 
   try {
-    const redirectUri = buildFeishuCallbackUrl()
+    const redirectUri = `${window.location.origin}/auth/callback`
     const state = generateState()
 
     sessionStorage.setItem("feishu_oauth_state", state)
@@ -222,63 +210,6 @@ const handleFeishuLogin = async () => {
   } catch (error) {
     console.error("获取飞书授权链接失败:", error)
     ElMessage.error("获取授权链接失败，请稍后重试")
-  } finally {
-    loading.value = false
-  }
-}
-
-const handleFeishuCallback = async (code: string, _state?: string) => {
-  loading.value = true
-
-  try {
-    const checkResponse = await checkFeishuAuth({ code, state: _state || "" })
-
-    if (!checkResponse.success || !checkResponse.data) {
-      ElMessage.error(checkResponse.message || "飞书授权失败")
-      return
-    }
-
-    const { userExists, isFeishuBound, feishuUser, tempToken } =
-      checkResponse.data
-
-    if (userExists && isFeishuBound && tempToken) {
-      authStore.setToken(tempToken)
-      const userResponse = await getCurrentUser()
-      if (userResponse.success && userResponse.data) {
-        authStore.setUser({
-          id: userResponse.data.id,
-          feishuId: userResponse.data.feishuId,
-          name: userResponse.data.name,
-          email: userResponse.data.email,
-          avatarUrl: userResponse.data.avatarUrl,
-          role: userResponse.data.role,
-          permissions: userResponse.data.permissions,
-          createdAt: userResponse.data.createdAt,
-          updatedAt: userResponse.data.createdAt,
-        })
-      }
-
-      ElMessage.success({
-        message: `欢迎回来，${feishuUser?.name || "用户"}！`,
-        duration: 2000,
-      })
-
-      const redirect = route.query.redirect as string
-      router.replace(redirect || "/tasks")
-    } else if (feishuUser && tempToken) {
-      sessionStorage.setItem("temp_token", tempToken)
-      sessionStorage.setItem("feishu_user", JSON.stringify(feishuUser))
-
-      router.replace({
-        path: "/register",
-        query: { from: "feishu" },
-      })
-    } else {
-      ElMessage.error("无法获取用户信息")
-    }
-  } catch (error) {
-    console.error("飞书登录失败:", error)
-    ElMessage.error("登录失败，请稍后重试")
   } finally {
     loading.value = false
   }

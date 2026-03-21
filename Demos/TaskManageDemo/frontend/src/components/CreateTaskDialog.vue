@@ -1,48 +1,18 @@
 <template>
-  <el-dialog
-    v-model="visible"
-    title="新建任务"
-    width="600px"
-    destroy-on-close
-    class="create-task-dialog"
-  >
-    <el-form
-      ref="formRef"
-      :model="form"
-      :rules="rules"
-      label-position="top"
-      class="task-form"
-    >
+  <el-dialog v-model="visible" title="新建任务" width="600px" destroy-on-close class="create-task-dialog">
+    <el-form ref="formRef" :model="form" :rules="rules" label-position="top" class="task-form">
       <el-form-item label="任务标题" prop="summary">
-        <el-input
-          v-model="form.summary"
-          placeholder="输入任务标题"
-          size="large"
-        />
+        <el-input v-model="form.summary" placeholder="输入任务标题" size="large" />
       </el-form-item>
 
       <el-form-item label="任务描述" prop="description">
-        <el-input
-          v-model="form.description"
-          type="textarea"
-          :rows="3"
-          placeholder="输入任务描述（可选）"
-        />
+        <el-input v-model="form.description" type="textarea" :rows="3" placeholder="输入任务描述（可选）" />
       </el-form-item>
 
       <div class="form-row">
         <el-form-item label="任务清单" prop="taskListId" class="form-col">
-          <el-select
-            v-model="form.taskListId"
-            placeholder="选择任务清单"
-            style="width: 100%"
-          >
-            <el-option
-              v-for="list in taskLists"
-              :key="list.id"
-              :label="list.name"
-              :value="list.id"
-            />
+          <el-select v-model="form.taskListId" placeholder="选择任务清单" style="width: 100%">
+            <el-option v-for="list in taskLists" :key="list.id" :label="list.name" :value="list.id" />
           </el-select>
         </el-form-item>
 
@@ -58,37 +28,17 @@
 
       <div class="form-row">
         <el-form-item label="开始时间" prop="startTime" class="form-col">
-          <el-date-picker
-            v-model="form.startTime"
-            type="datetime"
-            placeholder="选择开始时间"
-            style="width: 100%"
-          />
+          <el-date-picker v-model="form.startTime" type="datetime" placeholder="选择开始时间" style="width: 100%" />
         </el-form-item>
 
         <el-form-item label="截止时间" prop="dueTime" class="form-col">
-          <el-date-picker
-            v-model="form.dueTime"
-            type="datetime"
-            placeholder="选择截止时间"
-            style="width: 100%"
-          />
+          <el-date-picker v-model="form.dueTime" type="datetime" placeholder="选择截止时间" style="width: 100%" />
         </el-form-item>
       </div>
 
       <el-form-item label="负责人" prop="assignees">
-        <el-select
-          v-model="form.assignees"
-          multiple
-          placeholder="选择负责人"
-          style="width: 100%"
-        >
-          <el-option
-            v-for="user in users"
-            :key="user.id"
-            :label="user.name"
-            :value="user.feishuId"
-          >
+        <el-select v-model="form.assignees" multiple placeholder="选择负责人" style="width: 100%">
+          <el-option v-for="user in users" :key="user.id" :label="user.name" :value="user.feishuId">
             <div class="user-option">
               <el-avatar :size="24" :src="user.avatarUrl">
                 {{ user.name.charAt(0) }}
@@ -100,20 +50,8 @@
       </el-form-item>
 
       <el-form-item label="标签" prop="tags">
-        <el-select
-          v-model="form.tags"
-          multiple
-          allow-create
-          filterable
-          placeholder="添加标签"
-          style="width: 100%"
-        >
-          <el-option
-            v-for="tag in availableTags"
-            :key="tag"
-            :label="tag"
-            :value="tag"
-          />
+        <el-select v-model="form.tags" multiple allow-create filterable placeholder="添加标签" style="width: 100%">
+          <el-option v-for="tag in availableTags" :key="tag" :label="tag" :value="tag" />
         </el-select>
       </el-form-item>
     </el-form>
@@ -130,61 +68,61 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
-import { ElMessage } from 'element-plus'
-import type { FormInstance, FormRules } from 'element-plus'
-import { taskApi } from '../api/task'
-import { taskListApi } from '../api/taskList'
-import { getUsers } from '../api/user'
-import type { TaskList, User } from '../types'
+import { ref, computed, watch } from "vue"
+import { ElMessage } from "element-plus"
+import type { FormInstance, FormRules } from "element-plus"
+import { taskApi } from "../api/task"
+import { taskListApi } from "../api/taskList"
+import { getUsers } from "../api/user"
+import type { TaskList, User, CreateTaskRequest } from "../types"
 
 const props = defineProps<{
   modelValue: boolean
 }>()
 
 const emit = defineEmits<{
-  'update:modelValue': [value: boolean]
+  "update:modelValue": [value: boolean]
   success: []
 }>()
 
 const visible = computed({
   get: () => props.modelValue,
-  set: (val) => emit('update:modelValue', val)
+  set: (val) => emit("update:modelValue", val),
 })
 
 const formRef = ref<FormInstance>()
 const loading = ref(false)
 
 const form = ref({
-  summary: '',
-  description: '',
+  summary: "",
+  description: "",
   taskListId: undefined as number | undefined,
   priority: 2,
   startTime: undefined as Date | undefined,
   dueTime: undefined as Date | undefined,
   assignees: [] as string[],
-  tags: [] as string[]
+  tags: [] as string[],
 })
 
 const rules: FormRules = {
-  summary: [{ required: true, message: '请输入任务标题', trigger: 'blur' }],
-  priority: [{ required: true, message: '请选择优先级', trigger: 'change' }]
+  summary: [{ required: true, message: "请输入任务标题", trigger: "blur" }],
+  priority: [{ required: true, message: "请选择优先级", trigger: "change" }],
 }
 
 const taskLists = ref<TaskList[]>([])
 const users = ref<User[]>([])
-const availableTags = ref(['重要', '紧急', '设计', '开发', '测试', '文档'])
+const availableTags = ref(["重要", "紧急", "设计", "开发", "测试", "文档"])
 
 const loadData = async () => {
   try {
     const [listsRes, usersRes] = await Promise.all([
       taskListApi.getTaskLists(),
-      getUsers({ page: 1, pageSize: 100 })
+      getUsers({ page: 1, pageSize: 100 }),
     ])
     taskLists.value = listsRes
     users.value = usersRes.data?.items || []
   } catch (error) {
-    console.error('加载数据失败:', error)
+    console.error("加载数据失败:", error)
   }
 }
 
@@ -192,14 +130,14 @@ watch(visible, (val) => {
   if (val) {
     loadData()
     form.value = {
-      summary: '',
-      description: '',
+      summary: "",
+      description: "",
       taskListId: undefined,
       priority: 2,
       startTime: undefined,
       dueTime: undefined,
       assignees: [],
-      tags: []
+      tags: [],
     }
   }
 })
@@ -211,12 +149,14 @@ const handleSubmit = async () => {
     if (valid) {
       loading.value = true
       try {
-        const selectedList = taskLists.value.find(l => l.id === form.value.taskListId)
-        const requestData: Record<string, unknown> = {
+        const selectedList = taskLists.value.find(
+          (l) => l.id === form.value.taskListId
+        )
+        const requestData: CreateTaskRequest = {
           summary: form.value.summary,
           description: form.value.description,
           priority: form.value.priority,
-          assignees: form.value.assignees
+          assignees: form.value.assignees,
         }
         if (selectedList?.taskListGuid) {
           requestData.taskListGuid = selectedList.taskListGuid
@@ -227,12 +167,12 @@ const handleSubmit = async () => {
         if (form.value.dueTime) {
           requestData.dueTime = form.value.dueTime.toISOString()
         }
-        await taskApi.createTask(requestData as CreateTaskRequest)
-        ElMessage.success('任务创建成功')
+        await taskApi.createTask(requestData)
+        ElMessage.success("任务创建成功")
         visible.value = false
-        emit('success')
+        emit("success")
       } catch (error) {
-        ElMessage.error('任务创建失败')
+        ElMessage.error("任务创建失败")
       } finally {
         loading.value = false
       }

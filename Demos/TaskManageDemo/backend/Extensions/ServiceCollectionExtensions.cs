@@ -76,7 +76,7 @@ public static class ServiceCollectionExtensions
         services.AddFeishuApp(configuration, "FeishuApps");
 
         services.CreateFeishuServicesBuilder()
-            .AddModules(FeishuModule.Organization)
+            .AddModules(FeishuModule.Organization, FeishuModule.Approval)
             .AddTaskApi()
             .AddMessageApi()
             .Build();
@@ -119,7 +119,9 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IPermissionService, PermissionService>();
         services.AddScoped<IRoleService, RoleService>();
         services.AddScoped<IApprovalService, ApprovalService>();
+        services.AddScoped<IFeishuApproval, FeishuApprovalAdapter>();
         services.AddScoped<IDepartmentSyncService, DepartmentSyncService>();
+        services.AddScoped<IFeishuDepartmentApi, FeishuDepartmentApiAdapter>();
         services.AddScoped<ICommentService, CommentService>();
         services.AddScoped<ILocalAuthService, LocalAuthService>();
 

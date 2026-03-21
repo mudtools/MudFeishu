@@ -78,15 +78,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from "vue"
+import { ref, computed, onMounted } from "vue"
 import { useRouter } from "vue-router"
 import { ElMessage, ElMessageBox } from "element-plus"
 import { Link, Sunny, Moon } from "@element-plus/icons-vue"
 import { useThemeStore } from "../stores/theme"
+import { useAuthStore } from "../stores/auth"
 import { getOAuthUrl } from "../api"
 
 const router = useRouter()
 const themeStore = useThemeStore()
+const authStore = useAuthStore()
 
 const loading = ref(false)
 
@@ -95,6 +97,14 @@ const isDark = computed(() => themeStore.isDark())
 const toggleTheme = () => {
   themeStore.toggleTheme()
 }
+
+onMounted(() => {
+  // 如果用户已经绑定飞书账号，直接跳转到首页
+  if (authStore.user?.feishuId) {
+    ElMessage.info("您已绑定飞书账号")
+    router.replace("/tasks")
+  }
+})
 
 const handleBindFeishu = async () => {
   loading.value = true

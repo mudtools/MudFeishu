@@ -437,6 +437,21 @@ public class BindFeishuResponse
     public string? FeishuAvatar { get; set; }
 
     /// <summary>
+    /// 邮箱
+    /// </summary>
+    public string? Email { get; set; }
+
+    /// <summary>
+    /// 手机号
+    /// </summary>
+    public string? Mobile { get; set; }
+
+    /// <summary>
+    /// 英文名
+    /// </summary>
+    public string? EnglishName { get; set; }
+
+    /// <summary>
     /// 消息
     /// </summary>
     public string? Message { get; set; }

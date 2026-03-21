@@ -63,6 +63,7 @@ export interface User {
   name: string;
   englishName?: string;
   email?: string;
+  mobile?: string;
   avatarUrl?: string;
   departmentId?: number;
   department?: Department;
@@ -220,6 +221,9 @@ export interface BindFeishuResponse {
   success: boolean;
   feishuName?: string;
   feishuAvatar?: string;
+  email?: string;
+  mobile?: string;
+  englishName?: string;
   message?: string;
 }
 

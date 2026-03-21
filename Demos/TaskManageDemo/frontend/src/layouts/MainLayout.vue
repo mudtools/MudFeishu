@@ -157,7 +157,7 @@
                   </el-avatar>
                   <div class="dropdown-user-info">
                     <span class="dropdown-user-name">{{ userName }}</span>
-                    <span class="dropdown-user-email">user@example.com</span>
+                    <span class="dropdown-user-email">{{ userEmail || '未设置邮箱' }}</span>
                   </div>
                 </div>
                 <el-dropdown-item divided>
@@ -199,7 +199,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from "vue"
+import { ref, computed } from "vue"
 import { useRoute, useRouter } from "vue-router"
 import {
   Document,
@@ -234,9 +234,6 @@ const authStore = useAuthStore()
 const isCollapsed = ref(false)
 const createTaskVisible = ref(false)
 const notificationCount = ref(3)
-const userName = ref(localStorage.getItem("username") || "用户")
-const userAvatar = ref("")
-const userPermissions = ref<string[]>([])
 
 const taskStats = ref({
   pending: 5,
@@ -245,8 +242,14 @@ const taskStats = ref({
 
 const activeMenu = computed(() => route.path)
 
+const userName = computed(
+  () => authStore.user?.name || localStorage.getItem("username") || "用户"
+)
+const userEmail = computed(() => authStore.user?.email || "")
+const userAvatar = computed(() => authStore.user?.avatarUrl || "")
+
 const hasUserManagePermission = computed(() => {
-  return userPermissions.value.includes("user:manage")
+  return authStore.hasPermission("user:manage")
 })
 
 const toggleSidebar = () => {
@@ -262,17 +265,6 @@ const handleLogout = () => {
   localStorage.removeItem("permissions")
   router.push("/login")
 }
-
-onMounted(() => {
-  const permissionsStr = localStorage.getItem("permissions")
-  if (permissionsStr) {
-    try {
-      userPermissions.value = JSON.parse(permissionsStr)
-    } catch {
-      userPermissions.value = []
-    }
-  }
-})
 </script>
 
 <style scoped>

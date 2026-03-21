@@ -43,8 +43,20 @@ export function setupRouterGuards(router: Router) {
 
     // 绑定飞书页面特殊处理：已绑定飞书的用户直接跳转到首页
     if (to.name === 'BindFeishu') {
-      // 如果用户信息中没有 isFeishuBound 字段，需要从其他地方判断
-      // 这里暂时不做限制，让用户可以访问绑定页面
+      // 从 localStorage 获取用户信息，检查是否已绑定飞书
+      const storedUser = localStorage.getItem('user')
+      if (storedUser) {
+        try {
+          const user = JSON.parse(storedUser)
+          // 如果用户已经绑定飞书账号，直接跳转到首页
+          if (user.feishuId) {
+            next({ name: 'TaskList' })
+            return
+          }
+        } catch {
+          // 解析失败，继续访问绑定页面
+        }
+      }
     }
 
     next()

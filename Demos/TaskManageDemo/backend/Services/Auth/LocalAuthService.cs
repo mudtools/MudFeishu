@@ -249,6 +249,9 @@ public class LocalAuthService : ILocalAuthService
                 Success = true,
                 FeishuName = feishuUser.Name,
                 FeishuAvatar = feishuUser.AvatarUrl,
+                Email = feishuUser.Email,
+                Mobile = feishuUser.Mobile,
+                EnglishName = feishuUser.EnglishName,
                 Message = "绑定成功"
             };
         }

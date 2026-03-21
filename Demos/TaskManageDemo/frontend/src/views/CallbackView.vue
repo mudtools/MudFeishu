@@ -100,6 +100,19 @@ async function handleBindCallback(code: string, state: string) {
     const response = await bindFeishu({ code, state })
 
     if (response.success && response.data?.success) {
+      // 更新 authStore 中的用户信息
+      const currentUser = authStore.user
+      if (currentUser && response.data) {
+        authStore.setUser({
+          ...currentUser,
+          name: response.data.feishuName || currentUser.name,
+          avatarUrl: response.data.feishuAvatar || currentUser.avatarUrl,
+          email: response.data.email || currentUser.email,
+          mobile: response.data.mobile,
+          englishName: response.data.englishName,
+        })
+      }
+
       ElMessage.success({
         message: `飞书账号绑定成功！欢迎，${response.data.feishuName || '用户'}！`,
         duration: 2000,

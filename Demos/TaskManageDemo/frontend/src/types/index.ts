@@ -311,7 +311,8 @@ export interface OAuthUrlRequest {
  * OAuth URL 响应
  */
 export interface OAuthUrlResponse {
-  url: string;
+  authUrl: string;
+  state: string;
 }
 
 // ==================== 用户管理类型 ====================

@@ -83,7 +83,7 @@ import { useRouter } from "vue-router"
 import { ElMessage, ElMessageBox } from "element-plus"
 import { Link, Sunny, Moon } from "@element-plus/icons-vue"
 import { useThemeStore } from "../stores/theme"
-import { getOAuthUrl, generateState } from "../api"
+import { getOAuthUrl } from "../api"
 
 const router = useRouter()
 const themeStore = useThemeStore()
@@ -101,14 +101,13 @@ const handleBindFeishu = async () => {
 
   try {
     const redirectUri = `${window.location.origin}/auth/callback`
-    const state = generateState()
 
-    sessionStorage.setItem("feishu_bind_state", state)
-
-    const response = await getOAuthUrl({ redirectUri, state })
+    const response = await getOAuthUrl({ redirectUri })
 
     if (response.success && response.data) {
-      window.location.href = response.data.url
+      // 使用后端返回的 state
+      sessionStorage.setItem("feishu_bind_state", response.data.state)
+      window.location.href = response.data.authUrl
     } else {
       ElMessage.error(response.message || "获取授权链接失败")
     }

@@ -17,7 +17,7 @@ public interface IFeishuAuthService
     /// <summary>
     /// 获取飞书 OAuth 授权链接
     /// </summary>
-    OAuthUrlResponse GetOAuthUrl(string? state = null);
+    OAuthUrlResponse GetOAuthUrl(string? state = null, string? redirectUri = null);
 
     /// <summary>
     /// 使用授权码登录

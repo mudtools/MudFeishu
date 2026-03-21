@@ -48,12 +48,13 @@ public class AuthController : BaseController
     /// 获取飞书 OAuth 授权链接
     /// </summary>
     [HttpGet("feishu/url")]
-    public ActionResult<ApiResponse<OAuthUrlResponse>> GetFeishuAuthUrl()
+    public ActionResult<ApiResponse<OAuthUrlResponse>> GetFeishuAuthUrl(
+        [FromQuery] string? redirectUri)
     {
         try
         {
             var state = _stateStorageService.GenerateState();
-            var response = _feishuAuthService.GetOAuthUrl(state);
+            var response = _feishuAuthService.GetOAuthUrl(state, redirectUri);
             return Success(response, "生成授权URL成功");
         }
         catch (Exception ex)

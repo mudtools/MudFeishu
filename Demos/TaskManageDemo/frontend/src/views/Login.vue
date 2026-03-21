@@ -133,7 +133,7 @@ import { ElMessage, type FormInstance, type FormRules } from "element-plus"
 import { List, Sunny, Moon, Key } from "@element-plus/icons-vue"
 import { useThemeStore } from "../stores/theme"
 import { useAuthStore } from "../stores/auth"
-import { getOAuthUrl, generateState, passwordLogin } from "../api"
+import { getOAuthUrl, passwordLogin } from "../api"
 import type { LoginResponse } from "../types"
 
 const router = useRouter()
@@ -196,14 +196,13 @@ const handleFeishuLogin = async () => {
 
   try {
     const redirectUri = `${window.location.origin}/auth/callback`
-    const state = generateState()
 
-    sessionStorage.setItem("feishu_oauth_state", state)
-
-    const response = await getOAuthUrl({ redirectUri, state })
+    const response = await getOAuthUrl({ redirectUri })
 
     if (response.success && response.data) {
-      window.location.href = response.data.url
+      // 使用后端返回的 state
+      sessionStorage.setItem("feishu_oauth_state", response.data.state)
+      window.location.href = response.data.authUrl
     } else {
       ElMessage.error(response.message || "获取授权链接失败")
     }

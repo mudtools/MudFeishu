@@ -1,7 +1,7 @@
 /**
  * 认证相关 API
  */
-import { apiClient } from './client'
+import { apiClient } from "./client";
 import type {
   ApiResponse,
   LoginRequest,
@@ -14,17 +14,25 @@ import type {
   BindFeishuRequest,
   BindFeishuResponse,
   FeishuAuthCheckResponse,
-} from '../types'
+} from "../types";
 
 /**
  * 获取飞书 OAuth 授权链接
- * @param _request OAuth URL 请求参数（未使用，保留用于类型一致性）
+ * @param request OAuth URL 请求参数
  * @returns 授权链接
  */
 export async function getOAuthUrl(
-  _request: OAuthUrlRequest
+  request: OAuthUrlRequest,
 ): Promise<ApiResponse<OAuthUrlResponse>> {
-  return apiClient.get<OAuthUrlResponse>('/auth/feishu/url')
+  const params = new URLSearchParams();
+  if (request.redirectUri) {
+    params.append("redirectUri", request.redirectUri);
+  }
+  const queryString = params.toString();
+  const url = queryString
+    ? `/auth/feishu/url?${queryString}`
+    : "/auth/feishu/url";
+  return apiClient.get<OAuthUrlResponse>(url);
 }
 
 /**
@@ -33,9 +41,9 @@ export async function getOAuthUrl(
  * @returns 登录响应
  */
 export async function loginWithCode(
-  request: LoginRequest
+  request: LoginRequest,
 ): Promise<ApiResponse<LoginResponse>> {
-  return apiClient.post<LoginResponse>('/auth/feishu/callback', request)
+  return apiClient.post<LoginResponse>("/auth/feishu/callback", request);
 }
 
 /**
@@ -44,9 +52,9 @@ export async function loginWithCode(
  * @returns 登录响应
  */
 export async function passwordLogin(
-  request: PasswordLoginRequest
+  request: PasswordLoginRequest,
 ): Promise<ApiResponse<LoginResponse>> {
-  return apiClient.post<LoginResponse>('/auth/login', request)
+  return apiClient.post<LoginResponse>("/auth/login", request);
 }
 
 /**
@@ -55,9 +63,9 @@ export async function passwordLogin(
  * @returns 登录响应
  */
 export async function register(
-  request: RegisterRequest
+  request: RegisterRequest,
 ): Promise<ApiResponse<LoginResponse>> {
-  return apiClient.post<LoginResponse>('/auth/register', request)
+  return apiClient.post<LoginResponse>("/auth/register", request);
 }
 
 /**
@@ -66,9 +74,9 @@ export async function register(
  * @returns 飞书授权检查响应
  */
 export async function checkFeishuAuth(
-  request: LoginRequest
+  request: LoginRequest,
 ): Promise<ApiResponse<FeishuAuthCheckResponse>> {
-  return apiClient.post<FeishuAuthCheckResponse>('/auth/feishu/check', request)
+  return apiClient.post<FeishuAuthCheckResponse>("/auth/feishu/check", request);
 }
 
 /**
@@ -77,9 +85,9 @@ export async function checkFeishuAuth(
  * @returns 绑定响应
  */
 export async function bindFeishu(
-  request: BindFeishuRequest
+  request: BindFeishuRequest,
 ): Promise<ApiResponse<BindFeishuResponse>> {
-  return apiClient.post<BindFeishuResponse>('/auth/feishu/bind', request)
+  return apiClient.post<BindFeishuResponse>("/auth/feishu/bind", request);
 }
 
 /**
@@ -87,7 +95,7 @@ export async function bindFeishu(
  * @returns 当前用户信息
  */
 export async function getCurrentUser(): Promise<ApiResponse<CurrentUserInfo>> {
-  return apiClient.get<CurrentUserInfo>('/auth/me')
+  return apiClient.get<CurrentUserInfo>("/auth/me");
 }
 
 /**
@@ -95,7 +103,7 @@ export async function getCurrentUser(): Promise<ApiResponse<CurrentUserInfo>> {
  * @returns 退出结果
  */
 export async function logout(): Promise<ApiResponse<boolean>> {
-  return apiClient.post<boolean>('/auth/logout')
+  return apiClient.post<boolean>("/auth/logout");
 }
 
 /**
@@ -103,7 +111,7 @@ export async function logout(): Promise<ApiResponse<boolean>> {
  * @returns 刷新结果
  */
 export async function refreshToken(): Promise<ApiResponse<boolean>> {
-  return apiClient.post<boolean>('/auth/refresh')
+  return apiClient.post<boolean>("/auth/refresh");
 }
 
 /**
@@ -112,8 +120,8 @@ export async function refreshToken(): Promise<ApiResponse<boolean>> {
  * @returns 回调处理 URL
  */
 export function buildFeishuCallbackUrl(): string {
-  const currentUrl = new URL(window.location.href)
-  return `${currentUrl.origin}/auth/callback`
+  const currentUrl = new URL(window.location.href);
+  return `${currentUrl.origin}/auth/callback`;
 }
 
 /**
@@ -121,5 +129,8 @@ export function buildFeishuCallbackUrl(): string {
  * @returns 随机字符串
  */
 export function generateState(): string {
-  return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)
+  return (
+    Math.random().toString(36).substring(2, 15) +
+    Math.random().toString(36).substring(2, 15)
+  );
 }

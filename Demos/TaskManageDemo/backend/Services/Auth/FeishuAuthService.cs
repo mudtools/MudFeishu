@@ -45,12 +45,12 @@ public class FeishuAuthService : IFeishuAuthService
         _logger = logger;
     }
 
-    public OAuthUrlResponse GetOAuthUrl(string? state = null)
+    public OAuthUrlResponse GetOAuthUrl(string? state = null, string? redirectUri = null)
     {
         var appId = _feishuAppManager.DefaultConfig.AppId;
-        var redirectUri = _configuration["OAuth:RedirectUri"];
+        var configuredRedirectUri = redirectUri ?? _configuration["OAuth:RedirectUri"];
 
-        if (string.IsNullOrEmpty(appId) || string.IsNullOrEmpty(redirectUri))
+        if (string.IsNullOrEmpty(appId) || string.IsNullOrEmpty(configuredRedirectUri))
         {
             throw new InvalidOperationException("飞书应用配置不完整");
         }
@@ -66,7 +66,7 @@ public class FeishuAuthService : IFeishuAuthService
 
         var authUrl = $"https://accounts.feishu.cn/open-apis/authen/v1/authorize?" +
                       $"client_id={appId}&" +
-                      $"redirect_uri={Uri.EscapeDataString(redirectUri)}&" +
+                      $"redirect_uri={Uri.EscapeDataString(configuredRedirectUri)}&" +
                       $"response_type=code&" +
                       $"scope={Uri.EscapeDataString(scopeString)}&" +
                       $"state={Uri.EscapeDataString(state ?? "default")}";

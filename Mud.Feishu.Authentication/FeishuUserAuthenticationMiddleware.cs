@@ -149,7 +149,7 @@ public class FeishuUserAuthenticationMiddleware(
     /// </summary>
     /// <param name="value">原始值</param>
     /// <returns>脱敏后的值</returns>
-    private static string MaskSensitiveInfo(string value)
+    private static string MaskSensitiveInfo(string? value)
     {
         if (string.IsNullOrEmpty(value))
         {
@@ -157,12 +157,12 @@ public class FeishuUserAuthenticationMiddleware(
         }
 
         // 保留前3位和后3位，中间用***代替
-        if (value.Length <= 6)
+        if (value?.Length <= 6)
         {
             return "***";
         }
 
-        return $"{value.Substring(0, 3)}***{value.Substring(value.Length - 3)}";
+        return $"{value?.Substring(0, 3)}***{value?.Substring(value.Length - 3)}";
     }
 
     /// <summary>

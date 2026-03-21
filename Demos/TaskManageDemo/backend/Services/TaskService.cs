@@ -82,8 +82,10 @@ public class TaskService : ITaskService
 
         if (!string.IsNullOrEmpty(parameters.Keyword))
         {
-            query = query.Where(t => t.Summary.Contains(parameters.Keyword) ||
-                                     (t.Description != null && t.Description.Contains(parameters.Keyword)));
+            // 清理输入防止SQL注入和LIKE通配符滥用
+            var sanitizedKeyword = SanitizeSearchKeyword(parameters.Keyword);
+            query = query.Where(t => t.Summary.Contains(sanitizedKeyword) ||
+                                     (t.Description != null && t.Description.Contains(sanitizedKeyword)));
         }
 
         if (parameters.DueTimeFrom.HasValue)
@@ -402,6 +404,27 @@ public class TaskService : ITaskService
     #endregion
 
     #region 私有方法
+
+    /// <summary>
+    /// 清理搜索关键词，防止SQL注入和LIKE通配符滥用
+    /// </summary>
+    private static string SanitizeSearchKeyword(string keyword)
+    {
+        if (string.IsNullOrWhiteSpace(keyword))
+            return string.Empty;
+
+        // 限制长度
+        var trimmed = keyword.Trim();
+        if (trimmed.Length > 100)
+            trimmed = trimmed.Substring(0, 100);
+
+        // 转义LIKE通配符
+        return trimmed
+            .Replace("\\", "\\\\")
+            .Replace("%", "\\%")
+            .Replace("_", "\\_")
+            .Replace("[", "\\[");
+    }
 
     /// <summary>
     /// 将 TaskSync 实体映射为 TaskDto

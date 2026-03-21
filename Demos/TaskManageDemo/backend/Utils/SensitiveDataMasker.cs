@@ -5,225 +5,256 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-using System.Text;
 using System.Text.RegularExpressions;
 
 namespace TaskManageDemo.Backend.Utils;
 
 /// <summary>
-/// 敏感数据脱敏工具
+/// 敏感数据脱敏器接口
 /// </summary>
-public static class SensitiveDataMasker
+public interface ISensitiveDataMasker
 {
     /// <summary>
-    /// 敏感字段名称（不区分大小写）
+    /// 掩码敏感数据
     /// </summary>
-    private static readonly HashSet<string> SensitiveFields = new(StringComparer.OrdinalIgnoreCase)
+    string Mask(string? input, SensitiveDataType type);
+
+    /// <summary>
+    /// 掩码对象中的敏感字段
+    /// </summary>
+    T MaskObject<T>(T obj) where T : class;
+}
+
+/// <summary>
+/// 敏感数据类型
+/// </summary>
+public enum SensitiveDataType
+{
+    /// <summary>令牌/密钥</summary>
+    Token,
+
+    /// <summary>密码</summary>
+    Password,
+
+    /// <summary>手机号</summary>
+    Phone,
+
+    /// <summary>邮箱</summary>
+    Email,
+
+    /// <summary>身份证号</summary>
+    IdCard,
+
+    /// <summary>银行卡号</summary>
+    BankCard,
+
+    /// <summary>通用</summary>
+    Generic
+}
+
+/// <summary>
+/// 敏感数据脱敏器实现
+/// </summary>
+public class SensitiveDataMasker : ISensitiveDataMasker
+{
+    private static readonly string[] SensitiveFieldNames = new[]
     {
-        "password",
-        "pwd",
-        "secret",
-        "token",
-        "apikey",
-        "api_key",
-        "accesstoken",
-        "access_token",
-        "refreshtoken",
-        "refresh_token",
-        "appsecret",
-        "app_secret",
-        "privatekey",
-        "private_key",
-        "creditcard",
-        "credit_card",
-        "ssn",
-        "socialsecurity",
-        "idcard",
-        "phone",
-        "mobile",
-        "email"
+        "password", "passwd", "pwd",
+        "secret", "appsecret", "app_secret",
+        "token", "accesstoken", "access_token", "refreshtoken", "refresh_token",
+        "apikey", "api_key", "api_secret",
+        "authorization", "auth_token",
+        "creditcard", "credit_card", "cardnumber", "card_number",
+        "ssn", "socialsecurity", "social_security"
     };
 
     /// <summary>
-    /// 脱敏手机号
+    /// 掩码敏感数据
     /// </summary>
-    /// <param name="phone">手机号</param>
-    /// <returns>脱敏后的手机号</returns>
-    public static string MaskPhone(string? phone)
+    public string Mask(string? input, SensitiveDataType type)
     {
-        if (string.IsNullOrWhiteSpace(phone))
+        if (string.IsNullOrEmpty(input))
             return string.Empty;
 
-        if (phone.Length <= 7)
-            return "***" + phone[^1..];
-
-        return phone[..3] + "****" + phone[^4..];
+        return type switch
+        {
+            SensitiveDataType.Token => MaskToken(input),
+            SensitiveDataType.Password => MaskPassword(input),
+            SensitiveDataType.Phone => MaskPhone(input),
+            SensitiveDataType.Email => MaskEmail(input),
+            SensitiveDataType.IdCard => MaskIdCard(input),
+            SensitiveDataType.BankCard => MaskBankCard(input),
+            SensitiveDataType.Generic => MaskGeneric(input),
+            _ => MaskGeneric(input)
+        };
     }
 
     /// <summary>
-    /// 脱敏邮箱
+    /// 掩码对象中的敏感字段
     /// </summary>
-    /// <param name="email">邮箱</param>
-    /// <returns>脱敏后的邮箱</returns>
-    public static string MaskEmail(string? email)
+    public T MaskObject<T>(T obj) where T : class
     {
-        if (string.IsNullOrWhiteSpace(email))
-            return string.Empty;
+        if (obj == null)
+            return obj;
 
-        var atIndex = email.IndexOf('@');
-        if (atIndex <= 1)
-            return "***" + email;
+        var type = typeof(T);
+        var properties = type.GetProperties()
+            .Where(p => p.CanRead && p.CanWrite && p.PropertyType == typeof(string));
 
-        var prefix = email[..atIndex];
-        var domain = email[atIndex..];
+        foreach (var property in properties)
+        {
+            var propertyName = property.Name.ToLowerInvariant();
+            if (SensitiveFieldNames.Any(sf => propertyName.Contains(sf)))
+            {
+                var value = property.GetValue(obj) as string;
+                if (!string.IsNullOrEmpty(value))
+                {
+                    property.SetValue(obj, MaskGeneric(value));
+                }
+            }
+        }
 
-        var maskedPrefix = prefix.Length <= 2
-            ? prefix[0] + "***"
-            : prefix[0] + "***" + prefix[^1];
-
-        return maskedPrefix + domain;
+        return obj;
     }
 
     /// <summary>
-    /// 脱敏身份证号
+    /// 掩码配置字典中的敏感数据
     /// </summary>
-    /// <param name="idCard">身份证号</param>
-    /// <returns>脱敏后的身份证号</returns>
-    public static string MaskIdCard(string? idCard)
+    public static Dictionary<string, string?> MaskConfiguration(Dictionary<string, string?> config)
     {
-        if (string.IsNullOrWhiteSpace(idCard))
-            return string.Empty;
-
-        if (idCard.Length <= 10)
-            return "****" + idCard[^4..];
-
-        return idCard[..6] + "********" + idCard[^4..];
+        var masked = new Dictionary<string, string?>();
+        foreach (var kvp in config)
+        {
+            var keyLower = kvp.Key.ToLowerInvariant();
+            if (SensitiveFieldNames.Any(sf => keyLower.Contains(sf)))
+            {
+                masked[kvp.Key] = MaskGeneric(kvp.Value ?? string.Empty);
+            }
+            else
+            {
+                masked[kvp.Key] = kvp.Value;
+            }
+        }
+        return masked;
     }
 
     /// <summary>
-    /// 脱敏银行卡号
+    /// 掩码令牌
     /// </summary>
-    /// <param name="cardNumber">银行卡号</param>
-    /// <returns>脱敏后的银行卡号</returns>
-    public static string MaskBankCard(string? cardNumber)
+    private static string MaskToken(string token)
     {
-        if (string.IsNullOrWhiteSpace(cardNumber))
-            return string.Empty;
-
-        if (cardNumber.Length <= 8)
-            return "****" + cardNumber[^4..];
-
-        return cardNumber[..4] + "****" + cardNumber[^4..];
-    }
-
-    /// <summary>
-    /// 脱敏 Token 或密钥
-    /// </summary>
-    /// <param name="token">Token 或密钥</param>
-    /// <returns>脱敏后的字符串</returns>
-    public static string MaskToken(string? token)
-    {
-        if (string.IsNullOrWhiteSpace(token))
-            return string.Empty;
-
         if (token.Length <= 8)
             return "****";
 
-        return token[..4] + "****" + token[^4..];
+        return token.Substring(0, 4) + "****" + token.Substring(token.Length - 4);
     }
 
     /// <summary>
-    /// 脱敏字符串中间部分
+    /// 掩码密码
     /// </summary>
-    /// <param name="value">原始值</param>
-    /// <param name="visibleChars">两端可见字符数</param>
-    /// <returns>脱敏后的字符串</returns>
-    public static string MaskMiddle(string? value, int visibleChars = 2)
+    private static string MaskPassword(string password)
     {
-        if (string.IsNullOrWhiteSpace(value))
-            return string.Empty;
-
-        if (value.Length <= visibleChars * 2)
-            return new string('*', value.Length);
-
-        var start = value[..visibleChars];
-        var end = value[^visibleChars..];
-        var middleLength = value.Length - visibleChars * 2;
-
-        return start + new string('*', middleLength) + end;
+        return new string('*', Math.Min(password.Length, 8));
     }
 
     /// <summary>
-    /// 脱敏 JSON 字符串中的敏感字段
+    /// 掩码手机号
     /// </summary>
-    /// <param name="json">JSON 字符串</param>
-    /// <returns>脱敏后的 JSON 字符串</returns>
-    public static string MaskJson(string json)
+    private static string MaskPhone(string phone)
     {
-        if (string.IsNullOrWhiteSpace(json))
-            return json;
+        if (phone.Length < 7)
+            return "****";
 
-        // 匹配 JSON 中的键值对
-        var pattern = @"""([^""]+)""\s*:\s*""([^""]*)""";
-        
-        return Regex.Replace(json, pattern, match =>
+        return phone.Substring(0, 3) + "****" + phone.Substring(phone.Length - 4);
+    }
+
+    /// <summary>
+    /// 掩码邮箱
+    /// </summary>
+    private static string MaskEmail(string email)
+    {
+        var atIndex = email.IndexOf('@');
+        if (atIndex <= 1)
+            return "****" + email.Substring(atIndex);
+
+        var localPart = email.Substring(0, atIndex);
+        var domain = email.Substring(atIndex);
+
+        if (localPart.Length <= 2)
+            return localPart + "****" + domain;
+
+        return localPart.Substring(0, 2) + "****" + domain;
+    }
+
+    /// <summary>
+    /// 掩码身份证号
+    /// </summary>
+    private static string MaskIdCard(string idCard)
+    {
+        if (idCard.Length < 8)
+            return "****";
+
+        return idCard.Substring(0, 4) + "**********" + idCard.Substring(idCard.Length - 4);
+    }
+
+    /// <summary>
+    /// 掩码银行卡号
+    /// </summary>
+    private static string MaskBankCard(string cardNumber)
+    {
+        var digitsOnly = new string(cardNumber.Where(char.IsDigit).ToArray());
+        if (digitsOnly.Length < 8)
+            return "****";
+
+        return digitsOnly.Substring(0, 4) + " **** **** " + digitsOnly.Substring(digitsOnly.Length - 4);
+    }
+
+    /// <summary>
+    /// 通用掩码（保留前4后4）
+    /// </summary>
+    private static string MaskGeneric(string input)
+    {
+        if (input.Length <= 8)
+            return new string('*', input.Length);
+
+        return input.Substring(0, 4) + new string('*', input.Length - 8) + input.Substring(input.Length - 4);
+    }
+}
+
+/// <summary>
+/// Serilog 敏感数据脱敏扩展
+/// </summary>
+public static class SerilogSensitiveDataExtensions
+{
+    /// <summary>
+    /// 掩码日志中的敏感数据
+    /// </summary>
+    public static string MaskSensitiveData(this string message)
+    {
+        if (string.IsNullOrEmpty(message))
+            return message;
+
+        // 掩码常见的敏感数据模式
+        var patterns = new (Regex regex, string replacement)[]
         {
-            var key = match.Groups[1].Value;
-            var value = match.Groups[2].Value;
+            // Bearer Token
+            (new Regex(@"Bearer\s+[\w-]+\.[\w-]+\.[\w-]+", RegexOptions.IgnoreCase), "Bearer ***MASKED***"),
+            // 密码字段
+            (new Regex(@"(password|passwd|pwd)[:=]\s*[^\s&]+", RegexOptions.IgnoreCase), "$1=***MASKED***"),
+            // Secret字段
+            (new Regex(@"(secret|appsecret|app_secret)[:=]\s*[^\s&]+", RegexOptions.IgnoreCase), "$1=***MASKED***"),
+            // Token字段
+            (new Regex(@"(token|access_token|refresh_token)[:=]\s*[^\s&]+", RegexOptions.IgnoreCase), "$1=***MASKED***"),
+            // API Key
+            (new Regex(@"(apikey|api_key)[:=]\s*[^\s&]+", RegexOptions.IgnoreCase), "$1=***MASKED***"),
+        };
 
-            if (IsSensitiveField(key))
-            {
-                var maskedValue = GetMaskedValue(key, value);
-                return $@"""{key}"":""{maskedValue}""";
-            }
+        var result = message;
+        foreach (var (regex, replacement) in patterns)
+        {
+            result = regex.Replace(result, replacement);
+        }
 
-            return match.Value;
-        });
-    }
-
-    /// <summary>
-    /// 判断是否是敏感字段
-    /// </summary>
-    private static bool IsSensitiveField(string fieldName)
-    {
-        return SensitiveFields.Contains(fieldName);
-    }
-
-    /// <summary>
-    /// 根据字段名获取脱敏后的值
-    /// </summary>
-    private static string GetMaskedValue(string fieldName, string value)
-    {
-        var lowerName = fieldName.ToLowerInvariant();
-
-        if (lowerName.Contains("phone") || lowerName.Contains("mobile"))
-            return MaskPhone(value);
-        
-        if (lowerName.Contains("email"))
-            return MaskEmail(value);
-        
-        if (lowerName.Contains("idcard") || lowerName.Contains("ssn"))
-            return MaskIdCard(value);
-        
-        if (lowerName.Contains("card"))
-            return MaskBankCard(value);
-        
-        if (lowerName.Contains("token") || lowerName.Contains("secret") || lowerName.Contains("key"))
-            return MaskToken(value);
-
-        return MaskMiddle(value);
-    }
-
-    /// <summary>
-    /// 完全隐藏字符串
-    /// </summary>
-    /// <param name="value">原始值</param>
-    /// <returns>完全隐藏的字符串</returns>
-    public static string Hide(string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-            return string.Empty;
-
-        return new string('*', value.Length);
+        return result;
     }
 }

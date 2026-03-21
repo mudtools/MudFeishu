@@ -41,7 +41,15 @@ public static class ServiceCollectionExtensions
             ?? "Data Source=TaskManage.db";
 
         services.AddDbContext<TaskManageDbContext>(options =>
-            options.UseSqlite(connectionString));
+        {
+            options.UseSqlite(connectionString, sqliteOptions =>
+            {
+                sqliteOptions.MigrationsAssembly("TaskManageDemo.Backend");
+            });
+
+            // 启用 WAL 模式以提高并发性能
+            options.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTrackingWithIdentityResolution);
+        });
 
         return services;
     }

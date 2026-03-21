@@ -17,8 +17,10 @@ using TaskManageDemo.Backend.Extensions;
 using TaskManageDemo.Backend.Middleware;
 using TaskManageDemo.Backend.Models.DTOs;
 using TaskManageDemo.Backend.Services.Auth;
+using TaskManageDemo.Backend.Utils;
 using FluentValidation;
 using FluentValidation.AspNetCore;
+using TaskManageDemo.Backend.Services.HealthChecks;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -54,6 +56,18 @@ var jwtSecret = oauthOptions.Jwt.Secret;
 if (string.IsNullOrEmpty(jwtSecret))
 {
     throw new InvalidOperationException("JWT密钥未配置，请在 appsettings.json 中配置 OAuth:Jwt:Secret");
+}
+
+// 强制检查 JWT 密钥强度（至少32个字符）
+if (jwtSecret.Length < 32)
+{
+    throw new InvalidOperationException("JWT密钥必须至少32个字符，当前长度: " + jwtSecret.Length);
+}
+
+// 检查密钥复杂度（不能是简单重复字符或常见弱密码）
+if (IsWeakJwtSecret(jwtSecret))
+{
+    throw new InvalidOperationException("JWT密钥太弱，请使用包含大小写字母、数字和特殊字符的复杂密钥");
 }
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -96,11 +110,17 @@ builder.Services.AddFluentValidationAutoValidation();
 // 添加内存缓存
 builder.Services.AddMemoryCache();
 
+// 添加敏感数据脱敏服务
+builder.Services.AddSingleton<ISensitiveDataMasker, SensitiveDataMasker>();
+
 builder.Services.AddHealthChecks()
     .AddSqlite(
         builder.Configuration.GetConnectionString("DefaultConnection") ?? "Data Source=TaskManage.db",
         name: "database",
-        tags: new[] { "db", "sqlite" });
+        tags: new[] { "db", "sqlite" })
+    .AddCheck<FeishuApiHealthCheck>("feishu_api", tags: new[] { "external", "feishu" })
+    .AddCheck<DiskSpaceHealthCheck>("disk_space", tags: new[] { "system" })
+    .AddCheck<MemoryHealthCheck>("memory", tags: new[] { "system" });
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -123,7 +143,21 @@ builder.Services.AddSwaggerGen(c =>
 
 builder.Services.AddCors(options =>
 {
-    options.AddDefaultPolicy(policy =>
+    // 生产环境使用严格策略
+    options.AddPolicy("ProductionPolicy", policy =>
+    {
+        var allowedOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>()
+            ?? new[] { "http://localhost:5173", "http://localhost:3000" };
+
+        policy.WithOrigins(allowedOrigins)
+              .WithMethods("GET", "POST", "PUT", "DELETE", "PATCH")
+              .WithHeaders("Authorization", "Content-Type", "X-Request-ID", "X-Correlation-ID")
+              .AllowCredentials()
+              .SetPreflightMaxAge(TimeSpan.FromHours(1));
+    });
+
+    // 开发环境使用宽松策略
+    options.AddPolicy("DevelopmentPolicy", policy =>
     {
         policy.AllowAnyOrigin()
               .AllowAnyMethod()
@@ -136,19 +170,40 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<TaskManageDbContext>();
-    dbContext.Database.EnsureCreated();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
 
-    // 初始化权限数据
-    var permissionService = scope.ServiceProvider.GetRequiredService<IPermissionService>();
-    await permissionService.InitializePermissionsAsync();
+    try
+    {
+        // 生产环境使用 Migrate() 而不是 EnsureCreated()
+        if (app.Environment.IsProduction())
+        {
+            logger.LogInformation("应用数据库迁移...");
+            await dbContext.Database.MigrateAsync();
+        }
+        else
+        {
+            await dbContext.Database.EnsureCreatedAsync();
+        }
 
-    // 初始化默认角色
-    var roleService = scope.ServiceProvider.GetRequiredService<IRoleService>();
-    await roleService.InitializeDefaultRolesAsync();
+        // 初始化权限数据
+        var permissionService = scope.ServiceProvider.GetRequiredService<IPermissionService>();
+        await permissionService.InitializePermissionsAsync();
 
-    // 初始化管理员账号
-    var localAuthService = scope.ServiceProvider.GetRequiredService<ILocalAuthService>();
-    await localAuthService.InitializeAdminAccountAsync();
+        // 初始化默认角色
+        var roleService = scope.ServiceProvider.GetRequiredService<IRoleService>();
+        await roleService.InitializeDefaultRolesAsync();
+
+        // 初始化管理员账号
+        var localAuthService = scope.ServiceProvider.GetRequiredService<ILocalAuthService>();
+        await localAuthService.InitializeAdminAccountAsync();
+
+        logger.LogInformation("数据库初始化完成");
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "数据库初始化失败");
+        throw;
+    }
 }
 
 if (app.Environment.IsDevelopment())
@@ -177,7 +232,15 @@ app.UseAuthorization();
 app.UseFeishuAuthentication();
 app.UseFeishuAuthorization();
 
-app.UseCors();
+// 根据环境使用不同的CORS策略
+if (app.Environment.IsDevelopment())
+{
+    app.UseCors("DevelopmentPolicy");
+}
+else
+{
+    app.UseCors("ProductionPolicy");
+}
 app.UseFeishuWebhook();
 app.MapControllers();
 app.MapHealthChecks("/health", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
@@ -204,4 +267,34 @@ app.MapHealthChecks("/health", new Microsoft.AspNetCore.Diagnostics.HealthChecks
 app.Run();
 
 // 使 Program 类对测试项目可见
-public partial class Program { }
+public partial class Program
+{
+    /// <summary>
+    /// 检查 JWT 密钥是否为弱密码
+    /// </summary>
+    private static bool IsWeakJwtSecret(string secret)
+    {
+        // 检查是否为重复字符
+        if (secret.Distinct().Count() <= 3)
+            return true;
+
+        // 检查常见弱密码模式
+        var weakPatterns = new[]
+        {
+            "password", "123456", "secret", "admin", "default",
+            "your_jwt_secret", "jwt_secret", "token_secret"
+        };
+
+        foreach (var pattern in weakPatterns)
+        {
+            if (secret.Contains(pattern, StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+
+        // 检查是否全部为数字或全部为字母
+        if (secret.All(char.IsDigit) || secret.All(char.IsLetter))
+            return true;
+
+        return false;
+    }
+}

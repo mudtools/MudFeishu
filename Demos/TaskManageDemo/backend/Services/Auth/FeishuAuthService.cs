@@ -148,8 +148,9 @@ public class FeishuAuthService : IFeishuAuthService
                 unionId,
                 feishuUser.Name ?? "未知用户",
                 feishuUser.AvatarUrl,
-                feishuUser.Email
-            );
+                feishuUser.Email,
+                cancellationToken
+            ).ConfigureAwait(false);
 
             // 5. 更新用户飞书令牌
             user.FeishuAccessToken = tokenResult.AccessToken;
@@ -366,9 +367,12 @@ public class FeishuAuthService : IFeishuAuthService
         string unionId,
         string name,
         string? avatar,
-        string? email)
+        string? email,
+        CancellationToken cancellationToken = default)
     {
-        var user = await _dbContext.Users.FirstOrDefaultAsync(u => u.OpenId == openId);
+        var user = await _dbContext.Users
+            .FirstOrDefaultAsync(u => u.OpenId == openId, cancellationToken)
+            .ConfigureAwait(false);
 
         if (user != null)
         {
@@ -379,7 +383,7 @@ public class FeishuAuthService : IFeishuAuthService
             user.Email = email;
             user.UnionId = unionId;
             user.OpenId = openId;
-            await _dbContext.SaveChangesAsync();
+            await _dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             _logger.LogInformation("用户登录更新: {UserId}, {Name}", user.Id, user.Name);
             return (user, false);
         }
@@ -402,10 +406,11 @@ public class FeishuAuthService : IFeishuAuthService
         };
 
         _dbContext.Users.Add(user);
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         // 为新用户初始化默认权限
-        await _permissionService.InitializeDefaultPermissionsAsync(user.Id);
+        await _permissionService.InitializeDefaultPermissionsAsync(user.Id, cancellationToken)
+            .ConfigureAwait(false);
 
         _logger.LogInformation("创建新用户: {UserId}, {Name}", user.Id, user.Name);
         return (user, true);

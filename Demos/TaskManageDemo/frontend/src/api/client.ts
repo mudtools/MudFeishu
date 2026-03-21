@@ -4,6 +4,17 @@ import { ElMessage, ElNotification } from 'element-plus'
 import type { ApiResponse } from '../types'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api'
+const DEFAULT_TIMEOUT = Number(import.meta.env.VITE_API_TIMEOUT) || 30000
+
+/**
+ * API请求配置选项
+ */
+export interface ApiRequestConfig extends AxiosRequestConfig {
+  /** 是否跳过错误通知 */
+  skipErrorNotification?: boolean
+  /** 自定义超时时间（毫秒） */
+  timeout?: number
+}
 
 /**
  * 错误码映射
@@ -80,7 +91,7 @@ class ApiClient {
   constructor() {
     this.client = axios.create({
       baseURL: API_BASE_URL,
-      timeout: 30000,
+      timeout: DEFAULT_TIMEOUT,
       headers: {
         'Content-Type': 'application/json',
       },
@@ -88,6 +99,13 @@ class ApiClient {
 
     this.setupRequestInterceptor()
     this.setupResponseInterceptor()
+  }
+
+  /**
+   * 创建取消令牌
+   */
+  createCancelToken() {
+    return axios.CancelToken.source()
   }
 
   /**
@@ -194,41 +212,70 @@ class ApiClient {
   /**
    * GET 请求
    */
-  async get<T>(url: string, config?: AxiosRequestConfig): Promise<ApiResponse<T>> {
-    const response = await this.client.get<ApiResponse<T>>(url, config)
+  async get<T>(url: string, config?: ApiRequestConfig): Promise<ApiResponse<T>> {
+    const axiosConfig = this.buildAxiosConfig(config)
+    const response = await this.client.get<ApiResponse<T>>(url, axiosConfig)
     return response.data
   }
 
   /**
    * POST 请求
    */
-  async post<T>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<ApiResponse<T>> {
-    const response = await this.client.post<ApiResponse<T>>(url, data, config)
+  async post<T>(url: string, data?: unknown, config?: ApiRequestConfig): Promise<ApiResponse<T>> {
+    const axiosConfig = this.buildAxiosConfig(config)
+    const response = await this.client.post<ApiResponse<T>>(url, data, axiosConfig)
     return response.data
   }
 
   /**
    * PUT 请求
    */
-  async put<T>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<ApiResponse<T>> {
-    const response = await this.client.put<ApiResponse<T>>(url, data, config)
+  async put<T>(url: string, data?: unknown, config?: ApiRequestConfig): Promise<ApiResponse<T>> {
+    const axiosConfig = this.buildAxiosConfig(config)
+    const response = await this.client.put<ApiResponse<T>>(url, data, axiosConfig)
     return response.data
   }
 
   /**
    * DELETE 请求
    */
-  async delete<T>(url: string, config?: AxiosRequestConfig): Promise<ApiResponse<T>> {
-    const response = await this.client.delete<ApiResponse<T>>(url, config)
+  async delete<T>(url: string, config?: ApiRequestConfig): Promise<ApiResponse<T>> {
+    const axiosConfig = this.buildAxiosConfig(config)
+    const response = await this.client.delete<ApiResponse<T>>(url, axiosConfig)
     return response.data
   }
 
   /**
    * PATCH 请求
    */
-  async patch<T>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<ApiResponse<T>> {
-    const response = await this.client.patch<ApiResponse<T>>(url, data, config)
+  async patch<T>(url: string, data?: unknown, config?: ApiRequestConfig): Promise<ApiResponse<T>> {
+    const axiosConfig = this.buildAxiosConfig(config)
+    const response = await this.client.patch<ApiResponse<T>>(url, data, axiosConfig)
     return response.data
+  }
+
+  /**
+   * 构建 Axios 配置
+   */
+  private buildAxiosConfig(config?: ApiRequestConfig): AxiosRequestConfig {
+    if (!config) return {}
+
+    const axiosConfig: AxiosRequestConfig = { ...config }
+
+    // 处理 skipErrorNotification
+    if (config.skipErrorNotification) {
+      axiosConfig.headers = {
+        ...axiosConfig.headers,
+        'X-Skip-Error-Notification': 'true',
+      }
+    }
+
+    // 处理自定义超时
+    if (config.timeout) {
+      axiosConfig.timeout = config.timeout
+    }
+
+    return axiosConfig
   }
 
   /**

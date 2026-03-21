@@ -215,6 +215,14 @@ const handleFeishuLogin = async () => {
 }
 
 const handleLoginSuccess = async (data: LoginResponse) => {
+  console.log("Login response data:", JSON.stringify(data, null, 2))
+  console.log(
+    "isFeishuBound:",
+    data.isFeishuBound,
+    "type:",
+    typeof data.isFeishuBound
+  )
+
   authStore.setToken(data.accessToken)
 
   if (data.user) {
@@ -238,6 +246,7 @@ const handleLoginSuccess = async (data: LoginResponse) => {
 
   // 只有未绑定飞书账号的用户才需要跳转到绑定页面
   if (!data.isFeishuBound) {
+    console.log("User is not bound to Feishu, redirecting to bind-feishu page")
     ElMessage.warning({
       message: `欢迎，${data.user.name}！请绑定飞书账号以获得完整功能。`,
       duration: 3000,
@@ -245,6 +254,8 @@ const handleLoginSuccess = async (data: LoginResponse) => {
     router.replace("/bind-feishu")
     return
   }
+
+  console.log("User is bound to Feishu, redirecting to tasks page")
 
   const welcomeMessage = data.isFirstLogin
     ? `欢迎首次使用，${data.user.name}！`

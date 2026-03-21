@@ -394,7 +394,7 @@ public class LocalAuthService : ILocalAuthService
                 Role = UserRoles.Admin,
                 IsActive = true,
                 IsFirstLogin = true,
-                FeishuId = $"local_admin_{Guid.NewGuid():N}",
+                IsFeishuBound = false,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
@@ -416,6 +416,26 @@ public class LocalAuthService : ILocalAuthService
             }
 
             _logger.LogInformation("管理员账号初始化完成");
+        }
+        else
+        {
+            _logger.LogInformation("管理员账号已存在: IsFeishuBound={IsFeishuBound}, FeishuId={FeishuId}",
+                adminUser.IsFeishuBound, adminUser.FeishuId);
+
+            if (adminUser.IsFeishuBound && !string.IsNullOrEmpty(adminUser.FeishuId) && adminUser.FeishuId.StartsWith("local_admin_"))
+            {
+                _logger.LogInformation("正在重置管理员账号的飞书绑定状态...");
+                adminUser.IsFeishuBound = false;
+                adminUser.FeishuId = string.Empty;
+                adminUser.UpdatedAt = DateTime.UtcNow;
+                _dbContext.Users.Update(adminUser);
+                var changes = await _dbContext.SaveChangesAsync(cancellationToken);
+                _logger.LogInformation("管理员账号 IsFeishuBound 字段已重置，影响行数: {Changes}", changes);
+            }
+            else
+            {
+                _logger.LogInformation("管理员账号不需要重置飞书绑定状态");
+            }
         }
     }
 

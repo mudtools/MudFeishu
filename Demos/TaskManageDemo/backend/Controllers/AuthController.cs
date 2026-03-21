@@ -324,7 +324,9 @@ public class AuthController : BaseController
                 return Fail<LoginResponse>("用户名或密码错误", 401);
             }
 
-            var message = response.IsFirstLogin ? "登录成功，请绑定飞书账号" : "登录成功";
+            var message = !response.IsFeishuBound
+                ? "登录成功，请绑定飞书账号"
+                : (response.IsFirstLogin ? "首次登录成功" : "登录成功");
             return Success(response, message);
         }
         catch (Exception ex)

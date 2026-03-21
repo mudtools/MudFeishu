@@ -206,7 +206,7 @@ public class CommentsController : ControllerBase
 
     private int? GetCurrentUserId()
     {
-        var userIdClaim = User.FindFirst("sub") ?? User.FindFirst("userId");
+        var userIdClaim = User.FindFirst("sub") ?? User.FindFirst("user_id");
         if (userIdClaim is null || !int.TryParse(userIdClaim.Value, out var userId))
         {
             return null;

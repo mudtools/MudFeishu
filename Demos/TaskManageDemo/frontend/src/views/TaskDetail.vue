@@ -3,7 +3,9 @@
     <!-- 返回按钮 -->
     <div class="back-nav">
       <el-button text @click="goBack">
-        <el-icon><ArrowLeft /></el-icon>
+        <el-icon>
+          <ArrowLeft />
+        </el-icon>
         返回任务列表
       </el-button>
     </div>
@@ -15,30 +17,36 @@
           <div class="task-header-top">
             <div class="task-badges">
               <el-tag v-if="task.isCompleted" type="success" effect="dark" size="small">
-                <el-icon><CircleCheck /></el-icon>
+                <el-icon>
+                  <CircleCheck />
+                </el-icon>
                 已完成
               </el-tag>
               <TaskPriorityTag :priority="task.priority" />
               <el-tag v-if="isOverdue" type="danger" effect="dark" size="small">
-                <el-icon><Warning /></el-icon>
+                <el-icon>
+                  <Warning />
+                </el-icon>
                 已逾期
               </el-tag>
             </div>
             <div class="task-actions">
-              <el-button
-                v-if="!task.isCompleted"
-                type="success"
-                @click="handleComplete"
-              >
-                <el-icon><CircleCheck /></el-icon>
+              <el-button v-if="!task.isCompleted" type="success" @click="handleComplete">
+                <el-icon>
+                  <CircleCheck />
+                </el-icon>
                 完成任务
               </el-button>
               <el-button type="primary" @click="handleEdit">
-                <el-icon><Edit /></el-icon>
+                <el-icon>
+                  <Edit />
+                </el-icon>
                 编辑
               </el-button>
               <el-button type="danger" @click="handleDelete">
-                <el-icon><Delete /></el-icon>
+                <el-icon>
+                  <Delete />
+                </el-icon>
                 删除
               </el-button>
             </div>
@@ -50,15 +58,21 @@
 
           <div class="task-meta">
             <div class="meta-item">
-              <el-icon><User /></el-icon>
+              <el-icon>
+                <User />
+              </el-icon>
               <span>创建者: {{ task.creatorName || '未知' }}</span>
             </div>
             <div class="meta-item">
-              <el-icon><Calendar /></el-icon>
+              <el-icon>
+                <Calendar />
+              </el-icon>
               <span>创建于: {{ formatDate(task.createdAt) }}</span>
             </div>
             <div v-if="task.taskListName" class="meta-item">
-              <el-icon><Folder /></el-icon>
+              <el-icon>
+                <Folder />
+              </el-icon>
               <span>清单: {{ task.taskListName }}</span>
             </div>
           </div>
@@ -71,7 +85,9 @@
             <el-card class="section-card" shadow="never">
               <template #header>
                 <div class="section-header">
-                  <el-icon><Document /></el-icon>
+                  <el-icon>
+                    <Document />
+                  </el-icon>
                   <span>任务描述</span>
                 </div>
               </template>
@@ -84,21 +100,15 @@
             <el-card v-if="task.checkItems && task.checkItems.length > 0" class="section-card" shadow="never">
               <template #header>
                 <div class="section-header">
-                  <el-icon><List /></el-icon>
+                  <el-icon>
+                    <List />
+                  </el-icon>
                   <span>检查项</span>
-                  <el-progress
-                    :percentage="checkItemProgress"
-                    :format="(p: number) => `${p}%`"
-                    class="check-progress"
-                  />
+                  <el-progress :percentage="checkItemProgress" :format="(p: number) => `${p}%`" class="check-progress" />
                 </div>
               </template>
               <div class="check-items">
-                <div
-                  v-for="item in task.checkItems"
-                  :key="item.id"
-                  class="check-item"
-                >
+                <div v-for="item in task.checkItems" :key="item.id" class="check-item">
                   <el-checkbox :model-value="item.isCompleted" disabled />
                   <span :class="{ completed: item.isCompleted }">{{ item.content }}</span>
                 </div>
@@ -109,33 +119,34 @@
             <el-card class="section-card" shadow="never">
               <template #header>
                 <div class="section-header">
-                  <el-icon><ChatDotRound /></el-icon>
+                  <el-icon>
+                    <ChatDotRound />
+                  </el-icon>
                   <span>评论</span>
                 </div>
               </template>
               <div class="comments-section">
                 <div class="comment-input">
-                  <el-input
-                    v-model="newComment"
-                    type="textarea"
-                    :rows="3"
-                    placeholder="添加评论..."
-                  />
+                  <el-input v-model="newComment" type="textarea" :rows="3" placeholder="添加评论..." />
                   <el-button type="primary" class="submit-comment" @click="submitComment">
                     发表评论
                   </el-button>
                 </div>
-                <div class="comments-list">
+                <div v-loading="commentsLoading" class="comments-list">
                   <div v-for="comment in comments" :key="comment.id" class="comment-item">
-                    <UserAvatar :name="comment.author" :size="36" />
+                    <UserAvatar :name="comment.userName" :avatar-url="comment.userAvatar" :size="36" />
                     <div class="comment-content">
                       <div class="comment-header">
-                        <span class="comment-author">{{ comment.author }}</span>
+                        <span class="comment-author">{{ comment.userName }}</span>
                         <span class="comment-time">{{ formatDate(comment.createdAt) }}</span>
+                        <el-button type="danger" text size="small" @click="handleDeleteComment(comment.id)">
+                          删除
+                        </el-button>
                       </div>
                       <p class="comment-text">{{ comment.content }}</p>
                     </div>
                   </div>
+                  <el-empty v-if="!commentsLoading && comments.length === 0" description="暂无评论" />
                 </div>
               </div>
             </el-card>
@@ -147,7 +158,9 @@
             <el-card class="info-card" shadow="never">
               <template #header>
                 <div class="info-header">
-                  <el-icon><Clock /></el-icon>
+                  <el-icon>
+                    <Clock />
+                  </el-icon>
                   <span>时间信息</span>
                 </div>
               </template>
@@ -173,21 +186,15 @@
             <el-card v-if="task.members && task.members.length > 0" class="info-card" shadow="never">
               <template #header>
                 <div class="info-header">
-                  <el-icon><UserFilled /></el-icon>
+                  <el-icon>
+                    <UserFilled />
+                  </el-icon>
                   <span>任务成员</span>
                 </div>
               </template>
               <div class="members-list">
-                <div
-                  v-for="member in task.members"
-                  :key="member.id"
-                  class="member-item"
-                >
-                  <UserAvatar
-                    :name="member.name || '用户'"
-                    :avatar-url="member.avatarUrl"
-                    :size="36"
-                  />
+                <div v-for="member in task.members" :key="member.id" class="member-item">
+                  <UserAvatar :name="member.name || '用户'" :avatar-url="member.avatarUrl" :size="36" />
                   <div class="member-info">
                     <span class="member-name">{{ member.name }}</span>
                     <el-tag size="small" :type="member.role === 'assignee' ? 'primary' : 'info'">
@@ -202,17 +209,14 @@
             <el-card v-if="task.tags && task.tags.length > 0" class="info-card" shadow="never">
               <template #header>
                 <div class="info-header">
-                  <el-icon><CollectionTag /></el-icon>
+                  <el-icon>
+                    <CollectionTag />
+                  </el-icon>
                   <span>标签</span>
                 </div>
               </template>
               <div class="tags-list">
-                <el-tag
-                  v-for="tag in task.tags"
-                  :key="tag"
-                  effect="plain"
-                  class="task-tag"
-                >
+                <el-tag v-for="tag in task.tags" :key="tag" effect="plain" class="task-tag">
                   {{ tag }}
                 </el-tag>
               </div>
@@ -225,20 +229,8 @@
     </div>
 
     <!-- 编辑对话框 -->
-    <el-dialog
-      v-model="editDialogVisible"
-      title="编辑任务"
-      width="600px"
-      destroy-on-close
-      class="edit-dialog"
-    >
-      <el-form
-        ref="formRef"
-        :model="editForm"
-        :rules="formRules"
-        label-position="top"
-        class="edit-form"
-      >
+    <el-dialog v-model="editDialogVisible" title="编辑任务" width="600px" destroy-on-close class="edit-dialog">
+      <el-form ref="formRef" :model="editForm" :rules="formRules" label-position="top" class="edit-form">
         <el-form-item label="任务标题" prop="summary">
           <el-input v-model="editForm.summary" size="large" />
         </el-form-item>
@@ -255,13 +247,7 @@
             </el-select>
           </el-form-item>
           <el-form-item label="截止时间" prop="dueTime" class="form-col">
-            <el-date-picker
-              v-model="editForm.dueTime"
-              type="datetime"
-              format="YYYY-MM-DD HH:mm"
-              value-format="YYYY-MM-DDTHH:mm:ss"
-              style="width: 100%"
-            />
+            <el-date-picker v-model="editForm.dueTime" type="datetime" format="YYYY-MM-DD HH:mm" value-format="YYYY-MM-DDTHH:mm:ss" style="width: 100%" />
           </el-form-item>
         </div>
       </el-form>
@@ -278,10 +264,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import type { FormInstance, FormRules } from 'element-plus'
+import { ref, reactive, computed, onMounted } from "vue"
+import { useRoute, useRouter } from "vue-router"
+import { ElMessage, ElMessageBox } from "element-plus"
+import type { FormInstance, FormRules } from "element-plus"
 import {
   ArrowLeft,
   CircleCheck,
@@ -296,12 +282,13 @@ import {
   ChatDotRound,
   Clock,
   UserFilled,
-  CollectionTag
-} from '@element-plus/icons-vue'
-import { useTaskStore } from '../stores/task'
-import type { UpdateTaskRequest } from '../types'
-import { TaskPriorityTag, UserAvatar } from '../components'
-import dayjs from 'dayjs'
+  CollectionTag,
+} from "@element-plus/icons-vue"
+import { useTaskStore } from "../stores/task"
+import { taskApi } from "../api"
+import type { UpdateTaskRequest, TaskComment } from "../types"
+import { TaskPriorityTag, UserAvatar } from "../components"
+import dayjs from "dayjs"
 
 const route = useRoute()
 const router = useRouter()
@@ -313,26 +300,22 @@ const task = computed(() => taskStore.currentTask)
 const editDialogVisible = ref(false)
 const submitting = ref(false)
 const formRef = ref<FormInstance>()
-const newComment = ref('')
+const newComment = ref("")
+const comments = ref<TaskComment[]>([])
+const commentsLoading = ref(false)
 
 const editForm = reactive<UpdateTaskRequest>({
-  summary: '',
-  description: '',
+  summary: "",
+  description: "",
   priority: 2,
-  dueTime: '',
+  dueTime: "",
 })
 
 const formRules: FormRules = {
-  summary: [{ required: true, message: '请输入任务标题', trigger: 'blur' }],
+  summary: [{ required: true, message: "请输入任务标题", trigger: "blur" }],
 }
 
-// 模拟评论数据
-const comments = ref([
-  { id: 1, author: '张三', content: '这个任务需要尽快完成', createdAt: '2024-01-15T10:30:00' },
-  { id: 2, author: '李四', content: '我已经开始处理了', createdAt: '2024-01-15T14:20:00' },
-])
-
-const formatDate = (date: string) => dayjs(date).format('YYYY-MM-DD HH:mm')
+const formatDate = (date: string) => dayjs(date).format("YYYY-MM-DD HH:mm")
 
 const isOverdue = computed(() => {
   if (!task.value || task.value.isCompleted || !task.value.dueTime) return false
@@ -341,17 +324,32 @@ const isOverdue = computed(() => {
 
 const checkItemProgress = computed(() => {
   if (!task.value?.checkItems || task.value.checkItems.length === 0) return 0
-  const completed = task.value.checkItems.filter(item => item.isCompleted).length
+  const completed = task.value.checkItems.filter(
+    (item) => item.isCompleted
+  ).length
   return Math.round((completed / task.value.checkItems.length) * 100)
 })
 
-const goBack = () => router.push('/tasks')
+const goBack = () => router.push("/tasks")
+
+const fetchComments = async (taskId: number) => {
+  commentsLoading.value = true
+  try {
+    comments.value = await taskApi.getComments(taskId)
+  } catch {
+    comments.value = []
+  } finally {
+    commentsLoading.value = false
+  }
+}
 
 const handleComplete = async () => {
   try {
-    await ElMessageBox.confirm('确定要将此任务标记为已完成吗？', '确认', { type: 'success' })
+    await ElMessageBox.confirm("确定要将此任务标记为已完成吗？", "确认", {
+      type: "success",
+    })
     await taskStore.completeTask(task.value!.id)
-    ElMessage.success('任务已完成')
+    ElMessage.success("任务已完成")
   } catch {}
 }
 
@@ -359,9 +357,9 @@ const handleEdit = () => {
   if (!task.value) return
   Object.assign(editForm, {
     summary: task.value.summary,
-    description: task.value.description || '',
+    description: task.value.description || "",
     priority: task.value.priority,
-    dueTime: task.value.dueTime || '',
+    dueTime: task.value.dueTime || "",
   })
   editDialogVisible.value = true
 }
@@ -373,10 +371,10 @@ const handleSave = async () => {
     submitting.value = true
     try {
       await taskStore.updateTask(task.value!.id, editForm)
-      ElMessage.success('任务更新成功')
+      ElMessage.success("任务更新成功")
       editDialogVisible.value = false
     } catch {
-      ElMessage.error('任务更新失败')
+      ElMessage.error("任务更新失败")
     } finally {
       submitting.value = false
     }
@@ -385,28 +383,49 @@ const handleSave = async () => {
 
 const handleDelete = async () => {
   try {
-    await ElMessageBox.confirm('确定要删除此任务吗？此操作不可恢复。', '确认删除', { type: 'warning' })
+    await ElMessageBox.confirm(
+      "确定要删除此任务吗？此操作不可恢复。",
+      "确认删除",
+      { type: "warning" }
+    )
     await taskStore.deleteTask(task.value!.id)
-    ElMessage.success('任务已删除')
-    router.push('/tasks')
+    ElMessage.success("任务已删除")
+    router.push("/tasks")
   } catch {}
 }
 
-const submitComment = () => {
-  if (!newComment.value.trim()) return
-  comments.value.unshift({
-    id: Date.now(),
-    author: '当前用户',
-    content: newComment.value,
-    createdAt: new Date().toISOString()
-  })
-  newComment.value = ''
-  ElMessage.success('评论已发表')
+const submitComment = async () => {
+  if (!newComment.value.trim() || !task.value) return
+  try {
+    const comment = await taskApi.createComment(task.value.id, {
+      content: newComment.value.trim(),
+    })
+    comments.value.unshift(comment)
+    newComment.value = ""
+    ElMessage.success("评论已发表")
+  } catch {
+    ElMessage.error("评论发表失败")
+  }
+}
+
+const handleDeleteComment = async (commentId: number) => {
+  if (!task.value) return
+  try {
+    await ElMessageBox.confirm("确定要删除此评论吗？", "确认删除", {
+      type: "warning",
+    })
+    await taskApi.deleteComment(task.value.id, commentId)
+    comments.value = comments.value.filter((c) => c.id !== commentId)
+    ElMessage.success("评论已删除")
+  } catch {}
 }
 
 onMounted(() => {
   const id = Number(route.params.id)
-  if (id) taskStore.fetchTask(id)
+  if (id) {
+    taskStore.fetchTask(id)
+    fetchComments(id)
+  }
 })
 </script>
 

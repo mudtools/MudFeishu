@@ -444,3 +444,36 @@ export interface UserPermissionDetail {
   revokedPermissions: Permission[];
   effectivePermissions: string[];
 }
+
+// ==================== 评论相关类型 ====================
+
+/**
+ * 任务评论
+ */
+export interface TaskComment {
+  id: number;
+  taskId: number;
+  userId: number;
+  userName: string;
+  userAvatar?: string;
+  content: string;
+  parentCommentId?: number;
+  replies: TaskComment[];
+  createdAt: string;
+  updatedAt?: string;
+}
+
+/**
+ * 创建评论请求
+ */
+export interface CreateCommentRequest {
+  content: string;
+  parentCommentId?: number;
+}
+
+/**
+ * 更新评论请求
+ */
+export interface UpdateCommentRequest {
+  content: string;
+}

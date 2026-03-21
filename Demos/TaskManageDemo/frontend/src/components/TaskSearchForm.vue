@@ -55,14 +55,14 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), {
   keyword: '',
   status: 'all',
-  priority: 0,
+  priority: undefined,
   showDateRange: false
 })
 
 const emit = defineEmits<{
   'update:keyword': [value: string]
   'update:status': [value: string]
-  'update:priority': [value: number]
+  'update:priority': [value: number | undefined]
   search: []
   reset: []
 }>()
@@ -94,7 +94,7 @@ const handleSearch = () => {
 const handleReset = () => {
   localForm.keyword = ''
   localForm.status = 'all'
-  localForm.priority = 0
+  localForm.priority = undefined
   dateRange.value = null
   emit('reset')
 }

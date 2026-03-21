@@ -201,7 +201,7 @@ const taskStore = useTaskStore()
 const searchForm = reactive<TaskSearchParams>({
   keyword: "",
   status: "all",
-  priority: 0,
+  priority: undefined,
   page: 1,
   pageSize: 20,
 })

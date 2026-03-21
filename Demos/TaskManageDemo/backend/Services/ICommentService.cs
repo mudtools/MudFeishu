@@ -38,4 +38,9 @@ public interface ICommentService
     /// 删除评论
     /// </summary>
     Task<bool> DeleteCommentAsync(int commentId, int userId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 删除评论（支持管理员删除）
+    /// </summary>
+    Task<bool> DeleteCommentAsync(int commentId, int userId, bool isAdmin, CancellationToken cancellationToken = default);
 }

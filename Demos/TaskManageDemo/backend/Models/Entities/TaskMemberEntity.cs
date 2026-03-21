@@ -59,6 +59,11 @@ public class TaskMemberEntity
     public User? User { get; set; }
 
     /// <summary>
+    /// 飞书用户ID（用于同步）
+    /// </summary>
+    public string? FeishuUserId { get; set; }
+
+    /// <summary>
     /// 成员角色 (assignee: 负责人, follower: 关注人, creator: 创建者)
     /// </summary>
     public string Role { get; set; } = TaskMemberRoles.Assignee;

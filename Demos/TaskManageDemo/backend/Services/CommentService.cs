@@ -118,6 +118,14 @@ public class CommentService : ICommentService
 
     public async Task<bool> DeleteCommentAsync(int commentId, int userId, CancellationToken cancellationToken = default)
     {
+        return await DeleteCommentAsync(commentId, userId, isAdmin: false, cancellationToken);
+    }
+
+    /// <summary>
+    /// 删除评论（支持管理员删除）
+    /// </summary>
+    public async Task<bool> DeleteCommentAsync(int commentId, int userId, bool isAdmin, CancellationToken cancellationToken = default)
+    {
         var comment = await _dbContext.TaskComments
             .Include(c => c.Replies)
             .FirstOrDefaultAsync(c => c.Id == commentId, cancellationToken);
@@ -127,9 +135,9 @@ public class CommentService : ICommentService
             return false;
         }
 
-        if (comment.UserId != userId)
+        if (comment.UserId != userId && !isAdmin)
         {
-            throw new UnauthorizedAccessException("只能删除自己的评论");
+            throw new UnauthorizedAccessException("只能删除自己的评论，或使用管理员权限删除");
         }
 
         if (comment.Replies.Count > 0)
@@ -144,7 +152,8 @@ public class CommentService : ICommentService
 
         await _dbContext.SaveChangesAsync(cancellationToken);
 
-        _logger.LogInformation("删除评论: CommentId={CommentId}, UserId={UserId}", commentId, userId);
+        _logger.LogInformation("删除评论: CommentId={CommentId}, UserId={UserId}, IsAdmin={IsAdmin}", 
+            commentId, userId, isAdmin);
 
         return true;
     }

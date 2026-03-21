@@ -17,6 +17,7 @@
     <PackageReference Include="Mud.Feishu.Webhook" Version="2.0.4" />
     <ProjectReference Include="../../../Mud.Feishu.Authentication/Mud.Feishu.Authentication.csproj" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.11" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="8.0.11" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.11">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

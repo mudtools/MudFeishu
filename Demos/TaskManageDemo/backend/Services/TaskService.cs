@@ -250,7 +250,11 @@ public class TaskService : ITaskService
             return null;
         }
 
-        // 在飞书更新任务
+        var oldSummary = task.Summary;
+        var oldDescription = task.Description;
+        var oldIsCompleted = task.IsCompleted;
+        var oldDueTime = task.DueTime;
+
         var success = await _feishuTaskService.UpdateTaskAsync(
             task.TaskGuid,
             request.Summary,
@@ -266,7 +270,6 @@ public class TaskService : ITaskService
 
         _logger.LogInformation("飞书任务更新成功，TaskGuid: {TaskGuid}", task.TaskGuid);
 
-        // 使用事务同步到本地数据库
         var result = await _transactionService.ExecuteAsync(async () =>
         {
             var syncedTask = await _taskSyncService.SyncTaskAsync(task.TaskGuid, cancellationToken);
@@ -276,6 +279,37 @@ public class TaskService : ITaskService
             }
             return syncedTask;
         }, cancellationToken);
+
+        if (request.Summary != null && request.Summary != oldSummary)
+        {
+            await _taskHistoryService.RecordTaskUpdatedAsync(result.Id, userId, "Summary", oldSummary, request.Summary, cancellationToken);
+        }
+
+        if (request.Description != null && request.Description != oldDescription)
+        {
+            await _taskHistoryService.RecordTaskUpdatedAsync(result.Id, userId, "Description", oldDescription, request.Description, cancellationToken);
+        }
+
+        if (request.IsCompleted.HasValue && request.IsCompleted != oldIsCompleted)
+        {
+            await _taskHistoryService.RecordTaskStatusChangedAsync(
+                result.Id, 
+                userId, 
+                oldIsCompleted ? "completed" : "pending", 
+                request.IsCompleted.Value ? "completed" : "pending", 
+                cancellationToken);
+        }
+
+        if (request.DueTime != oldDueTime)
+        {
+            await _taskHistoryService.RecordTaskUpdatedAsync(
+                result.Id, 
+                userId, 
+                "DueTime", 
+                oldDueTime?.ToString("yyyy-MM-dd HH:mm:ss"), 
+                request.DueTime?.ToString("yyyy-MM-dd HH:mm:ss"), 
+                cancellationToken);
+        }
 
         return MapToTaskDto(result);
     }
@@ -294,7 +328,14 @@ public class TaskService : ITaskService
             return false;
         }
 
-        // 在飞书删除任务
+        await _taskHistoryService.RecordTaskUpdatedAsync(
+            taskId,
+            userId,
+            "TaskDeleted",
+            task.Summary,
+            null,
+            cancellationToken);
+
         var success = await _feishuTaskService.DeleteTaskAsync(task.TaskGuid, cancellationToken);
         if (!success)
         {
@@ -303,7 +344,6 @@ public class TaskService : ITaskService
 
         _logger.LogInformation("飞书任务删除成功，TaskGuid: {TaskGuid}", task.TaskGuid);
 
-        // 使用事务删除本地数据库记录
         await _transactionService.ExecuteAsync(async () =>
         {
             _dbContext.Tasks.Remove(task);

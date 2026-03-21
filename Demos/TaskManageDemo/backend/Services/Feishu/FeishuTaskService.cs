@@ -144,7 +144,7 @@ public class FeishuTaskService : IFeishuTaskService
         if (result?.Data?.Task != null)
         {
             var task = result.Data.Task;
-            return new TaskSync
+            var taskSync = new TaskSync
             {
                 TaskGuid = task.Guid ?? taskGuid,
                 Summary = task.Summary ?? string.Empty,
@@ -162,6 +162,18 @@ public class FeishuTaskService : IFeishuTaskService
                 CreatorId = task.Creator?.Id,
                 LastSyncedAt = DateTime.UtcNow
             };
+
+            if (task.Members != null && task.Members.Length > 0)
+            {
+                taskSync.Members = task.Members.Select(m => new TaskMemberEntity
+                {
+                    FeishuUserId = m.Id,
+                    Role = m.Role ?? TaskMemberRoles.Assignee,
+                    JoinedAt = DateTime.UtcNow
+                }).ToList();
+            }
+
+            return taskSync;
         }
 
         return null;

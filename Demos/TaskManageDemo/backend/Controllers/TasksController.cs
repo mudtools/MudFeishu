@@ -8,6 +8,7 @@
 using TaskManageDemo.Backend.Middleware;
 using TaskManageDemo.Backend.Models.DTOs;
 using TaskManageDemo.Backend.Services;
+using TaskManageDemo.Backend.Services.Search;
 
 namespace TaskManageDemo.Backend.Controllers;
 
@@ -19,6 +20,7 @@ namespace TaskManageDemo.Backend.Controllers;
 public class TasksController : BaseController
 {
     private readonly ITaskService _taskService;
+    private readonly ITaskSearchService _taskSearchService;
     private readonly ILogger<TasksController> _logger;
 
     /// <summary>
@@ -26,10 +28,25 @@ public class TasksController : BaseController
     /// </summary>
     public TasksController(
         ITaskService taskService,
+        ITaskSearchService taskSearchService,
         ILogger<TasksController> logger)
     {
         _taskService = taskService;
+        _taskSearchService = taskSearchService;
         _logger = logger;
+    }
+
+    /// <summary>
+    /// 搜索任务
+    /// </summary>
+    [HttpGet("search")]
+    [RequirePermission("task:read")]
+    public async Task<ActionResult<ApiResponse<PagedResponse<TaskDto>>>> SearchTasks(
+        [FromQuery] TaskSearchParameters parameters,
+        CancellationToken cancellationToken)
+    {
+        var result = await _taskSearchService.SearchAsync(parameters, cancellationToken);
+        return Success(result);
     }
 
     /// <summary>

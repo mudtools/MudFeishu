@@ -66,7 +66,7 @@ public abstract class BaseController : ControllerBase
     /// </summary>
     protected ActionResult<ApiResponse<T>> Created<T>(T data, string message = "创建成功")
     {
-        return ApiResponse<T>.Ok(data, message);
+        return StatusCode(201, ApiResponse<T>.Ok(data, message));
     }
 
     /// <summary>
@@ -82,7 +82,7 @@ public abstract class BaseController : ControllerBase
     /// </summary>
     protected ActionResult<ApiResponse<bool>> Deleted(string message = "删除成功")
     {
-        return ApiResponse<bool>.Ok(true, message);
+        return NoContent();
     }
 
     /// <summary>
@@ -90,7 +90,7 @@ public abstract class BaseController : ControllerBase
     /// </summary>
     protected ActionResult<ApiResponse<T>> NotFoundResult<T>(string message = "资源不存在")
     {
-        return ApiResponse<T>.Fail(message);
+        return NotFound(ApiResponse<T>.Fail(message));
     }
 
     /// <summary>
@@ -98,7 +98,7 @@ public abstract class BaseController : ControllerBase
     /// </summary>
     protected ActionResult<ApiResponse<T>> BadRequestResult<T>(string message = "参数错误")
     {
-        return ApiResponse<T>.Fail(message);
+        return BadRequest(ApiResponse<T>.Fail(message));
     }
 
     /// <summary>

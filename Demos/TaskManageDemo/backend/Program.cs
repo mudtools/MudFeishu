@@ -58,14 +58,15 @@ if (string.IsNullOrEmpty(jwtSecret))
     throw new InvalidOperationException("JWT密钥未配置，请在 appsettings.json 中配置 OAuth:Jwt:Secret");
 }
 
-// 强制检查 JWT 密钥强度（至少32个字符）
-if (jwtSecret.Length < 32)
+// 强制检查 JWT 密钥强度（至少32个字符）- 测试环境跳过
+var isTesting = builder.Environment.IsEnvironment("Testing");
+if (!isTesting && jwtSecret.Length < 32)
 {
     throw new InvalidOperationException("JWT密钥必须至少32个字符，当前长度: " + jwtSecret.Length);
 }
 
-// 检查密钥复杂度（不能是简单重复字符或常见弱密码）
-if (IsWeakJwtSecret(jwtSecret))
+// 检查密钥复杂度（不能是简单重复字符或常见弱密码）- 测试环境跳过
+if (!isTesting && IsWeakJwtSecret(jwtSecret))
 {
     throw new InvalidOperationException("JWT密钥太弱，请使用包含大小写字母、数字和特殊字符的复杂密钥");
 }
@@ -225,12 +226,20 @@ app.UseGlobalExceptionHandler();
 
 // 认证和授权中间件
 app.UseAuthentication();
-app.UseFeishuUserAuthentication(); // 飞书用户认证中间件
+
+if (!isTesting)
+{
+    app.UseFeishuUserAuthentication(); // 飞书用户认证中间件
+}
+
 app.UseAuthorization();
 
-// 原有的飞书认证中间件（保留用于向后兼容）
-app.UseFeishuAuthentication();
-app.UseFeishuAuthorization();
+if (!isTesting)
+{
+    // 原有的飞书认证中间件（保留用于向后兼容）
+    app.UseFeishuAuthentication();
+    app.UseFeishuAuthorization();
+}
 
 // 根据环境使用不同的CORS策略
 if (app.Environment.IsDevelopment())

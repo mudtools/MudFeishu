@@ -24,12 +24,7 @@ import type {
 export async function getOAuthUrl(
   request: OAuthUrlRequest
 ): Promise<ApiResponse<OAuthUrlResponse>> {
-  const params = new URLSearchParams()
-  params.append('redirectUri', request.redirectUri)
-  if (request.state) {
-    params.append('state', request.state)
-  }
-  return apiClient.get<OAuthUrlResponse>(`/auth/oauth-url?${params.toString()}`)
+  return apiClient.get<OAuthUrlResponse>('/auth/feishu/url')
 }
 
 /**
@@ -40,7 +35,7 @@ export async function getOAuthUrl(
 export async function loginWithCode(
   request: LoginRequest
 ): Promise<ApiResponse<LoginResponse>> {
-  return apiClient.post<LoginResponse>('/auth/login', request)
+  return apiClient.post<LoginResponse>('/auth/feishu/callback', request)
 }
 
 /**

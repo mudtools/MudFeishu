@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -30,35 +31,29 @@ public class IntegrationTestFactory : WebApplicationFactory<Program>
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        builder.UseEnvironment("Testing");
+
         builder.ConfigureServices(services =>
         {
-            // 替换数据库为内存数据库
-            var descriptor = services.SingleOrDefault(
-                d => d.ServiceType == typeof(DbContextOptions<TaskManageDbContext>));
-
-            if (descriptor != null)
+            services.PostConfigure<Microsoft.AspNetCore.Authentication.AuthenticationOptions>(options =>
             {
-                services.Remove(descriptor);
-            }
-
-            services.AddDbContext<TaskManageDbContext>(options =>
-            {
-                options.UseInMemoryDatabase("TestDatabase");
+                options.DefaultAuthenticateScheme = "Test";
+                options.DefaultChallengeScheme = "Test";
             });
 
-            // 添加测试认证
             services.AddAuthentication("Test")
                 .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>("Test", _ => { });
+        });
+    }
 
-            // 构建服务提供者
-            var serviceProvider = services.BuildServiceProvider();
+    public async Task InitializeTestDataAsync()
+    {
+        using var scope = Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<TaskManageDbContext>();
+        await db.Database.EnsureCreatedAsync();
 
-            // 初始化数据库
-            using var scope = serviceProvider.CreateScope();
-            var db = scope.ServiceProvider.GetRequiredService<TaskManageDbContext>();
-            db.Database.EnsureCreated();
-
-            // 创建测试用户
+        if (!await db.Users.AnyAsync(u => u.FeishuId == TestUserFeishuId))
+        {
             var testUser = new User
             {
                 FeishuId = TestUserFeishuId,
@@ -71,10 +66,8 @@ public class IntegrationTestFactory : WebApplicationFactory<Program>
                 LastSyncedAt = DateTime.UtcNow
             };
             db.Users.Add(testUser);
-            db.SaveChanges();
-        });
-
-        builder.UseEnvironment("Testing");
+            await db.SaveChangesAsync();
+        }
     }
 }
 

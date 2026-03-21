@@ -42,12 +42,18 @@ public static class ServiceCollectionExtensions
 
         services.AddDbContext<TaskManageDbContext>(options =>
         {
-            options.UseSqlite(connectionString, sqliteOptions =>
+            if (connectionString.Contains(":memory:") || connectionString.Contains("InMemory"))
             {
-                sqliteOptions.MigrationsAssembly("TaskManageDemo.Backend");
-            });
+                options.UseInMemoryDatabase("TestDatabase");
+            }
+            else
+            {
+                options.UseSqlite(connectionString, sqliteOptions =>
+                {
+                    sqliteOptions.MigrationsAssembly("TaskManageDemo.Backend");
+                });
+            }
 
-            // 启用 WAL 模式以提高并发性能
             options.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTrackingWithIdentityResolution);
         });
 
@@ -61,9 +67,16 @@ public static class ServiceCollectionExtensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
+        var feishuAppsSection = configuration.GetSection("FeishuApps");
+        if (!feishuAppsSection.Exists())
+        {
+            return services;
+        }
+
         services.AddFeishuApp(configuration, "FeishuApps");
 
         services.CreateFeishuServicesBuilder()
+            .AddModules(FeishuModule.Organization)
             .AddTaskApi()
             .AddMessageApi()
             .Build();

@@ -6,6 +6,7 @@
 // -----------------------------------------------------------------------
 
 using TaskManageDemo.Backend.Data;
+using TaskManageDemo.Backend.Models.Entities;
 using TaskManageDemo.Backend.Services.Feishu;
 
 namespace TaskManageDemo.Backend.Services.Sync;
@@ -82,11 +83,11 @@ public class TaskSyncService : ITaskSyncService
     public async Task<TaskSync> SaveTaskAsync(TaskSync task, CancellationToken cancellationToken = default)
     {
         var existingTask = await _dbContext.Tasks
+            .Include(t => t.Members)
             .FirstOrDefaultAsync(t => t.TaskGuid == task.TaskGuid, cancellationToken);
 
         if (existingTask != null)
         {
-            // 更新现有任务
             existingTask.Summary = task.Summary;
             existingTask.Description = task.Description;
             existingTask.Status = task.Status;
@@ -97,6 +98,8 @@ public class TaskSyncService : ITaskSyncService
             existingTask.CompletedTime = task.CompletedTime;
             existingTask.UpdatedAt = DateTime.UtcNow;
             existingTask.LastSyncedAt = DateTime.UtcNow;
+
+            await SyncMembersAsync(existingTask, task.Members, cancellationToken);
 
             _dbContext.Tasks.Update(existingTask);
             _logger.LogDebug("更新任务: {TaskGuid}", task.TaskGuid);
@@ -115,12 +118,21 @@ public class TaskSyncService : ITaskSyncService
         }
         else
         {
-            // 创建新任务
             task.LastSyncedAt = DateTime.UtcNow;
             _dbContext.Tasks.Add(task);
             _logger.LogDebug("创建新任务: {TaskGuid}", task.TaskGuid);
 
             await _dbContext.SaveChangesAsync(cancellationToken);
+
+            if (task.Members.Count > 0)
+            {
+                foreach (var member in task.Members)
+                {
+                    member.TaskSyncId = task.Id;
+                }
+                _dbContext.TaskMembers.AddRange(task.Members);
+                await _dbContext.SaveChangesAsync(cancellationToken);
+            }
 
             await RecordHistoryAsync(
                 task.Id,
@@ -133,6 +145,44 @@ public class TaskSyncService : ITaskSyncService
 
             return task;
         }
+    }
+
+    /// <summary>
+    /// 同步任务成员
+    /// </summary>
+    private async Task SyncMembersAsync(
+        TaskSync existingTask,
+        ICollection<TaskMemberEntity> newMembers,
+        CancellationToken cancellationToken)
+    {
+        var existingMembers = existingTask.Members.ToList();
+
+        var membersToRemove = existingMembers
+            .Where(em => !newMembers.Any(nm => nm.FeishuUserId == em.FeishuUserId))
+            .ToList();
+
+        foreach (var member in membersToRemove)
+        {
+            _dbContext.TaskMembers.Remove(member);
+        }
+
+        foreach (var newMember in newMembers)
+        {
+            var existingMember = existingMembers
+                .FirstOrDefault(em => em.FeishuUserId == newMember.FeishuUserId);
+
+            if (existingMember != null)
+            {
+                existingMember.Role = newMember.Role;
+            }
+            else
+            {
+                newMember.TaskSyncId = existingTask.Id;
+                _dbContext.TaskMembers.Add(newMember);
+            }
+        }
+
+        await Task.CompletedTask;
     }
 
     /// <summary>

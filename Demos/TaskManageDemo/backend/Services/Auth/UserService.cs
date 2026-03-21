@@ -13,72 +13,6 @@ using TaskManageDemo.Backend.Models.Entities;
 namespace TaskManageDemo.Backend.Services.Auth;
 
 /// <summary>
-/// 用户服务接口
-/// </summary>
-public interface IUserService
-{
-    /// <summary>
-    /// 获取用户列表
-    /// </summary>
-    Task<(List<UserDto> users, int total)> GetUsersAsync(UserQueryParameters parameters, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// 根据ID获取用户
-    /// </summary>
-    Task<UserDto?> GetUserByIdAsync(int id, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// 根据飞书ID获取用户
-    /// </summary>
-    Task<UserDto?> GetUserByFeishuIdAsync(string feishuId, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// 更新用户信息
-    /// </summary>
-    Task<UserDto?> UpdateUserAsync(int id, UpdateUserRequest request, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// 删除用户（软删除）
-    /// </summary>
-    Task<bool> DeleteUserAsync(int id, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// 激活用户
-    /// </summary>
-    Task<bool> ActivateUserAsync(int id, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// 禁用用户
-    /// </summary>
-    Task<bool> DeactivateUserAsync(int id, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// 获取当前登录用户信息
-    /// </summary>
-    Task<CurrentUserInfo?> GetCurrentUserAsync(string feishuId, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// 根据 OpenId 获取用户
-    /// </summary>
-    Task<UserDto?> GetUserByOpenIdAsync(string openId, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// 清除用户令牌
-    /// </summary>
-    Task ClearUserTokenAsync(string openId, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// 同步飞书用户信息到本地
-    /// </summary>
-    Task<UserDto?> SyncFeishuUserAsync(string feishuId, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// 获取用户统计数据
-    /// </summary>
-    Task<UserStatisticsDto> GetUserStatisticsAsync(CancellationToken cancellationToken = default);
-}
-
-/// <summary>
 /// 用户服务实现
 /// </summary>
 public class UserService : IUserService
@@ -354,30 +288,4 @@ public class UserService : IUserService
             LastLoginAt = user.LastLoginAt
         };
     }
-}
-
-/// <summary>
-/// 用户统计数据
-/// </summary>
-public class UserStatisticsDto
-{
-    /// <summary>
-    /// 总用户数
-    /// </summary>
-    public int TotalUsers { get; set; }
-
-    /// <summary>
-    /// 活跃用户数
-    /// </summary>
-    public int ActiveUsers { get; set; }
-
-    /// <summary>
-    /// 管理员数量
-    /// </summary>
-    public int AdminUsers { get; set; }
-
-    /// <summary>
-    /// 本月新增用户数
-    /// </summary>
-    public int NewUsersThisMonth { get; set; }
 }

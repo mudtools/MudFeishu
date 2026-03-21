@@ -15,52 +15,6 @@ using TaskManageDemo.Backend.Models.Entities;
 namespace TaskManageDemo.Backend.Services.Auth;
 
 /// <summary>
-/// 本地认证服务接口
-/// </summary>
-public interface ILocalAuthService
-{
-    /// <summary>
-    /// 用户名密码登录
-    /// </summary>
-    Task<LoginResponse?> PasswordLoginAsync(string username, string password, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// 注册新用户
-    /// </summary>
-    Task<LoginResponse?> RegisterAsync(RegisterRequest request, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// 绑定飞书账号
-    /// </summary>
-    Task<BindFeishuResponse> BindFeishuAsync(int userId, string code, string state, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// 修改密码
-    /// </summary>
-    Task<bool> ChangePasswordAsync(int userId, string oldPassword, string newPassword, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// 检查飞书授权状态
-    /// </summary>
-    Task<FeishuAuthCheckResponse> CheckFeishuAuthAsync(string code, string state, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// 初始化管理员账号
-    /// </summary>
-    Task InitializeAdminAccountAsync(CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// 验证密码
-    /// </summary>
-    bool VerifyPassword(string password, string hash);
-
-    /// <summary>
-    /// 哈希密码
-    /// </summary>
-    string HashPassword(string password);
-}
-
-/// <summary>
 /// 本地认证服务实现
 /// </summary>
 public class LocalAuthService : ILocalAuthService

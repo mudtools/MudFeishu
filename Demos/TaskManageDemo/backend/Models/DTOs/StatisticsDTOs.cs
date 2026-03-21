@@ -38,6 +38,36 @@ public class TaskStatisticsDto
     public double CompletionRate { get; set; }
 
     /// <summary>
+    /// 今日创建任务数
+    /// </summary>
+    public int TodayCreated { get; set; }
+
+    /// <summary>
+    /// 今日完成任务数
+    /// </summary>
+    public int TodayCompleted { get; set; }
+
+    /// <summary>
+    /// 本周创建任务数
+    /// </summary>
+    public int WeekCreated { get; set; }
+
+    /// <summary>
+    /// 本周完成任务数
+    /// </summary>
+    public int WeekCompleted { get; set; }
+
+    /// <summary>
+    /// 本月创建任务数
+    /// </summary>
+    public int MonthCreated { get; set; }
+
+    /// <summary>
+    /// 本月完成任务数
+    /// </summary>
+    public int MonthCompleted { get; set; }
+
+    /// <summary>
     /// 按优先级分布
     /// </summary>
     public List<PriorityDistributionDto> PriorityDistribution { get; set; } = new();
@@ -103,7 +133,7 @@ public class UserWorkloadDto
     /// <summary>
     /// 用户ID
     /// </summary>
-    public int UserId { get; set; }
+    public string UserId { get; set; } = string.Empty;
 
     /// <summary>
     /// 用户飞书ID
@@ -116,14 +146,19 @@ public class UserWorkloadDto
     public string UserName { get; set; } = string.Empty;
 
     /// <summary>
+    /// 头像URL
+    /// </summary>
+    public string? AvatarUrl { get; set; }
+
+    /// <summary>
     /// 分配的任务总数
     /// </summary>
-    public int TotalAssigned { get; set; }
+    public int TotalTasks { get; set; }
 
     /// <summary>
     /// 已完成任务数
     /// </summary>
-    public int CompletedCount { get; set; }
+    public int CompletedTasks { get; set; }
 
     /// <summary>
     /// 进行中任务数
@@ -133,7 +168,7 @@ public class UserWorkloadDto
     /// <summary>
     /// 逾期任务数
     /// </summary>
-    public int OverdueCount { get; set; }
+    public int OverdueTasks { get; set; }
 
     /// <summary>
     /// 完成率

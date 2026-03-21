@@ -184,12 +184,12 @@ public class OAuthUrlResponse
     /// <summary>
     /// 授权链接
     /// </summary>
-    public string Url { get; set; } = string.Empty;
+    public string AuthUrl { get; set; } = string.Empty;
 
     /// <summary>
     /// 状态码
     /// </summary>
-    public string? State { get; set; }
+    public string State { get; set; } = string.Empty;
 }
 
 /// <summary>

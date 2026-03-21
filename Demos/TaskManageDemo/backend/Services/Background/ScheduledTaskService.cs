@@ -14,27 +14,6 @@ using TaskManageDemo.Backend.Services.Sync;
 namespace TaskManageDemo.Backend.Services.Background;
 
 /// <summary>
-/// 定时任务服务接口
-/// </summary>
-public interface IScheduledTaskService
-{
-    /// <summary>
-    /// 发送任务截止提醒
-    /// </summary>
-    Task SendDueRemindersAsync(CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// 执行全量同步
-    /// </summary>
-    Task PerformFullSyncAsync(CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// 重试失败的事件
-    /// </summary>
-    Task RetryFailedEventsAsync(CancellationToken cancellationToken = default);
-}
-
-/// <summary>
 /// 定时任务服务实现
 /// </summary>
 public class ScheduledTaskService : IScheduledTaskService
@@ -146,81 +125,5 @@ public class ScheduledTaskService : IScheduledTaskService
         {
             _logger.LogInformation("重试事件: {EventId}, 类型: {EventType}", record.EventId, record.EventType);
         }
-    }
-}
-
-/// <summary>
-/// 后台任务执行器 - 使用 IHostedService
-/// </summary>
-public class BackgroundTaskExecutor : BackgroundService
-{
-    private readonly IServiceProvider _serviceProvider;
-    private readonly ILogger<BackgroundTaskExecutor> _logger;
-    private readonly TimeSpan _reminderInterval = TimeSpan.FromHours(1);
-    private readonly TimeSpan _syncInterval = TimeSpan.FromHours(6);
-
-    /// <summary>
-    /// 初始化后台任务执行器
-    /// </summary>
-    public BackgroundTaskExecutor(
-        IServiceProvider serviceProvider,
-        ILogger<BackgroundTaskExecutor> logger)
-    {
-        _serviceProvider = serviceProvider;
-        _logger = logger;
-    }
-
-    /// <summary>
-    /// 执行后台任务
-    /// </summary>
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
-    {
-        _logger.LogInformation("后台任务执行器启动");
-
-        while (!stoppingToken.IsCancellationRequested)
-        {
-            try
-            {
-                using var scope = _serviceProvider.CreateScope();
-                var scheduledService = scope.ServiceProvider.GetRequiredService<IScheduledTaskService>();
-
-                await scheduledService.SendDueRemindersAsync(stoppingToken);
-
-                await Task.Delay(_reminderInterval, stoppingToken);
-
-                await scheduledService.RetryFailedEventsAsync(stoppingToken);
-
-                await scheduledService.PerformFullSyncAsync(stoppingToken);
-
-                await Task.Delay(_syncInterval, stoppingToken);
-            }
-            catch (OperationCanceledException)
-            {
-                break;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "后台任务执行出错");
-                await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken);
-            }
-        }
-
-        _logger.LogInformation("后台任务执行器停止");
-    }
-}
-
-/// <summary>
-/// 定时任务配置
-/// </summary>
-public static class ScheduledTaskConfiguration
-{
-    /// <summary>
-    /// 添加定时任务服务
-    /// </summary>
-    public static IServiceCollection AddScheduledTasks(this IServiceCollection services)
-    {
-        services.AddScoped<IScheduledTaskService, ScheduledTaskService>();
-        services.AddHostedService<BackgroundTaskExecutor>();
-        return services;
     }
 }

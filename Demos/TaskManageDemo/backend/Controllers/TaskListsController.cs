@@ -124,7 +124,7 @@ public class TaskListsController : BaseController
     [HttpPost]
     [RequirePermission("tasklist:create")]
     public async Task<ActionResult<ApiResponse<TaskListDto>>> CreateTaskList(
-        [FromBody] CreateTaskListRequest request,
+        [FromBody] CreateTaskListRequestDto request,
         CancellationToken cancellationToken)
     {
         string? taskListGuid = null;
@@ -202,7 +202,7 @@ public class TaskListsController : BaseController
     [RequirePermission("tasklist:update")]
     public async Task<ActionResult<ApiResponse<TaskListDto>>> UpdateTaskList(
         int id,
-        [FromBody] UpdateTaskListRequest request,
+        [FromBody] UpdateTaskListRequestDto request,
         CancellationToken cancellationToken)
     {
         var taskList = await _dbContext.TaskLists.FindAsync([id], cancellationToken);
@@ -315,9 +315,10 @@ public class TaskListsController : BaseController
             return NotFoundResult<bool>("任务清单不存在");
         }
 
+        var memberIds = request.Members.Select(m => m.Id).ToList();
         var success = await _taskListService.AddMembersAsync(
             taskList.TaskListGuid,
-            request.MemberIds,
+            memberIds,
             cancellationToken);
 
         if (!success)
@@ -344,9 +345,10 @@ public class TaskListsController : BaseController
             return NotFoundResult<bool>("任务清单不存在");
         }
 
+        var memberIds = request.Members.Select(m => m.Id).ToList();
         var success = await _taskListService.RemoveMembersAsync(
             taskList.TaskListGuid,
-            request.MemberIds,
+            memberIds,
             cancellationToken);
 
         if (!success)

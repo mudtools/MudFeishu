@@ -6,7 +6,6 @@
 // -----------------------------------------------------------------------
 
 using TaskManageDemo.Backend.Models.DTOs;
-using TaskManageDemo.Backend.Models.Entities;
 
 namespace TaskManageDemo.Backend.Services.History;
 

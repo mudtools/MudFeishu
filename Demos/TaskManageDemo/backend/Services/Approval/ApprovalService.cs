@@ -11,63 +11,6 @@ using TaskManageDemo.Backend.Models.DTOs;
 namespace TaskManageDemo.Backend.Services.Approval;
 
 /// <summary>
-/// 审批服务接口
-/// </summary>
-public interface IApprovalService
-{
-    /// <summary>
-    /// 创建审批实例
-    /// </summary>
-    Task<ApprovalInstanceDto?> CreateApprovalAsync(
-        CreateApprovalRequest request,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// 获取审批实例详情
-    /// </summary>
-    Task<ApprovalInstanceDto?> GetApprovalAsync(
-        string instanceId,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// 取消审批实例
-    /// </summary>
-    Task<bool> CancelApprovalAsync(
-        string instanceId,
-        string userId,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// 获取用户审批列表
-    /// </summary>
-    Task<PagedResponse<ApprovalInstanceDto>> GetUserApprovalsAsync(
-        string userId,
-        string? status,
-        int page,
-        int pageSize,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// 创建任务延期审批
-    /// </summary>
-    Task<ApprovalInstanceDto?> CreateTaskDelayApprovalAsync(
-        string taskGuid,
-        string userId,
-        DateTime newDueTime,
-        string reason,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// 创建任务删除审批
-    /// </summary>
-    Task<ApprovalInstanceDto?> CreateTaskDeleteApprovalAsync(
-        string taskGuid,
-        string userId,
-        string reason,
-        CancellationToken cancellationToken = default);
-}
-
-/// <summary>
 /// 审批服务实现
 /// </summary>
 public class ApprovalService : IApprovalService
@@ -88,25 +31,29 @@ public class ApprovalService : IApprovalService
         CreateApprovalRequest request,
         CancellationToken cancellationToken = default)
     {
+        var formList = request.FormData.Select(kv => new Dictionary<string, object>
+        {
+            ["id"] = kv.Key,
+            ["type"] = "input",
+            ["value"] = kv.Value
+        }).ToList();
+
+        if (!string.IsNullOrEmpty(request.TaskGuid))
+        {
+            formList.Add(new Dictionary<string, object>
+            {
+                ["id"] = "task_guid",
+                ["type"] = "input",
+                ["value"] = request.TaskGuid
+            });
+        }
+
         var approvalRequest = new CreateApprovalInstanceRequest
         {
             ApprovalCode = request.ApprovalCode,
             UserId = request.UserId,
-            Form = request.FormData.Select(kv => new ApprovalFormContent
-            {
-                Key = kv.Key,
-                Value = JsonSerializer.Serialize(kv.Value)
-            }).ToArray()
+            Form = JsonSerializer.Serialize(formList)
         };
-
-        if (!string.IsNullOrEmpty(request.TaskGuid))
-        {
-            approvalRequest.Form = approvalRequest.Form.Append(new ApprovalFormContent
-            {
-                Key = "task_guid",
-                Value = request.TaskGuid
-            }).ToArray();
-        }
 
         var result = await _approvalApi.CreateApprovalInstanceAsync(approvalRequest, cancellationToken: cancellationToken);
 
@@ -136,19 +83,17 @@ public class ApprovalService : IApprovalService
     {
         var result = await _approvalApi.GetApprovalInstanceAsync(instanceId, cancellationToken: cancellationToken);
 
-        if (result?.Data != null)
+        if (result?.Data?.Instance != null)
         {
             return new ApprovalInstanceDto
             {
-                InstanceId = result.Data.InstanceId ?? instanceId,
-                ApprovalCode = result.Data.ApprovalCode ?? string.Empty,
-                UserId = result.Data.UserId ?? string.Empty,
-                Status = result.Data.Status ?? string.Empty,
-                CreatedAt = result.Data.StartTime.HasValue
-                    ? DateTimeOffset.FromUnixTimeMilliseconds(result.Data.StartTime.Value).DateTime
-                    : DateTime.MinValue,
-                CompletedAt = result.Data.EndTime.HasValue
-                    ? DateTimeOffset.FromUnixTimeMilliseconds(result.Data.EndTime.Value).DateTime
+                InstanceId = result.Data.Instance.InstanceId ?? instanceId,
+                ApprovalCode = result.Data.Instance.ApprovalCode ?? string.Empty,
+                UserId = result.Data.Instance.UserId ?? string.Empty,
+                Status = result.Data.Instance.Status ?? string.Empty,
+                CreatedAt = DateTimeOffset.FromUnixTimeMilliseconds(result.Data.Instance.CreateTime).DateTime,
+                CompletedAt = result.Data.Instance.EndTime.HasValue
+                    ? DateTimeOffset.FromUnixTimeMilliseconds(result.Data.Instance.EndTime.Value).DateTime
                     : null
             };
         }
@@ -189,7 +134,7 @@ public class ApprovalService : IApprovalService
         var request = new GetApprovalInstanceListRequest
         {
             UserId = userId,
-            PageToken = ((page - 1) * pageSize).ToString(),
+            PageToken = (page - 1) * pageSize,
             PageSize = pageSize
         };
 
@@ -200,21 +145,19 @@ public class ApprovalService : IApprovalService
 
         var result = await _approvalApi.GetApprovalInstanceListAsync(request, cancellationToken: cancellationToken);
 
-        var items = result?.Data?.Instances?.Select(i => new ApprovalInstanceDto
+        var items = result?.Data?.InstanceIds?.Select(i => new ApprovalInstanceDto
         {
             InstanceId = i.InstanceId ?? string.Empty,
             ApprovalCode = i.ApprovalCode ?? string.Empty,
             UserId = i.UserId ?? string.Empty,
             Status = i.Status ?? string.Empty,
-            CreatedAt = i.StartTime.HasValue
-                ? DateTimeOffset.FromUnixTimeMilliseconds(i.StartTime.Value).DateTime
-                : DateTime.MinValue
+            CreatedAt = DateTimeOffset.FromUnixTimeMilliseconds(i.CreateTime).DateTime
         }).ToList() ?? new List<ApprovalInstanceDto>();
 
         return new PagedResponse<ApprovalInstanceDto>
         {
             Items = items,
-            Total = result?.Data?.Total ?? 0,
+            Total = items.Count,
             Page = page,
             PageSize = pageSize
         };
@@ -262,98 +205,3 @@ public class ApprovalService : IApprovalService
         }, cancellationToken);
     }
 }
-
-/// <summary>
-/// 飞书审批API接口（占位，实际由Mud.Feishu提供）
-/// </summary>
-public interface IFeishuApproval
-{
-    Task<CreateApprovalInstanceResponse?> CreateApprovalInstanceAsync(
-        CreateApprovalInstanceRequest request,
-        CancellationToken cancellationToken = default);
-
-    Task<GetApprovalInstanceResponse?> GetApprovalInstanceAsync(
-        string instanceId,
-        CancellationToken cancellationToken = default);
-
-    Task<CancelApprovalInstanceResponse?> CancelApprovalInstanceAsync(
-        CancelApprovalInstanceRequest request,
-        CancellationToken cancellationToken = default);
-
-    Task<GetApprovalInstanceListResponse?> GetApprovalInstanceListAsync(
-        GetApprovalInstanceListRequest request,
-        CancellationToken cancellationToken = default);
-}
-
-#pragma warning disable CS8618
-public class CreateApprovalInstanceRequest
-{
-    public string ApprovalCode { get; set; }
-    public string UserId { get; set; }
-    public ApprovalFormContent[] Form { get; set; }
-}
-
-public class ApprovalFormContent
-{
-    public string Key { get; set; }
-    public string Value { get; set; }
-}
-
-public class CreateApprovalInstanceResponse
-{
-    public int Code { get; set; }
-    public CreateApprovalInstanceData? Data { get; set; }
-}
-
-public class CreateApprovalInstanceData
-{
-    public string? InstanceId { get; set; }
-}
-
-public class GetApprovalInstanceResponse
-{
-    public int Code { get; set; }
-    public GetApprovalInstanceData? Data { get; set; }
-}
-
-public class GetApprovalInstanceData
-{
-    public string? InstanceId { get; set; }
-    public string? ApprovalCode { get; set; }
-    public string? UserId { get; set; }
-    public string? Status { get; set; }
-    public long? StartTime { get; set; }
-    public long? EndTime { get; set; }
-}
-
-public class CancelApprovalInstanceRequest
-{
-    public string InstanceId { get; set; }
-    public string UserId { get; set; }
-}
-
-public class CancelApprovalInstanceResponse
-{
-    public int Code { get; set; }
-}
-
-public class GetApprovalInstanceListRequest
-{
-    public string UserId { get; set; } = string.Empty;
-    public string? Status { get; set; }
-    public string? PageToken { get; set; }
-    public int PageSize { get; set; } = 20;
-}
-
-public class GetApprovalInstanceListResponse
-{
-    public int Code { get; set; }
-    public GetApprovalInstanceListData? Data { get; set; }
-}
-
-public class GetApprovalInstanceListData
-{
-    public List<GetApprovalInstanceData>? Instances { get; set; }
-    public int Total { get; set; }
-}
-#pragma warning restore CS8618

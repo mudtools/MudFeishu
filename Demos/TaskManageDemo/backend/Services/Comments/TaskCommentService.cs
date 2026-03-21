@@ -12,55 +12,6 @@ using TaskManageDemo.Backend.Models.Entities;
 namespace TaskManageDemo.Backend.Services.Comments;
 
 /// <summary>
-/// 任务评论服务接口
-/// </summary>
-public interface ITaskCommentService
-{
-    /// <summary>
-    /// 获取任务的评论列表
-    /// </summary>
-    Task<List<TaskComment>> GetCommentsByTaskIdAsync(
-        int taskId,
-        int page = 1,
-        int pageSize = 20,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// 创建评论
-    /// </summary>
-    Task<TaskComment> CreateCommentAsync(
-        int taskId,
-        int userId,
-        string content,
-        int? parentCommentId = null,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// 更新评论
-    /// </summary>
-    Task<TaskComment?> UpdateCommentAsync(
-        int commentId,
-        int userId,
-        string content,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// 删除评论
-    /// </summary>
-    Task<bool> DeleteCommentAsync(
-        int commentId,
-        int userId,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// 获取评论数量
-    /// </summary>
-    Task<int> GetCommentCountAsync(
-        int taskId,
-        CancellationToken cancellationToken = default);
-}
-
-/// <summary>
 /// 任务评论服务实现
 /// </summary>
 public class TaskCommentService : ITaskCommentService

@@ -11,40 +11,6 @@ using Mud.Feishu;
 namespace TaskManageDemo.Backend.Services.Feishu;
 
 /// <summary>
-/// 飞书通知服务接口
-/// </summary>
-public interface IFeishuNotificationService
-{
-    /// <summary>
-    /// 发送任务分配通知
-    /// </summary>
-    Task SendTaskAssignedNotificationAsync(
-        string assigneeFeishuId,
-        string taskTitle,
-        string taskGuid,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// 发送任务截止提醒
-    /// </summary>
-    Task SendTaskDueReminderAsync(
-        string assigneeFeishuId,
-        string taskTitle,
-        string taskGuid,
-        DateTime dueTime,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// 发送任务完成通知
-    /// </summary>
-    Task SendTaskCompletedNotificationAsync(
-        string creatorFeishuId,
-        string taskTitle,
-        string taskGuid,
-        CancellationToken cancellationToken = default);
-}
-
-/// <summary>
 /// 飞书通知服务实现
 /// </summary>
 public class FeishuNotificationService : IFeishuNotificationService

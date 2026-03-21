@@ -15,7 +15,7 @@ namespace TaskManageDemo.Backend.Services.Auth;
 public interface IPermissionService
 {
     /// <summary>
-    /// 获取用户的所有权限（包含角色权限和用户特定权限）
+    /// 获取用户权限列表
     /// </summary>
     Task<List<string>> GetUserPermissionsAsync(int userId, CancellationToken cancellationToken = default);
 
@@ -35,17 +35,17 @@ public interface IPermissionService
     Task RevokePermissionAsync(int userId, string permission, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 获取角色的权限列表
+    /// 获取角色权限列表
     /// </summary>
     List<string> GetRolePermissions(string role);
 
     /// <summary>
-    /// 检查用户是否可以访问指定任务
+    /// 检查用户是否可以访问任务
     /// </summary>
     Task<bool> CanAccessTaskAsync(int userId, int taskId, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 检查用户是否可以修改指定任务
+    /// 检查用户是否可以修改任务
     /// </summary>
     Task<bool> CanModifyTaskAsync(int userId, int taskId, CancellationToken cancellationToken = default);
 
@@ -60,12 +60,12 @@ public interface IPermissionService
     Task InitializeDefaultPermissionsAsync(int userId, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 获取所有权限列表
+    /// 获取所有权限
     /// </summary>
     Task<List<PermissionDto>> GetAllPermissionsAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 获取权限分组列表
+    /// 获取权限分组
     /// </summary>
     Task<List<PermissionGroupDto>> GetPermissionGroupsAsync(CancellationToken cancellationToken = default);
 

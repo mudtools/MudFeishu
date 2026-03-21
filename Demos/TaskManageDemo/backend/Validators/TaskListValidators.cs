@@ -13,7 +13,7 @@ namespace TaskManageDemo.Backend.Validators;
 /// <summary>
 /// 创建任务清单请求验证器
 /// </summary>
-public class CreateTaskListRequestValidator : AbstractValidator<CreateTaskListRequest>
+public class CreateTaskListRequestValidator : AbstractValidator<CreateTaskListRequestDto>
 {
     public CreateTaskListRequestValidator()
     {
@@ -29,7 +29,7 @@ public class CreateTaskListRequestValidator : AbstractValidator<CreateTaskListRe
 /// <summary>
 /// 更新任务清单请求验证器
 /// </summary>
-public class UpdateTaskListRequestValidator : AbstractValidator<UpdateTaskListRequest>
+public class UpdateTaskListRequestValidator : AbstractValidator<UpdateTaskListRequestDto>
 {
     public UpdateTaskListRequestValidator()
     {

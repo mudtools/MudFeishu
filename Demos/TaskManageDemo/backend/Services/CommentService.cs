@@ -13,37 +13,6 @@ using TaskManageDemo.Backend.Models.Entities;
 namespace TaskManageDemo.Backend.Services;
 
 /// <summary>
-/// 评论服务接口
-/// </summary>
-public interface ICommentService
-{
-    /// <summary>
-    /// 获取任务的评论列表
-    /// </summary>
-    Task<List<TaskCommentDto>> GetTaskCommentsAsync(int taskId, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// 获取评论详情
-    /// </summary>
-    Task<TaskCommentDto?> GetCommentByIdAsync(int commentId, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// 创建评论
-    /// </summary>
-    Task<TaskCommentDto> CreateCommentAsync(int taskId, int userId, CreateCommentRequest request, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// 更新评论
-    /// </summary>
-    Task<TaskCommentDto?> UpdateCommentAsync(int commentId, int userId, UpdateCommentRequest request, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// 删除评论
-    /// </summary>
-    Task<bool> DeleteCommentAsync(int commentId, int userId, CancellationToken cancellationToken = default);
-}
-
-/// <summary>
 /// 评论服务实现
 /// </summary>
 public class CommentService : ICommentService

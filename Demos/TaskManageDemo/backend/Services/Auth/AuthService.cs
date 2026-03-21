@@ -11,32 +11,6 @@ using TaskManageDemo.Backend.Models.DTOs;
 namespace TaskManageDemo.Backend.Services.Auth;
 
 /// <summary>
-/// 认证服务接口
-/// </summary>
-public interface IAuthService
-{
-    /// <summary>
-    /// 根据飞书用户ID获取用户信息
-    /// </summary>
-    Task<UserInfo?> GetUserByFeishuIdAsync(string feishuId, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// 同步用户信息
-    /// </summary>
-    Task<User> SyncUserAsync(string feishuId, string name, string? avatarUrl, string? departmentId, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// 检查用户是否有指定权限
-    /// </summary>
-    Task<bool> HasPermissionAsync(string userId, string permission, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// 获取用户权限列表
-    /// </summary>
-    Task<List<string>> GetUserPermissionsAsync(string userId, CancellationToken cancellationToken = default);
-}
-
-/// <summary>
 /// 认证服务实现
 /// </summary>
 public class AuthService : IAuthService

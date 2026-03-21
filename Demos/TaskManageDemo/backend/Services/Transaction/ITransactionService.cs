@@ -47,19 +47,3 @@ public interface ITransactionService
     /// <returns>操作结果</returns>
     Task<T> ExecuteAsync<T>(Func<Task<T>> operation, CancellationToken cancellationToken = default);
 }
-
-/// <summary>
-/// 事务上下文接口
-/// </summary>
-public interface ITransactionContext : IAsyncDisposable
-{
-    /// <summary>
-    /// 提交事务
-    /// </summary>
-    Task CommitAsync();
-
-    /// <summary>
-    /// 回滚事务
-    /// </summary>
-    Task RollbackAsync();
-}

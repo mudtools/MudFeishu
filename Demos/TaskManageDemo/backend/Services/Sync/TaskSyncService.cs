@@ -11,39 +11,6 @@ using TaskManageDemo.Backend.Services.Feishu;
 namespace TaskManageDemo.Backend.Services.Sync;
 
 /// <summary>
-/// 任务同步服务接口
-/// </summary>
-public interface ITaskSyncService
-{
-    /// <summary>
-    /// 同步单个任务
-    /// </summary>
-    Task<TaskSync?> SyncTaskAsync(string taskGuid, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// 同步清单下的所有任务
-    /// </summary>
-    Task<int> SyncTaskListTasksAsync(string taskListGuid, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// 保存任务到本地数据库
-    /// </summary>
-    Task<TaskSync> SaveTaskAsync(TaskSync task, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// 记录任务历史
-    /// </summary>
-    Task RecordHistoryAsync(
-        int taskSyncId,
-        string actionType,
-        string? fieldName,
-        string? oldValue,
-        string? newValue,
-        string? operatorId,
-        CancellationToken cancellationToken = default);
-}
-
-/// <summary>
 /// 任务同步服务实现
 /// </summary>
 public class TaskSyncService : ITaskSyncService
@@ -100,13 +67,12 @@ public class TaskSyncService : ITaskSyncService
             var taskData = await _feishuTaskService.GetTaskByIdAsync(taskSummary.Guid, cancellationToken);
             if (taskData != null)
             {
-                taskData.TaskListGuid = taskListGuid;
                 await SaveTaskAsync(taskData, cancellationToken);
                 syncCount++;
             }
         }
 
-        _logger.LogInformation("同步清单任务完成: {TaskListGuid}, 同步数量: {Count}", taskListGuid, syncCount);
+        _logger.LogInformation("清单任务同步完成: {TaskListGuid}, 同步任务数: {Count}", taskListGuid, syncCount);
         return syncCount;
     }
 
@@ -116,39 +82,57 @@ public class TaskSyncService : ITaskSyncService
     public async Task<TaskSync> SaveTaskAsync(TaskSync task, CancellationToken cancellationToken = default)
     {
         var existingTask = await _dbContext.Tasks
-            .Include(t => t.Members)
             .FirstOrDefaultAsync(t => t.TaskGuid == task.TaskGuid, cancellationToken);
 
-        if (existingTask == null)
+        if (existingTask != null)
         {
-            task.CreatedAt = DateTime.UtcNow;
-            task.UpdatedAt = DateTime.UtcNow;
-            task.LastSyncedAt = DateTime.UtcNow;
+            // 更新现有任务
+            existingTask.Summary = task.Summary;
+            existingTask.Description = task.Description;
+            existingTask.Status = task.Status;
+            existingTask.IsCompleted = task.IsCompleted;
+            existingTask.Priority = task.Priority;
+            existingTask.DueTime = task.DueTime;
+            existingTask.StartTime = task.StartTime;
+            existingTask.CompletedTime = task.CompletedTime;
+            existingTask.UpdatedAt = DateTime.UtcNow;
+            existingTask.LastSyncedAt = DateTime.UtcNow;
 
+            _dbContext.Tasks.Update(existingTask);
+            _logger.LogDebug("更新任务: {TaskGuid}", task.TaskGuid);
+
+            await RecordHistoryAsync(
+                existingTask.Id,
+                "UPDATE",
+                null,
+                null,
+                null,
+                null,
+                cancellationToken);
+
+            await _dbContext.SaveChangesAsync(cancellationToken);
+            return existingTask;
+        }
+        else
+        {
+            // 创建新任务
+            task.LastSyncedAt = DateTime.UtcNow;
             _dbContext.Tasks.Add(task);
+            _logger.LogDebug("创建新任务: {TaskGuid}", task.TaskGuid);
+
             await _dbContext.SaveChangesAsync(cancellationToken);
 
-            _logger.LogInformation("新增任务: {TaskGuid}", task.TaskGuid);
+            await RecordHistoryAsync(
+                task.Id,
+                "CREATE",
+                null,
+                null,
+                null,
+                null,
+                cancellationToken);
+
             return task;
         }
-
-        existingTask.Summary = task.Summary;
-        existingTask.Description = task.Description;
-        existingTask.Status = task.Status;
-        existingTask.IsCompleted = task.IsCompleted;
-        existingTask.Priority = task.Priority;
-        existingTask.StartTime = task.StartTime;
-        existingTask.DueTime = task.DueTime;
-        existingTask.CompletedTime = task.CompletedTime;
-        existingTask.CreatorId = task.CreatorId;
-        existingTask.TaskListGuid = task.TaskListGuid;
-        existingTask.UpdatedAt = DateTime.UtcNow;
-        existingTask.LastSyncedAt = DateTime.UtcNow;
-
-        await _dbContext.SaveChangesAsync(cancellationToken);
-
-        _logger.LogInformation("更新任务: {TaskGuid}", task.TaskGuid);
-        return existingTask;
     }
 
     /// <summary>

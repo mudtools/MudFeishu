@@ -13,37 +13,6 @@ using TaskManageDemo.Backend.Models.DTOs;
 namespace TaskManageDemo.Backend.Services.Auth;
 
 /// <summary>
-/// 飞书 OAuth 认证服务接口
-/// </summary>
-public interface IFeishuAuthService
-{
-    /// <summary>
-    /// 获取飞书 OAuth 授权链接
-    /// </summary>
-    OAuthUrlResponse GetOAuthUrl(string? state = null);
-
-    /// <summary>
-    /// 使用授权码登录
-    /// </summary>
-    Task<LoginResponse?> LoginWithCodeAsync(string code, string state, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// 刷新飞书用户令牌
-    /// </summary>
-    Task<TokenRefreshResponse?> RefreshTokenAsync(string openId, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// 获取飞书用户详细信息
-    /// </summary>
-    Task<FeishuUserDetail?> GetUserDetailAsync(string openId, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// 根据授权码获取飞书用户信息（用于注册流程）
-    /// </summary>
-    Task<FeishuUserInfoForRegistration?> GetUserInfoByCodeAsync(string code, CancellationToken cancellationToken = default);
-}
-
-/// <summary>
 /// 飞书 OAuth 认证服务实现
 /// </summary>
 public class FeishuAuthService : IFeishuAuthService
@@ -100,14 +69,12 @@ public class FeishuAuthService : IFeishuAuthService
                       $"redirect_uri={Uri.EscapeDataString(redirectUri)}&" +
                       $"response_type=code&" +
                       $"scope={Uri.EscapeDataString(scopeString)}&" +
-                      $"state={state}";
-
-        _logger.LogInformation("生成飞书授权URL成功");
+                      $"state={Uri.EscapeDataString(state ?? "default")}";
 
         return new OAuthUrlResponse
         {
-            Url = authUrl,
-            State = state
+            AuthUrl = authUrl,
+            State = state ?? "default"
         };
     }
 
@@ -115,9 +82,11 @@ public class FeishuAuthService : IFeishuAuthService
     {
         try
         {
+            _logger.LogInformation("开始飞书登录流程: State={State}", state);
+
             var redirectUri = _configuration["OAuth:RedirectUri"];
 
-            // 1. 使用授权码获取用户访问令牌
+            // 使用授权码获取用户访问令牌
             var tokenResult = await _userTokenManager.GetUserTokenWithCodeAsync(code, redirectUri ?? string.Empty);
 
             if (tokenResult == null || tokenResult.Code != 0)
@@ -126,10 +95,10 @@ public class FeishuAuthService : IFeishuAuthService
                 return null;
             }
 
-            // 2. 设置当前用户ID，用于调用飞书API
+            // 设置当前用户ID
             _feishuUserApi.CurrentUserId = tokenResult.UserId;
 
-            // 3. 获取用户信息
+            // 获取用户信息
             var userInfoResult = await _feishuUserApi.GetUserInfoAsync();
 
             if (userInfoResult?.Data == null)
@@ -139,62 +108,39 @@ public class FeishuAuthService : IFeishuAuthService
             }
 
             var feishuUser = userInfoResult.Data;
-            var openId = feishuUser.OpenId ?? string.Empty;
-            var unionId = feishuUser.UnionId ?? string.Empty;
 
-            // 4. 查找或创建本地用户
+            // 获取或创建用户
             var (user, isFirstLogin) = await GetOrCreateUserAsync(
-                openId,
-                unionId,
+                feishuUser.OpenId ?? string.Empty,
+                feishuUser.UnionId ?? string.Empty,
                 feishuUser.Name ?? "未知用户",
                 feishuUser.AvatarUrl,
                 feishuUser.Email,
-                cancellationToken
-            ).ConfigureAwait(false);
+                cancellationToken);
 
-            // 5. 更新用户飞书令牌
-            user.FeishuAccessToken = tokenResult.AccessToken;
-            user.FeishuRefreshToken = tokenResult.RefreshToken;
-            user.TokenExpiresAt = tokenResult.AccessTokenExpireTime > 0
-                ? DateTimeOffset.FromUnixTimeMilliseconds(tokenResult.AccessTokenExpireTime).DateTime
-                : null;
-            user.LastLoginAt = DateTime.UtcNow;
+            // 生成JWT Token
+            var token = _jwtTokenService.GenerateToken(
+                user.OpenId ?? string.Empty,
+                user.UnionId ?? string.Empty,
+                user.Name,
+                user.Id);
 
-            await _dbContext.SaveChangesAsync(cancellationToken);
-
-            // 6. 生成 JWT Token
-            var jwtToken = _jwtTokenService.GenerateToken(openId, unionId, user.Name, user.Id);
-
-            // 7. 获取用户权限
-            var permissions = await _permissionService.GetUserPermissionsAsync(user.Id, cancellationToken);
-
-            _logger.LogInformation("用户登录成功: {UserId} ({Name}), 首次登录: {IsFirstLogin}",
+            _logger.LogInformation("飞书登录成功: {UserId}, {Name}, 首次登录: {IsFirstLogin}",
                 user.Id, user.Name, isFirstLogin);
 
             return new LoginResponse
             {
-                AccessToken = jwtToken,
-                TokenType = "Bearer",
-                ExpiresIn = _configuration.GetSection("OAuth:Jwt").GetValue<int>("ExpirationMinutes", 60) * 60,
-                IsFirstLogin = isFirstLogin,
+                AccessToken = token,
+                ExpiresIn = 3600,
                 User = new UserDto
                 {
                     Id = user.Id,
                     FeishuId = user.FeishuId,
-                    OpenId = user.OpenId,
-                    UnionId = user.UnionId,
                     Name = user.Name,
-                    EnglishName = user.EnglishName,
-                    Email = user.Email,
-                    Mobile = user.Mobile,
                     AvatarUrl = user.AvatarUrl,
-                    DepartmentId = user.DepartmentId,
-                    Position = user.Position,
-                    Role = user.Role ?? UserRoles.User,
-                    IsActive = user.IsActive,
-                    CreatedAt = user.CreatedAt,
-                    LastLoginAt = user.LastLoginAt
-                }
+                    Role = user.Role ?? UserRoles.User
+                },
+                IsFirstLogin = isFirstLogin
             };
         }
         catch (Exception ex)
@@ -415,52 +361,4 @@ public class FeishuAuthService : IFeishuAuthService
         _logger.LogInformation("创建新用户: {UserId}, {Name}", user.Id, user.Name);
         return (user, true);
     }
-}
-
-/// <summary>
-/// 飞书用户详细信息
-/// </summary>
-public class FeishuUserDetail
-{
-    public string OpenId { get; set; } = string.Empty;
-    public string UnionId { get; set; } = string.Empty;
-    public string UserId { get; set; } = string.Empty;
-    public string Name { get; set; } = string.Empty;
-    public string? EnName { get; set; }
-    public string? Nickname { get; set; }
-    public string? AvatarUrl { get; set; }
-    public string? AvatarThumb { get; set; }
-    public string? AvatarMiddle { get; set; }
-    public string? AvatarBig { get; set; }
-    public string? Email { get; set; }
-    public string? Mobile { get; set; }
-    public string? EnterpriseEmail { get; set; }
-    public string? EmployeeNo { get; set; }
-    public string? TenantKey { get; set; }
-}
-
-/// <summary>
-/// Token 刷新响应
-/// </summary>
-public class TokenRefreshResponse
-{
-    public string AccessToken { get; set; } = string.Empty;
-    public string RefreshToken { get; set; } = string.Empty;
-    public int ExpiresIn { get; set; }
-}
-
-/// <summary>
-/// 飞书用户信息（用于注册流程）
-/// </summary>
-public class FeishuUserInfoForRegistration
-{
-    public string FeishuId { get; set; } = string.Empty;
-    public string? OpenId { get; set; }
-    public string? UnionId { get; set; }
-    public string Name { get; set; } = string.Empty;
-    public string? EnglishName { get; set; }
-    public string? AvatarUrl { get; set; }
-    public string? Email { get; set; }
-    public string? Mobile { get; set; }
-    public string? DepartmentId { get; set; }
 }

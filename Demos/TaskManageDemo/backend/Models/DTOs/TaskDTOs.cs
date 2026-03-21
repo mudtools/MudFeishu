@@ -338,7 +338,7 @@ public class TaskListDto
 /// <summary>
 /// 创建任务清单请求
 /// </summary>
-public class CreateTaskListRequest
+public class CreateTaskListRequestDto
 {
     /// <summary>
     /// 清单名称
@@ -356,7 +356,7 @@ public class CreateTaskListRequest
 /// <summary>
 /// 更新任务清单请求
 /// </summary>
-public class UpdateTaskListRequest
+public class UpdateTaskListRequestDto
 {
     /// <summary>
     /// 清单名称
@@ -371,14 +371,30 @@ public class UpdateTaskListRequest
 }
 
 /// <summary>
+/// 任务清单成员信息
+/// </summary>
+public class TaskListMemberInfo
+{
+    /// <summary>
+    /// 成员ID
+    /// </summary>
+    public string Id { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 成员类型
+    /// </summary>
+    public string Type { get; set; } = string.Empty;
+}
+
+/// <summary>
 /// 添加清单成员请求
 /// </summary>
 public class AddTaskListMembersRequest
 {
     /// <summary>
-    /// 成员ID列表
+    /// 成员列表
     /// </summary>
-    public List<string> MemberIds { get; set; } = new();
+    public TaskListMemberInfo[] Members { get; set; } = Array.Empty<TaskListMemberInfo>();
 }
 
 /// <summary>
@@ -387,7 +403,7 @@ public class AddTaskListMembersRequest
 public class RemoveTaskListMembersRequest
 {
     /// <summary>
-    /// 成员ID列表
+    /// 成员列表
     /// </summary>
-    public List<string> MemberIds { get; set; } = new();
+    public TaskListMemberInfo[] Members { get; set; } = Array.Empty<TaskListMemberInfo>();
 }

@@ -13,33 +13,6 @@ using TaskManageDemo.Backend.Models.Entities;
 namespace TaskManageDemo.Backend.Services.Statistics;
 
 /// <summary>
-/// 统计服务接口
-/// </summary>
-public interface IStatisticsService
-{
-    /// <summary>
-    /// 获取任务统计概览
-    /// </summary>
-    Task<TaskStatisticsDto> GetTaskStatisticsAsync(CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// 获取用户工作量统计
-    /// </summary>
-    Task<List<UserWorkloadDto>> GetUserWorkloadAsync(
-        DateTime? startDate,
-        DateTime? endDate,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// 获取任务完成趋势
-    /// </summary>
-    Task<List<TaskTrendDto>> GetTaskTrendAsync(
-        DateTime startDate,
-        DateTime endDate,
-        CancellationToken cancellationToken = default);
-}
-
-/// <summary>
 /// 统计服务实现
 /// </summary>
 public class StatisticsService : IStatisticsService
@@ -98,19 +71,8 @@ public class StatisticsService : IStatisticsService
         var priorityDistribution = priorityGroups.Select(g => new PriorityDistributionDto
         {
             Priority = g.Priority,
-            PriorityName = GetPriorityName(g.Priority),
-            Count = g.Count,
-            Percentage = totalTasks > 0 ? Math.Round((double)g.Count / totalTasks * 100, 2) : 0
+            Count = g.Count
         }).ToList();
-
-        var statusDistribution = new List<StatusDistributionDto>
-        {
-            new() { Status = "已完成", Count = completedTasks, Percentage = totalTasks > 0 ? Math.Round((double)completedTasks / totalTasks * 100, 2) : 0 },
-            new() { Status = "进行中", Count = pendingTasks - overdueTasks, Percentage = totalTasks > 0 ? Math.Round((double)(pendingTasks - overdueTasks) / totalTasks * 100, 2) : 0 },
-            new() { Status = "已逾期", Count = overdueTasks, Percentage = totalTasks > 0 ? Math.Round((double)overdueTasks / totalTasks * 100, 2) : 0 }
-        };
-
-        var completionRate = totalTasks > 0 ? Math.Round((double)completedTasks / totalTasks * 100, 2) : 0;
 
         return new TaskStatisticsDto
         {
@@ -118,63 +80,69 @@ public class StatisticsService : IStatisticsService
             CompletedTasks = completedTasks,
             PendingTasks = pendingTasks,
             OverdueTasks = overdueTasks,
-            CompletionRate = completionRate,
-            PriorityDistribution = priorityDistribution,
-            StatusDistribution = statusDistribution
+            TodayCreated = todayCreated,
+            TodayCompleted = todayCompleted,
+            WeekCreated = weekCreated,
+            WeekCompleted = weekCompleted,
+            MonthCreated = monthCreated,
+            MonthCompleted = monthCompleted,
+            PriorityDistribution = priorityDistribution
         };
     }
-
-    private static string GetPriorityName(int priority) => priority switch
-    {
-        1 => "低",
-        2 => "中",
-        3 => "高",
-        4 => "紧急",
-        _ => "无"
-    };
 
     public async Task<List<UserWorkloadDto>> GetUserWorkloadAsync(
         DateTime? startDate,
         DateTime? endDate,
         CancellationToken cancellationToken = default)
     {
-        var query = _dbContext.TaskMembers
-            .Include(m => m.User)
-            .Include(m => m.Task)
-            .Where(m => m.Role == TaskMemberRoles.Assignee);
+        var query = _dbContext.Users
+            .Where(u => u.IsActive)
+            .AsQueryable();
 
-        if (startDate.HasValue)
+        var users = await query.ToListAsync(cancellationToken);
+        var result = new List<UserWorkloadDto>();
+
+        foreach (var user in users)
         {
-            query = query.Where(m => m.Task!.CreatedAt >= startDate.Value);
-        }
+            var taskQuery = _dbContext.TaskMembers
+                .Where(m => m.UserId == user.Id && m.Role == TaskMemberRoles.Assignee)
+                .Join(_dbContext.Tasks,
+                    m => m.TaskSyncId,
+                    t => t.Id,
+                    (m, t) => t)
+                .AsQueryable();
 
-        if (endDate.HasValue)
-        {
-            query = query.Where(m => m.Task!.CreatedAt <= endDate.Value);
-        }
-
-        var userTasks = await query
-            .GroupBy(m => m.User)
-            .Select(g => new UserWorkloadDto
+            if (startDate.HasValue)
             {
-                UserId = g.Key!.Id,
-                FeishuId = g.Key.FeishuId,
-                UserName = g.Key.Name,
-                TotalAssigned = g.Count(),
-                CompletedCount = g.Count(m => m.Task!.IsCompleted),
-                PendingCount = g.Count(m => !m.Task!.IsCompleted),
-                OverdueCount = g.Count(m => !m.Task!.IsCompleted && m.Task.DueTime < DateTime.UtcNow)
-            })
-            .ToListAsync(cancellationToken);
+                taskQuery = taskQuery.Where(t => t.CreatedAt >= startDate.Value);
+            }
 
-        foreach (var item in userTasks)
-        {
-            item.CompletionRate = item.TotalAssigned > 0
-                ? Math.Round((double)item.CompletedCount / item.TotalAssigned * 100, 2)
-                : 0;
+            if (endDate.HasValue)
+            {
+                taskQuery = taskQuery.Where(t => t.CreatedAt <= endDate.Value);
+            }
+
+            var totalTasks = await taskQuery.CountAsync(cancellationToken);
+            var completedTasks = await taskQuery
+                .Where(t => t.IsCompleted)
+                .CountAsync(cancellationToken);
+            var overdueTasks = await taskQuery
+                .Where(t => !t.IsCompleted && t.DueTime < DateTime.UtcNow)
+                .CountAsync(cancellationToken);
+
+            result.Add(new UserWorkloadDto
+            {
+                UserId = user.Id.ToString(),
+                UserName = user.Name,
+                AvatarUrl = user.AvatarUrl,
+                TotalTasks = totalTasks,
+                CompletedTasks = completedTasks,
+                OverdueTasks = overdueTasks,
+                CompletionRate = totalTasks > 0 ? (double)completedTasks / totalTasks * 100 : 0
+            });
         }
 
-        return userTasks.OrderByDescending(u => u.TotalAssigned).Take(20).ToList();
+        return result.OrderByDescending(r => r.TotalTasks).ToList();
     }
 
     public async Task<List<TaskTrendDto>> GetTaskTrendAsync(
@@ -182,29 +150,29 @@ public class StatisticsService : IStatisticsService
         DateTime endDate,
         CancellationToken cancellationToken = default)
     {
-        var createdTrend = await _dbContext.Tasks
-            .Where(t => t.CreatedAt >= startDate && t.CreatedAt <= endDate)
-            .GroupBy(t => t.CreatedAt.Date)
-            .Select(g => new { Date = g.Key, Created = g.Count() })
-            .ToListAsync(cancellationToken);
-
-        var completedTrend = await _dbContext.Tasks
-            .Where(t => t.IsCompleted && t.CompletedTime >= startDate && t.CompletedTime <= endDate)
-            .GroupBy(t => t.CompletedTime!.Value.Date)
-            .Select(g => new { Date = g.Key, Completed = g.Count() })
-            .ToListAsync(cancellationToken);
-
         var result = new List<TaskTrendDto>();
-        for (var date = startDate.Date; date <= endDate.Date; date = date.AddDays(1))
+        var currentDate = startDate.Date;
+
+        while (currentDate <= endDate.Date)
         {
-            var created = createdTrend.FirstOrDefault(t => t.Date == date)?.Created ?? 0;
-            var completed = completedTrend.FirstOrDefault(t => t.Date == date)?.Completed ?? 0;
+            var nextDate = currentDate.AddDays(1);
+
+            var created = await _dbContext.Tasks
+                .Where(t => t.CreatedAt >= currentDate && t.CreatedAt < nextDate)
+                .CountAsync(cancellationToken);
+
+            var completed = await _dbContext.Tasks
+                .Where(t => t.IsCompleted && t.CompletedTime >= currentDate && t.CompletedTime < nextDate)
+                .CountAsync(cancellationToken);
+
             result.Add(new TaskTrendDto
             {
-                Date = date,
+                Date = currentDate,
                 CreatedCount = created,
                 CompletedCount = completed
             });
+
+            currentDate = nextDate;
         }
 
         return result;

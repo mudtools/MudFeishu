@@ -14,42 +14,6 @@ using TaskManageDemo.Backend.Models.DTOs;
 namespace TaskManageDemo.Backend.Services.Auth;
 
 /// <summary>
-/// JWT Token 服务接口
-/// </summary>
-public interface IJwtTokenService
-{
-    /// <summary>
-    /// 生成 JWT Token
-    /// </summary>
-    string GenerateToken(string openId, string unionId, string name, int userId);
-
-    /// <summary>
-    /// 生成 JWT Token（带权限）
-    /// </summary>
-    string GenerateToken(string userId, string username, string openId, string role, List<string> permissions);
-
-    /// <summary>
-    /// 生成临时 Token（用于注册流程）
-    /// </summary>
-    string GenerateTempToken(string feishuId, string name);
-
-    /// <summary>
-    /// 验证临时 Token
-    /// </summary>
-    (string feishuId, string name)? ValidateTempToken(string token);
-
-    /// <summary>
-    /// 验证 JWT Token
-    /// </summary>
-    bool ValidateToken(string token, out ClaimsPrincipal? principal);
-
-    /// <summary>
-    /// 从 Token 中获取用户信息
-    /// </summary>
-    (string openId, string unionId, string name, int userId)? GetUserFromToken(string token);
-}
-
-/// <summary>
 /// JWT Token 服务实现
 /// </summary>
 public class JwtTokenService : IJwtTokenService

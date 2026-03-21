@@ -8,57 +8,9 @@
 using Mud.Feishu;
 using Mud.Feishu.DataModels.Tasks;
 using Mud.Feishu.DataModels.TasksList;
+using TaskManageDemo.Backend.Models.DTOs;
 
 namespace TaskManageDemo.Backend.Services.Feishu;
-
-/// <summary>
-/// 飞书任务清单服务接口
-/// </summary>
-public interface IFeishuTaskListService
-{
-    /// <summary>
-    /// 创建任务清单
-    /// </summary>
-    Task<string?> CreateTaskListAsync(
-        string name,
-        string? description,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// 获取任务清单详情
-    /// </summary>
-    Task<TaskList?> GetTaskListByIdAsync(string taskListGuid, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// 更新任务清单
-    /// </summary>
-    Task<bool> UpdateTaskListAsync(
-        string taskListGuid,
-        string? name,
-        string? description,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// 删除任务清单
-    /// </summary>
-    Task<bool> DeleteTaskListAsync(string taskListGuid, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// 添加清单成员
-    /// </summary>
-    Task<bool> AddMembersAsync(
-        string taskListGuid,
-        List<string> memberIds,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// 移除清单成员
-    /// </summary>
-    Task<bool> RemoveMembersAsync(
-        string taskListGuid,
-        List<string> memberIds,
-        CancellationToken cancellationToken = default);
-}
 
 /// <summary>
 /// 飞书任务清单服务实现
@@ -85,7 +37,7 @@ public class FeishuTaskListService : IFeishuTaskListService
         string? description,
         CancellationToken cancellationToken = default)
     {
-        var request = new CreateTaskListRequest
+        var request = new Mud.Feishu.DataModels.TasksList.CreateTaskListRequest
         {
             Name = name
         };
@@ -116,7 +68,9 @@ public class FeishuTaskListService : IFeishuTaskListService
             {
                 TaskListGuid = taskList.Guid ?? taskListGuid,
                 Name = taskList.Name ?? string.Empty,
-                LastSyncedAt = DateTime.UtcNow
+                OwnerId = taskList.Owner?.Id,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
             };
         }
 
@@ -132,14 +86,21 @@ public class FeishuTaskListService : IFeishuTaskListService
         string? description,
         CancellationToken cancellationToken = default)
     {
-        var request = new UpdateTaskListRequest
+        var request = new Mud.Feishu.DataModels.TasksList.UpdateTaskListRequest();
+        var updateFields = new List<string>();
+
+        if (name != null)
         {
-            Tasklist = new TaskListData
-            {
-                Name = name ?? string.Empty
-            },
-            UpdateFields = name != null ? ["name"] : []
-        };
+            request.Tasklist.Name = name;
+            updateFields.Add("name");
+        }
+
+        if (updateFields.Count == 0)
+        {
+            return true;
+        }
+
+        request.UpdateFields = updateFields.ToArray();
 
         var result = await _taskListApi.UpdateTaskListByIdAsync(taskListGuid, request, cancellationToken: cancellationToken);
 
@@ -158,9 +119,9 @@ public class FeishuTaskListService : IFeishuTaskListService
     /// </summary>
     public async Task<bool> DeleteTaskListAsync(string taskListGuid, CancellationToken cancellationToken = default)
     {
-        var result = await _taskListApi.DeleteTaskListByIdAsync(taskListGuid, cancellationToken);
+        var result = await _taskListApi.DeleteTaskListByIdAsync(taskListGuid, cancellationToken: cancellationToken);
 
-        if (result != null && result.Code == 0)
+        if (result?.Code == 0)
         {
             _logger.LogInformation("任务清单删除成功: {TaskListGuid}", taskListGuid);
             return true;
@@ -178,9 +139,9 @@ public class FeishuTaskListService : IFeishuTaskListService
         List<string> memberIds,
         CancellationToken cancellationToken = default)
     {
-        var request = new AddTaskListMemberRequest
+        var request = new Mud.Feishu.DataModels.TasksList.AddTaskListMemberRequest
         {
-            Members = memberIds.Select(id => new TaskMember
+            Members = memberIds.Select(id => new Mud.Feishu.DataModels.Tasks.TaskMember
             {
                 Id = id,
                 Type = "user"
@@ -191,11 +152,11 @@ public class FeishuTaskListService : IFeishuTaskListService
 
         if (result?.Data != null)
         {
-            _logger.LogInformation("清单成员添加成功: {TaskListGuid}", taskListGuid);
+            _logger.LogInformation("任务清单成员添加成功: {TaskListGuid}", taskListGuid);
             return true;
         }
 
-        _logger.LogWarning("清单成员添加失败: {TaskListGuid}", taskListGuid);
+        _logger.LogWarning("任务清单成员添加失败: {TaskListGuid}", taskListGuid);
         return false;
     }
 
@@ -207,9 +168,9 @@ public class FeishuTaskListService : IFeishuTaskListService
         List<string> memberIds,
         CancellationToken cancellationToken = default)
     {
-        var request = new RemoveTaskListMemberRequest
+        var request = new Mud.Feishu.DataModels.TasksList.RemoveTaskListMemberRequest
         {
-            Members = memberIds.Select(id => new TaskMember
+            Members = memberIds.Select(id => new Mud.Feishu.DataModels.Tasks.TaskMember
             {
                 Id = id,
                 Type = "user"
@@ -220,11 +181,11 @@ public class FeishuTaskListService : IFeishuTaskListService
 
         if (result?.Data != null)
         {
-            _logger.LogInformation("清单成员移除成功: {TaskListGuid}", taskListGuid);
+            _logger.LogInformation("任务清单成员移除成功: {TaskListGuid}", taskListGuid);
             return true;
         }
 
-        _logger.LogWarning("清单成员移除失败: {TaskListGuid}", taskListGuid);
+        _logger.LogWarning("任务清单成员移除失败: {TaskListGuid}", taskListGuid);
         return false;
     }
 }

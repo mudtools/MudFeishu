@@ -17,6 +17,12 @@ const routes: RouteRecordRaw[] = [
     meta: { title: "注册", public: true },
   },
   {
+    path: "/bind-feishu",
+    name: "BindFeishu",
+    component: () => import("../views/BindFeishu.vue"),
+    meta: { title: "绑定飞书" },
+  },
+  {
     path: "/",
     component: MainLayout,
     redirect: "/tasks",

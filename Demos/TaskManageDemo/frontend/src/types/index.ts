@@ -264,14 +264,15 @@ export interface LoginResponse {
   expiresIn: number;
   user: UserInfo;
   isFirstLogin: boolean;
+  isFeishuBound: boolean;
 }
 
 /**
  * 用户信息（登录后返回）
  */
 export interface UserInfo {
-  userId: string;
-  userName: string;
+  id: number;
+  name: string;
   feishuId: string;
   departmentId?: string;
   role: string;

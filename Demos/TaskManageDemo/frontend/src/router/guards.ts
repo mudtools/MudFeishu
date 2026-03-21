@@ -39,6 +39,12 @@ export function setupRouterGuards(router: Router) {
       return
     }
 
+    // 绑定飞书页面特殊处理：已绑定飞书的用户直接跳转到首页
+    if (to.name === 'BindFeishu') {
+      // 如果用户信息中没有 isFeishuBound 字段，需要从其他地方判断
+      // 这里暂时不做限制，让用户可以访问绑定页面
+    }
+
     // 检查权限
     const permissions = to.meta.permissions as string[] | undefined
     if (permissions && permissions.length > 0) {

@@ -158,6 +158,11 @@ public class LoginResponse
     /// 是否为首次登录
     /// </summary>
     public bool IsFirstLogin { get; set; }
+
+    /// <summary>
+    /// 是否已绑定飞书账号
+    /// </summary>
+    public bool IsFeishuBound { get; set; }
 }
 
 /// <summary>

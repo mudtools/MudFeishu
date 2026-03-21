@@ -289,9 +289,9 @@ const handleLoginSuccess = async (data: LoginResponse) => {
 
   if (data.user) {
     authStore.setUser({
-      id: parseInt(data.user.userId) || 0,
+      id: data.user.id,
       feishuId: data.user.feishuId,
-      name: data.user.userName,
+      name: data.user.name,
       email: undefined,
       avatarUrl: undefined,
       role: data.user.role,
@@ -306,9 +306,18 @@ const handleLoginSuccess = async (data: LoginResponse) => {
     JSON.stringify(data.user.permissions || [])
   )
 
+  if (data.isFirstLogin && !data.isFeishuBound) {
+    ElMessage.warning({
+      message: `欢迎首次使用，${data.user.name}！请绑定飞书账号以获得完整功能。`,
+      duration: 3000,
+    })
+    router.replace("/bind-feishu")
+    return
+  }
+
   const welcomeMessage = data.isFirstLogin
-    ? `欢迎首次使用，${data.user.userName}！请绑定飞书账号以获得完整功能。`
-    : `欢迎回来，${data.user.userName}！`
+    ? `欢迎首次使用，${data.user.name}！`
+    : `欢迎回来，${data.user.name}！`
 
   ElMessage.success({
     message: welcomeMessage,

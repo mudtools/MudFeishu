@@ -18,11 +18,11 @@ import type {
 
 /**
  * 获取飞书 OAuth 授权链接
- * @param request OAuth URL 请求参数
+ * @param _request OAuth URL 请求参数（未使用，保留用于类型一致性）
  * @returns 授权链接
  */
 export async function getOAuthUrl(
-  request: OAuthUrlRequest
+  _request: OAuthUrlRequest
 ): Promise<ApiResponse<OAuthUrlResponse>> {
   return apiClient.get<OAuthUrlResponse>('/auth/feishu/url')
 }

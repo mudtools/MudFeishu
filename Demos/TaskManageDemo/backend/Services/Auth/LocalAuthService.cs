@@ -87,7 +87,8 @@ public class LocalAuthService : ILocalAuthService
             AccessToken = token,
             ExpiresIn = 3600,
             User = MapToUserDto(user, permissions),
-            IsFirstLogin = user.IsFirstLogin
+            IsFirstLogin = user.IsFirstLogin,
+            IsFeishuBound = user.IsFeishuBound
         };
     }
 

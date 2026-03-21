@@ -272,9 +272,9 @@ const handleRegisterSuccess = async (data: LoginResponse) => {
 
   if (data.user) {
     authStore.setUser({
-      id: parseInt(data.user.userId) || 0,
+      id: data.user.id,
       feishuId: data.user.feishuId,
-      name: data.user.userName,
+      name: data.user.name,
       email: undefined,
       avatarUrl: undefined,
       role: data.user.role,
@@ -287,7 +287,7 @@ const handleRegisterSuccess = async (data: LoginResponse) => {
   localStorage.setItem("permissions", JSON.stringify(data.user.permissions || []))
 
   ElMessage.success({
-    message: `注册成功，欢迎加入，${data.user.userName}！`,
+    message: `注册成功，欢迎加入，${data.user.name}！`,
     duration: 2000,
   })
 

@@ -8,16 +8,20 @@
     <div class="folder-tree-container">
       <el-tree
         ref="treeRef"
-        :data="folders"
+        :data="folderTreeData"
         :props="treeProps"
         node-key="folderToken"
         :expand-on-click-node="false"
         :default-expand-all="true"
+        highlight-current
         @node-click="handleNodeClick"
       >
-        <template #default="{ node }">
-          <div class="tree-node">
-            <el-icon class="folder-icon"><Folder /></el-icon>
+        <template #default="{ node, data }">
+          <div class="tree-node" :class="{ 'is-root': !data.folderToken }">
+            <el-icon class="folder-icon">
+              <Folder v-if="data.folderToken" />
+              <HomeFilled v-else />
+            </el-icon>
             <span>{{ node.label }}</span>
           </div>
         </template>
@@ -31,9 +35,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { ElMessage, ElTree } from 'element-plus'
-import { folderApi } from '@/api'
+import { Folder, HomeFilled } from '@element-plus/icons-vue'
+import { folderApi, batchApi } from '@/api'
+import { useFileStore } from '@/stores/fileStore'
 import type { FolderResponse } from '@/api/types'
 
 const props = defineProps<{
@@ -50,11 +56,23 @@ const visible = ref(true)
 const loading = ref(false)
 const folders = ref<FolderResponse[]>([])
 const selectedFolder = ref<string | null>(null)
+const fileStore = useFileStore()
 
 const treeProps = {
   children: 'children',
   label: 'folderName'
 }
+
+// 添加根目录选项
+const folderTreeData = computed(() => {
+  return [
+    {
+      folderToken: '',
+      folderName: '根目录',
+      children: folders.value
+    }
+  ]
+})
 
 const loadFolders = async () => {
   try {
@@ -91,15 +109,41 @@ const buildTree = (folderList: FolderResponse[]): any[] => {
 }
 
 const handleNodeClick = (data: FolderResponse) => {
-  selectedFolder.value = data.folderToken
+  selectedFolder.value = data.folderToken || null
 }
 
 const handleSubmit = async () => {
   loading.value = true
   try {
-    await folderApi.update(props.itemToken, {
-      parentFolderToken: selectedFolder.value || undefined
-    })
+    const targetFolderToken = selectedFolder.value || ''
+
+    if (props.itemType === 'batch') {
+      // 批量移动：使用选中的所有文件
+      const selectedFiles = fileStore.selectedFiles
+      if (selectedFiles.length === 0) {
+        ElMessage.warning('没有选中任何文件')
+        return
+      }
+      await batchApi.move({
+        fileTokens: selectedFiles,
+        folderTokens: [],
+        targetFolderToken: targetFolderToken
+      })
+      fileStore.clearSelection()
+    } else if (props.itemType === 'folder') {
+      // 移动文件夹
+      await folderApi.update(props.itemToken, {
+        parentFolderToken: targetFolderToken || undefined
+      })
+    } else {
+      // 移动单个文件
+      await batchApi.move({
+        fileTokens: [props.itemToken],
+        folderTokens: [],
+        targetFolderToken: targetFolderToken
+      })
+    }
+    
     ElMessage.success('移动成功')
     emit('success')
     handleClose()

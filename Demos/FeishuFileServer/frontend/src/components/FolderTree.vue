@@ -180,8 +180,8 @@ onUnmounted(() => {
 .root-folder-node {
   display: flex;
   align-items: center;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-sm) var(--spacing-md);
+  gap: 4px;
+  padding: 4px 8px;
   cursor: pointer;
   border-radius: var(--radius-md);
   margin-bottom: var(--spacing-xs);
@@ -209,8 +209,9 @@ onUnmounted(() => {
 
   .folder-icon {
     color: var(--primary-color);
-    font-size: 18px;
+    font-size: 16px;
     transition: all var(--transition-fast);
+    flex-shrink: 0;
   }
 
   .folder-name {
@@ -219,14 +220,36 @@ onUnmounted(() => {
     text-overflow: ellipsis;
     white-space: nowrap;
     font-weight: 500;
-    font-size: 14px;
+    font-size: 13px;
+    min-width: 0;
   }
 
   .folder-actions {
     opacity: 0;
     transition: opacity var(--transition-fast);
     display: flex;
-    gap: 2px;
+    align-items: center;
+    gap: 0;
+    flex-shrink: 0;
+    margin-left: auto;
+
+    :deep(.el-button) {
+      padding: 2px;
+      margin: 0;
+      min-width: 20px;
+      height: 20px;
+      font-size: 12px;
+      border-radius: 4px;
+      
+      .el-icon {
+        font-size: 12px;
+        margin: 0;
+      }
+      
+      &:hover {
+        background: rgba(255, 255, 255, 0.2);
+      }
+    }
   }
 }
 

@@ -154,8 +154,8 @@ const handleDelete = () => {
 .folder-item {
   display: flex;
   align-items: center;
-  gap: var(--spacing-xs);
-  padding: var(--spacing-sm) var(--spacing-md);
+  gap: 2px;
+  padding: 4px 8px;
   cursor: pointer;
   border-radius: var(--radius-md);
   transition: all var(--transition-fast);
@@ -181,8 +181,9 @@ const handleDelete = () => {
 
   .folder-icon {
     color: #ffc107;
-    font-size: 18px;
+    font-size: 16px;
     transition: all var(--transition-fast);
+    flex-shrink: 0;
   }
 
   .folder-name {
@@ -190,14 +191,36 @@ const handleDelete = () => {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-size: 14px;
+    font-size: 13px;
+    min-width: 0;
   }
 
   .folder-actions {
     opacity: 0;
     transition: opacity var(--transition-fast);
     display: flex;
-    gap: 1px;
+    align-items: center;
+    gap: 0;
+    flex-shrink: 0;
+    margin-left: auto;
+
+    :deep(.el-button) {
+      padding: 2px;
+      margin: 0;
+      min-width: 20px;
+      height: 20px;
+      font-size: 12px;
+      border-radius: 4px;
+      
+      .el-icon {
+        font-size: 12px;
+        margin: 0;
+      }
+      
+      &:hover {
+        background: var(--bg-tertiary);
+      }
+    }
   }
 }
 </style>

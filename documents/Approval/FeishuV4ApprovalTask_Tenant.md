@@ -14,14 +14,14 @@
 
 ## 函数列表
 
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-|---------|---------|---------|----------|
-| `AgreeApprovalAsync` | 同意审批任务 | 租户令牌 | POST |
-| `RejectApprovalAsync` | 拒绝审批任务 | 租户令牌 | POST |
-| `TransferApprovalAsync` | 转交审批任务 | 租户令牌 | POST |
-| `RollbackApprovalAsync` | 退回审批任务 | 租户令牌 | POST |
-| `InstancesAddSignAsync` | 审批任务加签 | 租户令牌 | POST |
-| `ResubmitApprovalAsync` | 重新提交审批任务 | 租户令牌 | POST |
+| 函数名称                | 功能描述         | 认证方式 | HTTP 方法 |
+| ----------------------- | ---------------- | -------- | --------- |
+| `AgreeApprovalAsync`    | 同意审批任务     | 租户令牌 | POST      |
+| `RejectApprovalAsync`   | 拒绝审批任务     | 租户令牌 | POST      |
+| `TransferApprovalAsync` | 转交审批任务     | 租户令牌 | POST      |
+| `RollbackApprovalAsync` | 退回审批任务     | 租户令牌 | POST      |
+| `InstancesAddSignAsync` | 审批任务加签     | 租户令牌 | POST      |
+| `ResubmitApprovalAsync` | 重新提交审批任务 | 租户令牌 | POST      |
 
 ## 函数详细内容
 
@@ -42,11 +42,11 @@ Task<FeishuNullDataApiResult?> AgreeApprovalAsync(
 
 #### 参数
 
-| 参数名 | 必填 | 类型 | 描述 |
-|-------|-----|------|-----|
-| `agreeApprovalTasksRequest` | ✅ | `AgreeApprovalTasksRequest` | 同意审批任务请求体 |
-| `user_id_type` | ⚪ | `string` | 用户 ID 类型，默认：`open_id` |
-| `cancellationToken` | ⚪ | `CancellationToken` | 取消操作令牌对象 |
+| 参数名                      | 必填 | 类型                        | 描述                          |
+| --------------------------- | ---- | --------------------------- | ----------------------------- |
+| `agreeApprovalTasksRequest` | ✅   | `AgreeApprovalTasksRequest` | 同意审批任务请求体            |
+| `user_id_type`              | ⚪   | `string`                    | 用户 ID 类型，默认：`open_id` |
+| `cancellationToken`         | ⚪   | `CancellationToken`         | 取消操作令牌对象              |
 
 **请求体示例：**
 
@@ -86,22 +86,33 @@ Task<FeishuNullDataApiResult?> AgreeApprovalAsync(
 #### 代码示例
 
 ```csharp
-// 同意审批任务
-var request = new AgreeApprovalTasksRequest
+// 使用租户权限同意审批任务
+public class ApprovalTaskService
 {
-    TaskId = "123456789",
-    InstanceCode = "6A123516-FB88-470D-A428-9AF58B71B3C0",
-    UserId = "ou_7dab8a3d3dfcd10xxx",
-    Comment = "同意，请尽快安排"
-};
+    private readonly IFeishuTenantV4ApprovalTask _taskClient;
 
-var result = await _feishuApi
-    .UseApp(appId, appSecret)
-    .ExecuteAsync(api => api.AgreeApprovalAsync(request));
+    public ApprovalTaskService(IFeishuTenantV4ApprovalTask taskClient)
+    {
+        _taskClient = taskClient;
+    }
 
-if (result?.Code == 0)
-{
-    Console.WriteLine("审批已通过");
+    public async Task AgreeApprovalAsync()
+    {
+        var request = new AgreeApprovalTasksRequest
+        {
+            TaskId = "123456789",
+            InstanceCode = "6A123516-FB88-470D-A428-9AF58B71B3C0",
+            UserId = "ou_7dab8a3d3dfcd10xxx",
+            Comment = "同意，请尽快安排"
+        };
+
+        var result = await _taskClient.AgreeApprovalAsync(request);
+
+        if (result?.Code == 0)
+        {
+            Console.WriteLine("审批已通过");
+        }
+    }
 }
 ```
 
@@ -124,11 +135,11 @@ Task<FeishuNullDataApiResult?> RejectApprovalAsync(
 
 #### 参数
 
-| 参数名 | 必填 | 类型 | 描述 |
-|-------|-----|------|-----|
-| `rejectApprovalTaskRequest` | ✅ | `RejectApprovalTaskRequest` | 拒绝审批任务请求体 |
-| `user_id_type` | ⚪ | `string` | 用户 ID 类型，默认：`open_id` |
-| `cancellationToken` | ⚪ | `CancellationToken` | 取消操作令牌对象 |
+| 参数名                      | 必填 | 类型                        | 描述                          |
+| --------------------------- | ---- | --------------------------- | ----------------------------- |
+| `rejectApprovalTaskRequest` | ✅   | `RejectApprovalTaskRequest` | 拒绝审批任务请求体            |
+| `user_id_type`              | ⚪   | `string`                    | 用户 ID 类型，默认：`open_id` |
+| `cancellationToken`         | ⚪   | `CancellationToken`         | 取消操作令牌对象              |
 
 **请求体示例：**
 
@@ -160,22 +171,33 @@ Task<FeishuNullDataApiResult?> RejectApprovalAsync(
 #### 代码示例
 
 ```csharp
-// 拒绝审批任务
-var request = new RejectApprovalTaskRequest
+// 使用租户权限拒绝审批任务
+public class ApprovalTaskService
 {
-    TaskId = "123456789",
-    InstanceCode = "6A123516-FB88-470D-A428-9AF58B71B3C0",
-    UserId = "ou_7dab8a3d3dfcd10xxx",
-    Comment = "信息不完整，请补充部门经理签字"
-};
+    private readonly IFeishuTenantV4ApprovalTask _taskClient;
 
-var result = await _feishuApi
-    .UseApp(appId, appSecret)
-    .ExecuteAsync(api => api.RejectApprovalAsync(request));
+    public ApprovalTaskService(IFeishuTenantV4ApprovalTask taskClient)
+    {
+        _taskClient = taskClient;
+    }
 
-if (result?.Code == 0)
-{
-    Console.WriteLine("审批已拒绝");
+    public async Task RejectApprovalAsync()
+    {
+        var request = new RejectApprovalTaskRequest
+        {
+            TaskId = "123456789",
+            InstanceCode = "6A123516-FB88-470D-A428-9AF58B71B3C0",
+            UserId = "ou_7dab8a3d3dfcd10xxx",
+            Comment = "信息不完整，请补充部门经理签字"
+        };
+
+        var result = await _taskClient.RejectApprovalAsync(request);
+
+        if (result?.Code == 0)
+        {
+            Console.WriteLine("审批已拒绝");
+        }
+    }
 }
 ```
 
@@ -198,11 +220,11 @@ Task<FeishuNullDataApiResult?> TransferApprovalAsync(
 
 #### 参数
 
-| 参数名 | 必填 | 类型 | 描述 |
-|-------|-----|------|-----|
-| `transferApprovalTasksRequest` | ✅ | `TransferApprovalTasksRequest` | 转交审批任务请求体 |
-| `user_id_type` | ⚪ | `string` | 用户 ID 类型，默认：`open_id` |
-| `cancellationToken` | ⚪ | `CancellationToken` | 取消操作令牌对象 |
+| 参数名                         | 必填 | 类型                           | 描述                          |
+| ------------------------------ | ---- | ------------------------------ | ----------------------------- |
+| `transferApprovalTasksRequest` | ✅   | `TransferApprovalTasksRequest` | 转交审批任务请求体            |
+| `user_id_type`                 | ⚪   | `string`                       | 用户 ID 类型，默认：`open_id` |
+| `cancellationToken`            | ⚪   | `CancellationToken`            | 取消操作令牌对象              |
 
 **请求体示例：**
 
@@ -236,23 +258,34 @@ Task<FeishuNullDataApiResult?> TransferApprovalAsync(
 #### 代码示例
 
 ```csharp
-// 转交审批任务给他人
-var request = new TransferApprovalTasksRequest
+// 使用租户权限转交审批任务
+public class ApprovalTaskService
 {
-    TaskId = "123456789",
-    InstanceCode = "6A123516-FB88-470D-A428-9AF58B71B3C0",
-    UserId = "ou_7dab8a3d3dfcd10xxx",
-    TransferUserId = "ou_8eab9b4e4egde21yyy",
-    Comment = "此申请涉及技术评估，请技术经理协助审批"
-};
+    private readonly IFeishuTenantV4ApprovalTask _taskClient;
 
-var result = await _feishuApi
-    .UseApp(appId, appSecret)
-    .ExecuteAsync(api => api.TransferApprovalAsync(request));
+    public ApprovalTaskService(IFeishuTenantV4ApprovalTask taskClient)
+    {
+        _taskClient = taskClient;
+    }
 
-if (result?.Code == 0)
-{
-    Console.WriteLine("审批已转交");
+    public async Task TransferApprovalAsync()
+    {
+        var request = new TransferApprovalTasksRequest
+        {
+            TaskId = "123456789",
+            InstanceCode = "6A123516-FB88-470D-A428-9AF58B71B3C0",
+            UserId = "ou_7dab8a3d3dfcd10xxx",
+            TransferUserId = "ou_8eab9b4e4egde21yyy",
+            Comment = "此申请涉及技术评估，请技术经理协助审批"
+        };
+
+        var result = await _taskClient.TransferApprovalAsync(request);
+
+        if (result?.Code == 0)
+        {
+            Console.WriteLine("审批已转交");
+        }
+    }
 }
 ```
 
@@ -275,11 +308,11 @@ Task<FeishuNullDataApiResult?> RollbackApprovalAsync(
 
 #### 参数
 
-| 参数名 | 必填 | 类型 | 描述 |
-|-------|-----|------|-----|
-| `rollbackApprovalInstancesRequest` | ✅ | `RollbackApprovalInstancesRequest` | 退回审批任务请求体 |
-| `user_id_type` | ⚪ | `string` | 用户 ID 类型，默认：`open_id` |
-| `cancellationToken` | ⚪ | `CancellationToken` | 取消操作令牌对象 |
+| 参数名                             | 必填 | 类型                               | 描述                          |
+| ---------------------------------- | ---- | ---------------------------------- | ----------------------------- |
+| `rollbackApprovalInstancesRequest` | ✅   | `RollbackApprovalInstancesRequest` | 退回审批任务请求体            |
+| `user_id_type`                     | ⚪   | `string`                           | 用户 ID 类型，默认：`open_id` |
+| `cancellationToken`                | ⚪   | `CancellationToken`                | 取消操作令牌对象              |
 
 **请求体示例：**
 
@@ -312,22 +345,33 @@ Task<FeishuNullDataApiResult?> RollbackApprovalAsync(
 #### 代码示例
 
 ```csharp
-// 退回审批到指定节点
-var request = new RollbackApprovalInstancesRequest
+// 使用租户权限退回审批任务
+public class ApprovalTaskService
 {
-    InstanceCode = "6A123516-FB88-470D-A428-9AF58B71B3C0",
-    UserId = "ou_7dab8a3d3dfcd10xxx",
-    NodeId = "START",
-    Comment = "申请信息有误，请修改后重新提交"
-};
+    private readonly IFeishuTenantV4ApprovalTask _taskClient;
 
-var result = await _feishuApi
-    .UseApp(appId, appSecret)
-    .ExecuteAsync(api => api.RollbackApprovalAsync(request));
+    public ApprovalTaskService(IFeishuTenantV4ApprovalTask taskClient)
+    {
+        _taskClient = taskClient;
+    }
 
-if (result?.Code == 0)
-{
-    Console.WriteLine("审批已退回");
+    public async Task RollbackApprovalAsync()
+    {
+        var request = new RollbackApprovalInstancesRequest
+        {
+            InstanceCode = "6A123516-FB88-470D-A428-9AF58B71B3C0",
+            UserId = "ou_7dab8a3d3dfcd10xxx",
+            NodeId = "START",
+            Comment = "申请信息有误，请修改后重新提交"
+        };
+
+        var result = await _taskClient.RollbackApprovalAsync(request);
+
+        if (result?.Code == 0)
+        {
+            Console.WriteLine("审批已退回");
+        }
+    }
 }
 ```
 
@@ -349,10 +393,10 @@ Task<FeishuNullDataApiResult?> InstancesAddSignAsync(
 
 #### 参数
 
-| 参数名 | 必填 | 类型 | 描述 |
-|-------|-----|------|-----|
-| `instancesAddSignRequest` | ✅ | `InstancesAddSignRequest` | 审批任务加签请求体 |
-| `cancellationToken` | ⚪ | `CancellationToken` | 取消操作令牌对象 |
+| 参数名                    | 必填 | 类型                      | 描述               |
+| ------------------------- | ---- | ------------------------- | ------------------ |
+| `instancesAddSignRequest` | ✅   | `InstancesAddSignRequest` | 审批任务加签请求体 |
+| `cancellationToken`       | ⚪   | `CancellationToken`       | 取消操作令牌对象   |
 
 **请求体示例：**
 
@@ -388,24 +432,35 @@ Task<FeishuNullDataApiResult?> InstancesAddSignAsync(
 #### 代码示例
 
 ```csharp
-// 审批任务加签
-var request = new InstancesAddSignRequest
+// 使用租户权限审批任务加签
+public class ApprovalTaskService
 {
-    InstanceCode = "6A123516-FB88-470D-A428-9AF58B71B3C0",
-    TaskId = "123456789",
-    UserId = "ou_7dab8a3d3dfcd10xxx",
-    SignUserIds = new List<string> { "ou_9fab0c5f5fhif32zzz" },
-    SignType = "BEFORE",
-    Comment = "此合同涉及重要条款，需要法务部门先审核"
-};
+    private readonly IFeishuTenantV4ApprovalTask _taskClient;
 
-var result = await _feishuApi
-    .UseApp(appId, appSecret)
-    .ExecuteAsync(api => api.InstancesAddSignAsync(request));
+    public ApprovalTaskService(IFeishuTenantV4ApprovalTask taskClient)
+    {
+        _taskClient = taskClient;
+    }
 
-if (result?.Code == 0)
-{
-    Console.WriteLine("加签成功");
+    public async Task AddSignAsync()
+    {
+        var request = new InstancesAddSignRequest
+        {
+            InstanceCode = "6A123516-FB88-470D-A428-9AF58B71B3C0",
+            TaskId = "123456789",
+            UserId = "ou_7dab8a3d3dfcd10xxx",
+            SignUserIds = new List<string> { "ou_9fab0c5f5fhif32zzz" },
+            SignType = "BEFORE",
+            Comment = "此合同涉及重要条款，需要法务部门先审核"
+        };
+
+        var result = await _taskClient.InstancesAddSignAsync(request);
+
+        if (result?.Code == 0)
+        {
+            Console.WriteLine("加签成功");
+        }
+    }
 }
 ```
 
@@ -428,11 +483,11 @@ Task<FeishuNullDataApiResult?> ResubmitApprovalAsync(
 
 #### 参数
 
-| 参数名 | 必填 | 类型 | 描述 |
-|-------|-----|------|-----|
-| `instancesAddSignRequest` | ✅ | `ResubmitApprovalRequest` | 重新提交审批任务请求体 |
-| `user_id_type` | ⚪ | `string` | 用户 ID 类型，默认：`open_id` |
-| `cancellationToken` | ⚪ | `CancellationToken` | 取消操作令牌对象 |
+| 参数名                    | 必填 | 类型                      | 描述                          |
+| ------------------------- | ---- | ------------------------- | ----------------------------- |
+| `instancesAddSignRequest` | ✅   | `ResubmitApprovalRequest` | 重新提交审批任务请求体        |
+| `user_id_type`            | ⚪   | `string`                  | 用户 ID 类型，默认：`open_id` |
+| `cancellationToken`       | ⚪   | `CancellationToken`       | 取消操作令牌对象              |
 
 **请求体示例：**
 
@@ -470,88 +525,104 @@ Task<FeishuNullDataApiResult?> ResubmitApprovalAsync(
 #### 代码示例
 
 ```csharp
-// 重新提交审批
-var request = new ResubmitApprovalRequest
+// 使用租户权限重新提交审批任务
+public class ApprovalTaskService
 {
-    InstanceCode = "6A123516-FB88-470D-A428-9AF58B71B3C0",
-    UserId = "ou_7dab8a3d3dfcd10xxx",
-    Form = new List<FormData>
+    private readonly IFeishuTenantV4ApprovalTask _taskClient;
+
+    public ApprovalTaskService(IFeishuTenantV4ApprovalTask taskClient)
     {
-        new FormData { Id = "amount", Type = "number", Value = "5000" },
-        new FormData { Id = "reason", Type = "textarea", Value = "费用明细已补充完整" }
-    },
-    Comment = "已按财务意见修改金额并补充说明"
-};
+        _taskClient = taskClient;
+    }
 
-var result = await _feishuApi
-    .UseApp(appId, appSecret)
-    .ExecuteAsync(api => api.ResubmitApprovalAsync(request));
+    public async Task ResubmitApprovalAsync()
+    {
+        var request = new ResubmitApprovalRequest
+        {
+            InstanceCode = "6A123516-FB88-470D-A428-9AF58B71B3C0",
+            UserId = "ou_7dab8a3d3dfcd10xxx",
+            Form = new List<FormData>
+            {
+                new FormData { Id = "amount", Type = "number", Value = "5000" },
+                new FormData { Id = "reason", Type = "textarea", Value = "费用明细已补充完整" }
+            },
+            Comment = "已按财务意见修改金额并补充说明"
+        };
 
-if (result?.Code == 0)
-{
-    Console.WriteLine("审批已重新提交");
+        var result = await _taskClient.ResubmitApprovalAsync(request);
+
+        if (result?.Code == 0)
+        {
+            Console.WriteLine("审批已重新提交");
+        }
+    }
 }
 ```
 
 **完整的审批任务处理示例：**
 
 ```csharp
-// 处理审批任务的完整流程
-public async Task<bool> ProcessApprovalTaskAsync(
-    string appId,
-    string appSecret,
-    string taskId,
-    string instanceCode,
-    string userId,
-    ApprovalAction action,
-    string comment = null)
+// 使用租户权限处理审批任务的完整流程
+public class ApprovalTaskProcessor
 {
-    var api = _feishuApi.UseApp(appId, appSecret);
-    
-    FeishuNullDataApiResult result;
-    
-    switch (action)
+    private readonly IFeishuTenantV4ApprovalTask _taskClient;
+
+    public ApprovalTaskProcessor(IFeishuTenantV4ApprovalTask taskClient)
     {
-        case ApprovalAction.Agree:
-            result = await api.ExecuteAsync(a => a.AgreeApprovalAsync(
-                new AgreeApprovalTasksRequest
-                {
-                    TaskId = taskId,
-                    InstanceCode = instanceCode,
-                    UserId = userId,
-                    Comment = comment
-                }));
-            break;
-            
-        case ApprovalAction.Reject:
-            result = await api.ExecuteAsync(a => a.RejectApprovalAsync(
-                new RejectApprovalTaskRequest
-                {
-                    TaskId = taskId,
-                    InstanceCode = instanceCode,
-                    UserId = userId,
-                    Comment = comment
-                }));
-            break;
-            
-        case ApprovalAction.Transfer:
-            // 需要从 comment 中解析转交人 ID
-            result = await api.ExecuteAsync(a => a.TransferApprovalAsync(
-                new TransferApprovalTasksRequest
-                {
-                    TaskId = taskId,
-                    InstanceCode = instanceCode,
-                    UserId = userId,
-                    TransferUserId = comment, // 这里应该解析出用户ID
-                    Comment = "请协助审批"
-                }));
-            break;
-            
-        default:
-            throw new ArgumentException("不支持的审批操作");
+        _taskClient = taskClient;
     }
-    
-    return result?.Code == 0;
+
+    public async Task<bool> ProcessApprovalTaskAsync(
+        string taskId,
+        string instanceCode,
+        string userId,
+        ApprovalAction action,
+        string? comment = null)
+    {
+        FeishuNullDataApiResult? result;
+
+        switch (action)
+        {
+            case ApprovalAction.Agree:
+                result = await _taskClient.AgreeApprovalAsync(
+                    new AgreeApprovalTasksRequest
+                    {
+                        TaskId = taskId,
+                        InstanceCode = instanceCode,
+                        UserId = userId,
+                        Comment = comment
+                    });
+                break;
+
+            case ApprovalAction.Reject:
+                result = await _taskClient.RejectApprovalAsync(
+                    new RejectApprovalTaskRequest
+                    {
+                        TaskId = taskId,
+                        InstanceCode = instanceCode,
+                        UserId = userId,
+                        Comment = comment
+                    });
+                break;
+
+            case ApprovalAction.Transfer:
+                result = await _taskClient.TransferApprovalAsync(
+                    new TransferApprovalTasksRequest
+                    {
+                        TaskId = taskId,
+                        InstanceCode = instanceCode,
+                        UserId = userId,
+                        TransferUserId = comment!,
+                        Comment = "请协助审批"
+                    });
+                break;
+
+            default:
+                throw new ArgumentException("不支持的审批操作");
+        }
+
+        return result?.Code == 0;
+    }
 }
 
 public enum ApprovalAction

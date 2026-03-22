@@ -14,16 +14,16 @@
 
 ## 函数列表
 
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-|---------|---------|---------|----------|
-| `CreateApprovalAsync` | 创建审批定义 | 租户令牌 | POST |
-| `GetApprovalByCodeAsync` | 获取审批定义详情 | 租户令牌 | GET |
-| `CreateInstanceAsync` | 创建审批实例 | 租户令牌 | POST |
-| `CancelInstanceAsync` | 撤回审批实例 | 租户令牌 | POST |
-| `CarbonCopyInstanceAsync` | 抄送审批实例 | 租户令牌 | POST |
-| `PreviewInstanceAsync` | 预览审批流程（创建实例前） | 租户令牌 | POST |
-| `PreviewInstanceAsync` | 预览审批流程（创建实例后） | 租户令牌 | POST |
-| `GetInstanceByIdAsync` | 获取审批实例详情 | 租户令牌 | GET |
+| 函数名称                  | 功能描述                   | 认证方式 | HTTP 方法 |
+| ------------------------- | -------------------------- | -------- | --------- |
+| `CreateApprovalAsync`     | 创建审批定义               | 租户令牌 | POST      |
+| `GetApprovalByCodeAsync`  | 获取审批定义详情           | 租户令牌 | GET       |
+| `CreateInstanceAsync`     | 创建审批实例               | 租户令牌 | POST      |
+| `CancelInstanceAsync`     | 撤回审批实例               | 租户令牌 | POST      |
+| `CarbonCopyInstanceAsync` | 抄送审批实例               | 租户令牌 | POST      |
+| `PreviewInstanceAsync`    | 预览审批流程（创建实例前） | 租户令牌 | POST      |
+| `PreviewInstanceAsync`    | 预览审批流程（创建实例后） | 租户令牌 | POST      |
+| `GetInstanceByIdAsync`    | 获取审批实例详情           | 租户令牌 | GET       |
 
 ## 函数详细内容
 
@@ -45,12 +45,12 @@ Task<FeishuApiResult<CreateApprovalResult>?> CreateApprovalAsync(
 
 #### 参数
 
-| 参数名 | 必填 | 类型 | 描述 |
-|-------|-----|------|-----|
-| `createApprovalRequest` | ✅ | `CreateApprovalRequest` | 创建审批定义请求体 |
-| `user_id_type` | ⚪ | `string` | 用户 ID 类型，默认：`open_id` |
-| `department_id_type` | ⚪ | `string` | 部门 ID 类型，默认：`open_department_id` |
-| `cancellationToken` | ⚪ | `CancellationToken` | 取消操作令牌对象 |
+| 参数名                  | 必填 | 类型                    | 描述                                     |
+| ----------------------- | ---- | ----------------------- | ---------------------------------------- |
+| `createApprovalRequest` | ✅   | `CreateApprovalRequest` | 创建审批定义请求体                       |
+| `user_id_type`          | ⚪   | `string`                | 用户 ID 类型，默认：`open_id`            |
+| `department_id_type`    | ⚪   | `string`                | 部门 ID 类型，默认：`open_department_id` |
+| `cancellationToken`     | ⚪   | `CancellationToken`     | 取消操作令牌对象                         |
 
 **请求体示例：**
 
@@ -96,37 +96,48 @@ Task<FeishuApiResult<CreateApprovalResult>?> CreateApprovalAsync(
 #### 代码示例
 
 ```csharp
-// 创建请假审批定义
-var request = new CreateApprovalRequest
+// 使用租户权限创建审批定义
+public class ApprovalService
 {
-    ApprovalName = "请假申请",
-    Description = "用于员工请假的审批流程",
-    Viewers = new List<Viewer>
+    private readonly IFeishuTenantV4Approval _approvalClient;
+
+    public ApprovalService(IFeishuTenantV4Approval approvalClient)
     {
-        new Viewer
-        {
-            ViewerType = "TENANT",
-            ViewerId = ""
-        }
-    },
-    Form = new Form
-    {
-        FormContent = "表单配置内容"
-    },
-    Config = new ApprovalConfig
-    {
-        EnableAgain = true,
-        EnableCc = true
+        _approvalClient = approvalClient;
     }
-};
 
-var result = await _feishuApi
-    .UseApp(appId, appSecret)
-    .ExecuteAsync(api => api.CreateApprovalAsync(request));
+    public async Task CreateApprovalAsync()
+    {
+        var request = new CreateApprovalRequest
+        {
+            ApprovalName = "请假申请",
+            Description = "用于员工请假的审批流程",
+            Viewers = new List<Viewer>
+            {
+                new Viewer
+                {
+                    ViewerType = "TENANT",
+                    ViewerId = ""
+                }
+            },
+            Form = new Form
+            {
+                FormContent = "表单配置内容"
+            },
+            Config = new ApprovalConfig
+            {
+                EnableAgain = true,
+                EnableCc = true
+            }
+        };
 
-if (result?.Code == 0)
-{
-    Console.WriteLine($"审批定义创建成功，Code: {result.Data?.ApprovalCode}");
+        var result = await _approvalClient.CreateApprovalAsync(request);
+
+        if (result?.Code == 0)
+        {
+            Console.WriteLine($"审批定义创建成功，Code: {result.Data?.ApprovalCode}");
+        }
+    }
 }
 ```
 
@@ -151,13 +162,13 @@ Task<FeishuApiResult<GetApprovalResult>?> GetApprovalByCodeAsync(
 
 #### 参数
 
-| 参数名 | 必填 | 类型 | 描述 |
-|-------|-----|------|-----|
-| `approval_code` | ✅ | `string` | 审批定义 Code，示例值：`"7C468A54-8745-2245-9675-08B7C63E7A85"` |
-| `locale` | ⚪ | `string` | 语言可选值，默认为审批定义配置的默认语言，示例值：`"zh-CN"` |
-| `with_admin_id` | ⚪ | `bool` | 是否返回有数据管理权限的审批流程管理员 ID 列表 |
-| `user_id_type` | ⚪ | `string` | 用户 ID 类型，默认：`open_id` |
-| `cancellationToken` | ⚪ | `CancellationToken` | 取消操作令牌对象 |
+| 参数名              | 必填 | 类型                | 描述                                                            |
+| ------------------- | ---- | ------------------- | --------------------------------------------------------------- |
+| `approval_code`     | ✅   | `string`            | 审批定义 Code，示例值：`"7C468A54-8745-2245-9675-08B7C63E7A85"` |
+| `locale`            | ⚪   | `string`            | 语言可选值，默认为审批定义配置的默认语言，示例值：`"zh-CN"`     |
+| `with_admin_id`     | ⚪   | `bool`              | 是否返回有数据管理权限的审批流程管理员 ID 列表                  |
+| `user_id_type`      | ⚪   | `string`            | 用户 ID 类型，默认：`open_id`                                   |
+| `cancellationToken` | ⚪   | `CancellationToken` | 取消操作令牌对象                                                |
 
 #### 响应
 
@@ -195,19 +206,30 @@ Task<FeishuApiResult<GetApprovalResult>?> GetApprovalByCodeAsync(
 #### 代码示例
 
 ```csharp
-// 获取审批定义详情
-var approvalCode = "7C468A54-8745-2245-9675-08B7C63E7A85";
-var result = await _feishuApi
-    .UseApp(appId, appSecret)
-    .ExecuteAsync(api => api.GetApprovalByCodeAsync(
-        approvalCode,
-        locale: "zh-CN",
-        with_admin_id: true));
-
-if (result?.Code == 0)
+// 使用租户权限获取审批定义详情
+public class ApprovalService
 {
-    Console.WriteLine($"审批名称: {result.Data?.ApprovalName}");
-    Console.WriteLine($"审批状态: {result.Data?.Status}");
+    private readonly IFeishuTenantV4Approval _approvalClient;
+
+    public ApprovalService(IFeishuTenantV4Approval approvalClient)
+    {
+        _approvalClient = approvalClient;
+    }
+
+    public async Task GetApprovalAsync()
+    {
+        var approvalCode = "7C468A54-8745-2245-9675-08B7C63E7A85";
+        var result = await _approvalClient.GetApprovalByCodeAsync(
+            approvalCode,
+            locale: "zh-CN",
+            with_admin_id: true);
+
+        if (result?.Code == 0)
+        {
+            Console.WriteLine($"审批名称: {result.Data?.ApprovalName}");
+            Console.WriteLine($"审批状态: {result.Data?.Status}");
+        }
+    }
 }
 ```
 
@@ -229,10 +251,10 @@ Task<FeishuApiResult<CreateInstancesResult>?> CreateInstanceAsync(
 
 #### 参数
 
-| 参数名 | 必填 | 类型 | 描述 |
-|-------|-----|------|-----|
-| `createInstanceRequest` | ✅ | `CreateInstanceRequest` | 创建审批实例请求体 |
-| `cancellationToken` | ⚪ | `CancellationToken` | 取消操作令牌对象 |
+| 参数名                  | 必填 | 类型                    | 描述               |
+| ----------------------- | ---- | ----------------------- | ------------------ |
+| `createInstanceRequest` | ✅   | `CreateInstanceRequest` | 创建审批实例请求体 |
+| `cancellationToken`     | ⚪   | `CancellationToken`     | 取消操作令牌对象   |
 
 **请求体示例：**
 
@@ -279,27 +301,38 @@ Task<FeishuApiResult<CreateInstancesResult>?> CreateInstanceAsync(
 #### 代码示例
 
 ```csharp
-// 发起请假审批实例
-var request = new CreateInstanceRequest
+// 使用租户权限创建审批实例
+public class ApprovalService
 {
-    ApprovalCode = "7C468A54-8745-2245-9675-08B7C63E7A85",
-    OpenId = "ou_7dab8a3d3dfcd10xxx",
-    Form = new List<FormData>
+    private readonly IFeishuTenantV4Approval _approvalClient;
+
+    public ApprovalService(IFeishuTenantV4Approval approvalClient)
     {
-        new FormData { Id = "reason", Type = "input", Value = "家中有事" },
-        new FormData { Id = "date", Type = "date", Value = "2025-03-20" },
-        new FormData { Id = "days", Type = "number", Value = "1" }
-    },
-    NodeCustomeMode = "SEQUENTIAL"
-};
+        _approvalClient = approvalClient;
+    }
 
-var result = await _feishuApi
-    .UseApp(appId, appSecret)
-    .ExecuteAsync(api => api.CreateInstanceAsync(request));
+    public async Task CreateInstanceAsync()
+    {
+        var request = new CreateInstanceRequest
+        {
+            ApprovalCode = "7C468A54-8745-2245-9675-08B7C63E7A85",
+            OpenId = "ou_7dab8a3d3dfcd10xxx",
+            Form = new List<FormData>
+            {
+                new FormData { Id = "reason", Type = "input", Value = "家中有事" },
+                new FormData { Id = "date", Type = "date", Value = "2025-03-20" },
+                new FormData { Id = "days", Type = "number", Value = "1" }
+            },
+            NodeCustomeMode = "SEQUENTIAL"
+        };
 
-if (result?.Code == 0)
-{
-    Console.WriteLine($"审批实例创建成功，Code: {result.Data?.InstanceCode}");
+        var result = await _approvalClient.CreateInstanceAsync(request);
+
+        if (result?.Code == 0)
+        {
+            Console.WriteLine($"审批实例创建成功，Code: {result.Data?.InstanceCode}");
+        }
+    }
 }
 ```
 
@@ -322,11 +355,11 @@ Task<FeishuNullDataApiResult?> CancelInstanceAsync(
 
 #### 参数
 
-| 参数名 | 必填 | 类型 | 描述 |
-|-------|-----|------|-----|
-| `cancelInstancesRequest` | ✅ | `CancelInstancesRequest` | 撤回审批实例请求体 |
-| `user_id_type` | ⚪ | `string` | 用户 ID 类型，默认：`open_id` |
-| `cancellationToken` | ⚪ | `CancellationToken` | 取消操作令牌对象 |
+| 参数名                   | 必填 | 类型                     | 描述                          |
+| ------------------------ | ---- | ------------------------ | ----------------------------- |
+| `cancelInstancesRequest` | ✅   | `CancelInstancesRequest` | 撤回审批实例请求体            |
+| `user_id_type`           | ⚪   | `string`                 | 用户 ID 类型，默认：`open_id` |
+| `cancellationToken`      | ⚪   | `CancellationToken`      | 取消操作令牌对象              |
 
 **请求体示例：**
 
@@ -357,21 +390,32 @@ Task<FeishuNullDataApiResult?> CancelInstanceAsync(
 #### 代码示例
 
 ```csharp
-// 撤回已提交的审批实例
-var request = new CancelInstancesRequest
+// 使用租户权限撤回审批实例
+public class ApprovalService
 {
-    InstanceCode = "6A123516-FB88-470D-A428-9AF58B71B3C0",
-    UserId = "ou_7dab8a3d3dfcd10xxx",
-    Reason = "信息填写错误，需要重新提交"
-};
+    private readonly IFeishuTenantV4Approval _approvalClient;
 
-var result = await _feishuApi
-    .UseApp(appId, appSecret)
-    .ExecuteAsync(api => api.CancelInstanceAsync(request));
+    public ApprovalService(IFeishuTenantV4Approval approvalClient)
+    {
+        _approvalClient = approvalClient;
+    }
 
-if (result?.Code == 0)
-{
-    Console.WriteLine("审批实例撤回成功");
+    public async Task CancelInstanceAsync()
+    {
+        var request = new CancelInstancesRequest
+        {
+            InstanceCode = "6A123516-FB88-470D-A428-9AF58B71B3C0",
+            UserId = "ou_7dab8a3d3dfcd10xxx",
+            Reason = "信息填写错误，需要重新提交"
+        };
+
+        var result = await _approvalClient.CancelInstanceAsync(request);
+
+        if (result?.Code == 0)
+        {
+            Console.WriteLine("审批实例撤回成功");
+        }
+    }
 }
 ```
 
@@ -394,11 +438,11 @@ Task<FeishuNullDataApiResult?> CarbonCopyInstanceAsync(
 
 #### 参数
 
-| 参数名 | 必填 | 类型 | 描述 |
-|-------|-----|------|-----|
-| `ccInstanceRequest` | ✅ | `CarbonCopyInstanceRequest` | 抄送审批实例请求体 |
-| `user_id_type` | ⚪ | `string` | 用户 ID 类型，默认：`open_id` |
-| `cancellationToken` | ⚪ | `CancellationToken` | 取消操作令牌对象 |
+| 参数名              | 必填 | 类型                        | 描述                          |
+| ------------------- | ---- | --------------------------- | ----------------------------- |
+| `ccInstanceRequest` | ✅   | `CarbonCopyInstanceRequest` | 抄送审批实例请求体            |
+| `user_id_type`      | ⚪   | `string`                    | 用户 ID 类型，默认：`open_id` |
+| `cancellationToken` | ⚪   | `CancellationToken`         | 取消操作令牌对象              |
 
 **请求体示例：**
 
@@ -429,24 +473,35 @@ Task<FeishuNullDataApiResult?> CarbonCopyInstanceAsync(
 #### 代码示例
 
 ```csharp
-// 抄送审批实例给相关人员
-var request = new CarbonCopyInstanceRequest
+// 使用租户权限抄送审批实例
+public class ApprovalService
 {
-    InstanceCode = "6A123516-FB88-470D-A428-9AF58B71B3C0",
-    CcUserIds = new List<string>
+    private readonly IFeishuTenantV4Approval _approvalClient;
+
+    public ApprovalService(IFeishuTenantV4Approval approvalClient)
     {
-        "ou_7dab8a3d3dfcd10xxx",
-        "ou_8eab9b4e4egde21yyy"
+        _approvalClient = approvalClient;
     }
-};
 
-var result = await _feishuApi
-    .UseApp(appId, appSecret)
-    .ExecuteAsync(api => api.CarbonCopyInstanceAsync(request));
+    public async Task CarbonCopyInstanceAsync()
+    {
+        var request = new CarbonCopyInstanceRequest
+        {
+            InstanceCode = "6A123516-FB88-470D-A428-9AF58B71B3C0",
+            CcUserIds = new List<string>
+            {
+                "ou_7dab8a3d3dfcd10xxx",
+                "ou_8eab9b4e4egde21yyy"
+            }
+        };
 
-if (result?.Code == 0)
-{
-    Console.WriteLine("抄送成功");
+        var result = await _approvalClient.CarbonCopyInstanceAsync(request);
+
+        if (result?.Code == 0)
+        {
+            Console.WriteLine("抄送成功");
+        }
+    }
 }
 ```
 
@@ -469,11 +524,11 @@ Task<FeishuApiResult<PreviewNodeResult>?> PreviewInstanceAsync(
 
 #### 参数
 
-| 参数名 | 必填 | 类型 | 描述 |
-|-------|-----|------|-----|
-| `previewInstanceRequest` | ✅ | `PreviewInstanceRequest` | 预览审批流程请求体（创建实例前） |
-| `user_id_type` | ⚪ | `string` | 用户 ID 类型，默认：`open_id` |
-| `cancellationToken` | ⚪ | `CancellationToken` | 取消操作令牌对象 |
+| 参数名                   | 必填 | 类型                     | 描述                             |
+| ------------------------ | ---- | ------------------------ | -------------------------------- |
+| `previewInstanceRequest` | ✅   | `PreviewInstanceRequest` | 预览审批流程请求体（创建实例前） |
+| `user_id_type`           | ⚪   | `string`                 | 用户 ID 类型，默认：`open_id`    |
+| `cancellationToken`      | ⚪   | `CancellationToken`      | 取消操作令牌对象                 |
 
 #### 响应
 
@@ -509,22 +564,33 @@ Task<FeishuApiResult<PreviewNodeResult>?> PreviewInstanceAsync(
 #### 代码示例
 
 ```csharp
-// 预览审批流程
-var request = new PreviewInstanceRequest
+// 使用租户权限预览审批流程
+public class ApprovalService
 {
-    ApprovalCode = "7C468A54-8745-2245-9675-08B7C63E7A85",
-    OpenId = "ou_7dab8a3d3dfcd10xxx"
-};
+    private readonly IFeishuTenantV4Approval _approvalClient;
 
-var result = await _feishuApi
-    .UseApp(appId, appSecret)
-    .ExecuteAsync(api => api.PreviewInstanceAsync(request));
-
-if (result?.Code == 0)
-{
-    foreach (var node in result.Data?.Nodes ?? new List<PreviewNode>())
+    public ApprovalService(IFeishuTenantV4Approval approvalClient)
     {
-        Console.WriteLine($"节点: {node.NodeName}, 类型: {node.NodeType}");
+        _approvalClient = approvalClient;
+    }
+
+    public async Task PreviewInstanceAsync()
+    {
+        var request = new PreviewInstanceRequest
+        {
+            ApprovalCode = "7C468A54-8745-2245-9675-08B7C63E7A85",
+            OpenId = "ou_7dab8a3d3dfcd10xxx"
+        };
+
+        var result = await _approvalClient.PreviewInstanceAsync(request);
+
+        if (result?.Code == 0)
+        {
+            foreach (var node in result.Data?.Nodes ?? new List<PreviewNode>())
+            {
+                Console.WriteLine($"节点: {node.NodeName}, 类型: {node.NodeType}");
+            }
+        }
     }
 }
 ```
@@ -548,11 +614,11 @@ Task<FeishuApiResult<PreviewNodeResult>?> PreviewInstanceAsync(
 
 #### 参数
 
-| 参数名 | 必填 | 类型 | 描述 |
-|-------|-----|------|-----|
-| `previewInstanceRequest` | ✅ | `PreviewInstanceAfterRequest` | 预览审批流程请求体（创建实例后） |
-| `user_id_type` | ⚪ | `string` | 用户 ID 类型，默认：`open_id` |
-| `cancellationToken` | ⚪ | `CancellationToken` | 取消操作令牌对象 |
+| 参数名                   | 必填 | 类型                          | 描述                             |
+| ------------------------ | ---- | ----------------------------- | -------------------------------- |
+| `previewInstanceRequest` | ✅   | `PreviewInstanceAfterRequest` | 预览审批流程请求体（创建实例后） |
+| `user_id_type`           | ⚪   | `string`                      | 用户 ID 类型，默认：`open_id`    |
+| `cancellationToken`      | ⚪   | `CancellationToken`           | 取消操作令牌对象                 |
 
 #### 响应
 
@@ -600,13 +666,13 @@ Task<FeishuApiResult<GetApprovalInstanceResult>?> GetInstanceByIdAsync(
 
 #### 参数
 
-| 参数名 | 必填 | 类型 | 描述 |
-|-------|-----|------|-----|
-| `instance_id` | ✅ | `string` | 审批实例 Code，示例值：`"6A123516-FB88-470D-A428-9AF58B71B3C0"` |
-| `locale` | ⚪ | `string` | 语言可选值，示例值：`"zh-CN"` |
-| `user_id` | ⚪ | `bool` | 是否返回发起审批的用户 ID |
-| `user_id_type` | ⚪ | `string` | 用户 ID 类型，默认：`open_id` |
-| `cancellationToken` | ⚪ | `CancellationToken` | 取消操作令牌对象 |
+| 参数名              | 必填 | 类型                | 描述                                                            |
+| ------------------- | ---- | ------------------- | --------------------------------------------------------------- |
+| `instance_id`       | ✅   | `string`            | 审批实例 Code，示例值：`"6A123516-FB88-470D-A428-9AF58B71B3C0"` |
+| `locale`            | ⚪   | `string`            | 语言可选值，示例值：`"zh-CN"`                                   |
+| `user_id`           | ⚪   | `bool`              | 是否返回发起审批的用户 ID                                       |
+| `user_id_type`      | ⚪   | `string`            | 用户 ID 类型，默认：`open_id`                                   |
+| `cancellationToken` | ⚪   | `CancellationToken` | 取消操作令牌对象                                                |
 
 #### 响应
 
@@ -652,22 +718,33 @@ Task<FeishuApiResult<GetApprovalInstanceResult>?> GetInstanceByIdAsync(
 #### 代码示例
 
 ```csharp
-// 获取审批实例详情
-var instanceId = "6A123516-FB88-470D-A428-9AF58B71B3C0";
-var result = await _feishuApi
-    .UseApp(appId, appSecret)
-    .ExecuteAsync(api => api.GetInstanceByIdAsync(instanceId));
-
-if (result?.Code == 0)
+// 使用租户权限获取审批实例详情
+public class ApprovalService
 {
-    var data = result.Data;
-    Console.WriteLine($"审批名称: {data?.ApprovalName}");
-    Console.WriteLine($"审批状态: {data?.Status}");
-    Console.WriteLine($"创建时间: {data?.CreateTime}");
-    
-    foreach (var task in data?.Tasks ?? new List<TaskInfo>())
+    private readonly IFeishuTenantV4Approval _approvalClient;
+
+    public ApprovalService(IFeishuTenantV4Approval approvalClient)
     {
-        Console.WriteLine($"任务: {task.NodeName}, 状态: {task.Status}");
+        _approvalClient = approvalClient;
+    }
+
+    public async Task GetInstanceAsync()
+    {
+        var instanceId = "6A123516-FB88-470D-A428-9AF58B71B3C0";
+        var result = await _approvalClient.GetInstanceByIdAsync(instanceId);
+
+        if (result?.Code == 0)
+        {
+            var data = result.Data;
+            Console.WriteLine($"审批名称: {data?.ApprovalName}");
+            Console.WriteLine($"审批状态: {data?.Status}");
+            Console.WriteLine($"创建时间: {data?.CreateTime}");
+
+            foreach (var task in data?.Tasks ?? new List<TaskInfo>())
+            {
+                Console.WriteLine($"任务: {task.NodeName}, 状态: {task.Status}");
+            }
+        }
     }
 }
 ```

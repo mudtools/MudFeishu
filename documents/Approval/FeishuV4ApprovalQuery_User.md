@@ -14,11 +14,11 @@
 
 ## 函数列表
 
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-|---------|---------|---------|----------|
-| `GetInstancesPageListAsync` | 查询审批实例分页列表 | 用户令牌 | POST |
-| `GetCarbonCopyPageListAsync` | 查询审批抄送分页列表 | 用户令牌 | POST |
-| `GetTasksPageListAsync` | 查询审批任务分页列表 | 用户令牌 | POST |
+| 函数名称                     | 功能描述             | 认证方式 | HTTP 方法 |
+| ---------------------------- | -------------------- | -------- | --------- |
+| `GetInstancesPageListAsync`  | 查询审批实例分页列表 | 用户令牌 | POST      |
+| `GetCarbonCopyPageListAsync` | 查询审批抄送分页列表 | 用户令牌 | POST      |
+| `GetTasksPageListAsync`      | 查询审批任务分页列表 | 用户令牌 | POST      |
 
 ## 函数详细内容
 
@@ -41,13 +41,13 @@ Task<FeishuApiResult<ApprovalInstancesQueryResult>?> GetInstancesPageListAsync(
 
 #### 参数
 
-| 参数名 | 必填 | 类型 | 描述 |
-|-------|-----|------|-----|
-| `approvalInstancesQueryRequest` | ✅ | `ApprovalInstancesQueryRequest` | 查询实例列表请求体 |
-| `page_size` | ⚪ | `int` | 分页大小，默认：10 |
-| `page_token` | ⚪ | `string` | 分页标记，第一次请求不填 |
-| `user_id_type` | ⚪ | `string` | 用户 ID 类型，默认：`open_id` |
-| `cancellationToken` | ⚪ | `CancellationToken` | 取消操作令牌对象 |
+| 参数名                          | 必填 | 类型                            | 描述                          |
+| ------------------------------- | ---- | ------------------------------- | ----------------------------- |
+| `approvalInstancesQueryRequest` | ✅   | `ApprovalInstancesQueryRequest` | 查询实例列表请求体            |
+| `page_size`                     | ⚪   | `int`                           | 分页大小，默认：10            |
+| `page_token`                    | ⚪   | `string`                        | 分页标记，第一次请求不填      |
+| `user_id_type`                  | ⚪   | `string`                        | 用户 ID 类型，默认：`open_id` |
+| `cancellationToken`             | ⚪   | `CancellationToken`             | 取消操作令牌对象              |
 
 **请求体示例：**
 
@@ -95,24 +95,35 @@ Task<FeishuApiResult<ApprovalInstancesQueryResult>?> GetInstancesPageListAsync(
 #### 代码示例
 
 ```csharp
-// 查询当前用户的审批列表（使用用户令牌）
-var request = new ApprovalInstancesQueryRequest
+// 使用用户权限查询审批实例分页列表
+public class UserApprovalQueryService
 {
-    Status = "PENDING",
-    StartTime = DateTime.Now.AddDays(-30),
-    EndTime = DateTime.Now
-};
+    private readonly IFeishuUserV4ApprovalQuery _queryClient;
 
-var result = await _feishuApi
-    .WithUserToken(userAccessToken)  // 使用用户令牌
-    .ExecuteAsync(api => api.GetInstancesPageListAsync(request, page_size: 20));
-
-if (result?.Code == 0)
-{
-    Console.WriteLine($"您有 {result.Data?.Items?.Count} 条审批记录");
-    foreach (var instance in result.Data?.Items ?? new List<ApprovalInstance>())
+    public UserApprovalQueryService(IFeishuUserV4ApprovalQuery queryClient)
     {
-        Console.WriteLine($"- {instance.ApprovalName} ({instance.Status})");
+        _queryClient = queryClient;
+    }
+
+    public async Task GetMyInstancesAsync()
+    {
+        var request = new ApprovalInstancesQueryRequest
+        {
+            Status = "PENDING",
+            StartTime = DateTime.Now.AddDays(-30),
+            EndTime = DateTime.Now
+        };
+
+        var result = await _queryClient.GetInstancesPageListAsync(request, page_size: 20);
+
+        if (result?.Code == 0)
+        {
+            Console.WriteLine($"您有 {result.Data?.Items?.Count} 条审批记录");
+            foreach (var instance in result.Data?.Items ?? new List<ApprovalInstance>())
+            {
+                Console.WriteLine($"- {instance.ApprovalName} ({instance.Status})");
+            }
+        }
     }
 }
 ```
@@ -138,13 +149,13 @@ Task<FeishuApiResult<ApprovalInstancesCcQueryResult>?> GetCarbonCopyPageListAsyn
 
 #### 参数
 
-| 参数名 | 必填 | 类型 | 描述 |
-|-------|-----|------|-----|
-| `approvalInstancesCcQueryReques` | ✅ | `ApprovalInstancesCcQueryRequest` | 查询抄送列表请求体 |
-| `page_size` | ⚪ | `int` | 分页大小，默认：10 |
-| `page_token` | ⚪ | `string` | 分页标记，第一次请求不填 |
-| `user_id_type` | ⚪ | `string` | 用户 ID 类型，默认：`open_id` |
-| `cancellationToken` | ⚪ | `CancellationToken` | 取消操作令牌对象 |
+| 参数名                           | 必填 | 类型                              | 描述                          |
+| -------------------------------- | ---- | --------------------------------- | ----------------------------- |
+| `approvalInstancesCcQueryReques` | ✅   | `ApprovalInstancesCcQueryRequest` | 查询抄送列表请求体            |
+| `page_size`                      | ⚪   | `int`                             | 分页大小，默认：10            |
+| `page_token`                     | ⚪   | `string`                          | 分页标记，第一次请求不填      |
+| `user_id_type`                   | ⚪   | `string`                          | 用户 ID 类型，默认：`open_id` |
+| `cancellationToken`              | ⚪   | `CancellationToken`               | 取消操作令牌对象              |
 
 **请求体示例：**
 
@@ -189,20 +200,31 @@ Task<FeishuApiResult<ApprovalInstancesCcQueryResult>?> GetCarbonCopyPageListAsyn
 #### 代码示例
 
 ```csharp
-// 查询当前用户的抄送列表（使用用户令牌）
-var request = new ApprovalInstancesCcQueryRequest
+// 使用用户权限查询审批抄送分页列表
+public class UserApprovalQueryService
 {
-    StartTime = DateTime.Now.AddDays(-30),
-    EndTime = DateTime.Now
-};
+    private readonly IFeishuUserV4ApprovalQuery _queryClient;
 
-var result = await _feishuApi
-    .WithUserToken(userAccessToken)  // 使用用户令牌
-    .ExecuteAsync(api => api.GetCarbonCopyPageListAsync(request));
+    public UserApprovalQueryService(IFeishuUserV4ApprovalQuery queryClient)
+    {
+        _queryClient = queryClient;
+    }
 
-if (result?.Code == 0)
-{
-    Console.WriteLine($"您有 {result.Data?.Items?.Count} 条抄送记录");
+    public async Task GetMyCarbonCopyListAsync()
+    {
+        var request = new ApprovalInstancesCcQueryRequest
+        {
+            StartTime = DateTime.Now.AddDays(-30),
+            EndTime = DateTime.Now
+        };
+
+        var result = await _queryClient.GetCarbonCopyPageListAsync(request);
+
+        if (result?.Code == 0)
+        {
+            Console.WriteLine($"您有 {result.Data?.Items?.Count} 条抄送记录");
+        }
+    }
 }
 ```
 
@@ -227,13 +249,13 @@ Task<FeishuApiResult<ApprovalInstancesTaskQueryResult>?> GetTasksPageListAsync(
 
 #### 参数
 
-| 参数名 | 必填 | 类型 | 描述 |
-|-------|-----|------|-----|
-| `approvalInstancesTaskQueryRequest` | ✅ | `ApprovalInstancesTaskQueryRequest` | 查询任务列表请求体 |
-| `page_size` | ⚪ | `int` | 分页大小，默认：10 |
-| `page_token` | ⚪ | `string` | 分页标记，第一次请求不填 |
-| `user_id_type` | ⚪ | `string` | 用户 ID 类型，默认：`open_id` |
-| `cancellationToken` | ⚪ | `CancellationToken` | 取消操作令牌对象 |
+| 参数名                              | 必填 | 类型                                | 描述                          |
+| ----------------------------------- | ---- | ----------------------------------- | ----------------------------- |
+| `approvalInstancesTaskQueryRequest` | ✅   | `ApprovalInstancesTaskQueryRequest` | 查询任务列表请求体            |
+| `page_size`                         | ⚪   | `int`                               | 分页大小，默认：10            |
+| `page_token`                        | ⚪   | `string`                            | 分页标记，第一次请求不填      |
+| `user_id_type`                      | ⚪   | `string`                            | 用户 ID 类型，默认：`open_id` |
+| `cancellationToken`                 | ⚪   | `CancellationToken`                 | 取消操作令牌对象              |
 
 **请求体示例：**
 
@@ -282,26 +304,37 @@ Task<FeishuApiResult<ApprovalInstancesTaskQueryResult>?> GetTasksPageListAsync(
 #### 代码示例
 
 ```csharp
-// 查询当前用户的待办任务（使用用户令牌）
-var request = new ApprovalInstancesTaskQueryRequest
+// 使用用户权限查询审批任务分页列表
+public class UserApprovalQueryService
 {
-    TaskStatus = "PENDING",
-    StartTime = DateTime.Now.AddDays(-30),
-    EndTime = DateTime.Now
-};
+    private readonly IFeishuUserV4ApprovalQuery _queryClient;
 
-var result = await _feishuApi
-    .WithUserToken(userAccessToken)  // 使用用户令牌
-    .ExecuteAsync(api => api.GetTasksPageListAsync(request, page_size: 50));
-
-if (result?.Code == 0)
-{
-    var pendingTasks = result.Data?.Items ?? new List<ApprovalTask>();
-    Console.WriteLine($"您有 {pendingTasks.Count} 个待办审批任务");
-    
-    foreach (var task in pendingTasks)
+    public UserApprovalQueryService(IFeishuUserV4ApprovalQuery queryClient)
     {
-        Console.WriteLine($"- [{task.ApprovalName}] {task.NodeName} ({task.CreateTime:MM-dd})");
+        _queryClient = queryClient;
+    }
+
+    public async Task GetMyPendingTasksAsync()
+    {
+        var request = new ApprovalInstancesTaskQueryRequest
+        {
+            TaskStatus = "PENDING",
+            StartTime = DateTime.Now.AddDays(-30),
+            EndTime = DateTime.Now
+        };
+
+        var result = await _queryClient.GetTasksPageListAsync(request, page_size: 50);
+
+        if (result?.Code == 0)
+        {
+            var pendingTasks = result.Data?.Items ?? new List<ApprovalTask>();
+            Console.WriteLine($"您有 {pendingTasks.Count} 个待办审批任务");
+
+            foreach (var task in pendingTasks)
+            {
+                Console.WriteLine($"- [{task.ApprovalName}] {task.NodeName} ({task.CreateTime:MM-dd})");
+            }
+        }
     }
 }
 ```
@@ -309,59 +342,59 @@ if (result?.Code == 0)
 **完整的个人审批中心示例：**
 
 ```csharp
-// 构建个人审批中心数据
-public async Task<PersonalApprovalCenter> GetPersonalApprovalCenterAsync(
-    string userAccessToken)
+// 使用用户权限构建个人审批中心数据
+public class PersonalApprovalCenterService
 {
-    var center = new PersonalApprovalCenter();
-    
-    // 1. 获取待办任务
-    var taskRequest = new ApprovalInstancesTaskQueryRequest
+    private readonly IFeishuUserV4ApprovalQuery _queryClient;
+
+    public PersonalApprovalCenterService(IFeishuUserV4ApprovalQuery queryClient)
     {
-        TaskStatus = "PENDING"
-    };
-    
-    var taskResult = await _feishuApi
-        .WithUserToken(userAccessToken)
-        .ExecuteAsync(api => api.GetTasksPageListAsync(taskRequest));
-        
-    if (taskResult?.Code == 0)
-    {
-        center.PendingTasks = taskResult.Data?.Items ?? new List<ApprovalTask>();
-        center.PendingCount = center.PendingTasks.Count;
+        _queryClient = queryClient;
     }
-    
-    // 2. 获取抄送列表（最近10条）
-    var ccRequest = new ApprovalInstancesCcQueryRequest
+
+    public async Task<PersonalApprovalCenter> GetPersonalApprovalCenterAsync()
     {
-        StartTime = DateTime.Now.AddDays(-30)
-    };
-    
-    var ccResult = await _feishuApi
-        .WithUserToken(userAccessToken)
-        .ExecuteAsync(api => api.GetCarbonCopyPageListAsync(ccRequest, page_size: 10));
-        
-    if (ccResult?.Code == 0)
-    {
-        center.CcList = ccResult.Data?.Items ?? new List<ApprovalCcItem>();
+        var center = new PersonalApprovalCenter();
+
+        var taskRequest = new ApprovalInstancesTaskQueryRequest
+        {
+            TaskStatus = "PENDING"
+        };
+
+        var taskResult = await _queryClient.GetTasksPageListAsync(taskRequest);
+
+        if (taskResult?.Code == 0)
+        {
+            center.PendingTasks = taskResult.Data?.Items ?? new List<ApprovalTask>();
+            center.PendingCount = center.PendingTasks.Count;
+        }
+
+        var ccRequest = new ApprovalInstancesCcQueryRequest
+        {
+            StartTime = DateTime.Now.AddDays(-30)
+        };
+
+        var ccResult = await _queryClient.GetCarbonCopyPageListAsync(ccRequest, page_size: 10);
+
+        if (ccResult?.Code == 0)
+        {
+            center.CcList = ccResult.Data?.Items ?? new List<ApprovalCcItem>();
+        }
+
+        var instanceRequest = new ApprovalInstancesQueryRequest
+        {
+            StartTime = DateTime.Now.AddDays(-30)
+        };
+
+        var instanceResult = await _queryClient.GetInstancesPageListAsync(instanceRequest, page_size: 10);
+
+        if (instanceResult?.Code == 0)
+        {
+            center.MyInstances = instanceResult.Data?.Items ?? new List<ApprovalInstance>();
+        }
+
+        return center;
     }
-    
-    // 3. 获取我的审批（最近10条）
-    var instanceRequest = new ApprovalInstancesQueryRequest
-    {
-        StartTime = DateTime.Now.AddDays(-30)
-    };
-    
-    var instanceResult = await _feishuApi
-        .WithUserToken(userAccessToken)
-        .ExecuteAsync(api => api.GetInstancesPageListAsync(instanceRequest, page_size: 10));
-        
-    if (instanceResult?.Code == 0)
-    {
-        center.MyInstances = instanceResult.Data?.Items ?? new List<ApprovalInstance>();
-    }
-    
-    return center;
 }
 
 public class PersonalApprovalCenter
@@ -375,9 +408,9 @@ public class PersonalApprovalCenter
 
 ## 租户接口与用户接口的区别
 
-| 特性 | 租户接口 (`IFeishuTenantV4ApprovalQuery`) | 用户接口 (`IFeishuUserV4ApprovalQuery`) |
-|-----|------------------------------------------|----------------------------------------|
-| 认证方式 | 租户令牌 | 用户令牌 |
-| 数据范围 | 可查询企业全部审批数据 | 只能查询当前用户有权限的数据 |
-| 适用场景 | 后台管理系统、数据分析 | 用户端界面、个人中心 |
-| 权限要求 | 需要应用具备相应权限 | 需要用户授权相应权限 |
+| 特性     | 租户接口 (`IFeishuTenantV4ApprovalQuery`) | 用户接口 (`IFeishuUserV4ApprovalQuery`) |
+| -------- | ----------------------------------------- | --------------------------------------- |
+| 认证方式 | 租户令牌                                  | 用户令牌                                |
+| 数据范围 | 可查询企业全部审批数据                    | 只能查询当前用户有权限的数据            |
+| 适用场景 | 后台管理系统、数据分析                    | 用户端界面、个人中心                    |
+| 权限要求 | 需要应用具备相应权限                      | 需要用户授权相应权限                    |

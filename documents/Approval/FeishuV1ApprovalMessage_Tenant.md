@@ -16,11 +16,11 @@
 
 ## 函数列表
 
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-|---------|---------|---------|----------|
-| `SendBotMessageAsync` | 发送审批 Bot 消息（通用模板） | 租户令牌 | POST |
-| `SendBotMessageAsync` | 发送审批 Bot 消息（自定义模板） | 租户令牌 | POST |
-| `UpdateBotMessageAsync` | 更新审批 Bot 消息 | 租户令牌 | POST |
+| 函数名称                | 功能描述                        | 认证方式 | HTTP 方法 |
+| ----------------------- | ------------------------------- | -------- | --------- |
+| `SendBotMessageAsync`   | 发送审批 Bot 消息（通用模板）   | 租户令牌 | POST      |
+| `SendBotMessageAsync`   | 发送审批 Bot 消息（自定义模板） | 租户令牌 | POST      |
+| `UpdateBotMessageAsync` | 更新审批 Bot 消息               | 租户令牌 | POST      |
 
 ## 函数详细内容
 
@@ -40,10 +40,10 @@ Task<FeishuApiResult<ApprovalBotMessageResult>?> SendBotMessageAsync(
 
 #### 参数
 
-| 参数名 | 必填 | 类型 | 描述 |
-|-------|-----|------|-----|
-| `approvalBotMessageRequest` | ✅ | `ApprovalBotMessageRequest` | 发送审批 Bot 消息通用模板请求体 |
-| `cancellationToken` | ⚪ | `CancellationToken` | 取消操作令牌对象 |
+| 参数名                      | 必填 | 类型                        | 描述                            |
+| --------------------------- | ---- | --------------------------- | ------------------------------- |
+| `approvalBotMessageRequest` | ✅   | `ApprovalBotMessageRequest` | 发送审批 Bot 消息通用模板请求体 |
+| `cancellationToken`         | ⚪   | `CancellationToken`         | 取消操作令牌对象                |
 
 **请求体示例：**
 
@@ -79,23 +79,34 @@ Task<FeishuApiResult<ApprovalBotMessageResult>?> SendBotMessageAsync(
 #### 代码示例
 
 ```csharp
-// 发送审批待办通知
-var request = new ApprovalBotMessageRequest
+// 使用租户权限发送审批 Bot 消息
+public class ApprovalMessageService
 {
-    ApprovalCode = "7C468A54-8745-2245-9675-08B7C63E7A85",
-    InstanceCode = "6A123516-FB88-470D-A428-9AF58B71B3C0",
-    OpenId = "ou_7dab8a3d3dfcd10xxx",
-    TaskId = "123456789",
-    Status = "pending"
-};
+    private readonly IFeishuTenantV1ApprovalMessage _messageClient;
 
-var result = await _feishuApi
-    .UseApp(appId, appSecret)
-    .ExecuteAsync(api => api.SendBotMessageAsync(request));
+    public ApprovalMessageService(IFeishuTenantV1ApprovalMessage messageClient)
+    {
+        _messageClient = messageClient;
+    }
 
-if (result?.Code == 0)
-{
-    Console.WriteLine($"消息发送成功，消息ID: {result.Data?.MessageId}");
+    public async Task SendBotMessageAsync()
+    {
+        var request = new ApprovalBotMessageRequest
+        {
+            ApprovalCode = "7C468A54-8745-2245-9675-08B7C63E7A85",
+            InstanceCode = "6A123516-FB88-470D-A428-9AF58B71B3C0",
+            OpenId = "ou_7dab8a3d3dfcd10xxx",
+            TaskId = "123456789",
+            Status = "pending"
+        };
+
+        var result = await _messageClient.SendBotMessageAsync(request);
+
+        if (result?.Code == 0)
+        {
+            Console.WriteLine($"消息发送成功，消息ID: {result.Data?.MessageId}");
+        }
+    }
 }
 ```
 
@@ -117,10 +128,10 @@ Task<FeishuApiResult<ApprovalBotMessageResult>?> SendBotMessageAsync(
 
 #### 参数
 
-| 参数名 | 必填 | 类型 | 描述 |
-|-------|-----|------|-----|
-| `customApprovalBotMessageRequest` | ✅ | `CustomApprovalBotMessageRequest` | 发送审批 Bot 消息自定义模板请求体 |
-| `cancellationToken` | ⚪ | `CancellationToken` | 取消操作令牌对象 |
+| 参数名                            | 必填 | 类型                              | 描述                              |
+| --------------------------------- | ---- | --------------------------------- | --------------------------------- |
+| `customApprovalBotMessageRequest` | ✅   | `CustomApprovalBotMessageRequest` | 发送审批 Bot 消息自定义模板请求体 |
+| `cancellationToken`               | ⚪   | `CancellationToken`               | 取消操作令牌对象                  |
 
 **请求体示例：**
 
@@ -160,24 +171,40 @@ Task<FeishuApiResult<ApprovalBotMessageResult>?> SendBotMessageAsync(
 #### 代码示例
 
 ```csharp
-// 发送自定义审批通知
-var request = new CustomApprovalBotMessageRequest
+// 使用租户权限发送自定义审批 Bot 消息
+public class ApprovalMessageService
 {
-    ApprovalCode = "7C468A54-8745-2245-9675-08B7C63E7A85",
-    InstanceCode = "6A123516-FB88-470D-A428-9AF58B71B3C0",
-    OpenId = "ou_7dab8a3d3dfcd10xxx",
-    TaskId = "123456789",
-    Status = "pending",
-    CustomMessage = new CustomMessage
-    {
-        Title = "您有新的审批待办",
-        Content = "张三的请假申请需要您的审批"
-    }
-};
+    private readonly IFeishuTenantV1ApprovalMessage _messageClient;
 
-var result = await _feishuApi
-    .UseApp(appId, appSecret)
-    .ExecuteAsync(api => api.SendBotMessageAsync(request));
+    public ApprovalMessageService(IFeishuTenantV1ApprovalMessage messageClient)
+    {
+        _messageClient = messageClient;
+    }
+
+    public async Task SendCustomBotMessageAsync()
+    {
+        var request = new CustomApprovalBotMessageRequest
+        {
+            ApprovalCode = "7C468A54-8745-2245-9675-08B7C63E7A85",
+            InstanceCode = "6A123516-FB88-470D-A428-9AF58B71B3C0",
+            OpenId = "ou_7dab8a3d3dfcd10xxx",
+            TaskId = "123456789",
+            Status = "pending",
+            CustomMessage = new CustomMessage
+            {
+                Title = "您有新的审批待办",
+                Content = "张三的请假申请需要您的审批"
+            }
+        };
+
+        var result = await _messageClient.SendBotMessageAsync(request);
+
+        if (result?.Code == 0)
+        {
+            Console.WriteLine($"消息发送成功，消息ID: {result.Data?.MessageId}");
+        }
+    }
+}
 ```
 
 ---
@@ -198,10 +225,10 @@ Task<FeishuApiResult<ApprovalBotMessageResult>?> UpdateBotMessageAsync(
 
 #### 参数
 
-| 参数名 | 必填 | 类型 | 描述 |
-|-------|-----|------|-----|
-| `approvalBotMessageUpdateRequest` | ✅ | `ApprovalBotMessageUpdateRequest` | 更新审批 Bot 消息请求体 |
-| `cancellationToken` | ⚪ | `CancellationToken` | 取消操作令牌对象 |
+| 参数名                            | 必填 | 类型                              | 描述                    |
+| --------------------------------- | ---- | --------------------------------- | ----------------------- |
+| `approvalBotMessageUpdateRequest` | ✅   | `ApprovalBotMessageUpdateRequest` | 更新审批 Bot 消息请求体 |
+| `cancellationToken`               | ⚪   | `CancellationToken`               | 取消操作令牌对象        |
 
 **请求体示例：**
 
@@ -238,24 +265,35 @@ Task<FeishuApiResult<ApprovalBotMessageResult>?> UpdateBotMessageAsync(
 #### 代码示例
 
 ```csharp
-// 更新已发送的审批消息为已通过状态
-var request = new ApprovalBotMessageUpdateRequest
+// 使用租户权限更新审批 Bot 消息
+public class ApprovalMessageService
 {
-    MessageId = "om_7dxxxxxxxxxx",
-    Status = "approved",
-    UpdateContent = new UpdateContent
+    private readonly IFeishuTenantV1ApprovalMessage _messageClient;
+
+    public ApprovalMessageService(IFeishuTenantV1ApprovalMessage messageClient)
     {
-        Title = "审批已完成",
-        Content = "该请假申请已通过"
+        _messageClient = messageClient;
     }
-};
 
-var result = await _feishuApi
-    .UseApp(appId, appSecret)
-    .ExecuteAsync(api => api.UpdateBotMessageAsync(request));
+    public async Task UpdateBotMessageAsync()
+    {
+        var request = new ApprovalBotMessageUpdateRequest
+        {
+            MessageId = "om_7dxxxxxxxxxx",
+            Status = "approved",
+            UpdateContent = new UpdateContent
+            {
+                Title = "审批已完成",
+                Content = "该请假申请已通过"
+            }
+        };
 
-if (result?.Code == 0)
-{
-    Console.WriteLine("消息更新成功");
+        var result = await _messageClient.UpdateBotMessageAsync(request);
+
+        if (result?.Code == 0)
+        {
+            Console.WriteLine("消息更新成功");
+        }
+    }
 }
 ```

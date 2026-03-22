@@ -14,13 +14,13 @@
 
 ## 函数列表
 
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-|---------|---------|---------|----------|
-| `CreateApprovalAsync` | 创建三方审批定义 | 租户令牌 | POST |
-| `GetApprovalByCodeAsync` | 获取三方审批定义详情 | 租户令牌 | GET |
-| `SyncInstancesAsync` | 同步三方审批实例 | 租户令牌 | POST |
-| `CheckInstancesAsync` | 校验三方审批实例数据 | 租户令牌 | POST |
-| `GetInstancesStatePageListAsync` | 获取三方审批实例状态分页列表 | 租户令牌 | GET |
+| 函数名称                         | 功能描述                     | 认证方式 | HTTP 方法 |
+| -------------------------------- | ---------------------------- | -------- | --------- |
+| `CreateApprovalAsync`            | 创建三方审批定义             | 租户令牌 | POST      |
+| `GetApprovalByCodeAsync`         | 获取三方审批定义详情         | 租户令牌 | GET       |
+| `SyncInstancesAsync`             | 同步三方审批实例             | 租户令牌 | POST      |
+| `CheckInstancesAsync`            | 校验三方审批实例数据         | 租户令牌 | POST      |
+| `GetInstancesStatePageListAsync` | 获取三方审批实例状态分页列表 | 租户令牌 | GET       |
 
 ## 函数详细内容
 
@@ -42,12 +42,12 @@ Task<FeishuApiResult<CreateApprovalExternalResult>?> CreateApprovalAsync(
 
 #### 参数
 
-| 参数名 | 必填 | 类型 | 描述 |
-|-------|-----|------|-----|
-| `createApprovalRequest` | ✅ | `CreateApprovalExternalRequest` | 创建三方审批定义请求体 |
-| `user_id_type` | ⚪ | `string` | 用户 ID 类型，默认：`open_id` |
-| `department_id_type` | ⚪ | `string` | 部门 ID 类型，默认：`open_department_id` |
-| `cancellationToken` | ⚪ | `CancellationToken` | 取消操作令牌对象 |
+| 参数名                  | 必填 | 类型                            | 描述                                     |
+| ----------------------- | ---- | ------------------------------- | ---------------------------------------- |
+| `createApprovalRequest` | ✅   | `CreateApprovalExternalRequest` | 创建三方审批定义请求体                   |
+| `user_id_type`          | ⚪   | `string`                        | 用户 ID 类型，默认：`open_id`            |
+| `department_id_type`    | ⚪   | `string`                        | 部门 ID 类型，默认：`open_department_id` |
+| `cancellationToken`     | ⚪   | `CancellationToken`             | 取消操作令牌对象                         |
 
 **请求体示例：**
 
@@ -92,31 +92,42 @@ Task<FeishuApiResult<CreateApprovalExternalResult>?> CreateApprovalAsync(
 #### 代码示例
 
 ```csharp
-// 创建三方审批定义
-var request = new CreateApprovalExternalRequest
+// 使用租户权限创建三方审批定义
+public class ExternalApprovalService
 {
-    ApprovalName = "ERP采购审批",
-    Description = "连接企业ERP系统的采购审批流程",
-    External = new ExternalConfig
+    private readonly IFeishuTenantV4ApprovalExternal _externalClient;
+
+    public ExternalApprovalService(IFeishuTenantV4ApprovalExternal externalClient)
     {
-        CreateLinkPc = "https://erp.company.com/approval/create",
-        CreateLinkMobile = "https://erp.company.com/mobile/approval/create",
-        CallbackUrl = "https://erp.company.com/callback/feishu",
-        Secret = "your_secret_key"
-    },
-    Viewers = new List<Viewer>
-    {
-        new Viewer { ViewerType = "TENANT" }
+        _externalClient = externalClient;
     }
-};
 
-var result = await _feishuApi
-    .UseApp(appId, appSecret)
-    .ExecuteAsync(api => api.CreateApprovalAsync(request));
+    public async Task CreateApprovalAsync()
+    {
+        var request = new CreateApprovalExternalRequest
+        {
+            ApprovalName = "ERP采购审批",
+            Description = "连接企业ERP系统的采购审批流程",
+            External = new ExternalConfig
+            {
+                CreateLinkPc = "https://erp.company.com/approval/create",
+                CreateLinkMobile = "https://erp.company.com/mobile/approval/create",
+                CallbackUrl = "https://erp.company.com/callback/feishu",
+                Secret = "your_secret_key"
+            },
+            Viewers = new List<Viewer>
+            {
+                new Viewer { ViewerType = "TENANT" }
+            }
+        };
 
-if (result?.Code == 0)
-{
-    Console.WriteLine($"三方审批定义创建成功，Code: {result.Data?.ApprovalCode}");
+        var result = await _externalClient.CreateApprovalAsync(request);
+
+        if (result?.Code == 0)
+        {
+            Console.WriteLine($"三方审批定义创建成功，Code: {result.Data?.ApprovalCode}");
+        }
+    }
 }
 ```
 
@@ -139,11 +150,11 @@ Task<FeishuApiResult<GetApprovalExternalResult>?> GetApprovalByCodeAsync(
 
 #### 参数
 
-| 参数名 | 必填 | 类型 | 描述 |
-|-------|-----|------|-----|
-| `approval_code` | ✅ | `string` | 三方审批定义 Code，示例值：`"7C468A54-8745-2245-9675-08B7C63E7A85"` |
-| `user_id_type` | ⚪ | `string` | 用户 ID 类型，默认：`open_id` |
-| `cancellationToken` | ⚪ | `CancellationToken` | 取消操作令牌对象 |
+| 参数名              | 必填 | 类型                | 描述                                                                |
+| ------------------- | ---- | ------------------- | ------------------------------------------------------------------- |
+| `approval_code`     | ✅   | `string`            | 三方审批定义 Code，示例值：`"7C468A54-8745-2245-9675-08B7C63E7A85"` |
+| `user_id_type`      | ⚪   | `string`            | 用户 ID 类型，默认：`open_id`                                       |
+| `cancellationToken` | ⚪   | `CancellationToken` | 取消操作令牌对象                                                    |
 
 #### 响应
 
@@ -180,18 +191,29 @@ Task<FeishuApiResult<GetApprovalExternalResult>?> GetApprovalByCodeAsync(
 #### 代码示例
 
 ```csharp
-// 获取三方审批定义详情
-var approvalCode = "7C468A54-8745-2245-9675-08B7C63E7A85";
-var result = await _feishuApi
-    .UseApp(appId, appSecret)
-    .ExecuteAsync(api => api.GetApprovalByCodeAsync(approvalCode));
-
-if (result?.Code == 0)
+// 使用租户权限获取三方审批定义详情
+public class ExternalApprovalService
 {
-    var data = result.Data;
-    Console.WriteLine($"审批名称: {data?.ApprovalName}");
-    Console.WriteLine($"PC端链接: {data?.External?.CreateLinkPc}");
-    Console.WriteLine($"回调地址: {data?.External?.CallbackUrl}");
+    private readonly IFeishuTenantV4ApprovalExternal _externalClient;
+
+    public ExternalApprovalService(IFeishuTenantV4ApprovalExternal externalClient)
+    {
+        _externalClient = externalClient;
+    }
+
+    public async Task GetApprovalAsync()
+    {
+        var approvalCode = "7C468A54-8745-2245-9675-08B7C63E7A85";
+        var result = await _externalClient.GetApprovalByCodeAsync(approvalCode);
+
+        if (result?.Code == 0)
+        {
+            var data = result.Data;
+            Console.WriteLine($"审批名称: {data?.ApprovalName}");
+            Console.WriteLine($"PC端链接: {data?.External?.CreateLinkPc}");
+            Console.WriteLine($"回调地址: {data?.External?.CallbackUrl}");
+        }
+    }
 }
 ```
 
@@ -213,10 +235,10 @@ Task<FeishuApiResult<SyncExternalInstancesResult>?> SyncInstancesAsync(
 
 #### 参数
 
-| 参数名 | 必填 | 类型 | 描述 |
-|-------|-----|------|-----|
-| `syncApprovalInstancesRequest` | ✅ | `SyncApprovalInstancesRequest` | 同步三方审批实例请求体 |
-| `cancellationToken` | ⚪ | `CancellationToken` | 取消操作令牌对象 |
+| 参数名                         | 必填 | 类型                           | 描述                   |
+| ------------------------------ | ---- | ------------------------------ | ---------------------- |
+| `syncApprovalInstancesRequest` | ✅   | `SyncApprovalInstancesRequest` | 同步三方审批实例请求体 |
+| `cancellationToken`            | ⚪   | `CancellationToken`            | 取消操作令牌对象       |
 
 **请求体示例：**
 
@@ -267,41 +289,52 @@ Task<FeishuApiResult<SyncExternalInstancesResult>?> SyncInstancesAsync(
 #### 代码示例
 
 ```csharp
-// 同步三方审批实例到飞书
-var request = new SyncApprovalInstancesRequest
+// 使用租户权限同步三方审批实例到飞书
+public class ExternalApprovalService
 {
-    ApprovalCode = "7C468A54-8745-2245-9675-08B7C63E7A85",
-    Instances = new List<ExternalInstance>
+    private readonly IFeishuTenantV4ApprovalExternal _externalClient;
+
+    public ExternalApprovalService(IFeishuTenantV4ApprovalExternal externalClient)
     {
-        new ExternalInstance
+        _externalClient = externalClient;
+    }
+
+    public async Task SyncInstancesAsync()
+    {
+        var request = new SyncApprovalInstancesRequest
         {
-            InstanceCode = "ERP20250320001",
-            OpenId = "ou_7dab8a3d3dfcd10xxx",
-            Status = "PENDING",
-            Title = "采购申请-办公用品",
-            CreateTime = DateTime.Now.AddHours(-2),
-            UpdateTime = DateTime.Now,
-            Url = "https://erp.company.com/approval/detail/ERP20250320001",
-            Tasks = new List<ExternalTask>
+            ApprovalCode = "7C468A54-8745-2245-9675-08B7C63E7A85",
+            Instances = new List<ExternalInstance>
             {
-                new ExternalTask
+                new ExternalInstance
                 {
-                    TaskId = "TASK001",
-                    OpenId = "ou_8eab9b4e4egde21yyy",
-                    Status = "PENDING"
+                    InstanceCode = "ERP20250320001",
+                    OpenId = "ou_7dab8a3d3dfcd10xxx",
+                    Status = "PENDING",
+                    Title = "采购申请-办公用品",
+                    CreateTime = DateTime.Now.AddHours(-2),
+                    UpdateTime = DateTime.Now,
+                    Url = "https://erp.company.com/approval/detail/ERP20250320001",
+                    Tasks = new List<ExternalTask>
+                    {
+                        new ExternalTask
+                        {
+                            TaskId = "TASK001",
+                            OpenId = "ou_8eab9b4e4egde21yyy",
+                            Status = "PENDING"
+                        }
+                    }
                 }
             }
+        };
+
+        var result = await _externalClient.SyncInstancesAsync(request);
+
+        if (result?.Code == 0)
+        {
+            Console.WriteLine($"同步成功 {result.Data?.SyncedCount} 条实例");
         }
     }
-};
-
-var result = await _feishuApi
-    .UseApp(appId, appSecret)
-    .ExecuteAsync(api => api.SyncInstancesAsync(request));
-
-if (result?.Code == 0)
-{
-    Console.WriteLine($"同步成功 {result.Data?.SyncedCount} 条实例");
 }
 ```
 
@@ -323,10 +356,10 @@ Task<FeishuApiResult<CheckExternalInstancesResult>?> CheckInstancesAsync(
 
 #### 参数
 
-| 参数名 | 必填 | 类型 | 描述 |
-|-------|-----|------|-----|
-| `checkExternalInstancesRequest` | ✅ | `CheckExternalInstancesRequest` | 校验三方审批实例请求体 |
-| `cancellationToken` | ⚪ | `CancellationToken` | 取消操作令牌对象 |
+| 参数名                          | 必填 | 类型                            | 描述                   |
+| ------------------------------- | ---- | ------------------------------- | ---------------------- |
+| `checkExternalInstancesRequest` | ✅   | `CheckExternalInstancesRequest` | 校验三方审批实例请求体 |
+| `cancellationToken`             | ⚪   | `CancellationToken`             | 取消操作令牌对象       |
 
 **请求体示例：**
 
@@ -365,28 +398,39 @@ Task<FeishuApiResult<CheckExternalInstancesResult>?> CheckInstancesAsync(
 #### 代码示例
 
 ```csharp
-// 校验三方审批实例数据状态
-var request = new CheckExternalInstancesRequest
+// 使用租户权限校验三方审批实例数据状态
+public class ExternalApprovalService
 {
-    ApprovalCode = "7C468A54-8745-2245-9675-08B7C63E7A85",
-    Instances = new List<InstanceCheckInfo>
+    private readonly IFeishuTenantV4ApprovalExternal _externalClient;
+
+    public ExternalApprovalService(IFeishuTenantV4ApprovalExternal externalClient)
     {
-        new InstanceCheckInfo
+        _externalClient = externalClient;
+    }
+
+    public async Task CheckInstancesAsync()
+    {
+        var request = new CheckExternalInstancesRequest
         {
-            InstanceCode = "ERP20250320001",
-            UpdateTime = DateTime.Now
+            ApprovalCode = "7C468A54-8745-2245-9675-08B7C63E7A85",
+            Instances = new List<InstanceCheckInfo>
+            {
+                new InstanceCheckInfo
+                {
+                    InstanceCode = "ERP20250320001",
+                    UpdateTime = DateTime.Now
+                }
+            }
+        };
+
+        var result = await _externalClient.CheckInstancesAsync(request);
+
+        if (result?.Code == 0)
+        {
+            Console.WriteLine($"无效实例: {string.Join(",", result.Data?.InvalidInstances ?? new List<string>())}");
+            Console.WriteLine($"不存在实例: {string.Join(",", result.Data?.NotFoundInstances ?? new List<string>())}");
         }
     }
-};
-
-var result = await _feishuApi
-    .UseApp(appId, appSecret)
-    .ExecuteAsync(api => api.CheckInstancesAsync(request));
-
-if (result?.Code == 0)
-{
-    Console.WriteLine($"无效实例: {string.Join(",", result.Data?.InvalidInstances ?? new List<string>())}");
-    Console.WriteLine($"不存在实例: {string.Join(",", result.Data?.NotFoundInstances ?? new List<string>())}");
 }
 ```
 
@@ -410,12 +454,12 @@ Task<FeishuApiResult<GetInstancesStateResult>?> GetInstancesStatePageListAsync(
 
 #### 参数
 
-| 参数名 | 必填 | 类型 | 描述 |
-|-------|-----|------|-----|
-| `getExternalInstancesStateRequest` | ✅ | `GetExternalInstancesStateRequest` | 获取三方审批实例状态列表请求体 |
-| `page_size` | ⚪ | `int` | 分页大小，默认：10 |
-| `page_token` | ⚪ | `string` | 分页标记，第一次请求不填 |
-| `cancellationToken` | ⚪ | `CancellationToken` | 取消操作令牌对象 |
+| 参数名                             | 必填 | 类型                               | 描述                           |
+| ---------------------------------- | ---- | ---------------------------------- | ------------------------------ |
+| `getExternalInstancesStateRequest` | ✅   | `GetExternalInstancesStateRequest` | 获取三方审批实例状态列表请求体 |
+| `page_size`                        | ⚪   | `int`                              | 分页大小，默认：10             |
+| `page_token`                       | ⚪   | `string`                           | 分页标记，第一次请求不填       |
+| `cancellationToken`                | ⚪   | `CancellationToken`                | 取消操作令牌对象               |
 
 **请求体示例：**
 
@@ -459,24 +503,35 @@ Task<FeishuApiResult<GetInstancesStateResult>?> GetInstancesStatePageListAsync(
 #### 代码示例
 
 ```csharp
-// 获取三方审批实例状态列表
-var request = new GetExternalInstancesStateRequest
+// 使用租户权限获取三方审批实例状态列表
+public class ExternalApprovalService
 {
-    ApprovalCode = "7C468A54-8745-2245-9675-08B7C63E7A85",
-    Status = "PENDING",
-    StartTime = DateTime.Now.AddDays(-7),
-    EndTime = DateTime.Now
-};
+    private readonly IFeishuTenantV4ApprovalExternal _externalClient;
 
-var result = await _feishuApi
-    .UseApp(appId, appSecret)
-    .ExecuteAsync(api => api.GetInstancesStatePageListAsync(request, page_size: 50));
-
-if (result?.Code == 0)
-{
-    foreach (var item in result.Data?.Items ?? new List<InstanceStateItem>())
+    public ExternalApprovalService(IFeishuTenantV4ApprovalExternal externalClient)
     {
-        Console.WriteLine($"实例: {item.InstanceCode}, 状态: {item.Status}");
+        _externalClient = externalClient;
+    }
+
+    public async Task GetInstancesStateAsync()
+    {
+        var request = new GetExternalInstancesStateRequest
+        {
+            ApprovalCode = "7C468A54-8745-2245-9675-08B7C63E7A85",
+            Status = "PENDING",
+            StartTime = DateTime.Now.AddDays(-7),
+            EndTime = DateTime.Now
+        };
+
+        var result = await _externalClient.GetInstancesStatePageListAsync(request, page_size: 50);
+
+        if (result?.Code == 0)
+        {
+            foreach (var item in result.Data?.Items ?? new List<InstanceStateItem>())
+            {
+                Console.WriteLine($"实例: {item.InstanceCode}, 状态: {item.Status}");
+            }
+        }
     }
 }
 ```

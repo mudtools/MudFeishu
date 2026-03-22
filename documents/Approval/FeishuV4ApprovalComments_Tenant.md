@@ -14,12 +14,12 @@
 
 ## 函数列表
 
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-|---------|---------|---------|----------|
-| `CreateCommentAsync` | 创建/修改/回复评论 | 租户令牌 | POST |
-| `DeleteCommentByIdAsync` | 删除指定评论 | 租户令牌 | DELETE |
-| `RemoveCommentsAsync` | 清空全部评论 | 租户令牌 | POST |
-| `GetCommentsPageListByIdAsync` | 获取评论分页列表 | 租户令牌 | GET |
+| 函数名称                       | 功能描述           | 认证方式 | HTTP 方法 |
+| ------------------------------ | ------------------ | -------- | --------- |
+| `CreateCommentAsync`           | 创建/修改/回复评论 | 租户令牌 | POST      |
+| `DeleteCommentByIdAsync`       | 删除指定评论       | 租户令牌 | DELETE    |
+| `RemoveCommentsAsync`          | 清空全部评论       | 租户令牌 | POST      |
+| `GetCommentsPageListByIdAsync` | 获取评论分页列表   | 租户令牌 | GET       |
 
 ## 函数详细内容
 
@@ -42,13 +42,13 @@ Task<FeishuApiResult<CommentOperationResult>?> CreateCommentAsync(
 
 #### 参数
 
-| 参数名 | 必填 | 类型 | 描述 |
-|-------|-----|------|-----|
-| `instance_id` | ✅ | `string` | 审批实例 Code，支持传入自定义审批实例 ID，示例值：`"6A123516-FB88-470D-A428-9AF58B71B3C0"` |
-| `user_id` | ✅ | `string` | 用户 ID，ID 类型与 user_id_type 取值一致，示例值：`"e5286g26"` |
-| `createApprovalRequest` | ✅ | `CreateCommentRequest` | 创建评论请求体 |
-| `user_id_type` | ⚪ | `string` | 用户 ID 类型，默认：`open_id` |
-| `cancellationToken` | ⚪ | `CancellationToken` | 取消操作令牌对象 |
+| 参数名                  | 必填 | 类型                   | 描述                                                                                       |
+| ----------------------- | ---- | ---------------------- | ------------------------------------------------------------------------------------------ |
+| `instance_id`           | ✅   | `string`               | 审批实例 Code，支持传入自定义审批实例 ID，示例值：`"6A123516-FB88-470D-A428-9AF58B71B3C0"` |
+| `user_id`               | ✅   | `string`               | 用户 ID，ID 类型与 user_id_type 取值一致，示例值：`"e5286g26"`                             |
+| `createApprovalRequest` | ✅   | `CreateCommentRequest` | 创建评论请求体                                                                             |
+| `user_id_type`          | ⚪   | `string`               | 用户 ID 类型，默认：`open_id`                                                              |
+| `cancellationToken`     | ⚪   | `CancellationToken`    | 取消操作令牌对象                                                                           |
 
 **请求体示例：**
 
@@ -96,30 +96,41 @@ Task<FeishuApiResult<CommentOperationResult>?> CreateCommentAsync(
 #### 代码示例
 
 ```csharp
-// 创建审批评论
-var instanceId = "6A123516-FB88-470D-A428-9AF58B71B3C0";
-var userId = "ou_7dab8a3d3dfcd10xxx";
-
-var request = new CreateCommentRequest
+// 使用租户权限创建审批评论
+public class ApprovalCommentService
 {
-    Content = "这个审批需要尽快处理，@主管请查看",
-    Mentions = new List<Mention>
+    private readonly IFeishuTenantV4ApprovalComments _commentsClient;
+
+    public ApprovalCommentService(IFeishuTenantV4ApprovalComments commentsClient)
     {
-        new Mention
+        _commentsClient = commentsClient;
+    }
+
+    public async Task CreateCommentAsync()
+    {
+        var instanceId = "6A123516-FB88-470D-A428-9AF58B71B3C0";
+        var userId = "ou_7dab8a3d3dfcd10xxx";
+
+        var request = new CreateCommentRequest
         {
-            Key = "@主管",
-            Id = "ou_8eab9b4e4egde21yyy"
+            Content = "这个审批需要尽快处理，@主管请查看",
+            Mentions = new List<Mention>
+            {
+                new Mention
+                {
+                    Key = "@主管",
+                    Id = "ou_8eab9b4e4egde21yyy"
+                }
+            }
+        };
+
+        var result = await _commentsClient.CreateCommentAsync(instanceId, userId, request);
+
+        if (result?.Code == 0)
+        {
+            Console.WriteLine($"评论创建成功，ID: {result.Data?.CommentId}");
         }
     }
-};
-
-var result = await _feishuApi
-    .UseApp(appId, appSecret)
-    .ExecuteAsync(api => api.CreateCommentAsync(instanceId, userId, request));
-
-if (result?.Code == 0)
-{
-    Console.WriteLine($"评论创建成功，ID: {result.Data?.CommentId}");
 }
 ```
 
@@ -144,13 +155,13 @@ Task<FeishuApiResult<CommentOperationResult>?> DeleteCommentByIdAsync(
 
 #### 参数
 
-| 参数名 | 必填 | 类型 | 描述 |
-|-------|-----|------|-----|
-| `instance_id` | ✅ | `string` | 审批实例 Code，示例值：`"6A123516-FB88-470D-A428-9AF58B71B3C0"` |
-| `comment_id` | ✅ | `string` | 评论 ID，示例值：`"7081516627711606803"` |
-| `user_id` | ✅ | `string` | 用户 ID，ID 类型与 user_id_type 取值一致，示例值：`"e5286g26"` |
-| `user_id_type` | ⚪ | `string` | 用户 ID 类型，默认：`open_id` |
-| `cancellationToken` | ⚪ | `CancellationToken` | 取消操作令牌对象 |
+| 参数名              | 必填 | 类型                | 描述                                                            |
+| ------------------- | ---- | ------------------- | --------------------------------------------------------------- |
+| `instance_id`       | ✅   | `string`            | 审批实例 Code，示例值：`"6A123516-FB88-470D-A428-9AF58B71B3C0"` |
+| `comment_id`        | ✅   | `string`            | 评论 ID，示例值：`"7081516627711606803"`                        |
+| `user_id`           | ✅   | `string`            | 用户 ID，ID 类型与 user_id_type 取值一致，示例值：`"e5286g26"`  |
+| `user_id_type`      | ⚪   | `string`            | 用户 ID 类型，默认：`open_id`                                   |
+| `cancellationToken` | ⚪   | `CancellationToken` | 取消操作令牌对象                                                |
 
 #### 响应
 
@@ -176,18 +187,29 @@ Task<FeishuApiResult<CommentOperationResult>?> DeleteCommentByIdAsync(
 #### 代码示例
 
 ```csharp
-// 删除指定评论
-var instanceId = "6A123516-FB88-470D-A428-9AF58B71B3C0";
-var commentId = "7081516627711606803";
-var userId = "ou_7dab8a3d3dfcd10xxx";
-
-var result = await _feishuApi
-    .UseApp(appId, appSecret)
-    .ExecuteAsync(api => api.DeleteCommentByIdAsync(instanceId, commentId, userId));
-
-if (result?.Code == 0)
+// 使用租户权限删除审批评论
+public class ApprovalCommentService
 {
-    Console.WriteLine("评论删除成功");
+    private readonly IFeishuTenantV4ApprovalComments _commentsClient;
+
+    public ApprovalCommentService(IFeishuTenantV4ApprovalComments commentsClient)
+    {
+        _commentsClient = commentsClient;
+    }
+
+    public async Task DeleteCommentAsync()
+    {
+        var instanceId = "6A123516-FB88-470D-A428-9AF58B71B3C0";
+        var commentId = "7081516627711606803";
+        var userId = "ou_7dab8a3d3dfcd10xxx";
+
+        var result = await _commentsClient.DeleteCommentByIdAsync(instanceId, commentId, userId);
+
+        if (result?.Code == 0)
+        {
+            Console.WriteLine("评论删除成功");
+        }
+    }
 }
 ```
 
@@ -211,12 +233,12 @@ Task<FeishuApiResult<CommentsRemoveResult>?> RemoveCommentsAsync(
 
 #### 参数
 
-| 参数名 | 必填 | 类型 | 描述 |
-|-------|-----|------|-----|
-| `instance_id` | ✅ | `string` | 审批实例 Code，示例值：`"6A123516-FB88-470D-A428-9AF58B71B3C0"` |
-| `user_id` | ✅ | `string` | 用户 ID，ID 类型与 user_id_type 取值一致，示例值：`"e5286g26"` |
-| `user_id_type` | ⚪ | `string` | 用户 ID 类型，默认：`open_id` |
-| `cancellationToken` | ⚪ | `CancellationToken` | 取消操作令牌对象 |
+| 参数名              | 必填 | 类型                | 描述                                                            |
+| ------------------- | ---- | ------------------- | --------------------------------------------------------------- |
+| `instance_id`       | ✅   | `string`            | 审批实例 Code，示例值：`"6A123516-FB88-470D-A428-9AF58B71B3C0"` |
+| `user_id`           | ✅   | `string`            | 用户 ID，ID 类型与 user_id_type 取值一致，示例值：`"e5286g26"`  |
+| `user_id_type`      | ⚪   | `string`            | 用户 ID 类型，默认：`open_id`                                   |
+| `cancellationToken` | ⚪   | `CancellationToken` | 取消操作令牌对象                                                |
 
 #### 响应
 
@@ -240,17 +262,28 @@ Task<FeishuApiResult<CommentsRemoveResult>?> RemoveCommentsAsync(
 #### 代码示例
 
 ```csharp
-// 清空审批实例的所有评论
-var instanceId = "6A123516-FB88-470D-A428-9AF58B71B3C0";
-var userId = "ou_7dab8a3d3dfcd10xxx";
-
-var result = await _feishuApi
-    .UseApp(appId, appSecret)
-    .ExecuteAsync(api => api.RemoveCommentsAsync(instanceId, userId));
-
-if (result?.Code == 0)
+// 使用租户权限清空审批实例的所有评论
+public class ApprovalCommentService
 {
-    Console.WriteLine($"已清空 {result.Data?.RemovedCount} 条评论");
+    private readonly IFeishuTenantV4ApprovalComments _commentsClient;
+
+    public ApprovalCommentService(IFeishuTenantV4ApprovalComments commentsClient)
+    {
+        _commentsClient = commentsClient;
+    }
+
+    public async Task RemoveAllCommentsAsync()
+    {
+        var instanceId = "6A123516-FB88-470D-A428-9AF58B71B3C0";
+        var userId = "ou_7dab8a3d3dfcd10xxx";
+
+        var result = await _commentsClient.RemoveCommentsAsync(instanceId, userId);
+
+        if (result?.Code == 0)
+        {
+            Console.WriteLine($"已清空 {result.Data?.RemovedCount} 条评论");
+        }
+    }
 }
 ```
 
@@ -276,14 +309,14 @@ Task<FeishuApiResult<CommentsPageListResult>?> GetCommentsPageListByIdAsync(
 
 #### 参数
 
-| 参数名 | 必填 | 类型 | 描述 |
-|-------|-----|------|-----|
-| `instance_id` | ✅ | `string` | 审批实例 Code，示例值：`"6A123516-FB88-470D-A428-9AF58B71B3C0"` |
-| `user_id` | ✅ | `string` | 用户 ID，ID 类型与 user_id_type 取值一致，示例值：`"e5286g26"` |
-| `page_size` | ⚪ | `int` | 分页大小，默认：10 |
-| `page_token` | ⚪ | `string` | 分页标记，第一次请求不填 |
-| `user_id_type` | ⚪ | `string` | 用户 ID 类型，默认：`open_id` |
-| `cancellationToken` | ⚪ | `CancellationToken` | 取消操作令牌对象 |
+| 参数名              | 必填 | 类型                | 描述                                                            |
+| ------------------- | ---- | ------------------- | --------------------------------------------------------------- |
+| `instance_id`       | ✅   | `string`            | 审批实例 Code，示例值：`"6A123516-FB88-470D-A428-9AF58B71B3C0"` |
+| `user_id`           | ✅   | `string`            | 用户 ID，ID 类型与 user_id_type 取值一致，示例值：`"e5286g26"`  |
+| `page_size`         | ⚪   | `int`               | 分页大小，默认：10                                              |
+| `page_token`        | ⚪   | `string`            | 分页标记，第一次请求不填                                        |
+| `user_id_type`      | ⚪   | `string`            | 用户 ID 类型，默认：`open_id`                                   |
+| `cancellationToken` | ⚪   | `CancellationToken` | 取消操作令牌对象                                                |
 
 #### 响应
 
@@ -326,22 +359,33 @@ Task<FeishuApiResult<CommentsPageListResult>?> GetCommentsPageListByIdAsync(
 #### 代码示例
 
 ```csharp
-// 获取审批实例的评论列表
-var instanceId = "6A123516-FB88-470D-A428-9AF58B71B3C0";
-var userId = "ou_7dab8a3d3dfcd10xxx";
-
-var result = await _feishuApi
-    .UseApp(appId, appSecret)
-    .ExecuteAsync(api => api.GetCommentsPageListByIdAsync(
-        instanceId, 
-        userId, 
-        page_size: 20));
-
-if (result?.Code == 0)
+// 使用租户权限获取审批实例的评论列表
+public class ApprovalCommentService
 {
-    foreach (var comment in result.Data?.Items ?? new List<CommentItem>())
+    private readonly IFeishuTenantV4ApprovalComments _commentsClient;
+
+    public ApprovalCommentService(IFeishuTenantV4ApprovalComments commentsClient)
     {
-        Console.WriteLine($"[{comment.CreateTime}] {comment.Content}");
+        _commentsClient = commentsClient;
+    }
+
+    public async Task GetCommentsAsync()
+    {
+        var instanceId = "6A123516-FB88-470D-A428-9AF58B71B3C0";
+        var userId = "ou_7dab8a3d3dfcd10xxx";
+
+        var result = await _commentsClient.GetCommentsPageListByIdAsync(
+            instanceId,
+            userId,
+            page_size: 20);
+
+        if (result?.Code == 0)
+        {
+            foreach (var comment in result.Data?.Items ?? new List<CommentItem>())
+            {
+                Console.WriteLine($"[{comment.CreateTime}] {comment.Content}");
+            }
+        }
     }
 }
 ```

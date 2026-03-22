@@ -34,25 +34,61 @@
 dotnet add package Mud.Feishu
 ```
 
-### 基本使用
+### 配置文件
+
+在 `appsettings.json` 中添加飞书应用配置：
+
+```json
+{
+  "FeishuApps": [
+    {
+      "AppKey": "default",
+      "AppId": "cli_xxx",
+      "AppSecret": "your_app_secret",
+      "BaseUrl": "https://open.feishu.cn",
+      "IsDefault": true
+    }
+  ]
+}
+```
+
+### 注册服务
+
+在 `Program.cs` 中注册飞书服务：
+
+```csharp
+// 添加飞书服务
+builder.Services.AddFeishuApp(builder.Configuration, "FeishuApps");
+
+// 注册 API 服务
+builder.Services.CreateFeishuServicesBuilder()
+    .AddModules(FeishuModule.All)
+    .Build();
+```
+
+### 依赖注入使用
+
+在 Controller 或服务中通过构造函数注入接口：
 
 ```csharp
 using Mud.Feishu;
 
-// 创建飞书应用客户端
-var feishuApp = FeishuAppBuilder.Create()
-    .WithAppConfig(new FeishuAppConfig
+public class AttendanceController : ControllerBase
+{
+    private readonly IFeishuTenantV1AttendanceGroups _groupsApi;
+
+    public AttendanceController(IFeishuTenantV1AttendanceGroups groupsApi)
     {
-        AppKey = "your_app_id",
-        AppSecret = "your_app_secret"
-    })
-    .Build();
+        _groupsApi = groupsApi;
+    }
 
-// 获取考勤组管理接口
-var groups = feishuApp.GetRequiredService<IFeishuTenantV1AttendanceGroups>();
-
-// 获取考勤组列表
-var result = await groups.GetGroupPageListAsync(pageSize: 10);
+    [HttpGet("groups")]
+    public async Task<IActionResult> GetGroups([FromQuery] int pageSize = 10)
+    {
+        var result = await _groupsApi.GetGroupPageListAsync(pageSize: pageSize);
+        return Ok(result);
+    }
+}
 ```
 
 ## API 接口导航

@@ -33,29 +33,61 @@
 dotnet add package Mud.Feishu
 ```
 
-### 基本使用
+### 配置文件
+
+在 `appsettings.json` 中添加飞书应用配置：
+
+```json
+{
+  "FeishuApps": [
+    {
+      "AppKey": "default",
+      "AppId": "cli_xxx",
+      "AppSecret": "your_app_secret",
+      "BaseUrl": "https://open.feishu.cn",
+      "IsDefault": true
+    }
+  ]
+}
+```
+
+### 注册服务
+
+在 `Program.cs` 中注册飞书服务：
+
+```csharp
+// 添加飞书服务
+builder.Services.AddFeishuApp(builder.Configuration, "FeishuApps");
+
+// 注册 API 服务
+builder.Services.CreateFeishuServicesBuilder()
+    .AddModules(FeishuModule.All)
+    .Build();
+```
+
+### 依赖注入使用
+
+在 Controller 或服务中通过构造函数注入接口：
 
 ```csharp
 using Mud.Feishu;
 
-// 创建飞书应用客户端
-var feishuApp = FeishuAppBuilder.Create()
-    .WithAppConfig(new FeishuAppConfig
-    {
-        AppKey = "your_app_id",
-        AppSecret = "your_app_secret"
-    })
-    .Build();
-
-// 获取审批接口
-var approval = feishuApp.GetRequiredService<IFeishuTenantV4Approval>();
-
-// 创建审批实例
-var result = await approval.CreateInstanceAsync(new CreateApprovalInstanceRequest
+public class ApprovalController : ControllerBase
 {
-    ApprovalCode = "approval_code",
-    UserId = "user_id"
-});
+    private readonly IFeishuTenantV4Approval _approvalApi;
+
+    public ApprovalController(IFeishuTenantV4Approval approvalApi)
+    {
+        _approvalApi = approvalApi;
+    }
+
+    [HttpPost("create-instance")]
+    public async Task<IActionResult> CreateInstance([FromBody] CreateApprovalInstanceRequest request)
+    {
+        var result = await _approvalApi.CreateInstanceAsync(request);
+        return Ok(result);
+    }
+}
 ```
 
 ## API 接口导航

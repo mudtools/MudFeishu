@@ -120,5 +120,5 @@ public class AttendanceController : ControllerBase
 ## 命名空间与版本信息
 
 - **根命名空间**：`Mud.Feishu`
-- **当前版本**：待补充
+- **当前版本**：2.0.5
 - **目标框架**：.NET Standard 2.0 / .NET 6+ / .NET 8+

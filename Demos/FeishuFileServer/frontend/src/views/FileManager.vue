@@ -1,7 +1,7 @@
 <template>
   <div class="file-manager" :class="{ 'dark-mode': appStore.isDark }">
     <div class="main-content">
-      <aside class="sidebar glass-effect" :class="{ collapsed: appStore.sidebarCollapsed }">
+      <aside class="sidebar" :class="{ collapsed: appStore.sidebarCollapsed }">
         <div class="sidebar-header">
           <div class="logo-container">
             <div class="logo-icon gradient-bg">
@@ -768,13 +768,15 @@ onMounted(() => {
 .sidebar {
   width: 280px;
   min-width: 280px;
-  border-right: 1px solid var(--border-light);
+  background: var(--bg-secondary);
+  border-right: 1px solid var(--border-color);
   overflow: hidden;
   transition: all var(--transition-normal);
   position: relative;
   z-index: 10;
   display: flex;
   flex-direction: column;
+  color: var(--text-primary);
 }
 
 .sidebar.collapsed {
@@ -825,12 +827,38 @@ onMounted(() => {
   flex: 1;
   overflow-y: auto;
   padding: var(--spacing-md);
+  color: var(--text-primary);
 }
 
 .quick-actions {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-sm);
+}
+
+.divider {
+  height: 1px;
+  background: var(--border-color);
+  margin: var(--spacing-md) 0;
+}
+
+.folder-section {
+  color: var(--text-primary);
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-sm);
+}
+
+.section-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .action-btn {
@@ -892,21 +920,6 @@ onMounted(() => {
     box-shadow: var(--shadow-lg), 0 6px 20px rgba(16, 185, 129, 0.35);
     transform: translateY(-1px);
   }
-}
-
-.section-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: var(--spacing-sm);
-}
-
-.section-title {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
 }
 
 .content-area {

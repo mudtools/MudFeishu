@@ -187,6 +187,7 @@ onUnmounted(() => {
   margin-bottom: var(--spacing-xs);
   transition: all var(--transition-fast);
   background: var(--bg-secondary);
+  color: var(--text-primary);
 
   &:hover {
     background: var(--bg-tertiary);
@@ -203,6 +204,10 @@ onUnmounted(() => {
     box-shadow: var(--shadow-sm), 0 2px 8px rgba(99, 102, 241, 0.3);
 
     .folder-icon {
+      color: white;
+    }
+    
+    .folder-name {
       color: white;
     }
   }
@@ -222,6 +227,7 @@ onUnmounted(() => {
     font-weight: 500;
     font-size: 13px;
     min-width: 0;
+    color: var(--text-primary);
   }
 
   .folder-actions {

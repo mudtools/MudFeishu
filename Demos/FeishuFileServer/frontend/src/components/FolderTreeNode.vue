@@ -160,6 +160,7 @@ const handleDelete = () => {
   border-radius: var(--radius-md);
   transition: all var(--transition-fast);
   position: relative;
+  color: var(--text-primary);
 
   &:hover {
     background: var(--bg-secondary);
@@ -177,6 +178,11 @@ const handleDelete = () => {
     .folder-icon {
       color: var(--primary-color);
     }
+    
+    .folder-name {
+      color: var(--primary-color);
+      font-weight: 600;
+    }
   }
 
   .folder-icon {
@@ -193,6 +199,7 @@ const handleDelete = () => {
     white-space: nowrap;
     font-size: 13px;
     min-width: 0;
+    color: var(--text-primary);
   }
 
   .folder-actions {

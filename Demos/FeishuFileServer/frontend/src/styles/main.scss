@@ -7,12 +7,12 @@
   --bg-color: #f8fafc;
   --bg-secondary: #ffffff;
   --bg-tertiary: #f1f5f9;
-  --bg-glass: rgba(255, 255, 255, 0.7);
-  --bg-glass-strong: rgba(255, 255, 255, 0.85);
+  --bg-glass: rgba(255, 255, 255, 0.85);
+  --bg-glass-strong: rgba(255, 255, 255, 0.95);
   
-  --text-primary: #1e293b;
-  --text-secondary: #64748b;
-  --text-tertiary: #94a3b8;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-tertiary: #64748b;
   
   --border-color: rgba(148, 163, 184, 0.2);
   --border-light: rgba(148, 163, 184, 0.1);
@@ -57,12 +57,12 @@
   --bg-color: #0f172a;
   --bg-secondary: #1e293b;
   --bg-tertiary: #334155;
-  --bg-glass: rgba(30, 41, 59, 0.7);
-  --bg-glass-strong: rgba(30, 41, 59, 0.85);
+  --bg-glass: rgba(30, 41, 59, 0.85);
+  --bg-glass-strong: rgba(30, 41, 59, 0.95);
   
-  --text-primary: #f1f5f9;
-  --text-secondary: #94a3b8;
-  --text-tertiary: #64748b;
+  --text-primary: #f8fafc;
+  --text-secondary: #cbd5e1;
+  --text-tertiary: #94a3b8;
   
   --border-color: rgba(148, 163, 184, 0.15);
   --border-light: rgba(148, 163, 184, 0.08);
@@ -139,10 +139,8 @@ html, body {
 .sidebar {
   width: 280px;
   min-width: 280px;
-  background: var(--bg-glass-strong);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-right: 1px solid var(--border-light);
+  background: var(--bg-secondary);
+  border-right: 1px solid var(--border-color);
   overflow-y: auto;
   transition: all var(--transition-normal);
   position: relative;
@@ -153,7 +151,7 @@ html, body {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, var(--bg-glass) 0%, transparent 100%);
+  background: transparent;
   pointer-events: none;
 }
 

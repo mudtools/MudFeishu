@@ -29,6 +29,7 @@ public class AuthenticationMiddleware
         "/api/auth/feishu/url",
         "/api/auth/feishu/callback",
         "/api/auth/feishu/check",
+        "/api/auth/feishu/complete-bind",
         "/webhook/feishu"
     };
 

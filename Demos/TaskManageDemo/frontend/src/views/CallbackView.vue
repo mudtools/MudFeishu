@@ -3,7 +3,7 @@ import { onMounted, ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Loading, CircleClose } from '@element-plus/icons-vue'
-import { loginWithCode, bindFeishu } from '../api'
+import { loginWithCode, bindFeishu, completeFeishuBind } from '../api'
 import { useAuthStore } from '../stores/auth'
 
 const router = useRouter()
@@ -11,6 +11,15 @@ const route = useRoute()
 const authStore = useAuthStore()
 const loading = ref(true)
 const error = ref('')
+const needBind = ref(false)
+const tempToken = ref('')
+const bindForm = ref({
+  username: '',
+  password: '',
+  confirmPassword: ''
+})
+const binding = ref(false)
+const bindFormRef = ref()
 
 async function handleCallback() {
   const code = route.query.code as string
@@ -22,7 +31,6 @@ async function handleCallback() {
     return
   }
 
-  // 检查是否是绑定飞书账号的回调
   const bindState = sessionStorage.getItem('feishu_bind_state')
   if (bindState) {
     if (bindState !== state) {
@@ -35,7 +43,6 @@ async function handleCallback() {
     return
   }
 
-  // 验证登录 state
   const storedState = sessionStorage.getItem('feishu_oauth_state')
   if (storedState && storedState !== state) {
     error.value = 'State 验证失败，请重新登录'
@@ -51,39 +58,50 @@ async function handleLoginCallback(code: string, state: string) {
   try {
     const response = await loginWithCode({ code, state })
 
-    if (response.success && response.data?.accessToken) {
-      authStore.setToken(response.data.accessToken)
-
-      if (response.data.user) {
-        authStore.setUser({
-          id: response.data.user.id,
-          feishuId: response.data.user.feishuId,
-          name: response.data.user.name,
-          email: response.data.user.email,
-          avatarUrl: response.data.user.avatarUrl,
-          role: response.data.user.role,
-          permissions: response.data.user.permissions || [],
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        })
+    if (response.success && response.data) {
+      if (!response.data.isFeishuBound) {
+        needBind.value = true
+        tempToken.value = response.data.accessToken
+        loading.value = false
+        return
       }
 
-      localStorage.setItem(
-        'permissions',
-        JSON.stringify(response.data.user?.permissions || [])
-      )
+      if (response.data.accessToken && response.data.user && response.data.user.id > 0) {
+        authStore.setToken(response.data.accessToken)
 
-      const welcomeMessage = response.data.isFirstLogin
-        ? `欢迎首次使用，${response.data.user?.name || '用户'}！`
-        : `欢迎回来，${response.data.user?.name || '用户'}！`
+        if (response.data.user) {
+          authStore.setUser({
+            id: response.data.user.id,
+            feishuId: response.data.user.feishuId,
+            name: response.data.user.name,
+            email: response.data.user.email,
+            avatarUrl: response.data.user.avatarUrl,
+            role: response.data.user.role,
+            permissions: response.data.user.permissions || [],
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          })
+        }
 
-      ElMessage.success({
-        message: welcomeMessage,
-        duration: 2000,
-      })
+        localStorage.setItem(
+          'permissions',
+          JSON.stringify(response.data.user?.permissions || [])
+        )
 
-      const redirect = (route.query.redirect as string) || '/tasks'
-      router.replace(redirect)
+        const welcomeMessage = response.data.isFirstLogin
+          ? `欢迎首次使用，${response.data.user?.name || '用户'}！`
+          : `欢迎回来，${response.data.user?.name || '用户'}！`
+
+        ElMessage.success({
+          message: welcomeMessage,
+          duration: 2000,
+        })
+
+        const redirect = (route.query.redirect as string) || '/tasks'
+        router.replace(redirect)
+      } else {
+        error.value = response.message || '登录失败'
+      }
     } else {
       error.value = response.message || '登录失败'
     }
@@ -95,12 +113,76 @@ async function handleLoginCallback(code: string, state: string) {
   }
 }
 
+async function handleBindSubmit() {
+  if (!bindFormRef.value) return
+
+  await bindFormRef.value.validate(async (valid: boolean) => {
+    if (!valid) return
+
+    if (bindForm.value.password !== bindForm.value.confirmPassword) {
+      ElMessage.error('两次输入的密码不一致')
+      return
+    }
+
+    if (bindForm.value.password.length < 6) {
+      ElMessage.error('密码长度至少6位')
+      return
+    }
+
+    binding.value = true
+
+    try {
+      const response = await completeFeishuBind({
+        tempToken: tempToken.value,
+        username: bindForm.value.username,
+        password: bindForm.value.password
+      })
+
+      if (response.success && response.data?.accessToken) {
+        authStore.setToken(response.data.accessToken)
+
+        if (response.data.user) {
+          authStore.setUser({
+            id: response.data.user.id,
+            feishuId: response.data.user.feishuId,
+            name: response.data.user.name,
+            email: response.data.user.email,
+            avatarUrl: response.data.user.avatarUrl,
+            role: response.data.user.role,
+            permissions: response.data.user.permissions || [],
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          })
+        }
+
+        localStorage.setItem(
+          'permissions',
+          JSON.stringify(response.data.user?.permissions || [])
+        )
+
+        ElMessage.success({
+          message: `欢迎首次使用，${response.data.user?.name || '用户'}！`,
+          duration: 2000,
+        })
+
+        router.replace('/tasks')
+      } else {
+        ElMessage.error(response.message || '绑定失败')
+      }
+    } catch (err: any) {
+      console.error('绑定失败:', err)
+      ElMessage.error(err.response?.data?.message || err.message || '绑定失败')
+    } finally {
+      binding.value = false
+    }
+  })
+}
+
 async function handleBindCallback(code: string, state: string) {
   try {
     const response = await bindFeishu({ code, state })
 
     if (response.success && response.data?.success) {
-      // 更新 authStore 中的用户信息
       const currentUser = authStore.user
       if (currentUser && response.data) {
         authStore.setUser({
@@ -129,6 +211,42 @@ async function handleBindCallback(code: string, state: string) {
   }
 }
 
+const validateUsername = (rule: any, value: string, callback: any) => {
+  if (!value) {
+    callback(new Error('请输入用户名'))
+  } else if (value.length < 3) {
+    callback(new Error('用户名至少3个字符'))
+  } else {
+    callback()
+  }
+}
+
+const validatePassword = (rule: any, value: string, callback: any) => {
+  if (!value) {
+    callback(new Error('请输入密码'))
+  } else if (value.length < 6) {
+    callback(new Error('密码至少6个字符'))
+  } else {
+    callback()
+  }
+}
+
+const validateConfirmPassword = (rule: any, value: string, callback: any) => {
+  if (!value) {
+    callback(new Error('请再次输入密码'))
+  } else if (value !== bindForm.value.password) {
+    callback(new Error('两次输入的密码不一致'))
+  } else {
+    callback()
+  }
+}
+
+const bindRules = {
+  username: [{ validator: validateUsername, trigger: 'blur' }],
+  password: [{ validator: validatePassword, trigger: 'blur' }],
+  confirmPassword: [{ validator: validateConfirmPassword, trigger: 'blur' }]
+}
+
 onMounted(() => {
   handleCallback()
 })
@@ -150,6 +268,49 @@ onMounted(() => {
       <el-button v-if="error" type="primary" @click="router.push('/login')">
         返回登录
       </el-button>
+
+      <div v-if="needBind && !loading" class="bind-form">
+        <h3 class="bind-title">完成账户设置</h3>
+        <p class="bind-desc">请设置本地账户的用户名和密码，以便下次登录使用</p>
+        
+        <el-form ref="bindFormRef" :model="bindForm" :rules="bindRules" label-position="top">
+          <el-form-item label="用户名" prop="username">
+            <el-input 
+              v-model="bindForm.username" 
+              placeholder="请输入用户名（至少3个字符）"
+              :disabled="binding"
+            />
+          </el-form-item>
+          <el-form-item label="密码" prop="password">
+            <el-input 
+              v-model="bindForm.password" 
+              type="password"
+              placeholder="请输入密码（至少6个字符）"
+              show-password
+              :disabled="binding"
+            />
+          </el-form-item>
+          <el-form-item label="确认密码" prop="confirmPassword">
+            <el-input 
+              v-model="bindForm.confirmPassword" 
+              type="password"
+              placeholder="请再次输入密码"
+              show-password
+              :disabled="binding"
+            />
+          </el-form-item>
+          <el-form-item>
+            <el-button 
+              type="primary" 
+              :loading="binding" 
+              class="bind-btn"
+              @click="handleBindSubmit"
+            >
+              {{ binding ? '提交中...' : '完成绑定' }}
+            </el-button>
+          </el-form-item>
+        </el-form>
+      </div>
     </div>
   </div>
 </template>
@@ -169,7 +330,8 @@ onMounted(() => {
   background: var(--el-bg-color);
   border-radius: 16px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
-  min-width: 320px;
+  min-width: 360px;
+  max-width: 400px;
 }
 
 .loading-icon {
@@ -204,5 +366,28 @@ onMounted(() => {
 
 .el-button {
   margin-top: 16px;
+}
+
+.bind-form {
+  text-align: left;
+  margin-top: 24px;
+}
+
+.bind-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+  margin-bottom: 8px;
+}
+
+.bind-desc {
+  font-size: 14px;
+  color: var(--el-text-color-secondary);
+  margin-bottom: 24px;
+}
+
+.bind-btn {
+  width: 100%;
+  margin-top: 8px;
 }
 </style>

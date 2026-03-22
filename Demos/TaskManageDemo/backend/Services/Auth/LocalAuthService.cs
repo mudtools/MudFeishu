@@ -486,4 +486,67 @@ public class LocalAuthService : ILocalAuthService
             LastLoginAt = user.LastLoginAt
         };
     }
+
+    public async Task<LoginResponse?> RegisterWithFeishuAsync(string tempToken, string username, string password, CancellationToken cancellationToken = default)
+    {
+        var tempUserInfo = _jwtTokenService.ValidateTempToken(tempToken);
+        if (tempUserInfo == null)
+        {
+            _logger.LogWarning("无效的临时Token");
+            return null;
+        }
+
+        var (feishuId, name) = tempUserInfo.Value;
+
+        var existingUser = await _dbContext.Users
+            .FirstOrDefaultAsync(u => u.Username == username, cancellationToken);
+
+        if (existingUser != null)
+        {
+            _logger.LogWarning("用户名已存在: {Username}", username);
+            return null;
+        }
+
+        var newUser = new User
+        {
+            Username = username,
+            PasswordHash = HashPassword(password),
+            FeishuId = feishuId,
+            OpenId = feishuId,
+            Name = name,
+            Role = UserRoles.User,
+            IsActive = true,
+            IsFirstLogin = false,
+            IsFeishuBound = true,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+            LastLoginAt = DateTime.UtcNow
+        };
+
+        _dbContext.Users.Add(newUser);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        await _permissionService.InitializeDefaultPermissionsAsync(newUser.Id, cancellationToken);
+
+        var permissions = await _permissionService.GetUserPermissionsAsync(newUser.Id, cancellationToken);
+
+        var token = _jwtTokenService.GenerateToken(
+            newUser.Id.ToString(),
+            newUser.Username ?? newUser.Name,
+            newUser.OpenId ?? string.Empty,
+            newUser.Role ?? UserRoles.User,
+            permissions);
+
+        _logger.LogInformation("飞书用户完成本地账户绑定: {UserId}, {Username}, OpenId: {OpenId}",
+            newUser.Id, username, feishuId);
+
+        return new LoginResponse
+        {
+            AccessToken = token,
+            ExpiresIn = 3600,
+            User = MapToUserDto(newUser, permissions),
+            IsFirstLogin = true,
+            IsFeishuBound = true
+        };
+    }
 }

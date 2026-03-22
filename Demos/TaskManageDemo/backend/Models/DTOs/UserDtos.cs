@@ -83,6 +83,11 @@ public class UserDto
     public bool IsActive { get; set; }
 
     /// <summary>
+    /// 用户权限列表
+    /// </summary>
+    public List<string> Permissions { get; set; } = new();
+
+    /// <summary>
     /// 创建时间
     /// </summary>
     public DateTime CreatedAt { get; set; }
@@ -414,6 +419,27 @@ public class BindFeishuRequest
     /// State 参数
     /// </summary>
     public string State { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// 飞书登录后完成本地账户绑定请求
+/// </summary>
+public class CompleteFeishuBindRequest
+{
+    /// <summary>
+    /// 临时Token（飞书登录后返回的临时令牌）
+    /// </summary>
+    public string TempToken { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 用户名
+    /// </summary>
+    public string Username { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 密码
+    /// </summary>
+    public string Password { get; set; } = string.Empty;
 }
 
 /// <summary>

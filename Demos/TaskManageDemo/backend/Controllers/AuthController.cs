@@ -409,6 +409,51 @@ public class AuthController : BaseController
     }
 
     /// <summary>
+    /// 飞书登录后完成本地账户绑定
+    /// </summary>
+    [HttpPost("feishu/complete-bind")]
+    public async Task<ActionResult<ApiResponse<LoginResponse>>> CompleteFeishuBind(
+        [FromBody] CompleteFeishuBindRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(request.TempToken))
+            {
+                return BadRequestResult<LoginResponse>("缺少临时令牌");
+            }
+
+            if (string.IsNullOrEmpty(request.Username) || string.IsNullOrEmpty(request.Password))
+            {
+                return BadRequestResult<LoginResponse>("用户名和密码不能为空");
+            }
+
+            if (request.Password.Length < 6)
+            {
+                return BadRequestResult<LoginResponse>("密码长度至少6位");
+            }
+
+            var response = await _localAuthService.RegisterWithFeishuAsync(
+                request.TempToken,
+                request.Username,
+                request.Password,
+                cancellationToken);
+
+            if (response == null)
+            {
+                return Fail<LoginResponse>("绑定失败，用户名可能已存在或临时令牌无效");
+            }
+
+            return Success(response, "绑定成功，欢迎首次使用！");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "完成飞书绑定失败");
+            return Fail<LoginResponse>("绑定失败");
+        }
+    }
+
+    /// <summary>
     /// 绑定飞书账号
     /// </summary>
     [HttpPost("feishu/bind")]

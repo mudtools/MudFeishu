@@ -123,7 +123,12 @@ builder.Services.AddHealthChecks()
     .AddCheck<DiskSpaceHealthCheck>("disk_space", tags: new[] { "system" })
     .AddCheck<MemoryHealthCheck>("memory", tags: new[] { "system" });
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+        options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
+    });
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {

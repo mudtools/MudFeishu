@@ -47,6 +47,17 @@ export async function loginWithCode(
 }
 
 /**
+ * 飞书登录后完成本地账户绑定
+ * @param request 绑定请求
+ * @returns 登录响应
+ */
+export async function completeFeishuBind(
+  request: { tempToken: string; username: string; password: string },
+): Promise<ApiResponse<LoginResponse>> {
+  return apiClient.post<LoginResponse>("/auth/feishu/complete-bind", request);
+}
+
+/**
  * 用户名密码登录
  * @param request 登录请求
  * @returns 登录响应

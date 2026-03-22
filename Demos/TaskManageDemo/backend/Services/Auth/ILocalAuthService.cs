@@ -53,4 +53,9 @@ public interface ILocalAuthService
     /// 哈希密码
     /// </summary>
     string HashPassword(string password);
+
+    /// <summary>
+    /// 飞书登录后完成本地账户绑定
+    /// </summary>
+    Task<LoginResponse?> RegisterWithFeishuAsync(string tempToken, string username, string password, CancellationToken cancellationToken = default);
 }

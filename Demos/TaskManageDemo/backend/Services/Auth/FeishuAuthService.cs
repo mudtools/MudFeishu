@@ -109,49 +109,72 @@ public class FeishuAuthService : IFeishuAuthService
 
             var feishuUser = userInfoResult.Data;
 
-            // 获取或创建用户
-            var (user, isFirstLogin) = await GetOrCreateUserAsync(
+            var existingUser = await _dbContext.Users
+                .FirstOrDefaultAsync(u => u.OpenId == feishuUser.OpenId, cancellationToken);
+
+            if (existingUser != null && existingUser.IsFeishuBound)
+            {
+                _logger.LogInformation("飞书用户已绑定本地账户，直接登录: {OpenId}", feishuUser.OpenId);
+
+                existingUser.FeishuAccessToken = tokenResult.AccessToken;
+                existingUser.FeishuRefreshToken = tokenResult.RefreshToken;
+                existingUser.TokenExpiresAt = tokenResult.AccessTokenExpireTime > 0
+                    ? DateTimeOffset.FromUnixTimeMilliseconds(tokenResult.AccessTokenExpireTime).DateTime
+                    : null;
+                existingUser.LastLoginAt = DateTime.UtcNow;
+                await _dbContext.SaveChangesAsync(cancellationToken);
+
+                var permissions = await _permissionService.GetUserPermissionsAsync(existingUser.Id, cancellationToken);
+
+                var token = _jwtTokenService.GenerateToken(
+                    existingUser.Id.ToString(),
+                    existingUser.Name,
+                    existingUser.OpenId ?? string.Empty,
+                    existingUser.Role ?? UserRoles.User,
+                    permissions);
+
+                _logger.LogInformation("飞书登录成功（已绑定）: {UserId}, {Name}",
+                    existingUser.Id, existingUser.Name);
+
+                return new LoginResponse
+                {
+                    AccessToken = token,
+                    ExpiresIn = 3600,
+                    User = new UserDto
+                    {
+                        Id = existingUser.Id,
+                        FeishuId = existingUser.FeishuId,
+                        Name = existingUser.Name,
+                        AvatarUrl = existingUser.AvatarUrl,
+                        Role = existingUser.Role ?? UserRoles.User,
+                        Permissions = permissions
+                    },
+                    IsFirstLogin = false,
+                    IsFeishuBound = true
+                };
+            }
+
+            _logger.LogInformation("飞书用户未绑定本地账户，需要注册/绑定: {OpenId}", feishuUser.OpenId);
+
+            var tempToken = _jwtTokenService.GenerateTempToken(
                 feishuUser.OpenId ?? string.Empty,
-                feishuUser.UnionId ?? string.Empty,
-                feishuUser.Name ?? "未知用户",
-                feishuUser.AvatarUrl,
-                feishuUser.Email,
-                cancellationToken);
-
-            // 保存飞书用户的 Token
-            user.FeishuAccessToken = tokenResult.AccessToken;
-            user.FeishuRefreshToken = tokenResult.RefreshToken;
-            user.TokenExpiresAt = tokenResult.AccessTokenExpireTime > 0
-                ? DateTimeOffset.FromUnixTimeMilliseconds(tokenResult.AccessTokenExpireTime).DateTime
-                : null;
-            await _dbContext.SaveChangesAsync(cancellationToken);
-
-            _logger.LogInformation("飞书用户Token已保存: {OpenId}, 过期时间: {ExpiresAt}",
-                user.OpenId, user.TokenExpiresAt);
-
-            // 生成JWT Token
-            var token = _jwtTokenService.GenerateToken(
-                user.OpenId ?? string.Empty,
-                user.UnionId ?? string.Empty,
-                user.Name,
-                user.Id);
-
-            _logger.LogInformation("飞书登录成功: {UserId}, {Name}, 首次登录: {IsFirstLogin}",
-                user.Id, user.Name, isFirstLogin);
+                feishuUser.Name ?? "未知用户");
 
             return new LoginResponse
             {
-                AccessToken = token,
+                AccessToken = tempToken,
                 ExpiresIn = 3600,
                 User = new UserDto
                 {
-                    Id = user.Id,
-                    FeishuId = user.FeishuId,
-                    Name = user.Name,
-                    AvatarUrl = user.AvatarUrl,
-                    Role = user.Role ?? UserRoles.User
+                    Id = 0,
+                    FeishuId = feishuUser.OpenId,
+                    Name = feishuUser.Name ?? "未知用户",
+                    AvatarUrl = feishuUser.AvatarUrl,
+                    Role = UserRoles.User,
+                    Permissions = new List<string>()
                 },
-                IsFirstLogin = isFirstLogin
+                IsFirstLogin = true,
+                IsFeishuBound = false
             };
         }
         catch (Exception ex)

@@ -26,8 +26,9 @@ public class AuthenticationMiddleware
         "/swagger",
         "/api/auth/login",
         "/api/auth/register",
-        "/api/auth/callback",
         "/api/auth/feishu/url",
+        "/api/auth/feishu/callback",
+        "/api/auth/feishu/check",
         "/webhook/feishu"
     };
 

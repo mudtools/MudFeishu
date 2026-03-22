@@ -69,4 +69,12 @@ public interface IFeishuV3Spreadsheets : IFeishuAppContextSwitcher
         [Path] string? spreadsheet_token,
         [Body] BatchUpdateSheetRequest batchUpdateSheetRequest,
         CancellationToken cancellationToken = default);
+
+
+    [Post("/open-apis/sheets/v2/spreadsheets/{spreadsheet_token}/sheets_batch_update")]
+    Task<FeishuApiResult<BatchUpdateSheetPropertiesResult>?> BatchUpdateSheetPropertiesAsync(
+       [Path] string? spreadsheet_token,
+       [Body] BatchUpdateSheetPropertiesRequest batchUpdateSheetPropertiesRequest,
+       [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
+       CancellationToken cancellationToken = default);
 }

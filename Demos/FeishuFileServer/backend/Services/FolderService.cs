@@ -179,6 +179,7 @@ public class FolderService : IFolderService
     /// <summary>
     /// 获取文件夹列表
     /// 支持按父文件夹和用户筛选
+    /// 当 parentFolderToken 为 null 时返回所有文件夹，以便前端构建树形结构
     /// </summary>
     /// <param name="parentFolderToken">父文件夹令牌</param>
     /// <param name="userId">用户ID</param>
@@ -192,8 +193,11 @@ public class FolderService : IFolderService
 
         if (!string.IsNullOrEmpty(parentFolderToken))
         {
+            // 只返回指定父文件夹下的直接子文件夹
             query = query.Where(f => f.ParentFolderToken == parentFolderToken);
         }
+        // 当 parentFolderToken 为 null 时，返回所有文件夹（不过滤 ParentFolderToken）
+        // 这样前端 buildTree 函数可以构建完整的树形结构
 
         if (userId.HasValue)
         {

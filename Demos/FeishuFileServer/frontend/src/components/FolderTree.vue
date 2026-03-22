@@ -20,46 +20,17 @@
     </div>
 
     <div class="folder-list">
-      <div 
+      <FolderTreeNode
         v-for="folder in folderStore.folders" 
         :key="folder.folderToken"
-        class="folder-item"
-        :class="{ 'is-active': currentFolderToken === folder.folderToken }"
-        @click="handleNodeClick(folder)"
-        @contextmenu.prevent="showContextMenu($event, folder)"
-      >
-        <el-icon class="folder-icon"><Folder /></el-icon>
-        <span class="folder-name">{{ folder.folderName }}</span>
-        <div class="folder-actions" @click.stop>
-          <el-button 
-            type="primary" 
-            size="small" 
-            text
-            @click="handleCreateFolder(folder)"
-            title="新建子文件夹"
-          >
-            <el-icon><Plus /></el-icon>
-          </el-button>
-          <el-button 
-            type="warning" 
-            size="small" 
-            text
-            @click="handleRenameFolder(folder)"
-            title="重命名"
-          >
-            <el-icon><Edit /></el-icon>
-          </el-button>
-          <el-button 
-            type="danger" 
-            size="small" 
-            text
-            @click="handleDeleteFolder(folder)"
-            title="删除"
-          >
-            <el-icon><Delete /></el-icon>
-          </el-button>
-        </div>
-      </div>
+        :folder="folder"
+        :current-folder-token="currentFolderToken"
+        @node-click="handleNodeClick"
+        @context-menu="showContextMenu"
+        @create-folder="handleCreateFolder"
+        @rename-folder="handleRenameFolder"
+        @delete-folder="handleDeleteFolder"
+      />
     </div>
 
     <el-empty v-if="!folderStore.loading && folderStore.folders.length === 0" description="暂无文件夹" />
@@ -96,11 +67,12 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { HomeFilled, Folder, FolderAdd, Edit, Delete, Plus } from '@element-plus/icons-vue'
+import { HomeFilled, FolderAdd, Edit, Delete, Plus } from '@element-plus/icons-vue'
 import { useFolderStore } from '@/stores/folderStore'
 import { folderApi } from '@/api'
 import type { FolderResponse } from '@/api/types'
 import FolderDialog from '@/components/FolderDialog.vue'
+import FolderTreeNode from '@/components/FolderTreeNode.vue'
 
 const props = defineProps<{
   currentFolderToken?: string | null
@@ -264,56 +236,6 @@ onUnmounted(() => {
   gap: var(--spacing-xs);
 }
 
-.folder-item {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-sm) var(--spacing-md);
-  cursor: pointer;
-  border-radius: var(--radius-md);
-  transition: all var(--transition-fast);
-  position: relative;
-
-  &:hover {
-    background: var(--bg-secondary);
-    transform: translateX(2px);
-
-    .folder-actions {
-      opacity: 1;
-    }
-  }
-
-  &.is-active {
-    background: var(--primary-light);
-    color: var(--primary-color);
-
-    .folder-icon {
-      color: var(--primary-color);
-    }
-  }
-
-  .folder-icon {
-    color: #ffc107;
-    font-size: 18px;
-    transition: all var(--transition-fast);
-  }
-
-  .folder-name {
-    flex: 1;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-size: 14px;
-  }
-
-  .folder-actions {
-    opacity: 0;
-    transition: opacity var(--transition-fast);
-    display: flex;
-    gap: 1px;
-  }
-}
-
 .context-menu {
   position: fixed;
   background: var(--bg-color);
@@ -353,7 +275,7 @@ onUnmounted(() => {
   }
 }
 
-:deep(.el-empty) {
+::deep(.el-empty) {
   padding: var(--spacing-xl);
 
   .el-empty__description {

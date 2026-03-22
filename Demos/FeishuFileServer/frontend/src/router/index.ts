@@ -58,16 +58,39 @@ const router = createRouter({
   routes
 })
 
-router.beforeEach((to, _from, next) => {
+router.beforeEach(async (to, _from, next) => {
   const authStore = useAuthStore()
 
-  if (to.meta.requiresAuth && !authStore.isLoggedIn) {
-    next('/login')
-  } else if (to.path === '/login' && authStore.isLoggedIn) {
-    next('/')
-  } else {
-    next()
+  // 如果有 token 但没有用户信息，尝试获取用户信息
+  if (authStore.token && !authStore.user) {
+    try {
+      await authStore.init()
+    } catch (error) {
+      // 获取用户信息失败，清除认证状态
+      authStore.clearAuth()
+    }
   }
+
+  // 公开页面直接放行
+  if (to.meta.public) {
+    // 已登录用户访问登录页，重定向到首页
+    if (to.path === '/login' && authStore.isLoggedIn) {
+      next('/')
+      return
+    }
+    next()
+    return
+  }
+
+  // 需要认证的页面
+  if (to.meta.requiresAuth || !to.meta.public) {
+    if (!authStore.isLoggedIn) {
+      next({ path: '/login', query: { redirect: to.fullPath } })
+      return
+    }
+  }
+
+  next()
 })
 
 export default router

@@ -333,7 +333,8 @@ public class FeishuSyncService : IFeishuSyncService
                 FolderName = file.Name ?? "未命名文件夹",
                 ParentFolderToken = parentFolderToken,
                 CreatedTime = ParseDateTime(file.CreatedTime) ?? DateTime.UtcNow,
-                IsDeleted = false
+                IsDeleted = false,
+                UserId = userId
             };
 
             _dbContext.FolderRecords.Add(newFolder);

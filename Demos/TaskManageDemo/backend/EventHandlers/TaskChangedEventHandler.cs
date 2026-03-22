@@ -5,114 +5,64 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-using System.Text.Json;
 using Mud.Feishu.Abstractions;
-using TaskManageDemo.Backend.Data;
+using Mud.Feishu.Abstractions.DataModels.Task;
+using Mud.Feishu.Abstractions.EventHandlers;
+using Mud.Feishu.Abstractions.Services;
 using TaskManageDemo.Backend.Services.Sync;
 
 namespace TaskManageDemo.Backend.EventHandlers;
 
 /// <summary>
 /// 任务变更事件处理器
+/// <para>处理飞书任务变更事件</para>
 /// </summary>
-public class TaskChangedEventHandler : IFeishuEventHandler
+public class FeishuTaskUpdatedEventHandler : global::Mud.Feishu.Abstractions.EventHandlers.TaskUpdatedEventHandler
 {
-    /// <summary>
-    /// 支持的事件类型
-    /// </summary>
-    public string SupportedEventType => "task.task.updated_v2";
-
-    private readonly TaskManageDbContext _dbContext;
     private readonly ITaskSyncService _taskSyncService;
-    private readonly IEventProcessService _eventProcessService;
-    private readonly ILogger<TaskChangedEventHandler> _logger;
 
-    /// <summary>
-    /// 初始化任务变更事件处理器
-    /// </summary>
-    public TaskChangedEventHandler(
-        TaskManageDbContext dbContext,
-        ITaskSyncService taskSyncService,
-        IEventProcessService eventProcessService,
-        ILogger<TaskChangedEventHandler> logger)
+    public FeishuTaskUpdatedEventHandler(
+        IFeishuEventDeduplicator businessDeduplicator,
+        ILogger<FeishuTaskUpdatedEventHandler> logger,
+        ITaskSyncService taskSyncService)
+        : base(businessDeduplicator, logger)
     {
-        _dbContext = dbContext;
-        _taskSyncService = taskSyncService;
-        _eventProcessService = eventProcessService;
-        _logger = logger;
+        _taskSyncService = taskSyncService ?? throw new ArgumentNullException(nameof(taskSyncService));
     }
 
-    /// <summary>
-    /// 处理事件
-    /// </summary>
-    public async Task HandleAsync(EventData eventData, CancellationToken cancellationToken = default)
+    protected override async Task ProcessBusinessLogicAsync(
+        EventData eventData,
+        TaskUpdatedResult? eventEntity,
+        CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation("处理任务变更事件: {EventType}", eventData.EventType);
-
-        var eventJson = JsonSerializer.Serialize(eventData.Event);
-        var taskEvent = JsonSerializer.Deserialize<TaskChangedEvent>(eventJson);
-
-        if (taskEvent?.Task == null || string.IsNullOrEmpty(taskEvent.Task.TaskId))
+        if (eventEntity == null || string.IsNullOrEmpty(eventEntity.TaskId))
         {
-            _logger.LogWarning("事件数据解析失败");
+            _logger.LogWarning("任务变更事件实体为空或任务ID缺失，跳过处理");
             return;
         }
 
-        var taskGuid = taskEvent.Task.TaskId;
-        var eventId = $"{eventData.EventType}_{taskGuid}_{eventData.EventId}";
+        var taskGuid = eventEntity.TaskId;
+        var objType = eventEntity.ObjType;
 
-        // 检查幂等性
-        if (await _eventProcessService.IsProcessedAsync(eventId, cancellationToken))
-        {
-            _logger.LogWarning("任务变更事件已处理: {EventId}", eventId);
-            return;
-        }
+        _logger.LogInformation("处理任务变更事件: TaskId={TaskId}, ObjType={ObjType}",
+            taskGuid, objType);
 
-        var record = await _eventProcessService.StartProcessAsync(eventId, eventData.EventType, cancellationToken);
+        var objTypeDescription = objType switch
+        {
+            1 => "任务详情发生变化",
+            2 => "任务协作者发生变化",
+            3 => "任务关注者发生变化",
+            4 => "任务提醒时间发生变化",
+            5 => "任务完成",
+            6 => "任务取消完成",
+            7 => "任务删除",
+            _ => "未知变更类型"
+        };
 
-        try
-        {
-            await _taskSyncService.SyncTaskAsync(taskGuid, cancellationToken);
-            await _eventProcessService.MarkSuccessAsync(record.Id, cancellationToken);
-            _logger.LogInformation("任务同步完成: {TaskGuid}", taskGuid);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "处理任务变更事件失败: {EventId}", eventId);
-            await _eventProcessService.MarkFailedAsync(record.Id, ex.Message, cancellationToken);
-            throw;
-        }
+        _logger.LogDebug("任务变更类型: {ObjTypeDescription}", objTypeDescription);
+
+        await _taskSyncService.SyncTaskAsync(taskGuid, cancellationToken);
+
+        _logger.LogInformation("任务同步完成: TaskId={TaskId}", taskGuid);
     }
-}
-
-/// <summary>
-/// 任务变更事件数据
-/// </summary>
-public class TaskChangedEvent
-{
-    /// <summary>
-    /// 任务信息
-    /// </summary>
-    public TaskEventInfo? Task { get; set; }
-}
-
-/// <summary>
-/// 任务事件信息
-/// </summary>
-public class TaskEventInfo
-{
-    /// <summary>
-    /// 任务ID
-    /// </summary>
-    public string? TaskId { get; set; }
-
-    /// <summary>
-    /// 任务标题
-    /// </summary>
-    public string? Summary { get; set; }
-
-    /// <summary>
-    /// 是否完成
-    /// </summary>
-    public bool? Completed { get; set; }
 }

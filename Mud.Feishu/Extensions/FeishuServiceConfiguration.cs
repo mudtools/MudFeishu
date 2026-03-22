@@ -12,7 +12,7 @@ namespace Microsoft.Extensions.DependencyInjection;
 /// </summary>
 internal class FeishuServiceConfiguration
 {
-    private readonly HashSet<FeishuModule> _registeredModules = new();
+    private readonly HashSet<FeishuModule> _registeredModules = [];
 
     /// <summary>
     /// 尝试添加模块到已注册集合

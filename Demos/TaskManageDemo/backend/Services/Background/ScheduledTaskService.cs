@@ -6,7 +6,6 @@
 // -----------------------------------------------------------------------
 
 using TaskManageDemo.Backend.Data;
-using TaskManageDemo.Backend.EventHandlers;
 using TaskManageDemo.Backend.Models.Entities;
 using TaskManageDemo.Backend.Services.Feishu;
 using TaskManageDemo.Backend.Services.Sync;
@@ -21,7 +20,6 @@ public class ScheduledTaskService : IScheduledTaskService
     private readonly TaskManageDbContext _dbContext;
     private readonly IFeishuNotificationService _notificationService;
     private readonly ITaskSyncService _syncService;
-    private readonly IEventProcessService _eventProcessService;
     private readonly ILogger<ScheduledTaskService> _logger;
 
     /// <summary>
@@ -31,13 +29,11 @@ public class ScheduledTaskService : IScheduledTaskService
         TaskManageDbContext dbContext,
         IFeishuNotificationService notificationService,
         ITaskSyncService syncService,
-        IEventProcessService eventProcessService,
         ILogger<ScheduledTaskService> logger)
     {
         _dbContext = dbContext;
         _notificationService = notificationService;
         _syncService = syncService;
-        _eventProcessService = eventProcessService;
         _logger = logger;
     }
 
@@ -113,17 +109,11 @@ public class ScheduledTaskService : IScheduledTaskService
 
     /// <summary>
     /// 重试失败的事件
+    /// <para>注意：使用 IdempotentFeishuEventHandler 基类时，事件重试由框架内置的 IFeishuEventDeduplicator 处理</para>
     /// </summary>
     public async Task RetryFailedEventsAsync(CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation("开始重试失败的事件");
-
-        var failedEvents = await _eventProcessService.GetPendingRetryEventsAsync(cancellationToken);
-        _logger.LogInformation("找到 {Count} 个待重试事件", failedEvents.Count);
-
-        foreach (var record in failedEvents)
-        {
-            _logger.LogInformation("重试事件: {EventId}, 类型: {EventType}", record.EventId, record.EventType);
-        }
+        _logger.LogInformation("事件重试由框架内置的幂等性处理器自动管理");
+        await Task.CompletedTask;
     }
 }

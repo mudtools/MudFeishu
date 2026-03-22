@@ -5,155 +5,151 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-using System.Text.Json;
 using Mud.Feishu.Abstractions;
+using Mud.Feishu.Abstractions.DataModels.Organization;
+using Mud.Feishu.Abstractions.EventHandlers;
+using Mud.Feishu.Abstractions.Services;
 using TaskManageDemo.Backend.Data;
 
 namespace TaskManageDemo.Backend.EventHandlers;
 
 /// <summary>
 /// 用户变更事件处理器
+/// <para>处理飞书用户创建和更新事件</para>
 /// </summary>
-public class UserChangedEventHandler : IFeishuEventHandler
+public class UserCreatedEventHandler : UserCreateEventHandler
 {
-    /// <summary>
-    /// 支持的事件类型
-    /// </summary>
-    public string SupportedEventType => "contact.user.created_v3";
-
     private readonly TaskManageDbContext _dbContext;
-    private readonly IEventProcessService _eventProcessService;
-    private readonly ILogger<UserChangedEventHandler> _logger;
 
-    /// <summary>
-    /// 初始化用户变更事件处理器
-    /// </summary>
-    public UserChangedEventHandler(
-        TaskManageDbContext dbContext,
-        IEventProcessService eventProcessService,
-        ILogger<UserChangedEventHandler> logger)
+    public UserCreatedEventHandler(
+        IFeishuEventDeduplicator businessDeduplicator,
+        ILogger<UserCreatedEventHandler> logger,
+        TaskManageDbContext dbContext)
+        : base(businessDeduplicator, logger)
     {
-        _dbContext = dbContext;
-        _eventProcessService = eventProcessService;
-        _logger = logger;
+        _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
     }
 
-    /// <summary>
-    /// 处理事件
-    /// </summary>
-    public async Task HandleAsync(EventData eventData, CancellationToken cancellationToken = default)
+    protected override async Task ProcessBusinessLogicAsync(
+        EventData eventData,
+        UserCreateResult? eventEntity,
+        CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation("处理用户变更事件: {EventType}", eventData.EventType);
-
-        var eventJson = JsonSerializer.Serialize(eventData.Event);
-        var userEvent = JsonSerializer.Deserialize<UserChangedEvent>(eventJson);
-
-        if (userEvent?.User == null)
+        if (eventEntity == null)
         {
-            _logger.LogWarning("事件数据解析失败");
+            _logger.LogWarning("用户创建事件实体为空，跳过处理");
             return;
         }
 
-        var user = userEvent.User;
-        var eventId = $"{eventData.EventType}_{user.UserId}_{eventData.EventId}";
+        _logger.LogInformation("处理用户创建事件: OpenId={OpenId}, Name={Name}",
+            eventEntity.OpenId, eventEntity.Name);
 
-        // 检查幂等性
-        if (await _eventProcessService.IsProcessedAsync(eventId, cancellationToken))
+        var user = await _dbContext.Users
+            .FirstOrDefaultAsync(u => u.FeishuId == eventEntity.OpenId, cancellationToken);
+
+        if (user == null)
         {
-            _logger.LogWarning("用户变更事件已处理: {EventId}", eventId);
-            return;
-        }
-
-        var record = await _eventProcessService.StartProcessAsync(eventId, eventData.EventType, cancellationToken);
-
-        try
-        {
-            var existingUser = await _dbContext.Users
-                .FirstOrDefaultAsync(u => u.FeishuId == user.UserId, cancellationToken);
-
-            if (existingUser == null)
+            user = new User
             {
-                existingUser = new User
-                {
-                    FeishuId = user.UserId ?? string.Empty,
-                    Name = user.Name ?? string.Empty,
-                    Email = user.Email,
-                    Mobile = user.Mobile,
-                    Position = user.Position,
-                    DepartmentId = user.DepartmentId,
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow,
-                    LastSyncedAt = DateTime.UtcNow
-                };
-                _dbContext.Users.Add(existingUser);
-            }
-            else
-            {
-                existingUser.Name = user.Name ?? existingUser.Name;
-                existingUser.Email = user.Email ?? existingUser.Email;
-                existingUser.Mobile = user.Mobile ?? existingUser.Mobile;
-                existingUser.Position = user.Position ?? existingUser.Position;
-                existingUser.DepartmentId = user.DepartmentId ?? existingUser.DepartmentId;
-                existingUser.UpdatedAt = DateTime.UtcNow;
-                existingUser.LastSyncedAt = DateTime.UtcNow;
-            }
-
-            await _dbContext.SaveChangesAsync(cancellationToken);
-            await _eventProcessService.MarkSuccessAsync(record.Id, cancellationToken);
-            _logger.LogInformation("用户同步完成: {UserId}", user.UserId);
+                FeishuId = eventEntity.OpenId ?? string.Empty,
+                Name = eventEntity.Name ?? string.Empty,
+                Email = eventEntity.Email ?? eventEntity.EnterpriseEmail,
+                Mobile = eventEntity.Mobile,
+                Position = eventEntity.JobTitle,
+                DepartmentId = eventEntity.DepartmentIds?.FirstOrDefault(),
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                LastSyncedAt = DateTime.UtcNow
+            };
+            _dbContext.Users.Add(user);
+            _logger.LogInformation("创建新用户: FeishuId={FeishuId}, Name={Name}",
+                user.FeishuId, user.Name);
         }
-        catch (Exception ex)
+        else
         {
-            _logger.LogError(ex, "处理用户变更事件失败: {EventId}", eventId);
-            await _eventProcessService.MarkFailedAsync(record.Id, ex.Message, cancellationToken);
-            throw;
+            user.Name = eventEntity.Name ?? user.Name;
+            user.Email = eventEntity.Email ?? eventEntity.EnterpriseEmail ?? user.Email;
+            user.Mobile = eventEntity.Mobile ?? user.Mobile;
+            user.Position = eventEntity.JobTitle ?? user.Position;
+            user.DepartmentId = eventEntity.DepartmentIds?.FirstOrDefault() ?? user.DepartmentId;
+            user.UpdatedAt = DateTime.UtcNow;
+            user.LastSyncedAt = DateTime.UtcNow;
+            _logger.LogInformation("更新用户: FeishuId={FeishuId}, Name={Name}",
+                user.FeishuId, user.Name);
         }
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        _logger.LogInformation("用户同步完成: OpenId={OpenId}", eventEntity.OpenId);
     }
 }
 
 /// <summary>
-/// 用户变更事件数据
+/// 用户更新事件处理器
+/// <para>处理飞书用户信息更新事件</para>
 /// </summary>
-public class UserChangedEvent
+public class UserUpdatedEventHandler : UserUpdateEventHandler
 {
-    /// <summary>
-    /// 用户信息
-    /// </summary>
-    public UserInfo? User { get; set; }
-}
+    private readonly TaskManageDbContext _dbContext;
 
-/// <summary>
-/// 用户信息
-/// </summary>
-public class UserInfo
-{
-    /// <summary>
-    /// 用户ID
-    /// </summary>
-    public string? UserId { get; set; }
+    public UserUpdatedEventHandler(
+        IFeishuEventDeduplicator businessDeduplicator,
+        ILogger<UserUpdatedEventHandler> logger,
+        TaskManageDbContext dbContext)
+        : base(businessDeduplicator, logger)
+    {
+        _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
+    }
 
-    /// <summary>
-    /// 用户姓名
-    /// </summary>
-    public string? Name { get; set; }
+    protected override async Task ProcessBusinessLogicAsync(
+        EventData eventData,
+        UserUpdateResult? eventEntity,
+        CancellationToken cancellationToken = default)
+    {
+        if (eventEntity?.Object == null)
+        {
+            _logger.LogWarning("用户更新事件实体为空，跳过处理");
+            return;
+        }
 
-    /// <summary>
-    /// 邮箱
-    /// </summary>
-    public string? Email { get; set; }
+        var userInfo = eventEntity.Object;
+        _logger.LogInformation("处理用户更新事件: OpenId={OpenId}, Name={Name}",
+            userInfo.OpenId, userInfo.Name);
 
-    /// <summary>
-    /// 手机号
-    /// </summary>
-    public string? Mobile { get; set; }
+        var user = await _dbContext.Users
+            .FirstOrDefaultAsync(u => u.FeishuId == userInfo.OpenId, cancellationToken);
 
-    /// <summary>
-    /// 职位
-    /// </summary>
-    public string? Position { get; set; }
+        if (user == null)
+        {
+            user = new User
+            {
+                FeishuId = userInfo.OpenId ?? string.Empty,
+                Name = userInfo.Name ?? string.Empty,
+                Email = userInfo.Email ?? userInfo.EnterpriseEmail,
+                Mobile = userInfo.Mobile,
+                Position = userInfo.JobTitle,
+                DepartmentId = userInfo.DepartmentIds?.FirstOrDefault(),
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                LastSyncedAt = DateTime.UtcNow
+            };
+            _dbContext.Users.Add(user);
+            _logger.LogInformation("创建新用户（来自更新事件）: FeishuId={FeishuId}, Name={Name}",
+                user.FeishuId, user.Name);
+        }
+        else
+        {
+            user.Name = userInfo.Name ?? user.Name;
+            user.Email = userInfo.Email ?? userInfo.EnterpriseEmail ?? user.Email;
+            user.Mobile = userInfo.Mobile ?? user.Mobile;
+            user.Position = userInfo.JobTitle ?? user.Position;
+            user.DepartmentId = userInfo.DepartmentIds?.FirstOrDefault() ?? user.DepartmentId;
+            user.UpdatedAt = DateTime.UtcNow;
+            user.LastSyncedAt = DateTime.UtcNow;
+            _logger.LogInformation("更新用户: FeishuId={FeishuId}, Name={Name}",
+                user.FeishuId, user.Name);
+        }
 
-    /// <summary>
-    /// 部门ID
-    /// </summary>
-    public string? DepartmentId { get; set; }
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        _logger.LogInformation("用户更新同步完成: OpenId={OpenId}", userInfo.OpenId);
+    }
 }

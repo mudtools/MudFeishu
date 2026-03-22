@@ -20,7 +20,6 @@ namespace Mud.Feishu.Interfaces;
 [Header(Consts.Authorization)]
 public interface IFeishuV3Spreadsheets : IFeishuAppContextSwitcher
 {
-
     /// <summary>
     /// 创建电子表格
     /// <para>在云空间指定目录下创建电子表格。可自定义表格标题。不支持带内容创建表格。</para>
@@ -39,7 +38,6 @@ public interface IFeishuV3Spreadsheets : IFeishuAppContextSwitcher
     /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
     /// <param name="patchSpreadsheetRequest">修改电子表格属性请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
-    [Post("/open-apis/sheets/v3/spreadsheets")]
     [Patch("/open-apis/sheets/v3/spreadsheets/{spreadsheet_token}")]
     Task<FeishuNullDataApiResult?> PatchSpreadsheetAsync(
       [Path] string spreadsheet_token,
@@ -57,5 +55,18 @@ public interface IFeishuV3Spreadsheets : IFeishuAppContextSwitcher
     Task<FeishuApiResult<GetSpreadsheetResult>?> GetSpreadsheetByTokenAsync(
         [Path] string? spreadsheet_token,
         [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
+        CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 操作工作表，根据电子表格的 token 对工作表进行操作，包括增加工作表、复制工作表、删除工作表。
+    /// </summary>
+    /// <param name="batchUpdateSheetRequest">操作工作表请求体</param>
+    /// <param name="spreadsheet_token">文件夹的 token。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Post("/open-apis/sheets/v2/spreadsheets/{spreadsheet_token}/sheets_batch_update")]
+    Task<FeishuApiResult<BatchUpdateSheetResult>?> BatchUpdateSheetAsync(
+        [Path] string? spreadsheet_token,
+        [Body] BatchUpdateSheetRequest batchUpdateSheetRequest,
         CancellationToken cancellationToken = default);
 }

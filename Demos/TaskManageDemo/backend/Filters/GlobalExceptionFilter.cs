@@ -54,7 +54,7 @@ public class GlobalExceptionFilter : IExceptionFilter
 
         // 根据异常类型设置 HTTP 状态码
         var statusCode = GetStatusCode(exception);
-        
+
         context.Result = new ObjectResult(errorResponse)
         {
             StatusCode = statusCode,
@@ -70,7 +70,7 @@ public class GlobalExceptionFilter : IExceptionFilter
     private void LogException(Exception exception, string requestId, ExceptionContext context)
     {
         var request = context.HttpContext.Request;
-        
+
         _logger.LogError(
             exception,
             "未处理的异常: RequestId={RequestId}, Method={Method}, Path={Path}, Message={Message}",

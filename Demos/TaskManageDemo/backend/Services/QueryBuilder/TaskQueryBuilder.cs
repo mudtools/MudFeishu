@@ -30,8 +30,8 @@ public class TaskQueryBuilder
     {
         if (!string.IsNullOrWhiteSpace(keyword))
         {
-            _query = _query.Where(t => 
-                t.Summary.Contains(keyword) || 
+            _query = _query.Where(t =>
+                t.Summary.Contains(keyword) ||
                 (t.Description != null && t.Description.Contains(keyword)));
         }
         return this;
@@ -73,7 +73,7 @@ public class TaskQueryBuilder
     {
         if (assigneeId.HasValue)
         {
-            _query = _query.Where(t => 
+            _query = _query.Where(t =>
                 t.Members.Any(m => m.UserId == assigneeId.Value && m.Role == TaskMemberRoles.Assignee));
         }
         return this;
@@ -116,9 +116,9 @@ public class TaskQueryBuilder
         if (overdue == true)
         {
             var now = DateTime.UtcNow;
-            _query = _query.Where(t => 
-                !t.IsCompleted && 
-                t.DueTime != null && 
+            _query = _query.Where(t =>
+                !t.IsCompleted &&
+                t.DueTime != null &&
                 t.DueTime < now);
         }
         return this;
@@ -152,20 +152,20 @@ public class TaskQueryBuilder
     {
         _query = sortBy?.ToLower() switch
         {
-            "created" => sortDescending 
-                ? _query.OrderByDescending(t => t.CreatedAt) 
+            "created" => sortDescending
+                ? _query.OrderByDescending(t => t.CreatedAt)
                 : _query.OrderBy(t => t.CreatedAt),
-            "due" => sortDescending 
-                ? _query.OrderByDescending(t => t.DueTime) 
+            "due" => sortDescending
+                ? _query.OrderByDescending(t => t.DueTime)
                 : _query.OrderBy(t => t.DueTime),
-            "priority" => sortDescending 
-                ? _query.OrderByDescending(t => t.Priority) 
+            "priority" => sortDescending
+                ? _query.OrderByDescending(t => t.Priority)
                 : _query.OrderBy(t => t.Priority),
-            "updated" => sortDescending 
-                ? _query.OrderByDescending(t => t.UpdatedAt) 
+            "updated" => sortDescending
+                ? _query.OrderByDescending(t => t.UpdatedAt)
                 : _query.OrderBy(t => t.UpdatedAt),
-            _ => sortDescending 
-                ? _query.OrderByDescending(t => t.CreatedAt) 
+            _ => sortDescending
+                ? _query.OrderByDescending(t => t.CreatedAt)
                 : _query.OrderBy(t => t.CreatedAt)
         };
         return this;
@@ -175,8 +175,8 @@ public class TaskQueryBuilder
     /// 应用分页
     /// </summary>
     public async Task<(List<TaskSync> Items, int Total)> WithPagingAsync(
-        int page, 
-        int pageSize, 
+        int page,
+        int pageSize,
         CancellationToken cancellationToken = default)
     {
         var total = await _query.CountAsync(cancellationToken);

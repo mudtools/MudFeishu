@@ -6,7 +6,6 @@
 // -----------------------------------------------------------------------
 
 using Microsoft.EntityFrameworkCore;
-using TaskManageDemo.Backend.EventHandlers;
 using TaskManageDemo.Backend.Models.Entities;
 using TaskManageDemo.Backend.Services.Templates;
 
@@ -64,11 +63,6 @@ public class TaskManageDbContext : DbContext
     /// 任务模板表
     /// </summary>
     public DbSet<TaskTemplate> TaskTemplates => Set<TaskTemplate>();
-
-    /// <summary>
-    /// 事件处理记录表
-    /// </summary>
-    public DbSet<EventProcessRecord> EventProcessRecords => Set<EventProcessRecord>();
 
     /// <summary>
     /// 权限定义表
@@ -200,17 +194,6 @@ public class TaskManageDbContext : DbContext
             entity.HasIndex(e => e.Name);
 
             entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
-        });
-
-        modelBuilder.Entity<EventProcessRecord>(entity =>
-        {
-            entity.HasKey(e => e.Id);
-            entity.HasIndex(e => e.EventId).IsUnique();
-            entity.HasIndex(e => e.Status);
-            entity.HasIndex(e => e.NextRetryAt);
-
-            entity.Property(e => e.EventId).IsRequired().HasMaxLength(200);
-            entity.Property(e => e.EventType).IsRequired().HasMaxLength(100);
         });
 
         modelBuilder.Entity<Permission>(entity =>

@@ -5,192 +5,92 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-using Microsoft.Extensions.Logging;
+using Mud.Feishu.Abstractions;
+using Mud.Feishu.Abstractions.DataModels.Approval;
+using Mud.Feishu.Abstractions.EventHandlers;
+using Mud.Feishu.Abstractions.Services;
 using TaskManageDemo.Backend.Data;
-using TaskManageDemo.Backend.Models.Entities;
 
 namespace TaskManageDemo.Backend.EventHandlers;
 
 /// <summary>
 /// 审批实例事件处理器
-/// 处理飞书审批实例的回调事件
+/// <para>处理飞书审批实例状态变更事件</para>
 /// </summary>
-public class ApprovalInstanceEventHandler
+public class FeishuApprovalInstanceEventHandler : global::Mud.Feishu.Abstractions.EventHandlers.ApprovalInstanceEventHandler
 {
     private readonly TaskManageDbContext _dbContext;
-    private readonly ILogger<ApprovalInstanceEventHandler> _logger;
-    private readonly IEventProcessService _eventProcessService;
 
-    public ApprovalInstanceEventHandler(
-        TaskManageDbContext dbContext,
-        ILogger<ApprovalInstanceEventHandler> logger,
-        IEventProcessService eventProcessService)
+    public FeishuApprovalInstanceEventHandler(
+        IFeishuEventDeduplicator businessDeduplicator,
+        ILogger<FeishuApprovalInstanceEventHandler> logger,
+        TaskManageDbContext dbContext)
+        : base(businessDeduplicator, logger)
     {
-        _dbContext = dbContext;
-        _logger = logger;
-        _eventProcessService = eventProcessService;
+        _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
     }
 
-    /// <summary>
-    /// 处理审批实例开始事件
-    /// </summary>
-    public async Task HandleApprovalStartedAsync(
-        string instanceId,
-        string approvalCode,
-        string userId,
+    protected override async Task ProcessBusinessLogicAsync(
+        EventData eventData,
+        ApprovalInstanceResult? eventEntity,
         CancellationToken cancellationToken = default)
     {
-        var eventId = $"approval_started_{instanceId}";
-
-        // 检查幂等性
-        if (await _eventProcessService.IsProcessedAsync(eventId, cancellationToken))
+        if (eventEntity == null)
         {
-            _logger.LogWarning("审批开始事件已处理: {InstanceId}", instanceId);
+            _logger.LogWarning("审批实例事件实体为空，跳过处理");
             return;
         }
 
-        var record = await _eventProcessService.StartProcessAsync(eventId, "ApprovalStarted", cancellationToken);
+        var instanceCode = eventEntity.InstanceCode;
+        var approvalCode = eventEntity.ApprovalCode;
+        var status = eventEntity.Status;
 
-        try
+        _logger.LogInformation("处理审批实例状态变更事件: InstanceCode={InstanceCode}, ApprovalCode={ApprovalCode}, Status={Status}",
+            instanceCode, approvalCode, status);
+
+        var statusDescription = status switch
         {
-            _logger.LogInformation("处理审批开始事件: InstanceId={InstanceId}, ApprovalCode={ApprovalCode}", 
-                instanceId, approvalCode);
+            "PENDING" => "审批中",
+            "APPROVED" => "已通过",
+            "REJECTED" => "已拒绝",
+            "CANCELED" => "已撤回",
+            "DELETED" => "已删除",
+            "REVERTED" => "已撤销",
+            "OVERTIME_CLOSE" => "超时被关闭",
+            "OVERTIME_RECOVER" => "超时实例被恢复",
+            _ => "未知状态"
+        };
 
-            // 记录审批历史
-            var history = new ApprovalHistory
-            {
-                InstanceId = instanceId,
-                ApprovalCode = approvalCode,
-                UserId = userId,
-                Action = "started",
-                ActionTime = DateTime.UtcNow,
-                CreatedAt = DateTime.UtcNow
-            };
+        _logger.LogDebug("审批状态: {StatusDescription}", statusDescription);
 
-            _dbContext.Add(history);
-            await _dbContext.SaveChangesAsync(cancellationToken);
-
-            await _eventProcessService.MarkSuccessAsync(record.Id, cancellationToken);
-            _logger.LogInformation("审批开始事件处理完成: {InstanceId}", instanceId);
-        }
-        catch (Exception ex)
+        var history = new ApprovalHistory
         {
-            _logger.LogError(ex, "处理审批开始事件失败: {InstanceId}", instanceId);
-            await _eventProcessService.MarkFailedAsync(record.Id, ex.Message, cancellationToken);
-            throw;
+            InstanceId = instanceCode ?? string.Empty,
+            ApprovalCode = approvalCode ?? string.Empty,
+            UserId = eventData.AppId ?? string.Empty,
+            Action = status ?? string.Empty,
+            ActionTime = DateTime.UtcNow,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _dbContext.Add(history);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        if (status == "APPROVED" || status == "REJECTED")
+        {
+            await UpdateRelatedTaskStatusAsync(instanceCode ?? string.Empty, status, cancellationToken);
         }
+
+        _logger.LogInformation("审批实例事件处理完成: InstanceCode={InstanceCode}, Status={Status}",
+            instanceCode, status);
     }
 
-    /// <summary>
-    /// 处理审批实例通过事件
-    /// </summary>
-    public async Task HandleApprovalPassedAsync(
-        string instanceId,
-        string approvalCode,
-        string userId,
-        CancellationToken cancellationToken = default)
-    {
-        var eventId = $"approval_passed_{instanceId}";
-
-        if (await _eventProcessService.IsProcessedAsync(eventId, cancellationToken))
-        {
-            _logger.LogWarning("审批通过事件已处理: {InstanceId}", instanceId);
-            return;
-        }
-
-        var record = await _eventProcessService.StartProcessAsync(eventId, "ApprovalPassed", cancellationToken);
-
-        try
-        {
-            _logger.LogInformation("处理审批通过事件: InstanceId={InstanceId}", instanceId);
-
-            var history = new ApprovalHistory
-            {
-                InstanceId = instanceId,
-                ApprovalCode = approvalCode,
-                UserId = userId,
-                Action = "passed",
-                ActionTime = DateTime.UtcNow,
-                CreatedAt = DateTime.UtcNow
-            };
-
-            _dbContext.Add(history);
-            await _dbContext.SaveChangesAsync(cancellationToken);
-
-            // 更新关联任务状态（如果有）
-            await UpdateRelatedTaskStatusAsync(instanceId, "approved", cancellationToken);
-
-            await _eventProcessService.MarkSuccessAsync(record.Id, cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "处理审批通过事件失败: {InstanceId}", instanceId);
-            await _eventProcessService.MarkFailedAsync(record.Id, ex.Message, cancellationToken);
-            throw;
-        }
-    }
-
-    /// <summary>
-    /// 处理审批实例拒绝事件
-    /// </summary>
-    public async Task HandleApprovalRejectedAsync(
-        string instanceId,
-        string approvalCode,
-        string userId,
-        string? rejectReason,
-        CancellationToken cancellationToken = default)
-    {
-        var eventId = $"approval_rejected_{instanceId}";
-
-        if (await _eventProcessService.IsProcessedAsync(eventId, cancellationToken))
-        {
-            _logger.LogWarning("审批拒绝事件已处理: {InstanceId}", instanceId);
-            return;
-        }
-
-        var record = await _eventProcessService.StartProcessAsync(eventId, "ApprovalRejected", cancellationToken);
-
-        try
-        {
-            _logger.LogInformation("处理审批拒绝事件: InstanceId={InstanceId}", instanceId);
-
-            var history = new ApprovalHistory
-            {
-                InstanceId = instanceId,
-                ApprovalCode = approvalCode,
-                UserId = userId,
-                Action = "rejected",
-                ActionTime = DateTime.UtcNow,
-                Comment = rejectReason,
-                CreatedAt = DateTime.UtcNow
-            };
-
-            _dbContext.Add(history);
-            await _dbContext.SaveChangesAsync(cancellationToken);
-
-            // 更新关联任务状态
-            await UpdateRelatedTaskStatusAsync(instanceId, "rejected", cancellationToken);
-
-            await _eventProcessService.MarkSuccessAsync(record.Id, cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "处理审批拒绝事件失败: {InstanceId}", instanceId);
-            await _eventProcessService.MarkFailedAsync(record.Id, ex.Message, cancellationToken);
-            throw;
-        }
-    }
-
-    /// <summary>
-    /// 更新关联任务状态
-    /// </summary>
     private async Task UpdateRelatedTaskStatusAsync(
         string instanceId,
         string status,
         CancellationToken cancellationToken)
     {
-        // TODO: 实现任务-审批关联逻辑
-        _logger.LogInformation("更新任务审批状态: InstanceId={InstanceId}, Status={Status}", 
+        _logger.LogInformation("更新任务审批状态: InstanceId={InstanceId}, Status={Status}",
             instanceId, status);
         await Task.CompletedTask;
     }

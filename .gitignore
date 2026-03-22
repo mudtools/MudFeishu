@@ -92,3 +92,4 @@ node_modules
 /Demos/FeishuFileServer/backend/bin
 /Demos/FeishuFileServer/backend/logs
 /Demos/FeishuFileServer/frontend/dist
+/Demos/TaskManageDemo/backend/DB

@@ -7,8 +7,10 @@
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using Mud.Feishu.Abstractions.Interceptors;
 using TaskManageDemo.Backend.Data;
 using TaskManageDemo.Backend.EventHandlers;
+using TaskManageDemo.Backend.Interceptors;
 using TaskManageDemo.Backend.Models.DTOs;
 using TaskManageDemo.Backend.Services;
 using TaskManageDemo.Backend.Services.Approval;
@@ -92,8 +94,14 @@ public static class ServiceCollectionExtensions
         IConfiguration configuration)
     {
         services.CreateFeishuWebhookServiceBuilder(configuration, "FeishuWebhook")
-            .AddHandler<UserChangedEventHandler>()
-            .AddHandler<TaskChangedEventHandler>()
+            .AddInterceptor<LoggingEventInterceptor>()
+            .AddInterceptor<TelemetryEventInterceptor>(sp => new TelemetryEventInterceptor("TaskManageDemo.Backend"))
+            .AddInterceptor<AuditLogInterceptor>()
+            .AddInterceptor<PerformanceMonitoringInterceptor>()
+            .AddHandler<UserCreatedEventHandler>()
+            .AddHandler<UserUpdatedEventHandler>()
+            .AddHandler<FeishuTaskUpdatedEventHandler>()
+            .AddHandler<FeishuApprovalInstanceEventHandler>()
             .Build();
 
         return services;
@@ -110,7 +118,6 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IFeishuNotificationService, FeishuNotificationService>();
         services.AddScoped<IFeishuAuthService, FeishuAuthService>();
         services.AddScoped<ITaskSyncService, TaskSyncService>();
-        services.AddScoped<IEventProcessService, EventProcessService>();
         services.AddScoped<ITaskSearchService, TaskSearchService>();
         services.AddScoped<ITaskTemplateService, TaskTemplateService>();
         services.AddScoped<IStatisticsService, StatisticsService>();

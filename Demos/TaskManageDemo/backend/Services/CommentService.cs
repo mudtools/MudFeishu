@@ -152,7 +152,7 @@ public class CommentService : ICommentService
 
         await _dbContext.SaveChangesAsync(cancellationToken);
 
-        _logger.LogInformation("删除评论: CommentId={CommentId}, UserId={UserId}, IsAdmin={IsAdmin}", 
+        _logger.LogInformation("删除评论: CommentId={CommentId}, UserId={UserId}, IsAdmin={IsAdmin}",
             commentId, userId, isAdmin);
 
         return true;

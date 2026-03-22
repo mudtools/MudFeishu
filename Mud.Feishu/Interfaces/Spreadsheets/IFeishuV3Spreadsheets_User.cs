@@ -17,6 +17,6 @@ namespace Mud.Feishu;
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Spreadsheets", InheritedFrom = nameof(FeishuV3Spreadsheets))]
 [Header(Consts.Authorization)]
 [Token(TokenType.TenantAccessToken)]
-public interface IFeishuTenantV3Spreadsheets : IFeishuV3Spreadsheets
+public interface IFeishuTenantV3Spreadsheets : IFeishuV3Spreadsheets, ICurrentUserId
 {
 }

@@ -63,6 +63,11 @@ public enum FeishuModule
     Docx,
 
     /// <summary>
+    /// 飞书电子表格管理
+    /// </summary>
+    Spreadsheets,
+
+    /// <summary>
     /// 所有功能
     /// </summary>
     All

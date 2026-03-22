@@ -44,6 +44,7 @@ public class FeishuServiceBuilder
             [FeishuModule.Drive] = new DriveModuleRegistrar(),
             [FeishuModule.Wiki] = new WikiModuleRegistrar(),
             [FeishuModule.Docx] = new DocxModuleRegistrar(),
+            [FeishuModule.Spreadsheets] = new SpreadsheetsModuleRegistrar()
         };
     }
 
@@ -102,6 +103,12 @@ public class FeishuServiceBuilder
     public FeishuServiceBuilder AddDocxApi() => AddModule(FeishuModule.Docx);
 
     /// <summary>
+    /// 添加电子表格管理 API 服务
+    /// </summary>
+    /// <returns>建造者实例，支持链式调用</returns>
+    public FeishuServiceBuilder AddSpreadsheetsApi() => AddModule(FeishuModule.Spreadsheets);
+
+    /// <summary>
     /// 添加飞书云盘管理 API 服务
     /// </summary>
     /// <returns>建造者实例，支持链式调用</returns>
@@ -122,6 +129,7 @@ public class FeishuServiceBuilder
                .AddDriveApi()
                .AddWikiApi()
                .AddDocxApi()
+               .AddSpreadsheetsApi()
                .AddAttendanceApi();
     }
 

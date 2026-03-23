@@ -43,6 +43,7 @@ public class FeishuTaskService : IFeishuTaskService
         List<string>? assignees,
         DateTime? dueTime,
         DateTime? startTime = null,
+        string? taskListGuid = null,
         CancellationToken cancellationToken = default)
     {
         var request = new CreateTaskRequest
@@ -60,7 +61,10 @@ public class FeishuTaskService : IFeishuTaskService
                 Id = a,
                 Type = "user",
                 Role = "assignee"
-            }).ToArray()
+            }).ToArray(),
+            Tasklists = !string.IsNullOrEmpty(taskListGuid)
+                ? new TaskInTaskListInfo[] { new TaskInTaskListInfo { TasklistGuid = taskListGuid } }
+                : null
         };
 
         var result = await _taskApi.CreateTaskAsync(request, cancellationToken: cancellationToken);

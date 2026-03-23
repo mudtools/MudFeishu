@@ -129,67 +129,14 @@
     </div>
 
     <!-- 新建任务对话框 -->
-    <el-dialog
-      v-model="createDialogVisible"
-      title="新建任务"
-      width="500px"
-      destroy-on-close
-      class="kanban-dialog"
-    >
-      <el-form
-        ref="formRef"
-        :model="taskForm"
-        :rules="formRules"
-        label-position="top"
-        class="task-form"
-      >
-        <el-form-item label="任务标题" prop="summary">
-          <el-input v-model="taskForm.summary" placeholder="请输入任务标题" size="large" />
-        </el-form-item>
-        <el-form-item label="任务描述" prop="description">
-          <el-input
-            v-model="taskForm.description"
-            type="textarea"
-            :rows="3"
-            placeholder="请输入任务描述（可选）"
-          />
-        </el-form-item>
-        <div class="form-row">
-          <el-form-item label="优先级" prop="priority" class="form-col">
-            <el-select v-model="taskForm.priority" placeholder="选择优先级" style="width: 100%">
-              <el-option label="低" :value="1" />
-              <el-option label="中" :value="2" />
-              <el-option label="高" :value="3" />
-              <el-option label="紧急" :value="4" />
-            </el-select>
-          </el-form-item>
-          <el-form-item label="截止时间" prop="dueTime" class="form-col">
-            <el-date-picker
-              v-model="taskForm.dueTime"
-              type="datetime"
-              placeholder="选择截止时间"
-              format="YYYY-MM-DD HH:mm"
-              value-format="YYYY-MM-DDTHH:mm:ss"
-              style="width: 100%"
-            />
-          </el-form-item>
-        </div>
-      </el-form>
-      <template #footer>
-        <div class="dialog-footer">
-          <el-button @click="createDialogVisible = false">取消</el-button>
-          <el-button type="primary" :loading="submitting" @click="handleCreate">创建</el-button>
-        </div>
-      </template>
-    </el-dialog>
+    <CreateTaskDialog v-model="createDialogVisible" @success="handleCreateSuccess" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import type { FormInstance, FormRules } from 'element-plus'
 import {
   Plus,
   Clock,
@@ -199,8 +146,9 @@ import {
   Delete
 } from '@element-plus/icons-vue'
 import { useTaskStore } from '../stores/task'
-import type { Task, CreateTaskRequest } from '../types'
+import type { Task } from '../types'
 import { TaskPriorityTag, UserAvatar, TaskStatusTag } from '../components'
+import CreateTaskDialog from '../components/CreateTaskDialog.vue'
 import dayjs from 'dayjs'
 
 const router = useRouter()
@@ -213,19 +161,8 @@ const columns = [
 ]
 
 const createDialogVisible = ref(false)
-const submitting = ref(false)
-const formRef = ref<FormInstance>()
 const draggedTask = ref<Task | null>(null)
 const dragOverColumn = ref<string | null>(null)
-
-const taskForm = reactive<CreateTaskRequest>({
-  summary: '',
-  priority: 2,
-})
-
-const formRules: FormRules = {
-  summary: [{ required: true, message: '请输入任务标题', trigger: 'blur' }],
-}
 
 const formatDate = (date: string) => dayjs(date).format('MM-DD HH:mm')
 
@@ -279,8 +216,11 @@ const handleDrop = async (_event: DragEvent, status: string) => {
 const goToTask = (id: number) => router.push(`/tasks/${id}`)
 
 const showCreateDialog = (_status?: string) => {
-  Object.assign(taskForm, { summary: '', priority: 2, dueTime: '' })
   createDialogVisible.value = true
+}
+
+const handleCreateSuccess = () => {
+  taskStore.fetchTasks({ includeCompleted: true, pageSize: 100 })
 }
 
 const handleTaskCommand = async (command: string, task: Task) => {
@@ -306,23 +246,6 @@ const handleTaskCommand = async (command: string, task: Task) => {
       }
       break
   }
-}
-
-const handleCreate = async () => {
-  if (!formRef.value) return
-  await formRef.value.validate(async (valid) => {
-    if (!valid) return
-    submitting.value = true
-    try {
-      await taskStore.createTask(taskForm)
-      ElMessage.success('任务创建成功')
-      createDialogVisible.value = false
-    } catch {
-      ElMessage.error('任务创建失败')
-    } finally {
-      submitting.value = false
-    }
-  })
 }
 
 onMounted(() => {
@@ -578,41 +501,5 @@ onMounted(() => {
 .task-card-leave-to {
   opacity: 0;
   transform: translateY(20px);
-}
-
-/* 对话框 */
-.kanban-dialog :deep(.el-dialog__header) {
-  padding: 20px 24px;
-  border-bottom: 1px solid var(--border-light);
-}
-
-.kanban-dialog :deep(.el-dialog__body) {
-  padding: 24px;
-}
-
-.kanban-dialog :deep(.el-dialog__footer) {
-  padding: 16px 24px;
-  border-top: 1px solid var(--border-light);
-}
-
-.task-form :deep(.el-form-item__label) {
-  font-weight: 500;
-  color: var(--text-primary);
-  padding-bottom: 8px;
-}
-
-.form-row {
-  display: flex;
-  gap: 16px;
-}
-
-.form-col {
-  flex: 1;
-}
-
-.dialog-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
 }
 </style>

@@ -209,6 +209,7 @@ public class TaskService : ITaskService
             request.AssigneeIds,
             request.DueTime,
             request.StartTime,
+            request.TaskListGuid,
             cancellationToken);
 
         if (string.IsNullOrEmpty(taskGuid))

@@ -180,6 +180,22 @@ using (var scope = app.Services.CreateScope())
 
     try
     {
+        var dbPath = builder.Configuration.GetConnectionString("DefaultConnection");
+        if (!string.IsNullOrEmpty(dbPath))
+        {
+            var dataSourceMatch = System.Text.RegularExpressions.Regex.Match(dbPath, @"Data Source=(.+?)(?:;|$)");
+            if (dataSourceMatch.Success)
+            {
+                var dbFilePath = dataSourceMatch.Groups[1].Value;
+                var dbDirectory = Path.GetDirectoryName(dbFilePath);
+                if (!string.IsNullOrEmpty(dbDirectory) && !Directory.Exists(dbDirectory))
+                {
+                    Directory.CreateDirectory(dbDirectory);
+                    logger.LogInformation("创建数据库目录: {Directory}", dbDirectory);
+                }
+            }
+        }
+
         // 生产环境使用 Migrate() 而不是 EnsureCreated()
         if (app.Environment.IsProduction())
         {

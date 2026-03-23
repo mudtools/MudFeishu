@@ -1,6 +1,6 @@
 # FeishuFileServer - 飞书云盘文件管理系统
 
-基于飞书开放平台的云盘文件管理系统，支持大文件分片上传、文件分享、版本管理等功能。
+基于飞书开放平台的企业级云盘文件管理系统，支持大文件分片上传、飞书云空间同步、文件分享、版本管理等完整功能。
 
 ## 目录
 
@@ -17,25 +17,41 @@
 
 ### 文件管理
 
-- 📁 **文件夹管理** - 创建、重命名、删除文件夹
-- 📄 **文件上传** - 支持普通上传和分片上传
-- 📥 **文件下载** - 单文件下载和批量下载
+- 📁 **文件夹管理** - 创建、重命名、移动、删除文件夹，支持多级目录
+- 📄 **文件上传** - 支持普通上传和大文件分片上传
+- 📥 **文件下载** - 单文件下载和批量打包下载
 - 🔄 **文件操作** - 重命名、移动、复制、删除
 - 🗑️ **回收站** - 文件回收站和恢复功能
+- 📋 **文件详情** - 独立的文件详情页面，查看文件信息
+
+### 飞书云空间集成
+
+- ☁️ **云空间同步** - 一键同步飞书云盘文件和文件夹到本地系统
+- 📊 **同步状态** - 实时显示同步进度和统计信息
+- 🔄 **增量同步** - 智能识别新增和更新的文件
+- 📁 **文件夹同步** - 支持同步指定文件夹
 
 ### 高级功能
 
-- 🚀 **大文件分片上传** - 支持断点续传
-- ☁️ **飞书云空间集成** - 文件存储到飞书云盘
-- 🔗 **文件分享** - 创建分享链接和密码保护
-- 📜 **版本管理** - 文件版本历史和回滚
-- 📊 **操作日志** - 完整的操作记录
+- 🚀 **大文件分片上传** - 支持断点续传，最大支持 500MB
+- 🔗 **文件分享** - 创建分享链接，支持密码保护和过期时间
+- 📜 **版本管理** - 文件版本历史、版本下载、版本恢复
+- 📊 **操作日志** - 完整的操作记录，支持按时间、类型筛选
+- 📦 **批量操作** - 批量下载、移动、复制、删除
 
 ### 用户系统
 
-- 🔐 **用户认证** - JWT Token 认证
-- 👤 **用户管理** - 个人资料和密码修改
-- 🛡️ **权限控制** - 基于用户的文件权限
+- 🔐 **用户认证** - JWT Token 认证，支持 Token 刷新
+- 👤 **用户管理** - 个人资料修改、密码修改
+- 🛡️ **权限控制** - 基于用户的文件权限，路由级别权限守卫
+- 🔒 **安全登录** - 登录状态持久化，自动跳转
+
+### 界面特性
+
+- 🌓 **主题切换** - 支持亮色/暗色主题，自动跟随系统
+- 📱 **响应式设计** - 完美适配桌面端和移动端
+- ✨ **现代 UI** - 基于 Element Plus 的现代化界面设计
+- 🎨 **玻璃拟态** - 精美的视觉效果和动画过渡
 
 ## 系统架构
 
@@ -48,6 +64,9 @@
 │  └─────────────┘  └─────────────┘  └─────────────┘              │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐              │
 │  │ ChunkUploader│  │ ShareDialog │  │ VersionHist │              │
+│  └─────────────┘  └─────────────┘  └─────────────┘              │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐              │
+│  │  SyncPanel  │  │ MoveDialog  │  │ OperationLog│              │
 │  └─────────────┘  └─────────────┘  └─────────────┘              │
 ├─────────────────────────────────────────────────────────────────┤
 │                         API Layer (Axios)                        │
@@ -62,6 +81,9 @@
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐              │
 │  │ BatchController│ │ShareController│ │ChunkUpload │              │
 │  └─────────────┘  └─────────────┘  └─────────────┘              │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐              │
+│  │ SyncController│ │VersionsCtrl │  │ RecycleBin  │              │
+│  └─────────────┘  └─────────────┘  └─────────────┘              │
 ├─────────────────────────────────────────────────────────────────┤
 │                        Service Layer                             │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐              │
@@ -69,6 +91,9 @@
 │  └─────────────┘  └─────────────┘  └─────────────┘              │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐              │
 │  │ChunkUpload  │  │ShareService │  │FeishuDrive  │              │
+│  └─────────────┘  └─────────────┘  └─────────────┘              │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐              │
+│  │FeishuSync   │  │VersionSvc   │  │OperationLog │              │
 │  └─────────────┘  └─────────────┘  └─────────────┘              │
 ├─────────────────────────────────────────────────────────────────┤
 │                      Data Access Layer                           │
@@ -259,8 +284,11 @@ VITE_API_BASE_URL=http://localhost:5000
 | **认证**     | `POST /api/auth/login`                       | 用户登录       |
 |              | `POST /api/auth/register`                    | 用户注册       |
 |              | `GET /api/auth/profile`                      | 获取用户信息   |
+|              | `PUT /api/auth/profile`                      | 更新用户资料   |
+|              | `PUT /api/auth/password`                     | 修改密码       |
 | **文件**     | `POST /api/files/upload`                     | 上传文件       |
 |              | `GET /api/files`                             | 获取文件列表   |
+|              | `GET /api/files/{token}`                     | 获取文件详情   |
 |              | `GET /api/files/{token}/download`            | 下载文件       |
 |              | `DELETE /api/files/{token}`                  | 删除文件       |
 | **文件夹**   | `POST /api/folders`                          | 创建文件夹     |
@@ -274,9 +302,18 @@ VITE_API_BASE_URL=http://localhost:5000
 |              | `POST /api/batch/copy`                       | 批量复制       |
 |              | `POST /api/batch/download`                   | 批量下载       |
 | **分享**     | `POST /api/shares`                           | 创建分享       |
+|              | `GET /api/shares`                            | 获取分享列表   |
 |              | `GET /api/shares/{code}`                     | 访问分享       |
+| **同步**     | `POST /api/sync/all`                         | 同步所有文件   |
+|              | `POST /api/sync/folder/{token}`              | 同步指定文件夹 |
+|              | `GET /api/sync/status`                       | 获取同步状态   |
+| **版本**     | `GET /api/files/{token}/versions`            | 获取版本列表   |
+|              | `POST /api/files/{token}/versions`           | 创建新版本     |
+|              | `GET /api/files/{token}/versions/{v}/download` | 下载版本   |
+|              | `PUT /api/files/{token}/versions/{v}/restore` | 恢复版本   |
 | **回收站**   | `GET /api/recyclebin/files`                  | 获取已删除文件 |
 |              | `POST /api/recyclebin/files/{token}/restore` | 恢复文件       |
+| **日志**     | `GET /api/logs`                              | 获取操作日志   |
 
 ## 项目结构
 
@@ -290,6 +327,8 @@ FeishuFileServer/
 │   │   ├── BatchController.cs        # 批量操作控制器
 │   │   ├── ChunkUploadController.cs  # 分片上传控制器
 │   │   ├── SharesController.cs       # 分享控制器
+│   │   ├── SyncController.cs         # 同步控制器
+│   │   ├── VersionsController.cs     # 版本控制器
 │   │   ├── RecycleBinController.cs   # 回收站控制器
 │   │   └── LogsController.cs         # 日志控制器
 │   ├── Services/                     # 业务服务
@@ -301,7 +340,10 @@ FeishuFileServer/
 │   │   ├── AuthService.cs
 │   │   ├── ChunkUploadService.cs
 │   │   ├── BatchService.cs
-│   │   └── ShareService.cs
+│   │   ├── ShareService.cs
+│   │   ├── FeishuSyncService.cs      # 飞书同步服务
+│   │   ├── VersionService.cs         # 版本服务
+│   │   └── OperationLogService.cs    # 操作日志服务
 │   ├── Models/                       # 数据模型
 │   │   ├── DTOs/                     # 数据传输对象
 │   │   ├── User.cs
@@ -326,21 +368,35 @@ FeishuFileServer/
 │   │   ├── components/               # 组件
 │   │   │   ├── FileList.vue          # 文件列表
 │   │   │   ├── FolderTree.vue        # 文件夹树
+│   │   │   ├── FolderTreeNode.vue    # 文件夹树节点
 │   │   │   ├── ChunkUploader.vue     # 分片上传
+│   │   │   ├── FileUpload.vue        # 文件上传
 │   │   │   ├── FolderDialog.vue      # 文件夹对话框
+│   │   │   ├── MoveDialog.vue        # 移动对话框
+│   │   │   ├── RenameDialog.vue      # 重命名对话框
 │   │   │   ├── ShareDialog.vue       # 分享对话框
-│   │   │   └── VersionHistory.vue    # 版本历史
+│   │   │   ├── VersionHistory.vue    # 版本历史
+│   │   │   ├── SyncPanel.vue         # 同步面板
+│   │   │   ├── OperationLogDrawer.vue # 操作日志抽屉
+│   │   │   ├── UserProfileDialog.vue # 用户资料对话框
+│   │   │   └── ChangePasswordDialog.vue # 修改密码对话框
 │   │   ├── views/                    # 页面
 │   │   │   ├── FileManager.vue       # 文件管理主页
+│   │   │   ├── FileDetail.vue        # 文件详情页
 │   │   │   ├── LoginView.vue         # 登录页
 │   │   │   ├── RecycleBin.vue        # 回收站
-│   │   │   └── ShareList.vue         # 分享列表
+│   │   │   ├── ShareList.vue         # 分享列表
+│   │   │   ├── ShareAccess.vue       # 分享访问页
+│   │   │   └── NotFound.vue          # 404页面
 │   │   ├── stores/                   # 状态管理
-│   │   │   ├── authStore.ts
-│   │   │   ├── fileStore.ts
-│   │   │   └── folderStore.ts
+│   │   │   ├── authStore.ts          # 认证状态
+│   │   │   ├── fileStore.ts          # 文件状态
+│   │   │   ├── folderStore.ts        # 文件夹状态
+│   │   │   └── appStore.ts           # 应用状态
 │   │   ├── router/                   # 路由配置
+│   │   │   └── index.ts
 │   │   ├── styles/                   # 样式文件
+│   │   │   └── main.scss             # 主样式
 │   │   ├── utils/                    # 工具函数
 │   │   ├── App.vue                   # 根组件
 │   │   └── main.ts                   # 入口文件
@@ -349,7 +405,11 @@ FeishuFileServer/
 │   ├── vite.config.ts
 │   └── tsconfig.json
 │
-└── README.md                         # 项目文档
+├── build-backend.bat                  # 后端构建脚本
+├── build-frontend.bat                 # 前端构建脚本
+├── run-backend.bat                    # 后端运行脚本
+├── run-frontend.bat                   # 前端运行脚本
+└── README.md                          # 项目文档
 ```
 
 ## 开发指南

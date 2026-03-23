@@ -54,6 +54,23 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<FeishuFileDbContext>();
+
+    var dbPath = builder.Configuration.GetConnectionString("DefaultConnection");
+    if (!string.IsNullOrEmpty(dbPath))
+    {
+        var dataSourceMatch = System.Text.RegularExpressions.Regex.Match(dbPath, @"Data Source=(.+?)(?:;|$)");
+        if (dataSourceMatch.Success)
+        {
+            var dbFilePath = dataSourceMatch.Groups[1].Value;
+            var dbDirectory = Path.GetDirectoryName(dbFilePath);
+            if (!string.IsNullOrEmpty(dbDirectory) && !Directory.Exists(dbDirectory))
+            {
+                Directory.CreateDirectory(dbDirectory);
+                Log.Information("创建数据库目录: {Directory}", dbDirectory);
+            }
+        }
+    }
+
     await dbContext.Database.MigrateAsync();
 
     // 初始化管理员用户

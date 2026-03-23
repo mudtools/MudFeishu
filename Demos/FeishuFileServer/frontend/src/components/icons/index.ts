@@ -1,0 +1,12 @@
+// 导出所有自定义图标组件
+export { default as IconSync } from './IconSync.vue'
+export { default as IconUpload } from './IconUpload.vue'
+export { default as IconFolderAdd } from './IconFolderAdd.vue'
+export { default as IconFolder } from './IconFolder.vue'
+export { default as IconHome } from './IconHome.vue'
+export { default as IconPlus } from './IconPlus.vue'
+export { default as IconEdit } from './IconEdit.vue'
+export { default as IconDelete } from './IconDelete.vue'
+export { default as IconChevronRight } from './IconChevronRight.vue'
+export { default as IconChevronDown } from './IconChevronDown.vue'
+export { default as IconRefresh } from './IconRefresh.vue'

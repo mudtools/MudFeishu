@@ -11,8 +11,9 @@
         <div class="logo-icon gradient-bg">
           <el-icon size="32"><FolderOpened /></el-icon>
         </div>
-        <h1 class="gradient-text">{{ isLogin ? '欢迎回来' : '创建账户' }}</h1>
-        <p class="subtitle">飞书文件管理系统</p>
+        <div class="login-line"></div>
+        <h1 class="gradient-text">飞书云文件管理系统</h1>
+        <p class="subtitle">{{ isLogin ? '欢迎回来' : '创建账户' }}</p>
       </div>
 
       <el-form
@@ -310,7 +311,14 @@ const handleSubmit = async () => {
   
   .subtitle {
     color: var(--text-secondary);
-    font-size: 14px;
+    font-size: 24px;
+  }
+
+  .login-line{
+    width: 100%;
+    height: 1px;
+    background: var(--border-color);
+    margin: var(--spacing-md) 0;
   }
 }
 

@@ -10,7 +10,7 @@
               </el-icon>
             </div>
             <transition name="fade">
-              <span v-if="!appStore.sidebarCollapsed" class="logo-text gradient-text">文件管理器</span>
+              <span v-if="!appStore.sidebarCollapsed" class="logo-text gradient-text">飞书云文件管理器</span>
             </transition>
           </div>
           <el-button class="collapse-btn" text @click="appStore.toggleSidebar">
@@ -24,21 +24,15 @@
         <div class="sidebar-content" v-show="!appStore.sidebarCollapsed">
           <div class="quick-actions">
             <button class="action-btn btn-sync" @click="showSyncDialog = true">
-              <el-icon>
-                <Refresh />
-              </el-icon>
+              <IconSync :size="18" />
               <span>同步云空间</span>
             </button>
             <button class="action-btn btn-primary" @click="handleUpload">
-              <el-icon>
-                <Upload />
-              </el-icon>
+              <IconUpload :size="18" />
               <span>上传文件</span>
             </button>
             <button class="action-btn btn-secondary" @click="handleCreateFolder">
-              <el-icon>
-                <FolderAdd />
-              </el-icon>
+              <IconFolderAdd :size="18" />
               <span>新建文件夹</span>
             </button>
           </div>
@@ -49,9 +43,7 @@
             <div class="section-header">
               <span class="section-title">文件夹</span>
               <el-button text size="small" @click="loadFolders">
-                <el-icon>
-                  <Refresh />
-                </el-icon>
+                <IconRefresh :size="16" />
               </el-button>
             </div>
             <FolderTree :current-folder-token="currentFolderToken" @select="handleFolderSelect" @folder-created="loadFolders" @folder-updated="loadFolders" />
@@ -282,8 +274,6 @@ import { ref, computed, onMounted, watch } from "vue"
 import { useRoute, useRouter } from "vue-router"
 import { ElMessage, ElMessageBox } from "element-plus"
 import {
-  Upload,
-  FolderAdd,
   Search,
   List,
   Grid,
@@ -296,7 +286,6 @@ import {
   Lock,
   SwitchButton,
   ArrowRight,
-  Refresh,
   Close,
   Moon,
   Sunny,
@@ -306,6 +295,7 @@ import {
   CopyDocument,
   Delete,
 } from "@element-plus/icons-vue"
+import { IconSync, IconUpload, IconFolderAdd, IconRefresh } from "@/components/icons"
 import { useFileStore } from "@/stores/fileStore"
 import { useFolderStore } from "@/stores/folderStore"
 import { useAppStore } from "@/stores/appStore"

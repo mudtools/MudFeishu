@@ -6,17 +6,17 @@
       @click="handleClick"
       @contextmenu.prevent="handleContextMenu($event)"
     >
-      <el-icon 
+      <span 
         class="expand-icon" 
         :class="{ 'is-expanded': expanded }"
         @click.stop="toggleExpand"
         v-if="hasChildren"
       >
-        <CaretRight v-if="!expanded" />
-        <CaretBottom v-else />
-      </el-icon>
+        <IconChevronRight v-if="!expanded" :size="14" />
+        <IconChevronDown v-else :size="14" />
+      </span>
       <span class="expand-placeholder" v-else></span>
-      <el-icon class="folder-icon"><Folder /></el-icon>
+      <IconFolder class="folder-icon" :size="18" />
       <span class="folder-name">{{ folder.folderName }}</span>
       <div class="folder-actions" @click.stop>
         <el-button 
@@ -26,7 +26,7 @@
           @click="handleCreate"
           title="新建子文件夹"
         >
-          <el-icon><Plus /></el-icon>
+          <IconPlus :size="14" />
         </el-button>
         <el-button 
           type="warning" 
@@ -35,7 +35,7 @@
           @click="handleRename"
           title="重命名"
         >
-          <el-icon><Edit /></el-icon>
+          <IconEdit :size="14" />
         </el-button>
         <el-button 
           type="danger" 
@@ -44,7 +44,7 @@
           @click="handleDelete"
           title="删除"
         >
-          <el-icon><Delete /></el-icon>
+          <IconDelete :size="14" />
         </el-button>
       </div>
     </div>
@@ -55,7 +55,7 @@
         :folder="child"
         :current-folder-token="currentFolderToken"
         @node-click="$emit('node-click', $event)"
-        @context-menu="$emit('context-menu', $event, $event)"
+        @context-menu="(e, f) => $emit('context-menu', e, f)"
         @create-folder="$emit('create-folder', $event)"
         @rename-folder="$emit('rename-folder', $event)"
         @delete-folder="$emit('delete-folder', $event)"
@@ -66,7 +66,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { Folder, Edit, Delete, Plus, CaretRight, CaretBottom } from '@element-plus/icons-vue'
+import { IconFolder, IconPlus, IconEdit, IconDelete, IconChevronRight, IconChevronDown } from '@/components/icons'
 import type { FolderTreeNode } from '@/stores/folderStore'
 
 const props = defineProps<{
@@ -125,23 +125,25 @@ const handleDelete = () => {
 }
 
 .expand-icon {
-  font-size: 12px;
   color: var(--text-tertiary);
   cursor: pointer;
   transition: all var(--transition-fast);
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  border-radius: 4px;
 
   &:hover {
-    color: var(--text-primary);
+    color: var(--primary-color);
+    background: var(--primary-light);
   }
 
   &.is-expanded {
     color: var(--primary-color);
+    transform: rotate(0deg);
   }
 }
 
@@ -186,7 +188,7 @@ const handleDelete = () => {
   }
 
   .folder-icon {
-    color: #ffc107;
+    color: var(--primary-color);
     font-size: 16px;
     transition: all var(--transition-fast);
     flex-shrink: 0;

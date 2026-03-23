@@ -5,9 +5,7 @@
         <div class="sidebar-header">
           <div class="logo-container">
             <div class="logo-icon gradient-bg">
-              <el-icon size="24">
-                <FolderOpened />
-              </el-icon>
+              <IconLogo :size="24" />
             </div>
             <transition name="fade">
               <span v-if="!appStore.sidebarCollapsed" class="logo-text gradient-text">飞书云文件管理器</span>
@@ -295,7 +293,7 @@ import {
   CopyDocument,
   Delete,
 } from "@element-plus/icons-vue"
-import { IconSync, IconUpload, IconFolderAdd, IconRefresh } from "@/components/icons"
+import { IconSync, IconUpload, IconFolderAdd, IconRefresh, IconLogo } from "@/components/icons"
 import { useFileStore } from "@/stores/fileStore"
 import { useFolderStore } from "@/stores/folderStore"
 import { useAppStore } from "@/stores/appStore"

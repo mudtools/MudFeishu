@@ -40,9 +40,25 @@ public interface IFeishuV3SpreadsheetCell : IFeishuAppContextSwitcher
     /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
     /// <param name="unMergeCellsRequest">拆分单元格请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
-    [Post("/open-apis/sheets/v2/spreadsheets/{spreadsheetToken}/unmerge_cells")]
+    [Post("/open-apis/sheets/v2/spreadsheets/{spreadsheet_token}/unmerge_cells")]
     Task<FeishuApiResult<CellsOpsResult>?> UnMergeCellsAsync(
       [Path] string spreadsheet_token,
       [Body] UnMergeCellsRequest unMergeCellsRequest,
       CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 查找单元格
+    /// <para>在指定范围内查找符合查找条件的单元格。</para>
+    /// </summary>
+    /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
+    /// <param name="sheet_id">工作表的 ID。示例值："2jm6f6"</param>
+    /// <param name="getCellsRequest">查找单元格请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Post("/open-apis/sheets/v3/spreadsheets/{spreadsheet_token}/sheets/{sheet_id}/find")]
+    Task<FeishuApiResult<GetCellsResult>?> GetCellsAsync(
+        [Path] string spreadsheet_token,
+        [Path] string sheet_id,
+        [Body] GetCellsRequest getCellsRequest,
+        CancellationToken cancellationToken = default);
 }

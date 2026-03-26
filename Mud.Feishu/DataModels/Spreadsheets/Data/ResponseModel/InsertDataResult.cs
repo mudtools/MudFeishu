@@ -8,14 +8,36 @@
 namespace Mud.Feishu.DataModels.Spreadsheets;
 
 /// <summary>
-/// 更新的单元格信息
+/// 插入数据响应体
 /// </summary>
-public class CellsStyleUpdate : CellsStyleUpdateInfo
+public class InsertDataResult
 {
+    /// <summary>
+    /// <para>电子表格的 token</para>
+    /// <para>必填：否</para>
+    /// </summary>
+    [JsonPropertyName("spreadsheetToken")]
+    public string? SpreadsheetToken { get; set; }
+
+    /// <summary>
+    /// <para>插入数据的范围</para>
+    /// <para>必填：否</para>
+    /// </summary>
+    [JsonPropertyName("tableRange")]
+    public string? TableRange { get; set; }
+
     /// <summary>
     /// <para>工作表的版本号。从 0 开始计数，更新一次版本号加一。</para>
     /// <para>必填：否</para>
     /// </summary>
     [JsonPropertyName("revision")]
     public int? Revision { get; set; }
+
+    /// <summary>
+    /// <para>插入数据的范围、更新的行列总数等</para>
+    /// <para>必填：否</para>
+    /// </summary>
+    [JsonPropertyName("updates")]
+    public CellsUpdate? Updates { get; set; }
 }
+

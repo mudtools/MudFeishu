@@ -9,7 +9,7 @@ namespace Mud.Feishu.DataModels.Spreadsheets;
 
 
 /// <summary>更新的单元格信息</summary>
-public class CellsStyleUpdateInfo
+public class CellsUpdateInfo
 {
     /// <summary>
     /// <para>电子表格的 token</para>

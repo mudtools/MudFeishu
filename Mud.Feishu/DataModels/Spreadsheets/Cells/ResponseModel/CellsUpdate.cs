@@ -8,15 +8,14 @@
 namespace Mud.Feishu.DataModels.Spreadsheets;
 
 /// <summary>
-/// 设置单元格样式响应体
+/// 更新的单元格信息
 /// </summary>
-public class SetCellsStyleResult
+public class CellsUpdate : CellsUpdateInfo
 {
     /// <summary>
-    /// <para>更新的单元格信息</para>
+    /// <para>工作表的版本号。从 0 开始计数，更新一次版本号加一。</para>
     /// <para>必填：否</para>
     /// </summary>
-    [JsonPropertyName("updates")]
-    public CellsUpdate? Updates { get; set; }
+    [JsonPropertyName("revision")]
+    public int? Revision { get; set; }
 }
-

@@ -8,15 +8,14 @@
 namespace Mud.Feishu.DataModels.Spreadsheets;
 
 /// <summary>
-/// 设置单元格样式响应体
+/// 插入数据请求体
 /// </summary>
-public class SetCellsStyleResult
+public class InsertDataRequest
 {
     /// <summary>
-    /// <para>更新的单元格信息</para>
-    /// <para>必填：否</para>
+    /// <para>指定工作表中的范围和在该范围中插入的数据。</para>
+    /// <para>必填：是</para>
     /// </summary>
-    [JsonPropertyName("updates")]
-    public CellsUpdate? Updates { get; set; }
+    [JsonPropertyName("valueRange")]
+    public RangeValues ValueRange { get; set; } = new();
 }
-

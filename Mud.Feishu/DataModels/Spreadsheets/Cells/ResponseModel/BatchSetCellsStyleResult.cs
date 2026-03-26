@@ -52,7 +52,7 @@ public class BatchSetCellsStyleResult
     /// <para>必填：否</para>
     /// </summary>
     [JsonPropertyName("responses")]
-    public CellsStyleUpdateInfo[]? Responses { get; set; }
+    public CellsUpdateInfo[]? Responses { get; set; }
 
 
 }

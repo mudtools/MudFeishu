@@ -35,4 +35,19 @@ public interface IFeishuV3SpreadsheetDataValidation : IFeishuAppContextSwitcher
       CancellationToken cancellationToken = default);
 
 
+
+    /// <summary>
+    /// 更新下拉列表设置
+    /// <para>更新电子表格工作表中单个下拉列表的设置，支持更新下拉列表的选项和属性，包括是否支持多选、下拉选项的样式等。</para>
+    /// </summary>
+    /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
+    /// <param name="sheetId">工作表的 ID。示例值："2jm6f6"</param>
+    /// <param name="updateDataValidationRequest">更新数据验证请求</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Put("/open-apis/sheets/v2/spreadsheets/{spreadsheet_token}/dataValidation/{sheetId}")]
+    Task<FeishuApiResult<UpdateDataValidationResult>?> UpdateDataValidationAsync(
+         [Path] string spreadsheet_token,
+         [Path] string sheetId,
+         [Body] UpdateDataValidationRequest updateDataValidationRequest,
+         CancellationToken cancellationToken = default);
 }

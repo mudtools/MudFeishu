@@ -59,7 +59,8 @@ public interface IFeishuV3Spreadsheets : IFeishuAppContextSwitcher
 
 
     /// <summary>
-    /// 操作工作表，根据电子表格的 token 对工作表进行操作，包括增加工作表、复制工作表、删除工作表。
+    /// 操作工作表。
+    /// <para>根据电子表格的 token 对工作表进行操作，包括增加工作表、复制工作表、删除工作表。</para>
     /// </summary>
     /// <param name="batchUpdateSheetRequest">操作工作表请求体</param>
     /// <param name="spreadsheet_token">文件夹的 token。</param>
@@ -70,11 +71,30 @@ public interface IFeishuV3Spreadsheets : IFeishuAppContextSwitcher
         [Body] BatchUpdateSheetRequest batchUpdateSheetRequest,
         CancellationToken cancellationToken = default);
 
-
+    /// <summary>
+    /// 更新工作表属性
+    /// <para>更新电子表格中的工作表。支持更新工作表的标题、位置，和隐藏、冻结、保护等属性。</para>
+    /// </summary>
+    /// <param name="batchUpdateSheetPropertiesRequest">更新工作表属性请求体</param>
+    /// <param name="spreadsheet_token">文件夹的 token。</param>
+    /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Post("/open-apis/sheets/v2/spreadsheets/{spreadsheet_token}/sheets_batch_update")]
     Task<FeishuApiResult<BatchUpdateSheetPropertiesResult>?> BatchUpdateSheetPropertiesAsync(
        [Path] string? spreadsheet_token,
        [Body] BatchUpdateSheetPropertiesRequest batchUpdateSheetPropertiesRequest,
        [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
        CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 根据电子表格 token 获取电子表格的基础信息，包括电子表格的所有者、URL 链接等。
+    /// </summary>
+    /// <param name="spreadsheet_token">文件夹的 token。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Get("/open-apis/sheets/v3/spreadsheets/{spreadsheet_token}/sheets/query")]
+    Task<FeishuApiResult<GetSpreadsheetSheets>?> GetSpreadsheetSheetsByTokenAsync(
+        [Path] string? spreadsheet_token,
+        CancellationToken cancellationToken = default);
+
 }

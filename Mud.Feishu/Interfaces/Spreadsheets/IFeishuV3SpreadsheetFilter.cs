@@ -50,4 +50,32 @@ public interface IFeishuV3SpreadsheetFilter : IFeishuAppContextSwitcher
         [Path] string sheet_id,
         [Body] UpdateFilterRequest updateFilterRequest,
         CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 获取筛选
+    /// <para>获取电子表格中工作表的详细筛选信息，包括筛选的应用范围、筛选条件、被筛选条件过滤掉的行。</para>
+    /// </summary>
+    /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
+    /// <param name="sheet_id">工作表的 ID。示例值："2jm6f6"</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Get("/open-apis/sheets/v3/spreadsheets/{spreadsheet_token}/sheets/{sheet_id}/filter")]
+    Task<FeishuApiResult<GetFilterResult>?> GetFilterAsync(
+       [Path] string spreadsheet_token,
+       [Path] string sheet_id,
+       CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 删除筛选
+    /// <para>删除电子表格中指定工作表的所有筛选。</para>
+    /// </summary>
+    /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
+    /// <param name="sheet_id">工作表的 ID。示例值："2jm6f6"</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Delete("/open-apis/sheets/v3/spreadsheets/{spreadsheet_token}/sheets/{sheet_id}/filter")]
+    Task<FeishuNullDataApiResult?> DeleteFilterAsync(
+       [Path] string spreadsheet_token,
+       [Path] string sheet_id,
+       CancellationToken cancellationToken = default);
 }

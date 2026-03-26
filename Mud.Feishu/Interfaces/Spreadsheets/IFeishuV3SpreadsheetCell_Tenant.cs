@@ -5,30 +5,16 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-using Mud.Feishu.DataModels.Spreadsheets;
-
-namespace Mud.Feishu.Interfaces;
+namespace Mud.Feishu;
 
 /// <summary>
 /// 飞书开放平台电子表格工作表中的单元格处理功能。
 /// <para>在工作表单元格中进行读取数据、写入数据、筛选数据等各类操作时。</para>
 /// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/docs/sheets-v3/overview"/></para>
 /// </summary>
-[HttpClientApi(TokenManage = nameof(IFeishuAppManager), IsAbstract = true)]
+[HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Spreadsheets", InheritedFrom = nameof(FeishuV3SpreadsheetCell))]
 [Header(Consts.Authorization)]
-public interface IFeishuV3SpreadsheetCell : IFeishuAppContextSwitcher
+[Token(TokenType.TenantAccessToken)]
+public interface IFeishuTenantV3SpreadsheetCell : IFeishuV3SpreadsheetCell
 {
-
-    /// <summary>
-    /// 合并单元格
-    /// <para>合并电子表格工作表中的单元格。。</para>
-    /// </summary>
-    /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
-    /// <param name="mergeCellsRequest">合并单元格请求体</param>
-    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
-    [Post("/open-apis/sheets/v2/spreadsheets/{spreadsheet_token}/merge_cells")]
-    Task<FeishuApiResult<MergeCellsResult>?> MergeCellsAsync(
-       [Path] string spreadsheet_token,
-       [Body] MergeCellsRequest mergeCellsRequest,
-       CancellationToken cancellationToken = default);
 }

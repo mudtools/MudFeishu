@@ -8,35 +8,15 @@
 namespace Mud.Feishu.DataModels.Spreadsheets;
 
 /// <summary>
-/// 筛选条件
+/// 筛选条件信息
 /// </summary>
-public class FilterViewCondition
+public class FilterConditionInfo : FilterViewCondition
 {
     /// <summary>
-    /// <para>筛选类型。枚举值如下所示。</para>
-    /// <para>- hiddenValue：隐藏值筛选</para>
-    /// <para>- number：数字筛选</para>
-    /// <para>- text：文本筛选</para>
-    /// <para>- color：颜色筛选</para>
+    /// <para>设置筛选条件的列，用字母表示。</para>
     /// <para>必填：否</para>
-    /// <para>示例值：number</para>
+    /// <para>示例值：E</para>
     /// </summary>
-    [JsonPropertyName("filter_type")]
-    public string? FilterType { get; set; }
-
-    /// <summary>
-    /// <para>比较类型。</para>
-    /// <para>必填：否</para>
-    /// <para>示例值：less</para>
-    /// </summary>
-    [JsonPropertyName("compare_type")]
-    public string? CompareType { get; set; }
-
-    /// <summary>
-    /// <para>筛选参数。</para>
-    /// <para>必填：否</para>
-    /// <para>示例值：6</para>
-    /// </summary>
-    [JsonPropertyName("expected")]
-    public string[]? Expected { get; set; }
+    [JsonPropertyName("condition_id")]
+    public string? ConditionId { get; set; }
 }

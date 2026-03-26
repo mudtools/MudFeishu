@@ -8,14 +8,13 @@
 namespace Mud.Feishu.DataModels.Spreadsheets;
 
 /// <summary>
-/// 创建筛选条件响应体
+/// 创建\更新筛选条件响应体
 /// </summary>
-public class CreateFilterConditionsResult
+public class FilterConditionsOpsResult
 {
     /// <summary>
-    /// <para>创建的筛选条件</para>
-    /// <para>必填：否</para>
+    /// <para>筛选条件</para>
     /// </summary>
     [JsonPropertyName("condition")]
-    public FilterViewCondition? Condition { get; set; }
+    public FilterConditionInfo? Condition { get; set; }
 }

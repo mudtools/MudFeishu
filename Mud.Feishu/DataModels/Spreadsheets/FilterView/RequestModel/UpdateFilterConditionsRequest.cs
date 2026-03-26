@@ -8,15 +8,9 @@
 namespace Mud.Feishu.DataModels.Spreadsheets;
 
 /// <summary>
-/// 创建筛选条件请求体
+/// 更新筛选条件请求体
 /// </summary>
-public class CreateFilterConditionsRequest : FilterViewCondition
+public class UpdateFilterConditionsRequest : FilterViewCondition
 {
-    /// <summary>
-    /// <para>设置筛选条件的列，用字母表示。</para>
-    /// <para>必填：否</para>
-    /// <para>示例值：E</para>
-    /// </summary>
-    [JsonPropertyName("condition_id")]
-    public string? ConditionId { get; set; }
+
 }

@@ -109,10 +109,30 @@ public interface IFeishuV3SpreadsheetFilterView : IFeishuAppContextSwitcher
     /// <param name="createFilterConditionsRequest">创建筛选条件请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Post("/open-apis/sheets/v3/spreadsheets/{spreadsheet_token}/sheets/{sheet_id}/filter_views/{filter_view_id}/conditions")]
-    Task<FeishuApiResult<CreateFilterConditionsResult>?> CreateFilterConditionsAsync(
+    Task<FeishuApiResult<FilterConditionsOpsResult>?> CreateFilterConditionsAsync(
          [Path] string spreadsheet_token,
          [Path] string sheet_id,
          [Path] string filter_view_id,
          [Body] CreateFilterConditionsRequest createFilterConditionsRequest,
          CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 创建筛选条件
+    /// <para>在筛选视图的指定列创建筛选条件，包括筛选的类型、比较类型、筛选参数等。</para>
+    /// </summary>
+    /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
+    /// <param name="sheet_id">工作表的 ID。示例值："2jm6f6"</param>
+    /// <param name="filter_view_id">筛选视图 ID。示例值："pH9hbVcCXA"</param>
+    /// <param name="condition_id">筛选视图 ID。示例值：pH9hbVcCXA</param>
+    /// <param name="updateFilterConditionsRequest">更新筛选条件请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Put("/open-apis/sheets/v3/spreadsheets/{spreadsheet_token}/sheets/{sheet_id}/filter_views/{filter_view_id}/conditions/{condition_id}")]
+    Task<FeishuApiResult<FilterConditionsOpsResult>?> UpdateFilterConditionsAsync(
+        [Path] string spreadsheet_token,
+        [Path] string sheet_id,
+        [Path] string filter_view_id,
+        [Path] string condition_id,
+        [Body] UpdateFilterConditionsRequest updateFilterConditionsRequest,
+        CancellationToken cancellationToken = default);
 }

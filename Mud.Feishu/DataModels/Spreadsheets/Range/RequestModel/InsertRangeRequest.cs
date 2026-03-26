@@ -1,4 +1,4 @@
-// -----------------------------------------------------------------------
+﻿// -----------------------------------------------------------------------
 //  作者：Mud Studio  版权所有 (c) Mud Studio 2025   
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
@@ -7,29 +7,25 @@
 
 namespace Mud.Feishu.DataModels.Spreadsheets;
 
-/// <summary></summary>
-public class SheetDimension
+/// <summary>
+/// 插入行列请求体
+/// </summary>
+public class InsertRangeRequest
 {
     /// <summary>
-    /// <para>电子表格工作表的 ID。</para>
+    /// <para>需要插入行列的维度信息</para>
     /// <para>必填：是</para>
     /// </summary>
-    [JsonPropertyName("sheetId")]
-    public string SheetId { get; set; } = string.Empty;
+    [JsonPropertyName("dimension")]
+    public InsertRangeDimension Dimension { get; set; } = new();
+
 
     /// <summary>
-    /// <para>更新的维度。可选值：</para>
-    /// <para>- `ROWS`：行</para>
-    /// <para>- `COLUMNS`：列</para>
-    /// <para>必填：是</para>
+    /// <para>插入的空白行或列是否继承表中的单元格样式。不填或设置为空即不继承任何样式，为默认空白样式。可选值：</para>
+    /// <para>- `BEFORE`：继承起始位置的单元格的样式</para>
+    /// <para>- `AFTER`：继承结束位置的单元格的样式</para>
+    /// <para>必填：否</para>
     /// </summary>
-    [JsonPropertyName("majorDimension")]
-    public string MajorDimension { get; set; } = string.Empty;
-
-    /// <summary>
-    /// <para>要增加的行数或列数。取值范围为 (0,5000]</para>
-    /// <para>必填：是</para>
-    /// </summary>
-    [JsonPropertyName("length")]
-    public int Length { get; set; }
+    [JsonPropertyName("inheritStyle")]
+    public string? InheritStyle { get; set; }
 }

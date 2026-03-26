@@ -23,9 +23,31 @@ namespace Mud.Feishu.Interfaces;
 [Header(Consts.Authorization)]
 public interface IFeishuV3SpreadsheetRange
 {
+
+    /// <summary>
+    /// 增加行列
+    /// <para>用于在电子表格工作表中增加空白行或列。</para>
+    /// </summary>
+    /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
+    /// <param name="createRangeRequest">增加行列请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Post("/open-apis/sheets/v2/spreadsheets/{spreadsheet_token}/dimension_range")]
     Task<FeishuApiResult<CreateRangeResult>?> CreateRangeAsync(
          [Path] string spreadsheet_token,
          [Body] CreateRangeRequest createRangeRequest,
          CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 插入行列
+    /// <para>用于在电子表格的指定位置插入空白行或列。</para>
+    /// </summary>
+    /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
+    /// <param name="insertRangeRequest">插入行列请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Post("/open-apis/sheets/v2/spreadsheets/{spreadsheetToken}/insert_dimension_range")]
+    Task<FeishuNullDataApiResult?> InsertRangeAsync(
+        [Path] string spreadsheet_token,
+        [Body] InsertRangeRequest insertRangeRequest,
+        CancellationToken cancellationToken = default);
 }

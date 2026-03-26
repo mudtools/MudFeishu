@@ -27,8 +27,22 @@ public interface IFeishuV3SpreadsheetCell : IFeishuAppContextSwitcher
     /// <param name="mergeCellsRequest">合并单元格请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Post("/open-apis/sheets/v2/spreadsheets/{spreadsheet_token}/merge_cells")]
-    Task<FeishuApiResult<MergeCellsResult>?> MergeCellsAsync(
+    Task<FeishuApiResult<CellsOpsResult>?> MergeCellsAsync(
        [Path] string spreadsheet_token,
        [Body] MergeCellsRequest mergeCellsRequest,
        CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 拆分单元格
+    /// <para>拆分电子表格工作表中的单元格。。</para>
+    /// </summary>
+    /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
+    /// <param name="unMergeCellsRequest">拆分单元格请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Post("/open-apis/sheets/v2/spreadsheets/{spreadsheetToken}/unmerge_cells")]
+    Task<FeishuApiResult<CellsOpsResult>?> UnMergeCellsAsync(
+      [Path] string spreadsheet_token,
+      [Body] UnMergeCellsRequest unMergeCellsRequest,
+      CancellationToken cancellationToken = default);
 }

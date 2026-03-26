@@ -8,9 +8,9 @@
 namespace Mud.Feishu.DataModels.Spreadsheets;
 
 /// <summary>
-/// 合并单元格响应体
+/// 单元格操作结果响应体
 /// </summary>
-public class MergeCellsResult
+public class CellsOpsResult
 {
     /// <summary>
     /// <para>电子表格的 token</para>

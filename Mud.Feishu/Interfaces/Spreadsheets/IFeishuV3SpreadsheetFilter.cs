@@ -34,4 +34,20 @@ public interface IFeishuV3SpreadsheetFilter : IFeishuAppContextSwitcher
         [Path] string sheet_id,
         [Body] CreateFilterRequest createFilterRequest,
         CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 更新筛选
+    /// <para>在电子表格工作表筛选范围中，更新指定列的筛选条件。</para>
+    /// </summary>
+    /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
+    /// <param name="sheet_id">工作表的 ID。示例值："2jm6f6"</param>
+    /// <param name="updateFilterRequest">更新筛选请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Put("/open-apis/sheets/v3/spreadsheets/{spreadsheet_token}/sheets/{sheet_id}/filter")]
+    Task<FeishuNullDataApiResult?> UpdateFilterAsync(
+        [Path] string spreadsheet_token,
+        [Path] string sheet_id,
+        [Body] UpdateFilterRequest updateFilterRequest,
+        CancellationToken cancellationToken = default);
 }

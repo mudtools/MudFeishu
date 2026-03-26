@@ -16,5 +16,5 @@ internal sealed class SpreadsheetsModuleRegistrar : IFeishuModuleRegistrar
     public FeishuModule Module => FeishuModule.Spreadsheets;
 
     /// <inheritdoc />
-    public void Register(IServiceCollection services) => services.AddWikiWebApiHttpClient();
+    public void Register(IServiceCollection services) => services.AddSpreadsheetsWebApiHttpClient();
 }

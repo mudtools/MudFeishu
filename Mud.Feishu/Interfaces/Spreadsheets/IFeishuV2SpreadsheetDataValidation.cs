@@ -9,8 +9,6 @@ using Mud.Feishu.DataModels.Spreadsheets;
 
 namespace Mud.Feishu.Interfaces;
 
-
-
 /// <summary>
 /// 数据校验用于限制电子表格单元格中的数据类型或用户输入单元格的值。
 /// <para>目前，电子表格支持下拉列表相关接口，用于验证数据。</para>
@@ -18,7 +16,7 @@ namespace Mud.Feishu.Interfaces;
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), IsAbstract = true)]
 [Header(Consts.Authorization)]
-public interface IFeishuV3SpreadsheetDataValidation : IFeishuAppContextSwitcher
+public interface IFeishuV2SpreadsheetDataValidation : IFeishuAppContextSwitcher
 {
 
     /// <summary>

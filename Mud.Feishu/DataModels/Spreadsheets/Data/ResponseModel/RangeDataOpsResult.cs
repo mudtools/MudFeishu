@@ -8,9 +8,9 @@
 namespace Mud.Feishu.DataModels.Spreadsheets;
 
 /// <summary>
-/// 插入数据响应体
+/// 插入\追加数据响应体
 /// </summary>
-public class InsertDataResult
+public class RangeDataOpsResult
 {
     /// <summary>
     /// <para>电子表格的 token</para>

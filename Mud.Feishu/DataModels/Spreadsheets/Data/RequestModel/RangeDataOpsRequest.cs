@@ -8,9 +8,9 @@
 namespace Mud.Feishu.DataModels.Spreadsheets;
 
 /// <summary>
-/// 插入数据请求体
+/// 插入\追加数据请求体
 /// </summary>
-public class InsertDataRequest
+public class RangeDataOpsRequest
 {
     /// <summary>
     /// <para>指定工作表中的范围和在该范围中插入的数据。</para>

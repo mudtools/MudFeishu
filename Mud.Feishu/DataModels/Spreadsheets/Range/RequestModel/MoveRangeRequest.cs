@@ -7,29 +7,22 @@
 
 namespace Mud.Feishu.DataModels.Spreadsheets;
 
-/// <summary></summary>
-public class CreateRangeDimension
+/// <summary>
+/// 移动行列请求体
+/// </summary>
+public class MoveRangeRequest
 {
     /// <summary>
-    /// <para>电子表格工作表的 ID。</para>
-    /// <para>必填：是</para>
+    /// <para>移动源位置信息</para>
+    /// <para>必填：否</para>
     /// </summary>
-    [JsonPropertyName("sheetId")]
-    public string SheetId { get; set; } = string.Empty;
-
+    [JsonPropertyName("source")]
+    public MoveRangeDimension? Source { get; set; }
     /// <summary>
-    /// <para>更新的维度。可选值：</para>
-    /// <para>- `ROWS`：行</para>
-    /// <para>- `COLUMNS`：列</para>
-    /// <para>必填：是</para>
+    /// <para>移动的目标位置行或者列</para>
+    /// <para>必填：否</para>
+    /// <para>示例值：4</para>
     /// </summary>
-    [JsonPropertyName("majorDimension")]
-    public string MajorDimension { get; set; } = string.Empty;
-
-    /// <summary>
-    /// <para>要增加的行数或列数。取值范围为 (0,5000]</para>
-    /// <para>必填：是</para>
-    /// </summary>
-    [JsonPropertyName("length")]
-    public int Length { get; set; }
+    [JsonPropertyName("destination_index")]
+    public int? DestinationIndex { get; set; }
 }

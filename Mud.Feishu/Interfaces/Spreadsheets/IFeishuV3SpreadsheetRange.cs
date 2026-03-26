@@ -45,7 +45,7 @@ public interface IFeishuV3SpreadsheetRange
     /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
     /// <param name="insertRangeRequest">插入行列请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
-    [Post("/open-apis/sheets/v2/spreadsheets/{spreadsheetToken}/insert_dimension_range")]
+    [Post("/open-apis/sheets/v2/spreadsheets/{spreadsheet_token}/insert_dimension_range")]
     Task<FeishuNullDataApiResult?> InsertRangeAsync(
         [Path] string spreadsheet_token,
         [Body] InsertRangeRequest insertRangeRequest,
@@ -60,12 +60,39 @@ public interface IFeishuV3SpreadsheetRange
     /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
     /// <param name="insertRangeRequest">更新行列请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
-    [Put("/open-apis/sheets/v2/spreadsheets/{spreadsheetToken}/dimension_range")]
+    [Put("/open-apis/sheets/v2/spreadsheets/{spreadsheet_token}/dimension_range")]
     Task<FeishuNullDataApiResult?> UpdateRangeAsync(
       [Path] string spreadsheet_token,
       [Body] UpdateRangeRequest insertRangeRequest,
       CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// 移动行列
+    /// <para>用于移动行或列。行或列被移动到目标位置后，原本在目标位置的行列会对应右移或下移。</para>
+    /// </summary>
+    /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
+    /// <param name="sheet_id">工作表的 ID。示例值："2jm6f6"</param>
+    /// <param name="moveRangeRequest">更新行列请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Post("/open-apis/sheets/v3/spreadsheets/{spreadsheet_token}/sheets/{sheet_id}/move_dimension")]
+    Task<FeishuNullDataApiResult?> MoveRangeAsync(
+         [Path] string spreadsheet_token,
+         [Path] string sheet_id,
+         [Body] MoveRangeRequest moveRangeRequest,
+         CancellationToken cancellationToken = default);
 
 
+
+    /// <summary>
+    /// 删除行列
+    /// <para>用于删除电子表格中的指定行或列。</para>
+    /// </summary>
+    /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
+    /// <param name="deleteRangeRequest">删除行列请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Post("/open-apis/sheets/v2/spreadsheets/{spreadsheet_token}/dimension_range")]
+    Task<FeishuNullDataApiResult?> DeleteRangeAsync(
+         [Path] string spreadsheet_token,
+         [Body] DeleteRangeRequest deleteRangeRequest,
+         CancellationToken cancellationToken = default);
 }

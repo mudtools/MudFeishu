@@ -8,9 +8,9 @@
 namespace Mud.Feishu.DataModels.Spreadsheets;
 
 /// <summary>
-/// 增加行列请求体
+/// 删除行列请求体
 /// </summary>
-public class CreateRangeRequest
+public class DeleteRangeRequest
 {
     /// <summary>
     /// <para>需要增加行列的维度信息</para>

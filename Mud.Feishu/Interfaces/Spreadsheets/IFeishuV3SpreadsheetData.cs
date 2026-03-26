@@ -67,4 +67,40 @@ public interface IFeishuV3SpreadsheetData : IFeishuAppContextSwitcher
          CancellationToken cancellationToken = default);
 
 
+    /// <summary>
+    /// 读取单个范围
+    /// <para>读取电子表格中单个指定范围的数据。</para>
+    /// </summary>
+    /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
+    /// <param name="range">
+    /// <para>查询范围。格式为 `&lt;sheetId&gt;!&lt;开始位置&gt;:&lt;结束位置&gt;`。其中：</para>
+    /// <para>- `sheetId` 为工作表 ID</para>
+    /// <para>- `&lt;开始位置&gt;:&lt;结束位置&gt;` 为工作表中单元格的范围，数字表示行索引，字母表示列索引。如 `A2:B2` 表示该工作表第 2 行的 A 列到 B 列。</para>
+    /// <para>**注意**：若使用 `&lt;sheetId&gt;!&lt;开始单元格&gt;:&lt;结束列&gt;` 和 `&lt;sheetId&gt;!&lt;开始列&gt;:&lt;结束列&gt;` 的写法时，仅支持获取 100 列数据。</para>
+    /// <para>**示例值**："Q7PlXT!A1:B2"</para>
+    /// </param>
+    /// <param name="valueRenderOption">
+    /// <para>指定单元格数据的格式。可选值如下所示。当参数缺省时，默认不进行公式计算，返回公式本身，且单元格为数值格式。</para>
+    /// <para>- ToString：返回纯文本的值（数值类型除外）</para>
+    /// <para>- Formula：单元格中含有公式时，返回公式本身</para>
+    /// <para>- FormattedValue：计算并格式化单元格</para>
+    /// <para>- UnformattedValue：计算但不对单元格进行格式化</para>
+    /// <para>默认值：null</para>
+    /// </param>
+    /// <param name="dateTimeRenderOption">
+    /// <para>指定数据类型为日期、时间、或时间日期的单元格数据的格式。</para>
+    /// <para>- 若不传值，默认返回浮点数值，整数部分为自 1899 年 12 月 30 日以来的天数；小数部分为该时间占 24 小时的份额。例如：若时间为 1900 年 1 月 1 日中午 12 点，则默认返回 2.5。其中，2 表示 1900 年 1 月 1 日为 1899 年12 月 30 日之后的 2 天；0.5 表示 12 点占 24 小时的二分之一，即 12/24=0.5。</para>
+    /// <para>- 可选值为 FormattedString，此时接口将计算并对日期、时间、或时间日期类型的数据格式化并返回格式化后的字符串，但不会对数字进行格式化。</para>
+    /// <para>默认值：null</para>
+    /// </param>
+    /// <param name="user_id_type">当单元格中包含@用户等涉及用户信息的元素时，该参数可指定返回的用户 ID 类型。默认为 lark_id，建议选择 open_id 或 union_id。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Get("/open-apis/sheets/v2/spreadsheets/{spreadsheet_token}/values/{range}")]
+    Task<FeishuApiResult<GetRangeDataResult>?> GetRangeDataAsync(
+        [Path] string spreadsheet_token,
+        [Path] string range,
+        [Query("valueRenderOption")] string? valueRenderOption = null,
+        [Query("dateTimeRenderOption")] string? dateTimeRenderOption = null,
+        [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
+        CancellationToken cancellationToken = default);
 }

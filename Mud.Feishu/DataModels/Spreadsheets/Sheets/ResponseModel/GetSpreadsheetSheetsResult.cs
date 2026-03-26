@@ -10,7 +10,7 @@ namespace Mud.Feishu.DataModels.Spreadsheets;
 /// <summary>
 /// 获取工作表响应体
 /// </summary>
-public class GetSpreadsheetSheets
+public class GetSpreadsheetSheetsResult
 {
     /// <summary>
     /// <para>工作表列表</para>

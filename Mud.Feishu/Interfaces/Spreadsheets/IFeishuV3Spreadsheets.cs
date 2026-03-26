@@ -53,7 +53,7 @@ public interface IFeishuV3Spreadsheets : IFeishuAppContextSwitcher
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Get("/open-apis/sheets/v3/spreadsheets/{spreadsheet_token}")]
     Task<FeishuApiResult<GetSpreadsheetResult>?> GetSpreadsheetByTokenAsync(
-        [Path] string? spreadsheet_token,
+        [Path] string spreadsheet_token,
         [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
         CancellationToken cancellationToken = default);
 
@@ -67,7 +67,7 @@ public interface IFeishuV3Spreadsheets : IFeishuAppContextSwitcher
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Post("/open-apis/sheets/v2/spreadsheets/{spreadsheet_token}/sheets_batch_update")]
     Task<FeishuApiResult<BatchUpdateSheetResult>?> BatchUpdateSheetAsync(
-        [Path] string? spreadsheet_token,
+        [Path] string spreadsheet_token,
         [Body] BatchUpdateSheetRequest batchUpdateSheetRequest,
         CancellationToken cancellationToken = default);
 
@@ -81,20 +81,34 @@ public interface IFeishuV3Spreadsheets : IFeishuAppContextSwitcher
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Post("/open-apis/sheets/v2/spreadsheets/{spreadsheet_token}/sheets_batch_update")]
     Task<FeishuApiResult<BatchUpdateSheetPropertiesResult>?> BatchUpdateSheetPropertiesAsync(
-       [Path] string? spreadsheet_token,
+       [Path] string spreadsheet_token,
        [Body] BatchUpdateSheetPropertiesRequest batchUpdateSheetPropertiesRequest,
        [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
        CancellationToken cancellationToken = default);
 
 
     /// <summary>
-    /// 根据电子表格 token 获取电子表格的基础信息，包括电子表格的所有者、URL 链接等。
+    /// <para>获取电子表格的所有工作表。</para>
+    /// <para>根据电子表格 token 获取电子表格的基础信息，包括电子表格的所有者、URL 链接等。</para>
     /// </summary>
     /// <param name="spreadsheet_token">文件夹的 token。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Get("/open-apis/sheets/v3/spreadsheets/{spreadsheet_token}/sheets/query")]
-    Task<FeishuApiResult<GetSpreadsheetSheets>?> GetSpreadsheetSheetsByTokenAsync(
-        [Path] string? spreadsheet_token,
+    Task<FeishuApiResult<GetSpreadsheetSheetsResult>?> GetSpreadsheetSheetsByTokenAsync(
+        [Path] string spreadsheet_token,
         CancellationToken cancellationToken = default);
 
+
+    /// <summary>
+    /// 查询电子表格中的工作表。
+    /// <para>根据工作表 ID 查询工作表属性信息，包括工作表的标题、索引位置、是否被隐藏等。</para>
+    /// </summary>
+    /// <param name="spreadsheet_token">文件夹的 token。</param>
+    /// <param name="sheet_id"></param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Get("/open-apis/sheets/v3/spreadsheets/{spreadsheet_token}/sheets/{sheet_id}")]
+    Task<FeishuApiResult<GetSpreadsheetSheetResult>?> GetSpreadsheetSheetBySheetIdAsync(
+         [Path] string spreadsheet_token,
+         [Path] string sheet_id,
+         CancellationToken cancellationToken = default);
 }

@@ -162,10 +162,28 @@ public interface IFeishuV3SpreadsheetFilterView : IFeishuAppContextSwitcher
     /// <param name="condition_id">筛选视图 ID。示例值：pH9hbVcCXA</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Get("/open-apis/sheets/v3/spreadsheets/{spreadsheet_token}/sheets/{sheet_id}/filter_views/{filter_view_id}/conditions/{condition_id}")]
-    Task<FeishuApiResult<GetFilterConditionResult>?> GetFilterConditionAsync(
+    Task<FeishuApiResult<GetFilterConditionResult>?> GetFilterConditionByIdAsync(
         [Path] string spreadsheet_token,
         [Path] string sheet_id,
         [Path] string filter_view_id,
         [Path] string condition_id,
         CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 删除筛选条件
+    /// <para>删除筛选视图指定列的所有筛选条件。</para>
+    /// </summary>
+    /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
+    /// <param name="sheet_id">工作表的 ID。示例值："2jm6f6"</param>
+    /// <param name="filter_view_id">筛选视图 ID。示例值："pH9hbVcCXA"</param>
+    /// <param name="condition_id">筛选视图 ID。示例值：pH9hbVcCXA</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Delete("/open-apis/sheets/v3/spreadsheets/{spreadsheet_token}/sheets/{sheet_id}/filter_views/{filter_view_id}/conditions/{condition_id}")]
+    Task<FeishuNullDataApiResult?> DeleteFilterConditionByIdAsync(
+       [Path] string spreadsheet_token,
+       [Path] string sheet_id,
+       [Path] string filter_view_id,
+       [Path] string condition_id,
+       CancellationToken cancellationToken = default);
 }

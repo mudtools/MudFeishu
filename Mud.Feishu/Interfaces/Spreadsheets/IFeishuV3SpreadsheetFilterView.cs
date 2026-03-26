@@ -135,4 +135,37 @@ public interface IFeishuV3SpreadsheetFilterView : IFeishuAppContextSwitcher
         [Path] string condition_id,
         [Body] UpdateFilterConditionsRequest updateFilterConditionsRequest,
         CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 查询筛选条件
+    /// <para>查询指定筛选视图的所有筛选条件，包括筛选的类型、比较类型、筛选参数等。</para>
+    /// </summary>
+    /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
+    /// <param name="sheet_id">工作表的 ID。示例值："2jm6f6"</param>
+    /// <param name="filter_view_id">筛选视图 ID。示例值："pH9hbVcCXA"</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Get("/open-apis/sheets/v3/spreadsheets/{spreadsheet_token}/sheets/{sheet_id}/filter_views/{filter_view_id}/conditions/query")]
+    Task<FeishuApiResult<GetFilterConditionsResult>?> GetFilterConditionsAsync(
+        [Path] string spreadsheet_token,
+        [Path] string sheet_id,
+        [Path] string filter_view_id,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 查询筛选条件
+    /// <para>查询指定筛选视图的所有筛选条件，包括筛选的类型、比较类型、筛选参数等。</para>
+    /// </summary>
+    /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
+    /// <param name="sheet_id">工作表的 ID。示例值："2jm6f6"</param>
+    /// <param name="filter_view_id">筛选视图 ID。示例值："pH9hbVcCXA"</param>
+    /// <param name="condition_id">筛选视图 ID。示例值：pH9hbVcCXA</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Get("/open-apis/sheets/v3/spreadsheets/{spreadsheet_token}/sheets/{sheet_id}/filter_views/{filter_view_id}/conditions/{condition_id}")]
+    Task<FeishuApiResult<GetFilterConditionResult>?> GetFilterConditionAsync(
+        [Path] string spreadsheet_token,
+        [Path] string sheet_id,
+        [Path] string filter_view_id,
+        [Path] string condition_id,
+        CancellationToken cancellationToken = default);
 }

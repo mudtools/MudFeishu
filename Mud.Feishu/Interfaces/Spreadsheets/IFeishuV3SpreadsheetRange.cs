@@ -21,7 +21,7 @@ namespace Mud.Feishu.Interfaces;
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), IsAbstract = true)]
 [Header(Consts.Authorization)]
-public interface IFeishuV3SpreadsheetRange
+public interface IFeishuV3SpreadsheetRange : IFeishuAppContextSwitcher
 {
 
     /// <summary>
@@ -50,7 +50,6 @@ public interface IFeishuV3SpreadsheetRange
         [Path] string spreadsheet_token,
         [Body] InsertRangeRequest insertRangeRequest,
         CancellationToken cancellationToken = default);
-
 
 
     /// <summary>

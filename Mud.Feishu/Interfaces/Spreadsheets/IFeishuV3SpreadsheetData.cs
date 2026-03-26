@@ -151,8 +151,22 @@ public interface IFeishuV3SpreadsheetData : IFeishuAppContextSwitcher
     /// <param name="rangeDataRequest">指定工作表的范围和写入的数据请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Put("/open-apis/sheets/v2/spreadsheets/{spreadsheet_token}/values")]
-    Task<FeishuApiResult<CellsUpdate>?> RangeDataAsync(
+    Task<FeishuApiResult<CellsUpdate>?> RangeWriteDataAsync(
         [Path] string spreadsheet_token,
         [Body] RangeDataOpsRequest rangeDataRequest,
         CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 向多个范围写入数据
+    /// <para>向电子表格某个工作表的多个指定范围中写入数据。若指定范围已内有数据，将被新写入的数据覆盖。</para>
+    /// </summary>
+    /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
+    /// <param name="rangesDataRequest">写入多个范围数据请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Post("/open-apis/sheets/v2/spreadsheets/{spreadsheet_token}/values_batch_update")]
+    Task<FeishuApiResult<RangesWriteDataResult>?> RangesWriteDataAsync(
+       [Path] string spreadsheet_token,
+       [Body] RangesDataOpsRequest rangesDataRequest,
+       CancellationToken cancellationToken = default);
 }

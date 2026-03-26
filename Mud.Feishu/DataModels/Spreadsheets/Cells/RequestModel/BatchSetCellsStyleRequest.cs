@@ -8,14 +8,14 @@
 namespace Mud.Feishu.DataModels.Spreadsheets;
 
 /// <summary>
-/// 更新的单元格信息
+/// 批量设置单元格样式请求体
 /// </summary>
-public class CellsStyleUpdate : CellsStyleUpdateInfo
+public class BatchSetCellsStyleRequest
 {
     /// <summary>
-    /// <para>工作表的版本号。从 0 开始计数，更新一次版本号加一。</para>
-    /// <para>必填：否</para>
+    /// <para>指定样式与范围，支持传入多对 `ranges` 和 `style` 参数。</para>
+    /// <para>必填：是</para>
     /// </summary>
-    [JsonPropertyName("revision")]
-    public int? Revision { get; set; }
+    [JsonPropertyName("data")]
+    public RangesStyle[] Data { get; set; } = [];
 }

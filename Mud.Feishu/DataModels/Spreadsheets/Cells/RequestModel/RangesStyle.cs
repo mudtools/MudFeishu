@@ -8,14 +8,23 @@
 namespace Mud.Feishu.DataModels.Spreadsheets;
 
 /// <summary>
-/// 更新的单元格信息
+/// 样式与范围
 /// </summary>
-public class CellsStyleUpdate : CellsStyleUpdateInfo
+public class RangesStyle
 {
     /// <summary>
-    /// <para>工作表的版本号。从 0 开始计数，更新一次版本号加一。</para>
-    /// <para>必填：否</para>
+    /// <para>⁣指定多个范围。单个范围的格式为 `&lt;sheetId&gt;!&lt;开始位置&gt;:&lt;结束位置&gt;`。其中：</para>
+    /// <para>- `sheetId` 为工作表 ID</para>
+    /// <para>- `&lt;开始位置&gt;:&lt;结束位置&gt;` 为工作表中单元格的范围，数字表示行索引，字母表示列索引。如 `A2:B2` 表示该工作表第 2 行的 A 列到 B 列。</para>
+    /// <para>必填：是</para>
     /// </summary>
-    [JsonPropertyName("revision")]
-    public int? Revision { get; set; }
+    [JsonPropertyName("ranges")]
+    public string[] Ranges { get; set; } = [];
+
+    /// <summary>
+    /// <para>需要更新的样式</para>
+    /// <para>必填：是</para>
+    /// </summary>
+    [JsonPropertyName("style")]
+    public CellStyle Style { get; set; } = new();
 }

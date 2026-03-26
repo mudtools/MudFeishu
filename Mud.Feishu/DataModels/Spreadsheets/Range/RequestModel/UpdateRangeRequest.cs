@@ -8,24 +8,21 @@
 namespace Mud.Feishu.DataModels.Spreadsheets;
 
 /// <summary>
-/// 插入行列请求体
+/// 更新行列请求体
 /// </summary>
-public class InsertRangeRequest
+public class UpdateRangeRequest
 {
     /// <summary>
-    /// <para>需要插入行列的维度信息</para>
+    /// <para>需要更新行列的维度信息</para>
     /// <para>必填：是</para>
     /// </summary>
     [JsonPropertyName("dimension")]
     public SheetRangeDimension Dimension { get; set; } = new();
 
-
     /// <summary>
-    /// <para>插入的空白行或列是否继承表中的单元格样式。不填或设置为空即不继承任何样式，为默认空白样式。可选值：</para>
-    /// <para>- `BEFORE`：继承起始位置的单元格的样式</para>
-    /// <para>- `AFTER`：继承结束位置的单元格的样式</para>
-    /// <para>必填：否</para>
+    /// <para>更新行或列的属性。至少写入以下参数之一</para>
+    /// <para>必填：是</para>
     /// </summary>
-    [JsonPropertyName("inheritStyle")]
-    public string? InheritStyle { get; set; }
+    [JsonPropertyName("dimensionProperties")]
+    public SheetDimensionProperty DimensionProperties { get; set; } = new();
 }

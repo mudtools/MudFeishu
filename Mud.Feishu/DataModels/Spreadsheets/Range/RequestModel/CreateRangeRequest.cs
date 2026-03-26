@@ -17,5 +17,5 @@ public class CreateRangeRequest
     /// <para>必填：是</para>
     /// </summary>
     [JsonPropertyName("dimension")]
-    public SheetRangeDimension Dimension { get; set; } = new();
+    public CreateRangeDimension Dimension { get; set; } = new();
 }

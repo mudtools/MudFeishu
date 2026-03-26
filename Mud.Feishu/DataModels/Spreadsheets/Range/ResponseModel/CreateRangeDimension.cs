@@ -7,8 +7,8 @@
 
 namespace Mud.Feishu.DataModels.Spreadsheets;
 
-/// <summary>插入行列的维度信息</summary>
-public class InsertRangeDimension
+/// <summary></summary>
+public class CreateRangeDimension
 {
     /// <summary>
     /// <para>电子表格工作表的 ID。</para>
@@ -18,7 +18,7 @@ public class InsertRangeDimension
     public string SheetId { get; set; } = string.Empty;
 
     /// <summary>
-    /// <para>要更新的维度。可选值：</para>
+    /// <para>更新的维度。可选值：</para>
     /// <para>- `ROWS`：行</para>
     /// <para>- `COLUMNS`：列</para>
     /// <para>必填：是</para>
@@ -27,17 +27,9 @@ public class InsertRangeDimension
     public string MajorDimension { get; set; } = string.Empty;
 
     /// <summary>
-    /// <para>插入的行或列的起始位置。从 0 开始计数。若 `startIndex` 为 3，则从第 4 行或列开始插入空行或列。包含第 4 行或列。</para>
+    /// <para>要增加的行数或列数。取值范围为 (0,5000]</para>
     /// <para>必填：是</para>
     /// </summary>
-    [JsonPropertyName("startIndex")]
-    public int StartIndex { get; set; }
-
-    /// <summary>
-    /// <para>插入的行或列结束的位置。从 0 开始计数。若 `endIndex` 为 7，则从第 8 行结束插入行。第 8 行不再插入空行。</para>
-    /// <para>示例：当 `majorDimension`为 `ROWS`、 `startIndex` 为 3、`endIndex ` 为 7 时，则在第 4、5、6、7 行插入空白行，共插入 4 行。</para>
-    /// <para>必填：是</para>
-    /// </summary>
-    [JsonPropertyName("endIndex")]
-    public int EndIndex { get; set; }
+    [JsonPropertyName("length")]
+    public int Length { get; set; }
 }

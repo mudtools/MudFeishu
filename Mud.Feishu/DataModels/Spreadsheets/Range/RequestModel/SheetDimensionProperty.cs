@@ -7,29 +7,24 @@
 
 namespace Mud.Feishu.DataModels.Spreadsheets;
 
-/// <summary></summary>
-public class SheetRangeDimension
+/// <summary>
+/// 更新行或列的属性
+/// </summary>
+public class SheetDimensionProperty
 {
     /// <summary>
-    /// <para>电子表格工作表的 ID。</para>
-    /// <para>必填：是</para>
+    /// <para>是否显示行或列。可选值：</para>
+    /// <para>- true：显示行或列</para>
+    /// <para>- false：隐藏行或列</para>
+    /// <para>必填：否</para>
     /// </summary>
-    [JsonPropertyName("sheetId")]
-    public string SheetId { get; set; } = string.Empty;
+    [JsonPropertyName("visible")]
+    public bool? Visible { get; set; }
 
     /// <summary>
-    /// <para>更新的维度。可选值：</para>
-    /// <para>- `ROWS`：行</para>
-    /// <para>- `COLUMNS`：列</para>
-    /// <para>必填：是</para>
+    /// <para>行高或列宽。单位为像素。`fixedSize` 为 0 时，等价于隐藏行或列。</para>
+    /// <para>必填：否</para>
     /// </summary>
-    [JsonPropertyName("majorDimension")]
-    public string MajorDimension { get; set; } = string.Empty;
-
-    /// <summary>
-    /// <para>要增加的行数或列数。取值范围为 (0,5000]</para>
-    /// <para>必填：是</para>
-    /// </summary>
-    [JsonPropertyName("length")]
-    public int Length { get; set; }
+    [JsonPropertyName("fixedSize")]
+    public int? FixedSize { get; set; }
 }

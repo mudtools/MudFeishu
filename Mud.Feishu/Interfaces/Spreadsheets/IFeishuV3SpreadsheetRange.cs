@@ -50,4 +50,22 @@ public interface IFeishuV3SpreadsheetRange
         [Path] string spreadsheet_token,
         [Body] InsertRangeRequest insertRangeRequest,
         CancellationToken cancellationToken = default);
+
+
+
+    /// <summary>
+    /// 更新行列
+    /// <para>用于更新设置电子表格中行列的属性，包括是否隐藏行列和设置行高列宽。</para>
+    /// </summary>
+    /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
+    /// <param name="insertRangeRequest">更新行列请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Put("/open-apis/sheets/v2/spreadsheets/{spreadsheetToken}/dimension_range")]
+    Task<FeishuNullDataApiResult?> UpdateRangeAsync(
+      [Path] string spreadsheet_token,
+      [Body] UpdateRangeRequest insertRangeRequest,
+      CancellationToken cancellationToken = default);
+
+
+
 }

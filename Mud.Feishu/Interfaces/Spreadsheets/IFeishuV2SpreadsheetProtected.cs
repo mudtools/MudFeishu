@@ -32,4 +32,26 @@ public interface IFeishuV2SpreadsheetProtected : IFeishuAppContextSwitcher
        [Body] CreateProtectedRequest createProtectedRequest,
        [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
        CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 修改保护范围
+    /// <para>修改电子表格工作表中指定的保护范围。</para>
+    /// </summary>
+    /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
+    /// <param name="updateProtectedRequest">创建保护范围的请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Post("/sheets/v2/spreadsheets/{spreadsheet_token}/protected_range_batch_update")]
+    Task<FeishuApiResult<UpdateProtectedResult>?> UpdateProtectedAsync(
+      [Path] string spreadsheet_token,
+      [Body] UpdateProtectedRequest updateProtectedRequest,
+      CancellationToken cancellationToken = default);
+
+
+    [Get("/open-apis/sheets/v2/spreadsheets/{spreadsheetToken}/protected_range_batch_get")]
+    Task<FeishuApiResult<GetProtectedResult>?> GetProtectedAsync(
+        [Path] string spreadsheet_token,
+        [Query("protectIds")] string protectIds,
+        [Query("memberType")] string? memberType = Consts.User_Id_Type,
+        CancellationToken cancellationToken = default);
 }

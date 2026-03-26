@@ -27,7 +27,7 @@ public interface IFeishuV3SpreadsheetFilterView : IFeishuAppContextSwitcher
     /// <param name="createFilterViewRequest">创建筛选视图请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Post("/open-apis/sheets/v3/spreadsheets/{spreadsheet_token}/sheets/{sheet_id}/filter_views")]
-    Task<FeishuApiResult<FilterViewsResult>?> CreateFilterViewAsync(
+    Task<FeishuApiResult<FilterViewResult>?> CreateFilterViewAsync(
         [Path] string spreadsheet_token,
         [Path] string sheet_id,
         [Body] CreateFilterViewRequest createFilterViewRequest,
@@ -44,7 +44,7 @@ public interface IFeishuV3SpreadsheetFilterView : IFeishuAppContextSwitcher
     /// <param name="updateFilterViewRequest">更新筛选视图请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Patch("/open-apis/sheets/v3/spreadsheets/{spreadsheet_token}/sheets/{sheet_id}/filter_views/{filter_view_id}")]
-    Task<FeishuApiResult<FilterViewsResult>?> UpdateFilterViewAsync(
+    Task<FeishuApiResult<FilterViewResult>?> UpdateFilterViewAsync(
        [Path] string spreadsheet_token,
        [Path] string sheet_id,
        [Path] string filter_view_id,
@@ -65,4 +65,20 @@ public interface IFeishuV3SpreadsheetFilterView : IFeishuAppContextSwitcher
          [Path] string spreadsheet_token,
          [Path] string sheet_id,
          CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 获取筛选视图
+    /// <para>获取指定筛选视图的信息，包括 ID、名称和筛选范围。</para>
+    /// </summary>
+    /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
+    /// <param name="sheet_id">工作表的 ID。示例值："2jm6f6"</param>
+    /// <param name="filter_view_id">筛选视图 ID。示例值："pH9hbVcCXA"</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Get("/open-apis/sheets/v3/spreadsheets/{spreadsheet_token}/sheets/{sheet_id}/filter_views/{filter_view_id}")]
+    Task<FeishuApiResult<FilterViewResult>?> GetFilterViewByIdAsync(
+        [Path] string spreadsheet_token,
+        [Path] string sheet_id,
+        [Path] string filter_view_id,
+        CancellationToken cancellationToken = default);
 }

@@ -10,7 +10,7 @@ namespace Mud.Feishu.DataModels.Spreadsheets;
 /// <summary>
 /// 筛选视图响应体
 /// </summary>
-public class FilterViewsResult
+public class FilterViewResult
 {
     /// <summary>
     /// <para>创建的筛选视图的信息</para>

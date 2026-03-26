@@ -1,4 +1,4 @@
-﻿// -----------------------------------------------------------------------
+// -----------------------------------------------------------------------
 //  作者：Mud Studio  版权所有 (c) Mud Studio 2025   
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
@@ -48,10 +48,35 @@ public interface IFeishuV2SpreadsheetProtected : IFeishuAppContextSwitcher
       CancellationToken cancellationToken = default);
 
 
+    /// <summary>
+    /// 获取保护范围
+    /// <para>获取电子表格工作表中指定保护范围的信息，包括保护的行列索引、支持编辑的用户 ID、保护范围的备注等。</para>
+    /// </summary>
+    /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
+    /// <param name="protectIds">要获取的保护范围的 ID 列表，多个 ID 之间逗号分隔。
+    /// <para>**示例值**："7379738014546812456,7379738014546812456"</para>
+    /// </param>
+    /// <param name="memberType">返回的用户 ID 的类型。默认为 `userId`，建议选择 `openId`。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Get("/open-apis/sheets/v2/spreadsheets/{spreadsheet_token}/protected_range_batch_get")]
     Task<FeishuApiResult<GetProtectedResult>?> GetProtectedAsync(
         [Path] string spreadsheet_token,
         [Query("protectIds")] string protectIds,
         [Query("memberType")] string? memberType = Consts.User_Id_Type,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 删除保护范围
+    /// <para>根据保护范围 ID 删除保护范围。</para>
+    /// </summary>
+    /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
+    /// <param name="protectIds">要删除的保护范围的 ID 列表，多个 ID 之间逗号分隔。
+    /// <para>**示例值**："7379738014546812456,7379738014546812456"</para>
+    /// </param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Delete("/sheets/v2/spreadsheets/{spreadsheet_token}/protected_range_batch_del")]
+    Task<FeishuApiResult<DeleteProtectedResult>?> DeleteProtectedAsync(
+        [Path] string spreadsheet_token,
+        [Query("protectIds")] string protectIds,
         CancellationToken cancellationToken = default);
 }

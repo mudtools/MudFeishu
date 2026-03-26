@@ -8,7 +8,7 @@
 namespace Mud.Feishu;
 
 /// <summary>
-/// 飞书电子表格数据保护实现表格的特定行或列设置保护区域，并精细化控制协作者的编辑权限
+/// 格数据保护用于设置电子表格保护范围指对工作表中的任意行或列进行保护，并可设置其他协作者是否有权限编辑该数据，有效保障数据信息安全。
 /// <para>本接口提供飞书开放平台电子表格中数据保护能力相关方法。</para>
 /// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/docs/sheets-v3/overview"/></para>
 /// </summary>

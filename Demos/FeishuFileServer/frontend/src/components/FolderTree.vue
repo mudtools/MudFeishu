@@ -5,7 +5,7 @@
       :class="{ 'is-active': currentFolderToken === null }"
       @click="handleRootClick"
     >
-      <el-icon class="folder-icon"><HomeFilled /></el-icon>
+      <IconHome class="folder-icon" :size="18" />
       <span class="folder-name">根目录</span>
       <div class="folder-actions" @click.stop>
         <el-button 
@@ -14,7 +14,7 @@
           text
           @click="handleCreateFolder(null)"
         >
-          <el-icon><Plus /></el-icon>
+          <IconPlus :size="16" />
         </el-button>
       </div>
     </div>
@@ -41,15 +41,15 @@
       :style="{ left: contextMenu.x + 'px', top: contextMenu.y + 'px' }"
     >
       <div class="context-menu-item" @click="handleCreateFolder(contextMenu.folder)">
-        <el-icon><FolderAdd /></el-icon>
+        <IconFolderAdd :size="16" />
         <span>新建子文件夹</span>
       </div>
       <div class="context-menu-item" @click="handleRenameFolder(contextMenu.folder)">
-        <el-icon><Edit /></el-icon>
+        <IconEdit :size="16" />
         <span>重命名</span>
       </div>
       <div class="context-menu-item danger" @click="handleDeleteFolder(contextMenu.folder)">
-        <el-icon><Delete /></el-icon>
+        <IconDelete :size="16" />
         <span>删除</span>
       </div>
     </div>
@@ -67,7 +67,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { HomeFilled, FolderAdd, Edit, Delete, Plus } from '@element-plus/icons-vue'
+import { IconHome, IconPlus, IconFolderAdd, IconEdit, IconDelete } from '@/components/icons'
 import { useFolderStore } from '@/stores/folderStore'
 import { folderApi } from '@/api'
 import type { FolderResponse } from '@/api/types'
@@ -285,6 +285,7 @@ onUnmounted(() => {
     border-radius: var(--radius-md);
     transition: all var(--transition-fast);
     font-size: 14px;
+    color: var(--text-primary);
 
     &:hover {
       background: var(--bg-secondary);
@@ -296,10 +297,6 @@ onUnmounted(() => {
       &:hover {
         background: rgba(239, 68, 68, 0.1);
       }
-    }
-
-    .el-icon {
-      font-size: 16px;
     }
   }
 }

@@ -50,4 +50,28 @@ public interface IFeishuV3SpreadsheetDataValidation : IFeishuAppContextSwitcher
          [Path] string sheetId,
          [Body] UpdateDataValidationRequest updateDataValidationRequest,
          CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 增加保护范围
+    /// <para>在电子表格工作表中设置多个保护范围，支持对行或列设置保护范围。</para>
+    /// </summary>
+    /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <param name="range">
+    /// <para>查询范围。格式为 `&lt;sheetId&gt;!&lt;开始位置&gt;:&lt;结束位置&gt;`。其中：</para>
+    /// <para>- `sheetId` 为工作表 ID</para>
+    /// <para>- `&lt;开始位置&gt;:&lt;结束位置&gt;` 为工作表中单元格的范围，数字表示行索引，字母表示列索引。如 `A2:B2` 表示该工作表第 2 行的 A 列到 B 列。</para>
+    /// </param>
+    /// <param name="dataValidationType">
+    /// <para>数据验证类型。取固定值 "list"，表示下拉列表。</para>
+    /// </param>
+    [Get("/open-apis/sheets/v2/spreadsheets/{spreadsheet_token}/dataValidation")]
+    Task<FeishuApiResult<GetDataValidationsResult>?> GetDataValidationsAsync(
+      [Path] string spreadsheet_token,
+      [Query("range")] string range,
+      [Query("dataValidationType")] string dataValidationType,
+      CancellationToken cancellationToken = default);
+
+
 }

@@ -33,7 +33,7 @@ public interface IFeishuV3SpreadsheetData : IFeishuAppContextSwitcher
 
 
     /// <summary>
-    /// 插入数据
+    /// 追加数据
     /// <para>在电子表格工作表的指定范围中，在空白位置中追加数据。例如，若指定范围参数 range 为 6e5ed3!A1:B2，该接口将会依次寻找 A1、A2、A3...单元格，在找到的第一个空白位置中写入数据。</para>
     /// </summary>
     /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
@@ -133,7 +133,7 @@ public interface IFeishuV3SpreadsheetData : IFeishuAppContextSwitcher
     /// </param>
     /// <param name="user_id_type">当单元格中包含@用户等涉及用户信息的元素时，该参数可指定返回的用户 ID 类型。默认为 lark_id，建议选择 open_id 或 union_id。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
-    [Get("/open-apis/sheets/v2/spreadsheets/{spreadsheetToken}/values_batch_get")]
+    [Get("/open-apis/sheets/v2/spreadsheets/{spreadsheet_token}/values_batch_get")]
     Task<FeishuApiResult<GetRangesDataResult>?> GetRangesDataAsync(
        [Path] string spreadsheet_token,
        [Query("ranges")] string ranges,
@@ -141,4 +141,18 @@ public interface IFeishuV3SpreadsheetData : IFeishuAppContextSwitcher
        [Query("dateTimeRenderOption")] string? dateTimeRenderOption = null,
        [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
        CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 向单个范围写入数据
+    /// <para>向电子表格某个工作表的单个指定范围中写入数据。若指定范围内已有数据，将被新写入的数据覆盖。</para>
+    /// </summary>
+    /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
+    /// <param name="rangeDataRequest">指定工作表的范围和写入的数据请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Put("/open-apis/sheets/v2/spreadsheets/{spreadsheet_token}/values")]
+    Task<FeishuApiResult<CellsUpdate>?> RangeDataAsync(
+        [Path] string spreadsheet_token,
+        [Body] RangeDataOpsRequest rangeDataRequest,
+        CancellationToken cancellationToken = default);
 }

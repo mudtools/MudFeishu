@@ -9,7 +9,7 @@ namespace Mud.Feishu.DataModels.Spreadsheets;
 
 
 /// <summary>
-/// 插入数据请求体中的范围值
+/// 写入数据请求体中的范围值
 /// </summary>
 public class RangeValues
 {

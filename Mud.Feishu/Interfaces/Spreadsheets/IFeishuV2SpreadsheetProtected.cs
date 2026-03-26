@@ -48,7 +48,7 @@ public interface IFeishuV2SpreadsheetProtected : IFeishuAppContextSwitcher
       CancellationToken cancellationToken = default);
 
 
-    [Get("/open-apis/sheets/v2/spreadsheets/{spreadsheetToken}/protected_range_batch_get")]
+    [Get("/open-apis/sheets/v2/spreadsheets/{spreadsheet_token}/protected_range_batch_get")]
     Task<FeishuApiResult<GetProtectedResult>?> GetProtectedAsync(
         [Path] string spreadsheet_token,
         [Query("protectIds")] string protectIds,

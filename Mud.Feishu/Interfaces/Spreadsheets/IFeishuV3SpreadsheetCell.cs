@@ -53,12 +53,29 @@ public interface IFeishuV3SpreadsheetCell : IFeishuAppContextSwitcher
     /// </summary>
     /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
     /// <param name="sheet_id">工作表的 ID。示例值："2jm6f6"</param>
-    /// <param name="getCellsRequest">查找单元格请求体</param>
+    /// <param name="findCellsRequest">查找单元格请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Post("/open-apis/sheets/v3/spreadsheets/{spreadsheet_token}/sheets/{sheet_id}/find")]
-    Task<FeishuApiResult<GetCellsResult>?> GetCellsAsync(
+    Task<FeishuApiResult<FindCellsResult>?> FindCellsAsync(
         [Path] string spreadsheet_token,
         [Path] string sheet_id,
-        [Body] GetCellsRequest getCellsRequest,
+        [Body] FindCellsRequest findCellsRequest,
         CancellationToken cancellationToken = default);
+
+
+
+    /// <summary>
+    /// 替换单元格
+    /// <para>在指定范围内，查找并替换符合查找条件的单元格。</para>
+    /// </summary>
+    /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
+    /// <param name="sheet_id">工作表的 ID。示例值："2jm6f6"</param>
+    /// <param name="replaceCellsRequest">替换单元格请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Post("/open-apis/sheets/v3/spreadsheets/{spreadsheet_token}/sheets/{sheet_id}/replace")]
+    Task<FeishuApiResult<ReplaceCellsResult>?> ReplaceCellsAsync(
+       [Path] string spreadsheet_token,
+       [Path] string sheet_id,
+       [Body] ReplaceCellsRequest replaceCellsRequest,
+       CancellationToken cancellationToken = default);
 }

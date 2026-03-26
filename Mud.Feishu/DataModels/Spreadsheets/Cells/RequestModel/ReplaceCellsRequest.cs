@@ -8,9 +8,9 @@
 namespace Mud.Feishu.DataModels.Spreadsheets;
 
 /// <summary>
-/// 查找单元格请求体
+/// 替换单元格请求体
 /// </summary> 
-public class GetCellsRequest
+public class ReplaceCellsRequest
 {
     /// <summary>
     /// <para>指定查找单元格的条件。</para>
@@ -20,10 +20,18 @@ public class GetCellsRequest
     public FindCellsCondition FindCondition { get; set; } = new();
 
     /// <summary>
-    /// <para>查找的字符串。当`search_by_regex` 字段为 true 时，你需填入正则表达式</para>
+    /// <para>查找的字符串。当`search_by_regex` 字段为 true 时，你需填入正则表达式。</para>
     /// <para>必填：是</para>
-    /// <para>示例值：如下所示： - 字符串查找示例： "hello" - 正则表达式查找示例："[A-Z]\w+</para>
+    /// <para>示例值：hello</para>
     /// </summary>
     [JsonPropertyName("find")]
     public string Find { get; set; } = string.Empty;
+
+    /// <summary>
+    /// <para>替换的字符串</para>
+    /// <para>必填：是</para>
+    /// <para>示例值：world</para>
+    /// </summary>
+    [JsonPropertyName("replacement")]
+    public string Replacement { get; set; } = string.Empty;
 }

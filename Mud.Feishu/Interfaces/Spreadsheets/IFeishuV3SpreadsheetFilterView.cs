@@ -50,4 +50,19 @@ public interface IFeishuV3SpreadsheetFilterView : IFeishuAppContextSwitcher
        [Path] string filter_view_id,
        [Body] UpdateFilterViewRequest updateFilterViewRequest,
        CancellationToken cancellationToken = default);
+
+
+
+    /// <summary>
+    /// 查询筛选视图
+    /// <para>查询电子表格指定工作表的所有筛选视图及其基本信息，包括视图 ID、视图名称和筛选范围。</para>
+    /// </summary>
+    /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
+    /// <param name="sheet_id">工作表的 ID。示例值："2jm6f6"</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Get("/open-apis/sheets/v3/spreadsheets/{spreadsheet_token}/sheets/{sheet_id}/filter_views/query")]
+    Task<FeishuApiResult<GetFilterViewsResult>?> GetFilterViewsAsync(
+         [Path] string spreadsheet_token,
+         [Path] string sheet_id,
+         CancellationToken cancellationToken = default);
 }

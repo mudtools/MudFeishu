@@ -74,4 +74,18 @@ public interface IFeishuV3SpreadsheetDataValidation : IFeishuAppContextSwitcher
       CancellationToken cancellationToken = default);
 
 
+    /// <summary>
+    /// 删除下拉列表设置
+    /// <para>删除电子表格工作表指定范围中下拉列表的设置，但仍保留选项文本。</para>
+    /// </summary>
+    /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
+    /// <param name="deleteDataValidationRequest">删除数据验证请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Delete("/open-apis/sheets/v2/spreadsheets/{spreadsheetToken}/dataValidation")]
+    Task<FeishuApiResult<DeleteDataValidationResult>?> DeleteDataValidationAsync(
+     [Path] string spreadsheet_token,
+     [Body] DeleteDataValidationRequest deleteDataValidationRequest,
+     CancellationToken cancellationToken = default);
+
+
 }

@@ -81,7 +81,7 @@ public interface IFeishuV3SpreadsheetDataValidation : IFeishuAppContextSwitcher
     /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
     /// <param name="deleteDataValidationRequest">删除数据验证请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
-    [Delete("/open-apis/sheets/v2/spreadsheets/{spreadsheetToken}/dataValidation")]
+    [Delete("/open-apis/sheets/v2/spreadsheets/{spreadsheet_token}/dataValidation")]
     Task<FeishuApiResult<DeleteDataValidationResult>?> DeleteDataValidationAsync(
      [Path] string spreadsheet_token,
      [Body] DeleteDataValidationRequest deleteDataValidationRequest,

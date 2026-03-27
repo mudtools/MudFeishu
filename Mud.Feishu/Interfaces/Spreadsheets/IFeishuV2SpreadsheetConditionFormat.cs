@@ -28,8 +28,22 @@ public interface IFeishuV2SpreadsheetConditionFormat : IFeishuAppContextSwitcher
     /// <param name="createConditionFormatRequest">批量创建条件格式请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Post("/open-apis/sheets/v2/spreadsheets/{spreadsheet_token}/condition_formats/batch_create")]
-    Task<FeishuApiResult<CreateConditionFormatResult>?> CreateConditionFormatAsync(
+    Task<FeishuApiResult<ConditionFormatOpsResult>?> CreateConditionsFormatAsync(
         [Path] string spreadsheet_token,
         [Body] CreateConditionFormatRequest createConditionFormatRequest,
         CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 批量更新条件格式
+    /// <para>更新已有的条件格式。支持跨工作表更新多个条件格式。该接口为全量更新接口，若非必填参数不传值，将改变原有配置。</para>
+    /// </summary>
+    /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
+    /// <param name="updateConditionFormatRequest">批量更新条件格式请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Post("/open-apis/sheets/v2/spreadsheets/{spreadsheet_token}/condition_formats/batch_update")]
+    Task<FeishuApiResult<ConditionFormatOpsResult>?> UpdateConditionsFormatAsync(
+       [Path] string spreadsheet_token,
+       [Body] UpdateConditionFormatRequest updateConditionFormatRequest,
+       CancellationToken cancellationToken = default);
 }

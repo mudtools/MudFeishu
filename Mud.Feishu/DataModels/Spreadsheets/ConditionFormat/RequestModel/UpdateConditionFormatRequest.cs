@@ -7,16 +7,17 @@
 
 namespace Mud.Feishu.DataModels.Spreadsheets;
 
-/// <summary>
-/// 批量创建条件格式响应体
-/// </summary>
-public class CreateConditionFormatResult
+/// <summary>批量更新条件格式请求体</summary>
+public class UpdateConditionFormatRequest
 {
     /// <summary>
-    /// <para>响应信息</para>
-    /// <para>必填：否</para>
+    /// <para>要更新的条件格式的信息。支持更新最多 10 个条件格式。</para>
+    /// <para>**注意**：</para>
+    /// <para>响应体中将返回每个条件格式的更新结果，包括成功或具体的失败信息。</para>
+    /// <para>必填：是</para>
     /// </summary>
-    [JsonPropertyName("responses")]
-    public CreateConditionFormatResponse[]? Responses { get; set; }
+    [JsonPropertyName("sheet_condition_formats")]
+    public SheetConditionFormatData[] SheetConditionFormats { get; set; } = [];
+
 
 }

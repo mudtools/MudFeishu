@@ -7,14 +7,20 @@
 
 namespace Mud.Feishu.DataModels.Spreadsheets;
 
-/// <summary>条件格式的详细信息</summary>
-public class ConditionFormatData : ConditionFormat
+/// <summary>电子表格工作表的条件格式数据</summary>
+public class SheetConditionFormatData
 {
     /// <summary>
-    /// <para>需要更新的条件格式的 ID。</para>
+    /// <para>电子表格工作表的 ID。</para>
     /// <para>必填：是</para>
     /// </summary>
-    [JsonPropertyName("cf_id")]
-    public string CfId { get; set; } = string.Empty;
+    [JsonPropertyName("sheet_id")]
+    public string SheetId { get; set; } = string.Empty;
 
+    /// <summary>
+    /// <para>条件格式的详细信息</para>
+    /// <para>必填：是</para>
+    /// </summary>
+    [JsonPropertyName("condition_format")]
+    public ConditionFormatData ConditionFormat { get; set; } = new();
 }

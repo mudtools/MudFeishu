@@ -22,7 +22,7 @@ public class SheetConditionFormat
     /// <para>必填：是</para>
     /// </summary>
     [JsonPropertyName("condition_format")]
-    public ConditionFormatData ConditionFormat { get; set; } = new();
+    public ConditionFormat ConditionFormat { get; set; } = new();
 
 
 }

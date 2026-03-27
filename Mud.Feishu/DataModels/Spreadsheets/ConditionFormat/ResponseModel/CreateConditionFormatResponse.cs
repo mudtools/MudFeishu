@@ -8,7 +8,7 @@
 namespace Mud.Feishu.DataModels.Spreadsheets;
 
 /// <summary>
-/// 批量创建条件格式响应体中的每个响应项
+/// 批量创建\修改条件格式响应体中的每个响应项
 /// </summary>
 public class CreateConditionFormatResponse
 {
@@ -20,14 +20,14 @@ public class CreateConditionFormatResponse
     public string? SheetId { get; set; }
 
     /// <summary>
-    /// <para>要创建的条件格式的 ID</para>
+    /// <para>要创建\修改的条件格式的 ID</para>
     /// <para>必填：否</para>
     /// </summary>
     [JsonPropertyName("cf_id")]
     public string? CfId { get; set; }
 
     /// <summary>
-    /// <para>当前条件格式创建的状态码。0 表示成功创建，非 0 表示失败。</para>
+    /// <para>当前条件格式创建\修改的状态码。0 表示成功创建，非 0 表示失败。</para>
     /// <para>必填：否</para>
     /// </summary>
     [JsonPropertyName("res_code")]

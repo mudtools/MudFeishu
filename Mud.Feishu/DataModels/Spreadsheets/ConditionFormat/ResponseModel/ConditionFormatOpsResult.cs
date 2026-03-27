@@ -7,14 +7,16 @@
 
 namespace Mud.Feishu.DataModels.Spreadsheets;
 
-/// <summary>条件格式的详细信息</summary>
-public class ConditionFormatData : ConditionFormat
+/// <summary>
+/// 批量创建\修改条件格式响应体
+/// </summary>
+public class ConditionFormatOpsResult
 {
     /// <summary>
-    /// <para>需要更新的条件格式的 ID。</para>
-    /// <para>必填：是</para>
+    /// <para>响应信息</para>
+    /// <para>必填：否</para>
     /// </summary>
-    [JsonPropertyName("cf_id")]
-    public string CfId { get; set; } = string.Empty;
+    [JsonPropertyName("responses")]
+    public CreateConditionFormatResponse[]? Responses { get; set; }
 
 }

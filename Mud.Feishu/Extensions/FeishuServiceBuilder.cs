@@ -44,7 +44,8 @@ public class FeishuServiceBuilder
             [FeishuModule.Drive] = new DriveModuleRegistrar(),
             [FeishuModule.Wiki] = new WikiModuleRegistrar(),
             [FeishuModule.Docx] = new DocxModuleRegistrar(),
-            [FeishuModule.Spreadsheets] = new SpreadsheetsModuleRegistrar()
+            [FeishuModule.Spreadsheets] = new SpreadsheetsModuleRegistrar(),
+            [FeishuModule.Bitable] = new BitableRegistrar()
         };
     }
 
@@ -109,6 +110,12 @@ public class FeishuServiceBuilder
     public FeishuServiceBuilder AddSpreadsheetsApi() => AddModule(FeishuModule.Spreadsheets);
 
     /// <summary>
+    /// 添加多维表格管理 API 服务
+    /// </summary>
+    /// <returns>建造者实例，支持链式调用</returns>
+    public FeishuServiceBuilder AddBiTableApi() => AddModule(FeishuModule.Bitable);
+
+    /// <summary>
     /// 添加飞书云盘管理 API 服务
     /// </summary>
     /// <returns>建造者实例，支持链式调用</returns>
@@ -120,17 +127,11 @@ public class FeishuServiceBuilder
     /// <returns>建造者实例，支持链式调用</returns>
     public FeishuServiceBuilder AddAllApis()
     {
-        return AddOrganizationApi()
-               .AddMessageApi()
-               .AddChatGroupApi()
-               .AddApprovalApi()
-               .AddTaskApi()
-               .AddCardApi()
-               .AddDriveApi()
-               .AddWikiApi()
-               .AddDocxApi()
-               .AddSpreadsheetsApi()
-               .AddAttendanceApi();
+        foreach (var module in _registrars.Keys)
+        {
+            AddModule(module);
+        }
+        return this;
     }
 
     /// <summary>

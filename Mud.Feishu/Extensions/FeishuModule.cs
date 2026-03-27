@@ -68,6 +68,11 @@ public enum FeishuModule
     Spreadsheets,
 
     /// <summary>
+    /// 飞书多维表格管理
+    /// </summary>
+    Bitable,
+
+    /// <summary>
     /// 所有功能
     /// </summary>
     All

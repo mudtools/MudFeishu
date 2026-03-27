@@ -53,4 +53,21 @@ public interface IFeishuTenantV3SpreadsheetFloatImage : IFeishuV3SpreadsheetFloa
           [Path] string float_image_id,
           [Body] UpdateFloatImageRequest updateFloatImageRequest,
           CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 获取浮动图片
+    /// <para>获取电子表格工作表内指定浮动图片的参数信息。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/sheets-v3/spreadsheet-sheet-float_image/get">接口文档</see></para>
+    /// </summary>
+    /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
+    /// <param name="sheet_id">工作表的 ID。示例值："2jm6f6"</param>
+    /// <param name="float_image_id">工作表内浮动图片的唯一标识。示例值：ye06SS14ph</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Get("/open-apis/sheets/v3/spreadsheets/{spreadsheet_token}/sheets/{sheet_id}/float_images/{float_image_id}")]
+    Task<FeishuApiResult<FloatImageOpsResult>?> GetFloatImageAsync(
+             [Path] string spreadsheet_token,
+             [Path] string sheet_id,
+             [Path] string float_image_id,
+             CancellationToken cancellationToken = default);
 }

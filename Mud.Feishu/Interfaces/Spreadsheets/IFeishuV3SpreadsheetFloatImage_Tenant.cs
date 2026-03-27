@@ -75,7 +75,7 @@ public interface IFeishuTenantV3SpreadsheetFloatImage : IFeishuV3SpreadsheetFloa
     /// <summary>
     /// 查询浮动图片
     /// <para>获取电子表格工作表内所有的浮动图片的参数信息。</para>
-    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/sheets-v3/spreadsheet-sheet-float_image/get">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/sheets-v3/spreadsheet-sheet-float_image/query">接口文档</see></para>
     /// </summary>
     /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
     /// <param name="sheet_id">工作表的 ID。示例值："2jm6f6"</param>
@@ -85,4 +85,21 @@ public interface IFeishuTenantV3SpreadsheetFloatImage : IFeishuV3SpreadsheetFloa
            [Path] string spreadsheet_token,
            [Path] string sheet_id,
            CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 删除浮动图片
+    /// <para>删除电子表格工作表内指定的浮动图片。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/sheets-v3/spreadsheet-sheet-float_image/delete">接口文档</see></para>
+    /// </summary>
+    /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
+    /// <param name="sheet_id">工作表的 ID。示例值："2jm6f6"</param>
+    /// <param name="float_image_id">工作表内浮动图片的唯一标识。示例值：ye06SS14ph</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Delete("/open-apis/sheets/v3/spreadsheets/{spreadsheet_token}/sheets/{sheet_id}/float_images/{float_image_id}")]
+    Task<FeishuNullDataApiResult?> DeleteFloatImageAsync(
+            [Path] string spreadsheet_token,
+            [Path] string sheet_id,
+            [Path] string float_image_id,
+            CancellationToken cancellationToken = default);
 }

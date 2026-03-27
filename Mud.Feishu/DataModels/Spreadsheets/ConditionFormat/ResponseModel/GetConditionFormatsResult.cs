@@ -7,16 +7,13 @@
 
 namespace Mud.Feishu.DataModels.Spreadsheets;
 
-/// <summary>
-/// 批量操作条件格式响应体
-/// </summary>
-public class ConditionFormatOpsResult
+/// <summary>获取条件格式响应体</summary>
+public class GetConditionFormatsResult
 {
     /// <summary>
-    /// <para>响应信息</para>
+    /// <para>表格的条件格式信息</para>
     /// <para>必填：否</para>
     /// </summary>
-    [JsonPropertyName("responses")]
-    public CreateConditionFormatResponse[]? Responses { get; set; }
-
+    [JsonPropertyName("sheet_condition_formats")]
+    public SheetConditionFormatData[]? SheetConditionFormats { get; set; }
 }

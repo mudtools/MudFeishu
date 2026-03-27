@@ -8,35 +8,21 @@
 namespace Mud.Feishu.DataModels.Spreadsheets;
 
 /// <summary>
-/// 批量操作条件格式响应体中的每个响应项
+/// 条件格式 ID
 /// </summary>
-public class CreateConditionFormatResponse
+public class SheetCfId
 {
     /// <summary>
-    /// <para>工作表的 ID</para>
+    /// <para>电子表格工作表的 ID。</para>
     /// <para>必填：否</para>
     /// </summary>
     [JsonPropertyName("sheet_id")]
     public string? SheetId { get; set; }
 
     /// <summary>
-    /// <para>要操作的条件格式的 ID</para>
+    /// <para>条件格式的 ID。</para>
     /// <para>必填：否</para>
     /// </summary>
     [JsonPropertyName("cf_id")]
     public string? CfId { get; set; }
-
-    /// <summary>
-    /// <para>当前条件格式操作的状态码。0 表示成功创建，非 0 表示失败。</para>
-    /// <para>必填：否</para>
-    /// </summary>
-    [JsonPropertyName("res_code")]
-    public int? ResCode { get; set; }
-
-    /// <summary>
-    /// <para>条件格式设置返回的状态信息，success 表示成功，非 success 将返回失败原因。</para>
-    /// <para>必填：否</para>
-    /// </summary>
-    [JsonPropertyName("res_msg")]
-    public string? ResMsg { get; set; }
 }

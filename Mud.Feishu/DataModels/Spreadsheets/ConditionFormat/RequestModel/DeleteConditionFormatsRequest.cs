@@ -8,15 +8,16 @@
 namespace Mud.Feishu.DataModels.Spreadsheets;
 
 /// <summary>
-/// 批量操作条件格式响应体
+/// 删除条件格式请求体
 /// </summary>
-public class ConditionFormatOpsResult
+public class DeleteConditionFormatsRequest
 {
     /// <summary>
-    /// <para>响应信息</para>
+    /// <para>要删除的电子表格条件格式的 ID。最多可删除 10 个条件格式。</para>
+    /// <para>**注意**：</para>
+    /// <para>响应体中将返回每个条件格式的删除结果，包括成功或具体的失败信息。</para>
     /// <para>必填：否</para>
     /// </summary>
-    [JsonPropertyName("responses")]
-    public CreateConditionFormatResponse[]? Responses { get; set; }
-
+    [JsonPropertyName("sheet_cf_ids")]
+    public SheetCfId[]? SheetCfIds { get; set; }
 }

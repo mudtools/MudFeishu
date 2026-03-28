@@ -8,13 +8,15 @@
 namespace Mud.Feishu.DataModels.Bitable;
 
 /// <summary>
-/// 创建多维表格请求体
+/// 更新多维表格应用数据表响应体
 /// </summary>
-public class CreateTableRequest
-{ /// <summary>
-  /// <para>数据表</para>
-  /// <para>必填：否</para>
-  /// </summary>
-    [JsonPropertyName("table")]
-    public AppTable? Table { get; set; }
+public class UpdateAppTableResult
+{
+    /// <summary>
+    /// <para>新的数据表名称</para>
+    /// <para>必填：否</para>
+    /// <para>示例值：新的数据表名称</para>
+    /// </summary>
+    [JsonPropertyName("name")]
+    public string? Name { get; set; }
 }

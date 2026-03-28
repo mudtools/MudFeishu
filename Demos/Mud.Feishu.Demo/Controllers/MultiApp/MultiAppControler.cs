@@ -32,7 +32,7 @@ public class MultiAppControler : ControllerBase
     {
         try
         {
-            var tenantJobTitleApi = _feishuAppManager.GetFeishuApi<IFeishuTenantV3JobTitle>("hr-app");
+            var tenantJobTitleApi = _feishuAppManager.GetWebApi<IFeishuTenantV3JobTitle>("hr-app");
             var result = await tenantJobTitleApi.GetJobTitlesListAsync(10, null);
             return Ok(result.Data);
         }

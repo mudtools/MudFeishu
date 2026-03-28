@@ -1,5 +1,54 @@
 # Mud.Feishu Change Log
 
+## [2.0.5] - 2026-03-27
+
+### ✨ Added
+
+- **Spreadsheets**: Added Feishu spreadsheet management module support
+  - Worksheet management: create, query, update, delete worksheets
+  - Row/Column operations: insert, update, move, delete rows and columns
+  - Cell features: merge, find, style settings, data read/write
+  - Filter features: filter view creation and management, filter condition settings
+  - Data protection: protection range settings and management
+  - Data validation: validation rule settings and management
+  - Conditional formatting: format rule creation and management
+  - Floating images: image insert, query, delete
+- **Bitable**: Added Feishu bitable management module support
+  - Bitable metadata get and update
+- **Authentication**: Added Feishu user authentication module
+  - User authentication middleware and context service
+  - User authentication test project
+- **Demo Project**: Added Feishu task management demo project
+
+### 🔧 Changed
+
+- **Spreadsheet Refactoring**: Refactored Feishu spreadsheet related models and interfaces
+  - Refactored spreadsheet related models and interfaces
+  - Adjusted spreadsheet interface namespaces and added tenant and user interfaces
+  - Refactored cell operation related models and interfaces
+  - Renamed cell related classes for better clarity
+  - Refactored filter condition related models and interfaces
+  - Unified filter view response models and added get interface
+  - Refactored spreadsheet data validation interfaces
+- **Authentication Refactoring**: Refactored user token manager and dependencies
+  - Moved token formatting method to TokenUtils utility class
+- **Webhook Refactoring**: Refactored validator base class and utilities
+  - Used environment service instead of direct environment variable access
+- **Test Optimization**: Used environment service mock instead of environment variable settings
+- **Project Optimization**: Removed redundant EnsureUserContext calls and adjusted project references
+
+### 📚 Documentation
+
+- Updated README documentation
+- Updated dependency documentation and version notes
+- Updated interface documentation comments and added data protection related models
+- Improved XML comments
+
+### 📦 Build & Config
+
+- Updated frontend dependency versions
+- Updated dependency package versions to 10.0.5 and added authentication tests
+
 ## [2.0.4] - 2026-03-19
 
 ### ✨ Added

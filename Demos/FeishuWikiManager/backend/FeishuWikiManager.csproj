@@ -15,10 +15,11 @@
 		<PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.15.0" />
 	</ItemGroup>
 	<ItemGroup>
-		<!--<PackageReference Include="Mud.Feishu" Version="2.0.4" />-->
+		<PackageReference Include="Mud.Feishu" Version="2.0.5" />
+		<PackageReference Include="Mud.Feishu.Authentication" Version="2.0.5" />
 	</ItemGroup>
-	<ItemGroup>
+	<!--<ItemGroup>
 		<ProjectReference Include="..\..\..\Mud.Feishu.Authentication\Mud.Feishu.Authentication.csproj" />
 		<ProjectReference Include="..\..\..\Mud.Feishu\Mud.Feishu.csproj" />
-	</ItemGroup>
+	</ItemGroup>-->
 </Project>

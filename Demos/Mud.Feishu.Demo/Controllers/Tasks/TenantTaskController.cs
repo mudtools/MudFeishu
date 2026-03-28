@@ -6,7 +6,7 @@
 // -----------------------------------------------------------------------
 
 using Microsoft.AspNetCore.Mvc;
-using Mud.Feishu.DataModels.Task;
+using Mud.Feishu.DataModels.Tasks;
 
 namespace Mud.Feishu.Test.Controllers.Tasks;
 

@@ -169,6 +169,7 @@ public class IdempotentFeishuEventHandlerTests
             It.IsAny<EventData>(),
             It.IsAny<TestEventData>(),
             It.IsAny<CancellationToken>()), Times.Once);
+        // 当业务键为空时，不会调用 TryMarkAsProcessing，直接处理事件
         _deduplicatorMock.Verify(d => d.TryMarkAsProcessing(It.IsAny<string>()), Times.Never);
     }
 

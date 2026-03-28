@@ -6,6 +6,7 @@
 // -----------------------------------------------------------------------
 
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Options;
 using Mud.Feishu.Authentication;
 using System.Security.Claims;
 
@@ -18,11 +19,13 @@ public class FeishuUserAuthenticationMiddlewareTests
 {
     private readonly Mock<ILogger<FeishuUserAuthenticationMiddleware>> _loggerMock;
     private readonly ICurrentUserContext _userContext;
+    private readonly IOptions<FeishuUserAuthenticationOptions> _defaultOptions;
 
     public FeishuUserAuthenticationMiddlewareTests()
     {
         _loggerMock = new Mock<ILogger<FeishuUserAuthenticationMiddleware>>();
         _userContext = new CurrentUserContext();
+        _defaultOptions = Options.Create(new FeishuUserAuthenticationOptions());
     }
 
     #region InvokeAsync Tests
@@ -41,18 +44,28 @@ public class FeishuUserAuthenticationMiddlewareTests
         var identity = new ClaimsIdentity(claims, "TestAuth");
         var principal = new ClaimsPrincipal(identity);
 
+        var capturedValues = new CapturedUserValues();
         var httpContext = CreateHttpContext(principal);
-        var middleware = CreateMiddleware(_ => Task.CompletedTask);
+        var middleware = CreateMiddleware(_ =>
+        {
+            capturedValues.OpenId = _userContext.OpenId;
+            capturedValues.UnionId = _userContext.UnionId;
+            capturedValues.UserId = _userContext.UserId;
+            capturedValues.Name = _userContext.Name;
+            return Task.CompletedTask;
+        });
 
         // Act
         await middleware.InvokeAsync(httpContext, _userContext);
 
-        // Assert
-        Assert.Equal("test_open_id", _userContext.OpenId);
-        Assert.Equal("test_union_id", _userContext.UnionId);
-        Assert.Equal("test_user_id", _userContext.UserId);
-        Assert.Equal("Test User", _userContext.Name);
-        Assert.True(_userContext.IsAuthenticated);
+        // Assert - 在请求处理过程中捕获的值
+        Assert.Equal("test_open_id", capturedValues.OpenId);
+        Assert.Equal("test_union_id", capturedValues.UnionId);
+        Assert.Equal("test_user_id", capturedValues.UserId);
+        Assert.Equal("Test User", capturedValues.Name);
+        // 请求结束后上下文被清除
+        Assert.Null(_userContext.OpenId);
+        Assert.False(_userContext.IsAuthenticated);
     }
 
     [Fact]
@@ -209,7 +222,7 @@ public class FeishuUserAuthenticationMiddlewareTests
         var middleware = CreateMiddleware(_ => throw new InvalidOperationException("Test exception"));
 
         // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(() => 
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
             middleware.InvokeAsync(httpContext, _userContext));
 
         // Assert - Context should be cleared even after exception
@@ -223,7 +236,7 @@ public class FeishuUserAuthenticationMiddlewareTests
 
     private FeishuUserAuthenticationMiddleware CreateMiddleware(RequestDelegate next)
     {
-        return new FeishuUserAuthenticationMiddleware(next, _loggerMock.Object);
+        return new FeishuUserAuthenticationMiddleware(next, _defaultOptions, _loggerMock.Object);
     }
 
     private static HttpContext CreateHttpContext(ClaimsPrincipal? user)

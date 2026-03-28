@@ -178,11 +178,11 @@ public class UrlValidatorTests
     [Fact]
     public void ValidateUrl_WithCustomDomain_WhenAllowed_ShouldPass()
     {
-        // Arrange
+        // Arrange - 使用公共域名，避免被解析为私有 IP
         var customUrls = new[]
         {
-            "https://api.example.com",
-            "https://custom.feishu.com"
+            "https://api.github.com",
+            "https://example.org"
         };
 
         // Act & Assert

@@ -48,17 +48,19 @@ public abstract class IdempotentFeishuEventHandler<T> : DefaultFeishuEventHandle
     {
         var businessKey = GetBusinessKey(eventData);
 
-        if (string.IsNullOrEmpty(businessKey) && _logger.IsEnabled(LogLevel.Debug))
+        if (string.IsNullOrEmpty(businessKey))
         {
-            _logger.LogWarning("业务键为空，跳过业务层幂等性检查，直接处理事件 {EventId}", eventData.EventId);
+            if (_logger.IsEnabled(LogLevel.Debug))
+                _logger.LogWarning("业务键为空，跳过业务层幂等性检查，直接处理事件 {EventId}", eventData.EventId);
             await ProcessBusinessLogicAsync(eventData, null, cancellationToken);
             return;
         }
 
         // 检查业务键是否已处理
-        if (_businessDeduplicator.TryMarkAsProcessing(businessKey ?? string.Empty) && _logger.IsEnabled(LogLevel.Debug))
+        if (_businessDeduplicator.TryMarkAsProcessing(businessKey))
         {
-            _logger.LogDebug("业务键 {BusinessKey} 已处理或在处理中，跳过事件 {EventId}", businessKey, eventData.EventId);
+            if (_logger.IsEnabled(LogLevel.Debug))
+                _logger.LogDebug("业务键 {BusinessKey} 已处理或在处理中，跳过事件 {EventId}", businessKey, eventData.EventId);
             return;
         }
 
@@ -69,7 +71,7 @@ public abstract class IdempotentFeishuEventHandler<T> : DefaultFeishuEventHandle
             await ProcessBusinessLogicAsync(eventData, eventEntity, cancellationToken);
 
             // 标记为已完成
-            _businessDeduplicator.MarkAsCompleted(businessKey ?? string.Empty);
+            _businessDeduplicator.MarkAsCompleted(businessKey);
 
             if (_logger.IsEnabled(LogLevel.Debug))
                 _logger.LogDebug("业务键 {BusinessKey} 处理完成", businessKey);
@@ -77,7 +79,7 @@ public abstract class IdempotentFeishuEventHandler<T> : DefaultFeishuEventHandle
         catch (Exception)
         {
             // 处理失败，回滚状态
-            _businessDeduplicator.RollbackProcessing(businessKey ?? string.Empty);
+            _businessDeduplicator.RollbackProcessing(businessKey);
             throw;
         }
     }

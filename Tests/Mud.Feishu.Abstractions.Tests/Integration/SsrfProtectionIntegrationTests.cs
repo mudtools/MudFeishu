@@ -48,10 +48,10 @@ public class SsrfProtectionIntegrationTests
             AllowCustomBaseUrl = false
         };
 
-        // Act & Assert
-        var exception = Assert.Throws<ArgumentException>(() =>
+        // Act & Assert - UrlValidator throws InvalidOperationException for non-whitelisted domains
+        var exception = Assert.Throws<InvalidOperationException>(() =>
             UrlValidator.ValidateBaseUrl(config.BaseUrl, config.AllowCustomBaseUrl));
-        Assert.Contains("私有 IP", exception.Message);
+        Assert.Contains("不在飞书官方白名单", exception.Message);
     }
 
     [Fact]
@@ -67,10 +67,10 @@ public class SsrfProtectionIntegrationTests
             AllowCustomBaseUrl = false
         };
 
-        // Act & Assert
-        var exception = Assert.Throws<ArgumentException>(() =>
+        // Act & Assert - UrlValidator throws InvalidOperationException for non-HTTPS
+        var exception = Assert.Throws<InvalidOperationException>(() =>
             UrlValidator.ValidateBaseUrl(config.BaseUrl, config.AllowCustomBaseUrl));
-        Assert.Contains("HTTPS", exception.Message);
+        Assert.Contains("仅允许 HTTPS", exception.Message);
     }
 
     [Fact]
@@ -86,22 +86,22 @@ public class SsrfProtectionIntegrationTests
             AllowCustomBaseUrl = false
         };
 
-        // Act & Assert
-        var exception = Assert.Throws<ArgumentException>(() =>
+        // Act & Assert - UrlValidator throws InvalidOperationException for non-whitelisted domains
+        var exception = Assert.Throws<InvalidOperationException>(() =>
             UrlValidator.ValidateBaseUrl(config.BaseUrl, config.AllowCustomBaseUrl));
-        Assert.Contains("不在白名单", exception.Message);
+        Assert.Contains("不在飞书官方白名单", exception.Message);
     }
 
     [Fact]
     public void ValidateBaseUrl_WithCustomDomain_WhenAllowed_ShouldPass()
     {
-        // Arrange
+        // Arrange - 使用公共域名，避免被解析为私有 IP
         var config = new FeishuAppConfig
         {
             AppKey = "test_app_key",
             AppId = "test_app_id",
             AppSecret = "test_app_secret",
-            BaseUrl = "https://api.example.com",
+            BaseUrl = "https://api.github.com",
             AllowCustomBaseUrl = true
         };
 
@@ -139,12 +139,12 @@ public class SsrfProtectionIntegrationTests
             "https://192.168.255.254"
         };
 
-        // Act & Assert
+        // Act & Assert - UrlValidator throws InvalidOperationException for non-whitelisted domains
         foreach (var url in privateIps)
         {
-            var exception = Assert.Throws<ArgumentException>(() =>
+            var exception = Assert.Throws<InvalidOperationException>(() =>
                 UrlValidator.ValidateUrl(url, false));
-            Assert.Contains("私有 IP", exception.Message);
+            Assert.Contains("不在飞书官方白名单", exception.Message);
         }
     }
 
@@ -182,12 +182,12 @@ public class SsrfProtectionIntegrationTests
             "ws://open.feishu.cn"
         };
 
-        // Act & Assert
+        // Act & Assert - UrlValidator throws InvalidOperationException for non-HTTPS
         foreach (var url in nonHttpsUrls)
         {
-            var exception = Assert.Throws<ArgumentException>(() =>
+            var exception = Assert.Throws<InvalidOperationException>(() =>
                 UrlValidator.ValidateUrl(url, false));
-            Assert.Contains("HTTPS", exception.Message);
+            Assert.Contains("仅允许 HTTPS", exception.Message);
         }
     }
 
@@ -231,21 +231,21 @@ public class SsrfProtectionIntegrationTests
         };
 
         // Act & Assert - Should throw because custom domain not allowed
-        var exception = Assert.Throws<ArgumentException>(() =>
+        var exception = Assert.Throws<InvalidOperationException>(() =>
             UrlValidator.ValidateBaseUrl(config.BaseUrl, config.AllowCustomBaseUrl));
-        Assert.Contains("不在白名单", exception.Message);
+        Assert.Contains("不在飞书官方白名单", exception.Message);
     }
 
     [Fact]
     public void MigratedConfiguration_WithAllowCustomBaseUrlSet_ShouldWork()
     {
-        // Arrange
+        // Arrange - 使用公共域名，避免被解析为私有 IP
         var config = new FeishuAppConfig
         {
             AppKey = "test_app_key",
             AppId = "test_app_id",
             AppSecret = "test_app_secret",
-            BaseUrl = "https://api.example.com",
+            BaseUrl = "https://api.github.com",
             AllowCustomBaseUrl = true
         };
 

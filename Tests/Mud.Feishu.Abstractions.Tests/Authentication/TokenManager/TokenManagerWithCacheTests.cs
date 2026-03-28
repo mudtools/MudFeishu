@@ -169,7 +169,8 @@ public class TokenManagerWithCacheTests
         {
             await Task.Delay(10);
             _retryCount++;
-            throw new Exception("Simulated token acquisition failure");
+            // 使用可重试的异常类型，这样才能触发重试机制并最终包装为 FeishuException
+            throw new HttpRequestException("Simulated token acquisition failure");
         }
     }
 }

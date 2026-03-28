@@ -56,18 +56,20 @@ public class FeishuEventDeduplicator : IFeishuEventDeduplicator
     /// <inheritdoc/>
     public bool TryMarkAsProcessed(string eventId)
     {
-        if (string.IsNullOrEmpty(eventId) && _logger != null && _logger.IsEnabled(LogLevel.Warning))
+        if (string.IsNullOrEmpty(eventId))
         {
-            _logger?.LogWarning("事件ID为空，跳过去重检查");
+            if (_logger != null && _logger.IsEnabled(LogLevel.Warning))
+                _logger?.LogWarning("事件ID为空，跳过去重检查");
             return false;
         }
 
         lock (_lock)
         {
             // 检查是否已存在
-            if (_eventCache.ContainsKey(eventId) && _logger != null && _logger.IsEnabled(LogLevel.Debug))
+            if (_eventCache.ContainsKey(eventId))
             {
-                _logger?.LogDebug("事件 {EventId} 已处理过，跳过", eventId);
+                if (_logger != null && _logger.IsEnabled(LogLevel.Debug))
+                    _logger?.LogDebug("事件 {EventId} 已处理过，跳过", eventId);
                 return true; // 已处理
             }
 
@@ -87,9 +89,10 @@ public class FeishuEventDeduplicator : IFeishuEventDeduplicator
     /// <inheritdoc/>
     public bool TryMarkAsProcessing(string eventId)
     {
-        if (string.IsNullOrEmpty(eventId) && _logger != null && _logger.IsEnabled(LogLevel.Debug))
+        if (string.IsNullOrEmpty(eventId))
         {
-            _logger?.LogWarning("事件ID为空，跳过去重检查");
+            if (_logger != null && _logger.IsEnabled(LogLevel.Warning))
+                _logger?.LogWarning("事件ID为空，跳过去重检查");
             return false;
         }
 

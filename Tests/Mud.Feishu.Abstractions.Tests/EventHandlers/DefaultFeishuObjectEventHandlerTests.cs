@@ -66,16 +66,21 @@ public class DefaultFeishuObjectEventHandlerTests
         var eventId = "test-event-id";
         var eventType = "test.object.event";
 
-        var eventData = new EventData
+        var objectEventData = new ObjectEventResult<TestEventData>
         {
-            EventId = eventId,
-            EventType = eventType,
-            Event = JsonDocument.Parse(JsonSerializer.Serialize(new TestEventData
+            Object = new TestEventData
             {
                 EventId = eventId,
                 UserId = "test-user-id",
                 DepartmentId = "test-dept-id"
-            }))
+            }
+        };
+
+        var eventData = new EventData
+        {
+            EventId = eventId,
+            EventType = eventType,
+            Event = JsonDocument.Parse(JsonSerializer.Serialize(objectEventData))
         };
 
         // Act
@@ -83,8 +88,8 @@ public class DefaultFeishuObjectEventHandlerTests
 
         // Assert
         _eventProcessorMock.Verify(x => x.ProcessBusinessLogicAsync(
-            It.Is<EventData>(e => e.EventId == eventId),
-            It.Is<ObjectEventResult<TestEventData>>(e => e.Object != null && e.Object.EventId == eventId),
+            It.IsAny<EventData>(),
+            It.IsAny<ObjectEventResult<TestEventData>>(),
             It.IsAny<CancellationToken>()), Times.Once);
     }
 

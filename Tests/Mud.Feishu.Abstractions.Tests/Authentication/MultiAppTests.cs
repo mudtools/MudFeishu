@@ -7,6 +7,7 @@
 
 using Microsoft.Extensions.DependencyInjection;
 using Mud.Feishu.Abstractions.Utilities;
+using Mud.Feishu.Authentication;
 using Mud.Feishu.TokenManager;
 using Mud.HttpUtils;
 
@@ -126,16 +127,21 @@ public class MultiAppTests
         // Act
         var configString = config.ToString();
 
-        // Assert
-        Assert.Contains("te****45", configString);
+        // Assert - VerySecret = "very_secret_key_12345", 掩码后为 "ve****45"
+        Assert.Contains("ve****45", configString);
         Assert.DoesNotContain(AppConfigs.Secrets.VerySecret, configString);
     }
 
     [Fact]
-    public void MultiApp_DuplicateAppKeys_ShouldThrowOnRegistration()
+    public void MultiApp_DuplicateAppKeys_ShouldOverwrite()
     {
         // Arrange
         var services = new ServiceCollection();
+        services.AddHttpClient();
+        services.AddSingleton<IFeishuAuthentication, FeishuV3Authentication>();
+        services.AddSingleton<ICurrentUserContext, CurrentUserContext>();
+        services.Configure<JsonSerializerOptions>(options => HttpClientExtensions.GetDefaultJsonSerializerOptions());
+
         var configs = new List<FeishuAppConfig>
         {
             new FeishuAppConfig
@@ -147,20 +153,28 @@ public class MultiAppTests
             },
             new FeishuAppConfig
             {
-                AppKey = AppConfigs.AppKeys.App1,  // 重复的AppKey
+                AppKey = AppConfigs.AppKeys.App1,  // 重复的AppKey - 会覆盖第一个
                 AppId = AppConfigs.AppIds.App2,
-                AppSecret = AppConfigs.Secrets.App2
+                AppSecret = AppConfigs.Secrets.App2,
+                IsDefault = true
             }
         };
 
-        // Act & Assert
-        Assert.Throws<InvalidOperationException>(() =>
-        {
-            services.AddSingleton<IFeishuAppManager>(sp => new FeishuAppManager(
-                sp,
-                configs,
-                sp.GetRequiredService<ILogger<FeishuAppManager>>()));
-        });
+        services.AddSingleton<ITokenCache, MemoryTokenCache>();
+        services.AddSingleton<IFeishuAppManager>(sp => new FeishuAppManager(
+            sp,
+            configs,
+            sp.GetRequiredService<ILogger<FeishuAppManager>>()));
+
+        var provider = services.BuildServiceProvider();
+        var appManager = provider.GetRequiredService<IFeishuAppManager>();
+
+        // Act - 重复的 AppKey 会被覆盖，所以只有一个应用
+        var app = appManager.GetApp(AppConfigs.AppKeys.App1);
+
+        // Assert - 应该是第二个配置（被覆盖后）
+        Assert.NotNull(app);
+        Assert.Equal(AppConfigs.AppIds.App2, app.Config.AppId);
     }
 
     [Fact]
@@ -168,6 +182,11 @@ public class MultiAppTests
     {
         // Arrange
         var services = new ServiceCollection();
+        services.AddHttpClient();
+        services.AddSingleton<IFeishuAuthentication, FeishuV3Authentication>();
+        services.AddSingleton<ICurrentUserContext, CurrentUserContext>();
+        services.Configure<JsonSerializerOptions>(options => HttpClientExtensions.GetDefaultJsonSerializerOptions());
+
         var configs = new List<FeishuAppConfig>
         {
             new FeishuAppConfig
@@ -179,14 +198,17 @@ public class MultiAppTests
             }
         };
 
-        // Act & Assert
+        services.AddSingleton<ITokenCache, MemoryTokenCache>();
+        services.AddSingleton<IFeishuAppManager>(sp => new FeishuAppManager(
+            sp,
+            configs,
+            sp.GetRequiredService<ILogger<FeishuAppManager>>()));
+
+        var provider = services.BuildServiceProvider();
+
+        // Act & Assert - 解析服务时才会抛出异常
         Assert.Throws<InvalidOperationException>(() =>
-        {
-            services.AddSingleton<IFeishuAppManager>(sp => new FeishuAppManager(
-                sp,
-                configs,
-                sp.GetRequiredService<ILogger<FeishuAppManager>>()));
-        });
+            provider.GetRequiredService<IFeishuAppManager>());
     }
 
     [Fact]
@@ -196,6 +218,7 @@ public class MultiAppTests
         var services = new ServiceCollection();
         services.AddHttpClient();
         services.AddSingleton<IFeishuAuthentication, FeishuV3Authentication>();
+        services.AddSingleton<ICurrentUserContext, CurrentUserContext>();
         services.Configure<JsonSerializerOptions>(options => HttpClientExtensions.GetDefaultJsonSerializerOptions());
 
         var configs = new List<FeishuAppConfig>
@@ -238,6 +261,7 @@ public class MultiAppTests
         var services = new ServiceCollection();
         services.AddHttpClient();
         services.AddSingleton<IFeishuAuthentication, FeishuV3Authentication>();
+        services.AddSingleton<ICurrentUserContext, CurrentUserContext>();
         services.Configure<JsonSerializerOptions>(options => HttpClientExtensions.GetDefaultJsonSerializerOptions());
 
         var configs = new List<FeishuAppConfig>
@@ -271,6 +295,7 @@ public class MultiAppTests
         var services = new ServiceCollection();
         services.AddHttpClient();
         services.AddSingleton<IFeishuAuthentication, FeishuV3Authentication>();
+        services.AddSingleton<ICurrentUserContext, CurrentUserContext>();
         services.Configure<JsonSerializerOptions>(options => HttpClientExtensions.GetDefaultJsonSerializerOptions());
 
         var configs = new List<FeishuAppConfig>
@@ -319,6 +344,7 @@ public class MultiAppTests
         var services = new ServiceCollection();
         services.AddHttpClient();
         services.AddSingleton<IFeishuAuthentication, FeishuV3Authentication>();
+        services.AddSingleton<ICurrentUserContext, CurrentUserContext>();
         services.Configure<JsonSerializerOptions>(options => HttpClientExtensions.GetDefaultJsonSerializerOptions());
 
         var configs = new List<FeishuAppConfig>
@@ -353,6 +379,7 @@ public class MultiAppTests
         var services = new ServiceCollection();
         services.AddHttpClient();
         services.AddSingleton<IFeishuAuthentication, FeishuV3Authentication>();
+        services.AddSingleton<ICurrentUserContext, CurrentUserContext>();
         services.Configure<JsonSerializerOptions>(options => HttpClientExtensions.GetDefaultJsonSerializerOptions());
 
         var configs = new List<FeishuAppConfig>
@@ -402,6 +429,7 @@ public class MultiAppTests
         var services = new ServiceCollection();
         services.AddHttpClient();
         services.AddSingleton<IFeishuAuthentication, FeishuV3Authentication>();
+        services.AddSingleton<ICurrentUserContext, CurrentUserContext>();
         services.Configure<JsonSerializerOptions>(options => HttpClientExtensions.GetDefaultJsonSerializerOptions());
 
         var configs = new List<FeishuAppConfig>

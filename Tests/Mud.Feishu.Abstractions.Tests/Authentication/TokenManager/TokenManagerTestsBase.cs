@@ -43,6 +43,7 @@ public abstract class TokenManagerTestsBase : IDisposable
 
         var loggerMock = new Mock<ILogger<TokenManagerWithCache>>();
         var userTokenManagerLoggerMock = new Mock<ILogger<Mud.Feishu.TokenManager.UserTokenManager>>();
+        var currentUserContextMock = new Mock<ICurrentUserContext>();
         var optionsMock = new Mock<IOptions<FeishuAppConfig>>();
         optionsMock.Setup(x => x.Value).Returns(Config);
 
@@ -60,6 +61,7 @@ public abstract class TokenManagerTestsBase : IDisposable
 
         var userTokenManager = new Mud.Feishu.TokenManager.UserTokenManager(
             _authenticationApiMock.Object,
+            currentUserContextMock.Object,
             optionsMock.Object,
             userTokenManagerLoggerMock.Object,
             _userTokenCacheMock.Object);

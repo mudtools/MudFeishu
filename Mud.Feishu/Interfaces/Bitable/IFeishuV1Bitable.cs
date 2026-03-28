@@ -165,4 +165,24 @@ public interface IFeishuV1Bitable : IFeishuAppContextSwitcher
         CancellationToken cancellationToken = default);
 
 
+    /// <summary>
+    /// 删除一个数据表
+    /// <para>通过 app_token 和 table_id 删除指定的多维表格数据表。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table/delete">接口文档</see></para>
+    /// </summary>
+    /// <param name="app_token">
+    /// <para>多维表格 App 的唯一标识。不同形态的多维表格，其 app_token 的获取方式不同，参考[<see href="https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/bitable-overview">多维表格 app_token 获取方式</see>]获取。</para>
+    /// <para>示例值：AW3Qbtr2cakCnesXzXVbbsrIcVT</para>
+    /// </param>
+    /// <param name="table_id">
+    /// <para>多维表格数据表的唯一标识。</para>
+    /// <para>示例值：tbl1TkhyTWDkSoZ3</para>
+    /// </param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Delete("/open-apis/bitable/v1/apps/{app_token}/tables/{table_id}")]
+    Task<FeishuNullDataApiResult?> DeleteAppTableAsync(
+       [Path] string app_token,
+       [Path] string table_id,
+       CancellationToken cancellationToken = default);
+
 }

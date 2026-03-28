@@ -8,16 +8,23 @@
 namespace Mud.Feishu.DataModels.Bitable;
 
 /// <summary>
-/// 新增多个数据表请求体
-/// <para>多维表格数据表的请求参数列表</para>
+/// 多维表格应用数据表基础信息
 /// </summary>
-public class CreateTablesRequest
+public class AppTableBaseInfo : AppTableBase
 {
     /// <summary>
-    /// <para>tables</para>
+    /// <para>数据表 ID</para>
     /// <para>必填：否</para>
+    /// <para>示例值：\-</para>
     /// </summary>
-    [JsonPropertyName("tables")]
-    public AppTableBase[]? Tables { get; set; }
+    [JsonPropertyName("table_id")]
+    public string? TableId { get; set; }
 
+    /// <summary>
+    /// <para>数据表的版本号。对数据表进行修改时更新，如新增、删除记录，修改数据表名称等，初始为 1，每次更新+1</para>
+    /// <para>必填：否</para>
+    /// <para>示例值：\-</para>
+    /// </summary>
+    [JsonPropertyName("revision")]
+    public int? Revision { get; set; }
 }

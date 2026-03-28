@@ -10,7 +10,7 @@ namespace Mud.Feishu.DataModels.Bitable;
 /// <summary>
 /// <para>tables</para>
 /// </summary>
-public class AppTableBaseInfo
+public class AppTableBase
 {
     /// <summary>
     /// <para>数据表名称。该字段必填。</para>

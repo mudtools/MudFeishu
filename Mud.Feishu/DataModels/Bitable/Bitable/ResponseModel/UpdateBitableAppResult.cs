@@ -5,34 +5,17 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-namespace Mud.Feishu.Abstractions;
+namespace Mud.Feishu.DataModels.Bitable;
 
 /// <summary>
-/// 全局常量。
+/// 更新多维表格应用响应体
 /// </summary>
-internal class Consts
+public class UpdateBitableAppResult
 {
     /// <summary>
-    /// 用户ID类型的默认值。
+    /// <para>多维表格元数据</para>
+    /// <para>必填：否</para>
     /// </summary>
-    public const string User_Id_Type = "open_id";
-
-    /// <summary>
-    /// 部门ID类型的默认值。
-    /// </summary>
-    public const string Department_Id_Type = "open_department_id";
-
-    /// <summary>
-    /// 授权Header名称。
-    /// </summary>
-    public const string Authorization = "Authorization";
-
-    /// <summary>
-    /// 每页的默认数量。
-    /// </summary>
-    public const int PageSize = 10;
-
-    public const string HandlerNamespace = "Mud.Feishu.Abstractions.EventHandlers";
-    public const string InheritedFrom = "IdempotentFeishuEventHandler";
-    public const string InheritedFromObject = "DefaultFeishuObjectEventHandler";
+    [JsonPropertyName("app")]
+    public BitableAppMetaData? App { get; set; }
 }

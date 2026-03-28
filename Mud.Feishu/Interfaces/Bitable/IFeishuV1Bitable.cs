@@ -1,4 +1,4 @@
-﻿// -----------------------------------------------------------------------
+// -----------------------------------------------------------------------
 //  作者：Mud Studio  版权所有 (c) Mud Studio 2025   
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
@@ -64,4 +64,22 @@ public interface IFeishuV1Bitable : IFeishuAppContextSwitcher
     Task<FeishuApiResult<GetBitableAppResult>?> GetBitableAppInfoAsync(
        [Path] string app_token,
        CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 更新多维表格元数据
+    /// <para>更新多维表格元数据，包括多维表格的名称、是否开启高级权限。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/bitable-v1/app/update?appId=cli_a98ea7d1a0ba100b">接口文档</see></para>
+    /// </summary>
+    /// <param name="app_token">
+    /// <para>要复制的多维表格 App 的唯一标识。不同形态的多维表格，其 app_token 的获取方式不同，参考[<see href="https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/bitable-overview">多维表格 app_token 获取方式</see>]获取。</para>
+    /// <para>示例值：AW3Qbtr2cakCnesXzXVbbsrIcVT</para>
+    /// </param>
+    /// <param name="updateBitableAppRequest">更新多维表格应用请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Put("/open-apis/bitable/v1/apps/{app_token}")]
+    Task<FeishuApiResult<UpdateBitableAppResult>?> UpdateBitableAppAsync(
+        [Path] string app_token,
+        [Body] UpdateBitableAppRequest updateBitableAppRequest,
+        CancellationToken cancellationToken = default);
 }

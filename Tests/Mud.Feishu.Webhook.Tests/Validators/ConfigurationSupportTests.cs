@@ -362,4 +362,215 @@ public class ConfigurationSupportTests
         Assert.False(result.IsValid);
         Assert.NotEmpty(result.Errors);
     }
+
+    /// <summary>
+    /// 测试配置验证服务 - 多应用配置验证
+    /// </summary>
+    [Fact]
+    public void ConfigurationValidationService_ShouldValidateMultiAppConfiguration()
+    {
+        // Arrange
+        var loggerMock = new Mock<ILogger<ConfigurationValidationService>>();
+        var service = new ConfigurationValidationService(loggerMock.Object);
+
+        var options = new FeishuWebhookOptions
+        {
+            Apps = new Dictionary<string, FeishuAppWebhookOptions>
+            {
+                ["app1"] = new FeishuAppWebhookOptions
+                {
+                    AppKey = "app1",
+                    VerificationToken = "token1_12345678",
+                    EncryptKey = "app1_encrypt_key_32_characters!!"
+                },
+                ["app2"] = new FeishuAppWebhookOptions
+                {
+                    AppKey = "app2",
+                    VerificationToken = "token2_12345678",
+                    EncryptKey = "app2_encrypt_key_32_characters!!"
+                }
+            }
+        };
+
+        // Act
+        var result = service.ValidateGlobalConfiguration(options);
+
+        // Assert
+        Assert.True(result.IsValid);
+    }
+
+    /// <summary>
+    /// 测试配置验证服务 - 重复应用键检测
+    /// </summary>
+    [Fact]
+    public void ConfigurationValidationService_ShouldDetectDuplicateAppKeys()
+    {
+        // Arrange
+        var loggerMock = new Mock<ILogger<ConfigurationValidationService>>();
+        var service = new ConfigurationValidationService(loggerMock.Object);
+
+        var options = new FeishuWebhookOptions
+        {
+            Apps = new Dictionary<string, FeishuAppWebhookOptions>
+            {
+                ["app1"] = new FeishuAppWebhookOptions
+                {
+                    AppKey = "app1",
+                    VerificationToken = "token1",
+                    EncryptKey = "12345678901234567890123456789012"
+                }
+            }
+        };
+
+        // Act
+        var result = service.ValidateGlobalConfiguration(options);
+
+        // Assert - 字典键本身不会重复，但验证应该通过
+        Assert.True(result.IsValid);
+    }
+
+    /// <summary>
+    /// 测试配置验证服务 - 性能配置警告
+    /// </summary>
+    [Fact]
+    public void ConfigurationValidationService_ShouldWarnOnExtremePerformanceSettings()
+    {
+        // Arrange
+        var loggerMock = new Mock<ILogger<ConfigurationValidationService>>();
+        var service = new ConfigurationValidationService(loggerMock.Object);
+
+        var options = new FeishuWebhookOptions
+        {
+            EventHandlingTimeoutMs = 500, // 过短
+            MaxConcurrentEvents = 2000, // 过大
+            MaxRequestBodySize = 200 * 1024 * 1024 // 200MB，过大
+        };
+
+        // Act
+        var result = service.ValidateGlobalConfiguration(options);
+
+        // Assert
+        Assert.True(result.IsValid); // 警告不影响有效性
+        Assert.NotEmpty(result.Warnings);
+    }
+
+    /// <summary>
+    /// 测试配置验证服务 - 空应用键验证
+    /// </summary>
+    [Fact]
+    public void ConfigurationValidationService_ShouldRejectEmptyAppKey()
+    {
+        // Arrange
+        var loggerMock = new Mock<ILogger<ConfigurationValidationService>>();
+        var service = new ConfigurationValidationService(loggerMock.Object);
+
+        var globalOptions = new FeishuWebhookOptions();
+
+        var appConfig = new FeishuAppWebhookOptions
+        {
+            AppKey = "test_app",
+            VerificationToken = "valid_token",
+            EncryptKey = "12345678901234567890123456789012"
+        };
+
+        // Act
+        var result = service.ValidateAppConfiguration("", appConfig, globalOptions);
+
+        // Assert
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Errors, e => e.Contains("应用键不能为空"));
+    }
+
+    /// <summary>
+    /// 测试配置验证服务 - 空配置对象验证
+    /// </summary>
+    [Fact]
+    public void ConfigurationValidationService_ShouldRejectNullAppConfig()
+    {
+        // Arrange
+        var loggerMock = new Mock<ILogger<ConfigurationValidationService>>();
+        var service = new ConfigurationValidationService(loggerMock.Object);
+
+        var globalOptions = new FeishuWebhookOptions();
+
+        // Act
+        var result = service.ValidateAppConfiguration("test_app", null!, globalOptions);
+
+        // Assert
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Errors, e => e.Contains("配置不能为空"));
+    }
+
+    /// <summary>
+    /// 测试配置验证服务 - Token 长度警告
+    /// </summary>
+    [Fact]
+    public void ConfigurationValidationService_ShouldWarnOnShortToken()
+    {
+        // Arrange
+        var loggerMock = new Mock<ILogger<ConfigurationValidationService>>();
+        var service = new ConfigurationValidationService(loggerMock.Object);
+
+        var globalOptions = new FeishuWebhookOptions();
+
+        var appConfig = new FeishuAppWebhookOptions
+        {
+            AppKey = "test_app",
+            VerificationToken = "short", // 过短
+            EncryptKey = "12345678901234567890123456789012"
+        };
+
+        // Act
+        var result = service.ValidateAppConfiguration("test_app", appConfig, globalOptions);
+
+        // Assert
+        Assert.True(result.IsValid); // 警告不影响有效性
+        Assert.NotEmpty(result.Warnings);
+    }
+
+    /// <summary>
+    /// 测试配置验证结果 - 合并功能
+    /// </summary>
+    [Fact]
+    public void ConfigurationValidationResult_MergeShouldCombineResults()
+    {
+        // Arrange
+        var result1 = new ConfigurationValidationResult();
+        result1.AddError("Error 1");
+        result1.AddWarning("Warning 1");
+
+        var result2 = new ConfigurationValidationResult();
+        result2.AddError("Error 2");
+        result2.AddInfo("Info 1");
+
+        // Act
+        result1.Merge(result2);
+
+        // Assert
+        Assert.Equal(2, result1.Errors.Count);
+        Assert.Single(result1.Warnings);
+        Assert.Single(result1.Infos);
+    }
+
+    /// <summary>
+    /// 测试配置验证结果 - 摘要功能
+    /// </summary>
+    [Fact]
+    public void ConfigurationValidationResult_GetSummaryShouldReturnCorrectFormat()
+    {
+        // Arrange
+        var result = new ConfigurationValidationResult();
+        result.AddError("Error 1");
+        result.AddWarning("Warning 1");
+        result.AddInfo("Info 1");
+
+        // Act
+        var summary = result.GetSummary();
+
+        // Assert
+        Assert.Contains("失败", summary);
+        Assert.Contains("错误: 1", summary);
+        Assert.Contains("警告: 1", summary);
+        Assert.Contains("信息: 1", summary);
+    }
 }

@@ -129,4 +129,270 @@ public class FailedEventRetryServiceTests
         // Assert
         service.Should().NotBeNull();
     }
+
+    [Fact]
+    public async Task ExecuteAsync_WithRetryDisabled_ShouldNotProcessEvent()
+    {
+        // Arrange
+        var options = new FailedEventRetryOptions
+        {
+            EnableRetry = false
+        };
+        var optionsMock = Options.Create(options);
+        var eventStoreMock = new Mock<IFailedEventStore>();
+
+        var service = new FailedEventRetryService(
+            optionsMock,
+            _loggerMock.Object,
+            _webhookServiceMock.Object,
+            eventStoreMock.Object);
+
+        using var cts = new CancellationTokenSource(100);
+
+        // Act
+        await service.StartAsync(cts.Token);
+        await Task.Delay(150);
+        await service.StopAsync(CancellationToken.None);
+
+        // Assert - 不应该调用事件存储
+        eventStoreMock.Verify(
+            x => x.GetPendingRetryEventsAsync(It.IsAny<DateTimeOffset>(), It.IsAny<int>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WithNoFailedEvents_ShouldNotProcess()
+    {
+        // Arrange
+        var optionsMock = Options.Create(_options);
+        var eventStoreMock = new Mock<IFailedEventStore>();
+        eventStoreMock
+            .Setup(x => x.GetPendingRetryEventsAsync(It.IsAny<DateTimeOffset>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<FailedEventInfo>());
+
+        var service = new FailedEventRetryService(
+            optionsMock,
+            _loggerMock.Object,
+            _webhookServiceMock.Object,
+            eventStoreMock.Object);
+
+        using var cts = new CancellationTokenSource(100);
+
+        // Act
+        await service.StartAsync(cts.Token);
+        await Task.Delay(150);
+        await service.StopAsync(CancellationToken.None);
+
+        // Assert
+        eventStoreMock.Verify(
+            x => x.GetPendingRetryEventsAsync(It.IsAny<DateTimeOffset>(), It.IsAny<int>(), It.IsAny<CancellationToken>()),
+            Times.AtLeastOnce);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WithFailedEvent_ShouldRetryAndSucceed()
+    {
+        // Arrange
+        var optionsMock = Options.Create(_options);
+        var eventStoreMock = new Mock<IFailedEventStore>();
+
+        var failedEvent = new FailedEventInfo
+        {
+            EventId = "event-001",
+            EventType = "test.event",
+            SerializedEventData = "{\"eventId\":\"event-001\",\"eventType\":\"test.event\"}",
+            RetryCount = 0,
+            FailedAt = DateTime.UtcNow
+        };
+
+        eventStoreMock
+            .Setup(x => x.GetPendingRetryEventsAsync(It.IsAny<DateTimeOffset>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<FailedEventInfo> { failedEvent });
+
+        _webhookServiceMock
+            .Setup(x => x.HandleEventAsync(It.IsAny<EventData>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((true, (string?)null));
+
+        var service = new FailedEventRetryService(
+            optionsMock,
+            _loggerMock.Object,
+            _webhookServiceMock.Object,
+            eventStoreMock.Object);
+
+        using var cts = new CancellationTokenSource(200);
+
+        // Act
+        await service.StartAsync(cts.Token);
+        await Task.Delay(250);
+        await service.StopAsync(CancellationToken.None);
+
+        // Assert
+        eventStoreMock.Verify(
+            x => x.RemoveFailedEventAsync("event-001", It.IsAny<CancellationToken>()),
+            Times.AtLeastOnce);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WithFailedEvent_ShouldRetryAndFail()
+    {
+        // Arrange
+        var optionsMock = Options.Create(_options);
+        var eventStoreMock = new Mock<IFailedEventStore>();
+
+        var failedEvent = new FailedEventInfo
+        {
+            EventId = "event-002",
+            EventType = "test.event",
+            SerializedEventData = "{\"eventId\":\"event-002\",\"eventType\":\"test.event\"}",
+            RetryCount = 0,
+            FailedAt = DateTime.UtcNow
+        };
+
+        eventStoreMock
+            .Setup(x => x.GetPendingRetryEventsAsync(It.IsAny<DateTimeOffset>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<FailedEventInfo> { failedEvent });
+
+        _webhookServiceMock
+            .Setup(x => x.HandleEventAsync(It.IsAny<EventData>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((false, "处理失败"));
+
+        var service = new FailedEventRetryService(
+            optionsMock,
+            _loggerMock.Object,
+            _webhookServiceMock.Object,
+            eventStoreMock.Object);
+
+        using var cts = new CancellationTokenSource(200);
+
+        // Act
+        await service.StartAsync(cts.Token);
+        await Task.Delay(250);
+        await service.StopAsync(CancellationToken.None);
+
+        // Assert
+        eventStoreMock.Verify(
+            x => x.UpdateFailedEventAsync(It.IsAny<FailedEventInfo>(), It.IsAny<CancellationToken>()),
+            Times.AtLeastOnce);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WithMaxRetryExceeded_ShouldRemoveEvent()
+    {
+        // Arrange
+        var optionsMock = Options.Create(_options);
+        var eventStoreMock = new Mock<IFailedEventStore>();
+
+        var failedEvent = new FailedEventInfo
+        {
+            EventId = "event-003",
+            EventType = "test.event",
+            SerializedEventData = "{\"eventId\":\"event-003\",\"eventType\":\"test.event\"}",
+            RetryCount = 3, // 已达到最大重试次数
+            FailedAt = DateTime.UtcNow
+        };
+
+        eventStoreMock
+            .Setup(x => x.GetPendingRetryEventsAsync(It.IsAny<DateTimeOffset>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<FailedEventInfo> { failedEvent });
+
+        var service = new FailedEventRetryService(
+            optionsMock,
+            _loggerMock.Object,
+            _webhookServiceMock.Object,
+            eventStoreMock.Object);
+
+        using var cts = new CancellationTokenSource(200);
+
+        // Act
+        await service.StartAsync(cts.Token);
+        await Task.Delay(250);
+        await service.StopAsync(CancellationToken.None);
+
+        // Assert - 应该移除事件，因为已达到最大重试次数
+        eventStoreMock.Verify(
+            x => x.RemoveFailedEventAsync("event-003", It.IsAny<CancellationToken>()),
+            Times.AtLeastOnce);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WithInvalidJsonData_ShouldUpdateRetryCount()
+    {
+        // Arrange
+        var optionsMock = Options.Create(_options);
+        var eventStoreMock = new Mock<IFailedEventStore>();
+
+        var failedEvent = new FailedEventInfo
+        {
+            EventId = "event-004",
+            EventType = "test.event",
+            SerializedEventData = "invalid_json_data",
+            RetryCount = 0,
+            FailedAt = DateTime.UtcNow
+        };
+
+        eventStoreMock
+            .Setup(x => x.GetPendingRetryEventsAsync(It.IsAny<DateTimeOffset>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<FailedEventInfo> { failedEvent });
+
+        var service = new FailedEventRetryService(
+            optionsMock,
+            _loggerMock.Object,
+            _webhookServiceMock.Object,
+            eventStoreMock.Object);
+
+        using var cts = new CancellationTokenSource(200);
+
+        // Act
+        await service.StartAsync(cts.Token);
+        await Task.Delay(250);
+        await service.StopAsync(CancellationToken.None);
+
+        // Assert - 无效 JSON 会抛出异常，进入 catch 块，更新重试次数
+        eventStoreMock.Verify(
+            x => x.UpdateFailedEventAsync(It.Is<FailedEventInfo>(e => e.EventId == "event-004" && e.RetryCount > 0), It.IsAny<CancellationToken>()),
+            Times.AtLeastOnce);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WithException_ShouldUpdateRetryCount()
+    {
+        // Arrange
+        var optionsMock = Options.Create(_options);
+        var eventStoreMock = new Mock<IFailedEventStore>();
+
+        var failedEvent = new FailedEventInfo
+        {
+            EventId = "event-005",
+            EventType = "test.event",
+            SerializedEventData = "{\"eventId\":\"event-005\",\"eventType\":\"test.event\"}",
+            RetryCount = 0,
+            FailedAt = DateTime.UtcNow
+        };
+
+        eventStoreMock
+            .Setup(x => x.GetPendingRetryEventsAsync(It.IsAny<DateTimeOffset>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<FailedEventInfo> { failedEvent });
+
+        _webhookServiceMock
+            .Setup(x => x.HandleEventAsync(It.IsAny<EventData>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("测试异常"));
+
+        var service = new FailedEventRetryService(
+            optionsMock,
+            _loggerMock.Object,
+            _webhookServiceMock.Object,
+            eventStoreMock.Object);
+
+        using var cts = new CancellationTokenSource(200);
+
+        // Act
+        await service.StartAsync(cts.Token);
+        await Task.Delay(250);
+        await service.StopAsync(CancellationToken.None);
+
+        // Assert - 应该更新重试次数
+        eventStoreMock.Verify(
+            x => x.UpdateFailedEventAsync(It.Is<FailedEventInfo>(e => e.RetryCount > 0), It.IsAny<CancellationToken>()),
+            Times.AtLeastOnce);
+    }
 }

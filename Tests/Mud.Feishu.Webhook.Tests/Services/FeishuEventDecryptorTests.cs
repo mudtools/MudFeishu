@@ -85,6 +85,98 @@ public class FeishuEventDecryptorTests
         result.Should().BeNull();
     }
 
+    [Fact]
+    public async Task DecryptAsync_WithValidV2Data_ShouldReturnEventData()
+    {
+        // Arrange
+        var encryptKey = "test_encrypt_key_123456";
+        var originalJson = "{\"schema\":\"2.0\",\"header\":{\"event_id\":\"v2_event_123\",\"event_type\":\"contact.user.created_v3\",\"create_time\":\"1704067200000\",\"tenant_key\":\"tenant_abc\",\"app_id\":\"app_123\"},\"event\":{\"user_id\":\"ou_xxx\"}}";
+        var encryptedData = EncryptData(originalJson, encryptKey);
+
+        // Act
+        var result = await _decryptor.DecryptAsync(encryptedData, encryptKey);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.EventId.Should().Be("v2_event_123");
+        result.EventType.Should().Be("contact.user.created_v3");
+        result.TenantKey.Should().Be("tenant_abc");
+        result.AppId.Should().Be("app_123");
+        result.Event.Should().NotBeNull();
+        result.Event!.ToString().Should().Contain("user_id");
+    }
+
+    [Fact]
+    public async Task DecryptAsync_WithUrlVerificationRequest_ShouldReturnSpecialEventData()
+    {
+        // Arrange
+        var encryptKey = "test_encrypt_key_123456";
+        var originalJson = "{\"type\":\"url_verification\",\"challenge\":\"test_challenge_value\"}";
+        var encryptedData = EncryptData(originalJson, encryptKey);
+
+        // Act
+        var result = await _decryptor.DecryptAsync(encryptedData, encryptKey);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.EventType.Should().Be("url_verification");
+        result.Event.Should().NotBeNull();
+        result.Event!.ToString().Should().Contain("test_challenge_value");
+    }
+
+    [Fact]
+    public async Task DecryptAsync_WithV2EventWithNumericCreateTime_ShouldParseCorrectly()
+    {
+        // Arrange
+        var encryptKey = "test_encrypt_key_123456";
+        var originalJson = "{\"schema\":\"2.0\",\"header\":{\"event_id\":\"event_456\",\"event_type\":\"test.event\",\"create_time\":1704067200000}}";
+        var encryptedData = EncryptData(originalJson, encryptKey);
+
+        // Act
+        var result = await _decryptor.DecryptAsync(encryptedData, encryptKey);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.EventId.Should().Be("event_456");
+        result.CreateTime.Should().BeGreaterThan(0);
+    }
+
+    [Fact]
+    public async Task DecryptAsync_WithV1EventWithTenantKeyAndAppId_ShouldParseAllFields()
+    {
+        // Arrange
+        var encryptKey = "test_encrypt_key_123456";
+        var originalJson = "{\"event_id\":\"event_789\",\"event_type\":\"app.card.created\",\"create_time\":\"1704067200000\",\"tenant_key\":\"my_tenant\",\"app_id\":\"my_app\",\"event\":{\"card_id\":\"card_123\"}}";
+        var encryptedData = EncryptData(originalJson, encryptKey);
+
+        // Act
+        var result = await _decryptor.DecryptAsync(encryptedData, encryptKey);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.EventId.Should().Be("event_789");
+        result.EventType.Should().Be("app.card.created");
+        result.TenantKey.Should().Be("my_tenant");
+        result.AppId.Should().Be("my_app");
+        result.Event.Should().NotBeNull();
+        result.Event!.ToString().Should().Contain("card_id");
+    }
+
+    [Fact]
+    public async Task DecryptAsync_WithCancellationToken_ShouldRespectCancellation()
+    {
+        // Arrange
+        var encryptKey = "test_encrypt_key_123456";
+        var originalJson = "{\"event_type\":\"test_event\"}";
+        var encryptedData = EncryptData(originalJson, encryptKey);
+        var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        // Act & Assert
+        await Assert.ThrowsAsync<OperationCanceledException>(() => 
+            _decryptor.DecryptAsync(encryptedData, encryptKey, cts.Token));
+    }
+
     /// <summary>
     /// 辅助方法：加密数据（模拟飞书加密）
     /// </summary>

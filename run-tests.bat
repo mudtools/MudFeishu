@@ -100,6 +100,17 @@ if %errorlevel% neq 0 (
     echo Test report generated at: %cd%\%TEST_REPORT_DIR%\webhook-tests.trx
 )
 
+echo.
+echo Running Authentication tests...
+dotnet test Tests\Mud.Feishu.Authentication.Tests --logger "trx;LogFileName=authentication-tests.trx" --results-directory "%TEST_REPORT_DIR%"
+if %errorlevel% neq 0 (
+    echo Authentication tests failed!
+    echo Test report generated at: %cd%\%TEST_REPORT_DIR%\authentication-tests.trx
+) else (
+    echo Authentication tests passed!
+    echo Test report generated at: %cd%\%TEST_REPORT_DIR%\authentication-tests.trx
+)
+
 REM Generate combined HTML report if ReportGenerator is available
 where ReportGenerator >nul 2>nul
 if %errorlevel% equ 0 (

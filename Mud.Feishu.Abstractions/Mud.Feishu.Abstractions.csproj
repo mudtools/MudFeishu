@@ -17,8 +17,8 @@
 	</PropertyGroup>
 
 	<ItemGroup Condition="'$(TargetFramework)' == 'net10.0' or '$(TargetFramework)' == 'net9.0' or '$(TargetFramework)' == 'net8.0'">
-		<PackageReference Include="Microsoft.Extensions.Http" Version="10.0.4" />
-		<PackageReference Include="Microsoft.Extensions.Http.Polly" Version="10.0.4" />
+		<PackageReference Include="Microsoft.Extensions.Http" Version="10.0.5" />
+		<PackageReference Include="Microsoft.Extensions.Http.Polly" Version="10.0.5" />
 	</ItemGroup>
 	<ItemGroup Condition="'$(TargetFramework)' == 'net6.0'or '$(TargetFramework)' == 'netstandard2.0'">
 		<PackageReference Include="Microsoft.Extensions.Http" Version="8.0.1" />

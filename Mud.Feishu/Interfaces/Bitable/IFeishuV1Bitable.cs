@@ -82,4 +82,40 @@ public interface IFeishuV1Bitable : IFeishuAppContextSwitcher
         [Path] string app_token,
         [Body] UpdateBitableAppRequest updateBitableAppRequest,
         CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 新增一个数据表
+    /// <para>新增一个数据表，支持传入数据表名称、视图名称和字段。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table/create">接口文档</see></para>
+    /// </summary>
+    /// <param name="app_token">
+    /// <para>要复制的多维表格 App 的唯一标识。不同形态的多维表格，其 app_token 的获取方式不同，参考[<see href="https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/bitable-overview">多维表格 app_token 获取方式</see>]获取。</para>
+    /// <para>示例值：AW3Qbtr2cakCnesXzXVbbsrIcVT</para>
+    /// </param>
+    /// <param name="createTableRequest">创建多维表格请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Post("/open-apis/bitable/v1/apps/{app_token}/tables")]
+    Task<FeishuApiResult<CreateTableResult>?> CreateAppTableAsync(
+        [Path] string app_token,
+        [Body] CreateTableRequest createTableRequest,
+        CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 新增多个数据表
+    /// <para>新增多个数据表，仅可指定数据表名称。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table/batch_create">接口文档</see></para>
+    /// </summary>
+    /// <param name="app_token">
+    /// <para>要复制的多维表格 App 的唯一标识。不同形态的多维表格，其 app_token 的获取方式不同，参考[<see href="https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/bitable-overview">多维表格 app_token 获取方式</see>]获取。</para>
+    /// <para>示例值：AW3Qbtr2cakCnesXzXVbbsrIcVT</para>
+    /// </param>
+    /// <param name="createTableRequest">创建多维表格请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Post("/open-apis/bitable/v1/apps/{app_token}/tables/batch_create")]
+    Task<FeishuApiResult<CreateTablesResult>?> CreateAppTablesAsync(
+      [Path] string app_token,
+      [Body] CreateTablesRequest createTableRequest,
+      CancellationToken cancellationToken = default);
 }

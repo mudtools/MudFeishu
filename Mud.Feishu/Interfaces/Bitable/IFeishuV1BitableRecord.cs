@@ -18,8 +18,6 @@ namespace Mud.Feishu.Interfaces;
 [Header(Consts.Authorization)]
 public interface IFeishuV1BitableRecord : IFeishuAppContextSwitcher
 {
-
-
     /// <summary>
     /// 新增记录
     /// <para>在多维表格数据表中新增一条记录。</para>

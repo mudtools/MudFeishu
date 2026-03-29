@@ -89,7 +89,7 @@ public interface IFeishuV1BitableView : IFeishuAppContextSwitcher
     /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Get("/open-apis/bitable/v1/apps/{app_token}/tables/{table_id}/views")]
-    Task<FeishuApiPageListResult<AppViewDetailInfo>?> GetViewsPageListAsync(
+    Task<FeishuApiPageListTotalResult<AppViewDetailInfo>?> GetViewsPageListAsync(
        [Path] string app_token,
        [Path] string table_id,
        [Query("page_size")] int page_size = 20,

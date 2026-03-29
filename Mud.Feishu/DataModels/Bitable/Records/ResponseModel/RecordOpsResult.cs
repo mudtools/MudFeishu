@@ -8,12 +8,12 @@
 namespace Mud.Feishu.DataModels.Bitable;
 
 /// <summary>
-/// 新增记录响应体
+/// 新增/修改记录响应体
 /// </summary>
-public class AddRecordResult
+public class RecordOpsResult
 {
     /// <summary>
-    /// <para>新增记录的内容</para>
+    /// <para>记录的内容</para>
     /// <para>必填：否</para>
     /// </summary>
     [JsonPropertyName("record")]

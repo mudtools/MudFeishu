@@ -8,9 +8,9 @@
 namespace Mud.Feishu.DataModels.Bitable;
 
 /// <summary>
-/// 新增记录请求体
+/// 新增/更新记录请求体
 /// </summary>
-public class AddRecordRequest
+public class RecordOpsRequest
 {
     /// <summary>
     /// <para>要新增的记录的数据。需先指定数据表中的字段（即指定列），再传入正确格式的数据作为一条记录。</para>

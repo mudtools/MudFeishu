@@ -5,17 +5,17 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-namespace Mud.Feishu;
-
+namespace Mud.Feishu.DataModels.Bitable;
 
 /// <summary>
-/// 数据校验用于限制电子表格单元格中的数据类型或用户输入单元格的值。
-/// <para>目前，电子表格支持下拉列表相关接口，用于验证数据。</para>
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/docs/sheets-v3/datavalidation/datavalidation-guide"/></para>
+/// 新增记录响应体
 /// </summary>
-[HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Spreadsheets", InheritedFrom = nameof(FeishuV2SpreadsheetDataValidation))]
-[Header(Consts.Authorization)]
-[Token(TokenType.TenantAccessToken)]
-public interface IFeishuTenantV2SpreadsheetDataValidation : IFeishuV2SpreadsheetDataValidation
+public class AddRecordResult
 {
+    /// <summary>
+    /// <para>新增记录的内容</para>
+    /// <para>必填：否</para>
+    /// </summary>
+    [JsonPropertyName("record")]
+    public AppTableRecordInfo? Record { get; set; }
 }

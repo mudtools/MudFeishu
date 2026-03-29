@@ -6,6 +6,8 @@
 // -----------------------------------------------------------------------
 
 
+using Mud.Feishu.DataModels.Bitable;
+
 namespace Mud.Feishu.Interfaces;
 
 /// <summary>

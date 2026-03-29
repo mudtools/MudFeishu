@@ -49,7 +49,7 @@ public interface IFeishuV1BitableAppTable : IFeishuAppContextSwitcher
     /// <para>示例值：AW3Qbtr2cakCnesXzXVbbsrIcVT</para>
     /// </param>
     /// <param name="createTableRequest">创建多维表格请求体</param>
-    /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
+    /// <param name="user_id_type">用户 ID，ID 类型与查询结果中的 user_id_type 类型保持一致。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Post("/open-apis/bitable/v1/apps/{app_token}/tables/batch_create")]
     Task<FeishuApiResult<CreateTablesResult>?> CreateAppTablesAsync(

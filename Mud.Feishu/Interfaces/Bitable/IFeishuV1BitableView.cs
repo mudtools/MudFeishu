@@ -69,4 +69,40 @@ public interface IFeishuV1BitableView : IFeishuAppContextSwitcher
        [Path] string view_id,
        [Body] UpdateViewRequest updateViewRequest,
        CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 分页列出视图
+    /// <para>分页获取多维表格数据表中的所有视图。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table-view/list">接口文档</see></para>
+    /// </summary>
+    /// <param name="app_token">
+    /// <para>多维表格 App 的唯一标识。不同形态的多维表格，其 app_token 的获取方式不同，参考[<see href="https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/bitable-overview">多维表格 app_token 获取方式</see>]获取。</para>
+    /// <para>示例值：AW3Qbtr2cakCnesXzXVbbsrIcVT</para>
+    /// </param>
+    /// <param name="table_id">
+    /// <para>多维表格数据表的唯一标识。</para>
+    /// <para>示例值：tbl1TkhyTWDkSoZ3</para>
+    /// </param>
+    /// <param name="user_id_type">用户 ID，ID 类型与查询结果中的 user_id_type 类型保持一致。</param>
+    /// <param name="page_size">分页大小，即本次请求所返回的信息列表内的最大条目数。默认值：500</param>
+    /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Get("/open-apis/bitable/v1/apps/{app_token}/tables/{table_id}/views")]
+    Task<FeishuApiPageListResult<AppViewDetailInfo>?> GetViewsPageListAsync(
+       [Path] string app_token,
+       [Path] string table_id,
+       [Query("page_size")] int page_size = 20,
+       [Query("page_token")] string? page_token = null,
+       [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
+       CancellationToken cancellationToken = default);
+
+
+    [Get("/open-apis/bitable/v1/apps/{app_token}/tables/{table_id}/views/{view_id}")]
+    Task<FeishuApiResult<AppViewDetailInfo>?> GetViewAsync(
+       [Path] string app_token,
+       [Path] string table_id,
+       [Path] string view_id,
+       [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
+       CancellationToken cancellationToken = default);
 }

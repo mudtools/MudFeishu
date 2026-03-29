@@ -1,0 +1,140 @@
+// -----------------------------------------------------------------------
+//  作者：Mud Studio  版权所有 (c) Mud Studio 2026   
+//  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
+//  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
+//  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
+// -----------------------------------------------------------------------
+
+
+namespace Mud.Feishu.Interfaces;
+
+/// <summary>
+/// <para>数据表 table是多维表格的数据容器，一个多维表格中至少有一个数据表（table），也可能有多个数据表。</para>
+/// <para>每个数据表都有唯一标识 table_id。table_id 在一个多维表格 App 中唯一，在全局不一定唯一。</para>
+/// <para>可通过多维表格 URL 获取 table_id，也可通过列出数据表接口获取 table_id。</para>
+/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/docs/bitable-v1/bitable-overview"/></para>
+/// </summary>
+[HttpClientApi(TokenManage = nameof(IFeishuAppManager), IsAbstract = true)]
+[Header(Consts.Authorization)]
+public interface IFeishuV1BitableAppTable : IFeishuAppContextSwitcher
+{
+
+    /// <summary>
+    /// 新增一个数据表
+    /// <para>新增一个数据表，支持传入数据表名称、视图名称和字段。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table/create">接口文档</see></para>
+    /// </summary>
+    /// <param name="app_token">
+    /// <para>多维表格 App 的唯一标识。不同形态的多维表格，其 app_token 的获取方式不同，参考[<see href="https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/bitable-overview">多维表格 app_token 获取方式</see>]获取。</para>
+    /// <para>示例值：AW3Qbtr2cakCnesXzXVbbsrIcVT</para>
+    /// </param>
+    /// <param name="createTableRequest">创建多维表格请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Post("/open-apis/bitable/v1/apps/{app_token}/tables")]
+    Task<FeishuApiResult<CreateTableResult>?> CreateAppTableAsync(
+        [Path] string app_token,
+        [Body] CreateTableRequest createTableRequest,
+        CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 新增多个数据表
+    /// <para>新增多个数据表，仅可指定数据表名称。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table/batch_create">接口文档</see></para>
+    /// </summary>
+    /// <param name="app_token">
+    /// <para>多维表格 App 的唯一标识。不同形态的多维表格，其 app_token 的获取方式不同，参考[<see href="https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/bitable-overview">多维表格 app_token 获取方式</see>]获取。</para>
+    /// <para>示例值：AW3Qbtr2cakCnesXzXVbbsrIcVT</para>
+    /// </param>
+    /// <param name="createTableRequest">创建多维表格请求体</param>
+    /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Post("/open-apis/bitable/v1/apps/{app_token}/tables/batch_create")]
+    Task<FeishuApiResult<CreateTablesResult>?> CreateAppTablesAsync(
+      [Path] string app_token,
+      [Body] CreateTablesRequest createTableRequest,
+      [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
+      CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 新增多个数据表
+    /// <para>新增多个数据表，仅可指定数据表名称。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table/patch">接口文档</see></para>
+    /// </summary>
+    /// <param name="app_token">
+    /// <para>多维表格 App 的唯一标识。不同形态的多维表格，其 app_token 的获取方式不同，参考[<see href="https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/bitable-overview">多维表格 app_token 获取方式</see>]获取。</para>
+    /// <para>示例值：AW3Qbtr2cakCnesXzXVbbsrIcVT</para>
+    /// </param>
+    /// <param name="table_id">
+    /// <para>多维表格数据表的唯一标识。</para>
+    /// <para>示例值：tbl1TkhyTWDkSoZ3</para>
+    /// </param>
+    /// <param name="updateAppTableRequest">更新多维表格应用数据表请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Patch("/open-apis/bitable/v1/apps/{app_token}/tables/{table_id}")]
+    Task<FeishuApiResult<UpdateAppTableResult>?> UpdateAppTableAsync(
+         [Path] string app_token,
+         [Path] string table_id,
+         [Body] UpdateAppTableRequest updateAppTableRequest,
+         CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 列出数据表
+    /// <para>列出多维表格中的所有数据表，包括其 ID、版本号和名称。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table/list">接口文档</see></para>
+    /// </summary>
+    /// <param name="app_token">
+    /// <para>多维表格 App 的唯一标识。不同形态的多维表格，其 app_token 的获取方式不同，参考[<see href="https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/bitable-overview">多维表格 app_token 获取方式</see>]获取。</para>
+    /// <para>示例值：AW3Qbtr2cakCnesXzXVbbsrIcVT</para>
+    /// </param>
+    /// <param name="page_size">分页大小，即本次请求所返回的信息列表内的最大条目数。默认值：500</param>
+    /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Get("/open-apis/bitable/v1/apps/{app_token}/tables")]
+    Task<FeishuApiPageListResult<AppTableBaseInfo>?> GetAppTablePageListAsync(
+        [Path] string app_token,
+        [Query("page_size")] int page_size = 20,
+        [Query("page_token")] string? page_token = null,
+        CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 删除一个数据表
+    /// <para>通过 app_token 和 table_id 删除指定的多维表格数据表。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table/delete">接口文档</see></para>
+    /// </summary>
+    /// <param name="app_token">
+    /// <para>多维表格 App 的唯一标识。不同形态的多维表格，其 app_token 的获取方式不同，参考[<see href="https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/bitable-overview">多维表格 app_token 获取方式</see>]获取。</para>
+    /// <para>示例值：AW3Qbtr2cakCnesXzXVbbsrIcVT</para>
+    /// </param>
+    /// <param name="table_id">
+    /// <para>多维表格数据表的唯一标识。</para>
+    /// <para>示例值：tbl1TkhyTWDkSoZ3</para>
+    /// </param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Delete("/open-apis/bitable/v1/apps/{app_token}/tables/{table_id}")]
+    Task<FeishuNullDataApiResult?> DeleteAppTableAsync(
+       [Path] string app_token,
+       [Path] string table_id,
+       CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 删除多个数据表
+    /// <para>通过 app_token 和 table_id 删除多个数据表。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table/batch_delete">接口文档</see></para>
+    /// </summary>
+    /// <param name="app_token">
+    /// <para>多维表格 App 的唯一标识。不同形态的多维表格，其 app_token 的获取方式不同，参考[<see href="https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/bitable-overview">多维表格 app_token 获取方式</see>]获取。</para>
+    /// <para>示例值：AW3Qbtr2cakCnesXzXVbbsrIcVT</para>
+    /// </param>
+    /// <param name="batchDeleteRequest">批量删除多维表格应用数据表记录请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Delete("/open-apis/bitable/v1/apps/{app_token}/tables/batch_delete")]
+    Task<FeishuNullDataApiResult?> DeleteAppTablesAsync(
+      [Path] string app_token,
+      [Body] BatchDeleteRequest batchDeleteRequest,
+      CancellationToken cancellationToken = default);
+}

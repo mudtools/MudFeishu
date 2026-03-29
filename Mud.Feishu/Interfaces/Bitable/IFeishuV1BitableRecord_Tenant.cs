@@ -12,7 +12,7 @@ namespace Mud.Feishu;
 /// <para>每条记录都有唯一标识 record_id，record_id 在一个多维表格中唯一，在全局不一定唯一。record_id 需要通过查询记录接口获取。</para>
 /// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/docs/bitable-v1/app-table-record/bitable-record-data-structure-overview"/></para>
 /// </summary>
-[HttpClientApi(RegistryGroupName = "Bitable", TokenManage = nameof(IFeishuAppManager), InheritedFrom = nameof(FeishuV1BitableAppTable))]
+[HttpClientApi(RegistryGroupName = "Bitable", TokenManage = nameof(IFeishuAppManager), InheritedFrom = nameof(FeishuV1BitableRecord))]
 [Header(Consts.Authorization)]
 [Token(TokenType.TenantAccessToken)]
 public interface IFeishuTenantV1BitableRecord : IFeishuV1BitableRecord

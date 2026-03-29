@@ -27,4 +27,8 @@
 	<ItemGroup>
 	  <ProjectReference Include="..\Mud.Feishu.Abstractions\Mud.Feishu.Abstractions.csproj" />
 	</ItemGroup>
+	<ItemGroup>
+	  <Folder Include="DataModels\Bitable\Views\RequestModel\" />
+	  <Folder Include="DataModels\Bitable\Views\ResponseModel\" />
+	</ItemGroup>
 </Project>

@@ -98,11 +98,56 @@ public interface IFeishuV1BitableView : IFeishuAppContextSwitcher
        CancellationToken cancellationToken = default);
 
 
+    /// <summary>
+    /// 获取视图
+    /// <para>根据视图 ID 获取现有视图信息，包括视图名称、类型、属性等。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table-view/get">接口文档</see></para>
+    /// </summary>
+    /// <param name="app_token">
+    /// <para>多维表格 App 的唯一标识。不同形态的多维表格，其 app_token 的获取方式不同，参考[<see href="https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/bitable-overview">多维表格 app_token 获取方式</see>]获取。</para>
+    /// <para>示例值：AW3Qbtr2cakCnesXzXVbbsrIcVT</para>
+    /// </param>
+    /// <param name="table_id">
+    /// <para>多维表格数据表的唯一标识。</para>
+    /// <para>示例值：tbl1TkhyTWDkSoZ3</para>
+    /// </param>
+    /// <param name="view_id">
+    /// <para>多维表格中视图的唯一标识。</para>
+    /// <para>示例值：vewTpR1urY</para>
+    /// </param>
+    /// <param name="user_id_type">用户 ID，ID 类型与查询结果中的 user_id_type 类型保持一致。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Get("/open-apis/bitable/v1/apps/{app_token}/tables/{table_id}/views/{view_id}")]
-    Task<FeishuApiResult<AppViewDetailInfo>?> GetViewAsync(
+    Task<FeishuApiResult<GetViewResult>?> GetViewAsync(
        [Path] string app_token,
        [Path] string table_id,
        [Path] string view_id,
        [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
        CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 删除视图
+    /// <para>通过 app_token、table_id 和 view_id，删除多维表格数据表中的指定视图。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table-view/delete">接口文档</see></para>
+    /// </summary>
+    /// <param name="app_token">
+    /// <para>多维表格 App 的唯一标识。不同形态的多维表格，其 app_token 的获取方式不同，参考[<see href="https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/bitable-overview">多维表格 app_token 获取方式</see>]获取。</para>
+    /// <para>示例值：AW3Qbtr2cakCnesXzXVbbsrIcVT</para>
+    /// </param>
+    /// <param name="table_id">
+    /// <para>多维表格数据表的唯一标识。</para>
+    /// <para>示例值：tbl1TkhyTWDkSoZ3</para>
+    /// </param>
+    /// <param name="view_id">
+    /// <para>多维表格中视图的唯一标识。</para>
+    /// <para>示例值：vewTpR1urY</para>
+    /// </param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Delete("/open-apis/bitable/v1/apps/{app_token}/tables/{table_id}/views/{view_id}")]
+    Task<FeishuApiResult<GetViewResult>?> DeleteViewAsync(
+          [Path] string app_token,
+          [Path] string table_id,
+          [Path] string view_id,
+          CancellationToken cancellationToken = default);
 }

@@ -8,23 +8,26 @@
 namespace Mud.Feishu.DataModels.Bitable;
 
 /// <summary>
-/// <para>字段支持的编辑模式</para>
+/// <para>字段的描述</para>
 /// </summary>
-public class AppTableFieldPropertyAllowedEditModes
+public class AppTableFieldDescription
 {
     /// <summary>
-    /// <para>是否允许手动录入</para>
+    /// <para>是否禁止同步该描述，只在新增、修改字段时生效。枚举值：</para>
+    /// <para>- true：表示禁止同步该描述内容到表单的问题描述</para>
+    /// <para>- false：允许同步该描述</para>
     /// <para>必填：否</para>
     /// <para>示例值：true</para>
+    /// <para>默认值：true</para>
     /// </summary>
-    [JsonPropertyName("manual")]
-    public bool? Manual { get; set; }
+    [JsonPropertyName("disable_sync")]
+    public bool? DisableSync { get; set; }
 
     /// <summary>
-    /// <para>是否允许移动端录入</para>
+    /// <para>字段描述内容</para>
     /// <para>必填：否</para>
-    /// <para>示例值：true</para>
+    /// <para>示例值：这是一个字段描述</para>
     /// </summary>
-    [JsonPropertyName("scan")]
-    public bool? Scan { get; set; }
+    [JsonPropertyName("text")]
+    public string? Text { get; set; }
 }

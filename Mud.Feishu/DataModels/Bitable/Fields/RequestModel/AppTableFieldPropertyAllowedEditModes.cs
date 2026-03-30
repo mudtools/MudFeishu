@@ -8,33 +8,23 @@
 namespace Mud.Feishu.DataModels.Bitable;
 
 /// <summary>
-/// <para>单选、多选字段的选项信息</para>
+/// <para>条码展示类型字段支持的配置</para>
 /// </summary>
-public class AppTableFieldPropertyOption
+public class AppTableFieldPropertyAllowedEditModes
 {
     /// <summary>
-    /// <para>选项名</para>
+    /// <para>是否允许手动录入。默认为 true</para>
     /// <para>必填：否</para>
-    /// <para>示例值：红色</para>
+    /// <para>示例值：true</para>
     /// </summary>
-    [JsonPropertyName("name")]
-    public string? Name { get; set; }
+    [JsonPropertyName("manual")]
+    public bool? Manual { get; set; }
 
     /// <summary>
-    /// <para>选项 ID，创建时不可指定 ID</para>
+    /// <para>是否允许移动端录入。默认为 true</para>
     /// <para>必填：否</para>
-    /// <para>示例值：optKl35lnG</para>
+    /// <para>示例值：true</para>
     /// </summary>
-    [JsonPropertyName("id")]
-    public string? Id { get; set; }
-
-    /// <summary>
-    /// <para>选项颜色。</para>
-    /// <para>必填：否</para>
-    /// <para>示例值：0</para>
-    /// <para>最大值：54</para>
-    /// <para>最小值：0</para>
-    /// </summary>
-    [JsonPropertyName("color")]
-    public int? Color { get; set; }
+    [JsonPropertyName("scan")]
+    public bool? Scan { get; set; }
 }

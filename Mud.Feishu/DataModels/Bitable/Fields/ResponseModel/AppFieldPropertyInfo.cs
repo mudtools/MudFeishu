@@ -8,24 +8,17 @@
 namespace Mud.Feishu.DataModels.Bitable;
 
 /// <summary>
-/// <para>字段的描述</para>
+/// <para>应用字段属性信息</para>
 /// </summary>
-public class AppTableFieldDescription
+public class AppFieldPropertyInfo : AppFieldProperty
 {
-    /// <summary>
-    /// <para>是否禁止同步，如果为true，表示禁止同步该描述内容到表单的问题描述</para>
-    /// <para>必填：否</para>
-    /// <para>示例值：true</para>
-    /// <para>默认值：true</para>
-    /// </summary>
-    [JsonPropertyName("disable_sync")]
-    public bool? DisableSync { get; set; }
 
     /// <summary>
-    /// <para>字段描述内容，支持换行\n</para>
+    /// <para>单向关联、双向关联字段中关联的数据表的名称</para>
     /// <para>必填：否</para>
-    /// <para>示例值：请按 name_id 格式填写\n例如：“Alice_20202020”</para>
+    /// <para>示例值："table2"</para>
     /// </summary>
-    [JsonPropertyName("text")]
-    public string? Text { get; set; }
+    [JsonPropertyName("table_name")]
+    public string? TableName { get; set; }
+
 }

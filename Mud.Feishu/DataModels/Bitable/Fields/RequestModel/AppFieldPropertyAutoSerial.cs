@@ -8,15 +8,26 @@
 namespace Mud.Feishu.DataModels.Bitable;
 
 /// <summary>
-/// <para>评分字段的相关设置</para>
+/// <para>自动编号类型</para>
 /// </summary>
-public class AppTableFieldPropertyRating
+public class AppFieldPropertyAutoSerial
 {
     /// <summary>
-    /// <para>评分字段的符号展示</para>
-    /// <para>必填：否</para>
-    /// <para>示例值：star</para>
+    /// <para>自动编号类型</para>
+    /// <para>必填：是</para>
+    /// <para>示例值：auto_increment_number</para>
+    /// <para>可选值：<list type="bullet">
+    /// <item>custom：自定义编号</item>
+    /// <item>auto_increment_number：自增数字</item>
+    /// </list></para>
     /// </summary>
-    [JsonPropertyName("symbol")]
-    public string? Symbol { get; set; }
+    [JsonPropertyName("type")]
+    public string Type { get; set; } = string.Empty;
+
+    /// <summary>
+    /// <para>自定义编号规则列表</para>
+    /// <para>必填：否</para>
+    /// </summary>
+    [JsonPropertyName("options")]
+    public AppFieldPropertyAutoSerialOptions[]? Options { get; set; }
 }

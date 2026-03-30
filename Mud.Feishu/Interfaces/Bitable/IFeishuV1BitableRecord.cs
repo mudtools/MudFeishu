@@ -228,4 +228,29 @@ public interface IFeishuV1BitableRecord : IFeishuAppContextSwitcher
        [Query("ignore_consistency_check")] bool? ignore_consistency_check = false,
        [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
        CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 批量获取记录
+    /// <para>通过多个记录 ID 查询记录信息。该接口最多支持查询 100 条记录。</para>
+    /// <para><see href="https://open.feishu.cn/document/docs/bitable-v1/app-table-record/batch_get">接口文档</see></para>
+    /// </summary>
+    /// <param name="app_token">
+    /// <para>多维表格 App 的唯一标识。不同形态的多维表格，其 app_token 的获取方式不同，参考[<see href="https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/bitable-overview">多维表格 app_token 获取方式</see>]获取。</para>
+    /// <para>示例值：AW3Qbtr2cakCnesXzXVbbsrIcVT</para>
+    /// </param>
+    /// <param name="table_id">
+    /// <para>多维表格数据表的唯一标识。</para>
+    /// <para>示例值：tbl1TkhyTWDkSoZ3</para>
+    /// </param>
+    /// <param name="queryRecordsRequest">批量获取记录请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Post("/open-apis/bitable/v1/apps/{app_token}/tables/{table_id}/records/batch_get")]
+    Task<FeishuApiResult<GetRecordsResult>?> GetRecordsAsync(
+      [Path] string app_token,
+      [Path] string table_id,
+      [Body] GetRecordsRequest queryRecordsRequest,
+      CancellationToken cancellationToken = default);
+
+
 }

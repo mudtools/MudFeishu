@@ -62,7 +62,7 @@ public class AppTableRecord
     /// <summary>
     /// <para>记录分享链接(批量获取记录接口将返回该字段)</para>
     /// <para>必填：否</para>
-    /// <para>示例值：https://www.example.com/record/WVoXrzIaqeorcJcHgzAcg8AQnNd</para>
+    /// <para>示例值：https://www.mudtools.cn/record/WVoXrzIaqeorcJcHgzAcg8AQnNd</para>
     /// </summary>
     [JsonPropertyName("shared_url")]
     public string? SharedUrl { get; set; }
@@ -70,7 +70,7 @@ public class AppTableRecord
     /// <summary>
     /// <para>记录链接(检索记录接口将返回该字段)</para>
     /// <para>必填：否</para>
-    /// <para>示例值：https://www.example.com/record/WVoXrzIaqeorcJcHgzAcg8AQnNd</para>
+    /// <para>示例值：https://www.mudtools.cn/record/WVoXrzIaqeorcJcHgzAcg8AQnNd</para>
     /// </summary>
     [JsonPropertyName("record_url")]
     public string? RecordUrl { get; set; }

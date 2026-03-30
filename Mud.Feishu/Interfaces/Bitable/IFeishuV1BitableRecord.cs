@@ -158,4 +158,42 @@ public interface IFeishuV1BitableRecord : IFeishuAppContextSwitcher
         [Path] string record_id,
         [Query("ignore_consistency_check")] bool? ignore_consistency_check = false,
         CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 新增多条记录
+    /// <para>在多维表格数据表中新增多条记录，单次调用最多新增 1,000 条记录。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table-record/batch_create">接口文档</see></para>
+    /// </summary>
+    /// <param name="app_token">
+    /// <para>多维表格 App 的唯一标识。不同形态的多维表格，其 app_token 的获取方式不同，参考[<see href="https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/bitable-overview">多维表格 app_token 获取方式</see>]获取。</para>
+    /// <para>示例值：AW3Qbtr2cakCnesXzXVbbsrIcVT</para>
+    /// </param>
+    /// <param name="table_id">
+    /// <para>多维表格数据表的唯一标识。</para>
+    /// <para>示例值：tbl1TkhyTWDkSoZ3</para>
+    /// </param>
+    /// <param name="addRecordsRequest">新增多条记录请求体</param>
+    /// <param name="client_token">
+    /// <para>格式为标准的 uuidv4，操作的唯一标识，用于幂等的进行更新操作。此值为空表示将发起一次新的请求，此值非空表示幂等的进行更新操作。</para>
+    /// <para>示例值：fe599b60-450f-46ff-b2ef-9f6675625b97</para>
+    /// <para>默认值：null</para> /// </param>
+    /// <param name="ignore_consistency_check">
+    /// <para>是否忽略一致性读写检查，默认为 false，即在进行读写操作时，系统将确保读取到的数据和写入的数据是一致的。可选值：</para>
+    /// <para>- true：忽略读写一致性检查，提高性能，但可能会导致某些节点的数据不同步，出现暂时不一致</para>
+    /// <para>- false：开启读写一致性检查，确保数据在读写过程中一致</para>
+    /// <para>示例值：true</para>
+    /// <para>默认值：null</para>
+    /// </param>
+    /// <param name="user_id_type">用户 ID，ID 类型与查询结果中的 user_id_type 类型保持一致。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Post("/open-apis/bitable/v1/apps/{app_token}/tables/{table_id}/records/batch_create")]
+    Task<FeishuApiResult<RecordsOpsResult>?> AddRecordsAsync(
+         [Path] string app_token,
+         [Path] string table_id,
+         [Body] RecordsOpsRequest addRecordsRequest,
+         [Query("client_token")] string? client_token = null,
+         [Query("ignore_consistency_check")] bool? ignore_consistency_check = false,
+         [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
+         CancellationToken cancellationToken = default);
 }

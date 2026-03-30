@@ -77,4 +77,79 @@ public interface IFeishuV1BitableField : IFeishuAppContextSwitcher
          CancellationToken cancellationToken = default);
 
 
+
+    /// <summary>
+    /// 列出字段
+    /// <para>获取多维表格数据表中的的所有字段。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table-field/list">接口文档</see></para>
+    /// </summary>
+    /// <param name="app_token">
+    /// <para>多维表格 App 的唯一标识。不同形态的多维表格，其 app_token 的获取方式不同，参考[<see href="https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/bitable-overview">多维表格 app_token 获取方式</see>]获取。</para>
+    /// <para>示例值：AW3Qbtr2cakCnesXzXVbbsrIcVT</para>
+    /// </param>
+    /// <param name="table_id">
+    /// <para>多维表格数据表的唯一标识。</para>
+    /// <para>示例值：tbl1TkhyTWDkSoZ3</para>
+    /// </param>
+    /// <param name="view_id">
+    /// <para>多维表格中视图的唯一标识。</para>
+    /// <para>示例值：vewOVMEXPF</para>
+    /// <para>默认值：null</para>
+    /// </param>
+    /// <param name="text_field_as_array">
+    /// <para>必填：否</para>
+    /// <para>控制字段描述 `description` 数据的返回格式，默认为 false。true 表示 `description` 将以数组形式返回，如：</para>
+    /// <para>```json</para>
+    /// <para>{</para>
+    /// <para>"description": [</para>
+    /// <para>{</para>
+    /// <para>"text": "字段的描述",</para>
+    /// <para>"type": "text"</para>
+    /// <para>}</para>
+    /// <para>]</para>
+    /// <para>}</para>
+    /// <para>```</para>
+    /// <para>示例值：true</para>
+    /// </param>
+    /// <param name="page_size">分页大小，即本次请求所返回的信息列表内的最大条目数。默认值：500</param>
+    /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Get("/open-apis/bitable/v1/apps/{app_token}/tables/{table_id}/fields")]
+    Task<FeishuApiPageListTotalResult<AppTableFieldInfo>?> QueryRecordsPageListAsync(
+      [Path] string app_token,
+      [Path] string table_id,
+      [Query("view_id")] string? view_id = null,
+      [Query("text_field_as_array")] bool? text_field_as_array = null,
+      [Query("page_size")] int page_size = 20,
+      [Query("page_token")] string? page_token = null,
+      CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 删除字段
+    /// <para>删除多维表格数据表中的一个字段。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table-field/delete">接口文档</see></para>
+    /// </summary>
+    /// <param name="app_token">
+    /// <para>多维表格 App 的唯一标识。不同形态的多维表格，其 app_token 的获取方式不同，参考[<see href="https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/bitable-overview">多维表格 app_token 获取方式</see>]获取。</para>
+    /// <para>示例值：AW3Qbtr2cakCnesXzXVbbsrIcVT</para>
+    /// </param>
+    /// <param name="table_id">
+    /// <para>多维表格数据表的唯一标识。</para>
+    /// <para>示例值：tbl1TkhyTWDkSoZ3</para>
+    /// </param>
+    /// <param name="field_id">
+    /// <para>路径参数</para>
+    /// <para>必填：是</para>
+    /// <para>数据表中一个字段的唯一标识。</para>
+    /// <para>示例值：fldPTb0U2y</para>
+    /// </param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Delete("/open-apis/bitable/v1/apps/{app_token}/tables/{table_id}/fields/{field_id}")]
+    Task<FeishuApiResult<DeleteFieldResult>?> DeleteFieldAsync(
+     [Path] string app_token,
+     [Path] string table_id,
+     [Path] string field_id,
+     CancellationToken cancellationToken = default);
+
 }

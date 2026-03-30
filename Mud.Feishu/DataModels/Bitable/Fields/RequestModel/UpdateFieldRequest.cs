@@ -8,9 +8,9 @@
 namespace Mud.Feishu.DataModels.Bitable;
 
 /// <summary>
-/// 多维表格字段操作请求体
+/// 多维表格更新字段操作请求体
 /// </summary>
-public class FieldOpsRequest
+public class UpdateFieldRequest
 {
     /// <summary>
     /// <para>多维表格字段名称。名称中的首尾空格将会被去除。</para>
@@ -55,7 +55,7 @@ public class FieldOpsRequest
     /// <para>必填：否</para>
     /// </summary>
     [JsonPropertyName("property")]
-    public AppFieldProperty? Property { get; set; }
+    public AppFieldPropertyInfo? Property { get; set; }
 
     /// <summary>
     /// <para>字段的描述</para>

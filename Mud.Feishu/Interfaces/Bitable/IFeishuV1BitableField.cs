@@ -35,13 +35,46 @@ public interface IFeishuV1BitableField : IFeishuAppContextSwitcher
     /// <param name="client_token">
     /// <para>格式为标准的 uuidv4，操作的唯一标识，用于幂等的进行更新操作。此值为空表示将发起一次新的请求，此值非空表示幂等的进行更新操作。</para>
     /// <para>示例值：fe599b60-450f-46ff-b2ef-9f6675625b97</para>
-    /// <para>默认值：null</para> /// </param>
+    /// <para>默认值：null</para> 
+    /// </param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Post("/open-apis/bitable/v1/apps/{app_token}/tables/{table_id}/fields")]
     Task<FeishuApiResult<FieldOpsResult>?> AddFieldAsync(
       [Path] string app_token,
       [Path] string table_id,
-      [Body] FieldOpsRequest addFieldRequest,
+      [Body] AddFieldRequest addFieldRequest,
       [Query("client_token")] string? client_token = null,
       CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 更新字段
+    /// <para>在多维表格数据表中更新一个字段。更新字段时为全量更新，property 等字段会被完全覆盖。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table-field/update">接口文档</see></para>
+    /// </summary>
+    /// <param name="app_token">
+    /// <para>多维表格 App 的唯一标识。不同形态的多维表格，其 app_token 的获取方式不同，参考[<see href="https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/bitable-overview">多维表格 app_token 获取方式</see>]获取。</para>
+    /// <para>示例值：AW3Qbtr2cakCnesXzXVbbsrIcVT</para>
+    /// </param>
+    /// <param name="table_id">
+    /// <para>多维表格数据表的唯一标识。</para>
+    /// <para>示例值：tbl1TkhyTWDkSoZ3</para>
+    /// </param>
+    /// <param name="field_id">
+    /// <para>路径参数</para>
+    /// <para>必填：是</para>
+    /// <para>数据表中一个字段的唯一标识。</para>
+    /// <para>示例值：fldPTb0U2y</para>
+    /// </param>
+    /// <param name="updateFieldRequest">更新多维表格字段操作请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Put("/open-apis/bitable/v1/apps/{app_token}/tables/{table_id}/fields/{field_id}")]
+    Task<FeishuApiResult<FieldOpsResult>?> UpdateFieldAsync(
+         [Path] string app_token,
+         [Path] string table_id,
+         [Path] string field_id,
+         [Body] UpdateFieldRequest updateFieldRequest,
+         CancellationToken cancellationToken = default);
+
+
 }

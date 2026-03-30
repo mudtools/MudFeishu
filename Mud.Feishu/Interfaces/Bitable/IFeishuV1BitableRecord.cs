@@ -35,7 +35,8 @@ public interface IFeishuV1BitableRecord : IFeishuAppContextSwitcher
     /// <param name="client_token">
     /// <para>格式为标准的 uuidv4，操作的唯一标识，用于幂等的进行更新操作。此值为空表示将发起一次新的请求，此值非空表示幂等的进行更新操作。</para>
     /// <para>示例值：fe599b60-450f-46ff-b2ef-9f6675625b97</para>
-    /// <para>默认值：null</para> /// </param>
+    /// <para>默认值：null</para> 
+    /// </param>
     /// <param name="ignore_consistency_check">
     /// <para>是否忽略一致性读写检查，默认为 false，即在进行读写操作时，系统将确保读取到的数据和写入的数据是一致的。可选值：</para>
     /// <para>- true：忽略读写一致性检查，提高性能，但可能会导致某些节点的数据不同步，出现暂时不一致</para>

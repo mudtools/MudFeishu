@@ -253,4 +253,32 @@ public interface IFeishuV1BitableRecord : IFeishuAppContextSwitcher
       CancellationToken cancellationToken = default);
 
 
+    /// <summary>
+    /// 批量删除记录
+    /// <para>删除多维表格数据表中现有的多条记录。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table-record/batch_delete">接口文档</see></para>
+    /// </summary>
+    /// <param name="app_token">
+    /// <para>多维表格 App 的唯一标识。不同形态的多维表格，其 app_token 的获取方式不同，参考[<see href="https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/bitable-overview">多维表格 app_token 获取方式</see>]获取。</para>
+    /// <para>示例值：AW3Qbtr2cakCnesXzXVbbsrIcVT</para>
+    /// </param>
+    /// <param name="table_id">
+    /// <para>多维表格数据表的唯一标识。</para>
+    /// <para>示例值：tbl1TkhyTWDkSoZ3</para>
+    /// </param>   
+    /// <param name="queryRecordsRequest">批量删除记录请求体</param>
+    /// <param name="ignore_consistency_check">
+    /// <para>是否忽略一致性读写检查，默认为 false，即在进行读写操作时，系统将确保读取到的数据和写入的数据是一致的。可选值：</para>
+    /// <para>- true：忽略读写一致性检查，提高性能，但可能会导致某些节点的数据不同步，出现暂时不一致</para>
+    /// <para>- false：开启读写一致性检查，确保数据在读写过程中一致</para>
+    /// <para>示例值：true</para>
+    /// </param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Post("/open-apis/bitable/v1/apps/{app_token}/tables/{table_id}/records/batch_delete")]
+    Task<FeishuApiResult<DeleteRecordsResult>?> DeleteRecordsAsync(
+          [Path] string app_token,
+          [Path] string table_id,
+          [Body] DeleteRecordsRequest queryRecordsRequest,
+          [Query("ignore_consistency_check")] bool? ignore_consistency_check = false,
+          CancellationToken cancellationToken = default);
 }

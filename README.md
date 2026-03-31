@@ -7,12 +7,12 @@
 企业级 .NET 飞书 API 集成 SDK
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![NuGet Downloads](https://img.shields.io/nuget/dt/Mud.Feishu.svg)](https://www.nuget.org/packages/Mud.Feishu/)
-[![NuGet Downloads](https://img.shields.io/nuget/dt/Mud.Feishu.WebSocket.svg)](https://www.nuget.org/packages/Mud.Feishu.WebSocket/)
-[![NuGet Downloads](https://img.shields.io/nuget/dt/Mud.Feishu.Webhook.svg)](https://www.nuget.org/packages/Mud.Feishu.Webhook/)
-[![NuGet Downloads](https://img.shields.io/nuget/dt/Mud.Feishu.Abstractions.svg)](https://www.nuget.org/packages/Mud.Feishu.Abstractions/)
-[![NuGet Downloads](https://img.shields.io/nuget/dt/Mud.Feishu.Authentication.svg)](https://www.nuget.org/packages/Mud.Feishu.Authentication/)
-[![NuGet Downloads](https://img.shields.io/nuget/dt/Mud.Feishu.Redis.svg)](https://www.nuget.org/packages/Mud.Feishu.Redis/)
+🔹 [![Mud.Feishu](https://img.shields.io/nuget/v/Mud.Feishu?label=Mud.Feishu "Mud.Feishu")](https://www.nuget.org/packages/Mud.Feishu/ "Mud.Feishu")
+🔹 [![Mud.Feishu.WebSocket](https://img.shields.io/nuget/v/Mud.Feishu.WebSocket?label=Mud.Feishu.WebSocket "Mud.Feishu.WebSocket")](https://www.nuget.org/packages/Mud.Feishu.WebSocket/ "Mud.Feishu.WebSocket")
+🔹 [![Mud.Feishu.Webhook](https://img.shields.io/nuget/v/Mud.Feishu.Webhook?label=Mud.Feishu.Webhook "Mud.Feishu.Webhook")](https://www.nuget.org/packages/Mud.Feishu.Webhook/ "Mud.Feishu.Webhook")
+🔹 [![Mud.Feishu.Abstractions](https://img.shields.io/nuget/v/Mud.Feishu.Abstractions?label=Mud.Feishu.Abstractions "Mud.Feishu.Abstractions")](https://www.nuget.org/packages/Mud.Feishu.Abstractions/ "Mud.Feishu.Abstractions")
+🔹 [![Mud.Feishu.Authentication](https://img.shields.io/nuget/v/Mud.Feishu.Authentication?label=Mud.Feishu.Authentication "Mud.Feishu.Authentication")](https://www.nuget.org/packages/Mud.Feishu.Authentication/ "Mud.Feishu.Authentication")
+🔹 [![Mud.Feishu.Redis](https://img.shields.io/nuget/v/Mud.Feishu.Redis?label=Mud.Feishu.Redis "Mud.Feishu.Redis")](https://www.nuget.org/packages/Mud.Feishu.Redis/ "Mud.Feishu.Redis")
 
 **完整的 HTTP API、WebSocket 实时事件订阅和 Webhook 事件处理解决方案**
 

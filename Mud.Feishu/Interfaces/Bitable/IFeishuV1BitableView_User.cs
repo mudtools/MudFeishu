@@ -15,7 +15,7 @@ namespace Mud.Feishu;
 /// </summary>
 [HttpClientApi(RegistryGroupName = "Bitable", TokenManage = nameof(IFeishuAppManager), InheritedFrom = nameof(FeishuV1BitableView))]
 [Header(Consts.Authorization)]
-[Token(TokenType.UserAccessToken)]
+[Token(TokenType.UserAccessToken, Name = Consts.Authorization)]
 public interface IFeishuUserV1BitableView : IFeishuV1BitableView, ICurrentUserId
 {
 }

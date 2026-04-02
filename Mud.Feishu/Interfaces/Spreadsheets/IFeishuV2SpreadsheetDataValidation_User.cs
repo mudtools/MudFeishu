@@ -14,8 +14,7 @@ namespace Mud.Feishu;
 /// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/docs/sheets-v3/datavalidation/datavalidation-guide"/></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Spreadsheets", InheritedFrom = nameof(FeishuV2SpreadsheetDataValidation))]
-[Header(Consts.Authorization)]
-[Token(TokenType.UserAccessToken)]
+[Token(TokenType.UserAccessToken, Name = Consts.Authorization)]
 public interface IFeishuUserV2SpreadsheetDataValidation : IFeishuV2SpreadsheetDataValidation, ICurrentUserId
 {
 }

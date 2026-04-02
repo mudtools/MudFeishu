@@ -14,8 +14,7 @@ namespace Mud.Feishu;
 /// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table-field/guide"/></para>
 /// </summary>
 [HttpClientApi(RegistryGroupName = "Bitable", TokenManage = nameof(IFeishuAppManager), InheritedFrom = nameof(FeishuV1BitableField))]
-[Header(Consts.Authorization)]
-[Token(TokenType.UserAccessToken)]
+[Token(TokenType.UserAccessToken, Name = Consts.Authorization)]
 public interface IFeishuUserV1BitableField : IFeishuV1BitableField, ICurrentUserId
 {
 }

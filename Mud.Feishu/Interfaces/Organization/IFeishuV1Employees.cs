@@ -14,7 +14,7 @@ namespace Mud.Feishu.Interfaces;
 /// <para>当前接口不能直接调用，仅为子接口的公共方法抽象</para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), IsAbstract = true)]
-[Header(Consts.Authorization)]
+[Token(TokenType.TenantAccessToken, Name = Consts.Authorization)]
 public interface IFeishuV1Employees : IFeishuAppContextSwitcher
 {
     /// <summary>

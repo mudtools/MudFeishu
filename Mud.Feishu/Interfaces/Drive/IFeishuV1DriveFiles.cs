@@ -16,7 +16,7 @@ namespace Mud.Feishu.Interfaces;
 /// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/docs/drive-v1/file/file-overview"/></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), IsAbstract = true)]
-[Header(Consts.Authorization)]
+[Token(TokenType.TenantAccessToken, Name = Consts.Authorization)]
 public interface IFeishuV1DriveFiles : IFeishuAppContextSwitcher
 {
     /// <summary>

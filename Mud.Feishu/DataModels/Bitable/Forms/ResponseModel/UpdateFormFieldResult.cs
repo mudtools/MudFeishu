@@ -17,5 +17,5 @@ public class UpdateFormFieldResult
     /// <para>必填：否</para>
     /// </summary>
     [JsonPropertyName("fields")]
-    public AppTableFormPatchedField? Fields { get; set; }
+    public AppTableFormFieldData? Fields { get; set; }
 }

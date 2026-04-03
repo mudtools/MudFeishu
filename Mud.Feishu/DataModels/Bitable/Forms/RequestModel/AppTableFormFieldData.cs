@@ -10,7 +10,7 @@ namespace Mud.Feishu.DataModels.Bitable;
 /// <summary>
 /// <para>更新表单字段值</para>
 /// </summary>
-public class AppTableFormPatchedField
+public class AppTableFormFieldData
 {
     /// <summary>
     /// <para>要更新的表单问题的前一个表单问题的 `field_id`，用于更新当前表单问题的位置。若该字段为空字符串，则表示将该表单问题的顺序排至首个位置。</para>

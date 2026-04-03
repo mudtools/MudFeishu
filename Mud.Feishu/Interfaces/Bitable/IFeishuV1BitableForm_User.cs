@@ -5,13 +5,15 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-namespace Mud.Feishu.DataModels.Bitable;
+namespace Mud.Feishu;
 
 /// <summary>
-/// <para>更新表单字段请求</para>
+/// <para>表单视图 form，表单视图是多维表格的一种视图类型，形式类似于问卷，可以用来收集信息和数据。</para>
+/// <para>每个表单都有唯一标识 form_id，即当前视图的 view_id。form_id 的获取方式和 view_id 的获取方式相同。</para>
+/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/bitable-v1/app-table-form/upgrade"/></para>
 /// </summary>
-public class UpdateFormFieldRequest : AppTableFormFieldData
+[HttpClientApi(RegistryGroupName = "Bitable", TokenManage = nameof(IFeishuAppManager), InheritedFrom = nameof(FeishuV1BitableForm))]
+[Token(TokenType.UserAccessToken, Name = Consts.Authorization)]
+public interface IFeishuUserV1BitableForm : IFeishuV1BitableForm, ICurrentUserId
 {
-
-
 }

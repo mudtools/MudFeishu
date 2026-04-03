@@ -67,10 +67,70 @@ public interface IFeishuV1BitableForm : IFeishuAppContextSwitcher
     /// <param name="updateFormRequest">更新表单请求体</param> 
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Patch("/open-apis/bitable/v1/apps/{app_token}/tables/{table_id}/forms/{form_id}")]
-    Task<FeishuApiResult<UpdateFormResult>?> UpdateFormAsync(
+    Task<FeishuApiResult<FormResult>?> UpdateFormAsync(
       [Path] string app_token,
       [Path] string table_id,
       [Path] string form_id,
       [Body] UpdateFormRequest updateFormRequest,
       CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 获取表单元数据
+    /// <para>获取表单的所有元数据，包括表单名称、描述、是否共享等。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/bitable-v1/form/get">接口文档</see></para>
+    /// </summary>
+    /// <param name="app_token">
+    /// <para>多维表格 App 的唯一标识。不同形态的多维表格，其 app_token 的获取方式不同，参考[<see href="https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/bitable-overview">多维表格 app_token 获取方式</see>]获取。</para>
+    /// <para>示例值：AW3Qbtr2cakCnesXzXVbbsrIcVT</para>
+    /// </param>
+    /// <param name="table_id">
+    /// <para>多维表格数据表的唯一标识。</para>
+    /// <para>示例值：tbl1TkhyTWDkSoZ3</para>
+    /// </param>
+    /// <param name="form_id">
+    /// <para>多维表格中表单的唯一标识。</para>
+    /// <para>示例值：vew6oMbAa4</para>
+    /// </param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Get("/open-apis/bitable/v1/apps/{app_token}/tables/{table_id}/forms/{form_id}")]
+    Task<FeishuApiResult<FormResult>?> GetFormAsync(
+      [Path] string app_token,
+      [Path] string table_id,
+      [Path] string form_id,
+      CancellationToken cancellationToken = default);
+
+
+
+    /// <summary>
+    /// 更新表单问题
+    /// <para>更新表单中的问题项。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/bitable-v1/form/patch">接口文档</see></para>
+    /// </summary>
+    /// <param name="app_token">
+    /// <para>多维表格 App 的唯一标识。不同形态的多维表格，其 app_token 的获取方式不同，参考[<see href="https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/bitable-overview">多维表格 app_token 获取方式</see>]获取。</para>
+    /// <para>示例值：AW3Qbtr2cakCnesXzXVbbsrIcVT</para>
+    /// </param>
+    /// <param name="table_id">
+    /// <para>多维表格数据表的唯一标识。</para>
+    /// <para>示例值：tbl1TkhyTWDkSoZ3</para>
+    /// </param>
+    /// <param name="form_id">
+    /// <para>多维表格中表单的唯一标识。</para>
+    /// <para>示例值：vew6oMbAa4</para>
+    /// </param>
+    /// <param name="field_id">
+    /// <para>表单问题的唯一标识。表单中的问题本质上是表单视图中的字段，因此你可通过[列出字段](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/bitable-v1/app-table-field/list)接口获取表单问题的唯一标识。</para>
+    /// <para>示例值：fldjX7dUj5</para>
+    /// </param>
+    /// <param name="updateFormFieldRequest">更新表单字段请求</param> 
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Patch("/open-apis/bitable/v1/apps/{app_token}/tables/{table_id}/forms/{form_id}/fields/{field_id}")]
+    Task<FeishuApiResult<UpdateFormFieldResult>?> UpdateFormFieldAsync(
+     [Path] string app_token,
+     [Path] string table_id,
+     [Path] string form_id,
+     [Path] string field_id,
+     [Body] UpdateFormFieldRequest updateFormFieldRequest,
+     CancellationToken cancellationToken = default);
 }

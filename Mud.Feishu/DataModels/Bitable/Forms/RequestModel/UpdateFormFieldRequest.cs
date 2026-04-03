@@ -8,14 +8,10 @@
 namespace Mud.Feishu.DataModels.Bitable;
 
 /// <summary>
-/// 更新表单响应体
+/// <para>更新表单字段请求</para>
 /// </summary>
-public class UpdateFormResult
+public class UpdateFormFieldRequest : AppTableFormPatchedField
 {
-    /// <summary>
-    /// <para>表单元数据信息</para>
-    /// <para>必填：是</para>
-    /// </summary>
-    [JsonPropertyName("form")]
-    public AppTableFormInfo Form { get; set; } = new();
+
+
 }

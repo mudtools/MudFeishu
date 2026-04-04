@@ -8,9 +8,9 @@
 namespace Mud.Feishu.DataModels.Bitable;
 
 /// <summary>
-/// <para>新增自定义角色响应体</para>
+/// <para>新增/修改自定义角色响应体</para>
 /// </summary>
-public class CreateRoleResult
+public class RoleOpsResult
 {
     /// <summary>
     /// <para>自定义角色</para>

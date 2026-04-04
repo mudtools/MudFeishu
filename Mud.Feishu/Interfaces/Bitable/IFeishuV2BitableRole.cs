@@ -58,4 +58,46 @@ public interface IFeishuV2BitableRole : IFeishuAppContextSwitcher
        [Path] string role_id,
        [Body] UpdateRoleRequest updateRoleRequest,
        CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 列出自定义角色
+    /// <para>列出多维表格高级权限中用户自定义的角色。</para>
+    /// <para><see href="https://open.feishu.cn/document/docs/bitable-v1/advanced-permission/app-role/list-2">接口文档</see></para>
+    /// </summary>
+    /// <param name="app_token">
+    /// <para>多维表格 App 的唯一标识。不同形态的多维表格，其 app_token 的获取方式不同，参考[<see href="https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/bitable-overview">多维表格 app_token 获取方式</see>]获取。</para>
+    /// <para>示例值：AW3Qbtr2cakCnesXzXVbbsrIcVT</para>
+    /// </param>   
+    /// <param name="page_size">分页大小，即本次请求所返回的信息列表内的最大条目数。默认值：500</param>
+    /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Get("/open-apis/base/v2/apps/{app_token}/roles")]
+    Task<FeishuApiPageListTotalResult<AppRoleInfo>?> QueryRecordsPageListAsync(
+      [Path] string app_token,
+      [Query("page_size")] int page_size = 20,
+      [Query("page_token")] string? page_token = null,
+      CancellationToken cancellationToken = default);
+
+
+
+    /// <summary>
+    /// 删除自定义角色
+    /// <para>删除多维表格高级权限中自定义的角色。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/bitable-v1/advanced-permission/app-role/delete">接口文档</see></para>
+    /// </summary>
+    /// <param name="app_token">
+    /// <para>多维表格 App 的唯一标识。不同形态的多维表格，其 app_token 的获取方式不同，参考[<see href="https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/bitable-overview">多维表格 app_token 获取方式</see>]获取。</para>
+    /// <para>示例值：AW3Qbtr2cakCnesXzXVbbsrIcVT</para>
+    /// </param>   
+    /// <param name="role_id">
+    /// <para>多维表格高级权限中自定义角色的唯一标识，以 rol 开头。获取方式：通过[列出自定义角色](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/bitable-v1/app-role/list)接口获取。</para>
+    /// <para>示例值：roljRpwIUt</para>
+    /// </param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Delete("/open-apis/bitable/v1/apps/{app_token}/roles/{role_id}")]
+    Task<FeishuNullDataApiResult?> DeleteRoleAsync(
+        [Path] string app_token,
+        [Path] string role_id,
+        CancellationToken cancellationToken = default);
 }

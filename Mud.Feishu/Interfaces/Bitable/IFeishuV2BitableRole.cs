@@ -125,4 +125,26 @@ public interface IFeishuV2BitableRole : IFeishuAppContextSwitcher
       [Body] AddRoleMemberRequest addRoleMemberRequest,
       [Query("member_id_type")] string member_id_type = Consts.User_Id_Type,
       CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 批量新增协作者
+    /// <para>批量新增多维表格高级权限中自定义角色的协作者。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/bitable-v1/advanced-permission/app-role-member/batch_create">接口文档</see></para>
+    /// </summary>
+    /// <param name="app_token">
+    /// <para>多维表格 App 的唯一标识。不同形态的多维表格，其 app_token 的获取方式不同，参考[<see href="https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/bitable-overview">多维表格 app_token 获取方式</see>]获取。</para>
+    /// <para>示例值：AW3Qbtr2cakCnesXzXVbbsrIcVT</para>
+    /// </param>   
+    /// <param name="role_id">
+    /// <para>多维表格高级权限中自定义角色的唯一标识，以 rol 开头。获取方式：通过[列出自定义角色](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/bitable-v1/app-role/list)接口获取。</para>
+    /// <para>示例值：roljRpwIUt</para>
+    /// </param>
+    /// <param name="addRoleMemberRequest">新增协作者请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Post("/open-apis/bitable/v1/apps/{app_token}/roles/{role_id}/members/batch_create")]
+    Task<FeishuNullDataApiResult?> AddRoleMembersAsync(
+    [Path] string app_token,
+    [Path] string role_id,
+    [Body] AddRoleMembersRequest addRoleMemberRequest,
+    CancellationToken cancellationToken = default);
 }

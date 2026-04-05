@@ -239,7 +239,7 @@ internal class FeishuAppManager : IFeishuAppManager
         config.Validate();
 
         var memoryCacheLogger = _serviceProvider.GetRequiredService<ILogger<MemoryTokenCache>>();
-        var currentUserContext = _serviceProvider.GetRequiredService<ICurrentUserContext>();
+        var currentUserContext = _serviceProvider.GetService<ICurrentUserContext>();
         var appCache = new MemoryTokenCache(memoryCacheLogger, config.TokenRefreshThreshold);
         var prefixedCache = new PrefixedTokenCache(appCache, config.AppKey);
 

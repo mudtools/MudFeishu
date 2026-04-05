@@ -46,7 +46,7 @@ internal class UserTokenManager : IFeishuUserTokenManager
         IUserTokenCache userTokenCache)
     {
         _authenticationApi = authenticationApi ?? throw new ArgumentNullException(nameof(authenticationApi));
-        _currentUserContext = currentUserContext ?? throw new ArgumentNullException(nameof(currentUserContext));
+        _currentUserContext = currentUserContext;
         _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _userTokenCache = userTokenCache ?? throw new ArgumentNullException(nameof(userTokenCache));

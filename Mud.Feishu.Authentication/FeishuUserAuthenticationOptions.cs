@@ -5,6 +5,8 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using Microsoft.Extensions.Options;
+
 namespace Mud.Feishu.Authentication;
 
 /// <summary>
@@ -20,7 +22,7 @@ namespace Mud.Feishu.Authentication;
 /// });
 /// </code>
 /// </remarks>
-public class FeishuUserAuthenticationOptions
+public class FeishuUserAuthenticationOptions : IValidateOptions<FeishuUserAuthenticationOptions>
 {
     /// <summary>
     /// OpenId 的 Claim 类型名称
@@ -69,4 +71,40 @@ public class FeishuUserAuthenticationOptions
     /// 生产环境建议保持 false
     /// </remarks>
     public bool EnableSensitiveLog { get; set; } = false;
+
+    /// <summary>
+    /// 验证选项配置
+    /// </summary>
+    /// <param name="name">选项名称</param>
+    /// <param name="options">选项实例</param>
+    /// <returns>验证结果</returns>
+    public ValidateOptionsResult Validate(string? name, FeishuUserAuthenticationOptions options)
+    {
+        if (string.IsNullOrWhiteSpace(options.OpenIdClaimType))
+        {
+            return ValidateOptionsResult.Fail("OpenIdClaimType cannot be null or empty.");
+        }
+
+        if (string.IsNullOrWhiteSpace(options.OpenIdFallbackClaimType))
+        {
+            return ValidateOptionsResult.Fail("OpenIdFallbackClaimType cannot be null or empty.");
+        }
+
+        if (string.IsNullOrWhiteSpace(options.UnionIdClaimType))
+        {
+            return ValidateOptionsResult.Fail("UnionIdClaimType cannot be null or empty.");
+        }
+
+        if (string.IsNullOrWhiteSpace(options.UserIdClaimType))
+        {
+            return ValidateOptionsResult.Fail("UserIdClaimType cannot be null or empty.");
+        }
+
+        if (string.IsNullOrWhiteSpace(options.NameClaimType))
+        {
+            return ValidateOptionsResult.Fail("NameClaimType cannot be null or empty.");
+        }
+
+        return ValidateOptionsResult.Success;
+    }
 }

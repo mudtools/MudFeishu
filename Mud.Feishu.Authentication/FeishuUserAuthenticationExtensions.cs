@@ -8,6 +8,7 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 using Mud.Feishu.Abstractions;
 using Mud.Feishu.Authentication;
 
@@ -69,6 +70,9 @@ public static class FeishuUserAuthenticationExtensions
     {
         // 注册配置选项
         services.Configure(configure);
+
+        // 注册选项验证器
+        services.AddSingleton<IValidateOptions<FeishuUserAuthenticationOptions>, FeishuUserAuthenticationOptions>();
 
         // 使用 TryAddSingleton 允许用户自定义实现
         services.TryAddSingleton<ICurrentUserContext, CurrentUserContext>();

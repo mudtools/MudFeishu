@@ -22,13 +22,15 @@ namespace Mud.Feishu.Authentication.Tests.Middleware;
 public class FeishuUserAuthenticationMiddlewareTests
 {
     private readonly Mock<ILogger<FeishuUserAuthenticationMiddleware>> _loggerMock;
+    private readonly Mock<ILogger<CurrentUserContext>> _userContextLoggerMock;
     private readonly ICurrentUserContext _userContext;
     private readonly IOptions<FeishuUserAuthenticationOptions> _defaultOptions;
 
     public FeishuUserAuthenticationMiddlewareTests()
     {
         _loggerMock = new Mock<ILogger<FeishuUserAuthenticationMiddleware>>();
-        _userContext = new CurrentUserContext();
+        _userContextLoggerMock = new Mock<ILogger<CurrentUserContext>>();
+        _userContext = new CurrentUserContext(_userContextLoggerMock.Object);
         _defaultOptions = Options.Create(new FeishuUserAuthenticationOptions());
     }
 

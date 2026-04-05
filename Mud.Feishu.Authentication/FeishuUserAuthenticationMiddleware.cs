@@ -79,24 +79,17 @@ public class FeishuUserAuthenticationMiddleware(
 
             if (!string.IsNullOrEmpty(openId))
             {
-                // 设置用户上下文
                 userContext.SetUser(openId!, unionId, userId, name);
 
-                // 设置 Activity 标签
                 activity?.SetTag("user.open_id", openId);
                 activity?.SetTag("user.union_id", unionId ?? "N/A");
 
-                // 根据配置决定是否记录敏感信息
-                if (_options.EnableSensitiveLog)
-                {
-                    _logger.LogDebug("用户上下文已设置: OpenId={OpenId}, UnionId={UnionId}, UserId={UserId}",
-                        openId, unionId ?? "N/A", userId ?? "N/A");
-                }
-                else
-                {
-                    _logger.LogDebug("用户上下文已设置: OpenId={OpenId}, UnionId={UnionId}, UserId={UserId}",
-                        MaskSensitiveInfo(openId), unionId != null ? MaskSensitiveInfo(unionId) : "N/A", userId ?? "N/A");
-                }
+                var logOpenId = _options.EnableSensitiveLog ? openId : MaskSensitiveInfo(openId);
+                var logUnionId = _options.EnableSensitiveLog ? unionId ?? "N/A" : (unionId != null ? MaskSensitiveInfo(unionId) : "N/A");
+                var logUserId = userId ?? "N/A";
+
+                _logger.LogDebug("用户上下文已设置: OpenId={OpenId}, UnionId={UnionId}, UserId={UserId}",
+                    logOpenId, logUnionId, logUserId);
             }
             else
             {
@@ -112,11 +105,9 @@ public class FeishuUserAuthenticationMiddleware(
         }
         finally
         {
-            // 确保请求结束后清理用户上下文
             try
             {
                 userContext.Clear();
-                _logger.LogDebug("用户上下文已清理");
             }
             catch (Exception ex)
             {
@@ -149,20 +140,19 @@ public class FeishuUserAuthenticationMiddleware(
     /// </summary>
     /// <param name="value">原始值</param>
     /// <returns>脱敏后的值</returns>
-    private static string MaskSensitiveInfo(string? value)
+    private static string MaskSensitiveInfo(string value)
     {
         if (string.IsNullOrEmpty(value))
         {
             return "N/A";
         }
 
-        // 保留前3位和后3位，中间用***代替
-        if (value?.Length <= 6)
+        if (value.Length <= 6)
         {
             return "***";
         }
 
-        return $"{value?.Substring(0, 3)}***{value?.Substring(value.Length - 3)}";
+        return $"{value.Substring(0, 2)}***{value.Substring(value.Length - 2)}";
     }
 
     /// <summary>

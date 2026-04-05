@@ -5,6 +5,7 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using Microsoft.Extensions.Logging;
 using Mud.Feishu.Abstractions;
 
 namespace Mud.Feishu.Authentication;
@@ -23,8 +24,11 @@ namespace Mud.Feishu.Authentication;
 /// AsyncLocal 会自动将数据绑定到当前的异步控制流上下文，
 /// 确保在不同的异步方法之间正确传递，而不会受到并发请求的影响。
 /// </remarks>
-public class CurrentUserContext : ICurrentUserContext
+/// <param name="logger">日志记录器</param>
+public class CurrentUserContext(ILogger<CurrentUserContext> logger) : ICurrentUserContext
 {
+    private readonly ILogger<CurrentUserContext> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+
     /// <summary>
     /// 使用静态字段确保在整个应用程序生命周期内，所有请求共享同一个 AsyncLocal 实例
     /// </summary>
@@ -53,6 +57,12 @@ public class CurrentUserContext : ICurrentUserContext
             throw new ArgumentException("OpenId cannot be null, empty or whitespace.", nameof(openId));
         }
 
+        if (_currentUser.Value != null)
+        {
+            _logger.LogWarning("用户上下文被覆盖: 原 OpenId={OldOpenId}, 新 OpenId={NewOpenId}",
+                MaskSensitiveInfo(_currentUser.Value.OpenId), MaskSensitiveInfo(openId));
+        }
+
         _currentUser.Value = new UserInfo
         {
             OpenId = openId,
@@ -65,7 +75,34 @@ public class CurrentUserContext : ICurrentUserContext
     /// <inheritdoc />
     public void Clear()
     {
+        if (_currentUser.Value == null)
+        {
+            _logger.LogDebug("用户上下文已为空，无需清理");
+            return;
+        }
+
         _currentUser.Value = null;
+        _logger.LogDebug("用户上下文已清理");
+    }
+
+    /// <summary>
+    /// 脱敏处理敏感信息
+    /// </summary>
+    /// <param name="value">原始值</param>
+    /// <returns>脱敏后的值</returns>
+    private static string MaskSensitiveInfo(string? value)
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            return "N/A";
+        }
+
+        if (value.Length <= 6)
+        {
+            return "***";
+        }
+
+        return $"{value.Substring(0, 2)}***{value.Substring(value.Length - 2)}";
     }
 
     /// <summary>

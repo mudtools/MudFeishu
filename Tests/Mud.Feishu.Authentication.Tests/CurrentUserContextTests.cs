@@ -5,6 +5,8 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using Microsoft.Extensions.Logging;
+using Moq;
 using Mud.Feishu.Authentication;
 using Xunit;
 
@@ -15,13 +17,25 @@ namespace Mud.Feishu.Authentication.Tests;
 /// </summary>
 public class CurrentUserContextTests
 {
+    private readonly Mock<ILogger<CurrentUserContext>> _loggerMock;
+
+    public CurrentUserContextTests()
+    {
+        _loggerMock = new Mock<ILogger<CurrentUserContext>>();
+    }
+
+    private CurrentUserContext CreateContext()
+    {
+        return new CurrentUserContext(_loggerMock.Object);
+    }
+
     #region SetUser Tests
 
     [Fact]
     public void SetUser_ValidParameters_SetsProperties()
     {
         // Arrange
-        var context = new CurrentUserContext();
+        var context = CreateContext();
 
         // Act
         context.SetUser("open_id_123", "union_id_456", "user_id_789", "Test User");
@@ -38,7 +52,7 @@ public class CurrentUserContextTests
     public void SetUser_OnlyOpenId_SetsOnlyOpenId()
     {
         // Arrange
-        var context = new CurrentUserContext();
+        var context = CreateContext();
 
         // Act
         context.SetUser("open_id_123");
@@ -55,7 +69,7 @@ public class CurrentUserContextTests
     public void SetUser_EmptyOpenId_ThrowsArgumentException()
     {
         // Arrange
-        var context = new CurrentUserContext();
+        var context = CreateContext();
 
         // Act & Assert
         Assert.Throws<ArgumentException>(() => context.SetUser(string.Empty));
@@ -65,7 +79,7 @@ public class CurrentUserContextTests
     public void SetUser_NullOpenId_ThrowsArgumentException()
     {
         // Arrange
-        var context = new CurrentUserContext();
+        var context = CreateContext();
 
         // Act & Assert
         Assert.Throws<ArgumentException>(() => context.SetUser(null!));
@@ -75,7 +89,7 @@ public class CurrentUserContextTests
     public void SetUser_WhitespaceOpenId_ThrowsArgumentException()
     {
         // Arrange
-        var context = new CurrentUserContext();
+        var context = CreateContext();
 
         // Act & Assert
         Assert.Throws<ArgumentException>(() => context.SetUser("   "));
@@ -89,7 +103,7 @@ public class CurrentUserContextTests
     public void Clear_AfterSetUser_PropertiesAreNull()
     {
         // Arrange
-        var context = new CurrentUserContext();
+        var context = CreateContext();
         context.SetUser("open_id_123", "union_id_456", "user_id_789", "Test User");
 
         // Act
@@ -107,7 +121,7 @@ public class CurrentUserContextTests
     public void Clear_WhenNoUser_DoesNotThrow()
     {
         // Arrange
-        var context = new CurrentUserContext();
+        var context = CreateContext();
 
         // Act & Assert - should not throw
         context.Clear();
@@ -122,7 +136,7 @@ public class CurrentUserContextTests
     public void IsAuthenticated_NoUser_ReturnsFalse()
     {
         // Arrange
-        var context = new CurrentUserContext();
+        var context = CreateContext();
 
         // Assert
         Assert.False(context.IsAuthenticated);
@@ -132,7 +146,7 @@ public class CurrentUserContextTests
     public void IsAuthenticated_ValidUser_ReturnsTrue()
     {
         // Arrange
-        var context = new CurrentUserContext();
+        var context = CreateContext();
         context.SetUser("open_id_123");
 
         // Assert
@@ -143,7 +157,7 @@ public class CurrentUserContextTests
     public void IsAuthenticated_AfterClear_ReturnsFalse()
     {
         // Arrange
-        var context = new CurrentUserContext();
+        var context = CreateContext();
         context.SetUser("open_id_123");
         context.Clear();
 
@@ -159,7 +173,7 @@ public class CurrentUserContextTests
     public async Task AsyncLocal_IsolationBetweenAsyncContexts()
     {
         // Arrange
-        var context = new CurrentUserContext();
+        var context = CreateContext();
 
         // Act - Run two async operations with different users
         var task1 = Task.Run(async () =>
@@ -187,7 +201,7 @@ public class CurrentUserContextTests
     public async Task AsyncLocal_IsolationBetweenThreads()
     {
         // Arrange
-        var context = new CurrentUserContext();
+        var context = CreateContext();
         var results = new System.Collections.Concurrent.ConcurrentBag<string?>();
 
         // Act - Run multiple threads with different users
@@ -209,7 +223,7 @@ public class CurrentUserContextTests
     public async Task AsyncLocal_ClearInOneContext_DoesNotAffectOthers()
     {
         // Arrange
-        var context = new CurrentUserContext();
+        var context = CreateContext();
 
         // Act
         var task1 = Task.Run(() =>
@@ -240,7 +254,7 @@ public class CurrentUserContextTests
     public void SetUser_OverwritesExistingUser()
     {
         // Arrange
-        var context = new CurrentUserContext();
+        var context = CreateContext();
         context.SetUser("open_id_1", "union_id_1", "user_id_1", "User 1");
 
         // Act

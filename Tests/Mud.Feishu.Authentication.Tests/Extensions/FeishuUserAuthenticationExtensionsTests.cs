@@ -58,6 +58,7 @@ public class FeishuUserAuthenticationExtensionsTests
     {
         // Arrange
         var services = new ServiceCollection();
+        services.AddLogging();
         services.AddFeishuUserContext();
         var serviceProvider = services.BuildServiceProvider();
 
@@ -74,6 +75,7 @@ public class FeishuUserAuthenticationExtensionsTests
     {
         // Arrange
         var services = new ServiceCollection();
+        services.AddLogging();
         services.AddFeishuUserContext();
         var serviceProvider = services.BuildServiceProvider();
 
@@ -173,7 +175,7 @@ public class FeishuUserAuthenticationExtensionsTests
         services.AddLogging();
         services.AddFeishuUserContext();
         var serviceProvider = services.BuildServiceProvider();
-        
+
         var appBuilder = new Mock<IApplicationBuilder>();
         appBuilder.SetupGet(x => x.ApplicationServices).Returns(serviceProvider);
         appBuilder.Setup(x => x.Use(It.IsAny<Func<RequestDelegate, RequestDelegate>>()))
@@ -194,9 +196,9 @@ public class FeishuUserAuthenticationExtensionsTests
         services.AddLogging();
         services.AddFeishuUserContext();
         var serviceProvider = services.BuildServiceProvider();
-        
+
         Func<RequestDelegate, RequestDelegate>? registeredMiddleware = null;
-        
+
         var appBuilder = new Mock<IApplicationBuilder>();
         appBuilder.SetupGet(x => x.ApplicationServices).Returns(serviceProvider);
         appBuilder.Setup(x => x.Use(It.IsAny<Func<RequestDelegate, RequestDelegate>>()))
@@ -219,6 +221,7 @@ public class FeishuUserAuthenticationExtensionsTests
     {
         // Arrange
         var services = new ServiceCollection();
+        services.AddLogging();
         services.AddFeishuUserContext();
         var serviceProvider = services.BuildServiceProvider();
 
@@ -242,8 +245,9 @@ public class FeishuUserAuthenticationExtensionsTests
     public void Integration_ServiceCollectionChaining_WorksCorrectly()
     {
         // Arrange & Act
-        var services = new ServiceCollection()
-            .AddFeishuUserContext()
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddFeishuUserContext()
             .AddSingleton<TestClass>();
 
         var serviceProvider = services.BuildServiceProvider();

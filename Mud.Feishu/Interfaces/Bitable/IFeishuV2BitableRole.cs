@@ -15,7 +15,7 @@ namespace Mud.Feishu.Interfaces;
 /// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/docs/bitable-v1/advanced-permission/advanced-permission-guide"/></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), IsAbstract = true)]
-[Token(TokenType.TenantAccessToken, Name = Consts.Authorization)]
+[Token("TenantAccessToken", Name = Consts.Authorization)]
 public interface IFeishuV2BitableRole : IFeishuAppContextSwitcher
 {
 
@@ -73,7 +73,7 @@ public interface IFeishuV2BitableRole : IFeishuAppContextSwitcher
     /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Get("/open-apis/base/v2/apps/{app_token}/roles")]
-    Task<FeishuApiPageListTotalResult<AppRoleInfo>?> QueryRecordsPageListAsync(
+    Task<FeishuApiPageListTotalResult<AppRoleInfo>?> GetRolesPageListAsync(
       [Path] string app_token,
       [Query("page_size")] int page_size = 20,
       [Query("page_token")] string? page_token = null,

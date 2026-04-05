@@ -13,7 +13,7 @@ namespace Mud.Feishu;
 /// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/docs/sheets-v3/overview"/></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Spreadsheets", InheritedFrom = nameof(FeishuV2SpreadsheetProtected))]
-[Token(TokenType.UserAccessToken, Name = Consts.Authorization)]
+[Token("UserAccessToken", Name = Consts.Authorization)]
 public interface IFeishuUserV2SpreadsheetProtected : IFeishuV2SpreadsheetProtected, ICurrentUserId
 {
 }

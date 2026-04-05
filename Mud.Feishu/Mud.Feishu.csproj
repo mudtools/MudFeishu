@@ -15,19 +15,15 @@
 		<BaseOutputPath>..\bin</BaseOutputPath>
 	</PropertyGroup>
 	<ItemGroup>
-		<PackageReference Include="Mud.HttpUtils.Generator" Version="1.6.4" PrivateAssets="all" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+		<PackageReference Include="Mud.HttpUtils.Generator" Version="1.6.5" PrivateAssets="all" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
 		<None Include=".\README.md" Pack="true" PackagePath="\" />
 		<None Include="..\Icon.png" Pack="true" PackagePath="\" />
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Mud.HttpUtils" Version="1.6.4" />
+		<PackageReference Include="Mud.HttpUtils" Version="1.6.5" />
 	</ItemGroup>
 	<ItemGroup>
 	  <ProjectReference Include="..\Mud.Feishu.Abstractions\Mud.Feishu.Abstractions.csproj" />
-	</ItemGroup>
-	<ItemGroup>
-	  <Folder Include="DataModels\Bitable\Views\RequestModel\" />
-	  <Folder Include="DataModels\Bitable\Views\ResponseModel\" />
 	</ItemGroup>
 </Project>

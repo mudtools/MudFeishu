@@ -14,7 +14,7 @@ namespace Mud.Feishu.Interfaces;
 /// <para>任务的使用者可以在使用“任务截止时间”，“任务负责人”……等系统字段之外，自行定义如”优先级“，”项目发布日期“，”价格“等和使用场景密切相关的字段。</para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), IsAbstract = true)]
-[Token(TokenType.TenantAccessToken, Name = Consts.Authorization)]
+[Token("TenantAccessToken", Name = Consts.Authorization)]
 public interface IFeishuV2TaskCustomFields : IFeishuAppContextSwitcher
 {
     /// <summary>

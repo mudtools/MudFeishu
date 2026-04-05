@@ -15,7 +15,7 @@ namespace Mud.Feishu;
 /// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/docs/bitable-v1/advanced-permission/advanced-permission-guide"/></para>
 /// </summary>
 [HttpClientApi(RegistryGroupName = "Bitable", TokenManage = nameof(IFeishuAppManager), InheritedFrom = nameof(FeishuV2BitableRole))]
-[Token(TokenType.TenantAccessToken, Name = Consts.Authorization)]
+[Token("TenantAccessToken", Name = Consts.Authorization)]
 public interface IFeishuTenantV2BitableRole : IFeishuV2BitableRole
 {
 }

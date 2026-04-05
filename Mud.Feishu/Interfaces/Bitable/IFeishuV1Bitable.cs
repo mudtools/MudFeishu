@@ -15,7 +15,7 @@ namespace Mud.Feishu.Interfaces;
 /// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/docs/bitable-v1/bitable-overview"/></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), IsAbstract = true)]
-[Token(TokenType.TenantAccessToken, Name = Consts.Authorization)]
+[Token("TenantAccessToken", Name = Consts.Authorization)]
 public interface IFeishuV1Bitable : IFeishuAppContextSwitcher
 {
     /// <summary>

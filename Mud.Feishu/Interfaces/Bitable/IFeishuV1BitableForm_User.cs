@@ -13,7 +13,7 @@ namespace Mud.Feishu;
 /// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/bitable-v1/app-table-form/upgrade"/></para>
 /// </summary>
 [HttpClientApi(RegistryGroupName = "Bitable", TokenManage = nameof(IFeishuAppManager), InheritedFrom = nameof(FeishuV1BitableForm))]
-[Token(TokenType.UserAccessToken, Name = Consts.Authorization)]
+[Token("UserAccessToken", Name = Consts.Authorization)]
 public interface IFeishuUserV1BitableForm : IFeishuV1BitableForm, ICurrentUserId
 {
 }

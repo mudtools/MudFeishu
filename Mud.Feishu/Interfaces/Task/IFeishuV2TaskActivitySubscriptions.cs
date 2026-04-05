@@ -13,7 +13,7 @@ namespace Mud.Feishu.Interfaces;
 /// 任务清单动态订阅
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), IsAbstract = true)]
-[Token(TokenType.TenantAccessToken, Name = Consts.Authorization)]
+[Token("TenantAccessToken", Name = Consts.Authorization)]
 public interface IFeishuV2TaskActivitySubscriptions : IFeishuAppContextSwitcher
 {
     /// <summary>

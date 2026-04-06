@@ -68,10 +68,18 @@ public class CompositeFeishuEventValidator : ValidatorBase, IFeishuEventValidato
     }
 
     /// <inheritdoc />
+    [Obsolete("建议使用异步版本 ValidateSubscriptionRequestAsync")]
     public bool ValidateSubscriptionRequest(EventVerificationRequest request, string expectedToken)
     {
         _logger.LogDebug("开始验证订阅请求");
         return _subscriptionValidator.ValidateSubscriptionRequest(request, expectedToken);
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> ValidateSubscriptionRequestAsync(EventVerificationRequest request, string expectedToken, CancellationToken cancellationToken = default)
+    {
+        _logger.LogDebug("开始验证订阅请求（异步）");
+        return await _subscriptionValidator.ValidateSubscriptionRequestAsync(request, expectedToken, cancellationToken);
     }
 
     /// <inheritdoc />

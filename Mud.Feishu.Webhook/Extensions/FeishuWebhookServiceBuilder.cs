@@ -297,6 +297,25 @@ public class FeishuWebhookServiceBuilder
     }
 
     /// <summary>
+    /// 使用自定义加密密钥提供程序
+    /// </summary>
+    /// <typeparam name="TEncryptKeyProvider">自定义加密密钥提供程序类型</typeparam>
+    /// <returns>建造者实例，支持链式调用</returns>
+    /// <remarks>
+    /// 使用场景：
+    /// 1. 从 Azure KeyVault 获取密钥
+    /// 2. 从 AWS Secrets Manager 获取密钥
+    /// 3. 从环境变量获取密钥
+    /// 4. 从自定义密钥管理服务获取密钥
+    /// </remarks>
+    public FeishuWebhookServiceBuilder UseEncryptKeyProvider<TEncryptKeyProvider>()
+        where TEncryptKeyProvider : class, IEncryptKeyProvider
+    {
+        _services.AddScoped<IEncryptKeyProvider, TEncryptKeyProvider>();
+        return this;
+    }
+
+    /// <summary>
     /// 使用自定义组合验证器（完全替换默认实现）
     /// </summary>
     /// <typeparam name="TCompositeValidator">自定义组合验证器类型</typeparam>
@@ -451,6 +470,9 @@ public class FeishuWebhookServiceBuilder
 
         // 注册工具服务（单例）
         _services.TryAddSingleton<IEnvironmentService, EnvironmentService>();
+
+        // 注册加密密钥提供程序（默认从配置文件读取）
+        _services.TryAddScoped<IEncryptKeyProvider, DefaultEncryptKeyProvider>();
 
         // 注册专门的验证器（作用域服务）
         _services.TryAddScoped<ISignatureValidator, SignatureValidator>();

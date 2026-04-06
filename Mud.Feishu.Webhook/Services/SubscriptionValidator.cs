@@ -17,23 +17,31 @@ namespace Mud.Feishu.Webhook.Services;
 public class SubscriptionValidator : ValidatorBase, ISubscriptionValidator
 {
     private readonly ILogger<SubscriptionValidator> _logger;
-    private readonly IOptionsMonitor<FeishuWebhookOptions> _optionsMonitor;
+    private readonly IEncryptKeyProvider _encryptKeyProvider;
 
     /// <summary>
     /// 初始化订阅验证器
     /// </summary>
     /// <param name="logger">日志记录器</param>
-    /// <param name="optionsMonitor">配置监视器</param>
+    /// <param name="encryptKeyProvider">加密密钥提供程序</param>
     public SubscriptionValidator(
         ILogger<SubscriptionValidator> logger,
-        IOptionsMonitor<FeishuWebhookOptions> optionsMonitor)
+        IEncryptKeyProvider encryptKeyProvider)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _optionsMonitor = optionsMonitor ?? throw new ArgumentNullException(nameof(optionsMonitor));
+        _encryptKeyProvider = encryptKeyProvider ?? throw new ArgumentNullException(nameof(encryptKeyProvider));
     }
 
     /// <inheritdoc />
+    [Obsolete("建议使用异步版本 ValidateSubscriptionRequestAsync")]
     public bool ValidateSubscriptionRequest(EventVerificationRequest request, string expectedToken)
+    {
+        // 同步版本，使用 GetAwaiter().GetResult() 避免死锁
+        return ValidateSubscriptionRequestAsync(request, expectedToken).GetAwaiter().GetResult();
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> ValidateSubscriptionRequestAsync(EventVerificationRequest request, string expectedToken, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -66,7 +74,7 @@ public class SubscriptionValidator : ValidatorBase, ISubscriptionValidator
             }
 
             // 获取期望的 Token，支持多应用配置
-            var effectiveExpectedToken = GetEffectiveToken(expectedToken);
+            var effectiveExpectedToken = await GetEffectiveTokenAsync(expectedToken);
 
             if (string.IsNullOrEmpty(effectiveExpectedToken))
             {
@@ -78,8 +86,8 @@ public class SubscriptionValidator : ValidatorBase, ISubscriptionValidator
             if (request.Token != effectiveExpectedToken)
             {
                 // 为了安全，不在日志中记录完整的 Token 值，只记录前几位
-                var actualTokenPrefix = request.Token.Length > 4 ? request.Token.Substring(0, 4) + "***" : "***";
-                var expectedTokenPrefix = effectiveExpectedToken.Length > 4 ? effectiveExpectedToken.Substring(0, 4) + "***" : "***";
+                var actualTokenPrefix = request.Token?.Length > 4 ? request.Token.Substring(0, 4) + "***" : "***";
+                var expectedTokenPrefix = effectiveExpectedToken!.Length > 4 ? effectiveExpectedToken.Substring(0, 4) + "***" : "***";
 
                 _logger.LogWarning("验证 Token 不匹配: 期望 {ExpectedToken}, 实际 {ActualToken}, AppKey: {AppKey}",
                     expectedTokenPrefix, actualTokenPrefix, _currentAppKey ?? "null");
@@ -101,30 +109,18 @@ public class SubscriptionValidator : ValidatorBase, ISubscriptionValidator
     /// </summary>
     /// <param name="fallbackToken">后备 Token</param>
     /// <returns>有效的验证 Token</returns>
-    private string? GetEffectiveToken(string? fallbackToken)
+    private async Task<string?> GetEffectiveTokenAsync(string? fallbackToken)
     {
-        FeishuWebhookOptions? options = null;
         try
         {
-            options = _optionsMonitor.CurrentValue;
-        }
-        catch (Exception ex)
-        {
-            // 配置访问异常，直接使用 fallback token
-            _logger.LogWarning(ex, "配置访问异常，将使用后备验证 Token, AppKey: {AppKey}", _currentAppKey ?? "null");
-            return fallbackToken;
-        }
-
-        try
-        {
-            // 多应用场景：优先使用应用特定配置
+            // 多应用场景：从密钥提供程序获取验证 Token
             if (!string.IsNullOrEmpty(_currentAppKey))
             {
-                var appConfig = options?.GetAppConfig(_currentAppKey);
-                if (appConfig != null && !string.IsNullOrEmpty(appConfig.VerificationToken))
+                var verificationToken = await _encryptKeyProvider.GetVerificationTokenAsync(_currentAppKey!);
+                if (!string.IsNullOrEmpty(verificationToken))
                 {
                     _logger.LogDebug("使用应用 {AppKey} 的验证 Token", _currentAppKey);
-                    return appConfig.VerificationToken;
+                    return verificationToken;
                 }
             }
 

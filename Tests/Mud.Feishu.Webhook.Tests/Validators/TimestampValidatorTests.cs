@@ -7,6 +7,7 @@
 
 using Mud.Feishu.Webhook.Services;
 using Mud.Feishu.Webhook.Configuration;
+using Mud.Feishu.Webhook.Utilities;
 
 namespace Mud.Feishu.Webhook.Tests.Validators;
 
@@ -18,12 +19,14 @@ public class TimestampValidatorTests
 {
     private readonly Mock<ILogger<TimestampValidator>> _loggerMock;
     private readonly Mock<IOptionsMonitor<FeishuWebhookOptions>> _optionsMonitorMock;
+    private readonly Mock<IEnvironmentService> _environmentServiceMock;
     private readonly TimestampValidator _validator;
 
     public TimestampValidatorTests()
     {
         _loggerMock = new Mock<ILogger<TimestampValidator>>();
         _optionsMonitorMock = new Mock<IOptionsMonitor<FeishuWebhookOptions>>();
+        _environmentServiceMock = new Mock<IEnvironmentService>();
 
         // Setup default options
         var defaultOptions = new FeishuWebhookOptions
@@ -31,8 +34,12 @@ public class TimestampValidatorTests
             TimestampToleranceSeconds = 300
         };
         _optionsMonitorMock.Setup(x => x.CurrentValue).Returns(defaultOptions);
+        
+        // 默认设置为开发环境
+        _environmentServiceMock.Setup(x => x.IsProduction).Returns(false);
+        _environmentServiceMock.Setup(x => x.IsDevelopment).Returns(true);
 
-        _validator = new TimestampValidator(_loggerMock.Object, _optionsMonitorMock.Object);
+        _validator = new TimestampValidator(_loggerMock.Object, _optionsMonitorMock.Object, _environmentServiceMock.Object);
     }
 
     #region 秒级时间戳验证测试
@@ -186,37 +193,66 @@ public class TimestampValidatorTests
     #region 零时间戳处理测试
 
     [Fact]
-    public void ValidateTimestamp_WithZeroTimestamp_ShouldReturnTrue()
+    public void ValidateTimestamp_WithZeroTimestampInDevelopment_ShouldReturnTrue()
     {
-        // Arrange - 零时间戳应该被允许（跳过验证）
+        // Arrange - 开发环境下零时间戳应该被允许（跳过验证）
+        _environmentServiceMock.Setup(x => x.IsProduction).Returns(false);
+        _environmentServiceMock.Setup(x => x.IsDevelopment).Returns(true);
+        var validator = new TimestampValidator(_loggerMock.Object, _optionsMonitorMock.Object, _environmentServiceMock.Object);
+        
         var timestamp = 0L;
         var toleranceSeconds = 300;
 
         // Act
-        var result = _validator.ValidateTimestamp(timestamp, toleranceSeconds);
+        var result = validator.ValidateTimestamp(timestamp, toleranceSeconds);
 
         // Assert
         Assert.True(result);
 
         // 验证调试日志被记录
-        VerifyLogCalled(LogLevel.Debug, "时间戳为 0，跳过时间戳验证");
+        VerifyLogCalled(LogLevel.Warning, "时间戳为 0，跳过时间戳验证");
+    }
+
+    [Fact]
+    public void ValidateTimestamp_WithZeroTimestampInProduction_ShouldReturnFalse()
+    {
+        // Arrange - 生产环境下零时间戳应该被拒绝
+        _environmentServiceMock.Setup(x => x.IsProduction).Returns(true);
+        _environmentServiceMock.Setup(x => x.IsDevelopment).Returns(false);
+        var validator = new TimestampValidator(_loggerMock.Object, _optionsMonitorMock.Object, _environmentServiceMock.Object);
+        
+        var timestamp = 0L;
+        var toleranceSeconds = 300;
+
+        // Act
+        var result = validator.ValidateTimestamp(timestamp, toleranceSeconds);
+
+        // Assert
+        Assert.False(result);
+
+        // 验证错误日志被记录
+        VerifyLogCalled(LogLevel.Error, "时间戳为 0，拒绝请求");
     }
 
     [Theory]
     [InlineData(60)]
     [InlineData(300)]
     [InlineData(600)]
-    public void ValidateTimestamp_WithZeroTimestamp_DifferentTolerances_ShouldAlwaysReturnTrue(int toleranceSeconds)
+    public void ValidateTimestamp_WithZeroTimestampInDevelopment_DifferentTolerances_ShouldReturnTrue(int toleranceSeconds)
     {
-        // Arrange - 零时间戳在任何容错设置下都应该被允许
+        // Arrange - 开发环境下零时间戳在任何容错设置下都应该被允许
+        _environmentServiceMock.Setup(x => x.IsProduction).Returns(false);
+        _environmentServiceMock.Setup(x => x.IsDevelopment).Returns(true);
+        var validator = new TimestampValidator(_loggerMock.Object, _optionsMonitorMock.Object, _environmentServiceMock.Object);
+        
         var timestamp = 0L;
 
         // Act
-        var result = _validator.ValidateTimestamp(timestamp, toleranceSeconds);
+        var result = validator.ValidateTimestamp(timestamp, toleranceSeconds);
 
         // Assert
         Assert.True(result);
-        VerifyLogCalled(LogLevel.Debug, "时间戳为 0，跳过时间戳验证");
+        VerifyLogCalled(LogLevel.Warning, "时间戳为 0，跳过时间戳验证");
     }
 
     #endregion

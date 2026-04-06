@@ -123,11 +123,11 @@ public class FeishuMultiAppMiddleware
         var stopwatch = Stopwatch.StartNew();
         var path = context.Request.Path.Value ?? string.Empty;
 
-        _logger.LogWarning("当前请求路径: {path}", path);
+        _logger.LogDebug("当前请求路径: {Path}", path);
 
         // 尝试从路径中提取 AppKey
         var appKey = ExtractAppKeyFromPath(path);
-        _logger.LogWarning("当前应用键 AppKey: {appKey}", appKey);
+        _logger.LogDebug("当前应用键 AppKey: {AppKey}", appKey);
         if (string.IsNullOrEmpty(appKey))
         {
             await _next(context);
@@ -171,6 +171,18 @@ public class FeishuMultiAppMiddleware
 
         try
         {
+            // 验证客户端 IP（如果配置了白名单）
+            if (Options.AllowedSourceIPs.Count > 0)
+            {
+                if (!IpAddressHelper.IsIpAllowed(clientIp, Options.AllowedSourceIPs))
+                {
+                    _logger.LogWarning("客户端 IP {ClientIP} 不在白名单中，拒绝请求, AppKey: {AppKey}",
+                        clientIp, appKey ?? "null");
+                    await WriteErrorResponse(context, 403, "Forbidden: IP not allowed", requestId);
+                    return;
+                }
+            }
+
             // 验证 HTTP 方法
             if (!Options.AllowedHttpMethods.Contains(context.Request.Method))
             {

@@ -18,18 +18,22 @@ public class TimestampValidator : ValidatorBase, ITimestampValidator
 {
     private readonly ILogger<TimestampValidator> _logger;
     private readonly IOptionsMonitor<FeishuWebhookOptions> _optionsMonitor;
+    private readonly IEnvironmentService _environmentService;
 
     /// <summary>
     /// 初始化时间戳验证器
     /// </summary>
     /// <param name="logger">日志记录器</param>
     /// <param name="optionsMonitor">配置监视器</param>
+    /// <param name="environmentService">环境服务</param>
     public TimestampValidator(
         ILogger<TimestampValidator> logger,
-        IOptionsMonitor<FeishuWebhookOptions> optionsMonitor)
+        IOptionsMonitor<FeishuWebhookOptions> optionsMonitor,
+        IEnvironmentService? environmentService = null)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _optionsMonitor = optionsMonitor ?? throw new ArgumentNullException(nameof(optionsMonitor));
+        _environmentService = environmentService ?? new EnvironmentService();
     }
 
     /// <inheritdoc />
@@ -37,10 +41,22 @@ public class TimestampValidator : ValidatorBase, ITimestampValidator
     {
         try
         {
-            // 如果时间戳为 0，跳过验证（飞书某些请求类型可能不包含时间戳）
+            // 如果时间戳为 0，需要根据环境决定是否拒绝
             if (timestamp == 0)
             {
-                _logger.LogDebug("时间戳为 0，跳过时间戳验证, AppKey: {AppKey}", _currentAppKey ?? "null");
+                if (_environmentService.IsProduction)
+                {
+                    // 生产环境拒绝时间戳为 0 的请求（安全要求）
+                    _logger.LogError(
+                        "时间戳为 0，拒绝请求（生产环境不允许跳过时间戳验证），AppKey: {AppKey}",
+                        _currentAppKey ?? "null");
+                    return false;
+                }
+
+                // 开发/测试环境允许，但记录警告
+                _logger.LogWarning(
+                    "时间戳为 0，跳过时间戳验证（非生产环境，警告：此配置存在安全风险），AppKey: {AppKey}",
+                    _currentAppKey ?? "null");
                 return true;
             }
 

@@ -371,6 +371,9 @@ public class DependencyInjectionTests
         public void SetCurrentAppKey(string appKey) { }
 
         public bool ValidateSubscriptionRequest(EventVerificationRequest request, string expectedToken) => true;
+
+        public Task<bool> ValidateSubscriptionRequestAsync(EventVerificationRequest request, string expectedToken, CancellationToken cancellationToken = default) 
+            => Task.FromResult(true);
     }
 
     /// <summary>
@@ -381,6 +384,9 @@ public class DependencyInjectionTests
         public void SetCurrentAppKey(string appKey) { }
 
         public bool ValidateSubscriptionRequest(EventVerificationRequest request, string expectedToken) => true;
+
+        public Task<bool> ValidateSubscriptionRequestAsync(EventVerificationRequest request, string expectedToken, CancellationToken cancellationToken = default) 
+            => Task.FromResult(true);
 
         public Task<bool> ValidateSignatureAsync(long timestamp, string nonce, string encrypt, string signature, string encryptKey)
             => Task.FromResult(true);

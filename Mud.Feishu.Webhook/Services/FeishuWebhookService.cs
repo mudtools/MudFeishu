@@ -29,11 +29,7 @@ public class FeishuWebhookService : IFeishuWebhookService
     private readonly IFeishuEventDeduplicator _deduplicator;
     private readonly IFeishuEventDistributedDeduplicator? _distributedDeduplicator;
     private readonly ISecurityAuditService? _securityAuditService;
-
-    /// <summary>
-    /// 提供的加密密钥（支持多密钥场景，使用 AsyncLocal 确保线程安全）
-    /// </summary>
-    private static readonly AsyncLocal<string?> _providedEncryptKey = new();
+    private readonly IEncryptKeyProvider _encryptKeyProvider;
 
     /// <summary>
     /// 当前应用键（多应用场景，使用 AsyncLocal 确保线程安全）
@@ -55,6 +51,7 @@ public class FeishuWebhookService : IFeishuWebhookService
         IFeishuEventInterceptor[] interceptors,
         FeishuWebhookConcurrencyService concurrencyService,
         IFeishuEventDeduplicator deduplicator,
+        IEncryptKeyProvider encryptKeyProvider,
         ISecurityAuditService? securityAuditService,
         IFeishuEventDistributedDeduplicator? distributedDeduplicator = null)
     {
@@ -66,6 +63,7 @@ public class FeishuWebhookService : IFeishuWebhookService
         _interceptors = interceptors;
         _concurrencyService = concurrencyService;
         _deduplicator = deduplicator;
+        _encryptKeyProvider = encryptKeyProvider ?? throw new ArgumentNullException(nameof(encryptKeyProvider));
         _distributedDeduplicator = distributedDeduplicator;
         _securityAuditService = securityAuditService;
 
@@ -156,14 +154,14 @@ public class FeishuWebhookService : IFeishuWebhookService
                 return null;
             }
 
-            var appConfig = Options.GetAppConfig(_currentAppKey.Value);
+            var appConfig = Options.GetAppConfig(_currentAppKey.Value!);
             if (appConfig == null)
             {
                 _logger.LogError("未找到应用配置, AppKey: {AppKey}", _currentAppKey);
                 return null;
             }
 
-            if (!_validator.ValidateSubscriptionRequest(request, appConfig.VerificationToken))
+            if (!await _validator.ValidateSubscriptionRequestAsync(request, appConfig.VerificationToken ?? string.Empty))
             {
                 _logger.LogWarning("事件订阅验证失败, AppKey: {AppKey}", _currentAppKey);
                 return null;
@@ -345,18 +343,11 @@ public class FeishuWebhookService : IFeishuWebhookService
                 return false;
             }
 
-            // 在多应用场景下，优先使用提供的加密密钥，否则从应用配置获取
-            string? encryptKey = _providedEncryptKey.Value;
-            if (string.IsNullOrEmpty(encryptKey) && !string.IsNullOrEmpty(_currentAppKey.Value))
+            // 使用密钥提供程序获取加密密钥
+            string? encryptKey = null;
+            if (!string.IsNullOrEmpty(_currentAppKey.Value))
             {
-                var appConfig = Options.GetAppConfig(_currentAppKey.Value);
-                if (appConfig == null)
-                {
-                    _logger.LogError("未找到应用配置, AppKey: {AppKey}", _currentAppKey);
-                    FeishuMetricsHelper.RecordEventHandlingFailure("signature_validation", "app_config_not_found");
-                    return false;
-                }
-                encryptKey = appConfig.EncryptKey;
+                encryptKey = await _encryptKeyProvider.GetEncryptKeyAsync(_currentAppKey.Value!);
             }
 
             if (string.IsNullOrEmpty(encryptKey))
@@ -371,7 +362,7 @@ public class FeishuWebhookService : IFeishuWebhookService
                 request.Nonce,
                 request.Encrypt!,
                 request.Signature,
-                encryptKey);
+                encryptKey!);
 
             if (isValid)
             {
@@ -397,13 +388,14 @@ public class FeishuWebhookService : IFeishuWebhookService
     {
         try
         {
-            var appConfig = Options.GetAppConfig(_currentAppKey.Value);
-            if (appConfig == null)
+            // 使用密钥提供程序获取加密密钥
+            var encryptKey = await _encryptKeyProvider.GetEncryptKeyAsync(_currentAppKey.Value ?? string.Empty);
+            if (string.IsNullOrEmpty(encryptKey))
             {
-                _logger.LogError("未找到应用配置, AppKey: {AppKey}", _currentAppKey);
+                _logger.LogError("无法获取加密密钥, AppKey: {AppKey}", _currentAppKey.Value ?? "null");
                 return false;
             }
-            string encryptKey = appConfig.EncryptKey;
+            
             // 构建签名字符串：timestamp + nonce + encryptKey + body
             var signString = $"{request.Timestamp}{request.Nonce}{encryptKey}{body}";
 
@@ -459,18 +451,11 @@ public class FeishuWebhookService : IFeishuWebhookService
 
         try
         {
-            // 在多应用场景下，优先使用提供的加密密钥，否则从应用配置获取
-            var encryptKey = _providedEncryptKey.Value;
-            if (string.IsNullOrEmpty(encryptKey) && !string.IsNullOrEmpty(_currentAppKey.Value))
+            // 使用密钥提供程序获取加密密钥
+            string? encryptKey = null;
+            if (!string.IsNullOrEmpty(_currentAppKey.Value))
             {
-                var appConfig = Options.GetAppConfig(_currentAppKey.Value);
-                if (appConfig == null)
-                {
-                    _logger.LogError("未找到应用配置, AppKey: {AppKey}", _currentAppKey);
-                    FeishuMetricsHelper.RecordEventHandlingFailure("event_decryption", "app_config_not_found");
-                    return null;
-                }
-                encryptKey = appConfig.EncryptKey;
+                encryptKey = await _encryptKeyProvider.GetEncryptKeyAsync(_currentAppKey.Value!);
             }
 
             if (string.IsNullOrEmpty(encryptKey))
@@ -480,7 +465,7 @@ public class FeishuWebhookService : IFeishuWebhookService
                 return null;
             }
 
-            var eventData = await _decryptor.DecryptAsync(encryptedData, encryptKey, cancellationToken);
+            var eventData = await _decryptor.DecryptAsync(encryptedData, encryptKey!, cancellationToken);
             if (eventData != null)
             {
                 FeishuMetricsHelper.RecordEventHandlingSuccess("event_decryption");

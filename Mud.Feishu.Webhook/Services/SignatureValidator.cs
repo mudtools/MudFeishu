@@ -16,6 +16,41 @@ namespace Mud.Feishu.Webhook.Services;
 /// 飞书事件签名验证器实现
 /// 支持 HMAC-SHA256 和 SHA-256 两种签名算法
 /// </summary>
+/// <remarks>
+/// <para>
+/// 飞书 Webhook 使用两种签名验证方式：
+/// </para>
+/// <list type="number">
+/// <item>
+/// <term>HMAC-SHA256 签名（请求体验证）</term>
+/// <description>
+/// - 签名字符串格式：timestamp + "\n" + nonce + "\n" + encrypt
+/// - 算法：HMAC-SHA256(encryptKey, signString)
+/// - 用途：验证请求体中的加密数据完整性
+/// - 触发条件：EnableBodySignatureValidation = true
+/// </description>
+/// </item>
+/// <item>
+/// <term>SHA-256 签名（请求头验证）</term>
+/// <description>
+/// - 签名字符串格式：timestamp + nonce + encryptKey + body
+/// - 算法：SHA-256(signString)
+/// - 用途：验证整个请求的完整性和来源
+/// - 触发条件：EnforceHeaderSignatureValidation = true
+/// - 注意：此方式更安全，生产环境强烈推荐
+/// </description>
+/// </item>
+/// </list>
+/// <para>
+/// 安全建议：
+/// </para>
+/// <list type="bullet">
+/// <item><description>生产环境必须启用 EnforceHeaderSignatureValidation</description></item>
+/// <item><description>建议同时启用两种验证以提供双重保护</description></item>
+/// <item><description>时间戳容错范围建议设置为 30 秒或更短</description></item>
+/// <item><description>使用固定时间比较防止计时攻击</description></item>
+/// </list>
+/// </remarks>
 public class SignatureValidator : ValidatorBase, ISignatureValidator
 {
     private readonly ILogger<SignatureValidator> _logger;
@@ -71,6 +106,29 @@ public class SignatureValidator : ValidatorBase, ISignatureValidator
     }
 
     /// <inheritdoc />
+    /// <summary>
+    /// 验证 HMAC-SHA256 签名（请求体验证）
+    /// </summary>
+    /// <param name="timestamp">请求时间戳</param>
+    /// <param name="nonce">随机字符串</param>
+    /// <param name="encrypt">加密的请求数据</param>
+    /// <param name="signature">待验证的签名</param>
+    /// <param name="encryptKey">加密密钥</param>
+    /// <returns>签名验证结果</returns>
+    /// <remarks>
+    /// <para>
+    /// 验证流程：
+    /// </para>
+    /// <list type="number">
+    /// <item><description>检查时间戳和 nonce 是否有效</description></item>
+    /// <item><description>构建签名字符串：timestamp + "\n" + nonce + "\n" + encrypt</description></item>
+    /// <item><description>使用 HMAC-SHA256 计算签名</description></item>
+    /// <item><description>使用固定时间比较验证签名</description></item>
+    /// </list>
+    /// <para>
+    /// 注意：此方法不验证时间戳是否过期，需配合 ITimestampValidator 使用
+    /// </para>
+    /// </remarks>
     public async Task<bool> ValidateSignatureAsync(long timestamp, string nonce, string encrypt, string signature, string encryptKey)
     {
         try
@@ -143,6 +201,38 @@ public class SignatureValidator : ValidatorBase, ISignatureValidator
     }
 
     /// <inheritdoc />
+    /// <summary>
+    /// 验证 SHA-256 签名（请求头验证）
+    /// </summary>
+    /// <param name="timestamp">请求时间戳</param>
+    /// <param name="nonce">随机字符串</param>
+    /// <param name="body">完整的请求体字符串</param>
+    /// <param name="headerSignature">请求头中的签名（X-Lark-Signature）</param>
+    /// <param name="encryptKey">加密密钥</param>
+    /// <returns>签名验证结果</returns>
+    /// <remarks>
+    /// <para>
+    /// 验证流程：
+    /// </para>
+    /// <list type="number">
+    /// <item><description>检查请求头签名是否存在（可选强制验证）</description></item>
+    /// <item><description>检查时间戳和 nonce 是否有效</description></item>
+    /// <item><description>构建签名字符串：timestamp + nonce + encryptKey + body</description></item>
+    /// <item><description>使用 SHA-256 计算签名</description></item>
+    /// <item><description>使用固定时间比较验证签名</description></item>
+    /// </list>
+    /// <para>
+    /// 此方法比 HMAC-SHA256 更安全，因为：
+    /// </para>
+    /// <list type="bullet">
+    /// <item><description>验证完整的请求体，而不仅仅是加密部分</description></item>
+    /// <item><description>签名包含在请求头中，更难被篡改</description></item>
+    /// <item><description>符合飞书官方推荐的安全实践</description></item>
+    /// </list>
+    /// <para>
+    /// 生产环境强烈建议启用 EnforceHeaderSignatureValidation = true
+    /// </para>
+    /// </remarks>
     public async Task<bool> ValidateHeaderSignatureAsync(long timestamp, string nonce, string body, string? headerSignature, string encryptKey)
     {
         try

@@ -8,7 +8,7 @@
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;
-using Mud.Feishu.WebSocket.Core;
+using Mud.Feishu.WebSocket;
 
 namespace Mud.Feishu.WebSocket.Tests.Core;
 

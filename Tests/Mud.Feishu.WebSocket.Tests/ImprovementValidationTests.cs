@@ -7,7 +7,7 @@
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
-using Mud.Feishu.WebSocket.Core;
+using Mud.Feishu.WebSocket;
 using System.Net.Sockets;
 using System.Net.WebSockets;
 using Xunit;

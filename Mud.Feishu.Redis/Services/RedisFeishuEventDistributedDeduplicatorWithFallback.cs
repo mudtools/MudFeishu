@@ -5,6 +5,8 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using Mud.Feishu.Abstractions.Configuration;
+using Mud.Feishu.Abstractions.Services;
 using StackExchange.Redis;
 
 namespace Mud.Feishu.Redis.Services;
@@ -19,6 +21,7 @@ namespace Mud.Feishu.Redis.Services;
 /// 2. Redis 失败时自动降级到内存去重
 /// 3. 支持指数退避重试机制
 /// 4. 记录降级和恢复事件
+/// 5. 支持完整的状态机（Processing -> Completed / Rollback）
 /// </remarks>
 public class RedisFeishuEventDistributedDeduplicatorWithFallback : IFeishuEventDistributedDeduplicator, IAsyncDisposable
 {
@@ -26,7 +29,9 @@ public class RedisFeishuEventDistributedDeduplicatorWithFallback : IFeishuEventD
     private readonly IConnectionMultiplexer _redis;
     private readonly IDatabase _database;
     private readonly IFeishuEventDistributedDeduplicator _fallbackDeduplicator;
+    private readonly IFallbackAlertService? _alertService;
     private readonly TimeSpan _defaultCacheExpiration;
+    private readonly TimeSpan _defaultProcessingTimeout;
     private readonly string _keyPrefix;
     private readonly int _maxRetryCount;
     private readonly TimeSpan _initialRetryDelay;
@@ -37,6 +42,11 @@ public class RedisFeishuEventDistributedDeduplicatorWithFallback : IFeishuEventD
     private DateTime _lastFailureTime = DateTime.MinValue;
     private readonly SemaphoreSlim _retrySemaphore = new(1, 1);
     private bool _disposed;
+
+    private const string StatusField = "status";
+    private const string TimestampField = "timestamp";
+    private const string ProcessingStatus = "processing";
+    private const string CompletedStatus = "completed";
 
     /// <summary>
     /// 获取当前是否使用 Redis
@@ -54,36 +64,81 @@ public class RedisFeishuEventDistributedDeduplicatorWithFallback : IFeishuEventD
     /// <param name="redis">Redis 连接多路复用器</param>
     /// <param name="logger">日志记录器（可选）</param>
     /// <param name="cacheExpiration">默认缓存过期时间</param>
+    /// <param name="processingTimeout">默认处理中超时时间</param>
     /// <param name="keyPrefix">Redis 键前缀，默认为 "feishu:event:"</param>
     /// <param name="maxRetryCount">最大重试次数，默认为 3</param>
     /// <param name="initialRetryDelay">初始重试延迟，默认为 1 秒</param>
     /// <param name="maxRetryDelay">最大重试延迟，默认为 30 秒</param>
+    /// <param name="alertService">降级告警服务（可选）</param>
     public RedisFeishuEventDistributedDeduplicatorWithFallback(
         IConnectionMultiplexer redis,
         ILogger<RedisFeishuEventDistributedDeduplicatorWithFallback>? logger = null,
         TimeSpan? cacheExpiration = null,
+        TimeSpan? processingTimeout = null,
         string? keyPrefix = null,
         int maxRetryCount = 3,
         TimeSpan? initialRetryDelay = null,
-        TimeSpan? maxRetryDelay = null)
+        TimeSpan? maxRetryDelay = null,
+        IFallbackAlertService? alertService = null)
     {
         _redis = redis ?? throw new ArgumentNullException(nameof(redis));
         _logger = logger;
         _database = _redis.GetDatabase();
         _defaultCacheExpiration = cacheExpiration ?? TimeSpan.FromHours(24);
+        _defaultProcessingTimeout = processingTimeout ?? TimeSpan.FromMinutes(10);
         _keyPrefix = keyPrefix ?? "feishu:event:";
         _maxRetryCount = maxRetryCount;
         _initialRetryDelay = initialRetryDelay ?? TimeSpan.FromSeconds(1);
         _maxRetryDelay = maxRetryDelay ?? TimeSpan.FromSeconds(30);
+        _alertService = alertService;
 
-        // 创建内存降级去重器
-        _fallbackDeduplicator = new FeishuEventDistributedDeduplicator(logger as ILogger<FeishuEventDistributedDeduplicator>, _defaultCacheExpiration);
+        _fallbackDeduplicator = new FeishuEventDistributedDeduplicator(
+            logger as ILogger<FeishuEventDistributedDeduplicator>,
+            _defaultCacheExpiration,
+            TimeSpan.FromMinutes(5),
+            _defaultProcessingTimeout);
 
-        _logger?.LogInformation("飞书 Redis 分布式事件去重服务（带降级）初始化完成，缓存过期时间: {Expiration}, 键前缀: {KeyPrefix}, 最大重试: {MaxRetry}",
-            _defaultCacheExpiration, _keyPrefix, _maxRetryCount);
+        _logger?.LogInformation("飞书 Redis 分布式事件去重服务（带降级）初始化完成，缓存过期时间: {Expiration}, 处理超时: {ProcessingTimeout}, 键前缀: {KeyPrefix}, 最大重试: {MaxRetry}",
+            _defaultCacheExpiration, _defaultProcessingTimeout, _keyPrefix, _maxRetryCount);
+    }
+
+    /// <summary>
+    /// 使用统一配置构造
+    /// </summary>
+    /// <param name="redis">Redis 连接多路复用器</param>
+    /// <param name="options">去重配置选项</param>
+    /// <param name="logger">日志记录器（可选）</param>
+    /// <param name="alertService">降级告警服务（可选）</param>
+    public RedisFeishuEventDistributedDeduplicatorWithFallback(
+        IConnectionMultiplexer redis,
+        DeduplicationOptions options,
+        ILogger<RedisFeishuEventDistributedDeduplicatorWithFallback>? logger = null,
+        IFallbackAlertService? alertService = null)
+    {
+        _redis = redis ?? throw new ArgumentNullException(nameof(redis));
+        if (options == null)
+            throw new ArgumentNullException(nameof(options));
+
+        _logger = logger;
+        _database = _redis.GetDatabase();
+        _defaultCacheExpiration = options.CacheExpiration;
+        _defaultProcessingTimeout = options.ProcessingTimeout;
+        _keyPrefix = options.KeyPrefix;
+        _maxRetryCount = options.MaxRetryCount;
+        _initialRetryDelay = options.InitialRetryDelay;
+        _maxRetryDelay = options.MaxRetryDelay;
+        _alertService = alertService;
+
+        _fallbackDeduplicator = new FeishuEventDistributedDeduplicator(
+            options,
+            logger as ILogger<FeishuEventDistributedDeduplicator>);
+
+        _logger?.LogInformation("飞书 Redis 分布式事件去重服务（带降级）初始化完成（使用统一配置），缓存过期时间: {Expiration}, 处理超时: {ProcessingTimeout}, 键前缀: {KeyPrefix}, 最大重试: {MaxRetry}",
+            _defaultCacheExpiration, _defaultProcessingTimeout, _keyPrefix, _maxRetryCount);
     }
 
     /// <inheritdoc />
+    [Obsolete("建议使用 TryMarkAsProcessingAsync 方法以支持状态机和异常恢复")]
     public async Task<bool> TryMarkAsProcessedAsync(string eventId, string? appKey = null, TimeSpan? ttl = null, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(eventId))
@@ -92,20 +147,136 @@ public class RedisFeishuEventDistributedDeduplicatorWithFallback : IFeishuEventD
             return false;
         }
 
-        // 如果 Redis 不可用，直接使用降级策略
         if (!_redisAvailable)
         {
-            return await UseFallbackAsync(eventId, appKey, ttl, cancellationToken, "Redis 不可用");
+            return await UseFallbackForMarkProcessedAsync(eventId, appKey, ttl, cancellationToken, "Redis 不可用");
         }
 
-        // 尝试使用 Redis，带重试机制
         try
         {
-            return await TryMarkWithRetryAsync(eventId, appKey, ttl, cancellationToken);
+            return await TryMarkProcessedWithRetryAsync(eventId, appKey, ttl, cancellationToken);
         }
         catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
         {
-            return await HandleRedisFailureAsync(eventId, appKey, ttl, cancellationToken, ex);
+            return await HandleRedisFailureForMarkProcessedAsync(eventId, appKey, ttl, cancellationToken, ex);
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<DeduplicationResult> TryMarkAsProcessingAsync(string eventId, string? appKey = null, TimeSpan? ttl = null, TimeSpan? processingTimeout = null, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrEmpty(eventId))
+        {
+            _logger?.LogWarning("事件ID为空，跳过去重检查");
+            return DeduplicationResult.Success(eventId);
+        }
+
+        if (!_redisAvailable)
+        {
+            return await UseFallbackForProcessingAsync(eventId, appKey, ttl, processingTimeout, cancellationToken, "Redis 不可用");
+        }
+
+        try
+        {
+            return await TryMarkProcessingWithRetryAsync(eventId, appKey, ttl, processingTimeout, cancellationToken);
+        }
+        catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+        {
+            return await HandleRedisFailureForProcessingAsync(eventId, appKey, ttl, processingTimeout, cancellationToken, ex);
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task MarkAsCompletedAsync(string eventId, string? appKey = null, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrEmpty(eventId))
+        {
+            return;
+        }
+
+        if (!_redisAvailable)
+        {
+            await _fallbackDeduplicator.MarkAsCompletedAsync(eventId, appKey, cancellationToken);
+            return;
+        }
+
+        try
+        {
+            var redisKey = GetRedisKey(eventId, appKey);
+
+            for (int attempt = 0; attempt < _maxRetryCount; attempt++)
+            {
+                try
+                {
+                    await _database.HashSetAsync(redisKey, new[]
+                    {
+                        new HashEntry(StatusField, CompletedStatus),
+                        new HashEntry(TimestampField, DateTime.UtcNow.ToString("O"))
+                    });
+                    ResetFailureCount();
+                    _logger?.LogDebug("事件 {EventId} 标记为已完成 (AppKey: {AppKey})", eventId, appKey ?? "default");
+                    return;
+                }
+                catch (RedisConnectionException ex)
+                {
+                    _logger?.LogWarning(ex, "Redis 连接失败 (尝试 {Attempt}/{MaxRetry})", attempt + 1, _maxRetryCount);
+                    if (attempt == _maxRetryCount - 1)
+                        throw;
+                    await Task.Delay(CalculateRetryDelay(attempt), cancellationToken);
+                }
+            }
+        }
+        catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+        {
+            _logger?.LogError(ex, "Redis 失败，使用内存降级标记完成");
+            await _fallbackDeduplicator.MarkAsCompletedAsync(eventId, appKey, cancellationToken);
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task RollbackProcessingAsync(string eventId, string? appKey = null, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrEmpty(eventId))
+        {
+            return;
+        }
+
+        if (!_redisAvailable)
+        {
+            await _fallbackDeduplicator.RollbackProcessingAsync(eventId, appKey, cancellationToken);
+            return;
+        }
+
+        try
+        {
+            var redisKey = GetRedisKey(eventId, appKey);
+
+            for (int attempt = 0; attempt < _maxRetryCount; attempt++)
+            {
+                try
+                {
+                    var status = await _database.HashGetAsync(redisKey, StatusField);
+                    if (status == ProcessingStatus)
+                    {
+                        await _database.KeyDeleteAsync(redisKey);
+                        _logger?.LogDebug("事件 {EventId} 处理回滚，允许重新处理 (AppKey: {AppKey})", eventId, appKey ?? "default");
+                    }
+                    ResetFailureCount();
+                    return;
+                }
+                catch (RedisConnectionException ex)
+                {
+                    _logger?.LogWarning(ex, "Redis 连接失败 (尝试 {Attempt}/{MaxRetry})", attempt + 1, _maxRetryCount);
+                    if (attempt == _maxRetryCount - 1)
+                        throw;
+                    await Task.Delay(CalculateRetryDelay(attempt), cancellationToken);
+                }
+            }
+        }
+        catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+        {
+            _logger?.LogError(ex, "Redis 失败，使用内存降级回滚");
+            await _fallbackDeduplicator.RollbackProcessingAsync(eventId, appKey, cancellationToken);
         }
     }
 
@@ -117,13 +288,11 @@ public class RedisFeishuEventDistributedDeduplicatorWithFallback : IFeishuEventD
             return false;
         }
 
-        // 如果 Redis 不可用，直接使用降级策略
         if (!_redisAvailable)
         {
             return await _fallbackDeduplicator.IsProcessedAsync(eventId, appKey, cancellationToken);
         }
 
-        // 尝试使用 Redis
         try
         {
             return await CheckWithRetryAsync(eventId, appKey, cancellationToken);
@@ -135,11 +304,66 @@ public class RedisFeishuEventDistributedDeduplicatorWithFallback : IFeishuEventD
     }
 
     /// <inheritdoc />
+    public async Task<DeduplicationStatus> GetStatusAsync(string eventId, string? appKey = null, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrEmpty(eventId))
+        {
+            return DeduplicationStatus.Pending;
+        }
+
+        if (!_redisAvailable)
+        {
+            return await _fallbackDeduplicator.GetStatusAsync(eventId, appKey, cancellationToken);
+        }
+
+        try
+        {
+            var redisKey = GetRedisKey(eventId, appKey);
+            var entries = await _database.HashGetAllAsync(redisKey);
+
+            if (entries.Length == 0)
+            {
+                return DeduplicationStatus.Pending;
+            }
+
+            var statusEntry = entries.FirstOrDefault(x => x.Name == StatusField);
+            var timestampEntry = entries.FirstOrDefault(x => x.Name == TimestampField);
+
+            var status = statusEntry.Value.ToString();
+
+            if (status == CompletedStatus)
+            {
+                return DeduplicationStatus.Completed;
+            }
+
+            if (status == ProcessingStatus)
+            {
+                var timestampStr = timestampEntry.Value.ToString();
+                if (DateTime.TryParse(timestampStr, out var timestamp))
+                {
+                    var elapsed = DateTime.UtcNow - timestamp;
+                    if (elapsed > _defaultProcessingTimeout)
+                    {
+                        return DeduplicationStatus.Pending;
+                    }
+                }
+                return DeduplicationStatus.Processing;
+            }
+
+            return DeduplicationStatus.Pending;
+        }
+        catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+        {
+            _logger?.LogError(ex, "Redis 失败，使用内存降级获取状态");
+            return await _fallbackDeduplicator.GetStatusAsync(eventId, appKey, cancellationToken);
+        }
+    }
+
+    /// <inheritdoc />
     public async Task<int> CleanupExpiredAsync(CancellationToken cancellationToken = default)
     {
         try
         {
-            // Redis 使用 EXPIRE 自动清理，只清理内存降级器
             return await _fallbackDeduplicator.CleanupExpiredAsync(cancellationToken);
         }
         catch (Exception ex)
@@ -159,15 +383,9 @@ public class RedisFeishuEventDistributedDeduplicatorWithFallback : IFeishuEventD
 
         await _fallbackDeduplicator.DisposeAsync();
         _retrySemaphore.Dispose();
-
-        // ConnectionMultiplexer 应由调用者管理，此处不释放
-        await Task.CompletedTask;
     }
 
-    /// <summary>
-    /// 尝试使用 Redis 标记事件，带重试机制
-    /// </summary>
-    private async Task<bool> TryMarkWithRetryAsync(string eventId, string? appKey, TimeSpan? ttl, CancellationToken cancellationToken)
+    private async Task<bool> TryMarkProcessedWithRetryAsync(string eventId, string? appKey, TimeSpan? ttl, CancellationToken cancellationToken)
     {
         var actualTtl = ttl ?? _defaultCacheExpiration;
         var redisKey = GetRedisKey(eventId, appKey);
@@ -176,59 +394,110 @@ public class RedisFeishuEventDistributedDeduplicatorWithFallback : IFeishuEventD
         {
             try
             {
-                // 使用 SETNX + EXPIRE 实现原子性去重
-                var setResult = await _database.StringSetAsync(
-                    redisKey,
-                    "1",
-                    actualTtl,
-                    When.NotExists);
-
-                if (!setResult)
+                var existing = await _database.HashGetAllAsync(redisKey);
+                if (existing.Length > 0)
                 {
                     _logger?.LogDebug("事件 {EventId} 已处理过，跳过", eventId);
-                    return true; // 已处理
+                    return true;
                 }
 
-                // 成功，重置失败计数
+                await _database.HashSetAsync(redisKey, new[]
+                {
+                    new HashEntry(StatusField, CompletedStatus),
+                    new HashEntry(TimestampField, DateTime.UtcNow.ToString("O"))
+                });
+                await _database.KeyExpireAsync(redisKey, actualTtl);
+
                 ResetFailureCount();
                 _logger?.LogDebug("事件 {EventId} 标记为已处理，TTL: {Ttl}", eventId, actualTtl);
-                return false; // 未处理，新事件
+                return false;
             }
             catch (RedisConnectionException ex)
             {
                 _logger?.LogWarning(ex, "Redis 连接失败 (尝试 {Attempt}/{MaxRetry})", attempt + 1, _maxRetryCount);
-
-                // 最后一次尝试失败，抛出异常
                 if (attempt == _maxRetryCount - 1)
                     throw;
-
-                // 等待重试（指数退避）
-                var delay = CalculateRetryDelay(attempt);
-                await Task.Delay(delay, cancellationToken);
-            }
-            catch (RedisTimeoutException ex)
-            {
-                _logger?.LogWarning(ex, "Redis 超时 (尝试 {Attempt}/{MaxRetry})", attempt + 1, _maxRetryCount);
-
-                if (attempt == _maxRetryCount - 1)
-                    throw;
-
-                var delay = CalculateRetryDelay(attempt);
-                await Task.Delay(delay, cancellationToken);
-            }
-            catch (RedisException ex)
-            {
-                _logger?.LogError(ex, "Redis 错误 (尝试 {Attempt}/{MaxRetry})", attempt + 1, _maxRetryCount);
-                throw;
+                await Task.Delay(CalculateRetryDelay(attempt), cancellationToken);
             }
         }
 
         return false;
     }
 
-    /// <summary>
-    /// 尝试使用 Redis 检查事件，带重试机制
-    /// </summary>
+    private async Task<DeduplicationResult> TryMarkProcessingWithRetryAsync(string eventId, string? appKey, TimeSpan? ttl, TimeSpan? processingTimeout, CancellationToken cancellationToken)
+    {
+        var actualTtl = ttl ?? _defaultCacheExpiration;
+        var actualProcessingTimeout = processingTimeout ?? _defaultProcessingTimeout;
+        var redisKey = GetRedisKey(eventId, appKey);
+
+        for (int attempt = 0; attempt < _maxRetryCount; attempt++)
+        {
+            try
+            {
+                var existing = await _database.HashGetAllAsync(redisKey);
+                if (existing.Length > 0)
+                {
+                    var statusEntry = existing.FirstOrDefault(x => x.Name == StatusField);
+                    var timestampEntry = existing.FirstOrDefault(x => x.Name == TimestampField);
+
+                    var status = statusEntry.Value.ToString();
+                    var timestampStr = timestampEntry.Value.ToString();
+
+                    if (status == CompletedStatus)
+                    {
+                        _logger?.LogDebug("事件 {EventId} 已完成，跳过 (AppKey: {AppKey})", eventId, appKey ?? "default");
+                        return DeduplicationResult.Duplicate(eventId, false, DeduplicationStatus.Completed);
+                    }
+
+                    if (status == ProcessingStatus)
+                    {
+                        if (DateTime.TryParse(timestampStr, out var timestamp))
+                        {
+                            var elapsed = DateTime.UtcNow - timestamp;
+                            if (elapsed > actualProcessingTimeout)
+                            {
+                                _logger?.LogWarning("事件 {EventId} 处理中超时，允许重新处理 (AppKey: {AppKey})", eventId, appKey ?? "default");
+
+                                await _database.HashSetAsync(redisKey, new[]
+                                {
+                                    new HashEntry(StatusField, ProcessingStatus),
+                                    new HashEntry(TimestampField, DateTime.UtcNow.ToString("O"))
+                                });
+                                await _database.KeyExpireAsync(redisKey, actualTtl);
+
+                                ResetFailureCount();
+                                return DeduplicationResult.TimeoutRecoverable(eventId);
+                            }
+                        }
+
+                        _logger?.LogDebug("事件 {EventId} 正在处理中，跳过 (AppKey: {AppKey})", eventId, appKey ?? "default");
+                        return DeduplicationResult.Duplicate(eventId, true, DeduplicationStatus.Processing);
+                    }
+                }
+
+                await _database.HashSetAsync(redisKey, new[]
+                {
+                    new HashEntry(StatusField, ProcessingStatus),
+                    new HashEntry(TimestampField, DateTime.UtcNow.ToString("O"))
+                });
+                await _database.KeyExpireAsync(redisKey, actualTtl);
+
+                ResetFailureCount();
+                _logger?.LogDebug("事件 {EventId} 标记为处理中，TTL: {Ttl} (AppKey: {AppKey})", eventId, actualTtl, appKey ?? "default");
+                return DeduplicationResult.Success(eventId);
+            }
+            catch (RedisConnectionException ex)
+            {
+                _logger?.LogWarning(ex, "Redis 连接失败 (尝试 {Attempt}/{MaxRetry})", attempt + 1, _maxRetryCount);
+                if (attempt == _maxRetryCount - 1)
+                    throw;
+                await Task.Delay(CalculateRetryDelay(attempt), cancellationToken);
+            }
+        }
+
+        return DeduplicationResult.Success(eventId);
+    }
+
     private async Task<bool> CheckWithRetryAsync(string eventId, string? appKey, CancellationToken cancellationToken)
     {
         var redisKey = GetRedisKey(eventId, appKey);
@@ -237,40 +506,23 @@ public class RedisFeishuEventDistributedDeduplicatorWithFallback : IFeishuEventD
         {
             try
             {
-                var exists = await _database.KeyExistsAsync(redisKey);
+                var status = await _database.HashGetAsync(redisKey, StatusField);
                 ResetFailureCount();
-                _logger?.LogDebug("事件 {EventId} 处理状态: {Status}", eventId, exists ? "已处理" : "未处理");
-                return exists;
+                return status == CompletedStatus;
             }
             catch (RedisConnectionException ex)
             {
                 _logger?.LogWarning(ex, "Redis 连接失败 (尝试 {Attempt}/{MaxRetry})", attempt + 1, _maxRetryCount);
-
                 if (attempt == _maxRetryCount - 1)
                     throw;
-
-                var delay = CalculateRetryDelay(attempt);
-                await Task.Delay(delay, cancellationToken);
-            }
-            catch (RedisTimeoutException ex)
-            {
-                _logger?.LogWarning(ex, "Redis 超时 (尝试 {Attempt}/{MaxRetry})", attempt + 1, _maxRetryCount);
-
-                if (attempt == _maxRetryCount - 1)
-                    throw;
-
-                var delay = CalculateRetryDelay(attempt);
-                await Task.Delay(delay, cancellationToken);
+                await Task.Delay(CalculateRetryDelay(attempt), cancellationToken);
             }
         }
 
         return false;
     }
 
-    /// <summary>
-    /// 处理 Redis 失败，降级到内存去重
-    /// </summary>
-    private async Task<bool> HandleRedisFailureAsync(string eventId, string? appKey, TimeSpan? ttl, CancellationToken cancellationToken, Exception ex)
+    private async Task<bool> HandleRedisFailureForMarkProcessedAsync(string eventId, string? appKey, TimeSpan? ttl, CancellationToken cancellationToken, Exception ex)
     {
         await _retrySemaphore.WaitAsync(cancellationToken);
         try
@@ -280,14 +532,13 @@ public class RedisFeishuEventDistributedDeduplicatorWithFallback : IFeishuEventD
 
             _logger?.LogError(ex, "Redis 失败，连续失败次数: {FailCount}, 降级到内存去重", _consecutiveFailures);
 
-            // 如果连续失败超过阈值，标记 Redis 不可用
             if (_consecutiveFailures >= 3)
             {
                 _redisAvailable = false;
                 _logger?.LogWarning("连续失败 {FailCount} 次，标记 Redis 为不可用，使用内存去重", _consecutiveFailures);
             }
 
-            return await UseFallbackAsync(eventId, appKey, ttl, cancellationToken, "Redis 失败");
+            return await UseFallbackForMarkProcessedAsync(eventId, appKey, ttl, cancellationToken, "Redis 失败");
         }
         finally
         {
@@ -295,9 +546,30 @@ public class RedisFeishuEventDistributedDeduplicatorWithFallback : IFeishuEventD
         }
     }
 
-    /// <summary>
-    /// 处理 Redis 失败（检查操作）
-    /// </summary>
+    private async Task<DeduplicationResult> HandleRedisFailureForProcessingAsync(string eventId, string? appKey, TimeSpan? ttl, TimeSpan? processingTimeout, CancellationToken cancellationToken, Exception ex)
+    {
+        await _retrySemaphore.WaitAsync(cancellationToken);
+        try
+        {
+            _consecutiveFailures++;
+            _lastFailureTime = DateTime.UtcNow;
+
+            _logger?.LogError(ex, "Redis 失败，连续失败次数: {FailCount}, 降级到内存去重", _consecutiveFailures);
+
+            if (_consecutiveFailures >= 3)
+            {
+                _redisAvailable = false;
+                _logger?.LogWarning("连续失败 {FailCount} 次，标记 Redis 为不可用，使用内存去重", _consecutiveFailures);
+            }
+
+            return await UseFallbackForProcessingAsync(eventId, appKey, ttl, processingTimeout, cancellationToken, "Redis 失败");
+        }
+        finally
+        {
+            _retrySemaphore.Release();
+        }
+    }
+
     private async Task<bool> HandleRedisFailureForCheckAsync(string eventId, string? appKey, CancellationToken cancellationToken, Exception ex)
     {
         await _retrySemaphore.WaitAsync(cancellationToken);
@@ -308,10 +580,24 @@ public class RedisFeishuEventDistributedDeduplicatorWithFallback : IFeishuEventD
 
             _logger?.LogError(ex, "Redis 失败（检查操作），连续失败次数: {FailCount}, 使用内存去重", _consecutiveFailures);
 
-            if (_consecutiveFailures >= 3)
+            if (_consecutiveFailures >= 3 && _redisAvailable)
             {
                 _redisAvailable = false;
                 _logger?.LogWarning("连续失败 {FailCount} 次，标记 Redis 为不可用", _consecutiveFailures);
+
+                if (_alertService != null)
+                {
+                    await _alertService.RaiseAlertAsync(
+                        FallbackAlertType.RedisFallbackActivated,
+                        $"Redis 连续失败 {_consecutiveFailures} 次，已降级到内存去重",
+                        ex,
+                        new Dictionary<string, object?>
+                        {
+                            ["ConsecutiveFailures"] = _consecutiveFailures,
+                            ["IsFallbackActive"] = true,
+                            ["EventId"] = eventId
+                        });
+                }
             }
 
             return await _fallbackDeduplicator.IsProcessedAsync(eventId, appKey, cancellationToken);
@@ -322,18 +608,18 @@ public class RedisFeishuEventDistributedDeduplicatorWithFallback : IFeishuEventD
         }
     }
 
-    /// <summary>
-    /// 使用内存降级去重器
-    /// </summary>
-    private async Task<bool> UseFallbackAsync(string eventId, string? appKey, TimeSpan? ttl, CancellationToken cancellationToken, string reason)
+    private async Task<bool> UseFallbackForMarkProcessedAsync(string eventId, string? appKey, TimeSpan? ttl, CancellationToken cancellationToken, string reason)
     {
         _logger?.LogDebug("使用内存降级去重器，原因: {Reason}, 事件ID: {EventId}, AppKey: {AppKey}", reason, eventId, appKey ?? "default");
         return await _fallbackDeduplicator.TryMarkAsProcessedAsync(eventId, appKey, ttl, cancellationToken);
     }
 
-    /// <summary>
-    /// 计算重试延迟（指数退避）
-    /// </summary>
+    private async Task<DeduplicationResult> UseFallbackForProcessingAsync(string eventId, string? appKey, TimeSpan? ttl, TimeSpan? processingTimeout, CancellationToken cancellationToken, string reason)
+    {
+        _logger?.LogDebug("使用内存降级去重器，原因: {Reason}, 事件ID: {EventId}, AppKey: {AppKey}", reason, eventId, appKey ?? "default");
+        return await _fallbackDeduplicator.TryMarkAsProcessingAsync(eventId, appKey, ttl, processingTimeout, cancellationToken);
+    }
+
     private TimeSpan CalculateRetryDelay(int attempt)
     {
         var delay = TimeSpan.FromMilliseconds(
@@ -345,29 +631,35 @@ public class RedisFeishuEventDistributedDeduplicatorWithFallback : IFeishuEventD
         return delay;
     }
 
-    /// <summary>
-    /// 重置失败计数
-    /// </summary>
     private void ResetFailureCount()
     {
         if (_consecutiveFailures > 0)
         {
+            var wasUnavailable = !_redisAvailable;
             _consecutiveFailures = 0;
-            if (!_redisAvailable)
+            if (wasUnavailable)
             {
                 _redisAvailable = true;
                 _logger?.LogInformation("Redis 连接恢复，重新启用 Redis 去重");
+
+                if (_alertService != null)
+                {
+                    _ = _alertService.RaiseAlertAsync(
+                        FallbackAlertType.RedisRecovered,
+                        "Redis 连接已恢复，重新启用 Redis 分布式去重",
+                        null,
+                        new Dictionary<string, object?>
+                        {
+                            ["WasFallbackActive"] = true,
+                            ["RecoveredAt"] = DateTime.UtcNow
+                        });
+                }
             }
         }
     }
 
-    /// <summary>
-    /// 生成 Redis 键
-    /// </summary>
     private string GetRedisKey(string eventId, string? appKey = null)
     {
-        // 如果提供了 appKey，将其包含在键中以实现多应用隔离
-        // 格式: {prefix}{appKey}:{eventId} 或 {prefix}{eventId}
         if (!string.IsNullOrEmpty(appKey))
         {
             return $"{_keyPrefix}{appKey}:{eventId}";

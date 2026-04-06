@@ -492,7 +492,8 @@ public class FeishuWebhookService : IFeishuWebhookService
     {
         if (_distributedDeduplicator != null)
         {
-            return (await _distributedDeduplicator.TryMarkAsProcessedAsync(eventId, appKey, cancellationToken: cancellationToken), false);
+            var result = await _distributedDeduplicator.TryMarkAsProcessingAsync(eventId, appKey, cancellationToken: cancellationToken);
+            return (result.IsDuplicate, result.WasProcessing);
         }
         else
         {
@@ -503,16 +504,30 @@ public class FeishuWebhookService : IFeishuWebhookService
     /// <summary>
     /// 标记去重为已完成
     /// </summary>
-    private void MarkDeduplicationCompletedAsync(string eventId)
+    private async Task MarkDeduplicationCompletedAsync(string eventId, string? appKey = null)
     {
-        _deduplicator.MarkAsCompleted(eventId);
+        if (_distributedDeduplicator != null)
+        {
+            await _distributedDeduplicator.MarkAsCompletedAsync(eventId, appKey);
+        }
+        else
+        {
+            _deduplicator.MarkAsCompleted(eventId);
+        }
     }
 
     /// <summary>
     /// 回滚去重状态
     /// </summary>
-    private void RollbackDeduplicationAsync(string eventId)
+    private async Task RollbackDeduplicationAsync(string eventId, string? appKey = null)
     {
-        _deduplicator.RollbackProcessing(eventId);
+        if (_distributedDeduplicator != null)
+        {
+            await _distributedDeduplicator.RollbackProcessingAsync(eventId, appKey);
+        }
+        else
+        {
+            _deduplicator.RollbackProcessing(eventId);
+        }
     }
 }

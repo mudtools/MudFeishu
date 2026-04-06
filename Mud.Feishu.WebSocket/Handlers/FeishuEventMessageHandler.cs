@@ -107,26 +107,31 @@ public class FeishuEventMessageHandler : JsonMessageHandler
                 eventData.EventType, eventData.EventId);
 
             // 去重检查 - 使用处理中状态机制
-            bool isProcessing = false;
+            DeduplicationResult? dedupResult = null;
             bool shouldSkip = false;
 
             if (_options.EventDeduplication.Mode == EventDeduplicationMode.Distributed && _distributedDeduplicator != null)
             {
-                // 使用分布式去重
-                isProcessing = await _distributedDeduplicator.TryMarkAsProcessedAsync(eventData.EventId, cancellationToken: cancellationToken);
+                // 使用分布式去重 - 使用状态机方法
+                dedupResult = await _distributedDeduplicator.TryMarkAsProcessingAsync(eventData.EventId, cancellationToken: cancellationToken);
+                if (dedupResult.IsDuplicate)
+                {
+                    _logger.LogDebug("事件 {EventId} 已在处理中或已处理，跳过 (WasProcessing: {WasProcessing}, Status: {Status})",
+                        eventData.EventId, dedupResult.WasProcessing, dedupResult.Status);
+                    shouldSkip = true;
+                    FeishuMetricsHelper.RecordEventDeduplicationHit("event_id");
+                }
             }
             else if (_options.EventDeduplication.Mode == EventDeduplicationMode.InMemory && _deduplicator != null)
             {
                 // 使用内存去重 - 标记为处理中
-                isProcessing = _deduplicator.TryMarkAsProcessing(eventData.EventId);
-            }
-
-            if (isProcessing)
-            {
-                _logger.LogDebug("事件 {EventId} 已在处理中或已处理，跳过", eventData.EventId);
-                shouldSkip = true;
-                // 记录事件去重命中
-                FeishuMetricsHelper.RecordEventDeduplicationHit("event_id");
+                var isProcessing = _deduplicator.TryMarkAsProcessing(eventData.EventId);
+                if (isProcessing)
+                {
+                    _logger.LogDebug("事件 {EventId} 已在处理中或已处理，跳过", eventData.EventId);
+                    shouldSkip = true;
+                    FeishuMetricsHelper.RecordEventDeduplicationHit("event_id");
+                }
             }
 
             if (!shouldSkip)
@@ -157,7 +162,11 @@ public class FeishuEventMessageHandler : JsonMessageHandler
                             await _eventHandlerFactory.HandleEventParallelAsync(eventData.EventType, eventData, cancellationToken);
 
                             // 处理成功，标记为已完成
-                            if (_options.EventDeduplication.Mode == EventDeduplicationMode.InMemory && _deduplicator != null)
+                            if (_options.EventDeduplication.Mode == EventDeduplicationMode.Distributed && _distributedDeduplicator != null)
+                            {
+                                await _distributedDeduplicator.MarkAsCompletedAsync(eventData.EventId, cancellationToken: cancellationToken);
+                            }
+                            else if (_options.EventDeduplication.Mode == EventDeduplicationMode.InMemory && _deduplicator != null)
                             {
                                 _deduplicator.MarkAsCompleted(eventData.EventId);
                             }
@@ -171,7 +180,11 @@ public class FeishuEventMessageHandler : JsonMessageHandler
                         processingException = ex;
 
                         // 处理失败，回滚处理中状态
-                        if (_options.EventDeduplication.Mode == EventDeduplicationMode.InMemory && _deduplicator != null)
+                        if (_options.EventDeduplication.Mode == EventDeduplicationMode.Distributed && _distributedDeduplicator != null)
+                        {
+                            await _distributedDeduplicator.RollbackProcessingAsync(eventData.EventId, cancellationToken: cancellationToken);
+                        }
+                        else if (_options.EventDeduplication.Mode == EventDeduplicationMode.InMemory && _deduplicator != null)
                         {
                             _deduplicator.RollbackProcessing(eventData.EventId);
                         }

@@ -113,7 +113,8 @@ public static class RedisFeishuServiceBuilderExtensions
                 redis,
                 logger,
                 options.EventCacheExpiration,
-                options.EventKeyPrefix);
+                processingTimeout: null,
+                keyPrefix: options.EventKeyPrefix);
         });
 
         return services;

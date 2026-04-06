@@ -5,6 +5,8 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using Mud.Feishu.Abstractions.Configuration;
+
 namespace Mud.Feishu.Abstractions.Services;
 
 /// <summary>
@@ -12,43 +14,201 @@ namespace Mud.Feishu.Abstractions.Services;
 /// 适用于单机部署或开发测试环境
 /// 对于分布式部署，建议使用 Redis 等外部存储实现
 /// </summary>
-public sealed class FeishuEventDistributedDeduplicator : MemoryDeduplicator<string>, IFeishuEventDistributedDeduplicator
+public sealed class FeishuEventDistributedDeduplicator : IFeishuEventDistributedDeduplicator
 {
+    private readonly ILogger<FeishuEventDistributedDeduplicator>? _logger;
+    private readonly Dictionary<string, DistributedCacheEntry> _cache;
+    private readonly Timer _cleanupTimer;
+    private readonly TimeSpan _cacheExpiration;
+    private readonly TimeSpan _processingTimeout;
+    private readonly TimeSpan _cleanupInterval;
+    private readonly object _lock = new();
+    private bool _disposed;
+
     /// <summary>
     /// 构造函数
     /// </summary>
+    /// <param name="logger">日志记录器</param>
+    /// <param name="cacheExpiration">缓存过期时间，默认 24 小时</param>
+    /// <param name="cleanupInterval">清理间隔时间，默认 5 分钟</param>
+    /// <param name="processingTimeout">处理中超时时间，默认 10 分钟</param>
     public FeishuEventDistributedDeduplicator(
         ILogger<FeishuEventDistributedDeduplicator>? logger = null,
         TimeSpan? cacheExpiration = null,
-        TimeSpan? cleanupInterval = null)
-        : base(logger, cacheExpiration, cleanupInterval)
+        TimeSpan? cleanupInterval = null,
+        TimeSpan? processingTimeout = null)
     {
-        logger?.LogInformation("飞书分布式事件去重服务初始化完成，缓存过期时间: {Expiration}, 清理间隔: {CleanupInterval}",
-            cacheExpiration ?? TimeSpan.FromHours(24),
-            cleanupInterval ?? TimeSpan.FromMinutes(5));
+        _logger = logger;
+        _cache = new Dictionary<string, DistributedCacheEntry>();
+        _cacheExpiration = cacheExpiration ?? TimeSpan.FromHours(24);
+        _cleanupInterval = cleanupInterval ?? TimeSpan.FromMinutes(5);
+        _processingTimeout = processingTimeout ?? TimeSpan.FromMinutes(10);
+
+        _cleanupTimer = new Timer(CleanupExpiredEntries, null, _cleanupInterval, _cleanupInterval);
+
+        _logger?.LogInformation("飞书分布式事件去重服务初始化完成，缓存过期时间: {Expiration}, 清理间隔: {CleanupInterval}, 处理超时: {ProcessingTimeout}",
+            _cacheExpiration, _cleanupInterval, _processingTimeout);
+    }
+
+    /// <summary>
+    /// 使用统一配置构造
+    /// </summary>
+    /// <param name="options">去重配置选项</param>
+    /// <param name="logger">日志记录器</param>
+    public FeishuEventDistributedDeduplicator(DeduplicationOptions options, ILogger<FeishuEventDistributedDeduplicator>? logger = null)
+    {
+        if (options == null)
+            throw new ArgumentNullException(nameof(options));
+
+        _logger = logger;
+        _cache = new Dictionary<string, DistributedCacheEntry>();
+        _cacheExpiration = options.CacheExpiration;
+        _cleanupInterval = options.CleanupInterval;
+        _processingTimeout = options.ProcessingTimeout;
+
+        _cleanupTimer = new Timer(CleanupExpiredEntries, null, _cleanupInterval, _cleanupInterval);
+
+        _logger?.LogInformation("飞书分布式事件去重服务初始化完成（使用统一配置），缓存过期时间: {Expiration}, 清理间隔: {CleanupInterval}, 处理超时: {ProcessingTimeout}",
+            _cacheExpiration, _cleanupInterval, _processingTimeout);
     }
 
     /// <inheritdoc />
+    [Obsolete("建议使用 TryMarkAsProcessingAsync 方法以支持状态机和异常恢复")]
     public Task<bool> TryMarkAsProcessedAsync(string eventId, string? appKey = null, TimeSpan? ttl = null, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(eventId))
         {
-            Logger?.LogWarning("事件ID为空，跳过去重检查");
+            _logger?.LogWarning("事件ID为空，跳过去重检查");
             return Task.FromResult(false);
         }
 
-        var result = TryMarkAsProcessed(eventId, appKey);
+        var cacheKey = GetCacheKey(eventId, appKey);
 
-        if (result)
+        lock (_lock)
         {
-            Logger?.LogDebug("事件 {EventId} (AppKey: {AppKey}) 已处理过，跳过", eventId, appKey ?? "default");
+            if (_cache.TryGetValue(cacheKey, out var entry))
+            {
+                _logger?.LogDebug("事件 {EventId} (AppKey: {AppKey}) 已处理过，跳过", eventId, appKey ?? "default");
+                return Task.FromResult(true);
+            }
+
+            _cache[cacheKey] = new DistributedCacheEntry
+            {
+                EventId = eventId,
+                AppKey = appKey,
+                Status = DeduplicationStatus.Completed,
+                Timestamp = DateTimeOffset.UtcNow
+            };
+
+            _logger?.LogDebug("事件 {EventId} (AppKey: {AppKey}) 标记为已处理", eventId, appKey ?? "default");
+            return Task.FromResult(false);
         }
-        else
+    }
+
+    /// <inheritdoc />
+    public Task<DeduplicationResult> TryMarkAsProcessingAsync(string eventId, string? appKey = null, TimeSpan? ttl = null, TimeSpan? processingTimeout = null, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrEmpty(eventId))
         {
-            Logger?.LogDebug("事件 {EventId} (AppKey: {AppKey}) 标记为已处理", eventId, appKey ?? "default");
+            _logger?.LogWarning("事件ID为空，跳过去重检查");
+            return Task.FromResult(DeduplicationResult.Success(eventId));
         }
 
-        return Task.FromResult(result);
+        var cacheKey = GetCacheKey(eventId, appKey);
+        var actualProcessingTimeout = processingTimeout ?? _processingTimeout;
+
+        lock (_lock)
+        {
+            if (_cache.TryGetValue(cacheKey, out var entry))
+            {
+                if (entry.Status == DeduplicationStatus.Completed)
+                {
+                    _logger?.LogDebug("事件 {EventId} (AppKey: {AppKey}) 已完成，跳过", eventId, appKey ?? "default");
+                    return Task.FromResult(DeduplicationResult.Duplicate(eventId, false, DeduplicationStatus.Completed));
+                }
+
+                if (entry.Status == DeduplicationStatus.Processing)
+                {
+                    var elapsed = DateTimeOffset.UtcNow - entry.Timestamp;
+                    if (elapsed > actualProcessingTimeout)
+                    {
+                        _logger?.LogWarning("事件 {EventId} (AppKey: {AppKey}) 处理中超时 ({Elapsed} > {Timeout})，允许重新处理",
+                            eventId, appKey ?? "default", elapsed, actualProcessingTimeout);
+
+                        entry.Status = DeduplicationStatus.Processing;
+                        entry.Timestamp = DateTimeOffset.UtcNow;
+
+                        return Task.FromResult(DeduplicationResult.TimeoutRecoverable(eventId));
+                    }
+
+                    _logger?.LogDebug("事件 {EventId} (AppKey: {AppKey}) 正在处理中，跳过", eventId, appKey ?? "default");
+                    return Task.FromResult(DeduplicationResult.Duplicate(eventId, true, DeduplicationStatus.Processing));
+                }
+            }
+
+            _cache[cacheKey] = new DistributedCacheEntry
+            {
+                EventId = eventId,
+                AppKey = appKey,
+                Status = DeduplicationStatus.Processing,
+                Timestamp = DateTimeOffset.UtcNow
+            };
+
+            _logger?.LogDebug("事件 {EventId} (AppKey: {AppKey}) 标记为处理中", eventId, appKey ?? "default");
+            return Task.FromResult(DeduplicationResult.Success(eventId));
+        }
+    }
+
+    /// <inheritdoc />
+    public Task MarkAsCompletedAsync(string eventId, string? appKey = null, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrEmpty(eventId))
+        {
+            return Task.CompletedTask;
+        }
+
+        var cacheKey = GetCacheKey(eventId, appKey);
+
+        lock (_lock)
+        {
+            if (_cache.TryGetValue(cacheKey, out var entry))
+            {
+                entry.Status = DeduplicationStatus.Completed;
+                entry.Timestamp = DateTimeOffset.UtcNow;
+                _logger?.LogDebug("事件 {EventId} (AppKey: {AppKey}) 标记为已完成", eventId, appKey ?? "default");
+            }
+        }
+
+        return Task.CompletedTask;
+    }
+
+    /// <inheritdoc />
+    public Task RollbackProcessingAsync(string eventId, string? appKey = null, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrEmpty(eventId))
+        {
+            return Task.CompletedTask;
+        }
+
+        var cacheKey = GetCacheKey(eventId, appKey);
+
+        lock (_lock)
+        {
+            if (_cache.TryGetValue(cacheKey, out var entry))
+            {
+                if (entry.Status == DeduplicationStatus.Processing)
+                {
+                    _cache.Remove(cacheKey);
+                    _logger?.LogDebug("事件 {EventId} (AppKey: {AppKey}) 处理回滚，允许重新处理", eventId, appKey ?? "default");
+                }
+                else
+                {
+                    _logger?.LogDebug("事件 {EventId} (AppKey: {AppKey}) 状态为 {Status}，无需回滚", eventId, appKey ?? "default", entry.Status);
+                }
+            }
+        }
+
+        return Task.CompletedTask;
     }
 
     /// <inheritdoc />
@@ -59,12 +219,120 @@ public sealed class FeishuEventDistributedDeduplicator : MemoryDeduplicator<stri
             return Task.FromResult(false);
         }
 
-        return Task.FromResult(IsProcessed(eventId, appKey));
+        var cacheKey = GetCacheKey(eventId, appKey);
+
+        lock (_lock)
+        {
+            if (_cache.TryGetValue(cacheKey, out var entry))
+            {
+                return Task.FromResult(entry.Status == DeduplicationStatus.Completed);
+            }
+            return Task.FromResult(false);
+        }
+    }
+
+    /// <inheritdoc />
+    public Task<DeduplicationStatus> GetStatusAsync(string eventId, string? appKey = null, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrEmpty(eventId))
+        {
+            return Task.FromResult(DeduplicationStatus.Pending);
+        }
+
+        var cacheKey = GetCacheKey(eventId, appKey);
+
+        lock (_lock)
+        {
+            if (_cache.TryGetValue(cacheKey, out var entry))
+            {
+                if (entry.Status == DeduplicationStatus.Processing)
+                {
+                    var elapsed = DateTimeOffset.UtcNow - entry.Timestamp;
+                    if (elapsed > _processingTimeout)
+                    {
+                        return Task.FromResult(DeduplicationStatus.Pending);
+                    }
+                }
+                return Task.FromResult(entry.Status);
+            }
+            return Task.FromResult(DeduplicationStatus.Pending);
+        }
     }
 
     /// <inheritdoc />
     public Task<int> CleanupExpiredAsync(CancellationToken cancellationToken = default)
     {
-        return Task.FromResult(CleanupExpired());
+        lock (_lock)
+        {
+            var now = DateTimeOffset.UtcNow;
+            var expiredKeys = _cache
+                .Where(kvp => (now - kvp.Value.Timestamp) > _cacheExpiration)
+                .Select(kvp => kvp.Key)
+                .ToList();
+
+            foreach (var key in expiredKeys)
+            {
+                _cache.Remove(key);
+            }
+
+            if (expiredKeys.Count > 0)
+            {
+                _logger?.LogDebug("清理了 {Count} 个过期缓存条目", expiredKeys.Count);
+            }
+
+            return Task.FromResult(expiredKeys.Count);
+        }
+    }
+
+    private void CleanupExpiredEntries(object? state)
+    {
+        lock (_lock)
+        {
+            var now = DateTimeOffset.UtcNow;
+            var expiredKeys = _cache
+                .Where(kvp => (now - kvp.Value.Timestamp) > _cacheExpiration)
+                .Select(kvp => kvp.Key)
+                .ToList();
+
+            foreach (var key in expiredKeys)
+            {
+                _cache.Remove(key);
+            }
+
+            if (expiredKeys.Count > 0)
+            {
+                _logger?.LogDebug("清理了 {Count} 个过期缓存条目", expiredKeys.Count);
+            }
+        }
+    }
+
+    private static string GetCacheKey(string eventId, string? appKey)
+    {
+        return string.IsNullOrEmpty(appKey) ? eventId : $"{appKey}:{eventId}";
+    }
+
+    /// <inheritdoc />
+    public ValueTask DisposeAsync()
+    {
+        if (_disposed)
+            return new ValueTask();
+
+        _disposed = true;
+        _cleanupTimer.Dispose();
+
+        lock (_lock)
+        {
+            _cache.Clear();
+        }
+
+        return new ValueTask();
+    }
+
+    private class DistributedCacheEntry
+    {
+        public string EventId { get; set; } = string.Empty;
+        public string? AppKey { get; set; }
+        public DeduplicationStatus Status { get; set; }
+        public DateTimeOffset Timestamp { get; set; }
     }
 }

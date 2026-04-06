@@ -5,6 +5,8 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using Mud.Feishu.Abstractions.Configuration;
+
 namespace Mud.Feishu.Abstractions.Services;
 
 /// <summary>
@@ -41,15 +43,37 @@ public class FeishuEventDeduplicator : IFeishuEventDeduplicator
     {
         _logger = logger;
         _eventCache = new Dictionary<string, EventCacheEntry>();
-        _cacheExpiration = cacheExpiration ?? TimeSpan.FromHours(24); // 默认缓存24小时
-        _cleanupInterval = cleanupInterval ?? TimeSpan.FromMinutes(5); // 默认每5分钟清理一次
-        _processingTimeout = processingTimeout ?? TimeSpan.FromMinutes(5); // 默认处理中超时5分钟
+        _cacheExpiration = cacheExpiration ?? TimeSpan.FromHours(24);
+        _cleanupInterval = cleanupInterval ?? TimeSpan.FromMinutes(5);
+        _processingTimeout = processingTimeout ?? TimeSpan.FromMinutes(5);
 
-        // 启动定期清理任务
         _cleanupTimer = new Timer(CleanupExpiredEntries, null, _cleanupInterval, _cleanupInterval);
 
         if (_logger != null && _logger.IsEnabled(LogLevel.Information))
             _logger?.LogInformation("飞书事件去重服务初始化完成，缓存过期时间: {Expiration}, 清理间隔: {CleanupInterval}, 处理中超时: {ProcessingTimeout}",
+            _cacheExpiration, _cleanupInterval, _processingTimeout);
+    }
+
+    /// <summary>
+    /// 使用统一配置构造
+    /// </summary>
+    /// <param name="options">去重配置选项</param>
+    /// <param name="logger">日志记录器（可选）</param>
+    public FeishuEventDeduplicator(DeduplicationOptions options, ILogger<FeishuEventDeduplicator>? logger = null)
+    {
+        if (options == null)
+            throw new ArgumentNullException(nameof(options));
+
+        _logger = logger;
+        _eventCache = new Dictionary<string, EventCacheEntry>();
+        _cacheExpiration = options.CacheExpiration;
+        _cleanupInterval = options.CleanupInterval;
+        _processingTimeout = options.ProcessingTimeout;
+
+        _cleanupTimer = new Timer(CleanupExpiredEntries, null, _cleanupInterval, _cleanupInterval);
+
+        if (_logger != null && _logger.IsEnabled(LogLevel.Information))
+            _logger?.LogInformation("飞书事件去重服务初始化完成（使用统一配置），缓存过期时间: {Expiration}, 清理间隔: {CleanupInterval}, 处理中超时: {ProcessingTimeout}",
             _cacheExpiration, _cleanupInterval, _processingTimeout);
     }
 

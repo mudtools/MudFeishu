@@ -34,12 +34,10 @@ public class RedisFeishuEventDistributedDeduplicatorTests
     {
         // Arrange
         _databaseMock
-            .Setup(x => x.StringSetAsync(
+            .Setup(x => x.HashGetAllAsync(
                 It.IsAny<RedisKey>(),
-                It.IsAny<RedisValue>(),
-                It.IsAny<TimeSpan>(),
-                When.NotExists))
-            .ReturnsAsync(true);
+                It.IsAny<CommandFlags>()))
+            .ReturnsAsync(Array.Empty<HashEntry>());
 
         var deduplicator = new RedisFeishuEventDistributedDeduplicator(
             _connectionMultiplexerMock.Object,
@@ -49,12 +47,14 @@ public class RedisFeishuEventDistributedDeduplicatorTests
         var result = await deduplicator.TryMarkAsProcessedAsync("test_event_123");
 
         // Assert
-        Assert.False(result); // StringSetAsync 返回 true（设置成功），表示新事件，所以 TryMarkAsProcessedAsync 返回 false
-        _databaseMock.Verify(x => x.StringSetAsync(
+        Assert.False(result);
+        _databaseMock.Verify(x => x.HashGetAllAsync(
             It.IsAny<RedisKey>(),
-            It.IsAny<RedisValue>(),
-            It.IsAny<TimeSpan?>(),
-            When.NotExists), Times.Once);
+            It.IsAny<CommandFlags>()), Times.Once);
+        _databaseMock.Verify(x => x.HashSetAsync(
+            It.IsAny<RedisKey>(),
+            It.IsAny<HashEntry[]>(),
+            It.IsAny<CommandFlags>()), Times.Once);
     }
 
     [Fact]
@@ -62,13 +62,14 @@ public class RedisFeishuEventDistributedDeduplicatorTests
     {
         // Arrange
         _databaseMock
-            .Setup(x => x.StringSetAsync(
+            .Setup(x => x.HashGetAllAsync(
                 It.IsAny<RedisKey>(),
-                It.IsAny<RedisValue>(),
-                It.IsAny<TimeSpan>(),
-                When.NotExists
-                ))
-            .ReturnsAsync(false);
+                It.IsAny<CommandFlags>()))
+            .ReturnsAsync(new HashEntry[]
+            {
+                new HashEntry("status", "completed"),
+                new HashEntry("timestamp", DateTime.UtcNow.ToString("O"))
+            });
 
         var deduplicator = new RedisFeishuEventDistributedDeduplicator(
             _connectionMultiplexerMock.Object,
@@ -78,7 +79,7 @@ public class RedisFeishuEventDistributedDeduplicatorTests
         var result = await deduplicator.TryMarkAsProcessedAsync("test_event_123");
 
         // Assert
-        Assert.True(result); // StringSetAsync 返回 false（键已存在），表示重复事件，所以 TryMarkAsProcessedAsync 返回 true
+        Assert.True(result);
     }
 
     [Fact]
@@ -86,12 +87,9 @@ public class RedisFeishuEventDistributedDeduplicatorTests
     {
         // Arrange
         _databaseMock
-            .Setup(x => x.StringSetAsync(
+            .Setup(x => x.HashGetAllAsync(
                 It.IsAny<RedisKey>(),
-                It.IsAny<RedisValue>(),
-                It.IsAny<TimeSpan>(),
-                When.NotExists
-                ))
+                It.IsAny<CommandFlags>()))
             .ThrowsAsync(new RedisException("Redis connection failed"));
 
         var deduplicator = new RedisFeishuEventDistributedDeduplicator(
@@ -108,8 +106,8 @@ public class RedisFeishuEventDistributedDeduplicatorTests
     {
         // Arrange
         _databaseMock
-            .Setup(x => x.KeyExistsAsync(It.IsAny<RedisKey>(), It.IsAny<CommandFlags>()))
-            .ReturnsAsync(true);
+            .Setup(x => x.HashGetAsync(It.IsAny<RedisKey>(), It.IsAny<RedisValue>(), It.IsAny<CommandFlags>()))
+            .ReturnsAsync("completed");
 
         var deduplicator = new RedisFeishuEventDistributedDeduplicator(
             _connectionMultiplexerMock.Object,
@@ -127,9 +125,8 @@ public class RedisFeishuEventDistributedDeduplicatorTests
     {
         // Arrange
         _databaseMock
-
-            .Setup(x => x.KeyExistsAsync(It.IsAny<RedisKey>(), It.IsAny<CommandFlags>()))
-            .ReturnsAsync(false);
+            .Setup(x => x.HashGetAsync(It.IsAny<RedisKey>(), It.IsAny<RedisValue>(), It.IsAny<CommandFlags>()))
+            .ReturnsAsync(RedisValue.Null);
 
         var deduplicator = new RedisFeishuEventDistributedDeduplicator(
             _connectionMultiplexerMock.Object,
@@ -178,13 +175,10 @@ public class RedisFeishuEventDistributedDeduplicatorTests
         // Arrange
         var customTtl = TimeSpan.FromMinutes(10);
         _databaseMock
-            .Setup(x => x.StringSetAsync(
+            .Setup(x => x.HashGetAllAsync(
                 It.IsAny<RedisKey>(),
-                It.IsAny<RedisValue>(),
-                customTtl,
-                When.NotExists
-                ))
-            .ReturnsAsync(true);
+                It.IsAny<CommandFlags>()))
+            .ReturnsAsync(Array.Empty<HashEntry>());
 
         var deduplicator = new RedisFeishuEventDistributedDeduplicator(
             _connectionMultiplexerMock.Object,
@@ -194,12 +188,16 @@ public class RedisFeishuEventDistributedDeduplicatorTests
         var result = await deduplicator.TryMarkAsProcessedAsync("test_event_123", null, customTtl);
 
         // Assert
-        Assert.False(result); // StringSetAsync 返回 true（设置成功），表示新事件，所以 TryMarkAsProcessedAsync 返回 false
-        _databaseMock.Verify(x => x.StringSetAsync(
+        Assert.False(result);
+        _databaseMock.Verify(x => x.HashSetAsync(
             It.IsAny<RedisKey>(),
-            It.IsAny<RedisValue>(),
-            customTtl,
-            When.NotExists), Times.Once);
+            It.IsAny<HashEntry[]>(),
+            It.IsAny<CommandFlags>()), Times.Once);
+        _databaseMock.Verify(x => x.KeyExpireAsync(
+            It.IsAny<RedisKey>(),
+            It.IsAny<TimeSpan>(),
+            It.IsAny<ExpireWhen>(),
+            It.IsAny<CommandFlags>()), Times.Once);
     }
 
     [Fact]

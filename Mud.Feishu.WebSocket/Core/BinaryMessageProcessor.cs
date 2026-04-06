@@ -29,6 +29,7 @@ public class BinaryMessageProcessor : IDisposable
     private readonly List<Task> _activeProcessingTasks = new();
     private readonly IFeishuSeqIDDeduplicator? _seqIdDeduplicator;
     private readonly MessageSequenceValidator? _sequenceValidator;
+    private readonly IUnifiedDeduplicationMiddleware? _unifiedDeduplicationMiddleware;
 
     /// <summary>
     /// 二进制消息接收事件
@@ -49,7 +50,8 @@ public class BinaryMessageProcessor : IDisposable
         FeishuWebSocketOptions options,
         MessageRouter messageRouter,
         IFeishuSeqIDDeduplicator? seqIdDeduplicator = null,
-        MessageSequenceValidator? sequenceValidator = null)
+        MessageSequenceValidator? sequenceValidator = null,
+        IUnifiedDeduplicationMiddleware? unifiedDeduplicationMiddleware = null)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _options = options ?? new FeishuWebSocketOptions();
@@ -57,6 +59,7 @@ public class BinaryMessageProcessor : IDisposable
         _messageRouter = messageRouter ?? throw new ArgumentNullException(nameof(messageRouter));
         _seqIdDeduplicator = seqIdDeduplicator;
         _sequenceValidator = sequenceValidator;
+        _unifiedDeduplicationMiddleware = unifiedDeduplicationMiddleware;
     }
 
     /// <summary>
@@ -203,15 +206,48 @@ public class BinaryMessageProcessor : IDisposable
                     }
                 }
 
-                // SeqID 去重检查
-                if (_seqIdDeduplicator != null && _seqIdDeduplicator.TryMarkAsProcessed(frame.SeqID))
+                string? extractedEventId = null;
+                if (frame?.Payload != null)
                 {
-                    if (_options.EnableLogging)
-                        _logger.LogDebug("SeqID {SeqID} 已处理过，跳过", frame.SeqID);
-                    eventArgs.SkipReason = $"SeqID {frame.SeqID} 已处理过";
-                    BinaryMessageReceived?.Invoke(this, eventArgs);
-                    await SendAckMessageAsync(frame, true, cancellationToken);
-                    return;
+                    var jsonPayload = System.Text.Encoding.UTF8.GetString(frame.Payload);
+                    try
+                    {
+                        using var jsonDoc = JsonDocument.Parse(jsonPayload);
+                        if (jsonDoc.RootElement.TryGetProperty("event_id", out var eventIdElement))
+                        {
+                            extractedEventId = eventIdElement.GetString();
+                        }
+                    }
+                    catch
+                    {
+                    }
+                }
+
+                if (_unifiedDeduplicationMiddleware != null && (!string.IsNullOrEmpty(extractedEventId) || frame.SeqID > 0))
+                {
+                    var dedupResult = await _unifiedDeduplicationMiddleware.CheckAsync(extractedEventId, frame.SeqID, cancellationToken);
+                    if (dedupResult.ShouldSkip)
+                    {
+                        if (_options.EnableLogging)
+                            _logger.LogDebug("统一去重检查跳过: {Reason}, EventId={EventId}, SeqId={SeqId}",
+                                dedupResult.Reason, extractedEventId, frame.SeqID);
+                        eventArgs.SkipReason = dedupResult.Reason;
+                        BinaryMessageReceived?.Invoke(this, eventArgs);
+                        await SendAckMessageAsync(frame, true, cancellationToken);
+                        return;
+                    }
+                }
+                else
+                {
+                    if (_seqIdDeduplicator != null && _seqIdDeduplicator.TryMarkAsProcessed(frame.SeqID))
+                    {
+                        if (_options.EnableLogging)
+                            _logger.LogDebug("SeqID {SeqID} 已处理过，跳过", frame.SeqID);
+                        eventArgs.SkipReason = $"SeqID {frame.SeqID} 已处理过";
+                        BinaryMessageReceived?.Invoke(this, eventArgs);
+                        await SendAckMessageAsync(frame, true, cancellationToken);
+                        return;
+                    }
                 }
 
                 if (frame?.Payload != null)

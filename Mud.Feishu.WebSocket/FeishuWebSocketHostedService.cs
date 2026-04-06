@@ -9,7 +9,6 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Mud.Feishu.WebSocket.SocketEventArgs;
-using System.Text.Json;
 
 namespace Mud.Feishu.WebSocket;
 
@@ -21,9 +20,6 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
     private readonly ILogger<FeishuWebSocketHostedService> _logger;
     private readonly IFeishuWebSocketManager _webSocketManager;
     private readonly FeishuWebSocketOptions _options;
-
-    // 心跳和健康检查
-    private Timer? _heartbeatTimer;
     private bool _disposed = false;
 
     // 重连状态管理
@@ -227,9 +223,8 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
         var state = _webSocketManager.GetConnectionState();
         _logger.LogInformation("飞书WebSocket连接已建立 (时间: {Time}, 重连次数: {ReconnectCount})",
             DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss"), state.ReconnectCount);
-
-        // 启动心跳检测
-        StartHeartbeat();
+        
+        // 心跳管理已由 FeishuWebSocketClient 内部统一处理，无需在此重复启动
     }
 
     /// <summary>
@@ -246,9 +241,8 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
                 e.CloseStatus, e.CloseStatusDescription, stats.Uptime);
         }
 
-        // 停止心跳检测
-        StopHeartbeat();
-
+        // 心跳管理已由 FeishuWebSocketClient 内部统一处理，无需在此停止
+        
         // 使用统一重连方法，避免重复重连逻辑
         _ = Task.Run(async () =>
         {
@@ -272,58 +266,6 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
     {
         if (_options.EnableLogging)
             _logger.LogError(e.Exception, "飞书WebSocket发生错误: {Message} (类型: {Type})", e.ErrorMessage, e.ErrorType);
-    }
-
-    /// <summary>
-    /// 启动心跳检测
-    /// </summary>
-    private void StartHeartbeat()
-    {
-        StopHeartbeat(); // 确保没有重复的心跳定时器
-
-        if (_options.HeartbeatIntervalMs > 0)
-        {
-            _heartbeatTimer = new Timer(HeartbeatCallback, null,
-                TimeSpan.FromMilliseconds(_options.HeartbeatIntervalMs),
-                TimeSpan.FromMilliseconds(_options.HeartbeatIntervalMs));
-        }
-    }
-
-    /// <summary>
-    /// 停止心跳检测
-    /// </summary>
-    private void StopHeartbeat()
-    {
-        _heartbeatTimer?.Dispose();
-        _heartbeatTimer = null;
-    }
-
-    /// <summary>
-    /// 心跳回调
-    /// </summary>
-    /// <param name="state">状态对象</param>
-    private async void HeartbeatCallback(object? state)
-    {
-        if (_disposed || !_webSocketManager.IsConnected)
-            return;
-
-        try
-        {
-            // 发送心跳消息
-            var heartbeatMessage = JsonSerializer.Serialize(new
-            {
-                type = "heartbeat",
-                timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
-            });
-            await _webSocketManager.SendMessageAsync(heartbeatMessage);
-
-            if (_options.EnableLogging)
-                _logger.LogDebug("心跳检测成功");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "心跳检测失败");
-        }
     }
 
     /// <summary>
@@ -371,9 +313,6 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
                 _webSocketManager.Connected -= OnConnected;
                 _webSocketManager.Disconnected -= OnDisconnected;
                 _webSocketManager.Error -= OnError;
-
-                // 停止心跳检测
-                StopHeartbeat();
 
                 // 释放重连锁
                 _reconnectLock?.Dispose();

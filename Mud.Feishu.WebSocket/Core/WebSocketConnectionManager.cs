@@ -7,8 +7,10 @@
 using Microsoft.Extensions.Logging;
 using Mud.Feishu.WebSocket.Core;
 using Mud.Feishu.WebSocket.SocketEventArgs;
-using Mud.HttpUtils;
 using System.Net.WebSockets;
+using System.Net.Security;
+using System.Security.Authentication;
+using System.Security.Cryptography.X509Certificates;
 
 namespace Mud.Feishu.WebSocket;
 
@@ -118,6 +120,9 @@ public class WebSocketConnectionManager : IDisposable
             // 创建新的WebSocket连接
             _webSocket = new ClientWebSocket();
             _cancellationTokenSource = new CancellationTokenSource();
+
+            // 配置SSL/TLS证书验证
+            ConfigureCertificateValidation(_webSocket, uri);
 
             // 设置连接超时
             using var timeoutCts = new CancellationTokenSource(_options.ConnectionTimeoutMs);
@@ -390,6 +395,102 @@ public class WebSocketConnectionManager : IDisposable
                 _logger.LogInformation("准备自动重连...");
             }
         }
+    }
+
+    /// <summary>
+    /// 配置SSL/TLS证书验证
+    /// </summary>
+    /// <param name="webSocket">WebSocket客户端实例</param>
+    /// <param name="uri">连接的URI</param>
+    /// <remarks>
+    /// 根据配置选项设置证书验证策略。生产环境建议启用严格的证书验证。
+    /// 支持自定义证书验证回调、自签名证书处理等配置。
+    /// 注意：证书验证回调仅在 .NET Core 2.1+ / .NET 5+ 中可用。
+    /// </remarks>
+    private void ConfigureCertificateValidation(ClientWebSocket webSocket, Uri uri)
+    {
+        // 仅对wss协议配置证书验证
+        if (uri.Scheme != "wss")
+            return;
+
+#if NETCOREAPP2_1_OR_GREATER || NET5_0_OR_GREATER
+        try
+        {
+            // 使用自定义证书验证回调（优先级最高）
+            if (_options.CustomCertificateValidationCallback != null)
+            {
+                webSocket.Options.RemoteCertificateValidationCallback = _options.CustomCertificateValidationCallback;
+                if (_options.EnableLogging)
+                {
+                    _logger.LogDebug("已配置自定义证书验证回调");
+                }
+                return;
+            }
+
+            // 根据配置决定是否验证证书
+            if (!_options.ValidateServerCertificate)
+            {
+                // 禁用证书验证（仅用于开发/测试环境）
+                webSocket.Options.RemoteCertificateValidationCallback = (sender, certificate, chain, sslPolicyErrors) => true;
+                if (_options.EnableLogging)
+                {
+                    _logger.LogWarning("已禁用SSL证书验证，此配置仅应在开发/测试环境使用");
+                }
+                return;
+            }
+
+            // 配置标准证书验证，支持自签名证书选项
+            webSocket.Options.RemoteCertificateValidationCallback = (sender, certificate, chain, sslPolicyErrors) =>
+            {
+                // 如果没有错误，直接通过
+                if (sslPolicyErrors == SslPolicyErrors.None)
+                    return true;
+
+                // 如果允许自签名证书且错误仅为自签名相关
+                if (_options.AllowSelfSignedCertificates)
+                {
+                    if (sslPolicyErrors == SslPolicyErrors.RemoteCertificateChainErrors ||
+                        sslPolicyErrors == SslPolicyErrors.RemoteCertificateNameMismatch)
+                    {
+                        if (_options.EnableLogging)
+                        {
+                            _logger.LogWarning("允许自签名证书: {Errors}", sslPolicyErrors);
+                        }
+                        return true;
+                    }
+                }
+
+                // 其他情况严格验证
+                if (_options.EnableLogging)
+                {
+                    _logger.LogError("SSL证书验证失败: {Errors}", sslPolicyErrors);
+                }
+                return false;
+            };
+
+            if (_options.EnableLogging)
+            {
+                _logger.LogDebug("已配置SSL证书验证 (允许自签名: {AllowSelfSigned})", _options.AllowSelfSignedCertificates);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "配置证书验证时发生错误");
+        }
+#else
+        // .NET Standard 2.0 不支持 RemoteCertificateValidationCallback
+        if (_options.EnableLogging)
+        {
+            if (!_options.ValidateServerCertificate)
+            {
+                _logger.LogWarning(".NET Standard 2.0 不支持自定义证书验证回调，ValidateServerCertificate 配置无效");
+            }
+            if (_options.AllowSelfSignedCertificates)
+            {
+                _logger.LogWarning(".NET Standard 2.0 不支持自定义证书验证回调，AllowSelfSignedCertificates 配置无效");
+            }
+        }
+#endif
     }
 
     /// <summary>

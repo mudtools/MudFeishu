@@ -1,5 +1,5 @@
 // -----------------------------------------------------------------------
-//  作者：Mud Studio  版权所有 (c) Mud Studio 2025
+//  作者：Mud Studio  版权所有 (c) Mud Studio 2026   
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
@@ -12,7 +12,7 @@ namespace Mud.Feishu.WebSocket;
 /// </summary>
 public class FeishuWebSocketOptions
 {
-    private int _heartbeatIntervalMs = 30000;
+    private int _heartbeatIntervalMs = 25000;
     private int _reconnectDelayMs = 5000;
     private int _emptyQueueCheckIntervalMs = 100;
     private int _maxReconnectDelayMs = 30000;
@@ -54,7 +54,7 @@ public class FeishuWebSocketOptions
     public int InitialReceiveBufferSize { get; set; } = 4096;
 
     /// <summary>
-    /// 心跳间隔时间（毫秒），默认为30000毫秒，最小为5000毫秒
+    /// 心跳间隔时间（毫秒），默认为25000毫秒（飞书建议25秒内），最小为5000毫秒
     /// </summary>
     public int HeartbeatIntervalMs
     {
@@ -114,6 +114,22 @@ public class FeishuWebSocketOptions
         get => _maxConcurrentMessageProcessing;
         set => _maxConcurrentMessageProcessing = Math.Max(1, value);
     }
+
+    /// <summary>
+    /// 是否验证SSL证书，默认为true（生产环境建议为true）
+    /// </summary>
+    public bool ValidateServerCertificate { get; set; } = true;
+
+    /// <summary>
+    /// 是否允许自签名证书，默认为false（生产环境建议为false）
+    /// </summary>
+    public bool AllowSelfSignedCertificates { get; set; } = false;
+
+    /// <summary>
+    /// 自定义证书验证回调（可选）
+    /// <para>如果设置，将使用此回调进行证书验证</para>
+    /// </summary>
+    public System.Net.Security.RemoteCertificateValidationCallback? CustomCertificateValidationCallback { get; set; }
 
     /// <summary>
     /// 事件去重配置

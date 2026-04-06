@@ -1,11 +1,4 @@
 // -----------------------------------------------------------------------
-//  作者：Mud Studio  版权所有 (c) Mud Studio 2026   
-//  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
-//  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
-//  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
-// -----------------------------------------------------------------------
-
-// -----------------------------------------------------------------------
 //  作者：Mud Studio  版权所有 (c) Mud Studio 2025
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
@@ -16,14 +9,13 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Mud.Feishu.DataModels.WsEndpoint;
 using Mud.Feishu.WebSocket.SocketEventArgs;
-using Mud.HttpUtils;
 
 namespace Mud.Feishu.WebSocket;
 
 /// <summary>
 /// 飞书WebSocket管理器实现，用于管理WebSocket连接的生命周期
 /// </summary>
-public class FeishuWebSocketManager : IFeishuWebSocketManager
+public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable
 {
     private readonly ILogger<FeishuWebSocketManager> _logger;
     private readonly IFeishuAppContext _appContext;
@@ -482,6 +474,66 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager
         _logger.LogError(e.Exception, "Mud 飞书WebSocket发生错误: {Message} (类型: {ErrorType}, 状态: {State}, 网络: {IsNetwork}, 认证: {IsAuth}, 时间: {Timestamp})",
             e.ErrorMessage, e.ErrorType, e.ConnectionState, e.IsNetworkError, e.IsAuthError, e.Timestamp);
         Error?.Invoke(this, e);
+    }
+
+    /// <summary>
+    /// 异步释放资源
+    /// </summary>
+    /// <returns>表示异步释放操作的任务</returns>
+    public async ValueTask DisposeAsync()
+    {
+        if (_disposed)
+            return;
+
+        try
+        {
+            // 使用异步方式停止服务
+            if (_isRunning)
+            {
+                using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+                try
+                {
+                    await StopAsync(timeoutCts.Token).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    _logger.LogWarning("停止WebSocket服务超时，强制释放资源");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "停止WebSocket服务时发生错误");
+                }
+            }
+
+            // 清理令牌缓存
+            lock (_tokenLock)
+            {
+                _cachedAccessToken = null;
+                _tokenExpiryTime = DateTime.MinValue;
+            }
+
+            // 异步释放客户端资源（如果客户端实现了IAsyncDisposable）
+            if (_webSocketClient is IAsyncDisposable asyncDisposableClient)
+            {
+                await asyncDisposableClient.DisposeAsync().ConfigureAwait(false);
+            }
+            else
+            {
+                _webSocketClient?.Dispose();
+            }
+
+            _startStopLock?.Dispose();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "异步释放资源时发生错误");
+        }
+        finally
+        {
+            _disposed = true;
+        }
+
+        GC.SuppressFinalize(this);
     }
 
     /// <summary>

@@ -25,6 +25,16 @@ public class MessageSequenceValidator
     /// 最近处理的序号数量（用于滑动窗口去重）
     /// </summary>
     private const int RecentNumbersWindow = 1000;
+    
+    /// <summary>
+    /// 序号跳跃阈值，超过此值认为消息丢失
+    /// </summary>
+    private const int SequenceGapThreshold = 10;
+    
+    /// <summary>
+    /// 清理旧数据的间隔（分钟）
+    /// </summary>
+    private const int CleanupIntervalMinutes = 30;
 
     /// <summary>
     /// 验证失败事件
@@ -103,7 +113,7 @@ public class MessageSequenceValidator
                 ulong sequenceGap = sequenceNumber - _lastProcessedSequenceNumber.Value;
 
                 // 如果序号跳跃较大，可能有消息丢失
-                if (sequenceGap > 10) // 阈值可配置
+                if (sequenceGap > SequenceGapThreshold)
                 {
                     _logger.LogWarning("检测到消息丢失: Last={LastSequence}, Current={CurrentSequence}, LostCount={LostCount}",
                         _lastProcessedSequenceNumber, sequenceNumber, sequenceGap - 1);
@@ -149,7 +159,7 @@ public class MessageSequenceValidator
     private void CleanupOldData()
     {
         var timeSinceReset = DateTime.UtcNow - _lastResetTime;
-        if (timeSinceReset.TotalMinutes > 30) // 每30分钟清理一次
+        if (timeSinceReset.TotalMinutes > CleanupIntervalMinutes)
         {
             if (_options.EnableLogging)
                 _logger.LogDebug("清理消息序号验证器的旧数据");

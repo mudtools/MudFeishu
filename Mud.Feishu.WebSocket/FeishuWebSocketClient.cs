@@ -56,6 +56,11 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
     // 心跳相关状态
     private DateTime _lastPongTime = DateTime.MinValue;
     private int _heartbeatMissedCount = 0;
+    
+    /// <summary>
+    /// 心跳超时阈值，连续超过此次数将触发重连
+    /// </summary>
+    private const int HeartbeatTimeoutThreshold = 3;
 
     // 连接状态线程安全保护
     private int _connectionState = 0; // 0=未连接, 1=已连接, 2=连接中, 3=重连中
@@ -577,9 +582,27 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
                         // 加入消息队列
                         if (_options.EnableMessageQueue)
                         {
-                            while (_messageQueue.Count >= _options.MessageQueueCapacity)
+                            // 检查队列是否已满，满时丢弃最旧的消息并发出告警
+                            if (_messageQueue.Count >= _options.MessageQueueCapacity)
                             {
-                                _messageQueue.TryDequeue(out _);
+                                var droppedCount = 0;
+                                while (_messageQueue.Count >= _options.MessageQueueCapacity && _messageQueue.TryDequeue(out _))
+                                {
+                                    droppedCount++;
+                                }
+                                
+                                // 发出队列满告警
+                                _logger.LogWarning("消息队列已满 (容量: {Capacity})，已丢弃 {DroppedCount} 条最旧消息以腾出空间",
+                                    _options.MessageQueueCapacity, droppedCount);
+                                
+                                // 触发错误事件通知上层应用
+                                Error?.Invoke(this, new WebSocketErrorEventArgs
+                                {
+                                    Exception = new InvalidOperationException($"消息队列已满，丢弃了 {droppedCount} 条旧消息"),
+                                    ErrorMessage = $"消息队列已满，丢弃 {droppedCount} 条旧消息",
+                                    ErrorType = "QueueOverflowWarning",
+                                    IsRecoverable = true
+                                });
                             }
                             _messageQueue.Enqueue(message);
                         }
@@ -762,7 +785,7 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
                 timeSinceLastPong.TotalMilliseconds, _heartbeatMissedCount);
 
             // 如果连续多次超时，触发重连
-            if (_heartbeatMissedCount >= 3 && _options.AutoReconnect)
+            if (_heartbeatMissedCount >= HeartbeatTimeoutThreshold && _options.AutoReconnect)
             {
                 // 检查是否超过最大重连次数，避免无限重连
                 if (IsMaxReconnectAttemptsReached())

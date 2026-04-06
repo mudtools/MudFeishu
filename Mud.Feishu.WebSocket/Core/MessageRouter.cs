@@ -162,7 +162,10 @@ public class MessageRouter
         }
         catch (System.Text.Json.JsonException ex)
         {
-            _logger.LogError(ex, "解析消息JSON失败: {Message}", message);
+            // 记录更详细的JSON解析错误信息，便于排查问题
+            var truncatedMessage = message.Length > 500 ? message.Substring(0, 500) + "..." : message;
+            _logger.LogError(ex, "解析消息JSON失败，消息长度: {Length}, 消息前500字符: {Message}, 错误位置: {ErrorPosition}",
+                message.Length, truncatedMessage, ex.BytePositionInLine);
             return string.Empty;
         }
     }

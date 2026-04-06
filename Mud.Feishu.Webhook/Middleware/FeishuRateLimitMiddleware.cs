@@ -1,5 +1,5 @@
 // -----------------------------------------------------------------------
-//  作者：Mud Studio  版权所有 (c) Mud Studio 2025
+//  作者：Mud Studio  版权所有 (c) Mud Studio 2026   
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
@@ -84,7 +84,7 @@ public class FeishuRateLimitMiddleware : IDisposable
         }
 
         // 检查是否在白名单中
-        if (!string.IsNullOrEmpty(clientIp) && _rateLimitOptions.WhitelistIPs.Contains(clientIp))
+        if (!string.IsNullOrEmpty(clientIp) && _rateLimitOptions.WhitelistIPs.Contains(clientIp!))
         {
             _logger.LogDebug("客户端 IP {ClientIP} 在白名单中，跳过限流", clientIp);
             await _next(context);
@@ -97,13 +97,13 @@ public class FeishuRateLimitMiddleware : IDisposable
         var rateLimitKey = (appKey ?? "global", clientIp);
 
         // 获取或创建计数器
-        if (_requestCounts.TryGetValue(rateLimitKey, out var counter))
+        if (_requestCounts.TryGetValue(rateLimitKey!, out var counter))
         {
             // 检查是否超出时间窗口
             if ((now - counter.WindowStart).TotalSeconds > _rateLimitOptions.WindowSizeSeconds)
             {
                 // 新窗口，重置计数
-                _requestCounts[rateLimitKey] = (1, now);
+                _requestCounts[rateLimitKey!] = (1, now);
             }
             else
             {
@@ -120,13 +120,13 @@ public class FeishuRateLimitMiddleware : IDisposable
 
                 // 使用 CompareExchange 确保原子性更新
                 var newCounter = (counter.Count + 1, counter.WindowStart);
-                while (!_requestCounts.TryUpdate(rateLimitKey, newCounter, counter))
+                while (!_requestCounts.TryUpdate(rateLimitKey!, newCounter, counter))
                 {
                     // 如果更新失败，重新获取当前值
-                    if (!_requestCounts.TryGetValue(rateLimitKey, out counter))
+                    if (!_requestCounts.TryGetValue(rateLimitKey!, out counter))
                     {
                         // 如果键不存在，添加新条目
-                        _requestCounts.TryAdd(rateLimitKey, (1, now));
+                        _requestCounts.TryAdd(rateLimitKey!, (1, now));
                         break;
                     }
                     newCounter = (counter.Count + 1, counter.WindowStart);
@@ -136,7 +136,7 @@ public class FeishuRateLimitMiddleware : IDisposable
         else
         {
             // 新 IP，尝试添加计数器，如果已存在则获取现有值并递增
-            _requestCounts.TryAdd(rateLimitKey, (1, now));
+            _requestCounts.TryAdd(rateLimitKey!, (1, now));
         }
 
         await _next(context);

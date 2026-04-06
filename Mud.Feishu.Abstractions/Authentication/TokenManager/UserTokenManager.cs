@@ -159,7 +159,7 @@ internal class UserTokenManager : IFeishuUserTokenManager
         var userId = openId;
         var cacheKey = GenerateCacheKey(userId);
 
-        var tokenInfo = UserTokenInfo.FromCredentialToken(token, userId, openId, unionId);
+        var tokenInfo = UserTokenInfo.FromCredentialToken(token, userId!, openId, unionId);
         await _userTokenCache.SetAsync(cacheKey, tokenInfo, cancellationToken);
 
         _logger.LogInformation("User token acquired for user {UserId}, access token expires at {ExpireTime}, refresh token expires at {RefreshExpireTime}",

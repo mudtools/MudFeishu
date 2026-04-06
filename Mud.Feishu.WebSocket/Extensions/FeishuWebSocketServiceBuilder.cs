@@ -312,7 +312,14 @@ public class FeishuWebSocketServiceBuilder
         }
 
         // 注册重连协调器（单例）
-        _services.AddSingleton<IReconnectionOrchestrator, ReconnectionOrchestrator>();
+        _services.AddSingleton<IReconnectionOrchestrator>(serviceProvider =>
+        {
+            var logger = serviceProvider.GetRequiredService<ILogger<ReconnectionOrchestrator>>();
+            var strategy = serviceProvider.GetRequiredService<IReconnectStrategy>();
+            var manager = serviceProvider.GetRequiredService<IFeishuWebSocketManager>();
+            var options = serviceProvider.GetRequiredService<IOptions<FeishuWebSocketOptions>>().Value;
+            return new ReconnectionOrchestrator(logger, strategy, manager, options);
+        });
 
         // 注册WebSocket客户端
         _services.AddSingleton<IFeishuWebSocketClient>(serviceProvider =>

@@ -6,6 +6,7 @@
 // -----------------------------------------------------------------------
 
 using Microsoft.Extensions.DependencyInjection;
+using Mud.Feishu.Abstractions.Internal;
 using Mud.Feishu.Abstractions.Utilities;
 using Mud.Feishu.Authentication;
 using Mud.Feishu.TokenManager;
@@ -137,7 +138,7 @@ public class MultiAppTests
         // Arrange
         var services = new ServiceCollection();
         services.AddHttpClient();
-        services.AddSingleton<IFeishuAuthentication, FeishuV3Authentication>();
+        services.AddSingleton<IFeishuAuthentication, FeishuAuthentication>();
         services.AddSingleton<ICurrentUserContext, CurrentUserContext>();
         services.Configure<JsonSerializerOptions>(options => HttpClientExtensions.GetDefaultJsonSerializerOptions());
 
@@ -182,7 +183,7 @@ public class MultiAppTests
         // Arrange
         var services = new ServiceCollection();
         services.AddHttpClient();
-        services.AddSingleton<IFeishuAuthentication, FeishuV3Authentication>();
+        services.AddSingleton<IFeishuAuthentication, FeishuAuthentication>();
         services.AddSingleton<ICurrentUserContext, CurrentUserContext>();
         services.Configure<JsonSerializerOptions>(options => HttpClientExtensions.GetDefaultJsonSerializerOptions());
 
@@ -216,7 +217,7 @@ public class MultiAppTests
         // Arrange
         var services = new ServiceCollection();
         services.AddHttpClient();
-        services.AddSingleton<IFeishuAuthentication, FeishuV3Authentication>();
+        services.AddSingleton<IFeishuAuthentication, FeishuAuthentication>();
         services.AddSingleton<ICurrentUserContext, CurrentUserContext>();
         services.Configure<JsonSerializerOptions>(options => HttpClientExtensions.GetDefaultJsonSerializerOptions());
 
@@ -259,7 +260,7 @@ public class MultiAppTests
         // Arrange
         var services = new ServiceCollection();
         services.AddHttpClient();
-        services.AddSingleton<IFeishuAuthentication, FeishuV3Authentication>();
+        services.AddSingleton<IFeishuAuthentication, FeishuAuthentication>();
         services.AddSingleton<ICurrentUserContext, CurrentUserContext>();
         services.Configure<JsonSerializerOptions>(options => HttpClientExtensions.GetDefaultJsonSerializerOptions());
 
@@ -293,7 +294,7 @@ public class MultiAppTests
         // Arrange
         var services = new ServiceCollection();
         services.AddHttpClient();
-        services.AddSingleton<IFeishuAuthentication, FeishuV3Authentication>();
+        services.AddSingleton<IFeishuAuthentication, FeishuAuthentication>();
         services.AddSingleton<ICurrentUserContext, CurrentUserContext>();
         services.Configure<JsonSerializerOptions>(options => HttpClientExtensions.GetDefaultJsonSerializerOptions());
 
@@ -342,7 +343,7 @@ public class MultiAppTests
         // Arrange
         var services = new ServiceCollection();
         services.AddHttpClient();
-        services.AddSingleton<IFeishuAuthentication, FeishuV3Authentication>();
+        services.AddSingleton<IFeishuAuthentication, FeishuAuthentication>();
         services.AddSingleton<ICurrentUserContext, CurrentUserContext>();
         services.Configure<JsonSerializerOptions>(options => HttpClientExtensions.GetDefaultJsonSerializerOptions());
 
@@ -377,7 +378,7 @@ public class MultiAppTests
         // Arrange
         var services = new ServiceCollection();
         services.AddHttpClient();
-        services.AddSingleton<IFeishuAuthentication, FeishuV3Authentication>();
+        services.AddSingleton<IFeishuAuthentication, FeishuAuthentication>();
         services.AddSingleton<ICurrentUserContext, CurrentUserContext>();
         services.Configure<JsonSerializerOptions>(options => HttpClientExtensions.GetDefaultJsonSerializerOptions());
 
@@ -427,7 +428,7 @@ public class MultiAppTests
         // Arrange
         var services = new ServiceCollection();
         services.AddHttpClient();
-        services.AddSingleton<IFeishuAuthentication, FeishuV3Authentication>();
+        services.AddSingleton<IFeishuAuthentication, FeishuAuthentication>();
         services.AddSingleton<ICurrentUserContext, CurrentUserContext>();
         services.Configure<JsonSerializerOptions>(options => HttpClientExtensions.GetDefaultJsonSerializerOptions());
 

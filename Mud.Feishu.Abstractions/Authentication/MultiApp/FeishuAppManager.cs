@@ -7,6 +7,7 @@
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using Mud.Feishu.Abstractions.Internal;
 using Mud.Feishu.TokenManager;
 using System.Text.Json;
 
@@ -247,11 +248,11 @@ internal class FeishuAppManager : IFeishuAppManager
         var appUserTokenCache = new MemoryUserTokenCache(userTokenCacheLogger, config.TokenRefreshThreshold);
         var prefixedUserTokenCache = new PrefixedUserTokenCache(appUserTokenCache, config.AppKey);
 
-        var jsonSerializerOptions = _serviceProvider.GetRequiredService<IOptionsMonitor<JsonSerializerOptions>>();
+        var jsonSerializerOptions = _serviceProvider.GetRequiredService<IOptions<JsonSerializerOptions>>();
 
         var httpClient = CreateHttpClient(config, jsonSerializerOptions);
 
-        var authenticationApi = new FeishuV3Authentication(httpClient, jsonSerializerOptions);
+        var authenticationApi = new FeishuAuthentication(jsonSerializerOptions, httpClient);
 
         var tokenManagerLogger = _serviceProvider.GetRequiredService<ILogger<TokenManagerWithCache>>();
 
@@ -297,7 +298,7 @@ internal class FeishuAppManager : IFeishuAppManager
     /// <summary>
     /// 创建独立的HttpClient实例
     /// </summary>
-    private IEnhancedHttpClient CreateHttpClient(FeishuAppConfig config, IOptionsMonitor<JsonSerializerOptions> jsonSerializerOptions)
+    private IEnhancedHttpClient CreateHttpClient(FeishuAppConfig config, IOptions<JsonSerializerOptions> jsonSerializerOptions)
     {
         var httpClientFactory = _serviceProvider.GetRequiredService<IHttpClientFactory>();
         var httpClient = httpClientFactory.CreateClient($"feishu-{config.AppKey}");

@@ -13,23 +13,23 @@ namespace Mud.Feishu.Abstractions;
 internal class FeishuHttpClient : EnhancedHttpClient, IEnhancedHttpClient
 {
     private readonly ILogger<FeishuHttpClient> _logger;
-    private readonly IOptionsMonitor<JsonSerializerOptions> _jsonSerializerOptionsMonitor;
+    private readonly IOptions<JsonSerializerOptions> _jsonSerializerOptions;
 
     public FeishuHttpClient(
         HttpClient httpClient,
         ILogger<FeishuHttpClient> logger,
         bool? enableLogging,
-        IOptionsMonitor<JsonSerializerOptions> serializerOptions) : base(httpClient, logger)
+        IOptions<JsonSerializerOptions> serializerOptions) : base(httpClient, logger)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
-        _jsonSerializerOptionsMonitor = serializerOptions ?? throw new ArgumentNullException(nameof(serializerOptions));
+        _jsonSerializerOptions = serializerOptions ?? throw new ArgumentNullException(nameof(serializerOptions));
 
     }
 
     protected override JsonSerializerOptions? GetJsonSerializerOptions()
     {
-        return _jsonSerializerOptionsMonitor.CurrentValue;
+        return _jsonSerializerOptions.Value;
     }
 
     public override string EncryptContent(object content, string propertyName = "data", SerializeType serializeType = SerializeType.Json)

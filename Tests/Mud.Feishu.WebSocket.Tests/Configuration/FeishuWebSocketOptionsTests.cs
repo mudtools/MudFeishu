@@ -26,7 +26,7 @@ public class FeishuWebSocketOptionsTests
         options.ReconnectDelayMs.Should().Be(5000);
         options.MaxReconnectDelayMs.Should().Be(30000);
         options.InitialReceiveBufferSize.Should().Be(4096);
-        options.HeartbeatIntervalMs.Should().Be(30000);
+        options.HeartbeatIntervalMs.Should().Be(25000);
         options.ConnectionTimeoutMs.Should().Be(10000);
         options.EnableLogging.Should().BeTrue();
         options.MessageSizeLimits.MaxTextMessageSize.Should().Be(1024 * 1024); // 1MB

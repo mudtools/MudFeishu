@@ -370,7 +370,7 @@ public class WebSocketConnectionManager : IDisposable
     /// <returns>表示异步处理操作的任务</returns>
     /// <remarks>
     /// 该方法会触发<see cref="Disconnected"/>事件，通知订阅者连接已关闭。
-    /// 如果配置了自动重连，会准备重连逻辑。
+    /// 重连逻辑由<see cref="ReconnectionOrchestrator"/>统一处理。
     /// </remarks>
     private async Task HandleCloseMessageAsync(WebSocketReceiveResult result)
     {
@@ -388,15 +388,6 @@ public class WebSocketConnectionManager : IDisposable
             CloseStatusDescription = result.CloseStatusDescription,
             IsServerInitiated = true
         });
-
-        if (_options.AutoReconnect)
-        {
-            // 触发重连逻辑，这里简化处理
-            if (_options.EnableLogging)
-            {
-                _logger.LogInformation("准备自动重连...");
-            }
-        }
     }
 
     /// <summary>

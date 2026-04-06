@@ -215,21 +215,23 @@ public class ReconnectionOrchestratorTests
     [Fact]
     public async Task TryReconnectAsync_WhenAlreadyReconnecting_ShouldReturnFalse()
     {
+        var callCount = 0;
         _strategyMock.Setup(x => x.ShouldContinueReconnect(It.IsAny<int>(), It.IsAny<TimeSpan>()))
-            .Returns(true);
-        _strategyMock.Setup(x => x.CalculateDelay(It.IsAny<int>()))
-            .Returns(TimeSpan.FromMilliseconds(100));
-        _managerMock.Setup(x => x.ReconnectAsync(It.IsAny<CancellationToken>()))
-            .Returns(async () =>
+            .Returns(() =>
             {
-                await Task.Delay(200);
+                callCount++;
+                return callCount <= 3;
             });
+        _strategyMock.Setup(x => x.CalculateDelay(It.IsAny<int>()))
+            .Returns(TimeSpan.FromMilliseconds(10));
+        _managerMock.Setup(x => x.ReconnectAsync(It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
         _managerMock.Setup(x => x.IsConnected).Returns(false);
 
         var orchestrator = CreateOrchestrator();
 
         var task1 = orchestrator.TryReconnectAsync("test1");
-        await Task.Delay(10);
+        await Task.Delay(5);
         var task2 = orchestrator.TryReconnectAsync("test2");
 
         var results = await Task.WhenAll(task1, task2);

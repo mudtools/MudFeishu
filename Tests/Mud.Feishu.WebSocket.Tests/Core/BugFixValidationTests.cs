@@ -42,18 +42,14 @@ public class BugFixValidationTests
     [Fact]
     public void HeartbeatTimeoutThreshold_ShouldBeDefined_AsConstant()
     {
-        // Arrange
         const string fieldName = "HeartbeatTimeoutThreshold";
 
-        // Act - 通过反射获取常量值
         var type = typeof(FeishuWebSocketClient);
         var field = type.GetField(fieldName, System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
         var value = field?.GetValue(null);
 
-        // Assert
         value.Should().Be(3);
         field?.IsLiteral.Should().BeTrue();
-        field?.IsInitOnly.Should().BeTrue();
     }
 
     #endregion

@@ -9,7 +9,6 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using Mud.Feishu.Webhook.Models;
 using Mud.Feishu.Webhook.Services;
-using Mud.Feishu.Webhook.Configuration;
 using Xunit;
 
 namespace Mud.Feishu.Webhook.Tests.Validators;
@@ -22,19 +21,15 @@ namespace Mud.Feishu.Webhook.Tests.Validators;
 public class SubscriptionValidatorTests
 {
     private readonly Mock<ILogger<SubscriptionValidator>> _loggerMock;
-    private readonly Mock<IOptionsMonitor<FeishuWebhookOptions>> _optionsMonitorMock;
+    private readonly Mock<IEncryptKeyProvider> _encryptKeyProviderMock;
     private readonly SubscriptionValidator _validator;
 
     public SubscriptionValidatorTests()
     {
         _loggerMock = new Mock<ILogger<SubscriptionValidator>>();
-        _optionsMonitorMock = new Mock<IOptionsMonitor<FeishuWebhookOptions>>();
+        _encryptKeyProviderMock = new Mock<IEncryptKeyProvider>();
 
-        // Setup default options
-        var defaultOptions = new FeishuWebhookOptions();
-        _optionsMonitorMock.Setup(x => x.CurrentValue).Returns(defaultOptions);
-
-        _validator = new SubscriptionValidator(_loggerMock.Object, _optionsMonitorMock.Object);
+        _validator = new SubscriptionValidator(_loggerMock.Object, _encryptKeyProviderMock.Object);
     }
 
     #region 构造函数和基本功能测试
@@ -43,11 +38,22 @@ public class SubscriptionValidatorTests
     public void Constructor_WithNullLogger_ShouldThrowArgumentNullException()
     {
         // Arrange
-        var optionsMonitorMock = new Mock<IOptionsMonitor<FeishuWebhookOptions>>();
+        var encryptKeyProviderMock = new Mock<IEncryptKeyProvider>();
 
         // Act & Assert
         Assert.Throws<ArgumentNullException>(() =>
-            new SubscriptionValidator(null!, optionsMonitorMock.Object));
+            new SubscriptionValidator(null!, encryptKeyProviderMock.Object));
+    }
+
+    [Fact]
+    public void Constructor_WithNullEncryptKeyProvider_ShouldThrowArgumentNullException()
+    {
+        // Arrange
+        var loggerMock = new Mock<ILogger<SubscriptionValidator>>();
+
+        // Act & Assert
+        Assert.Throws<ArgumentNullException>(() =>
+            new SubscriptionValidator(loggerMock.Object, null!));
     }
 
     [Fact]
@@ -69,23 +75,26 @@ public class SubscriptionValidatorTests
     #region 有效订阅请求验证测试 (需求 4.2)
 
     [Fact]
-    public void ValidateSubscriptionRequest_WithValidRequest_ShouldReturnTrue()
+    public async Task ValidateSubscriptionRequestAsync_WithValidRequest_ShouldReturnTrue()
     {
         // Arrange
+        var appKey = "test-app-key";
+        var verificationToken = "valid-token";
+        _validator.SetCurrentAppKey(appKey);
+
         var request = new EventVerificationRequest
         {
             Type = "url_verification",
-            Token = "valid-token",
+            Token = verificationToken,
             Challenge = "valid-challenge"
         };
-        var expectedToken = "valid-token";
 
-        // Setup options
-        var options = new FeishuWebhookOptions();
-        _optionsMonitorMock.Setup(x => x.CurrentValue).Returns(options);
+        _encryptKeyProviderMock
+            .Setup(x => x.GetVerificationTokenAsync(appKey, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(verificationToken);
 
         // Act
-        var result = _validator.ValidateSubscriptionRequest(request, expectedToken);
+        var result = await _validator.ValidateSubscriptionRequestAsync(request, verificationToken);
 
         // Assert
         Assert.True(result);
@@ -93,26 +102,26 @@ public class SubscriptionValidatorTests
     }
 
     [Fact]
-    public void ValidateSubscriptionRequest_WithValidRequestAndAppKey_ShouldReturnTrue()
+    public async Task ValidateSubscriptionRequestAsync_WithValidRequestAndAppKey_ShouldReturnTrue()
     {
         // Arrange
         var appKey = "test-app-key";
+        var verificationToken = "valid-token";
         _validator.SetCurrentAppKey(appKey);
 
         var request = new EventVerificationRequest
         {
             Type = "url_verification",
-            Token = "valid-token",
+            Token = verificationToken,
             Challenge = "valid-challenge"
         };
-        var expectedToken = "valid-token";
 
-        // Setup options
-        var options = new FeishuWebhookOptions();
-        _optionsMonitorMock.Setup(x => x.CurrentValue).Returns(options);
+        _encryptKeyProviderMock
+            .Setup(x => x.GetVerificationTokenAsync(appKey, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(verificationToken);
 
         // Act
-        var result = _validator.ValidateSubscriptionRequest(request, expectedToken);
+        var result = await _validator.ValidateSubscriptionRequestAsync(request, verificationToken);
 
         // Assert
         Assert.True(result);
@@ -124,7 +133,7 @@ public class SubscriptionValidatorTests
     #region 无效请求类型处理测试 (需求 4.3)
 
     [Fact]
-    public void ValidateSubscriptionRequest_WithInvalidType_ShouldReturnFalse()
+    public async Task ValidateSubscriptionRequestAsync_WithInvalidType_ShouldReturnFalse()
     {
         // Arrange
         var request = new EventVerificationRequest
@@ -136,7 +145,7 @@ public class SubscriptionValidatorTests
         var expectedToken = "valid-token";
 
         // Act
-        var result = _validator.ValidateSubscriptionRequest(request, expectedToken);
+        var result = await _validator.ValidateSubscriptionRequestAsync(request, expectedToken);
 
         // Assert
         Assert.False(result);
@@ -144,7 +153,7 @@ public class SubscriptionValidatorTests
     }
 
     [Fact]
-    public void ValidateSubscriptionRequest_WithEmptyType_ShouldReturnFalse()
+    public async Task ValidateSubscriptionRequestAsync_WithEmptyType_ShouldReturnFalse()
     {
         // Arrange
         var request = new EventVerificationRequest
@@ -156,7 +165,7 @@ public class SubscriptionValidatorTests
         var expectedToken = "valid-token";
 
         // Act
-        var result = _validator.ValidateSubscriptionRequest(request, expectedToken);
+        var result = await _validator.ValidateSubscriptionRequestAsync(request, expectedToken);
 
         // Assert
         Assert.False(result);
@@ -168,7 +177,7 @@ public class SubscriptionValidatorTests
     [InlineData("card_action")]
     [InlineData("invalid_type")]
     [InlineData("event")]
-    public void ValidateSubscriptionRequest_WithVariousInvalidTypes_ShouldReturnFalse(string invalidType)
+    public async Task ValidateSubscriptionRequestAsync_WithVariousInvalidTypes_ShouldReturnFalse(string invalidType)
     {
         // Arrange
         var request = new EventVerificationRequest
@@ -180,7 +189,7 @@ public class SubscriptionValidatorTests
         var expectedToken = "valid-token";
 
         // Act
-        var result = _validator.ValidateSubscriptionRequest(request, expectedToken);
+        var result = await _validator.ValidateSubscriptionRequestAsync(request, expectedToken);
 
         // Assert
         Assert.False(result);
@@ -192,7 +201,7 @@ public class SubscriptionValidatorTests
     #region Token不匹配场景测试 (需求 4.4)
 
     [Fact]
-    public void ValidateSubscriptionRequest_WithMismatchedToken_ShouldReturnFalse()
+    public async Task ValidateSubscriptionRequestAsync_WithMismatchedToken_ShouldReturnFalse()
     {
         // Arrange
         var request = new EventVerificationRequest
@@ -204,7 +213,7 @@ public class SubscriptionValidatorTests
         var expectedToken = "expected-token";
 
         // Act
-        var result = _validator.ValidateSubscriptionRequest(request, expectedToken);
+        var result = await _validator.ValidateSubscriptionRequestAsync(request, expectedToken);
 
         // Assert
         Assert.False(result);
@@ -212,7 +221,7 @@ public class SubscriptionValidatorTests
     }
 
     [Fact]
-    public void ValidateSubscriptionRequest_WithMismatchedToken_ShouldMaskTokensInLog()
+    public async Task ValidateSubscriptionRequestAsync_WithMismatchedToken_ShouldMaskTokensInLog()
     {
         // Arrange
         var request = new EventVerificationRequest
@@ -223,12 +232,8 @@ public class SubscriptionValidatorTests
         };
         var expectedToken = "expected-long-token-654321";
 
-        // Setup options
-        var options = new FeishuWebhookOptions();
-        _optionsMonitorMock.Setup(x => x.CurrentValue).Returns(options);
-
         // Act
-        var result = _validator.ValidateSubscriptionRequest(request, expectedToken);
+        var result = await _validator.ValidateSubscriptionRequestAsync(request, expectedToken);
 
         // Assert
         Assert.False(result);
@@ -238,7 +243,7 @@ public class SubscriptionValidatorTests
     }
 
     [Fact]
-    public void ValidateSubscriptionRequest_WithShortMismatchedToken_ShouldMaskTokensInLog()
+    public async Task ValidateSubscriptionRequestAsync_WithShortMismatchedToken_ShouldMaskTokensInLog()
     {
         // Arrange
         var request = new EventVerificationRequest
@@ -250,7 +255,7 @@ public class SubscriptionValidatorTests
         var expectedToken = "xyz"; // 短Token
 
         // Act
-        var result = _validator.ValidateSubscriptionRequest(request, expectedToken);
+        var result = await _validator.ValidateSubscriptionRequestAsync(request, expectedToken);
 
         // Assert
         Assert.False(result);
@@ -263,14 +268,14 @@ public class SubscriptionValidatorTests
     #region 缺失字段处理测试 (需求 4.5)
 
     [Fact]
-    public void ValidateSubscriptionRequest_WithNullRequest_ShouldReturnFalse()
+    public async Task ValidateSubscriptionRequestAsync_WithNullRequest_ShouldReturnFalse()
     {
         // Arrange
         EventVerificationRequest? request = null;
         var expectedToken = "valid-token";
 
         // Act
-        var result = _validator.ValidateSubscriptionRequest(request!, expectedToken);
+        var result = await _validator.ValidateSubscriptionRequestAsync(request!, expectedToken);
 
         // Assert
         Assert.False(result);
@@ -278,7 +283,7 @@ public class SubscriptionValidatorTests
     }
 
     [Fact]
-    public void ValidateSubscriptionRequest_WithEmptyToken_ShouldReturnFalse()
+    public async Task ValidateSubscriptionRequestAsync_WithEmptyToken_ShouldReturnFalse()
     {
         // Arrange
         var request = new EventVerificationRequest
@@ -290,7 +295,7 @@ public class SubscriptionValidatorTests
         var expectedToken = "valid-token";
 
         // Act
-        var result = _validator.ValidateSubscriptionRequest(request, expectedToken);
+        var result = await _validator.ValidateSubscriptionRequestAsync(request, expectedToken);
 
         // Assert
         Assert.False(result);
@@ -298,7 +303,7 @@ public class SubscriptionValidatorTests
     }
 
     [Fact]
-    public void ValidateSubscriptionRequest_WithNullToken_ShouldReturnFalse()
+    public async Task ValidateSubscriptionRequestAsync_WithNullToken_ShouldReturnFalse()
     {
         // Arrange
         var request = new EventVerificationRequest
@@ -310,7 +315,7 @@ public class SubscriptionValidatorTests
         var expectedToken = "valid-token";
 
         // Act
-        var result = _validator.ValidateSubscriptionRequest(request, expectedToken);
+        var result = await _validator.ValidateSubscriptionRequestAsync(request, expectedToken);
 
         // Assert
         Assert.False(result);
@@ -318,7 +323,7 @@ public class SubscriptionValidatorTests
     }
 
     [Fact]
-    public void ValidateSubscriptionRequest_WithEmptyChallenge_ShouldReturnFalse()
+    public async Task ValidateSubscriptionRequestAsync_WithEmptyChallenge_ShouldReturnFalse()
     {
         // Arrange
         var request = new EventVerificationRequest
@@ -330,7 +335,7 @@ public class SubscriptionValidatorTests
         var expectedToken = "valid-token";
 
         // Act
-        var result = _validator.ValidateSubscriptionRequest(request, expectedToken);
+        var result = await _validator.ValidateSubscriptionRequestAsync(request, expectedToken);
 
         // Assert
         Assert.False(result);
@@ -338,7 +343,7 @@ public class SubscriptionValidatorTests
     }
 
     [Fact]
-    public void ValidateSubscriptionRequest_WithNullChallenge_ShouldReturnFalse()
+    public async Task ValidateSubscriptionRequestAsync_WithNullChallenge_ShouldReturnFalse()
     {
         // Arrange
         var request = new EventVerificationRequest
@@ -350,7 +355,7 @@ public class SubscriptionValidatorTests
         var expectedToken = "valid-token";
 
         // Act
-        var result = _validator.ValidateSubscriptionRequest(request, expectedToken);
+        var result = await _validator.ValidateSubscriptionRequestAsync(request, expectedToken);
 
         // Assert
         Assert.False(result);
@@ -366,30 +371,31 @@ public class SubscriptionValidatorTests
     #region 多应用场景测试
 
     [Fact]
-    public void ValidateSubscriptionRequest_WithDifferentAppKeys_ShouldLogCorrectAppKey()
+    public async Task ValidateSubscriptionRequestAsync_WithDifferentAppKeys_ShouldLogCorrectAppKey()
     {
         // Arrange
         var appKey1 = "app1";
         var appKey2 = "app2";
+        var verificationToken = "valid-token";
         var request = new EventVerificationRequest
         {
             Type = "url_verification",
-            Token = "valid-token",
+            Token = verificationToken,
             Challenge = "valid-challenge"
         };
 
-        // Setup options
-        var options = new FeishuWebhookOptions();
-        _optionsMonitorMock.Setup(x => x.CurrentValue).Returns(options);
+        _encryptKeyProviderMock
+            .Setup(x => x.GetVerificationTokenAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(verificationToken);
 
         // Act & Assert - 第一个应用
         _validator.SetCurrentAppKey(appKey1);
-        var result1 = _validator.ValidateSubscriptionRequest(request, "valid-token");
+        var result1 = await _validator.ValidateSubscriptionRequestAsync(request, verificationToken);
         Assert.True(result1);
 
         // Act & Assert - 第二个应用
         _validator.SetCurrentAppKey(appKey2);
-        var result2 = _validator.ValidateSubscriptionRequest(request, "valid-token");
+        var result2 = await _validator.ValidateSubscriptionRequestAsync(request, verificationToken);
         Assert.True(result2);
 
         // 验证日志中包含正确的AppKey
@@ -397,22 +403,19 @@ public class SubscriptionValidatorTests
     }
 
     [Fact]
-    public void ValidateSubscriptionRequest_WithNullAppKey_ShouldLogNullAppKey()
+    public async Task ValidateSubscriptionRequestAsync_WithNullAppKey_ShouldLogNullAppKey()
     {
         // Arrange
+        var verificationToken = "valid-token";
         var request = new EventVerificationRequest
         {
             Type = "url_verification",
-            Token = "valid-token",
+            Token = verificationToken,
             Challenge = "valid-challenge"
         };
 
-        // Setup options
-        var options = new FeishuWebhookOptions();
-        _optionsMonitorMock.Setup(x => x.CurrentValue).Returns(options);
-
         // Act
-        var result = _validator.ValidateSubscriptionRequest(request, "valid-token");
+        var result = await _validator.ValidateSubscriptionRequestAsync(request, verificationToken);
 
         // Assert
         Assert.True(result);

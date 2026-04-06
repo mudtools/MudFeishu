@@ -110,17 +110,13 @@ public class ConfigurationSupportTests
     /// 测试订阅验证器使用后备 Token
     /// </summary>
     [Fact]
-    public void SubscriptionValidator_ShouldUseFallbackToken()
+    public async Task SubscriptionValidator_ShouldUseFallbackToken()
     {
         // Arrange
-        var optionsMonitorMock = new Mock<IOptionsMonitor<FeishuWebhookOptions>>();
+        var encryptKeyProviderMock = new Mock<IEncryptKeyProvider>();
         var loggerMock = new Mock<ILogger<SubscriptionValidator>>();
 
-        var options = new FeishuWebhookOptions();
-
-        optionsMonitorMock.Setup(x => x.CurrentValue).Returns(options);
-
-        var validator = new SubscriptionValidator(loggerMock.Object, optionsMonitorMock.Object);
+        var validator = new SubscriptionValidator(loggerMock.Object, encryptKeyProviderMock.Object);
 
         var request = new EventVerificationRequest
         {
@@ -130,7 +126,7 @@ public class ConfigurationSupportTests
         };
 
         // Act - 使用传入的 fallback token
-        var result = validator.ValidateSubscriptionRequest(request, "fallback_token");
+        var result = await validator.ValidateSubscriptionRequestAsync(request, "fallback_token");
 
         // Assert
         Assert.True(result);
@@ -140,34 +136,21 @@ public class ConfigurationSupportTests
     /// 测试订阅验证器多应用配置支持
     /// </summary>
     [Fact]
-    public void SubscriptionValidator_ShouldSupportMultiAppConfiguration()
+    public async Task SubscriptionValidator_ShouldSupportMultiAppConfiguration()
     {
         // Arrange
-        var optionsMonitorMock = new Mock<IOptionsMonitor<FeishuWebhookOptions>>();
+        var encryptKeyProviderMock = new Mock<IEncryptKeyProvider>();
         var loggerMock = new Mock<ILogger<SubscriptionValidator>>();
 
-        var options = new FeishuWebhookOptions
-        {
-            Apps = new Dictionary<string, FeishuAppWebhookOptions>
-            {
-                ["app1"] = new FeishuAppWebhookOptions
-                {
-                    AppKey = "app1",
-                    VerificationToken = "app1_token",
-                    EncryptKey = "app1_encrypt_key_32_characters!!"
-                },
-                ["app2"] = new FeishuAppWebhookOptions
-                {
-                    AppKey = "app2",
-                    VerificationToken = "app2_token",
-                    EncryptKey = "app2_encrypt_key_32_characters!!"
-                }
-            }
-        };
+        encryptKeyProviderMock
+            .Setup(x => x.GetVerificationTokenAsync("app1", It.IsAny<CancellationToken>()))
+            .ReturnsAsync("app1_token");
 
-        optionsMonitorMock.Setup(x => x.CurrentValue).Returns(options);
+        encryptKeyProviderMock
+            .Setup(x => x.GetVerificationTokenAsync("app2", It.IsAny<CancellationToken>()))
+            .ReturnsAsync("app2_token");
 
-        var validator = new SubscriptionValidator(loggerMock.Object, optionsMonitorMock.Object);
+        var validator = new SubscriptionValidator(loggerMock.Object, encryptKeyProviderMock.Object);
 
         // Act & Assert - 测试app1
         validator.SetCurrentAppKey("app1");
@@ -178,7 +161,7 @@ public class ConfigurationSupportTests
             Challenge = "test_challenge"
         };
 
-        var result1 = validator.ValidateSubscriptionRequest(request1, "fallback_token");
+        var result1 = await validator.ValidateSubscriptionRequestAsync(request1, "app1_token");
         Assert.True(result1);
 
         // Act & Assert - 测试app2
@@ -190,7 +173,7 @@ public class ConfigurationSupportTests
             Challenge = "test_challenge"
         };
 
-        var result2 = validator.ValidateSubscriptionRequest(request2, "fallback_token");
+        var result2 = await validator.ValidateSubscriptionRequestAsync(request2, "app2_token");
         Assert.True(result2);
     }
 
@@ -198,20 +181,17 @@ public class ConfigurationSupportTests
     /// 测试订阅验证器应用配置不存在时的降级处理
     /// </summary>
     [Fact]
-    public void SubscriptionValidator_ShouldFallbackWhenAppConfigNotFound()
+    public async Task SubscriptionValidator_ShouldFallbackWhenAppConfigNotFound()
     {
         // Arrange
-        var optionsMonitorMock = new Mock<IOptionsMonitor<FeishuWebhookOptions>>();
+        var encryptKeyProviderMock = new Mock<IEncryptKeyProvider>();
         var loggerMock = new Mock<ILogger<SubscriptionValidator>>();
 
-        var options = new FeishuWebhookOptions
-        {
-            Apps = new Dictionary<string, FeishuAppWebhookOptions>()
-        };
+        encryptKeyProviderMock
+            .Setup(x => x.GetVerificationTokenAsync("nonexistent_app", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((string?)null);
 
-        optionsMonitorMock.Setup(x => x.CurrentValue).Returns(options);
-
-        var validator = new SubscriptionValidator(loggerMock.Object, optionsMonitorMock.Object);
+        var validator = new SubscriptionValidator(loggerMock.Object, encryptKeyProviderMock.Object);
         validator.SetCurrentAppKey("nonexistent_app");
 
         var request = new EventVerificationRequest
@@ -222,7 +202,7 @@ public class ConfigurationSupportTests
         };
 
         // Act - 使用传入的 fallback token
-        var result = validator.ValidateSubscriptionRequest(request, "fallback_token");
+        var result = await validator.ValidateSubscriptionRequestAsync(request, "fallback_token");
 
         // Assert
         Assert.True(result);
@@ -232,16 +212,18 @@ public class ConfigurationSupportTests
     /// 测试订阅验证器配置异常处理
     /// </summary>
     [Fact]
-    public void SubscriptionValidator_ShouldHandleConfigurationException()
+    public async Task SubscriptionValidator_ShouldHandleConfigurationException()
     {
         // Arrange
-        var optionsMonitorMock = new Mock<IOptionsMonitor<FeishuWebhookOptions>>();
+        var encryptKeyProviderMock = new Mock<IEncryptKeyProvider>();
         var loggerMock = new Mock<ILogger<SubscriptionValidator>>();
 
         // 模拟配置访问异常
-        optionsMonitorMock.Setup(x => x.CurrentValue).Throws(new InvalidOperationException("Configuration error"));
+        encryptKeyProviderMock
+            .Setup(x => x.GetVerificationTokenAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("Configuration error"));
 
-        var validator = new SubscriptionValidator(loggerMock.Object, optionsMonitorMock.Object);
+        var validator = new SubscriptionValidator(loggerMock.Object, encryptKeyProviderMock.Object);
 
         var request = new EventVerificationRequest
         {
@@ -251,7 +233,7 @@ public class ConfigurationSupportTests
         };
 
         // Act - 应该使用fallback token
-        var result = validator.ValidateSubscriptionRequest(request, "fallback_token");
+        var result = await validator.ValidateSubscriptionRequestAsync(request, "fallback_token");
 
         // Assert
         Assert.True(result);

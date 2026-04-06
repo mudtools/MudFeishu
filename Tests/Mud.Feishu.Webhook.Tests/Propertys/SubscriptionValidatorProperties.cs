@@ -7,7 +7,6 @@
 
 using FsCheck;
 using FsCheck.Xunit;
-using Mud.Feishu.Webhook.Configuration;
 using Mud.Feishu.Webhook.Models;
 using Mud.Feishu.Webhook.Services;
 
@@ -21,16 +20,12 @@ namespace Mud.Feishu.Webhook.Tests.Propertys;
 public class SubscriptionValidatorProperties
 {
     private readonly Mock<ILogger<SubscriptionValidator>> _loggerMock;
-    private readonly Mock<IOptionsMonitor<FeishuWebhookOptions>> _optionsMonitorMock;
+    private readonly Mock<IEncryptKeyProvider> _encryptKeyProviderMock;
 
     public SubscriptionValidatorProperties()
     {
         _loggerMock = new Mock<ILogger<SubscriptionValidator>>();
-        _optionsMonitorMock = new Mock<IOptionsMonitor<FeishuWebhookOptions>>();
-
-        // Setup default options
-        var defaultOptions = new FeishuWebhookOptions();
-        _optionsMonitorMock.Setup(x => x.CurrentValue).Returns(defaultOptions);
+        _encryptKeyProviderMock = new Mock<IEncryptKeyProvider>();
     }
 
     /// <summary>
@@ -51,11 +46,9 @@ public class SubscriptionValidatorProperties
 
                 // Arrange
                 var loggerMock = new Mock<ILogger<SubscriptionValidator>>();
-                var optionsMonitorMock = new Mock<IOptionsMonitor<FeishuWebhookOptions>>();
-                var defaultOptions = new FeishuWebhookOptions();
-                optionsMonitorMock.Setup(x => x.CurrentValue).Returns(defaultOptions);
+                var encryptKeyProviderMock = new Mock<IEncryptKeyProvider>();
 
-                var validator = new SubscriptionValidator(loggerMock.Object, optionsMonitorMock.Object);
+                var validator = new SubscriptionValidator(loggerMock.Object, encryptKeyProviderMock.Object);
 
                 EventVerificationRequest? request = null;
                 if (!data.IsRequestNull)

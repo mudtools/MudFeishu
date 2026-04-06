@@ -252,7 +252,6 @@ public class BinaryMessageProcessor : IDisposable
 
                 if (frame?.Payload != null)
                 {
-                    // 解析 JSON payload
                     var jsonPayload = System.Text.Encoding.UTF8.GetString(frame.Payload);
                     eventArgs.JsonContent = jsonPayload;
                     eventArgs.MessageType = "Frame";
@@ -260,10 +259,8 @@ public class BinaryMessageProcessor : IDisposable
                     if (_options.EnableLogging)
                         _logger.LogDebug("成功解析 Frame Payload 为 JSON 内容:{jsonPayload}", jsonPayload);
 
-                    // 触发事件，让外部处理JSON payload
                     BinaryMessageReceived?.Invoke(this, eventArgs);
 
-                    // 如果设置了MessageRouter，则路由JSON内容
                     if (_messageRouter != null)
                     {
                         if (_options.EnableLogging)
@@ -271,7 +268,33 @@ public class BinaryMessageProcessor : IDisposable
                         await _messageRouter.RouteBinaryMessageAsync(jsonPayload, "Frame", cancellationToken);
                     }
 
-                    await SendAckMessageAsync(frame, true, cancellationToken);
+                    if (eventArgs.ProcessingTask != null)
+                    {
+                        try
+                        {
+                            await eventArgs.ProcessingTask;
+                        }
+                        catch (Exception ex)
+                        {
+                            eventArgs.ProcessingSuccess = false;
+                            eventArgs.ProcessingException = ex;
+                            _logger.LogError(ex, "事件处理器处理失败: EventId={EventId}, SeqId={SeqId}", extractedEventId, frame.SeqID);
+                        }
+                    }
+
+                    if (_unifiedDeduplicationMiddleware != null && (!string.IsNullOrEmpty(extractedEventId) || frame.SeqID > 0))
+                    {
+                        if (eventArgs.ProcessingSuccess)
+                        {
+                            await _unifiedDeduplicationMiddleware.MarkCompletedAsync(extractedEventId, frame.SeqID, cancellationToken);
+                        }
+                        else
+                        {
+                            await _unifiedDeduplicationMiddleware.RollbackAsync(extractedEventId, frame.SeqID, cancellationToken);
+                        }
+                    }
+
+                    await SendAckMessageAsync(frame, eventArgs.ProcessingSuccess, cancellationToken);
                 }
                 else
                 {
@@ -279,6 +302,12 @@ public class BinaryMessageProcessor : IDisposable
                         _logger.LogWarning("Frame 解析成功但 Payload 为空");
                     eventArgs.ParseError = "Frame 解析成功但 Payload 为空";
                     BinaryMessageReceived?.Invoke(this, eventArgs);
+
+                    if (_unifiedDeduplicationMiddleware != null && (!string.IsNullOrEmpty(extractedEventId) || frame.SeqID > 0))
+                    {
+                        await _unifiedDeduplicationMiddleware.RollbackAsync(extractedEventId, frame.SeqID, cancellationToken);
+                    }
+
                     await SendAckMessageAsync(frame, false, cancellationToken);
                 }
             }
@@ -288,7 +317,6 @@ public class BinaryMessageProcessor : IDisposable
 
                 eventArgs.ParseError = $"ProtoBuf 反序列化失败: {ex.Message}";
 
-                // 如果 ProtoBuf 解析失败，尝试直接解析为 JSON
                 var jsonString = Encoding.UTF8.GetString(completeData);
                 if (!string.IsNullOrWhiteSpace(jsonString))
                 {
@@ -296,7 +324,6 @@ public class BinaryMessageProcessor : IDisposable
                     eventArgs.MessageType = "JSON_Fallback";
                     BinaryMessageReceived?.Invoke(this, eventArgs);
 
-                    // 如果设置了MessageRouter，则路由JSON内容
                     if (_messageRouter != null)
                     {
                         if (_options.EnableLogging)
@@ -304,17 +331,17 @@ public class BinaryMessageProcessor : IDisposable
                         await _messageRouter.RouteBinaryMessageAsync(jsonString, "JSON_Fallback", cancellationToken);
                     }
                 }
+                else
+                {
+                    BinaryMessageReceived?.Invoke(this, eventArgs);
+                }
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "处理完整二进制消息时发生错误");
                 eventArgs.ParseError = $"处理完整二进制消息时发生错误: {ex.Message}";
+                BinaryMessageReceived?.Invoke(this, eventArgs);
             }
-
-            // 触发二进制消息接收事件
-            BinaryMessageReceived?.Invoke(this, eventArgs);
-
-            await Task.FromResult(true);
         }
         catch (Exception ex)
         {

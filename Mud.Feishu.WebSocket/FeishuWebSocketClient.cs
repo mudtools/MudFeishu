@@ -142,7 +142,11 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
         _messageProcessingSemaphore = new SemaphoreSlim(_options.MaxConcurrentMessageProcessing, _options.MaxConcurrentMessageProcessing);
 
         // 初始化事件处理器委托，保存引用以便正确取消订阅
-        _onConnected = (s, e) => Connected?.Invoke(this, e);
+        _onConnected = (s, e) =>
+        {
+            ResetStateOnReconnect();
+            Connected?.Invoke(this, e);
+        };
         _onDisconnected = (s, e) => Disconnected?.Invoke(this, e);
         _onAuthenticated = (s, e) => Authenticated?.Invoke(this, e);
         _onErrorFromConnectionManager = (s, e) => Error?.Invoke(this, e);
@@ -244,6 +248,32 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
 
         if (_options.EnableLogging)
             _logger.LogDebug("已更新最后一次Pong时间");
+    }
+
+    /// <summary>
+    /// 重连时重置状态
+    /// </summary>
+    /// <remarks>
+    /// 在 WebSocket 重连成功后调用，重置消息序号验证器和去重器的状态，
+    /// 避免旧状态影响新连接的消息处理。
+    /// </remarks>
+    private void ResetStateOnReconnect()
+    {
+        if (_options.EnableLogging)
+            _logger.LogDebug("重连成功，重置消息序号验证器和去重器状态");
+
+        _sequenceValidator?.Reset();
+
+        if (_seqIdDeduplicator is FeishuSeqIDDeduplicator seqIdDeduplicatorImpl)
+        {
+            seqIdDeduplicatorImpl.ClearCache();
+        }
+
+        _lastPongTime = DateTime.UtcNow;
+        _heartbeatMissedCount = 0;
+
+        if (_options.EnableLogging)
+            _logger.LogInformation("重连状态重置完成");
     }
 
     /// <summary>

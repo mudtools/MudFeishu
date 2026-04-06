@@ -7,7 +7,7 @@
 
 using Microsoft.Extensions.Logging;
 
-namespace Mud.Feishu.WebSocket.Core;
+namespace Mud.Feishu.WebSocket;
 
 /// <summary>
 /// 统一重连协调器实现

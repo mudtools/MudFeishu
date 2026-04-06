@@ -8,7 +8,6 @@
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Mud.Feishu.WebSocket.Core;
 using Mud.Feishu.WebSocket.SocketEventArgs;
 
 namespace Mud.Feishu.WebSocket;

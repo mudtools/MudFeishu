@@ -6,13 +6,10 @@
 // -----------------------------------------------------------------------
 
 using Microsoft.Extensions.Logging;
-using Mud.Feishu.WebSocket.Core;
 using Mud.Feishu.WebSocket.SocketEventArgs;
 using Mud.HttpUtils;
 using System.Net.Security;
 using System.Net.WebSockets;
-using System.Security.Authentication;
-using System.Security.Cryptography.X509Certificates;
 
 namespace Mud.Feishu.WebSocket;
 

@@ -7,7 +7,7 @@
 
 using Microsoft.Extensions.Logging;
 
-namespace Mud.Feishu.WebSocket.Core;
+namespace Mud.Feishu.WebSocket;
 
 /// <summary>
 /// 指数退避重连策略

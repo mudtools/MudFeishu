@@ -71,26 +71,15 @@ public class ConfigurationSupportProperties
             data =>
             {
                 // Arrange
-                var optionsMonitorMock = new Mock<IOptionsMonitor<FeishuWebhookOptions>>();
+                var encryptKeyProviderMock = new Mock<IEncryptKeyProvider>();
                 var loggerMock = new Mock<ILogger<SubscriptionValidator>>();
 
-                var globalOptions = new FeishuWebhookOptions
-                {
-                    Apps = new Dictionary<string, FeishuAppWebhookOptions>
-                    {
-                        [data.AppKey] = new FeishuAppWebhookOptions
-                        {
-                            AppKey = data.AppKey,
-                            VerificationToken = data.AppToken,
-                            EncryptKey = data.AppEncryptKey
-                        }
-                    }
-                };
-
-                optionsMonitorMock.Setup(x => x.CurrentValue).Returns(globalOptions);
+                encryptKeyProviderMock
+                    .Setup(x => x.GetVerificationTokenAsync(data.AppKey, It.IsAny<CancellationToken>()))
+                    .ReturnsAsync(data.AppToken);
 
                 // Act
-                var subscriptionValidator = new SubscriptionValidator(loggerMock.Object, optionsMonitorMock.Object);
+                var subscriptionValidator = new SubscriptionValidator(loggerMock.Object, encryptKeyProviderMock.Object);
                 subscriptionValidator.SetCurrentAppKey(data.AppKey);
 
                 var request = new EventVerificationRequest
@@ -101,7 +90,7 @@ public class ConfigurationSupportProperties
                 };
 
                 // 验证应该使用应用特定配置而不是全局配置
-                var result = subscriptionValidator.ValidateSubscriptionRequest(request, null);
+                var result = subscriptionValidator.ValidateSubscriptionRequestAsync(request, data.AppToken).GetAwaiter().GetResult();
 
                 // Assert - 应该使用应用特定的 Token，所以验证应该成功
                 return result;

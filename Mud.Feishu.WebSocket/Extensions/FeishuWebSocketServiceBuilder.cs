@@ -11,6 +11,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Mud.Feishu.Abstractions.Services;
 using Mud.Feishu.WebSocket;
+using Mud.Feishu.WebSocket.Core;
 using Mud.Feishu.WebSocket.Handlers;
 
 namespace Microsoft.Extensions.DependencyInjection;
@@ -299,6 +300,20 @@ public class FeishuWebSocketServiceBuilder
         {
             _services.AddSingleton<IFeishuSeqIDDeduplicator, FeishuSeqIDDeduplicator>();
         }
+
+        // 注册重连策略（单例，如果未手动注册则使用指数退避策略）
+        if (!_services.Any(s => s.ServiceType == typeof(IReconnectStrategy)))
+        {
+            _services.AddSingleton<IReconnectStrategy>(serviceProvider =>
+            {
+                var options = serviceProvider.GetRequiredService<IOptions<FeishuWebSocketOptions>>().Value;
+                var logger = serviceProvider.GetService<ILogger<ExponentialBackoffReconnectStrategy>>();
+                return new ExponentialBackoffReconnectStrategy(options, logger);
+            });
+        }
+
+        // 注册重连协调器（单例）
+        _services.AddSingleton<IReconnectionOrchestrator, ReconnectionOrchestrator>();
 
         // 注册WebSocket客户端
         _services.AddSingleton<IFeishuWebSocketClient>(serviceProvider =>

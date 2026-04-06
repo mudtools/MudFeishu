@@ -48,6 +48,23 @@ public class FeishuWebSocketOptions
     }
 
     /// <summary>
+    /// 最大重连总时间，默认为30分钟
+    /// <para>超过此时间后将停止重连尝试</para>
+    /// </summary>
+    public TimeSpan MaxTotalReconnectTime { get; set; } = TimeSpan.FromMinutes(30);
+
+    /// <summary>
+    /// 重连冷却时间，默认为5秒
+    /// <para>两次重连尝试之间的最小间隔时间，防止过于频繁的重连</para>
+    /// </summary>
+    public TimeSpan ReconnectCooldownTime { get; set; } = TimeSpan.FromSeconds(5);
+
+    /// <summary>
+    /// 是否启用重连指标收集，默认为true
+    /// </summary>
+    public bool EnableReconnectMetrics { get; set; } = true;
+
+    /// <summary>
     /// 初始接收缓冲区大小（字节），默认为4KB
     /// <para>仅用于初始化WebSocket接收缓冲区，实际消息大小会动态调整</para>
     /// </summary>
@@ -186,7 +203,7 @@ public class FeishuWebSocketOptions
     /// </summary>
     public override string ToString()
     {
-        return $"FeishuWebSocketOptions {{ AutoReconnect: {AutoReconnect}, MaxReconnectAttempts: {MaxReconnectAttempts}, ReconnectDelayMs: {ReconnectDelayMs}, HeartbeatIntervalMs: {HeartbeatIntervalMs}, EnableLogging: {EnableLogging}, EventDeduplicationMode: {EventDeduplication.Mode} }}";
+        return $"FeishuWebSocketOptions {{ AutoReconnect: {AutoReconnect}, MaxReconnectAttempts: {MaxReconnectAttempts}, ReconnectDelayMs: {ReconnectDelayMs}, MaxTotalReconnectTime: {MaxTotalReconnectTime}, ReconnectCooldownTime: {ReconnectCooldownTime}, HeartbeatIntervalMs: {HeartbeatIntervalMs}, EnableLogging: {EnableLogging}, EventDeduplicationMode: {EventDeduplication.Mode} }}";
     }
 }
 

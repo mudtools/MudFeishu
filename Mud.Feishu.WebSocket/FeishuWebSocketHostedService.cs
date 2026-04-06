@@ -1,5 +1,5 @@
 // -----------------------------------------------------------------------
-//  作者：Mud Studio  版权所有 (c) Mud Studio 2025
+//  作者：Mud Studio  版权所有 (c) Mud Studio 2026
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
@@ -8,6 +8,7 @@
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Mud.Feishu.WebSocket.Core;
 using Mud.Feishu.WebSocket.SocketEventArgs;
 
 namespace Mud.Feishu.WebSocket;
@@ -19,134 +20,35 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
 {
     private readonly ILogger<FeishuWebSocketHostedService> _logger;
     private readonly IFeishuWebSocketManager _webSocketManager;
+    private readonly IReconnectionOrchestrator _reconnectionOrchestrator;
     private readonly FeishuWebSocketOptions _options;
-    private bool _disposed = false;
-
-    // 重连状态管理
-    private readonly SemaphoreSlim _reconnectLock = new(1, 1);
-    private bool _isReconnecting = false;
-    private DateTime _lastReconnectAttempt = DateTime.MinValue;
-    private int _currentReconnectAttempt = 0;
+    private bool _disposed;
 
     /// <summary>
     /// 构造函数
     /// </summary>
     /// <param name="logger">日志记录器</param>
     /// <param name="webSocketManager">WebSocket管理器</param>
+    /// <param name="reconnectionOrchestrator">重连协调器</param>
     /// <param name="options">WebSocket配置选项</param>
     public FeishuWebSocketHostedService(
         ILogger<FeishuWebSocketHostedService> logger,
         IFeishuWebSocketManager webSocketManager,
+        IReconnectionOrchestrator reconnectionOrchestrator,
         IOptions<FeishuWebSocketOptions> options)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _webSocketManager = webSocketManager ?? throw new ArgumentNullException(nameof(webSocketManager));
+        _reconnectionOrchestrator = reconnectionOrchestrator ?? throw new ArgumentNullException(nameof(reconnectionOrchestrator));
         _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
 
-        // 订阅WebSocket事件
         _webSocketManager.Connected += OnConnected;
         _webSocketManager.Disconnected += OnDisconnected;
         _webSocketManager.Error += OnError;
-    }
 
-    /// <summary>
-    /// 统一的重连处理方法
-    /// </summary>
-    /// <param name="reason">重连原因</param>
-    /// <param name="cancellationToken">取消令牌</param>
-    /// <returns>是否重连成功</returns>
-    private async Task<bool> TryReconnectAsync(string reason, CancellationToken cancellationToken)
-    {
-        if (!_options.AutoReconnect)
-        {
-            _logger.LogInformation("自动重连已禁用，跳过重连");
-            return false;
-        }
-
-        await _reconnectLock.WaitAsync(cancellationToken);
-        try
-        {
-            // 检查是否已经在重连中
-            if (_isReconnecting)
-            {
-                _logger.LogDebug("重连已在进行中，跳过重复重连请求");
-                return false;
-            }
-
-            // 检查重连冷却期（防止过于频繁的重连尝试）
-            var timeSinceLastAttempt = DateTime.UtcNow - _lastReconnectAttempt;
-            if (timeSinceLastAttempt < TimeSpan.FromSeconds(5))
-            {
-                _logger.LogDebug("重连冷却期内，跳过重连尝试");
-                return false;
-            }
-
-            _isReconnecting = true;
-            _lastReconnectAttempt = DateTime.UtcNow;
-            _currentReconnectAttempt = 0;
-
-            _logger.LogInformation("开始重连流程，原因: {Reason}", reason);
-
-            var maxReconnectAttempts = _options.MaxReconnectAttempts;
-            var reconnected = false;
-
-            for (int attempt = 0; attempt < maxReconnectAttempts && !reconnected && !cancellationToken.IsCancellationRequested; attempt++)
-            {
-                _currentReconnectAttempt = attempt + 1;
-
-                if (_options.EnableLogging)
-                    _logger.LogInformation("重连尝试 {Attempt}/{MaxAttempts}...", _currentReconnectAttempt, maxReconnectAttempts);
-
-                reconnected = await TryReconnectWithBackoffAsync(attempt, cancellationToken);
-
-                if (reconnected)
-                {
-                    _logger.LogInformation("重连成功 (尝试次数: {Attempt})", _currentReconnectAttempt);
-                    break;
-                }
-            }
-
-            if (!reconnected && !cancellationToken.IsCancellationRequested)
-            {
-                _logger.LogError("重连失败，已达到最大重连次数 {MaxAttempts}", maxReconnectAttempts);
-            }
-
-            return reconnected;
-        }
-        finally
-        {
-            _isReconnecting = false;
-            _reconnectLock.Release();
-        }
-    }
-
-    /// <summary>
-    /// 使用指数退避策略尝试重连
-    /// </summary>
-    /// <param name="attempt">当前尝试次数（从0开始）</param>
-    /// <param name="cancellationToken">取消令牌</param>
-    /// <returns>是否重连成功</returns>
-    private async Task<bool> TryReconnectWithBackoffAsync(int attempt, CancellationToken cancellationToken)
-    {
-        // 指数退避：delay = baseDelay * (2^attempt)，最大不超过配置的MaxReconnectDelayMs
-        var baseDelay = TimeSpan.FromMilliseconds(_options.ReconnectDelayMs);
-        var exponentialDelay = TimeSpan.FromMilliseconds(baseDelay.TotalMilliseconds * Math.Pow(2, attempt));
-        var maxDelay = TimeSpan.FromMilliseconds(_options.MaxReconnectDelayMs);
-        var delay = exponentialDelay > maxDelay ? maxDelay : exponentialDelay;
-
-        _logger.LogInformation("等待 {Delay}毫秒后进行第 {Attempt} 次重连尝试", delay.TotalMilliseconds, attempt + 1);
-        await Task.Delay(delay, cancellationToken);
-
-        try
-        {
-            await _webSocketManager.ReconnectAsync(cancellationToken);
-            return _webSocketManager.IsConnected;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "第 {Attempt} 次重连尝试失败", attempt + 1);
-            return false;
-        }
+        _reconnectionOrchestrator.ReconnectSucceeded += OnReconnectSucceeded;
+        _reconnectionOrchestrator.ReconnectFailed += OnReconnectFailed;
+        _reconnectionOrchestrator.ReconnectLimitReached += OnReconnectLimitReached;
     }
 
     /// <summary>
@@ -160,26 +62,21 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
 
         try
         {
-            // 启动WebSocket连接
             await _webSocketManager.StartAsync(stoppingToken);
 
-            // 保持服务运行，直到收到停止信号
             while (!stoppingToken.IsCancellationRequested)
             {
                 try
                 {
-                    // 使用配置的健康检查间隔检查连接状态
                     await Task.Delay(TimeSpan.FromMilliseconds(_options.HealthCheckIntervalMs), stoppingToken);
 
-                    // 如果连接断开且启用自动重连，使用统一重连方法
                     if (!_webSocketManager.IsConnected)
                     {
-                        await TryReconnectAsync("健康检查发现连接断开", stoppingToken);
+                        await _reconnectionOrchestrator.TryReconnectAsync("健康检查发现连接断开", stoppingToken);
                     }
                 }
                 catch (TaskCanceledException)
                 {
-                    // 正常取消，不需要处理
                     break;
                 }
                 catch (Exception ex)
@@ -216,22 +113,18 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
     /// <summary>
     /// WebSocket连接建立事件处理
     /// </summary>
-    /// <param name="sender">事件发送者</param>
-    /// <param name="e">事件参数</param>
-    private void OnConnected(object? sender, System.EventArgs e)
+    private void OnConnected(object? sender, EventArgs e)
     {
         var state = _webSocketManager.GetConnectionState();
         _logger.LogInformation("飞书WebSocket连接已建立 (时间: {Time}, 重连次数: {ReconnectCount})",
             DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss"), state.ReconnectCount);
-        
-        // 心跳管理已由 FeishuWebSocketClient 内部统一处理，无需在此重复启动
+
+        _reconnectionOrchestrator.ResetReconnectCounter();
     }
 
     /// <summary>
     /// WebSocket连接断开事件处理
     /// </summary>
-    /// <param name="sender">事件发送者</param>
-    /// <param name="e">事件参数</param>
     private void OnDisconnected(object? sender, WebSocketCloseEventArgs e)
     {
         if (_options.EnableLogging)
@@ -241,14 +134,11 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
                 e.CloseStatus, e.CloseStatusDescription, stats.Uptime);
         }
 
-        // 心跳管理已由 FeishuWebSocketClient 内部统一处理，无需在此停止
-        
-        // 使用统一重连方法，避免重复重连逻辑
         _ = Task.Run(async () =>
         {
             try
             {
-                await TryReconnectAsync("连接断开事件触发", CancellationToken.None);
+                await _reconnectionOrchestrator.TryReconnectAsync("连接断开事件触发", CancellationToken.None);
             }
             catch (Exception ex)
             {
@@ -260,12 +150,36 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
     /// <summary>
     /// WebSocket错误事件处理
     /// </summary>
-    /// <param name="sender">事件发送者</param>
-    /// <param name="e">事件参数</param>
     private void OnError(object? sender, WebSocketErrorEventArgs e)
     {
         if (_options.EnableLogging)
             _logger.LogError(e.Exception, "飞书WebSocket发生错误: {Message} (类型: {Type})", e.ErrorMessage, e.ErrorType);
+    }
+
+    /// <summary>
+    /// 重连成功事件处理
+    /// </summary>
+    private void OnReconnectSucceeded(object? sender, ReconnectSuccessEventArgs e)
+    {
+        _logger.LogInformation("重连成功 (尝试次数: {Attempt}, 总次数: {Total})",
+            e.AttemptCount, e.TotalReconnectCount);
+    }
+
+    /// <summary>
+    /// 重连失败事件处理
+    /// </summary>
+    private void OnReconnectFailed(object? sender, ReconnectFailedEventArgs e)
+    {
+        _logger.LogError(e.Error, "重连失败 (尝试次数: {Attempt})", e.AttemptCount);
+    }
+
+    /// <summary>
+    /// 达到重连限制事件处理
+    /// </summary>
+    private void OnReconnectLimitReached(object? sender, ReconnectLimitReachedEventArgs e)
+    {
+        _logger.LogError("已达到重连限制 (总尝试次数: {TotalAttempts}, 总时间: {ElapsedTime})",
+            e.TotalAttempts, e.TotalElapsedTime);
     }
 
     /// <summary>
@@ -309,13 +223,13 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
         {
             try
             {
-                // 取消事件订阅，防止内存泄漏
                 _webSocketManager.Connected -= OnConnected;
                 _webSocketManager.Disconnected -= OnDisconnected;
                 _webSocketManager.Error -= OnError;
 
-                // 释放重连锁
-                _reconnectLock?.Dispose();
+                _reconnectionOrchestrator.ReconnectSucceeded -= OnReconnectSucceeded;
+                _reconnectionOrchestrator.ReconnectFailed -= OnReconnectFailed;
+                _reconnectionOrchestrator.ReconnectLimitReached -= OnReconnectLimitReached;
 
                 _logger.LogInformation("飞书WebSocket后台服务资源已清理");
             }

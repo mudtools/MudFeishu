@@ -132,7 +132,6 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable
     private DateTime _connectedTime = DateTime.MinValue;
     private int _reconnectCount = 0;
     private Exception? _lastError;
-    private bool _isReconnecting = false;
     private readonly object _stateLock = new();
 
     /// <summary>
@@ -245,7 +244,6 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable
             {
                 _connectedTime = DateTime.UtcNow;
                 _lastError = null;
-                _isReconnecting = false;
             }
 
             _logger.LogInformation("--------------Mud飞书WebSocket服务启动成功--------------");
@@ -291,7 +289,6 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable
             lock (_stateLock)
             {
                 _connectedTime = DateTime.MinValue;
-                _isReconnecting = false;
             }
 
             _logger.LogWarning("Mud飞书WebSocket服务已停止");
@@ -334,35 +331,20 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable
     /// <returns>重连任务</returns>
     public async Task ReconnectAsync(CancellationToken cancellationToken = default)
     {
-        // 避免重入
-        if (_isReconnecting)
-        {
-            _logger.LogWarning("已有重连操作在进行中，跳过本次重连请求");
-            return;
-        }
-
         _logger.LogInformation("正在重新连接Mud飞书WebSocket服务...");
-
-        lock (_stateLock)
-        {
-            _isReconnecting = true;
-        }
 
         try
         {
-            // 先断开现有连接
             if (IsConnected)
             {
                 await _webSocketClient.DisconnectAsync(cancellationToken);
             }
 
-            // 重新启动连接
             await StartAsync(cancellationToken);
 
             lock (_stateLock)
             {
                 _reconnectCount++;
-                _isReconnecting = false;
             }
             _logger.LogInformation("Mud飞书WebSocket服务重连成功");
         }
@@ -371,7 +353,6 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable
             lock (_stateLock)
             {
                 _lastError = ex;
-                _isReconnecting = false;
             }
             _logger.LogError(ex, "Mud飞书WebSocket服务重连失败");
             throw;
@@ -402,15 +383,6 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable
     {
         lock (_stateLock)
         {
-            if (_isReconnecting)
-            {
-                return WebSocketConnectionState.Reconnecting with
-                {
-                    ReconnectCount = _reconnectCount,
-                    LastError = _lastError
-                };
-            }
-
             if (IsConnected)
             {
                 return WebSocketConnectionState.Connected(_connectedTime, _reconnectCount);

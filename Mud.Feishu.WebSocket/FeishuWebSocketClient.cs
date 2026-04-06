@@ -56,7 +56,7 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
     // 心跳相关状态
     private DateTime _lastPongTime = DateTime.MinValue;
     private int _heartbeatMissedCount = 0;
-    
+
     /// <summary>
     /// 心跳超时阈值，连续超过此次数将触发重连
     /// </summary>
@@ -65,12 +65,6 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
     // 连接状态线程安全保护
     private int _connectionState = 0; // 0=未连接, 1=已连接, 2=连接中, 3=重连中
     private readonly object _connectionStateLock = new();
-
-    // 重连总次数和时间限制 (防止无限重连)
-    private int _totalReconnectAttempts = 0;
-    private DateTime _firstReconnectAttempt = DateTime.MinValue;
-    private const int MaxTotalReconnectAttempts = 20; // 总最大重连次数
-    private static readonly TimeSpan MaxReconnectTotalTime = TimeSpan.FromMinutes(30); // 最大重连总时间
 
     // 处理器引用
     private PingPongMessageHandler? _pingPongHandler;
@@ -100,62 +94,6 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
 
     /// <inheritdoc/>
     public bool IsAuthenticated => _authManager.IsAuthenticated;
-
-    /// <summary>
-    /// 检查是否超过最大重连次数限制
-    /// </summary>
-    private bool IsMaxReconnectAttemptsReached()
-    {
-        lock (_connectionStateLock)
-        {
-            // 检查总重连次数
-            if (_totalReconnectAttempts >= MaxTotalReconnectAttempts)
-            {
-                _logger.LogError("已达到最大重连总次数 {MaxAttempts}，停止重连", MaxTotalReconnectAttempts);
-                return true;
-            }
-
-            // 检查重连总时间
-            if (_firstReconnectAttempt != DateTime.MinValue)
-            {
-                var totalReconnectTime = DateTime.UtcNow - _firstReconnectAttempt;
-                if (totalReconnectTime >= MaxReconnectTotalTime)
-                {
-                    _logger.LogError("已达到最大重连总时间 {MaxTime} 分钟，停止重连", MaxReconnectTotalTime.TotalMinutes);
-                    return true;
-                }
-            }
-
-            return false;
-        }
-    }
-
-    /// <summary>
-    /// 重置重连计数器
-    /// </summary>
-    private void ResetReconnectCounter()
-    {
-        lock (_connectionStateLock)
-        {
-            _totalReconnectAttempts = 0;
-            _firstReconnectAttempt = DateTime.MinValue;
-        }
-    }
-
-    /// <summary>
-    /// 增加重连计数
-    /// </summary>
-    private void IncrementReconnectAttempt()
-    {
-        lock (_connectionStateLock)
-        {
-            if (_firstReconnectAttempt == DateTime.MinValue)
-            {
-                _firstReconnectAttempt = DateTime.UtcNow;
-            }
-            _totalReconnectAttempts++;
-        }
-    }
 
     /// <inheritdoc/>
     public event EventHandler<EventArgs>? Connected;
@@ -321,9 +259,6 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
         {
             _connectionState = 2; // 连接中
         }
-
-        // 重置重连计数器（连接建立时重置）
-        ResetReconnectCounter();
 
         using (FeishuMetricsHelper.RecordHttpRequest("GET", endpoint.Url))
         {
@@ -590,11 +525,11 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
                                 {
                                     droppedCount++;
                                 }
-                                
+
                                 // 发出队列满告警
                                 _logger.LogWarning("消息队列已满 (容量: {Capacity})，已丢弃 {DroppedCount} 条最旧消息以腾出空间",
                                     _options.MessageQueueCapacity, droppedCount);
-                                
+
                                 // 触发错误事件通知上层应用
                                 Error?.Invoke(this, new WebSocketErrorEventArgs
                                 {
@@ -700,26 +635,15 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
             _lastPongTime = DateTime.UtcNow;
             _heartbeatMissedCount = 0;
 
-            // 保持心跳运行，即使连接断开也要持续检测以便触发重连
             while (!cancellationToken.IsCancellationRequested)
             {
                 await Task.Delay(_options.HeartbeatIntervalMs, cancellationToken);
 
-                // 如果连接已断开且启用自动重连，尝试触发重连
                 if (!_connectionManager.IsConnected)
                 {
                     if (_options.AutoReconnect)
                     {
-                        // 检查是否超过最大重连次数，避免无限重连
-                        if (IsMaxReconnectAttemptsReached())
-                        {
-                            _logger.LogError("已达到最大重连限制，停止重连。连接状态: {State}", _connectionManager.State);
-                            break;
-                        }
-
-                        IncrementReconnectAttempt();
-                        _logger.LogDebug("连接已断开，触发重连事件... (第 {Attempt} 次)", _totalReconnectAttempts);
-                        // 触发断开事件，让 HostedService 处理重连逻辑
+                        _logger.LogDebug("连接已断开，触发重连事件...");
                         Disconnected?.Invoke(this, new SocketEventArgs.WebSocketCloseEventArgs
                         {
                             CloseStatus = System.Net.WebSockets.WebSocketCloseStatus.NormalClosure,
@@ -728,7 +652,6 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
                             Timestamp = DateTime.UtcNow
                         });
                     }
-                    // 连接断开后重置心跳状态
                     _lastPongTime = DateTime.UtcNow;
                     _heartbeatMissedCount = 0;
                     continue;
@@ -747,35 +670,38 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
                     if (_options.EnableLogging)
                         _logger.LogDebug("已发送心跳");
 
-                    // 检查心跳超时
-                    await CheckHeartbeatTimeoutAsync(cancellationToken);
+                    CheckHeartbeatTimeoutAsync();
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "发送心跳时发生错误");
 
-                    // 心跳发送失败，尝试触发重连
                     if (_options.AutoReconnect)
                     {
-                        _logger.LogWarning("心跳发送失败，准备重连...");
-                        await TriggerReconnectAsync(cancellationToken);
+                        _logger.LogWarning("心跳发送失败，触发断开事件...");
+                        Disconnected?.Invoke(this, new SocketEventArgs.WebSocketCloseEventArgs
+                        {
+                            CloseStatus = System.Net.WebSockets.WebSocketCloseStatus.EndpointUnavailable,
+                            CloseStatusDescription = "心跳发送失败，触发重连",
+                            IsServerInitiated = false,
+                            Timestamp = DateTime.UtcNow
+                        });
                     }
                 }
             }
         }
         catch (OperationCanceledException)
         {
-            // 正常取消，不需要处理
         }
     }
 
     /// <summary>
     /// 检查心跳超时
     /// </summary>
-    private async Task CheckHeartbeatTimeoutAsync(CancellationToken cancellationToken)
+    private void CheckHeartbeatTimeoutAsync()
     {
         var timeSinceLastPong = DateTime.UtcNow - _lastPongTime;
-        var heartbeatTimeoutMs = _options.HeartbeatIntervalMs * 2; // 超时时间为2倍心跳间隔
+        var heartbeatTimeoutMs = _options.HeartbeatIntervalMs * 2;
 
         if (timeSinceLastPong.TotalMilliseconds > heartbeatTimeoutMs)
         {
@@ -784,52 +710,21 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
             _logger.LogWarning("心跳超时：{TimeSinceLastPong}ms 未收到响应，超时次数：{MissedCount}",
                 timeSinceLastPong.TotalMilliseconds, _heartbeatMissedCount);
 
-            // 如果连续多次超时，触发重连
             if (_heartbeatMissedCount >= HeartbeatTimeoutThreshold && _options.AutoReconnect)
             {
-                // 检查是否超过最大重连次数，避免无限重连
-                if (IsMaxReconnectAttemptsReached())
+                _logger.LogError("连续 {MissedCount} 次心跳超时，触发重连", _heartbeatMissedCount);
+                Disconnected?.Invoke(this, new SocketEventArgs.WebSocketCloseEventArgs
                 {
-                    _logger.LogError("已达到最大重连限制，停止重连");
-                    return;
-                }
-
-                IncrementReconnectAttempt();
-                _logger.LogError("连续 {MissedCount} 次心跳超时，触发重连 (第 {Attempt} 次)", _heartbeatMissedCount, _totalReconnectAttempts);
-                await TriggerReconnectAsync(cancellationToken);
+                    CloseStatus = System.Net.WebSockets.WebSocketCloseStatus.EndpointUnavailable,
+                    CloseStatusDescription = "心跳超时，触发重连",
+                    IsServerInitiated = false,
+                    Timestamp = DateTime.UtcNow
+                });
             }
         }
         else
         {
-            // 重置超时计数器
             _heartbeatMissedCount = 0;
-        }
-    }
-
-    /// <summary>
-    /// 触发重连
-    /// </summary>
-    private async Task TriggerReconnectAsync(CancellationToken cancellationToken)
-    {
-        try
-        {
-            if (_connectionManager.IsConnected)
-            {
-                await _connectionManager.DisconnectAsync(cancellationToken);
-            }
-
-            // 触发断开事件，让 HostedService 处理重连逻辑
-            Disconnected?.Invoke(this, new SocketEventArgs.WebSocketCloseEventArgs
-            {
-                CloseStatus = System.Net.WebSockets.WebSocketCloseStatus.EndpointUnavailable,
-                CloseStatusDescription = "心跳超时，触发重连",
-                IsServerInitiated = false,
-                Timestamp = DateTime.UtcNow
-            });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "触发重连时发生错误");
         }
     }
 

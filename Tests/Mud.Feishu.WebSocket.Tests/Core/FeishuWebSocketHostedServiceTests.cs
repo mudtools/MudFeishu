@@ -9,6 +9,7 @@ using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
+using Mud.Feishu.WebSocket.Core;
 using Mud.Feishu.WebSocket.SocketEventArgs;
 using System.Net.WebSockets;
 
@@ -21,12 +22,14 @@ public class FeishuWebSocketHostedServiceTests
 {
     private readonly Mock<ILogger<FeishuWebSocketHostedService>> _loggerMock;
     private readonly Mock<IFeishuWebSocketManager> _managerMock;
+    private readonly Mock<IReconnectionOrchestrator> _orchestratorMock;
     private readonly FeishuWebSocketOptions _options;
 
     public FeishuWebSocketHostedServiceTests()
     {
         _loggerMock = new Mock<ILogger<FeishuWebSocketHostedService>>();
         _managerMock = new Mock<IFeishuWebSocketManager>();
+        _orchestratorMock = new Mock<IReconnectionOrchestrator>();
         _options = new FeishuWebSocketOptions
         {
             EnableLogging = false,
@@ -42,10 +45,10 @@ public class FeishuWebSocketHostedServiceTests
     [Fact]
     public void Constructor_WithNullLogger_ShouldThrowArgumentNullException()
     {
-        // Act & Assert
         var action = () => new FeishuWebSocketHostedService(
             null!,
             _managerMock.Object,
+            _orchestratorMock.Object,
             Options.Create(_options));
 
         action.Should().Throw<ArgumentNullException>()
@@ -55,10 +58,10 @@ public class FeishuWebSocketHostedServiceTests
     [Fact]
     public void Constructor_WithNullManager_ShouldThrowArgumentNullException()
     {
-        // Act & Assert
         var action = () => new FeishuWebSocketHostedService(
             _loggerMock.Object,
             null!,
+            _orchestratorMock.Object,
             Options.Create(_options));
 
         action.Should().Throw<ArgumentNullException>()
@@ -66,12 +69,25 @@ public class FeishuWebSocketHostedServiceTests
     }
 
     [Fact]
-    public void Constructor_WithNullOptions_ShouldThrowArgumentNullException()
+    public void Constructor_WithNullOrchestrator_ShouldThrowArgumentNullException()
     {
-        // Act & Assert
         var action = () => new FeishuWebSocketHostedService(
             _loggerMock.Object,
             _managerMock.Object,
+            null!,
+            Options.Create(_options));
+
+        action.Should().Throw<ArgumentNullException>()
+            .WithParameterName("reconnectionOrchestrator");
+    }
+
+    [Fact]
+    public void Constructor_WithNullOptions_ShouldThrowArgumentNullException()
+    {
+        var action = () => new FeishuWebSocketHostedService(
+            _loggerMock.Object,
+            _managerMock.Object,
+            _orchestratorMock.Object,
             null!);
 
         action.Should().Throw<ArgumentNullException>()
@@ -81,32 +97,29 @@ public class FeishuWebSocketHostedServiceTests
     [Fact]
     public void Constructor_WithValidParameters_ShouldCreateInstance()
     {
-        // Act
         var service = new FeishuWebSocketHostedService(
             _loggerMock.Object,
             _managerMock.Object,
+            _orchestratorMock.Object,
             Options.Create(_options));
 
-        // Assert
         service.Should().NotBeNull();
     }
 
     [Fact]
     public void GetConnectionStats_ShouldReturnManagerStats()
     {
-        // Arrange
         var expectedStats = (TimeSpan.FromMinutes(10), 2, (Exception?)null);
         _managerMock.Setup(x => x.GetConnectionStats()).Returns(expectedStats);
 
         var service = new FeishuWebSocketHostedService(
             _loggerMock.Object,
             _managerMock.Object,
+            _orchestratorMock.Object,
             Options.Create(_options));
 
-        // Act
         var stats = service.GetConnectionStats();
 
-        // Assert
         stats.Should().Be(expectedStats);
         _managerMock.Verify(x => x.GetConnectionStats(), Times.Once);
     }
@@ -114,19 +127,17 @@ public class FeishuWebSocketHostedServiceTests
     [Fact]
     public void GetConnectionState_ShouldReturnManagerState()
     {
-        // Arrange
         var expectedState = WebSocketConnectionState.Connected(DateTime.UtcNow, 0);
         _managerMock.Setup(x => x.GetConnectionState()).Returns(expectedState);
 
         var service = new FeishuWebSocketHostedService(
             _loggerMock.Object,
             _managerMock.Object,
+            _orchestratorMock.Object,
             Options.Create(_options));
 
-        // Act
         var state = service.GetConnectionState();
 
-        // Assert
         state.Should().Be(expectedState);
         _managerMock.Verify(x => x.GetConnectionState(), Times.Once);
     }
@@ -134,32 +145,29 @@ public class FeishuWebSocketHostedServiceTests
     [Fact]
     public async Task StopAsync_ShouldCallManagerStopAsync()
     {
-        // Arrange
         _managerMock.Setup(x => x.StopAsync(It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
         var service = new FeishuWebSocketHostedService(
             _loggerMock.Object,
             _managerMock.Object,
+            _orchestratorMock.Object,
             Options.Create(_options));
 
-        // Act
         await service.StopAsync(CancellationToken.None);
 
-        // Assert
         _managerMock.Verify(x => x.StopAsync(It.IsAny<CancellationToken>()), Times.AtLeastOnce);
     }
 
     [Fact]
     public void Dispose_ShouldNotThrowWhenCalledMultipleTimes()
     {
-        // Arrange
         var service = new FeishuWebSocketHostedService(
             _loggerMock.Object,
             _managerMock.Object,
+            _orchestratorMock.Object,
             Options.Create(_options));
 
-        // Act & Assert
         var action = () =>
         {
             service.Dispose();
@@ -172,40 +180,66 @@ public class FeishuWebSocketHostedServiceTests
     [Fact]
     public void Constructor_ShouldSubscribeToManagerEvents()
     {
-        // Arrange & Act
         var service = new FeishuWebSocketHostedService(
             _loggerMock.Object,
             _managerMock.Object,
+            _orchestratorMock.Object,
             Options.Create(_options));
 
-        // Assert - 验证事件订阅
         _managerMock.VerifyAdd(x => x.Connected += It.IsAny<EventHandler<EventArgs>>(), Times.Once);
         _managerMock.VerifyAdd(x => x.Disconnected += It.IsAny<EventHandler<WebSocketCloseEventArgs>>(), Times.Once);
         _managerMock.VerifyAdd(x => x.Error += It.IsAny<EventHandler<WebSocketErrorEventArgs>>(), Times.Once);
     }
 
     [Fact]
-    public void Dispose_ShouldUnsubscribeFromManagerEvents()
+    public void Constructor_ShouldSubscribeToOrchestratorEvents()
     {
-        // Arrange
         var service = new FeishuWebSocketHostedService(
             _loggerMock.Object,
             _managerMock.Object,
+            _orchestratorMock.Object,
             Options.Create(_options));
 
-        // Act
+        _orchestratorMock.VerifyAdd(x => x.ReconnectSucceeded += It.IsAny<EventHandler<ReconnectSuccessEventArgs>>(), Times.Once);
+        _orchestratorMock.VerifyAdd(x => x.ReconnectFailed += It.IsAny<EventHandler<ReconnectFailedEventArgs>>(), Times.Once);
+        _orchestratorMock.VerifyAdd(x => x.ReconnectLimitReached += It.IsAny<EventHandler<ReconnectLimitReachedEventArgs>>(), Times.Once);
+    }
+
+    [Fact]
+    public void Dispose_ShouldUnsubscribeFromManagerEvents()
+    {
+        var service = new FeishuWebSocketHostedService(
+            _loggerMock.Object,
+            _managerMock.Object,
+            _orchestratorMock.Object,
+            Options.Create(_options));
+
         service.Dispose();
 
-        // Assert - 验证事件取消订阅
         _managerMock.VerifyRemove(x => x.Connected -= It.IsAny<EventHandler<EventArgs>>(), Times.Once);
         _managerMock.VerifyRemove(x => x.Disconnected -= It.IsAny<EventHandler<WebSocketCloseEventArgs>>(), Times.Once);
         _managerMock.VerifyRemove(x => x.Error -= It.IsAny<EventHandler<WebSocketErrorEventArgs>>(), Times.Once);
     }
 
     [Fact]
+    public void Dispose_ShouldUnsubscribeFromOrchestratorEvents()
+    {
+        var service = new FeishuWebSocketHostedService(
+            _loggerMock.Object,
+            _managerMock.Object,
+            _orchestratorMock.Object,
+            Options.Create(_options));
+
+        service.Dispose();
+
+        _orchestratorMock.VerifyRemove(x => x.ReconnectSucceeded -= It.IsAny<EventHandler<ReconnectSuccessEventArgs>>(), Times.Once);
+        _orchestratorMock.VerifyRemove(x => x.ReconnectFailed -= It.IsAny<EventHandler<ReconnectFailedEventArgs>>(), Times.Once);
+        _orchestratorMock.VerifyRemove(x => x.ReconnectLimitReached -= It.IsAny<EventHandler<ReconnectLimitReachedEventArgs>>(), Times.Once);
+    }
+
+    [Fact]
     public async Task StopAsync_ShouldStopManagerAndDispose()
     {
-        // Arrange
         _managerMock.Setup(x => x.StartAsync(It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
         _managerMock.Setup(x => x.StopAsync(It.IsAny<CancellationToken>()))
@@ -215,18 +249,15 @@ public class FeishuWebSocketHostedServiceTests
         var service = new FeishuWebSocketHostedService(
             _loggerMock.Object,
             _managerMock.Object,
+            _orchestratorMock.Object,
             Options.Create(_options));
 
-        // Act - 启动服务
         await service.StartAsync(CancellationToken.None);
 
-        // 等待服务启动
         await Task.Delay(50);
 
-        // 停止服务
         await service.StopAsync(CancellationToken.None);
 
-        // Assert
         _managerMock.Verify(x => x.StopAsync(It.IsAny<CancellationToken>()), Times.AtLeastOnce());
     }
 }

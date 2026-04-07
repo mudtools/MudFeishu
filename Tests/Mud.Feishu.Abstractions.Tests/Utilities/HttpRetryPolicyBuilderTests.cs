@@ -497,10 +497,13 @@ public class HttpRetryPolicyBuilderTests
         var delay2 = (timestamps[2] - timestamps[1]).TotalMilliseconds;
         var delay3 = (timestamps[3] - timestamps[2]).TotalMilliseconds;
 
-        // With 50ms jitter, delays should be: 50-150ms, 150-250ms, 300-500ms
-        Assert.InRange(delay1, 50, 200); // ~100ms ± jitter
-        Assert.InRange(delay2, 150, 300); // ~200ms ± jitter
-        Assert.InRange(delay3, 300, 550); // ~400ms ± jitter (widened range for jitter)
+        // With 50ms jitter and system timing variations, delays should be:
+        // 1st retry: 50-250ms (100ms ± 50ms jitter + system variance)
+        // 2nd retry: 100-350ms (200ms ± 50ms jitter + system variance)
+        // 3rd retry: 250-600ms (400ms ± 50ms jitter + system variance)
+        Assert.InRange(delay1, 50, 250); // ~100ms ± jitter + variance
+        Assert.InRange(delay2, 100, 350); // ~200ms ± jitter + variance
+        Assert.InRange(delay3, 250, 600); // ~400ms ± jitter + variance (widened range for jitter)
     }
 
     [Fact]

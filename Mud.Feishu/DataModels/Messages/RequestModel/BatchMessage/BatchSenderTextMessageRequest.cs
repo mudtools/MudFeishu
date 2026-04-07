@@ -33,5 +33,6 @@ public class BatchSenderTextMessageRequest : BatchSendMessageRequestBase<Message
 #if NET7_0_OR_GREATER
         required
 #endif
-        override string? MsgType { get; set; } = "text";
+        override string? MsgType
+    { get; set; } = "text";
 }

@@ -19,5 +19,6 @@ public class BatchSenderMessageGroupShareRequest : BatchSendMessageRequestBase<M
 #if NET7_0_OR_GREATER
         required
 #endif
-        override string? MsgType { get; set; } = "share_chat";
+        override string? MsgType
+    { get; set; } = "share_chat";
 }

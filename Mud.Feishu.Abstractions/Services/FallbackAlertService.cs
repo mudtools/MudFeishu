@@ -139,7 +139,7 @@ public class LoggingAlertHandler : IFallbackAlertHandler
             _ => LogLevel.Error
         };
 
-        _logger?.Log(logLevel, 
+        _logger?.Log(logLevel,
             "[降级告警] {AlertType}: {Message}, 连续失败: {Failures}, 已降级: {IsFallback}, 异常: {Exception}",
             eventArgs.AlertType,
             eventArgs.Message,

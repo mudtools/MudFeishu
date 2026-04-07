@@ -83,8 +83,8 @@ public class FeishuWebhookServiceTests
         };
 
         _validatorMock
-            .Setup(x => x.ValidateSubscriptionRequest(request, "test_token"))
-            .Returns(true);
+            .Setup(x => x.ValidateSubscriptionRequestAsync(request, "test_token", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
 
         // 设置当前应用键，这是 VerifyEventSubscriptionAsync 的前置条件
         var appConfig = new FeishuAppWebhookOptions
@@ -118,8 +118,8 @@ public class FeishuWebhookServiceTests
         };
 
         _validatorMock
-            .Setup(x => x.ValidateSubscriptionRequest(request, "test_token"))
-            .Returns(false);
+            .Setup(x => x.ValidateSubscriptionRequestAsync(request, "test_token", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
 
         var service = CreateService();
 

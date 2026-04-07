@@ -19,5 +19,6 @@ public class BatchSenderMessageImageRequest : BatchSendMessageRequestBase<Messag
 #if NET7_0_OR_GREATER
         required
 #endif
-        override string? MsgType { get; set; } = "image";
+        override string? MsgType
+    { get; set; } = "image";
 }

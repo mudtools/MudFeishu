@@ -26,6 +26,7 @@ public class FeishuWebhookServiceConcurrencyTests
     private readonly Mock<ILogger<FeishuWebhookService>> _loggerMock;
     private readonly FeishuWebhookConcurrencyService _concurrencyService;
     private readonly Mock<IFeishuEventDeduplicator> _deduplicatorMock;
+    private readonly Mock<IEncryptKeyProvider> _encryptKeyProviderMock;
     private readonly FeishuWebhookOptions _options;
 
     public FeishuWebhookServiceConcurrencyTests()
@@ -36,6 +37,7 @@ public class FeishuWebhookServiceConcurrencyTests
         _handlerFactoryMock = new Mock<IFeishuEventHandlerFactory>();
         _loggerMock = new Mock<ILogger<FeishuWebhookService>>();
         _deduplicatorMock = new Mock<IFeishuEventDeduplicator>();
+        _encryptKeyProviderMock = new Mock<IEncryptKeyProvider>();
 
         _options = new FeishuWebhookOptions
         {
@@ -82,8 +84,31 @@ public class FeishuWebhookServiceConcurrencyTests
 
         // 默认验证通过
         _validatorMock
-            .Setup(x => x.ValidateSubscriptionRequest(It.IsAny<EventVerificationRequest>(), It.IsAny<string>()))
-            .Returns(true);
+            .Setup(x => x.ValidateSubscriptionRequestAsync(It.IsAny<EventVerificationRequest>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        // 设置加密密钥提供程序
+        _encryptKeyProviderMock
+            .Setup(x => x.GetEncryptKeyAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((string appKey, CancellationToken _) =>
+            {
+                if (_options.Apps.TryGetValue(appKey, out var appConfig))
+                {
+                    return appConfig.EncryptKey;
+                }
+                return null;
+            });
+
+        _encryptKeyProviderMock
+            .Setup(x => x.GetVerificationTokenAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((string appKey, CancellationToken _) =>
+            {
+                if (_options.Apps.TryGetValue(appKey, out var appConfig))
+                {
+                    return appConfig.VerificationToken;
+                }
+                return null;
+            });
     }
 
     private FeishuWebhookService CreateService()
@@ -97,6 +122,7 @@ public class FeishuWebhookServiceConcurrencyTests
             Array.Empty<IFeishuEventInterceptor>(),
             _concurrencyService,
             _deduplicatorMock.Object,
+            _encryptKeyProviderMock.Object,
             null,
             null);
     }

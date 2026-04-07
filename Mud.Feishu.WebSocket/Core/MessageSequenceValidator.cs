@@ -25,12 +25,12 @@ public class MessageSequenceValidator
     /// 最近处理的序号数量（用于滑动窗口去重）
     /// </summary>
     private const int RecentNumbersWindow = 1000;
-    
+
     /// <summary>
     /// 序号跳跃阈值，超过此值认为消息丢失
     /// </summary>
     private const int SequenceGapThreshold = 10;
-    
+
     /// <summary>
     /// 清理旧数据的间隔（分钟）
     /// </summary>

@@ -23,7 +23,7 @@ public class PingPongMessageHandler : JsonMessageHandler, IPongHandler
     /// 接收到 Pong 消息时触发的事件
     /// </summary>
     public event EventHandler? PongReceived;
-   
+
     /// <summary>
     /// 初始化Ping/Pong消息处理器
     /// </summary>
@@ -95,7 +95,7 @@ public class PingPongMessageHandler : JsonMessageHandler, IPongHandler
 
         if (_options.EnableLogging)
             _logger.LogDebug("Pong延迟: {Latency}ms", latencyMs);
-        
+
         // 触发PongReceived事件，通知客户端更新最后一次Pong时间
         PongReceived?.Invoke(this, EventArgs.Empty);
     }

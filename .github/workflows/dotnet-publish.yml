@@ -57,7 +57,7 @@ jobs:
 
       # 步骤5：运行单元测试（排除不完善的项目）
       - name: Run tests
-        run: dotnet test ${{ env.SOLUTION_FILE }} --no-build --configuration ${{ env.CONFIGURATION }} --logger trx --verbosity normal --filter "FullyQualifiedName!~Mud.Feishu.Tests" --framework "net6.0|net8.0|net10.0"
+        run: dotnet test ${{ env.SOLUTION_FILE }} --no-build --configuration ${{ env.CONFIGURATION }} --logger trx --verbosity normal --filter "FullyQualifiedName!~Mud.Feishu.Tests"
 
       # 步骤6：上传测试报告，方便在GitHub上查看
       - name: Publish test results
@@ -66,6 +66,11 @@ jobs:
         with:
           name: test-results-${{ matrix.os }}
           path: "**/*.trx"
+
+      # 步骤7：检查测试结果，确保测试失败会导致整个 job 失败
+      - name: Check test results
+        if: steps.test.outcome == 'failure'
+        run: exit 1
 
   # 第二个作业：版本管理和创建 Release
   version-and-release:

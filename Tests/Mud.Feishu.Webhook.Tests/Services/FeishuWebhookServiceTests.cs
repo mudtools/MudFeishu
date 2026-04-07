@@ -23,6 +23,7 @@ public class FeishuWebhookServiceTests
     private readonly Mock<ILogger<FeishuWebhookService>> _loggerMock;
     private readonly FeishuWebhookConcurrencyService _concurrencyService;
     private readonly Mock<IFeishuEventDeduplicator> _deduplicatorMock;
+    private readonly Mock<IEncryptKeyProvider> _encryptKeyProviderMock;
     private readonly FeishuWebhookOptions _options;
 
     public FeishuWebhookServiceTests()
@@ -33,6 +34,7 @@ public class FeishuWebhookServiceTests
         _handlerFactoryMock = new Mock<IFeishuEventHandlerFactory>();
         _loggerMock = new Mock<ILogger<FeishuWebhookService>>();
         _deduplicatorMock = new Mock<IFeishuEventDeduplicator>();
+        _encryptKeyProviderMock = new Mock<IEncryptKeyProvider>();
 
         _options = new FeishuWebhookOptions
         {
@@ -45,6 +47,28 @@ public class FeishuWebhookServiceTests
 
         var concurrencyLoggerMock = new Mock<ILogger<FeishuWebhookConcurrencyService>>();
         _concurrencyService = new FeishuWebhookConcurrencyService(_optionsMonitorMock.Object, concurrencyLoggerMock.Object);
+
+        _encryptKeyProviderMock
+            .Setup(x => x.GetEncryptKeyAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((string appKey, CancellationToken _) =>
+            {
+                if (_options.Apps.TryGetValue(appKey, out var appConfig))
+                {
+                    return appConfig.EncryptKey;
+                }
+                return null;
+            });
+
+        _encryptKeyProviderMock
+            .Setup(x => x.GetVerificationTokenAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((string appKey, CancellationToken _) =>
+            {
+                if (_options.Apps.TryGetValue(appKey, out var appConfig))
+                {
+                    return appConfig.VerificationToken;
+                }
+                return null;
+            });
     }
 
     [Fact]
@@ -274,6 +298,7 @@ public class FeishuWebhookServiceTests
             Array.Empty<IFeishuEventInterceptor>(),
             _concurrencyService,
             _deduplicatorMock.Object,
+            _encryptKeyProviderMock.Object,
             null,
             null);
     }

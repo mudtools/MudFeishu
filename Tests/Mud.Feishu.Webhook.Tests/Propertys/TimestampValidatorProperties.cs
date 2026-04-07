@@ -9,6 +9,7 @@ using FsCheck;
 using FsCheck.Xunit;
 using Mud.Feishu.Webhook.Configuration;
 using Mud.Feishu.Webhook.Services;
+using Mud.Feishu.Webhook.Utilities;
 using SystemRandom = System.Random;
 
 namespace Mud.Feishu.Webhook.Tests.Propertys;
@@ -22,11 +23,13 @@ public class TimestampValidatorProperties
 {
     private readonly Mock<ILogger<TimestampValidator>> _loggerMock;
     private readonly Mock<IOptionsMonitor<FeishuWebhookOptions>> _optionsMonitorMock;
+    private readonly Mock<IEnvironmentService> _environmentServiceMock;
 
     public TimestampValidatorProperties()
     {
         _loggerMock = new Mock<ILogger<TimestampValidator>>();
         _optionsMonitorMock = new Mock<IOptionsMonitor<FeishuWebhookOptions>>();
+        _environmentServiceMock = new Mock<IEnvironmentService>();
 
         // Setup default options
         var defaultOptions = new FeishuWebhookOptions
@@ -34,6 +37,11 @@ public class TimestampValidatorProperties
             TimestampToleranceSeconds = 300
         };
         _optionsMonitorMock.Setup(x => x.CurrentValue).Returns(defaultOptions);
+
+        // Setup environment service to return non-production for tests
+        _environmentServiceMock.Setup(x => x.IsProduction).Returns(false);
+        _environmentServiceMock.Setup(x => x.IsDevelopment).Returns(true);
+        _environmentServiceMock.Setup(x => x.EnvironmentName).Returns("Development");
     }
 
     /// <summary>
@@ -50,7 +58,7 @@ public class TimestampValidatorProperties
             data =>
             {
                 // Arrange
-                var validator = new TimestampValidator(_loggerMock.Object, _optionsMonitorMock.Object);
+                var validator = new TimestampValidator(_loggerMock.Object, _optionsMonitorMock.Object, _environmentServiceMock.Object);
 
                 // Act
                 var result = validator.ValidateTimestamp(data.Timestamp, data.ToleranceSeconds);
@@ -89,7 +97,7 @@ public class TimestampValidatorProperties
             data =>
             {
                 // Arrange
-                var validator = new TimestampValidator(_loggerMock.Object, _optionsMonitorMock.Object);
+                var validator = new TimestampValidator(_loggerMock.Object, _optionsMonitorMock.Object, _environmentServiceMock.Object);
 
                 // Act
                 var result = validator.ValidateTimestamp(data.Timestamp, data.ToleranceSeconds);
@@ -137,10 +145,13 @@ public class TimestampValidatorProperties
                 // Arrange
                 var loggerMock = new Mock<ILogger<TimestampValidator>>();
                 var optionsMonitorMock = new Mock<IOptionsMonitor<FeishuWebhookOptions>>();
+                var environmentServiceMock = new Mock<IEnvironmentService>();
                 var defaultOptions = new FeishuWebhookOptions { TimestampToleranceSeconds = 300 };
                 optionsMonitorMock.Setup(x => x.CurrentValue).Returns(defaultOptions);
+                environmentServiceMock.Setup(x => x.IsProduction).Returns(false);
+                environmentServiceMock.Setup(x => x.IsDevelopment).Returns(true);
 
-                var validator = new TimestampValidator(loggerMock.Object, optionsMonitorMock.Object);
+                var validator = new TimestampValidator(loggerMock.Object, optionsMonitorMock.Object, environmentServiceMock.Object);
 
                 // Act
                 var result = validator.ValidateTimestamp(data.Timestamp, data.ToleranceSeconds);

@@ -77,7 +77,7 @@ internal class UserTokenManager : IFeishuUserTokenManager
         {
             _logger.LogDebug("Using cached access token for user {UserId}", userId);
             FeishuMetricsHelper.RecordTokenFetch("UserAccessToken", fromCache: true);
-            return FormatBearerToken(tokenInfo.AccessToken);
+            return TokenUtils.FormatBearerToken(tokenInfo.AccessToken);
         }
 
         try
@@ -300,7 +300,7 @@ internal class UserTokenManager : IFeishuUserTokenManager
 
         if (tokenInfo.IsAccessTokenValid(_options.TokenRefreshThreshold))
         {
-            return FormatBearerToken(tokenInfo.AccessToken);
+            return TokenUtils.FormatBearerToken(tokenInfo.AccessToken);
         }
 
         if (tokenInfo.IsRefreshTokenValid())
@@ -310,7 +310,7 @@ internal class UserTokenManager : IFeishuUserTokenManager
             var newToken = await RefreshUserTokenAsync(userId, cancellationToken);
             if (newToken != null && !string.IsNullOrEmpty(newToken.AccessToken))
             {
-                return FormatBearerToken(newToken.AccessToken);
+                return TokenUtils.FormatBearerToken(newToken.AccessToken);
             }
 
             _logger.LogWarning("Failed to refresh token for user {UserId}", userId);
@@ -347,13 +347,5 @@ internal class UserTokenManager : IFeishuUserTokenManager
     private string GenerateCacheKey(string? userId)
     {
         return $"{_options.AppId}:UserAccessToken:{userId}";
-    }
-
-    private static string FormatBearerToken(string? token)
-    {
-        if (string.IsNullOrEmpty(token))
-            return "Bearer ";
-
-        return token!.StartsWith("Bearer ") ? token : $"Bearer {token}";
     }
 }

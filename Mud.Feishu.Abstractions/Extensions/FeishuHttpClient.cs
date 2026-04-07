@@ -32,9 +32,17 @@ internal class FeishuHttpClient : EnhancedHttpClient, IEnhancedHttpClient
         return _jsonSerializerOptions.Value;
     }
 
+    /// <summary>
+    /// 加密内容（当前 SDK 不支持此功能）
+    /// </summary>
+    /// <param name="content">要加密的内容</param>
+    /// <param name="propertyName">属性名称</param>
+    /// <param name="serializeType">序列化类型</param>
+    /// <returns>不支持此操作</returns>
+    /// <exception cref="NotSupportedException">始终抛出，因为飞书 SDK 不需要请求体加密功能</exception>
     public override string EncryptContent(object content, string propertyName = "data", SerializeType serializeType = SerializeType.Json)
     {
-        _logger.LogWarning("当前类库无须使用请求体加密功能。");
-        throw new NotImplementedException("当前类库无须使用请求体加密功能。");
+        _logger.LogWarning("飞书 SDK 不支持请求体加密功能，此方法不应被调用");
+        throw new NotSupportedException("飞书 SDK 不需要请求体加密功能。如需使用加密功能，请使用其他支持加密的 HTTP 客户端实现。");
     }
 }

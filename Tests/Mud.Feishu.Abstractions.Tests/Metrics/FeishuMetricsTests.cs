@@ -6,6 +6,7 @@
 // -----------------------------------------------------------------------
 
 using FluentAssertions;
+using System.Collections.Concurrent;
 using System.Diagnostics.Metrics;
 using Mud.Feishu.Abstractions.Metrics;
 
@@ -17,13 +18,14 @@ namespace Mud.Feishu.Abstractions.Tests.Metrics;
 public class FeishuMetricsTests
 {
     private readonly MeterListener _meterListener;
-    private readonly Dictionary<string, long> _counterValues;
-    private readonly Dictionary<string, List<double>> _histogramValues;
+    private readonly ConcurrentDictionary<string, long> _counterValues;
+    private readonly ConcurrentDictionary<string, List<double>> _histogramValues;
+    private readonly object _histogramLock = new();
 
     public FeishuMetricsTests()
     {
-        _counterValues = new Dictionary<string, long>();
-        _histogramValues = new Dictionary<string, List<double>>();
+        _counterValues = new ConcurrentDictionary<string, long>();
+        _histogramValues = new ConcurrentDictionary<string, List<double>>();
 
         // 设置指标监听器来捕获指标值
         _meterListener = new MeterListener();
@@ -49,21 +51,17 @@ public class FeishuMetricsTests
         _meterListener.SetMeasurementEventCallback<long>((instrument, value, tags, state) =>
         {
             var key = instrument.Name;
-            if (!_counterValues.ContainsKey(key))
-            {
-                _counterValues[key] = 0;
-            }
-            _counterValues[key] += value;
+            _counterValues.AddOrUpdate(key, value, (_, existing) => existing + value);
         });
 
         _meterListener.SetMeasurementEventCallback<double>((instrument, value, tags, state) =>
         {
             var key = instrument.Name;
-            if (!_histogramValues.ContainsKey(key))
+            var list = _histogramValues.GetOrAdd(key, _ => new List<double>());
+            lock (_histogramLock)
             {
-                _histogramValues[key] = new List<double>();
+                list.Add(value);
             }
-            _histogramValues[key].Add(value);
         });
 
         _meterListener.Start();

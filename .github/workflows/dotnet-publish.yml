@@ -1,0 +1,86 @@
+name: .NET Build, Test and Publish
+
+on:
+  push:
+    branches: [ "main", "master" ]
+    tags:
+      - 'v*'  # 当推送版本标签时触发（如 v1.0.0）
+  pull_request:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+env:
+  DOTNET_VERSION: '10.0.x'     # .NET SDK 版本（支持构建 netstandard2.0, net6.0, net8.0, net10.0）
+  CONFIGURATION: 'Release'     # 构建配置
+  SOLUTION_FILE: 'Mud.Feishu.slnx'  # 解决方案文件
+
+jobs:
+  # 第一个作业：负责构建和测试（支持多操作系统）
+  build-and-test:
+    name: Build and Test (${{ matrix.os }})
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+    # 步骤1：检出你的代码
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    # 步骤2：安装.NET SDK
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    # 步骤3：还原依赖包
+    - name: Restore dependencies
+      run: dotnet restore ${{ env.SOLUTION_FILE }}
+
+    # 步骤4：编译整个解决方案
+    - name: Build
+      run: dotnet build ${{ env.SOLUTION_FILE }} --no-restore --configuration ${{ env.CONFIGURATION }}
+
+    # 步骤5：运行单元测试
+    - name: Run tests
+      run: dotnet test ${{ env.SOLUTION_FILE }} --no-build --configuration ${{ env.CONFIGURATION }} --logger trx --verbosity normal
+    
+    # 步骤6：上传测试报告，方便在GitHub上查看
+    - name: Publish test results
+      uses: actions/upload-artifact@v4
+      if: always()  # 即使测试失败也执行
+      with:
+        name: test-results-${{ matrix.os }}
+        path: '**/*.trx'
+
+  # 第二个作业：负责打包和发布NuGet包
+  # 只在推送版本标签时执行发布
+  publish-nuget:
+    name: Publish to NuGet
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')  # 只在推送版本标签时执行（如 v1.0.0）
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Restore dependencies
+      run: dotnet restore ${{ env.SOLUTION_FILE }}
+
+    - name: Build
+      run: dotnet build ${{ env.SOLUTION_FILE }} --configuration ${{ env.CONFIGURATION }} --no-restore
+
+    # 打包：生成 .nupkg 文件
+    - name: Pack NuGet package
+      run: dotnet pack ${{ env.SOLUTION_FILE }} --configuration ${{ env.CONFIGURATION }} --output ./nupkg --no-build
+
+    # 发布：将包推送到 NuGet.org
+    - name: Push to NuGet.org
+      run: dotnet nuget push "./nupkg/*.nupkg" --api-key ${{ secrets.MUDFEISHU }} --source https://api.nuget.org/v3/index.json --skip-duplicate

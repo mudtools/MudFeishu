@@ -2,30 +2,30 @@ name: .NET Build, Test and Publish
 
 on:
   push:
-    branches: [ "main", "master" ]
+    branches: ["main", "master"]
     tags:
-      - 'v*'  # 当推送版本标签时触发（如 v1.0.0）
+      - "v*" # 当推送版本标签时触发（如 v1.0.0）
   pull_request:
-    branches: [ "main", "master" ]
+    branches: ["main", "master"]
   workflow_dispatch:
     inputs:
       version:
-        description: '版本号（如 2.0.7，留空则自动根据提交信息生成）'
+        description: "版本号（如 2.0.7，留空则自动根据提交信息生成）"
         required: false
-        default: ''
+        default: ""
       dry_run:
-        description: '试运行模式（不实际发布）'
+        description: "试运行模式（不实际发布）"
         required: true
-        default: 'false'
+        default: "false"
         type: boolean
 
 permissions:
-  contents: write  # 需要写权限来创建 tag 和 release
+  contents: write # 需要写权限来创建 tag 和 release
 
 env:
-  DOTNET_VERSIONS: '8.0.x 10.0.x'  # .NET SDK 版本（支持构建 netstandard2.0, net6.0, net8.0, net10.0）
-  CONFIGURATION: 'Release'     # 构建配置
-  SOLUTION_FILE: 'Mud.Feishu.slnx'  # 解决方案文件
+  DOTNET_VERSIONS: "8.0.x 9.0.x 10.0.x" # .NET SDK 版本（支持构建 netstandard2.0, net6.0, net8.0, net9.0, net10.0）
+  CONFIGURATION: "Release" # 构建配置
+  SOLUTION_FILE: "Mud.Feishu.slnx" # 解决方案文件
 
 jobs:
   # 第一个作业：负责构建和测试（支持多操作系统）
@@ -35,37 +35,37 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
-    
+
     steps:
-    # 步骤1：检出你的代码
-    - name: Checkout code
-      uses: actions/checkout@v4
+      # 步骤1：检出你的代码
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    # 步骤2：安装.NET SDK（多版本支持）
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: ${{ env.DOTNET_VERSIONS }}
+      # 步骤2：安装.NET SDK（多版本支持）
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSIONS }}
 
-    # 步骤3：还原依赖包
-    - name: Restore dependencies
-      run: dotnet restore ${{ env.SOLUTION_FILE }}
+      # 步骤3：还原依赖包
+      - name: Restore dependencies
+        run: dotnet restore ${{ env.SOLUTION_FILE }}
 
-    # 步骤4：编译整个解决方案
-    - name: Build
-      run: dotnet build ${{ env.SOLUTION_FILE }} --no-restore --configuration ${{ env.CONFIGURATION }}
+      # 步骤4：编译整个解决方案
+      - name: Build
+        run: dotnet build ${{ env.SOLUTION_FILE }} --no-restore --configuration ${{ env.CONFIGURATION }}
 
-    # 步骤5：运行单元测试（排除不完善的项目）
-    - name: Run tests
-      run: dotnet test ${{ env.SOLUTION_FILE }} --no-build --configuration ${{ env.CONFIGURATION }} --logger trx --verbosity normal --filter "FullyQualifiedName!~Mud.Feishu.Tests"
-    
-    # 步骤6：上传测试报告，方便在GitHub上查看
-    - name: Publish test results
-      uses: actions/upload-artifact@v4
-      if: always()  # 即使测试失败也执行
-      with:
-        name: test-results-${{ matrix.os }}
-        path: '**/*.trx'
+      # 步骤5：运行单元测试（排除不完善的项目）
+      - name: Run tests
+        run: dotnet test ${{ env.SOLUTION_FILE }} --no-build --configuration ${{ env.CONFIGURATION }} --logger trx --verbosity normal --filter "FullyQualifiedName!~Mud.Feishu.Tests"
+
+      # 步骤6：上传测试报告，方便在GitHub上查看
+      - name: Publish test results
+        uses: actions/upload-artifact@v4
+        if: always() # 即使测试失败也执行
+        with:
+          name: test-results-${{ matrix.os }}
+          path: "**/*.trx"
 
   # 第二个作业：版本管理和创建 Release
   version-and-release:
@@ -76,127 +76,127 @@ jobs:
     outputs:
       version: ${{ steps.version_info.outputs.version }}
       new_release: ${{ steps.version_info.outputs.new_release }}
-    
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-        token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '20'
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
 
-    - name: Install semantic-release
-      run: |
-        npm install -g semantic-release@23
-        npm install -g @semantic-release/git@10
-        npm install -g @semantic-release/changelog@6
-        npm install -g @semantic-release/exec@6
-        npm install -g conventional-changelog-conventionalcommits@7
+      - name: Install semantic-release
+        run: |
+          npm install -g semantic-release@23
+          npm install -g @semantic-release/git@10
+          npm install -g @semantic-release/changelog@6
+          npm install -g @semantic-release/exec@6
+          npm install -g conventional-changelog-conventionalcommits@7
 
-    - name: Create semantic-release config
-      run: |
-        cat > .releaserc.json << 'EOF'
-        {
-          "branches": ["main", "master"],
-          "plugins": [
-            [
-              "conventional-changelog-conventionalcommits",
-              {
-                "types": [
-                  { "type": "feat", "section": "✨ Features", "hidden": false },
-                  { "type": "fix", "section": "🐛 Bug Fixes", "hidden": false },
-                  { "type": "perf", "section": "⚡ Performance", "hidden": false },
-                  { "type": "refactor", "section": "♻️ Code Refactoring", "hidden": false },
-                  { "type": "docs", "section": "📝 Documentation", "hidden": false },
-                  { "type": "test", "section": "✅ Tests", "hidden": false },
-                  { "type": "build", "section": "📦 Build System", "hidden": false },
-                  { "type": "ci", "section": "👷 CI/CD", "hidden": false },
-                  { "type": "chore", "section": "🔧 Maintenance", "hidden": true }
-                ]
-              }
-            ],
-            [
-              "@semantic-release/changelog",
-              {
-                "changelogFile": "CHANGELOG.md",
-                "changelogTitle": "# Changelog\n\nAll notable changes to this project will be documented in this file."
-              }
-            ],
-            [
-              "@semantic-release/exec",
-              {
-                "prepareCmd": "sed -i 's/<Version>.*<\\/Version>/<Version>${nextRelease.version}<\\/Version>/' Directory.Build.props"
-              }
-            ],
-            [
-              "@semantic-release/git",
-              {
-                "assets": ["Directory.Build.props", "CHANGELOG.md"],
-                "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
-              }
+      - name: Create semantic-release config
+        run: |
+          cat > .releaserc.json << 'EOF'
+          {
+            "branches": ["main", "master"],
+            "plugins": [
+              [
+                "conventional-changelog-conventionalcommits",
+                {
+                  "types": [
+                    { "type": "feat", "section": "✨ Features", "hidden": false },
+                    { "type": "fix", "section": "🐛 Bug Fixes", "hidden": false },
+                    { "type": "perf", "section": "⚡ Performance", "hidden": false },
+                    { "type": "refactor", "section": "♻️ Code Refactoring", "hidden": false },
+                    { "type": "docs", "section": "📝 Documentation", "hidden": false },
+                    { "type": "test", "section": "✅ Tests", "hidden": false },
+                    { "type": "build", "section": "📦 Build System", "hidden": false },
+                    { "type": "ci", "section": "👷 CI/CD", "hidden": false },
+                    { "type": "chore", "section": "🔧 Maintenance", "hidden": true }
+                  ]
+                }
+              ],
+              [
+                "@semantic-release/changelog",
+                {
+                  "changelogFile": "CHANGELOG.md",
+                  "changelogTitle": "# Changelog\n\nAll notable changes to this project will be documented in this file."
+                }
+              ],
+              [
+                "@semantic-release/exec",
+                {
+                  "prepareCmd": "sed -i 's/<Version>.*<\\/Version>/<Version>${nextRelease.version}<\\/Version>/' Directory.Build.props"
+                }
+              ],
+              [
+                "@semantic-release/git",
+                {
+                  "assets": ["Directory.Build.props", "CHANGELOG.md"],
+                  "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
+                }
+              ]
             ]
-          ]
-        }
-        EOF
+          }
+          EOF
 
-    - name: Run semantic-release
-      id: semantic
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        if [ -n "${{ inputs.version }}" ]; then
-          VERSION="${{ inputs.version }}"
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "new_release=true" >> $GITHUB_OUTPUT
-          
-          # 更新 Directory.Build.props
-          sed -i "s/<Version>.*<\/Version>/<Version>$VERSION<\/Version>/" Directory.Build.props
-          
-          # 生成 changelog
-          echo "## v$VERSION ($(date '+%Y-%m-%d'))" > RELEASE_NOTES.md
-          echo "" >> RELEASE_NOTES.md
-          git log --pretty=format:"- %s" $(git describe --tags --abbrev=0 2>/dev/null || echo "")..HEAD >> RELEASE_NOTES.md || echo "- Manual release v$VERSION" >> RELEASE_NOTES.md
-          
-          # 提交并创建 tag
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add Directory.Build.props
-          git commit -m "chore(release): v$VERSION [skip ci]" || true
-          git tag -a "v$VERSION" -F RELEASE_NOTES.md
-          
-          if [ "${{ inputs.dry_run }}" != "true" ]; then
-            git push origin HEAD:master
-            git push origin "v$VERSION"
-          fi
-        else
-          if [ "${{ inputs.dry_run }}" = "true" ]; then
-            DRY_RUN=true npx semantic-release --dry-run
-            VERSION=$(npx semantic-release --dry-run 2>&1 | grep -oP 'The next release version is \K[0-9.]+')
-            echo "version=${VERSION:-skip}" >> $GITHUB_OUTPUT
-            echo "new_release=false" >> $GITHUB_OUTPUT
-          else
-            npx semantic-release
-            VERSION=$(git describe --tags --abbrev=0 | sed 's/v//')
+      - name: Run semantic-release
+        id: semantic
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ -n "${{ inputs.version }}" ]; then
+            VERSION="${{ inputs.version }}"
             echo "version=$VERSION" >> $GITHUB_OUTPUT
             echo "new_release=true" >> $GITHUB_OUTPUT
+            
+            # 更新 Directory.Build.props
+            sed -i "s/<Version>.*<\/Version>/<Version>$VERSION<\/Version>/" Directory.Build.props
+            
+            # 生成 changelog
+            echo "## v$VERSION ($(date '+%Y-%m-%d'))" > RELEASE_NOTES.md
+            echo "" >> RELEASE_NOTES.md
+            git log --pretty=format:"- %s" $(git describe --tags --abbrev=0 2>/dev/null || echo "")..HEAD >> RELEASE_NOTES.md || echo "- Manual release v$VERSION" >> RELEASE_NOTES.md
+            
+            # 提交并创建 tag
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add Directory.Build.props
+            git commit -m "chore(release): v$VERSION [skip ci]" || true
+            git tag -a "v$VERSION" -F RELEASE_NOTES.md
+            
+            if [ "${{ inputs.dry_run }}" != "true" ]; then
+              git push origin HEAD:master
+              git push origin "v$VERSION"
+            fi
+          else
+            if [ "${{ inputs.dry_run }}" = "true" ]; then
+              DRY_RUN=true npx semantic-release --dry-run
+              VERSION=$(npx semantic-release --dry-run 2>&1 | grep -oP 'The next release version is \K[0-9.]+')
+              echo "version=${VERSION:-skip}" >> $GITHUB_OUTPUT
+              echo "new_release=false" >> $GITHUB_OUTPUT
+            else
+              npx semantic-release
+              VERSION=$(git describe --tags --abbrev=0 | sed 's/v//')
+              echo "version=$VERSION" >> $GITHUB_OUTPUT
+              echo "new_release=true" >> $GITHUB_OUTPUT
+            fi
           fi
-        fi
 
-    - name: Extract version info
-      id: version_info
-      run: |
-        VERSION="${{ steps.semantic.outputs.version }}"
-        if [ "$VERSION" = "skip" ] || [ -z "$VERSION" ]; then
-          echo "version=skip" >> $GITHUB_OUTPUT
-          echo "new_release=false" >> $GITHUB_OUTPUT
-        else
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "new_release=${{ steps.semantic.outputs.new_release }}" >> $GITHUB_OUTPUT
-        fi
+      - name: Extract version info
+        id: version_info
+        run: |
+          VERSION="${{ steps.semantic.outputs.version }}"
+          if [ "$VERSION" = "skip" ] || [ -z "$VERSION" ]; then
+            echo "version=skip" >> $GITHUB_OUTPUT
+            echo "new_release=false" >> $GITHUB_OUTPUT
+          else
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "new_release=${{ steps.semantic.outputs.new_release }}" >> $GITHUB_OUTPUT
+          fi
 
   # 第三个作业：负责打包和发布NuGet包
   # 只在推送版本标签时执行发布
@@ -207,37 +207,37 @@ jobs:
     if: |
       (startsWith(github.ref, 'refs/tags/v') || 
       (needs.version-and-release.outputs.new_release == 'true'))
-    
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        ref: ${{ github.ref }}
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
 
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: ${{ env.DOTNET_VERSIONS }}
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSIONS }}
 
-    - name: Restore dependencies
-      run: dotnet restore ${{ env.SOLUTION_FILE }}
+      - name: Restore dependencies
+        run: dotnet restore ${{ env.SOLUTION_FILE }}
 
-    - name: Build
-      run: dotnet build ${{ env.SOLUTION_FILE }} --configuration ${{ env.CONFIGURATION }} --no-restore
+      - name: Build
+        run: dotnet build ${{ env.SOLUTION_FILE }} --configuration ${{ env.CONFIGURATION }} --no-restore
 
-    # 编译验证 Demos 项目
+      # 编译验证 Demos 项目
     - name: Build Demos
       run: |
         echo "Building all demo projects..."
         find ./Demos -name "*.csproj" -type f | while read project; do
           echo "Building: $project"
-          dotnet build "$project" --configuration ${{ env.CONFIGURATION }} --no-restore
+          dotnet build "$project" --configuration ${{ env.CONFIGURATION }}
         done
 
-    # 打包：生成 .nupkg 文件
-    - name: Pack NuGet package
-      run: dotnet pack ${{ env.SOLUTION_FILE }} --configuration ${{ env.CONFIGURATION }} --output ./nupkg --no-build
+      # 打包：生成 .nupkg 文件
+      - name: Pack NuGet package
+        run: dotnet pack ${{ env.SOLUTION_FILE }} --configuration ${{ env.CONFIGURATION }} --output ./nupkg --no-build
 
-    # 发布：将包推送到 NuGet.org
-    - name: Push to NuGet.org
-      run: dotnet nuget push "./nupkg/*.nupkg" --api-key ${{ secrets.MUDFEISHU }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+      # 发布：将包推送到 NuGet.org
+      - name: Push to NuGet.org
+        run: dotnet nuget push "./nupkg/*.nupkg" --api-key ${{ secrets.MUDFEISHU }} --source https://api.nuget.org/v3/index.json --skip-duplicate

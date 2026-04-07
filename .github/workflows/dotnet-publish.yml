@@ -226,13 +226,13 @@ jobs:
         run: dotnet build ${{ env.SOLUTION_FILE }} --configuration ${{ env.CONFIGURATION }} --no-restore
 
       # 编译验证 Demos 项目
-    - name: Build Demos
-      run: |
-        echo "Building all demo projects..."
-        find ./Demos -name "*.csproj" -type f | while read project; do
-          echo "Building: $project"
-          dotnet build "$project" --configuration ${{ env.CONFIGURATION }}
-        done
+      - name: Build Demos
+        run: |
+          echo "Building all demo projects..."
+          find ./Demos -name "*.csproj" -type f | while read project; do
+            echo "Building: $project"
+            dotnet build "$project" --configuration ${{ env.CONFIGURATION }}
+          done
 
       # 打包：生成 .nupkg 文件
       - name: Pack NuGet package

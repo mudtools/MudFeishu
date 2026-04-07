@@ -21,15 +21,6 @@ public interface IFeishuEventValidator
     void SetCurrentAppKey(string appKey);
 
     /// <summary>
-    /// 验证事件订阅请求
-    /// </summary>
-    /// <param name="request">验证请求</param>
-    /// <param name="expectedToken">期望的验证 Token</param>
-    /// <returns>是否验证通过</returns>
-    [Obsolete("建议使用异步版本 ValidateSubscriptionRequestAsync")]
-    bool ValidateSubscriptionRequest(EventVerificationRequest request, string expectedToken);
-
-    /// <summary>
     /// 异步验证事件订阅请求
     /// </summary>
     /// <param name="request">验证请求</param>

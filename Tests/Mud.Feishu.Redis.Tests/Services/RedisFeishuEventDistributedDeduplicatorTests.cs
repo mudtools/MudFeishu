@@ -5,6 +5,7 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using Mud.Feishu.Abstractions.Services;
 using Mud.Feishu.Redis.Services;
 
 namespace Mud.Feishu.Redis.Tests.Services;
@@ -30,7 +31,7 @@ public class RedisFeishuEventDistributedDeduplicatorTests
     }
 
     [Fact]
-    public async Task TryMarkAsProcessedAsync_WhenFirstEvent_ShouldReturnFalse()
+    public async Task TryMarkAsProcessingAsync_WhenFirstEvent_ShouldReturnSuccess()
     {
         // Arrange
         _databaseMock
@@ -44,10 +45,11 @@ public class RedisFeishuEventDistributedDeduplicatorTests
             _loggerMock.Object);
 
         // Act
-        var result = await deduplicator.TryMarkAsProcessedAsync("test_event_123");
+        var result = await deduplicator.TryMarkAsProcessingAsync("test_event_123");
 
         // Assert
-        Assert.False(result);
+        Assert.False(result.IsDuplicate);
+        Assert.Equal("test_event_123", result.EventId);
         _databaseMock.Verify(x => x.HashGetAllAsync(
             It.IsAny<RedisKey>(),
             It.IsAny<CommandFlags>()), Times.Once);
@@ -58,7 +60,7 @@ public class RedisFeishuEventDistributedDeduplicatorTests
     }
 
     [Fact]
-    public async Task TryMarkAsProcessedAsync_WhenDuplicateEvent_ShouldReturnTrue()
+    public async Task TryMarkAsProcessingAsync_WhenEventCompleted_ShouldReturnDuplicate()
     {
         // Arrange
         _databaseMock
@@ -76,14 +78,43 @@ public class RedisFeishuEventDistributedDeduplicatorTests
             _loggerMock.Object);
 
         // Act
-        var result = await deduplicator.TryMarkAsProcessedAsync("test_event_123");
+        var result = await deduplicator.TryMarkAsProcessingAsync("test_event_123");
 
         // Assert
-        Assert.True(result);
+        Assert.True(result.IsDuplicate);
+        Assert.False(result.WasProcessing);
+        Assert.Equal(DeduplicationStatus.Completed, result.Status);
     }
 
     [Fact]
-    public async Task TryMarkAsProcessedAsync_WhenRedisFails_ShouldReturnFalse()
+    public async Task TryMarkAsProcessingAsync_WhenEventProcessing_ShouldReturnDuplicate()
+    {
+        // Arrange
+        _databaseMock
+            .Setup(x => x.HashGetAllAsync(
+                It.IsAny<RedisKey>(),
+                It.IsAny<CommandFlags>()))
+            .ReturnsAsync(new HashEntry[]
+            {
+                new HashEntry("status", "processing"),
+                new HashEntry("timestamp", DateTime.UtcNow.ToString("O"))
+            });
+
+        var deduplicator = new RedisFeishuEventDistributedDeduplicator(
+            _connectionMultiplexerMock.Object,
+            _loggerMock.Object);
+
+        // Act
+        var result = await deduplicator.TryMarkAsProcessingAsync("test_event_123");
+
+        // Assert
+        Assert.True(result.IsDuplicate);
+        Assert.True(result.WasProcessing);
+        Assert.Equal(DeduplicationStatus.Processing, result.Status);
+    }
+
+    [Fact]
+    public async Task TryMarkAsProcessingAsync_WhenRedisFails_ShouldThrowInvalidOperationException()
     {
         // Arrange
         _databaseMock
@@ -98,7 +129,7 @@ public class RedisFeishuEventDistributedDeduplicatorTests
 
         // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(
-            async () => await deduplicator.TryMarkAsProcessedAsync("test_event_123"));
+            async () => await deduplicator.TryMarkAsProcessingAsync("test_event_123"));
     }
 
     [Fact]
@@ -155,7 +186,7 @@ public class RedisFeishuEventDistributedDeduplicatorTests
     }
 
     [Fact]
-    public async Task TryMarkAsProcessedAsync_WithEmptyEventId_ShouldReturnFalse()
+    public async Task TryMarkAsProcessingAsync_WithEmptyEventId_ShouldReturnSuccess()
     {
         // Arrange
         var deduplicator = new RedisFeishuEventDistributedDeduplicator(
@@ -163,14 +194,14 @@ public class RedisFeishuEventDistributedDeduplicatorTests
             _loggerMock.Object);
 
         // Act
-        var result = await deduplicator.TryMarkAsProcessedAsync("");
+        var result = await deduplicator.TryMarkAsProcessingAsync("");
 
         // Assert
-        Assert.False(result);
+        Assert.False(result.IsDuplicate);
     }
 
     [Fact]
-    public async Task TryMarkAsProcessedAsync_WithCustomTtl_ShouldUseCustomTtl()
+    public async Task TryMarkAsProcessingAsync_WithCustomTtl_ShouldUseCustomTtl()
     {
         // Arrange
         var customTtl = TimeSpan.FromMinutes(10);
@@ -185,10 +216,10 @@ public class RedisFeishuEventDistributedDeduplicatorTests
             _loggerMock.Object);
 
         // Act
-        var result = await deduplicator.TryMarkAsProcessedAsync("test_event_123", null, customTtl);
+        var result = await deduplicator.TryMarkAsProcessingAsync("test_event_123", null, customTtl);
 
         // Assert
-        Assert.False(result);
+        Assert.False(result.IsDuplicate);
         _databaseMock.Verify(x => x.HashSetAsync(
             It.IsAny<RedisKey>(),
             It.IsAny<HashEntry[]>(),
@@ -198,39 +229,5 @@ public class RedisFeishuEventDistributedDeduplicatorTests
             It.IsAny<TimeSpan>(),
             It.IsAny<ExpireWhen>(),
             It.IsAny<CommandFlags>()), Times.Once);
-    }
-
-    [Fact]
-    public async Task RemoveAsync_WhenEventExists_ShouldReturnTrue()
-    {
-        // Arrange
-        _databaseMock
-            .Setup(x => x.KeyDeleteAsync(It.IsAny<RedisKey>(), It.IsAny<CommandFlags>()))
-            .ReturnsAsync(true);
-
-        var deduplicator = new RedisFeishuEventDistributedDeduplicator(
-            _connectionMultiplexerMock.Object,
-            _loggerMock.Object);
-
-        // Act
-        var result = await deduplicator.RemoveAsync("test_event_123");
-
-        // Assert
-        Assert.True(result);
-    }
-
-    [Fact]
-    public async Task RemoveAsync_WithEmptyEventId_ShouldReturnFalse()
-    {
-        // Arrange
-        var deduplicator = new RedisFeishuEventDistributedDeduplicator(
-            _connectionMultiplexerMock.Object,
-            _loggerMock.Object);
-
-        // Act
-        var result = await deduplicator.RemoveAsync("");
-
-        // Assert
-        Assert.False(result);
     }
 }

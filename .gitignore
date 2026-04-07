@@ -10,6 +10,7 @@
 /.trae
 /.docs
 /artifacts
+/TestResults
 /Mud.Feishu/bin/Debug
 /Mud.Feishu/obj
 /Mud.Feishu.Test/obj

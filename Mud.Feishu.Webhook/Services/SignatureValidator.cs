@@ -314,9 +314,7 @@ public class SignatureValidator : ValidatorBase, ISignatureValidator
                 timestamp, nonce, encryptKey.Length, body.Length);
 
             // 使用 SHA-256 计算签名（不是 HMAC-SHA256！）
-            using var sha256 = SHA256.Create();
-            var hashBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(signString));
-            var computedSignature = BitConverter.ToString(hashBytes).Replace("-", "").ToLower();
+            var computedSignature = ComputeSha256Signature(signString);
 
             // 使用固定时间比较防止计时攻击
             var isValid = !string.IsNullOrEmpty(headerSignature) &&
@@ -364,6 +362,21 @@ public class SignatureValidator : ValidatorBase, ISignatureValidator
             _logger.LogError(ex, "验证请求头签名时发生错误, AppKey: {AppKey}", _currentAppKey ?? "null");
             return false;
         }
+    }
+
+    /// <summary>
+    /// 计算 SHA-256 签名
+    /// </summary>
+    /// <param name="input">输入字符串</param>
+    /// <returns>十六进制小写签名字符串</returns>
+    /// <remarks>
+    /// 用于飞书事件签名验证，返回小写十六进制格式的签名字符串
+    /// </remarks>
+    public static string ComputeSha256Signature(string input)
+    {
+        using var sha256 = SHA256.Create();
+        var hashBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(input));
+        return BitConverter.ToString(hashBytes).Replace("-", "").ToLower();
     }
 
     /// <summary>

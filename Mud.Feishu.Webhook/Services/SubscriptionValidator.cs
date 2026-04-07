@@ -33,14 +33,6 @@ public class SubscriptionValidator : ValidatorBase, ISubscriptionValidator
     }
 
     /// <inheritdoc />
-    [Obsolete("建议使用异步版本 ValidateSubscriptionRequestAsync")]
-    public bool ValidateSubscriptionRequest(EventVerificationRequest request, string expectedToken)
-    {
-        // 同步版本，使用 GetAwaiter().GetResult() 避免死锁
-        return ValidateSubscriptionRequestAsync(request, expectedToken).GetAwaiter().GetResult();
-    }
-
-    /// <inheritdoc />
     public async Task<bool> ValidateSubscriptionRequestAsync(EventVerificationRequest request, string expectedToken, CancellationToken cancellationToken = default)
     {
         try

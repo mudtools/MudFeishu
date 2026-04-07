@@ -14,17 +14,6 @@ namespace Mud.Feishu.Abstractions.Services;
 public interface IFeishuEventDistributedDeduplicator : IAsyncDisposable
 {
     /// <summary>
-    /// 尝试将事件标记为已处理（简化方法，向后兼容）
-    /// </summary>
-    /// <param name="eventId">事件唯一标识符</param>
-    /// <param name="appKey">应用键（用于多应用场景，避免跨应用冲突）</param>
-    /// <param name="ttl">过期时间（可选），不指定则使用默认值</param>
-    /// <param name="cancellationToken">取消令牌</param>
-    /// <returns>如果事件已被处理过返回 true（重复事件），否则返回 false 并标记为已处理</returns>
-    [Obsolete("建议使用 TryMarkAsProcessingAsync 方法以支持状态机和异常恢复")]
-    Task<bool> TryMarkAsProcessedAsync(string eventId, string? appKey = null, TimeSpan? ttl = null, CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// 尝试将事件标记为处理中（状态机入口）
     /// </summary>
     /// <param name="eventId">事件唯一标识符</param>

@@ -103,39 +103,6 @@ public sealed class FeishuEventDistributedDeduplicator : IFeishuEventDistributed
     }
 
     /// <inheritdoc />
-    [Obsolete("建议使用 TryMarkAsProcessingAsync 方法以支持状态机和异常恢复")]
-    public Task<bool> TryMarkAsProcessedAsync(string eventId, string? appKey = null, TimeSpan? ttl = null, CancellationToken cancellationToken = default)
-    {
-        if (string.IsNullOrEmpty(eventId))
-        {
-            _logger?.LogWarning("事件ID为空，跳过去重检查");
-            return Task.FromResult(false);
-        }
-
-        var cacheKey = GetCacheKey(eventId, appKey);
-
-        lock (_lock)
-        {
-            if (_cache.TryGetValue(cacheKey, out var entry))
-            {
-                _logger?.LogDebug("事件 {EventId} (AppKey: {AppKey}) 已处理过，跳过", eventId, appKey ?? "default");
-                return Task.FromResult(true);
-            }
-
-            _cache[cacheKey] = new DistributedCacheEntry
-            {
-                EventId = eventId,
-                AppKey = appKey,
-                Status = DeduplicationStatus.Completed,
-                Timestamp = DateTimeOffset.UtcNow
-            };
-
-            _logger?.LogDebug("事件 {EventId} (AppKey: {AppKey}) 标记为已处理", eventId, appKey ?? "default");
-            return Task.FromResult(false);
-        }
-    }
-
-    /// <inheritdoc />
     public Task<DeduplicationResult> TryMarkAsProcessingAsync(string eventId, string? appKey = null, TimeSpan? ttl = null, TimeSpan? processingTimeout = null, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(eventId))

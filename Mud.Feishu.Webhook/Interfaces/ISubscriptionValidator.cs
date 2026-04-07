@@ -22,22 +22,6 @@ public interface ISubscriptionValidator
     void SetCurrentAppKey(string appKey);
 
     /// <summary>
-    /// 验证事件订阅请求
-    /// </summary>
-    /// <param name="request">事件验证请求对象</param>
-    /// <param name="expectedToken">期望的验证 Token</param>
-    /// <returns>如果验证通过返回 true，否则返回 false</returns>
-    /// <remarks>
-    /// 验证规则：
-    /// <para>1. 请求类型必须为 "url_verification"</para>
-    /// <para>2. Token 字段不能为空且必须与期望值匹配</para>
-    /// <para>3. Challenge 字段不能为空</para>
-    /// <para>验证失败时会记录相应的警告日志</para>
-    /// </remarks>
-    [Obsolete("建议使用异步版本 ValidateSubscriptionRequestAsync")]
-    bool ValidateSubscriptionRequest(EventVerificationRequest request, string expectedToken);
-
-    /// <summary>
     /// 异步验证事件订阅请求
     /// </summary>
     /// <param name="request">事件验证请求对象</param>

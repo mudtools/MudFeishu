@@ -17,7 +17,7 @@ namespace Mud.Feishu.Abstractions.Tests.Services;
 public class FeishuEventDistributedDeduplicatorTests
 {
     [Fact]
-    public async Task TryMarkAsProcessedAsync_WhenFirstEvent_ShouldReturnFalse()
+    public async Task TryMarkAsProcessingAsync_WhenFirstEvent_ShouldReturnSuccess()
     {
         // Arrange
         var loggerMock = new Mock<Microsoft.Extensions.Logging.ILogger<FeishuEventDistributedDeduplicator>>();
@@ -25,14 +25,15 @@ public class FeishuEventDistributedDeduplicatorTests
         var eventId = "test_event_123";
 
         // Act
-        var result = await deduplicator.TryMarkAsProcessedAsync(eventId);
+        var result = await deduplicator.TryMarkAsProcessingAsync(eventId);
 
         // Assert
-        Assert.False(result); // false 表示未处理过（新事件）
+        Assert.False(result.IsDuplicate); // false 表示未处理过（新事件）
+        Assert.Equal(eventId, result.EventId);
     }
 
     [Fact]
-    public async Task TryMarkAsProcessedAsync_WhenDuplicateEvent_ShouldReturnTrue()
+    public async Task TryMarkAsProcessingAsync_WhenDuplicateEvent_ShouldReturnDuplicate()
     {
         // Arrange
         var loggerMock = new Mock<Microsoft.Extensions.Logging.ILogger<FeishuEventDistributedDeduplicator>>();
@@ -40,15 +41,16 @@ public class FeishuEventDistributedDeduplicatorTests
         var eventId = "test_event_123";
 
         // Act
-        await deduplicator.TryMarkAsProcessedAsync(eventId);
-        var result = await deduplicator.TryMarkAsProcessedAsync(eventId);
+        await deduplicator.TryMarkAsProcessingAsync(eventId);
+        var result = await deduplicator.TryMarkAsProcessingAsync(eventId);
 
         // Assert
-        Assert.True(result); // true 表示已处理过（重复事件）
+        Assert.True(result.IsDuplicate); // true 表示正在处理中
+        Assert.True(result.WasProcessing); // WasProcessing=true 表示正在处理中
     }
 
     [Fact]
-    public async Task TryMarkAsProcessedAsync_WhenDifferentEvents_ShouldReturnFalse()
+    public async Task TryMarkAsProcessingAsync_WhenDifferentEvents_ShouldReturnSuccess()
     {
         // Arrange
         var loggerMock = new Mock<Microsoft.Extensions.Logging.ILogger<FeishuEventDistributedDeduplicator>>();
@@ -57,29 +59,29 @@ public class FeishuEventDistributedDeduplicatorTests
         var eventId2 = "test_event_456";
 
         // Act
-        await deduplicator.TryMarkAsProcessedAsync(eventId1);
-        var result = await deduplicator.TryMarkAsProcessedAsync(eventId2);
+        await deduplicator.TryMarkAsProcessingAsync(eventId1);
+        var result = await deduplicator.TryMarkAsProcessingAsync(eventId2);
 
         // Assert
-        Assert.False(result); // false 表示未处理过（新事件）
+        Assert.False(result.IsDuplicate); // false 表示未处理过（新事件）
     }
 
     [Fact]
-    public async Task TryMarkAsProcessedAsync_WhenNullOrEmptyEventId_ShouldReturnFalse()
+    public async Task TryMarkAsProcessingAsync_WhenNullOrEmptyEventId_ShouldReturnSuccess()
     {
         // Arrange
         var loggerMock = new Mock<Microsoft.Extensions.Logging.ILogger<FeishuEventDistributedDeduplicator>>();
         var deduplicator = new FeishuEventDistributedDeduplicator(loggerMock.Object);
 
         // Act
-        var result1 = await deduplicator.TryMarkAsProcessedAsync(null!);
-        var result2 = await deduplicator.TryMarkAsProcessedAsync(string.Empty);
-        var result3 = await deduplicator.TryMarkAsProcessedAsync("   ");
+        var result1 = await deduplicator.TryMarkAsProcessingAsync(null!);
+        var result2 = await deduplicator.TryMarkAsProcessingAsync(string.Empty);
+        var result3 = await deduplicator.TryMarkAsProcessingAsync("   ");
 
         // Assert
-        Assert.False(result1); // 空值应返回 false（跳过去重检查）
-        Assert.False(result2);
-        Assert.False(result3);
+        Assert.False(result1.IsDuplicate); // 空值应返回成功（跳过去重检查）
+        Assert.False(result2.IsDuplicate);
+        Assert.False(result3.IsDuplicate);
     }
 
     [Fact]
@@ -89,7 +91,8 @@ public class FeishuEventDistributedDeduplicatorTests
         var loggerMock = new Mock<Microsoft.Extensions.Logging.ILogger<FeishuEventDistributedDeduplicator>>();
         var deduplicator = new FeishuEventDistributedDeduplicator(loggerMock.Object);
         var eventId = "test_event_123";
-        await deduplicator.TryMarkAsProcessedAsync(eventId);
+        await deduplicator.TryMarkAsProcessingAsync(eventId);
+        await deduplicator.MarkAsCompletedAsync(eventId);
 
         // Act
         var result = await deduplicator.IsProcessedAsync(eventId);
@@ -120,7 +123,8 @@ public class FeishuEventDistributedDeduplicatorTests
         var loggerMock = new Mock<Microsoft.Extensions.Logging.ILogger<FeishuEventDistributedDeduplicator>>();
         var deduplicator = new FeishuEventDistributedDeduplicator(loggerMock.Object, cacheExpiration: TimeSpan.FromMilliseconds(100));
         var eventId = "test_event_123";
-        await deduplicator.TryMarkAsProcessedAsync(eventId);
+        await deduplicator.TryMarkAsProcessingAsync(eventId);
+        await deduplicator.MarkAsCompletedAsync(eventId);
 
         // Act
         await Task.Delay(150); // 等待过期

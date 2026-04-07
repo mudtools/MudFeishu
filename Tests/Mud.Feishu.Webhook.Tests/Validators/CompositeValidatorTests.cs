@@ -148,31 +148,6 @@ public class CompositeValidatorTests
     #region 方法委托正确性测试 (需求 5.2, 5.3)
 
     [Fact]
-    public void ValidateSubscriptionRequest_ShouldDelegateToSubscriptionValidator()
-    {
-        // Arrange
-        var request = new EventVerificationRequest
-        {
-            Type = "url_verification",
-            Token = "test-token",
-            Challenge = "test-challenge"
-        };
-        var expectedToken = "test-token";
-        var expectedResult = true;
-
-        _subscriptionValidatorMock
-            .Setup(x => x.ValidateSubscriptionRequest(request, expectedToken))
-            .Returns(expectedResult);
-
-        // Act
-        var result = _validator.ValidateSubscriptionRequest(request, expectedToken);
-
-        // Assert
-        Assert.Equal(expectedResult, result);
-        _subscriptionValidatorMock.Verify(x => x.ValidateSubscriptionRequest(request, expectedToken), Times.Once);
-    }
-
-    [Fact]
     public void ValidateTimestamp_ShouldDelegateToTimestampValidator()
     {
         // Arrange
@@ -390,28 +365,6 @@ public class CompositeValidatorTests
         _timestampValidatorMock.Verify(x => x.ValidateTimestamp(timestamp, _options.TimestampToleranceSeconds), Times.Once);
         _nonceValidatorMock.Verify(x => x.ValidateNonceAsync(nonce, It.IsAny<bool>()), Times.Once);
         _signatureValidatorMock.Verify(x => x.ValidateSignatureAsync(timestamp, nonce, encrypt, signature, encryptKey), Times.Once);
-    }
-
-    [Fact]
-    public void ValidateSubscriptionRequest_WithMockValidator_ShouldWorkCorrectly()
-    {
-        // Arrange
-        var request = new EventVerificationRequest
-        {
-            Type = "url_verification",
-            Token = "mock-token",
-            Challenge = "mock-challenge"
-        };
-        var expectedToken = "mock-token";
-
-        _subscriptionValidatorMock.Setup(x => x.ValidateSubscriptionRequest(It.IsAny<EventVerificationRequest>(), It.IsAny<string>())).Returns(true);
-
-        // Act
-        var result = _validator.ValidateSubscriptionRequest(request, expectedToken);
-
-        // Assert
-        Assert.True(result);
-        _subscriptionValidatorMock.Verify(x => x.ValidateSubscriptionRequest(request, expectedToken), Times.Once);
     }
 
     [Fact]

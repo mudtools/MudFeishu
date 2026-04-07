@@ -400,12 +400,10 @@ public class FeishuWebhookService : IFeishuWebhookService
             var signString = $"{request.Timestamp}{request.Nonce}{encryptKey}{body}";
 
             // 使用 SHA-256 计算签名
-            using var sha256 = SHA256.Create();
-            var hashBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(signString));
-            var computedSignature = BitConverter.ToString(hashBytes).Replace("-", "").ToLower();
+            var computedSignature = SignatureValidator.ComputeSha256Signature(signString);
 
             // 使用固定时间比较防止计时攻击
-            var isValid = FixedTimeEquals(
+            var isValid = SignatureValidator.FixedTimeEquals(
                 Encoding.UTF8.GetBytes(computedSignature),
                 Encoding.UTF8.GetBytes(request.Signature));
 
@@ -432,16 +430,7 @@ public class FeishuWebhookService : IFeishuWebhookService
         }
     }
 
-    /// <summary>
-    /// 固定时间比较方法，防止计时攻击（使用 SignatureValidator 的公共方法）
-    /// </summary>
-    /// <param name="left">第一个字节数组</param>
-    /// <param name="right">第二个字节数组</param>
-    /// <returns>如果两个数组相等返回 true，否则返回 false</returns>
-    private static bool FixedTimeEquals(byte[] left, byte[] right)
-    {
-        return SignatureValidator.FixedTimeEquals(left, right);
-    }
+
 
     /// <inheritdoc />
     public async Task<EventData?> DecryptEventAsync(string encryptedData, CancellationToken cancellationToken = default)

@@ -138,31 +138,6 @@ public class RedisFeishuEventDistributedDeduplicatorWithFallback : IFeishuEventD
     }
 
     /// <inheritdoc />
-    [Obsolete("建议使用 TryMarkAsProcessingAsync 方法以支持状态机和异常恢复")]
-    public async Task<bool> TryMarkAsProcessedAsync(string eventId, string? appKey = null, TimeSpan? ttl = null, CancellationToken cancellationToken = default)
-    {
-        if (string.IsNullOrEmpty(eventId))
-        {
-            _logger?.LogWarning("事件ID为空，跳过去重检查");
-            return false;
-        }
-
-        if (!_redisAvailable)
-        {
-            return await UseFallbackForMarkProcessedAsync(eventId, appKey, ttl, cancellationToken, "Redis 不可用");
-        }
-
-        try
-        {
-            return await TryMarkProcessedWithRetryAsync(eventId, appKey, ttl, cancellationToken);
-        }
-        catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
-        {
-            return await HandleRedisFailureForMarkProcessedAsync(eventId, appKey, ttl, cancellationToken, ex);
-        }
-    }
-
-    /// <inheritdoc />
     public async Task<DeduplicationResult> TryMarkAsProcessingAsync(string eventId, string? appKey = null, TimeSpan? ttl = null, TimeSpan? processingTimeout = null, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(eventId))
@@ -385,45 +360,6 @@ public class RedisFeishuEventDistributedDeduplicatorWithFallback : IFeishuEventD
         _retrySemaphore.Dispose();
     }
 
-    private async Task<bool> TryMarkProcessedWithRetryAsync(string eventId, string? appKey, TimeSpan? ttl, CancellationToken cancellationToken)
-    {
-        var actualTtl = ttl ?? _defaultCacheExpiration;
-        var redisKey = GetRedisKey(eventId, appKey);
-
-        for (int attempt = 0; attempt < _maxRetryCount; attempt++)
-        {
-            try
-            {
-                var existing = await _database.HashGetAllAsync(redisKey);
-                if (existing.Length > 0)
-                {
-                    _logger?.LogDebug("事件 {EventId} 已处理过，跳过", eventId);
-                    return true;
-                }
-
-                await _database.HashSetAsync(redisKey, new[]
-                {
-                    new HashEntry(StatusField, CompletedStatus),
-                    new HashEntry(TimestampField, DateTime.UtcNow.ToString("O"))
-                });
-                await _database.KeyExpireAsync(redisKey, actualTtl);
-
-                ResetFailureCount();
-                _logger?.LogDebug("事件 {EventId} 标记为已处理，TTL: {Ttl}", eventId, actualTtl);
-                return false;
-            }
-            catch (RedisConnectionException ex)
-            {
-                _logger?.LogWarning(ex, "Redis 连接失败 (尝试 {Attempt}/{MaxRetry})", attempt + 1, _maxRetryCount);
-                if (attempt == _maxRetryCount - 1)
-                    throw;
-                await Task.Delay(CalculateRetryDelay(attempt), cancellationToken);
-            }
-        }
-
-        return false;
-    }
-
     private async Task<DeduplicationResult> TryMarkProcessingWithRetryAsync(string eventId, string? appKey, TimeSpan? ttl, TimeSpan? processingTimeout, CancellationToken cancellationToken)
     {
         var actualTtl = ttl ?? _defaultCacheExpiration;
@@ -522,30 +458,6 @@ public class RedisFeishuEventDistributedDeduplicatorWithFallback : IFeishuEventD
         return false;
     }
 
-    private async Task<bool> HandleRedisFailureForMarkProcessedAsync(string eventId, string? appKey, TimeSpan? ttl, CancellationToken cancellationToken, Exception ex)
-    {
-        await _retrySemaphore.WaitAsync(cancellationToken);
-        try
-        {
-            _consecutiveFailures++;
-            _lastFailureTime = DateTime.UtcNow;
-
-            _logger?.LogError(ex, "Redis 失败，连续失败次数: {FailCount}, 降级到内存去重", _consecutiveFailures);
-
-            if (_consecutiveFailures >= 3)
-            {
-                _redisAvailable = false;
-                _logger?.LogWarning("连续失败 {FailCount} 次，标记 Redis 为不可用，使用内存去重", _consecutiveFailures);
-            }
-
-            return await UseFallbackForMarkProcessedAsync(eventId, appKey, ttl, cancellationToken, "Redis 失败");
-        }
-        finally
-        {
-            _retrySemaphore.Release();
-        }
-    }
-
     private async Task<DeduplicationResult> HandleRedisFailureForProcessingAsync(string eventId, string? appKey, TimeSpan? ttl, TimeSpan? processingTimeout, CancellationToken cancellationToken, Exception ex)
     {
         await _retrySemaphore.WaitAsync(cancellationToken);
@@ -606,12 +518,6 @@ public class RedisFeishuEventDistributedDeduplicatorWithFallback : IFeishuEventD
         {
             _retrySemaphore.Release();
         }
-    }
-
-    private async Task<bool> UseFallbackForMarkProcessedAsync(string eventId, string? appKey, TimeSpan? ttl, CancellationToken cancellationToken, string reason)
-    {
-        _logger?.LogDebug("使用内存降级去重器，原因: {Reason}, 事件ID: {EventId}, AppKey: {AppKey}", reason, eventId, appKey ?? "default");
-        return await _fallbackDeduplicator.TryMarkAsProcessedAsync(eventId, appKey, ttl, cancellationToken);
     }
 
     private async Task<DeduplicationResult> UseFallbackForProcessingAsync(string eventId, string? appKey, TimeSpan? ttl, TimeSpan? processingTimeout, CancellationToken cancellationToken, string reason)

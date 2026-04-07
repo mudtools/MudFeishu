@@ -89,55 +89,6 @@ public class RedisFeishuEventDistributedDeduplicator : IFeishuEventDistributedDe
     }
 
     /// <inheritdoc />
-    [Obsolete("建议使用 TryMarkAsProcessingAsync 方法以支持状态机和异常恢复")]
-    public async Task<bool> TryMarkAsProcessedAsync(string eventId, string? appKey = null, TimeSpan? ttl = null, CancellationToken cancellationToken = default)
-    {
-        if (string.IsNullOrEmpty(eventId))
-        {
-            _logger?.LogWarning("事件ID为空，跳过去重检查");
-            return false;
-        }
-
-        try
-        {
-            var actualTtl = ttl ?? _defaultCacheExpiration;
-            var redisKey = GetRedisKey(eventId, appKey);
-
-            var existing = await _database.HashGetAllAsync(redisKey);
-            if (existing.Length > 0)
-            {
-                _logger?.LogDebug("事件 {EventId} 已处理过，跳过 (AppKey: {AppKey})", eventId, appKey ?? "default");
-                return true;
-            }
-
-            await _database.HashSetAsync(redisKey, new[]
-            {
-                new HashEntry(StatusField, CompletedStatus),
-                new HashEntry(TimestampField, DateTime.UtcNow.ToString("O"))
-            });
-            await _database.KeyExpireAsync(redisKey, actualTtl);
-
-            _logger?.LogDebug("事件 {EventId} 标记为已处理，TTL: {Ttl} (AppKey: {AppKey})", eventId, actualTtl, appKey ?? "default");
-            return false;
-        }
-        catch (RedisConnectionException ex)
-        {
-            _logger.LogError(ex, "Redis 连接异常，事件 {EventId} 去重失败", eventId);
-            throw new InvalidOperationException("Redis 连接失败，无法完成去重", ex);
-        }
-        catch (RedisTimeoutException ex)
-        {
-            _logger.LogWarning(ex, "Redis 超时，事件 {EventId} 去重失败", eventId);
-            throw new InvalidOperationException("Redis 操作超时", ex);
-        }
-        catch (RedisException ex)
-        {
-            _logger.LogError(ex, "Redis 操作异常，事件 {EventId} 去重失败", eventId);
-            throw new InvalidOperationException("Redis 操作失败", ex);
-        }
-    }
-
-    /// <inheritdoc />
     public async Task<DeduplicationResult> TryMarkAsProcessingAsync(string eventId, string? appKey = null, TimeSpan? ttl = null, TimeSpan? processingTimeout = null, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(eventId))

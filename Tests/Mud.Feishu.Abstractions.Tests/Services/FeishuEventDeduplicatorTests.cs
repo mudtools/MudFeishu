@@ -161,12 +161,12 @@ public class FeishuEventDeduplicatorTests
         var loggerMock = new Mock<ILogger<FeishuEventDeduplicator>>();
         var deduplicator = new FeishuEventDeduplicator(
             loggerMock.Object,
-            processingTimeout: TimeSpan.FromMilliseconds(100));
+            processingTimeout: TimeSpan.FromMilliseconds(20));
         var eventId = "test_event_123";
 
         // Act
         deduplicator.TryMarkAsProcessing(eventId);
-        await Task.Delay(150); // 等待超时
+        await Task.Delay(30); // 等待超时
         var result = deduplicator.TryMarkAsProcessing(eventId);
 
         // Assert

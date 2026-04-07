@@ -121,13 +121,13 @@ public class FeishuEventDistributedDeduplicatorTests
     {
         // Arrange
         var loggerMock = new Mock<Microsoft.Extensions.Logging.ILogger<FeishuEventDistributedDeduplicator>>();
-        var deduplicator = new FeishuEventDistributedDeduplicator(loggerMock.Object, cacheExpiration: TimeSpan.FromMilliseconds(100));
+        var deduplicator = new FeishuEventDistributedDeduplicator(loggerMock.Object, cacheExpiration: TimeSpan.FromMilliseconds(20));
         var eventId = "test_event_123";
         await deduplicator.TryMarkAsProcessingAsync(eventId);
         await deduplicator.MarkAsCompletedAsync(eventId);
 
         // Act
-        await Task.Delay(150); // 等待过期
+        await Task.Delay(30); // 等待过期
         var result = await deduplicator.CleanupExpiredAsync();
 
         // Assert

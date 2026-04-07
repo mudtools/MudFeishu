@@ -23,7 +23,7 @@ permissions:
   contents: write # 需要写权限来创建 tag 和 release
 
 env:
-  DOTNET_VERSIONS: "8.0.x 9.0.x 10.0.x" # .NET SDK 版本（支持构建 netstandard2.0, net6.0, net8.0, net9.0, net10.0）
+  DOTNET_VERSIONS: "6.0.x 8.0.x 9.0.x 10.0.x" # .NET SDK 版本（支持构建 netstandard2.0, net6.0, net8.0, net9.0, net10.0）
   CONFIGURATION: "Release" # 构建配置
   SOLUTION_FILE: "Mud.Feishu.slnx" # 解决方案文件
 
@@ -57,7 +57,7 @@ jobs:
 
       # 步骤5：运行单元测试（排除不完善的项目）
       - name: Run tests
-        run: dotnet test ${{ env.SOLUTION_FILE }} --no-build --configuration ${{ env.CONFIGURATION }} --logger trx --verbosity normal --filter "FullyQualifiedName!~Mud.Feishu.Tests"
+        run: dotnet test ${{ env.SOLUTION_FILE }} --no-build --configuration ${{ env.CONFIGURATION }} --logger trx --verbosity normal --filter "FullyQualifiedName!~Mud.Feishu.Tests" --framework "net6.0|net8.0|net10.0"
 
       # 步骤6：上传测试报告，方便在GitHub上查看
       - name: Publish test results

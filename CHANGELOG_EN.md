@@ -1,5 +1,126 @@
 # Mud.Feishu Change Log
 
+## [2.0.7] - 2026-04-07
+
+### ✨ Added
+
+- **WebSocket Enhancement**: Comprehensive enhancement of WebSocket connection management and error handling
+  - Added message processing state tracking functionality
+  - Added reconnection state reset functionality
+  - Implemented reconnection coordinator to optimize reconnection logic and heartbeat intervals
+  - Enhanced connection management with more comprehensive error handling mechanisms
+- **Webhook Enhancement**: Added asynchronous validation methods and IP whitelist support
+  - Added asynchronous validation methods to improve performance
+  - Supported IP whitelist configuration to enhance security
+- **Distributed Deduplication Service Refactoring**: Refactored distributed deduplication service with state machine and event processing lifecycle support
+  - Implemented state machine pattern supporting Processing → Completed state transitions
+  - Added event processing timeout and rollback mechanisms
+  - Supported processing state tracking and exception recovery
+- **Metrics Collection Optimization**: Optimized metrics collection performance using concurrent collections
+  - Adopted `ConcurrentDictionary` to replace traditional lock mechanisms
+  - Improved performance in high-concurrency scenarios
+- **Utility Class Extension**: Added HttpClient extension methods for JSON serialization configuration
+  - Added `ConfigureJsonSerializerOptions` extension method
+  - Simplified JSON serialization configuration workflow
+
+### 🔧 Changed
+
+- **Token Management Refactoring**: Extracted token formatting logic to TokenUtils utility class
+  - Unified `FormatBearerToken` and `RemoveBearerPrefix` methods
+  - Eliminated code duplication and improved code maintainability
+- **Signature Validation Optimization**: Removed deprecated methods and optimized signature validation logic
+  - Cleaned up obsolete validation methods
+  - Simplified validation workflow and improved performance
+- **WebSocket Refactoring**: Refactored namespaces of WebSocket related classes
+  - Unified namespace structure
+  - Optimized code organization
+- **Test Refactoring**: Refactored subscription validation tests to use encryption key provider
+  - Updated test cases to adapt to new validator architecture
+  - Improved test coverage and code quality
+
+### 🐛 Fixed
+
+- Fixed numerous null reference warnings to improve code robustness
+- Fixed issue where `FeishuWebhookService` async methods were not awaited
+- Fixed heartbeat interval issues in reconnection logic
+
+### 🧪 Tests
+
+- Added WebSocket core functionality tests
+  - Added bug fix validation tests
+  - Added exponential backoff reconnection strategy tests
+  - Added reconnection coordinator tests
+- Added deduplication service tests
+  - Added unified deduplication middleware tests
+  - Added configuration options tests
+  - Added fallback alert service tests
+- Added metrics collection tests
+  - Optimized concurrent performance test cases
+
+### 📦 Build & Config
+
+- **CI/CD Enhancement**: Enhanced release process and supported multi-version .NET builds
+  - Supported parallel builds for .NET 6.0, 8.0, 10.0
+  - Optimized build and test configurations
+
+## [2.0.6] - 2026-04-05
+
+### ✨ Added
+
+- **Bitable Advanced Permissions**: Added Feishu bitable advanced permission management functionality
+  - Added advanced permission interfaces and related data models
+  - Added role member management related interfaces and models
+  - Added batch add collaborators interface and request models
+  - Added custom role query, update, and delete interfaces
+- **Bitable Dashboard**: Added Feishu bitable dashboard functionality
+  - Added dashboard interface definitions
+  - Added dashboard copy functionality and related data models and interfaces
+- **Bitable Forms**: Added form management functionality
+  - Added form field update related models and interfaces
+  - Added update form metadata interface and related models
+  - Added form upgrade interface and related data models
+- **Bitable Fields**: Added field management functionality
+  - Added create field group functionality interface and models
+  - Added delete field interface and response models
+  - Added update field interface
+- **Bitable Records**: Added record batch operation functionality
+  - Added batch create records interface and related data models
+  - Added batch get records interface and related models
+  - Added batch delete records interface and related models
+  - Added delete record interface and response models
+- **User Authentication**: Added Feishu user authentication middleware and related service configuration
+
+### 🔧 Changed
+
+- **Authorization Mechanism Refactoring**: Unified Token property declaration for authorization
+  - Changed Token property from TokenType enum to string type
+  - Removed Header property from interfaces, unified Token property for authorization settings
+- **Bitable Refactoring**: Optimized model and interface structure
+  - Refactored role related request model file structure
+  - Refactored form field related interfaces and models
+  - Refactored field operation request models and optimized directory structure
+  - Refactored record operation request models and updated interfaces
+- **Document Interface**: Moved document block interfaces to main namespace
+- **Demo Project**: Changed demo project from NuGet package reference to local project reference
+
+### 🐛 Fixed
+
+- Fixed Bitable registration method name
+- Updated dependency versions and added request body encryption method
+
+### 📚 Documentation
+
+- Updated NuGet package download badge style
+
+### 🧪 Tests
+
+- Added unit tests for bitable interfaces
+
+### 📦 Build & Config
+
+- Updated project version to 2.0.6 and adjusted token manager parameters
+- Updated demo project dependencies and added Feishu authentication package
+
 ## [2.0.5] - 2026-03-27
 
 ### ✨ Added

@@ -7,20 +7,20 @@
 
 using Mud.Feishu.Abstractions.Services;
 
-namespace Mud.Feishu.Webhook;
+namespace Mud.Feishu.Abstractions.EventHandlers;
 
 /// <summary>
-/// Webhook 应用键上下文访问器
-/// 继承自 <see cref="IAppKeyAccessor"/>，提供 Webhook 特定的扩展
+/// 支持 AppKey 上下文注入的处理器接口
 /// </summary>
 /// <remarks>
-/// <para>实现原理：</para>
-/// <list type="bullet">
-///   <item><description>使用 static AsyncLocal 确保在异步调用链中正确传递 AppKey</description></item>
-///   <item><description>注册为 Singleton 生命周期，全局共享同一个实例</description></item>
-///   <item><description>所有验证器通过此接口获取当前 AppKey，无需手动 SetCurrentAppKey</description></item>
-/// </list>
+/// 此接口用于框架内部，在处理器执行前注入 AppKey 上下文访问器。
+/// 实现此接口的处理器可以在多应用场景下正确获取当前 AppKey。
 /// </remarks>
-public interface IWebhookAppKeyAccessor : IAppKeyAccessor
+public interface ISetAppKeyAware
 {
+    /// <summary>
+    /// 设置应用键上下文访问器
+    /// </summary>
+    /// <param name="appKeyAccessor">应用键上下文访问器</param>
+    void SetAppKeyAccessor(IAppKeyAccessor appKeyAccessor);
 }

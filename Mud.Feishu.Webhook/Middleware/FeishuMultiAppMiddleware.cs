@@ -142,14 +142,6 @@ public class FeishuMultiAppMiddleware
             return;
         }
 
-        // 验证应用是否有处理器
-        if (!_handlerRegistry.HasHandlers(appKey ?? string.Empty))
-        {
-            _logger.LogWarning("应用 {AppKey} 没有注册任何处理器", appKey);
-            await _next(context);
-            return;
-        }
-
         // 获取应用配置
         var requestId = RequestIdHelper.GetOrGenerateRequestId(context);
         var clientIp = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
@@ -353,7 +345,11 @@ public class FeishuMultiAppMiddleware
             // 验证请求签名（如果不是验证请求）
             if (!await webhookService.HandleEventAsync(eventRequest, requestBody))
             {
-                _logger.LogWarning("签名验证失败");
+                _logger.LogWarning("签名验证失败 - Timestamp: {Timestamp}, Nonce: {Nonce}, SignaturePrefix: {SignaturePrefix}, AppKey: {AppKey}",
+                    eventRequest.Timestamp,
+                    eventRequest.Nonce,
+                    eventRequest.Signature?.Length > 8 ? eventRequest.Signature.Substring(0, 8) + "..." : eventRequest.Signature ?? "(null)",
+                    appKey);
                 await WriteErrorResponse(context, 403, "Forbidden: Signature validation failed", requestId);
                 return;
             }

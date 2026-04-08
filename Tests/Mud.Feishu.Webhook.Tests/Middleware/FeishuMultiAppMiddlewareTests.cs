@@ -93,17 +93,29 @@ public class FeishuMultiAppMiddlewareTests
     }
 
     [Fact]
-    public async Task InvokeAsync_WithNoHandlers_ShouldCallNext()
+    public async Task InvokeAsync_WithNoHandlers_ShouldContinueProcessingWithGlobalFactory()
     {
-        // Arrange
+        // Arrange - 没有应用专属处理器，但应该继续处理（使用全局工厂）
         var middleware = CreateMiddleware();
-        var context = CreateHttpContext("/feishu/app1", "POST");
+        var body = JsonSerializer.Serialize(new { encrypt = "test_encrypted_data" });
+        var context = CreateHttpContext("/feishu/app1", "POST", body);
+
+        // 设置 webhookService 模拟
+        _webhookServiceMock.Setup(x => x.SetCurrentAppKey(It.IsAny<string>()));
+        _webhookServiceMock.Setup(x => x.DecryptEventAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new EventData { EventType = "test_event", EventId = "test_id" });
+        _webhookServiceMock.Setup(x => x.HandleEventAsync(It.IsAny<FeishuWebhookRequest>(), It.IsAny<string>()))
+            .ReturnsAsync(true);
+        _webhookServiceMock.Setup(x => x.HandleEventAsync(It.IsAny<EventData>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((true, null));
 
         // Act
         await middleware.InvokeAsync(context);
 
-        // Assert
-        _nextMock.Verify(x => x(context), Times.Once);
+        // Assert - 不应该调用 _next，应该继续处理请求
+        _nextMock.Verify(x => x(context), Times.Never);
+        // 验证请求被处理（状态码应该是 200）
+        context.Response.StatusCode.Should().Be(200);
     }
 
     [Fact]

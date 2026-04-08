@@ -477,7 +477,10 @@ public class FeishuWebhookServiceBuilder
         _services.TryAddSingleton<FeishuWebhookInterceptorRegistry>();
 
         // 注册 AppKey 上下文访问器（单例，基于 AsyncLocal 的线程安全实现）
-        _services.TryAddSingleton<IWebhookAppKeyAccessor, WebhookAppKeyAccessor>();
+        // 同时注册 IAppKeyAccessor 和 IWebhookAppKeyAccessor，指向同一个实例
+        _services.TryAddSingleton<WebhookAppKeyAccessor>();
+        _services.TryAddSingleton<IAppKeyAccessor>(sp => sp.GetRequiredService<WebhookAppKeyAccessor>());
+        _services.TryAddSingleton<IWebhookAppKeyAccessor>(sp => sp.GetRequiredService<WebhookAppKeyAccessor>());
 
         // 注册工具服务（单例）
         _services.TryAddSingleton<IEnvironmentService, EnvironmentService>();

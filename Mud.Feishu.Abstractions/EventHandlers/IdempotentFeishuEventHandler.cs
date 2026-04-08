@@ -5,6 +5,9 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using Microsoft.Extensions.DependencyInjection;
+using Mud.Feishu.Abstractions.Services;
+
 namespace Mud.Feishu.Abstractions.EventHandlers;
 
 /// <summary>
@@ -19,23 +22,56 @@ namespace Mud.Feishu.Abstractions.EventHandlers;
 /// 2. 重写 <see cref="DefaultFeishuEventHandler&lt;T&gt;.ProcessBusinessLogicAsync"/> 方法实现业务逻辑
 /// 3. 基类会自动处理业务去重，确保同一业务键只处理一次
 /// </remarks>
-public abstract class IdempotentFeishuEventHandler<T> : DefaultFeishuEventHandler<T>
+public abstract class IdempotentFeishuEventHandler<T> : DefaultFeishuEventHandler<T>, ISetAppKeyAware
     where T : class, IEventResult, new()
 {
     private readonly IFeishuEventDeduplicator _businessDeduplicator;
+    private IAppKeyAccessor? _appKeyAccessor;
 
+    /// <summary>
+    /// 获取当前应用键（从上下文获取）
+    /// </summary>
+    protected string? CurrentAppKey => _appKeyAccessor?.CurrentAppKey;
 
     /// <summary>
     /// 构造函数
     /// </summary>
     /// <param name="businessDeduplicator">业务层去重服务</param>
     /// <param name="logger">日志记录器</param>
+    /// <param name="appKeyAccessor">应用键上下文访问器（可选）</param>
     public IdempotentFeishuEventHandler(
         IFeishuEventDeduplicator businessDeduplicator,
-        ILogger logger)
+        ILogger logger,
+        IAppKeyAccessor? appKeyAccessor = null)
         : base(logger)
     {
         _businessDeduplicator = businessDeduplicator ?? throw new ArgumentNullException(nameof(businessDeduplicator));
+        _appKeyAccessor = appKeyAccessor;
+    }
+
+    /// <summary>
+    /// 构造函数（支持从 IServiceProvider 获取 IAppKeyAccessor）
+    /// </summary>
+    /// <param name="businessDeduplicator">业务层去重服务</param>
+    /// <param name="logger">日志记录器</param>
+    /// <param name="serviceProvider">服务提供程序（用于获取 IAppKeyAccessor）</param>
+    public IdempotentFeishuEventHandler(
+        IFeishuEventDeduplicator businessDeduplicator,
+        ILogger logger,
+        IServiceProvider serviceProvider)
+        : base(logger)
+    {
+        _businessDeduplicator = businessDeduplicator ?? throw new ArgumentNullException(nameof(businessDeduplicator));
+        _appKeyAccessor = serviceProvider?.GetService(typeof(IAppKeyAccessor)) as IAppKeyAccessor;
+    }
+
+    /// <summary>
+    /// 设置应用键上下文访问器（由框架内部调用）
+    /// </summary>
+    /// <param name="appKeyAccessor">应用键上下文访问器</param>
+    public void SetAppKeyAccessor(IAppKeyAccessor appKeyAccessor)
+    {
+        _appKeyAccessor = appKeyAccessor ?? throw new ArgumentNullException(nameof(appKeyAccessor));
     }
 
 
@@ -47,6 +83,7 @@ public abstract class IdempotentFeishuEventHandler<T> : DefaultFeishuEventHandle
     public sealed override async Task HandleAsync(EventData eventData, CancellationToken cancellationToken = default)
     {
         var businessKey = GetBusinessKey(eventData);
+        var appKey = CurrentAppKey;
 
         if (string.IsNullOrEmpty(businessKey))
         {
@@ -56,8 +93,8 @@ public abstract class IdempotentFeishuEventHandler<T> : DefaultFeishuEventHandle
             return;
         }
 
-        // 检查业务键是否已处理
-        if (_businessDeduplicator.TryMarkAsProcessing(businessKey!))
+        // 检查业务键是否已处理（传递 AppKey 实现多应用隔离）
+        if (_businessDeduplicator.TryMarkAsProcessing(businessKey!, appKey))
         {
             if (_logger.IsEnabled(LogLevel.Debug))
                 _logger.LogDebug("业务键 {BusinessKey} 已处理或在处理中，跳过事件 {EventId}", businessKey, eventData.EventId);
@@ -71,7 +108,7 @@ public abstract class IdempotentFeishuEventHandler<T> : DefaultFeishuEventHandle
             await ProcessBusinessLogicAsync(eventData, eventEntity, cancellationToken);
 
             // 标记为已完成
-            _businessDeduplicator.MarkAsCompleted(businessKey!);
+            _businessDeduplicator.MarkAsCompleted(businessKey!, appKey);
 
             if (_logger.IsEnabled(LogLevel.Debug))
                 _logger.LogDebug("业务键 {BusinessKey} 处理完成", businessKey);
@@ -79,7 +116,7 @@ public abstract class IdempotentFeishuEventHandler<T> : DefaultFeishuEventHandle
         catch (Exception)
         {
             // 处理失败，回滚状态
-            _businessDeduplicator.RollbackProcessing(businessKey!);
+            _businessDeduplicator.RollbackProcessing(businessKey!, appKey);
             throw;
         }
     }

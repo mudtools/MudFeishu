@@ -5,22 +5,35 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-using Mud.Feishu.Abstractions.Services;
-
-namespace Mud.Feishu.Webhook;
+namespace Mud.Feishu.Abstractions.Services;
 
 /// <summary>
-/// Webhook 应用键上下文访问器
-/// 继承自 <see cref="IAppKeyAccessor"/>，提供 Webhook 特定的扩展
+/// 应用键上下文访问器
+/// 基于 AsyncLocal 实现线程安全的 AppKey 上下文传播
 /// </summary>
 /// <remarks>
 /// <para>实现原理：</para>
 /// <list type="bullet">
 ///   <item><description>使用 static AsyncLocal 确保在异步调用链中正确传递 AppKey</description></item>
 ///   <item><description>注册为 Singleton 生命周期，全局共享同一个实例</description></item>
-///   <item><description>所有验证器通过此接口获取当前 AppKey，无需手动 SetCurrentAppKey</description></item>
+///   <item><description>所有验证器和处理器通过此接口获取当前 AppKey，无需手动传递</description></item>
 /// </list>
 /// </remarks>
-public interface IWebhookAppKeyAccessor : IAppKeyAccessor
+public interface IAppKeyAccessor
 {
+    /// <summary>
+    /// 获取当前请求的应用键（多应用场景）
+    /// </summary>
+    string? CurrentAppKey { get; }
+
+    /// <summary>
+    /// 设置当前请求的应用键
+    /// </summary>
+    /// <param name="appKey">应用键</param>
+    void SetAppKey(string appKey);
+
+    /// <summary>
+    /// 清除当前请求的应用键
+    /// </summary>
+    void Clear();
 }

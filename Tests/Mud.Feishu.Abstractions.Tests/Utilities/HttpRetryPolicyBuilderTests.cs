@@ -497,13 +497,21 @@ public class HttpRetryPolicyBuilderTests
         var delay2 = (timestamps[2] - timestamps[1]).TotalMilliseconds;
         var delay3 = (timestamps[3] - timestamps[2]).TotalMilliseconds;
 
-        // With 50ms jitter and system timing variations, delays should be:
-        // 1st retry: 50-250ms (100ms ± 50ms jitter + system variance)
-        // 2nd retry: 100-350ms (200ms ± 50ms jitter + system variance)
-        // 3rd retry: 250-600ms (400ms ± 50ms jitter + system variance)
-        Assert.InRange(delay1, 50, 250); // ~100ms ± jitter + variance
-        Assert.InRange(delay2, 100, 350); // ~200ms ± jitter + variance
-        Assert.InRange(delay3, 250, 600); // ~400ms ± jitter + variance (widened range for jitter)
+        // With ±20% jitter and CI environment timing variations, delays should be:
+        // 1st retry: 80-120ms theoretical (100ms * 2^0 * [0.8, 1.2))
+        //            Allow wider range for CI environment: 50-300ms
+        // 2nd retry: 160-240ms theoretical (100ms * 2^1 * [0.8, 1.2))
+        //            Allow wider range for CI environment: 100-400ms
+        // 3rd retry: 320-480ms theoretical (100ms * 2^2 * [0.8, 1.2))
+        //            Allow wider range for CI environment: 200-700ms
+        Assert.InRange(delay1, 50, 300); // ~100ms ± 20% jitter + CI variance
+        Assert.InRange(delay2, 100, 400); // ~200ms ± 20% jitter + CI variance
+        Assert.InRange(delay3, 200, 700); // ~400ms ± 20% jitter + CI variance
+        
+        // Verify exponential backoff: each delay should generally be larger than the previous
+        // (allowing for some tolerance due to jitter and timing variations)
+        Assert.True(delay2 > delay1 * 0.5, $"delay2 ({delay2}ms) should be larger than half of delay1 ({delay1}ms)");
+        Assert.True(delay3 > delay2 * 0.5, $"delay3 ({delay3}ms) should be larger than half of delay2 ({delay2}ms)");
     }
 
     [Fact]

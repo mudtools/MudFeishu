@@ -5,8 +5,6 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-using System.ComponentModel.DataAnnotations;
-
 namespace Mud.Feishu.Abstractions;
 
 /// <summary>
@@ -25,7 +23,6 @@ public class FeishuAppConfig
     /// 示例值: "default", "hr-app", "approval-app"
     /// 用于在代码中通过名称引用特定应用，不与飞书平台关联。
     /// </remarks>
-    [Required(ErrorMessage = "AppKey 不能为空")]
     public
 #if NET7_0_OR_GREATER
         required
@@ -40,9 +37,6 @@ public class FeishuAppConfig
     /// 示例值: "cli_a1b2c3d4e5f6g7h8"
     /// 在飞书开放平台创建应用后获得，用于标识你的飞书应用。
     /// </remarks>
-    [Required(ErrorMessage = "AppId 不能为空")]
-    [RegularExpression(@"^(cli_|app_).+", ErrorMessage = "AppId 格式无效，应以 'cli_' 或 'app_' 开头")]
-    [MinLength(20, ErrorMessage = "AppId 长度无效")]
     public
 #if NET7_0_OR_GREATER
         required
@@ -58,8 +52,6 @@ public class FeishuAppConfig
     /// 在飞书开放平台创建应用后获得，用于应用身份验证。
     /// 请妥善保管，不要在代码中硬编码或提交到版本控制系统。
     /// </remarks>
-    [Required(ErrorMessage = "AppSecret 不能为空")]
-    [MinLength(16, ErrorMessage = "AppSecret 长度必须至少为 16 字符")]
     public
 #if NET7_0_OR_GREATER
         required
@@ -104,7 +96,6 @@ public class FeishuAppConfig
     /// 范围: 1-300秒
     /// 用于设置API调用的超时时间，网络环境较差时可适当增加此值。
     /// </remarks>
-    [Range(1, 300, ErrorMessage = "TimeOut 必须在 1-300 秒之间")]
     public int TimeOut { get; set; } = 30;
 
     /// <summary>
@@ -115,7 +106,6 @@ public class FeishuAppConfig
     /// 范围: 0-10次
     /// 当API调用失败时的自动重试次数，提高请求的成功率和稳定性。
     /// </remarks>
-    [Range(0, 10, ErrorMessage = "RetryCount 必须在 0-10 次之间")]
     public int RetryCount { get; set; } = 3;
 
     /// <summary>
@@ -126,7 +116,6 @@ public class FeishuAppConfig
     /// 范围: 100-60000毫秒
     /// 重试之间的基础延迟时间，实际延迟会采用指数退避策略。
     /// </remarks>
-    [Range(100, 60000, ErrorMessage = "RetryDelayMs 必须在 100-60000 毫秒之间")]
     public int RetryDelayMs { get; set; } = 1000;
 
     /// <summary>
@@ -137,7 +126,6 @@ public class FeishuAppConfig
     /// 范围: 60-3600秒
     /// 在令牌过期前提前刷新的时间间隔，避免因网络延迟等原因导致令牌失效。
     /// </remarks>
-    [Range(60, 3600, ErrorMessage = "TokenRefreshThreshold 必须在 60-3600 秒之间")]
     public int TokenRefreshThreshold { get; set; } = 300;
 
     /// <summary>
@@ -168,11 +156,9 @@ public class FeishuAppConfig
     /// <exception cref="InvalidOperationException">当配置项无效时抛出</exception>
     public void Validate()
     {
-        // 验证 AppKey
         if (string.IsNullOrWhiteSpace(AppKey))
             throw new InvalidOperationException("AppKey 不能为空");
 
-        // 验证 AppId
         if (string.IsNullOrWhiteSpace(AppId))
             throw new InvalidOperationException("AppId 不能为空");
 
@@ -182,30 +168,24 @@ public class FeishuAppConfig
         if (AppId.Length < 20)
             throw new InvalidOperationException("AppId 长度无效");
 
-        // 验证 AppSecret
         if (string.IsNullOrWhiteSpace(AppSecret))
             throw new InvalidOperationException("AppSecret 不能为空");
 
         if (AppSecret.Length < 16)
             throw new InvalidOperationException("AppSecret 长度必须至少为 16 字符");
 
-        // 验证 TimeOut
         if (TimeOut < 1 || TimeOut > 300)
             throw new InvalidOperationException("TimeOut 必须在 1-300 秒之间");
 
-        // 验证 RetryCount
         if (RetryCount < 0 || RetryCount > 10)
             throw new InvalidOperationException("RetryCount 必须在 0-10 次之间");
 
-        // 验证 RetryDelayMs
         if (RetryDelayMs < 100 || RetryDelayMs > 60000)
             throw new InvalidOperationException("RetryDelayMs 必须在 100-60000 毫秒之间");
 
-        // 验证 TokenRefreshThreshold
         if (TokenRefreshThreshold < 60 || TokenRefreshThreshold > 3600)
             throw new InvalidOperationException("TokenRefreshThreshold 必须在 60-3600 秒之间");
 
-        // 验证 BaseUrl
         if (!string.IsNullOrEmpty(BaseUrl) && !Uri.TryCreate(BaseUrl, UriKind.Absolute, out _))
             throw new InvalidOperationException("BaseUrl 必须是有效的 URI 格式");
 
@@ -216,7 +196,6 @@ public class FeishuAppConfig
                 throw new InvalidOperationException("BaseUrl 必须是 HTTP 或 HTTPS 协议");
         }
 
-        // 自动推断 IsDefault：AppKey 为 "default" 时自动设置为默认应用
         if (AppKey.Equals("default", StringComparison.OrdinalIgnoreCase))
         {
             IsDefault = true;

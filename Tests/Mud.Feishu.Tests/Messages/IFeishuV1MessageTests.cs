@@ -18,17 +18,17 @@ namespace Mud.Feishu.Tests;
 /// </summary>
 public class IFeishuV1MessageTests
 {
-    private static readonly JsonSerializerOptions _jsonSerializerOptions = _jsonSerializerOptions = HttpClientExtensions.GetDefaultJsonSerializerOptions();
+    private static readonly JsonSerializerOptions _jsonSerializerOptions = HttpClientExtensions.GetDefaultJsonSerializerOptions();
 
     #region 撤回消息
     [Fact]
     public void TestRevokeMessageAsyncResult()
     {
-        string resultStr = "";
+        string resultStr = """{"code":0,"msg":"success","data":null}""";
         var result = JsonSerializer.Deserialize<FeishuNullDataApiResult>(resultStr, _jsonSerializerOptions);
 
-        // 验证顶层对象非空
         Assert.NotNull(result);
+        Assert.Equal(0, result.Code);
     }
     #endregion
 
@@ -36,23 +36,19 @@ public class IFeishuV1MessageTests
     [Fact]
     public void TestAddMessageReactionsAsyncRequestBody()
     {
-        string bodyStr = "";
+        string bodyStr = """{"reaction_type":"LAUGH","message_id":"om_123"}""";
         var requestBody = JsonSerializer.Deserialize<EmojiReactionRequest>(bodyStr, _jsonSerializerOptions);
 
-        // 验证顶层对象非空
         Assert.NotNull(requestBody);
     }
 
     [Fact]
     public void TestAddMessageReactionsAsyncResult()
     {
-        string resultStr = "";
+        string resultStr = """{"code":0,"msg":"success","data":{"reaction_id":"reaction_123"}}""";
         var result = JsonSerializer.Deserialize<FeishuApiResult<EmojiReactionResult>>(resultStr, _jsonSerializerOptions);
 
-        // 验证顶层对象非空
         Assert.NotNull(result);
-
-        // 验证必需字段非空
         Assert.NotNull(result.Data);
     }
     #endregion
@@ -61,11 +57,11 @@ public class IFeishuV1MessageTests
     [Fact]
     public void TestGetMessageReactionsPageListAsyncResult()
     {
-        string resultStr = "";
+        string resultStr = """{"code":0,"msg":"success","data":{"items":[]}}""";
         var result = JsonSerializer.Deserialize<FeishuApiListResult<EmojiReactionResult>>(resultStr, _jsonSerializerOptions);
 
-        // 验证顶层对象非空
         Assert.NotNull(result);
+        Assert.Equal(0, result.Code);
     }
     #endregion
 
@@ -73,13 +69,10 @@ public class IFeishuV1MessageTests
     [Fact]
     public void TestDeleteMessageReactionsAsyncResult()
     {
-        string resultStr = "";
+        string resultStr = """{"code":0,"msg":"success","data":{"reaction_id":"reaction_123"}}""";
         var result = JsonSerializer.Deserialize<FeishuApiResult<EmojiReactionResult>>(resultStr, _jsonSerializerOptions);
 
-        // 验证顶层对象非空
         Assert.NotNull(result);
-
-        // 验证必需字段非空
         Assert.NotNull(result.Data);
     }
     #endregion
@@ -88,23 +81,19 @@ public class IFeishuV1MessageTests
     [Fact]
     public void TestPinMessageAsyncRequestBody()
     {
-        string bodyStr = "";
+        string bodyStr = """{"message_id":"om_123"}""";
         var requestBody = JsonSerializer.Deserialize<MessageRequest>(bodyStr, _jsonSerializerOptions);
 
-        // 验证顶层对象非空
         Assert.NotNull(requestBody);
     }
 
     [Fact]
     public void TestPinMessageAsyncResult()
     {
-        string resultStr = "";
+        string resultStr = """{"code":0,"msg":"success","data":{"pin_id":"pin_123"}}""";
         var result = JsonSerializer.Deserialize<FeishuApiResult<PinDataResult>>(resultStr, _jsonSerializerOptions);
 
-        // 验证顶层对象非空
         Assert.NotNull(result);
-
-        // 验证必需字段非空
         Assert.NotNull(result.Data);
     }
     #endregion
@@ -113,11 +102,11 @@ public class IFeishuV1MessageTests
     [Fact]
     public void TestDeletePinMessageAsyncResult()
     {
-        string resultStr = "";
+        string resultStr = """{"code":0,"msg":"success","data":null}""";
         var result = JsonSerializer.Deserialize<FeishuNullDataApiResult>(resultStr, _jsonSerializerOptions);
 
-        // 验证顶层对象非空
         Assert.NotNull(result);
+        Assert.Equal(0, result.Code);
     }
     #endregion
 
@@ -125,11 +114,11 @@ public class IFeishuV1MessageTests
     [Fact]
     public void TestGetPinMessagePageListAsyncResult()
     {
-        string resultStr = "";
+        string resultStr = """{"code":0,"msg":"success","data":{"items":[],"has_more":false,"page_token":""}}""";
         var result = JsonSerializer.Deserialize<FeishuApiPageListResult<PinInfo>>(resultStr, _jsonSerializerOptions);
 
-        // 验证顶层对象非空
         Assert.NotNull(result);
+        Assert.Equal(0, result.Code);
     }
     #endregion
 }

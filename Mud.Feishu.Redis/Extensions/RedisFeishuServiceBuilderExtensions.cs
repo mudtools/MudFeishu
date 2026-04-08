@@ -7,6 +7,7 @@
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Mud.Feishu.Redis.Configuration;
 using Mud.Feishu.Redis.HealthChecks;
 using Mud.Feishu.Redis.Services;
@@ -26,23 +27,17 @@ public static class RedisFeishuServiceBuilderExtensions
     /// <returns>服务集合</returns>
     private static IServiceCollection AddFeishuRedis(this IServiceCollection services)
     {
-        // 注册 RedisOptions 配置为 IOptions 模式
+        services.AddSingleton<IValidateOptions<RedisOptions>, RedisOptionsValidator>();
+
         services.AddSingleton(sp =>
         {
-            var configuration = sp.GetService<IConfiguration>();
+            var options = sp.GetRequiredService<IOptions<RedisOptions>>().Value;
             var logger = sp.GetService<ILogger<RedisOptions>>();
-            var options = new RedisOptions();
-
-            configuration?.GetSection("FeishuRedis").Bind(options);
-
-            // 验证配置
-            options.Validate();
 
             logger?.LogInformation("Redis options loaded. Server: {ServerAddress}", options.ServerAddress);
             return options;
         });
 
-        // 注册 IConnectionMultiplexer 单例
         services.AddSingleton<IConnectionMultiplexer>(sp =>
         {
             var options = sp.GetRequiredService<RedisOptions>();
@@ -58,7 +53,7 @@ public static class RedisFeishuServiceBuilderExtensions
                     ConnectTimeout = options.ConnectTimeout,
                     SyncTimeout = options.SyncTimeout,
                     Ssl = options.Ssl,
-                    Password = options.Password, // 从配置读取
+                    Password = options.Password,
                     AllowAdmin = options.AllowAdmin,
                     AbortOnConnectFail = options.AbortOnConnectFail,
                     ConnectRetry = options.ConnectRetry,
@@ -68,7 +63,6 @@ public static class RedisFeishuServiceBuilderExtensions
 
                 var redis = ConnectionMultiplexer.Connect(config);
 
-                // 注册连接事件
                 redis.ConnectionFailed += (sender, args) =>
                 {
                     logger?.LogWarning(args.Exception, "Redis connection failed: {FailureType}", args.FailureType);
@@ -89,7 +83,6 @@ public static class RedisFeishuServiceBuilderExtensions
             }
         });
 
-        // 注册健康检查
         services.AddSingleton<RedisHealthCheck>();
         services.AddHealthChecks()
             .AddCheck<RedisHealthCheck>("feishu-redis", tags: ["redis", "feishu"]);
@@ -183,7 +176,6 @@ public static class RedisFeishuServiceBuilderExtensions
         services.Configure<RedisOptions>(options =>
         {
             configuration.GetSection(section).Bind(options);
-            options.Validate();
         });
 
         return services

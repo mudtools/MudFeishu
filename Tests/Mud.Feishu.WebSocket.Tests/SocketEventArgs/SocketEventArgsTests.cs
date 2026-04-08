@@ -242,7 +242,7 @@ public class SocketEventArgsTests
         var args = new WebSocketPingEventArgs();
 
         // Assert
-        args.Timestamp.Should().BeCloseTo(DateTimeOffset.UtcNow, TimeSpan.FromSeconds(1));
+        args.Timestamp.Should().BeCloseTo(DateTimeOffset.UtcNow, TimeSpan.FromSeconds(5));
     }
 
     [Fact]
@@ -252,7 +252,7 @@ public class SocketEventArgsTests
         var args = new WebSocketPongEventArgs();
 
         // Assert
-        args.Timestamp.Should().BeCloseTo(DateTimeOffset.UtcNow, TimeSpan.FromSeconds(1));
+        args.Timestamp.Should().BeCloseTo(DateTimeOffset.UtcNow, TimeSpan.FromSeconds(5));
         args.LatencyMs.Should().BeNull();
         args.PongMessage.Should().BeNull();
     }

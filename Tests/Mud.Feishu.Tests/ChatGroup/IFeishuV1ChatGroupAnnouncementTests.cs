@@ -351,7 +351,7 @@ public class IFeishuV1ChatGroupAnnouncementTests
     [Fact]
     public void Test_UpdateNoticeBlockAsync_RequestBody()
     {
-        string bodyStr = "";
+        string bodyStr = """{"requests":[],"update_text_elements":[]}""";
         var requestBody = JsonSerializer.Deserialize<BlocksBatchUpdateRequest>(bodyStr, _jsonSerializerOptions);
 
         Assert.NotNull(requestBody);
@@ -363,7 +363,7 @@ public class IFeishuV1ChatGroupAnnouncementTests
     [Fact]
     public void Test_UpdateNoticeBlockAsync_Result()
     {
-        string resultStr = "";
+        string resultStr = """{"code":0,"msg":"success","data":{"revision_id":1}}""";
         var result = JsonSerializer.Deserialize<FeishuApiResult<BatchUpdateResult>>(resultStr, _jsonSerializerOptions);
 
         Assert.NotNull(result);
@@ -376,9 +376,7 @@ public class IFeishuV1ChatGroupAnnouncementTests
     [Fact]
     public void Test_GetBlockContentByIdAsync_Result()
     {
-        string resultStr = """
-                      
-            """;
+        string resultStr = """{"code":0,"msg":"success","data":{"items":[]}}""";
         var result = JsonSerializer.Deserialize<FeishuApiResult<GetBlockContentListResult>>(resultStr, _jsonSerializerOptions);
 
         Assert.NotNull(result);
@@ -391,7 +389,7 @@ public class IFeishuV1ChatGroupAnnouncementTests
     [Fact]
     public void Test_GetBlockContentPageListByIdAsync_Result()
     {
-        string resultStr = "";
+        string resultStr = """{"code":0,"msg":"success","data":{"items":[],"has_more":false,"page_token":""}}""";
         var result = JsonSerializer.Deserialize<FeishuApiPageListResult<AnnouncementBlock>>(resultStr, _jsonSerializerOptions);
 
         Assert.NotNull(result);

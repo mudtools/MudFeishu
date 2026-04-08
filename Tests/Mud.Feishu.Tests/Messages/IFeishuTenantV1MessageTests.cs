@@ -18,35 +18,31 @@ namespace Mud.Feishu.Tests;
 /// </summary>
 public class IFeishuTenantV1MessageTests
 {
-    private static readonly JsonSerializerOptions _jsonSerializerOptions = _jsonSerializerOptions = HttpClientExtensions.GetDefaultJsonSerializerOptions();
+    private static readonly JsonSerializerOptions _jsonSerializerOptions = HttpClientExtensions.GetDefaultJsonSerializerOptions();
 
     #region 发送消息
     [Fact]
     public void TestSendMessageAsyncRequestBody()
     {
-        string bodyStr = "";
+        string bodyStr = """{"receive_id":"ou_test123","msg_type":"text","content":"{\\"text\\":\\"hello\\"}","uuid":"test-uuid-123"}""";
         var requestBody = JsonSerializer.Deserialize<SendMessageRequest>(bodyStr, _jsonSerializerOptions);
 
-        // 验证顶层对象非空
         Assert.NotNull(requestBody);
-
-        // 验证必需字段非空
-        Assert.NotNull(requestBody.MsgType);
-        Assert.NotNull(requestBody.ReceiveId);
+        Assert.Equal("ou_test123", requestBody.ReceiveId);
+        Assert.Equal("text", requestBody.MsgType);
+        Assert.Equal("test-uuid-123", requestBody.Uuid);
     }
 
     [Fact]
     public void TestSendMessageAsyncResult()
     {
-        string resultStr = "";
+        string resultStr = """{"code":0,"msg":"success","data":{"message_id":"om_test123"}}""";
         var result = JsonSerializer.Deserialize<FeishuApiResult<MessageDataResult>>(resultStr, _jsonSerializerOptions);
 
-        // 验证顶层对象非空
         Assert.NotNull(result);
-
-        // 验证必需字段非空
+        Assert.Equal(0, result.Code);
         Assert.NotNull(result.Data);
-        Assert.NotEmpty(result.Data.MessageId!);
+        Assert.Equal("om_test123", result.Data.MessageId);
     }
     #endregion
 
@@ -54,28 +50,23 @@ public class IFeishuTenantV1MessageTests
     [Fact]
     public void TestReplyMessageAsyncRequestBody()
     {
-        string bodyStr = "";
+        string bodyStr = """{"msg_type":"text","content":"{\\"text\\":\\"reply content\\"}","uuid":"reply-uuid-123"}""";
         var requestBody = JsonSerializer.Deserialize<ReplyMessageRequest>(bodyStr, _jsonSerializerOptions);
 
-        // 验证顶层对象非空
         Assert.NotNull(requestBody);
-
-        // 验证必需字段非空
-        Assert.NotNull(requestBody.MsgType);
+        Assert.Equal("text", requestBody.MsgType);
     }
 
     [Fact]
     public void TestReplyMessageAsyncResult()
     {
-        string resultStr = "";
+        string resultStr = """{"code":0,"msg":"success","data":{"message_id":"om_reply123"}}""";
         var result = JsonSerializer.Deserialize<FeishuApiResult<MessageDataResult>>(resultStr, _jsonSerializerOptions);
 
-        // 验证顶层对象非空
         Assert.NotNull(result);
-
-        // 验证必需字段非空
+        Assert.Equal(0, result.Code);
         Assert.NotNull(result.Data);
-        Assert.NotEmpty(result.Data.MessageId!);
+        Assert.Equal("om_reply123", result.Data.MessageId);
     }
     #endregion
 
@@ -83,25 +74,23 @@ public class IFeishuTenantV1MessageTests
     [Fact]
     public void TestEditMessageAsyncRequestBody()
     {
-        string bodyStr = "";
+        string bodyStr = """{"msg_type":"text","content":"{\\"text\\":\\"edited content\\"}"}""";
         var requestBody = JsonSerializer.Deserialize<EditMessageRequest>(bodyStr, _jsonSerializerOptions);
 
-        // 验证顶层对象非空
         Assert.NotNull(requestBody);
+        Assert.Equal("text", requestBody.MsgType);
     }
 
     [Fact]
     public void TestEditMessageAsyncResult()
     {
-        string resultStr = "";
+        string resultStr = """{"code":0,"msg":"success","data":{"message_id":"om_edit123"}}""";
         var result = JsonSerializer.Deserialize<FeishuApiResult<MessageDataResult>>(resultStr, _jsonSerializerOptions);
 
-        // 验证顶层对象非空
         Assert.NotNull(result);
-
-        // 验证必需字段非空
+        Assert.Equal(0, result.Code);
         Assert.NotNull(result.Data);
-        Assert.NotEmpty(result.Data.MessageId!);
+        Assert.Equal("om_edit123", result.Data.MessageId);
     }
     #endregion
 
@@ -109,23 +98,21 @@ public class IFeishuTenantV1MessageTests
     [Fact]
     public void TestReceiveMessageAsyncRequestBody()
     {
-        string bodyStr = "";
+        string bodyStr = """{"receive_id":"ou_forward123","receive_id_type":"open_id"}""";
         var requestBody = JsonSerializer.Deserialize<ReceiveMessageRequest>(bodyStr, _jsonSerializerOptions);
 
-        // 验证顶层对象非空
         Assert.NotNull(requestBody);
+        Assert.Equal("ou_forward123", requestBody.ReceiveId);
     }
 
     [Fact]
     public void TestReceiveMessageAsyncResult()
     {
-        string resultStr = "";
+        string resultStr = """{"code":0,"msg":"success","data":{"message_id":"om_forward123"}}""";
         var result = JsonSerializer.Deserialize<FeishuApiResult<ReceiveMessageResult>>(resultStr, _jsonSerializerOptions);
 
-        // 验证顶层对象非空
         Assert.NotNull(result);
-
-        // 验证必需字段非空
+        Assert.Equal(0, result.Code);
         Assert.NotNull(result.Data);
     }
     #endregion
@@ -134,23 +121,21 @@ public class IFeishuTenantV1MessageTests
     [Fact]
     public void TestMergeReceiveMessageAsyncRequestBody()
     {
-        string bodyStr = "";
+        string bodyStr = """{"receive_id":"ou_merge123","receive_id_type":"open_id","message_id_list":["om_1","om_2"]}""";
         var requestBody = JsonSerializer.Deserialize<MergeReceiveMessageRequest>(bodyStr, _jsonSerializerOptions);
 
-        // 验证顶层对象非空
         Assert.NotNull(requestBody);
+        Assert.Equal("ou_merge123", requestBody.ReceiveId);
     }
 
     [Fact]
     public void TestMergeReceiveMessageAsyncResult()
     {
-        string resultStr = "";
+        string resultStr = """{"code":0,"msg":"success","data":{"message_id":"om_merge123"}}""";
         var result = JsonSerializer.Deserialize<FeishuApiResult<MergeReceiveMessageResult>>(resultStr, _jsonSerializerOptions);
 
-        // 验证顶层对象非空
         Assert.NotNull(result);
-
-        // 验证必需字段非空
+        Assert.Equal(0, result.Code);
         Assert.NotNull(result.Data);
     }
     #endregion
@@ -159,13 +144,11 @@ public class IFeishuTenantV1MessageTests
     [Fact]
     public void TestReceiveThreadsAsyncResult()
     {
-        string resultStr = "";
+        string resultStr = """{"code":0,"msg":"success","data":{"thread_id":"thread_123"}}""";
         var result = JsonSerializer.Deserialize<FeishuApiResult<ThreadResult>>(resultStr, _jsonSerializerOptions);
 
-        // 验证顶层对象非空
         Assert.NotNull(result);
-
-        // 验证必需字段非空
+        Assert.Equal(0, result.Code);
         Assert.NotNull(result.Data);
     }
     #endregion
@@ -174,21 +157,20 @@ public class IFeishuTenantV1MessageTests
     [Fact]
     public void TestCreateMessageFollowUpAsyncRequestBody()
     {
-        string bodyStr = "";
+        string bodyStr = """{"follow_up_type":"quick_action","content":"{\\"text\\":\\"follow up\\"}"}""";
         var requestBody = JsonSerializer.Deserialize<MessageFollowUpRequest>(bodyStr, _jsonSerializerOptions);
 
-        // 验证顶层对象非空
         Assert.NotNull(requestBody);
     }
 
     [Fact]
     public void TestCreateMessageFollowUpAsyncResult()
     {
-        string resultStr = "";
+        string resultStr = """{"code":0,"msg":"success","data":null}""";
         var result = JsonSerializer.Deserialize<FeishuNullDataApiResult>(resultStr, _jsonSerializerOptions);
 
-        // 验证顶层对象非空
         Assert.NotNull(result);
+        Assert.Equal(0, result.Code);
     }
     #endregion
 
@@ -196,11 +178,11 @@ public class IFeishuTenantV1MessageTests
     [Fact]
     public void TestGetMessageReadUsesAsyncResult()
     {
-        string resultStr = "";
+        string resultStr = """{"code":0,"msg":"success","data":{"items":[{"user_id":"ou_123"}],"has_more":false,"page_token":""}}""";
         var result = JsonSerializer.Deserialize<FeishuApiPageListResult<ReadMessageUser>>(resultStr, _jsonSerializerOptions);
 
-        // 验证顶层对象非空
         Assert.NotNull(result);
+        Assert.Equal(0, result.Code);
     }
     #endregion
 
@@ -208,11 +190,11 @@ public class IFeishuTenantV1MessageTests
     [Fact]
     public void TestGetHistoryMessageAsyncResult()
     {
-        string resultStr = "";
+        string resultStr = """{"code":0,"msg":"success","data":{"items":[],"has_more":false,"page_token":""}}""";
         var result = JsonSerializer.Deserialize<FeishuApiPageListResult<HistoryMessageData>>(resultStr, _jsonSerializerOptions);
 
-        // 验证顶层对象非空
         Assert.NotNull(result);
+        Assert.Equal(0, result.Code);
     }
     #endregion
 
@@ -220,7 +202,6 @@ public class IFeishuTenantV1MessageTests
     [Fact]
     public void TestGetMessageFileResult()
     {
-        // 这是一个返回字节数组的函数，无需测试反序列化
     }
     #endregion
 
@@ -228,7 +209,6 @@ public class IFeishuTenantV1MessageTests
     [Fact]
     public void TestGetMessageLargeFileResult()
     {
-        // 这是一个保存到本地文件的函数，无需测试反序列化
     }
     #endregion
 
@@ -236,11 +216,11 @@ public class IFeishuTenantV1MessageTests
     [Fact]
     public void TestGetContentListByMessageIdAsyncResult()
     {
-        string resultStr = "";
+        string resultStr = """{"code":0,"msg":"success","data":{"items":[]}}""";
         var result = JsonSerializer.Deserialize<FeishuApiListResult<MessageContentData>>(resultStr, _jsonSerializerOptions);
 
-        // 验证顶层对象非空
         Assert.NotNull(result);
+        Assert.Equal(0, result.Code);
     }
     #endregion
 
@@ -248,7 +228,6 @@ public class IFeishuTenantV1MessageTests
     [Fact]
     public void TestDownFileAsyncResult()
     {
-        // 这是一个返回字节数组的函数，无需测试反序列化
     }
     #endregion
 
@@ -256,7 +235,6 @@ public class IFeishuTenantV1MessageTests
     [Fact]
     public void TestDownLargeFileAsyncResult()
     {
-        // 这是一个保存到本地文件的函数，无需测试反序列化
     }
     #endregion
 
@@ -264,7 +242,6 @@ public class IFeishuTenantV1MessageTests
     [Fact]
     public void TestDownImageAsyncResult()
     {
-        // 这是一个返回字节数组的函数，无需测试反序列化
     }
     #endregion
 
@@ -272,7 +249,6 @@ public class IFeishuTenantV1MessageTests
     [Fact]
     public void TestDownLargeImageAsyncResult()
     {
-        // 这是一个保存到本地文件的函数，无需测试反序列化
     }
     #endregion
 
@@ -280,25 +256,22 @@ public class IFeishuTenantV1MessageTests
     [Fact]
     public void TestUploadFileAsyncRequestBody()
     {
-        string bodyStr = "";
+        string bodyStr = """{"file_key":"file_123","file_name":"test.txt","file_type":"stream"}""";
         var requestBody = JsonSerializer.Deserialize<UploadMessageFileRequest>(bodyStr, _jsonSerializerOptions);
 
-        // 验证顶层对象非空
         Assert.NotNull(requestBody);
     }
 
     [Fact]
     public void TestUploadFileAsyncResult()
     {
-        string resultStr = "";
+        string resultStr = """{"code":0,"msg":"success","data":{"file_key":"file_123"}}""";
         var result = JsonSerializer.Deserialize<FeishuApiResult<FileUploadResult>>(resultStr, _jsonSerializerOptions);
 
-        // 验证顶层对象非空
         Assert.NotNull(result);
-
-        // 验证必需字段非空
+        Assert.Equal(0, result.Code);
         Assert.NotNull(result.Data);
-        Assert.NotEmpty(result.Data.FileKey!);
+        Assert.Equal("file_123", result.Data.FileKey);
     }
     #endregion
 
@@ -306,25 +279,22 @@ public class IFeishuTenantV1MessageTests
     [Fact]
     public void TestUploadImageAsyncRequestBody()
     {
-        string bodyStr = "";
+        string bodyStr = """{"image_type":"message","image_key":"img_123"}""";
         var requestBody = JsonSerializer.Deserialize<UploadImageRequest>(bodyStr, _jsonSerializerOptions);
 
-        // 验证顶层对象非空
         Assert.NotNull(requestBody);
     }
 
     [Fact]
     public void TestUploadImageAsyncResult()
     {
-        string resultStr = "";
+        string resultStr = """{"code":0,"msg":"success","data":{"image_key":"img_123"}}""";
         var result = JsonSerializer.Deserialize<FeishuApiResult<ImageUpdateResult>>(resultStr, _jsonSerializerOptions);
 
-        // 验证顶层对象非空
         Assert.NotNull(result);
-
-        // 验证必需字段非空
+        Assert.Equal(0, result.Code);
         Assert.NotNull(result.Data);
-        Assert.NotEmpty(result.Data.ImageKey!);
+        Assert.Equal("img_123", result.Data.ImageKey);
     }
     #endregion
 
@@ -332,23 +302,20 @@ public class IFeishuTenantV1MessageTests
     [Fact]
     public void TestMessageUrgentAppAsyncRequestBody()
     {
-        string bodyStr = "";
+        string bodyStr = """{"user_id_list":["ou_123","ou_456"],"urgent_type":"app"}""";
         var requestBody = JsonSerializer.Deserialize<MessageUrgentRequest>(bodyStr, _jsonSerializerOptions);
 
-        // 验证顶层对象非空
         Assert.NotNull(requestBody);
     }
 
     [Fact]
     public void TestMessageUrgentAppAsyncResult()
     {
-        string resultStr = "";
+        string resultStr = """{"code":0,"msg":"success","data":{"urgent_code":"urgent_123"}}""";
         var result = JsonSerializer.Deserialize<FeishuApiResult<MessageUrgentResult>>(resultStr, _jsonSerializerOptions);
 
-        // 验证顶层对象非空
         Assert.NotNull(result);
-
-        // 验证必需字段非空
+        Assert.Equal(0, result.Code);
         Assert.NotNull(result.Data);
     }
     #endregion
@@ -357,13 +324,11 @@ public class IFeishuTenantV1MessageTests
     [Fact]
     public void TestMessageUrgentSMSAsyncResult()
     {
-        string resultStr = "";
+        string resultStr = """{"code":0,"msg":"success","data":{"urgent_code":"urgent_sms_123"}}""";
         var result = JsonSerializer.Deserialize<FeishuApiResult<MessageUrgentResult>>(resultStr, _jsonSerializerOptions);
 
-        // 验证顶层对象非空
         Assert.NotNull(result);
-
-        // 验证必需字段非空
+        Assert.Equal(0, result.Code);
         Assert.NotNull(result.Data);
     }
     #endregion
@@ -372,13 +337,11 @@ public class IFeishuTenantV1MessageTests
     [Fact]
     public void TestMessageUrgentPhoneAsyncResult()
     {
-        string resultStr = "";
+        string resultStr = """{"code":0,"msg":"success","data":{"urgent_code":"urgent_phone_123"}}""";
         var result = JsonSerializer.Deserialize<FeishuApiResult<MessageUrgentResult>>(resultStr, _jsonSerializerOptions);
 
-        // 验证顶层对象非空
         Assert.NotNull(result);
-
-        // 验证必需字段非空
+        Assert.Equal(0, result.Code);
         Assert.NotNull(result.Data);
     }
     #endregion
@@ -387,21 +350,20 @@ public class IFeishuTenantV1MessageTests
     [Fact]
     public void TestUpdateUrlPreviewAsyncRequestBody()
     {
-        string bodyStr = "";
+        string bodyStr = """{"message_id":"om_123","url":"https://example.com"}""";
         var requestBody = JsonSerializer.Deserialize<UrlPreviewRequest>(bodyStr, _jsonSerializerOptions);
 
-        // 验证顶层对象非空
         Assert.NotNull(requestBody);
     }
 
     [Fact]
     public void TestUpdateUrlPreviewAsyncResult()
     {
-        string resultStr = "";
+        string resultStr = """{"code":0,"msg":"success","data":null}""";
         var result = JsonSerializer.Deserialize<FeishuNullDataApiResult>(resultStr, _jsonSerializerOptions);
 
-        // 验证顶层对象非空
         Assert.NotNull(result);
+        Assert.Equal(0, result.Code);
     }
     #endregion
 }

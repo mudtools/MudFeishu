@@ -18,32 +18,26 @@ namespace Mud.Feishu.Tests;
 /// </summary>
 public class IFeishuTenantV1BatchMessageTests
 {
-    private static readonly JsonSerializerOptions _jsonSerializerOptions = _jsonSerializerOptions = HttpClientExtensions.GetDefaultJsonSerializerOptions();
+    private static readonly JsonSerializerOptions _jsonSerializerOptions = HttpClientExtensions.GetDefaultJsonSerializerOptions();
 
     #region 批量发送文本消息
     [Fact]
     public void TestBatchSendTextMessageAsyncRequestBody()
     {
-        string bodyStr = "";
+        string bodyStr = """{"msg_type":"text","content":"{\\"text\\":\\"hello\\"}","receive_id_list":["ou_123"]}""";
         var requestBody = JsonSerializer.Deserialize<BatchSenderTextMessageRequest>(bodyStr, _jsonSerializerOptions);
 
-        // 验证顶层对象非空
         Assert.NotNull(requestBody);
-
-        // 验证必需字段非空
         Assert.NotNull(requestBody.MsgType);
     }
 
     [Fact]
     public void TestBatchSendTextMessageAsyncResult()
     {
-        string resultStr = "";
+        string resultStr = """{"code":0,"msg":"success","data":{"message_id":"om_batch_123","invalid_receiver_ids":[]}}""";
         var result = JsonSerializer.Deserialize<FeishuApiResult<BatchMessageResult>>(resultStr, _jsonSerializerOptions);
 
-        // 验证顶层对象非空
         Assert.NotNull(result);
-
-        // 验证必需字段非空
         Assert.NotNull(result.Data);
         Assert.NotEmpty(result.Data.MessageId!);
     }
@@ -53,26 +47,20 @@ public class IFeishuTenantV1BatchMessageTests
     [Fact]
     public void TestBatchSendRichTextMessageAsyncRequestBody()
     {
-        string bodyStr = "";
+        string bodyStr = """{"msg_type":"post","content":"{\\"zh_cn\\":{\\"title\\":\\"test\\"}}","receive_id_list":["ou_123"]}""";
         var requestBody = JsonSerializer.Deserialize<BatchSenderRichTextMessageRequest>(bodyStr, _jsonSerializerOptions);
 
-        // 验证顶层对象非空
         Assert.NotNull(requestBody);
-
-        // 验证必需字段非空
         Assert.NotNull(requestBody.MsgType);
     }
 
     [Fact]
     public void TestBatchSendRichTextMessageAsyncResult()
     {
-        string resultStr = "";
+        string resultStr = """{"code":0,"msg":"success","data":{"message_id":"om_batch_456","invalid_receiver_ids":[]}}""";
         var result = JsonSerializer.Deserialize<FeishuApiResult<BatchMessageResult>>(resultStr, _jsonSerializerOptions);
 
-        // 验证顶层对象非空
         Assert.NotNull(result);
-
-        // 验证必需字段非空
         Assert.NotNull(result.Data);
         Assert.NotEmpty(result.Data.MessageId!);
     }
@@ -82,26 +70,20 @@ public class IFeishuTenantV1BatchMessageTests
     [Fact]
     public void TestBatchSendImageMessageAsyncRequestBody()
     {
-        string bodyStr = "";
+        string bodyStr = """{"msg_type":"image","content":"{\\"image_key\\":\\"img_123\\"}","receive_id_list":["ou_123"]}""";
         var requestBody = JsonSerializer.Deserialize<BatchSenderMessageImageRequest>(bodyStr, _jsonSerializerOptions);
 
-        // 验证顶层对象非空
         Assert.NotNull(requestBody);
-
-        // 验证必需字段非空
         Assert.NotNull(requestBody.MsgType);
     }
 
     [Fact]
     public void TestBatchSendImageMessageAsyncResult()
     {
-        string resultStr = "";
+        string resultStr = """{"code":0,"msg":"success","data":{"message_id":"om_batch_789","invalid_receiver_ids":[]}}""";
         var result = JsonSerializer.Deserialize<FeishuApiResult<BatchMessageResult>>(resultStr, _jsonSerializerOptions);
 
-        // 验证顶层对象非空
         Assert.NotNull(result);
-
-        // 验证必需字段非空
         Assert.NotNull(result.Data);
         Assert.NotEmpty(result.Data.MessageId!);
     }
@@ -111,26 +93,20 @@ public class IFeishuTenantV1BatchMessageTests
     [Fact]
     public void TestBatchSendGroupShareMessageAsyncRequestBody()
     {
-        string bodyStr = "";
+        string bodyStr = """{"msg_type":"share_chat","content":"{\\"chat_id\\":\\"oc_123\\"}","receive_id_list":["ou_123"]}""";
         var requestBody = JsonSerializer.Deserialize<BatchSenderMessageGroupShareRequest>(bodyStr, _jsonSerializerOptions);
 
-        // 验证顶层对象非空
         Assert.NotNull(requestBody);
-
-        // 验证必需字段非空
         Assert.NotNull(requestBody.MsgType);
     }
 
     [Fact]
     public void TestBatchSendGroupShareMessageAsyncResult()
     {
-        string resultStr = "";
+        string resultStr = """{"code":0,"msg":"success","data":{"message_id":"om_batch_abc","invalid_receiver_ids":[]}}""";
         var result = JsonSerializer.Deserialize<FeishuApiResult<BatchMessageResult>>(resultStr, _jsonSerializerOptions);
 
-        // 验证顶层对象非空
         Assert.NotNull(result);
-
-        // 验证必需字段非空
         Assert.NotNull(result.Data);
         Assert.NotEmpty(result.Data.MessageId!);
     }
@@ -140,11 +116,11 @@ public class IFeishuTenantV1BatchMessageTests
     [Fact]
     public void TestRevokeMessageAsyncResult()
     {
-        string resultStr = "";
+        string resultStr = """{"code":0,"msg":"success","data":null}""";
         var result = JsonSerializer.Deserialize<FeishuNullDataApiResult>(resultStr, _jsonSerializerOptions);
 
-        // 验证顶层对象非空
         Assert.NotNull(result);
+        Assert.Equal(0, result.Code);
     }
     #endregion
 
@@ -152,13 +128,10 @@ public class IFeishuTenantV1BatchMessageTests
     [Fact]
     public void TestGetUserReadMessageInfosAsyncResult()
     {
-        string resultStr = "";
+        string resultStr = """{"code":0,"msg":"success","data":{"read_user_count":10,"read_user_list":[]}}""";
         var result = JsonSerializer.Deserialize<FeishuApiResult<BatchMessageReadStatusResult>>(resultStr, _jsonSerializerOptions);
 
-        // 验证顶层对象非空
         Assert.NotNull(result);
-
-        // 验证必需字段非空
         Assert.NotNull(result.Data);
     }
     #endregion
@@ -167,13 +140,10 @@ public class IFeishuTenantV1BatchMessageTests
     [Fact]
     public void TestGetBatchMessageProgressAsyncResult()
     {
-        string resultStr = "";
+        string resultStr = """{"code":0,"msg":"success","data":{"status":"success","total_count":100,"sent_count":100}}""";
         var result = JsonSerializer.Deserialize<FeishuApiResult<BatchMessageProgressResult>>(resultStr, _jsonSerializerOptions);
 
-        // 验证顶层对象非空
         Assert.NotNull(result);
-
-        // 验证必需字段非空
         Assert.NotNull(result.Data);
     }
     #endregion

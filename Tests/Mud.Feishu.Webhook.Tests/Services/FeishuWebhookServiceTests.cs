@@ -285,6 +285,12 @@ public class FeishuWebhookServiceTests
             Timestamp = timestamp
         };
 
+        // 设置验证器 mock 返回 true（委托给验证器进行签名验证）
+        _validatorMock
+            .Setup(x => x.ValidateHeaderSignatureAsync(
+                timestamp, nonce, body, computedSignature, encryptKey))
+            .ReturnsAsync(true);
+
         var service = CreateService();
         service.SetCurrentAppKey("test-app");
         _options.Apps["test-app"] = new FeishuAppWebhookOptions
@@ -298,6 +304,8 @@ public class FeishuWebhookServiceTests
 
         // Assert
         Assert.True(result);
+        _validatorMock.Verify(x => x.ValidateHeaderSignatureAsync(
+            timestamp, nonce, body, computedSignature, encryptKey), Times.Once);
     }
 
     private FeishuWebhookService CreateService()

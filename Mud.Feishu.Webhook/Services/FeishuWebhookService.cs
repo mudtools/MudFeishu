@@ -405,32 +405,13 @@ public class FeishuWebhookService : IFeishuWebhookService
                 return false;
             }
 
-            // 构建签名字符串：timestamp + nonce + encryptKey + body
-            var signString = $"{request.Timestamp}{request.Nonce}{encryptKey}{body}";
-
-            // 使用 SHA-256 计算签名
-            var computedSignature = SignatureValidator.ComputeSha256Signature(signString);
-
-            // 使用固定时间比较防止计时攻击
-            var isValid = SignatureValidator.FixedTimeEquals(
-                Encoding.UTF8.GetBytes(computedSignature),
-                Encoding.UTF8.GetBytes(request.Signature));
-
-            if (!isValid)
-            {
-                var computedPrefix = computedSignature.Length > 8 ? computedSignature.Substring(0, 8) : computedSignature;
-                var signaturePrefix = request.Signature.Length > 8 ? request.Signature.Substring(0, 8) : request.Signature;
-                _logger.LogDebug("签名验证失败: 计算 {ComputedSignaturePrefix}..., 期望 {ExpectedSignaturePrefix}..., AppKey: {AppKey}",
-                    computedPrefix + "...",
-                    signaturePrefix + "...",
-                    _appKeyAccessor.CurrentAppKey ?? "null");
-            }
-            else
-            {
-                _logger.LogDebug("签名验证成功, AppKey: {AppKey}", _appKeyAccessor.CurrentAppKey ?? "null");
-            }
-
-            return isValid;
+            // 委托给验证器进行签名验证，消除内联重复代码
+            return await _validator.ValidateHeaderSignatureAsync(
+                request.Timestamp,
+                request.Nonce,
+                body,
+                request.Signature,
+                encryptKey);
         }
         catch (Exception ex)
         {

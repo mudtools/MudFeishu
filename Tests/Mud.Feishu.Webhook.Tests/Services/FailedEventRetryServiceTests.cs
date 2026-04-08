@@ -1,6 +1,6 @@
 // -----------------------------------------------------------------------
 //  作者：Mud Studio  版权所有 (c) Mud Studio 2025
-//  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规和许可证的要求。使用本项目应遵守相关法律法规和许可证的要求。
+//  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
 //  不得利用本项目从事危害国家安全、扰乱社会顺序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
@@ -31,7 +31,7 @@ public class FailedEventRetryServiceTests
             EnableRetry = true,
             MaxRetryCount = 3,
             MaxRetryPerPoll = 10,
-            RetryPollIntervalSeconds = 60
+            RetryPollIntervalSeconds = 1
         };
     }
 
@@ -60,7 +60,7 @@ public class FailedEventRetryServiceTests
             EnableRetry = true,
             MaxRetryCount = 3,
             MaxRetryPerPoll = 10,
-            RetryPollIntervalSeconds = 60
+            RetryPollIntervalSeconds = 1
         };
         var optionsMock = Options.Create(options);
 
@@ -89,7 +89,8 @@ public class FailedEventRetryServiceTests
         // Arrange
         var options = new FailedEventRetryOptions
         {
-            EnableRetry = false
+            EnableRetry = false,
+            RetryPollIntervalSeconds = 1
         };
         var optionsMock = Options.Create(options);
 
@@ -136,7 +137,8 @@ public class FailedEventRetryServiceTests
         // Arrange
         var options = new FailedEventRetryOptions
         {
-            EnableRetry = false
+            EnableRetry = false,
+            RetryPollIntervalSeconds = 1
         };
         var optionsMock = Options.Create(options);
         var eventStoreMock = new Mock<IFailedEventStore>();
@@ -147,11 +149,11 @@ public class FailedEventRetryServiceTests
             _webhookServiceMock.Object,
             eventStoreMock.Object);
 
-        using var cts = new CancellationTokenSource(100);
+        using var cts = new CancellationTokenSource(500);
 
         // Act
         await service.StartAsync(cts.Token);
-        await Task.Delay(150);
+        await Task.Delay(600);
         await service.StopAsync(CancellationToken.None);
 
         // Assert - 不应该调用事件存储
@@ -176,11 +178,11 @@ public class FailedEventRetryServiceTests
             _webhookServiceMock.Object,
             eventStoreMock.Object);
 
-        using var cts = new CancellationTokenSource(100);
+        using var cts = new CancellationTokenSource(500);
 
         // Act
         await service.StartAsync(cts.Token);
-        await Task.Delay(150);
+        await Task.Delay(600);
         await service.StopAsync(CancellationToken.None);
 
         // Assert
@@ -219,11 +221,11 @@ public class FailedEventRetryServiceTests
             _webhookServiceMock.Object,
             eventStoreMock.Object);
 
-        using var cts = new CancellationTokenSource(200);
+        using var cts = new CancellationTokenSource(1000);
 
         // Act
         await service.StartAsync(cts.Token);
-        await Task.Delay(250);
+        await Task.Delay(1200);
         await service.StopAsync(CancellationToken.None);
 
         // Assert
@@ -262,11 +264,11 @@ public class FailedEventRetryServiceTests
             _webhookServiceMock.Object,
             eventStoreMock.Object);
 
-        using var cts = new CancellationTokenSource(200);
+        using var cts = new CancellationTokenSource(1000);
 
         // Act
         await service.StartAsync(cts.Token);
-        await Task.Delay(250);
+        await Task.Delay(1200);
         await service.StopAsync(CancellationToken.None);
 
         // Assert
@@ -301,11 +303,11 @@ public class FailedEventRetryServiceTests
             _webhookServiceMock.Object,
             eventStoreMock.Object);
 
-        using var cts = new CancellationTokenSource(200);
+        using var cts = new CancellationTokenSource(1000);
 
         // Act
         await service.StartAsync(cts.Token);
-        await Task.Delay(250);
+        await Task.Delay(1200);
         await service.StopAsync(CancellationToken.None);
 
         // Assert - 应该移除事件，因为已达到最大重试次数
@@ -340,11 +342,11 @@ public class FailedEventRetryServiceTests
             _webhookServiceMock.Object,
             eventStoreMock.Object);
 
-        using var cts = new CancellationTokenSource(200);
+        using var cts = new CancellationTokenSource(1000);
 
         // Act
         await service.StartAsync(cts.Token);
-        await Task.Delay(250);
+        await Task.Delay(1200);
         await service.StopAsync(CancellationToken.None);
 
         // Assert - 无效 JSON 会抛出异常，进入 catch 块，更新重试次数
@@ -383,11 +385,11 @@ public class FailedEventRetryServiceTests
             _webhookServiceMock.Object,
             eventStoreMock.Object);
 
-        using var cts = new CancellationTokenSource(200);
+        using var cts = new CancellationTokenSource(1000);
 
         // Act
         await service.StartAsync(cts.Token);
-        await Task.Delay(250);
+        await Task.Delay(1200);
         await service.StopAsync(CancellationToken.None);
 
         // Assert - 应该更新重试次数

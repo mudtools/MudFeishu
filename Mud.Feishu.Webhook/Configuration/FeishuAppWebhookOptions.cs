@@ -1,4 +1,4 @@
-﻿// -----------------------------------------------------------------------
+// -----------------------------------------------------------------------
 //  作者：Mud Studio  版权所有 (c) Mud Studio 2025   
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
@@ -37,4 +37,26 @@ public class FeishuAppWebhookOptions
     /// 是否强制验证请求头签名，默认 false
     /// </summary>
     public bool EnforceHeaderSignatureValidation { get; set; } = false;
+
+    /// <summary>
+    /// 验证配置有效性
+    /// </summary>
+    /// <exception cref="InvalidOperationException">配置无效时抛出</exception>
+    public void Validate()
+    {
+        if (string.IsNullOrWhiteSpace(AppKey))
+            throw new InvalidOperationException("AppKey 不能为空");
+
+        if (string.IsNullOrWhiteSpace(VerificationToken))
+            throw new InvalidOperationException("VerificationToken 不能为空");
+
+        if (string.IsNullOrWhiteSpace(EncryptKey))
+            throw new InvalidOperationException("EncryptKey 不能为空");
+
+        if (EncryptKey.Length != 32)
+            throw new InvalidOperationException("EncryptKey 长度必须为 32 字符");
+
+        if (TimestampToleranceSeconds < 0)
+            throw new InvalidOperationException("TimestampToleranceSeconds 不能为负数");
+    }
 }

@@ -7,16 +7,16 @@
 
 using Microsoft.Extensions.Options;
 
-namespace Mud.Feishu.WebSocket.Configuration;
+namespace Mud.Feishu.Webhook.Configuration;
 
 /// <summary>
-/// FeishuWebSocketOptions 配置验证器
+/// FeishuWebhookOptions 配置验证器
 /// </summary>
 /// <remarks>
 /// 实现 IValidateOptions 接口，在依赖注入时自动验证配置。
-/// 内部调用 FeishuWebSocketOptions.Validate() 方法，保持验证逻辑一致性。
+/// 内部调用 FeishuWebhookOptions.Validate() 方法，保持验证逻辑一致性。
 /// </remarks>
-public class FeishuWebSocketOptionsValidator : IValidateOptions<FeishuWebSocketOptions>
+public class FeishuWebhookOptionsValidator : IValidateOptions<FeishuWebhookOptions>
 {
     /// <summary>
     /// 验证配置选项
@@ -24,11 +24,11 @@ public class FeishuWebSocketOptionsValidator : IValidateOptions<FeishuWebSocketO
     /// <param name="name">配置名称</param>
     /// <param name="options">配置选项实例</param>
     /// <returns>验证结果</returns>
-    public ValidateOptionsResult Validate(string? name, FeishuWebSocketOptions options)
+    public ValidateOptionsResult Validate(string? name, FeishuWebhookOptions options)
     {
         if (options == null)
         {
-            return ValidateOptionsResult.Fail("FeishuWebSocketOptions 配置不能为 null");
+            return ValidateOptionsResult.Fail("FeishuWebhookOptions 配置不能为 null");
         }
 
         try
@@ -38,7 +38,7 @@ public class FeishuWebSocketOptionsValidator : IValidateOptions<FeishuWebSocketO
         }
         catch (InvalidOperationException ex)
         {
-            return ValidateOptionsResult.Fail($"FeishuWebSocketOptions 配置验证失败: {ex.Message}");
+            return ValidateOptionsResult.Fail($"FeishuWebhookOptions 配置验证失败: {ex.Message}");
         }
     }
 }

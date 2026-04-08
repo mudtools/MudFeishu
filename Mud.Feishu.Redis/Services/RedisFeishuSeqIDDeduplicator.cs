@@ -1,5 +1,5 @@
 // -----------------------------------------------------------------------
-//  作者：Mud Studio  版权所有 (c) Mud Studio 2025
+//  作者：Mud Studio  版权所有 (c) Mud Studio 2026   
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
@@ -21,7 +21,6 @@ public class RedisFeishuSeqIDDeduplicator : IFeishuSeqIDDeduplicator, IAsyncDisp
     private readonly IDatabase _database;
     private readonly TimeSpan _defaultCacheExpiration;
     private readonly string _keyPrefix;
-    private readonly string _maxSeqIdKey;
     private bool _disposed;
 
     /// <summary>
@@ -42,7 +41,6 @@ public class RedisFeishuSeqIDDeduplicator : IFeishuSeqIDDeduplicator, IAsyncDisp
         _database = _redis.GetDatabase();
         _defaultCacheExpiration = cacheExpiration ?? TimeSpan.FromHours(24);
         _keyPrefix = keyPrefix ?? "feishu:seqid:";
-        _maxSeqIdKey = $"{_keyPrefix}max";
 
         _logger?.LogInformation("飞书 Redis SeqID 去重服务初始化完成，缓存过期时间: {Expiration}, 键前缀: {KeyPrefix}",
             _defaultCacheExpiration, _keyPrefix);
@@ -76,17 +74,17 @@ public class RedisFeishuSeqIDDeduplicator : IFeishuSeqIDDeduplicator, IAsyncDisp
         }
         catch (RedisConnectionException ex)
         {
-            _logger.LogError(ex, "Redis 连接异常，SeqID {SeqId} 去重失败", seqId);
+            _logger?.LogError(ex, "Redis 连接异常，SeqID {SeqId} 去重失败", seqId);
             throw new InvalidOperationException("Redis 连接失败，无法完成 SeqID 去重", ex);
         }
         catch (RedisTimeoutException ex)
         {
-            _logger.LogWarning(ex, "Redis 超时，SeqID {SeqId} 去重失败", seqId);
+            _logger?.LogWarning(ex, "Redis 超时，SeqID {SeqId} 去重失败", seqId);
             throw new InvalidOperationException("Redis 操作超时", ex);
         }
         catch (RedisException ex)
         {
-            _logger.LogError(ex, "Redis 操作异常，SeqID {SeqId} 去重失败", seqId);
+            _logger?.LogError(ex, "Redis 操作异常，SeqID {SeqId} 去重失败", seqId);
             throw new InvalidOperationException("Redis 操作失败", ex);
         }
     }
@@ -121,17 +119,17 @@ public class RedisFeishuSeqIDDeduplicator : IFeishuSeqIDDeduplicator, IAsyncDisp
         }
         catch (RedisConnectionException ex)
         {
-            _logger.LogError(ex, "Redis 连接异常，SeqID {SeqId} 去重失败", seqId);
+            _logger?.LogError(ex, "Redis 连接异常，SeqID {SeqId} 去重失败", seqId);
             throw new InvalidOperationException("Redis 连接失败，无法完成 SeqID 去重", ex);
         }
         catch (RedisTimeoutException ex)
         {
-            _logger.LogWarning(ex, "Redis 超时，SeqID {SeqId} 去重失败", seqId);
+            _logger?.LogWarning(ex, "Redis 超时，SeqID {SeqId} 去重失败", seqId);
             throw new InvalidOperationException("Redis 操作超时", ex);
         }
         catch (RedisException ex)
         {
-            _logger.LogError(ex, "Redis 操作异常，SeqID {SeqId} 去重失败", seqId);
+            _logger?.LogError(ex, "Redis 操作异常，SeqID {SeqId} 去重失败", seqId);
             throw new InvalidOperationException("Redis 操作失败", ex);
         }
     }

@@ -258,10 +258,10 @@ public class FeishuWebhookServiceConcurrencyTests
         {
             var index = i;
             _decryptorMock
-                .Setup(x => x.DecryptAsync($"encrypted_{i}", It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .Setup(x => x.DecryptAsync($"encrypted_{index}", It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new EventData
                 {
-                    EventId = $"event_{i}",
+                    EventId = $"event_{index}",
                     EventType = "test.event",
                     CreateTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
                 });
@@ -270,11 +270,12 @@ public class FeishuWebhookServiceConcurrencyTests
         // 创建并发任务
         for (int i = 0; i < 30; i++)
         {
-            var appKey = appKeys[i % appKeys.Length];
+            var index = i; // 捕获循环变量的当前值
+            var appKey = appKeys[index % appKeys.Length];
             var task = Task.Run(async () =>
             {
                 service.SetCurrentAppKey(appKey);
-                return await service.DecryptEventAsync($"encrypted_{i}");
+                return await service.DecryptEventAsync($"encrypted_{index}");
             });
 
             tasks.Add(task);

@@ -6,7 +6,6 @@
 // -----------------------------------------------------------------------
 
 using Mud.Feishu.Abstractions;
-using Mud.Feishu.Abstractions.EventHandlers;
 using Mud.Feishu.Abstractions.Metrics;
 using Mud.Feishu.Abstractions.Services;
 using Mud.Feishu.Webhook.Configuration;
@@ -527,12 +526,6 @@ public class FeishuWebhookService : IFeishuWebhookService
             foreach (var handlerType in handlerTypes)
             {
                 var handler = (IFeishuEventHandler)_serviceProvider.GetRequiredService(handlerType);
-
-                // 为幂等处理器注入 AppKeyAccessor（支持多应用隔离）
-                if (handler is ISetAppKeyAware setAppKeyHandler)
-                {
-                    setAppKeyHandler.SetAppKeyAccessor(_appKeyAccessor);
-                }
 
                 tasks.Add(handler.HandleAsync(eventData, cancellationToken));
             }

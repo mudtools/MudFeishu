@@ -17,10 +17,8 @@ public class FeishuWebhookOptionsTests
     [Fact]
     public void FeishuWebhookOptions_DefaultValues_ShouldBeCorrect()
     {
-        // Arrange & Act
         var options = new FeishuWebhookOptions();
 
-        // Assert
         Assert.True(options.EnableBodySignatureValidation);
         Assert.Equal(30, options.TimestampToleranceSeconds);
         Assert.Equal(30000, options.EventHandlingTimeoutMs);
@@ -31,7 +29,6 @@ public class FeishuWebhookOptionsTests
     [Fact]
     public void FeishuWebhookOptions_SetCustomValues_ShouldWork()
     {
-        // Arrange & Act
         var options = new FeishuWebhookOptions
         {
             EnableBodySignatureValidation = false,
@@ -41,7 +38,6 @@ public class FeishuWebhookOptionsTests
             EnableExceptionHandling = false
         };
 
-        // Assert
         Assert.False(options.EnableBodySignatureValidation);
         Assert.Equal(600, options.TimestampToleranceSeconds);
         Assert.Equal(10000, options.EventHandlingTimeoutMs);
@@ -52,14 +48,12 @@ public class FeishuWebhookOptionsTests
     [Fact]
     public void FeishuWebhookOptions_SetTimeouts_ShouldAcceptValidValues()
     {
-        // Arrange & Act
         var options = new FeishuWebhookOptions
         {
             TimestampToleranceSeconds = 120,
             EventHandlingTimeoutMs = 30000
         };
 
-        // Assert
         Assert.Equal(120, options.TimestampToleranceSeconds);
         Assert.Equal(30000, options.EventHandlingTimeoutMs);
     }
@@ -67,14 +61,145 @@ public class FeishuWebhookOptionsTests
     [Fact]
     public void FeishuWebhookOptions_SetMaxConcurrentEvents_ShouldAcceptPositiveValues()
     {
-        // Arrange & Act
         var options1 = new FeishuWebhookOptions { MaxConcurrentEvents = 1 };
         var options2 = new FeishuWebhookOptions { MaxConcurrentEvents = 500 };
         var options3 = new FeishuWebhookOptions { MaxConcurrentEvents = 1000 };
 
-        // Assert
         Assert.Equal(1, options1.MaxConcurrentEvents);
         Assert.Equal(500, options2.MaxConcurrentEvents);
         Assert.Equal(1000, options3.MaxConcurrentEvents);
     }
+
+    #region Validate() Method Tests
+
+    [Fact]
+    public void Validate_WithValidOptions_ShouldNotThrow()
+    {
+        var options = new FeishuWebhookOptions
+        {
+            Apps = new Dictionary<string, FeishuAppWebhookOptions>
+            {
+                ["test-app"] = new FeishuAppWebhookOptions
+                {
+                    AppKey = "test-app",
+                    VerificationToken = "test_token",
+                    EncryptKey = "12345678901234567890123456789012"
+                }
+            }
+        };
+
+        var exception = Record.Exception(() => options.Validate());
+        Assert.Null(exception);
+    }
+
+    [Fact]
+    public void Validate_WithInvalidEventHandlingTimeoutMs_ShouldThrow()
+    {
+        var options = new FeishuWebhookOptions
+        {
+            EventHandlingTimeoutMs = 100
+        };
+
+        var ex = Assert.Throws<InvalidOperationException>(() => options.Validate());
+        Assert.Contains("EventHandlingTimeoutMs", ex.Message);
+    }
+
+    [Fact]
+    public void Validate_WithInvalidMaxConcurrentEvents_ShouldThrow()
+    {
+        var options = new FeishuWebhookOptions
+        {
+            MaxConcurrentEvents = 0
+        };
+
+        var ex = Assert.Throws<InvalidOperationException>(() => options.Validate());
+        Assert.Contains("MaxConcurrentEvents", ex.Message);
+    }
+
+    [Fact]
+    public void Validate_WithInvalidMaxRequestBodySize_ShouldThrow()
+    {
+        var options = new FeishuWebhookOptions
+        {
+            MaxRequestBodySize = 100
+        };
+
+        var ex = Assert.Throws<InvalidOperationException>(() => options.Validate());
+        Assert.Contains("MaxRequestBodySize", ex.Message);
+    }
+
+    [Fact]
+    public void Validate_WithNegativeTimestampTolerance_ShouldThrow()
+    {
+        var options = new FeishuWebhookOptions
+        {
+            TimestampToleranceSeconds = -1
+        };
+
+        var ex = Assert.Throws<InvalidOperationException>(() => options.Validate());
+        Assert.Contains("TimestampToleranceSeconds", ex.Message);
+    }
+
+    [Fact]
+    public void Validate_WithMissingEncryptKey_ShouldThrow()
+    {
+        var options = new FeishuWebhookOptions
+        {
+            Apps = new Dictionary<string, FeishuAppWebhookOptions>
+            {
+                ["test-app"] = new FeishuAppWebhookOptions
+                {
+                    AppKey = "test-app",
+                    VerificationToken = "test_token",
+                    EncryptKey = ""
+                }
+            }
+        };
+
+        var ex = Assert.Throws<InvalidOperationException>(() => options.Validate());
+        Assert.Contains("EncryptKey", ex.Message);
+    }
+
+    [Fact]
+    public void Validate_WithInvalidEncryptKeyLength_ShouldThrow()
+    {
+        var options = new FeishuWebhookOptions
+        {
+            Apps = new Dictionary<string, FeishuAppWebhookOptions>
+            {
+                ["test-app"] = new FeishuAppWebhookOptions
+                {
+                    AppKey = "test-app",
+                    VerificationToken = "test_token",
+                    EncryptKey = "short_key"
+                }
+            }
+        };
+
+        var ex = Assert.Throws<InvalidOperationException>(() => options.Validate());
+        Assert.Contains("EncryptKey", ex.Message);
+        Assert.Contains("32", ex.Message);
+    }
+
+    [Fact]
+    public void Validate_WithMissingVerificationToken_ShouldThrow()
+    {
+        var options = new FeishuWebhookOptions
+        {
+            Apps = new Dictionary<string, FeishuAppWebhookOptions>
+            {
+                ["test-app"] = new FeishuAppWebhookOptions
+                {
+                    AppKey = "test-app",
+                    VerificationToken = "",
+                    EncryptKey = "12345678901234567890123456789012"
+                }
+            }
+        };
+
+        var ex = Assert.Throws<InvalidOperationException>(() => options.Validate());
+        Assert.Contains("VerificationToken", ex.Message);
+    }
+
+    #endregion
 }

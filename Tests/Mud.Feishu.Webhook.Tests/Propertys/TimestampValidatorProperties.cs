@@ -24,12 +24,14 @@ public class TimestampValidatorProperties
     private readonly Mock<ILogger<TimestampValidator>> _loggerMock;
     private readonly Mock<IOptionsMonitor<FeishuWebhookOptions>> _optionsMonitorMock;
     private readonly Mock<IEnvironmentService> _environmentServiceMock;
+    private readonly Mock<IWebhookAppKeyAccessor> _appKeyAccessorMock;
 
     public TimestampValidatorProperties()
     {
         _loggerMock = new Mock<ILogger<TimestampValidator>>();
         _optionsMonitorMock = new Mock<IOptionsMonitor<FeishuWebhookOptions>>();
         _environmentServiceMock = new Mock<IEnvironmentService>();
+        _appKeyAccessorMock = new Mock<IWebhookAppKeyAccessor>();
 
         // Setup default options
         var defaultOptions = new FeishuWebhookOptions
@@ -42,6 +44,15 @@ public class TimestampValidatorProperties
         _environmentServiceMock.Setup(x => x.IsProduction).Returns(false);
         _environmentServiceMock.Setup(x => x.IsDevelopment).Returns(true);
         _environmentServiceMock.Setup(x => x.EnvironmentName).Returns("Development");
+
+        // 设置 _appKeyAccessorMock 使 SetAppKey 方法能够更新 CurrentAppKey 属性
+        string? currentAppKey = null;
+        _appKeyAccessorMock
+            .Setup(x => x.SetAppKey(It.IsAny<string>()))
+            .Callback<string>(appKey => currentAppKey = appKey);
+        _appKeyAccessorMock
+            .Setup(x => x.CurrentAppKey)
+            .Returns(() => currentAppKey);
     }
 
     /// <summary>
@@ -58,7 +69,7 @@ public class TimestampValidatorProperties
             data =>
             {
                 // Arrange
-                var validator = new TimestampValidator(_loggerMock.Object, _optionsMonitorMock.Object, _environmentServiceMock.Object);
+                var validator = new TimestampValidator(_loggerMock.Object, _optionsMonitorMock.Object, _appKeyAccessorMock.Object, _environmentServiceMock.Object);
 
                 // Act
                 var result = validator.ValidateTimestamp(data.Timestamp, data.ToleranceSeconds);
@@ -97,7 +108,7 @@ public class TimestampValidatorProperties
             data =>
             {
                 // Arrange
-                var validator = new TimestampValidator(_loggerMock.Object, _optionsMonitorMock.Object, _environmentServiceMock.Object);
+                var validator = new TimestampValidator(_loggerMock.Object, _optionsMonitorMock.Object, _appKeyAccessorMock.Object, _environmentServiceMock.Object);
 
                 // Act
                 var result = validator.ValidateTimestamp(data.Timestamp, data.ToleranceSeconds);
@@ -151,7 +162,7 @@ public class TimestampValidatorProperties
                 environmentServiceMock.Setup(x => x.IsProduction).Returns(false);
                 environmentServiceMock.Setup(x => x.IsDevelopment).Returns(true);
 
-                var validator = new TimestampValidator(loggerMock.Object, optionsMonitorMock.Object, environmentServiceMock.Object);
+                var validator = new TimestampValidator(loggerMock.Object, optionsMonitorMock.Object, _appKeyAccessorMock.Object, environmentServiceMock.Object);
 
                 // Act
                 var result = validator.ValidateTimestamp(data.Timestamp, data.ToleranceSeconds);

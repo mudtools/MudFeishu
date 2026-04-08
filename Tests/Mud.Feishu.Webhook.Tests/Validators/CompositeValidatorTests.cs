@@ -28,6 +28,7 @@ public class CompositeValidatorTests
     private readonly Mock<ISubscriptionValidator> _subscriptionValidatorMock;
     private readonly Mock<ILogger<CompositeFeishuEventValidator>> _loggerMock;
     private readonly Mock<IOptionsMonitor<FeishuWebhookOptions>> _optionsMock;
+    private readonly Mock<IWebhookAppKeyAccessor> _appKeyAccessorMock;
     private readonly FeishuWebhookOptions _options;
     private readonly CompositeFeishuEventValidator _validator;
 
@@ -39,6 +40,7 @@ public class CompositeValidatorTests
         _subscriptionValidatorMock = new Mock<ISubscriptionValidator>();
         _loggerMock = new Mock<ILogger<CompositeFeishuEventValidator>>();
         _optionsMock = new Mock<IOptionsMonitor<FeishuWebhookOptions>>();
+        _appKeyAccessorMock = new Mock<IWebhookAppKeyAccessor>();
 
         _options = new FeishuWebhookOptions
         {
@@ -54,7 +56,8 @@ public class CompositeValidatorTests
             _nonceValidatorMock.Object,
             _subscriptionValidatorMock.Object,
             _loggerMock.Object,
-            _optionsMock.Object);
+            _optionsMock.Object,
+            _appKeyAccessorMock.Object);
     }
 
     #region 构造函数测试
@@ -70,7 +73,8 @@ public class CompositeValidatorTests
                 _nonceValidatorMock.Object,
                 _subscriptionValidatorMock.Object,
                 _loggerMock.Object,
-                _optionsMock.Object));
+                _optionsMock.Object,
+                _appKeyAccessorMock.Object));
     }
 
     [Fact]
@@ -84,7 +88,8 @@ public class CompositeValidatorTests
                 _nonceValidatorMock.Object,
                 _subscriptionValidatorMock.Object,
                 _loggerMock.Object,
-                _optionsMock.Object));
+                _optionsMock.Object,
+                _appKeyAccessorMock.Object));
     }
 
     [Fact]
@@ -98,7 +103,8 @@ public class CompositeValidatorTests
                 null!,
                 _subscriptionValidatorMock.Object,
                 _loggerMock.Object,
-                _optionsMock.Object));
+                _optionsMock.Object,
+                _appKeyAccessorMock.Object));
     }
 
     [Fact]
@@ -112,7 +118,8 @@ public class CompositeValidatorTests
                 _nonceValidatorMock.Object,
                 null!,
                 _loggerMock.Object,
-                _optionsMock.Object));
+                _optionsMock.Object,
+                _appKeyAccessorMock.Object));
     }
 
     [Fact]
@@ -126,7 +133,8 @@ public class CompositeValidatorTests
                 _nonceValidatorMock.Object,
                 _subscriptionValidatorMock.Object,
                 null!,
-                _optionsMock.Object));
+                _optionsMock.Object,
+                _appKeyAccessorMock.Object));
     }
 
     [Fact]
@@ -140,6 +148,22 @@ public class CompositeValidatorTests
                 _nonceValidatorMock.Object,
                 _subscriptionValidatorMock.Object,
                 _loggerMock.Object,
+                null!,
+                _appKeyAccessorMock.Object));
+    }
+
+    [Fact]
+    public void Constructor_WithNullAppKeyAccessor_ShouldThrowArgumentNullException()
+    {
+        // Arrange & Act & Assert
+        Assert.Throws<ArgumentNullException>(() =>
+            new CompositeFeishuEventValidator(
+                _signatureValidatorMock.Object,
+                _timestampValidatorMock.Object,
+                _nonceValidatorMock.Object,
+                _subscriptionValidatorMock.Object,
+                _loggerMock.Object,
+                _optionsMock.Object,
                 null!));
     }
 
@@ -291,7 +315,7 @@ public class CompositeValidatorTests
     #region 多应用键传播测试 (需求 5.5)
 
     [Fact]
-    public void SetCurrentAppKey_ShouldPropagateToAllSupportedValidators()
+    public void SetCurrentAppKey_ShouldPropagateToAppKeyAccessor()
     {
         // Arrange
         var appKey = "test-app-key";
@@ -299,11 +323,8 @@ public class CompositeValidatorTests
         // Act
         _validator.SetCurrentAppKey(appKey);
 
-        // Assert
-        _signatureValidatorMock.Verify(x => x.SetCurrentAppKey(appKey), Times.Once);
-        _nonceValidatorMock.Verify(x => x.SetCurrentAppKey(appKey), Times.Once);
-        _subscriptionValidatorMock.Verify(x => x.SetCurrentAppKey(appKey), Times.Once);
-        // 时间戳验证器不支持多应用，不应该被调用
+        // Assert - 验证 AppKeyAccessor 被设置
+        _appKeyAccessorMock.Verify(x => x.SetAppKey(appKey), Times.Once);
     }
 
     [Fact]
@@ -315,10 +336,8 @@ public class CompositeValidatorTests
         // Act
         _validator.SetCurrentAppKey(appKey);
 
-        // Assert
-        _signatureValidatorMock.Verify(x => x.SetCurrentAppKey(appKey), Times.Once);
-        _nonceValidatorMock.Verify(x => x.SetCurrentAppKey(appKey), Times.Once);
-        _subscriptionValidatorMock.Verify(x => x.SetCurrentAppKey(appKey), Times.Once);
+        // Assert - 验证 AppKeyAccessor 被设置
+        _appKeyAccessorMock.Verify(x => x.SetAppKey(appKey), Times.Once);
     }
 
     [Fact]
@@ -330,10 +349,8 @@ public class CompositeValidatorTests
         // Act
         _validator.SetCurrentAppKey(appKey!);
 
-        // Assert
-        _signatureValidatorMock.Verify(x => x.SetCurrentAppKey(appKey!), Times.Once);
-        _nonceValidatorMock.Verify(x => x.SetCurrentAppKey(appKey!), Times.Once);
-        _subscriptionValidatorMock.Verify(x => x.SetCurrentAppKey(appKey!), Times.Once);
+        // Assert - 验证 AppKeyAccessor 被设置
+        _appKeyAccessorMock.Verify(x => x.SetAppKey(appKey!), Times.Once);
     }
 
     #endregion

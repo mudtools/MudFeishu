@@ -14,25 +14,34 @@ namespace Mud.Feishu.Webhook.Services;
 /// 飞书事件时间戳验证器实现
 /// 支持秒级和毫秒级时间戳的自动识别和验证
 /// </summary>
-public class TimestampValidator : ValidatorBase, ITimestampValidator
+public class TimestampValidator : ITimestampValidator
 {
     private readonly ILogger<TimestampValidator> _logger;
     private readonly IOptionsMonitor<FeishuWebhookOptions> _optionsMonitor;
     private readonly IEnvironmentService _environmentService;
+    private readonly IWebhookAppKeyAccessor _appKeyAccessor;
+
+    /// <summary>
+    /// 获取当前应用键（优先从 IWebhookAppKeyAccessor 获取）
+    /// </summary>
+    private string? CurrentAppKey => _appKeyAccessor.CurrentAppKey;
 
     /// <summary>
     /// 初始化时间戳验证器
     /// </summary>
     /// <param name="logger">日志记录器</param>
     /// <param name="optionsMonitor">配置监视器</param>
+    /// <param name="appKeyAccessor">应用键上下文访问器</param>
     /// <param name="environmentService">环境服务</param>
     public TimestampValidator(
         ILogger<TimestampValidator> logger,
         IOptionsMonitor<FeishuWebhookOptions> optionsMonitor,
+        IWebhookAppKeyAccessor appKeyAccessor,
         IEnvironmentService? environmentService = null)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _optionsMonitor = optionsMonitor ?? throw new ArgumentNullException(nameof(optionsMonitor));
+        _appKeyAccessor = appKeyAccessor ?? throw new ArgumentNullException(nameof(appKeyAccessor));
         _environmentService = environmentService ?? new EnvironmentService();
     }
 
@@ -49,14 +58,14 @@ public class TimestampValidator : ValidatorBase, ITimestampValidator
                     // 生产环境拒绝时间戳为 0 的请求（安全要求）
                     _logger.LogError(
                         "时间戳为 0，拒绝请求（生产环境不允许跳过时间戳验证），AppKey: {AppKey}",
-                        _currentAppKey ?? "null");
+                        CurrentAppKey ?? "null");
                     return false;
                 }
 
                 // 开发/测试环境允许，但记录警告
                 _logger.LogWarning(
                     "时间戳为 0，跳过时间戳验证（非生产环境，警告：此配置存在安全风险），AppKey: {AppKey}",
-                    _currentAppKey ?? "null");
+                    CurrentAppKey ?? "null");
                 return true;
             }
 
@@ -67,17 +76,17 @@ public class TimestampValidator : ValidatorBase, ITimestampValidator
                 var options = _optionsMonitor.CurrentValue;
 
                 // 多应用场景：尝试从应用特定配置获取
-                if (!string.IsNullOrEmpty(_currentAppKey))
+                if (!string.IsNullOrEmpty(CurrentAppKey))
                 {
-                    var appConfig = options.GetAppConfig(_currentAppKey!);
+                    var appConfig = options.GetAppConfig(CurrentAppKey!);
                     if (appConfig != null)
                     {
-                        // 优先使用应用特定配置，如果没有设置则使用全局配置
+                        // 优先使用应用特定配置，如果未设置（-1 或 0）则使用全局配置
                         effectiveToleranceSeconds = appConfig.TimestampToleranceSeconds > 0
                             ? appConfig.TimestampToleranceSeconds
                             : options.TimestampToleranceSeconds;
                         _logger.LogDebug("使用应用 {AppKey} 的时间戳容错配置: {ToleranceSeconds}秒",
-                            _currentAppKey, effectiveToleranceSeconds);
+                            CurrentAppKey, effectiveToleranceSeconds);
                     }
                 }
                 else
@@ -92,7 +101,7 @@ public class TimestampValidator : ValidatorBase, ITimestampValidator
             if (effectiveToleranceSeconds < 0)
             {
                 _logger.LogError("时间戳容错配置无效: {ToleranceSeconds}秒，使用默认值 300 秒, AppKey: {AppKey}",
-                    effectiveToleranceSeconds, _currentAppKey ?? "null");
+                    effectiveToleranceSeconds, CurrentAppKey ?? "null");
                 effectiveToleranceSeconds = 300;
             }
 
@@ -100,7 +109,7 @@ public class TimestampValidator : ValidatorBase, ITimestampValidator
             var requestTime = TimestampHelper.ToDateTimeOffset(timestamp);
             var timestampType = TimestampHelper.IsMilliseconds(timestamp) ? "毫秒级" : "秒级";
             _logger.LogDebug("识别为{TimestampType}时间戳: {Timestamp} -> {RequestTime}, AppKey: {AppKey}",
-                timestampType, timestamp, requestTime, _currentAppKey ?? "null");
+                timestampType, timestamp, requestTime, CurrentAppKey ?? "null");
 
             var now = DateTimeOffset.UtcNow;
             var diff = Math.Abs((now - requestTime).TotalSeconds);
@@ -110,12 +119,12 @@ public class TimestampValidator : ValidatorBase, ITimestampValidator
             if (!isValid)
             {
                 _logger.LogWarning("时间戳超出容错范围: 请求时间 {RequestTime}, 当前时间 {CurrentTime}, 差异 {Diff}秒, 容错范围 {Tolerance}秒, AppKey: {AppKey}",
-                    requestTime, now, diff, effectiveToleranceSeconds, _currentAppKey ?? "null");
+                    requestTime, now, diff, effectiveToleranceSeconds, CurrentAppKey ?? "null");
             }
             else
             {
                 _logger.LogDebug("时间戳验证通过: 请求时间 {RequestTime}, 当前时间 {CurrentTime}, 差异 {Diff}秒, 容错范围 {Tolerance}秒, AppKey: {AppKey}",
-                    requestTime, now, diff, effectiveToleranceSeconds, _currentAppKey ?? "null");
+                    requestTime, now, diff, effectiveToleranceSeconds, CurrentAppKey ?? "null");
             }
 
             return isValid;
@@ -123,8 +132,15 @@ public class TimestampValidator : ValidatorBase, ITimestampValidator
         catch (Exception ex)
         {
             _logger.LogError(ex, "验证时间戳时发生错误, Timestamp: {Timestamp}, AppKey: {AppKey}",
-                timestamp, _currentAppKey ?? "null");
+                timestamp, CurrentAppKey ?? "null");
             return false;
         }
+    }
+
+    /// <inheritdoc />
+    public void SetCurrentAppKey(string appKey)
+    {
+        _appKeyAccessor.SetAppKey(appKey);
+        _logger.LogDebug("设置当前应用键: {AppKey}", appKey);
     }
 }

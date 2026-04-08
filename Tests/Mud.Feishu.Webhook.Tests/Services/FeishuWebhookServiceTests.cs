@@ -25,6 +25,7 @@ public class FeishuWebhookServiceTests
     private readonly Mock<IFeishuEventDeduplicator> _deduplicatorMock;
     private readonly Mock<IEncryptKeyProvider> _encryptKeyProviderMock;
     private readonly Mock<IServiceProvider> _serviceProviderMock;
+    private readonly Mock<IWebhookAppKeyAccessor> _appKeyAccessorMock;
     private readonly FeishuWebhookOptions _options;
 
     public FeishuWebhookServiceTests()
@@ -37,6 +38,7 @@ public class FeishuWebhookServiceTests
         _deduplicatorMock = new Mock<IFeishuEventDeduplicator>();
         _encryptKeyProviderMock = new Mock<IEncryptKeyProvider>();
         _serviceProviderMock = new Mock<IServiceProvider>();
+        _appKeyAccessorMock = new Mock<IWebhookAppKeyAccessor>();
 
         _options = new FeishuWebhookOptions
         {
@@ -49,6 +51,15 @@ public class FeishuWebhookServiceTests
 
         var concurrencyLoggerMock = new Mock<ILogger<FeishuWebhookConcurrencyService>>();
         _concurrencyService = new FeishuWebhookConcurrencyService(_optionsMonitorMock.Object, concurrencyLoggerMock.Object);
+
+        // 设置 _appKeyAccessorMock 使 SetAppKey 方法能够更新 CurrentAppKey 属性
+        string? currentAppKey = null;
+        _appKeyAccessorMock
+            .Setup(x => x.SetAppKey(It.IsAny<string>()))
+            .Callback<string>(appKey => currentAppKey = appKey);
+        _appKeyAccessorMock
+            .Setup(x => x.CurrentAppKey)
+            .Returns(() => currentAppKey);
 
         _encryptKeyProviderMock
             .Setup(x => x.GetEncryptKeyAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
@@ -302,8 +313,184 @@ public class FeishuWebhookServiceTests
             _deduplicatorMock.Object,
             _encryptKeyProviderMock.Object,
             new FeishuWebhookHandlerRegistry(),
+            new FeishuWebhookInterceptorRegistry(),
             _serviceProviderMock.Object,
+            _appKeyAccessorMock.Object,
             null,
             null);
+    }
+
+    [Fact]
+    public async Task HandleEventAsync_WithDifferentAppKeys_ShouldAllowSameEventId()
+    {
+        // Arrange
+        var eventId = "shared_event_123";
+        var eventData1 = new EventData
+        {
+            EventId = eventId,
+            EventType = "test.event"
+        };
+        var eventData2 = new EventData
+        {
+            EventId = eventId,
+            EventType = "test.event"
+        };
+
+        var appKey1 = "app-001";
+        var appKey2 = "app-002";
+
+        _deduplicatorMock
+            .Setup(x => x.TryMarkAsProcessing(eventId, appKey1))
+            .Returns(false);
+
+        _deduplicatorMock
+            .Setup(x => x.TryMarkAsProcessing(eventId, appKey2))
+            .Returns(false);
+
+        _handlerFactoryMock
+            .Setup(x => x.HandleEventParallelAsync(It.IsAny<string>(), It.IsAny<EventData>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var service = CreateService();
+
+        // Act - App1 处理事件
+        service.SetCurrentAppKey(appKey1);
+        var result1 = await service.HandleEventAsync(eventData1);
+
+        // Assert - App1 应该成功
+        Assert.True(result1.Success);
+
+        // Act - App2 处理相同事件ID
+        service.SetCurrentAppKey(appKey2);
+        var result2 = await service.HandleEventAsync(eventData2);
+
+        // Assert - App2 也应该成功（不同应用隔离）
+        Assert.True(result2.Success);
+    }
+
+    [Fact]
+    public async Task HandleEventAsync_WithAppSpecificHandler_ShouldUseAppHandler()
+    {
+        // Arrange
+        var appKey = "app-001";
+        var eventData = new EventData
+        {
+            EventId = "test_event_456",
+            EventType = "test.event"
+        };
+
+        var handlerRegistry = new FeishuWebhookHandlerRegistry();
+        handlerRegistry.Register(appKey, typeof(TestAppHandler));
+
+        var handlerMock = new Mock<IFeishuEventHandler>();
+        handlerMock
+            .Setup(x => x.HandleAsync(eventData, It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        _serviceProviderMock
+            .Setup(x => x.GetService(typeof(TestAppHandler)))
+            .Returns(handlerMock.Object);
+
+        _deduplicatorMock
+            .Setup(x => x.TryMarkAsProcessing(eventData.EventId, appKey))
+            .Returns(false);
+
+        var service = new FeishuWebhookService(
+            _optionsMonitorMock.Object,
+            _validatorMock.Object,
+            _decryptorMock.Object,
+            _handlerFactoryMock.Object,
+            _loggerMock.Object,
+            Array.Empty<IFeishuEventInterceptor>(),
+            _concurrencyService,
+            _deduplicatorMock.Object,
+            _encryptKeyProviderMock.Object,
+            handlerRegistry,
+            new FeishuWebhookInterceptorRegistry(),
+            _serviceProviderMock.Object,
+            _appKeyAccessorMock.Object,
+            null,
+            null);
+
+        // Act
+        service.SetCurrentAppKey(appKey);
+        var result = await service.HandleEventAsync(eventData);
+
+        // Assert
+        Assert.True(result.Success);
+        handlerMock.Verify(x => x.HandleAsync(eventData, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleEventAsync_WithAppSpecificInterceptor_ShouldUseAppInterceptor()
+    {
+        // Arrange
+        var appKey = "app-001";
+        var eventData = new EventData
+        {
+            EventId = "test_event_789",
+            EventType = "test.event"
+        };
+
+        var interceptorRegistry = new FeishuWebhookInterceptorRegistry();
+        interceptorRegistry.Register(appKey, typeof(TestAppInterceptor));
+
+        var interceptorMock = new Mock<IFeishuEventInterceptor>();
+        interceptorMock
+            .Setup(x => x.BeforeHandleAsync(eventData.EventType, eventData, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+        interceptorMock
+            .Setup(x => x.AfterHandleAsync(eventData.EventType, eventData, It.IsAny<Exception?>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        _serviceProviderMock
+            .Setup(x => x.GetService(typeof(TestAppInterceptor)))
+            .Returns(interceptorMock.Object);
+
+        _deduplicatorMock
+            .Setup(x => x.TryMarkAsProcessing(eventData.EventId, appKey))
+            .Returns(false);
+
+        _handlerFactoryMock
+            .Setup(x => x.HandleEventParallelAsync(It.IsAny<string>(), It.IsAny<EventData>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var service = new FeishuWebhookService(
+            _optionsMonitorMock.Object,
+            _validatorMock.Object,
+            _decryptorMock.Object,
+            _handlerFactoryMock.Object,
+            _loggerMock.Object,
+            Array.Empty<IFeishuEventInterceptor>(),
+            _concurrencyService,
+            _deduplicatorMock.Object,
+            _encryptKeyProviderMock.Object,
+            new FeishuWebhookHandlerRegistry(),
+            interceptorRegistry,
+            _serviceProviderMock.Object,
+            _appKeyAccessorMock.Object,
+            null,
+            null);
+
+        // Act
+        service.SetCurrentAppKey(appKey);
+        var result = await service.HandleEventAsync(eventData);
+
+        // Assert
+        Assert.True(result.Success);
+        interceptorMock.Verify(x => x.BeforeHandleAsync(eventData.EventType, eventData, It.IsAny<CancellationToken>()), Times.Once);
+        interceptorMock.Verify(x => x.AfterHandleAsync(eventData.EventType, eventData, It.IsAny<Exception?>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    private class TestAppHandler : IFeishuEventHandler
+    {
+        public string SupportedEventType => "test.event";
+        public Task HandleAsync(EventData eventData, CancellationToken cancellationToken = default) => Task.CompletedTask;
+    }
+
+    private class TestAppInterceptor : IFeishuEventInterceptor
+    {
+        public Task<bool> BeforeHandleAsync(string eventType, EventData eventData, CancellationToken cancellationToken = default) => Task.FromResult(true);
+        public Task AfterHandleAsync(string eventType, EventData eventData, Exception? exception, CancellationToken cancellationToken = default) => Task.CompletedTask;
     }
 }

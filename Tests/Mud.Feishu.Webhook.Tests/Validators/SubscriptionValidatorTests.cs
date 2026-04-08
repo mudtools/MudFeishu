@@ -22,14 +22,16 @@ public class SubscriptionValidatorTests
 {
     private readonly Mock<ILogger<SubscriptionValidator>> _loggerMock;
     private readonly Mock<IEncryptKeyProvider> _encryptKeyProviderMock;
+    private readonly Mock<IWebhookAppKeyAccessor> _appKeyAccessorMock;
     private readonly SubscriptionValidator _validator;
 
     public SubscriptionValidatorTests()
     {
         _loggerMock = new Mock<ILogger<SubscriptionValidator>>();
         _encryptKeyProviderMock = new Mock<IEncryptKeyProvider>();
+        _appKeyAccessorMock = new Mock<IWebhookAppKeyAccessor>();
 
-        _validator = new SubscriptionValidator(_loggerMock.Object, _encryptKeyProviderMock.Object);
+        _validator = new SubscriptionValidator(_loggerMock.Object, _encryptKeyProviderMock.Object, _appKeyAccessorMock.Object);
     }
 
     #region 构造函数和基本功能测试
@@ -39,10 +41,11 @@ public class SubscriptionValidatorTests
     {
         // Arrange
         var encryptKeyProviderMock = new Mock<IEncryptKeyProvider>();
+        var appKeyAccessorMock = new Mock<IWebhookAppKeyAccessor>();
 
         // Act & Assert
         Assert.Throws<ArgumentNullException>(() =>
-            new SubscriptionValidator(null!, encryptKeyProviderMock.Object));
+            new SubscriptionValidator(null!, encryptKeyProviderMock.Object, appKeyAccessorMock.Object));
     }
 
     [Fact]
@@ -50,10 +53,23 @@ public class SubscriptionValidatorTests
     {
         // Arrange
         var loggerMock = new Mock<ILogger<SubscriptionValidator>>();
+        var appKeyAccessorMock = new Mock<IWebhookAppKeyAccessor>();
 
         // Act & Assert
         Assert.Throws<ArgumentNullException>(() =>
-            new SubscriptionValidator(loggerMock.Object, null!));
+            new SubscriptionValidator(loggerMock.Object, null!, appKeyAccessorMock.Object));
+    }
+
+    [Fact]
+    public void Constructor_WithNullAppKeyAccessor_ShouldThrowArgumentNullException()
+    {
+        // Arrange
+        var loggerMock = new Mock<ILogger<SubscriptionValidator>>();
+        var encryptKeyProviderMock = new Mock<IEncryptKeyProvider>();
+
+        // Act & Assert
+        Assert.Throws<ArgumentNullException>(() =>
+            new SubscriptionValidator(loggerMock.Object, encryptKeyProviderMock.Object, null!));
     }
 
     [Fact]

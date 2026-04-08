@@ -20,6 +20,22 @@ namespace Mud.Feishu.Webhook.Tests.Propertys;
 [Trait("Feature", "feishu-validator-refactoring")]
 public class ConfigurationSupportProperties
 {
+    private readonly Mock<IWebhookAppKeyAccessor> _appKeyAccessorMock;
+
+    public ConfigurationSupportProperties()
+    {
+        _appKeyAccessorMock = new Mock<IWebhookAppKeyAccessor>();
+
+        // 设置 _appKeyAccessorMock 使 SetAppKey 方法能够更新 CurrentAppKey 属性
+        string? currentAppKey = null;
+        _appKeyAccessorMock
+            .Setup(x => x.SetAppKey(It.IsAny<string>()))
+            .Callback<string>(appKey => currentAppKey = appKey);
+        _appKeyAccessorMock
+            .Setup(x => x.CurrentAppKey)
+            .Returns(() => currentAppKey);
+    }
+
     /// <summary>
     /// 属性 20: 配置读取正确性
     /// **验证需求: 6.4**
@@ -46,7 +62,7 @@ public class ConfigurationSupportProperties
                 optionsMonitorMock.Setup(x => x.CurrentValue).Returns(options);
 
                 // Act
-                var timestampValidator = new TimestampValidator(loggerMock.Object, optionsMonitorMock.Object);
+                var timestampValidator = new TimestampValidator(loggerMock.Object, optionsMonitorMock.Object, _appKeyAccessorMock.Object);
 
                 // 测试配置读取 - 使用默认参数时应该从配置读取
                 var result = timestampValidator.ValidateTimestamp(DateTimeOffset.UtcNow.ToUnixTimeSeconds());
@@ -79,7 +95,7 @@ public class ConfigurationSupportProperties
                     .ReturnsAsync(data.AppToken);
 
                 // Act
-                var subscriptionValidator = new SubscriptionValidator(loggerMock.Object, encryptKeyProviderMock.Object);
+                var subscriptionValidator = new SubscriptionValidator(loggerMock.Object, encryptKeyProviderMock.Object, _appKeyAccessorMock.Object);
                 subscriptionValidator.SetCurrentAppKey(data.AppKey);
 
                 var request = new EventVerificationRequest

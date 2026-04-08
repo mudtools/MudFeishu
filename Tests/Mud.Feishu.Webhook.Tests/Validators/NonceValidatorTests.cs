@@ -22,13 +22,25 @@ public class NonceValidatorTests
 {
     private readonly Mock<ILogger<NonceValidator>> _loggerMock;
     private readonly Mock<IFeishuNonceDistributedDeduplicator> _deduplicatorMock;
+    private readonly Mock<IWebhookAppKeyAccessor> _appKeyAccessorMock;
     private readonly NonceValidator _validator;
 
     public NonceValidatorTests()
     {
         _loggerMock = new Mock<ILogger<NonceValidator>>();
         _deduplicatorMock = new Mock<IFeishuNonceDistributedDeduplicator>();
-        _validator = new NonceValidator(_loggerMock.Object, _deduplicatorMock.Object);
+        _appKeyAccessorMock = new Mock<IWebhookAppKeyAccessor>();
+
+        // 设置 _appKeyAccessorMock 使 SetAppKey 方法能够更新 CurrentAppKey 属性
+        string? currentAppKey = null;
+        _appKeyAccessorMock
+            .Setup(x => x.SetAppKey(It.IsAny<string>()))
+            .Callback<string>(appKey => currentAppKey = appKey);
+        _appKeyAccessorMock
+            .Setup(x => x.CurrentAppKey)
+            .Returns(() => currentAppKey);
+
+        _validator = new NonceValidator(_loggerMock.Object, _deduplicatorMock.Object, _appKeyAccessorMock.Object);
     }
 
     #region 构造函数和基本功能测试
@@ -38,7 +50,7 @@ public class NonceValidatorTests
     {
         // Arrange & Act & Assert
         Assert.Throws<ArgumentNullException>(() =>
-            new NonceValidator(null!, _deduplicatorMock.Object));
+            new NonceValidator(null!, _deduplicatorMock.Object, _appKeyAccessorMock.Object));
     }
 
     [Fact]
@@ -46,7 +58,15 @@ public class NonceValidatorTests
     {
         // Arrange & Act & Assert
         Assert.Throws<ArgumentNullException>(() =>
-            new NonceValidator(_loggerMock.Object, null!));
+            new NonceValidator(_loggerMock.Object, null!, _appKeyAccessorMock.Object));
+    }
+
+    [Fact]
+    public void Constructor_WithNullAppKeyAccessor_ShouldThrowArgumentNullException()
+    {
+        // Arrange & Act & Assert
+        Assert.Throws<ArgumentNullException>(() =>
+            new NonceValidator(_loggerMock.Object, _deduplicatorMock.Object, null!));
     }
 
     [Fact]

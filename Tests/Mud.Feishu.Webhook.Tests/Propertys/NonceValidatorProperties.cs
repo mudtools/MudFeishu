@@ -20,10 +20,21 @@ namespace Mud.Feishu.Webhook.Tests.Propertys;
 public class NonceValidatorProperties
 {
     private readonly Mock<ILogger<NonceValidator>> _loggerMock;
+    private readonly Mock<IWebhookAppKeyAccessor> _appKeyAccessorMock;
 
     public NonceValidatorProperties()
     {
         _loggerMock = new Mock<ILogger<NonceValidator>>();
+        _appKeyAccessorMock = new Mock<IWebhookAppKeyAccessor>();
+
+        // 设置 _appKeyAccessorMock 使 SetAppKey 方法能够更新 CurrentAppKey 属性
+        string? currentAppKey = null;
+        _appKeyAccessorMock
+            .Setup(x => x.SetAppKey(It.IsAny<string>()))
+            .Callback<string>(appKey => currentAppKey = appKey);
+        _appKeyAccessorMock
+            .Setup(x => x.CurrentAppKey)
+            .Returns(() => currentAppKey);
     }
 
     /// <summary>
@@ -45,7 +56,17 @@ public class NonceValidatorProperties
                     .Setup(x => x.TryMarkAsUsedAsync(data.Nonce, data.AppKey, It.IsAny<TimeSpan?>(), It.IsAny<CancellationToken>()))
                     .ReturnsAsync(data.IsAlreadyUsed);
 
-                var validator = new NonceValidator(_loggerMock.Object, deduplicatorMock.Object);
+                // 为每个测试用例创建新的 appKeyAccessorMock
+                var appKeyAccessorMock = new Mock<IWebhookAppKeyAccessor>();
+                string? currentAppKey = null;
+                appKeyAccessorMock
+                    .Setup(x => x.SetAppKey(It.IsAny<string>()))
+                    .Callback<string>(appKey => currentAppKey = appKey);
+                appKeyAccessorMock
+                    .Setup(x => x.CurrentAppKey)
+                    .Returns(() => currentAppKey);
+
+                var validator = new NonceValidator(_loggerMock.Object, deduplicatorMock.Object, appKeyAccessorMock.Object);
                 if (!string.IsNullOrEmpty(data.AppKey))
                 {
                     validator.SetCurrentAppKey(data.AppKey);
@@ -90,7 +111,17 @@ public class NonceValidatorProperties
                     .Setup(x => x.TryMarkAsUsedAsync(data.Nonce, data.AppKey2, It.IsAny<TimeSpan?>(), It.IsAny<CancellationToken>()))
                     .ReturnsAsync(false); // 第二个应用的相同Nonce也未被使用
 
-                var validator = new NonceValidator(_loggerMock.Object, deduplicatorMock.Object);
+                // 为每个测试用例创建新的 appKeyAccessorMock
+                var appKeyAccessorMock = new Mock<IWebhookAppKeyAccessor>();
+                string? currentAppKey = null;
+                appKeyAccessorMock
+                    .Setup(x => x.SetAppKey(It.IsAny<string>()))
+                    .Callback<string>(appKey => currentAppKey = appKey);
+                appKeyAccessorMock
+                    .Setup(x => x.CurrentAppKey)
+                    .Returns(() => currentAppKey);
+
+                var validator = new NonceValidator(_loggerMock.Object, deduplicatorMock.Object, appKeyAccessorMock.Object);
 
                 // Act - 测试第一个应用
                 validator.SetCurrentAppKey(data.AppKey1);
@@ -135,7 +166,18 @@ public class NonceValidatorProperties
                     .ReturnsAsync(true); // Nonce已被使用
 
                 var loggerMock = new Mock<ILogger<NonceValidator>>();
-                var validator = new NonceValidator(loggerMock.Object, deduplicatorMock.Object);
+
+                // 为每个测试用例创建新的 appKeyAccessorMock
+                var appKeyAccessorMock = new Mock<IWebhookAppKeyAccessor>();
+                string? currentAppKey = null;
+                appKeyAccessorMock
+                    .Setup(x => x.SetAppKey(It.IsAny<string>()))
+                    .Callback<string>(appKey => currentAppKey = appKey);
+                appKeyAccessorMock
+                    .Setup(x => x.CurrentAppKey)
+                    .Returns(() => currentAppKey);
+
+                var validator = new NonceValidator(loggerMock.Object, deduplicatorMock.Object, appKeyAccessorMock.Object);
 
                 if (!string.IsNullOrEmpty(data.AppKey))
                 {
@@ -181,7 +223,18 @@ public class NonceValidatorProperties
                 // Arrange
                 var deduplicatorMock = new Mock<IFeishuNonceDistributedDeduplicator>();
                 var loggerMock = new Mock<ILogger<NonceValidator>>();
-                var validator = new NonceValidator(loggerMock.Object, deduplicatorMock.Object);
+
+                // 为每个测试用例创建新的 appKeyAccessorMock
+                var appKeyAccessorMock = new Mock<IWebhookAppKeyAccessor>();
+                string? currentAppKey = null;
+                appKeyAccessorMock
+                    .Setup(x => x.SetAppKey(It.IsAny<string>()))
+                    .Callback<string>(appKey => currentAppKey = appKey);
+                appKeyAccessorMock
+                    .Setup(x => x.CurrentAppKey)
+                    .Returns(() => currentAppKey);
+
+                var validator = new NonceValidator(loggerMock.Object, deduplicatorMock.Object, appKeyAccessorMock.Object);
 
                 if (!string.IsNullOrEmpty(data.AppKey))
                 {

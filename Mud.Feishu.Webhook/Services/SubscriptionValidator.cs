@@ -14,22 +14,31 @@ namespace Mud.Feishu.Webhook.Services;
 /// 飞书事件订阅验证器实现
 /// 负责验证飞书事件订阅请求的有效性
 /// </summary>
-public class SubscriptionValidator : ValidatorBase, ISubscriptionValidator
+public class SubscriptionValidator : ISubscriptionValidator
 {
     private readonly ILogger<SubscriptionValidator> _logger;
     private readonly IEncryptKeyProvider _encryptKeyProvider;
+    private readonly IWebhookAppKeyAccessor _appKeyAccessor;
+
+    /// <summary>
+    /// 获取当前应用键（优先从 IWebhookAppKeyAccessor 获取）
+    /// </summary>
+    private string? CurrentAppKey => _appKeyAccessor.CurrentAppKey;
 
     /// <summary>
     /// 初始化订阅验证器
     /// </summary>
     /// <param name="logger">日志记录器</param>
     /// <param name="encryptKeyProvider">加密密钥提供程序</param>
+    /// <param name="appKeyAccessor">应用键上下文访问器</param>
     public SubscriptionValidator(
         ILogger<SubscriptionValidator> logger,
-        IEncryptKeyProvider encryptKeyProvider)
+        IEncryptKeyProvider encryptKeyProvider,
+        IWebhookAppKeyAccessor appKeyAccessor)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _encryptKeyProvider = encryptKeyProvider ?? throw new ArgumentNullException(nameof(encryptKeyProvider));
+        _appKeyAccessor = appKeyAccessor ?? throw new ArgumentNullException(nameof(appKeyAccessor));
     }
 
     /// <inheritdoc />
@@ -40,28 +49,28 @@ public class SubscriptionValidator : ValidatorBase, ISubscriptionValidator
             // 验证请求对象不为空
             if (request == null)
             {
-                _logger.LogWarning("验证请求对象为空, AppKey: {AppKey}", _currentAppKey ?? "null");
+                _logger.LogWarning("验证请求对象为空, AppKey: {AppKey}", CurrentAppKey ?? "null");
                 return false;
             }
 
             // 验证请求类型
             if (request.Type != "url_verification")
             {
-                _logger.LogWarning("无效的验证请求类型: {Type}, AppKey: {AppKey}", request.Type, _currentAppKey ?? "null");
+                _logger.LogWarning("无效的验证请求类型: {Type}, AppKey: {AppKey}", request.Type, CurrentAppKey ?? "null");
                 return false;
             }
 
             // 验证 Token 字段
             if (string.IsNullOrEmpty(request.Token))
             {
-                _logger.LogWarning("验证请求缺少 Token, AppKey: {AppKey}", _currentAppKey ?? "null");
+                _logger.LogWarning("验证请求缺少 Token, AppKey: {AppKey}", CurrentAppKey ?? "null");
                 return false;
             }
 
             // 验证 Challenge 字段
             if (string.IsNullOrEmpty(request.Challenge))
             {
-                _logger.LogWarning("验证请求缺少 Challenge, AppKey: {AppKey}", _currentAppKey ?? "null");
+                _logger.LogWarning("验证请求缺少 Challenge, AppKey: {AppKey}", CurrentAppKey ?? "null");
                 return false;
             }
 
@@ -70,7 +79,7 @@ public class SubscriptionValidator : ValidatorBase, ISubscriptionValidator
 
             if (string.IsNullOrEmpty(effectiveExpectedToken))
             {
-                _logger.LogError("无法获取有效的验证 Token, AppKey: {AppKey}", _currentAppKey ?? "null");
+                _logger.LogError("无法获取有效的验证 Token, AppKey: {AppKey}", CurrentAppKey ?? "null");
                 return false;
             }
 
@@ -82,16 +91,16 @@ public class SubscriptionValidator : ValidatorBase, ISubscriptionValidator
                 var expectedTokenPrefix = effectiveExpectedToken!.Length > 4 ? effectiveExpectedToken.Substring(0, 4) + "***" : "***";
 
                 _logger.LogWarning("验证 Token 不匹配: 期望 {ExpectedToken}, 实际 {ActualToken}, AppKey: {AppKey}",
-                    expectedTokenPrefix, actualTokenPrefix, _currentAppKey ?? "null");
+                    expectedTokenPrefix, actualTokenPrefix, CurrentAppKey ?? "null");
                 return false;
             }
 
-            _logger.LogInformation("事件订阅验证请求验证成功, AppKey: {AppKey}", _currentAppKey ?? "null");
+            _logger.LogInformation("事件订阅验证请求验证成功, AppKey: {AppKey}", CurrentAppKey ?? "null");
             return true;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "验证事件订阅请求时发生错误, AppKey: {AppKey}", _currentAppKey ?? "null");
+            _logger.LogError(ex, "验证事件订阅请求时发生错误, AppKey: {AppKey}", CurrentAppKey ?? "null");
             return false;
         }
     }
@@ -106,12 +115,12 @@ public class SubscriptionValidator : ValidatorBase, ISubscriptionValidator
         try
         {
             // 多应用场景：从密钥提供程序获取验证 Token
-            if (!string.IsNullOrEmpty(_currentAppKey))
+            if (!string.IsNullOrEmpty(CurrentAppKey))
             {
-                var verificationToken = await _encryptKeyProvider.GetVerificationTokenAsync(_currentAppKey!);
+                var verificationToken = await _encryptKeyProvider.GetVerificationTokenAsync(CurrentAppKey!);
                 if (!string.IsNullOrEmpty(verificationToken))
                 {
-                    _logger.LogDebug("使用应用 {AppKey} 的验证 Token", _currentAppKey);
+                    _logger.LogDebug("使用应用 {AppKey} 的验证 Token", CurrentAppKey);
                     return verificationToken;
                 }
             }
@@ -119,17 +128,24 @@ public class SubscriptionValidator : ValidatorBase, ISubscriptionValidator
             // 使用传入的后备 Token（用于非多应用场景的兼容）
             if (!string.IsNullOrEmpty(fallbackToken))
             {
-                _logger.LogDebug("使用传入的后备验证 Token, AppKey: {AppKey}", _currentAppKey ?? "null");
+                _logger.LogDebug("使用传入的后备验证 Token, AppKey: {AppKey}", CurrentAppKey ?? "null");
                 return fallbackToken;
             }
 
-            _logger.LogWarning("未找到有效的验证 Token, AppKey: {AppKey}", _currentAppKey ?? "null");
+            _logger.LogWarning("未找到有效的验证 Token, AppKey: {AppKey}", CurrentAppKey ?? "null");
             return null;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "获取有效验证 Token 时发生错误, AppKey: {AppKey}", _currentAppKey ?? "null");
+            _logger.LogError(ex, "获取有效验证 Token 时发生错误, AppKey: {AppKey}", CurrentAppKey ?? "null");
             return null;
         }
+    }
+
+    /// <inheritdoc />
+    public void SetCurrentAppKey(string appKey)
+    {
+        _appKeyAccessor.SetAppKey(appKey);
+        _logger.LogDebug("设置当前应用键: {AppKey}", appKey);
     }
 }

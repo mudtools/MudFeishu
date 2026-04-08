@@ -29,9 +29,10 @@ public class FeishuAppWebhookOptions
     public string EncryptKey { get; set; } = string.Empty;
 
     /// <summary>
-    /// 时间戳容错范围（秒），默认 300 秒（5 分钟）
+    /// 时间戳容错范围（秒），默认 -1 表示继承全局配置
+    /// 设置为正整数时使用应用级配置，设置为 -1 或 0 时继承全局 TimestampToleranceSeconds
     /// </summary>
-    public int TimestampToleranceSeconds { get; set; } = 300;
+    public int TimestampToleranceSeconds { get; set; } = -1;
 
     /// <summary>
     /// 是否强制验证请求头签名，默认 false
@@ -62,7 +63,7 @@ public class FeishuAppWebhookOptions
         if (EncryptKey.Length != 32)
             throw new InvalidOperationException("EncryptKey 长度必须为 32 字符");
 
-        if (TimestampToleranceSeconds < 0)
-            throw new InvalidOperationException("TimestampToleranceSeconds 不能为负数");
+        // TimestampToleranceSeconds: -1 表示继承全局配置，0 或正整数表示应用级配置
+        // 不需要验证负数，因为 -1 是合法的特殊值
     }
 }

@@ -20,6 +20,7 @@ public class TimestampValidatorTests
     private readonly Mock<ILogger<TimestampValidator>> _loggerMock;
     private readonly Mock<IOptionsMonitor<FeishuWebhookOptions>> _optionsMonitorMock;
     private readonly Mock<IEnvironmentService> _environmentServiceMock;
+    private readonly Mock<IWebhookAppKeyAccessor> _appKeyAccessorMock;
     private readonly TimestampValidator _validator;
 
     public TimestampValidatorTests()
@@ -27,6 +28,7 @@ public class TimestampValidatorTests
         _loggerMock = new Mock<ILogger<TimestampValidator>>();
         _optionsMonitorMock = new Mock<IOptionsMonitor<FeishuWebhookOptions>>();
         _environmentServiceMock = new Mock<IEnvironmentService>();
+        _appKeyAccessorMock = new Mock<IWebhookAppKeyAccessor>();
 
         // Setup default options
         var defaultOptions = new FeishuWebhookOptions
@@ -39,7 +41,7 @@ public class TimestampValidatorTests
         _environmentServiceMock.Setup(x => x.IsProduction).Returns(false);
         _environmentServiceMock.Setup(x => x.IsDevelopment).Returns(true);
 
-        _validator = new TimestampValidator(_loggerMock.Object, _optionsMonitorMock.Object, _environmentServiceMock.Object);
+        _validator = new TimestampValidator(_loggerMock.Object, _optionsMonitorMock.Object, _appKeyAccessorMock.Object, _environmentServiceMock.Object);
     }
 
     #region 秒级时间戳验证测试
@@ -198,7 +200,7 @@ public class TimestampValidatorTests
         // Arrange - 开发环境下零时间戳应该被允许（跳过验证）
         _environmentServiceMock.Setup(x => x.IsProduction).Returns(false);
         _environmentServiceMock.Setup(x => x.IsDevelopment).Returns(true);
-        var validator = new TimestampValidator(_loggerMock.Object, _optionsMonitorMock.Object, _environmentServiceMock.Object);
+        var validator = new TimestampValidator(_loggerMock.Object, _optionsMonitorMock.Object, _appKeyAccessorMock.Object, _environmentServiceMock.Object);
         
         var timestamp = 0L;
         var toleranceSeconds = 300;
@@ -219,7 +221,7 @@ public class TimestampValidatorTests
         // Arrange - 生产环境下零时间戳应该被拒绝
         _environmentServiceMock.Setup(x => x.IsProduction).Returns(true);
         _environmentServiceMock.Setup(x => x.IsDevelopment).Returns(false);
-        var validator = new TimestampValidator(_loggerMock.Object, _optionsMonitorMock.Object, _environmentServiceMock.Object);
+        var validator = new TimestampValidator(_loggerMock.Object, _optionsMonitorMock.Object, _appKeyAccessorMock.Object, _environmentServiceMock.Object);
         
         var timestamp = 0L;
         var toleranceSeconds = 300;
@@ -243,7 +245,7 @@ public class TimestampValidatorTests
         // Arrange - 开发环境下零时间戳在任何容错设置下都应该被允许
         _environmentServiceMock.Setup(x => x.IsProduction).Returns(false);
         _environmentServiceMock.Setup(x => x.IsDevelopment).Returns(true);
-        var validator = new TimestampValidator(_loggerMock.Object, _optionsMonitorMock.Object, _environmentServiceMock.Object);
+        var validator = new TimestampValidator(_loggerMock.Object, _optionsMonitorMock.Object, _appKeyAccessorMock.Object, _environmentServiceMock.Object);
         
         var timestamp = 0L;
 

@@ -21,6 +21,13 @@ namespace Mud.Feishu.Webhook.Tests.Validators;
 /// </summary>
 public class ConfigurationSupportTests
 {
+    private readonly Mock<IWebhookAppKeyAccessor> _appKeyAccessorMock;
+
+    public ConfigurationSupportTests()
+    {
+        _appKeyAccessorMock = new Mock<IWebhookAppKeyAccessor>();
+    }
+
     /// <summary>
     /// 测试时间戳验证器从配置读取容错时间
     /// </summary>
@@ -38,7 +45,7 @@ public class ConfigurationSupportTests
 
         optionsMonitorMock.Setup(x => x.CurrentValue).Returns(options);
 
-        var validator = new TimestampValidator(loggerMock.Object, optionsMonitorMock.Object);
+        var validator = new TimestampValidator(loggerMock.Object, optionsMonitorMock.Object, _appKeyAccessorMock.Object);
 
         // Act - 使用默认参数，应该从配置读取
         var currentTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
@@ -67,7 +74,7 @@ public class ConfigurationSupportTests
 
         optionsMonitorMock.Setup(x => x.CurrentValue).Returns(options);
 
-        var validator = new TimestampValidator(loggerMock.Object, optionsMonitorMock.Object);
+        var validator = new TimestampValidator(loggerMock.Object, optionsMonitorMock.Object, _appKeyAccessorMock.Object);
 
         // Act - 使用默认参数，应该从配置读取
         var currentTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
@@ -95,7 +102,7 @@ public class ConfigurationSupportTests
 
         optionsMonitorMock.Setup(x => x.CurrentValue).Returns(options);
 
-        var validator = new TimestampValidator(loggerMock.Object, optionsMonitorMock.Object);
+        var validator = new TimestampValidator(loggerMock.Object, optionsMonitorMock.Object, _appKeyAccessorMock.Object);
 
         // Act - 应该使用默认值300秒
         var currentTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
@@ -116,7 +123,7 @@ public class ConfigurationSupportTests
         var encryptKeyProviderMock = new Mock<IEncryptKeyProvider>();
         var loggerMock = new Mock<ILogger<SubscriptionValidator>>();
 
-        var validator = new SubscriptionValidator(loggerMock.Object, encryptKeyProviderMock.Object);
+        var validator = new SubscriptionValidator(loggerMock.Object, encryptKeyProviderMock.Object, _appKeyAccessorMock.Object);
 
         var request = new EventVerificationRequest
         {
@@ -150,7 +157,7 @@ public class ConfigurationSupportTests
             .Setup(x => x.GetVerificationTokenAsync("app2", It.IsAny<CancellationToken>()))
             .ReturnsAsync("app2_token");
 
-        var validator = new SubscriptionValidator(loggerMock.Object, encryptKeyProviderMock.Object);
+        var validator = new SubscriptionValidator(loggerMock.Object, encryptKeyProviderMock.Object, _appKeyAccessorMock.Object);
 
         // Act & Assert - 测试app1
         validator.SetCurrentAppKey("app1");
@@ -191,7 +198,7 @@ public class ConfigurationSupportTests
             .Setup(x => x.GetVerificationTokenAsync("nonexistent_app", It.IsAny<CancellationToken>()))
             .ReturnsAsync((string?)null);
 
-        var validator = new SubscriptionValidator(loggerMock.Object, encryptKeyProviderMock.Object);
+        var validator = new SubscriptionValidator(loggerMock.Object, encryptKeyProviderMock.Object, _appKeyAccessorMock.Object);
         validator.SetCurrentAppKey("nonexistent_app");
 
         var request = new EventVerificationRequest
@@ -223,7 +230,7 @@ public class ConfigurationSupportTests
             .Setup(x => x.GetVerificationTokenAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("Configuration error"));
 
-        var validator = new SubscriptionValidator(loggerMock.Object, encryptKeyProviderMock.Object);
+        var validator = new SubscriptionValidator(loggerMock.Object, encryptKeyProviderMock.Object, _appKeyAccessorMock.Object);
 
         var request = new EventVerificationRequest
         {

@@ -258,4 +258,130 @@ public class FeishuEventDeduplicatorTests
         // Assert
         Assert.Equal(DeduplicationStatus.Completed, deduplicator.GetStatus(eventId));
     }
+
+    [Fact]
+    public void TryMarkAsProcessing_WithDifferentAppKeys_ShouldAllowSameEventId()
+    {
+        // Arrange
+        var loggerMock = new Mock<ILogger<FeishuEventDeduplicator>>();
+        var deduplicator = new FeishuEventDeduplicator(loggerMock.Object);
+        var eventId = "test_event_123";
+        var appKey1 = "app-001";
+        var appKey2 = "app-002";
+
+        // Act - App1 处理事件
+        var result1 = deduplicator.TryMarkAsProcessing(eventId, appKey1);
+
+        // Assert - App1 应该可以处理（新事件）
+        Assert.False(result1);
+
+        // Act - App2 处理相同事件ID
+        var result2 = deduplicator.TryMarkAsProcessing(eventId, appKey2);
+
+        // Assert - App2 也应该可以处理（不同应用隔离）
+        Assert.False(result2);
+
+        // Act - App1 再次处理相同事件
+        var result1Again = deduplicator.TryMarkAsProcessing(eventId, appKey1);
+
+        // Assert - App1 应该检测到重复
+        Assert.True(result1Again);
+    }
+
+    [Fact]
+    public void TryMarkAsProcessed_WithDifferentAppKeys_ShouldIsolateByAppKey()
+    {
+        // Arrange
+        var loggerMock = new Mock<ILogger<FeishuEventDeduplicator>>();
+        var deduplicator = new FeishuEventDeduplicator(loggerMock.Object);
+        var eventId = "test_event_456";
+        var appKey1 = "app-001";
+        var appKey2 = "app-002";
+
+        // Act - App1 标记为已处理
+        var result1 = deduplicator.TryMarkAsProcessed(eventId, appKey1);
+
+        // Assert - App1 应该返回 false（新事件）
+        Assert.False(result1);
+
+        // Act - App2 处理相同事件ID
+        var result2 = deduplicator.TryMarkAsProcessed(eventId, appKey2);
+
+        // Assert - App2 也应该返回 false（不同应用隔离）
+        Assert.False(result2);
+
+        // Act - App1 再次处理
+        var result1Again = deduplicator.TryMarkAsProcessed(eventId, appKey1);
+
+        // Assert - App1 应该检测到重复
+        Assert.True(result1Again);
+    }
+
+    [Fact]
+    public void MarkAsCompleted_WithAppKey_ShouldUpdateCorrectAppKey()
+    {
+        // Arrange
+        var loggerMock = new Mock<ILogger<FeishuEventDeduplicator>>();
+        var deduplicator = new FeishuEventDeduplicator(loggerMock.Object);
+        var eventId = "test_event_789";
+        var appKey1 = "app-001";
+        var appKey2 = "app-002";
+
+        // Act - 两个应用都标记为处理中
+        deduplicator.TryMarkAsProcessing(eventId, appKey1);
+        deduplicator.TryMarkAsProcessing(eventId, appKey2);
+
+        // Act - App1 标记为完成
+        deduplicator.MarkAsCompleted(eventId, appKey1);
+
+        // Assert - App1 应该是完成状态
+        Assert.Equal(DeduplicationStatus.Completed, deduplicator.GetStatus(eventId, appKey1));
+
+        // Assert - App2 应该还是处理中状态
+        Assert.Equal(DeduplicationStatus.Processing, deduplicator.GetStatus(eventId, appKey2));
+    }
+
+    [Fact]
+    public void RollbackProcessing_WithAppKey_ShouldOnlyRollbackCorrectApp()
+    {
+        // Arrange
+        var loggerMock = new Mock<ILogger<FeishuEventDeduplicator>>();
+        var deduplicator = new FeishuEventDeduplicator(loggerMock.Object);
+        var eventId = "test_event_rollback";
+        var appKey1 = "app-001";
+        var appKey2 = "app-002";
+
+        // Act - 两个应用都标记为处理中
+        deduplicator.TryMarkAsProcessing(eventId, appKey1);
+        deduplicator.TryMarkAsProcessing(eventId, appKey2);
+
+        // Act - App1 回滚
+        deduplicator.RollbackProcessing(eventId, appKey1);
+
+        // Assert - App1 应该是 Pending 状态
+        Assert.Equal(DeduplicationStatus.Pending, deduplicator.GetStatus(eventId, appKey1));
+
+        // Assert - App2 应该还是处理中状态
+        Assert.Equal(DeduplicationStatus.Processing, deduplicator.GetStatus(eventId, appKey2));
+    }
+
+    [Fact]
+    public void IsProcessed_WithAppKey_ShouldCheckCorrectApp()
+    {
+        // Arrange
+        var loggerMock = new Mock<ILogger<FeishuEventDeduplicator>>();
+        var deduplicator = new FeishuEventDeduplicator(loggerMock.Object);
+        var eventId = "test_event_isprocessed";
+        var appKey1 = "app-001";
+        var appKey2 = "app-002";
+
+        // Act - App1 标记为已处理
+        deduplicator.TryMarkAsProcessed(eventId, appKey1);
+
+        // Assert - App1 应该是已处理
+        Assert.True(deduplicator.IsProcessed(eventId, appKey1));
+
+        // Assert - App2 应该是未处理
+        Assert.False(deduplicator.IsProcessed(eventId, appKey2));
+    }
 }

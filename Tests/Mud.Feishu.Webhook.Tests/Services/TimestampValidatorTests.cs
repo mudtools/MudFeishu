@@ -22,6 +22,7 @@ public class TimestampValidatorTests
     private readonly Mock<ILogger<TimestampValidator>> _loggerMock;
     private readonly Mock<IOptionsMonitor<FeishuWebhookOptions>> _optionsMock;
     private readonly Mock<IEnvironmentService> _environmentServiceMock;
+    private readonly Mock<IWebhookAppKeyAccessor> _appKeyAccessorMock;
     private readonly FeishuWebhookOptions _options;
 
     public TimestampValidatorTests()
@@ -29,11 +30,21 @@ public class TimestampValidatorTests
         _loggerMock = new Mock<ILogger<TimestampValidator>>();
         _optionsMock = new Mock<IOptionsMonitor<FeishuWebhookOptions>>();
         _environmentServiceMock = new Mock<IEnvironmentService>();
+        _appKeyAccessorMock = new Mock<IWebhookAppKeyAccessor>();
         _options = new FeishuWebhookOptions
         {
             TimestampToleranceSeconds = 30
         };
         _optionsMock.Setup(x => x.CurrentValue).Returns(_options);
+
+        // 设置 _appKeyAccessorMock 使 SetAppKey 方法能够更新 CurrentAppKey 属性
+        string? currentAppKey = null;
+        _appKeyAccessorMock
+            .Setup(x => x.SetAppKey(It.IsAny<string>()))
+            .Callback<string>(appKey => currentAppKey = appKey);
+        _appKeyAccessorMock
+            .Setup(x => x.CurrentAppKey)
+            .Returns(() => currentAppKey);
     }
 
     [Fact]
@@ -44,6 +55,7 @@ public class TimestampValidatorTests
         var validator = new TimestampValidator(
             _loggerMock.Object,
             _optionsMock.Object,
+            _appKeyAccessorMock.Object,
             _environmentServiceMock.Object);
 
         // Act
@@ -61,6 +73,7 @@ public class TimestampValidatorTests
         var validator = new TimestampValidator(
             _loggerMock.Object,
             _optionsMock.Object,
+            _appKeyAccessorMock.Object,
             _environmentServiceMock.Object);
 
         // Act
@@ -78,6 +91,7 @@ public class TimestampValidatorTests
         var validator = new TimestampValidator(
             _loggerMock.Object,
             _optionsMock.Object,
+            _appKeyAccessorMock.Object,
             _environmentServiceMock.Object);
         var validTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
@@ -96,6 +110,7 @@ public class TimestampValidatorTests
         var validator = new TimestampValidator(
             _loggerMock.Object,
             _optionsMock.Object,
+            _appKeyAccessorMock.Object,
             _environmentServiceMock.Object);
         var expiredTimestamp = DateTimeOffset.UtcNow.AddSeconds(-60).ToUnixTimeSeconds();
 
@@ -114,6 +129,7 @@ public class TimestampValidatorTests
         var validator = new TimestampValidator(
             _loggerMock.Object,
             _optionsMock.Object,
+            _appKeyAccessorMock.Object,
             _environmentServiceMock.Object);
         var millisecondTimestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
@@ -146,6 +162,7 @@ public class TimestampValidatorTests
         var validator = new TimestampValidator(
             _loggerMock.Object,
             _optionsMock.Object,
+            _appKeyAccessorMock.Object,
             _environmentServiceMock.Object);
         validator.SetCurrentAppKey("test_app");
 

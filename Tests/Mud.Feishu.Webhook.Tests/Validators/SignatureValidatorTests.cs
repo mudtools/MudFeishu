@@ -27,6 +27,7 @@ public class SignatureValidatorTests
     private readonly Mock<ISecurityAuditService> _auditServiceMock;
     private readonly Mock<IOptionsMonitor<FeishuWebhookOptions>> _optionsMonitorMock;
     private readonly Mock<IEnvironmentService> _environmentServiceMock;
+    private readonly Mock<IWebhookAppKeyAccessor> _appKeyAccessorMock;
     private readonly FeishuWebhookOptions _options;
     private readonly SignatureValidator _validator;
 
@@ -36,6 +37,7 @@ public class SignatureValidatorTests
         _auditServiceMock = new Mock<ISecurityAuditService>();
         _optionsMonitorMock = new Mock<IOptionsMonitor<FeishuWebhookOptions>>();
         _environmentServiceMock = new Mock<IEnvironmentService>();
+        _appKeyAccessorMock = new Mock<IWebhookAppKeyAccessor>();
 
         _options = new FeishuWebhookOptions
         {
@@ -47,6 +49,7 @@ public class SignatureValidatorTests
         _validator = new SignatureValidator(
             _loggerMock.Object,
             _optionsMonitorMock.Object,
+            _appKeyAccessorMock.Object,
             _auditServiceMock.Object,
             _environmentServiceMock.Object);
     }

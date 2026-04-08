@@ -16,7 +16,11 @@ namespace Mud.Feishu.Webhook.Services;
 /// 实现原有 IFeishuEventValidator 接口，委托给各个专门的验证器
 /// 保持向后兼容性的同时提供单一职责的验证器架构
 /// </summary>
-public class CompositeFeishuEventValidator : ValidatorBase, IFeishuEventValidator
+/// <remarks>
+/// 各子验证器通过 IWebhookAppKeyAccessor 自动获取当前 AppKey，
+/// 无需在组合验证器中手动传播 SetCurrentAppKey。
+/// </remarks>
+public class CompositeFeishuEventValidator : IFeishuEventValidator
 {
     private readonly ISignatureValidator _signatureValidator;
     private readonly ITimestampValidator _timestampValidator;
@@ -25,6 +29,7 @@ public class CompositeFeishuEventValidator : ValidatorBase, IFeishuEventValidato
     private readonly ILogger<CompositeFeishuEventValidator> _logger;
     private readonly IOptionsMonitor<FeishuWebhookOptions> _optionsMonitor;
     private readonly IEnvironmentService _environmentService;
+    private readonly IWebhookAppKeyAccessor _appKeyAccessor;
 
     /// <summary>
     /// 获取当前配置选项（支持热更新）
@@ -40,6 +45,7 @@ public class CompositeFeishuEventValidator : ValidatorBase, IFeishuEventValidato
     /// <param name="subscriptionValidator">订阅验证器</param>
     /// <param name="logger">日志记录器</param>
     /// <param name="optionsMonitor">Webhook 配置选项监视器</param>
+    /// <param name="appKeyAccessor">应用键上下文访问器</param>
     /// <param name="environmentService">环境服务</param>
     public CompositeFeishuEventValidator(
         ISignatureValidator signatureValidator,
@@ -48,6 +54,7 @@ public class CompositeFeishuEventValidator : ValidatorBase, IFeishuEventValidato
         ISubscriptionValidator subscriptionValidator,
         ILogger<CompositeFeishuEventValidator> logger,
         IOptionsMonitor<FeishuWebhookOptions> optionsMonitor,
+        IWebhookAppKeyAccessor appKeyAccessor,
         IEnvironmentService? environmentService = null)
     {
         _signatureValidator = signatureValidator ?? throw new ArgumentNullException(nameof(signatureValidator));
@@ -56,20 +63,22 @@ public class CompositeFeishuEventValidator : ValidatorBase, IFeishuEventValidato
         _subscriptionValidator = subscriptionValidator ?? throw new ArgumentNullException(nameof(subscriptionValidator));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _optionsMonitor = optionsMonitor ?? throw new ArgumentNullException(nameof(optionsMonitor));
+        _appKeyAccessor = appKeyAccessor ?? throw new ArgumentNullException(nameof(appKeyAccessor));
         _environmentService = environmentService ?? new EnvironmentService();
     }
 
-    /// <inheritdoc />
-    public override void SetCurrentAppKey(string appKey)
+    /// <summary>
+    /// 设置当前应用键（向后兼容，AppKey 通过 IWebhookAppKeyAccessor 自动传播）
+    /// </summary>
+    /// <param name="appKey">应用键</param>
+    /// <remarks>
+    /// 此方法保留用于向后兼容。新代码应通过 IWebhookAppKeyAccessor.SetAppKey() 设置 AppKey，
+    /// 各子验证器自动通过 IWebhookAppKeyAccessor.CurrentAppKey 获取。
+    /// </remarks>
+    public void SetCurrentAppKey(string appKey)
     {
-        base.SetCurrentAppKey(appKey);
+        _appKeyAccessor.SetAppKey(appKey);
         _logger.LogDebug("设置当前应用键: {AppKey}", appKey);
-
-        // 将应用键传播到所有支持多应用的验证器
-        _signatureValidator.SetCurrentAppKey(appKey);
-        _timestampValidator.SetCurrentAppKey(appKey);
-        _nonceValidator.SetCurrentAppKey(appKey);
-        _subscriptionValidator.SetCurrentAppKey(appKey);
     }
 
     /// <inheritdoc />

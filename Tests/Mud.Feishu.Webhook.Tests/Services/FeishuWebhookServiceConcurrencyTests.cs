@@ -28,6 +28,7 @@ public class FeishuWebhookServiceConcurrencyTests
     private readonly Mock<IFeishuEventDeduplicator> _deduplicatorMock;
     private readonly Mock<IEncryptKeyProvider> _encryptKeyProviderMock;
     private readonly Mock<IServiceProvider> _serviceProviderMock;
+    private readonly Mock<IWebhookAppKeyAccessor> _appKeyAccessorMock;
     private readonly FeishuWebhookOptions _options;
 
     public FeishuWebhookServiceConcurrencyTests()
@@ -40,6 +41,7 @@ public class FeishuWebhookServiceConcurrencyTests
         _deduplicatorMock = new Mock<IFeishuEventDeduplicator>();
         _encryptKeyProviderMock = new Mock<IEncryptKeyProvider>();
         _serviceProviderMock = new Mock<IServiceProvider>();
+        _appKeyAccessorMock = new Mock<IWebhookAppKeyAccessor>();
 
         _options = new FeishuWebhookOptions
         {
@@ -73,6 +75,15 @@ public class FeishuWebhookServiceConcurrencyTests
 
         var concurrencyLoggerMock = new Mock<ILogger<FeishuWebhookConcurrencyService>>();
         _concurrencyService = new FeishuWebhookConcurrencyService(_optionsMonitorMock.Object, concurrencyLoggerMock.Object);
+
+        // 设置 _appKeyAccessorMock 使 SetAppKey 方法能够更新 CurrentAppKey 属性
+        string? currentAppKey = null;
+        _appKeyAccessorMock
+            .Setup(x => x.SetAppKey(It.IsAny<string>()))
+            .Callback<string>(appKey => currentAppKey = appKey);
+        _appKeyAccessorMock
+            .Setup(x => x.CurrentAppKey)
+            .Returns(() => currentAppKey);
 
         // 默认去重返回未处理
         _deduplicatorMock
@@ -126,7 +137,29 @@ public class FeishuWebhookServiceConcurrencyTests
             _deduplicatorMock.Object,
             _encryptKeyProviderMock.Object,
             new FeishuWebhookHandlerRegistry(),
+            new FeishuWebhookInterceptorRegistry(),
             _serviceProviderMock.Object,
+            _appKeyAccessorMock.Object,
+            null,
+            null);
+    }
+
+    private FeishuWebhookService CreateServiceWithRealAppKeyAccessor(IWebhookAppKeyAccessor appKeyAccessor)
+    {
+        return new FeishuWebhookService(
+            _optionsMonitorMock.Object,
+            _validatorMock.Object,
+            _decryptorMock.Object,
+            _handlerFactoryMock.Object,
+            _loggerMock.Object,
+            Array.Empty<IFeishuEventInterceptor>(),
+            _concurrencyService,
+            _deduplicatorMock.Object,
+            _encryptKeyProviderMock.Object,
+            new FeishuWebhookHandlerRegistry(),
+            new FeishuWebhookInterceptorRegistry(),
+            _serviceProviderMock.Object,
+            appKeyAccessor,
             null,
             null);
     }
@@ -383,8 +416,9 @@ public class FeishuWebhookServiceConcurrencyTests
     [Fact]
     public async Task HandleEventAsync_WithFeishuWebhookRequest_ConcurrentDifferentApps_ShouldValidateSignatureCorrectly()
     {
-        // Arrange
-        var service = CreateService();
+        // Arrange - 使用真实的 AsyncLocal 实现
+        var appKeyAccessor = new TestWebhookAppKeyAccessor();
+        var service = CreateServiceWithRealAppKeyAccessor(appKeyAccessor);
         var tasks = new List<Task<bool>>();
         var appKeys = new[] { "app1", "app2", "app3" };
         var encryptKeys = new Dictionary<string, string>
@@ -411,7 +445,7 @@ public class FeishuWebhookServiceConcurrencyTests
 
             var task = Task.Run(async () =>
             {
-                service.SetCurrentAppKey(appKey);
+                appKeyAccessor.SetAppKey(appKey);
 
                 var request = new FeishuWebhookRequest
                 {

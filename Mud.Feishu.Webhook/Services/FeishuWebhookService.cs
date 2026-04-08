@@ -31,12 +31,9 @@ public class FeishuWebhookService : IFeishuWebhookService
     private readonly ISecurityAuditService? _securityAuditService;
     private readonly IEncryptKeyProvider _encryptKeyProvider;
     private readonly FeishuWebhookHandlerRegistry _handlerRegistry;
+    private readonly FeishuWebhookInterceptorRegistry _interceptorRegistry;
     private readonly IServiceProvider _serviceProvider;
-
-    /// <summary>
-    /// 当前应用键（多应用场景，使用 AsyncLocal 确保线程安全）
-    /// </summary>
-    private static readonly AsyncLocal<string?> _currentAppKey = new();
+    private readonly IWebhookAppKeyAccessor _appKeyAccessor;
 
     /// <summary>
     /// 获取当前配置选项（支持热更新）
@@ -55,7 +52,9 @@ public class FeishuWebhookService : IFeishuWebhookService
         IFeishuEventDeduplicator deduplicator,
         IEncryptKeyProvider encryptKeyProvider,
         FeishuWebhookHandlerRegistry handlerRegistry,
+        FeishuWebhookInterceptorRegistry interceptorRegistry,
         IServiceProvider serviceProvider,
+        IWebhookAppKeyAccessor appKeyAccessor,
         ISecurityAuditService? securityAuditService,
         IFeishuEventDistributedDeduplicator? distributedDeduplicator = null)
     {
@@ -69,7 +68,9 @@ public class FeishuWebhookService : IFeishuWebhookService
         _deduplicator = deduplicator;
         _encryptKeyProvider = encryptKeyProvider ?? throw new ArgumentNullException(nameof(encryptKeyProvider));
         _handlerRegistry = handlerRegistry ?? throw new ArgumentNullException(nameof(handlerRegistry));
+        _interceptorRegistry = interceptorRegistry ?? throw new ArgumentNullException(nameof(interceptorRegistry));
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
+        _appKeyAccessor = appKeyAccessor ?? throw new ArgumentNullException(nameof(appKeyAccessor));
         _distributedDeduplicator = distributedDeduplicator;
         _securityAuditService = securityAuditService;
 
@@ -142,8 +143,7 @@ public class FeishuWebhookService : IFeishuWebhookService
     /// <inheritdoc />
     public void SetCurrentAppKey(string appKey)
     {
-        _currentAppKey.Value = appKey;
-        _validator.SetCurrentAppKey(appKey);
+        _appKeyAccessor.SetAppKey(appKey);
     }
 
     /// <inheritdoc />
@@ -151,25 +151,25 @@ public class FeishuWebhookService : IFeishuWebhookService
     {
         try
         {
-            _logger.LogInformation("开始验证飞书事件订阅请求, AppKey: {AppKey}", _currentAppKey.Value ?? "null");
+            _logger.LogInformation("开始验证飞书事件订阅请求, AppKey: {AppKey}", _appKeyAccessor.CurrentAppKey ?? "null");
 
             // 从应用配置中获取验证 Token
-            if (string.IsNullOrEmpty(_currentAppKey.Value))
+            if (string.IsNullOrEmpty(_appKeyAccessor.CurrentAppKey))
             {
                 _logger.LogError("当前应用键未设置，无法验证事件订阅请求");
                 return null;
             }
 
-            var appConfig = Options.GetAppConfig(_currentAppKey.Value!);
+            var appConfig = Options.GetAppConfig(_appKeyAccessor.CurrentAppKey!);
             if (appConfig == null)
             {
-                _logger.LogError("未找到应用配置, AppKey: {AppKey}", _currentAppKey);
+                _logger.LogError("未找到应用配置, AppKey: {AppKey}", _appKeyAccessor.CurrentAppKey);
                 return null;
             }
 
             if (!await _validator.ValidateSubscriptionRequestAsync(request, appConfig.VerificationToken ?? string.Empty))
             {
-                _logger.LogWarning("事件订阅验证失败, AppKey: {AppKey}", _currentAppKey);
+                _logger.LogWarning("事件订阅验证失败, AppKey: {AppKey}", _appKeyAccessor.CurrentAppKey);
                 return null;
             }
 
@@ -178,12 +178,12 @@ public class FeishuWebhookService : IFeishuWebhookService
                 Challenge = request.Challenge
             };
 
-            _logger.LogInformation("事件订阅验证成功，返回挑战码: {Challenge}, AppKey: {AppKey}", request.Challenge, _currentAppKey);
+            _logger.LogInformation("事件订阅验证成功，返回挑战码: {Challenge}, AppKey: {AppKey}", request.Challenge, _appKeyAccessor.CurrentAppKey);
             return await Task.FromResult(response);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "验证事件订阅请求时发生错误, AppKey: {AppKey}", _currentAppKey.Value ?? "null");
+            _logger.LogError(ex, "验证事件订阅请求时发生错误, AppKey: {AppKey}", _appKeyAccessor.CurrentAppKey ?? "null");
             return null;
         }
     }
@@ -191,7 +191,7 @@ public class FeishuWebhookService : IFeishuWebhookService
     /// <inheritdoc />
     public async Task<(bool Success, string? ErrorReason)> HandleEventAsync(EventData eventData, CancellationToken cancellationToken = default)
     {
-        return await HandleEventWithInterceptorsAsync(eventData, _currentAppKey.Value, cancellationToken);
+        return await HandleEventWithInterceptorsAsync(eventData, _appKeyAccessor.CurrentAppKey, cancellationToken);
     }
 
     /// <summary>
@@ -201,13 +201,16 @@ public class FeishuWebhookService : IFeishuWebhookService
     {
         Exception? processingException = null;
 
+        // 获取拦截器列表（优先使用应用专属拦截器，回退到全局拦截器）
+        var interceptors = GetInterceptors(appKey).ToList();
+
         try
         {
             // 记录事件处理开始
             using var eventMetrics = FeishuMetricsHelper.RecordEventHandling(eventData.EventType, "webhook");
 
             // 前置拦截器
-            foreach (var interceptor in _interceptors)
+            foreach (var interceptor in interceptors)
             {
                 var shouldContinue = await interceptor.BeforeHandleAsync(eventData.EventType, eventData, cancellationToken);
                 if (!shouldContinue)
@@ -286,7 +289,7 @@ public class FeishuWebhookService : IFeishuWebhookService
         finally
         {
             // 后置拦截器（无论成功或失败都执行）
-            foreach (var interceptor in _interceptors)
+            foreach (var interceptor in interceptors)
             {
                 await interceptor.AfterHandleAsync(eventData.EventType, eventData, processingException, cancellationToken);
             }
@@ -344,21 +347,21 @@ public class FeishuWebhookService : IFeishuWebhookService
                 string.IsNullOrEmpty(request.Signature) ||
                 string.IsNullOrEmpty(request.Nonce))
             {
-                _logger.LogWarning("请求缺少必要的签名字段, AppKey: {AppKey}", _currentAppKey.Value ?? "null");
+                _logger.LogWarning("请求缺少必要的签名字段, AppKey: {AppKey}", _appKeyAccessor.CurrentAppKey ?? "null");
                 FeishuMetricsHelper.RecordEventHandlingFailure("signature_validation", "missing_fields");
                 return false;
             }
 
             // 使用密钥提供程序获取加密密钥
             string? encryptKey = null;
-            if (!string.IsNullOrEmpty(_currentAppKey.Value))
+            if (!string.IsNullOrEmpty(_appKeyAccessor.CurrentAppKey))
             {
-                encryptKey = await _encryptKeyProvider.GetEncryptKeyAsync(_currentAppKey.Value!);
+                encryptKey = await _encryptKeyProvider.GetEncryptKeyAsync(_appKeyAccessor.CurrentAppKey!);
             }
 
             if (string.IsNullOrEmpty(encryptKey))
             {
-                _logger.LogError("缺少加密密钥，无法验证签名, AppKey: {AppKey}", _currentAppKey.Value ?? "null");
+                _logger.LogError("缺少加密密钥，无法验证签名, AppKey: {AppKey}", _appKeyAccessor.CurrentAppKey ?? "null");
                 FeishuMetricsHelper.RecordEventHandlingFailure("signature_validation", "missing_encrypt_key");
                 return false;
             }
@@ -383,7 +386,7 @@ public class FeishuWebhookService : IFeishuWebhookService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "验证请求签名时发生错误, AppKey: {AppKey}", _currentAppKey.Value ?? "null");
+            _logger.LogError(ex, "验证请求签名时发生错误, AppKey: {AppKey}", _appKeyAccessor.CurrentAppKey ?? "null");
             FeishuMetricsHelper.RecordEventHandlingFailure("signature_validation", ex.GetType().Name);
             return false;
         }
@@ -395,10 +398,10 @@ public class FeishuWebhookService : IFeishuWebhookService
         try
         {
             // 使用密钥提供程序获取加密密钥
-            var encryptKey = await _encryptKeyProvider.GetEncryptKeyAsync(_currentAppKey.Value ?? string.Empty);
+            var encryptKey = await _encryptKeyProvider.GetEncryptKeyAsync(_appKeyAccessor.CurrentAppKey ?? string.Empty);
             if (string.IsNullOrEmpty(encryptKey))
             {
-                _logger.LogError("无法获取加密密钥, AppKey: {AppKey}", _currentAppKey.Value ?? "null");
+                _logger.LogError("无法获取加密密钥, AppKey: {AppKey}", _appKeyAccessor.CurrentAppKey ?? "null");
                 return false;
             }
 
@@ -420,18 +423,18 @@ public class FeishuWebhookService : IFeishuWebhookService
                 _logger.LogDebug("签名验证失败: 计算 {ComputedSignaturePrefix}..., 期望 {ExpectedSignaturePrefix}..., AppKey: {AppKey}",
                     computedPrefix + "...",
                     signaturePrefix + "...",
-                    _currentAppKey.Value ?? "null");
+                    _appKeyAccessor.CurrentAppKey ?? "null");
             }
             else
             {
-                _logger.LogDebug("签名验证成功, AppKey: {AppKey}", _currentAppKey.Value ?? "null");
+                _logger.LogDebug("签名验证成功, AppKey: {AppKey}", _appKeyAccessor.CurrentAppKey ?? "null");
             }
 
             return isValid;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "验证请求签名时发生错误, AppKey: {AppKey}", _currentAppKey.Value ?? "null");
+            _logger.LogError(ex, "验证请求签名时发生错误, AppKey: {AppKey}", _appKeyAccessor.CurrentAppKey ?? "null");
             return false;
         }
     }
@@ -448,14 +451,14 @@ public class FeishuWebhookService : IFeishuWebhookService
         {
             // 使用密钥提供程序获取加密密钥
             string? encryptKey = null;
-            if (!string.IsNullOrEmpty(_currentAppKey.Value))
+            if (!string.IsNullOrEmpty(_appKeyAccessor.CurrentAppKey))
             {
-                encryptKey = await _encryptKeyProvider.GetEncryptKeyAsync(_currentAppKey.Value!);
+                encryptKey = await _encryptKeyProvider.GetEncryptKeyAsync(_appKeyAccessor.CurrentAppKey!);
             }
 
             if (string.IsNullOrEmpty(encryptKey))
             {
-                _logger.LogError("缺少加密密钥，无法解密事件数据, AppKey: {AppKey}", _currentAppKey.Value ?? "null");
+                _logger.LogError("缺少加密密钥，无法解密事件数据, AppKey: {AppKey}", _appKeyAccessor.CurrentAppKey ?? "null");
                 FeishuMetricsHelper.RecordEventHandlingFailure("event_decryption", "missing_encrypt_key");
                 return null;
             }
@@ -474,7 +477,7 @@ public class FeishuWebhookService : IFeishuWebhookService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "解密事件数据时发生错误, AppKey: {AppKey}", _currentAppKey.Value ?? "null");
+            _logger.LogError(ex, "解密事件数据时发生错误, AppKey: {AppKey}", _appKeyAccessor.CurrentAppKey ?? "null");
             FeishuMetricsHelper.RecordEventHandlingFailure("event_decryption", ex.GetType().Name);
             return null;
         }
@@ -554,6 +557,37 @@ public class FeishuWebhookService : IFeishuWebhookService
             _logger.LogDebug("使用全局处理器工厂分发事件: {EventType}, AppKey: {AppKey}",
                 eventType, appKey ?? "null");
             await _handlerFactory.HandleEventParallelAsync(eventType, eventData, cancellationToken);
+        }
+    }
+
+    /// <summary>
+    /// 获取拦截器列表（支持按 AppKey 隔离）
+    /// 优先使用应用专属拦截器，无专属拦截器时回退到全局拦截器
+    /// </summary>
+    private IEnumerable<IFeishuEventInterceptor> GetInterceptors(string? appKey)
+    {
+        // 如果有应用专属拦截器，优先使用
+        if (!string.IsNullOrEmpty(appKey) && _interceptorRegistry.HasInterceptors(appKey!))
+        {
+            var interceptorTypes = _interceptorRegistry.GetInterceptors(appKey!);
+            _logger.LogDebug("使用应用 {AppKey} 的专属拦截器（{Count} 个）", appKey, interceptorTypes.Count);
+
+            foreach (var interceptorType in interceptorTypes)
+            {
+                var interceptor = (IFeishuEventInterceptor)_serviceProvider.GetRequiredService(interceptorType);
+                yield return interceptor;
+            }
+        }
+        else
+        {
+            // 回退到全局拦截器
+            _logger.LogDebug("使用全局拦截器（{Count} 个）, AppKey: {AppKey}",
+                _interceptors.Length, appKey ?? "null");
+
+            foreach (var interceptor in _interceptors)
+            {
+                yield return interceptor;
+            }
         }
     }
 }

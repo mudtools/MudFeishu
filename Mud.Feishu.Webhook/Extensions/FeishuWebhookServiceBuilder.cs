@@ -406,7 +406,8 @@ public class FeishuWebhookServiceBuilder
     private void RegisterOptions()
     {
         _services.AddSingleton<IValidateOptions<FeishuWebhookOptions>, FeishuWebhookOptionsValidator>();
-        _services.AddSingleton<IValidateOptions<FeishuAppWebhookOptions>, FeishuAppWebhookOptionsValidator>();
+        // 注意：FeishuAppWebhookOptions 不作为 IOptions<T> 独立注册，IValidateOptions 永远不会被框架自动调用。
+        // 应用级配置的验证已在 FeishuWebhookOptions.Validate() 中通过遍历 Apps 字典完成。
         _services.AddSingleton<IValidateOptions<RateLimitOptions>, RateLimitOptionsValidator>();
 
         // 应用自定义配置
@@ -474,6 +475,9 @@ public class FeishuWebhookServiceBuilder
         // 注册多应用注册表（单例，所有应用共享）
         _services.TryAddSingleton<FeishuWebhookHandlerRegistry>();
         _services.TryAddSingleton<FeishuWebhookInterceptorRegistry>();
+
+        // 注册 AppKey 上下文访问器（单例，基于 AsyncLocal 的线程安全实现）
+        _services.TryAddSingleton<IWebhookAppKeyAccessor, WebhookAppKeyAccessor>();
 
         // 注册工具服务（单例）
         _services.TryAddSingleton<IEnvironmentService, EnvironmentService>();

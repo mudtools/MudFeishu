@@ -7,8 +7,6 @@
 
 using Mud.Feishu.Webhook.Configuration;
 using Mud.Feishu.Webhook.Utilities;
-using System.Security.Cryptography;
-using System.Text;
 
 namespace Mud.Feishu.Webhook.Services;
 
@@ -51,28 +49,37 @@ namespace Mud.Feishu.Webhook.Services;
 /// <item><description>使用固定时间比较防止计时攻击</description></item>
 /// </list>
 /// </remarks>
-public class SignatureValidator : ValidatorBase, ISignatureValidator
+public class SignatureValidator : ISignatureValidator
 {
     private readonly ILogger<SignatureValidator> _logger;
     private readonly IOptionsMonitor<FeishuWebhookOptions> _options;
     private readonly ISecurityAuditService? _securityAuditService;
     private readonly IEnvironmentService _environmentService;
+    private readonly IWebhookAppKeyAccessor _appKeyAccessor;
+
+    /// <summary>
+    /// 获取当前应用键（优先从 IWebhookAppKeyAccessor 获取）
+    /// </summary>
+    private string? CurrentAppKey => _appKeyAccessor.CurrentAppKey;
 
     /// <summary>
     /// 初始化签名验证器
     /// </summary>
     /// <param name="logger">日志记录器</param>
     /// <param name="options">Webhook 配置选项</param>
+    /// <param name="appKeyAccessor">应用键上下文访问器</param>
     /// <param name="securityAuditService">安全审计服务</param>
     /// <param name="environmentService">环境服务</param>
     public SignatureValidator(
         ILogger<SignatureValidator> logger,
         IOptionsMonitor<FeishuWebhookOptions> options,
+        IWebhookAppKeyAccessor appKeyAccessor,
         ISecurityAuditService? securityAuditService = null,
         IEnvironmentService? environmentService = null)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _options = options ?? throw new ArgumentNullException(nameof(options));
+        _appKeyAccessor = appKeyAccessor ?? throw new ArgumentNullException(nameof(appKeyAccessor));
         _securityAuditService = securityAuditService;
         _environmentService = environmentService ?? new EnvironmentService();
     }
@@ -88,7 +95,7 @@ public class SignatureValidator : ValidatorBase, ISignatureValidator
             "SignatureValidator",
             message,
             "",
-            _currentAppKey);
+            CurrentAppKey);
     }
 
     /// <summary>
@@ -102,33 +109,10 @@ public class SignatureValidator : ValidatorBase, ISignatureValidator
             "SignatureValidator",
             message,
             "",
-            _currentAppKey);
+            CurrentAppKey);
     }
 
     /// <inheritdoc />
-    /// <summary>
-    /// 验证 HMAC-SHA256 签名（请求体验证）
-    /// </summary>
-    /// <param name="timestamp">请求时间戳</param>
-    /// <param name="nonce">随机字符串</param>
-    /// <param name="encrypt">加密的请求数据</param>
-    /// <param name="signature">待验证的签名</param>
-    /// <param name="encryptKey">加密密钥</param>
-    /// <returns>签名验证结果</returns>
-    /// <remarks>
-    /// <para>
-    /// 验证流程：
-    /// </para>
-    /// <list type="number">
-    /// <item><description>检查时间戳和 nonce 是否有效</description></item>
-    /// <item><description>构建签名字符串：timestamp + "\n" + nonce + "\n" + encrypt</description></item>
-    /// <item><description>使用 HMAC-SHA256 计算签名</description></item>
-    /// <item><description>使用固定时间比较验证签名</description></item>
-    /// </list>
-    /// <para>
-    /// 注意：此方法不验证时间戳是否过期，需配合 ITimestampValidator 使用
-    /// </para>
-    /// </remarks>
     public async Task<bool> ValidateSignatureAsync(long timestamp, string nonce, string encrypt, string signature, string encryptKey)
     {
         try
@@ -142,20 +126,18 @@ public class SignatureValidator : ValidatorBase, ISignatureValidator
                         "时间戳或 nonce 为空（Timestamp: {Timestamp}, Nonce: {Nonce}），拒绝请求（生产环境不允许跳过签名验证）",
                         timestamp, nonce);
 
-                    // 记录安全审计日志
                     LogSecurityFailure($"时间戳或 nonce 为空（Timestamp: {timestamp}, Nonce: {nonce}），拒绝请求");
 
-                    return false; // 生产环境拒绝请求
+                    return false;
                 }
 
                 _logger.LogWarning(
                     "时间戳或 nonce 为空（Timestamp: {Timestamp}, Nonce: {Nonce}），跳过签名验证（开发环境，警告：此配置存在安全风险）",
                     timestamp, nonce);
 
-                // 记录安全审计日志
                 LogSecurityFailure($"开发环境：时间戳或 nonce 为空（Timestamp: {timestamp}, Nonce: {nonce}），跳过签名验证");
 
-                return true; // 开发环境允许跳过
+                return true;
             }
 
             // 构建签名字符串：timestamp + "\n" + nonce + "\n" + encrypt
@@ -178,61 +160,27 @@ public class SignatureValidator : ValidatorBase, ISignatureValidator
                 _logger.LogDebug("签名验证失败: 计算 {ComputedSignaturePrefix}..., 期望 {ExpectedSignaturePrefix}..., AppKey: {AppKey}",
                     computedPrefix + "...",
                     signaturePrefix + "...",
-                    _currentAppKey ?? "null");
+                    CurrentAppKey ?? "null");
 
-                // 记录安全审计日志
                 LogSecurityFailure($"签名验证失败: 计算 {computedPrefix}..., 期望 {signaturePrefix}...");
             }
             else
             {
-                _logger.LogDebug("签名验证成功, AppKey: {AppKey}", _currentAppKey ?? "null");
+                _logger.LogDebug("签名验证成功, AppKey: {AppKey}", CurrentAppKey ?? "null");
 
-                // 记录安全审计日志
-                LogSecuritySuccess($"签名验证成功, AppKey: {_currentAppKey ?? "null"}");
+                LogSecuritySuccess($"签名验证成功, AppKey: {CurrentAppKey ?? "null"}");
             }
 
             return isValid;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "验证签名时发生错误, AppKey: {AppKey}", _currentAppKey ?? "null");
+            _logger.LogError(ex, "验证签名时发生错误, AppKey: {AppKey}", CurrentAppKey ?? "null");
             return false;
         }
     }
 
     /// <inheritdoc />
-    /// <summary>
-    /// 验证 SHA-256 签名（请求头验证）
-    /// </summary>
-    /// <param name="timestamp">请求时间戳</param>
-    /// <param name="nonce">随机字符串</param>
-    /// <param name="body">完整的请求体字符串</param>
-    /// <param name="headerSignature">请求头中的签名（X-Lark-Signature）</param>
-    /// <param name="encryptKey">加密密钥</param>
-    /// <returns>签名验证结果</returns>
-    /// <remarks>
-    /// <para>
-    /// 验证流程：
-    /// </para>
-    /// <list type="number">
-    /// <item><description>检查请求头签名是否存在（可选强制验证）</description></item>
-    /// <item><description>检查时间戳和 nonce 是否有效</description></item>
-    /// <item><description>构建签名字符串：timestamp + nonce + encryptKey + body</description></item>
-    /// <item><description>使用 SHA-256 计算签名</description></item>
-    /// <item><description>使用固定时间比较验证签名</description></item>
-    /// </list>
-    /// <para>
-    /// 此方法比 HMAC-SHA256 更安全，因为：
-    /// </para>
-    /// <list type="bullet">
-    /// <item><description>验证完整的请求体，而不仅仅是加密部分</description></item>
-    /// <item><description>签名包含在请求头中，更难被篡改</description></item>
-    /// <item><description>符合飞书官方推荐的安全实践</description></item>
-    /// </list>
-    /// <para>
-    /// 生产环境强烈建议启用 EnforceHeaderSignatureValidation = true
-    /// </para>
-    /// </remarks>
     public async Task<bool> ValidateHeaderSignatureAsync(long timestamp, string nonce, string body, string? headerSignature, string encryptKey)
     {
         try
@@ -245,15 +193,15 @@ public class SignatureValidator : ValidatorBase, ISignatureValidator
                 var enforceValidation = options.EnforceHeaderSignatureValidation;
 
                 // 多应用场景：检查应用特定配置
-                if (!string.IsNullOrEmpty(_currentAppKey))
+                if (!string.IsNullOrEmpty(CurrentAppKey))
                 {
-                    var appConfig = options.GetAppConfig(_currentAppKey!);
+                    var appConfig = options.GetAppConfig(CurrentAppKey!);
                     if (appConfig != null)
                     {
                         // 优先使用应用级别的 EnforceHeaderSignatureValidation 配置
                         enforceValidation = appConfig.EnforceHeaderSignatureValidation;
                         _logger.LogDebug("使用应用 {AppKey} 的签名验证配置: {EnforceValidation}",
-                            _currentAppKey, enforceValidation);
+                            CurrentAppKey, enforceValidation);
                     }
                 }
 
@@ -264,7 +212,6 @@ public class SignatureValidator : ValidatorBase, ISignatureValidator
                         "请求头中缺少 X-Lark-Signature，拒绝请求（配置为强制验证，当前环境: {Environment}）",
                         _environmentService.EnvironmentName);
 
-                    // 记录安全审计日志
                     LogSecurityFailure(_environmentService.IsProduction
                         ? "生产环境：请求头缺少 X-Lark-Signature，拒绝请求"
                         : "非生产环境：请求头缺少 X-Lark-Signature（警告：此配置存在安全风险）");
@@ -288,20 +235,18 @@ public class SignatureValidator : ValidatorBase, ISignatureValidator
                         "时间戳或 nonce 为空（Timestamp: {Timestamp}, Nonce: {Nonce}），拒绝请求（生产环境不允许跳过签名验证）",
                         timestamp, nonce);
 
-                    // 记录安全审计日志
                     LogSecurityFailure($"时间戳或 nonce 为空（Timestamp: {timestamp}, Nonce: {nonce}），拒绝请求");
 
-                    return false; // 生产环境拒绝请求
+                    return false;
                 }
 
                 _logger.LogWarning(
                     "时间戳或 nonce 为空（Timestamp: {Timestamp}, Nonce: {Nonce}），跳过签名验证（开发环境，警告：此配置存在安全风险）",
                     timestamp, nonce);
 
-                // 记录安全审计日志
                 LogSecurityFailure($"开发环境：时间戳或 nonce 为空（Timestamp: {timestamp}, Nonce: {nonce}），跳过签名验证");
 
-                return true; // 开发环境允许跳过
+                return true;
             }
 
             // 根据飞书官方文档，签名字符串格式为：
@@ -330,36 +275,34 @@ public class SignatureValidator : ValidatorBase, ISignatureValidator
                 _logger.LogDebug("请求头签名验证失败: 计算 {ComputedSignaturePrefix}..., 期望 {ExpectedSignaturePrefix}..., AppKey: {AppKey}",
                     computedPrefix + "...",
                     headerPrefix + "...",
-                    _currentAppKey ?? "null");
+                    CurrentAppKey ?? "null");
 
-                // 记录安全审计日志
                 _ = _securityAuditService?.LogSecurityFailureAsync(
                     SecurityEventType.SignatureValidation,
                     "unknown",
                     "SignatureValidator",
                     $"请求头签名验证失败: 计算 {computedPrefix}..., 期望 {headerPrefix}...",
                     "",
-                    _currentAppKey);
+                    CurrentAppKey);
             }
             else
             {
-                _logger.LogDebug("请求头签名验证成功, AppKey: {AppKey}", _currentAppKey ?? "null");
+                _logger.LogDebug("请求头签名验证成功, AppKey: {AppKey}", CurrentAppKey ?? "null");
 
-                // 记录安全审计日志
                 _ = _securityAuditService?.LogSecuritySuccessAsync(
                     SecurityEventType.SignatureValidation,
                     "unknown",
                     "SignatureValidator",
-                    $"请求头签名验证成功, AppKey: {_currentAppKey ?? "null"}",
+                    $"请求头签名验证成功, AppKey: {CurrentAppKey ?? "null"}",
                     "",
-                    _currentAppKey);
+                    CurrentAppKey);
             }
 
             return isValid;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "验证请求头签名时发生错误, AppKey: {AppKey}", _currentAppKey ?? "null");
+            _logger.LogError(ex, "验证请求头签名时发生错误, AppKey: {AppKey}", CurrentAppKey ?? "null");
             return false;
         }
     }
@@ -399,5 +342,12 @@ public class SignatureValidator : ValidatorBase, ISignatureValidator
         }
 
         return result == 0;
+    }
+
+    /// <inheritdoc />
+    public void SetCurrentAppKey(string appKey)
+    {
+        _appKeyAccessor.SetAppKey(appKey);
+        _logger.LogDebug("设置当前应用键: {AppKey}", appKey);
     }
 }

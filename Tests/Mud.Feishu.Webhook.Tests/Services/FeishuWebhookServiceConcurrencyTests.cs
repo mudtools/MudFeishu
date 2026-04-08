@@ -27,6 +27,7 @@ public class FeishuWebhookServiceConcurrencyTests
     private readonly FeishuWebhookConcurrencyService _concurrencyService;
     private readonly Mock<IFeishuEventDeduplicator> _deduplicatorMock;
     private readonly Mock<IEncryptKeyProvider> _encryptKeyProviderMock;
+    private readonly Mock<IServiceProvider> _serviceProviderMock;
     private readonly FeishuWebhookOptions _options;
 
     public FeishuWebhookServiceConcurrencyTests()
@@ -38,6 +39,7 @@ public class FeishuWebhookServiceConcurrencyTests
         _loggerMock = new Mock<ILogger<FeishuWebhookService>>();
         _deduplicatorMock = new Mock<IFeishuEventDeduplicator>();
         _encryptKeyProviderMock = new Mock<IEncryptKeyProvider>();
+        _serviceProviderMock = new Mock<IServiceProvider>();
 
         _options = new FeishuWebhookOptions
         {
@@ -74,7 +76,7 @@ public class FeishuWebhookServiceConcurrencyTests
 
         // 默认去重返回未处理
         _deduplicatorMock
-            .Setup(x => x.TryMarkAsProcessing(It.IsAny<string>()))
+            .Setup(x => x.TryMarkAsProcessing(It.IsAny<string>(), It.IsAny<string?>()))
             .Returns(false);
 
         // 默认处理成功
@@ -123,6 +125,8 @@ public class FeishuWebhookServiceConcurrencyTests
             _concurrencyService,
             _deduplicatorMock.Object,
             _encryptKeyProviderMock.Object,
+            new FeishuWebhookHandlerRegistry(),
+            _serviceProviderMock.Object,
             null,
             null);
     }

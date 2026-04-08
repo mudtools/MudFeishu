@@ -38,43 +38,49 @@ public interface IFeishuEventDeduplicator : IAsyncDisposable
     /// 尝试将事件标记为已处理
     /// </summary>
     /// <param name="eventId">事件唯一标识符</param>
+    /// <param name="appKey">应用键（多应用场景，用于隔离不同应用的去重记录）</param>
     /// <returns>如果事件已被处理过返回 true（重复事件），否则返回 false 并标记为已处理</returns>
-    bool TryMarkAsProcessed(string eventId);
+    bool TryMarkAsProcessed(string eventId, string? appKey = null);
 
     /// <summary>
     /// 尝试将事件标记为处理中
     /// </summary>
     /// <param name="eventId">事件唯一标识符</param>
+    /// <param name="appKey">应用键（多应用场景，用于隔离不同应用的去重记录）</param>
     /// <returns>
     /// 返回当前状态：
     /// <c>false</c> - 成功标记为处理中（新事件）
     /// <c>true</c> - 事件已在处理中或已处理（重复事件）
     /// </returns>
-    bool TryMarkAsProcessing(string eventId);
+    bool TryMarkAsProcessing(string eventId, string? appKey = null);
 
     /// <summary>
     /// 将处理中的事件标记为已完成
     /// </summary>
     /// <param name="eventId">事件唯一标识符</param>
-    void MarkAsCompleted(string eventId);
+    /// <param name="appKey">应用键（多应用场景，用于隔离不同应用的去重记录）</param>
+    void MarkAsCompleted(string eventId, string? appKey = null);
 
     /// <summary>
     /// 回滚处理中的状态（标记为未处理）
     /// </summary>
     /// <param name="eventId">事件唯一标识符</param>
-    void RollbackProcessing(string eventId);
+    /// <param name="appKey">应用键（多应用场景，用于隔离不同应用的去重记录）</param>
+    void RollbackProcessing(string eventId, string? appKey = null);
 
     /// <summary>
     /// 检查事件是否已被处理（不标记）
     /// </summary>
     /// <param name="eventId">事件唯一标识符</param>
+    /// <param name="appKey">应用键（多应用场景，用于隔离不同应用的去重记录）</param>
     /// <returns>如果事件已被处理返回 true，否则返回 false</returns>
-    bool IsProcessed(string eventId);
+    bool IsProcessed(string eventId, string? appKey = null);
 
     /// <summary>
     /// 获取事件的处理状态
     /// </summary>
     /// <param name="eventId">事件唯一标识符</param>
+    /// <param name="appKey">应用键（多应用场景，用于隔离不同应用的去重记录）</param>
     /// <returns>事件处理状态</returns>
-    DeduplicationStatus GetStatus(string eventId);
+    DeduplicationStatus GetStatus(string eventId, string? appKey = null);
 }

@@ -19,6 +19,7 @@ public class FeishuRateLimitMiddlewareTests : IDisposable
 {
     private readonly Mock<RequestDelegate> _nextMock;
     private readonly Mock<ILogger<FeishuRateLimitMiddleware>> _loggerMock;
+    private readonly Mock<IOptionsMonitor<FeishuWebhookOptions>> _optionsMonitorMock;
     private readonly FeishuWebhookOptions _options;
     private FeishuRateLimitMiddleware? _middleware;
 
@@ -26,6 +27,7 @@ public class FeishuRateLimitMiddlewareTests : IDisposable
     {
         _nextMock = new Mock<RequestDelegate>();
         _loggerMock = new Mock<ILogger<FeishuRateLimitMiddleware>>();
+        _optionsMonitorMock = new Mock<IOptionsMonitor<FeishuWebhookOptions>>();
         _options = new FeishuWebhookOptions
         {
             GlobalRoutePrefix = "feishu",
@@ -38,17 +40,17 @@ public class FeishuRateLimitMiddlewareTests : IDisposable
                 TooManyRequestsMessage = "请求过于频繁"
             }
         };
+        _optionsMonitorMock.Setup(x => x.CurrentValue).Returns(_options);
     }
 
     [Fact]
     public void Constructor_WithNullNext_ShouldThrowArgumentNullException()
     {
         // Arrange
-        var options = Options.Create(_options);
         var logger = _loggerMock.Object;
 
         // Act
-        var action = () => new FeishuRateLimitMiddleware(null!, options, logger);
+        var action = () => new FeishuRateLimitMiddleware(null!, _optionsMonitorMock.Object, logger);
 
         // Assert
         action.Should().Throw<ArgumentNullException>();
@@ -58,11 +60,10 @@ public class FeishuRateLimitMiddlewareTests : IDisposable
     public void Constructor_WithNullLogger_ShouldThrowArgumentNullException()
     {
         // Arrange
-        var options = Options.Create(_options);
         RequestDelegate next = _ => Task.CompletedTask;
 
         // Act
-        var action = () => new FeishuRateLimitMiddleware(next, options, null!);
+        var action = () => new FeishuRateLimitMiddleware(next, _optionsMonitorMock.Object, null!);
 
         // Assert
         action.Should().Throw<ArgumentNullException>();
@@ -236,7 +237,7 @@ public class FeishuRateLimitMiddlewareTests : IDisposable
     {
         return new FeishuRateLimitMiddleware(
             _nextMock.Object,
-            Options.Create(_options),
+            _optionsMonitorMock.Object,
             _loggerMock.Object);
     }
 

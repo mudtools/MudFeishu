@@ -78,7 +78,7 @@ public class FeishuEventDeduplicator : IFeishuEventDeduplicator
     }
 
     /// <inheritdoc/>
-    public bool TryMarkAsProcessed(string eventId)
+    public bool TryMarkAsProcessed(string eventId, string? appKey = null)
     {
         if (string.IsNullOrEmpty(eventId))
         {
@@ -87,31 +87,34 @@ public class FeishuEventDeduplicator : IFeishuEventDeduplicator
             return false;
         }
 
+        var cacheKey = BuildCacheKey(eventId, appKey);
+
         lock (_lock)
         {
             // 检查是否已存在
-            if (_eventCache.ContainsKey(eventId))
+            if (_eventCache.ContainsKey(cacheKey))
             {
                 if (_logger != null && _logger.IsEnabled(LogLevel.Debug))
-                    _logger?.LogDebug("事件 {EventId} 已处理过，跳过", eventId);
+                    _logger?.LogDebug("事件 {EventId}（AppKey: {AppKey}）已处理过，跳过", eventId, appKey ?? "null");
                 return true; // 已处理
             }
 
             // 记录新事件
-            _eventCache[eventId] = new EventCacheEntry
+            _eventCache[cacheKey] = new EventCacheEntry
             {
                 ProcessedAt = DateTimeOffset.UtcNow,
                 EventId = eventId,
+                AppKey = appKey,
                 Status = DeduplicationStatus.Completed
             };
             if (_logger != null && _logger.IsEnabled(LogLevel.Debug))
-                _logger?.LogDebug("事件 {EventId} 标记为已处理", eventId);
+                _logger?.LogDebug("事件 {EventId}（AppKey: {AppKey}）标记为已处理", eventId, appKey ?? "null");
             return false; // 未处理，新事件
         }
     }
 
     /// <inheritdoc/>
-    public bool TryMarkAsProcessing(string eventId)
+    public bool TryMarkAsProcessing(string eventId, string? appKey = null)
     {
         if (string.IsNullOrEmpty(eventId))
         {
@@ -120,15 +123,17 @@ public class FeishuEventDeduplicator : IFeishuEventDeduplicator
             return false;
         }
 
+        var cacheKey = BuildCacheKey(eventId, appKey);
+
         lock (_lock)
         {
             // 检查是否已存在
-            if (_eventCache.TryGetValue(eventId, out var entry))
+            if (_eventCache.TryGetValue(cacheKey, out var entry))
             {
                 // 如果已处理，返回 true
                 if (entry.Status == DeduplicationStatus.Completed && _logger != null && _logger.IsEnabled(LogLevel.Debug))
                 {
-                    _logger?.LogDebug("事件 {EventId} 已处理过，跳过", eventId);
+                    _logger?.LogDebug("事件 {EventId}（AppKey: {AppKey}）已处理过，跳过", eventId, appKey ?? "null");
                     return true;
                 }
 
@@ -139,105 +144,114 @@ public class FeishuEventDeduplicator : IFeishuEventDeduplicator
                     {
                         // 处理中超时，允许重新处理
                         if (_logger != null && _logger.IsEnabled(LogLevel.Warning))
-                            _logger?.LogWarning("事件 {EventId} 处理中超时，允许重新处理", eventId);
-                        _eventCache.Remove(eventId);
+                            _logger?.LogWarning("事件 {EventId}（AppKey: {AppKey}）处理中超时，允许重新处理", eventId, appKey ?? "null");
+                        _eventCache.Remove(cacheKey);
                         // 继续处理
                     }
                     else
                     {
                         if (_logger != null && _logger.IsEnabled(LogLevel.Debug))
-                            _logger?.LogDebug("事件 {EventId} 正在处理中，跳过", eventId);
+                            _logger?.LogDebug("事件 {EventId}（AppKey: {AppKey}）正在处理中，跳过", eventId, appKey ?? "null");
                         return true;
                     }
                 }
             }
 
             // 标记为处理中
-            _eventCache[eventId] = new EventCacheEntry
+            _eventCache[cacheKey] = new EventCacheEntry
             {
                 ProcessedAt = DateTimeOffset.UtcNow,
                 EventId = eventId,
+                AppKey = appKey,
                 Status = DeduplicationStatus.Processing
             };
             if (_logger != null && _logger.IsEnabled(LogLevel.Debug))
-                _logger?.LogDebug("事件 {EventId} 标记为处理中", eventId);
+                _logger?.LogDebug("事件 {EventId}（AppKey: {AppKey}）标记为处理中", eventId, appKey ?? "null");
             return false; // 未处理，新事件
         }
     }
 
     /// <inheritdoc/>
-    public void MarkAsCompleted(string eventId)
+    public void MarkAsCompleted(string eventId, string? appKey = null)
     {
         if (string.IsNullOrEmpty(eventId))
         {
             return;
         }
 
+        var cacheKey = BuildCacheKey(eventId, appKey);
+
         lock (_lock)
         {
-            if (_eventCache.TryGetValue(eventId, out var entry))
+            if (_eventCache.TryGetValue(cacheKey, out var entry))
             {
                 entry.Status = DeduplicationStatus.Completed;
                 entry.ProcessedAt = DateTimeOffset.UtcNow; // 更新完成时间
 
                 if (_logger != null && _logger.IsEnabled(LogLevel.Debug))
-                    _logger?.LogDebug("事件 {EventId} 标记为已完成", eventId);
+                    _logger?.LogDebug("事件 {EventId}（AppKey: {AppKey}）标记为已完成", eventId, appKey ?? "null");
             }
         }
     }
 
     /// <inheritdoc/>
-    public void RollbackProcessing(string eventId)
+    public void RollbackProcessing(string eventId, string? appKey = null)
     {
         if (string.IsNullOrEmpty(eventId))
         {
             return;
         }
 
+        var cacheKey = BuildCacheKey(eventId, appKey);
+
         lock (_lock)
         {
-            if (_eventCache.TryGetValue(eventId, out var entry))
+            if (_eventCache.TryGetValue(cacheKey, out var entry))
             {
                 if (entry.Status == DeduplicationStatus.Processing)
                 {
-                    _eventCache.Remove(eventId);
+                    _eventCache.Remove(cacheKey);
                     if (_logger != null && _logger.IsEnabled(LogLevel.Debug))
-                        _logger?.LogDebug("事件 {EventId} 处理回滚，允许重新处理", eventId);
+                        _logger?.LogDebug("事件 {EventId}（AppKey: {AppKey}）处理回滚，允许重新处理", eventId, appKey ?? "null");
                 }
                 else
                 {
                     if (_logger != null && _logger.IsEnabled(LogLevel.Debug))
-                        _logger?.LogDebug("事件 {EventId} 状态为 {Status}，无需回滚", eventId, entry.Status);
+                        _logger?.LogDebug("事件 {EventId}（AppKey: {AppKey}）状态为 {Status}，无需回滚", eventId, appKey ?? "null", entry.Status);
                 }
             }
         }
     }
 
     /// <inheritdoc/>
-    public bool IsProcessed(string eventId)
+    public bool IsProcessed(string eventId, string? appKey = null)
     {
         if (string.IsNullOrEmpty(eventId))
         {
             return false;
         }
 
+        var cacheKey = BuildCacheKey(eventId, appKey);
+
         lock (_lock)
         {
-            return _eventCache.TryGetValue(eventId, out var entry) && entry.Status == DeduplicationStatus.Completed;
+            return _eventCache.TryGetValue(cacheKey, out var entry) && entry.Status == DeduplicationStatus.Completed;
         }
     }
 
     /// <inheritdoc/>
-    public DeduplicationStatus GetStatus(string eventId)
+    public DeduplicationStatus GetStatus(string eventId, string? appKey = null)
     {
         if (string.IsNullOrEmpty(eventId))
         {
             return DeduplicationStatus.Pending;
         }
 
+        var cacheKey = BuildCacheKey(eventId, appKey);
+
         lock (_lock)
         {
-            if (_eventCache.TryGetValue(eventId, out var entry))
+            if (_eventCache.TryGetValue(cacheKey, out var entry))
             {
                 // 检查处理中超时
                 if (entry.Status == DeduplicationStatus.Processing &&
@@ -251,6 +265,17 @@ public class FeishuEventDeduplicator : IFeishuEventDeduplicator
 
             return DeduplicationStatus.Pending;
         }
+    }
+
+    /// <summary>
+    /// 构建缓存键，包含 AppKey 以实现多应用隔离
+    /// </summary>
+    /// <param name="eventId">事件唯一标识符</param>
+    /// <param name="appKey">应用键</param>
+    /// <returns>包含 AppKey 前缀的缓存键</returns>
+    private static string BuildCacheKey(string eventId, string? appKey)
+    {
+        return string.IsNullOrEmpty(appKey) ? eventId : $"{appKey}:{eventId}";
     }
 
     /// <summary>
@@ -333,6 +358,7 @@ public class FeishuEventDeduplicator : IFeishuEventDeduplicator
     private class EventCacheEntry
     {
         public string EventId { get; set; } = string.Empty;
+        public string? AppKey { get; set; }
         public DateTimeOffset ProcessedAt { get; set; }
         public DeduplicationStatus Status { get; set; } = DeduplicationStatus.Pending;
     }

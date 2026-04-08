@@ -175,7 +175,7 @@ public class SignatureValidator : ValidatorBase, ISignatureValidator
             {
                 var computedPrefix = computedSignature.Length > 8 ? computedSignature.Substring(0, 8) : computedSignature;
                 var signaturePrefix = signature.Length > 8 ? signature.Substring(0, 8) : signature;
-                _logger.LogWarning("签名验证失败: 计算 {ComputedSignaturePrefix}..., 期望 {ExpectedSignaturePrefix}..., AppKey: {AppKey}",
+                _logger.LogDebug("签名验证失败: 计算 {ComputedSignaturePrefix}..., 期望 {ExpectedSignaturePrefix}..., AppKey: {AppKey}",
                     computedPrefix + "...",
                     signaturePrefix + "...",
                     _currentAppKey ?? "null");
@@ -250,9 +250,9 @@ public class SignatureValidator : ValidatorBase, ISignatureValidator
                     var appConfig = options.GetAppConfig(_currentAppKey!);
                     if (appConfig != null)
                     {
-                        // 注意：当前 FeishuAppWebhookOptions 没有 EnforceHeaderSignatureValidation 属性
-                        // 这里使用全局配置
-                        _logger.LogDebug("使用应用 {AppKey} 的全局签名验证配置: {EnforceValidation}",
+                        // 优先使用应用级别的 EnforceHeaderSignatureValidation 配置
+                        enforceValidation = appConfig.EnforceHeaderSignatureValidation;
+                        _logger.LogDebug("使用应用 {AppKey} 的签名验证配置: {EnforceValidation}",
                             _currentAppKey, enforceValidation);
                     }
                 }
@@ -327,7 +327,7 @@ public class SignatureValidator : ValidatorBase, ISignatureValidator
                 var computedPrefix = computedSignature.Length > 8 ? computedSignature.Substring(0, 8) : computedSignature;
                 var headerPrefix = headerSignature is null ? "null" :
                     (headerSignature.Length > 8 ? headerSignature.Substring(0, 8) : headerSignature);
-                _logger.LogWarning("请求头签名验证失败: 计算 {ComputedSignaturePrefix}..., 期望 {ExpectedSignaturePrefix}..., AppKey: {AppKey}",
+                _logger.LogDebug("请求头签名验证失败: 计算 {ComputedSignaturePrefix}..., 期望 {ExpectedSignaturePrefix}..., AppKey: {AppKey}",
                     computedPrefix + "...",
                     headerPrefix + "...",
                     _currentAppKey ?? "null");

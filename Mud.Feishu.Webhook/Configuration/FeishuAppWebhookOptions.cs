@@ -39,6 +39,12 @@ public class FeishuAppWebhookOptions
     public bool EnforceHeaderSignatureValidation { get; set; } = false;
 
     /// <summary>
+    /// 是否启用请求体签名验证，默认 true
+    /// 如果 Middleware 中已验证 X-Lark-Signature 请求头，可禁用此选项以避免重复验证
+    /// </summary>
+    public bool EnableBodySignatureValidation { get; set; } = true;
+
+    /// <summary>
     /// 验证配置有效性
     /// </summary>
     /// <exception cref="InvalidOperationException">配置无效时抛出</exception>

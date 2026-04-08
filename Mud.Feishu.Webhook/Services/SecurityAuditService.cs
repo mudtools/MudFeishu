@@ -31,17 +31,8 @@ public class SecurityAuditService : ISecurityAuditService
         string? requestId = null,
         string? appKey = null)
     {
-        var message = $"安全验证失败 - 类型: {eventType}, IP: {clientIp}, 路径: {requestPath}, 详情: {details}";
-        if (!string.IsNullOrEmpty(requestId))
-        {
-            message += $", RequestId: {requestId}";
-        }
-        if (!string.IsNullOrEmpty(appKey))
-        {
-            message += $", AppKey: {appKey}";
-        }
-
-        _logger.LogWarning(message);
+        _logger.LogWarning("安全验证失败 - 类型: {EventType}, IP: {ClientIp}, 路径: {RequestPath}, 详情: {Details}, RequestId: {RequestId}, AppKey: {AppKey}",
+            eventType, clientIp, requestPath, details, requestId ?? "", appKey ?? "");
 
         // 这里可以扩展到外部安全审计系统，如SIEM等
         return Task.CompletedTask;
@@ -56,17 +47,8 @@ public class SecurityAuditService : ISecurityAuditService
         string? requestId = null,
         string? appKey = null)
     {
-        var message = $"安全验证成功 - 类型: {eventType}, IP: {clientIp}, 路径: {requestPath}, 详情: {details}";
-        if (!string.IsNullOrEmpty(requestId))
-        {
-            message += $", RequestId: {requestId}";
-        }
-        if (!string.IsNullOrEmpty(appKey))
-        {
-            message += $", AppKey: {appKey}";
-        }
-
-        _logger.LogInformation(message);
+        _logger.LogInformation("安全验证成功 - 类型: {EventType}, IP: {ClientIp}, 路径: {RequestPath}, 详情: {Details}, RequestId: {RequestId}, AppKey: {AppKey}",
+            eventType, clientIp, requestPath, details, requestId ?? "", appKey ?? "");
 
         // 这里可以扩展到外部安全审计系统，如SIEM等
         return Task.CompletedTask;

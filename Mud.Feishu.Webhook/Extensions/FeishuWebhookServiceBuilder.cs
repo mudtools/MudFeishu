@@ -213,6 +213,7 @@ public class FeishuWebhookServiceBuilder
 
     /// <summary>
     /// 为指定应用添加事件处理器（多应用模式）
+    /// 处理器仅注册到指定应用的 HandlerRegistry，不会注册到全局 IFeishuEventHandler 集合
     /// </summary>
     /// <typeparam name="THandler">处理器类型</typeparam>
     /// <param name="appKey">应用键</param>
@@ -226,12 +227,13 @@ public class FeishuWebhookServiceBuilder
         _handlerTypes.Add(typeof(THandler));
         _pendingHandlerRegistrations.Add((appKey, typeof(THandler)));
         _services.AddScoped<THandler>();
-        _services.AddScoped<IFeishuEventHandler, THandler>();
+        // 注意：不再全局注册到 IFeishuEventHandler，防止跨应用处理器泄漏
         return this;
     }
 
     /// <summary>
     /// 为指定应用添加事件拦截器（多应用模式）
+    /// 拦截器仅注册到指定应用的 InterceptorRegistry，不会注册到全局 IFeishuEventInterceptor 集合
     /// </summary>
     /// <typeparam name="TInterceptor">拦截器类型</typeparam>
     /// <param name="appKey">应用键</param>
@@ -245,7 +247,7 @@ public class FeishuWebhookServiceBuilder
         _interceptorTypes.Add(typeof(TInterceptor));
         _pendingInterceptorRegistrations.Add((appKey, typeof(TInterceptor)));
         _services.AddScoped<TInterceptor>();
-        _services.AddScoped<IFeishuEventInterceptor, TInterceptor>();
+        // 注意：不再全局注册到 IFeishuEventInterceptor，防止跨应用拦截器泄漏
         return this;
     }
 
@@ -539,10 +541,9 @@ public class FeishuWebhookServiceBuilder
         catch (Exception ex)
         {
             // 健康检查注册失败不应该影响主要功能
-            // 使用日志记录而非 Debug.WriteLine
-            var loggerFactory = _services.BuildServiceProvider().GetService<ILoggerFactory>();
-            var logger = loggerFactory?.CreateLogger<FeishuWebhookServiceBuilder>();
-            logger?.LogWarning(ex, "健康检查注册失败: {Message}", ex.Message);
+            // 注意：此处无法使用 ILogger，因为服务尚未构建完成
+            // 使用 Debug 输出作为最后的日志手段
+            System.Diagnostics.Debug.WriteLine($"健康检查注册失败: {ex.Message}");
         }
     }
 

@@ -23,8 +23,13 @@ public class CompositeFeishuEventValidator : ValidatorBase, IFeishuEventValidato
     private readonly INonceValidator _nonceValidator;
     private readonly ISubscriptionValidator _subscriptionValidator;
     private readonly ILogger<CompositeFeishuEventValidator> _logger;
-    private readonly IOptions<FeishuWebhookOptions> _options;
+    private readonly IOptionsMonitor<FeishuWebhookOptions> _optionsMonitor;
     private readonly IEnvironmentService _environmentService;
+
+    /// <summary>
+    /// 获取当前配置选项（支持热更新）
+    /// </summary>
+    private FeishuWebhookOptions Options => _optionsMonitor.CurrentValue;
 
     /// <summary>
     /// 初始化组合验证器
@@ -34,7 +39,7 @@ public class CompositeFeishuEventValidator : ValidatorBase, IFeishuEventValidato
     /// <param name="nonceValidator">Nonce 验证器</param>
     /// <param name="subscriptionValidator">订阅验证器</param>
     /// <param name="logger">日志记录器</param>
-    /// <param name="options">Webhook 配置选项</param>
+    /// <param name="optionsMonitor">Webhook 配置选项监视器</param>
     /// <param name="environmentService">环境服务</param>
     public CompositeFeishuEventValidator(
         ISignatureValidator signatureValidator,
@@ -42,7 +47,7 @@ public class CompositeFeishuEventValidator : ValidatorBase, IFeishuEventValidato
         INonceValidator nonceValidator,
         ISubscriptionValidator subscriptionValidator,
         ILogger<CompositeFeishuEventValidator> logger,
-        IOptions<FeishuWebhookOptions> options,
+        IOptionsMonitor<FeishuWebhookOptions> optionsMonitor,
         IEnvironmentService? environmentService = null)
     {
         _signatureValidator = signatureValidator ?? throw new ArgumentNullException(nameof(signatureValidator));
@@ -50,7 +55,7 @@ public class CompositeFeishuEventValidator : ValidatorBase, IFeishuEventValidato
         _nonceValidator = nonceValidator ?? throw new ArgumentNullException(nameof(nonceValidator));
         _subscriptionValidator = subscriptionValidator ?? throw new ArgumentNullException(nameof(subscriptionValidator));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _options = options ?? throw new ArgumentNullException(nameof(options));
+        _optionsMonitor = optionsMonitor ?? throw new ArgumentNullException(nameof(optionsMonitor));
         _environmentService = environmentService ?? new EnvironmentService();
     }
 
@@ -82,7 +87,7 @@ public class CompositeFeishuEventValidator : ValidatorBase, IFeishuEventValidato
         try
         {
             // 1. 首先验证时间戳
-            if (!_timestampValidator.ValidateTimestamp(timestamp, _options.Value.TimestampToleranceSeconds))
+            if (!_timestampValidator.ValidateTimestamp(timestamp, Options.TimestampToleranceSeconds))
             {
                 _logger.LogWarning("时间戳验证失败");
                 return false;
@@ -121,7 +126,7 @@ public class CompositeFeishuEventValidator : ValidatorBase, IFeishuEventValidato
         try
         {
             // 1. 首先验证时间戳
-            if (!_timestampValidator.ValidateTimestamp(timestamp, _options.Value.TimestampToleranceSeconds))
+            if (!_timestampValidator.ValidateTimestamp(timestamp, Options.TimestampToleranceSeconds))
             {
                 _logger.LogWarning("时间戳验证失败");
                 return false;

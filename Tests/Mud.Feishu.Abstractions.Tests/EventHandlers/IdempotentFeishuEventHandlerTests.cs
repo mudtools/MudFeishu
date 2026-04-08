@@ -80,7 +80,7 @@ public class IdempotentFeishuEventHandlerTests
             }))
         };
 
-        _deduplicatorMock.Setup(d => d.TryMarkAsProcessing(It.IsAny<string>())).Returns(false);
+        _deduplicatorMock.Setup(d => d.TryMarkAsProcessing(It.IsAny<string>(), It.IsAny<string?>())).Returns(false);
 
         // Act
         await _handler.HandleAsync(eventData, CancellationToken.None);
@@ -90,7 +90,7 @@ public class IdempotentFeishuEventHandlerTests
             It.IsAny<EventData>(),
             It.IsAny<TestEventData>(),
             It.IsAny<CancellationToken>()), Times.Once);
-        _deduplicatorMock.Verify(d => d.MarkAsCompleted(It.IsAny<string>()), Times.Once);
+        _deduplicatorMock.Verify(d => d.MarkAsCompleted(It.IsAny<string>(), It.IsAny<string?>()), Times.Once);
     }
 
     [Fact]
@@ -103,7 +103,7 @@ public class IdempotentFeishuEventHandlerTests
             EventType = "test.idempotent.event"
         };
 
-        _deduplicatorMock.Setup(d => d.TryMarkAsProcessing(It.IsAny<string>())).Returns(true);
+        _deduplicatorMock.Setup(d => d.TryMarkAsProcessing(It.IsAny<string>(), It.IsAny<string?>())).Returns(true);
 
         // Act
         await _handler.HandleAsync(eventData, CancellationToken.None);
@@ -113,7 +113,7 @@ public class IdempotentFeishuEventHandlerTests
             It.IsAny<EventData>(),
             It.IsAny<TestEventData>(),
             It.IsAny<CancellationToken>()), Times.Never);
-        _deduplicatorMock.Verify(d => d.MarkAsCompleted(It.IsAny<string>()), Times.Never);
+        _deduplicatorMock.Verify(d => d.MarkAsCompleted(It.IsAny<string>(), It.IsAny<string?>()), Times.Never);
     }
 
     [Fact]
@@ -131,7 +131,7 @@ public class IdempotentFeishuEventHandlerTests
             }))
         };
 
-        _deduplicatorMock.Setup(d => d.TryMarkAsProcessing(It.IsAny<string>())).Returns(false);
+        _deduplicatorMock.Setup(d => d.TryMarkAsProcessing(It.IsAny<string>(), It.IsAny<string?>())).Returns(false);
         _eventProcessorMock.Setup(p => p.ProcessBusinessLogicAsync(
             It.IsAny<EventData>(),
             It.IsAny<TestEventData>(),
@@ -141,8 +141,8 @@ public class IdempotentFeishuEventHandlerTests
         // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(() => _handler.HandleAsync(eventData, CancellationToken.None));
 
-        _deduplicatorMock.Verify(d => d.RollbackProcessing(It.IsAny<string>()), Times.Once);
-        _deduplicatorMock.Verify(d => d.MarkAsCompleted(It.IsAny<string>()), Times.Never);
+        _deduplicatorMock.Verify(d => d.RollbackProcessing(It.IsAny<string>(), It.IsAny<string?>()), Times.Once);
+        _deduplicatorMock.Verify(d => d.MarkAsCompleted(It.IsAny<string>(), It.IsAny<string?>()), Times.Never);
     }
 
     [Fact]
@@ -170,7 +170,7 @@ public class IdempotentFeishuEventHandlerTests
             It.IsAny<TestEventData>(),
             It.IsAny<CancellationToken>()), Times.Once);
         // 当业务键为空时，不会调用 TryMarkAsProcessing，直接处理事件
-        _deduplicatorMock.Verify(d => d.TryMarkAsProcessing(It.IsAny<string>()), Times.Never);
+        _deduplicatorMock.Verify(d => d.TryMarkAsProcessing(It.IsAny<string>(), It.IsAny<string?>()), Times.Never);
     }
 
     // 测试处理器 - 返回空业务键

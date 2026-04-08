@@ -225,6 +225,7 @@ public class FeishuMultiAppMiddleware
         {
             stopwatch.Stop();
             activity?.SetTag("request.duration_ms", stopwatch.ElapsedMilliseconds);
+            _logger.LogInformation("请求处理完成, 耗时: {DurationMs}ms, AppKey: {AppKey}", stopwatch.ElapsedMilliseconds, appKey ?? "unknown");
         }
     }
 

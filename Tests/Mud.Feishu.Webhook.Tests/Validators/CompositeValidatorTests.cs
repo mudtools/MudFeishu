@@ -27,7 +27,7 @@ public class CompositeValidatorTests
     private readonly Mock<INonceValidator> _nonceValidatorMock;
     private readonly Mock<ISubscriptionValidator> _subscriptionValidatorMock;
     private readonly Mock<ILogger<CompositeFeishuEventValidator>> _loggerMock;
-    private readonly Mock<IOptions<FeishuWebhookOptions>> _optionsMock;
+    private readonly Mock<IOptionsMonitor<FeishuWebhookOptions>> _optionsMock;
     private readonly FeishuWebhookOptions _options;
     private readonly CompositeFeishuEventValidator _validator;
 
@@ -38,7 +38,7 @@ public class CompositeValidatorTests
         _nonceValidatorMock = new Mock<INonceValidator>();
         _subscriptionValidatorMock = new Mock<ISubscriptionValidator>();
         _loggerMock = new Mock<ILogger<CompositeFeishuEventValidator>>();
-        _optionsMock = new Mock<IOptions<FeishuWebhookOptions>>();
+        _optionsMock = new Mock<IOptionsMonitor<FeishuWebhookOptions>>();
 
         _options = new FeishuWebhookOptions
         {
@@ -46,7 +46,7 @@ public class CompositeValidatorTests
             EnforceHeaderSignatureValidation = true
         };
 
-        _optionsMock.Setup(x => x.Value).Returns(_options);
+        _optionsMock.Setup(x => x.CurrentValue).Returns(_options);
 
         _validator = new CompositeFeishuEventValidator(
             _signatureValidatorMock.Object,

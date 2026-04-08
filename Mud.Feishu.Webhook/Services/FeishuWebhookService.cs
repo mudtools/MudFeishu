@@ -30,6 +30,8 @@ public class FeishuWebhookService : IFeishuWebhookService
     private readonly IFeishuEventDistributedDeduplicator? _distributedDeduplicator;
     private readonly ISecurityAuditService? _securityAuditService;
     private readonly IEncryptKeyProvider _encryptKeyProvider;
+    private readonly FeishuWebhookHandlerRegistry _handlerRegistry;
+    private readonly IServiceProvider _serviceProvider;
 
     /// <summary>
     /// 当前应用键（多应用场景，使用 AsyncLocal 确保线程安全）
@@ -52,6 +54,8 @@ public class FeishuWebhookService : IFeishuWebhookService
         FeishuWebhookConcurrencyService concurrencyService,
         IFeishuEventDeduplicator deduplicator,
         IEncryptKeyProvider encryptKeyProvider,
+        FeishuWebhookHandlerRegistry handlerRegistry,
+        IServiceProvider serviceProvider,
         ISecurityAuditService? securityAuditService,
         IFeishuEventDistributedDeduplicator? distributedDeduplicator = null)
     {
@@ -64,6 +68,8 @@ public class FeishuWebhookService : IFeishuWebhookService
         _concurrencyService = concurrencyService;
         _deduplicator = deduplicator;
         _encryptKeyProvider = encryptKeyProvider ?? throw new ArgumentNullException(nameof(encryptKeyProvider));
+        _handlerRegistry = handlerRegistry ?? throw new ArgumentNullException(nameof(handlerRegistry));
+        _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
         _distributedDeduplicator = distributedDeduplicator;
         _securityAuditService = securityAuditService;
 
@@ -185,7 +191,7 @@ public class FeishuWebhookService : IFeishuWebhookService
     /// <inheritdoc />
     public async Task<(bool Success, string? ErrorReason)> HandleEventAsync(EventData eventData, CancellationToken cancellationToken = default)
     {
-        return await HandleEventWithInterceptorsAsync(eventData, null, cancellationToken);
+        return await HandleEventWithInterceptorsAsync(eventData, _currentAppKey.Value, cancellationToken);
     }
 
     /// <summary>
@@ -231,11 +237,11 @@ public class FeishuWebhookService : IFeishuWebhookService
 
             try
             {
-                // 分发事件到处理器
-                await _handlerFactory.HandleEventParallelAsync(eventData.EventType, eventData, timeoutCts.Token);
+                // 分发事件到处理器（优先使用应用专属处理器，回退到全局工厂）
+                await DispatchEventAsync(eventData.EventType, eventData, appKey, timeoutCts.Token);
 
                 // 处理成功，标记为已完成
-                await MarkDeduplicationCompletedAsync(eventData.EventId);
+                await MarkDeduplicationCompletedAsync(eventData.EventId, appKey);
 
                 // 记录事件处理成功
                 FeishuMetricsHelper.RecordEventHandlingSuccess(eventData.EventType);
@@ -247,7 +253,7 @@ public class FeishuWebhookService : IFeishuWebhookService
             }
             catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
             {
-                await RollbackDeduplicationAsync(eventData.EventId);
+                await RollbackDeduplicationAsync(eventData.EventId, appKey);
 
                 _logger.LogWarning("事件处理超时: {EventType}, 事件ID: {EventId}, 超时时间: {TimeoutMs}ms, AppKey: {AppKey}",
                     eventData.EventType, eventData.EventId, Options.EventHandlingTimeoutMs, appKey ?? "null");
@@ -257,7 +263,7 @@ public class FeishuWebhookService : IFeishuWebhookService
         }
         catch (OperationCanceledException)
         {
-            await RollbackDeduplicationAsync(eventData.EventId);
+            await RollbackDeduplicationAsync(eventData.EventId, appKey);
             _logger.LogWarning("事件处理被取消，EventId: {EventId}, AppKey: {AppKey}", eventData.EventId, appKey ?? "null");
             FeishuMetricsHelper.RecordEventHandlingFailure(eventData.EventType, "canceled");
             throw;
@@ -265,7 +271,7 @@ public class FeishuWebhookService : IFeishuWebhookService
         catch (Exception ex)
         {
             processingException = ex;
-            await RollbackDeduplicationAsync(eventData.EventId);
+            await RollbackDeduplicationAsync(eventData.EventId, appKey);
             _logger.LogError(ex, "处理飞书事件时发生错误，EventId: {EventId}, AppKey: {AppKey}", eventData.EventId, appKey ?? "null");
 
             // 记录事件处理失败
@@ -411,7 +417,7 @@ public class FeishuWebhookService : IFeishuWebhookService
             {
                 var computedPrefix = computedSignature.Length > 8 ? computedSignature.Substring(0, 8) : computedSignature;
                 var signaturePrefix = request.Signature.Length > 8 ? request.Signature.Substring(0, 8) : request.Signature;
-                _logger.LogWarning("签名验证失败: 计算 {ComputedSignaturePrefix}..., 期望 {ExpectedSignaturePrefix}..., AppKey: {AppKey}",
+                _logger.LogDebug("签名验证失败: 计算 {ComputedSignaturePrefix}..., 期望 {ExpectedSignaturePrefix}..., AppKey: {AppKey}",
                     computedPrefix + "...",
                     signaturePrefix + "...",
                     _currentAppKey.Value ?? "null");
@@ -486,7 +492,7 @@ public class FeishuWebhookService : IFeishuWebhookService
         }
         else
         {
-            return (_deduplicator.TryMarkAsProcessing(eventId), false);
+            return (_deduplicator.TryMarkAsProcessing(eventId, appKey), false);
         }
     }
 
@@ -501,7 +507,7 @@ public class FeishuWebhookService : IFeishuWebhookService
         }
         else
         {
-            _deduplicator.MarkAsCompleted(eventId);
+            _deduplicator.MarkAsCompleted(eventId, appKey);
         }
     }
 
@@ -516,7 +522,38 @@ public class FeishuWebhookService : IFeishuWebhookService
         }
         else
         {
-            _deduplicator.RollbackProcessing(eventId);
+            _deduplicator.RollbackProcessing(eventId, appKey);
+        }
+    }
+
+    /// <summary>
+    /// 分发事件到处理器（支持按 AppKey 隔离）
+    /// 优先使用应用专属处理器，无专属处理器时回退到全局工厂
+    /// </summary>
+    private async Task DispatchEventAsync(string eventType, EventData eventData, string? appKey, CancellationToken cancellationToken)
+    {
+        // 如果有应用专属处理器，优先使用
+        if (!string.IsNullOrEmpty(appKey) && _handlerRegistry.HasHandlers(appKey!))
+        {
+            var handlerTypes = _handlerRegistry.GetHandlers(appKey!);
+            _logger.LogDebug("使用应用 {AppKey} 的专属处理器（{Count} 个）分发事件: {EventType}",
+                appKey, handlerTypes.Count, eventType);
+
+            var tasks = new List<Task>();
+            foreach (var handlerType in handlerTypes)
+            {
+                var handler = (IFeishuEventHandler)_serviceProvider.GetRequiredService(handlerType);
+                tasks.Add(handler.HandleAsync(eventData, cancellationToken));
+            }
+
+            await Task.WhenAll(tasks);
+        }
+        else
+        {
+            // 回退到全局处理器工厂
+            _logger.LogDebug("使用全局处理器工厂分发事件: {EventType}, AppKey: {AppKey}",
+                eventType, appKey ?? "null");
+            await _handlerFactory.HandleEventParallelAsync(eventType, eventData, cancellationToken);
         }
     }
 }

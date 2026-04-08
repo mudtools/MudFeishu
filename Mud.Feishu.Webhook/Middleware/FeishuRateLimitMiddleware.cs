@@ -16,8 +16,7 @@ namespace Mud.Feishu.Webhook;
 public class FeishuRateLimitMiddleware : IDisposable
 {
     private readonly RequestDelegate _next;
-    private readonly FeishuWebhookOptions _webhookOptions;
-    private readonly RateLimitOptions _rateLimitOptions;
+    private readonly IOptionsMonitor<FeishuWebhookOptions> _optionsMonitor;
     private readonly ILogger<FeishuRateLimitMiddleware> _logger;
 
     // 使用并发字典和滑动窗口计数器：ConcurrentDictionary<(AppKey, IP), (Count, WindowStart)>
@@ -30,16 +29,20 @@ public class FeishuRateLimitMiddleware : IDisposable
     private readonly Timer _cleanupTimer;
 
     /// <summary>
+    /// 获取当前配置选项（支持热更新）
+    /// </summary>
+    private FeishuWebhookOptions Options => _optionsMonitor.CurrentValue;
+
+    /// <summary>
     /// 构造函数
     /// </summary>
     public FeishuRateLimitMiddleware(
         RequestDelegate next,
-        IOptions<FeishuWebhookOptions> webhookOptions,
+        IOptionsMonitor<FeishuWebhookOptions> optionsMonitor,
         ILogger<FeishuRateLimitMiddleware> logger)
     {
         _next = next ?? throw new ArgumentNullException(nameof(next));
-        _webhookOptions = webhookOptions.Value;
-        _rateLimitOptions = _webhookOptions.RateLimit;
+        _optionsMonitor = optionsMonitor ?? throw new ArgumentNullException(nameof(optionsMonitor));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
         // 初始化定时清理任务，每分钟清理一次过期记录
@@ -57,34 +60,37 @@ public class FeishuRateLimitMiddleware : IDisposable
     /// </summary>
     public async Task InvokeAsync(HttpContext context)
     {
+        var options = Options;
+        var rateLimitOptions = options.RateLimit;
+
         // 如果未启用限流，直接放行
-        if (!_rateLimitOptions.EnableRateLimit)
+        if (!rateLimitOptions.EnableRateLimit)
         {
             await _next(context);
             return;
         }
 
-        // 检查是否为 Webhook 请求
-        if (!context.Request.Path.StartsWithSegments($"/{_webhookOptions.GlobalRoutePrefix}", StringComparison.OrdinalIgnoreCase))
+        // 检查是否为 Webhook 请求（使用动态前缀，与 MultiAppMiddleware 保持一致）
+        if (!context.Request.Path.StartsWithSegments($"/{options.GlobalRoutePrefix}", StringComparison.OrdinalIgnoreCase))
         {
             await _next(context);
             return;
         }
 
-        // 提取应用键
-        var appKey = ExtractAppKeyFromPath(context.Request.Path.Value ?? string.Empty);
+        // 提取应用键（使用动态前缀）
+        var appKey = ExtractAppKeyFromPath(context.Request.Path.Value ?? string.Empty, options.GlobalRoutePrefix);
 
         // 获取客户端 IP
         var clientIp = GetClientIp(context);
         if (string.IsNullOrEmpty(clientIp))
         {
             _logger.LogWarning("无法获取客户端 IP，拒绝请求");
-            await WriteTooManyRequestsResponse(context, "无法识别客户端 IP");
+            await WriteTooManyRequestsResponse(context, "无法识别客户端 IP", rateLimitOptions);
             return;
         }
 
         // 检查是否在白名单中
-        if (!string.IsNullOrEmpty(clientIp) && _rateLimitOptions.WhitelistIPs.Contains(clientIp!))
+        if (!string.IsNullOrEmpty(clientIp) && rateLimitOptions.WhitelistIPs.Contains(clientIp!))
         {
             _logger.LogDebug("客户端 IP {ClientIP} 在白名单中，跳过限流", clientIp);
             await _next(context);
@@ -100,7 +106,7 @@ public class FeishuRateLimitMiddleware : IDisposable
         if (_requestCounts.TryGetValue(rateLimitKey!, out var counter))
         {
             // 检查是否超出时间窗口
-            if ((now - counter.WindowStart).TotalSeconds > _rateLimitOptions.WindowSizeSeconds)
+            if ((now - counter.WindowStart).TotalSeconds > rateLimitOptions.WindowSizeSeconds)
             {
                 // 新窗口，重置计数
                 _requestCounts[rateLimitKey!] = (1, now);
@@ -108,13 +114,13 @@ public class FeishuRateLimitMiddleware : IDisposable
             else
             {
                 // 同一窗口，增加计数
-                if (counter.Count >= _rateLimitOptions.MaxRequestsPerWindow)
+                if (counter.Count >= rateLimitOptions.MaxRequestsPerWindow)
                 {
                     _logger.LogWarning("客户端 IP {ClientIP}（应用: {AppKey}）请求频率超出限制：{Count}/{MaxRequests} 在 {WindowSize}秒内",
-                        clientIp, appKey ?? "global", counter.Count, _rateLimitOptions.MaxRequestsPerWindow, _rateLimitOptions.WindowSizeSeconds);
+                        clientIp, appKey ?? "global", counter.Count, rateLimitOptions.MaxRequestsPerWindow, rateLimitOptions.WindowSizeSeconds);
 
                     await WriteTooManyRequestsResponse(context,
-                        $"{_rateLimitOptions.TooManyRequestsMessage}，请在 {_rateLimitOptions.WindowSizeSeconds} 秒后重试");
+                        $"{rateLimitOptions.TooManyRequestsMessage}，请在 {rateLimitOptions.WindowSizeSeconds} 秒后重试", rateLimitOptions);
                     return;
                 }
 
@@ -167,22 +173,32 @@ public class FeishuRateLimitMiddleware : IDisposable
     }
 
     /// <summary>
-    /// 从路径中提取 AppKey
+    /// 从路径中提取 AppKey（使用动态前缀，与 MultiAppMiddleware 保持一致）
     /// </summary>
     /// <example>
     /// /feishu/app1 -> app1
-    /// /feishu/app2/events -> app2
+    /// /lark/app2/events -> app2
     /// </example>
-    private static string? ExtractAppKeyFromPath(string path)
+    private static string? ExtractAppKeyFromPath(string path, string globalRoutePrefix)
     {
-        var globalPrefix = $"/feishu";
+        var globalPrefix = "/" + globalRoutePrefix;
 
         if (!path.StartsWith(globalPrefix, StringComparison.OrdinalIgnoreCase))
         {
             return null;
         }
 
-        var remainingPath = path.Substring(globalPrefix.Length).Trim('/');
+        var afterPrefixIndex = globalPrefix.Length;
+
+        // 路径正好等于前缀（如 "/feishu"）→ 无效
+        if (afterPrefixIndex >= path.Length)
+            return null;
+
+        // 必须紧跟一个 '/'（即路径形如 "/feishu/..."）
+        if (path[afterPrefixIndex] != '/')
+            return null;
+
+        var remainingPath = path.Substring(afterPrefixIndex + 1);
         var segments = remainingPath.Split('/');
 
         if (segments.Length > 0 && !string.IsNullOrEmpty(segments[0]))
@@ -198,9 +214,10 @@ public class FeishuRateLimitMiddleware : IDisposable
     /// </summary>
     private void CleanupExpiredWindows(object? state)
     {
+        var rateLimitOptions = Options.RateLimit;
         var now = DateTime.UtcNow;
         var expiredKeys = _requestCounts
-            .Where(kvp => (now - kvp.Value.WindowStart).TotalSeconds > _rateLimitOptions.WindowSizeSeconds * 2) // 保留2倍窗口时间，避免刚限流的IP被立即清理
+            .Where(kvp => (now - kvp.Value.WindowStart).TotalSeconds > rateLimitOptions.WindowSizeSeconds * 2) // 保留2倍窗口时间，避免刚限流的IP被立即清理
             .Select(kvp => kvp.Key)
             .ToList();
 
@@ -243,9 +260,9 @@ public class FeishuRateLimitMiddleware : IDisposable
     /// <summary>
     /// 写入 429 响应
     /// </summary>
-    private async Task WriteTooManyRequestsResponse(HttpContext context, string message)
+    private async Task WriteTooManyRequestsResponse(HttpContext context, string message, RateLimitOptions rateLimitOptions)
     {
-        context.Response.StatusCode = _rateLimitOptions.TooManyRequestsStatusCode;
+        context.Response.StatusCode = rateLimitOptions.TooManyRequestsStatusCode;
         context.Response.ContentType = "application/json";
 
         var errorResponse = new

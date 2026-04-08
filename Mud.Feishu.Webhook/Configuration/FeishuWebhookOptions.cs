@@ -145,6 +145,11 @@ public class FeishuWebhookOptions
         foreach (var appConfig in Apps)
         {
             var appKey = appConfig.Key;
+
+            // 验证 AppKey 格式（防止路由歧义）
+            if (!System.Text.RegularExpressions.Regex.IsMatch(appKey, @"^[a-zA-Z0-9_-]{1,64}$"))
+                throw new InvalidOperationException($"应用键 '{appKey}' 格式无效，仅允许字母、数字、下划线和连字符，长度1-64");
+
             var config = appConfig.Value;
 
             if (string.IsNullOrEmpty(config.AppKey))

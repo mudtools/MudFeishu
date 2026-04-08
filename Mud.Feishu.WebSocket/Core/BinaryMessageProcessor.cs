@@ -8,6 +8,7 @@
 using Microsoft.Extensions.Logging;
 using Mud.Feishu.Abstractions.Services;
 using Mud.Feishu.WebSocket.SocketEventArgs;
+using System.Buffers;
 using System.Text;
 using System.Text.Json;
 
@@ -30,6 +31,11 @@ public class BinaryMessageProcessor : IDisposable
     private readonly IFeishuSeqIDDeduplicator? _seqIdDeduplicator;
     private readonly MessageSequenceValidator? _sequenceValidator;
     private readonly IUnifiedDeduplicationMiddleware? _unifiedDeduplicationMiddleware;
+
+    /// <summary>
+    /// 大对象阈值（字节），超过此阈值使用 ArrayPool 优化
+    /// </summary>
+    private const int LargeObjectThreshold = 85_000;
 
     /// <summary>
     /// 二进制消息接收事件
@@ -104,12 +110,32 @@ public class BinaryMessageProcessor : IDisposable
                 // 如果消息接收完成
                 if (endOfMessage)
                 {
-                    var completeData = _binaryDataStream.ToArray();
+                    // 使用 GetBuffer() 获取内部缓冲区引用，避免 ToArray() 的复制
+                    // 注意：缓冲区长度可能大于实际数据长度，需要使用 Length 属性
+                    var buffer = _binaryDataStream.GetBuffer();
+                    var actualLength = (int)_binaryDataStream.Length;
                     var receiveDuration = DateTime.UtcNow - _binaryDataReceiveStartTime;
 
                     if (_options.EnableLogging)
                         _logger.LogInformation("二进制消息接收完成，大小: {Size} 字节，耗时: {Duration}ms",
-                            completeData.Length, receiveDuration.TotalMilliseconds);
+                            actualLength, receiveDuration.TotalMilliseconds);
+
+                    // 创建实际大小的数组（避免 LOH 分配的优化：对于大消息使用 ArrayPool）
+                    byte[] completeData;
+                    if (actualLength > LargeObjectThreshold)
+                    {
+                        // 大消息：从 ArrayPool 租用数组，处理后归还
+                        var rentedArray = ArrayPool<byte>.Shared.Rent(actualLength);
+                        Buffer.BlockCopy(buffer, 0, rentedArray, 0, actualLength);
+                        completeData = new ReadOnlyMemory<byte>(rentedArray, 0, actualLength).ToArray();
+                        ArrayPool<byte>.Shared.Return(rentedArray);
+                    }
+                    else
+                    {
+                        // 小消息：直接创建数组
+                        completeData = new byte[actualLength];
+                        Buffer.BlockCopy(buffer, 0, completeData, 0, actualLength);
+                    }
 
                     // 异步处理完整的二进制消息并跟踪任务
                     var processingTask = Task.Run(async () =>
@@ -184,7 +210,19 @@ public class BinaryMessageProcessor : IDisposable
             {
                 if (_options.EnableLogging)
                     _logger.LogDebug("尝试使用 ProtoBuf 反序列化二进制消息");
-                var frame = ProtoBuf.Serializer.Deserialize<EventProtoData>(new MemoryStream(completeData));
+
+                // 使用 Memory<byte> 的 Pin 方法或创建 MemoryStream
+                // 对于 netstandard2.0
+#if NETSTANDARD2_0
+                // 使用 Buffer.BlockCopy 替代 MemoryMarshal
+                var dataArray = new byte[completeData.Length];
+                Buffer.BlockCopy(completeData, 0, dataArray, 0, completeData.Length);
+                var frame = ProtoBuf.Serializer.Deserialize<EventProtoData>(new MemoryStream(dataArray));
+#else
+                // 对于 .NET Core 2.1+
+                var span = new ReadOnlySpan<byte>(completeData);
+                var frame = ProtoBuf.Serializer.Deserialize<EventProtoData>(span);
+#endif
 
                 if (_options.EnableLogging)
                     _logger.LogDebug("成功反序列化为 Frame 对象: Service={Service}, Method={Method}, PayloadType={PayloadType}, SeqID={SeqID}",

@@ -8,6 +8,27 @@
 namespace Mud.Feishu.WebSocket;
 
 /// <summary>
+/// 消息队列背压策略
+/// </summary>
+public enum QueueBackpressureStrategy
+{
+    /// <summary>
+    /// 丢弃最旧的消息（默认）
+    /// </summary>
+    DropOldest,
+
+    /// <summary>
+    /// 丢弃新消息
+    /// </summary>
+    DropNewest,
+
+    /// <summary>
+    /// 阻塞等待直到队列有空间（可能导致延迟）
+    /// </summary>
+    Block
+}
+
+/// <summary>
 /// 飞书WebSocket客户端配置选项
 /// </summary>
 public class FeishuWebSocketOptions
@@ -103,6 +124,16 @@ public class FeishuWebSocketOptions
     /// 消息队列最大容量，默认为1000条
     /// </summary>
     public int MessageQueueCapacity { get; set; } = 1000;
+
+    /// <summary>
+    /// 消息队列背压策略，默认为丢弃最旧的消息
+    /// </summary>
+    public QueueBackpressureStrategy BackpressureStrategy { get; set; } = QueueBackpressureStrategy.DropOldest;
+
+    /// <summary>
+    /// 背压阻塞等待超时时间（毫秒），仅当 BackpressureStrategy 为 Block 时有效，默认为5000毫秒
+    /// </summary>
+    public int BackpressureBlockTimeoutMs { get; set; } = 5000;
 
     /// <summary>
     /// 空队列检查间隔（毫秒），默认为100毫秒

@@ -18,7 +18,7 @@ public class MessageSequenceValidator
     private readonly FeishuWebSocketOptions _options;
     private readonly object _lock = new();
     private ulong? _lastProcessedSequenceNumber;
-    private readonly HashSet<ulong> _recentlyProcessedNumbers = new();
+    private readonly SortedSet<ulong> _recentlyProcessedNumbers = new();
     private DateTime _lastResetTime = DateTime.UtcNow;
 
     /// <summary>
@@ -169,9 +169,12 @@ public class MessageSequenceValidator
         }
         else if (_recentlyProcessedNumbers.Count > RecentNumbersWindow)
         {
-            // 超过窗口大小，移除最旧的序号
-            var oldest = _recentlyProcessedNumbers.Min();
-            _recentlyProcessedNumbers.Remove(oldest);
+            // 使用 SortedSet 的 Min 属性（O(1) 操作）
+            // 移除最旧的序号直到窗口大小
+            while (_recentlyProcessedNumbers.Count > RecentNumbersWindow)
+            {
+                _recentlyProcessedNumbers.Remove(_recentlyProcessedNumbers.Min);
+            }
         }
     }
 

@@ -11,6 +11,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Mud.Feishu.Abstractions.Services;
 using Mud.Feishu.WebSocket;
+using Mud.Feishu.WebSocket.Configuration;
 using Mud.Feishu.WebSocket.Handlers;
 
 namespace Microsoft.Extensions.DependencyInjection;
@@ -32,6 +33,9 @@ public class FeishuWebSocketServiceBuilder
     internal FeishuWebSocketServiceBuilder(IServiceCollection services)
     {
         _services = services ?? throw new ArgumentNullException(nameof(services));
+        
+        // 注册配置验证器
+        _services.AddSingleton<IValidateOptions<FeishuWebSocketOptions>, FeishuWebSocketOptionsValidator>();
     }
 
     /// <summary>

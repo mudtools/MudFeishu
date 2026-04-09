@@ -46,22 +46,6 @@ public abstract class IdempotentFeishuEventHandler<T> : DefaultFeishuEventHandle
         _appKeyAccessor = appKeyAccessor;
     }
 
-    /// <summary>
-    /// 构造函数（支持从 IServiceProvider 获取 IAppKeyAccessor）
-    /// </summary>
-    /// <param name="businessDeduplicator">业务层去重服务</param>
-    /// <param name="logger">日志记录器</param>
-    /// <param name="serviceProvider">服务提供程序（用于获取 IAppKeyAccessor）</param>
-    public IdempotentFeishuEventHandler(
-        IFeishuEventDeduplicator businessDeduplicator,
-        ILogger logger,
-        IServiceProvider serviceProvider)
-        : base(logger)
-    {
-        _businessDeduplicator = businessDeduplicator ?? throw new ArgumentNullException(nameof(businessDeduplicator));
-        _appKeyAccessor = serviceProvider?.GetService(typeof(IAppKeyAccessor)) as IAppKeyAccessor;
-    }
-
 
     /// <summary>
     /// 处理飞书事件（带业务层幂等性保护）

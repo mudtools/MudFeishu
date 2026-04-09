@@ -26,7 +26,8 @@
 /Mud.Feishu.WebSocket/obj
 /Mud.Feishu.WebSocket.Demo/bin
 /Mud.Feishu.WebSocket.Demo/obj
-/Mud.Feishu.WebSocket.Demo
+/Mud.Feishu.EventCallback/bin
+/Mud.Feishu.EventCallback/obj
 /bin
 /Mud.Feishu.Abstractions/bin
 /Mud.Feishu.Abstractions/obj
@@ -45,7 +46,7 @@
 /Demos/Mud.Feishu.Demo/obj
 /Demos/Mud.Feishu.Webhook.Demo
 /Demos/Mud.Feishu.Webhook.Demo/obj
-/Demos/Mud.Feishu.WebSocket.Demo
+/Demos/Mud.Feishu.WebSocket.Demo/bin
 /Demos/Mud.Feishu.WebSocket.Demo/obj
 /Demos/TaskManageDemo/backend/logs
 /Demos/TaskManageDemo/backend/obj

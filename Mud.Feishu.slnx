@@ -18,6 +18,7 @@
   <Folder Name="/Sources/">
     <Project Path="Mud.Feishu.Abstractions/Mud.Feishu.Abstractions.csproj" Id="b04973d2-c477-49a7-a00f-04288a8cabac" />
     <Project Path="Mud.Feishu.Authentication/Mud.Feishu.Authentication.csproj" />
+    <Project Path="Mud.Feishu.EventCallback/Mud.Feishu.EventCallback.csproj" Id="21f330ea-c8c3-4d9e-9f72-0e9e9f4d28c1" />
     <Project Path="Mud.Feishu.Redis/Mud.Feishu.Redis.csproj" />
     <Project Path="Mud.Feishu.Webhook/Mud.Feishu.Webhook.csproj" />
     <Project Path="Mud.Feishu.WebSocket/Mud.Feishu.WebSocket.csproj" />

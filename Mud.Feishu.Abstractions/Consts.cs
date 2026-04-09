@@ -32,7 +32,7 @@ internal class Consts
     /// </summary>
     public const int PageSize = 10;
 
-    public const string HandlerNamespace = "Mud.Feishu.EventHandlers";
+    public const string HandlerNamespace = "Mud.Feishu.EventCallback";
     public const string InheritedFrom = "IdempotentFeishuEventHandler";
     public const string InheritedFromObject = "DefaultFeishuObjectEventHandler";
 }

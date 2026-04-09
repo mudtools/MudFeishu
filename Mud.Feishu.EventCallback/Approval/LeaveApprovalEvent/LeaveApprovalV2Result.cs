@@ -7,7 +7,7 @@
 
 using Mud.Feishu.DataModels;
 
-namespace Mud.Feishu.EventCallback.DataModels.Approval;
+namespace Mud.Feishu.EventCallback.Approval;
 
 
 /// <summary>

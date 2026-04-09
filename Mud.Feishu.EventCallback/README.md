@@ -105,7 +105,7 @@ dotnet add package Mud.Feishu.EventCallback
 继承自动生成的事件处理器基类，实现业务逻辑：
 
 ```csharp
-using Mud.Feishu.EventCallback.DataModels.IM;
+using Mud.Feishu.EventCallback.IM;
 
 public class MyMessageHandler : MessageReceiveEventHandler
 {
@@ -134,7 +134,7 @@ public class MyMessageHandler : MessageReceiveEventHandler
 ### 2. 处理审批事件
 
 ```csharp
-using Mud.Feishu.EventCallback.DataModels.Approval;
+using Mud.Feishu.EventCallback.Approval;
 
 public class LeaveApprovalHandler : LeaveApprovalEventHandler
 {
@@ -163,7 +163,7 @@ public class LeaveApprovalHandler : LeaveApprovalEventHandler
 ### 3. 处理组织架构事件
 
 ```csharp
-using Mud.Feishu.EventCallback.DataModels.Organization;
+using Mud.Feishu.EventCallback.Organization;
 
 public class UserCreatedHandler : UserCreateEventHandler
 {

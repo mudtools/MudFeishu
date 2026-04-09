@@ -80,6 +80,14 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
+echo Building Mud.Feishu.EventCallback...
+dotnet build Mud.Feishu.EventCallback --configuration Release
+if %errorlevel% neq 0 (
+    echo Error: Failed to build Mud.Feishu.EventCallback
+    pause
+    exit /b 1
+)
+
 REM Build Redis project if exists
 if exist "Mud.Feishu.Redis" (
     echo Building Mud.Feishu.Redis...
@@ -164,6 +172,15 @@ echo Publishing Mud.Feishu.Authentication...
 dotnet pack Mud.Feishu.Authentication --configuration Release --output "%OUTPUT_DIR%" --version-suffix %VERSION_SUFFIX%
 if %errorlevel% neq 0 (
     echo Error: Failed to publish Mud.Feishu.Authentication
+    pause
+    exit /b 1
+)
+
+echo.
+echo Publishing Mud.Feishu.EventCallback...
+dotnet pack Mud.Feishu.EventCallback --configuration Release --output "%OUTPUT_DIR%" --version-suffix %VERSION_SUFFIX%
+if %errorlevel% neq 0 (
+    echo Error: Failed to publish Mud.Feishu.EventCallback
     pause
     exit /b 1
 )

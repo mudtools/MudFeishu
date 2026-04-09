@@ -53,11 +53,7 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable
         _webSocketClient.Disconnected += OnClientDisconnected;
         _webSocketClient.MessageReceived += OnClientMessageReceived;
         _webSocketClient.Error += OnClientError;
-
-        if (_webSocketClient is FeishuWebSocketClient concreteClient)
-        {
-            concreteClient.HeartbeatTimeout += OnClientHeartbeatTimeout;
-        }
+        _webSocketClient.HeartbeatTimeout += OnClientHeartbeatTimeout;
     }
 
     /// <summary>
@@ -464,6 +460,8 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable
                 _tokenExpiryTime = DateTime.MinValue;
             }
 
+            UnsubscribeClientEvents();
+
             // 异步释放客户端资源（如果客户端实现了IAsyncDisposable）
             if (_webSocketClient is IAsyncDisposable asyncDisposableClient)
             {
@@ -549,6 +547,8 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable
                 _tokenExpiryTime = DateTime.MinValue;
             }
 
+            UnsubscribeClientEvents();
+
             _webSocketClient?.Dispose();
             _startStopLock?.Dispose();
         }
@@ -563,5 +563,17 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable
 
         // 调用 GC.SuppressFinalize 以防止终结器被调用
         GC.SuppressFinalize(this);
+    }
+
+    /// <summary>
+    /// 取消订阅客户端事件，防止内存泄漏
+    /// </summary>
+    private void UnsubscribeClientEvents()
+    {
+        _webSocketClient.Connected -= OnClientConnected;
+        _webSocketClient.Disconnected -= OnClientDisconnected;
+        _webSocketClient.MessageReceived -= OnClientMessageReceived;
+        _webSocketClient.Error -= OnClientError;
+        _webSocketClient.HeartbeatTimeout -= OnClientHeartbeatTimeout;
     }
 }

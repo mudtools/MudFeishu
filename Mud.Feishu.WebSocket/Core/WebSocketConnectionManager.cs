@@ -405,6 +405,12 @@ public class WebSocketConnectionManager : IDisposable
                 return;
             }
         }
+
+        var receivedBytes = messageStream.Length;
+        _logger.LogWarning("分片消息重组中断，已接收 {ReceivedBytes} 字节但未收到 EndOfMessage 信号。连接状态: {State}, 取消请求: {Cancelled}",
+            receivedBytes, _webSocket?.State, cancellationToken.IsCancellationRequested);
+
+        OnError(new InvalidOperationException($"分片消息重组中断，已接收 {receivedBytes} 字节但未完成"), "分片消息重组中断");
     }
 
     /// <summary>

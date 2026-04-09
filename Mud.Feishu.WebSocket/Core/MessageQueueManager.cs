@@ -42,7 +42,7 @@ public class MessageQueueManager
         return _messageProcessors.Remove(processor);
     }
 
-    public bool Enqueue(string message, CancellationToken cancellationToken = default)
+    public async Task<bool> EnqueueAsync(string message, CancellationToken cancellationToken = default)
     {
         if (!_options.EnableMessageQueue)
             return false;
@@ -116,7 +116,7 @@ public class MessageQueueManager
                         break;
                     }
 
-                    Task.Delay(10, cancellationToken).Wait(cancellationToken);
+                    await Task.Delay(10, cancellationToken);
                 }
 
                 if (_messageQueue.Count < _options.MessageQueueCapacity)

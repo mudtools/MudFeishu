@@ -52,7 +52,7 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
     private readonly EventHandler _onPongReceived;
 
     // 连接状态线程安全保护 - 使用 Volatile + Interlocked 替代 lock 避免竞态条件
-    private int _connectionState = 0; // 0=未连接, 1=已连接, 2=连接中, 3=重连中
+    private int _connectionState = 0; // 0=未连接, 1=已连接, 2=连接中
 
     // 处理器引用
     private PingPongMessageHandler? _pingPongHandler;
@@ -341,6 +341,7 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
     {
         _cancellationTokenSource?.Cancel();
         await _connectionManager.DisconnectAsync(cancellationToken);
+        Volatile.Write(ref _connectionState, 0);
     }
 
     /// <summary>
@@ -552,7 +553,7 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
                             await _messageRouter.RouteMessageAsync(message, cancellationToken);
                         }
 
-                        _messageQueueManager.Enqueue(message, cancellationToken);
+                        await _messageQueueManager.EnqueueAsync(message, cancellationToken);
                     }
                     catch (Exception ex)
                     {
@@ -729,6 +730,13 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
         {
             _binaryProcessor.BinaryMessageReceived -= _onBinaryMessageReceived;
             _binaryProcessor.Error -= _onErrorFromBinary;
+        }
+
+        // 取消心跳管理器事件订阅
+        if (_heartbeatManager != null)
+        {
+            _heartbeatManager.HeartbeatTimeout -= OnHeartbeatTimeout;
+            _heartbeatManager.ConnectionLost -= OnHeartbeatConnectionLost;
         }
     }
 }

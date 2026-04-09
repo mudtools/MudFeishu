@@ -130,10 +130,14 @@ public class ReconnectionOrchestrator : IReconnectionOrchestrator, IDisposable
                     if (reconnected)
                     {
                         _totalReconnectCount++;
+                        var attemptCount = _currentAttempt;
+                        _currentAttempt = 0;
+                        _reconnectStartTime = null;
+                        _lastError = null;
                         _logger.LogInformation("重连成功 (尝试次数: {Attempt}, 总次数: {Total})",
-                            _currentAttempt, _totalReconnectCount);
+                            attemptCount, _totalReconnectCount);
 
-                        OnReconnectSucceeded(_currentAttempt);
+                        OnReconnectSucceeded(attemptCount);
                         break;
                     }
                 }

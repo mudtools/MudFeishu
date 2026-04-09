@@ -1,5 +1,5 @@
 // -----------------------------------------------------------------------
-//  作者：Mud Studio  版权所有 (c) Mud Studio 2025
+//  作者：Mud Studio  版权所有 (c) Mud Studio 2026   
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
@@ -21,12 +21,15 @@ public class AuthenticationManager
     private readonly ILogger<AuthenticationManager> _logger;
     private readonly Func<string, Task> _sendMessageCallback;
     private readonly SessionManager? _sessionManager;
+    private readonly Random _random = new();
     private bool _isAuthenticated = false;
     private readonly FeishuWebSocketOptions _options;
     private readonly SemaphoreSlim _authLock = new(1, 1);
     private int _authRetryCount = 0;
     private int _totalAuthFailures = 0;
     private DateTime _lastAuthFailureTime = DateTime.MinValue;
+    private TaskCompletionSource<bool>? _authCompletionSource;
+    private readonly object _authCompletionLock = new();
 
     // 认证失败冷却期管理
     private readonly Dictionary<string, DateTime> _authFailureCooldowns = new();
@@ -120,8 +123,7 @@ public class AuthenticationManager
                     var maxDelay = TimeSpan.FromMilliseconds(_options.MaxReconnectDelayMs);
 
                     // 添加随机抖动，避免多个客户端同时重试造成雪崩
-                    var random = new Random();
-                    var jitter = random.Next(0, 1000); // 0-1000ms 的随机抖动
+                    var jitter = _random.Next(0, 1000); // 0-1000ms 的随机抖动
                     var delay = exponentialDelay > maxDelay ? maxDelay : exponentialDelay;
                     delay = TimeSpan.FromMilliseconds(delay.TotalMilliseconds + jitter);
 
@@ -154,26 +156,47 @@ public class AuthenticationManager
                 _logger.LogInformation("正在进行WebSocket认证...");
             }
 
-            _isAuthenticated = false; // 重置认证状态
+            _isAuthenticated = false;
 
-            // 创建认证消息
             var authMessage = new AuthMessage
             {
                 Timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
                 Data = new AuthData
                 {
                     AppAccessToken = appAccessToken,
-                    // 尝试使用缓存的 session_id 进行会话恢复
                     SessionId = _sessionManager?.GetSessionIdForReconnect()
                 }
             };
 
             var authJson = JsonSerializer.Serialize(authMessage, JsonOptions.Default);
+
+            lock (_authCompletionLock)
+            {
+                _authCompletionSource?.TrySetCanceled(cancellationToken);
+                _authCompletionSource = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            }
+
             await _sendMessageCallback(authJson);
 
             if (_options.EnableLogging)
             {
                 _logger.LogInformation("已发送认证消息，等待响应...");
+            }
+
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            cts.CancelAfter(TimeSpan.FromSeconds(30));
+
+            try
+            {
+                var authSuccess = await _authCompletionSource.Task.ConfigureAwait(false);
+                if (!authSuccess)
+                {
+                    throw new InvalidOperationException("WebSocket认证被服务端拒绝");
+                }
+            }
+            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+            {
+                throw new TimeoutException("WebSocket认证响应超时（30秒）");
             }
         }
         catch (Exception ex)
@@ -191,7 +214,6 @@ public class AuthenticationManager
 
             AuthenticationFailed?.Invoke(this, errorArgs);
 
-            // 如果是最后一次尝试，抛出异常；否则由外层重试
             if (_authRetryCount >= _options.MaxReconnectAttempts)
             {
                 throw new InvalidOperationException($"WebSocket认证失败，已达到最大重试次数 {_options.MaxReconnectAttempts}", ex);
@@ -215,13 +237,16 @@ public class AuthenticationManager
                 _isAuthenticated = true;
                 _logger.LogInformation("WebSocket认证成功: {Message}", authResponse.Message);
 
-                // 记录认证成功指标
                 FeishuMetricsHelper.RecordEventHandlingSuccess("auth");
 
-                // 如果响应中包含 session_id，保存到会话管理器
                 if (!string.IsNullOrEmpty(authResponse.SessionId) && _sessionManager != null)
                 {
                     _sessionManager.SetSessionId(authResponse.SessionId);
+                }
+
+                lock (_authCompletionLock)
+                {
+                    _authCompletionSource?.TrySetResult(true);
                 }
 
                 Authenticated?.Invoke(this, EventArgs.Empty);
@@ -232,20 +257,22 @@ public class AuthenticationManager
                 _totalAuthFailures++;
                 _lastAuthFailureTime = DateTime.UtcNow;
 
-                // 记录认证失败指标
                 var errorType = authResponse?.Code.ToString() ?? "unknown";
                 FeishuMetricsHelper.RecordEventHandlingFailure("auth", errorType);
 
                 _logger.LogError("WebSocket认证失败: {Code} - {Message}, 总失败次数: {TotalFailures}",
                     authResponse?.Code, authResponse?.Message, _totalAuthFailures);
 
-                // 认证失败时重置会话
                 _sessionManager?.ResetSession();
 
-                // 根据不同的错误码记录详细信息
                 var errorCode = authResponse?.Code;
                 var errorMessage = authResponse?.Message;
                 LogDetailedAuthError(errorCode, errorMessage);
+
+                lock (_authCompletionLock)
+                {
+                    _authCompletionSource?.TrySetResult(false);
+                }
 
                 var errorArgs = new WebSocketErrorEventArgs
                 {
@@ -263,8 +290,12 @@ public class AuthenticationManager
             _isAuthenticated = false;
             _logger.LogError(ex, "解析认证响应失败: {Message}", responseMessage);
 
-            // 记录认证失败指标
             FeishuMetricsHelper.RecordEventHandlingFailure("auth", "json_parse_error");
+
+            lock (_authCompletionLock)
+            {
+                _authCompletionSource?.TrySetException(ex);
+            }
 
             var errorArgs = new WebSocketErrorEventArgs
             {
@@ -281,8 +312,12 @@ public class AuthenticationManager
             _isAuthenticated = false;
             _logger.LogError(ex, "处理认证响应时发生错误");
 
-            // 记录认证失败指标
             FeishuMetricsHelper.RecordEventHandlingFailure("auth", "unknown_error");
+
+            lock (_authCompletionLock)
+            {
+                _authCompletionSource?.TrySetException(ex);
+            }
 
             var errorArgs = new WebSocketErrorEventArgs
             {
@@ -303,6 +338,13 @@ public class AuthenticationManager
     {
         _isAuthenticated = false;
         _authRetryCount = 0;
+
+        lock (_authCompletionLock)
+        {
+            _authCompletionSource?.TrySetCanceled();
+            _authCompletionSource = null;
+        }
+
         _logger.LogDebug("已重置认证状态");
     }
 

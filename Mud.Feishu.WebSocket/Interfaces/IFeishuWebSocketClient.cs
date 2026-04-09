@@ -23,6 +23,11 @@ public interface IFeishuWebSocketClient : IDisposable
     WebSocketState State { get; }
 
     /// <summary>
+    /// 是否已连接
+    /// </summary>
+    bool IsConnected { get; }
+
+    /// <summary>
     /// 是否已认证
     /// </summary>
     bool IsAuthenticated { get; }

@@ -331,7 +331,6 @@ public class WebSocketConnectionManager : IDisposable
         if (_webSocket == null)
             throw new InvalidOperationException("WebSocket未初始化");
 
-        // 复用缓冲区以减少GC压力
         _receiveBuffer ??= new byte[_options.InitialReceiveBufferSize];
 
         try
@@ -339,12 +338,20 @@ public class WebSocketConnectionManager : IDisposable
             while (_webSocket.State == WebSocketState.Open && !cancellationToken.IsCancellationRequested)
             {
                 var result = await _webSocket.ReceiveAsync(new ArraySegment<byte>(_receiveBuffer), cancellationToken);
-                await messageHandler(new ArraySegment<byte>(_receiveBuffer, 0, result.Count), result);
 
                 if (result.MessageType == WebSocketMessageType.Close)
                 {
                     await HandleCloseMessageAsync(result);
                     break;
+                }
+
+                if (result.EndOfMessage)
+                {
+                    await messageHandler(new ArraySegment<byte>(_receiveBuffer, 0, result.Count), result);
+                }
+                else
+                {
+                    await HandleFragmentedMessageAsync(result, messageHandler, cancellationToken);
                 }
             }
         }
@@ -357,6 +364,46 @@ public class WebSocketConnectionManager : IDisposable
         {
             _logger.LogError(ex, "接收消息时发生错误");
             OnError(ex, "接收消息错误");
+        }
+    }
+
+    /// <summary>
+    /// 处理分片消息的重组
+    /// </summary>
+    /// <param name="firstResult">第一帧的接收结果</param>
+    /// <param name="messageHandler">消息处理器回调</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    private async Task HandleFragmentedMessageAsync(
+        WebSocketReceiveResult firstResult,
+        Func<ArraySegment<byte>, WebSocketReceiveResult, Task> messageHandler,
+        CancellationToken cancellationToken)
+    {
+        using var messageStream = new MemoryStream();
+
+        messageStream.Write(_receiveBuffer, 0, firstResult.Count);
+
+        while (_webSocket?.State == WebSocketState.Open && !cancellationToken.IsCancellationRequested)
+        {
+            var result = await _webSocket.ReceiveAsync(new ArraySegment<byte>(_receiveBuffer), cancellationToken);
+
+            if (result.MessageType == WebSocketMessageType.Close)
+            {
+                await HandleCloseMessageAsync(result);
+                return;
+            }
+
+            messageStream.Write(_receiveBuffer, 0, result.Count);
+
+            if (result.EndOfMessage)
+            {
+                var completeData = messageStream.ToArray();
+                var combinedResult = new WebSocketReceiveResult(
+                    completeData.Length,
+                    firstResult.MessageType,
+                    true);
+                await messageHandler(new ArraySegment<byte>(completeData), combinedResult);
+                return;
+            }
         }
     }
 

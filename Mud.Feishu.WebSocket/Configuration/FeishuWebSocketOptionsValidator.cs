@@ -7,7 +7,7 @@
 
 using Microsoft.Extensions.Options;
 
-namespace Mud.Feishu.WebSocket.Configuration;
+namespace Mud.Feishu.WebSocket;
 
 /// <summary>
 /// FeishuWebSocketOptions 配置验证器

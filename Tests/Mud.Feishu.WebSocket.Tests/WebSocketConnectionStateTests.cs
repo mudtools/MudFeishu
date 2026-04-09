@@ -174,29 +174,17 @@ public class WebSocketConnectionStateTests
     [Fact]
     public void LastError_ShouldBeSettable()
     {
-        // Arrange
-        var state = WebSocketConnectionState.Connected(DateTime.UtcNow);
-        var error = new Exception("Test error");
+        var state = WebSocketConnectionState.Disconnected(new Exception("Test error"));
 
-        // Act
-        state.LastError = error;
-
-        // Assert
-        state.LastError.Should().Be(error);
+        state.LastError.Should().NotBeNull();
     }
 
     [Fact]
     public void ReconnectCount_ShouldBeSettable()
     {
-        // Arrange
-        var state = WebSocketConnectionState.Connected(DateTime.UtcNow);
-        var reconnectCount = 10;
+        var state = WebSocketConnectionState.Connected(DateTime.UtcNow, reconnectCount: 10);
 
-        // Act
-        state.ReconnectCount = reconnectCount;
-
-        // Assert
-        state.ReconnectCount.Should().Be(reconnectCount);
+        state.ReconnectCount.Should().Be(10);
     }
 
     [Fact]

@@ -10,6 +10,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Mud.Feishu.Abstractions;
+using Mud.Feishu.WebSocket.Core;
 using Mud.Feishu.WebSocket.SocketEventArgs;
 
 namespace Mud.Feishu.WebSocket.Tests.Core;
@@ -44,7 +45,7 @@ public class BugFixValidationTests
     {
         const string fieldName = "HeartbeatTimeoutThreshold";
 
-        var type = typeof(FeishuWebSocketClient);
+        var type = typeof(HeartbeatManager);
         var field = type.GetField(fieldName, System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
         var value = field?.GetValue(null);
 

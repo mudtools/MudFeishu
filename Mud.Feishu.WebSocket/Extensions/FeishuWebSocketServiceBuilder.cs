@@ -11,7 +11,6 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Mud.Feishu.Abstractions.Services;
 using Mud.Feishu.WebSocket;
-using Mud.Feishu.WebSocket.Configuration;
 using Mud.Feishu.WebSocket.Handlers;
 
 namespace Microsoft.Extensions.DependencyInjection;
@@ -33,7 +32,7 @@ public class FeishuWebSocketServiceBuilder
     internal FeishuWebSocketServiceBuilder(IServiceCollection services)
     {
         _services = services ?? throw new ArgumentNullException(nameof(services));
-        
+
         // 注册配置验证器
         _services.AddSingleton<IValidateOptions<FeishuWebSocketOptions>, FeishuWebSocketOptionsValidator>();
     }
@@ -217,24 +216,6 @@ public class FeishuWebSocketServiceBuilder
             throw new InvalidOperationException(
                 "至少需要注册一个事件处理器。请使用 AddHandler<T>() 方法添加处理器。");
         }
-
-        // 验证 FeishuWebSocketOptions 配置
-        var serviceProvider = _services.BuildServiceProvider();
-        try
-        {
-            var options = serviceProvider.GetService<IOptions<FeishuWebSocketOptions>>();
-            if (options != null && options.Value != null)
-            {
-                options.Value.Validate();
-            }
-        }
-        finally
-        {
-            if (serviceProvider is IDisposable disposable)
-            {
-                disposable.Dispose();
-            }
-        }
     }
 
     /// <summary>
@@ -325,6 +306,28 @@ public class FeishuWebSocketServiceBuilder
             return new ReconnectionOrchestrator(logger, strategy, manager, options);
         });
 
+        // 注册SessionManager（单例）
+        if (!_services.Any(s => s.ServiceType == typeof(SessionManager)))
+        {
+            _services.AddSingleton<SessionManager>(serviceProvider =>
+            {
+                var logger = serviceProvider.GetRequiredService<ILogger<SessionManager>>();
+                var options = serviceProvider.GetRequiredService<IOptions<FeishuWebSocketOptions>>().Value;
+                return new SessionManager(logger, options);
+            });
+        }
+
+        // 注册MessageSequenceValidator（单例）
+        if (!_services.Any(s => s.ServiceType == typeof(MessageSequenceValidator)))
+        {
+            _services.AddSingleton<MessageSequenceValidator>(serviceProvider =>
+            {
+                var logger = serviceProvider.GetRequiredService<ILogger<MessageSequenceValidator>>();
+                var options = serviceProvider.GetRequiredService<IOptions<FeishuWebSocketOptions>>().Value;
+                return new MessageSequenceValidator(logger, options);
+            });
+        }
+
         // 注册WebSocket客户端
         _services.AddSingleton<IFeishuWebSocketClient>(serviceProvider =>
         {
@@ -334,7 +337,9 @@ public class FeishuWebSocketServiceBuilder
             var interceptors = serviceProvider.GetRequiredService<IFeishuEventInterceptor[]>();
             var options = serviceProvider.GetRequiredService<IOptions<FeishuWebSocketOptions>>().Value;
             var seqIdDeduplicator = serviceProvider.GetService<IFeishuSeqIDDeduplicator>();
-            return new FeishuWebSocketClient(logger, eventHandlerFactory, loggerFactory, interceptors, options, seqIdDeduplicator);
+            var sessionManager = serviceProvider.GetService<SessionManager>();
+            var sequenceValidator = serviceProvider.GetService<MessageSequenceValidator>();
+            return new FeishuWebSocketClient(logger, eventHandlerFactory, loggerFactory, interceptors, options, seqIdDeduplicator, sessionManager, sequenceValidator);
         });
 
         // 注册WebSocket管理器

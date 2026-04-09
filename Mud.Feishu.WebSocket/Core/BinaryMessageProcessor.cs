@@ -8,7 +8,6 @@
 using Microsoft.Extensions.Logging;
 using Mud.Feishu.Abstractions.Services;
 using Mud.Feishu.WebSocket.SocketEventArgs;
-using System.Buffers;
 using System.Text;
 using System.Text.Json;
 
@@ -33,7 +32,7 @@ public class BinaryMessageProcessor : IDisposable
     private readonly IUnifiedDeduplicationMiddleware? _unifiedDeduplicationMiddleware;
 
     /// <summary>
-    /// 大对象阈值（字节），超过此阈值使用 ArrayPool 优化
+    /// 大对象阈值（字节），超过此阈值使用 ToArray() 避免 GetBuffer() 的额外数据
     /// </summary>
     private const int LargeObjectThreshold = 85_000;
 
@@ -120,19 +119,13 @@ public class BinaryMessageProcessor : IDisposable
                         _logger.LogInformation("二进制消息接收完成，大小: {Size} 字节，耗时: {Duration}ms",
                             actualLength, receiveDuration.TotalMilliseconds);
 
-                    // 创建实际大小的数组（避免 LOH 分配的优化：对于大消息使用 ArrayPool）
                     byte[] completeData;
                     if (actualLength > LargeObjectThreshold)
                     {
-                        // 大消息：从 ArrayPool 租用数组，处理后归还
-                        var rentedArray = ArrayPool<byte>.Shared.Rent(actualLength);
-                        Buffer.BlockCopy(buffer, 0, rentedArray, 0, actualLength);
-                        completeData = new ReadOnlyMemory<byte>(rentedArray, 0, actualLength).ToArray();
-                        ArrayPool<byte>.Shared.Return(rentedArray);
+                        completeData = _binaryDataStream.ToArray();
                     }
                     else
                     {
-                        // 小消息：直接创建数组
                         completeData = new byte[actualLength];
                         Buffer.BlockCopy(buffer, 0, completeData, 0, actualLength);
                     }

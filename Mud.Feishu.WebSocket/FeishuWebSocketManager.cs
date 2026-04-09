@@ -1,5 +1,5 @@
 // -----------------------------------------------------------------------
-//  作者：Mud Studio  版权所有 (c) Mud Studio 2025
+//  作者：Mud Studio  版权所有 (c) Mud Studio 2026   
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
@@ -53,6 +53,11 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable
         _webSocketClient.Disconnected += OnClientDisconnected;
         _webSocketClient.MessageReceived += OnClientMessageReceived;
         _webSocketClient.Error += OnClientError;
+
+        if (_webSocketClient is FeishuWebSocketClient concreteClient)
+        {
+            concreteClient.HeartbeatTimeout += OnClientHeartbeatTimeout;
+        }
     }
 
     /// <summary>
@@ -92,42 +97,6 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable
     /// <summary>
     /// 使用指数退避策略重试操作
     /// </summary>
-    /// <typeparam name="T">返回类型</typeparam>
-    /// <param name="operation">要重试的操作</param>
-    /// <param name="maxRetries">最大重试次数</param>
-    /// <param name="operationName">操作名称（用于日志）</param>
-    /// <param name="cancellationToken">取消令牌</param>
-    /// <returns>操作结果</returns>
-    private async Task<T> RetryWithExponentialBackoffAsync<T>(
-        Func<Task<T>> operation,
-        int maxRetries,
-        string operationName,
-        CancellationToken cancellationToken)
-    {
-        for (int i = 0; i <= maxRetries; i++)
-        {
-            try
-            {
-                return await operation();
-            }
-            catch (Exception ex) when (i < maxRetries)
-            {
-                // 使用配置的 RetryDelayMs 进行指数退避
-                var delay = TimeSpan.FromMilliseconds(Math.Pow(2, i) * _appContext.Config.RetryDelayMs);
-                _logger.LogWarning(ex, "{OperationName}失败，将在{Delay}毫秒后重试 (尝试 {RetryCount}/{MaxRetries})",
-                         operationName, delay.TotalMilliseconds, i + 1, maxRetries + 1);
-
-                await Task.Delay(delay, cancellationToken);
-            }
-        }
-
-        // 最后一次尝试，不捕获异常
-        _logger.LogError("{OperationName}失败，已达到最大重试次数 {MaxRetries}", operationName, maxRetries + 1);
-
-        // 执行最后一次尝试
-        return await operation();
-    }
-
     // 监控字段
     private DateTime _connectedTime = DateTime.MinValue;
     private int _reconnectCount = 0;
@@ -215,7 +184,8 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable
             var maxRetries = _appContext.Config.RetryCount;
             WsEndpointResult? wsEndpointData = null;
 
-            wsEndpointData = await RetryWithExponentialBackoffAsync(
+            wsEndpointData = await RetryHelper.RetryWithExponentialBackoffAsync(
+                _logger,
                 async () =>
                 {
                     var wsEndpointResult = await _appContext.Authentication.GetWebSocketEndpointAsync(credentials, cancellationToken);
@@ -226,6 +196,7 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable
                     return wsEndpointResult.Data;
                 },
                 maxRetries,
+                _appContext.Config.RetryDelayMs,
                 "获取WebSocket端点",
                 cancellationToken);
 
@@ -420,6 +391,15 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable
                 _logger.LogInformation("连接持续时间: {Duration}", e.ConnectionDuration);
         }
 
+        Disconnected?.Invoke(this, e);
+    }
+
+    /// <summary>
+    /// 客户端心跳超时事件处理
+    /// </summary>
+    private void OnClientHeartbeatTimeout(object? sender, WebSocketCloseEventArgs e)
+    {
+        _logger.LogWarning("心跳超时，触发断开事件: {Description}", e.CloseStatusDescription);
         Disconnected?.Invoke(this, e);
     }
 

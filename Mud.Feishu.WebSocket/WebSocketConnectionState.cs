@@ -14,46 +14,22 @@ namespace Mud.Feishu.WebSocket;
 /// </summary>
 public record WebSocketConnectionState
 {
-    /// <summary>
-    /// 是否已连接
-    /// </summary>
     public bool IsConnected { get; private set; }
 
-    /// <summary>
-    /// WebSocket状态
-    /// </summary>
     public WebSocketState State { get; private set; }
 
-    /// <summary>
-    /// 连接建立时间
-    /// </summary>
     public DateTime ConnectedTime { get; private set; } = DateTime.MinValue;
 
-    /// <summary>
-    /// 连接持续时间
-    /// </summary>
     public TimeSpan ConnectionDuration => ConnectedTime == DateTime.MinValue
         ? TimeSpan.Zero
         : DateTime.UtcNow - ConnectedTime;
 
-    /// <summary>
-    /// 重连次数
-    /// </summary>
-    public int ReconnectCount { get; set; }
+    public int ReconnectCount { get; private set; }
 
-    /// <summary>
-    /// 最后一次错误
-    /// </summary>
-    public Exception? LastError { get; set; }
+    public Exception? LastError { get; private set; }
 
-    /// <summary>
-    /// 最后一次错误时间
-    /// </summary>
     public DateTime? LastErrorTime { get; private set; }
 
-    /// <summary>
-    /// 是否正在重连
-    /// </summary>
     public bool IsReconnecting { get; private set; }
 
     /// <summary>

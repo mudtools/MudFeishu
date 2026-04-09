@@ -1,5 +1,5 @@
 // -----------------------------------------------------------------------
-//  作者：Mud Studio  版权所有 (c) Mud Studio 2025
+//  作者：Mud Studio  版权所有 (c) Mud Studio 2026   
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
@@ -9,11 +9,9 @@ using Microsoft.Extensions.Logging;
 using Mud.Feishu.Abstractions.Metrics;
 using Mud.Feishu.Abstractions.Services;
 using Mud.Feishu.DataModels.WsEndpoint;
-using Mud.Feishu.WebSocket.DataModels;
 using Mud.Feishu.WebSocket.Exceptions;
 using Mud.Feishu.WebSocket.Handlers;
 using Mud.Feishu.WebSocket.SocketEventArgs;
-using System.Collections.Concurrent;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
@@ -34,15 +32,14 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
     private readonly MessageRouter _messageRouter;
     private readonly BinaryMessageProcessor _binaryProcessor;
     private readonly EventSubscriptionManager _subscriptionManager;
-    private readonly ConcurrentQueue<string> _messageQueue = new();
-    private readonly List<Func<string, Task>> _messageProcessors = new();
+    private readonly HeartbeatManager _heartbeatManager;
+    private readonly MessageQueueManager _messageQueueManager;
     private readonly ILoggerFactory _loggerFactory;
     private bool _disposed = false;
     private CancellationTokenSource? _cancellationTokenSource;
     private readonly IFeishuSeqIDDeduplicator? _seqIdDeduplicator;
     private readonly MessageSequenceValidator? _sequenceValidator;
     private readonly SessionManager? _sessionManager;
-    private readonly SemaphoreSlim _messageProcessingSemaphore;
 
     // 保存事件处理器委托引用，用于正确的取消订阅，避免内存泄漏
     private readonly EventHandler<EventArgs> _onConnected;
@@ -52,46 +49,18 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
     private readonly EventHandler<WebSocketErrorEventArgs> _onErrorFromAuth;
     private readonly EventHandler<WebSocketBinaryMessageEventArgs> _onBinaryMessageReceived;
     private readonly EventHandler<WebSocketErrorEventArgs> _onErrorFromBinary;
+    private readonly EventHandler _onPongReceived;
 
-    // 心跳相关状态 - 使用锁保护线程安全
-    private DateTime _lastPongTime = DateTime.MinValue;
-    private int _heartbeatMissedCount = 0;
-    private readonly object _heartbeatLock = new();
-
-    /// <summary>
-    /// 心跳超时阈值，连续超过此次数将触发重连
-    /// </summary>
-    private const int HeartbeatTimeoutThreshold = 3;
-
-    // 连接状态线程安全保护
+    // 连接状态线程安全保护 - 使用 Volatile + Interlocked 替代 lock 避免竞态条件
     private int _connectionState = 0; // 0=未连接, 1=已连接, 2=连接中, 3=重连中
-    private readonly object _connectionStateLock = new();
 
     // 处理器引用
     private PingPongMessageHandler? _pingPongHandler;
     /// <inheritdoc/>
-    public WebSocketState State
-    {
-        get
-        {
-            lock (_connectionStateLock)
-            {
-                return _connectionManager.State;
-            }
-        }
-    }
+    public WebSocketState State => _connectionManager.State;
 
     /// <inheritdoc/>
-    public bool IsConnected
-    {
-        get
-        {
-            lock (_connectionStateLock)
-            {
-                return _connectionState == 1 && _connectionManager.IsConnected;
-            }
-        }
-    }
+    public bool IsConnected => Volatile.Read(ref _connectionState) == 1 && _connectionManager.IsConnected;
 
     /// <inheritdoc/>
     public bool IsAuthenticated => _authManager.IsAuthenticated;
@@ -108,6 +77,11 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
     public event EventHandler<EventArgs>? Authenticated;
     /// <inheritdoc/>
     public event EventHandler<WebSocketBinaryMessageEventArgs>? BinaryMessageReceived;
+
+    /// <summary>
+    /// 心跳超时事件，当连续心跳超时达到阈值时触发
+    /// </summary>
+    public event EventHandler<WebSocketCloseEventArgs>? HeartbeatTimeout;
 
     /// <summary>
     /// 初始化飞书WebSocket客户端
@@ -138,9 +112,6 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
         _seqIdDeduplicator = seqIdDeduplicator;
         _sessionManager = sessionManager;
         _sequenceValidator = sequenceValidator;
-
-        // 初始化并发控制信号量
-        _messageProcessingSemaphore = new SemaphoreSlim(_options.MaxConcurrentMessageProcessing, _options.MaxConcurrentMessageProcessing);
 
         // 初始化事件处理器委托，保存引用以便正确取消订阅
         _onConnected = (s, e) =>
@@ -179,6 +150,10 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
             var handler = Error;
             handler?.Invoke(this, e);
         };
+        _onPongReceived = (object? s, EventArgs e) =>
+        {
+            _heartbeatManager.OnPongReceived();
+        };
 
         // 初始化组件
         _connectionManager = new WebSocketConnectionManager(_loggerFactory.CreateLogger<WebSocketConnectionManager>(), _options, _loggerFactory);
@@ -186,6 +161,8 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
         _messageRouter = new MessageRouter(_loggerFactory.CreateLogger<MessageRouter>(), _options);
         _binaryProcessor = new BinaryMessageProcessor(_loggerFactory.CreateLogger<BinaryMessageProcessor>(), _connectionManager, _options, _messageRouter, _seqIdDeduplicator, _sequenceValidator);
         _subscriptionManager = new EventSubscriptionManager(_loggerFactory.CreateLogger<EventSubscriptionManager>(), _options, (message) => SendMessageAsync(message));
+        _heartbeatManager = new HeartbeatManager(_loggerFactory.CreateLogger<HeartbeatManager>(), _options, (message) => SendMessageAsync(message), () => _connectionManager.IsConnected);
+        _messageQueueManager = new MessageQueueManager(_loggerFactory.CreateLogger<MessageQueueManager>(), _options);
 
         // 订阅组件事件
         SubscribeToComponentEvents();
@@ -199,18 +176,23 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
     /// </summary>
     private void SubscribeToComponentEvents()
     {
-        // 连接管理器事件 - 使用保存的委托引用
         _connectionManager.Connected += _onConnected;
         _connectionManager.Disconnected += _onDisconnected;
         _connectionManager.Error += _onErrorFromConnectionManager;
 
-        // 认证管理器事件 - 使用保存的委托引用
         _authManager.Authenticated += _onAuthenticated;
         _authManager.AuthenticationFailed += _onErrorFromAuth;
 
-        // 二进制处理器事件 - 使用保存的委托引用
         _binaryProcessor.BinaryMessageReceived += _onBinaryMessageReceived;
         _binaryProcessor.Error += _onErrorFromBinary;
+
+        _heartbeatManager.HeartbeatTimeout += OnHeartbeatTimeout;
+        _heartbeatManager.ConnectionLost += OnHeartbeatConnectionLost;
+        _messageQueueManager.Error += (s, e) =>
+        {
+            var handler = Error;
+            handler?.Invoke(this, e);
+        };
     }
 
     /// <summary>
@@ -223,10 +205,9 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
             _options,
             (message) => SendMessageAsync(message));
 
-        // 订阅 PongReceived 事件以更新最后一次 Pong 时间
         if (pingPongHandler is IPongHandler pongHandler)
         {
-            pongHandler.PongReceived += OnPongReceived;
+            pongHandler.PongReceived += _onPongReceived;
         }
 
         var authHandler = new AuthMessageHandler(
@@ -265,18 +246,21 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
     }
 
     /// <summary>
-    /// 处理 Pong 消息接收事件
+    /// 心跳超时事件处理
     /// </summary>
-    private void OnPongReceived(object? sender, EventArgs e)
+    private void OnHeartbeatTimeout(object? sender, WebSocketCloseEventArgs e)
     {
-        lock (_heartbeatLock)
-        {
-            _lastPongTime = DateTime.UtcNow;
-            _heartbeatMissedCount = 0;
-        }
+        var handler = HeartbeatTimeout;
+        handler?.Invoke(this, e);
+    }
 
-        if (_options.EnableLogging)
-            _logger.LogDebug("已更新最后一次Pong时间");
+    /// <summary>
+    /// 心跳检测到连接断开事件处理
+    /// </summary>
+    private void OnHeartbeatConnectionLost(object? sender, WebSocketCloseEventArgs e)
+    {
+        var handler = Disconnected;
+        handler?.Invoke(this, e);
     }
 
     /// <summary>
@@ -298,12 +282,6 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
             seqIdDeduplicatorImpl.ClearCache();
         }
 
-        lock (_heartbeatLock)
-        {
-            _lastPongTime = DateTime.UtcNow;
-            _heartbeatMissedCount = 0;
-        }
-
         if (_options.EnableLogging)
             _logger.LogInformation("重连状态重置完成");
     }
@@ -316,34 +294,26 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
         if (endpoint == null)
             throw new ArgumentNullException(nameof(endpoint));
 
-        // 设置连接状态为连接中
-        lock (_connectionStateLock)
-        {
-            _connectionState = 2; // 连接中
-        }
+        Volatile.Write(ref _connectionState, 2);
 
         using (FeishuMetricsHelper.RecordHttpRequest("GET", endpoint.Url))
         {
             await _connectionManager.ConnectAsync(endpoint.Url, cancellationToken);
         }
 
-        // 设置连接状态为已连接
-        lock (_connectionStateLock)
-        {
-            _connectionState = 1; // 已连接
-        }
+        Volatile.Write(ref _connectionState, 1);
 
         // 启动消息接收
         _cancellationTokenSource = new CancellationTokenSource();
         _ = Task.Run(() => StartReceivingAsyncInternal(_cancellationTokenSource.Token), _cancellationTokenSource.Token);
 
         // 启动心跳
-        _ = Task.Run(() => StartHeartbeatAsync(_cancellationTokenSource.Token), _cancellationTokenSource.Token);
+        _ = Task.Run(() => _heartbeatManager.StartHeartbeatAsync(_cancellationTokenSource.Token), _cancellationTokenSource.Token);
 
         // 启动消息队列处理
         if (_options.EnableMessageQueue)
         {
-            _ = Task.Run(() => ProcessMessageQueueAsync(_cancellationTokenSource.Token), _cancellationTokenSource.Token);
+            _ = Task.Run(() => _messageQueueManager.ProcessQueueAsync(_cancellationTokenSource.Token), _cancellationTokenSource.Token);
         }
     }
 
@@ -389,7 +359,7 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
         if (processor == null)
             throw new ArgumentNullException(nameof(processor));
 
-        _messageProcessors.Add(processor);
+        _messageQueueManager.RegisterProcessor(processor);
     }
 
     /// <summary>
@@ -397,7 +367,7 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
     /// </summary>
     public bool UnregisterMessageProcessor(Func<string, Task> processor)
     {
-        return _messageProcessors.Remove(processor);
+        return _messageQueueManager.UnregisterProcessor(processor);
     }
 
     /// <summary>
@@ -560,9 +530,8 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
 
                 if (_options.EnableLogging)
                     _logger.LogDebug("接收到文本消息，长度: {MessageLength}, 队列大小: {QueueCount}",
-                        message.Length, _messageQueue.Count);
+                        message.Length, _messageQueueManager.QueueCount);
 
-                // 触发消息接收事件
                 var messageReceivedHandler = MessageReceived;
                 messageReceivedHandler?.Invoke(this, new WebSocketMessageEventArgs
                 {
@@ -570,120 +539,23 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
                     MessageType = result.MessageType,
                     EndOfMessage = result.EndOfMessage,
                     MessageSize = buffer.Count,
-                    QueueCount = _messageQueue.Count
+                    QueueCount = _messageQueueManager.QueueCount
                 });
 
-                // 使用 Task.Run 将消息处理隔离到独立线程池，避免阻塞接收管道
-                // 捕获异常确保不会影响消息接收循环
                 _ = Task.Run(async () =>
                 {
                     try
                     {
-                        // 路由消息到处理器并记录指标
                         using (FeishuMetricsHelper.RecordEventHandling("websocket_message", "text"))
                         using (FeishuMetricsHelper.RecordWebSocketMessageProcessing())
                         {
                             await _messageRouter.RouteMessageAsync(message, cancellationToken);
                         }
 
-                        // 加入消息队列
-                        if (_options.EnableMessageQueue)
-                        {
-                            var enqueued = false;
-
-                            switch (_options.BackpressureStrategy)
-                            {
-                                case QueueBackpressureStrategy.DropOldest:
-                                    // 检查队列是否已满，满时丢弃最旧的消息并发出告警
-                                    if (_messageQueue.Count >= _options.MessageQueueCapacity)
-                                    {
-                                        var droppedCount = 0;
-                                        while (_messageQueue.Count >= _options.MessageQueueCapacity && _messageQueue.TryDequeue(out _))
-                                        {
-                                            droppedCount++;
-                                        }
-
-                                        _logger.LogWarning("消息队列已满 (容量: {Capacity})，已丢弃 {DroppedCount} 条最旧消息以腾出空间",
-                                            _options.MessageQueueCapacity, droppedCount);
-
-                                        var handler1 = Error;
-                                        handler1?.Invoke(this, new WebSocketErrorEventArgs
-                                        {
-                                            Exception = new InvalidOperationException($"消息队列已满，丢弃了 {droppedCount} 条旧消息"),
-                                            ErrorMessage = $"消息队列已满，丢弃 {droppedCount} 条旧消息",
-                                            ErrorType = "QueueOverflowWarning",
-                                            IsRecoverable = true
-                                        });
-                                    }
-                                    _messageQueue.Enqueue(message);
-                                    enqueued = true;
-                                    break;
-
-                                case QueueBackpressureStrategy.DropNewest:
-                                    // 队列已满时丢弃新消息
-                                    if (_messageQueue.Count >= _options.MessageQueueCapacity)
-                                    {
-                                        _logger.LogWarning("消息队列已满 (容量: {Capacity})，丢弃新消息",
-                                            _options.MessageQueueCapacity);
-
-                                        var handler2 = Error;
-                                        handler2?.Invoke(this, new WebSocketErrorEventArgs
-                                        {
-                                            Exception = new InvalidOperationException("消息队列已满，丢弃新消息"),
-                                            ErrorMessage = "消息队列已满，丢弃新消息",
-                                            ErrorType = "QueueOverflowWarning",
-                                            IsRecoverable = true
-                                        });
-                                    }
-                                    else
-                                    {
-                                        _messageQueue.Enqueue(message);
-                                        enqueued = true;
-                                    }
-                                    break;
-
-                                case QueueBackpressureStrategy.Block:
-                                    // 阻塞等待直到队列有空间或超时
-                                    var startTime = DateTime.UtcNow;
-                                    var timeoutMs = _options.BackpressureBlockTimeoutMs;
-
-                                    while (_messageQueue.Count >= _options.MessageQueueCapacity)
-                                    {
-                                        if ((DateTime.UtcNow - startTime).TotalMilliseconds > timeoutMs)
-                                        {
-                                            _logger.LogWarning("消息队列背压阻塞超时 ({Timeout}ms)，丢弃消息", timeoutMs);
-
-                                            var handler3 = Error;
-                                            handler3?.Invoke(this, new WebSocketErrorEventArgs
-                                            {
-                                                Exception = new TimeoutException($"消息队列背压阻塞超时 ({timeoutMs}ms)"),
-                                                ErrorMessage = $"消息队列背压阻塞超时，丢弃消息",
-                                                ErrorType = "QueueBlockTimeout",
-                                                IsRecoverable = true
-                                            });
-                                            break;
-                                        }
-
-                                        await Task.Delay(10, cancellationToken);
-                                    }
-
-                                    if (_messageQueue.Count < _options.MessageQueueCapacity)
-                                    {
-                                        _messageQueue.Enqueue(message);
-                                        enqueued = true;
-                                    }
-                                    break;
-                            }
-
-                            if (enqueued && _options.EnableLogging)
-                            {
-                                _logger.LogDebug("消息已加入队列，当前队列大小: {QueueCount}", _messageQueue.Count);
-                            }
-                        }
+                        _messageQueueManager.Enqueue(message, cancellationToken);
                     }
                     catch (Exception ex)
                     {
-                        // 隔离处理消息处理异常，避免影响接收管道
                         _logger.LogError(ex, "消息处理任务执行失败，不影响接收管道");
                         var handler = Error;
                         handler?.Invoke(this, new WebSocketErrorEventArgs
@@ -698,7 +570,6 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
             }
             else if (result.MessageType == WebSocketMessageType.Binary)
             {
-                // 二进制消息处理同样隔离到独立任务
                 _ = Task.Run(async () =>
                 {
                     try
@@ -770,205 +641,6 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
     }
 
     /// <summary>
-    /// 启动心跳
-    /// </summary>
-    private async Task StartHeartbeatAsync(CancellationToken cancellationToken)
-    {
-        try
-        {
-            lock (_heartbeatLock)
-            {
-                _lastPongTime = DateTime.UtcNow;
-                _heartbeatMissedCount = 0;
-            }
-
-            while (!cancellationToken.IsCancellationRequested)
-            {
-                await Task.Delay(_options.HeartbeatIntervalMs, cancellationToken);
-
-                if (!_connectionManager.IsConnected)
-                {
-                    if (_options.AutoReconnect)
-                    {
-                        _logger.LogDebug("连接已断开，触发重连事件...");
-                        var handler = Disconnected;
-                        handler?.Invoke(this, new SocketEventArgs.WebSocketCloseEventArgs
-                        {
-                            CloseStatus = System.Net.WebSockets.WebSocketCloseStatus.NormalClosure,
-                            CloseStatusDescription = "心跳检测到连接断开，准备重连",
-                            IsServerInitiated = false,
-                            Timestamp = DateTime.UtcNow
-                        });
-                    }
-                    lock (_heartbeatLock)
-                    {
-                        _lastPongTime = DateTime.UtcNow;
-                        _heartbeatMissedCount = 0;
-                    }
-                    continue;
-                }
-
-                try
-                {
-                    var pingMessage = new PingMessage
-                    {
-                        Timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
-                    };
-
-                    var heartbeatMessage = JsonSerializer.Serialize(pingMessage, JsonOptions.Default);
-                    await SendMessageAsync(heartbeatMessage, cancellationToken);
-
-                    if (_options.EnableLogging)
-                        _logger.LogDebug("已发送心跳");
-
-                    CheckHeartbeatTimeoutAsync();
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "发送心跳时发生错误");
-
-                    if (_options.AutoReconnect)
-                    {
-                        _logger.LogWarning("心跳发送失败，触发断开事件...");
-                        var disconnectedHandler = Disconnected;
-                        disconnectedHandler?.Invoke(this, new SocketEventArgs.WebSocketCloseEventArgs
-                        {
-                            CloseStatus = System.Net.WebSockets.WebSocketCloseStatus.EndpointUnavailable,
-                            CloseStatusDescription = "心跳发送失败，触发重连",
-                            IsServerInitiated = false,
-                            Timestamp = DateTime.UtcNow
-                        });
-                    }
-                }
-            }
-        }
-        catch (OperationCanceledException)
-        {
-        }
-    }
-
-    /// <summary>
-    /// 检查心跳超时
-    /// </summary>
-    private void CheckHeartbeatTimeoutAsync()
-    {
-        bool shouldTriggerReconnect = false;
-        int currentMissedCount = 0;
-        double timeSinceLastPongMs = 0;
-
-        lock (_heartbeatLock)
-        {
-            timeSinceLastPongMs = (DateTime.UtcNow - _lastPongTime).TotalMilliseconds;
-            var heartbeatTimeoutMs = _options.HeartbeatIntervalMs * 2;
-
-            if (timeSinceLastPongMs > heartbeatTimeoutMs)
-            {
-                _heartbeatMissedCount++;
-                currentMissedCount = _heartbeatMissedCount;
-
-                if (_heartbeatMissedCount >= HeartbeatTimeoutThreshold && _options.AutoReconnect)
-                {
-                    shouldTriggerReconnect = true;
-                }
-            }
-            else
-            {
-                _heartbeatMissedCount = 0;
-            }
-        }
-
-        if (currentMissedCount > 0)
-        {
-            _logger.LogWarning("心跳超时：{TimeSinceLastPong}ms 未收到响应，超时次数：{MissedCount}",
-                timeSinceLastPongMs, currentMissedCount);
-        }
-
-        if (shouldTriggerReconnect)
-        {
-            _logger.LogError("连续 {MissedCount} 次心跳超时，触发重连", currentMissedCount);
-            var handler = Disconnected;
-            handler?.Invoke(this, new SocketEventArgs.WebSocketCloseEventArgs
-            {
-                CloseStatus = System.Net.WebSockets.WebSocketCloseStatus.EndpointUnavailable,
-                CloseStatusDescription = "心跳超时，触发重连",
-                IsServerInitiated = false,
-                Timestamp = DateTime.UtcNow
-            });
-        }
-    }
-
-    /// <summary>
-    /// 处理消息队列
-    /// </summary>
-    private async Task ProcessMessageQueueAsync(CancellationToken cancellationToken)
-    {
-        try
-        {
-            var processedMessages = 0;
-            const int maxMessagesBeforeYield = 100;
-
-            while (!cancellationToken.IsCancellationRequested)
-            {
-                if (_messageQueue.TryDequeue(out var message))
-                {
-                    try
-                    {
-                        // 等待信号量，控制并发数
-                        await _messageProcessingSemaphore.WaitAsync(cancellationToken);
-
-                        try
-                        {
-                            var processingTasks = _messageProcessors.Select(processor =>
-                                ProcessMessageSafely(processor, message, cancellationToken));
-
-                            await Task.WhenAll(processingTasks);
-                            processedMessages++;
-
-                            if (processedMessages % maxMessagesBeforeYield == 0)
-                            {
-                                await Task.Yield();
-                            }
-                        }
-                        finally
-                        {
-                            // 释放信号量
-                            _messageProcessingSemaphore.Release();
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "处理队列中的消息时发生错误: {Message}", message);
-                    }
-                }
-                else
-                {
-                    await Task.Delay(_options.EmptyQueueCheckIntervalMs, cancellationToken);
-                }
-            }
-        }
-        catch (OperationCanceledException)
-        {
-            // 正常取消，不需要处理
-        }
-    }
-
-    /// <summary>
-    /// 安全地处理消息
-    /// </summary>
-    private async Task ProcessMessageSafely(Func<string, Task> processor, string message, CancellationToken _)
-    {
-        try
-        {
-            await processor(message);
-        }
-        catch (Exception ex)
-        {
-            if (_options.EnableLogging)
-                _logger.LogWarning(ex, "消息处理器执行失败: {Message}", message);
-        }
-    }
-
-    /// <summary>
     /// 判断 WebSocket 错误是否可恢复
     /// </summary>
     /// <param name="wsEx">WebSocket 异常</param>
@@ -1022,15 +694,14 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
     {
         if (_pingPongHandler != null)
         {
-            _pingPongHandler.PongReceived -= OnPongReceived;
+            _pingPongHandler.PongReceived -= _onPongReceived;
             _pingPongHandler = null;
         }
 
         // 清理订阅管理器
         _subscriptionManager?.ClearSubscriptions();
 
-        // 释放并发控制信号量
-        _messageProcessingSemaphore?.Dispose();
+        _messageQueueManager?.Dispose();
     }
 
     /// <summary>

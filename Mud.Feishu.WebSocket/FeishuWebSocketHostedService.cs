@@ -22,6 +22,9 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
     private readonly IReconnectionOrchestrator _reconnectionOrchestrator;
     private readonly FeishuWebSocketOptions _options;
     private bool _disposed;
+    private DateTime _lastReconnectTriggerTime = DateTime.MinValue;
+    private readonly object _reconnectDebounceLock = new();
+    private static readonly TimeSpan ReconnectDebounceInterval = TimeSpan.FromSeconds(3);
 
     /// <summary>
     /// 构造函数
@@ -71,7 +74,7 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
 
                     if (!_webSocketManager.IsConnected)
                     {
-                        await _reconnectionOrchestrator.TryReconnectAsync("健康检查发现连接断开", stoppingToken);
+                        TryTriggerReconnect("健康检查发现连接断开");
                     }
                 }
                 catch (TaskCanceledException)
@@ -133,11 +136,32 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
                 e.CloseStatus, e.CloseStatusDescription, stats.Uptime);
         }
 
+        TryTriggerReconnect("连接断开事件触发");
+    }
+
+    /// <summary>
+    /// 尝试触发重连（带防抖机制）
+    /// </summary>
+    private void TryTriggerReconnect(string reason)
+    {
+        lock (_reconnectDebounceLock)
+        {
+            var timeSinceLastTrigger = DateTime.UtcNow - _lastReconnectTriggerTime;
+            if (timeSinceLastTrigger < ReconnectDebounceInterval)
+            {
+                _logger.LogDebug("重连防抖：距上次触发仅 {Elapsed}ms，跳过本次重连触发（原因: {Reason}）",
+                    timeSinceLastTrigger.TotalMilliseconds, reason);
+                return;
+            }
+            _lastReconnectTriggerTime = DateTime.UtcNow;
+        }
+
         _ = Task.Run(async () =>
         {
             try
             {
-                await _reconnectionOrchestrator.TryReconnectAsync("连接断开事件触发", CancellationToken.None);
+                using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(5));
+                await _reconnectionOrchestrator.TryReconnectAsync(reason, cts.Token);
             }
             catch (Exception ex)
             {

@@ -58,4 +58,20 @@ public interface IFeishuV1BitableWorkflow : IFeishuAppContextSwitcher
          [Path] string workflow_id,
          [Body] UpdateAppWorkflowRequest updateAppWorkflowRequest,
          CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 列出工作流
+    /// <para>用于返回多维表格中所有工作流，多维表格管理员可通过此接口来管理表中的工作流。</para>
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/bitable-v1/app-block_workflow/list">接口文档</see></para>
+    /// </summary>
+    /// <param name="app_token">
+    /// <para>多维表格 App 的唯一标识。不同形态的多维表格，其 app_token 的获取方式不同，参考[<see href="https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/bitable-overview">多维表格 app_token 获取方式</see>]获取。</para>
+    /// <para>示例值：AW3Qbtr2cakCnesXzXVbbsrIcVT</para>
+    /// </param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Get("/open-apis/bitable/v1/apps/{app_token}/block_workflows")]
+    Task<FeishuApiResult<GetAppWorkflowListResult>?> GetAppBlockWorkflowListAsync(
+         [Path] string app_token,
+         CancellationToken cancellationToken = default);
 }

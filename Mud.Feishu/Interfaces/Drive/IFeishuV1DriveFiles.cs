@@ -1,5 +1,5 @@
 // -----------------------------------------------------------------------
-//  作者：Mud Studio  版权所有 (c) Mud Studio 2025   
+//  作者：Mud Studio  版权所有 (c) Mud Studio 2026   
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
@@ -21,6 +21,7 @@ public interface IFeishuV1DriveFiles : IFeishuAppContextSwitcher
 {
     /// <summary>
     /// 用于根据文件 token 获取其元数据，包括标题、所有者、创建时间、密级、访问链接等数据。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/drive-v1/file/batch_query">接口文档</see></para>
     /// </summary>
     /// <param name="metasBatchQueryRequest">获取文件元数据请求体</param>
     /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
@@ -34,6 +35,7 @@ public interface IFeishuV1DriveFiles : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 用于获取各类文件的流量统计信息和互动信息，包括阅读人数、阅读次数和点赞数。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/drive-v1/file/get">接口文档</see></para>
     /// </summary>
     /// <param name="file_token">文件 token。示例值：doccnfYZzTlvXqZIGTdAHKabcef</param>
     /// <param name="file_type">
@@ -61,6 +63,7 @@ public interface IFeishuV1DriveFiles : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 获取文档、电子表格、多维表格等文件的历史访问记录，包括访问者的 ID、姓名、头像和最近访问时间。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/drive-v1/file-view_record/list">接口文档</see></para>
     /// </summary>
     /// <param name="file_token">文件的 token
     /// <para>示例值：XIHSdYSI7oMEU1xrsnxc8fabcef</para>
@@ -94,6 +97,7 @@ public interface IFeishuV1DriveFiles : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 将用户云空间中的文件复制至其它文件夹下。该接口为异步接口。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/drive-v1/file/copy">接口文档</see></para>
     /// </summary>
     /// <param name="copyFileRequest">复制文件请求体</param>
     /// <param name="file_token">文件 token。示例值：doccnfYZzTlvXqZIGTdAHKabcef</param>
@@ -109,6 +113,7 @@ public interface IFeishuV1DriveFiles : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 将文件或者文件夹移动到用户云空间的其他位置。该接口为异步接口。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/drive-v1/file/move">接口文档</see></para>
     /// </summary>
     /// <param name="moveFileRequest">移动文件请求体</param>
     /// <param name="file_token">文件 token。示例值：doccnfYZzTlvXqZIGTdAHKabcef</param>
@@ -122,6 +127,7 @@ public interface IFeishuV1DriveFiles : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 删除用户在云空间内的文件或者文件夹。文件或文件夹被删除后，会进入回收站中。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/drive-v1/file/delete">接口文档</see></para>
     /// </summary>
     /// <param name="file_type">被删除文件的类型
     /// <para>必填：是</para>
@@ -150,6 +156,7 @@ public interface IFeishuV1DriveFiles : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 创建指定文件的快捷方式到云空间的其它文件夹中。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/drive-v1/file/create_shortcut">接口文档</see></para>
     /// </summary>
     /// <param name="createShortcutRequest">创建文件快捷方式请求体</param>
     /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
@@ -167,6 +174,7 @@ public interface IFeishuV1DriveFiles : IFeishuAppContextSwitcher
     /// <para>## 使用限制</para>
     /// <para>- 文件大小不得超过 20 MB，且不可上传空文件。要上传大于 20 MB 的文件，你需使用分片上传文件相关接口。详情参考[上传文件概述](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/drive-v1/file/multipart-upload-file-/introduction)。</para>
     /// <para>- 该接口调用频率上限为 5 QPS，10000 次/天。否则会返回 1061045 错误码，可通过稍后重试解决。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/drive-v1/upload/upload_all">接口文档</see></para>
     /// </summary>
     /// <param name="uploadAllFileRequest">上传文件请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
@@ -182,6 +190,7 @@ public interface IFeishuV1DriveFiles : IFeishuAppContextSwitcher
     /// <para>## 使用限制</para>
     /// <para>- 上传文件的大小限制因飞书版本而异。</para>
     /// <para>- 该接口不支持并发调用，且调用频率上限为 5 QPS，10000 次/天。否则会返回 1061045 错误码，可通过稍后重试解决。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/drive-v1/upload/multipart-upload-file-/upload_prepare">接口文档</see></para>
     /// </summary>
     /// <param name="filesUploadPartRequest">预上传请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
@@ -194,6 +203,7 @@ public interface IFeishuV1DriveFiles : IFeishuAppContextSwitcher
     /// <summary>
     /// 根据 预上传接口返回的上传事务 ID 和分片策略上传对应的文件分片。
     /// <para>上传完成后，需调用分片上传文件（完成上传）触发完成上传。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/drive-v1/upload/multipart-upload-file-/upload_part">接口文档</see></para>
     /// </summary>
     /// <param name="filesUploadPartRequest"> 分片上传文件-上传分片请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
@@ -205,6 +215,7 @@ public interface IFeishuV1DriveFiles : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 将分片全部上传完毕后，需调用本接口触发完成上传。否则将上传失败。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/drive-v1/upload/multipart-upload-file-/upload_finish">接口文档</see></para>
     /// </summary>
     /// <param name="filesUploadPartRequest">分片上传文件-完成上传请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
@@ -217,6 +228,7 @@ public interface IFeishuV1DriveFiles : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 下载云空间中的文件，如 PDF 文件。不包含飞书文档、电子表格以及多维表格等在线文档。该接口支持通过在请求头添加 Range 参数分片下载部分文件。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/drive-v1/download/download">接口文档</see></para>
     /// </summary>
     /// <param name="file_token">文件的 token，示例值："boxcnabCdefgabcef"。</param>
     /// <param name="range">
@@ -234,6 +246,7 @@ public interface IFeishuV1DriveFiles : IFeishuAppContextSwitcher
     /// <summary>
     /// <para>用于创建导入文件的任务，并返回导入任务 ID。导入文件指将本地文件如 Word、TXT、Markdown、Excel 等格式的文件导入为某种格式的飞书在线云文档。</para>
     /// <para>该接口为异步接口，需要继续调用查询导入任务结果接口获取导入结果。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/drive-v1/import_task/create">接口文档</see></para>
     /// </summary>
     /// <param name="importTasksRequest">创建导入任务请求体。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
@@ -246,6 +259,7 @@ public interface IFeishuV1DriveFiles : IFeishuAppContextSwitcher
 
     /// <summary>
     /// <para>根据创建导入任务返回的导入任务 ID（ticket）轮询导入结果。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/drive-v1/import_task/get">接口文档</see></para>
     /// </summary>
     /// <param name="ticket">导入任务 ID。示例值："7369583175086912356"。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
@@ -258,6 +272,7 @@ public interface IFeishuV1DriveFiles : IFeishuAppContextSwitcher
     /// <summary>
     /// <para>用于创建导出文件的任务，并返回导出任务 ID。导出文件指将飞书文档、电子表格、多维表格导出为本地文件，包括 Word、Excel、PDF、CSV 格式。</para>
     /// <para>该接口为异步接口，需要继续调用查询导出任务结果接口获取导出结果。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/drive-v1/export_task/create">接口文档</see></para>
     /// </summary>
     /// <param name="exportTasksRequest">创建导出任务请求体。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
@@ -270,6 +285,7 @@ public interface IFeishuV1DriveFiles : IFeishuAppContextSwitcher
     /// <summary>
     /// <para>根据创建导出任务返回的导出任务 ID（ticket）轮询导出任务结果，并返回导出文件的 token。</para>
     /// <para>你可使用该 token 继续调用下载导出文件接口将导出的产物下载到本地。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/drive-v1/export_task/get">接口文档</see></para>
     /// </summary>
     /// <param name="ticket">导出任务 ID。示例值："7369583175086912356"。</param>
     /// <param name="token">要导出的云文档的 token。示例值："docbcZVGtv1papC6jAVGiyabcef"</param>
@@ -284,6 +300,7 @@ public interface IFeishuV1DriveFiles : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 根据查询导出任务结果返回的导出文件的 token，下载导出产物到本地。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/drive-v1/export_task/download">接口文档</see></para>
     /// </summary>
     /// <remarks>你需及时下载导出的文件。在导出任务结束 10 分钟后，导出的文件将被删除，导致无法下载。</remarks>
     /// <param name="file_token">导出的文件的 token，示例值："boxcnabCdefgabcef"。</param>
@@ -294,6 +311,7 @@ public interface IFeishuV1DriveFiles : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 根据查询导出任务结果返回的导出文件的 token，下载导出产物到本地（适应于导出的大文件下载）。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/drive-v1/export_task/download">接口文档</see></para>
     /// </summary>
     /// <remarks>你需及时下载导出的文件。在导出任务结束 10 分钟后，导出的文件将被删除，导致无法下载。</remarks>
     /// <param name="file_token">导出的文件的 token，示例值："boxcnabCdefgabcef"。</param>
@@ -305,6 +323,7 @@ public interface IFeishuV1DriveFiles : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 获取指定云文档的点赞者列表并按点赞时间由近到远分页返回。
+    /// <para><see href="https://open.feishu.cn/document/docs/drive-v1/like/list">接口文档</see></para>
     /// </summary>
     /// <param name="file_token">文件的 token
     /// <para>示例值：XIHSdYSI7oMEU1xrsnxc8fabcef</para>

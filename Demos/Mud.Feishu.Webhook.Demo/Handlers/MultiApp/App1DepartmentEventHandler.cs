@@ -21,8 +21,8 @@ public class App1DepartmentEventHandler : DepartmentCreatedEventHandler
     private readonly DemoEventService _eventService;
 
     public App1DepartmentEventHandler(
-        IFeishuEventDeduplicator businessDeduplicator, 
-        ILogger<App1DepartmentEventHandler> logger, 
+        IFeishuEventDeduplicator businessDeduplicator,
+        ILogger<App1DepartmentEventHandler> logger,
         DemoEventService eventService)
         : base(businessDeduplicator, logger)
     {

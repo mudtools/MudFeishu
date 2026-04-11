@@ -82,7 +82,7 @@ public class UserLogsResponse
     /// 日志列表
     /// </summary>
     public List<FeishuFileServer.Models.OperationLog> Logs { get; set; } = new();
-    
+
     /// <summary>
     /// 总数量
     /// </summary>

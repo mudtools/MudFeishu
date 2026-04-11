@@ -40,7 +40,7 @@ public class FeishuUserAuthenticationMiddlewareTests
     public void Constructor_NullNext_ThrowsArgumentNullException()
     {
         // Act & Assert
-        Assert.Throws<ArgumentNullException>(() => 
+        Assert.Throws<ArgumentNullException>(() =>
             new FeishuUserAuthenticationMiddleware(null!, _defaultOptions, _loggerMock.Object));
     }
 
@@ -48,7 +48,7 @@ public class FeishuUserAuthenticationMiddlewareTests
     public void Constructor_NullOptions_ThrowsArgumentNullException()
     {
         // Act & Assert
-        Assert.Throws<ArgumentNullException>(() => 
+        Assert.Throws<ArgumentNullException>(() =>
             new FeishuUserAuthenticationMiddleware(_ => Task.CompletedTask, null!, _loggerMock.Object));
     }
 
@@ -56,7 +56,7 @@ public class FeishuUserAuthenticationMiddlewareTests
     public void Constructor_NullLogger_ThrowsArgumentNullException()
     {
         // Act & Assert
-        Assert.Throws<ArgumentNullException>(() => 
+        Assert.Throws<ArgumentNullException>(() =>
             new FeishuUserAuthenticationMiddleware(_ => Task.CompletedTask, _defaultOptions, null!));
     }
 
@@ -232,7 +232,7 @@ public class FeishuUserAuthenticationMiddlewareTests
         var middleware = CreateMiddleware(_ => throw new InvalidOperationException("Test exception"));
 
         // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(() => 
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
             middleware.InvokeAsync(httpContext, _userContext));
 
         // Assert - Context should be cleared even after exception

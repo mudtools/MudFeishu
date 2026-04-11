@@ -273,6 +273,13 @@ public class FeishuEventMessageHandler : JsonMessageHandler
             eventData.Header = header;
         }
 
+        // 解析 schema（在 header 之外）
+        if (root.TryGetProperty("schema", out var schemaElement))
+        {
+            eventData.Header ??= new FeishuEventHeader();
+            eventData.Header.Schema = schemaElement.GetString();
+        }
+
         // 解析event
         if (root.TryGetProperty("event", out var eventElement))
         {

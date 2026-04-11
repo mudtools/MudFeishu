@@ -9,9 +9,9 @@ public class FileUploadSettings
     /// <summary>
     /// 允许的文件扩展名列表
     /// </summary>
-    public List<string> AllowedExtensions { get; set; } = new() 
-    { 
-        ".docx", ".xlsx", ".pptx", ".png", ".jpg", ".jpeg", ".tiff", ".pdf" 
+    public List<string> AllowedExtensions { get; set; } = new()
+    {
+        ".docx", ".xlsx", ".pptx", ".png", ".jpg", ".jpeg", ".tiff", ".pdf"
     };
 
     /// <summary>

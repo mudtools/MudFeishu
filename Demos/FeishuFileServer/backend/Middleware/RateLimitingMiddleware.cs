@@ -65,7 +65,7 @@ public class RateLimitingMiddleware
             _logger.LogWarning("Rate limit exceeded for IP: {IpAddress}", ipAddress);
             context.Response.StatusCode = StatusCodes.Status429TooManyRequests;
             context.Response.ContentType = "application/json";
-            
+
             var response = new
             {
                 statusCode = 429,

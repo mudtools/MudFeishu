@@ -36,7 +36,7 @@ public class TimestampValidatorTests
             TimestampToleranceSeconds = 300
         };
         _optionsMonitorMock.Setup(x => x.CurrentValue).Returns(defaultOptions);
-        
+
         // 默认设置为开发环境
         _environmentServiceMock.Setup(x => x.IsProduction).Returns(false);
         _environmentServiceMock.Setup(x => x.IsDevelopment).Returns(true);
@@ -201,7 +201,7 @@ public class TimestampValidatorTests
         _environmentServiceMock.Setup(x => x.IsProduction).Returns(false);
         _environmentServiceMock.Setup(x => x.IsDevelopment).Returns(true);
         var validator = new TimestampValidator(_loggerMock.Object, _optionsMonitorMock.Object, _appKeyAccessorMock.Object, _environmentServiceMock.Object);
-        
+
         var timestamp = 0L;
         var toleranceSeconds = 300;
 
@@ -222,7 +222,7 @@ public class TimestampValidatorTests
         _environmentServiceMock.Setup(x => x.IsProduction).Returns(true);
         _environmentServiceMock.Setup(x => x.IsDevelopment).Returns(false);
         var validator = new TimestampValidator(_loggerMock.Object, _optionsMonitorMock.Object, _appKeyAccessorMock.Object, _environmentServiceMock.Object);
-        
+
         var timestamp = 0L;
         var toleranceSeconds = 300;
 
@@ -246,7 +246,7 @@ public class TimestampValidatorTests
         _environmentServiceMock.Setup(x => x.IsProduction).Returns(false);
         _environmentServiceMock.Setup(x => x.IsDevelopment).Returns(true);
         var validator = new TimestampValidator(_loggerMock.Object, _optionsMonitorMock.Object, _appKeyAccessorMock.Object, _environmentServiceMock.Object);
-        
+
         var timestamp = 0L;
 
         // Act

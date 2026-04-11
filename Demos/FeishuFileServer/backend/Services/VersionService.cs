@@ -156,13 +156,13 @@ public class VersionService : IVersionService
             version.IsCurrentVersion = false;
         }
 
-        var newVersionNumber = existingVersions.Count > 0 
-            ? existingVersions.Max(v => v.VersionNumber) + 1 
+        var newVersionNumber = existingVersions.Count > 0
+            ? existingVersions.Max(v => v.VersionNumber) + 1
             : 1;
 
         string? feishuVersionToken = null;
         var objType = GetObjectType(fileRecord.FileName);
-        
+
         if (!string.IsNullOrEmpty(objType))
         {
             try
@@ -172,9 +172,9 @@ public class VersionService : IVersionService
                 memoryStream.Position = 0;
 
                 var uploadResult = await _feishuDriveService.UploadFileAsync(
-                    memoryStream, 
-                    file.FileName, 
-                    fileRecord.FolderToken, 
+                    memoryStream,
+                    file.FileName,
+                    fileRecord.FolderToken,
                     cancellationToken);
 
                 feishuVersionToken = uploadResult.FileToken;
@@ -243,9 +243,9 @@ public class VersionService : IVersionService
             if (!string.IsNullOrEmpty(objType))
             {
                 var result = await _fileVersions.GetFileVersionByFileTokenAsync(
-                    fileToken, 
-                    versionToken, 
-                    objType, 
+                    fileToken,
+                    versionToken,
+                    objType,
                     cancellationToken: cancellationToken);
 
                 if (result?.Data != null && !string.IsNullOrEmpty(result.Data.VersionSuffix))

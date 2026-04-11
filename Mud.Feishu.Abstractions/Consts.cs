@@ -35,5 +35,4 @@ internal class Consts
     public const string HandlerNamespace = "Mud.Feishu.EventCallback";
     public const string InheritedFrom = "IdempotentFeishuEventHandler";
     public const string InheritedFromObject = "DefaultFeishuObjectEventHandler";
-    public const string InheritedFromWithHeader = "IdempotentFeishuEventHandler`2";
 }

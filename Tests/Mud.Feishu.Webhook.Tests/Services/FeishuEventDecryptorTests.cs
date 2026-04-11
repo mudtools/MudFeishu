@@ -193,7 +193,7 @@ public class FeishuEventDecryptorTests
     private string EncryptData(string plainText, string encryptKey)
     {
         using var aes = Aes.Create();
-        
+
         // 使用 SHA256 哈希密钥
         using var sha256 = SHA256.Create();
         var keyBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(encryptKey));
@@ -211,5 +211,82 @@ public class FeishuEventDecryptorTests
         Buffer.BlockCopy(encryptedBytes, 0, result, aes.IV.Length, encryptedBytes.Length);
 
         return Convert.ToBase64String(result);
+    }
+
+    [Fact]
+    public async Task DecryptAsync_WithV2Event_ShouldPopulateHeader()
+    {
+        var encryptKey = "test_encrypt_key_123456";
+        var originalJson = "{\"schema\":\"2.0\",\"header\":{\"event_id\":\"evt_header_001\",\"event_type\":\"drive.file.edit_v1\",\"create_time\":\"1704067200000\",\"token\":\"token_from_header\",\"tenant_key\":\"tk_header\",\"app_id\":\"cli_header\"},\"event\":{\"file_token\":\"ft_123\"}}";
+        var encryptedData = EncryptData(originalJson, encryptKey);
+
+        var result = await _decryptor.DecryptAsync(encryptedData, encryptKey);
+
+        result.Should().NotBeNull();
+        result!.Header.Should().NotBeNull();
+        result.Header!.Schema.Should().Be("2.0");
+        result.Header.EventId.Should().Be("evt_header_001");
+        result.Header.EventType.Should().Be("drive.file.edit_v1");
+        result.Header.Token.Should().Be("token_from_header");
+        result.Header.CreateTime.Should().Be("1704067200000");
+        result.Header.TenantKey.Should().Be("tk_header");
+        result.Header.AppId.Should().Be("cli_header");
+    }
+
+    [Fact]
+    public async Task DecryptAsync_WithV2Event_HeaderAndFlatPropertiesShouldBeConsistent()
+    {
+        var encryptKey = "test_encrypt_key_123456";
+        var originalJson = "{\"schema\":\"2.0\",\"header\":{\"event_id\":\"evt_consistent\",\"event_type\":\"drive.file.read_v1\",\"create_time\":\"1704067200000\",\"token\":\"tok_cons\",\"tenant_key\":\"tk_cons\",\"app_id\":\"cli_cons\"},\"event\":{\"file_token\":\"ft_456\"}}";
+        var encryptedData = EncryptData(originalJson, encryptKey);
+
+        var result = await _decryptor.DecryptAsync(encryptedData, encryptKey);
+
+        result.Should().NotBeNull();
+        result!.EventId.Should().Be(result.Header!.EventId);
+        result.EventType.Should().Be(result.Header.EventType);
+        result.TenantKey.Should().Be(result.Header.TenantKey);
+        result.AppId.Should().Be(result.Header.AppId);
+    }
+
+    [Fact]
+    public async Task DecryptAsync_WithV1Event_HeaderShouldBeNull()
+    {
+        var encryptKey = "test_encrypt_key_123456";
+        var originalJson = "{\"event_id\":\"evt_v1_001\",\"event_type\":\"test_event\",\"create_time\":1234567890,\"event\":{\"data\":\"value\"}}";
+        var encryptedData = EncryptData(originalJson, encryptKey);
+
+        var result = await _decryptor.DecryptAsync(encryptedData, encryptKey);
+
+        result.Should().NotBeNull();
+        result!.Header.Should().BeNull();
+        result.Schema.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task DecryptAsync_WithV2EventWithNumericCreateTime_HeaderCreateTimeShouldBeString()
+    {
+        var encryptKey = "test_encrypt_key_123456";
+        var originalJson = "{\"schema\":\"2.0\",\"header\":{\"event_id\":\"evt_num_ct\",\"event_type\":\"test.event\",\"create_time\":1704067200000,\"tenant_key\":\"tk\",\"app_id\":\"app\"},\"event\":{}}";
+        var encryptedData = EncryptData(originalJson, encryptKey);
+
+        var result = await _decryptor.DecryptAsync(encryptedData, encryptKey);
+
+        result.Should().NotBeNull();
+        result!.Header.Should().NotBeNull();
+        result.Header!.CreateTime.Should().Be("1704067200000");
+    }
+
+    [Fact]
+    public async Task DecryptAsync_WithV2Event_SchemaShouldBePopulated()
+    {
+        var encryptKey = "test_encrypt_key_123456";
+        var originalJson = "{\"schema\":\"2.0\",\"header\":{\"event_id\":\"evt_schema\",\"event_type\":\"test.event\",\"tenant_key\":\"tk\",\"app_id\":\"app\"},\"event\":{}}";
+        var encryptedData = EncryptData(originalJson, encryptKey);
+
+        var result = await _decryptor.DecryptAsync(encryptedData, encryptKey);
+
+        result.Should().NotBeNull();
+        result!.Schema.Should().Be("2.0");
     }
 }

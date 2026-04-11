@@ -189,7 +189,7 @@ public class SharesController : FeishuControllerBase
         try
         {
             var content = await _shareService.DownloadSharedFileAsync(shareCode, password, cancellationToken);
-            
+
             var shareContent = await _shareService.AccessShareAsync(shareCode, password, cancellationToken);
             var fileName = shareContent.ResourceName;
 

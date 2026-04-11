@@ -327,7 +327,7 @@ public class RedisFeishuSeqIDDeduplicatorTests
     {
         // Arrange
         _databaseMock
-            .Setup(x => x.StringSet(It.IsAny<RedisKey>(), It.IsAny<RedisValue>(), It.IsAny<TimeSpan>(), It.IsAny<When>() ))
+            .Setup(x => x.StringSet(It.IsAny<RedisKey>(), It.IsAny<RedisValue>(), It.IsAny<TimeSpan>(), It.IsAny<When>()))
             .Throws(new RedisConnectionException(ConnectionFailureType.UnableToConnect, "Connection failed"));
 
         var deduplicator = new RedisFeishuSeqIDDeduplicator(

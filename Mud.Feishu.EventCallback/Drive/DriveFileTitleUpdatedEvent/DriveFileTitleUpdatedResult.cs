@@ -15,7 +15,7 @@ namespace Mud.Feishu.EventCallback.Drive;
 /// <para>文档地址：https://open.feishu.cn/document/server-docs/docs/drive-v1/event/list/file-title-update</para>
 /// </summary>
 [GenerateEventHandler(EventType = FeishuEventTypes.DriveFileTitleUpdated, HandlerNamespace = Consts.HandlerNamespace,
-              InheritedFrom = Consts.InheritedFrom)]
+              InheritedFrom = Consts.InheritedFrom, HeaderType = nameof(FeishuEventHeader))]
 public class DriveFileTitleUpdatedResult : IEventResult
 {
     /// <summary>

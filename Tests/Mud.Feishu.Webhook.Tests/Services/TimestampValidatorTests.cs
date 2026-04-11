@@ -158,7 +158,7 @@ public class TimestampValidatorTests
             }
         };
         _optionsMock.Setup(x => x.CurrentValue).Returns(appOptions);
-        
+
         var validator = new TimestampValidator(
             _loggerMock.Object,
             _optionsMock.Object,

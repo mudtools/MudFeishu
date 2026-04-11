@@ -135,6 +135,16 @@ public abstract class IdempotentFeishuEventHandler<T, THeader> : IdempotentFeish
     where T : class, IEventResult, new()
     where THeader : class, IEventHeader, new()
 {
+    private static readonly JsonSerializerOptions _serializeOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    };
+
+    private static readonly JsonSerializerOptions _deserializeOptions = new()
+    {
+        PropertyNameCaseInsensitive = true,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    };
     /// <summary>
     /// 构造函数
     /// </summary>
@@ -162,16 +172,9 @@ public abstract class IdempotentFeishuEventHandler<T, THeader> : IdempotentFeish
 
         try
         {
-            var json = JsonSerializer.Serialize(eventData.Header, new JsonSerializerOptions
-            {
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-            });
+            var json = JsonSerializer.Serialize(eventData.Header, _serializeOptions);
 
-            return JsonSerializer.Deserialize<THeader>(json, new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true,
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-            });
+            return JsonSerializer.Deserialize<THeader>(json, _deserializeOptions);
         }
         catch (JsonException ex)
         {

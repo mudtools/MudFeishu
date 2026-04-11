@@ -141,4 +141,107 @@ public class FeishuEventMessageHandlerTests
         // Act & Assert - should not throw
         await handler.HandleAsync("not valid json");
     }
+
+    [Fact]
+    public async Task HandleAsync_WithV2Event_ShouldPopulateHeader()
+    {
+        var handler = CreateHandler();
+        var v2Message = @"{""schema"":""2.0"",""header"":{""event_id"":""evt_ws_001"",""event_type"":""drive.file.edit_v1"",""create_time"":""1704067200000"",""token"":""ws_token_abc"",""tenant_key"":""tk_ws"",""app_id"":""cli_ws""},""event"":{""file_token"":""ft_ws_123""}}";
+
+        EventData? capturedEventData = null;
+        _handlerFactoryMock
+            .Setup(f => f.HandleEventParallelAsync(It.IsAny<string>(), It.IsAny<EventData>(), It.IsAny<CancellationToken>()))
+            .Callback<string, EventData, CancellationToken>((_, ed, _) => capturedEventData = ed)
+            .Returns(Task.CompletedTask);
+
+        await handler.HandleAsync(v2Message);
+
+        capturedEventData.Should().NotBeNull();
+        capturedEventData!.Header.Should().NotBeNull();
+        capturedEventData.Header!.Schema.Should().Be("2.0");
+        capturedEventData.Header.EventId.Should().Be("evt_ws_001");
+        capturedEventData.Header.EventType.Should().Be("drive.file.edit_v1");
+        capturedEventData.Header.Token.Should().Be("ws_token_abc");
+        capturedEventData.Header.CreateTime.Should().Be("1704067200000");
+        capturedEventData.Header.TenantKey.Should().Be("tk_ws");
+        capturedEventData.Header.AppId.Should().Be("cli_ws");
+    }
+
+    [Fact]
+    public async Task HandleAsync_WithV2Event_HeaderAndFlatPropertiesShouldBeConsistent()
+    {
+        var handler = CreateHandler();
+        var v2Message = @"{""schema"":""2.0"",""header"":{""event_id"":""evt_ws_cons"",""event_type"":""drive.file.read_v1"",""create_time"":""1704067200000"",""token"":""ws_tok"",""tenant_key"":""tk_cons"",""app_id"":""cli_cons""},""event"":{}}";
+
+        EventData? capturedEventData = null;
+        _handlerFactoryMock
+            .Setup(f => f.HandleEventParallelAsync(It.IsAny<string>(), It.IsAny<EventData>(), It.IsAny<CancellationToken>()))
+            .Callback<string, EventData, CancellationToken>((_, ed, _) => capturedEventData = ed)
+            .Returns(Task.CompletedTask);
+
+        await handler.HandleAsync(v2Message);
+
+        capturedEventData.Should().NotBeNull();
+        capturedEventData!.EventId.Should().Be(capturedEventData.Header!.EventId);
+        capturedEventData.EventType.Should().Be(capturedEventData.Header.EventType);
+        capturedEventData.TenantKey.Should().Be(capturedEventData.Header.TenantKey);
+        capturedEventData.AppId.Should().Be(capturedEventData.Header.AppId);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WithV2Event_SchemaShouldBePopulatedFromRootLevel()
+    {
+        var handler = CreateHandler();
+        var v2Message = @"{""schema"":""2.0"",""header"":{""event_id"":""evt_schema_ws"",""event_type"":""test.event"",""tenant_key"":""tk"",""app_id"":""app""},""event"":{}}";
+
+        EventData? capturedEventData = null;
+        _handlerFactoryMock
+            .Setup(f => f.HandleEventParallelAsync(It.IsAny<string>(), It.IsAny<EventData>(), It.IsAny<CancellationToken>()))
+            .Callback<string, EventData, CancellationToken>((_, ed, _) => capturedEventData = ed)
+            .Returns(Task.CompletedTask);
+
+        await handler.HandleAsync(v2Message);
+
+        capturedEventData.Should().NotBeNull();
+        capturedEventData!.Schema.Should().Be("2.0");
+        capturedEventData.Header!.Schema.Should().Be("2.0");
+    }
+
+    [Fact]
+    public async Task HandleAsync_WithV1Event_HeaderShouldBeNull()
+    {
+        var handler = CreateHandler();
+        var v1Message = @"{""data"":{""event_id"":""evt_v1_ws"",""event_type"":""test.v1.event"",""app_id"":""cli_v1"",""tenant_key"":""tk_v1""}}";
+
+        EventData? capturedEventData = null;
+        _handlerFactoryMock
+            .Setup(f => f.HandleEventParallelAsync(It.IsAny<string>(), It.IsAny<EventData>(), It.IsAny<CancellationToken>()))
+            .Callback<string, EventData, CancellationToken>((_, ed, _) => capturedEventData = ed)
+            .Returns(Task.CompletedTask);
+
+        await handler.HandleAsync(v1Message);
+
+        capturedEventData.Should().NotBeNull();
+        capturedEventData!.Header.Should().BeNull();
+        capturedEventData.Schema.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task HandleAsync_WithV2EventWithNumericCreateTime_HeaderCreateTimeShouldBeString()
+    {
+        var handler = CreateHandler();
+        var v2Message = @"{""schema"":""2.0"",""header"":{""event_id"":""evt_num_ct_ws"",""event_type"":""test.event"",""create_time"":1704067200000,""tenant_key"":""tk"",""app_id"":""app""},""event"":{}}";
+
+        EventData? capturedEventData = null;
+        _handlerFactoryMock
+            .Setup(f => f.HandleEventParallelAsync(It.IsAny<string>(), It.IsAny<EventData>(), It.IsAny<CancellationToken>()))
+            .Callback<string, EventData, CancellationToken>((_, ed, _) => capturedEventData = ed)
+            .Returns(Task.CompletedTask);
+
+        await handler.HandleAsync(v2Message);
+
+        capturedEventData.Should().NotBeNull();
+        capturedEventData!.Header.Should().NotBeNull();
+        capturedEventData.Header!.CreateTime.Should().Be("1704067200000");
+    }
 }

@@ -1800,7 +1800,7 @@ public class IFeishuV2TaskTests
         // 验证顶层对象非空
         Assert.NotNull(requestBody);
         Assert.NotNull(requestBody.Reminders);
-        Assert.Equal(requestBody.Reminders[0].RelativeFireMinute, 30);
+        Assert.Equal(30, requestBody.Reminders[0].RelativeFireMinute);
     }
 
     /// <summary>

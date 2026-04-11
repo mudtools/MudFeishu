@@ -15,7 +15,7 @@ namespace Mud.Feishu.EventCallback.Drive;
 /// <para>文档地址：https://open.feishu.cn/document/docs/drive-v1/event/list/permission_member_applied</para>
 /// </summary>
 [GenerateEventHandler(EventType = FeishuEventTypes.DriveFilePermissionMemberApplied, HandlerNamespace = Consts.HandlerNamespace,
-              InheritedFrom = Consts.InheritedFrom)]
+              InheritedFrom = Consts.InheritedFrom, HeaderType = nameof(FeishuEventHeader))]
 public class DriveFilePermissionMemberAppliedResult : IEventResult
 {
     /// <summary>

@@ -142,10 +142,10 @@ public class UserService : IUserService
 
             // 设置当前用户 ID，用于调用飞书 API
             _feishuUserApi.CurrentUserId = openId;
-            
+
             // 调用飞书 API 获取详细用户信息
             var result = await _feishuUserApi.GetUserInfoAsync();
-            
+
             if (result?.Code != 0 || result.Data == null)
             {
                 _logger.LogError("从飞书获取用户信息失败: {Message}", result?.Msg ?? "未知错误");

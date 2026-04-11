@@ -48,7 +48,7 @@ public class IFeishuTenantV3EmployeeTypeTests
         // 验证顶层对象非空
         Assert.NotNull(requestBody);
         Assert.NotEmpty(requestBody.Content!);
-        Assert.Equal(requestBody.EnumType, 2);
+        Assert.Equal(2, requestBody.EnumType);
         Assert.NotNull(requestBody.I18nContent);
     }
 
@@ -115,7 +115,7 @@ public class IFeishuTenantV3EmployeeTypeTests
         // 验证顶层对象非空
         Assert.NotNull(requestBody);
         Assert.NotEmpty(requestBody.Content!);
-        Assert.Equal(requestBody.EnumType, 2);
+        Assert.Equal(2, requestBody.EnumType);
         Assert.NotNull(requestBody.I18nContent);
     }
 

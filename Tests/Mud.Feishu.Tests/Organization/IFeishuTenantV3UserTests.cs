@@ -546,7 +546,7 @@ public class IFeishuTenantV3UserTests
 
         // 验证必需字段非空
         Assert.NotNull(result.Data);
-        Assert.Equal(result.Data.ExpireIn, 7200);
+        Assert.Equal(7200, result.Data.ExpireIn);
         Assert.NotEmpty(result.Data.Ticket!);
     }
 }

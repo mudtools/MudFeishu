@@ -165,7 +165,7 @@ public class WikiNodeController : BaseController
             _logger.LogInformation("开始获取收藏列表，用户: {UserId}", user.Id);
             var favorites = await _wikiService.GetFavoritesAsync(user.Id);
             stopwatch.Stop();
-            _logger.LogInformation("获取收藏列表成功，用户: {UserId}，数量: {Count}，耗时: {ElapsedMs}ms", 
+            _logger.LogInformation("获取收藏列表成功，用户: {UserId}，数量: {Count}，耗时: {ElapsedMs}ms",
                 user.Id, favorites.Count, stopwatch.ElapsedMilliseconds);
             return Success(favorites);
         }

@@ -418,7 +418,7 @@ public class FeishuWebhookServiceConcurrencyTests
     {
         // Arrange - 使用真实的 AsyncLocal 实现
         var appKeyAccessor = new TestWebhookAppKeyAccessor();
-        
+
         // 设置验证器 mock 返回 true（委托给验证器进行签名验证）
         _validatorMock
             .Setup(x => x.ValidateHeaderSignatureAsync(
@@ -428,7 +428,7 @@ public class FeishuWebhookServiceConcurrencyTests
                 It.IsAny<string?>(),
                 It.IsAny<string>()))
             .ReturnsAsync(true);
-        
+
         var service = CreateServiceWithRealAppKeyAccessor(appKeyAccessor);
         var tasks = new List<Task<bool>>();
         var appKeys = new[] { "app1", "app2", "app3" };

@@ -405,7 +405,7 @@ public class BatchService : IBatchService
                     if (file != null && file.UserId == userId)
                     {
                         var fileContent = await _fileService.DownloadFileAsync(fileToken, null, cancellationToken);
-                        
+
                         var entry = zipArchive.CreateEntry(file.FileName, CompressionLevel.Optimal);
                         using var entryStream = entry.Open();
                         await entryStream.WriteAsync(fileContent, cancellationToken);

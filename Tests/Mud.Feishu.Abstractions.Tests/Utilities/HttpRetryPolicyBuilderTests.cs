@@ -507,7 +507,7 @@ public class HttpRetryPolicyBuilderTests
         Assert.InRange(delay1, 50, 500); // ~100ms ± 20% jitter + CI variance + system overhead
         Assert.InRange(delay2, 100, 600); // ~200ms ± 20% jitter + CI variance + system overhead
         Assert.InRange(delay3, 200, 1000); // ~400ms ± 20% jitter + CI variance + system overhead
-        
+
         // Verify exponential backoff: each delay should generally be larger than the previous
         // (allowing for some tolerance due to jitter and timing variations)
         // Note: We use 0.3 tolerance instead of 0.5 to be more resilient to CI timing variations
@@ -550,12 +550,12 @@ public class HttpRetryPolicyBuilderTests
 
         // Assert - Verify exponential backoff is working (delays should increase)
         Assert.Equal(4, timestamps.Count); // initial + 3 retries
-        
+
         // Verify delays are increasing with exponential backoff
         var delay1 = (timestamps[1] - timestamps[0]).TotalMilliseconds;
         var delay2 = (timestamps[2] - timestamps[1]).TotalMilliseconds;
         var delay3 = (timestamps[3] - timestamps[2]).TotalMilliseconds;
-        
+
         // With jitter, delays should be roughly: 500ms, 1000ms, 2000ms
         Assert.InRange(delay1, 250, 1000);
         Assert.InRange(delay2, 500, 1500);

@@ -23,9 +23,9 @@ public interface IOperationLogService
     /// <param name="isSuccess">是否成功</param>
     /// <param name="errorMessage">错误信息</param>
     /// <param name="cancellationToken">取消令牌</param>
-    Task LogAsync(int? userId, string? username, string operationType, string resourceType, 
+    Task LogAsync(int? userId, string? username, string operationType, string resourceType,
         string? resourceToken = null, string? resourceName = null, string? details = null,
-        string? ipAddress = null, string? userAgent = null, bool isSuccess = true, 
+        string? ipAddress = null, string? userAgent = null, bool isSuccess = true,
         string? errorMessage = null, CancellationToken cancellationToken = default);
 
     /// <summary>

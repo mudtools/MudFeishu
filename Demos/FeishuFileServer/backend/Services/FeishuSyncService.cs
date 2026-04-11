@@ -22,7 +22,7 @@ public class FeishuSyncService : IFeishuSyncService
     private readonly IFeishuTenantV1DriveFolder _driveFolder;
     private readonly IFeishuTenantV1DriveFiles _driveFiles;
     private readonly ILogger<FeishuSyncService> _logger;
-    
+
     /// <summary>
     /// 用户同步状态缓存
     /// 键为用户ID，值为同步状态
@@ -220,11 +220,11 @@ public class FeishuSyncService : IFeishuSyncService
         /// 每批处理的最大文件数量
         /// </summary>
         const int batchSize = 50;
-        
+
         for (int i = 0; i < files.Count; i += batchSize)
         {
             var batch = files.Skip(i).Take(batchSize).ToList();
-            
+
             var requestDocs = batch
                 .Where(f => !string.IsNullOrEmpty(f.Token))
                 .Select(f => new RequestDoc
@@ -248,11 +248,11 @@ public class FeishuSyncService : IFeishuSyncService
             /// 文件Token到元数据的映射字典
             /// </summary>
             Dictionary<string, FileMetaInfo> metaDict = new();
-            
+
             try
             {
                 var metasResponse = await _driveFiles.BatchQueryMetasAsync(metasRequest, cancellationToken: cancellationToken);
-                
+
                 if (metasResponse?.Data?.Metas != null)
                 {
                     foreach (var meta in metasResponse.Data.Metas)
@@ -364,7 +364,7 @@ public class FeishuSyncService : IFeishuSyncService
                 result.UpdatedFolders++;
                 _logger.LogDebug("更新文件夹: {FolderName} ({FolderToken})", existingFolder.FolderName, existingFolder.FolderToken);
             }
-            
+
             return existingFolder;
         }
     }

@@ -233,6 +233,18 @@ public static class FeishuEventTypes
     public const string AttendanceUserTaskUpdate = "attendance.user_task.updated_v1";
     #endregion
 
+    #region Drive Events
+    /// <summary>
+    /// 文件夹下文件创建
+    /// </summary>
+    public const string DriveFileCreated = "drive.file.created_in_folder_v1";
+
+    /// <summary>
+    /// 文件标题更新事件
+    /// </summary>
+    public const string DriveFileTitleUpdated = "drive.file.title_updated_v1";
+    #endregion
+
     /// <summary>
     /// 用户加入群聊事件
     /// </summary>

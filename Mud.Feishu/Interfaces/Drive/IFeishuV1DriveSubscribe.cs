@@ -130,4 +130,17 @@ public interface IFeishuV1DriveSubscribe : IFeishuAppContextSwitcher
       [Query("file_type")] string file_type,
       [Query("event_type")] string? event_type = null,
       CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 订阅用户云文档事件
+    /// <para>订阅用户云文档的各类通知事件，调用后目前可获取接收者视角的云文档评论、回复添加事件 ，未来 还会陆续扩充其它通知事件。</para>
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/drive-v1/user/subscription">接口文档</see></para>
+    /// </summary>
+    /// <param name="subscribeUserFileEventRequest">订阅用户云文档事件请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Post("/open-apis/drive/v1/user/subscription")]
+    Task<FeishuNullDataApiResult?> SubscribeUserFileEventAsync(
+      [Body] SubscribeUserFileEventRequest subscribeUserFileEventRequest,
+      CancellationToken cancellationToken = default);
 }

@@ -11,7 +11,10 @@ using System.Collections.Concurrent;
 
 namespace Mud.Feishu.WebSocket;
 
-public class MessageQueueManager
+/// <summary>
+/// 消息队列管理器，负责管理WebSocket消息的队列、背压处理和并发处理
+/// </summary>
+public class MessageQueueManager : IDisposable
 {
     private readonly ILogger<MessageQueueManager> _logger;
     private readonly FeishuWebSocketOptions _options;
@@ -19,10 +22,21 @@ public class MessageQueueManager
     private readonly List<Func<string, Task>> _messageProcessors = new();
     private readonly SemaphoreSlim _processingSemaphore;
 
+    /// <summary>
+    /// 错误事件，当消息队列处理发生错误时触发
+    /// </summary>
     public event EventHandler<WebSocketErrorEventArgs>? Error;
 
+    /// <summary>
+    /// 获取当前队列中的消息数量
+    /// </summary>
     public int QueueCount => _messageQueue.Count;
 
+    /// <summary>
+    /// 初始化消息队列管理器
+    /// </summary>
+    /// <param name="logger">日志记录器</param>
+    /// <param name="options">WebSocket配置选项</param>
     public MessageQueueManager(
         ILogger<MessageQueueManager> logger,
         FeishuWebSocketOptions options)
@@ -32,16 +46,37 @@ public class MessageQueueManager
         _processingSemaphore = new SemaphoreSlim(options.MaxConcurrentMessageProcessing, options.MaxConcurrentMessageProcessing);
     }
 
+    /// <summary>
+    /// 注册消息处理器
+    /// </summary>
+    /// <param name="processor">消息处理委托</param>
     public void RegisterProcessor(Func<string, Task> processor)
     {
         _messageProcessors.Add(processor);
     }
 
+    /// <summary>
+    /// 注销消息处理器
+    /// </summary>
+    /// <param name="processor">要注销的消息处理委托</param>
+    /// <returns>是否成功移除</returns>
     public bool UnregisterProcessor(Func<string, Task> processor)
     {
         return _messageProcessors.Remove(processor);
     }
 
+    /// <summary>
+    /// 将消息加入队列
+    /// </summary>
+    /// <param name="message">要加入队列的消息</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>是否成功加入队列</returns>
+    /// <remarks>
+    /// 根据配置的背压策略处理队列满的情况：
+    /// - DropOldest: 丢弃最旧的消息
+    /// - DropNewest: 丢弃新消息
+    /// - Block: 阻塞等待直到有空间或超时
+    /// </remarks>
     public async Task<bool> EnqueueAsync(string message, CancellationToken cancellationToken = default)
     {
         if (!_options.EnableMessageQueue)
@@ -135,6 +170,15 @@ public class MessageQueueManager
         return enqueued;
     }
 
+    /// <summary>
+    /// 处理队列中的消息
+    /// </summary>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>异步任务</returns>
+    /// <remarks>
+    /// 持续从队列中取出消息并分发给所有注册的处理器。
+    /// 使用信号量控制并发处理数量，每处理100条消息后让出线程。
+    /// </remarks>
     public async Task ProcessQueueAsync(CancellationToken cancellationToken)
     {
         try
@@ -184,11 +228,20 @@ public class MessageQueueManager
         }
     }
 
+    /// <summary>
+    /// 清空消息队列
+    /// </summary>
     public void Clear()
     {
         while (_messageQueue.TryDequeue(out _)) { }
     }
 
+    /// <summary>
+    /// 安全地处理单条消息
+    /// </summary>
+    /// <param name="processor">消息处理器</param>
+    /// <param name="message">消息内容</param>
+    /// <returns>异步任务</returns>
     private async Task ProcessMessageSafely(Func<string, Task> processor, string message)
     {
         try
@@ -202,11 +255,18 @@ public class MessageQueueManager
         }
     }
 
+    /// <summary>
+    /// 触发错误事件
+    /// </summary>
+    /// <param name="e">错误事件参数</param>
     private void OnError(WebSocketErrorEventArgs e)
     {
         Error?.Invoke(this, e);
     }
 
+    /// <summary>
+    /// 释放资源
+    /// </summary>
     public void Dispose()
     {
         Clear();

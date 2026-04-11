@@ -20,6 +20,7 @@ public interface IFeishuUserV1DriveFiles : IFeishuV1DriveFiles, ICurrentUserId
 {
     /// <summary>
     /// 用于根据搜索关键词（search_key）对当前用户可见的云文档进行搜索。。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/drive-v1/search/document-search">接口文档</see></para>
     /// </summary>
     /// <param name="searchFileObjectRequest">搜索云文档请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>

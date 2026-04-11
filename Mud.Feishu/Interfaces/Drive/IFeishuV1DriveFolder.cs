@@ -1,5 +1,5 @@
 // -----------------------------------------------------------------------
-//  作者：Mud Studio  版权所有 (c) Mud Studio 2025   
+//  作者：Mud Studio  版权所有 (c) Mud Studio 2026   
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
@@ -19,6 +19,7 @@ public interface IFeishuV1DriveFolder : IFeishuAppContextSwitcher
 {
     /// <summary>
     /// 获取用户“我的空间”（根文件夹）的元数据，包括根文件夹的 token、ID 和文件夹所有者的 ID。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/drive-v1/folder/get-root-folder-meta">接口文档</see></para>
     /// </summary>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Get("/open-apis/drive/explorer/v2/root_folder/meta")]
@@ -27,6 +28,7 @@ public interface IFeishuV1DriveFolder : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 根据用户和任务分组查询任务列表。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/drive-v1/folder/list">接口文档</see></para>
     /// </summary>
     /// <param name="direction">定义清单中文件的排序规则，与 order_by 配合使用，可选值：ASC：按升序排序、DESC：按降序排序</param>
     /// <param name="folder_token">文件夹的 token。不填写或填空字符串，将获取用户云空间根目录下的清单，且不支持分页和返回快捷方式。</param>
@@ -47,6 +49,7 @@ public interface IFeishuV1DriveFolder : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 用于根据文件夹 token 获取该文件夹的元数据，包括文件夹的 ID、名称、创建者 ID 等。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/drive-v1/folder/get-folder-meta">接口文档</see></para>
     /// </summary>
     /// <param name="folderToken">文件夹的 token。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
@@ -57,6 +60,7 @@ public interface IFeishuV1DriveFolder : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 用于在用户云空间指定文件夹中创建一个空文件夹。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/drive-v1/folder/create_folder">接口文档</see></para>
     /// </summary>
     /// <param name="createFolderRequest">新建文件夹请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
@@ -68,6 +72,7 @@ public interface IFeishuV1DriveFolder : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 查询异步任务的状态信息。目前支持查询删除文件夹和移动文件夹的异步任务。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/drive-v1/file/async-task/task_check">接口文档</see></para>
     /// </summary>
     /// <param name="task_id">异步任务的 ID。目前支持查询删除文件夹和移动文件夹的异步任务。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>

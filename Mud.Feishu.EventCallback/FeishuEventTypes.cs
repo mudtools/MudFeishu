@@ -243,6 +243,16 @@ public static class FeishuEventTypes
     /// 文件标题更新事件
     /// </summary>
     public const string DriveFileTitleUpdated = "drive.file.title_updated_v1";
+
+    /// <summary>
+    /// 文件已读事件
+    /// </summary>
+    public const string DriveFileRead = "drive.file.read_v1";
+
+    /// <summary>
+    /// 文件编辑事件
+    /// </summary>
+    public const string DriveFileEdit = "drive.file.edit_v1";
     #endregion
 
     /// <summary>

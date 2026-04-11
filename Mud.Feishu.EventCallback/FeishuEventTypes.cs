@@ -253,6 +253,17 @@ public static class FeishuEventTypes
     /// 文件编辑事件
     /// </summary>
     public const string DriveFileEdit = "drive.file.edit_v1";
+
+    /// <summary>
+    /// 文件协作者权限申请
+    /// </summary>
+    public const string DriveFilePermissionMemberApplied = "drive.file.permission_member_applied_v1";
+
+    /// <summary>
+    /// 文件协作者添加
+    /// </summary>
+    public const string DriveFilePermissionMemberAdded = "drive.file.permission_member_added_v1";
+
     #endregion
 
     /// <summary>

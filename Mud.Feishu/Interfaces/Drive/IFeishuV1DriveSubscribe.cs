@@ -162,4 +162,23 @@ public interface IFeishuV1DriveSubscribe : IFeishuAppContextSwitcher
     Task<FeishuNullDataApiResult?> UnsubscribeUserFileEventAsync(
         [Query("event_type")] string? event_type = null,
         CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 查询用户云文档事件订阅状态
+    /// <para>用于查询用户云文档事件的订阅状态。仅当is_subscribe（订阅状态）为 true，应用才可收到 “用户云文档事件”下的各类通知事件。</para>
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/drive-v1/user/subscription_status">接口文档</see></para>
+    /// </summary>
+    /// <param name="event_type">
+    /// <para>事件类型。</para>
+    /// <para>- 若 `file_type` 为 `folder`，需要填写该字段，且字段必须填写为 `file.created_in_folder_v1`，表示订阅[文件夹下文件创建](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/drive-v1/file/events/created_in_folder)事件</para>
+    /// <para>- 若 `file_type` 不为 `folder`，请勿填写该字段。对于文档、电子表格、多维表格等云文档类型，目前仅支持订阅所有相关的云文档事件，暂不支持只订阅该云文档类型下的某个或某些事件</para>
+    /// <para>示例值：file.created_in_folder_v1</para>
+    /// <para>默认值：null</para>
+    /// </param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Get("/open-apis/drive/v1/user/subscription_status")]
+    Task<FeishuApiResult<GetUserFileSubscribeResult>?> GetUserFileSubscribeAsync(
+      [Query("event_type")] string? event_type = null,
+      CancellationToken cancellationToken = default);
 }

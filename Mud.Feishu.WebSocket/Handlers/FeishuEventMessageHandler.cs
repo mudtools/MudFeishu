@@ -220,14 +220,29 @@ public class FeishuEventMessageHandler : JsonMessageHandler
         // 解析header
         if (root.TryGetProperty("header", out var headerElement))
         {
+            // 构建 Header 对象，保留完整的 v2.0 header 数据
+            var header = new FeishuEventHeader { Schema = "2.0" };
+
             if (headerElement.TryGetProperty("event_id", out var eventIdElement))
-                eventData.EventId = eventIdElement.GetString() ?? string.Empty;
+            {
+                var eventId = eventIdElement.GetString() ?? string.Empty;
+                header.EventId = eventId;
+                eventData.EventId = eventId;
+            }
 
             if (headerElement.TryGetProperty("event_type", out var eventTypeElement))
-                eventData.EventType = eventTypeElement.GetString() ?? string.Empty;
+            {
+                var eventType = eventTypeElement.GetString() ?? string.Empty;
+                header.EventType = eventType;
+                eventData.EventType = eventType;
+            }
 
             if (headerElement.TryGetProperty("create_time", out var createTimeElement))
             {
+                header.CreateTime = createTimeElement.ValueKind == JsonValueKind.String
+                    ? createTimeElement.GetString()
+                    : createTimeElement.TryGetInt64(out var ct) ? ct.ToString() : null;
+
                 if (createTimeElement.ValueKind == JsonValueKind.String &&
                     long.TryParse(createTimeElement.GetString(), out var createTimeLong))
                 {
@@ -239,11 +254,23 @@ public class FeishuEventMessageHandler : JsonMessageHandler
                 }
             }
 
+            if (headerElement.TryGetProperty("token", out var tokenElement))
+                header.Token = tokenElement.GetString();
+
             if (headerElement.TryGetProperty("tenant_key", out var tenantKeyElement))
-                eventData.TenantKey = tenantKeyElement.GetString() ?? string.Empty;
+            {
+                header.TenantKey = tenantKeyElement.GetString() ?? string.Empty;
+                eventData.TenantKey = header.TenantKey;
+            }
 
             if (headerElement.TryGetProperty("app_id", out var appIdElement))
-                eventData.AppId = appIdElement.GetString() ?? string.Empty;
+            {
+                header.AppId = appIdElement.GetString() ?? string.Empty;
+                eventData.AppId = header.AppId;
+            }
+
+            // 设置完整 Header
+            eventData.Header = header;
         }
 
         // 解析event

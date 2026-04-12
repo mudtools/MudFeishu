@@ -278,6 +278,11 @@ public static class FeishuEventTypes
     /// 文件删除事件
     /// </summary>
     public const string DriveFileDeleted = "drive.file.deleted_v1";
+
+    /// <summary>
+    /// 文件评论新增事件
+    /// </summary>
+    public const string DriveNoticeCommentAdd = "drive.notice.comment_add_v1";
     #endregion
 
     /// <summary>

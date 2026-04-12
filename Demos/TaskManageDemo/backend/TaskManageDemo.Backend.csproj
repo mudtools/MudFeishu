@@ -16,6 +16,7 @@
     <PackageReference Include="Mud.Feishu" Version="2.0.8" />
     <PackageReference Include="Mud.Feishu.Webhook" Version="2.0.8" />
 	<PackageReference Include="Mud.Feishu.Authentication" Version="2.0.8" />
+	<PackageReference Include="Mud.Feishu.EventCallback" Version="2.0.8" />
     <!--<ProjectReference Include="../../../Mud.Feishu.Authentication/Mud.Feishu.Authentication.csproj" />-->
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.11" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="8.0.11" />

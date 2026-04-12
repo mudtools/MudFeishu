@@ -16,7 +16,7 @@ namespace Mud.Feishu.EventCallback.Approval;
 /// <para>文档地址：https://open.feishu.cn/document/server-docs/approval-v4/event/common-event/custom-approval-event</para>
 /// </summary>
 [GenerateEventHandler(EventType = FeishuEventTypes.ApprovalApprovalUpdated, HandlerNamespace = Consts.HandlerNamespace,
-              InheritedFrom = Consts.InheritedFrom)]
+              InheritedFrom = Consts.InheritedFrom, HeaderType = Consts.DefaultHeader)]
 public class ApprovalApprovalUpdatedResult : IEventResult
 {
     /// <summary>

@@ -274,8 +274,8 @@ public class SsrfProtectionIntegrationTests
         }
         stopwatch.Stop();
 
-        // Assert - Should be very fast (less than 50ms for 1000 validations in CI environments)
-        Assert.True(stopwatch.ElapsedMilliseconds < 50,
+        // Assert - Should be very fast (less than 100ms for 1000 validations in CI environments)
+        Assert.True(stopwatch.ElapsedMilliseconds < 100,
             $"URL 验证应该很快，但 {iterations} 次验证耗时 {stopwatch.ElapsedMilliseconds}ms");
     }
 

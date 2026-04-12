@@ -16,7 +16,7 @@ namespace Mud.Feishu.EventCallback.Drive;
 /// <para>文档地址：https://open.feishu.cn/document/docs/drive-v1/event/list/created_in_folder</para>
 /// </summary>
 [GenerateEventHandler(EventType = FeishuEventTypes.DriveFileCreated, HandlerNamespace = Consts.HandlerNamespace,
-              InheritedFrom = Consts.InheritedFrom, HeaderType = nameof(FeishuEventHeader))]
+              InheritedFrom = Consts.InheritedFrom, HeaderType = Consts.DefaultHeader)]
 public class DriveFileCreatedResult : IEventResult
 {
     /// <summary>

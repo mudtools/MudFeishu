@@ -27,13 +27,13 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Mud.HttpUtils.Generator" Version="1.6.7" PrivateAssets="all" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+		<PackageReference Include="Mud.HttpUtils.Generator" Version="1.7.0" PrivateAssets="all" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
 		<None Include=".\README.md" Pack="true" PackagePath="\" />
 		<None Include="..\Icon.png" Pack="true" PackagePath="\" />
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Mud.HttpUtils" Version="1.6.7" />
+		<PackageReference Include="Mud.HttpUtils" Version="1.7.0" />
 	</ItemGroup>
 
 </Project>

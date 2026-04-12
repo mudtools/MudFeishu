@@ -12,10 +12,10 @@ namespace Mud.Feishu.EventCallback.Organization;
 /// <para>当应用订阅该事件后，如果通讯录内有部门被创建，则会触发该事件。</para>
 /// <para>事件类型:contact.department.created_v3</para>
 /// <para>使用时请继承：<see cref="DepartmentCreatedEventHandler"/></para>
-/// <para>订阅该事件详细文档：<see href="https://open.feishu.cn/document/server-docs/contact-v3/user/events/created"/></para>
+/// <para>订阅该事件详细文档：<see href="https://open.feishu.cn/document/server-docs/contact-v3/department/events/created"/></para>
 /// </summary>
 [GenerateEventHandler(EventType = FeishuEventTypes.DepartmentCreated, HandlerNamespace = Consts.HandlerNamespace,
-              InheritedFrom = Consts.InheritedFrom)]
+              InheritedFrom = Consts.InheritedFrom, HeaderType = nameof(FeishuEventHeader))]
 public class DepartmentCreatedResult : DepartmentResultInfo, IEventResult
 {
 

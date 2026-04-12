@@ -268,6 +268,16 @@ public static class FeishuEventTypes
     /// 文档协作者移除
     /// </summary>
     public const string DriveFilePermissionMemberRemoved = "drive.file.permission_member_removed_v1";
+
+    /// <summary>
+    /// 文件删除到回收站事件
+    /// </summary>
+    public const string DriveFileTrashed = "drive.file.trashed_v1";
+
+    /// <summary>
+    /// 文件删除事件
+    /// </summary>
+    public const string DriveFileDeleted = "drive.file.deleted_v1";
     #endregion
 
     /// <summary>

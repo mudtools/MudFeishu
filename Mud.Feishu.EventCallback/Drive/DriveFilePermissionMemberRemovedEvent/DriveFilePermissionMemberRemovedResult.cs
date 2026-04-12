@@ -7,19 +7,20 @@
 
 namespace Mud.Feishu.EventCallback.Drive;
 
+
 /// <summary>
-/// 文件协作者添加
-/// <para>添加用户或群作为文件协作者时将触发此事件。</para>
-/// <para>事件类型:drive.file.permission_member_added_v1</para>
-/// <para>使用时请继承：<see cref="DriveFilePermissionMemberAddedEventHandler"/></para>
-/// <para>文档地址：https://open.feishu.cn/document/docs/drive-v1/event/list/permission_member_added_v1</para>
+/// 文件协作者移除
+/// <para>移除用户或群作为文件协作者时将触发此事件。</para>
+/// <para>事件类型:drive.file.permission_member_removed_v1</para>
+/// <para>使用时请继承：<see cref="DriveFilePermissionMemberRemovedEventHandler"/></para>
+/// <para>文档地址：https://open.feishu.cn/document/server-docs/docs/drive-v1/event/list/file-collaborator-remove</para>
 /// </summary>
-[GenerateEventHandler(EventType = FeishuEventTypes.DriveFilePermissionMemberAdded, HandlerNamespace = Consts.HandlerNamespace,
-              InheritedFrom = Consts.InheritedFrom, HeaderType = nameof(FeishuEventHeader))]
-public class DriveFilePermissionMemberAddedResult : IEventResult
+[GenerateEventHandler(EventType = FeishuEventTypes.DriveFilePermissionMemberRemoved, HandlerNamespace = Consts.HandlerNamespace,
+              InheritedFrom = Consts.InheritedFrom, HeaderType = nameof(DriveFileEventHeader))]
+public class DriveFilePermissionMemberRemovedResult : IEventResult
 {
     /// <summary>
-    /// <para>添加的群 ID 列表</para>
+    /// <para>移除的群 ID 列表</para>
     /// <para>必填：否</para>
     /// </summary>
     [JsonPropertyName("chat_list")]
@@ -53,7 +54,7 @@ public class DriveFilePermissionMemberAddedResult : IEventResult
     public UserIdInfo? OperatorId { get; set; }
 
     /// <summary>
-    /// <para>添加的用户 ID 列表</para>
+    /// <para>移除的用户 ID 列表</para>
     /// <para>必填：否</para>
     /// </summary>
     [JsonPropertyName("user_list")]

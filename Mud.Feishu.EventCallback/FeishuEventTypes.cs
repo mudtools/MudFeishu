@@ -264,6 +264,10 @@ public static class FeishuEventTypes
     /// </summary>
     public const string DriveFilePermissionMemberAdded = "drive.file.permission_member_added_v1";
 
+    /// <summary>
+    /// 文档协作者移除
+    /// </summary>
+    public const string DriveFilePermissionMemberRemoved = "drive.file.permission_member_removed_v1";
     #endregion
 
     /// <summary>

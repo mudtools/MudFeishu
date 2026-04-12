@@ -8,20 +8,27 @@
 namespace Mud.Feishu.EventCallback.Drive;
 
 /// <summary>
-/// 文件标题变更
-/// <para>云文档标题变更事件。被订阅的云文档标题发生变更时，将会触发此事件。</para>
-/// <para>事件类型:drive.file.title_updated_v1</para>
-/// <para>使用时请继承：<see cref="DriveFileTitleUpdatedEventHandler"/></para>
-/// <para>文档地址：https://open.feishu.cn/document/server-docs/docs/drive-v1/event/list/file-title-update</para>
+/// 文件协作者添加
+/// <para>添加用户或群作为文件协作者时将触发此事件。</para>
+/// <para>事件类型:drive.file.permission_member_added_v1</para>
+/// <para>使用时请继承：<see cref="DriveFilePermissionMemberAddedEventHandler"/></para>
+/// <para>文档地址：https://open.feishu.cn/document/server-docs/docs/drive-v1/event/list/file-collaborator-add</para>
 /// </summary>
-[GenerateEventHandler(EventType = FeishuEventTypes.DriveFileTitleUpdated, HandlerNamespace = Consts.HandlerNamespace,
+[GenerateEventHandler(EventType = FeishuEventTypes.DriveFilePermissionMemberAdded, HandlerNamespace = Consts.HandlerNamespace,
               InheritedFrom = Consts.InheritedFrom, HeaderType = nameof(DriveFileEventHeader))]
-public class DriveFileTitleUpdatedResult : IEventResult
+public class DriveFilePermissionMemberAddedResult : IEventResult
 {
+    /// <summary>
+    /// <para>添加的群 ID 列表</para>
+    /// <para>必填：否</para>
+    /// </summary>
+    [JsonPropertyName("chat_list")]
+    public string[]? ChatList { get; set; }
+
     /// <summary>
     /// <para>云文档类型，支持以下枚举：</para>
     /// <para>- doc：旧版文档。已不推荐使用</para>
-    /// <para>- docx：文档</para>
+    /// <para>- docx：新版文档</para>
     /// <para>- sheet：电子表格</para>
     /// <para>- bitable：多维表格</para>
     /// <para>- slides：幻灯片</para>
@@ -44,4 +51,11 @@ public class DriveFileTitleUpdatedResult : IEventResult
     /// </summary>
     [JsonPropertyName("operator_id")]
     public UserIdInfo? OperatorId { get; set; }
+
+    /// <summary>
+    /// <para>添加的用户 ID 列表</para>
+    /// <para>必填：否</para>
+    /// </summary>
+    [JsonPropertyName("user_list")]
+    public UserIdInfo[]? UserList { get; set; }
 }

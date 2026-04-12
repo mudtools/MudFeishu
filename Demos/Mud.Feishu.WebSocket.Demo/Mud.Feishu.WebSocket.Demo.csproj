@@ -24,7 +24,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\Mud.Feishu.Redis\Mud.Feishu.Redis.csproj" />
     <ProjectReference Include="..\..\Mud.Feishu.WebSocket\Mud.Feishu.WebSocket.csproj" />
-	  <ProjectReference Include="..\..\Mud.Feishu.EventCallback\Mud.Feishu.EventCallback.csproj" />
+	<ProjectReference Include="..\..\Mud.Feishu.EventCallback\Mud.Feishu.EventCallback.csproj" />
   </ItemGroup>
 
   <ItemGroup>

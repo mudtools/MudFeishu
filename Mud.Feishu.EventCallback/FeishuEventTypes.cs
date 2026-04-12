@@ -283,6 +283,16 @@ public static class FeishuEventTypes
     /// 文件评论新增事件
     /// </summary>
     public const string DriveNoticeCommentAdd = "drive.notice.comment_add_v1";
+
+    /// <summary>
+    /// 多维表格字段变更事件
+    /// </summary>
+    public const string BitableFieldChanged = "drive.file.bitable_field_changed_v1";
+
+    /// <summary>
+    /// 多维表格记录变更事件
+    /// </summary>
+    public const string BitableRecordChanged = "drive.file.bitable_record_changed_v1";
     #endregion
 
     /// <summary>

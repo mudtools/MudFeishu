@@ -329,6 +329,17 @@ public class FeishuEventDeduplicator : IFeishuEventDeduplicator, IDisposable, IA
 
     private void CleanupExpiredEntriesLocked()
     {
+        var removedCount = RemoveExpiredEntriesLocked();
+
+        if (removedCount > 0)
+        {
+            if (_logger != null && _logger.IsEnabled(LogLevel.Debug))
+                _logger?.LogDebug("清理了 {Count} 个过期的事件缓存条目", removedCount);
+        }
+    }
+
+    private int RemoveExpiredEntriesLocked()
+    {
         var now = DateTimeOffset.UtcNow;
         var expiredKeys = _eventCache
             .Where(kvp => (now - kvp.Value.ProcessedAt) > _cacheExpiration)
@@ -340,11 +351,7 @@ public class FeishuEventDeduplicator : IFeishuEventDeduplicator, IDisposable, IA
             _eventCache.Remove(key);
         }
 
-        if (expiredKeys.Count > 0)
-        {
-            if (_logger != null && _logger.IsEnabled(LogLevel.Debug))
-                _logger?.LogDebug("清理了 {Count} 个过期的事件缓存条目", expiredKeys.Count);
-        }
+        return expiredKeys.Count;
     }
 
     /// <summary>
@@ -370,22 +377,7 @@ public class FeishuEventDeduplicator : IFeishuEventDeduplicator, IDisposable, IA
     {
         lock (_lock)
         {
-            var now = DateTimeOffset.UtcNow;
-            var expiredKeys = _eventCache
-                .Where(kvp => (now - kvp.Value.ProcessedAt) > _cacheExpiration)
-                .Select(kvp => kvp.Key)
-                .ToList();
-
-            foreach (var key in expiredKeys)
-            {
-                _eventCache.Remove(key);
-            }
-
-            if (expiredKeys.Count > 0)
-            {
-                if (_logger != null && _logger.IsEnabled(LogLevel.Debug))
-                    _logger?.LogDebug("清理了 {Count} 个过期的事件缓存条目", expiredKeys.Count);
-            }
+            CleanupExpiredEntriesLocked();
         }
     }
 
@@ -407,6 +399,20 @@ public class FeishuEventDeduplicator : IFeishuEventDeduplicator, IDisposable, IA
     /// <inheritdoc/>
     public void Dispose()
     {
+        DisposeCore();
+        GC.SuppressFinalize(this);
+    }
+
+    /// <inheritdoc/>
+    public ValueTask DisposeAsync()
+    {
+        DisposeCore();
+        GC.SuppressFinalize(this);
+        return new ValueTask();
+    }
+
+    private void DisposeCore()
+    {
         if (_disposed)
             return;
 
@@ -417,23 +423,6 @@ public class FeishuEventDeduplicator : IFeishuEventDeduplicator, IDisposable, IA
         {
             _eventCache.Clear();
         }
-    }
-
-    /// <inheritdoc/>
-    public ValueTask DisposeAsync()
-    {
-        if (_disposed)
-            return new ValueTask();
-
-        _disposed = true;
-        _cleanupTimer.Dispose();
-
-        lock (_lock)
-        {
-            _eventCache.Clear();
-        }
-
-        return new ValueTask();
     }
 
     /// <summary>

@@ -54,6 +54,11 @@ public interface IFeishuSeqIDDeduplicator : IAsyncDisposable
     void ClearCache();
 
     /// <summary>
+    /// 异步清空缓存
+    /// </summary>
+    Task ClearCacheAsync();
+
+    /// <summary>
     /// 获取当前缓存的 SeqID 数量
     /// </summary>
     int GetCacheCount();

@@ -277,9 +277,9 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
 
         _sequenceValidator?.Reset();
 
-        if (_seqIdDeduplicator is FeishuSeqIDDeduplicator seqIdDeduplicatorImpl)
+        if (_seqIdDeduplicator != null)
         {
-            await seqIdDeduplicatorImpl.ClearCacheAsync();
+            await _seqIdDeduplicator.ClearCacheAsync();
         }
 
         if (_options.EnableLogging)

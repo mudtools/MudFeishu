@@ -288,24 +288,7 @@ public sealed class FeishuEventDistributedDeduplicator : IFeishuEventDistributed
 
     private void CleanupExpiredEntries(object? state)
     {
-        lock (_lock)
-        {
-            var now = DateTimeOffset.UtcNow;
-            var expiredKeys = _cache
-                .Where(kvp => (now - kvp.Value.Timestamp) > _cacheExpiration)
-                .Select(kvp => kvp.Key)
-                .ToList();
-
-            foreach (var key in expiredKeys)
-            {
-                _cache.Remove(key);
-            }
-
-            if (expiredKeys.Count > 0)
-            {
-                _logger?.LogDebug("清理了 {Count} 个过期缓存条目", expiredKeys.Count);
-            }
-        }
+        CleanupExpiredAsync().GetAwaiter().GetResult();
     }
 
     private static string GetCacheKey(string eventId, string? appKey)
@@ -326,6 +309,20 @@ public sealed class FeishuEventDistributedDeduplicator : IFeishuEventDistributed
     /// <inheritdoc />
     public void Dispose()
     {
+        DisposeCore();
+        GC.SuppressFinalize(this);
+    }
+
+    /// <inheritdoc />
+    public ValueTask DisposeAsync()
+    {
+        DisposeCore();
+        GC.SuppressFinalize(this);
+        return new ValueTask();
+    }
+
+    private void DisposeCore()
+    {
         if (_disposed)
             return;
 
@@ -336,23 +333,6 @@ public sealed class FeishuEventDistributedDeduplicator : IFeishuEventDistributed
         {
             _cache.Clear();
         }
-    }
-
-    /// <inheritdoc />
-    public ValueTask DisposeAsync()
-    {
-        if (_disposed)
-            return new ValueTask();
-
-        _disposed = true;
-        _cleanupTimer.Dispose();
-
-        lock (_lock)
-        {
-            _cache.Clear();
-        }
-
-        return new ValueTask();
     }
 
     private class DistributedCacheEntry

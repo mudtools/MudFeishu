@@ -84,4 +84,11 @@ public interface IFeishuV1Board : IFeishuAppContextSwitcher
        [Path] string whiteboard_id,
        [Body] CreatePlantumlWhiteboardNodeRequest createPlantumlWhiteboardNodeRequest,
        CancellationToken cancellationToken = default);
+
+
+    [Post("/open-apis/board/v1/whiteboards/{whiteboard_id}/nodes")]
+    Task<FeishuNullDataApiResult?> CreateWhiteboardNodeAsync(
+      [Path] string whiteboard_id,
+      [Body] CreatePlantumlWhiteboardNodeRequest createPlantumlWhiteboardNodeRequest,
+      CancellationToken cancellationToken = default);
 }

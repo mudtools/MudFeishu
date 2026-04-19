@@ -55,7 +55,7 @@ public interface IFeishuV1DriveFilesVersions : IFeishuAppContextSwitcher
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Get("/open-apis/drive/v1/files/{file_token}/versions")]
     Task<FeishuApiPageListResult<FileVersionInfo>?> GetFileVersionPageListByFileTokenAsync(
-         [Path] string? file_token,
+         [Path] string file_token,
          [Query("obj_type")] string obj_type,
          [Query("page_size")] int page_size = Consts.PageSize,
          [Query("page_token")] string? page_token = null,
@@ -83,7 +83,7 @@ public interface IFeishuV1DriveFilesVersions : IFeishuAppContextSwitcher
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Get("/open-apis/drive/v1/files/{file_token}/versions/{version_id}")]
     Task<FeishuApiResult<FileVersionInfo>?> GetFileVersionByFileTokenAsync(
-       [Path] string? file_token,
+       [Path] string file_token,
        [Path] string version_id,
        [Query("obj_type")] string obj_type,
        [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
@@ -111,7 +111,7 @@ public interface IFeishuV1DriveFilesVersions : IFeishuAppContextSwitcher
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Delete("/open-apis/drive/v1/files/{file_token}/versions/{version_id}")]
     Task<FeishuNullDataApiResult?> DeleteFileVersionByFileTokenAsync(
-       [Path] string? file_token,
+       [Path] string file_token,
        [Path] string version_id,
        [Query("obj_type")] string obj_type,
        [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,

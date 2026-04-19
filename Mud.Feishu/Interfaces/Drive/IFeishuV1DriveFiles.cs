@@ -56,7 +56,7 @@ public interface IFeishuV1DriveFiles : IFeishuAppContextSwitcher
     /// <returns></returns>
     [Get("/open-apis/drive/v1/files/{file_token}/statistics")]
     Task<FeishuApiResult<FileStatisticsReuslt>?> GetFileStatisticsByFileTokenAsync(
-      [Path] string? file_token,
+      [Path] string file_token,
       [Query("file_type")] string file_type,
       CancellationToken cancellationToken = default);
 
@@ -88,7 +88,7 @@ public interface IFeishuV1DriveFiles : IFeishuAppContextSwitcher
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Get("/open-apis/drive/v1/files/{file_token}/view_records")]
     Task<FeishuApiPageListResult<FileViewRecord>?> GetFileViewRecordPageListByFileTokenAsync(
-       [Path] string? file_token,
+       [Path] string file_token,
        [Query("file_type")] string file_type,
        [Query("page_size")] int page_size = Consts.PageSize,
        [Query("page_token")] string? page_token = null,
@@ -107,7 +107,7 @@ public interface IFeishuV1DriveFiles : IFeishuAppContextSwitcher
     [Post("/open-apis/drive/v1/files/{file_token}/copy")]
     Task<FeishuApiResult<CopyFileResult>?> CopyFileByFileTokenAsync(
       [Body] CopyFileRequest copyFileRequest,
-      [Path] string? file_token,
+      [Path] string file_token,
       [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
       CancellationToken cancellationToken = default);
 
@@ -122,7 +122,7 @@ public interface IFeishuV1DriveFiles : IFeishuAppContextSwitcher
     [Post("/open-apis/drive/v1/files/{file_token}/move")]
     Task<FeishuApiResult<FileTaskResult>?> MoveFileByFileTokenAsync(
      [Body] MoveFileRequest moveFileRequest,
-     [Path] string? file_token,
+     [Path] string file_token,
      CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -150,7 +150,7 @@ public interface IFeishuV1DriveFiles : IFeishuAppContextSwitcher
     /// <returns></returns>
     [Delete("/open-apis/drive/v1/files/{file_token}")]
     Task<FeishuApiResult<FileTaskResult>?> DeleteFileByFileTokenAsync(
-        [Path] string? file_token,
+        [Path] string file_token,
         [Query("type")] string file_type,
         CancellationToken cancellationToken = default);
 
@@ -344,7 +344,7 @@ public interface IFeishuV1DriveFiles : IFeishuAppContextSwitcher
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Get("/open-apis/drive/v2/files/{file_token}/likes")]
     Task<FeishuApiPageListResult<FileLikeInfo>?> GetFileLikePageListByFileTokenAsync(
-       [Path] string? file_token,
+       [Path] string file_token,
        [Query("file_type")] string file_type,
        [Query("page_size")] int page_size = Consts.PageSize,
        [Query("page_token")] string? page_token = null,

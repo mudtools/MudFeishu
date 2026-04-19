@@ -55,7 +55,7 @@ public interface IFeishuV1DriveFolder : IFeishuAppContextSwitcher
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Get("/open-apis/drive/explorer/v2/folder/{folderToken}/meta")]
     Task<FeishuApiResult<GetFolderMetaResult>?> GetFolderMetaByTokenAsync(
-        [Path] string? folderToken,
+        [Path] string folderToken,
         CancellationToken cancellationToken = default);
 
     /// <summary>

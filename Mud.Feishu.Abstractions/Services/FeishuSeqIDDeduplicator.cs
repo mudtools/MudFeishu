@@ -87,6 +87,15 @@ public sealed class FeishuSeqIDDeduplicator : MemoryDeduplicator<ulong>, IFeishu
         Logger?.LogInformation("清空了 {Count} 个 SeqID 缓存条目", count);
     }
 
+    /// <summary>
+    /// 异步清空缓存
+    /// </summary>
+    public Task ClearCacheAsync()
+    {
+        ClearCache();
+        return Task.CompletedTask;
+    }
+
     /// <inheritdoc />
     public int GetCacheCount()
     {

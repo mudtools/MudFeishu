@@ -32,7 +32,7 @@ public class RedisOptionsTests
         Assert.Equal(5000, options.ConnectTimeout);
         Assert.Equal(5000, options.SyncTimeout);
         Assert.False(options.Ssl);
-        Assert.True(options.AllowAdmin);
+        Assert.False(options.AllowAdmin);
         Assert.True(options.AbortOnConnectFail);
         Assert.Equal(3, options.ConnectRetry);
         Assert.Null(options.DefaultDatabase);

@@ -185,6 +185,18 @@ public class FeishuWebSocketOptions
     public EventDeduplicationOptions EventDeduplication { get; set; } = new();
 
     /// <summary>
+    /// 访问令牌的有效期，默认为2小时
+    /// <para>飞书 TenantAccessToken 默认有效期为2小时</para>
+    /// </summary>
+    public TimeSpan? TokenRefreshInterval { get; set; }
+
+    /// <summary>
+    /// 提前刷新令牌的时间，默认为5分钟
+    /// <para>在令牌过期前提前刷新，避免使用即将过期的令牌</para>
+    /// </summary>
+    public TimeSpan? TokenRefreshAhead { get; set; }
+
+    /// <summary>
     /// 验证配置项的有效性
     /// </summary>
     /// <exception cref="InvalidOperationException">当配置项无效时抛出</exception>

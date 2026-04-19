@@ -69,9 +69,10 @@ public class RedisOptions
     public bool Ssl { get; set; }
 
     /// <summary>
-    /// 是否允许管理员操作，默认 true
+    /// 是否允许管理员操作，默认 false
+    /// <para>仅在生产环境需要执行 FLUSHDB 等管理命令时才应启用</para>
     /// </summary>
-    public bool AllowAdmin { get; set; } = true;
+    public bool AllowAdmin { get; set; } = false;
 
     /// <summary>
     /// 是否在连接失败时中止，默认 true

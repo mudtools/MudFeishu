@@ -270,7 +270,7 @@ public class BinaryMessageProcessor : IDisposable
                 }
                 else
                 {
-                    if (_seqIdDeduplicator != null && _seqIdDeduplicator.TryMarkAsProcessed(frame.SeqID))
+                    if (_seqIdDeduplicator != null && await _seqIdDeduplicator.TryMarkAsProcessedAsync(frame.SeqID))
                     {
                         if (_options.EnableLogging)
                             _logger.LogDebug("SeqID {SeqID} 已处理过，跳过", frame.SeqID);

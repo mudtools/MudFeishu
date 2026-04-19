@@ -298,6 +298,6 @@ public class IFeishuV1ChatGroupMemberTests
 
         Assert.NotNull(result);
         Assert.NotNull(result.Data);
-        Assert.Equal(false, result.Data.IsInChat);
+        Assert.False(result.Data.IsInChat);
     }
 }

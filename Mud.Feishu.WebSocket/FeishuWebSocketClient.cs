@@ -116,7 +116,7 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
         // 初始化事件处理器委托，保存引用以便正确取消订阅
         _onConnected = (s, e) =>
         {
-            ResetStateOnReconnect();
+            _ = ResetStateOnReconnectAsync();
             var handler = Connected;
             handler?.Invoke(this, e);
         };
@@ -270,7 +270,7 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
     /// 在 WebSocket 重连成功后调用，重置消息序号验证器和去重器的状态，
     /// 避免旧状态影响新连接的消息处理。
     /// </remarks>
-    private void ResetStateOnReconnect()
+    private async Task ResetStateOnReconnectAsync()
     {
         if (_options.EnableLogging)
             _logger.LogDebug("重连成功，重置消息序号验证器和去重器状态");
@@ -279,7 +279,7 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
 
         if (_seqIdDeduplicator is FeishuSeqIDDeduplicator seqIdDeduplicatorImpl)
         {
-            seqIdDeduplicatorImpl.ClearCache();
+            await seqIdDeduplicatorImpl.ClearCacheAsync();
         }
 
         if (_options.EnableLogging)

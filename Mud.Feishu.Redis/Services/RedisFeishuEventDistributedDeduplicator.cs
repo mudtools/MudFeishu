@@ -36,6 +36,46 @@ public class RedisFeishuEventDistributedDeduplicator : IFeishuEventDistributedDe
     private const string ProcessingStatus = "processing";
     private const string CompletedStatus = "completed";
 
+    private const string TryMarkAsProcessingLuaScript = @"
+        local key = KEYS[1]
+        local processingTimeout = ARGV[1]
+        local currentTimestamp = ARGV[2]
+        local ttlSeconds = ARGV[3]
+
+        local existing = redis.call('HGETALL', key)
+        if #existing > 0 then
+            local status = nil
+            local timestamp = nil
+            for i = 1, #existing, 2 do
+                if existing[i] == 'status' then
+                    status = existing[i+1]
+                elseif existing[i] == 'timestamp' then
+                    timestamp = existing[i+1]
+                end
+            end
+
+            if status == 'completed' then
+                return 1
+            end
+
+            if status == 'processing' then
+                if timestamp then
+                    local elapsed = tonumber(currentTimestamp) - tonumber(timestamp)
+                    if elapsed > tonumber(processingTimeout) then
+                        redis.call('HMSET', key, 'status', 'processing', 'timestamp', currentTimestamp)
+                        redis.call('EXPIRE', key, tonumber(ttlSeconds))
+                        return 3
+                    end
+                end
+                return 2
+            end
+        end
+
+        redis.call('HMSET', key, 'status', 'processing', 'timestamp', currentTimestamp)
+        redis.call('EXPIRE', key, tonumber(ttlSeconds))
+        return 0
+        ";
+
     /// <summary>
     /// 构造函数
     /// </summary>
@@ -101,57 +141,24 @@ public class RedisFeishuEventDistributedDeduplicator : IFeishuEventDistributedDe
             var actualTtl = ttl ?? _defaultCacheExpiration;
             var actualProcessingTimeout = processingTimeout ?? _defaultProcessingTimeout;
             var redisKey = GetRedisKey(eventId, appKey);
+            var currentTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            var processingTimeoutSeconds = (long)actualProcessingTimeout.TotalSeconds;
+            var ttlSeconds = (long)actualTtl.TotalSeconds;
 
-            var existing = await _database.HashGetAllAsync(redisKey);
-            if (existing.Length > 0)
+            var result = (long)await _database.ScriptEvaluateAsync(
+                TryMarkAsProcessingLuaScript,
+                new RedisKey[] { redisKey },
+                new RedisValue[] { processingTimeoutSeconds, currentTimestamp, ttlSeconds }
+            );
+
+            return result switch
             {
-                var statusEntry = existing.FirstOrDefault(x => x.Name == StatusField);
-                var timestampEntry = existing.FirstOrDefault(x => x.Name == TimestampField);
-
-                var status = statusEntry.Value.ToString();
-                var timestampStr = timestampEntry.Value.ToString();
-
-                if (status == CompletedStatus)
-                {
-                    _logger?.LogDebug("事件 {EventId} 已完成，跳过 (AppKey: {AppKey})", eventId, appKey ?? "default");
-                    return DeduplicationResult.Duplicate(eventId, false, DeduplicationStatus.Completed);
-                }
-
-                if (status == ProcessingStatus)
-                {
-                    if (DateTime.TryParse(timestampStr, out var timestamp))
-                    {
-                        var elapsed = DateTime.UtcNow - timestamp;
-                        if (elapsed > actualProcessingTimeout)
-                        {
-                            _logger?.LogWarning("事件 {EventId} 处理中超时 ({Elapsed} > {Timeout})，允许重新处理 (AppKey: {AppKey})",
-                                eventId, elapsed, actualProcessingTimeout, appKey ?? "default");
-
-                            await _database.HashSetAsync(redisKey, new[]
-                            {
-                                new HashEntry(StatusField, ProcessingStatus),
-                                new HashEntry(TimestampField, DateTime.UtcNow.ToString("O"))
-                            });
-                            await _database.KeyExpireAsync(redisKey, actualTtl);
-
-                            return DeduplicationResult.TimeoutRecoverable(eventId);
-                        }
-                    }
-
-                    _logger?.LogDebug("事件 {EventId} 正在处理中，跳过 (AppKey: {AppKey})", eventId, appKey ?? "default");
-                    return DeduplicationResult.Duplicate(eventId, true, DeduplicationStatus.Processing);
-                }
-            }
-
-            await _database.HashSetAsync(redisKey, new[]
-            {
-                new HashEntry(StatusField, ProcessingStatus),
-                new HashEntry(TimestampField, DateTime.UtcNow.ToString("O"))
-            });
-            await _database.KeyExpireAsync(redisKey, actualTtl);
-
-            _logger?.LogDebug("事件 {EventId} 标记为处理中，TTL: {Ttl} (AppKey: {AppKey})", eventId, actualTtl, appKey ?? "default");
-            return DeduplicationResult.Success(eventId);
+                0 => LogAndReturnSuccess(eventId, appKey, actualTtl),
+                1 => LogAndReturnDuplicate(eventId, appKey, false, DeduplicationStatus.Completed),
+                2 => LogAndReturnDuplicate(eventId, appKey, true, DeduplicationStatus.Processing),
+                3 => LogAndReturnTimeoutRecoverable(eventId, appKey, actualProcessingTimeout),
+                _ => LogAndReturnSuccess(eventId, appKey, actualTtl)
+            };
         }
         catch (RedisConnectionException ex)
         {
@@ -168,6 +175,27 @@ public class RedisFeishuEventDistributedDeduplicator : IFeishuEventDistributedDe
             _logger?.LogError(ex, "Redis 操作异常，事件 {EventId} 去重失败", eventId);
             throw new InvalidOperationException("Redis 操作失败", ex);
         }
+    }
+
+    private DeduplicationResult LogAndReturnSuccess(string eventId, string? appKey, TimeSpan ttl)
+    {
+        _logger?.LogDebug("事件 {EventId} 标记为处理中，TTL: {Ttl} (AppKey: {AppKey})", eventId, ttl, appKey ?? "default");
+        return DeduplicationResult.Success(eventId);
+    }
+
+    private DeduplicationResult LogAndReturnDuplicate(string eventId, string? appKey, bool isProcessing, DeduplicationStatus status)
+    {
+        if (status == DeduplicationStatus.Completed)
+            _logger?.LogDebug("事件 {EventId} 已完成，跳过 (AppKey: {AppKey})", eventId, appKey ?? "default");
+        else
+            _logger?.LogDebug("事件 {EventId} 正在处理中，跳过 (AppKey: {AppKey})", eventId, appKey ?? "default");
+        return DeduplicationResult.Duplicate(eventId, isProcessing, status);
+    }
+
+    private DeduplicationResult LogAndReturnTimeoutRecoverable(string eventId, string? appKey, TimeSpan processingTimeout)
+    {
+        _logger?.LogWarning("事件 {EventId} 处理中超时，允许重新处理 (AppKey: {AppKey})", eventId, appKey ?? "default");
+        return DeduplicationResult.TimeoutRecoverable(eventId);
     }
 
     /// <inheritdoc />
@@ -190,9 +218,20 @@ public class RedisFeishuEventDistributedDeduplicator : IFeishuEventDistributedDe
 
             _logger?.LogDebug("事件 {EventId} 标记为已完成 (AppKey: {AppKey})", eventId, appKey ?? "default");
         }
+        catch (RedisConnectionException ex)
+        {
+            _logger?.LogError(ex, "Redis 连接异常，标记事件 {EventId} 为已完成失败", eventId);
+            throw new InvalidOperationException("Redis 连接失败，无法标记事件为已完成", ex);
+        }
+        catch (RedisTimeoutException ex)
+        {
+            _logger?.LogWarning(ex, "Redis 超时，标记事件 {EventId} 为已完成失败", eventId);
+            throw new InvalidOperationException("Redis 操作超时，无法标记事件为已完成", ex);
+        }
         catch (RedisException ex)
         {
-            _logger?.LogError(ex, "标记事件 {EventId} 为已完成时发生错误", eventId);
+            _logger?.LogError(ex, "标记事件 {EventId} 为已完成时发生 Redis 错误", eventId);
+            throw new InvalidOperationException("Redis 操作失败，无法标记事件为已完成", ex);
         }
     }
 

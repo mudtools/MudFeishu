@@ -47,46 +47,10 @@ public class RedisFeishuSeqIDDeduplicator : IFeishuSeqIDDeduplicator, IAsyncDisp
     }
 
     /// <inheritdoc />
+    [Obsolete("请使用 TryMarkAsProcessedAsync 替代，同步方法在 Redis 场景下会阻塞线程")]
     public bool TryMarkAsProcessed(ulong seqId)
     {
-        try
-        {
-            var redisKey = GetRedisKey(seqId);
-
-            // 使用 SETNX + EXPIRE 实现原子性去重
-            var setResult = _database.StringSet(
-                redisKey,
-                "1",
-                _defaultCacheExpiration,
-                When.NotExists);
-
-            if (!setResult)
-            {
-                _logger?.LogDebug("SeqID {SeqId} 已处理过，跳过", seqId);
-                return true; // 已处理
-            }
-
-            // 更新最大 SeqID（使用 ZINCRBY 记录在 Sorted Set 中）
-            var sortedSetKey = $"{_keyPrefix}set";
-            _database.SortedSetAdd(sortedSetKey, seqId.ToString(), seqId);
-
-            return false; // 未处理，新消息
-        }
-        catch (RedisConnectionException ex)
-        {
-            _logger?.LogError(ex, "Redis 连接异常，SeqID {SeqId} 去重失败", seqId);
-            throw new InvalidOperationException("Redis 连接失败，无法完成 SeqID 去重", ex);
-        }
-        catch (RedisTimeoutException ex)
-        {
-            _logger?.LogWarning(ex, "Redis 超时，SeqID {SeqId} 去重失败", seqId);
-            throw new InvalidOperationException("Redis 操作超时", ex);
-        }
-        catch (RedisException ex)
-        {
-            _logger?.LogError(ex, "Redis 操作异常，SeqID {SeqId} 去重失败", seqId);
-            throw new InvalidOperationException("Redis 操作失败", ex);
-        }
+        return TryMarkAsProcessedAsync(seqId).GetAwaiter().GetResult();
     }
 
     /// <summary>
@@ -135,19 +99,10 @@ public class RedisFeishuSeqIDDeduplicator : IFeishuSeqIDDeduplicator, IAsyncDisp
     }
 
     /// <inheritdoc />
+    [Obsolete("请使用 IsProcessedAsync 替代，同步方法在 Redis 场景下会阻塞线程")]
     public bool IsProcessed(ulong seqId)
     {
-        try
-        {
-            var redisKey = GetRedisKey(seqId);
-            var exists = _database.KeyExists(redisKey);
-            return exists;
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogError(ex, "检查 SeqID {SeqId} 处理状态时发生错误", seqId);
-            return false;
-        }
+        return IsProcessedAsync(seqId).GetAwaiter().GetResult();
     }
 
     /// <inheritdoc />
@@ -167,38 +122,42 @@ public class RedisFeishuSeqIDDeduplicator : IFeishuSeqIDDeduplicator, IAsyncDisp
     }
 
     /// <inheritdoc />
+    [Obsolete("请使用 ClearCacheAsync 替代，同步方法在 Redis 场景下会阻塞线程")]
     public void ClearCache()
+    {
+        ClearCacheAsync().GetAwaiter().GetResult();
+    }
+
+    /// <summary>
+    /// 异步清空缓存
+    /// </summary>
+    public async Task ClearCacheAsync()
     {
         try
         {
-            var server = _redis.GetServer(_redis.GetEndPoints().First());
             var count = 0;
 
-            // 使用 SCAN 命令迭代删除所有键，避免 KEYS 命令阻塞 Redis
             foreach (var endPoint in _redis.GetEndPoints())
             {
                 var redisServer = _redis.GetServer(endPoint);
                 var pattern = $"{_keyPrefix}*";
 
-                // 使用 SCAN 迭代器遍历键
                 var keysToDelete = new List<RedisKey>();
-                foreach (var key in redisServer.Keys(pattern: pattern, pageSize: 1000))
+                await foreach (var key in redisServer.KeysAsync(pattern: pattern, pageSize: 1000))
                 {
                     keysToDelete.Add(key);
 
-                    // 批量删除，每批1000个
                     if (keysToDelete.Count >= 1000)
                     {
-                        var deleted = _database.KeyDelete(keysToDelete.ToArray());
+                        var deleted = await _database.KeyDeleteAsync(keysToDelete.ToArray());
                         count += (int)deleted;
                         keysToDelete.Clear();
                     }
                 }
 
-                // 删除剩余的键
                 if (keysToDelete.Count > 0)
                 {
-                    var deleted = _database.KeyDelete(keysToDelete.ToArray());
+                    var deleted = await _database.KeyDeleteAsync(keysToDelete.ToArray());
                     count += (int)deleted;
                 }
             }

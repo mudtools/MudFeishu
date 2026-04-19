@@ -17,14 +17,15 @@ namespace Mud.Feishu.Abstractions.Services;
 /// 此实现基于内存缓存，适用于单实例场景。
 /// 对于分布式场景，建议使用基于 Redis 等外部存储的分布式去重实现。
 /// </remarks>
-public class FeishuEventDeduplicator : IFeishuEventDeduplicator
+public class FeishuEventDeduplicator : IFeishuEventDeduplicator, IDisposable, IAsyncDisposable
 {
     private readonly ILogger<FeishuEventDeduplicator>? _logger;
     private readonly Dictionary<string, EventCacheEntry> _eventCache;
     private readonly Timer _cleanupTimer;
     private readonly TimeSpan _cacheExpiration;
     private readonly TimeSpan _cleanupInterval;
-    private readonly TimeSpan _processingTimeout; // 处理中超时时间
+    private readonly TimeSpan _processingTimeout;
+    private readonly int _maxCacheSize;
     private readonly object _lock = new();
     private bool _disposed;
 
@@ -39,13 +40,15 @@ public class FeishuEventDeduplicator : IFeishuEventDeduplicator
         ILogger<FeishuEventDeduplicator>? logger = null,
         TimeSpan? cacheExpiration = null,
         TimeSpan? cleanupInterval = null,
-        TimeSpan? processingTimeout = null)
+        TimeSpan? processingTimeout = null,
+        int maxCacheSize = 100000)
     {
         _logger = logger;
         _eventCache = new Dictionary<string, EventCacheEntry>();
         _cacheExpiration = cacheExpiration ?? TimeSpan.FromHours(24);
         _cleanupInterval = cleanupInterval ?? TimeSpan.FromMinutes(5);
         _processingTimeout = processingTimeout ?? TimeSpan.FromMinutes(5);
+        _maxCacheSize = Math.Max(0, maxCacheSize);
 
         _cleanupTimer = new Timer(CleanupExpiredEntries, null, _cleanupInterval, _cleanupInterval);
 
@@ -69,6 +72,7 @@ public class FeishuEventDeduplicator : IFeishuEventDeduplicator
         _cacheExpiration = options.CacheExpiration;
         _cleanupInterval = options.CleanupInterval;
         _processingTimeout = options.ProcessingTimeout;
+        _maxCacheSize = options.MaxCacheSize;
 
         _cleanupTimer = new Timer(CleanupExpiredEntries, null, _cleanupInterval, _cleanupInterval);
 
@@ -80,6 +84,8 @@ public class FeishuEventDeduplicator : IFeishuEventDeduplicator
     /// <inheritdoc/>
     public bool TryMarkAsProcessed(string eventId, string? appKey = null)
     {
+        ThrowIfDisposed();
+
         if (string.IsNullOrEmpty(eventId))
         {
             if (_logger != null && _logger.IsEnabled(LogLevel.Warning))
@@ -100,6 +106,7 @@ public class FeishuEventDeduplicator : IFeishuEventDeduplicator
             }
 
             // 记录新事件
+            EnsureCapacityLocked();
             _eventCache[cacheKey] = new EventCacheEntry
             {
                 ProcessedAt = DateTimeOffset.UtcNow,
@@ -116,6 +123,8 @@ public class FeishuEventDeduplicator : IFeishuEventDeduplicator
     /// <inheritdoc/>
     public bool TryMarkAsProcessing(string eventId, string? appKey = null)
     {
+        ThrowIfDisposed();
+
         if (string.IsNullOrEmpty(eventId))
         {
             if (_logger != null && _logger.IsEnabled(LogLevel.Warning))
@@ -158,6 +167,7 @@ public class FeishuEventDeduplicator : IFeishuEventDeduplicator
             }
 
             // 标记为处理中
+            EnsureCapacityLocked();
             _eventCache[cacheKey] = new EventCacheEntry
             {
                 ProcessedAt = DateTimeOffset.UtcNow,
@@ -174,6 +184,8 @@ public class FeishuEventDeduplicator : IFeishuEventDeduplicator
     /// <inheritdoc/>
     public void MarkAsCompleted(string eventId, string? appKey = null)
     {
+        ThrowIfDisposed();
+
         if (string.IsNullOrEmpty(eventId))
         {
             return;
@@ -197,6 +209,8 @@ public class FeishuEventDeduplicator : IFeishuEventDeduplicator
     /// <inheritdoc/>
     public void RollbackProcessing(string eventId, string? appKey = null)
     {
+        ThrowIfDisposed();
+
         if (string.IsNullOrEmpty(eventId))
         {
             return;
@@ -278,6 +292,61 @@ public class FeishuEventDeduplicator : IFeishuEventDeduplicator
         return string.IsNullOrEmpty(appKey) ? eventId : $"{appKey}:{eventId}";
     }
 
+    private void ThrowIfDisposed()
+    {
+#if NET7_0_OR_GREATER
+        ObjectDisposedException.ThrowIf(_disposed, this);
+#else
+        if (_disposed)
+            throw new ObjectDisposedException(GetType().Name);
+#endif
+    }
+
+    private void EnsureCapacityLocked()
+    {
+        if (_maxCacheSize <= 0)
+            return;
+
+        if (_eventCache.Count >= _maxCacheSize)
+        {
+            CleanupExpiredEntriesLocked();
+
+            if (_eventCache.Count >= _maxCacheSize)
+            {
+                if (_logger != null && _logger.IsEnabled(LogLevel.Warning))
+                    _logger?.LogWarning("缓存容量已达上限 {MaxCacheSize}，移除最旧条目", _maxCacheSize);
+
+                var oldestKey = _eventCache
+                    .OrderBy(x => x.Value.ProcessedAt)
+                    .Select(x => x.Key)
+                    .FirstOrDefault();
+
+                if (oldestKey != null)
+                    _eventCache.Remove(oldestKey);
+            }
+        }
+    }
+
+    private void CleanupExpiredEntriesLocked()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var expiredKeys = _eventCache
+            .Where(kvp => (now - kvp.Value.ProcessedAt) > _cacheExpiration)
+            .Select(kvp => kvp.Key)
+            .ToList();
+
+        foreach (var key in expiredKeys)
+        {
+            _eventCache.Remove(key);
+        }
+
+        if (expiredKeys.Count > 0)
+        {
+            if (_logger != null && _logger.IsEnabled(LogLevel.Debug))
+                _logger?.LogDebug("清理了 {Count} 个过期的事件缓存条目", expiredKeys.Count);
+        }
+    }
+
     /// <summary>
     /// 获取缓存统计信息
     /// </summary>
@@ -332,6 +401,21 @@ public class FeishuEventDeduplicator : IFeishuEventDeduplicator
 
             if (_logger != null && _logger.IsEnabled(LogLevel.Information))
                 _logger?.LogInformation("清空了 {Count} 个事件缓存条目", count);
+        }
+    }
+
+    /// <inheritdoc/>
+    public void Dispose()
+    {
+        if (_disposed)
+            return;
+
+        _disposed = true;
+        _cleanupTimer.Dispose();
+
+        lock (_lock)
+        {
+            _eventCache.Clear();
         }
     }
 

@@ -56,7 +56,7 @@ public class IFeishuTenantV3JobFamiliesTests
         Assert.NotNull(requestBody);
         Assert.NotEmpty(requestBody.Name!);
         Assert.NotEmpty(requestBody.I18nName);
-        Assert.Equal(true, requestBody.Status);
+        Assert.True(requestBody.Status);
     }
 
     /// <summary>
@@ -136,7 +136,7 @@ public class IFeishuTenantV3JobFamiliesTests
         Assert.NotNull(requestBody);
         Assert.NotEmpty(requestBody.Name!);
         Assert.NotEmpty(requestBody.I18nName);
-        Assert.Equal(true, requestBody.Status);
+        Assert.True(requestBody.Status);
     }
 
     /// <summary>

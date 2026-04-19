@@ -41,7 +41,7 @@ public class FeishuEventDecryptor : IFeishuEventDecryptor
                 return null;
             }
 
-            _logger.LogDebug("解密后的JSON数据: {DecryptedJson}", decryptedJson);
+            _logger.LogDebug("事件数据解密成功，数据长度: {Length}", decryptedJson.Length);
 
             // 解析事件数据（支持 v1.0 和 v2.0 版本，以及 URL 验证请求）
             EventData eventData;
@@ -87,10 +87,30 @@ public class FeishuEventDecryptor : IFeishuEventDecryptor
 
             return eventData;
         }
+        catch (OperationCanceledException)
+        {
+            _logger.LogWarning("解密事件数据操作被取消");
+            throw;
+        }
+        catch (FormatException ex)
+        {
+            _logger.LogError(ex, "事件数据 Base64 解码失败，数据格式无效");
+            return null;
+        }
+        catch (System.Security.Cryptography.CryptographicException ex)
+        {
+            _logger.LogError(ex, "事件数据 AES 解密失败，密钥或数据可能不正确");
+            return null;
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "事件数据 JSON 解析失败");
+            return null;
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "解密事件数据时发生错误");
-            return null;
+            _logger.LogError(ex, "解密事件数据时发生未知错误");
+            throw new InvalidOperationException("解密事件数据时发生错误", ex);
         }
     }
 

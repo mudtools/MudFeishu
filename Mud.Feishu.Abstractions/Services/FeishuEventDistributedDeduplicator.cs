@@ -43,7 +43,7 @@ namespace Mud.Feishu.Abstractions.Services;
 /// services.AddSingleton&lt;IFeishuEventDistributedDeduplicator, RedisFeishuEventDistributedDeduplicator&gt;();
 /// </code>
 /// </example>
-public sealed class FeishuEventDistributedDeduplicator : IFeishuEventDistributedDeduplicator
+public sealed class FeishuEventDistributedDeduplicator : IFeishuEventDistributedDeduplicator, IDisposable, IAsyncDisposable
 {
     private readonly ILogger<FeishuEventDistributedDeduplicator>? _logger;
     private readonly Dictionary<string, DistributedCacheEntry> _cache;
@@ -104,6 +104,8 @@ public sealed class FeishuEventDistributedDeduplicator : IFeishuEventDistributed
     /// <inheritdoc />
     public Task<DeduplicationResult> TryMarkAsProcessingAsync(string eventId, string? appKey = null, TimeSpan? ttl = null, TimeSpan? processingTimeout = null, CancellationToken cancellationToken = default)
     {
+        ThrowIfDisposed();
+
         if (string.IsNullOrEmpty(eventId))
         {
             _logger?.LogWarning("事件ID为空，跳过去重检查");
@@ -158,6 +160,8 @@ public sealed class FeishuEventDistributedDeduplicator : IFeishuEventDistributed
     /// <inheritdoc />
     public Task MarkAsCompletedAsync(string eventId, string? appKey = null, CancellationToken cancellationToken = default)
     {
+        ThrowIfDisposed();
+
         if (string.IsNullOrEmpty(eventId))
         {
             return Task.CompletedTask;
@@ -181,6 +185,8 @@ public sealed class FeishuEventDistributedDeduplicator : IFeishuEventDistributed
     /// <inheritdoc />
     public Task RollbackProcessingAsync(string eventId, string? appKey = null, CancellationToken cancellationToken = default)
     {
+        ThrowIfDisposed();
+
         if (string.IsNullOrEmpty(eventId))
         {
             return Task.CompletedTask;
@@ -305,6 +311,31 @@ public sealed class FeishuEventDistributedDeduplicator : IFeishuEventDistributed
     private static string GetCacheKey(string eventId, string? appKey)
     {
         return string.IsNullOrEmpty(appKey) ? eventId : $"{appKey}:{eventId}";
+    }
+
+    private void ThrowIfDisposed()
+    {
+#if NET7_0_OR_GREATER
+        ObjectDisposedException.ThrowIf(_disposed, this);
+#else
+        if (_disposed)
+            throw new ObjectDisposedException(GetType().Name);
+#endif
+    }
+
+    /// <inheritdoc />
+    public void Dispose()
+    {
+        if (_disposed)
+            return;
+
+        _disposed = true;
+        _cleanupTimer.Dispose();
+
+        lock (_lock)
+        {
+            _cache.Clear();
+        }
     }
 
     /// <inheritdoc />

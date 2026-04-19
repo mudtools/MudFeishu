@@ -33,12 +33,14 @@ public class RedisFeishuEventDistributedDeduplicatorTests
     [Fact]
     public async Task TryMarkAsProcessingAsync_WhenFirstEvent_ShouldReturnSuccess()
     {
-        // Arrange
+        // Arrange - Lua script returns 0 for new event
         _databaseMock
-            .Setup(x => x.HashGetAllAsync(
-                It.IsAny<RedisKey>(),
+            .Setup(x => x.ScriptEvaluateAsync(
+                It.IsAny<string>(),
+                It.IsAny<RedisKey[]>(),
+                It.IsAny<RedisValue[]>(),
                 It.IsAny<CommandFlags>()))
-            .ReturnsAsync(Array.Empty<HashEntry>());
+            .ReturnsAsync(RedisResult.Create(0L));
 
         var deduplicator = new RedisFeishuEventDistributedDeduplicator(
             _connectionMultiplexerMock.Object,
@@ -50,28 +52,24 @@ public class RedisFeishuEventDistributedDeduplicatorTests
         // Assert
         Assert.False(result.IsDuplicate);
         Assert.Equal("test_event_123", result.EventId);
-        _databaseMock.Verify(x => x.HashGetAllAsync(
-            It.IsAny<RedisKey>(),
-            It.IsAny<CommandFlags>()), Times.Once);
-        _databaseMock.Verify(x => x.HashSetAsync(
-            It.IsAny<RedisKey>(),
-            It.IsAny<HashEntry[]>(),
+        _databaseMock.Verify(x => x.ScriptEvaluateAsync(
+            It.IsAny<string>(),
+            It.IsAny<RedisKey[]>(),
+            It.IsAny<RedisValue[]>(),
             It.IsAny<CommandFlags>()), Times.Once);
     }
 
     [Fact]
     public async Task TryMarkAsProcessingAsync_WhenEventCompleted_ShouldReturnDuplicate()
     {
-        // Arrange
+        // Arrange - Lua script returns 1 for completed event
         _databaseMock
-            .Setup(x => x.HashGetAllAsync(
-                It.IsAny<RedisKey>(),
+            .Setup(x => x.ScriptEvaluateAsync(
+                It.IsAny<string>(),
+                It.IsAny<RedisKey[]>(),
+                It.IsAny<RedisValue[]>(),
                 It.IsAny<CommandFlags>()))
-            .ReturnsAsync(new HashEntry[]
-            {
-                new HashEntry("status", "completed"),
-                new HashEntry("timestamp", DateTime.UtcNow.ToString("O"))
-            });
+            .ReturnsAsync(RedisResult.Create(1L));
 
         var deduplicator = new RedisFeishuEventDistributedDeduplicator(
             _connectionMultiplexerMock.Object,
@@ -89,16 +87,14 @@ public class RedisFeishuEventDistributedDeduplicatorTests
     [Fact]
     public async Task TryMarkAsProcessingAsync_WhenEventProcessing_ShouldReturnDuplicate()
     {
-        // Arrange
+        // Arrange - Lua script returns 2 for processing event
         _databaseMock
-            .Setup(x => x.HashGetAllAsync(
-                It.IsAny<RedisKey>(),
+            .Setup(x => x.ScriptEvaluateAsync(
+                It.IsAny<string>(),
+                It.IsAny<RedisKey[]>(),
+                It.IsAny<RedisValue[]>(),
                 It.IsAny<CommandFlags>()))
-            .ReturnsAsync(new HashEntry[]
-            {
-                new HashEntry("status", "processing"),
-                new HashEntry("timestamp", DateTime.UtcNow.ToString("O"))
-            });
+            .ReturnsAsync(RedisResult.Create(2L));
 
         var deduplicator = new RedisFeishuEventDistributedDeduplicator(
             _connectionMultiplexerMock.Object,
@@ -114,14 +110,61 @@ public class RedisFeishuEventDistributedDeduplicatorTests
     }
 
     [Fact]
+    public async Task TryMarkAsProcessingAsync_WhenProcessingTimeout_ShouldReturnTimeoutRecoverable()
+    {
+        // Arrange - Lua script returns 3 for timeout recoverable
+        _databaseMock
+            .Setup(x => x.ScriptEvaluateAsync(
+                It.IsAny<string>(),
+                It.IsAny<RedisKey[]>(),
+                It.IsAny<RedisValue[]>(),
+                It.IsAny<CommandFlags>()))
+            .ReturnsAsync(RedisResult.Create(3L));
+
+        var deduplicator = new RedisFeishuEventDistributedDeduplicator(
+            _connectionMultiplexerMock.Object,
+            _loggerMock.Object);
+
+        // Act
+        var result = await deduplicator.TryMarkAsProcessingAsync("test_event_123");
+
+        // Assert
+        Assert.False(result.IsDuplicate);
+        Assert.Equal("test_event_123", result.EventId);
+    }
+
+    [Fact]
     public async Task TryMarkAsProcessingAsync_WhenRedisFails_ShouldThrowInvalidOperationException()
     {
         // Arrange
         _databaseMock
-            .Setup(x => x.HashGetAllAsync(
-                It.IsAny<RedisKey>(),
+            .Setup(x => x.ScriptEvaluateAsync(
+                It.IsAny<string>(),
+                It.IsAny<RedisKey[]>(),
+                It.IsAny<RedisValue[]>(),
                 It.IsAny<CommandFlags>()))
             .ThrowsAsync(new RedisException("Redis connection failed"));
+
+        var deduplicator = new RedisFeishuEventDistributedDeduplicator(
+            _connectionMultiplexerMock.Object,
+            _loggerMock.Object);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            async () => await deduplicator.TryMarkAsProcessingAsync("test_event_123"));
+    }
+
+    [Fact]
+    public async Task TryMarkAsProcessingAsync_WhenRedisConnectionFails_ShouldThrowInvalidOperationException()
+    {
+        // Arrange
+        _databaseMock
+            .Setup(x => x.ScriptEvaluateAsync(
+                It.IsAny<string>(),
+                It.IsAny<RedisKey[]>(),
+                It.IsAny<RedisValue[]>(),
+                It.IsAny<CommandFlags>()))
+            .ThrowsAsync(new RedisConnectionException(ConnectionFailureType.UnableToConnect, "Connection failed"));
 
         var deduplicator = new RedisFeishuEventDistributedDeduplicator(
             _connectionMultiplexerMock.Object,
@@ -182,7 +225,7 @@ public class RedisFeishuEventDistributedDeduplicatorTests
         var result = await deduplicator.CleanupExpiredAsync();
 
         // Assert
-        Assert.Equal(0, result); // Redis 自动清理，返回 0
+        Assert.Equal(0, result);
     }
 
     [Fact]
@@ -206,10 +249,12 @@ public class RedisFeishuEventDistributedDeduplicatorTests
         // Arrange
         var customTtl = TimeSpan.FromMinutes(10);
         _databaseMock
-            .Setup(x => x.HashGetAllAsync(
-                It.IsAny<RedisKey>(),
+            .Setup(x => x.ScriptEvaluateAsync(
+                It.IsAny<string>(),
+                It.IsAny<RedisKey[]>(),
+                It.IsAny<RedisValue[]>(),
                 It.IsAny<CommandFlags>()))
-            .ReturnsAsync(Array.Empty<HashEntry>());
+            .ReturnsAsync(RedisResult.Create(0L));
 
         var deduplicator = new RedisFeishuEventDistributedDeduplicator(
             _connectionMultiplexerMock.Object,
@@ -220,14 +265,55 @@ public class RedisFeishuEventDistributedDeduplicatorTests
 
         // Assert
         Assert.False(result.IsDuplicate);
+        _databaseMock.Verify(x => x.ScriptEvaluateAsync(
+            It.IsAny<string>(),
+            It.IsAny<RedisKey[]>(),
+            It.IsAny<RedisValue[]>(),
+            It.IsAny<CommandFlags>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task MarkAsCompletedAsync_ShouldUpdateStatus()
+    {
+        // Arrange
+        _databaseMock
+            .Setup(x => x.HashSetAsync(
+                It.IsAny<RedisKey>(),
+                It.IsAny<HashEntry[]>(),
+                It.IsAny<CommandFlags>()))
+            .Returns(Task.CompletedTask);
+
+        var deduplicator = new RedisFeishuEventDistributedDeduplicator(
+            _connectionMultiplexerMock.Object,
+            _loggerMock.Object);
+
+        // Act
+        await deduplicator.MarkAsCompletedAsync("test_event_123");
+
+        // Assert
         _databaseMock.Verify(x => x.HashSetAsync(
             It.IsAny<RedisKey>(),
             It.IsAny<HashEntry[]>(),
             It.IsAny<CommandFlags>()), Times.Once);
-        _databaseMock.Verify(x => x.KeyExpireAsync(
-            It.IsAny<RedisKey>(),
-            It.IsAny<TimeSpan>(),
-            It.IsAny<ExpireWhen>(),
-            It.IsAny<CommandFlags>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task MarkAsCompletedAsync_WhenRedisFails_ShouldThrowInvalidOperationException()
+    {
+        // Arrange
+        _databaseMock
+            .Setup(x => x.HashSetAsync(
+                It.IsAny<RedisKey>(),
+                It.IsAny<HashEntry[]>(),
+                It.IsAny<CommandFlags>()))
+            .ThrowsAsync(new RedisException("Redis error"));
+
+        var deduplicator = new RedisFeishuEventDistributedDeduplicator(
+            _connectionMultiplexerMock.Object,
+            _loggerMock.Object);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            async () => await deduplicator.MarkAsCompletedAsync("test_event_123"));
     }
 }

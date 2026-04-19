@@ -102,26 +102,28 @@ public class RedisFeishuSeqIDDeduplicatorTests
     {
         // Arrange
         _databaseMock
-            .Setup(x => x.StringSet(
+            .Setup(x => x.StringSetAsync(
                 It.IsAny<RedisKey>(),
                 It.IsAny<RedisValue>(),
                 It.IsAny<TimeSpan>(),
                 When.NotExists
                 ))
-            .Returns(true);
+            .ReturnsAsync(true);
         _databaseMock
-            .Setup(x => x.SortedSetAdd(It.IsAny<RedisKey>(), It.IsAny<RedisValue>(), It.IsAny<double>(), It.IsAny<SortedSetWhen>(), It.IsAny<CommandFlags>()))
-            .Returns(true);
+            .Setup(x => x.SortedSetAddAsync(It.IsAny<RedisKey>(), It.IsAny<RedisValue>(), It.IsAny<double>(), It.IsAny<SortedSetWhen>(), It.IsAny<CommandFlags>()))
+            .ReturnsAsync(true);
 
         var deduplicator = new RedisFeishuSeqIDDeduplicator(
             _connectionMultiplexerMock.Object,
             _loggerMock.Object);
 
         // Act
+#pragma warning disable CS0618 // 同步方法已标记为过时，测试兼容性保留
         var result = deduplicator.TryMarkAsProcessed(12345);
+#pragma warning restore CS0618
 
         // Assert
-        Assert.False(result); // StringSet 返回 true（设置成功），表示新 SeqID，所以 TryMarkAsProcessed 返回 false
+        Assert.False(result);
     }
 
     [Fact]
@@ -129,23 +131,25 @@ public class RedisFeishuSeqIDDeduplicatorTests
     {
         // Arrange
         _databaseMock
-            .Setup(x => x.StringSet(
+            .Setup(x => x.StringSetAsync(
                 It.IsAny<RedisKey>(),
                 It.IsAny<RedisValue>(),
                 It.IsAny<TimeSpan>(),
                 When.NotExists
                 ))
-            .Returns(false);
+            .ReturnsAsync(false);
 
         var deduplicator = new RedisFeishuSeqIDDeduplicator(
             _connectionMultiplexerMock.Object,
             _loggerMock.Object);
 
         // Act
+#pragma warning disable CS0618
         var result = deduplicator.TryMarkAsProcessed(12345);
+#pragma warning restore CS0618
 
         // Assert
-        Assert.True(result); // StringSet 返回 false（键已存在），表示重复 SeqID，所以 TryMarkAsProcessed 返回 true
+        Assert.True(result);
     }
 
     [Fact]
@@ -191,15 +195,17 @@ public class RedisFeishuSeqIDDeduplicatorTests
     {
         // Arrange
         _databaseMock
-            .Setup(x => x.KeyExists(It.IsAny<RedisKey>(), It.IsAny<CommandFlags>()))
-            .Returns(true);
+            .Setup(x => x.KeyExistsAsync(It.IsAny<RedisKey>(), It.IsAny<CommandFlags>()))
+            .ReturnsAsync(true);
 
         var deduplicator = new RedisFeishuSeqIDDeduplicator(
             _connectionMultiplexerMock.Object,
             _loggerMock.Object);
 
         // Act
+#pragma warning disable CS0618
         var result = deduplicator.IsProcessed(12345);
+#pragma warning restore CS0618
 
         // Assert
         Assert.True(result);
@@ -210,15 +216,17 @@ public class RedisFeishuSeqIDDeduplicatorTests
     {
         // Arrange
         _databaseMock
-            .Setup(x => x.KeyExists(It.IsAny<RedisKey>(), It.IsAny<CommandFlags>()))
-            .Returns(false);
+            .Setup(x => x.KeyExistsAsync(It.IsAny<RedisKey>(), It.IsAny<CommandFlags>()))
+            .ReturnsAsync(false);
 
         var deduplicator = new RedisFeishuSeqIDDeduplicator(
             _connectionMultiplexerMock.Object,
             _loggerMock.Object);
 
         // Act
+#pragma warning disable CS0618
         var result = deduplicator.IsProcessed(12345);
+#pragma warning restore CS0618
 
         // Assert
         Assert.False(result);
@@ -327,14 +335,16 @@ public class RedisFeishuSeqIDDeduplicatorTests
     {
         // Arrange
         _databaseMock
-            .Setup(x => x.StringSet(It.IsAny<RedisKey>(), It.IsAny<RedisValue>(), It.IsAny<TimeSpan>(), It.IsAny<When>()))
-            .Throws(new RedisConnectionException(ConnectionFailureType.UnableToConnect, "Connection failed"));
+            .Setup(x => x.StringSetAsync(It.IsAny<RedisKey>(), It.IsAny<RedisValue>(), It.IsAny<TimeSpan>(), It.IsAny<When>()))
+            .ThrowsAsync(new RedisConnectionException(ConnectionFailureType.UnableToConnect, "Connection failed"));
 
         var deduplicator = new RedisFeishuSeqIDDeduplicator(
             _connectionMultiplexerMock.Object,
             _loggerMock.Object);
 
         // Act & Assert
+#pragma warning disable CS0618
         Assert.Throws<InvalidOperationException>(() => deduplicator.TryMarkAsProcessed(12345));
+#pragma warning restore CS0618
     }
 }

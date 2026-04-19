@@ -10,6 +10,26 @@ using System.Collections.Concurrent;
 
 namespace Mud.Feishu.Webhook;
 
+internal sealed class RateLimitCounter
+{
+    private int _count;
+
+    public DateTime WindowStart { get; }
+
+    public int Count => Volatile.Read(ref _count);
+
+    public RateLimitCounter(DateTime windowStart)
+    {
+        WindowStart = windowStart;
+        _count = 0;
+    }
+
+    public int Increment()
+    {
+        return Interlocked.Increment(ref _count);
+    }
+}
+
 /// <summary>
 /// 飞书 Webhook 请求频率限制中间件
 /// </summary>
@@ -19,10 +39,8 @@ public class FeishuRateLimitMiddleware : IDisposable
     private readonly IOptionsMonitor<FeishuWebhookOptions> _optionsMonitor;
     private readonly ILogger<FeishuRateLimitMiddleware> _logger;
 
-    // 使用并发字典和滑动窗口计数器：ConcurrentDictionary<(AppKey, IP), (Count, WindowStart)>
-    private readonly ConcurrentDictionary<(string AppKey, string IP), (int Count, DateTime WindowStart)> _requestCounts = new();
+    private readonly ConcurrentDictionary<(string AppKey, string IP), RateLimitCounter> _requestCounts = new();
 
-    // 最大条目限制，防止内存泄漏
     private const int MaxIpEntries = 100000;
 
     // 定时清理的 Timer
@@ -99,50 +117,35 @@ public class FeishuRateLimitMiddleware : IDisposable
 
         var now = DateTime.UtcNow;
 
-        // 构造限流键：(AppKey, IP)
         var rateLimitKey = (appKey ?? "global", clientIp);
 
-        // 获取或创建计数器
-        if (_requestCounts.TryGetValue(rateLimitKey!, out var counter))
+        if (_requestCounts.Count >= MaxIpEntries)
         {
-            // 检查是否超出时间窗口
-            if ((now - counter.WindowStart).TotalSeconds > rateLimitOptions.WindowSizeSeconds)
-            {
-                // 新窗口，重置计数
-                _requestCounts[rateLimitKey!] = (1, now);
-            }
-            else
-            {
-                // 同一窗口，增加计数
-                if (counter.Count >= rateLimitOptions.MaxRequestsPerWindow)
-                {
-                    _logger.LogWarning("客户端 IP {ClientIP}（应用: {AppKey}）请求频率超出限制：{Count}/{MaxRequests} 在 {WindowSize}秒内",
-                        clientIp, appKey ?? "global", counter.Count, rateLimitOptions.MaxRequestsPerWindow, rateLimitOptions.WindowSizeSeconds);
-
-                    await WriteTooManyRequestsResponse(context,
-                        $"{rateLimitOptions.TooManyRequestsMessage}，请在 {rateLimitOptions.WindowSizeSeconds} 秒后重试", rateLimitOptions);
-                    return;
-                }
-
-                // 使用 CompareExchange 确保原子性更新
-                var newCounter = (counter.Count + 1, counter.WindowStart);
-                while (!_requestCounts.TryUpdate(rateLimitKey!, newCounter, counter))
-                {
-                    // 如果更新失败，重新获取当前值
-                    if (!_requestCounts.TryGetValue(rateLimitKey!, out counter))
-                    {
-                        // 如果键不存在，添加新条目
-                        _requestCounts.TryAdd(rateLimitKey!, (1, now));
-                        break;
-                    }
-                    newCounter = (counter.Count + 1, counter.WindowStart);
-                }
-            }
+            _logger.LogWarning("IP 条目数已达上限 {MaxIpEntries}，拒绝新 IP {ClientIP} 的请求", MaxIpEntries, clientIp);
+            await WriteTooManyRequestsResponse(context, "服务繁忙，请稍后重试", rateLimitOptions);
+            return;
         }
-        else
+
+        var counter = _requestCounts.AddOrUpdate(
+            rateLimitKey,
+            _ => new RateLimitCounter(now),
+            (_, existing) =>
+            {
+                if ((now - existing.WindowStart).TotalSeconds > rateLimitOptions.WindowSizeSeconds)
+                    return new RateLimitCounter(now);
+                return existing;
+            });
+
+        var currentCount = counter.Increment();
+
+        if (currentCount > rateLimitOptions.MaxRequestsPerWindow)
         {
-            // 新 IP，尝试添加计数器，如果已存在则获取现有值并递增
-            _requestCounts.TryAdd(rateLimitKey!, (1, now));
+            _logger.LogWarning("客户端 IP {ClientIP}（应用: {AppKey}）请求频率超出限制：{Count}/{MaxRequests} 在 {WindowSize}秒内",
+                clientIp, appKey ?? "global", currentCount, rateLimitOptions.MaxRequestsPerWindow, rateLimitOptions.WindowSizeSeconds);
+
+            await WriteTooManyRequestsResponse(context,
+                $"{rateLimitOptions.TooManyRequestsMessage}，请在 {rateLimitOptions.WindowSizeSeconds} 秒后重试", rateLimitOptions);
+            return;
         }
 
         await _next(context);
@@ -217,7 +220,7 @@ public class FeishuRateLimitMiddleware : IDisposable
         var rateLimitOptions = Options.RateLimit;
         var now = DateTime.UtcNow;
         var expiredKeys = _requestCounts
-            .Where(kvp => (now - kvp.Value.WindowStart).TotalSeconds > rateLimitOptions.WindowSizeSeconds * 2) // 保留2倍窗口时间，避免刚限流的IP被立即清理
+            .Where(kvp => (now - kvp.Value.WindowStart).TotalSeconds > rateLimitOptions.WindowSizeSeconds * 2)
             .Select(kvp => kvp.Key)
             .ToList();
 

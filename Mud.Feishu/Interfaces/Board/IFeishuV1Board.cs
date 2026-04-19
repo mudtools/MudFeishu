@@ -42,13 +42,13 @@ public interface IFeishuV1Board : IFeishuAppContextSwitcher
     /// <para>画板标识，可通过云文档下的文档接口 [<see href="https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/document-docx/docx-v1/document-block/list">获取文档所有块</see>] 获取，`block_type` 为 43 的 block 即为画板，对应的 &lt;code&gt;block.token&lt;/code&gt; 就是画板的&lt;code&gt;whiteboard_id&lt;/code&gt;</para>
     /// <para>示例值：Ud8xwWH01hO5mwbakqHbHeqmcCI</para>
     /// </param> 
-    /// <param name="request">更新画板主题请求体</param>
+    /// <param name="updateWhiteboardThemeRequest">更新画板主题请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Post("/open-apis/board/v1/whiteboards/{whiteboard_id}/update_theme")]
     Task<FeishuNullDataApiResult?> UpdateWhiteboardThemeAsync(
       [Path] string whiteboard_id,
-      [Body] WhiteboardsThemeRequest request,
+      [Body] UpdateWhiteboardThemeRequest updateWhiteboardThemeRequest,
       CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -89,6 +89,6 @@ public interface IFeishuV1Board : IFeishuAppContextSwitcher
     [Post("/open-apis/board/v1/whiteboards/{whiteboard_id}/nodes")]
     Task<FeishuNullDataApiResult?> CreateWhiteboardNodeAsync(
       [Path] string whiteboard_id,
-      [Body] CreatePlantumlWhiteboardNodeRequest createPlantumlWhiteboardNodeRequest,
+      [Body] CreateWhiteboardNodeRequest createWhiteboardNodeRequest,
       CancellationToken cancellationToken = default);
 }

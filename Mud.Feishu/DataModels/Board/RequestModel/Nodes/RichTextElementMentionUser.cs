@@ -8,10 +8,22 @@
 namespace Mud.Feishu.DataModels.Board;
 
 /// <summary>
-/// 更新画板主题请求体
+/// <para>@用户类别信息（当前元素为@用户类别时候需要有当前字段）</para>
 /// </summary>
-public class WhiteboardsThemeRequest : WhiteboardsTheme
+public class RichTextElementMentionUser
 {
+    /// <summary>
+    /// <para>用户openID，可通过 [获取指定用户的 Open ID](https://open.feishu.cn/document/uAjLw4CM/ugTN1YjL4UTN24CO1UjN/trouble-shooting/how-to-obtain-openid) 获取</para>
+    /// <para>必填：是</para>
+    /// <para>示例值：ou_da5****************dfe</para>
+    /// </summary>
+    [JsonPropertyName("user_id")]
+    public string UserId { get; set; } = string.Empty;
 
+    /// <summary>
+    /// <para>文字属性</para>
+    /// <para>必填：否</para>
+    /// </summary>
+    [JsonPropertyName("text_style")]
+    public RichTextElementTextStyle? TextStyle { get; set; }
 }
-

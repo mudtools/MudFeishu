@@ -26,10 +26,28 @@ public interface IFeishuV1Board : IFeishuAppContextSwitcher
     /// <param name="whiteboard_id">
     /// <para>画板标识，可通过云文档下的文档接口 [<see href="https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/document-docx/docx-v1/document-block/list">获取文档所有块</see>] 获取，`block_type` 为 43 的 block 即为画板，对应的 &lt;code&gt;block.token&lt;/code&gt; 就是画板的&lt;code&gt;whiteboard_id&lt;/code&gt;</para>
     /// <para>示例值：Ud8xwWH01hO5mwbakqHbHeqmcCI</para>
-    /// </param> /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// </param> 
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Get("/open-apis/board/v1/whiteboards/{whiteboard_id}/theme")]
     Task<FeishuApiResult<GetWhiteboardsThemeResult>?> GetWhiteboardThemeAsync(
          [Path] string whiteboard_id,
          CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 更新画板主题
+    /// <para><see href="https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/board-v1/whiteboard/update_theme">接口文档</see></para>
+    /// </summary>
+    /// <param name="whiteboard_id">
+    /// <para>画板标识，可通过云文档下的文档接口 [<see href="https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/document-docx/docx-v1/document-block/list">获取文档所有块</see>] 获取，`block_type` 为 43 的 block 即为画板，对应的 &lt;code&gt;block.token&lt;/code&gt; 就是画板的&lt;code&gt;whiteboard_id&lt;/code&gt;</para>
+    /// <para>示例值：Ud8xwWH01hO5mwbakqHbHeqmcCI</para>
+    /// </param> 
+    /// <param name="request">更新画板主题请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Post("/open-apis/board/v1/whiteboards/{whiteboard_id}/update_theme")]
+    Task<FeishuNullDataApiResult?> UpdateWhiteboardThemeAsync(
+      [Path] string whiteboard_id,
+      [Body] WhiteboardsThemeRequest request,
+      CancellationToken cancellationToken = default);
 }

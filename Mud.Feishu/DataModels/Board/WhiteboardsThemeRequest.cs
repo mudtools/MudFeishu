@@ -8,9 +8,10 @@
 namespace Mud.Feishu.DataModels.Board;
 
 /// <summary>
-/// 获取画板主题响应体
+/// 更新画板主题请求体
 /// </summary>
-public class GetWhiteboardsThemeResult : WhiteboardsTheme
+public class WhiteboardsThemeRequest : WhiteboardsTheme
 {
 
 }
+

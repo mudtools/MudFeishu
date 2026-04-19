@@ -8,9 +8,25 @@
 namespace Mud.Feishu.DataModels.Board;
 
 /// <summary>
-/// 获取画板主题响应体
+/// 画板主题
 /// </summary>
-public class GetWhiteboardsThemeResult : WhiteboardsTheme
+public class WhiteboardsTheme
 {
-
+    /// <summary>
+    /// <para>主题</para>
+    /// <para>必填：是</para>
+    /// <para>示例值：classic</para>
+    /// <para>最大长度：10000000</para>
+    /// <para>最小长度：1</para>
+    /// <para>可选值：<list type="bullet">
+    /// <item>classic：经典主题</item>
+    /// <item>minimalist_gray：简约灰主题</item>
+    /// <item>retro：复古主题</item>
+    /// <item>vibrant_color：炫彩主题</item>
+    /// <item>minimalist_blue：简约蓝主题</item>
+    /// <item>default：默认主题</item>
+    /// </list></para>
+    /// </summary>
+    [JsonPropertyName("theme")]
+    public string Theme { get; set; } = string.Empty;
 }

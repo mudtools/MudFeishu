@@ -85,9 +85,20 @@ public interface IFeishuV1Board : IFeishuAppContextSwitcher
        [Body] CreatePlantumlWhiteboardNodeRequest createPlantumlWhiteboardNodeRequest,
        CancellationToken cancellationToken = default);
 
-
+    /// <summary>
+    /// 创建节点
+    /// <para>创建画板节点，支持批量创建、创建含父子关系的节点等。</para>
+    /// <para><see href="https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/board-v1/whiteboard-node/create">接口文档</see></para>
+    /// </summary>
+    /// <param name="whiteboard_id">
+    /// <para>画板标识，可通过云文档下的文档接口 [<see href="https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/document-docx/docx-v1/document-block/list">获取文档所有块</see>] 获取，`block_type` 为 43 的 block 即为画板，对应的 &lt;code&gt;block.token&lt;/code&gt; 就是画板的&lt;code&gt;whiteboard_id&lt;/code&gt;</para>
+    /// <para>示例值：Ud8xwWH01hO5mwbakqHbHeqmcCI</para>
+    /// </param> 
+    /// <param name="createWhiteboardNodeRequest">创建画板节点请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
     [Post("/open-apis/board/v1/whiteboards/{whiteboard_id}/nodes")]
-    Task<FeishuNullDataApiResult?> CreateWhiteboardNodeAsync(
+    Task<FeishuApiResult<CreateWhiteboardNodeResult>?> CreateWhiteboardNodeAsync(
       [Path] string whiteboard_id,
       [Body] CreateWhiteboardNodeRequest createWhiteboardNodeRequest,
       CancellationToken cancellationToken = default);

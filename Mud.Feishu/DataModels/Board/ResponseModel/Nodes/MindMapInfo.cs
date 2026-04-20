@@ -7,30 +7,18 @@
 
 namespace Mud.Feishu.DataModels.Board;
 
-
 /// <summary>
-/// <para>坐标</para>
+/// <para>思维导图节点（v1版本，只读，写操作请使用mind_map_root/mind_map_node结构）</para>
 /// </summary>
-public class Point
+public class MindMapInfo
 {
     /// <summary>
-    /// <para>点位置x坐标，单位 px</para>
+    /// <para>父节点id</para>
     /// <para>必填：否</para>
-    /// <para>示例值：10</para>
-    /// <para>最大值：1000000000000000000</para>
-    /// <para>最小值：-1000000000000000000</para>
+    /// <para>示例值：z1:1</para>
+    /// <para>最大长度：10000</para>
+    /// <para>最小长度：0</para>
     /// </summary>
-    [JsonPropertyName("x")]
-    public double? X { get; set; }
-
-    /// <summary>
-    /// <para>点位置y坐标，单位 px</para>
-    /// <para>必填：否</para>
-    /// <para>示例值：10</para>
-    /// <para>最大值：100000000000000000000</para>
-    /// <para>最小值：-10000000000000000000</para>
-    /// </summary>
-    [JsonPropertyName("y")]
-    public double? Y { get; set; }
+    [JsonPropertyName("parent_id")]
+    public string? ParentId { get; set; }
 }
-

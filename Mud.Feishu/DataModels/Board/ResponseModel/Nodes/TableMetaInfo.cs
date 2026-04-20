@@ -7,30 +7,29 @@
 
 namespace Mud.Feishu.DataModels.Board;
 
-
 /// <summary>
-/// <para>坐标</para>
+/// <para>元信息</para>
 /// </summary>
-public class Point
+public class TableMetaInfo : TableMeta
 {
     /// <summary>
-    /// <para>点位置x坐标，单位 px</para>
+    /// <para>行数</para>
     /// <para>必填：否</para>
-    /// <para>示例值：10</para>
-    /// <para>最大值：1000000000000000000</para>
-    /// <para>最小值：-1000000000000000000</para>
+    /// <para>示例值：3</para>
+    /// <para>最大值：10000</para>
+    /// <para>最小值：0</para>
     /// </summary>
-    [JsonPropertyName("x")]
-    public double? X { get; set; }
+    [JsonPropertyName("row_num")]
+    public int? RowNum { get; set; }
 
     /// <summary>
-    /// <para>点位置y坐标，单位 px</para>
+    /// <para>列数</para>
     /// <para>必填：否</para>
-    /// <para>示例值：10</para>
-    /// <para>最大值：100000000000000000000</para>
-    /// <para>最小值：-10000000000000000000</para>
+    /// <para>示例值：2</para>
+    /// <para>最大值：10000</para>
+    /// <para>最小值：0</para>
     /// </summary>
-    [JsonPropertyName("y")]
-    public double? Y { get; set; }
-}
+    [JsonPropertyName("col_num")]
+    public int? ColNum { get; set; }
 
+}

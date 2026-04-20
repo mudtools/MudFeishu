@@ -95,11 +95,55 @@ public interface IFeishuV1Board : IFeishuAppContextSwitcher
     /// <para>示例值：Ud8xwWH01hO5mwbakqHbHeqmcCI</para>
     /// </param> 
     /// <param name="createWhiteboardNodeRequest">创建画板节点请求体</param>
+    /// <param name="client_token">
+    /// <para>操作的唯一标识，与接口返回值的 client_token 相对应，用于幂等的进行更新操作。此值为空表示将发起一次新的请求，此值非空表示幂等的进行更新操作</para>
+    /// <para>示例值：fe599b60-450f-46ff-b2ef-9f6675625b9</para>
+    /// <para>默认值：null</para>
+    /// </param>
+    /// <param name="user_id_type">
+    /// <para>用户 ID 类型</para>
+    /// <para>示例值：open_id</para>
+    /// <list type="bullet">
+    /// <item>open_id：标识一个用户在某个应用中的身份。同一个用户在不同应用中的 Open ID 不同。[了解更多：如何获取 Open ID](https://open.feishu.cn/document/uAjLw4CM/ugTN1YjL4UTN24CO1UjN/trouble-shooting/how-to-obtain-openid)</item>
+    /// <item>union_id：标识一个用户在某个应用开发商下的身份。同一用户在同一开发商下的应用中的 Union ID 是相同的，在不同开发商下的应用中的 Union ID 是不同的。通过 Union ID，应用开发商可以把同个用户在多个应用中的身份关联起来。[了解更多：如何获取 Union ID？](https://open.feishu.cn/document/uAjLw4CM/ugTN1YjL4UTN24CO1UjN/trouble-shooting/how-to-obtain-union-id)</item>
+    /// <item>user_id：标识一个用户在某个租户内的身份。同一个用户在租户 A 和租户 B 内的 User ID 是不同的。在同一个租户内，一个用户的 User ID 在所有应用（包括商店应用）中都保持一致。User ID 主要用于在不同的应用间打通用户数据。[了解更多：如何获取 User ID？](https://open.feishu.cn/document/uAjLw4CM/ugTN1YjL4UTN24CO1UjN/trouble-shooting/how-to-obtain-user-id)</item>
+    /// </list>
+    /// <para>默认值：open_id</para>
+    /// </param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Post("/open-apis/board/v1/whiteboards/{whiteboard_id}/nodes")]
     Task<FeishuApiResult<CreateWhiteboardNodeResult>?> CreateWhiteboardNodeAsync(
       [Path] string whiteboard_id,
       [Body] CreateWhiteboardNodeRequest createWhiteboardNodeRequest,
+      [Query] string? client_token = null,
+      [Query] string? user_id_type = Consts.User_Id_Type,
       CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 获取所有节点
+    /// <para>获取画板内所有的节点，节点以数组方式返回，可通过 parent_id（父节点）、children（子节点） 关系组装成画板内容。</para>
+    /// <para><see href="https://open.feishu.cn/document/docs/board-v1/whiteboard-node/list">接口文档</see></para>
+    /// </summary>
+    /// <param name="whiteboard_id">
+    /// <para>画板标识，可通过云文档下的文档接口 [<see href="https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/document-docx/docx-v1/document-block/list">获取文档所有块</see>] 获取，`block_type` 为 43 的 block 即为画板，对应的 &lt;code&gt;block.token&lt;/code&gt; 就是画板的&lt;code&gt;whiteboard_id&lt;/code&gt;</para>
+    /// <para>示例值：Ud8xwWH01hO5mwbakqHbHeqmcCI</para>
+    /// </param> 
+    /// <param name="user_id_type">
+    /// <para>用户 ID 类型</para>
+    /// <para>示例值：open_id</para>
+    /// <list type="bullet">
+    /// <item>open_id：标识一个用户在某个应用中的身份。同一个用户在不同应用中的 Open ID 不同。[了解更多：如何获取 Open ID](https://open.feishu.cn/document/uAjLw4CM/ugTN1YjL4UTN24CO1UjN/trouble-shooting/how-to-obtain-openid)</item>
+    /// <item>union_id：标识一个用户在某个应用开发商下的身份。同一用户在同一开发商下的应用中的 Union ID 是相同的，在不同开发商下的应用中的 Union ID 是不同的。通过 Union ID，应用开发商可以把同个用户在多个应用中的身份关联起来。[了解更多：如何获取 Union ID？](https://open.feishu.cn/document/uAjLw4CM/ugTN1YjL4UTN24CO1UjN/trouble-shooting/how-to-obtain-union-id)</item>
+    /// <item>user_id：标识一个用户在某个租户内的身份。同一个用户在租户 A 和租户 B 内的 User ID 是不同的。在同一个租户内，一个用户的 User ID 在所有应用（包括商店应用）中都保持一致。User ID 主要用于在不同的应用间打通用户数据。[了解更多：如何获取 User ID？](https://open.feishu.cn/document/uAjLw4CM/ugTN1YjL4UTN24CO1UjN/trouble-shooting/how-to-obtain-user-id)</item>
+    /// </list>
+    /// <para>默认值：open_id</para>
+    /// </param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Get("/open-apis/board/v1/whiteboards/{whiteboard_id}/nodes")]
+    Task<FeishuApiResult<GetWhiteboardNodesResult>?> GetWhiteboardNodesAsync(
+        [Path] string whiteboard_id,
+        [Query] string? user_id_type = Consts.User_Id_Type,
+        CancellationToken cancellationToken = default);
 }

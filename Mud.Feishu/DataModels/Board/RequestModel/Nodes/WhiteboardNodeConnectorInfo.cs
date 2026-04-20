@@ -10,7 +10,7 @@ namespace Mud.Feishu.DataModels.Board;
 /// <summary>
 /// <para>连线端点信息</para>
 /// </summary>
-public class ConnectorInfo
+public class WhiteboardNodeConnectorInfo
 {
     /// <summary>
     /// <para>连接图形信息，与position参数二选一，同时设置时attached_object生效</para>

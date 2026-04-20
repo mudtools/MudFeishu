@@ -10,15 +10,28 @@ namespace Mud.Feishu.DataModels.Board;
 /// <summary>
 /// <para>连线属性</para>
 /// </summary>
-public class WhiteboardNodeConnector
+public class ConnectorInfo
 {
+    /// <summary>
+    /// <para>开始连接节点信息（兼容线上数据，只读，写操作使用 start 字段，start_object 设置也不会生效）</para>
+    /// <para>必填：否</para>
+    /// </summary>
+    [JsonPropertyName("start_object")]
+    public ConnectorAttachedObject? StartObject { get; set; }
+
+    /// <summary>
+    /// <para>结束连接点信息（兼容线上数据， 只读，写操作使用 end 字段，写入时设置字段也不会生效）</para>
+    /// <para>必填：否</para>
+    /// </summary>
+    [JsonPropertyName("end_object")]
+    public ConnectorAttachedObject? EndObject { get; set; }
+
     /// <summary>
     /// <para>连线端点信息</para>
     /// <para>必填：否</para>
     /// </summary>
     [JsonPropertyName("start")]
     public WhiteboardNodeConnectorInfo? Start { get; set; }
-
 
     /// <summary>
     /// <para>连线端点信息</para>
@@ -33,7 +46,6 @@ public class WhiteboardNodeConnector
     /// </summary>
     [JsonPropertyName("captions")]
     public ConnectorCaption? Captions { get; set; }
-
 
     /// <summary>
     /// <para>连线类型</para>
@@ -76,5 +88,5 @@ public class WhiteboardNodeConnector
     /// <para>最小值：0</para>
     /// </summary>
     [JsonPropertyName("caption_position")]
-    public float? CaptionPosition { get; set; }
+    public double? CaptionPosition { get; set; }
 }

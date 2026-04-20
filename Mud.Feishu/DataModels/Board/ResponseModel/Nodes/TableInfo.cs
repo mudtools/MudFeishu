@@ -7,30 +7,34 @@
 
 namespace Mud.Feishu.DataModels.Board;
 
-
 /// <summary>
-/// <para>坐标</para>
+/// <para>表格属性</para>
 /// </summary>
-public class Point
+public class TableInfo
 {
     /// <summary>
-    /// <para>点位置x坐标，单位 px</para>
-    /// <para>必填：否</para>
-    /// <para>示例值：10</para>
-    /// <para>最大值：1000000000000000000</para>
-    /// <para>最小值：-1000000000000000000</para>
+    /// <para>元信息</para>
+    /// <para>必填：是</para>
     /// </summary>
-    [JsonPropertyName("x")]
-    public double? X { get; set; }
+    [JsonPropertyName("meta")]
+    public TableMetaInfo Meta { get; set; } = new();
 
     /// <summary>
-    /// <para>点位置y坐标，单位 px</para>
+    /// <para>标题</para>
     /// <para>必填：否</para>
-    /// <para>示例值：10</para>
-    /// <para>最大值：100000000000000000000</para>
-    /// <para>最小值：-10000000000000000000</para>
+    /// <para>示例值：表格</para>
+    /// <para>最大长度：1024</para>
+    /// <para>最小长度：0</para>
     /// </summary>
-    [JsonPropertyName("y")]
-    public double? Y { get; set; }
-}
+    [JsonPropertyName("title")]
+    public string? Title { get; set; }
 
+    /// <summary>
+    /// <para>单元格列表</para>
+    /// <para>必填：否</para>
+    /// <para>最大长度：10000</para>
+    /// <para>最小长度：0</para>
+    /// </summary>
+    [JsonPropertyName("cells")]
+    public TableCell[]? Cells { get; set; }
+}

@@ -7,30 +7,15 @@
 
 namespace Mud.Feishu.DataModels.Board;
 
-
 /// <summary>
-/// <para>坐标</para>
+/// 获取所有节点响应体
 /// </summary>
-public class Point
+public class GetWhiteboardNodesResult
 {
     /// <summary>
-    /// <para>点位置x坐标，单位 px</para>
+    /// <para>查询结果</para>
     /// <para>必填：否</para>
-    /// <para>示例值：10</para>
-    /// <para>最大值：1000000000000000000</para>
-    /// <para>最小值：-1000000000000000000</para>
     /// </summary>
-    [JsonPropertyName("x")]
-    public double? X { get; set; }
-
-    /// <summary>
-    /// <para>点位置y坐标，单位 px</para>
-    /// <para>必填：否</para>
-    /// <para>示例值：10</para>
-    /// <para>最大值：100000000000000000000</para>
-    /// <para>最小值：-10000000000000000000</para>
-    /// </summary>
-    [JsonPropertyName("y")]
-    public double? Y { get; set; }
+    [JsonPropertyName("nodes")]
+    public WhiteboardNodeInfo[]? Nodes { get; set; }
 }
-

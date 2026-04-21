@@ -70,7 +70,7 @@ public interface IFeishuV1DrivePermissions : IFeishuAppContextSwitcher
     /// <summary>
     /// 批量增加协作者权限
     /// <para>为指定云文档批量添加多个协作者，协作者可以是用户、群组、部门、用户组等。</para>
-    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/permission/permission-member/create">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/docs/permission/permission-member/batch_create">接口文档</see></para>
     /// </summary>
     /// <param name="token">
     /// <para>路径参数</para>
@@ -119,7 +119,7 @@ public interface IFeishuV1DrivePermissions : IFeishuAppContextSwitcher
     /// <summary>
     /// 增加协作者权限
     /// <para>为指定云文档添加协作者，协作者可以是用户、群组、部门、用户组等。</para>
-    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/permission/permission-member/create">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/permission/permission-member/update">接口文档</see></para>
     /// </summary>
     /// <param name="token">
     /// <para>路径参数</para>
@@ -175,7 +175,7 @@ public interface IFeishuV1DrivePermissions : IFeishuAppContextSwitcher
     /// <summary>
     /// 获取云文档协作者
     /// <para>获取指定云文档的协作者，支持查询人、群、组织架构、用户组、知识库成员五种类型的协作者。</para>
-    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/permission/permission-member/create">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/permission/permission-member/list">接口文档</see></para>
     /// </summary>
     /// <param name="token">
     /// <para>路径参数</para>
@@ -235,4 +235,65 @@ public interface IFeishuV1DrivePermissions : IFeishuAppContextSwitcher
        [Query("fields")] string? fields = null,
        [Query("perm_type")] string? perm_type = null,
        CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 移除云文档协作者权限
+    /// <para>通过云文档 token 和协作者 ID 移除指定云文档协作者的权限。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/permission/permission-member/delete">接口文档</see></para>
+    /// </summary>
+    /// <param name="token">
+    /// <para>路径参数</para>
+    /// <para>必填：是</para>
+    /// <para>云文档的 token，需要与 type 参数指定的云文档类型相匹配。</para>
+    /// <para>示例值：doccnBKgoMyY5OMbUG6FioTXuBe</para>
+    /// </param>
+    /// <param name="type">
+    /// <para>必填：是</para>
+    /// <para>云文档类型，需要与云文档的 token 相匹配。</para>
+    /// <para>示例值：docx</para>
+    /// <list type="bullet">
+    /// <item>doc：旧版文档。</item>
+    /// <item>sheet：电子表格</item>
+    /// <item>file：云空间文件</item>
+    /// <item>wiki：知识库节点</item>
+    /// <item>bitable：多维表格</item>
+    /// <item>docx：新版文档</item>
+    /// <item>folder：文件夹。使用 &lt;md-tag mode="inline" type="token-tenant"&gt;tenant_access_token&lt;/md-tag&gt; 调用时，需确保文件夹所有者为应用或应用拥有文件夹的可管理权限，你需要将应用作为群机器人添加至群内，然后授予该群组可管理权限。</item>
+    /// <item>mindnote：思维笔记</item>
+    /// <item>minutes：妙记。目前妙记还不支持 full_access 权限角色</item>
+    /// <item>slides：幻灯片</item>
+    /// </list>
+    /// </param>
+    /// <param name="member_id">
+    /// <para>路径参数</para>
+    /// <para>协作者 ID，该 ID 的类型与 member_type 指定的值需要保持一致。</para>
+    /// <para>示例值：ou_7dab8a3d3cdcc9da365777c7ad535d62</para>
+    /// </param>
+    /// <param name="deletePermissionMemberRequest">删除云文档协作者请求体</param>
+    /// <param name="member_type">
+    /// <para>必填：是</para>
+    /// <para>协作者 ID 类型，与协作者 ID （member_id）需要对应。</para>
+    /// <para>示例值：openid</para>
+    /// <list type="bullet">
+    /// <item>email：邮箱地址</item>
+    /// <item>openid：开放平台 Open ID - 获取应用 OpenID，参考[如何获取应用 open_id](https://open.feishu.cn/document/ukTMukTMukTM/uczNzUjL3czM14yN3MTN#6dbaa8df) - 获取用户 OpenID，参考[如何获取不同的用户 ID](https://open.feishu.cn/document/home/user-identity-introduction/open-id)</item>
+    /// <item>openchat：开放平台群组 ID。获取方式参考[群 ID 说明](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/im-v1/chat-id-description)</item>
+    /// <item>opendepartmentid：开放平台部门 ID。仅当使用 &lt;md-tag mode="inline" type="token-user"&gt;user_access_token&lt;/md-tag&gt; 调用时有效。获取方式参考[部门资源介绍](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/contact-v3/department/field-overview)</item>
+    /// <item>userid：用户 ID。获取方式参考[如何获取不同的用户 ID](https://open.feishu.cn/document/home/user-identity-introduction/open-id)</item>
+    /// <item>unionid：开放平台 Union ID。获取方式参考[如何获取不同的用户 ID](https://open.feishu.cn/document/home/user-identity-introduction/open-id)</item>
+    /// <item>groupid：自定义用户组 ID。获取方式参考[用户组资源介绍](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/contact-v3/group/overview)</item>
+    /// <item>wikispaceid：知识空间 ID。仅知识库文档支持该参数，当需要操作知识库文档里的「知识库成员」类型协作者时传该参数。获取方式参考[知识库概述](https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/wiki-overview)</item>
+    /// </list>
+    /// </param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Delete("/open-apis/drive/v1/permissions/{token}/members/{member_id}")]
+    Task<FeishuNullDataApiResult?> DeletePermissionMemberAsync(
+        [Path] string token,
+        [Path] string member_id,
+        [Query("type")] string type,
+        [Body] DeletePermissionMemberRequest deletePermissionMemberRequest,
+        [Query("member_type")] string member_type = Consts.User_Id_Type,
+        CancellationToken cancellationToken = default);
 }

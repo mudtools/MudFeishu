@@ -8,17 +8,15 @@
 namespace Mud.Feishu.DataModels.Drive;
 
 /// <summary>
-/// 协作者权限成员
-/// <para>协作者权限成员，包括用户、群组、部门、用户组等。</para>
+/// 获取云文档协作者响应体
+/// <para>获取指定云文档的协作者，支持查询人、群、组织架构、用户组、知识库成员五种类型的协作者。</para>
 /// </summary>
-public class PermissionMember : BasePermissionMember
+public class GetPermissionMemberResult
 {
-
     /// <summary>
-    /// <para>协作者 ID，该 ID 的类型与 member_type 指定的值需要保持一致。</para>
-    /// <para>必填：是</para>
-    /// <para>示例值：ou_1234567890abcdef1234567890abcdef</para>
+    /// <para>返回的列表数据</para>
+    /// <para>必填：否</para>
     /// </summary>
-    [JsonPropertyName("member_id")]
-    public string MemberId { get; set; } = string.Empty;
+    [JsonPropertyName("items")]
+    public PermissionMemberDetail[]? Items { get; set; }
 }

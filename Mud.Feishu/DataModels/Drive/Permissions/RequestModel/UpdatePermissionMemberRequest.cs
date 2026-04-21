@@ -8,17 +8,10 @@
 namespace Mud.Feishu.DataModels.Drive;
 
 /// <summary>
-/// 协作者权限成员
-/// <para>协作者权限成员，包括用户、群组、部门、用户组等。</para>
+/// 更新协作者权限成员请求模型
+/// <para>更新指定云文档中指定协作者的权限，包括可阅读、可编辑、可管理权限。</para>
 /// </summary>
-public class PermissionMember : BasePermissionMember
+public class UpdatePermissionMemberRequest : BasePermissionMember
 {
 
-    /// <summary>
-    /// <para>协作者 ID，该 ID 的类型与 member_type 指定的值需要保持一致。</para>
-    /// <para>必填：是</para>
-    /// <para>示例值：ou_1234567890abcdef1234567890abcdef</para>
-    /// </summary>
-    [JsonPropertyName("member_id")]
-    public string MemberId { get; set; } = string.Empty;
 }

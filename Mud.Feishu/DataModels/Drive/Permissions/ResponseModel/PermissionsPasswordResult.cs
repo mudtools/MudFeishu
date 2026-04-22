@@ -8,9 +8,15 @@
 namespace Mud.Feishu.DataModels.Drive;
 
 /// <summary>
-/// 更新云文档权限设置请求体
+/// 云文档密码响应体
 /// </summary>
-public class UpdateDrivePermissionsRequest : DrivePermissions
+public class PermissionsPasswordResult
 {
-
+    /// <summary>
+    /// <para>密码</para>
+    /// <para>必填：否</para>
+    /// <para>示例值：q79536&amp;1</para>
+    /// </summary>
+    [JsonPropertyName("password")]
+    public string? Password { get; set; }
 }

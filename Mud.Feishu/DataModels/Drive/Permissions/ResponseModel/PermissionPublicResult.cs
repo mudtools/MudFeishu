@@ -8,9 +8,9 @@
 namespace Mud.Feishu.DataModels.Drive;
 
 /// <summary>
-/// 更新云文档权限设置响应体
+/// 云文档权限设置信息响应体
 /// </summary>
-public class UpdatePermissionPublicResult
+public class PermissionPublicResult
 {
     /// <summary>
     /// <para>本次更新后的文档权限设置。如权限设置未更新，则不返回对应参数。</para>

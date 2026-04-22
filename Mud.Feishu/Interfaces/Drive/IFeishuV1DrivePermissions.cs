@@ -538,4 +538,77 @@ public interface IFeishuV1DrivePermissions : IFeishuAppContextSwitcher
          [Path] string token,
          [Query("type")] string type,
          CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 刷新云文档密码
+    /// <para>刷新指定云文档的密码。密码刷新后，旧密码将失效，并生成新密码。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/permission/permission-public/permission-public-password/update">接口文档</see></para>
+    /// </summary>
+    /// <param name="token">
+    /// <para>路径参数</para>
+    /// <para>必填：是</para>
+    /// <para>云文档的 token，需要与 type 参数指定的云文档类型相匹配。</para>
+    /// <para>示例值：doccnBKgoMyY5OMbUG6FioTXuBe</para>
+    /// </param>
+    /// <param name="type">
+    /// <para>必填：是</para>
+    /// <para>云文档类型，需要与云文档的 token 相匹配。</para>
+    /// <para>示例值：docx</para>
+    /// <list type="bullet">
+    /// <item>doc：旧版文档。</item>
+    /// <item>sheet：电子表格</item>
+    /// <item>file：云空间文件</item>
+    /// <item>wiki：知识库节点</item>
+    /// <item>bitable：多维表格</item>
+    /// <item>docx：新版文档</item>
+    /// <item>folder：文件夹。使用 &lt;md-tag mode="inline" type="token-tenant"&gt;tenant_access_token&lt;/md-tag&gt; 调用时，需确保文件夹所有者为应用或应用拥有文件夹的可管理权限，你需要将应用作为群机器人添加至群内，然后授予该群组可管理权限。</item>
+    /// <item>mindnote：思维笔记</item>
+    /// <item>minutes：妙记。目前妙记还不支持 full_access 权限角色</item>
+    /// <item>slides：幻灯片</item>
+    /// </list>
+    /// </param>  
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Put("/open-apis/drive/v1/permissions/{token}/public/password")]
+    Task<FeishuApiResult<PermissionsPasswordResult>?> UpdatePermissionPublicPasswordAsync(
+       [Path] string token,
+       [Query("type")] string type,
+       CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 停用云文档密码
+    /// <para>停用指定云文档的密码。密码停用后，组织外用户访问文档将无需输入密码。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/permission/permission-public/permission-public-password/delete">接口文档</see></para>
+    /// </summary>
+    /// <param name="token">
+    /// <para>路径参数</para>
+    /// <para>必填：是</para>
+    /// <para>云文档的 token，需要与 type 参数指定的云文档类型相匹配。</para>
+    /// <para>示例值：doccnBKgoMyY5OMbUG6FioTXuBe</para>
+    /// </param>
+    /// <param name="type">
+    /// <para>必填：是</para>
+    /// <para>云文档类型，需要与云文档的 token 相匹配。</para>
+    /// <para>示例值：docx</para>
+    /// <list type="bullet">
+    /// <item>doc：旧版文档。</item>
+    /// <item>sheet：电子表格</item>
+    /// <item>file：云空间文件</item>
+    /// <item>wiki：知识库节点</item>
+    /// <item>bitable：多维表格</item>
+    /// <item>docx：新版文档</item>
+    /// <item>folder：文件夹。使用 &lt;md-tag mode="inline" type="token-tenant"&gt;tenant_access_token&lt;/md-tag&gt; 调用时，需确保文件夹所有者为应用或应用拥有文件夹的可管理权限，你需要将应用作为群机器人添加至群内，然后授予该群组可管理权限。</item>
+    /// <item>mindnote：思维笔记</item>
+    /// <item>minutes：妙记。目前妙记还不支持 full_access 权限角色</item>
+    /// <item>slides：幻灯片</item>
+    /// </list>
+    /// </param>  
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Delete("/open-apis/drive/v1/permissions/{token}/public/password")]
+    Task<FeishuNullDataApiResult?> DeletePermissionPublicPasswordAsync(
+      [Path] string token,
+      [Query("type")] string type,
+      CancellationToken cancellationToken = default);
 }

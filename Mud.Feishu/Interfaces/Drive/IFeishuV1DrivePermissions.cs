@@ -296,4 +296,81 @@ public interface IFeishuV1DrivePermissions : IFeishuAppContextSwitcher
         [Body] DeletePermissionMemberRequest deletePermissionMemberRequest,
         [Query("member_type")] string member_type = Consts.User_Id_Type,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 转移云文档所有者
+    /// <para>转移指定云文档的所有者。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/permission/permission-member/transfer_owner">接口文档</see></para>
+    /// </summary>
+    /// <param name="token">
+    /// <para>路径参数</para>
+    /// <para>必填：是</para>
+    /// <para>云文档的 token，需要与 type 参数指定的云文档类型相匹配。</para>
+    /// <para>示例值：doccnBKgoMyY5OMbUG6FioTXuBe</para>
+    /// </param>
+    /// <param name="type">
+    /// <para>必填：是</para>
+    /// <para>云文档类型，需要与云文档的 token 相匹配。</para>
+    /// <para>示例值：docx</para>
+    /// <list type="bullet">
+    /// <item>doc：旧版文档。</item>
+    /// <item>sheet：电子表格</item>
+    /// <item>file：云空间文件</item>
+    /// <item>wiki：知识库节点</item>
+    /// <item>bitable：多维表格</item>
+    /// <item>docx：新版文档</item>
+    /// <item>folder：文件夹。使用 &lt;md-tag mode="inline" type="token-tenant"&gt;tenant_access_token&lt;/md-tag&gt; 调用时，需确保文件夹所有者为应用或应用拥有文件夹的可管理权限，你需要将应用作为群机器人添加至群内，然后授予该群组可管理权限。</item>
+    /// <item>mindnote：思维笔记</item>
+    /// <item>minutes：妙记。目前妙记还不支持 full_access 权限角色</item>
+    /// <item>slides：幻灯片</item>
+    /// </list>
+    /// </param>
+    /// <param name="need_notification">
+    /// <para>添加权限后是否通知对方。</para>
+    /// <para>可选值：</para>
+    /// <para>- true：通知对方</para>
+    /// <para>- false：不通知</para>
+    /// <para>示例值：false</para>
+    /// <para>默认值：false</para>
+    /// </param>
+    /// <param name="remove_old_owner">
+    /// <para>必填：否</para>
+    /// <para>转移后是否需要移除原云文档所有者的权限。可选值：</para>
+    /// <para>- `true`：移除原所有者权限</para>
+    /// <para>- `false`：不移除原所有者权限</para>
+    /// <para>示例值：false</para>
+    /// <para>默认值：false</para>
+    /// </param>
+    /// <param name="stay_put">
+    /// <para>必填：否</para>
+    /// <para>在个人文件夹下的云文档是否仍留在原所有者个人文件夹下。可选值：</para>
+    /// <para>- `true`：云文档留在原位置不变</para>
+    /// <para>- `false`：系统会将该内容移至新所有者的空间下</para>
+    /// <para>**注意**：仅当云文档在个人文件夹下时参数生效。</para>
+    /// <para>示例值：false</para>
+    /// <para>默认值：false</para>
+    /// </param>
+    /// <param name="old_owner_perm">
+    /// <para>必填：否</para>
+    /// <para>为原云文档所有者保留的具体权限。可选值：</para>
+    /// <para>- `view`：可阅读角色</para>
+    /// <para>- `edit`：可编辑角色</para>
+    /// <para>- `full_access`：可管理角色</para>
+    /// <para>**注意**：仅当 `remove_old_owner` 为 `false` 时，此参数才会生效。</para>
+    /// <para>示例值：view</para>
+    /// <para>默认值：full_access</para>
+    /// </param>
+    /// <param name="transferOwnerPermissionMemberRequest">转移云文档所有者请求体</param>    
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Post("/open-apis/drive/v1/permissions/{token}/members/transfer_owner")]
+    Task<FeishuNullDataApiResult?> TransferOwnerPermissionMemberAsync(
+       [Path] string token,
+       [Query("type")] string type,
+       [Body] TransferOwnerPermissionMemberRequest transferOwnerPermissionMemberRequest,
+       [Query("need_notification")] bool? need_notification = false,
+       [Query("remove_old_owner")] bool? remove_old_owner = false,
+       [Query("stay_put")] bool? stay_put = false,
+       [Query("old_owner_perm")] string? old_owner_perm = "full_access",
+       CancellationToken cancellationToken = default);
 }

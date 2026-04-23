@@ -368,4 +368,37 @@ public interface IFeishuV1Comments : IFeishuAppContextSwitcher
        [Path] string reply_id,
        [Query] string file_type,
        CancellationToken cancellationToken = default);
+
+
+
+    /// <summary>
+    /// 添加/取消表情回应
+    /// <para>对云文档中的某条评论进行emoji表情回应或取消emoji表情回应。适用于用户需要对云文档评论进行emoji表情互动的场景。</para>
+    /// <para><see href="https://open.feishu.cn/document/ukTMukTMukTM/uIzNzUjLyczM14iM3MTN/drive-v2/comment_reaction/update_reaction">接口文档</see></para>
+    /// </summary>
+    /// <param name="file_token">文件的 token
+    /// <para>示例值：XIHSdYSI7oMEU1xrsnxc8fabcef</para>
+    /// </param>    
+    /// <param name="file_type">
+    /// <para>必填：是</para>
+    /// <para>云文档类型</para>
+    /// <para>示例值：doc</para>
+    /// <list type="bullet">
+    /// <item>doc：旧版文档类型，已不推荐使用</item>
+    /// <item>docx：新版文档类型</item>
+    /// <item>sheet：电子表格类型</item>
+    /// <item>file：文件类型</item>
+    /// <item>slides：幻灯片</item>
+    /// </list>
+    /// </param>
+    /// <param name="updateReactionCommentReactionRequest">添加/取消表情回应请求体</param>
+    /// <param name="user_id_type">用户 ID，ID 类型与查询结果中的 user_id_type 类型保持一致。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Post("/open-apis/drive/v2/files/{file_token}/comments/reaction")]
+    Task<FeishuNullDataApiResult?> UpdateReactionCommentReactionAsync(
+       [Path] string file_token,
+       [Query] string file_type,
+       [Body] UpdateReactionCommentReactionRequest updateReactionCommentReactionRequest,
+       [Query] string? user_id_type = Consts.User_Id_Type,
+       CancellationToken cancellationToken = default);
 }

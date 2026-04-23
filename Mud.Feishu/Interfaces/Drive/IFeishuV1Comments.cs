@@ -209,9 +209,9 @@ public interface IFeishuV1Comments : IFeishuAppContextSwitcher
 
 
     /// <summary>
-    /// 添加全文评论
-    /// <para>在文档中添加一条全局评论，不支持局部评论。</para>
-    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/CommentAPI/create">接口文档</see></para>
+    /// 添加回复
+    /// <para>对云文档中的某条评论进行回复，回复内容支持普通文本、云文档链接等。</para>
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/drive-v1/file-comment-reply/create">接口文档</see></para>
     /// </summary>
     /// <param name="file_token">文件的 token
     /// <para>示例值：XIHSdYSI7oMEU1xrsnxc8fabcef</para>
@@ -243,4 +243,49 @@ public interface IFeishuV1Comments : IFeishuAppContextSwitcher
           [Body] CreateFileCommentReplyRequest createFileCommentReplyRequest,
           [Query] string? user_id_type = Consts.User_Id_Type,
           CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 分页获取回复信息
+    /// <para>用于根据评论 ID，获取该条评论对应的回复信息列表，包括回复 ID、回复内容、回复人的用户 ID 等。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/CommentAPI/list-2">接口文档</see></para>
+    /// </summary>
+    /// <param name="file_token">文件的 token
+    /// <para>示例值：XIHSdYSI7oMEU1xrsnxc8fabcef</para>
+    /// </param>    
+    /// <param name="comment_id">
+    /// <para>评论ID</para>
+    /// <para>示例值：6916106822734578184</para>
+    /// </param>
+    /// <param name="file_type">
+    /// <para>必填：是</para>
+    /// <para>云文档类型</para>
+    /// <para>示例值：doc</para>
+    /// <list type="bullet">
+    /// <item>doc：旧版文档类型，已不推荐使用</item>
+    /// <item>docx：新版文档类型</item>
+    /// <item>sheet：电子表格类型</item>
+    /// <item>file：文件类型</item>
+    /// <item>slides：幻灯片</item>
+    /// </list>
+    /// </param>
+    /// <param name="need_reaction">
+    /// <para>是否需要获取评论卡片上挂载的Reaction数据，默认值为false</para>
+    /// <para>示例值：false</para>
+    /// <para>默认值：false</para>
+    /// </param>
+    /// <param name="page_size">分页大小，即本次请求所返回的用户信息列表内的最大条目数。默认值：10</param>
+    /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
+    /// <param name="user_id_type">用户 ID，ID 类型与查询结果中的 user_id_type 类型保持一致。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Get("/open-apis/drive/v1/files/{file_token}/comments/{comment_id}/replies")]
+    Task<FeishuApiPageListResult<FileCommentReply>?> GetFileCommentRepliesPageListAsync(
+        [Path] string file_token,
+        [Path] string comment_id,
+        [Query] string file_type,
+        [Query] bool? need_reaction = false,
+        [Query] int page_size = Consts.PageSize_50,
+        [Query] string? page_token = null,
+        [Query] string? user_id_type = Consts.User_Id_Type,
+        CancellationToken cancellationToken = default);
 }

@@ -135,4 +135,13 @@ public interface IFeishuV1Comments : IFeishuAppContextSwitcher
          [Query] string file_type,
          [Body] PatchFileCommentRequest patchFileCommentRequest,
          CancellationToken cancellationToken = default);
+
+
+    [Post("/open-apis/drive/v1/files/{file_token}/comments")]
+    Task<FeishuApiResult<CreateFileCommentResult>?> CreateFileCommentAsync(
+      [Path] string file_token,
+      [Query] string file_type,
+      [Body] CreateFileCommentRequest createFileCommentRequest,
+      [Query] string? user_id_type = Consts.User_Id_Type,
+      CancellationToken cancellationToken = default);
 }

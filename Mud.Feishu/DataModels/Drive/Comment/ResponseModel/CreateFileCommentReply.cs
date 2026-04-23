@@ -8,9 +8,9 @@
 namespace Mud.Feishu.DataModels.Drive;
 
 /// <summary>
-/// <para>回复列表</para>
+/// <para>评论里的回复列表</para>
 /// </summary>
-public class FileCommentReply
+public class CreateFileCommentReply
 {
     /// <summary>
     /// <para>回复内容</para>
@@ -57,10 +57,4 @@ public class FileCommentReply
     /// </summary>
     [JsonPropertyName("extra")]
     public ReplyExtra? Extra { get; set; }
-
-    /// <summary>
-    /// 表情回复信息列表
-    /// </summary>
-    [JsonPropertyName("reactions")]
-    public Reaction[]? Reactions { get; set; }
 }

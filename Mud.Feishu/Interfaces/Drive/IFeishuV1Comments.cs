@@ -288,4 +288,84 @@ public interface IFeishuV1Comments : IFeishuAppContextSwitcher
         [Query] string? page_token = null,
         [Query] string? user_id_type = Consts.User_Id_Type,
         CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 更新回复的内容
+    /// <para>更新云文档中的某条回复的内容。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/CommentAPI/update">接口文档</see></para>
+    /// </summary>
+    /// <param name="file_token">文件的 token
+    /// <para>示例值：XIHSdYSI7oMEU1xrsnxc8fabcef</para>
+    /// </param>    
+    /// <param name="comment_id">
+    /// <para>评论ID</para>
+    /// <para>示例值：6916106822734578184</para>
+    /// </param>
+    /// <param name="file_type">
+    /// <para>必填：是</para>
+    /// <para>云文档类型</para>
+    /// <para>示例值：doc</para>
+    /// <list type="bullet">
+    /// <item>doc：旧版文档类型，已不推荐使用</item>
+    /// <item>docx：新版文档类型</item>
+    /// <item>sheet：电子表格类型</item>
+    /// <item>file：文件类型</item>
+    /// <item>slides：幻灯片</item>
+    /// </list>
+    /// </param>
+    /// <param name="reply_id">
+    /// <para>回复 ID</para>
+    /// <para>示例值：6916106822734594568</para>
+    /// </param> 
+    /// <param name="updateFileCommentReplyRequest">更新文件评论回复请求</param>
+    /// <param name="user_id_type">用户 ID，ID 类型与查询结果中的 user_id_type 类型保持一致。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Put("/open-apis/drive/v1/files/{file_token}/comments/{comment_id}/replies/{reply_id}")]
+    Task<FeishuNullDataApiResult?> UpdateFileCommentReplyAsync(
+       [Path] string file_token,
+       [Path] string comment_id,
+       [Path] string reply_id,
+       [Query] string file_type,
+       [Body] UpdateFileCommentReplyRequest updateFileCommentReplyRequest,
+       [Query] string? user_id_type = Consts.User_Id_Type,
+       CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 删除回复
+    /// <para>删除云文档中的某条回复。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/CommentAPI/delete">接口文档</see></para>
+    /// </summary>
+    /// <param name="file_token">文件的 token
+    /// <para>示例值：XIHSdYSI7oMEU1xrsnxc8fabcef</para>
+    /// </param>    
+    /// <param name="comment_id">
+    /// <para>评论ID</para>
+    /// <para>示例值：6916106822734578184</para>
+    /// </param>
+    /// <param name="file_type">
+    /// <para>必填：是</para>
+    /// <para>云文档类型</para>
+    /// <para>示例值：doc</para>
+    /// <list type="bullet">
+    /// <item>doc：旧版文档类型，已不推荐使用</item>
+    /// <item>docx：新版文档类型</item>
+    /// <item>sheet：电子表格类型</item>
+    /// <item>file：文件类型</item>
+    /// <item>slides：幻灯片</item>
+    /// </list>
+    /// </param>
+    /// <param name="reply_id">
+    /// <para>回复 ID</para>
+    /// <para>示例值：6916106822734594568</para>
+    /// </param> 
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Delete("/open-apis/drive/v1/files/{file_token}/comments/{comment_id}/replies/{reply_id}")]
+    Task<FeishuNullDataApiResult?> DeleteFileCommentReplyAsync(
+       [Path] string file_token,
+       [Path] string comment_id,
+       [Path] string reply_id,
+       [Query] string file_type,
+       CancellationToken cancellationToken = default);
 }

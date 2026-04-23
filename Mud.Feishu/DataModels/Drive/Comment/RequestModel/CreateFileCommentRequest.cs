@@ -8,7 +8,7 @@
 namespace Mud.Feishu.DataModels.Drive;
 
 /// <summary>
-/// <para>创建文件请求体</para>
+/// <para>添加全文评论请求体</para>
 /// </summary>
 public class CreateFileCommentRequest
 {

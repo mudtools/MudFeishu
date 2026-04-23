@@ -105,7 +105,7 @@ public interface IFeishuV1Comments : IFeishuAppContextSwitcher
     /// <summary>
     /// 批量获取评论
     /// <para>用于根据评论 ID 列表批量获取云文档评论信息，包括评论和回复 ID、回复的内容、评论人和回复人的用户 ID 等。支持返回全局评论以及局部评论，可通过 is_whole （是否为全局评论标识）字段区分。</para>
-    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/CommentAPI/batch_query">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/CommentAPI/patch">接口文档</see></para>
     /// </summary>
     /// <param name="file_token">文件的 token
     /// <para>示例值：XIHSdYSI7oMEU1xrsnxc8fabcef</para>
@@ -137,6 +137,29 @@ public interface IFeishuV1Comments : IFeishuAppContextSwitcher
          CancellationToken cancellationToken = default);
 
 
+    /// <summary>
+    /// 添加全文评论
+    /// <para>在文档中添加一条全局评论，不支持局部评论。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/CommentAPI/create">接口文档</see></para>
+    /// </summary>
+    /// <param name="file_token">文件的 token
+    /// <para>示例值：XIHSdYSI7oMEU1xrsnxc8fabcef</para>
+    /// </param>    
+    /// <param name="file_type">
+    /// <para>必填：是</para>
+    /// <para>云文档类型</para>
+    /// <para>示例值：doc</para>
+    /// <list type="bullet">
+    /// <item>doc：旧版文档类型，已不推荐使用</item>
+    /// <item>docx：新版文档类型</item>
+    /// <item>sheet：电子表格类型</item>
+    /// <item>file：文件类型</item>
+    /// <item>slides：幻灯片</item>
+    /// </list>
+    /// </param>
+    /// <param name="user_id_type">用户 ID，ID 类型与查询结果中的 user_id_type 类型保持一致。</param>
+    /// <param name="createFileCommentRequest">添加全文评论请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Post("/open-apis/drive/v1/files/{file_token}/comments")]
     Task<FeishuApiResult<CreateFileCommentResult>?> CreateFileCommentAsync(
       [Path] string file_token,
@@ -144,4 +167,43 @@ public interface IFeishuV1Comments : IFeishuAppContextSwitcher
       [Body] CreateFileCommentRequest createFileCommentRequest,
       [Query] string? user_id_type = Consts.User_Id_Type,
       CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 添加全文评论
+    /// <para>在文档中添加一条全局评论，不支持局部评论。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/CommentAPI/create">接口文档</see></para>
+    /// </summary>
+    /// <param name="file_token">文件的 token
+    /// <para>示例值：XIHSdYSI7oMEU1xrsnxc8fabcef</para>
+    /// </param>    
+    /// <param name="comment_id">
+    /// <para>评论ID</para>
+    /// <para>示例值：6916106822734578184</para>
+    /// </param>
+    /// <param name="file_type">
+    /// <para>必填：是</para>
+    /// <para>云文档类型</para>
+    /// <para>示例值：doc</para>
+    /// <list type="bullet">
+    /// <item>doc：旧版文档类型，已不推荐使用</item>
+    /// <item>docx：新版文档类型</item>
+    /// <item>sheet：电子表格类型</item>
+    /// <item>file：文件类型</item>
+    /// <item>slides：幻灯片</item>
+    /// </list>
+    /// </param>
+    /// <param name="need_reaction">
+    /// <para>是否需要获取评论卡片上挂载的Reaction数据，默认值为false</para>
+    /// <para>示例值：false</para>
+    /// <para>默认值：false</para>
+    /// </param>  /// <param name="user_id_type">用户 ID，ID 类型与查询结果中的 user_id_type 类型保持一致。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Get("/open-apis/drive/v1/files/{file_token}/comments/{comment_id}")]
+    Task<FeishuApiResult<FileComment>?> GetFileCommentAsync(
+         [Path] string file_token,
+         [Path] string comment_id,
+         [Query] string file_type,
+         [Query] bool? need_reaction = false,
+         [Query] string? user_id_type = Consts.User_Id_Type,
+         CancellationToken cancellationToken = default);
 }

@@ -16,7 +16,7 @@ public class Reaction
     /// 表情回复的键值，如 ANGRY、LIKE、LOVE 等
     /// </summary>
     [JsonPropertyName("reaction_key")]
-    public string ReactionKey { get; set; }
+    public string? ReactionKey { get; set; }
 
     /// <summary>
     /// 该表情回复的总数量
@@ -28,5 +28,5 @@ public class Reaction
     /// 前几位使用该表情的用户ID列表
     /// </summary>
     [JsonPropertyName("ahead_users")]
-    public List<string> AheadUsers { get; set; }
+    public List<string> AheadUsers { get; set; } = [];
 }

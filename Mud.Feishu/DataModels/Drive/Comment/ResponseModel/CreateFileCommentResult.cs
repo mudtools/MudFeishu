@@ -105,5 +105,5 @@ public class CreateFileCommentResult
     /// <para>必填：否</para>
     /// </summary>
     [JsonPropertyName("reply_list")]
-    public CreateFileCommentReplyList? ReplyList { get; set; }
+    public CreateFileCommentReplyListResult? ReplyList { get; set; }
 }

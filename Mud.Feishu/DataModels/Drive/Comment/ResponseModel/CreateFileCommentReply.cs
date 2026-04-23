@@ -10,7 +10,7 @@ namespace Mud.Feishu.DataModels.Drive;
 /// <summary>
 /// <para>评论里的回复列表</para>
 /// </summary>
-public class CreateFileCommentReply
+public class CreateFileCommentReplyResult
 {
     /// <summary>
     /// <para>回复内容</para>

@@ -10,12 +10,12 @@ namespace Mud.Feishu.DataModels.Drive;
 /// <summary>
 /// <para>评论里的回复列表</para>
 /// </summary>
-public class CreateFileCommentReplyList
+public class CreateFileCommentReplyListResult
 {
     /// <summary>
     /// <para>回复列表</para>
     /// <para>必填：是</para>
     /// </summary>
     [JsonPropertyName("replies")]
-    public CreateFileCommentReply[] Replies { get; set; } = [];
+    public CreateFileCommentReplyResult[] Replies { get; set; } = [];
 }

@@ -95,7 +95,7 @@ public interface IFeishuV2WikiNodes : IFeishuAppContextSwitcher
     Task<FeishuApiPageListResult<SpaceNodeInfo>?> GetSpaceNodesPageListAsync(
          [Path] string space_id,
          [Query("parent_node_token")] string? parent_node_token = null,
-         [Query("page_size")] int page_size = Consts.PageSize,
+         [Query("page_size")] int page_size = Consts.PageSize_10,
          [Query("page_token")] string? page_token = null,
          CancellationToken cancellationToken = default);
 

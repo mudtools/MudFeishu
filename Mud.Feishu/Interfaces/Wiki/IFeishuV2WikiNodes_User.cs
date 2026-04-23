@@ -28,7 +28,7 @@ public interface IFeishuUserV2WikiNodes : IFeishuV2WikiNodes, ICurrentUserId
     [Post("/open-apis/wiki/v2/nodes/search")]
     Task<FeishuApiPageListResult<WikiSearchResult>?> SearchPageListAsync(
          [Body] WikiSearchRequest wikiSearchRequest,
-         [Query("page_size")] int page_size = Consts.PageSize,
+         [Query("page_size")] int page_size = Consts.PageSize_10,
          [Query("page_token")] string? page_token = null,
          CancellationToken cancellationToken = default);
 }

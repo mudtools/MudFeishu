@@ -57,7 +57,7 @@ public interface IFeishuV1DriveFilesVersions : IFeishuAppContextSwitcher
     Task<FeishuApiPageListResult<FileVersionInfo>?> GetFileVersionPageListByFileTokenAsync(
          [Path] string file_token,
          [Query("obj_type")] string obj_type,
-         [Query("page_size")] int page_size = Consts.PageSize,
+         [Query("page_size")] int page_size = Consts.PageSize_10,
          [Query("page_token")] string? page_token = null,
          [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
          CancellationToken cancellationToken = default);

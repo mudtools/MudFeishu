@@ -83,7 +83,7 @@ public interface IFeishuTenantV3RoleMember : IFeishuAppContextSwitcher
     [Get("/open-apis/contact/v3/functional_roles/{role_id}/members")]
     Task<FeishuApiResult<RoleMemberScopeInfo>?> GetMembersAsync(
               [Path] string role_id,
-              [Query("page_size")] int? page_size = Consts.PageSize,
+              [Query("page_size")] int? page_size = Consts.PageSize_10,
               [Query("page_token")] string? page_token = null,
               [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
               [Query("department_id_type")] string? department_id_type = Consts.Department_Id_Type,

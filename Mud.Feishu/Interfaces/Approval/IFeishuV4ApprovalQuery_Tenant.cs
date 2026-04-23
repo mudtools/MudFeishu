@@ -29,7 +29,7 @@ public interface IFeishuTenantV4ApprovalQuery : IFeishuV4ApprovalQuery
     [Post("/open-apis/approval/v4/instances/query")]
     Task<FeishuApiResult<ApprovalInstancesQueryResult>?> GetInstancesPageListAsync(
          [Body] ApprovalInstancesQueryRequest approvalInstancesQueryRequest,
-         [Query("page_size")] int page_size = Consts.PageSize,
+         [Query("page_size")] int page_size = Consts.PageSize_10,
          [Query("page_token")] string? page_token = null,
          [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
          CancellationToken cancellationToken = default);
@@ -46,7 +46,7 @@ public interface IFeishuTenantV4ApprovalQuery : IFeishuV4ApprovalQuery
     [Post("/open-apis/approval/v4/instances/search_cc")]
     Task<FeishuApiResult<ApprovalInstancesCcQueryResult>?> GetCarbonCopyPageListAsync(
         [Body] ApprovalInstancesCcQueryRequest approvalInstancesCcQueryReques,
-        [Query("page_size")] int page_size = Consts.PageSize,
+        [Query("page_size")] int page_size = Consts.PageSize_10,
         [Query("page_token")] string? page_token = null,
         [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
         CancellationToken cancellationToken = default);
@@ -63,7 +63,7 @@ public interface IFeishuTenantV4ApprovalQuery : IFeishuV4ApprovalQuery
     [Post("/open-apis/approval/v4/tasks/search")]
     Task<FeishuApiResult<ApprovalInstancesTaskQueryResult>?> GetTasksPageListAsync(
         [Body] ApprovalInstancesTaskQueryRequest approvalInstancesTaskQueryRequest,
-        [Query("page_size")] int page_size = Consts.PageSize,
+        [Query("page_size")] int page_size = Consts.PageSize_10,
         [Query("page_token")] string? page_token = null,
         [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
         CancellationToken cancellationToken = default);

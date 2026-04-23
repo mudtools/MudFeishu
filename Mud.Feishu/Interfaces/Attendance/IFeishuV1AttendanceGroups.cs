@@ -45,7 +45,7 @@ public interface IFeishuV1AttendanceGroups : IFeishuAppContextSwitcher
         [Query("member_clock_type")] int member_clock_type = 0,
         [Query("employee_type")] string employee_type = Consts.User_Id_Type,
         [Query("dept_type")] string dept_type = Consts.Department_Id_Type,
-        [Query("page_size")] int page_size = Consts.PageSize,
+        [Query("page_size")] int page_size = Consts.PageSize_10,
         [Query("page_token")] string? page_token = null,
         CancellationToken cancellationToken = default);
 }

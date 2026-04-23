@@ -90,7 +90,7 @@ public interface IFeishuV1DriveFiles : IFeishuAppContextSwitcher
     Task<FeishuApiPageListResult<FileViewRecord>?> GetFileViewRecordPageListByFileTokenAsync(
        [Path] string file_token,
        [Query("file_type")] string file_type,
-       [Query("page_size")] int page_size = Consts.PageSize,
+       [Query("page_size")] int page_size = Consts.PageSize_10,
        [Query("page_token")] string? page_token = null,
        [Query("viewer_id_type")] string? viewer_id_type = Consts.User_Id_Type,
        CancellationToken cancellationToken = default);
@@ -346,7 +346,7 @@ public interface IFeishuV1DriveFiles : IFeishuAppContextSwitcher
     Task<FeishuApiPageListResult<FileLikeInfo>?> GetFileLikePageListByFileTokenAsync(
        [Path] string file_token,
        [Query("file_type")] string file_type,
-       [Query("page_size")] int page_size = Consts.PageSize,
+       [Query("page_size")] int page_size = Consts.PageSize_10,
        [Query("page_token")] string? page_token = null,
        [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
        CancellationToken cancellationToken = default);

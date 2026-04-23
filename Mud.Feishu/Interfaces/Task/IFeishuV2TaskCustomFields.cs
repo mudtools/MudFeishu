@@ -78,7 +78,7 @@ public interface IFeishuV2TaskCustomFields : IFeishuAppContextSwitcher
     Task<FeishuApiPageListResult<CustomFieldInfo>?> GetCustomFieldsPageListAsync(
         [Query("resource_type")] string? resource_type = null,
         [Query("resource_id")] string? resource_id = null,
-        [Query("page_size")] int page_size = Consts.PageSize,
+        [Query("page_size")] int page_size = Consts.PageSize_10,
         [Query("page_token")] string? page_token = null,
         [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
         CancellationToken cancellationToken = default);

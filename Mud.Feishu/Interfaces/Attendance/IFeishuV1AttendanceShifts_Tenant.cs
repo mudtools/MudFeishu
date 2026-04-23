@@ -75,7 +75,7 @@ public interface IFeishuTenantV1AttendanceShifts : IFeishuAppContextSwitcher
     /// <returns></returns>
     [Get("/open-apis/attendance/v1/shifts")]
     Task<FeishuApiResult<GetAttendanceShiftsPageListResult>?> GetShiftsPageListAsync(
-       [Query("page_size")] int page_size = Consts.PageSize,
+       [Query("page_size")] int page_size = Consts.PageSize_10,
        [Query("page_token")] string? page_token = null,
        CancellationToken cancellationToken = default);
 }

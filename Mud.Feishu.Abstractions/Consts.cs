@@ -28,9 +28,14 @@ internal class Consts
     public const string Authorization = "Authorization";
 
     /// <summary>
-    /// 每页的默认数量。
+    /// 每页的默认10条记录。
     /// </summary>
-    public const int PageSize = 10;
+    public const int PageSize_10 = 10;
+
+    /// <summary>
+    /// 每页的默认50条记录。
+    /// </summary>
+    public const int PageSize_50 = 50;
 
     public const string HandlerNamespace = "Mud.Feishu.EventCallback";
     public const string InheritedFrom = "IdempotentFeishuEventHandler";

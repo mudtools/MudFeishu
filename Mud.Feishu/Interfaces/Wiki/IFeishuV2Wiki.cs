@@ -31,7 +31,7 @@ public interface IFeishuV2Wiki : IFeishuAppContextSwitcher
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Get("/open-apis/wiki/v2/spaces")]
     Task<FeishuApiPageListResult<SpaceInfo>?> GetSpacesPageListAsync(
-      [Query("page_size")] int page_size = Consts.PageSize,
+      [Query("page_size")] int page_size = Consts.PageSize_10,
       [Query("page_token")] string? page_token = null,
       CancellationToken cancellationToken = default);
 
@@ -91,7 +91,7 @@ public interface IFeishuV2Wiki : IFeishuAppContextSwitcher
     [Get("/open-apis/wiki/v2/spaces/{space_id}/members")]
     Task<FeishuApiResult<SpaceMemberResult>?> GetSpaceMemberPageListAsync(
         [Path] string space_id,
-        [Query("page_size")] int page_size = Consts.PageSize,
+        [Query("page_size")] int page_size = Consts.PageSize_10,
         [Query("page_token")] string? page_token = null,
         CancellationToken cancellationToken = default);
 

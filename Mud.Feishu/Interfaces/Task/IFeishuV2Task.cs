@@ -237,7 +237,7 @@ public interface IFeishuV2Task : IFeishuAppContextSwitcher
     [Get("/open-apis/task/v2/tasks")]
     Task<FeishuApiPageListResult<SubTaskInfo>?> GetSubTasksPageListByIdAsync(
           [Path] string task_guid,
-          [Query("page_size")] int page_size = Consts.PageSize,
+          [Query("page_size")] int page_size = Consts.PageSize_10,
           [Query("page_token")] string? page_token = null,
           [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
           CancellationToken cancellationToken = default);

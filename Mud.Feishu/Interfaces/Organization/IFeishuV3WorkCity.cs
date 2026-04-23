@@ -26,7 +26,7 @@ public interface IFeishuV3WorkCity : IFeishuAppContextSwitcher
     /// <returns></returns>
     [Get("/open-apis/contact/v3/work_cities")]
     Task<FeishuApiPageListResult<WorkCity>?> GetWorkCitesListAsync(
-         [Query("page_size")] int? page_size = Consts.PageSize,
+         [Query("page_size")] int? page_size = Consts.PageSize_10,
          [Query("page_token")] string? page_token = null,
          CancellationToken cancellationToken = default);
 

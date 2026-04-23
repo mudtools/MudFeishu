@@ -68,7 +68,7 @@ public interface IFeishuV1AttendanceArchives : IFeishuAppContextSwitcher
     /// <returns></returns>
     [Get("/open-apis/attendance/v1/archive_rule")]
     Task<FeishuApiResult<FeishuApiPageListResult<ArchiveReportMeta>>?> GetArchiveRulePageListAsync(
-           [Query("page_size")] int page_size = Consts.PageSize,
+           [Query("page_size")] int page_size = Consts.PageSize_10,
            [Query("page_token")] string? page_token = null,
            CancellationToken cancellationToken = default);
 }

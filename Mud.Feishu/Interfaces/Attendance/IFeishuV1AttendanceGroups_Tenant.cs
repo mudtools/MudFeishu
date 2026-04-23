@@ -84,7 +84,7 @@ public interface IFeishuTenantV1AttendanceGroups : IFeishuV1AttendanceGroups
     /// <returns></returns>
     [Get("/open-apis/attendance/v1/groups")]
     Task<FeishuApiResult<AttendanceGroupsPageResult>?> GetGroupPageListAsync(
-        [Query("page_size")] int page_size = Consts.PageSize,
+        [Query("page_size")] int page_size = Consts.PageSize_10,
         [Query("page_token")] string? page_token = null,
         CancellationToken cancellationToken = default);
 }

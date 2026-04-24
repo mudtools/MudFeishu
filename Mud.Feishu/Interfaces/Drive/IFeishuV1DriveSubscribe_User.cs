@@ -57,4 +57,27 @@ public interface IFeishuUserV1DriveSubscribe : IFeishuV1DriveSubscribe, ICurrent
         [Path] string file_token,
         [Body] CreateFileSubscriptionRequest createFileSubscriptionRequest,
         CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 更新订阅状态
+    /// <para>根据订阅ID更新订阅状态。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/docs-assistant/file-subscription/patch">接口文档</see></para>
+    /// </summary>
+    /// <param name="file_token">
+    /// <para>云文档的 token。了解如何获取各类云文档的 token，参考[云空间常见问题](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/drive-v1/faq)。</para>
+    /// <para>示例值：doccnfYZzTlvXqZIGTdAHKabcef</para>
+    /// </param>
+    /// <param name="subscription_id">
+    /// <para>订阅关系ID</para>
+    /// <para>示例值：1234567890987654321</para>
+    /// </param>
+    /// <param name="updateFileSubscriptionRequest">更新订阅请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Patch("/open-apis/drive/v1/files/{file_token}/subscriptions/{subscription_id}")]
+    Task<FeishuApiResult<FileSubscriptionOOpsResult>?> UpdateFileSubscriptionAsync(
+       [Path] string file_token,
+       [Path] string subscription_id,
+       [Body] UpdateFileSubscriptionRequest updateFileSubscriptionRequest,
+       CancellationToken cancellationToken = default);
 }

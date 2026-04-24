@@ -350,4 +350,49 @@ public interface IFeishuV1DriveFiles : IFeishuAppContextSwitcher
        [Query("page_token")] string? page_token = null,
        [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 获取云文档内容
+    /// <para>可获取云文档内容，当前只支持获取新版文档 Markdown 格式的内容。</para>。
+    /// <para><see href="https://open.feishu.cn/document/docs/docs-v1/get">接口文档</see></para>
+    /// </summary>
+    /// <param name="doc_token">文件的 token
+    /// <para>示例值：XIHSdYSI7oMEU1xrsnxc8fabcef</para>
+    /// </param>
+    /// <param name="doc_type">
+    /// <para>必填：是</para>
+    /// <para>云文档类型</para>
+    /// <para>示例值：docx</para>
+    /// <list type="bullet">
+    /// <item>docx：新版文档</item>
+    /// </list>
+    /// </param>
+    /// <param name="content_type">
+    /// <para>必填：是</para>
+    /// <para>内容类型</para>
+    /// <para>示例值：markdown</para>
+    /// <list type="bullet">
+    /// <item>markdown：Markdown 格式</item>
+    /// </list>
+    /// </param>
+    /// <param name="lang">
+    /// <para>必填：否</para>
+    /// <para>云文档中存在 @用户 元素时，指定该用户名称的语言。默认 `zh`，即中文</para>
+    /// <para>示例值：zh</para>
+    /// <list type="bullet">
+    /// <item>zh：中文</item>
+    /// <item>en：英文</item>
+    /// <item>ja：日文</item>
+    /// </list>
+    /// <para>默认值：null</para>
+    /// </param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Get("/open-apis/docs/v1/content")]
+    Task<FeishuApiResult<FileContentResult>?> GetFileContentByFileTokenAsync(
+       [Query] string doc_token,
+       [Query] string doc_type,
+       [Query] string content_type,
+       [Query] string? lang = "zh",
+       CancellationToken cancellationToken = default);
+
 }

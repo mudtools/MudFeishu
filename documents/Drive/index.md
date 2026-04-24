@@ -12,6 +12,9 @@
 - 素材上传与下载
 - 文件元数据查询
 - 文件访问记录统计
+- 云文档评论管理
+- 云文档权限管理
+- 云文档事件订阅
 
 **适用场景：**
 
@@ -19,6 +22,9 @@
 - 文件自动化备份与同步
 - 文档协作与版本管理
 - 素材资源管理
+- 自动化评论管理与互动
+- 权限分配与审计
+- 文档变更实时通知
 
 **文档使用指引：**
 
@@ -110,8 +116,23 @@ public class DriveController : ControllerBase
 - [素材管理（租户）](./FeishuTenantV1DriveMedia.md) — 素材上传下载、获取临时下载链接
 - [素材管理（用户）](./FeishuUserV1DriveMedia.md) — 用户权限的素材管理
 
+### 云文档评论
+
+- [云文档评论（租户）](./FeishuTenantV1Comments.md) — 评论列表查询、添加评论、回复管理、表情回应
+- [云文档评论（用户）](./FeishuUserV1Comments.md) — 用户权限的评论管理，以用户身份管理评论互动
+
+### 云文档权限
+
+- [云文档权限（租户）](./FeishuTenantV1DrivePermissions.md) — 协作者权限管理、权限设置、文档密码管理
+- [云文档权限（用户）](./FeishuUserV1DrivePermissions.md) — 用户权限的文档权限管理，协作者邀请与权限分配
+
+### 云文档事件订阅
+
+- [云文档事件订阅（租户）](./FeishuTenantV1DriveSubscribe.md) — 订阅/取消/查询云文档事件，监听文档变更
+- [云文档事件订阅（用户）](./FeishuUserV1DriveSubscribe.md) — 用户权限的事件订阅，个人文档变更通知
+
 ## 命名空间与版本信息
 
 - **根命名空间**：`Mud.Feishu`
-- **当前版本**：2.0.5
+- **当前版本**：2.0.9
 - **目标框架**：.NET Standard 2.0 / .NET 6+ / .NET 8+

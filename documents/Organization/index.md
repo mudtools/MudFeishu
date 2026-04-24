@@ -93,39 +93,39 @@ public class UserController : ControllerBase
 
 ### 部门管理
 
-- [租户V1部门管理](./FeishuTenantV1Departments.md) — 部门创建、更新、删除、批量查询与搜索
-- [租户V3部门管理](./FeishuTenantV3Departments.md) — 部门信息获取、子部门列表、部门ID变更、部门群解绑
-- [用户V1部门管理](./FeishuUserV1Departments.md) — 用户权限的部门管理（V1版本）
-- [用户V3部门管理](./FeishuUserV3Departments.md) — 用户权限的部门查询（V3版本）
+- [租户 V1 部门管理](./FeishuTenantV1Departments.md) — 部门创建、更新、删除、批量查询与搜索
+- [租户 V3 部门管理](./FeishuTenantV3Departments.md) — 部门信息获取、子部门列表、部门 ID 变更、部门群解绑
+- [用户 V1 部门管理](./FeishuUserV1Departments.md) — 用户权限的部门管理（V1 版本）
+- [用户 V3 部门管理](./FeishuUserV3Departments.md) — 用户权限的部门查询（V3 版本）
 
 ### 用户管理
 
-- [租户V1员工管理](./FeishuTenantV1Employees.md) — 员工创建、更新、离职、恢复、批量查询
-- [租户V3用户管理](./FeishuTenantV3User.md) — 用户创建、更新、删除、恢复、JSAPI票据获取
-- [用户V1员工管理](./FeishuUserV1Employees.md) — 用户权限的员工管理（V1版本）
-- [用户V3用户管理](./FeishuUserV3User.md) — 用户权限的用户查询与搜索（V3版本）
+- [租户 V1 员工管理](./FeishuTenantV1Employees.md) — 员工创建、更新、离职、恢复、批量查询
+- [租户 V3 用户管理](./FeishuTenantV3User.md) — 用户创建、更新、删除、恢复、JSAPI 票据获取
+- [用户 V1 员工管理](./FeishuUserV1Employees.md) — 用户权限的员工管理（V1 版本）
+- [用户 V3 用户管理](./FeishuUserV3User.md) — 用户权限的用户查询与搜索（V3 版本）
 
 ### 角色与用户组
 
-- [租户V3角色管理](./FeishuTenantV3Role.md) — 角色创建、更新、删除
-- [租户V3角色成员管理](./FeishuTenantV3RoleMember.md) — 角色成员添加、管理范围设置、成员查询
-- [租户V3用户组管理](./FeishuTenantV3UserGroup.md) — 用户组创建、更新、查询、删除
-- [租户V3用户组成员管理](./FeishuTenantV3UserGroupMember.md) — 用户组成员添加、查询、移除
+- [租户 V3 角色管理](./FeishuTenantV3Role.md) — 角色创建、更新、删除
+- [租户 V3 角色成员管理](./FeishuTenantV3RoleMember.md) — 角色成员添加、管理范围设置、成员查询
+- [租户 V3 用户组管理](./FeishuTenantV3UserGroup.md) — 用户组创建、更新、查询、删除
+- [租户 V3 用户组成员管理](./FeishuTenantV3UserGroupMember.md) — 用户组成员添加、查询、移除
 
 ### 职级职务序列
 
-- [租户V3职级管理](./FeishuTenantV3JobLevel.md) — 职级创建、更新、查询、删除
-- [租户V3职务管理](./FeishuTenantV3JobTitle.md) — 职务列表与详情查询
-- [租户V3序列管理](./FeishuTenantV3JobFamilies.md) — 序列创建、更新、查询、删除
-- [用户V3职务管理](./FeishuUserV3JobTitle.md) — 用户权限的职务查询
+- [租户 V3 职级管理](./FeishuTenantV3JobLevel.md) — 职级创建、更新、查询、删除
+- [租户 V3 职务管理](./FeishuTenantV3JobTitle.md) — 职务列表与详情查询
+- [租户 V3 序列管理](./FeishuTenantV3JobFamilies.md) — 序列创建、更新、查询、删除
+- [用户 V3 职务管理](./FeishuUserV3JobTitle.md) — 用户权限的职务查询
 
 ### 单位与人员类型
 
-- [租户V3单位管理](./FeishuTenantV3Unit.md) — 单位创建、更新、部门绑定、查询
-- [租户V3人员类型管理](./FeishuTenantV3EmployeeType.md) — 人员类型创建、更新、查询、删除
+- [租户 V3 单位管理](./FeishuTenantV3Unit.md) — 单位创建、更新、部门绑定、查询
+- [租户 V3 人员类型管理](./FeishuTenantV3EmployeeType.md) — 人员类型创建、更新、查询、删除
 
 ## 命名空间与版本信息
 
 - **根命名空间**：`Mud.Feishu`
-- **当前版本**：2.0.5
+- **当前版本**：2.0.9
 - **目标框架**：.NET Standard 2.0 / .NET 6+ / .NET 8+

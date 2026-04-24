@@ -195,7 +195,7 @@ var builder = WebApplication.CreateBuilder(args);
 // 通过代码配置
 builder.Services.CreateFeishuWebhookServiceBuilder(options =>
 {
-    options.RoutePrefix = "feishu/Webhook";
+    options.GlobalRoutePrefix = "feishu";
     options.EnableRequestLogging = true;
     options.EnableExceptionHandling = true;
     options.MaxConcurrentEvents = 10;
@@ -401,12 +401,19 @@ public class DemoDepartmentEventHandler : DepartmentCreatedEventHandler
 
 ### 多应用配置
 
-| 选项                              | 类型                                          | 默认值 | 说明                               |
-| --------------------------------- | --------------------------------------------- | ------ | ---------------------------------- |
-| `Apps`                            | Dictionary\<string, FeishuAppWebhookOptions\> | {}     | 应用配置集合（AppKey -> 应用配置） |
-| `Apps.{AppKey}.AppKey`            | string                                        | -      | 应用键（用于标识应用）             |
-| `Apps.{AppKey}.VerificationToken` | string                                        | -      | 应用验证 Token                     |
-| `Apps.{AppKey}.EncryptKey`        | string                                        | -      | 应用加密 Key（32字节）             |
+| 选项                              | 类型                                          | 默认值 | 说明                                               |
+| --------------------------------- | --------------------------------------------- | ------ | -------------------------------------------------- |
+| `Apps`                            | Dictionary\<string, FeishuAppWebhookOptions\> | {}     | 应用配置集合（AppKey -> 应用配置）                 |
+| `Apps.{AppKey}.AppKey`            | string                                        | -      | 应用键（用于标识应用，仅允许字母、数字、下划线和连字符） |
+| `Apps.{AppKey}.VerificationToken` | string                                        | -      | 应用验证 Token                                     |
+| `Apps.{AppKey}.EncryptKey`        | string                                        | -      | 应用加密 Key（32字节）                             |
+| `Apps.{AppKey}.Description`       | string?                                       | null   | 应用描述（可选）                                   |
+| `Apps.{AppKey}.TimestampToleranceSeconds` | int                                    | -1     | 时间戳容差（-1 继承全局）                          |
+| `Apps.{AppKey}.EventHandlingTimeoutMs` | int                                     | -1     | 事件处理超时（-1 继承全局）                        |
+| `Apps.{AppKey}.EnforceHeaderSignatureValidation` | bool                           | false  | 是否强制签名验证（不继承全局）                     |
+| `Apps.{AppKey}.EnableBodySignatureValidation` | bool                              | true   | 是否验证请求体签名（不继承全局）                   |
+| `Apps.{AppKey}.EnableExceptionHandling` | bool?                                  | null   | 是否启用异常处理（null 继承全局）                  |
+| `Apps.{AppKey}.EnablePerformanceMonitoring` | bool?                                 | null   | 是否启用性能监控（null 继承全局）                  |
 
 ### 安全配置
 
@@ -434,8 +441,6 @@ public class DemoDepartmentEventHandler : DepartmentCreatedEventHandler
 | ------------------------- | ---- | ------ | -------------------- |
 | `EnableRequestLogging`    | bool | true   | 是否启用请求日志记录 |
 | `EnableExceptionHandling` | bool | true   | 是否启用异常处理     |
-
-### 断路器配置
 
 ### 失败事件重试配置
 
@@ -767,6 +772,157 @@ builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
 
 配置完成后发布应用，飞书服务器将开始向你的端点推送事件。
 
+## 自定义验证器和密钥提供程序
+
+### 自定义签名验证器
+
+```csharp
+builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
+    .UseSignatureValidator<MyCustomSignatureValidator>()
+    .AddHandler<MessageEventHandler>()
+    .Build();
+```
+
+### 自定义时间戳验证器
+
+```csharp
+builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
+    .UseTimestampValidator<MyCustomTimestampValidator>()
+    .AddHandler<MessageEventHandler>()
+    .Build();
+```
+
+### 自定义 Nonce 验证器
+
+```csharp
+builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
+    .UseNonceValidator<MyCustomNonceValidator>()
+    .AddHandler<MessageEventHandler>()
+    .Build();
+```
+
+### 自定义订阅验证器
+
+```csharp
+builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
+    .UseSubscriptionValidator<MyCustomSubscriptionValidator>()
+    .AddHandler<MessageEventHandler>()
+    .Build();
+```
+
+### 自定义加密密钥提供程序
+
+支持从外部源（如 Azure KeyVault、AWS Secrets Manager、环境变量等）获取加密密钥：
+
+```csharp
+builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
+    .UseEncryptKeyProvider<AzureKeyVaultEncryptKeyProvider>()
+    .AddHandler<MessageEventHandler>()
+    .Build();
+```
+
+实现 `IEncryptKeyProvider` 接口：
+
+```csharp
+using Mud.Feishu.Webhook;
+
+public class AzureKeyVaultEncryptKeyProvider : IEncryptKeyProvider
+{
+    private readonly KeyVaultClient _keyVaultClient;
+
+    public AzureKeyVaultEncryptKeyProvider(KeyVaultClient keyVaultClient)
+    {
+        _keyVaultClient = keyVaultClient;
+    }
+
+    public async Task<string?> GetEncryptKeyAsync(string appKey, CancellationToken cancellationToken = default)
+    {
+        return await _keyVaultClient.GetSecretAsync($"feishu-{appKey}-encrypt-key", cancellationToken);
+    }
+
+    public async Task<string?> GetVerificationTokenAsync(string appKey, CancellationToken cancellationToken = default)
+    {
+        return await _keyVaultClient.GetSecretAsync($"feishu-{appKey}-verification-token", cancellationToken);
+    }
+}
+```
+
+### 自定义组合验证器
+
+完全替换默认的验证逻辑：
+
+```csharp
+builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
+    .UseCompositeValidator<MyCustomCompositeValidator>()
+    .AddHandler<MessageEventHandler>()
+    .Build();
+```
+
+## 应用级配置继承
+
+多应用模式下，`FeishuAppWebhookOptions` 支持继承全局配置：
+
+| 配置项                        | 继承规则                                       |
+| ----------------------------- | ---------------------------------------------- |
+| `TimestampToleranceSeconds`   | 设置为 -1 或 0 时继承全局配置，正整数使用应用级配置 |
+| `EventHandlingTimeoutMs`      | 设置为 -1 或 0 时继承全局配置，正整数使用应用级配置 |
+| `EnableExceptionHandling`     | 设置为 null 时继承全局配置，否则使用应用级配置     |
+| `EnablePerformanceMonitoring` | 设置为 null 时继承全局配置，否则使用应用级配置     |
+| `EnforceHeaderSignatureValidation` | 不继承，直接使用应用级配置（默认 false）     |
+| `EnableBodySignatureValidation`    | 不继承，直接使用应用级配置（默认 true）      |
+
+示例：
+
+```json
+{
+  "FeishuWebhook": {
+    "EventHandlingTimeoutMs": 30000,
+    "TimestampToleranceSeconds": 30,
+    "Apps": {
+      "app1": {
+        "EventHandlingTimeoutMs": 60000,
+        "TimestampToleranceSeconds": -1
+      },
+      "app2": {
+        "EventHandlingTimeoutMs": -1,
+        "TimestampToleranceSeconds": 60
+      }
+    }
+  }
+}
+```
+
+上述配置中：
+- `app1`：事件处理超时 60 秒（应用级），时间戳容差 30 秒（继承全局）
+- `app2`：事件处理超时 30 秒（继承全局），时间戳容差 60 秒（应用级）
+
+## 安全审计
+
+内置 `ISecurityAuditService` 安全审计服务，记录安全验证事件：
+
+```csharp
+public class MySecurityService
+{
+    private readonly ISecurityAuditService _auditService;
+
+    public MySecurityService(ISecurityAuditService auditService)
+    {
+        _auditService = auditService;
+    }
+
+    public async Task OnSuspiciousRequestAsync(string clientIp, string requestPath)
+    {
+        await _auditService.LogSecurityFailureAsync(
+            SecurityEventType.SignatureValidation,
+            clientIp,
+            requestPath,
+            "签名验证失败，疑似伪造请求");
+    }
+}
+```
+
+支持的安全事件类型：`SignatureValidation`、`TimestampValidation`、`IpValidation`、`SubscriptionValidation`、`InvalidContentType`、`RateLimitExceeded`、`RequestSizeLimit`、`ThreatDetection`、`Other`。
+
 ## 监控和诊断
 
 ### 性能监控
@@ -789,18 +945,24 @@ builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
 
 ### 健康检查
 
-内置健康检查支持，可监控 Webhook 服务的运行状态：
+内置健康检查支持，默认启用，可监控 Webhook 服务的运行状态：
 
 ```csharp
 using Mud.Feishu.Webhook.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 启用健康检查
+// 健康检查默认启用，也可以显式调用
 builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
-    .EnableHealthChecks()    // 启用健康检查
+    .EnableHealthChecks()    // 启用健康检查（默认已启用）
     .AddHandler<MessageEventHandler>()
     .Build();
+
+// 如需禁用健康检查
+// builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
+//     .DisableHealthChecks()
+//     .AddHandler<MessageEventHandler>()
+//     .Build();
 
 var app = builder.Build();
 
@@ -811,17 +973,7 @@ app.UseFeishuWebhook();
 app.Run();
 ```
 
-健康检查配置选项：
-
-```json
-{
-  "FeishuWebhook": {
-    "HealthCheckUnhealthyFailureRateThreshold": 0.1, // 不健康阈值（10%）
-    "HealthCheckDegradedFailureRateThreshold": 0.05, // 降级阈值（5%）
-    "HealthCheckMinEventsThreshold": 10 // 最小事件数
-  }
-}
-```
+健康检查返回的数据包括：配置有效性、最大并发数、超时时间、当前可用并发槽位等。
 
 ### 日志记录
 
@@ -1198,19 +1350,35 @@ builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
     .AddHandler<Handler1>()
     .AddHandler<Handler2>()
     .Build();
+
+// ✅ 多应用独立处理器和拦截器
+builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
+    .AddHandler<App1Handler>("app1")
+    .AddInterceptor<App1LoggingInterceptor>("app1")
+    .AddHandler<App2Handler>("app2")
+    .Build();
+
+// ✅ 自定义验证器和密钥提供程序
+builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
+    .UseSignatureValidator<MySignatureValidator>()
+    .UseEncryptKeyProvider<AzureKeyVaultEncryptKeyProvider>()
+    .AddHandler<YourEventHandler>()
+    .Build();
 ```
 
 ### 常用配置项速查
 
-| 配置项                        | 默认值             | 说明                 |
-| ----------------------------- | ------------------ | -------------------- |
-| `RoutePrefix`                 | `"feishu/Webhook"` | Webhook 路由前缀     |
-| `VerificationToken`           | -                  | 验证令牌（必填）     |
-| `EncryptKey`                  | -                  | 加密密钥（32字节）   |
-| `MaxConcurrentEvents`         | `10`               | 最大并发事件数       |
-| `EventHandlingTimeoutMs`      | `30000`            | 事件处理超时（毫秒） |
-| `EnableBackgroundProcessing`  | `false`            | 后台处理模式         |
-| `EnablePerformanceMonitoring` | `false`            | 性能监控             |
+| 配置项                        | 默认值           | 说明                     |
+| ----------------------------- | ---------------- | ------------------------ |
+| `GlobalRoutePrefix`           | `"feishu"`       | 全局路由前缀             |
+| `VerificationToken`           | -                | 验证令牌（必填）         |
+| `EncryptKey`                  | -                | 加密密钥（32字节）       |
+| `MaxConcurrentEvents`         | `10`             | 最大并发事件数，支持热更新 |
+| `EventHandlingTimeoutMs`      | `30000`          | 事件处理超时（毫秒）     |
+| `EnableBackgroundProcessing`  | `false`          | 后台处理模式             |
+| `EnablePerformanceMonitoring` | `false`          | 性能监控                 |
+| `EnforceHeaderSignatureValidation` | `true`     | 强制签名验证（生产环境必须启用） |
+| `TimestampToleranceSeconds`   | `30`             | 时间戳容错范围（秒）     |
 
 ---
 
@@ -1241,15 +1409,17 @@ Mud.Feishu.Webhook 支持多应用模式，允许你为不同的飞书应用配�
 ### 注册代码
 
 ```csharp
-// 为不同应用注册独立的处理器
+// 为不同应用注册独立的处理器和拦截器
 builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
-    // App1 处理器
+    // App1 处理器和拦截器
     .AddHandler<App1DepartmentEventHandler>("app1")
     .AddHandler<App1MessageEventHandler>("app1")
+    .AddInterceptor<App1LoggingInterceptor>("app1")
 
-    // App2 处理器
+    // App2 处理器和拦截器
     .AddHandler<App2DepartmentEventHandler>("app2")
     .AddHandler<App2MessageEventHandler>("app2")
+    .AddInterceptor<App2AuditInterceptor>("app2")
 
     .Build();
 
@@ -1260,6 +1430,8 @@ app.UseFeishuWebhook();
 
 app.Run();
 ```
+
+> 💡 **说明**：通过 `AddHandler<T>(appKey)` 和 `AddInterceptor<T>(appKey)` 注册的处理器和拦截器仅对指定应用生效，不会注册到全局集合，避免跨应用泄漏。
 
 ### 路由映射
 
@@ -1274,8 +1446,10 @@ app.Run();
 
 - ✅ **配置隔离**：每个应用独立的 `EncryptKey` 和 `VerificationToken`
 - ✅ **处理器隔离**：每个应用只能调用自己的处理器
+- ✅ **拦截器隔离**：每个应用只能调用自己的拦截器
 - ✅ **路由隔离**：不同的路由前缀，互不干扰
 - ✅ **安全隔离**：每个应用独立的安全验证
+- ✅ **限流隔离**：基于 `(AppKey, IP)` 维度的独立限流
 
 详细的多应用文档请参阅：[Readme.MultiApp.md](Readme.MultiApp.md)
 

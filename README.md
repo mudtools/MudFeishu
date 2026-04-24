@@ -12,6 +12,7 @@
 [![Mud.Feishu.Webhook](https://img.shields.io/nuget/v/Mud.Feishu.Webhook?label=Mud.Feishu.Webhook "Mud.Feishu.Webhook")](https://www.nuget.org/packages/Mud.Feishu.Webhook/ "Mud.Feishu.Webhook") [![downloads](https://img.shields.io/nuget/dt/Mud.Feishu.Webhook "downloads")](https://www.nuget.org/packages/Mud.Feishu.Webhook/ "downloads")
 [![Mud.Feishu.Abstractions](https://img.shields.io/nuget/v/Mud.Feishu.Abstractions?label=Mud.Feishu.Abstractions "Mud.Feishu.Abstractions")](https://www.nuget.org/packages/Mud.Feishu.Abstractions/ "Mud.Feishu.Abstractions") [![downloads](https://img.shields.io/nuget/dt/Mud.Feishu.Abstractions "downloads")](https://www.nuget.org/packages/Mud.Feishu.Abstractions/ "downloads")
 [![Mud.Feishu.Authentication](https://img.shields.io/nuget/v/Mud.Feishu.Authentication?label=Mud.Feishu.Authentication "Mud.Feishu.Authentication")](https://www.nuget.org/packages/Mud.Feishu.Authentication/ "Mud.Feishu.Authentication") [![downloads](https://img.shields.io/nuget/dt/Mud.Feishu.Authentication "downloads")](https://www.nuget.org/packages/Mud.Feishu.Authentication/ "downloads")
+[![Mud.Feishu.EventCallback](https://img.shields.io/nuget/v/Mud.Feishu.EventCallback?label=Mud.Feishu.EventCallback "Mud.Feishu.EventCallback")](https://www.nuget.org/packages/Mud.Feishu.EventCallback/ "Mud.Feishu.EventCallback") [![downloads](https://img.shields.io/nuget/dt/Mud.Feishu.EventCallback "downloads")](https://www.nuget.org/packages/Mud.Feishu.EventCallback/ "downloads")
 [![Mud.Feishu.Redis](https://img.shields.io/nuget/v/Mud.Feishu.Redis?label=Mud.Feishu.Redis "Mud.Feishu.Redis")](https://www.nuget.org/packages/Mud.Feishu.Redis/ "Mud.Feishu.Redis") [![downloads](https://img.shields.io/nuget/dt/Mud.Feishu.Redis "downloads")](https://www.nuget.org/packages/Mud.Feishu.Redis/ "downloads")
 
 **完整的 HTTP API、WebSocket 实时事件订阅和 Webhook 事件处理解决方案**
@@ -20,7 +21,7 @@
 
 </div>
 
----
+***
 
 ## 📖 项目简介
 
@@ -28,27 +29,30 @@ MudFeishu 是一套现代化的企业级 .NET 飞书 API 集成 SDK，提供完�
 
 ### ✨ 核心优势
 
-- 🚀 **极简API** - 一行代码完成服务注册，开箱即用
+- 🚀 **极简 API** - 一行代码完成服务注册，开箱即用
 - 🏗️ **类型安全** - 强类型数据模型，编译时类型检查
 - 🔄 **自动令牌管理** - 智能缓存和刷新，无需手动维护
 - 🛡️ **企业级稳定** - 统一异常处理、智能重试、详细日志
 - 🎯 **事件驱动** - 策略模式事件处理，灵活扩展
 - 📊 **多框架支持** - .NET Standard 2.0、.NET 6.0、.NET 8.0、.NET 10.0
+- 🔒 **安全防护** - SSRF 防护、URL 白名单验证、签名验证、加密解密
+- 📈 **可观测性** - 内置 FeishuMetrics 指标收集，支持 OpenTelemetry 集成
 
----
+***
 
 ## 📦 项目概览
 
-| 组件                          | 描述                                                             | NuGet                                                                                                                               | 下载                                                                    |
-| ----------------------------- | ---------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| **Mud.Feishu.Abstractions**   | 事件订阅抽象层，提供策略模式和工厂模式的事件处理架构             | [![Nuget](https://img.shields.io/nuget/v/Mud.Feishu.Abstractions.svg)](https://www.nuget.org/packages/Mud.Feishu.Abstractions/)     | ![Nuget](https://img.shields.io/nuget/dt/Mud.Feishu.Abstractions.svg)   |
-| **Mud.Feishu**                | 核心 HTTP API 客户端库，支持组织架构、消息、群聊等完整飞书功能   | [![Nuget](https://img.shields.io/nuget/v/Mud.Feishu.svg)](https://www.nuget.org/packages/Mud.Feishu/)                               | ![Nuget](https://img.shields.io/nuget/dt/Mud.Feishu.svg)                |
-| **Mud.Feishu.Authentication** | 飞书用户认证中间件，基于 AsyncLocal 实现线程安全的用户上下文管理 | [![Nuget](https://img.shields.io/nuget/v/Mud.Feishu.Authentication.svg)](https://www.nuget.org/packages/Mud.Feishu.Authentication/) | ![Nuget](https://img.shields.io/nuget/dt/Mud.Feishu.Authentication.svg) |
-| **Mud.Feishu.WebSocket**      | 飞书 WebSocket 客户端，支持实时事件订阅和自动重连                | [![Nuget](https://img.shields.io/nuget/v/Mud.Feishu.WebSocket.svg)](https://www.nuget.org/packages/Mud.Feishu.WebSocket/)           | ![Nuget](https://img.shields.io/nuget/dt/Mud.Feishu.WebSocket.svg)      |
-| **Mud.Feishu.Webhook**        | 飞书 Webhook 事件处理组件，支持 HTTP 回调事件接收和处理          | [![Nuget](https://img.shields.io/nuget/v/Mud.Feishu.Webhook.svg)](https://www.nuget.org/packages/Mud.Feishu.Webhook/)               | ![Nuget](https://img.shields.io/nuget/dt/Mud.Feishu.Webhook.svg)        |
-| **Mud.Feishu.Redis**          | Redis 分布式去重扩展，支持多实例部署场景的事件去重               | [![Nuget](https://img.shields.io/nuget/v/Mud.Feishu.Redis.svg)](https://www.nuget.org/packages/Mud.Feishu.Redis/)                   | ![Nuget](https://img.shields.io/nuget/dt/Mud.Feishu.Redis.svg)          |
+| 组件                            | 描述                                                    | NuGet                                                                                                                               | 下载                                                                      |
+| ----------------------------- | ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| **Mud.Feishu.Abstractions**   | 事件订阅抽象层，提供策略模式和工厂模式的事件处理架构，内置 FeishuMetrics 指标收集和事件去重 | [![Nuget](https://img.shields.io/nuget/v/Mud.Feishu.Abstractions.svg)](https://www.nuget.org/packages/Mud.Feishu.Abstractions/)     | ![Nuget](https://img.shields.io/nuget/dt/Mud.Feishu.Abstractions.svg)   |
+| **Mud.Feishu**                | 核心 HTTP API 客户端库，支持组织架构、消息、群聊、云文档、画板、电子表格、多维表格等完整飞书功能 | [![Nuget](https://img.shields.io/nuget/v/Mud.Feishu.svg)](https://www.nuget.org/packages/Mud.Feishu/)                               | ![Nuget](https://img.shields.io/nuget/dt/Mud.Feishu.svg)                |
+| **Mud.Feishu.Authentication** | 飞书用户认证中间件，基于 AsyncLocal 实现线程安全的用户上下文管理                | [![Nuget](https://img.shields.io/nuget/v/Mud.Feishu.Authentication.svg)](https://www.nuget.org/packages/Mud.Feishu.Authentication/) | ![Nuget](https://img.shields.io/nuget/dt/Mud.Feishu.Authentication.svg) |
+| **Mud.Feishu.EventCallback**  | 飞书事件回调强类型数据模型，支持源代码生成器自动生成事件处理器                       | [![Nuget](https://img.shields.io/nuget/v/Mud.Feishu.EventCallback.svg)](https://www.nuget.org/packages/Mud.Feishu.EventCallback/)   | ![Nuget](https://img.shields.io/nuget/dt/Mud.Feishu.EventCallback.svg)  |
+| **Mud.Feishu.WebSocket**      | 飞书 WebSocket 客户端，支持实时事件订阅、事件去重、消息序号验证和智能重连            | [![Nuget](https://img.shields.io/nuget/v/Mud.Feishu.WebSocket.svg)](https://www.nuget.org/packages/Mud.Feishu.WebSocket/)           | ![Nuget](https://img.shields.io/nuget/dt/Mud.Feishu.WebSocket.svg)      |
+| **Mud.Feishu.Webhook**        | 飞书 Webhook 事件处理组件，支持自定义验证器、频率限制、多应用模式和健康检查            | [![Nuget](https://img.shields.io/nuget/v/Mud.Feishu.Webhook.svg)](https://www.nuget.org/packages/Mud.Feishu.Webhook/)               | ![Nuget](https://img.shields.io/nuget/dt/Mud.Feishu.Webhook.svg)        |
+| **Mud.Feishu.Redis**          | Redis 分布式去重扩展，支持事件/Nonce/SeqID 去重、降级策略和多应用隔离          | [![Nuget](https://img.shields.io/nuget/v/Mud.Feishu.Redis.svg)](https://www.nuget.org/packages/Mud.Feishu.Redis/)                   | ![Nuget](https://img.shields.io/nuget/dt/Mud.Feishu.Redis.svg)          |
 
----
+***
 
 ## 🚀 快速开始
 
@@ -69,6 +73,9 @@ dotnet add package Mud.Feishu.Webhook
 
 # 用户认证中间件 (可选)
 dotnet add package Mud.Feishu.Authentication
+
+# 事件回调强类型数据模型 (可选)
+dotnet add package Mud.Feishu.EventCallback
 
 # Redis 分布式去重扩展 (可选)
 dotnet add package Mud.Feishu.Redis
@@ -98,12 +105,17 @@ dotnet add package Mud.Feishu.Redis
       "EnableLogging": true
     }
   ],
-  "WebSocket": {
+  "FeishuWebSocket": {
     "AutoReconnect": true,
     "MaxReconnectAttempts": 5,
     "ReconnectDelayMs": 5000,
-    "HeartbeatIntervalMs": 30000,
-    "EnableLogging": true
+    "HeartbeatIntervalMs": 25000,
+    "EnableLogging": true,
+    "EventDeduplication": {
+      "Mode": "InMemory",
+      "CacheExpirationMs": 86400000,
+      "CleanupIntervalMs": 300000
+    }
   },
   "Webhook": {
     "GlobalRoutePrefix": "feishu",
@@ -159,7 +171,9 @@ var configs = new List<FeishuAppConfig>
 builder.Services.AddFeishuApp(configs);
 
 // 注册 HTTP API 服务（懒人模式 - 注册所有服务）
-builder.Services.AddFeishuHttpClient();
+builder.Services.CreateFeishuServicesBuilder()
+    .AddAllApis()
+    .Build();
 
 // 注册 HTTP API 服务（构造者模式 - 按需注册）
 builder.Services.CreateFeishuServicesBuilder()
@@ -169,18 +183,25 @@ builder.Services.CreateFeishuServicesBuilder()
     .AddApprovalApi()
     .AddTaskApi()
     .AddCardApi()
+    .AddAttendanceApi()
+    .AddDriveApi()
+    .AddWikiApi()
+    .AddDocxApi()
+    .AddSpreadsheetsApi()
+    .AddBiTableApi()
     .Build();
 
 // 注册 HTTP API 服务（按模块注册）
-builder.Services.AddFeishuHttpClient(new[] {
+builder.Services.AddFeishuServices(
     FeishuModule.Organization,
     FeishuModule.Message,
     FeishuModule.ChatGroup,
-    FeishuModule.Approval
-});
+    FeishuModule.Spreadsheets,
+    FeishuModule.Bitable
+);
 
 // 注册 WebSocket 事件订阅服务
-builder.Services.CreateFeishuWebSocketServiceBuilder(builder.Configuration)
+builder.Services.CreateFeishuWebSocketServiceBuilder(builder.Configuration, "default")
     .AddHandler<MessageEventHandler>()
     .Build();
 
@@ -220,7 +241,7 @@ public class TestController : ControllerBase
 }
 ```
 
----
+***
 
 ## 🎯 API 模块
 
@@ -228,19 +249,22 @@ Mud.Feishu 提供完整的飞书 HTTP API 覆盖，支持以下模块：
 
 ### 📋 API 模块总览
 
-| 模块分类        | API版本 | 主要功能                                            |
-| --------------- | ------- | --------------------------------------------------- |
-| **🔐 认证授权** | V3      | 应用令牌、租户令牌、用户令牌、OAuth 2.0、多应用管理 |
-| **👥 组织架构** | V1/V3   | 用户、部门、员工、用户组、职级、职务、角色          |
-| **💬 消息服务** | V1      | 文本/图片/卡片消息、批量发送、群聊管理              |
-| **📋 审批流程** | V4      | 审批定义、审批实例、审批任务、审批消息、审批统计    |
-| **📝 任务管理** | V2      | 任务创建、更新、分组、附件、评论、自定义字段        |
-| **📅 日程会议** | V4      | 日程事件、会议管理                                  |
-| **📄 文档管理** | V1      | 飞书文档、文档块、内容转换、知识库                  |
-| **📚 知识库**   | V2      | 知识空间、节点管理、节点复制移动                    |
-| **☁️ 云盘管理** | V1      | 云空间、文件夹、文件上传、版本管理                  |
-| **⏰ 考勤管理** | V1      | 考勤组、打卡记录、请假审批、考勤统计                |
-| **🎴 卡片管理** | V1/V2   | 卡片管理、卡片元素、消息流卡片                      |
+| 模块分类        | API 版本 | 主要功能                           |
+| ----------- | ------ | ------------------------------ |
+| **🔐 认证授权** | V3     | 应用令牌、租户令牌、用户令牌、OAuth 2.0、多应用管理 |
+| **👥 组织架构** | V1/V3  | 用户、部门、员工、用户组、职级、职务、角色          |
+| **💬 消息服务** | V1     | 文本/图片/卡片消息、批量发送、群聊管理           |
+| **📋 审批流程** | V4     | 审批定义、审批实例、审批任务、审批消息、审批订阅       |
+| **📝 任务管理** | V2     | 任务创建、更新、分组、附件、评论、自定义字段         |
+| **📅 日程会议** | V4     | 日程事件、会议管理                      |
+| **📄 文档管理** | V1     | 飞书文档、文档块、内容转换                  |
+| **📚 知识库**  | V2     | 知识空间、节点管理、节点复制移动               |
+| **☁️ 云盘管理** | V1     | 云空间、文件夹、文件上传、版本管理、权限、评论、订阅     |
+| **🎨 画板管理** | V1     | 画板主题、缩略图、节点创建、语法解析             |
+| **📊 电子表格** | V2/V3  | 电子表格、区域操作、筛选、数据验证、条件格式         |
+| **📋 多维表格** | V1/V2  | 数据表、记录、字段、视图、表单、仪表盘、角色、自动化     |
+| **⏰ 考勤管理**  | V1     | 考勤组、打卡记录、班次、请假审批、考勤统计、档案       |
+| **🎴 卡片管理** | V1/V2  | 卡片管理、卡片元素、消息流卡片                |
 
 ### 📄 文档管理 (Docx)
 
@@ -307,6 +331,21 @@ public interface IFeishuV1DriveFilesVersions
 {
     // 文件版本管理
 }
+
+public interface IFeishuV1DrivePermissions
+{
+    // 云文档权限管理
+}
+
+public interface IFeishuV1DriveSubscribe
+{
+    // 云文档事件订阅
+}
+
+public interface IFeishuV1Comments
+{
+    // 云文档评论管理
+}
 ```
 
 **功能列表**：
@@ -314,8 +353,11 @@ public interface IFeishuV1DriveFilesVersions
 - 文件上传和下载
 - 文件夹创建和管理
 - 文件版本控制
-- 文件权限管理
 - 媒体文件处理
+- 云文档权限管理（协作者增删改查、所有者转移、权限设置）
+- 云文档密码管理（启用、刷新、停用）
+- 云文档评论管理（评论/回复增删改查、表情回应）
+- 云文档事件订阅（文件/用户事件订阅管理）
 
 ### ⏰ 考勤管理 (Attendance)
 
@@ -482,7 +524,110 @@ public interface IFeishuTenantV3ChatGroup
 - 群公告
 - 会话标签
 
----
+### 🎨 画板管理 (Board)
+
+飞书画板（白板）API，支持画板主题、节点管理和语法解析。
+
+```csharp
+public interface IFeishuV1Board
+{
+    // 画板管理
+}
+```
+
+**功能列表**：
+
+- 获取和更新画板主题
+- 获取画板缩略图片
+- 解析画板语法（PlantUML/Mermaid）
+- 创建和管理画板节点
+
+### 📊 电子表格 (Spreadsheets)
+
+飞书电子表格 API，支持完整的电子表格操作。
+
+```csharp
+public interface IFeishuV3Spreadsheets
+{
+    // 电子表格基础操作
+}
+
+public interface IFeishuV3SpreadsheetRange
+{
+    // 区域操作
+}
+
+public interface IFeishuV3SpreadsheetData
+{
+    // 数据操作
+}
+
+public interface IFeishuV3SpreadsheetCell
+{
+    // 单元格操作
+}
+
+public interface IFeishuV3SpreadsheetFilter
+{
+    // 筛选操作
+}
+```
+
+**功能列表**：
+
+- 电子表格创建和获取
+- 区域读写和格式化
+- 数据查询和更新
+- 单元格样式设置
+- 筛选器和筛选视图
+- 浮动图片管理
+- 保护范围和数据验证
+- 条件格式
+
+### 📋 多维表格 (Bitable)
+
+飞书多维表格 API，支持完整的多维表格数据管理。
+
+```csharp
+public interface IFeishuV1Bitable
+{
+    // 多维表格应用管理
+}
+
+public interface IFeishuV1BitableAppTable
+{
+    // 数据表管理
+}
+
+public interface IFeishuV1BitableRecord
+{
+    // 记录管理
+}
+
+public interface IFeishuV1BitableField
+{
+    // 字段管理
+}
+
+public interface IFeishuV1BitableView
+{
+    // 视图管理
+}
+```
+
+**功能列表**：
+
+- 多维表格应用管理
+- 数据表 CRUD 操作
+- 记录增删改查
+- 字段类型管理
+- 视图配置
+- 表单管理
+- 仪表盘统计
+- 角色权限控制
+- 自动化流程管理
+
+***
 
 ## 🎯 核心功能
 
@@ -490,19 +635,25 @@ public interface IFeishuTenantV3ChatGroup
 
 **统一的事件处理架构，WebSocket 和 Webhook 共享相同的处理器接口**
 
-| 功能特性       | 说明                       |
-| -------------- | -------------------------- |
-| **策略模式**   | 可扩展的事件处理器架构     |
-| **工厂模式**   | 动态注册和发现处理器       |
-| **类型安全**   | 强类型数据模型，编译时检查 |
-| **自动去重**   | 内置事件 ID 去重机制       |
-| **事件拦截器** | 支持事件处理前后的拦截逻辑 |
-| **基类处理器** | 简化开发的专用基类         |
+| 功能特性         | 说明                                             |
+| ------------ | ---------------------------------------------- |
+| **策略模式**     | 可扩展的事件处理器架构                                    |
+| **工厂模式**     | 动态注册和发现处理器                                     |
+| **类型安全**     | 强类型数据模型，编译时检查                                  |
+| **自动去重**     | 内置事件 ID 去重机制（内存/分布式）                           |
+| **事件拦截器**    | 支持事件处理前后的拦截逻辑                                  |
+| **基类处理器**    | 简化开发的专用基类                                      |
+| **性能指标**     | 内置 FeishuMetrics 指标收集（Token、事件、HTTP、WebSocket） |
+| **SSRF 防护**  | URL 白名单验证和私有 IP 检测                             |
+| **SeqID 去重** | WebSocket 二进制消息序列号去重                           |
 
-**新增工具类**：
+**核心工具类**：
 
-- `UrlValidator` - URL 白名单验证和 SSRF 防护
-- `HttpRetryPolicyBuilder` - HTTP 重试策略构建器（支持指数退避和抖动）
+- `FeishuMetrics` / `FeishuMetricsHelper` - 统一性能指标收集（Token 缓存、事件处理、HTTP 请求、WebSocket 连接）
+- `FeishuEventDeduplicator` - 事件去重服务（支持内存和分布式模式）
+- `FeishuSeqIDDeduplicator` - WebSocket 消息序列号去重
+- `TokenUtils` - 令牌工具类
+- `UrlValidator` - URL 白名单验证和 SSRF 防护（来自 Mud.HttpUtils）
 
 ### 🌐 Mud.Feishu - HTTP API 客户端
 
@@ -515,11 +666,74 @@ public interface IFeishuTenantV3ChatGroup
 - ✅ 连接池管理
 - ✅ 详细日志记录
 - ✅ 多应用上下文切换支持
-- ✅ 性能指标监控（内置 Meter 指标收集）
+- ✅ 性能指标监控（内置 FeishuMetrics 指标收集）
+- ✅ SSRF 防护（URL 白名单验证和私有 IP 检测）
+- ✅ 自定义模块注册器（IFeishuModuleRegistrar 扩展）
 
 > 💡 **提示**：[查看完整 API 文档](./Mud.Feishu/README.md)
 
----
+### 🔌 Mud.Feishu.WebSocket - 实时事件订阅
+
+**企业级 WebSocket 客户端**：
+
+- ✅ 智能连接管理（自动重连、心跳检测、状态监控）
+- ✅ 指数退避重连策略（可插拔 IReconnectStrategy，双重限制：次数和时间）
+- ✅ 事件去重（InMemory/Distributed 模式，支持 Redis 分布式去重）
+- ✅ 消息序号验证（重放攻击检测、消息丢失检测、序号回退检测）
+- ✅ 消息队列背压策略（DropOldest/DropNewest/Block 三种策略）
+- ✅ 会话管理（session\_id 管理、断线恢复、24 小时有效期）
+- ✅ 连接指标监控（FeishuMetrics 集成，实时统计吞吐量）
+- ✅ SSL/TLS 证书验证（可配置验证策略、自定义验证回调）
+- ✅ 访问令牌自动刷新（缓存和提前刷新避免过期）
+
+> 💡 **提示**：[查看完整文档](./Mud.Feishu.WebSocket/Readme.md)
+
+### 🪝 Mud.Feishu.Webhook - HTTP 回调事件处理
+
+**企业级 Webhook 处理**：
+
+- ✅ 安全验证（签名验证、时间戳验证、Nonce 验证、订阅验证）
+- ✅ 加密解密（内置 AES-256-CBC 解密，自动处理飞书加密事件）
+- ✅ 自定义验证器（ISignatureValidator、ITimestampValidator、INonceValidator、IEncryptKeyProvider）
+- ✅ 请求频率限制（内置滑动窗口限流中间件）
+- ✅ 多应用模式（独立路由、处理器、拦截器和配置）
+- ✅ 应用级配置继承（全局配置自动继承到应用级）
+- ✅ 后台处理模式（异步事件处理，不阻塞 HTTP 响应）
+- ✅ 事件重试机制（可配置重试次数、延迟和策略）
+- ✅ 健康检查（内置 FeishuWebhookHealthCheck）
+- ✅ 性能监控（可选性能指标收集）
+
+> 💡 **提示**：[查看完整文档](./Mud.Feishu.Webhook/README.md)
+
+### 🔑 Mud.Feishu.Authentication - 用户认证中间件
+
+- ✅ 基于 AsyncLocal 的线程安全用户上下文管理
+- ✅ 从 JWT Claims 自动提取飞书用户信息
+- ✅ 支持分布式追踪 (ActivitySource)
+- ✅ 请求结束后自动清理用户上下文
+
+> 💡 **提示**：[查看完整文档](./Mud.Feishu.Authentication/README.md)
+
+### 📋 Mud.Feishu.EventCallback - 事件回调强类型模型
+
+- ✅ 强类型数据模型（所有事件数据均有完整类型定义和 XML 文档注释）
+- ✅ 源代码生成器（自动生成事件处理器基类）
+- ✅ 完整事件覆盖（组织架构、即时通讯、审批、任务等主要业务场景）
+
+> 💡 **提示**：[查看完整文档](./Mud.Feishu.EventCallback/README.md)
+
+### 📦 Mud.Feishu.Redis - Redis 分布式去重
+
+- ✅ 事件去重（Redis Hash + Lua 脚本状态机模式）
+- ✅ Nonce 去重（SETNX + EXPIRE 防止重放攻击）
+- ✅ SeqID 去重（Sorted Set 支持范围查询）
+- ✅ 降级策略（Redis 故障时自动降级到内存去重）
+- ✅ 多应用隔离（所有去重器支持 appKey 参数）
+- ✅ 健康检查（内置 Redis 健康检查）
+
+> 💡 **提示**：[查看完整文档](./Mud.Feishu.Redis/README.md)
+
+***
 
 ## 💡 快速开始示例
 
@@ -553,7 +767,7 @@ using (contextSwitcher.UseApp("hr-app"))
 
 ```csharp
 // WebSocket 实时事件订阅
-builder.Services.CreateFeishuWebSocketServiceBuilder(builder.Configuration)
+builder.Services.CreateFeishuWebSocketServiceBuilder(builder.Configuration, "default")
     .AddHandler<MessageEventHandler>()
     .Build();
 
@@ -565,7 +779,27 @@ builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
 app.UseFeishuWebhook();
 ```
 
----
+### 多应用事件处理
+
+```csharp
+// WebSocket 多应用事件订阅
+builder.Services.CreateFeishuWebSocketServiceBuilder(builder.Configuration, "default")
+    .AddHandler<DefaultAppEventHandler>()
+    .Build();
+
+builder.Services.CreateFeishuWebSocketServiceBuilder(builder.Configuration, "hr-app")
+    .AddHandler<HrAppEventHandler>()
+    .Build();
+
+// Webhook 多应用事件处理（独立路由、处理器和拦截器）
+builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
+    .AddHandler<App1Handler>("app1")
+    .AddInterceptor<App1LoggingInterceptor>("app1")
+    .AddHandler<App2Handler>("app2")
+    .Build();
+```
+
+***
 
 ## 📸 演示界面展示
 
@@ -573,41 +807,41 @@ app.UseFeishuWebhook();
 
 ### 用户认证与登录
 
-| 飞书 OAuth 授权                                    | 系统登录界面                                     |
-| :------------------------------------------------- | :----------------------------------------------- |
+| 飞书 OAuth 授权                          | 系统登录界面                            |
+| :----------------------------------- | :-------------------------------- |
 | ![飞书认证授权](./Images/wiki飞书认证授权界面.png) | ![登录界面](./Images/飞书云文档管理登陆界面.png) |
 
 ### 知识库管理核心功能
 
-| 主界面                                         | 知识空间                                   |
-| :--------------------------------------------- | :----------------------------------------- |
+| 主界面                                | 知识空间                             |
+| :--------------------------------- | :------------------------------- |
 | ![知识库主界面](./Images/Wiki知识库主界面.png) | ![知识空间](./Images/Wiki知识空间界面.png) |
 
-| 搜索功能                                     | 云空间同步                                               |
-| :------------------------------------------- | :------------------------------------------------------- |
+| 搜索功能                              | 云空间同步                                 |
+| :-------------------------------- | :------------------------------------ |
 | ![搜索界面](./Images/Wiki知识库搜索界面.png) | ![云空间同步](./Images/飞书云文档管理云空间同步功能.png) |
 
 ### 云文档管理
 
-| 文档管理主界面                                       | 文件上传                                             |
-| :--------------------------------------------------- | :--------------------------------------------------- |
+| 文档管理主界面                             | 文件上传                                |
+| :---------------------------------- | :---------------------------------- |
 | ![文档管理主界面](./Images/飞书云文档管理主界面.png) | ![文件上传](./Images/飞书云文档管理文件上传界面.png) |
 
 > 💡 **提示**：以上界面均基于 **Mud.Feishu** SDK 开发，完整展示了飞书 OAuth 认证、知识库管理、文档搜索、云空间同步等核心功能。[查看 Demo 源码](./Demos/FeishuWikiManager)
 
----
+***
 
 ## 📖 详细文档
 
 - [Mud.Feishu.Abstractions 详细文档](./Mud.Feishu.Abstractions/README.md) - 事件处理抽象层使用指南
 - [Mud.Feishu 详细文档](./Mud.Feishu/README.md) - HTTP API 完整使用指南
+- [Mud.Feishu.EventCallback 详细文档](./Mud.Feishu.EventCallback/README.md) - 飞书事件回调强类型数据模型使用指南
 - [Mud.Feishu.WebSocket 详细文档](./Mud.Feishu.WebSocket/Readme.md) - WebSocket 实时事件订阅指南
 - [Mud.Feishu.Webhook 详细文档](./Mud.Feishu.Webhook/README.md) - Webhook HTTP 回调事件处理指南
 - [Mud.Feishu.Authentication 详细文档](./Mud.Feishu.Authentication/README.md) - 飞书用户认证中间件使用指南
 - [Mud.Feishu.Redis 详细文档](./Mud.Feishu.Redis/README.md) - Redis 分布式去重扩展指南
-- [安全增强文档](./docs/SECURITY_IMPROVEMENTS.md) - SSRF 防护、URL 验证等安全特性详解
 
----
+***
 
 ## 🛠️ 技术栈
 
@@ -620,20 +854,20 @@ app.UseFeishuWebhook();
 
 ### 核心依赖
 
-| 包                                  | 版本             | 说明                            |
-| ----------------------------------- | ---------------- | ------------------------------- |
-| **Mud.HttpUtils**                   | v1.6.2           | HTTP 客户端工具类               |
-| **Mud.HttpUtils.Generator**         | v1.6.2           | HTTP 客户端代码生成器（编译时） |
-| **Microsoft.Extensions.Http**       | v8.0.1 / v10.0.4 | HTTP 客户端工厂                 |
-| **Microsoft.Extensions.Http.Polly** | v8.0.2 / v10.0.4 | 弹性和瞬态故障处理              |
+| 包                                   | 版本               | 说明                 |
+| ----------------------------------- | ---------------- | ------------------ |
+| **Mud.HttpUtils**                   | v1.7.0           | HTTP 客户端工具类        |
+| **Mud.HttpUtils.Generator**         | v1.7.0           | HTTP 客户端代码生成器（编译时） |
+| **Microsoft.Extensions.Http**       | v8.0.1 / v10.0.4 | HTTP 客户端工厂         |
+| **Microsoft.Extensions.Http.Polly** | v8.0.2 / v10.0.4 | 弹性和瞬态故障处理          |
 
----
+***
 
 ## 📄 许可证
 
 本项目遵循 [MIT 许可证](./LICENSE)，允许商业和非商业用途。
 
----
+***
 
 ## 🔗 相关链接
 
@@ -649,6 +883,7 @@ app.UseFeishuWebhook();
 - [Mud.Feishu.WebSocket](https://www.nuget.org/packages/Mud.Feishu.WebSocket/) - WebSocket 实时事件订阅库
 - [Mud.Feishu.Webhook](https://www.nuget.org/packages/Mud.Feishu.Webhook/) - Webhook HTTP 回调事件处理库
 - [Mud.Feishu.Authentication](https://www.nuget.org/packages/Mud.Feishu.Authentication/) - 飞书用户认证中间件库
+- [Mud.Feishu.EventCallback](https://www.nuget.org/packages/Mud.Feishu.EventCallback/) - 飞书事件回调强类型数据模型
 - [Mud.Feishu.Redis](https://www.nuget.org/packages/Mud.Feishu.Redis/) - Redis 分布式去重扩展库
 
 ### 🛠️ 开发资源
@@ -657,7 +892,9 @@ app.UseFeishuWebhook();
 - [Mud.ServiceCodeGenerator](https://gitee.com/mudtools/mud-code-generator) - HTTP 客户端代码生成器
 - [示例项目](./Demos) - 完整的使用示例和演示代码
   - [FeishuWikiManager](./Demos/FeishuWikiManager) - 飞书知识库管理 Demo（Vue3 + .NET）
-  - [Webhook Demo](./Demos/Mud.Feishu.Webhook.Demo) - Webhook 事件处理演示
+  - [FeishuFileServer](./Demos/FeishuFileServer) - 飞书云文档文件服务 Demo（Vue3 + .NET）
+  - [FeishuOAuthDemo](./Demos/FeishuOAuthDemo) - 飞书 OAuth 认证 Demo（Vue3 + .NET）
+  - [TaskManageDemo](./Demos/TaskManageDemo) - 飞书任务管理 Demo（Vue3 + .NET）
   - [WebSocket Demo](./Demos/Mud.Feishu.WebSocket.Demo) - WebSocket 实时事件演示
 - [测试项目](./Tests) - 完整的单元测试和集成测试
 
@@ -667,7 +904,7 @@ app.UseFeishuWebhook();
 - [贡献指南](./CONTRIBUTING.md) - 如何参与项目贡献
 - [更新日志](./CHANGELOG.md) - 版本更新记录和变更说明
 
----
+***
 
 <div align="center">
 

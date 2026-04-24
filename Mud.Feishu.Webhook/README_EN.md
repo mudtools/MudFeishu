@@ -64,7 +64,7 @@ app.Run();
 ```
 
 > 💡 **Note**: Webhook service uses middleware mode, automatically registering endpoints via `app.UseFeishuWebhook()`. Default route is `/feishu/{AppKey}`, where `{AppKey}` is the application key.
-> 
+>
 > ⚠️ **Important**: Rate limit middleware should be registered before Webhook middleware to ensure rate limiting policies are correctly applied.
 
 ### 3. Complete Configuration (Add Multiple Event Handlers)
@@ -380,13 +380,19 @@ public class DemoDepartmentEventHandler : DepartmentCreatedEventHandler
 
 ### Multi-App Configuration
 
-| Option                            | Type                                          | Default  | Description                                        |
-| --------------------------------- | --------------------------------------------- | -------- | -------------------------------------------------- |
-| `Apps`                            | Dictionary\<string, FeishuAppWebhookOptions\> | {}       | App configurations (AppKey -> AppConfig)           |
-| `Apps.{AppKey}.AppKey`            | string                                        | -        | Application key (used to identify app)             |
-| `Apps.{AppKey}.VerificationToken` | string                                        | -        | App verification token                             |
-| `Apps.{AppKey}.EncryptKey`        | string                                        | -        | App encryption key (32 bytes)                      |
-| `GlobalRoutePrefix`               | string                                        | "feishu" | Global route prefix (base path shared by all apps) |
+| Option                                           | Type                                          | Default | Description                                                    |
+| ------------------------------------------------ | --------------------------------------------- | ------- | -------------------------------------------------------------- |
+| `Apps`                                           | Dictionary\<string, FeishuAppWebhookOptions\> | {}      | App configurations (AppKey -> AppConfig)                       |
+| `Apps.{AppKey}.AppKey`                           | string                                        | -       | Application key (alphanumeric, underscore, hyphen, 1-64 chars) |
+| `Apps.{AppKey}.VerificationToken`                | string                                        | -       | App verification token                                         |
+| `Apps.{AppKey}.EncryptKey`                       | string                                        | -       | App encryption key (32 bytes)                                  |
+| `Apps.{AppKey}.Description`                      | string?                                       | null    | App description (optional)                                     |
+| `Apps.{AppKey}.TimestampToleranceSeconds`        | int                                           | -1      | Timestamp tolerance (-1 inherits global)                       |
+| `Apps.{AppKey}.EventHandlingTimeoutMs`           | int                                           | -1      | Event handling timeout (-1 inherits global)                    |
+| `Apps.{AppKey}.EnforceHeaderSignatureValidation` | bool                                          | false   | Enforce header signature validation (does not inherit)         |
+| `Apps.{AppKey}.EnableBodySignatureValidation`    | bool                                          | true    | Enable body signature validation (does not inherit)            |
+| `Apps.{AppKey}.EnableExceptionHandling`          | bool?                                         | null    | Enable exception handling (null inherits global)               |
+| `Apps.{AppKey}.EnablePerformanceMonitoring`      | bool?                                         | null    | Enable performance monitoring (null inherits global)           |
 
 ### Security Configuration
 
@@ -1005,31 +1011,38 @@ app.MapDiagnostics();          // Diagnostics endpoints
 ### Common Issues
 
 1. **Validation Failed**
+
    - Check if `VerificationToken` is correct
    - Confirm request URL is configured correctly
 
 2. **Decryption Failed**
+
    - Check if `EncryptKey` is correct
    - Confirm encryption is enabled on Feishu platform
 
 3. **Signature Validation Failed**
+
    - Check time synchronization
    - Confirm request hasn't been modified by proxy server
    - Ensure `EnforceHeaderSignatureValidation` is set to true in production
 
 4. **Event Handling Failed**
+
    - Check if event handlers are correctly registered
    - View detailed error information in logs
 
 5. **Distributed Deployment Event Duplication**
+
    - Default uses in-memory deduplication, multi-instance deployment requires distributed deduplication
    - Refer to `IFeishuNonceDistributedDeduplicator` interface for custom Redis implementation
 
 6. **Timeout Handling**
+
    - Check if `EventHandlingTimeoutMs` configuration is reasonable
    - Ensure event handling logic supports cancellation tokens
 
 7. **Rate Limiting Issues**
+
    - Check `RateLimit.EnableRateLimit` configuration
    - Confirm client IP is in whitelist
    - Adjust `MaxRequestsPerWindow` and `WindowSizeSeconds` parameters

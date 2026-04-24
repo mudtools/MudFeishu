@@ -12,7 +12,7 @@ Mud.Feishu 是飞书服务端 SDK 的 .NET 适配版，提供完整的 HTTP API 
 - **自动令牌管理** - 智能缓存和刷新，无需手动维护
 - **智能重试机制** - 内置重试策略，提高调用成功率
 - **多应用支持** - 统一管理多个飞书应用
-- **完整 API 覆盖** - 支持组织架构、消息、群聊、审批、任务等飞书核心功能
+- **完整 API 覆盖** - 支持组织架构、消息、群聊、审批、任务、云文档、画板、电子表格、多维表格等飞书核心功能
 
 ## 安装
 
@@ -69,13 +69,17 @@ builder.Services.CreateFeishuServicesBuilder()
     .AddDriveApi()
     .AddWikiApi()
     .AddDocxApi()
+    .AddSpreadsheetsApi()
+    .AddBiTableApi()
     .Build();
 
 // 方式三：模块枚举模式
 builder.Services.AddFeishuServices(
     FeishuModule.Organization,
     FeishuModule.Message,
-    FeishuModule.ChatGroup
+    FeishuModule.ChatGroup,
+    FeishuModule.Spreadsheets,
+    FeishuModule.Bitable
 );
 
 var app = builder.Build();
@@ -116,146 +120,148 @@ public class UserService
 
 **继承关系**：`IFeishuTenantV3User` / `IFeishuUserV3User` → `IFeishuV3User`
 
-| 接口类型 | 接口名称 | API 函数 | 说明 |
-|---------|---------|---------|------|
-| **父类接口（公共）** | `IFeishuV3User` | `UpdateUserAsync` | 更新用户信息 |
-| | | `GetUserInfoByIdAsync` | 获取单个用户信息 |
-| | | `GetUserByIdsAsync` | 批量获取用户信息 |
-| | | `GetUserByDepartmentIdAsync` | 获取部门直属用户列表 |
-| **租户令牌接口** | `IFeishuTenantV3User` | `CreateUserAsync` | 创建用户（员工入职） |
-| | 继承父类所有方法 | `UpdateUserIdAsync` | 更新用户 ID |
-| | | `GetBatchUsersAsync` | 通过手机号/邮箱获取用户 ID |
-| | | `GetUsersByKeywordAsync` | 通过关键词搜索用户 |
-| | | `DeleteUserByIdAsync` | 删除用户（员工离职） |
-| | | `ResurrectUserByIdAsync` | 恢复已删除用户 |
-| | | `LogoutAsync` | 退出用户登录态 |
-| | | `GetJsTicketAsync` | 获取 JSAPI 临时调用凭证 |
-| **用户令牌接口** | `IFeishuUserV3User` | `GetUsersByKeywordAsync` | 通过关键词搜索用户 |
-| | 继承父类所有方法 | `GetUserInfoAsync` | 获取当前用户信息 |
+| 接口类型         | 接口名称                  | API 函数                       | 说明              |
+| ------------ | --------------------- | ---------------------------- | --------------- |
+| **父类接口（公共）** | `IFeishuV3User`       | `UpdateUserAsync`            | 更新用户信息          |
+| <br />       | <br />                | `GetUserInfoByIdAsync`       | 获取单个用户信息        |
+| <br />       | <br />                | `GetUserByIdsAsync`          | 批量获取用户信息        |
+| <br />       | <br />                | `GetUserByDepartmentIdAsync` | 获取部门直属用户列表      |
+| **租户令牌接口**   | `IFeishuTenantV3User` | `CreateUserAsync`            | 创建用户（员工入职）      |
+| <br />       | 继承父类所有方法              | `UpdateUserIdAsync`          | 更新用户 ID         |
+| <br />       | <br />                | `GetBatchUsersAsync`         | 通过手机号/邮箱获取用户 ID |
+| <br />       | <br />                | `GetUsersByKeywordAsync`     | 通过关键词搜索用户       |
+| <br />       | <br />                | `DeleteUserByIdAsync`        | 删除用户（员工离职）      |
+| <br />       | <br />                | `ResurrectUserByIdAsync`     | 恢复已删除用户         |
+| <br />       | <br />                | `LogoutAsync`                | 退出用户登录态         |
+| <br />       | <br />                | `GetJsTicketAsync`           | 获取 JSAPI 临时调用凭证 |
+| **用户令牌接口**   | `IFeishuUserV3User`   | `GetUsersByKeywordAsync`     | 通过关键词搜索用户       |
+| <br />       | 继承父类所有方法              | `GetUserInfoAsync`           | 获取当前用户信息        |
 
 #### 部门管理
 
 **继承关系**：`IFeishuTenantV3Departments` / `IFeishuUserV3Departments` → `IFeishuV3Departments`
 
-| 接口类型 | 接口名称 | API 函数 | 说明 |
-|---------|---------|---------|------|
-| **父类接口（公共）** | `IFeishuV3Departments` | `GetDepartmentInfoByIdAsync` | 获取单个部门信息 |
-| | | `GetDepartmentsByIdsAsync` | 批量获取部门信息 |
-| | | `GetDepartmentsByParentIdAsync` | 获取子部门列表 |
-| | | `GetParentDepartmentsByIdAsync` | 获取父部门信息 |
-| **租户令牌接口** | `IFeishuTenantV3Departments` | `CreateDepartmentAsync` | 创建部门 |
-| | 继承父类所有方法 | `UpdatePartDepartmentAsync` | 更新部门部分信息 |
-| | | `UpdateDepartmentAsync` | 更新部门全部信息 |
-| | | `UpdateDepartmentIdAsync` | 更新部门自定义 ID |
-| | | `UnbindDepartmentChatAsync` | 解绑部门群 |
-| | | `DeleteDepartmentByIdAsync` | 删除部门 |
-| **用户令牌接口** | `IFeishuUserV3Departments` | - | 仅继承父类方法 |
+| 接口类型         | 接口名称                         | API 函数                          | 说明         |
+| ------------ | ---------------------------- | ------------------------------- | ---------- |
+| **父类接口（公共）** | `IFeishuV3Departments`       | `GetDepartmentInfoByIdAsync`    | 获取单个部门信息   |
+| <br />       | <br />                       | `GetDepartmentsByIdsAsync`      | 批量获取部门信息   |
+| <br />       | <br />                       | `GetDepartmentsByParentIdAsync` | 获取子部门列表    |
+| <br />       | <br />                       | `GetParentDepartmentsByIdAsync` | 获取父部门信息    |
+| **租户令牌接口**   | `IFeishuTenantV3Departments` | `CreateDepartmentAsync`         | 创建部门       |
+| <br />       | 继承父类所有方法                     | `UpdatePartDepartmentAsync`     | 更新部门部分信息   |
+| <br />       | <br />                       | `UpdateDepartmentAsync`         | 更新部门全部信息   |
+| <br />       | <br />                       | `UpdateDepartmentIdAsync`       | 更新部门自定义 ID |
+| <br />       | <br />                       | `UnbindDepartmentChatAsync`     | 解绑部门群      |
+| <br />       | <br />                       | `DeleteDepartmentByIdAsync`     | 删除部门       |
+| **用户令牌接口**   | `IFeishuUserV3Departments`   | -                               | 仅继承父类方法    |
 
 #### 其他组织管理接口
 
-| 接口名称 | 继承关系 | 说明 |
-|---------|---------|------|
-| `IFeishuTenantV3JobLevel` | - | 职级管理（仅租户令牌） |
-| `IFeishuTenantV3JobTitle` → `IFeishuV3JobTitle` | 继承父类 | 职务管理 |
-| `IFeishuUserV3JobTitle` → `IFeishuV3JobTitle` | 继承父类 | 职务管理 |
-| `IFeishuTenantV3JobFamilies` | - | 职务族管理 |
-| `IFeishuTenantV3UserGroup` → `IFeishuV3UserGroup` | 继承父类 | 用户组管理 |
-| `IFeishuTenantV3UserGroupMember` → `IFeishuV3UserGroupMember` | 继承父类 | 用户组成员管理 |
-| `IFeishuTenantV3Role` → `IFeishuV3Role` | 继承父类 | 角色管理 |
-| `IFeishuTenantV3RoleMember` → `IFeishuV3RoleMember` | 继承父类 | 角色成员管理 |
-| `IFeishuTenantV3Unit` → `IFeishuV3Unit` | 继承父类 | 单位管理 |
-| `IFeishuTenantV3WorkCity` → `IFeishuV3WorkCity` | 继承父类 | 工作城市管理 |
-| `IFeishuUserV3WorkCity` → `IFeishuV3WorkCity` | 继承父类 | 工作城市管理 |
-| `IFeishuTenantV3EmployeeType` | - | 人员类型管理 |
+| 接口名称                                                          | 继承关系 | 说明          |
+| ------------------------------------------------------------- | ---- | ----------- |
+| `IFeishuTenantV3JobLevel`                                     | -    | 职级管理（仅租户令牌） |
+| `IFeishuTenantV3JobTitle` → `IFeishuV3JobTitle`               | 继承父类 | 职务管理        |
+| `IFeishuUserV3JobTitle` → `IFeishuV3JobTitle`                 | 继承父类 | 职务管理        |
+| `IFeishuTenantV3JobFamilies`                                  | -    | 职务族管理       |
+| `IFeishuTenantV3UserGroup` → `IFeishuV3UserGroup`             | 继承父类 | 用户组管理       |
+| `IFeishuTenantV3UserGroupMember` → `IFeishuV3UserGroupMember` | 继承父类 | 用户组成员管理     |
+| `IFeishuTenantV3Role` → `IFeishuV3Role`                       | 继承父类 | 角色管理        |
+| `IFeishuTenantV3RoleMember` → `IFeishuV3RoleMember`           | 继承父类 | 角色成员管理      |
+| `IFeishuTenantV3Unit` → `IFeishuV3Unit`                       | 继承父类 | 单位管理        |
+| `IFeishuTenantV3WorkCity` → `IFeishuV3WorkCity`               | 继承父类 | 工作城市管理      |
+| `IFeishuUserV3WorkCity` → `IFeishuV3WorkCity`                 | 继承父类 | 工作城市管理      |
+| `IFeishuTenantV3EmployeeType`                                 | -    | 人员类型管理      |
 
----
+***
 
 ### 消息服务 (Messages)
 
 **继承关系**：`IFeishuTenantV1Message` / `IFeishuUserV1Message` → `IFeishuV1Message`
 
-| 接口类型 | 接口名称 | API 函数 | 说明 |
-|---------|---------|---------|------|
-| **父类接口（公共）** | `IFeishuV1Message` | `RevokeMessageAsync` | 撤回消息 |
-| | | `AddMessageReactionsAsync` | 添加表情回复 |
-| | | `GetMessageReactionsPageListAsync` | 获取表情回复列表 |
-| | | `DeleteMessageReactionsAsync` | 删除表情回复 |
-| | | `PinMessageAsync` | Pin 消息 |
-| | | `DeletePinMessageAsync` | 移除 Pin |
-| | | `GetPinMessagePageListAsync` | 获取 Pin 消息列表 |
-| **租户令牌接口** | `IFeishuTenantV1Message` | `SendMessageAsync` | 发送消息 |
-| | 继承父类所有方法 | `ReplyMessageAsync` | 回复消息 |
-| | | `EditMessageAsync` | 编辑消息 |
-| | | `ReceiveMessageAsync` | 转发消息 |
-| | | `MergeReceiveMessageAsync` | 合并转发消息 |
-| | | `ReceiveThreadsAsync` | 转发话题 |
-| | | `CreateMessageFollowUpAsync` | 添加跟随气泡 |
-| | | `GetMessageReadUsesAsync` | 查询消息已读状态 |
-| | | `GetHistoryMessageAsync` | 获取历史消息 |
-| | | `GetMessageFile` | 获取消息内资源文件（小文件） |
-| | | `GetMessageLargeFile` | 获取消息内资源文件（大文件） |
-| | | `GetContentListByMessageIdAsync` | 获取消息内容 |
-| | | `UploadFileAsync` | 上传文件 |
-| | | `UploadImageAsync` | 上传图片 |
-| | | `DownFileAsync` | 下载文件（小文件） |
-| | | `DownLargeFileAsync` | 下载文件（大文件） |
-| | | `DownImageAsync` | 下载图片（小文件） |
-| | | `DownLargeImageAsync` | 下载图片（大文件） |
-| | | `MessageUrgentAppAsync` | 应用内消息加急 |
-| | | `MessageUrgentSMSAsync` | 短信消息加急 |
-| | | `MessageUrgentPhoneAsync` | 电话消息加急 |
-| | | `UpdateUrlPreviewAsync` | 更新 URL 预览 |
-| **用户令牌接口** | `IFeishuUserV1Message` | - | 仅继承父类方法 |
-| **批量消息** | `IFeishuV1BatchMessage_Tenant` | 批量消息相关 | 批量消息管理 |
+| 接口类型         | 接口名称                           | API 函数                             | 说明             |
+| ------------ | ------------------------------ | ---------------------------------- | -------------- |
+| **父类接口（公共）** | `IFeishuV1Message`             | `RevokeMessageAsync`               | 撤回消息           |
+| <br />       | <br />                         | `AddMessageReactionsAsync`         | 添加表情回复         |
+| <br />       | <br />                         | `GetMessageReactionsPageListAsync` | 获取表情回复列表       |
+| <br />       | <br />                         | `DeleteMessageReactionsAsync`      | 删除表情回复         |
+| <br />       | <br />                         | `PinMessageAsync`                  | Pin 消息         |
+| <br />       | <br />                         | `DeletePinMessageAsync`            | 移除 Pin         |
+| <br />       | <br />                         | `GetPinMessagePageListAsync`       | 获取 Pin 消息列表    |
+| **租户令牌接口**   | `IFeishuTenantV1Message`       | `SendMessageAsync`                 | 发送消息           |
+| <br />       | 继承父类所有方法                       | `ReplyMessageAsync`                | 回复消息           |
+| <br />       | <br />                         | `EditMessageAsync`                 | 编辑消息           |
+| <br />       | <br />                         | `ReceiveMessageAsync`              | 转发消息           |
+| <br />       | <br />                         | `MergeReceiveMessageAsync`         | 合并转发消息         |
+| <br />       | <br />                         | `ReceiveThreadsAsync`              | 转发话题           |
+| <br />       | <br />                         | `CreateMessageFollowUpAsync`       | 添加跟随气泡         |
+| <br />       | <br />                         | `GetMessageReadUsesAsync`          | 查询消息已读状态       |
+| <br />       | <br />                         | `GetHistoryMessageAsync`           | 获取历史消息         |
+| <br />       | <br />                         | `GetMessageFile`                   | 获取消息内资源文件（小文件） |
+| <br />       | <br />                         | `GetMessageLargeFile`              | 获取消息内资源文件（大文件） |
+| <br />       | <br />                         | `GetContentListByMessageIdAsync`   | 获取消息内容         |
+| <br />       | <br />                         | `UploadFileAsync`                  | 上传文件           |
+| <br />       | <br />                         | `UploadImageAsync`                 | 上传图片           |
+| <br />       | <br />                         | `DownFileAsync`                    | 下载文件（小文件）      |
+| <br />       | <br />                         | `DownLargeFileAsync`               | 下载文件（大文件）      |
+| <br />       | <br />                         | `DownImageAsync`                   | 下载图片（小文件）      |
+| <br />       | <br />                         | `DownLargeImageAsync`              | 下载图片（大文件）      |
+| <br />       | <br />                         | `MessageUrgentAppAsync`            | 应用内消息加急        |
+| <br />       | <br />                         | `MessageUrgentSMSAsync`            | 短信消息加急         |
+| <br />       | <br />                         | `MessageUrgentPhoneAsync`          | 电话消息加急         |
+| <br />       | <br />                         | `UpdateUrlPreviewAsync`            | 更新 URL 预览      |
+| **用户令牌接口**   | `IFeishuUserV1Message`         | -                                  | 仅继承父类方法        |
+| **批量消息**     | `IFeishuV1BatchMessage_Tenant` | 批量消息相关                             | 批量消息管理         |
 
----
+***
 
 ### 群聊管理 (ChatGroup)
 
 **继承关系**：`IFeishuTenantV1ChatGroup` / `IFeishuUserV1ChatGroup` → `IFeishuV1ChatGroup`
 
-| 接口类型 | 接口名称 | API 函数 | 说明 |
-|---------|---------|---------|------|
-| **父类接口（公共）** | `IFeishuV1ChatGroup` | `UpdateChatGroupByIdAsync` | 更新群信息 |
-| | | `DeleteChatGroupAsync` | 解散群聊 |
-| | | `GetChatGroupInoByIdAsync` | 获取群信息 |
-| | | `GetChatGroupPageListAsync` | 获取群列表 |
-| | | `GetChatGroupPageListByKeywordAsync` | 搜索群列表 |
-| | | `UpdateChatModerationAsync` | 更新群发言权限 |
-| | | `GetChatGroupModeratorPageListByIdAsync` | 获取群发言权限信息 |
-| | | `PutChatGroupTopNoticeAsync` | 置顶消息/公告 |
-| | | `DeleteChatGroupTopNoticeAsync` | 取消置顶 |
-| | | `GetChatGroupShareLinkByIdAsync` | 获取群分享链接 |
-| **租户令牌接口** | `IFeishuTenantV1ChatGroup` | `CreateChatGroupAsync` | 创建群聊 |
-| | 继承父类所有方法 | | |
+| 接口类型         | 接口名称                       | API 函数                                   | 说明        |
+| ------------ | -------------------------- | ---------------------------------------- | --------- |
+| **父类接口（公共）** | `IFeishuV1ChatGroup`       | `UpdateChatGroupByIdAsync`               | 更新群信息     |
+| <br />       | <br />                     | `DeleteChatGroupAsync`                   | 解散群聊      |
+| <br />       | <br />                     | `GetChatGroupInoByIdAsync`               | 获取群信息     |
+| <br />       | <br />                     | `GetChatGroupPageListAsync`              | 获取群列表     |
+| <br />       | <br />                     | `GetChatGroupPageListByKeywordAsync`     | 搜索群列表     |
+| <br />       | <br />                     | `UpdateChatModerationAsync`              | 更新群发言权限   |
+| <br />       | <br />                     | `GetChatGroupModeratorPageListByIdAsync` | 获取群发言权限信息 |
+| <br />       | <br />                     | `PutChatGroupTopNoticeAsync`             | 置顶消息/公告   |
+| <br />       | <br />                     | `DeleteChatGroupTopNoticeAsync`          | 取消置顶      |
+| <br />       | <br />                     | `GetChatGroupShareLinkByIdAsync`         | 获取群分享链接   |
+| **租户令牌接口**   | `IFeishuTenantV1ChatGroup` | `CreateChatGroupAsync`                   | 创建群聊      |
+| <br />       | 继承父类所有方法                   | <br />                                   | <br />    |
 
 **其他群聊相关接口**：
 
-| 接口名称 | 继承关系 | 说明 |
-|---------|---------|------|
-| `IFeishuTenantV1ChatGroupMember` → `IFeishuV1ChatGroupMember` | 继承父类 | 群成员管理（租户令牌） |
-| `IFeishuUserV1ChatGroupMember` → `IFeishuV1ChatGroupMember` | 继承父类 | 群成员管理（用户令牌） |
-| `IFeishuTenantV1ChatGroupAnnouncement` → `IFeishuV1ChatGroupAnnouncement` | 继承父类 | 群公告管理（租户令牌） |
-| `IFeishuUserV1ChatGroupAnnouncement` → `IFeishuV1ChatGroupAnnouncement` | 继承父类 | 群公告管理（用户令牌） |
-| `IFeishuTenantV1ChatTabs` → `IFeishuV1ChatTabs` | 继承父类 | 群标签页管理（租户令牌） |
-| `IFeishuUserV1ChatTabs` → `IFeishuV1ChatTabs` | 继承父类 | 群标签页管理（用户令牌） |
-| `IFeishuTenantV1ChatGroupMenu` | - | 群菜单管理（仅租户令牌） |
+| 接口名称                                                                      | 继承关系 | 说明           |
+| ------------------------------------------------------------------------- | ---- | ------------ |
+| `IFeishuTenantV1ChatGroupMember` → `IFeishuV1ChatGroupMember`             | 继承父类 | 群成员管理（租户令牌）  |
+| `IFeishuUserV1ChatGroupMember` → `IFeishuV1ChatGroupMember`               | 继承父类 | 群成员管理（用户令牌）  |
+| `IFeishuTenantV1ChatGroupAnnouncement` → `IFeishuV1ChatGroupAnnouncement` | 继承父类 | 群公告管理（租户令牌）  |
+| `IFeishuUserV1ChatGroupAnnouncement` → `IFeishuV1ChatGroupAnnouncement`   | 继承父类 | 群公告管理（用户令牌）  |
+| `IFeishuTenantV1ChatTabs` → `IFeishuV1ChatTabs`                           | 继承父类 | 群标签页管理（租户令牌） |
+| `IFeishuUserV1ChatTabs` → `IFeishuV1ChatTabs`                             | 继承父类 | 群标签页管理（用户令牌） |
+| `IFeishuTenantV1ChatGroupMenu`                                            | -    | 群菜单管理（仅租户令牌） |
 
----
+***
 
 ### 审批流程 (Approval)
 
-| 接口名称 | 继承关系 | 说明 |
-|---------|---------|------|
-| `IFeishuTenantV4Approval` | - | 审批定义和实例管理（租户令牌） |
-| `IFeishuTenantV4ApprovalTask` | - | 审批任务管理（租户令牌） |
-| `IFeishuTenantV4ApprovalComments` | - | 审批评论管理（租户令牌） |
-| `IFeishuTenantV4ApprovalExternal` | - | 第三方审批（租户令牌） |
-| `IFeishuTenantV4ApprovalFile` | - | 审批文件管理（租户令牌） |
+| 接口名称                                                      | 继承关系 | 说明              |
+| --------------------------------------------------------- | ---- | --------------- |
+| `IFeishuTenantV4Approval`                                 | -    | 审批定义和实例管理（租户令牌） |
+| `IFeishuTenantV4ApprovalTask`                             | -    | 审批任务管理（租户令牌）    |
+| `IFeishuTenantV4ApprovalComments`                         | -    | 审批评论管理（租户令牌）    |
+| `IFeishuTenantV4ApprovalExternal`                         | -    | 第三方审批（租户令牌）     |
+| `IFeishuTenantV4ApprovalFile`                             | -    | 审批文件管理（租户令牌）    |
 | `IFeishuTenantV4ApprovalQuery` → `IFeishuV4ApprovalQuery` | 继承父类 | 审批查询（租户令牌） |
 | `IFeishuUserV4ApprovalQuery` → `IFeishuV4ApprovalQuery` | 继承父类 | 审批查询（用户令牌） |
+| `IFeishuTenantV4ApprovalSubscribe` | - | 审批订阅（租户令牌） |
 
-**租户令牌接口 `IFeishuTenantV4Approval` 主要 API 函数**：
+**租户令牌接口** **`IFeishuTenantV4Approval`** **主要 API 函数**：
+
 - `CreateApprovalAsync` - 创建审批定义
 - `GetApprovalByCodeAsync` - 获取审批定义信息
 - `CreateInstanceAsync` - 创建审批实例
@@ -264,147 +270,195 @@ public class UserService
 - `PreviewInstanceAsync` - 预览审批流程
 - `GetInstanceByIdAsync` - 获取审批实例详情
 
----
+***
 
 ### 任务管理 (Task)
 
 **继承关系**：`IFeishuTenantV2Task` / `IFeishuUserV2Task` → `IFeishuV2Task`
 
-| 接口类型 | 接口名称 | API 函数 | 说明 |
-|---------|---------|---------|------|
-| **父类接口（公共）** | `IFeishuV2Task` | `CreateTaskAsync` | 创建任务 |
-| | | `UpdateTaskAsync` | 更新任务 |
-| | | `GetTaskByIdAsync` | 获取任务详情 |
-| | | `DeleteTaskByIdAsync` | 删除任务 |
-| | | `AddMembersByIdAsync` | 添加任务成员 |
-| | | `RemoveMembersByIdAsync` | 移除任务成员 |
-| | | `GetTaskListsByIdAsync` | 获取任务所在清单 |
-| | | `AddTaskListsByIdAsync` | 将任务加入清单 |
-| | | `RemoveTaskListsByIdAsync` | 将任务移出清单 |
-| | | `AddTaskReminderByIdAsync` | 添加任务提醒 |
-| | | `RemoveTaskReminderByIdAsync` | 移除任务提醒 |
-| | | `AddTaskDependenciesByIdAsync` | 添加任务依赖 |
-| | | `RemoveTaskDependenciesByIdAsync` | 移除任务依赖 |
-| | | `CreateSubTaskAsync` | 创建子任务 |
-| | | `GetSubTasksPageListByIdAsync` | 获取子任务列表 |
-| **租户令牌接口** | `IFeishuTenantV2Task` | - | 仅继承父类方法 |
-| **用户令牌接口** | `IFeishuUserV2Task` | - | 仅继承父类方法 |
+| 接口类型         | 接口名称                  | API 函数                            | 说明       |
+| ------------ | --------------------- | --------------------------------- | -------- |
+| **父类接口（公共）** | `IFeishuV2Task`       | `CreateTaskAsync`                 | 创建任务     |
+| <br />       | <br />                | `UpdateTaskAsync`                 | 更新任务     |
+| <br />       | <br />                | `GetTaskByIdAsync`                | 获取任务详情   |
+| <br />       | <br />                | `DeleteTaskByIdAsync`             | 删除任务     |
+| <br />       | <br />                | `AddMembersByIdAsync`             | 添加任务成员   |
+| <br />       | <br />                | `RemoveMembersByIdAsync`          | 移除任务成员   |
+| <br />       | <br />                | `GetTaskListsByIdAsync`           | 获取任务所在清单 |
+| <br />       | <br />                | `AddTaskListsByIdAsync`           | 将任务加入清单  |
+| <br />       | <br />                | `RemoveTaskListsByIdAsync`        | 将任务移出清单  |
+| <br />       | <br />                | `AddTaskReminderByIdAsync`        | 添加任务提醒   |
+| <br />       | <br />                | `RemoveTaskReminderByIdAsync`     | 移除任务提醒   |
+| <br />       | <br />                | `AddTaskDependenciesByIdAsync`    | 添加任务依赖   |
+| <br />       | <br />                | `RemoveTaskDependenciesByIdAsync` | 移除任务依赖   |
+| <br />       | <br />                | `CreateSubTaskAsync`              | 创建子任务    |
+| <br />       | <br />                | `GetSubTasksPageListByIdAsync`    | 获取子任务列表  |
+| **租户令牌接口**   | `IFeishuTenantV2Task` | -                                 | 仅继承父类方法  |
+| **用户令牌接口**   | `IFeishuUserV2Task`   | -                                 | 仅继承父类方法  |
 
 **其他任务相关接口**：
 
-| 接口名称 | 继承关系 | 说明 |
-|---------|---------|------|
-| `IFeishuTenantV2TaskCustomFields` → `IFeishuV2TaskCustomFields` | 继承父类 | 自定义字段管理 |
-| `IFeishuUserV2TaskCustomFields` → `IFeishuV2TaskCustomFields` | 继承父类 | 自定义字段管理 |
-| `IFeishuTenantV2TaskComments` → `IFeishuV2TaskComments` | 继承父类 | 任务评论管理 |
-| `IFeishuUserV2TaskComments` → `IFeishuV2TaskComments` | 继承父类 | 任务评论管理 |
-| `IFeishuTenantV2TaskAttachments` → `IFeishuV2TaskAttachments` | 继承父类 | 任务附件管理 |
-| `IFeishuUserV2TaskAttachments` → `IFeishuV2TaskAttachments` | 继承父类 | 任务附件管理 |
-| `IFeishuTenantV2TaskList` → `IFeishuV2TaskList` | 继承父类 | 任务清单管理 |
-| `IFeishuUserV2TaskList` → `IFeishuV2TaskList` | 继承父类 | 任务清单管理 |
-| `IFeishuTenantV2TaskSections` → `IFeishuV2TaskSections` | 继承父类 | 任务分组管理 |
-| `IFeishuUserV2TaskSections` → `IFeishuV2TaskSections` | 继承父类 | 任务分组管理 |
-| `IFeishuTenantV2TaskActivitySubscriptions` → `IFeishuV2TaskActivitySubscriptions` | 继承父类 | 任务活动订阅 |
+| 接口名称                                                                              | 继承关系 | 说明      |
+| --------------------------------------------------------------------------------- | ---- | ------- |
+| `IFeishuTenantV2TaskCustomFields` → `IFeishuV2TaskCustomFields`                   | 继承父类 | 自定义字段管理 |
+| `IFeishuUserV2TaskCustomFields` → `IFeishuV2TaskCustomFields`                     | 继承父类 | 自定义字段管理 |
+| `IFeishuTenantV2TaskComments` → `IFeishuV2TaskComments`                           | 继承父类 | 任务评论管理  |
+| `IFeishuUserV2TaskComments` → `IFeishuV2TaskComments`                             | 继承父类 | 任务评论管理  |
+| `IFeishuTenantV2TaskAttachments` → `IFeishuV2TaskAttachments`                     | 继承父类 | 任务附件管理  |
+| `IFeishuUserV2TaskAttachments` → `IFeishuV2TaskAttachments`                       | 继承父类 | 任务附件管理  |
+| `IFeishuTenantV2TaskList` → `IFeishuV2TaskList`                                   | 继承父类 | 任务清单管理  |
+| `IFeishuUserV2TaskList` → `IFeishuV2TaskList`                                     | 继承父类 | 任务清单管理  |
+| `IFeishuTenantV2TaskSections` → `IFeishuV2TaskSections`                           | 继承父类 | 任务分组管理  |
+| `IFeishuUserV2TaskSections` → `IFeishuV2TaskSections`                             | 继承父类 | 任务分组管理  |
+| `IFeishuTenantV2TaskActivitySubscriptions` → `IFeishuV2TaskActivitySubscriptions` | 继承父类 | 任务活动订阅  |
 
----
+***
 
 ### 卡片管理 (Card)
 
-| 接口名称 | API 函数 | 说明 |
-|---------|---------|------|
-| `IFeishuTenantV1Card` | `CreateCardAsync` | 创建卡片实体 |
-| | `UpdateCardSettingsByIdAsync` | 更新卡片配置 |
-| | `PartialUpdateCardByIdAsync` | 局部更新卡片 |
-| | `UpdateCardByIdAsync` | 全量更新卡片 |
-| `IFeishuTenantV1CardElements` | 卡片元素管理 | 元素操作 |
+| 接口名称                          | API 函数                        | 说明     |
+| ----------------------------- | ----------------------------- | ------ |
+| `IFeishuTenantV1Card`         | `CreateCardAsync`             | 创建卡片实体 |
+| <br />                        | `UpdateCardSettingsByIdAsync` | 更新卡片配置 |
+| <br />                        | `PartialUpdateCardByIdAsync`  | 局部更新卡片 |
+| <br />                        | `UpdateCardByIdAsync`         | 全量更新卡片 |
+| `IFeishuTenantV1CardElements` | 卡片元素管理                        | 元素操作   |
 
----
+***
 
 ### 考勤管理 (Attendance)
 
-| 接口名称 | API 函数 | 说明 |
-|---------|---------|------|
-| `IFeishuTenantV1AttendanceUserFlows` | `BatchCreateUserFlowAsync` | 导入打卡流水 |
-| | `GetUserFlowAsync` | 获取打卡流水记录 |
-| | `QueryUserFlowAsync` | 批量查询打卡流水 |
-| | `BatchDelUserFlowAsync` | 删除打卡流水 |
-| | `QueryUserTaskAsync` | 查询打卡结果 |
-| `IFeishuTenantV1AttendanceGroups` | 考勤组管理 | 组配置管理 |
-| `IFeishuTenantV1AttendanceStats` | 考勤统计 | 统计报表 |
+| 接口名称                                 | API 函数                     | 说明       |
+| ------------------------------------ | -------------------------- | -------- |
+| `IFeishuTenantV1AttendanceUserFlows` | `BatchCreateUserFlowAsync` | 导入打卡流水   |
+| <br />                               | `GetUserFlowAsync`         | 获取打卡流水记录 |
+| <br />                               | `QueryUserFlowAsync`       | 批量查询打卡流水 |
+| <br />                               | `BatchDelUserFlowAsync`    | 删除打卡流水   |
+| <br />                               | `QueryUserTaskAsync`       | 查询打卡结果   |
+| `IFeishuTenantV1AttendanceGroups`    | 考勤组管理                      | 组配置管理    |
+| `IFeishuTenantV1AttendanceStats`     | 考勤统计                       | 统计报表     |
+| `IFeishuTenantV1AttendanceShifts`    | 班次管理                       | 班次配置管理   |
+| `IFeishuTenantV1AttendanceArchives`  | 考勤档案管理                     | 档案数据管理   |
 
----
+***
 
 ### 云盘管理 (Drive)
 
 **继承关系**：`IFeishuTenantV1DriveFiles` / `IFeishuUserV1DriveFiles` → `IFeishuV1DriveFiles`
 
-| 接口类型 | 接口名称 | API 函数 | 说明 |
-|---------|---------|---------|------|
-| **父类接口（公共）** | `IFeishuV1DriveFiles` | `BatchQueryMetasAsync` | 批量获取文件元数据 |
-| | | `GetFileStatisticsByFileTokenAsync` | 获取文件统计信息 |
-| | | `GetFileViewRecordPageListByFileTokenAsync` | 获取文件访问记录 |
-| | | `CopyFileByFileTokenAsync` | 复制文件 |
-| | | `MoveFileByFileTokenAsync` | 移动文件 |
-| | | `DeleteFileByFileTokenAsync` | 删除文件 |
-| | | `CreateShortcutAsync` | 创建快捷方式 |
-| | | `UploadAllFileAsync` | 上传文件（小文件） |
-| | | `UploadPrepareFileAsync` | 预上传（分片上传） |
-| | | `UploadPartFileAsync` | 上传分片 |
-| | | `UploadFinishFileAsync` | 完成分片上传 |
-| | | `DownloadFileAsync` | 下载文件 |
-| | | `CreateImportTaskAsync` | 创建导入任务 |
-| | | `GetImportTaskAsync` | 获取导入任务结果 |
-| | | `CreateExportTaskAsync` | 创建导出任务 |
-| | | `GetExportTaskAsync` | 获取导出任务结果 |
-| | | `DownloadExportFileAsync` | 下载导出文件 |
-| | | `GetFileLikePageListByFileTokenAsync` | 获取文件点赞列表 |
-| **租户令牌接口** | `IFeishuTenantV1DriveFiles` | - | 仅继承父类方法 |
-| **用户令牌接口** | `IFeishuUserV1DriveFiles` | - | 仅继承父类方法 |
+| 接口类型         | 接口名称                        | API 函数                                      | 说明        |
+| ------------ | --------------------------- | ------------------------------------------- | --------- |
+| **父类接口（公共）** | `IFeishuV1DriveFiles`       | `BatchQueryMetasAsync`                      | 批量获取文件元数据 |
+| <br />       | <br />                      | `GetFileStatisticsByFileTokenAsync`         | 获取文件统计信息  |
+| <br />       | <br />                      | `GetFileViewRecordPageListByFileTokenAsync` | 获取文件访问记录  |
+| <br />       | <br />                      | `CopyFileByFileTokenAsync`                  | 复制文件      |
+| <br />       | <br />                      | `MoveFileByFileTokenAsync`                  | 移动文件      |
+| <br />       | <br />                      | `DeleteFileByFileTokenAsync`                | 删除文件      |
+| <br />       | <br />                      | `CreateShortcutAsync`                       | 创建快捷方式    |
+| <br />       | <br />                      | `UploadAllFileAsync`                        | 上传文件（小文件） |
+| <br />       | <br />                      | `UploadPrepareFileAsync`                    | 预上传（分片上传） |
+| <br />       | <br />                      | `UploadPartFileAsync`                       | 上传分片      |
+| <br />       | <br />                      | `UploadFinishFileAsync`                     | 完成分片上传    |
+| <br />       | <br />                      | `DownloadFileAsync`                         | 下载文件      |
+| <br />       | <br />                      | `CreateImportTaskAsync`                     | 创建导入任务    |
+| <br />       | <br />                      | `GetImportTaskAsync`                        | 获取导入任务结果  |
+| <br />       | <br />                      | `CreateExportTaskAsync`                     | 创建导出任务    |
+| <br />       | <br />                      | `GetExportTaskAsync`                        | 获取导出任务结果  |
+| <br />       | <br />                      | `DownloadExportFileAsync`                   | 下载导出文件    |
+| <br />       | <br />                      | `GetFileLikePageListByFileTokenAsync`       | 获取文件点赞列表  |
+| **租户令牌接口**   | `IFeishuTenantV1DriveFiles` | -                                           | 仅继承父类方法   |
+| **用户令牌接口**   | `IFeishuUserV1DriveFiles`   | -                                           | 仅继承父类方法   |
 
 **其他云盘相关接口**：
 
-| 接口名称 | 继承关系 | 说明 |
-|---------|---------|------|
-| `IFeishuTenantV1DriveFolder` → `IFeishuV1DriveFolder` | 继承父类 | 文件夹管理 |
-| `IFeishuUserV1DriveFolder` → `IFeishuV1DriveFolder` | 继承父类 | 文件夹管理 |
+| 接口名称                                                                | 继承关系 | 说明     |
+| ------------------------------------------------------------------- | ---- | ------ |
+| `IFeishuTenantV1DriveFolder` → `IFeishuV1DriveFolder`               | 继承父类 | 文件夹管理  |
+| `IFeishuUserV1DriveFolder` → `IFeishuV1DriveFolder`                 | 继承父类 | 文件夹管理  |
 | `IFeishuTenantV1DriveFilesVersions` → `IFeishuV1DriveFilesVersions` | 继承父类 | 文件版本管理 |
-| `IFeishuUserV1DriveFilesVersions` → `IFeishuV1DriveFilesVersions` | 继承父类 | 文件版本管理 |
-| `IFeishuTenantV1DriveMedia` → `IFeishuV1DriveMedia` | 继承父类 | 媒体文件管理 |
-| `IFeishuUserV1DriveMedia` → `IFeishuV1DriveMedia` | 继承父类 | 媒体文件管理 |
+| `IFeishuUserV1DriveFilesVersions` → `IFeishuV1DriveFilesVersions`   | 继承父类 | 文件版本管理 |
+| `IFeishuTenantV1DriveMedia` → `IFeishuV1DriveMedia`                 | 继承父类 | 媒体文件管理 |
+| `IFeishuUserV1DriveMedia` → `IFeishuV1DriveMedia`                   | 继承父类 | 媒体文件管理 |
+| `IFeishuTenantV1DrivePermissions` → `IFeishuV1DrivePermissions`     | 继承父类 | 云文档权限管理 |
+| `IFeishuUserV1DrivePermissions` → `IFeishuV1DrivePermissions`       | 继承父类 | 云文档权限管理 |
+| `IFeishuTenantV1DriveSubscribe` → `IFeishuV1DriveSubscribe`         | 继承父类 | 云文档事件订阅 |
+| `IFeishuUserV1DriveSubscribe` → `IFeishuV1DriveSubscribe`           | 继承父类 | 云文档事件订阅 |
+| `IFeishuTenantV1Comments` → `IFeishuV1Comments`                     | 继承父类 | 云文档评论管理 |
+| `IFeishuUserV1Comments` → `IFeishuV1Comments`                       | 继承父类 | 云文档评论管理 |
 
----
+#### 云文档权限管理 (Drive Permissions)
+
+**继承关系**：`IFeishuTenantV1DrivePermissions` / `IFeishuUserV1DrivePermissions` → `IFeishuV1DrivePermissions`
+
+| API 函数 | 说明 |
+|---------|------|
+| `CreatePermissionMemberAsync` | 增加协作者权限 |
+| `BatchCreatePermissionMemberAsync` | 批量增加协作者权限 |
+| `UpdatePermissionMemberAsync` | 更新协作者权限 |
+| `GetPermissionMemberAsync` | 获取云文档协作者列表 |
+| `DeletePermissionMemberAsync` | 移除云文档协作者权限 |
+| `TransferOwnerPermissionMemberAsync` | 转移云文档所有者 |
+| `GetAuthPermissionMemberAsync` | 判断用户云文档权限 |
+| `UpdatePermissionPublicAsync` | 更新云文档权限设置 |
+| `GetPermissionPublicAsync` | 获取云文档权限设置 |
+| `CreatePermissionPublicPasswordAsync` | 启用云文档密码 |
+| `UpdatePermissionPublicPasswordAsync` | 刷新云文档密码 |
+| `DeletePermissionPublicPasswordAsync` | 停用云文档密码 |
+
+#### 云文档评论 (Drive Comments)
+
+**继承关系**：`IFeishuTenantV1Comments` / `IFeishuUserV1Comments` → `IFeishuV1Comments`
+
+| API 函数 | 说明 |
+|---------|------|
+| `GetCommentsPageListAsync` | 获取云文档所有评论 |
+| `BatchQueryFileCommentAsync` | 批量获取评论 |
+| `PatchFileCommentAsync` | 解决/恢复评论 |
+| `CreateFileCommentAsync` | 添加全文评论 |
+| `GetFileCommentAsync` | 获取评论详情 |
+| `CreateFileCommentReplyAsync` | 添加回复 |
+| `GetFileCommentRepliesPageListAsync` | 分页获取回复信息 |
+| `UpdateFileCommentReplyAsync` | 更新回复的内容 |
+| `DeleteFileCommentReplyAsync` | 删除回复 |
+| `UpdateReactionCommentReactionAsync` | 添加/取消表情回应 |
+
+#### 云文档事件订阅 (Drive Subscribe)
+
+**继承关系**：`IFeishuTenantV1DriveSubscribe` / `IFeishuUserV1DriveSubscribe` → `IFeishuV1Drive
+
+***
 
 ### 知识库 (Wiki)
 
 **继承关系**：`IFeishuTenantV2Wiki` / `IFeishuUserV2Wiki` → `IFeishuV2Wiki`
 
-| 接口类型 | 接口名称 | API 函数 | 说明 |
-|---------|---------|---------|------|
-| **父类接口（公共）** | `IFeishuV2Wiki` | `GetSpacesPageListAsync` | 获取知识空间列表 |
-| | | `GetSpaceInfoAsync` | 获取知识空间信息 |
-| | | `GetSpaceMemberPageListAsync` | 获取知识空间成员列表 |
-| | | `CreateSpaceMemberAsync` | 添加知识空间成员 |
-| | | `DeleteSpaceMemberAsync` | 删除知识空间成员 |
-| | | `UpdateSpaceSettingAsync` | 更新知识空间设置 |
-| **租户令牌接口** | `IFeishuTenantV2Wiki` | - | 仅继承父类方法 |
-| **用户令牌接口** | `IFeishuUserV2Wiki` | - | 仅继承父类方法 |
+| 接口类型         | 接口名称                  | API 函数                        | 说明         |
+| ------------ | --------------------- | ----------------------------- | ---------- |
+| **父类接口（公共）** | `IFeishuV2Wiki`       | `GetSpacesPageListAsync`      | 获取知识空间列表   |
+| <br />       | <br />                | `GetSpaceInfoAsync`           | 获取知识空间信息   |
+| <br />       | <br />                | `GetSpaceMemberPageListAsync` | 获取知识空间成员列表 |
+| <br />       | <br />                | `CreateSpaceMemberAsync`      | 添加知识空间成员   |
+| <br />       | <br />                | `DeleteSpaceMemberAsync`      | 删除知识空间成员   |
+| <br />       | <br />                | `UpdateSpaceSettingAsync`     | 更新知识空间设置   |
+| **租户令牌接口**   | `IFeishuTenantV2Wiki` | -                             | 仅继承父类方法    |
+| **用户令牌接口**   | `IFeishuUserV2Wiki`   | -                             | 仅继承父类方法    |
 
 **知识节点接口**：
 
-| 接口名称 | 继承关系 | 说明 |
-|---------|---------|------|
+| 接口名称                                              | 继承关系 | 说明     |
+| ------------------------------------------------- | ---- | ------ |
 | `IFeishuTenantV2WikiNodes` → `IFeishuV2WikiNodes` | 继承父类 | 知识节点管理 |
 
----
+***
 
 ### 文档管理 (Docx)
 
-| 接口名称 | 继承关系 | 说明 |
-|---------|---------|------|
-| `IFeishuTenantV1Docx` → `IFeishuV1Docx` | 继承父类 | 飞书文档基础操作 |
-| `IFeishuUserV1Docx` → `IFeishuV1Docx` | 继承父类 | 飞书文档基础操作 |
-| `IFeishuTenantV1DocxBlocks` → `IFeishuV1DocxBlocks` | 继承父类 | 文档块操作 |
-| `IFeishuUserV1DocxBlocks` → `IFeishuV1DocxBlocks` | 继承父类 | 文档块操作 |
+| 接口名称                                                | 继承关系 | 说明       |
+| --------------------------------------------------- | ---- | -------- |
+| `IFeishuTenantV1Docx` → `IFeishuV1Docx`             | 继承父类 | 飞书文档基础操作 |
+| `IFeishuUserV1Docx` → `IFeishuV1Docx`               | 继承父类 | 飞书文档基础操作 |
+| `IFeishuTenantV1DocxBlocks` → `IFeishuV1DocxBlocks` | 继承父类 | 文档块操作    |
+| `IFeishuUserV1DocxBlocks` → `IFeishuV1DocxBlocks`   | 继承父类 | 文档块操作    |
 
 ```csharp
 IFeishuV1Docx       // 文档基础操作
@@ -412,10 +466,77 @@ IFeishuV1DocxBlocks // 文档块操作
 ```
 
 **功能列表**：
+
 - 文档创建和获取
 - 文档块读取和更新
 - 批量操作文档块
 - 内容转换
+
+---
+
+### 画板管理 (Board)
+
+**继承关系**：`IFeishuTenantV1Board` / `IFeishuUserV1Board` → `IFeishuV1Board`
+
+| API 函数 | 说明 |
+---------|------
+| `GetWhiteboardThemeAsync` | 获取画板主题 |
+| `UpdateWhiteboardThemeAsync` | 更新画板主题 |
+| `DownloadWhiteboardImageAsync` | 获取画板缩略图片 |
+| `CreatePlantumlWhiteboardNodeAsync` | 解析画板语法（PlantUML/Mermaid） |
+| `CreateWhiteboardNodeAsync` | 创建画板节点 |
+| `GetWhiteboardNodesAsync` | 获取所有节点 |
+
+---
+
+### 电子表格 (Spreadsheets)
+
+| 接口名称 | 继承关系 | 说明 |
+---------|---------|------
+| `IFeishuTenantV3Spreadsheets` → `IFeishuV3Spreadsheets` | 继承父类 | 电子表格管理 |
+| `IFeishuUserV3Spreadsheets` → `IFeishuV3Spreadsheets` | 继承父类 | 电子表格管理 |
+| `IFeishuTenantV3SpreadsheetRange` → `IFeishuV3SpreadsheetRange` | 继承父类 | 区域操作 |
+| `IFeishuUserV3SpreadsheetRange` → `IFeishuV3SpreadsheetRange` | 继承父类 | 区域操作 |
+| `IFeishuTenantV3SpreadsheetData` → `IFeishuV3SpreadsheetData` | 继承父类 | 数据操作 |
+| `IFeishuUserV3SpreadsheetData` → `IFeishuV3SpreadsheetData` | 继承父类 | 数据操作 |
+| `IFeishuTenantV3SpreadsheetCell` → `IFeishuV3SpreadsheetCell` | 继承父类 | 单元格操作 |
+| `IFeishuUserV3SpreadsheetCell` → `IFeishuV3SpreadsheetCell` | 继承父类 | 单元格操作 |
+| `IFeishuTenantV3SpreadsheetFilter` → `IFeishuV3SpreadsheetFilter` | 继承父类 | 筛选操作 |
+| `IFeishuUserV3SpreadsheetFilter` → `IFeishuV3SpreadsheetFilter` | 继承父类 | 筛选操作 |
+| `IFeishuTenantV3SpreadsheetFilterView` → `IFeishuV3SpreadsheetFilterView` | 继承父类 | 筛选视图 |
+| `IFeishuUserV3SpreadsheetFilterView` → `IFeishuV3SpreadsheetFilterView` | 继承父类 | 筛选视图 |
+| `IFeishuTenantV3SpreadsheetFloatImage` → `IFeishuV3SpreadsheetFloatImage` | 继承父类 | 浮动图片 |
+| `IFeishuUserV3SpreadsheetFloatImage` → `IFeishuV3SpreadsheetFloatImage` | 继承父类 | 浮动图片 |
+| `IFeishuTenantV2SpreadsheetProtected` → `IFeishuV2SpreadsheetProtected` | 继承父类 | 保护范围 |
+| `IFeishuUserV2SpreadsheetProtected` → `IFeishuV2SpreadsheetProtected` | 继承父类 | 保护范围 |
+| `IFeishuTenantV2SpreadsheetDataValidation` → `IFeishuV2SpreadsheetDataValidation` | 继承父类 | 数据验证 |
+| `IFeishuUserV2SpreadsheetDataValidation` → `IFeishuV2SpreadsheetDataValidation` | 继承父类 | 数据验证 |
+| `IFeishuTenantV2SpreadsheetConditionFormat` → `IFeishuV2SpreadsheetConditionFormat` | 继承父类 | 条件格式 |
+| `IFeishuUserV2SpreadsheetConditionFormat` → `IFeishuV2SpreadsheetConditionFormat` | 继承父类 | 条件格式 |
+
+---
+
+### 多维表格 (Bitable)
+
+| 接口名称 | 继承关系 | 说明 |
+---------|---------|------
+| `IFeishuTenantV1Bitable` → `IFeishuV1Bitable` | 继承父类 | 多维表格应用管理 |
+| `IFeishuUserV1Bitable` → `IFeishuV1Bitable` | 继承父类 | 多维表格应用管理 |
+| `IFeishuTenantV1BitableAppTable` → `IFeishuV1BitableAppTable` | 继承父类 | 数据表管理 |
+| `IFeishuUserV1BitableAppTable` → `IFeishuV1BitableAppTable` | 继承父类 | 数据表管理 |
+| `IFeishuTenantV1BitableRecord` → `IFeishuV1BitableRecord` | 继承父类 | 记录管理 |
+| `IFeishuUserV1BitableRecord` → `IFeishuV1BitableRecord` | 继承父类 | 记录管理 |
+| `IFeishuTenantV1BitableField` → `IFeishuV1BitableField` | 继承父类 | 字段管理 |
+| `IFeishuUserV1BitableField` → `IFeishuV1BitableField` | 继承父类 | 字段管理 |
+| `IFeishuTenantV1BitableView` → `IFeishuV1BitableView` | 继承父类 | 视图管理 |
+| `IFeishuUserV1BitableView` → `IFeishuV1BitableView` | 继承父类 | 视图管理 |
+| `IFeishuTenantV1BitableForm` → `IFeishuV1BitableForm` | 继承父类 | 表单管理 |
+| `IFeishuUserV1BitableForm` → `IFeishuV1BitableForm` | 继承父类 | 表单管理 |
+| `IFeishuTenantV1BitableDashboard` → `IFeishuV1BitableDashboard` | 继承父类 | 仪表盘管理 |
+| `IFeishuUserV1BitableDashboard` → `IFeishuV1BitableDashboard` | 继承父类 | 仪表盘管理 |
+| `IFeishuTenantV2BitableRole` → `IFeishuV2BitableRole` | 继承父类 | 角色管理 |
+| `IFeishuUserV2BitableRole` → `IFeishuV2BitableRole` | 继承父类 | 角色管理 |
+| `IFeishuV1BitableWorkflow` | - | 自动化流程管理 |
 
 ## 多应用支持
 
@@ -459,18 +580,18 @@ public class MultiAppService
 
 ## 配置选项
 
-| 配置项 | 类型 | 默认值 | 说明 |
-|--------|------|--------|------|
-| `AppKey` | string | - | 应用唯一标识（必需） |
-| `AppId` | string | - | 飞书应用 ID（必需） |
-| `AppSecret` | string | - | 飞书应用密钥（必需） |
-| `BaseUrl` | string | https://open.feishu.cn | API 基础地址 |
-| `TimeOut` | int | 30 | HTTP 请求超时时间（秒） |
-| `RetryCount` | int | 3 | 失败重试次数 |
-| `RetryDelayMs` | int | 1000 | 重试延迟时间（毫秒） |
-| `TokenRefreshThreshold` | int | 300 | 令牌刷新阈值（秒） |
-| `EnableLogging` | bool | true | 是否启用日志记录 |
-| `IsDefault` | bool | false | 是否为默认应用 |
+| 配置项                     | 类型     | 默认值                      | 说明             |
+| ----------------------- | ------ | ------------------------ | -------------- |
+| `AppKey`                | string | -                        | 应用唯一标识（必需）     |
+| `AppId`                 | string | -                        | 飞书应用 ID（必需）    |
+| `AppSecret`             | string | -                        | 飞书应用密钥（必需）     |
+| `BaseUrl`               | string | <https://open.feishu.cn> | API 基础地址       |
+| `TimeOut`               | int    | 30                       | HTTP 请求超时时间（秒） |
+| `RetryCount`            | int    | 3                        | 失败重试次数         |
+| `RetryDelayMs`          | int    | 1000                     | 重试延迟时间（毫秒）     |
+| `TokenRefreshThreshold` | int    | 300                      | 令牌刷新阈值（秒）      |
+| `EnableLogging`         | bool   | true                     | 是否启用日志记录       |
+| `IsDefault`             | bool   | false                    | 是否为默认应用        |
 
 ## 自定义模块注册
 
@@ -498,7 +619,8 @@ builder.Services.CreateFeishuServicesBuilder()
 ### 自动令牌管理
 
 SDK 内置了智能的令牌管理机制：
-- 自动获取和缓存 access_token
+
+- 自动获取和缓存 access\_token
 - 令牌即将过期时自动刷新
 - 支持应用令牌、租户令牌、用户令牌三种类型
 - 高并发场景下的缓存击穿防护
@@ -506,6 +628,7 @@ SDK 内置了智能的令牌管理机制：
 ### 智能重试机制
 
 针对网络不稳定等场景，SDK 提供了可配置的重试策略：
+
 - 可配置重试次数和延迟时间
 - 支持指数退避策略
 - 自动重试失败的 API 调用
@@ -513,17 +636,18 @@ SDK 内置了智能的令牌管理机制：
 ### 类型安全
 
 所有 API 都通过强类型接口定义：
+
 - 编译时类型检查
 - 完整的 XML 文档注释
 - 智能提示支持
 
 ## 依赖项
 
-| 包                            | 版本   | 说明                          |
-| ----------------------------- | ------ | ----------------------------- |
-| **Mud.HttpUtils**             | v1.6.2 | HTTP 客户端工具类             |
-| **Mud.HttpUtils.Generator**   | v1.6.2 | HTTP 客户端代码生成器（编译时）|
-| **Mud.Feishu.Abstractions**   | *      | 飞书 SDK 抽象层（同版本依赖） |
+| 包                           | 版本     | 说明                 |
+| --------------------------- | ------ | ------------------ |
+| **Mud.HttpUtils**           | v1.6.2 | HTTP 客户端工具类        |
+| **Mud.HttpUtils.Generator** | v1.6.2 | HTTP 客户端代码生成器（编译时） |
+| **Mud.Feishu.Abstractions** | \*     | 飞书 SDK 抽象层（同版本依赖）  |
 
 ## 框架支持
 
@@ -548,6 +672,6 @@ SDK 内置了智能的令牌管理机制：
 
 如有问题或建议，欢迎提交 Issue 或 Pull Request。
 
----
+***
 
 **Mud.Feishu** - 让飞书集成变得简单！

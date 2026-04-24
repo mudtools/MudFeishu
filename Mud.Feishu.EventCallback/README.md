@@ -16,72 +16,94 @@
 
 ## 支持的事件类型
 
-### 📋 审批事件（Approval）
-
-| 事件类型                                | 说明         | 数据模型                                  |
-| --------------------------------------- | ------------ | ----------------------------------------- |
-| `leave_approval`                        | 请假审批     | `LeaveApprovalResult`                     |
-| `leave_approval_revert`                 | 请假撤销     | `LeaveApprovalRevertResult`               |
-| `leave_approval_v2`                     | 请假审批 V2  | `LeaveApprovalV2Result`                   |
-| `work_approval`                         | 加班审批     | `WorkApprovalResult`                      |
-| `work_approval_revert`                  | 加班撤销     | `WorkApprovalRevertResult`                |
-| `out_approval`                          | 外出审批     | `OutApprovalResult`                       |
-| `shift_approval`                        | 换班审批     | `ShiftApprovalResult`                     |
-| `approval_instance`                     | 审批实例     | `ApprovalInstanceResult`                  |
-| `approval_task`                         | 审批任务     | `ApprovalResult`                          |
-| `approval_cc`                           | 审批抄送     | `ApprovalCcResult`                        |
-| `approval_approval_updated`             | 审批定义更新 | `ApprovalApprovalUpdatedResult`           |
-| `approval_instance_trip_group_update`   | 出差审批更新 | `ApprovalInstanceTripGroupUpdateResult`   |
-| `approval_instance_remedy_group_update` | 补卡审批更新 | `ApprovalInstanceRemedyGroupUpdateResult` |
-
 ### 👥 组织架构事件（Organization）
 
-| 事件类型                                    | 说明           | 数据模型                          |
-| ------------------------------------------- | -------------- | --------------------------------- |
-| `contact.user.created_v3`                   | 员工入职       | `UserCreateResult`                |
-| `contact.user.deleted_v3`                   | 员工离职       | `UserDeleteResult`                |
-| `contact.user.updated_v3`                   | 员工信息更新   | `UserUpdateResult`                |
-| `contact.department.created_v3`             | 部门创建       | `DepartmentCreatedEventResult`    |
-| `contact.department.deleted_v3`             | 部门删除       | `DepartmentDeleteResult`          |
-| `contact.department.updated_v3`             | 部门更新       | `DepartmentDeleteResult`          |
-| `contact.custom_attr.updated_v3`            | 自定义属性更新 | `CustomAttrUpdateResult`          |
-| `contact.employee_type_enum.created_v3`     | 人员类型创建   | `EmployeeTypeEnumCreatedResult`   |
-| `contact.employee_type_enum.deleted_v3`     | 人员类型删除   | `EmployeeTypeEnumDeleteResult`    |
-| `contact.employee_type_enum.updated_v3`     | 人员类型更新   | `EmployeeTypeEnumUpdateResult`    |
-| `contact.employee_type_enum.activated_v3`   | 人员类型激活   | `EmployeeTypeEnumActivedResult`   |
-| `contact.employee_type_enum.deactivated_v3` | 人员类型停用   | `EmployeeTypeEnumDeActivedResult` |
+| 事件类型                                    | 事件委托类                              | 事件说明         |
+| ------------------------------------------- | --------------------------------------- | ---------------- |
+| `contact.user.created_v3`                   | `UserCreateEventHandler`                | 员工入职事件     |
+| `contact.user.updated_v3`                   | `UserUpdateEventHandler`                | 员工信息更新事件 |
+| `contact.user.deleted_v3`                   | `UserDeleteEventHandler`                | 员工离职事件     |
+| `contact.department.created_v3`             | `DepartmentCreatedEventHandler`         | 部门创建事件     |
+| `contact.department.updated_v3`             | `DepartmentUpdateEventHandler`          | 部门更新事件     |
+| `contact.department.deleted_v3`             | `DepartmentDeleteEventHandler`          | 部门删除事件     |
+| `contact.custom_attr_event.updated_v3`      | `CustomAttrUpdateEventHandler`          | 成员字段变更事件 |
+| `contact.employee_type_enum.created_v3`     | `EmployeeTypeEnumCreatedEventHandler`   | 人员类型创建事件 |
+| `contact.employee_type_enum.updated_v3`     | `EmployeeTypeEnumUpdateEventHandler`    | 人员类型更新事件 |
+| `contact.employee_type_enum.deleted_v3`     | `EmployeeTypeEnumDeleteEventHandler`    | 人员类型删除事件 |
+| `contact.employee_type_enum.actived_v3`     | `EmployeeTypeEnumActivedEventHandler`   | 人员类型启用事件 |
+| `contact.employee_type_enum.deactivated_v3` | `EmployeeTypeEnumDeActivedEventHandler` | 人员类型禁用事件 |
 
 ### 💬 即时通讯事件（IM）
 
-| 事件类型                           | 说明         | 数据模型                       |
-| ---------------------------------- | ------------ | ------------------------------ |
-| `im.message.receive_v1`            | 接收消息     | `MessageReceiveResult`         |
-| `im.message.read_v1`               | 消息已读     | `MessageReadResult`            |
-| `im.message.recalled_v1`           | 消息撤回     | `MessageRecalledResult`        |
-| `im.message_reaction.created_v1`   | 表情回应创建 | `MessageReactionCreatedResult` |
-| `im.message_reaction.deleted_v1`   | 表情回应删除 | `MessageReactionDeletedResult` |
-| `im.chat.updated_v1`               | 群聊更新     | `ChatUpdatedResult`            |
-| `im.chat.disbanded_v1`             | 群聊解散     | `ChatDisbandedResult`          |
-| `im.chat.member.user.added_v1`     | 用户进群     | `ChatMemberUserAddedResult`    |
-| `im.chat.member.user.deleted_v1`   | 用户退群     | `ChatMemberUserAddedResult`    |
-| `im.chat.member.user.withdrawn_v1` | 用户主动退群 | `ChatMemberUserAddedResult`    |
-| `im.chat.member.bot.added_v1`      | 机器人进群   | `ChatMemberBotAddedResult`     |
-| `im.chat.member.bot.deleted_v1`    | 机器人退群   | `ChatMemberBotDeletedResult`   |
+| 事件类型                           | 事件委托类                            | 事件说明             |
+| ---------------------------------- | ------------------------------------- | -------------------- |
+| `im.message.receive_v1`            | `MessageReceiveEventHandler`          | 接收消息事件         |
+| `im.message.recalled_v1`           | `MessageRecalledEventHandler`         | 消息撤回事件         |
+| `im.message.message_read_v1`       | `MessageReadEventHandler`             | 消息已读事件         |
+| `im.message.reaction.created_v1`   | `MessageReactionCreatedEventHandler`  | 新增消息表情回复事件 |
+| `im.message.reaction.deleted_v1`   | `MessageReactionDeletedEventHandler`  | 删除消息表情回复事件 |
+| `im.chat.disbanded_v1`             | `ChatDisbandedEventHandler`           | 群解散事件           |
+| `im.chat.updated_v1`               | `ChatUpdatedEventHandler`             | 群配置修改事件       |
+| `im.chat.member.user.added_v1`     | `ChatMemberUserAddedEventHandler`     | 用户进群事件         |
+| `im.chat.member.user.deleted_v1`   | `ChatMemberUserDeletedEventHandler`   | 用户出群事件         |
+| `im.chat.member.user.withdrawn_v1` | `ChatMemberUserWithdrawnEventHandler` | 撤销拉用户进群事件   |
+| `im.chat.member.bot.added_v1`      | `ChatMemberBotAddedEventHandler`      | 机器人进群事件       |
+| `im.chat.member.bot.deleted_v1`    | `ChatMemberBotDeletedEventHandler`    | 机器人被移出群事件   |
+
+### 📋 审批事件（Approval）
+
+| 事件类型                                   | 事件委托类                                      | 事件说明               |
+| ------------------------------------------ | ----------------------------------------------- | ---------------------- |
+| `approval.approval.updated_v4`             | `ApprovalApprovalUpdatedEventHandler`           | 审批定义更新事件       |
+| `approval_instance`                        | `ApprovalInstanceEventHandler`                  | 审批实例状态变更事件   |
+| `approval_task`                            | `ApprovalTaskEventHandler`                      | 审批任务状态变更事件   |
+| `approval_cc`                              | `ApprovalCcEventHandler`                        | 审批抄送状态变更事件   |
+| `approval.instance.trip_group_update_v4`   | `ApprovalInstanceTripGroupUpdateEventHandler`   | 出差审批事件           |
+| `approval.instance.remedy_group_update_v4` | `ApprovalInstanceRemedyGroupUpdateEventHandler` | 补卡审批事件           |
+| `leave_approval`                           | `LeaveApprovalEventHandler`                     | 请假审批事件           |
+| `leave_approvalV2`                         | `LeaveApprovalV2EventHandler`                   | 请假审批事件 V2        |
+| `leave_approval_revert`                    | `LeaveApprovalRevertEventHandler`               | 请假审批通过并撤销事件 |
+| `work_approval`                            | `WorkApprovalEventHandler`                      | 加班审批事件           |
+| `work_approval_revert`                     | `WorkApprovalRevertEventHandler`                | 加班审批通过并撤销事件 |
+| `out_approval`                             | `OutApprovalEventHandler`                       | 外出审批事件           |
+| `shift_approval`                           | `ShiftApprovalEventHandler`                     | 换班审批事件           |
 
 ### ✅ 任务事件（Task）
 
-| 事件类型               | 说明         | 数据模型                   |
-| ---------------------- | ------------ | -------------------------- |
-| `task.updated`         | 任务更新     | `TaskUpdatedResult`        |
-| `task.comment.updated` | 任务评论更新 | `TaskCommentUpdatedResult` |
-| `task.tenant.updated`  | 租户任务更新 | `TaskUpdateTenantResult`   |
+| 事件类型                       | 事件委托类                       | 事件说明                     |
+| ------------------------------ | -------------------------------- | ---------------------------- |
+| `task.task.updated_v1`         | `TaskUpdatedEventHandler`        | 任务信息变更（应用维度）事件 |
+| `task.task.update_tenant_v1`   | `TaskUpdateTenantEventHandler`   | 任务信息变更（租户维度）事件 |
+| `task.task.comment.updated_v1` | `TaskCommentUpdatedEventHandler` | 任务评论信息变更事件         |
+
+### ☁️ 云盘事件（Drive）
+
+| 事件类型                                  | 事件委托类                                     | 事件说明               |
+| ----------------------------------------- | ---------------------------------------------- | ---------------------- |
+| `drive.file.created_in_folder_v1`         | `DriveFileCreatedEventHandler`                 | 文件夹下文件创建事件   |
+| `drive.file.title_updated_v1`             | `DriveFileTitleUpdatedEventHandler`            | 文件标题更新事件       |
+| `drive.file.read_v1`                      | `DriveFileReadEventHandler`                    | 文件已读事件           |
+| `drive.file.edit_v1`                      | `DriveFileEditEventHandler`                    | 文件编辑事件           |
+| `drive.file.permission_member_applied_v1` | `DriveFilePermissionMemberAppliedEventHandler` | 文件协作者权限申请事件 |
+| `drive.file.permission_member_added_v1`   | `DriveFilePermissionMemberAddedEventHandler`   | 文件协作者添加事件     |
+| `drive.file.permission_member_removed_v1` | `DriveFilePermissionMemberRemovedEventHandler` | 文档协作者移除事件     |
+| `drive.file.trashed_v1`                   | `DriveFileTrashedEventHandler`                 | 文件删除到回收站事件   |
+| `drive.file.deleted_v1`                   | `DriveFileDeletedEventHandler`                 | 文件删除事件           |
+| `drive.notice.comment_add_v1`             | `DriveNoticeCommentAddEventHandler`            | 文件评论新增事件       |
+
+### 📋 多维表格事件（Bitable）
+
+| 事件类型                               | 事件委托类                         | 事件说明             |
+| -------------------------------------- | ---------------------------------- | -------------------- |
+| `drive.file.bitable_field_changed_v1`  | `BitableFieldChangedEventHandler`  | 多维表格字段变更事件 |
+| `drive.file.bitable_record_changed_v1` | `BitableRecordChangedEventHandler` | 多维表格记录变更事件 |
 
 ### ⏰ 考勤事件（Attendance）
 
-| 事件类型                          | 说明         | 数据模型                          |
-| --------------------------------- | ------------ | --------------------------------- |
-| `attendance.user_flow.created_v1` | 考勤流水创建 | `AttendanceUserFlowCreatedResult` |
-| `attendance.user_task.updated_v1` | 考勤任务更新 | `AttendanceUserTaskUpdatedResult` |
+| 事件类型                          | 事件委托类                              | 事件说明             |
+| --------------------------------- | --------------------------------------- | -------------------- |
+| `attendance.user_flow.created_v1` | `AttendanceUserFlowCreatedEventHandler` | 考勤用户打卡流水事件 |
+| `attendance.user_task.updated_v1` | `AttendanceUserTaskUpdatedEventHandler` | 考勤用户任务更新事件 |
 
 ## 安装
 
@@ -224,14 +246,16 @@ public class MessageReceiveResult : IEventResult
 ```
 Mud.Feishu.EventCallback/
 ├── Approval/                          # 审批事件
+│   ├── ApprovalApprovalUpdatedEvent/  # 审批定义更新
+│   ├── ApprovalCcEvent/              # 审批抄送
+│   ├── ApprovalInstanceEvent/        # 审批实例
+│   ├── ApprovalInstanceTripGroupUpdateEvent/ # 出差审批
+│   ├── ApprovalInstanceRemedyGroupUpdateEvent/ # 补卡审批
+│   ├── ApprovalTaskEvent/            # 审批任务
 │   ├── LeaveApprovalEvent/           # 请假审批
-│   ├── WorkApprovalEvent/            # 加班审批
 │   ├── OutApprovalEvent/             # 外出审批
 │   ├── ShiftApprovalEvent/           # 换班审批
-│   ├── ApprovalInstanceEvent/        # 审批实例
-│   ├── ApprovalTaskEvent/            # 审批任务
-│   ├── ApprovalCcEvent/              # 审批抄送
-│   └── ...
+│   └── WorkApprovalEvent/            # 加班审批
 ├── Organization/                      # 组织架构事件
 │   ├── UserCreateEvent/              # 用户创建
 │   ├── UserDeleteEvent/              # 用户删除
@@ -239,7 +263,12 @@ Mud.Feishu.EventCallback/
 │   ├── DepartmentCreatedEvent/       # 部门创建
 │   ├── DepartmentDeletedEvent/       # 部门删除
 │   ├── DepartmentUpdateEvent/        # 部门更新
-│   └── ...
+│   ├── CustomAttrUpdateEvent/        # 自定义属性更新
+│   ├── EmployeeTypeEnumCreatedEvent/ # 人员类型创建
+│   ├── EmployeeTypeEnumDeleteEvent/  # 人员类型删除
+│   ├── EmployeeTypeEnumUpdateEvent/  # 人员类型更新
+│   ├── EmployeeTypeEnumActivedEvent/ # 人员类型启用
+│   └── EmployeeTypeEnumDeActivedEvent/ # 人员类型禁用
 ├── IM/                               # 即时通讯事件
 │   ├── MessageReceiveEvent/          # 消息接收
 │   ├── MessageReadEvent/             # 消息已读
@@ -248,11 +277,29 @@ Mud.Feishu.EventCallback/
 │   ├── MessageReactionDeletedEvent/  # 表情回应删除
 │   ├── ChatUpdatedEvent/             # 群聊更新
 │   ├── ChatDisbandedEvent/           # 群聊解散
-│   └── ...
+│   ├── ChatMemberUserAddedEvent/     # 用户进群
+│   ├── ChatMemberUserDeletedEvent/   # 用户出群
+│   ├── ChatMemberUserWithdrawnEvent/ # 撤销拉用户进群
+│   ├── ChatMemberBotAddedEvent/      # 机器人进群
+│   └── ChatMemberBotDeletedEvent/    # 机器人退群
 ├── Task/                             # 任务事件
 │   ├── TaskUpdatedResult.cs          # 任务更新
 │   ├── TaskCommentUpdatedResult.cs   # 任务评论更新
 │   └── TaskUpdateTenantResult.cs     # 租户任务更新
+├── Drive/                            # 云盘事件
+│   ├── DriveFileCreatedEvent/        # 文件创建
+│   ├── DriveFileDeletedEvent/        # 文件删除
+│   ├── DriveFileEditEvent/           # 文件编辑
+│   ├── DriveFileReadEvent/           # 文件已读
+│   ├── DriveFileTitleUpdatedEvent/   # 文件标题更新
+│   ├── DriveFileTrashedEvent/        # 文件回收站
+│   ├── DriveFilePermissionMemberAddedEvent/     # 协作者添加
+│   ├── DriveFilePermissionMemberAppliedEvent/   # 协作者权限申请
+│   ├── DriveFilePermissionMemberRemovedEvent/   # 协作者移除
+│   └── DriveNoticeCommentAddEvent/   # 评论新增
+├── Bitable/                          # 多维表格事件
+│   ├── BitableFieldChangedEvent/     # 字段变更
+│   └── BitableRecordChanged/         # 记录变更
 ├── Attendance/                       # 考勤事件
 │   ├── AttendanceUserFlowCreatedResult.cs   # 考勤流水创建
 │   └── AttendanceUserTaskUpdatedResult.cs   # 考勤任务更新

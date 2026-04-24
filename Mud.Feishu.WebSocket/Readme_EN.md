@@ -14,7 +14,13 @@ Enterprise-grade Feishu event subscription WebSocket client, providing reliable 
 - 🔌 **Event Interceptors** - Support inserting custom logic before/after event handling (logging, telemetry, rate limiting, etc.)
 - 🛡️ **Enterprise-Grade Stability** - Comprehensive error handling, resource management, logging
 - ⚙️ **Flexible Configuration** - Supports configuration files, code configuration, and builder pattern
-- 📊 **Monitoring-Friendly** - Detailed event notifications, performance metrics, heartbeat statistics
+- 📊 **Monitoring-Friendly** - Detailed event notifications, performance metrics, heartbeat statistics, FeishuMetrics integration
+- 🔁 **Exponential Backoff Reconnection** - Pluggable reconnection strategy, dual limits on attempts and time, debounce mechanism
+- 🔐 **Message Sequence Validation** - Replay attack detection, message loss detection, sequence rollback detection
+- 📦 **Message Queue Backpressure** - Three backpressure strategies (DropOldest/DropNewest/Block)
+- 🔑 **Event Deduplication** - In-memory/Distributed deduplication (Redis), prevent duplicate processing
+- 🔒 **SSL/TLS Certificate Validation** - Configurable certificate validation policy, custom validation callback
+- 🎫 **Auto Token Refresh** - Access token caching and early refresh to avoid expiration
 
 ## 🚀 Quick Start
 
@@ -77,12 +83,17 @@ app.Run();
       "IsDefault": true
     }
   ],
-  "WebSocket": {
+  "FeishuWebSocket": {
     "AutoReconnect": true,
     "MaxReconnectAttempts": 5,
     "ReconnectDelayMs": 5000,
-    "HeartbeatIntervalMs": 30000,
-    "EnableLogging": true
+    "HeartbeatIntervalMs": 25000,
+    "EnableLogging": true,
+    "EventDeduplication": {
+      "Mode": "InMemory",
+      "CacheExpirationMs": 86400000,
+      "CleanupIntervalMs": 300000
+    }
   }
 }
 ```
@@ -97,21 +108,29 @@ The Feishu WebSocket client adopts modular design, breaking down complex functio
 
 #### Core Components
 
-| Component | Responsibility | Features |
-|-----------|---------------|----------|
-| **WebSocketConnectionManager** | Connection Manager | Connection establishment, disconnection, state management, reconnection mechanism |
-| **AuthenticationManager** | Authentication Manager | WebSocket authentication flow, state management, authentication events |
-| **MessageRouter** | Message Router | Message routing, version detection (v1.0/v2.0), handler management |
-| **BinaryMessageProcessor** | Binary Message Processor | Incremental receiving, ProtoBuf/JSON parsing, memory optimization |
+| Component                               | Responsibility           | Features                                                                                  |
+| --------------------------------------- | ------------------------ | ----------------------------------------------------------------------------------------- |
+| **WebSocketConnectionManager**          | Connection Manager       | Connection establishment, disconnection, state management, SSL/TLS certificate validation |
+| **AuthenticationManager**               | Authentication Manager   | WebSocket authentication flow, state management, authentication events                    |
+| **MessageRouter**                       | Message Router           | Message routing, version detection (v1.0/v2.0), handler management                        |
+| **BinaryMessageProcessor**              | Binary Message Processor | Incremental receiving, ProtoBuf/JSON parsing, memory optimization                         |
+| **HeartbeatManager**                    | Heartbeat Manager        | Heartbeat detection, timeout handling, consecutive timeout triggers reconnection          |
+| **SessionManager**                      | Session Manager          | session_id management, session recovery, 24-hour validity                                 |
+| **MessageSequenceValidator**            | Sequence Validator       | Replay detection, message loss detection, sequence rollback detection                     |
+| **MessageQueueManager**                 | Queue Manager            | Message queuing, backpressure strategy, concurrency control                               |
+| **EventSubscriptionManager**            | Subscription Manager     | Event type subscription, subscription request sending                                     |
+| **ConnectionMetrics**                   | Metrics Manager          | Message statistics, performance metrics, FeishuMetrics integration                        |
+| **ReconnectionOrchestrator**            | Reconnection Coordinator | Unified reconnection management, debounce mechanism, cooldown time                        |
+| **ExponentialBackoffReconnectStrategy** | Backoff Strategy         | Exponential backoff delay, dual limits on attempts and time                               |
 
 #### Message Handlers
 
-| Handler | Description |
-|---------|-------------|
-| **IMessageHandler** | Message handler interface, provides generic deserialization functionality |
-| **EventMessageHandler** | Event message handler, supports v1.0 and v2.0 versions |
-| **BasicMessageHandler** | Basic message handler (Ping/Pong, authentication, heartbeat) |
-| **FeishuWebSocketClient** | Main client, composes all components |
+| Handler                   | Description                                                               |
+| ------------------------- | ------------------------------------------------------------------------- |
+| **IMessageHandler**       | Message handler interface, provides generic deserialization functionality |
+| **EventMessageHandler**   | Event message handler, supports v1.0 and v2.0 versions                    |
+| **BasicMessageHandler**   | Basic message handler (Ping/Pong, authentication, heartbeat)              |
+| **FeishuWebSocketClient** | Main client, composes all components                                      |
 
 ### Architecture Advantages
 
@@ -144,19 +163,52 @@ client.RegisterMessageProcessor(customMessageHandler);
 
 ```
 Mud.Feishu.WebSocket/
-├── Core/                           # Core components
+├── Configuration/                 # Configuration options
+│   ├── FeishuWebSocketOptions.cs  # Core configuration options
+│   ├── FeishuWebSocketOptionsValidator.cs # Configuration validator
+│   ├── EventDeduplicationOptions.cs # Event deduplication config
+│   ├── EventDeduplicationMode.cs  # Deduplication mode enum
+│   └── MessageSizeLimits.cs       # Message size limits
+├── Core/                          # Core components
 │   ├── WebSocketConnectionManager.cs  # Connection management
 │   ├── AuthenticationManager.cs      # Authentication management
-│   ├── MessageRouter.cs             # Message routing
-│   └── BinaryMessageProcessor.cs    # Binary processing
-├── Handlers/                       # Message handlers
+│   ├── MessageRouter.cs              # Message routing
+│   ├── BinaryMessageProcessor.cs     # Binary processing
+│   ├── HeartbeatManager.cs           # Heartbeat management
+│   ├── SessionManager.cs             # Session management
+│   ├── MessageSequenceValidator.cs   # Message sequence validation
+│   ├── MessageQueueManager.cs        # Message queue management
+│   ├── EventSubscriptionManager.cs   # Event subscription management
+│   ├── ConnectionMetrics.cs          # Connection metrics
+│   ├── ReconnectionOrchestrator.cs   # Reconnection coordinator
+│   ├── ExponentialBackoffReconnectStrategy.cs # Exponential backoff strategy
+│   ├── IReconnectStrategy.cs         # Reconnect strategy interface
+│   ├── IReconnectionOrchestrator.cs  # Reconnection orchestrator interface
+│   ├── ErrorRecoveryStrategy.cs      # Error recovery strategy
+│   ├── RetryHelper.cs                # Retry utility
+│   └── JsonOptions.cs                # JSON serialization options
+├── Handlers/                      # Message handlers
 │   ├── IMessageHandler.cs          # Handler interface
-│   ├── EventMessageHandler.cs       # Event message handling
-│   └── BasicMessageHandler.cs     # Basic message handling
-├── SocketEventArgs/                # Event argument classes
+│   ├── FeishuEventMessageHandler.cs # Event message handling
+│   ├── AuthMessageHandler.cs       # Auth message handling
+│   ├── HeartbeatMessageHandler.cs  # Heartbeat message handling
+│   ├── PingPongMessageHandler.cs   # Ping/Pong handling
+│   ├── JsonMessageHandler.cs       # JSON message base class
+│   └── FeishuWebSocketEventHandlerFactory.cs # Event handler factory
+├── Interfaces/                    # Public interfaces
+│   ├── IFeishuWebSocketClient.cs   # Client interface
+│   ├── IFeishuWebSocketManager.cs  # Manager interface
+│   └── IMessageHandler.cs          # Message handler interface
+├── SocketEventArgs/               # Event argument classes
 ├── DataModels/                    # Data models
+├── Exceptions/                    # Exception definitions
+├── Extensions/                    # Extension methods
+│   ├── FeishuWebSocketServiceBuilder.cs # Service builder
+│   └── ServiceCollectionExtensions.cs   # Registration extensions
 ├── FeishuWebSocketClient.cs       # Main client
-└── Examples/                      # Usage examples
+├── FeishuWebSocketManager.cs      # Manager implementation
+├── FeishuWebSocketHostedService.cs # Background service
+└── WebSocketConnectionState.cs    # Connection state model
 ```
 
 ## 🏗️ Service Registration Methods
@@ -187,13 +239,31 @@ builder.Services.CreateFeishuWebSocketServiceBuilder(builder.Configuration)
 // Use delegate to configure options
 builder.Services.CreateFeishuWebSocketServiceBuilder(options =>
 {
-    options.AppId = "your_app_id";
-    options.AppSecret = "your_app_secret";
     options.AutoReconnect = true;
-    options.HeartbeatIntervalMs = 30000;
+    options.HeartbeatIntervalMs = 25000;
+    options.MaxReconnectAttempts = 5;
+    options.MaxTotalReconnectTime = TimeSpan.FromMinutes(30);
+    options.EventDeduplication.Mode = EventDeduplicationMode.InMemory;
 })
 .AddHandler<ReceiveMessageEventHandler>()
 .Build();
+```
+
+### 🎯 Apply Method
+
+```csharp
+// Use Apply method for conditional configuration
+builder.Services.CreateFeishuWebSocketServiceBuilder(builder.Configuration)
+    .Apply(b =>
+    {
+        if (builder.Environment.IsDevelopment())
+            b.AddInterceptor<LoggingEventInterceptor>();
+
+        if (builder.Configuration.GetValue<bool>("Features:EnableAudit"))
+            b.AddHandler<AuditEventHandler>();
+    })
+    .AddHandler<ReceiveMessageEventHandler>()
+    .Build();
 ```
 
 ### 🔌 Add Event Interceptors
@@ -227,16 +297,16 @@ builder.Services.CreateFeishuWebSocketServiceBuilder(builder.Configuration)
 
 ### Built-in Event Handlers
 
-| Handler | Event Type | Description |
-|---------|-----------|-------------|
-| `ReceiveMessageEventHandler` | `im.message.receive_v1` | Receive message event |
-| `UserCreatedEventHandler` | `contact.user.created_v3` | User created event |
-| `MessageReadEventHandler` | `im.message.message_read_v1` | Message read event |
-| `UserAddedToGroupEventHandler` | `im.chat.member.user_added_v1` | User joins group chat |
-| `UserRemovedFromGroupEventHandler` | `im.chat.member.user_deleted_v1` | User leaves group chat |
-| `DefaultFeishuEventHandler` | - | Unknown event type handling |
-| `DepartmentCreatedEventHandler` | `contact.department.created_v3` | Department created event |
-| `DepartmentDeleteEventHandler` | `contact.department.deleted_v3` | Department deleted event |
+| Handler                            | Event Type                       | Description                 |
+| ---------------------------------- | -------------------------------- | --------------------------- |
+| `ReceiveMessageEventHandler`       | `im.message.receive_v1`          | Receive message event       |
+| `UserCreatedEventHandler`          | `contact.user.created_v3`        | User created event          |
+| `MessageReadEventHandler`          | `im.message.message_read_v1`     | Message read event          |
+| `UserAddedToGroupEventHandler`     | `im.chat.member.user_added_v1`   | User joins group chat       |
+| `UserRemovedFromGroupEventHandler` | `im.chat.member.user_deleted_v1` | User leaves group chat      |
+| `DefaultFeishuEventHandler`        | -                                | Unknown event type handling |
+| `DepartmentCreatedEventHandler`    | `contact.department.created_v3`  | Department created event    |
+| `DepartmentDeleteEventHandler`     | `contact.department.deleted_v3`  | Department deleted event    |
 
 ### Using Built-in Event Handler Base Classes
 
@@ -448,7 +518,7 @@ public class CustomEventHandler : IFeishuEventHandler
         if (eventData == null) throw new ArgumentNullException(nameof(eventData));
 
         _logger.LogInformation("🎯 Processing custom event: {EventType}", eventData.EventType);
-        
+
         // Implement your business logic
         await ProcessBusinessLogicAsync(eventData);
     }
@@ -583,7 +653,7 @@ public class ServiceManager
 {
     private readonly IFeishuEventHandlerFactory _factory;
     private readonly ILogger<ServiceManager> _logger;
-    
+
     public ServiceManager(IFeishuEventHandlerFactory factory, ILogger<ServiceManager> logger)
     {
         _factory = factory;
@@ -603,31 +673,42 @@ public class ServiceManager
 
 ### WebSocket Configuration
 
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `AutoReconnect` | bool | true | Auto reconnect |
-| `MaxReconnectAttempts` | int | 5 | Max reconnect attempts |
-| `ReconnectDelayMs` | int | 5000 | Reconnect delay (ms) |
-| `MaxReconnectDelayMs` | int | 30000 | Max reconnect delay (ms) |
-| `HeartbeatIntervalMs` | int | 30000 | Heartbeat interval (ms) |
-| `ConnectionTimeoutMs` | int | 10000 | Connection timeout (ms) |
-| `InitialReceiveBufferSize` | int | 4096 | Initial receive buffer size (bytes) |
-| `EnableLogging` | bool | true | Enable logging |
-| `EnableMessageQueue` | bool | true | Enable message queue |
-| `MessageQueueCapacity` | int | 1000 | Message queue capacity |
-| `EmptyQueueCheckIntervalMs` | int | 100 | Empty queue check interval (ms) |
-| `HealthCheckIntervalMs` | int | 60000 | Health check interval (ms) |
-| `MaxConcurrentMessageProcessing` | int | 10 | Max concurrent message processing |
+| Option                                | Type                                 | Default    | Description                                                      |
+| ------------------------------------- | ------------------------------------ | ---------- | ---------------------------------------------------------------- |
+| `AutoReconnect`                       | bool                                 | true       | Auto reconnect                                                   |
+| `MaxReconnectAttempts`                | int                                  | 5          | Max reconnect attempts                                           |
+| `ReconnectDelayMs`                    | int                                  | 5000       | Base reconnect delay (ms), min 1000                              |
+| `MaxReconnectDelayMs`                 | int                                  | 30000      | Max reconnect delay (ms), ≥ReconnectDelayMs                      |
+| `MaxTotalReconnectTime`               | TimeSpan                             | 30min      | Max total reconnection time, stops retrying after                |
+| `ReconnectCooldownTime`               | TimeSpan                             | 5s         | Minimum interval between reconnection attempts                   |
+| `EnableReconnectMetrics`              | bool                                 | true       | Enable reconnection metrics collection                           |
+| `HeartbeatIntervalMs`                 | int                                  | 25000      | Heartbeat interval (ms), min 5000 (Feishu recommends ≤25s)       |
+| `ConnectionTimeoutMs`                 | int                                  | 10000      | Connection timeout (ms)                                          |
+| `InitialReceiveBufferSize`            | int                                  | 4096       | Initial receive buffer size (bytes)                              |
+| `EnableLogging`                       | bool                                 | true       | Enable logging                                                   |
+| `EnableMessageQueue`                  | bool                                 | true       | Enable message queue                                             |
+| `MessageQueueCapacity`                | int                                  | 1000       | Message queue capacity                                           |
+| `BackpressureStrategy`                | QueueBackpressureStrategy            | DropOldest | Backpressure strategy (DropOldest/DropNewest/Block)              |
+| `BackpressureBlockTimeoutMs`          | int                                  | 5000       | Backpressure block wait timeout (ms), Block mode only            |
+| `EmptyQueueCheckIntervalMs`           | int                                  | 100        | Empty queue check interval (ms), min 10                          |
+| `HealthCheckIntervalMs`               | int                                  | 60000      | Health check interval (ms), min 1000                             |
+| `MaxConcurrentMessageProcessing`      | int                                  | 10         | Max concurrent message processing, min 1                         |
+| `ValidateServerCertificate`           | bool                                 | true       | Validate SSL certificate (recommended true in production)        |
+| `AllowSelfSignedCertificates`         | bool                                 | false      | Allow self-signed certificates (recommended false in production) |
+| `CustomCertificateValidationCallback` | RemoteCertificateValidationCallback? | null       | Custom certificate validation callback                           |
+| `TokenRefreshInterval`                | TimeSpan?                            | 2h         | Access token validity period                                     |
+| `TokenRefreshAhead`                   | TimeSpan?                            | 5min       | Time to refresh token ahead of expiration                        |
+| `EventDeduplication`                  | EventDeduplicationOptions            | See below  | Event deduplication configuration                                |
 
 ### Message Size Limits (`MessageSizeLimits`)
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `MaxTextMessageSize` | int | 1048576 | Max text message size (characters) |
-| `MaxBinaryMessageSize` | long | 10485760 | Max binary message size (bytes) |
+| Option                 | Type | Default  | Description                        |
+| ---------------------- | ---- | -------- | ---------------------------------- |
+| `MaxTextMessageSize`   | int  | 1048576  | Max text message size (characters) |
+| `MaxBinaryMessageSize` | long | 10485760 | Max binary message size (bytes)    |
 
 **Configuration Example:**
+
 ```json
 {
   "FeishuWebSocket": {
@@ -641,18 +722,20 @@ public class ServiceManager
 
 ### Event Deduplication (`EventDeduplication`)
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `Mode` | `EventDeduplicationMode` | `InMemory` | Deduplication mode (None/InMemory/Distributed) |
-| `CacheExpirationMs` | int | 86400000 | Cache expiration time (ms), default 24 hours |
-| `CleanupIntervalMs` | int | 300000 | Cache cleanup interval (ms), default 5 minutes |
+| Option              | Type                     | Default    | Description                                    |
+| ------------------- | ------------------------ | ---------- | ---------------------------------------------- |
+| `Mode`              | `EventDeduplicationMode` | `InMemory` | Deduplication mode (None/InMemory/Distributed) |
+| `CacheExpirationMs` | int                      | 86400000   | Cache expiration time (ms), default 24 hours   |
+| `CleanupIntervalMs` | int                      | 300000     | Cache cleanup interval (ms), default 5 minutes |
 
 **Deduplication Modes:**
+
 - `None` - Disable deduplication (not recommended, for special scenarios only)
 - `InMemory` - In-memory deduplication (single instance, default)
 - `Distributed` - Distributed deduplication (requires `IFeishuEventDistributedDeduplicator`)
 
 **Configuration Example:**
+
 ```json
 {
   "FeishuWebSocket": {
@@ -743,34 +826,169 @@ public class ConnectionService
     public ConnectionService(IFeishuWebSocketManager manager)
         => _manager = manager;
 
-    // Connection management
     public async Task StartAsync() => await _manager.StartAsync();
     public async Task StopAsync() => await _manager.StopAsync();
     public async Task ReconnectAsync() => await _manager.ReconnectAsync();
-    
-    // Message operations
-    public async Task SendMessageAsync(string message) 
+    public async Task SendMessageAsync(string message)
         => await _manager.SendMessageAsync(message);
-    
-    // Event subscription
+
     public void SubscribeEvents()
     {
         _manager.Connected += OnConnected;
         _manager.Disconnected += OnDisconnected;
-        _manager.HeartbeatReceived += OnHeartbeat;
+        _manager.Error += OnError;
+        _manager.MessageReceived += OnMessageReceived;
     }
+
+    public WebSocketConnectionState GetConnectionState()
+        => _manager.GetConnectionState();
+
+    public (TimeSpan Uptime, int ReconnectCount, Exception? LastError) GetStats()
+        => _manager.GetConnectionStats();
 }
 ```
+
+### Message Sequence Validation
+
+Built-in `MessageSequenceValidator` detects message replay and loss:
+
+- **Duplicate detection**: Sliding window deduplication (last 1000 messages)
+- **Sequence rollback detection**: Detects potential attack behavior
+- **Message loss detection**: Warning when sequence gap exceeds threshold
+
+```csharp
+var validator = serviceProvider.GetRequiredService<MessageSequenceValidator>();
+validator.ValidationFailed += (sender, args) =>
+{
+    if (args.MessageType == SequenceValidationType.SequenceRollback)
+        logger.LogWarning("Sequence rollback detected: {Message}", args.Message);
+    else if (args.MessageType == SequenceValidationType.MessageLoss)
+        logger.LogWarning("Possible message loss: {Message}", args.Message);
+};
+```
+
+### Session Management
+
+`SessionManager` manages WebSocket session state, supporting disconnection recovery:
+
+- **Session ID management**: Automatically tracks current session_id
+- **Session validity**: 24-hour validity check
+- **Reconnection recovery**: Get valid session ID via `GetSessionIdForReconnect()`
+- **Session events**: `SessionUpdated` event for session changes
+
+### Connection Metrics
+
+`ConnectionMetrics` provides real-time connection statistics, integrated with `FeishuMetrics`:
+
+```csharp
+var metrics = serviceProvider.GetRequiredService<ConnectionMetrics>();
+var stats = metrics.GetCurrentStats();
+
+stats.MessagesSent;           // Sent message count
+stats.MessagesReceived;       // Received message count (valid)
+stats.MessagesReceivedTotal;  // Total received (including duplicates)
+stats.BytesSent;              // Sent bytes
+stats.BytesReceived;          // Received bytes
+stats.ConnectionErrors;       // Connection error count
+stats.AuthenticationErrors;   // Authentication error count
+stats.AverageProcessingTimeMs;// Average processing time
+stats.Uptime;                 // Connection duration
+stats.MessagesPerSecond;      // Messages per second
+stats.BytesPerSecond;         // Bytes per second
+```
+
+### Backpressure Strategy
+
+Three backpressure strategies when message queue is full:
+
+| Strategy     | Description                    | Use Case                                    |
+| ------------ | ------------------------------ | ------------------------------------------- |
+| `DropOldest` | Drop oldest messages (default) | Real-time priority, message loss acceptable |
+| `DropNewest` | Drop newest messages           | Data integrity priority                     |
+| `Block`      | Block until queue has space    | No message loss, latency acceptable         |
+
+```json
+{
+  "FeishuWebSocket": {
+    "MessageQueueCapacity": 1000,
+    "BackpressureStrategy": "DropOldest",
+    "BackpressureBlockTimeoutMs": 5000
+  }
+}
+```
+
+### SSL/TLS Certificate Configuration
+
+```csharp
+builder.Services.CreateFeishuWebSocketServiceBuilder(builder.Configuration)
+    .ConfigureOptions(options =>
+    {
+        options.ValidateServerCertificate = true;
+        options.AllowSelfSignedCertificates = false;
+    })
+    .AddHandler<ReceiveMessageEventHandler>()
+    .Build();
+```
+
+Custom certificate validation:
+
+```csharp
+options.CustomCertificateValidationCallback = (sender, certificate, chain, sslPolicyErrors) =>
+{
+    return sslPolicyErrors == System.Net.Security.SslPolicyErrors.None;
+};
+```
+
+### Custom Reconnection Strategy
+
+Implement `IReconnectStrategy` to replace the default exponential backoff:
+
+```csharp
+public class FixedIntervalReconnectStrategy : IReconnectStrategy
+{
+    private readonly TimeSpan _interval;
+
+    public FixedIntervalReconnectStrategy(TimeSpan interval)
+        => _interval = interval;
+
+    public TimeSpan CalculateDelay(int attemptCount) => _interval;
+
+    public bool ShouldContinueReconnect(int attemptCount, TimeSpan totalElapsedTime)
+        => attemptCount <= 10;
+}
+
+// Register custom strategy (before CreateFeishuWebSocketServiceBuilder)
+builder.Services.AddSingleton<IReconnectStrategy>(
+    new FixedIntervalReconnectStrategy(TimeSpan.FromSeconds(10)));
+```
+
+### Access Token Management
+
+`FeishuWebSocketManager` has built-in access token caching and auto-refresh:
+
+```json
+{
+  "FeishuWebSocket": {
+    "TokenRefreshInterval": "02:00:00",
+    "TokenRefreshAhead": "00:05:00"
+  }
+}
+```
+
+- `TokenRefreshInterval`: Token validity period, default 2 hours (consistent with Feishu)
+- `TokenRefreshAhead`: Time to refresh ahead of expiration, default 5 minutes
 
 ## 📋 Supported Event Types
 
 ### WebSocket Message Types
+
 - `ping` / `pong` - Connection keep-alive
 - `heartbeat` - Heartbeat message
 - `event` - Business event
 - `auth` - Authentication response
 
 ### Main Business Events
+
 - **Messages**: `im.message.receive_v1`, `im.message.message_read_v1`
 - **Group Chats**: `im.chat.member.user_added_v1`, `im.chat.member.user_deleted_v1`
 - **Users**: `contact.user.created_v3`, `contact.user.updated_v3`, `contact.user.deleted_v3`

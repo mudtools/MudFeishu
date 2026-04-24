@@ -8,23 +8,17 @@
 namespace Mud.Feishu.DataModels.Calendar;
 
 /// <summary>
-/// 用户日历信息
+/// 批量获取主日历信息请求体
 /// </summary>
-public class UserCalendar
+public class GetPrimarysCalendarRequest
 {
     /// <summary>
-    /// <para>日历实体信息。</para>
-    /// <para>必填：否</para>
+    /// <para>用户 ID 列表，多个 ID 的取值格式为 `["ou_c186b6833e2d5faf2bc587e71ddabcef", "ou_7d8a6e6df7621556ce0d21922b676706"]`。</para>
+    /// <para>需要传入与查询参数 user_id_type 相匹配的 ID。例如，`user_id_type=open_id` 时，需要传入用户的 open_id。了解用户 ID 参见[用户相关的 ID 概念](https://open.feishu.cn/document/home/user-identity-introduction/introduction)。</para>
+    /// <para>必填：是</para>
+    /// <para>最大长度：10</para>
+    /// <para>最小长度：1</para>
     /// </summary>
-    [JsonPropertyName("calendar")]
-    public CalendarInfo? Calendar { get; set; }
-
-
-    /// <summary>
-    /// <para>日历创建者的 User ID。了解用户不同类型的 ID，可参见[用户身份概述](https://open.feishu.cn/document/home/user-identity-introduction/introduction)。</para>
-    /// <para>必填：否</para>
-    /// <para>示例值：ou_xxxxxx</para>
-    /// </summary>
-    [JsonPropertyName("user_id")]
-    public string? UserId { get; set; }
+    [JsonPropertyName("user_ids")]
+    public string[] UserIds { get; set; } = [];
 }

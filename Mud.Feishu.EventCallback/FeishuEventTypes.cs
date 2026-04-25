@@ -300,6 +300,16 @@ public static class FeishuEventTypes
     /// 日历变更事件
     /// </summary>
     public const string CalendarChanged = "calendar.calendar.changed_v4";
+
+    /// <summary>
+    /// 创建 ACL 事件
+    /// </summary>
+    public const string CalendarAclCreated = "calendar.calendar.acl.created_v4";
+
+    /// <summary>
+    /// 删除 ACL
+    /// </summary>
+    public const string CalendarAclDeleted = "calendar.calendar.acl.deleted_v4";
     #endregion
 
     /// <summary>

@@ -41,11 +41,9 @@ public interface IFeishuV4Calendar : IFeishuAppContextSwitcher
     /// <param name="calendar_id">
     /// <para>日历 ID。</para>
     /// <para>创建共享日历时会返回日历 ID。也可以调用以下接口获取某一日历的 ID。</para>
-    /// <para>- [查询主日历信息](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/calendar-v4/calendar/primary)</para>
-    /// <para>- [查询日历列表](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/calendar-v4/calendar/list)</para>
-    /// <para>- [搜索日历](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/calendar-v4/calendar/search)</para>
     /// <para>示例值：feishu.cn_xxxxxxxxxx@group.calendar.feishu.cn</para>
-    /// </param> /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// </param>  
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Delete("/open-apis/calendar/v4/calendars/{calendar_id}")]
     Task<FeishuNullDataApiResult?> DeleteCalendarAsync(
          [Path] string calendar_id,
@@ -116,9 +114,6 @@ public interface IFeishuV4Calendar : IFeishuAppContextSwitcher
     /// <param name="calendar_id">
     /// <para>日历 ID。</para>
     /// <para>创建共享日历时会返回日历 ID。也可以调用以下接口获取某一日历的 ID。</para>
-    /// <para>- [查询主日历信息](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/calendar-v4/calendar/primary)</para>
-    /// <para>- [查询日历列表](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/calendar-v4/calendar/list)</para>
-    /// <para>- [搜索日历](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/calendar-v4/calendar/search)</para>
     /// <para>示例值：feishu.cn_xxxxxxxxxx@group.calendar.feishu.cn</para>
     /// </param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
@@ -212,4 +207,24 @@ public interface IFeishuV4Calendar : IFeishuAppContextSwitcher
          [Query] string? page_token = null,
          [Query] string? sync_token = null,
          CancellationToken cancellationToken = default);
+
+
+
+    /// <summary>
+    /// 更新日历信息
+    /// <para>以当前身份（应用或用户）修改指定日历的标题、描述、公开范围等信息。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/calendar-v4/calendar/patch">接口文档</see></para>
+    /// </summary> 
+    /// <param name="calendar_id">
+    /// <para>日历 ID。</para>
+    /// <para>创建共享日历时会返回日历 ID。也可以调用以下接口获取某一日历的 ID。</para>
+    /// <para>示例值：feishu.cn_xxxxxxxxxx@group.calendar.feishu.cn</para>
+    /// </param>
+    /// <param name="updateCalendarRequest">更新日历请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Patch("/open-apis/calendar/v4/calendars/{calendar_id}")]
+    Task<FeishuApiResult<UpdateCalendarResult>?> UpdateCalendarAsync(
+        [Path] string calendar_id,
+        [Body] UpdateCalendarRequest updateCalendarRequest,
+        CancellationToken cancellationToken = default);
 }

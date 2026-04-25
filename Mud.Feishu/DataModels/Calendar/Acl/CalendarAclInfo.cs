@@ -10,7 +10,7 @@ namespace Mud.Feishu.DataModels.Calendar;
 /// <summary>
 /// <para>日历访问控制数据信息。</para>
 /// </summary>
-public class CalendarAclDataInfo : CalendarAclData
+public class CalendarAclInfo : CalendarAclData
 {
     /// <summary>
     /// <para>访问控制 ID。该 ID 在单个日历实体内唯一，不同日历实体可能存在重复的访问控制 ID。</para>

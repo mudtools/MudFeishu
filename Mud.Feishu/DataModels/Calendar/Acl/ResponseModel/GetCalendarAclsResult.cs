@@ -7,10 +7,16 @@
 
 namespace Mud.Feishu.DataModels.Calendar;
 
-/// <summary>
-/// 创建访问控制响应体
-/// </summary>
-public class CreateCalendarAclResult : CalendarAclInfo
-{
 
+/// <summary>
+/// 获取日历访问控制列表响应体
+/// </summary>
+public class GetCalendarAclsResult : ApiPageListResult
+{
+    /// <summary>
+    /// <para>日历对应的访问控制列表。</para>
+    /// <para>必填：否</para>
+    /// </summary>
+    [JsonPropertyName("acls")]
+    public CalendarAclInfo[]? Acls { get; set; }
 }

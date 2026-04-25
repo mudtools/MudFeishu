@@ -5,8 +5,6 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-using Mud.Feishu.DataModels.Calendar;
-
 namespace Mud.Feishu;
 
 /// <summary>
@@ -30,8 +28,8 @@ public interface IFeishuUserV4Calendar : IFeishuV4Calendar, ICurrentUserId
 
 
     /// <summary>
-    /// 订阅日历变更事件
-    /// <para>为当前用户身份订阅日历变更事件。</para>
+    /// 取消订阅日历变更事件
+    /// <para>为当前用户身份取消订阅日历变更事件。</para>
     /// <para><see href="https://open.feishu.cn/document/server-docs/calendar-v4/calendar/unsubscription">接口文档</see></para>
     /// </summary> 
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>

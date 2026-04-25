@@ -140,4 +140,28 @@ public interface IFeishuV4Calendar : IFeishuAppContextSwitcher
     Task<FeishuApiResult<GetCalendarsResult>?> GetCalendarsAsync(
       [Body] GetCalendarsRequest getCalendarsRequest,
       CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 查询主日历日程忙闲信息
+    /// <para>查询指定用户的主日历忙闲信息，或者查询指定会议室的忙闲信息。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/calendar-v4/calendar/list">接口文档</see></para>
+    /// </summary> 
+    /// <param name="user_id_type">
+    /// <para>用户 ID 类型</para>
+    /// <para>示例值：open_id</para>
+    /// <list type="bullet">
+    /// <item>open_id：标识一个用户在某个应用中的身份。同一个用户在不同应用中的 Open ID 不同。[了解更多：如何获取 Open ID](https://open.feishu.cn/document/uAjLw4CM/ugTN1YjL4UTN24CO1UjN/trouble-shooting/how-to-obtain-openid)</item>
+    /// <item>union_id：标识一个用户在某个应用开发商下的身份。同一用户在同一开发商下的应用中的 Union ID 是相同的，在不同开发商下的应用中的 Union ID 是不同的。通过 Union ID，应用开发商可以把同个用户在多个应用中的身份关联起来。[了解更多：如何获取 Union ID？](https://open.feishu.cn/document/uAjLw4CM/ugTN1YjL4UTN24CO1UjN/trouble-shooting/how-to-obtain-union-id)</item>
+    /// <item>user_id：标识一个用户在某个租户内的身份。同一个用户在租户 A 和租户 B 内的 User ID 是不同的。在同一个租户内，一个用户的 User ID 在所有应用（包括商店应用）中都保持一致。User ID 主要用于在不同的应用间打通用户数据。[了解更多：如何获取 User ID？](https://open.feishu.cn/document/uAjLw4CM/ugTN1YjL4UTN24CO1UjN/trouble-shooting/how-to-obtain-user-id)</item>
+    /// </list>
+    /// <para>默认值：open_id</para>
+    /// </param>
+    /// <param name="getFreebusyCalendarRequest">获取空闲/忙碌日历信息的请求体。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Post("/open-apis/calendar/v4/freebusy/list")]
+    Task<FeishuApiResult<GetFreebusyCalendarResult>?> GetFreebusyCalendarAsync(
+      [Body] GetFreebusyCalendarRequest getFreebusyCalendarRequest,
+      [Query] string? user_id_type = Consts.User_Id_Type,
+      CancellationToken cancellationToken = default);
 }

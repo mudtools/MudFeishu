@@ -16,7 +16,7 @@ namespace Mud.Feishu.Interfaces;
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), IsAbstract = true)]
 [Token("TenantAccessToken", Name = Consts.Authorization)]
-public interface IFeishuV1Comments : IFeishuAppContextSwitcher
+public interface IFeishuV1DriveComments : IFeishuAppContextSwitcher
 {
 
     /// <summary>

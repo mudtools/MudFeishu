@@ -295,6 +295,13 @@ public static class FeishuEventTypes
     public const string BitableRecordChanged = "drive.file.bitable_record_changed_v1";
     #endregion
 
+    #region Calendar Events
+    /// <summary>
+    /// 日历变更事件
+    /// </summary>
+    public const string CalendarChanged = "calendar.calendar.changed_v4";
+    #endregion
+
     /// <summary>
     /// 用户加入群聊事件
     /// </summary>

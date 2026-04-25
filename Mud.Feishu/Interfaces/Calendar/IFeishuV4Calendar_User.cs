@@ -26,5 +26,16 @@ public interface IFeishuUserV4Calendar : IFeishuV4Calendar, ICurrentUserId
     /// </summary> 
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Post("/open-apis/calendar/v4/calendars/subscription")]
-    Task<FeishuApiResult<CalendarOopsResult>?> SubscribeCalendarEventAsync(CancellationToken cancellationToken = default);
+    Task<FeishuNullDataApiResult?> SubscribeCalendarEventAsync(CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 订阅日历变更事件
+    /// <para>为当前用户身份订阅日历变更事件。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/calendar-v4/calendar/unsubscription">接口文档</see></para>
+    /// </summary> 
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Post("/open-apis/calendar/v4/calendars/unsubscription")]
+    Task<FeishuNullDataApiResult?> UnSubscribeCalendarEventAsync(CancellationToken cancellationToken = default);
+
 }

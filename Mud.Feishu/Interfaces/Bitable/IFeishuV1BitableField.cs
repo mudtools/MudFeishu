@@ -120,7 +120,7 @@ public interface IFeishuV1BitableField : IFeishuAppContextSwitcher
       [Path] string table_id,
       [Query("view_id")] string? view_id = null,
       [Query("text_field_as_array")] bool? text_field_as_array = null,
-      [Query("page_size")] int page_size = 20,
+      [Query("page_size")] int page_size = Consts.PageSize_500,
       [Query("page_token")] string? page_token = null,
       CancellationToken cancellationToken = default);
 

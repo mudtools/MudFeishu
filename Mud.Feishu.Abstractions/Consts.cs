@@ -37,6 +37,12 @@ internal class Consts
     /// </summary>
     public const int PageSize_50 = 50;
 
+
+    /// <summary>
+    /// 每页的默认500条记录。
+    /// </summary>
+    public const int PageSize_500 = 500;
+
     public const string HandlerNamespace = "Mud.Feishu.EventCallback";
     public const string InheritedFrom = "IdempotentFeishuEventHandler";
     public const string InheritedFromObject = "DefaultFeishuObjectEventHandler";

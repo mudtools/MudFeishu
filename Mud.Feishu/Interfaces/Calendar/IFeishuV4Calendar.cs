@@ -126,4 +126,18 @@ public interface IFeishuV4Calendar : IFeishuAppContextSwitcher
        [Path] string calendar_id,
        [Query] string? user_id_type = Consts.User_Id_Type,
        CancellationToken cancellationToken = default);
+
+
+
+    /// <summary>
+    /// 批量查询日历信息
+    /// <para>批量查询指定日历的标题、描述、公开范围等信息。</para>
+    /// <para><see href="https://open.feishu.cn/document/calendar-v4/calendar/mget-3">接口文档</see></para>
+    /// </summary> 
+    /// <param name="getCalendarsRequest">批量获取日历信息请求体。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Post("/open-apis/calendar/v4/calendars/mget")]
+    Task<FeishuApiResult<GetCalendarsResult>?> GetCalendarsAsync(
+      [Body] GetCalendarsRequest getCalendarsRequest,
+      CancellationToken cancellationToken = default);
 }

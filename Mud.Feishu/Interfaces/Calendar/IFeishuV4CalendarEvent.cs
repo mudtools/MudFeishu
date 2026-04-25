@@ -5,6 +5,8 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using Mud.Feishu.DataModels.Calendar;
+
 namespace Mud.Feishu.Interfaces;
 
 /// <summary>
@@ -17,4 +19,71 @@ namespace Mud.Feishu.Interfaces;
 public interface IFeishuV4CalendarEvent : IFeishuAppContextSwitcher
 {
 
+    /// <summary>
+    /// 创建日程
+    /// <para>以当前身份（应用或用户）在指定日历上创建一个日程。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/calendar-v4/calendar-event/create">接口文档</see></para>
+    /// </summary> 
+    /// <param name="calendar_id">
+    /// <para>日历 ID。</para>
+    /// <para>创建共享日历时会返回日历 ID。也可以调用以下接口获取某一日历的 ID。</para>
+    /// <para>示例值：feishu.cn_xxxxxxxxxx@group.calendar.feishu.cn</para>
+    /// </param> 
+    /// <param name="user_id_type">
+    /// <para>用户 ID 类型</para>
+    /// <para>示例值：open_id</para>
+    /// <list type="bullet">
+    /// <item>open_id：标识一个用户在某个应用中的身份。同一个用户在不同应用中的 Open ID 不同。</item>
+    /// <item>union_id：标识一个用户在某个应用开发商下的身份。同一用户在同一开发商下的应用中的 Union ID 是相同的，在不同开发商下的应用中的 Union ID 是不同的。通过 Union ID，应用开发商可以把同个用户在多个应用中的身份关联起来。</item>
+    /// <item>user_id：标识一个用户在某个租户内的身份。同一个用户在租户 A 和租户 B 内的 User ID 是不同的。在同一个租户内，一个用户的 User ID 在所有应用（包括商店应用）中都保持一致。User ID 主要用于在不同的应用间打通用户数据。</item>
+    /// </list>
+    /// <para>默认值：open_id</para>
+    /// </param>
+    /// <param name="idempotency_key">
+    /// <para>创建日程的幂等 key，该 key 在应用和日历维度下唯一，用于避免重复创建资源。建议按照示例值的格式进行取值。</para>
+    /// <para>示例值：25fdf41b-8c80-2ce1-e94c-de8b5e7aa7e6</para>
+    /// <para>默认值：null</para>
+    /// </param>
+    /// <param name="createCalendarEventRequest">创建日程请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Post("/open-apis/calendar/v4/calendars/{calendar_id}/events")]
+    Task<FeishuApiResult<CreateCalendarEventResult>?> CreateCalendarEventAsync(
+       [Path] string calendar_id,
+       [Body] CreateCalendarEventRequest createCalendarEventRequest,
+       [Query] string? idempotency_key = null,
+       [Query] string? user_id_type = Consts.User_Id_Type,
+       CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 删除日程
+    /// <para>以当前身份（应用或用户）删除指定日历上的一个日程。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/calendar-v4/calendar-event/delete">接口文档</see></para>
+    /// </summary> 
+    /// <param name="calendar_id">
+    /// <para>日历 ID。</para>
+    /// <para>创建共享日历时会返回日历 ID。也可以调用以下接口获取某一日历的 ID。</para>
+    /// <para>示例值：feishu.cn_xxxxxxxxxx@group.calendar.feishu.cn</para>
+    /// </param> 
+    /// <param name="event_id">
+    /// <para>日程 ID。</para>
+    /// <para>示例值：xxxxxxxxx_0</para>
+    /// </param>
+    /// <param name="need_notification">
+    /// <para>删除日程是否给日程参与人发送 Bot 通知。</para>
+    /// <para>**默认值**：true</para>
+    /// <para>示例值：false</para>
+    /// <list type="bullet">
+    /// <item>true：发送</item>
+    /// <item>false：不发送</item>
+    /// </list>
+    /// <para>默认值：null</para>
+    /// </param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Delete("/open-apis/calendar/v4/calendars/{calendar_id}/events/{event_id}")]
+    Task<FeishuNullDataApiResult?> DeleteCalendarEventAsync(
+       [Path] string calendar_id,
+       [Path] string event_id,
+       [Query] bool? need_notification = true,
+       CancellationToken cancellationToken = default);
 }

@@ -45,4 +45,40 @@ internal class FeishuHttpClient : EnhancedHttpClient, IEnhancedHttpClient
         _logger.LogWarning("飞书 SDK 不支持请求体加密功能，此方法不应被调用");
         throw new NotSupportedException("飞书 SDK 不需要请求体加密功能。如需使用加密功能，请使用其他支持加密的 HTTP 客户端实现。");
     }
+
+    /// <summary>
+    /// 解密内容（当前 SDK 不支持此功能）
+    /// </summary>
+    /// <param name="encryptedContent">要解密的加密字符串</param>
+    /// <returns>不支持此操作</returns>
+    /// <exception cref="NotSupportedException">始终抛出，因为飞书 SDK 不需要响应解密功能</exception>
+    public override string DecryptContent(string encryptedContent)
+    {
+        _logger.LogWarning("飞书 SDK 不支持响应解密功能，此方法不应被调用");
+        throw new NotSupportedException("飞书 SDK 不需要响应解密功能。如需使用解密功能，请使用其他支持解密的 HTTP 客户端实现。");
+    }
+
+    /// <summary>
+    /// 加密字节数组（当前 SDK 不支持此功能）
+    /// </summary>
+    /// <param name="data">要加密的字节数组</param>
+    /// <returns>不支持此操作</returns>
+    /// <exception cref="NotSupportedException">始终抛出，因为飞书 SDK 不需要字节加密功能</exception>
+    public override byte[] EncryptBytes(byte[] data)
+    {
+        _logger.LogWarning("飞书 SDK 不支持字节加密功能，此方法不应被调用");
+        throw new NotSupportedException("飞书 SDK 不需要字节加密功能。如需使用加密功能，请使用其他支持加密的 HTTP 客户端实现。");
+    }
+
+    /// <summary>
+    /// 解密字节数组（当前 SDK 不支持此功能）
+    /// </summary>
+    /// <param name="encryptedData">要解密的加密字节数组</param>
+    /// <returns>不支持此操作</returns>
+    /// <exception cref="NotSupportedException">始终抛出，因为飞书 SDK 不需要字节解密功能</exception>
+    public override byte[] DecryptBytes(byte[] encryptedData)
+    {
+        _logger.LogWarning("飞书 SDK 不支持字节解密功能，此方法不应被调用");
+        throw new NotSupportedException("飞书 SDK 不需要字节解密功能。如需使用解密功能，请使用其他支持解密的 HTTP 客户端实现。");
+    }
 }

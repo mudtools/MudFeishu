@@ -88,7 +88,7 @@ internal class FeishuAppManager : IFeishuAppManager
     /// </summary>
     /// <typeparam name="T">飞书API类型</typeparam>
     /// <returns>默认应用的飞书API实例</returns>
-    public T GetDefalutWebApi<T>() where T : IAppContextSwitcher
+    public T GetDefaultWebApi<T>() where T : IAppContextSwitcher
     {
         var service = _serviceProvider.GetService<T>();
         if (service == null)
@@ -96,6 +96,74 @@ internal class FeishuAppManager : IFeishuAppManager
         service.UseDefaultApp();
         return service;
     }
+
+    /// <summary>
+    /// 获取默认应用的飞书API实例（已废弃，请使用 GetDefaultWebApi）
+    /// </summary>
+    /// <typeparam name="T">飞书API类型</typeparam>
+    /// <returns>默认应用的飞书API实例</returns>
+    [Obsolete("请使用 GetDefaultWebApi<T>() 替代。此方法将在未来版本中移除。")]
+    public T GetDefalutWebApi<T>() where T : IAppContextSwitcher
+    {
+        return GetDefaultWebApi<T>();
+    }
+
+    /// <summary>
+    /// 注册或更新应用上下文
+    /// </summary>
+    public void RegisterApp(string appKey, IFeishuAppContext appContext, bool isDefault = false)
+    {
+        if (appContext is not FeishuAppContext context)
+            throw new ArgumentException("应用上下文必须是 FeishuAppContext 类型", nameof(appContext));
+
+        _apps[appKey] = context;
+
+        if (isDefault)
+        {
+            foreach (var app in _apps.Values)
+            {
+                app.Config.IsDefault = false;
+            }
+            context.Config.IsDefault = true;
+        }
+
+        _logger.LogInformation("注册飞书应用: {AppKey} (默认: {IsDefault})", appKey, isDefault);
+    }
+
+    /// <summary>
+    /// 异步注册或更新应用上下文
+    /// </summary>
+    public Task RegisterAppAsync(string appKey, IFeishuAppContext appContext, bool isDefault = false, CancellationToken cancellationToken = default)
+    {
+        RegisterApp(appKey, appContext, isDefault);
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// 更新已注册应用的上下文
+    /// </summary>
+    public void UpdateApp(string appKey, IFeishuAppContext appContext)
+    {
+        if (!_apps.ContainsKey(appKey))
+            throw new KeyNotFoundException($"应用 {appKey} 不存在，无法更新");
+
+        RegisterApp(appKey, appContext, appContext.Config.IsDefault);
+    }
+
+    /// <summary>
+    /// 注册上下文切换器工厂委托
+    /// </summary>
+    public void RegisterSwitcherFactory<TContextSwitcher>(Func<IFeishuAppContext, TContextSwitcher> factory)
+        where TContextSwitcher : IAppContextSwitcher
+    {
+        // 飞书应用管理器暂不需要此功能
+        _logger.LogWarning("RegisterSwitcherFactory 未实现");
+    }
+
+    /// <summary>
+    /// 应用配置变更事件
+    /// </summary>
+    public event EventHandler<AppConfigurationChangedEventArgs>? ConfigurationChanged;
 
 
     /// <summary>
@@ -239,14 +307,7 @@ internal class FeishuAppManager : IFeishuAppManager
     {
         config.Validate();
 
-        var memoryCacheLogger = _serviceProvider.GetRequiredService<ILogger<MemoryTokenCache>>();
         var currentUserContext = _serviceProvider.GetService<ICurrentUserContext>();
-        var appCache = new MemoryTokenCache(memoryCacheLogger, config.TokenRefreshThreshold);
-        var prefixedCache = new PrefixedTokenCache(appCache, config.AppKey);
-
-        var userTokenCacheLogger = _serviceProvider.GetRequiredService<ILogger<MemoryUserTokenCache>>();
-        var appUserTokenCache = new MemoryUserTokenCache(userTokenCacheLogger, config.TokenRefreshThreshold);
-        var prefixedUserTokenCache = new PrefixedUserTokenCache(appUserTokenCache, config.AppKey);
 
         var jsonSerializerOptions = _serviceProvider.GetRequiredService<IOptions<JsonSerializerOptions>>();
 
@@ -254,29 +315,26 @@ internal class FeishuAppManager : IFeishuAppManager
 
         var authenticationApi = new FeishuAuthentication(jsonSerializerOptions, httpClient);
 
-        var tokenManagerLogger = _serviceProvider.GetRequiredService<ILogger<TokenManagerWithCache>>();
-
         var options = Options.Create(config);
 
+        var tenantTokenManagerLogger = _serviceProvider.GetRequiredService<ILogger<TenantTokenManager>>();
         var tenantTokenManager = new TenantTokenManager(
             authenticationApi,
             options,
-            tokenManagerLogger,
-            prefixedCache);
+            tenantTokenManagerLogger);
 
+        var appTokenManagerLogger = _serviceProvider.GetRequiredService<ILogger<AppTokenManager>>();
         var appTokenManager = new AppTokenManager(
             authenticationApi,
             options,
-            tokenManagerLogger,
-            prefixedCache);
+            appTokenManagerLogger);
 
-        var userTokenManagerLogger = _serviceProvider.GetRequiredService<ILogger<TokenManager.UserTokenManager>>();
+        var userTokenManagerLogger = _serviceProvider.GetRequiredService<ILogger<UserTokenManager>>();
         var userTokenManager = new UserTokenManager(
-            authenticationApi,
             currentUserContext,
+            authenticationApi,
             options,
-            userTokenManagerLogger,
-            prefixedUserTokenCache);
+            userTokenManagerLogger);
 
         var context = new FeishuAppContext(
             config,
@@ -284,7 +342,6 @@ internal class FeishuAppManager : IFeishuAppManager
             appTokenManager,
             userTokenManager,
             authenticationApi,
-            prefixedCache,
             httpClient);
 
         _apps[config.AppKey] = context;

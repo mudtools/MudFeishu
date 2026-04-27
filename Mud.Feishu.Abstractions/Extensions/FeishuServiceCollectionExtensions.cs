@@ -107,7 +107,7 @@ public static class FeishuServiceCollectionExtensions
             bool allowCustomBaseUrl = config?.AllowCustomBaseUrl ?? false;
 
             // 验证 BaseUrl 是否安全（SSRF 防护）
-            UrlValidator.ValidateBaseUrl(baseUrl, allowCustomBaseUrl);
+            ValidateFeishuBaseUrl(baseUrl, allowCustomBaseUrl);
 
             int timeOut = config?.TimeOut ?? 60;
 
@@ -136,5 +136,39 @@ public static class FeishuServiceCollectionExtensions
                 int retryDelayMs = config?.RetryDelayMs ?? 1000;
                 return HttpRetryPolicyBuilder.BuildRetryPolicy(retryCount, retryDelayMs);
             });
+    }
+
+    /// <summary>
+    /// 验证飞书 BaseUrl 是否安全（简化版，仅验证飞书官方域名）
+    /// </summary>
+    private static void ValidateFeishuBaseUrl(string? baseUrl, bool allowCustomBaseUrl)
+    {
+        if (string.IsNullOrWhiteSpace(baseUrl))
+            return;
+
+        if (!Uri.TryCreate(baseUrl, UriKind.Absolute, out var uri) ||
+            !Uri.IsWellFormedUriString(baseUrl, UriKind.Absolute))
+        {
+            throw new ArgumentException($"URL 格式无效: {baseUrl}", nameof(baseUrl));
+        }
+
+        if (!string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException($"仅允许 HTTPS 协议，当前协议: {uri.Scheme}");
+        }
+
+        if (!allowCustomBaseUrl)
+        {
+            var host = uri.Host.ToLowerInvariant();
+            var allowedDomains = new[] { "open.feishu.cn", "open.larksuite.com", "feishu.cn", "larksuite.com" };
+            bool isAllowed = allowedDomains.Any(domain =>
+                host == domain || host.EndsWith("." + domain, StringComparison.OrdinalIgnoreCase));
+
+            if (!isAllowed)
+            {
+                throw new InvalidOperationException(
+                    $"域名 '{uri.Host}' 不在飞书官方白名单中。如需使用自定义域名，请设置 AllowCustomBaseUrl=true（注意安全风险）。");
+            }
+        }
     }
 }

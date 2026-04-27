@@ -1,14 +1,14 @@
 // -----------------------------------------------------------------------
-//  作者：Mud Studio  版权所有 (c) Mud Studio 2026   
+//  作者：Mud Studio  版权所有 (c) Mud Studio 2025
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using Mud.Feishu.Abstractions;
-using Mud.Feishu.Abstractions.Metrics;
-using System.Collections.Concurrent;
+using Mud.Feishu.Exceptions;
 
 namespace Mud.Feishu.TokenManager;
 
@@ -16,43 +16,40 @@ namespace Mud.Feishu.TokenManager;
 /// 用户令牌管理器
 /// </summary>
 /// <remarks>
-/// 提供用户访问令牌的获取、缓存和自动刷新功能。
-/// 核心特性：
-/// <list type="bullet">
-///   <item><description>支持完整的 OAuth 授权流程</description></item>
-///   <item><description>自动令牌刷新机制</description></item>
-///   <item><description>线程安全的并发控制</description></item>
-///   <item><description>防止缓存击穿的 Lazy 加载</description></item>
-/// </list>
+/// 负责用户访问令牌（User Access Token）的获取、缓存和管理。
+/// 用户令牌用于用户级别的权限验证，通过授权码（Code）换取用户令牌。
+/// 继承 Mud.HttpUtils v2.0 的 UserTokenManagerBase，获得内置并发安全、自动清理、IMemoryCache 缓存等能力。
 /// </remarks>
-internal class UserTokenManager : IFeishuUserTokenManager
+internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
 {
     private readonly ICurrentUserContext? _currentUserContext;
     private readonly IFeishuAuthentication _authenticationApi;
     private readonly FeishuAppConfig _options;
     private readonly ILogger<UserTokenManager> _logger;
-    private readonly IUserTokenCache _userTokenCache;
-    private readonly ConcurrentDictionary<string, Lazy<Task<string?>>> _tokenLoadingTasks = new();
-    private readonly ConcurrentDictionary<string, SemaphoreSlim> _refreshLocks = new();
+    private readonly IMemoryCache _localCache;
 
-    private const int DefaultAccessTokenExpirationSeconds = 7200;
-    private const int DefaultRefreshTokenExpirationSeconds = 2592000;
-
+    /// <summary>
+    /// 初始化 UserTokenManager 实例
+    /// </summary>
+    /// <param name="currentUserContext">当前用户上下文（可选）</param>
+    /// <param name="authenticationApi">飞书认证API接口</param>
+    /// <param name="options">飞书配置选项</param>
+    /// <param name="logger">日志记录器</param>
     public UserTokenManager(
-        IFeishuAuthentication authenticationApi,
         ICurrentUserContext? currentUserContext,
+        IFeishuAuthentication authenticationApi,
         IOptions<FeishuAppConfig> options,
-        ILogger<UserTokenManager> logger,
-        IUserTokenCache userTokenCache)
+        ILogger<UserTokenManager> logger)
     {
-        _authenticationApi = authenticationApi ?? throw new ArgumentNullException(nameof(authenticationApi));
         _currentUserContext = currentUserContext;
+        _authenticationApi = authenticationApi ?? throw new ArgumentNullException(nameof(authenticationApi));
         _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _userTokenCache = userTokenCache ?? throw new ArgumentNullException(nameof(userTokenCache));
+        _localCache = new MemoryCache(new MemoryCacheOptions { SizeLimit = 1000 });
     }
 
-    public async Task<string> GetTokenAsync(CancellationToken cancellationToken = default)
+    /// <inheritdoc />
+    public override async Task<string> GetTokenAsync(CancellationToken cancellationToken = default)
     {
         if (_currentUserContext == null)
             throw new InvalidOperationException("CurrentUserContext is not available. Cannot get user token.");
@@ -60,64 +57,32 @@ internal class UserTokenManager : IFeishuUserTokenManager
         if (!_currentUserContext.IsAuthenticated)
             throw new InvalidOperationException("Current user is not authenticated. Cannot get user token.");
 
-        return await GetTokenAsync(_currentUserContext.OpenId, cancellationToken) ?? throw new InvalidOperationException("Failed to obtain user token.");
+        return await GetOrRefreshTokenAsync(_currentUserContext.OpenId, cancellationToken)
+            ?? throw new InvalidOperationException("Failed to obtain user token.");
     }
 
-    public async Task<string?> GetTokenAsync(string? userId, CancellationToken cancellationToken = default)
+    /// <inheritdoc />
+    public override async Task<string?> GetTokenAsync(string? userId, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(userId))
-        {
-            throw new ArgumentException("UserId cannot be null or empty for user token operations.", nameof(userId));
-        }
+            throw new ArgumentException("OpenId cannot be null or empty.", nameof(userId));
 
-        var cacheKey = GenerateCacheKey(userId);
-
-        var tokenInfo = await _userTokenCache.GetAsync(cacheKey, cancellationToken);
-        if (tokenInfo != null && tokenInfo.IsAccessTokenValid(_options.TokenRefreshThreshold))
-        {
-            _logger.LogDebug("Using cached access token for user {UserId}", userId);
-            FeishuMetricsHelper.RecordTokenFetch("UserAccessToken", fromCache: true);
-            return TokenUtils.FormatBearerToken(tokenInfo.AccessToken);
-        }
-
-        try
-        {
-            FeishuMetricsHelper.RecordTokenFetch("UserAccessToken", fromCache: false);
-
-            var lazyTask = _tokenLoadingTasks.GetOrAdd(cacheKey, _ => new Lazy<Task<string?>>(
-                () => GetOrRefreshTokenInternalAsync(userId!, cancellationToken),
-                LazyThreadSafetyMode.ExecutionAndPublication));
-
-            return await lazyTask.Value;
-        }
-        finally
-        {
-            _tokenLoadingTasks.TryRemove(cacheKey, out _);
-        }
+        return await GetOrRefreshTokenAsync(userId, cancellationToken);
     }
 
-    public async Task<UserTokenInfo?> GetTokenInfoAsync(string userId, CancellationToken cancellationToken = default)
-    {
-        if (string.IsNullOrEmpty(userId))
-        {
-            throw new ArgumentException("UserId cannot be null or empty.", nameof(userId));
-        }
-
-        var cacheKey = GenerateCacheKey(userId);
-        return await _userTokenCache.GetAsync(cacheKey, cancellationToken);
-    }
-
-    public async Task<UserTokenInfo?> GetUserTokenWithCodeAsync(
+    /// <inheritdoc />
+    public override async Task<UserTokenInfo?> GetUserTokenWithCodeAsync(
         string code,
         string redirectUri,
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(code))
-        {
             throw new ArgumentException("Code cannot be null or empty.", nameof(code));
-        }
 
-        _logger.LogInformation("Getting user token with authorization code");
+        if (string.IsNullOrEmpty(redirectUri))
+            throw new ArgumentException("RedirectUri cannot be null or empty.", nameof(redirectUri));
+
+        _logger.LogInformation("Exchanging code for user token");
 
         var credentials = new OAuthTokenRequest
         {
@@ -129,223 +94,149 @@ internal class UserTokenManager : IFeishuUserTokenManager
         };
 
         var res = await _authenticationApi.GetOAuthenAccessTokenAsync(credentials, cancellationToken);
-        if (res == null)
-        {
-            _logger.LogWarning("Failed to get user token: API returned null");
-            return null;
-        }
 
-        var token = CreateCredentialTokenFromResult(res);
-
-        if (res.Code != 0)
+        if (res == null || res.Code != 0)
         {
-            _logger.LogWarning("Failed to get user token: {Code} - {Msg}", res.Code, res.Msg);
-            return token;
+            throw new FeishuException(res?.Code ?? 500, $"获取 UserAccessToken 失败: {res?.Msg ?? "返回结果为null"}");
         }
 
         if (string.IsNullOrEmpty(res.AccessToken))
-            throw new InvalidOperationException("API returned success but access token is null or empty.");
-
-        var userInfo = await _authenticationApi.GetUserInfoAsync(token.AccessToken!, cancellationToken);
-        var openId = userInfo?.Data?.OpenId;
-        var unionId = userInfo?.Data?.UnionId;
-
-        if (string.IsNullOrEmpty(openId))
         {
-            _logger.LogWarning("Failed to get user info from token");
-            return token;
+            throw new FeishuException(443, "获取 UserAccessToken 失败: AccessToken为空");
         }
 
-        var userId = openId;
-        var cacheKey = GenerateCacheKey(userId);
+        var tokenInfo = new UserTokenInfo
+        {
+            UserId = string.Empty,
+            AccessToken = res.AccessToken,
+            RefreshToken = res.RefreshToken,
+            AccessTokenExpireTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + ((res.ExpiresIn > 0 ? res.ExpiresIn : 7200) * 1000L),
+            RefreshTokenExpireTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + ((res.RefreshTokenExpiresIn > 0 ? res.RefreshTokenExpiresIn : 30 * 24 * 3600) * 1000L),
+            Scope = res.Scope,
+            Code = res.Code,
+            Msg = res.Msg
+        };
 
-        var tokenInfo = UserTokenInfo.FromCredentialToken(token, userId!, openId, unionId);
-        await _userTokenCache.SetAsync(cacheKey, tokenInfo, cancellationToken);
-
-        _logger.LogInformation("User token acquired for user {UserId}, access token expires at {ExpireTime}, refresh token expires at {RefreshExpireTime}",
-            userId,
-            DateTimeOffset.FromUnixTimeMilliseconds(token.AccessTokenExpireTime),
-            token.RefreshTokenExpireTime > 0 ? DateTimeOffset.FromUnixTimeMilliseconds(token.RefreshTokenExpireTime) : "N/A");
+        _localCache.Set("temp_token", tokenInfo, new MemoryCacheEntryOptions
+        {
+            Size = 1,
+            AbsoluteExpirationRelativeToNow = TimeSpan.FromMilliseconds(Math.Max(0, tokenInfo.AccessTokenExpireTime - DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()))
+        });
 
         return tokenInfo;
     }
 
-    public async Task<UserTokenInfo?> RefreshUserTokenAsync(
+    /// <inheritdoc />
+    public override async Task<UserTokenInfo?> RefreshUserTokenAsync(
         string userId,
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(userId))
-        {
-            throw new ArgumentException("UserId cannot be null or empty.", nameof(userId));
-        }
-
-        var cacheKey = GenerateCacheKey(userId);
-
-        var refreshLock = _refreshLocks.GetOrAdd(userId, _ => new SemaphoreSlim(1, 1));
-        await refreshLock.WaitAsync(cancellationToken);
-        try
-        {
-            var tokenInfo = await GetTokenInfoInternalAsync(cacheKey, cancellationToken);
-            if (tokenInfo == null)
-            {
-                _logger.LogWarning("No token info found for user {UserId}, cannot refresh", userId);
-                return null;
-            }
-
-            if (string.IsNullOrEmpty(tokenInfo.RefreshToken))
-            {
-                _logger.LogWarning("No refresh token found for user {UserId}", userId);
-                return null;
-            }
-
-            if (!tokenInfo.IsRefreshTokenValid())
-            {
-                _logger.LogWarning("Refresh token expired for user {UserId}", userId);
-                return null;
-            }
-
-            _logger.LogInformation("Refreshing user token for user {UserId}", userId);
-            FeishuMetricsHelper.RecordTokenRefresh("UserAccessToken");
-
-            var credentials = new OAuthRefreshTokenRequest
-            {
-                GrantType = "refresh_token",
-                ClientId = _options.AppId,
-                ClientSecret = _options.AppSecret,
-                RefreshToken = tokenInfo.RefreshToken
-            };
-
-            var res = await _authenticationApi.GetOAuthenRefreshAccessTokenAsync(credentials, cancellationToken);
-            if (res == null)
-            {
-                _logger.LogWarning("Failed to refresh user token: API returned null");
-                return null;
-            }
-
-            var newToken = CreateCredentialTokenFromResult(res);
-
-            if (res.Code != 0)
-            {
-                _logger.LogWarning("Failed to refresh user token: {Code} - {Msg}", res.Code, res.Msg);
-                return newToken;
-            }
-
-            tokenInfo.UpdateFromCredentialToken(newToken);
-            await _userTokenCache.SetAsync(cacheKey, tokenInfo, cancellationToken);
-
-            _logger.LogInformation("User token refreshed for user {UserId}, new access token expires at {ExpireTime}",
-                userId, DateTimeOffset.FromUnixTimeMilliseconds(newToken.AccessTokenExpireTime));
-
-            return tokenInfo;
-        }
-        finally
-        {
-            refreshLock.Release();
-        }
-    }
-
-    public async Task<bool> RemoveTokenAsync(string userId, CancellationToken cancellationToken = default)
-    {
-        if (string.IsNullOrEmpty(userId))
-        {
-            return false;
-        }
-
-        var cacheKey = GenerateCacheKey(userId);
-        var removed = await _userTokenCache.RemoveAsync(cacheKey, cancellationToken);
-
-        if (removed)
-        {
-            _logger.LogInformation("User token removed for user {UserId}", userId);
-        }
-
-        return removed;
-    }
-
-    public async Task<bool> HasValidTokenAsync(string userId, CancellationToken cancellationToken = default)
-    {
-        if (string.IsNullOrEmpty(userId))
-        {
-            return false;
-        }
-
-        var cacheKey = GenerateCacheKey(userId);
-        return await _userTokenCache.ExistsAsync(cacheKey, cancellationToken);
-    }
-
-    public async Task<bool> CanRefreshTokenAsync(string userId, CancellationToken cancellationToken = default)
-    {
-        if (string.IsNullOrEmpty(userId))
-        {
-            return false;
-        }
-
-        var cacheKey = GenerateCacheKey(userId);
-        var tokenInfo = await GetTokenInfoInternalAsync(cacheKey, cancellationToken);
-
-        return tokenInfo?.IsRefreshTokenValid() ?? false;
-    }
-
-    private async Task<string?> GetOrRefreshTokenInternalAsync(string userId, CancellationToken cancellationToken)
-    {
-        var cacheKey = GenerateCacheKey(userId);
-
-        var tokenInfo = await GetTokenInfoInternalAsync(cacheKey, cancellationToken);
-
-        if (tokenInfo == null)
-        {
-            _logger.LogWarning("No token found for user {UserId}. Please use GetUserTokenWithCodeAsync to obtain a token.", userId);
             return null;
-        }
 
-        if (tokenInfo.IsAccessTokenValid(_options.TokenRefreshThreshold))
-        {
-            return TokenUtils.FormatBearerToken(tokenInfo.AccessToken);
-        }
-
-        if (tokenInfo.IsRefreshTokenValid())
-        {
-            _logger.LogInformation("Access token expired, attempting to refresh for user {UserId}", userId);
-
-            var newToken = await RefreshUserTokenAsync(userId, cancellationToken);
-            if (newToken != null && !string.IsNullOrEmpty(newToken.AccessToken))
-            {
-                return TokenUtils.FormatBearerToken(newToken.AccessToken);
-            }
-
-            _logger.LogWarning("Failed to refresh token for user {UserId}", userId);
+        var cachedInfo = GetUserTokenFromLocalCache(userId);
+        if (cachedInfo == null)
             return null;
-        }
 
-        _logger.LogWarning("Both access token and refresh token expired for user {UserId}. Re-authorization required.", userId);
-        return null;
-    }
+        if (string.IsNullOrEmpty(cachedInfo.RefreshToken))
+            return null;
 
-    private async Task<UserTokenInfo?> GetTokenInfoInternalAsync(string cacheKey, CancellationToken cancellationToken)
-    {
-        return await _userTokenCache.GetAsync(cacheKey, cancellationToken);
-    }
+        _logger.LogInformation("Refreshing user token for userId: {UserId}", userId);
 
-    private UserTokenInfo CreateCredentialTokenFromResult(OAuthCredentialsResult res)
-    {
-        var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-        var accessTokenExpire = now + ((res.ExpiresIn > 0 ? res.ExpiresIn : DefaultAccessTokenExpirationSeconds) * 1000L);
-        var refreshTokenExpire = now + ((res.RefreshTokenExpiresIn > 0 ? res.RefreshTokenExpiresIn : DefaultRefreshTokenExpirationSeconds) * 1000L);
-
-        return new UserTokenInfo
+        var credentials = new OAuthRefreshTokenRequest
         {
-            AccessToken = res.AccessToken,
-            AccessTokenExpireTime = accessTokenExpire,
-            RefreshToken = res.RefreshToken,
-            RefreshTokenExpireTime = refreshTokenExpire,
-            Scope = res.Scope,
-            Code = res.Code,
-            Msg = res.ErrorDescription ?? (res.Code == 0 ? "Success" : "Unknown error")
+            GrantType = "refresh_token",
+            ClientId = _options.AppId,
+            ClientSecret = _options.AppSecret,
+            RefreshToken = cachedInfo.RefreshToken
         };
+
+        var res = await _authenticationApi.GetOAuthenRefreshAccessTokenAsync(credentials, cancellationToken);
+
+        if (res == null || res.Code != 0)
+        {
+            _logger.LogWarning("Failed to refresh user token for userId: {UserId}, error: {Msg}", userId, res?.Msg);
+            return null;
+        }
+
+        var tokenInfo = new UserTokenInfo
+        {
+            UserId = cachedInfo.UserId,
+            OpenId = cachedInfo.OpenId,
+            UnionId = cachedInfo.UnionId,
+            AccessToken = res.AccessToken ?? cachedInfo.AccessToken,
+            RefreshToken = res.RefreshToken ?? cachedInfo.RefreshToken,
+            AccessTokenExpireTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + ((res.ExpiresIn > 0 ? res.ExpiresIn : 7200) * 1000L),
+            RefreshTokenExpireTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + ((res.RefreshTokenExpiresIn > 0 ? res.RefreshTokenExpiresIn : 30 * 24 * 3600) * 1000L),
+            Scope = cachedInfo.Scope,
+            Code = res.Code,
+            Msg = res.Msg
+        };
+
+        UpdateUserTokenCache(userId, tokenInfo);
+        _localCache.Set(userId, tokenInfo, new MemoryCacheEntryOptions
+        {
+            Size = 1,
+            AbsoluteExpirationRelativeToNow = TimeSpan.FromMilliseconds(Math.Max(0, tokenInfo.AccessTokenExpireTime - DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()))
+        });
+        return tokenInfo;
     }
 
-    private string GenerateCacheKey(string? userId)
+    /// <inheritdoc />
+    public override Task<bool> RemoveTokenAsync(string userId, CancellationToken cancellationToken = default)
     {
-        return $"{_options.AppId}:UserAccessToken:{userId}";
+        if (string.IsNullOrEmpty(userId))
+            return Task.FromResult(false);
+
+        RemoveUserTokenFromCache(userId);
+        _localCache.Remove(userId);
+        return Task.FromResult(true);
+    }
+
+    /// <inheritdoc />
+    public override Task<bool> HasValidTokenAsync(string userId, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrEmpty(userId))
+            return Task.FromResult(false);
+
+        var cachedInfo = GetUserTokenFromLocalCache(userId);
+        return Task.FromResult(cachedInfo != null && !string.IsNullOrEmpty(cachedInfo.AccessToken));
+    }
+
+    /// <inheritdoc />
+    public override Task<bool> CanRefreshTokenAsync(string userId, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrEmpty(userId))
+            return Task.FromResult(false);
+
+        var cachedInfo = GetUserTokenFromLocalCache(userId);
+        return Task.FromResult(cachedInfo != null && !string.IsNullOrEmpty(cachedInfo.RefreshToken));
+    }
+
+    /// <inheritdoc />
+    public override Task<UserTokenInfo?> GetTokenInfoAsync(string userId, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrEmpty(userId))
+            return Task.FromResult<UserTokenInfo?>(null);
+
+        var cachedInfo = GetUserTokenFromLocalCache(userId);
+        return Task.FromResult(cachedInfo);
+    }
+
+    /// <summary>
+    /// 从本地缓存获取用户令牌信息
+    /// </summary>
+    private UserTokenInfo? GetUserTokenFromLocalCache(string userId)
+    {
+        return _localCache.Get<UserTokenInfo>(userId);
+    }
+
+    /// <summary>
+    /// 刷新令牌的核心实现（TokenManagerBase 要求的抽象方法）
+    /// 用户令牌不支持通过此方法刷新，用户令牌使用 RefreshUserTokenAsync 方法
+    /// </summary>
+    protected override Task<CredentialToken> RefreshTokenCoreAsync(CancellationToken cancellationToken)
+    {
+        throw new NotSupportedException("User tokens should be refreshed via RefreshUserTokenAsync method.");
     }
 }

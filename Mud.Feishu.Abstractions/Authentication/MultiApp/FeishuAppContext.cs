@@ -5,6 +5,8 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using Mud.Feishu.TokenManager;
+
 namespace Mud.Feishu.Abstractions;
 
 
@@ -16,10 +18,10 @@ namespace Mud.Feishu.Abstractions;
 /// - 应用配置信息
 /// - 各种类型的令牌管理器（租户令牌、应用令牌、用户令牌）
 /// - 认证API客户端
-/// - 令牌缓存
 /// - HTTP客户端
 /// 
 /// 每个应用上下文是完全独立的，不同应用之间的配置、缓存和资源互不干扰。
+/// 令牌缓存由 Mud.HttpUtils v2.0 的 TokenManagerBase 内部管理。
 /// </remarks>
 public class FeishuAppContext : IFeishuAppContext, IMudAppContext, IDisposable
 {
@@ -50,6 +52,44 @@ public class FeishuAppContext : IFeishuAppContext, IMudAppContext, IDisposable
             "useraccesstoken" => UserTokenManager,
             _ => throw new ArgumentOutOfRangeException(nameof(tokenType), $"Unsupported token type: {tokenType}")
         };
+    }
+
+    /// <summary>
+    /// 获取指定类型的令牌管理器（泛型版本）
+    /// </summary>
+    /// <typeparam name="T">令牌管理器类型</typeparam>
+    /// <returns>指定类型的令牌管理器实例</returns>
+    public T GetTokenManager<T>() where T : class, ITokenManager
+    {
+        if (typeof(T) == typeof(ITenantTokenManager) || typeof(T) == typeof(TenantTokenManager))
+            return TenantTokenManager as T ?? throw new InvalidOperationException($"Cannot cast TenantTokenManager to {typeof(T).Name}");
+        if (typeof(T) == typeof(IAppTokenManager) || typeof(T) == typeof(AppTokenManager))
+            return AppTokenManager as T ?? throw new InvalidOperationException($"Cannot cast AppTokenManager to {typeof(T).Name}");
+        if (typeof(T) == typeof(IFeishuUserTokenManager) || typeof(T) == typeof(UserTokenManager))
+            return UserTokenManager as T ?? throw new InvalidOperationException($"Cannot cast UserTokenManager to {typeof(T).Name}");
+
+        throw new InvalidOperationException($"Unsupported token manager type: {typeof(T).Name}");
+    }
+
+    /// <summary>
+    /// 从应用上下文中获取指定类型的服务实例
+    /// </summary>
+    /// <typeparam name="T">要获取的服务类型</typeparam>
+    /// <returns>指定类型的服务实例；如果服务未注册则返回 null</returns>
+    public T? GetService<T>() where T : class
+    {
+        if (typeof(T) == typeof(IFeishuAuthentication))
+            return Authentication as T;
+        if (typeof(T) == typeof(IEnhancedHttpClient))
+            return HttpClient as T;
+        if (typeof(T) == typeof(ITenantTokenManager))
+            return TenantTokenManager as T;
+        if (typeof(T) == typeof(IAppTokenManager))
+            return AppTokenManager as T;
+        if (typeof(T) == typeof(IFeishuUserTokenManager))
+            return UserTokenManager as T;
+
+        return null;
     }
 
     /// <summary>
@@ -96,15 +136,6 @@ public class FeishuAppContext : IFeishuAppContext, IMudAppContext, IDisposable
     public IFeishuAuthentication Authentication { get; }
 
     /// <summary>
-    /// 令牌缓存
-    /// </summary>
-    /// <remarks>
-    /// 用于缓存此应用的令牌，减少对飞书API的频繁调用。
-    /// 缓存键会自动添加应用前缀，确保不同应用的缓存互不干扰。
-    /// </remarks>
-    public ITokenCache TokenCache { get; }
-
-    /// <summary>
     /// 初始化飞书应用上下文
     /// </summary>
     /// <param name="config">应用配置</param>
@@ -112,7 +143,6 @@ public class FeishuAppContext : IFeishuAppContext, IMudAppContext, IDisposable
     /// <param name="appTokenManager">应用令牌管理器</param>
     /// <param name="userTokenManager">用户令牌管理器</param>
     /// <param name="authenticationApi">认证API客户端</param>
-    /// <param name="tokenCache">令牌缓存</param>
     /// <param name="httpClient">HTTP客户端</param>
     /// <exception cref="ArgumentNullException">当任何必需参数为null时抛出</exception>
     public FeishuAppContext(
@@ -121,7 +151,6 @@ public class FeishuAppContext : IFeishuAppContext, IMudAppContext, IDisposable
         IAppTokenManager appTokenManager,
         IFeishuUserTokenManager userTokenManager,
         IFeishuAuthentication authenticationApi,
-        ITokenCache tokenCache,
         IEnhancedHttpClient httpClient)
     {
         Config = config ?? throw new ArgumentNullException(nameof(config));
@@ -129,7 +158,6 @@ public class FeishuAppContext : IFeishuAppContext, IMudAppContext, IDisposable
         AppTokenManager = appTokenManager ?? throw new ArgumentNullException(nameof(appTokenManager));
         UserTokenManager = userTokenManager ?? throw new ArgumentNullException(nameof(userTokenManager));
         Authentication = authenticationApi ?? throw new ArgumentNullException(nameof(authenticationApi));
-        TokenCache = tokenCache ?? throw new ArgumentNullException(nameof(tokenCache));
         HttpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
     }
 
@@ -137,13 +165,21 @@ public class FeishuAppContext : IFeishuAppContext, IMudAppContext, IDisposable
     /// 释放资源
     /// </summary>
     /// <remarks>
-    /// 清理应用上下文占用的资源，主要是令牌缓存。
+    /// 清理应用上下文占用的资源，主要是令牌管理器。
     /// </remarks>
     public void Dispose()
     {
-        if (TokenCache is IDisposable disposableCache)
+        if (TenantTokenManager is IDisposable disposableTenant)
         {
-            disposableCache.Dispose();
+            disposableTenant.Dispose();
+        }
+        if (AppTokenManager is IDisposable disposableApp)
+        {
+            disposableApp.Dispose();
+        }
+        if (UserTokenManager is IDisposable disposableUser)
+        {
+            disposableUser.Dispose();
         }
     }
 

@@ -124,9 +124,9 @@ public interface IFeishuV4CalendarEvent : IFeishuAppContextSwitcher
 
 
     /// <summary>
-    /// 更新日程
-    /// <para>以当前身份（应用或用户）更新指定日历上的一个日程，包括日程标题、描述、开始与结束时间、视频会议以及日程地点等信息。</para>
-    /// <para><see href="https://open.feishu.cn/document/server-docs/calendar-v4/calendar-event/patch">接口文档</see></para>
+    /// 获取日程
+    /// <para>以当前身份（应用或用户）获取指定日历内的某一日程信息，包括日程的标题、时间段、视频会议信息、公开范围以及参与人权限等。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/calendar-v4/calendar-event/get">接口文档</see></para>
     /// </summary> 
     /// <param name="calendar_id">
     /// <para>日历 ID。</para>
@@ -180,4 +180,81 @@ public interface IFeishuV4CalendarEvent : IFeishuAppContextSwitcher
       [Query] int? max_attendee_num = 10,
       [Query] string? user_id_type = Consts.User_Id_Type,
       CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 获取日程
+    /// <para>以当前身份（应用或用户）获取指定日历内的某一日程信息，包括日程的标题、时间段、视频会议信息、公开范围以及参与人权限等。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/calendar-v4/calendar-event/get">接口文档</see></para>
+    /// </summary> 
+    /// <param name="calendar_id">
+    /// <para>日历 ID。</para>
+    /// <para>创建共享日历时会返回日历 ID。也可以调用以下接口获取某一日历的 ID。</para>
+    /// <para>示例值：feishu.cn_xxxxxxxxxx@group.calendar.feishu.cn</para>
+    /// </param> 
+    /// <param name="user_id_type">
+    /// <para>用户 ID 类型</para>
+    /// <para>示例值：open_id</para>
+    /// <list type="bullet">
+    /// <item>open_id：标识一个用户在某个应用中的身份。同一个用户在不同应用中的 Open ID 不同。</item>
+    /// <item>union_id：标识一个用户在某个应用开发商下的身份。同一用户在同一开发商下的应用中的 Union ID 是相同的，在不同开发商下的应用中的 Union ID 是不同的。通过 Union ID，应用开发商可以把同个用户在多个应用中的身份关联起来。</item>
+    /// <item>user_id：标识一个用户在某个租户内的身份。同一个用户在租户 A 和租户 B 内的 User ID 是不同的。在同一个租户内，一个用户的 User ID 在所有应用（包括商店应用）中都保持一致。User ID 主要用于在不同的应用间打通用户数据。</item>
+    /// </list>
+    /// <para>默认值：open_id</para>
+    /// </param>
+    /// <param name="page_size">分页大小，即本次请求所返回的信息列表内的最大条目数。默认值：500</param>
+    /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
+    /// <param name="anchor_time">
+    /// <para>必填：否</para>
+    /// <para>时间锚点，Unix 时间戳（秒）。anchor_time 用于设置一个时间点，以便直接拉取该时间点之后的日程数据，从而避免拉取全量日程数据。可使用 page_token 或 sync_token 进行分页或增量拉取 anchor_time 之后的所有日程数据。</para>
+    /// <para>**使用说明**：</para>
+    /// <para>- 对于单次日程，会获取到 **日程结束时间 &gt;= anchor_time** 的日程信息。</para>
+    /// <para>- 对于重复性日程，目前设置 anchor_time 后均会获取到，包括在 anchor_time 之前的已结束的历史重复性日程。</para>
+    /// <para>- 对于例外日程，会获取到 **original_time &gt;= anchor_time** 以及 **日程结束时间 &gt;= anchor_time** 的日程信息，其中 original_time 从例外日程 ID 中获取，ID 结构为 `{uid}_{original_time}`。</para>
+    /// <para>**注意**：该参数不可与 start_time 和 end_time 一起使用。</para>
+    /// <para>**默认值**：空</para>
+    /// <para>示例值：1609430400</para>
+    /// <para>默认值：null</para>
+    /// </param>
+    /// <param name="sync_token">
+    /// <para>必填：否</para>
+    /// <para>增量同步标记，第一次请求不填。当分页查询结束（page_token 返回值为空）时，接口会返回 sync_token 字段，下次调用可使用该 sync_token 增量获取日历变更数据。</para>
+    /// <para>**默认值**：空</para>
+    /// <para>示例值：ListCalendarsSyncToken_1632452910</para>
+    /// <para>默认值：null</para>
+    /// </param>
+    /// <param name="start_time">
+    /// <para>必填：否</para>
+    /// <para>时间区间的开始时间， Unix 时间戳（秒），与end_time搭配使用，用于拉取指定时间区间内的日程数据.</para>
+    /// <para>**注意**：</para>
+    /// <para>- 该方式只能一次性返回数据，无法进行分页。一次性返回的数据大小受page_size限制，超过限制的数据将被截断。</para>
+    /// <para>- 在使用start_time和end_time时，不能与page_token或sync_token一起使用。</para>
+    /// <para>- 在使用start_time和end_time时，不能与anchor_time一起使用。</para>
+    /// <para>**默认值**：空</para>
+    /// <para>示例值：1631777271</para>
+    /// <para>默认值：null</para>
+    /// </param>
+    /// <param name="end_time">
+    /// <para>必填：否</para>
+    /// <para>时间区间的结束时间， Unix 时间戳（秒）。与start_time搭配使用，用于拉取指定时间区间内的日程数据.</para>
+    /// <para>**注意**：</para>
+    /// <para>- 该方式只能一次性返回数据，无法进行分页。一次性返回的数据大小受page_size限制，超过限制的数据将被截断。</para>
+    /// <para>- 在使用start_time和end_time时不能与page_token或sync_token一起使用。</para>
+    /// <para>- 在使用start_time和end_time时，不能与anchor_time一起使用。</para>
+    /// <para>**默认值**：空</para>
+    /// <para>示例值：1631777271</para>
+    /// <para>默认值：null</para>
+    /// </param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Get("/open-apis/calendar/v4/calendars/{calendar_id}/events")]
+    Task<FeishuApiResult<GetCalendarEventPageListResult>?> GetCalendarEventPageListAsync(
+        [Path] string calendar_id,
+        [Query] int page_size = Consts.PageSize_20,
+        [Query] string? page_token = null,
+        [Query] string? anchor_time = null,
+        [Query] string? sync_token = null,
+        [Query] string? start_time = null,
+        [Query] string? end_time = null,
+        [Query] string? user_id_type = Consts.User_Id_Type,
+        CancellationToken cancellationToken = default);
 }

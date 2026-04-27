@@ -103,7 +103,7 @@ public interface IFeishuV4CalendarAcl : IFeishuAppContextSwitcher
     /// </param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Get("/open-apis/calendar/v4/calendars/{calendar_id}/acls")]
-    Task<FeishuApiResult<GetCalendarAclsResult>?> GetCalendarAclsPageListAsync(
+    Task<FeishuApiResult<GetCalendarEventPageListResult>?> GetCalendarAclsPageListAsync(
         [Path] string calendar_id,
         [Query] int page_size = Consts.PageSize_20,
         [Query] string? page_token = null,

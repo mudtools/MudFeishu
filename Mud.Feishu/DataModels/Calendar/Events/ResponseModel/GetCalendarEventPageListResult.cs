@@ -8,15 +8,15 @@
 namespace Mud.Feishu.DataModels.Calendar;
 
 /// <summary>
-/// <para>视频会议信息。</para>
+/// 获取日程分页列表响应体
 /// </summary>
-public class CalendarEventVchat : CalendarEventVchatData
+public class GetCalendarEventPageListResult : ApiPageListResult<CalendarEventListDetailInfo>
 {
     /// <summary>
-    /// <para>飞书视频会议（VC）的会前设置。</para>
+    /// <para>增量同步标记。当 has_more 为 false 时，会同步返回新的 sync_token，下次请求需要带上 sync_token 增量获取日历变更数据。</para>
     /// <para>必填：否</para>
+    /// <para>示例值：ListCalendarsSyncToken_1632452910</para>
     /// </summary>
-    [JsonPropertyName("meeting_settings")]
-    public CalendarEventVchatMeetingSettings? MeetingSettings { get; set; }
-
+    [JsonPropertyName("sync_token")]
+    public string? SyncToken { get; set; }
 }

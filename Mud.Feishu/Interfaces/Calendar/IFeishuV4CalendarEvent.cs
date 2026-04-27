@@ -47,7 +47,7 @@ public interface IFeishuV4CalendarEvent : IFeishuAppContextSwitcher
     /// <param name="createCalendarEventRequest">创建日程请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Post("/open-apis/calendar/v4/calendars/{calendar_id}/events")]
-    Task<FeishuApiResult<CreateCalendarEventResult>?> CreateCalendarEventAsync(
+    Task<FeishuApiResult<CalendarEventOopsResult>?> CreateCalendarEventAsync(
        [Path] string calendar_id,
        [Body] CreateCalendarEventRequest createCalendarEventRequest,
        [Query] string? idempotency_key = null,
@@ -86,4 +86,39 @@ public interface IFeishuV4CalendarEvent : IFeishuAppContextSwitcher
        [Path] string event_id,
        [Query] bool? need_notification = true,
        CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 更新日程
+    /// <para>以当前身份（应用或用户）更新指定日历上的一个日程，包括日程标题、描述、开始与结束时间、视频会议以及日程地点等信息。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/calendar-v4/calendar-event/patch">接口文档</see></para>
+    /// </summary> 
+    /// <param name="calendar_id">
+    /// <para>日历 ID。</para>
+    /// <para>创建共享日历时会返回日历 ID。也可以调用以下接口获取某一日历的 ID。</para>
+    /// <para>示例值：feishu.cn_xxxxxxxxxx@group.calendar.feishu.cn</para>
+    /// </param> 
+    /// <param name="user_id_type">
+    /// <para>用户 ID 类型</para>
+    /// <para>示例值：open_id</para>
+    /// <list type="bullet">
+    /// <item>open_id：标识一个用户在某个应用中的身份。同一个用户在不同应用中的 Open ID 不同。</item>
+    /// <item>union_id：标识一个用户在某个应用开发商下的身份。同一用户在同一开发商下的应用中的 Union ID 是相同的，在不同开发商下的应用中的 Union ID 是不同的。通过 Union ID，应用开发商可以把同个用户在多个应用中的身份关联起来。</item>
+    /// <item>user_id：标识一个用户在某个租户内的身份。同一个用户在租户 A 和租户 B 内的 User ID 是不同的。在同一个租户内，一个用户的 User ID 在所有应用（包括商店应用）中都保持一致。User ID 主要用于在不同的应用间打通用户数据。</item>
+    /// </list>
+    /// <para>默认值：open_id</para>
+    /// </param>
+    /// <param name="event_id">
+    /// <para>日程 ID。</para>
+    /// <para>示例值：xxxxxxxxx_0</para>
+    /// </param>
+    /// <param name="updateCalendarEventRequest">更新日程请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Patch("/open-apis/calendar/v4/calendars/{calendar_id}/events/{event_id}")]
+    Task<FeishuApiResult<CalendarEventOopsResult>?> UpdateCalendarEventAsync(
+      [Path] string calendar_id,
+      [Path] string event_id,
+      [Body] UpdateCalendarEventRequest updateCalendarEventRequest,
+      [Query] string? user_id_type = Consts.User_Id_Type,
+      CancellationToken cancellationToken = default);
 }

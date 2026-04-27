@@ -8,7 +8,6 @@
 namespace Mud.Feishu.DataModels.Calendar;
 
 
-
 /// <summary>
 /// <para>日程自定义信息，控制日程详情页的 UI 展示。不传值则默认为空。</para>
 /// </summary>

@@ -9,9 +9,9 @@ namespace Mud.Feishu.DataModels.Calendar;
 
 
 /// <summary>
-/// <para>创建日程响应体</para>
+/// <para>日程业务操作响应体</para>
 /// </summary>
-public class CreateCalendarEventResult
+public class CalendarEventOopsResult
 {
     /// <summary>
     /// <para>新创建的日程实体信息。</para>

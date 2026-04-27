@@ -1,0 +1,62 @@
+// -----------------------------------------------------------------------
+//  作者：Mud Studio  版权所有 (c) Mud Studio 2026   
+//  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
+//  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
+//  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
+// -----------------------------------------------------------------------
+
+namespace Mud.Feishu.DataModels.Calendar;
+
+/// <summary>
+/// <para>群中的群成员，当参与人类型（type）为 chat 时有效。群成员不支持编辑。</para>
+/// </summary>
+public class AttendeeChatMember
+{
+    /// <summary>
+    /// <para>参与人 RSVP 状态，即日程回复状态。</para>
+    /// <para>必填：否</para>
+    /// <para>示例值：accept</para>
+    /// <para>可选值：<list type="bullet">
+    /// <item>needs_action：参与人尚未回复状态，或表示会议室预约中</item>
+    /// <item>accept：参与人回复接受，或表示会议室预约成功</item>
+    /// <item>tentative：参与人回复待定</item>
+    /// <item>decline：参与人回复拒绝，或表示会议室预约失败</item>
+    /// <item>removed：参与人或会议室已经从日程中被移除</item>
+    /// </list></para>
+    /// </summary>
+    [JsonPropertyName("rsvp_status")]
+    public string? RsvpStatus { get; set; }
+
+    /// <summary>
+    /// <para>参与人是否为可选参加。</para>
+    /// <para>必填：否</para>
+    /// <para>示例值：true</para>
+    /// <para>默认值：false</para>
+    /// </summary>
+    [JsonPropertyName("is_optional")]
+    public bool? IsOptional { get; set; }
+
+    /// <summary>
+    /// <para>参与人名称。</para>
+    /// <para>必填：否</para>
+    /// <para>示例值：zhangsan</para>
+    /// </summary>
+    [JsonPropertyName("display_name")]
+    public string? DisplayName { get; set; }
+
+    /// <summary>
+    /// <para>参与人是否为日程组织者。</para>
+    /// <para>必填：否</para>
+    /// <para>示例值：false</para>
+    /// </summary>
+    [JsonPropertyName("is_organizer")]
+    public bool? IsOrganizer { get; set; }
+
+    /// <summary>
+    /// <para>参与人是否为外部参与人。</para>
+    /// <para>必填：否</para>
+    /// <para>示例值：false</para>
+    /// </summary>
+    [JsonPropertyName("is_external")]
+    public bool? IsExternal { get; set; }
+}

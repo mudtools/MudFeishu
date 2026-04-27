@@ -10,7 +10,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using Mud.Feishu.Abstractions.Configuration;
-using Mud.Feishu.Abstractions.Utilities;
+using Mud.HttpUtils;
+using Mud.HttpUtils.Resilience;
 using System.Net;
 using System.Text.Json;
 
@@ -83,59 +84,40 @@ public static class FeishuServiceCollectionExtensions
     {
         foreach (var config in configs)
         {
-            services.AddHttpClient($"feishu-{config.AppKey}")
-                    .ConfigureFeishuHttpClient(config);
+            var clientName = $"feishu-{config.AppKey}";
+            var baseAddress = config.BaseUrl ?? "https://open.feishu.cn";
+            var allowCustomBaseUrl = config.AllowCustomBaseUrl;
+            var timeOut = config.TimeOut;
+            var retryCount = config.RetryCount;
+            var retryDelayMs = config.RetryDelayMs;
+
+            // 验证 BaseUrl 是否安全（SSRF 防护）
+            ValidateFeishuBaseUrl(baseAddress, allowCustomBaseUrl);
+
+            services.AddMudHttpClient(
+                clientName,
+                client =>
+                {
+                    client.BaseAddress = new Uri(baseAddress);
+                    client.DefaultRequestHeaders.Add("User-Agent", "MudFeishuClient/1.0");
+                    client.Timeout = TimeSpan.FromSeconds(timeOut);
+                });
+
+            services.AddMudHttpResilienceDecorator(resilienceOptions =>
+            {
+                resilienceOptions.Retry.Enabled = true;
+                resilienceOptions.Retry.MaxRetryAttempts = retryCount;
+                resilienceOptions.Retry.DelayMilliseconds = retryDelayMs;
+                resilienceOptions.Retry.UseExponentialBackoff = true;
+                resilienceOptions.Timeout.Enabled = true;
+                resilienceOptions.Timeout.TimeoutSeconds = timeOut;
+            });
         }
 
         // 注册JSON配置
         services.Configure<JsonSerializerOptions>(options => HttpClientExtensions.GetDefaultJsonSerializerOptions());
 
         return services;
-    }
-
-
-    private static IHttpClientBuilder ConfigureFeishuHttpClient(
-        this IHttpClientBuilder builder,
-        FeishuAppConfig? config,
-        Action<HttpClient, IServiceProvider>? additionalConfig = null)
-    {
-        return builder
-        .ConfigureHttpClient((serviceProvider, client) =>
-        {
-            // 基础配置
-            string baseUrl = config?.BaseUrl ?? "https://open.feishu.cn";
-            bool allowCustomBaseUrl = config?.AllowCustomBaseUrl ?? false;
-
-            // 验证 BaseUrl 是否安全（SSRF 防护）
-            ValidateFeishuBaseUrl(baseUrl, allowCustomBaseUrl);
-
-            int timeOut = config?.TimeOut ?? 60;
-
-            client.BaseAddress = new Uri(baseUrl);
-            client.DefaultRequestHeaders.Add("User-Agent", "MudFeishuClient/1.0");
-            client.Timeout = TimeSpan.FromSeconds(timeOut);
-
-            // 额外的配置
-            additionalConfig?.Invoke(client, serviceProvider);
-        })
-            .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
-            {
-                AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate,
-                // 启用更安全的SSL/TLS协议
-                SslProtocols = System.Security.Authentication.SslProtocols.Tls12,
-                // 自动重定向
-                AllowAutoRedirect = true,
-                MaxAutomaticRedirections = 5,
-                // 支持连接池复用
-                MaxConnectionsPerServer = 100,
-            })
-            .AddPolicyHandler(request =>
-            {
-                // 使用自定义重试策略，区分 4xx 和 5xx 错误
-                int retryCount = config?.RetryCount ?? 3;
-                int retryDelayMs = config?.RetryDelayMs ?? 1000;
-                return HttpRetryPolicyBuilder.BuildRetryPolicy(retryCount, retryDelayMs);
-            });
     }
 
     /// <summary>

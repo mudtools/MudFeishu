@@ -48,25 +48,8 @@ public class AppTokenManagerTests : TokenManagerTestsBase
 
         // Assert
         Assert.NotNull(result);
-        Assert.Equal($"Bearer {expectedToken}", result);
+        Assert.Equal(expectedToken, result);
         _authenticationApiMock.Verify(x => x.GetAppAccessTokenAsync(It.IsAny<AppCredentials>(), It.IsAny<CancellationToken>()), Times.Once);
-        _tokenCacheMock.Verify(x => x.SetAsync(It.IsAny<string>(), expectedToken, It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Once);
-    }
-
-    [Fact]
-    public async Task GetTokenAsync_ShouldReturnCachedToken_WhenCacheHasValidToken()
-    {
-        // Arrange
-        var cachedToken = "cached-token"; // 缓存中存储不带前缀的原始token
-        _tokenCacheMock.Setup(x => x.GetAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(cachedToken);
-
-        // Act
-        var result = await _appTokenManager.GetTokenAsync(CancellationToken.None);
-
-        // Assert - 返回时应带有 Bearer 前缀
-        Assert.Equal($"Bearer {cachedToken}", result);
-        _authenticationApiMock.Verify(x => x.GetAppAccessTokenAsync(It.IsAny<AppCredentials>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -104,7 +87,7 @@ public class AppTokenManagerTests : TokenManagerTestsBase
     }
 
     [Fact]
-    public async Task GetTokenAsync_ShouldReuseCachedToken_WhenTokenIsValid()
+    public async Task GetTokenAsync_ShouldCacheToken_WhenTokenIsValid()
     {
         // Arrange
         var expectedToken = "test-app-access-token";
@@ -117,20 +100,9 @@ public class AppTokenManagerTests : TokenManagerTestsBase
             Msg = "ok"
         };
 
-        var callCount = 0;
         _authenticationApiMock
             .Setup(x => x.GetAppAccessTokenAsync(It.IsAny<AppCredentials>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(() =>
-            {
-                callCount++;
-                return callCount == 1 ? apiResult : null;
-            });
-
-        _tokenCacheMock.Setup(x => x.GetAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(() =>
-            {
-                return callCount == 0 ? null : expectedToken; // 缓存返回不带前缀的原始token
-            });
+            .ReturnsAsync(apiResult);
 
         // Act - First call should get new token
         var result1 = await _appTokenManager.GetTokenAsync(CancellationToken.None);
@@ -141,15 +113,15 @@ public class AppTokenManagerTests : TokenManagerTestsBase
         // Assert
         Assert.NotNull(result1);
         Assert.NotNull(result2);
-        Assert.Equal($"Bearer {expectedToken}", result1);
+        Assert.Equal(expectedToken, result1);
         Assert.Equal(result1, result2);
 
-        // Verify API was only called once
+        // Verify API was only called once (second call used cache)
         _authenticationApiMock.Verify(x => x.GetAppAccessTokenAsync(It.IsAny<AppCredentials>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
-    public async Task GetTokenAsync_ShouldThrowFeishuException_WhenNetworkTimeout()
+    public async Task GetTokenAsync_ShouldThrowTaskCanceledException_WhenNetworkTimeout()
     {
         // Arrange
         _authenticationApiMock
@@ -157,12 +129,11 @@ public class AppTokenManagerTests : TokenManagerTestsBase
             .ThrowsAsync(new TaskCanceledException("Request timed out"));
 
         // Act & Assert
-        var exception = await Assert.ThrowsAsync<FeishuException>(() => _appTokenManager.GetTokenAsync(CancellationToken.None));
-        Assert.Contains("Failed to acquire AppAccessToken after", exception.Message);
+        await Assert.ThrowsAsync<TaskCanceledException>(() => _appTokenManager.GetTokenAsync(CancellationToken.None));
     }
 
     [Fact]
-    public async Task GetTokenAsync_ShouldThrowFeishuException_WhenHttpRequestException()
+    public async Task GetTokenAsync_ShouldThrowHttpRequestException_WhenNetworkError()
     {
         // Arrange
         _authenticationApiMock
@@ -170,8 +141,7 @@ public class AppTokenManagerTests : TokenManagerTestsBase
             .ThrowsAsync(new HttpRequestException("Network error"));
 
         // Act & Assert
-        var exception = await Assert.ThrowsAsync<FeishuException>(() => _appTokenManager.GetTokenAsync(CancellationToken.None));
-        Assert.Contains("Network error", exception.Message);
+        await Assert.ThrowsAsync<HttpRequestException>(() => _appTokenManager.GetTokenAsync(CancellationToken.None));
     }
 
     [Fact]

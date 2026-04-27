@@ -41,7 +41,7 @@ public class DefaultEncryptKeyProvider : IEncryptKeyProvider
     /// <inheritdoc />
     public Task<string?> GetEncryptKeyAsync(string appKey, CancellationToken cancellationToken = default)
     {
-        ExceptionUtils.ThrowIfNull(appKey, nameof(appKey));
+        if (appKey == null) throw new ArgumentNullException(nameof(appKey));
 
         var options = _optionsMonitor.CurrentValue;
         var appConfig = options.GetAppConfig(appKey);
@@ -65,7 +65,7 @@ public class DefaultEncryptKeyProvider : IEncryptKeyProvider
     /// <inheritdoc />
     public Task<string?> GetVerificationTokenAsync(string appKey, CancellationToken cancellationToken = default)
     {
-        ExceptionUtils.ThrowIfNull(appKey, nameof(appKey));
+        if (appKey == null) throw new ArgumentNullException(nameof(appKey));
 
         var options = _optionsMonitor.CurrentValue;
         var appConfig = options.GetAppConfig(appKey);

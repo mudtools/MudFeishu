@@ -11,17 +11,9 @@ using Mud.HttpUtils;
 
 namespace Mud.Feishu.Tests.Authentication.TokenManager;
 
-/// <summary>
-/// 令牌管理器测试基类
-/// </summary>
-/// <remarks>
-/// 提供测试所需的公共基础设施，包括 Mock 对象和 FeishuAppContext 实例。
-/// </remarks>
 public abstract class TokenManagerTestsBase : IDisposable
 {
     protected readonly Mock<IFeishuAuthentication> _authenticationApiMock;
-    protected readonly Mock<ITokenCache> _tokenCacheMock;
-    protected readonly Mock<IUserTokenCache> _userTokenCacheMock;
     protected readonly Mock<IEnhancedHttpClient> _httpClientMock;
     protected readonly FeishuAppConfig Config;
     protected readonly FeishuAppContext AppContext;
@@ -29,8 +21,6 @@ public abstract class TokenManagerTestsBase : IDisposable
     protected TokenManagerTestsBase()
     {
         _authenticationApiMock = new Mock<IFeishuAuthentication>();
-        _tokenCacheMock = new Mock<ITokenCache>();
-        _userTokenCacheMock = new Mock<IUserTokenCache>();
         _httpClientMock = new Mock<IEnhancedHttpClient>();
 
         Config = new FeishuAppConfig
@@ -41,8 +31,9 @@ public abstract class TokenManagerTestsBase : IDisposable
             TokenRefreshThreshold = 300
         };
 
-        var loggerMock = new Mock<ILogger<TokenManagerWithCache>>();
-        var userTokenManagerLoggerMock = new Mock<ILogger<Mud.Feishu.TokenManager.UserTokenManager>>();
+        var loggerMock = new Mock<ILogger<TenantTokenManager>>();
+        var appTokenManagerLoggerMock = new Mock<ILogger<AppTokenManager>>();
+        var userTokenManagerLoggerMock = new Mock<ILogger<UserTokenManager>>();
         var currentUserContextMock = new Mock<ICurrentUserContext>();
         var optionsMock = new Mock<IOptions<FeishuAppConfig>>();
         optionsMock.Setup(x => x.Value).Returns(Config);
@@ -50,21 +41,18 @@ public abstract class TokenManagerTestsBase : IDisposable
         var tenantTokenManager = new TenantTokenManager(
             _authenticationApiMock.Object,
             optionsMock.Object,
-            loggerMock.Object,
-            _tokenCacheMock.Object);
+            loggerMock.Object);
 
         var appTokenManager = new AppTokenManager(
             _authenticationApiMock.Object,
             optionsMock.Object,
-            loggerMock.Object,
-            _tokenCacheMock.Object);
+            appTokenManagerLoggerMock.Object);
 
-        var userTokenManager = new Mud.Feishu.TokenManager.UserTokenManager(
-            _authenticationApiMock.Object,
+        var userTokenManager = new UserTokenManager(
             currentUserContextMock.Object,
+            _authenticationApiMock.Object,
             optionsMock.Object,
-            userTokenManagerLoggerMock.Object,
-            _userTokenCacheMock.Object);
+            userTokenManagerLoggerMock.Object);
 
         AppContext = new FeishuAppContext(
             Config,
@@ -72,23 +60,7 @@ public abstract class TokenManagerTestsBase : IDisposable
             appTokenManager,
             userTokenManager,
             _authenticationApiMock.Object,
-            _tokenCacheMock.Object,
             _httpClientMock.Object);
-
-        _tokenCacheMock.Setup(x => x.GetAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((string?)null);
-        _tokenCacheMock.Setup(x => x.SetAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
-        _tokenCacheMock.Setup(x => x.GetStatisticsAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync((0, 0));
-
-        UserTokenInfo? nullToken = null;
-        _userTokenCacheMock.Setup(x => x.GetAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(nullToken);
-        _userTokenCacheMock.Setup(x => x.SetAsync(It.IsAny<string>(), It.IsAny<UserTokenInfo>(), It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
-        _userTokenCacheMock.Setup(x => x.GetStatisticsAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync((0, 0));
     }
 
     public void Dispose()

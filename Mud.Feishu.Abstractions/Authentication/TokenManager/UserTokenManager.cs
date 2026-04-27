@@ -5,6 +5,7 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using System.Collections.Concurrent;
 using Microsoft.Extensions.Options;
 using Mud.Feishu.Abstractions;
 using Mud.Feishu.Exceptions;
@@ -21,6 +22,7 @@ namespace Mud.Feishu.TokenManager;
 /// </remarks>
 internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
 {
+    private readonly ConcurrentDictionary<string, UserTokenInfo> _userTokenLookup = new();
     private readonly ICurrentUserContext? _currentUserContext;
     private readonly IFeishuAuthentication _authenticationApi;
     private readonly FeishuAppConfig _options;
@@ -125,7 +127,7 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
         if (string.IsNullOrEmpty(userId))
             return null;
 
-        var cachedInfo = GetTokenInfoAsync(userId, cancellationToken).Result;
+        var cachedInfo = await GetTokenInfoAsync(userId, cancellationToken).ConfigureAwait(false);
         if (cachedInfo == null)
             return null;
 
@@ -165,6 +167,7 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
         };
 
         UpdateUserTokenCache(userId, tokenInfo);
+        _userTokenLookup[userId] = tokenInfo;
         return tokenInfo;
     }
 
@@ -175,27 +178,28 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
             return Task.FromResult(false);
 
         RemoveUserTokenFromCache(userId);
+        _userTokenLookup.TryRemove(userId, out _);
         return Task.FromResult(true);
     }
 
     /// <inheritdoc />
-    public override Task<bool> HasValidTokenAsync(string userId, CancellationToken cancellationToken = default)
+    public override async Task<bool> HasValidTokenAsync(string userId, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(userId))
-            return Task.FromResult(false);
+            return false;
 
-        var cachedInfo = GetTokenInfoAsync(userId, cancellationToken).Result;
-        return Task.FromResult(cachedInfo != null && !string.IsNullOrEmpty(cachedInfo.AccessToken));
+        var cachedInfo = await GetTokenInfoAsync(userId, cancellationToken).ConfigureAwait(false);
+        return cachedInfo != null && !string.IsNullOrEmpty(cachedInfo.AccessToken);
     }
 
     /// <inheritdoc />
-    public override Task<bool> CanRefreshTokenAsync(string userId, CancellationToken cancellationToken = default)
+    public override async Task<bool> CanRefreshTokenAsync(string userId, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(userId))
-            return Task.FromResult(false);
+            return false;
 
-        var cachedInfo = GetTokenInfoAsync(userId, cancellationToken).Result;
-        return Task.FromResult(cachedInfo != null && !string.IsNullOrEmpty(cachedInfo.RefreshToken));
+        var cachedInfo = await GetTokenInfoAsync(userId, cancellationToken).ConfigureAwait(false);
+        return cachedInfo != null && !string.IsNullOrEmpty(cachedInfo.RefreshToken);
     }
 
     /// <inheritdoc />
@@ -204,19 +208,8 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
         if (string.IsNullOrEmpty(userId))
             return Task.FromResult<UserTokenInfo?>(null);
 
-        var cacheField = typeof(UserTokenManagerBase).GetField("_userTokenCache",
-            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-
-        if (cacheField?.GetValue(this) is { } cache)
-        {
-            var getMethod = cache.GetType().GetMethod("Get", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
-            if (getMethod != null)
-            {
-                var genericMethod = getMethod.MakeGenericMethod(typeof(UserTokenInfo));
-                var result = genericMethod.Invoke(cache, new object[] { userId });
-                return Task.FromResult(result as UserTokenInfo);
-            }
-        }
+        if (_userTokenLookup.TryGetValue(userId, out var tokenInfo))
+            return Task.FromResult<UserTokenInfo?>(tokenInfo);
 
         return Task.FromResult<UserTokenInfo?>(null);
     }

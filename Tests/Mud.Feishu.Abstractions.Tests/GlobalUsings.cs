@@ -12,6 +12,7 @@ global using Mud.Feishu.Abstractions;
 global using Mud.Feishu.Abstractions.EventHandlers;
 global using Mud.Feishu.Abstractions.Services;
 global using Mud.Feishu.Abstractions.Interceptors;
+global using Mud.Feishu.Exceptions;
 global using System;
 global using System.Collections.Generic;
 global using System.Linq;

@@ -5,7 +5,6 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using Mud.Feishu.Abstractions;
 using Mud.Feishu.Exceptions;
@@ -26,7 +25,6 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
     private readonly IFeishuAuthentication _authenticationApi;
     private readonly FeishuAppConfig _options;
     private readonly ILogger<UserTokenManager> _logger;
-    private readonly IMemoryCache _localCache;
 
     /// <summary>
     /// 初始化 UserTokenManager 实例
@@ -45,7 +43,6 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
         _authenticationApi = authenticationApi ?? throw new ArgumentNullException(nameof(authenticationApi));
         _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _localCache = new MemoryCache(new MemoryCacheOptions { SizeLimit = 1000 });
     }
 
     /// <inheritdoc />
@@ -117,12 +114,6 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
             Msg = res.Msg
         };
 
-        _localCache.Set("temp_token", tokenInfo, new MemoryCacheEntryOptions
-        {
-            Size = 1,
-            AbsoluteExpirationRelativeToNow = TimeSpan.FromMilliseconds(Math.Max(0, tokenInfo.AccessTokenExpireTime - DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()))
-        });
-
         return tokenInfo;
     }
 
@@ -134,7 +125,7 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
         if (string.IsNullOrEmpty(userId))
             return null;
 
-        var cachedInfo = GetUserTokenFromLocalCache(userId);
+        var cachedInfo = GetTokenInfoAsync(userId, cancellationToken).Result;
         if (cachedInfo == null)
             return null;
 
@@ -174,11 +165,6 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
         };
 
         UpdateUserTokenCache(userId, tokenInfo);
-        _localCache.Set(userId, tokenInfo, new MemoryCacheEntryOptions
-        {
-            Size = 1,
-            AbsoluteExpirationRelativeToNow = TimeSpan.FromMilliseconds(Math.Max(0, tokenInfo.AccessTokenExpireTime - DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()))
-        });
         return tokenInfo;
     }
 
@@ -189,7 +175,6 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
             return Task.FromResult(false);
 
         RemoveUserTokenFromCache(userId);
-        _localCache.Remove(userId);
         return Task.FromResult(true);
     }
 
@@ -199,7 +184,7 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
         if (string.IsNullOrEmpty(userId))
             return Task.FromResult(false);
 
-        var cachedInfo = GetUserTokenFromLocalCache(userId);
+        var cachedInfo = GetTokenInfoAsync(userId, cancellationToken).Result;
         return Task.FromResult(cachedInfo != null && !string.IsNullOrEmpty(cachedInfo.AccessToken));
     }
 
@@ -209,7 +194,7 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
         if (string.IsNullOrEmpty(userId))
             return Task.FromResult(false);
 
-        var cachedInfo = GetUserTokenFromLocalCache(userId);
+        var cachedInfo = GetTokenInfoAsync(userId, cancellationToken).Result;
         return Task.FromResult(cachedInfo != null && !string.IsNullOrEmpty(cachedInfo.RefreshToken));
     }
 
@@ -219,16 +204,21 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
         if (string.IsNullOrEmpty(userId))
             return Task.FromResult<UserTokenInfo?>(null);
 
-        var cachedInfo = GetUserTokenFromLocalCache(userId);
-        return Task.FromResult(cachedInfo);
-    }
+        var cacheField = typeof(UserTokenManagerBase).GetField("_userTokenCache",
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
 
-    /// <summary>
-    /// 从本地缓存获取用户令牌信息
-    /// </summary>
-    private UserTokenInfo? GetUserTokenFromLocalCache(string userId)
-    {
-        return _localCache.Get<UserTokenInfo>(userId);
+        if (cacheField?.GetValue(this) is { } cache)
+        {
+            var getMethod = cache.GetType().GetMethod("Get", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
+            if (getMethod != null)
+            {
+                var genericMethod = getMethod.MakeGenericMethod(typeof(UserTokenInfo));
+                var result = genericMethod.Invoke(cache, new object[] { userId });
+                return Task.FromResult(result as UserTokenInfo);
+            }
+        }
+
+        return Task.FromResult<UserTokenInfo?>(null);
     }
 
     /// <summary>

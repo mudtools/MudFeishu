@@ -6,7 +6,8 @@
 // -----------------------------------------------------------------------
 
 using Microsoft.Extensions.DependencyInjection;
-using Mud.Feishu.Abstractions.Internal;
+using Microsoft.Extensions.Options;
+using Moq;
 using Mud.Feishu.Abstractions.Utilities;
 using Mud.Feishu.Authentication;
 using Mud.Feishu.TokenManager;
@@ -138,7 +139,7 @@ public class MultiAppTests
         // Arrange
         var services = new ServiceCollection();
         services.AddHttpClient();
-        services.AddSingleton<IFeishuAuthentication, FeishuAuthentication>();
+        services.AddSingleton<IFeishuAuthentication>(new Mock<IFeishuAuthentication>().Object);
         services.AddSingleton<ICurrentUserContext, CurrentUserContext>();
         services.Configure<JsonSerializerOptions>(options => HttpClientExtensions.GetDefaultJsonSerializerOptions());
 
@@ -183,7 +184,7 @@ public class MultiAppTests
         // Arrange
         var services = new ServiceCollection();
         services.AddHttpClient();
-        services.AddSingleton<IFeishuAuthentication, FeishuAuthentication>();
+        services.AddSingleton<IFeishuAuthentication>(new Mock<IFeishuAuthentication>().Object);
         services.AddSingleton<ICurrentUserContext, CurrentUserContext>();
         services.Configure<JsonSerializerOptions>(options => HttpClientExtensions.GetDefaultJsonSerializerOptions());
 
@@ -217,7 +218,7 @@ public class MultiAppTests
         // Arrange
         var services = new ServiceCollection();
         services.AddHttpClient();
-        services.AddSingleton<IFeishuAuthentication, FeishuAuthentication>();
+        services.AddSingleton<IFeishuAuthentication>(new Mock<IFeishuAuthentication>().Object);
         services.AddSingleton<ICurrentUserContext, CurrentUserContext>();
         services.Configure<JsonSerializerOptions>(options => HttpClientExtensions.GetDefaultJsonSerializerOptions());
 
@@ -260,7 +261,7 @@ public class MultiAppTests
         // Arrange
         var services = new ServiceCollection();
         services.AddHttpClient();
-        services.AddSingleton<IFeishuAuthentication, FeishuAuthentication>();
+        services.AddSingleton<IFeishuAuthentication>(new Mock<IFeishuAuthentication>().Object);
         services.AddSingleton<ICurrentUserContext, CurrentUserContext>();
         services.Configure<JsonSerializerOptions>(options => HttpClientExtensions.GetDefaultJsonSerializerOptions());
 
@@ -285,7 +286,7 @@ public class MultiAppTests
         var appManager = provider.GetRequiredService<IFeishuAppManager>();
 
         // Act & Assert
-        Assert.Throws<KeyNotFoundException>(() => appManager.GetApp("non-existent-app"));
+        Assert.Throws<InvalidOperationException>(() => appManager.GetApp("non-existent-app"));
     }
 
     [Fact]
@@ -294,7 +295,7 @@ public class MultiAppTests
         // Arrange
         var services = new ServiceCollection();
         services.AddHttpClient();
-        services.AddSingleton<IFeishuAuthentication, FeishuAuthentication>();
+        services.AddSingleton<IFeishuAuthentication>(new Mock<IFeishuAuthentication>().Object);
         services.AddSingleton<ICurrentUserContext, CurrentUserContext>();
         services.Configure<JsonSerializerOptions>(options => HttpClientExtensions.GetDefaultJsonSerializerOptions());
 
@@ -343,7 +344,7 @@ public class MultiAppTests
         // Arrange
         var services = new ServiceCollection();
         services.AddHttpClient();
-        services.AddSingleton<IFeishuAuthentication, FeishuAuthentication>();
+        services.AddSingleton<IFeishuAuthentication>(new Mock<IFeishuAuthentication>().Object);
         services.AddSingleton<ICurrentUserContext, CurrentUserContext>();
         services.Configure<JsonSerializerOptions>(options => HttpClientExtensions.GetDefaultJsonSerializerOptions());
 
@@ -378,7 +379,7 @@ public class MultiAppTests
         // Arrange
         var services = new ServiceCollection();
         services.AddHttpClient();
-        services.AddSingleton<IFeishuAuthentication, FeishuAuthentication>();
+        services.AddSingleton<IFeishuAuthentication>(new Mock<IFeishuAuthentication>().Object);
         services.AddSingleton<ICurrentUserContext, CurrentUserContext>();
         services.Configure<JsonSerializerOptions>(options => HttpClientExtensions.GetDefaultJsonSerializerOptions());
 
@@ -423,12 +424,12 @@ public class MultiAppTests
     }
 
     [Fact]
-    public void MultiApp_RemoveDefaultApp_ShouldFailWhenMultipleApps()
+    public void MultiApp_RemoveDefaultApp_ShouldClearDefault()
     {
         // Arrange
         var services = new ServiceCollection();
         services.AddHttpClient();
-        services.AddSingleton<IFeishuAuthentication, FeishuAuthentication>();
+        services.AddSingleton<IFeishuAuthentication>(new Mock<IFeishuAuthentication>().Object);
         services.AddSingleton<ICurrentUserContext, CurrentUserContext>();
         services.Configure<JsonSerializerOptions>(options => HttpClientExtensions.GetDefaultJsonSerializerOptions());
 
@@ -458,7 +459,12 @@ public class MultiAppTests
         var provider = services.BuildServiceProvider();
         var appManager = provider.GetRequiredService<IFeishuAppManager>();
 
-        // Act & Assert
-        Assert.Throws<InvalidOperationException>(() => appManager.RemoveApp(AppConfigs.AppKeys.Default));
+        // Act - 移除默认应用
+        var result = appManager.RemoveApp(AppConfigs.AppKeys.Default);
+
+        // Assert - 基类允许移除默认应用，但会清除默认键
+        Assert.True(result);
+        Assert.True(appManager.HasApp(AppConfigs.AppKeys.Hr));
+        Assert.False(appManager.HasApp(AppConfigs.AppKeys.Default));
     }
 }

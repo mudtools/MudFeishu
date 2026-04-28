@@ -125,4 +125,98 @@ public class TenantTokenManagerTests : TokenManagerTestsBase
         _authenticationApiMock.Verify(x => x.GetTenantAccessTokenAsync(It.IsAny<AppCredentials>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
+    [Fact]
+    public async Task GetTokenAsync_ShouldRefreshToken_WhenTokenIsExpired()
+    {
+        var firstToken = "expired-tenant-token";
+        var refreshedToken = "refreshed-tenant-token";
+        var callCount = 0;
+
+        _authenticationApiMock
+            .Setup(x => x.GetTenantAccessTokenAsync(It.IsAny<AppCredentials>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() =>
+            {
+                callCount++;
+                return new TenantAppCredentialResult
+                {
+                    TenantAccessToken = callCount == 1 ? firstToken : refreshedToken,
+                    Expire = callCount == 1 ? 1 : 7200,
+                    Code = 0,
+                    Msg = "ok"
+                };
+            });
+
+        var result1 = await _tenantTokenManager.GetTokenAsync(CancellationToken.None);
+        Assert.Equal(firstToken, result1);
+
+        var result2 = await _tenantTokenManager.GetTokenAsync(CancellationToken.None);
+        Assert.Equal(refreshedToken, result2);
+
+        _authenticationApiMock.Verify(x => x.GetTenantAccessTokenAsync(It.IsAny<AppCredentials>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
+    }
+
+    [Fact]
+    public async Task GetTokenAsync_ShouldOnlyCallApiOnce_WhenConcurrentRequests()
+    {
+        var expectedToken = "concurrent-tenant-token";
+        var callCount = 0;
+        var tcs = new TaskCompletionSource<TenantAppCredentialResult>();
+
+        _authenticationApiMock
+            .Setup(x => x.GetTenantAccessTokenAsync(It.IsAny<AppCredentials>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() =>
+            {
+                Interlocked.Increment(ref callCount);
+                return new TenantAppCredentialResult
+                {
+                    TenantAccessToken = expectedToken,
+                    Expire = 7200,
+                    Code = 0,
+                    Msg = "ok"
+                };
+            });
+
+        var tasks = new Task<string>[5];
+        for (var i = 0; i < 5; i++)
+        {
+            tasks[i] = _tenantTokenManager.GetTokenAsync(CancellationToken.None);
+        }
+
+        var results = await Task.WhenAll(tasks);
+
+        Assert.All(results, r => Assert.Equal(expectedToken, r));
+        Assert.Equal(1, callCount);
+    }
+
+    [Fact]
+    public async Task InvalidateTokenAsync_ShouldForceRefreshOnNextCall()
+    {
+        var firstToken = "first-tenant-token";
+        var secondToken = "second-tenant-token";
+        var callCount = 0;
+
+        _authenticationApiMock
+            .Setup(x => x.GetTenantAccessTokenAsync(It.IsAny<AppCredentials>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() =>
+            {
+                callCount++;
+                return new TenantAppCredentialResult
+                {
+                    TenantAccessToken = callCount == 1 ? firstToken : secondToken,
+                    Expire = 7200,
+                    Code = 0,
+                    Msg = "ok"
+                };
+            });
+
+        var result1 = await _tenantTokenManager.GetTokenAsync(CancellationToken.None);
+        Assert.Equal(firstToken, result1);
+
+        await _tenantTokenManager.InvalidateTokenAsync(cancellationToken: CancellationToken.None);
+
+        var result2 = await _tenantTokenManager.GetTokenAsync(CancellationToken.None);
+        Assert.Equal(secondToken, result2);
+
+        _authenticationApiMock.Verify(x => x.GetTenantAccessTokenAsync(It.IsAny<AppCredentials>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
+    }
 }

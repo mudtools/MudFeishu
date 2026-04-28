@@ -161,7 +161,6 @@ public class MultiAppTests
             }
         };
 
-        services.AddSingleton<ITokenCache, MemoryTokenCache>();
         services.AddSingleton<IFeishuAppManager>(sp => new FeishuAppManager(
             sp,
             configs,
@@ -199,7 +198,6 @@ public class MultiAppTests
             }
         };
 
-        services.AddSingleton<ITokenCache, MemoryTokenCache>();
         services.AddSingleton<IFeishuAppManager>(sp => new FeishuAppManager(
             sp,
             configs,
@@ -239,7 +237,6 @@ public class MultiAppTests
             }
         };
 
-        services.AddSingleton<ITokenCache, MemoryTokenCache>();
         services.AddSingleton<IFeishuAppManager>(sp => new FeishuAppManager(
             sp,
             configs,
@@ -276,7 +273,6 @@ public class MultiAppTests
             }
         };
 
-        services.AddSingleton<ITokenCache, MemoryTokenCache>();
         services.AddSingleton<IFeishuAppManager>(sp => new FeishuAppManager(
             sp,
             configs,
@@ -322,7 +318,6 @@ public class MultiAppTests
             }
         };
 
-        services.AddSingleton<ITokenCache, MemoryTokenCache>();
         services.AddSingleton<IFeishuAppManager>(sp => new FeishuAppManager(
             sp,
             configs,
@@ -359,7 +354,6 @@ public class MultiAppTests
             }
         };
 
-        services.AddSingleton<ITokenCache, MemoryTokenCache>();
         services.AddSingleton<IFeishuAppManager>(sp => new FeishuAppManager(
             sp,
             configs,
@@ -400,7 +394,6 @@ public class MultiAppTests
             }
         };
 
-        services.AddSingleton<ITokenCache, MemoryTokenCache>();
         services.AddSingleton<IFeishuAppManager>(sp => new FeishuAppManager(
             sp,
             configs,
@@ -450,7 +443,6 @@ public class MultiAppTests
             }
         };
 
-        services.AddSingleton<ITokenCache, MemoryTokenCache>();
         services.AddSingleton<IFeishuAppManager>(sp => new FeishuAppManager(
             sp,
             configs,

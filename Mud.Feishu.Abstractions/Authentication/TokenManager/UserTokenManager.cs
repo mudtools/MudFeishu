@@ -214,6 +214,17 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
         return Task.FromResult<UserTokenInfo?>(null);
     }
 
+    /// <inheritdoc />
+    public Task StoreUserTokenAsync(string userId, UserTokenInfo tokenInfo, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrEmpty(userId) || tokenInfo == null)
+            return Task.CompletedTask;
+
+        _userTokenLookup[userId] = tokenInfo;
+        UpdateUserTokenCache(userId, tokenInfo);
+        return Task.CompletedTask;
+    }
+
     /// <summary>
     /// 刷新令牌的核心实现（TokenManagerBase 要求的抽象方法）
     /// 用户令牌不支持通过此方法刷新，用户令牌使用 RefreshUserTokenAsync 方法

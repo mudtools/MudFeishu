@@ -7,7 +7,6 @@
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using Mud.Feishu.Abstractions.Configuration;
 using Mud.HttpUtils;
@@ -58,18 +57,6 @@ public static class FeishuServiceCollectionExtensions
         return services;
     }
 
-
-    /// <summary>
-    /// 添加令牌缓存服务（自定义实现）
-    /// </summary>
-    /// <param name="services">服务集合</param>
-    /// <returns>服务集合实例。支持链式调用</returns>
-    public static IServiceCollection AddTokenCache<TCacheImplementation>(this IServiceCollection services)
-        where TCacheImplementation : class, ITokenCache
-    {
-        services.TryAddSingleton<ITokenCache, TCacheImplementation>();
-        return services;
-    }
 
     /// <summary>
     /// 注册多应用所需的基础服务（内部使用）

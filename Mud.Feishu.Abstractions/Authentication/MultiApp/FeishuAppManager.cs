@@ -172,18 +172,21 @@ internal class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuA
         var tenantTokenManager = new TenantTokenManager(
             authenticationApi,
             options,
-            _serviceProvider.GetRequiredService<ILogger<TenantTokenManager>>());
+            _serviceProvider.GetRequiredService<ILogger<TenantTokenManager>>(),
+            _serviceProvider.GetService<ITokenStore>());
 
         var appTokenManager = new AppTokenManager(
             authenticationApi,
             options,
-            _serviceProvider.GetRequiredService<ILogger<AppTokenManager>>());
+            _serviceProvider.GetRequiredService<ILogger<AppTokenManager>>(),
+            _serviceProvider.GetService<ITokenStore>());
 
         var userTokenManager = new UserTokenManager(
             currentUserContext,
             authenticationApi,
             options,
-            _serviceProvider.GetRequiredService<ILogger<UserTokenManager>>());
+            _serviceProvider.GetRequiredService<ILogger<UserTokenManager>>(),
+            _serviceProvider.GetService<IUserTokenStore>());
 
         return new FeishuAppContext(
             config,
@@ -205,6 +208,6 @@ internal class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuA
 
         var logger = _serviceProvider.GetRequiredService<ILogger<FeishuHttpClient>>();
 
-        return new FeishuHttpClient(enhancedClient, logger, config.EnableLogging, jsonSerializerOptions);
+        return new FeishuHttpClient(enhancedClient, logger, jsonSerializerOptions);
     }
 }

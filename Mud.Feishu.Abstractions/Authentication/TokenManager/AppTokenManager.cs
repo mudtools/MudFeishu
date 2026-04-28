@@ -18,12 +18,14 @@ namespace Mud.Feishu.TokenManager;
 /// 负责应用身份访问令牌（App Access Token）的获取、缓存和管理。
 /// 应用令牌用于应用级别的权限验证，通过AppId和AppSecret获取。
 /// 继承 Mud.HttpUtils v2.0 的 TokenManagerBase，获得内置并发安全、自动清理、重试等能力。
+/// 可选注入 ITokenStore 实现分布式令牌持久化（如 Redis）。
 /// </remarks>
 internal class AppTokenManager : TokenManagerBase, IAppTokenManager
 {
     private readonly IFeishuAuthentication _authenticationApi;
     private readonly FeishuAppConfig _options;
     private readonly ILogger<AppTokenManager> _logger;
+    private readonly ITokenStore? _tokenStore;
 
     /// <summary>
     /// 初始化 AppTokenManager 实例
@@ -31,14 +33,17 @@ internal class AppTokenManager : TokenManagerBase, IAppTokenManager
     /// <param name="authenticationApi">飞书认证API接口</param>
     /// <param name="options">飞书配置选项</param>
     /// <param name="logger">日志记录器</param>
+    /// <param name="tokenStore">令牌持久化存储（可选，用于分布式部署）</param>
     public AppTokenManager(
         IFeishuAuthentication authenticationApi,
         IOptions<FeishuAppConfig> options,
-        ILogger<AppTokenManager> logger)
+        ILogger<AppTokenManager> logger,
+        ITokenStore? tokenStore = null)
     {
         _authenticationApi = authenticationApi ?? throw new ArgumentNullException(nameof(authenticationApi));
         _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _tokenStore = tokenStore;
     }
 
     /// <summary>
@@ -79,10 +84,29 @@ internal class AppTokenManager : TokenManagerBase, IAppTokenManager
             throw new FeishuException(443, "获取 AppAccessToken 失败: AccessToken为空");
         }
 
-        return new CredentialToken
+        var token = new CredentialToken
         {
             AccessToken = res.AppAccessToken,
             Expire = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + ((res.Expire > 0 ? res.Expire : 7200) * 1000L)
         };
+
+        await PersistTokenAsync("AppAccessToken", token.AccessToken, res.Expire > 0 ? res.Expire : 7200, cancellationToken).ConfigureAwait(false);
+
+        return token;
+    }
+
+    private async Task PersistTokenAsync(string tokenType, string accessToken, long expiresInSeconds, CancellationToken cancellationToken)
+    {
+        if (_tokenStore == null)
+            return;
+
+        try
+        {
+            await _tokenStore.SetAccessTokenAsync(tokenType, accessToken, expiresInSeconds, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to persist token to ITokenStore for tokenType: {TokenType}", tokenType);
+        }
     }
 }

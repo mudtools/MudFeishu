@@ -8,6 +8,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using Mud.Feishu.Abstractions.Authentication;
 using Mud.Feishu.Abstractions.Configuration;
 using Mud.HttpUtils;
 using Mud.HttpUtils.Resilience;
@@ -110,6 +111,14 @@ public static class FeishuServiceCollectionExtensions
         }
 
         services.Configure<JsonSerializerOptions>(options => HttpClientExtensions.GetDefaultJsonSerializerOptions());
+
+        services.AddMemoryCache();
+
+        if (!services.Any(s => s.ServiceType == typeof(ITokenStore)))
+            services.AddSingleton<ITokenStore, FeishuTokenStore>();
+
+        if (!services.Any(s => s.ServiceType == typeof(IUserTokenStore)))
+            services.AddSingleton<IUserTokenStore, FeishuUserTokenStore>();
 
         return services;
     }

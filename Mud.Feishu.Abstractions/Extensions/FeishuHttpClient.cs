@@ -20,7 +20,6 @@ internal class FeishuHttpClient : IEnhancedHttpClient
     public FeishuHttpClient(
         IEnhancedHttpClient innerClient,
         ILogger<FeishuHttpClient> logger,
-        bool? enableLogging,
         IOptions<JsonSerializerOptions> serializerOptions)
     {
         _innerClient = innerClient ?? throw new ArgumentNullException(nameof(innerClient));

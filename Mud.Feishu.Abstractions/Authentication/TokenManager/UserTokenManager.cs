@@ -2,10 +2,9 @@
 //  作者：Mud Studio  版权所有 (c) Mud Studio 2026   
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
-//  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
+//  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！
 // -----------------------------------------------------------------------
 
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using Mud.Feishu.Abstractions;
 using Mud.Feishu.Exceptions;
@@ -19,7 +18,8 @@ namespace Mud.Feishu.TokenManager;
 /// 负责用户访问令牌（User Access Token）的获取、缓存和管理。
 /// 用户令牌用于用户级别的权限验证，通过授权码（Code）换取用户令牌。
 /// 继承 Mud.HttpUtils v2.0 的 UserTokenManagerBase，获得内置并发安全、自动清理等能力。
-/// 令牌缓存通过注入的 IMemoryCache 统一管理，确保读写一致性。
+/// 令牌缓存通过基类内置的 IMemoryCache 统一管理，确保读写一致性。
+/// 可选注入 IUserTokenStore 实现分布式令牌持久化（如 Redis）。
 /// </remarks>
 internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
 {
@@ -27,6 +27,7 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
     private readonly IFeishuAuthentication _authenticationApi;
     private readonly FeishuAppConfig _options;
     private readonly ILogger<UserTokenManager> _logger;
+    private readonly IUserTokenStore? _userTokenStore;
 
     /// <summary>
     /// 初始化 UserTokenManager 实例
@@ -35,17 +36,19 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
     /// <param name="authenticationApi">飞书认证API接口</param>
     /// <param name="options">飞书配置选项</param>
     /// <param name="logger">日志记录器</param>
-    /// <param name="cache">内存缓存实例</param>
+    /// <param name="userTokenStore">用户令牌持久化存储（可选，用于分布式部署）</param>
     public UserTokenManager(
         ICurrentUserContext? currentUserContext,
         IFeishuAuthentication authenticationApi,
         IOptions<FeishuAppConfig> options,
-        ILogger<UserTokenManager> logger)
+        ILogger<UserTokenManager> logger,
+        IUserTokenStore? userTokenStore = null)
     {
         _currentUserContext = currentUserContext;
         _authenticationApi = authenticationApi ?? throw new ArgumentNullException(nameof(authenticationApi));
         _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _userTokenStore = userTokenStore;
     }
 
     /// <inheritdoc />
@@ -168,19 +171,24 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
         };
 
         UpdateUserTokenCache(userId, tokenInfo);
-        SetUserTokenToCache(userId, tokenInfo);
+        await PersistUserTokenAsync(userId, tokenInfo, cancellationToken).ConfigureAwait(false);
         return tokenInfo;
     }
 
     /// <inheritdoc />
-    public override Task<bool> RemoveTokenAsync(string userId, CancellationToken cancellationToken = default)
+    public override async Task<bool> RemoveTokenAsync(string userId, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(userId))
-            return Task.FromResult(false);
+            return false;
 
         RemoveUserTokenFromCache(userId);
-        RemoveUserTokenFromLocalCache(userId);
-        return Task.FromResult(true);
+
+        if (_userTokenStore != null)
+        {
+            await _userTokenStore.RemoveAsync(userId, "UserAccessToken", cancellationToken).ConfigureAwait(false);
+        }
+
+        return true;
     }
 
     /// <inheritdoc />
@@ -209,19 +217,18 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
         if (string.IsNullOrEmpty(userId))
             return Task.FromResult<UserTokenInfo?>(null);
 
-        var cachedInfo = GetUserTokenFromLocalCache(userId);
+        var cachedInfo = GetUserTokenFromCache(userId);
         return Task.FromResult(cachedInfo);
     }
 
     /// <inheritdoc />
-    public Task StoreUserTokenAsync(string userId, UserTokenInfo tokenInfo, CancellationToken cancellationToken = default)
+    public async Task StoreUserTokenAsync(string userId, UserTokenInfo tokenInfo, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(userId) || tokenInfo == null)
-            return Task.CompletedTask;
+            return;
 
         UpdateUserTokenCache(userId, tokenInfo);
-        SetUserTokenToCache(userId, tokenInfo);
-        return Task.CompletedTask;
+        await PersistUserTokenAsync(userId, tokenInfo, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -233,31 +240,27 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
         throw new NotSupportedException("User tokens should be refreshed via RefreshUserTokenAsync method.");
     }
 
-    private static string BuildUserTokenCacheKey(string userId) => $"feishu:user:token:{userId}";
-
-    private UserTokenInfo? GetUserTokenFromLocalCache(string userId)
+    private async Task PersistUserTokenAsync(string userId, UserTokenInfo tokenInfo, CancellationToken cancellationToken)
     {
-        return GetUserTokenFromCache(BuildUserTokenCacheKey(userId));
-    }
+        if (_userTokenStore == null)
+            return;
 
-    private void SetUserTokenToCache(string userId, UserTokenInfo tokenInfo)
-    {
-        var remainingMs = tokenInfo.AccessTokenExpireTime - DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-        var cacheOptions = new MemoryCacheEntryOptions
+        try
         {
-            SlidingExpiration = TimeSpan.FromMinutes(30)
-        };
+            var remainingSeconds = (tokenInfo.AccessTokenExpireTime - DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()) / 1000L;
+            if (remainingSeconds > 0)
+            {
+                await _userTokenStore.SetAccessTokenAsync(userId, "UserAccessToken", tokenInfo.AccessToken, remainingSeconds, cancellationToken).ConfigureAwait(false);
+            }
 
-        if (remainingMs > 0)
-        {
-            cacheOptions.AbsoluteExpirationRelativeToNow = TimeSpan.FromMilliseconds(remainingMs);
+            if (!string.IsNullOrEmpty(tokenInfo.RefreshToken))
+            {
+                await _userTokenStore.SetRefreshTokenAsync(userId, "UserAccessToken", tokenInfo.RefreshToken, cancellationToken).ConfigureAwait(false);
+            }
         }
-
-        base.SetCachedToken(tokenInfo.AccessToken, remainingMs);
-    }
-
-    private void RemoveUserTokenFromLocalCache(string userId)
-    {
-        RemoveUserTokenFromCache(BuildUserTokenCacheKey(userId));
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to persist user token to IUserTokenStore for userId: {UserId}", userId);
+        }
     }
 }

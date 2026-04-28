@@ -199,14 +199,12 @@ internal class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuA
     /// </summary>
     private IEnhancedHttpClient CreateHttpClient(FeishuAppConfig config, IOptions<JsonSerializerOptions> jsonSerializerOptions)
     {
-        var httpClientFactory = _serviceProvider.GetRequiredService<IHttpClientFactory>();
-        var httpClient = httpClientFactory.CreateClient($"feishu-{config.AppKey}");
+        var httpClientResolver = _serviceProvider.GetRequiredService<IHttpClientResolver>();
+        var clientName = $"feishu-{config.AppKey}";
+        var enhancedClient = httpClientResolver.GetClient(clientName);
+
         var logger = _serviceProvider.GetRequiredService<ILogger<FeishuHttpClient>>();
 
-        httpClient.BaseAddress = new Uri(config.BaseUrl ?? "https://open.feishu.cn");
-        httpClient.DefaultRequestHeaders.Add("User-Agent", "MudFeishuClient/1.0");
-        httpClient.Timeout = TimeSpan.FromSeconds(config.TimeOut);
-
-        return new FeishuHttpClient(httpClient, logger, config.EnableLogging, jsonSerializerOptions);
+        return new FeishuHttpClient(enhancedClient, logger, config.EnableLogging, jsonSerializerOptions);
     }
 }

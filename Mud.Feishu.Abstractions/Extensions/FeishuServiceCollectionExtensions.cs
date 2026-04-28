@@ -75,10 +75,7 @@ public static class FeishuServiceCollectionExtensions
             var baseAddress = config.BaseUrl ?? "https://open.feishu.cn";
             var allowCustomBaseUrl = config.AllowCustomBaseUrl;
             var timeOut = config.TimeOut;
-            var retryCount = config.RetryCount;
-            var retryDelayMs = config.RetryDelayMs;
 
-            // 验证 BaseUrl 是否安全（SSRF 防护）
             ValidateFeishuBaseUrl(baseAddress, allowCustomBaseUrl);
 
             services.AddMudHttpClient(
@@ -89,19 +86,29 @@ public static class FeishuServiceCollectionExtensions
                     client.DefaultRequestHeaders.Add("User-Agent", "MudFeishuClient/1.0");
                     client.Timeout = TimeSpan.FromSeconds(timeOut);
                 });
+        }
 
+        var firstConfig = configs.FirstOrDefault();
+        if (firstConfig != null)
+        {
             services.AddMudHttpResilienceDecorator(resilienceOptions =>
             {
                 resilienceOptions.Retry.Enabled = true;
-                resilienceOptions.Retry.MaxRetryAttempts = retryCount;
-                resilienceOptions.Retry.DelayMilliseconds = retryDelayMs;
+                resilienceOptions.Retry.MaxRetryAttempts = firstConfig.RetryCount;
+                resilienceOptions.Retry.DelayMilliseconds = firstConfig.RetryDelayMs;
                 resilienceOptions.Retry.UseExponentialBackoff = true;
                 resilienceOptions.Timeout.Enabled = true;
-                resilienceOptions.Timeout.TimeoutSeconds = timeOut;
+                resilienceOptions.Timeout.TimeoutSeconds = firstConfig.TimeOut;
+
+                if (firstConfig.ResiliencePolicy != null)
+                {
+                    resilienceOptions.CircuitBreaker.Enabled = firstConfig.ResiliencePolicy.CircuitBreakerEnabled;
+                    resilienceOptions.CircuitBreaker.FailureThreshold = firstConfig.ResiliencePolicy.CircuitBreakerThreshold;
+                    resilienceOptions.CircuitBreaker.BreakDurationSeconds = firstConfig.ResiliencePolicy.CircuitBreakerDurationSeconds;
+                }
             });
         }
 
-        // 注册JSON配置
         services.Configure<JsonSerializerOptions>(options => HttpClientExtensions.GetDefaultJsonSerializerOptions());
 
         return services;

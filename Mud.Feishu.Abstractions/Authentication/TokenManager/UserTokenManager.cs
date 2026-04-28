@@ -5,7 +5,7 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-using System.Collections.Concurrent;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using Mud.Feishu.Abstractions;
 using Mud.Feishu.Exceptions;
@@ -18,15 +18,16 @@ namespace Mud.Feishu.TokenManager;
 /// <remarks>
 /// 负责用户访问令牌（User Access Token）的获取、缓存和管理。
 /// 用户令牌用于用户级别的权限验证，通过授权码（Code）换取用户令牌。
-/// 继承 Mud.HttpUtils v2.0 的 UserTokenManagerBase，获得内置并发安全、自动清理、IMemoryCache 缓存等能力。
+/// 继承 Mud.HttpUtils v2.0 的 UserTokenManagerBase，获得内置并发安全、自动清理等能力。
+/// 令牌缓存通过注入的 IMemoryCache 统一管理，确保读写一致性。
 /// </remarks>
 internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
 {
-    private readonly ConcurrentDictionary<string, UserTokenInfo> _userTokenLookup = new();
     private readonly ICurrentUserContext? _currentUserContext;
     private readonly IFeishuAuthentication _authenticationApi;
     private readonly FeishuAppConfig _options;
     private readonly ILogger<UserTokenManager> _logger;
+    private readonly IMemoryCache _cache;
 
     /// <summary>
     /// 初始化 UserTokenManager 实例
@@ -35,16 +36,19 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
     /// <param name="authenticationApi">飞书认证API接口</param>
     /// <param name="options">飞书配置选项</param>
     /// <param name="logger">日志记录器</param>
+    /// <param name="cache">内存缓存实例</param>
     public UserTokenManager(
         ICurrentUserContext? currentUserContext,
         IFeishuAuthentication authenticationApi,
         IOptions<FeishuAppConfig> options,
-        ILogger<UserTokenManager> logger)
+        ILogger<UserTokenManager> logger,
+        IMemoryCache cache)
     {
         _currentUserContext = currentUserContext;
         _authenticationApi = authenticationApi ?? throw new ArgumentNullException(nameof(authenticationApi));
         _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _cache = cache ?? throw new ArgumentNullException(nameof(cache));
     }
 
     /// <inheritdoc />
@@ -167,7 +171,7 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
         };
 
         UpdateUserTokenCache(userId, tokenInfo);
-        _userTokenLookup[userId] = tokenInfo;
+        SetUserTokenToCache(userId, tokenInfo);
         return tokenInfo;
     }
 
@@ -178,7 +182,7 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
             return Task.FromResult(false);
 
         RemoveUserTokenFromCache(userId);
-        _userTokenLookup.TryRemove(userId, out _);
+        RemoveUserTokenFromLocalCache(userId);
         return Task.FromResult(true);
     }
 
@@ -208,10 +212,8 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
         if (string.IsNullOrEmpty(userId))
             return Task.FromResult<UserTokenInfo?>(null);
 
-        if (_userTokenLookup.TryGetValue(userId, out var tokenInfo))
-            return Task.FromResult<UserTokenInfo?>(tokenInfo);
-
-        return Task.FromResult<UserTokenInfo?>(null);
+        var cachedInfo = GetUserTokenFromLocalCache(userId);
+        return Task.FromResult(cachedInfo);
     }
 
     /// <inheritdoc />
@@ -220,8 +222,8 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
         if (string.IsNullOrEmpty(userId) || tokenInfo == null)
             return Task.CompletedTask;
 
-        _userTokenLookup[userId] = tokenInfo;
         UpdateUserTokenCache(userId, tokenInfo);
+        SetUserTokenToCache(userId, tokenInfo);
         return Task.CompletedTask;
     }
 
@@ -232,5 +234,33 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
     protected override Task<CredentialToken> RefreshTokenCoreAsync(CancellationToken cancellationToken)
     {
         throw new NotSupportedException("User tokens should be refreshed via RefreshUserTokenAsync method.");
+    }
+
+    private static string BuildUserTokenCacheKey(string userId) => $"feishu:user:token:{userId}";
+
+    private UserTokenInfo? GetUserTokenFromLocalCache(string userId)
+    {
+        return _cache.Get<UserTokenInfo>(BuildUserTokenCacheKey(userId));
+    }
+
+    private void SetUserTokenToCache(string userId, UserTokenInfo tokenInfo)
+    {
+        var remainingMs = tokenInfo.AccessTokenExpireTime - DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        var cacheOptions = new MemoryCacheEntryOptions
+        {
+            SlidingExpiration = TimeSpan.FromMinutes(30)
+        };
+
+        if (remainingMs > 0)
+        {
+            cacheOptions.AbsoluteExpirationRelativeToNow = TimeSpan.FromMilliseconds(remainingMs);
+        }
+
+        _cache.Set(BuildUserTokenCacheKey(userId), tokenInfo, cacheOptions);
+    }
+
+    private void RemoveUserTokenFromLocalCache(string userId)
+    {
+        _cache.Remove(BuildUserTokenCacheKey(userId));
     }
 }

@@ -158,6 +158,29 @@ public static class RedisFeishuServiceBuilderExtensions
     }
 
     /// <summary>
+    /// 注册 Redis 分布式令牌存储服务
+    /// </summary>
+    private static IServiceCollection AddFeishuRedisTokenStore(
+        this IServiceCollection services)
+    {
+        services.AddSingleton<ITokenStore>(sp =>
+        {
+            var redis = sp.GetRequiredService<IConnectionMultiplexer>();
+            var logger = sp.GetService<ILogger<RedisTokenStore>>();
+            return new RedisTokenStore(redis, logger!);
+        });
+
+        services.AddSingleton<IUserTokenStore>(sp =>
+        {
+            var redis = sp.GetRequiredService<IConnectionMultiplexer>();
+            var logger = sp.GetService<ILogger<RedisUserTokenStore>>();
+            return new RedisUserTokenStore(redis, logger!);
+        });
+
+        return services;
+    }
+
+    /// <summary>
     /// 注册所有 Redis 分布式去重服务（事件去重、Nonce 去重、SeqID 去重）
     /// </summary>
     /// <param name="services">服务集合</param>
@@ -182,7 +205,8 @@ public static class RedisFeishuServiceBuilderExtensions
             .AddFeishuRedis()
             .AddFeishuRedisEventDeduplicator()
             .AddFeishuRedisNonceDeduplicator()
-            .AddFeishuRedisSeqIDDeduplicator();
+            .AddFeishuRedisSeqIDDeduplicator()
+            .AddFeishuRedisTokenStore();
     }
 
     /// <summary>
@@ -204,6 +228,7 @@ public static class RedisFeishuServiceBuilderExtensions
             .AddFeishuRedis()
             .AddFeishuRedisEventDeduplicator()
             .AddFeishuRedisNonceDeduplicator()
-            .AddFeishuRedisSeqIDDeduplicator();
+            .AddFeishuRedisSeqIDDeduplicator()
+            .AddFeishuRedisTokenStore();
     }
 }

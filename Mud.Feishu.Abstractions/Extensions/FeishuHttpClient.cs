@@ -5,9 +5,7 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！
 // -----------------------------------------------------------------------
 
-using Microsoft.Extensions.Options;
 using System.Text;
-using System.Text.Json;
 
 namespace Mud.Feishu.Abstractions;
 
@@ -15,16 +13,13 @@ internal class FeishuHttpClient : IEnhancedHttpClient
 {
     private readonly IEnhancedHttpClient _innerClient;
     private readonly ILogger<FeishuHttpClient> _logger;
-    private readonly IOptions<JsonSerializerOptions> _jsonSerializerOptions;
 
     public FeishuHttpClient(
         IEnhancedHttpClient innerClient,
-        ILogger<FeishuHttpClient> logger,
-        IOptions<JsonSerializerOptions> serializerOptions)
+        ILogger<FeishuHttpClient> logger)
     {
         _innerClient = innerClient ?? throw new ArgumentNullException(nameof(innerClient));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _jsonSerializerOptions = serializerOptions ?? throw new ArgumentNullException(nameof(serializerOptions));
     }
 
     public Uri? BaseAddress => _innerClient.BaseAddress;

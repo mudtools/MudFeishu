@@ -5,17 +5,14 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using Microsoft.Extensions.Options;
 using Mud.Feishu.DataModels;
 using Mud.Feishu.Exceptions;
+using Mud.Feishu.TokenManager;
+using Mud.HttpUtils;
 
 namespace Mud.Feishu.Tests.Authentication.TokenManager;
 
-/// <summary>
-/// 租户令牌管理器测试（通过 FeishuAppContext 接口测试）
-/// </summary>
-/// <remarks>
-/// 由于 TenantTokenManager 现在是 internal 类，测试通过 FeishuAppContext 公开的 ITenantTokenManager 接口进行测试。
-/// </remarks>
 public class TenantTokenManagerTests : TokenManagerTestsBase
 {
     private readonly ITenantTokenManager _tenantTokenManager;
@@ -28,7 +25,6 @@ public class TenantTokenManagerTests : TokenManagerTestsBase
     [Fact]
     public async Task GetTokenAsync_ShouldReturnBearerToken_WhenApiReturnsValidToken()
     {
-        // Arrange
         var expectedToken = "test-tenant-access-token";
         var tokenExpire = 7200;
         var apiResult = new TenantAppCredentialResult
@@ -43,10 +39,8 @@ public class TenantTokenManagerTests : TokenManagerTestsBase
             .Setup(x => x.GetTenantAccessTokenAsync(It.IsAny<AppCredentials>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(apiResult);
 
-        // Act
         var result = await _tenantTokenManager.GetTokenAsync(CancellationToken.None);
 
-        // Assert
         Assert.NotNull(result);
         Assert.Equal(expectedToken, result);
         _authenticationApiMock.Verify(x => x.GetTenantAccessTokenAsync(It.IsAny<AppCredentials>(), It.IsAny<CancellationToken>()), Times.Once);
@@ -55,12 +49,10 @@ public class TenantTokenManagerTests : TokenManagerTestsBase
     [Fact]
     public async Task GetTokenAsync_ShouldReturnNull_WhenApiReturnsNull()
     {
-        // Arrange
         _authenticationApiMock
             .Setup(x => x.GetTenantAccessTokenAsync(It.IsAny<AppCredentials>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((TenantAppCredentialResult?)null);
 
-        // Act & Assert
         await Assert.ThrowsAsync<FeishuException>(() => _tenantTokenManager.GetTokenAsync(CancellationToken.None));
         _authenticationApiMock.Verify(x => x.GetTenantAccessTokenAsync(It.IsAny<AppCredentials>(), It.IsAny<CancellationToken>()), Times.Once);
     }
@@ -68,7 +60,6 @@ public class TenantTokenManagerTests : TokenManagerTestsBase
     [Fact]
     public async Task GetTokenAsync_ShouldThrowFeishuException_WhenApiReturnsError()
     {
-        // Arrange
         var apiResult = new TenantAppCredentialResult
         {
             Code = 400,
@@ -79,7 +70,6 @@ public class TenantTokenManagerTests : TokenManagerTestsBase
             .Setup(x => x.GetTenantAccessTokenAsync(It.IsAny<AppCredentials>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(apiResult);
 
-        // Act & Assert
         var exception = await Assert.ThrowsAsync<FeishuException>(() => _tenantTokenManager.GetTokenAsync(CancellationToken.None));
         Assert.Equal(400, exception.ErrorCode);
         Assert.Contains("Invalid app credentials", exception.Message);
@@ -89,7 +79,6 @@ public class TenantTokenManagerTests : TokenManagerTestsBase
     [Fact]
     public async Task GetTokenAsync_ShouldCacheToken_WhenTokenIsValid()
     {
-        // Arrange
         var expectedToken = "test-tenant-access-token";
         var tokenExpire = 7200;
         var apiResult = new TenantAppCredentialResult
@@ -109,19 +98,14 @@ public class TenantTokenManagerTests : TokenManagerTestsBase
                 return apiResult;
             });
 
-        // Act - First call should get new token
         var result1 = await _tenantTokenManager.GetTokenAsync(CancellationToken.None);
-
-        // Act - Second call should use cached token
         var result2 = await _tenantTokenManager.GetTokenAsync(CancellationToken.None);
 
-        // Assert
         Assert.NotNull(result1);
         Assert.NotNull(result2);
         Assert.Equal(expectedToken, result1);
         Assert.Equal(result1, result2);
 
-        // Verify API was only called once (second call used cache)
         _authenticationApiMock.Verify(x => x.GetTenantAccessTokenAsync(It.IsAny<AppCredentials>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -160,7 +144,6 @@ public class TenantTokenManagerTests : TokenManagerTestsBase
     {
         var expectedToken = "concurrent-tenant-token";
         var callCount = 0;
-        var tcs = new TaskCompletionSource<TenantAppCredentialResult>();
 
         _authenticationApiMock
             .Setup(x => x.GetTenantAccessTokenAsync(It.IsAny<AppCredentials>(), It.IsAny<CancellationToken>()))
@@ -218,5 +201,163 @@ public class TenantTokenManagerTests : TokenManagerTestsBase
         Assert.Equal(secondToken, result2);
 
         _authenticationApiMock.Verify(x => x.GetTenantAccessTokenAsync(It.IsAny<AppCredentials>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
+    }
+}
+
+public class TenantTokenManagerWithStoreTests : IDisposable
+{
+    private readonly Mock<IFeishuAuthentication> _authenticationApiMock;
+    private readonly Mock<IEnhancedHttpClient> _httpClientMock;
+    private readonly Mock<ITokenStore> _tokenStoreMock;
+    private readonly FeishuAppConfig _config;
+    private readonly FeishuAppContext _appContext;
+    private readonly ITenantTokenManager _tenantTokenManager;
+
+    public TenantTokenManagerWithStoreTests()
+    {
+        _authenticationApiMock = new Mock<IFeishuAuthentication>();
+        _httpClientMock = new Mock<IEnhancedHttpClient>();
+        _tokenStoreMock = new Mock<ITokenStore>();
+
+        _config = new FeishuAppConfig
+        {
+            AppKey = "test",
+            AppId = "test_app_id_1234567890",
+            AppSecret = "test_app_secret_123456",
+            TokenRefreshThreshold = 300
+        };
+
+        var loggerMock = new Mock<ILogger<TenantTokenManager>>();
+        var appTokenManagerLoggerMock = new Mock<ILogger<AppTokenManager>>();
+        var userTokenManagerLoggerMock = new Mock<ILogger<UserTokenManager>>();
+        var currentUserContextMock = new Mock<ICurrentUserContext>();
+        var optionsMock = new Mock<IOptions<FeishuAppConfig>>();
+        optionsMock.Setup(x => x.Value).Returns(_config);
+
+        var tenantTokenManager = new TenantTokenManager(
+            _authenticationApiMock.Object,
+            optionsMock.Object,
+            loggerMock.Object,
+            _tokenStoreMock.Object);
+
+        var appTokenManager = new AppTokenManager(
+            _authenticationApiMock.Object,
+            optionsMock.Object,
+            appTokenManagerLoggerMock.Object,
+            _tokenStoreMock.Object);
+
+        var userTokenManager = new UserTokenManager(
+            currentUserContextMock.Object,
+            _authenticationApiMock.Object,
+            optionsMock.Object,
+            userTokenManagerLoggerMock.Object);
+
+        _appContext = new FeishuAppContext(
+            _config,
+            tenantTokenManager,
+            appTokenManager,
+            userTokenManager,
+            _authenticationApiMock.Object,
+            _httpClientMock.Object);
+
+        _tenantTokenManager = _appContext.TenantTokenManager;
+    }
+
+    public void Dispose()
+    {
+        _appContext?.Dispose();
+    }
+
+    [Fact]
+    public async Task GetTokenAsync_ShouldRestoreFromStore_WhenStoreHasToken()
+    {
+        var storedToken = "stored-tenant-token";
+        _tokenStoreMock
+            .Setup(x => x.GetAccessTokenAsync("TenantAccessToken", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(storedToken);
+
+        var result = await _tenantTokenManager.GetTokenAsync(CancellationToken.None);
+
+        Assert.Equal(storedToken, result);
+        _authenticationApiMock.Verify(
+            x => x.GetTenantAccessTokenAsync(It.IsAny<AppCredentials>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task GetTokenAsync_ShouldCallApi_WhenStoreReturnsNull()
+    {
+        _tokenStoreMock
+            .Setup(x => x.GetAccessTokenAsync("TenantAccessToken", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((string?)null);
+
+        var expectedToken = "api-tenant-token";
+        _authenticationApiMock
+            .Setup(x => x.GetTenantAccessTokenAsync(It.IsAny<AppCredentials>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new TenantAppCredentialResult
+            {
+                TenantAccessToken = expectedToken,
+                Expire = 7200,
+                Code = 0,
+                Msg = "ok"
+            });
+
+        var result = await _tenantTokenManager.GetTokenAsync(CancellationToken.None);
+
+        Assert.Equal(expectedToken, result);
+        _authenticationApiMock.Verify(
+            x => x.GetTenantAccessTokenAsync(It.IsAny<AppCredentials>(), It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task GetTokenAsync_ShouldCallApi_WhenStoreThrowsException()
+    {
+        _tokenStoreMock
+            .Setup(x => x.GetAccessTokenAsync("TenantAccessToken", It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("Store error"));
+
+        var expectedToken = "api-tenant-token";
+        _authenticationApiMock
+            .Setup(x => x.GetTenantAccessTokenAsync(It.IsAny<AppCredentials>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new TenantAppCredentialResult
+            {
+                TenantAccessToken = expectedToken,
+                Expire = 7200,
+                Code = 0,
+                Msg = "ok"
+            });
+
+        var result = await _tenantTokenManager.GetTokenAsync(CancellationToken.None);
+
+        Assert.Equal(expectedToken, result);
+        _authenticationApiMock.Verify(
+            x => x.GetTenantAccessTokenAsync(It.IsAny<AppCredentials>(), It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task GetTokenAsync_ShouldPersistToken_WhenApiReturnsValidToken()
+    {
+        var expectedToken = "api-tenant-token";
+        _tokenStoreMock
+            .Setup(x => x.GetAccessTokenAsync("TenantAccessToken", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((string?)null);
+
+        _authenticationApiMock
+            .Setup(x => x.GetTenantAccessTokenAsync(It.IsAny<AppCredentials>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new TenantAppCredentialResult
+            {
+                TenantAccessToken = expectedToken,
+                Expire = 7200,
+                Code = 0,
+                Msg = "ok"
+            });
+
+        await _tenantTokenManager.GetTokenAsync(CancellationToken.None);
+
+        _tokenStoreMock.Verify(
+            x => x.SetAccessTokenAsync("TenantAccessToken", expectedToken, 7200, It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 }

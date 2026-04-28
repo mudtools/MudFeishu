@@ -51,6 +51,8 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
         _userTokenStore = userTokenStore;
     }
 
+    protected override int UserExpireThresholdSeconds => _options.TokenRefreshThreshold;
+
     /// <inheritdoc />
     public override async Task<string> GetTokenAsync(CancellationToken cancellationToken = default)
     {

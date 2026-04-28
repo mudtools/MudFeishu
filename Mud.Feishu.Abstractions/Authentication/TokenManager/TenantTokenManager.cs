@@ -58,12 +58,17 @@ internal class TenantTokenManager : TokenManagerBase, ITenantTokenManager
     }
 
     /// <summary>
-    /// 刷新令牌的核心实现
+    /// 重写基类的令牌获取逻辑，在内部缓存未命中时先尝试从 ITokenStore 恢复令牌
     /// </summary>
-    /// <param name="cancellationToken">取消令牌</param>
-    /// <returns>凭证令牌</returns>
     protected override async Task<CredentialToken> RefreshTokenCoreAsync(CancellationToken cancellationToken)
     {
+        if (_tokenStore != null)
+        {
+            var restoredToken = await TryRestoreFromStoreAsync(cancellationToken).ConfigureAwait(false);
+            if (restoredToken != null)
+                return restoredToken;
+        }
+
         _logger.LogInformation("Refreshing TenantAccessToken for AppId: {AppId}", _options.AppId);
 
         var credentials = new AppCredentials
@@ -93,6 +98,32 @@ internal class TenantTokenManager : TokenManagerBase, ITenantTokenManager
         await PersistTokenAsync("TenantAccessToken", token.AccessToken, res.Expire > 0 ? res.Expire : 7200, cancellationToken).ConfigureAwait(false);
 
         return token;
+    }
+
+    private async Task<CredentialToken?> TryRestoreFromStoreAsync(CancellationToken cancellationToken)
+    {
+        if (_tokenStore == null)
+            return null;
+
+        try
+        {
+            var storedToken = await _tokenStore.GetAccessTokenAsync("TenantAccessToken", cancellationToken).ConfigureAwait(false);
+            if (!string.IsNullOrEmpty(storedToken))
+            {
+                _logger.LogDebug("Restored TenantAccessToken from ITokenStore for AppId: {AppId}", _options.AppId);
+                return new CredentialToken
+                {
+                    AccessToken = storedToken,
+                    Expire = DateTimeOffset.UtcNow.AddMinutes(30).ToUnixTimeMilliseconds()
+                };
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to restore token from ITokenStore for AppId: {AppId}", _options.AppId);
+        }
+
+        return null;
     }
 
     private async Task PersistTokenAsync(string tokenType, string accessToken, long expiresInSeconds, CancellationToken cancellationToken)

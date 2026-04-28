@@ -291,4 +291,5 @@ public interface IFeishuV4CalendarEvent : IFeishuAppContextSwitcher
        [Query] string? page_token = null,
        [Query] string? user_id_type = Consts.User_Id_Type,
        CancellationToken cancellationToken = default);
+       
 }

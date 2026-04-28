@@ -310,6 +310,11 @@ public static class FeishuEventTypes
     /// 删除 ACL
     /// </summary>
     public const string CalendarAclDeleted = "calendar.calendar.acl.deleted_v4";
+
+    /// <summary>
+    /// 日程变更
+    /// </summary>
+    public const string CalendarEventChanged = "calendar.calendar.event.changed_v4";
     #endregion
 
     /// <summary>

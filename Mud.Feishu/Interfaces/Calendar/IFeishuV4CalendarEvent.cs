@@ -315,4 +315,43 @@ public interface IFeishuV4CalendarEvent : IFeishuAppContextSwitcher
       [Path] string event_id,
       [Body] ReplyCalendarEventRequest replyCalendarEventRequest,
       CancellationToken cancellationToken = default);
+
+
+
+    /// <summary>
+    /// 获取重复日程实例
+    /// <para>以当前身份（应用或用户）获取指定日历中的某一重复日程信息。</para>
+    /// <para><see href="https://open.feishu.cn/document/calendar-v4/calendar-event/instances">接口文档</see></para>
+    /// </summary> 
+    /// <param name="calendar_id">
+    /// <para>日历 ID。</para>
+    /// <para>创建共享日历时会返回日历 ID。也可以调用以下接口获取某一日历的 ID。</para>
+    /// <para>示例值：feishu.cn_xxxxxxxxxx@group.calendar.feishu.cn</para>
+    /// </param> 
+    /// <param name="event_id">
+    /// <para>日程 ID。</para>
+    /// <para>示例值：xxxxxxxxx_0</para>
+    /// </param>
+    /// <param name="start_time">
+    /// <para>开始时间，Unix 时间戳，单位为秒。该参数与 end_time 用于设置时间范围，即重复日程的查询区间为 （start_time, end_time）</para>
+    /// <para>**注意**：start_time 与 end_time 之间的时间区间不能超过 2年。</para>
+    /// <para>示例值：1631777271</para>
+    /// </param>
+    /// <param name="end_time">
+    /// <para>结束时间，Unix 时间戳，单位为秒。该参数与 start_time 用于设置时间范围，即重复日程的查询区间为 （start_time, end_time）</para>
+    /// <para>**注意**：start_time 与 end_time 之间的时间区间不能超过 2年。</para>
+    /// <para>示例值：1631777271</para>
+    /// </param>
+    /// <param name="page_size">分页大小，即本次请求所返回的信息列表内的最大条目数。默认值：500</param>
+    /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Get("/open-apis/calendar/v4/calendars/{calendar_id}/events/{event_id}/instances")]
+    Task<FeishuApiPageListResult<CalendarEventInstanceResult>?> GetInstancesCalendarEventPageListAsync(
+      [Path] string calendar_id,
+      [Path] string event_id,
+      [Query] string start_time,
+      [Query] string end_time,
+      [Query] int page_size = Consts.PageSize_50,
+      [Query] string? page_token = null,
+      CancellationToken cancellationToken = default);
 }

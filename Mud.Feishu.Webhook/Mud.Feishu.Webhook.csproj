@@ -23,12 +23,10 @@
 		<InternalsVisibleTo Include="Mud.Feishu.Webhook.Tests" />
 	</ItemGroup>
 	<ItemGroup Condition="'$(TargetFramework)' == 'net10.0' or '$(TargetFramework)' == 'net8.0'">
-		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.5" />
 		<PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" Version="10.0.5" />
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0' or '$(TargetFramework)' == 'net6.0'">
-		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.1" />
 		<PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" Version="8.0.1" />
 	</ItemGroup>
 
@@ -38,7 +36,7 @@
 		<!-- <PackageReference Include="Mud.Feishu.Abstractions" Version="1.1.2" /> -->
 	</ItemGroup>
 	<ItemGroup>
-		<ProjectReference Include="..\Mud.Feishu.Abstractions\Mud.Feishu.Abstractions.csproj" />		
+		<ProjectReference Include="..\Mud.Feishu.Abstractions\Mud.Feishu.Abstractions.csproj" />
 	</ItemGroup>
 	<ItemGroup>
 		<None Include=".\README.md" Pack="true" PackagePath="\" />

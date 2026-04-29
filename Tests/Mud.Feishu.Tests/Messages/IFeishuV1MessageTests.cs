@@ -36,7 +36,7 @@ public class IFeishuV1MessageTests
     [Fact]
     public void TestAddMessageReactionsAsyncRequestBody()
     {
-        string bodyStr = """{"reaction_type":"LAUGH","message_id":"om_123"}""";
+        string bodyStr = """{"reaction_type":{"emoji_type":"LAUGH"},"message_id":"om_123"}""";
         var requestBody = JsonSerializer.Deserialize<EmojiReactionRequest>(bodyStr, _jsonSerializerOptions);
 
         Assert.NotNull(requestBody);

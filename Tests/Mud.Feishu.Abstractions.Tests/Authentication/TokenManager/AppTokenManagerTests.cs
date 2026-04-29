@@ -230,8 +230,18 @@ public class AppTokenManagerWithStoreTests : IDisposable
     {
         var storedToken = "stored-app-token";
         _tokenStoreMock
-            .Setup(x => x.GetAccessTokenAsync("AppAccessToken", It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetAccessTokenAsync("AppAccessToken:test", It.IsAny<CancellationToken>()))
             .ReturnsAsync(storedToken);
+
+        _authenticationApiMock
+            .Setup(x => x.GetAppAccessTokenAsync(It.IsAny<AppCredentials>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new AppCredentialResult
+            {
+                AppAccessToken = "api-app-token",
+                Expire = 7200,
+                Code = 0,
+                Msg = "ok"
+            });
 
         var result = await _appTokenManager.GetTokenAsync(CancellationToken.None);
 
@@ -245,7 +255,7 @@ public class AppTokenManagerWithStoreTests : IDisposable
     public async Task GetTokenAsync_ShouldCallApi_WhenStoreReturnsNull()
     {
         _tokenStoreMock
-            .Setup(x => x.GetAccessTokenAsync("AppAccessToken", It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetAccessTokenAsync("AppAccessToken:test", It.IsAny<CancellationToken>()))
             .ReturnsAsync((string?)null);
 
         var expectedToken = "api-app-token";
@@ -271,7 +281,7 @@ public class AppTokenManagerWithStoreTests : IDisposable
     public async Task GetTokenAsync_ShouldCallApi_WhenStoreThrowsException()
     {
         _tokenStoreMock
-            .Setup(x => x.GetAccessTokenAsync("AppAccessToken", It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetAccessTokenAsync("AppAccessToken:test", It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("Store error"));
 
         var expectedToken = "api-app-token";
@@ -297,9 +307,6 @@ public class AppTokenManagerWithStoreTests : IDisposable
     public async Task GetTokenAsync_ShouldPersistToken_WhenApiReturnsValidToken()
     {
         var expectedToken = "api-app-token";
-        _tokenStoreMock
-            .Setup(x => x.GetAccessTokenAsync("AppAccessToken", It.IsAny<CancellationToken>()))
-            .ReturnsAsync((string?)null);
 
         _authenticationApiMock
             .Setup(x => x.GetAppAccessTokenAsync(It.IsAny<AppCredentials>(), It.IsAny<CancellationToken>()))
@@ -314,7 +321,7 @@ public class AppTokenManagerWithStoreTests : IDisposable
         await _appTokenManager.GetTokenAsync(CancellationToken.None);
 
         _tokenStoreMock.Verify(
-            x => x.SetAccessTokenAsync("AppAccessToken", expectedToken, 7200, It.IsAny<CancellationToken>()),
+            x => x.SetAccessTokenAsync("AppAccessToken:test", expectedToken, 7200, It.IsAny<CancellationToken>()),
             Times.Once);
     }
 }

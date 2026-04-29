@@ -28,6 +28,7 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
     private readonly FeishuAppConfig _options;
     private readonly ILogger<UserTokenManager> _logger;
     private readonly IUserTokenStore? _userTokenStore;
+    private readonly string _tokenTypeKey;
 
     /// <summary>
     /// 初始化 UserTokenManager 实例
@@ -49,6 +50,7 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
         _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _userTokenStore = userTokenStore;
+        _tokenTypeKey = $"UserAccessToken:{_options.AppKey}";
     }
 
     protected override int UserExpireThresholdSeconds => _options.TokenRefreshThreshold;
@@ -113,6 +115,8 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
         var tokenInfo = new UserTokenInfo
         {
             UserId = string.Empty,
+            OpenId = res.OpenId,
+            UnionId = res.UnionId,
             AccessToken = res.AccessToken,
             RefreshToken = res.RefreshToken,
             AccessTokenExpireTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + ((res.ExpiresIn > 0 ? res.ExpiresIn : 7200) * 1000L),
@@ -121,6 +125,13 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
             Code = res.Code,
             Msg = res.Msg
         };
+
+        if (!string.IsNullOrEmpty(res.OpenId))
+        {
+            tokenInfo.UserId = res.OpenId;
+            UpdateUserTokenCache(res.OpenId, tokenInfo);
+            await PersistUserTokenAsync(res.OpenId, tokenInfo, cancellationToken).ConfigureAwait(false);
+        }
 
         return tokenInfo;
     }
@@ -187,7 +198,7 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
 
         if (_userTokenStore != null)
         {
-            await _userTokenStore.RemoveAsync(userId, "UserAccessToken", cancellationToken).ConfigureAwait(false);
+            await _userTokenStore.RemoveAsync(userId, _tokenTypeKey, cancellationToken).ConfigureAwait(false);
         }
 
         return true;
@@ -214,13 +225,26 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
     }
 
     /// <inheritdoc />
-    public override Task<UserTokenInfo?> GetTokenInfoAsync(string userId, CancellationToken cancellationToken = default)
+    public override async Task<UserTokenInfo?> GetTokenInfoAsync(string userId, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(userId))
-            return Task.FromResult<UserTokenInfo?>(null);
+            return null;
 
         var cachedInfo = GetUserTokenFromCache(userId);
-        return Task.FromResult(cachedInfo);
+        if (cachedInfo != null)
+            return cachedInfo;
+
+        if (_userTokenStore != null)
+        {
+            var restoredInfo = await TryRestoreFromUserTokenStoreAsync(userId, cancellationToken).ConfigureAwait(false);
+            if (restoredInfo != null)
+            {
+                UpdateUserTokenCache(userId, restoredInfo);
+                return restoredInfo;
+            }
+        }
+
+        return null;
     }
 
     /// <inheritdoc />
@@ -252,17 +276,54 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
             var remainingSeconds = (tokenInfo.AccessTokenExpireTime - DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()) / 1000L;
             if (remainingSeconds > 0)
             {
-                await _userTokenStore.SetAccessTokenAsync(userId, "UserAccessToken", tokenInfo.AccessToken, remainingSeconds, cancellationToken).ConfigureAwait(false);
+                await _userTokenStore.SetAccessTokenAsync(userId, _tokenTypeKey, tokenInfo.AccessToken, remainingSeconds, cancellationToken).ConfigureAwait(false);
             }
 
             if (!string.IsNullOrEmpty(tokenInfo.RefreshToken))
             {
-                await _userTokenStore.SetRefreshTokenAsync(userId, "UserAccessToken", tokenInfo.RefreshToken, cancellationToken).ConfigureAwait(false);
+                await _userTokenStore.SetRefreshTokenAsync(userId, _tokenTypeKey, tokenInfo.RefreshToken, cancellationToken).ConfigureAwait(false);
             }
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Failed to persist user token to IUserTokenStore for userId: {UserId}", userId);
+        }
+    }
+
+    private async Task<UserTokenInfo?> TryRestoreFromUserTokenStoreAsync(string userId, CancellationToken cancellationToken)
+    {
+        if (_userTokenStore == null)
+            return null;
+
+        try
+        {
+            var accessToken = await _userTokenStore.GetAccessTokenAsync(userId, _tokenTypeKey, cancellationToken).ConfigureAwait(false);
+            if (string.IsNullOrEmpty(accessToken))
+                return null;
+
+            var refreshToken = await _userTokenStore.GetRefreshTokenAsync(userId, _tokenTypeKey, cancellationToken).ConfigureAwait(false);
+
+            _logger.LogDebug("Restored user token from IUserTokenStore for userId: {UserId}", userId);
+
+            var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            var thresholdMs = UserExpireThresholdSeconds * 1000L;
+
+            return new UserTokenInfo
+            {
+                UserId = userId,
+                OpenId = userId,
+                AccessToken = accessToken,
+                RefreshToken = refreshToken,
+                AccessTokenExpireTime = now + thresholdMs,
+                RefreshTokenExpireTime = !string.IsNullOrEmpty(refreshToken)
+                    ? now + thresholdMs
+                    : 0
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to restore user token from IUserTokenStore for userId: {UserId}", userId);
+            return null;
         }
     }
 }

@@ -26,6 +26,7 @@ internal class TenantTokenManager : TokenManagerBase, ITenantTokenManager
     private readonly FeishuAppConfig _options;
     private readonly ILogger<TenantTokenManager> _logger;
     private readonly ITokenStore? _tokenStore;
+    private readonly string _tokenTypeKey;
 
     /// <summary>
     /// 初始化 TenantTokenManager 实例
@@ -44,6 +45,7 @@ internal class TenantTokenManager : TokenManagerBase, ITenantTokenManager
         _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _tokenStore = tokenStore;
+        _tokenTypeKey = $"TenantAccessToken:{_options.AppKey}";
     }
 
     /// <summary>
@@ -58,16 +60,13 @@ internal class TenantTokenManager : TokenManagerBase, ITenantTokenManager
     }
 
     /// <summary>
-    /// 重写基类的令牌获取逻辑，在内部缓存未命中时先尝试从 ITokenStore 恢复令牌
+    /// 重写令牌获取流程，优先从 ITokenStore 恢复令牌，避免不必要的 API 调用。
     /// </summary>
     protected override async Task<CredentialToken> RefreshTokenCoreAsync(CancellationToken cancellationToken)
     {
-        if (_tokenStore != null)
-        {
-            var restoredToken = await TryRestoreFromStoreAsync(cancellationToken).ConfigureAwait(false);
-            if (restoredToken != null)
-                return restoredToken;
-        }
+        var restoredToken = await TryRestoreFromStoreAsync(cancellationToken).ConfigureAwait(false);
+        if (restoredToken != null)
+            return restoredToken;
 
         _logger.LogInformation("Refreshing TenantAccessToken for AppId: {AppId}", _options.AppId);
 
@@ -95,7 +94,7 @@ internal class TenantTokenManager : TokenManagerBase, ITenantTokenManager
             Expire = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + ((res.Expire > 0 ? res.Expire : 7200) * 1000L)
         };
 
-        await PersistTokenAsync("TenantAccessToken", token.AccessToken, res.Expire > 0 ? res.Expire : 7200, cancellationToken).ConfigureAwait(false);
+        await PersistTokenAsync(_tokenTypeKey, token.AccessToken, res.Expire > 0 ? res.Expire : 7200, cancellationToken).ConfigureAwait(false);
 
         return token;
     }
@@ -107,14 +106,14 @@ internal class TenantTokenManager : TokenManagerBase, ITenantTokenManager
 
         try
         {
-            var storedToken = await _tokenStore.GetAccessTokenAsync("TenantAccessToken", cancellationToken).ConfigureAwait(false);
+            var storedToken = await _tokenStore.GetAccessTokenAsync(_tokenTypeKey, cancellationToken).ConfigureAwait(false);
             if (!string.IsNullOrEmpty(storedToken))
             {
                 _logger.LogDebug("Restored TenantAccessToken from ITokenStore for AppId: {AppId}", _options.AppId);
                 return new CredentialToken
                 {
                     AccessToken = storedToken,
-                    Expire = DateTimeOffset.UtcNow.AddMinutes(30).ToUnixTimeMilliseconds()
+                    Expire = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + (ExpireThresholdSeconds * 1000L)
                 };
             }
         }

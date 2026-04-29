@@ -24,7 +24,7 @@ public class IFeishuTenantV1MessageTests
     [Fact]
     public void TestSendMessageAsyncRequestBody()
     {
-        string bodyStr = """{"receive_id":"ou_test123","msg_type":"text","content":"{\\"text\\":\\"hello\\"}","uuid":"test-uuid-123"}""";
+        string bodyStr = """{"receive_id":"ou_test123","msg_type":"text","content":"{\"text\":\"hello\"}","uuid":"test-uuid-123"}""";
         var requestBody = JsonSerializer.Deserialize<SendMessageRequest>(bodyStr, _jsonSerializerOptions);
 
         Assert.NotNull(requestBody);
@@ -50,7 +50,7 @@ public class IFeishuTenantV1MessageTests
     [Fact]
     public void TestReplyMessageAsyncRequestBody()
     {
-        string bodyStr = """{"msg_type":"text","content":"{\\"text\\":\\"reply content\\"}","uuid":"reply-uuid-123"}""";
+        string bodyStr = """{"msg_type":"text","content":"{\"text\":\"reply content\"}","uuid":"reply-uuid-123"}""";
         var requestBody = JsonSerializer.Deserialize<ReplyMessageRequest>(bodyStr, _jsonSerializerOptions);
 
         Assert.NotNull(requestBody);
@@ -74,7 +74,7 @@ public class IFeishuTenantV1MessageTests
     [Fact]
     public void TestEditMessageAsyncRequestBody()
     {
-        string bodyStr = """{"msg_type":"text","content":"{\\"text\\":\\"edited content\\"}"}""";
+        string bodyStr = """{"msg_type":"text","content":"{\"text\":\"edited content\"}"}""";
         var requestBody = JsonSerializer.Deserialize<EditMessageRequest>(bodyStr, _jsonSerializerOptions);
 
         Assert.NotNull(requestBody);
@@ -157,7 +157,7 @@ public class IFeishuTenantV1MessageTests
     [Fact]
     public void TestCreateMessageFollowUpAsyncRequestBody()
     {
-        string bodyStr = """{"follow_up_type":"quick_action","content":"{\\"text\\":\\"follow up\\"}"}""";
+        string bodyStr = """{"follow_ups":[{"content":"follow up"}]}""";
         var requestBody = JsonSerializer.Deserialize<MessageFollowUpRequest>(bodyStr, _jsonSerializerOptions);
 
         Assert.NotNull(requestBody);

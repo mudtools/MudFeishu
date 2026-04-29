@@ -7,16 +7,21 @@
 
 namespace Mud.Feishu.DataModels.Calendar;
 
+
 /// <summary>
-/// <para>视频会议信息。</para>
+/// <para>日程附件。</para>
 /// </summary>
-public class CalendarEventVchat : CalendarEventVchatData
+public class UpdateAttachmentData : CalendarAttachment
 {
     /// <summary>
-    /// <para>飞书视频会议（VC）的会前设置。</para>
+    /// <para>是否删除附件。</para>
+    /// <para>**可选值有**：</para>
+    /// <para>- true：删除</para>
+    /// <para>- false：不删除</para>
+    /// <para>**默认值**：false</para>
     /// <para>必填：否</para>
+    /// <para>示例值：true</para>
     /// </summary>
-    [JsonPropertyName("meeting_settings")]
-    public CalendarEventVchatMeetingSettings? MeetingSettings { get; set; }
-
+    [JsonPropertyName("is_deleted")]
+    public bool? IsDeleted { get; set; }
 }

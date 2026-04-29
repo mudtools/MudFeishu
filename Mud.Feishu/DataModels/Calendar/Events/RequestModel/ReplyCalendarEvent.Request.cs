@@ -8,15 +8,20 @@
 namespace Mud.Feishu.DataModels.Calendar;
 
 /// <summary>
-/// <para>视频会议信息。</para>
+/// 回复日程请求体
 /// </summary>
-public class CalendarEventVchat : CalendarEventVchatData
+public class ReplyCalendarEventRequest
 {
     /// <summary>
-    /// <para>飞书视频会议（VC）的会前设置。</para>
-    /// <para>必填：否</para>
+    /// <para>日程参与人 RSVP 状态，即日程回复状态。</para>
+    /// <para>必填：是</para>
+    /// <para>示例值：accept</para>
+    /// <para>可选值：<list type="bullet">
+    /// <item>accept：接受</item>
+    /// <item>decline：拒绝</item>
+    /// <item>tentative：待定</item>
+    /// </list></para>
     /// </summary>
-    [JsonPropertyName("meeting_settings")]
-    public CalendarEventVchatMeetingSettings? MeetingSettings { get; set; }
-
+    [JsonPropertyName("rsvp_status")]
+    public string RsvpStatus { get; set; } = string.Empty;
 }

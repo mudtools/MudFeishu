@@ -8,15 +8,33 @@
 namespace Mud.Feishu.DataModels.Calendar;
 
 /// <summary>
-/// <para>视频会议信息。</para>
+/// <para>会议室的个性化配置。</para>
 /// </summary>
-public class CalendarEventVchat : CalendarEventVchatData
+public class CalendarAttendeeResourceCustomization
 {
     /// <summary>
-    /// <para>飞书视频会议（VC）的会前设置。</para>
-    /// <para>必填：否</para>
+    /// <para>每个配置的唯一 ID。</para>
+    /// <para>必填：是</para>
+    /// <para>示例值：16281481596100</para>
     /// </summary>
-    [JsonPropertyName("meeting_settings")]
-    public CalendarEventVchatMeetingSettings? MeetingSettings { get; set; }
+    [JsonPropertyName("index_key")]
+    public string IndexKey { get; set; } = string.Empty;
+
+    /// <summary>
+    /// <para>填空类型的取值。</para>
+    /// <para>必填：否</para>
+    /// <para>示例值：xxx</para>
+    /// </summary>
+    [JsonPropertyName("input_content")]
+    public string? InputContent { get; set; }
+
+    /// <summary>
+    /// <para>每个配置的选项。</para>
+    /// <para>必填：否</para>
+    /// <para>示例值：无</para>
+    /// </summary>
+    [JsonPropertyName("options")]
+    public CustomizationOption[]? Options { get; set; }
+
 
 }

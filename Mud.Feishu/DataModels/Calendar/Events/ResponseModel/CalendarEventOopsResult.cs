@@ -7,16 +7,19 @@
 
 namespace Mud.Feishu.DataModels.Calendar;
 
+
 /// <summary>
-/// <para>视频会议信息。</para>
+/// <para>日程业务操作响应体</para>
 /// </summary>
-public class CalendarEventVchat : CalendarEventVchatData
+public class CalendarEventOopsResult
 {
     /// <summary>
-    /// <para>飞书视频会议（VC）的会前设置。</para>
+    /// <para>新创建的日程实体信息。</para>
     /// <para>必填：否</para>
     /// </summary>
-    [JsonPropertyName("meeting_settings")]
-    public CalendarEventVchatMeetingSettings? MeetingSettings { get; set; }
+    [JsonPropertyName("event")]
+    public CalendarEventInfo? Event { get; set; }
+
 
 }
+

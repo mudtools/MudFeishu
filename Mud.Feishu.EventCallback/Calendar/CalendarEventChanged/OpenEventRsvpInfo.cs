@@ -5,21 +5,27 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-namespace Mud.Feishu.DataModels.Calendar;
+namespace Mud.Feishu.EventCallback.Calendar;
 
 
-/// <summary>
-/// <para>创建日程响应体</para>
-/// </summary>
-public class CreateCalendarEventResult
+/// <summary></summary>
+public class OpenEventRsvpInfo
 {
     /// <summary>
-    /// <para>新创建的日程实体信息。</para>
+    /// <para>用户类型参与人的用户 ID。</para>
     /// <para>必填：否</para>
     /// </summary>
-    [JsonPropertyName("event")]
-    public CalendarEventInfo? Event { get; set; }
+    [JsonPropertyName("from_user_id")]
+    public UserIdInfo? FromUserId { get; set; }
 
-
+    /// <summary>
+    /// <para>RSVP 操作状态。</para>
+    /// <para>**可能值有：**</para>
+    /// <para>- accept：接收</para>
+    /// <para>- decline：拒绝</para>
+    /// <para>- tentative：待定</para>
+    /// <para>必填：否</para>
+    /// </summary>
+    [JsonPropertyName("rsvp_status")]
+    public string? RsvpStatus { get; set; }
 }
-

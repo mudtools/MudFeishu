@@ -8,15 +8,14 @@
 namespace Mud.Feishu.DataModels.Calendar;
 
 /// <summary>
-/// <para>视频会议信息。</para>
+/// 获取日程实例视图响应体
 /// </summary>
-public class CalendarEventVchat : CalendarEventVchatData
+public class GetInstanceViewCalendarEventResult
 {
     /// <summary>
-    /// <para>飞书视频会议（VC）的会前设置。</para>
+    /// <para>日程 instance 列表。</para>
     /// <para>必填：否</para>
     /// </summary>
-    [JsonPropertyName("meeting_settings")]
-    public CalendarEventVchatMeetingSettings? MeetingSettings { get; set; }
-
+    [JsonPropertyName("items")]
+    public CalendarEventInstanceView[]? Items { get; set; }
 }

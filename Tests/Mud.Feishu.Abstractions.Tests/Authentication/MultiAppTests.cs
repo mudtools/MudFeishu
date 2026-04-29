@@ -26,14 +26,12 @@ public class MultiAppTests
     {
         var services = new ServiceCollection();
 
-        var httpClientMock = new Mock<IEnhancedHttpClient>();
         var httpClientResolverMock = new Mock<IHttpClientResolver>();
         httpClientResolverMock
             .Setup(x => x.GetClient(It.IsAny<string>()))
-            .Returns(httpClientMock.Object);
+            .Returns<string>(clientName => new Mock<IEnhancedHttpClient>().Object);
 
         services.AddSingleton(httpClientResolverMock.Object);
-        services.AddSingleton(httpClientMock.Object);
         services.AddSingleton<IFeishuAuthentication>(new Mock<IFeishuAuthentication>().Object);
         services.AddSingleton<ICurrentUserContext, CurrentUserContext>();
         services.Configure<JsonSerializerOptions>(options => HttpClientExtensions.GetDefaultJsonSerializerOptions());

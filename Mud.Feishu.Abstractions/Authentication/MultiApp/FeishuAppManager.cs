@@ -9,6 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Mud.Feishu.Abstractions.Internal;
 using Mud.Feishu.TokenManager;
+using Mud.HttpUtils.Resilience;
 using System.Text.Json;
 
 namespace Mud.Feishu.Abstractions;
@@ -200,17 +201,18 @@ internal class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuA
             httpClient);
     }
 
-    /// <summary>
-    /// 创建独立的HttpClient实例
-    /// </summary>
     private IEnhancedHttpClient CreateHttpClient(FeishuAppConfig config)
     {
         var httpClientResolver = _serviceProvider.GetRequiredService<IHttpClientResolver>();
         var clientName = $"feishu-{config.AppKey}";
-        var enhancedClient = httpClientResolver.GetClient(clientName);
+        var baseClient = httpClientResolver.GetClient(clientName);
 
-        var logger = _serviceProvider.GetRequiredService<ILogger<FeishuHttpClient>>();
+        var policyProvider = _serviceProvider.GetService<IResiliencePolicyProvider>();
+        if (policyProvider == null)
+            return baseClient;
 
-        return new FeishuHttpClient(enhancedClient, logger);
+        var resilienceLogger = _serviceProvider.GetService<ILogger<ResilientHttpClient>>();
+        var resilienceOptions = _serviceProvider.GetService<IOptions<ResilienceOptions>>()?.Value;
+        return new ResilientHttpClient(baseClient, policyProvider, resilienceLogger, resilienceOptions);
     }
 }

@@ -17,4 +17,18 @@ namespace Mud.Feishu;
 public interface IFeishuTenantV4CalendarEvent : IFeishuV4CalendarEvent
 {
 
+    /// <summary>
+    /// 删除请假日程
+    /// <para>删除一个指定的请假日程。请假日程删除后，用户个人签名页的请假信息也会消失。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/calendar-v4/timeoff_event/delete">接口文档</see></para>
+    /// </summary> 
+    /// <param name="timeoff_event_id">
+    /// <para>请假日程 ID，在创建请假日程时从返回结果中获取。</para>
+    /// <para>示例值：timeoff:XXXXXX-XXXX-0917-1623-aa493d591a39</para>
+    /// </param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Delete("/open-apis/calendar/v4/timeoff_events/{timeoff_event_id}")]
+    Task<FeishuNullDataApiResult?> DeleteTimeoffEventAsync(
+       [Query] string timeoff_event_id,
+       CancellationToken cancellationToken = default);
 }

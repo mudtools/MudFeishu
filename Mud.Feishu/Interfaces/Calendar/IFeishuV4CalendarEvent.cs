@@ -490,4 +490,5 @@ public interface IFeishuV4CalendarEvent : IFeishuAppContextSwitcher
         [Body] CreateTimeoffEventRequest createTimeoffEventRequest,
         [Query] string? user_id_type = Consts.User_Id_Type,
         CancellationToken cancellationToken = default);
+
 }

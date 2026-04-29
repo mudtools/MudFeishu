@@ -71,4 +71,18 @@ public interface IFeishuTenantV4CalendarEvent : IFeishuV4CalendarEvent
     Task<FeishuApiResult<GetMeetingRoomSummaryResult>?> GetMeetingRoomSummaryAsync(
        [Body] GetMeetingRoomSummaryRequest getMeetingRoomSummaryRequest,
        CancellationToken cancellationToken = default);
+
+
+
+    /// <summary>
+    /// 回复会议室日程实例
+    /// <para>用于回复会议室日程实例，支持回复未签到释放、提前结束释放、被管理员置为接受、被管理员置为拒绝。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/calendar-v4/meeting-room-event/reply-meeting-room-event-instance">接口文档</see></para>
+    /// </summary> 
+    /// <param name="replyMeetingRoomInstanceRequest">回复会议室日程实例请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Post("/open-apis/meeting_room/instance/reply")]
+    Task<FeishuNullDataApiResult?> ReplyMeetingRoomEventInstanceAsync(
+      [Body] ReplyMeetingRoomEventInstanceRequest replyMeetingRoomInstanceRequest,
+      CancellationToken cancellationToken = default);
 }

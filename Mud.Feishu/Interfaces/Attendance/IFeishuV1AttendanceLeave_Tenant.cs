@@ -15,7 +15,7 @@ namespace Mud.Feishu;
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Attendance")]
 [Token("TenantAccessToken", Name = Consts.Authorization)]
-public interface IFeishuV1AttendanceLeave_Tenant : IFeishuAppContextSwitcher
+public interface IFeishuTenantV1AttendanceLeave : IFeishuAppContextSwitcher
 {
     /// <summary>
     /// 通过过期时间获取发放记录，只能获取到对应时间段过期的发放记录。

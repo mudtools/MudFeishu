@@ -394,4 +394,26 @@ public interface IFeishuV4CalendarEvent : IFeishuAppContextSwitcher
        [Query] string end_time,
        [Query] string? user_id_type = Consts.User_Id_Type,
        CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 创建会议群
+    /// <para>以当前身份（应用或用户）为指定日程创建一个会议群。</para>
+    /// <para><see href="https://open.feishu.cn/document/calendar-v4/calendar-event-meeting_chat/create">接口文档</see></para>
+    /// </summary> 
+    /// <param name="calendar_id">
+    /// <para>日历 ID。</para>
+    /// <para>创建共享日历时会返回日历 ID。也可以调用以下接口获取某一日历的 ID。</para>
+    /// <para>示例值：feishu.cn_xxxxxxxxxx@group.calendar.feishu.cn</para>
+    /// </param> 
+    /// <param name="event_id">
+    /// <para>日程 ID。</para>
+    /// <para>示例值：xxxxxxxxx_0</para>
+    /// </param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Post("/open-apis/calendar/v4/calendars/{calendar_id}/events/{event_id}/meeting_chat")]
+    Task<FeishuApiResult<CreateCalendarEventMeetingChatResult>?> CreateCalendarEventMeetingChatAsync(
+        [Path] string calendar_id,
+        [Path] string event_id,
+        CancellationToken cancellationToken = default);
 }

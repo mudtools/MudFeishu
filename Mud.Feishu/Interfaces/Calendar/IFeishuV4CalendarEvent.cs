@@ -444,4 +444,26 @@ public interface IFeishuV4CalendarEvent : IFeishuAppContextSwitcher
        [Path] string event_id,
        [Query] string meeting_chat_id,
        CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 创建会议纪要
+    /// <para>为指定的日程创建会议纪要。纪要以文档形式展示，成功创建后会返回纪要文档 URL。</para>
+    /// <para><see href="https://open.feishu.cn/document/calendar-v4/calendar-event-meeting_minute/create">接口文档</see></para>
+    /// </summary> 
+    /// <param name="calendar_id">
+    /// <para>日历 ID。</para>
+    /// <para>创建共享日历时会返回日历 ID。也可以调用以下接口获取某一日历的 ID。</para>
+    /// <para>示例值：feishu.cn_xxxxxxxxxx@group.calendar.feishu.cn</para>
+    /// </param> 
+    /// <param name="event_id">
+    /// <para>日程 ID。</para>
+    /// <para>示例值：xxxxxxxxx_0</para>
+    /// </param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Post("/open-apis/calendar/v4/calendars/{calendar_id}/events/{event_id}/meeting_minute")]
+    Task<FeishuApiResult<CreateCalendarEventMeetingMinuteResult>?> CreateCalendarEventMeetingMinuteAsync(
+      [Path] string calendar_id,
+      [Path] string event_id,
+      CancellationToken cancellationToken = default);
 }

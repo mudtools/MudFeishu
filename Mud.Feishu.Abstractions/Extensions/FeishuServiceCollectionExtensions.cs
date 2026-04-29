@@ -12,7 +12,6 @@ using Mud.Feishu.Abstractions.Authentication;
 using Mud.Feishu.Abstractions.Configuration;
 using Mud.HttpUtils;
 using Mud.HttpUtils.Resilience;
-using System.Net;
 using System.Text.Json;
 
 namespace Mud.Feishu.Abstractions;
@@ -79,7 +78,7 @@ public static class FeishuServiceCollectionExtensions
 
             ValidateFeishuBaseUrl(baseAddress, allowCustomBaseUrl);
 
-            services.AddMudHttpClient(
+            services.AddNamedMudHttpClient(
                 clientName,
                 client =>
                 {

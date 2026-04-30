@@ -320,6 +320,11 @@ public static class FeishuEventTypes
     /// 会议室状态信息变更
     /// </summary>
     public const string RoomStatusChanged = "meeting_room.meeting_room.status_changed_v1";
+
+    /// <summary>
+    /// 第三方会议室日程变动
+    /// </summary>
+    public const string ThirdPartyMeetingRoomEventCreated = "third_party_meeting_room_event_created";
     #endregion
 
     /// <summary>

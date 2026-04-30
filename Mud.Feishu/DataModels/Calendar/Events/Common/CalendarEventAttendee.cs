@@ -89,8 +89,6 @@ public class CalendarEventAttendee
     [JsonPropertyName("chat_members")]
     public AttendeeChatMember[]? ChatMembers { get; set; }
 
-
-
     /// <summary>
     /// <para>用户类型参与人的用户 ID，ID 类型与 user_id_type 的值保持一致。关于用户 ID 可参见[用户相关的 ID 概念](https://open.feishu.cn/document/home/user-identity-introduction/introduction)。</para>
     /// <para>**注意**：当 is_external 返回为 true 时，此字段只会返回 open_id 或者 union_id。</para>

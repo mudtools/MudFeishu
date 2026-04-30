@@ -315,6 +315,11 @@ public static class FeishuEventTypes
     /// 日程变更
     /// </summary>
     public const string CalendarEventChanged = "calendar.calendar.event.changed_v4";
+
+    /// <summary>
+    /// 会议室状态信息变更
+    /// </summary>
+    public const string RoomStatusChanged = "meeting_room.meeting_room.status_changed_v1";
     #endregion
 
     /// <summary>

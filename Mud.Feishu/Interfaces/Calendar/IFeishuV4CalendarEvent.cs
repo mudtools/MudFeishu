@@ -394,4 +394,103 @@ public interface IFeishuV4CalendarEvent : IFeishuAppContextSwitcher
        [Query] string end_time,
        [Query] string? user_id_type = Consts.User_Id_Type,
        CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 创建会议群
+    /// <para>以当前身份（应用或用户）为指定日程创建一个会议群。</para>
+    /// <para><see href="https://open.feishu.cn/document/calendar-v4/calendar-event-meeting_chat/create">接口文档</see></para>
+    /// </summary> 
+    /// <param name="calendar_id">
+    /// <para>日历 ID。</para>
+    /// <para>创建共享日历时会返回日历 ID。也可以调用以下接口获取某一日历的 ID。</para>
+    /// <para>示例值：feishu.cn_xxxxxxxxxx@group.calendar.feishu.cn</para>
+    /// </param> 
+    /// <param name="event_id">
+    /// <para>日程 ID。</para>
+    /// <para>示例值：xxxxxxxxx_0</para>
+    /// </param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Post("/open-apis/calendar/v4/calendars/{calendar_id}/events/{event_id}/meeting_chat")]
+    Task<FeishuApiResult<CreateCalendarEventMeetingChatResult>?> CreateCalendarEventMeetingChatAsync(
+        [Path] string calendar_id,
+        [Path] string event_id,
+        CancellationToken cancellationToken = default);
+
+
+
+    /// <summary>
+    /// 解绑会议群
+    /// <para>以当前身份（应用或用户）为日程解绑已创建的会议群。</para>
+    /// <para><see href="https://open.feishu.cn/document/calendar-v4/calendar-event-meeting_chat/delete">接口文档</see></para>
+    /// </summary> 
+    /// <param name="calendar_id">
+    /// <para>日历 ID。</para>
+    /// <para>创建共享日历时会返回日历 ID。也可以调用以下接口获取某一日历的 ID。</para>
+    /// <para>示例值：feishu.cn_xxxxxxxxxx@group.calendar.feishu.cn</para>
+    /// </param> 
+    /// <param name="event_id">
+    /// <para>日程 ID。</para>
+    /// <para>示例值：xxxxxxxxx_0</para>
+    /// </param>
+    /// <param name="meeting_chat_id">
+    /// <para>会议群 ID。在创建会议群时会返回会议群 ID。</para>
+    /// <para>示例值：oc_xxx</para>
+    /// </param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Delete("/open-apis/calendar/v4/calendars/{calendar_id}/events/{event_id}/meeting_chat")]
+    Task<FeishuNullDataApiResult?> DeleteCalendarEventMeetingChatAsync(
+       [Path] string calendar_id,
+       [Path] string event_id,
+       [Query] string meeting_chat_id,
+       CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 创建会议纪要
+    /// <para>为指定的日程创建会议纪要。纪要以文档形式展示，成功创建后会返回纪要文档 URL。</para>
+    /// <para><see href="https://open.feishu.cn/document/calendar-v4/calendar-event-meeting_minute/create">接口文档</see></para>
+    /// </summary> 
+    /// <param name="calendar_id">
+    /// <para>日历 ID。</para>
+    /// <para>创建共享日历时会返回日历 ID。也可以调用以下接口获取某一日历的 ID。</para>
+    /// <para>示例值：feishu.cn_xxxxxxxxxx@group.calendar.feishu.cn</para>
+    /// </param> 
+    /// <param name="event_id">
+    /// <para>日程 ID。</para>
+    /// <para>示例值：xxxxxxxxx_0</para>
+    /// </param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Post("/open-apis/calendar/v4/calendars/{calendar_id}/events/{event_id}/meeting_minute")]
+    Task<FeishuApiResult<CreateCalendarEventMeetingMinuteResult>?> CreateCalendarEventMeetingMinuteAsync(
+      [Path] string calendar_id,
+      [Path] string event_id,
+      CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 查询会议室忙闲
+    /// <para>获取指定会议室的忙碌、空闲日程信息。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/calendar-v4/meeting-room-event/query-room-availability">接口文档</see></para>
+    /// </summary> 
+    /// <param name="room_ids">
+    /// <para>会议室 ID。你可以通过[查询会议室列表](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/vc-v1/room/list)或[搜索会议室](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/vc-v1/room/search)接口获取指定会议室 ID。</para>
+    /// <para>1. room_ids个数不要超过20。</para>
+    /// <para>2. GET 请求中传入多个会议室 ID 的格式示例为 `room_ids=omm_83d09ad4f6896e02029a6a075f71xxxx&amp;room_ids=omm_eada1d61a550955240c28757e7dexxxx`。</para>
+    /// </param>
+    /// <param name="time_min">
+    /// <para>查询的起始时间，需要遵循 [RFC3339](https://tools.ietf.org/html/rfc3339) 格式，示例：2019-09-04T08:45:00+08:00。</para>
+    /// <para>**注意**：传入该参数时需要进行 URL 编码。</para>
+    /// </param>
+    /// <param name="time_max">
+    /// <para>查询的结束时间，需要遵循 [RFC3339](https://tools.ietf.org/html/rfc3339) 格式，示例：2019-09-04T09:45:00+08:00。</para>
+    /// <para>**注意**：传入该参数时需要进行 URL 编码。</para>
+    /// </param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Get("/open-apis/meeting_room/freebusy/batch_get")]
+    Task<FeishuApiResult<QueryMeetingRoomFreebusyResult>?> QueryMeetingRoomFreebusyAsync(
+       [Query] string[] room_ids,
+       [Query] string time_min,
+       [Query] string time_max,
+       CancellationToken cancellationToken = default);
 }

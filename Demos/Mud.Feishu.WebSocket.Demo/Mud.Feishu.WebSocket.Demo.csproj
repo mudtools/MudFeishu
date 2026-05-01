@@ -15,18 +15,18 @@
     <None Remove="Test\**" />
   </ItemGroup>
 
-  <!-- <ItemGroup>
-    <PackageReference Include="Mud.Feishu.Abstractions" Version="2.0.9" />
-    <PackageReference Include="Mud.Feishu.Redis" Version="2.0.9" />
-    <PackageReference Include="Mud.Feishu.WebSocket" Version="2.0.9" />
-    <PackageReference Include="Mud.Feishu.EventCallback" Version="2.0.9" />
-  </ItemGroup> -->
-
   <ItemGroup>
+    <PackageReference Include="Mud.Feishu.Abstractions" Version="3.0.0-preview1" />
+    <PackageReference Include="Mud.Feishu.Redis" Version="3.0.0-preview1" />
+    <PackageReference Include="Mud.Feishu.WebSocket" Version="3.0.0-preview1" />
+    <PackageReference Include="Mud.Feishu.EventCallback" Version="3.0.0-preview1" />
+  </ItemGroup>
+
+  <!-- <ItemGroup>
     <ProjectReference Include="..\..\Mud.Feishu.Redis\Mud.Feishu.Redis.csproj" />
     <ProjectReference Include="..\..\Mud.Feishu.WebSocket\Mud.Feishu.WebSocket.csproj" />
 	<ProjectReference Include="..\..\Mud.Feishu.EventCallback\Mud.Feishu.EventCallback.csproj" />
-  </ItemGroup>
+  </ItemGroup> -->
 
   <ItemGroup>
     <Folder Include="Properties\" />

@@ -34,7 +34,7 @@ public class FeishuUserAuthenticationExtensionsTests
         services.AddFeishuUserContext();
 
         // Assert
-        var descriptor = services.FirstOrDefault(d => d.ServiceType == typeof(ICurrentUserContext));
+        var descriptor = services.FirstOrDefault(d => d.ServiceType == typeof(IFeishuCurrentUserContext));
         Assert.NotNull(descriptor);
         Assert.Equal(ServiceLifetime.Singleton, descriptor.Lifetime);
         Assert.Equal(typeof(CurrentUserContext), descriptor.ImplementationType);
@@ -54,7 +54,7 @@ public class FeishuUserAuthenticationExtensionsTests
     }
 
     [Fact]
-    public void AddFeishuUserContext_CanResolveICurrentUserContext()
+    public void AddFeishuUserContext_CanResolveIFeishuCurrentUserContext()
     {
         // Arrange
         var services = new ServiceCollection();
@@ -63,7 +63,7 @@ public class FeishuUserAuthenticationExtensionsTests
         var serviceProvider = services.BuildServiceProvider();
 
         // Act
-        var context = serviceProvider.GetService<ICurrentUserContext>();
+        var context = serviceProvider.GetService<IFeishuCurrentUserContext>();
 
         // Assert
         Assert.NotNull(context);
@@ -80,8 +80,8 @@ public class FeishuUserAuthenticationExtensionsTests
         var serviceProvider = services.BuildServiceProvider();
 
         // Act
-        var context1 = serviceProvider.GetService<ICurrentUserContext>();
-        var context2 = serviceProvider.GetService<ICurrentUserContext>();
+        var context1 = serviceProvider.GetService<IFeishuCurrentUserContext>();
+        var context2 = serviceProvider.GetService<IFeishuCurrentUserContext>();
 
         // Assert
         Assert.Same(context1, context2);
@@ -92,15 +92,15 @@ public class FeishuUserAuthenticationExtensionsTests
     {
         // Arrange
         var services = new ServiceCollection();
-        var customContext = new Mock<ICurrentUserContext>().Object;
-        services.AddSingleton<ICurrentUserContext>(customContext);
+        var customContext = new Mock<IFeishuCurrentUserContext>().Object;
+        services.AddSingleton<IFeishuCurrentUserContext>(customContext);
 
         // Act
         services.AddFeishuUserContext();
         var serviceProvider = services.BuildServiceProvider();
 
         // Assert - Should still return the custom implementation
-        var context = serviceProvider.GetService<ICurrentUserContext>();
+        var context = serviceProvider.GetService<IFeishuCurrentUserContext>();
         Assert.Same(customContext, context);
     }
 
@@ -226,7 +226,7 @@ public class FeishuUserAuthenticationExtensionsTests
         var serviceProvider = services.BuildServiceProvider();
 
         // Act
-        var context = serviceProvider.GetRequiredService<ICurrentUserContext>();
+        var context = serviceProvider.GetRequiredService<IFeishuCurrentUserContext>();
         context.SetUser("test_open_id", "test_union_id", "test_user_id", "Test User");
 
         // Assert
@@ -281,9 +281,9 @@ public class FeishuUserAuthenticationExtensionsTests
 
     private class TestClass
     {
-        public ICurrentUserContext UserContext { get; }
+        public IFeishuCurrentUserContext UserContext { get; }
 
-        public TestClass(ICurrentUserContext userContext)
+        public TestClass(IFeishuCurrentUserContext userContext)
         {
             UserContext = userContext;
         }

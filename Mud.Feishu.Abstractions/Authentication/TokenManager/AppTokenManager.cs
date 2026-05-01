@@ -113,7 +113,7 @@ internal class AppTokenManager : TokenManagerBase, IAppTokenManager
                 return new CredentialToken
                 {
                     AccessToken = storedToken,
-                    Expire = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + (ExpireThresholdSeconds * 1000L)
+                    Expire = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + (7200L * 1000L)
                 };
             }
         }

@@ -39,24 +39,12 @@ builder.Services.AddApplicationServices(builder.Configuration);
 builder.Services.AddFeishuServices(builder.Configuration);
 builder.Services.AddCorsConfiguration(builder.Configuration);
 
-// 配置 JSON 序列化使用 camelCase
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
     });
 
-// 添加飞书应用服务
-builder.Services.AddFeishuApp(builder.Configuration, "FeishuApps");
-
-// 注册API服务
-builder.Services.CreateFeishuServicesBuilder()
-    .AddModules(FeishuModule.Organization)
-    .AddModules(FeishuModule.Drive)
-    .Build()
-    .AddLogging(options => options.AddConsole());
-
-// 添加飞书用户上下文服务
 builder.Services.AddFeishuUserContext(o =>
 {
     o.OpenIdClaimType = "open_id";

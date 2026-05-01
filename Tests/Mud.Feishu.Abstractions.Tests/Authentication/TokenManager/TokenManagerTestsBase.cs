@@ -34,7 +34,7 @@ public abstract class TokenManagerTestsBase : IDisposable
         var loggerMock = new Mock<ILogger<TenantTokenManager>>();
         var appTokenManagerLoggerMock = new Mock<ILogger<AppTokenManager>>();
         var userTokenManagerLoggerMock = new Mock<ILogger<UserTokenManager>>();
-        var currentUserContextMock = new Mock<ICurrentUserContext>();
+        var currentUserContextMock = new Mock<IFeishuCurrentUserContext>();
         var optionsMock = new Mock<IOptions<FeishuAppConfig>>();
         optionsMock.Setup(x => x.Value).Returns(Config);
 

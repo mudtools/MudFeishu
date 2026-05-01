@@ -33,7 +33,7 @@ public class MultiAppTests
 
         services.AddSingleton(httpClientResolverMock.Object);
         services.AddSingleton<IFeishuAuthentication>(new Mock<IFeishuAuthentication>().Object);
-        services.AddSingleton<ICurrentUserContext, CurrentUserContext>();
+        services.AddSingleton<IFeishuCurrentUserContext, CurrentUserContext>();
         services.Configure<JsonSerializerOptions>(options => HttpClientExtensions.GetDefaultJsonSerializerOptions());
         services.AddLogging();
 

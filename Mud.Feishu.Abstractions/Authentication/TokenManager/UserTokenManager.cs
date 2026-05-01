@@ -23,7 +23,7 @@ namespace Mud.Feishu.TokenManager;
 /// </remarks>
 internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
 {
-    private readonly ICurrentUserContext? _currentUserContext;
+    private readonly IFeishuCurrentUserContext? _currentUserContext;
     private readonly IFeishuAuthentication _authenticationApi;
     private readonly FeishuAppConfig _options;
     private readonly ILogger<UserTokenManager> _logger;
@@ -39,7 +39,7 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
     /// <param name="logger">日志记录器</param>
     /// <param name="userTokenStore">用户令牌持久化存储（可选，用于分布式部署）</param>
     public UserTokenManager(
-        ICurrentUserContext? currentUserContext,
+        IFeishuCurrentUserContext? currentUserContext,
         IFeishuAuthentication authenticationApi,
         IOptions<FeishuAppConfig> options,
         ILogger<UserTokenManager> logger,
@@ -306,7 +306,6 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
             _logger.LogDebug("Restored user token from IUserTokenStore for userId: {UserId}", userId);
 
             var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-            var thresholdMs = UserExpireThresholdSeconds * 1000L;
 
             return new UserTokenInfo
             {
@@ -314,9 +313,9 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
                 OpenId = userId,
                 AccessToken = accessToken,
                 RefreshToken = refreshToken,
-                AccessTokenExpireTime = now + thresholdMs,
+                AccessTokenExpireTime = now + (7200L * 1000L),
                 RefreshTokenExpireTime = !string.IsNullOrEmpty(refreshToken)
-                    ? now + thresholdMs
+                    ? now + (30L * 24 * 3600 * 1000L)
                     : 0
             };
         }

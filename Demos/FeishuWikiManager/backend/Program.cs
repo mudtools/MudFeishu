@@ -103,8 +103,7 @@ builder.Services.CreateFeishuServicesBuilder()
         FeishuModule.Organization,
         FeishuModule.Wiki
     )
-    .Build()
-    .AddLogging(options => options.AddConsole());
+    .Build();
 
 builder.Services.AddHostedService<StateCleanupService>();
 

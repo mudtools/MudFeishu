@@ -82,8 +82,7 @@ builder.Services.AddFeishuApp(builder.Configuration, "FeishuApps");
 // 注册API服务
 builder.Services.CreateFeishuServicesBuilder()
     .AddModules(FeishuModule.Organization)
-    .Build()
-    .AddLogging(options => options.AddConsole());
+    .Build();
 
 // 添加飞书用户上下文服务
 builder.Services.AddFeishuUserContext(o =>

@@ -2,11 +2,11 @@ name: .NET Build, Test and Publish
 
 on:
   push:
-    branches: ["main", "master"]
+    branches: ["main", "master","v3"]
     tags:
       - "v*" # 当推送版本标签时触发（如 v1.0.0）
   pull_request:
-    branches: ["main", "master"]
+    branches: ["main", "master","v3"]
   workflow_dispatch:
     inputs:
       version:

@@ -10,7 +10,7 @@ namespace Mud.Feishu.DataModels.Calendar;
 /// <summary>
 /// 将 Exchange 账户绑定到飞书账户响应体
 /// </summary>
-public class CreateExchangeBindingResult
+public class ExchangeBindingOopsResult
 {
     /// <summary>
     /// <para>Exchange 的 admin 账户。</para>

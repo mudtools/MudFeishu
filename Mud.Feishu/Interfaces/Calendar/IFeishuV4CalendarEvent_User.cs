@@ -5,6 +5,8 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using Mud.Feishu.DataModels.Calendar;
+
 namespace Mud.Feishu;
 
 /// <summary>
@@ -70,4 +72,18 @@ public interface IFeishuUserV4CalendarEvent : IFeishuV4CalendarEvent, ICurrentUs
       [Path] string calendar_id,
       [Query] string? user_id_type = Consts.User_Id_Type,
       CancellationToken cancellationToken = default);
+
+
+
+    /// <summary>
+    /// 生成 CalDAV 配置
+    /// <para>为当前用户生成一个 CalDAV 账号密码，用于将飞书日历信息同步到本地设备日历。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/calendar-v4/setting/generate_caldav_conf">接口文档</see></para>
+    /// </summary> 
+    /// <param name="generateCaldavConfSettingRequest">生成 CalDAV 配置请求体。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Post("/open-apis/calendar/v4/settings/generate_caldav_conf")]
+    Task<FeishuApiResult<GenerateCaldavConfSettingResult>?> GenerateCaldavConfSettingAsync(
+       [Body] GenerateCaldavConfSettingRequest generateCaldavConfSettingRequest,
+       CancellationToken cancellationToken = default);
 }

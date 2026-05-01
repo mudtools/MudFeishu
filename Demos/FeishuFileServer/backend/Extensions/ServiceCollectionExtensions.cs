@@ -94,7 +94,8 @@ public static class ServiceCollectionExtensions
         services.AddFeishuApp(configuration, "FeishuApps");
 
         services.CreateFeishuServicesBuilder()
-            .AddDriveApi()
+            .AddModules(FeishuModule.Organization)
+            .AddModules(FeishuModule.Drive)
             .Build();
 
         services.AddScoped<IFeishuDriveService, FeishuDriveService>();

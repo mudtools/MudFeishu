@@ -306,7 +306,6 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
             _logger.LogDebug("Restored user token from IUserTokenStore for userId: {UserId}", userId);
 
             var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-            var thresholdMs = UserExpireThresholdSeconds * 1000L;
 
             return new UserTokenInfo
             {
@@ -314,9 +313,9 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
                 OpenId = userId,
                 AccessToken = accessToken,
                 RefreshToken = refreshToken,
-                AccessTokenExpireTime = now + thresholdMs,
+                AccessTokenExpireTime = now + (7200L * 1000L),
                 RefreshTokenExpireTime = !string.IsNullOrEmpty(refreshToken)
-                    ? now + thresholdMs
+                    ? now + (30L * 24 * 3600 * 1000L)
                     : 0
             };
         }

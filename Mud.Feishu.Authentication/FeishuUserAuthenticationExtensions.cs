@@ -76,6 +76,8 @@ public static class FeishuUserAuthenticationExtensions
 
         // 使用 TryAddSingleton 允许用户自定义实现
         services.TryAddSingleton<ICurrentUserContext, CurrentUserContext>();
+        services.TryAddSingleton<Mud.HttpUtils.ICurrentUserContext>(
+            sp => sp.GetRequiredService<ICurrentUserContext>());
 
         return services;
     }

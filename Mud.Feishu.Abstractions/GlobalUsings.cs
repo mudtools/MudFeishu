@@ -10,6 +10,7 @@ global using Mud.Feishu.Abstractions.EventHandlers;
 global using Mud.Feishu.Abstractions.Services;
 global using Mud.Feishu.Abstractions.Utilities;
 global using Mud.Feishu.DataModels;
+global using ICurrentUserContext = Mud.Feishu.Abstractions.ICurrentUserContext;
 global using Mud.HttpUtils;
 global using Mud.HttpUtils.Attributes;
 global using System.Text.Json.Serialization;

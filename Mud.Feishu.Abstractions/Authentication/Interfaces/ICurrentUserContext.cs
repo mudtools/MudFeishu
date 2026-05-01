@@ -24,7 +24,7 @@ namespace Mud.Feishu.Abstractions;
 ///   <item><description>用户信息在请求结束后自动清除，无需手动调用 Clear()</description></item>
 /// </list>
 /// </remarks>
-public interface ICurrentUserContext
+public interface ICurrentUserContext : Mud.HttpUtils.ICurrentUserContext
 {
     /// <summary>
     /// 飞书用户 OpenId

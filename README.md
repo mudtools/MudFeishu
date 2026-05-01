@@ -856,10 +856,10 @@ builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
 
 | 包                                   | 版本               | 说明                 |
 | ----------------------------------- | ---------------- | ------------------ |
-| **Mud.HttpUtils**                   | v1.7.0           | HTTP 客户端工具类        |
-| **Mud.HttpUtils.Generator**         | v1.7.0           | HTTP 客户端代码生成器（编译时） |
+| **Mud.HttpUtils**                   | v2.0.0-preview4   | HTTP 客户端工具类（含源代码生成器） |
+| **Mud.HttpUtils.Generator**         | v2.0.0-preview4   | HTTP 客户端代码生成器（编译时） |
+| **Mud.HttpUtils.Resilience**        | v2.0.0-preview4   | 弹性策略装饰器（重试/超时/熔断） |
 | **Microsoft.Extensions.Http**       | v8.0.1 / v10.0.4 | HTTP 客户端工厂         |
-| **Microsoft.Extensions.Http.Polly** | v8.0.2 / v10.0.4 | 弹性和瞬态故障处理          |
 
 ***
 

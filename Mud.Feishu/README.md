@@ -645,8 +645,8 @@ SDK 内置了智能的令牌管理机制：
 
 | 包                           | 版本     | 说明                 |
 | --------------------------- | ------ | ------------------ |
-| **Mud.HttpUtils**           | v1.6.2 | HTTP 客户端工具类        |
-| **Mud.HttpUtils.Generator** | v1.6.2 | HTTP 客户端代码生成器（编译时） |
+| **Mud.HttpUtils**           | v2.0.0-preview4 | HTTP 客户端工具类（含源代码生成器） |
+| **Mud.HttpUtils.Generator** | v2.0.0-preview4 | HTTP 客户端代码生成器（编译时） |
 | **Mud.Feishu.Abstractions** | \*     | 飞书 SDK 抽象层（同版本依赖）  |
 
 ## 框架支持

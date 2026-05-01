@@ -23,7 +23,7 @@ namespace Mud.Feishu.TokenManager;
 /// </remarks>
 internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
 {
-    private readonly ICurrentUserContext? _currentUserContext;
+    private readonly IFeishuCurrentUserContext? _currentUserContext;
     private readonly IFeishuAuthentication _authenticationApi;
     private readonly FeishuAppConfig _options;
     private readonly ILogger<UserTokenManager> _logger;
@@ -39,7 +39,7 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
     /// <param name="logger">日志记录器</param>
     /// <param name="userTokenStore">用户令牌持久化存储（可选，用于分布式部署）</param>
     public UserTokenManager(
-        ICurrentUserContext? currentUserContext,
+        IFeishuCurrentUserContext? currentUserContext,
         IFeishuAuthentication authenticationApi,
         IOptions<FeishuAppConfig> options,
         ILogger<UserTokenManager> logger,

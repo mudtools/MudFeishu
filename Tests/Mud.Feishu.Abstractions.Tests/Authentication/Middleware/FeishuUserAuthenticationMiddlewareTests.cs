@@ -19,7 +19,7 @@ public class FeishuUserAuthenticationMiddlewareTests
 {
     private readonly Mock<ILogger<FeishuUserAuthenticationMiddleware>> _loggerMock;
     private readonly Mock<ILogger<CurrentUserContext>> _userContextLoggerMock;
-    private readonly ICurrentUserContext _userContext;
+    private readonly IFeishuCurrentUserContext _userContext;
     private readonly IOptions<FeishuUserAuthenticationOptions> _defaultOptions;
 
     public FeishuUserAuthenticationMiddlewareTests()

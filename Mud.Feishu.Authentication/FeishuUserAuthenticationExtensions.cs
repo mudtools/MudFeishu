@@ -32,7 +32,7 @@ public static class FeishuUserAuthenticationExtensions
     /// <remarks>
     /// <para>注册内容：</para>
     /// <list type="bullet">
-    ///   <item><description>ICurrentUserContext - 注册为 Singleton（使用 TryAddSingleton 允许覆盖）</description></item>
+    ///   <item><description>IFeishuCurrentUserContext - 注册为 Singleton（使用 TryAddSingleton 允许覆盖）</description></item>
     ///   <item><description>FeishuUserAuthenticationOptions - 配置选项</description></item>
     /// </list>
     /// <para>使用示例：</para>
@@ -54,7 +54,7 @@ public static class FeishuUserAuthenticationExtensions
     /// <remarks>
     /// <para>注册内容：</para>
     /// <list type="bullet">
-    ///   <item><description>ICurrentUserContext - 注册为 Singleton（使用 TryAddSingleton 允许覆盖）</description></item>
+    ///   <item><description>IFeishuCurrentUserContext - 注册为 Singleton（使用 TryAddSingleton 允许覆盖）</description></item>
     ///   <item><description>FeishuUserAuthenticationOptions - 配置选项</description></item>
     /// </list>
     /// <para>使用示例：</para>
@@ -75,9 +75,8 @@ public static class FeishuUserAuthenticationExtensions
         services.AddSingleton<IValidateOptions<FeishuUserAuthenticationOptions>, FeishuUserAuthenticationOptions>();
 
         // 使用 TryAddSingleton 允许用户自定义实现
-        services.TryAddSingleton<ICurrentUserContext, CurrentUserContext>();
-        services.TryAddSingleton<Mud.HttpUtils.ICurrentUserContext>(
-            sp => sp.GetRequiredService<ICurrentUserContext>());
+        services.TryAddSingleton<IFeishuCurrentUserContext, CurrentUserContext>();
+        services.TryAddSingleton<Mud.HttpUtils.ICurrentUserContext, CurrentUserContext>();
 
         return services;
     }

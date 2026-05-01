@@ -8,10 +8,11 @@
 namespace Mud.Feishu.Abstractions;
 
 /// <summary>
-/// 当前用户上下文接口
+/// 飞书当前用户上下文接口
 /// </summary>
 /// <remarks>
-/// 提供当前请求的用户身份信息访问能力。基于 AsyncLocal 实现，确保在异步上下文中正确传递用户信息。
+/// 提供当前请求的飞书用户身份信息访问能力。基于 AsyncLocal 实现，确保在异步上下文中正确传递用户信息。
+/// 继承自 <see cref="Mud.HttpUtils.ICurrentUserContext"/>，同时提供飞书特有的 OpenId、UnionId 等属性。
 /// <para>典型使用场景：</para>
 /// <list type="bullet">
 ///   <item><description>在业务服务中获取当前用户ID，用于查询用户令牌</description></item>
@@ -24,7 +25,7 @@ namespace Mud.Feishu.Abstractions;
 ///   <item><description>用户信息在请求结束后自动清除，无需手动调用 Clear()</description></item>
 /// </list>
 /// </remarks>
-public interface ICurrentUserContext : Mud.HttpUtils.ICurrentUserContext
+public interface IFeishuCurrentUserContext : Mud.HttpUtils.ICurrentUserContext
 {
     /// <summary>
     /// 飞书用户 OpenId

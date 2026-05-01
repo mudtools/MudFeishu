@@ -25,7 +25,7 @@ namespace Mud.Feishu.Authentication;
 /// 确保在不同的异步方法之间正确传递，而不会受到并发请求的影响。
 /// </remarks>
 /// <param name="logger">日志记录器</param>
-public class CurrentUserContext(ILogger<CurrentUserContext> logger) : ICurrentUserContext
+public class CurrentUserContext(ILogger<CurrentUserContext> logger) : IFeishuCurrentUserContext
 {
     private readonly ILogger<CurrentUserContext> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 

@@ -21,7 +21,7 @@ namespace Mud.Feishu.Authentication;
 /// <para>功能说明：</para>
 /// <list type="bullet">
 ///   <item><description>从已认证的 ClaimsPrincipal 中提取飞书用户信息</description></item>
-///   <item><description>设置 ICurrentUserContext 供后续请求处理使用</description></item>
+///   <item><description>设置 IFeishuCurrentUserContext 供后续请求处理使用</description></item>
 ///   <item><description>请求结束后自动清理用户上下文</description></item>
 /// </list>
 /// <para>中间件位置：</para>
@@ -60,7 +60,7 @@ public class FeishuUserAuthenticationMiddleware(
     /// </summary>
     /// <param name="context">HTTP 上下文</param>
     /// <param name="userContext">用户上下文</param>
-    public async Task InvokeAsync(HttpContext context, ICurrentUserContext userContext)
+    public async Task InvokeAsync(HttpContext context, IFeishuCurrentUserContext userContext)
     {
         // 使用 Activity 进行分布式追踪
         using var activity = _options.EnableDistributedTracing

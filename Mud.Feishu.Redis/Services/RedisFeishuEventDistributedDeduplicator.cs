@@ -21,7 +21,7 @@ namespace Mud.Feishu.Redis.Services;
 /// 2. 处理中超时恢复
 /// 3. 异常后回滚
 /// </remarks>
-#pragma warning disable CS0618
+#pragma warning disable CS0618 // IFeishuEventDistributedDeduplicator 已废弃，但需保持向后兼容直到正式移除
 public class RedisFeishuEventDistributedDeduplicator : IFeishuEventDistributedDeduplicator, IAsyncDisposable
 {
     private readonly ILogger<RedisFeishuEventDistributedDeduplicator>? _logger;
@@ -487,4 +487,4 @@ public class RedisFeishuEventDistributedDeduplicator : IFeishuEventDistributedDe
         return $"{_keyPrefix}{eventId}";
     }
 }
-#pragma warning restore CS0618
+#pragma warning restore CS0618 // IFeishuEventDistributedDeduplicator 已废弃，但需保持向后兼容直到正式移除

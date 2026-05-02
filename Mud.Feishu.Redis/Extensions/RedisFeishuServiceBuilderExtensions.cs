@@ -96,9 +96,9 @@ public static class RedisFeishuServiceBuilderExtensions
     private static IServiceCollection AddFeishuRedisEventDeduplicator(
         this IServiceCollection services)
     {
-#pragma warning disable CS0618
+#pragma warning disable CS0618 // IFeishuEventDistributedDeduplicator 已废弃，但需保持向后兼容直到正式移除
         services.AddSingleton<IFeishuEventDistributedDeduplicator>(sp =>
-#pragma warning restore CS0618
+#pragma warning restore CS0618 // IFeishuEventDistributedDeduplicator 已废弃，但需保持向后兼容直到正式移除
         {
             var redis = sp.GetRequiredService<IConnectionMultiplexer>();
             var options = sp.GetRequiredService<RedisOptions>();

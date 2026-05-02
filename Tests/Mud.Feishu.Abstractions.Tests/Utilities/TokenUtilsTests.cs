@@ -8,6 +8,8 @@
 using Mud.Feishu.Abstractions.Utilities;
 using Xunit;
 
+#pragma warning disable CS0618
+
 namespace Mud.Feishu.Abstractions.Tests.Utilities;
 
 /// <summary>

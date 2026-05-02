@@ -22,9 +22,9 @@ public class FeishuEventMessageHandler : JsonMessageHandler
 {
     private readonly IFeishuEventHandlerFactory _eventHandlerFactory;
     private readonly IFeishuEventDeduplicator? _deduplicator;
-#pragma warning disable CS0618
+#pragma warning disable CS0618 // IFeishuEventDistributedDeduplicator 已废弃，但需保持向后兼容直到正式移除
     private readonly IFeishuEventDistributedDeduplicator? _distributedDeduplicator;
-#pragma warning restore CS0618
+#pragma warning restore CS0618 // IFeishuEventDistributedDeduplicator 已废弃，但需保持向后兼容直到正式移除
     private readonly IFeishuEventInterceptor[] _interceptors;
     private readonly FeishuWebSocketOptions _options;
 
@@ -42,9 +42,9 @@ public class FeishuEventMessageHandler : JsonMessageHandler
         ILogger<FeishuEventMessageHandler> logger,
         IFeishuEventHandlerFactory eventHandlerFactory,
         IFeishuEventDeduplicator? deduplicator,
-#pragma warning disable CS0618
+#pragma warning disable CS0618 // IFeishuEventDistributedDeduplicator 已废弃，但需保持向后兼容直到正式移除
         IFeishuEventDistributedDeduplicator? distributedDeduplicator,
-#pragma warning restore CS0618
+#pragma warning restore CS0618 // IFeishuEventDistributedDeduplicator 已废弃，但需保持向后兼容直到正式移除
         IFeishuSeqIDDeduplicator? seqIdDeduplicator,
         IFeishuEventInterceptor[]? interceptors,
         FeishuWebSocketOptions options)

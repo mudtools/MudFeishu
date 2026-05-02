@@ -14,35 +14,16 @@ namespace Mud.Feishu.Abstractions.Services;
 /// </summary>
 /// <remarks>
 /// <para>
-/// ⚠️ 重要提示：此类仅适用于单机部署或开发测试环境，不适合真正的分布式场景。
+/// ⚠️ 已废弃：此类与 <see cref="FeishuEventDeduplicator"/> 功能高度重复，将在未来版本中移除。
 /// </para>
 /// <para>
-/// 在分布式环境下，多个实例之间的内存不共享，无法实现真正的跨实例去重。
-/// 对于生产环境的分布式部署，请使用以下方案：
+/// 迁移指南：
 /// </para>
 /// <list type="bullet">
-///   <item><description>实现自定义的 <see cref="IFeishuEventDistributedDeduplicator"/> 接口，使用外部存储（如 Redis、数据库等）</description></item>
-/// </list>
-/// <para>
-/// 此类实现了 <see cref="IFeishuEventDistributedDeduplicator"/> 接口，主要是为了：
-/// </para>
-/// <list type="number">
-///   <item><description>提供开发测试环境下的快速实现</description></item>
-///   <item><description>作为接口的默认实现，方便依赖注入</description></item>
-///   <item><description>在单机部署场景下提供完整的去重功能</description></item>
+///   <item><description>单机场景：直接使用 <see cref="FeishuEventDeduplicator"/>，功能完全等价</description></item>
+///   <item><description>分布式场景：使用 Mud.Feishu.Redis 包中的 <c>RedisFeishuEventDistributedDeduplicator</c></description></item>
 /// </list>
 /// </remarks>
-/// <example>
-/// 单机场景使用示例（已废弃，请直接使用 IFeishuEventDeduplicator）：
-/// <code>
-/// services.AddSingleton&lt;IFeishuEventDeduplicator, FeishuEventDeduplicator&gt;();
-/// </code>
-/// 
-/// 分布式场景使用示例（需要安装 Mud.Feishu.Redis 包）：
-/// <code>
-/// services.AddSingleton&lt;IFeishuEventDistributedDeduplicator, RedisFeishuEventDistributedDeduplicator&gt;();
-/// </code>
-/// </example>
 [Obsolete("此类与 FeishuEventDeduplicator 功能高度重复，将在未来版本中移除。单机场景请使用 FeishuEventDeduplicator，分布式场景请使用 Redis 实现。")]
 public sealed class FeishuEventDistributedDeduplicator : IFeishuEventDistributedDeduplicator, IDisposable, IAsyncDisposable
 {

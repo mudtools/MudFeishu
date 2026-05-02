@@ -9,7 +9,7 @@ using Moq;
 using Mud.Feishu.Abstractions.Services;
 using Xunit;
 
-#pragma warning disable CS0618
+#pragma warning disable CS0618 // FeishuEventDistributedDeduplicator 已废弃，测试仍需覆盖
 
 namespace Mud.Feishu.Abstractions.Tests.Services;
 

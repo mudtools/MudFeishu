@@ -222,7 +222,7 @@ public class FeishuAppConfig
             IsDefault = true;
         }
 
-#pragma warning disable CS0618
+#pragma warning disable CS0618 // ResiliencePolicy 已废弃，但需保持向后兼容直到正式移除
         if (ResiliencePolicy != null)
         {
             if (ResiliencePolicy.CircuitBreakerThreshold < 2 || ResiliencePolicy.CircuitBreakerThreshold > 100)
@@ -231,7 +231,7 @@ public class FeishuAppConfig
             if (ResiliencePolicy.CircuitBreakerDurationSeconds < 5 || ResiliencePolicy.CircuitBreakerDurationSeconds > 300)
                 throw new InvalidOperationException("CircuitBreakerDurationSeconds 必须在 5-300 秒之间");
         }
-#pragma warning restore CS0618
+#pragma warning restore CS0618 // ResiliencePolicy 已废弃，但需保持向后兼容直到正式移除
     }
 
     /// <summary>

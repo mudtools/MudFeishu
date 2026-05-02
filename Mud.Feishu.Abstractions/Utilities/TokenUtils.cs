@@ -11,6 +11,7 @@ namespace Mud.Feishu.Abstractions.Utilities;
 /// Token 工具类
 /// 提供 Token 格式化和处理功能
 /// </summary>
+[Obsolete("此类在生产代码中未被使用，将在未来版本中移除。")]
 public static class TokenUtils
 {
     /// <summary>

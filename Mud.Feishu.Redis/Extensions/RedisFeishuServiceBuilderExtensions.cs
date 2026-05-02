@@ -96,7 +96,9 @@ public static class RedisFeishuServiceBuilderExtensions
     private static IServiceCollection AddFeishuRedisEventDeduplicator(
         this IServiceCollection services)
     {
+#pragma warning disable CS0618
         services.AddSingleton<IFeishuEventDistributedDeduplicator>(sp =>
+#pragma warning restore CS0618
         {
             var redis = sp.GetRequiredService<IConnectionMultiplexer>();
             var options = sp.GetRequiredService<RedisOptions>();

@@ -168,6 +168,7 @@ public class FeishuAppConfig
     /// </code>
     /// </para>
     /// </remarks>
+    [Obsolete("此配置从未被实际消费，熔断功能未实现。将在未来版本中移除。")]
     public ResiliencePolicyOptions? ResiliencePolicy { get; set; }
 
     /// <summary>
@@ -221,6 +222,7 @@ public class FeishuAppConfig
             IsDefault = true;
         }
 
+#pragma warning disable CS0618
         if (ResiliencePolicy != null)
         {
             if (ResiliencePolicy.CircuitBreakerThreshold < 2 || ResiliencePolicy.CircuitBreakerThreshold > 100)
@@ -229,6 +231,7 @@ public class FeishuAppConfig
             if (ResiliencePolicy.CircuitBreakerDurationSeconds < 5 || ResiliencePolicy.CircuitBreakerDurationSeconds > 300)
                 throw new InvalidOperationException("CircuitBreakerDurationSeconds 必须在 5-300 秒之间");
         }
+#pragma warning restore CS0618
     }
 
     /// <summary>

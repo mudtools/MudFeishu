@@ -104,7 +104,6 @@ public class ConnectionMetricsTests
         // Assert
         var stats = _connectionMetrics.GetCurrentStats();
         stats.MessagesReceived.Should().Be(1);
-        stats.MessagesReceivedTotal.Should().Be(1);
         stats.BytesReceived.Should().Be(bytes);
 
         // 验证 FeishuMetricsHelper 是否被调用（通过指标监听器）
@@ -177,7 +176,6 @@ public class ConnectionMetricsTests
         var stats = _connectionMetrics.GetCurrentStats();
         stats.MessagesSent.Should().Be(0);
         stats.MessagesReceived.Should().Be(0);
-        stats.MessagesReceivedTotal.Should().Be(0);
         stats.BytesSent.Should().Be(0);
         stats.BytesReceived.Should().Be(0);
         stats.ConnectionErrors.Should().Be(0);
@@ -202,7 +200,6 @@ public class ConnectionMetricsTests
         // Assert
         stats.MessagesSent.Should().Be(2);
         stats.MessagesReceived.Should().Be(2);
-        stats.MessagesReceivedTotal.Should().Be(2);
         stats.BytesSent.Should().Be(250); // 100 + 150
         stats.BytesReceived.Should().Be(450); // 200 + 250
         stats.ConnectionErrors.Should().Be(1);

@@ -26,7 +26,9 @@ public class FeishuWebhookService : IFeishuWebhookService
     private readonly IFeishuEventInterceptor[] _interceptors;
     private readonly FeishuWebhookConcurrencyService _concurrencyService;
     private readonly IFeishuEventDeduplicator _deduplicator;
+#pragma warning disable CS0618
     private readonly IFeishuEventDistributedDeduplicator? _distributedDeduplicator;
+#pragma warning restore CS0618
     private readonly ISecurityAuditService? _securityAuditService;
     private readonly IEncryptKeyProvider _encryptKeyProvider;
     private readonly FeishuWebhookHandlerRegistry _handlerRegistry;
@@ -55,7 +57,9 @@ public class FeishuWebhookService : IFeishuWebhookService
         IServiceProvider serviceProvider,
         IWebhookAppKeyAccessor appKeyAccessor,
         ISecurityAuditService? securityAuditService,
+#pragma warning disable CS0618
         IFeishuEventDistributedDeduplicator? distributedDeduplicator = null)
+#pragma warning restore CS0618
     {
         _optionsMonitor = optionsMonitor;
         _validator = validator;

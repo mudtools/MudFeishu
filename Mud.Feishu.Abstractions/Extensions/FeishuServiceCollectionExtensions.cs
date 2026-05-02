@@ -100,12 +100,14 @@ public static class FeishuServiceCollectionExtensions
                 resilienceOptions.Timeout.Enabled = true;
                 resilienceOptions.Timeout.TimeoutSeconds = firstConfig.TimeOut;
 
+#pragma warning disable CS0618
                 if (firstConfig.ResiliencePolicy != null)
                 {
                     resilienceOptions.CircuitBreaker.Enabled = firstConfig.ResiliencePolicy.CircuitBreakerEnabled;
                     resilienceOptions.CircuitBreaker.FailureThreshold = firstConfig.ResiliencePolicy.CircuitBreakerThreshold;
                     resilienceOptions.CircuitBreaker.BreakDurationSeconds = firstConfig.ResiliencePolicy.CircuitBreakerDurationSeconds;
                 }
+#pragma warning restore CS0618
             });
         }
 

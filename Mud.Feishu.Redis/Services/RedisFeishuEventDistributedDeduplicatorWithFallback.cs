@@ -23,6 +23,7 @@ namespace Mud.Feishu.Redis.Services;
 /// 4. 记录降级和恢复事件
 /// 5. 支持完整的状态机（Processing -> Completed / Rollback）
 /// </remarks>
+#pragma warning disable CS0618
 public class RedisFeishuEventDistributedDeduplicatorWithFallback : IFeishuEventDistributedDeduplicator, IAsyncDisposable
 {
     private readonly ILogger<RedisFeishuEventDistributedDeduplicatorWithFallback>? _logger;
@@ -577,3 +578,4 @@ public class RedisFeishuEventDistributedDeduplicatorWithFallback : IFeishuEventD
         return $"{_keyPrefix}{eventId}";
     }
 }
+#pragma warning restore CS0618

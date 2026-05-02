@@ -14,6 +14,7 @@ namespace Mud.Feishu.Abstractions;
 /// 定义飞书 API 调用的弹性策略配置，包括熔断器等高级策略。
 /// 重试和超时策略由 FeishuAppConfig 的 RetryCount、RetryDelayMs、TimeOut 属性直接控制。
 /// </remarks>
+[Obsolete("此配置从未被实际消费，熔断功能未实现。将在未来版本中移除。")]
 public class ResiliencePolicyOptions
 {
     /// <summary>

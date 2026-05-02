@@ -23,7 +23,6 @@ public class ConnectionMetrics
     // 基础统计
     private long _messagesSent = 0;
     private long _messagesReceived = 0;
-    private long _messagesReceivedTotal = 0; // 总接收数（包括重复等）
     private long _bytesSent = 0;
     private long _bytesReceived = 0;
 
@@ -62,7 +61,6 @@ public class ConnectionMetrics
         {
             _messagesSent = 0;
             _messagesReceived = 0;
-            _messagesReceivedTotal = 0;
             _bytesSent = 0;
             _bytesReceived = 0;
             _connectionStartTime = DateTime.MinValue;
@@ -123,7 +121,6 @@ public class ConnectionMetrics
         lock (_lock)
         {
             _messagesReceived++;
-            _messagesReceivedTotal++;
             _bytesReceived += bytes;
         }
 
@@ -190,10 +187,10 @@ public class ConnectionMetrics
 
         if (_logger.IsEnabled(LogLevel.Information))
         {
-            _logger.LogInformation("连接统计更新: Sent={Sent}, Received={Received}, TotalReceived={TotalReceived}, " +
+            _logger.LogInformation("连接统计更新: Sent={Sent}, Received={Received}, " +
                 "BytesSent={BytesSent}, BytesReceived={BytesReceived}, Errors={Errors}, " +
                 "AuthErrors={AuthErrors}, AvgProcessingTimeMs={AvgTime}",
-                stats.MessagesSent, stats.MessagesReceived, stats.MessagesReceivedTotal,
+                stats.MessagesSent, stats.MessagesReceived,
                 stats.BytesSent, stats.BytesReceived, stats.ConnectionErrors, stats.AuthenticationErrors,
                 stats.AverageProcessingTimeMs);
         }
@@ -218,7 +215,6 @@ public class ConnectionMetrics
             {
                 MessagesSent = _messagesSent,
                 MessagesReceived = _messagesReceived,
-                MessagesReceivedTotal = _messagesReceivedTotal,
                 BytesSent = _bytesSent,
                 BytesReceived = _bytesReceived,
                 ConnectionErrors = _connectionErrors,
@@ -247,11 +243,6 @@ public class ConnectionStatistics
     /// 接收的消息数（有效）
     /// </summary>
     public long MessagesReceived { get; set; }
-
-    /// <summary>
-    /// 总接收消息数（包括重复）
-    /// </summary>
-    public long MessagesReceivedTotal { get; set; }
 
     /// <summary>
     /// 发送的字节数

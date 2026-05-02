@@ -11,6 +11,7 @@ namespace Mud.Feishu.Abstractions.Services;
 /// 飞书分布式事件去重服务接口
 /// 适用于分布式部署场景，使用外部存储（如 Redis）实现跨实例的去重
 /// </summary>
+[Obsolete("此接口将与 IFeishuEventDeduplicator 合并，将在未来版本中移除。")]
 public interface IFeishuEventDistributedDeduplicator : IAsyncDisposable
 {
     /// <summary>

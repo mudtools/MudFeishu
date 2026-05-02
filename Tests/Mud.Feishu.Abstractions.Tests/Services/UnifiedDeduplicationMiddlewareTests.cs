@@ -12,14 +12,18 @@ namespace Mud.Feishu.Abstractions.Tests.Services;
 
 public class UnifiedDeduplicationMiddlewareTests
 {
+#pragma warning disable CS0618
     private readonly Mock<IFeishuEventDistributedDeduplicator> _eventDeduplicatorMock;
+#pragma warning restore CS0618
     private readonly Mock<IFeishuSeqIDDeduplicator> _seqIdDeduplicatorMock;
     private readonly Mock<ILogger<UnifiedDeduplicationMiddleware>> _loggerMock;
     private readonly DeduplicationOptions _options;
 
     public UnifiedDeduplicationMiddlewareTests()
     {
+#pragma warning disable CS0618
         _eventDeduplicatorMock = new Mock<IFeishuEventDistributedDeduplicator>();
+#pragma warning restore CS0618
         _seqIdDeduplicatorMock = new Mock<IFeishuSeqIDDeduplicator>();
         _loggerMock = new Mock<ILogger<UnifiedDeduplicationMiddleware>>();
         _options = new DeduplicationOptions();

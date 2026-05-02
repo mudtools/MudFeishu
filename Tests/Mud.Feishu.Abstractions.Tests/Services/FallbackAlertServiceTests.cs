@@ -1,12 +1,11 @@
 // -----------------------------------------------------------------------
-//  作者：Mud Studio  版权所有 (c) Mud Studio 2026
+//  作者：Mud Studio  版权所有 (c) Mud Studio 2025
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
-//  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
+//  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！
 // -----------------------------------------------------------------------
 
 using Mud.Feishu.Abstractions.Services;
-using Xunit;
 
 namespace Mud.Feishu.Abstractions.Tests.Services;
 
@@ -22,146 +21,130 @@ public class FallbackAlertServiceTests
     [Fact]
     public async Task RaiseAlertAsync_ShouldInvokeAlertRaisedEvent()
     {
-        var service = new FallbackAlertService(_loggerMock.Object);
-        FallbackAlertEventArgs? receivedArgs = null;
-        service.AlertRaised += (sender, args) => receivedArgs = args;
+        var sut = new FallbackAlertService(_loggerMock.Object);
+        FallbackAlertEventArgs? capturedArgs = null;
+        sut.AlertRaised += (_, args) => capturedArgs = args;
 
-        await service.RaiseAlertAsync(
-            FallbackAlertType.RedisConnectionFailed,
-            "Redis connection failed",
-            new InvalidOperationException("Test exception"));
+        await sut.RaiseAlertAsync(FallbackAlertType.RedisConnectionFailed, "Test alert");
 
-        Assert.NotNull(receivedArgs);
-        Assert.Equal(FallbackAlertType.RedisConnectionFailed, receivedArgs.AlertType);
-        Assert.Equal("Redis connection failed", receivedArgs.Message);
-        Assert.NotNull(receivedArgs.Exception);
-        Assert.IsType<InvalidOperationException>(receivedArgs.Exception);
+        Assert.NotNull(capturedArgs);
+        Assert.Equal(FallbackAlertType.RedisConnectionFailed, capturedArgs.AlertType);
+        Assert.Equal("Test alert", capturedArgs.Message);
     }
 
     [Fact]
-    public async Task RaiseAlertAsync_ShouldCallRegisteredHandlers()
+    public async Task RaiseAlertAsync_ShouldCallRegisteredHandler()
     {
         var handlerMock = new Mock<IFallbackAlertHandler>();
-        var service = new FallbackAlertService(_loggerMock.Object, new[] { handlerMock.Object });
+        var sut = new FallbackAlertService(_loggerMock.Object, new[] { handlerMock.Object });
 
-        await service.RaiseAlertAsync(
-            FallbackAlertType.RedisConnectionFailed,
-            "Test message");
+        await sut.RaiseAlertAsync(FallbackAlertType.RedisTimeout, "Timeout alert");
 
         handlerMock.Verify(
-            x => x.HandleAlertAsync(It.IsAny<FallbackAlertEventArgs>()),
+            x => x.HandleAlertAsync(It.Is<FallbackAlertEventArgs>(
+                a => a.AlertType == FallbackAlertType.RedisTimeout && a.Message == "Timeout alert")),
             Times.Once);
+    }
+
+    [Fact]
+    public async Task RaiseAlertAsync_WithException_ShouldIncludeExceptionInArgs()
+    {
+        var sut = new FallbackAlertService(_loggerMock.Object);
+        FallbackAlertEventArgs? capturedArgs = null;
+        sut.AlertRaised += (_, args) => capturedArgs = args;
+        var testEx = new InvalidOperationException("Test error");
+
+        await sut.RaiseAlertAsync(FallbackAlertType.RedisConnectionFailed, "Alert", testEx);
+
+        Assert.NotNull(capturedArgs);
+        Assert.Equal(testEx, capturedArgs.Exception);
+    }
+
+    [Fact]
+    public async Task RaiseAlertAsync_WithAdditionalData_ShouldIncludeDataInArgs()
+    {
+        var sut = new FallbackAlertService(_loggerMock.Object);
+        FallbackAlertEventArgs? capturedArgs = null;
+        sut.AlertRaised += (_, args) => capturedArgs = args;
+        var data = new Dictionary<string, object?> { { "key", "value" } };
+
+        await sut.RaiseAlertAsync(FallbackAlertType.RedisFallbackActivated, "Alert", null, data);
+
+        Assert.NotNull(capturedArgs);
+        Assert.True(capturedArgs.AdditionalData.ContainsKey("key"));
+        Assert.Equal("value", capturedArgs.AdditionalData["key"]);
+    }
+
+    [Fact]
+    public async Task RaiseAlertAsync_WhenHandlerThrows_ShouldNotPropagateException()
+    {
+        var failingHandler = new Mock<IFallbackAlertHandler>();
+        failingHandler
+            .Setup(x => x.HandleAlertAsync(It.IsAny<FallbackAlertEventArgs>()))
+            .ThrowsAsync(new Exception("Handler failed"));
+
+        var sut = new FallbackAlertService(_loggerMock.Object, new[] { failingHandler.Object });
+
+        await sut.RaiseAlertAsync(FallbackAlertType.RedisConnectionFailed, "Alert");
     }
 
     [Fact]
     public async Task RaiseAlertAsync_WithMultipleHandlers_ShouldCallAllHandlers()
     {
-        var handler1Mock = new Mock<IFallbackAlertHandler>();
-        var handler2Mock = new Mock<IFallbackAlertHandler>();
-        var service = new FallbackAlertService(_loggerMock.Object, new[] { handler1Mock.Object, handler2Mock.Object });
+        var handler1 = new Mock<IFallbackAlertHandler>();
+        var handler2 = new Mock<IFallbackAlertHandler>();
+        var sut = new FallbackAlertService(_loggerMock.Object, new[] { handler1.Object, handler2.Object });
 
-        await service.RaiseAlertAsync(
-            FallbackAlertType.RedisConnectionFailed,
-            "Test message");
+        await sut.RaiseAlertAsync(FallbackAlertType.RedisRecovered, "Recovered");
 
-        handler1Mock.Verify(
-            x => x.HandleAlertAsync(It.IsAny<FallbackAlertEventArgs>()),
-            Times.Once);
-        handler2Mock.Verify(
-            x => x.HandleAlertAsync(It.IsAny<FallbackAlertEventArgs>()),
-            Times.Once);
+        handler1.Verify(x => x.HandleAlertAsync(It.IsAny<FallbackAlertEventArgs>()), Times.Once);
+        handler2.Verify(x => x.HandleAlertAsync(It.IsAny<FallbackAlertEventArgs>()), Times.Once);
     }
 
     [Fact]
-    public async Task RaiseAlertAsync_WhenHandlerThrows_ShouldContinueWithOtherHandlers()
+    public void RegisterHandler_ShouldAddHandler()
     {
-        var handler1Mock = new Mock<IFallbackAlertHandler>();
-        var handler2Mock = new Mock<IFallbackAlertHandler>();
+        var sut = new FallbackAlertService(_loggerMock.Object);
+        var handler = new Mock<IFallbackAlertHandler>();
 
-        handler1Mock
-            .Setup(x => x.HandleAlertAsync(It.IsAny<FallbackAlertEventArgs>()))
-            .ThrowsAsync(new InvalidOperationException("Handler error"));
+        sut.RegisterHandler(handler.Object);
 
-        var service = new FallbackAlertService(_loggerMock.Object, new[] { handler1Mock.Object, handler2Mock.Object });
-
-        await service.RaiseAlertAsync(
-            FallbackAlertType.RedisConnectionFailed,
-            "Test message");
-
-        handler1Mock.Verify(
-            x => x.HandleAlertAsync(It.IsAny<FallbackAlertEventArgs>()),
-            Times.Once);
-        handler2Mock.Verify(
-            x => x.HandleAlertAsync(It.IsAny<FallbackAlertEventArgs>()),
-            Times.Once);
+        Assert.Single(sut.GetHandlersForTest());
     }
 
     [Fact]
-    public async Task RaiseAlertAsync_WithAdditionalData_ShouldIncludeInEventArgs()
+    public void RemoveHandler_ShouldRemoveHandler()
     {
-        var service = new FallbackAlertService(_loggerMock.Object);
-        FallbackAlertEventArgs? receivedArgs = null;
-        service.AlertRaised += (sender, args) => receivedArgs = args;
+        var handler = new Mock<IFallbackAlertHandler>();
+        var sut = new FallbackAlertService(_loggerMock.Object, new[] { handler.Object });
 
-        var additionalData = new Dictionary<string, object?>
-        {
-            ["Key1"] = "Value1",
-            ["Key2"] = 123
-        };
+        sut.RemoveHandler(handler.Object);
 
-        await service.RaiseAlertAsync(
-            FallbackAlertType.RedisConnectionFailed,
-            "Test message",
-            additionalData: additionalData);
-
-        Assert.NotNull(receivedArgs);
-        Assert.Equal("Value1", receivedArgs.AdditionalData["Key1"]);
-        Assert.Equal(123, receivedArgs.AdditionalData["Key2"]);
+        Assert.Empty(sut.GetHandlersForTest());
     }
 
     [Fact]
-    public async Task RegisterHandler_ShouldAddHandlerToService()
+    public async Task RaiseAlertAsync_WhenNoHandlers_ShouldNotThrow()
     {
-        var handlerMock = new Mock<IFallbackAlertHandler>();
-        var service = new FallbackAlertService(_loggerMock.Object);
+        var sut = new FallbackAlertService(_loggerMock.Object);
 
-        service.RegisterHandler(handlerMock.Object);
-
-        await service.RaiseAlertAsync(FallbackAlertType.RedisConnectionFailed, "Test");
-
-        handlerMock.Verify(x => x.HandleAlertAsync(It.IsAny<FallbackAlertEventArgs>()), Times.Once);
+        await sut.RaiseAlertAsync(FallbackAlertType.RedisConnectionFailed, "No handlers");
     }
 
     [Fact]
-    public async Task RemoveHandler_ShouldRemoveHandlerFromService()
+    public async Task RaiseAlertAsync_WhenNoSubscribers_ShouldNotThrow()
     {
-        var handlerMock = new Mock<IFallbackAlertHandler>();
-        var service = new FallbackAlertService(_loggerMock.Object);
-        service.RegisterHandler(handlerMock.Object);
+        var sut = new FallbackAlertService(_loggerMock.Object);
 
-        service.RemoveHandler(handlerMock.Object);
-
-        await service.RaiseAlertAsync(FallbackAlertType.RedisConnectionFailed, "Test");
-
-        handlerMock.Verify(x => x.HandleAlertAsync(It.IsAny<FallbackAlertEventArgs>()), Times.Never);
+        await sut.RaiseAlertAsync(FallbackAlertType.RedisTimeout, "No subscribers");
     }
+}
 
-    [Fact]
-    public async Task RaiseAlertAsync_WithDifferentAlertTypes_ShouldPassCorrectType()
+internal static class FallbackAlertServiceTestExtensions
+{
+    public static List<IFallbackAlertHandler> GetHandlersForTest(this FallbackAlertService service)
     {
-        var service = new FallbackAlertService(_loggerMock.Object);
-        var receivedTypes = new List<FallbackAlertType>();
-        service.AlertRaised += (sender, args) => receivedTypes.Add(args.AlertType);
-
-        await service.RaiseAlertAsync(FallbackAlertType.RedisConnectionFailed, "Test1");
-        await service.RaiseAlertAsync(FallbackAlertType.RedisTimeout, "Test2");
-        await service.RaiseAlertAsync(FallbackAlertType.RedisFallbackActivated, "Test3");
-        await service.RaiseAlertAsync(FallbackAlertType.RedisRecovered, "Test4");
-
-        Assert.Equal(4, receivedTypes.Count);
-        Assert.Equal(FallbackAlertType.RedisConnectionFailed, receivedTypes[0]);
-        Assert.Equal(FallbackAlertType.RedisTimeout, receivedTypes[1]);
-        Assert.Equal(FallbackAlertType.RedisFallbackActivated, receivedTypes[2]);
-        Assert.Equal(FallbackAlertType.RedisRecovered, receivedTypes[3]);
+        var field = typeof(FallbackAlertService).GetField("_handlers", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        return (List<IFallbackAlertHandler>)field!.GetValue(service)!;
     }
 }

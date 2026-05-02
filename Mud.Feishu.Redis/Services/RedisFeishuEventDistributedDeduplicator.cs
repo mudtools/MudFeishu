@@ -329,7 +329,7 @@ public class RedisFeishuEventDistributedDeduplicator : IFeishuEventDistributedDe
             if (status == ProcessingStatus)
             {
                 var timestampStr = timestampEntry.Value.ToString();
-                if (DateTime.TryParse(timestampStr, out var timestamp))
+                if (DateTime.TryParse(timestampStr, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.RoundtripKind, out var timestamp))
                 {
                     var elapsed = DateTime.UtcNow - timestamp;
                     if (elapsed > _defaultProcessingTimeout)

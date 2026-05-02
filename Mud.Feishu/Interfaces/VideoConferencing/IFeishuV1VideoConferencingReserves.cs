@@ -22,7 +22,8 @@ public interface IFeishuV1VideoConferencingReserves : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 预约会议
-    /// <para>创建一个会议预约。</para>
+    /// <para>创建一个会议预约。支持预约最近30天内的会议（到期时间距离当前时间不超过30天），预约到期后会议号将被释放，如需继续使用可通过"更新预约"接口进行续期;</para>
+    /// <para>预约会议时可配置参会人在会中的权限，以达到控制会议的目的。</para>
     /// <para><see href="https://open.feishu.cn/document/server-docs/vc-v1/reserve/apply">接口文档</see></para>
     /// </summary> 
     /// <param name="user_id_type">
@@ -42,4 +43,21 @@ public interface IFeishuV1VideoConferencingReserves : IFeishuAppContextSwitcher
       [Body] CreateApplyReserveRequest createApplyReserveRequest,
       [Query] string? user_id_type = Consts.User_Id_Type,
       CancellationToken cancellationToken = default);
+
+
+
+    /// <summary>
+    /// 删除预约
+    /// <para>删除一个预约。只能删除归属于自己的预约；删除后数据不可恢复。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/vc-v1/reserve/delete">接口文档</see></para>
+    /// </summary> 
+    /// <param name="reserve_id">
+    /// <para>预约ID（预约的唯一标识）</para>
+    /// <para>示例值：6911188411932033028</para>
+    /// </param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Delete("/open-apis/vc/v1/reserves/{reserve_id}")]
+    Task<FeishuNullDataApiResult?> DeleteReserveAsync(
+       [Path] string reserve_id,
+       CancellationToken cancellationToken = default);
 }

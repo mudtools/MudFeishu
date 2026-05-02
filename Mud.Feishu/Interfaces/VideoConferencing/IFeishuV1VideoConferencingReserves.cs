@@ -39,7 +39,7 @@ public interface IFeishuV1VideoConferencingReserves : IFeishuAppContextSwitcher
     /// <param name="applyReserveRequest">预约会议请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Post("/open-apis/vc/v1/reserves/apply")]
-    Task<FeishuApiResult<CreateApplyReserveResult>?> ApplyReserveAsync(
+    Task<FeishuApiResult<ApplyReserveResult>?> ApplyReserveAsync(
       [Body] ApplyReserveRequest applyReserveRequest,
       [Query] string? user_id_type = Consts.User_Id_Type,
       CancellationToken cancellationToken = default);
@@ -62,4 +62,31 @@ public interface IFeishuV1VideoConferencingReserves : IFeishuAppContextSwitcher
        CancellationToken cancellationToken = default);
 
 
+    /// <summary>
+    /// 更新预约
+    /// <para>更新一个预约。只能更新归属于自己的预约，不需要更新的字段不传（如果传空则会被更新为空）；可用于续期操作，到期时间距离当前时间不超过30天</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/vc-v1/reserve/update">接口文档</see></para>
+    /// </summary> 
+    /// <param name="reserve_id">
+    /// <para>预约ID（预约的唯一标识）</para>
+    /// <para>示例值：6911188411932033028</para>
+    /// </param>
+    /// <param name="user_id_type">
+    /// <para>用户 ID 类型</para>
+    /// <para>示例值：open_id</para>
+    /// <list type="bullet">
+    /// <item>open_id：标识一个用户在某个应用中的身份。同一个用户在不同应用中的 Open ID 不同。</item>
+    /// <item>union_id：标识一个用户在某个应用开发商下的身份。同一用户在同一开发商下的应用中的 Union ID 是相同的，在不同开发商下的应用中的 Union ID 是不同的。通过 Union ID，应用开发商可以把同个用户在多个应用中的身份关联起来。</item>
+    /// <item>user_id：标识一个用户在某个租户内的身份。同一个用户在租户 A 和租户 B 内的 User ID 是不同的。在同一个租户内，一个用户的 User ID 在所有应用（包括商店应用）中都保持一致。User ID 主要用于在不同的应用间打通用户数据。</item>
+    /// </list>
+    /// <para>默认值：open_id</para>
+    /// </param>
+    /// <param name="updateReserveRequest">更新预约请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Put("/open-apis/vc/v1/reserves/{reserve_id}")]
+    Task<FeishuApiResult<UpdateReserveResult>?> UpdateReserveAsync(
+      [Path] string reserve_id,
+      [Body] UpdateReserveRequest updateReserveRequest,
+      [Query] string? user_id_type = Consts.User_Id_Type,
+      CancellationToken cancellationToken = default);
 }

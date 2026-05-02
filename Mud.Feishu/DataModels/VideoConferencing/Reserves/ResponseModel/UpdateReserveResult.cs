@@ -8,16 +8,16 @@
 namespace Mud.Feishu.DataModels.VideoConferencing;
 
 /// <summary>
-/// 预约会议响应体
+/// 更新预约响应体
 /// </summary>
-public class CreateApplyReserveResult
+public class UpdateReserveResult
 {
     /// <summary>
     /// <para>预约数据</para>
     /// <para>必填：否</para>
     /// </summary>
     [JsonPropertyName("reserve")]
-    public ReservesApplyData? Reserve { get; set; }
+    public UpdateReserveInfo? Reserve { get; set; }
 
 
     /// <summary>

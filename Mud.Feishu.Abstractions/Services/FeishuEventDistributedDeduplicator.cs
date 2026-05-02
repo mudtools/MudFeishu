@@ -33,9 +33,9 @@ namespace Mud.Feishu.Abstractions.Services;
 /// </list>
 /// </remarks>
 /// <example>
-/// 单机场景使用示例：
+/// 单机场景使用示例（已废弃，请直接使用 IFeishuEventDeduplicator）：
 /// <code>
-/// services.AddSingleton&lt;IFeishuEventDistributedDeduplicator, FeishuEventDeduplicator&gt;();
+/// services.AddSingleton&lt;IFeishuEventDeduplicator, FeishuEventDeduplicator&gt;();
 /// </code>
 /// 
 /// 分布式场景使用示例（需要安装 Mud.Feishu.Redis 包）：

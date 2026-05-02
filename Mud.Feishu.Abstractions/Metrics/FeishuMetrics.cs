@@ -136,14 +136,6 @@ public class FeishuMetrics
     }
 
     /// <summary>
-    /// 记录当前缓存的令牌数
-    /// </summary>
-    public static readonly ObservableGauge<int> CachedTokenCount = Meter.CreateObservableGauge<int>(
-        "feishu_cached_tokens",
-        observeValue: () => 0,
-        description: "当前缓存的令牌数");
-
-    /// <summary>
     /// 记录 WebSocket 发送消息数
     /// </summary>
     public static readonly Counter<long> WebSocketMessageSentCount = Meter.CreateCounter<long>(

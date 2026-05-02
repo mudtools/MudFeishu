@@ -32,7 +32,7 @@ public sealed class FeishuSeqIDDeduplicator : MemoryDeduplicator<ulong>, IFeishu
     }
 
     /// <inheritdoc />
-    public bool TryMarkAsProcessed(ulong seqId)
+    public Task<bool> TryMarkAsProcessedAsync(ulong seqId)
     {
         var result = base.TryMarkAsProcessed(seqId);
 
@@ -52,19 +52,7 @@ public sealed class FeishuSeqIDDeduplicator : MemoryDeduplicator<ulong>, IFeishu
             Logger?.LogDebug("SeqID {SeqId} 标记为已处理，当前最大 SeqID: {MaxSeqId}", seqId, _maxProcessedSeqId);
         }
 
-        return result;
-    }
-
-    /// <inheritdoc />
-    public Task<bool> TryMarkAsProcessedAsync(ulong seqId)
-    {
-        return Task.FromResult(TryMarkAsProcessed(seqId));
-    }
-
-    /// <inheritdoc />
-    public bool IsProcessed(ulong seqId)
-    {
-        return base.IsProcessed(seqId);
+        return Task.FromResult(result);
     }
 
     /// <inheritdoc />
@@ -74,7 +62,7 @@ public sealed class FeishuSeqIDDeduplicator : MemoryDeduplicator<ulong>, IFeishu
     }
 
     /// <inheritdoc />
-    public override void ClearCache()
+    public Task ClearCacheAsync()
     {
         var count = Count;
         base.ClearCache();
@@ -85,14 +73,6 @@ public sealed class FeishuSeqIDDeduplicator : MemoryDeduplicator<ulong>, IFeishu
         }
 
         Logger?.LogInformation("清空了 {Count} 个 SeqID 缓存条目", count);
-    }
-
-    /// <summary>
-    /// 异步清空缓存
-    /// </summary>
-    public Task ClearCacheAsync()
-    {
-        ClearCache();
         return Task.CompletedTask;
     }
 

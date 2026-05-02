@@ -114,15 +114,6 @@ internal class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuA
         return service;
     }
 
-    /// <summary>
-    /// 获取默认应用的飞书API实例（已废弃，请使用 GetDefaultWebApi）
-    /// </summary>
-    [Obsolete("请使用 GetDefaultWebApi<T>() 替代。此方法将在未来版本中移除。")]
-    public new T GetDefalutWebApi<T>() where T : IAppContextSwitcher
-    {
-        return GetDefaultWebApi<T>();
-    }
-
 
     bool IAppManager<IFeishuAppContext>.TryGetApp(string appKey, out IFeishuAppContext? appContext)
     {

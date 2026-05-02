@@ -92,11 +92,13 @@ public class RedisFeishuEventDistributedDeduplicatorWithFallback : IFeishuEventD
         _maxRetryDelay = maxRetryDelay ?? TimeSpan.FromSeconds(30);
         _alertService = alertService;
 
+#pragma warning disable CS0618
         _fallbackDeduplicator = new FeishuEventDistributedDeduplicator(
             logger as ILogger<FeishuEventDistributedDeduplicator>,
             _defaultCacheExpiration,
             TimeSpan.FromMinutes(5),
             _defaultProcessingTimeout);
+#pragma warning restore CS0618
 
         _logger?.LogInformation("飞书 Redis 分布式事件去重服务（带降级）初始化完成，缓存过期时间: {Expiration}, 处理超时: {ProcessingTimeout}, 键前缀: {KeyPrefix}, 最大重试: {MaxRetry}",
             _defaultCacheExpiration, _defaultProcessingTimeout, _keyPrefix, _maxRetryCount);
@@ -129,9 +131,11 @@ public class RedisFeishuEventDistributedDeduplicatorWithFallback : IFeishuEventD
         _maxRetryDelay = options.MaxRetryDelay;
         _alertService = alertService;
 
+#pragma warning disable CS0618
         _fallbackDeduplicator = new FeishuEventDistributedDeduplicator(
             options,
             logger as ILogger<FeishuEventDistributedDeduplicator>);
+#pragma warning restore CS0618
 
         _logger?.LogInformation("飞书 Redis 分布式事件去重服务（带降级）初始化完成（使用统一配置），缓存过期时间: {Expiration}, 处理超时: {ProcessingTimeout}, 键前缀: {KeyPrefix}, 最大重试: {MaxRetry}",
             _defaultCacheExpiration, _defaultProcessingTimeout, _keyPrefix, _maxRetryCount);

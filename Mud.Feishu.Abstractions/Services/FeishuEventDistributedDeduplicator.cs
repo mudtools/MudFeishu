@@ -35,7 +35,7 @@ namespace Mud.Feishu.Abstractions.Services;
 /// <example>
 /// 单机场景使用示例：
 /// <code>
-/// services.AddSingleton&lt;IFeishuEventDistributedDeduplicator, FeishuEventDistributedDeduplicator&gt;();
+/// services.AddSingleton&lt;IFeishuEventDistributedDeduplicator, FeishuEventDeduplicator&gt;();
 /// </code>
 /// 
 /// 分布式场景使用示例（需要安装 Mud.Feishu.Redis 包）：
@@ -43,6 +43,7 @@ namespace Mud.Feishu.Abstractions.Services;
 /// services.AddSingleton&lt;IFeishuEventDistributedDeduplicator, RedisFeishuEventDistributedDeduplicator&gt;();
 /// </code>
 /// </example>
+[Obsolete("此类与 FeishuEventDeduplicator 功能高度重复，将在未来版本中移除。单机场景请使用 FeishuEventDeduplicator，分布式场景请使用 Redis 实现。")]
 public sealed class FeishuEventDistributedDeduplicator : IFeishuEventDistributedDeduplicator, IDisposable, IAsyncDisposable
 {
     private readonly ILogger<FeishuEventDistributedDeduplicator>? _logger;

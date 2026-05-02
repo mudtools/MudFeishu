@@ -98,61 +98,6 @@ public class RedisFeishuSeqIDDeduplicatorTests
     }
 
     [Fact]
-    public void TryMarkAsProcessed_WhenFirstSeqId_ShouldReturnFalse()
-    {
-        // Arrange
-        _databaseMock
-            .Setup(x => x.StringSetAsync(
-                It.IsAny<RedisKey>(),
-                It.IsAny<RedisValue>(),
-                It.IsAny<TimeSpan>(),
-                When.NotExists
-                ))
-            .ReturnsAsync(true);
-        _databaseMock
-            .Setup(x => x.SortedSetAddAsync(It.IsAny<RedisKey>(), It.IsAny<RedisValue>(), It.IsAny<double>(), It.IsAny<SortedSetWhen>(), It.IsAny<CommandFlags>()))
-            .ReturnsAsync(true);
-
-        var deduplicator = new RedisFeishuSeqIDDeduplicator(
-            _connectionMultiplexerMock.Object,
-            _loggerMock.Object);
-
-        // Act
-#pragma warning disable CS0618 // 同步方法已标记为过时，测试兼容性保留
-        var result = deduplicator.TryMarkAsProcessed(12345);
-#pragma warning restore CS0618
-
-        // Assert
-        Assert.False(result);
-    }
-
-    [Fact]
-    public void TryMarkAsProcessed_WhenDuplicateSeqId_ShouldReturnTrue()
-    {
-        // Arrange
-        _databaseMock
-            .Setup(x => x.StringSetAsync(
-                It.IsAny<RedisKey>(),
-                It.IsAny<RedisValue>(),
-                It.IsAny<TimeSpan>(),
-                When.NotExists
-                ))
-            .ReturnsAsync(false);
-
-        var deduplicator = new RedisFeishuSeqIDDeduplicator(
-            _connectionMultiplexerMock.Object,
-            _loggerMock.Object);
-
-        // Act
-#pragma warning disable CS0618
-        var result = deduplicator.TryMarkAsProcessed(12345);
-#pragma warning restore CS0618
-
-        // Assert
-        Assert.True(result);
-    }
-
-    [Fact]
     public async Task IsProcessedAsync_WhenSeqIdExists_ShouldReturnTrue()
     {
         // Arrange
@@ -185,48 +130,6 @@ public class RedisFeishuSeqIDDeduplicatorTests
 
         // Act
         var result = await deduplicator.IsProcessedAsync(12345);
-
-        // Assert
-        Assert.False(result);
-    }
-
-    [Fact]
-    public void IsProcessed_WhenSeqIdExists_ShouldReturnTrue()
-    {
-        // Arrange
-        _databaseMock
-            .Setup(x => x.KeyExistsAsync(It.IsAny<RedisKey>(), It.IsAny<CommandFlags>()))
-            .ReturnsAsync(true);
-
-        var deduplicator = new RedisFeishuSeqIDDeduplicator(
-            _connectionMultiplexerMock.Object,
-            _loggerMock.Object);
-
-        // Act
-#pragma warning disable CS0618
-        var result = deduplicator.IsProcessed(12345);
-#pragma warning restore CS0618
-
-        // Assert
-        Assert.True(result);
-    }
-
-    [Fact]
-    public void IsProcessed_WhenSeqIdNotExists_ShouldReturnFalse()
-    {
-        // Arrange
-        _databaseMock
-            .Setup(x => x.KeyExistsAsync(It.IsAny<RedisKey>(), It.IsAny<CommandFlags>()))
-            .ReturnsAsync(false);
-
-        var deduplicator = new RedisFeishuSeqIDDeduplicator(
-            _connectionMultiplexerMock.Object,
-            _loggerMock.Object);
-
-        // Act
-#pragma warning disable CS0618
-        var result = deduplicator.IsProcessed(12345);
-#pragma warning restore CS0618
 
         // Assert
         Assert.False(result);
@@ -330,21 +233,4 @@ public class RedisFeishuSeqIDDeduplicatorTests
             async () => await deduplicator.TryMarkAsProcessedAsync(12345));
     }
 
-    [Fact]
-    public void TryMarkAsProcessed_WhenRedisConnectionFails_ShouldThrowInvalidOperationException()
-    {
-        // Arrange
-        _databaseMock
-            .Setup(x => x.StringSetAsync(It.IsAny<RedisKey>(), It.IsAny<RedisValue>(), It.IsAny<TimeSpan>(), It.IsAny<When>()))
-            .ThrowsAsync(new RedisConnectionException(ConnectionFailureType.UnableToConnect, "Connection failed"));
-
-        var deduplicator = new RedisFeishuSeqIDDeduplicator(
-            _connectionMultiplexerMock.Object,
-            _loggerMock.Object);
-
-        // Act & Assert
-#pragma warning disable CS0618
-        Assert.Throws<InvalidOperationException>(() => deduplicator.TryMarkAsProcessed(12345));
-#pragma warning restore CS0618
-    }
 }

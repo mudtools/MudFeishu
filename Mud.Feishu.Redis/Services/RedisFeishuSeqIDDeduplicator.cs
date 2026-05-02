@@ -46,15 +46,8 @@ public class RedisFeishuSeqIDDeduplicator : IFeishuSeqIDDeduplicator, IAsyncDisp
             _defaultCacheExpiration, _keyPrefix);
     }
 
-    /// <inheritdoc />
-    [Obsolete("请使用 TryMarkAsProcessedAsync 替代，同步方法在 Redis 场景下会阻塞线程")]
-    public bool TryMarkAsProcessed(ulong seqId)
-    {
-        return TryMarkAsProcessedAsync(seqId).GetAwaiter().GetResult();
-    }
-
     /// <summary>
-    /// 尝试标记 SeqID 为已处理（异步版本）
+    /// 尝试标记 SeqID 为已处理
     /// </summary>
     public async Task<bool> TryMarkAsProcessedAsync(ulong seqId)
     {
@@ -99,13 +92,6 @@ public class RedisFeishuSeqIDDeduplicator : IFeishuSeqIDDeduplicator, IAsyncDisp
     }
 
     /// <inheritdoc />
-    [Obsolete("请使用 IsProcessedAsync 替代，同步方法在 Redis 场景下会阻塞线程")]
-    public bool IsProcessed(ulong seqId)
-    {
-        return IsProcessedAsync(seqId).GetAwaiter().GetResult();
-    }
-
-    /// <inheritdoc />
     public async Task<bool> IsProcessedAsync(ulong seqId)
     {
         try
@@ -119,13 +105,6 @@ public class RedisFeishuSeqIDDeduplicator : IFeishuSeqIDDeduplicator, IAsyncDisp
             _logger?.LogError(ex, "检查 SeqID {SeqId} 处理状态时发生错误", seqId);
             return false;
         }
-    }
-
-    /// <inheritdoc />
-    [Obsolete("请使用 ClearCacheAsync 替代，同步方法在 Redis 场景下会阻塞线程")]
-    public void ClearCache()
-    {
-        ClearCacheAsync().GetAwaiter().GetResult();
     }
 
     /// <summary>

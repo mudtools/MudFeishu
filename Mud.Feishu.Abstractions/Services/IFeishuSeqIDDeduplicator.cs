@@ -22,16 +22,6 @@ public interface IFeishuSeqIDDeduplicator : IAsyncDisposable
     /// <c>true</c> 表示该 SeqID 已被处理过，应跳过当前消息
     /// <c>false</c> 表示该 SeqID 未被处理过，是新的消息
     /// </returns>
-    bool TryMarkAsProcessed(ulong seqId);
-
-    /// <summary>
-    /// 尝试标记 SeqID 为已处理（异步版本）
-    /// </summary>
-    /// <param name="seqId">消息序列号</param>
-    /// <returns>
-    /// <c>true</c> 表示该 SeqID 已被处理过，应跳过当前消息
-    /// <c>false</c> 表示该 SeqID 未被处理过，是新的消息
-    /// </returns>
     Task<bool> TryMarkAsProcessedAsync(ulong seqId);
 
     /// <summary>
@@ -39,19 +29,7 @@ public interface IFeishuSeqIDDeduplicator : IAsyncDisposable
     /// </summary>
     /// <param name="seqId">消息序列号</param>
     /// <returns><c>true</c> 表示已处理，<c>false</c> 表示未处理</returns>
-    bool IsProcessed(ulong seqId);
-
-    /// <summary>
-    /// 检查指定 SeqID 是否已处理（异步版本）
-    /// </summary>
-    /// <param name="seqId">消息序列号</param>
-    /// <returns><c>true</c> 表示已处理，<c>false</c> 表示未处理</returns>
     Task<bool> IsProcessedAsync(ulong seqId);
-
-    /// <summary>
-    /// 清空缓存
-    /// </summary>
-    void ClearCache();
 
     /// <summary>
     /// 异步清空缓存

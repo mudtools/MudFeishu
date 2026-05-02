@@ -6,6 +6,7 @@
 // -----------------------------------------------------------------------
 
 using System.Diagnostics;
+using System.Diagnostics.Metrics;
 
 namespace Mud.Feishu.Abstractions.Metrics;
 
@@ -55,7 +56,7 @@ public static class FeishuMetricsHelper
 
         FeishuMetrics.EventHandlingCount.Add(1, tags);
 
-        return new EventHandlingInstrumentation(tags);
+        return FeishuMetrics.EventHandlingDuration.RecordDuration(tags);
     }
 
     /// <summary>
@@ -102,7 +103,7 @@ public static class FeishuMetricsHelper
 
         FeishuMetrics.HttpRequestCount.Add(1, tags);
 
-        return new HttpRequestInstrumentation(tags);
+        return FeishuMetrics.HttpRequestDuration.RecordDuration(tags);
     }
 
     /// <summary>
@@ -137,36 +138,6 @@ public static class FeishuMetricsHelper
             return url;
 
         return string.Concat(url.Substring(0, maxLength), "...");
-    }
-
-    /// <summary>
-    /// 事件处理指标记录器
-    /// </summary>
-    private sealed class EventHandlingInstrumentation(TagList tags) : IDisposable
-    {
-        private readonly TagList _tags = tags;
-        private readonly Stopwatch _stopwatch = Stopwatch.StartNew();
-
-        public void Dispose()
-        {
-            _stopwatch.Stop();
-            FeishuMetrics.EventHandlingDuration.Record(_stopwatch.ElapsedMilliseconds, _tags);
-        }
-    }
-
-    /// <summary>
-    /// HTTP 请求指标记录器
-    /// </summary>
-    private sealed class HttpRequestInstrumentation(TagList tags) : IDisposable
-    {
-        private readonly TagList _tags = tags;
-        private readonly Stopwatch _stopwatch = Stopwatch.StartNew();
-
-        public void Dispose()
-        {
-            _stopwatch.Stop();
-            FeishuMetrics.HttpRequestDuration.Record(_stopwatch.ElapsedMilliseconds, _tags);
-        }
     }
 
     /// <summary>
@@ -214,20 +185,6 @@ public static class FeishuMetricsHelper
     /// </summary>
     public static IDisposable RecordWebSocketMessageProcessing()
     {
-        return new WebSocketMessageProcessingInstrumentation();
-    }
-
-    /// <summary>
-    /// WebSocket 消息处理指标记录器
-    /// </summary>
-    private sealed class WebSocketMessageProcessingInstrumentation : IDisposable
-    {
-        private readonly Stopwatch _stopwatch = Stopwatch.StartNew();
-
-        public void Dispose()
-        {
-            _stopwatch.Stop();
-            FeishuMetrics.WebSocketMessageProcessingDuration.Record(_stopwatch.ElapsedMilliseconds);
-        }
+        return FeishuMetrics.WebSocketMessageProcessingDuration.RecordDuration();
     }
 }

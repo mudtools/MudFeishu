@@ -20,19 +20,24 @@ public static class MeterExtensions
     /// </summary>
     public static IDisposable RecordDuration(this Histogram<double> histogram)
     {
-        return new DurationRecorder(histogram);
+        return new DurationRecorder(histogram, default);
     }
 
     /// <summary>
-    /// 持续时间记录器
+    /// 创建一个带标签的可释放持续时间记录器
     /// </summary>
+    public static IDisposable RecordDuration(this Histogram<double> histogram, TagList tags)
+    {
+        return new DurationRecorder(histogram, tags);
+    }
+
     private class DurationRecorder : IDisposable
     {
         private readonly Histogram<double> _histogram;
         private readonly Stopwatch _stopwatch;
         private readonly TagList _tags;
 
-        public DurationRecorder(Histogram<double> histogram, TagList tags = default)
+        public DurationRecorder(Histogram<double> histogram, TagList tags)
         {
             _histogram = histogram;
             _tags = tags;

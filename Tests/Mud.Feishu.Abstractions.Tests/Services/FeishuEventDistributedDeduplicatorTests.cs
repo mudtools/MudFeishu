@@ -9,6 +9,8 @@ using Moq;
 using Mud.Feishu.Abstractions.Services;
 using Xunit;
 
+#pragma warning disable CS0618
+
 namespace Mud.Feishu.Abstractions.Tests.Services;
 
 /// <summary>

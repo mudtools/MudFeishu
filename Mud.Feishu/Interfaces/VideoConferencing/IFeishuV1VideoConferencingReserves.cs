@@ -36,11 +36,11 @@ public interface IFeishuV1VideoConferencingReserves : IFeishuAppContextSwitcher
     /// </list>
     /// <para>默认值：open_id</para>
     /// </param>
-    /// <param name="createApplyReserveRequest">预约会议请求体</param>
+    /// <param name="applyReserveRequest">预约会议请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Post("/open-apis/vc/v1/reserves/apply")]
-    Task<FeishuApiResult<CreateApplyReserveResult>?> CreateApplyReserveAsync(
-      [Body] CreateApplyReserveRequest createApplyReserveRequest,
+    Task<FeishuApiResult<CreateApplyReserveResult>?> ApplyReserveAsync(
+      [Body] ApplyReserveRequest applyReserveRequest,
       [Query] string? user_id_type = Consts.User_Id_Type,
       CancellationToken cancellationToken = default);
 
@@ -60,4 +60,6 @@ public interface IFeishuV1VideoConferencingReserves : IFeishuAppContextSwitcher
     Task<FeishuNullDataApiResult?> DeleteReserveAsync(
        [Path] string reserve_id,
        CancellationToken cancellationToken = default);
+
+
 }

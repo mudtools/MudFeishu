@@ -10,7 +10,7 @@ namespace Mud.Feishu.DataModels.VideoConferencing;
 /// <summary>
 /// <para>预约会议请求体</para>
 /// </summary>
-public class CreateApplyReserveRequest
+public class ApplyReserveRequest
 {
     /// <summary>
     /// <para>预约到期时间（unix时间，单位sec），多人会议必填</para>

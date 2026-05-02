@@ -469,7 +469,14 @@ public class FeishuMultiAppMiddleware
             }
         }
 
-        if (!string.IsNullOrEmpty(appConfig.VerificationToken) && token != appConfig.VerificationToken)
+        if (string.IsNullOrEmpty(appConfig.VerificationToken))
+        {
+            _logger.LogWarning("应用未配置 VerificationToken，拒绝加密验证请求（安全边界），AppKey: {AppKey}", appConfig.AppKey);
+            await WriteErrorResponse(context, 403, "Forbidden: VerificationToken not configured", requestId);
+            return;
+        }
+
+        if (token != appConfig.VerificationToken)
         {
             var actualTokenPrefix = token?.Length > 4 ? token.Substring(0, 4) + "***" : "***";
             _logger.LogWarning("加密验证请求 Token 不匹配: 实际 {ActualToken}, AppKey: {AppKey}",

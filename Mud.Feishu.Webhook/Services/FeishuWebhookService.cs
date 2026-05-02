@@ -300,45 +300,9 @@ public class FeishuWebhookService : IFeishuWebhookService
     }
 
     /// <summary>
-    /// 使用拦截器处理事件（加密的 FeishuWebhookRequest）
+    /// 验证请求签名（使用 HMAC-SHA256 算法，已废弃）
     /// </summary>
-    private async Task<(bool Success, string? ErrorReason)> HandleEventWithInterceptorsAsync(FeishuWebhookRequest request, string? appKey, CancellationToken cancellationToken)
-    {
-        // 验证请求签名
-        if (Options.EnableBodySignatureValidation && !await ValidateRequestSignature(request))
-        {
-            _logger.LogWarning("请求体签名验证失败，AppKey: {AppKey}", appKey ?? "null");
-
-            // 记录安全审计日志
-            _ = _securityAuditService?.LogSecurityFailureAsync(
-                SecurityEventType.SignatureValidation,
-                "unknown", // 在服务层无法获取客户端IP
-                "FeishuWebhookService",
-                "请求体签名验证失败",
-                "",
-                appKey);
-
-            return (false, "Signature validation failed");
-        }
-
-        // 解密事件数据
-        if (string.IsNullOrEmpty(request.Encrypt))
-        {
-            _logger.LogError("请求中缺少加密数据，AppKey: {AppKey}", appKey ?? "null");
-            return (false, "Missing encrypted data");
-        }
-
-        var eventData = await DecryptEventAsync(request.Encrypt!, cancellationToken);
-        if (eventData == null)
-        {
-            _logger.LogError("事件数据解密失败，AppKey: {AppKey}", appKey ?? "null");
-            return (false, "Decryption failed");
-        }
-
-        return await HandleEventWithInterceptorsAsync(eventData, appKey, cancellationToken);
-    }
-
-    /// <summary />
+    [Obsolete("此方法使用 HMAC-SHA256 算法，与飞书官方签名算法（SHA-256）不一致，将在未来版本中移除。请使用 HandleEventAsync(FeishuWebhookRequest, string) 替代。")]
 #pragma warning disable CS0618 // ValidateSignatureAsync 已标记为 Obsolete，但需保持向后兼容
     public async Task<bool> ValidateRequestSignature(FeishuWebhookRequest request)
 #pragma warning restore CS0618

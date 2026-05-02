@@ -235,17 +235,151 @@ public class FeishuMultiAppMiddlewareTests
     [Fact]
     public async Task InvokeAsync_WithMissingEncryptField_ShouldReturn400()
     {
-        // Arrange
-        _handlerRegistry.Register("app1", typeof(TestHandler));
         var requestBody = JsonSerializer.Serialize(new { type = "event" });
         var middleware = CreateMiddleware();
         var context = CreateHttpContext("/feishu/app1", "POST", requestBody);
 
-        // Act
         await middleware.InvokeAsync(context);
 
-        // Assert
         context.Response.StatusCode.Should().Be(400);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_WithSignatureValidationFailed_ShouldReturn403()
+    {
+        var body = JsonSerializer.Serialize(new { encrypt = "test_encrypted_data" });
+        var middleware = CreateMiddleware();
+        var context = CreateHttpContext("/feishu/app1", "POST", body);
+
+        _webhookServiceMock.Setup(x => x.SetCurrentAppKey(It.IsAny<string>()));
+        _webhookServiceMock.Setup(x => x.HandleEventAsync(It.IsAny<FeishuWebhookRequest>(), It.IsAny<string>()))
+            .ReturnsAsync(false);
+
+        await middleware.InvokeAsync(context);
+
+        context.Response.StatusCode.Should().Be(403);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_WithDecryptionFailed_ShouldReturn400()
+    {
+        var body = JsonSerializer.Serialize(new { encrypt = "test_encrypted_data" });
+        var middleware = CreateMiddleware();
+        var context = CreateHttpContext("/feishu/app1", "POST", body);
+
+        _webhookServiceMock.Setup(x => x.SetCurrentAppKey(It.IsAny<string>()));
+        _webhookServiceMock.Setup(x => x.HandleEventAsync(It.IsAny<FeishuWebhookRequest>(), It.IsAny<string>()))
+            .ReturnsAsync(true);
+        _webhookServiceMock.Setup(x => x.DecryptEventAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((EventData?)null);
+
+        await middleware.InvokeAsync(context);
+
+        context.Response.StatusCode.Should().Be(400);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_WithEncryptedVerificationRequest_WhenTokenMismatch_ShouldReturn403()
+    {
+        var body = JsonSerializer.Serialize(new { encrypt = "test_encrypted_data" });
+        var middleware = CreateMiddleware();
+        var context = CreateHttpContext("/feishu/app1", "POST", body);
+
+        var verificationJson = JsonSerializer.Serialize(new
+        {
+            type = "url_verification",
+            challenge = "test_challenge",
+            token = "wrong_token"
+        });
+        var decryptedData = new EventData
+        {
+            EventType = "url_verification",
+            Event = verificationJson
+        };
+
+        _webhookServiceMock.Setup(x => x.SetCurrentAppKey(It.IsAny<string>()));
+        _webhookServiceMock.Setup(x => x.HandleEventAsync(It.IsAny<FeishuWebhookRequest>(), It.IsAny<string>()))
+            .ReturnsAsync(true);
+        _webhookServiceMock.Setup(x => x.DecryptEventAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(decryptedData);
+
+        await middleware.InvokeAsync(context);
+
+        context.Response.StatusCode.Should().Be(403);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_WithEncryptedVerificationRequest_WhenNoVerificationToken_ShouldReturn403()
+    {
+        var options = new FeishuWebhookOptions
+        {
+            GlobalRoutePrefix = "feishu",
+            Apps = new Dictionary<string, FeishuAppWebhookOptions>
+            {
+                ["no_token_app"] = new FeishuAppWebhookOptions
+                {
+                    AppKey = "no_token_app",
+                    VerificationToken = "",
+                    EncryptKey = "test_encrypt_key_no_token"
+                }
+            }
+        };
+
+        var body = JsonSerializer.Serialize(new { encrypt = "test_encrypted_data" });
+        var middleware = CreateMiddlewareWithOptions(options);
+        var context = CreateHttpContext("/feishu/no_token_app", "POST", body);
+
+        var verificationJson = JsonSerializer.Serialize(new
+        {
+            type = "url_verification",
+            challenge = "test_challenge",
+            token = "some_token"
+        });
+        var decryptedData = new EventData
+        {
+            EventType = "url_verification",
+            Event = verificationJson
+        };
+
+        _webhookServiceMock.Setup(x => x.SetCurrentAppKey(It.IsAny<string>()));
+        _webhookServiceMock.Setup(x => x.HandleEventAsync(It.IsAny<FeishuWebhookRequest>(), It.IsAny<string>()))
+            .ReturnsAsync(true);
+        _webhookServiceMock.Setup(x => x.DecryptEventAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(decryptedData);
+
+        await middleware.InvokeAsync(context);
+
+        context.Response.StatusCode.Should().Be(403);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_WithEncryptedVerificationRequest_WhenTokenMatches_ShouldReturnChallenge()
+    {
+        var body = JsonSerializer.Serialize(new { encrypt = "test_encrypted_data" });
+        var middleware = CreateMiddleware();
+        var context = CreateHttpContext("/feishu/app1", "POST", body);
+
+        var verificationJson = JsonSerializer.Serialize(new
+        {
+            type = "url_verification",
+            challenge = "test_challenge_code",
+            token = "test_token_1"
+        });
+        var decryptedData = new EventData
+        {
+            EventType = "url_verification",
+            Event = verificationJson
+        };
+
+        _webhookServiceMock.Setup(x => x.SetCurrentAppKey(It.IsAny<string>()));
+        _webhookServiceMock.Setup(x => x.HandleEventAsync(It.IsAny<FeishuWebhookRequest>(), It.IsAny<string>()))
+            .ReturnsAsync(true);
+        _webhookServiceMock.Setup(x => x.DecryptEventAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(decryptedData);
+
+        await middleware.InvokeAsync(context);
+
+        context.Response.StatusCode.Should().Be(200);
     }
 
     private FeishuMultiAppMiddleware CreateMiddleware()

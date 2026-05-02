@@ -41,24 +41,25 @@ public interface IFeishuWebhookService
     /// 2. 已解密场景：如果事件数据已经通过其他方式解密，可以直接调用此方法
     /// 3. 批量处理：处理已解密的事件队列
     ///
-    /// 注意：此方法不会验证签名，仅处理已解密的数据。如需完整的验证流程，
-    /// 请使用 HandleEventAsync(FeishuWebhookRequest) 重载方法。
+    /// 注意：此方法不会验证签名，仅处理已解密的数据。如需签名验证，
+    /// 请使用 HandleEventAsync(FeishuWebhookRequest, string) 方法。
     /// </remarks>
     Task<(bool Success, string? ErrorReason)> HandleEventAsync(EventData eventData, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 验证请求签名
+    /// 验证请求签名（使用 HMAC-SHA256 算法）
     /// </summary>
     /// <param name="request">Webhook 请求</param>
     /// <returns>是否验证通过</returns>
+    [Obsolete("此方法使用 HMAC-SHA256 算法，与飞书官方签名算法（SHA-256）不一致，将在未来版本中移除。请使用 HandleEventAsync(FeishuWebhookRequest, string) 替代。")]
     Task<bool> ValidateRequestSignature(FeishuWebhookRequest request);
 
     /// <summary>
-    /// 处理飞书事件推送（使用飞书官方算法验证签名）
+    /// 验证请求头签名（使用飞书官方 SHA-256 算法）
     /// </summary>
     /// <param name="request">Webhook 请求</param>
-    /// <param name="body">请求体</param>
-    /// <returns>是否验证通过</returns>
+    /// <param name="body">原始请求体</param>
+    /// <returns>签名验证是否通过</returns>
     Task<bool> HandleEventAsync(FeishuWebhookRequest request, string body);
 
     /// <summary>

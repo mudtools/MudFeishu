@@ -32,6 +32,7 @@ public interface ISignatureValidator
     /// 签名计算方式：HMAC-SHA256(timestamp + "\n" + nonce + "\n" + encrypt, encryptKey)
     /// 使用固定时间比较防止计时攻击
     /// </remarks>
+    [Obsolete("此方法使用 HMAC-SHA256 算法，与飞书官方签名算法（SHA-256）不一致，将在未来版本中移除。请使用 ValidateHeaderSignatureAsync 替代。")]
     Task<bool> ValidateSignatureAsync(long timestamp, string nonce, string encrypt, string signature, string encryptKey);
 
     /// <summary>

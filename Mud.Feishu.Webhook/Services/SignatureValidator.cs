@@ -113,6 +113,7 @@ public class SignatureValidator : ISignatureValidator
     }
 
     /// <inheritdoc />
+    [Obsolete("此方法使用 HMAC-SHA256 算法，与飞书官方签名算法（SHA-256）不一致，将在未来版本中移除。请使用 ValidateHeaderSignatureAsync 替代。")]
     public async Task<bool> ValidateSignatureAsync(long timestamp, string nonce, string encrypt, string signature, string encryptKey)
     {
         try

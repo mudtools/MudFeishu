@@ -262,6 +262,8 @@ public class FeishuEventDecryptor : IFeishuEventDecryptor
                     _logger.LogDebug("开始解密，密钥长度: {KeyLength}, 加密数据长度: {DataLength}", encryptKey.Length, encryptedBytes.Length);
 
                 using var aes = Aes.Create();
+                aes.Mode = CipherMode.CBC;
+                aes.Padding = PaddingMode.PKCS7;
                 // 飞书的 EncryptKey 直接使用 UTF-8 编码后进行 SHA-256 哈希得到 32 字节密钥
                 byte[] keyBytes;
                 using (var sha256 = SHA256.Create())
@@ -269,7 +271,6 @@ public class FeishuEventDecryptor : IFeishuEventDecryptor
                     keyBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(encryptKey));
                 }
                 aes.Key = keyBytes;
-                aes.Mode = CipherMode.CBC;
                 aes.IV = encryptedBytes.Take(BlockSize).ToArray();
 
                 using var transform = aes.CreateDecryptor();

@@ -339,7 +339,9 @@ public class FeishuWebhookService : IFeishuWebhookService
     }
 
     /// <summary />
+#pragma warning disable CS0618 // ValidateSignatureAsync 已标记为 Obsolete，但需保持向后兼容
     public async Task<bool> ValidateRequestSignature(FeishuWebhookRequest request)
+#pragma warning restore CS0618
     {
         // 记录签名验证开始
         using var signatureMetrics = FeishuMetricsHelper.RecordEventHandling("signature_validation", "webhook");

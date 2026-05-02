@@ -281,8 +281,8 @@ public class FeishuMultiAppMiddleware
 
         try
         {
-            // 尝试处理明文 URL 验证请求
-            if (await TryHandlePlaintextVerificationAsync(context, requestBody, webhookService))
+            // 尝试处理明文 URL 验证请求（仅在未配置 EncryptKey 时允许）
+            if (await TryHandlePlaintextVerificationAsync(context, requestBody, webhookService, appKey, requestId))
             {
                 return;
             }
@@ -312,8 +312,21 @@ public class FeishuMultiAppMiddleware
                 return;
             }
 
-            // 先解密以判断是否为验证请求，并验证签名
-            var decryptedData = await webhookService.DecryptEventAsync(eventRequest.Encrypt!);
+            // 先验证请求签名，再解密（安全原则：先验签后解密）
+            if (!await webhookService.HandleEventAsync(eventRequest, requestBody))
+            {
+                _logger.LogWarning("签名验证失败 - Timestamp: {Timestamp}, Nonce: {Nonce}, SignaturePrefix: {SignaturePrefix}, AppKey: {AppKey}",
+                    eventRequest.Timestamp,
+                    eventRequest.Nonce,
+                    eventRequest.Signature?.Length > 8 ? eventRequest.Signature.Substring(0, 8) + "..." : eventRequest.Signature ?? "(null)",
+                    appKey);
+                await WriteErrorResponse(context, 403, "Forbidden: Signature validation failed", requestId);
+                return;
+            }
+
+            // 签名验证通过后再解密（验证请求使用 1 秒超时，确保飞书要求）
+            using var decryptionCts = new CancellationTokenSource(TimeSpan.FromSeconds(1));
+            var decryptedData = await webhookService.DecryptEventAsync(eventRequest.Encrypt!, decryptionCts.Token);
 
             if (decryptedData == null)
             {
@@ -330,7 +343,7 @@ public class FeishuMultiAppMiddleware
             // 检查是否为加密验证请求
             if (decryptedData.EventType == "url_verification")
             {
-                await HandleEncryptedVerificationAsync(context, decryptedData);
+                await HandleEncryptedVerificationAsync(context, decryptedData, appConfig, requestId);
                 return;
             }
 
@@ -339,18 +352,6 @@ public class FeishuMultiAppMiddleware
             {
                 _logger.LogError("事件数据无效：EventType 和 EventId 均为空");
                 await WriteErrorResponse(context, 400, "Bad Request: Invalid event data", requestId);
-                return;
-            }
-
-            // 验证请求签名（如果不是验证请求）
-            if (!await webhookService.HandleEventAsync(eventRequest, requestBody))
-            {
-                _logger.LogWarning("签名验证失败 - Timestamp: {Timestamp}, Nonce: {Nonce}, SignaturePrefix: {SignaturePrefix}, AppKey: {AppKey}",
-                    eventRequest.Timestamp,
-                    eventRequest.Nonce,
-                    eventRequest.Signature?.Length > 8 ? eventRequest.Signature.Substring(0, 8) + "..." : eventRequest.Signature ?? "(null)",
-                    appKey);
-                await WriteErrorResponse(context, 403, "Forbidden: Signature validation failed", requestId);
                 return;
             }
 
@@ -381,11 +382,14 @@ public class FeishuMultiAppMiddleware
 
     /// <summary>
     /// 尝试处理明文 URL 验证请求
+    /// 当应用配置了 EncryptKey 时，拒绝明文验证请求（安全边界）
     /// </summary>
     private async Task<bool> TryHandlePlaintextVerificationAsync(
         HttpContext context,
         string requestBody,
-        IFeishuWebhookService webhookService)
+        IFeishuWebhookService webhookService,
+        string appKey,
+        string requestId)
     {
         var verificationRequest = JsonSerializer.Deserialize(
             requestBody,
@@ -395,7 +399,16 @@ public class FeishuMultiAppMiddleware
         {
             _logger.LogDebug("检测到明文 URL 验证请求");
 
-            var verificationResponse = await webhookService.VerifyEventSubscriptionAsync(verificationRequest);
+            var appConfig = Options.GetAppConfig(appKey);
+            if (appConfig != null && !string.IsNullOrEmpty(appConfig.EncryptKey))
+            {
+                _logger.LogWarning("应用已配置 EncryptKey，拒绝明文验证请求（安全边界），AppKey: {AppKey}", appKey);
+                await WriteErrorResponse(context, 403, "Forbidden: Plaintext verification not allowed when EncryptKey is configured", requestId);
+                return true;
+            }
+
+            using var verificationCts = new CancellationTokenSource(TimeSpan.FromSeconds(1));
+            var verificationResponse = await webhookService.VerifyEventSubscriptionAsync(verificationRequest, verificationCts.Token);
 
             if (verificationResponse == null)
             {
@@ -413,12 +426,17 @@ public class FeishuMultiAppMiddleware
 
     /// <summary>
     /// 处理加密的 URL 验证请求
+    /// 验证解密后数据中的 token 字段，确保请求来源合法
     /// </summary>
-    private async Task HandleEncryptedVerificationAsync(HttpContext context, EventData decryptedData)
+    private async Task HandleEncryptedVerificationAsync(
+        HttpContext context,
+        EventData decryptedData,
+        FeishuAppWebhookOptions appConfig,
+        string requestId)
     {
-        string? challenge = string.Empty;
+        string? challenge = null;
+        string? token = null;
 
-        // 尝试从 Event 中解析 challenge 字段
         if (decryptedData.Event is string eventJson)
         {
             try
@@ -429,10 +447,14 @@ public class FeishuMultiAppMiddleware
                 {
                     challenge = challengeElement.GetString();
                 }
+                if (root.TryGetProperty("token", out var tokenElement))
+                {
+                    token = tokenElement.GetString();
+                }
             }
             catch (JsonException ex)
             {
-                _logger.LogError(ex, "解析挑战码时发生错误");
+                _logger.LogError(ex, "解析验证请求数据时发生错误");
             }
         }
         else if (decryptedData.Event is JsonElement eventElement)
@@ -441,6 +463,19 @@ public class FeishuMultiAppMiddleware
             {
                 challenge = challengeElement.GetString();
             }
+            if (eventElement.TryGetProperty("token", out var tokenElement))
+            {
+                token = tokenElement.GetString();
+            }
+        }
+
+        if (!string.IsNullOrEmpty(appConfig.VerificationToken) && token != appConfig.VerificationToken)
+        {
+            var actualTokenPrefix = token?.Length > 4 ? token.Substring(0, 4) + "***" : "***";
+            _logger.LogWarning("加密验证请求 Token 不匹配: 实际 {ActualToken}, AppKey: {AppKey}",
+                actualTokenPrefix, appConfig.AppKey);
+            await WriteErrorResponse(context, 403, "Forbidden: Token mismatch", requestId);
+            return;
         }
 
         var verificationResponse = new EventVerificationResponse

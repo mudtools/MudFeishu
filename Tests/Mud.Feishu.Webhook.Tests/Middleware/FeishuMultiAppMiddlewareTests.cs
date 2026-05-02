@@ -166,10 +166,8 @@ public class FeishuMultiAppMiddlewareTests
     }
 
     [Fact]
-    public async Task InvokeAsync_WithUrlVerificationRequest_ShouldReturnChallenge()
+    public async Task InvokeAsync_WithUrlVerificationRequest_WhenEncryptKeyConfigured_ShouldReturn403()
     {
-        // Arrange
-        _handlerRegistry.Register("app1", typeof(TestHandler));
         var verificationRequest = new EventVerificationRequest
         {
             Type = "url_verification",
@@ -179,14 +177,43 @@ public class FeishuMultiAppMiddlewareTests
         var middleware = CreateMiddleware();
         var context = CreateHttpContext("/feishu/app1", "POST", requestBody);
 
+        await middleware.InvokeAsync(context);
+
+        context.Response.StatusCode.Should().Be(403);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_WithUrlVerificationRequest_WhenNoEncryptKey_ShouldReturnChallenge()
+    {
+        var options = new FeishuWebhookOptions
+        {
+            GlobalRoutePrefix = "feishu",
+            Apps = new Dictionary<string, FeishuAppWebhookOptions>
+            {
+                ["nokey_app"] = new FeishuAppWebhookOptions
+                {
+                    AppKey = "nokey_app",
+                    VerificationToken = "test_token_nokey",
+                    EncryptKey = ""
+                }
+            }
+        };
+
+        var verificationRequest = new EventVerificationRequest
+        {
+            Type = "url_verification",
+            Challenge = "test_challenge_code"
+        };
+        var requestBody = JsonSerializer.Serialize(verificationRequest);
+        var middleware = CreateMiddlewareWithOptions(options);
+        var context = CreateHttpContext("/feishu/nokey_app", "POST", requestBody);
+
         _webhookServiceMock
             .Setup(x => x.VerifyEventSubscriptionAsync(It.IsAny<EventVerificationRequest>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new EventVerificationResponse { Challenge = "test_challenge_code" });
 
-        // Act
         await middleware.InvokeAsync(context);
 
-        // Assert
         context.Response.StatusCode.Should().Be(200);
     }
 
@@ -223,8 +250,13 @@ public class FeishuMultiAppMiddlewareTests
 
     private FeishuMultiAppMiddleware CreateMiddleware()
     {
+        return CreateMiddlewareWithOptions(_options);
+    }
+
+    private FeishuMultiAppMiddleware CreateMiddlewareWithOptions(FeishuWebhookOptions options)
+    {
         var optionsMonitorMock = new Mock<IOptionsMonitor<FeishuWebhookOptions>>();
-        optionsMonitorMock.Setup(x => x.CurrentValue).Returns(_options);
+        optionsMonitorMock.Setup(x => x.CurrentValue).Returns(options);
         optionsMonitorMock.Setup(x => x.OnChange(It.IsAny<Action<FeishuWebhookOptions, string?>>()))
             .Returns((IDisposable)null!);
 

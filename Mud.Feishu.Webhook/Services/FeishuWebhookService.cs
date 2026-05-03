@@ -26,10 +26,6 @@ public class FeishuWebhookService : IFeishuWebhookService
     private readonly IFeishuEventInterceptor[] _interceptors;
     private readonly FeishuWebhookConcurrencyService _concurrencyService;
     private readonly IFeishuEventDeduplicator _deduplicator;
-#pragma warning disable CS0618 // IFeishuEventDistributedDeduplicator 已废弃，但需保持向后兼容直到正式移除
-    private readonly IFeishuEventDistributedDeduplicator? _distributedDeduplicator;
-#pragma warning restore CS0618 // IFeishuEventDistributedDeduplicator 已废弃，但需保持向后兼容直到正式移除
-    private readonly ISecurityAuditService? _securityAuditService;
     private readonly IEncryptKeyProvider _encryptKeyProvider;
     private readonly FeishuWebhookHandlerRegistry _handlerRegistry;
     private readonly FeishuWebhookInterceptorRegistry _interceptorRegistry;
@@ -55,11 +51,7 @@ public class FeishuWebhookService : IFeishuWebhookService
         FeishuWebhookHandlerRegistry handlerRegistry,
         FeishuWebhookInterceptorRegistry interceptorRegistry,
         IServiceProvider serviceProvider,
-        IWebhookAppKeyAccessor appKeyAccessor,
-        ISecurityAuditService? securityAuditService,
-#pragma warning disable CS0618 // IFeishuEventDistributedDeduplicator 已废弃，但需保持向后兼容直到正式移除
-        IFeishuEventDistributedDeduplicator? distributedDeduplicator = null)
-#pragma warning restore CS0618 // IFeishuEventDistributedDeduplicator 已废弃，但需保持向后兼容直到正式移除
+        IWebhookAppKeyAccessor appKeyAccessor)
     {
         _optionsMonitor = optionsMonitor;
         _validator = validator;
@@ -74,8 +66,6 @@ public class FeishuWebhookService : IFeishuWebhookService
         _interceptorRegistry = interceptorRegistry ?? throw new ArgumentNullException(nameof(interceptorRegistry));
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
         _appKeyAccessor = appKeyAccessor ?? throw new ArgumentNullException(nameof(appKeyAccessor));
-        _distributedDeduplicator = distributedDeduplicator;
-        _securityAuditService = securityAuditService;
 
         // 监听配置变更
         _optionsMonitor.OnChange((newOptions, name) =>
@@ -371,50 +361,20 @@ public class FeishuWebhookService : IFeishuWebhookService
         }
     }
 
-    /// <summary>
-    /// 检查去重状态
-    /// </summary>
     private async Task<(bool shouldSkip, bool isProcessing)> CheckDeduplicationAsync(string eventId, string? appKey, CancellationToken cancellationToken)
     {
-        if (_distributedDeduplicator != null)
-        {
-            var result = await _distributedDeduplicator.TryMarkAsProcessingAsync(eventId, appKey, cancellationToken: cancellationToken);
-            return (result.IsDuplicate, result.WasProcessing);
-        }
-        else
-        {
-            return (_deduplicator.TryMarkAsProcessing(eventId, appKey), false);
-        }
+        var result = await _deduplicator.TryMarkAsProcessingAsync(eventId, appKey, cancellationToken: cancellationToken);
+        return (result.IsDuplicate, result.WasProcessing);
     }
 
-    /// <summary>
-    /// 标记去重为已完成
-    /// </summary>
     private async Task MarkDeduplicationCompletedAsync(string eventId, string? appKey = null)
     {
-        if (_distributedDeduplicator != null)
-        {
-            await _distributedDeduplicator.MarkAsCompletedAsync(eventId, appKey);
-        }
-        else
-        {
-            _deduplicator.MarkAsCompleted(eventId, appKey);
-        }
+        await _deduplicator.MarkAsCompletedAsync(eventId, appKey);
     }
 
-    /// <summary>
-    /// 回滚去重状态
-    /// </summary>
     private async Task RollbackDeduplicationAsync(string eventId, string? appKey = null)
     {
-        if (_distributedDeduplicator != null)
-        {
-            await _distributedDeduplicator.RollbackProcessingAsync(eventId, appKey);
-        }
-        else
-        {
-            _deduplicator.RollbackProcessing(eventId, appKey);
-        }
+        await _deduplicator.RollbackProcessingAsync(eventId, appKey);
     }
 
     /// <summary>

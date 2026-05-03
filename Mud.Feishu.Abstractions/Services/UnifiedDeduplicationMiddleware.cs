@@ -21,9 +21,7 @@ namespace Mud.Feishu.Abstractions.Services;
 /// </remarks>
 public class UnifiedDeduplicationMiddleware : IUnifiedDeduplicationMiddleware, IAsyncDisposable
 {
-#pragma warning disable CS0618 // IFeishuEventDistributedDeduplicator 已废弃，但需保持向后兼容直到正式移除
-    private readonly IFeishuEventDistributedDeduplicator? _eventDeduplicator;
-#pragma warning restore CS0618 // IFeishuEventDistributedDeduplicator 已废弃，但需保持向后兼容直到正式移除
+    private readonly IFeishuEventDeduplicator? _eventDeduplicator;
     private readonly IFeishuSeqIDDeduplicator? _seqIdDeduplicator;
     private readonly DeduplicationOptions _options;
     private readonly ILogger<UnifiedDeduplicationMiddleware>? _logger;
@@ -37,9 +35,7 @@ public class UnifiedDeduplicationMiddleware : IUnifiedDeduplicationMiddleware, I
     /// <param name="options">去重配置选项</param>
     /// <param name="logger">日志记录器（可选）</param>
     public UnifiedDeduplicationMiddleware(
-#pragma warning disable CS0618 // IFeishuEventDistributedDeduplicator 已废弃，但需保持向后兼容直到正式移除
-        IFeishuEventDistributedDeduplicator? eventDeduplicator = null,
-#pragma warning restore CS0618 // IFeishuEventDistributedDeduplicator 已废弃，但需保持向后兼容直到正式移除
+        IFeishuEventDeduplicator? eventDeduplicator = null,
         IFeishuSeqIDDeduplicator? seqIdDeduplicator = null,
         DeduplicationOptions? options = null,
         ILogger<UnifiedDeduplicationMiddleware>? logger = null)

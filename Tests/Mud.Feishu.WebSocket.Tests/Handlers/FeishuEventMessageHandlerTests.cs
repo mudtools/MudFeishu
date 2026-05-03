@@ -37,7 +37,6 @@ public class FeishuEventMessageHandlerTests
             null,
             null,
             null,
-            null,
             _options);
     }
 
@@ -48,7 +47,6 @@ public class FeishuEventMessageHandlerTests
         var action = () => new FeishuEventMessageHandler(
             _loggerMock.Object,
             null!,
-            null,
             null,
             null,
             null,
@@ -65,7 +63,6 @@ public class FeishuEventMessageHandlerTests
         var action = () => new FeishuEventMessageHandler(
             _loggerMock.Object,
             _handlerFactoryMock.Object,
-            null,
             null,
             null,
             null,

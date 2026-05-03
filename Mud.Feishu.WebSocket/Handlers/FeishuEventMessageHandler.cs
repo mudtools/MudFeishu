@@ -22,9 +22,6 @@ public class FeishuEventMessageHandler : JsonMessageHandler
 {
     private readonly IFeishuEventHandlerFactory _eventHandlerFactory;
     private readonly IFeishuEventDeduplicator? _deduplicator;
-#pragma warning disable CS0618 // IFeishuEventDistributedDeduplicator 已废弃，但需保持向后兼容直到正式移除
-    private readonly IFeishuEventDistributedDeduplicator? _distributedDeduplicator;
-#pragma warning restore CS0618 // IFeishuEventDistributedDeduplicator 已废弃，但需保持向后兼容直到正式移除
     private readonly IFeishuEventInterceptor[] _interceptors;
     private readonly FeishuWebSocketOptions _options;
 
@@ -42,9 +39,6 @@ public class FeishuEventMessageHandler : JsonMessageHandler
         ILogger<FeishuEventMessageHandler> logger,
         IFeishuEventHandlerFactory eventHandlerFactory,
         IFeishuEventDeduplicator? deduplicator,
-#pragma warning disable CS0618 // IFeishuEventDistributedDeduplicator 已废弃，但需保持向后兼容直到正式移除
-        IFeishuEventDistributedDeduplicator? distributedDeduplicator,
-#pragma warning restore CS0618 // IFeishuEventDistributedDeduplicator 已废弃，但需保持向后兼容直到正式移除
         IFeishuSeqIDDeduplicator? seqIdDeduplicator,
         IFeishuEventInterceptor[]? interceptors,
         FeishuWebSocketOptions options)
@@ -52,7 +46,6 @@ public class FeishuEventMessageHandler : JsonMessageHandler
     {
         _eventHandlerFactory = eventHandlerFactory ?? throw new ArgumentNullException(nameof(eventHandlerFactory));
         _deduplicator = deduplicator;
-        _distributedDeduplicator = distributedDeduplicator;
         _interceptors = interceptors ?? Array.Empty<IFeishuEventInterceptor>();
         _options = options ?? throw new ArgumentNullException(nameof(options));
     }
@@ -114,25 +107,13 @@ public class FeishuEventMessageHandler : JsonMessageHandler
             DeduplicationResult? dedupResult = null;
             bool shouldSkip = false;
 
-            if (_options.EventDeduplication.Mode == EventDeduplicationMode.Distributed && _distributedDeduplicator != null)
+            if (_deduplicator != null)
             {
-                // 使用分布式去重 - 使用状态机方法
-                dedupResult = await _distributedDeduplicator.TryMarkAsProcessingAsync(eventData.EventId, cancellationToken: cancellationToken);
+                dedupResult = await _deduplicator.TryMarkAsProcessingAsync(eventData.EventId, cancellationToken: cancellationToken);
                 if (dedupResult.IsDuplicate)
                 {
                     _logger.LogDebug("事件 {EventId} 已在处理中或已处理，跳过 (WasProcessing: {WasProcessing}, Status: {Status})",
                         eventData.EventId, dedupResult.WasProcessing, dedupResult.Status);
-                    shouldSkip = true;
-                    FeishuMetricsHelper.RecordEventDeduplicationHit("event_id");
-                }
-            }
-            else if (_options.EventDeduplication.Mode == EventDeduplicationMode.InMemory && _deduplicator != null)
-            {
-                // 使用内存去重 - 标记为处理中
-                var isProcessing = _deduplicator.TryMarkAsProcessing(eventData.EventId);
-                if (isProcessing)
-                {
-                    _logger.LogDebug("事件 {EventId} 已在处理中或已处理，跳过", eventData.EventId);
                     shouldSkip = true;
                     FeishuMetricsHelper.RecordEventDeduplicationHit("event_id");
                 }
@@ -166,13 +147,9 @@ public class FeishuEventMessageHandler : JsonMessageHandler
                             await _eventHandlerFactory.HandleEventParallelAsync(eventData.EventType, eventData, cancellationToken);
 
                             // 处理成功，标记为已完成
-                            if (_options.EventDeduplication.Mode == EventDeduplicationMode.Distributed && _distributedDeduplicator != null)
+                            if (_deduplicator != null)
                             {
-                                await _distributedDeduplicator.MarkAsCompletedAsync(eventData.EventId, cancellationToken: cancellationToken);
-                            }
-                            else if (_options.EventDeduplication.Mode == EventDeduplicationMode.InMemory && _deduplicator != null)
-                            {
-                                _deduplicator.MarkAsCompleted(eventData.EventId);
+                                await _deduplicator.MarkAsCompletedAsync(eventData.EventId, cancellationToken: cancellationToken);
                             }
 
                             // 记录事件处理成功
@@ -184,13 +161,9 @@ public class FeishuEventMessageHandler : JsonMessageHandler
                         processingException = ex;
 
                         // 处理失败，回滚处理中状态
-                        if (_options.EventDeduplication.Mode == EventDeduplicationMode.Distributed && _distributedDeduplicator != null)
+                        if (_deduplicator != null)
                         {
-                            await _distributedDeduplicator.RollbackProcessingAsync(eventData.EventId, cancellationToken: cancellationToken);
-                        }
-                        else if (_options.EventDeduplication.Mode == EventDeduplicationMode.InMemory && _deduplicator != null)
-                        {
-                            _deduplicator.RollbackProcessing(eventData.EventId);
+                            await _deduplicator.RollbackProcessingAsync(eventData.EventId, cancellationToken: cancellationToken);
                         }
 
                         // 记录事件处理失败

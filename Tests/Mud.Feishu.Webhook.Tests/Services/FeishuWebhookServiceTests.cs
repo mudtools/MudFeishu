@@ -155,8 +155,8 @@ public class FeishuWebhookServiceTests
         };
 
         _deduplicatorMock
-            .Setup(x => x.TryMarkAsProcessing(eventData.EventId, It.IsAny<string?>()))
-            .Returns(false);
+            .Setup(x => x.TryMarkAsProcessingAsync(eventData.EventId, It.IsAny<string?>(), null, null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new DeduplicationResult { IsDuplicate = false, WasProcessing = false });
 
         _handlerFactoryMock
             .Setup(x => x.HandleEventParallelAsync(eventData.EventType, eventData, It.IsAny<CancellationToken>()))
@@ -187,8 +187,8 @@ public class FeishuWebhookServiceTests
         };
 
         _deduplicatorMock
-            .Setup(x => x.TryMarkAsProcessing(eventData.EventId, It.IsAny<string?>()))
-            .Returns(true); // 已处理过
+            .Setup(x => x.TryMarkAsProcessingAsync(eventData.EventId, It.IsAny<string?>(), null, null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new DeduplicationResult { IsDuplicate = true, WasProcessing = false });
 
         var service = CreateService();
 
@@ -323,9 +323,7 @@ public class FeishuWebhookServiceTests
             new FeishuWebhookHandlerRegistry(),
             new FeishuWebhookInterceptorRegistry(),
             _serviceProviderMock.Object,
-            _appKeyAccessorMock.Object,
-            null,
-            null);
+            _appKeyAccessorMock.Object);
     }
 
     [Fact]
@@ -348,12 +346,12 @@ public class FeishuWebhookServiceTests
         var appKey2 = "app-002";
 
         _deduplicatorMock
-            .Setup(x => x.TryMarkAsProcessing(eventId, appKey1))
-            .Returns(false);
+            .Setup(x => x.TryMarkAsProcessingAsync(eventId, appKey1, null, null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new DeduplicationResult { IsDuplicate = false, WasProcessing = false });
 
         _deduplicatorMock
-            .Setup(x => x.TryMarkAsProcessing(eventId, appKey2))
-            .Returns(false);
+            .Setup(x => x.TryMarkAsProcessingAsync(eventId, appKey2, null, null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new DeduplicationResult { IsDuplicate = false, WasProcessing = false });
 
         _handlerFactoryMock
             .Setup(x => x.HandleEventParallelAsync(It.IsAny<string>(), It.IsAny<EventData>(), It.IsAny<CancellationToken>()))
@@ -400,8 +398,8 @@ public class FeishuWebhookServiceTests
             .Returns(handlerMock.Object);
 
         _deduplicatorMock
-            .Setup(x => x.TryMarkAsProcessing(eventData.EventId, appKey))
-            .Returns(false);
+            .Setup(x => x.TryMarkAsProcessingAsync(eventData.EventId, appKey, null, null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new DeduplicationResult { IsDuplicate = false, WasProcessing = false });
 
         var service = new FeishuWebhookService(
             _optionsMonitorMock.Object,
@@ -416,9 +414,7 @@ public class FeishuWebhookServiceTests
             handlerRegistry,
             new FeishuWebhookInterceptorRegistry(),
             _serviceProviderMock.Object,
-            _appKeyAccessorMock.Object,
-            null,
-            null);
+            _appKeyAccessorMock.Object);
 
         // Act
         service.SetCurrentAppKey(appKey);
@@ -456,8 +452,8 @@ public class FeishuWebhookServiceTests
             .Returns(interceptorMock.Object);
 
         _deduplicatorMock
-            .Setup(x => x.TryMarkAsProcessing(eventData.EventId, appKey))
-            .Returns(false);
+            .Setup(x => x.TryMarkAsProcessingAsync(eventData.EventId, appKey, null, null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new DeduplicationResult { IsDuplicate = false, WasProcessing = false });
 
         _handlerFactoryMock
             .Setup(x => x.HandleEventParallelAsync(It.IsAny<string>(), It.IsAny<EventData>(), It.IsAny<CancellationToken>()))
@@ -476,9 +472,7 @@ public class FeishuWebhookServiceTests
             new FeishuWebhookHandlerRegistry(),
             interceptorRegistry,
             _serviceProviderMock.Object,
-            _appKeyAccessorMock.Object,
-            null,
-            null);
+            _appKeyAccessorMock.Object);
 
         // Act
         service.SetCurrentAppKey(appKey);

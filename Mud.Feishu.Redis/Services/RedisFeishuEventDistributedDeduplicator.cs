@@ -21,8 +21,7 @@ namespace Mud.Feishu.Redis.Services;
 /// 2. 处理中超时恢复
 /// 3. 异常后回滚
 /// </remarks>
-#pragma warning disable CS0618 // IFeishuEventDistributedDeduplicator 已废弃，但需保持向后兼容直到正式移除
-public class RedisFeishuEventDistributedDeduplicator : IFeishuEventDistributedDeduplicator, IAsyncDisposable
+public class RedisFeishuEventDistributedDeduplicator : IFeishuEventDeduplicator, IAsyncDisposable
 {
     private readonly ILogger<RedisFeishuEventDistributedDeduplicator>? _logger;
     private readonly IConnectionMultiplexer _redis;
@@ -466,6 +465,43 @@ public class RedisFeishuEventDistributedDeduplicator : IFeishuEventDistributedDe
     }
 
     /// <inheritdoc />
+    public bool TryMarkAsProcessed(string eventId, string? appKey = null)
+    {
+        return Task.Run(() => IsProcessedAsync(eventId, appKey)).GetAwaiter().GetResult();
+    }
+
+    /// <inheritdoc />
+    public bool TryMarkAsProcessing(string eventId, string? appKey = null)
+    {
+        var result = Task.Run(() => TryMarkAsProcessingAsync(eventId, appKey)).GetAwaiter().GetResult();
+        return result.IsDuplicate;
+    }
+
+    /// <inheritdoc />
+    public void MarkAsCompleted(string eventId, string? appKey = null)
+    {
+        Task.Run(() => MarkAsCompletedAsync(eventId, appKey)).GetAwaiter().GetResult();
+    }
+
+    /// <inheritdoc />
+    public void RollbackProcessing(string eventId, string? appKey = null)
+    {
+        Task.Run(() => RollbackProcessingAsync(eventId, appKey)).GetAwaiter().GetResult();
+    }
+
+    /// <inheritdoc />
+    public bool IsProcessed(string eventId, string? appKey = null)
+    {
+        return Task.Run(() => IsProcessedAsync(eventId, appKey)).GetAwaiter().GetResult();
+    }
+
+    /// <inheritdoc />
+    public DeduplicationStatus GetStatus(string eventId, string? appKey = null)
+    {
+        return Task.Run(() => GetStatusAsync(eventId, appKey)).GetAwaiter().GetResult();
+    }
+
+    /// <inheritdoc />
     public async ValueTask DisposeAsync()
     {
         if (_disposed)
@@ -487,4 +523,3 @@ public class RedisFeishuEventDistributedDeduplicator : IFeishuEventDistributedDe
         return $"{_keyPrefix}{eventId}";
     }
 }
-#pragma warning restore CS0618 // IFeishuEventDistributedDeduplicator 已废弃，但需保持向后兼容直到正式移除

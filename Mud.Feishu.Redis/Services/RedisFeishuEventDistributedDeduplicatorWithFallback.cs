@@ -23,13 +23,12 @@ namespace Mud.Feishu.Redis.Services;
 /// 4. 记录降级和恢复事件
 /// 5. 支持完整的状态机（Processing -> Completed / Rollback）
 /// </remarks>
-#pragma warning disable CS0618 // IFeishuEventDistributedDeduplicator 已废弃，但需保持向后兼容直到正式移除
-public class RedisFeishuEventDistributedDeduplicatorWithFallback : IFeishuEventDistributedDeduplicator, IAsyncDisposable
+public class RedisFeishuEventDistributedDeduplicatorWithFallback : IFeishuEventDeduplicator, IAsyncDisposable
 {
     private readonly ILogger<RedisFeishuEventDistributedDeduplicatorWithFallback>? _logger;
     private readonly IConnectionMultiplexer _redis;
     private readonly IDatabase _database;
-    private readonly IFeishuEventDistributedDeduplicator _fallbackDeduplicator;
+    private readonly IFeishuEventDeduplicator _fallbackDeduplicator;
     private readonly IFallbackAlertService? _alertService;
     private readonly TimeSpan _defaultCacheExpiration;
     private readonly TimeSpan _defaultProcessingTimeout;
@@ -93,13 +92,11 @@ public class RedisFeishuEventDistributedDeduplicatorWithFallback : IFeishuEventD
         _maxRetryDelay = maxRetryDelay ?? TimeSpan.FromSeconds(30);
         _alertService = alertService;
 
-#pragma warning disable CS0618 // FeishuEventDistributedDeduplicator 已废弃，但需保持向后兼容直到正式移除
-        _fallbackDeduplicator = new FeishuEventDistributedDeduplicator(
-            logger as ILogger<FeishuEventDistributedDeduplicator>,
+        _fallbackDeduplicator = new FeishuEventDeduplicator(
+            logger as ILogger<FeishuEventDeduplicator>,
             _defaultCacheExpiration,
             TimeSpan.FromMinutes(5),
             _defaultProcessingTimeout);
-#pragma warning restore CS0618 // FeishuEventDistributedDeduplicator 已废弃，但需保持向后兼容直到正式移除
 
         _logger?.LogInformation("飞书 Redis 分布式事件去重服务（带降级）初始化完成，缓存过期时间: {Expiration}, 处理超时: {ProcessingTimeout}, 键前缀: {KeyPrefix}, 最大重试: {MaxRetry}",
             _defaultCacheExpiration, _defaultProcessingTimeout, _keyPrefix, _maxRetryCount);
@@ -132,11 +129,9 @@ public class RedisFeishuEventDistributedDeduplicatorWithFallback : IFeishuEventD
         _maxRetryDelay = options.MaxRetryDelay;
         _alertService = alertService;
 
-#pragma warning disable CS0618 // FeishuEventDistributedDeduplicator 已废弃，但需保持向后兼容直到正式移除
-        _fallbackDeduplicator = new FeishuEventDistributedDeduplicator(
+        _fallbackDeduplicator = new FeishuEventDeduplicator(
             options,
-            logger as ILogger<FeishuEventDistributedDeduplicator>);
-#pragma warning restore CS0618 // FeishuEventDistributedDeduplicator 已废弃，但需保持向后兼容直到正式移除
+            logger as ILogger<FeishuEventDeduplicator>);
 
         _logger?.LogInformation("飞书 Redis 分布式事件去重服务（带降级）初始化完成（使用统一配置），缓存过期时间: {Expiration}, 处理超时: {ProcessingTimeout}, 键前缀: {KeyPrefix}, 最大重试: {MaxRetry}",
             _defaultCacheExpiration, _defaultProcessingTimeout, _keyPrefix, _maxRetryCount);
@@ -351,6 +346,43 @@ public class RedisFeishuEventDistributedDeduplicatorWithFallback : IFeishuEventD
             _logger?.LogError(ex, "清理过期条目时发生错误");
             return 0;
         }
+    }
+
+    /// <inheritdoc />
+    public bool TryMarkAsProcessed(string eventId, string? appKey = null)
+    {
+        return Task.Run(() => IsProcessedAsync(eventId, appKey)).GetAwaiter().GetResult();
+    }
+
+    /// <inheritdoc />
+    public bool TryMarkAsProcessing(string eventId, string? appKey = null)
+    {
+        var result = Task.Run(() => TryMarkAsProcessingAsync(eventId, appKey)).GetAwaiter().GetResult();
+        return result.IsDuplicate;
+    }
+
+    /// <inheritdoc />
+    public void MarkAsCompleted(string eventId, string? appKey = null)
+    {
+        Task.Run(() => MarkAsCompletedAsync(eventId, appKey)).GetAwaiter().GetResult();
+    }
+
+    /// <inheritdoc />
+    public void RollbackProcessing(string eventId, string? appKey = null)
+    {
+        Task.Run(() => RollbackProcessingAsync(eventId, appKey)).GetAwaiter().GetResult();
+    }
+
+    /// <inheritdoc />
+    public bool IsProcessed(string eventId, string? appKey = null)
+    {
+        return Task.Run(() => IsProcessedAsync(eventId, appKey)).GetAwaiter().GetResult();
+    }
+
+    /// <inheritdoc />
+    public DeduplicationStatus GetStatus(string eventId, string? appKey = null)
+    {
+        return Task.Run(() => GetStatusAsync(eventId, appKey)).GetAwaiter().GetResult();
     }
 
     /// <inheritdoc />
@@ -578,4 +610,3 @@ public class RedisFeishuEventDistributedDeduplicatorWithFallback : IFeishuEventD
         return $"{_keyPrefix}{eventId}";
     }
 }
-#pragma warning restore CS0618 // IFeishuEventDistributedDeduplicator 已废弃，但需保持向后兼容直到正式移除

@@ -467,11 +467,6 @@ public class FeishuWebhookServiceBuilder
         _services.AddSingleton<FeishuWebhookConcurrencyService>();
         _services.AddHostedService(sp => sp.GetRequiredService<FeishuWebhookConcurrencyService>());
         _services.TryAddSingleton<IFeishuEventDeduplicator, FeishuEventDeduplicator>();
-
-        // 分布式去重器（默认使用内存实现）
-#pragma warning disable CS0618 // IFeishuEventDistributedDeduplicator 已废弃，但需保持向后兼容直到正式移除
-        _services.TryAddSingleton<IFeishuEventDistributedDeduplicator, FeishuEventDistributedDeduplicator>();
-#pragma warning restore CS0618 // IFeishuEventDistributedDeduplicator 已废弃，但需保持向后兼容直到正式移除
         _services.TryAddSingleton<IFeishuNonceDistributedDeduplicator, FeishuNonceDistributedDeduplicator>();
 
         // 注册多应用注册表（单例，所有应用共享）

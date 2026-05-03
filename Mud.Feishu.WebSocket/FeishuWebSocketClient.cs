@@ -228,7 +228,6 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
             _loggerFactory.CreateLogger<FeishuEventMessageHandler>(),
             _eventHandlerFactory,
             null,
-            null,
             _seqIdDeduplicator,
             _interceptors,
             _options);

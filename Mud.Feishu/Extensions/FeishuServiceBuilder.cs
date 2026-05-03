@@ -34,19 +34,19 @@ public class FeishuServiceBuilder
     {
         return new Dictionary<FeishuModule, IFeishuModuleRegistrar>
         {
-            [FeishuModule.Organization] = new OrganizationModuleRegistrar(),
-            [FeishuModule.Message] = new MessageModuleRegistrar(),
-            [FeishuModule.ChatGroup] = new ChatGroupModuleRegistrar(),
-            [FeishuModule.Approval] = new ApprovalModuleRegistrar(),
-            [FeishuModule.Task] = new TaskModuleRegistrar(),
-            [FeishuModule.Card] = new CardModuleRegistrar(),
-            [FeishuModule.Attendance] = new AttendanceModuleRegistrar(),
-            [FeishuModule.Drive] = new DriveModuleRegistrar(),
-            [FeishuModule.Wiki] = new WikiModuleRegistrar(),
-            [FeishuModule.Docx] = new DocxModuleRegistrar(),
-            [FeishuModule.Spreadsheets] = new SpreadsheetsModuleRegistrar(),
-            [FeishuModule.Bitable] = new BitableRegistrar(),
-            [FeishuModule.Calendar] = new CalendarRegistrar(),
+            [FeishuModule.Organization] = new FeishuModuleRegistrar(FeishuModule.Organization, s => s.AddOrganizationWebApiHttpClient()),
+            [FeishuModule.Message] = new FeishuModuleRegistrar(FeishuModule.Message, s => s.AddMessageWebApiHttpClient()),
+            [FeishuModule.ChatGroup] = new FeishuModuleRegistrar(FeishuModule.ChatGroup, s => s.AddChatGroupWebApiHttpClient()),
+            [FeishuModule.Approval] = new FeishuModuleRegistrar(FeishuModule.Approval, s => s.AddApprovalWebApiHttpClient()),
+            [FeishuModule.Task] = new FeishuModuleRegistrar(FeishuModule.Task, s => s.AddTaskWebApiHttpClient()),
+            [FeishuModule.Card] = new FeishuModuleRegistrar(FeishuModule.Card, s => s.AddCardsWebApiHttpClient()),
+            [FeishuModule.Attendance] = new FeishuModuleRegistrar(FeishuModule.Attendance, s => s.AddAttendanceWebApiHttpClient()),
+            [FeishuModule.Drive] = new FeishuModuleRegistrar(FeishuModule.Drive, s => s.AddDriveWebApiHttpClient()),
+            [FeishuModule.Wiki] = new FeishuModuleRegistrar(FeishuModule.Wiki, s => s.AddWikiWebApiHttpClient()),
+            [FeishuModule.Docx] = new FeishuModuleRegistrar(FeishuModule.Docx, s => s.AddDocxWebApiHttpClient()),
+            [FeishuModule.Spreadsheets] = new FeishuModuleRegistrar(FeishuModule.Spreadsheets, s => s.AddSpreadsheetsWebApiHttpClient()),
+            [FeishuModule.Bitable] = new FeishuModuleRegistrar(FeishuModule.Bitable, s => s.AddBitableWebApiHttpClient()),
+            [FeishuModule.Calendar] = new FeishuModuleRegistrar(FeishuModule.Calendar, s => s.AddCalendarWebApiHttpClient()),
         };
     }
 

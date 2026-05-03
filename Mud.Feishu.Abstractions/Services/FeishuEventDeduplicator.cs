@@ -83,6 +83,52 @@ public class FeishuEventDeduplicator : IFeishuEventDeduplicator, IDisposable, IA
     }
 
     /// <inheritdoc/>
+    public Task<DeduplicationResult> TryMarkAsProcessingAsync(string eventId, string? appKey = null, TimeSpan? ttl = null, TimeSpan? processingTimeout = null, CancellationToken cancellationToken = default)
+    {
+        var isDuplicate = TryMarkAsProcessing(eventId, appKey);
+        var result = isDuplicate
+            ? DeduplicationResult.Duplicate(eventId, false, GetStatus(eventId, appKey))
+            : DeduplicationResult.Success(eventId);
+        return Task.FromResult(result);
+    }
+
+    /// <inheritdoc/>
+    public Task MarkAsCompletedAsync(string eventId, string? appKey = null, CancellationToken cancellationToken = default)
+    {
+        MarkAsCompleted(eventId, appKey);
+        return Task.CompletedTask;
+    }
+
+    /// <inheritdoc/>
+    public Task RollbackProcessingAsync(string eventId, string? appKey = null, CancellationToken cancellationToken = default)
+    {
+        RollbackProcessing(eventId, appKey);
+        return Task.CompletedTask;
+    }
+
+    /// <inheritdoc/>
+    public Task<bool> IsProcessedAsync(string eventId, string? appKey = null, CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult(IsProcessed(eventId, appKey));
+    }
+
+    /// <inheritdoc/>
+    public Task<DeduplicationStatus> GetStatusAsync(string eventId, string? appKey = null, CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult(GetStatus(eventId, appKey));
+    }
+
+    /// <inheritdoc/>
+    public Task<int> CleanupExpiredAsync(CancellationToken cancellationToken = default)
+    {
+        lock (_lock)
+        {
+            var count = RemoveExpiredEntriesLocked();
+            return Task.FromResult(count);
+        }
+    }
+
+    /// <inheritdoc/>
     public bool TryMarkAsProcessed(string eventId, string? appKey = null)
     {
         ThrowIfDisposed();

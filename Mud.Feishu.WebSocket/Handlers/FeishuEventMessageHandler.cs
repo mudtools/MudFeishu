@@ -31,7 +31,6 @@ public class FeishuEventMessageHandler : JsonMessageHandler
     /// <param name="logger">日志记录器</param>
     /// <param name="eventHandlerFactory">事件处理器工厂</param>
     /// <param name="deduplicator">事件去重服务（可选）</param>
-    /// <param name="distributedDeduplicator">分布式事件去重服务（可选）</param>
     /// <param name="seqIdDeduplicator">SeqID 去重服务（可选）</param>
     /// <param name="interceptors">事件拦截器集合</param>
     /// <param name="options">WebSocket 配置选项</param>

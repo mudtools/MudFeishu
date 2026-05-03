@@ -556,7 +556,8 @@ public class FeishuWebhookServiceBuilder
     /// </summary>
     private void RegisterRetryServices()
     {
-        // 仅在配置中启用时注册
+        _services.TryAddSingleton<IFailedEventStore, InMemoryFailedEventStore>();
+
         _services.PostConfigure<FeishuWebhookOptions>(options =>
         {
             if (options.Retry.EnableRetry)

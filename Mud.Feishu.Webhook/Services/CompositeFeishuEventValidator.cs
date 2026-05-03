@@ -89,46 +89,6 @@ public class CompositeFeishuEventValidator : IFeishuEventValidator
     }
 
     /// <inheritdoc />
-    [Obsolete("此方法使用 HMAC-SHA256 算法，与飞书官方签名算法（SHA-256）不一致，将在未来版本中移除。请使用 ValidateHeaderSignatureAsync 替代。")]
-    public async Task<bool> ValidateSignatureAsync(long timestamp, string nonce, string encrypt, string signature, string encryptKey)
-    {
-        _logger.LogDebug("开始验证请求签名 - Timestamp: {Timestamp}, Nonce: {Nonce}", timestamp, nonce);
-
-        try
-        {
-            // 1. 首先验证时间戳
-            if (!_timestampValidator.ValidateTimestamp(timestamp, Options.TimestampToleranceSeconds))
-            {
-                _logger.LogWarning("时间戳验证失败");
-                return false;
-            }
-
-            // 2. 然后验证 Nonce（防重放攻击）
-            if (!await _nonceValidator.ValidateNonceAsync(nonce, _environmentService.IsProduction))
-            {
-                _logger.LogWarning("Nonce 验证失败");
-                return false;
-            }
-
-            // 3. 最后验证签名
-            var signatureResult = await _signatureValidator.ValidateSignatureAsync(timestamp, nonce, encrypt, signature, encryptKey);
-            if (!signatureResult)
-            {
-                _logger.LogWarning("签名验证失败");
-                return false;
-            }
-
-            _logger.LogDebug("请求签名验证成功");
-            return true;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "验证请求签名时发生错误");
-            return false;
-        }
-    }
-
-    /// <inheritdoc />
     public async Task<bool> ValidateHeaderSignatureAsync(long timestamp, string nonce, string body, string? headerSignature, string encryptKey)
     {
         _logger.LogDebug("开始验证请求头签名 - Timestamp: {Timestamp}, Nonce: {Nonce}", timestamp, nonce);

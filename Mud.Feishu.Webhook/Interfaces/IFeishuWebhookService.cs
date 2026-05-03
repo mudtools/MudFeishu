@@ -47,14 +47,6 @@ public interface IFeishuWebhookService
     Task<(bool Success, string? ErrorReason)> HandleEventAsync(EventData eventData, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 验证请求签名（使用 HMAC-SHA256 算法）
-    /// </summary>
-    /// <param name="request">Webhook 请求</param>
-    /// <returns>是否验证通过</returns>
-    [Obsolete("此方法使用 HMAC-SHA256 算法，与飞书官方签名算法（SHA-256）不一致，将在未来版本中移除。请使用 HandleEventAsync(FeishuWebhookRequest, string) 替代。")]
-    Task<bool> ValidateRequestSignature(FeishuWebhookRequest request);
-
-    /// <summary>
     /// 验证请求头签名（使用飞书官方 SHA-256 算法）
     /// </summary>
     /// <param name="request">Webhook 请求</param>

@@ -20,22 +20,6 @@ public interface ISignatureValidator
     void SetCurrentAppKey(string appKey);
 
     /// <summary>
-    /// 验证请求签名（使用 HMAC-SHA256 算法）
-    /// </summary>
-    /// <param name="timestamp">请求时间戳</param>
-    /// <param name="nonce">随机数，用于防重放攻击</param>
-    /// <param name="encrypt">加密的事件数据</param>
-    /// <param name="signature">待验证的签名</param>
-    /// <param name="encryptKey">加密密钥</param>
-    /// <returns>如果签名验证通过返回 true，否则返回 false</returns>
-    /// <remarks>
-    /// 签名计算方式：HMAC-SHA256(timestamp + "\n" + nonce + "\n" + encrypt, encryptKey)
-    /// 使用固定时间比较防止计时攻击
-    /// </remarks>
-    [Obsolete("此方法使用 HMAC-SHA256 算法，与飞书官方签名算法（SHA-256）不一致，将在未来版本中移除。请使用 ValidateHeaderSignatureAsync 替代。")]
-    Task<bool> ValidateSignatureAsync(long timestamp, string nonce, string encrypt, string signature, string encryptKey);
-
-    /// <summary>
     /// 验证请求头中的签名（使用 SHA-256 算法）
     /// </summary>
     /// <param name="timestamp">请求时间戳</param>

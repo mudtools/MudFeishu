@@ -14,7 +14,7 @@ namespace Mud.Feishu.WebSocket.Handlers;
 /// <summary>
 /// Ping/Pong消息处理器
 /// </summary>
-public class PingPongMessageHandler : JsonMessageHandler, IPongHandler
+public class PingPongMessageHandler : JsonMessageHandler
 {
     private readonly Func<string, Task> _sendMessageCallback;
     private readonly FeishuWebSocketOptions _options;

@@ -151,27 +151,6 @@ public class FeishuAppConfig
     public bool IsDefault { get; set; } = false;
 
     /// <summary>
-    /// 弹性策略配置
-    /// </summary>
-    /// <remarks>
-    /// 默认值: null（不启用熔断等高级策略）
-    /// 配置熔断器等高级弹性策略。重试和超时策略由 RetryCount、RetryDelayMs、TimeOut 属性直接控制。
-    /// <para>
-    /// 示例配置:
-    /// <code>
-    /// ResiliencePolicy = new ResiliencePolicyOptions
-    /// {
-    ///     CircuitBreakerEnabled = true,
-    ///     CircuitBreakerThreshold = 5,
-    ///     CircuitBreakerDurationSeconds = 30
-    /// }
-    /// </code>
-    /// </para>
-    /// </remarks>
-    [Obsolete("此配置从未被实际消费，熔断功能未实现。将在未来版本中移除。")]
-    public ResiliencePolicyOptions? ResiliencePolicy { get; set; }
-
-    /// <summary>
     /// 验证配置项的有效性
     /// </summary>
     /// <exception cref="InvalidOperationException">当配置项无效时抛出</exception>
@@ -221,17 +200,6 @@ public class FeishuAppConfig
         {
             IsDefault = true;
         }
-
-#pragma warning disable CS0618 // ResiliencePolicy 已废弃，但需保持向后兼容直到正式移除
-        if (ResiliencePolicy != null)
-        {
-            if (ResiliencePolicy.CircuitBreakerThreshold < 2 || ResiliencePolicy.CircuitBreakerThreshold > 100)
-                throw new InvalidOperationException("CircuitBreakerThreshold 必须在 2-100 之间");
-
-            if (ResiliencePolicy.CircuitBreakerDurationSeconds < 5 || ResiliencePolicy.CircuitBreakerDurationSeconds > 300)
-                throw new InvalidOperationException("CircuitBreakerDurationSeconds 必须在 5-300 秒之间");
-        }
-#pragma warning restore CS0618 // ResiliencePolicy 已废弃，但需保持向后兼容直到正式移除
     }
 
     /// <summary>

@@ -30,18 +30,6 @@ public interface IFeishuEventValidator
     Task<bool> ValidateSubscriptionRequestAsync(EventVerificationRequest request, string expectedToken, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 验证请求签名
-    /// </summary>
-    /// <param name="timestamp">时间戳</param>
-    /// <param name="nonce">随机数</param>
-    /// <param name="encrypt">加密数据</param>
-    /// <param name="signature">签名</param>
-    /// <param name="encryptKey">加密密钥</param>
-    /// <returns>是否验证通过</returns>
-    [Obsolete("此方法使用 HMAC-SHA256 算法，与飞书官方签名算法（SHA-256）不一致，将在未来版本中移除。请使用 ValidateHeaderSignatureAsync 替代。")]
-    Task<bool> ValidateSignatureAsync(long timestamp, string nonce, string encrypt, string signature, string encryptKey);
-
-    /// <summary>
     /// 验证请求头中的签名（X-Lark-Signature）
     /// </summary>
     /// <param name="timestamp">时间戳</param>

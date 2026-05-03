@@ -299,68 +299,6 @@ public class FeishuWebhookService : IFeishuWebhookService
         }
     }
 
-    /// <summary>
-    /// 验证请求签名（使用 HMAC-SHA256 算法，已废弃）
-    /// </summary>
-    [Obsolete("此方法使用 HMAC-SHA256 算法，与飞书官方签名算法（SHA-256）不一致，将在未来版本中移除。请使用 HandleEventAsync(FeishuWebhookRequest, string) 替代。")]
-#pragma warning disable CS0618 // ValidateSignatureAsync 已标记为 Obsolete，但需保持向后兼容
-    public async Task<bool> ValidateRequestSignature(FeishuWebhookRequest request)
-#pragma warning restore CS0618
-    {
-        // 记录签名验证开始
-        using var signatureMetrics = FeishuMetricsHelper.RecordEventHandling("signature_validation", "webhook");
-
-        try
-        {
-            if (string.IsNullOrEmpty(request.Encrypt) ||
-                string.IsNullOrEmpty(request.Signature) ||
-                string.IsNullOrEmpty(request.Nonce))
-            {
-                _logger.LogWarning("请求缺少必要的签名字段, AppKey: {AppKey}", _appKeyAccessor.CurrentAppKey ?? "null");
-                FeishuMetricsHelper.RecordEventHandlingFailure("signature_validation", "missing_fields");
-                return false;
-            }
-
-            // 使用密钥提供程序获取加密密钥
-            string? encryptKey = null;
-            if (!string.IsNullOrEmpty(_appKeyAccessor.CurrentAppKey))
-            {
-                encryptKey = await _encryptKeyProvider.GetEncryptKeyAsync(_appKeyAccessor.CurrentAppKey!);
-            }
-
-            if (string.IsNullOrEmpty(encryptKey))
-            {
-                _logger.LogError("缺少加密密钥，无法验证签名, AppKey: {AppKey}", _appKeyAccessor.CurrentAppKey ?? "null");
-                FeishuMetricsHelper.RecordEventHandlingFailure("signature_validation", "missing_encrypt_key");
-                return false;
-            }
-
-            var isValid = await _validator.ValidateSignatureAsync(
-                request.Timestamp,
-                request.Nonce,
-                request.Encrypt!,
-                request.Signature,
-                encryptKey!);
-
-            if (isValid)
-            {
-                FeishuMetricsHelper.RecordEventHandlingSuccess("signature_validation");
-            }
-            else
-            {
-                FeishuMetricsHelper.RecordEventHandlingFailure("signature_validation", "invalid_signature");
-            }
-
-            return isValid;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "验证请求签名时发生错误, AppKey: {AppKey}", _appKeyAccessor.CurrentAppKey ?? "null");
-            FeishuMetricsHelper.RecordEventHandlingFailure("signature_validation", ex.GetType().Name);
-            return false;
-        }
-    }
-
     /// <inheritdoc />
     public async Task<bool> HandleEventAsync(FeishuWebhookRequest request, string body)
     {

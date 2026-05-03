@@ -205,10 +205,7 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
             _options,
             (message) => SendMessageAsync(message));
 
-        if (pingPongHandler is IPongHandler pongHandler)
-        {
-            pongHandler.PongReceived += _onPongReceived;
-        }
+        pingPongHandler.PongReceived += _onPongReceived;
 
         var authHandler = new AuthMessageHandler(
             _loggerFactory.CreateLogger<AuthMessageHandler>(),

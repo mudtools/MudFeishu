@@ -73,10 +73,7 @@ public static class FeishuServiceCollectionExtensions
         {
             var clientName = $"feishu-{config.AppKey}";
             var baseAddress = config.BaseUrl ?? "https://open.feishu.cn";
-            var allowCustomBaseUrl = config.AllowCustomBaseUrl;
             var timeOut = config.TimeOut;
-
-            ValidateFeishuBaseUrl(baseAddress, allowCustomBaseUrl);
 
             services.AddMudHttpClient(
                 clientName,
@@ -132,23 +129,4 @@ public static class FeishuServiceCollectionExtensions
         return services;
     }
 
-    /// <summary>
-    /// 验证飞书 BaseUrl 是否安全（简化版，仅验证飞书官方域名）
-    /// </summary>
-    private static void ValidateFeishuBaseUrl(string? baseUrl, bool allowCustomBaseUrl)
-    {
-        if (string.IsNullOrWhiteSpace(baseUrl))
-            return;
-
-        if (!Uri.TryCreate(baseUrl, UriKind.Absolute, out var uri) ||
-            !Uri.IsWellFormedUriString(baseUrl, UriKind.Absolute))
-        {
-            throw new ArgumentException($"URL 格式无效: {baseUrl}", nameof(baseUrl));
-        }
-
-        if (!string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
-        {
-            throw new InvalidOperationException($"仅允许 HTTPS 协议，当前协议: {uri.Scheme}");
-        }
-    }
 }

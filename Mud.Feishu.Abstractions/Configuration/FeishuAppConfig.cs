@@ -192,8 +192,8 @@ public class FeishuAppConfig
         if (!string.IsNullOrEmpty(BaseUrl))
         {
             var uri = new Uri(BaseUrl);
-            if (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps)
-                throw new InvalidOperationException("BaseUrl 必须是 HTTP 或 HTTPS 协议");
+            if (!string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("BaseUrl 仅允许 HTTPS 协议");
 
             if (!AllowCustomBaseUrl)
             {

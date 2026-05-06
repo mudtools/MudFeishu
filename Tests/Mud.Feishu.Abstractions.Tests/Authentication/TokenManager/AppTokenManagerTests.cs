@@ -321,7 +321,7 @@ public class AppTokenManagerWithStoreTests : IDisposable
         await _appTokenManager.GetTokenAsync(CancellationToken.None);
 
         _tokenStoreMock.Verify(
-            x => x.SetAccessTokenAsync("AppAccessToken:test", expectedToken, 7200, It.IsAny<CancellationToken>()),
+            x => x.SetAccessTokenAsync("AppAccessToken:test", It.Is<string>(s => s.EndsWith("|" + expectedToken)), 7200, It.IsAny<CancellationToken>()),
             Times.Once);
     }
 }

@@ -644,7 +644,7 @@ public class TokenManagerWithStoreConcurrencyTests : IDisposable
         await _appTokenManager.GetTokenAsync(CancellationToken.None);
 
         _tokenStoreMock.Verify(
-            x => x.SetAccessTokenAsync(It.IsAny<string>(), expectedToken, 7200, It.IsAny<CancellationToken>()),
+            x => x.SetAccessTokenAsync(It.IsAny<string>(), It.Is<string>(s => s.EndsWith("|" + expectedToken)), 7200, It.IsAny<CancellationToken>()),
             Times.Once);
     }
 

@@ -51,7 +51,8 @@ public class FeishuAppContext : IFeishuAppContext, IMudAppContext, IDisposable
             "tenantaccesstoken" => TenantTokenManager,
             "appaccesstoken" => AppTokenManager,
             "useraccesstoken" => UserTokenManager,
-            _ => TenantTokenManager
+            _ => throw new InvalidOperationException(
+                $"不支持的令牌类型: '{tokenType}'。支持的类型: TenantAccessToken, AppAccessToken, UserAccessToken")
         };
     }
 

@@ -276,12 +276,14 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
             var remainingSeconds = (tokenInfo.AccessTokenExpireTime - DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()) / 1000L;
             if (remainingSeconds > 0)
             {
-                await _userTokenStore.SetAccessTokenAsync(userId, _tokenTypeKey, tokenInfo.AccessToken!, remainingSeconds, cancellationToken).ConfigureAwait(false);
+                var encodedAccessToken = EncodeStoredValue(tokenInfo.AccessToken!, tokenInfo.AccessTokenExpireTime);
+                await _userTokenStore.SetAccessTokenAsync(userId, _tokenTypeKey, encodedAccessToken, remainingSeconds, cancellationToken).ConfigureAwait(false);
             }
 
             if (!string.IsNullOrEmpty(tokenInfo.RefreshToken))
             {
-                await _userTokenStore.SetRefreshTokenAsync(userId, _tokenTypeKey, tokenInfo.RefreshToken!, cancellationToken).ConfigureAwait(false);
+                var encodedRefreshToken = EncodeStoredValue(tokenInfo.RefreshToken, tokenInfo.RefreshTokenExpireTime);
+                await _userTokenStore.SetRefreshTokenAsync(userId, _tokenTypeKey, encodedRefreshToken, cancellationToken).ConfigureAwait(false);
             }
         }
         catch (Exception ex)
@@ -297,27 +299,37 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
 
         try
         {
-            var accessToken = await _userTokenStore.GetAccessTokenAsync(userId, _tokenTypeKey, cancellationToken).ConfigureAwait(false);
-            if (string.IsNullOrEmpty(accessToken))
+            var storedAccessToken = await _userTokenStore.GetAccessTokenAsync(userId, _tokenTypeKey, cancellationToken).ConfigureAwait(false);
+            if (string.IsNullOrEmpty(storedAccessToken))
                 return null;
 
-            var refreshToken = await _userTokenStore.GetRefreshTokenAsync(userId, _tokenTypeKey, cancellationToken).ConfigureAwait(false);
+            var (accessToken, accessTokenExpireMs) = DecodeStoredValue(storedAccessToken);
+
+            var storedRefreshToken = await _userTokenStore.GetRefreshTokenAsync(userId, _tokenTypeKey, cancellationToken).ConfigureAwait(false);
+            var (refreshToken, refreshTokenExpireMs) = !string.IsNullOrEmpty(storedRefreshToken)
+                ? DecodeStoredValue(storedRefreshToken)
+                : (null, 0L);
 
             _logger.LogDebug("Restored user token from IUserTokenStore for userId: {UserId}", userId);
 
             var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+            if (accessTokenExpireMs > 0 && accessTokenExpireMs <= now)
+            {
+                _logger.LogDebug("Restored user access token has expired for userId: {UserId}, skipping", userId);
+                return null;
+            }
+
             var safeExpireSeconds = _options.TokenRefreshThreshold + 60;
 
             return new UserTokenInfo
             {
                 UserId = userId,
-                OpenId = userId,
+                OpenId = null,
                 AccessToken = accessToken,
                 RefreshToken = refreshToken,
-                AccessTokenExpireTime = now + (safeExpireSeconds * 1000L),
-                RefreshTokenExpireTime = !string.IsNullOrEmpty(refreshToken)
-                    ? now + (safeExpireSeconds * 1000L)
-                    : 0
+                AccessTokenExpireTime = accessTokenExpireMs > 0 ? accessTokenExpireMs : now + (safeExpireSeconds * 1000L),
+                RefreshTokenExpireTime = refreshTokenExpireMs > 0 ? refreshTokenExpireMs : 0
             };
         }
         catch (Exception ex)
@@ -325,5 +337,19 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
             _logger.LogWarning(ex, "Failed to restore user token from IUserTokenStore for userId: {UserId}", userId);
             return null;
         }
+    }
+
+    private static string EncodeStoredValue(string token, long expireTimestampMs)
+        => $"{expireTimestampMs}|{token}";
+
+    private static (string Token, long ExpireTimestampMs) DecodeStoredValue(string storedValue)
+    {
+        var separatorIndex = storedValue.IndexOf('|');
+        if (separatorIndex > 0 && long.TryParse(storedValue.AsSpan(0, separatorIndex), out var expireMs))
+        {
+            return (storedValue.Substring(separatorIndex + 1), expireMs);
+        }
+
+        return (storedValue, 0);
     }
 }

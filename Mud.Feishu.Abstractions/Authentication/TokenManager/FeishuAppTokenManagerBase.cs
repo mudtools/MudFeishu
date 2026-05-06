@@ -80,17 +80,36 @@ internal abstract class FeishuAppTokenManagerBase : TokenManagerBase
 
         try
         {
-            var storedToken = await _tokenStore.GetAccessTokenAsync(_tokenTypeKey, cancellationToken).ConfigureAwait(false);
-            if (!string.IsNullOrEmpty(storedToken))
+            var storedValue = await _tokenStore.GetAccessTokenAsync(_tokenTypeKey, cancellationToken).ConfigureAwait(false);
+            if (string.IsNullOrEmpty(storedValue))
+                return null;
+
+            var (accessToken, expireTimestampMs) = DecodeStoredToken(storedValue);
+
+            if (expireTimestampMs > 0)
             {
+                var remainingMs = expireTimestampMs - DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                if (remainingMs <= _options.TokenRefreshThreshold * 1000L)
+                {
+                    _logger.LogDebug("Restored token from ITokenStore is near expiration for AppId: {AppId}, skipping", _options.AppId);
+                    return null;
+                }
+
                 _logger.LogDebug("Restored token from ITokenStore for AppId: {AppId}, TokenType: {TokenType}", _options.AppId, _tokenTypeKey);
-                var safeExpireSeconds = _options.TokenRefreshThreshold + 60;
                 return new CredentialToken
                 {
-                    AccessToken = storedToken,
-                    Expire = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + (safeExpireSeconds * 1000L)
+                    AccessToken = accessToken,
+                    Expire = expireTimestampMs
                 };
             }
+
+            _logger.LogDebug("Restored token from ITokenStore (no expiration info) for AppId: {AppId}, TokenType: {TokenType}", _options.AppId, _tokenTypeKey);
+            var safeExpireSeconds = _options.TokenRefreshThreshold + 60;
+            return new CredentialToken
+            {
+                AccessToken = accessToken,
+                Expire = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + (safeExpireSeconds * 1000L)
+            };
         }
         catch (Exception ex)
         {
@@ -107,11 +126,27 @@ internal abstract class FeishuAppTokenManagerBase : TokenManagerBase
 
         try
         {
-            await _tokenStore.SetAccessTokenAsync(tokenType, accessToken, expiresInSeconds, cancellationToken).ConfigureAwait(false);
+            var expireTimestampMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + (expiresInSeconds * 1000L);
+            var encodedValue = EncodeStoredToken(accessToken, expireTimestampMs);
+            await _tokenStore.SetAccessTokenAsync(tokenType, encodedValue, expiresInSeconds, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Failed to persist token to ITokenStore for tokenType: {TokenType}", tokenType);
         }
+    }
+
+    private static string EncodeStoredToken(string accessToken, long expireTimestampMs)
+        => $"{expireTimestampMs}|{accessToken}";
+
+    private static (string AccessToken, long ExpireTimestampMs) DecodeStoredToken(string storedValue)
+    {
+        var separatorIndex = storedValue.IndexOf('|');
+        if (separatorIndex > 0 && long.TryParse(storedValue.AsSpan(0, separatorIndex), out var expireMs))
+        {
+            return (storedValue.Substring(separatorIndex + 1), expireMs);
+        }
+
+        return (storedValue, 0);
     }
 }

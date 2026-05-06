@@ -99,10 +99,13 @@ dotnet add package Mud.Feishu.Redis
       "AppId": "your_feishu_app_id",
       "AppSecret": "your_feishu_app_secret",
       "BaseUrl": "https://open.feishu.cn",
+      "AllowCustomBaseUrl": false,
       "TimeOut": 30,
       "RetryCount": 3,
       "RetryDelayMs": 1000,
-      "EnableLogging": true
+      "TokenRefreshThreshold": 300,
+      "EnableLogging": true,
+      "IsDefault": true
     }
   ],
   "FeishuWebSocket": {

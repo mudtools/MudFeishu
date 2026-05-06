@@ -14,12 +14,13 @@ namespace Mud.Feishu.Abstractions;
 /// </summary>
 /// <remarks>
 /// 实现 IValidateOptions 接口，在依赖注入时自动验证配置。
+/// 支持单个 FeishuAppConfig 和 List&lt;FeishuAppConfig&gt; 两种配置模式的验证。
 /// 内部调用 FeishuAppConfig.Validate() 方法，保持验证逻辑一致性。
 /// </remarks>
-public class FeishuAppConfigValidator : IValidateOptions<FeishuAppConfig>
+public class FeishuAppConfigValidator : IValidateOptions<FeishuAppConfig>, IValidateOptions<List<FeishuAppConfig>>
 {
     /// <summary>
-    /// 验证配置选项
+    /// 验证单个 FeishuAppConfig 配置选项
     /// </summary>
     /// <param name="name">配置名称</param>
     /// <param name="options">配置选项实例</param>
@@ -40,5 +41,39 @@ public class FeishuAppConfigValidator : IValidateOptions<FeishuAppConfig>
         {
             return ValidateOptionsResult.Fail($"FeishuAppConfig 配置验证失败: {ex.Message}");
         }
+    }
+
+    /// <summary>
+    /// 验证 List&lt;FeishuAppConfig&gt; 配置选项列表
+    /// </summary>
+    /// <param name="name">配置名称</param>
+    /// <param name="options">配置选项列表实例</param>
+    /// <returns>验证结果</returns>
+    public ValidateOptionsResult Validate(string? name, List<FeishuAppConfig> options)
+    {
+        if (options == null || options.Count == 0)
+        {
+            return ValidateOptionsResult.Fail("FeishuAppConfig 配置列表不能为 null 或空");
+        }
+
+        var errors = new List<string>();
+        for (int i = 0; i < options.Count; i++)
+        {
+            try
+            {
+                options[i].Validate();
+            }
+            catch (InvalidOperationException ex)
+            {
+                errors.Add($"应用[{i}] (AppKey: {options[i].AppKey ?? "null"}): {ex.Message}");
+            }
+        }
+
+        if (errors.Count > 0)
+        {
+            return ValidateOptionsResult.Fail($"FeishuAppConfig 配置验证失败:\n{string.Join("\n", errors)}");
+        }
+
+        return ValidateOptionsResult.Success;
     }
 }

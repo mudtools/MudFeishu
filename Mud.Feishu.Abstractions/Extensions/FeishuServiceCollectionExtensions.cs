@@ -37,6 +37,7 @@ public static class FeishuServiceCollectionExtensions
         services.Configure<List<FeishuAppConfig>>(options => configuration.GetSection(section).Bind(options));
 
         services.AddSingleton<IValidateOptions<FeishuAppConfig>, FeishuAppConfigValidator>();
+        services.AddSingleton<IValidateOptions<List<FeishuAppConfig>>, FeishuAppConfigValidator>();
 
         return services;
     }
@@ -54,6 +55,7 @@ public static class FeishuServiceCollectionExtensions
 
         services.Configure(configureOptions);
         services.AddSingleton<IValidateOptions<FeishuAppConfig>, FeishuAppConfigValidator>();
+        services.AddSingleton<IValidateOptions<List<FeishuAppConfig>>, FeishuAppConfigValidator>();
         return services;
     }
 
@@ -85,28 +87,29 @@ public static class FeishuServiceCollectionExtensions
                 });
         }
 
-        var firstConfig = configs.FirstOrDefault();
-        if (firstConfig != null)
+        var defaultConfig = configs.FirstOrDefault(c => c.IsDefault) ?? configs.FirstOrDefault();
+        if (defaultConfig != null)
         {
             services.AddMudHttpResilienceDecorator(resilienceOptions =>
             {
                 resilienceOptions.Retry.Enabled = true;
-                resilienceOptions.Retry.MaxRetryAttempts = firstConfig.RetryCount;
-                resilienceOptions.Retry.DelayMilliseconds = firstConfig.RetryDelayMs;
+                resilienceOptions.Retry.MaxRetryAttempts = defaultConfig.RetryCount;
+                resilienceOptions.Retry.DelayMilliseconds = defaultConfig.RetryDelayMs;
                 resilienceOptions.Retry.UseExponentialBackoff = true;
                 resilienceOptions.Timeout.Enabled = true;
-                resilienceOptions.Timeout.TimeoutSeconds = firstConfig.TimeOut;
+                resilienceOptions.Timeout.TimeoutSeconds = defaultConfig.TimeOut;
             });
         }
 
         if (configs.Count > 1)
         {
-            var nonDefaultConfigs = configs.Where(c => c != firstConfig && (c.RetryCount != firstConfig.RetryCount || c.RetryDelayMs != firstConfig.RetryDelayMs || c.TimeOut != firstConfig.TimeOut)).ToList();
+            var nonDefaultConfigs = configs.Where(c => c != defaultConfig && (c.RetryCount != defaultConfig!.RetryCount || c.RetryDelayMs != defaultConfig.RetryDelayMs || c.TimeOut != defaultConfig.TimeOut)).ToList();
             if (nonDefaultConfigs.Count > 0)
             {
                 System.Diagnostics.Debug.WriteLine(
-                    $"[MudFeishu] 多应用模式下弹性策略（重试、超时）为全局共享配置，当前使用默认应用 '{firstConfig!.AppKey}' 的配置。" +
-                    $"以下应用的自定义 Resilience 配置将被忽略: {string.Join(", ", nonDefaultConfigs.Select(c => c.AppKey))}");
+                    $"[MudFeishu] 多应用模式下弹性策略（重试、超时）为全局共享配置，当前使用默认应用 '{defaultConfig!.AppKey}' 的配置。" +
+                    $"以下应用的自定义 Resilience 配置将被忽略: {string.Join(", ", nonDefaultConfigs.Select(c => c.AppKey))}。" +
+                    $"这是 Mud.HttpUtils 框架的设计限制，所有命名客户端共享同一组弹性策略。");
             }
         }
 

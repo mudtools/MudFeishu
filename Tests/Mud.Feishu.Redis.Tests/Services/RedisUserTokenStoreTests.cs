@@ -13,12 +13,14 @@ public class RedisUserTokenStoreTests
 {
     private readonly Mock<IConnectionMultiplexer> _connectionMultiplexerMock;
     private readonly Mock<IDatabase> _databaseMock;
+    private readonly Mock<ILogger<RedisTokenStore>> _tokenStoreLoggerMock;
     private readonly Mock<ILogger<RedisUserTokenStore>> _loggerMock;
 
     public RedisUserTokenStoreTests()
     {
         _connectionMultiplexerMock = new Mock<IConnectionMultiplexer>();
         _databaseMock = new Mock<IDatabase>();
+        _tokenStoreLoggerMock = new Mock<ILogger<RedisTokenStore>>();
         _loggerMock = new Mock<ILogger<RedisUserTokenStore>>();
 
         _connectionMultiplexerMock
@@ -38,16 +40,28 @@ public class RedisUserTokenStoreTests
             .ReturnsAsync(2L);
     }
 
+    private RedisTokenStore CreateInnerStore() =>
+        new RedisTokenStore(_connectionMultiplexerMock.Object, _tokenStoreLoggerMock.Object);
+
+    private RedisUserTokenStore CreateSut() =>
+        new RedisUserTokenStore(CreateInnerStore(), _connectionMultiplexerMock.Object, _loggerMock.Object);
+
+    [Fact]
+    public void Constructor_WhenInnerStoreIsNull_ShouldThrowArgumentNullException()
+    {
+        Assert.Throws<ArgumentNullException>(() => new RedisUserTokenStore(null!, _connectionMultiplexerMock.Object, _loggerMock.Object));
+    }
+
     [Fact]
     public void Constructor_WhenRedisIsNull_ShouldThrowArgumentNullException()
     {
-        Assert.Throws<ArgumentNullException>(() => new RedisUserTokenStore(null!, _loggerMock.Object));
+        Assert.Throws<ArgumentNullException>(() => new RedisUserTokenStore(CreateInnerStore(), null!, _loggerMock.Object));
     }
 
     [Fact]
     public void Constructor_WhenLoggerIsNull_ShouldThrowArgumentNullException()
     {
-        Assert.Throws<ArgumentNullException>(() => new RedisUserTokenStore(_connectionMultiplexerMock.Object, null!));
+        Assert.Throws<ArgumentNullException>(() => new RedisUserTokenStore(CreateInnerStore(), _connectionMultiplexerMock.Object, null!));
     }
 
     [Fact]
@@ -57,7 +71,7 @@ public class RedisUserTokenStoreTests
             .Setup(x => x.StringGetAsync(It.IsAny<RedisKey>(), It.IsAny<CommandFlags>()))
             .ReturnsAsync("app_access_token");
 
-        var store = new RedisUserTokenStore(_connectionMultiplexerMock.Object, _loggerMock.Object);
+        var store = CreateSut();
 
         var result = await store.GetAccessTokenAsync("app");
 
@@ -67,7 +81,7 @@ public class RedisUserTokenStoreTests
     [Fact]
     public async Task GetAccessTokenAsync_WithTokenTypeOnly_WhenTokenNotExists_ShouldReturnNull()
     {
-        var store = new RedisUserTokenStore(_connectionMultiplexerMock.Object, _loggerMock.Object);
+        var store = CreateSut();
 
         var result = await store.GetAccessTokenAsync("app");
 
@@ -77,7 +91,7 @@ public class RedisUserTokenStoreTests
     [Fact]
     public async Task SetAccessTokenAsync_WithTokenTypeOnly_ShouldNotThrow()
     {
-        var store = new RedisUserTokenStore(_connectionMultiplexerMock.Object, _loggerMock.Object);
+        var store = CreateSut();
 
         await store.SetAccessTokenAsync("app", "token", 7200);
     }
@@ -89,7 +103,7 @@ public class RedisUserTokenStoreTests
             .Setup(x => x.StringGetAsync(It.IsAny<RedisKey>(), It.IsAny<CommandFlags>()))
             .ReturnsAsync("app_refresh_token");
 
-        var store = new RedisUserTokenStore(_connectionMultiplexerMock.Object, _loggerMock.Object);
+        var store = CreateSut();
 
         var result = await store.GetRefreshTokenAsync("app");
 
@@ -99,7 +113,7 @@ public class RedisUserTokenStoreTests
     [Fact]
     public async Task SetRefreshTokenAsync_WithTokenTypeOnly_ShouldNotThrow()
     {
-        var store = new RedisUserTokenStore(_connectionMultiplexerMock.Object, _loggerMock.Object);
+        var store = CreateSut();
 
         await store.SetRefreshTokenAsync("app", "refresh_token");
     }
@@ -107,7 +121,7 @@ public class RedisUserTokenStoreTests
     [Fact]
     public async Task RemoveAsync_WithTokenTypeOnly_ShouldNotThrow()
     {
-        var store = new RedisUserTokenStore(_connectionMultiplexerMock.Object, _loggerMock.Object);
+        var store = CreateSut();
 
         await store.RemoveAsync("app");
     }
@@ -119,7 +133,7 @@ public class RedisUserTokenStoreTests
             .Setup(x => x.StringGetAsync(It.IsAny<RedisKey>(), It.IsAny<CommandFlags>()))
             .ReturnsAsync("user_access_token");
 
-        var store = new RedisUserTokenStore(_connectionMultiplexerMock.Object, _loggerMock.Object);
+        var store = CreateSut();
 
         var result = await store.GetAccessTokenAsync("ou_xxx", "user");
 
@@ -129,7 +143,7 @@ public class RedisUserTokenStoreTests
     [Fact]
     public async Task GetAccessTokenAsync_WithUserIdAndTokenType_WhenTokenNotExists_ShouldReturnNull()
     {
-        var store = new RedisUserTokenStore(_connectionMultiplexerMock.Object, _loggerMock.Object);
+        var store = CreateSut();
 
         var result = await store.GetAccessTokenAsync("ou_xxx", "user");
 
@@ -139,7 +153,7 @@ public class RedisUserTokenStoreTests
     [Fact]
     public async Task SetAccessTokenAsync_WithUserIdAndTokenType_ShouldNotThrow()
     {
-        var store = new RedisUserTokenStore(_connectionMultiplexerMock.Object, _loggerMock.Object);
+        var store = CreateSut();
 
         await store.SetAccessTokenAsync("ou_xxx", "user", "user_token", 3600);
     }
@@ -151,7 +165,7 @@ public class RedisUserTokenStoreTests
             .Setup(x => x.StringGetAsync(It.IsAny<RedisKey>(), It.IsAny<CommandFlags>()))
             .ReturnsAsync("user_refresh_token");
 
-        var store = new RedisUserTokenStore(_connectionMultiplexerMock.Object, _loggerMock.Object);
+        var store = CreateSut();
 
         var result = await store.GetRefreshTokenAsync("ou_xxx", "user");
 
@@ -161,7 +175,7 @@ public class RedisUserTokenStoreTests
     [Fact]
     public async Task SetRefreshTokenAsync_WithUserIdAndTokenType_ShouldNotThrow()
     {
-        var store = new RedisUserTokenStore(_connectionMultiplexerMock.Object, _loggerMock.Object);
+        var store = CreateSut();
 
         await store.SetRefreshTokenAsync("ou_xxx", "user", "user_refresh");
     }
@@ -169,7 +183,7 @@ public class RedisUserTokenStoreTests
     [Fact]
     public async Task RemoveAsync_WithUserIdAndTokenType_ShouldNotThrow()
     {
-        var store = new RedisUserTokenStore(_connectionMultiplexerMock.Object, _loggerMock.Object);
+        var store = CreateSut();
 
         await store.RemoveAsync("ou_xxx", "user");
     }

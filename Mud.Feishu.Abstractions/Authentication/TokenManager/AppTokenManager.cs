@@ -7,9 +7,10 @@
 
 using Microsoft.Extensions.Options;
 using Mud.Feishu.Abstractions;
+using Mud.Feishu.Abstractions.Authentication;
 using Mud.Feishu.Exceptions;
 
-namespace Mud.Feishu.TokenManager;
+namespace Mud.Feishu.Abstractions.Authentication;
 
 /// <summary>
 /// 应用令牌管理器
@@ -20,14 +21,8 @@ namespace Mud.Feishu.TokenManager;
 /// 继承 Mud.HttpUtils v2.0 的 TokenManagerBase，获得内置并发安全、自动清理、重试等能力。
 /// 可选注入 ITokenStore 实现分布式令牌持久化（如 Redis）。
 /// </remarks>
-internal class AppTokenManager : TokenManagerBase, IAppTokenManager
+internal class AppTokenManager : FeishuAppTokenManagerBase, IAppTokenManager
 {
-    private readonly IFeishuAuthentication _authenticationApi;
-    private readonly FeishuAppConfig _options;
-    private readonly ILogger<AppTokenManager> _logger;
-    private readonly ITokenStore? _tokenStore;
-    private readonly string _tokenTypeKey;
-
     /// <summary>
     /// 初始化 AppTokenManager 实例
     /// </summary>
@@ -40,43 +35,19 @@ internal class AppTokenManager : TokenManagerBase, IAppTokenManager
         IOptions<FeishuAppConfig> options,
         ILogger<AppTokenManager> logger,
         ITokenStore? tokenStore = null)
+        : base(authenticationApi, options, logger, tokenStore, "AppAccessToken")
     {
-        _authenticationApi = authenticationApi ?? throw new ArgumentNullException(nameof(authenticationApi));
-        _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _tokenStore = tokenStore;
-        _tokenTypeKey = $"AppAccessToken:{_options.AppKey}";
     }
 
-    /// <summary>
-    /// 令牌过期提前量（秒），提前刷新令牌
-    /// </summary>
-    protected override int ExpireThresholdSeconds => _options.TokenRefreshThreshold;
-
-    /// <inheritdoc />
-    public override async Task<string> GetTokenAsync(CancellationToken cancellationToken = default)
+    protected override async Task<(string AccessToken, long ExpireSeconds)> RefreshTokenFromApiAsync(CancellationToken cancellationToken)
     {
-        return await GetOrRefreshTokenAsync(cancellationToken).ConfigureAwait(false);
-    }
-
-    /// <summary>
-    /// 重写令牌获取流程，优先从 ITokenStore 恢复令牌，避免不必要的 API 调用。
-    /// </summary>
-    protected override async Task<CredentialToken> RefreshTokenCoreAsync(CancellationToken cancellationToken)
-    {
-        var restoredToken = await TryRestoreFromStoreAsync(cancellationToken).ConfigureAwait(false);
-        if (restoredToken != null)
-            return restoredToken;
-
-        _logger.LogInformation("Refreshing AppAccessToken for AppId: {AppId}", _options.AppId);
-
         var credentials = new AppCredentials
         {
-            AppId = _options.AppId,
-            AppSecret = _options.AppSecret
+            AppId = Options.AppId,
+            AppSecret = Options.AppSecret
         };
 
-        var res = await _authenticationApi.GetAppAccessTokenAsync(credentials, cancellationToken);
+        var res = await AuthenticationApi.GetAppAccessTokenAsync(credentials, cancellationToken);
 
         if (res == null || res.Code != 0)
         {
@@ -88,55 +59,6 @@ internal class AppTokenManager : TokenManagerBase, IAppTokenManager
             throw new FeishuException(443, "获取 AppAccessToken 失败: AccessToken为空");
         }
 
-        var token = new CredentialToken
-        {
-            AccessToken = res.AppAccessToken,
-            Expire = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + ((res.Expire > 0 ? res.Expire : 7200) * 1000L)
-        };
-
-        await PersistTokenAsync(_tokenTypeKey, token.AccessToken, res.Expire > 0 ? res.Expire : 7200, cancellationToken).ConfigureAwait(false);
-
-        return token;
-    }
-
-    private async Task<CredentialToken?> TryRestoreFromStoreAsync(CancellationToken cancellationToken)
-    {
-        if (_tokenStore == null)
-            return null;
-
-        try
-        {
-            var storedToken = await _tokenStore.GetAccessTokenAsync(_tokenTypeKey, cancellationToken).ConfigureAwait(false);
-            if (!string.IsNullOrEmpty(storedToken))
-            {
-                _logger.LogDebug("Restored AppAccessToken from ITokenStore for AppId: {AppId}", _options.AppId);
-                return new CredentialToken
-                {
-                    AccessToken = storedToken,
-                    Expire = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + (7200L * 1000L)
-                };
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to restore token from ITokenStore for AppId: {AppId}", _options.AppId);
-        }
-
-        return null;
-    }
-
-    private async Task PersistTokenAsync(string tokenType, string accessToken, long expiresInSeconds, CancellationToken cancellationToken)
-    {
-        if (_tokenStore == null)
-            return;
-
-        try
-        {
-            await _tokenStore.SetAccessTokenAsync(tokenType, accessToken, expiresInSeconds, cancellationToken).ConfigureAwait(false);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to persist token to ITokenStore for tokenType: {TokenType}", tokenType);
-        }
+        return (res.AppAccessToken, res.Expire > 0 ? res.Expire : 7200);
     }
 }

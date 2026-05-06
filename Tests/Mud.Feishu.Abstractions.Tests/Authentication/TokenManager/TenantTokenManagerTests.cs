@@ -8,7 +8,7 @@
 using Microsoft.Extensions.Options;
 using Mud.Feishu.DataModels;
 using Mud.Feishu.Exceptions;
-using Mud.Feishu.TokenManager;
+using Mud.Feishu.Abstractions.Authentication;
 using Mud.HttpUtils;
 
 namespace Mud.Feishu.Tests.Authentication.TokenManager;

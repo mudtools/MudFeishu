@@ -78,7 +78,7 @@ public static class FeishuServiceCollectionExtensions
 
             ValidateFeishuBaseUrl(baseAddress, allowCustomBaseUrl);
 
-            services.AddNamedMudHttpClient(
+            services.AddMudHttpClient(
                 clientName,
                 client =>
                 {
@@ -102,12 +102,29 @@ public static class FeishuServiceCollectionExtensions
             });
         }
 
+        if (configs.Count > 1)
+        {
+            var nonDefaultConfigs = configs.Where(c => c != firstConfig && (c.RetryCount != firstConfig.RetryCount || c.RetryDelayMs != firstConfig.RetryDelayMs || c.TimeOut != firstConfig.TimeOut)).ToList();
+            if (nonDefaultConfigs.Count > 0)
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    $"[MudFeishu] 多应用模式下弹性策略（重试、超时）为全局共享配置，当前使用默认应用 '{firstConfig!.AppKey}' 的配置。" +
+                    $"以下应用的自定义 Resilience 配置将被忽略: {string.Join(", ", nonDefaultConfigs.Select(c => c.AppKey))}");
+            }
+        }
+
         services.Configure<JsonSerializerOptions>(options => HttpClientExtensions.GetDefaultJsonSerializerOptions());
 
         services.AddMemoryCache();
 
+        services.AddTokenProvider();
+        services.AddCurrentUserContext();
+
         if (!services.Any(s => s.ServiceType == typeof(ITokenStore)))
-            services.AddSingleton<ITokenStore, FeishuTokenStore>();
+        {
+            services.AddSingleton<FeishuTokenStore>();
+            services.AddSingleton<ITokenStore>(sp => sp.GetRequiredService<FeishuTokenStore>());
+        }
 
         if (!services.Any(s => s.ServiceType == typeof(IUserTokenStore)))
             services.AddSingleton<IUserTokenStore, FeishuUserTokenStore>();
@@ -132,20 +149,6 @@ public static class FeishuServiceCollectionExtensions
         if (!string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
         {
             throw new InvalidOperationException($"仅允许 HTTPS 协议，当前协议: {uri.Scheme}");
-        }
-
-        if (!allowCustomBaseUrl)
-        {
-            var host = uri.Host.ToLowerInvariant();
-            var allowedDomains = new[] { "open.feishu.cn", "open.larksuite.com", "feishu.cn", "larksuite.com" };
-            bool isAllowed = allowedDomains.Any(domain =>
-                host == domain || host.EndsWith("." + domain, StringComparison.OrdinalIgnoreCase));
-
-            if (!isAllowed)
-            {
-                throw new InvalidOperationException(
-                    $"域名 '{uri.Host}' 不在飞书官方白名单中。如需使用自定义域名，请设置 AllowCustomBaseUrl=true（注意安全风险）。");
-            }
         }
     }
 }

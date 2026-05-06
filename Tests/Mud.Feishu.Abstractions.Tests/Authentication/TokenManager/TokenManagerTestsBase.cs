@@ -6,7 +6,7 @@
 // -----------------------------------------------------------------------
 
 using Microsoft.Extensions.Options;
-using Mud.Feishu.TokenManager;
+using Mud.Feishu.Abstractions.Authentication;
 using Mud.HttpUtils;
 
 namespace Mud.Feishu.Tests.Authentication.TokenManager;

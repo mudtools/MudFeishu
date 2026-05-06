@@ -194,6 +194,20 @@ public class FeishuAppConfig
             var uri = new Uri(BaseUrl);
             if (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps)
                 throw new InvalidOperationException("BaseUrl 必须是 HTTP 或 HTTPS 协议");
+
+            if (!AllowCustomBaseUrl)
+            {
+                var host = uri.Host.ToLowerInvariant();
+                var allowedDomains = new[] { "open.feishu.cn", "open.larksuite.com", "feishu.cn", "larksuite.com" };
+                bool isAllowed = allowedDomains.Any(domain =>
+                    host == domain || host.EndsWith("." + domain, StringComparison.OrdinalIgnoreCase));
+
+                if (!isAllowed)
+                {
+                    throw new InvalidOperationException(
+                        $"域名 '{uri.Host}' 不在飞书官方白名单中。如需使用自定义域名，请设置 AllowCustomBaseUrl=true（注意安全风险）。");
+                }
+            }
         }
 
         if (AppKey.Equals("default", StringComparison.OrdinalIgnoreCase))

@@ -7,8 +7,8 @@
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using Mud.Feishu.Abstractions.Authentication;
 using Mud.Feishu.Abstractions.Internal;
-using Mud.Feishu.TokenManager;
 using System.Text.Json;
 
 namespace Mud.Feishu.Abstractions;
@@ -159,7 +159,8 @@ internal class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuA
         var jsonSerializerOptions = _serviceProvider.GetRequiredService<IOptions<JsonSerializerOptions>>();
 
         var httpClient = CreateHttpClient(config);
-        var authenticationApi = new FeishuAuthentication(jsonSerializerOptions, httpClient);
+        var authenticationApi = _serviceProvider.GetService<IFeishuAuthentication>()
+            ?? new FeishuAuthentication(jsonSerializerOptions, httpClient);
         var options = Options.Create(config);
 
 

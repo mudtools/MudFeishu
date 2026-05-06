@@ -9,7 +9,6 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using Mud.Feishu.Abstractions.Authentication;
 using Mud.Feishu.DataModels;
-using Mud.Feishu.TokenManager;
 
 namespace Mud.Feishu.Tests.Authentication.TokenManager;
 
@@ -827,12 +826,14 @@ public class FeishuTokenStoreBoundaryTests : IDisposable
 public class FeishuUserTokenStoreBoundaryTests : IDisposable
 {
     private readonly MemoryCache _cache;
+    private readonly FeishuTokenStore _innerStore;
     private readonly FeishuUserTokenStore _sut;
 
     public FeishuUserTokenStoreBoundaryTests()
     {
         _cache = new MemoryCache(new MemoryCacheOptions());
-        _sut = new FeishuUserTokenStore(_cache);
+        _innerStore = new FeishuTokenStore(_cache);
+        _sut = new FeishuUserTokenStore(_innerStore, _cache);
     }
 
     public void Dispose()

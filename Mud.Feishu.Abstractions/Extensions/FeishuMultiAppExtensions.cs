@@ -148,7 +148,6 @@ public static class FeishuMultiAppExtensions
     /// </summary>
     private static void DetectAndWarnSingleAppRegistration(IServiceCollection services)
     {
-        // 检测是否已注册全局TokenManager
         var hasTenantTokenManager = services.Any(s =>
             s.ServiceType == typeof(ITenantTokenManager) ||
             s.ServiceType == typeof(IAppTokenManager) ||
@@ -156,12 +155,8 @@ public static class FeishuMultiAppExtensions
 
         if (hasTenantTokenManager)
         {
-            // 使用 ILoggerFactory 获取日志记录器
-            var loggerFactory = services.BuildServiceProvider().GetService<ILoggerFactory>();
-            var logger = loggerFactory?.CreateLogger("FeishuMultiAppExtensions");
-
-            logger?.LogWarning(
-                "检测到已注册单应用模式的TokenManager。多应用模式已启用,单应用模式的TokenManager将被忽略。" +
+            System.Diagnostics.Debug.WriteLine(
+                "[MudFeishu] 检测到已注册单应用模式的TokenManager。多应用模式已启用,单应用模式的TokenManager将被忽略。" +
                 "建议移除 AddTokenManagers() 等单应用API的调用。" +
                 "请参考文档: https://github.com/mudtools/MudFeishu/wiki/Multi-App-Migration");
         }
@@ -209,10 +204,23 @@ public static class FeishuMultiAppExtensions
         // 验证并设置默认应用
         ValidateAndSetDefaultApp(configs);
 
-        services.AddSingleton(sp => new FeishuAppManager(
+        services.AddSingleton<IFeishuAppManager>(sp => new FeishuAppManager(
             sp,
             configs,
             sp.GetRequiredService<ILogger<FeishuAppManager>>()));
+
+        services.AddSingleton(sp =>
+        {
+            var appManager = sp.GetRequiredService<IFeishuAppManager>();
+            return appManager.GetDefaultApp();
+        });
+
+        services.AddSingleton(configs);
+        services.Configure<List<FeishuAppConfig>>(options =>
+        {
+            options.Clear();
+            options.AddRange(configs);
+        });
 
         return services;
     }
@@ -252,10 +260,23 @@ public static class FeishuMultiAppExtensions
         // 验证并设置默认应用
         ValidateAndSetDefaultApp(configs);
 
-        services.AddSingleton(sp => new FeishuAppManager(
+        services.AddSingleton<IFeishuAppManager>(sp => new FeishuAppManager(
             sp,
             configs,
             sp.GetRequiredService<ILogger<FeishuAppManager>>()));
+
+        services.AddSingleton(sp =>
+        {
+            var appManager = sp.GetRequiredService<IFeishuAppManager>();
+            return appManager.GetDefaultApp();
+        });
+
+        services.AddSingleton(configs);
+        services.Configure<List<FeishuAppConfig>>(options =>
+        {
+            options.Clear();
+            options.AddRange(configs);
+        });
 
         return services;
     }

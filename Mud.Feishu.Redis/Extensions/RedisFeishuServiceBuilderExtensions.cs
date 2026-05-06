@@ -163,18 +163,21 @@ public static class RedisFeishuServiceBuilderExtensions
     public static IServiceCollection AddFeishuRedisTokenStore(
         this IServiceCollection services)
     {
-        services.AddSingleton<ITokenStore>(sp =>
+        services.AddSingleton<RedisTokenStore>(sp =>
         {
             var redis = sp.GetRequiredService<IConnectionMultiplexer>();
             var logger = sp.GetService<ILogger<RedisTokenStore>>();
             return new RedisTokenStore(redis, logger!);
         });
 
+        services.AddSingleton<ITokenStore>(sp => sp.GetRequiredService<RedisTokenStore>());
+
         services.AddSingleton<IUserTokenStore>(sp =>
         {
+            var innerStore = sp.GetRequiredService<RedisTokenStore>();
             var redis = sp.GetRequiredService<IConnectionMultiplexer>();
             var logger = sp.GetService<ILogger<RedisUserTokenStore>>();
-            return new RedisUserTokenStore(redis, logger!);
+            return new RedisUserTokenStore(innerStore, redis, logger!);
         });
 
         return services;

@@ -10,7 +10,7 @@ using Microsoft.Extensions.Options;
 using Moq;
 using Mud.Feishu.Abstractions.Utilities;
 using Mud.Feishu.Authentication;
-using Mud.Feishu.TokenManager;
+using Mud.Feishu.Abstractions.Authentication;
 using Mud.HttpUtils;
 
 namespace Mud.Feishu.Abstractions.Tests;

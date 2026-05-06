@@ -9,7 +9,7 @@ using Microsoft.Extensions.Options;
 using Mud.Feishu.Abstractions;
 using Mud.Feishu.Exceptions;
 
-namespace Mud.Feishu.TokenManager;
+namespace Mud.Feishu.Abstractions.Authentication;
 
 /// <summary>
 /// 用户令牌管理器
@@ -306,6 +306,7 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
             _logger.LogDebug("Restored user token from IUserTokenStore for userId: {UserId}", userId);
 
             var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            var safeExpireSeconds = _options.TokenRefreshThreshold + 60;
 
             return new UserTokenInfo
             {
@@ -313,9 +314,9 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
                 OpenId = userId,
                 AccessToken = accessToken,
                 RefreshToken = refreshToken,
-                AccessTokenExpireTime = now + (7200L * 1000L),
+                AccessTokenExpireTime = now + (safeExpireSeconds * 1000L),
                 RefreshTokenExpireTime = !string.IsNullOrEmpty(refreshToken)
-                    ? now + (30L * 24 * 3600 * 1000L)
+                    ? now + (safeExpireSeconds * 1000L)
                     : 0
             };
         }

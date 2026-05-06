@@ -109,12 +109,14 @@ public class FeishuTokenStoreTests : IDisposable
 public class FeishuUserTokenStoreTests : IDisposable
 {
     private readonly MemoryCache _cache;
+    private readonly FeishuTokenStore _innerStore;
     private readonly FeishuUserTokenStore _sut;
 
     public FeishuUserTokenStoreTests()
     {
         _cache = new MemoryCache(new MemoryCacheOptions());
-        _sut = new FeishuUserTokenStore(_cache);
+        _innerStore = new FeishuTokenStore(_cache);
+        _sut = new FeishuUserTokenStore(_innerStore, _cache);
     }
 
     public void Dispose()
@@ -125,7 +127,7 @@ public class FeishuUserTokenStoreTests : IDisposable
     [Fact]
     public void Constructor_ShouldThrowArgumentNullException_WhenCacheIsNull()
     {
-        Assert.Throws<ArgumentNullException>(() => new FeishuUserTokenStore(null!));
+        Assert.Throws<ArgumentNullException>(() => new FeishuUserTokenStore(null!, null!));
     }
 
     [Fact]

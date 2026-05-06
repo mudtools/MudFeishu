@@ -5,7 +5,7 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-using Mud.Feishu.TokenManager;
+using Mud.Feishu.Abstractions.Authentication;
 
 namespace Mud.Feishu.Abstractions;
 
@@ -43,14 +43,15 @@ public class FeishuAppContext : IFeishuAppContext, IMudAppContext, IDisposable
     public ITokenManager GetTokenManager(string tokenType)
     {
         if (string.IsNullOrEmpty(tokenType))
-            return TenantTokenManager; // 默认返回租户令牌管理器
-        tokenType = tokenType.Trim().ToLower();
-        return tokenType switch
+            return TenantTokenManager;
+
+        var normalizedType = tokenType.Trim().ToLowerInvariant();
+        return normalizedType switch
         {
             "tenantaccesstoken" => TenantTokenManager,
             "appaccesstoken" => AppTokenManager,
             "useraccesstoken" => UserTokenManager,
-            _ => throw new ArgumentOutOfRangeException(nameof(tokenType), $"Unsupported token type: {tokenType}")
+            _ => TenantTokenManager
         };
     }
 

@@ -5,6 +5,8 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using Mud.Feishu.DataModels.VideoConferencing;
+
 namespace Mud.Feishu;
 
 
@@ -15,7 +17,22 @@ namespace Mud.Feishu;
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "VideoConferencing", InheritedFrom = nameof(FeishuV1VideoConferencingMeeting))]
 [Token("UserAccessToken", Name = Consts.Authorization)]
-public interface IFeishuUserV1VideoConferencingMeeting_User : IFeishuV1VideoConferencingMeeting, ICurrentUserId
+public interface IFeishuUserV1VideoConferencingMeeting : IFeishuV1VideoConferencingMeeting, ICurrentUserId
 {
 
+    /// <summary>
+    /// 搜索会议记录
+    /// <para>根据关键词、时间范围等条件搜索会议记录，返回符合条件的会议列表，包含会议 ID、主题、开始时间及参与者等信息。</para>
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/vc-v1/meeting/search">接口文档</see></para>
+    /// </summary>
+    /// <param name="page_size">分页大小，即本次请求所返回的信息列表内的最大条目数。默认值：500</param>
+    /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
+    /// <param name="searchMeetingRequest">会议搜索请求模型</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Get("/open-apis/vc/v1/meetings/search")]
+    Task<FeishuApiPageListResult<MeetingSearchResult>?> SearchMeetingPageListAsync(
+        [Body] SearchMeetingRequest searchMeetingRequest,
+        [Query] int page_size = Consts.PageSize_15,
+        [Query] string? page_token = null,
+        CancellationToken cancellationToken = default);
 }

@@ -15,7 +15,7 @@ namespace Mud.Feishu;
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "VideoConferencing", InheritedFrom = nameof(FeishuV1VideoConferencingReserves))]
 [Token("UserAccessToken", Name = Consts.Authorization)]
-public interface IFeishuUserV1VideoConferencingReserves_User : IFeishuV1VideoConferencingReserves, ICurrentUserId
+public interface IFeishuUserV1VideoConferencingReserves : IFeishuV1VideoConferencingReserves, ICurrentUserId
 {
 
 }

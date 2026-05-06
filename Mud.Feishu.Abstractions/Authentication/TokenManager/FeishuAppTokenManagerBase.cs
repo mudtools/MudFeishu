@@ -142,7 +142,7 @@ internal abstract class FeishuAppTokenManagerBase : TokenManagerBase
     private static (string AccessToken, long ExpireTimestampMs) DecodeStoredToken(string storedValue)
     {
         var separatorIndex = storedValue.IndexOf('|');
-        if (separatorIndex > 0 && long.TryParse(storedValue.AsSpan(0, separatorIndex), out var expireMs))
+        if (separatorIndex > 0 && long.TryParse(storedValue.Substring(0, separatorIndex), out var expireMs))
         {
             return (storedValue.Substring(separatorIndex + 1), expireMs);
         }

@@ -444,4 +444,67 @@ public class MultiAppTests
         Assert.True(appManager.HasApp(AppConfigs.AppKeys.Hr));
         Assert.False(appManager.HasApp(AppConfigs.AppKeys.Default));
     }
+
+    [Fact]
+    public void FeishuAppContext_GetTokenManager_WithUnsupportedType_ShouldThrow()
+    {
+        var services = CreateServiceCollection();
+
+        var configs = new List<FeishuAppConfig>
+        {
+            new FeishuAppConfig
+            {
+                AppKey = AppConfigs.AppKeys.Default,
+                AppId = AppConfigs.AppIds.Default,
+                AppSecret = AppConfigs.Secrets.Default,
+                IsDefault = true
+            }
+        };
+
+        services.AddSingleton<IFeishuAppManager>(sp => new FeishuAppManager(
+            sp,
+            configs,
+            sp.GetRequiredService<ILogger<FeishuAppManager>>()));
+
+        var provider = services.BuildServiceProvider();
+        var appManager = provider.GetRequiredService<IFeishuAppManager>();
+        var app = appManager.GetApp(AppConfigs.AppKeys.Default);
+
+        var ex = Assert.Throws<InvalidOperationException>(() => app.GetTokenManager("UnknownTokenType"));
+        Assert.Contains("不支持的令牌类型", ex.Message);
+    }
+
+    [Fact]
+    public void FeishuAppContext_GetTokenManager_WithNullOrEmptyType_ShouldReturnTenantTokenManager()
+    {
+        var services = CreateServiceCollection();
+
+        var configs = new List<FeishuAppConfig>
+        {
+            new FeishuAppConfig
+            {
+                AppKey = AppConfigs.AppKeys.Default,
+                AppId = AppConfigs.AppIds.Default,
+                AppSecret = AppConfigs.Secrets.Default,
+                IsDefault = true
+            }
+        };
+
+        services.AddSingleton<IFeishuAppManager>(sp => new FeishuAppManager(
+            sp,
+            configs,
+            sp.GetRequiredService<ILogger<FeishuAppManager>>()));
+
+        var provider = services.BuildServiceProvider();
+        var appManager = provider.GetRequiredService<IFeishuAppManager>();
+        var app = appManager.GetApp(AppConfigs.AppKeys.Default);
+
+        var nullResult = app.GetTokenManager(null!);
+        var emptyResult = app.GetTokenManager("");
+
+        Assert.NotNull(nullResult);
+        Assert.NotNull(emptyResult);
+        Assert.Equal(app.TenantTokenManager, nullResult);
+        Assert.Equal(app.TenantTokenManager, emptyResult);
+    }
 }

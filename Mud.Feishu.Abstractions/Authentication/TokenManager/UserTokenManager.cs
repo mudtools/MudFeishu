@@ -345,7 +345,7 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
     private static (string Token, long ExpireTimestampMs) DecodeStoredValue(string storedValue)
     {
         var separatorIndex = storedValue.IndexOf('|');
-        if (separatorIndex > 0 && long.TryParse(storedValue.AsSpan(0, separatorIndex), out var expireMs))
+        if (separatorIndex > 0 && long.TryParse(storedValue.Substring(0, separatorIndex), out var expireMs))
         {
             return (storedValue.Substring(separatorIndex + 1), expireMs);
         }

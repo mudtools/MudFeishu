@@ -25,7 +25,7 @@ public class FeishuAppConfigValidatorTests
     [Fact]
     public void Validate_WithNullOptions_ShouldReturnFail()
     {
-        var result = _validator.Validate(null, null!);
+        var result = _validator.Validate(null, (FeishuAppConfig)null!);
 
         Assert.True(result.Failed);
         Assert.Contains("不能为 null", result.FailureMessage);

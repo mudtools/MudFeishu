@@ -9,16 +9,31 @@ namespace Mud.Feishu.DataModels.VideoConferencing;
 
 
 /// <summary>
-/// <para>会议设置</para>
+/// <para>会议元信息</para>
 /// </summary>
-public class ReserveMeetingSetting : ReserveMeetingSettingInfo
+public class MeetingMeta
 {
     /// <summary>
-    /// <para>设置会议密码，不传则根据个人设置决定是否使用密码及分配随机密码，传空则不使用密码，传 4-9 位数字则设置密码</para>
+    /// <para>跳转链接</para>
     /// <para>必填：否</para>
-    /// <para>示例值：971024</para>
-    /// <para>最大长度：9</para>
+    /// <para>示例值：https://applink.larkoffice.com/*</para>
     /// </summary>
-    [JsonPropertyName("password")]
-    public string? Password { get; set; }
+    [JsonPropertyName("app_link")]
+    public string? AppLink { get; set; }
+
+    /// <summary>
+    /// <para>图标url</para>
+    /// <para>必填：否</para>
+    /// <para>示例值：https://lf-packag*</para>
+    /// </summary>
+    [JsonPropertyName("avatar")]
+    public string? Avatar { get; set; }
+
+    /// <summary>
+    /// <para>描述，包含会议时间、组织者和会议ID</para>
+    /// <para>必填：否</para>
+    /// <para>示例值：会议时间 | 组织者：组织者姓名 | ID：123456789</para>
+    /// </summary>
+    [JsonPropertyName("description")]
+    public string? Description { get; set; }
 }

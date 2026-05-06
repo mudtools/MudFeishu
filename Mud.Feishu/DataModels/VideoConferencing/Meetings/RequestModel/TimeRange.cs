@@ -9,16 +9,23 @@ namespace Mud.Feishu.DataModels.VideoConferencing;
 
 
 /// <summary>
-/// <para>会议设置</para>
+/// <para>按会议开始时间过滤，传入时间范围对象。其中 start_time 必须小于等于 end_time（即 meeting_filter.start_time.end_time）。</para>
 /// </summary>
-public class ReserveMeetingSetting : ReserveMeetingSettingInfo
+public class TimeRange
 {
     /// <summary>
-    /// <para>设置会议密码，不传则根据个人设置决定是否使用密码及分配随机密码，传空则不使用密码，传 4-9 位数字则设置密码</para>
+    /// <para>时间范围的起始时间，需符合 ISO 8601 标准并携带时区信息。</para>
     /// <para>必填：否</para>
-    /// <para>示例值：971024</para>
-    /// <para>最大长度：9</para>
+    /// <para>示例值：2026-03-21T16:15:30+08:00</para>
     /// </summary>
-    [JsonPropertyName("password")]
-    public string? Password { get; set; }
+    [JsonPropertyName("start_time")]
+    public string? StartTime { get; set; }
+
+    /// <summary>
+    /// <para>时间范围的结束时间，需符合 ISO 8601 标准并携带时区信息。</para>
+    /// <para>必填：否</para>
+    /// <para>示例值：2026-03-21T16:15:30+08:00</para>
+    /// </summary>
+    [JsonPropertyName("end_time")]
+    public string? EndTime { get; set; }
 }

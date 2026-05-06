@@ -7,18 +7,25 @@
 
 namespace Mud.Feishu.DataModels.VideoConferencing;
 
-
 /// <summary>
-/// <para>会议设置</para>
+/// <para>会议搜索请求模型</para>
 /// </summary>
-public class ReserveMeetingSetting : ReserveMeetingSettingInfo
+public class SearchMeetingRequest
 {
     /// <summary>
-    /// <para>设置会议密码，不传则根据个人设置决定是否使用密码及分配随机密码，传空则不使用密码，传 4-9 位数字则设置密码</para>
+    /// <para>搜索关键词</para>
+    /// <para>**数据校验规则：** 长度范围：1 字符 ～ 50 字符</para>
     /// <para>必填：否</para>
-    /// <para>示例值：971024</para>
-    /// <para>最大长度：9</para>
+    /// <para>示例值：周会</para>
     /// </summary>
-    [JsonPropertyName("password")]
-    public string? Password { get; set; }
+    [JsonPropertyName("query")]
+    public string? Query { get; set; }
+
+    /// <summary>
+    /// <para>会议搜索的过滤条件</para>
+    /// <para>必填：否</para>
+    /// </summary>
+    [JsonPropertyName("meeting_filter")]
+    public MeetingFilterParam? MeetingFilter { get; set; }
+
 }

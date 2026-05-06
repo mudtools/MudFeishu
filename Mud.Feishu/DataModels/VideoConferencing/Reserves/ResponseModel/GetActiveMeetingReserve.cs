@@ -7,18 +7,15 @@
 
 namespace Mud.Feishu.DataModels.VideoConferencing;
 
-
 /// <summary>
-/// <para>会议设置</para>
+/// 获取活跃会议响应体
 /// </summary>
-public class ReserveMeetingSetting : ReserveMeetingSettingInfo
+public class GetActiveMeetingReserveResult
 {
     /// <summary>
-    /// <para>设置会议密码，不传则根据个人设置决定是否使用密码及分配随机密码，传空则不使用密码，传 4-9 位数字则设置密码</para>
+    /// <para>会议数据</para>
     /// <para>必填：否</para>
-    /// <para>示例值：971024</para>
-    /// <para>最大长度：9</para>
     /// </summary>
-    [JsonPropertyName("password")]
-    public string? Password { get; set; }
+    [JsonPropertyName("meeting")]
+    public ActiveMeeting? Meeting { get; set; }
 }

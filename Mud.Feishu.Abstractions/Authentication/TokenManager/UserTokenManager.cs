@@ -6,7 +6,6 @@
 // -----------------------------------------------------------------------
 
 using Microsoft.Extensions.Options;
-using Mud.Feishu.Abstractions;
 using Mud.Feishu.Exceptions;
 
 namespace Mud.Feishu.Abstractions.Authentication;
@@ -107,7 +106,7 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
             throw new FeishuException(res?.Code ?? 500, $"获取 UserAccessToken 失败: {res?.Msg ?? "返回结果为null"}");
         }
 
-        if (string.IsNullOrEmpty(res.AccessToken))
+        if (string.IsNullOrWhiteSpace(res.AccessToken))
         {
             throw new FeishuException(443, "获取 UserAccessToken 失败: AccessToken为空");
         }
@@ -126,11 +125,11 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
             Msg = res.Msg
         };
 
-        if (!string.IsNullOrEmpty(res.OpenId))
+        if (!string.IsNullOrWhiteSpace(res.OpenId))
         {
-            tokenInfo.UserId = res.OpenId;
-            UpdateUserTokenCache(res.OpenId, tokenInfo);
-            await PersistUserTokenAsync(res.OpenId, tokenInfo, cancellationToken).ConfigureAwait(false);
+            tokenInfo.UserId = res.OpenId!;
+            UpdateUserTokenCache(res.OpenId!, tokenInfo);
+            await PersistUserTokenAsync(res.OpenId!, tokenInfo, cancellationToken).ConfigureAwait(false);
         }
 
         return tokenInfo;
@@ -282,7 +281,7 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
 
             if (!string.IsNullOrEmpty(tokenInfo.RefreshToken))
             {
-                var encodedRefreshToken = TokenStoreHelper.EncodeStoredToken(tokenInfo.RefreshToken, tokenInfo.RefreshTokenExpireTime);
+                var encodedRefreshToken = TokenStoreHelper.EncodeStoredToken(tokenInfo.RefreshToken!, tokenInfo.RefreshTokenExpireTime);
                 await _userTokenStore.SetRefreshTokenAsync(userId, _tokenTypeKey, encodedRefreshToken, cancellationToken).ConfigureAwait(false);
             }
         }
@@ -303,11 +302,11 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
             if (string.IsNullOrEmpty(storedAccessToken))
                 return null;
 
-            var (accessToken, accessTokenExpireMs) = TokenStoreHelper.DecodeStoredToken(storedAccessToken);
+            var (accessToken, accessTokenExpireMs) = TokenStoreHelper.DecodeStoredToken(storedAccessToken!);
 
             var storedRefreshToken = await _userTokenStore.GetRefreshTokenAsync(userId, _tokenTypeKey, cancellationToken).ConfigureAwait(false);
             var (refreshToken, refreshTokenExpireMs) = !string.IsNullOrEmpty(storedRefreshToken)
-                ? TokenStoreHelper.DecodeStoredToken(storedRefreshToken)
+                ? TokenStoreHelper.DecodeStoredToken(storedRefreshToken!)
                 : (null, 0L);
 
             _logger.LogDebug("Restored user token from IUserTokenStore for userId: {UserId}", userId);

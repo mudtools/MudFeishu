@@ -120,26 +120,8 @@ public static class FeishuMultiAppExtensions
         // 注册基础服务（HttpClient工厂）
         services.AddFeishuAppBaseServices(configs);
 
-        // 注册配置到服务容器
-        services.AddSingleton(configs);
-        services.Configure<List<FeishuAppConfig>>(options =>
-        {
-            options.Clear();
-            options.AddRange(configs);
-        });
-
-        // 注册应用管理器
-        services.AddSingleton<IFeishuAppManager, FeishuAppManager>(sp => new FeishuAppManager(
-            sp,
-            configs,
-            sp.GetRequiredService<ILogger<FeishuAppManager>>()
-        ));
-        // 注册 IMudAppContext 接口，从 IFeishuAppManager 获取默认应用
-        services.AddSingleton(sp =>
-        {
-            var appManager = sp.GetRequiredService<IFeishuAppManager>();
-            return appManager.GetDefaultApp();
-        });
+        // 注册核心服务（应用管理器、默认应用上下文、配置）
+        RegisterCoreServices(services, configs);
         return services;
     }
 
@@ -204,23 +186,8 @@ public static class FeishuMultiAppExtensions
         // 验证并设置默认应用
         ValidateAndSetDefaultApp(configs);
 
-        services.AddSingleton<IFeishuAppManager>(sp => new FeishuAppManager(
-            sp,
-            configs,
-            sp.GetRequiredService<ILogger<FeishuAppManager>>()));
-
-        services.AddSingleton(sp =>
-        {
-            var appManager = sp.GetRequiredService<IFeishuAppManager>();
-            return appManager.GetDefaultApp();
-        });
-
-        services.AddSingleton(configs);
-        services.Configure<List<FeishuAppConfig>>(options =>
-        {
-            options.Clear();
-            options.AddRange(configs);
-        });
+        // 注册核心服务（应用管理器、默认应用上下文、配置）
+        RegisterCoreServices(services, configs);
 
         return services;
     }
@@ -260,6 +227,19 @@ public static class FeishuMultiAppExtensions
         // 验证并设置默认应用
         ValidateAndSetDefaultApp(configs);
 
+        // 注册核心服务（应用管理器、默认应用上下文、配置）
+        RegisterCoreServices(services, configs);
+
+        return services;
+    }
+
+    /// <summary>
+    /// 注册核心服务（应用管理器、默认应用上下文、配置）
+    /// </summary>
+    /// <param name="services">服务集合</param>
+    /// <param name="configs">应用配置列表</param>
+    private static void RegisterCoreServices(IServiceCollection services, List<FeishuAppConfig> configs)
+    {
         services.AddSingleton<IFeishuAppManager>(sp => new FeishuAppManager(
             sp,
             configs,
@@ -277,8 +257,6 @@ public static class FeishuMultiAppExtensions
             options.Clear();
             options.AddRange(configs);
         });
-
-        return services;
     }
 
     /// <summary>

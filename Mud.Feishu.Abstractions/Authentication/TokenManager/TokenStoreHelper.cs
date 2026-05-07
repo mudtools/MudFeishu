@@ -28,6 +28,8 @@ internal static class TokenStoreHelper
             return (storedValue.Substring(separatorIndex + 1), expireMs);
         }
 
+        // separatorIndex <= 0 时（无分隔符或以 | 开头），说明存储值不含有效的过期时间戳，
+        // 视为旧格式或损坏数据，返回原始值并将过期时间置零，由调用方决定是否刷新令牌。
         return (storedValue, 0);
     }
 }

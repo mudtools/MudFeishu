@@ -32,7 +32,7 @@ public class FeishuAppContext : IFeishuAppContext, IDisposable
     /// 用于发送HTTP请求到飞书API的客户端实例。
     /// 每个应用拥有独立的HTTP客户端实例。
     /// </remarks>
-    public IEnhancedHttpClient HttpClient { get; private set; }
+    public IEnhancedHttpClient HttpClient { get; }
 
 
     /// <summary>
@@ -64,13 +64,13 @@ public class FeishuAppContext : IFeishuAppContext, IDisposable
     public T GetTokenManager<T>() where T : class, ITokenManager
     {
         if (typeof(T) == typeof(ITenantTokenManager) || typeof(T) == typeof(TenantTokenManager))
-            return TenantTokenManager as T ?? throw new InvalidOperationException($"Cannot cast TenantTokenManager to {typeof(T).Name}");
+            return TenantTokenManager as T ?? throw new InvalidOperationException($"无法将 TenantTokenManager 转换为 {typeof(T).Name}");
         if (typeof(T) == typeof(IAppTokenManager) || typeof(T) == typeof(AppTokenManager))
-            return AppTokenManager as T ?? throw new InvalidOperationException($"Cannot cast AppTokenManager to {typeof(T).Name}");
+            return AppTokenManager as T ?? throw new InvalidOperationException($"无法将 AppTokenManager 转换为 {typeof(T).Name}");
         if (typeof(T) == typeof(IFeishuUserTokenManager) || typeof(T) == typeof(UserTokenManager))
-            return UserTokenManager as T ?? throw new InvalidOperationException($"Cannot cast UserTokenManager to {typeof(T).Name}");
+            return UserTokenManager as T ?? throw new InvalidOperationException($"无法将 UserTokenManager 转换为 {typeof(T).Name}");
 
-        throw new InvalidOperationException($"Unsupported token manager type: {typeof(T).Name}");
+        throw new InvalidOperationException($"不支持的令牌管理器类型: {typeof(T).Name}");
     }
 
     /// <summary>
@@ -80,18 +80,15 @@ public class FeishuAppContext : IFeishuAppContext, IDisposable
     /// <returns>指定类型的服务实例；如果服务未注册则返回 null</returns>
     public T? GetService<T>() where T : class
     {
-        if (typeof(T) == typeof(IFeishuAuthentication))
-            return Authentication as T;
-        if (typeof(T) == typeof(IEnhancedHttpClient))
-            return HttpClient as T;
-        if (typeof(T) == typeof(ITenantTokenManager))
-            return TenantTokenManager as T;
-        if (typeof(T) == typeof(IAppTokenManager))
-            return AppTokenManager as T;
-        if (typeof(T) == typeof(IFeishuUserTokenManager))
-            return UserTokenManager as T;
-
-        return null;
+        return typeof(T) switch
+        {
+            var t when t == typeof(IFeishuAuthentication) => Authentication as T,
+            var t when t == typeof(IEnhancedHttpClient) => HttpClient as T,
+            var t when t == typeof(ITenantTokenManager) => TenantTokenManager as T,
+            var t when t == typeof(IAppTokenManager) => AppTokenManager as T,
+            var t when t == typeof(IFeishuUserTokenManager) => UserTokenManager as T,
+            _ => null
+        };
     }
 
     /// <summary>
@@ -172,17 +169,13 @@ public class FeishuAppContext : IFeishuAppContext, IDisposable
     public void Dispose()
     {
         if (TenantTokenManager is IDisposable disposableTenant)
-        {
             disposableTenant.Dispose();
-        }
         if (AppTokenManager is IDisposable disposableApp)
-        {
             disposableApp.Dispose();
-        }
         if (UserTokenManager is IDisposable disposableUser)
-        {
             disposableUser.Dispose();
-        }
+        if (Authentication is IDisposable disposableAuth)
+            disposableAuth.Dispose();
     }
 
     /// <summary>

@@ -507,4 +507,76 @@ public class MultiAppTests
         Assert.Equal(app.TenantTokenManager, nullResult);
         Assert.Equal(app.TenantTokenManager, emptyResult);
     }
+
+    [Fact]
+    public void FeishuAppManager_GetWebApi_ShouldUseOverrideImplementation()
+    {
+        var services = CreateServiceCollection();
+
+        var switcherMock = new Mock<IFeishuAppContextSwitcher>();
+        var appContextMock = new Mock<IMudAppContext>();
+        switcherMock.Setup(x => x.UseApp(AppConfigs.AppKeys.Default)).Returns(appContextMock.Object);
+
+        services.AddSingleton<IFeishuAppContextSwitcher>(switcherMock.Object);
+
+        var configs = new List<FeishuAppConfig>
+        {
+            new FeishuAppConfig
+            {
+                AppKey = AppConfigs.AppKeys.Default,
+                AppId = AppConfigs.AppIds.Default,
+                AppSecret = AppConfigs.Secrets.Default,
+                IsDefault = true
+            }
+        };
+
+        services.AddSingleton<IFeishuAppManager>(sp => new FeishuAppManager(
+            sp,
+            configs,
+            sp.GetRequiredService<ILogger<FeishuAppManager>>()));
+
+        var provider = services.BuildServiceProvider();
+        var appManager = provider.GetRequiredService<IFeishuAppManager>();
+
+        var result = appManager.GetWebApi<IFeishuAppContextSwitcher>(AppConfigs.AppKeys.Default);
+
+        Assert.NotNull(result);
+        switcherMock.Verify(x => x.UseApp(AppConfigs.AppKeys.Default), Times.Once);
+    }
+
+    [Fact]
+    public void FeishuAppManager_GetDefaultWebApi_ShouldUseOverrideImplementation()
+    {
+        var services = CreateServiceCollection();
+
+        var switcherMock = new Mock<IFeishuAppContextSwitcher>();
+        var appContextMock = new Mock<IMudAppContext>();
+        switcherMock.Setup(x => x.UseDefaultApp()).Returns(appContextMock.Object);
+
+        services.AddSingleton<IFeishuAppContextSwitcher>(switcherMock.Object);
+
+        var configs = new List<FeishuAppConfig>
+        {
+            new FeishuAppConfig
+            {
+                AppKey = AppConfigs.AppKeys.Default,
+                AppId = AppConfigs.AppIds.Default,
+                AppSecret = AppConfigs.Secrets.Default,
+                IsDefault = true
+            }
+        };
+
+        services.AddSingleton<IFeishuAppManager>(sp => new FeishuAppManager(
+            sp,
+            configs,
+            sp.GetRequiredService<ILogger<FeishuAppManager>>()));
+
+        var provider = services.BuildServiceProvider();
+        var appManager = provider.GetRequiredService<IFeishuAppManager>();
+
+        var result = appManager.GetDefaultWebApi<IFeishuAppContextSwitcher>();
+
+        Assert.NotNull(result);
+        switcherMock.Verify(x => x.UseDefaultApp(), Times.Once);
+    }
 }

@@ -1,5 +1,5 @@
 // -----------------------------------------------------------------------
-//  作者：Mud Studio  版权所有 (c) Mud Studio 2025   
+//  作者：Mud Studio  版权所有 (c) Mud Studio 2026   
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
@@ -12,7 +12,7 @@ namespace Mud.Feishu.Abstractions;
 /// </summary>
 /// <remarks>
 /// 提供当前请求的飞书用户身份信息访问能力。基于 AsyncLocal 实现，确保在异步上下文中正确传递用户信息。
-/// 继承自 <see cref="Mud.HttpUtils.ICurrentUserContext"/>，同时提供飞书特有的 OpenId、UnionId 等属性。
+/// 继承自 <see cref="ICurrentUserContext"/>，同时提供飞书特有的 OpenId、UnionId 等属性。
 /// <para>典型使用场景：</para>
 /// <list type="bullet">
 ///   <item><description>在业务服务中获取当前用户ID，用于查询用户令牌</description></item>
@@ -25,7 +25,7 @@ namespace Mud.Feishu.Abstractions;
 ///   <item><description>用户信息在请求结束后自动清除，无需手动调用 Clear()</description></item>
 /// </list>
 /// </remarks>
-public interface IFeishuCurrentUserContext : Mud.HttpUtils.ICurrentUserContext
+public interface IFeishuCurrentUserContext : ICurrentUserContext
 {
     /// <summary>
     /// 飞书用户 OpenId
@@ -43,14 +43,6 @@ public interface IFeishuCurrentUserContext : Mud.HttpUtils.ICurrentUserContext
     /// </remarks>
     string? UnionId { get; }
 
-    /// <summary>
-    /// 业务系统用户ID
-    /// </summary>
-    /// <remarks>
-    /// 业务系统内部的用户ID，可选字段。
-    /// 如果业务系统有自己的用户体系，可在此存储。
-    /// </remarks>
-    string? UserId { get; }
 
     /// <summary>
     /// 用户名称

@@ -41,7 +41,9 @@ internal class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuA
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
-        foreach (var config in configs)
+        var configList = configs as IList<FeishuAppConfig> ?? configs.ToList();
+
+        foreach (var config in configList)
         {
             var context = CreateAppContext(config);
             RegisterApp(config.AppKey, context, config.IsDefault);
@@ -51,6 +53,8 @@ internal class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuA
         {
             throw new InvalidOperationException("未配置默认应用");
         }
+
+        WarnResilienceConfigMismatch(configList);
 
         _logger.LogInformation("飞书应用管理器初始化完成，共加载 {Count} 个应用", GetAllApps().Count());
     }
@@ -93,11 +97,14 @@ internal class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuA
     /// <summary>
     /// 根据应用键获取飞书API实例
     /// </summary>
-    public new T GetWebApi<T>(string appKey) where T : IAppContextSwitcher
+    /// <remarks>
+    /// 重写基类方法，从 DI 容器获取已注册的服务并调用 UseApp 切换应用上下文。
+    /// </remarks>
+    public override IFeishuAppContext GetWebApi<IFeishuAppContext>(string appKey)
     {
-        var service = _serviceProvider.GetService<T>();
+        var service = _serviceProvider.GetService<IFeishuAppContext>();
         if (service == null)
-            throw new InvalidOperationException($"未注册飞书API服务: {typeof(T).FullName}");
+            throw new InvalidOperationException($"未注册飞书API服务: {typeof(IFeishuAppContext).FullName}");
         service.UseApp(appKey);
         return service;
     }
@@ -105,11 +112,14 @@ internal class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuA
     /// <summary>
     /// 获取默认应用的飞书API实例
     /// </summary>
-    public new T GetDefaultWebApi<T>() where T : IAppContextSwitcher
+    /// <remarks>
+    /// 重写基类方法，从 DI 容器获取已注册的服务并调用 UseDefaultApp 切换应用上下文。
+    /// </remarks>
+    public override IFeishuAppContext GetDefaultWebApi<IFeishuAppContext>()
     {
-        var service = _serviceProvider.GetService<T>();
+        var service = _serviceProvider.GetService<IFeishuAppContext>();
         if (service == null)
-            throw new InvalidOperationException($"未注册飞书API服务: {typeof(T).FullName}");
+            throw new InvalidOperationException($"未注册飞书API服务: {typeof(IFeishuAppContext).FullName}");
         service.UseDefaultApp();
         return service;
     }
@@ -156,11 +166,11 @@ internal class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuA
         config.Validate();
 
         var currentUserContext = _serviceProvider.GetService<IFeishuCurrentUserContext>();
-        var jsonSerializerOptions = _serviceProvider.GetRequiredService<IOptions<JsonSerializerOptions>>();
+        var jsonSerializerOptions = Options.Create(_serviceProvider.GetRequiredService<JsonSerializerOptions>());
 
         var httpClient = CreateHttpClient(config);
         var authenticationApi = _serviceProvider.GetService<IFeishuAuthentication>()
-            ?? new FeishuAuthentication(jsonSerializerOptions, httpClient);
+            ?? (IFeishuAuthentication)ActivatorUtilities.CreateInstance(_serviceProvider, typeof(FeishuAuthentication), jsonSerializerOptions, httpClient);
         var options = Options.Create(config);
 
 
@@ -197,5 +207,29 @@ internal class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuA
         var httpClientResolver = _serviceProvider.GetRequiredService<IHttpClientResolver>();
         var clientName = $"feishu-{config.AppKey}";
         return httpClientResolver.GetClient(clientName);
+    }
+
+    private void WarnResilienceConfigMismatch(IList<FeishuAppConfig> configs)
+    {
+        if (configs.Count <= 1)
+            return;
+
+        var defaultConfig = configs.FirstOrDefault(c => c.IsDefault) ?? configs.FirstOrDefault();
+        if (defaultConfig == null)
+            return;
+
+        var nonDefaultConfigs = configs
+            .Where(c => c != defaultConfig && (c.RetryCount != defaultConfig.RetryCount || c.RetryDelayMs != defaultConfig.RetryDelayMs || c.TimeOut != defaultConfig.TimeOut))
+            .ToList();
+
+        if (nonDefaultConfigs.Count > 0)
+        {
+            _logger.LogWarning(
+                "多应用模式下弹性策略（重试、超时）为全局共享配置，当前使用默认应用 '{DefaultAppKey}' 的配置。" +
+                "以下应用的自定义 Resilience 配置将被忽略: {IgnoredApps}。" +
+                "这是 Mud.HttpUtils 框架的设计限制，所有命名客户端共享同一组弹性策略。",
+                defaultConfig.AppKey,
+                string.Join(", ", nonDefaultConfigs.Select(c => c.AppKey)));
+        }
     }
 }

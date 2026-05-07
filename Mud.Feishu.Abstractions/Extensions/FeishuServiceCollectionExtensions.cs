@@ -7,6 +7,7 @@
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using Mud.Feishu.Abstractions.Authentication;
 using Mud.Feishu.Abstractions.Configuration;
@@ -101,24 +102,13 @@ public static class FeishuServiceCollectionExtensions
             });
         }
 
-        if (configs.Count > 1)
-        {
-            var nonDefaultConfigs = configs.Where(c => c != defaultConfig && (c.RetryCount != defaultConfig!.RetryCount || c.RetryDelayMs != defaultConfig.RetryDelayMs || c.TimeOut != defaultConfig.TimeOut)).ToList();
-            if (nonDefaultConfigs.Count > 0)
-            {
-                System.Diagnostics.Debug.WriteLine(
-                    $"[MudFeishu] 多应用模式下弹性策略（重试、超时）为全局共享配置，当前使用默认应用 '{defaultConfig!.AppKey}' 的配置。" +
-                    $"以下应用的自定义 Resilience 配置将被忽略: {string.Join(", ", nonDefaultConfigs.Select(c => c.AppKey))}。" +
-                    $"这是 Mud.HttpUtils 框架的设计限制，所有命名客户端共享同一组弹性策略。");
-            }
-        }
-
-        services.Configure<JsonSerializerOptions>(options => HttpClientExtensions.GetDefaultJsonSerializerOptions());
+        services.AddSingleton(_ => HttpClientExtensions.GetDefaultJsonSerializerOptions());
 
         services.AddMemoryCache();
 
         services.AddTokenProvider();
         services.AddCurrentUserContext();
+        services.TryAddSingleton<IFeishuCurrentUserContext, DefaultFeishuCurrentUserContext>();
 
         if (!services.Any(s => s.ServiceType == typeof(ITokenStore)))
         {

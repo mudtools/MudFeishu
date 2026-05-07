@@ -166,7 +166,7 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
         if (res == null || res.Code != 0)
         {
             _logger.LogWarning("Failed to refresh user token for userId: {UserId}, error: {Msg}", userId, res?.Msg);
-            return null;
+            throw new FeishuException(res?.Code ?? 500, $"刷新 UserAccessToken 失败: {res?.Msg ?? "返回结果为null"}");
         }
 
         var tokenInfo = new UserTokenInfo
@@ -276,13 +276,13 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
             var remainingSeconds = (tokenInfo.AccessTokenExpireTime - DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()) / 1000L;
             if (remainingSeconds > 0)
             {
-                var encodedAccessToken = EncodeStoredValue(tokenInfo.AccessToken!, tokenInfo.AccessTokenExpireTime);
+                var encodedAccessToken = TokenStoreHelper.EncodeStoredToken(tokenInfo.AccessToken!, tokenInfo.AccessTokenExpireTime);
                 await _userTokenStore.SetAccessTokenAsync(userId, _tokenTypeKey, encodedAccessToken, remainingSeconds, cancellationToken).ConfigureAwait(false);
             }
 
             if (!string.IsNullOrEmpty(tokenInfo.RefreshToken))
             {
-                var encodedRefreshToken = EncodeStoredValue(tokenInfo.RefreshToken, tokenInfo.RefreshTokenExpireTime);
+                var encodedRefreshToken = TokenStoreHelper.EncodeStoredToken(tokenInfo.RefreshToken, tokenInfo.RefreshTokenExpireTime);
                 await _userTokenStore.SetRefreshTokenAsync(userId, _tokenTypeKey, encodedRefreshToken, cancellationToken).ConfigureAwait(false);
             }
         }
@@ -303,11 +303,11 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
             if (string.IsNullOrEmpty(storedAccessToken))
                 return null;
 
-            var (accessToken, accessTokenExpireMs) = DecodeStoredValue(storedAccessToken);
+            var (accessToken, accessTokenExpireMs) = TokenStoreHelper.DecodeStoredToken(storedAccessToken);
 
             var storedRefreshToken = await _userTokenStore.GetRefreshTokenAsync(userId, _tokenTypeKey, cancellationToken).ConfigureAwait(false);
             var (refreshToken, refreshTokenExpireMs) = !string.IsNullOrEmpty(storedRefreshToken)
-                ? DecodeStoredValue(storedRefreshToken)
+                ? TokenStoreHelper.DecodeStoredToken(storedRefreshToken)
                 : (null, 0L);
 
             _logger.LogDebug("Restored user token from IUserTokenStore for userId: {UserId}", userId);
@@ -339,17 +339,4 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
         }
     }
 
-    private static string EncodeStoredValue(string token, long expireTimestampMs)
-        => $"{expireTimestampMs}|{token}";
-
-    private static (string Token, long ExpireTimestampMs) DecodeStoredValue(string storedValue)
-    {
-        var separatorIndex = storedValue.IndexOf('|');
-        if (separatorIndex > 0 && long.TryParse(storedValue.Substring(0, separatorIndex), out var expireMs))
-        {
-            return (storedValue.Substring(separatorIndex + 1), expireMs);
-        }
-
-        return (storedValue, 0);
-    }
 }

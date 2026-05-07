@@ -94,6 +94,6 @@ public class FeishuUserTokenStore : IUserTokenStore
         return Task.CompletedTask;
     }
 
-    private static string BuildUserAccessTokenKey(string userId, string tokenType) => $"feishu:user:{userId}:token:{tokenType}:access";
-    private static string BuildUserRefreshTokenKey(string userId, string tokenType) => $"feishu:user:{userId}:token:{tokenType}:refresh";
+    private static string BuildUserAccessTokenKey(string userId, string tokenType) => $"feishu:token:user:{userId}:{tokenType}:access";
+    private static string BuildUserRefreshTokenKey(string userId, string tokenType) => $"feishu:token:user:{userId}:{tokenType}:refresh";
 }

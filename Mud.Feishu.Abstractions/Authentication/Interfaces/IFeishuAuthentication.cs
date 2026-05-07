@@ -106,9 +106,9 @@ public interface IFeishuAuthentication
     /// 获取长连接地址及配置信息。
     /// </summary>
     /// <param name="appCredentials">应用唯一标识及应用秘钥信息</param>
-    /// <param name="cancellation_token">取消操作的令牌</param>
+    /// <param name="cancellationToken">取消操作的令牌</param>
     [Post("/callback/ws/endpoint")]
     Task<FeishuApiResult<WsEndpointResult>?> GetWebSocketEndpointAsync(
         [Body] WsAppCredentials appCredentials,
-        CancellationToken cancellation_token = default);
+        CancellationToken cancellationToken = default);
 }

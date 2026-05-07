@@ -84,7 +84,7 @@ internal abstract class FeishuAppTokenManagerBase : TokenManagerBase
             if (string.IsNullOrEmpty(storedValue))
                 return null;
 
-            var (accessToken, expireTimestampMs) = DecodeStoredToken(storedValue);
+            var (accessToken, expireTimestampMs) = TokenStoreHelper.DecodeStoredToken(storedValue);
 
             if (expireTimestampMs > 0)
             {
@@ -127,7 +127,7 @@ internal abstract class FeishuAppTokenManagerBase : TokenManagerBase
         try
         {
             var expireTimestampMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + (expiresInSeconds * 1000L);
-            var encodedValue = EncodeStoredToken(accessToken, expireTimestampMs);
+            var encodedValue = TokenStoreHelper.EncodeStoredToken(accessToken, expireTimestampMs);
             await _tokenStore.SetAccessTokenAsync(tokenType, encodedValue, expiresInSeconds, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex)
@@ -136,17 +136,4 @@ internal abstract class FeishuAppTokenManagerBase : TokenManagerBase
         }
     }
 
-    private static string EncodeStoredToken(string accessToken, long expireTimestampMs)
-        => $"{expireTimestampMs}|{accessToken}";
-
-    private static (string AccessToken, long ExpireTimestampMs) DecodeStoredToken(string storedValue)
-    {
-        var separatorIndex = storedValue.IndexOf('|');
-        if (separatorIndex > 0 && long.TryParse(storedValue.Substring(0, separatorIndex), out var expireMs))
-        {
-            return (storedValue.Substring(separatorIndex + 1), expireMs);
-        }
-
-        return (storedValue, 0);
-    }
 }

@@ -65,4 +65,21 @@ public interface IFeishuUserV1VideoConferencingMeeting : IFeishuV1VideoConferenc
         [Query] string? user_id_type = Consts.User_Id_Type,
         CancellationToken cancellationToken = default);
 
+
+
+    /// <summary>
+    /// 结束会议
+    /// <para>结束一个进行中的会议。会议正在进行中，且操作者须具有相应的权限（如果操作者为用户，必须是会中当前主持人）</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/vc-v1/meeting/end">接口文档</see></para>
+    /// </summary>
+    /// <param name="meeting_id">
+    /// <para>会议ID（视频会议的唯一标识，视频会议开始后才会产生）</para>
+    /// <para>示例值：6911188411932033028</para>
+    /// </param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Patch("/open-apis/vc/v1/meetings/{meeting_id}/end")]
+    Task<FeishuNullDataApiResult?> EndMeetingAsync(
+       [Path] string meeting_id,
+       CancellationToken cancellationToken = default);
+
 }

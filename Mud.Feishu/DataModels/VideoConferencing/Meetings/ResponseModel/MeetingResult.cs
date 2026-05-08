@@ -9,10 +9,23 @@ namespace Mud.Feishu.DataModels.VideoConferencing;
 
 
 /// <summary>
-/// 活跃会议
+/// <para>会议信息</para>
 /// </summary>
-public class ActiveMeeting : Meeting
+public class MeetingResult
 {
+    /// <summary>
+    /// <para>会议数据</para>
+    /// <para>必填：否</para>
+    /// </summary>
+    [JsonPropertyName("meeting")]
+    public MeetingInfo? Meeting { get; set; }
 
 
+
+    /// <summary>
+    /// <para>会议产物相关信息</para>
+    /// <para>必填：否</para>
+    /// </summary>
+    [JsonPropertyName("related_artifacts")]
+    public MeetingRelatedArtifacts? RelatedArtifacts { get; set; }
 }

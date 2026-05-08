@@ -7,12 +7,17 @@
 
 namespace Mud.Feishu.DataModels.VideoConferencing;
 
-
 /// <summary>
-/// 活跃会议
+/// <para>会议数据</para>
 /// </summary>
-public class ActiveMeeting : Meeting
+public class MeetingInfo : Meeting
 {
 
-
+    /// <summary>
+    /// <para>纪要ID</para>
+    /// <para>必填：否</para>
+    /// <para>示例值：6943848821689040898</para>
+    /// </summary>
+    [JsonPropertyName("note_id")]
+    public string? NoteId { get; set; }
 }

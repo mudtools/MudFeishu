@@ -47,4 +47,54 @@ public interface IFeishuV1VideoConferencingMeeting : IFeishuAppContextSwitcher
       [Body] SetHostMeetingRequest setHostMeetingRequest,
       [Query] string? user_id_type = Consts.User_Id_Type,
       CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 获取会议详情
+    /// <para>根据会议 ID 获取指定会议的详细信息，包括会议主题、链接、主持人、参会人员、状态、时间信息及关联纪要 ID。</para>
+    /// <para>只能获取归属于自己的会议，支持查询最近90天内的会议</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/vc-v1/meeting/get">接口文档</see></para>
+    /// </summary>
+    /// <param name="user_id_type">
+    /// <para>用户 ID 类型</para>
+    /// <para>示例值：open_id</para>
+    /// <list type="bullet">
+    /// <item>open_id：标识一个用户在某个应用中的身份。同一个用户在不同应用中的 Open ID 不同。</item>
+    /// <item>union_id：标识一个用户在某个应用开发商下的身份。同一用户在同一开发商下的应用中的 Union ID 是相同的，在不同开发商下的应用中的 Union ID 是不同的。通过 Union ID，应用开发商可以把同个用户在多个应用中的身份关联起来。</item>
+    /// <item>user_id：标识一个用户在某个租户内的身份。同一个用户在租户 A 和租户 B 内的 User ID 是不同的。在同一个租户内，一个用户的 User ID 在所有应用（包括商店应用）中都保持一致。User ID 主要用于在不同的应用间打通用户数据。</item>
+    /// </list>
+    /// <para>默认值：open_id</para>
+    /// </param>
+    /// <param name="meeting_id">
+    /// <para>会议ID（视频会议的唯一标识，视频会议开始后才会产生）</para>
+    /// <para>示例值：6911188411932033028</para>
+    /// </param>
+    /// <param name="with_participants">
+    /// <para>是否返回参会人列表，默认值为 false，不返回参会人列表；设为 true 时返回参会人列表。当 user_id_type 为 user_id 时，参会人列表仅能获取 Lark 用户。</para>
+    /// <para>示例值：false</para>
+    /// <para>默认值：null</para>
+    /// </param>
+    /// <param name="with_meeting_ability">
+    /// <para>是否返回会中使用能力统计，默认值为 false，不返回能力统计；设为 true 时返回会中使用能力统计（仅限tenant_access_token）</para>
+    /// <para>示例值：false</para>
+    /// <para>默认值：null</para>
+    /// </param>
+    /// <param name="query_mode">
+    /// <para>此次查询的查询模式，不传，或传0，只查询会议信息；传1，只查询会议产物</para>
+    /// <para>示例值：0</para>
+    /// <list type="bullet">
+    /// <item>0：只查询会议信息（默认）</item>
+    /// <item>1：只查询会议产物（纪要、逐字稿）</item>
+    /// </list>
+    /// <para>默认值：null</para>
+    /// </param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Get("/open-apis/vc/v1/meetings/{meeting_id}")]
+    Task<FeishuApiResult<MeetingResult>?> GetMeetingAsync(
+       [Path] string meeting_id,
+       [Query] bool? with_participants = null,
+       [Query] bool? with_meeting_ability = null,
+       [Query] int? query_mode = null,
+       [Query] string? user_id_type = Consts.User_Id_Type,
+       CancellationToken cancellationToken = default);
 }

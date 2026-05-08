@@ -49,7 +49,8 @@ internal class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuA
             RegisterApp(config.AppKey, context, config.IsDefault);
         }
 
-        if (!HasApp(GetDefaultApp().Config.AppKey))
+        var defaultApp = GetDefaultApp();
+        if (defaultApp == null || !HasApp(defaultApp.Config.AppKey))
         {
             throw new InvalidOperationException("未配置默认应用");
         }

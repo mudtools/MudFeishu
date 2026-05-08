@@ -9,18 +9,16 @@ using Microsoft.Extensions.Caching.Memory;
 
 namespace Mud.Feishu.Abstractions.Authentication;
 
-
 /// <summary>
 /// 基于 IMemoryCache 的飞书用户令牌存储适配器
 /// </summary>
 /// <remarks>
 /// 实现 Mud.HttpUtils v2.0 的 IUserTokenStore 接口，将用户令牌持久化到 IMemoryCache。
 /// 支持按用户标识隔离令牌数据。
-/// ITokenStore 的方法通过组合 FeishuTokenStore 实现，避免重复代码。
+/// ITokenStore 的方法通过 UserTokenStoreBase 基类委托给内部 FeishuTokenStore 实现。
 /// </remarks>
-public class FeishuUserTokenStore : IUserTokenStore
+public class FeishuUserTokenStore : UserTokenStoreBase
 {
-    private readonly FeishuTokenStore _innerStore;
     private readonly IMemoryCache _cache;
 
     /// <summary>
@@ -29,33 +27,13 @@ public class FeishuUserTokenStore : IUserTokenStore
     /// <param name="innerStore">内部令牌存储实例，用于 ITokenStore 方法委托</param>
     /// <param name="cache">内存缓存实例</param>
     public FeishuUserTokenStore(FeishuTokenStore innerStore, IMemoryCache cache)
+        : base(innerStore)
     {
-        _innerStore = innerStore ?? throw new ArgumentNullException(nameof(innerStore));
         _cache = cache ?? throw new ArgumentNullException(nameof(cache));
     }
 
     /// <inheritdoc />
-    public Task<string?> GetAccessTokenAsync(string tokenType, CancellationToken cancellationToken = default)
-        => _innerStore.GetAccessTokenAsync(tokenType, cancellationToken);
-
-    /// <inheritdoc />
-    public Task SetAccessTokenAsync(string tokenType, string accessToken, long expiresInSeconds, CancellationToken cancellationToken = default)
-        => _innerStore.SetAccessTokenAsync(tokenType, accessToken, expiresInSeconds, cancellationToken);
-
-    /// <inheritdoc />
-    public Task<string?> GetRefreshTokenAsync(string tokenType, CancellationToken cancellationToken = default)
-        => _innerStore.GetRefreshTokenAsync(tokenType, cancellationToken);
-
-    /// <inheritdoc />
-    public Task SetRefreshTokenAsync(string tokenType, string refreshToken, CancellationToken cancellationToken = default)
-        => _innerStore.SetRefreshTokenAsync(tokenType, refreshToken, cancellationToken);
-
-    /// <inheritdoc />
-    public Task RemoveAsync(string tokenType, CancellationToken cancellationToken = default)
-        => _innerStore.RemoveAsync(tokenType, cancellationToken);
-
-    /// <inheritdoc />
-    public Task<string?> GetAccessTokenAsync(string userId, string tokenType, CancellationToken cancellationToken = default)
+    public override Task<string?> GetAccessTokenAsync(string userId, string tokenType, CancellationToken cancellationToken = default)
     {
         var key = BuildUserAccessTokenKey(userId, tokenType);
         var token = _cache.Get<string>(key);
@@ -63,7 +41,7 @@ public class FeishuUserTokenStore : IUserTokenStore
     }
 
     /// <inheritdoc />
-    public Task SetAccessTokenAsync(string userId, string tokenType, string accessToken, long expiresInSeconds, CancellationToken cancellationToken = default)
+    public override Task SetAccessTokenAsync(string userId, string tokenType, string accessToken, long expiresInSeconds, CancellationToken cancellationToken = default)
     {
         var key = BuildUserAccessTokenKey(userId, tokenType);
         _cache.Set(key, accessToken, TimeSpan.FromSeconds(expiresInSeconds));
@@ -71,7 +49,7 @@ public class FeishuUserTokenStore : IUserTokenStore
     }
 
     /// <inheritdoc />
-    public Task<string?> GetRefreshTokenAsync(string userId, string tokenType, CancellationToken cancellationToken = default)
+    public override Task<string?> GetRefreshTokenAsync(string userId, string tokenType, CancellationToken cancellationToken = default)
     {
         var key = BuildUserRefreshTokenKey(userId, tokenType);
         var token = _cache.Get<string>(key);
@@ -79,7 +57,7 @@ public class FeishuUserTokenStore : IUserTokenStore
     }
 
     /// <inheritdoc />
-    public Task SetRefreshTokenAsync(string userId, string tokenType, string refreshToken, CancellationToken cancellationToken = default)
+    public override Task SetRefreshTokenAsync(string userId, string tokenType, string refreshToken, CancellationToken cancellationToken = default)
     {
         var key = BuildUserRefreshTokenKey(userId, tokenType);
         _cache.Set(key, refreshToken, TimeSpan.FromDays(30));
@@ -87,13 +65,10 @@ public class FeishuUserTokenStore : IUserTokenStore
     }
 
     /// <inheritdoc />
-    public Task RemoveAsync(string userId, string tokenType, CancellationToken cancellationToken = default)
+    public override Task RemoveAsync(string userId, string tokenType, CancellationToken cancellationToken = default)
     {
         _cache.Remove(BuildUserAccessTokenKey(userId, tokenType));
         _cache.Remove(BuildUserRefreshTokenKey(userId, tokenType));
         return Task.CompletedTask;
     }
-
-    private static string BuildUserAccessTokenKey(string userId, string tokenType) => $"feishu:token:user:{userId}:{tokenType}:access";
-    private static string BuildUserRefreshTokenKey(string userId, string tokenType) => $"feishu:token:user:{userId}:{tokenType}:refresh";
 }

@@ -65,21 +65,6 @@ public interface IFeishuTenantV3User : IFeishuV3User
       CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 通过用户名关键词搜索其他用户的信息，包括用户头像、用户名、用户所在部门、用户 user_id 以及 open_id。
-    /// </summary>
-    /// <param name="query">搜索关键词，接口通过传入的关键词搜索相匹配的用户名。</param>
-    /// <param name="page_size">分页大小，即本次请求所返回的用户信息列表内的最大条目数。默认值：10</param>
-    /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
-    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
-    /// <returns></returns>
-    [Get("/open-apis/search/v1/user")]
-    Task<FeishuApiResult<UserSearchListResult>?> GetUsersByKeywordAsync(
-     [Query("query")] string query,
-     [Query("page_size")] int page_size = Consts.PageSize_10,
-     [Query("page_token")] string? page_token = null,
-     CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// 从通讯录内删除一个指定用户（该动作可以理解为员工离职），删除时可通过请求参数将用户所有的群组、文档、日程和应用等数据转让至他人。
     /// </summary>
     /// <param name="user_id">用户 ID。</param>

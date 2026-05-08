@@ -45,15 +45,16 @@ public class FeishuAppContext : IFeishuAppContext, IDisposable
         if (string.IsNullOrEmpty(tokenType))
             return TenantTokenManager;
 
-        var normalizedType = tokenType.Trim().ToLowerInvariant();
-        return normalizedType switch
-        {
-            "tenantaccesstoken" => TenantTokenManager,
-            "appaccesstoken" => AppTokenManager,
-            "useraccesstoken" => UserTokenManager,
-            _ => throw new InvalidOperationException(
-                $"不支持的令牌类型: '{tokenType}'。支持的类型: TenantAccessToken, AppAccessToken, UserAccessToken")
-        };
+        var trimmed = tokenType.Trim();
+        if (trimmed.Equals("TenantAccessToken", StringComparison.OrdinalIgnoreCase))
+            return TenantTokenManager;
+        if (trimmed.Equals("AppAccessToken", StringComparison.OrdinalIgnoreCase))
+            return AppTokenManager;
+        if (trimmed.Equals("UserAccessToken", StringComparison.OrdinalIgnoreCase))
+            return UserTokenManager;
+
+        throw new InvalidOperationException(
+            $"不支持的令牌类型: '{tokenType}'。支持的类型: TenantAccessToken, AppAccessToken, UserAccessToken");
     }
 
     /// <summary>

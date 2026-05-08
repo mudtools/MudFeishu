@@ -47,6 +47,7 @@ public class FeishuServiceBuilder
             [FeishuModule.Spreadsheets] = new FeishuModuleRegistrar(FeishuModule.Spreadsheets, s => s.AddSpreadsheetsWebApiHttpClient()),
             [FeishuModule.Bitable] = new FeishuModuleRegistrar(FeishuModule.Bitable, s => s.AddBitableWebApiHttpClient()),
             [FeishuModule.Calendar] = new FeishuModuleRegistrar(FeishuModule.Calendar, s => s.AddCalendarWebApiHttpClient()),
+            [FeishuModule.VideoConferencing] = new FeishuModuleRegistrar(FeishuModule.VideoConferencing, s => s.AddVideoConferencingWebApiHttpClient()),
         };
     }
 
@@ -128,6 +129,12 @@ public class FeishuServiceBuilder
     /// </summary>
     /// <returns>建造者实例，支持链式调用</returns>
     public FeishuServiceBuilder AddCalendarApi() => AddModule(FeishuModule.Calendar);
+
+    /// <summary>
+    /// 添加飞书视频会议管理 API 服务
+    /// </summary>
+    /// <returns>建造者实例，支持链式调用</returns>
+    public FeishuServiceBuilder AddVideoConferencingApi() => AddModule(FeishuModule.VideoConferencing);
 
     /// <summary>
     /// 添加所有 API 服务

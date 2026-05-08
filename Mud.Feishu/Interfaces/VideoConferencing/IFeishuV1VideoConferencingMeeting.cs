@@ -97,4 +97,34 @@ public interface IFeishuV1VideoConferencingMeeting : IFeishuAppContextSwitcher
        [Query] int? query_mode = null,
        [Query] string? user_id_type = Consts.User_Id_Type,
        CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 获取与会议号关联的会议列表
+    /// <para>获取指定时间范围内与会议号关联的会议简要信息列表。仅支持查询 90 天内的数据。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/vc-v1/meeting/list_by_no">接口文档</see></para>
+    /// </summary>
+    /// <param name="meeting_no">
+    /// <para>9位会议号（会议链接最后9位数）</para>
+    /// <para>示例值：123456789</para>
+    /// </param>
+    /// <param name="start_time">
+    /// <para>查询开始时间（unix时间，单位sec），需小于end_time的值</para>
+    /// <para>示例值：1608888867</para>
+    /// </param>
+    /// <param name="end_time">
+    /// <para>查询结束时间（unix时间，单位sec）</para>
+    /// <para>示例值：1608888867</para>
+    /// </param>
+    /// <param name="page_size">分页大小，即本次请求所返回的用户信息列表内的最大条目数。默认值：20</param>
+    /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Get("/open-apis/vc/v1/meetings/list_by_no")]
+    Task<FeishuApiResult<MeetingPageListResult>?> GetMeetingPageListAsync(
+        [Query] string meeting_no,
+        [Query] string start_time,
+        [Query] string end_time,
+        [Query] int page_size = Consts.PageSize_20,
+        [Query] string? page_token = null,
+        CancellationToken cancellationToken = default);
 }

@@ -83,8 +83,6 @@ public static class FeishuServiceCollectionExtensions
                 clientName,
                 client =>
                 {
-                    // 验证 BaseUrl 是否安全（SSRF 防护）
-                    // UrlValidator.ValidateBaseUrl(baseAddress, allowCustomBaseUrl);
                     client.BaseAddress = new Uri(baseAddress);
                     client.DefaultRequestHeaders.Add("User-Agent", "MudFeishuClient/1.0");
                     client.Timeout = TimeSpan.FromSeconds(timeOut);

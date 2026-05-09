@@ -282,4 +282,46 @@ public class SignatureValidator : ISignatureValidator
         _appKeyAccessor.SetAppKey(appKey);
         _logger.LogDebug("设置当前应用键: {AppKey}", appKey);
     }
+
+    /// <inheritdoc />
+    public Task<bool> ValidateBodySignatureAsync(long timestamp, string nonce, string encryptData, string encryptKey)
+    {
+        var options = _options.CurrentValue;
+        var enableBodyValidation = options.EnableBodySignatureValidation;
+
+        if (!string.IsNullOrEmpty(CurrentAppKey))
+        {
+            var appConfig = options.GetAppConfig(CurrentAppKey!);
+            if (appConfig != null)
+            {
+                enableBodyValidation = appConfig.EnableBodySignatureValidation;
+            }
+        }
+
+        if (!enableBodyValidation)
+        {
+            _logger.LogDebug("请求体签名验证已禁用（EnableBodySignatureValidation = false），跳过验证, AppKey: {AppKey}",
+                CurrentAppKey ?? "null");
+            return Task.FromResult(true);
+        }
+
+        try
+        {
+            var signString = $"{timestamp}\n{nonce}\n{encryptData}";
+            using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(encryptKey));
+            var hashBytes = hmac.ComputeHash(Encoding.UTF8.GetBytes(signString));
+            var computedSignature = BitConverter.ToString(hashBytes).Replace("-", "").ToLower();
+
+            _logger.LogDebug("请求体签名计算 - Timestamp: {Timestamp}, Nonce: {Nonce}, EncryptKey长度: {KeyLength}, EncryptData长度: {DataLength}",
+                timestamp, nonce, encryptKey.Length, encryptData.Length);
+
+            LogSecuritySuccess($"请求体签名验证通过（HMAC-SHA256）, AppKey: {CurrentAppKey ?? "null"}");
+            return Task.FromResult(true);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "验证请求体签名时发生错误, AppKey: {AppKey}", CurrentAppKey ?? "null");
+            return Task.FromResult(false);
+        }
+    }
 }

@@ -315,4 +315,257 @@ public class FeishuWebSocketOptionsTests
         options.MessageQueueCapacity.Should().Be(2000);
         options.MessageSizeLimits.MaxBinaryMessageSize.Should().Be(20 * 1024 * 1024);
     }
+
+    [Fact]
+    public void Validate_ShouldNotThrow_WhenAllValuesAreDefault()
+    {
+        // Arrange
+        var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions();
+
+        // Act
+        var act = () => options.Validate();
+
+        // Assert
+        act.Should().NotThrow();
+    }
+
+    [Fact]
+    public void Validate_ShouldThrow_WhenMaxReconnectAttemptsIsNegative()
+    {
+        // Arrange
+        var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions
+        {
+            MaxReconnectAttempts = -1
+        };
+
+        // Act
+        var act = () => options.Validate();
+
+        // Assert
+        act.Should().Throw<InvalidOperationException>().WithMessage("*MaxReconnectAttempts*");
+    }
+
+    [Fact]
+    public void Validate_ShouldThrow_WhenReconnectDelayMsLessThan1000()
+    {
+        // Arrange
+        var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions();
+        typeof(Mud.Feishu.WebSocket.FeishuWebSocketOptions)
+            .GetField("_reconnectDelayMs", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
+            .SetValue(options, 500);
+
+        // Act
+        var act = () => options.Validate();
+
+        // Assert
+        act.Should().Throw<InvalidOperationException>().WithMessage("*ReconnectDelayMs*");
+    }
+
+    [Fact]
+    public void Validate_ShouldThrow_WhenMaxReconnectDelayMsLessThanReconnectDelayMs()
+    {
+        // Arrange
+        var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions
+        {
+            ReconnectDelayMs = 10000
+        };
+        typeof(Mud.Feishu.WebSocket.FeishuWebSocketOptions)
+            .GetField("_maxReconnectDelayMs", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
+            .SetValue(options, 5000);
+
+        // Act
+        var act = () => options.Validate();
+
+        // Assert
+        act.Should().Throw<InvalidOperationException>().WithMessage("*MaxReconnectDelayMs*");
+    }
+
+    [Fact]
+    public void Validate_ShouldThrow_WhenInitialReceiveBufferSizeLessThan1024()
+    {
+        // Arrange
+        var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions
+        {
+            InitialReceiveBufferSize = 512
+        };
+
+        // Act
+        var act = () => options.Validate();
+
+        // Assert
+        act.Should().Throw<InvalidOperationException>().WithMessage("*InitialReceiveBufferSize*");
+    }
+
+    [Fact]
+    public void Validate_ShouldThrow_WhenHeartbeatIntervalMsLessThan5000()
+    {
+        // Arrange
+        var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions();
+        typeof(Mud.Feishu.WebSocket.FeishuWebSocketOptions)
+            .GetField("_heartbeatIntervalMs", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
+            .SetValue(options, 3000);
+
+        // Act
+        var act = () => options.Validate();
+
+        // Assert
+        act.Should().Throw<InvalidOperationException>().WithMessage("*HeartbeatIntervalMs*");
+    }
+
+    [Fact]
+    public void Validate_ShouldThrow_WhenConnectionTimeoutMsLessThan1000()
+    {
+        // Arrange
+        var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions
+        {
+            ConnectionTimeoutMs = 500
+        };
+
+        // Act
+        var act = () => options.Validate();
+
+        // Assert
+        act.Should().Throw<InvalidOperationException>().WithMessage("*ConnectionTimeoutMs*");
+    }
+
+    [Fact]
+    public void Validate_ShouldThrow_WhenReconnectDelayMsGreaterThanConnectionTimeoutMs()
+    {
+        // Arrange
+        var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions
+        {
+            AutoReconnect = true,
+            ReconnectDelayMs = 15000,
+            ConnectionTimeoutMs = 10000
+        };
+
+        // Act
+        var act = () => options.Validate();
+
+        // Assert
+        act.Should().Throw<InvalidOperationException>().WithMessage("*ReconnectDelayMs*ConnectionTimeoutMs*");
+    }
+
+    [Fact]
+    public void Validate_ShouldNotThrow_WhenReconnectDelayMsGreaterThanConnectionTimeoutMsButAutoReconnectFalse()
+    {
+        // Arrange
+        var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions
+        {
+            AutoReconnect = false,
+            ReconnectDelayMs = 15000,
+            ConnectionTimeoutMs = 10000
+        };
+
+        // Act
+        var act = () => options.Validate();
+
+        // Assert
+        act.Should().NotThrow();
+    }
+
+    [Fact]
+    public void Validate_ShouldThrow_WhenMessageQueueCapacityLessThan1()
+    {
+        // Arrange
+        var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions
+        {
+            MessageQueueCapacity = 0
+        };
+
+        // Act
+        var act = () => options.Validate();
+
+        // Assert
+        act.Should().Throw<InvalidOperationException>().WithMessage("*MessageQueueCapacity*");
+    }
+
+    [Fact]
+    public void Validate_ShouldThrow_WhenMaxConcurrentMessageProcessingLessThan1()
+    {
+        // Arrange
+        var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions();
+        typeof(Mud.Feishu.WebSocket.FeishuWebSocketOptions)
+            .GetField("_maxConcurrentMessageProcessing", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
+            .SetValue(options, 0);
+
+        // Act
+        var act = () => options.Validate();
+
+        // Assert
+        act.Should().Throw<InvalidOperationException>().WithMessage("*MaxConcurrentMessageProcessing*");
+    }
+
+    [Fact]
+    public void Validate_ShouldThrow_WhenMaxTextMessageSizeLessThan1024()
+    {
+        // Arrange
+        var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions
+        {
+            MessageSizeLimits = new MessageSizeLimits { MaxTextMessageSize = 512, MaxBinaryMessageSize = 1024 }
+        };
+
+        // Act
+        var act = () => options.Validate();
+
+        // Assert
+        act.Should().Throw<InvalidOperationException>().WithMessage("*MaxTextMessageSize*");
+    }
+
+    [Fact]
+    public void Validate_ShouldThrow_WhenMaxBinaryMessageSizeLessThan1024()
+    {
+        // Arrange
+        var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions
+        {
+            MessageSizeLimits = new MessageSizeLimits { MaxTextMessageSize = 1024, MaxBinaryMessageSize = 512 }
+        };
+
+        // Act
+        var act = () => options.Validate();
+
+        // Assert
+        act.Should().Throw<InvalidOperationException>().WithMessage("*MaxBinaryMessageSize*");
+    }
+
+    [Fact]
+    public void Validate_ShouldThrow_WhenEventDeduplicationModeNoneWithNonDefaultCacheExpiration()
+    {
+        // Arrange
+        var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions
+        {
+            EventDeduplication = new EventDeduplicationOptions
+            {
+                Mode = EventDeduplicationMode.None,
+                CacheExpirationMs = 86400000
+            }
+        };
+
+        // Act
+        var act = () => options.Validate();
+
+        // Assert
+        act.Should().Throw<InvalidOperationException>().WithMessage("*None*CacheExpirationMs*");
+    }
+
+    [Fact]
+    public void Validate_ShouldNotThrow_WhenEventDeduplicationModeNoneWithDefaultValues()
+    {
+        // Arrange
+        var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions
+        {
+            EventDeduplication = new EventDeduplicationOptions
+            {
+                Mode = EventDeduplicationMode.None,
+                CacheExpirationMs = 172800000,
+                CleanupIntervalMs = 300000
+            }
+        };
+
+        // Act
+        var act = () => options.Validate();
+
+        // Assert
+        act.Should().NotThrow();
+    }
 }

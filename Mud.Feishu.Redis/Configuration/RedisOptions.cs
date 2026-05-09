@@ -24,9 +24,9 @@ public class RedisOptions
     public string Password { get; set; } = string.Empty;
 
     /// <summary>
-    /// 事件去重缓存过期时间，默认 24 小时
+    /// 事件去重缓存过期时间，默认 48 小时
     /// </summary>
-    public TimeSpan EventCacheExpiration { get; set; } = TimeSpan.FromHours(24);
+    public TimeSpan EventCacheExpiration { get; set; } = TimeSpan.FromHours(48);
 
     /// <summary>
     /// Nonce 有效期，默认 5 分钟
@@ -34,24 +34,24 @@ public class RedisOptions
     public TimeSpan NonceTtl { get; set; } = TimeSpan.FromMinutes(5);
 
     /// <summary>
-    /// SeqID 去重缓存过期时间，默认 24 小时
+    /// SeqID 去重缓存过期时间，默认 48 小时
     /// </summary>
-    public TimeSpan SeqIdCacheExpiration { get; set; } = TimeSpan.FromHours(24);
+    public TimeSpan SeqIdCacheExpiration { get; set; } = TimeSpan.FromHours(48);
 
     /// <summary>
-    /// 事件去重键前缀，默认为 "feishu:event:"
+    /// 事件去重键前缀
     /// </summary>
-    public string EventKeyPrefix { get; set; } = "feishu:event:";
+    public string EventKeyPrefix { get; set; } = Mud.Feishu.Abstractions.Consts.DefaultEventKeyPrefix;
 
     /// <summary>
-    /// Nonce 去重键前缀，默认为 "feishu:nonce:"
+    /// Nonce 去重键前缀
     /// </summary>
-    public string NonceKeyPrefix { get; set; } = "feishu:nonce:";
+    public string NonceKeyPrefix { get; set; } = Mud.Feishu.Abstractions.Consts.DefaultNonceKeyPrefix;
 
     /// <summary>
-    /// SeqID 去重键前缀，默认为 "feishu:seqid:"
+    /// SeqID 去重键前缀
     /// </summary>
-    public string SeqIdKeyPrefix { get; set; } = "feishu:seqid:";
+    public string SeqIdKeyPrefix { get; set; } = Mud.Feishu.Abstractions.Consts.DefaultSeqIdKeyPrefix;
 
     /// <summary>
     /// 连接超时时间，默认 5000 毫秒

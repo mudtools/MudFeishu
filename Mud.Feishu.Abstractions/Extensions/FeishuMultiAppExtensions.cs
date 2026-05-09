@@ -292,10 +292,6 @@ public static class FeishuMultiAppExtensions
         }
         else if (defaultAppCount > 1)
         {
-            System.Diagnostics.Debug.WriteLine(
-                $"[MudFeishu] 检测到 {defaultAppCount} 个应用配置了 IsDefault=true，仅第一个将被设为默认应用。" +
-                "建议明确指定唯一的默认应用以避免歧义。");
-
             var defaultApps = configs.Where(c => c.IsDefault).ToList();
             for (int i = 1; i < defaultApps.Count; i++)
             {

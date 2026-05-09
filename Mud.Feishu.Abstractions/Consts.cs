@@ -66,4 +66,19 @@ internal class Consts
     /// 默认重试延迟时间（毫秒）
     /// </summary>
     public const int DefaultRetryDelayMs = 1000;
+
+    /// <summary>
+    /// 事件去重键默认前缀
+    /// </summary>
+    public const string DefaultEventKeyPrefix = "feishu:event:";
+
+    /// <summary>
+    /// Nonce 去重键默认前缀
+    /// </summary>
+    public const string DefaultNonceKeyPrefix = "feishu:nonce:";
+
+    /// <summary>
+    /// SeqID 去重键默认前缀
+    /// </summary>
+    public const string DefaultSeqIdKeyPrefix = "feishu:seqid:";
 }

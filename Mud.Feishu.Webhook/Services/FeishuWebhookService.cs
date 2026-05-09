@@ -194,6 +194,13 @@ public class FeishuWebhookService : IFeishuWebhookService
     {
         Exception? processingException = null;
 
+        var enablePerformanceMonitoring = Options.EnablePerformanceMonitoring;
+        var appConfig = !string.IsNullOrEmpty(appKey) ? Options.GetAppConfig(appKey!) : null;
+        if (appConfig != null)
+            enablePerformanceMonitoring = appConfig.GetEffectiveEnablePerformanceMonitoring(Options.EnablePerformanceMonitoring);
+
+        var performanceStopwatch = enablePerformanceMonitoring ? System.Diagnostics.Stopwatch.StartNew() : null;
+
         // 获取拦截器列表（优先使用应用专属拦截器，回退到全局拦截器）
         var interceptors = GetInterceptors(appKey).ToList();
 
@@ -242,8 +249,11 @@ public class FeishuWebhookService : IFeishuWebhookService
                 // 记录事件处理成功
                 FeishuMetricsHelper.RecordEventHandlingSuccess(eventData.EventType);
 
-                _logger.LogInformation("事件处理完成: {EventType}, 事件ID: {EventId}, AppKey: {AppKey}",
-                    eventData.EventType, eventData.EventId, appKey ?? "null");
+                if (Options.EnableRequestLogging)
+                {
+                    _logger.LogInformation("事件处理完成: {EventType}, 事件ID: {EventId}, AppKey: {AppKey}",
+                        eventData.EventType, eventData.EventId, appKey ?? "null");
+                }
 
                 return (true, null);
             }
@@ -273,7 +283,11 @@ public class FeishuWebhookService : IFeishuWebhookService
             // 记录事件处理失败
             FeishuMetricsHelper.RecordEventHandlingFailure(eventData.EventType, ex.GetType().Name);
 
-            if (Options.EnableExceptionHandling)
+            var effectiveEnableExceptionHandling = Options.EnableExceptionHandling;
+            if (appConfig != null)
+                effectiveEnableExceptionHandling = appConfig.GetEffectiveEnableExceptionHandling(Options.EnableExceptionHandling);
+
+            if (effectiveEnableExceptionHandling)
             {
                 return (false, "Internal server error");
             }
@@ -285,6 +299,14 @@ public class FeishuWebhookService : IFeishuWebhookService
             foreach (var interceptor in interceptors)
             {
                 await interceptor.AfterHandleAsync(eventData.EventType, eventData, processingException, cancellationToken);
+            }
+
+            if (performanceStopwatch != null)
+            {
+                performanceStopwatch.Stop();
+                _logger.LogInformation(
+                    "性能监控: 事件 {EventType} 处理耗时 {ElapsedMs}ms, EventId: {EventId}, AppKey: {AppKey}",
+                    eventData.EventType, performanceStopwatch.ElapsedMilliseconds, eventData.EventId, appKey ?? "null");
             }
         }
     }

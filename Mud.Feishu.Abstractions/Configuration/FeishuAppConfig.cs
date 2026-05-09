@@ -183,6 +183,9 @@ public class FeishuAppConfig
         if (RetryDelayMs < 100 || RetryDelayMs > 60000)
             throw new InvalidOperationException("RetryDelayMs 必须在 100-60000 毫秒之间");
 
+        if (RetryDelayMs > TimeOut * 1000)
+            throw new InvalidOperationException("RetryDelayMs 不应大于 TimeOut（毫秒），否则重试将永远不会执行");
+
         if (TokenRefreshThreshold < 60 || TokenRefreshThreshold > 3600)
             throw new InvalidOperationException("TokenRefreshThreshold 必须在 60-3600 秒之间");
 

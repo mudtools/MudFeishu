@@ -220,6 +220,9 @@ public class FeishuWebSocketOptions
         if (ConnectionTimeoutMs < 1000)
             throw new InvalidOperationException("ConnectionTimeoutMs必须至少为1000毫秒");
 
+        if (AutoReconnect && ReconnectDelayMs > ConnectionTimeoutMs)
+            throw new InvalidOperationException("ReconnectDelayMs不应大于ConnectionTimeoutMs，否则重连将在连接超时后才触发");
+
         if (MessageQueueCapacity < 1)
             throw new InvalidOperationException("MessageQueueCapacity必须至少为1");
 
@@ -233,13 +236,13 @@ public class FeishuWebSocketOptions
         if (MessageSizeLimits.MaxBinaryMessageSize < 1024)
             throw new InvalidOperationException("MessageSizeLimits.MaxBinaryMessageSize必须至少为1024字节");
 
-        // 去重配置警告（非强制）
+        // 去重配置验证
         if (EventDeduplication.Mode == EventDeduplicationMode.None)
         {
-            System.Diagnostics.Debug.WriteLine(
-                "[MudFeishu] EventDeduplication.Mode 设置为 None，事件去重已禁用。" +
-                "生产环境建议启用至少一种去重机制（InMemory 或 Redis）以避免重复处理事件。" +
-                "CacheExpirationMs 和 CleanupIntervalMs 配置将不会生效。");
+            if (EventDeduplication.CacheExpirationMs != 172800000 || EventDeduplication.CleanupIntervalMs != 300000)
+                throw new InvalidOperationException(
+                    "EventDeduplication.Mode 设置为 None 时，CacheExpirationMs 和 CleanupIntervalMs 配置不会生效。" +
+                    "生产环境建议启用至少一种去重机制（InMemory 或 Redis）以避免重复处理事件。");
         }
     }
 

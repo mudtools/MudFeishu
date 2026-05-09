@@ -23,9 +23,9 @@ public class RedisOptionsTests
         // Assert
         Assert.Equal("localhost:6379", options.ServerAddress);
         Assert.Equal(string.Empty, options.Password);
-        Assert.Equal(TimeSpan.FromHours(24), options.EventCacheExpiration);
+        Assert.Equal(TimeSpan.FromHours(48), options.EventCacheExpiration);
         Assert.Equal(TimeSpan.FromMinutes(5), options.NonceTtl);
-        Assert.Equal(TimeSpan.FromHours(24), options.SeqIdCacheExpiration);
+        Assert.Equal(TimeSpan.FromHours(48), options.SeqIdCacheExpiration);
         Assert.Equal("feishu:event:", options.EventKeyPrefix);
         Assert.Equal("feishu:nonce:", options.NonceKeyPrefix);
         Assert.Equal("feishu:seqid:", options.SeqIdKeyPrefix);

@@ -124,9 +124,9 @@ public class DeduplicationOptions
     public string KeyPrefix
     {
         get => _keyPrefix;
-        set => _keyPrefix = string.IsNullOrEmpty(value) ? "feishu:event:" : value;
+        set => _keyPrefix = string.IsNullOrEmpty(value) ? Consts.DefaultEventKeyPrefix : value;
     }
-    private string _keyPrefix = "feishu:event:";
+    private string _keyPrefix = Consts.DefaultEventKeyPrefix;
 
     /// <summary>
     /// 最大缓存容量（仅内存模式）

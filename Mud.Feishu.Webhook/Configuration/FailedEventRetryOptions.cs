@@ -69,5 +69,12 @@ public class FailedEventRetryOptions
 
         if (MaxRetryPerPoll < 1)
             throw new InvalidOperationException("MaxRetryPerPoll 必须至少为 1");
+
+        if (!EnableRetry)
+        {
+            if (MaxRetryCount > 0 && MaxRetryCount != Mud.Feishu.Abstractions.Consts.DefaultRetryCount)
+                throw new InvalidOperationException(
+                    "EnableRetry 为 false 但 MaxRetryCount 被设置为非默认值，请启用 EnableRetry 或恢复 MaxRetryCount 为默认值");
+        }
     }
 }

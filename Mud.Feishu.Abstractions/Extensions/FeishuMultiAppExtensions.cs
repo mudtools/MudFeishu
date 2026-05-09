@@ -137,6 +137,9 @@ public static class FeishuMultiAppExtensions
 
         if (hasTenantTokenManager)
         {
+            // 注意：此处无法使用 ILogger，因为服务容器尚未构建完成
+            // 使用 Debug 输出作为 ConfigureServices 阶段的日志手段
+            // 仅在 Debug 模式下可见，生产环境建议在应用启动后检查日志确认配置正确
             System.Diagnostics.Debug.WriteLine(
                 "[MudFeishu] 检测到已注册单应用模式的TokenManager。多应用模式已启用,单应用模式的TokenManager将被忽略。" +
                 "建议移除 AddTokenManagers() 等单应用API的调用。" +

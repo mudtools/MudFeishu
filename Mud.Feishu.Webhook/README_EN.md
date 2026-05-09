@@ -390,7 +390,7 @@ public class DemoDepartmentEventHandler : DepartmentCreatedEventHandler
 | `Apps.{AppKey}.TimestampToleranceSeconds`        | int                                           | -1      | Timestamp tolerance (-1 inherits global)                       |
 | `Apps.{AppKey}.EventHandlingTimeoutMs`           | int                                           | -1      | Event handling timeout (-1 inherits global)                    |
 | `Apps.{AppKey}.EnforceHeaderSignatureValidation` | bool                                          | false   | Enforce header signature validation (does not inherit)         |
-| `Apps.{AppKey}.EnableBodySignatureValidation`    | bool                                          | true    | Enable body signature validation (does not inherit)            |
+| `Apps.{AppKey}.EnableBodySignatureValidation`    | bool?                                         | null    | Enable body signature validation (null inherits global)        |
 | `Apps.{AppKey}.EnableExceptionHandling`          | bool?                                         | null    | Enable exception handling (null inherits global)               |
 | `Apps.{AppKey}.EnablePerformanceMonitoring`      | bool?                                         | null    | Enable performance monitoring (null inherits global)           |
 

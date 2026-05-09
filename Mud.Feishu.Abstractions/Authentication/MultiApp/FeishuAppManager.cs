@@ -164,8 +164,6 @@ internal class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuA
     /// </summary>
     private FeishuAppContext CreateAppContext(FeishuAppConfig config)
     {
-        config.Validate();
-
         var currentUserContext = _serviceProvider.GetService<IFeishuCurrentUserContext>();
         var jsonSerializerOptions = Options.Create(_serviceProvider.GetRequiredService<JsonSerializerOptions>());
 

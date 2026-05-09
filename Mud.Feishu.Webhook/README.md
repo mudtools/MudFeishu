@@ -411,7 +411,7 @@ public class DemoDepartmentEventHandler : DepartmentCreatedEventHandler
 | `Apps.{AppKey}.TimestampToleranceSeconds` | int                                    | -1     | 时间戳容差（-1 继承全局）                          |
 | `Apps.{AppKey}.EventHandlingTimeoutMs` | int                                     | -1     | 事件处理超时（-1 继承全局）                        |
 | `Apps.{AppKey}.EnforceHeaderSignatureValidation` | bool                           | false  | 是否强制签名验证（不继承全局）                     |
-| `Apps.{AppKey}.EnableBodySignatureValidation` | bool                              | true   | 是否验证请求体签名（不继承全局）                   |
+| `Apps.{AppKey}.EnableBodySignatureValidation` | bool?                             | null   | 是否验证请求体签名（null 继承全局）               |
 | `Apps.{AppKey}.EnableExceptionHandling` | bool?                                  | null   | 是否启用异常处理（null 继承全局）                  |
 | `Apps.{AppKey}.EnablePerformanceMonitoring` | bool?                                 | null   | 是否启用性能监控（null 继承全局）                  |
 
@@ -869,7 +869,7 @@ builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
 | `EnableExceptionHandling`     | 设置为 null 时继承全局配置，否则使用应用级配置     |
 | `EnablePerformanceMonitoring` | 设置为 null 时继承全局配置，否则使用应用级配置     |
 | `EnforceHeaderSignatureValidation` | 不继承，直接使用应用级配置（默认 false）     |
-| `EnableBodySignatureValidation`    | 不继承，直接使用应用级配置（默认 true）      |
+| `EnableBodySignatureValidation`    | 设置为 null 时继承全局配置，否则使用应用级配置     |
 
 示例：
 

@@ -294,7 +294,7 @@ public class SignatureValidator : ISignatureValidator
             var appConfig = options.GetAppConfig(CurrentAppKey!);
             if (appConfig != null)
             {
-                enableBodyValidation = appConfig.EnableBodySignatureValidation;
+                enableBodyValidation = appConfig.GetEffectiveEnableBodySignatureValidation(enableBodyValidation);
             }
         }
 

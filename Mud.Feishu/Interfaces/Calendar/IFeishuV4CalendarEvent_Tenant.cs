@@ -55,7 +55,7 @@ public interface IFeishuTenantV4CalendarEvent : IFeishuV4CalendarEvent
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Delete("/open-apis/calendar/v4/timeoff_events/{timeoff_event_id}")]
     Task<FeishuNullDataApiResult?> DeleteTimeoffEventAsync(
-       [Query] string timeoff_event_id,
+       [Path] string timeoff_event_id,
        CancellationToken cancellationToken = default);
 
 

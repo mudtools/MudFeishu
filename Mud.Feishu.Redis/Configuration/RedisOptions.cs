@@ -82,7 +82,7 @@ public class RedisOptions
     /// <summary>
     /// 连接重试次数，默认 3 次
     /// </summary>
-    public int ConnectRetry { get; set; } = 3;
+    public int ConnectRetry { get; set; } = Mud.Feishu.Abstractions.Consts.DefaultRetryCount;
 
     /// <summary>
     /// 默认数据库索引

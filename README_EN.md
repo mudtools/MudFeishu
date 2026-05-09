@@ -152,14 +152,14 @@ dotnet add package Mud.Feishu.Redis
       "IsDefault": true
     }
   ],
-  "WebSocket": {
+  "FeishuWebSocket": {
     "AutoReconnect": true,
     "MaxReconnectAttempts": 5,
     "ReconnectDelayMs": 5000,
     "HeartbeatIntervalMs": 30000,
     "EnableLogging": true
   },
-  "Webhook": {
+  "FeishuWebhook": {
     "VerificationToken": "your_verification_token",
     "EncryptKey": "your_encrypt_key_32_bytes_long",
     "RoutePrefix": "feishu/webhook",

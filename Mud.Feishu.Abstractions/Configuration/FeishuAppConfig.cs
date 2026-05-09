@@ -106,7 +106,7 @@ public class FeishuAppConfig
     /// 范围: 0-10次
     /// 当API调用失败时的自动重试次数，提高请求的成功率和稳定性。
     /// </remarks>
-    public int RetryCount { get; set; } = 3;
+    public int RetryCount { get; set; } = Consts.DefaultRetryCount;
 
     /// <summary>
     /// 重试延迟时间（毫秒）
@@ -116,7 +116,7 @@ public class FeishuAppConfig
     /// 范围: 100-60000毫秒
     /// 重试之间的基础延迟时间，实际延迟会采用指数退避策略。
     /// </remarks>
-    public int RetryDelayMs { get; set; } = 1000;
+    public int RetryDelayMs { get; set; } = Consts.DefaultRetryDelayMs;
 
     /// <summary>
     /// 令牌刷新阈值（秒）

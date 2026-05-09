@@ -18,7 +18,7 @@ public class EventDeduplicationOptions
     public EventDeduplicationMode Mode { get; set; } = EventDeduplicationMode.InMemory;
 
     /// <summary>
-    /// 缓存过期时间（毫秒），默认为24小时
+    /// 缓存过期时间（毫秒），默认为48小时
     /// <para>建议设置为与飞书官方事件重试窗口期一致，避免长延时场景下的重复处理</para>
     /// </summary>
     public int CacheExpirationMs
@@ -26,7 +26,7 @@ public class EventDeduplicationOptions
         get => _cacheExpirationMs;
         set => _cacheExpirationMs = Math.Max(60000, value);
     }
-    private int _cacheExpirationMs = 24 * 60 * 60 * 1000; // 默认 24 小时
+    private int _cacheExpirationMs = 48 * 60 * 60 * 1000; // 默认 48 小时
 
     /// <summary>
     /// 缓存清理间隔（毫秒），默认为5分钟

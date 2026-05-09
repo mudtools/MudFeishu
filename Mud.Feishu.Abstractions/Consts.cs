@@ -56,4 +56,14 @@ internal class Consts
     public const string InheritedFrom = "IdempotentFeishuEventHandler";
     public const string InheritedFromObject = "DefaultFeishuObjectEventHandler";
     public const string DefaultHeader = "FeishuEventHeader";
+
+    /// <summary>
+    /// 默认重试次数
+    /// </summary>
+    public const int DefaultRetryCount = 3;
+
+    /// <summary>
+    /// 默认重试延迟时间（毫秒）
+    /// </summary>
+    public const int DefaultRetryDelayMs = 1000;
 }

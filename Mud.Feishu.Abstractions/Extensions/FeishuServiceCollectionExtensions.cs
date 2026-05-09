@@ -76,12 +76,15 @@ public static class FeishuServiceCollectionExtensions
         {
             var clientName = $"feishu-{config.AppKey}";
             var baseAddress = config.BaseUrl ?? "https://open.feishu.cn";
+            bool allowCustomBaseUrl = config?.AllowCustomBaseUrl ?? false;
             var timeOut = config.TimeOut;
 
             services.AddMudHttpClient(
                 clientName,
                 client =>
                 {
+                    // 验证 BaseUrl 是否安全（SSRF 防护）
+                    // UrlValidator.ValidateBaseUrl(baseAddress, allowCustomBaseUrl);
                     client.BaseAddress = new Uri(baseAddress);
                     client.DefaultRequestHeaders.Add("User-Agent", "MudFeishuClient/1.0");
                     client.Timeout = TimeSpan.FromSeconds(timeOut);

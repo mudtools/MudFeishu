@@ -236,8 +236,10 @@ public class FeishuWebSocketOptions
         // 去重配置警告（非强制）
         if (EventDeduplication.Mode == EventDeduplicationMode.None)
         {
-            // 记录警告但不抛出异常，允许用户根据场景自行决定
-            // 生产环境建议启用至少一种去重机制
+            System.Diagnostics.Debug.WriteLine(
+                "[MudFeishu] EventDeduplication.Mode 设置为 None，事件去重已禁用。" +
+                "生产环境建议启用至少一种去重机制（InMemory 或 Redis）以避免重复处理事件。" +
+                "CacheExpirationMs 和 CleanupIntervalMs 配置将不会生效。");
         }
     }
 

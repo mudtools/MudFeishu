@@ -22,7 +22,7 @@ public class EventDeduplicationOptionsTests
 
         // Assert
         options.Mode.Should().Be(EventDeduplicationMode.InMemory);
-        options.CacheExpirationMs.Should().Be(24 * 60 * 60 * 1000); // 24 hours
+        options.CacheExpirationMs.Should().Be(48 * 60 * 60 * 1000); // 48 hours
         options.CleanupIntervalMs.Should().Be(5 * 60 * 1000); // 5 minutes
     }
 

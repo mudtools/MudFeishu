@@ -88,7 +88,8 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
         if (string.IsNullOrEmpty(redirectUri))
             throw new ArgumentException("RedirectUri cannot be null or empty.", nameof(redirectUri));
 
-        _logger.LogInformation("Exchanging code for user token");
+        if (_options.EnableLogging)
+            _logger.LogInformation("Exchanging code for user token");
 
         var credentials = new OAuthTokenRequest
         {
@@ -150,7 +151,8 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
         if (string.IsNullOrEmpty(cachedInfo.RefreshToken))
             return null;
 
-        _logger.LogInformation("Refreshing user token for userId: {UserId}", userId);
+        if (_options.EnableLogging)
+            _logger.LogInformation("Refreshing user token for userId: {UserId}", userId);
 
         var credentials = new OAuthRefreshTokenRequest
         {

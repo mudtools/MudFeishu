@@ -56,7 +56,8 @@ internal abstract class FeishuAppTokenManagerBase : TokenManagerBase
         if (restoredToken != null)
             return restoredToken;
 
-        _logger.LogInformation("Refreshing {TokenType} for AppId: {AppId}", _tokenTypeKey, _options.AppId);
+        if (_options.EnableLogging)
+            _logger.LogInformation("Refreshing {TokenType} for AppId: {AppId}", _tokenTypeKey, _options.AppId);
 
         var result = await RefreshTokenFromApiAsync(cancellationToken).ConfigureAwait(false);
 
@@ -89,11 +90,13 @@ internal abstract class FeishuAppTokenManagerBase : TokenManagerBase
                 var remainingMs = expireTimestampMs - DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
                 if (remainingMs <= _options.TokenRefreshThreshold * 1000L)
                 {
-                    _logger.LogDebug("Restored token from ITokenStore is near expiration for AppId: {AppId}, skipping", _options.AppId);
+                    if (_options.EnableLogging)
+                        _logger.LogDebug("Restored token from ITokenStore is near expiration for AppId: {AppId}, skipping", _options.AppId);
                     return null;
                 }
 
-                _logger.LogDebug("Restored token from ITokenStore for AppId: {AppId}, TokenType: {TokenType}", _options.AppId, _tokenTypeKey);
+                if (_options.EnableLogging)
+                    _logger.LogDebug("Restored token from ITokenStore for AppId: {AppId}, TokenType: {TokenType}", _options.AppId, _tokenTypeKey);
                 return new CredentialToken
                 {
                     AccessToken = accessToken,
@@ -101,7 +104,8 @@ internal abstract class FeishuAppTokenManagerBase : TokenManagerBase
                 };
             }
 
-            _logger.LogDebug("Restored token from ITokenStore (no expiration info) for AppId: {AppId}, TokenType: {TokenType}", _options.AppId, _tokenTypeKey);
+            if (_options.EnableLogging)
+                _logger.LogDebug("Restored token from ITokenStore (no expiration info) for AppId: {AppId}, TokenType: {TokenType}", _options.AppId, _tokenTypeKey);
             var safeExpireSeconds = _options.TokenRefreshThreshold + 60;
             return new CredentialToken
             {

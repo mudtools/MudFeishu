@@ -129,7 +129,8 @@ public class ReconnectionOrchestrator : IReconnectionOrchestrator, IDisposable
 
                     if (reconnected)
                     {
-                        _totalReconnectCount++;
+                        if (_options.EnableReconnectMetrics)
+                            _totalReconnectCount++;
                         var attemptCount = _currentAttempt;
                         _currentAttempt = 0;
                         _reconnectStartTime = null;
@@ -183,7 +184,7 @@ public class ReconnectionOrchestrator : IReconnectionOrchestrator, IDisposable
         {
             IsReconnecting = _isReconnecting,
             CurrentAttempt = _currentAttempt,
-            TotalReconnectCount = _totalReconnectCount,
+            TotalReconnectCount = _options.EnableReconnectMetrics ? _totalReconnectCount : 0,
             LastReconnectAttempt = _lastReconnectAttempt,
             ReconnectStartTime = _reconnectStartTime,
             LastReconnectReason = _lastReconnectReason,

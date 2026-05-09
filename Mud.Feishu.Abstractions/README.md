@@ -530,6 +530,7 @@ public class DynamicAppManager
 | `AppId`                 | string | -                      | 飞书应用 ID（必需）     |
 | `AppSecret`             | string | -                      | 飞书应用密钥（必需）    |
 | `BaseUrl`               | string | https://open.feishu.cn | API 基础地址            |
+| `AllowCustomBaseUrl`    | bool   | false                  | 是否允许自定义基础 URL（存在 SSRF 风险，仅用于特殊场景） |
 | `TimeOut`               | int    | 30                     | HTTP 请求超时时间（秒） |
 | `RetryCount`            | int    | 3                      | 失败重试次数            |
 | `RetryDelayMs`          | int    | 1000                   | 重试延迟时间（毫秒）    |

@@ -19,7 +19,7 @@ public class FailedEventRetryOptionsTests
         var options = new FailedEventRetryOptions();
 
         options.EnableRetry.Should().BeFalse();
-        options.MaxRetryCount.Should().Be(Mud.Feishu.Abstractions.Consts.DefaultRetryCount);
+        options.MaxRetryCount.Should().Be(3);
         options.InitialRetryDelaySeconds.Should().Be(10);
         options.RetryDelayMultiplier.Should().Be(2.0);
         options.MaxRetryDelaySeconds.Should().Be(300);

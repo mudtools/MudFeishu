@@ -91,7 +91,7 @@ app.Run();
     "EnableLogging": true,
     "EventDeduplication": {
       "Mode": "InMemory",
-      "CacheExpirationMs": 86400000,
+      "CacheExpirationMs": 172800000,
       "CleanupIntervalMs": 300000
     }
   }
@@ -725,7 +725,7 @@ public class ServiceManager
 | Option              | Type                     | Default    | Description                                    |
 | ------------------- | ------------------------ | ---------- | ---------------------------------------------- |
 | `Mode`              | `EventDeduplicationMode` | `InMemory` | Deduplication mode (None/InMemory/Distributed) |
-| `CacheExpirationMs` | int                      | 86400000   | Cache expiration time (ms), default 24 hours   |
+| `CacheExpirationMs` | int                      | 172800000  | Cache expiration time (ms), default 48 hours   |
 | `CleanupIntervalMs` | int                      | 300000     | Cache cleanup interval (ms), default 5 minutes |
 
 **Deduplication Modes:**
@@ -741,7 +741,7 @@ public class ServiceManager
   "FeishuWebSocket": {
     "EventDeduplication": {
       "Mode": "InMemory",
-      "CacheExpirationMs": 86400000,
+      "CacheExpirationMs": 172800000,
       "CleanupIntervalMs": 300000
     }
   }

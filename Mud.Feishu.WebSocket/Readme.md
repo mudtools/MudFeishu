@@ -94,7 +94,7 @@ app.Run();
     "EnableLogging": true,
     "EventDeduplication": {
       "Mode": "InMemory",
-      "CacheExpirationMs": 86400000,
+      "CacheExpirationMs": 172800000,
       "CleanupIntervalMs": 300000
     }
   }
@@ -730,7 +730,7 @@ public class ServiceManager
 | 选项                | 类型                     | 默认值     | 说明                                  |
 | ------------------- | ------------------------ | ---------- | ------------------------------------- |
 | `Mode`              | `EventDeduplicationMode` | `InMemory` | 去重模式（None/InMemory/Distributed） |
-| `CacheExpirationMs` | int                      | 86400000   | 缓存过期时间(ms)，默认 24 小时        |
+| `CacheExpirationMs` | int                      | 172800000  | 缓存过期时间(ms)，默认 48 小时        |
 | `CleanupIntervalMs` | int                      | 300000     | 缓存清理间隔(ms)，默认 5 分钟         |
 
 **去重模式说明：**
@@ -746,7 +746,7 @@ public class ServiceManager
   "FeishuWebSocket": {
     "EventDeduplication": {
       "Mode": "InMemory",
-      "CacheExpirationMs": 86400000,
+      "CacheExpirationMs": 172800000,
       "CleanupIntervalMs": 300000
     }
   }

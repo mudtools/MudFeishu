@@ -244,7 +244,7 @@ dotnet run
 | 配置项 | 类型 | 默认值 | 说明 |
 |--------|------|--------|------|
 | `Mode` | `EventDeduplicationMode` | `InMemory` | 去重模式（None/InMemory/Distributed） |
-| `CacheExpirationMs` | int | 86400000 | 缓存过期时间（毫秒），默认24小时 |
+| `CacheExpirationMs` | int | 172800000 | 缓存过期时间（毫秒），默认48小时 |
 | `CleanupIntervalMs` | int | 300000 | 缓存清理间隔（毫秒），默认5分钟 |
 
 ### Redis 配置项

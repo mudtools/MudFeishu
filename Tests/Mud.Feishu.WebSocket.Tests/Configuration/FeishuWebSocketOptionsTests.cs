@@ -36,7 +36,7 @@ public class FeishuWebSocketOptionsTests
         options.MessageSizeLimits.MaxBinaryMessageSize.Should().Be(10 * 1024 * 1024); // 10MB
         options.HealthCheckIntervalMs.Should().Be(60000);
         options.EventDeduplication.Mode.Should().Be(Mud.Feishu.WebSocket.EventDeduplicationMode.InMemory);
-        options.EventDeduplication.CacheExpirationMs.Should().Be(24 * 60 * 60 * 1000);
+        options.EventDeduplication.CacheExpirationMs.Should().Be(48 * 60 * 60 * 1000);
         options.EventDeduplication.CleanupIntervalMs.Should().Be(5 * 60 * 1000);
         options.MaxConcurrentMessageProcessing.Should().Be(10);
     }

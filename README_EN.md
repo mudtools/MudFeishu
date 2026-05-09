@@ -157,7 +157,18 @@ dotnet add package Mud.Feishu.Redis
     "MaxReconnectAttempts": 5,
     "ReconnectDelayMs": 5000,
     "HeartbeatIntervalMs": 30000,
-    "EnableLogging": true
+    "EnableLogging": true,
+    "ConnectionTimeoutMs": 10000,
+    "EnableMessageQueue": true,
+    "MessageQueueCapacity": 1000,
+    "MaxConcurrentMessageProcessing": 10,
+    "HealthCheckIntervalMs": 60000,
+    "ValidateServerCertificate": true,
+    "EventDeduplication": {
+      "Mode": "InMemory",
+      "CacheExpirationMs": 172800000,
+      "CleanupIntervalMs": 300000
+    }
   },
   "FeishuWebhook": {
     "VerificationToken": "your_verification_token",
@@ -168,6 +179,32 @@ dotnet add package Mud.Feishu.Redis
   }
 }
 ```
+
+<details>
+<summary>📋 WebSocket Advanced Configuration Reference</summary>
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `MaxReconnectDelayMs` | int | 30000 | Maximum reconnection delay (ms) |
+| `MaxTotalReconnectTime` | TimeSpan | 30min | Maximum total reconnection time |
+| `ReconnectCooldownTime` | TimeSpan | 5s | Cooldown between reconnection attempts |
+| `EnableReconnectMetrics` | bool | true | Enable reconnection metrics collection |
+| `ConnectionTimeoutMs` | int | 10000 | Connection timeout (ms) |
+| `InitialReceiveBufferSize` | int | 4096 | Initial receive buffer size (bytes) |
+| `ValidateServerCertificate` | bool | true | Validate SSL certificates |
+| `AllowSelfSignedCertificates` | bool | false | Allow self-signed certificates |
+| `EnableMessageQueue` | bool | true | Enable message queue processing |
+| `MessageQueueCapacity` | int | 1000 | Maximum message queue capacity |
+| `BackpressureStrategy` | enum | DropOldest | Backpressure strategy (DropOldest/DropNewest/Block) |
+| `BackpressureBlockTimeoutMs` | int | 5000 | Backpressure block timeout (ms) |
+| `HealthCheckIntervalMs` | int | 60000 | Health check interval (ms) |
+| `MaxConcurrentMessageProcessing` | int | 10 | Max concurrent message processing |
+| `TokenRefreshInterval` | TimeSpan | 2h | Access token validity period |
+| `TokenRefreshAhead` | TimeSpan | 5min | Token refresh ahead time |
+
+> 💡 For more details, see [Mud.Feishu.WebSocket Documentation](./Mud.Feishu.WebSocket/Readme.md)
+
+</details>
 
 ### 3️⃣ Service Registration (Program.cs)
 

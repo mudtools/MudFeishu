@@ -22,7 +22,7 @@ public class DeduplicationOptionsTests
         Assert.Equal(TimeSpan.FromMinutes(10), options.ProcessingTimeout);
         Assert.Equal(TimeSpan.FromMinutes(5), options.CleanupInterval);
         Assert.True(options.AllowProcessingOnFallback);
-        Assert.Equal(3, options.MaxRetryCount);
+        Assert.Equal(Consts.DefaultRetryCount, options.MaxRetryCount);
     }
 
     [Fact]

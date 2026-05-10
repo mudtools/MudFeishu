@@ -2,7 +2,8 @@
 //  作者：Mud Studio  版权所有 (c) Mud Studio 2025
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
-//  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
+//  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！
+//  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！
 // -----------------------------------------------------------------------
 
 namespace Mud.Feishu.Abstractions.Services;
@@ -19,6 +20,8 @@ public class MemoryDeduplicator<TKey> : IAsyncDisposable where TKey : notnull
     private readonly Timer _cleanupTimer;
     private readonly TimeSpan _cacheExpiration;
     private readonly TimeSpan _cleanupInterval;
+    private readonly TimeSpan _processingTimeout;
+    private readonly int _maxCacheSize;
     private readonly object _lock = new();
     private bool _disposed;
 
@@ -28,15 +31,21 @@ public class MemoryDeduplicator<TKey> : IAsyncDisposable where TKey : notnull
     /// <param name="logger">日志记录器</param>
     /// <param name="cacheExpiration">缓存过期时间，默认 24 小时</param>
     /// <param name="cleanupInterval">清理间隔时间，默认 5 分钟</param>
+    /// <param name="processingTimeout">处理中超时时间，默认 5 分钟</param>
+    /// <param name="maxCacheSize">最大缓存大小，0 表示不限制</param>
     public MemoryDeduplicator(
         ILogger<MemoryDeduplicator<TKey>>? logger = null,
         TimeSpan? cacheExpiration = null,
-        TimeSpan? cleanupInterval = null)
+        TimeSpan? cleanupInterval = null,
+        TimeSpan? processingTimeout = null,
+        int maxCacheSize = 0)
     {
         _logger = logger;
         _cache = new Dictionary<TKey, CacheEntry>();
         _cacheExpiration = cacheExpiration ?? TimeSpan.FromHours(24);
         _cleanupInterval = cleanupInterval ?? TimeSpan.FromMinutes(5);
+        _processingTimeout = processingTimeout ?? TimeSpan.FromMinutes(5);
+        _maxCacheSize = Math.Max(0, maxCacheSize);
 
         _cleanupTimer = new Timer(CleanupExpiredEntries, null, _cleanupInterval, _cleanupInterval);
 
@@ -50,8 +59,10 @@ public class MemoryDeduplicator<TKey> : IAsyncDisposable where TKey : notnull
     /// <param name="key">键值</param>
     /// <param name="appKey">应用键（用于多应用场景）</param>
     /// <returns>如果已处理过返回 true，否则返回 false 并标记</returns>
-    public bool TryMarkAsProcessed(TKey key, string? appKey = null)
+    public virtual bool TryMarkAsProcessed(TKey key, string? appKey = null)
     {
+        ThrowIfDisposed();
+
         if (key == null)
         {
             _logger?.LogWarning("键为空，跳过去重检查");
@@ -74,15 +85,131 @@ public class MemoryDeduplicator<TKey> : IAsyncDisposable where TKey : notnull
                 _cache.Remove(cacheKey);
             }
 
+            EnsureCapacityLocked();
             _cache[cacheKey] = new CacheEntry
             {
                 Key = key,
                 ProcessedAt = DateTimeOffset.UtcNow,
-                AppKey = appKey
+                AppKey = appKey,
+                Status = DeduplicationStatus.Completed
             };
 
             _logger?.LogDebug("键 {Key} (AppKey: {AppKey}) 标记为已处理", key, appKey ?? "default");
             return false;
+        }
+    }
+
+    /// <summary>
+    /// 尝试将键标记为处理中
+    /// </summary>
+    /// <param name="key">键值</param>
+    /// <param name="appKey">应用键（用于多应用场景）</param>
+    /// <returns>如果已处理过或正在处理中返回 true，否则返回 false 并标记为处理中</returns>
+    public virtual bool TryMarkAsProcessing(TKey key, string? appKey = null)
+    {
+        ThrowIfDisposed();
+
+        if (key == null)
+        {
+            _logger?.LogWarning("键为空，跳过去重检查");
+            return false;
+        }
+
+        var cacheKey = GetCacheKey(key, appKey);
+
+        lock (_lock)
+        {
+            if (_cache.TryGetValue(cacheKey, out var entry))
+            {
+                if (entry.Status == DeduplicationStatus.Completed)
+                {
+                    _logger?.LogDebug("键 {Key} (AppKey: {AppKey}) 已处理过，跳过", key, appKey ?? "default");
+                    return true;
+                }
+
+                if (entry.Status == DeduplicationStatus.Processing)
+                {
+                    if (DateTimeOffset.UtcNow - entry.ProcessedAt > _processingTimeout)
+                    {
+                        _logger?.LogWarning("键 {Key} (AppKey: {AppKey}) 处理中超时，允许重新处理", key, appKey ?? "default");
+                        _cache.Remove(cacheKey);
+                    }
+                    else
+                    {
+                        _logger?.LogDebug("键 {Key} (AppKey: {AppKey}) 正在处理中，跳过", key, appKey ?? "default");
+                        return true;
+                    }
+                }
+            }
+
+            EnsureCapacityLocked();
+            _cache[cacheKey] = new CacheEntry
+            {
+                Key = key,
+                ProcessedAt = DateTimeOffset.UtcNow,
+                AppKey = appKey,
+                Status = DeduplicationStatus.Processing
+            };
+
+            _logger?.LogDebug("键 {Key} (AppKey: {AppKey}) 标记为处理中", key, appKey ?? "default");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// 将处理中的键标记为已完成
+    /// </summary>
+    /// <param name="key">键值</param>
+    /// <param name="appKey">应用键</param>
+    public virtual void MarkAsCompleted(TKey key, string? appKey = null)
+    {
+        ThrowIfDisposed();
+
+        if (key == null)
+            return;
+
+        var cacheKey = GetCacheKey(key, appKey);
+
+        lock (_lock)
+        {
+            if (_cache.TryGetValue(cacheKey, out var entry))
+            {
+                entry.Status = DeduplicationStatus.Completed;
+                entry.ProcessedAt = DateTimeOffset.UtcNow;
+
+                _logger?.LogDebug("键 {Key} (AppKey: {AppKey}) 标记为已完成", key, appKey ?? "default");
+            }
+        }
+    }
+
+    /// <summary>
+    /// 回滚处理中的状态（移除缓存条目，允许重新处理）
+    /// </summary>
+    /// <param name="key">键值</param>
+    /// <param name="appKey">应用键</param>
+    public virtual void RollbackProcessing(TKey key, string? appKey = null)
+    {
+        ThrowIfDisposed();
+
+        if (key == null)
+            return;
+
+        var cacheKey = GetCacheKey(key, appKey);
+
+        lock (_lock)
+        {
+            if (_cache.TryGetValue(cacheKey, out var entry))
+            {
+                if (entry.Status == DeduplicationStatus.Processing)
+                {
+                    _cache.Remove(cacheKey);
+                    _logger?.LogDebug("键 {Key} (AppKey: {AppKey}) 处理回滚，允许重新处理", key, appKey ?? "default");
+                }
+                else
+                {
+                    _logger?.LogDebug("键 {Key} (AppKey: {AppKey}) 状态为 {Status}，无需回滚", key, appKey ?? "default", entry.Status);
+                }
+            }
         }
     }
 
@@ -92,7 +219,7 @@ public class MemoryDeduplicator<TKey> : IAsyncDisposable where TKey : notnull
     /// <param name="key">键值</param>
     /// <param name="appKey">应用键</param>
     /// <returns>如果已处理返回 true</returns>
-    public bool IsProcessed(TKey key, string? appKey = null)
+    public virtual bool IsProcessed(TKey key, string? appKey = null)
     {
         if (key == null)
             return false;
@@ -104,7 +231,44 @@ public class MemoryDeduplicator<TKey> : IAsyncDisposable where TKey : notnull
             if (!_cache.TryGetValue(cacheKey, out var entry))
                 return false;
 
-            return (DateTimeOffset.UtcNow - entry.ProcessedAt) <= _cacheExpiration;
+            if (entry.Status == DeduplicationStatus.Processing &&
+                DateTimeOffset.UtcNow - entry.ProcessedAt > _processingTimeout)
+            {
+                return false;
+            }
+
+            return entry.Status == DeduplicationStatus.Completed
+                && (DateTimeOffset.UtcNow - entry.ProcessedAt) <= _cacheExpiration;
+        }
+    }
+
+    /// <summary>
+    /// 获取键的处理状态
+    /// </summary>
+    /// <param name="key">键值</param>
+    /// <param name="appKey">应用键</param>
+    /// <returns>处理状态</returns>
+    public virtual DeduplicationStatus GetStatus(TKey key, string? appKey = null)
+    {
+        if (key == null)
+            return DeduplicationStatus.Pending;
+
+        var cacheKey = GetCacheKey(key, appKey);
+
+        lock (_lock)
+        {
+            if (_cache.TryGetValue(cacheKey, out var entry))
+            {
+                if (entry.Status == DeduplicationStatus.Processing &&
+                    DateTimeOffset.UtcNow - entry.ProcessedAt > _processingTimeout)
+                {
+                    return DeduplicationStatus.Pending;
+                }
+
+                return entry.Status;
+            }
+
+            return DeduplicationStatus.Pending;
         }
     }
 
@@ -169,6 +333,16 @@ public class MemoryDeduplicator<TKey> : IAsyncDisposable where TKey : notnull
     protected TimeSpan CacheExpiration => _cacheExpiration;
 
     /// <summary>
+    /// 获取处理中超时时间
+    /// </summary>
+    protected TimeSpan ProcessingTimeout => _processingTimeout;
+
+    /// <summary>
+    /// 获取最大缓存大小
+    /// </summary>
+    protected int MaxCacheSize => _maxCacheSize;
+
+    /// <summary>
     /// 获取日志记录器（供派生类使用）
     /// </summary>
     protected ILogger? Logger => _logger;
@@ -182,6 +356,40 @@ public class MemoryDeduplicator<TKey> : IAsyncDisposable where TKey : notnull
     /// 获取缓存字典（供派生类使用）
     /// </summary>
     protected Dictionary<TKey, CacheEntry> Cache => _cache;
+
+    private void ThrowIfDisposed()
+    {
+#if NET7_0_OR_GREATER
+        ObjectDisposedException.ThrowIf(_disposed, this);
+#else
+        if (_disposed)
+            throw new ObjectDisposedException(GetType().Name);
+#endif
+    }
+
+    private void EnsureCapacityLocked()
+    {
+        if (_maxCacheSize <= 0)
+            return;
+
+        if (_cache.Count >= _maxCacheSize)
+        {
+            CleanupExpiredEntriesLocked();
+
+            if (_cache.Count >= _maxCacheSize)
+            {
+                _logger?.LogWarning("缓存容量已达上限 {MaxCacheSize}，移除最旧条目", _maxCacheSize);
+
+                var oldestKey = _cache
+                    .OrderBy(x => x.Value.ProcessedAt)
+                    .Select(x => x.Key)
+                    .FirstOrDefault();
+
+                if (oldestKey != null)
+                    _cache.Remove(oldestKey);
+            }
+        }
+    }
 
     private int CleanupExpiredEntriesLocked()
     {
@@ -231,11 +439,9 @@ public class MemoryDeduplicator<TKey> : IAsyncDisposable where TKey : notnull
 
     private static TKey GetCacheKey(TKey key, string? appKey)
     {
-        // 对于值类型，无法组合键，直接返回原键
         if (typeof(TKey).IsValueType || string.IsNullOrEmpty(appKey))
             return key;
 
-        // 对于字符串类型，可以组合 appKey
         if (key is string strKey)
         {
             return (TKey)(object)$"{appKey}:{strKey}";
@@ -263,7 +469,10 @@ public class MemoryDeduplicator<TKey> : IAsyncDisposable where TKey : notnull
         /// 处理时间
         /// </summary>
         public DateTimeOffset ProcessedAt { get; set; }
+
+        /// <summary>
+        /// 处理状态
+        /// </summary>
+        public DeduplicationStatus Status { get; set; } = DeduplicationStatus.Pending;
     }
 }
-
-

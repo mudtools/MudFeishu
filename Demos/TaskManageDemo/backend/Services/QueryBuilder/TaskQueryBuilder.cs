@@ -80,19 +80,6 @@ public class TaskQueryBuilder
     }
 
     /// <summary>
-    /// 按任务清单过滤
-    /// 注意：TaskSync 实体没有 TaskListId 属性，此方法已禁用
-    /// </summary>
-    // public TaskQueryBuilder WithTaskList(int? taskListId)
-    // {
-    //     if (taskListId.HasValue)
-    //     {
-    //         _query = _query.Where(t => t.TaskListId == taskListId.Value);
-    //     }
-    //     return this;
-    // }
-
-    /// <summary>
     /// 按截止日期范围过滤
     /// </summary>
     public TaskQueryBuilder WithDueDateRange(DateTime? from, DateTime? to)

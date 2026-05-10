@@ -9,9 +9,9 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Mud.Feishu.Abstractions.EventHandlers;
 using Mud.Feishu.Abstractions.Services;
 using Mud.Feishu.WebSocket;
-using Mud.Feishu.WebSocket.Handlers;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
@@ -239,13 +239,13 @@ public class FeishuWebSocketServiceBuilder
 
         _services.AddSingleton<IFeishuEventHandlerFactory>(serviceProvider =>
         {
-            var logger = serviceProvider.GetRequiredService<ILogger<FeishuWebSocketEventHandlerFactory>>();
+            var logger = serviceProvider.GetRequiredService<ILogger<DefaultFeishuEventHandlerFactory>>();
             var handlers = serviceProvider.GetRequiredService<IEnumerable<IFeishuEventHandler>>()
                 .Where(h => _handlerTypes.Contains(h.GetType()))
                 .ToList();
             var defaultHandler = serviceProvider.GetService(defaultHandlerType) as IFeishuEventHandler
                 ?? handlers.FirstOrDefault(h => h.GetType() == defaultHandlerType);
-            return new FeishuWebSocketEventHandlerFactory(logger, handlers, defaultHandler!);
+            return new DefaultFeishuEventHandlerFactory(logger, handlers, defaultHandler!);
         });
 
         // 注册事件拦截器集合（单例，按注册顺序排序）

@@ -22,21 +22,8 @@ internal class FeishuServiceConfiguration
     public bool TryAdd(FeishuModule module) => _registeredModules.Add(module);
 
     /// <summary>
-    /// 检查模块是否已注册
-    /// </summary>
-    /// <param name="module">要检查的模块</param>
-    /// <returns>如果模块已注册则返回 true</returns>
-    public bool IsRegistered(FeishuModule module) => _registeredModules.Contains(module);
-
-    /// <summary>
     /// 检查是否添加了任何服务
     /// </summary>
     /// <returns>是否添加了服务</returns>
     public bool HasAnyService() => _registeredModules.Count > 0;
-
-    /// <summary>
-    /// 获取所有已注册的模块
-    /// </summary>
-    /// <returns>已注册模块的只读集合</returns>
-    public IReadOnlyCollection<FeishuModule> GetRegisteredModules() => _registeredModules;
 }

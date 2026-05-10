@@ -2,7 +2,7 @@
 //  作者：Mud Studio  版权所有 (c) Mud Studio 2026   
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
-//  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
+//  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！
 // -----------------------------------------------------------------------
 
 using Microsoft.Extensions.Logging;
@@ -18,6 +18,84 @@ namespace Mud.Feishu.WebSocket;
 public class ErrorRecoveryStrategy
 {
     private readonly ILogger<ErrorRecoveryStrategy> _logger;
+
+    private static readonly Dictionary<WebSocketError, (bool IsRecoverable, string Recommendation, int DelaySeconds)> WebSocketErrorMap = new()
+    {
+        [WebSocketError.ConnectionClosedPrematurely] = (true, "立即重连", 1),
+        [WebSocketError.Faulted] = (true, "立即重连", 1),
+        [WebSocketError.InvalidState] = (true, "重新建立连接", 2),
+        [WebSocketError.NotAWebSocket] = (false, "检查服务器配置", 0),
+        [WebSocketError.UnsupportedVersion] = (false, "检查服务器配置", 0),
+        [WebSocketError.UnsupportedProtocol] = (false, "检查服务器配置", 0),
+        [WebSocketError.HeaderError] = (false, "检查请求头配置", 0),
+    };
+
+    private static readonly Dictionary<SocketError, (bool IsRecoverable, string Recommendation, int DelaySeconds)> SocketErrorMap = new()
+    {
+        [SocketError.ConnectionRefused] = (true, "网络连接问题，重试连接", 5),
+        [SocketError.ConnectionReset] = (true, "网络连接问题，重试连接", 5),
+        [SocketError.ConnectionAborted] = (true, "网络连接问题，重试连接", 5),
+        [SocketError.TimedOut] = (true, "连接超时，重试连接", 3),
+        [SocketError.NetworkUnreachable] = (true, "网络不可达，延迟重试", 30),
+        [SocketError.HostUnreachable] = (true, "网络不可达，延迟重试", 30),
+        [SocketError.AddressNotAvailable] = (false, "地址配置错误", 0),
+        [SocketError.AddressFamilyNotSupported] = (false, "地址配置错误", 0),
+    };
+
+    private static readonly Dictionary<Type, Func<Exception, ErrorRecoveryResult>> ExceptionAnalyzerMap = new();
+
+    static ErrorRecoveryStrategy()
+    {
+        ExceptionAnalyzerMap[typeof(WebSocketException)] = ex => AnalyzeWebSocketException((WebSocketException)ex);
+        ExceptionAnalyzerMap[typeof(SocketException)] = ex => AnalyzeSocketException((SocketException)ex);
+        ExceptionAnalyzerMap[typeof(HttpRequestException)] = ex => AnalyzeHttpException((HttpRequestException)ex);
+        ExceptionAnalyzerMap[typeof(TimeoutException)] = _ => new ErrorRecoveryResult
+        {
+            ErrorType = "TimeoutException",
+            IsRecoverable = true,
+            RecoveryRecommendation = "操作超时，重试连接",
+            SuggestedDelay = TimeSpan.FromSeconds(3)
+        };
+        ExceptionAnalyzerMap[typeof(OperationCanceledException)] = _ => new ErrorRecoveryResult
+        {
+            ErrorType = "OperationCanceledException",
+            IsRecoverable = false,
+            RecoveryRecommendation = "操作被取消"
+        };
+        ExceptionAnalyzerMap[typeof(FeishuAuthenticationException)] = ex =>
+        {
+            var authEx = (FeishuAuthenticationException)ex;
+            return new ErrorRecoveryResult
+            {
+                ErrorType = "FeishuAuthenticationException",
+                IsRecoverable = authEx.IsRecoverable,
+                RecoveryRecommendation = authEx.IsRecoverable ? "认证失败，刷新令牌后重试" : "认证配置错误，检查应用凭据",
+                SuggestedDelay = TimeSpan.FromSeconds(5)
+            };
+        };
+        ExceptionAnalyzerMap[typeof(FeishuConnectionException)] = ex =>
+        {
+            var connEx = (FeishuConnectionException)ex;
+            return new ErrorRecoveryResult
+            {
+                ErrorType = "FeishuConnectionException",
+                IsRecoverable = connEx.IsRecoverable,
+                RecoveryRecommendation = connEx.IsRecoverable ? "连接异常，重试连接" : "连接配置错误",
+                SuggestedDelay = TimeSpan.FromSeconds(5)
+            };
+        };
+        ExceptionAnalyzerMap[typeof(FeishuNetworkException)] = ex =>
+        {
+            var netEx = (FeishuNetworkException)ex;
+            return new ErrorRecoveryResult
+            {
+                ErrorType = "FeishuNetworkException",
+                IsRecoverable = netEx.IsRecoverable,
+                RecoveryRecommendation = netEx.IsRecoverable ? "网络异常，重试连接" : "网络配置错误",
+                SuggestedDelay = TimeSpan.FromSeconds(10)
+            };
+        };
+    }
 
     /// <summary>
     /// 构造函数
@@ -36,52 +114,10 @@ public class ErrorRecoveryStrategy
     /// <returns>错误恢复结果</returns>
     public ErrorRecoveryResult AnalyzeError(Exception exception, string context = "")
     {
-        var result = new ErrorRecoveryResult
-        {
-            Exception = exception,
-            Context = context,
-            Timestamp = DateTime.UtcNow
-        };
-
-        // 分析异常类型和可恢复性
-        switch (exception)
-        {
-            case WebSocketException wsEx:
-                result = AnalyzeWebSocketException(wsEx, result);
-                break;
-
-            case SocketException sockEx:
-                result = AnalyzeSocketException(sockEx, result);
-                break;
-
-            case HttpRequestException httpEx:
-                result = AnalyzeHttpException(httpEx, result);
-                break;
-
-            case TimeoutException timeoutEx:
-                result = AnalyzeTimeoutException(timeoutEx, result);
-                break;
-
-            case OperationCanceledException cancelEx:
-                result = AnalyzeCancellationException(cancelEx, result);
-                break;
-
-            case FeishuAuthenticationException authEx:
-                result = AnalyzeAuthenticationException(authEx, result);
-                break;
-
-            case FeishuConnectionException connEx:
-                result = AnalyzeConnectionException(connEx, result);
-                break;
-
-            case FeishuNetworkException netEx:
-                result = AnalyzeNetworkException(netEx, result);
-                break;
-
-            default:
-                result = AnalyzeGenericException(exception, result);
-                break;
-        }
+        var result = AnalyzeCore(exception);
+        result.Exception = exception;
+        result.Context = context;
+        result.Timestamp = DateTime.UtcNow;
 
         _logger.LogDebug("错误分析完成: {ErrorType}, 可恢复: {IsRecoverable}, 建议: {Recommendation}",
             result.ErrorType, result.IsRecoverable, result.RecoveryRecommendation);
@@ -89,109 +125,85 @@ public class ErrorRecoveryStrategy
         return result;
     }
 
-    /// <summary>
-    /// 分析WebSocket异常
-    /// </summary>
-    private ErrorRecoveryResult AnalyzeWebSocketException(WebSocketException wsEx, ErrorRecoveryResult result)
+    private static ErrorRecoveryResult AnalyzeCore(Exception exception)
     {
-        result.ErrorType = "WebSocketException";
-        result.ErrorCode = wsEx.WebSocketErrorCode.ToString();
+        var exType = exception.GetType();
 
-        switch (wsEx.WebSocketErrorCode)
+        foreach (var kvp in ExceptionAnalyzerMap)
         {
-            case WebSocketError.ConnectionClosedPrematurely:
-            case WebSocketError.Faulted:
-                result.IsRecoverable = true;
-                result.RecoveryRecommendation = "立即重连";
-                result.SuggestedDelay = TimeSpan.FromSeconds(1);
-                break;
+            if (kvp.Key.IsAssignableFrom(exType))
+            {
+                return kvp.Value(exception);
+            }
+        }
 
-            case WebSocketError.InvalidState:
-                result.IsRecoverable = true;
-                result.RecoveryRecommendation = "重新建立连接";
-                result.SuggestedDelay = TimeSpan.FromSeconds(2);
-                break;
+        return new ErrorRecoveryResult
+        {
+            ErrorType = exType.Name,
+            IsRecoverable = true,
+            RecoveryRecommendation = "未知错误，尝试重连",
+            SuggestedDelay = TimeSpan.FromSeconds(10)
+        };
+    }
 
-            case WebSocketError.NotAWebSocket:
-            case WebSocketError.UnsupportedVersion:
-            case WebSocketError.UnsupportedProtocol:
-                result.IsRecoverable = false;
-                result.RecoveryRecommendation = "检查服务器配置";
-                break;
+    private static ErrorRecoveryResult AnalyzeWebSocketException(WebSocketException wsEx)
+    {
+        var result = new ErrorRecoveryResult
+        {
+            ErrorType = "WebSocketException",
+            ErrorCode = wsEx.WebSocketErrorCode.ToString()
+        };
 
-            case WebSocketError.HeaderError:
-                result.IsRecoverable = false;
-                result.RecoveryRecommendation = "检查请求头配置";
-                break;
-
-            default:
-                result.IsRecoverable = true;
-                result.RecoveryRecommendation = "尝试重连";
-                result.SuggestedDelay = TimeSpan.FromSeconds(5);
-                break;
+        if (WebSocketErrorMap.TryGetValue(wsEx.WebSocketErrorCode, out var mapping))
+        {
+            result.IsRecoverable = mapping.IsRecoverable;
+            result.RecoveryRecommendation = mapping.Recommendation;
+            result.SuggestedDelay = TimeSpan.FromSeconds(mapping.DelaySeconds);
+        }
+        else
+        {
+            result.IsRecoverable = true;
+            result.RecoveryRecommendation = "尝试重连";
+            result.SuggestedDelay = TimeSpan.FromSeconds(5);
         }
 
         return result;
     }
 
-    /// <summary>
-    /// 分析Socket异常
-    /// </summary>
-    private ErrorRecoveryResult AnalyzeSocketException(SocketException sockEx, ErrorRecoveryResult result)
+    private static ErrorRecoveryResult AnalyzeSocketException(SocketException sockEx)
     {
-        result.ErrorType = "SocketException";
-        result.ErrorCode = sockEx.SocketErrorCode.ToString();
-
-        switch (sockEx.SocketErrorCode)
+        var result = new ErrorRecoveryResult
         {
-            case SocketError.ConnectionRefused:
-            case SocketError.ConnectionReset:
-            case SocketError.ConnectionAborted:
-                result.IsRecoverable = true;
-                result.RecoveryRecommendation = "网络连接问题，重试连接";
-                result.SuggestedDelay = TimeSpan.FromSeconds(5);
-                break;
+            ErrorType = "SocketException",
+            ErrorCode = sockEx.SocketErrorCode.ToString()
+        };
 
-            case SocketError.TimedOut:
-                result.IsRecoverable = true;
-                result.RecoveryRecommendation = "连接超时，重试连接";
-                result.SuggestedDelay = TimeSpan.FromSeconds(3);
-                break;
-
-            case SocketError.NetworkUnreachable:
-            case SocketError.HostUnreachable:
-                result.IsRecoverable = true;
-                result.RecoveryRecommendation = "网络不可达，延迟重试";
-                result.SuggestedDelay = TimeSpan.FromSeconds(30);
-                break;
-
-            case SocketError.AddressNotAvailable:
-            case SocketError.AddressFamilyNotSupported:
-                result.IsRecoverable = false;
-                result.RecoveryRecommendation = "地址配置错误";
-                break;
-
-            default:
-                result.IsRecoverable = true;
-                result.RecoveryRecommendation = "Socket错误，尝试重连";
-                result.SuggestedDelay = TimeSpan.FromSeconds(10);
-                break;
+        if (SocketErrorMap.TryGetValue(sockEx.SocketErrorCode, out var mapping))
+        {
+            result.IsRecoverable = mapping.IsRecoverable;
+            result.RecoveryRecommendation = mapping.Recommendation;
+            result.SuggestedDelay = TimeSpan.FromSeconds(mapping.DelaySeconds);
+        }
+        else
+        {
+            result.IsRecoverable = true;
+            result.RecoveryRecommendation = "Socket错误，尝试重连";
+            result.SuggestedDelay = TimeSpan.FromSeconds(10);
         }
 
         return result;
     }
 
-    /// <summary>
-    /// 分析HTTP异常
-    /// </summary>
-    private ErrorRecoveryResult AnalyzeHttpException(HttpRequestException httpEx, ErrorRecoveryResult result)
+    private static ErrorRecoveryResult AnalyzeHttpException(HttpRequestException httpEx)
     {
-        result.ErrorType = "HttpRequestException";
-        result.IsRecoverable = true;
-        result.RecoveryRecommendation = "HTTP请求失败，重试连接";
-        result.SuggestedDelay = TimeSpan.FromSeconds(5);
+        var result = new ErrorRecoveryResult
+        {
+            ErrorType = "HttpRequestException",
+            IsRecoverable = true,
+            RecoveryRecommendation = "HTTP请求失败，重试连接",
+            SuggestedDelay = TimeSpan.FromSeconds(5)
+        };
 
-        // 检查是否包含特定的HTTP状态码信息
         if (httpEx.Message.Contains("500") || httpEx.Message.Contains("502") || httpEx.Message.Contains("503"))
         {
             result.RecoveryRecommendation = "服务器错误，延迟重试";
@@ -203,86 +215,6 @@ public class ErrorRecoveryStrategy
             result.RecoveryRecommendation = "认证失败，检查凭据";
         }
 
-        return result;
-    }
-
-    /// <summary>
-    /// 分析超时异常
-    /// </summary>
-    private ErrorRecoveryResult AnalyzeTimeoutException(TimeoutException timeoutEx, ErrorRecoveryResult result)
-    {
-        result.ErrorType = "TimeoutException";
-        result.IsRecoverable = true;
-        result.RecoveryRecommendation = "操作超时，重试连接";
-        result.SuggestedDelay = TimeSpan.FromSeconds(3);
-        return result;
-    }
-
-    /// <summary>
-    /// 分析取消异常
-    /// </summary>
-    private ErrorRecoveryResult AnalyzeCancellationException(OperationCanceledException cancelEx, ErrorRecoveryResult result)
-    {
-        result.ErrorType = "OperationCanceledException";
-        result.IsRecoverable = false; // 取消操作通常不需要恢复
-        result.RecoveryRecommendation = "操作被取消";
-        return result;
-    }
-
-    /// <summary>
-    /// 分析认证异常
-    /// </summary>
-    private ErrorRecoveryResult AnalyzeAuthenticationException(FeishuAuthenticationException authEx, ErrorRecoveryResult result)
-    {
-        result.ErrorType = "FeishuAuthenticationException";
-        result.IsRecoverable = authEx.IsRecoverable;
-
-        if (authEx.IsRecoverable)
-        {
-            result.RecoveryRecommendation = "认证失败，刷新令牌后重试";
-            result.SuggestedDelay = TimeSpan.FromSeconds(5);
-        }
-        else
-        {
-            result.RecoveryRecommendation = "认证配置错误，检查应用凭据";
-        }
-
-        return result;
-    }
-
-    /// <summary>
-    /// 分析连接异常
-    /// </summary>
-    private ErrorRecoveryResult AnalyzeConnectionException(FeishuConnectionException connEx, ErrorRecoveryResult result)
-    {
-        result.ErrorType = "FeishuConnectionException";
-        result.IsRecoverable = connEx.IsRecoverable;
-        result.RecoveryRecommendation = connEx.IsRecoverable ? "连接异常，重试连接" : "连接配置错误";
-        result.SuggestedDelay = TimeSpan.FromSeconds(5);
-        return result;
-    }
-
-    /// <summary>
-    /// 分析网络异常
-    /// </summary>
-    private ErrorRecoveryResult AnalyzeNetworkException(FeishuNetworkException netEx, ErrorRecoveryResult result)
-    {
-        result.ErrorType = "FeishuNetworkException";
-        result.IsRecoverable = netEx.IsRecoverable;
-        result.RecoveryRecommendation = netEx.IsRecoverable ? "网络异常，重试连接" : "网络配置错误";
-        result.SuggestedDelay = TimeSpan.FromSeconds(10);
-        return result;
-    }
-
-    /// <summary>
-    /// 分析通用异常
-    /// </summary>
-    private ErrorRecoveryResult AnalyzeGenericException(Exception ex, ErrorRecoveryResult result)
-    {
-        result.ErrorType = ex.GetType().Name;
-        result.IsRecoverable = true; // 默认认为可恢复
-        result.RecoveryRecommendation = "未知错误，尝试重连";
-        result.SuggestedDelay = TimeSpan.FromSeconds(10);
         return result;
     }
 }

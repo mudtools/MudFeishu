@@ -384,4 +384,129 @@ public class FeishuEventDeduplicatorTests
         // Assert - App2 应该是未处理
         Assert.False(deduplicator.IsProcessed(eventId, appKey2));
     }
+
+    [Fact]
+    public async Task TryMarkAsProcessingAsync_WhenNewEvent_ShouldReturnSuccess()
+    {
+        // Arrange
+        var loggerMock = new Mock<ILogger<FeishuEventDeduplicator>>();
+        var deduplicator = new FeishuEventDeduplicator(loggerMock.Object);
+        var eventId = "test_event_async_new";
+
+        // Act
+        var result = await deduplicator.TryMarkAsProcessingAsync(eventId);
+
+        // Assert
+        Assert.False(result.IsDuplicate);
+        Assert.False(result.WasProcessing);
+        Assert.Equal(eventId, result.EventId);
+        Assert.Equal(DeduplicationStatus.Processing, result.Status);
+    }
+
+    [Fact]
+    public async Task TryMarkAsProcessingAsync_WhenEventCompleted_ShouldReturnDuplicateWithWasProcessingFalse()
+    {
+        // Arrange
+        var loggerMock = new Mock<ILogger<FeishuEventDeduplicator>>();
+        var deduplicator = new FeishuEventDeduplicator(loggerMock.Object);
+        var eventId = "test_event_async_completed";
+
+        deduplicator.TryMarkAsProcessing(eventId);
+        deduplicator.MarkAsCompleted(eventId);
+
+        // Act
+        var result = await deduplicator.TryMarkAsProcessingAsync(eventId);
+
+        // Assert
+        Assert.True(result.IsDuplicate);
+        Assert.False(result.WasProcessing);
+        Assert.Equal(DeduplicationStatus.Completed, result.Status);
+    }
+
+    [Fact]
+    public async Task TryMarkAsProcessingAsync_WhenEventProcessing_ShouldReturnDuplicateWithWasProcessingTrue()
+    {
+        // Arrange
+        var loggerMock = new Mock<ILogger<FeishuEventDeduplicator>>();
+        var deduplicator = new FeishuEventDeduplicator(loggerMock.Object);
+        var eventId = "test_event_async_processing";
+
+        deduplicator.TryMarkAsProcessing(eventId);
+
+        // Act
+        var result = await deduplicator.TryMarkAsProcessingAsync(eventId);
+
+        // Assert
+        Assert.True(result.IsDuplicate);
+        Assert.True(result.WasProcessing);
+        Assert.Equal(DeduplicationStatus.Processing, result.Status);
+    }
+
+    [Fact]
+    public async Task TryMarkAsProcessingAsync_WhenProcessingTimeout_ShouldReturnTimeoutRecoverable()
+    {
+        // Arrange
+        var loggerMock = new Mock<ILogger<FeishuEventDeduplicator>>();
+        var deduplicator = new FeishuEventDeduplicator(
+            loggerMock.Object,
+            processingTimeout: TimeSpan.FromMilliseconds(20));
+        var eventId = "test_event_async_timeout";
+
+        deduplicator.TryMarkAsProcessing(eventId);
+        await Task.Delay(30);
+
+        // Act
+        var result = await deduplicator.TryMarkAsProcessingAsync(eventId);
+
+        // Assert
+        Assert.False(result.IsDuplicate);
+        Assert.True(result.WasProcessing);
+        Assert.Equal(DeduplicationStatus.Processing, result.Status);
+    }
+
+    [Fact]
+    public async Task TryMarkAsProcessingAsync_WhenNullOrEmptyEventId_ShouldReturnSuccess()
+    {
+        // Arrange
+        var loggerMock = new Mock<ILogger<FeishuEventDeduplicator>>();
+        var deduplicator = new FeishuEventDeduplicator(loggerMock.Object);
+
+        // Act
+        var result1 = await deduplicator.TryMarkAsProcessingAsync(null!);
+        var result2 = await deduplicator.TryMarkAsProcessingAsync(string.Empty);
+
+        // Assert
+        Assert.False(result1.IsDuplicate);
+        Assert.False(result2.IsDuplicate);
+    }
+
+    [Fact]
+    public async Task TryMarkAsProcessingAsync_WithAppKey_ShouldIsolateByAppKey()
+    {
+        // Arrange
+        var loggerMock = new Mock<ILogger<FeishuEventDeduplicator>>();
+        var deduplicator = new FeishuEventDeduplicator(loggerMock.Object);
+        var eventId = "test_event_async_appkey";
+        var appKey1 = "app-001";
+        var appKey2 = "app-002";
+
+        // Act - App1 标记为处理中
+        var result1 = await deduplicator.TryMarkAsProcessingAsync(eventId, appKey1);
+
+        // Assert - App1 应该成功
+        Assert.False(result1.IsDuplicate);
+
+        // Act - App2 处理相同事件ID
+        var result2 = await deduplicator.TryMarkAsProcessingAsync(eventId, appKey2);
+
+        // Assert - App2 也应该成功（不同应用隔离）
+        Assert.False(result2.IsDuplicate);
+
+        // Act - App1 再次处理
+        var result1Again = await deduplicator.TryMarkAsProcessingAsync(eventId, appKey1);
+
+        // Assert - App1 应该检测到重复
+        Assert.True(result1Again.IsDuplicate);
+        Assert.True(result1Again.WasProcessing);
+    }
 }

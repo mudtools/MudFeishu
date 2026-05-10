@@ -113,11 +113,21 @@ public class FeishuEventDeduplicator : MemoryDeduplicator<string>, IFeishuEventD
     /// <inheritdoc/>
     public Task<DeduplicationResult> TryMarkAsProcessingAsync(string eventId, string? appKey = null, TimeSpan? ttl = null, TimeSpan? processingTimeout = null, CancellationToken cancellationToken = default)
     {
+        var previousStatus = GetStatus(eventId, appKey);
+        var existedBefore = ContainsKey(eventId, appKey);
         var isDuplicate = TryMarkAsProcessing(eventId, appKey);
-        var result = isDuplicate
-            ? DeduplicationResult.Duplicate(eventId, false, GetStatus(eventId, appKey))
-            : DeduplicationResult.Success(eventId);
-        return Task.FromResult(result);
+
+        if (isDuplicate)
+        {
+            return Task.FromResult(DeduplicationResult.Duplicate(eventId, previousStatus == DeduplicationStatus.Processing, previousStatus));
+        }
+
+        if (existedBefore && previousStatus == DeduplicationStatus.Pending)
+        {
+            return Task.FromResult(DeduplicationResult.TimeoutRecoverable(eventId));
+        }
+
+        return Task.FromResult(DeduplicationResult.Success(eventId));
     }
 
     /// <inheritdoc/>

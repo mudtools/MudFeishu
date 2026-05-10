@@ -3,7 +3,6 @@
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！
-//  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！
 // -----------------------------------------------------------------------
 
 namespace Mud.Feishu.Abstractions.Services;
@@ -331,6 +330,25 @@ public class MemoryDeduplicator<TKey> : IAsyncDisposable where TKey : notnull
     /// 获取缓存过期时间
     /// </summary>
     protected TimeSpan CacheExpiration => _cacheExpiration;
+
+    /// <summary>
+    /// 检查键是否存在于缓存中（不考虑超时，反映实际缓存状态）
+    /// </summary>
+    /// <param name="key">键值</param>
+    /// <param name="appKey">应用键</param>
+    /// <returns>如果键存在于缓存中返回 true</returns>
+    protected bool ContainsKey(TKey key, string? appKey = null)
+    {
+        if (key == null)
+            return false;
+
+        var cacheKey = GetCacheKey(key, appKey);
+
+        lock (_lock)
+        {
+            return _cache.ContainsKey(cacheKey);
+        }
+    }
 
     /// <summary>
     /// 获取处理中超时时间

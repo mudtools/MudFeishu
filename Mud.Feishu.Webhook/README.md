@@ -116,8 +116,6 @@ app.Run();
 ```json
 {
   "FeishuWebhook": {
-    "VerificationToken": "your_verification_token",
-    "EncryptKey": "your_encrypt_key_32_bytes_long",
     "GlobalRoutePrefix": "feishu",
     "AutoRegisterEndpoint": true,
     "EnableRequestLogging": true,
@@ -401,19 +399,19 @@ public class DemoDepartmentEventHandler : DepartmentCreatedEventHandler
 
 ### 多应用配置
 
-| 选项                              | 类型                                          | 默认值 | 说明                                               |
-| --------------------------------- | --------------------------------------------- | ------ | -------------------------------------------------- |
-| `Apps`                            | Dictionary\<string, FeishuAppWebhookOptions\> | {}     | 应用配置集合（AppKey -> 应用配置）                 |
-| `Apps.{AppKey}.AppKey`            | string                                        | -      | 应用键（用于标识应用，仅允许字母、数字、下划线和连字符） |
-| `Apps.{AppKey}.VerificationToken` | string                                        | -      | 应用验证 Token                                     |
-| `Apps.{AppKey}.EncryptKey`        | string                                        | -      | 应用加密 Key（32字节）                             |
-| `Apps.{AppKey}.Description`       | string?                                       | null   | 应用描述（可选）                                   |
-| `Apps.{AppKey}.TimestampToleranceSeconds` | int                                    | -1     | 时间戳容差（-1 继承全局）                          |
-| `Apps.{AppKey}.EventHandlingTimeoutMs` | int                                     | -1     | 事件处理超时（-1 继承全局）                        |
-| `Apps.{AppKey}.EnforceHeaderSignatureValidation` | bool                           | false  | 是否强制签名验证（不继承全局）                     |
-| `Apps.{AppKey}.EnableBodySignatureValidation` | bool?                             | null   | 是否验证请求体签名（null 继承全局）               |
-| `Apps.{AppKey}.EnableExceptionHandling` | bool?                                  | null   | 是否启用异常处理（null 继承全局）                  |
-| `Apps.{AppKey}.EnablePerformanceMonitoring` | bool?                                 | null   | 是否启用性能监控（null 继承全局）                  |
+| 选项                                             | 类型                                          | 默认值 | 说明                                                     |
+| ------------------------------------------------ | --------------------------------------------- | ------ | -------------------------------------------------------- |
+| `Apps`                                           | Dictionary\<string, FeishuAppWebhookOptions\> | {}     | 应用配置集合（AppKey -> 应用配置）                       |
+| `Apps.{AppKey}.AppKey`                           | string                                        | -      | 应用键（用于标识应用，仅允许字母、数字、下划线和连字符） |
+| `Apps.{AppKey}.VerificationToken`                | string                                        | -      | 应用验证 Token                                           |
+| `Apps.{AppKey}.EncryptKey`                       | string                                        | -      | 应用加密 Key（32字节）                                   |
+| `Apps.{AppKey}.Description`                      | string?                                       | null   | 应用描述（可选）                                         |
+| `Apps.{AppKey}.TimestampToleranceSeconds`        | int                                           | -1     | 时间戳容差（-1 继承全局）                                |
+| `Apps.{AppKey}.EventHandlingTimeoutMs`           | int                                           | -1     | 事件处理超时（-1 继承全局）                              |
+| `Apps.{AppKey}.EnforceHeaderSignatureValidation` | bool?                                         | null   | 是否强制签名验证（null 继承全局）                        |
+| `Apps.{AppKey}.EnableBodySignatureValidation`    | bool?                                         | null   | 是否验证请求体签名（null 继承全局）                      |
+| `Apps.{AppKey}.EnableExceptionHandling`          | bool?                                         | null   | 是否启用异常处理（null 继承全局）                        |
+| `Apps.{AppKey}.EnablePerformanceMonitoring`      | bool?                                         | null   | 是否启用性能监控（null 继承全局）                        |
 
 ### 安全配置
 
@@ -424,16 +422,16 @@ public class DemoDepartmentEventHandler : DepartmentCreatedEventHandler
 | `MaxRequestBodySize`               | long              | 10MB     | 最大请求体大小                                 |
 | `EnforceHeaderSignatureValidation` | bool              | true     | 是否强制验证请求头签名                         |
 | `EnableBodySignatureValidation`    | bool              | true     | 是否在服务层再次验证请求体签名                 |
-| `TimestampToleranceSeconds`        | int               | 60       | 时间戳验证容错范围（秒）                       |
+| `TimestampToleranceSeconds`        | int               | 30       | 时间戳验证容错范围（秒）                       |
 
 ### 性能配置
 
-| 选项                          | 类型 | 默认值 | 说明                       |
-| ----------------------------- | ---- | ------ | -------------------------- |
-| `MaxConcurrentEvents`         | int  | 10     | 最大并发事件数，支持热更新 |
-| `EventHandlingTimeoutMs`      | int  | 30000  | 事件处理超时时间（毫秒）   |
-| `EnablePerformanceMonitoring` | bool | false  | 是否启用性能监控           |
-| `EnableBackgroundProcessing`  | bool | false  | 是否启用异步后台处理模式   |
+| 选项                          | 类型 | 默认值 | 说明                                                   |
+| ----------------------------- | ---- | ------ | ------------------------------------------------------ |
+| `MaxConcurrentEvents`         | int  | 10     | 最大并发事件数，支持热更新                             |
+| `EventHandlingTimeoutMs`      | int  | 30000  | 事件处理超时时间（毫秒）                               |
+| `EnablePerformanceMonitoring` | bool | false  | 是否启用性能监控                                       |
+| `EnableBackgroundProcessing`  | bool | false  | 是否启用后台处理模式（启用后激活令牌自动刷新后台服务） |
 
 ### 日志配置
 
@@ -862,14 +860,14 @@ builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
 
 多应用模式下，`FeishuAppWebhookOptions` 支持继承全局配置：
 
-| 配置项                        | 继承规则                                       |
-| ----------------------------- | ---------------------------------------------- |
-| `TimestampToleranceSeconds`   | 设置为 -1 或 0 时继承全局配置，正整数使用应用级配置 |
-| `EventHandlingTimeoutMs`      | 设置为 -1 或 0 时继承全局配置，正整数使用应用级配置 |
-| `EnableExceptionHandling`     | 设置为 null 时继承全局配置，否则使用应用级配置     |
-| `EnablePerformanceMonitoring` | 设置为 null 时继承全局配置，否则使用应用级配置     |
-| `EnforceHeaderSignatureValidation` | 不继承，直接使用应用级配置（默认 false）     |
-| `EnableBodySignatureValidation`    | 设置为 null 时继承全局配置，否则使用应用级配置     |
+| 配置项                             | 继承规则                                            |
+| ---------------------------------- | --------------------------------------------------- |
+| `TimestampToleranceSeconds`        | 设置为 -1 或 0 时继承全局配置，正整数使用应用级配置 |
+| `EventHandlingTimeoutMs`           | 设置为 -1 或 0 时继承全局配置，正整数使用应用级配置 |
+| `EnableExceptionHandling`          | 设置为 null 时继承全局配置，否则使用应用级配置      |
+| `EnablePerformanceMonitoring`      | 设置为 null 时继承全局配置，否则使用应用级配置      |
+| `EnforceHeaderSignatureValidation` | 设置为 null 时继承全局配置，否则使用应用级配置      |
+| `EnableBodySignatureValidation`    | 设置为 null 时继承全局配置，否则使用应用级配置      |
 
 示例：
 
@@ -893,6 +891,7 @@ builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
 ```
 
 上述配置中：
+
 - `app1`：事件处理超时 60 秒（应用级），时间戳容差 30 秒（继承全局）
 - `app2`：事件处理超时 30 秒（继承全局），时间戳容差 60 秒（应用级）
 
@@ -1368,17 +1367,17 @@ builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
 
 ### 常用配置项速查
 
-| 配置项                        | 默认值           | 说明                     |
-| ----------------------------- | ---------------- | ------------------------ |
-| `GlobalRoutePrefix`           | `"feishu"`       | 全局路由前缀             |
-| `VerificationToken`           | -                | 验证令牌（必填）         |
-| `EncryptKey`                  | -                | 加密密钥（32字节）       |
-| `MaxConcurrentEvents`         | `10`             | 最大并发事件数，支持热更新 |
-| `EventHandlingTimeoutMs`      | `30000`          | 事件处理超时（毫秒）     |
-| `EnableBackgroundProcessing`  | `false`          | 后台处理模式             |
-| `EnablePerformanceMonitoring` | `false`          | 性能监控                 |
-| `EnforceHeaderSignatureValidation` | `true`     | 强制签名验证（生产环境必须启用） |
-| `TimestampToleranceSeconds`   | `30`             | 时间戳容错范围（秒）     |
+| 配置项                             | 默认值     | 说明                                   |
+| ---------------------------------- | ---------- | -------------------------------------- |
+| `GlobalRoutePrefix`                | `"feishu"` | 全局路由前缀                           |
+| `VerificationToken`                | -          | 验证令牌（必填）                       |
+| `EncryptKey`                       | -          | 加密密钥（32字节）                     |
+| `MaxConcurrentEvents`              | `10`       | 最大并发事件数，支持热更新             |
+| `EventHandlingTimeoutMs`           | `30000`    | 事件处理超时（毫秒）                   |
+| `EnableBackgroundProcessing`       | `false`    | 后台处理模式（启用后激活令牌自动刷新） |
+| `EnablePerformanceMonitoring`      | `false`    | 性能监控                               |
+| `EnforceHeaderSignatureValidation` | `true`     | 强制签名验证（生产环境必须启用）       |
+| `TimestampToleranceSeconds`        | `30`       | 时间戳容错范围（秒）                   |
 
 ---
 

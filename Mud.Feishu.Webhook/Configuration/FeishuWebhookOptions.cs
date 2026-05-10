@@ -102,9 +102,10 @@ public class FeishuWebhookOptions
     public RateLimitOptions RateLimit { get; set; } = new();
 
     /// <summary>
-    /// 是否启用异步后台处理模式
-    /// 启用后会立即返回飞书成功响应，然后在后台处理事件
-    /// 这可以避免飞书超时重试，适用于耗时较长的业务逻辑
+    /// 是否启用后台处理模式
+    /// 启用后将激活 Mud.HttpUtils 组件的令牌自动刷新后台服务（TokenRefreshBackgroundService），
+    /// 定期刷新即将过期的访问令牌，确保后台处理事件时令牌始终有效。
+    /// 参见 <see cref="Mud.HttpUtils.TokenRefreshBackgroundOptions"/> 了解更多令牌刷新配置。
     /// </summary>
     public bool EnableBackgroundProcessing { get; set; } = false;
 

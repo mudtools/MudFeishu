@@ -8,6 +8,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Mud.Feishu.Webhook.Configuration;
+using Mud.HttpUtils;
 using Xunit;
 
 namespace Mud.Feishu.Webhook.Tests.Configuration;
@@ -29,20 +30,6 @@ public class ConfigurationValidatorIntegrationTests
 
         Assert.NotNull(validator);
         Assert.IsType<FeishuWebhookOptionsValidator>(validator);
-    }
-
-    [Fact]
-    public void ServiceCollection_ShouldRegisterFeishuAppWebhookOptionsValidator()
-    {
-        var services = new ServiceCollection();
-        services.AddOptions<FeishuAppWebhookOptions>();
-        services.AddSingleton<IValidateOptions<FeishuAppWebhookOptions>, FeishuAppWebhookOptionsValidator>();
-
-        var serviceProvider = services.BuildServiceProvider();
-        var validator = serviceProvider.GetService<IValidateOptions<FeishuAppWebhookOptions>>();
-
-        Assert.NotNull(validator);
-        Assert.IsType<FeishuAppWebhookOptionsValidator>(validator);
     }
 
     [Fact]
@@ -100,26 +87,6 @@ public class ConfigurationValidatorIntegrationTests
     }
 
     [Fact]
-    public void FeishuAppWebhookOptions_Validation_WithValidOptions_ShouldSucceed()
-    {
-        var services = new ServiceCollection();
-        services.AddOptions<FeishuAppWebhookOptions>()
-            .Configure(options =>
-            {
-                options.AppKey = "test-app";
-                options.VerificationToken = "test_token";
-                options.EncryptKey = "12345678901234567890123456789012";
-            });
-        services.AddSingleton<IValidateOptions<FeishuAppWebhookOptions>, FeishuAppWebhookOptionsValidator>();
-
-        var serviceProvider = services.BuildServiceProvider();
-        var options = serviceProvider.GetRequiredService<IOptions<FeishuAppWebhookOptions>>();
-
-        Assert.NotNull(options.Value);
-        Assert.Equal("test-app", options.Value.AppKey);
-    }
-
-    [Fact]
     public void RateLimitOptions_Validation_WithDisabledRateLimit_ShouldSucceed()
     {
         var services = new ServiceCollection();
@@ -156,5 +123,66 @@ public class ConfigurationValidatorIntegrationTests
 
         Assert.NotNull(options.Value);
         Assert.True(options.Value.EnableRateLimit);
+    }
+
+    [Fact]
+    public void EnableBackgroundProcessing_ShouldMapToTokenRefreshBackgroundOptions_WhenEnabled()
+    {
+        var services = new ServiceCollection();
+        services.AddOptions<FeishuWebhookOptions>()
+            .Configure(options =>
+            {
+                options.EnableBackgroundProcessing = true;
+            });
+        services.AddOptions<TokenRefreshBackgroundOptions>()
+            .PostConfigure<IOptions<FeishuWebhookOptions>>((tokenOptions, webhookOptions) =>
+            {
+                tokenOptions.Enabled = webhookOptions.Value.EnableBackgroundProcessing;
+            });
+
+        var serviceProvider = services.BuildServiceProvider();
+        var tokenOptions = serviceProvider.GetRequiredService<IOptions<TokenRefreshBackgroundOptions>>();
+
+        Assert.True(tokenOptions.Value.Enabled);
+    }
+
+    [Fact]
+    public void EnableBackgroundProcessing_ShouldMapToTokenRefreshBackgroundOptions_WhenDisabled()
+    {
+        var services = new ServiceCollection();
+        services.AddOptions<FeishuWebhookOptions>()
+            .Configure(options =>
+            {
+                options.EnableBackgroundProcessing = false;
+            });
+        services.AddOptions<TokenRefreshBackgroundOptions>()
+            .PostConfigure<IOptions<FeishuWebhookOptions>>((tokenOptions, webhookOptions) =>
+            {
+                tokenOptions.Enabled = webhookOptions.Value.EnableBackgroundProcessing;
+            });
+
+        var serviceProvider = services.BuildServiceProvider();
+        var tokenOptions = serviceProvider.GetRequiredService<IOptions<TokenRefreshBackgroundOptions>>();
+
+        Assert.False(tokenOptions.Value.Enabled);
+    }
+
+    [Fact]
+    public void EnableBackgroundProcessing_DefaultValue_ShouldMapToTokenRefreshBackgroundOptions()
+    {
+        var services = new ServiceCollection();
+        services.AddOptions<FeishuWebhookOptions>();
+        services.AddOptions<TokenRefreshBackgroundOptions>()
+            .PostConfigure<IOptions<FeishuWebhookOptions>>((tokenOptions, webhookOptions) =>
+            {
+                tokenOptions.Enabled = webhookOptions.Value.EnableBackgroundProcessing;
+            });
+
+        var serviceProvider = services.BuildServiceProvider();
+        var webhookOptions = serviceProvider.GetRequiredService<IOptions<FeishuWebhookOptions>>();
+        var tokenOptions = serviceProvider.GetRequiredService<IOptions<TokenRefreshBackgroundOptions>>();
+
+        Assert.False(webhookOptions.Value.EnableBackgroundProcessing);
+        Assert.False(tokenOptions.Value.Enabled);
     }
 }

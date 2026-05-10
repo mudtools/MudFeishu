@@ -95,8 +95,6 @@ app.Run();
 ```json
 {
   "FeishuWebhook": {
-    "VerificationToken": "your_verification_token",
-    "EncryptKey": "your_encrypt_key_32_bytes_long",
     "GlobalRoutePrefix": "feishu",
     "AutoRegisterEndpoint": true,
     "EnableRequestLogging": true,
@@ -389,7 +387,7 @@ public class DemoDepartmentEventHandler : DepartmentCreatedEventHandler
 | `Apps.{AppKey}.Description`                      | string?                                       | null    | App description (optional)                                     |
 | `Apps.{AppKey}.TimestampToleranceSeconds`        | int                                           | -1      | Timestamp tolerance (-1 inherits global)                       |
 | `Apps.{AppKey}.EventHandlingTimeoutMs`           | int                                           | -1      | Event handling timeout (-1 inherits global)                    |
-| `Apps.{AppKey}.EnforceHeaderSignatureValidation` | bool                                          | false   | Enforce header signature validation (does not inherit)         |
+| `Apps.{AppKey}.EnforceHeaderSignatureValidation` | bool?                                         | null    | Enforce header signature validation (null inherits global)     |
 | `Apps.{AppKey}.EnableBodySignatureValidation`    | bool?                                         | null    | Enable body signature validation (null inherits global)        |
 | `Apps.{AppKey}.EnableExceptionHandling`          | bool?                                         | null    | Enable exception handling (null inherits global)               |
 | `Apps.{AppKey}.EnablePerformanceMonitoring`      | bool?                                         | null    | Enable performance monitoring (null inherits global)           |
@@ -403,16 +401,16 @@ public class DemoDepartmentEventHandler : DepartmentCreatedEventHandler
 | `MaxRequestBodySize`               | long              | 10MB     | Max request body size                                              |
 | `EnforceHeaderSignatureValidation` | bool              | true     | Whether to enforce header signature validation                     |
 | `EnableBodySignatureValidation`    | bool              | true     | Whether to validate request body signature at service layer        |
-| `TimestampToleranceSeconds`        | int               | 60       | Timestamp validation tolerance (seconds)                           |
+| `TimestampToleranceSeconds`        | int               | 30       | Timestamp validation tolerance (seconds)                           |
 
 ### Performance Configuration
 
-| Option                        | Type | Default | Description                                   |
-| ----------------------------- | ---- | ------- | --------------------------------------------- |
-| `MaxConcurrentEvents`         | int  | 10      | Max concurrent events, supports hot reload    |
-| `EventHandlingTimeoutMs`      | int  | 30000   | Event handling timeout (milliseconds)         |
-| `EnablePerformanceMonitoring` | bool | false   | Whether to enable performance monitoring      |
-| `EnableBackgroundProcessing`  | bool | false   | Whether to enable async background processing |
+| Option                        | Type | Default | Description                                                                                                 |
+| ----------------------------- | ---- | ------- | ----------------------------------------------------------------------------------------------------------- |
+| `MaxConcurrentEvents`         | int  | 10      | Max concurrent events, supports hot reload                                                                  |
+| `EventHandlingTimeoutMs`      | int  | 30000   | Event handling timeout (milliseconds)                                                                       |
+| `EnablePerformanceMonitoring` | bool | false   | Whether to enable performance monitoring                                                                    |
+| `EnableBackgroundProcessing`  | bool | false   | Whether to enable background processing mode (activates token auto-refresh background service when enabled) |
 
 ### Logging Configuration
 
@@ -1011,38 +1009,31 @@ app.MapDiagnostics();          // Diagnostics endpoints
 ### Common Issues
 
 1. **Validation Failed**
-
    - Check if `VerificationToken` is correct
    - Confirm request URL is configured correctly
 
 2. **Decryption Failed**
-
    - Check if `EncryptKey` is correct
    - Confirm encryption is enabled on Feishu platform
 
 3. **Signature Validation Failed**
-
    - Check time synchronization
    - Confirm request hasn't been modified by proxy server
    - Ensure `EnforceHeaderSignatureValidation` is set to true in production
 
 4. **Event Handling Failed**
-
    - Check if event handlers are correctly registered
    - View detailed error information in logs
 
 5. **Distributed Deployment Event Duplication**
-
    - Default uses in-memory deduplication, multi-instance deployment requires distributed deduplication
    - Refer to `IFeishuNonceDistributedDeduplicator` interface for custom Redis implementation
 
 6. **Timeout Handling**
-
    - Check if `EventHandlingTimeoutMs` configuration is reasonable
    - Ensure event handling logic supports cancellation tokens
 
 7. **Rate Limiting Issues**
-
    - Check `RateLimit.EnableRateLimit` configuration
    - Confirm client IP is in whitelist
    - Adjust `MaxRequestsPerWindow` and `WindowSizeSeconds` parameters
@@ -1195,15 +1186,15 @@ builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
 
 ### Common Configuration Quick Reference
 
-| Configuration                 | Default            | Description                   |
-| ----------------------------- | ------------------ | ----------------------------- |
-| `RoutePrefix`                 | `"feishu/Webhook"` | Webhook route prefix          |
-| `VerificationToken`           | -                  | Verification token (required) |
-| `EncryptKey`                  | -                  | Encryption key (32 bytes)     |
-| `MaxConcurrentEvents`         | `10`               | Max concurrent events         |
-| `EventHandlingTimeoutMs`      | `30000`            | Event handling timeout (ms)   |
-| `EnableBackgroundProcessing`  | `false`            | Background processing mode    |
-| `EnablePerformanceMonitoring` | `false`            | Performance monitoring        |
+| Configuration                 | Default            | Description                                               |
+| ----------------------------- | ------------------ | --------------------------------------------------------- |
+| `RoutePrefix`                 | `"feishu/Webhook"` | Webhook route prefix                                      |
+| `VerificationToken`           | -                  | Verification token (required)                             |
+| `EncryptKey`                  | -                  | Encryption key (32 bytes)                                 |
+| `MaxConcurrentEvents`         | `10`               | Max concurrent events                                     |
+| `EventHandlingTimeoutMs`      | `30000`            | Event handling timeout (ms)                               |
+| `EnableBackgroundProcessing`  | `false`            | Background processing mode (activates token auto-refresh) |
+| `EnablePerformanceMonitoring` | `false`            | Performance monitoring                                    |
 
 ---
 

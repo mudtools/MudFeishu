@@ -529,9 +529,26 @@ public class FeishuWebSocketOptionsTests
     }
 
     [Fact]
-    public void Validate_ShouldThrow_WhenEventDeduplicationModeNoneWithNonDefaultCacheExpiration()
+    public void Validate_ShouldThrow_WhenEventDeduplicationModeNoneWithDefaultValues()
     {
-        // Arrange
+        var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions
+        {
+            EventDeduplication = new EventDeduplicationOptions
+            {
+                Mode = EventDeduplicationMode.None,
+                CacheExpirationMs = EventDeduplicationOptions.DefaultCacheExpirationMs,
+                CleanupIntervalMs = EventDeduplicationOptions.DefaultCleanupIntervalMs
+            }
+        };
+
+        var act = () => options.Validate();
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*None*去重*");
+    }
+
+    [Fact]
+    public void Validate_ShouldThrow_WhenEventDeduplicationModeNoneWithCustomCacheExpiration()
+    {
         var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions
         {
             EventDeduplication = new EventDeduplicationOptions
@@ -541,31 +558,8 @@ public class FeishuWebSocketOptionsTests
             }
         };
 
-        // Act
         var act = () => options.Validate();
 
-        // Assert
         act.Should().Throw<InvalidOperationException>().WithMessage("*None*CacheExpirationMs*");
-    }
-
-    [Fact]
-    public void Validate_ShouldNotThrow_WhenEventDeduplicationModeNoneWithDefaultValues()
-    {
-        // Arrange
-        var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions
-        {
-            EventDeduplication = new EventDeduplicationOptions
-            {
-                Mode = EventDeduplicationMode.None,
-                CacheExpirationMs = 172800000,
-                CleanupIntervalMs = 300000
-            }
-        };
-
-        // Act
-        var act = () => options.Validate();
-
-        // Assert
-        act.Should().NotThrow();
     }
 }

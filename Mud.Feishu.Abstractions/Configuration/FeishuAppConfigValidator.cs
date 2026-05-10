@@ -69,6 +69,13 @@ public class FeishuAppConfigValidator : IValidateOptions<FeishuAppConfig>, IVali
             }
         }
 
+        var defaultApps = options.Where(c => c.IsDefault).ToList();
+        if (defaultApps.Count > 1)
+        {
+            var defaultAppKeys = string.Join(", ", defaultApps.Select(c => c.AppKey ?? "null"));
+            errors.Add($"存在多个 IsDefault=true 的应用（{defaultAppKeys}），仅第一个默认应用会生效。请确保只有一个应用标记为默认。");
+        }
+
         if (errors.Count > 0)
         {
             return ValidateOptionsResult.Fail($"FeishuAppConfig 配置验证失败:\n{string.Join("\n", errors)}");

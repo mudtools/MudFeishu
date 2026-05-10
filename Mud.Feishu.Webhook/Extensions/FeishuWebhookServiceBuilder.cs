@@ -13,6 +13,7 @@ using Mud.Feishu.Webhook;
 using Mud.Feishu.Webhook.Configuration;
 using Mud.Feishu.Webhook.Services;
 using Mud.Feishu.Webhook.Utilities;
+using Mud.HttpUtils;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
@@ -468,6 +469,17 @@ public class FeishuWebhookServiceBuilder
         _services.AddHostedService(sp => sp.GetRequiredService<FeishuWebhookConcurrencyService>());
         _services.TryAddSingleton<IFeishuEventDeduplicator, FeishuEventDeduplicator>();
         _services.TryAddSingleton<IFeishuNonceDistributedDeduplicator, FeishuNonceDistributedDeduplicator>();
+
+        // 注册令牌自动刷新后台服务（由 EnableBackgroundProcessing 配置控制是否启用）
+        // 使用 Mud.HttpUtils 提供的扩展方法，自动根据目标框架选择正确的实现
+        _services.AddTokenRefreshBackgroundService();
+
+        // 将 FeishuWebhookOptions.EnableBackgroundProcessing 映射到 TokenRefreshBackgroundOptions.Enabled
+        _services.AddOptions<TokenRefreshBackgroundOptions>()
+            .PostConfigure<IOptions<FeishuWebhookOptions>>((tokenOptions, webhookOptions) =>
+            {
+                tokenOptions.Enabled = webhookOptions.Value.EnableBackgroundProcessing;
+            });
 
         // 注册多应用注册表（单例，所有应用共享）
         _services.TryAddSingleton<FeishuWebhookHandlerRegistry>();

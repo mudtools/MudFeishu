@@ -51,10 +51,10 @@ public class FeishuAppWebhookOptions
     public int EventHandlingTimeoutMs { get; set; } = -1;
 
     /// <summary>
-    /// 是否强制验证请求头签名，默认 false
-    /// 注意：此配置不继承全局配置，因为应用可能有不同的安全策略
+    /// 是否强制验证请求头签名，默认 null 表示继承全局配置
+    /// 设置为 true 或 false 时使用应用级配置，设置为 null 时继承全局 EnforceHeaderSignatureValidation
     /// </summary>
-    public bool EnforceHeaderSignatureValidation { get; set; } = false;
+    public bool? EnforceHeaderSignatureValidation { get; set; }
 
     /// <summary>
     /// 是否启用请求体签名验证，默认 null 表示继承全局配置
@@ -139,4 +139,12 @@ public class FeishuAppWebhookOptions
     /// <returns>有效的请求体签名验证配置</returns>
     public bool GetEffectiveEnableBodySignatureValidation(bool globalValue) =>
         EnableBodySignatureValidation ?? globalValue;
+
+    /// <summary>
+    /// 获取有效的请求头签名验证配置（解析继承逻辑）
+    /// </summary>
+    /// <param name="globalValue">全局配置值</param>
+    /// <returns>有效的请求头签名验证配置</returns>
+    public bool GetEffectiveEnforceHeaderSignatureValidation(bool globalValue) =>
+        EnforceHeaderSignatureValidation ?? globalValue;
 }

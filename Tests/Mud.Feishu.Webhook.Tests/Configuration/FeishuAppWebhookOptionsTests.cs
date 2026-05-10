@@ -24,7 +24,7 @@ public class FeishuAppWebhookOptionsTests
         options.Description.Should().BeNull();
         options.TimestampToleranceSeconds.Should().Be(-1);
         options.EventHandlingTimeoutMs.Should().Be(-1);
-        options.EnforceHeaderSignatureValidation.Should().BeFalse();
+        options.EnforceHeaderSignatureValidation.Should().BeNull();
         options.EnableBodySignatureValidation.Should().BeNull();
         options.EnableExceptionHandling.Should().BeNull();
         options.EnablePerformanceMonitoring.Should().BeNull();
@@ -244,5 +244,37 @@ public class FeishuAppWebhookOptionsTests
         var options = new FeishuAppWebhookOptions { EnableBodySignatureValidation = null };
 
         options.GetEffectiveEnableBodySignatureValidation(false).Should().BeFalse();
+    }
+
+    [Fact]
+    public void GetEffectiveEnforceHeaderSignatureValidation_ShouldReturnLocalValue_WhenSetToTrue()
+    {
+        var options = new FeishuAppWebhookOptions { EnforceHeaderSignatureValidation = true };
+
+        options.GetEffectiveEnforceHeaderSignatureValidation(false).Should().BeTrue();
+    }
+
+    [Fact]
+    public void GetEffectiveEnforceHeaderSignatureValidation_ShouldReturnLocalValue_WhenSetToFalse()
+    {
+        var options = new FeishuAppWebhookOptions { EnforceHeaderSignatureValidation = false };
+
+        options.GetEffectiveEnforceHeaderSignatureValidation(true).Should().BeFalse();
+    }
+
+    [Fact]
+    public void GetEffectiveEnforceHeaderSignatureValidation_ShouldReturnGlobalValue_WhenNull()
+    {
+        var options = new FeishuAppWebhookOptions { EnforceHeaderSignatureValidation = null };
+
+        options.GetEffectiveEnforceHeaderSignatureValidation(true).Should().BeTrue();
+    }
+
+    [Fact]
+    public void GetEffectiveEnforceHeaderSignatureValidation_ShouldReturnGlobalFalse_WhenNullAndGlobalFalse()
+    {
+        var options = new FeishuAppWebhookOptions { EnforceHeaderSignatureValidation = null };
+
+        options.GetEffectiveEnforceHeaderSignatureValidation(false).Should().BeFalse();
     }
 }

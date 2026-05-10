@@ -64,7 +64,7 @@ public class DeduplicationOptions
     private TimeSpan _cleanupInterval = TimeSpan.FromMinutes(5);
 
     /// <summary>
-    /// 降级策略：是否在 Redis 失败时允许处理事件
+    /// 降级策略：是否在 Redis 失败时允许处理事件（仅分布式模式）
     /// </summary>
     /// <remarks>
     /// <list type="bullet">
@@ -76,7 +76,7 @@ public class DeduplicationOptions
     public bool AllowProcessingOnFallback { get; set; } = true;
 
     /// <summary>
-    /// 最大重试次数（分布式模式）
+    /// 最大重试次数（仅分布式模式）
     /// </summary>
     /// <remarks>
     /// Redis 操作失败时的最大重试次数。
@@ -89,7 +89,7 @@ public class DeduplicationOptions
     private int _maxRetryCount = Mud.Feishu.Abstractions.Consts.DefaultRetryCount;
 
     /// <summary>
-    /// 初始重试延迟（分布式模式）
+    /// 初始重试延迟（仅分布式模式）
     /// </summary>
     /// <remarks>
     /// 首次重试前的等待时间，后续重试将使用指数退避策略。
@@ -102,7 +102,7 @@ public class DeduplicationOptions
     private TimeSpan _initialRetryDelay = TimeSpan.FromSeconds(1);
 
     /// <summary>
-    /// 最大重试延迟（分布式模式）
+    /// 最大重试延迟（仅分布式模式）
     /// </summary>
     /// <remarks>
     /// 指数退避策略的最大延迟时间上限。
@@ -115,7 +115,7 @@ public class DeduplicationOptions
     private TimeSpan _maxRetryDelay = TimeSpan.FromSeconds(30);
 
     /// <summary>
-    /// Redis 键前缀（分布式模式）
+    /// Redis 键前缀（仅分布式模式）
     /// </summary>
     /// <remarks>
     /// 用于区分不同应用或环境的 Redis 键。

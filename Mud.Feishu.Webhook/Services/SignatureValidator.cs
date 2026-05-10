@@ -130,8 +130,8 @@ public class SignatureValidator : ISignatureValidator
                     var appConfig = options.GetAppConfig(CurrentAppKey!);
                     if (appConfig != null)
                     {
-                        // 优先使用应用级别的 EnforceHeaderSignatureValidation 配置
-                        enforceValidation = appConfig.EnforceHeaderSignatureValidation;
+                        // 使用应用级配置，null 时继承全局配置
+                        enforceValidation = appConfig.GetEffectiveEnforceHeaderSignatureValidation(enforceValidation);
                         _logger.LogDebug("使用应用 {AppKey} 的签名验证配置: {EnforceValidation}",
                             CurrentAppKey, enforceValidation);
                     }

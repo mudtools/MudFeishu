@@ -320,4 +320,59 @@ public class FeishuAppConfigListValidatorTests
         Assert.Contains("[0]", result.FailureMessage);
         Assert.Contains("[1]", result.FailureMessage);
     }
+
+    [Fact]
+    public void ValidateList_WithMultipleDefaultApps_ShouldReturnFail()
+    {
+        var configs = new List<FeishuAppConfig>
+        {
+            new()
+            {
+                AppKey = "app1",
+                AppId = "cli_test123456789012",
+                AppSecret = "test_secret_key_12345",
+                IsDefault = true
+            },
+            new()
+            {
+                AppKey = "app2",
+                AppId = "cli_another123456789",
+                AppSecret = "another_secret_key_12",
+                IsDefault = true
+            }
+        };
+
+        var result = _validator.Validate(null, configs);
+
+        Assert.True(result.Failed);
+        Assert.Contains("IsDefault=true", result.FailureMessage);
+        Assert.Contains("app1", result.FailureMessage);
+        Assert.Contains("app2", result.FailureMessage);
+    }
+
+    [Fact]
+    public void ValidateList_WithSingleDefaultApp_ShouldReturnSuccess()
+    {
+        var configs = new List<FeishuAppConfig>
+        {
+            new()
+            {
+                AppKey = "app1",
+                AppId = "cli_test123456789012",
+                AppSecret = "test_secret_key_12345",
+                IsDefault = true
+            },
+            new()
+            {
+                AppKey = "app2",
+                AppId = "cli_another123456789",
+                AppSecret = "another_secret_key_12",
+                IsDefault = false
+            }
+        };
+
+        var result = _validator.Validate(null, configs);
+
+        Assert.True(result.Succeeded);
+    }
 }

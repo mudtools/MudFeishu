@@ -32,9 +32,9 @@ dotnet add package Mud.Feishu.Redis
   "FeishuRedis": {
     "ServerAddress": "localhost:6379",
     "Password": "",
-    "EventCacheExpiration": "24:00:00",
+    "EventCacheExpiration": "48:00:00",
     "NonceTtl": "00:05:00",
-    "SeqIdCacheExpiration": "24:00:00",
+    "SeqIdCacheExpiration": "48:00:00",
     "EventKeyPrefix": "feishu:event:",
     "NonceKeyPrefix": "feishu:nonce:",
     "SeqIdKeyPrefix": "feishu:seqid:",
@@ -68,7 +68,7 @@ builder.Services.AddFeishuRedisDeduplicators(options =>
 {
     options.ServerAddress = "localhost:6379";
     options.Password = "your_password";
-    options.EventCacheExpiration = TimeSpan.FromHours(24);
+    options.EventCacheExpiration = TimeSpan.FromHours(48);
     options.NonceTtl = TimeSpan.FromMinutes(5);
     options.ConnectRetry = 3;
 });
@@ -112,9 +112,9 @@ app.Run();
 | ---------------------- | -------- | ---------------- | ------------------------------------------------------------------------ |
 | `ServerAddress`        | string   | "localhost:6379" | Redis 服务器地址（host:port 或 redis://host:port 或 rediss://host:port） |
 | `Password`             | string   | ""               | Redis 密码                                                               |
-| `EventCacheExpiration` | TimeSpan | 24 小时          | 事件去重缓存过期时间                                                     |
+| `EventCacheExpiration` | TimeSpan | 48 小时          | 事件去重缓存过期时间                                                     |
 | `NonceTtl`             | TimeSpan | 5 分钟           | Nonce 有效期                                                             |
-| `SeqIdCacheExpiration` | TimeSpan | 24 小时          | SeqID 去重缓存过期时间                                                   |
+| `SeqIdCacheExpiration` | TimeSpan | 48 小时          | SeqID 去重缓存过期时间                                                   |
 | `EventKeyPrefix`       | string   | "feishu:event:"  | 事件去重键前缀                                                           |
 | `NonceKeyPrefix`       | string   | "feishu:nonce:"  | Nonce 去重键前缀                                                         |
 | `SeqIdKeyPrefix`       | string   | "feishu:seqid:"  | SeqID 去重键前缀                                                         |
@@ -246,7 +246,7 @@ builder.Services.AddSingleton<IFeishuEventDistributedDeduplicator>(sp =>
     return new RedisFeishuEventDistributedDeduplicatorWithFallback(
         redis,
         logger,
-        cacheExpiration: TimeSpan.FromHours(24),
+        cacheExpiration: TimeSpan.FromHours(48),
         processingTimeout: TimeSpan.FromMinutes(10),
         maxRetryCount: 3,
         initialRetryDelay: TimeSpan.FromSeconds(1),

@@ -239,10 +239,17 @@ public class FeishuWebSocketOptions
         // 去重配置验证
         if (EventDeduplication.Mode == EventDeduplicationMode.None)
         {
-            if (EventDeduplication.CacheExpirationMs != 172800000 || EventDeduplication.CleanupIntervalMs != 300000)
+            var hasCustomCacheSettings = EventDeduplication.CacheExpirationMs != EventDeduplicationOptions.DefaultCacheExpirationMs
+                || EventDeduplication.CleanupIntervalMs != EventDeduplicationOptions.DefaultCleanupIntervalMs;
+
+            if (hasCustomCacheSettings)
                 throw new InvalidOperationException(
                     "EventDeduplication.Mode 设置为 None 时，CacheExpirationMs 和 CleanupIntervalMs 配置不会生效。" +
-                    "生产环境建议启用至少一种去重机制（InMemory 或 Redis）以避免重复处理事件。");
+                    "请启用至少一种去重机制（InMemory 或 Redis）以使这些配置生效。");
+
+            throw new InvalidOperationException(
+                "EventDeduplication.Mode 设置为 None，事件去重功能已关闭，可能导致重复处理事件。" +
+                "生产环境强烈建议启用至少一种去重机制（InMemory 或 Redis）以避免重复处理事件。");
         }
     }
 

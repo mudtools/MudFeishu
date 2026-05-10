@@ -560,6 +560,7 @@ public class FeishuWebSocketOptionsTests
 
         var act = () => options.Validate();
 
-        act.Should().Throw<InvalidOperationException>().WithMessage("*None*CacheExpirationMs*");
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*None*去重*CacheExpirationMs*");
     }
 }

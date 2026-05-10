@@ -42,27 +42,11 @@ public class ErrorRecoveryStrategy
         [SocketError.AddressFamilyNotSupported] = (false, "地址配置错误", 0),
     };
 
-    private static readonly Dictionary<Type, Func<Exception, ErrorRecoveryResult>> ExceptionAnalyzerMap = new();
+    private static readonly List<KeyValuePair<Type, Func<Exception, ErrorRecoveryResult>>> ExceptionAnalyzerMap = new();
 
     static ErrorRecoveryStrategy()
     {
-        ExceptionAnalyzerMap[typeof(WebSocketException)] = ex => AnalyzeWebSocketException((WebSocketException)ex);
-        ExceptionAnalyzerMap[typeof(SocketException)] = ex => AnalyzeSocketException((SocketException)ex);
-        ExceptionAnalyzerMap[typeof(HttpRequestException)] = ex => AnalyzeHttpException((HttpRequestException)ex);
-        ExceptionAnalyzerMap[typeof(TimeoutException)] = _ => new ErrorRecoveryResult
-        {
-            ErrorType = "TimeoutException",
-            IsRecoverable = true,
-            RecoveryRecommendation = "操作超时，重试连接",
-            SuggestedDelay = TimeSpan.FromSeconds(3)
-        };
-        ExceptionAnalyzerMap[typeof(OperationCanceledException)] = _ => new ErrorRecoveryResult
-        {
-            ErrorType = "OperationCanceledException",
-            IsRecoverable = false,
-            RecoveryRecommendation = "操作被取消"
-        };
-        ExceptionAnalyzerMap[typeof(FeishuAuthenticationException)] = ex =>
+        ExceptionAnalyzerMap.Add(new(typeof(FeishuAuthenticationException), ex =>
         {
             var authEx = (FeishuAuthenticationException)ex;
             return new ErrorRecoveryResult
@@ -72,8 +56,8 @@ public class ErrorRecoveryStrategy
                 RecoveryRecommendation = authEx.IsRecoverable ? "认证失败，刷新令牌后重试" : "认证配置错误，检查应用凭据",
                 SuggestedDelay = TimeSpan.FromSeconds(5)
             };
-        };
-        ExceptionAnalyzerMap[typeof(FeishuConnectionException)] = ex =>
+        }));
+        ExceptionAnalyzerMap.Add(new(typeof(FeishuConnectionException), ex =>
         {
             var connEx = (FeishuConnectionException)ex;
             return new ErrorRecoveryResult
@@ -83,8 +67,8 @@ public class ErrorRecoveryStrategy
                 RecoveryRecommendation = connEx.IsRecoverable ? "连接异常，重试连接" : "连接配置错误",
                 SuggestedDelay = TimeSpan.FromSeconds(5)
             };
-        };
-        ExceptionAnalyzerMap[typeof(FeishuNetworkException)] = ex =>
+        }));
+        ExceptionAnalyzerMap.Add(new(typeof(FeishuNetworkException), ex =>
         {
             var netEx = (FeishuNetworkException)ex;
             return new ErrorRecoveryResult
@@ -94,7 +78,23 @@ public class ErrorRecoveryStrategy
                 RecoveryRecommendation = netEx.IsRecoverable ? "网络异常，重试连接" : "网络配置错误",
                 SuggestedDelay = TimeSpan.FromSeconds(10)
             };
-        };
+        }));
+        ExceptionAnalyzerMap.Add(new(typeof(WebSocketException), ex => AnalyzeWebSocketException((WebSocketException)ex)));
+        ExceptionAnalyzerMap.Add(new(typeof(SocketException), ex => AnalyzeSocketException((SocketException)ex)));
+        ExceptionAnalyzerMap.Add(new(typeof(HttpRequestException), ex => AnalyzeHttpException((HttpRequestException)ex)));
+        ExceptionAnalyzerMap.Add(new(typeof(TimeoutException), _ => new ErrorRecoveryResult
+        {
+            ErrorType = "TimeoutException",
+            IsRecoverable = true,
+            RecoveryRecommendation = "操作超时，重试连接",
+            SuggestedDelay = TimeSpan.FromSeconds(3)
+        }));
+        ExceptionAnalyzerMap.Add(new(typeof(OperationCanceledException), _ => new ErrorRecoveryResult
+        {
+            ErrorType = "OperationCanceledException",
+            IsRecoverable = false,
+            RecoveryRecommendation = "操作被取消"
+        }));
     }
 
     /// <summary>

@@ -172,7 +172,14 @@ public class FeishuEventDeduplicator : MemoryDeduplicator<string>, IFeishuEventD
         return (stats.Total, stats.Expired);
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// 释放资源
+    /// </summary>
+    /// <remarks>
+    /// 此方法通过同步等待 <see cref="DisposeAsync"/> 完成来释放资源。
+    /// 在拥有同步上下文的环境（如 UI 线程或旧版 ASP.NET）中可能导致死锁，
+    /// 建议优先使用 <see cref="DisposeAsync"/> 方法。
+    /// </remarks>
     public void Dispose()
     {
         DisposeAsync().AsTask().GetAwaiter().GetResult();

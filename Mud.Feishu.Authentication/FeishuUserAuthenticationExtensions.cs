@@ -6,7 +6,6 @@
 // -----------------------------------------------------------------------
 
 using Microsoft.AspNetCore.Builder;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using Mud.Feishu.Abstractions;
@@ -32,11 +31,15 @@ public static class FeishuUserAuthenticationExtensions
     /// <remarks>
     /// <para>注册内容：</para>
     /// <list type="bullet">
-    ///   <item><description>IFeishuCurrentUserContext - 注册为 Singleton（使用 TryAddSingleton 允许覆盖）</description></item>
+    ///   <item><description>IFeishuCurrentUserContext - 注册为 Singleton（覆盖 AddFeishuApp 中的默认实现）</description></item>
+    ///   <item><description>ICurrentUserContext - 注册为 Singleton（覆盖 AddFeishuApp 中的默认实现）</description></item>
     ///   <item><description>FeishuUserAuthenticationOptions - 配置选项</description></item>
     /// </list>
+    /// <para>此方法会覆盖 <see cref="Mud.Feishu.Abstractions.FeishuServiceCollectionExtensions.AddFeishuAppBaseServices"/> 中注册的默认实现，
+    /// 应在 <c>services.AddFeishuApp()</c> 之后调用。</para>
     /// <para>使用示例：</para>
     /// <code>
+    /// services.AddFeishuApp(builder.Configuration, "FeishuApps");
     /// services.AddFeishuUserContext();
     /// </code>
     /// </remarks>
@@ -54,11 +57,15 @@ public static class FeishuUserAuthenticationExtensions
     /// <remarks>
     /// <para>注册内容：</para>
     /// <list type="bullet">
-    ///   <item><description>IFeishuCurrentUserContext - 注册为 Singleton（使用 TryAddSingleton 允许覆盖）</description></item>
+    ///   <item><description>IFeishuCurrentUserContext - 注册为 Singleton（覆盖 AddFeishuApp 中的默认实现）</description></item>
+    ///   <item><description>ICurrentUserContext - 注册为 Singleton（覆盖 AddFeishuApp 中的默认实现）</description></item>
     ///   <item><description>FeishuUserAuthenticationOptions - 配置选项</description></item>
     /// </list>
+    /// <para>此方法会覆盖 <see cref="Mud.Feishu.Abstractions.FeishuServiceCollectionExtensions.AddFeishuAppBaseServices"/> 中注册的默认实现，
+    /// 应在 <c>services.AddFeishuApp()</c> 之后调用。</para>
     /// <para>使用示例：</para>
     /// <code>
+    /// services.AddFeishuApp(builder.Configuration, "FeishuApps");
     /// services.AddFeishuUserContext(options =>
     /// {
     ///     options.OpenIdClaimType = "custom_open_id";
@@ -68,15 +75,16 @@ public static class FeishuUserAuthenticationExtensions
     /// </remarks>
     public static IServiceCollection AddFeishuUserContext(this IServiceCollection services, Action<FeishuUserAuthenticationOptions> configure)
     {
-        // 注册配置选项
         services.Configure(configure);
 
-        // 注册选项验证器
         services.AddSingleton<IValidateOptions<FeishuUserAuthenticationOptions>, FeishuUserAuthenticationOptions>();
 
-        // 使用 TryAddSingleton 允许用户自定义实现
-        services.TryAddSingleton<IFeishuCurrentUserContext, CurrentUserContext>();
-        services.TryAddSingleton<Mud.HttpUtils.ICurrentUserContext, CurrentUserContext>();
+        services.RemoveAll<IFeishuCurrentUserContext>();
+        services.RemoveAll<Mud.HttpUtils.ICurrentUserContext>();
+
+        services.AddSingleton<CurrentUserContext>();
+        services.AddSingleton<IFeishuCurrentUserContext>(sp => sp.GetRequiredService<CurrentUserContext>());
+        services.AddSingleton<Mud.HttpUtils.ICurrentUserContext>(sp => sp.GetRequiredService<CurrentUserContext>());
 
         return services;
     }

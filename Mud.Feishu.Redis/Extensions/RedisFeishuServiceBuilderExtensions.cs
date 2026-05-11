@@ -7,6 +7,7 @@
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using Mud.Feishu.Redis.Configuration;
 using Mud.Feishu.Redis.HealthChecks;
@@ -170,14 +171,20 @@ public static class RedisFeishuServiceBuilderExtensions
             return new RedisTokenStore(redis, logger!);
         });
 
-        services.AddSingleton<ITokenStore>(sp => sp.GetRequiredService<RedisTokenStore>());
-
-        services.AddSingleton<IUserTokenStore>(sp =>
+        services.TryAddSingleton(sp =>
         {
-            var innerStore = sp.GetRequiredService<RedisTokenStore>();
-            var redis = sp.GetRequiredService<IConnectionMultiplexer>();
-            var logger = sp.GetService<ILogger<RedisUserTokenStore>>();
-            return new RedisUserTokenStore(innerStore, redis, logger!);
+            return services.AddSingleton<ITokenStore>(sp => sp.GetRequiredService<RedisTokenStore>());
+        });
+
+        services.TryAddSingleton(sp =>
+        {
+            return services.AddSingleton<IUserTokenStore>(sp =>
+            {
+                var innerStore = sp.GetRequiredService<RedisTokenStore>();
+                var redis = sp.GetRequiredService<IConnectionMultiplexer>();
+                var logger = sp.GetService<ILogger<RedisUserTokenStore>>();
+                return new RedisUserTokenStore(innerStore, redis, logger!);
+            });
         });
 
         return services;

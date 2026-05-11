@@ -45,6 +45,7 @@ builder.Services.AddControllers()
         options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
     });
 
+// 添加飞书用户上下文服务
 builder.Services.AddFeishuUserContext(o =>
 {
     o.OpenIdClaimType = "open_id";

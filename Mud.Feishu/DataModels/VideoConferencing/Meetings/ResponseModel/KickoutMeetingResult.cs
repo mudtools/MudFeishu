@@ -8,32 +8,16 @@
 namespace Mud.Feishu.DataModels.VideoConferencing;
 
 /// <summary>
-/// <para>会议信息中的用户</para>
+/// <para>移除会议用户响应</para>
 /// </summary>
-public class MeetingUser
+public class KickoutMeetingResult
 {
     /// <summary>
-    /// <para>用户ID</para>
+    /// <para>移除结果</para>
     /// <para>必填：否</para>
-    /// <para>示例值：ou_3ec3f6a28a0d08c45d895276e8e5e19b</para>
     /// </summary>
-    [JsonPropertyName("id")]
-    public string? Id { get; set; }
+    [JsonPropertyName("kickout_results")]
+    public MeetingParticipantResult[]? KickoutResults { get; set; }
 
-    /// <summary>
-    /// <para>用户类型</para>
-    /// <para>必填：否</para>
-    /// <para>示例值：1</para>
-    /// <para>可选值：<list type="bullet">
-    /// <item>1：飞书用户</item>
-    /// <item>2：rooms用户</item>
-    /// <item>3：文档用户</item>
-    /// <item>4：neo单品用户</item>
-    /// <item>5：neo单品游客用户</item>
-    /// <item>6：pstn用户</item>
-    /// <item>7：sip用户</item>
-    /// </list></para>
-    /// </summary>
-    [JsonPropertyName("user_type")]
-    public int? UserType { get; set; }
+
 }

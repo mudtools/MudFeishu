@@ -7,12 +7,10 @@
 
 namespace Mud.Feishu.DataModels.VideoConferencing;
 
-
 /// <summary>
-/// 活跃会议
+/// <para>会议数据</para>
 /// </summary>
-public class ActiveMeeting : Meeting
+public class MeetingInfo : Meeting
 {
-
 
 }

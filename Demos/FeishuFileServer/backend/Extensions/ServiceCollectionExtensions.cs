@@ -98,15 +98,7 @@ public static class ServiceCollectionExtensions
     /// <returns>服务集合</returns>
     public static IServiceCollection AddFeishuServices(this IServiceCollection services, IConfiguration configuration)
     {
-        //services.AddFeishuApp(configuration, "FeishuApps");
-        services.AddFeishuApp((config) =>
-        {
-            config.AddApp("default", "cli_a970202535f8d077", "HPFcd0eWZggvm59VZU560c5kE3UT3AMp", true, opt =>
-            {
-                opt.AllowCustomBaseUrl = true;
-                opt.BaseUrl = "https://open.work.sany.com.cn";
-            });
-        });
+        services.AddFeishuApp(configuration, "FeishuApps");
         services.CreateFeishuServicesBuilder()
             .AddOrganizationApi()
             .AddDriveApi()

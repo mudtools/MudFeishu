@@ -83,6 +83,11 @@ public enum FeishuModule
     VideoConferencing,
 
     /// <summary>
+    /// 认证授权
+    /// </summary>
+    Authentication,
+
+    /// <summary>
     /// 所有功能
     /// </summary>
     All

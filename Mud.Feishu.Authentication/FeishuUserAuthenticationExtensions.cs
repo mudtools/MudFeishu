@@ -10,6 +10,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using Mud.Feishu.Abstractions;
 using Mud.Feishu.Authentication;
+using Mud.HttpUtils;
 
 
 namespace Microsoft.Extensions.DependencyInjection;
@@ -80,11 +81,11 @@ public static class FeishuUserAuthenticationExtensions
         services.AddSingleton<IValidateOptions<FeishuUserAuthenticationOptions>, FeishuUserAuthenticationOptions>();
 
         services.RemoveAll<IFeishuCurrentUserContext>();
-        services.RemoveAll<Mud.HttpUtils.ICurrentUserContext>();
+        services.RemoveAll<ICurrentUserContext>();
 
         services.AddSingleton<CurrentUserContext>();
         services.AddSingleton<IFeishuCurrentUserContext>(sp => sp.GetRequiredService<CurrentUserContext>());
-        services.AddSingleton<Mud.HttpUtils.ICurrentUserContext>(sp => sp.GetRequiredService<CurrentUserContext>());
+        services.AddSingleton<ICurrentUserContext>(sp => sp.GetRequiredService<CurrentUserContext>());
 
         return services;
     }

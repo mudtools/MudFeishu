@@ -76,7 +76,7 @@ public static class FeishuServiceCollectionExtensions
             var clientName = $"feishu-{config.AppKey}";
             var baseAddress = config.BaseUrl ?? "https://open.feishu.cn";
             bool allowCustomBaseUrl = config?.AllowCustomBaseUrl ?? false;
-            var timeOut = config?.TimeOut ?? 60;
+            var timeOut = config?.TimeOut ?? 30;
             services.AddMudHttpClient(
                 clientName,
                 client =>
@@ -99,6 +99,11 @@ public static class FeishuServiceCollectionExtensions
                 resilienceOptions.Retry.UseExponentialBackoff = true;
                 resilienceOptions.Timeout.Enabled = true;
                 resilienceOptions.Timeout.TimeoutSeconds = defaultConfig.TimeOut;
+                resilienceOptions.CircuitBreaker.Enabled = true;
+                resilienceOptions.CircuitBreaker.FailureThreshold = 50;
+                resilienceOptions.CircuitBreaker.SamplingDurationSeconds = 30;
+                resilienceOptions.CircuitBreaker.BreakDurationSeconds = 60;
+                resilienceOptions.CircuitBreaker.MinimumThroughput = 10;
             });
         }
 
@@ -107,8 +112,8 @@ public static class FeishuServiceCollectionExtensions
         services.AddMemoryCache();
 
         services.AddTokenProvider();
-        services.AddCurrentUserContext();
         services.TryAddSingleton<IFeishuCurrentUserContext, DefaultFeishuCurrentUserContext>();
+        services.TryAddSingleton<Mud.HttpUtils.ICurrentUserContext>(sp => sp.GetRequiredService<IFeishuCurrentUserContext>());
 
         if (!services.Any(s => s.ServiceType == typeof(ITokenStore)))
         {

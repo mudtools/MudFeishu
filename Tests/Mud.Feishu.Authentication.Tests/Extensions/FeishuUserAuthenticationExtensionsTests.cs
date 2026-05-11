@@ -88,20 +88,19 @@ public class FeishuUserAuthenticationExtensionsTests
     }
 
     [Fact]
-    public void AddFeishuUserContext_TryAddSingleton_DoesNotOverrideExistingRegistration()
+    public void AddFeishuUserContext_RemoveAll_OverridesExistingRegistration()
     {
-        // Arrange
         var services = new ServiceCollection();
+        services.AddLogging();
         var customContext = new Mock<IFeishuCurrentUserContext>().Object;
         services.AddSingleton<IFeishuCurrentUserContext>(customContext);
 
-        // Act
         services.AddFeishuUserContext();
         var serviceProvider = services.BuildServiceProvider();
 
-        // Assert - Should still return the custom implementation
         var context = serviceProvider.GetService<IFeishuCurrentUserContext>();
-        Assert.Same(customContext, context);
+        Assert.IsType<CurrentUserContext>(context);
+        Assert.NotSame(customContext, context);
     }
 
     #endregion

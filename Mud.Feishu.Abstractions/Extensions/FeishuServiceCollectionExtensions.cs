@@ -10,10 +10,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using Mud.Feishu.Abstractions.Authentication;
-using Mud.Feishu.Abstractions.Configuration;
-using Mud.HttpUtils;
 using Mud.HttpUtils.Resilience;
-using System.Text.Json;
 
 namespace Mud.Feishu.Abstractions;
 
@@ -72,13 +69,14 @@ public static class FeishuServiceCollectionExtensions
     /// </remarks>
     internal static IServiceCollection AddFeishuAppBaseServices(this IServiceCollection services, List<FeishuAppConfig> configs)
     {
+        UrlValidator.ConfigureAllowedDomains(["open.feishu.cn", "open.larksuite.com", "larksuite.com", "feishu.cn"]);
+
         foreach (var config in configs)
         {
             var clientName = $"feishu-{config.AppKey}";
             var baseAddress = config.BaseUrl ?? "https://open.feishu.cn";
             bool allowCustomBaseUrl = config?.AllowCustomBaseUrl ?? false;
             var timeOut = config?.TimeOut ?? 60;
-            UrlValidator.ConfigureAllowedDomains(["open.feishu.cn", "open.larksuite.com", "larksuite.com", "feishu.cn"]);
             services.AddMudHttpClient(
                 clientName,
                 client =>
@@ -104,7 +102,7 @@ public static class FeishuServiceCollectionExtensions
             });
         }
 
-        services.AddSingleton(_ => HttpClientExtensions.GetDefaultJsonSerializerOptions());
+        services.TryAddSingleton(_ => HttpClientExtensions.GetDefaultJsonSerializerOptions());
 
         services.AddMemoryCache();
 

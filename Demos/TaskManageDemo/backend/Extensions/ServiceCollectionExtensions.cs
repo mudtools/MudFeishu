@@ -132,10 +132,6 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ICommentService, CommentService>();
         services.AddScoped<ILocalAuthService, LocalAuthService>();
 
-        // HttpClient
-        services.AddHttpClient();
-
-        // 事务服务
         services.AddScoped<ITransactionService, TransactionService>();
 
         // 任务历史服务

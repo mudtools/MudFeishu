@@ -95,9 +95,6 @@ public class FeishuAuthService : IFeishuAuthService
                 return null;
             }
 
-            // 设置当前用户ID
-            _feishuUserApi.CurrentUserId = tokenResult.UserId;
-
             // 获取用户信息
             var userInfoResult = await _feishuUserApi.GetUserInfoAsync();
 
@@ -252,11 +249,8 @@ public class FeishuAuthService : IFeishuAuthService
                 return null;
             }
 
-            // 设置当前用户 ID，用于调用飞书 API
-            _feishuUserApi.CurrentUserId = openId;
-
             // 调用飞书 API 获取详细用户信息
-            var result = await _feishuUserApi.GetUserInfoAsync();
+            var result = await _feishuUserApi.GetUserInfoAsync(cancellationToken);
 
             if (result?.Code != 0 || result.Data == null)
             {
@@ -308,9 +302,7 @@ public class FeishuAuthService : IFeishuAuthService
                 return null;
             }
 
-            _feishuUserApi.CurrentUserId = tokenResult.UserId;
-
-            var userInfoResult = await _feishuUserApi.GetUserInfoAsync();
+            var userInfoResult = await _feishuUserApi.GetUserInfoAsync(cancellationToken);
 
             if (userInfoResult?.Data == null)
             {

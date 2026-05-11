@@ -126,7 +126,6 @@ public class OAuthController : BaseController
                 return BadRequestResult($"获取用户访问令牌失败: {tokenResult?.Msg ?? "未知错误"}");
             }
 
-            _feishuUserApi.CurrentUserId = tokenResult.UserId;
             var userInfoResult = await _feishuUserApi.GetUserInfoAsync();
 
             if (userInfoResult?.Data == null)

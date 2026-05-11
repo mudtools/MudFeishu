@@ -21,12 +21,12 @@ namespace FeishuWikiManager.Filters;
 /// </remarks>
 public class SetUserContextFilter : IAsyncActionFilter
 {
-    private readonly ICurrentUserContext _userContext;
+    private readonly IFeishuCurrentUserContext _userContext;
     private readonly IUserService _userService;
     private readonly ILogger<SetUserContextFilter> _logger;
 
     public SetUserContextFilter(
-        ICurrentUserContext userContext,
+        IFeishuCurrentUserContext userContext,
         IUserService userService,
         ILogger<SetUserContextFilter> logger)
     {

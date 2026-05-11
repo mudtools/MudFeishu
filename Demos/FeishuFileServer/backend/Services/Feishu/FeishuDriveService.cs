@@ -1,3 +1,10 @@
+// -----------------------------------------------------------------------
+//  作者：Mud Studio  版权所有 (c) Mud Studio 2026   
+//  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
+//  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
+//  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
+// -----------------------------------------------------------------------
+
 using FeishuFileServer.Models;
 using Mud.Feishu;
 using Mud.Feishu.DataModels.Drive;
@@ -14,6 +21,8 @@ public class FeishuDriveService : IFeishuDriveService
 {
     private readonly IFeishuTenantV1DriveFiles _driveFiles;
     private readonly IFeishuTenantV1DriveFolder _driveFolder;
+    private readonly IFeishuTenantV1BatchMessage _message;
+    private readonly IFeishuTenantV1ChatGroup _chatGroup;
     private readonly ILogger<FeishuDriveService> _logger;
     private readonly string _tempDirectory;
 
@@ -26,10 +35,14 @@ public class FeishuDriveService : IFeishuDriveService
     public FeishuDriveService(
         IFeishuTenantV1DriveFiles driveFiles,
         IFeishuTenantV1DriveFolder driveFolder,
+        IFeishuTenantV1BatchMessage message,
+        IFeishuTenantV1ChatGroup chatGroup,
         ILogger<FeishuDriveService> logger)
     {
         _driveFiles = driveFiles;
         _driveFolder = driveFolder;
+        _message = message;
+        _chatGroup = chatGroup;
         _logger = logger;
         _tempDirectory = Path.Combine(Path.GetTempPath(), "FeishuFileServer");
         Directory.CreateDirectory(_tempDirectory);

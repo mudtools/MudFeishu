@@ -1,5 +1,5 @@
 // -----------------------------------------------------------------------
-//  作者：Mud Studio  版权所有 (c) Mud Studio 2025
+//  作者：Mud Studio  版权所有 (c) Mud Studio 2026   
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
@@ -96,7 +96,6 @@ public static class FeishuMultiAppExtensions
         this IServiceCollection services,
         Action<List<FeishuAppConfig>>? validateConfig,
         IConfiguration configuration,
-
         string sectionName = "FeishuApps")
     {
         if (services == null)
@@ -104,67 +103,14 @@ public static class FeishuMultiAppExtensions
         if (configuration == null)
             throw new ArgumentNullException(nameof(configuration));
 
-        // 检测是否已注册单应用模式的TokenManager,给出警告
-        DetectAndWarnSingleAppRegistration(services);
-
-        // 先加载配置
+        // 加载配置
         var configs = new List<FeishuAppConfig>();
-        var section = configuration.GetSection(sectionName);
-        section.Bind(configs);
+        configuration.GetSection(sectionName).Bind(configs);
 
-        // 验证并设置默认应用
-        ValidateAndSetDefaultApp(configs);
-
+        // 执行自定义验证
         validateConfig?.Invoke(configs);
 
-        // 注册基础服务（HttpClient工厂）
-        services.AddFeishuAppBaseServices(configs);
-
-        // 注册配置到服务容器
-        services.AddSingleton(configs);
-        services.Configure<List<FeishuAppConfig>>(options =>
-        {
-            options.Clear();
-            options.AddRange(configs);
-        });
-
-        // 注册应用管理器
-        services.AddSingleton<IFeishuAppManager, FeishuAppManager>(sp => new FeishuAppManager(
-            sp,
-            configs,
-            sp.GetRequiredService<ILogger<FeishuAppManager>>()
-        ));
-        // 注册 IMudAppContext 接口，从 IFeishuAppManager 获取默认应用
-        services.AddSingleton(sp =>
-        {
-            var appManager = sp.GetRequiredService<IFeishuAppManager>();
-            return appManager.GetDefaultApp();
-        });
-        return services;
-    }
-
-    /// <summary>
-    /// 检测并警告单应用模式注册
-    /// </summary>
-    private static void DetectAndWarnSingleAppRegistration(IServiceCollection services)
-    {
-        // 检测是否已注册全局TokenManager
-        var hasTenantTokenManager = services.Any(s =>
-            s.ServiceType == typeof(ITenantTokenManager) ||
-            s.ServiceType == typeof(IAppTokenManager) ||
-            s.ServiceType == typeof(IUserTokenManager));
-
-        if (hasTenantTokenManager)
-        {
-            // 使用 ILoggerFactory 获取日志记录器
-            var loggerFactory = services.BuildServiceProvider().GetService<ILoggerFactory>();
-            var logger = loggerFactory?.CreateLogger("FeishuMultiAppExtensions");
-
-            logger?.LogWarning(
-                "检测到已注册单应用模式的TokenManager。多应用模式已启用,单应用模式的TokenManager将被忽略。" +
-                "建议移除 AddTokenManagers() 等单应用API的调用。" +
-                "请参考文档: https://github.com/mudtools/MudFeishu/wiki/Multi-App-Migration");
-        }
+        return services.RegisterFeishuAppCore(configs);
     }
 
     /// <summary>
@@ -203,18 +149,7 @@ public static class FeishuMultiAppExtensions
         configure(builder);
         var configs = builder.Build();
 
-        // 注册基础服务
-        services.AddFeishuAppBaseServices(configs);
-
-        // 验证并设置默认应用
-        ValidateAndSetDefaultApp(configs);
-
-        services.AddSingleton(sp => new FeishuAppManager(
-            sp,
-            configs,
-            sp.GetRequiredService<ILogger<FeishuAppManager>>()));
-
-        return services;
+        return services.RegisterFeishuAppCore(configs);
     }
 
     /// <summary>
@@ -246,18 +181,74 @@ public static class FeishuMultiAppExtensions
         if (configs == null)
             throw new ArgumentNullException(nameof(configs));
 
-        // 注册基础服务
-        services.AddFeishuAppBaseServices(configs);
+        return services.RegisterFeishuAppCore(configs);
+    }
+
+    /// <summary>
+    /// 核心注册逻辑，统一所有 AddFeishuApp 重载的注册流程
+    /// </summary>
+    /// <param name="services">服务集合</param>
+    /// <param name="configs">应用配置列表</param>
+    /// <returns>服务集合实例</returns>
+    private static IServiceCollection RegisterFeishuAppCore(
+        this IServiceCollection services,
+        List<FeishuAppConfig> configs)
+    {
+        // 检测是否已注册单应用模式的TokenManager，给出警告
+        DetectAndWarnSingleAppRegistration(services);
 
         // 验证并设置默认应用
         ValidateAndSetDefaultApp(configs);
 
-        services.AddSingleton(sp => new FeishuAppManager(
+        // 注册基础服务（HttpClient工厂等）
+        services.AddFeishuAppBaseServices(configs);
+
+        // 注册配置到服务容器
+        services.AddSingleton(configs);
+        services.Configure<List<FeishuAppConfig>>(options =>
+        {
+            options.Clear();
+            options.AddRange(configs);
+        });
+
+        // 注册应用管理器
+        services.AddSingleton<IFeishuAppManager, FeishuAppManager>(sp => new FeishuAppManager(
             sp,
             configs,
             sp.GetRequiredService<ILogger<FeishuAppManager>>()));
 
+        // 注册 IMudAppContext 接口，从 IFeishuAppManager 获取默认应用
+        services.AddSingleton(sp =>
+        {
+            var appManager = sp.GetRequiredService<IFeishuAppManager>();
+            return appManager.GetDefaultApp();
+        });
+
         return services;
+    }
+
+    /// <summary>
+    /// 检测并警告单应用模式注册
+    /// </summary>
+    private static void DetectAndWarnSingleAppRegistration(IServiceCollection services)
+    {
+        // 检测是否已注册全局TokenManager
+        var hasLegacyTokenManager = services.Any(s =>
+            s.ServiceType == typeof(ITenantTokenManager) ||
+            s.ServiceType == typeof(IAppTokenManager) ||
+            s.ServiceType == typeof(IUserTokenManager));
+
+        if (hasLegacyTokenManager)
+        {
+            // 使用 ILoggerFactory 获取日志记录器
+            var loggerFactory = services.BuildServiceProvider().GetService<ILoggerFactory>();
+            var logger = loggerFactory?.CreateLogger("FeishuMultiAppExtensions");
+
+            logger?.LogWarning(
+                "检测到已注册单应用模式的TokenManager。多应用模式已启用,单应用模式的TokenManager将被忽略。" +
+                "建议移除 AddTokenManagers() 等单应用API的调用。" +
+                "请参考文档: https://github.com/mudtools/MudFeishu/wiki/Multi-App-Migration");
+        }
     }
 
     /// <summary>
@@ -275,7 +266,7 @@ public static class FeishuMultiAppExtensions
                                        .Where(g => g.Count() > 1)
                                        .Select(g => g.Key)
                                        .ToList();
-        if (duplicateAppKeys.Any())
+        if (duplicateAppKeys.Count > 0)
             throw new InvalidOperationException($"检测到重复的AppKey: {string.Join(", ", duplicateAppKeys)}");
 
         // 验证所有配置（包含自动推断逻辑）

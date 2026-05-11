@@ -29,6 +29,7 @@ public class FeishuUserAuthenticationExtensionsTests
     {
         // Arrange
         var services = new ServiceCollection();
+        services.AddLogging();
 
         // Act
         services.AddFeishuUserContext();
@@ -37,7 +38,10 @@ public class FeishuUserAuthenticationExtensionsTests
         var descriptor = services.FirstOrDefault(d => d.ServiceType == typeof(IFeishuCurrentUserContext));
         Assert.NotNull(descriptor);
         Assert.Equal(ServiceLifetime.Singleton, descriptor.Lifetime);
-        Assert.Equal(typeof(CurrentUserContext), descriptor.ImplementationType);
+
+        var serviceProvider = services.BuildServiceProvider();
+        var context = serviceProvider.GetService<IFeishuCurrentUserContext>();
+        Assert.IsType<CurrentUserContext>(context);
     }
 
     [Fact]
@@ -101,6 +105,38 @@ public class FeishuUserAuthenticationExtensionsTests
         var context = serviceProvider.GetService<IFeishuCurrentUserContext>();
         Assert.IsType<CurrentUserContext>(context);
         Assert.NotSame(customContext, context);
+    }
+
+    [Fact]
+    public void AddFeishuUserContext_RemoveAll_OverridesExistingICurrentUserContextRegistration()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        var customContext = new Mock<Mud.HttpUtils.ICurrentUserContext>().Object;
+        services.AddSingleton<Mud.HttpUtils.ICurrentUserContext>(customContext);
+
+        services.AddFeishuUserContext();
+        var serviceProvider = services.BuildServiceProvider();
+
+        var context = serviceProvider.GetService<Mud.HttpUtils.ICurrentUserContext>();
+        Assert.IsType<CurrentUserContext>(context);
+        Assert.NotSame(customContext, context);
+    }
+
+    [Fact]
+    public void AddFeishuUserContext_IFeishuCurrentUserContextAndICurrentUserContextResolveToSameInstance()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddFeishuUserContext();
+        var serviceProvider = services.BuildServiceProvider();
+
+        var feishuContext = serviceProvider.GetRequiredService<IFeishuCurrentUserContext>();
+        var httpUtilsContext = serviceProvider.GetRequiredService<Mud.HttpUtils.ICurrentUserContext>();
+
+        Assert.IsType<CurrentUserContext>(feishuContext);
+        Assert.IsType<CurrentUserContext>(httpUtilsContext);
+        Assert.Same(feishuContext, httpUtilsContext);
     }
 
     #endregion

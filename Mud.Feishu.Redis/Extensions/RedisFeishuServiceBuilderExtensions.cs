@@ -170,12 +170,12 @@ public static class RedisFeishuServiceBuilderExtensions
             return new RedisTokenStore(redis, logger!);
         });
 
-        if (!services.Any(s => s.ServiceType == typeof(ITokenStore)))
+        services.TryAddSingleton(sp =>
         {
             services.AddSingleton<ITokenStore>(sp => sp.GetRequiredService<RedisTokenStore>());
-        }
+        });
 
-        if (!services.Any(s => s.ServiceType == typeof(IUserTokenStore)))
+        services.TryAddSingleton(sp =>
         {
             services.AddSingleton<IUserTokenStore>(sp =>
             {
@@ -184,7 +184,7 @@ public static class RedisFeishuServiceBuilderExtensions
                 var logger = sp.GetService<ILogger<RedisUserTokenStore>>();
                 return new RedisUserTokenStore(innerStore, redis, logger!);
             });
-        }
+        });
 
         return services;
     }

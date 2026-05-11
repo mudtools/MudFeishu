@@ -80,10 +80,11 @@ public static class FeishuUserAuthenticationExtensions
         services.AddSingleton<IValidateOptions<FeishuUserAuthenticationOptions>, FeishuUserAuthenticationOptions>();
 
         services.RemoveAll<IFeishuCurrentUserContext>();
-        services.AddSingleton<IFeishuCurrentUserContext, CurrentUserContext>();
-
         services.RemoveAll<Mud.HttpUtils.ICurrentUserContext>();
-        services.AddSingleton<Mud.HttpUtils.ICurrentUserContext, CurrentUserContext>();
+
+        services.AddSingleton<CurrentUserContext>();
+        services.AddSingleton<IFeishuCurrentUserContext>(sp => sp.GetRequiredService<CurrentUserContext>());
+        services.AddSingleton<Mud.HttpUtils.ICurrentUserContext>(sp => sp.GetRequiredService<CurrentUserContext>());
 
         return services;
     }

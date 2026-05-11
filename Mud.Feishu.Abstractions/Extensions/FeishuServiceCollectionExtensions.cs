@@ -99,11 +99,11 @@ public static class FeishuServiceCollectionExtensions
                 resilienceOptions.Retry.UseExponentialBackoff = true;
                 resilienceOptions.Timeout.Enabled = true;
                 resilienceOptions.Timeout.TimeoutSeconds = defaultConfig.TimeOut;
-                resilienceOptions.CircuitBreaker.Enabled = true;
-                resilienceOptions.CircuitBreaker.FailureThreshold = 50;
-                resilienceOptions.CircuitBreaker.SamplingDurationSeconds = 30;
-                resilienceOptions.CircuitBreaker.BreakDurationSeconds = 60;
-                resilienceOptions.CircuitBreaker.MinimumThroughput = 10;
+                resilienceOptions.CircuitBreaker.Enabled = defaultConfig.CircuitBreakerEnabled;
+                resilienceOptions.CircuitBreaker.FailureThreshold = defaultConfig.CircuitBreakerFailureThreshold;
+                resilienceOptions.CircuitBreaker.SamplingDurationSeconds = defaultConfig.CircuitBreakerSamplingDurationSeconds;
+                resilienceOptions.CircuitBreaker.BreakDurationSeconds = defaultConfig.CircuitBreakerBreakDurationSeconds;
+                resilienceOptions.CircuitBreaker.MinimumThroughput = defaultConfig.CircuitBreakerMinimumThroughput;
             });
         }
 

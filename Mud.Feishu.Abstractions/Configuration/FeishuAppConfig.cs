@@ -119,6 +119,56 @@ public class FeishuAppConfig
     public int RetryDelayMs { get; set; } = Consts.DefaultRetryDelayMs;
 
     /// <summary>
+    /// 是否启用熔断策略
+    /// </summary>
+    /// <remarks>
+    /// 默认值: true
+    /// 当设置为 true 时，在采样窗口内失败率达到阈值后将触发熔断，阻止请求发送，保护下游服务。
+    /// </remarks>
+    public bool CircuitBreakerEnabled { get; set; } = true;
+
+    /// <summary>
+    /// 熔断失败率阈值（百分比）
+    /// </summary>
+    /// <remarks>
+    /// 默认值: 20（即20%失败率触发熔断）
+    /// 范围: 1-100
+    /// 在采样窗口内，失败率达到此阈值时触发熔断。
+    /// 建议根据飞书API限频特性设置，较低的阈值可以更早感知异常。
+    /// </remarks>
+    public int CircuitBreakerFailureThreshold { get; set; } = Consts.DefaultCircuitBreakerFailureThreshold;
+
+    /// <summary>
+    /// 熔断采样窗口时间（秒）
+    /// </summary>
+    /// <remarks>
+    /// 默认值: 60秒
+    /// 范围: 10-300秒
+    /// 在此时间窗口内统计请求失败率，建议与飞书API限频窗口（通常1分钟）对齐。
+    /// </remarks>
+    public int CircuitBreakerSamplingDurationSeconds { get; set; } = Consts.DefaultCircuitBreakerSamplingDurationSeconds;
+
+    /// <summary>
+    /// 熔断持续时间（秒）
+    /// </summary>
+    /// <remarks>
+    /// 默认值: 60秒
+    /// 范围: 10-300秒
+    /// 熔断触发后，在此时间内阻止请求发送。建议与飞书限频冷却期一致。
+    /// </remarks>
+    public int CircuitBreakerBreakDurationSeconds { get; set; } = Consts.DefaultCircuitBreakerBreakDurationSeconds;
+
+    /// <summary>
+    /// 熔断最小吞吐量
+    /// </summary>
+    /// <remarks>
+    /// 默认值: 10
+    /// 范围: 2-1000
+    /// 在采样窗口内，请求数必须达到此值后才开始计算失败率，防止低流量时误触发熔断。
+    /// </remarks>
+    public int CircuitBreakerMinimumThroughput { get; set; } = Consts.DefaultCircuitBreakerMinimumThroughput;
+
+    /// <summary>
     /// 令牌刷新阈值（秒）
     /// </summary>
     /// <remarks>
@@ -183,6 +233,18 @@ public class FeishuAppConfig
         if (RetryDelayMs < 100 || RetryDelayMs > 60000)
             throw new InvalidOperationException("RetryDelayMs 必须在 100-60000 毫秒之间");
 
+        if (CircuitBreakerFailureThreshold < 1 || CircuitBreakerFailureThreshold > 100)
+            throw new InvalidOperationException("CircuitBreakerFailureThreshold 必须在 1-100 之间");
+
+        if (CircuitBreakerSamplingDurationSeconds < 10 || CircuitBreakerSamplingDurationSeconds > 300)
+            throw new InvalidOperationException("CircuitBreakerSamplingDurationSeconds 必须在 10-300 秒之间");
+
+        if (CircuitBreakerBreakDurationSeconds < 10 || CircuitBreakerBreakDurationSeconds > 300)
+            throw new InvalidOperationException("CircuitBreakerBreakDurationSeconds 必须在 10-300 秒之间");
+
+        if (CircuitBreakerMinimumThroughput < 2 || CircuitBreakerMinimumThroughput > 1000)
+            throw new InvalidOperationException("CircuitBreakerMinimumThroughput 必须在 2-1000 之间");
+
         if (TokenRefreshThreshold < 60 || TokenRefreshThreshold > 3600)
             throw new InvalidOperationException("TokenRefreshThreshold 必须在 60-3600 秒之间");
 
@@ -222,7 +284,7 @@ public class FeishuAppConfig
     /// <returns>配置字符串</returns>
     public override string ToString()
     {
-        return $"FeishuAppConfig {{ AppKey: {AppKey}, AppId: {AppId}, AppSecret: {MaskSensitiveData(AppSecret)}, BaseUrl: {BaseUrl}, TimeOut: {TimeOut}s, RetryCount: {RetryCount}, RetryDelayMs: {RetryDelayMs}ms, TokenRefreshThreshold: {TokenRefreshThreshold}s, EnableLogging: {EnableLogging}, IsDefault: {IsDefault} }}";
+        return $"FeishuAppConfig {{ AppKey: {AppKey}, AppId: {AppId}, AppSecret: {MaskSensitiveData(AppSecret)}, BaseUrl: {BaseUrl}, TimeOut: {TimeOut}s, RetryCount: {RetryCount}, RetryDelayMs: {RetryDelayMs}ms, CircuitBreakerEnabled: {CircuitBreakerEnabled}, CircuitBreakerFailureThreshold: {CircuitBreakerFailureThreshold}%, CircuitBreakerSamplingDurationSeconds: {CircuitBreakerSamplingDurationSeconds}s, CircuitBreakerBreakDurationSeconds: {CircuitBreakerBreakDurationSeconds}s, CircuitBreakerMinimumThroughput: {CircuitBreakerMinimumThroughput}, TokenRefreshThreshold: {TokenRefreshThreshold}s, EnableLogging: {EnableLogging}, IsDefault: {IsDefault} }}";
     }
 
     private static string MaskSensitiveData(string? data)

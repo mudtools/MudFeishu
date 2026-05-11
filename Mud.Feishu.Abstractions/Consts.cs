@@ -68,6 +68,26 @@ internal class Consts
     public const int DefaultRetryDelayMs = 1000;
 
     /// <summary>
+    /// 默认熔断失败率阈值（百分比）
+    /// </summary>
+    public const int DefaultCircuitBreakerFailureThreshold = 20;
+
+    /// <summary>
+    /// 默认熔断采样窗口时间（秒）
+    /// </summary>
+    public const int DefaultCircuitBreakerSamplingDurationSeconds = 60;
+
+    /// <summary>
+    /// 默认熔断持续时间（秒）
+    /// </summary>
+    public const int DefaultCircuitBreakerBreakDurationSeconds = 60;
+
+    /// <summary>
+    /// 默认熔断最小吞吐量
+    /// </summary>
+    public const int DefaultCircuitBreakerMinimumThroughput = 10;
+
+    /// <summary>
     /// 事件去重键默认前缀
     /// </summary>
     public const string DefaultEventKeyPrefix = "feishu:event:";

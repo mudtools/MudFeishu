@@ -12,8 +12,8 @@
     <PackageReference Include="Mud.Feishu.EventCallback" Version="3.0.0-preview1" />
   </ItemGroup>
 
-  <ItemGroup>
+  <!--<ItemGroup>
     <ProjectReference Include="..\..\Mud.Feishu.Webhook\Mud.Feishu.Webhook.csproj" />
 	<ProjectReference Include="..\..\Mud.Feishu.EventCallback\Mud.Feishu.EventCallback.csproj" />
-  </ItemGroup>
+  </ItemGroup>-->
 </Project>

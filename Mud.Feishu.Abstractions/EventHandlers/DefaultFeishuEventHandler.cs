@@ -126,11 +126,6 @@ public abstract class DefaultFeishuEventHandler<T> : IFeishuEventHandler
                 PropertyNamingPolicy = JsonNamingPolicy.CamelCase
             };
 
-            if (string.IsNullOrWhiteSpace(eventJson))
-            {
-                return default;
-            }
-
             var result = JsonSerializer.Deserialize<T>(eventJson!, deserializeOptions);
             return result ?? default;
         }

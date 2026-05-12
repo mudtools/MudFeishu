@@ -38,14 +38,4 @@ public static class FeishuJsonOptions
         WriteIndented = false,
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
     };
-
-    /// <summary>
-    /// 启用枚举字符串序列化
-    /// </summary>
-    public static void EnableEnumStringConverter()
-    {
-        var converter = new JsonStringEnumConverter(JsonNamingPolicy.CamelCase);
-        Deserialize.Converters.Add(converter);
-        Serialize.Converters.Add(converter);
-    }
 }

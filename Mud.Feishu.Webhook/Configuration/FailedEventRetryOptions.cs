@@ -15,7 +15,7 @@ public class FailedEventRetryOptions
     /// <summary>
     /// 是否启用失败事件重试
     /// </summary>
-    public bool EnableRetry { get; set; } = false;
+    public bool EnableRetry { get; set; }
 
     /// <summary>
     /// 最大重试次数，默认 3

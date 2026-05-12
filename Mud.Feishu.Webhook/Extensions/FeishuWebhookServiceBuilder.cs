@@ -510,9 +510,6 @@ public class FeishuWebhookServiceBuilder
         _services.TryAddScoped<IFeishuEventDecryptor, FeishuEventDecryptor>();
         _services.TryAddScoped<IFeishuWebhookService, FeishuWebhookService>();
         _services.TryAddScoped<ISecurityAuditService, SecurityAuditService>();
-
-        // 注意：ThreatDetectionService 和 CircuitBreakerService 已被移除
-        // 这些服务已注册但未在主要服务中使用，已清理冗余代码
     }
 
 

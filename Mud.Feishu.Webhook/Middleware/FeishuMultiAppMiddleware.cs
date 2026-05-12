@@ -227,44 +227,7 @@ public class FeishuMultiAppMiddleware
     /// <summary>
     /// 从路径中提取 AppKey
     /// </summary>
-    /// <example>
-    /// /feishu/app1 -> app1
-    /// /feishu/app2/events -> app2
-    /// </example>
-    /// <param name="path">HTTP 请求路径，必须以 '/' 开头</param>
-    /// <returns>提取的 AppKey；若路径不符合格式，则返回 null</returns>
-    private string? ExtractAppKeyFromPath(string path)
-    {
-        if (string.IsNullOrEmpty(path))
-            return null;
-
-        var prefix = "/" + Options.GlobalRoutePrefix;
-
-        if (!path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
-            return null;
-
-        var afterPrefixIndex = prefix.Length;
-
-        // 路径正好等于前缀（如 "/feishu"）→ 无效
-        if (afterPrefixIndex >= path.Length)
-            return null;
-
-        // 必须紧跟一个 '/'（即路径形如 "/feishu/..."）
-        if (path[afterPrefixIndex] != '/')
-            return null;
-
-        // AppKey 从 afterPrefixIndex + 1 开始
-        var start = afterPrefixIndex + 1;
-        if (start >= path.Length)
-            return null; // 路径以 "/feishu/" 结尾，无 AppKey
-
-        var end = path.IndexOf('/', start);
-        if (end == -1)
-            end = path.Length;
-
-        var appKey = path.Substring(start, end - start);
-        return string.IsNullOrEmpty(appKey) ? null : appKey;
-    }
+    private string? ExtractAppKeyFromPath(string path) => WebhookPathHelper.ExtractAppKeyFromPath(path, Options.GlobalRoutePrefix);
 
 
     /// <summary>

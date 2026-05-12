@@ -15,7 +15,7 @@ public class RateLimitOptions
     /// <summary>
     /// 是否启用请求频率限制
     /// </summary>
-    public bool EnableRateLimit { get; set; } = false;
+    public bool EnableRateLimit { get; set; }
 
     /// <summary>
     /// 时间窗口大小（秒）

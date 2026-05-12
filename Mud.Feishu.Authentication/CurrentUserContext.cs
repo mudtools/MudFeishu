@@ -90,20 +90,7 @@ public class CurrentUserContext(ILogger<CurrentUserContext> logger) : IFeishuCur
     /// </summary>
     /// <param name="value">原始值</param>
     /// <returns>脱敏后的值</returns>
-    private static string MaskSensitiveInfo(string? value)
-    {
-        if (string.IsNullOrEmpty(value))
-        {
-            return "N/A";
-        }
-
-        if (value!.Length <= 6)
-        {
-            return "***";
-        }
-
-        return $"{value.Substring(0, 2)}***{value.Substring(value.Length - 2)}";
-    }
+    private static string MaskSensitiveInfo(string? value) => SensitiveDataUtils.MaskSensitiveInfo(value);
 
     /// <summary>
     /// 内部用户信息类

@@ -11,57 +11,6 @@ using Mud.Feishu.Webhook.Configuration;
 namespace Mud.Feishu.Webhook;
 
 /// <summary>
-/// 失败事件记录
-/// </summary>
-public class FailedEventRecord
-{
-    /// <summary>
-    /// 事件 ID
-    /// </summary>
-    public string EventId { get; set; } = string.Empty;
-
-    /// <summary>
-    /// 事件类型
-    /// </summary>
-    public string EventType { get; set; } = string.Empty;
-
-    /// <summary>
-    /// 事件数据（JSON）
-    /// </summary>
-    public string EventDataJson { get; set; } = string.Empty;
-
-    /// <summary>
-    /// 失败原因
-    /// </summary>
-    public string? FailureReason { get; set; }
-
-    /// <summary>
-    /// 异常信息
-    /// </summary>
-    public string? ExceptionMessage { get; set; }
-
-    /// <summary>
-    /// 首次失败时间
-    /// </summary>
-    public DateTimeOffset FirstFailureTime { get; set; }
-
-    /// <summary>
-    /// 最后失败时间
-    /// </summary>
-    public DateTimeOffset LastFailureTime { get; set; }
-
-    /// <summary>
-    /// 重试次数
-    /// </summary>
-    public int RetryCount { get; set; }
-
-    /// <summary>
-    /// 下次重试时间
-    /// </summary>
-    public DateTimeOffset? NextRetryTime { get; set; }
-}
-
-/// <summary>
 /// 失败事件重试服务
 /// 后台服务，定期重试失败的事件
 /// </summary>

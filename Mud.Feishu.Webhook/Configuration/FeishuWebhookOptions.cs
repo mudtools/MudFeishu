@@ -137,8 +137,6 @@ public class FeishuWebhookOptions
         if (TimestampToleranceSeconds < 0)
             throw new InvalidOperationException("TimestampToleranceSeconds 不能为负数");
 
-        // 注意：CircuitBreaker 功能已被移除，不再验证相关配置
-
         // 验证重试配置
         Retry.Validate();
 

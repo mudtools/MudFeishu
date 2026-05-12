@@ -124,6 +124,11 @@ public class MessageSequenceValidator
                         MessageType = SequenceValidationType.MessageLoss,
                         Message = $"可能丢失 {sequenceGap - 1} 条消息: 上一次序号 {_lastProcessedSequenceNumber}, 当前序号 {sequenceNumber}"
                     });
+
+                    _lastProcessedSequenceNumber = sequenceNumber;
+                    _recentlyProcessedNumbers.Add(sequenceNumber);
+
+                    return SequenceValidationResult.MessageLoss;
                 }
                 // 允许序号小范围跳跃（正常网络情况）
             }
@@ -191,21 +196,6 @@ public class MessageSequenceValidator
         }
     }
 
-    /// <summary>
-    /// 获取验证器状态
-    /// </summary>
-    public ValidatorStatus GetStatus()
-    {
-        lock (_lock)
-        {
-            return new ValidatorStatus
-            {
-                LastProcessedSequenceNumber = _lastProcessedSequenceNumber,
-                RecentlyProcessedCount = _recentlyProcessedNumbers.Count,
-                LastResetTime = _lastResetTime
-            };
-        }
-    }
 }
 
 /// <summary>
@@ -269,25 +259,4 @@ public class SequenceValidationEventArgs : EventArgs
     /// 消息
     /// </summary>
     public string Message { get; set; } = string.Empty;
-}
-
-/// <summary>
-/// 验证器状态
-/// </summary>
-public class ValidatorStatus
-{
-    /// <summary>
-    /// 最后处理的序号
-    /// </summary>
-    public ulong? LastProcessedSequenceNumber { get; set; }
-
-    /// <summary>
-    /// 最近处理的序号数量
-    /// </summary>
-    public int RecentlyProcessedCount { get; set; }
-
-    /// <summary>
-    /// 最后重置时间
-    /// </summary>
-    public DateTime LastResetTime { get; set; }
 }

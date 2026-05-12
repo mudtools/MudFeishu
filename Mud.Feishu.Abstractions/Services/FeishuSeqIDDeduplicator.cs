@@ -14,7 +14,7 @@ namespace Mud.Feishu.Abstractions.Services;
 /// </summary>
 public sealed class FeishuSeqIDDeduplicator : MemoryDeduplicator<ulong>, IFeishuSeqIDDeduplicator
 {
-    private ulong _maxProcessedSeqId = 0;
+    private ulong _maxProcessedSeqId;
     private readonly object _maxIdLock = new();
 
     /// <summary>

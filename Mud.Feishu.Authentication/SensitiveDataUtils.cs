@@ -5,11 +5,22 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-global using Mud.Feishu;
-global using Mud.Feishu.Abstractions;
-global using Mud.Feishu.DataModels;
-global using Mud.Feishu.Interfaces;
-global using Mud.HttpUtils;
-global using Mud.HttpUtils.Attributes;
-global using System.Text.Json.Serialization;
+namespace Mud.Feishu.Authentication;
 
+internal static class SensitiveDataUtils
+{
+    public static string MaskSensitiveInfo(string? value)
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            return "N/A";
+        }
+
+        if (value!.Length <= 6)
+        {
+            return "***";
+        }
+
+        return $"{value.Substring(0, 2)}***{value.Substring(value.Length - 2)}";
+    }
+}

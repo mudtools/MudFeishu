@@ -24,15 +24,4 @@ public static class JsonOptions
         PropertyNameCaseInsensitive = true,
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase
     };
-
-    /// <summary>
-    /// 用于调试的JSON序列化选项（格式化输出）
-    /// </summary>
-    public static readonly JsonSerializerOptions Indented = new()
-    {
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-        WriteIndented = true,
-        PropertyNameCaseInsensitive = true,
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-    };
 }

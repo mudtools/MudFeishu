@@ -24,5 +24,5 @@ public class BatchQueryFileCommentRequest
     /// 是否需要获取评论卡片上挂载的Reaction数据，默认值为false
     /// </summary>
     [JsonPropertyName("need_reaction")]
-    public bool NeedReaction { get; set; } = false;
+    public bool NeedReaction { get; set; }
 }

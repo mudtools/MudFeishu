@@ -6,6 +6,7 @@
 // -----------------------------------------------------------------------
 
 using Mud.Feishu.Webhook.Configuration;
+using Mud.Feishu.Webhook.Utils;
 using System.Collections.Concurrent;
 
 namespace Mud.Feishu.Webhook;
@@ -175,42 +176,7 @@ public class FeishuRateLimitMiddleware : IDisposable
         return context.Connection.RemoteIpAddress?.ToString();
     }
 
-    /// <summary>
-    /// 从路径中提取 AppKey（使用动态前缀，与 MultiAppMiddleware 保持一致）
-    /// </summary>
-    /// <example>
-    /// /feishu/app1 -> app1
-    /// /lark/app2/events -> app2
-    /// </example>
-    private static string? ExtractAppKeyFromPath(string path, string globalRoutePrefix)
-    {
-        var globalPrefix = "/" + globalRoutePrefix;
-
-        if (!path.StartsWith(globalPrefix, StringComparison.OrdinalIgnoreCase))
-        {
-            return null;
-        }
-
-        var afterPrefixIndex = globalPrefix.Length;
-
-        // 路径正好等于前缀（如 "/feishu"）→ 无效
-        if (afterPrefixIndex >= path.Length)
-            return null;
-
-        // 必须紧跟一个 '/'（即路径形如 "/feishu/..."）
-        if (path[afterPrefixIndex] != '/')
-            return null;
-
-        var remainingPath = path.Substring(afterPrefixIndex + 1);
-        var segments = remainingPath.Split('/');
-
-        if (segments.Length > 0 && !string.IsNullOrEmpty(segments[0]))
-        {
-            return segments[0];
-        }
-
-        return null;
-    }
+    private static string? ExtractAppKeyFromPath(string path, string globalRoutePrefix) => WebhookPathHelper.ExtractAppKeyFromPath(path, globalRoutePrefix);
 
     /// <summary>
     /// 清理过期的窗口记录（由定时器调用）

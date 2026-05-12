@@ -15,7 +15,7 @@ namespace Mud.Feishu.EventCallback.Calendar;
 /// <para>使用时请继承：<see cref="CalendarAclDeleteEventHandler"/></para>
 /// <para>文档地址：https://open.feishu.cn/document/server-docs/calendar-v4/calendar-acl/events/deleted</para>
 /// </summary>
-[GenerateEventHandler(EventType = FeishuEventTypes.CalendarAclCreated, HandlerNamespace = Consts.HandlerNamespace,
+[GenerateEventHandler(EventType = FeishuEventTypes.CalendarAclDeleted, HandlerNamespace = Consts.HandlerNamespace,
               InheritedFrom = Consts.InheritedFrom, HeaderType = nameof(FeishuEventHeader))]
 public class CalendarAclDeleteResult : IEventResult
 {

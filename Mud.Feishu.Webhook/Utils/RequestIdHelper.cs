@@ -141,15 +141,6 @@ public static class RequestIdHelper
     }
 
     /// <summary>
-    /// 生成新的 RequestId（GUID 格式）
-    /// </summary>
-    /// <returns>新的 RequestId</returns>
-    public static string GenerateRequestId()
-    {
-        return Guid.NewGuid().ToString("N");
-    }
-
-    /// <summary>
     /// 为响应添加 RequestId 头
     /// </summary>
     /// <param name="context">HTTP 上下文</param>
@@ -159,64 +150,6 @@ public static class RequestIdHelper
         if (!string.IsNullOrEmpty(requestId) && !context.Response.HasStarted)
         {
             context.Response.Headers["X-Request-Id"] = requestId;
-        }
-    }
-
-    /// <summary>
-    /// 获取 RequestId 的来源类型
-    /// </summary>
-    /// <param name="context">HTTP 上下文</param>
-    /// <returns>RequestId 来源描述</returns>
-    public static string GetRequestIdSource(HttpContext context)
-    {
-        var requestId = context.Items[RequestIdItemKey] as string;
-        if (string.IsNullOrEmpty(requestId))
-        {
-            return "None";
-        }
-
-        // 检查是否来自飞书
-        if (context.Request.Headers["X-Request-Id"].FirstOrDefault() == requestId)
-        {
-            return "Feishu-X-Request-Id";
-        }
-
-        // 检查其他追踪头
-        foreach (var headerName in TraceHeaderNames)
-        {
-            var headerValue = context.Request.Headers[headerName].FirstOrDefault();
-            if (headerValue == requestId)
-            {
-                return headerName;
-            }
-        }
-
-        // 检查是否为 ASP.NET Core TraceIdentifier
-        if (requestId == context.TraceIdentifier)
-        {
-            return "ASPNETCORE-TraceIdentifier";
-        }
-
-        return "Unknown";
-    }
-
-    /// <summary>
-    /// 为 Activity 设置 RequestId 标签
-    /// </summary>
-    /// <param name="activity">分布式追踪 Activity</param>
-    /// <param name="context">HTTP 上下文</param>
-    public static void SetActivityRequestId(Activity? activity, HttpContext context)
-    {
-        if (activity == null)
-        {
-            return;
-        }
-
-        var requestId = context.Items[RequestIdItemKey] as string;
-        if (!string.IsNullOrEmpty(requestId))
-        {
-            activity.SetTag("request.id", requestId);
-            activity.SetTag("request.id.source", GetRequestIdSource(context));
         }
     }
 }

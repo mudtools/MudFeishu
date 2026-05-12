@@ -50,7 +50,7 @@ public abstract class DepartmentRequestBase
     /// 是否创建部门群。
     /// </summary>
     [JsonPropertyName("create_group_chat")]
-    public bool CreateGroupChat { get; set; } = false;
+    public bool CreateGroupChat { get; set; }
 
     /// <summary>
     /// 部门负责人信息。

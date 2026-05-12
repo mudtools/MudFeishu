@@ -326,34 +326,4 @@ public static class FeishuEventTypes
     /// </summary>
     public const string ThirdPartyMeetingRoomEventCreated = "third_party_meeting_room_event_created";
     #endregion
-
-    /// <summary>
-    /// 用户加入群聊事件
-    /// </summary>
-    public const string UserAddedToGroup = "im.chat.member.user_added_v1";
-
-    /// <summary>
-    /// 用户离开群聊事件
-    /// </summary>
-    public const string UserRemovedFromGroup = "im.chat.member.user_deleted_v1";
-
-    /// <summary>
-    /// 群聊信息更新事件
-    /// </summary>
-    public const string GroupUpdated = "im.chat.updated_v1";
-
-    /// <summary>
-    /// 日程事件
-    /// </summary>
-    public const string CalendarEvent = "calendar.event.updated_v4";
-
-    /// <summary>
-    /// 会议开始事件
-    /// </summary>
-    public const string MeetingStart = "meeting.meeting.started_v1";
-
-    /// <summary>
-    /// 会议结束事件
-    /// </summary>
-    public const string MeetingEnd = "meeting.meeting.ended_v1";
 }

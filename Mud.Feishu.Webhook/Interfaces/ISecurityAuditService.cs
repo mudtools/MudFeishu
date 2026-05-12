@@ -52,48 +52,11 @@ public interface ISecurityAuditService
 /// </summary>
 public enum SecurityEventType
 {
-    /// <summary>
-    /// 签名验证
-    /// </summary>
     SignatureValidation,
 
-    /// <summary>
-    /// 时间戳验证
-    /// </summary>
     TimestampValidation,
 
-    /// <summary>
-    /// IP验证
-    /// </summary>
-    IpValidation,
-
-    /// <summary>
-    /// 订阅验证
-    /// </summary>
     SubscriptionValidation,
 
-    /// <summary>
-    /// Content-Type 验证
-    /// </summary>
-    InvalidContentType,
-
-    /// <summary>
-    /// 请求频率限制
-    /// </summary>
-    RateLimitExceeded,
-
-    /// <summary>
-    /// 请求大小限制
-    /// </summary>
-    RequestSizeLimit,
-
-    /// <summary>
-    /// 威胁检测
-    /// </summary>
-    ThreatDetection,
-
-    /// <summary>
-    /// 其他安全事件
-    /// </summary>
     Other
 }

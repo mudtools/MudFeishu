@@ -116,8 +116,4 @@ public interface IFeishuV1Message : IFeishuAppContextSwitcher
         [Query("page_token")] string? page_token = null,
         CancellationToken cancellationToken = default);
     #endregion
-
-    #region 消息卡片
-    // TODO 消息卡片
-    #endregion
 }

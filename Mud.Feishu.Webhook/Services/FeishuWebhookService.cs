@@ -94,9 +94,6 @@ public class FeishuWebhookService : IFeishuWebhookService
                 changes.Add($"EnableBackgroundProcessing: {oldOptions.EnableBackgroundProcessing} → {newOptions.EnableBackgroundProcessing}");
             }
 
-            // 注意：CircuitBreaker 配置变更已被移除
-
-
             if (oldOptions.EnablePerformanceMonitoring != newOptions.EnablePerformanceMonitoring)
             {
                 changes.Add($"EnablePerformanceMonitoring: {oldOptions.EnablePerformanceMonitoring} → {newOptions.EnablePerformanceMonitoring}");

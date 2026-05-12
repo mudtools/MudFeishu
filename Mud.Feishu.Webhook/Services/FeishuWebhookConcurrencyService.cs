@@ -195,11 +195,7 @@ public class FeishuWebhookConcurrencyService : IAsyncDisposable, IHostedService
     {
         if (_disposed)
         {
-#if NETSTANDARD2_0
             return;
-#else
-            return;
-#endif
         }
 
         _disposed = true;
@@ -207,11 +203,6 @@ public class FeishuWebhookConcurrencyService : IAsyncDisposable, IHostedService
         _semaphore.Dispose();
         _semaphoreLock.Dispose();
         GC.SuppressFinalize(this);
-#if NETSTANDARD2_0
-        return;
-#else
-        return;
-#endif
     }
 
     /// <summary>

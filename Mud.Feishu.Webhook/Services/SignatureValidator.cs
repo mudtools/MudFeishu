@@ -209,25 +209,13 @@ public class SignatureValidator : ISignatureValidator
                     headerPrefix + "...",
                     CurrentAppKey ?? "null");
 
-                _ = _securityAuditService?.LogSecurityFailureAsync(
-                    SecurityEventType.SignatureValidation,
-                    "unknown",
-                    "SignatureValidator",
-                    $"请求头签名验证失败: 计算 {computedPrefix}..., 期望 {headerPrefix}...",
-                    "",
-                    CurrentAppKey);
+                LogSecurityFailure($"请求头签名验证失败: 计算 {computedPrefix}..., 期望 {headerPrefix}...");
             }
             else
             {
                 _logger.LogDebug("请求头签名验证成功, AppKey: {AppKey}", CurrentAppKey ?? "null");
 
-                _ = _securityAuditService?.LogSecuritySuccessAsync(
-                    SecurityEventType.SignatureValidation,
-                    "unknown",
-                    "SignatureValidator",
-                    $"请求头签名验证成功, AppKey: {CurrentAppKey ?? "null"}",
-                    "",
-                    CurrentAppKey);
+                LogSecuritySuccess($"请求头签名验证成功, AppKey: {CurrentAppKey ?? "null"}");
             }
 
             return isValid;

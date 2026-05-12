@@ -52,4 +52,30 @@ public interface IFeishuUserV1VideoConferencingRecording : IFeishuV1VideoConfere
     Task<FeishuNullDataApiResult?> StopMeetingRecordingAsync(
       [Path] string meeting_id,
       CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 授权录制文件
+    /// <para>将一个会议的录制文件授权给组织、用户或公开到公网。</para>
+    /// <para>会议结束后并且收到了"录制完成"的事件方可进行授权；会议owner（通过开放平台预约的会议即为预约人）才有权限操作</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/vc-v1/meeting-recording/start">接口文档</see></para>
+    /// </summary>
+    /// <param name="meeting_id">
+    /// <para>会议ID（视频会议的唯一标识，视频会议开始后才会产生）</para>
+    /// <para>示例值：6911188411932033028</para>
+    /// </param>
+    /// <param name="setPermissionMeetingRecordingRequest">授权录制文件请求体</param>
+    /// <para>默认值：open_id</para>
+    /// </param>
+    /// <param name="meeting_id">
+    /// <para>会议ID（视频会议的唯一标识，视频会议开始后才会产生）</para>
+    /// <para>示例值：6911188411932033028</para>
+    /// </param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Patch("/open-apis/vc/v1/meetings/{meeting_id}/recording/set_permission")]
+    Task<FeishuNullDataApiResult?> SetPermissionMeetingRecordingAsync(
+      [Path] string meeting_id,
+      [Body] SetPermissionMeetingRecordingRequest setPermissionMeetingRecordingRequest,
+      [Query] string? user_id_type = Consts.User_Id_Type,
+      CancellationToken cancellationToken = default);
 }

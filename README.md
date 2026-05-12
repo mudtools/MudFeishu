@@ -135,10 +135,11 @@ dotnet add package Mud.Feishu.Redis
     "GlobalRoutePrefix": "feishu",
     "EnableRequestLogging": true,
     "MaxConcurrentEvents": 10,
-    "EnableIpWhitelist": true,
-    "EnableTimestampValidation": true,
-    "TimestampToleranceSeconds": 300,
-    "EnableSignatureLogging": false,
+    "EnforceHeaderSignatureValidation": true,
+    "EnableBodySignatureValidation": true,
+    "TimestampToleranceSeconds": 30,
+    "EventHandlingTimeoutMs": 30000,
+    "MaxRequestBodySize": 10485760,
     "Apps": {
       "app1": {
         "AppKey": "cli_a1b2c3d4e5f6g7h8",
@@ -211,16 +212,18 @@ dotnet add package Mud.Feishu.Redis
 <details>
 <summary>📋 Webhook 安全配置参考</summary>
 
-| 配置项                      | 类型 | 默认值 | 说明                                     |
-| --------------------------- | ---- | ------ | ---------------------------------------- |
-| `EnableIpWhitelist`         | bool | true   | 是否启用飞书服务器 IP 白名单验证         |
-| `EnableTimestampValidation` | bool | true   | 是否启用时间戳验证，防止重放攻击         |
-| `TimestampToleranceSeconds` | int  | 300    | 时间戳容差（秒），超过此时间视为无效请求 |
-| `EnableSignatureLogging`    | bool | false  | 是否启用签名验证日志（生产环境建议关闭） |
-| `MaxConcurrentEvents`       | int  | 10     | 最大并发事件处理数                       |
-| `EnableRequestLogging`      | bool | false  | 是否启用请求日志                         |
+| 配置项                             | 类型                  | 默认值 | 说明                                                         |
+| ---------------------------------- | --------------------- | ------ | ------------------------------------------------------------ |
+| `AllowedSourceIPs`                 | HashSet&lt;string&gt; | 空     | 允许的源 IP 白名单，支持 CIDR 格式。非空时自动启用 IP 验证   |
+| `EnforceHeaderSignatureValidation` | bool                  | true   | 是否强制验证 X-Lark-Signature 请求头签名（生产环境必须启用） |
+| `EnableBodySignatureValidation`    | bool                  | true   | 是否在服务层再次验证请求体签名（Middleware 已验证时可关闭）  |
+| `TimestampToleranceSeconds`        | int                   | 30     | 时间戳容差（秒），超过此时间视为无效请求                     |
+| `MaxConcurrentEvents`              | int                   | 10     | 最大并发事件处理数                                           |
+| `EnableRequestLogging`             | bool                  | true   | 是否启用请求日志                                             |
+| `MaxRequestBodySize`               | long                  | 10MB   | 最大请求体大小（字节）                                       |
+| `EventHandlingTimeoutMs`           | int                   | 30000  | 事件处理超时时间（毫秒）                                     |
 
-> 🔒 生产环境强烈建议启用 `EnableIpWhitelist` 和 `EnableTimestampValidation`，关闭 `EnableSignatureLogging` 以避免敏感信息泄露。
+> 🔒 生产环境强烈建议保持 `EnforceHeaderSignatureValidation=true`，配置 `AllowedSourceIPs` 限制来源 IP，并将 `TimestampToleranceSeconds` 设置为 30 秒或更短以减少重放攻击时间窗口。
 
 </details>
 

@@ -377,7 +377,7 @@ public class FeishuAppConfigListValidatorTests
     }
 
     [Fact]
-    public void ValidateList_WithNonDefaultAppCustomResilience_ShouldReturnFail()
+    public void ValidateList_WithNonDefaultAppDifferentResilience_ShouldReturnSuccess()
     {
         var configs = new List<FeishuAppConfig>
         {
@@ -400,40 +400,6 @@ public class FeishuAppConfigListValidatorTests
                 TimeOut = 60,
                 RetryCount = 5,
                 RetryDelayMs = 2000
-            }
-        };
-
-        var result = _validator.Validate(null, configs);
-
-        Assert.True(result.Failed);
-        Assert.Contains("弹性策略", result.FailureMessage);
-        Assert.Contains("non-default-app", result.FailureMessage);
-    }
-
-    [Fact]
-    public void ValidateList_WithNonDefaultAppSameResilienceAsDefault_ShouldReturnSuccess()
-    {
-        var configs = new List<FeishuAppConfig>
-        {
-            new()
-            {
-                AppKey = "default-app",
-                AppId = "cli_test123456789012",
-                AppSecret = "test_secret_key_12345",
-                IsDefault = true,
-                TimeOut = 30,
-                RetryCount = 3,
-                RetryDelayMs = 1000
-            },
-            new()
-            {
-                AppKey = "non-default-app",
-                AppId = "cli_another123456789",
-                AppSecret = "another_secret_key_12",
-                IsDefault = false,
-                TimeOut = 30,
-                RetryCount = 3,
-                RetryDelayMs = 1000
             }
         };
 

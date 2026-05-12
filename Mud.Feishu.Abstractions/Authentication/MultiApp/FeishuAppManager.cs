@@ -218,17 +218,29 @@ internal class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuA
             return;
 
         var nonDefaultConfigs = configs
-            .Where(c => c != defaultConfig && (c.RetryCount != defaultConfig.RetryCount || c.RetryDelayMs != defaultConfig.RetryDelayMs || c.TimeOut != defaultConfig.TimeOut))
+            .Where(c => c != defaultConfig && HasResilienceMismatch(c, defaultConfig))
             .ToList();
 
         if (nonDefaultConfigs.Count > 0)
         {
             _logger.LogWarning(
-                "多应用模式下弹性策略（重试、超时）为全局共享配置，当前使用默认应用 '{DefaultAppKey}' 的配置。" +
+                "多应用模式下弹性策略（重试、超时、熔断）为全局共享配置，当前使用默认应用 '{DefaultAppKey}' 的配置。" +
                 "以下应用的自定义 Resilience 配置将被忽略: {IgnoredApps}。" +
                 "这是 Mud.HttpUtils 框架的设计限制，所有命名客户端共享同一组弹性策略。",
                 defaultConfig.AppKey,
                 string.Join(", ", nonDefaultConfigs.Select(c => c.AppKey)));
         }
+    }
+
+    private static bool HasResilienceMismatch(FeishuAppConfig app, FeishuAppConfig defaultApp)
+    {
+        return app.RetryCount != defaultApp.RetryCount
+            || app.RetryDelayMs != defaultApp.RetryDelayMs
+            || app.TimeOut != defaultApp.TimeOut
+            || app.CircuitBreakerEnabled != defaultApp.CircuitBreakerEnabled
+            || app.CircuitBreakerFailureThreshold != defaultApp.CircuitBreakerFailureThreshold
+            || app.CircuitBreakerSamplingDurationSeconds != defaultApp.CircuitBreakerSamplingDurationSeconds
+            || app.CircuitBreakerBreakDurationSeconds != defaultApp.CircuitBreakerBreakDurationSeconds
+            || app.CircuitBreakerMinimumThroughput != defaultApp.CircuitBreakerMinimumThroughput;
     }
 }

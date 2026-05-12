@@ -1,5 +1,5 @@
 // -----------------------------------------------------------------------
-//  作者：Mud Studio  版权所有 (c) Mud Studio 2026   
+//  作者：Mud Studio  版权所有 (c) Mud Studio 2026
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
@@ -76,39 +76,11 @@ public class FeishuAppConfigValidator : IValidateOptions<FeishuAppConfig>, IVali
             errors.Add($"存在多个 IsDefault=true 的应用（{defaultAppKeys}），仅允许一个默认应用。请确保只有一个应用标记为 IsDefault=true。");
         }
 
-        if (options.Count > 1 && defaultApps.Count == 1)
-        {
-            var defaultApp = defaultApps[0];
-            var nonDefaultAppsWithCustomResilience = options
-                .Where(c => !c.IsDefault && HasCustomResilienceConfig(c, defaultApp))
-                .ToList();
-
-            if (nonDefaultAppsWithCustomResilience.Count > 0)
-            {
-                var appKeys = string.Join(", ", nonDefaultAppsWithCustomResilience.Select(c => c.AppKey ?? "null"));
-                errors.Add(
-                    $"以下非默认应用配置了自定义弹性策略（TimeOut/RetryCount/RetryDelayMs/CircuitBreaker*）: {appKeys}。" +
-                    "多应用模式下弹性策略为全局共享，仅默认应用的配置生效。请移除非默认应用的弹性策略配置，或使用默认应用的配置。");
-            }
-        }
-
         if (errors.Count > 0)
         {
             return ValidateOptionsResult.Fail($"FeishuAppConfig 配置验证失败:\n{string.Join("\n", errors)}");
         }
 
         return ValidateOptionsResult.Success;
-    }
-
-    private static bool HasCustomResilienceConfig(FeishuAppConfig app, FeishuAppConfig defaultApp)
-    {
-        return app.TimeOut != defaultApp.TimeOut
-            || app.RetryCount != defaultApp.RetryCount
-            || app.RetryDelayMs != defaultApp.RetryDelayMs
-            || app.CircuitBreakerEnabled != defaultApp.CircuitBreakerEnabled
-            || app.CircuitBreakerFailureThreshold != defaultApp.CircuitBreakerFailureThreshold
-            || app.CircuitBreakerSamplingDurationSeconds != defaultApp.CircuitBreakerSamplingDurationSeconds
-            || app.CircuitBreakerBreakDurationSeconds != defaultApp.CircuitBreakerBreakDurationSeconds
-            || app.CircuitBreakerMinimumThroughput != defaultApp.CircuitBreakerMinimumThroughput;
     }
 }

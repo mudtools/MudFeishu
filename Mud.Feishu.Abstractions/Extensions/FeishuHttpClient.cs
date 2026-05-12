@@ -19,7 +19,8 @@ internal class FeishuHttpClient : EnhancedHttpClient, IEnhancedHttpClient
         HttpClient httpClient,
         ILogger<FeishuHttpClient> logger,
         bool? enableLogging,
-        IOptions<JsonSerializerOptions> serializerOptions) : base(httpClient, logger)
+        IOptions<JsonSerializerOptions> serializerOptions,
+        EnhancedHttpClientOptions? options = null) : base(httpClient, logger, options)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 

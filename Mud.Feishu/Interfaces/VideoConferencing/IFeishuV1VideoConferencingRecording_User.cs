@@ -64,13 +64,17 @@ public interface IFeishuUserV1VideoConferencingRecording : IFeishuV1VideoConfere
     /// <para>会议ID（视频会议的唯一标识，视频会议开始后才会产生）</para>
     /// <para>示例值：6911188411932033028</para>
     /// </param>
-    /// <param name="setPermissionMeetingRecordingRequest">授权录制文件请求体</param>
+    /// <param name="user_id_type">
+    /// <para>用户 ID 类型</para>
+    /// <para>示例值：open_id</para>
+    /// <list type="bullet">
+    /// <item>open_id：标识一个用户在某个应用中的身份。同一个用户在不同应用中的 Open ID 不同。</item>
+    /// <item>union_id：标识一个用户在某个应用开发商下的身份。同一用户在同一开发商下的应用中的 Union ID 是相同的，在不同开发商下的应用中的 Union ID 是不同的。通过 Union ID，应用开发商可以把同个用户在多个应用中的身份关联起来。</item>
+    /// <item>user_id：标识一个用户在某个租户内的身份。同一个用户在租户 A 和租户 B 内的 User ID 是不同的。在同一个租户内，一个用户的 User ID 在所有应用（包括商店应用）中都保持一致。User ID 主要用于在不同的应用间打通用户数据。</item>
+    /// </list>
     /// <para>默认值：open_id</para>
     /// </param>
-    /// <param name="meeting_id">
-    /// <para>会议ID（视频会议的唯一标识，视频会议开始后才会产生）</para>
-    /// <para>示例值：6911188411932033028</para>
-    /// </param>
+    /// <param name="setPermissionMeetingRecordingRequest">授权录制文件请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Patch("/open-apis/vc/v1/meetings/{meeting_id}/recording/set_permission")]
     Task<FeishuNullDataApiResult?> SetPermissionMeetingRecordingAsync(

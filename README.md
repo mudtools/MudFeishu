@@ -103,6 +103,11 @@ dotnet add package Mud.Feishu.Redis
       "TimeOut": 30,
       "RetryCount": 3,
       "RetryDelayMs": 1000,
+      "CircuitBreakerEnabled": true,
+      "CircuitBreakerFailureThreshold": 20,
+      "CircuitBreakerSamplingDurationSeconds": 60,
+      "CircuitBreakerBreakDurationSeconds": 60,
+      "CircuitBreakerMinimumThroughput": 10,
       "TokenRefreshThreshold": 300,
       "EnableLogging": true,
       "IsDefault": true
@@ -130,6 +135,10 @@ dotnet add package Mud.Feishu.Redis
     "GlobalRoutePrefix": "feishu",
     "EnableRequestLogging": true,
     "MaxConcurrentEvents": 10,
+    "EnableIpWhitelist": true,
+    "EnableTimestampValidation": true,
+    "TimestampToleranceSeconds": 300,
+    "EnableSignatureLogging": false,
     "Apps": {
       "app1": {
         "AppKey": "cli_a1b2c3d4e5f6g7h8",
@@ -164,11 +173,54 @@ dotnet add package Mud.Feishu.Redis
 | `BackpressureStrategy`           | enum     | DropOldest | 背压策略（DropOldest/DropNewest/Block） |
 | `BackpressureBlockTimeoutMs`     | int      | 5000       | 背压阻塞等待超时（毫秒）                |
 | `HealthCheckIntervalMs`          | int      | 60000      | 健康检查间隔（毫秒）                    |
+| `EmptyQueueCheckIntervalMs`      | int      | 100        | 空队列检查间隔（毫秒），最小 10         |
 | `MaxConcurrentMessageProcessing` | int      | 10         | 最大并发消息处理数                      |
+| `MessageSizeLimits`              | object   | 见下方     | 消息大小限制配置                        |
 | `TokenRefreshInterval`           | TimeSpan | 2 小时     | 访问令牌有效期                          |
 | `TokenRefreshAhead`              | TimeSpan | 5 分钟     | 提前刷新令牌的时间                      |
 
+**MessageSizeLimits 子配置：**
+
+| 配置项                 | 类型 | 默认值 | 说明                       |
+| ---------------------- | ---- | ------ | -------------------------- |
+| `MaxTextMessageSize`   | int  | 1MB    | 最大文本消息大小（字符数） |
+| `MaxBinaryMessageSize` | long | 10MB   | 最大二进制消息大小（字节） |
+
 > 💡 更多配置详情请参考 [Mud.Feishu.WebSocket 详细文档](./Mud.Feishu.WebSocket/Readme.md)
+
+</details>
+
+<details>
+<summary>📋 弹性策略配置参考（FeishuApps）</summary>
+
+| 配置项                                  | 类型 | 默认值 | 说明                                 |
+| --------------------------------------- | ---- | ------ | ------------------------------------ |
+| `TimeOut`                               | int  | 30     | HTTP 请求超时时间（秒），范围 1-300  |
+| `RetryCount`                            | int  | 3      | 重试次数，范围 0-10                  |
+| `RetryDelayMs`                          | int  | 1000   | 重试延迟时间（毫秒），范围 100-60000 |
+| `CircuitBreakerEnabled`                 | bool | true   | 是否启用熔断器                       |
+| `CircuitBreakerFailureThreshold`        | int  | 20     | 熔断失败率阈值（百分比），范围 1-100 |
+| `CircuitBreakerSamplingDurationSeconds` | int  | 60     | 熔断采样窗口时间（秒），范围 10-300  |
+| `CircuitBreakerBreakDurationSeconds`    | int  | 60     | 熔断持续时间（秒），范围 10-300      |
+| `CircuitBreakerMinimumThroughput`       | int  | 10     | 熔断最小吞吐量，范围 2-1000          |
+
+> ⚠️ 多应用模式下，弹性策略为全局共享，仅默认应用（`IsDefault=true`）的配置生效。非默认应用的弹性策略配置将被忽略。
+
+</details>
+
+<details>
+<summary>📋 Webhook 安全配置参考</summary>
+
+| 配置项                      | 类型 | 默认值 | 说明                                     |
+| --------------------------- | ---- | ------ | ---------------------------------------- |
+| `EnableIpWhitelist`         | bool | true   | 是否启用飞书服务器 IP 白名单验证         |
+| `EnableTimestampValidation` | bool | true   | 是否启用时间戳验证，防止重放攻击         |
+| `TimestampToleranceSeconds` | int  | 300    | 时间戳容差（秒），超过此时间视为无效请求 |
+| `EnableSignatureLogging`    | bool | false  | 是否启用签名验证日志（生产环境建议关闭） |
+| `MaxConcurrentEvents`       | int  | 10     | 最大并发事件处理数                       |
+| `EnableRequestLogging`      | bool | false  | 是否启用请求日志                         |
+
+> 🔒 生产环境强烈建议启用 `EnableIpWhitelist` 和 `EnableTimestampValidation`，关闭 `EnableSignatureLogging` 以避免敏感信息泄露。
 
 </details>
 

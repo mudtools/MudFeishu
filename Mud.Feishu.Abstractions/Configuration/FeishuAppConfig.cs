@@ -233,6 +233,9 @@ public class FeishuAppConfig
         if (RetryDelayMs < 100 || RetryDelayMs > 60000)
             throw new InvalidOperationException("RetryDelayMs 必须在 100-60000 毫秒之间");
 
+        if (RetryCount > 0 && RetryDelayMs > TimeOut * 1000L)
+            throw new InvalidOperationException($"RetryDelayMs ({RetryDelayMs}ms) 不应大于 TimeOut ({TimeOut}s)，重试等待时间超过请求超时时间在逻辑上不合理");
+
         if (CircuitBreakerFailureThreshold < 1 || CircuitBreakerFailureThreshold > 100)
             throw new InvalidOperationException("CircuitBreakerFailureThreshold 必须在 1-100 之间");
 

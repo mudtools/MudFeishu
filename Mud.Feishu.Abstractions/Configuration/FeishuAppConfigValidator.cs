@@ -73,7 +73,23 @@ public class FeishuAppConfigValidator : IValidateOptions<FeishuAppConfig>, IVali
         if (defaultApps.Count > 1)
         {
             var defaultAppKeys = string.Join(", ", defaultApps.Select(c => c.AppKey ?? "null"));
-            errors.Add($"存在多个 IsDefault=true 的应用（{defaultAppKeys}），仅第一个默认应用会生效。请确保只有一个应用标记为默认。");
+            errors.Add($"存在多个 IsDefault=true 的应用（{defaultAppKeys}），仅允许一个默认应用。请确保只有一个应用标记为 IsDefault=true。");
+        }
+
+        if (options.Count > 1 && defaultApps.Count == 1)
+        {
+            var defaultApp = defaultApps[0];
+            var nonDefaultAppsWithCustomResilience = options
+                .Where(c => !c.IsDefault && HasCustomResilienceConfig(c, defaultApp))
+                .ToList();
+
+            if (nonDefaultAppsWithCustomResilience.Count > 0)
+            {
+                var appKeys = string.Join(", ", nonDefaultAppsWithCustomResilience.Select(c => c.AppKey ?? "null"));
+                errors.Add(
+                    $"以下非默认应用配置了自定义弹性策略（TimeOut/RetryCount/RetryDelayMs/CircuitBreaker*）: {appKeys}。" +
+                    "多应用模式下弹性策略为全局共享，仅默认应用的配置生效。请移除非默认应用的弹性策略配置，或使用默认应用的配置。");
+            }
         }
 
         if (errors.Count > 0)
@@ -82,5 +98,17 @@ public class FeishuAppConfigValidator : IValidateOptions<FeishuAppConfig>, IVali
         }
 
         return ValidateOptionsResult.Success;
+    }
+
+    private static bool HasCustomResilienceConfig(FeishuAppConfig app, FeishuAppConfig defaultApp)
+    {
+        return app.TimeOut != defaultApp.TimeOut
+            || app.RetryCount != defaultApp.RetryCount
+            || app.RetryDelayMs != defaultApp.RetryDelayMs
+            || app.CircuitBreakerEnabled != defaultApp.CircuitBreakerEnabled
+            || app.CircuitBreakerFailureThreshold != defaultApp.CircuitBreakerFailureThreshold
+            || app.CircuitBreakerSamplingDurationSeconds != defaultApp.CircuitBreakerSamplingDurationSeconds
+            || app.CircuitBreakerBreakDurationSeconds != defaultApp.CircuitBreakerBreakDurationSeconds
+            || app.CircuitBreakerMinimumThroughput != defaultApp.CircuitBreakerMinimumThroughput;
     }
 }

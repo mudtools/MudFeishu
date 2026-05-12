@@ -543,7 +543,7 @@ public class FeishuWebSocketOptionsTests
 
         var act = () => options.Validate();
 
-        act.Should().Throw<InvalidOperationException>().WithMessage("*None*去重*");
+        act.Should().Throw<InvalidOperationException>().WithMessage("*None*事件去重*");
     }
 
     [Fact]
@@ -561,6 +561,6 @@ public class FeishuWebSocketOptionsTests
         var act = () => options.Validate();
 
         act.Should().Throw<InvalidOperationException>()
-            .WithMessage("*None*去重*CacheExpirationMs*");
+            .WithMessage("*None*CacheExpirationMs*");
     }
 }

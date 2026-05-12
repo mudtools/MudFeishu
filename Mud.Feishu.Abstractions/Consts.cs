@@ -101,4 +101,24 @@ internal class Consts
     /// SeqID 去重键默认前缀
     /// </summary>
     public const string DefaultSeqIdKeyPrefix = "feishu:seqid:";
+
+    /// <summary>
+    /// 默认事件缓存过期时间（毫秒）：48 小时
+    /// </summary>
+    public const int DefaultCacheExpirationMs = 48 * 60 * 60 * 1000;
+
+    /// <summary>
+    /// 默认缓存清理间隔（毫秒）：5 分钟
+    /// </summary>
+    public const int DefaultCleanupIntervalMs = 5 * 60 * 1000;
+
+    /// <summary>
+    /// 默认处理中超时时间（毫秒）：10 分钟
+    /// </summary>
+    public const int DefaultProcessingTimeoutMs = 10 * 60 * 1000;
+
+    /// <summary>
+    /// 默认最大缓存容量
+    /// </summary>
+    public const int DefaultMaxCacheSize = 100000;
 }

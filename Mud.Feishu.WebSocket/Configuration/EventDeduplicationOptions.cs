@@ -15,12 +15,12 @@ public class EventDeduplicationOptions
     /// <summary>
     /// 默认缓存过期时间（毫秒）：48 小时
     /// </summary>
-    public const int DefaultCacheExpirationMs = 48 * 60 * 60 * 1000;
+    public const int DefaultCacheExpirationMs = Mud.Feishu.Abstractions.Consts.DefaultCacheExpirationMs;
 
     /// <summary>
     /// 默认缓存清理间隔（毫秒）：5 分钟
     /// </summary>
-    public const int DefaultCleanupIntervalMs = 5 * 60 * 1000;
+    public const int DefaultCleanupIntervalMs = Mud.Feishu.Abstractions.Consts.DefaultCleanupIntervalMs;
 
     /// <summary>
     /// 去重模式，默认为内存去重

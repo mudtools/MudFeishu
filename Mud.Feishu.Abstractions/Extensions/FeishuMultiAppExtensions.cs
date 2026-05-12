@@ -295,11 +295,9 @@ public static class FeishuMultiAppExtensions
         }
         else if (defaultAppCount > 1)
         {
-            var defaultApps = configs.Where(c => c.IsDefault).ToList();
-            for (int i = 1; i < defaultApps.Count; i++)
-            {
-                defaultApps[i].IsDefault = false;
-            }
+            var defaultAppKeys = configs.Where(c => c.IsDefault).Select(c => c.AppKey);
+            throw new InvalidOperationException(
+                $"检测到多个 IsDefault=true 的应用（{string.Join(", ", defaultAppKeys)}），仅允许一个默认应用。请确保只有一个应用标记为 IsDefault=true。");
         }
     }
 }

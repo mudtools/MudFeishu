@@ -34,7 +34,7 @@ public class DeduplicationOptions
         get => _cacheExpiration;
         set => _cacheExpiration = value >= TimeSpan.FromMinutes(1) ? value : TimeSpan.FromMinutes(1);
     }
-    private TimeSpan _cacheExpiration = TimeSpan.FromHours(48);
+    private TimeSpan _cacheExpiration = TimeSpan.FromMilliseconds(Consts.DefaultCacheExpirationMs);
 
     /// <summary>
     /// 处理中超时时间
@@ -48,7 +48,7 @@ public class DeduplicationOptions
         get => _processingTimeout;
         set => _processingTimeout = value >= TimeSpan.FromSeconds(10) ? value : TimeSpan.FromSeconds(10);
     }
-    private TimeSpan _processingTimeout = TimeSpan.FromMinutes(10);
+    private TimeSpan _processingTimeout = TimeSpan.FromMilliseconds(Consts.DefaultProcessingTimeoutMs);
 
     /// <summary>
     /// 缓存清理间隔（仅内存模式）
@@ -61,7 +61,7 @@ public class DeduplicationOptions
         get => _cleanupInterval;
         set => _cleanupInterval = value >= TimeSpan.FromSeconds(30) ? value : TimeSpan.FromSeconds(30);
     }
-    private TimeSpan _cleanupInterval = TimeSpan.FromMinutes(5);
+    private TimeSpan _cleanupInterval = TimeSpan.FromMilliseconds(Consts.DefaultCleanupIntervalMs);
 
     /// <summary>
     /// 降级策略：是否在 Redis 失败时允许处理事件（仅分布式模式）
@@ -140,7 +140,7 @@ public class DeduplicationOptions
         get => _maxCacheSize;
         set => _maxCacheSize = Math.Max(0, value);
     }
-    private int _maxCacheSize = 100000;
+    private int _maxCacheSize = Consts.DefaultMaxCacheSize;
 
     /// <summary>
     /// 是否启用详细日志

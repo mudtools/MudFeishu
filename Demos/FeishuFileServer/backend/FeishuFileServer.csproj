@@ -24,14 +24,14 @@
         <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.25" />
         <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
     </ItemGroup>
-	<!--<ItemGroup>
-		<PackageReference Include="Mud.Feishu" Version="2.1.1" />
-		<PackageReference Include="Mud.Feishu.Authentication" Version="2.1.1" />
-	</ItemGroup>-->
-    <ItemGroup>
+	<ItemGroup>
+		<PackageReference Include="Mud.Feishu" Version="2.1.2" />
+		<PackageReference Include="Mud.Feishu.Authentication" Version="2.1.2" />
+	</ItemGroup>
+    <!--<ItemGroup>
 		<ProjectReference Include="..\..\..\Mud.Feishu.Authentication\Mud.Feishu.Authentication.csproj" />
 		<ProjectReference Include="..\..\..\Mud.Feishu\Mud.Feishu.csproj" />
-    </ItemGroup>
+    </ItemGroup>-->
 	 
 
     <ItemGroup>

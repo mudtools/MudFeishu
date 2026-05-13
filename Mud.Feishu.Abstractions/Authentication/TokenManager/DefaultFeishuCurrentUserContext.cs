@@ -39,6 +39,24 @@ internal sealed class DefaultFeishuCurrentUserContext : IFeishuCurrentUserContex
         };
     }
 
+    public void SetUserId(string? userId)
+    {
+        var current = _currentUser.Value;
+        if (userId == null)
+        {
+            _currentUser.Value = null;
+            return;
+        }
+
+        _currentUser.Value = new UserInfo
+        {
+            OpenId = current?.OpenId,
+            UnionId = current?.UnionId,
+            UserId = userId,
+            Name = current?.Name
+        };
+    }
+
     public void Clear()
     {
         _currentUser.Value = null;

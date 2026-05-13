@@ -83,5 +83,41 @@ public class RedisUserTokenStore : UserTokenStoreBase
         await db.KeyDeleteAsync(new RedisKey[] { BuildUserAccessTokenKey(userId, tokenType), BuildUserRefreshTokenKey(userId, tokenType) }).ConfigureAwait(false);
     }
 
+    /// <inheritdoc />
+    public override async Task<IEnumerable<string>> GetTokenTypesAsync(string userId, CancellationToken cancellationToken = default)
+    {
+        var pattern = $"{_keyPrefix}:user:{userId}:*:access";
+        var keys = GetServer().Keys(pattern: pattern);
+        var tokenTypes = new List<string>();
+        var prefixLength = $"{_keyPrefix}:user:{userId}:".Length;
+
+        foreach (var key in keys)
+        {
+            var keyStr = key.ToString();
+            var parts = keyStr.Substring(prefixLength).Split(':');
+            if (parts.Length >= 2)
+                tokenTypes.Add(parts[0]);
+        }
+
+        return tokenTypes.Distinct();
+    }
+
+    /// <inheritdoc />
+    public override async Task ClearUserAsync(string userId, CancellationToken cancellationToken = default)
+    {
+        var pattern = $"{_keyPrefix}:user:{userId}:*";
+        var db = GetDatabase();
+        var keys = GetServer().Keys(pattern: pattern);
+
+        foreach (var key in keys)
+            await db.KeyDeleteAsync(key).ConfigureAwait(false);
+    }
+
     private IDatabase GetDatabase() => _redis.GetDatabase();
+
+    private IServer GetServer()
+    {
+        var endpoints = _redis.GetEndPoints();
+        return _redis.GetServer(endpoints[0]);
+    }
 }

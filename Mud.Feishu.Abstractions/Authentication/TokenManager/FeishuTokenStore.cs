@@ -5,6 +5,7 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using System.Collections.Concurrent;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace Mud.Feishu.Abstractions.Authentication;
@@ -20,6 +21,7 @@ namespace Mud.Feishu.Abstractions.Authentication;
 public class FeishuTokenStore : ITokenStore
 {
     private readonly IMemoryCache _cache;
+    private readonly ConcurrentDictionary<string, byte> _tokenTypes = new();
 
     /// <summary>
     /// 初始化 FeishuTokenStore 实例
@@ -41,6 +43,7 @@ public class FeishuTokenStore : ITokenStore
     /// <inheritdoc />
     public Task SetAccessTokenAsync(string tokenType, string accessToken, long expiresInSeconds, CancellationToken cancellationToken = default)
     {
+        _tokenTypes.TryAdd(tokenType, 0);
         var key = BuildAccessTokenKey(tokenType);
         _cache.Set(key, accessToken, TimeSpan.FromSeconds(expiresInSeconds));
         return Task.CompletedTask;
@@ -65,8 +68,26 @@ public class FeishuTokenStore : ITokenStore
     /// <inheritdoc />
     public Task RemoveAsync(string tokenType, CancellationToken cancellationToken = default)
     {
+        _tokenTypes.TryRemove(tokenType, out _);
         _cache.Remove(BuildAccessTokenKey(tokenType));
         _cache.Remove(BuildRefreshTokenKey(tokenType));
+        return Task.CompletedTask;
+    }
+
+    public Task<IEnumerable<string>> GetTokenTypesAsync(CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult(_tokenTypes.Keys.AsEnumerable());
+    }
+
+    public Task ClearAsync(CancellationToken cancellationToken = default)
+    {
+        foreach (var tokenType in _tokenTypes.Keys)
+        {
+            _cache.Remove(BuildAccessTokenKey(tokenType));
+            _cache.Remove(BuildRefreshTokenKey(tokenType));
+        }
+
+        _tokenTypes.Clear();
         return Task.CompletedTask;
     }
 

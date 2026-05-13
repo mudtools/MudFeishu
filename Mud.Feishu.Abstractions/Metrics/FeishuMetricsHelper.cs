@@ -16,33 +16,6 @@ namespace Mud.Feishu.Abstractions.Metrics;
 public static class FeishuMetricsHelper
 {
     /// <summary>
-    /// 记录令牌获取指标
-    /// </summary>
-    public static IDisposable RecordTokenFetch(string tokenType, bool fromCache)
-    {
-        FeishuMetrics.TokenFetchCount.Add(1, new TagList { { "token_type", tokenType } });
-
-        if (fromCache)
-        {
-            FeishuMetrics.TokenCacheHitCount.Add(1, new TagList { { "token_type", tokenType } });
-        }
-        else
-        {
-            FeishuMetrics.TokenCacheMissCount.Add(1, new TagList { { "token_type", tokenType } });
-        }
-
-        return FeishuMetrics.TokenFetchDuration.RecordDuration();
-    }
-
-    /// <summary>
-    /// 记录令牌刷新指标
-    /// </summary>
-    public static void RecordTokenRefresh(string tokenType)
-    {
-        FeishuMetrics.TokenRefreshCount.Add(1, new TagList { { "token_type", tokenType } });
-    }
-
-    /// <summary>
     /// 记录事件处理指标
     /// </summary>
     public static IDisposable RecordEventHandling(string eventType, string? handlerType = null)
@@ -107,29 +80,6 @@ public static class FeishuMetricsHelper
     }
 
     /// <summary>
-    /// 记录 HTTP 请求成功
-    /// </summary>
-    public static void RecordHttpRequestSuccess(string method, int statusCode)
-    {
-        FeishuMetrics.HttpRequestSuccessCount.Add(1, new TagList { { "method", method }, { "status_code", statusCode.ToString() } });
-    }
-
-    /// <summary>
-    /// 记录 HTTP 请求失败
-    /// </summary>
-    public static void RecordHttpRequestFailure(string method, int statusCode, string? errorType = null)
-    {
-        var tags = new TagList { { "method", method }, { "status_code", statusCode.ToString() } };
-
-        if (errorType != null)
-        {
-            tags.Add(new("error_type", errorType));
-        }
-
-        FeishuMetrics.HttpRequestFailureCount.Add(1, tags);
-    }
-
-    /// <summary>
     /// 截断 URL 以避免标签过长
     /// </summary>
     private static string TruncateUrl(string url, int maxLength)
@@ -138,46 +88,6 @@ public static class FeishuMetricsHelper
             return url;
 
         return string.Concat(url.Substring(0, maxLength), "...");
-    }
-
-    /// <summary>
-    /// 记录 WebSocket 消息发送
-    /// </summary>
-    public static void RecordWebSocketMessageSent(long bytes = 0)
-    {
-        FeishuMetrics.WebSocketMessageSentCount.Add(1);
-        if (bytes > 0)
-        {
-            FeishuMetrics.WebSocketBytesSentCount.Add(bytes);
-        }
-    }
-
-    /// <summary>
-    /// 记录 WebSocket 消息接收
-    /// </summary>
-    public static void RecordWebSocketMessageReceived(long bytes = 0)
-    {
-        FeishuMetrics.WebSocketMessageReceivedCount.Add(1);
-        if (bytes > 0)
-        {
-            FeishuMetrics.WebSocketBytesReceivedCount.Add(bytes);
-        }
-    }
-
-    /// <summary>
-    /// 记录 WebSocket 连接错误
-    /// </summary>
-    public static void RecordWebSocketConnectionError()
-    {
-        FeishuMetrics.WebSocketConnectionErrorCount.Add(1);
-    }
-
-    /// <summary>
-    /// 记录 WebSocket 认证错误
-    /// </summary>
-    public static void RecordWebSocketAuthenticationError()
-    {
-        FeishuMetrics.WebSocketAuthenticationErrorCount.Add(1);
     }
 
     /// <summary>

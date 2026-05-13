@@ -5,6 +5,8 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using Mud.Feishu.Abstractions.Utilities;
+
 namespace Mud.Feishu.Abstractions;
 
 /// <summary>
@@ -287,13 +289,6 @@ public class FeishuAppConfig
     /// <returns>配置字符串</returns>
     public override string ToString()
     {
-        return $"FeishuAppConfig {{ AppKey: {AppKey}, AppId: {AppId}, AppSecret: {MaskSensitiveData(AppSecret)}, BaseUrl: {BaseUrl}, TimeOut: {TimeOut}s, RetryCount: {RetryCount}, RetryDelayMs: {RetryDelayMs}ms, CircuitBreakerEnabled: {CircuitBreakerEnabled}, CircuitBreakerFailureThreshold: {CircuitBreakerFailureThreshold}%, CircuitBreakerSamplingDurationSeconds: {CircuitBreakerSamplingDurationSeconds}s, CircuitBreakerBreakDurationSeconds: {CircuitBreakerBreakDurationSeconds}s, CircuitBreakerMinimumThroughput: {CircuitBreakerMinimumThroughput}, TokenRefreshThreshold: {TokenRefreshThreshold}s, EnableLogging: {EnableLogging}, IsDefault: {IsDefault} }}";
-    }
-
-    private static string MaskSensitiveData(string? data)
-    {
-        if (string.IsNullOrEmpty(data) || data!.Length <= 4)
-            return "****";
-        return $"{data.Substring(0, 2)}****{data.Substring(data.Length - 2)}";
+        return $"FeishuAppConfig {{ AppKey: {AppKey}, AppId: {AppId}, AppSecret: {SensitiveDataUtils.MaskSensitiveData(AppSecret)}, BaseUrl: {BaseUrl}, TimeOut: {TimeOut}s, RetryCount: {RetryCount}, RetryDelayMs: {RetryDelayMs}ms, CircuitBreakerEnabled: {CircuitBreakerEnabled}, CircuitBreakerFailureThreshold: {CircuitBreakerFailureThreshold}%, CircuitBreakerSamplingDurationSeconds: {CircuitBreakerSamplingDurationSeconds}s, CircuitBreakerBreakDurationSeconds: {CircuitBreakerBreakDurationSeconds}s, CircuitBreakerMinimumThroughput: {CircuitBreakerMinimumThroughput}, TokenRefreshThreshold: {TokenRefreshThreshold}s, EnableLogging: {EnableLogging}, IsDefault: {IsDefault} }}";
     }
 }

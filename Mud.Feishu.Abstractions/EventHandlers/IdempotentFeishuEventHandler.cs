@@ -6,6 +6,7 @@
 // -----------------------------------------------------------------------
 
 using System.Text.Json;
+using Mud.Feishu.Abstractions.Utilities;
 
 namespace Mud.Feishu.Abstractions.EventHandlers;
 
@@ -135,16 +136,6 @@ public abstract class IdempotentFeishuEventHandler<T, THeader> : IdempotentFeish
     where T : class, IEventResult, new()
     where THeader : class, IEventHeader, new()
 {
-    private static readonly JsonSerializerOptions _serializeOptions = new()
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-    };
-
-    private static readonly JsonSerializerOptions _deserializeOptions = new()
-    {
-        PropertyNameCaseInsensitive = true,
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-    };
     /// <summary>
     /// 构造函数
     /// </summary>
@@ -172,9 +163,9 @@ public abstract class IdempotentFeishuEventHandler<T, THeader> : IdempotentFeish
 
         try
         {
-            var json = JsonSerializer.Serialize(eventData.Header, _serializeOptions);
+            var json = JsonSerializer.Serialize(eventData.Header, FeishuJsonDefaults.SerializerOptions);
 
-            return JsonSerializer.Deserialize<THeader>(json, _deserializeOptions);
+            return JsonSerializer.Deserialize<THeader>(json, FeishuJsonDefaults.DeserializerOptions);
         }
         catch (JsonException ex)
         {

@@ -25,10 +25,6 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable
     private bool _isRunning = false;
     private bool _disposed = false;
 
-    private string? _cachedAccessToken;
-    private DateTime _tokenExpiryTime = DateTime.MinValue;
-    private readonly SemaphoreSlim _tokenLock = new(1, 1);
-
     /// <summary>
     /// 构造函数
     /// </summary>
@@ -56,47 +52,21 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable
     }
 
     /// <summary>
-    /// 获取有效的访问令牌（带缓存）
+    /// 获取有效的访问令牌
     /// </summary>
     /// <param name="cancellationToken">取消令牌</param>
     /// <returns>有效的访问令牌</returns>
     private async Task<string> GetValidAccessTokenAsync(CancellationToken cancellationToken)
     {
-        await _tokenLock.WaitAsync(cancellationToken).ConfigureAwait(false);
-        try
-        {
-            if (_cachedAccessToken != null && DateTime.UtcNow < _tokenExpiryTime)
-            {
-                return _cachedAccessToken;
-            }
-        }
-        finally
-        {
-            _tokenLock.Release();
-        }
-
         var tokenManager = _appContext.GetTokenManager("TenantAccessToken");
-        var newToken = await tokenManager.GetTokenAsync(cancellationToken).ConfigureAwait(false);
+        var token = await tokenManager.GetTokenAsync(cancellationToken).ConfigureAwait(false);
 
-        if (string.IsNullOrEmpty(newToken))
+        if (string.IsNullOrEmpty(token))
         {
             throw new InvalidOperationException("获取的应用访问令牌为空");
         }
 
-        await _tokenLock.WaitAsync(cancellationToken).ConfigureAwait(false);
-        try
-        {
-            _cachedAccessToken = newToken;
-            var tokenLifetime = _webSocketOptions.TokenRefreshInterval ?? TimeSpan.FromHours(2);
-            var refreshAhead = _webSocketOptions.TokenRefreshAhead ?? TimeSpan.FromMinutes(5);
-            _tokenExpiryTime = DateTime.UtcNow + tokenLifetime - refreshAhead;
-        }
-        finally
-        {
-            _tokenLock.Release();
-        }
-
-        return newToken;
+        return token;
     }
 
     /// <summary>
@@ -462,10 +432,6 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable
                 }
             }
 
-            // 清理令牌缓存
-            _cachedAccessToken = null;
-            _tokenExpiryTime = DateTime.MinValue;
-
             UnsubscribeClientEvents();
 
             // 异步释放客户端资源（如果客户端实现了IAsyncDisposable）
@@ -479,7 +445,6 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable
             }
 
             _startStopLock?.Dispose();
-            _tokenLock?.Dispose();
         }
         catch (Exception ex)
         {
@@ -547,15 +512,10 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable
                 _logger.LogWarning("获取启动停止锁超时（5秒），强制释放资源");
             }
 
-            // 清理令牌缓存
-            _cachedAccessToken = null;
-            _tokenExpiryTime = DateTime.MinValue;
-
             UnsubscribeClientEvents();
 
             _webSocketClient?.Dispose();
             _startStopLock?.Dispose();
-            _tokenLock?.Dispose();
         }
         catch (Exception ex)
         {

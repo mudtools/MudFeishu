@@ -6,31 +6,32 @@
 // -----------------------------------------------------------------------
 
 using System.Text.Json;
-using Mud.Feishu.Abstractions.Utilities;
 
-namespace Mud.Feishu.Webhook.Configuration;
+namespace Mud.Feishu.Abstractions.Utilities;
 
 /// <summary>
-/// 飞书 Webhook 统一的 JSON 序列化选项
+/// 飞书 SDK 统一的 JSON 序列化默认选项
 /// </summary>
-public static class FeishuJsonOptions
+public static class FeishuJsonDefaults
 {
     /// <summary>
-    /// 请求体反序列化选项（基于共享默认选项，增加严格校验配置）
+    /// 默认的反序列化选项（忽略大小写、驼峰命名、忽略 null 值写入）
     /// </summary>
-    public static JsonSerializerOptions Deserialize { get; } = new(FeishuJsonDefaults.DeserializerOptions)
+    public static readonly JsonSerializerOptions DeserializerOptions = new()
     {
-        ReadCommentHandling = JsonCommentHandling.Disallow,
-        AllowTrailingCommas = false,
-        MaxDepth = 64
-#if NET8_0_OR_GREATER
-        ,
-        UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow
-#endif
+        PropertyNameCaseInsensitive = true,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        WriteIndented = false,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
     };
 
     /// <summary>
-    /// 响应体序列化选项
+    /// 默认的序列化选项（驼峰命名、不缩进、忽略 null 值写入）
     /// </summary>
-    public static JsonSerializerOptions Serialize => FeishuJsonDefaults.SerializerOptions;
+    public static readonly JsonSerializerOptions SerializerOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        WriteIndented = false,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+    };
 }

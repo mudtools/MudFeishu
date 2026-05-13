@@ -6,6 +6,7 @@
 // -----------------------------------------------------------------------
 
 using System.Text.Json;
+using Mud.Feishu.Abstractions.Utilities;
 
 namespace Mud.Feishu.WebSocket;
 
@@ -17,11 +18,5 @@ public static class JsonOptions
     /// <summary>
     /// 默认的JSON序列化选项
     /// </summary>
-    public static readonly JsonSerializerOptions Default = new()
-    {
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-        WriteIndented = false,
-        PropertyNameCaseInsensitive = true,
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-    };
+    public static readonly JsonSerializerOptions Default = FeishuJsonDefaults.SerializerOptions;
 }

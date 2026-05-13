@@ -93,16 +93,6 @@ internal class Consts
     public const string DefaultEventKeyPrefix = "feishu:event:";
 
     /// <summary>
-    /// Nonce 去重键默认前缀
-    /// </summary>
-    public const string DefaultNonceKeyPrefix = "feishu:nonce:";
-
-    /// <summary>
-    /// SeqID 去重键默认前缀
-    /// </summary>
-    public const string DefaultSeqIdKeyPrefix = "feishu:seqid:";
-
-    /// <summary>
     /// 默认事件缓存过期时间（毫秒）：48 小时
     /// </summary>
     public const int DefaultCacheExpirationMs = 48 * 60 * 60 * 1000;

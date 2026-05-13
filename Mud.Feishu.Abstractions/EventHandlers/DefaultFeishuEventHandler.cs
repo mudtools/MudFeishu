@@ -6,6 +6,7 @@
 // -----------------------------------------------------------------------
 
 using System.Text.Json;
+using Mud.Feishu.Abstractions.Utilities;
 
 namespace Mud.Feishu.Abstractions.EventHandlers;
 
@@ -16,6 +17,7 @@ namespace Mud.Feishu.Abstractions.EventHandlers;
 public abstract class DefaultFeishuEventHandler<T> : IFeishuEventHandler
     where T : class, IEventResult, new()
 {
+
     /// <summary>
     /// 日志记录器。
     /// </summary>
@@ -80,9 +82,13 @@ public abstract class DefaultFeishuEventHandler<T> : IFeishuEventHandler
     /// <exception cref="InvalidOperationException">当事件数据为空或反序列化失败时抛出</exception>
     protected T? DeserializeEvent(EventData eventData)
     {
-        if (eventData.Event == null && _logger.IsEnabled(LogLevel.Debug))
+        if (eventData.Event == null)
         {
-            _logger.LogWarning("事件数据为空，事件ID：{EventId}，事件类型: {EventType}", eventData.EventId, eventData.EventType);
+            if (_logger.IsEnabled(LogLevel.Debug))
+            {
+                _logger.LogWarning("事件数据为空，事件ID：{EventId}，事件类型: {EventType}", eventData.EventId, eventData.EventType);
+            }
+
             return default;
         }
 
@@ -104,29 +110,21 @@ public abstract class DefaultFeishuEventHandler<T> : IFeishuEventHandler
                 }
                 else
                 {
-                    // 处理其他类型，尝试序列化为 JSON
-                    var options = new JsonSerializerOptions
-                    {
-                        PropertyNameCaseInsensitive = true,
-                        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-                    };
-                    eventJson = JsonSerializer.Serialize(eventData.Event, options);
+                    eventJson = JsonSerializer.Serialize(eventData.Event, FeishuJsonDefaults.SerializerOptions);
                 }
             }
 
-            if (string.IsNullOrWhiteSpace(eventJson) && _logger.IsEnabled(LogLevel.Debug))
+            if (string.IsNullOrWhiteSpace(eventJson))
             {
-                _logger.LogWarning("事件JSON数据为空，事件ID：{EventId}，事件类型: {EventType}", eventData.EventId, eventData.EventType);
+                if (_logger.IsEnabled(LogLevel.Debug))
+                {
+                    _logger.LogWarning("事件JSON数据为空，事件ID：{EventId}，事件类型: {EventType}", eventData.EventId, eventData.EventType);
+                }
+
                 return default;
             }
 
-            var deserializeOptions = new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true,
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-            };
-
-            var result = JsonSerializer.Deserialize<T>(eventJson!, deserializeOptions);
+            var result = JsonSerializer.Deserialize<T>(eventJson!, FeishuJsonDefaults.DeserializerOptions);
             return result ?? default;
         }
         catch (JsonException ex)

@@ -5,6 +5,8 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using Mud.Feishu.Abstractions.Utilities;
+
 namespace Mud.Feishu.Redis.Configuration;
 
 /// <summary>
@@ -12,6 +14,9 @@ namespace Mud.Feishu.Redis.Configuration;
 /// </summary>
 public class RedisOptions
 {
+    private const string DefaultNonceKeyPrefix = "feishu:nonce:";
+    private const string DefaultSeqIdKeyPrefix = "feishu:seqid:";
+
     /// <summary>
     /// Redis 连接字符串
     /// <para>示例: "localhost:6379", "127.0.0.1:6379", "rediss://secure.redis.com:6380"</para>
@@ -46,12 +51,12 @@ public class RedisOptions
     /// <summary>
     /// Nonce 去重键前缀
     /// </summary>
-    public string NonceKeyPrefix { get; set; } = Mud.Feishu.Abstractions.Consts.DefaultNonceKeyPrefix;
+    public string NonceKeyPrefix { get; set; } = DefaultNonceKeyPrefix;
 
     /// <summary>
     /// SeqID 去重键前缀
     /// </summary>
-    public string SeqIdKeyPrefix { get; set; } = Mud.Feishu.Abstractions.Consts.DefaultSeqIdKeyPrefix;
+    public string SeqIdKeyPrefix { get; set; } = DefaultSeqIdKeyPrefix;
 
     /// <summary>
     /// 连接超时时间，默认 5000 毫秒
@@ -124,13 +129,6 @@ public class RedisOptions
     /// </summary>
     public override string ToString()
     {
-        return $"RedisOptions {{ ServerAddress: {ServerAddress}, Password: {MaskSensitiveData(Password)}, DefaultDatabase: {DefaultDatabase?.ToString() ?? "默认"}, ConnectTimeout: {ConnectTimeout}ms, SyncTimeout: {SyncTimeout}ms, Ssl: {Ssl} }}";
-    }
-
-    private static string MaskSensitiveData(string? data)
-    {
-        if (string.IsNullOrEmpty(data) || data.Length <= 4)
-            return "****";
-        return $"{data.Substring(0, 2)}****{data.Substring(data.Length - 2)}";
+        return $"RedisOptions {{ ServerAddress: {ServerAddress}, Password: {SensitiveDataUtils.MaskSensitiveData(Password)}, DefaultDatabase: {DefaultDatabase?.ToString() ?? "默认"}, ConnectTimeout: {ConnectTimeout}ms, SyncTimeout: {SyncTimeout}ms, Ssl: {Ssl} }}";
     }
 }

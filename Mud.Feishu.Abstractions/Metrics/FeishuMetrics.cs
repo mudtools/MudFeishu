@@ -17,34 +17,6 @@ public class FeishuMetrics
     private static readonly Meter Meter = new("Mud.Feishu", "2.0.0");
 
     /// <summary>
-    /// 记录令牌获取操作
-    /// </summary>
-    public static readonly Counter<long> TokenFetchCount = Meter.CreateCounter<long>(
-        "feishu_token_fetch_total",
-        description: "令牌获取总次数");
-
-    /// <summary>
-    /// 记录令牌缓存命中
-    /// </summary>
-    public static readonly Counter<long> TokenCacheHitCount = Meter.CreateCounter<long>(
-        "feishu_token_cache_hit_total",
-        description: "令牌缓存命中次数");
-
-    /// <summary>
-    /// 记录令牌缓存未命中
-    /// </summary>
-    public static readonly Counter<long> TokenCacheMissCount = Meter.CreateCounter<long>(
-        "feishu_token_cache_miss_total",
-        description: "令牌缓存未命中次数");
-
-    /// <summary>
-    /// 记录令牌刷新次数
-    /// </summary>
-    public static readonly Counter<long> TokenRefreshCount = Meter.CreateCounter<long>(
-        "feishu_token_refresh_total",
-        description: "令牌刷新次数");
-
-    /// <summary>
     /// 记录事件处理次数
     /// </summary>
     public static readonly Counter<long> EventHandlingCount = Meter.CreateCounter<long>(
@@ -80,34 +52,12 @@ public class FeishuMetrics
         description: "HTTP 请求总次数");
 
     /// <summary>
-    /// 记录 HTTP 请求成功次数
-    /// </summary>
-    public static readonly Counter<long> HttpRequestSuccessCount = Meter.CreateCounter<long>(
-        "feishu_http_request_success_total",
-        description: "HTTP 请求成功次数");
-
-    /// <summary>
-    /// 记录 HTTP 请求失败次数
-    /// </summary>
-    public static readonly Counter<long> HttpRequestFailureCount = Meter.CreateCounter<long>(
-        "feishu_http_request_failure_total",
-        description: "HTTP 请求失败次数");
-
-    /// <summary>
     /// 记录 HTTP 请求持续时间（毫秒）
     /// </summary>
     public static readonly Histogram<double> HttpRequestDuration = Meter.CreateHistogram<double>(
         "feishu_http_request_duration_ms",
         unit: "ms",
         description: "HTTP 请求持续时间（毫秒）");
-
-    /// <summary>
-    /// 记录令牌获取持续时间（毫秒）
-    /// </summary>
-    public static readonly Histogram<double> TokenFetchDuration = Meter.CreateHistogram<double>(
-        "feishu_token_fetch_duration_ms",
-        unit: "ms",
-        description: "令牌获取持续时间（毫秒）");
 
     /// <summary>
     /// 记录事件处理持续时间（毫秒）
@@ -134,48 +84,6 @@ public class FeishuMetrics
             observeValue: () => WebSocketConnectionCountProvider(),
             description: "WebSocket 连接数");
     }
-
-    /// <summary>
-    /// 记录 WebSocket 发送消息数
-    /// </summary>
-    public static readonly Counter<long> WebSocketMessageSentCount = Meter.CreateCounter<long>(
-        "feishu_websocket_messages_sent_total",
-        description: "WebSocket 发送消息数");
-
-    /// <summary>
-    /// 记录 WebSocket 接收消息数
-    /// </summary>
-    public static readonly Counter<long> WebSocketMessageReceivedCount = Meter.CreateCounter<long>(
-        "feishu_websocket_messages_received_total",
-        description: "WebSocket 接收消息数");
-
-    /// <summary>
-    /// 记录 WebSocket 发送字节数
-    /// </summary>
-    public static readonly Counter<long> WebSocketBytesSentCount = Meter.CreateCounter<long>(
-        "feishu_websocket_bytes_sent_total",
-        description: "WebSocket 发送字节数");
-
-    /// <summary>
-    /// 记录 WebSocket 接收字节数
-    /// </summary>
-    public static readonly Counter<long> WebSocketBytesReceivedCount = Meter.CreateCounter<long>(
-        "feishu_websocket_bytes_received_total",
-        description: "WebSocket 接收字节数");
-
-    /// <summary>
-    /// 记录 WebSocket 连接错误数
-    /// </summary>
-    public static readonly Counter<long> WebSocketConnectionErrorCount = Meter.CreateCounter<long>(
-        "feishu_websocket_connection_errors_total",
-        description: "WebSocket 连接错误数");
-
-    /// <summary>
-    /// 记录 WebSocket 认证错误数
-    /// </summary>
-    public static readonly Counter<long> WebSocketAuthenticationErrorCount = Meter.CreateCounter<long>(
-        "feishu_websocket_authentication_errors_total",
-        description: "WebSocket 认证错误数");
 
     /// <summary>
     /// 记录 WebSocket 消息处理持续时间（毫秒）

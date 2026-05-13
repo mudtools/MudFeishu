@@ -5,32 +5,22 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-using System.Text.Json;
-using Mud.Feishu.Abstractions.Utilities;
-
-namespace Mud.Feishu.Webhook.Configuration;
+namespace Mud.Feishu.Abstractions.Utilities;
 
 /// <summary>
-/// 飞书 Webhook 统一的 JSON 序列化选项
+/// 敏感数据掩码工具类
 /// </summary>
-public static class FeishuJsonOptions
+public static class SensitiveDataUtils
 {
     /// <summary>
-    /// 请求体反序列化选项（基于共享默认选项，增加严格校验配置）
+    /// 对敏感数据进行掩码处理，仅保留首尾各2个字符
     /// </summary>
-    public static JsonSerializerOptions Deserialize { get; } = new(FeishuJsonDefaults.DeserializerOptions)
+    /// <param name="data">需要掩码的敏感数据</param>
+    /// <returns>掩码后的字符串</returns>
+    public static string MaskSensitiveData(string? data)
     {
-        ReadCommentHandling = JsonCommentHandling.Disallow,
-        AllowTrailingCommas = false,
-        MaxDepth = 64
-#if NET8_0_OR_GREATER
-        ,
-        UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow
-#endif
-    };
-
-    /// <summary>
-    /// 响应体序列化选项
-    /// </summary>
-    public static JsonSerializerOptions Serialize => FeishuJsonDefaults.SerializerOptions;
+        if (string.IsNullOrEmpty(data) || data!.Length <= 4)
+            return "****";
+        return $"{data.Substring(0, 2)}****{data.Substring(data.Length - 2)}";
+    }
 }

@@ -6,8 +6,6 @@
 // -----------------------------------------------------------------------
 
 using FluentAssertions;
-using Mud.Feishu.Abstractions;
-using Mud.Feishu.WebSocket.DataModels;
 using Mud.Feishu.WebSocket.SocketEventArgs;
 using System.Net.WebSockets;
 
@@ -133,78 +131,6 @@ public class SocketEventArgsTests
         args.EndOfMessage.Should().BeTrue();
         args.MessageSize.Should().Be(100);
         args.QueueCount.Should().Be(5);
-    }
-
-    [Fact]
-    public void WebSocketFeishuEventArgs_DefaultValues_ShouldBeSet()
-    {
-        // Arrange & Act
-        var args = new WebSocketFeishuEventArgs();
-
-        // Assert
-        args.EventMessage.Should().BeNull();
-        args.IsV2Message.Should().BeFalse();
-        args.EventData.Should().BeNull();
-        args.EventType.Should().BeNull();
-        args.EventTypeV2.Should().BeNull();
-        args.EventId.Should().BeNull();
-        args.EventIdV2.Should().BeNull();
-        args.AppId.Should().BeNull();
-        args.TenantKey.Should().BeNull();
-        args.Timestamp.Should().BeCloseTo(DateTimeOffset.UtcNow, TimeSpan.FromSeconds(1));
-        args.RawEvent.Should().BeNull();
-    }
-
-    [Fact]
-    public void WebSocketFeishuEventArgs_WithV1Message_ShouldSetProperties()
-    {
-        // Arrange
-        var eventMessage = new EventMessage
-        {
-            Data = new EventData
-            {
-                EventType = "contact.user.created",
-                AppId = "cli_test",
-                TenantKey = "tenant_test"
-            }
-        };
-
-        // Act
-        var args = new WebSocketFeishuEventArgs
-        {
-            EventMessage = eventMessage,
-            IsV2Message = false,
-            RawEvent = "{\"type\":\"event\"}"
-        };
-
-        // Assert
-        args.EventMessage.Should().Be(eventMessage);
-        args.IsV2Message.Should().BeFalse();
-        args.EventData.Should().NotBeNull();
-        args.EventType.Should().Be("contact.user.created");
-        args.AppId.Should().Be("cli_test");
-        args.TenantKey.Should().Be("tenant_test");
-        args.RawEvent.Should().Be("{\"type\":\"event\"}");
-    }
-
-    [Fact]
-    public void WebSocketFeishuEventArgs_WithV2Message_ShouldSetProperties()
-    {
-        // Arrange & Act
-        var args = new WebSocketFeishuEventArgs
-        {
-            IsV2Message = true,
-            EventTypeV2 = "im.message.receive_v1",
-            EventIdV2 = "event_v2_id",
-            RawEvent = "{\"header\":{\"event_type\":\"im.message.receive_v1\"}}"
-        };
-
-        // Assert
-        args.IsV2Message.Should().BeTrue();
-        args.EventType.Should().Be("im.message.receive_v1");
-        args.EventId.Should().Be("event_v2_id");
-        args.EventTypeV2.Should().Be("im.message.receive_v1");
-        args.EventIdV2.Should().Be("event_v2_id");
     }
 
     [Fact]

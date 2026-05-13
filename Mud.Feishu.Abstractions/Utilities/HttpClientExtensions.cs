@@ -19,12 +19,6 @@ internal static class HttpClientExtensions
     /// </summary>
     internal static JsonSerializerOptions GetDefaultJsonSerializerOptions()
     {
-        return new JsonSerializerOptions
-        {
-            PropertyNameCaseInsensitive = true,
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            WriteIndented = false,
-            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
-        };
+        return FeishuJsonDefaults.SerializerOptions;
     }
 }

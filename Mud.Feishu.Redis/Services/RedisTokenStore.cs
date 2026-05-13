@@ -75,7 +75,43 @@ public class RedisTokenStore : ITokenStore
         await db.KeyDeleteAsync(new RedisKey[] { BuildAccessTokenKey(tokenType), BuildRefreshTokenKey(tokenType) }).ConfigureAwait(false);
     }
 
+    /// <inheritdoc />
+    public async Task<IEnumerable<string>> GetTokenTypesAsync(CancellationToken cancellationToken = default)
+    {
+        var pattern = $"{_keyPrefix}:*:access";
+        var keys = GetServer().Keys(pattern: pattern);
+        var tokenTypes = new List<string>();
+        var prefixLength = $"{_keyPrefix}:".Length;
+
+        foreach (var key in keys)
+        {
+            var keyStr = key.ToString();
+            var parts = keyStr.Substring(prefixLength).Split(':');
+            if (parts.Length >= 2)
+                tokenTypes.Add(parts[0]);
+        }
+
+        return tokenTypes.Distinct();
+    }
+
+    /// <inheritdoc />
+    public async Task ClearAsync(CancellationToken cancellationToken = default)
+    {
+        var pattern = $"{_keyPrefix}:*";
+        var db = GetDatabase();
+        var keys = GetServer().Keys(pattern: pattern);
+
+        foreach (var key in keys)
+            await db.KeyDeleteAsync(key).ConfigureAwait(false);
+    }
+
     private IDatabase GetDatabase() => _redis.GetDatabase();
+
+    private IServer GetServer()
+    {
+        var endpoints = _redis.GetEndPoints();
+        return _redis.GetServer(endpoints[0]);
+    }
 
     private string BuildAccessTokenKey(string tokenType) => $"{_keyPrefix}:{tokenType}:access";
     private string BuildRefreshTokenKey(string tokenType) => $"{_keyPrefix}:{tokenType}:refresh";

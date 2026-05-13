@@ -73,6 +73,27 @@ public class CurrentUserContext(ILogger<CurrentUserContext> logger) : IFeishuCur
     }
 
     /// <inheritdoc />
+    public void SetUserId(string? userId)
+    {
+        var current = _currentUser.Value;
+        if (userId == null)
+        {
+            _currentUser.Value = null;
+            _logger.LogDebug("用户上下文已通过 SetUserId 清理");
+            return;
+        }
+
+        _currentUser.Value = new UserInfo
+        {
+            OpenId = current?.OpenId,
+            UnionId = current?.UnionId,
+            UserId = userId,
+            Name = current?.Name
+        };
+        _logger.LogDebug("用户上下文 UserId 已设置: {UserId}", MaskSensitiveInfo(userId));
+    }
+
+    /// <inheritdoc />
     public void Clear()
     {
         if (_currentUser.Value == null)

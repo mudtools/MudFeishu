@@ -268,4 +268,50 @@ public class CurrentUserContextTests
     }
 
     #endregion
+
+    #region SetUserId Tests
+
+    [Fact]
+    public void SetUserId_ShouldSetUserId_WhenNoExistingUser()
+    {
+        var context = CreateContext();
+
+        context.SetUserId("user_id_123");
+
+        Assert.Equal("user_id_123", context.UserId);
+        Assert.Null(context.OpenId);
+        Assert.Null(context.UnionId);
+        Assert.Null(context.Name);
+    }
+
+    [Fact]
+    public void SetUserId_ShouldPreserveOtherFields_WhenExistingUser()
+    {
+        var context = CreateContext();
+        context.SetUser("open_id_1", "union_id_1", "user_id_1", "User 1");
+
+        context.SetUserId("user_id_2");
+
+        Assert.Equal("open_id_1", context.OpenId);
+        Assert.Equal("union_id_1", context.UnionId);
+        Assert.Equal("user_id_2", context.UserId);
+        Assert.Equal("User 1", context.Name);
+    }
+
+    [Fact]
+    public void SetUserId_ShouldClearContext_WhenNull()
+    {
+        var context = CreateContext();
+        context.SetUser("open_id_1", "union_id_1", "user_id_1", "User 1");
+
+        context.SetUserId(null);
+
+        Assert.Null(context.UserId);
+        Assert.Null(context.OpenId);
+        Assert.Null(context.UnionId);
+        Assert.Null(context.Name);
+        Assert.False(context.IsAuthenticated);
+    }
+
+    #endregion
 }

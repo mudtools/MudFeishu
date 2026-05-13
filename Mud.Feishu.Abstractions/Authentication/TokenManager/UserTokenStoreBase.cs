@@ -49,6 +49,14 @@ public abstract class UserTokenStoreBase : IUserTokenStore
         => _innerStore.RemoveAsync(tokenType, cancellationToken);
 
     /// <inheritdoc />
+    public Task<IEnumerable<string>> GetTokenTypesAsync(CancellationToken cancellationToken = default)
+        => _innerStore.GetTokenTypesAsync(cancellationToken);
+
+    /// <inheritdoc />
+    public Task ClearAsync(CancellationToken cancellationToken = default)
+        => _innerStore.ClearAsync(cancellationToken);
+
+    /// <inheritdoc />
     public abstract Task<string?> GetAccessTokenAsync(string userId, string tokenType, CancellationToken cancellationToken = default);
 
     /// <inheritdoc />
@@ -62,6 +70,12 @@ public abstract class UserTokenStoreBase : IUserTokenStore
 
     /// <inheritdoc />
     public abstract Task RemoveAsync(string userId, string tokenType, CancellationToken cancellationToken = default);
+
+    /// <inheritdoc />
+    public abstract Task<IEnumerable<string>> GetTokenTypesAsync(string userId, CancellationToken cancellationToken = default);
+
+    /// <inheritdoc />
+    public abstract Task ClearUserAsync(string userId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 获取键前缀，子类可重写以自定义前缀

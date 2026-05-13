@@ -74,11 +74,13 @@ public class FeishuTokenStore : ITokenStore
         return Task.CompletedTask;
     }
 
+    /// <inheritdoc />
     public Task<IEnumerable<string>> GetTokenTypesAsync(CancellationToken cancellationToken = default)
     {
         return Task.FromResult(_tokenTypes.Keys.AsEnumerable());
     }
 
+    /// <inheritdoc />
     public Task ClearAsync(CancellationToken cancellationToken = default)
     {
         foreach (var tokenType in _tokenTypes.Keys)

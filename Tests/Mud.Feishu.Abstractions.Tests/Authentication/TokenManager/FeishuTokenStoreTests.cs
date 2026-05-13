@@ -104,6 +104,64 @@ public class FeishuTokenStoreTests : IDisposable
         Assert.Null(tenantResult);
         Assert.Equal("app-token", appResult);
     }
+
+    [Fact]
+    public async Task GetTokenTypesAsync_ShouldReturnEmpty_WhenNoTokensStored()
+    {
+        var result = await _sut.GetTokenTypesAsync();
+        Assert.Empty(result);
+    }
+
+    [Fact]
+    public async Task GetTokenTypesAsync_ShouldReturnStoredTokenTypes()
+    {
+        await _sut.SetAccessTokenAsync("TenantAccessToken", "tenant-token", 7200);
+        await _sut.SetAccessTokenAsync("AppAccessToken", "app-token", 7200);
+
+        var result = await _sut.GetTokenTypesAsync();
+        Assert.Equal(2, result.Count());
+        Assert.Contains("TenantAccessToken", result);
+        Assert.Contains("AppAccessToken", result);
+    }
+
+    [Fact]
+    public async Task GetTokenTypesAsync_ShouldNotReturnRemovedTokenTypes()
+    {
+        await _sut.SetAccessTokenAsync("TenantAccessToken", "tenant-token", 7200);
+        await _sut.SetAccessTokenAsync("AppAccessToken", "app-token", 7200);
+        await _sut.RemoveAsync("TenantAccessToken");
+
+        var result = await _sut.GetTokenTypesAsync();
+        Assert.Single(result);
+        Assert.Contains("AppAccessToken", result);
+    }
+
+    [Fact]
+    public async Task ClearAsync_ShouldRemoveAllTokens()
+    {
+        await _sut.SetAccessTokenAsync("TenantAccessToken", "tenant-token", 7200);
+        await _sut.SetAccessTokenAsync("AppAccessToken", "app-token", 7200);
+        await _sut.SetRefreshTokenAsync("TenantAccessToken", "refresh-token");
+
+        await _sut.ClearAsync();
+
+        var tenantAccess = await _sut.GetAccessTokenAsync("TenantAccessToken");
+        var appAccess = await _sut.GetAccessTokenAsync("AppAccessToken");
+        var tenantRefresh = await _sut.GetRefreshTokenAsync("TenantAccessToken");
+        Assert.Null(tenantAccess);
+        Assert.Null(appAccess);
+        Assert.Null(tenantRefresh);
+    }
+
+    [Fact]
+    public async Task ClearAsync_ShouldClearTokenTypes()
+    {
+        await _sut.SetAccessTokenAsync("TenantAccessToken", "tenant-token", 7200);
+        await _sut.ClearAsync();
+
+        var result = await _sut.GetTokenTypesAsync();
+        Assert.Empty(result);
+    }
 }
 
 public class FeishuUserTokenStoreTests : IDisposable
@@ -127,7 +185,8 @@ public class FeishuUserTokenStoreTests : IDisposable
     [Fact]
     public void Constructor_ShouldThrowArgumentNullException_WhenCacheIsNull()
     {
-        Assert.Throws<ArgumentNullException>(() => new FeishuUserTokenStore(null!, null!));
+        var innerStore = new FeishuTokenStore(new MemoryCache(new MemoryCacheOptions()));
+        Assert.Throws<ArgumentNullException>(() => new FeishuUserTokenStore(innerStore, null!));
     }
 
     [Fact]
@@ -246,5 +305,63 @@ public class FeishuUserTokenStoreTests : IDisposable
         var user2Result = await _sut.GetAccessTokenAsync("user2", "UserAccessToken");
         Assert.Null(user1Result);
         Assert.Equal("user2-token", user2Result);
+    }
+
+    [Fact]
+    public async Task GetTokenTypesAsync_ShouldReturnEmpty_WhenNoUserTokensStored()
+    {
+        var result = await _sut.GetTokenTypesAsync("user1");
+        Assert.Empty(result);
+    }
+
+    [Fact]
+    public async Task GetTokenTypesAsync_ShouldReturnStoredTokenTypesForUser()
+    {
+        await _sut.SetAccessTokenAsync("user1", "UserAccessToken", "token1", 7200);
+        await _sut.SetAccessTokenAsync("user1", "CustomToken", "token2", 7200);
+
+        var result = await _sut.GetTokenTypesAsync("user1");
+        Assert.Equal(2, result.Count());
+        Assert.Contains("UserAccessToken", result);
+        Assert.Contains("CustomToken", result);
+    }
+
+    [Fact]
+    public async Task GetTokenTypesAsync_ShouldIsolateByUser()
+    {
+        await _sut.SetAccessTokenAsync("user1", "UserAccessToken", "token1", 7200);
+        await _sut.SetAccessTokenAsync("user2", "UserAccessToken", "token2", 7200);
+
+        var user1Result = await _sut.GetTokenTypesAsync("user1");
+        var user2Result = await _sut.GetTokenTypesAsync("user2");
+        Assert.Single(user1Result);
+        Assert.Single(user2Result);
+    }
+
+    [Fact]
+    public async Task ClearUserAsync_ShouldRemoveAllTokensForUser()
+    {
+        await _sut.SetAccessTokenAsync("user1", "UserAccessToken", "access-token", 7200);
+        await _sut.SetRefreshTokenAsync("user1", "UserAccessToken", "refresh-token");
+        await _sut.SetAccessTokenAsync("user2", "UserAccessToken", "user2-token", 7200);
+
+        await _sut.ClearUserAsync("user1");
+
+        var user1Access = await _sut.GetAccessTokenAsync("user1", "UserAccessToken");
+        var user1Refresh = await _sut.GetRefreshTokenAsync("user1", "UserAccessToken");
+        var user2Access = await _sut.GetAccessTokenAsync("user2", "UserAccessToken");
+        Assert.Null(user1Access);
+        Assert.Null(user1Refresh);
+        Assert.Equal("user2-token", user2Access);
+    }
+
+    [Fact]
+    public async Task ClearUserAsync_ShouldClearTokenTypesForUser()
+    {
+        await _sut.SetAccessTokenAsync("user1", "UserAccessToken", "token", 7200);
+        await _sut.ClearUserAsync("user1");
+
+        var result = await _sut.GetTokenTypesAsync("user1");
+        Assert.Empty(result);
     }
 }

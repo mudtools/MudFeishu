@@ -76,6 +76,7 @@ public class FeishuUserTokenStore : UserTokenStoreBase
         return Task.CompletedTask;
     }
 
+    /// <inheritdoc />
     public override Task<IEnumerable<string>> GetTokenTypesAsync(string userId, CancellationToken cancellationToken = default)
     {
         if (_userTokenTypes.TryGetValue(userId, out var tokenTypes))
@@ -84,6 +85,7 @@ public class FeishuUserTokenStore : UserTokenStoreBase
         return Task.FromResult(Enumerable.Empty<string>());
     }
 
+    /// <inheritdoc />
     public override Task ClearUserAsync(string userId, CancellationToken cancellationToken = default)
     {
         if (_userTokenTypes.TryRemove(userId, out var tokenTypes))

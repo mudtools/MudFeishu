@@ -701,8 +701,8 @@ public class ServiceManager
 | `ValidateServerCertificate`           | bool                                 | true       | 是否验证 SSL 证书（生产环境建议 true）      |
 | `AllowSelfSignedCertificates`         | bool                                 | false      | 是否允许自签名证书（生产环境建议 false）    |
 | `CustomCertificateValidationCallback` | RemoteCertificateValidationCallback? | null       | 自定义证书验证回调                          |
-| `TokenRefreshInterval`                | TimeSpan?                            | 2 小时     | 访问令牌有效期                              |
-| `TokenRefreshAhead`                   | TimeSpan?                            | 5 分钟     | 提前刷新令牌的时间                          |
+| `TokenRefreshInterval`                | TimeSpan?                            | 2 小时     | ⚠️ 已过时，令牌生命周期由 IAppTokenManager 管理 |
+| `TokenRefreshAhead`                   | TimeSpan?                            | 5 分钟     | ⚠️ 已过时，令牌刷新策略由 IAppTokenManager 管理 |
 | `EventDeduplication`                  | EventDeduplicationOptions            | 见下       | 事件去重配置                                |
 
 ### 消息大小限制配置 (`MessageSizeLimits`)

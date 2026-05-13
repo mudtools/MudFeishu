@@ -187,13 +187,17 @@ public class FeishuWebSocketOptions
     /// <summary>
     /// 访问令牌的有效期，默认为2小时
     /// <para>飞书 TenantAccessToken 默认有效期为2小时</para>
+    /// <para>此配置已不再使用，令牌生命周期由 IAppTokenManager 管理</para>
     /// </summary>
+    [Obsolete("令牌生命周期已由 IAppTokenManager 统一管理，此配置不再生效。将在未来版本中移除。")]
     public TimeSpan? TokenRefreshInterval { get; set; }
 
     /// <summary>
     /// 提前刷新令牌的时间，默认为5分钟
     /// <para>在令牌过期前提前刷新，避免使用即将过期的令牌</para>
+    /// <para>此配置已不再使用，令牌刷新策略由 IAppTokenManager 管理</para>
     /// </summary>
+    [Obsolete("令牌刷新策略已由 IAppTokenManager 统一管理，此配置不再生效。将在未来版本中移除。")]
     public TimeSpan? TokenRefreshAhead { get; set; }
 
     /// <summary>

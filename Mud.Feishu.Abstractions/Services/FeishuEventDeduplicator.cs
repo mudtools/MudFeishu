@@ -167,9 +167,9 @@ public class FeishuEventDeduplicator : MemoryDeduplicator<string>, IFeishuEventD
     /// 释放资源
     /// </summary>
     /// <remarks>
-    /// 此方法通过同步等待 <see cref="MemoryDeduplicator.DisposeAsync"/> 完成来释放资源。
+    /// 此方法通过同步等待 <see cref="MemoryDeduplicator{TKey}.DisposeAsync"/> 完成来释放资源。
     /// 在拥有同步上下文的环境（如 UI 线程或旧版 ASP.NET）中可能导致死锁，
-    /// 建议优先使用 <see cref="MemoryDeduplicator.DisposeAsync"/> 方法。
+    /// 建议优先使用 <see cref="MemoryDeduplicator{TKey}.DisposeAsync"/> 方法。
     /// </remarks>
     public void Dispose()
     {

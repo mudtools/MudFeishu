@@ -140,7 +140,7 @@ public class FeishuUserAuthenticationMiddleware(
     /// </summary>
     /// <param name="value">原始值</param>
     /// <returns>脱敏后的值</returns>
-    private static string MaskSensitiveInfo(string value) => SensitiveDataUtils.MaskSensitiveInfo(value);
+    private static string MaskSensitiveInfo(string value) => Abstractions.Utilities.SensitiveDataUtils.MaskSensitiveData(value);
 
     /// <summary>
     /// ActivitySource 用于分布式追踪

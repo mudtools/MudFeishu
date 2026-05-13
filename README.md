@@ -177,8 +177,8 @@ dotnet add package Mud.Feishu.Redis
 | `EmptyQueueCheckIntervalMs`      | int      | 100        | 空队列检查间隔（毫秒），最小 10         |
 | `MaxConcurrentMessageProcessing` | int      | 10         | 最大并发消息处理数                      |
 | `MessageSizeLimits`              | object   | 见下方     | 消息大小限制配置                        |
-| `TokenRefreshInterval`           | TimeSpan | 2 小时     | 访问令牌有效期                          |
-| `TokenRefreshAhead`              | TimeSpan | 5 分钟     | 提前刷新令牌的时间                      |
+| `TokenRefreshInterval`           | TimeSpan | 2 小时     | ⚠️ 已过时，令牌生命周期由 IAppTokenManager 管理 |
+| `TokenRefreshAhead`              | TimeSpan | 5 分钟     | ⚠️ 已过时，令牌刷新策略由 IAppTokenManager 管理 |
 
 **MessageSizeLimits 子配置：**
 

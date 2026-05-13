@@ -696,8 +696,8 @@ public class ServiceManager
 | `ValidateServerCertificate`           | bool                                 | true       | Validate SSL certificate (recommended true in production)        |
 | `AllowSelfSignedCertificates`         | bool                                 | false      | Allow self-signed certificates (recommended false in production) |
 | `CustomCertificateValidationCallback` | RemoteCertificateValidationCallback? | null       | Custom certificate validation callback                           |
-| `TokenRefreshInterval`                | TimeSpan?                            | 2h         | Access token validity period                                     |
-| `TokenRefreshAhead`                   | TimeSpan?                            | 5min       | Time to refresh token ahead of expiration                        |
+| `TokenRefreshInterval`                | TimeSpan?                            | 2h         | ⚠️ Obsolete, token lifecycle managed by IAppTokenManager         |
+| `TokenRefreshAhead`                   | TimeSpan?                            | 5min       | ⚠️ Obsolete, token refresh strategy managed by IAppTokenManager  |
 | `EventDeduplication`                  | EventDeduplicationOptions            | See below  | Event deduplication configuration                                |
 
 ### Message Size Limits (`MessageSizeLimits`)

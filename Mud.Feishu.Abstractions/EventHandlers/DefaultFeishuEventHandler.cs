@@ -94,24 +94,19 @@ public abstract class DefaultFeishuEventHandler<T> : IFeishuEventHandler
 
         try
         {
-            string? eventJson = null;
+            string? eventJson;
 
-            if (eventData.Event != null)
+            if (eventData.Event is JsonDocument jsonDocument)
             {
-                if (eventData.Event is JsonDocument jsonDocument)
-                {
-                    // 处理 JsonDocument 类型
-                    eventJson = jsonDocument.RootElement.GetRawText();
-                }
-                else if (eventData.Event is string stringEvent)
-                {
-                    // 处理字符串类型
-                    eventJson = stringEvent;
-                }
-                else
-                {
-                    eventJson = JsonSerializer.Serialize(eventData.Event, FeishuJsonDefaults.SerializerOptions);
-                }
+                eventJson = jsonDocument.RootElement.GetRawText();
+            }
+            else if (eventData.Event is string stringEvent)
+            {
+                eventJson = stringEvent;
+            }
+            else
+            {
+                eventJson = JsonSerializer.Serialize(eventData.Event, FeishuJsonDefaults.SerializerOptions);
             }
 
             if (string.IsNullOrWhiteSpace(eventJson))

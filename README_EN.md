@@ -199,8 +199,8 @@ dotnet add package Mud.Feishu.Redis
 | `BackpressureBlockTimeoutMs` | int | 5000 | Backpressure block timeout (ms) |
 | `HealthCheckIntervalMs` | int | 60000 | Health check interval (ms) |
 | `MaxConcurrentMessageProcessing` | int | 10 | Max concurrent message processing |
-| `TokenRefreshInterval` | TimeSpan | 2h | Access token validity period |
-| `TokenRefreshAhead` | TimeSpan | 5min | Token refresh ahead time |
+| `TokenRefreshInterval` | TimeSpan | 2h | ⚠️ Obsolete, token lifecycle managed by IAppTokenManager |
+| `TokenRefreshAhead` | TimeSpan | 5min | ⚠️ Obsolete, token refresh strategy managed by IAppTokenManager |
 
 > 💡 For more details, see [Mud.Feishu.WebSocket Documentation](./Mud.Feishu.WebSocket/Readme.md)
 

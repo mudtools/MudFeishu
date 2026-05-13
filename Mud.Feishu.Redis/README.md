@@ -231,7 +231,6 @@ Pending → Processing → Completed
 - Redis 失败时自动降级到内存去重
 - 支持指数退避重试机制（可配置重试次数和延迟）
 - 连续失败超过阈值时标记 Redis 为不可用
-- 支持降级告警通知（`IFallbackAlertService`）
 - Redis 恢复后自动切回
 
 **使用示例**:

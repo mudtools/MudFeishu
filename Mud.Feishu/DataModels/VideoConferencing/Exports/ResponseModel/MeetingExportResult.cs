@@ -8,9 +8,9 @@
 namespace Mud.Feishu.DataModels.VideoConferencing;
 
 /// <summary>
-/// 导出会议明细响应体
+/// 导出会议信息响应体
 /// </summary>
-public class MeetingListExportResult
+public class MeetingExportResult
 {
     /// <summary>
     /// <para>任务id</para>

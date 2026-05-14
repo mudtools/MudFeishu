@@ -119,8 +119,8 @@ public interface IFeishuV1VideoConferencingExports : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 查询导出任务结果
+    /// <para><see href="https://open.feishu.cn/document/server-docs/vc-v1/export/get">接口文档</see></para>
     /// </summary> 
-    /// <param name="task_id">
     /// <param name="task_id">
     /// <para>任务id</para>
     /// <para>示例值：7108646852144136212</para>
@@ -130,4 +130,19 @@ public interface IFeishuV1VideoConferencingExports : IFeishuAppContextSwitcher
     Task<FeishuApiResult<ExportResult>?> GetExportAsync(
         [Path] string? task_id,
         CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 下载导出文件
+    /// <para><see href="https://open.feishu.cn/document/server-docs/vc-v1/export/download">接口文档</see></para>
+    /// </summary> 
+    /// <param name="file_token">
+    /// <para>文档token</para>
+    /// <para>示例值：6yHu7Igp7Igy62Ez6fLr6IJz7j9i5WMe6fHq5yZeY2Jz6yLqYAMAY46fZfEz64Lr5fYyYQ==</para>
+    /// </param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Get("/open-apis/vc/v1/exports/download")]
+    Task<byte[]?> DownloadExportAsync(
+       [Query] string? file_token,
+       CancellationToken cancellationToken = default);
 }

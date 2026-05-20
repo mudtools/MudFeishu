@@ -57,4 +57,20 @@ public interface IFeishuTenantV1VideoConferencingRoomLevel : IFeishuAppContextSw
         [Path] string room_level_id,
         [Body] UpdateRoomLevelRequest updateRoomLevelRequest,
         CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 查询会议室层级详情
+    /// <para>可以使用会议室层级 ID 查询会议室层级详情。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/vc-v1/room_level/get">接口文档</see></para>
+    /// </summary>   
+    /// <param name="room_level_id">
+    /// <para>层级ID</para>
+    /// <para>示例值：omb_4ad1a2c7a2fbc5fc9570f38456931293</para>
+    /// </param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Get("/open-apis/vc/v1/room_levels/{room_level_id}")]
+    Task<FeishuApiResult<GetRoomLevelResult>?> GetRoomLevelAsync(
+       [Path] string room_level_id,
+       CancellationToken cancellationToken = default);
 }

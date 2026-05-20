@@ -86,4 +86,24 @@ public interface IFeishuTenantV1VideoConferencingRoomLevel : IFeishuAppContextSw
     Task<FeishuApiResult<GetRoomLevelsResult>?> GetRoomLevelsAsync(
       [Body] GetRoomLevelsRequest getRoomLevelsRequest,
       CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 分页查询会议室层级列表。
+    /// <para>用来查询某个会议室层级下的子层级列表。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/vc-v1/room_level/list">接口文档</see></para>
+    /// </summary>
+    /// <param name="room_level_id">
+    /// <para>层级ID</para>
+    /// <para>示例值：omb_4ad1a2c7a2fbc5fc9570f38456931293</para>
+    /// </param>
+    /// <param name="page_size">分页大小，即本次请求所返回的列表内的最大条目数。默认值：10</param>
+    /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Get("/open-apis/vc/v1/room_levels")]
+    Task<FeishuApiPageListResult<RoomLevelInfo>?> GetRoomLevelsPageListAsync(
+        [Query] string room_level_id,
+        [Query] int page_size = Consts.PageSize_10,
+        [Query] string? page_token = null,
+        CancellationToken cancellationToken = default);
 }

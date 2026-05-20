@@ -43,4 +43,21 @@ public interface IFeishuTenantV1VideoConferencingRoom
     Task<FeishuNullDataApiResult?> DeleteMeetingRoomAsync(
        [Path] string room_id,
        CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 更新会议室
+    /// <para><see href="https://open.feishu.cn/document/server-docs/vc-v1/room/patch">接口文档</see></para>
+    /// </summary>   
+    /// <param name="room_id">
+    /// <para>会议室ID</para>
+    /// <para>示例值：omm_4de32cf10a4358788ff4e09e37ebbf9b</para>
+    /// </param>
+    /// <param name="updateMeetingRoomRequest">更新会议室请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Patch("/open-apis/vc/v1/rooms/{room_id}")]
+    Task<FeishuNullDataApiResult?> UpdateMeetingRoomAsync(
+        [Path] string room_id,
+        [Body] UpdateMeetingRoomRequest updateMeetingRoomRequest,
+        CancellationToken cancellationToken = default);
 }

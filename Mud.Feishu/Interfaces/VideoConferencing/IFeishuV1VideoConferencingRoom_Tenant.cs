@@ -102,8 +102,7 @@ public interface IFeishuTenantV1VideoConferencingRoom : IFeishuAppContextSwitche
     /// </list>
     /// </param>
     /// <param name="getMeetingRoomsRequest">批量查询会议室请求体</param>
-    /// <param name="cancellationToken">
-    /// <see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Post("/open-apis/vc/v1/rooms/mget")]
     Task<FeishuApiResult<GetMeetingRoomsResult>?> GetMeetingRoomsAsync(
       [Body] GetMeetingRoomsRequest getMeetingRoomsRequest,

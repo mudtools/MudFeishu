@@ -18,4 +18,15 @@ namespace Mud.Feishu;
 public interface IFeishuTenantV1VideoConferencingRoom
 {
 
+    /// <summary>
+    /// 创建会议室
+    /// <para><see href="https://open.feishu.cn/document/server-docs/vc-v1/room/create">接口文档</see></para>
+    /// </summary>   
+    /// <param name="createMeetingRoomRequest">创建会议室请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Post("/open-apis/vc/v1/rooms")]
+    Task<FeishuApiResult<CreateMeetingRoomResult>?> CreateMeetingRoomAsync(
+      [Body] CreateMeetingRoomRequest createMeetingRoomRequest,
+      CancellationToken cancellationToken = default);
+
 }

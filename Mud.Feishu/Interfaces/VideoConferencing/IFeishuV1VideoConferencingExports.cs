@@ -69,7 +69,7 @@ public interface IFeishuV1VideoConferencingExports : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 导出参会人会议质量数据
-    /// <para>导出某场会议某个参会人的音视频&共享质量数据（仅支持已结束会议），具体权限要求请参考<see href="https://open.feishu.cn/document/server-docs/vc-v1/export/export-overview">资源介绍</see>。</para>
+    /// <para>导出某场会议某个参会人的音视频\共享质量数据（仅支持已结束会议），具体权限要求请参考<see href="https://open.feishu.cn/document/server-docs/vc-v1/export/export-overview">资源介绍</see>。</para>
     /// <para><see href="https://open.feishu.cn/document/server-docs/vc-v1/export/participant_quality_list">接口文档</see></para>
     /// </summary> 
     /// <param name="user_id_type">
@@ -94,7 +94,7 @@ public interface IFeishuV1VideoConferencingExports : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 导出会议室预定数据
-    /// <para>导出某场会议某个参会人的音视频&共享质量数据（仅支持已结束会议），具体权限要求请参考<see href="https://open.feishu.cn/document/server-docs/vc-v1/export/export-overview">资源介绍</see>。</para>
+    /// <para>导出某场会议某个参会人的音视频\共享质量数据（仅支持已结束会议），具体权限要求请参考<see href="https://open.feishu.cn/document/server-docs/vc-v1/export/export-overview">资源介绍</see>。</para>
     /// <para><see href="https://open.feishu.cn/document/server-docs/vc-v1/export/resource_reservation_list">接口文档</see></para>
     /// </summary> 
     /// <param name="user_id_type">

@@ -15,7 +15,7 @@ namespace Mud.Feishu;
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "VideoConferencing")]
 [Token("TenantAccessToken", Name = Consts.Authorization)]
-public interface IFeishuTenantV1VideoConferencingRoom
+public interface IFeishuTenantV1VideoConferencingRoom : IFeishuAppContextSwitcher
 {
 
     /// <summary>

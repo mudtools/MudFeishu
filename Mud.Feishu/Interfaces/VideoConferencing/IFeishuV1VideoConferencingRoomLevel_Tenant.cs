@@ -106,4 +106,20 @@ public interface IFeishuTenantV1VideoConferencingRoomLevel : IFeishuAppContextSw
         [Query] int page_size = Consts.PageSize_10,
         [Query] string? page_token = null,
         CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 搜索会议室层级
+    /// <para>可以用来搜索会议室层级，支持使用自定义会议室层级 ID 进行查询。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/vc-v1/room_level/search">接口文档</see></para>
+    /// </summary>   
+    /// <param name="custom_level_ids">
+    /// <para>用于查询指定会议室层级的自定义会议室层级ID</para>
+    /// <para>示例值：1000,1001</para>
+    /// </param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Get("/open-apis/vc/v1/room_levels/search")]
+    Task<FeishuApiResult<SearchRoomLevelResult>?> SearchRoomLevelAsync(
+       [Query] string custom_level_ids,
+       CancellationToken cancellationToken = default);
 }

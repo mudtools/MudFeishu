@@ -1,0 +1,141 @@
+// -----------------------------------------------------------------------
+//  作者：Mud Studio  版权所有 (c) Mud Studio 2026   
+//  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
+//  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
+//  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
+// -----------------------------------------------------------------------
+
+using Mud.Feishu.DataModels.VideoConferencing;
+
+namespace Mud.Feishu;
+
+/// <summary>
+/// 用户可以进行查询会议室、创建会议室、更新会议室等操作
+/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/vc-v1/room/room-overview"/></para>
+/// </summary>
+[HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "VideoConferencing")]
+[Token("TenantAccessToken", Name = Consts.Authorization)]
+public interface IFeishuTenantV1VideoConferencingRoom : IFeishuAppContextSwitcher
+{
+
+    /// <summary>
+    /// 创建会议室
+    /// <para><see href="https://open.feishu.cn/document/server-docs/vc-v1/room/create">接口文档</see></para>
+    /// </summary>   
+    /// <param name="createMeetingRoomRequest">创建会议室请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Post("/open-apis/vc/v1/rooms")]
+    Task<FeishuApiResult<CreateMeetingRoomResult>?> CreateMeetingRoomAsync(
+      [Body] CreateMeetingRoomRequest createMeetingRoomRequest,
+      CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 删除会议室
+    /// <para><see href="https://open.feishu.cn/document/server-docs/vc-v1/room/delete">接口文档</see></para>
+    /// </summary>   
+    /// <param name="room_id">
+    /// <para>会议室ID</para>
+    /// <para>示例值：omm_4de32cf10a4358788ff4e09e37ebbf9b</para>
+    /// </param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Delete("/open-apis/vc/v1/rooms/{room_id}")]
+    Task<FeishuNullDataApiResult?> DeleteMeetingRoomAsync(
+       [Path] string room_id,
+       CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 更新会议室
+    /// <para><see href="https://open.feishu.cn/document/server-docs/vc-v1/room/patch">接口文档</see></para>
+    /// </summary>   
+    /// <param name="room_id">
+    /// <para>会议室ID</para>
+    /// <para>示例值：omm_4de32cf10a4358788ff4e09e37ebbf9b</para>
+    /// </param>
+    /// <param name="updateMeetingRoomRequest">更新会议室请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Patch("/open-apis/vc/v1/rooms/{room_id}")]
+    Task<FeishuNullDataApiResult?> UpdateMeetingRoomAsync(
+        [Path] string room_id,
+        [Body] UpdateMeetingRoomRequest updateMeetingRoomRequest,
+        CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 查询会议室详情
+    /// <para><see href="https://open.feishu.cn/document/server-docs/vc-v1/room/get">接口文档</see></para>
+    /// </summary>   
+    /// <param name="user_id_type">
+    /// <para>用户 ID 类型</para>
+    /// <para>示例值：open_id</para>
+    /// <list type="bullet">
+    /// <item>open_id：标识一个用户在某个应用中的身份。同一个用户在不同应用中的 Open ID 不同。</item>
+    /// <item>union_id：标识一个用户在某个应用开发商下的身份。同一用户在同一开发商下的应用中的 Union ID 是相同的，在不同开发商下的应用中的 Union ID 是不同的。通过 Union ID，应用开发商可以把同个用户在多个应用中的身份关联起来。</item>
+    /// <item>user_id：标识一个用户在某个租户内的身份。同一个用户在租户 A 和租户 B 内的 User ID 是不同的。在同一个租户内，一个用户的 User ID 在所有应用（包括商店应用）中都保持一致。User ID 主要用于在不同的应用间打通用户数据。</item>
+    /// </list>
+    /// </param>
+    /// <param name="room_id">
+    /// <para>会议室ID</para>
+    /// <para>示例值：omm_4de32cf10a4358788ff4e09e37ebbf9b</para>
+    /// </param>
+    /// <param name="cancellationToken">
+    /// <see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Get("/open-apis/vc/v1/rooms/{room_id}")]
+    Task<FeishuApiResult<GetMeetingRoomResult>?> GetMeetingRoomAsync(
+       [Path] string room_id,
+       [Query] string? user_id_type = Consts.User_Id_Type,
+       CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 使用会议室 ID 批量查询会议室详情。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/vc-v1/room/mget">接口文档</see></para>
+    /// </summary>   
+    /// <param name="user_id_type">
+    /// <para>用户 ID 类型</para>
+    /// <para>示例值：open_id</para>
+    /// <list type="bullet">
+    /// <item>open_id：标识一个用户在某个应用中的身份。同一个用户在不同应用中的 Open ID 不同。</item>
+    /// <item>union_id：标识一个用户在某个应用开发商下的身份。同一用户在同一开发商下的应用中的 Union ID 是相同的，在不同开发商下的应用中的 Union ID 是不同的。通过 Union ID，应用开发商可以把同个用户在多个应用中的身份关联起来。</item>
+    /// <item>user_id：标识一个用户在某个租户内的身份。同一个用户在租户 A 和租户 B 内的 User ID 是不同的。在同一个租户内，一个用户的 User ID 在所有应用（包括商店应用）中都保持一致。User ID 主要用于在不同的应用间打通用户数据。</item>
+    /// </list>
+    /// </param>
+    /// <param name="getMeetingRoomsRequest">批量查询会议室请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Post("/open-apis/vc/v1/rooms/mget")]
+    Task<FeishuApiResult<GetMeetingRoomsResult>?> GetMeetingRoomsAsync(
+      [Body] GetMeetingRoomsRequest getMeetingRoomsRequest,
+      [Query] string? user_id_type = Consts.User_Id_Type,
+      CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 分页查询会议室列表
+    /// <para>可以用来查询某个会议室层级下会议室列表。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/vc-v1/room/list">接口文档</see></para>
+    /// </summary>
+    /// <param name="room_level_id">
+    /// <para>层级ID，当需要获取租户下会议室列表时，room_level_id可传空</para>
+    /// <para>示例值：omb_4ad1a2c7a2fbc5fc9570f38456931293</para>
+    /// </param>
+    /// <param name="user_id_type">
+    /// <para>用户 ID 类型</para>
+    /// <para>示例值：open_id</para>
+    /// <list type="bullet">
+    /// <item>open_id：标识一个用户在某个应用中的身份。同一个用户在不同应用中的 Open ID 不同。</item>
+    /// <item>union_id：标识一个用户在某个应用开发商下的身份。同一用户在同一开发商下的应用中的 Union ID 是相同的，在不同开发商下的应用中的 Union ID 是不同的。通过 Union ID，应用开发商可以把同个用户在多个应用中的身份关联起来。</item>
+    /// <item>user_id：标识一个用户在某个租户内的身份。同一个用户在租户 A 和租户 B 内的 User ID 是不同的。在同一个租户内，一个用户的 User ID 在所有应用（包括商店应用）中都保持一致。User ID 主要用于在不同的应用间打通用户数据。</item>
+    /// </list>
+    /// </param>
+    /// <param name="page_size">分页大小，即本次请求所返回的列表内的最大条目数。默认值：10</param>
+    /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Get("/open-apis/vc/v1/rooms")]
+    Task<FeishuApiPageListResult<MeetingRoomInfo>?> GetMeetingRoomsPageListAsync(
+      [Query] string? room_level_id = null,
+      [Query] int page_size = Consts.PageSize_10,
+      [Query] string? page_token = null,
+      [Query] string? user_id_type = Consts.User_Id_Type,
+      CancellationToken cancellationToken = default);
+}

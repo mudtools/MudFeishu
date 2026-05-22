@@ -1,0 +1,125 @@
+// -----------------------------------------------------------------------
+//  作者：Mud Studio  版权所有 (c) Mud Studio 2026   
+//  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
+//  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
+//  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
+// -----------------------------------------------------------------------
+
+using Mud.Feishu.DataModels.VideoConferencing;
+
+namespace Mud.Feishu;
+
+/// <summary>
+/// 用户可以进行查询会议室层级、创建会议室层级、更新会议室层级等操作.
+/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/vc-v1/room_level/room-level-overview"/></para>
+/// </summary>
+[HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "VideoConferencing")]
+[Token("TenantAccessToken", Name = Consts.Authorization)]
+public interface IFeishuTenantV1VideoConferencingRoomLevel : IFeishuAppContextSwitcher
+{
+
+    /// <summary>
+    /// 创建会议室层级
+    /// <para><see href="https://open.feishu.cn/document/server-docs/vc-v1/room_level/create">接口文档</see></para>
+    /// </summary>   
+    /// <param name="createRoomLevelRequest">创建会议室层级请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Post("/open-apis/vc/v1/room_levels")]
+    Task<FeishuApiResult<CreateRoomLevelResult>?> CreateRoomLevelAsync(
+        [Body] CreateRoomLevelRequest createRoomLevelRequest,
+        CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 删除会议室层级
+    /// <para><see href="https://open.feishu.cn/document/server-docs/vc-v1/room_level/del">接口文档</see></para>
+    /// </summary>   
+    /// <param name="deleteRoomLevelRequest">删除会议室层级请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Post("/open-apis/vc/v1/room_levels/del")]
+    Task<FeishuNullDataApiResult?> DeleteRoomLevelAsync(
+       [Body] DeleteRoomLevelRequest deleteRoomLevelRequest,
+       CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 更新会议室层级
+    /// <para><see href="https://open.feishu.cn/document/server-docs/vc-v1/room_level/patch">接口文档</see></para>
+    /// </summary>   
+    /// <param name="room_level_id">
+    /// <para>层级ID</para>
+    /// <para>示例值：omb_4ad1a2c7a2fbc5fc9570f38456931293</para>
+    /// </param>
+    /// <param name="updateRoomLevelRequest">更新会议室层级请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Patch("/open-apis/vc/v1/room_levels/{room_level_id}")]
+    Task<FeishuApiResult<CreateRoomLevelResult>?> UpdateRoomLevelAsync(
+        [Path] string room_level_id,
+        [Body] UpdateRoomLevelRequest updateRoomLevelRequest,
+        CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 查询会议室层级详情
+    /// <para>可以使用会议室层级 ID 查询会议室层级详情。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/vc-v1/room_level/get">接口文档</see></para>
+    /// </summary>   
+    /// <param name="room_level_id">
+    /// <para>层级ID</para>
+    /// <para>示例值：omb_4ad1a2c7a2fbc5fc9570f38456931293</para>
+    /// </param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Get("/open-apis/vc/v1/room_levels/{room_level_id}")]
+    Task<FeishuApiResult<GetRoomLevelResult>?> GetRoomLevelAsync(
+       [Path] string room_level_id,
+       CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 批量查询会议室层级详情
+    /// <para>可以使用会议室层级 ID 批量查询会议室层级详情。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/vc-v1/room_level/mget">接口文档</see></para>
+    /// </summary>   
+    /// <param name="getRoomLevelsRequest">批量查询会议室层级详情请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Post("/open-apis/vc/v1/room_levels/mget")]
+    Task<FeishuApiResult<GetRoomLevelsResult>?> GetRoomLevelsAsync(
+      [Body] GetRoomLevelsRequest getRoomLevelsRequest,
+      CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 分页查询会议室层级列表。
+    /// <para>用来查询某个会议室层级下的子层级列表。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/vc-v1/room_level/list">接口文档</see></para>
+    /// </summary>
+    /// <param name="room_level_id">
+    /// <para>层级ID</para>
+    /// <para>示例值：omb_4ad1a2c7a2fbc5fc9570f38456931293</para>
+    /// </param>
+    /// <param name="page_size">分页大小，即本次请求所返回的列表内的最大条目数。默认值：10</param>
+    /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Get("/open-apis/vc/v1/room_levels")]
+    Task<FeishuApiPageListResult<RoomLevelInfo>?> GetRoomLevelsPageListAsync(
+        [Query] string room_level_id,
+        [Query] int page_size = Consts.PageSize_10,
+        [Query] string? page_token = null,
+        CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 搜索会议室层级
+    /// <para>可以用来搜索会议室层级，支持使用自定义会议室层级 ID 进行查询。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/vc-v1/room_level/search">接口文档</see></para>
+    /// </summary>   
+    /// <param name="custom_level_ids">
+    /// <para>用于查询指定会议室层级的自定义会议室层级ID</para>
+    /// <para>示例值：1000,1001</para>
+    /// </param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Get("/open-apis/vc/v1/room_levels/search")]
+    Task<FeishuApiResult<SearchRoomLevelResult>?> SearchRoomLevelAsync(
+       [Query] string custom_level_ids,
+       CancellationToken cancellationToken = default);
+}

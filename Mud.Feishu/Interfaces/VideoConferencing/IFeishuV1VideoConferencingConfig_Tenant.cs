@@ -1,0 +1,328 @@
+// -----------------------------------------------------------------------
+//  作者：Mud Studio  版权所有 (c) Mud Studio 2026   
+//  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
+//  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
+//  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
+// -----------------------------------------------------------------------
+
+using Mud.Feishu.DataModels.VideoConferencing;
+
+namespace Mud.Feishu;
+
+/// <summary>
+/// 会议室配置用于对飞书会议室的背景设置、资源管理等进行配置。
+/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/vc-v1/scope_config/room-configuration-overview"/></para>
+/// </summary>
+[HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "VideoConferencing")]
+[Token("TenantAccessToken", Name = Consts.Authorization)]
+public interface IFeishuTenantV1VideoConferencingConfig : IFeishuAppContextSwitcher
+{
+
+
+    /// <summary>
+    /// 查询会议室配置。
+    /// <para>可以用来查询某个会议层级范围下或者某个会议室的配置。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/vc-v1/scope_config/get">接口文档</see></para>
+    /// </summary>   
+    /// <param name="user_id_type">
+    /// <para>用户 ID 类型</para>
+    /// <para>示例值：open_id</para>
+    /// <list type="bullet">
+    /// <item>open_id：标识一个用户在某个应用中的身份。同一个用户在不同应用中的 Open ID 不同。</item>
+    /// <item>union_id：标识一个用户在某个应用开发商下的身份。同一用户在同一开发商下的应用中的 Union ID 是相同的，在不同开发商下的应用中的 Union ID 是不同的。通过 Union ID，应用开发商可以把同个用户在多个应用中的身份关联起来。</item>
+    /// <item>user_id：标识一个用户在某个租户内的身份。同一个用户在租户 A 和租户 B 内的 User ID 是不同的。在同一个租户内，一个用户的 User ID 在所有应用（包括商店应用）中都保持一致。User ID 主要用于在不同的应用间打通用户数据。</item>
+    /// </list>
+    /// </param>
+    /// <param name="scope_type">
+    /// <para>查询节点范围</para>
+    /// <para>示例值：1</para>
+    /// <list type="bullet">
+    /// <item>1：会议室层级</item>
+    /// <item>2：会议室</item>
+    /// </list>
+    /// </param>
+    /// <param name="scope_id">
+    /// <para>查询节点ID：如果scope_type为1，则为层级ID，如果scope_type为2，则为会议室ID</para>
+    /// <para>示例值：omm_608d34d82d531b27fa993902d350a307</para>
+    /// </param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Get("/open-apis/vc/v1/scope_config")]
+    Task<FeishuApiResult<GetScopeConfigResult>?> GetScopeConfigAsync(
+        [Query] string scope_type,
+        [Query] string scope_id,
+        [Query] string? user_id_type = Consts.User_Id_Type,
+        CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 设置会议室配置。
+    /// <para>可以用来设置某个会议层级范围下或者某个会议室的配置。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/vc-v1/scope_config/create">接口文档</see></para>
+    /// </summary>   
+    /// <param name="user_id_type">
+    /// <para>用户 ID 类型</para>
+    /// <para>示例值：open_id</para>
+    /// <list type="bullet">
+    /// <item>open_id：标识一个用户在某个应用中的身份。同一个用户在不同应用中的 Open ID 不同。</item>
+    /// <item>union_id：标识一个用户在某个应用开发商下的身份。同一用户在同一开发商下的应用中的 Union ID 是相同的，在不同开发商下的应用中的 Union ID 是不同的。通过 Union ID，应用开发商可以把同个用户在多个应用中的身份关联起来。</item>
+    /// <item>user_id：标识一个用户在某个租户内的身份。同一个用户在租户 A 和租户 B 内的 User ID 是不同的。在同一个租户内，一个用户的 User ID 在所有应用（包括商店应用）中都保持一致。User ID 主要用于在不同的应用间打通用户数据。</item>
+    /// </list>
+    /// </param>
+    /// <param name="createScopeConfigRequest">设置会议室配置请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Post("/open-apis/vc/v1/scope_config")]
+    Task<FeishuNullDataApiResult?> CreateScopeConfigAsync(
+        [Body] CreateScopeConfigRequest createScopeConfigRequest,
+        [Query] string? user_id_type = Consts.User_Id_Type,
+        CancellationToken cancellationToken = default);
+
+
+
+    /// <summary>
+    /// 查询会议室预定限制。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/vc-v1/scope_config/reserve_scope">接口文档</see></para>
+    /// </summary>   
+    /// <param name="user_id_type">
+    /// <para>用户 ID 类型</para>
+    /// <para>示例值：open_id</para>
+    /// <list type="bullet">
+    /// <item>open_id：标识一个用户在某个应用中的身份。同一个用户在不同应用中的 Open ID 不同。</item>
+    /// <item>union_id：标识一个用户在某个应用开发商下的身份。同一用户在同一开发商下的应用中的 Union ID 是相同的，在不同开发商下的应用中的 Union ID 是不同的。通过 Union ID，应用开发商可以把同个用户在多个应用中的身份关联起来。</item>
+    /// <item>user_id：标识一个用户在某个租户内的身份。同一个用户在租户 A 和租户 B 内的 User ID 是不同的。在同一个租户内，一个用户的 User ID 在所有应用（包括商店应用）中都保持一致。User ID 主要用于在不同的应用间打通用户数据。</item>
+    /// </list>
+    /// </param>
+    /// <param name="scope_type">
+    /// <para>查询节点范围</para>
+    /// <para>示例值：1</para>
+    /// <list type="bullet">
+    /// <item>1：会议室层级</item>
+    /// <item>2：会议室</item>
+    /// </list>
+    /// </param>
+    /// <param name="scope_id">
+    /// <para>查询节点ID：如果scope_type为1，则为层级ID，如果scope_type为2，则为会议室ID</para>
+    /// <para>示例值：omm_608d34d82d531b27fa993902d350a307</para>
+    /// </param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Get("/open-apis/vc/v1/reserve_configs/reserve_scope")]
+    Task<FeishuApiResult<GetReserveScopeReserveConfigResult>?> GetReserveScopeReserveConfigAsync(
+         [Query] string scope_id,
+         [Query] string scope_type,
+         [Query] string? user_id_type = Consts.User_Id_Type,
+         CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 更新会议室预定限制。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/vc-v1/scope_config/patch">接口文档</see></para>
+    /// </summary>   
+    /// <param name="reserve_config_id">
+    /// <para>会议室或层级id</para>
+    /// <para>示例值：omm_3c5dd7e09bac0c1758fcf9511bd1a771</para>
+    /// </param>
+    /// <param name="user_id_type">
+    /// <para>用户 ID 类型</para>
+    /// <para>示例值：open_id</para>
+    /// <list type="bullet">
+    /// <item>open_id：标识一个用户在某个应用中的身份。同一个用户在不同应用中的 Open ID 不同。</item>
+    /// <item>union_id：标识一个用户在某个应用开发商下的身份。同一用户在同一开发商下的应用中的 Union ID 是相同的，在不同开发商下的应用中的 Union ID 是不同的。通过 Union ID，应用开发商可以把同个用户在多个应用中的身份关联起来。</item>
+    /// <item>user_id：标识一个用户在某个租户内的身份。同一个用户在租户 A 和租户 B 内的 User ID 是不同的。在同一个租户内，一个用户的 User ID 在所有应用（包括商店应用）中都保持一致。User ID 主要用于在不同的应用间打通用户数据。</item>
+    /// </list>
+    /// </param>
+    /// <param name="updateReserveConfigRequest">更新会议室预定限制请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Patch("/open-apis/vc/v1/reserve_configs/{reserve_config_id}")]
+    Task<FeishuNullDataApiResult?> UpdateReserveConfigAsync(
+        [Path] string reserve_config_id,
+        [Body] UpdateReserveConfigRequest updateReserveConfigRequest,
+        [Query] string? user_id_type = Consts.User_Id_Type,
+        CancellationToken cancellationToken = default);
+
+
+
+    /// <summary>
+    /// 查询会议室预定表单。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/vc-v1/scope_config/get-2">接口文档</see></para>
+    /// </summary>   
+    /// <param name="user_id_type">
+    /// <para>用户 ID 类型</para>
+    /// <para>示例值：open_id</para>
+    /// <list type="bullet">
+    /// <item>open_id：标识一个用户在某个应用中的身份。同一个用户在不同应用中的 Open ID 不同。</item>
+    /// <item>union_id：标识一个用户在某个应用开发商下的身份。同一用户在同一开发商下的应用中的 Union ID 是相同的，在不同开发商下的应用中的 Union ID 是不同的。通过 Union ID，应用开发商可以把同个用户在多个应用中的身份关联起来。</item>
+    /// <item>user_id：标识一个用户在某个租户内的身份。同一个用户在租户 A 和租户 B 内的 User ID 是不同的。在同一个租户内，一个用户的 User ID 在所有应用（包括商店应用）中都保持一致。User ID 主要用于在不同的应用间打通用户数据。</item>
+    /// </list>
+    /// </param>
+    /// <param name="reserve_config_id">
+    /// <para>会议室或层级id</para>
+    /// <para>示例值：omm_3c5dd7e09bac0c1758fcf9511bd1a771</para>
+    /// </param>
+    /// <param name="scope_type">
+    /// <para>查询节点范围</para>
+    /// <para>示例值：1</para>
+    /// <list type="bullet">
+    /// <item>1：会议室层级</item>
+    /// <item>2：会议室</item>
+    /// </list>
+    /// </param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Get("/open-apis/vc/v1/reserve_configs/{reserve_config_id}/form")]
+    Task<FeishuApiResult<GetReserveConfigFormResult>?> GetReserveConfigFormAsync(
+        [Path] string reserve_config_id,
+        [Query] string scope_type,
+        [Query] string? user_id_type = Consts.User_Id_Type,
+        CancellationToken cancellationToken = default);
+
+
+
+    /// <summary>
+    /// 更新会议室预定表单。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/vc-v1/scope_config/patch-2">接口文档</see></para>
+    /// </summary>   
+    /// <param name="user_id_type">
+    /// <para>用户 ID 类型</para>
+    /// <para>示例值：open_id</para>
+    /// <list type="bullet">
+    /// <item>open_id：标识一个用户在某个应用中的身份。同一个用户在不同应用中的 Open ID 不同。</item>
+    /// <item>union_id：标识一个用户在某个应用开发商下的身份。同一用户在同一开发商下的应用中的 Union ID 是相同的，在不同开发商下的应用中的 Union ID 是不同的。通过 Union ID，应用开发商可以把同个用户在多个应用中的身份关联起来。</item>
+    /// <item>user_id：标识一个用户在某个租户内的身份。同一个用户在租户 A 和租户 B 内的 User ID 是不同的。在同一个租户内，一个用户的 User ID 在所有应用（包括商店应用）中都保持一致。User ID 主要用于在不同的应用间打通用户数据。</item>
+    /// </list>
+    /// </param>
+    /// <param name="reserve_config_id">
+    /// <para>会议室或层级id</para>
+    /// <para>示例值：omm_3c5dd7e09bac0c1758fcf9511bd1a771</para>
+    /// </param>
+    /// <param name="updateReserveConfigFormRequest">更新会议室预定表单请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Patch("/open-apis/vc/v1/reserve_configs/{reserve_config_id}/form")]
+    Task<FeishuNullDataApiResult?> UpdateReserveConfigFormAsync(
+       [Path] string reserve_config_id,
+       [Body] UpdateReserveConfigFormRequest updateReserveConfigFormRequest,
+       [Query] string? user_id_type = Consts.User_Id_Type,
+       CancellationToken cancellationToken = default);
+
+
+
+
+    /// <summary>
+    /// 查询会议室预定管理员。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/vc-v1/scope_config/get-3">接口文档</see></para>
+    /// </summary>   
+    /// <param name="user_id_type">
+    /// <para>用户 ID 类型</para>
+    /// <para>示例值：open_id</para>
+    /// <list type="bullet">
+    /// <item>open_id：标识一个用户在某个应用中的身份。同一个用户在不同应用中的 Open ID 不同。</item>
+    /// <item>union_id：标识一个用户在某个应用开发商下的身份。同一用户在同一开发商下的应用中的 Union ID 是相同的，在不同开发商下的应用中的 Union ID 是不同的。通过 Union ID，应用开发商可以把同个用户在多个应用中的身份关联起来。</item>
+    /// <item>user_id：标识一个用户在某个租户内的身份。同一个用户在租户 A 和租户 B 内的 User ID 是不同的。在同一个租户内，一个用户的 User ID 在所有应用（包括商店应用）中都保持一致。User ID 主要用于在不同的应用间打通用户数据。</item>
+    /// </list>
+    /// </param>
+    /// <param name="reserve_config_id">
+    /// <para>会议室或层级id</para>
+    /// <para>示例值：omm_3c5dd7e09bac0c1758fcf9511bd1a771</para>
+    /// </param>
+    /// <param name="scope_type">
+    /// <para>查询节点范围</para>
+    /// <para>示例值：1</para>
+    /// <list type="bullet">
+    /// <item>1：会议室层级</item>
+    /// <item>2：会议室</item>
+    /// </list>
+    /// </param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Get("/open-apis/vc/v1/reserve_configs/{reserve_config_id}/admin")]
+    Task<FeishuApiResult<GetReserveConfigAdminResult>?> GetReserveConfigAdminAsync(
+        [Path] string reserve_config_id,
+        [Query] string scope_type,
+        [Query] string? user_id_type = Consts.User_Id_Type,
+        CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 更新会议室预定管理员。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/vc-v1/scope_config/patch-3">接口文档</see></para>
+    /// </summary>   
+    /// <param name="user_id_type">
+    /// <para>用户 ID 类型</para>
+    /// <para>示例值：open_id</para>
+    /// <list type="bullet">
+    /// <item>open_id：标识一个用户在某个应用中的身份。同一个用户在不同应用中的 Open ID 不同。</item>
+    /// <item>union_id：标识一个用户在某个应用开发商下的身份。同一用户在同一开发商下的应用中的 Union ID 是相同的，在不同开发商下的应用中的 Union ID 是不同的。通过 Union ID，应用开发商可以把同个用户在多个应用中的身份关联起来。</item>
+    /// <item>user_id：标识一个用户在某个租户内的身份。同一个用户在租户 A 和租户 B 内的 User ID 是不同的。在同一个租户内，一个用户的 User ID 在所有应用（包括商店应用）中都保持一致。User ID 主要用于在不同的应用间打通用户数据。</item>
+    /// </list>
+    /// </param>
+    /// <param name="reserve_config_id">
+    /// <para>会议室或层级id</para>
+    /// <para>示例值：omm_3c5dd7e09bac0c1758fcf9511bd1a771</para>
+    /// </param>
+    /// <param name="updateReserveConfigAdminRequest">更新会议室预定管理员请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Patch("/open-apis/vc/v1/reserve_configs/{reserve_config_id}/admin")]
+    Task<FeishuNullDataApiResult?> UpdateReserveConfigAdminAsync(
+         [Path] string reserve_config_id,
+         [Body] UpdateReserveConfigAdminRequest updateReserveConfigAdminRequest,
+         [Query] string? user_id_type = Consts.User_Id_Type,
+         CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 查询禁用状态变更通知。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/vc-v1/scope_config/get-4">接口文档</see></para>
+    /// </summary>   
+    /// <param name="user_id_type">
+    /// <para>用户 ID 类型</para>
+    /// <para>示例值：open_id</para>
+    /// <list type="bullet">
+    /// <item>open_id：标识一个用户在某个应用中的身份。同一个用户在不同应用中的 Open ID 不同。</item>
+    /// <item>union_id：标识一个用户在某个应用开发商下的身份。同一用户在同一开发商下的应用中的 Union ID 是相同的，在不同开发商下的应用中的 Union ID 是不同的。通过 Union ID，应用开发商可以把同个用户在多个应用中的身份关联起来。</item>
+    /// <item>user_id：标识一个用户在某个租户内的身份。同一个用户在租户 A 和租户 B 内的 User ID 是不同的。在同一个租户内，一个用户的 User ID 在所有应用（包括商店应用）中都保持一致。User ID 主要用于在不同的应用间打通用户数据。</item>
+    /// </list>
+    /// </param>
+    /// <param name="reserve_config_id">
+    /// <para>会议室或层级id</para>
+    /// <para>示例值：omm_3c5dd7e09bac0c1758fcf9511bd1a771</para>
+    /// </param>
+    /// <param name="scope_type">
+    /// <para>查询节点范围</para>
+    /// <para>示例值：1</para>
+    /// <list type="bullet">
+    /// <item>1：会议室层级</item>
+    /// <item>2：会议室</item>
+    /// </list>
+    /// </param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Get("/open-apis/vc/v1/reserve_configs/{reserve_config_id}/disable_inform")]
+    Task<FeishuApiResult<GetReserveConfigDisableInformResult>?> GetReserveConfigDisableInformAsync(
+         [Path] string reserve_config_id,
+         [Query] string scope_type,
+         [Query] string? user_id_type = Consts.User_Id_Type,
+         CancellationToken cancellationToken = default);
+
+
+
+    /// <summary>
+    /// 更新禁用状态变更通知。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/vc-v1/scope_config/patch-4">接口文档</see></para>
+    /// </summary>   
+    /// <param name="user_id_type">
+    /// <para>用户 ID 类型</para>
+    /// <para>示例值：open_id</para>
+    /// <list type="bullet">
+    /// <item>open_id：标识一个用户在某个应用中的身份。同一个用户在不同应用中的 Open ID 不同。</item>
+    /// <item>union_id：标识一个用户在某个应用开发商下的身份。同一用户在同一开发商下的应用中的 Union ID 是相同的，在不同开发商下的应用中的 Union ID 是不同的。通过 Union ID，应用开发商可以把同个用户在多个应用中的身份关联起来。</item>
+    /// <item>user_id：标识一个用户在某个租户内的身份。同一个用户在租户 A 和租户 B 内的 User ID 是不同的。在同一个租户内，一个用户的 User ID 在所有应用（包括商店应用）中都保持一致。User ID 主要用于在不同的应用间打通用户数据。</item>
+    /// </list>
+    /// </param>
+    /// <param name="reserve_config_id">
+    /// <para>会议室或层级id</para>
+    /// <para>示例值：omm_3c5dd7e09bac0c1758fcf9511bd1a771</para>
+    /// </param>
+    /// <param name="updateReserveConfigDisableInformRequest">更新禁用状态变更通知请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Patch("/open-apis/vc/v1/reserve_configs/{reserve_config_id}/disable_inform")]
+    Task<FeishuNullDataApiResult?> UpdateReserveConfigDisableInformAsync(
+      [Path] string reserve_config_id,
+      [Body] UpdateReserveConfigDisableInformRequest updateReserveConfigDisableInformRequest,
+      [Query] string? user_id_type = Consts.User_Id_Type,
+      CancellationToken cancellationToken = default);
+}

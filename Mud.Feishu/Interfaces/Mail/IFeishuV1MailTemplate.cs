@@ -82,4 +82,26 @@ public interface IFeishuV1MailTemplate : IFeishuAppContextSwitcher
     Task<FeishuApiResult<GetMailTemplateListResult>?> GetMailTemplateListAsync(
         [Path] string user_mailbox_id,
         CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 获取邮件模板。
+    /// <para>获取指定邮件模板的完整详情，包括模板名称、主题、正文（HTML 或纯文本）、收件人/抄送/密送地址、附件信息等所有字段。常用于编辑模板前回填表单，或在发送邮件场景下读取模板内容做二次填充。</para>
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-template/get">接口文档</see></para>
+    /// </summary>
+    /// <param name="user_mailbox_id">
+    /// <para>用户邮箱地址，作为用户邮箱身份标识。使用 user_access_token 调用时，可使用占位符 `me` 表示当前授权用户的主邮箱。</para>
+    /// <para>示例值：user@example.com</para>
+    /// </param>
+    /// <param name="template_id">
+    /// <para>邮件模板 ID。可通过列出个人邮件模板接口或创建个人邮件模板接口的返回值获取。</para>
+    /// <para>示例值：7281187859195772947</para>
+    /// </param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Get("/open-apis/mail/v1/user_mailboxes/{user_mailbox_id}/templates/{template_id}")]
+    Task<FeishuApiResult<GetMailTemplateResult>?> GetMailTemplateAsync(
+       [Path] string user_mailbox_id,
+       [Path] string template_id,
+       CancellationToken cancellationToken = default);
+
 }

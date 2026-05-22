@@ -45,10 +45,41 @@ public interface IFeishuV1MailTemplate : IFeishuAppContextSwitcher
         CancellationToken cancellationToken = default);
 
 
+    /// <summary>
+    /// 更新邮件模板。
+    /// <para>以全量替换的方式更新指定邮件模板的所有字段（包括名称、主题、正文、附件、收件信息等）。本接口为「全量更新」语义：请求时需传入完整的模板对象，未携带的字段将被清空。</para>
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-template/update">接口文档</see></para>
+    /// </summary>
+    /// <param name="user_mailbox_id">
+    /// <para>用户邮箱地址，作为用户邮箱身份标识。使用 user_access_token 调用时，可使用占位符 `me` 表示当前授权用户的主邮箱。</para>
+    /// <para>示例值：user@example.com</para>
+    /// </param>
+    /// <param name="template_id">
+    /// <para>邮件模板 ID。可通过列出个人邮件模板接口或创建个人邮件模板接口的返回值获取。</para>
+    /// <para>示例值：7281187859195772947</para>
+    /// </param>
+    /// <param name="updateMailTemplateRequest">更新邮件模板请求对象，包含待更新的邮件模板信息。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Put("/open-apis/mail/v1/user_mailboxes/{user_mailbox_id}/templates/{template_id}")]
     Task<FeishuApiResult<UpdateMailTemplateResult>?> UpdateMailTemplateAsync(
         [Path] string user_mailbox_id,
         [Path] string template_id,
         [Body] UpdateMailTemplateRequest updateMailTemplateRequest,
+        CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 列出邮件模板。
+    /// <para>列出指定用户邮箱下的全部个人邮件模板基本信息（一次性返回，不分页），常用于在编辑或发送邮件场景下展示可选模板列表。如需获取模板正文与附件等完整字段，请通过获取个人邮件模板详情接口按 template_id 查询。</para>
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-template/list">接口文档</see></para>
+    /// </summary>
+    /// <param name="user_mailbox_id">
+    /// <para>用户邮箱地址，作为用户邮箱身份标识。使用 user_access_token 调用时，可使用占位符 `me` 表示当前授权用户的主邮箱。</para>
+    /// <para>示例值：user@example.com</para>
+    /// </param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Get("/open-apis/mail/v1/user_mailboxes/{user_mailbox_id}/templates")]
+    Task<FeishuApiResult<GetMailTemplateListResult>?> GetMailTemplateListAsync(
+        [Path] string user_mailbox_id,
         CancellationToken cancellationToken = default);
 }

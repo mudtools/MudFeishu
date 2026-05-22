@@ -78,6 +78,16 @@ public enum FeishuModule
     Calendar,
 
     /// <summary>
+    /// 飞书视频会议管理
+    /// </summary>
+    VideoConferencing,
+
+    /// <summary>
+    /// 认证授权
+    /// </summary>
+    Authentication,
+
+    /// <summary>
     /// 所有功能
     /// </summary>
     All

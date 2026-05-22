@@ -1,4 +1,4 @@
-# 会议预约（用户令牌）
+# 会议预约 - 用户权限
 **IFeishuUserV1VideoConferencingReserves**
 
 ## 功能描述

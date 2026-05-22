@@ -1,4 +1,4 @@
-# 会议管理
+# 会议管理 - 租户权限
 **IFeishuTenantV1VideoConferencingMeeting**
 
 ## 功能描述

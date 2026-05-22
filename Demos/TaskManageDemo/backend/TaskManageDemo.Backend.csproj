@@ -24,11 +24,11 @@
 		<PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="7.5.1" />
 	</ItemGroup>
 	<ItemGroup>
-		<PackageReference Include="Mud.Feishu.Abstractions" Version="3.0.0-preview2" />
-		<PackageReference Include="Mud.Feishu" Version="3.0.0-preview2" />
-		<PackageReference Include="Mud.Feishu.Authentication" Version="3.0.0-preview2" />
-		<PackageReference Include="Mud.Feishu.Webhook" Version="3.0.0-preview2" />
-		<PackageReference Include="Mud.Feishu.EventCallback" Version="3.0.0-preview2" />
+		<PackageReference Include="Mud.Feishu.Abstractions" Version="3.0.0-preview3" />
+		<PackageReference Include="Mud.Feishu" Version="3.0.0-preview3" />
+		<PackageReference Include="Mud.Feishu.Authentication" Version="3.0.0-preview3" />
+		<PackageReference Include="Mud.Feishu.Webhook" Version="3.0.0-preview3" />
+		<PackageReference Include="Mud.Feishu.EventCallback" Version="3.0.0-preview3" />
 	</ItemGroup>
 	<!-- <ItemGroup>
 		<ProjectReference Include="..\..\..\Mud.Feishu\Mud.Feishu.csproj" />

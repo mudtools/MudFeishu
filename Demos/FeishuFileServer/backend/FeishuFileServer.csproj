@@ -25,8 +25,8 @@
         <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
     </ItemGroup>
 	<ItemGroup>
-		<PackageReference Include="Mud.Feishu" Version="3.0.0-preview2" />
-		<PackageReference Include="Mud.Feishu.Authentication" Version="3.0.0-preview2" />
+		<PackageReference Include="Mud.Feishu" Version="3.0.0-preview3" />
+		<PackageReference Include="Mud.Feishu.Authentication" Version="3.0.0-preview3" />
 	</ItemGroup>
     <!-- <ItemGroup>
 		<ProjectReference Include="..\..\..\Mud.Feishu.Authentication\Mud.Feishu.Authentication.csproj" />

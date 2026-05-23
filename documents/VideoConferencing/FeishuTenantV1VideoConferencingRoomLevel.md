@@ -1,4 +1,4 @@
-# 会议室层级 - 租户权限
+# 会议室层级 - 租户令牌
 **IFeishuTenantV1VideoConferencingRoomLevel**
 
 ## 功能描述

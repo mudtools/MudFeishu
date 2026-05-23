@@ -1,4 +1,4 @@
-# 云文档权限 - 租户权限（FeishuTenantV1DrivePermissions）
+# 云文档权限 - 租户令牌（FeishuTenantV1DrivePermissions）
 
 ## 接口名称
 

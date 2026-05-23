@@ -1,4 +1,4 @@
-# 素材管理 - 租户权限（FeishuTenantV1DriveMedia）
+# 素材管理 - 租户令牌（FeishuTenantV1DriveMedia）
 
 ## 接口名称
 **素材管理（租户权限）** -（`IFeishuTenantV1DriveMedia`）

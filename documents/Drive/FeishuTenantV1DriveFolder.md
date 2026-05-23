@@ -1,4 +1,4 @@
-# 文件夹管理 - 租户权限（FeishuTenantV1DriveFolder）
+# 文件夹管理 - 租户令牌（FeishuTenantV1DriveFolder）
 
 ## 接口名称
 **文件夹管理（租户权限）** -（`IFeishuTenantV1DriveFolder`）

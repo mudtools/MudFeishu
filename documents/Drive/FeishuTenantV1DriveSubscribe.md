@@ -1,4 +1,4 @@
-# 云文档事件订阅 - 租户权限（FeishuTenantV1DriveSubscribe）
+# 云文档事件订阅 - 租户令牌（FeishuTenantV1DriveSubscribe）
 
 ## 接口名称
 **云文档事件订阅（租户权限）** -（`IFeishuTenantV1DriveSubscribe`）

@@ -1,4 +1,4 @@
-# 多维表格高级权限 - 用户权限（FeishuUserV2BitableRole）
+# 多维表格高级权限 - 用户令牌（FeishuUserV2BitableRole）
 
 ## 接口名称
 

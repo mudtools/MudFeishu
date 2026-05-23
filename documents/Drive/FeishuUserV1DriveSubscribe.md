@@ -1,4 +1,4 @@
-# 云文档事件订阅 - 用户权限（FeishuUserV1DriveSubscribe）
+# 云文档事件订阅 - 用户令牌（FeishuUserV1DriveSubscribe）
 
 ## 接口名称
 **云文档事件订阅（用户权限）** -（`IFeishuUserV1DriveSubscribe`）

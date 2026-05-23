@@ -1,4 +1,4 @@
-# 云文档评论 - 用户权限（FeishuUserV1Comments）
+# 云文档评论 - 用户令牌（FeishuUserV1Comments）
 
 ## 接口名称
 **云文档评论（用户权限）** -（`IFeishuUserV1Comments`）

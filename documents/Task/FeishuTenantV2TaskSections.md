@@ -1,4 +1,4 @@
-# 任务自定义分组 V2 - 租户权限
+# 任务自定义分组 V2 - 租户令牌
 
 ## 接口名称
 **任务自定义分组 V2 -（IFeishuTenantV2TaskSections）**

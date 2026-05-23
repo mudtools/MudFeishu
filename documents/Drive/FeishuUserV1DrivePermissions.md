@@ -1,4 +1,4 @@
-# 云文档权限 - 用户权限（FeishuUserV1DrivePermissions）
+# 云文档权限 - 用户令牌（FeishuUserV1DrivePermissions）
 
 ## 接口名称
 **云文档权限（用户权限）** -（`IFeishuUserV1DrivePermissions`）

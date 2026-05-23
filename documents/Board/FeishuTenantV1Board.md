@@ -1,4 +1,4 @@
-# 画板 - 租户权限（FeishuTenantV1Board）
+# 画板 - 租户令牌（FeishuTenantV1Board）
 
 ## 接口名称
 

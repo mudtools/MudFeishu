@@ -1,4 +1,4 @@
-# 会议录制 - 租户权限
+# 会议录制 - 租户令牌
 **IFeishuTenantV1VideoConferencingRecording**
 
 ## 功能描述

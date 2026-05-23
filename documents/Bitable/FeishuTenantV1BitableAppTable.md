@@ -1,4 +1,4 @@
-# 多维表格数据表 - 租户权限（FeishuTenantV1BitableAppTable）
+# 多维表格数据表 - 租户令牌（FeishuTenantV1BitableAppTable）
 
 ## 接口名称
 

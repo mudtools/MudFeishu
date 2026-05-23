@@ -1,4 +1,4 @@
-# 多维表格高级权限 - 租户权限（FeishuTenantV2BitableRole）
+# 多维表格高级权限 - 租户令牌（FeishuTenantV2BitableRole）
 
 ## 接口名称
 

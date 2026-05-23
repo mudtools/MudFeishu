@@ -1,4 +1,4 @@
-# 文件版本管理 - 用户权限（FeishuUserV1DriveFilesVersions）
+# 文件版本管理 - 用户令牌（FeishuUserV1DriveFilesVersions）
 
 ## 接口名称
 **文件版本管理（用户权限）** -（`IFeishuUserV1DriveFilesVersions`）

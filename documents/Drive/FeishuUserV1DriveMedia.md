@@ -1,4 +1,4 @@
-# 素材管理 - 用户权限（FeishuUserV1DriveMedia）
+# 素材管理 - 用户令牌（FeishuUserV1DriveMedia）
 
 ## 接口名称
 **素材管理（用户权限）** -（`IFeishuUserV1DriveMedia`）

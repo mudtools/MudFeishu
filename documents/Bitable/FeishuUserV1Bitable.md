@@ -1,4 +1,4 @@
-# 多维表格 - 用户权限（FeishuUserV1Bitable）
+# 多维表格 - 用户令牌（FeishuUserV1Bitable）
 
 ## 接口名称
 

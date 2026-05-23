@@ -1,4 +1,4 @@
-# 云文档评论 - 租户权限（FeishuTenantV1Comments）
+# 云文档评论 - 租户令牌（FeishuTenantV1Comments）
 
 ## 接口名称
 

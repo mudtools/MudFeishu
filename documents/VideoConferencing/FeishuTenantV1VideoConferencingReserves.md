@@ -1,4 +1,4 @@
-# 会议预约 - 租户权限
+# 会议预约 - 租户令牌
 **IFeishuTenantV1VideoConferencingReserves**
 
 ## 功能描述

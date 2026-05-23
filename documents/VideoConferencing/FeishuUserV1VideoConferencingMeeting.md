@@ -1,4 +1,4 @@
-# 会议管理 - 用户权限
+# 会议管理 - 用户令牌
 **IFeishuUserV1VideoConferencingMeeting**
 
 ## 功能描述

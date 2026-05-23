@@ -1,4 +1,4 @@
-# 会议报告 - 租户权限
+# 会议报告 - 租户令牌
 **IFeishuTenantV1VideoConferencingReport**
 
 ## 功能描述

@@ -1,4 +1,4 @@
-# 会议数据查询
+# 会议数据查询 - 租户权限
 **IFeishuTenantV1VideoConferencingMeetinData**
 
 ## 功能描述

@@ -1,4 +1,4 @@
-# 会议数据查询（用户令牌）
+# 会议数据查询 - 用户权限
 **IFeishuUserV1VideoConferencingMeetinData**
 
 ## 功能描述

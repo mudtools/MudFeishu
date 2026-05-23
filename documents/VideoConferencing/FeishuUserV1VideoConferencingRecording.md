@@ -1,4 +1,4 @@
-# 会议录制（用户令牌）
+# 会议录制 - 用户权限
 **IFeishuUserV1VideoConferencingRecording**
 
 ## 功能描述

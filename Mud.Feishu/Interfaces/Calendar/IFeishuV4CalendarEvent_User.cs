@@ -113,9 +113,9 @@ public interface IFeishuUserV4CalendarEvent : IFeishuV4CalendarEvent, ICurrentUs
 
 
     /// <summary>
-    /// 将 Exchange 账户绑定到飞书账户
-    /// <para>将 Exchange 账户绑定到飞书账户，进而支持 Exchange 日历的导入。</para>
-    /// <para><see href="https://open.feishu.cn/document/server-docs/calendar-v4/exchange_binding/create">接口文档</see></para>
+    /// 解除 Exchange 账户绑定
+    /// <para>解除 Exchange 账户和飞书账户的绑定关系，Exchange 账户解除绑定后才能和其他飞书账户继续绑定。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/calendar-v4/exchange_binding/delete">接口文档</see></para>
     /// </summary> 
     /// <param name="exchange_binding_id">
     /// <para>Exchange 绑定的唯一标识 ID。调用 [将 Exchange 账户绑定到飞书账户](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/calendar-v4/exchange_binding/create) 绑定时，可从返回结果中获取 exchange_binding_id。</para>
@@ -131,7 +131,7 @@ public interface IFeishuUserV4CalendarEvent : IFeishuV4CalendarEvent, ICurrentUs
     /// <summary>
     /// 查询 Exchange 账户的绑定状态
     /// <para>获取 Exchange 账户的绑定状态，包括 Exchange 日历的同步状态。</para>
-    /// <para><see href="https://open.feishu.cn/document/server-docs/calendar-v4/exchange_binding/create">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/calendar-v4/exchange_binding/get">接口文档</see></para>
     /// </summary> 
     /// <param name="user_id_type">
     /// <para>用户 ID 类型</para>

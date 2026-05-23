@@ -1,7 +1,7 @@
 # 考勤归档报表管理接口（租户） - FeishuTenantV1AttendanceArchives
 
 ## 接口名称
-**考勤归档报表管理（租户权限）** - (FeishuTenantV1AttendanceArchives)
+**考勤归档报表管理（租户令牌）** - (FeishuTenantV1AttendanceArchives)
 
 ## 功能描述
 归档报表用于对应后台假勤管理-考勤统计-报表-归档报表功能。支持引用系统报表，可设置归档时间和数据归档周期，并且支持根据部门/人员、国家/地区、人员类型、工作地点、职级、序列、职务进行人员圈选。
@@ -32,7 +32,7 @@
 ### 代码示例
 
 ```csharp
-// 使用租户权限获取归档报表信息
+// 使用租户令牌获取归档报表信息
 public class ArchiveService
 {
     private readonly IFeishuTenantV1AttendanceArchives _archivesClient;

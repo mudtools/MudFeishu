@@ -96,7 +96,7 @@ public class AttendanceController : ControllerBase
 ### 考勤组与班次管理
 
 - [考勤组管理接口（租户）](./FeishuTenantV1AttendanceGroups.md) — 管理考勤组的创建、删除、查询，设置考勤方式、时间、地点等规则
-- [考勤组管理接口（用户）](./FeishuUserV1AttendanceGroups.md) — 用户权限的考勤组管理，适用于员工查询自己所在的考勤组信息
+- [考勤组管理接口（用户）](./FeishuUserV1AttendanceGroups.md) — 用户令牌的考勤组管理，适用于员工查询自己所在的考勤组信息
 - [考勤班次管理接口](./FeishuTenantV1AttendanceShifts.md) — 管理考勤班次，设置上下班时间、迟到规则、休息规则等
 - [考勤排班管理接口](./FeishuTenantV1AttendanceUserDailyShifts.md) — 管理排班表，为指定人员在指定日期安排班次
 
@@ -113,8 +113,8 @@ public class AttendanceController : ControllerBase
 
 ### 归档报表与用户设置
 
-- [考勤归档报表管理接口（租户）](./FeishuTenantV1AttendanceArchives.md) — 租户权限的归档报表管理，可访问企业内所有考勤归档数据
-- [考勤归档报表管理接口（用户）](./FeishuUserV1AttendanceArchives.md) — 用户权限的归档报表管理，访问权限受限于当前用户
+- [考勤归档报表管理接口（租户）](./FeishuTenantV1AttendanceArchives.md) — 租户令牌的归档报表管理，可访问企业内所有考勤归档数据
+- [考勤归档报表管理接口（用户）](./FeishuUserV1AttendanceArchives.md) — 用户令牌的归档报表管理，访问权限受限于当前用户
 - [考勤用户设置接口](./FeishuTenantV1AttendanceUserSettings.md) — 修改用户人脸识别信息、上传下载人脸照片
 
 ## 命名空间与版本信息

@@ -96,7 +96,7 @@ Task<FeishuApiResult<CommentOperationResult>?> CreateCommentAsync(
 #### 代码示例
 
 ```csharp
-// 使用租户权限创建审批评论
+// 使用租户令牌创建审批评论
 public class ApprovalCommentService
 {
     private readonly IFeishuTenantV4ApprovalComments _commentsClient;
@@ -187,7 +187,7 @@ Task<FeishuApiResult<CommentOperationResult>?> DeleteCommentByIdAsync(
 #### 代码示例
 
 ```csharp
-// 使用租户权限删除审批评论
+// 使用租户令牌删除审批评论
 public class ApprovalCommentService
 {
     private readonly IFeishuTenantV4ApprovalComments _commentsClient;
@@ -262,7 +262,7 @@ Task<FeishuApiResult<CommentsRemoveResult>?> RemoveCommentsAsync(
 #### 代码示例
 
 ```csharp
-// 使用租户权限清空审批实例的所有评论
+// 使用租户令牌清空审批实例的所有评论
 public class ApprovalCommentService
 {
     private readonly IFeishuTenantV4ApprovalComments _commentsClient;
@@ -359,7 +359,7 @@ Task<FeishuApiResult<CommentsPageListResult>?> GetCommentsPageListByIdAsync(
 #### 代码示例
 
 ```csharp
-// 使用租户权限获取审批实例的评论列表
+// 使用租户令牌获取审批实例的评论列表
 public class ApprovalCommentService
 {
     private readonly IFeishuTenantV4ApprovalComments _commentsClient;

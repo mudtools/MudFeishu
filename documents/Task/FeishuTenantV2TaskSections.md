@@ -89,7 +89,7 @@ Task<FeishuApiResult<TaskSectionsOperationResult>?> CreateTaskSectionsAsync(
 
 **代码示例**：
 ```csharp
-// 使用租户权限创建自定义分组
+// 使用租户令牌创建自定义分组
 public class TaskSectionsService
 {
     private readonly IFeishuTenantV2TaskSections _sectionsClient;

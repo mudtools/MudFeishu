@@ -103,7 +103,7 @@ Task<FeishuApiResult<TasklistActivitySubscriptionResult>?> CreateActivitySubscri
 
 **代码示例**：
 ```csharp
-// 使用租户权限创建动态订阅
+// 使用租户令牌创建动态订阅
 public class TaskActivitySubscriptionService
 {
     private readonly IFeishuTenantV2TaskActivitySubscriptions _subscriptionClient;

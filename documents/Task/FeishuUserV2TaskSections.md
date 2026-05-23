@@ -9,7 +9,7 @@
 - 按优先级分组：P0-重要且紧急，P1-重要但不紧急，...
 - 按类别分组：市场相关、人事相关，...
 
-本接口提供以当前登录用户身份管理任务自定义分组的能力，与租户权限接口功能一致，但使用用户令牌进行认证。
+本接口提供以当前登录用户身份管理任务自定义分组的能力，与租户令牌接口功能一致，但使用用户令牌进行认证。
 
 ## 参考文档
 - [飞书开放平台 - 任务自定义分组概述](https://open.feishu.cn/document/task-v2/section/section-feature-overview)
@@ -83,7 +83,7 @@ Task<FeishuApiResult<TaskSectionsOperationResult>?> CreateTaskSectionsAsync(
 
 **代码示例**：
 ```csharp
-// 使用用户权限创建自定义分组
+// 使用用户令牌创建自定义分组
 public class UserTaskSectionsService
 {
     private readonly IFeishuUserV2TaskSections _sectionsClient;

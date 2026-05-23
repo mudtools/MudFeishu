@@ -96,7 +96,7 @@ Task<FeishuApiResult<CreateApprovalResult>?> CreateApprovalAsync(
 #### 代码示例
 
 ```csharp
-// 使用租户权限创建审批定义
+// 使用租户令牌创建审批定义
 public class ApprovalService
 {
     private readonly IFeishuTenantV4Approval _approvalClient;
@@ -206,7 +206,7 @@ Task<FeishuApiResult<GetApprovalResult>?> GetApprovalByCodeAsync(
 #### 代码示例
 
 ```csharp
-// 使用租户权限获取审批定义详情
+// 使用租户令牌获取审批定义详情
 public class ApprovalService
 {
     private readonly IFeishuTenantV4Approval _approvalClient;
@@ -301,7 +301,7 @@ Task<FeishuApiResult<CreateInstancesResult>?> CreateInstanceAsync(
 #### 代码示例
 
 ```csharp
-// 使用租户权限创建审批实例
+// 使用租户令牌创建审批实例
 public class ApprovalService
 {
     private readonly IFeishuTenantV4Approval _approvalClient;
@@ -390,7 +390,7 @@ Task<FeishuNullDataApiResult?> CancelInstanceAsync(
 #### 代码示例
 
 ```csharp
-// 使用租户权限撤回审批实例
+// 使用租户令牌撤回审批实例
 public class ApprovalService
 {
     private readonly IFeishuTenantV4Approval _approvalClient;
@@ -473,7 +473,7 @@ Task<FeishuNullDataApiResult?> CarbonCopyInstanceAsync(
 #### 代码示例
 
 ```csharp
-// 使用租户权限抄送审批实例
+// 使用租户令牌抄送审批实例
 public class ApprovalService
 {
     private readonly IFeishuTenantV4Approval _approvalClient;
@@ -564,7 +564,7 @@ Task<FeishuApiResult<PreviewNodeResult>?> PreviewInstanceAsync(
 #### 代码示例
 
 ```csharp
-// 使用租户权限预览审批流程
+// 使用租户令牌预览审批流程
 public class ApprovalService
 {
     private readonly IFeishuTenantV4Approval _approvalClient;
@@ -718,7 +718,7 @@ Task<FeishuApiResult<GetApprovalInstanceResult>?> GetInstanceByIdAsync(
 #### 代码示例
 
 ```csharp
-// 使用租户权限获取审批实例详情
+// 使用租户令牌获取审批实例详情
 public class ApprovalService
 {
     private readonly IFeishuTenantV4Approval _approvalClient;

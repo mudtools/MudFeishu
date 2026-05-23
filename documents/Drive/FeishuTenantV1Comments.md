@@ -2,7 +2,7 @@
 
 ## 接口名称
 
-**云文档评论（租户权限）** -（`IFeishuTenantV1Comments`）
+**云文档评论（租户令牌）** -（`IFeishuTenantV1Comments`）
 
 ## 功能描述
 

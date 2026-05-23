@@ -6,7 +6,7 @@
 ## 功能描述
 任务评论功能实现评论创建、回复、更新、删除、获取详情等功能。通过评论功能，团队成员可以在任务下进行沟通交流，记录任务相关的讨论和决策过程。
 
-本接口提供以当前登录用户身份管理任务评论的能力，与租户权限接口功能一致，但使用用户令牌进行认证。
+本接口提供以当前登录用户身份管理任务评论的能力，与租户令牌接口功能一致，但使用用户令牌进行认证。
 
 ## 参考文档
 - [飞书开放平台 - 任务评论概述](https://open.feishu.cn/document/task-v2/comment/overview)
@@ -80,7 +80,7 @@ Task<FeishuApiResult<CommentOpreationResult>?> CreateCommentAsync(
 
 **代码示例**：
 ```csharp
-// 使用用户权限创建评论
+// 使用用户令牌创建评论
 public class UserCommentService
 {
     private readonly IFeishuUserV2TaskComments _commentClient;

@@ -85,7 +85,7 @@ Task<FeishuApiResult<TaskAttachmentsUploadResult>?> UploadAttachmentAsync(
 
 **代码示例**：
 ```csharp
-// 使用租户权限上传附件
+// 使用租户令牌上传附件
 public class TaskAttachmentService
 {
     private readonly IFeishuTenantV2TaskAttachments _attachmentClient;

@@ -1,6 +1,6 @@
 ## 接口名称
 
-**Wiki 知识库节点（租户权限）- (IFeishuTenantV2WikiNodes)**
+**Wiki 知识库节点（租户令牌）- (IFeishuTenantV2WikiNodes)**
 
 ## 功能描述
 
@@ -322,7 +322,7 @@ Task<FeishuApiResult<GetTaskResult>?> GetTaskByIdAsync(
 
 ## 代码示例
 
-### 使用租户权限管理知识空间节点
+### 使用租户令牌管理知识空间节点
 
 ```csharp
 public class WikiNodeTenantService

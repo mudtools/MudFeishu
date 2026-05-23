@@ -94,7 +94,7 @@ public class BoardController : ControllerBase
 ### 画板管理
 
 - [画板（租户）](./FeishuTenantV1Board.md) — 画板主题管理、缩略图导出、语法解析、节点创建与查询
-- [画板（用户）](./FeishuUserV1Board.md) — 用户权限的画板管理，以用户身份操作画板
+- [画板（用户）](./FeishuUserV1Board.md) — 用户令牌的画板管理，以用户身份操作画板
 
 ## 命名空间与版本信息
 

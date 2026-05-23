@@ -1,7 +1,7 @@
 # 考勤组管理接口（用户） - FeishuUserV1AttendanceGroups
 
 ## 接口名称
-**考勤组管理（用户权限）** - (FeishuUserV1AttendanceGroups)
+**考勤组管理（用户令牌）** - (FeishuUserV1AttendanceGroups)
 
 ## 功能描述
 考勤组是对部门或者员工在某个特定场所及特定时间段内的出勤情况的一种规则设定，包括上下班、迟到、早退、病假、婚假、丧假、公休、工作时间、加班情况等。通过设置考勤组，可以从部门、员工两个维度，来设定考勤方式、考勤时间、考勤地点等考勤规则。
@@ -37,7 +37,7 @@
 ### 代码示例
 
 ```csharp
-// 使用用户权限操作考勤组
+// 使用用户令牌操作考勤组
 public class UserAttendanceGroupService
 {
     private readonly IFeishuUserV1AttendanceGroups _groupsClient;

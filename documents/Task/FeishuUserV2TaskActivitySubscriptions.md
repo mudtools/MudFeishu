@@ -6,7 +6,7 @@
 ## 功能描述
 任务清单动态订阅功能允许为任务清单创建订阅，当清单中发生特定事件时，系统会向订阅中的订阅者发送通知消息。
 
-本接口提供以当前登录用户身份管理任务清单动态订阅的能力，与租户权限接口功能一致，但使用用户令牌进行认证。
+本接口提供以当前登录用户身份管理任务清单动态订阅的能力，与租户令牌接口功能一致，但使用用户令牌进行认证。
 
 ## 参考文档
 - [飞书开放平台 - 任务清单动态订阅](https://open.feishu.cn/document/task-v2/tasklist-activity_subscription/create)
@@ -103,7 +103,7 @@ Task<FeishuApiResult<TasklistActivitySubscriptionResult>?> CreateActivitySubscri
 
 **代码示例**：
 ```csharp
-// 使用用户权限创建动态订阅
+// 使用用户令牌创建动态订阅
 public class UserSubscriptionService
 {
     private readonly IFeishuUserV2TaskActivitySubscriptions _subscriptionClient;

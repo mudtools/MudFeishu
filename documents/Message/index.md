@@ -97,7 +97,7 @@ public class MessageController : ControllerBase
 ### 消息管理
 
 - [消息管理（租户）](./FeishuTenantV1Message.md) — 发送、回复、编辑、撤回、转发消息，获取历史消息与已读状态
-- [消息管理（用户）](./FeishuUserV1Message.md) — 用户权限的消息管理，支持撤回、表情回复、Pin 消息等
+- [消息管理（用户）](./FeishuUserV1Message.md) — 用户令牌的消息管理，支持撤回、表情回复、Pin 消息等
 
 ### 批量消息
 

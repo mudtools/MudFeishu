@@ -99,7 +99,7 @@ Task<FeishuApiResult<FileUploadResult>?> UploadFileAsync(
 #### 代码示例
 
 ```csharp
-// 使用租户权限上传审批文件
+// 使用租户令牌上传审批文件
 public class ApprovalFileService
 {
     private readonly IFeishuTenantV2ApprovalFile _fileClient;
@@ -133,7 +133,7 @@ public class ApprovalFileService
 **上传图片文件示例：**
 
 ```csharp
-// 使用租户权限上传审批图片
+// 使用租户令牌上传审批图片
 public class ApprovalFileService
 {
     private readonly IFeishuTenantV2ApprovalFile _fileClient;
@@ -167,7 +167,7 @@ public class ApprovalFileService
 **完整业务场景示例：**
 
 ```csharp
-// 使用租户权限完成文件上传并创建审批实例的完整流程
+// 使用租户令牌完成文件上传并创建审批实例的完整流程
 public class ApprovalWithFileService
 {
     private readonly IFeishuTenantV2ApprovalFile _fileClient;

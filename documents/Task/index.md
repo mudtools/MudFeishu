@@ -96,37 +96,37 @@ public class TaskController : ControllerBase
 ### 任务管理
 
 - [飞书任务 V2（租户）](./FeishuTenantV2Task.md) — 创建、更新、删除任务，管理任务成员、清单、提醒、依赖关系及子任务
-- [飞书任务 V2（用户）](./FeishuUserV2Task.md) — 用户权限的任务管理，支持分页获取任务列表
+- [飞书任务 V2（用户）](./FeishuUserV2Task.md) — 用户令牌的任务管理，支持分页获取任务列表
 
 ### 任务清单
 
 - [任务清单 V2（租户）](./FeishuTenantV2TaskList.md) — 创建、更新、删除清单，管理清单成员，获取清单任务列表
-- [任务清单 V2（用户）](./FeishuUserV2TaskList.md) — 用户权限的任务清单管理
+- [任务清单 V2（用户）](./FeishuUserV2TaskList.md) — 用户令牌的任务清单管理
 
 ### 任务评论
 
 - [任务评论 V2（租户）](./FeishuTenantV2TaskComments.md) — 创建、更新、删除评论，列取评论列表
-- [任务评论 V2（用户）](./FeishuUserV2TaskComments.md) — 用户权限的任务评论管理
+- [任务评论 V2（用户）](./FeishuUserV2TaskComments.md) — 用户令牌的任务评论管理
 
 ### 任务附件
 
 - [任务附件 V2（租户）](./FeishuTenantV2TaskAttachments.md) — 上传、列取、获取、删除任务附件
-- [任务附件 V2（用户）](./FeishuUserV2TaskAttachments.md) — 用户权限的任务附件管理
+- [任务附件 V2（用户）](./FeishuUserV2TaskAttachments.md) — 用户令牌的任务附件管理
 
 ### 自定义字段
 
 - [任务自定义字段 V2（租户）](./FeishuTenantV2TaskCustomFields.md) — 创建、更新自定义字段，管理字段选项
-- [任务自定义字段 V2（用户）](./FeishuUserV2TaskCustomFields.md) — 用户权限的自定义字段管理
+- [任务自定义字段 V2（用户）](./FeishuUserV2TaskCustomFields.md) — 用户令牌的自定义字段管理
 
 ### 自定义分组
 
 - [任务自定义分组 V2（租户）](./FeishuTenantV2TaskSections.md) — 创建、更新、删除自定义分组，获取分组任务列表
-- [任务自定义分组 V2（用户）](./FeishuUserV2TaskSections.md) — 用户权限的自定义分组管理
+- [任务自定义分组 V2（用户）](./FeishuUserV2TaskSections.md) — 用户令牌的自定义分组管理
 
 ### 动态订阅
 
 - [任务清单动态订阅 V2（租户）](./FeishuTenantV2TaskActivitySubscriptions.md) — 创建、查询、更新、删除清单动态订阅
-- [任务清单动态订阅 V2（用户）](./FeishuUserV2TaskActivitySubscriptions.md) — 用户权限的动态订阅管理
+- [任务清单动态订阅 V2（用户）](./FeishuUserV2TaskActivitySubscriptions.md) — 用户令牌的动态订阅管理
 
 ## 命名空间与版本信息
 

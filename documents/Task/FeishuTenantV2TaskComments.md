@@ -80,7 +80,7 @@ Task<FeishuApiResult<CommentOpreationResult>?> CreateCommentAsync(
 
 **代码示例**：
 ```csharp
-// 使用租户权限创建评论
+// 使用租户令牌创建评论
 public class TaskCommentService
 {
     private readonly IFeishuTenantV2TaskComments _commentClient;

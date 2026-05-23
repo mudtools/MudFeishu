@@ -1,7 +1,7 @@
 # 文件版本管理 - 用户令牌（FeishuUserV1DriveFilesVersions）
 
 ## 接口名称
-**文件版本管理（用户权限）** -（`IFeishuUserV1DriveFilesVersions`）
+**文件版本管理（用户令牌）** -（`IFeishuUserV1DriveFilesVersions`）
 
 ## 功能描述
 提供以用户身份管理飞书云空间文件版本的能力。文件版本是基于文件生成的新版本，版本依附于文件而存在。支持基于在线文档和电子表格创建、获取、删除版本信息。适用于需要以具体用户身份管理文档版本的业务场景，如文档版本回溯、版本对比等。
@@ -187,7 +187,7 @@ Task<FeishuNullDataApiResult?> DeleteFileVersionByFileTokenAsync(
 
 **代码示例**：
 ```csharp
-// 使用用户权限管理文档版本
+// 使用用户令牌管理文档版本
 public class DocumentVersionService
 {
     private readonly IFeishuUserV1DriveFilesVersions _versionClient;

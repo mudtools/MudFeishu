@@ -99,47 +99,47 @@ public class BitableController : ControllerBase
 ### 多维表格应用
 
 - [多维表格（租户）](./FeishuTenantV1Bitable.md) — 创建、获取、更新多维表格应用
-- [多维表格（用户）](./FeishuUserV1Bitable.md) — 用户权限的多维表格应用管理
+- [多维表格（用户）](./FeishuUserV1Bitable.md) — 用户令牌的多维表格应用管理
 
 ### 数据表
 
 - [数据表（租户）](./FeishuTenantV1BitableAppTable.md) — 数据表增删改查、批量操作
-- [数据表（用户）](./FeishuUserV1BitableAppTable.md) — 用户权限的数据表管理
+- [数据表（用户）](./FeishuUserV1BitableAppTable.md) — 用户令牌的数据表管理
 
 ### 仪表盘
 
 - [仪表盘（租户）](./FeishuTenantV1BitableDashboard.md) — 仪表盘增删改查
-- [仪表盘（用户）](./FeishuUserV1BitableDashboard.md) — 用户权限的仪表盘管理
+- [仪表盘（用户）](./FeishuUserV1BitableDashboard.md) — 用户令牌的仪表盘管理
 
 ### 字段
 
 - [字段（租户）](./FeishuTenantV1BitableField.md) — 字段增删改查、字段编组管理
-- [字段（用户）](./FeishuUserV1BitableField.md) — 用户权限的字段管理
+- [字段（用户）](./FeishuUserV1BitableField.md) — 用户令牌的字段管理
 
 ### 表单
 
 - [表单（租户）](./FeishuTenantV1BitableForm.md) — 表单升级、元数据管理、问题管理
-- [表单（用户）](./FeishuUserV1BitableForm.md) — 用户权限的表单管理
+- [表单（用户）](./FeishuUserV1BitableForm.md) — 用户令牌的表单管理
 
 ### 记录
 
 - [记录（租户）](./FeishuTenantV1BitableRecord.md) — 记录增删改查、批量操作
-- [记录（用户）](./FeishuUserV1BitableRecord.md) — 用户权限的记录管理
+- [记录（用户）](./FeishuUserV1BitableRecord.md) — 用户令牌的记录管理
 
 ### 视图
 
 - [视图（租户）](./FeishuTenantV1BitableView.md) — 视图增删改查
-- [视图（用户）](./FeishuUserV1BitableView.md) — 用户权限的视图管理
+- [视图（用户）](./FeishuUserV1BitableView.md) — 用户令牌的视图管理
 
 ### 高级权限
 
 - [高级权限（租户）](./FeishuTenantV2BitableRole.md) — 自定义角色管理、协作者管理
-- [高级权限（用户）](./FeishuUserV2BitableRole.md) — 用户权限的高级权限管理
+- [高级权限（用户）](./FeishuUserV2BitableRole.md) — 用户令牌的高级权限管理
 
 ### 自动化流程
 
 - [自动化流程（租户）](./FeishuTenantV1BitableWorkflow.md) — 列出自动化流程、更新流程状态、列出工作流
-- [自动化流程（用户）](./FeishuUserV1BitableWorkflow.md) — 用户权限的自动化流程管理
+- [自动化流程（用户）](./FeishuUserV1BitableWorkflow.md) — 用户令牌的自动化流程管理
 
 ## 命名空间与版本信息
 

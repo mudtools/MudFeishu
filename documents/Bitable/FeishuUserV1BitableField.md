@@ -2,7 +2,7 @@
 
 ## 接口名称
 
-**多维表格字段（用户权限）** -（`IFeishuUserV1BitableField`）
+**多维表格字段（用户令牌）** -（`IFeishuUserV1BitableField`）
 
 ## 功能描述
 

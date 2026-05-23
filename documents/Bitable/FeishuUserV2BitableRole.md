@@ -2,7 +2,7 @@
 
 ## 接口名称
 
-**多维表格高级权限（用户权限）** -（`IFeishuUserV2BitableRole`）
+**多维表格高级权限（用户令牌）** -（`IFeishuUserV2BitableRole`）
 
 ## 功能描述
 

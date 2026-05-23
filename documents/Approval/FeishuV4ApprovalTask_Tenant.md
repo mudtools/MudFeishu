@@ -86,7 +86,7 @@ Task<FeishuNullDataApiResult?> AgreeApprovalAsync(
 #### 代码示例
 
 ```csharp
-// 使用租户权限同意审批任务
+// 使用租户令牌同意审批任务
 public class ApprovalTaskService
 {
     private readonly IFeishuTenantV4ApprovalTask _taskClient;
@@ -171,7 +171,7 @@ Task<FeishuNullDataApiResult?> RejectApprovalAsync(
 #### 代码示例
 
 ```csharp
-// 使用租户权限拒绝审批任务
+// 使用租户令牌拒绝审批任务
 public class ApprovalTaskService
 {
     private readonly IFeishuTenantV4ApprovalTask _taskClient;
@@ -258,7 +258,7 @@ Task<FeishuNullDataApiResult?> TransferApprovalAsync(
 #### 代码示例
 
 ```csharp
-// 使用租户权限转交审批任务
+// 使用租户令牌转交审批任务
 public class ApprovalTaskService
 {
     private readonly IFeishuTenantV4ApprovalTask _taskClient;
@@ -345,7 +345,7 @@ Task<FeishuNullDataApiResult?> RollbackApprovalAsync(
 #### 代码示例
 
 ```csharp
-// 使用租户权限退回审批任务
+// 使用租户令牌退回审批任务
 public class ApprovalTaskService
 {
     private readonly IFeishuTenantV4ApprovalTask _taskClient;
@@ -432,7 +432,7 @@ Task<FeishuNullDataApiResult?> InstancesAddSignAsync(
 #### 代码示例
 
 ```csharp
-// 使用租户权限审批任务加签
+// 使用租户令牌审批任务加签
 public class ApprovalTaskService
 {
     private readonly IFeishuTenantV4ApprovalTask _taskClient;
@@ -525,7 +525,7 @@ Task<FeishuNullDataApiResult?> ResubmitApprovalAsync(
 #### 代码示例
 
 ```csharp
-// 使用租户权限重新提交审批任务
+// 使用租户令牌重新提交审批任务
 public class ApprovalTaskService
 {
     private readonly IFeishuTenantV4ApprovalTask _taskClient;
@@ -562,7 +562,7 @@ public class ApprovalTaskService
 **完整的审批任务处理示例：**
 
 ```csharp
-// 使用租户权限处理审批任务的完整流程
+// 使用租户令牌处理审批任务的完整流程
 public class ApprovalTaskProcessor
 {
     private readonly IFeishuTenantV4ApprovalTask _taskClient;

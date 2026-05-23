@@ -109,7 +109,7 @@ Task<FeishuApiResult<TaskOperationResult>?> CreateTaskAsync(
 
 **代码示例**：
 ```csharp
-// 使用租户权限创建任务
+// 使用租户令牌创建任务
 public class TaskService
 {
     private readonly IFeishuTenantV2Task _taskClient;

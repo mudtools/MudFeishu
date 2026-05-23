@@ -2,7 +2,7 @@
 
 ## 接口名称
 
-**画板（用户权限）** -（`IFeishuUserV1Board`）
+**画板（用户令牌）** -（`IFeishuUserV1Board`）
 
 ## 功能描述
 

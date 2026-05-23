@@ -88,7 +88,7 @@ Task<FeishuApiResult<TaskListOperationResult>?> CreateTaskListAsync(
 
 **代码示例**：
 ```csharp
-// 使用租户权限创建清单
+// 使用租户令牌创建清单
 public class TaskListService
 {
     private readonly IFeishuTenantV2TaskList _taskListClient;

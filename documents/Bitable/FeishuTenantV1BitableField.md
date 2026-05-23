@@ -2,7 +2,7 @@
 
 ## 接口名称
 
-**多维表格字段（租户权限）** -（`IFeishuTenantV1BitableField`）
+**多维表格字段（租户令牌）** -（`IFeishuTenantV1BitableField`）
 
 ## 功能描述
 

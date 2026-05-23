@@ -6,7 +6,7 @@
 ## 功能描述
 飞书任务是一款飞书自带的通用任务/项目管理工具，拥有强大的协作能力。可以轻松地在飞书App的任务中心、群组、文档等场景中快捷创建任务，同时也可以将任务分享给感兴趣的成员，或者关注和跟进一些感兴趣的任务。
 
-本接口提供以当前登录用户身份操作飞书任务的完整能力，与租户权限接口功能一致，但使用用户令牌进行认证。额外支持基于调用身份分页列出特定类型的所有任务。
+本接口提供以当前登录用户身份操作飞书任务的完整能力，与租户令牌接口功能一致，但使用用户令牌进行认证。额外支持基于调用身份分页列出特定类型的所有任务。
 
 ## 参考文档
 - [飞书开放平台 - 任务 V2 概述](https://open.feishu.cn/document/task-v2/task/overview)
@@ -112,7 +112,7 @@ Task<FeishuApiPageListResult<ListTaskInfo>?> GetTasksPageListByIdAsync(
 
 **代码示例**：
 ```csharp
-// 使用用户权限获取任务列表
+// 使用用户令牌获取任务列表
 public class UserTaskService
 {
     private readonly IFeishuUserV2Task _taskClient;
@@ -243,7 +243,7 @@ Task<FeishuApiResult<TaskOperationResult>?> CreateTaskAsync(
 
 **代码示例**：
 ```csharp
-// 使用用户权限创建任务
+// 使用用户令牌创建任务
 public async Task CreatePersonalTaskAsync()
 {
     var request = new CreateTaskRequest

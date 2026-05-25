@@ -5,15 +5,20 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-namespace Mud.Feishu;
+namespace Mud.Feishu.DataModels.Mail;
 
 
 /// <summary>
-/// 飞书邮件会话API接口实现了修改、查询、删除等邮件模板功能。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-thread/batch_trash"/></para>
+/// 更新标签请求体
 /// </summary>
-[HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Mail", InheritedFrom = nameof(FeishuV1MailThread))]
-[Token("UserAccessToken", Name = Consts.Authorization)]
-public interface IFeishuUserV1MailThread : IFeishuV1MailThread, ICurrentUserId
+public class UpdateUserMailboxLabelRequest
 {
+    /// <summary>
+    /// <para>邮件标签，必须填写名字或颜色中的至少一个字段</para>
+    /// <para>必填：是</para>
+    /// </summary>
+    [JsonPropertyName("label")]
+    public MailLabel Label { get; set; } = new();
+
+
 }

@@ -9,11 +9,11 @@ namespace Mud.Feishu;
 
 
 /// <summary>
-/// 飞书邮件会话API接口实现了修改、查询、删除等邮件模板功能。
+/// 飞书标签API接口实现了修改、查询、删除等邮件标签功能。
 /// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-thread/batch_trash"/></para>
 /// </summary>
-[HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Mail", InheritedFrom = nameof(FeishuV1MailThread))]
+[HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Mail", InheritedFrom = nameof(FeishuV1MailLabel))]
 [Token("UserAccessToken", Name = Consts.Authorization)]
-public interface IFeishuUserV1MailThread : IFeishuV1MailThread, ICurrentUserId
+public interface IFeishuUserV1MailLabel : IFeishuV1MailLabel, ICurrentUserId
 {
 }

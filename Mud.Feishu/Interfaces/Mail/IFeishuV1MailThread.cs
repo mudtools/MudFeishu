@@ -57,4 +57,23 @@ public interface IFeishuV1MailThread : IFeishuAppContextSwitcher
      CancellationToken cancellationToken = default);
 
 
+    /// <summary>
+    /// 删除邮件会话。
+    /// <para>将指定的邮件会话移入已删除文件夹</para>
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-thread/trash">接口文档</see></para>
+    /// </summary>
+    /// <param name="user_mailbox_id">
+    /// <para>用户邮箱地址，作为用户邮箱身份标识。使用 user_access_token 调用时，可使用占位符 `me` 表示当前授权用户的主邮箱。</para>
+    /// <para>示例值：user@example.com</para>
+    /// </param>
+    /// <param name="thread_id">
+    /// <para>邮件会话ID。可通过发送邮件、回复邮件的接口返回值或获取邮件详情接口查询获得。</para>
+    /// <para>示例值：th_xxxxxxxxxxxx</para>
+    /// </param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Post("/open-apis/mail/v1/user_mailboxes/{user_mailbox_id}/threads/{thread_id}/trash")]
+    Task<FeishuNullDataApiResult?> TrashUserMailboxThreadAsync(
+        [Path] string user_mailbox_id,
+        [Path] string thread_id,
+        CancellationToken cancellationToken = default);
 }

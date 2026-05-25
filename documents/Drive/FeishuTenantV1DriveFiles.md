@@ -1,7 +1,7 @@
-# 云空间文件管理 - 租户权限（FeishuTenantV1DriveFiles）
+# 云空间文件管理 - 租户令牌（FeishuTenantV1DriveFiles）
 
 ## 接口名称
-**云空间文件管理（租户权限）** -（`IFeishuTenantV1DriveFiles`）
+**云空间文件管理（租户令牌）** -（`IFeishuTenantV1DriveFiles`）
 
 ## 功能描述
 提供飞书云空间文件的全生命周期管理能力，包括文件元数据查询、文件统计信息获取、访问记录查询、文件复制/移动/删除、快捷方式创建、文件上传下载、以及文件导入导出等功能。适用于需要以应用身份管理企业云文档资源的业务场景。

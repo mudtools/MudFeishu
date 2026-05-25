@@ -1,4 +1,4 @@
-# 会议导出 - 租户权限
+# 会议导出 - 租户令牌
 **IFeishuTenantV1VideoConferencingExports**
 
 ## 功能描述

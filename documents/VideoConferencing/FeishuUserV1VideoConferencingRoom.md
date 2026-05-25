@@ -1,4 +1,4 @@
-# 会议室搜索 - 用户权限
+# 会议室搜索 - 用户令牌
 **IFeishuUserV1VideoConferencingRoom**
 
 ## 功能描述

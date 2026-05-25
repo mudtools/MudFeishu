@@ -1,4 +1,4 @@
-# 任务清单 V2 - 用户权限
+# 任务清单 V2 - 用户令牌
 
 ## 接口名称
 **任务清单 V2 -（IFeishuUserV2TaskList）**
@@ -6,7 +6,7 @@
 ## 功能描述
 飞书清单可以用于组织和管理属于同一个项目的多个任务。通过清单，团队可以将相关的任务归类到一起，方便统一管理和跟踪项目进度。
 
-本接口提供以当前登录用户身份管理任务清单的能力，与租户权限接口功能一致，但使用用户令牌进行认证。
+本接口提供以当前登录用户身份管理任务清单的能力，与租户令牌接口功能一致，但使用用户令牌进行认证。
 
 ## 参考文档
 - [飞书开放平台 - 任务清单概述](https://open.feishu.cn/document/task-v2/tasklist/overview)
@@ -83,7 +83,7 @@ Task<FeishuApiResult<TaskListOperationResult>?> CreateTaskListAsync(
 
 **代码示例**：
 ```csharp
-// 使用用户权限创建清单
+// 使用用户令牌创建清单
 public class UserTaskListService
 {
     private readonly IFeishuUserV2TaskList _taskListClient;

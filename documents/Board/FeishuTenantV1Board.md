@@ -1,8 +1,8 @@
-# 画板 - 租户权限（FeishuTenantV1Board）
+# 画板 - 租户令牌（FeishuTenantV1Board）
 
 ## 接口名称
 
-**画板（租户权限）** -（`IFeishuTenantV1Board`）
+**画板（租户令牌）** -（`IFeishuTenantV1Board`）
 
 ## 功能描述
 

@@ -1,4 +1,4 @@
-# 日历访问控制 API
+# 日历访问控制 - 租户令牌
 **IFeishuTenantV4CalendarAcl**
 
 ## 功能描述

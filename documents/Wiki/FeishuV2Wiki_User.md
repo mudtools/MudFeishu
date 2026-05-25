@@ -1,5 +1,5 @@
 ## 接口名称
-**Wiki 知识库（用户权限）- (IFeishuUserV2Wiki)**
+**Wiki 知识库（用户令牌）- (IFeishuUserV2Wiki)**
 
 ## 功能描述
 飞书知识库是一个面向组织的知识管理系统。通过结构化沉淀高价值信息，形成完整的知识体系。此外，明确的内容分类，层级式的页面树，还能够轻松提升知识的流转和传播效率，更好地成就组织和个人。
@@ -296,7 +296,7 @@ Task<FeishuApiResult<SpaceInfoResult>?> CreateSpaceAsync(
 
 ## 代码示例
 
-### 使用用户权限创建和管理知识空间
+### 使用用户令牌创建和管理知识空间
 
 ```csharp
 public class WikiUserService

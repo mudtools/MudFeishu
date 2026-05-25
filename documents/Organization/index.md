@@ -95,15 +95,15 @@ public class UserController : ControllerBase
 
 - [租户 V1 部门管理](./FeishuTenantV1Departments.md) — 部门创建、更新、删除、批量查询与搜索
 - [租户 V3 部门管理](./FeishuTenantV3Departments.md) — 部门信息获取、子部门列表、部门 ID 变更、部门群解绑
-- [用户 V1 部门管理](./FeishuUserV1Departments.md) — 用户权限的部门管理（V1 版本）
-- [用户 V3 部门管理](./FeishuUserV3Departments.md) — 用户权限的部门查询（V3 版本）
+- [用户 V1 部门管理](./FeishuUserV1Departments.md) — 用户令牌的部门管理（V1 版本）
+- [用户 V3 部门管理](./FeishuUserV3Departments.md) — 用户令牌的部门查询（V3 版本）
 
 ### 用户管理
 
 - [租户 V1 员工管理](./FeishuTenantV1Employees.md) — 员工创建、更新、离职、恢复、批量查询
 - [租户 V3 用户管理](./FeishuTenantV3User.md) — 用户创建、更新、删除、恢复、JSAPI 票据获取
-- [用户 V1 员工管理](./FeishuUserV1Employees.md) — 用户权限的员工管理（V1 版本）
-- [用户 V3 用户管理](./FeishuUserV3User.md) — 用户权限的用户查询与搜索（V3 版本）
+- [用户 V1 员工管理](./FeishuUserV1Employees.md) — 用户令牌的员工管理（V1 版本）
+- [用户 V3 用户管理](./FeishuUserV3User.md) — 用户令牌的用户查询与搜索（V3 版本）
 
 ### 角色与用户组
 
@@ -117,7 +117,7 @@ public class UserController : ControllerBase
 - [租户 V3 职级管理](./FeishuTenantV3JobLevel.md) — 职级创建、更新、查询、删除
 - [租户 V3 职务管理](./FeishuTenantV3JobTitle.md) — 职务列表与详情查询
 - [租户 V3 序列管理](./FeishuTenantV3JobFamilies.md) — 序列创建、更新、查询、删除
-- [用户 V3 职务管理](./FeishuUserV3JobTitle.md) — 用户权限的职务查询
+- [用户 V3 职务管理](./FeishuUserV3JobTitle.md) — 用户令牌的职务查询
 
 ### 单位与人员类型
 

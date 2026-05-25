@@ -95,7 +95,7 @@ Task<FeishuApiResult<ApprovalInstancesQueryResult>?> GetInstancesPageListAsync(
 #### 代码示例
 
 ```csharp
-// 使用用户权限查询审批实例分页列表
+// 使用用户令牌查询审批实例分页列表
 public class UserApprovalQueryService
 {
     private readonly IFeishuUserV4ApprovalQuery _queryClient;
@@ -200,7 +200,7 @@ Task<FeishuApiResult<ApprovalInstancesCcQueryResult>?> GetCarbonCopyPageListAsyn
 #### 代码示例
 
 ```csharp
-// 使用用户权限查询审批抄送分页列表
+// 使用用户令牌查询审批抄送分页列表
 public class UserApprovalQueryService
 {
     private readonly IFeishuUserV4ApprovalQuery _queryClient;
@@ -304,7 +304,7 @@ Task<FeishuApiResult<ApprovalInstancesTaskQueryResult>?> GetTasksPageListAsync(
 #### 代码示例
 
 ```csharp
-// 使用用户权限查询审批任务分页列表
+// 使用用户令牌查询审批任务分页列表
 public class UserApprovalQueryService
 {
     private readonly IFeishuUserV4ApprovalQuery _queryClient;
@@ -342,7 +342,7 @@ public class UserApprovalQueryService
 **完整的个人审批中心示例：**
 
 ```csharp
-// 使用用户权限构建个人审批中心数据
+// 使用用户令牌构建个人审批中心数据
 public class PersonalApprovalCenterService
 {
     private readonly IFeishuUserV4ApprovalQuery _queryClient;

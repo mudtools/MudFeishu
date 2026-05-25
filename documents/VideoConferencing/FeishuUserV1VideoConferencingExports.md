@@ -1,4 +1,4 @@
-# 会议导出 - 用户权限
+# 会议导出 - 用户令牌
 **IFeishuUserV1VideoConferencingExports**
 
 ## 功能描述

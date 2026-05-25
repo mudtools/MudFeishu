@@ -93,7 +93,7 @@ Task<FeishuApiResult<DocumentInfoResult>?> CreateDocumentAsync(
 **代码示例**：
 
 ```csharp
-// 使用租户权限创建云文档
+// 使用租户令牌创建云文档
 public class DocumentService
 {
     private readonly IFeishuTenantV1Docx _docxClient;

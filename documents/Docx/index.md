@@ -93,12 +93,12 @@ public class DocxController : ControllerBase
 ### 文档管理
 
 - [飞书云文档租户接口](./FeishuTenantV1Docx.md) — 创建文档、获取文档信息、获取文档纯文本内容
-- [飞书云文档用户接口](./FeishuUserV1Docx.md) — 用户权限的文档管理，以用户身份操作文档
+- [飞书云文档用户接口](./FeishuUserV1Docx.md) — 用户令牌的文档管理，以用户身份操作文档
 
 ### 文档块管理
 
 - [飞书云文档块租户接口](./FeishuTenantV1DocxBlocks.md) — 创建/更新/删除文档块、批量更新、内容转换
-- [飞书云文档块用户接口](./FeishuUserV1DocxBlocks.md) — 用户权限的文档块管理，以用户身份编辑文档内容
+- [飞书云文档块用户接口](./FeishuUserV1DocxBlocks.md) — 用户令牌的文档块管理，以用户身份编辑文档内容
 
 ## 命名空间与版本信息
 

@@ -1,7 +1,7 @@
-# 文件夹管理 - 租户权限（FeishuTenantV1DriveFolder）
+# 文件夹管理 - 租户令牌（FeishuTenantV1DriveFolder）
 
 ## 接口名称
-**文件夹管理（租户权限）** -（`IFeishuTenantV1DriveFolder`）
+**文件夹管理（租户令牌）** -（`IFeishuTenantV1DriveFolder`）
 
 ## 功能描述
 提供以租户身份管理飞书云空间文件夹的能力。文件夹是飞书云空间中用于管理文件和其它文件夹的容器，每个文件夹都有唯一的 token 作为标识。支持获取文件夹元数据、创建文件夹、获取文件清单以及查询异步任务状态。适用于需要以应用身份管理云空间文件夹的业务场景，如企业级文档管理、自动化文件夹创建等。
@@ -211,7 +211,7 @@ Task<FeishuApiResult<FilesTaskCheckResult>?> GetTaskCheckFileAsync(
 
 **代码示例**：
 ```csharp
-// 使用租户权限管理文件夹
+// 使用租户令牌管理文件夹
 public class FolderManagementService
 {
     private readonly IFeishuTenantV1DriveFolder _folderClient;

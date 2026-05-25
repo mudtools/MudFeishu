@@ -1,8 +1,8 @@
-# 多维表格仪表盘 - 用户权限（FeishuUserV1BitableDashboard）
+# 多维表格仪表盘 - 用户令牌（FeishuUserV1BitableDashboard）
 
 ## 接口名称
 
-**多维表格仪表盘（用户权限）** -（`IFeishuUserV1BitableDashboard`）
+**多维表格仪表盘（用户令牌）** -（`IFeishuUserV1BitableDashboard`）
 
 ## 功能描述
 

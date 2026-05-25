@@ -1,8 +1,8 @@
-# 多维表格表单 - 用户权限（FeishuUserV1BitableForm）
+# 多维表格表单 - 用户令牌（FeishuUserV1BitableForm）
 
 ## 接口名称
 
-**多维表格表单（用户权限）** -（`IFeishuUserV1BitableForm`）
+**多维表格表单（用户令牌）** -（`IFeishuUserV1BitableForm`）
 
 ## 功能描述
 

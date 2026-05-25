@@ -1,4 +1,4 @@
-# 任务自定义字段 V2 - 用户权限
+# 任务自定义字段 V2 - 用户令牌
 
 ## 接口名称
 **任务自定义字段 V2 -（IFeishuUserV2TaskCustomFields）**
@@ -8,7 +8,7 @@
 
 任务的使用者可以在使用"任务截止时间"、"任务负责人"等系统字段之外，自行定义如"优先级"、"项目发布日期"、"价格"等和使用场景密切相关的字段。
 
-本接口提供以当前登录用户身份管理任务自定义字段的能力，与租户权限接口功能一致，但使用用户令牌进行认证。
+本接口提供以当前登录用户身份管理任务自定义字段的能力，与租户令牌接口功能一致，但使用用户令牌进行认证。
 
 ## 参考文档
 - [飞书开放平台 - 任务自定义字段概述](https://open.feishu.cn/document/task-v2/custom_field/custom-field-overview)
@@ -95,7 +95,7 @@ Task<FeishuApiResult<CustomFieldsResult>?> CreateCustomFieldsAsync(
 
 **代码示例**：
 ```csharp
-// 使用用户权限创建自定义字段
+// 使用用户令牌创建自定义字段
 public class UserCustomFieldService
 {
     private readonly IFeishuUserV2TaskCustomFields _customFieldClient;

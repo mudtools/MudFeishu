@@ -1,4 +1,4 @@
-# 任务自定义字段 V2 - 租户权限
+# 任务自定义字段 V2 - 租户令牌
 
 ## 接口名称
 **任务自定义字段 V2 -（IFeishuTenantV2TaskCustomFields）**
@@ -115,7 +115,7 @@ Task<FeishuApiResult<CustomFieldsResult>?> CreateCustomFieldsAsync(
 
 **代码示例**：
 ```csharp
-// 使用租户权限创建自定义字段
+// 使用租户令牌创建自定义字段
 public class TaskCustomFieldService
 {
     private readonly IFeishuTenantV2TaskCustomFields _customFieldClient;

@@ -94,23 +94,23 @@ public class ChatGroupController : ControllerBase
 ### 群组管理
 
 - [飞书群组 API（租户）](./FeishuTenantV1ChatGroup.md) — 创建群聊、更新群信息、解散群组、获取群列表、群置顶管理
-- [飞书群组 API（用户）](./FeishuUserV1ChatGroup.md) — 用户权限的群组管理，适用于用户身份操作群组
+- [飞书群组 API（用户）](./FeishuUserV1ChatGroup.md) — 用户令牌的群组管理，适用于用户身份操作群组
 
 ### 群成员管理
 
 - [飞书群成员 API（租户）](./FeishuTenantV1ChatGroupMember.md) — 添加/移除群成员、添加/删除群管理员、分页获取群成员列表
-- [飞书群成员 API（用户）](./FeishuUserV1ChatGroupMember.md) — 用户权限的群成员管理，适用于用户身份操作
+- [飞书群成员 API（用户）](./FeishuUserV1ChatGroupMember.md) — 用户令牌的群成员管理，适用于用户身份操作
 
 ### 群公告管理
 
 - [飞书群公告 API（租户）](./FeishuTenantV1ChatGroupAnnouncement.md) — 获取群公告、创建/更新/删除群公告块
-- [飞书群公告 API（用户）](./FeishuUserV1ChatGroupAnnouncement.md) — 用户权限的群公告管理
+- [飞书群公告 API（用户）](./FeishuUserV1ChatGroupAnnouncement.md) — 用户令牌的群公告管理
 
 ### 群菜单与标签页
 
 - [飞书群菜单 API（租户）](./FeishuTenantV1ChatGroupMenu.md) — 添加、更新、删除、排序群菜单
 - [飞书会话标签页 API（租户）](./FeishuTenantV1ChatTabs.md) — 创建、更新、删除、排序会话标签页
-- [飞书会话标签页 API（用户）](./FeishuUserV1ChatTabs.md) — 用户权限的会话标签页管理
+- [飞书会话标签页 API（用户）](./FeishuUserV1ChatTabs.md) — 用户令牌的会话标签页管理
 
 ## 命名空间与版本信息
 

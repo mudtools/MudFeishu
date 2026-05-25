@@ -1,4 +1,4 @@
-# 会议管理 - 租户权限
+# 会议管理 - 租户令牌
 **IFeishuTenantV1VideoConferencingMeeting**
 
 ## 功能描述

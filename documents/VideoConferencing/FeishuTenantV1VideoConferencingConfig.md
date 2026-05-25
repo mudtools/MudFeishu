@@ -1,4 +1,4 @@
-# 会议室配置 - 租户权限
+# 会议室配置 - 租户令牌
 **IFeishuTenantV1VideoConferencingConfig**
 
 ## 功能描述

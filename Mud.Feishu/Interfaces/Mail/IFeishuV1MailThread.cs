@@ -76,4 +76,29 @@ public interface IFeishuV1MailThread : IFeishuAppContextSwitcher
         [Path] string user_mailbox_id,
         [Path] string thread_id,
         CancellationToken cancellationToken = default);
+
+
+
+    /// <summary>
+    /// 修改邮件会话。
+    /// <para>修改邮件会话的标签、所属文件夹和已读未读状态，支持为邮件会话添加旗标、归档、移入垃圾邮件文件夹。</para>
+    /// <para>注意，接口不支持将邮件会话移入已删除文件夹，如需，请使用删除邮件会话接口。</para>
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-thread/modify">接口文档</see></para>
+    /// </summary>
+    /// <param name="user_mailbox_id">
+    /// <para>用户邮箱地址，作为用户邮箱身份标识。使用 user_access_token 调用时，可使用占位符 `me` 表示当前授权用户的主邮箱。</para>
+    /// <para>示例值：user@example.com</para>
+    /// </param>
+    /// <param name="thread_id">
+    /// <para>邮件会话ID。可通过发送邮件、回复邮件的接口返回值或获取邮件详情接口查询获得。</para>
+    /// <para>示例值：th_xxxxxxxxxxxx</para>
+    /// </param>
+    /// <param name="modifyUserMailboxThreadRequest">修改邮件会话请求对象，包含待修改的邮件会话信息。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Post("/open-apis/mail/v1/user_mailboxes/{user_mailbox_id}/threads/{thread_id}/modify")]
+    Task<FeishuNullDataApiResult?> ModifyUserMailboxThreadAsync(
+         [Path] string user_mailbox_id,
+         [Path] string thread_id,
+         [Body] ModifyUserMailboxThreadRequest modifyUserMailboxThreadRequest,
+         CancellationToken cancellationToken = default);
 }

@@ -142,4 +142,21 @@ public interface IFeishuV1MailTemplate : IFeishuAppContextSwitcher
       [Path] string user_mailbox_id,
       [Path] string template_id,
       CancellationToken cancellationToken = default);
+
+
+
+    /// <summary>
+    /// 列出可发信邮箱。
+    /// <para>获取当前地址的可用于发信的邮箱地址列表。</para>
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-setting/send_as">接口文档</see></para>
+    /// </summary>
+    /// <param name="user_mailbox_id">
+    /// <para>用户邮箱地址，作为用户邮箱身份标识。使用 user_access_token 调用时，可使用占位符 `me` 表示当前授权用户的主邮箱。</para>
+    /// <para>示例值：user@example.com</para>
+    /// </param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Get("/open-apis/mail/v1/user_mailboxes/{user_mailbox_id}/settings/send_as")]
+    Task<FeishuApiResult<GetSendAsUserMailboxSettingResult>?> GetSendAsUserMailboxSettingAsync(
+       [Path] string user_mailbox_id,
+       CancellationToken cancellationToken = default);
 }

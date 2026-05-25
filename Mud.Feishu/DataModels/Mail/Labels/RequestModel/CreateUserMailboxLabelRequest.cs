@@ -8,16 +8,14 @@
 namespace Mud.Feishu.DataModels.Mail;
 
 /// <summary>
-/// 更新标签响应体
+/// 表示为用户邮箱创建邮件标签的请求。
 /// </summary>
-public class UpdateUserMailboxLabelResult
+public class CreateUserMailboxLabelRequest
 {
     /// <summary>
-    /// <para>标签</para>
-    /// <para>必填：否</para>
+    /// <para>邮件标签，必须填写名字或颜色中的至少一个字段</para>
+    /// <para>必填：是</para>
     /// </summary>
     [JsonPropertyName("label")]
-    public MailLabelInfo? Label { get; set; }
-
-
+    public MailLabel Label { get; set; } = new();
 }

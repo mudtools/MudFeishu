@@ -33,7 +33,7 @@ public interface IFeishuV1MailLabel : IFeishuAppContextSwitcher
     /// <param name="updateUserMailboxLabelRequest">更新用户邮箱标签请求对象，包含待更新的标签信息。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Patch("/open-apis/mail/v1/user_mailboxes/{user_mailbox_id}/labels/{label_id}")]
-    Task<FeishuApiResult<UpdateUserMailboxLabelResult>?> UpdateUserMailboxLabelAsync(
+    Task<FeishuApiResult<UserMailboxLabelOopsResult>?> UpdateUserMailboxLabelAsync(
       [Path] string user_mailbox_id,
       [Path] string label_id,
       [Body] UpdateUserMailboxLabelRequest updateUserMailboxLabelRequest,
@@ -74,5 +74,44 @@ public interface IFeishuV1MailLabel : IFeishuAppContextSwitcher
     Task<FeishuApiResult<GetUserMailboxLabelResult>?> GetUserMailboxLabelAsync(
       [Path] string user_mailbox_id,
       [Path] string label_id,
+      CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 删除标签。
+    /// <para>删除用户指定的标签，注意，删除的标签无法恢复。</para>
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-label/delete">接口文档</see></para>
+    /// </summary>
+    /// <param name="user_mailbox_id">
+    /// <para>用户邮箱地址，作为用户邮箱身份标识。使用 user_access_token 调用时，可使用占位符 `me` 表示当前授权用户的主邮箱。</para>
+    /// <para>示例值：user@example.com</para>
+    /// </param>
+    /// <param name="label_id">
+    /// <para>标签ID，创建标签成功后返回的标签ID，或可通过列出标签、获取邮件详情等接口获得</para>
+    /// <para>示例值：7620003644728938013</para>
+    /// </param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Delete("/open-apis/mail/v1/user_mailboxes/{user_mailbox_id}/labels/{label_id}")]
+    Task<FeishuNullDataApiResult?> DeleteUserMailboxLabelAsync(
+       [Path] string user_mailbox_id,
+       [Path] string label_id,
+       CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 创建标签。
+    /// <para>根据用户指定的名称、颜色等信息，创建邮件标签。</para>
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-label/create">接口文档</see></para>
+    /// </summary>
+    /// <param name="user_mailbox_id">
+    /// <para>用户邮箱地址，作为用户邮箱身份标识。使用 user_access_token 调用时，可使用占位符 `me` 表示当前授权用户的主邮箱。</para>
+    /// <para>示例值：user@example.com</para>
+    /// </param>
+    /// <param name="createUserMailboxLabelRequest">创建用户邮箱标签请求对象，包含待创建的标签信息。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Post("/open-apis/mail/v1/user_mailboxes/{user_mailbox_id}/labels")]
+    Task<FeishuApiResult<UserMailboxLabelOopsResult>?> CreateUserMailboxLabelAsync(
+      [Path] string user_mailbox_id,
+      [Body] CreateUserMailboxLabelRequest createUserMailboxLabelRequest,
       CancellationToken cancellationToken = default);
 }

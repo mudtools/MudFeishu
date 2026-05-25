@@ -1,4 +1,4 @@
-# 飞书任务 V2 - 租户权限
+# 飞书任务 V2 - 租户令牌
 
 ## 接口名称
 **飞书任务 V2 -（IFeishuTenantV2Task）**
@@ -109,7 +109,7 @@ Task<FeishuApiResult<TaskOperationResult>?> CreateTaskAsync(
 
 **代码示例**：
 ```csharp
-// 使用租户权限创建任务
+// 使用租户令牌创建任务
 public class TaskService
 {
     private readonly IFeishuTenantV2Task _taskClient;

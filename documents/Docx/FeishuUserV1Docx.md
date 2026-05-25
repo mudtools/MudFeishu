@@ -86,7 +86,7 @@ Task<FeishuApiResult<DocumentInfoResult>?> CreateDocumentAsync(
 **代码示例**：
 
 ```csharp
-// 使用用户权限创建个人文档
+// 使用用户令牌创建个人文档
 public class UserDocumentService
 {
     private readonly IFeishuUserV1Docx _userDocxClient;

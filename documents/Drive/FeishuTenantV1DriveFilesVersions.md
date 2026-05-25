@@ -1,10 +1,10 @@
-# 文件版本管理（租户权限）- FeishuTenantV1DriveFilesVersions
+# 文件版本管理（租户令牌）- FeishuTenantV1DriveFilesVersions
 
 ## 接口名称
-**文件版本管理（租户权限）** -（`FeishuTenantV1DriveFilesVersions`）
+**文件版本管理（租户令牌）** -（`FeishuTenantV1DriveFilesVersions`）
 
 ## 功能描述
-文件版本是基于文件生成的新版本，版本依附于文件而存在。本接口提供基于租户权限的在线文档和电子表格版本管理功能，支持创建、删除和获取版本信息。适用于企业级应用场景，如文档版本控制、历史记录管理等。
+文件版本是基于文件生成的新版本，版本依附于文件而存在。本接口提供基于租户令牌的在线文档和电子表格版本管理功能，支持创建、删除和获取版本信息。适用于企业级应用场景，如文档版本控制、历史记录管理等。
 
 ## 参考文档
 - [飞书官方文档 - 文件版本概述](https://open.feishu.cn/document/server-docs/docs/drive-v1/file-version/overview)
@@ -74,7 +74,7 @@ Task<FeishuApiResult<CreateFileVersionResult>?> CreateFileVersionAsync(
 
 **代码示例**：
 ```csharp
-// 使用租户权限创建文档版本
+// 使用租户令牌创建文档版本
 public class DocumentVersionService
 {
     private readonly IFeishuTenantV1DriveFilesVersions _versionClient;

@@ -1,7 +1,7 @@
 # 应用消息流卡片接口 - FeishuTenantV2AppCardMessageStream
 
 ## 接口名称
-**应用消息流卡片管理（租户权限）** - (FeishuTenantV2AppCardMessageStream)
+**应用消息流卡片管理（租户令牌）** - (FeishuTenantV2AppCardMessageStream)
 
 ## 功能描述
 应用消息流卡片是飞书为应用提供的消息触达能力，让应用可以直接在消息流发送消息，重要消息能更快触达用户。支持创建、更新、删除消息流卡片，以及设置即时提醒、更新快捷操作按钮等功能。

@@ -1,7 +1,7 @@
-# 素材管理 - 租户权限（FeishuTenantV1DriveMedia）
+# 素材管理 - 租户令牌（FeishuTenantV1DriveMedia）
 
 ## 接口名称
-**素材管理（租户权限）** -（`IFeishuTenantV1DriveMedia`）
+**素材管理（租户令牌）** -（`IFeishuTenantV1DriveMedia`）
 
 ## 功能描述
 提供以租户身份管理飞书云文档素材的能力。素材指在文档、电子表格、多维表格等中用到的资源素材，如文档中的图片、视频或文件等，每个素材都有唯一的 token 作为标识。支持素材的上传（包括完整上传和分片上传）、下载和获取临时下载链接。适用于需要以应用身份管理云文档素材的业务场景，如自动化文档生成、批量素材处理等。
@@ -238,7 +238,7 @@ Task<FeishuApiResult<BatchGetTmpDownloadUrlResult>?> BatchGetTmpDownloadUrlAsync
 
 **代码示例**：
 ```csharp
-// 使用租户权限管理素材
+// 使用租户令牌管理素材
 public class MediaManagementService
 {
     private readonly IFeishuTenantV1DriveMedia _mediaClient;

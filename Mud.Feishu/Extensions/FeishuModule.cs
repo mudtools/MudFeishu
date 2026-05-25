@@ -88,6 +88,11 @@ public enum FeishuModule
     Authentication,
 
     /// <summary>
+    /// 邮箱
+    /// </summary>
+    Mail,
+
+    /// <summary>
     /// 所有功能
     /// </summary>
     All

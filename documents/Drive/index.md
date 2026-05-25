@@ -100,12 +100,12 @@ public class DriveController : ControllerBase
 ### 文件管理
 
 - [云空间文件管理（租户）](./FeishuTenantV1DriveFiles.md) — 文件上传下载、复制移动删除、导入导出、元数据查询
-- [云空间文件管理（用户）](./FeishuUserV1DriveFiles.md) — 用户权限的文件管理，以用户身份操作云文档
+- [云空间文件管理（用户）](./FeishuUserV1DriveFiles.md) — 用户令牌的文件管理，以用户身份操作云文档
 
 ### 文件版本管理
 
 - [文件版本管理（租户）](./FeishuTenantV1DriveFilesVersions.md) — 创建、查询、删除文档版本
-- [文件版本管理（用户）](./FeishuUserV1DriveFilesVersions.md) — 用户权限的版本管理
+- [文件版本管理（用户）](./FeishuUserV1DriveFilesVersions.md) — 用户令牌的版本管理
 
 ### 文件夹管理
 
@@ -114,22 +114,22 @@ public class DriveController : ControllerBase
 ### 素材管理
 
 - [素材管理（租户）](./FeishuTenantV1DriveMedia.md) — 素材上传下载、获取临时下载链接
-- [素材管理（用户）](./FeishuUserV1DriveMedia.md) — 用户权限的素材管理
+- [素材管理（用户）](./FeishuUserV1DriveMedia.md) — 用户令牌的素材管理
 
 ### 云文档评论
 
 - [云文档评论（租户）](./FeishuTenantV1Comments.md) — 评论列表查询、添加评论、回复管理、表情回应
-- [云文档评论（用户）](./FeishuUserV1Comments.md) — 用户权限的评论管理，以用户身份管理评论互动
+- [云文档评论（用户）](./FeishuUserV1Comments.md) — 用户令牌的评论管理，以用户身份管理评论互动
 
 ### 云文档权限
 
 - [云文档权限（租户）](./FeishuTenantV1DrivePermissions.md) — 协作者权限管理、权限设置、文档密码管理
-- [云文档权限（用户）](./FeishuUserV1DrivePermissions.md) — 用户权限的文档权限管理，协作者邀请与权限分配
+- [云文档权限（用户）](./FeishuUserV1DrivePermissions.md) — 用户令牌的文档权限管理，协作者邀请与权限分配
 
 ### 云文档事件订阅
 
 - [云文档事件订阅（租户）](./FeishuTenantV1DriveSubscribe.md) — 订阅/取消/查询云文档事件，监听文档变更
-- [云文档事件订阅（用户）](./FeishuUserV1DriveSubscribe.md) — 用户权限的事件订阅，个人文档变更通知
+- [云文档事件订阅（用户）](./FeishuUserV1DriveSubscribe.md) — 用户令牌的事件订阅，个人文档变更通知
 
 ## 命名空间与版本信息
 

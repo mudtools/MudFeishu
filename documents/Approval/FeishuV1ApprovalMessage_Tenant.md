@@ -79,7 +79,7 @@ Task<FeishuApiResult<ApprovalBotMessageResult>?> SendBotMessageAsync(
 #### 代码示例
 
 ```csharp
-// 使用租户权限发送审批 Bot 消息
+// 使用租户令牌发送审批 Bot 消息
 public class ApprovalMessageService
 {
     private readonly IFeishuTenantV1ApprovalMessage _messageClient;
@@ -171,7 +171,7 @@ Task<FeishuApiResult<ApprovalBotMessageResult>?> SendBotMessageAsync(
 #### 代码示例
 
 ```csharp
-// 使用租户权限发送自定义审批 Bot 消息
+// 使用租户令牌发送自定义审批 Bot 消息
 public class ApprovalMessageService
 {
     private readonly IFeishuTenantV1ApprovalMessage _messageClient;
@@ -265,7 +265,7 @@ Task<FeishuApiResult<ApprovalBotMessageResult>?> UpdateBotMessageAsync(
 #### 代码示例
 
 ```csharp
-// 使用租户权限更新审批 Bot 消息
+// 使用租户令牌更新审批 Bot 消息
 public class ApprovalMessageService
 {
     private readonly IFeishuTenantV1ApprovalMessage _messageClient;

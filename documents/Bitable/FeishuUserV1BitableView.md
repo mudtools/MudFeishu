@@ -1,8 +1,8 @@
-# 多维表格视图 - 用户权限（FeishuUserV1BitableView）
+# 多维表格视图 - 用户令牌（FeishuUserV1BitableView）
 
 ## 接口名称
 
-**多维表格视图（用户权限）** -（`IFeishuUserV1BitableView`）
+**多维表格视图（用户令牌）** -（`IFeishuUserV1BitableView`）
 
 ## 功能描述
 

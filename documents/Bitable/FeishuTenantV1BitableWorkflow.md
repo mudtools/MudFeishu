@@ -1,8 +1,8 @@
-# 多维表格自动化流程 - 租户权限（FeishuTenantV1BitableWorkflow）
+# 多维表格自动化流程 - 租户令牌（FeishuTenantV1BitableWorkflow）
 
 ## 接口名称
 
-**多维表格自动化流程（租户权限）** -（`IFeishuTenantV1BitableWorkflow`）
+**多维表格自动化流程（租户令牌）** -（`IFeishuTenantV1BitableWorkflow`）
 
 ## 功能描述
 

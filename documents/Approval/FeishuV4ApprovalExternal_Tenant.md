@@ -92,7 +92,7 @@ Task<FeishuApiResult<CreateApprovalExternalResult>?> CreateApprovalAsync(
 #### 代码示例
 
 ```csharp
-// 使用租户权限创建三方审批定义
+// 使用租户令牌创建三方审批定义
 public class ExternalApprovalService
 {
     private readonly IFeishuTenantV4ApprovalExternal _externalClient;
@@ -191,7 +191,7 @@ Task<FeishuApiResult<GetApprovalExternalResult>?> GetApprovalByCodeAsync(
 #### 代码示例
 
 ```csharp
-// 使用租户权限获取三方审批定义详情
+// 使用租户令牌获取三方审批定义详情
 public class ExternalApprovalService
 {
     private readonly IFeishuTenantV4ApprovalExternal _externalClient;
@@ -289,7 +289,7 @@ Task<FeishuApiResult<SyncExternalInstancesResult>?> SyncInstancesAsync(
 #### 代码示例
 
 ```csharp
-// 使用租户权限同步三方审批实例到飞书
+// 使用租户令牌同步三方审批实例到飞书
 public class ExternalApprovalService
 {
     private readonly IFeishuTenantV4ApprovalExternal _externalClient;
@@ -398,7 +398,7 @@ Task<FeishuApiResult<CheckExternalInstancesResult>?> CheckInstancesAsync(
 #### 代码示例
 
 ```csharp
-// 使用租户权限校验三方审批实例数据状态
+// 使用租户令牌校验三方审批实例数据状态
 public class ExternalApprovalService
 {
     private readonly IFeishuTenantV4ApprovalExternal _externalClient;
@@ -503,7 +503,7 @@ Task<FeishuApiResult<GetInstancesStateResult>?> GetInstancesStatePageListAsync(
 #### 代码示例
 
 ```csharp
-// 使用租户权限获取三方审批实例状态列表
+// 使用租户令牌获取三方审批实例状态列表
 public class ExternalApprovalService
 {
     private readonly IFeishuTenantV4ApprovalExternal _externalClient;

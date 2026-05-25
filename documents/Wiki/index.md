@@ -103,12 +103,12 @@ public class WikiController : ControllerBase
 ### 知识空间管理
 
 - [Wiki 知识库（租户）](./FeishuV2Wiki_Tenant.md) — 获取知识空间列表、空间详情、成员管理、更新空间设置
-- [Wiki 知识库（用户）](./FeishuV2Wiki_User.md) — 用户权限的知识空间管理，支持创建知识空间
+- [Wiki 知识库（用户）](./FeishuV2Wiki_User.md) — 用户令牌的知识空间管理，支持创建知识空间
 
 ### 知识空间节点
 
 - [Wiki 知识库节点（租户）](./FeishuV2WikiNodes_Tenant.md) — 创建、移动、复制节点，移动云文档至知识空间
-- [Wiki 知识库节点（用户）](./FeishuV2WikiNodes_User.md) — 用户权限的节点管理，支持 Wiki 搜索功能
+- [Wiki 知识库节点（用户）](./FeishuV2WikiNodes_User.md) — 用户令牌的节点管理，支持 Wiki 搜索功能
 
 ## 命名空间与版本信息
 

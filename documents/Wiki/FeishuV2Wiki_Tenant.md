@@ -1,5 +1,5 @@
 ## 接口名称
-**Wiki 知识库（租户权限）- (IFeishuTenantV2Wiki)**
+**Wiki 知识库（租户令牌）- (IFeishuTenantV2Wiki)**
 
 ## 功能描述
 飞书知识库是一个面向组织的知识管理系统。通过结构化沉淀高价值信息，形成完整的知识体系。此外，明确的内容分类，层级式的页面树，还能够轻松提升知识的流转和传播效率，更好地成就组织和个人。
@@ -284,7 +284,7 @@ Task<FeishuApiResult<UpdateSpaceSettingResult>?> UpdateSpaceSettingAsync(
 
 ## 代码示例
 
-### 使用租户权限管理知识空间
+### 使用租户令牌管理知识空间
 
 ```csharp
 public class WikiTenantService

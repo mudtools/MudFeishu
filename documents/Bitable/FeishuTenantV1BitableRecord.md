@@ -1,8 +1,8 @@
-# 多维表格记录 - 租户权限（FeishuTenantV1BitableRecord）
+# 多维表格记录 - 租户令牌（FeishuTenantV1BitableRecord）
 
 ## 接口名称
 
-**多维表格记录（租户权限）** -（`IFeishuTenantV1BitableRecord`）
+**多维表格记录（租户令牌）** -（`IFeishuTenantV1BitableRecord`）
 
 ## 功能描述
 

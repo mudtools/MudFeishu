@@ -1,8 +1,8 @@
-# 多维表格仪表盘 - 租户权限（FeishuTenantV1BitableDashboard）
+# 多维表格仪表盘 - 租户令牌（FeishuTenantV1BitableDashboard）
 
 ## 接口名称
 
-**多维表格仪表盘（租户权限）** -（`IFeishuTenantV1BitableDashboard`）
+**多维表格仪表盘（租户令牌）** -（`IFeishuTenantV1BitableDashboard`）
 
 ## 功能描述
 

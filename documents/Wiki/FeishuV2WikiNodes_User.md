@@ -1,5 +1,5 @@
 ## 接口名称
-**Wiki 知识库节点（用户权限）- (IFeishuUserV2WikiNodes)**
+**Wiki 知识库节点（用户令牌）- (IFeishuUserV2WikiNodes)**
 
 ## 功能描述
 知识空间中的节点，支持文档、表格等多种文件类型。文件是各种类型的文件的统称，泛指云空间内所有的文件。每个文件都有唯一 token 作为标识。
@@ -360,7 +360,7 @@ Task<FeishuApiPageListResult<WikiSearchResult>?> SearchPageListAsync(
 
 ## 代码示例
 
-### 使用用户权限搜索和管理 Wiki 节点
+### 使用用户令牌搜索和管理 Wiki 节点
 
 ```csharp
 public class WikiNodeUserService

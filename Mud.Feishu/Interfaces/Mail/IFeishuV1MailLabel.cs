@@ -17,12 +17,10 @@ namespace Mud.Feishu.Interfaces;
 [Token("TenantAccessToken", Name = Consts.Authorization)]
 public interface IFeishuV1MailLabel : IFeishuAppContextSwitcher
 {
-
-
     /// <summary>
-    /// 批量删除邮件会话。
-    /// <para>批量将指定的邮件会话移入已删除文件夹。</para>
-    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-thread/batch_trash">接口文档</see></para>
+    /// 更新标签。
+    /// <para>更新用户指定标签的名字、颜色等信息。</para>
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-label/patch">接口文档</see></para>
     /// </summary>
     /// <param name="user_mailbox_id">
     /// <para>用户邮箱地址，作为用户邮箱身份标识。使用 user_access_token 调用时，可使用占位符 `me` 表示当前授权用户的主邮箱。</para>
@@ -40,5 +38,21 @@ public interface IFeishuV1MailLabel : IFeishuAppContextSwitcher
       [Path] string label_id,
       [Body] UpdateUserMailboxLabelRequest updateUserMailboxLabelRequest,
       CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 列出标签。
+    /// <para>列出邮件标签，包括ID、名称、颜色、未读信息等内容。</para>
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-label/list">接口文档</see></para>
+    /// </summary>
+    /// <param name="user_mailbox_id">
+    /// <para>用户邮箱地址，作为用户邮箱身份标识。使用 user_access_token 调用时，可使用占位符 `me` 表示当前授权用户的主邮箱。</para>
+    /// <para>示例值：user@example.com</para>
+    /// </param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Get("/open-apis/mail/v1/user_mailboxes/{user_mailbox_id}/labels")]
+    Task<FeishuApiResult<GetUserMailboxLabelListResult>?> GetUserMailboxLabelListAsync(
+       [Path] string user_mailbox_id,
+       CancellationToken cancellationToken = default);
 
 }

@@ -139,4 +139,42 @@ public interface IFeishuV1MailThread : IFeishuAppContextSwitcher
         [Query] string? format = null,
         [Query] bool? include_spam_trash = null,
         CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 分页列出邮件会话。
+    /// <para>分页列出用户指定文件夹或标签下的邮件会话，按时间倒序分页获取。</para>
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-thread/list">接口文档</see></para>
+    /// </summary>
+    /// <param name="user_mailbox_id">
+    /// <para>用户邮箱地址，作为用户邮箱身份标识。使用 user_access_token 调用时，可使用占位符 `me` 表示当前授权用户的主邮箱。</para>
+    /// <para>示例值：user@example.com</para>
+    /// </param>
+    /// <param name="folder_id">
+    /// <para>文件夹 id，支持INBOX、SENT、SPAM、ARCHIVED、SCHEDULED、TRASH、DRAFT以及自定义文件夹ID</para>
+    /// <para>示例值：INBOX 或者用户文件夹 id</para>
+    /// <para>默认值：null</para>
+    /// </param>
+    /// <param name="only_unread">
+    /// <para>是否只查询未读会话</para>
+    /// <para>示例值：true</para>
+    /// <para>默认值：null</para>
+    /// </param>
+    /// <param name="label_id">
+    /// <para>标签id，支持IMPORTANT、OTHER、FLAGGED以及自定义标签ID</para>
+    /// <para>示例值：FLAGGED</para>
+    /// <para>默认值：null</para>
+    /// </param>
+    /// <param name="page_size">分页大小，即本次请求所返回的信息列表内的最大条目数。默认值：20</param>
+    /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Get("/open-apis/mail/v1/user_mailboxes/{user_mailbox_id}/threads")]
+    Task<FeishuApiPageListResult<MailThreadInfo>?> GetUserMailboxThreadPageListAsync(
+        [Path] string user_mailbox_id,
+        [Query] string? folder_id = null,
+        [Query] bool? only_unread = null,
+        [Query] string? label_id = null,
+        [Query] int page_size = Consts.PageSize_20,
+        [Query] string? page_token = null,
+        CancellationToken cancellationToken = default);
 }

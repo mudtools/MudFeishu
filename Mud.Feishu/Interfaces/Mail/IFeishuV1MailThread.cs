@@ -11,7 +11,7 @@ namespace Mud.Feishu.Interfaces;
 
 
 /// <summary>
-/// 飞书邮件会话API接口实现了修改、查询、删除等邮件模板功能。
+/// 飞书邮件会话API接口实现了修改、查询、删除等邮件模板管理功能。
 /// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-thread/batch_trash"/></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), IsAbstract = true)]

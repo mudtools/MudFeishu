@@ -8,9 +8,9 @@
 namespace Mud.Feishu.DataModels.Mail;
 
 /// <summary>
-/// 更新草稿请求体
+/// 邮箱草稿请求体
 /// </summary>
-public class UpdateUserMailboxDraftRequest
+public class UserMailboxDraftRequest
 {
     /// <summary>
     /// <para>base64url 编码的完整 RFC 5822（EML）邮件内容，包含所有邮件头（Subject、From、To、Cc、Bcc 等）和邮件正文（含内联图片和附件的 MIME 结构），将整体替换草稿原有内容。原始EML大小不可超过37.5MB。</para>

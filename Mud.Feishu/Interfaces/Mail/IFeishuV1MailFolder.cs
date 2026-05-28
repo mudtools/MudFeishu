@@ -104,4 +104,29 @@ public interface IFeishuV1MailFolder : IFeishuAppContextSwitcher
 
 
 
+    /// <summary>
+    /// 列出邮箱文件夹。
+    /// <para>列出用户文件夹，可获取文件夹名称、文件夹ID、文件夹下的未读邮件和未读会话数量。</para>
+    /// <para><see href="https://open.feishu.cn/document/mail-v1/user_mailbox-folder/patch">接口文档</see></para>
+    /// </summary>
+    /// <param name="user_mailbox_id">
+    /// <para>用户邮箱地址，作为用户邮箱身份标识。使用 user_access_token 调用时，可使用占位符 `me` 表示当前授权用户的主邮箱。</para>
+    /// <para>示例值：user@example.com</para>
+    /// </param>
+    /// <param name="folder_type">
+    /// <para>必填：否</para>
+    /// <para>文件夹类型</para>
+    /// <para>示例值：1</para>
+    /// <list type="bullet">
+    /// <item>1：系统文件夹</item>
+    /// <item>2：用户文件夹</item>
+    /// </list>
+    /// <para>默认值：null</para>
+    /// </param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Get("/open-apis/mail/v1/user_mailboxes/{user_mailbox_id}/folders")]
+    Task<FeishuApiResult<GetUserMailboxFoldeListResult>?> GetUserMailboxFoldeListAsync(
+         [Path] string user_mailbox_id,
+         [Query] int? folder_type = null,
+         CancellationToken cancellationToken = default);
 }

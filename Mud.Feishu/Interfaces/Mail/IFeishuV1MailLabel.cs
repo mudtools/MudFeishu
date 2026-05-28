@@ -10,7 +10,7 @@ using Mud.Feishu.DataModels.Mail;
 namespace Mud.Feishu.Interfaces;
 
 /// <summary>
-/// 飞书标签API接口实现了修改、查询、删除等邮件标签功能。
+/// 飞书邮箱标签API接口实现了修改、查询、删除等邮件标签功能。
 /// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-thread/batch_trash"/></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), IsAbstract = true)]
@@ -114,4 +114,7 @@ public interface IFeishuV1MailLabel : IFeishuAppContextSwitcher
       [Path] string user_mailbox_id,
       [Body] CreateUserMailboxLabelRequest createUserMailboxLabelRequest,
       CancellationToken cancellationToken = default);
+
+
+
 }

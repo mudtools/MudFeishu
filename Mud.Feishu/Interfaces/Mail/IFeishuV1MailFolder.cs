@@ -35,8 +35,27 @@ public interface IFeishuV1MailFolder : IFeishuAppContextSwitcher
     /// </param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Get("/open-apis/mail/v1/user_mailboxes/{user_mailbox_id}/folders/{folder_id}")]
-    Task<FeishuApiResult<GetUserMailboxFoldeResult>?> GetUserMailboxFoldeAsync(
+    Task<FeishuApiResult<UserMailboxFoldeOopsResult>?> GetUserMailboxFoldeAsync(
       [Path] string user_mailbox_id,
       [Path] string folder_id,
       CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 创建邮箱文件夹。
+    /// <para>创建邮箱文件夹。</para>
+    /// <para><see href="https://open.feishu.cn/document/mail-v1/user_mailbox-folder/create">接口文档</see></para>
+    /// </summary>
+    /// <param name="user_mailbox_id">
+    /// <para>用户邮箱地址，作为用户邮箱身份标识。使用 user_access_token 调用时，可使用占位符 `me` 表示当前授权用户的主邮箱。</para>
+    /// <para>示例值：user@example.com</para>
+    /// </param>
+    /// <param name="createUserMailboxFoldeRequest">创建用户邮箱文件夹请求对象，包含待创建的文件夹信息。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Post("/open-apis/mail/v1/user_mailboxes/{user_mailbox_id}/folders")]
+    Task<FeishuApiResult<UserMailboxFoldeOopsResult>?> CreateUserMailboxFoldeAsync(
+        [Path] string user_mailbox_id,
+        [Body] CreateUserMailboxFoldeRequest createUserMailboxFoldeRequest,
+        CancellationToken cancellationToken = default);
+
 }

@@ -8,9 +8,9 @@
 namespace Mud.Feishu.DataModels.Mail;
 
 /// <summary>
-/// 获取邮箱文件信息响应体
+/// 邮箱文件信息业务操作响应体
 /// </summary>
-public class GetUserMailboxFoldeResult
+public class UserMailboxFoldeOopsResult
 {
     /// <summary>
     /// <para>邮件文件夹的完整信息，包含文件夹ID、名称、归属层级、类型及未读统计数据。</para>

@@ -58,4 +58,50 @@ public interface IFeishuV1MailFolder : IFeishuAppContextSwitcher
         [Body] CreateUserMailboxFoldeRequest createUserMailboxFoldeRequest,
         CancellationToken cancellationToken = default);
 
+
+    /// <summary>
+    /// 删除邮箱文件夹。
+    /// <para>通过指定文件夹ID，删除对应的邮箱文件夹。</para>
+    /// <para><see href="https://open.feishu.cn/document/mail-v1/user_mailbox-folder/delete">接口文档</see></para>
+    /// </summary>
+    /// <param name="user_mailbox_id">
+    /// <para>用户邮箱地址，作为用户邮箱身份标识。使用 user_access_token 调用时，可使用占位符 `me` 表示当前授权用户的主邮箱。</para>
+    /// <para>示例值：user@example.com</para>
+    /// </param>
+    /// <param name="folder_id">
+    /// <para>邮件文件夹唯一标识。可通过「获取邮箱文件夹列表」接口获取目标文件夹的 ID；若未传入该参数，默认返回根文件夹（收件箱）详情。</para>
+    /// <para>示例值：7620095646711680541</para>
+    /// </param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Delete("/open-apis/mail/v1/user_mailboxes/{user_mailbox_id}/folders/{folder_id}")]
+    Task<FeishuNullDataApiResult?> DeleteUserMailboxFoldeAsync(
+        [Path] string user_mailbox_id,
+        [Path] string folder_id,
+        CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 更新邮箱文件夹。
+    /// <para>通过指定文件夹ID，更新对应的邮箱文件夹。</para>
+    /// <para><see href="https://open.feishu.cn/document/mail-v1/user_mailbox-folder/patch">接口文档</see></para>
+    /// </summary>
+    /// <param name="user_mailbox_id">
+    /// <para>用户邮箱地址，作为用户邮箱身份标识。使用 user_access_token 调用时，可使用占位符 `me` 表示当前授权用户的主邮箱。</para>
+    /// <para>示例值：user@example.com</para>
+    /// </param>
+    /// <param name="folder_id">
+    /// <para>邮件文件夹唯一标识。可通过「获取邮箱文件夹列表」接口获取目标文件夹的 ID；若未传入该参数，默认返回根文件夹（收件箱）详情。</para>
+    /// <para>示例值：7620095646711680541</para>
+    /// </param>
+    /// <param name="updateUserMailboxFoldeRequest">更新用户邮箱文件夹请求对象，包含待更新的文件夹信息。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Patch("/open-apis/mail/v1/user_mailboxes/{user_mailbox_id}/folders/{folder_id}")]
+    Task<FeishuNullDataApiResult?> UpdateUserMailboxFoldeAsync(
+       [Path] string user_mailbox_id,
+       [Path] string folder_id,
+       [Body] UpdateUserMailboxFoldeRequest updateUserMailboxFoldeRequest,
+       CancellationToken cancellationToken = default);
+
+
+
 }

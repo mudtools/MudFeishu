@@ -82,4 +82,36 @@ public interface IFeishuUserV1MailDraft : IFeishuAppContextSwitcher, ICurrentUse
         [Query] int page_size = Consts.PageSize_20,
         [Query] string? page_token = null,
         CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 获取草稿内容。
+    /// <para>更具用户指定的草稿ID，获取草稿详细信息。</para>
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-draft/get">接口文档</see></para>
+    /// </summary>
+    /// <param name="user_mailbox_id">
+    /// <para>用户邮箱地址，作为用户邮箱身份标识。使用 user_access_token 调用时，可使用占位符 `me` 表示当前授权用户的主邮箱。</para>
+    /// <para>示例值：user@example.com</para>
+    /// </param>
+    /// <param name="draft_id">
+    /// <para>草稿ID，可通过创建草稿或列出草稿接口获得</para>
+    /// <para>示例值：268dce11-85f7-427d-8756-6be3abc850fd</para>
+    /// </param>
+    /// <param name="format">
+    /// <para>需要获取的草稿内容样式，取值：metadata / full（默认）/ raw</para>
+    /// <para>示例值：full</para>
+    /// <list type="bullet">
+    /// <item>metadata：草稿元数据信息，包括邮件摘要、主题、收发件人等信息</item>
+    /// <item>raw：获取草稿EML</item>
+    /// <item>full：邮件全文，获取包括纯文本、HTML等在内的邮件全文信息</item>
+    /// </list>
+    /// <para>默认值：null</para>
+    /// </param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Get("/open-apis/mail/v1/user_mailboxes/{user_mailbox_id}/drafts/{draft_id}")]
+    Task<FeishuApiResult<GetUserMailboxDraftResult>?> GetUserMailboxDraftAsync(
+       [Path] string user_mailbox_id,
+       [Path] string draft_id,
+       [Query] string? format = null,
+       CancellationToken cancellationToken = default);
 }

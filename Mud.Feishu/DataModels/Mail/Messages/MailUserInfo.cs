@@ -5,37 +5,37 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-namespace Mud.Feishu.DataModels.Mail;
+namespace Mud.Feishu.DataModels;
 
 /// <summary>
-/// <para>邮件会话</para>
+/// <para>邮件 Owner 信息</para>
 /// </summary>
-public class MailThread
+public class MailUserInfo
 {
     /// <summary>
-    /// <para>会话ID</para>
-    /// <para>必填：否</para>
-    /// <para>示例值：xx</para>
+    /// <para>owner是个人邮箱还是公共邮箱</para>
+    /// <para>**示例值**：</para>
+    /// <para>- `user`：个人邮箱</para>
+    /// <para>- `public_mailbox`：公共邮箱</para>
+    /// <para>必填：是</para>
+    /// <para>示例值：user</para>
     /// </summary>
-    [JsonPropertyName("id")]
-    public string? Id { get; set; }
+    [JsonPropertyName("type")]
+    public string Type { get; set; } = string.Empty;
 
     /// <summary>
-    /// <para>会话内的最新的一封邮件摘要，用于快速预览邮件核心内容</para>
+    /// <para>邮件卡片owner的ID，type为`user`时非空（与`user_id_type`对应）</para>
     /// <para>必填：否</para>
-    /// <para>示例值：hello world</para>
+    /// <para>示例值：ou_7dab8a3d3cdcc9da365777c7ad115d62</para>
     /// </summary>
-    [JsonPropertyName("body_preview")]
-    public string? BodyPreview { get; set; }
+    [JsonPropertyName("owner_user_id")]
+    public string? OwnerUserId { get; set; }
 
     /// <summary>
-    /// <para>会话中的邮件列表</para>
+    /// <para>公共邮箱唯一标识，type为`public_mailbox`时非空</para>
     /// <para>必填：否</para>
-    /// <para>最大长度：999</para>
-    /// <para>最小长度：0</para>
+    /// <para>示例值：xxx</para>
     /// </summary>
-    [JsonPropertyName("messages")]
-    public MailMessage[]? Messages { get; set; }
-
-
+    [JsonPropertyName("public_mailbox_id")]
+    public string? PublicMailboxId { get; set; }
 }

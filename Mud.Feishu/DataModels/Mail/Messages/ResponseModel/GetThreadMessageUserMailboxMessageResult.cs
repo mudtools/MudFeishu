@@ -7,35 +7,18 @@
 
 namespace Mud.Feishu.DataModels.Mail;
 
+
 /// <summary>
-/// <para>邮件会话</para>
+/// 查询会话下邮件信息响应体
 /// </summary>
-public class MailThread
+public class GetThreadMessageUserMailboxMessageResult
 {
     /// <summary>
-    /// <para>会话ID</para>
+    /// <para>邮件元数据列表</para>
     /// <para>必填：否</para>
-    /// <para>示例值：xx</para>
     /// </summary>
-    [JsonPropertyName("id")]
-    public string? Id { get; set; }
-
-    /// <summary>
-    /// <para>会话内的最新的一封邮件摘要，用于快速预览邮件核心内容</para>
-    /// <para>必填：否</para>
-    /// <para>示例值：hello world</para>
-    /// </summary>
-    [JsonPropertyName("body_preview")]
-    public string? BodyPreview { get; set; }
-
-    /// <summary>
-    /// <para>会话中的邮件列表</para>
-    /// <para>必填：否</para>
-    /// <para>最大长度：999</para>
-    /// <para>最小长度：0</para>
-    /// </summary>
-    [JsonPropertyName("messages")]
-    public MailMessage[]? Messages { get; set; }
+    [JsonPropertyName("items")]
+    public MessageThreadMeta[]? Items { get; set; }
 
 
 }

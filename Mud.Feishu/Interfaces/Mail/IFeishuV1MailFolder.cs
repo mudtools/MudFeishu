@@ -129,4 +129,20 @@ public interface IFeishuV1MailFolder : IFeishuAppContextSwitcher
          [Path] string user_mailbox_id,
          [Query] int? folder_type = null,
          CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 列出可访问的邮箱。
+    /// <para>列出可访问的邮箱，包括拥有读信和发信权限的主账号、公共邮箱。</para>
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox/accessible_mailboxes">接口文档</see></para>
+    /// </summary>
+    /// <param name="user_mailbox_id">
+    /// <para>用户邮箱地址，作为用户邮箱身份标识。使用 user_access_token 调用时，可使用占位符 `me` 表示当前授权用户的主邮箱。</para>
+    /// <para>示例值：user@example.com</para>
+    /// </param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Get("/open-apis/mail/v1/user_mailboxes/{user_mailbox_id}/accessible_mailboxes")]
+    Task<FeishuApiResult<GetAccessibleMailboxesUserMailboxResult>?> GetAccessibleMailboxesUserMailboxAsync(
+        [Path] string user_mailbox_id,
+        CancellationToken cancellationToken = default);
 }

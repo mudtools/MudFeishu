@@ -10,7 +10,7 @@ namespace Mud.Feishu.DataModels.Mail;
 /// <summary>
 /// <para>会话中的邮件列表</para>
 /// </summary>
-public class MialMessage
+public class MailMessage
 {
     /// <summary>
     /// <para>主题</para>

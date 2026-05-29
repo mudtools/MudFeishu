@@ -8,10 +8,19 @@
 namespace Mud.Feishu.DataModels.Mail;
 
 /// <summary>
-/// <para>草稿内容</para>
+/// <para>返回邮件内容</para>
 /// </summary>
 public class MailMessageInfo
 {
+    /// <summary>
+    /// <para>MIME邮件数据，基于base64url编码</para>
+    /// <para>必填：否</para>
+    /// <para>示例值：Q29udGVudC1UeXBlOiB0ZXh0L3BsYWluOyBjaGFyc2V0PSJ1cy1hc2NpaSIKTUlNRS1WZXJzaW9uOiAxLjAKQ29udGVudC1UcmFuc2Zlci1FbmNvZGluZzogN2JpdAp0bzogInRvIiA8dG9AeHh4Lnh4Pgpmcm9tOiAiZnJvbSIgPGZyb21AeHh4Lnh4PgpzdWJqZWN0OiB0aGlzIGlzIGEgc3ViamVjdAoKdGhpcyBpcyB0aGUgbWVzc2FnZSBib2R5Lg</para>
+    /// <para>最大长度：52428800</para>
+    /// </summary>
+    [JsonPropertyName("raw")]
+    public string? Raw { get; set; }
+
     /// <summary>
     /// <para>主题</para>
     /// <para>必填：否</para>
@@ -27,6 +36,7 @@ public class MailMessageInfo
     [JsonPropertyName("to")]
     public MailAddress[]? Tos { get; set; }
 
+
     /// <summary>
     /// <para>抄送</para>
     /// <para>必填：否</para>
@@ -35,7 +45,7 @@ public class MailMessageInfo
     public MailAddress[]? Ccs { get; set; }
 
     /// <summary>
-    /// <para>秘送</para>
+    /// <para>密送</para>
     /// <para>必填：否</para>
     /// </summary>
     [JsonPropertyName("bcc")]
@@ -94,7 +104,7 @@ public class MailMessageInfo
     /// <para>最大长度：501</para>
     /// </summary>
     [JsonPropertyName("attachments")]
-    public MailAttachment[]? Attachments { get; set; }
+    public MailAttachmentInfo[]? Attachments { get; set; }
 
 
     /// <summary>
@@ -174,7 +184,6 @@ public class MailMessageInfo
     /// </summary>
     [JsonPropertyName("security_level")]
     public MailSecurityLevel? SecurityLevel { get; set; }
-
 
     /// <summary>
     /// <para>References邮件头</para>

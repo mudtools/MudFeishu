@@ -8,9 +8,9 @@
 namespace Mud.Feishu.DataModels.Mail;
 
 /// <summary>
-/// <para>可发信地址。包括主地址、别名地址、邮件组。</para>
+/// <para>用户可访问的所有邮箱信息，包含主邮箱和公共邮箱</para>
 /// </summary>
-public class EmailInfo
+public class EmailBaseInfo
 {
     /// <summary>
     /// <para>邮箱地址</para>
@@ -34,6 +34,13 @@ public class EmailInfo
     /// </summary>
     [JsonPropertyName("email_type")]
     public string? EmailType { get; set; }
+}
+
+/// <summary>
+/// <para>可发信地址。包括主地址、别名地址、邮件组。</para>
+/// </summary>
+public class EmailInfo : EmailBaseInfo
+{
 
     /// <summary>
     /// <para>邮箱名称</para>

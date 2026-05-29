@@ -105,7 +105,7 @@ public class DraftMessage
     /// <para>最大长度：501</para>
     /// </summary>
     [JsonPropertyName("attachments")]
-    public DraftAttachment[]? Attachments { get; set; }
+    public MailAttachmentInfo[]? Attachments { get; set; }
 
 
     /// <summary>

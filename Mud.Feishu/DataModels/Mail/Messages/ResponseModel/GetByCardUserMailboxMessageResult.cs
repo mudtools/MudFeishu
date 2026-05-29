@@ -8,34 +8,29 @@
 namespace Mud.Feishu.DataModels.Mail;
 
 /// <summary>
-/// <para>邮件会话</para>
+/// 获取邮件卡片的邮件列表响应体
 /// </summary>
-public class MailThread
+public class GetByCardUserMailboxMessageResult
 {
     /// <summary>
-    /// <para>会话ID</para>
-    /// <para>必填：否</para>
-    /// <para>示例值：xx</para>
+    /// <para>邮件 Owner 信息</para>
+    /// <para>必填：是</para>
     /// </summary>
-    [JsonPropertyName("id")]
-    public string? Id { get; set; }
+    [JsonPropertyName("owner_info")]
+    public MailUserInfo OwnerInfo { get; set; } = new();    
 
     /// <summary>
-    /// <para>会话内的最新的一封邮件摘要，用于快速预览邮件核心内容</para>
-    /// <para>必填：否</para>
-    /// <para>示例值：hello world</para>
+    /// <para>邮件ID列表</para>
+    /// <para>必填：是</para>
     /// </summary>
-    [JsonPropertyName("body_preview")]
-    public string? BodyPreview { get; set; }
+    [JsonPropertyName("message_ids")]
+    public string[] MessageIds { get; set; } = [];
 
     /// <summary>
-    /// <para>会话中的邮件列表</para>
-    /// <para>必填：否</para>
-    /// <para>最大长度：999</para>
-    /// <para>最小长度：0</para>
+    /// <para>邮件卡片ID</para>
+    /// <para>必填：是</para>
+    /// <para>示例值：512ca581-6059-4449-8150-5522e6646d32</para>
     /// </summary>
-    [JsonPropertyName("messages")]
-    public MailMessage[]? Messages { get; set; }
-
-
+    [JsonPropertyName("card_id")]
+    public string CardId { get; set; } = string.Empty;
 }

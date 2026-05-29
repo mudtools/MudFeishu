@@ -7,18 +7,17 @@
 
 namespace Mud.Feishu.DataModels.Mail;
 
-
 /// <summary>
-/// <para>邮件附件列表</para>
+/// 批量删除邮件请求体
 /// </summary>
-public class DraftAttachment : MailAttachment
+public class BatchTrashUserMailboxMessageRequest
 {
     /// <summary>
-    /// <para>附件的正文，使用 base64url 编码（支持的文件最大 37MB）</para>
-    /// <para>必填：是</para>
-    /// <para>示例值：aGVsbG8gd29ybGQK</para>
-    /// <para>最大长度：51729750</para>
+    /// <para>邮件ID，可通过列出邮件接口、收信事件通知等方式获得</para>
+    /// <para>必填：否</para>
+    /// <para>最大长度：20</para>
+    /// <para>最小长度：0</para>
     /// </summary>
-    [JsonPropertyName("body")]
-    public string Body { get; set; } = string.Empty;
+    [JsonPropertyName("message_ids")]
+    public string[]? MessageIds { get; set; }
 }

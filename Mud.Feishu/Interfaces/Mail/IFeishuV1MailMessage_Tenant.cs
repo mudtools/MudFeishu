@@ -5,28 +5,15 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-namespace Mud.Feishu.DataModels.Mail;
+namespace Mud.Feishu;
+
 
 /// <summary>
-/// <para>草稿内容</para>
+/// 飞书邮箱邮件API接口实现了修改、查询、删除等邮箱邮件管理功能。
+/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-folder/get"/></para>
 /// </summary>
-public class MailDraftContent
+[HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Mail", InheritedFrom = nameof(FeishuV1MailMessage))]
+[Token("TenantAccessToken", Name = Consts.Authorization)]
+public interface IFeishuTenantV1MailMessage : IFeishuV1MailMessage
 {
-    /// <summary>
-    /// <para>草稿ID</para>
-    /// <para>必填：否</para>
-    /// <para>示例值：268dce11-85f7-427d-8756-6be3abc850fd</para>
-    /// <para>最大长度：255</para>
-    /// <para>最小长度：1</para>
-    /// </summary>
-    [JsonPropertyName("id")]
-    public string? Id { get; set; }
-
-    /// <summary>
-    /// <para>草稿内容</para>
-    /// <para>必填：否</para>
-    /// </summary>
-    [JsonPropertyName("message")]
-    public MailMessage? Message { get; set; }
-
 }

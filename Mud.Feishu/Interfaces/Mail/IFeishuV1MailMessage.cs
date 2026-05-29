@@ -237,9 +237,9 @@ public interface IFeishuV1MailMessage : IFeishuAppContextSwitcher
 
 
     /// <summary>
-    /// 修改邮件。
-    /// <para>修改邮件标签、所属文件夹、已读未读状态，可为邮件添加旗标、归档、移入垃圾邮件等操作。不支持移动邮件到已删除文件夹，如需，请使用删除邮件接口。</para>
-    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-message/modify">接口文档</see></para>
+    /// 获取邮件详情。
+    /// <para>获取邮件详情，使用应用权限访问时，需要申请邮件数据资源的数据权限。</para>
+    /// <para><see href="https://open.feishu.cn/document/mail-v1/user_mailbox-message/get">接口文档</see></para>
     /// </summary>
     /// <param name="user_mailbox_id">
     /// <para>用户邮箱地址，作为用户邮箱身份标识。使用 user_access_token 调用时，可使用占位符 `me` 表示当前授权用户的主邮箱。</para>
@@ -249,6 +249,16 @@ public interface IFeishuV1MailMessage : IFeishuAppContextSwitcher
     /// <para>邮件ID，可通过列出邮件接口获得</para>
     /// <para>示例值：NzR3Zkd5NGhBTS9NVkZnSklidDVGT3VoQmM4PQ==</para>
     /// </param>
+    /// <param name="format">
+    /// <para>需要获取的邮件内容。支持选择full/plain_text_full/metadata</para>
+    /// <para>示例值：full</para>
+    /// <list type="bullet">
+    /// <item>full：全文，包括标签、文件夹、主题、收发件人、纯文本、HTML等信息</item>
+    /// <item>plain_text_full：全文，只返回纯文本正文内容，不返回HTML。返回内容包括标签、文件夹、主题、收发件人、纯文本等信息</item>
+    /// <item>metadata：邮件元数据信息，包括标签、文件夹、主题、收发件人、摘要等信息，不返回正文内容</item>
+    /// </list>
+    /// <para>默认值：null</para>
+    /// </param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Get("/open-apis/mail/v1/user_mailboxes/{user_mailbox_id}/messages/{message_id}")]
     Task<FeishuApiResult<GetUserMailboxMessageResult>?> GetUserMailboxMessageAsync(
@@ -256,4 +266,5 @@ public interface IFeishuV1MailMessage : IFeishuAppContextSwitcher
          [Path] string message_id,
          [Query] string? format = null,
          CancellationToken cancellationToken = default);
+
 }

@@ -27,6 +27,6 @@ public class MailDraftContent
     /// <para>必填：否</para>
     /// </summary>
     [JsonPropertyName("message")]
-    public MailMessageInfo? Message { get; set; }
+    public MailMessage? Message { get; set; }
 
 }

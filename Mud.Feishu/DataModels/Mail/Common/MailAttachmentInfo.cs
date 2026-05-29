@@ -11,7 +11,7 @@ namespace Mud.Feishu.DataModels.Mail;
 /// <summary>
 /// <para>邮件附件列表</para>
 /// </summary>
-public class DraftAttachment : MailAttachment
+public class MailAttachmentInfo : MailAttachment
 {
     /// <summary>
     /// <para>附件的正文，使用 base64url 编码（支持的文件最大 37MB）</para>

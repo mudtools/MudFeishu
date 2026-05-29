@@ -76,4 +76,45 @@ public interface IFeishuV1MailMessage : IFeishuAppContextSwitcher
        [Path] string user_mailbox_id,
        [Path] string message_id,
        CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 修改邮件。
+    /// <para>修改邮件标签、所属文件夹、已读未读状态，可为邮件添加旗标、归档、移入垃圾邮件等操作。不支持移动邮件到已删除文件夹，如需，请使用删除邮件接口。</para>
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-message/modify">接口文档</see></para>
+    /// </summary>
+    /// <param name="user_mailbox_id">
+    /// <para>用户邮箱地址，作为用户邮箱身份标识。使用 user_access_token 调用时，可使用占位符 `me` 表示当前授权用户的主邮箱。</para>
+    /// <para>示例值：user@example.com</para>
+    /// </param>
+    /// <param name="message_id">
+    /// <para>邮件ID，可通过列出邮件接口获得</para>
+    /// <para>示例值：NzR3Zkd5NGhBTS9NVkZnSklidDVGT3VoQmM4PQ==</para>
+    /// </param>
+    /// <param name="request">修改用户邮箱邮件请求对象，包含需要修改的属性信息。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Put("/open-apis/mail/v1/user_mailboxes/{user_mailbox_id}/messages/{message_id}/modify")]
+    Task<FeishuNullDataApiResult?> ModifyUserMailboxMessageAsync(
+       [Path] string user_mailbox_id,
+       [Path] string message_id,
+       [Body] ModifyUserMailboxMessageRequest request,
+       CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 批量获取邮件详情。
+    /// <para>通过指定邮件ID，获取对应邮件的标签、文件夹、摘要、正文、html、附件等信息。</para>
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-message/batch_get">接口文档</see></para>
+    /// </summary>
+    /// <param name="user_mailbox_id">
+    /// <para>用户邮箱地址，作为用户邮箱身份标识。使用 user_access_token 调用时，可使用占位符 `me` 表示当前授权用户的主邮箱。</para>
+    /// <para>示例值：user@example.com</para>
+    /// </param>
+    /// <param name="request">批量获取用户邮箱邮件请求对象，包含待获取的邮件ID列表。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Post("/open-apis/mail/v1/user_mailboxes/{user_mailbox_id}/messages/batch_get")]
+    Task<FeishuApiResult<BatchGetUserMailboxMessageResult>?> BatchGetUserMailboxMessageAsync(
+      [Path] string user_mailbox_id,
+      [Body] BatchGetUserMailboxMessageRequest request,
+      CancellationToken cancellationToken = default);
 }

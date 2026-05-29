@@ -117,4 +117,43 @@ public interface IFeishuV1MailMessage : IFeishuAppContextSwitcher
       [Path] string user_mailbox_id,
       [Body] BatchGetUserMailboxMessageRequest request,
       CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 查询会话下邮件信息。
+    /// <para>通过用户邮箱地址和邮件会话ID，获取该会话下的所有邮件关键信息列表。</para>
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-message/list_thread_message">接口文档</see></para>
+    /// </summary>
+    /// <param name="user_mailbox_id">
+    /// <para>用户邮箱地址，作为用户邮箱身份标识。使用 user_access_token 调用时，可使用占位符 `me` 表示当前授权用户的主邮箱。</para>
+    /// <para>示例值：user@example.com</para>
+    /// </param>
+    /// <param name="thread_id">
+    /// <para>路径参数</para>
+    /// <para>必填：是</para>
+    /// <para>邮件会话ID。可通过发送邮件、回复邮件的接口返回值或获取邮件详情接口查询获得。</para>
+    /// <para>示例值：xxxxxxxxxxxx</para>
+    /// </param>
+    /// <param name="format">
+    /// <para>必填：否</para>
+    /// <para>需要获取的邮件内容</para>
+    /// <para>示例值：full</para>
+    /// <list type="bullet">
+    /// <item>full：全文，包括标签、文件夹、主题、收发件人、纯文本、HTML等信息</item>
+    /// <item>plain_text_full：全文，只返回纯文本正文内容，不返回HTML。返回内容包括标签、文件夹、主题、收发件人、纯文本等信息</item>
+    /// <item>metadata：邮件元数据信息，包括标签、文件夹、主题、收发件人、摘要等信息，不返回正文内容</item>
+    /// </list>
+    /// <para>默认值：null</para>
+    /// </param>
+    /// <param name="include_spam_trash">
+    /// <para>是否包含垃圾邮件和已删除邮件</para>
+    /// </param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Get("/open-apis/mail/v1/user_mailboxes/{user_mailbox_id}/threads/{thread_id}/messages")]
+    Task<FeishuApiResult<GetThreadMessageUserMailboxMessageResult>?> GetThreadMessageUserMailboxMessageAsync(
+        [Path] string user_mailbox_id,
+        [Path] string thread_id,
+        [Query] string? format = null,
+        [Query] string? include_spam_trash = null,
+        CancellationToken cancellationToken = default);
 }

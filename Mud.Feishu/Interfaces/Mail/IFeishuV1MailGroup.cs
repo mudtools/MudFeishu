@@ -420,4 +420,58 @@ public interface IFeishuTenantV1MailGroup : IFeishuAppContextSwitcher
          [Path] string mailgroup_id,
          [Body] BatchDeleteMailGroupMemberRequest request,
          CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 创建邮件组别名。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/mail-v1/mail-group/mailgroup-alias/create">接口文档</see></para>
+    /// </summary>
+    /// <param name="mailgroup_id">
+    /// <para>邮件组ID或邮箱地址</para>
+    /// <para>示例值：xxxxxx 或 test_mail_group@xx.xx</para>
+    /// </param>
+    /// <param name="request">创建邮件组别名请求对象，包含待创建的邮件组别名信息。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Post("/open-apis/mail/v1/mailgroups/{mailgroup_id}/aliases")]
+    Task<FeishuApiResult<CreateMailGroupAliasResult>?> CreateMailGroupAliasAsync(
+        [Path] string mailgroup_id,
+        [Body] CreateMailGroupAliasRequest request,
+        CancellationToken cancellationToken = default);
+
+
+
+    /// <summary>
+    /// 删除邮件组别名。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/mail-v1/mail-group/mailgroup-alias/delete">接口文档</see></para>
+    /// </summary>
+    /// <param name="mailgroup_id">
+    /// <para>邮件组ID或邮箱地址</para>
+    /// <para>示例值：xxxxxx 或 test_mail_group@xx.xx</para>
+    /// </param>
+    /// <param name="alias_id">
+    /// <para>邮件组别名邮箱地址</para>
+    /// <para>示例值：xxx@xx.xxx</para>
+    /// </param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Delete("/open-apis/mail/v1/mailgroups/{mailgroup_id}/aliases/{alias_id}")]
+    Task<FeishuNullDataApiResult?> DeleteMailGroupAliasAsync(
+         [Path] string mailgroup_id,
+         [Path] string alias_id,
+         CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 获取邮件组所有别名。
+    /// <para>该接口一次性返回所有数据，分页参数无效</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/mail-v1/mail-group/mailgroup-alias/delete">接口文档</see></para>
+    /// </summary>
+    /// <param name="mailgroup_id">
+    /// <para>邮件组ID或邮箱地址</para>
+    /// <para>示例值：xxxxxx 或 test_mail_group@xx.xx</para>
+    /// </param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Get("/open-apis/mail/v1/mailgroups/{mailgroup_id}/aliases")]
+    Task<FeishuApiResult<GetMailGroupAliasResult>?> GetMailGroupAliasListAsync(
+       [Path] string mailgroup_id,
+       CancellationToken cancellationToken = default);
 }

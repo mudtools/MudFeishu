@@ -8,23 +8,26 @@
 namespace Mud.Feishu.DataModels.Mail;
 
 /// <summary>
-/// <para>邮件别名</para>
+/// 公共邮箱成员
 /// </summary>
-public class EmailAlias
+public class PublicMailboxMember
 {
     /// <summary>
-    /// <para>主邮箱地址</para>
+    /// <para>租户内用户的唯一标识（当成员类型是USER时有值）</para>
     /// <para>必填：否</para>
-    /// <para>示例值：xxx@xx.xxx</para>
+    /// <para>示例值：xxxxxxxxxx</para>
     /// </summary>
-    [JsonPropertyName("primary_email")]
-    public string? PrimaryEmail { get; set; }
+    [JsonPropertyName("user_id")]
+    public string? UserId { get; set; }
 
     /// <summary>
-    /// <para>邮箱别名</para>
+    /// <para>成员类型</para>
     /// <para>必填：否</para>
-    /// <para>示例值：xxx@xx.xxx</para>
+    /// <para>示例值：USER</para>
+    /// <para>可选值：<list type="bullet">
+    /// <item>USER：内部用户</item>
+    /// </list></para>
     /// </summary>
-    [JsonPropertyName("email_alias")]
-    public string? EmailAliasSuffix { get; set; }
+    [JsonPropertyName("type")]
+    public string? Type { get; set; }
 }

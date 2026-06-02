@@ -181,7 +181,7 @@ public interface IFeishuTenantV1MailGroup : IFeishuAppContextSwitcher
     /// <param name="request">批量删除邮件组管理员请求对象，包含待删除的邮件组管理员信息。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Post("/open-apis/mail/v1/mailgroups/{mailgroup_id}/managers/batch_delete")]
-    Task<FeishuNullDataApiResult?> BatchDeleteMailgroupManagerAsync(
+    Task<FeishuNullDataApiResult?> BatchDeleteMailGroupManagerAsync(
         [Path] string mailgroup_id,
         [Body] BatchOopsMailgroupManagerRequest request,
         [Query] string? user_id_type = Consts.User_Id_Type,
@@ -672,7 +672,7 @@ public interface IFeishuTenantV1MailGroup : IFeishuAppContextSwitcher
     /// <param name="request">批量删除邮件组权限成员请求体。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Delete("/open-apis/mail/v1/mailgroups/{mailgroup_id}/permission_members/batch_delete")]
-    Task<FeishuNullDataApiResult?> BatchDeleteMailgroupPermissionMemberAsync(
+    Task<FeishuNullDataApiResult?> BatchDeleteMailGroupPermissionMemberAsync(
         [Path] string mailgroup_id,
         [Body] BatchDeleteMailGroupPermissionMembersRequest request,
         CancellationToken cancellationToken = default);

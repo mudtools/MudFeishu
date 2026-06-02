@@ -8,23 +8,14 @@
 namespace Mud.Feishu.DataModels.Mail;
 
 /// <summary>
-/// <para>邮件别名</para>
+/// 创建公共邮箱别名响应体
 /// </summary>
-public class EmailAlias
+public class CreatePublicMailboxAliasResult
 {
     /// <summary>
-    /// <para>主邮箱地址</para>
+    /// <para>公共邮箱别名</para>
     /// <para>必填：否</para>
-    /// <para>示例值：xxx@xx.xxx</para>
     /// </summary>
-    [JsonPropertyName("primary_email")]
-    public string? PrimaryEmail { get; set; }
-
-    /// <summary>
-    /// <para>邮箱别名</para>
-    /// <para>必填：否</para>
-    /// <para>示例值：xxx@xx.xxx</para>
-    /// </summary>
-    [JsonPropertyName("email_alias")]
-    public string? EmailAliasSuffix { get; set; }
+    [JsonPropertyName("public_mailbox_alias")]
+    public EmailAlias? PublicMailboxAlias { get; set; }
 }

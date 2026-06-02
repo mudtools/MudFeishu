@@ -58,7 +58,7 @@ public interface IFeishuTenantV1MailGroup : IFeishuAppContextSwitcher
     /// <param name="request">更新邮件组请求对象，包含待更新的邮件组信息。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Patch("/open-apis/mail/v1/mailgroups/{mailgroup_id}")]
-    Task<FeishuApiResult<UpdateMailGroupResult>?> UpdateMailGroupAsync(
+    Task<FeishuApiResult<UpdateMailGroupResult>?> UpdateMailGroupPartialAsync(
         [Path] string mailgroup_id,
         [Body] UpdateMailGroupRequest request,
         CancellationToken cancellationToken = default);
@@ -76,7 +76,7 @@ public interface IFeishuTenantV1MailGroup : IFeishuAppContextSwitcher
     /// <param name="request">更新邮件组请求对象，包含待更新的邮件组信息。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Put("/open-apis/mail/v1/mailgroups/{mailgroup_id}")]
-    Task<FeishuApiResult<UpdateMailGroupResult>?> UpdateMailGroupInfoAsync(
+    Task<FeishuApiResult<UpdateMailGroupResult>?> UpdateMailGroupAsync(
         [Path] string mailgroup_id,
         [Body] UpdateMailGroupRequest request,
         CancellationToken cancellationToken = default);

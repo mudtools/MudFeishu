@@ -13,8 +13,8 @@
 		<PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.15.0" />
 	</ItemGroup>
 	<ItemGroup>
-		<PackageReference Include="Mud.Feishu" Version="2.1.3" />
-		<PackageReference Include="Mud.Feishu.Authentication" Version="2.1.3" />
+		<PackageReference Include="Mud.Feishu" Version="2.1.4" />
+		<PackageReference Include="Mud.Feishu.Authentication" Version="2.1.4" />
 	</ItemGroup>
 	<!--<ItemGroup>
 		<ProjectReference Include="..\..\..\Mud.Feishu\Mud.Feishu.csproj" />

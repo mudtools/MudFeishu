@@ -250,7 +250,7 @@ internal class FeishuAppManager : IFeishuAppManager
 
         var jsonSerializerOptions = _serviceProvider.GetRequiredService<IOptions<JsonSerializerOptions>>();
 
-        var httpClient = CreateHttpClient(config, jsonSerializerOptions);
+        var httpClient = CreateHttpClient(_serviceProvider, config, jsonSerializerOptions);
 
         var authenticationApi = new FeishuAuthentication(jsonSerializerOptions, httpClient);
 
@@ -298,11 +298,11 @@ internal class FeishuAppManager : IFeishuAppManager
     /// <summary>
     /// 创建独立的HttpClient实例
     /// </summary>
-    private IEnhancedHttpClient CreateHttpClient(FeishuAppConfig config, IOptions<JsonSerializerOptions> jsonSerializerOptions)
+    public static IEnhancedHttpClient CreateHttpClient(IServiceProvider serviceProvider, FeishuAppConfig config, IOptions<JsonSerializerOptions> jsonSerializerOptions)
     {
-        var httpClientFactory = _serviceProvider.GetRequiredService<IHttpClientFactory>();
+        var httpClientFactory = serviceProvider.GetRequiredService<IHttpClientFactory>();
         var httpClient = httpClientFactory.CreateClient($"feishu-{config.AppKey}");
-        var logger = _serviceProvider.GetRequiredService<ILogger<FeishuHttpClient>>();
+        var logger = serviceProvider.GetRequiredService<ILogger<FeishuHttpClient>>();
 
         // 配置HttpClient
         httpClient.BaseAddress = new Uri(config.BaseUrl ?? "https://open.feishu.cn");

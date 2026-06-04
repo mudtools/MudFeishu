@@ -7,7 +7,9 @@
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Mud.Feishu.Abstractions;
+using System.Text.Json;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
@@ -222,6 +224,16 @@ public static class FeishuMultiAppExtensions
         {
             var appManager = sp.GetRequiredService<IFeishuAppManager>();
             return appManager.GetDefaultApp();
+        });
+
+        services.AddSingleton<IEnhancedHttpClient>(sp =>
+        {
+            var defaultConfig = configs.First(c => c.IsDefault);
+            var jsonSerializerOptions = sp.GetRequiredService<IOptions<JsonSerializerOptions>>();
+            return FeishuAppManager.CreateHttpClient(
+                sp,
+                defaultConfig,
+                jsonSerializerOptions);
         });
 
         return services;

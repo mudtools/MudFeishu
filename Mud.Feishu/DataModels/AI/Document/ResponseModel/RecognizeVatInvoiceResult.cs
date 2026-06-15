@@ -8,14 +8,16 @@
 namespace Mud.Feishu.DataModels.AI;
 
 /// <summary>
-/// <para>驾驶证信息</para>
+/// 识别文件中的增值税发票响应体
 /// </summary>
-public class DrvingLicenseRecognize
+public class RecognizeVatInvoiceResult
 {
     /// <summary>
-    /// <para>识别出的实体类型</para>
+    /// <para>增值税发票信息</para>
     /// <para>必填：否</para>
     /// </summary>
-    [JsonPropertyName("entities")]
-    public DrivingEntity[]? Entities { get; set; }
+    [JsonPropertyName("vat_invoices")]
+    public VatInvoiceRecognize[]? VatInvoices { get; set; }
+
+   
 }

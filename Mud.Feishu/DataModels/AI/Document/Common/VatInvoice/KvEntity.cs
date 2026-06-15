@@ -8,14 +8,23 @@
 namespace Mud.Feishu.DataModels.AI;
 
 /// <summary>
-/// <para>驾驶证信息</para>
+/// <para>识别出的票据详细信息</para>
 /// </summary>
-public class DrvingLicenseRecognize
+public class KvEntity
 {
     /// <summary>
-    /// <para>识别出的实体类型</para>
+    /// <para>识别的实体类型</para>
     /// <para>必填：否</para>
+    /// <para>示例值：entry_name</para>
     /// </summary>
-    [JsonPropertyName("entities")]
-    public DrivingEntity[]? Entities { get; set; }
+    [JsonPropertyName("type")]
+    public string? Type { get; set; }
+
+    /// <summary>
+    /// <para>识别出字段的文本信息</para>
+    /// <para>必填：否</para>
+    /// <para>示例值：餐饮服务</para>
+    /// </summary>
+    [JsonPropertyName("value")]
+    public string? Value { get; set; }
 }

@@ -50,6 +50,7 @@ public class FeishuServiceBuilder
             [FeishuModule.VideoConferencing] = new FeishuModuleRegistrar(FeishuModule.VideoConferencing, s => s.AddVideoConferencingWebApiHttpClient()),
             [FeishuModule.Mail] = new FeishuModuleRegistrar(FeishuModule.Mail, s => s.AddMailWebApiHttpClient()),
             [FeishuModule.Authentication] = new FeishuModuleRegistrar(FeishuModule.Authentication, s => s.AddAuthenticationWebApiHttpClient()),
+            [FeishuModule.AI] = new FeishuModuleRegistrar(FeishuModule.AI, s => s.AddAIWebApiHttpClient()),
         };
     }
 
@@ -144,6 +145,12 @@ public class FeishuServiceBuilder
     /// <returns>建造者实例，支持链式调用</returns>
     public FeishuServiceBuilder AddMailApi() => AddModule(FeishuModule.Mail);
 
+
+    /// <summary>
+    /// 添加飞书 AI 能力 API 服务
+    /// </summary>
+    /// <returns></returns>
+    public FeishuServiceBuilder AddAIApi() => AddModule(FeishuModule.AI);
 
     /// <summary>
     /// 添加认证授权 API 服务

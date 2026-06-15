@@ -242,8 +242,8 @@ builder.Services.AddFeishuApp(builder.Configuration);
 // 注册多应用模式（方式二：代码配置）
 builder.Services.AddFeishuApp(configure =>
 {
-    config.AddDefaultApp("default", "cli_xxx", "dsk_xxx");
-    config.AddApp("hr-app", "cli_yyy", "dsk_yyy", opt =>
+    configure.AddDefaultApp("default", "cli_xxx", "dsk_xxx");
+    configure.AddApp("hr-app", "cli_yyy", "dsk_yyy", opt =>
     {
         opt.TimeOut = 45;
         opt.RetryCount = 5;

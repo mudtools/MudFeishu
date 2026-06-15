@@ -93,6 +93,11 @@ public enum FeishuModule
     Mail,
 
     /// <summary>
+    /// AI能力
+    /// </summary>
+    AI,
+
+    /// <summary>
     /// 所有功能
     /// </summary>
     All

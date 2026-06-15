@@ -8,9 +8,9 @@
 namespace Mud.Feishu.DataModels.AI;
 
 /// <summary>
-/// <para>机动车发票信息</para>
+/// <para>健康证信息</para>
 /// </summary>
-public class VehicleInvoiceRecognizeVehicleInvoice
+public class HealthCertificateRecognize
 {
     /// <summary>
     /// <para>识别出的实体类型</para>
@@ -19,6 +19,7 @@ public class VehicleInvoiceRecognizeVehicleInvoice
     /// <para>最小长度：0</para>
     /// </summary>
     [JsonPropertyName("entities")]
-    public VehicleInvoiceEntity[]? Entities { get; set; }
+    public HealthCertificateEntity[]? Entities { get; set; }
+
 
 }

@@ -8,16 +8,32 @@
 namespace Mud.Feishu.DataModels.AI;
 
 /// <summary>
-/// 识别文件中的机动车发票结果。
+/// <para>识别出的实体类型</para>
 /// </summary>
-public class RecognizeVehicleInvoiceResult
+public class HealthCertificateEntity
 {
     /// <summary>
-    /// <para>机动车发票信息</para>
+    /// <para>识别的字段种类</para>
     /// <para>必填：否</para>
+    /// <para>示例值：id_number</para>
+    /// <para>可选值：<list type="bullet">
+    /// <item>name：姓名</item>
+    /// <item>issued_by：发证机关</item>
+    /// <item>date_of_handling：办证日期</item>
+    /// <item>date_of_issue：发证日期</item>
+    /// <item>date_of_medical_examination：体检日期</item>
+    /// <item>valid_date：有效日期</item>
+    /// <item>other_date：其他日期</item>
+    /// </list></para>
     /// </summary>
-    [JsonPropertyName("vehicle_invoice")]
-    public VehicleInvoiceRecognize? VehicleInvoice { get; set; }
+    [JsonPropertyName("type")]
+    public string? Type { get; set; }
 
-
+    /// <summary>
+    /// <para>识别出字段的文本信息</para>
+    /// <para>必填：否</para>
+    /// <para>示例值：张三</para>
+    /// </summary>
+    [JsonPropertyName("value")]
+    public string? Value { get; set; }
 }

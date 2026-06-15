@@ -8,16 +8,15 @@
 namespace Mud.Feishu.DataModels.AI;
 
 /// <summary>
-/// 识别文件中的机动车发票结果。
+/// 识别文件中的健康证响应体
 /// </summary>
-public class RecognizeVehicleInvoiceResult
+public class RecognizeHealthCertificateResult
 {
     /// <summary>
-    /// <para>机动车发票信息</para>
+    /// <para>健康证信息</para>
     /// <para>必填：否</para>
     /// </summary>
-    [JsonPropertyName("vehicle_invoice")]
-    public VehicleInvoiceRecognize? VehicleInvoice { get; set; }
-
+    [JsonPropertyName("health_certificate")]
+    public HealthCertificateRecognize? HealthCertificate { get; set; }
 
 }

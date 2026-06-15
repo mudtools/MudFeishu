@@ -8,16 +8,17 @@
 namespace Mud.Feishu.DataModels.AI;
 
 /// <summary>
-/// 识别文件中的机动车发票结果。
+/// <para>机动车发票信息</para>
 /// </summary>
-public class RecognizeVehicleInvoiceResult
+public class VehicleInvoiceRecognize
 {
     /// <summary>
-    /// <para>机动车发票信息</para>
+    /// <para>识别出的实体类型</para>
     /// <para>必填：否</para>
+    /// <para>最大长度：22</para>
+    /// <para>最小长度：0</para>
     /// </summary>
-    [JsonPropertyName("vehicle_invoice")]
-    public VehicleInvoiceRecognize? VehicleInvoice { get; set; }
-
+    [JsonPropertyName("entities")]
+    public VehicleInvoiceEntity[]? Entities { get; set; }
 
 }

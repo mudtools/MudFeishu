@@ -5,6 +5,8 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using Mud.Feishu.DataModels.AI;
+
 namespace Mud.Feishu.Interfaces;
 
 /// <summary>
@@ -15,5 +17,15 @@ namespace Mud.Feishu.Interfaces;
 [Token("TenantAccessToken", Name = Consts.Authorization)]
 public interface IFeishuV1AIDocument : IFeishuAppContextSwitcher
 {
-
+    /// <summary>
+    /// 识别文件中的机动车发票。
+    /// <para>机动车发票识别接口，支持PDF/DOCX/PNG/JPG四种文件类型的一次性的识别。文件大小需要小于30M。</para>
+    /// <para><see href="https://open.feishu.cn/document/ai/document_ai-v1/vehicle_invoice/recognize">接口文档</see></para>
+    /// </summary>
+    /// <param name="request">上传用于AI处理的文件请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Post("/open-apis/document_ai/v1/vehicle_invoice/recognize")]
+    Task<FeishuApiResult<RecognizeVehicleInvoiceResult>?> RecognizeVehicleInvoiceAsync(
+      [FormContent] FileUploadRequest request,
+      CancellationToken cancellationToken = default);
 }

@@ -95,4 +95,17 @@ public interface IFeishuTenantV1AIDocument : IFeishuV1AIDocument
     Task<FeishuApiResult<RecognizeVehicleLicenseResult>?> RecognizeVehicleLicenseAsync(
       [FormContent] FileUploadRequest request,
       CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 识别文件中的火车票信息。
+    /// <para>火车票识别接口，支持PDF/DOCX/PNG/JPG四种文件类型的一次性的识别。文件大小需要小于30M。</para>
+    /// <para><see href="https://open.feishu.cn/document/ai/document_ai-v1/train_invoice/recognize">接口文档</see></para>
+    /// </summary>
+    /// <param name="request">上传用于AI处理的文件请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Post("/open-apis/document_ai/v1/train_invoice/recognize")]
+    Task<FeishuApiResult<RecognizeTrainInvoiceResult>?> RecognizeTrainInvoiceAsync(
+      [FormContent] FileUploadRequest request,
+      CancellationToken cancellationToken = default);
 }

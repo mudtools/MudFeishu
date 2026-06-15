@@ -15,6 +15,7 @@ public class BatchSenderMessageImageRequest : BatchSendMessageRequestBase<Messag
     /// <summary>
     /// 消息类型。
     /// </summary>
+    [JsonPropertyName("msg_type")]
     public
 #if NET7_0_OR_GREATER
         required

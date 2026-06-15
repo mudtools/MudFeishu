@@ -29,4 +29,17 @@ public interface IFeishuTenantV1SpeechToText : IFeishuAppContextSwitcher
     Task<FeishuApiResult<FileRecognizeSpeechResult>?> FileRecognizeSpeechAsync(
       [Body] FileRecognizeSpeechRequest request,
       CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 识别流式语音。
+    /// <para>语音流式接口，将整个音频文件分片进行传入模型。能够实时返回数据。建议每个音频分片的大小为 100-200ms。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/ai/speech_to_text-v1/stream_recognize">接口文档</see></para>
+    /// </summary>
+    /// <param name="request">上传用于AI处理的文件请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Post("/open-apis/speech_to_text/v1/speech/stream_recognize")]
+    Task<FeishuApiResult<StreamRecognizeSpeechResult>?> StreamRecognizeSpeechAsync(
+      [Body] StreamRecognizeSpeechRequest request,
+      CancellationToken cancellationToken = default);
 }

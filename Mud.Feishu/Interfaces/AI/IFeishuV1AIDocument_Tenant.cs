@@ -30,4 +30,17 @@ public interface IFeishuTenantV1AIDocument : IFeishuV1AIDocument
     Task<FeishuApiResult<ParseResumeResult>?> ParseResumeAsync(
       [FormContent] FileUploadRequest request,
       CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 识别文件中的港澳居民来往内地通行证信息。
+    /// <para>港澳居民来往内地通行证识别接口，支持PDF/DOCX/PNG/JPG四种文件类型的一次性的识别。文件大小需要小于30M。</para>
+    /// <para><see href="https://open.feishu.cn/document/ai/document_ai-v1/hkm_mainland_travel_permit/recognize">接口文档</see></para>
+    /// </summary>
+    /// <param name="request">上传用于AI处理的文件请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Post("/open-apis/document_ai/v1/hkm_mainland_travel_permit/recognize")]
+    Task<FeishuApiResult<RecognizeHkmMainlandTravelPermitResult>?> RecognizeHkmMainlandTravelPermitAsync(
+      [FormContent] FileUploadRequest request,
+      CancellationToken cancellationToken = default);
 }

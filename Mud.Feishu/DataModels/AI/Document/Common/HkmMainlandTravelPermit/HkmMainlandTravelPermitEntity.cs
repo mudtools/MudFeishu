@@ -10,34 +10,18 @@ namespace Mud.Feishu.DataModels.AI;
 /// <summary>
 /// <para>识别出的实体类型</para>
 /// </summary>
-public class VehicleInvoiceEntity
+public class HkmMainlandTravelPermitEntity
 {
     /// <summary>
     /// <para>识别的字段种类</para>
     /// <para>必填：否</para>
-    /// <para>示例值：SalerName</para>
+    /// <para>示例值：full_name_cn</para>
     /// <para>可选值：<list type="bullet">
-    /// <item>invoice_code：发票代码</item>
-    /// <item>invoice_num：发票号码</item>
-    /// <item>date：开票日期</item>
-    /// <item>print_code：机打代码</item>
-    /// <item>print_num：机打号码</item>
-    /// <item>machine_num：机器编码</item>
-    /// <item>buyer_name：购买方名称</item>
-    /// <item>buyer_id：购买方纳税人识别号</item>
-    /// <item>vehicle_type：车辆类型</item>
-    /// <item>product_model：厂牌型号</item>
-    /// <item>certificate_num：合格证号</item>
-    /// <item>engine_num：发动机号码</item>
-    /// <item>vin：车架号</item>
-    /// <item>total_price：价税合计</item>
-    /// <item>total_price_little：小写金额</item>
-    /// <item>saler_name：销货单位名称</item>
-    /// <item>saler_id：销售方纳税人识别号</item>
-    /// <item>saler_addr：地址</item>
-    /// <item>tax_rate：税率</item>
-    /// <item>tax：税额</item>
-    /// <item>price：不含税价格</item>
+    /// <item>full_name_cn：中文姓名</item>
+    /// <item>full_name_en：英文格式姓名</item>
+    /// <item>date_of_birth：出生日期</item>
+    /// <item>date_of_expiry：有效期至</item>
+    /// <item>card_number：证件号码</item>
     /// </list></para>
     /// </summary>
     [JsonPropertyName("type")]
@@ -46,7 +30,7 @@ public class VehicleInvoiceEntity
     /// <summary>
     /// <para>识别出字段的文本信息</para>
     /// <para>必填：否</para>
-    /// <para>示例值：xxxx公司</para>
+    /// <para>示例值：张三</para>
     /// </summary>
     [JsonPropertyName("value")]
     public string? Value { get; set; }

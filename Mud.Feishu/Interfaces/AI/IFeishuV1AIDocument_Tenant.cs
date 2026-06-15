@@ -69,4 +69,17 @@ public interface IFeishuTenantV1AIDocument : IFeishuV1AIDocument
     Task<FeishuApiResult<RecognizeChinesePassportResult>?> RecognizeChinesePassportAsync(
       [FormContent] FileUploadRequest request,
       CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 识别文件中的银行卡信息。
+    /// <para>银行卡识别接口，支持PDF/DOCX/PNG/JPG四种文件类型的一次性的识别。文件大小需要小于30M。</para>
+    /// <para><see href="https://open.feishu.cn/document/ai/document_ai-v1/bank_card/recognize">接口文档</see></para>
+    /// </summary>
+    /// <param name="request">上传用于AI处理的文件请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Post("/open-apis/document_ai/v1/bank_card/recognize")]
+    Task<FeishuApiResult<RecognizeBankCardResult>?> RecognizeBankCardAsync(
+      [FormContent] FileUploadRequest request,
+      CancellationToken cancellationToken = default);
 }

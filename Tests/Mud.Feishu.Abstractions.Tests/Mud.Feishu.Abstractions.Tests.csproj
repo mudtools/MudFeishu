@@ -1,5 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <PropertyGroup>
+    <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
+  </PropertyGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\..\Mud.Feishu.Abstractions\Mud.Feishu.Abstractions.csproj" />
     <ProjectReference Include="..\..\Mud.Feishu\Mud.Feishu.csproj" />

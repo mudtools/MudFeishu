@@ -24,7 +24,7 @@ public class IFeishuTenantV1BatchMessageTests
     [Fact]
     public void TestBatchSendTextMessageAsyncRequestBody()
     {
-        string bodyStr = """{"msg_type":"text","content":"{\\"text\\":\\"hello\\"}","receive_id_list":["ou_123"]}""";
+        string bodyStr = """{"msg_type":"text","content":{"text":"hello"},"receive_id_list":["ou_123"]}""";
         var requestBody = JsonSerializer.Deserialize<BatchSenderTextMessageRequest>(bodyStr, _jsonSerializerOptions);
 
         Assert.NotNull(requestBody);
@@ -47,7 +47,7 @@ public class IFeishuTenantV1BatchMessageTests
     [Fact]
     public void TestBatchSendRichTextMessageAsyncRequestBody()
     {
-        string bodyStr = """{"msg_type":"post","content":"{\\"zh_cn\\":{\\"title\\":\\"test\\"}}","receive_id_list":["ou_123"]}""";
+        string bodyStr = """{"msg_type":"post","content":{"post":{"zh_cn":{"title":"test"}}},"receive_id_list":["ou_123"]}""";
         var requestBody = JsonSerializer.Deserialize<BatchSenderRichTextMessageRequest>(bodyStr, _jsonSerializerOptions);
 
         Assert.NotNull(requestBody);
@@ -70,7 +70,7 @@ public class IFeishuTenantV1BatchMessageTests
     [Fact]
     public void TestBatchSendImageMessageAsyncRequestBody()
     {
-        string bodyStr = """{"msg_type":"image","content":"{\\"image_key\\":\\"img_123\\"}","receive_id_list":["ou_123"]}""";
+        string bodyStr = """{"msg_type":"image","content":{"image_key":"img_123"},"receive_id_list":["ou_123"]}""";
         var requestBody = JsonSerializer.Deserialize<BatchSenderMessageImageRequest>(bodyStr, _jsonSerializerOptions);
 
         Assert.NotNull(requestBody);
@@ -93,7 +93,7 @@ public class IFeishuTenantV1BatchMessageTests
     [Fact]
     public void TestBatchSendGroupShareMessageAsyncRequestBody()
     {
-        string bodyStr = """{"msg_type":"share_chat","content":"{\\"chat_id\\":\\"oc_123\\"}","receive_id_list":["ou_123"]}""";
+        string bodyStr = """{"msg_type":"share_chat","content":{"share_chat_id":"oc_123"},"receive_id_list":["ou_123"]}""";
         var requestBody = JsonSerializer.Deserialize<BatchSenderMessageGroupShareRequest>(bodyStr, _jsonSerializerOptions);
 
         Assert.NotNull(requestBody);

@@ -51,6 +51,7 @@ public class FeishuServiceBuilder
             [FeishuModule.Mail] = new FeishuModuleRegistrar(FeishuModule.Mail, s => s.AddMailWebApiHttpClient()),
             [FeishuModule.Authentication] = new FeishuModuleRegistrar(FeishuModule.Authentication, s => s.AddAuthenticationWebApiHttpClient()),
             [FeishuModule.AI] = new FeishuModuleRegistrar(FeishuModule.AI, s => s.AddAIWebApiHttpClient()),
+            [FeishuModule.Search] = new FeishuModuleRegistrar(FeishuModule.Search, s => s.AddSearchWebApiHttpClient())
         };
     }
 
@@ -151,6 +152,13 @@ public class FeishuServiceBuilder
     /// </summary>
     /// <returns></returns>
     public FeishuServiceBuilder AddAIApi() => AddModule(FeishuModule.AI);
+
+
+    /// <summary>
+    /// 添加飞书搜索 API 服务
+    /// </summary>
+    /// <returns></returns>
+    public FeishuServiceBuilder AddSearchApi() => AddModule(FeishuModule.Search);
 
     /// <summary>
     /// 添加认证授权 API 服务

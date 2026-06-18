@@ -7,7 +7,7 @@
 
 using Mud.Feishu.DataModels.AI;
 
-namespace Mud.Feishu.Interfaces.AI;
+namespace Mud.Feishu;
 
 
 /// <summary>
@@ -16,7 +16,7 @@ namespace Mud.Feishu.Interfaces.AI;
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "AI")]
 [Token("TenantAccessToken", Name = Consts.Authorization)]
-public interface IFeishuTenantV1SpeechToText : IFeishuAppContextSwitcher
+public interface IFeishuTenantV1AISpeechToText : IFeishuAppContextSwitcher
 {
     /// <summary>
     /// 识别语音文件。

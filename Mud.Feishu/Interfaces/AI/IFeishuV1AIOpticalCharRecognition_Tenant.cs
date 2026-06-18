@@ -7,7 +7,7 @@
 
 using Mud.Feishu.DataModels.AI;
 
-namespace Mud.Feishu.Interfaces.AI;
+namespace Mud.Feishu;
 
 
 /// <summary>

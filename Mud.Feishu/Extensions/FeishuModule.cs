@@ -98,6 +98,11 @@ public enum FeishuModule
     AI,
 
     /// <summary>
+    /// 搜索
+    /// </summary>
+    Search,
+
+    /// <summary>
     /// 所有功能
     /// </summary>
     All

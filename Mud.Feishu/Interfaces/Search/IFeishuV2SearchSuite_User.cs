@@ -39,7 +39,7 @@ public interface IFeishuUserV2SearchSuite : IFeishuAppContextSwitcher, ICurrentU
     /// </param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Post("/open-apis/search/v2/message")]
-    Task<FeishuApiPageListResult<string>?> SearchMessageAsync(
+    Task<FeishuApiPageListResult<string>?> SearchMessagePageListAsync(
       [Body] SearchMessageRequest request,
       [Query] int? page_size = 20,
       [Query] string? page_token = null,
@@ -67,7 +67,7 @@ public interface IFeishuUserV2SearchSuite : IFeishuAppContextSwitcher, ICurrentU
     /// </param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Post("/open-apis/search/v2/app")]
-    Task<FeishuApiPageListResult<string>?> SearchAppAsync(
+    Task<FeishuApiPageListResult<string>?> SearchAppPageListAsync(
       [Body] SearchAppRequest request,
       [Query] int? page_size = 20,
       [Query] string? page_token = null,

@@ -35,7 +35,7 @@ public interface IFeishuTenantV2SearchDataSource : IFeishuAppContextSwitcher
     /// <summary>
     /// 删除数据源。
     /// <para>删除一个已存在的数据源。</para>
-    /// <para><see href="https://open.feishu.cn/document/server-docs/search-v2/open-search/data_source/create">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/search-v2/open-search/data_source/delete">接口文档</see></para>
     /// </summary>
     /// <param name="data_source_id">
     /// <para>数据源的唯一标识</para>
@@ -46,4 +46,66 @@ public interface IFeishuTenantV2SearchDataSource : IFeishuAppContextSwitcher
     Task<FeishuNullDataApiResult?> DeleteDataSourceAsync(
       [Path] string data_source_id,
       CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 更新数据源。
+    /// <para>更新一个已存在的数据源。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/search-v2/open-search/data_source/patch">接口文档</see></para>
+    /// </summary>
+    /// <param name="data_source_id">
+    /// <para>数据源的唯一标识</para>
+    /// <para>**示例值**："6953903108179099667"</para>
+    /// </param>
+    /// <param name="request">更新数据源请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Patch("/open-apis/search/v2/data_sources/{data_source_id}")]
+    Task<FeishuNullDataApiResult?> UpdateDataSourceAsync(
+      [Path] string data_source_id,
+      [Body] UpdateDataSourceRequest request,
+      CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 获取数据源。
+    /// <para>获取已经创建的数据源。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/search-v2/open-search/data_source/get">接口文档</see></para>
+    /// </summary>
+    /// <param name="data_source_id">
+    /// <para>数据源的唯一标识</para>
+    /// <para>**示例值**："6953903108179099667"</para>
+    /// </param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Get("/open-apis/search/v2/data_sources/{data_source_id}")]
+    Task<FeishuApiResult<GetDataSourceResult>?> GetDataSourceAsync(
+      [Path] string data_source_id,
+      CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 批量获取数据源。
+    /// <para>批量获取创建的数据源信息。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/search-v2/open-search/data_source/list">接口文档</see></para>
+    /// </summary>
+    /// <param name="view">
+    /// <para>回包数据格式，0-全量数据；1-摘要数据。</para>
+    /// <para>**注**：摘要数据仅包含"id"，"name"，"state"。</para>
+    /// <para>**示例值**：0</para>
+    /// <para>**可选值有**：</para>
+    /// <para>0:全量数据,1:摘要数据</para>
+    /// <list type="bullet">
+    /// <item>0：全量数据</item>
+    /// <item>1：摘要数据</item>
+    /// </list>
+    /// <para>默认值：null</para>
+    /// </param>
+    /// <param name="page_size">分页大小，即本次请求所返回的信息列表内的最大条目数。默认值：20</param>
+    /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Get("/open-apis/search/v2/data_sources")]
+    Task<FeishuApiPageListResult<AppDataSourceInfo>?> GetDataSourcePageListAsync(
+        [Query] int? view = null,
+        [Query] int? page_size = 20,
+        [Query] string? page_token = null,
+        CancellationToken cancellationToken = default);
 }

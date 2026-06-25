@@ -108,4 +108,84 @@ public interface IFeishuTenantV2SearchDataSource : IFeishuAppContextSwitcher
         [Query] int? page_size = 20,
         [Query] string? page_token = null,
         CancellationToken cancellationToken = default);
+
+
+
+    /// <summary>
+    /// 为指定数据项创建索引。
+    /// <para>索引一条数据记录。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/search-v2/open-search/data_source-item/create">接口文档</see></para>
+    /// </summary>
+    /// <param name="data_source_id">
+    /// <para>数据源的唯一标识</para>
+    /// <para>**示例值**："6953903108179099667"</para>
+    /// </param>
+    /// <param name="request">创建数据项索引请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Post("/open-apis/search/v2/data_sources/{data_source_id}/items")]
+    Task<FeishuNullDataApiResult?> CreateDataItemIndexAsync(
+        [Path] string data_source_id,
+        [Body] CreateDataItemIndexRequest request,
+        CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 批量为数据项创建索引。
+    /// <para>为提高索引数据记录的速度，特提供批量索引数据记录的接口。</para>
+    /// <para>注意：一个batch中所有数据项的datasourceID需要一致，tenantID也需要一致</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/search-v2/open-search/data_source-item/batch_create">接口文档</see></para>
+    /// </summary>
+    /// <param name="data_source_id">
+    /// <para>数据源的唯一标识</para>
+    /// <para>**示例值**："6953903108179099667"</para>
+    /// </param>
+    /// <param name="request">创建数据项索引请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Post("/open-apis/search/v2/data_sources/{data_source_id}/items/batch_create")]
+    Task<FeishuApiResult<BatchCreateDataItemIndexResult>?> BatchCreateDataItemIndexAsync(
+       [Path] string data_source_id,
+       [Body] BatchCreateDataItemIndexRequest request,
+       CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 删除数据项。
+    /// <para>删除数据项。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/search-v2/open-search/data_source/delete">接口文档</see></para>
+    /// </summary>
+    /// <param name="data_source_id">
+    /// <para>数据源的唯一标识</para>
+    /// <para>**示例值**："6953903108179099667"</para>
+    /// </param>
+    /// <param name="item_id">
+    /// <para>数据记录的ID</para>
+    /// <para>**示例值**："01010111"</para>
+    /// </param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Delete("/open-apis/search/v2/data_sources/{data_source_id}/items/{item_id}")]
+    Task<FeishuNullDataApiResult?> DeleteDataItemIndexAsync(
+      [Path] string data_source_id,
+      [Path] string item_id,
+      CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 查询指定数据项。
+    /// <para>获取单个数据记录。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/search-v2/open-search/data_source-item/get?appId=cli_a98ea7d1a0ba100b">接口文档</see></para>
+    /// </summary>
+    /// <param name="data_source_id">
+    /// <para>数据源的唯一标识</para>
+    /// <para>**示例值**："6953903108179099667"</para>
+    /// </param>
+    /// <param name="item_id">
+    /// <para>数据记录的ID</para>
+    /// <para>**示例值**："01010111"</para>
+    /// </param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Get("/open-apis/search/v2/data_sources/{data_source_id}/items/{item_id}")]
+    Task<FeishuApiResult<DataItemIndex>?> GetDataItemIndexAsync(
+        [Path] string data_source_id,
+        [Path] string item_id,
+        CancellationToken cancellationToken = default);
 }

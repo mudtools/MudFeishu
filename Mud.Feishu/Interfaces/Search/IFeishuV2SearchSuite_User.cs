@@ -14,7 +14,7 @@ namespace Mud.Feishu;
 /// 飞书AI套件搜索搜索根据搜索关键词（query）对当前用户可见的应用、消息进行搜索。
 /// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/search-v2/suite-search/create"/></para>
 /// </summary>
-[HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "AI")]
+[HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Search")]
 [Token("UserAccessToken", Name = Consts.Authorization)]
 public interface IFeishuUserV2SearchSuite : IFeishuAppContextSwitcher, ICurrentUserId
 {

@@ -1,0 +1,42 @@
+﻿// -----------------------------------------------------------------------
+//  作者：Mud Studio  版权所有 (c) Mud Studio 2026   
+//  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
+//  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
+//  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
+// -----------------------------------------------------------------------
+
+namespace Mud.Feishu.DataModels.Search;
+
+/// <summary>
+/// <para>数据源信息</para>
+/// </summary>
+public class DataSourceInfo : DataSource
+{
+    /// <summary>
+    /// <para>数据源的唯一标识</para>
+    /// <para>必填：否</para>
+    /// </summary>
+    [JsonPropertyName("id")]
+    public long? Id { get; set; }
+
+    /// <summary>
+    /// <para>创建时间，使用Unix时间戳，单位为“秒”</para>
+    /// <para>必填：否</para>
+    /// </summary>
+    [JsonPropertyName("create_time")]
+    public string? CreateTime { get; set; }
+
+    /// <summary>
+    /// <para>更新时间，使用Unix时间戳，单位为“秒”</para>
+    /// <para>必填：否</para>
+    /// </summary>
+    [JsonPropertyName("update_time")]
+    public string? UpdateTime { get; set; }
+
+    /// <summary>
+    /// <para>是否超限</para>
+    /// <para>必填：否</para>
+    /// </summary>
+    [JsonPropertyName("is_exceed_quota")]
+    public bool? IsExceedQuota { get; set; }
+}

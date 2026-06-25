@@ -7,9 +7,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Mud.Feishu.Abstractions" Version="2.1.4" />
-    <PackageReference Include="Mud.Feishu.Webhook" Version="2.1.4" />
-    <PackageReference Include="Mud.Feishu.EventCallback" Version="2.1.4" />
+    <PackageReference Include="Mud.Feishu.Abstractions" Version="2.1.5" />
+    <PackageReference Include="Mud.Feishu.Webhook" Version="2.1.5" />
+    <PackageReference Include="Mud.Feishu.EventCallback" Version="2.1.5" />
   </ItemGroup>
 
   <!--<ItemGroup>

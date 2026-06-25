@@ -188,4 +188,83 @@ public interface IFeishuTenantV2SearchDataSource : IFeishuAppContextSwitcher
         [Path] string data_source_id,
         [Path] string item_id,
         CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 创建数据范式。
+    /// <para>创建一个数据范式。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/search-v2/open-search/schema/create">接口文档</see></para>
+    /// </summary>
+    /// <param name="request">创建数据范式请求体</param>
+    /// <param name="validate_only">
+    /// <para>是否只用来校验合法性</para>
+    /// <para>**示例值**：true</para>
+    /// <para>**默认值**：`false`</para>
+    /// <para>默认值：null</para>
+    /// </param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Post("/open-apis/search/v2/schemas")]
+    Task<FeishuApiResult<CreateSchemaResult>?> CreateSchemaAsync(
+      [Body] CreateSchemaRequest request,
+      [Query] bool? validate_only = null,
+      CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 删除数据范式。
+    /// <para>删除已存在的数据范式。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/search-v2/open-search/schema/delete">接口文档</see></para>
+    /// </summary>
+    /// <param name="schema_id">
+    /// <para>用户自定义数据范式的唯一标识</para>
+    /// <para>**示例值**："custom_schema_id"</para>
+    /// <para>**数据校验规则**：</para>
+    /// <para>- 最大长度：`40` 字符</para>
+    /// <para>- 正则校验：`^[a-zA-Z][a-zA-Z0-9-_].*$`</para>
+    /// </param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Delete("/open-apis/search/v2/schemas/{schema_id}")]
+    Task<FeishuNullDataApiResult?> DeleteSchemaAsync(
+       [Path] string schema_id,
+       CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 修改数据范式。
+    /// <para>修改数据范式。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/search-v2/open-search/schema/patch">接口文档</see></para>
+    /// </summary>
+    /// <param name="schema_id">
+    /// <para>用户自定义数据范式的唯一标识</para>
+    /// <para>**示例值**："custom_schema_id"</para>
+    /// <para>**数据校验规则**：</para>
+    /// <para>- 最大长度：`40` 字符</para>
+    /// <para>- 正则校验：`^[a-zA-Z][a-zA-Z0-9-_].*$`</para>
+    /// </param>
+    /// <param name="request">修改数据范式请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Patch("/open-apis/search/v2/schemas/{schema_id}")]
+    Task<FeishuApiResult<UpdateSchemaResult>?> UpdateSchemaAsync(
+        [Path] string schema_id,
+        [Body] UpdateSchemaRequest request,
+        CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 获取数据范式。
+    /// <para>获取单个数据范式。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/search-v2/open-search/schema/get">接口文档</see></para>
+    /// </summary>
+    /// <param name="schema_id">
+    /// <para>用户自定义数据范式的唯一标识</para>
+    /// <para>**示例值**："custom_schema_id"</para>
+    /// <para>**数据校验规则**：</para>
+    /// <para>- 最大长度：`40` 字符</para>
+    /// <para>- 正则校验：`^[a-zA-Z][a-zA-Z0-9-_].*$`</para>
+    /// </param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Get("/open-apis/search/v2/schemas/{schema_id}")]
+    Task<FeishuApiResult<GetSchemaResult>?> GetSchemaAsync(
+       [Path] string schema_id,
+       CancellationToken cancellationToken = default);
 }

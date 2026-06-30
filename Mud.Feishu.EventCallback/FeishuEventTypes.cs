@@ -326,4 +326,81 @@ public static class FeishuEventTypes
     /// </summary>
     public const string ThirdPartyMeetingRoomEventCreated = "third_party_meeting_room_event_created";
     #endregion
+
+    #region VideoConferencing Events
+    /// <summary>
+    /// 会议纪要生成
+    /// </summary>
+    public const string VcNoteGenerated = "vc.note.generated_v1";
+
+    /// <summary>
+    /// 参与的会议结束
+    /// </summary>
+    public const string MeetingParticipantMeetingEnded = "vc.meeting.participant_meeting_ended_v1";
+
+    /// <summary>
+    /// 企业会议开始
+    /// </summary>
+    public const string MeetingAllMeetingStarted = "vc.meeting.all_meeting_started_v1";
+
+    /// <summary>
+    /// 企业会议结束
+    /// </summary>
+    public const string MeetingAllMeetingEnded = "vc.meeting.all_meeting_ended_v1";
+
+    /// <summary>
+    /// 会议开始
+    /// </summary>
+    public const string MeetingMeetingStarted = "vc.meeting.meeting_started_v1";
+
+    /// <summary>
+    /// 会议结束
+    /// </summary>
+    public const string MeetingMeetingEnded = "vc.meeting.meeting_ended_v1";
+
+    /// <summary>
+    /// 加入会议
+    /// </summary>
+    public const string MeetingJoinMeeting = "vc.meeting.join_meeting_v1";
+
+    /// <summary>
+    /// 离开会议
+    /// </summary>
+    public const string MeetingLeaveMeeting = "vc.meeting.leave_meeting_v1";
+
+    /// <summary>
+    /// 开始录制
+    /// </summary>
+    public const string MeetingRecordingStarted = "vc.meeting.recording_started_v1";
+    #endregion
+
+    /// <summary>
+    /// 用户加入群聊事件
+    /// </summary>
+    public const string UserAddedToGroup = "im.chat.member.user_added_v1";
+
+    /// <summary>
+    /// 用户离开群聊事件
+    /// </summary>
+    public const string UserRemovedFromGroup = "im.chat.member.user_deleted_v1";
+
+    /// <summary>
+    /// 群聊信息更新事件
+    /// </summary>
+    public const string GroupUpdated = "im.chat.updated_v1";
+
+    /// <summary>
+    /// 日程事件
+    /// </summary>
+    public const string CalendarEvent = "calendar.event.updated_v4";
+
+    /// <summary>
+    /// 会议开始事件
+    /// </summary>
+    public const string MeetingStart = "meeting.meeting.started_v1";
+
+    /// <summary>
+    /// 会议结束事件
+    /// </summary>
+    public const string MeetingEnd = "meeting.meeting.ended_v1";
 }

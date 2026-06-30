@@ -327,6 +327,28 @@ public static class FeishuEventTypes
     public const string ThirdPartyMeetingRoomEventCreated = "third_party_meeting_room_event_created";
     #endregion
 
+    #region VideoConferencing Events
+    /// <summary>
+    /// 会议纪要生成
+    /// </summary>
+    public const string VcNoteGenerated = "vc.note.generated_v1";
+
+    /// <summary>
+    /// 参与的会议结束
+    /// </summary>
+    public const string MeetingParticipantMeetingEnded = "vc.meeting.participant_meeting_ended_v1";
+
+    /// <summary>
+    /// 企业会议开始
+    /// </summary>
+    public const string MeetingAllMeetingStarted = "vc.meeting.all_meeting_started_v1";
+
+    /// <summary>
+    /// 企业会议结束
+    /// </summary>
+    public const string MeetingAllMeetingEnded = "vc.meeting.all_meeting_ended_v1";
+    #endregion
+
     /// <summary>
     /// 用户加入群聊事件
     /// </summary>

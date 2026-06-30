@@ -347,6 +347,27 @@ public static class FeishuEventTypes
     /// 企业会议结束
     /// </summary>
     public const string MeetingAllMeetingEnded = "vc.meeting.all_meeting_ended_v1";
+
+    /// <summary>
+    /// 会议开始
+    /// </summary>
+    public const string MeetingMeetingStarted = "vc.meeting.meeting_started_v1";
+
+    /// <summary>
+    /// 会议结束
+    /// </summary>
+    public const string MeetingMeetingEnded = "vc.meeting.meeting_ended_v1";
+
+    /// <summary>
+    /// 加入会议
+    /// </summary>
+    public const string MeetingJoinMeeting = "vc.meeting.join_meeting_v1";
+
+    /// <summary>
+    /// 离开会议
+    /// </summary>
+    public const string MeetingLeaveMeeting = "vc.meeting.leave_meeting_v1";
+
     #endregion
 
     /// <summary>

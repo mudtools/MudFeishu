@@ -368,6 +368,10 @@ public static class FeishuEventTypes
     /// </summary>
     public const string MeetingLeaveMeeting = "vc.meeting.leave_meeting_v1";
 
+    /// <summary>
+    /// 开始录制
+    /// </summary>
+    public const string MeetingRecordingStarted = "vc.meeting.recording_started_v1";
     #endregion
 
     /// <summary>

@@ -422,6 +422,11 @@ public static class FeishuEventTypes
     /// 删除会议室
     /// </summary>
     public const string RoomDeletedEvent = "vc.room.deleted_v1";
+
+    /// <summary>
+    /// 预约配置更新
+    /// </summary>
+    public const string ReserveConfigUpdated = "vc.reserve_config.updated_v1";
     #endregion
 
     /// <summary>

@@ -372,6 +372,61 @@ public static class FeishuEventTypes
     /// 开始录制
     /// </summary>
     public const string MeetingRecordingStarted = "vc.meeting.recording_started_v1";
+
+    /// <summary>
+    /// 停止录制
+    /// </summary>
+    public const string MeetingRecordingEnded = "vc.meeting.recording_ended_v1";
+
+    /// <summary>
+    /// 录制完成
+    /// </summary>
+    public const string MeetingRecordingReady = "vc.meeting.recording_ready_v1";
+
+    /// <summary>
+    /// 会议共享开始
+    /// </summary>
+    public const string MeetingShareStarted = "vc.meeting.share_started_v1";
+
+    /// <summary>
+    /// 会议共享结束
+    /// </summary>
+    public const string MeetingShareEnded = "vc.meeting.share_ended_v1";
+
+    /// <summary>
+    /// 创建会议室层级
+    /// </summary>
+    public const string RoomLevelCreatedEvent = "vc.room_level.created_v1";
+
+    /// <summary>
+    /// 更新会议室层级
+    /// </summary>
+    public const string RoomLevelUpdatedEvent = "vc.room_level.updated_v1";
+
+    /// <summary>
+    /// 删除会议室层级
+    /// </summary>
+    public const string RoomLevelDeletedEvent = "vc.room_level.deleted_v1";
+
+    /// <summary>
+    /// 创建会议室
+    /// </summary>
+    public const string RoomCreatedEvent = "vc.room.created_v1";
+
+    /// <summary>
+    /// 更新会议室
+    /// </summary>
+    public const string RoomUpdatedEvent = "vc.room.updated_v1";
+
+    /// <summary>
+    /// 删除会议室
+    /// </summary>
+    public const string RoomDeletedEvent = "vc.room.deleted_v1";
+
+    /// <summary>
+    /// 预约配置更新
+    /// </summary>
+    public const string ReserveConfigUpdated = "vc.reserve_config.updated_v1";
     #endregion
 
     /// <summary>

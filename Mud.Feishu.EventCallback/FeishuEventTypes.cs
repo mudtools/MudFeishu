@@ -407,6 +407,21 @@ public static class FeishuEventTypes
     /// 删除会议室层级
     /// </summary>
     public const string RoomLevelDeletedEvent = "vc.room_level.deleted_v1";
+
+    /// <summary>
+    /// 创建会议室
+    /// </summary>
+    public const string RoomCreatedEvent = "vc.room.created_v1";
+
+    /// <summary>
+    /// 更新会议室
+    /// </summary>
+    public const string RoomUpdatedEvent = "vc.room.updated_v1";
+
+    /// <summary>
+    /// 删除会议室
+    /// </summary>
+    public const string RoomDeletedEvent = "vc.room.deleted_v1";
     #endregion
 
     /// <summary>

@@ -392,6 +392,21 @@ public static class FeishuEventTypes
     /// 会议共享结束
     /// </summary>
     public const string MeetingShareEnded = "vc.meeting.share_ended_v1";
+
+    /// <summary>
+    /// 创建会议室层级
+    /// </summary>
+    public const string RoomLevelCreatedEvent = "vc.room_level.created_v1";
+
+    /// <summary>
+    /// 更新会议室层级
+    /// </summary>
+    public const string RoomLevelUpdatedEvent = "vc.room_level.updated_v1";
+
+    /// <summary>
+    /// 删除会议室层级
+    /// </summary>
+    public const string RoomLevelDeletedEvent = "vc.room_level.deleted_v1";
     #endregion
 
     /// <summary>

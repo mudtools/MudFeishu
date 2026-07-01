@@ -372,6 +372,26 @@ public static class FeishuEventTypes
     /// 开始录制
     /// </summary>
     public const string MeetingRecordingStarted = "vc.meeting.recording_started_v1";
+
+    /// <summary>
+    /// 停止录制
+    /// </summary>
+    public const string MeetingRecordingEnded = "vc.meeting.recording_ended_v1";
+
+    /// <summary>
+    /// 录制完成
+    /// </summary>
+    public const string MeetingRecordingReady = "vc.meeting.recording_ready_v1";
+
+    /// <summary>
+    /// 会议共享开始
+    /// </summary>
+    public const string MeetingShareStarted = "vc.meeting.share_started_v1";
+
+    /// <summary>
+    /// 会议共享结束
+    /// </summary>
+    public const string MeetingShareEnded = "vc.meeting.share_ended_v1";
     #endregion
 
     /// <summary>

@@ -34,4 +34,17 @@ public interface IFeishuUserV1HelpDeskAgent : IFeishuV1HelpDeskAgent, ICurrentUs
         [Path] string agent_id,
         [Body] UpdateAgentInfoRequest request,
         CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 创建客服工作日程
+    /// <para>用于创建客服日程。注意事项：user_access_token 访问，需要操作者是当前服务台的管理员或所有者</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/helpdesk-v1/agent-function/agent/patch">接口文档</see></para>
+    /// </summary> 
+    /// <param name="request">创建客服工作日程请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Post("/open-apis/helpdesk/v1/agent_schedules")]
+    Task<FeishuNullDataApiResult?> CreateAgentScheduleAsync(
+      [Body] CreateAgentScheduleRequest request,
+      CancellationToken cancellationToken = default);
 }

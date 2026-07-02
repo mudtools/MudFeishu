@@ -429,6 +429,13 @@ public static class FeishuEventTypes
     public const string ReserveConfigUpdated = "vc.reserve_config.updated_v1";
     #endregion
 
+    #region Mail Events
+    /// <summary>
+    /// 邮件接收事件
+    /// </summary>
+    public const string MessageReceived = "mail.user_mailbox.event.message_received_v1";
+    #endregion
+
     /// <summary>
     /// 用户加入群聊事件
     /// </summary>

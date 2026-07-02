@@ -103,6 +103,11 @@ public enum FeishuModule
     Search,
 
     /// <summary>
+    /// 服务台
+    /// </summary>
+    HelpDesk,
+
+    /// <summary>
     /// 所有功能
     /// </summary>
     All

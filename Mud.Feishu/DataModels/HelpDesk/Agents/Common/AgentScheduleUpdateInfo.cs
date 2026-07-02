@@ -7,21 +7,11 @@
 
 namespace Mud.Feishu.DataModels.HelpDesk;
 
-
 /// <summary>
-/// <para>新客服日程</para>
+/// <para>客服日程</para>
 /// </summary>
-public class AgentScheduleUpdateInfo
+public class AgentScheduleUpdate
 {
-    /// <summary>
-    /// <para>客服id</para>
-    /// <para>[可以以普通用户身份在服务台发起工单，从工单详情里面获取用户guest.id](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/helpdesk-v1/ticket/get)</para>
-    /// <para>必填：否</para>
-    /// <para>示例值：agent-id</para>
-    /// </summary>
-    [JsonPropertyName("agent_id")]
-    public string? AgentId { get; set; }
-
     /// <summary>
     /// <para>工作日程列表</para>
     /// <para>必填：否</para>
@@ -37,4 +27,20 @@ public class AgentScheduleUpdateInfo
     /// </summary>
     [JsonPropertyName("agent_skill_ids")]
     public string[]? AgentSkillIds { get; set; }
+}
+
+/// <summary>
+/// <para>新客服日程</para>
+/// </summary>
+public class AgentScheduleUpdateInfo : AgentScheduleUpdate
+{
+    /// <summary>
+    /// <para>客服id</para>
+    /// <para>[可以以普通用户身份在服务台发起工单，从工单详情里面获取用户guest.id](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/helpdesk-v1/ticket/get)</para>
+    /// <para>必填：否</para>
+    /// <para>示例值：agent-id</para>
+    /// </summary>
+    [JsonPropertyName("agent_id")]
+    public string? AgentId { get; set; }
+
 }

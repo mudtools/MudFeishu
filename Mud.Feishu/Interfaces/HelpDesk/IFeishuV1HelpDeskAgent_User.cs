@@ -39,7 +39,7 @@ public interface IFeishuUserV1HelpDeskAgent : IFeishuV1HelpDeskAgent, ICurrentUs
     /// <summary>
     /// 创建客服工作日程
     /// <para>用于创建客服日程。注意事项：user_access_token 访问，需要操作者是当前服务台的管理员或所有者</para>
-    /// <para><see href="https://open.feishu.cn/document/server-docs/helpdesk-v1/agent-function/agent/patch">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/helpdesk-v1/agent-function/agent-schedules/create">接口文档</see></para>
     /// </summary> 
     /// <param name="request">创建客服工作日程请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
@@ -47,4 +47,41 @@ public interface IFeishuUserV1HelpDeskAgent : IFeishuV1HelpDeskAgent, ICurrentUs
     Task<FeishuNullDataApiResult?> CreateAgentScheduleAsync(
       [Body] CreateAgentScheduleRequest request,
       CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 删除客服工作日程
+    /// <para>用于删除客服日程。注意事项：user_access_token 访问，需要操作者是当前服务台的管理员或所有者</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/helpdesk-v1/agent-function/agent-schedules/delete">接口文档</see></para>
+    /// </summary> 
+    /// <param name="agent_id">
+    /// <para>客服id</para>
+    /// <para>示例值：ou_14777d82ffef0f707de5a8c7ff2c5ebe</para>
+    /// </param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Delete("/open-apis/helpdesk/v1/agents/{agent_id}/schedules")]
+    Task<FeishuNullDataApiResult?> DeleteAgentScheduleAsync(
+         [Path] string agent_id,
+         CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 更新客服工作日程
+    /// <para>用于更新客服日程。注意事项：user_access_token 访问，需要操作者是当前服务台的管理员或所有者</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/helpdesk-v1/agent-function/agent-schedules/patch">接口文档</see></para>
+    /// </summary> 
+    /// <param name="agent_id">
+    /// <para>客服id</para>
+    /// <para>示例值：ou_14777d82ffef0f707de5a8c7ff2c5ebe</para>
+    /// </param>
+    /// <param name="request">更新客服工作日程请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Patch("/open-apis/helpdesk/v1/agents/{agent_id}/schedules")]
+    Task<FeishuNullDataApiResult?> UpdateAgentScheduleAsync(
+        [Path] string agent_id,
+        [Body] UpdateAgentScheduleRequest request,
+        CancellationToken cancellationToken = default);
+
+
+
 }

@@ -227,6 +227,7 @@ public class DefaultFeishuEventHandlerFactory : IFeishuEventHandlerFactory
         catch (Exception ex)
         {
             _logger.LogError(ex, "并行处理事件 {EventType} 时发生错误", eventType);
+            throw;
         }
     }
 
@@ -251,7 +252,9 @@ public class DefaultFeishuEventHandlerFactory : IFeishuEventHandlerFactory
         {
             _logger.LogError(ex, "事件处理器 {HandlerType} 处理事件 {EventId} 时发生错误",
                 handler.GetType().Name, eventData.EventId);
-            // 不重新抛出异常，避免影响其他处理器
+            // 重新抛出异常，让调用方（FeishuEventMessageHandler）能够感知失败并正确回滚去重状态
+            // 注意：Task.WhenAll 会等待所有并行任务完成，单个处理器的异常不会中断其他处理器
+            throw;
         }
     }
 

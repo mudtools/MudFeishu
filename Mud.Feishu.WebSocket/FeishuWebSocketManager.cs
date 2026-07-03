@@ -23,6 +23,7 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable
     private readonly IFeishuWebSocketClient _webSocketClient;
     private readonly SemaphoreSlim _startStopLock = new(1, 1);
     private bool _isRunning = false;
+    private volatile bool _isReconnecting = false;
     private bool _disposed = false;
 
     /// <summary>
@@ -281,12 +282,22 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable
     {
         _logger.LogInformation("正在重新连接Mud飞书WebSocket服务...");
 
+        // 设置重连标志位，抑制重连过程中的 Disconnected 事件转发，
+        // 防止 ReconnectAsync → DisconnectAsync → Disconnected 事件 → 触发新重连 的级联风暴。
+        _isReconnecting = true;
         try
         {
+            // 断开旧连接（如果仍然连接）
             if (IsConnected)
             {
                 await _webSocketClient.DisconnectAsync(cancellationToken);
             }
+
+            // 关键：强制重置 _isRunning 状态，确保 StartAsync 能建立新连接
+            // 心跳超时或连接断开事件不会重置 _isRunning，只有 StopAsync 会重置。
+            // 如果不在此处重置，StartAsync 会检测到 _isRunning == true 而直接返回，
+            // 导致重连逻辑误认为成功但实际未建立新连接（死循环问题）。
+            _isRunning = false;
 
             await StartAsync(cancellationToken);
 
@@ -304,6 +315,10 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable
             }
             _logger.LogError(ex, "Mud飞书WebSocket服务重连失败");
             throw;
+        }
+        finally
+        {
+            _isReconnecting = false;
         }
     }
 
@@ -358,6 +373,14 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable
     /// <param name="e">事件参数</param>
     private void OnClientDisconnected(object? sender, WebSocketCloseEventArgs e)
     {
+        // 重连过程中的主动断开不转发 Disconnected 事件，避免触发级联重连
+        // （ReconnectAsync → DisconnectAsync → Disconnected 事件 → TryTriggerReconnect → 新重连）
+        if (_isReconnecting)
+        {
+            _logger.LogDebug("重连过程中的断开事件已被抑制，不转发 Disconnected 事件");
+            return;
+        }
+
         if (_webSocketOptions.EnableLogging)
             _logger.LogInformation("Mud飞书WebSocket连接已断开: {Status} - {Description} (服务器端: {IsServerInitiated}, 时间: {Timestamp})",
                 e.CloseStatus, e.CloseStatusDescription, e.IsServerInitiated, e.Timestamp);
@@ -376,6 +399,13 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable
     /// </summary>
     private void OnClientHeartbeatTimeout(object? sender, WebSocketCloseEventArgs e)
     {
+        // 重连过程中的心跳超时不转发，避免触发级联重连
+        if (_isReconnecting)
+        {
+            _logger.LogDebug("重连过程中的心跳超时事件已被抑制");
+            return;
+        }
+
         _logger.LogWarning("心跳超时，触发断开事件: {Description}", e.CloseStatusDescription);
         Disconnected?.Invoke(this, e);
     }

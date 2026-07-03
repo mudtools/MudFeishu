@@ -207,6 +207,7 @@ public class BinaryMessageProcessor : IDisposable
             }
 
             // 尝试解析为 Frame 对象
+            ulong? markedSeqId = null; // 跟踪已标记的 SeqID，用于失败时回滚
             try
             {
                 if (_options.EnableLogging)
@@ -293,6 +294,11 @@ public class BinaryMessageProcessor : IDisposable
                         BinaryMessageReceived?.Invoke(this, eventArgs);
                         await SendAckMessageAsync(frame, true, cancellationToken);
                         return;
+                    }
+                    // 记录已标记的 SeqID，用于处理失败时回滚
+                    if (_seqIdDeduplicator != null)
+                    {
+                        markedSeqId = frame.SeqID;
                     }
                 }
 
@@ -387,6 +393,19 @@ public class BinaryMessageProcessor : IDisposable
                 _logger.LogError(ex, "处理完整二进制消息时发生错误");
                 eventArgs.ParseError = $"处理完整二进制消息时发生错误: {ex.Message}";
                 BinaryMessageReceived?.Invoke(this, eventArgs);
+
+                // 回滚 SeqID 去重状态，允许服务端重发时重新处理
+                if (markedSeqId.HasValue && _seqIdDeduplicator != null)
+                {
+                    try
+                    {
+                        await _seqIdDeduplicator.RollbackAsync(markedSeqId.Value);
+                    }
+                    catch (Exception rollbackEx)
+                    {
+                        _logger.LogError(rollbackEx, "回滚 SeqID {SeqId} 时发生错误", markedSeqId.Value);
+                    }
+                }
             }
         }
         catch (Exception ex)
@@ -421,8 +440,8 @@ public class BinaryMessageProcessor : IDisposable
 
             case MessageType.Pong:
                 // 解析 Pong 中的 ClientConfig 并触发事件（对照 Java SDK: case PONG: configure(conf);）
-                if (_options.EnableLogging)
-                    _logger.LogDebug("收到 Pong 控制帧，解析 ClientConfig...");
+                // Pong 接收日志不受 EnableLogging 限制，便于诊断心跳问题
+                _logger.LogDebug("收到 Pong 控制帧，解析 ClientConfig...");
 
                 var config = FrameBuilder.ExtractClientConfig(frame, _logger);
                 eventArgs.JsonContent = frame.Payload != null ? Encoding.UTF8.GetString(frame.Payload) : null;

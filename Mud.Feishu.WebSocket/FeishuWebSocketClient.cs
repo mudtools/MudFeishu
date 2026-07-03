@@ -391,6 +391,11 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
     public async Task ConnectAsync(WsEndpointResult endpoint, string appAccessToken, CancellationToken cancellationToken = default)
     {
         await ConnectAsync(endpoint, cancellationToken);
+
+        // 重置认证状态：确保每次新连接（包括重连）都重新进行认证，
+        // 避免旧连接的 _isAuthenticated=true 导致新连接跳过认证。
+        _authManager.ResetAuthentication();
+
         await _authManager.AuthenticateAsync(appAccessToken, cancellationToken);
 
         // 认证成功后，自动订阅事件
@@ -598,6 +603,10 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
     /// </summary>
     private async Task HandleReceivedMessageAsync(ArraySegment<byte> buffer, WebSocketReceiveResult result, CancellationToken cancellationToken)
     {
+        // 收到任意消息时通知心跳管理器重置超时计时器
+        // 飞书服务端不一定回复 Pong，但只要在接收事件数据就说明连接是健康的
+        _heartbeatManager.OnActivity();
+
         try
         {
             if (result.MessageType == WebSocketMessageType.Text)

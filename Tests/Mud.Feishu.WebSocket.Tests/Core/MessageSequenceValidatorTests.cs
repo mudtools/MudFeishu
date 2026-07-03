@@ -51,6 +51,7 @@ public class MessageSequenceValidatorTests
     /// <summary>
     /// 测试不同序号场景的验证逻辑
     /// 业务场景：验证连续序号、重复序号、序号回退、小间隔序号和大间隔序号的处理
+    /// 注意：默认 SequenceGapThreshold=0（禁用跳跃检测），大间隔序号返回 Valid
     /// </summary>
     /// <param name="firstSequence">第一条消息的序号</param>
     /// <param name="secondSequence">第二条消息的序号</param>
@@ -62,7 +63,7 @@ public class MessageSequenceValidatorTests
     [InlineData(12345UL, 12345UL, SequenceValidationResult.Valid, SequenceValidationResult.Duplicate, "重复序号")]
     [InlineData(12345UL, 12344UL, SequenceValidationResult.Valid, SequenceValidationResult.Rollback, "序号回退")]
     [InlineData(12345UL, 12347UL, SequenceValidationResult.Valid, SequenceValidationResult.Valid, "小间隔序号")]
-    [InlineData(12345UL, 12360UL, SequenceValidationResult.Valid, SequenceValidationResult.MessageLoss, "大间隔序号")]
+    [InlineData(12345UL, 99999UL, SequenceValidationResult.Valid, SequenceValidationResult.Valid, "大间隔序号（默认禁用跳跃检测）")]
     public void ValidateSequence_ShouldHandleDifferentSequenceScenarios(
         ulong firstSequence,
         ulong secondSequence,
@@ -71,6 +72,7 @@ public class MessageSequenceValidatorTests
         string scenarioDescription)
     {
         // Arrange - 创建新的验证器实例以确保测试隔离
+        // 默认 SequenceGapThreshold=0，禁用跳跃检测（飞书 SeqID 是全局计数器，跳跃属正常现象）
         var validator = new MessageSequenceValidator(_loggerMock.Object, _options);
 
         // Act

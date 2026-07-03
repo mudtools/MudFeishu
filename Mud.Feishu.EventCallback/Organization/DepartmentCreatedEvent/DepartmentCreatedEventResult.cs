@@ -8,7 +8,7 @@
 namespace Mud.Feishu.EventCallback.Organization;
 
 /// <summary>
-/// 部门创建事件处理器
+/// 部门创建事件结果
 /// <para>当应用订阅该事件后，如果通讯录内有部门被创建，则会触发该事件。</para>
 /// <para>事件类型:contact.department.created_v3</para>
 /// <para>使用时请继承：<see cref="DepartmentCreatedEventHandler"/></para>
@@ -16,7 +16,11 @@ namespace Mud.Feishu.EventCallback.Organization;
 /// </summary>
 [GenerateEventHandler(EventType = FeishuEventTypes.DepartmentCreated, HandlerNamespace = Consts.HandlerNamespace,
               InheritedFrom = Consts.InheritedFrom, HeaderType = nameof(FeishuEventHeader))]
-public class DepartmentCreatedResult : DepartmentResultInfo, IEventResult
+public class DepartmentCreatedResult : IEventResult
 {
-
+    /// <summary>
+    /// 部门信息
+    /// </summary>
+    [JsonPropertyName("object")]
+    public DepartmentResultInfo? Object { get; set; }
 }

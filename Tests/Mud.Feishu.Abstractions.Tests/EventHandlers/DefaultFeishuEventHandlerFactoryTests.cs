@@ -217,10 +217,12 @@ public class DefaultFeishuEventHandlerFactoryTests
             EventType = "test.event.type1"
         };
 
-        // Act
-        await factory.HandleEventParallelAsync("test.event.type1", eventData, CancellationToken.None);
+        // Act - 异常现在会被传播给调用方，以便正确回滚去重状态
+        // 但 Task.WhenAll 仍会等待所有并行任务完成，所以其他处理器不受影响
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            factory.HandleEventParallelAsync("test.event.type1", eventData, CancellationToken.None));
 
-        // Assert - 两个处理器都应该被调用
+        // Assert - 两个处理器都应该被调用（异常不会中断其他并行处理器）
         _handler1Mock.Verify(h => h.HandleAsync(It.IsAny<EventData>(), It.IsAny<CancellationToken>()), Times.Once);
         handler3Mock.Verify(h => h.HandleAsync(It.IsAny<EventData>(), It.IsAny<CancellationToken>()), Times.Once);
     }

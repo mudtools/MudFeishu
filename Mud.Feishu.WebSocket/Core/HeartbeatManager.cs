@@ -88,6 +88,9 @@ public class HeartbeatManager
                 _heartbeatMissedCount = 0;
             }
 
+            _logger.LogInformation("心跳管理器已启动，心跳间隔: {IntervalMs}ms, 超时阈值: {Threshold}次",
+                _options.HeartbeatIntervalMs, HeartbeatTimeoutThreshold);
+
             while (!cancellationToken.IsCancellationRequested)
             {
                 await Task.Delay(_options.HeartbeatIntervalMs, cancellationToken);
@@ -120,10 +123,18 @@ public class HeartbeatManager
                     var pingFrameData = FrameBuilder.BuildPingFrame(serviceId);
                     await _sendBinaryCallback(pingFrameData, cancellationToken);
 
+                    // Ping 发送成功即重置心跳超时计时器（参照 Python SDK _ping_loop）
+                    // Python SDK 无心跳超时检测：只要 Ping 能成功发送就说明连接是健康的。
+                    // 飞书服务端不一定对每个 Ping 都回复 Pong，但不能因此判定连接已断开。
+                    // 连接是否真正断开由接收循环的异常或 Ping 发送失败来检测。
+                    lock (_heartbeatLock)
+                    {
+                        _lastPongTime = DateTime.UtcNow;
+                        _heartbeatMissedCount = 0;
+                    }
+
                     if (_options.EnableLogging)
                         _logger.LogDebug("已发送 ProtoBuf 心跳 (ServiceId={ServiceId})", serviceId);
-
-                    CheckHeartbeatTimeout();
                 }
                 catch (Exception ex)
                 {
@@ -149,6 +160,20 @@ public class HeartbeatManager
     }
 
     /// <summary>
+    /// 通知收到任意消息（数据帧或控制帧），重置心跳超时计时器
+    /// <para>飞书服务端不一定对每个 Ping 都回复 Pong，但只要连接上有数据流动（事件、ACK 等），
+    /// 就说明连接是健康的。此方法用于在收到任意消息时重置心跳超时计数。</para>
+    /// </summary>
+    public void OnActivity()
+    {
+        lock (_heartbeatLock)
+        {
+            _lastPongTime = DateTime.UtcNow;
+            _heartbeatMissedCount = 0;
+        }
+    }
+
+    /// <summary>
     /// 通知收到Pong响应，重置心跳超时计数并应用服务端下发的 ClientConfig
     /// </summary>
     /// <param name="config">服务端通过 Pong 下发的客户端配置（可选）</param>
@@ -166,8 +191,8 @@ public class HeartbeatManager
             ApplyClientConfig(config);
         }
 
-        if (_options.EnableLogging)
-            _logger.LogDebug("已更新最后一次Pong时间");
+        // Pong 接收日志不受 EnableLogging 限制，便于诊断心跳问题
+        _logger.LogDebug("已收到 Pong 响应，心跳超时计数已重置");
     }
 
     /// <summary>

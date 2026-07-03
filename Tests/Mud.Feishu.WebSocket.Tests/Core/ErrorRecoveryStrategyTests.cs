@@ -166,7 +166,7 @@ public class ErrorRecoveryStrategyTests
     }
 
     [Fact]
-    public void AnalyzeError_WithOperationCanceledException_ShouldNotBeRecoverable()
+    public void AnalyzeError_WithOperationCanceledException_ShouldBeRecoverable()
     {
         // Arrange
         var exception = new OperationCanceledException();
@@ -175,7 +175,11 @@ public class ErrorRecoveryStrategyTests
         var result = _strategy.AnalyzeError(exception);
 
         // Assert
-        result.IsRecoverable.Should().BeFalse();
+        // OperationCanceledException 在 WebSocket 场景中通常由断开/重连时的取消操作触发，
+        // 应标记为可恢复以允许重连流程继续执行。
+        // 正常的取消场景已在 WebSocketConnectionManager.StartReceivingAsync 中单独处理，
+        // 不会传递到 ErrorRecoveryStrategy。
+        result.IsRecoverable.Should().BeTrue();
         result.ErrorType.Should().Be("OperationCanceledException");
     }
 

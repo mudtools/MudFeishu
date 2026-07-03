@@ -359,6 +359,11 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
                 }
             }
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // 正常的取消操作（如断开连接或重连时取消接收循环），不应触发错误事件
+            _logger.LogInformation("消息接收循环已取消（正常关闭或重连）");
+        }
         catch (WebSocketException ex)
         {
             _logger.LogError(ex, "接收消息时发生WebSocket错误");

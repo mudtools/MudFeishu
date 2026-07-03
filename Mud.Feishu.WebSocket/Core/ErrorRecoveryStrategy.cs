@@ -89,11 +89,23 @@ public class ErrorRecoveryStrategy
             RecoveryRecommendation = "操作超时，重试连接",
             SuggestedDelay = TimeSpan.FromSeconds(3)
         }));
-        ExceptionAnalyzerMap.Add(new(typeof(OperationCanceledException), _ => new ErrorRecoveryResult
+        ExceptionAnalyzerMap.Add(new(typeof(OperationCanceledException), ex =>
         {
-            ErrorType = "OperationCanceledException",
-            IsRecoverable = false,
-            RecoveryRecommendation = "操作被取消"
+            // OperationCanceledException 可能由两种场景触发：
+            // 1. 主动断开/重连时取消接收循环 → 这是正常行为，不应阻断重连
+            // 2. 外部 CancellationToken 被取消（如应用关闭）→ 确实不可恢复
+            // 由于 ErrorRecoveryStrategy 无法直接访问 CancellationToken，
+            // 这里统一标记为可恢复，由上层调用方根据实际场景决定是否重连。
+            // WebSocketConnectionManager.StartReceivingAsync 已单独处理取消场景，
+            // 不会将正常的取消异常传递到 ErrorRecoveryStrategy。
+            var isTaskCanceled = ex is TaskCanceledException;
+            return new ErrorRecoveryResult
+            {
+                ErrorType = "OperationCanceledException",
+                IsRecoverable = true,
+                RecoveryRecommendation = isTaskCanceled ? "任务超时或被取消，尝试重连" : "操作被取消，尝试重连",
+                SuggestedDelay = TimeSpan.FromSeconds(3)
+            };
         }));
     }
 

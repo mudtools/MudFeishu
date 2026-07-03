@@ -27,9 +27,11 @@ public class MessageSequenceValidator
     private const int RecentNumbersWindow = 1000;
 
     /// <summary>
-    /// 序号跳跃阈值，超过此值认为消息丢失
+    /// 序号跳跃阈值，超过此值认为消息丢失。
+    /// 从 FeishuWebSocketOptions.SequenceGapThreshold 读取，
+    /// 默认为 0（禁用跳跃检测），因为飞书 SeqID 是全局计数器。
     /// </summary>
-    private const int SequenceGapThreshold = 10;
+    private readonly ulong _sequenceGapThreshold;
 
     /// <summary>
     /// 清理旧数据的间隔（分钟）
@@ -50,6 +52,7 @@ public class MessageSequenceValidator
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _options = options ?? new FeishuWebSocketOptions();
+        _sequenceGapThreshold = _options.SequenceGapThreshold;
     }
 
     /// <summary>
@@ -113,7 +116,8 @@ public class MessageSequenceValidator
                 ulong sequenceGap = sequenceNumber - _lastProcessedSequenceNumber.Value;
 
                 // 如果序号跳跃较大，可能有消息丢失
-                if (sequenceGap > SequenceGapThreshold)
+                // 当 _sequenceGapThreshold 为 0 时，禁用跳跃检测（飞书 SeqID 是全局计数器，跳跃属正常现象）
+                if (_sequenceGapThreshold > 0 && sequenceGap > _sequenceGapThreshold)
                 {
                     _logger.LogWarning("检测到消息丢失: Last={LastSequence}, Current={CurrentSequence}, LostCount={LostCount}",
                         _lastProcessedSequenceNumber, sequenceNumber, sequenceGap - 1);

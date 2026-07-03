@@ -25,6 +25,15 @@ public interface IFeishuSeqIDDeduplicator : IAsyncDisposable
     Task<bool> TryMarkAsProcessedAsync(ulong seqId);
 
     /// <summary>
+    /// 回滚 SeqID 的处理状态，允许重新处理
+    /// <para>当事件处理失败时调用此方法，移除 SeqID 的已处理标记，
+    /// 使服务端重发该消息时能够被重新处理</para>
+    /// </summary>
+    /// <param name="seqId">消息序列号</param>
+    /// <returns>异步任务</returns>
+    Task RollbackAsync(ulong seqId);
+
+    /// <summary>
     /// 检查指定 SeqID 是否已处理
     /// </summary>
     /// <param name="seqId">消息序列号</param>

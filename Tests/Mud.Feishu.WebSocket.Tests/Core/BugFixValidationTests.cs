@@ -176,18 +176,32 @@ public class BugFixValidationTests
     #region 代码质量: 常量化验证
 
     [Fact]
-    public void MessageSequenceValidator_ShouldHave_SequenceGapThreshold_Constant()
+    public void MessageSequenceValidator_ShouldHave_ConfigurableSequenceGapThreshold()
     {
-        // Arrange
-        const string fieldName = "SequenceGapThreshold";
+        // Arrange & Act
+        // SequenceGapThreshold 已从硬编码常量改为可配置属性
+        // 默认值为 0（禁用跳跃检测），因为飞书 SeqID 是全局计数器，跳跃属正常现象
+        var defaultOptions = new FeishuWebSocketOptions();
+        var customOptions = new FeishuWebSocketOptions { SequenceGapThreshold = 100 };
 
-        // Act
-        var type = typeof(MessageSequenceValidator);
-        var field = type.GetField(fieldName, System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
-        var value = field?.GetValue(null);
+        var defaultValidator = new MessageSequenceValidator(
+            NullLogger<MessageSequenceValidator>.Instance, defaultOptions);
+        var customValidator = new MessageSequenceValidator(
+            NullLogger<MessageSequenceValidator>.Instance, customOptions);
 
         // Assert
-        value.Should().Be(10);
+        defaultOptions.SequenceGapThreshold.Should().Be(0, "默认应禁用跳跃检测（飞书 SeqID 是全局计数器）");
+        customOptions.SequenceGapThreshold.Should().Be(100, "应支持自定义配置");
+
+        // 验证默认配置下大间隔序号不会被误报为消息丢失
+        defaultValidator.ValidateSequence(10000UL);
+        var result = defaultValidator.ValidateSequence(99999UL);
+        result.Should().Be(SequenceValidationResult.Valid, "默认禁用跳跃检测时大间隔序号应返回 Valid");
+
+        // 验证自定义配置下超过阈值的间隔会被检测为消息丢失
+        customValidator.ValidateSequence(10000UL);
+        var lossResult = customValidator.ValidateSequence(10150UL);
+        lossResult.Should().Be(SequenceValidationResult.MessageLoss, "超过配置阈值的间隔应返回 MessageLoss");
     }
 
     [Fact]

@@ -56,6 +56,17 @@ public sealed class FeishuSeqIDDeduplicator : MemoryDeduplicator<ulong>, IFeishu
     }
 
     /// <inheritdoc />
+    public Task RollbackAsync(ulong seqId)
+    {
+        var removed = base.Remove(seqId);
+        if (removed)
+        {
+            Logger?.LogDebug("SeqID {SeqId} 已回滚，允许重新处理", seqId);
+        }
+        return Task.CompletedTask;
+    }
+
+    /// <inheritdoc />
     public Task<bool> IsProcessedAsync(ulong seqId)
     {
         return Task.FromResult(base.IsProcessed(seqId));

@@ -204,6 +204,15 @@ public class FeishuWebSocketOptions
     public System.Net.Security.RemoteCertificateValidationCallback? CustomCertificateValidationCallback { get; set; }
 
     /// <summary>
+    /// 消息序号跳跃阈值，超过此值认为消息丢失。
+    /// <para>飞书 SeqID 是全局计数器，不同应用/连接共享同一序号空间，
+    /// 因此序号跳跃是正常现象（跳跃量可达数万甚至数十万）。</para>
+    /// <para>设为 0 表示禁用跳跃检测（推荐），仅保留重复检测和回退检测。</para>
+    /// 默认为 0（禁用）。
+    /// </summary>
+    public ulong SequenceGapThreshold { get; set; } = 0;
+
+    /// <summary>
     /// 事件去重配置
     /// </summary>
     public EventDeduplicationOptions EventDeduplication { get; set; } = new();

@@ -38,13 +38,13 @@ public class DemoDepartmentEventHandler : DepartmentCreatedEventHandler
             await _eventService.RecordDepartmentEventAsync(departmentData, cancellationToken);
 
             // 模拟业务处理
-            if (departmentData != null)
+            if (departmentData?.Object != null)
             {
-                await ProcessDepartmentEventAsync(departmentData, cancellationToken);
+                await ProcessDepartmentEventAsync(departmentData.Object, cancellationToken);
             }
 
             _logger.LogInformation(">> [部门事件] 部门创建事件处理完成: 部门ID {DepartmentId}, 部门名 {DepartmentName}",
-                departmentData.DepartmentId, departmentData);
+                departmentData?.Object?.DepartmentId, departmentData?.Object?.Name);
         }
         catch (Exception ex)
         {
@@ -54,7 +54,7 @@ public class DemoDepartmentEventHandler : DepartmentCreatedEventHandler
     }
 
 
-    private async Task ProcessDepartmentEventAsync(DepartmentCreatedResult departmentData, CancellationToken cancellationToken)
+    private async Task ProcessDepartmentEventAsync(DepartmentResultInfo departmentData, CancellationToken cancellationToken)
     {
         _logger.LogDebug("🔄 [部门事件] 开始处理部门数据: {DepartmentId}", departmentData.DepartmentId);
 

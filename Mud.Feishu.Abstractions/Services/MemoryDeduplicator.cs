@@ -213,6 +213,27 @@ public class MemoryDeduplicator<TKey> : IAsyncDisposable where TKey : notnull
     }
 
     /// <summary>
+    /// 移除指定键的缓存条目（无论状态），允许重新处理
+    /// </summary>
+    /// <param name="key">键值</param>
+    /// <param name="appKey">应用键</param>
+    /// <returns>如果键存在并被移除返回 true，否则返回 false</returns>
+    public virtual bool Remove(TKey key, string? appKey = null)
+    {
+        ThrowIfDisposed();
+
+        if (key == null)
+            return false;
+
+        var cacheKey = GetCacheKey(key, appKey);
+
+        lock (_lock)
+        {
+            return _cache.Remove(cacheKey);
+        }
+    }
+
+    /// <summary>
     /// 检查键是否已处理
     /// </summary>
     /// <param name="key">键值</param>

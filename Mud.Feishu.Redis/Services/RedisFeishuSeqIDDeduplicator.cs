@@ -92,6 +92,26 @@ public class RedisFeishuSeqIDDeduplicator : IFeishuSeqIDDeduplicator, IAsyncDisp
     }
 
     /// <inheritdoc />
+    public async Task RollbackAsync(ulong seqId)
+    {
+        try
+        {
+            var redisKey = GetRedisKey(seqId);
+            var sortedSetKey = $"{_keyPrefix}set";
+
+            // 删除 SeqID 的 Redis 键和 Sorted Set 条目
+            await _database.KeyDeleteAsync(redisKey);
+            await _database.SortedSetRemoveAsync(sortedSetKey, seqId.ToString());
+
+            _logger?.LogDebug("SeqID {SeqId} 已回滚，允许重新处理", seqId);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "回滚 SeqID {SeqId} 时发生错误", seqId);
+        }
+    }
+
+    /// <inheritdoc />
     public async Task<bool> IsProcessedAsync(ulong seqId)
     {
         try

@@ -251,8 +251,10 @@ public class FeishuWebSocketOptions
         if (AutoReconnect && ReconnectDelayMs > ConnectionTimeoutMs)
             throw new InvalidOperationException("ReconnectDelayMs不应大于ConnectionTimeoutMs，否则重连将在连接超时后才触发");
 
+#pragma warning disable CS0618 // MessageQueueCapacity 已标记为 Obsolete，此处仅做向后兼容验证
         if (MessageQueueCapacity < 1)
             throw new InvalidOperationException("MessageQueueCapacity必须至少为1");
+#pragma warning restore CS0618
 
         if (MaxConcurrentMessageProcessing < 1)
             throw new InvalidOperationException("MaxConcurrentMessageProcessing必须至少为1");

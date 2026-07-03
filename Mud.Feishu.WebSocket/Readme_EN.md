@@ -117,7 +117,7 @@ The Feishu WebSocket client adopts modular design, breaking down complex functio
 | **HeartbeatManager**                    | Heartbeat Manager        | Heartbeat detection, timeout handling, consecutive timeout triggers reconnection          |
 | **SessionManager**                      | Session Manager          | session_id management, session recovery, 24-hour validity                                 |
 | **MessageSequenceValidator**            | Sequence Validator       | Replay detection, message loss detection, sequence rollback detection                     |
-| **MessageQueueManager**                 | Queue Manager            | Message queuing, backpressure strategy, concurrency control                               |
+| **MessageQueueManager** *(Deprecated)*  | Queue Manager            | Message queuing, backpressure strategy, concurrency control (Obsolete, messages routed directly by MessageRouter) |
 | **EventSubscriptionManager**            | Subscription Manager     | Event type subscription, subscription request sending                                     |
 | **ConnectionMetrics**                   | Metrics Manager          | Message statistics, performance metrics, FeishuMetrics integration                        |
 | **ReconnectionOrchestrator**            | Reconnection Coordinator | Unified reconnection management, debounce mechanism, cooldown time                        |
@@ -177,7 +177,7 @@ Mud.Feishu.WebSocket/
 │   ├── HeartbeatManager.cs           # Heartbeat management
 │   ├── SessionManager.cs             # Session management
 │   ├── MessageSequenceValidator.cs   # Message sequence validation
-│   ├── MessageQueueManager.cs        # Message queue management
+│   ├── MessageQueueManager.cs        # Message queue management (Deprecated, Obsolete)
 │   ├── EventSubscriptionManager.cs   # Event subscription management
 │   ├── ConnectionMetrics.cs          # Connection metrics
 │   ├── ReconnectionOrchestrator.cs   # Reconnection coordinator

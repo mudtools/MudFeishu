@@ -22,29 +22,28 @@ public class ClientConfigInfo
     public int ReconnectCount { get; set; }
 
     /// <summary>
-    /// 重连间隔时间，单位：毫秒。
+    /// 重连间隔时间，单位：秒。
     /// <para>定义每次重连尝试之间的等待时间，用于避免频繁重连对服务器造成压力。</para>
-    /// <para>建议设置在1000-5000毫秒之间，根据网络状况调整。</para>
-    /// <para>默认值：3000毫秒</para>
+    /// <para>此值由服务端通过 Pong.ClientConfig 下发，.NET 客户端在应用时自动转换为毫秒。</para>
+    /// <para>默认值：120秒（Python SDK 对照）</para>
     /// </summary>
     [JsonPropertyName("ReconnectInterval")]
     public int ReconnectInterval { get; set; }
 
     /// <summary>
-    /// 重连随机数，用于在重连间隔基础上增加随机延迟。
+    /// 重连随机数，单位：秒。
     /// <para>通过添加随机因子，避免多个客户端同时重连造成的"惊群效应"。</para>
-    /// <para>系统会在重连间隔基础上增加0到此值的随机毫秒数。</para>
-    /// <para>默认值：1000毫秒</para>
+    /// <para>系统会在重连间隔基础上增加0到此值的随机延迟。</para>
+    /// <para>默认值：30秒（Python SDK 对照）</para>
     /// </summary>
     [JsonPropertyName("ReconnectNonce")]
     public int ReconnectNonce { get; set; }
 
     /// <summary>
-    /// 心跳检测间隔时间，单位：毫秒。
+    /// 心跳检测间隔时间，单位：秒。
     /// <para>用于定期发送ping消息以保持WebSocket连接活跃，检测连接状态。</para>
-    /// <para>间隔过短可能增加网络开销，过长可能导致连接断开检测延迟。</para>
-    /// <para>建议设置在30000-60000毫秒之间。</para>
-    /// <para>默认值：30000毫秒</para>
+    /// <para>此值由服务端通过 Pong.ClientConfig 下发，.NET 客户端在应用时自动转换为毫秒。</para>
+    /// <para>默认值：120秒（Python SDK 对照）</para>
     /// </summary>
     [JsonPropertyName("PingInterval")]
     public int PingInterval { get; set; }

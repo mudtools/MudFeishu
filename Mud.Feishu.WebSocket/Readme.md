@@ -120,7 +120,7 @@ app.Run();
 | **HeartbeatManager**                    | 心跳管理器       | 心跳检测、超时处理、连续超时触发重连       |
 | **SessionManager**                      | 会话管理器       | session_id 管理、会话恢复、24 小时有效期   |
 | **MessageSequenceValidator**            | 消息序号验证器   | 重放检测、消息丢失检测、序号回退检测       |
-| **MessageQueueManager**                 | 消息队列管理器   | 消息队列、背压策略、并发控制               |
+| **MessageQueueManager** *(已废弃)*      | 消息队列管理器   | 消息队列、背压策略、并发控制（已标记 Obsolete，消息直接由 MessageRouter 处理） |
 | **EventSubscriptionManager**            | 事件订阅管理器   | 事件类型订阅、订阅请求发送                 |
 | **ConnectionMetrics**                   | 连接指标管理器   | 消息统计、性能指标、FeishuMetrics 集成     |
 | **ReconnectionOrchestrator**            | 重连协调器       | 统一重连管理、防抖机制、冷却时间           |
@@ -180,7 +180,7 @@ Mud.Feishu.WebSocket/
 │   ├── HeartbeatManager.cs           # 心跳管理
 │   ├── SessionManager.cs             # 会话管理
 │   ├── MessageSequenceValidator.cs   # 消息序号验证
-│   ├── MessageQueueManager.cs        # 消息队列管理
+│   ├── MessageQueueManager.cs        # 消息队列管理 (已废弃，标记为 Obsolete)
 │   ├── EventSubscriptionManager.cs   # 事件订阅管理
 │   ├── ConnectionMetrics.cs          # 连接指标
 │   ├── ReconnectionOrchestrator.cs   # 重连协调器

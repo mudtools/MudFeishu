@@ -39,6 +39,7 @@ public class FeishuWebSocketOptions
     private int _maxReconnectDelayMs = 30000;
     private int _healthCheckIntervalMs = 60000;
     private int _maxConcurrentMessageProcessing = 10; // 默认最大并发消息处理数
+    private int _messageHandlerTimeoutMs = 30000; // 默认消息处理超时30秒
 
     /// <summary>
     /// 自动重连，默认为true
@@ -119,26 +120,31 @@ public class FeishuWebSocketOptions
     /// <summary>
     /// 是否启用消息队列处理，默认为true
     /// </summary>
+    [Obsolete("消息队列已从主处理路径中移除，此配置不再生效。将在未来版本中移除。")]
     public bool EnableMessageQueue { get; set; } = true;
 
     /// <summary>
     /// 消息队列最大容量，默认为1000条
     /// </summary>
+    [Obsolete("消息队列已从主处理路径中移除，此配置不再生效。将在未来版本中移除。")]
     public int MessageQueueCapacity { get; set; } = 1000;
 
     /// <summary>
     /// 消息队列背压策略，默认为丢弃最旧的消息
     /// </summary>
+    [Obsolete("消息队列已从主处理路径中移除，此配置不再生效。将在未来版本中移除。")]
     public QueueBackpressureStrategy BackpressureStrategy { get; set; } = QueueBackpressureStrategy.DropOldest;
 
     /// <summary>
     /// 背压阻塞等待超时时间（毫秒），仅当 BackpressureStrategy 为 Block 时有效，默认为5000毫秒
     /// </summary>
+    [Obsolete("消息队列已从主处理路径中移除，此配置不再生效。将在未来版本中移除。")]
     public int BackpressureBlockTimeoutMs { get; set; } = 5000;
 
     /// <summary>
     /// 空队列检查间隔（毫秒），默认为100毫秒
     /// </summary>
+    [Obsolete("消息队列已从主处理路径中移除，此配置不再生效。将在未来版本中移除。")]
     public int EmptyQueueCheckIntervalMs
     {
         get => _emptyQueueCheckIntervalMs;
@@ -162,6 +168,17 @@ public class FeishuWebSocketOptions
     {
         get => _maxConcurrentMessageProcessing;
         set => _maxConcurrentMessageProcessing = Math.Max(1, value);
+    }
+
+    /// <summary>
+    /// 单条消息处理超时时间（毫秒），默认为30000毫秒（30秒）
+    /// <para>当消息处理器执行时间超过此阈值时，将取消处理并记录警告日志</para>
+    /// <para>设为 0 表示不限制超时</para>
+    /// </summary>
+    public int MessageHandlerTimeoutMs
+    {
+        get => _messageHandlerTimeoutMs;
+        set => _messageHandlerTimeoutMs = Math.Max(0, value);
     }
 
     /// <summary>

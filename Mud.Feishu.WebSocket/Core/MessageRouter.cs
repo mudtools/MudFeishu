@@ -126,12 +126,72 @@ public class MessageRouter
             }
             _logger.LogDebug("将消息路由到处理器: {HandlerType} (来源: {SourceType}, 消息类型: {MessageType})",
                     handler.GetType().Name, sourceType, messageType);
-            await handler.HandleAsync(message, cancellationToken);
+            await HandleWithTimeoutAsync(handler, message, cancellationToken);
         }
         catch (Exception ex)
         {
             var truncatedMsg = message.Length > 200 ? message.Substring(0, 200) + "..." : message;
             _logger.LogError(ex, "路由消息时发生错误 (来源: {SourceType}): {Message}", sourceType, truncatedMsg);
+        }
+    }
+
+    /// <summary>
+    /// 带超时控制的消息处理
+    /// <para>当消息处理器执行时间超过配置的 MessageHandlerTimeoutMs 时，取消处理并记录警告</para>
+    /// <para>设为 0 表示不限制超时</para>
+    /// </summary>
+    /// <param name="handler">消息处理器</param>
+    /// <param name="message">消息内容</param>
+    /// <param name="cancellationToken">外部取消令牌</param>
+    private async Task HandleWithTimeoutAsync(IMessageHandler handler, string message, CancellationToken cancellationToken)
+    {
+        var timeoutMs = _options.MessageHandlerTimeoutMs;
+
+        // 超时设为 0 时不限制
+        if (timeoutMs <= 0)
+        {
+            await handler.HandleAsync(message, cancellationToken);
+            return;
+        }
+
+        using var timeoutCts = new CancellationTokenSource(timeoutMs);
+        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
+
+        try
+        {
+            var handlerTask = handler.HandleAsync(message, linkedCts.Token);
+            var completed = await Task.WhenAny(handlerTask, Task.Delay(timeoutMs, cancellationToken));
+
+            if (completed != handlerTask)
+            {
+                // 超时，取消处理器
+                timeoutCts.Cancel();
+                _logger.LogWarning("消息处理器超时 ({TimeoutMs}ms): {HandlerType}, 消息类型可能为: {Message}",
+                    timeoutMs, handler.GetType().Name, message.Length > 200 ? message.Substring(0, 200) + "..." : message);
+
+                // 等待处理器响应取消（短超时避免无限阻塞）
+                try
+                {
+                    var graceCompleted = await Task.WhenAny(handlerTask, Task.Delay(TimeSpan.FromSeconds(2)));
+                    if (graceCompleted != handlerTask)
+                    {
+                        _logger.LogWarning("消息处理器未响应取消请求（2秒），可能仍在运行: {HandlerType}", handler.GetType().Name);
+                    }
+                }
+                catch
+                {
+                    // 处理器未响应取消，忽略
+                }
+            }
+            else
+            {
+                // 正常完成，传播可能的异常
+                await handlerTask;
+            }
+        }
+        catch (OperationCanceledException) when (timeoutCts.Token.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+        {
+            _logger.LogWarning("消息处理器被超时取消: {HandlerType}", handler.GetType().Name);
         }
     }
 

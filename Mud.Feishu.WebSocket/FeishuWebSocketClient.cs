@@ -33,13 +33,11 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
     private readonly BinaryMessageProcessor _binaryProcessor;
     private readonly EventSubscriptionManager _subscriptionManager;
     private readonly HeartbeatManager _heartbeatManager;
-    private readonly MessageQueueManager _messageQueueManager;
     private readonly ILoggerFactory _loggerFactory;
     private bool _disposed = false;
     private CancellationTokenSource? _cancellationTokenSource;
     private Task? _receiveTask;
     private Task? _heartbeatTask;
-    private Task? _queueTask;
     private readonly SemaphoreSlim _connectLock = new(1, 1);
     private readonly IFeishuSeqIDDeduplicator? _seqIdDeduplicator;
     private readonly MessageSequenceValidator? _sequenceValidator;
@@ -53,7 +51,8 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
     private readonly EventHandler<WebSocketErrorEventArgs> _onErrorFromAuth;
     private readonly EventHandler<WebSocketBinaryMessageEventArgs> _onBinaryMessageReceived;
     private readonly EventHandler<WebSocketErrorEventArgs> _onErrorFromBinary;
-    private readonly EventHandler _onPongReceived;
+    private readonly EventHandler<ClientConfigInfo?> _onPongReceivedBinary;
+    private readonly EventHandler _onPongReceivedText;
 
     // 连接状态线程安全保护 - 使用 Volatile + Interlocked 替代 lock 避免竞态条件
     private int _connectionState = 0; // 0=未连接, 1=已连接, 2=连接中
@@ -161,9 +160,13 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
             var handler = Error;
             handler?.Invoke(this, e);
         };
-        _onPongReceived = (object? s, EventArgs e) =>
+        _onPongReceivedBinary = (object? s, ClientConfigInfo? config) =>
         {
-            _heartbeatManager.OnPongReceived();
+            _heartbeatManager.OnPongReceived(config);
+        };
+        _onPongReceivedText = (object? s, EventArgs e) =>
+        {
+            _heartbeatManager.OnPongReceived(null);
         };
 
         // 初始化组件
@@ -172,8 +175,11 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
         _messageRouter = new MessageRouter(_loggerFactory.CreateLogger<MessageRouter>(), _options);
         _binaryProcessor = new BinaryMessageProcessor(_loggerFactory.CreateLogger<BinaryMessageProcessor>(), _connectionManager, _options, _messageRouter, _seqIdDeduplicator, _sequenceValidator);
         _subscriptionManager = new EventSubscriptionManager(_loggerFactory.CreateLogger<EventSubscriptionManager>(), _options, (message) => SendMessageAsync(message));
-        _heartbeatManager = new HeartbeatManager(_loggerFactory.CreateLogger<HeartbeatManager>(), _options, (message) => SendMessageAsync(message), () => _connectionManager.IsConnected);
-        _messageQueueManager = new MessageQueueManager(_loggerFactory.CreateLogger<MessageQueueManager>(), _options);
+        _heartbeatManager = new HeartbeatManager(
+            _loggerFactory.CreateLogger<HeartbeatManager>(),
+            _options,
+            (data, token) => _connectionManager.SendBinaryMessageAsync(data, token),
+            () => _connectionManager.IsConnected);
 
         // 订阅组件事件
         SubscribeToComponentEvents();
@@ -196,14 +202,10 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
 
         _binaryProcessor.BinaryMessageReceived += _onBinaryMessageReceived;
         _binaryProcessor.Error += _onErrorFromBinary;
+        _binaryProcessor.PongReceived += _onPongReceivedBinary;
 
         _heartbeatManager.HeartbeatTimeout += OnHeartbeatTimeout;
         _heartbeatManager.ConnectionLost += OnHeartbeatConnectionLost;
-        _messageQueueManager.Error += (s, e) =>
-        {
-            var handler = Error;
-            handler?.Invoke(this, e);
-        };
     }
 
     /// <summary>
@@ -216,7 +218,7 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
             _options,
             (message) => SendMessageAsync(message));
 
-        pingPongHandler.PongReceived += _onPongReceived;
+        pingPongHandler.PongReceived += _onPongReceivedText;
 
         var authHandler = new AuthMessageHandler(
             _loggerFactory.CreateLogger<AuthMessageHandler>(),
@@ -314,6 +316,17 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
                 await _connectionManager.ConnectAsync(endpoint.Url, cancellationToken);
             }
 
+            // 从 WebSocket URL 中提取 service_id 并注入心跳管理器（对照 Java SDK）
+            var serviceId = FrameBuilder.ExtractServiceId(endpoint.Url);
+            if (serviceId.HasValue)
+            {
+                _heartbeatManager.SetServiceId(serviceId.Value);
+            }
+            else if (_options.EnableLogging)
+            {
+                _logger.LogWarning("无法从 WebSocket URL 提取 service_id，心跳将使用默认值 0");
+            }
+
             Volatile.Write(ref _connectionState, 1);
 
             // 创建与调用方 Token 链接的新 CTS
@@ -325,12 +338,6 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
 
             // 启动心跳
             _heartbeatTask = Task.Run(() => _heartbeatManager.StartHeartbeatAsync(token), token);
-
-            // 启动消息队列处理
-            if (_options.EnableMessageQueue)
-            {
-                _queueTask = Task.Run(() => _messageQueueManager.ProcessQueueAsync(token), token);
-            }
         }
         finally
         {
@@ -353,7 +360,6 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
             var tasks = new List<Task>();
             if (_receiveTask != null) tasks.Add(_receiveTask);
             if (_heartbeatTask != null) tasks.Add(_heartbeatTask);
-            if (_queueTask != null) tasks.Add(_queueTask);
 
             if (tasks.Count > 0)
             {
@@ -376,7 +382,6 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
             _cancellationTokenSource = null;
             _receiveTask = null;
             _heartbeatTask = null;
-            _queueTask = null;
         }
     }
 
@@ -426,20 +431,19 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
     /// <summary>
     /// 注册消息处理器
     /// </summary>
+    [Obsolete("消息队列已废弃，消息直接由 MessageRouter 处理。此方法不再生效。")]
     public void RegisterMessageProcessor(Func<string, Task> processor)
     {
-        if (processor == null)
-            throw new ArgumentNullException(nameof(processor));
-
-        _messageQueueManager.RegisterProcessor(processor);
+        // 消息队列已废弃，此方法为空操作
     }
 
     /// <summary>
     /// 移除消息处理器
     /// </summary>
+    [Obsolete("消息队列已废弃，消息直接由 MessageRouter 处理。此方法始终返回 false。")]
     public bool UnregisterMessageProcessor(Func<string, Task> processor)
     {
-        return _messageQueueManager.UnregisterProcessor(processor);
+        return false;
     }
 
     /// <summary>
@@ -601,8 +605,8 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
                 var message = Encoding.UTF8.GetString(buffer.Array!, buffer.Offset, buffer.Count);
 
                 if (_options.EnableLogging)
-                    _logger.LogDebug("接收到文本消息，长度: {MessageLength}, 队列大小: {QueueCount}",
-                        message.Length, _messageQueueManager.QueueCount);
+                    _logger.LogDebug("接收到文本消息，长度: {MessageLength}",
+                        message.Length);
 
                 var messageReceivedHandler = MessageReceived;
                 messageReceivedHandler?.Invoke(this, new WebSocketMessageEventArgs
@@ -610,8 +614,7 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
                     Message = message,
                     MessageType = result.MessageType,
                     EndOfMessage = result.EndOfMessage,
-                    MessageSize = buffer.Count,
-                    QueueCount = _messageQueueManager.QueueCount
+                    MessageSize = buffer.Count
                 });
 
                 // 消息仅由 MessageRouter 处理，不再同时入队 MessageQueueManager 避免双重处理
@@ -803,14 +806,12 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
     {
         if (_pingPongHandler != null)
         {
-            _pingPongHandler.PongReceived -= _onPongReceived;
+            _pingPongHandler.PongReceived -= _onPongReceivedText;
             _pingPongHandler = null;
         }
 
         // 清理订阅管理器
         _subscriptionManager?.ClearSubscriptions();
-
-        _messageQueueManager?.Dispose();
     }
 
     /// <summary>
@@ -838,6 +839,7 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
         {
             _binaryProcessor.BinaryMessageReceived -= _onBinaryMessageReceived;
             _binaryProcessor.Error -= _onErrorFromBinary;
+            _binaryProcessor.PongReceived -= _onPongReceivedBinary;
         }
 
         // 取消心跳管理器事件订阅

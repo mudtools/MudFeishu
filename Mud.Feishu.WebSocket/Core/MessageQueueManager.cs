@@ -14,6 +14,7 @@ namespace Mud.Feishu.WebSocket;
 /// <summary>
 /// 消息队列管理器，负责管理WebSocket消息的队列、背压处理和并发处理
 /// </summary>
+[Obsolete("消息队列已从主消息处理路径中移除，消息直接由 MessageRouter 处理。此类将在未来版本中移除。")]
 public class MessageQueueManager : IDisposable
 {
     private readonly ILogger<MessageQueueManager> _logger;

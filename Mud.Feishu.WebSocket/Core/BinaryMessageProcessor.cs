@@ -7,6 +7,7 @@
 
 using Microsoft.Extensions.Logging;
 using Mud.Feishu.Abstractions.Services;
+using Mud.Feishu.DataModels.WsEndpoint;
 using Mud.Feishu.WebSocket.SocketEventArgs;
 using System.Diagnostics;
 using System.Text;
@@ -46,6 +47,12 @@ public class BinaryMessageProcessor : IDisposable
     /// 错误事件
     /// </summary>
     public event EventHandler<WebSocketErrorEventArgs>? Error;
+
+    /// <summary>
+    /// 收到 Pong 控制帧事件，携带服务端下发的 ClientConfig（如果存在）
+    /// <para>handleControlFrame → PONG → configure(ClientConfig)</para>
+    /// </summary>
+    public event EventHandler<ClientConfigInfo?>? PongReceived;
 
     /// <summary>
     /// 默认构造函数
@@ -222,6 +229,13 @@ public class BinaryMessageProcessor : IDisposable
                     _logger.LogDebug("成功反序列化为 Frame 对象: Service={Service}, Method={Method}, PayloadType={PayloadType}, SeqID={SeqID}",
                         frame.Service, frame.Method, frame.PayloadType, frame.SeqID);
 
+                // 区分 CONTROL 帧和 DATA 帧进行不同处理（
+                if (FrameBuilder.IsControlFrame(frame))
+                {
+                    HandleControlFrame(frame, eventArgs);
+                    return;
+                }
+
                 // 消息序号验证
                 if (_sequenceValidator != null)
                 {
@@ -379,6 +393,51 @@ public class BinaryMessageProcessor : IDisposable
         {
             _logger.LogError(ex, "处理完整二进制消息时发生未知错误");
             OnError($"处理完整二进制消息时发生未知错误: {ex.Message}", ex.GetType().Name);
+        }
+    }
+
+    /// <summary>
+    /// 处理控制帧（CONTROL, Method=0）
+    /// <para>Ping: 忽略（服务端不应发送 Ping 到客户端）</para>
+    /// <para>Pong: 解析 Payload 中的 ClientConfig，触发 PongReceived 事件</para>
+    /// </summary>
+    /// <param name="frame">ProtoBuf 控制帧</param>
+    /// <param name="eventArgs">二进制消息事件参数</param>
+    private void HandleControlFrame(EventProtoData frame, WebSocketBinaryMessageEventArgs eventArgs)
+    {
+        var messageType = frame.MessageType;
+
+        eventArgs.MessageType = $"Control_{messageType}";
+
+        switch (messageType)
+        {
+            case MessageType.Ping:
+                // 服务端发送的 Ping，忽略（对照 Java SDK: case PING: return;）
+                if (_options.EnableLogging)
+                    _logger.LogDebug("收到服务端 Ping 控制帧，已忽略");
+                eventArgs.SkipReason = "服务端 Ping 控制帧，无需处理";
+                BinaryMessageReceived?.Invoke(this, eventArgs);
+                break;
+
+            case MessageType.Pong:
+                // 解析 Pong 中的 ClientConfig 并触发事件（对照 Java SDK: case PONG: configure(conf);）
+                if (_options.EnableLogging)
+                    _logger.LogDebug("收到 Pong 控制帧，解析 ClientConfig...");
+
+                var config = FrameBuilder.ExtractClientConfig(frame, _logger);
+                eventArgs.JsonContent = frame.Payload != null ? Encoding.UTF8.GetString(frame.Payload) : null;
+                BinaryMessageReceived?.Invoke(this, eventArgs);
+
+                // 通知 HeartbeatManager 重置超时并应用动态配置
+                PongReceived?.Invoke(this, config);
+                break;
+
+            default:
+                if (_options.EnableLogging)
+                    _logger.LogDebug("收到未知控制帧类型: {MessageType}", messageType);
+                eventArgs.SkipReason = $"未知控制帧类型: {messageType}";
+                BinaryMessageReceived?.Invoke(this, eventArgs);
+                break;
         }
     }
 

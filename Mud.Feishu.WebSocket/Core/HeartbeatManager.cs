@@ -6,26 +6,27 @@
 // -----------------------------------------------------------------------
 
 using Microsoft.Extensions.Logging;
-using Mud.Feishu.WebSocket.DataModels;
+using Mud.Feishu.DataModels.WsEndpoint;
 using Mud.Feishu.WebSocket.SocketEventArgs;
 using System.Net.WebSockets;
-using System.Text.Json;
 
 namespace Mud.Feishu.WebSocket;
 
 /// <summary>
 /// 心跳管理器 - 负责WebSocket心跳检测和超时处理
+/// <para>使用 ProtoBuf 二进制 Ping 帧与飞书服务端通信</para>
 /// </summary>
 public class HeartbeatManager
 {
     private readonly ILogger<HeartbeatManager> _logger;
     private readonly FeishuWebSocketOptions _options;
-    private readonly Func<string, Task> _sendMessageCallback;
+    private readonly Func<byte[], CancellationToken, Task> _sendBinaryCallback;
     private readonly Func<bool> _isConnectedCallback;
 
     private DateTime _lastPongTime = DateTime.MinValue;
     private int _heartbeatMissedCount = 0;
     private readonly object _heartbeatLock = new();
+    private int? _serviceId;
 
     /// <summary>
     /// 心跳超时阈值，连续超过此次数将触发重连
@@ -47,18 +48,30 @@ public class HeartbeatManager
     /// </summary>
     /// <param name="logger">日志记录器</param>
     /// <param name="options">WebSocket配置选项</param>
-    /// <param name="sendMessageCallback">发送消息回调</param>
+    /// <param name="sendBinaryCallback">发送二进制消息回调</param>
     /// <param name="isConnectedCallback">检查连接状态回调</param>
     public HeartbeatManager(
         ILogger<HeartbeatManager> logger,
         FeishuWebSocketOptions options,
-        Func<string, Task> sendMessageCallback,
+        Func<byte[], CancellationToken, Task> sendBinaryCallback,
         Func<bool> isConnectedCallback)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _options = options ?? throw new ArgumentNullException(nameof(options));
-        _sendMessageCallback = sendMessageCallback ?? throw new ArgumentNullException(nameof(sendMessageCallback));
+        _sendBinaryCallback = sendBinaryCallback ?? throw new ArgumentNullException(nameof(sendBinaryCallback));
         _isConnectedCallback = isConnectedCallback ?? throw new ArgumentNullException(nameof(isConnectedCallback));
+    }
+
+    /// <summary>
+    /// 设置服务ID（从 WebSocket URL 的 service_id 查询参数提取）
+    /// <para>ProtoBuf Ping 帧需要包含 serviceId 字段</para>
+    /// </summary>
+    /// <param name="serviceId">服务ID</param>
+    public void SetServiceId(int serviceId)
+    {
+        _serviceId = serviceId;
+        if (_options.EnableLogging)
+            _logger.LogDebug("心跳管理器已设置 ServiceId={ServiceId}", serviceId);
     }
 
     /// <summary>
@@ -102,16 +115,13 @@ public class HeartbeatManager
 
                 try
                 {
-                    var pingMessage = new PingMessage
-                    {
-                        Timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
-                    };
-
-                    var heartbeatMessage = JsonSerializer.Serialize(pingMessage, JsonOptions.Default);
-                    await _sendMessageCallback(heartbeatMessage);
+                    // 构建并发送 ProtoBuf 二进制 Ping 帧
+                    var serviceId = _serviceId ?? 0;
+                    var pingFrameData = FrameBuilder.BuildPingFrame(serviceId);
+                    await _sendBinaryCallback(pingFrameData, cancellationToken);
 
                     if (_options.EnableLogging)
-                        _logger.LogDebug("已发送心跳");
+                        _logger.LogDebug("已发送 ProtoBuf 心跳 (ServiceId={ServiceId})", serviceId);
 
                     CheckHeartbeatTimeout();
                 }
@@ -139,9 +149,10 @@ public class HeartbeatManager
     }
 
     /// <summary>
-    /// 通知收到Pong响应，重置心跳超时计数
+    /// 通知收到Pong响应，重置心跳超时计数并应用服务端下发的 ClientConfig
     /// </summary>
-    public void OnPongReceived()
+    /// <param name="config">服务端通过 Pong 下发的客户端配置（可选）</param>
+    public void OnPongReceived(ClientConfigInfo? config = null)
     {
         lock (_heartbeatLock)
         {
@@ -149,8 +160,57 @@ public class HeartbeatManager
             _heartbeatMissedCount = 0;
         }
 
+        // 应用服务端下发的动态配置（对照 Java SDK configure()）
+        if (config != null)
+        {
+            ApplyClientConfig(config);
+        }
+
         if (_options.EnableLogging)
             _logger.LogDebug("已更新最后一次Pong时间");
+    }
+
+    /// <summary>
+    /// 应用服务端下发的 ClientConfig，动态更新心跳间隔等配置
+    /// <para>ClientConfig 中的 PingInterval 单位为秒，需转换为毫秒</para>
+    /// </summary>
+    /// <param name="config">客户端配置信息</param>
+    private void ApplyClientConfig(ClientConfigInfo config)
+    {
+        if (config == null)
+            return;
+
+        // PingInterval 单位为秒，转换为毫秒
+        if (config.PingInterval > 0)
+        {
+            var newIntervalMs = config.PingInterval * 1000;
+            if (newIntervalMs != _options.HeartbeatIntervalMs)
+            {
+                var oldIntervalMs = _options.HeartbeatIntervalMs;
+                _options.HeartbeatIntervalMs = newIntervalMs;
+                if (_options.EnableLogging)
+                    _logger.LogInformation("心跳间隔已动态更新: {OldMs}ms → {NewMs}ms (服务端下发 PingInterval={PingInterval}s)",
+                        oldIntervalMs, newIntervalMs, config.PingInterval);
+            }
+        }
+
+        // ReconnectInterval 单位为秒，转换为毫秒
+        if (config.ReconnectInterval > 0)
+        {
+            _options.ReconnectDelayMs = config.ReconnectInterval * 1000;
+            if (_options.EnableLogging)
+                _logger.LogDebug("重连间隔已更新: {Ms}ms", _options.ReconnectDelayMs);
+        }
+
+        // MaxReconnectAttempts: reconnectCount=-1 表示无限重连
+        //  MaxReconnectAttempts=0 → 无限重连；>0 → 有限重连
+        if (config.ReconnectCount >= -1)
+        {
+            // Java reconnectCount=-1 映射为 .NET MaxReconnectAttempts=0（无限重连）
+            _options.MaxReconnectAttempts = config.ReconnectCount == -1 ? 0 : config.ReconnectCount;
+            if (_options.EnableLogging)
+                _logger.LogDebug("最大重连次数已更新: {Count}", _options.MaxReconnectAttempts);
+        }
     }
 
     /// <summary>

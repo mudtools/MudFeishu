@@ -111,6 +111,7 @@ public interface IFeishuWebSocketClient : IAsyncDisposable, IDisposable
     /// 注册消息处理器
     /// </summary>
     /// <param name="processor">消息处理器</param>
+    [Obsolete("消息队列已废弃，消息直接由 MessageRouter 处理。此方法不再生效。")]
     void RegisterMessageProcessor(Func<string, Task> processor);
 
     /// <summary>
@@ -118,5 +119,6 @@ public interface IFeishuWebSocketClient : IAsyncDisposable, IDisposable
     /// </summary>
     /// <param name="processor">要移除的消息处理器</param>
     /// <returns>是否成功移除</returns>
+    [Obsolete("消息队列已废弃，消息直接由 MessageRouter 处理。此方法始终返回 false。")]
     bool UnregisterMessageProcessor(Func<string, Task> processor);
 }

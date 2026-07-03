@@ -43,7 +43,7 @@ public class RedisFeishuNonceDistributedDeduplicator : IFeishuNonceDistributedDe
         _logger = logger;
         _database = _redis.GetDatabase();
         _defaultNonceTtl = nonceTtl ?? TimeSpan.FromMinutes(5);
-        _keyPrefix = keyPrefix ?? "feishu:nonce:";
+        _keyPrefix = keyPrefix ?? Mud.Feishu.Abstractions.Consts.DefaultNonceKeyPrefix;
 
         _logger?.LogInformation("飞书 Redis 分布式 Nonce 去重服务初始化完成，Nonce TTL: {Ttl}, 键前缀: {KeyPrefix}",
             _defaultNonceTtl, _keyPrefix);

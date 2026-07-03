@@ -39,8 +39,8 @@ public class RedisFeishuSeqIDDeduplicator : IFeishuSeqIDDeduplicator, IAsyncDisp
         _redis = redis ?? throw new ArgumentNullException(nameof(redis));
         _logger = logger;
         _database = _redis.GetDatabase();
-        _defaultCacheExpiration = cacheExpiration ?? TimeSpan.FromHours(24);
-        _keyPrefix = keyPrefix ?? "feishu:seqid:";
+        _defaultCacheExpiration = cacheExpiration ?? TimeSpan.FromMilliseconds(Mud.Feishu.Abstractions.Consts.DefaultCacheExpirationMs);
+        _keyPrefix = keyPrefix ?? Mud.Feishu.Abstractions.Consts.DefaultSeqIdKeyPrefix;
 
         _logger?.LogInformation("飞书 Redis SeqID 去重服务初始化完成，缓存过期时间: {Expiration}, 键前缀: {KeyPrefix}",
             _defaultCacheExpiration, _keyPrefix);

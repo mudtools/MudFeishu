@@ -5,6 +5,7 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using Mud.Feishu.Abstractions;
 using Mud.Feishu.Abstractions.Utilities;
 
 namespace Mud.Feishu.Redis.Configuration;
@@ -14,8 +15,7 @@ namespace Mud.Feishu.Redis.Configuration;
 /// </summary>
 public class RedisOptions
 {
-    private const string DefaultNonceKeyPrefix = "feishu:nonce:";
-    private const string DefaultSeqIdKeyPrefix = "feishu:seqid:";
+    // Nonce 和 SeqID 键前缀已统一至 Consts.DefaultNonceKeyPrefix 和 Consts.DefaultSeqIdKeyPrefix
 
     /// <summary>
     /// Redis 连接字符串
@@ -31,7 +31,7 @@ public class RedisOptions
     /// <summary>
     /// 事件去重缓存过期时间，默认 48 小时
     /// </summary>
-    public TimeSpan EventCacheExpiration { get; set; } = TimeSpan.FromHours(48);
+    public TimeSpan EventCacheExpiration { get; set; } = TimeSpan.FromMilliseconds(Mud.Feishu.Abstractions.Consts.DefaultCacheExpirationMs);
 
     /// <summary>
     /// Nonce 有效期，默认 5 分钟
@@ -41,7 +41,7 @@ public class RedisOptions
     /// <summary>
     /// SeqID 去重缓存过期时间，默认 48 小时
     /// </summary>
-    public TimeSpan SeqIdCacheExpiration { get; set; } = TimeSpan.FromHours(48);
+    public TimeSpan SeqIdCacheExpiration { get; set; } = TimeSpan.FromMilliseconds(Mud.Feishu.Abstractions.Consts.DefaultCacheExpirationMs);
 
     /// <summary>
     /// 事件去重键前缀
@@ -51,12 +51,12 @@ public class RedisOptions
     /// <summary>
     /// Nonce 去重键前缀
     /// </summary>
-    public string NonceKeyPrefix { get; set; } = DefaultNonceKeyPrefix;
+    public string NonceKeyPrefix { get; set; } = Mud.Feishu.Abstractions.Consts.DefaultNonceKeyPrefix;
 
     /// <summary>
     /// SeqID 去重键前缀
     /// </summary>
-    public string SeqIdKeyPrefix { get; set; } = DefaultSeqIdKeyPrefix;
+    public string SeqIdKeyPrefix { get; set; } = Mud.Feishu.Abstractions.Consts.DefaultSeqIdKeyPrefix;
 
     /// <summary>
     /// 连接超时时间，默认 5000 毫秒

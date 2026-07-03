@@ -94,7 +94,6 @@ public class ConfigurationValidatorIntegrationTests
             .Configure(options =>
             {
                 options.EnableRateLimit = false;
-                options.WindowSizeSeconds = 0;
             });
         services.AddSingleton<IValidateOptions<RateLimitOptions>, RateLimitOptionsValidator>();
 

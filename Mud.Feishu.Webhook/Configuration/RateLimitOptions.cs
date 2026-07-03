@@ -64,5 +64,21 @@ public class RateLimitOptions
             if (TooManyRequestsStatusCode < 400 || TooManyRequestsStatusCode > 599)
                 throw new InvalidOperationException("TooManyRequestsStatusCode 必须在 400-599 之间");
         }
+        else
+        {
+            // 当 EnableRateLimit=false 时，检查子配置是否被修改为非默认值
+            // 避免用户误以为子配置会生效但实际上被忽略
+            if (WindowSizeSeconds != 60)
+                throw new InvalidOperationException(
+                    "EnableRateLimit 为 false 但 WindowSizeSeconds 被设置为非默认值，请启用 EnableRateLimit 或恢复 WindowSizeSeconds 为默认值 60");
+
+            if (MaxRequestsPerWindow != 100)
+                throw new InvalidOperationException(
+                    "EnableRateLimit 为 false 但 MaxRequestsPerWindow 被设置为非默认值，请启用 EnableRateLimit 或恢复 MaxRequestsPerWindow 为默认值 100");
+
+            if (TooManyRequestsStatusCode != 429)
+                throw new InvalidOperationException(
+                    "EnableRateLimit 为 false 但 TooManyRequestsStatusCode 被设置为非默认值，请启用 EnableRateLimit 或恢复 TooManyRequestsStatusCode 为默认值 429");
+        }
     }
 }

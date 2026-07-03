@@ -28,13 +28,43 @@ public class RateLimitOptionsTests
     }
 
     [Fact]
-    public void Validate_ShouldNotThrow_WhenRateLimitIsDisabled()
+    public void Validate_ShouldNotThrow_WhenRateLimitIsDisabledWithDefaults()
+    {
+        var options = new RateLimitOptions { EnableRateLimit = false };
+
+        var act = () => options.Validate();
+
+        act.Should().NotThrow();
+    }
+
+    [Fact]
+    public void Validate_ShouldThrow_WhenRateLimitDisabledButWindowSizeIsNonDefault()
     {
         var options = new RateLimitOptions { EnableRateLimit = false, WindowSizeSeconds = 0 };
 
         var act = () => options.Validate();
 
-        act.Should().NotThrow();
+        act.Should().Throw<InvalidOperationException>().WithMessage("*EnableRateLimit*false*WindowSizeSeconds*");
+    }
+
+    [Fact]
+    public void Validate_ShouldThrow_WhenRateLimitDisabledButMaxRequestsIsNonDefault()
+    {
+        var options = new RateLimitOptions { EnableRateLimit = false, MaxRequestsPerWindow = 200 };
+
+        var act = () => options.Validate();
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*EnableRateLimit*false*MaxRequestsPerWindow*");
+    }
+
+    [Fact]
+    public void Validate_ShouldThrow_WhenRateLimitDisabledButStatusCodeIsNonDefault()
+    {
+        var options = new RateLimitOptions { EnableRateLimit = false, TooManyRequestsStatusCode = 503 };
+
+        var act = () => options.Validate();
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*EnableRateLimit*false*TooManyRequestsStatusCode*");
     }
 
     [Fact]

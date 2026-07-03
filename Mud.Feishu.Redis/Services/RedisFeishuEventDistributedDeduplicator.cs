@@ -94,9 +94,9 @@ public class RedisFeishuEventDistributedDeduplicator : IFeishuEventDeduplicator,
         _redis = redis ?? throw new ArgumentNullException(nameof(redis));
         _logger = logger;
         _database = _redis.GetDatabase();
-        _defaultCacheExpiration = cacheExpiration ?? TimeSpan.FromHours(24);
-        _defaultProcessingTimeout = processingTimeout ?? TimeSpan.FromMinutes(10);
-        _keyPrefix = keyPrefix ?? "feishu:event:";
+        _defaultCacheExpiration = cacheExpiration ?? TimeSpan.FromMilliseconds(Mud.Feishu.Abstractions.Consts.DefaultCacheExpirationMs);
+        _defaultProcessingTimeout = processingTimeout ?? TimeSpan.FromMilliseconds(Mud.Feishu.Abstractions.Consts.DefaultProcessingTimeoutMs);
+        _keyPrefix = keyPrefix ?? Mud.Feishu.Abstractions.Consts.DefaultEventKeyPrefix;
 
         _logger?.LogInformation("飞书 Redis 分布式事件去重服务初始化完成，缓存过期时间: {Expiration}, 处理超时: {ProcessingTimeout}, 键前缀: {KeyPrefix}",
             _defaultCacheExpiration, _defaultProcessingTimeout, _keyPrefix);

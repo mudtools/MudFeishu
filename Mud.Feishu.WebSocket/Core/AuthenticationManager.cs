@@ -28,6 +28,12 @@ public class AuthenticationManager
     private int _authRetryCount = 0;
     private int _totalAuthFailures = 0;
     private DateTime _lastAuthFailureTime = DateTime.MinValue;
+    /// <summary>
+    /// 标志位：表示当前失败是否已由 HandleAuthResponse 计数。
+    /// true = 服务端拒绝已计数，RecordAuthFailure 不应重复递增；
+    /// false = 网络异常等场景，RecordAuthFailure 应递增计数。
+    /// </summary>
+    private volatile bool _authFailureCountedByResponse = false;
     private TaskCompletionSource<bool>? _authCompletionSource;
     private readonly object _authCompletionLock = new();
 
@@ -99,7 +105,14 @@ public class AuthenticationManager
             }
 
             // 使用指数退避策略重试认证
+            // MaxReconnectAttempts = 0 表示无限重试（仅受外部 CancellationToken 限制）
             var maxRetries = _options.MaxReconnectAttempts;
+            var isInfiniteRetry = maxRetries == 0;
+            if (isInfiniteRetry)
+            {
+                maxRetries = int.MaxValue; // 转换为无限循环
+            }
+
             for (int attempt = 0; attempt <= maxRetries; attempt++)
             {
                 try
@@ -214,7 +227,8 @@ public class AuthenticationManager
 
             AuthenticationFailed?.Invoke(this, errorArgs);
 
-            if (_authRetryCount >= _options.MaxReconnectAttempts)
+            // MaxReconnectAttempts = 0 表示无限重试，不抛出“达到最大重试次数”异常
+            if (_authRetryCount >= _options.MaxReconnectAttempts && _options.MaxReconnectAttempts > 0)
             {
                 throw new InvalidOperationException($"WebSocket认证失败，已达到最大重试次数 {_options.MaxReconnectAttempts}", ex);
             }
@@ -256,6 +270,8 @@ public class AuthenticationManager
                 _isAuthenticated = false;
                 _totalAuthFailures++;
                 _lastAuthFailureTime = DateTime.UtcNow;
+                // 标记已由服务端响应计数，避免 RecordAuthFailure 重复递增
+                _authFailureCountedByResponse = true;
 
                 var errorType = authResponse?.Code.ToString() ?? "unknown";
                 FeishuMetricsHelper.RecordEventHandlingFailure("auth", errorType);
@@ -338,6 +354,7 @@ public class AuthenticationManager
     {
         _isAuthenticated = false;
         _authRetryCount = 0;
+        _authFailureCountedByResponse = false;
 
         lock (_authCompletionLock)
         {
@@ -418,12 +435,14 @@ public class AuthenticationManager
         lock (_cooldownLock)
         {
             // 仅在非服务端拒绝场景（网络异常等）递增计数
-            // 服务端拒绝场景由 HandleAuthResponse 直接递增
-            if (_lastAuthFailureTime == DateTime.MinValue)
+            // 服务端拒绝场景由 HandleAuthResponse 直接递增，通过 _authFailureCountedByResponse 标志区分
+            if (!_authFailureCountedByResponse)
             {
                 _totalAuthFailures++;
                 _lastAuthFailureTime = DateTime.UtcNow;
             }
+            // 重置标志，为下一次认证尝试准备
+            _authFailureCountedByResponse = false;
 
             // 如果连续失败次数达到阈值，设置冷却期
             if (_totalAuthFailures >= MaxAuthFailuresBeforeCooldown)
@@ -453,6 +472,7 @@ public class AuthenticationManager
             }
             // 认证成功后重置失败计数
             _totalAuthFailures = 0;
+            _authFailureCountedByResponse = false;
         }
     }
 

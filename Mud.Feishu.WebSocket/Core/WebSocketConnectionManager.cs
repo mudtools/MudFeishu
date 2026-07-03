@@ -446,7 +446,8 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
                 result.CloseStatus, result.CloseStatusDescription);
         }
 
-        // 连接计数递减统一在 DisconnectAsync 中处理，避免双重递减
+        // 服务端发起关闭时在此处递减连接计数。
+        // DisconnectAsync 中的递减受 _webSocket.State == Closed 保护，不会双重递减。
         try
         {
             if (_webSocket != null && _webSocket.State == WebSocketState.Open)
@@ -462,7 +463,7 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
             _logger.LogDebug(ex, "确认关闭连接时发生异常（可忽略）");
         }
 
-        // 递减连接计数（仅一次）
+        // 递减连接计数（服务端关闭场景，仅一次）
         Interlocked.Decrement(ref _connectionCount);
 
         Disconnected?.Invoke(this, new WebSocketCloseEventArgs

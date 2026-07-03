@@ -289,7 +289,7 @@ public class BinaryMessageProcessor : IDisposable
                     eventArgs.MessageType = "Frame";
 
                     if (_options.EnableLogging)
-                        _logger.LogDebug("成功解析 Frame Payload 为 JSON 内容:{jsonPayload}", jsonPayload);
+                        _logger.LogDebug("成功解析 Frame Payload 为 JSON 内容（长度: {PayloadLength}）", jsonPayload.Length);
 
                     BinaryMessageReceived?.Invoke(this, eventArgs);
 

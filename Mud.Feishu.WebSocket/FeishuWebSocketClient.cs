@@ -21,7 +21,7 @@ namespace Mud.Feishu.WebSocket;
 /// <summary>
 /// 飞书WebSocket客户端 - 采用组件化设计提高可维护性
 /// </summary>
-public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
+public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDisposable, IDisposable
 {
     private readonly ILogger<FeishuWebSocketClient> _logger;
     private readonly FeishuWebSocketOptions _options;
@@ -37,6 +37,10 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
     private readonly ILoggerFactory _loggerFactory;
     private bool _disposed = false;
     private CancellationTokenSource? _cancellationTokenSource;
+    private Task? _receiveTask;
+    private Task? _heartbeatTask;
+    private Task? _queueTask;
+    private readonly SemaphoreSlim _connectLock = new(1, 1);
     private readonly IFeishuSeqIDDeduplicator? _seqIdDeduplicator;
     private readonly MessageSequenceValidator? _sequenceValidator;
     private readonly SessionManager? _sessionManager;
@@ -114,9 +118,16 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
         _sequenceValidator = sequenceValidator;
 
         // 初始化事件处理器委托，保存引用以便正确取消订阅
-        _onConnected = (s, e) =>
+        _onConnected = async (s, e) =>
         {
-            _ = ResetStateOnReconnectAsync();
+            try
+            {
+                await ResetStateOnReconnectAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "重连状态重置失败");
+            }
             var handler = Connected;
             handler?.Invoke(this, e);
         };
@@ -290,26 +301,82 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
         if (endpoint == null)
             throw new ArgumentNullException(nameof(endpoint));
 
-        Volatile.Write(ref _connectionState, 2);
-
-        using (FeishuMetricsHelper.RecordHttpRequest("GET", endpoint.Url))
+        await _connectLock.WaitAsync(cancellationToken);
+        try
         {
-            await _connectionManager.ConnectAsync(endpoint.Url, cancellationToken);
+            // 取消并释放旧的 CTS，等待旧的后台任务退出
+            await StopBackgroundTasksAsync();
+
+            Volatile.Write(ref _connectionState, 2);
+
+            using (FeishuMetricsHelper.RecordHttpRequest("GET", endpoint.Url))
+            {
+                await _connectionManager.ConnectAsync(endpoint.Url, cancellationToken);
+            }
+
+            Volatile.Write(ref _connectionState, 1);
+
+            // 创建与调用方 Token 链接的新 CTS
+            _cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            var token = _cancellationTokenSource.Token;
+
+            // 启动消息接收
+            _receiveTask = Task.Run(() => StartReceivingAsyncInternal(token), token);
+
+            // 启动心跳
+            _heartbeatTask = Task.Run(() => _heartbeatManager.StartHeartbeatAsync(token), token);
+
+            // 启动消息队列处理
+            if (_options.EnableMessageQueue)
+            {
+                _queueTask = Task.Run(() => _messageQueueManager.ProcessQueueAsync(token), token);
+            }
         }
-
-        Volatile.Write(ref _connectionState, 1);
-
-        // 启动消息接收
-        _cancellationTokenSource = new CancellationTokenSource();
-        _ = Task.Run(() => StartReceivingAsyncInternal(_cancellationTokenSource.Token), _cancellationTokenSource.Token);
-
-        // 启动心跳
-        _ = Task.Run(() => _heartbeatManager.StartHeartbeatAsync(_cancellationTokenSource.Token), _cancellationTokenSource.Token);
-
-        // 启动消息队列处理
-        if (_options.EnableMessageQueue)
+        finally
         {
-            _ = Task.Run(() => _messageQueueManager.ProcessQueueAsync(_cancellationTokenSource.Token), _cancellationTokenSource.Token);
+            _connectLock.Release();
+        }
+    }
+
+    /// <summary>
+    /// 停止后台任务并等待其退出
+    /// </summary>
+    private async Task StopBackgroundTasksAsync()
+    {
+        var oldCts = _cancellationTokenSource;
+        if (oldCts != null)
+        {
+            try { oldCts.Cancel(); }
+            catch (ObjectDisposedException) { }
+
+            // 等待旧的后台任务退出（带超时避免死锁）
+            var tasks = new List<Task>();
+            if (_receiveTask != null) tasks.Add(_receiveTask);
+            if (_heartbeatTask != null) tasks.Add(_heartbeatTask);
+            if (_queueTask != null) tasks.Add(_queueTask);
+
+            if (tasks.Count > 0)
+            {
+                try
+                {
+                    var allTask = Task.WhenAll(tasks);
+                    var completed = await Task.WhenAny(allTask, Task.Delay(TimeSpan.FromSeconds(5)));
+                    if (completed != allTask)
+                    {
+                        _logger.LogWarning("等待后台任务退出超时（5秒），继续执行");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogDebug(ex, "后台任务退出时发生异常（可忽略）");
+                }
+            }
+
+            oldCts.Dispose();
+            _cancellationTokenSource = null;
+            _receiveTask = null;
+            _heartbeatTask = null;
+            _queueTask = null;
         }
     }
 
@@ -335,9 +402,17 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
     /// </summary>
     public async Task DisconnectAsync(CancellationToken cancellationToken = default)
     {
-        _cancellationTokenSource?.Cancel();
-        await _connectionManager.DisconnectAsync(cancellationToken);
-        Volatile.Write(ref _connectionState, 0);
+        await _connectLock.WaitAsync(cancellationToken);
+        try
+        {
+            await StopBackgroundTasksAsync();
+            await _connectionManager.DisconnectAsync(cancellationToken);
+            Volatile.Write(ref _connectionState, 0);
+        }
+        finally
+        {
+            _connectLock.Release();
+        }
     }
 
     /// <summary>
@@ -539,6 +614,7 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
                     QueueCount = _messageQueueManager.QueueCount
                 });
 
+                // 消息仅由 MessageRouter 处理，不再同时入队 MessageQueueManager 避免双重处理
                 _ = Task.Run(async () =>
                 {
                     try
@@ -548,8 +624,6 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
                         {
                             await _messageRouter.RouteMessageAsync(message, cancellationToken);
                         }
-
-                        await _messageQueueManager.EnqueueAsync(message, cancellationToken);
                     }
                     catch (Exception ex)
                     {
@@ -659,6 +733,41 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
 
 
     /// <summary>
+    /// 异步释放资源
+    /// </summary>
+    public async ValueTask DisposeAsync()
+    {
+        if (_disposed)
+            return;
+
+        try
+        {
+            _cancellationTokenSource?.Cancel();
+            await StopBackgroundTasksAsync();
+            UnsubscribeFromComponentEvents();
+            UnsubscribeFromHandlerEvents();
+
+            if (_connectionManager is IAsyncDisposable asyncDisposableConn)
+                await asyncDisposableConn.DisposeAsync();
+            else
+                _connectionManager?.Dispose();
+
+            _binaryProcessor?.Dispose();
+            _connectLock?.Dispose();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "异步释放资源时发生错误");
+        }
+        finally
+        {
+            _disposed = true;
+        }
+
+        GC.SuppressFinalize(this);
+    }
+
+    /// <summary>
     /// <inheritdoc/>
     /// </summary>
     public void Dispose()
@@ -673,6 +782,7 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
             UnsubscribeFromHandlerEvents();
             _connectionManager?.Dispose();
             _binaryProcessor?.Dispose();
+            _connectLock?.Dispose();
         }
         catch (Exception ex)
         {
@@ -682,6 +792,8 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IDisposable
         {
             _disposed = true;
         }
+
+        GC.SuppressFinalize(this);
     }
 
     /// <summary>

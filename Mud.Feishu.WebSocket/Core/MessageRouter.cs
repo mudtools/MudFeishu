@@ -16,6 +16,7 @@ public class MessageRouter
 {
     private readonly ILogger<MessageRouter> _logger;
     private readonly List<IMessageHandler> _handlers;
+    private readonly object _handlersLock = new();
     private readonly FeishuWebSocketOptions _options;
 
     /// <summary>
@@ -38,7 +39,10 @@ public class MessageRouter
         if (handler == null)
             throw new ArgumentNullException(nameof(handler));
 
-        _handlers.Add(handler);
+        lock (_handlersLock)
+        {
+            _handlers.Add(handler);
+        }
         _logger.LogDebug("已注册消息处理器: {HandlerType}", handler.GetType().Name);
     }
 
@@ -47,15 +51,15 @@ public class MessageRouter
     /// </summary>
     public bool UnregisterHandler(IMessageHandler handler)
     {
-        var removed = _handlers.Remove(handler);
-        if (removed)
+        lock (_handlersLock)
         {
-            if (_options.EnableLogging)
+            var removed = _handlers.Remove(handler);
+            if (removed && _options.EnableLogging)
             {
                 _logger.LogDebug("已移除消息处理器: {HandlerType}", handler.GetType().Name);
             }
+            return removed;
         }
-        return removed;
     }
 
     /// <summary>
@@ -103,13 +107,18 @@ public class MessageRouter
             var messageType = ExtractMessageType(message);
             if (string.IsNullOrEmpty(messageType))
             {
-                _logger.LogWarning("无法提取消息类型 (来源: {SourceType}): {Message}", sourceType, message);
+                var truncatedMsg = message.Length > 200 ? message.Substring(0, 200) + "..." : message;
+                _logger.LogWarning("无法提取消息类型 (来源: {SourceType}): {Message}", sourceType, truncatedMsg);
 
                 return;
             }
 
-            // 查找能处理该消息类型的处理器
-            var handler = _handlers.FirstOrDefault(h => h.CanHandle(messageType));
+            // 查找能处理该消息类型的处理器（加锁保证线程安全，保持注册顺序）
+            IMessageHandler? handler;
+            lock (_handlersLock)
+            {
+                handler = _handlers.FirstOrDefault(h => h.CanHandle(messageType));
+            }
             if (handler == null)
             {
                 _logger.LogWarning("未找到能处理消息类型 {MessageType} 的处理器 (来源: {SourceType})", messageType, sourceType);
@@ -121,7 +130,8 @@ public class MessageRouter
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "路由消息时发生错误 (来源: {SourceType}): {Message}", sourceType, message);
+            var truncatedMsg = message.Length > 200 ? message.Substring(0, 200) + "..." : message;
+            _logger.LogError(ex, "路由消息时发生错误 (来源: {SourceType}): {Message}", sourceType, truncatedMsg);
         }
     }
 

@@ -11,6 +11,8 @@ namespace Mud.Feishu.WebSocket;
 
 public static class RetryHelper
 {
+    private static readonly Random JitterRandom = new();
+
     public static async Task<T> RetryWithExponentialBackoffAsync<T>(
         ILogger logger,
         Func<Task<T>> operation,
@@ -27,9 +29,13 @@ public static class RetryHelper
             }
             catch (Exception ex) when (i < maxRetries)
             {
-                var delay = TimeSpan.FromMilliseconds(Math.Pow(2, i) * baseDelayMs);
-                logger.LogWarning(ex, "{OperationName}失败，将在{Delay}毫秒后重试 (尝试 {RetryCount}/{MaxRetries})",
-                    operationName, delay.TotalMilliseconds, i + 1, maxRetries + 1);
+                // 添加随机抖动，避免多个客户端同时重试造成雪崩
+                var baseDelay = Math.Pow(2, i) * baseDelayMs;
+                var jitter = JitterRandom.NextDouble() * baseDelayMs; // 0~baseDelayMs 的随机抖动
+                var delay = TimeSpan.FromMilliseconds(baseDelay + jitter);
+
+                logger.LogWarning(ex, "{OperationName}失败，将在{Delay}ms后重试 (尝试 {RetryCount}/{MaxRetries}, 抖动 {Jitter}ms)",
+                    operationName, delay.TotalMilliseconds, i + 1, maxRetries + 1, jitter);
 
                 await Task.Delay(delay, cancellationToken);
             }

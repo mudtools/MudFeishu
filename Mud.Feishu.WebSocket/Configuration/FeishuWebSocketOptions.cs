@@ -46,7 +46,8 @@ public class FeishuWebSocketOptions
     public bool AutoReconnect { get; set; } = true;
 
     /// <summary>
-    /// 最大重连次数，默认为5次
+    /// 最大重连次数，默认为5次。
+    /// 设为 0 表示无限重连（仅受 MaxTotalReconnectTime 限制）。
     /// </summary>
     public int MaxReconnectAttempts { get; set; } = 5;
 
@@ -162,6 +163,12 @@ public class FeishuWebSocketOptions
         get => _maxConcurrentMessageProcessing;
         set => _maxConcurrentMessageProcessing = Math.Max(1, value);
     }
+
+    /// <summary>
+    /// 是否允许不安全的 WebSocket 连接（ws://），默认为 false。
+    /// 生产环境应始终使用 wss://，仅在开发/测试环境启用此项。
+    /// </summary>
+    public bool AllowInsecureWebSocket { get; set; } = false;
 
     /// <summary>
     /// 是否验证SSL证书，默认为true（生产环境建议为true）

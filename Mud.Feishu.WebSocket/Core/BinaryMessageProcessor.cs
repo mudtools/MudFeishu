@@ -8,6 +8,7 @@
 using Microsoft.Extensions.Logging;
 using Mud.Feishu.Abstractions.Services;
 using Mud.Feishu.WebSocket.SocketEventArgs;
+using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 
@@ -381,35 +382,70 @@ public class BinaryMessageProcessor : IDisposable
         }
     }
 
-    private async Task SendAckMessageAsync(EventProtoData? eventProtoData, bool sucess, CancellationToken cancellationToken)
+    private async Task SendAckMessageAsync(EventProtoData? eventProtoData, bool success, CancellationToken cancellationToken)
     {
         if (eventProtoData == null)
             return;
 
-        var data = new
+        // 按照飞书 WebSocket 协议（Java SDK 对照）构造 ACK 响应
+        // Response 格式: {"code": 200/500, "headers": {}, "data": "base64-encoded"}
+        // 同时在 Frame headers 中添加 biz_rt（业务处理耗时）
+        var stopwatch = Stopwatch.StartNew();
+
+        var responseData = System.Array.Empty<byte>();
+
+        var responseObj = new
         {
-            status = sucess ? "success" : "failure",
-            timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+            code = success ? 200 : 500,
+            headers = (Dictionary<string, string>?)null,
+            data = Convert.ToBase64String(responseData)
         };
-        var dto_string = JsonSerializer.Serialize(data, JsonOptions.Default);
-        var ackMessage = new
-        {
-            code = 200,
-            data = Encoding.UTF8.GetBytes(dto_string)
-        };
+
+        var ackJson = JsonSerializer.Serialize(responseObj, JsonOptions.Default);
+        var ackPayload = Encoding.UTF8.GetBytes(ackJson);
+
+        stopwatch.Stop();
+        var elapsedMs = (long)stopwatch.Elapsed.TotalMilliseconds;
 
         try
         {
-            var ackJson = JsonSerializer.Serialize(ackMessage, JsonOptions.Default);
+            // 克隆 Frame 对象避免修改原始数据
+            var headerCount = eventProtoData.Headers?.Length ?? 0;
+            var newHeaders = new ProtoHeader[headerCount + 1];
+            if (eventProtoData.Headers != null)
+            {
+                for (int i = 0; i < eventProtoData.Headers.Length; i++)
+                {
+                    newHeaders[i] = new ProtoHeader
+                    {
+                        Key = eventProtoData.Headers[i].Key,
+                        Value = eventProtoData.Headers[i].Value
+                    };
+                }
+            }
+            newHeaders[headerCount] = new ProtoHeader { Key = "biz_rt", Value = elapsedMs.ToString() };
+
+            var ackFrame = new EventProtoData
+            {
+                Service = eventProtoData.Service,
+                Method = eventProtoData.Method,
+                SeqID = eventProtoData.SeqID,
+                LogID = eventProtoData.LogID,
+                LogIDNew = eventProtoData.LogIDNew,
+                Payload = ackPayload,
+                PayloadEncoding = "json",
+                PayloadType = "ack",
+                Headers = newHeaders
+            };
+
             using var messageStream = new MemoryStream();
-            eventProtoData.Payload = Encoding.UTF8.GetBytes(ackJson);
-            ProtoBuf.Serializer.Serialize(messageStream, eventProtoData);
+            ProtoBuf.Serializer.Serialize(messageStream, ackFrame);
 
             if (messageStream.TryGetBuffer(out var arraySegment) && _connectionManager != null)
             {
                 await _connectionManager.SendBinaryMessageAsync(arraySegment, cancellationToken);
                 if (_options.EnableLogging)
-                    _logger.LogDebug("已发送ACK消息: {AckJson}", ackJson);
+                    _logger.LogDebug("已发送ACK消息: code={Code}, biz_rt={BizRt}ms", responseObj.code, elapsedMs);
             }
         }
         catch (Exception x)
@@ -417,7 +453,6 @@ public class BinaryMessageProcessor : IDisposable
             _logger.LogError(x, "发送ACK消息时发生错误");
             OnError($"发送ACK消息时发生错误: {x.Message}", x.GetType().Name);
         }
-
     }
 
     /// <summary>

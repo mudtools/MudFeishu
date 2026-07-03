@@ -409,15 +409,21 @@ public class AuthenticationManager
     }
 
     /// <summary>
-    /// 记录认证失败
+    /// 记录认证失败（用于网络异常等非服务端拒绝的场景）
+    /// 注意：服务端拒绝已在 HandleAuthResponse 中计数，此方法不再重复递增 _totalAuthFailures
     /// </summary>
     /// <param name="appAccessToken">应用访问令牌</param>
     private void RecordAuthFailure(string appAccessToken)
     {
         lock (_cooldownLock)
         {
-            _totalAuthFailures++;
-            _lastAuthFailureTime = DateTime.UtcNow;
+            // 仅在非服务端拒绝场景（网络异常等）递增计数
+            // 服务端拒绝场景由 HandleAuthResponse 直接递增
+            if (_lastAuthFailureTime == DateTime.MinValue)
+            {
+                _totalAuthFailures++;
+                _lastAuthFailureTime = DateTime.UtcNow;
+            }
 
             // 如果连续失败次数达到阈值，设置冷却期
             if (_totalAuthFailures >= MaxAuthFailuresBeforeCooldown)

@@ -20,7 +20,7 @@ namespace Mud.Feishu.WebSocket;
 /// 该类负责WebSocket连接的建立、维护、断开和消息收发功能。
 /// 支持自动重连、连接超时、错误处理和资源清理等企业级特性。
 /// </remarks>
-public class WebSocketConnectionManager : IDisposable
+public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
 {
     private static int _connectionCount = 0;
     private readonly ILogger<WebSocketConnectionManager> _logger;
@@ -106,6 +106,10 @@ public class WebSocketConnectionManager : IDisposable
 
         if (uri.Scheme != "ws" && uri.Scheme != "wss")
             throw new ArgumentException("WebSocket URL必须使用ws://或wss://协议", nameof(url));
+
+        // 安全校验：默认禁止不安全的 ws:// 连接
+        if (uri.Scheme == "ws" && !_options.AllowInsecureWebSocket)
+            throw new ArgumentException("WebSocket URL使用不安全的ws://协议。如需在开发/测试环境使用，请设置 AllowInsecureWebSocket = true", nameof(url));
 
         await _connectionLock.WaitAsync(cancellationToken);
         try
@@ -379,6 +383,9 @@ public class WebSocketConnectionManager : IDisposable
         CancellationToken cancellationToken)
     {
         using var messageStream = new MemoryStream();
+        var maxMessageSize = firstResult.MessageType == WebSocketMessageType.Binary
+            ? _options.MessageSizeLimits.MaxBinaryMessageSize
+            : _options.MessageSizeLimits.MaxTextMessageSize;
 
         messageStream.Write(_receiveBuffer, 0, firstResult.Count);
 
@@ -393,6 +400,15 @@ public class WebSocketConnectionManager : IDisposable
             }
 
             messageStream.Write(_receiveBuffer, 0, result.Count);
+
+            // 检查分片消息是否超过大小限制
+            if (messageStream.Length > maxMessageSize)
+            {
+                _logger.LogError("分片消息大小 {Size} 超过最大限制 {MaxSize}，丢弃消息",
+                    messageStream.Length, maxMessageSize);
+                OnError(new InvalidOperationException($"分片消息大小 {messageStream.Length} 超过最大限制 {maxMessageSize}"), "分片消息大小超限");
+                return;
+            }
 
             if (result.EndOfMessage)
             {
@@ -430,6 +446,23 @@ public class WebSocketConnectionManager : IDisposable
                 result.CloseStatus, result.CloseStatusDescription);
         }
 
+        // 连接计数递减统一在 DisconnectAsync 中处理，避免双重递减
+        try
+        {
+            if (_webSocket != null && _webSocket.State == WebSocketState.Open)
+            {
+                await _webSocket.CloseAsync(
+                    WebSocketCloseStatus.NormalClosure,
+                    "客户端确认关闭连接",
+                    CancellationToken.None);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "确认关闭连接时发生异常（可忽略）");
+        }
+
+        // 递减连接计数（仅一次）
         Interlocked.Decrement(ref _connectionCount);
 
         Disconnected?.Invoke(this, new WebSocketCloseEventArgs
@@ -576,6 +609,47 @@ public class WebSocketConnectionManager : IDisposable
         }
 
         Error?.Invoke(this, errorArgs);
+    }
+
+    /// <summary>
+    /// 异步释放资源
+    /// </summary>
+    public async ValueTask DisposeAsync()
+    {
+        if (_disposed)
+            return;
+
+        try
+        {
+            _cancellationTokenSource?.Cancel();
+            if (_webSocket != null && _webSocket.State == WebSocketState.Open)
+            {
+                try
+                {
+                    await _webSocket.CloseAsync(
+                        WebSocketCloseStatus.NormalClosure,
+                        "客户端释放资源",
+                        CancellationToken.None);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogDebug(ex, "关闭 WebSocket 时发生异常（可忽略）");
+                }
+            }
+            _webSocket?.Dispose();
+            _cancellationTokenSource?.Dispose();
+            _connectionLock.Dispose();
+            _receiveBuffer = null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "异步释放连接管理器资源时发生错误");
+        }
+        finally
+        {
+            _disposed = true;
+        }
+        GC.SuppressFinalize(this);
     }
 
     /// <summary>

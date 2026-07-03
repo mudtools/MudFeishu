@@ -50,37 +50,46 @@ public class ExponentialBackoffReconnectStrategyTests
     }
 
     [Fact]
-    public void CalculateDelay_WithAttemptCount1_ShouldReturnBaseDelay()
+    public void CalculateDelay_WithAttemptCount1_ShouldReturnBaseDelayWithJitter()
     {
         var strategy = new ExponentialBackoffReconnectStrategy(_options, _loggerMock.Object);
 
         var delay = strategy.CalculateDelay(1);
 
-        delay.Should().Be(TimeSpan.FromMilliseconds(_options.ReconnectDelayMs));
+        // 抖动范围：baseDelay ~ baseDelay * 1.25
+        var baseDelay = TimeSpan.FromMilliseconds(_options.ReconnectDelayMs);
+        var maxDelayWithJitter = TimeSpan.FromMilliseconds(_options.ReconnectDelayMs * 1.25);
+        delay.Should().BeGreaterThanOrEqualTo(baseDelay).And.BeLessThanOrEqualTo(maxDelayWithJitter);
     }
 
     [Fact]
-    public void CalculateDelay_WithAttemptCount2_ShouldReturnDoubleDelay()
+    public void CalculateDelay_WithAttemptCount2_ShouldReturnDoubleDelayWithJitter()
     {
         var strategy = new ExponentialBackoffReconnectStrategy(_options, _loggerMock.Object);
 
         var delay = strategy.CalculateDelay(2);
 
-        delay.Should().Be(TimeSpan.FromMilliseconds(_options.ReconnectDelayMs * 2));
+        // 抖动范围：baseDelay*2 ~ baseDelay*2 * 1.25
+        var baseDelay = TimeSpan.FromMilliseconds(_options.ReconnectDelayMs * 2);
+        var maxDelayWithJitter = TimeSpan.FromMilliseconds(_options.ReconnectDelayMs * 2 * 1.25);
+        delay.Should().BeGreaterThanOrEqualTo(baseDelay).And.BeLessThanOrEqualTo(maxDelayWithJitter);
     }
 
     [Fact]
-    public void CalculateDelay_WithAttemptCount3_ShouldReturnQuadrupleDelay()
+    public void CalculateDelay_WithAttemptCount3_ShouldReturnQuadrupleDelayWithJitter()
     {
         var strategy = new ExponentialBackoffReconnectStrategy(_options, _loggerMock.Object);
 
         var delay = strategy.CalculateDelay(3);
 
-        delay.Should().Be(TimeSpan.FromMilliseconds(_options.ReconnectDelayMs * 4));
+        // 抖动范围：baseDelay*4 ~ baseDelay*4 * 1.25
+        var baseDelay = TimeSpan.FromMilliseconds(_options.ReconnectDelayMs * 4);
+        var maxDelayWithJitter = TimeSpan.FromMilliseconds(_options.ReconnectDelayMs * 4 * 1.25);
+        delay.Should().BeGreaterThanOrEqualTo(baseDelay).And.BeLessThanOrEqualTo(maxDelayWithJitter);
     }
 
     [Fact]
-    public void CalculateDelay_WhenExceedsMaxDelay_ShouldReturnMaxDelay()
+    public void CalculateDelay_WhenExceedsMaxDelay_ShouldReturnMaxDelayWithJitter()
     {
         _options.ReconnectDelayMs = 1000;
         _options.MaxReconnectDelayMs = 5000;
@@ -88,7 +97,10 @@ public class ExponentialBackoffReconnectStrategyTests
 
         var delay = strategy.CalculateDelay(10);
 
-        delay.Should().Be(TimeSpan.FromMilliseconds(_options.MaxReconnectDelayMs));
+        // 抖动在封顶后添加，范围：maxDelay ~ maxDelay * 1.25
+        var maxDelay = TimeSpan.FromMilliseconds(_options.MaxReconnectDelayMs);
+        var maxDelayWithJitter = TimeSpan.FromMilliseconds(_options.MaxReconnectDelayMs * 1.25);
+        delay.Should().BeGreaterThanOrEqualTo(maxDelay).And.BeLessThanOrEqualTo(maxDelayWithJitter);
     }
 
     [Fact]

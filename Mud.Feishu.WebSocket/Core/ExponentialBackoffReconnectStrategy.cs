@@ -16,6 +16,7 @@ public class ExponentialBackoffReconnectStrategy : IReconnectStrategy
 {
     private readonly FeishuWebSocketOptions _options;
     private readonly ILogger<ExponentialBackoffReconnectStrategy>? _logger;
+    private static readonly Random JitterRandom = new();
 
     /// <summary>
     /// 初始化指数退避重连策略
@@ -31,9 +32,9 @@ public class ExponentialBackoffReconnectStrategy : IReconnectStrategy
     }
 
     /// <summary>
-    /// 计算延迟时间：delay = baseDelay * (2^attempt)，不超过最大延迟
+    /// 计算延迟时间：delay = baseDelay * (2^attempt) + jitter，不超过最大延迟
     /// </summary>
-    /// <param name="attemptCount">当前尝试次数（从1开始）</param>
+    /// <param name="attemptCount">当前尝试次数（从 1 开始）</param>
     /// <returns>延迟时间</returns>
     public TimeSpan CalculateDelay(int attemptCount)
     {
@@ -47,21 +48,27 @@ public class ExponentialBackoffReconnectStrategy : IReconnectStrategy
 
         var delay = exponentialDelay > maxDelay ? maxDelay : exponentialDelay;
 
-        _logger?.LogDebug("计算重连延迟: 尝试次数={Attempt}, 基础延迟={BaseDelay}ms, 指数延迟={ExponentialDelay}ms, 最终延迟={FinalDelay}ms",
-            attemptCount, baseDelay.TotalMilliseconds, exponentialDelay.TotalMilliseconds, delay.TotalMilliseconds);
+        // 添加随机抖动（0~25% 的延迟），避免多个客户端同时重连造成雪崩
+        var jitterMs = JitterRandom.NextDouble() * delay.TotalMilliseconds * 0.25;
+        delay = TimeSpan.FromMilliseconds(delay.TotalMilliseconds + jitterMs);
+
+        _logger?.LogDebug("计算重连延迟: 尝试次数={Attempt}, 基础延迟={BaseDelay}ms, 指数延迟={ExponentialDelay}ms, 抖动={Jitter}ms, 最终延迟={FinalDelay}ms",
+            attemptCount, baseDelay.TotalMilliseconds, exponentialDelay.TotalMilliseconds, jitterMs, delay.TotalMilliseconds);
 
         return delay;
     }
 
     /// <summary>
-    /// 判断是否继续重连：检查次数和时间限制
+    /// 判断是否继续重连：检查次数和时间限制。
+    /// 当 MaxReconnectAttempts = 0 时表示无限重连，仅受 MaxTotalReconnectTime 限制。
     /// </summary>
     /// <param name="attemptCount">当前尝试次数</param>
     /// <param name="totalElapsedTime">已消耗的总时间</param>
     /// <returns>是否应该继续重连</returns>
     public bool ShouldContinueReconnect(int attemptCount, TimeSpan totalElapsedTime)
     {
-        if (attemptCount > _options.MaxReconnectAttempts)
+        // MaxReconnectAttempts = 0 表示无限重连（仅受时间限制）
+        if (_options.MaxReconnectAttempts > 0 && attemptCount > _options.MaxReconnectAttempts)
         {
             _logger?.LogDebug("已达到最大重连次数限制: {AttemptCount}/{MaxAttempts}",
                 attemptCount, _options.MaxReconnectAttempts);

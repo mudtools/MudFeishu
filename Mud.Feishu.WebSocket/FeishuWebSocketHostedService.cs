@@ -62,10 +62,42 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
     {
         _logger.LogInformation("飞书WebSocket后台服务正在启动...");
 
+        // 初始连接重试：首次启动失败时进行有限次重试
+        int initialRetryCount = 0;
+        const int maxInitialRetries = 3;
+        const int initialRetryDelayMs = 5000;
+
+        while (!stoppingToken.IsCancellationRequested && initialRetryCount <= maxInitialRetries)
+        {
+            try
+            {
+                await _webSocketManager.StartAsync(stoppingToken);
+                break; // 启动成功，跳出重试循环
+            }
+            catch (Exception ex) when (!stoppingToken.IsCancellationRequested)
+            {
+                initialRetryCount++;
+                if (initialRetryCount > maxInitialRetries)
+                {
+                    _logger.LogError(ex, "飞书WebSocket服务初始连接失败，已达最大重试次数 ({MaxRetries})，进入健康检查模式", maxInitialRetries);
+                    break;
+                }
+
+                _logger.LogWarning(ex, "飞书WebSocket服务初始连接失败 (第 {Attempt}/{MaxRetries} 次)，{DelayMs}ms 后重试...",
+                    initialRetryCount, maxInitialRetries, initialRetryDelayMs);
+                try
+                {
+                    await Task.Delay(initialRetryDelayMs, stoppingToken);
+                }
+                catch (TaskCanceledException)
+                {
+                    break;
+                }
+            }
+        }
+
         try
         {
-            await _webSocketManager.StartAsync(stoppingToken);
-
             while (!stoppingToken.IsCancellationRequested)
             {
                 try

@@ -19,7 +19,7 @@ public class MessageQueueManager : IDisposable
     private readonly ILogger<MessageQueueManager> _logger;
     private readonly FeishuWebSocketOptions _options;
     private readonly ConcurrentQueue<string> _messageQueue = new();
-    private readonly List<Func<string, Task>> _messageProcessors = new();
+    private readonly ConcurrentBag<Func<string, Task>> _messageProcessors = new();
     private readonly SemaphoreSlim _processingSemaphore;
 
     /// <summary>
@@ -62,7 +62,13 @@ public class MessageQueueManager : IDisposable
     /// <returns>是否成功移除</returns>
     public bool UnregisterProcessor(Func<string, Task> processor)
     {
-        return _messageProcessors.Remove(processor);
+        // ConcurrentBag 不支持单个元素移除，重建集合
+        var remaining = _messageProcessors.Where(p => p != processor).ToList();
+        while (!_messageProcessors.IsEmpty)
+            _messageProcessors.TryTake(out _);
+        foreach (var p in remaining)
+            _messageProcessors.Add(p);
+        return true;
     }
 
     /// <summary>
@@ -196,8 +202,9 @@ public class MessageQueueManager : IDisposable
 
                         try
                         {
+                            // 快照迭代避免并发修改问题
                             var processingTasks = _messageProcessors.Select(processor =>
-                                ProcessMessageSafely(processor, message));
+                                ProcessMessageSafely(processor, message)).ToList();
 
                             await Task.WhenAll(processingTasks);
                             processedMessages++;

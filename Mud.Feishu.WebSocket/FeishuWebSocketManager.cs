@@ -130,11 +130,14 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable
 
             using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSeconds));
             using var combinedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
+            var combinedToken = combinedCts.Token;
 
+            // 获取一次 AccessToken 并复用
+            string appAccessToken;
             try
             {
-                var accessToken = await GetValidAccessTokenAsync(combinedCts.Token);
-                if (string.IsNullOrEmpty(accessToken))
+                appAccessToken = await GetValidAccessTokenAsync(combinedToken);
+                if (string.IsNullOrEmpty(appAccessToken))
                 {
                     _logger.LogError("获取的应用访问令牌为空");
                     throw new InvalidOperationException("无法获取有效的应用访问令牌");
@@ -155,7 +158,7 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable
                 AppSecret = _appContext.Config.AppSecret
             };
 
-            // 使用重试策略获取WebSocket端点
+            // 使用重试策略获取WebSocket端点（使用 combinedToken 传递超时控制）
             var maxRetries = _appContext.Config.RetryCount;
             WsEndpointResult? wsEndpointData = null;
 
@@ -163,7 +166,7 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable
                 _logger,
                 async () =>
                 {
-                    var wsEndpointResult = await _appContext.Authentication.GetWebSocketEndpointAsync(credentials, cancellationToken);
+                    var wsEndpointResult = await _appContext.Authentication.GetWebSocketEndpointAsync(credentials, combinedToken);
                     if (wsEndpointResult?.Data == null)
                     {
                         throw new InvalidOperationException("获取的WebSocket端点信息为空");
@@ -173,16 +176,15 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable
                 maxRetries,
                 _appContext.Config.RetryDelayMs,
                 "获取WebSocket端点",
-                cancellationToken);
+                combinedToken);
 
             if (wsEndpointData == null)
             {
                 throw new InvalidOperationException("无法获取WebSocket端点信息");
             }
 
-            // 建立WebSocket连接并认证
-            var appAccessToken = await GetValidAccessTokenAsync(combinedCts.Token);
-            await _webSocketClient.ConnectAsync(wsEndpointData, appAccessToken, cancellationToken);
+            // 建立WebSocket连接并认证（复用已获取的 AccessToken，不再重复获取）
+            await _webSocketClient.ConnectAsync(wsEndpointData, appAccessToken, combinedToken);
 
             _isRunning = true;
 

@@ -62,7 +62,7 @@ public class MessageSequenceValidatorTests
     [InlineData(12345UL, 12345UL, SequenceValidationResult.Valid, SequenceValidationResult.Duplicate, "重复序号")]
     [InlineData(12345UL, 12344UL, SequenceValidationResult.Valid, SequenceValidationResult.Rollback, "序号回退")]
     [InlineData(12345UL, 12347UL, SequenceValidationResult.Valid, SequenceValidationResult.Valid, "小间隔序号")]
-    [InlineData(12345UL, 12360UL, SequenceValidationResult.Valid, SequenceValidationResult.Valid, "大间隔序号")]
+    [InlineData(12345UL, 12360UL, SequenceValidationResult.Valid, SequenceValidationResult.MessageLoss, "大间隔序号")]
     public void ValidateSequence_ShouldHandleDifferentSequenceScenarios(
         ulong firstSequence,
         ulong secondSequence,

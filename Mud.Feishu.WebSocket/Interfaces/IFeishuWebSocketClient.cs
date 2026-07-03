@@ -15,7 +15,7 @@ namespace Mud.Feishu.WebSocket;
 /// <summary>
 /// 飞书WebSocket客户端接口，提供连接管理、消息处理和事件订阅功能
 /// </summary>
-public interface IFeishuWebSocketClient : IDisposable
+public interface IFeishuWebSocketClient : IAsyncDisposable, IDisposable
 {
     /// <summary>
     /// WebSocket连接状态

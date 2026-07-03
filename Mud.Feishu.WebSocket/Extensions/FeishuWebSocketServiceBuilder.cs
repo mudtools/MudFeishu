@@ -350,5 +350,10 @@ public class FeishuWebSocketServiceBuilder
 
         // 添加后台服务
         _services.AddHostedService<FeishuWebSocketHostedService>();
+
+#if NET8_0_OR_GREATER
+        // 注册健康检查（仅在 .NET 8+ 框架可用）
+        _services.AddSingleton<FeishuWebSocketHealthCheck>();
+#endif
     }
 }

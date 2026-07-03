@@ -66,10 +66,10 @@ public class PingPongMessageHandler : JsonMessageHandler
         if (_options.EnableLogging)
             _logger.LogDebug("收到Ping消息，时间戳: {Timestamp}", pingMessage?.Timestamp);
 
-        // 发送Pong响应
+        // 发送Pong响应（使用毫秒级时间戳以提高精度）
         var pongMessage = new PongMessage
         {
-            Timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+            Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
         };
 
         var pongJson = JsonSerializer.Serialize(pongMessage, JsonOptions.Default);
@@ -85,12 +85,21 @@ public class PingPongMessageHandler : JsonMessageHandler
         if (_options.EnableLogging)
             _logger.LogDebug("收到Pong消息，时间戳: {Timestamp}", pongMessage?.Timestamp);
 
-        // 计算延迟
+        // 计算延迟（使用毫秒级时间戳，避免秒级精度丢失）
         long? latencyMs = null;
         if (pongMessage?.Timestamp > 0)
         {
-            var currentTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-            latencyMs = (currentTime - pongMessage.Timestamp) * 1000;
+            // 兼容秒级和毫秒级时间戳：秒级时间戳通常 < 10^12，毫秒级 > 10^12
+            var currentTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            var pongTimestamp = pongMessage.Timestamp;
+
+            // 如果时间戳看起来是秒级（小于 10^12），转换为毫秒
+            if (pongTimestamp < 1_000_000_000_000L)
+            {
+                pongTimestamp *= 1000;
+            }
+
+            latencyMs = currentTime - pongTimestamp;
         }
 
         if (_options.EnableLogging)

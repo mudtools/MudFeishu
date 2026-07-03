@@ -44,7 +44,7 @@ public interface IFeishuEventValidator
     /// 验证时间戳是否在有效范围内
     /// </summary>
     /// <param name="timestamp">时间戳</param>
-    /// <param name="toleranceSeconds">容错秒数</param>
+    /// <param name="toleranceSeconds">容错秒数，为 null 时从配置读取</param>
     /// <returns>是否有效</returns>
-    bool ValidateTimestamp(long timestamp, int toleranceSeconds = 300);
+    bool ValidateTimestamp(long timestamp, int? toleranceSeconds = null);
 }

@@ -12,15 +12,10 @@ namespace Mud.Feishu.Webhook;
 /// <summary>
 /// 飞书事件解密服务实现
 /// </summary>
-public class FeishuEventDecryptor : IFeishuEventDecryptor
+public class FeishuEventDecryptor(ILogger<FeishuEventDecryptor> logger) : IFeishuEventDecryptor
 {
-    private readonly ILogger<FeishuEventDecryptor> _logger;
+    private readonly ILogger<FeishuEventDecryptor> _logger = logger;
     private const int BlockSize = 16;
-    /// <inheritdoc />
-    public FeishuEventDecryptor(ILogger<FeishuEventDecryptor> logger)
-    {
-        _logger = logger;
-    }
 
     /// <inheritdoc />
     public async Task<EventData?> DecryptAsync(string encryptedData, string encryptKey, CancellationToken cancellationToken = default)

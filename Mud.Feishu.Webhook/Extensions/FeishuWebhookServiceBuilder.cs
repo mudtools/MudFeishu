@@ -5,14 +5,13 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-using Microsoft.Extensions.Options;
 using Mud.Feishu.Abstractions;
 using Mud.Feishu.Abstractions.EventHandlers;
 using Mud.Feishu.Abstractions.Services;
 using Mud.Feishu.Webhook;
 using Mud.Feishu.Webhook.Configuration;
 using Mud.Feishu.Webhook.Services;
-using Mud.Feishu.Webhook.Utilities;
+using Mud.Feishu.Webhook.Utils;
 using Mud.HttpUtils;
 
 namespace Microsoft.Extensions.DependencyInjection;
@@ -480,6 +479,9 @@ public class FeishuWebhookServiceBuilder
             {
                 tokenOptions.Enabled = webhookOptions.Value.EnableBackgroundProcessing;
             });
+
+        // 注册 HttpContext 访问器（用于在 SignatureValidator 中获取客户端 IP）
+        _services.AddHttpContextAccessor();
 
         // 注册多应用注册表（单例，所有应用共享）
         _services.TryAddSingleton<FeishuWebhookHandlerRegistry>();

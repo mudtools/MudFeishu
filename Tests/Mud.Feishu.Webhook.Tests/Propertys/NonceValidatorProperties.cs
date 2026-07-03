@@ -8,6 +8,7 @@
 using FsCheck;
 using FsCheck.Xunit;
 using Mud.Feishu.Abstractions.Services;
+using Mud.Feishu.Webhook.Configuration;
 using Mud.Feishu.Webhook.Services;
 
 namespace Mud.Feishu.Webhook.Tests.Propertys;
@@ -66,7 +67,7 @@ public class NonceValidatorProperties
                     .Setup(x => x.CurrentAppKey)
                     .Returns(() => currentAppKey);
 
-                var validator = new NonceValidator(_loggerMock.Object, deduplicatorMock.Object, appKeyAccessorMock.Object);
+                var validator = new NonceValidator(_loggerMock.Object, deduplicatorMock.Object, appKeyAccessorMock.Object, CreateOptionsMonitorMock());
                 if (!string.IsNullOrEmpty(data.AppKey))
                 {
                     validator.SetCurrentAppKey(data.AppKey);
@@ -121,7 +122,7 @@ public class NonceValidatorProperties
                     .Setup(x => x.CurrentAppKey)
                     .Returns(() => currentAppKey);
 
-                var validator = new NonceValidator(_loggerMock.Object, deduplicatorMock.Object, appKeyAccessorMock.Object);
+                var validator = new NonceValidator(_loggerMock.Object, deduplicatorMock.Object, appKeyAccessorMock.Object, CreateOptionsMonitorMock());
 
                 // Act - 测试第一个应用
                 validator.SetCurrentAppKey(data.AppKey1);
@@ -177,7 +178,7 @@ public class NonceValidatorProperties
                     .Setup(x => x.CurrentAppKey)
                     .Returns(() => currentAppKey);
 
-                var validator = new NonceValidator(loggerMock.Object, deduplicatorMock.Object, appKeyAccessorMock.Object);
+                var validator = new NonceValidator(loggerMock.Object, deduplicatorMock.Object, appKeyAccessorMock.Object, CreateOptionsMonitorMock());
 
                 if (!string.IsNullOrEmpty(data.AppKey))
                 {
@@ -234,7 +235,7 @@ public class NonceValidatorProperties
                     .Setup(x => x.CurrentAppKey)
                     .Returns(() => currentAppKey);
 
-                var validator = new NonceValidator(loggerMock.Object, deduplicatorMock.Object, appKeyAccessorMock.Object);
+                var validator = new NonceValidator(loggerMock.Object, deduplicatorMock.Object, appKeyAccessorMock.Object, CreateOptionsMonitorMock());
 
                 if (!string.IsNullOrEmpty(data.AppKey))
                 {
@@ -280,6 +281,19 @@ public class NonceValidatorProperties
                     return allowedEmptyNonce;
                 }
             });
+    }
+
+    /// <summary>
+    /// 创建默认的 OptionsMonitor Mock（Reject 模式）
+    /// </summary>
+    private static IOptionsMonitor<FeishuWebhookOptions> CreateOptionsMonitorMock()
+    {
+        var mock = new Mock<IOptionsMonitor<FeishuWebhookOptions>>();
+        mock.Setup(x => x.CurrentValue).Returns(new FeishuWebhookOptions
+        {
+            NonceValidationFailureMode = NonceFailureMode.Reject
+        });
+        return mock.Object;
     }
 
     /// <summary>

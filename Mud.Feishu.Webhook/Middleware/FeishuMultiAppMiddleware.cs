@@ -7,6 +7,7 @@
 
 using Mud.Feishu.Abstractions;
 using Mud.Feishu.Webhook.Configuration;
+using Mud.Feishu.Webhook.Exceptions;
 using Mud.Feishu.Webhook.Models;
 using Mud.Feishu.Webhook.Serialization;
 using Mud.Feishu.Webhook.Utils;
@@ -187,7 +188,7 @@ public class FeishuMultiAppMiddleware
             var contentType = context.Request.ContentType;
             if (string.IsNullOrEmpty(contentType) || !contentType.ToLowerInvariant().Contains("application/json"))
             {
-                await WriteErrorResponse(context, 400, "Unsupported Media Type", requestId);
+                await WriteErrorResponse(context, 415, "Unsupported Media Type", requestId);
                 return;
             }
 
@@ -208,6 +209,12 @@ public class FeishuMultiAppMiddleware
                 requestBody,
                 requestId,
                 appKey ?? string.Empty);
+        }
+        catch (FeishuWebhookValidationException ex)
+        {
+            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            _logger.LogWarning("请求体验证失败: {Message}, AppKey: {AppKey}", ex.Message, appKey ?? "unknown");
+            await WriteErrorResponse(context, 413, "Request Entity Too Large", requestId);
         }
         catch (Exception ex)
         {
@@ -274,7 +281,7 @@ public class FeishuMultiAppMiddleware
             if (appConfig == null)
             {
                 _logger.LogError("未找到应用配置, AppKey: {AppKey}", appKey);
-                await WriteErrorResponse(context, 500, "Internal Server Error: App configuration not found", requestId);
+                await WriteErrorResponse(context, 500, "Internal Server Error", requestId);
                 return;
             }
 
@@ -286,7 +293,7 @@ public class FeishuMultiAppMiddleware
                     eventRequest.Nonce,
                     eventRequest.Signature?.Length > 8 ? eventRequest.Signature.Substring(0, 8) + "..." : eventRequest.Signature ?? "(null)",
                     appKey);
-                await WriteErrorResponse(context, 403, "Forbidden: Signature validation failed", requestId);
+                await WriteErrorResponse(context, 403, "Forbidden", requestId);
                 return;
             }
 
@@ -328,7 +335,7 @@ public class FeishuMultiAppMiddleware
             if (!result.Success)
             {
                 _logger.LogError("事件处理失败: {Reason}", result.ErrorReason ?? "未知错误");
-                await WriteErrorResponse(context, 500, "Internal Server Error: " + (result.ErrorReason ?? "Unknown error"), requestId);
+                await WriteErrorResponse(context, 500, "Internal Server Error", requestId);
                 return;
             }
 
@@ -461,13 +468,43 @@ public class FeishuMultiAppMiddleware
     }
 
     /// <summary>
-    /// 读取请求体
+    /// 读取请求体（带大小限制检查）
     /// </summary>
     private async Task<string> ReadRequestBodyAsync(HttpRequest request)
     {
+        var maxSize = Options.MaxRequestBodySize;
+
+        // 检查 Content-Length 头（快速拒绝）
+        if (request.ContentLength.HasValue && request.ContentLength.Value > maxSize)
+        {
+            throw new FeishuWebhookValidationException(
+                $"请求体大小 {request.ContentLength.Value} 超过限制 {maxSize} 字节");
+        }
+
         request.EnableBuffering();
         request.Body.Position = 0;
-        return await new StreamReader(request.Body).ReadToEndAsync();
+
+        // 逐块读取，防止无 Content-Length 的攻击
+        var sb = new StringBuilder();
+        var buffer = new char[4096];
+        long totalRead = 0;
+
+        using var reader = new StreamReader(
+            request.Body, Encoding.UTF8, true, bufferSize: 1024, leaveOpen: true);
+
+        int read;
+        while ((read = await reader.ReadAsync(buffer, 0, buffer.Length)) > 0)
+        {
+            totalRead += read;
+            if (totalRead > maxSize)
+            {
+                throw new FeishuWebhookValidationException(
+                    $"请求体大小超过限制 {maxSize} 字节");
+            }
+            sb.Append(buffer, 0, read);
+        }
+
+        return sb.ToString();
     }
 
     /// <summary>

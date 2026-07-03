@@ -5,7 +5,6 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-using Mud.Feishu.Webhook.Configuration;
 using Mud.Feishu.Webhook.Models;
 
 namespace Mud.Feishu.Webhook.Services;
@@ -14,32 +13,25 @@ namespace Mud.Feishu.Webhook.Services;
 /// 飞书事件订阅验证器实现
 /// 负责验证飞书事件订阅请求的有效性
 /// </summary>
-public class SubscriptionValidator : ISubscriptionValidator
+/// <remarks>
+/// 初始化订阅验证器
+/// </remarks>
+/// <param name="logger">日志记录器</param>
+/// <param name="encryptKeyProvider">加密密钥提供程序</param>
+/// <param name="appKeyAccessor">应用键上下文访问器</param>
+public class SubscriptionValidator(
+    ILogger<SubscriptionValidator> logger,
+    IEncryptKeyProvider encryptKeyProvider,
+    IWebhookAppKeyAccessor appKeyAccessor) : ISubscriptionValidator
 {
-    private readonly ILogger<SubscriptionValidator> _logger;
-    private readonly IEncryptKeyProvider _encryptKeyProvider;
-    private readonly IWebhookAppKeyAccessor _appKeyAccessor;
+    private readonly ILogger<SubscriptionValidator> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    private readonly IEncryptKeyProvider _encryptKeyProvider = encryptKeyProvider ?? throw new ArgumentNullException(nameof(encryptKeyProvider));
+    private readonly IWebhookAppKeyAccessor _appKeyAccessor = appKeyAccessor ?? throw new ArgumentNullException(nameof(appKeyAccessor));
 
     /// <summary>
     /// 获取当前应用键（优先从 IWebhookAppKeyAccessor 获取）
     /// </summary>
     private string? CurrentAppKey => _appKeyAccessor.CurrentAppKey;
-
-    /// <summary>
-    /// 初始化订阅验证器
-    /// </summary>
-    /// <param name="logger">日志记录器</param>
-    /// <param name="encryptKeyProvider">加密密钥提供程序</param>
-    /// <param name="appKeyAccessor">应用键上下文访问器</param>
-    public SubscriptionValidator(
-        ILogger<SubscriptionValidator> logger,
-        IEncryptKeyProvider encryptKeyProvider,
-        IWebhookAppKeyAccessor appKeyAccessor)
-    {
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _encryptKeyProvider = encryptKeyProvider ?? throw new ArgumentNullException(nameof(encryptKeyProvider));
-        _appKeyAccessor = appKeyAccessor ?? throw new ArgumentNullException(nameof(appKeyAccessor));
-    }
 
     /// <inheritdoc />
     public async Task<bool> ValidateSubscriptionRequestAsync(EventVerificationRequest request, string expectedToken, CancellationToken cancellationToken = default)

@@ -7,7 +7,7 @@
 
 using Mud.Feishu.Webhook.Configuration;
 using Mud.Feishu.Webhook.Models;
-using Mud.Feishu.Webhook.Utilities;
+using Mud.Feishu.Webhook.Utils;
 
 namespace Mud.Feishu.Webhook.Services;
 
@@ -95,8 +95,8 @@ public class CompositeFeishuEventValidator : IFeishuEventValidator
 
         try
         {
-            // 1. 首先验证时间戳
-            if (!_timestampValidator.ValidateTimestamp(timestamp, Options.TimestampToleranceSeconds))
+            // 1. 首先验证时间戳（传 null 让验证器从配置读取应用级或全局级容差）
+            if (!_timestampValidator.ValidateTimestamp(timestamp, null))
             {
                 _logger.LogWarning("时间戳验证失败");
                 return false;
@@ -128,9 +128,9 @@ public class CompositeFeishuEventValidator : IFeishuEventValidator
     }
 
     /// <inheritdoc />
-    public bool ValidateTimestamp(long timestamp, int toleranceSeconds = 300)
+    public bool ValidateTimestamp(long timestamp, int? toleranceSeconds = null)
     {
-        _logger.LogDebug("验证时间戳 - Timestamp: {Timestamp}, Tolerance: {Tolerance}秒", timestamp, toleranceSeconds);
+        _logger.LogDebug("验证时间戳 - Timestamp: {Timestamp}, Tolerance: {Tolerance}秒", timestamp, toleranceSeconds?.ToString() ?? "(从配置读取)");
         return _timestampValidator.ValidateTimestamp(timestamp, toleranceSeconds);
     }
 }

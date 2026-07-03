@@ -6,7 +6,7 @@
 // -----------------------------------------------------------------------
 
 using Mud.Feishu.Webhook.Configuration;
-using Mud.Feishu.Webhook.Utilities;
+using Mud.Feishu.Webhook.Utils;
 
 namespace Mud.Feishu.Webhook.Services;
 
@@ -14,39 +14,31 @@ namespace Mud.Feishu.Webhook.Services;
 /// 飞书事件时间戳验证器实现
 /// 支持秒级和毫秒级时间戳的自动识别和验证
 /// </summary>
-public class TimestampValidator : ITimestampValidator
+/// <remarks>
+/// 初始化时间戳验证器
+/// </remarks>
+/// <param name="logger">日志记录器</param>
+/// <param name="optionsMonitor">配置监视器</param>
+/// <param name="appKeyAccessor">应用键上下文访问器</param>
+/// <param name="environmentService">环境服务</param>
+public class TimestampValidator(
+    ILogger<TimestampValidator> logger,
+    IOptionsMonitor<FeishuWebhookOptions> optionsMonitor,
+    IWebhookAppKeyAccessor appKeyAccessor,
+    IEnvironmentService? environmentService = null) : ITimestampValidator
 {
-    private readonly ILogger<TimestampValidator> _logger;
-    private readonly IOptionsMonitor<FeishuWebhookOptions> _optionsMonitor;
-    private readonly IEnvironmentService _environmentService;
-    private readonly IWebhookAppKeyAccessor _appKeyAccessor;
+    private readonly ILogger<TimestampValidator> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    private readonly IOptionsMonitor<FeishuWebhookOptions> _optionsMonitor = optionsMonitor ?? throw new ArgumentNullException(nameof(optionsMonitor));
+    private readonly IEnvironmentService _environmentService = environmentService ?? new EnvironmentService();
+    private readonly IWebhookAppKeyAccessor _appKeyAccessor = appKeyAccessor ?? throw new ArgumentNullException(nameof(appKeyAccessor));
 
     /// <summary>
     /// 获取当前应用键（优先从 IWebhookAppKeyAccessor 获取）
     /// </summary>
     private string? CurrentAppKey => _appKeyAccessor.CurrentAppKey;
 
-    /// <summary>
-    /// 初始化时间戳验证器
-    /// </summary>
-    /// <param name="logger">日志记录器</param>
-    /// <param name="optionsMonitor">配置监视器</param>
-    /// <param name="appKeyAccessor">应用键上下文访问器</param>
-    /// <param name="environmentService">环境服务</param>
-    public TimestampValidator(
-        ILogger<TimestampValidator> logger,
-        IOptionsMonitor<FeishuWebhookOptions> optionsMonitor,
-        IWebhookAppKeyAccessor appKeyAccessor,
-        IEnvironmentService? environmentService = null)
-    {
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _optionsMonitor = optionsMonitor ?? throw new ArgumentNullException(nameof(optionsMonitor));
-        _appKeyAccessor = appKeyAccessor ?? throw new ArgumentNullException(nameof(appKeyAccessor));
-        _environmentService = environmentService ?? new EnvironmentService();
-    }
-
     /// <inheritdoc />
-    public bool ValidateTimestamp(long timestamp, int toleranceSeconds = 300)
+    public bool ValidateTimestamp(long timestamp, int? toleranceSeconds = null)
     {
         try
         {
@@ -69,10 +61,16 @@ public class TimestampValidator : ITimestampValidator
                 return true;
             }
 
-            // 获取配置的容错时间，优先使用传入的参数，然后是配置值
-            var effectiveToleranceSeconds = toleranceSeconds;
-            if (toleranceSeconds == 300) // 使用默认值时，尝试从配置读取
+            // 解析容错时间：优先使用显式传入的参数，为 null 时从配置读取
+            int effectiveToleranceSeconds;
+            if (toleranceSeconds.HasValue)
             {
+                // 显式传入了容错值，直接使用
+                effectiveToleranceSeconds = toleranceSeconds.Value;
+            }
+            else
+            {
+                // 未传入容错值，从配置中读取
                 var options = _optionsMonitor.CurrentValue;
 
                 // 多应用场景：尝试从应用特定配置获取
@@ -87,6 +85,11 @@ public class TimestampValidator : ITimestampValidator
                             : options.TimestampToleranceSeconds;
                         _logger.LogDebug("使用应用 {AppKey} 的时间戳容错配置: {ToleranceSeconds}秒",
                             CurrentAppKey, effectiveToleranceSeconds);
+                    }
+                    else
+                    {
+                        effectiveToleranceSeconds = options.TimestampToleranceSeconds;
+                        _logger.LogDebug("应用配置不存在，使用全局时间戳容错配置: {ToleranceSeconds}秒", effectiveToleranceSeconds);
                     }
                 }
                 else

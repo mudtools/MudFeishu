@@ -6,8 +6,10 @@
 // -----------------------------------------------------------------------
 
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Moq;
 using Mud.Feishu.Abstractions.Services;
+using Mud.Feishu.Webhook.Configuration;
 using Mud.Feishu.Webhook.Services;
 using Xunit;
 
@@ -23,6 +25,7 @@ public class NonceValidatorTests
     private readonly Mock<ILogger<NonceValidator>> _loggerMock;
     private readonly Mock<IFeishuNonceDistributedDeduplicator> _deduplicatorMock;
     private readonly Mock<IWebhookAppKeyAccessor> _appKeyAccessorMock;
+    private readonly Mock<IOptionsMonitor<FeishuWebhookOptions>> _optionsMonitorMock;
     private readonly NonceValidator _validator;
 
     public NonceValidatorTests()
@@ -30,6 +33,13 @@ public class NonceValidatorTests
         _loggerMock = new Mock<ILogger<NonceValidator>>();
         _deduplicatorMock = new Mock<IFeishuNonceDistributedDeduplicator>();
         _appKeyAccessorMock = new Mock<IWebhookAppKeyAccessor>();
+        _optionsMonitorMock = new Mock<IOptionsMonitor<FeishuWebhookOptions>>();
+
+        // 设置默认配置（Reject 模式）
+        _optionsMonitorMock.Setup(x => x.CurrentValue).Returns(new FeishuWebhookOptions
+        {
+            NonceValidationFailureMode = NonceFailureMode.Reject
+        });
 
         // 设置 _appKeyAccessorMock 使 SetAppKey 方法能够更新 CurrentAppKey 属性
         string? currentAppKey = null;
@@ -40,7 +50,7 @@ public class NonceValidatorTests
             .Setup(x => x.CurrentAppKey)
             .Returns(() => currentAppKey);
 
-        _validator = new NonceValidator(_loggerMock.Object, _deduplicatorMock.Object, _appKeyAccessorMock.Object);
+        _validator = new NonceValidator(_loggerMock.Object, _deduplicatorMock.Object, _appKeyAccessorMock.Object, _optionsMonitorMock.Object);
     }
 
     #region 构造函数和基本功能测试
@@ -50,7 +60,7 @@ public class NonceValidatorTests
     {
         // Arrange & Act & Assert
         Assert.Throws<ArgumentNullException>(() =>
-            new NonceValidator(null!, _deduplicatorMock.Object, _appKeyAccessorMock.Object));
+            new NonceValidator(null!, _deduplicatorMock.Object, _appKeyAccessorMock.Object, _optionsMonitorMock.Object));
     }
 
     [Fact]
@@ -58,7 +68,7 @@ public class NonceValidatorTests
     {
         // Arrange & Act & Assert
         Assert.Throws<ArgumentNullException>(() =>
-            new NonceValidator(_loggerMock.Object, null!, _appKeyAccessorMock.Object));
+            new NonceValidator(_loggerMock.Object, null!, _appKeyAccessorMock.Object, _optionsMonitorMock.Object));
     }
 
     [Fact]
@@ -66,7 +76,15 @@ public class NonceValidatorTests
     {
         // Arrange & Act & Assert
         Assert.Throws<ArgumentNullException>(() =>
-            new NonceValidator(_loggerMock.Object, _deduplicatorMock.Object, null!));
+            new NonceValidator(_loggerMock.Object, _deduplicatorMock.Object, null!, _optionsMonitorMock.Object));
+    }
+
+    [Fact]
+    public void Constructor_WithNullOptionsMonitor_ShouldThrowArgumentNullException()
+    {
+        // Arrange & Act & Assert
+        Assert.Throws<ArgumentNullException>(() =>
+            new NonceValidator(_loggerMock.Object, _deduplicatorMock.Object, _appKeyAccessorMock.Object, null!));
     }
 
     [Fact]
@@ -136,9 +154,13 @@ public class NonceValidatorTests
     }
 
     [Fact]
-    public async Task TryMarkNonceAsUsedAsync_WithException_ShouldReturnTrueAndLogError()
+    public async Task TryMarkNonceAsUsedAsync_WithExceptionInRejectMode_ShouldReturnTrueAndLogError()
     {
         // Arrange
+        _optionsMonitorMock.Setup(x => x.CurrentValue).Returns(new FeishuWebhookOptions
+        {
+            NonceValidationFailureMode = NonceFailureMode.Reject
+        });
         var nonce = "error-nonce-789";
         var exception = new InvalidOperationException("Test exception");
         _deduplicatorMock
@@ -149,7 +171,31 @@ public class NonceValidatorTests
         var result = await _validator.TryMarkNonceAsUsedAsync(nonce);
 
         // Assert
-        Assert.True(result); // 异常情况下返回true（安全起见，认为已被使用）
+        Assert.True(result); // Reject 模式下，异常时返回 true（认为已使用，拒绝请求）
+
+        // 验证错误日志被记录
+        VerifyLogCalled(LogLevel.Error, "检查 Nonce 使用状态时发生错误");
+    }
+
+    [Fact]
+    public async Task TryMarkNonceAsUsedAsync_WithExceptionInAllowMode_ShouldReturnFalseAndLogError()
+    {
+        // Arrange
+        _optionsMonitorMock.Setup(x => x.CurrentValue).Returns(new FeishuWebhookOptions
+        {
+            NonceValidationFailureMode = NonceFailureMode.Allow
+        });
+        var nonce = "error-nonce-allow";
+        var exception = new InvalidOperationException("Test exception");
+        _deduplicatorMock
+            .Setup(x => x.TryMarkAsUsedAsync(nonce, null, It.IsAny<TimeSpan?>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(exception);
+
+        // Act
+        var result = await _validator.TryMarkNonceAsUsedAsync(nonce);
+
+        // Assert
+        Assert.False(result); // Allow 模式下，异常时返回 false（认为未使用，允许请求）
 
         // 验证错误日志被记录
         VerifyLogCalled(LogLevel.Error, "检查 Nonce 使用状态时发生错误");

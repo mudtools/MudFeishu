@@ -5,7 +5,6 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-using Microsoft.Extensions.Hosting;
 using Mud.Feishu.Webhook.Configuration;
 
 namespace Mud.Feishu.Webhook;
@@ -112,14 +111,14 @@ public class FeishuWebhookConcurrencyService : IAsyncDisposable, IHostedService
 
             if (_semaphoreUpgraded)
             {
-                // 已经升级过，清理旧信号量
+                // 已经升级过，原子替换并延迟释放旧信号量
                 var oldSemaphore = Interlocked.Exchange(ref _semaphore,
                     new SemaphoreSlim(actualMaxConcurrent, actualMaxConcurrent));
 
                 _logger.LogInformation("信号量已重新创建，新的最大并发数: {NewMax} (实际: {ActualMaxConcurrent})", newMaxConcurrent, actualMaxConcurrent);
 
                 // 延迟释放旧信号量，等待可能正在使用的请求完成
-                await Task.Run(async () =>
+                _ = Task.Run(async () =>
                    {
                        await Task.Delay(60000); // 等待 60 秒
                        oldSemaphore.Dispose();
@@ -127,10 +126,18 @@ public class FeishuWebhookConcurrencyService : IAsyncDisposable, IHostedService
             }
             else
             {
-                // 首次升级，替换但不立即释放旧信号量（保持向后兼容）
-                _semaphore = new SemaphoreSlim(actualMaxConcurrent, actualMaxConcurrent);
+                // 首次升级，原子替换并延迟释放旧信号量（修复信号量泄漏）
+                var oldSemaphore = Interlocked.Exchange(ref _semaphore,
+                    new SemaphoreSlim(actualMaxConcurrent, actualMaxConcurrent));
                 _semaphoreUpgraded = true;
                 _logger.LogInformation("信号量首次创建，最大并发数: {NewMax} (实际: {ActualMaxConcurrent})", newMaxConcurrent, actualMaxConcurrent);
+
+                // 延迟释放旧信号量，等待可能正在使用的请求完成
+                _ = Task.Run(async () =>
+                {
+                    await Task.Delay(60000); // 等待 60 秒
+                    oldSemaphore.Dispose();
+                });
             }
         }
         finally

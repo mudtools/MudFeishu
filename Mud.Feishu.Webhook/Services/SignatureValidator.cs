@@ -6,7 +6,7 @@
 // -----------------------------------------------------------------------
 
 using Mud.Feishu.Webhook.Configuration;
-using Mud.Feishu.Webhook.Utilities;
+using Mud.Feishu.Webhook.Utils;
 
 namespace Mud.Feishu.Webhook.Services;
 
@@ -49,13 +49,29 @@ namespace Mud.Feishu.Webhook.Services;
 /// <item><description>使用固定时间比较防止计时攻击</description></item>
 /// </list>
 /// </remarks>
-public class SignatureValidator : ISignatureValidator
+/// <remarks>
+/// 初始化签名验证器
+/// </remarks>
+/// <param name="logger">日志记录器</param>
+/// <param name="options">Webhook 配置选项</param>
+/// <param name="appKeyAccessor">应用键上下文访问器</param>
+/// <param name="securityAuditService">安全审计服务</param>
+/// <param name="environmentService">环境服务</param>
+/// <param name="httpContextAccessor">HTTP 上下文访问器（可选，用于获取客户端 IP）</param>
+public class SignatureValidator(
+    ILogger<SignatureValidator> logger,
+    IOptionsMonitor<FeishuWebhookOptions> options,
+    IWebhookAppKeyAccessor appKeyAccessor,
+    ISecurityAuditService? securityAuditService = null,
+    IEnvironmentService? environmentService = null,
+    IHttpContextAccessor? httpContextAccessor = null) : ISignatureValidator
 {
-    private readonly ILogger<SignatureValidator> _logger;
-    private readonly IOptionsMonitor<FeishuWebhookOptions> _options;
-    private readonly ISecurityAuditService? _securityAuditService;
-    private readonly IEnvironmentService _environmentService;
-    private readonly IWebhookAppKeyAccessor _appKeyAccessor;
+    private readonly ILogger<SignatureValidator> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    private readonly IOptionsMonitor<FeishuWebhookOptions> _options = options ?? throw new ArgumentNullException(nameof(options));
+    private readonly ISecurityAuditService? _securityAuditService = securityAuditService;
+    private readonly IEnvironmentService _environmentService = environmentService ?? new EnvironmentService();
+    private readonly IWebhookAppKeyAccessor _appKeyAccessor = appKeyAccessor ?? throw new ArgumentNullException(nameof(appKeyAccessor));
+    private readonly IHttpContextAccessor? _httpContextAccessor = httpContextAccessor;
 
     /// <summary>
     /// 获取当前应用键（优先从 IWebhookAppKeyAccessor 获取）
@@ -63,26 +79,9 @@ public class SignatureValidator : ISignatureValidator
     private string? CurrentAppKey => _appKeyAccessor.CurrentAppKey;
 
     /// <summary>
-    /// 初始化签名验证器
+    /// 获取当前客户端 IP（从 HttpContext 中提取）
     /// </summary>
-    /// <param name="logger">日志记录器</param>
-    /// <param name="options">Webhook 配置选项</param>
-    /// <param name="appKeyAccessor">应用键上下文访问器</param>
-    /// <param name="securityAuditService">安全审计服务</param>
-    /// <param name="environmentService">环境服务</param>
-    public SignatureValidator(
-        ILogger<SignatureValidator> logger,
-        IOptionsMonitor<FeishuWebhookOptions> options,
-        IWebhookAppKeyAccessor appKeyAccessor,
-        ISecurityAuditService? securityAuditService = null,
-        IEnvironmentService? environmentService = null)
-    {
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _options = options ?? throw new ArgumentNullException(nameof(options));
-        _appKeyAccessor = appKeyAccessor ?? throw new ArgumentNullException(nameof(appKeyAccessor));
-        _securityAuditService = securityAuditService;
-        _environmentService = environmentService ?? new EnvironmentService();
-    }
+    private string CurrentClientIp => _httpContextAccessor?.HttpContext?.Connection?.RemoteIpAddress?.ToString() ?? "unknown";
 
     /// <summary>
     /// 记录安全审计失败日志
@@ -91,7 +90,7 @@ public class SignatureValidator : ISignatureValidator
     {
         _ = _securityAuditService?.LogSecurityFailureAsync(
             SecurityEventType.SignatureValidation,
-            "unknown",
+            CurrentClientIp,
             "SignatureValidator",
             message,
             "",
@@ -105,7 +104,7 @@ public class SignatureValidator : ISignatureValidator
     {
         _ = _securityAuditService?.LogSecuritySuccessAsync(
             SecurityEventType.SignatureValidation,
-            "unknown",
+            CurrentClientIp,
             "SignatureValidator",
             message,
             "",
@@ -272,7 +271,7 @@ public class SignatureValidator : ISignatureValidator
     }
 
     /// <inheritdoc />
-    public Task<bool> ValidateBodySignatureAsync(long timestamp, string nonce, string encryptData, string encryptKey)
+    public Task<bool> ValidateBodySignatureAsync(long timestamp, string nonce, string encryptData, string encryptKey, string? expectedSignature = null)
     {
         var options = _options.CurrentValue;
         var enableBodyValidation = options.EnableBodySignatureValidation;
@@ -295,6 +294,14 @@ public class SignatureValidator : ISignatureValidator
 
         try
         {
+            // 当未提供期望签名时，无法进行比较，记录警告并跳过
+            if (string.IsNullOrEmpty(expectedSignature))
+            {
+                _logger.LogWarning("请求体签名验证已启用，但未提供期望签名值，跳过签名比较（警告：此请求未经过完整验证）, AppKey: {AppKey}",
+                    CurrentAppKey ?? "null");
+                return Task.FromResult(true);
+            }
+
             var signString = $"{timestamp}\n{nonce}\n{encryptData}";
             using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(encryptKey));
             var hashBytes = hmac.ComputeHash(Encoding.UTF8.GetBytes(signString));
@@ -303,6 +310,22 @@ public class SignatureValidator : ISignatureValidator
             _logger.LogDebug("请求体签名计算 - Timestamp: {Timestamp}, Nonce: {Nonce}, EncryptKey长度: {KeyLength}, EncryptData长度: {DataLength}",
                 timestamp, nonce, encryptKey.Length, encryptData.Length);
 
+            // 使用固定时间比较防止计时攻击
+            var isValid = FixedTimeEquals(
+                Encoding.UTF8.GetBytes(computedSignature),
+                Encoding.UTF8.GetBytes(expectedSignature!));
+
+            if (!isValid)
+            {
+                var computedPrefix = computedSignature.Length > 8 ? computedSignature.Substring(0, 8) : computedSignature;
+                var expectedPrefix = expectedSignature!.Length > 8 ? expectedSignature.Substring(0, 8) : expectedSignature;
+                _logger.LogWarning("请求体签名验证失败: 计算 {ComputedPrefix}..., 期望 {ExpectedPrefix}..., AppKey: {AppKey}",
+                    computedPrefix + "...", expectedPrefix + "...", CurrentAppKey ?? "null");
+                LogSecurityFailure($"请求体签名验证失败: 计算 {computedPrefix}..., 期望 {expectedPrefix}...");
+                return Task.FromResult(false);
+            }
+
+            _logger.LogDebug("请求体签名验证成功, AppKey: {AppKey}", CurrentAppKey ?? "null");
             LogSecuritySuccess($"请求体签名验证通过（HMAC-SHA256）, AppKey: {CurrentAppKey ?? "null"}");
             return Task.FromResult(true);
         }

@@ -97,6 +97,17 @@ public class FeishuWebhookOptions
     public int TimestampToleranceSeconds { get; set; } = 30;
 
     /// <summary>
+    /// Nonce 验证异常时的降级策略
+    /// 当 Nonce 去重服务（如 Redis）不可用时，决定如何处理请求
+    /// </summary>
+    /// <remarks>
+    /// - <see cref="NonceFailureMode.Reject"/>（默认）：拒绝请求（安全优先，但可能影响可用性）
+    /// - <see cref="NonceFailureMode.Allow"/>：允许请求通过（可用性优先，但存在重放攻击风险）
+    /// 生产环境建议保持 Reject 模式；仅在去重服务短暂不可用且明确了解风险时切换为 Allow
+    /// </remarks>
+    public NonceFailureMode NonceValidationFailureMode { get; set; } = NonceFailureMode.Reject;
+
+    /// <summary>
     /// 请求频率限制配置
     /// </summary>
     public RateLimitOptions RateLimit { get; set; } = new();

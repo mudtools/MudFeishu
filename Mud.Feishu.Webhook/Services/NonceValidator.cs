@@ -6,6 +6,7 @@
 // -----------------------------------------------------------------------
 
 using Mud.Feishu.Abstractions.Services;
+using Mud.Feishu.Webhook.Configuration;
 
 namespace Mud.Feishu.Webhook.Services;
 
@@ -13,11 +14,23 @@ namespace Mud.Feishu.Webhook.Services;
 /// 飞书事件 Nonce 验证器实现
 /// 负责防重放攻击的 Nonce 去重验证，支持多应用场景下的隔离
 /// </summary>
-public class NonceValidator : INonceValidator
+/// <remarks>
+/// 初始化 Nonce 验证器
+/// </remarks>
+/// <param name="logger">日志记录器</param>
+/// <param name="nonceDeduplicator">Nonce 去重器服务</param>
+/// <param name="appKeyAccessor">应用键上下文访问器</param>
+/// <param name="optionsMonitor">Webhook 配置选项监控器</param>
+public class NonceValidator(
+    ILogger<NonceValidator> logger,
+    IFeishuNonceDistributedDeduplicator nonceDeduplicator,
+    IWebhookAppKeyAccessor appKeyAccessor,
+    IOptionsMonitor<FeishuWebhookOptions> optionsMonitor) : INonceValidator
 {
-    private readonly ILogger<NonceValidator> _logger;
-    private readonly IFeishuNonceDistributedDeduplicator _nonceDeduplicator;
-    private readonly IWebhookAppKeyAccessor _appKeyAccessor;
+    private readonly ILogger<NonceValidator> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    private readonly IFeishuNonceDistributedDeduplicator _nonceDeduplicator = nonceDeduplicator ?? throw new ArgumentNullException(nameof(nonceDeduplicator));
+    private readonly IWebhookAppKeyAccessor _appKeyAccessor = appKeyAccessor ?? throw new ArgumentNullException(nameof(appKeyAccessor));
+    private readonly IOptionsMonitor<FeishuWebhookOptions> _optionsMonitor = optionsMonitor ?? throw new ArgumentNullException(nameof(optionsMonitor));
 
     /// <summary>
     /// 获取当前应用键（优先从 IWebhookAppKeyAccessor 获取）
@@ -25,20 +38,9 @@ public class NonceValidator : INonceValidator
     private string? CurrentAppKey => _appKeyAccessor.CurrentAppKey;
 
     /// <summary>
-    /// 初始化 Nonce 验证器
+    /// 获取当前 Nonce 验证降级策略
     /// </summary>
-    /// <param name="logger">日志记录器</param>
-    /// <param name="nonceDeduplicator">Nonce 去重器服务</param>
-    /// <param name="appKeyAccessor">应用键上下文访问器</param>
-    public NonceValidator(
-        ILogger<NonceValidator> logger,
-        IFeishuNonceDistributedDeduplicator nonceDeduplicator,
-        IWebhookAppKeyAccessor appKeyAccessor)
-    {
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _nonceDeduplicator = nonceDeduplicator ?? throw new ArgumentNullException(nameof(nonceDeduplicator));
-        _appKeyAccessor = appKeyAccessor ?? throw new ArgumentNullException(nameof(appKeyAccessor));
-    }
+    private NonceFailureMode FailureMode => _optionsMonitor.CurrentValue.NonceValidationFailureMode;
 
     /// <inheritdoc />
     public async Task<bool> TryMarkNonceAsUsedAsync(string nonce)
@@ -62,9 +64,13 @@ public class NonceValidator : INonceValidator
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "检查 Nonce 使用状态时发生错误, Nonce: {Nonce}, AppKey: {AppKey}", nonce, CurrentAppKey ?? "null");
-            // 异常情况下，为了安全起见，认为 Nonce 已被使用
-            return true;
+            _logger.LogError(ex, "检查 Nonce 使用状态时发生错误, Nonce: {Nonce}, AppKey: {AppKey}, 降级策略: {FailureMode}",
+                nonce, CurrentAppKey ?? "null", FailureMode);
+
+            // 根据配置的降级策略决定异常时的行为
+            // - Reject: 认为已使用（返回 true = 拒绝请求，安全优先）
+            // - Allow: 认为未使用（返回 false = 允许请求，可用性优先）
+            return FailureMode != NonceFailureMode.Allow;
         }
     }
 

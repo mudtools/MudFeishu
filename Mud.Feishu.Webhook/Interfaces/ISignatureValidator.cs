@@ -41,10 +41,12 @@ public interface ISignatureValidator
     /// <param name="nonce">随机数</param>
     /// <param name="encryptData">加密的请求数据</param>
     /// <param name="encryptKey">加密密钥</param>
+    /// <param name="expectedSignature">期望的签名值（可选，当为 null 时跳过比较）</param>
     /// <returns>如果签名验证通过或配置禁用验证时返回 true，否则返回 false</returns>
     /// <remarks>
     /// 签名计算方式：HMAC-SHA256(encryptKey, timestamp + "\n" + nonce + "\n" + encryptData)
     /// 当 EnableBodySignatureValidation 为 false 时跳过验证并返回 true
+    /// 当 expectedSignature 为 null 或空时，记录警告并返回 true（兼容旧版本）
     /// </remarks>
-    Task<bool> ValidateBodySignatureAsync(long timestamp, string nonce, string encryptData, string encryptKey);
+    Task<bool> ValidateBodySignatureAsync(long timestamp, string nonce, string encryptData, string encryptKey, string? expectedSignature = null);
 }

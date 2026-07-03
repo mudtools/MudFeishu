@@ -7,7 +7,7 @@
 
 using Mud.Feishu.Webhook.Services;
 using Mud.Feishu.Webhook.Configuration;
-using Mud.Feishu.Webhook.Utilities;
+using Mud.Feishu.Webhook.Utils;
 
 namespace Mud.Feishu.Webhook.Tests.Validators;
 

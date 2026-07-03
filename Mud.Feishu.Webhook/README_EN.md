@@ -108,6 +108,7 @@ app.Run();
     "EnforceHeaderSignatureValidation": true,
     "EnableBodySignatureValidation": true,
     "TimestampToleranceSeconds": 30,
+    "NonceValidationFailureMode": "Reject",
     "EnableBackgroundProcessing": false,
     "Retry": {
       "EnableRetry": false,
@@ -402,6 +403,7 @@ public class DemoDepartmentEventHandler : DepartmentCreatedEventHandler
 | `EnforceHeaderSignatureValidation` | bool              | true     | Whether to enforce header signature validation                     |
 | `EnableBodySignatureValidation`    | bool              | true     | Whether to validate request body signature at service layer        |
 | `TimestampToleranceSeconds`        | int               | 30       | Timestamp validation tolerance (seconds)                           |
+| `NonceValidationFailureMode`       | NonceFailureMode  | Reject  | Nonce dedup service unavailable fallback (Reject=security-first, Allow=availability-first) |
 
 ### Performance Configuration
 

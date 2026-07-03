@@ -129,6 +129,7 @@ app.Run();
     "EnforceHeaderSignatureValidation": true,
     "EnableBodySignatureValidation": true,
     "TimestampToleranceSeconds": 30,
+    "NonceValidationFailureMode": "Reject",
     "EnableBackgroundProcessing": false,
     "Retry": {
       "EnableRetry": false,
@@ -423,6 +424,7 @@ public class DemoDepartmentEventHandler : DepartmentCreatedEventHandler
 | `EnforceHeaderSignatureValidation` | bool              | true     | 是否强制验证请求头签名                         |
 | `EnableBodySignatureValidation`    | bool              | true     | 是否在服务层再次验证请求体签名                 |
 | `TimestampToleranceSeconds`        | int               | 30       | 时间戳验证容错范围（秒）                       |
+| `NonceValidationFailureMode`       | NonceFailureMode  | Reject  | Nonce 去重服务不可用时的降级策略（Reject=安全优先拒绝，Allow=可用性优先放行） |
 
 ### 性能配置
 

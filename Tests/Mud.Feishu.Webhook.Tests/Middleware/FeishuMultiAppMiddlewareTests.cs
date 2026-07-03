@@ -135,19 +135,19 @@ public class FeishuMultiAppMiddlewareTests
     }
 
     [Fact]
-    public async Task InvokeAsync_WithInvalidContentType_ShouldReturn400()
+    public async Task InvokeAsync_WithInvalidContentType_ShouldReturn415()
     {
-        // Arrange
-        _handlerRegistry.Register("app1", typeof(TestHandler));
-        var middleware = CreateMiddleware();
-        var context = CreateHttpContext("/feishu/app1", "POST");
-        context.Request.ContentType = "text/plain";
+    // Arrange
+    _handlerRegistry.Register("app1", typeof(TestHandler));
+    var middleware = CreateMiddleware();
+    var context = CreateHttpContext("/feishu/app1", "POST");
+    context.Request.ContentType = "text/plain";
 
-        // Act
-        await middleware.InvokeAsync(context);
+    // Act
+    await middleware.InvokeAsync(context);
 
-        // Assert
-        context.Response.StatusCode.Should().Be(400);
+    // Assert
+    context.Response.StatusCode.Should().Be(415);
     }
 
     [Fact]

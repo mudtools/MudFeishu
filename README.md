@@ -207,6 +207,12 @@ dotnet add package Mud.Feishu.Redis
 | `ProcessingTimeout` | TimeSpan | 10 分钟  | 处理中超时时间（最小 10 秒），超时后允许重新处理事件                                     |
 | `MaxCacheSize`      | int      | 100000   | 内存缓存最大条目数，0 表示不限制                                                         |
 
+> 🔧 **Mode 实现说明**：
+>
+> - `None`：注册 `NoopFeishuEventDeduplicator` 空实现，所有去重方法均不执行实际操作（`TryMarkAsProcessingAsync` 直接返回 Success、`IsProcessedAsync` 返回 false、`GetStatusAsync` 返回 Pending），事件直接处理不抛异常，输出 Debug 日志便于观测。适用于调试场景或对去重不敏感的事件流。
+> - `InMemory`：注册 `FeishuEventDeduplicator` 内存实现，进程内缓存事件 ID，重启后失效。
+> - `Distributed`：需通过 `services.AddSingleton<IFeishuEventDeduplicator, RedisFeishuEventDistributedDeduplicator>()` 手动注册分布式实现。若未注册，SDK 将记录警告并降级为内存实现（不抛异常以保证启动可用性）。
+
 > 💡 TimeSpan 配置说明：`Microsoft.Extensions.Configuration` 绑定 TimeSpan 时使用 `TypeDescriptor` 解析，"24:00:00" 会被解释为 **24 天** 而非 24 小时。请使用 `"d.hh:mm:ss"` 格式（如 `"2.00:00:00"` 表示 48 小时）或 `"hh:mm:ss"` 格式（如 `"00:30:00"` 表示 30 分钟）。
 
 > 💡 更多配置详情请参考 [Mud.Feishu.WebSocket 详细文档](./Mud.Feishu.WebSocket/Readme.md)

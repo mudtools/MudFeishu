@@ -19,7 +19,8 @@ public class NoopFeishuEventDeduplicator : IFeishuEventDeduplicator
     /// 初始化 <see cref="NoopFeishuEventDeduplicator"/> 的新实例
     /// </summary>
     /// <param name="logger">日志记录器</param>
-    public NoopFeishuEventDeduplicator(ILogger logger) => _logger = logger;
+    /// <exception cref="ArgumentNullException"><paramref name="logger"/> 为 null</exception>
+    public NoopFeishuEventDeduplicator(ILogger logger) => _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
     /// <inheritdoc />
     public Task<DeduplicationResult> TryMarkAsProcessingAsync(string eventId, string? appKey = null, TimeSpan? ttl = null, TimeSpan? processingTimeout = null, CancellationToken cancellationToken = default)

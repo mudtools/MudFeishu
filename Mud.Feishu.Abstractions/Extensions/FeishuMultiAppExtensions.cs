@@ -311,7 +311,8 @@ public static class FeishuMultiAppExtensions
                     config.TimeOut != defaultApp.TimeOut ||
                     config.RetryDelayMs != defaultApp.RetryDelayMs)
                 {
-                    System.Diagnostics.Debug.WriteLine(
+                    // 使用 Console.Error.WriteLine 而非 Debug.WriteLine，确保 Release 模式下警告不被编译剥离
+                    Console.Error.WriteLine(
                         $"[MudFeishu] 警告：应用 '{config.AppKey}' 的弹性策略配置（RetryCount/TimeOut/RetryDelayMs）" +
                         $"与默认应用 '{defaultApp.AppKey}' 不同。多应用模式下仅默认应用的弹性策略生效，" +
                         $"非默认应用的配置将被忽略。");

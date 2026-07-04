@@ -377,9 +377,9 @@ public class MemoryDeduplicator<TKey> : IAsyncDisposable, IDisposable where TKey
     protected TimeSpan ProcessingTimeout => _processingTimeout;
 
     /// <summary>
-    /// 获取最大缓存大小
+    /// 获取最大缓存大小（仅供内部使用）
     /// </summary>
-    protected int MaxCacheSize => _maxCacheSize;
+    private int MaxCacheSize => _maxCacheSize;
 
     /// <summary>
     /// 获取日志记录器（供派生类使用）
@@ -387,14 +387,14 @@ public class MemoryDeduplicator<TKey> : IAsyncDisposable, IDisposable where TKey
     protected ILogger? Logger => _logger;
 
     /// <summary>
-    /// 获取锁对象（供派生类使用）
+    /// 获取锁对象（仅供内部使用）
     /// </summary>
-    protected object Lock => _lock;
+    private object Lock => _lock;
 
     /// <summary>
-    /// 获取缓存字典（供派生类使用）
+    /// 获取缓存字典（仅供内部使用）
     /// </summary>
-    protected Dictionary<TKey, CacheEntry> Cache => _cache;
+    private Dictionary<TKey, CacheEntry> Cache => _cache;
 
     private void ThrowIfDisposed()
     {

@@ -64,19 +64,12 @@ public class SignatureValidator(
     IWebhookAppKeyAccessor appKeyAccessor,
     ISecurityAuditService? securityAuditService = null,
     IEnvironmentService? environmentService = null,
-    IHttpContextAccessor? httpContextAccessor = null) : ISignatureValidator
+    IHttpContextAccessor? httpContextAccessor = null) : WebhookValidatorBase(appKeyAccessor, logger), ISignatureValidator
 {
-    private readonly ILogger<SignatureValidator> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     private readonly IOptionsMonitor<FeishuWebhookOptions> _options = options ?? throw new ArgumentNullException(nameof(options));
     private readonly ISecurityAuditService? _securityAuditService = securityAuditService;
     private readonly IEnvironmentService _environmentService = environmentService ?? new EnvironmentService();
-    private readonly IWebhookAppKeyAccessor _appKeyAccessor = appKeyAccessor ?? throw new ArgumentNullException(nameof(appKeyAccessor));
     private readonly IHttpContextAccessor? _httpContextAccessor = httpContextAccessor;
-
-    /// <summary>
-    /// 获取当前应用键（优先从 IWebhookAppKeyAccessor 获取）
-    /// </summary>
-    private string? CurrentAppKey => _appKeyAccessor.CurrentAppKey;
 
     /// <summary>
     /// 获取当前客户端 IP（从 HttpContext 中提取）
@@ -131,7 +124,7 @@ public class SignatureValidator(
                     {
                         // 使用应用级配置，null 时继承全局配置
                         enforceValidation = appConfig.GetEffectiveEnforceHeaderSignatureValidation(enforceValidation);
-                        _logger.LogDebug("使用应用 {AppKey} 的签名验证配置: {EnforceValidation}",
+                        Logger.LogDebug("使用应用 {AppKey} 的签名验证配置: {EnforceValidation}",
                             CurrentAppKey, enforceValidation);
                     }
                 }
@@ -139,7 +132,7 @@ public class SignatureValidator(
                 // 如果配置为强制验证，则拒绝请求
                 if (enforceValidation)
                 {
-                    _logger.LogWarning(
+                    Logger.LogWarning(
                         "请求头中缺少 X-Lark-Signature，拒绝请求（配置为强制验证，当前环境: {Environment}）",
                         _environmentService.EnvironmentName);
 
@@ -151,7 +144,7 @@ public class SignatureValidator(
                 }
 
                 // 否则跳过验证（兼容旧版本）
-                _logger.LogDebug(
+                Logger.LogDebug(
                     "请求头中未包含 X-Lark-Signature，跳过头部签名验证（警告：此配置存在严重安全风险，" +
                     "建议在生产环境设置 EnforceHeaderSignatureValidation = true）");
                 return true;
@@ -162,7 +155,7 @@ public class SignatureValidator(
             {
                 if (_environmentService.IsProduction)
                 {
-                    _logger.LogError(
+                    Logger.LogError(
                         "时间戳或 nonce 为空（Timestamp: {Timestamp}, Nonce: {Nonce}），拒绝请求（生产环境不允许跳过签名验证）",
                         timestamp, nonce);
 
@@ -171,7 +164,7 @@ public class SignatureValidator(
                     return false;
                 }
 
-                _logger.LogWarning(
+                Logger.LogWarning(
                     "时间戳或 nonce 为空（Timestamp: {Timestamp}, Nonce: {Nonce}），跳过签名验证（开发环境，警告：此配置存在安全风险）",
                     timestamp, nonce);
 
@@ -186,7 +179,7 @@ public class SignatureValidator(
             var signString = $"{timestamp}{nonce}{encryptKey}{body}";
 
             // 调试日志：显示签名计算信息（不记录敏感的 EncryptKey 内容，仅记录长度）
-            _logger.LogDebug("请求头签名计算 - Timestamp: {Timestamp}, Nonce: {Nonce}, EncryptKey长度: {KeyLength}, Body长度: {BodyLength}",
+            Logger.LogDebug("请求头签名计算 - Timestamp: {Timestamp}, Nonce: {Nonce}, EncryptKey长度: {KeyLength}, Body长度: {BodyLength}",
                 timestamp, nonce, encryptKey.Length, body.Length);
 
             // 使用 SHA-256 计算签名（不是 HMAC-SHA256！）
@@ -203,7 +196,7 @@ public class SignatureValidator(
                 var computedPrefix = computedSignature.Length > 8 ? computedSignature.Substring(0, 8) : computedSignature;
                 var headerPrefix = headerSignature is null ? "null" :
                     (headerSignature.Length > 8 ? headerSignature.Substring(0, 8) : headerSignature);
-                _logger.LogDebug("请求头签名验证失败: 计算 {ComputedSignaturePrefix}..., 期望 {ExpectedSignaturePrefix}..., AppKey: {AppKey}",
+                Logger.LogDebug("请求头签名验证失败: 计算 {ComputedSignaturePrefix}..., 期望 {ExpectedSignaturePrefix}..., AppKey: {AppKey}",
                     computedPrefix + "...",
                     headerPrefix + "...",
                     CurrentAppKey ?? "null");
@@ -212,7 +205,7 @@ public class SignatureValidator(
             }
             else
             {
-                _logger.LogDebug("请求头签名验证成功, AppKey: {AppKey}", CurrentAppKey ?? "null");
+                Logger.LogDebug("请求头签名验证成功, AppKey: {AppKey}", CurrentAppKey ?? "null");
 
                 LogSecuritySuccess($"请求头签名验证成功, AppKey: {CurrentAppKey ?? "null"}");
             }
@@ -221,7 +214,7 @@ public class SignatureValidator(
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "验证请求头签名时发生错误, AppKey: {AppKey}", CurrentAppKey ?? "null");
+            Logger.LogError(ex, "验证请求头签名时发生错误, AppKey: {AppKey}", CurrentAppKey ?? "null");
             return false;
         }
     }
@@ -264,13 +257,6 @@ public class SignatureValidator(
     }
 
     /// <inheritdoc />
-    public void SetCurrentAppKey(string appKey)
-    {
-        _appKeyAccessor.SetAppKey(appKey);
-        _logger.LogDebug("设置当前应用键: {AppKey}", appKey);
-    }
-
-    /// <inheritdoc />
     public Task<bool> ValidateBodySignatureAsync(long timestamp, string nonce, string encryptData, string encryptKey, string? expectedSignature = null)
     {
         var options = _options.CurrentValue;
@@ -287,7 +273,7 @@ public class SignatureValidator(
 
         if (!enableBodyValidation)
         {
-            _logger.LogDebug("请求体签名验证已禁用（EnableBodySignatureValidation = false），跳过验证, AppKey: {AppKey}",
+            Logger.LogDebug("请求体签名验证已禁用（EnableBodySignatureValidation = false），跳过验证, AppKey: {AppKey}",
                 CurrentAppKey ?? "null");
             return Task.FromResult(true);
         }
@@ -297,7 +283,7 @@ public class SignatureValidator(
             // 当未提供期望签名时，无法进行比较，记录警告并跳过
             if (string.IsNullOrEmpty(expectedSignature))
             {
-                _logger.LogWarning("请求体签名验证已启用，但未提供期望签名值，跳过签名比较（警告：此请求未经过完整验证）, AppKey: {AppKey}",
+                Logger.LogWarning("请求体签名验证已启用，但未提供期望签名值，跳过签名比较（警告：此请求未经过完整验证）, AppKey: {AppKey}",
                     CurrentAppKey ?? "null");
                 return Task.FromResult(true);
             }
@@ -307,7 +293,7 @@ public class SignatureValidator(
             var hashBytes = hmac.ComputeHash(Encoding.UTF8.GetBytes(signString));
             var computedSignature = BitConverter.ToString(hashBytes).Replace("-", "").ToLower();
 
-            _logger.LogDebug("请求体签名计算 - Timestamp: {Timestamp}, Nonce: {Nonce}, EncryptKey长度: {KeyLength}, EncryptData长度: {DataLength}",
+            Logger.LogDebug("请求体签名计算 - Timestamp: {Timestamp}, Nonce: {Nonce}, EncryptKey长度: {KeyLength}, EncryptData长度: {DataLength}",
                 timestamp, nonce, encryptKey.Length, encryptData.Length);
 
             // 使用固定时间比较防止计时攻击
@@ -319,19 +305,19 @@ public class SignatureValidator(
             {
                 var computedPrefix = computedSignature.Length > 8 ? computedSignature.Substring(0, 8) : computedSignature;
                 var expectedPrefix = expectedSignature!.Length > 8 ? expectedSignature.Substring(0, 8) : expectedSignature;
-                _logger.LogWarning("请求体签名验证失败: 计算 {ComputedPrefix}..., 期望 {ExpectedPrefix}..., AppKey: {AppKey}",
+                Logger.LogWarning("请求体签名验证失败: 计算 {ComputedPrefix}..., 期望 {ExpectedPrefix}..., AppKey: {AppKey}",
                     computedPrefix + "...", expectedPrefix + "...", CurrentAppKey ?? "null");
                 LogSecurityFailure($"请求体签名验证失败: 计算 {computedPrefix}..., 期望 {expectedPrefix}...");
                 return Task.FromResult(false);
             }
 
-            _logger.LogDebug("请求体签名验证成功, AppKey: {AppKey}", CurrentAppKey ?? "null");
+            Logger.LogDebug("请求体签名验证成功, AppKey: {AppKey}", CurrentAppKey ?? "null");
             LogSecuritySuccess($"请求体签名验证通过（HMAC-SHA256）, AppKey: {CurrentAppKey ?? "null"}");
             return Task.FromResult(true);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "验证请求体签名时发生错误, AppKey: {AppKey}", CurrentAppKey ?? "null");
+            Logger.LogError(ex, "验证请求体签名时发生错误, AppKey: {AppKey}", CurrentAppKey ?? "null");
             return Task.FromResult(false);
         }
     }

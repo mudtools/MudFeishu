@@ -274,8 +274,8 @@ public class FeishuWebSocketServiceBuilder
 
                 return new FeishuEventDeduplicator(
                     logger,
-                    TimeSpan.FromMilliseconds(options.EventDeduplication.CacheExpirationMs),
-                    TimeSpan.FromMilliseconds(options.EventDeduplication.CleanupIntervalMs));
+                    options.EventDeduplication.CacheExpiration,
+                    options.EventDeduplication.CleanupInterval);
             });
         }
 

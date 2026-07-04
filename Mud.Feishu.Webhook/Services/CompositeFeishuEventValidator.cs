@@ -20,16 +20,14 @@ namespace Mud.Feishu.Webhook.Services;
 /// 各子验证器通过 IWebhookAppKeyAccessor 自动获取当前 AppKey，
 /// 无需在组合验证器中手动传播 SetCurrentAppKey。
 /// </remarks>
-public class CompositeFeishuEventValidator : IFeishuEventValidator
+public class CompositeFeishuEventValidator : WebhookValidatorBase, IFeishuEventValidator
 {
     private readonly ISignatureValidator _signatureValidator;
     private readonly ITimestampValidator _timestampValidator;
     private readonly INonceValidator _nonceValidator;
     private readonly ISubscriptionValidator _subscriptionValidator;
-    private readonly ILogger<CompositeFeishuEventValidator> _logger;
     private readonly IOptionsMonitor<FeishuWebhookOptions> _optionsMonitor;
     private readonly IEnvironmentService _environmentService;
-    private readonly IWebhookAppKeyAccessor _appKeyAccessor;
 
     /// <summary>
     /// 获取当前配置选项（支持热更新）
@@ -56,56 +54,41 @@ public class CompositeFeishuEventValidator : IFeishuEventValidator
         IOptionsMonitor<FeishuWebhookOptions> optionsMonitor,
         IWebhookAppKeyAccessor appKeyAccessor,
         IEnvironmentService? environmentService = null)
+        : base(appKeyAccessor, logger)
     {
         _signatureValidator = signatureValidator ?? throw new ArgumentNullException(nameof(signatureValidator));
         _timestampValidator = timestampValidator ?? throw new ArgumentNullException(nameof(timestampValidator));
         _nonceValidator = nonceValidator ?? throw new ArgumentNullException(nameof(nonceValidator));
         _subscriptionValidator = subscriptionValidator ?? throw new ArgumentNullException(nameof(subscriptionValidator));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _optionsMonitor = optionsMonitor ?? throw new ArgumentNullException(nameof(optionsMonitor));
-        _appKeyAccessor = appKeyAccessor ?? throw new ArgumentNullException(nameof(appKeyAccessor));
         _environmentService = environmentService ?? new EnvironmentService();
-    }
-
-    /// <summary>
-    /// 设置当前应用键（向后兼容，AppKey 通过 IWebhookAppKeyAccessor 自动传播）
-    /// </summary>
-    /// <param name="appKey">应用键</param>
-    /// <remarks>
-    /// 此方法保留用于向后兼容。新代码应通过 IWebhookAppKeyAccessor.SetAppKey() 设置 AppKey，
-    /// 各子验证器自动通过 IWebhookAppKeyAccessor.CurrentAppKey 获取。
-    /// </remarks>
-    public void SetCurrentAppKey(string appKey)
-    {
-        _appKeyAccessor.SetAppKey(appKey);
-        _logger.LogDebug("设置当前应用键: {AppKey}", appKey);
     }
 
     /// <inheritdoc />
     public async Task<bool> ValidateSubscriptionRequestAsync(EventVerificationRequest request, string expectedToken, CancellationToken cancellationToken = default)
     {
-        _logger.LogDebug("开始验证订阅请求（异步）");
+        Logger.LogDebug("开始验证订阅请求（异步）");
         return await _subscriptionValidator.ValidateSubscriptionRequestAsync(request, expectedToken, cancellationToken);
     }
 
     /// <inheritdoc />
     public async Task<bool> ValidateHeaderSignatureAsync(long timestamp, string nonce, string body, string? headerSignature, string encryptKey)
     {
-        _logger.LogDebug("开始验证请求头签名 - Timestamp: {Timestamp}, Nonce: {Nonce}", timestamp, nonce);
+        Logger.LogDebug("开始验证请求头签名 - Timestamp: {Timestamp}, Nonce: {Nonce}", timestamp, nonce);
 
         try
         {
             // 1. 首先验证时间戳（传 null 让验证器从配置读取应用级或全局级容差）
             if (!_timestampValidator.ValidateTimestamp(timestamp, null))
             {
-                _logger.LogWarning("时间戳验证失败");
+                Logger.LogWarning("时间戳验证失败");
                 return false;
             }
 
             // 2. 然后验证 Nonce（防重放攻击）
             if (!await _nonceValidator.ValidateNonceAsync(nonce, _environmentService.IsProduction))
             {
-                _logger.LogWarning("Nonce 验证失败");
+                Logger.LogWarning("Nonce 验证失败");
                 return false;
             }
 
@@ -113,16 +96,16 @@ public class CompositeFeishuEventValidator : IFeishuEventValidator
             var signatureResult = await _signatureValidator.ValidateHeaderSignatureAsync(timestamp, nonce, body, headerSignature, encryptKey);
             if (!signatureResult)
             {
-                _logger.LogWarning("请求头签名验证失败");
+                Logger.LogWarning("请求头签名验证失败");
                 return false;
             }
 
-            _logger.LogDebug("请求头签名验证成功");
+            Logger.LogDebug("请求头签名验证成功");
             return true;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "验证请求头签名时发生错误");
+            Logger.LogError(ex, "验证请求头签名时发生错误");
             return false;
         }
     }
@@ -130,7 +113,7 @@ public class CompositeFeishuEventValidator : IFeishuEventValidator
     /// <inheritdoc />
     public bool ValidateTimestamp(long timestamp, int? toleranceSeconds = null)
     {
-        _logger.LogDebug("验证时间戳 - Timestamp: {Timestamp}, Tolerance: {Tolerance}秒", timestamp, toleranceSeconds?.ToString() ?? "(从配置读取)");
+        Logger.LogDebug("验证时间戳 - Timestamp: {Timestamp}, Tolerance: {Tolerance}秒", timestamp, toleranceSeconds?.ToString() ?? "(从配置读取)");
         return _timestampValidator.ValidateTimestamp(timestamp, toleranceSeconds);
     }
 }

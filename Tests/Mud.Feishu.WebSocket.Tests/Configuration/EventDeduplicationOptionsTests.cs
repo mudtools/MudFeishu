@@ -22,62 +22,62 @@ public class EventDeduplicationOptionsTests
 
         // Assert
         options.Mode.Should().Be(EventDeduplicationMode.InMemory);
-        options.CacheExpirationMs.Should().Be(48 * 60 * 60 * 1000); // 48 hours
-        options.CleanupIntervalMs.Should().Be(5 * 60 * 1000); // 5 minutes
+        options.CacheExpiration.Should().Be(TimeSpan.FromHours(48)); // 48 hours
+        options.CleanupInterval.Should().Be(TimeSpan.FromMinutes(5)); // 5 minutes
     }
 
     [Fact]
-    public void CacheExpirationMs_ShouldEnforceMinimumValue()
+    public void CacheExpiration_ShouldEnforceMinimumValue()
     {
         // Arrange
         var options = new EventDeduplicationOptions();
 
         // Act
-        options.CacheExpirationMs = 30000; // 30 seconds
+        options.CacheExpiration = TimeSpan.FromSeconds(30); // 30 seconds
 
         // Assert
-        options.CacheExpirationMs.Should().Be(60000, "minimum value should be enforced");
+        options.CacheExpiration.Should().Be(TimeSpan.FromSeconds(60), "minimum value should be enforced");
     }
 
     [Fact]
-    public void CacheExpirationMs_ShouldAcceptValidValue()
+    public void CacheExpiration_ShouldAcceptValidValue()
     {
         // Arrange
         var options = new EventDeduplicationOptions();
-        var expectedValue = 12 * 60 * 60 * 1000; // 12 hours
+        var expectedValue = TimeSpan.FromHours(12); // 12 hours
 
         // Act
-        options.CacheExpirationMs = expectedValue;
+        options.CacheExpiration = expectedValue;
 
         // Assert
-        options.CacheExpirationMs.Should().Be(expectedValue);
+        options.CacheExpiration.Should().Be(expectedValue);
     }
 
     [Fact]
-    public void CleanupIntervalMs_ShouldEnforceMinimumValue()
+    public void CleanupInterval_ShouldEnforceMinimumValue()
     {
         // Arrange
         var options = new EventDeduplicationOptions();
 
         // Act
-        options.CleanupIntervalMs = 30000; // 30 seconds
+        options.CleanupInterval = TimeSpan.FromSeconds(30); // 30 seconds
 
         // Assert
-        options.CleanupIntervalMs.Should().Be(60000, "minimum value should be enforced");
+        options.CleanupInterval.Should().Be(TimeSpan.FromSeconds(60), "minimum value should be enforced");
     }
 
     [Fact]
-    public void CleanupIntervalMs_ShouldAcceptValidValue()
+    public void CleanupInterval_ShouldAcceptValidValue()
     {
         // Arrange
         var options = new EventDeduplicationOptions();
-        var expectedValue = 10 * 60 * 1000; // 10 minutes
+        var expectedValue = TimeSpan.FromMinutes(10); // 10 minutes
 
         // Act
-        options.CleanupIntervalMs = expectedValue;
+        options.CleanupInterval = expectedValue;
 
         // Assert
-        options.CleanupIntervalMs.Should().Be(expectedValue);
+        options.CleanupInterval.Should().Be(expectedValue);
     }
 
     [Theory]
@@ -97,17 +97,17 @@ public class EventDeduplicationOptionsTests
     }
 
     [Fact]
-    public void CacheExpirationMs_ShouldHandleLargeValues()
+    public void CacheExpiration_ShouldHandleLargeValues()
     {
         // Arrange
         var options = new EventDeduplicationOptions();
-        var largeValue = 7 * 24 * 60 * 60 * 1000; // 7 days
+        var largeValue = TimeSpan.FromDays(7); // 7 days
 
         // Act
-        options.CacheExpirationMs = largeValue;
+        options.CacheExpiration = largeValue;
 
         // Assert
-        options.CacheExpirationMs.Should().Be(largeValue);
+        options.CacheExpiration.Should().Be(largeValue);
     }
 }
 

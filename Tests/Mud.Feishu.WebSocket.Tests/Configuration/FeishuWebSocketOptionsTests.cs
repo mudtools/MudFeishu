@@ -200,21 +200,6 @@ public class FeishuWebSocketOptionsTests
         options.EventDeduplication.CleanupInterval.Should().Be(expectedValue);
     }
 
-    [Fact]
-    public void EventDeduplicationCacheExpirationMs_Obsolete_ShouldStillWorkAsBridge()
-    {
-        // Arrange
-        var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions();
-#pragma warning disable CS0618
-        // Act
-        options.EventDeduplication.CacheExpirationMs = 12 * 60 * 60 * 1000; // 12 hours
-
-        // Assert
-        options.EventDeduplication.CacheExpirationMs.Should().Be(12 * 60 * 60 * 1000);
-        options.EventDeduplication.CacheExpiration.Should().Be(TimeSpan.FromHours(12));
-#pragma warning restore CS0618
-    }
-
     [Theory]
     [InlineData(false)]
     [InlineData(true)]

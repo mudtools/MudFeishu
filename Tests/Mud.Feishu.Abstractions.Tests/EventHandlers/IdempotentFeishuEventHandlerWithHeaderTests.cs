@@ -5,11 +5,9 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-// 测试中调用已标记为 [Obsolete] 的同步去重方法
-#pragma warning disable CS0618
-
 using System.Text.Json;
 using FluentAssertions;
+using Mud.Feishu.Abstractions.Services;
 
 namespace Mud.Feishu.Abstractions.Tests.EventHandlers;
 
@@ -113,7 +111,7 @@ public class IdempotentFeishuEventHandlerWithHeaderTests
     {
         var handler = new TestHeaderHandler(_deduplicatorMock.Object, _loggerMock.Object);
         var eventData = CreateV2EventData();
-        _deduplicatorMock.Setup(d => d.TryMarkAsProcessing(It.IsAny<string>(), It.IsAny<string?>())).Returns(false);
+        _deduplicatorMock.Setup(d => d.TryMarkAsProcessingAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<TimeSpan?>(), It.IsAny<TimeSpan?>(), It.IsAny<CancellationToken>())).ReturnsAsync(DeduplicationResult.Success("test"));
 
         await handler.HandleAsync(eventData, CancellationToken.None);
 
@@ -137,7 +135,7 @@ public class IdempotentFeishuEventHandlerWithHeaderTests
             Header = null,
             Event = JsonDocument.Parse(JsonSerializer.Serialize(new TestEventData { UserId = "user_001" }))
         };
-        _deduplicatorMock.Setup(d => d.TryMarkAsProcessing(It.IsAny<string>(), It.IsAny<string?>())).Returns(false);
+        _deduplicatorMock.Setup(d => d.TryMarkAsProcessingAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<TimeSpan?>(), It.IsAny<TimeSpan?>(), It.IsAny<CancellationToken>())).ReturnsAsync(DeduplicationResult.Success("test"));
 
         await handler.HandleAsync(eventData, CancellationToken.None);
 
@@ -149,7 +147,7 @@ public class IdempotentFeishuEventHandlerWithHeaderTests
     {
         var handler = new TestHeaderHandlerWithoutOverride(_deduplicatorMock.Object, _loggerMock.Object);
         var eventData = CreateV2EventData();
-        _deduplicatorMock.Setup(d => d.TryMarkAsProcessing(It.IsAny<string>(), It.IsAny<string?>())).Returns(false);
+        _deduplicatorMock.Setup(d => d.TryMarkAsProcessingAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<TimeSpan?>(), It.IsAny<TimeSpan?>(), It.IsAny<CancellationToken>())).ReturnsAsync(DeduplicationResult.Success("test"));
 
         await handler.HandleAsync(eventData, CancellationToken.None);
 
@@ -163,7 +161,7 @@ public class IdempotentFeishuEventHandlerWithHeaderTests
     {
         var handler = new TestHeaderHandler(_deduplicatorMock.Object, _loggerMock.Object);
         var eventData = CreateV2EventData();
-        _deduplicatorMock.Setup(d => d.TryMarkAsProcessing(It.IsAny<string>(), It.IsAny<string?>())).Returns(false);
+        _deduplicatorMock.Setup(d => d.TryMarkAsProcessingAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<TimeSpan?>(), It.IsAny<TimeSpan?>(), It.IsAny<CancellationToken>())).ReturnsAsync(DeduplicationResult.Success("test"));
 
         await handler.HandleAsync(eventData, CancellationToken.None);
 
@@ -184,7 +182,7 @@ public class IdempotentFeishuEventHandlerWithHeaderTests
             Header = null,
             Event = JsonDocument.Parse(JsonSerializer.Serialize(new TestEventData { UserId = "user_002" }))
         };
-        _deduplicatorMock.Setup(d => d.TryMarkAsProcessing(It.IsAny<string>(), It.IsAny<string?>())).Returns(false);
+        _deduplicatorMock.Setup(d => d.TryMarkAsProcessingAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<TimeSpan?>(), It.IsAny<TimeSpan?>(), It.IsAny<CancellationToken>())).ReturnsAsync(DeduplicationResult.Success("test"));
 
         await handler.HandleAsync(eventData, CancellationToken.None);
 
@@ -197,13 +195,13 @@ public class IdempotentFeishuEventHandlerWithHeaderTests
     {
         var handler = new TestHeaderHandler(_deduplicatorMock.Object, _loggerMock.Object);
         var eventData = CreateV2EventData();
-        _deduplicatorMock.Setup(d => d.TryMarkAsProcessing(It.IsAny<string>(), It.IsAny<string?>())).Returns(true);
+        _deduplicatorMock.Setup(d => d.TryMarkAsProcessingAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<TimeSpan?>(), It.IsAny<TimeSpan?>(), It.IsAny<CancellationToken>())).ReturnsAsync(DeduplicationResult.Duplicate("test"));
 
         await handler.HandleAsync(eventData, CancellationToken.None);
 
         handler.LastEventData.Should().BeNull();
         handler.LastHeader.Should().BeNull();
-        _deduplicatorMock.Verify(d => d.MarkAsCompleted(It.IsAny<string>(), It.IsAny<string?>()), Times.Never);
+        _deduplicatorMock.Verify(d => d.MarkAsCompletedAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -211,11 +209,11 @@ public class IdempotentFeishuEventHandlerWithHeaderTests
     {
         var handler = new TestHeaderHandler(_deduplicatorMock.Object, _loggerMock.Object);
         var eventData = CreateV2EventData();
-        _deduplicatorMock.Setup(d => d.TryMarkAsProcessing(It.IsAny<string>(), It.IsAny<string?>())).Returns(false);
+        _deduplicatorMock.Setup(d => d.TryMarkAsProcessingAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<TimeSpan?>(), It.IsAny<TimeSpan?>(), It.IsAny<CancellationToken>())).ReturnsAsync(DeduplicationResult.Success("test"));
 
         await handler.HandleAsync(eventData, CancellationToken.None);
 
-        _deduplicatorMock.Verify(d => d.MarkAsCompleted(It.IsAny<string>(), It.IsAny<string?>()), Times.Once);
+        _deduplicatorMock.Verify(d => d.MarkAsCompletedAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -223,13 +221,13 @@ public class IdempotentFeishuEventHandlerWithHeaderTests
     {
         var handler = new FailingHeaderHandler(_deduplicatorMock.Object, _loggerMock.Object);
         var eventData = CreateV2EventData();
-        _deduplicatorMock.Setup(d => d.TryMarkAsProcessing(It.IsAny<string>(), It.IsAny<string?>())).Returns(false);
+        _deduplicatorMock.Setup(d => d.TryMarkAsProcessingAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<TimeSpan?>(), It.IsAny<TimeSpan?>(), It.IsAny<CancellationToken>())).ReturnsAsync(DeduplicationResult.Success("test"));
 
         await Assert.ThrowsAsync<InvalidOperationException>(
             () => handler.HandleAsync(eventData, CancellationToken.None));
 
-        _deduplicatorMock.Verify(d => d.RollbackProcessing(It.IsAny<string>(), It.IsAny<string?>()), Times.Once);
-        _deduplicatorMock.Verify(d => d.MarkAsCompleted(It.IsAny<string>(), It.IsAny<string?>()), Times.Never);
+        _deduplicatorMock.Verify(d => d.RollbackProcessingAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Once);
+        _deduplicatorMock.Verify(d => d.MarkAsCompletedAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     public class FailingHeaderHandler : IdempotentFeishuEventHandler<TestEventData, FeishuEventHeader>

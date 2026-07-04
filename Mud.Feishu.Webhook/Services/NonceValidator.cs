@@ -25,17 +25,10 @@ public class NonceValidator(
     ILogger<NonceValidator> logger,
     IFeishuNonceDistributedDeduplicator nonceDeduplicator,
     IWebhookAppKeyAccessor appKeyAccessor,
-    IOptionsMonitor<FeishuWebhookOptions> optionsMonitor) : INonceValidator
+    IOptionsMonitor<FeishuWebhookOptions> optionsMonitor) : WebhookValidatorBase(appKeyAccessor, logger), INonceValidator
 {
-    private readonly ILogger<NonceValidator> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     private readonly IFeishuNonceDistributedDeduplicator _nonceDeduplicator = nonceDeduplicator ?? throw new ArgumentNullException(nameof(nonceDeduplicator));
-    private readonly IWebhookAppKeyAccessor _appKeyAccessor = appKeyAccessor ?? throw new ArgumentNullException(nameof(appKeyAccessor));
     private readonly IOptionsMonitor<FeishuWebhookOptions> _optionsMonitor = optionsMonitor ?? throw new ArgumentNullException(nameof(optionsMonitor));
-
-    /// <summary>
-    /// 获取当前应用键（优先从 IWebhookAppKeyAccessor 获取）
-    /// </summary>
-    private string? CurrentAppKey => _appKeyAccessor.CurrentAppKey;
 
     /// <summary>
     /// 获取当前 Nonce 验证降级策略
@@ -53,18 +46,18 @@ public class NonceValidator(
 
             if (isAlreadyUsed)
             {
-                _logger.LogWarning("Nonce {Nonce} 已使用过（AppKey: {AppKey}），检测到重放攻击", nonce, CurrentAppKey ?? "null");
+                Logger.LogWarning("Nonce {Nonce} 已使用过（AppKey: {AppKey}），检测到重放攻击", nonce, CurrentAppKey ?? "null");
             }
             else
             {
-                _logger.LogDebug("Nonce {Nonce} 验证通过并已标记为已使用（AppKey: {AppKey}）", nonce, CurrentAppKey ?? "null");
+                Logger.LogDebug("Nonce {Nonce} 验证通过并已标记为已使用（AppKey: {AppKey}）", nonce, CurrentAppKey ?? "null");
             }
 
             return isAlreadyUsed;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "检查 Nonce 使用状态时发生错误, Nonce: {Nonce}, AppKey: {AppKey}, 降级策略: {FailureMode}",
+            Logger.LogError(ex, "检查 Nonce 使用状态时发生错误, Nonce: {Nonce}, AppKey: {AppKey}, 降级策略: {FailureMode}",
                 nonce, CurrentAppKey ?? "null", FailureMode);
 
             // 根据配置的降级策略决定异常时的行为
@@ -84,14 +77,14 @@ public class NonceValidator(
             {
                 if (isProductionEnvironment)
                 {
-                    _logger.LogError(
+                    Logger.LogError(
                         "Nonce 为空，拒绝请求（生产环境不允许空 Nonce），AppKey: {AppKey}",
                         CurrentAppKey ?? "null");
                     return false; // 生产环境拒绝空 Nonce
                 }
                 else
                 {
-                    _logger.LogWarning(
+                    Logger.LogWarning(
                         "Nonce 为空，跳过验证（开发环境，警告：此配置存在安全风险），AppKey: {AppKey}",
                         CurrentAppKey ?? "null");
                     return true; // 开发环境允许空 Nonce
@@ -106,15 +99,9 @@ public class NonceValidator(
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "验证 Nonce 时发生错误, Nonce: {Nonce}, AppKey: {AppKey}", nonce, CurrentAppKey ?? "null");
+            Logger.LogError(ex, "验证 Nonce 时发生错误, Nonce: {Nonce}, AppKey: {AppKey}", nonce, CurrentAppKey ?? "null");
             return false;
         }
     }
 
-    /// <inheritdoc />
-    public void SetCurrentAppKey(string appKey)
-    {
-        _appKeyAccessor.SetAppKey(appKey);
-        _logger.LogDebug("设置当前应用键: {AppKey}", appKey);
-    }
 }

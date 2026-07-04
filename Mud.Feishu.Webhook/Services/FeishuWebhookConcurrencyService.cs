@@ -109,36 +109,19 @@ public class FeishuWebhookConcurrencyService : IAsyncDisposable, IHostedService
             _logger.LogInformation("并发控制配置已更新，最大并发数: {OldMax} -> {NewMax} (实际: {ActualMaxConcurrent})",
                 oldMax, newMaxConcurrent, actualMaxConcurrent);
 
-            if (_semaphoreUpgraded)
+            // 原子替换信号量并延迟释放旧信号量（修复信号量泄漏）
+            var oldSemaphore = Interlocked.Exchange(ref _semaphore,
+                new SemaphoreSlim(actualMaxConcurrent, actualMaxConcurrent));
+            var logMessage = _semaphoreUpgraded ? "信号量已重新创建" : "信号量首次创建";
+            _semaphoreUpgraded = true;
+            _logger.LogInformation("{Message}，最大并发数: {NewMax} (实际: {ActualMaxConcurrent})", logMessage, newMaxConcurrent, actualMaxConcurrent);
+
+            // 延迟释放旧信号量，等待可能正在使用的请求完成
+            _ = Task.Run(async () =>
             {
-                // 已经升级过，原子替换并延迟释放旧信号量
-                var oldSemaphore = Interlocked.Exchange(ref _semaphore,
-                    new SemaphoreSlim(actualMaxConcurrent, actualMaxConcurrent));
-
-                _logger.LogInformation("信号量已重新创建，新的最大并发数: {NewMax} (实际: {ActualMaxConcurrent})", newMaxConcurrent, actualMaxConcurrent);
-
-                // 延迟释放旧信号量，等待可能正在使用的请求完成
-                _ = Task.Run(async () =>
-                   {
-                       await Task.Delay(60000); // 等待 60 秒
-                       oldSemaphore.Dispose();
-                   });
-            }
-            else
-            {
-                // 首次升级，原子替换并延迟释放旧信号量（修复信号量泄漏）
-                var oldSemaphore = Interlocked.Exchange(ref _semaphore,
-                    new SemaphoreSlim(actualMaxConcurrent, actualMaxConcurrent));
-                _semaphoreUpgraded = true;
-                _logger.LogInformation("信号量首次创建，最大并发数: {NewMax} (实际: {ActualMaxConcurrent})", newMaxConcurrent, actualMaxConcurrent);
-
-                // 延迟释放旧信号量，等待可能正在使用的请求完成
-                _ = Task.Run(async () =>
-                {
-                    await Task.Delay(60000); // 等待 60 秒
-                    oldSemaphore.Dispose();
-                });
-            }
+                await Task.Delay(60000); // 等待 60 秒
+                oldSemaphore.Dispose();
+            });
         }
         finally
         {

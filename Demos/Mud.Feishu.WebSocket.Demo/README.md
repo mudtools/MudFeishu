@@ -191,8 +191,8 @@ dotnet run
         },
         "EventDeduplication": {
           "Mode": "Distributed",
-          "CacheExpirationMs": 1800000,
-          "CleanupIntervalMs": 300000
+          "CacheExpiration": "00:30:00",
+          "CleanupInterval": "00:05:00"
         }
       },
     "Redis": {
@@ -244,8 +244,8 @@ dotnet run
 | 配置项 | 类型 | 默认值 | 说明 |
 |--------|------|--------|------|
 | `Mode` | `EventDeduplicationMode` | `InMemory` | 去重模式（None/InMemory/Distributed） |
-| `CacheExpirationMs` | int | 172800000 | 缓存过期时间（毫秒），默认48小时 |
-| `CleanupIntervalMs` | int | 300000 | 缓存清理间隔（毫秒），默认5分钟 |
+| `CacheExpiration` | TimeSpan | `48:00:00` | 缓存过期时间，默认48小时 |
+| `CleanupInterval` | TimeSpan | `00:05:00` | 缓存清理间隔，默认5分钟 |
 
 ### Redis 配置项
 
@@ -674,7 +674,7 @@ protected override async Task<bool> ShouldProcessAsync(EventData eventData, Canc
   "FeishuWebSocket": {
     "EventDeduplication": {
       "Mode": "InMemory",
-      "CacheExpirationMs": 1800000
+      "CacheExpiration": "00:30:00"
     }
   }
 }

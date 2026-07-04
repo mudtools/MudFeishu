@@ -49,24 +49,4 @@ public class EventDeduplicationOptions
         set => _cleanupInterval = value < TimeSpan.FromSeconds(60) ? TimeSpan.FromSeconds(60) : value;
     }
     private TimeSpan _cleanupInterval = DefaultCleanupInterval;
-
-    /// <summary>
-    /// 缓存过期时间（毫秒）- 已废弃，请使用 <see cref="CacheExpiration"/>
-    /// </summary>
-    [Obsolete("请使用 CacheExpiration (TimeSpan) 代替。")]
-    public int CacheExpirationMs
-    {
-        get => (int)CacheExpiration.TotalMilliseconds;
-        set => CacheExpiration = TimeSpan.FromMilliseconds(value);
-    }
-
-    /// <summary>
-    /// 缓存清理间隔（毫秒）- 已废弃，请使用 <see cref="CleanupInterval"/>
-    /// </summary>
-    [Obsolete("请使用 CleanupInterval (TimeSpan) 代替。")]
-    public int CleanupIntervalMs
-    {
-        get => (int)CleanupInterval.TotalMilliseconds;
-        set => CleanupInterval = TimeSpan.FromMilliseconds(value);
-    }
 }

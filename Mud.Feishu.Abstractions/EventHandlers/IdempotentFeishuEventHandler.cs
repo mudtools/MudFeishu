@@ -60,10 +60,9 @@ public abstract class IdempotentFeishuEventHandler<T>(
             return;
         }
 
-#pragma warning disable CS0618 // 同步去重方法已标记为 Obsolete，内存实现中异步方法内部调用同步方法
         // 检查业务键是否已处理（传递 AppKey 实现多应用隔离）
-        if (_businessDeduplicator.TryMarkAsProcessing(businessKey!, appKey))
-#pragma warning restore CS0618
+        var deduplicationResult = await _businessDeduplicator.TryMarkAsProcessingAsync(businessKey!, appKey, cancellationToken: cancellationToken);
+        if (deduplicationResult.IsDuplicate)
         {
             if (_logger.IsEnabled(LogLevel.Debug))
                 _logger.LogDebug("业务键 {BusinessKey} 已处理或在处理中，跳过事件 {EventId}", businessKey, eventData.EventId);
@@ -76,20 +75,16 @@ public abstract class IdempotentFeishuEventHandler<T>(
             // 处理事件
             await ProcessBusinessLogicAsync(eventData, eventEntity, cancellationToken);
 
-#pragma warning disable CS0618
             // 标记为已完成
-            _businessDeduplicator.MarkAsCompleted(businessKey!, appKey);
-#pragma warning restore CS0618
+            await _businessDeduplicator.MarkAsCompletedAsync(businessKey!, appKey, cancellationToken);
 
             if (_logger.IsEnabled(LogLevel.Debug))
                 _logger.LogDebug("业务键 {BusinessKey} 处理完成", businessKey);
         }
         catch (Exception)
         {
-#pragma warning disable CS0618
             // 处理失败，回滚状态
-            _businessDeduplicator.RollbackProcessing(businessKey!, appKey);
-#pragma warning restore CS0618
+            await _businessDeduplicator.RollbackProcessingAsync(businessKey!, appKey, cancellationToken);
             throw;
         }
     }

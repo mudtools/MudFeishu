@@ -57,68 +57,14 @@ public class FeishuEventDeduplicator : MemoryDeduplicator<string>, IFeishuEventD
     }
 
     /// <inheritdoc/>
-    [Obsolete("请使用异步方法 TryMarkAsProcessingAsync 代替。此方法将在下一版本移除。")]
-    public override bool TryMarkAsProcessed(string key, string? appKey = null)
-    {
-        if (string.IsNullOrEmpty(key))
-        {
-            Logger?.LogWarning("事件ID为空，跳过去重检查");
-            return false;
-        }
-        return base.TryMarkAsProcessed(key, appKey);
-    }
-
-    /// <inheritdoc/>
-    [Obsolete("请使用异步方法 TryMarkAsProcessingAsync 代替。此方法将在下一版本移除。")]
-    public override bool TryMarkAsProcessing(string key, string? appKey = null)
-    {
-        if (string.IsNullOrEmpty(key))
-        {
-            Logger?.LogWarning("事件ID为空，跳过去重检查");
-            return false;
-        }
-        return base.TryMarkAsProcessing(key, appKey);
-    }
-
-    /// <inheritdoc/>
-    [Obsolete("请使用异步方法 MarkAsCompletedAsync 代替。此方法将在下一版本移除。")]
-    public override void MarkAsCompleted(string key, string? appKey = null)
-    {
-        if (string.IsNullOrEmpty(key))
-            return;
-        base.MarkAsCompleted(key, appKey);
-    }
-
-    /// <inheritdoc/>
-    [Obsolete("请使用异步方法 RollbackProcessingAsync 代替。此方法将在下一版本移除。")]
-    public override void RollbackProcessing(string key, string? appKey = null)
-    {
-        if (string.IsNullOrEmpty(key))
-            return;
-        base.RollbackProcessing(key, appKey);
-    }
-
-    /// <inheritdoc/>
-    [Obsolete("请使用异步方法 IsProcessedAsync 代替。此方法将在下一版本移除。")]
-    public override bool IsProcessed(string key, string? appKey = null)
-    {
-        if (string.IsNullOrEmpty(key))
-            return false;
-        return base.IsProcessed(key, appKey);
-    }
-
-    /// <inheritdoc/>
-    [Obsolete("请使用异步方法 GetStatusAsync 代替。此方法将在下一版本移除。")]
-    public override DeduplicationStatus GetStatus(string key, string? appKey = null)
-    {
-        if (string.IsNullOrEmpty(key))
-            return DeduplicationStatus.Pending;
-        return base.GetStatus(key, appKey);
-    }
-
-    /// <inheritdoc/>
     public Task<DeduplicationResult> TryMarkAsProcessingAsync(string eventId, string? appKey = null, TimeSpan? ttl = null, TimeSpan? processingTimeout = null, CancellationToken cancellationToken = default)
     {
+        if (string.IsNullOrEmpty(eventId))
+        {
+            Logger?.LogWarning("事件ID为空，跳过去重检查");
+            return Task.FromResult(DeduplicationResult.Success(eventId));
+        }
+
         var previousStatus = GetStatus(eventId, appKey);
         var existedBefore = ContainsKey(eventId, appKey);
         var isDuplicate = TryMarkAsProcessing(eventId, appKey);
@@ -139,6 +85,8 @@ public class FeishuEventDeduplicator : MemoryDeduplicator<string>, IFeishuEventD
     /// <inheritdoc/>
     public Task MarkAsCompletedAsync(string eventId, string? appKey = null, CancellationToken cancellationToken = default)
     {
+        if (string.IsNullOrEmpty(eventId))
+            return Task.CompletedTask;
         MarkAsCompleted(eventId, appKey);
         return Task.CompletedTask;
     }
@@ -146,6 +94,8 @@ public class FeishuEventDeduplicator : MemoryDeduplicator<string>, IFeishuEventD
     /// <inheritdoc/>
     public Task RollbackProcessingAsync(string eventId, string? appKey = null, CancellationToken cancellationToken = default)
     {
+        if (string.IsNullOrEmpty(eventId))
+            return Task.CompletedTask;
         RollbackProcessing(eventId, appKey);
         return Task.CompletedTask;
     }
@@ -153,12 +103,16 @@ public class FeishuEventDeduplicator : MemoryDeduplicator<string>, IFeishuEventD
     /// <inheritdoc/>
     public Task<bool> IsProcessedAsync(string eventId, string? appKey = null, CancellationToken cancellationToken = default)
     {
+        if (string.IsNullOrEmpty(eventId))
+            return Task.FromResult(false);
         return Task.FromResult(IsProcessed(eventId, appKey));
     }
 
     /// <inheritdoc/>
     public Task<DeduplicationStatus> GetStatusAsync(string eventId, string? appKey = null, CancellationToken cancellationToken = default)
     {
+        if (string.IsNullOrEmpty(eventId))
+            return Task.FromResult(DeduplicationStatus.Pending);
         return Task.FromResult(GetStatus(eventId, appKey));
     }
 

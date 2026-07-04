@@ -166,8 +166,8 @@ dotnet add package Mud.Feishu.Redis
     "ValidateServerCertificate": true,
     "EventDeduplication": {
       "Mode": "InMemory",
-      "CacheExpirationMs": 172800000,
-      "CleanupIntervalMs": 300000
+      "CacheExpiration": "48:00:00",
+      "CleanupInterval": "00:05:00"
     }
   },
   "FeishuWebhook": {

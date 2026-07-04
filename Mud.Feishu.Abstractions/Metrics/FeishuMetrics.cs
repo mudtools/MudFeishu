@@ -14,7 +14,7 @@ namespace Mud.Feishu.Abstractions.Metrics;
 /// </summary>
 public class FeishuMetrics
 {
-    private static readonly Meter Meter = new("Mud.Feishu", "2.0.0");
+    private static readonly Meter Meter = new("Mud.Feishu", "3.0.0");
 
     /// <summary>
     /// 记录事件处理次数

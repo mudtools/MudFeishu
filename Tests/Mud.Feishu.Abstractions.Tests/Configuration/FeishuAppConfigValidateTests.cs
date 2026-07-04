@@ -227,4 +227,78 @@ public class FeishuAppConfigValidateTests
         act.Should().Throw<InvalidOperationException>()
             .WithMessage("*CircuitBreakerFailureThreshold*");
     }
+
+    /// <summary>
+    /// BaseUrl 仅允许 HTTPS 协议，HTTP 应抛异常
+    /// </summary>
+    [Fact]
+    public void Validate_ShouldThrow_WhenBaseUrlIsHttp()
+    {
+        var config = CreateValidConfig();
+        config.BaseUrl = "http://open.feishu.cn";
+
+        var act = () => config.Validate();
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*HTTPS*");
+    }
+
+    /// <summary>
+    /// BaseUrl 域名不在飞书官方白名单中且 AllowCustomBaseUrl=false 时应抛异常
+    /// </summary>
+    [Fact]
+    public void Validate_ShouldThrow_WhenDomainNotInWhitelist()
+    {
+        var config = CreateValidConfig();
+        config.BaseUrl = "https://evil.example.com";
+
+        var act = () => config.Validate();
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*白名单*");
+    }
+
+    /// <summary>
+    /// AllowCustomBaseUrl=true 时允许使用自定义域名
+    /// </summary>
+    [Fact]
+    public void Validate_ShouldNotThrow_WhenAllowCustomBaseUrlTrue()
+    {
+        var config = CreateValidConfig();
+        config.BaseUrl = "https://internal.proxy.com";
+        config.AllowCustomBaseUrl = true;
+
+        var act = () => config.Validate();
+
+        act.Should().NotThrow();
+    }
+
+    /// <summary>
+    /// BaseUrl 为飞书官方域名时应通过验证
+    /// </summary>
+    [Fact]
+    public void Validate_ShouldNotThrow_WhenDomainIsFeishuOfficial()
+    {
+        var config = CreateValidConfig();
+        config.BaseUrl = "https://open.feishu.cn";
+
+        var act = () => config.Validate();
+
+        act.Should().NotThrow();
+    }
+
+    /// <summary>
+    /// BaseUrl 不是有效的绝对 URI 时应抛异常
+    /// </summary>
+    [Fact]
+    public void Validate_ShouldThrow_WhenBaseUrlIsInvalidUri()
+    {
+        var config = CreateValidConfig();
+        config.BaseUrl = "not a url";
+
+        var act = () => config.Validate();
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*BaseUrl*URI*");
+    }
 }

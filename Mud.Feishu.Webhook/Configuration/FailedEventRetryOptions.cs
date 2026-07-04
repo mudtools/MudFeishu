@@ -5,6 +5,8 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using Mud.Feishu.Abstractions;
+
 namespace Mud.Feishu.Webhook.Configuration;
 
 /// <summary>
@@ -20,7 +22,7 @@ public class FailedEventRetryOptions
     /// <summary>
     /// 最大重试次数，默认 3
     /// </summary>
-    public int MaxRetryCount { get; set; } = Mud.Feishu.Abstractions.Consts.DefaultRetryCount;
+    public int MaxRetryCount { get; set; } = Mud.Feishu.Abstractions.Consts.DefaultEventRetryCount;
 
     /// <summary>
     /// 初始重试延迟（秒），默认 10
@@ -72,9 +74,31 @@ public class FailedEventRetryOptions
 
         if (!EnableRetry)
         {
-            if (MaxRetryCount > 0 && MaxRetryCount != Mud.Feishu.Abstractions.Consts.DefaultRetryCount)
+            // 当 EnableRetry=false 时，检查所有子配置是否被修改为非默认值
+            // 避免用户误以为子配置会生效但实际上被忽略
+            if (MaxRetryCount != Consts.DefaultEventRetryCount)
                 throw new InvalidOperationException(
                     "EnableRetry 为 false 但 MaxRetryCount 被设置为非默认值，请启用 EnableRetry 或恢复 MaxRetryCount 为默认值");
+
+            if (InitialRetryDelaySeconds != 10)
+                throw new InvalidOperationException(
+                    "EnableRetry 为 false 但 InitialRetryDelaySeconds 被设置为非默认值，请启用 EnableRetry 或恢复 InitialRetryDelaySeconds 为默认值 10");
+
+            if (RetryDelayMultiplier != 2.0)
+                throw new InvalidOperationException(
+                    "EnableRetry 为 false 但 RetryDelayMultiplier 被设置为非默认值，请启用 EnableRetry 或恢复 RetryDelayMultiplier 为默认值 2.0");
+
+            if (MaxRetryDelaySeconds != 300)
+                throw new InvalidOperationException(
+                    "EnableRetry 为 false 但 MaxRetryDelaySeconds 被设置为非默认值，请启用 EnableRetry 或恢复 MaxRetryDelaySeconds 为默认值 300");
+
+            if (RetryPollIntervalSeconds != 30)
+                throw new InvalidOperationException(
+                    "EnableRetry 为 false 但 RetryPollIntervalSeconds 被设置为非默认值，请启用 EnableRetry 或恢复 RetryPollIntervalSeconds 为默认值 30");
+
+            if (MaxRetryPerPoll != 10)
+                throw new InvalidOperationException(
+                    "EnableRetry 为 false 但 MaxRetryPerPoll 被设置为非默认值，请启用 EnableRetry 或恢复 MaxRetryPerPoll 为默认值 10");
         }
     }
 }

@@ -13,8 +13,8 @@ namespace Mud.Feishu.Webhook.Configuration;
 /// </summary>
 /// <remarks>
 /// 应用配置支持继承全局配置：
-/// - 设置为 -1 或 0 的数值字段表示继承全局配置
-/// - 布尔字段设置为 null 时继承全局配置，设置具体值时使用应用级配置
+/// - 数值字段（<see cref="TimestampToleranceSeconds"/>、<see cref="EventHandlingTimeoutMs"/>）设置为 <c>null</c>、<c>-1</c> 或 <c>0</c> 时继承全局配置，正整数使用应用级配置
+/// - 布尔字段设置为 <c>null</c> 时继承全局配置，设置具体值时使用应用级配置
 /// </remarks>
 public class FeishuAppWebhookOptions
 {
@@ -39,16 +39,18 @@ public class FeishuAppWebhookOptions
     public string? Description { get; set; }
 
     /// <summary>
-    /// 时间戳容错范围（秒），默认 -1 表示继承全局配置
-    /// 设置为正整数时使用应用级配置，设置为 -1 或 0 时继承全局 TimestampToleranceSeconds
+    /// 时间戳容差范围（秒），默认 <c>null</c> 表示继承全局配置。
+    /// <para>设置为正整数时使用应用级配置；设置为 <c>null</c>、<c>-1</c> 或 <c>0</c> 时继承全局 <c>TimestampToleranceSeconds</c>。</para>
+    /// <para>推荐使用 <c>null</c> 表示继承（与其他可空字段一致）；<c>-1</c> 仍向后兼容但已弃用。</para>
     /// </summary>
-    public int TimestampToleranceSeconds { get; set; } = -1;
+    public int? TimestampToleranceSeconds { get; set; }
 
     /// <summary>
-    /// 事件处理超时时间（毫秒），默认 -1 表示继承全局配置
-    /// 设置为正整数时使用应用级配置，设置为 -1 或 0 时继承全局 EventHandlingTimeoutMs
+    /// 事件处理超时时间（毫秒），默认 <c>null</c> 表示继承全局配置。
+    /// <para>设置为正整数时使用应用级配置；设置为 <c>null</c>、<c>-1</c> 或 <c>0</c> 时继承全局 <c>EventHandlingTimeoutMs</c>。</para>
+    /// <para>推荐使用 <c>null</c> 表示继承（与其他可空字段一致）；<c>-1</c> 仍向后兼容但已弃用。</para>
     /// </summary>
-    public int EventHandlingTimeoutMs { get; set; } = -1;
+    public int? EventHandlingTimeoutMs { get; set; }
 
     /// <summary>
     /// 是否强制验证请求头签名，默认 null 表示继承全局配置
@@ -90,13 +92,13 @@ public class FeishuAppWebhookOptions
         if (EncryptKey.Length != 32)
             throw new InvalidOperationException("EncryptKey 长度必须为 32 字符");
 
-        // TimestampToleranceSeconds: -1 表示继承全局配置，0 或正整数表示应用级配置
-        // 不需要验证负数，因为 -1 是合法的特殊值
+        // TimestampToleranceSeconds: null/-1/0 表示继承全局配置，正整数表示应用级配置
+        // 不需要验证负数，因为 -1 是合法的向后兼容特殊值
 
-        // EventHandlingTimeoutMs: -1 表示继承全局配置，正整数表示应用级配置
-        if (EventHandlingTimeoutMs < -1)
+        // EventHandlingTimeoutMs: null/-1/0 表示继承全局配置，正整数表示应用级配置
+        if (EventHandlingTimeoutMs.HasValue && EventHandlingTimeoutMs.Value < -1)
             throw new InvalidOperationException("EventHandlingTimeoutMs 不能小于 -1");
-        if (EventHandlingTimeoutMs > 0 && EventHandlingTimeoutMs < 1000)
+        if (EventHandlingTimeoutMs.HasValue && EventHandlingTimeoutMs.Value > 0 && EventHandlingTimeoutMs.Value < 1000)
             throw new InvalidOperationException("EventHandlingTimeoutMs 必须至少为 1000 毫秒");
     }
 
@@ -106,7 +108,7 @@ public class FeishuAppWebhookOptions
     /// <param name="globalValue">全局配置值</param>
     /// <returns>有效的时间戳容差秒数</returns>
     public int GetEffectiveTimestampTolerance(int globalValue) =>
-        TimestampToleranceSeconds > 0 ? TimestampToleranceSeconds : globalValue;
+        TimestampToleranceSeconds is > 0 ? TimestampToleranceSeconds.Value : globalValue;
 
     /// <summary>
     /// 获取有效的事件处理超时（解析继承逻辑）
@@ -114,7 +116,7 @@ public class FeishuAppWebhookOptions
     /// <param name="globalValue">全局配置值</param>
     /// <returns>有效的事件处理超时毫秒数</returns>
     public int GetEffectiveEventHandlingTimeout(int globalValue) =>
-        EventHandlingTimeoutMs > 0 ? EventHandlingTimeoutMs : globalValue;
+        EventHandlingTimeoutMs is > 0 ? EventHandlingTimeoutMs.Value : globalValue;
 
     /// <summary>
     /// 获取有效的异常处理配置（解析继承逻辑）

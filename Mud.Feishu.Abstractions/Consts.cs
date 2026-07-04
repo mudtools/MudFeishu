@@ -58,9 +58,31 @@ internal class Consts
     public const string DefaultHeader = "FeishuEventHeader";
 
     /// <summary>
-    /// 默认重试次数
+    /// 默认 HTTP API 重试次数（用于 FeishuAppConfig.RetryCount）
     /// </summary>
-    public const int DefaultRetryCount = 3;
+    public const int DefaultHttpRetryCount = 3;
+
+    /// <summary>
+    /// 默认 Redis 连接重试次数（用于 RedisOptions.ConnectRetry）
+    /// </summary>
+    public const int DefaultRedisConnectRetry = 3;
+
+    /// <summary>
+    /// 默认事件处理重试次数（用于 FailedEventRetryOptions.MaxRetryCount）
+    /// </summary>
+    public const int DefaultEventRetryCount = 3;
+
+    /// <summary>
+    /// 默认去重操作重试次数（用于 DeduplicationOptions.MaxRetryCount，Redis 操作失败时的重试）
+    /// </summary>
+    public const int DefaultDeduplicationRetryCount = 3;
+
+    /// <summary>
+    /// 默认重试次数（向后兼容别名，等同于 DefaultHttpRetryCount）。
+    /// <para>新代码应使用语义明确的常量：DefaultHttpRetryCount / DefaultRedisConnectRetry /
+    /// DefaultEventRetryCount / DefaultDeduplicationRetryCount。</para>
+    /// </summary>
+    public const int DefaultRetryCount = DefaultHttpRetryCount;
 
     /// <summary>
     /// 默认重试延迟时间（毫秒）

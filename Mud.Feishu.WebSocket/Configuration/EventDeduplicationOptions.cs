@@ -49,4 +49,26 @@ public class EventDeduplicationOptions
         set => _cleanupInterval = value < TimeSpan.FromSeconds(60) ? TimeSpan.FromSeconds(60) : value;
     }
     private TimeSpan _cleanupInterval = DefaultCleanupInterval;
+
+    /// <summary>
+    /// 默认处理中超时时间：10 分钟
+    /// </summary>
+    public static readonly TimeSpan DefaultProcessingTimeout = TimeSpan.FromMilliseconds(Mud.Feishu.Abstractions.Consts.DefaultProcessingTimeoutMs);
+
+    /// <summary>
+    /// 处理中超时时间，超时后允许重新处理事件
+    /// <para>默认为 10 分钟，最小值为 10 秒</para>
+    /// </summary>
+    public TimeSpan ProcessingTimeout
+    {
+        get => _processingTimeout;
+        set => _processingTimeout = value < TimeSpan.FromSeconds(10) ? TimeSpan.FromSeconds(10) : value;
+    }
+    private TimeSpan _processingTimeout = DefaultProcessingTimeout;
+
+    /// <summary>
+    /// 内存缓存最大条目数，0 表示不限制
+    /// <para>默认为 100000，与 Abstractions 层 DeduplicationOptions.MaxCacheSize 对齐</para>
+    /// </summary>
+    public int MaxCacheSize { get; set; } = Mud.Feishu.Abstractions.Consts.DefaultMaxCacheSize;
 }

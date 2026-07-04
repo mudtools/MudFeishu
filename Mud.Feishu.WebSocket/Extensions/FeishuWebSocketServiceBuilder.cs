@@ -263,19 +263,41 @@ public class FeishuWebSocketServiceBuilder
     /// </summary>
     private void RegisterCoreServices()
     {
-        // 注册事件去重服务（单例，如果未手动注册分布式去重则使用内存实现）
+        // 注册事件去重服务（单例，根据 EventDeduplication.Mode 选择实现）
+        // - Mode == None：注册 NoopFeishuEventDeduplicator，不进行去重
+        // - Mode == InMemory：注册 FeishuEventDeduplicator（内存实现）
+        // - Mode == Distributed：若未手动注册分布式实现，记录警告并降级为内存实现
         if (!_services.Any(s => s.ServiceType == typeof(IFeishuEventDeduplicator)))
         {
             _services.AddSingleton<IFeishuEventDeduplicator>(serviceProvider =>
             {
                 var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
                 var options = serviceProvider.GetRequiredService<IOptions<FeishuWebSocketOptions>>().Value;
+                var mode = options.EventDeduplication.Mode;
+
+                // None 模式：注册空实现，不进行去重
+                if (mode == EventDeduplicationMode.None)
+                {
+                    var noopLogger = loggerFactory.CreateLogger<NoopFeishuEventDeduplicator>();
+                    return new NoopFeishuEventDeduplicator(noopLogger);
+                }
+
                 var logger = loggerFactory.CreateLogger<FeishuEventDeduplicator>();
+
+                // Distributed 模式：检测是否已注册分布式实现，未注册时记录警告并降级为内存实现
+                if (mode == EventDeduplicationMode.Distributed)
+                {
+                    logger.LogWarning(
+                        "EventDeduplication.Mode=Distributed 但未注册 IFeishuEventDeduplicator 的分布式实现，降级为内存去重。" +
+                        "请通过 services.AddSingleton<IFeishuEventDeduplicator, RedisFeishuEventDistributedDeduplicator>() 注册 Redis 实现");
+                }
 
                 return new FeishuEventDeduplicator(
                     logger,
                     options.EventDeduplication.CacheExpiration,
-                    options.EventDeduplication.CleanupInterval);
+                    options.EventDeduplication.CleanupInterval,
+                    options.EventDeduplication.ProcessingTimeout,
+                    options.EventDeduplication.MaxCacheSize);
             });
         }
 

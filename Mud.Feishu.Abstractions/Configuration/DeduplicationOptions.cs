@@ -86,7 +86,7 @@ public class DeduplicationOptions
         get => _maxRetryCount;
         set => _maxRetryCount = Math.Max(0, Math.Min(value, 10));
     }
-    private int _maxRetryCount = Mud.Feishu.Abstractions.Consts.DefaultRetryCount;
+    private int _maxRetryCount = Consts.DefaultDeduplicationRetryCount;
 
     /// <summary>
     /// 初始重试延迟（仅分布式模式）

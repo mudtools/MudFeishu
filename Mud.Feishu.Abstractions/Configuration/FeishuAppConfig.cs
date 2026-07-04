@@ -108,7 +108,7 @@ public class FeishuAppConfig
     /// 范围: 0-10次
     /// 当API调用失败时的自动重试次数，提高请求的成功率和稳定性。
     /// </remarks>
-    public int RetryCount { get; set; } = Consts.DefaultRetryCount;
+    public int RetryCount { get; set; } = Consts.DefaultHttpRetryCount;
 
     /// <summary>
     /// 重试延迟时间（毫秒）

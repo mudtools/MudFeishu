@@ -50,7 +50,7 @@ public class FailedEventRetryOptionsTests
     [Fact]
     public void Validate_ShouldAcceptZeroMaxRetryCount()
     {
-        var options = new FailedEventRetryOptions { MaxRetryCount = 0 };
+        var options = new FailedEventRetryOptions { EnableRetry = true, MaxRetryCount = 0 };
 
         var act = () => options.Validate();
 
@@ -80,7 +80,7 @@ public class FailedEventRetryOptionsTests
     [Fact]
     public void Validate_ShouldAcceptRetryDelayMultiplierExactly1()
     {
-        var options = new FailedEventRetryOptions { RetryDelayMultiplier = 1.0 };
+        var options = new FailedEventRetryOptions { EnableRetry = true, RetryDelayMultiplier = 1.0 };
 
         var act = () => options.Validate();
 
@@ -106,6 +106,7 @@ public class FailedEventRetryOptionsTests
     {
         var options = new FailedEventRetryOptions
         {
+            EnableRetry = true,
             InitialRetryDelaySeconds = 10,
             MaxRetryDelaySeconds = 10
         };
@@ -152,5 +153,78 @@ public class FailedEventRetryOptionsTests
         var act = () => options.Validate();
 
         act.Should().NotThrow();
+    }
+
+    // ========== EnableRetry=false 时子配置一致性校验测试 ==========
+
+    [Fact]
+    public void Validate_ShouldNotThrow_WhenEnableRetryFalseAndAllDefaults()
+    {
+        // EnableRetry=false 但所有子配置均为默认值，应通过校验
+        var options = new FailedEventRetryOptions { EnableRetry = false };
+
+        var act = () => options.Validate();
+
+        act.Should().NotThrow();
+    }
+
+    [Fact]
+    public void Validate_ShouldThrow_WhenEnableRetryFalseButMaxRetryCountNonDefault()
+    {
+        var options = new FailedEventRetryOptions { EnableRetry = false, MaxRetryCount = 5 };
+
+        var act = () => options.Validate();
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*EnableRetry 为 false 但 MaxRetryCount*");
+    }
+
+    [Fact]
+    public void Validate_ShouldThrow_WhenEnableRetryFalseButInitialRetryDelaySecondsNonDefault()
+    {
+        var options = new FailedEventRetryOptions { EnableRetry = false, InitialRetryDelaySeconds = 30 };
+
+        var act = () => options.Validate();
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*EnableRetry 为 false 但 InitialRetryDelaySeconds*");
+    }
+
+    [Fact]
+    public void Validate_ShouldThrow_WhenEnableRetryFalseButRetryDelayMultiplierNonDefault()
+    {
+        var options = new FailedEventRetryOptions { EnableRetry = false, RetryDelayMultiplier = 3.0 };
+
+        var act = () => options.Validate();
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*EnableRetry 为 false 但 RetryDelayMultiplier*");
+    }
+
+    [Fact]
+    public void Validate_ShouldThrow_WhenEnableRetryFalseButMaxRetryDelaySecondsNonDefault()
+    {
+        var options = new FailedEventRetryOptions { EnableRetry = false, MaxRetryDelaySeconds = 600 };
+
+        var act = () => options.Validate();
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*EnableRetry 为 false 但 MaxRetryDelaySeconds*");
+    }
+
+    [Fact]
+    public void Validate_ShouldThrow_WhenEnableRetryFalseButRetryPollIntervalSecondsNonDefault()
+    {
+        var options = new FailedEventRetryOptions { EnableRetry = false, RetryPollIntervalSeconds = 60 };
+
+        var act = () => options.Validate();
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*EnableRetry 为 false 但 RetryPollIntervalSeconds*");
+    }
+
+    [Fact]
+    public void Validate_ShouldThrow_WhenEnableRetryFalseButMaxRetryPerPollNonDefault()
+    {
+        var options = new FailedEventRetryOptions { EnableRetry = false, MaxRetryPerPoll = 20 };
+
+        var act = () => options.Validate();
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*EnableRetry 为 false 但 MaxRetryPerPoll*");
     }
 }

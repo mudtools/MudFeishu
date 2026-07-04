@@ -146,4 +146,124 @@ public class RedisOptionsTests
         Assert.Equal(TimeSpan.FromSeconds(30), options.NonceTtl);
         Assert.Equal(TimeSpan.FromDays(30), options.SeqIdCacheExpiration);
     }
+
+    // ========== Validate() 方法测试 ==========
+
+    [Fact]
+    public void Validate_ShouldNotThrow_WithDefaultValues()
+    {
+        // Arrange
+        var options = new RedisOptions();
+
+        // Act & Assert - 默认值应通过校验
+        options.Validate();
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData(null)]
+    public void Validate_ShouldThrow_WhenServerAddressIsNullOrWhitespace(string? serverAddress)
+    {
+        // Arrange
+        var options = new RedisOptions { ServerAddress = serverAddress! };
+
+        // Act & Assert
+        var ex = Assert.Throws<InvalidOperationException>(() => options.Validate());
+        Assert.Contains("ServerAddress 不能为空", ex.Message);
+    }
+
+    [Theory]
+    [InlineData("invalidformat")]
+    [InlineData("justhost")]
+    [InlineData("no-port-here")]
+    public void Validate_ShouldThrow_WhenServerAddressMissingColonOrScheme(string serverAddress)
+    {
+        // Arrange
+        var options = new RedisOptions { ServerAddress = serverAddress };
+
+        // Act & Assert
+        var ex = Assert.Throws<InvalidOperationException>(() => options.Validate());
+        Assert.Contains("ServerAddress 格式无效", ex.Message);
+    }
+
+    [Theory]
+    [InlineData("localhost:6379")]
+    [InlineData("127.0.0.1:6379")]
+    [InlineData("redis.example.com:6380")]
+    [InlineData("redis://localhost:6379")]
+    [InlineData("rediss://secure.redis.com:6380")]
+    [InlineData("REDIS://localhost:6379")]
+    [InlineData("REDISS://secure.redis.com:6380")]
+    public void Validate_ShouldAccept_WhenServerAddressIsValidFormat(string serverAddress)
+    {
+        // Arrange
+        var options = new RedisOptions { ServerAddress = serverAddress };
+
+        // Act & Assert - 合法格式不应抛出异常
+        options.Validate();
+    }
+
+    [Fact]
+    public void Validate_ShouldThrow_WhenConnectTimeoutLessThan1000()
+    {
+        // Arrange
+        var options = new RedisOptions { ConnectTimeout = 500 };
+
+        // Act & Assert
+        var ex = Assert.Throws<InvalidOperationException>(() => options.Validate());
+        Assert.Contains("ConnectTimeout 必须至少为 1000 毫秒", ex.Message);
+    }
+
+    [Fact]
+    public void Validate_ShouldAccept_WhenConnectTimeoutIsExactly1000()
+    {
+        // Arrange
+        var options = new RedisOptions { ConnectTimeout = 1000 };
+
+        // Act & Assert - 边界值应通过校验
+        options.Validate();
+    }
+
+    [Fact]
+    public void Validate_ShouldThrow_WhenSyncTimeoutLessThan1000()
+    {
+        // Arrange
+        var options = new RedisOptions { SyncTimeout = 999 };
+
+        // Act & Assert
+        var ex = Assert.Throws<InvalidOperationException>(() => options.Validate());
+        Assert.Contains("SyncTimeout 必须至少为 1000 毫秒", ex.Message);
+    }
+
+    [Fact]
+    public void Validate_ShouldAccept_WhenSyncTimeoutIsExactly1000()
+    {
+        // Arrange
+        var options = new RedisOptions { SyncTimeout = 1000 };
+
+        // Act & Assert - 边界值应通过校验
+        options.Validate();
+    }
+
+    [Fact]
+    public void Validate_ShouldThrow_WhenConnectRetryIsNegative()
+    {
+        // Arrange
+        var options = new RedisOptions { ConnectRetry = -1 };
+
+        // Act & Assert
+        var ex = Assert.Throws<InvalidOperationException>(() => options.Validate());
+        Assert.Contains("ConnectRetry 不能为负数", ex.Message);
+    }
+
+    [Fact]
+    public void Validate_ShouldAccept_WhenConnectRetryIsZero()
+    {
+        // Arrange
+        var options = new RedisOptions { ConnectRetry = 0 };
+
+        // Act & Assert - 0 表示不重试，应通过校验
+        options.Validate();
+    }
 }

@@ -299,5 +299,24 @@ public static class FeishuMultiAppExtensions
             throw new InvalidOperationException(
                 $"检测到多个 IsDefault=true 的应用（{string.Join(", ", defaultAppKeys)}），仅允许一个默认应用。请确保只有一个应用标记为 IsDefault=true。");
         }
+
+        // 多应用模式下，检测非默认应用的弹性策略与默认应用不一致时发出警告
+        // 多应用模式下弹性策略为全局共享，仅默认应用的配置生效
+        var defaultApp = configs.FirstOrDefault(c => c.IsDefault);
+        if (defaultApp != null && configs.Count > 1)
+        {
+            foreach (var config in configs.Where(c => !c.IsDefault))
+            {
+                if (config.RetryCount != defaultApp.RetryCount ||
+                    config.TimeOut != defaultApp.TimeOut ||
+                    config.RetryDelayMs != defaultApp.RetryDelayMs)
+                {
+                    System.Diagnostics.Debug.WriteLine(
+                        $"[MudFeishu] 警告：应用 '{config.AppKey}' 的弹性策略配置（RetryCount/TimeOut/RetryDelayMs）" +
+                        $"与默认应用 '{defaultApp.AppKey}' 不同。多应用模式下仅默认应用的弹性策略生效，" +
+                        $"非默认应用的配置将被忽略。");
+                }
+            }
+        }
     }
 }

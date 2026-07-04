@@ -22,8 +22,8 @@ public class FeishuAppWebhookOptionsTests
         options.VerificationToken.Should().BeEmpty();
         options.EncryptKey.Should().BeEmpty();
         options.Description.Should().BeNull();
-        options.TimestampToleranceSeconds.Should().Be(-1);
-        options.EventHandlingTimeoutMs.Should().Be(-1);
+        options.TimestampToleranceSeconds.Should().BeNull();
+        options.EventHandlingTimeoutMs.Should().BeNull();
         options.EnforceHeaderSignatureValidation.Should().BeNull();
         options.EnableBodySignatureValidation.Should().BeNull();
         options.EnableExceptionHandling.Should().BeNull();
@@ -159,8 +159,17 @@ public class FeishuAppWebhookOptionsTests
     }
 
     [Fact]
+    public void GetEffectiveTimestampTolerance_ShouldReturnGlobalValue_WhenNull()
+    {
+        var options = new FeishuAppWebhookOptions { TimestampToleranceSeconds = null };
+
+        options.GetEffectiveTimestampTolerance(30).Should().Be(30);
+    }
+
+    [Fact]
     public void GetEffectiveTimestampTolerance_ShouldReturnGlobalValue_WhenMinus1()
     {
+        // -1 为向后兼容的继承哨兵值
         var options = new FeishuAppWebhookOptions { TimestampToleranceSeconds = -1 };
 
         options.GetEffectiveTimestampTolerance(30).Should().Be(30);
@@ -183,8 +192,17 @@ public class FeishuAppWebhookOptionsTests
     }
 
     [Fact]
+    public void GetEffectiveEventHandlingTimeout_ShouldReturnGlobalValue_WhenNull()
+    {
+        var options = new FeishuAppWebhookOptions { EventHandlingTimeoutMs = null };
+
+        options.GetEffectiveEventHandlingTimeout(30000).Should().Be(30000);
+    }
+
+    [Fact]
     public void GetEffectiveEventHandlingTimeout_ShouldReturnGlobalValue_WhenMinus1()
     {
+        // -1 为向后兼容的继承哨兵值
         var options = new FeishuAppWebhookOptions { EventHandlingTimeoutMs = -1 };
 
         options.GetEffectiveEventHandlingTimeout(30000).Should().Be(30000);

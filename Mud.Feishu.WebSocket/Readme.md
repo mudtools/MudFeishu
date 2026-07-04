@@ -719,34 +719,21 @@ public class ServiceManager
 
 ### 事件去重配置 (`EventDeduplication`)
 
+> ℹ️ `EventDeduplicationOptions` 是 WebSocket 层的轻量去重配置。Abstractions 层还提供了功能更丰富的 `DeduplicationOptions`，见下方[高级去重配置](#高级去重配置-deduplicationoptions)。
+
 | 选项                | 类型                     | 默认值     | 说明                                  |
 | ------------------- | ------------------------ | ---------- | ------------------------------------- |
 | `Mode`              | `EventDeduplicationMode` | `InMemory` | 去重模式（None/InMemory/Distributed） |
 | `CacheExpiration`   | TimeSpan                 | 48:00:00   | 缓存过期时间，默认 48 小时            |
 | `CleanupInterval`   | TimeSpan                 | 00:05:00   | 缓存清理间隔，默认 5 分钟             |
-| `KeyPrefix`         | string                   | "feishu:event:" | 事件去重键前缀（分布式模式下用于 Redis key 命名空间隔离） |
-| `EnableDeduplicationMetrics` | bool         | true       | 是否启用去重指标收集                  |
+| `ProcessingTimeout` | TimeSpan                 | 00:10:00   | 处理中超时时间，超时后允许重新处理，默认 10 分钟 |
+| `MaxCacheSize`      | int                      | 100000     | 内存缓存最大条目数，0 表示不限制      |
 
 **去重模式说明：**
 
 - `None` - 禁用去重（不推荐，仅用于特殊场景）
 - `InMemory` - 内存去重（单实例，默认）
 - `Distributed` - 分布式去重（需配置 `IFeishuEventDistributedDeduplicator`）
-
-**预设配置：**
-
-可通过静态属性快速应用预设配置：
-
-```csharp
-// 高可靠性模式（默认，48小时缓存，5分钟清理）
-options.EventDeduplication = EventDeduplicationOptions.Default;
-
-// 高可用性模式（6小时缓存，1分钟清理，适合高吞吐场景）
-options.EventDeduplication = EventDeduplicationOptions.HighAvailability;
-
-// 保守模式（72小时缓存，10分钟清理，适合低频重要事件）
-options.EventDeduplication = EventDeduplicationOptions.HighReliability;
-```
 
 **配置示例：**
 
@@ -760,6 +747,43 @@ options.EventDeduplication = EventDeduplicationOptions.HighReliability;
     }
   }
 }
+```
+
+### 高级去重配置 (`DeduplicationOptions`)
+
+> ℹ️ `DeduplicationOptions` 位于 `Mud.Feishu.Abstractions.Configuration` 命名空间，由 `FeishuEventDeduplicator` 和 `UnifiedDeduplicationMiddleware` 使用，提供比 `EventDeduplicationOptions` 更丰富的去重控制能力。
+
+| 选项                       | 类型     | 默认值         | 说明                                                       |
+| -------------------------- | -------- | -------------- | ---------------------------------------------------------- |
+| `CacheExpiration`          | TimeSpan | 48 小时        | 缓存过期时间，最小 1 分钟                                  |
+| `ProcessingTimeout`        | TimeSpan | 默认值         | 处理中超时时间，超时后允许重新处理，最小 10 秒             |
+| `CleanupInterval`          | TimeSpan | 5 分钟         | 缓存清理间隔（仅内存模式），最小 30 秒                     |
+| `AllowProcessingOnFallback`| bool     | true           | Redis 失败时是否降级处理（false=拒绝，true=降级到内存去重）|
+| `MaxRetryCount`            | int      | 默认值         | Redis 操作最大重试次数，范围 0-10（仅分布式模式）          |
+| `InitialRetryDelay`        | TimeSpan | 1 秒           | 首次重试延迟，后续使用指数退避（仅分布式模式）             |
+| `MaxRetryDelay`            | TimeSpan | 30 秒          | 指数退避最大延迟上限（仅分布式模式）                       |
+| `KeyPrefix`                | string   | "feishu:event:" | Redis 键前缀，用于应用/环境隔离（仅分布式模式）           |
+| `MaxCacheSize`             | int      | 默认值         | 内存缓存最大条目数，0 表示不限制（仅内存模式）             |
+| `EnableVerboseLogging`     | bool     | false          | 是否启用详细去重日志（调试用，生产环境建议关闭）           |
+
+**预设配置：**
+
+可通过静态属性快速应用预设配置：
+
+```csharp
+using Mud.Feishu.Abstractions.Configuration;
+
+// 默认配置（标准模式）
+var dedupOptions = DeduplicationOptions.Default;
+
+// 高可靠性模式（72小时缓存，5分钟处理超时，Redis失败时拒绝处理）
+var dedupOptions = DeduplicationOptions.HighReliability;
+
+// 高可用性模式（48小时缓存，15分钟处理超时，Redis失败时降级处理）
+var dedupOptions = DeduplicationOptions.HighAvailability;
+
+// 注入到 FeishuEventDeduplicator
+services.AddSingleton(new FeishuEventDeduplicator(dedupOptions));
 ```
 
 ## 🎯 高级用法

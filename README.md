@@ -117,15 +117,30 @@ dotnet add package Mud.Feishu.Redis
     "AutoReconnect": true,
     "MaxReconnectAttempts": 5,
     "ReconnectDelayMs": 5000,
+    "MaxReconnectDelayMs": 30000,
+    "MaxTotalReconnectTime": "00:30:00",
+    "ReconnectCooldownTime": "00:00:05",
+    "EnableReconnectMetrics": true,
     "HeartbeatIntervalMs": 25000,
     "EnableLogging": true,
     "ConnectionTimeoutMs": 10000,
     "HealthCheckIntervalMs": 60000,
+    "InitialReceiveBufferSize": 4096,
+    "MessageHandlerTimeoutMs": 30000,
     "ValidateServerCertificate": true,
+    "AllowSelfSignedCertificates": false,
+    "AllowInsecureWebSocket": false,
+    "SequenceGapThreshold": 0,
+    "MessageSizeLimits": {
+      "MaxTextMessageSize": 1048576,
+      "MaxBinaryMessageSize": 10485760
+    },
     "EventDeduplication": {
       "Mode": "InMemory",
-      "CacheExpiration": "48:00:00",
-      "CleanupInterval": "00:05:00"
+      "CacheExpiration": "2.00:00:00",
+      "CleanupInterval": "00:05:00",
+      "ProcessingTimeout": "00:10:00",
+      "MaxCacheSize": 100000
     }
   },
   "FeishuWebhook": {
@@ -156,23 +171,24 @@ dotnet add package Mud.Feishu.Redis
 <details>
 <summary>📋 WebSocket 高级配置参考</summary>
 
-| 配置项                           | 类型     | 默认值     | 说明                                    |
-| -------------------------------- | -------- | ---------- | --------------------------------------- |
-| `MaxReconnectDelayMs`            | int      | 30000      | 最大重连延迟时间（毫秒）                |
-| `MaxTotalReconnectTime`          | TimeSpan | 30 分钟    | 最大重连总时间                          |
-| `ReconnectCooldownTime`          | TimeSpan | 5 秒       | 两次重连之间的冷却时间                  |
-| `EnableReconnectMetrics`         | bool     | true       | 是否启用重连指标收集                    |
-| `ConnectionTimeoutMs`            | int      | 10000      | 连接超时时间（毫秒）                    |
-| `InitialReceiveBufferSize`       | int      | 4096       | 初始接收缓冲区大小（字节）              |
-| `ValidateServerCertificate`      | bool     | true       | 是否验证 SSL 证书                       |
-| `AllowSelfSignedCertificates`    | bool     | false      | 是否允许自签名证书                      |
-| `AllowInsecureWebSocket`         | bool     | false      | 是否允许 ws:// 不安全连接（仅开发/测试） |
-| `HealthCheckIntervalMs`          | int      | 60000      | 健康检查间隔（毫秒）                    |
-| `MessageHandlerTimeoutMs`        | int      | 30000      | 单条消息处理超时（毫秒），0 表示不限制  |
-| `SequenceGapThreshold`           | ulong    | 0          | 消息序号跳跃阈值，0 表示禁用跳跃检测    |
-| `MessageSizeLimits`              | object   | 见下方     | 消息大小限制配置                        |
-| `TokenRefreshInterval`           | TimeSpan | 2 小时     | ⚠️ 已移除，令牌刷新由 `FeishuAppConfig.TokenRefreshThreshold` 控制 |
-| `TokenRefreshAhead`              | TimeSpan | 5 分钟     | ⚠️ 已移除，令牌刷新由 `FeishuAppConfig.TokenRefreshThreshold` 控制 |
+| 配置项                        | 类型     | 默认值  | 说明                                                               |
+| ----------------------------- | -------- | ------- | ------------------------------------------------------------------ |
+| `MaxReconnectDelayMs`         | int      | 30000   | 最大重连延迟时间（毫秒）                                           |
+| `MaxTotalReconnectTime`       | TimeSpan | 30 分钟 | 最大重连总时间                                                     |
+| `ReconnectCooldownTime`       | TimeSpan | 5 秒    | 两次重连之间的冷却时间                                             |
+| `EnableReconnectMetrics`      | bool     | true    | 是否启用重连指标收集                                               |
+| `ConnectionTimeoutMs`         | int      | 10000   | 连接超时时间（毫秒）                                               |
+| `InitialReceiveBufferSize`    | int      | 4096    | 初始接收缓冲区大小（字节）                                         |
+| `ValidateServerCertificate`   | bool     | true    | 是否验证 SSL 证书                                                  |
+| `AllowSelfSignedCertificates` | bool     | false   | 是否允许自签名证书                                                 |
+| `AllowInsecureWebSocket`      | bool     | false   | 是否允许 ws:// 不安全连接（仅开发/测试）                           |
+| `HealthCheckIntervalMs`       | int      | 60000   | 健康检查间隔（毫秒）                                               |
+| `MessageHandlerTimeoutMs`     | int      | 30000   | 单条消息处理超时（毫秒），0 表示不限制                             |
+| `SequenceGapThreshold`        | ulong    | 0       | 消息序号跳跃阈值，0 表示禁用跳跃检测                               |
+| `MessageSizeLimits`           | object   | 见下方  | 消息大小限制配置                                                   |
+| `EventDeduplication`          | object   | 见下方  | 事件去重配置                                                       |
+| `TokenRefreshInterval`        | TimeSpan | 2 小时  | ⚠️ 已移除，令牌刷新由 `FeishuAppConfig.TokenRefreshThreshold` 控制 |
+| `TokenRefreshAhead`           | TimeSpan | 5 分钟  | ⚠️ 已移除，令牌刷新由 `FeishuAppConfig.TokenRefreshThreshold` 控制 |
 
 **MessageSizeLimits 子配置：**
 
@@ -181,7 +197,38 @@ dotnet add package Mud.Feishu.Redis
 | `MaxTextMessageSize`   | int  | 1MB    | 最大文本消息大小（字符数） |
 | `MaxBinaryMessageSize` | long | 10MB   | 最大二进制消息大小（字节） |
 
+**EventDeduplication 子配置：**
+
+| 配置项              | 类型     | 默认值   | 说明                                                                                     |
+| ------------------- | -------- | -------- | ---------------------------------------------------------------------------------------- |
+| `Mode`              | enum     | InMemory | 去重模式：None（禁用）/ InMemory（内存）/ Distributed（需注入 IFeishuEventDeduplicator） |
+| `CacheExpiration`   | TimeSpan | 48 小时  | 缓存过期时间（最小 60 秒）。建议与飞书事件重试窗口一致                                   |
+| `CleanupInterval`   | TimeSpan | 5 分钟   | 缓存清理间隔（最小 60 秒）                                                               |
+| `ProcessingTimeout` | TimeSpan | 10 分钟  | 处理中超时时间（最小 10 秒），超时后允许重新处理事件                                     |
+| `MaxCacheSize`      | int      | 100000   | 内存缓存最大条目数，0 表示不限制                                                         |
+
+> 💡 TimeSpan 配置说明：`Microsoft.Extensions.Configuration` 绑定 TimeSpan 时使用 `TypeDescriptor` 解析，"24:00:00" 会被解释为 **24 天** 而非 24 小时。请使用 `"d.hh:mm:ss"` 格式（如 `"2.00:00:00"` 表示 48 小时）或 `"hh:mm:ss"` 格式（如 `"00:30:00"` 表示 30 分钟）。
+
 > 💡 更多配置详情请参考 [Mud.Feishu.WebSocket 详细文档](./Mud.Feishu.WebSocket/Readme.md)
+
+</details>
+
+<details>
+<summary>📋 EnableLogging 多层级作用域说明</summary>
+
+SDK 中存在多个 `EnableLogging` / `EnableRequestLogging` 开关，它们**作用范围相互独立、互不覆盖**，按模块分别控制各自日志输出：
+
+| 配置项位置                           | 字段                     | 作用范围                                                               | 默认值 |
+| ------------------------------------ | ------------------------ | ---------------------------------------------------------------------- | ------ |
+| `FeishuApps[*].EnableLogging`        | `FeishuAppConfig`        | HTTP API 客户端层（`Mud.Feishu`）的请求/响应详细日志                   | true   |
+| `FeishuWebSocket:EnableLogging`      | `FeishuWebSocketOptions` | WebSocket 模块（`Mud.Feishu.WebSocket`）的连接/心跳/Ping/Pong 调试日志 | true   |
+| `FeishuWebhook:EnableRequestLogging` | `FeishuWebhookOptions`   | Webhook 模块（`Mud.Feishu.Webhook`）的入站请求日志                     | true   |
+
+> 💡 **优先级说明**：
+>
+> - 三个开关**各自独立**，不存在覆盖或继承关系。例如设置 `FeishuApps[0].EnableLogging=false` 不会影响 WebSocket 模块的日志输出。
+> - 如需全局关闭 SDK 日志，请同时将三个开关都设为 `false`，或通过 `ILoggerFactory` 过滤 `Mud.Feishu` 命名空间的日志级别。
+> - 推荐生产环境保持 `EnableLogging=true` 以便问题排查，但将日志级别调整为 `Information` 或 `Warning` 以减少日志量。
 
 </details>
 
@@ -218,6 +265,217 @@ dotnet add package Mud.Feishu.Redis
 | `EventHandlingTimeoutMs`           | int                   | 30000  | 事件处理超时时间（毫秒）                                     |
 
 > 🔒 生产环境强烈建议保持 `EnforceHeaderSignatureValidation=true`，配置 `AllowedSourceIPs` 限制来源 IP，并将 `TimestampToleranceSeconds` 设置为 30 秒或更短以减少重放攻击时间窗口。
+
+</details>
+
+<details>
+<summary>📋 Redis 分布式去重配置参考（RedisOptions）</summary>
+
+> 当引用 `Mud.Feishu.Redis` 包并启用分布式去重时，以下配置在 `FeishuRedis` 节点下生效。
+
+| 配置项                 | 类型     | 默认值           | 说明                                                    |
+| ---------------------- | -------- | ---------------- | ------------------------------------------------------- |
+| `ServerAddress`        | string   | "localhost:6379" | Redis 连接地址，格式 `host:port` 或 `redis://host:port` |
+| `Password`             | string   | 空               | Redis 密码                                              |
+| `DefaultDatabase`      | int?     | null             | 默认数据库索引（null 表示使用服务端默认）               |
+| `ClientName`           | string?  | null             | 客户端名称（便于在 Redis 端识别连接来源）               |
+| `ConnectTimeout`       | int      | 5000             | 连接超时（毫秒），最小 1000                             |
+| `SyncTimeout`          | int      | 5000             | 同步操作超时（毫秒），最小 1000                         |
+| `Ssl`                  | bool     | false            | 是否启用 TLS/SSL                                        |
+| `AbortOnConnectFail`   | bool     | true             | 连接失败时是否中止                                      |
+| `AllowAdmin`           | bool     | false            | 是否允许管理员操作（如 FLUSHDB），生产环境应保持 false  |
+| `ConnectRetry`         | int      | 3                | 连接重试次数，不能为负数                                |
+| `EventKeyPrefix`       | string   | "feishu:event:"  | 事件去重键前缀（用于应用/环境隔离）                     |
+| `NonceKeyPrefix`       | string   | "feishu:nonce:"  | Nonce 去重键前缀                                        |
+| `SeqIdKeyPrefix`       | string   | "feishu:seqid:"  | SeqID 去重键前缀                                        |
+| `EventCacheExpiration` | TimeSpan | 48:00:00         | 事件去重缓存过期时间                                    |
+| `NonceTtl`             | TimeSpan | 00:05:00         | Nonce 有效期                                            |
+| `SeqIdCacheExpiration` | TimeSpan | 48:00:00         | SeqID 去重缓存过期时间                                  |
+
+**配置示例：**
+
+```json
+{
+  "FeishuRedis": {
+    "ServerAddress": "redis://prod-redis.internal:6380",
+    "Password": "your-password",
+    "DefaultDatabase": 1,
+    "ConnectTimeout": 5000,
+    "SyncTimeout": 5000,
+    "Ssl": true,
+    "AbortOnConnectFail": true,
+    "ConnectRetry": 3,
+    "EventKeyPrefix": "prod:feishu:event:",
+    "NonceKeyPrefix": "prod:feishu:nonce:",
+    "SeqIdKeyPrefix": "prod:feishu:seqid:",
+    "EventCacheExpiration": "48:00:00",
+    "NonceTtl": "00:05:00",
+    "SeqIdCacheExpiration": "48:00:00"
+  }
+}
+```
+
+> 🔒 生产环境建议启用 `Ssl=true`，配置独立 `Password`，并为多租户场景设置不同的键前缀（`EventKeyPrefix`/`NonceKeyPrefix`/`SeqIdKeyPrefix`）以实现隔离。
+
+</details>
+
+<details>
+<summary>📋 用户认证配置参考（FeishuUserAuthenticationOptions）</summary>
+
+> 当引用 `Mud.Feishu.Authentication` 包并启用用户认证中间件时，以下配置在 `FeishuUserAuthentication` 节点下生效。
+
+| 配置项                     | 类型   | 默认值                    | 说明                                                        |
+| -------------------------- | ------ | ------------------------- | ----------------------------------------------------------- |
+| `OpenIdClaimType`          | string | "open_id"                 | OpenId 的 Claim 类型名称                                    |
+| `OpenIdFallbackClaimType`  | string | ClaimTypes.NameIdentifier | OpenId 的备用 Claim 类型名称                                |
+| `UnionIdClaimType`         | string | "union_id"                | UnionId 的 Claim 类型名称                                   |
+| `UserIdClaimType`          | string | "user_id"                 | UserId 的 Claim 类型名称                                    |
+| `NameClaimType`            | string | ClaimTypes.Name           | 用户名称的 Claim 类型名称                                   |
+| `EnableDistributedTracing` | bool   | true                      | 是否启用分布式追踪（创建 Activity 并设置用户相关标签）      |
+| `EnableSensitiveLog`       | bool   | false                     | 是否在日志中记录敏感信息（如 OpenId），生产环境应保持 false |
+
+**配置示例：**
+
+```json
+{
+  "FeishuUserAuthentication": {
+    "OpenIdClaimType": "open_id",
+    "UnionIdClaimType": "union_id",
+    "UserIdClaimType": "user_id",
+    "EnableDistributedTracing": true,
+    "EnableSensitiveLog": false
+  }
+}
+```
+
+> 🔒 生产环境强烈建议保持 `EnableSensitiveLog=false`，避免在日志中泄露用户 OpenId/UnionId 等敏感信息。
+
+</details>
+
+<details>
+<summary>📋 失败事件重试配置参考（FailedEventRetryOptions）</summary>
+
+> Webhook 模块支持失败事件的自动重试，以下配置在 `FeishuWebhook:FailedEventRetry` 节点下生效。
+
+| 配置项                     | 类型   | 默认值 | 说明                         |
+| -------------------------- | ------ | ------ | ---------------------------- |
+| `EnableRetry`              | bool   | false  | 是否启用失败事件重试         |
+| `MaxRetryCount`            | int    | 3      | 最大重试次数                 |
+| `InitialRetryDelaySeconds` | int    | 10     | 初始重试延迟（秒）           |
+| `RetryDelayMultiplier`     | double | 2.0    | 重试延迟倍数（指数退避）     |
+| `MaxRetryDelaySeconds`     | int    | 300    | 最大重试延迟（秒，5 分钟）   |
+| `RetryPollIntervalSeconds` | int    | 30     | 重试轮询间隔（秒）           |
+| `MaxRetryPerPoll`          | int    | 10     | 每次轮询处理的最大失败事件数 |
+
+**配置示例：**
+
+```json
+{
+  "FeishuWebhook": {
+    "FailedEventRetry": {
+      "EnableRetry": true,
+      "MaxRetryCount": 5,
+      "InitialRetryDelaySeconds": 10,
+      "RetryDelayMultiplier": 2.0,
+      "MaxRetryDelaySeconds": 300,
+      "RetryPollIntervalSeconds": 30,
+      "MaxRetryPerPoll": 10
+    }
+  }
+}
+```
+
+> ⚠️ 当 `EnableRetry=false` 时，所有子配置必须保持默认值，否则将在配置校验时抛出异常。这是为了避免用户误以为子配置会生效但实际上被忽略。
+
+</details>
+
+<details>
+<summary>📋 Webhook 应用级配置参考（FeishuAppWebhookOptions）</summary>
+
+> 多应用模式下，每个应用在 `FeishuWebhook:Apps:{appKey}` 节点下独立配置。未显式设置的数值/布尔字段将自动继承全局 `FeishuWebhookOptions` 中对应的配置。
+
+| 配置项                             | 类型   | 默认值 | 说明                                                                    |
+| ---------------------------------- | ------ | ------ | ----------------------------------------------------------------------- |
+| `AppKey`                           | string | 必填   | 飞书应用 AppId（如 `cli_xxx`）                                          |
+| `VerificationToken`                | string | 必填   | 应用事件订阅 Verification Token                                         |
+| `EncryptKey`                       | string | 必填   | 事件加密 Key（长度必须为 32 字符）                                      |
+| `Description`                      | string | null   | 应用描述（可选）                                                        |
+| `TimestampToleranceSeconds`        | int?   | null   | 时间戳容差（秒）。`null`/`-1`/`0` 继承全局，正整数覆盖全局              |
+| `EventHandlingTimeoutMs`           | int?   | null   | 事件处理超时（毫秒）。`null`/`-1`/`0` 继承全局，正整数（≥1000）覆盖全局 |
+| `EnforceHeaderSignatureValidation` | bool?  | null   | 是否强制验证请求头签名。`null` 继承全局                                 |
+| `EnableBodySignatureValidation`    | bool?  | null   | 是否验证请求体签名。`null` 继承全局                                     |
+| `EnableExceptionHandling`          | bool?  | null   | 是否启用异常捕获。`null` 继承全局                                       |
+| `EnablePerformanceMonitoring`      | bool?  | null   | 是否启用性能监控。`null` 继承全局                                       |
+
+**配置示例：**
+
+```json
+{
+  "FeishuWebhook": {
+    "TimestampToleranceSeconds": 30,
+    "EventHandlingTimeoutMs": 30000,
+    "Apps": {
+      "app1": {
+        "AppKey": "cli_a1b2c3d4e5f6g7h8",
+        "VerificationToken": "your_app1_verification_token",
+        "EncryptKey": "your_app1_encrypt_key_32_bytes_long",
+        "Description": "默认应用（继承全局配置）"
+      },
+      "app2": {
+        "AppKey": "cli_h8g7f6e5d4c3b2a1",
+        "VerificationToken": "your_app2_verification_token",
+        "EncryptKey": "your_app2_encrypt_key_32_bytes_long",
+        "TimestampToleranceSeconds": 60,
+        "EventHandlingTimeoutMs": 60000,
+        "EnforceHeaderSignatureValidation": false
+      }
+    }
+  }
+}
+```
+
+> 💡 **继承语义说明**：
+>
+> - 数值字段（`TimestampToleranceSeconds`、`EventHandlingTimeoutMs`）：推荐使用 `null` 表示继承全局；`-1` 与 `0` 为向后兼容值，仍被识别为继承。
+> - 布尔字段：`null` 表示继承全局，`true`/`false` 表示覆盖全局。
+> - 推荐统一使用 `null` 表示继承，以与其他可空字段保持一致。
+
+</details>
+
+<details>
+<summary>📋 Webhook 频率限制配置参考（RateLimitOptions）</summary>
+
+> 在 `FeishuWebhook:RateLimit` 节点下配置请求频率限制，防止异常客户端打垮 Webhook 端点。
+
+| 配置项                      | 类型                  | 默认值                     | 说明                                         |
+| --------------------------- | --------------------- | -------------------------- | -------------------------------------------- |
+| `EnableRateLimit`           | bool                  | false                      | 是否启用频率限制                             |
+| `WindowSizeSeconds`         | int                   | 60                         | 时间窗口大小（秒），最小 1                   |
+| `MaxRequestsPerWindow`      | int                   | 100                        | 每个时间窗口内允许的最大请求数，最小 1       |
+| `EnableIpRateLimit`         | bool                  | true                       | 是否基于 IP 维度限流（false 则基于全局维度） |
+| `TooManyRequestsStatusCode` | int                   | 429                        | 超出限制时的 HTTP 状态码，范围 400-599       |
+| `TooManyRequestsMessage`    | string                | "请求过于频繁，请稍后再试" | 超出限制时的响应消息                         |
+| `WhitelistIPs`              | HashSet&lt;string&gt; | 空                         | 白名单 IP 列表（不参与限流），支持单个 IP    |
+
+**配置示例：**
+
+```json
+{
+  "FeishuWebhook": {
+    "RateLimit": {
+      "EnableRateLimit": true,
+      "WindowSizeSeconds": 60,
+      "MaxRequestsPerWindow": 100,
+      "EnableIpRateLimit": true,
+      "TooManyRequestsStatusCode": 429,
+      "TooManyRequestsMessage": "请求过于频繁，请稍后再试",
+      "WhitelistIPs": ["10.0.0.1", "10.0.0.2"]
+    }
+  }
+}
+```
+
+> ⚠️ 当 `EnableRateLimit=false` 时，所有子配置必须保持默认值，否则将在配置校验时抛出异常。这是为了避免用户误以为子配置会生效但实际上被忽略。
 
 </details>
 

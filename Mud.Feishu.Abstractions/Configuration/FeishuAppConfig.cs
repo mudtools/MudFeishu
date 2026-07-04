@@ -235,18 +235,37 @@ public class FeishuAppConfig
         if (RetryDelayMs < 100 || RetryDelayMs > 60000)
             throw new InvalidOperationException("RetryDelayMs 必须在 100-60000 毫秒之间");
 
+        // 熔断器配置校验
+        if (CircuitBreakerEnabled)
+        {
+            // 启用熔断器时，验证所有子配置范围
+            if (CircuitBreakerFailureThreshold < 1 || CircuitBreakerFailureThreshold > 100)
+                throw new InvalidOperationException("CircuitBreakerFailureThreshold 必须在 1-100 之间");
 
-        if (CircuitBreakerFailureThreshold < 1 || CircuitBreakerFailureThreshold > 100)
-            throw new InvalidOperationException("CircuitBreakerFailureThreshold 必须在 1-100 之间");
+            if (CircuitBreakerSamplingDurationSeconds < 10 || CircuitBreakerSamplingDurationSeconds > 300)
+                throw new InvalidOperationException("CircuitBreakerSamplingDurationSeconds 必须在 10-300 秒之间");
 
-        if (CircuitBreakerSamplingDurationSeconds < 10 || CircuitBreakerSamplingDurationSeconds > 300)
-            throw new InvalidOperationException("CircuitBreakerSamplingDurationSeconds 必须在 10-300 秒之间");
+            if (CircuitBreakerBreakDurationSeconds < 10 || CircuitBreakerBreakDurationSeconds > 300)
+                throw new InvalidOperationException("CircuitBreakerBreakDurationSeconds 必须在 10-300 秒之间");
 
-        if (CircuitBreakerBreakDurationSeconds < 10 || CircuitBreakerBreakDurationSeconds > 300)
-            throw new InvalidOperationException("CircuitBreakerBreakDurationSeconds 必须在 10-300 秒之间");
+            if (CircuitBreakerMinimumThroughput < 2 || CircuitBreakerMinimumThroughput > 1000)
+                throw new InvalidOperationException("CircuitBreakerMinimumThroughput 必须在 2-1000 之间");
+        }
+        else
+        {
+            // 禁用熔断器时，检查是否有子配置被修改为非默认值
+            var hasNonDefaultCircuitBreakerSettings =
+                CircuitBreakerFailureThreshold != Consts.DefaultCircuitBreakerFailureThreshold ||
+                CircuitBreakerSamplingDurationSeconds != Consts.DefaultCircuitBreakerSamplingDurationSeconds ||
+                CircuitBreakerBreakDurationSeconds != Consts.DefaultCircuitBreakerBreakDurationSeconds ||
+                CircuitBreakerMinimumThroughput != Consts.DefaultCircuitBreakerMinimumThroughput;
 
-        if (CircuitBreakerMinimumThroughput < 2 || CircuitBreakerMinimumThroughput > 1000)
-            throw new InvalidOperationException("CircuitBreakerMinimumThroughput 必须在 2-1000 之间");
+            if (hasNonDefaultCircuitBreakerSettings)
+            {
+                throw new InvalidOperationException(
+                    "熔断器已禁用（CircuitBreakerEnabled=false），但配置了非默认的熔断器子参数。请移除熔断器相关配置或启用熔断器。");
+            }
+        }
 
         if (TokenRefreshThreshold < 60 || TokenRefreshThreshold > 3600)
             throw new InvalidOperationException("TokenRefreshThreshold 必须在 60-3600 秒之间");

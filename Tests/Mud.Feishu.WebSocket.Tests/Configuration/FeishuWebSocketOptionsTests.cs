@@ -6,6 +6,7 @@
 // -----------------------------------------------------------------------
 
 using FluentAssertions;
+using Microsoft.Extensions.Configuration;
 
 namespace Mud.Feishu.WebSocket.Tests.Configuration;
 

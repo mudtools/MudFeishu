@@ -20,7 +20,6 @@
 - 🔧 **资源管理优化** - 实现 IHostedService 生命周期管理，避免资源泄漏
 - 🔁 **指数退避重连** - 可插拔重连策略，次数和时间双重限制，防抖机制
 - 🔐 **消息序号验证** - 重放攻击检测、消息丢失检测、序号回退检测
-- 📦 **消息队列背压** - 三种背压策略（DropOldest/DropNewest/Block）
 - 🔑 **事件去重** - 内存去重/分布式去重（Redis），防止重复处理
 - 🔒 **SSL/TLS 证书验证** - 可配置证书验证策略，支持自定义验证回调
 - 🎫 **令牌自动刷新** - 访问令牌缓存和提前刷新，避免过期
@@ -690,8 +689,11 @@ public class ServiceManager
 | `InitialReceiveBufferSize`            | int                                  | 4096       | 初始接收缓冲区大小(字节)                    |
 | `EnableLogging`                       | bool                                 | true       | 启用日志                                    |
 | `HealthCheckIntervalMs`               | int                                  | 60000      | 健康检查间隔(ms)，最小 1000                 |
+| `MessageHandlerTimeoutMs`             | int                                  | 30000      | 单条消息处理超时(ms)，0 表示不限制          |
+| `SequenceGapThreshold`                | ulong                                | 0          | 消息序号跳跃阈值，0 表示禁用跳跃检测      |
 | `ValidateServerCertificate`           | bool                                 | true       | 是否验证 SSL 证书（生产环境建议 true）      |
 | `AllowSelfSignedCertificates`         | bool                                 | false      | 是否允许自签名证书（生产环境建议 false）    |
+| `AllowInsecureWebSocket`              | bool                                 | false      | 是否允许 ws:// 不安全连接（仅开发/测试环境）|
 | `CustomCertificateValidationCallback` | RemoteCertificateValidationCallback? | null       | 自定义证书验证回调                          |
 | `EventDeduplication`                  | EventDeduplicationOptions            | 见下       | 事件去重配置                                |
 
@@ -722,12 +724,29 @@ public class ServiceManager
 | `Mode`              | `EventDeduplicationMode` | `InMemory` | 去重模式（None/InMemory/Distributed） |
 | `CacheExpiration`   | TimeSpan                 | 48:00:00   | 缓存过期时间，默认 48 小时            |
 | `CleanupInterval`   | TimeSpan                 | 00:05:00   | 缓存清理间隔，默认 5 分钟             |
+| `KeyPrefix`         | string                   | "feishu:event:" | 事件去重键前缀（分布式模式下用于 Redis key 命名空间隔离） |
+| `EnableDeduplicationMetrics` | bool         | true       | 是否启用去重指标收集                  |
 
 **去重模式说明：**
 
 - `None` - 禁用去重（不推荐，仅用于特殊场景）
 - `InMemory` - 内存去重（单实例，默认）
 - `Distributed` - 分布式去重（需配置 `IFeishuEventDistributedDeduplicator`）
+
+**预设配置：**
+
+可通过静态属性快速应用预设配置：
+
+```csharp
+// 高可靠性模式（默认，48小时缓存，5分钟清理）
+options.EventDeduplication = EventDeduplicationOptions.Default;
+
+// 高可用性模式（6小时缓存，1分钟清理，适合高吞吐场景）
+options.EventDeduplication = EventDeduplicationOptions.HighAvailability;
+
+// 保守模式（72小时缓存，10分钟清理，适合低频重要事件）
+options.EventDeduplication = EventDeduplicationOptions.HighReliability;
+```
 
 **配置示例：**
 
@@ -894,8 +913,6 @@ stats.Uptime;                 // 连接时长
 stats.MessagesPerSecond;      // 每秒消息数
 stats.BytesPerSecond;         // 每秒字节数
 ```
-
-### 背压策略
 
 ### SSL/TLS 证书配置
 

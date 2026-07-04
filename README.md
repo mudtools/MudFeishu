@@ -120,9 +120,6 @@ dotnet add package Mud.Feishu.Redis
     "HeartbeatIntervalMs": 25000,
     "EnableLogging": true,
     "ConnectionTimeoutMs": 10000,
-    "EnableMessageQueue": true,
-    "MessageQueueCapacity": 1000,
-    "MaxConcurrentMessageProcessing": 10,
     "HealthCheckIntervalMs": 60000,
     "ValidateServerCertificate": true,
     "EventDeduplication": {
@@ -169,16 +166,13 @@ dotnet add package Mud.Feishu.Redis
 | `InitialReceiveBufferSize`       | int      | 4096       | 初始接收缓冲区大小（字节）              |
 | `ValidateServerCertificate`      | bool     | true       | 是否验证 SSL 证书                       |
 | `AllowSelfSignedCertificates`    | bool     | false      | 是否允许自签名证书                      |
-| `EnableMessageQueue`             | bool     | true       | 是否启用消息队列处理                    |
-| `MessageQueueCapacity`           | int      | 1000       | 消息队列最大容量                        |
-| `BackpressureStrategy`           | enum     | DropOldest | 背压策略（DropOldest/DropNewest/Block） |
-| `BackpressureBlockTimeoutMs`     | int      | 5000       | 背压阻塞等待超时（毫秒）                |
+| `AllowInsecureWebSocket`         | bool     | false      | 是否允许 ws:// 不安全连接（仅开发/测试） |
 | `HealthCheckIntervalMs`          | int      | 60000      | 健康检查间隔（毫秒）                    |
-| `EmptyQueueCheckIntervalMs`      | int      | 100        | 空队列检查间隔（毫秒），最小 10         |
-| `MaxConcurrentMessageProcessing` | int      | 10         | 最大并发消息处理数                      |
+| `MessageHandlerTimeoutMs`        | int      | 30000      | 单条消息处理超时（毫秒），0 表示不限制  |
+| `SequenceGapThreshold`           | ulong    | 0          | 消息序号跳跃阈值，0 表示禁用跳跃检测    |
 | `MessageSizeLimits`              | object   | 见下方     | 消息大小限制配置                        |
-| `TokenRefreshInterval`           | TimeSpan | 2 小时     | ⚠️ 已过时，令牌生命周期由 IAppTokenManager 管理 |
-| `TokenRefreshAhead`              | TimeSpan | 5 分钟     | ⚠️ 已过时，令牌刷新策略由 IAppTokenManager 管理 |
+| `TokenRefreshInterval`           | TimeSpan | 2 小时     | ⚠️ 已移除，令牌刷新由 `FeishuAppConfig.TokenRefreshThreshold` 控制 |
+| `TokenRefreshAhead`              | TimeSpan | 5 分钟     | ⚠️ 已移除，令牌刷新由 `FeishuAppConfig.TokenRefreshThreshold` 控制 |
 
 **MessageSizeLimits 子配置：**
 
@@ -770,7 +764,6 @@ public interface IFeishuV1BitableView
 - ✅ 指数退避重连策略（可插拔 IReconnectStrategy，双重限制：次数和时间）
 - ✅ 事件去重（InMemory/Distributed 模式，支持 Redis 分布式去重）
 - ✅ 消息序号验证（重放攻击检测、消息丢失检测、序号回退检测）
-- ✅ 消息队列背压策略（DropOldest/DropNewest/Block 三种策略）
 - ✅ 会话管理（session_id 管理、断线恢复、24 小时有效期）
 - ✅ 连接指标监控（FeishuMetrics 集成，实时统计吞吐量）
 - ✅ SSL/TLS 证书验证（可配置验证策略、自定义验证回调）

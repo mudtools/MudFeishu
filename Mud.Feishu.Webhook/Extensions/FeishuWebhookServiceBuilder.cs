@@ -29,6 +29,7 @@ public class FeishuWebhookServiceBuilder
     private readonly List<(string AppKey, Type InterceptorType)> _pendingInterceptorRegistrations = new();
     private bool _enableHealthChecks = true;
     private bool _autoRegisterEndpoint = true;
+    private bool _autoRegisterEndpointExplicitlySet = false;
     private bool _configured = false;
     private Action<FeishuWebhookOptions>? _configureOptions;
 
@@ -98,6 +99,7 @@ public class FeishuWebhookServiceBuilder
     public FeishuWebhookServiceBuilder EnableAutoEndpoint()
     {
         _autoRegisterEndpoint = true;
+        _autoRegisterEndpointExplicitlySet = true;
         return this;
     }
 
@@ -108,6 +110,7 @@ public class FeishuWebhookServiceBuilder
     public FeishuWebhookServiceBuilder DisableAutoEndpoint()
     {
         _autoRegisterEndpoint = false;
+        _autoRegisterEndpointExplicitlySet = true;
         return this;
     }
 
@@ -419,21 +422,14 @@ public class FeishuWebhookServiceBuilder
         // 确保基本配置存在，并注册多应用的处理器和拦截器
         _services.PostConfigure<FeishuWebhookOptions>(options =>
         {
-            // 设置默认值
-            options.AutoRegisterEndpoint = _autoRegisterEndpoint;
+            // 仅在用户显式调用 EnableAutoEndpoint()/DisableAutoEndpoint() 时覆盖配置值
+            // 否则尊重 appsettings.json 中的配置
+            if (_autoRegisterEndpointExplicitlySet)
+                options.AutoRegisterEndpoint = _autoRegisterEndpoint;
 
             // 如果用户没有配置，使用默认配置
             if (options.AllowedHttpMethods == null || !options.AllowedHttpMethods.Any())
                 options.AllowedHttpMethods = new HashSet<string> { "POST" };
-
-            if (options.MaxRequestBodySize == 0)
-                options.MaxRequestBodySize = 10 * 1024 * 1024; // 10MB
-
-            if (options.EventHandlingTimeoutMs == 0)
-                options.EventHandlingTimeoutMs = 30000;
-
-            if (options.MaxConcurrentEvents == 0)
-                options.MaxConcurrentEvents = 10;
 
             // 验证配置
             options.Validate();

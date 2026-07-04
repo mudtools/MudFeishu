@@ -25,6 +25,7 @@ namespace Mud.Feishu.Abstractions;
 /// </remarks>
 public class FeishuAppContext : IFeishuAppContext, IDisposable
 {
+    private bool _disposed;
     /// <summary>
     /// HTTP客户端
     /// </summary>
@@ -169,14 +170,26 @@ public class FeishuAppContext : IFeishuAppContext, IDisposable
     /// </remarks>
     public void Dispose()
     {
-        if (TenantTokenManager is IDisposable disposableTenant)
-            disposableTenant.Dispose();
-        if (AppTokenManager is IDisposable disposableApp)
-            disposableApp.Dispose();
-        if (UserTokenManager is IDisposable disposableUser)
-            disposableUser.Dispose();
-        if (Authentication is IDisposable disposableAuth)
-            disposableAuth.Dispose();
+        if (_disposed)
+            return;
+
+        try
+        {
+            if (TenantTokenManager is IDisposable disposableTenant)
+                disposableTenant.Dispose();
+            if (AppTokenManager is IDisposable disposableApp)
+                disposableApp.Dispose();
+            if (UserTokenManager is IDisposable disposableUser)
+                disposableUser.Dispose();
+            if (Authentication is IDisposable disposableAuth)
+                disposableAuth.Dispose();
+        }
+        finally
+        {
+            _disposed = true;
+        }
+
+        GC.SuppressFinalize(this);
     }
 
     /// <summary>

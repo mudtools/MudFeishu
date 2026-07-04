@@ -15,7 +15,7 @@ namespace Mud.Feishu.DataModels.Mail;
 /// <summary>
 /// 邮件组成员信息
 /// </summary>
-public class MailGroupMemberInfo: MailGroupMember
+public class MailGroupMemberInfo : MailGroupMember
 {
     /// <summary>
     /// <para>邮件组内成员唯一标识（在请求体中不用填）</para>

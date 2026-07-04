@@ -465,40 +465,46 @@ public class RedisFeishuEventDistributedDeduplicator : IFeishuEventDeduplicator,
     }
 
     /// <inheritdoc />
+    [Obsolete("请使用异步方法 TryMarkAsProcessingAsync 代替。此方法将在下一版本移除。")]
     public bool TryMarkAsProcessed(string eventId, string? appKey = null)
     {
-        return Task.Run(() => IsProcessedAsync(eventId, appKey)).GetAwaiter().GetResult();
+        return IsProcessedAsync(eventId, appKey).ConfigureAwait(false).GetAwaiter().GetResult();
     }
 
     /// <inheritdoc />
+    [Obsolete("请使用异步方法 TryMarkAsProcessingAsync 代替。此方法将在下一版本移除。")]
     public bool TryMarkAsProcessing(string eventId, string? appKey = null)
     {
-        var result = Task.Run(() => TryMarkAsProcessingAsync(eventId, appKey)).GetAwaiter().GetResult();
+        var result = TryMarkAsProcessingAsync(eventId, appKey).ConfigureAwait(false).GetAwaiter().GetResult();
         return result.IsDuplicate;
     }
 
     /// <inheritdoc />
+    [Obsolete("请使用异步方法 MarkAsCompletedAsync 代替。此方法将在下一版本移除。")]
     public void MarkAsCompleted(string eventId, string? appKey = null)
     {
-        Task.Run(() => MarkAsCompletedAsync(eventId, appKey)).GetAwaiter().GetResult();
+        MarkAsCompletedAsync(eventId, appKey).ConfigureAwait(false).GetAwaiter().GetResult();
     }
 
     /// <inheritdoc />
+    [Obsolete("请使用异步方法 RollbackProcessingAsync 代替。此方法将在下一版本移除。")]
     public void RollbackProcessing(string eventId, string? appKey = null)
     {
-        Task.Run(() => RollbackProcessingAsync(eventId, appKey)).GetAwaiter().GetResult();
+        RollbackProcessingAsync(eventId, appKey).ConfigureAwait(false).GetAwaiter().GetResult();
     }
 
     /// <inheritdoc />
+    [Obsolete("请使用异步方法 IsProcessedAsync 代替。此方法将在下一版本移除。")]
     public bool IsProcessed(string eventId, string? appKey = null)
     {
-        return Task.Run(() => IsProcessedAsync(eventId, appKey)).GetAwaiter().GetResult();
+        return IsProcessedAsync(eventId, appKey).ConfigureAwait(false).GetAwaiter().GetResult();
     }
 
     /// <inheritdoc />
+    [Obsolete("请使用异步方法 GetStatusAsync 代替。此方法将在下一版本移除。")]
     public DeduplicationStatus GetStatus(string eventId, string? appKey = null)
     {
-        return Task.Run(() => GetStatusAsync(eventId, appKey)).GetAwaiter().GetResult();
+        return GetStatusAsync(eventId, appKey).ConfigureAwait(false).GetAwaiter().GetResult();
     }
 
     /// <inheritdoc />

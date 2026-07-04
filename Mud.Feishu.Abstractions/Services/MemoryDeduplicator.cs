@@ -12,7 +12,7 @@ namespace Mud.Feishu.Abstractions.Services;
 /// 支持多种键类型（string、ulong 等），适用于事件去重、Nonce 去重、SeqID 去重等场景
 /// </summary>
 /// <typeparam name="TKey">键类型</typeparam>
-public class MemoryDeduplicator<TKey> : IAsyncDisposable where TKey : notnull
+public class MemoryDeduplicator<TKey> : IAsyncDisposable, IDisposable where TKey : notnull
 {
     private readonly ILogger<MemoryDeduplicator<TKey>>? _logger;
     private readonly Dictionary<TKey, CacheEntry> _cache;
@@ -460,10 +460,10 @@ public class MemoryDeduplicator<TKey> : IAsyncDisposable where TKey : notnull
     }
 
     /// <inheritdoc />
-    public ValueTask DisposeAsync()
+    public void Dispose()
     {
         if (_disposed)
-            return new ValueTask();
+            return;
 
         _disposed = true;
         _cleanupTimer.Dispose();
@@ -472,7 +472,12 @@ public class MemoryDeduplicator<TKey> : IAsyncDisposable where TKey : notnull
         {
             _cache.Clear();
         }
+    }
 
+    /// <inheritdoc />
+    public ValueTask DisposeAsync()
+    {
+        Dispose();
         return new ValueTask();
     }
 

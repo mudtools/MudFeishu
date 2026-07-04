@@ -41,6 +41,7 @@ public interface IFeishuEventDeduplicator : IAsyncDisposable
     /// <param name="eventId">事件唯一标识符</param>
     /// <param name="appKey">应用键（多应用场景，用于隔离不同应用的去重记录）</param>
     /// <returns>如果事件已被处理过返回 true（重复事件），否则返回 false 并标记为已处理</returns>
+    [Obsolete("请使用异步方法 TryMarkAsProcessingAsync 代替。此方法将在下一版本移除。")]
     bool TryMarkAsProcessed(string eventId, string? appKey = null);
 
     /// <summary>
@@ -53,6 +54,7 @@ public interface IFeishuEventDeduplicator : IAsyncDisposable
     /// <c>false</c> - 成功标记为处理中（新事件）
     /// <c>true</c> - 事件已在处理中或已处理（重复事件）
     /// </returns>
+    [Obsolete("请使用异步方法 TryMarkAsProcessingAsync 代替。此方法将在下一版本移除。")]
     bool TryMarkAsProcessing(string eventId, string? appKey = null);
 
     /// <summary>
@@ -60,6 +62,7 @@ public interface IFeishuEventDeduplicator : IAsyncDisposable
     /// </summary>
     /// <param name="eventId">事件唯一标识符</param>
     /// <param name="appKey">应用键（多应用场景，用于隔离不同应用的去重记录）</param>
+    [Obsolete("请使用异步方法 MarkAsCompletedAsync 代替。此方法将在下一版本移除。")]
     void MarkAsCompleted(string eventId, string? appKey = null);
 
     /// <summary>
@@ -67,6 +70,7 @@ public interface IFeishuEventDeduplicator : IAsyncDisposable
     /// </summary>
     /// <param name="eventId">事件唯一标识符</param>
     /// <param name="appKey">应用键（多应用场景，用于隔离不同应用的去重记录）</param>
+    [Obsolete("请使用异步方法 RollbackProcessingAsync 代替。此方法将在下一版本移除。")]
     void RollbackProcessing(string eventId, string? appKey = null);
 
     /// <summary>
@@ -75,6 +79,7 @@ public interface IFeishuEventDeduplicator : IAsyncDisposable
     /// <param name="eventId">事件唯一标识符</param>
     /// <param name="appKey">应用键（多应用场景，用于隔离不同应用的去重记录）</param>
     /// <returns>如果事件已被处理返回 true，否则返回 false</returns>
+    [Obsolete("请使用异步方法 IsProcessedAsync 代替。此方法将在下一版本移除。")]
     bool IsProcessed(string eventId, string? appKey = null);
 
     /// <summary>
@@ -83,6 +88,7 @@ public interface IFeishuEventDeduplicator : IAsyncDisposable
     /// <param name="eventId">事件唯一标识符</param>
     /// <param name="appKey">应用键（多应用场景，用于隔离不同应用的去重记录）</param>
     /// <returns>事件处理状态</returns>
+    [Obsolete("请使用异步方法 GetStatusAsync 代替。此方法将在下一版本移除。")]
     DeduplicationStatus GetStatus(string eventId, string? appKey = null);
 
     /// <summary>

@@ -19,5 +19,5 @@ public class RecognizeVatInvoiceResult
     [JsonPropertyName("vat_invoices")]
     public VatInvoiceRecognize[]? VatInvoices { get; set; }
 
-   
+
 }

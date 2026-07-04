@@ -433,23 +433,6 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
         await _connectionManager.SendMessageAsync(message, cancellationToken);
     }
 
-    /// <summary>
-    /// 注册消息处理器
-    /// </summary>
-    [Obsolete("消息队列已废弃，消息直接由 MessageRouter 处理。此方法不再生效。")]
-    public void RegisterMessageProcessor(Func<string, Task> processor)
-    {
-        // 消息队列已废弃，此方法为空操作
-    }
-
-    /// <summary>
-    /// 移除消息处理器
-    /// </summary>
-    [Obsolete("消息队列已废弃，消息直接由 MessageRouter 处理。此方法始终返回 false。")]
-    public bool UnregisterMessageProcessor(Func<string, Task> processor)
-    {
-        return false;
-    }
 
     /// <summary>
     /// 开始接收消息（公共接口实现）

@@ -7,26 +7,6 @@
 
 namespace Mud.Feishu.WebSocket;
 
-/// <summary>
-/// 消息队列背压策略
-/// </summary>
-public enum QueueBackpressureStrategy
-{
-    /// <summary>
-    /// 丢弃最旧的消息（默认）
-    /// </summary>
-    DropOldest,
-
-    /// <summary>
-    /// 丢弃新消息
-    /// </summary>
-    DropNewest,
-
-    /// <summary>
-    /// 阻塞等待直到队列有空间（可能导致延迟）
-    /// </summary>
-    Block
-}
 
 /// <summary>
 /// 飞书WebSocket客户端配置选项
@@ -35,10 +15,8 @@ public class FeishuWebSocketOptions
 {
     private int _heartbeatIntervalMs = 25000;
     private int _reconnectDelayMs = 5000;
-    private int _emptyQueueCheckIntervalMs = 100;
     private int _maxReconnectDelayMs = 30000;
     private int _healthCheckIntervalMs = 60000;
-    private int _maxConcurrentMessageProcessing = 10; // 默认最大并发消息处理数
     private int _messageHandlerTimeoutMs = 30000; // 默认消息处理超时30秒
 
     /// <summary>
@@ -117,39 +95,6 @@ public class FeishuWebSocketOptions
     /// </summary>
     public MessageSizeLimits MessageSizeLimits { get; set; } = new();
 
-    /// <summary>
-    /// 是否启用消息队列处理，默认为true
-    /// </summary>
-    [Obsolete("消息队列已从主处理路径中移除，此配置不再生效。将在未来版本中移除。")]
-    public bool EnableMessageQueue { get; set; } = true;
-
-    /// <summary>
-    /// 消息队列最大容量，默认为1000条
-    /// </summary>
-    [Obsolete("消息队列已从主处理路径中移除，此配置不再生效。将在未来版本中移除。")]
-    public int MessageQueueCapacity { get; set; } = 1000;
-
-    /// <summary>
-    /// 消息队列背压策略，默认为丢弃最旧的消息
-    /// </summary>
-    [Obsolete("消息队列已从主处理路径中移除，此配置不再生效。将在未来版本中移除。")]
-    public QueueBackpressureStrategy BackpressureStrategy { get; set; } = QueueBackpressureStrategy.DropOldest;
-
-    /// <summary>
-    /// 背压阻塞等待超时时间（毫秒），仅当 BackpressureStrategy 为 Block 时有效，默认为5000毫秒
-    /// </summary>
-    [Obsolete("消息队列已从主处理路径中移除，此配置不再生效。将在未来版本中移除。")]
-    public int BackpressureBlockTimeoutMs { get; set; } = 5000;
-
-    /// <summary>
-    /// 空队列检查间隔（毫秒），默认为100毫秒
-    /// </summary>
-    [Obsolete("消息队列已从主处理路径中移除，此配置不再生效。将在未来版本中移除。")]
-    public int EmptyQueueCheckIntervalMs
-    {
-        get => _emptyQueueCheckIntervalMs;
-        set => _emptyQueueCheckIntervalMs = Math.Max(10, value);
-    }
 
     /// <summary>
     /// 健康检查间隔（毫秒），默认为60000毫秒
@@ -160,15 +105,6 @@ public class FeishuWebSocketOptions
         set => _healthCheckIntervalMs = Math.Max(1000, value);
     }
 
-    /// <summary>
-    /// 最大并发消息处理数，默认为10
-    /// <para>用于控制同时处理的消息数量，防止线程池耗尽</para>
-    /// </summary>
-    public int MaxConcurrentMessageProcessing
-    {
-        get => _maxConcurrentMessageProcessing;
-        set => _maxConcurrentMessageProcessing = Math.Max(1, value);
-    }
 
     /// <summary>
     /// 单条消息处理超时时间（毫秒），默认为30000毫秒（30秒）
@@ -217,21 +153,6 @@ public class FeishuWebSocketOptions
     /// </summary>
     public EventDeduplicationOptions EventDeduplication { get; set; } = new();
 
-    /// <summary>
-    /// 访问令牌的有效期，默认为2小时
-    /// <para>飞书 TenantAccessToken 默认有效期为2小时</para>
-    /// <para>此配置已不再使用，令牌生命周期由 IAppTokenManager 管理</para>
-    /// </summary>
-    [Obsolete("令牌生命周期已由 IAppTokenManager 统一管理，此配置不再生效。将在未来版本中移除。")]
-    public TimeSpan? TokenRefreshInterval { get; set; }
-
-    /// <summary>
-    /// 提前刷新令牌的时间，默认为5分钟
-    /// <para>在令牌过期前提前刷新，避免使用即将过期的令牌</para>
-    /// <para>此配置已不再使用，令牌刷新策略由 IAppTokenManager 管理</para>
-    /// </summary>
-    [Obsolete("令牌刷新策略已由 IAppTokenManager 统一管理，此配置不再生效。将在未来版本中移除。")]
-    public TimeSpan? TokenRefreshAhead { get; set; }
 
     /// <summary>
     /// 验证配置项的有效性
@@ -260,13 +181,6 @@ public class FeishuWebSocketOptions
         if (AutoReconnect && ReconnectDelayMs > ConnectionTimeoutMs)
             throw new InvalidOperationException("ReconnectDelayMs不应大于ConnectionTimeoutMs，否则重连将在连接超时后才触发");
 
-#pragma warning disable CS0618 // MessageQueueCapacity 已标记为 Obsolete，此处仅做向后兼容验证
-        if (MessageQueueCapacity < 1)
-            throw new InvalidOperationException("MessageQueueCapacity必须至少为1");
-#pragma warning restore CS0618
-
-        if (MaxConcurrentMessageProcessing < 1)
-            throw new InvalidOperationException("MaxConcurrentMessageProcessing必须至少为1");
 
         // 验证消息大小限制配置
         if (MessageSizeLimits.MaxTextMessageSize < 1024)
@@ -278,17 +192,16 @@ public class FeishuWebSocketOptions
         // 去重配置验证
         if (EventDeduplication.Mode == EventDeduplicationMode.None)
         {
-            var hasCustomCacheSettings = EventDeduplication.CacheExpirationMs != EventDeduplicationOptions.DefaultCacheExpirationMs
-                || EventDeduplication.CleanupIntervalMs != EventDeduplicationOptions.DefaultCleanupIntervalMs;
+            var hasCustomCacheSettings = EventDeduplication.CacheExpiration != EventDeduplicationOptions.DefaultCacheExpiration
+                || EventDeduplication.CleanupInterval != EventDeduplicationOptions.DefaultCleanupInterval;
 
             if (hasCustomCacheSettings)
                 throw new InvalidOperationException(
-                    "EventDeduplication.Mode 设置为 None 时，CacheExpirationMs 和 CleanupIntervalMs 配置不会生效。" +
+                    "EventDeduplication.Mode 设置为 None 时，CacheExpiration 和 CleanupInterval 配置不会生效。" +
                     "请移除缓存配置，或将 Mode 设置为 InMemory 或 Redis。");
 
-            throw new InvalidOperationException(
-                "EventDeduplication.Mode 设置为 None，事件去重功能已关闭，可能导致重复处理事件。" +
-                "生产环境强烈建议启用至少一种去重机制（InMemory 或 Redis）以避免重复处理事件。");
+            // None 模式不阻止启动，仅在文档中建议生产环境启用去重
+            // 如需强制警告，可使用日志而非异常
         }
     }
 

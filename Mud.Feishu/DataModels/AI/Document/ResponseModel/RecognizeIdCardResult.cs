@@ -18,5 +18,5 @@ public class RecognizeIdCardResult
     /// </summary>
     [JsonPropertyName("id_card")]
     public IdCardRecognize? IdCard { get; set; }
-    
+
 }

@@ -13,14 +13,14 @@ namespace Mud.Feishu.WebSocket;
 public class EventDeduplicationOptions
 {
     /// <summary>
-    /// 默认缓存过期时间（毫秒）：48 小时
+    /// 默认缓存过期时间：48 小时
     /// </summary>
-    public const int DefaultCacheExpirationMs = Mud.Feishu.Abstractions.Consts.DefaultCacheExpirationMs;
+    public static readonly TimeSpan DefaultCacheExpiration = TimeSpan.FromMilliseconds(Mud.Feishu.Abstractions.Consts.DefaultCacheExpirationMs);
 
     /// <summary>
-    /// 默认缓存清理间隔（毫秒）：5 分钟
+    /// 默认缓存清理间隔：5 分钟
     /// </summary>
-    public const int DefaultCleanupIntervalMs = Mud.Feishu.Abstractions.Consts.DefaultCleanupIntervalMs;
+    public static readonly TimeSpan DefaultCleanupInterval = TimeSpan.FromMilliseconds(Mud.Feishu.Abstractions.Consts.DefaultCleanupIntervalMs);
 
     /// <summary>
     /// 去重模式，默认为内存去重
@@ -28,23 +28,33 @@ public class EventDeduplicationOptions
     public EventDeduplicationMode Mode { get; set; } = EventDeduplicationMode.InMemory;
 
     /// <summary>
-    /// 缓存过期时间（毫秒），默认为48小时
+    /// 缓存过期时间，默认为48小时
     /// <para>建议设置为与飞书官方事件重试窗口期一致，避免长延时场景下的重复处理</para>
     /// </summary>
-    public int CacheExpirationMs
-    {
-        get => _cacheExpirationMs;
-        set => _cacheExpirationMs = Math.Max(60000, value);
-    }
-    private int _cacheExpirationMs = DefaultCacheExpirationMs;
+    public TimeSpan CacheExpiration { get; set; } = DefaultCacheExpiration;
 
     /// <summary>
-    /// 缓存清理间隔（毫秒），默认为5分钟
+    /// 缓存清理间隔，默认为5分钟
     /// </summary>
+    public TimeSpan CleanupInterval { get; set; } = DefaultCleanupInterval;
+
+    /// <summary>
+    /// 缓存过期时间（毫秒）- 已废弃，请使用 <see cref="CacheExpiration"/>
+    /// </summary>
+    [Obsolete("请使用 CacheExpiration (TimeSpan) 代替。")]
+    public int CacheExpirationMs
+    {
+        get => (int)CacheExpiration.TotalMilliseconds;
+        set => CacheExpiration = TimeSpan.FromMilliseconds(Math.Max(60000, value));
+    }
+
+    /// <summary>
+    /// 缓存清理间隔（毫秒）- 已废弃，请使用 <see cref="CleanupInterval"/>
+    /// </summary>
+    [Obsolete("请使用 CleanupInterval (TimeSpan) 代替。")]
     public int CleanupIntervalMs
     {
-        get => _cleanupIntervalMs;
-        set => _cleanupIntervalMs = Math.Max(60000, value);
+        get => (int)CleanupInterval.TotalMilliseconds;
+        set => CleanupInterval = TimeSpan.FromMilliseconds(Math.Max(60000, value));
     }
-    private int _cleanupIntervalMs = DefaultCleanupIntervalMs;
 }

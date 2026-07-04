@@ -57,6 +57,7 @@ public class FeishuEventDeduplicator : MemoryDeduplicator<string>, IFeishuEventD
     }
 
     /// <inheritdoc/>
+    [Obsolete("请使用异步方法 TryMarkAsProcessingAsync 代替。此方法将在下一版本移除。")]
     public override bool TryMarkAsProcessed(string key, string? appKey = null)
     {
         if (string.IsNullOrEmpty(key))
@@ -68,6 +69,7 @@ public class FeishuEventDeduplicator : MemoryDeduplicator<string>, IFeishuEventD
     }
 
     /// <inheritdoc/>
+    [Obsolete("请使用异步方法 TryMarkAsProcessingAsync 代替。此方法将在下一版本移除。")]
     public override bool TryMarkAsProcessing(string key, string? appKey = null)
     {
         if (string.IsNullOrEmpty(key))
@@ -79,6 +81,7 @@ public class FeishuEventDeduplicator : MemoryDeduplicator<string>, IFeishuEventD
     }
 
     /// <inheritdoc/>
+    [Obsolete("请使用异步方法 MarkAsCompletedAsync 代替。此方法将在下一版本移除。")]
     public override void MarkAsCompleted(string key, string? appKey = null)
     {
         if (string.IsNullOrEmpty(key))
@@ -87,6 +90,7 @@ public class FeishuEventDeduplicator : MemoryDeduplicator<string>, IFeishuEventD
     }
 
     /// <inheritdoc/>
+    [Obsolete("请使用异步方法 RollbackProcessingAsync 代替。此方法将在下一版本移除。")]
     public override void RollbackProcessing(string key, string? appKey = null)
     {
         if (string.IsNullOrEmpty(key))
@@ -95,6 +99,7 @@ public class FeishuEventDeduplicator : MemoryDeduplicator<string>, IFeishuEventD
     }
 
     /// <inheritdoc/>
+    [Obsolete("请使用异步方法 IsProcessedAsync 代替。此方法将在下一版本移除。")]
     public override bool IsProcessed(string key, string? appKey = null)
     {
         if (string.IsNullOrEmpty(key))
@@ -103,6 +108,7 @@ public class FeishuEventDeduplicator : MemoryDeduplicator<string>, IFeishuEventD
     }
 
     /// <inheritdoc/>
+    [Obsolete("请使用异步方法 GetStatusAsync 代替。此方法将在下一版本移除。")]
     public override DeduplicationStatus GetStatus(string key, string? appKey = null)
     {
         if (string.IsNullOrEmpty(key))
@@ -163,17 +169,4 @@ public class FeishuEventDeduplicator : MemoryDeduplicator<string>, IFeishuEventD
     }
 
 
-    /// <summary>
-    /// 释放资源
-    /// </summary>
-    /// <remarks>
-    /// 此方法通过同步等待 <see cref="MemoryDeduplicator{TKey}.DisposeAsync"/> 完成来释放资源。
-    /// 在拥有同步上下文的环境（如 UI 线程或旧版 ASP.NET）中可能导致死锁，
-    /// 建议优先使用 <see cref="MemoryDeduplicator{TKey}.DisposeAsync"/> 方法。
-    /// </remarks>
-    public void Dispose()
-    {
-        DisposeAsync().AsTask().GetAwaiter().GetResult();
-        GC.SuppressFinalize(this);
-    }
 }

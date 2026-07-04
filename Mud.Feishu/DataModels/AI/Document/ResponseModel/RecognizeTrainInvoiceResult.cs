@@ -19,5 +19,5 @@ public class RecognizeTrainInvoiceResult
     [JsonPropertyName("train_invoices")]
     public TrainInvoiceRecognize[]? TrainInvoices { get; set; }
 
-   
+
 }

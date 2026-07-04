@@ -17,7 +17,7 @@ public class GetByCardUserMailboxMessageResult
     /// <para>必填：是</para>
     /// </summary>
     [JsonPropertyName("owner_info")]
-    public MailUserInfo OwnerInfo { get; set; } = new();    
+    public MailUserInfo OwnerInfo { get; set; } = new();
 
     /// <summary>
     /// <para>邮件ID列表</para>

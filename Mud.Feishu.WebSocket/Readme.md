@@ -94,8 +94,8 @@ app.Run();
     "EnableLogging": true,
     "EventDeduplication": {
       "Mode": "InMemory",
-      "CacheExpirationMs": 172800000,
-      "CleanupIntervalMs": 300000
+      "CacheExpiration": "48:00:00",
+      "CleanupInterval": "00:05:00"
     }
   }
 }
@@ -120,7 +120,6 @@ app.Run();
 | **HeartbeatManager**                    | 心跳管理器       | 心跳检测、超时处理、连续超时触发重连       |
 | **SessionManager**                      | 会话管理器       | session_id 管理、会话恢复、24 小时有效期   |
 | **MessageSequenceValidator**            | 消息序号验证器   | 重放检测、消息丢失检测、序号回退检测       |
-| **MessageQueueManager** *(已废弃)*      | 消息队列管理器   | 消息队列、背压策略、并发控制（已标记 Obsolete，消息直接由 MessageRouter 处理） |
 | **EventSubscriptionManager**            | 事件订阅管理器   | 事件类型订阅、订阅请求发送                 |
 | **ConnectionMetrics**                   | 连接指标管理器   | 消息统计、性能指标、FeishuMetrics 集成     |
 | **ReconnectionOrchestrator**            | 重连协调器       | 统一重连管理、防抖机制、冷却时间           |
@@ -180,7 +179,6 @@ Mud.Feishu.WebSocket/
 │   ├── HeartbeatManager.cs           # 心跳管理
 │   ├── SessionManager.cs             # 会话管理
 │   ├── MessageSequenceValidator.cs   # 消息序号验证
-│   ├── MessageQueueManager.cs        # 消息队列管理 (已废弃，标记为 Obsolete)
 │   ├── EventSubscriptionManager.cs   # 事件订阅管理
 │   ├── ConnectionMetrics.cs          # 连接指标
 │   ├── ReconnectionOrchestrator.cs   # 重连协调器
@@ -691,18 +689,10 @@ public class ServiceManager
 | `ConnectionTimeoutMs`                 | int                                  | 10000      | 连接超时(ms)                                |
 | `InitialReceiveBufferSize`            | int                                  | 4096       | 初始接收缓冲区大小(字节)                    |
 | `EnableLogging`                       | bool                                 | true       | 启用日志                                    |
-| `EnableMessageQueue`                  | bool                                 | true       | 启用消息队列                                |
-| `MessageQueueCapacity`                | int                                  | 1000       | 消息队列容量                                |
-| `BackpressureStrategy`                | QueueBackpressureStrategy            | DropOldest | 背压策略（DropOldest/DropNewest/Block）     |
-| `BackpressureBlockTimeoutMs`          | int                                  | 5000       | 背压阻塞等待超时(ms)，仅 Block 模式         |
-| `EmptyQueueCheckIntervalMs`           | int                                  | 100        | 空队列检查间隔(ms)，最小 10                 |
 | `HealthCheckIntervalMs`               | int                                  | 60000      | 健康检查间隔(ms)，最小 1000                 |
-| `MaxConcurrentMessageProcessing`      | int                                  | 10         | 最大并发消息处理数，最小 1                  |
 | `ValidateServerCertificate`           | bool                                 | true       | 是否验证 SSL 证书（生产环境建议 true）      |
 | `AllowSelfSignedCertificates`         | bool                                 | false      | 是否允许自签名证书（生产环境建议 false）    |
 | `CustomCertificateValidationCallback` | RemoteCertificateValidationCallback? | null       | 自定义证书验证回调                          |
-| `TokenRefreshInterval`                | TimeSpan?                            | 2 小时     | ⚠️ 已过时，令牌生命周期由 IAppTokenManager 管理 |
-| `TokenRefreshAhead`                   | TimeSpan?                            | 5 分钟     | ⚠️ 已过时，令牌刷新策略由 IAppTokenManager 管理 |
 | `EventDeduplication`                  | EventDeduplicationOptions            | 见下       | 事件去重配置                                |
 
 ### 消息大小限制配置 (`MessageSizeLimits`)
@@ -730,8 +720,8 @@ public class ServiceManager
 | 选项                | 类型                     | 默认值     | 说明                                  |
 | ------------------- | ------------------------ | ---------- | ------------------------------------- |
 | `Mode`              | `EventDeduplicationMode` | `InMemory` | 去重模式（None/InMemory/Distributed） |
-| `CacheExpirationMs` | int                      | 172800000  | 缓存过期时间(ms)，默认 48 小时        |
-| `CleanupIntervalMs` | int                      | 300000     | 缓存清理间隔(ms)，默认 5 分钟         |
+| `CacheExpiration`   | TimeSpan                 | 48:00:00   | 缓存过期时间，默认 48 小时            |
+| `CleanupInterval`   | TimeSpan                 | 00:05:00   | 缓存清理间隔，默认 5 分钟             |
 
 **去重模式说明：**
 
@@ -746,8 +736,8 @@ public class ServiceManager
   "FeishuWebSocket": {
     "EventDeduplication": {
       "Mode": "InMemory",
-      "CacheExpirationMs": 172800000,
-      "CleanupIntervalMs": 300000
+      "CacheExpiration": "48:00:00",
+      "CleanupInterval": "00:05:00"
     }
   }
 }
@@ -907,24 +897,6 @@ stats.BytesPerSecond;         // 每秒字节数
 
 ### 背压策略
 
-消息队列满时支持三种背压策略：
-
-| 策略         | 说明                   | 适用场景                 |
-| ------------ | ---------------------- | ------------------------ |
-| `DropOldest` | 丢弃最旧的消息（默认） | 实时性优先，允许丢消息   |
-| `DropNewest` | 丢弃新消息             | 数据完整性优先           |
-| `Block`      | 阻塞等待直到队列有空间 | 不允许丢消息，可接受延迟 |
-
-```json
-{
-  "FeishuWebSocket": {
-    "MessageQueueCapacity": 1000,
-    "BackpressureStrategy": "DropOldest",
-    "BackpressureBlockTimeoutMs": 5000
-  }
-}
-```
-
 ### SSL/TLS 证书配置
 
 ```csharp
@@ -972,19 +944,7 @@ builder.Services.AddSingleton<IReconnectStrategy>(
 
 ### 访问令牌管理
 
-`FeishuWebSocketManager` 内置访问令牌缓存和自动刷新：
-
-```json
-{
-  "FeishuWebSocket": {
-    "TokenRefreshInterval": "02:00:00",
-    "TokenRefreshAhead": "00:05:00"
-  }
-}
-```
-
-- `TokenRefreshInterval`：令牌有效期，默认 2 小时（与飞书一致）
-- `TokenRefreshAhead`：提前刷新时间，默认 5 分钟，避免使用即将过期的令牌
+`FeishuWebSocketManager` 的访问令牌缓存和自动刷新由 `IAppTokenManager` 统一管理，无需手动配置刷新间隔。
 
 ## 📋 支持的事件类型
 

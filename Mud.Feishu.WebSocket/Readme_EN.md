@@ -91,8 +91,8 @@ app.Run();
     "EnableLogging": true,
     "EventDeduplication": {
       "Mode": "InMemory",
-      "CacheExpirationMs": 172800000,
-      "CleanupIntervalMs": 300000
+      "CacheExpiration": "48:00:00",
+      "CleanupInterval": "00:05:00"
     }
   }
 }
@@ -117,7 +117,6 @@ The Feishu WebSocket client adopts modular design, breaking down complex functio
 | **HeartbeatManager**                    | Heartbeat Manager        | Heartbeat detection, timeout handling, consecutive timeout triggers reconnection          |
 | **SessionManager**                      | Session Manager          | session_id management, session recovery, 24-hour validity                                 |
 | **MessageSequenceValidator**            | Sequence Validator       | Replay detection, message loss detection, sequence rollback detection                     |
-| **MessageQueueManager** *(Deprecated)*  | Queue Manager            | Message queuing, backpressure strategy, concurrency control (Obsolete, messages routed directly by MessageRouter) |
 | **EventSubscriptionManager**            | Subscription Manager     | Event type subscription, subscription request sending                                     |
 | **ConnectionMetrics**                   | Metrics Manager          | Message statistics, performance metrics, FeishuMetrics integration                        |
 | **ReconnectionOrchestrator**            | Reconnection Coordinator | Unified reconnection management, debounce mechanism, cooldown time                        |
@@ -177,7 +176,6 @@ Mud.Feishu.WebSocket/
 │   ├── HeartbeatManager.cs           # Heartbeat management
 │   ├── SessionManager.cs             # Session management
 │   ├── MessageSequenceValidator.cs   # Message sequence validation
-│   ├── MessageQueueManager.cs        # Message queue management (Deprecated, Obsolete)
 │   ├── EventSubscriptionManager.cs   # Event subscription management
 │   ├── ConnectionMetrics.cs          # Connection metrics
 │   ├── ReconnectionOrchestrator.cs   # Reconnection coordinator
@@ -686,18 +684,10 @@ public class ServiceManager
 | `ConnectionTimeoutMs`                 | int                                  | 10000      | Connection timeout (ms)                                          |
 | `InitialReceiveBufferSize`            | int                                  | 4096       | Initial receive buffer size (bytes)                              |
 | `EnableLogging`                       | bool                                 | true       | Enable logging                                                   |
-| `EnableMessageQueue`                  | bool                                 | true       | Enable message queue                                             |
-| `MessageQueueCapacity`                | int                                  | 1000       | Message queue capacity                                           |
-| `BackpressureStrategy`                | QueueBackpressureStrategy            | DropOldest | Backpressure strategy (DropOldest/DropNewest/Block)              |
-| `BackpressureBlockTimeoutMs`          | int                                  | 5000       | Backpressure block wait timeout (ms), Block mode only            |
-| `EmptyQueueCheckIntervalMs`           | int                                  | 100        | Empty queue check interval (ms), min 10                          |
 | `HealthCheckIntervalMs`               | int                                  | 60000      | Health check interval (ms), min 1000                             |
-| `MaxConcurrentMessageProcessing`      | int                                  | 10         | Max concurrent message processing, min 1                         |
 | `ValidateServerCertificate`           | bool                                 | true       | Validate SSL certificate (recommended true in production)        |
 | `AllowSelfSignedCertificates`         | bool                                 | false      | Allow self-signed certificates (recommended false in production) |
 | `CustomCertificateValidationCallback` | RemoteCertificateValidationCallback? | null       | Custom certificate validation callback                           |
-| `TokenRefreshInterval`                | TimeSpan?                            | 2h         | ⚠️ Obsolete, token lifecycle managed by IAppTokenManager         |
-| `TokenRefreshAhead`                   | TimeSpan?                            | 5min       | ⚠️ Obsolete, token refresh strategy managed by IAppTokenManager  |
 | `EventDeduplication`                  | EventDeduplicationOptions            | See below  | Event deduplication configuration                                |
 
 ### Message Size Limits (`MessageSizeLimits`)
@@ -725,8 +715,8 @@ public class ServiceManager
 | Option              | Type                     | Default    | Description                                    |
 | ------------------- | ------------------------ | ---------- | ---------------------------------------------- |
 | `Mode`              | `EventDeduplicationMode` | `InMemory` | Deduplication mode (None/InMemory/Distributed) |
-| `CacheExpirationMs` | int                      | 172800000  | Cache expiration time (ms), default 48 hours   |
-| `CleanupIntervalMs` | int                      | 300000     | Cache cleanup interval (ms), default 5 minutes |
+| `CacheExpiration`   | TimeSpan                 | 48:00:00   | Cache expiration time, default 48 hours        |
+| `CleanupInterval`   | TimeSpan                 | 00:05:00   | Cache cleanup interval, default 5 minutes      |
 
 **Deduplication Modes:**
 
@@ -741,8 +731,8 @@ public class ServiceManager
   "FeishuWebSocket": {
     "EventDeduplication": {
       "Mode": "InMemory",
-      "CacheExpirationMs": 172800000,
-      "CleanupIntervalMs": 300000
+      "CacheExpiration": "48:00:00",
+      "CleanupInterval": "00:05:00"
     }
   }
 }
@@ -897,26 +887,6 @@ stats.MessagesPerSecond;      // Messages per second
 stats.BytesPerSecond;         // Bytes per second
 ```
 
-### Backpressure Strategy
-
-Three backpressure strategies when message queue is full:
-
-| Strategy     | Description                    | Use Case                                    |
-| ------------ | ------------------------------ | ------------------------------------------- |
-| `DropOldest` | Drop oldest messages (default) | Real-time priority, message loss acceptable |
-| `DropNewest` | Drop newest messages           | Data integrity priority                     |
-| `Block`      | Block until queue has space    | No message loss, latency acceptable         |
-
-```json
-{
-  "FeishuWebSocket": {
-    "MessageQueueCapacity": 1000,
-    "BackpressureStrategy": "DropOldest",
-    "BackpressureBlockTimeoutMs": 5000
-  }
-}
-```
-
 ### SSL/TLS Certificate Configuration
 
 ```csharp
@@ -964,19 +934,7 @@ builder.Services.AddSingleton<IReconnectStrategy>(
 
 ### Access Token Management
 
-`FeishuWebSocketManager` has built-in access token caching and auto-refresh:
-
-```json
-{
-  "FeishuWebSocket": {
-    "TokenRefreshInterval": "02:00:00",
-    "TokenRefreshAhead": "00:05:00"
-  }
-}
-```
-
-- `TokenRefreshInterval`: Token validity period, default 2 hours (consistent with Feishu)
-- `TokenRefreshAhead`: Time to refresh ahead of expiration, default 5 minutes
+`FeishuWebSocketManager`'s access token caching and auto-refresh are managed by `IAppTokenManager`, no manual refresh interval configuration needed.
 
 ## 📋 Supported Event Types
 

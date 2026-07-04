@@ -30,13 +30,25 @@ public class EventDeduplicationOptions
     /// <summary>
     /// 缓存过期时间，默认为48小时
     /// <para>建议设置为与飞书官方事件重试窗口期一致，避免长延时场景下的重复处理</para>
+    /// <para>最小值为 60 秒</para>
     /// </summary>
-    public TimeSpan CacheExpiration { get; set; } = DefaultCacheExpiration;
+    public TimeSpan CacheExpiration
+    {
+        get => _cacheExpiration;
+        set => _cacheExpiration = value < TimeSpan.FromSeconds(60) ? TimeSpan.FromSeconds(60) : value;
+    }
+    private TimeSpan _cacheExpiration = DefaultCacheExpiration;
 
     /// <summary>
     /// 缓存清理间隔，默认为5分钟
+    /// <para>最小值为 60 秒</para>
     /// </summary>
-    public TimeSpan CleanupInterval { get; set; } = DefaultCleanupInterval;
+    public TimeSpan CleanupInterval
+    {
+        get => _cleanupInterval;
+        set => _cleanupInterval = value < TimeSpan.FromSeconds(60) ? TimeSpan.FromSeconds(60) : value;
+    }
+    private TimeSpan _cleanupInterval = DefaultCleanupInterval;
 
     /// <summary>
     /// 缓存过期时间（毫秒）- 已废弃，请使用 <see cref="CacheExpiration"/>
@@ -45,7 +57,7 @@ public class EventDeduplicationOptions
     public int CacheExpirationMs
     {
         get => (int)CacheExpiration.TotalMilliseconds;
-        set => CacheExpiration = TimeSpan.FromMilliseconds(Math.Max(60000, value));
+        set => CacheExpiration = TimeSpan.FromMilliseconds(value);
     }
 
     /// <summary>
@@ -55,6 +67,6 @@ public class EventDeduplicationOptions
     public int CleanupIntervalMs
     {
         get => (int)CleanupInterval.TotalMilliseconds;
-        set => CleanupInterval = TimeSpan.FromMilliseconds(Math.Max(60000, value));
+        set => CleanupInterval = TimeSpan.FromMilliseconds(value);
     }
 }

@@ -30,18 +30,20 @@ public class FeishuAppConfigValidateTests
         act.Should().NotThrow();
     }
 
+    /// <summary>
+    /// REF-9: RetryDelayMs 可以大于 TimeOut（两者概念独立）
+    /// </summary>
     [Fact]
-    public void Validate_ShouldThrow_WhenRetryDelayMsGreaterThanTimeOut()
+    public void Validate_ShouldAcceptRetryDelayGreaterThanTimeout()
     {
         var config = CreateValidConfig();
-        config.TimeOut = 5;
-        config.RetryDelayMs = 10000;
+        config.TimeOut = 3;
+        config.RetryDelayMs = 5000;
         config.RetryCount = 3;
 
         var act = () => config.Validate();
 
-        act.Should().Throw<InvalidOperationException>()
-            .WithMessage("*RetryDelayMs*TimeOut*");
+        act.Should().NotThrow();
     }
 
     [Fact]

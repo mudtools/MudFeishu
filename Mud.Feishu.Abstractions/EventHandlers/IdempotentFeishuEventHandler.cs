@@ -6,7 +6,6 @@
 // -----------------------------------------------------------------------
 
 using System.Text.Json;
-using Mud.Feishu.Abstractions.Utilities;
 
 namespace Mud.Feishu.Abstractions.EventHandlers;
 
@@ -22,32 +21,25 @@ namespace Mud.Feishu.Abstractions.EventHandlers;
 /// 2. 重写 <see cref="DefaultFeishuEventHandler&lt;T&gt;.ProcessBusinessLogicAsync"/> 方法实现业务逻辑
 /// 3. 基类会自动处理业务去重，确保同一业务键只处理一次
 /// </remarks>
-public abstract class IdempotentFeishuEventHandler<T> : DefaultFeishuEventHandler<T>
+/// <remarks>
+/// 构造函数
+/// </remarks>
+/// <param name="businessDeduplicator">业务层去重服务</param>
+/// <param name="logger">日志记录器</param>
+/// <param name="appKeyAccessor">应用键上下文访问器（可选）</param>
+public abstract class IdempotentFeishuEventHandler<T>(
+    IFeishuEventDeduplicator businessDeduplicator,
+    ILogger logger,
+    IAppKeyAccessor? appKeyAccessor = null) : DefaultFeishuEventHandler<T>(logger)
     where T : class, IEventResult, new()
 {
-    private readonly IFeishuEventDeduplicator _businessDeduplicator;
-    private IAppKeyAccessor? _appKeyAccessor;
+    private readonly IFeishuEventDeduplicator _businessDeduplicator = businessDeduplicator ?? throw new ArgumentNullException(nameof(businessDeduplicator));
+    private IAppKeyAccessor? _appKeyAccessor = appKeyAccessor;
 
     /// <summary>
     /// 获取当前应用键（从上下文获取）
     /// </summary>
     protected string? CurrentAppKey => _appKeyAccessor?.CurrentAppKey;
-
-    /// <summary>
-    /// 构造函数
-    /// </summary>
-    /// <param name="businessDeduplicator">业务层去重服务</param>
-    /// <param name="logger">日志记录器</param>
-    /// <param name="appKeyAccessor">应用键上下文访问器（可选）</param>
-    public IdempotentFeishuEventHandler(
-        IFeishuEventDeduplicator businessDeduplicator,
-        ILogger logger,
-        IAppKeyAccessor? appKeyAccessor = null)
-        : base(logger)
-    {
-        _businessDeduplicator = businessDeduplicator ?? throw new ArgumentNullException(nameof(businessDeduplicator));
-        _appKeyAccessor = appKeyAccessor;
-    }
 
 
     /// <summary>
@@ -68,8 +60,10 @@ public abstract class IdempotentFeishuEventHandler<T> : DefaultFeishuEventHandle
             return;
         }
 
+#pragma warning disable CS0618 // 同步去重方法已标记为 Obsolete，内存实现中异步方法内部调用同步方法
         // 检查业务键是否已处理（传递 AppKey 实现多应用隔离）
         if (_businessDeduplicator.TryMarkAsProcessing(businessKey!, appKey))
+#pragma warning restore CS0618
         {
             if (_logger.IsEnabled(LogLevel.Debug))
                 _logger.LogDebug("业务键 {BusinessKey} 已处理或在处理中，跳过事件 {EventId}", businessKey, eventData.EventId);
@@ -82,16 +76,20 @@ public abstract class IdempotentFeishuEventHandler<T> : DefaultFeishuEventHandle
             // 处理事件
             await ProcessBusinessLogicAsync(eventData, eventEntity, cancellationToken);
 
+#pragma warning disable CS0618
             // 标记为已完成
             _businessDeduplicator.MarkAsCompleted(businessKey!, appKey);
+#pragma warning restore CS0618
 
             if (_logger.IsEnabled(LogLevel.Debug))
                 _logger.LogDebug("业务键 {BusinessKey} 处理完成", businessKey);
         }
         catch (Exception)
         {
+#pragma warning disable CS0618
             // 处理失败，回滚状态
             _businessDeduplicator.RollbackProcessing(businessKey!, appKey);
+#pragma warning restore CS0618
             throw;
         }
     }

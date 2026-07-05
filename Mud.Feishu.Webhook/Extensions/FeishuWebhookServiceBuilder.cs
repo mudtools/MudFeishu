@@ -465,11 +465,9 @@ public class FeishuWebhookServiceBuilder
         _services.TryAddSingleton<IFeishuEventDeduplicator, FeishuEventDeduplicator>();
         _services.TryAddSingleton<IFeishuNonceDistributedDeduplicator, FeishuNonceDistributedDeduplicator>();
 
-        // 注册令牌自动刷新后台服务（由 EnableBackgroundProcessing 配置控制是否启用）
-        // 使用 Mud.HttpUtils 提供的扩展方法，自动根据目标框架选择正确的实现
-        _services.AddTokenRefreshBackgroundService();
-
-        // 将 FeishuWebhookOptions.EnableBackgroundProcessing 映射到 TokenRefreshBackgroundOptions.Enabled
+        // 令牌自动刷新后台服务已在 AddFeishuAppBaseServices 中注册（由 Mud.HttpUtils 提供）。
+        // 此处仅保留 Webhook 模块的配置覆盖：将 FeishuWebhookOptions.EnableBackgroundProcessing 映射到 TokenRefreshBackgroundOptions.Enabled。
+        // 若 Webhook 显式禁用后台处理，则覆盖默认启用状态。
         _services.AddOptions<TokenRefreshBackgroundOptions>()
             .PostConfigure<IOptions<FeishuWebhookOptions>>((tokenOptions, webhookOptions) =>
             {

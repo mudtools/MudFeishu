@@ -77,6 +77,12 @@ public static class FeishuServiceCollectionExtensions
             var baseAddress = config.BaseUrl ?? "https://open.feishu.cn";
             bool allowCustomBaseUrl = config?.AllowCustomBaseUrl ?? false;
             var timeOut = config?.TimeOut ?? 30;
+            // 显式标记默认应用：AddMudHttpClient 内部 setAsDefault=true 时强制覆盖 IEnhancedHttpClient 默认注册，
+            // setAsDefault=false 时使用 TryAddTransient（已注册则跳过）。
+            // 此前未传该参数（默认 false），导致默认 IEnhancedHttpClient 隐式绑定到 configs 列表中的第一个 AppKey，
+            // 而非 IsDefault=true 的应用。现在通过显式传入确保默认 HttpClient 与 IsDefault=true 严格对应。
+            bool isDefault = config.IsDefault;
+
             services.AddMudHttpClient(
                 clientName,
                 client =>
@@ -85,7 +91,8 @@ public static class FeishuServiceCollectionExtensions
                     client.BaseAddress = new Uri(baseAddress);
                     client.DefaultRequestHeaders.Add("User-Agent", "MudFeishuClient/1.0");
                     client.Timeout = TimeSpan.FromSeconds(timeOut);
-                });
+                },
+                setAsDefault: isDefault);
         }
 
         var defaultConfig = configs.FirstOrDefault(c => c.IsDefault) ?? configs.FirstOrDefault();
@@ -111,9 +118,12 @@ public static class FeishuServiceCollectionExtensions
 
         services.AddMemoryCache();
 
-        services.AddTokenProvider();
+        // 注意：必须先注册飞书用户上下文，再调用 AddTokenProvider()。
+        // 原因：AddTokenProvider() 内部会 TryAddSingleton<ICurrentUserContext, DefaultCurrentUserContext<CurrentUserInfo>>(),
+        // 若先调用，飞书的桥接注册会因 TryAddSingleton 语义（已存在则跳过）而失效，导致两个上下文实例状态不共享。
         services.TryAddSingleton<IFeishuCurrentUserContext, DefaultFeishuCurrentUserContext>();
         services.TryAddSingleton<Mud.HttpUtils.ICurrentUserContext>(sp => sp.GetRequiredService<IFeishuCurrentUserContext>());
+        services.AddTokenProvider();
 
         if (!services.Any(s => s.ServiceType == typeof(ITokenStore)))
         {
@@ -122,7 +132,27 @@ public static class FeishuServiceCollectionExtensions
         }
 
         if (!services.Any(s => s.ServiceType == typeof(IUserTokenStore)))
-            services.AddSingleton<IUserTokenStore, FeishuUserTokenStore>();
+        {
+            services.AddSingleton<FeishuUserTokenStore>();
+            services.AddSingleton<IUserTokenStore>(sp => sp.GetRequiredService<FeishuUserTokenStore>());
+        }
+
+        // 注册令牌主动刷新后台服务（由 Mud.HttpUtils 提供，按目标框架自动选择实现）。
+        // 此前该服务仅在 Webhook 模块注册，纯 SDK 使用场景下 Token 仅懒加载刷新，
+        // 首次请求延迟增加且无法享受"过期前主动刷新"预热。
+        // 现统一在基础服务中注册，Webhook 模块保留配置覆盖即可。
+        services.AddTokenRefreshBackgroundService();
+
+        // 启用后台刷新服务（Mud.HttpUtils 默认 Enabled=false，需显式启用）
+        services.AddOptions<TokenRefreshBackgroundOptions>()
+            .PostConfigure<IOptions<List<FeishuAppConfig>>>((tokenOptions, appOptions) =>
+            {
+                var defaultConfig = appOptions.Value.FirstOrDefault(c => c.IsDefault) ?? appOptions.Value.FirstOrDefault();
+                if (defaultConfig != null)
+                {
+                    tokenOptions.Enabled = true;
+                }
+            });
 
         return services;
     }

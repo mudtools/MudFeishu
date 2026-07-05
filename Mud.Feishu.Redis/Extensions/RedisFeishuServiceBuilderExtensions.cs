@@ -9,6 +9,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
+using Mud.Feishu.Abstractions;
 using Mud.Feishu.Redis.Configuration;
 using Mud.Feishu.Redis.HealthChecks;
 using Mud.Feishu.Redis.Services;
@@ -191,6 +192,12 @@ public static class RedisFeishuServiceBuilderExtensions
     /// <param name="configuration">配置</param>
     /// <param name="sectionName">配置节名称</param>
     /// <returns>服务集合</returns>
+    /// <exception cref="InvalidOperationException">
+    /// 当 <see cref="IFeishuAppManager"/> 已注册时抛出。<br/>
+    /// 调用顺序约束：必须先 <c>AddFeishuRedisDeduplicators</c>，再 <c>AddFeishuApp</c>。
+    /// 颠倒顺序会导致 Redis TokenStore 因 TryAddSingleton 语义而无法覆盖默认 Memory 实现，
+    /// 且不会有任何错误抛出（静默失败）。
+    /// </exception>
     public static IServiceCollection AddFeishuRedisDeduplicators(
         this IServiceCollection services,
         IConfiguration configuration,
@@ -198,6 +205,17 @@ public static class RedisFeishuServiceBuilderExtensions
     {
         if (configuration == null)
             throw new ArgumentNullException(nameof(configuration));
+
+        // 检测 AddFeishuApp 是否已调用：若已注册 IFeishuAppManager，则 AddFeishuAppBaseServices 已注册默认 FeishuTokenStore，
+        // 此时 Redis 实现的 TryAddSingleton<ITokenStore> 会因已存在而跳过，导致 Redis TokenStore 无法生效（静默失败）。
+        if (services.Any(s => s.ServiceType == typeof(IFeishuAppManager)))
+        {
+            throw new InvalidOperationException(
+                "AddFeishuRedisDeduplicators 必须在 AddFeishuApp 之前调用。" +
+                "当前检测到 AddFeishuApp 已被调用，FeishuTokenStore（Memory 实现）已注册为 ITokenStore，" +
+                "Redis TokenStore 将因 TryAddSingleton 语义（已存在则跳过）而无法覆盖，导致 Redis 实现永不生效。" +
+                "请调整调用顺序：services.AddFeishuRedisDeduplicators(...); services.AddFeishuApp(...);");
+        }
 
         var section = sectionName ?? "FeishuRedis";
         services.Configure<RedisOptions>(options =>
@@ -219,12 +237,25 @@ public static class RedisFeishuServiceBuilderExtensions
     /// <param name="services">服务集合</param>
     /// <param name="configureOptions">配置选项的回调</param>
     /// <returns>服务集合</returns>
+    /// <exception cref="InvalidOperationException">
+    /// 当 <see cref="IFeishuAppManager"/> 已注册时抛出。详见 <see cref="AddFeishuRedisDeduplicators(IServiceCollection, IConfiguration, string)"/>。
+    /// </exception>
     public static IServiceCollection AddFeishuRedisDeduplicators(
         this IServiceCollection services,
         Action<RedisOptions> configureOptions)
     {
         if (configureOptions == null)
             throw new ArgumentNullException(nameof(configureOptions));
+
+        // 检测 AddFeishuApp 是否已调用（同 IConfiguration 重载）
+        if (services.Any(s => s.ServiceType == typeof(IFeishuAppManager)))
+        {
+            throw new InvalidOperationException(
+                "AddFeishuRedisDeduplicators 必须在 AddFeishuApp 之前调用。" +
+                "当前检测到 AddFeishuApp 已被调用，FeishuTokenStore（Memory 实现）已注册为 ITokenStore，" +
+                "Redis TokenStore 将因 TryAddSingleton 语义（已存在则跳过）而无法覆盖，导致 Redis 实现永不生效。" +
+                "请调整调用顺序：services.AddFeishuRedisDeduplicators(...); services.AddFeishuApp(...);");
+        }
 
         services.Configure(configureOptions);
 

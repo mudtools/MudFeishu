@@ -168,8 +168,14 @@ internal class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuA
         var jsonSerializerOptions = Options.Create(_serviceProvider.GetRequiredService<JsonSerializerOptions>());
 
         var httpClient = CreateHttpClient(config);
-        var authenticationApi = _serviceProvider.GetService<IFeishuAuthentication>()
-            ?? (IFeishuAuthentication)ActivatorUtilities.CreateInstance(_serviceProvider, typeof(FeishuAuthentication), jsonSerializerOptions, httpClient);
+
+        // 始终通过 ActivatorUtilities 创建带 httpClient 的实例，确保 HttpClient 与 AppKey 一一对应。
+        // 此前存在两条路径：DI 已注册时从 DI 解析（注入默认 IEnhancedHttpClient，对应第一个 AppKey），
+        // DI 未注册时通过 ActivatorUtilities 创建（传入按 AppKey 切换的 httpClient）。
+        // 两条路径行为不一致，若启用 AllowCustomBaseUrl 且不同 AppKey 配置不同 BaseAddress，DI 路径会发送到错误地址。
+        // 统一为 ActivatorUtilities 路径，保证 HttpClient 与 AppKey 严格对应。
+        var authenticationApi = (IFeishuAuthentication)ActivatorUtilities.CreateInstance(
+            _serviceProvider, typeof(FeishuAuthentication), jsonSerializerOptions, httpClient);
         var options = Options.Create(config);
 
 

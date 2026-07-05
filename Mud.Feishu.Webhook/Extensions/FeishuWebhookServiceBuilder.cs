@@ -467,7 +467,10 @@ public class FeishuWebhookServiceBuilder
 
         // 令牌自动刷新后台服务已在 AddFeishuAppBaseServices 中注册（由 Mud.HttpUtils 提供）。
         // 此处仅保留 Webhook 模块的配置覆盖：将 FeishuWebhookOptions.EnableBackgroundProcessing 映射到 TokenRefreshBackgroundOptions.Enabled。
-        // 若 Webhook 显式禁用后台处理，则覆盖默认启用状态。
+        // 注意：此 PostConfigure 在 AddFeishuAppBaseServices 的 PostConfigure 之后执行，因此会覆盖基础的 Enabled=true 设置。
+        // - 当 Webhook 启用后台处理（EnableBackgroundProcessing=true）：保持启用（与基础设置一致）
+        // - 当 Webhook 禁用后台处理（EnableBackgroundProcessing=false，默认值）：覆盖为基础 false，禁用后台刷新
+        // Webhook 模块默认不启用后台处理，因此默认行为是禁用 TokenRefreshBackgroundService。
         _services.AddOptions<TokenRefreshBackgroundOptions>()
             .PostConfigure<IOptions<FeishuWebhookOptions>>((tokenOptions, webhookOptions) =>
             {

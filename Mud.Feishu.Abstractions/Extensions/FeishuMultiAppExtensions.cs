@@ -183,11 +183,13 @@ public static class FeishuMultiAppExtensions
         configure(builder);
         var configs = builder.Build();
 
-        // 注册基础服务
-        services.AddFeishuAppBaseServices(configs);
-
-        // 验证并设置默认应用
+        // 验证并设置默认应用（必须在 AddFeishuAppBaseServices 之前调用）
+        // 原因：AddFeishuAppBaseServices 内部读取 config.IsDefault 决定 AddMudHttpClient 的 setAsDefault 参数。
+        // 若在 IsDefault 未确定时调用，所有 HttpClient 会以 setAsDefault:false 注册，导致默认 IEnhancedHttpClient 未绑定。
         ValidateAndSetDefaultApp(configs);
+
+        // 注册基础服务（HttpClient工厂）
+        services.AddFeishuAppBaseServices(configs);
 
         // 注册核心服务（应用管理器、默认应用上下文、配置）
         RegisterCoreServices(services, configs);
@@ -224,11 +226,13 @@ public static class FeishuMultiAppExtensions
         if (configs == null)
             throw new ArgumentNullException(nameof(configs));
 
-        // 注册基础服务
-        services.AddFeishuAppBaseServices(configs);
-
-        // 验证并设置默认应用
+        // 验证并设置默认应用（必须在 AddFeishuAppBaseServices 之前调用）
+        // 原因：AddFeishuAppBaseServices 内部读取 config.IsDefault 决定 AddMudHttpClient 的 setAsDefault 参数。
+        // 若在 IsDefault 未确定时调用，所有 HttpClient 会以 setAsDefault:false 注册，导致默认 IEnhancedHttpClient 未绑定。
         ValidateAndSetDefaultApp(configs);
+
+        // 注册基础服务（HttpClient工厂）
+        services.AddFeishuAppBaseServices(configs);
 
         // 注册核心服务（应用管理器、默认应用上下文、配置）
         RegisterCoreServices(services, configs);

@@ -49,7 +49,6 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable
         _webSocketClient.Disconnected += OnClientDisconnected;
         _webSocketClient.MessageReceived += OnClientMessageReceived;
         _webSocketClient.Error += OnClientError;
-        _webSocketClient.HeartbeatTimeout += OnClientHeartbeatTimeout;
     }
 
     /// <summary>
@@ -395,22 +394,6 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable
     }
 
     /// <summary>
-    /// 客户端心跳超时事件处理
-    /// </summary>
-    private void OnClientHeartbeatTimeout(object? sender, WebSocketCloseEventArgs e)
-    {
-        // 重连过程中的心跳超时不转发，避免触发级联重连
-        if (_isReconnecting)
-        {
-            _logger.LogDebug("重连过程中的心跳超时事件已被抑制");
-            return;
-        }
-
-        _logger.LogWarning("心跳超时，触发断开事件: {Description}", e.CloseStatusDescription);
-        Disconnected?.Invoke(this, e);
-    }
-
-    /// <summary>
     /// 客户端消息接收事件处理
     /// </summary>
     /// <param name="sender">事件发送者</param>
@@ -430,8 +413,19 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable
     /// <param name="e">事件参数</param>
     private void OnClientError(object? sender, WebSocketErrorEventArgs e)
     {
-        _logger.LogError(e.Exception, "Mud 飞书WebSocket发生错误: {Message} (类型: {ErrorType}, 状态: {State}, 网络: {IsNetwork}, 认证: {IsAuth}, 时间: {Timestamp})",
-            e.ErrorMessage, e.ErrorType, e.ConnectionState, e.IsNetworkError, e.IsAuthError, e.Timestamp);
+        // 可恢复错误（如服务端关闭连接）仅以 Warning 级别记录摘要，不输出完整堆栈，
+        // 避免同一异常在事件冒泡链中被多次以 ERR 级别重复打印。
+        // 不可恢复错误仍以 Error 级别记录完整异常信息。
+        if (e.IsRecoverable)
+        {
+            _logger.LogWarning("Mud 飞书WebSocket发生可恢复错误: {Message} (类型: {ErrorType}, 状态: {State}, 网络: {IsNetwork}, 时间: {Timestamp})",
+                e.ErrorMessage, e.ErrorType, e.ConnectionState, e.IsNetworkError, e.Timestamp);
+        }
+        else
+        {
+            _logger.LogError(e.Exception, "Mud 飞书WebSocket发生错误: {Message} (类型: {ErrorType}, 状态: {State}, 网络: {IsNetwork}, 认证: {IsAuth}, 时间: {Timestamp})",
+                e.ErrorMessage, e.ErrorType, e.ConnectionState, e.IsNetworkError, e.IsAuthError, e.Timestamp);
+        }
         Error?.Invoke(this, e);
     }
 
@@ -571,6 +565,5 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable
         _webSocketClient.Disconnected -= OnClientDisconnected;
         _webSocketClient.MessageReceived -= OnClientMessageReceived;
         _webSocketClient.Error -= OnClientError;
-        _webSocketClient.HeartbeatTimeout -= OnClientHeartbeatTimeout;
     }
 }

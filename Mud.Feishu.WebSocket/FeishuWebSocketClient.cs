@@ -178,8 +178,7 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
         _heartbeatManager = new HeartbeatManager(
             _loggerFactory.CreateLogger<HeartbeatManager>(),
             _options,
-            (data, token) => _connectionManager.SendBinaryMessageAsync(data, token),
-            () => _connectionManager.IsConnected);
+            (data, token) => _connectionManager.SendBinaryMessageAsync(data, token));
 
         // 订阅组件事件
         SubscribeToComponentEvents();
@@ -204,8 +203,6 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
         _binaryProcessor.Error += _onErrorFromBinary;
         _binaryProcessor.PongReceived += _onPongReceivedBinary;
 
-        _heartbeatManager.HeartbeatTimeout += OnHeartbeatTimeout;
-        _heartbeatManager.ConnectionLost += OnHeartbeatConnectionLost;
     }
 
     /// <summary>
@@ -252,24 +249,6 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
 
         // 保存 PingPongHandler 引用以便在 Dispose 时取消订阅
         _pingPongHandler = pingPongHandler;
-    }
-
-    /// <summary>
-    /// 心跳超时事件处理
-    /// </summary>
-    private void OnHeartbeatTimeout(object? sender, WebSocketCloseEventArgs e)
-    {
-        var handler = HeartbeatTimeout;
-        handler?.Invoke(this, e);
-    }
-
-    /// <summary>
-    /// 心跳检测到连接断开事件处理
-    /// </summary>
-    private void OnHeartbeatConnectionLost(object? sender, WebSocketCloseEventArgs e)
-    {
-        var handler = Disconnected;
-        handler?.Invoke(this, e);
     }
 
     /// <summary>
@@ -586,10 +565,6 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
     /// </summary>
     private async Task HandleReceivedMessageAsync(ArraySegment<byte> buffer, WebSocketReceiveResult result, CancellationToken cancellationToken)
     {
-        // 收到任意消息时通知心跳管理器重置超时计时器
-        // 飞书服务端不一定回复 Pong，但只要在接收事件数据就说明连接是健康的
-        _heartbeatManager.OnActivity();
-
         try
         {
             if (result.MessageType == WebSocketMessageType.Text)
@@ -834,11 +809,5 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
             _binaryProcessor.PongReceived -= _onPongReceivedBinary;
         }
 
-        // 取消心跳管理器事件订阅
-        if (_heartbeatManager != null)
-        {
-            _heartbeatManager.HeartbeatTimeout -= OnHeartbeatTimeout;
-            _heartbeatManager.ConnectionLost -= OnHeartbeatConnectionLost;
-        }
     }
 }

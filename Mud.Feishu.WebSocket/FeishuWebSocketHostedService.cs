@@ -207,7 +207,14 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
     /// </summary>
     private void OnError(object? sender, WebSocketErrorEventArgs e)
     {
-        if (_options.EnableLogging)
+        // 可恢复错误已在下层组件以 Warning 级别记录，此处仅在 Debug 级别记录避免重复刷屏。
+        // 不可恢复错误仍以 Error 级别记录完整异常。
+        if (!_options.EnableLogging)
+            return;
+
+        if (e.IsRecoverable)
+            _logger.LogDebug("飞书WebSocket发生可恢复错误: {Message} (类型: {Type})", e.ErrorMessage, e.ErrorType);
+        else
             _logger.LogError(e.Exception, "飞书WebSocket发生错误: {Message} (类型: {Type})", e.ErrorMessage, e.ErrorType);
     }
 

@@ -2,46 +2,28 @@
 //  作者：Mud Studio  版权所有 (c) Mud Studio 2026   
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
-//  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
+//  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
 using Microsoft.Extensions.Logging;
 using Mud.Feishu.DataModels.WsEndpoint;
-using Mud.Feishu.WebSocket.SocketEventArgs;
-using System.Net.WebSockets;
 
 namespace Mud.Feishu.WebSocket;
 
 /// <summary>
-/// 心跳管理器 - 负责WebSocket心跳检测和超时处理
-/// <para>使用 ProtoBuf 二进制 Ping 帧与飞书服务端通信</para>
+/// 心跳管理器 - 负责向飞书服务端发送应用级 ProtoBuf Ping 帧
+/// <para>设计理念（对齐 Python SDK <c>_ping_loop</c>）：</para>
+/// <para>1. 心跳循环只负责"发 Ping"，失败时仅记录日志，不主动触发重连。</para>
+/// <para>2. 连接是否真正断开由 WebSocketConnectionManager 的接收循环异常检测，
+/// 以及 <c>ClientWebSocket.KeepAliveInterval</c> 协议级 Ping/Pong 超时检测。</para>
+/// <para>3. 飞书服务端不一定对每个 Ping 都回复 Pong，不能以"未收到 Pong"判定连接断开。</para>
 /// </summary>
 public class HeartbeatManager
 {
     private readonly ILogger<HeartbeatManager> _logger;
     private readonly FeishuWebSocketOptions _options;
     private readonly Func<byte[], CancellationToken, Task> _sendBinaryCallback;
-    private readonly Func<bool> _isConnectedCallback;
-
-    private DateTime _lastPongTime = DateTime.MinValue;
-    private int _heartbeatMissedCount = 0;
-    private readonly object _heartbeatLock = new();
     private int? _serviceId;
-
-    /// <summary>
-    /// 心跳超时阈值，连续超过此次数将触发重连
-    /// </summary>
-    private const int HeartbeatTimeoutThreshold = 3;
-
-    /// <summary>
-    /// 心跳超时事件，当连续心跳超时达到阈值时触发
-    /// </summary>
-    public event EventHandler<WebSocketCloseEventArgs>? HeartbeatTimeout;
-
-    /// <summary>
-    /// 连接断开事件（心跳检测到连接断开时触发）
-    /// </summary>
-    public event EventHandler<WebSocketCloseEventArgs>? ConnectionLost;
 
     /// <summary>
     /// 初始化心跳管理器
@@ -49,17 +31,14 @@ public class HeartbeatManager
     /// <param name="logger">日志记录器</param>
     /// <param name="options">WebSocket配置选项</param>
     /// <param name="sendBinaryCallback">发送二进制消息回调</param>
-    /// <param name="isConnectedCallback">检查连接状态回调</param>
     public HeartbeatManager(
         ILogger<HeartbeatManager> logger,
         FeishuWebSocketOptions options,
-        Func<byte[], CancellationToken, Task> sendBinaryCallback,
-        Func<bool> isConnectedCallback)
+        Func<byte[], CancellationToken, Task> sendBinaryCallback)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _options = options ?? throw new ArgumentNullException(nameof(options));
         _sendBinaryCallback = sendBinaryCallback ?? throw new ArgumentNullException(nameof(sendBinaryCallback));
-        _isConnectedCallback = isConnectedCallback ?? throw new ArgumentNullException(nameof(isConnectedCallback));
     }
 
     /// <summary>
@@ -75,46 +54,22 @@ public class HeartbeatManager
     }
 
     /// <summary>
-    /// 启动心跳循环
+    /// 启动心跳循环（对齐 Python SDK <c>_ping_loop</c> 设计）
+    /// <para>循环逻辑：等待间隔 → 发送 ProtoBuf Ping → 记录日志。失败时仅记录警告，不触发重连。</para>
+    /// <para>连接断开由接收循环的异常或
+    /// <c>KeepAliveInterval</c> 协议级 Ping 超时检测，此处不重复处理。</para>
     /// </summary>
     /// <param name="cancellationToken">取消令牌</param>
     public async Task StartHeartbeatAsync(CancellationToken cancellationToken)
     {
+        _logger.LogInformation("心跳管理器已启动，心跳间隔: {IntervalMs}ms", _options.HeartbeatIntervalMs);
+
         try
         {
-            lock (_heartbeatLock)
-            {
-                _lastPongTime = DateTime.UtcNow;
-                _heartbeatMissedCount = 0;
-            }
-
-            _logger.LogInformation("心跳管理器已启动，心跳间隔: {IntervalMs}ms, 超时阈值: {Threshold}次",
-                _options.HeartbeatIntervalMs, HeartbeatTimeoutThreshold);
-
             while (!cancellationToken.IsCancellationRequested)
             {
+                // 与 Python SDK 一致：先等待间隔，再发送 Ping
                 await Task.Delay(_options.HeartbeatIntervalMs, cancellationToken);
-
-                if (!_isConnectedCallback())
-                {
-                    if (_options.AutoReconnect)
-                    {
-                        _logger.LogDebug("连接已断开，触发重连事件...");
-                        ConnectionLost?.Invoke(this, new WebSocketCloseEventArgs
-                        {
-                            CloseStatus = WebSocketCloseStatus.NormalClosure,
-                            CloseStatusDescription = "心跳检测到连接断开，准备重连",
-                            IsServerInitiated = false,
-                            Timestamp = DateTime.UtcNow
-                        });
-                    }
-                    lock (_heartbeatLock)
-                    {
-                        _lastPongTime = DateTime.UtcNow;
-                        _heartbeatMissedCount = 0;
-                    }
-                    continue;
-                }
 
                 try
                 {
@@ -123,34 +78,18 @@ public class HeartbeatManager
                     var pingFrameData = FrameBuilder.BuildPingFrame(serviceId);
                     await _sendBinaryCallback(pingFrameData, cancellationToken);
 
-                    // Ping 发送成功即重置心跳超时计时器（参照 Python SDK _ping_loop）
-                    // Python SDK 无心跳超时检测：只要 Ping 能成功发送就说明连接是健康的。
-                    // 飞书服务端不一定对每个 Ping 都回复 Pong，但不能因此判定连接已断开。
-                    // 连接是否真正断开由接收循环的异常或 Ping 发送失败来检测。
-                    lock (_heartbeatLock)
-                    {
-                        _lastPongTime = DateTime.UtcNow;
-                        _heartbeatMissedCount = 0;
-                    }
-
                     if (_options.EnableLogging)
                         _logger.LogDebug("已发送 ProtoBuf 心跳 (ServiceId={ServiceId})", serviceId);
                 }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "发送心跳时发生错误");
-
-                    if (_options.AutoReconnect)
-                    {
-                        _logger.LogWarning("心跳发送失败，触发心跳超时事件...");
-                        HeartbeatTimeout?.Invoke(this, new WebSocketCloseEventArgs
-                        {
-                            CloseStatus = WebSocketCloseStatus.EndpointUnavailable,
-                            CloseStatusDescription = "心跳发送失败，触发重连",
-                            IsServerInitiated = false,
-                            Timestamp = DateTime.UtcNow
-                        });
-                    }
+                    // 对齐 Python SDK _ping_loop：Ping 失败仅记录警告，不触发重连。
+                    // 连接是否断开由接收循环或 KeepAliveInterval 协议级 Ping 超时检测。
+                    _logger.LogWarning("发送心跳时发生错误: {Message}", ex.Message);
                 }
             }
         }
@@ -160,39 +99,19 @@ public class HeartbeatManager
     }
 
     /// <summary>
-    /// 通知收到任意消息（数据帧或控制帧），重置心跳超时计时器
-    /// <para>飞书服务端不一定对每个 Ping 都回复 Pong，但只要连接上有数据流动（事件、ACK 等），
-    /// 就说明连接是健康的。此方法用于在收到任意消息时重置心跳超时计数。</para>
-    /// </summary>
-    public void OnActivity()
-    {
-        lock (_heartbeatLock)
-        {
-            _lastPongTime = DateTime.UtcNow;
-            _heartbeatMissedCount = 0;
-        }
-    }
-
-    /// <summary>
-    /// 通知收到Pong响应，重置心跳超时计数并应用服务端下发的 ClientConfig
+    /// 通知收到Pong响应，应用服务端下发的 ClientConfig
+    /// <para>飞书服务端通过 Pong 控制帧的 Payload 下发 ClientConfig（PingInterval、ReconnectInterval 等），
+    /// 此方法解析并应用这些动态配置。</para>
     /// </summary>
     /// <param name="config">服务端通过 Pong 下发的客户端配置（可选）</param>
     public void OnPongReceived(ClientConfigInfo? config = null)
     {
-        lock (_heartbeatLock)
-        {
-            _lastPongTime = DateTime.UtcNow;
-            _heartbeatMissedCount = 0;
-        }
-
-        // 应用服务端下发的动态配置（对照 Java SDK configure()）
         if (config != null)
         {
             ApplyClientConfig(config);
         }
 
-        // Pong 接收日志不受 EnableLogging 限制，便于诊断心跳问题
-        _logger.LogDebug("已收到 Pong 响应，心跳超时计数已重置");
+        _logger.LogDebug("已收到 Pong 响应");
     }
 
     /// <summary>
@@ -235,55 +154,6 @@ public class HeartbeatManager
             _options.MaxReconnectAttempts = config.ReconnectCount == -1 ? 0 : config.ReconnectCount;
             if (_options.EnableLogging)
                 _logger.LogDebug("最大重连次数已更新: {Count}", _options.MaxReconnectAttempts);
-        }
-    }
-
-    /// <summary>
-    /// 检查心跳超时
-    /// </summary>
-    private void CheckHeartbeatTimeout()
-    {
-        bool shouldTriggerReconnect = false;
-        int currentMissedCount = 0;
-        double timeSinceLastPongMs = 0;
-
-        lock (_heartbeatLock)
-        {
-            timeSinceLastPongMs = (DateTime.UtcNow - _lastPongTime).TotalMilliseconds;
-            var heartbeatTimeoutMs = _options.HeartbeatIntervalMs * 2;
-
-            if (timeSinceLastPongMs > heartbeatTimeoutMs)
-            {
-                _heartbeatMissedCount++;
-                currentMissedCount = _heartbeatMissedCount;
-
-                if (_heartbeatMissedCount >= HeartbeatTimeoutThreshold && _options.AutoReconnect)
-                {
-                    shouldTriggerReconnect = true;
-                }
-            }
-            else
-            {
-                _heartbeatMissedCount = 0;
-            }
-        }
-
-        if (currentMissedCount > 0)
-        {
-            _logger.LogWarning("心跳超时：{TimeSinceLastPong}ms 未收到响应，超时次数：{MissedCount}",
-                timeSinceLastPongMs, currentMissedCount);
-        }
-
-        if (shouldTriggerReconnect)
-        {
-            _logger.LogError("连续 {MissedCount} 次心跳超时，触发重连", currentMissedCount);
-            HeartbeatTimeout?.Invoke(this, new WebSocketCloseEventArgs
-            {
-                CloseStatus = WebSocketCloseStatus.EndpointUnavailable,
-                CloseStatusDescription = "心跳超时，触发重连",
-                IsServerInitiated = false,
-                Timestamp = DateTime.UtcNow
-            });
         }
     }
 }

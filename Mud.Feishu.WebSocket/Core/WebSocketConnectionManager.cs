@@ -126,6 +126,13 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
             _cancellationTokenSource = new CancellationTokenSource();
             _disconnectedFired = false; // 新连接建立，重置断开事件标志
 
+            // 启用协议级 WebSocket Ping/Pong 保活（对齐 Python websockets 库默认行为）。
+            // Python SDK 的 websockets 库默认每 20 秒发送协议级 Ping 帧，
+            // .NET ClientWebSocket 默认 KeepAliveInterval=Zero（禁用）。
+            // 启用后，.NET 运行时会自动发送 WebSocket Ping (opcode 0x9)，
+            // 服务端回复 Pong (opcode 0xA)，保持中间网络设备（NAT/负载均衡器）的连接表项不超时。
+            _webSocket.Options.KeepAliveInterval = TimeSpan.FromSeconds(20);
+
             // 配置SSL/TLS证书验证
             ConfigureCertificateValidation(_webSocket, uri);
 
@@ -364,7 +371,9 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
         }
         catch (WebSocketException ex)
         {
-            _logger.LogError(ex, "接收消息时发生WebSocket错误");
+            // 仅在 Debug 级别记录完整异常（含堆栈），避免可恢复的网络断连以 ERR 级别刷屏。
+            // OnError 方法会根据错误恢复策略以适当的级别（WRN/ERR）记录面向用户的摘要日志。
+            _logger.LogDebug(ex, "接收消息时发生WebSocket错误");
             OnError(ex, "WebSocket接收错误");
             // 远程方未完成关闭握手就断开连接时，WebSocket 状态为 Aborted 而非 Closed，
             // 不会走 HandleCloseMessageAsync 路径，因此需要在此处主动触发 Disconnected 事件，
@@ -376,7 +385,7 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "接收消息时发生错误");
+            _logger.LogDebug(ex, "接收消息时发生错误");
             OnError(ex, "接收消息错误");
             NotifyDisconnected(
                 WebSocketCloseStatus.NormalClosure,

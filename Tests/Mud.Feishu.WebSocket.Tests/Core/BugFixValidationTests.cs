@@ -37,23 +37,6 @@ public class BugFixValidationTests
         };
     }
 
-    #region Bug修复1: 心跳超时阈值常量化
-
-    [Fact]
-    public void HeartbeatTimeoutThreshold_ShouldBeDefined_AsConstant()
-    {
-        const string fieldName = "HeartbeatTimeoutThreshold";
-
-        var type = typeof(HeartbeatManager);
-        var field = type.GetField(fieldName, System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
-        var value = field?.GetValue(null);
-
-        value.Should().Be(3);
-        field?.IsLiteral.Should().BeTrue();
-    }
-
-    #endregion
-
     #region Bug修复2: IAsyncDisposable接口实现
 
     [Fact]

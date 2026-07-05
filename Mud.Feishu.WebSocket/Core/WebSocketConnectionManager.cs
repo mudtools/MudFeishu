@@ -32,6 +32,7 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
     private byte[]? _receiveBuffer;
     private readonly ErrorRecoveryStrategy _errorRecoveryStrategy;
     private readonly ILoggerFactory _loggerFactory;
+    private volatile bool _disconnectedFired = true;
 
     /// <summary>
     /// 获取当前WebSocket连接数
@@ -123,6 +124,7 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
             // 创建新的WebSocket连接
             _webSocket = new ClientWebSocket();
             _cancellationTokenSource = new CancellationTokenSource();
+            _disconnectedFired = false; // 新连接建立，重置断开事件标志
 
             // 配置SSL/TLS证书验证
             ConfigureCertificateValidation(_webSocket, uri);
@@ -189,14 +191,10 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
                 _logger.LogInformation("已断开飞书WebSocket连接");
             }
 
-            Interlocked.Decrement(ref _connectionCount);
-
-            Disconnected?.Invoke(this, new WebSocketCloseEventArgs
-            {
-                CloseStatus = WebSocketCloseStatus.NormalClosure,
-                CloseStatusDescription = "客户端主动断开连接",
-                IsServerInitiated = false
-            });
+            NotifyDisconnected(
+                WebSocketCloseStatus.NormalClosure,
+                "客户端主动断开连接",
+                isServerInitiated: false);
         }
         catch (Exception ex)
         {
@@ -368,11 +366,22 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
         {
             _logger.LogError(ex, "接收消息时发生WebSocket错误");
             OnError(ex, "WebSocket接收错误");
+            // 远程方未完成关闭握手就断开连接时，WebSocket 状态为 Aborted 而非 Closed，
+            // 不会走 HandleCloseMessageAsync 路径，因此需要在此处主动触发 Disconnected 事件，
+            // 否则重连只能等待心跳管理器检测到连接断开后才触发（延迟可达数十秒）。
+            NotifyDisconnected(
+                WebSocketCloseStatus.NormalClosure,
+                "WebSocket接收错误导致连接断开",
+                isServerInitiated: true);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "接收消息时发生错误");
             OnError(ex, "接收消息错误");
+            NotifyDisconnected(
+                WebSocketCloseStatus.NormalClosure,
+                "接收消息错误导致连接断开",
+                isServerInitiated: true);
         }
     }
 
@@ -451,8 +460,8 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
                 result.CloseStatus, result.CloseStatusDescription);
         }
 
-        // 服务端发起关闭时在此处递减连接计数。
-        // DisconnectAsync 中的递减受 _webSocket.State == Closed 保护，不会双重递减。
+        // 通过 NotifyDisconnected 统一处理连接计数递减和 Disconnected 事件触发，
+        // _disconnectedFired 标志确保不会与 StartReceivingAsync 异常路径或 DisconnectAsync 重复触发。
         try
         {
             if (_webSocket != null && _webSocket.State == WebSocketState.Open)
@@ -468,15 +477,11 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
             _logger.LogDebug(ex, "确认关闭连接时发生异常（可忽略）");
         }
 
-        // 递减连接计数（服务端关闭场景，仅一次）
-        Interlocked.Decrement(ref _connectionCount);
-
-        Disconnected?.Invoke(this, new WebSocketCloseEventArgs
-        {
-            CloseStatus = result.CloseStatus,
-            CloseStatusDescription = result.CloseStatusDescription,
-            IsServerInitiated = true
-        });
+        // 递减连接计数并触发断开事件（仅一次）
+        NotifyDisconnected(
+            result.CloseStatus ?? WebSocketCloseStatus.NormalClosure,
+            result.CloseStatusDescription,
+            isServerInitiated: true);
     }
 
     /// <summary>
@@ -573,6 +578,33 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
             }
         }
 #endif
+    }
+
+    /// <summary>
+    /// 通知连接已断开（线程安全，仅触发一次）
+    /// </summary>
+    /// <param name="closeStatus">关闭状态码</param>
+    /// <param name="description">关闭描述</param>
+    /// <param name="isServerInitiated">是否为服务端发起</param>
+    /// <remarks>
+    /// 使用 <see cref="_disconnectedFired"/> 标志确保对同一次连接只递减一次连接计数并触发一次
+    /// <see cref="Disconnected"/> 事件，避免 <see cref="StartReceivingAsync"/> 异常路径与
+    /// <see cref="DisconnectAsync"/> / <see cref="HandleCloseMessageAsync"/> 之间的重复触发。
+    /// </remarks>
+    private void NotifyDisconnected(WebSocketCloseStatus closeStatus, string? description, bool isServerInitiated)
+    {
+        if (_disconnectedFired)
+            return;
+        _disconnectedFired = true;
+
+        Interlocked.Decrement(ref _connectionCount);
+
+        Disconnected?.Invoke(this, new WebSocketCloseEventArgs
+        {
+            CloseStatus = closeStatus,
+            CloseStatusDescription = description,
+            IsServerInitiated = isServerInitiated
+        });
     }
 
     /// <summary>

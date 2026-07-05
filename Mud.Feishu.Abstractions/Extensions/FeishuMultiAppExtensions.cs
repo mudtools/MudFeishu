@@ -304,24 +304,8 @@ public static class FeishuMultiAppExtensions
                 $"检测到多个 IsDefault=true 的应用（{string.Join(", ", defaultAppKeys)}），仅允许一个默认应用。请确保只有一个应用标记为 IsDefault=true。");
         }
 
-        // 多应用模式下，检测非默认应用的弹性策略与默认应用不一致时发出警告
-        // 多应用模式下弹性策略为全局共享，仅默认应用的配置生效
-        var defaultApp = configs.FirstOrDefault(c => c.IsDefault);
-        if (defaultApp != null && configs.Count > 1)
-        {
-            foreach (var config in configs.Where(c => !c.IsDefault))
-            {
-                if (config.RetryCount != defaultApp.RetryCount ||
-                    config.TimeOut != defaultApp.TimeOut ||
-                    config.RetryDelayMs != defaultApp.RetryDelayMs)
-                {
-                    // 使用 Console.Error.WriteLine 而非 Debug.WriteLine，确保 Release 模式下警告不被编译剥离
-                    Console.Error.WriteLine(
-                        $"[MudFeishu] 警告：应用 '{config.AppKey}' 的弹性策略配置（RetryCount/TimeOut/RetryDelayMs）" +
-                        $"与默认应用 '{defaultApp.AppKey}' 不同。多应用模式下仅默认应用的弹性策略生效，" +
-                        $"非默认应用的配置将被忽略。");
-                }
-            }
-        }
+        // 多应用模式下，弹性策略不一致的警告由 FeishuAppManager.WarnResilienceConfigMismatch 统一发出（运行时，使用 ILogger）。
+        // v1.1 修复 P1：此前此处使用 Console.Error.WriteLine 发出重复警告，与 FeishuAppManager 的 _logger.LogWarning 重复触发。
+        // 已移除此处的 Console.Error.WriteLine 警告，保留 FeishuAppManager 中更全面的运行时日志警告（覆盖所有弹性参数）。
     }
 }

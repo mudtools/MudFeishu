@@ -61,6 +61,15 @@ internal abstract class FeishuAppTokenManagerBase : TokenManagerBase
 
         var result = await RefreshTokenFromApiAsync(cancellationToken).ConfigureAwait(false);
 
+        // v1.1 修复 P0：飞书 API 异常响应时 result.AccessToken 可能为 null，
+        // 此时 PersistTokenAsync 会抛 ArgumentNullException（语义不准）。
+        // 在此提前校验，抛 InvalidOperationException 并附带上下文信息，便于诊断。
+        if (string.IsNullOrEmpty(result.AccessToken))
+        {
+            throw new InvalidOperationException(
+                $"飞书 API 刷新 {_tokenTypeKey} 令牌失败：返回的 AccessToken 为空。AppId: {_options.AppId}");
+        }
+
         await PersistTokenAsync(_tokenTypeKey, result.AccessToken, result.ExpireSeconds, cancellationToken).ConfigureAwait(false);
 
         return new CredentialToken
@@ -123,8 +132,10 @@ internal abstract class FeishuAppTokenManagerBase : TokenManagerBase
 
     private async Task PersistTokenAsync(string tokenType, string? accessToken, long expiresInSeconds, CancellationToken cancellationToken)
     {
+        // v1.1 修正：参数为空属于状态无效而非参数传递错误，抛 InvalidOperationException 更准确。
+        // 正常流程下 RefreshTokenCoreAsync 已在上游校验，此处为防御性检查。
         if (string.IsNullOrEmpty(accessToken))
-            throw new ArgumentNullException(nameof(accessToken));
+            throw new InvalidOperationException($"持久化令牌失败：accessToken 为空。TokenType: {tokenType}");
         if (_tokenStore == null)
             return;
 

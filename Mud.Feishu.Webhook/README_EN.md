@@ -106,7 +106,6 @@ app.Run();
     "MaxRequestBodySize": 10485760,
     "AllowedSourceIPs": [],
     "EnforceHeaderSignatureValidation": true,
-    "EnableBodySignatureValidation": true,
     "TimestampToleranceSeconds": 30,
     "NonceValidationFailureMode": "Reject",
     "EnableBackgroundProcessing": false,
@@ -389,7 +388,6 @@ public class DemoDepartmentEventHandler : DepartmentCreatedEventHandler
 | `Apps.{AppKey}.TimestampToleranceSeconds`        | int                                           | -1      | Timestamp tolerance (-1 inherits global)                       |
 | `Apps.{AppKey}.EventHandlingTimeoutMs`           | int                                           | -1      | Event handling timeout (-1 inherits global)                    |
 | `Apps.{AppKey}.EnforceHeaderSignatureValidation` | bool?                                         | null    | Enforce header signature validation (null inherits global)     |
-| `Apps.{AppKey}.EnableBodySignatureValidation`    | bool?                                         | null    | Enable body signature validation (null inherits global)        |
 | `Apps.{AppKey}.EnableExceptionHandling`          | bool?                                         | null    | Enable exception handling (null inherits global)               |
 | `Apps.{AppKey}.EnablePerformanceMonitoring`      | bool?                                         | null    | Enable performance monitoring (null inherits global)           |
 
@@ -401,7 +399,6 @@ public class DemoDepartmentEventHandler : DepartmentCreatedEventHandler
 | `AllowedHttpMethods`               | HashSet\<string\> | ["POST"] | Allowed HTTP methods                                               |
 | `MaxRequestBodySize`               | long              | 10MB     | Max request body size                                              |
 | `EnforceHeaderSignatureValidation` | bool              | true     | Whether to enforce header signature validation                     |
-| `EnableBodySignatureValidation`    | bool              | true     | Whether to validate request body signature at service layer        |
 | `TimestampToleranceSeconds`        | int               | 30       | Timestamp validation tolerance (seconds)                           |
 | `NonceValidationFailureMode`       | NonceFailureMode  | Reject  | Nonce dedup service unavailable fallback (Reject=security-first, Allow=availability-first) |
 

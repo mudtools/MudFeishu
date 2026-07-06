@@ -66,12 +66,6 @@ public class FeishuWebhookOptions
     public HashSet<string> AllowedSourceIPs { get; set; } = [];
 
     /// <summary>
-    /// 是否在服务层再次验证请求体签名
-    /// 如果 Middleware 中已验证 X-Lark-Signature 请求头，可禁用此选项以避免重复验证
-    /// </summary>
-    public bool EnableBodySignatureValidation { get; set; } = true;
-
-    /// <summary>
     /// 是否强制验证 X-Lark-Signature 请求头签名
     /// 当设置为 true 时，如果请求头中缺少签名将拒绝请求
     /// 生产环境建议设置为 true 以提高安全性

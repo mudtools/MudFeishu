@@ -1344,8 +1344,7 @@ If you use the following configurations in production environment, you need to m
 ```json
 {
   "FeishuWebhook": {
-    "EnforceHeaderSignatureValidation": true,
-    "EnableBodySignatureValidation": true
+    "EnforceHeaderSignatureValidation": true
   }
 }
 ```

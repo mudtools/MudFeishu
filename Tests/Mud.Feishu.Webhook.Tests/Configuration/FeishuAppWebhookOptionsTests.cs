@@ -25,7 +25,6 @@ public class FeishuAppWebhookOptionsTests
         options.TimestampToleranceSeconds.Should().BeNull();
         options.EventHandlingTimeoutMs.Should().BeNull();
         options.EnforceHeaderSignatureValidation.Should().BeNull();
-        options.EnableBodySignatureValidation.Should().BeNull();
         options.EnableExceptionHandling.Should().BeNull();
         options.EnablePerformanceMonitoring.Should().BeNull();
     }
@@ -238,30 +237,6 @@ public class FeishuAppWebhookOptionsTests
         var options = new FeishuAppWebhookOptions { EnablePerformanceMonitoring = null };
 
         options.GetEffectiveEnablePerformanceMonitoring(false).Should().BeFalse();
-    }
-
-    [Fact]
-    public void GetEffectiveEnableBodySignatureValidation_ShouldReturnLocalValue_WhenSet()
-    {
-        var options = new FeishuAppWebhookOptions { EnableBodySignatureValidation = false };
-
-        options.GetEffectiveEnableBodySignatureValidation(true).Should().BeFalse();
-    }
-
-    [Fact]
-    public void GetEffectiveEnableBodySignatureValidation_ShouldReturnGlobalValue_WhenNull()
-    {
-        var options = new FeishuAppWebhookOptions { EnableBodySignatureValidation = null };
-
-        options.GetEffectiveEnableBodySignatureValidation(true).Should().BeTrue();
-    }
-
-    [Fact]
-    public void GetEffectiveEnableBodySignatureValidation_ShouldReturnGlobalFalse_WhenNullAndGlobalFalse()
-    {
-        var options = new FeishuAppWebhookOptions { EnableBodySignatureValidation = null };
-
-        options.GetEffectiveEnableBodySignatureValidation(false).Should().BeFalse();
     }
 
     [Fact]

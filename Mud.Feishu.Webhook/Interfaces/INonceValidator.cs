@@ -20,6 +20,17 @@ public interface INonceValidator
     void SetCurrentAppKey(string appKey);
 
     /// <summary>
+    /// 检查 Nonce 是否已被使用（仅检查，不标记）
+    /// </summary>
+    /// <param name="nonce">随机数</param>
+    /// <returns>如果 Nonce 已被使用返回 true，否则返回 false</returns>
+    /// <remarks>
+    /// 此方法仅检查 Nonce 是否已存在，不会标记为已使用。
+    /// 用于在签名验证通过前进行预检查，避免签名失败时 Nonce 被误消费。
+    /// </remarks>
+    Task<bool> CheckNonceAsync(string nonce);
+
+    /// <summary>
     /// 检查并标记 Nonce 为已使用
     /// </summary>
     /// <param name="nonce">随机数</param>

@@ -12,22 +12,13 @@ namespace Mud.Feishu.Webhook.Services;
 
 /// <summary>
 /// 飞书事件签名验证器实现
-/// 支持 HMAC-SHA256 和 SHA-256 两种签名算法
+/// 使用 SHA-256 算法验证请求头签名（X-Lark-Signature）
 /// </summary>
 /// <remarks>
 /// <para>
-/// 飞书 Webhook 使用两种签名验证方式：
+/// 飞书 Webhook 签名验证方式：
 /// </para>
 /// <list type="number">
-/// <item>
-/// <term>HMAC-SHA256 签名（请求体验证）</term>
-/// <description>
-/// - 签名字符串格式：timestamp + "\n" + nonce + "\n" + encrypt
-/// - 算法：HMAC-SHA256(encryptKey, signString)
-/// - 用途：验证请求体中的加密数据完整性
-/// - 触发条件：EnableBodySignatureValidation = true
-/// </description>
-/// </item>
 /// <item>
 /// <term>SHA-256 签名（请求头验证）</term>
 /// <description>
@@ -35,7 +26,7 @@ namespace Mud.Feishu.Webhook.Services;
 /// - 算法：SHA-256(signString)
 /// - 用途：验证整个请求的完整性和来源
 /// - 触发条件：EnforceHeaderSignatureValidation = true
-/// - 注意：此方式更安全，生产环境强烈推荐
+/// - 注意：此方式与飞书官方 SDK（Python/Go）一致，生产环境强烈推荐
 /// </description>
 /// </item>
 /// </list>
@@ -44,7 +35,6 @@ namespace Mud.Feishu.Webhook.Services;
 /// </para>
 /// <list type="bullet">
 /// <item><description>生产环境必须启用 EnforceHeaderSignatureValidation</description></item>
-/// <item><description>建议同时启用两种验证以提供双重保护</description></item>
 /// <item><description>时间戳容错范围建议设置为 30 秒或更短</description></item>
 /// <item><description>使用固定时间比较防止计时攻击</description></item>
 /// </list>
@@ -256,69 +246,4 @@ public class SignatureValidator(
         return result == 0;
     }
 
-    /// <inheritdoc />
-    public Task<bool> ValidateBodySignatureAsync(long timestamp, string nonce, string encryptData, string encryptKey, string? expectedSignature = null)
-    {
-        var options = _options.CurrentValue;
-        var enableBodyValidation = options.EnableBodySignatureValidation;
-
-        if (!string.IsNullOrEmpty(CurrentAppKey))
-        {
-            var appConfig = options.GetAppConfig(CurrentAppKey!);
-            if (appConfig != null)
-            {
-                enableBodyValidation = appConfig.GetEffectiveEnableBodySignatureValidation(enableBodyValidation);
-            }
-        }
-
-        if (!enableBodyValidation)
-        {
-            Logger.LogDebug("请求体签名验证已禁用（EnableBodySignatureValidation = false），跳过验证, AppKey: {AppKey}",
-                CurrentAppKey ?? "null");
-            return Task.FromResult(true);
-        }
-
-        try
-        {
-            // 当未提供期望签名时，无法进行比较，记录警告并跳过
-            if (string.IsNullOrEmpty(expectedSignature))
-            {
-                Logger.LogWarning("请求体签名验证已启用，但未提供期望签名值，跳过签名比较（警告：此请求未经过完整验证）, AppKey: {AppKey}",
-                    CurrentAppKey ?? "null");
-                return Task.FromResult(true);
-            }
-
-            var signString = $"{timestamp}\n{nonce}\n{encryptData}";
-            using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(encryptKey));
-            var hashBytes = hmac.ComputeHash(Encoding.UTF8.GetBytes(signString));
-            var computedSignature = BitConverter.ToString(hashBytes).Replace("-", "").ToLower();
-
-            Logger.LogDebug("请求体签名计算 - Timestamp: {Timestamp}, Nonce: {Nonce}, EncryptKey长度: {KeyLength}, EncryptData长度: {DataLength}",
-                timestamp, nonce, encryptKey.Length, encryptData.Length);
-
-            // 使用固定时间比较防止计时攻击
-            var isValid = FixedTimeEquals(
-                Encoding.UTF8.GetBytes(computedSignature),
-                Encoding.UTF8.GetBytes(expectedSignature!));
-
-            if (!isValid)
-            {
-                var computedPrefix = computedSignature.Length > 8 ? computedSignature.Substring(0, 8) : computedSignature;
-                var expectedPrefix = expectedSignature!.Length > 8 ? expectedSignature.Substring(0, 8) : expectedSignature;
-                Logger.LogWarning("请求体签名验证失败: 计算 {ComputedPrefix}..., 期望 {ExpectedPrefix}..., AppKey: {AppKey}",
-                    computedPrefix + "...", expectedPrefix + "...", CurrentAppKey ?? "null");
-                LogSecurityFailure($"请求体签名验证失败: 计算 {computedPrefix}..., 期望 {expectedPrefix}...");
-                return Task.FromResult(false);
-            }
-
-            Logger.LogDebug("请求体签名验证成功, AppKey: {AppKey}", CurrentAppKey ?? "null");
-            LogSecuritySuccess($"请求体签名验证通过（HMAC-SHA256）, AppKey: {CurrentAppKey ?? "null"}");
-            return Task.FromResult(true);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "验证请求体签名时发生错误, AppKey: {AppKey}", CurrentAppKey ?? "null");
-            return Task.FromResult(false);
-        }
-    }
 }

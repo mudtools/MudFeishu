@@ -68,8 +68,10 @@ public class SubscriptionValidator(
                 return false;
             }
 
-            // 验证 Token 是否匹配
-            if (request.Token != effectiveExpectedToken)
+            // 验证 Token 是否匹配（使用固定时间比较防止计时攻击）
+            var tokenBytes = Encoding.UTF8.GetBytes(request.Token ?? string.Empty);
+            var expectedBytes = Encoding.UTF8.GetBytes(effectiveExpectedToken ?? string.Empty);
+            if (!SignatureValidator.FixedTimeEquals(tokenBytes, expectedBytes))
             {
                 // 为了安全，不在日志中记录完整的 Token 值，只记录前几位
                 var actualTokenPrefix = request.Token?.Length > 4 ? request.Token.Substring(0, 4) + "***" : "***";

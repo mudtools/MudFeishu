@@ -42,7 +42,6 @@ public class FeishuWebhookServiceTests
 
         _options = new FeishuWebhookOptions
         {
-            EnableBodySignatureValidation = false,
             EventHandlingTimeoutMs = 5000,
             MaxConcurrentEvents = 10
         };
@@ -482,6 +481,97 @@ public class FeishuWebhookServiceTests
         Assert.True(result.Success);
         interceptorMock.Verify(x => x.BeforeHandleAsync(eventData.EventType, eventData, It.IsAny<CancellationToken>()), Times.Once);
         interceptorMock.Verify(x => x.AfterHandleAsync(eventData.EventType, eventData, It.IsAny<Exception?>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleEventAsync_WithHandlerException_ShouldRollbackDeduplication()
+    {
+        // Arrange - 事件处理异常时应回滚去重状态
+        var eventData = new EventData
+        {
+            EventId = "rollback_test_event",
+            EventType = "test.event"
+        };
+
+        _deduplicatorMock
+            .Setup(x => x.TryMarkAsProcessingAsync(eventData.EventId, It.IsAny<string?>(), null, null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new DeduplicationResult { IsDuplicate = false, WasProcessing = false });
+
+        _handlerFactoryMock
+            .Setup(x => x.HandleEventParallelAsync(eventData.EventType, eventData, It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("Handler failed"));
+
+        var service = CreateService();
+
+        // Act
+        var result = await service.HandleEventAsync(eventData);
+
+        // Assert
+        Assert.False(result.Success);
+        Assert.Contains("Internal server error", result.ErrorReason ?? "");
+        // 验证去重状态被回滚
+        _deduplicatorMock.Verify(x => x.RollbackProcessingAsync(eventData.EventId, It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Once);
+        // 验证未调用 MarkAsCompletedAsync
+        _deduplicatorMock.Verify(x => x.MarkAsCompletedAsync(eventData.EventId, It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task HandleEventAsync_WithSuccessfulProcessing_ShouldMarkAsCompleted()
+    {
+        // Arrange - 事件处理成功后应标记为已完成
+        var eventData = new EventData
+        {
+            EventId = "complete_test_event",
+            EventType = "test.event"
+        };
+
+        _deduplicatorMock
+            .Setup(x => x.TryMarkAsProcessingAsync(eventData.EventId, It.IsAny<string?>(), null, null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new DeduplicationResult { IsDuplicate = false, WasProcessing = false });
+
+        _handlerFactoryMock
+            .Setup(x => x.HandleEventParallelAsync(eventData.EventType, eventData, It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var service = CreateService();
+
+        // Act
+        var result = await service.HandleEventAsync(eventData);
+
+        // Assert
+        Assert.True(result.Success);
+        // 验证去重状态被标记为已完成
+        _deduplicatorMock.Verify(x => x.MarkAsCompletedAsync(eventData.EventId, It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Once);
+        // 验证未调用回滚
+        _deduplicatorMock.Verify(x => x.RollbackProcessingAsync(eventData.EventId, It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task HandleEventAsync_WithCancellation_ShouldRollbackDeduplication()
+    {
+        // Arrange - 事件处理被取消时应回滚去重状态
+        var eventData = new EventData
+        {
+            EventId = "cancel_test_event",
+            EventType = "test.event"
+        };
+
+        _deduplicatorMock
+            .Setup(x => x.TryMarkAsProcessingAsync(eventData.EventId, It.IsAny<string?>(), null, null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new DeduplicationResult { IsDuplicate = false, WasProcessing = false });
+
+        _handlerFactoryMock
+            .Setup(x => x.HandleEventParallelAsync(eventData.EventType, eventData, It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new OperationCanceledException());
+
+        var service = CreateService();
+
+        // Act
+        await Assert.ThrowsAsync<OperationCanceledException>(() => service.HandleEventAsync(eventData));
+
+        // Assert - 验证去重状态被回滚（OperationCanceledException 会被两个 catch 块捕获，可能调用两次）
+        _deduplicatorMock.Verify(x => x.RollbackProcessingAsync(eventData.EventId, It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.AtLeastOnce);
+        _deduplicatorMock.Verify(x => x.MarkAsCompletedAsync(eventData.EventId, It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     private class TestAppHandler : IFeishuEventHandler

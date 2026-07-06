@@ -85,18 +85,28 @@ public class CompositeFeishuEventValidator : WebhookValidatorBase, IFeishuEventV
                 return false;
             }
 
-            // 2. 然后验证 Nonce（防重放攻击）
-            if (!await _nonceValidator.ValidateNonceAsync(nonce, _environmentService.IsProduction))
+            // 2. 预检查 Nonce 是否已被使用（仅检查不标记，避免签名失败时 Nonce 被误消费）
+            if (!await _nonceValidator.CheckNonceAsync(nonce))
             {
-                Logger.LogWarning("Nonce 验证失败");
+                Logger.LogWarning("Nonce 已被使用，检测到重放攻击");
                 return false;
             }
 
-            // 3. 最后验证请求头签名
+            // 3. 验证请求头签名
             var signatureResult = await _signatureValidator.ValidateHeaderSignatureAsync(timestamp, nonce, body, headerSignature, encryptKey);
             if (!signatureResult)
             {
                 Logger.LogWarning("请求头签名验证失败");
+                return false;
+            }
+
+            // 4. 签名验证通过后，标记 Nonce 为已使用（防重放攻击）
+            // 此时标记是安全的：签名已验证通过，不会因为签名失败导致 Nonce 被误消费
+            // TryMarkNonceAsUsedAsync 返回 true 表示 Nonce 已被使用（重放攻击），false 表示成功标记
+            if (await _nonceValidator.TryMarkNonceAsUsedAsync(nonce))
+            {
+                // 并发场景：在预检查和标记之间，其他请求可能已标记了同一 Nonce
+                Logger.LogWarning("Nonce 在签名验证后被其他请求标记为已使用，检测到重放攻击");
                 return false;
             }
 

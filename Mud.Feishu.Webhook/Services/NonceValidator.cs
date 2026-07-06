@@ -36,6 +36,31 @@ public class NonceValidator(
     private NonceFailureMode FailureMode => _optionsMonitor.CurrentValue.NonceValidationFailureMode;
 
     /// <inheritdoc />
+    public async Task<bool> CheckNonceAsync(string nonce)
+    {
+        try
+        {
+            // 空Nonce 处理逻辑与 ValidateNonceAsync 一致
+            if (string.IsNullOrEmpty(nonce))
+            {
+                return true; // 空Nonce视为有效（允许通过），由调用方根据环境决定
+            }
+
+            // 仅检查是否已被使用，不标记
+            var isUsed = await _nonceDeduplicator.IsUsedAsync(nonce, CurrentAppKey);
+            return !isUsed; // 未被使用返回 true（有效）
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "检查 Nonce 使用状态时发生错误, Nonce: {Nonce}, AppKey: {AppKey}, 降级策略: {FailureMode}",
+                nonce, CurrentAppKey ?? "null", FailureMode);
+
+            // 根据降级策略决定异常时的行为
+            return FailureMode != NonceFailureMode.Reject;
+        }
+    }
+
+    /// <inheritdoc />
     public async Task<bool> TryMarkNonceAsUsedAsync(string nonce)
     {
         try

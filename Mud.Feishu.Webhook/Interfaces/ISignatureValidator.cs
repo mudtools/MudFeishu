@@ -9,7 +9,7 @@ namespace Mud.Feishu.Webhook;
 
 /// <summary>
 /// 飞书事件签名验证器接口
-/// 负责验证请求体签名和请求头签名，支持 HMAC-SHA256 和 SHA-256 算法
+/// 负责验证请求头签名（X-Lark-Signature），使用 SHA-256 算法
 /// </summary>
 public interface ISignatureValidator
 {
@@ -33,20 +33,4 @@ public interface ISignatureValidator
     /// 如果 headerSignature 为空且配置允许，可能跳过验证
     /// </remarks>
     Task<bool> ValidateHeaderSignatureAsync(long timestamp, string nonce, string body, string? headerSignature, string encryptKey);
-
-    /// <summary>
-    /// 验证请求体签名（使用 HMAC-SHA256 算法）
-    /// </summary>
-    /// <param name="timestamp">请求时间戳</param>
-    /// <param name="nonce">随机数</param>
-    /// <param name="encryptData">加密的请求数据</param>
-    /// <param name="encryptKey">加密密钥</param>
-    /// <param name="expectedSignature">期望的签名值（可选，当为 null 时跳过比较）</param>
-    /// <returns>如果签名验证通过或配置禁用验证时返回 true，否则返回 false</returns>
-    /// <remarks>
-    /// 签名计算方式：HMAC-SHA256(encryptKey, timestamp + "\n" + nonce + "\n" + encryptData)
-    /// 当 EnableBodySignatureValidation 为 false 时跳过验证并返回 true
-    /// 当 expectedSignature 为 null 或空时，记录警告并返回 true（兼容旧版本）
-    /// </remarks>
-    Task<bool> ValidateBodySignatureAsync(long timestamp, string nonce, string encryptData, string encryptKey, string? expectedSignature = null);
 }

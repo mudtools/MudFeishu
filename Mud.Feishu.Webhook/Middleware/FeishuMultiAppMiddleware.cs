@@ -10,6 +10,7 @@ using Mud.Feishu.Webhook.Configuration;
 using Mud.Feishu.Webhook.Exceptions;
 using Mud.Feishu.Webhook.Models;
 using Mud.Feishu.Webhook.Serialization;
+using Mud.Feishu.Webhook.Services;
 using Mud.Feishu.Webhook.Utils;
 using System.Diagnostics;
 
@@ -449,7 +450,10 @@ public class FeishuMultiAppMiddleware
             return;
         }
 
-        if (token != appConfig.VerificationToken)
+        // 使用固定时间比较防止计时攻击
+        var tokenBytes = Encoding.UTF8.GetBytes(token ?? string.Empty);
+        var expectedTokenBytes = Encoding.UTF8.GetBytes(appConfig.VerificationToken ?? string.Empty);
+        if (!SignatureValidator.FixedTimeEquals(tokenBytes, expectedTokenBytes))
         {
             var actualTokenPrefix = token?.Length > 4 ? token.Substring(0, 4) + "***" : "***";
             _logger.LogWarning("加密验证请求 Token 不匹配: 实际 {ActualToken}, AppKey: {AppKey}",

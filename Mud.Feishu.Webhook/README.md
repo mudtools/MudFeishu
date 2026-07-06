@@ -127,7 +127,6 @@ app.Run();
     "MaxRequestBodySize": 10485760,
     "AllowedSourceIPs": [],
     "EnforceHeaderSignatureValidation": true,
-    "EnableBodySignatureValidation": true,
     "TimestampToleranceSeconds": 30,
     "NonceValidationFailureMode": "Reject",
     "EnableBackgroundProcessing": false,
@@ -410,7 +409,6 @@ public class DemoDepartmentEventHandler : DepartmentCreatedEventHandler
 | `Apps.{AppKey}.TimestampToleranceSeconds`        | int                                           | -1     | 时间戳容差（-1 继承全局）                                |
 | `Apps.{AppKey}.EventHandlingTimeoutMs`           | int                                           | -1     | 事件处理超时（-1 继承全局）                              |
 | `Apps.{AppKey}.EnforceHeaderSignatureValidation` | bool?                                         | null   | 是否强制签名验证（null 继承全局）                        |
-| `Apps.{AppKey}.EnableBodySignatureValidation`    | bool?                                         | null   | 是否验证请求体签名（null 继承全局）                      |
 | `Apps.{AppKey}.EnableExceptionHandling`          | bool?                                         | null   | 是否启用异常处理（null 继承全局）                        |
 | `Apps.{AppKey}.EnablePerformanceMonitoring`      | bool?                                         | null   | 是否启用性能监控（null 继承全局）                        |
 
@@ -422,7 +420,6 @@ public class DemoDepartmentEventHandler : DepartmentCreatedEventHandler
 | `AllowedHttpMethods`               | HashSet\<string\> | ["POST"] | 允许的 HTTP 方法                               |
 | `MaxRequestBodySize`               | long              | 10MB     | 最大请求体大小                                 |
 | `EnforceHeaderSignatureValidation` | bool              | true     | 是否强制验证请求头签名                         |
-| `EnableBodySignatureValidation`    | bool              | true     | 是否在服务层再次验证请求体签名                 |
 | `TimestampToleranceSeconds`        | int               | 30       | 时间戳验证容错范围（秒）                       |
 | `NonceValidationFailureMode`       | NonceFailureMode  | Reject  | Nonce 去重服务不可用时的降级策略（Reject=安全优先拒绝，Allow=可用性优先放行） |
 
@@ -869,7 +866,6 @@ builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
 | `EnableExceptionHandling`          | 设置为 null 时继承全局配置，否则使用应用级配置      |
 | `EnablePerformanceMonitoring`      | 设置为 null 时继承全局配置，否则使用应用级配置      |
 | `EnforceHeaderSignatureValidation` | 设置为 null 时继承全局配置，否则使用应用级配置      |
-| `EnableBodySignatureValidation`    | 设置为 null 时继承全局配置，否则使用应用级配置      |
 
 示例：
 

@@ -147,9 +147,8 @@ dotnet add package Mud.Feishu.Redis
     "GlobalRoutePrefix": "feishu",
     "EnableRequestLogging": true,
     "MaxConcurrentEvents": 10,
-    "EnforceHeaderSignatureValidation": true,
-    "EnableBodySignatureValidation": true,
-    "TimestampToleranceSeconds": 30,
+  "EnforceHeaderSignatureValidation": true,
+  "TimestampToleranceSeconds": 30,
     "EventHandlingTimeoutMs": 30000,
     "MaxRequestBodySize": 10485760,
     "Apps": {
@@ -263,7 +262,6 @@ SDK 中存在多个 `EnableLogging` / `EnableRequestLogging` 开关，它们**�
 | ---------------------------------- | --------------------- | ------ | ------------------------------------------------------------ |
 | `AllowedSourceIPs`                 | HashSet&lt;string&gt; | 空     | 允许的源 IP 白名单，支持 CIDR 格式。非空时自动启用 IP 验证   |
 | `EnforceHeaderSignatureValidation` | bool                  | true   | 是否强制验证 X-Lark-Signature 请求头签名（生产环境必须启用） |
-| `EnableBodySignatureValidation`    | bool                  | true   | 是否在服务层再次验证请求体签名（Middleware 已验证时可关闭）  |
 | `TimestampToleranceSeconds`        | int                   | 30     | 时间戳容差（秒），超过此时间视为无效请求                     |
 | `MaxConcurrentEvents`              | int                   | 10     | 最大并发事件处理数                                           |
 | `EnableRequestLogging`             | bool                  | true   | 是否启用请求日志                                             |
@@ -409,7 +407,6 @@ SDK 中存在多个 `EnableLogging` / `EnableRequestLogging` 开关，它们**�
 | `TimestampToleranceSeconds`        | int?   | null   | 时间戳容差（秒）。`null`/`-1`/`0` 继承全局，正整数覆盖全局              |
 | `EventHandlingTimeoutMs`           | int?   | null   | 事件处理超时（毫秒）。`null`/`-1`/`0` 继承全局，正整数（≥1000）覆盖全局 |
 | `EnforceHeaderSignatureValidation` | bool?  | null   | 是否强制验证请求头签名。`null` 继承全局                                 |
-| `EnableBodySignatureValidation`    | bool?  | null   | 是否验证请求体签名。`null` 继承全局                                     |
 | `EnableExceptionHandling`          | bool?  | null   | 是否启用异常捕获。`null` 继承全局                                       |
 | `EnablePerformanceMonitoring`      | bool?  | null   | 是否启用性能监控。`null` 继承全局                                       |
 

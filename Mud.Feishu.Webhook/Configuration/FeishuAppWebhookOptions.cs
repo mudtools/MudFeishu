@@ -59,12 +59,6 @@ public class FeishuAppWebhookOptions
     public bool? EnforceHeaderSignatureValidation { get; set; }
 
     /// <summary>
-    /// 是否启用请求体签名验证，默认 null 表示继承全局配置
-    /// 如果 Middleware 中已验证 X-Lark-Signature 请求头，可禁用此选项以避免重复验证
-    /// </summary>
-    public bool? EnableBodySignatureValidation { get; set; }
-
-    /// <summary>
     /// 是否启用事件处理异常捕获，默认 null 表示继承全局配置
     /// </summary>
     public bool? EnableExceptionHandling { get; set; }
@@ -133,14 +127,6 @@ public class FeishuAppWebhookOptions
     /// <returns>有效的性能监控配置</returns>
     public bool GetEffectiveEnablePerformanceMonitoring(bool globalValue) =>
         EnablePerformanceMonitoring ?? globalValue;
-
-    /// <summary>
-    /// 获取有效的请求体签名验证配置（解析继承逻辑）
-    /// </summary>
-    /// <param name="globalValue">全局配置值</param>
-    /// <returns>有效的请求体签名验证配置</returns>
-    public bool GetEffectiveEnableBodySignatureValidation(bool globalValue) =>
-        EnableBodySignatureValidation ?? globalValue;
 
     /// <summary>
     /// 获取有效的请求头签名验证配置（解析继承逻辑）

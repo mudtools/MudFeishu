@@ -19,7 +19,6 @@ public class FeishuWebhookOptionsTests
     {
         var options = new FeishuWebhookOptions();
 
-        Assert.True(options.EnableBodySignatureValidation);
         Assert.Equal(30, options.TimestampToleranceSeconds);
         Assert.Equal(30000, options.EventHandlingTimeoutMs);
         Assert.Equal(10, options.MaxConcurrentEvents);
@@ -31,14 +30,12 @@ public class FeishuWebhookOptionsTests
     {
         var options = new FeishuWebhookOptions
         {
-            EnableBodySignatureValidation = false,
             TimestampToleranceSeconds = 600,
             EventHandlingTimeoutMs = 10000,
             MaxConcurrentEvents = 200,
             EnableExceptionHandling = false
         };
 
-        Assert.False(options.EnableBodySignatureValidation);
         Assert.Equal(600, options.TimestampToleranceSeconds);
         Assert.Equal(10000, options.EventHandlingTimeoutMs);
         Assert.Equal(200, options.MaxConcurrentEvents);

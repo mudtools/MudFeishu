@@ -22,9 +22,8 @@ namespace Mud.Feishu.Webhook.Tests.Validators;
 /// <summary>
 /// 签名验证器单元测试
 /// 验证 SignatureValidator 类的各种签名验证场景
-/// 参考飞书 Go SDK (oapi-sdk-go) 的签名实现：
+/// 参考飞书官方 SDK（Python/Go）的签名实现：
 /// - 头部签名：SHA256(timestamp + nonce + encryptKey + body) → hex lowercase
-/// - 体验签名：HMAC-SHA256(encryptKey, timestamp + "\n" + nonce + "\n" + encryptData) → hex lowercase
 /// </summary>
 public class SignatureValidatorTests
 {
@@ -45,7 +44,6 @@ public class SignatureValidatorTests
 
         _defaultOptions = new FeishuWebhookOptions
         {
-            EnableBodySignatureValidation = true,
             EnforceHeaderSignatureValidation = true,
             TimestampToleranceSeconds = 300
         };
@@ -99,7 +97,7 @@ public class SignatureValidatorTests
     [Fact]
     public async Task ValidateHeaderSignatureAsync_WithValidSignature_ShouldReturnTrue()
     {
-        // Arrange - 参考飞书 Go SDK: SHA256(timestamp + nonce + encryptKey + body)
+        // Arrange - 参考飞书官方 SDK: SHA256(timestamp + nonce + encryptKey + body)
         var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         var nonce = "test-nonce-123";
         var encryptKey = "test-encrypt-key-0123456789abcdef"; // 32 chars
@@ -198,14 +196,13 @@ public class SignatureValidatorTests
     [Fact]
     public async Task ValidateHeaderSignatureAsync_WithGoSdkCompatibleSignature_ShouldReturnTrue()
     {
-        // Arrange - 使用与飞书 Go SDK 完全相同的签名计算方式
-        // Go SDK: Signature(timestamp, nonce, eventEncryptKey, body) = SHA256(timestamp + nonce + eventEncryptKey + body)
+        // Arrange - 使用与飞书官方 SDK 完全相同的签名计算方式
+        // SHA256(timestamp + nonce + eventEncryptKey + body)
         var timestamp = "1700000000";
         var nonce = "abc123nonce";
         var encryptKey = "my-encrypt-key-0123456789abcdef0123456";
         var body = @"{""encrypt"":""encrypted_payload_data""}";
 
-        // 使用 Go SDK 的签名计算方式
         var goSdkSignString = timestamp + nonce + encryptKey + body;
         var goSdkSignature = ComputeSha256Hex(goSdkSignString);
 
@@ -216,203 +213,12 @@ public class SignatureValidatorTests
             long.Parse(timestamp), nonce, body, goSdkSignature, encryptKey);
 
         // Assert
-        result.Should().BeTrue("签名计算应与飞书 Go SDK 兼容");
-    }
-
-    #endregion
-
-    #region 请求体签名验证测试 (HMAC-SHA256) - P0 修复验证
-
-    [Fact]
-    public async Task ValidateBodySignatureAsync_WithValidSignature_ShouldReturnTrue()
-    {
-        // Arrange - HMAC-SHA256(encryptKey, timestamp + "\n" + nonce + "\n" + encryptData)
-        var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-        var nonce = "test-nonce-456";
-        var encryptKey = "test-encrypt-key-0123456789abcdef";
-        var encryptData = "encrypted-data-content";
-        var signString = $"{timestamp}\n{nonce}\n{encryptData}";
-        var expectedSignature = ComputeHmacSha256Hex(encryptKey, signString);
-
-        var validator = CreateValidator();
-
-        // Act
-        var result = await validator.ValidateBodySignatureAsync(timestamp, nonce, encryptData, encryptKey, expectedSignature);
-
-        // Assert
-        result.Should().BeTrue("有效的请求体签名应该通过验证");
-    }
-
-    [Fact]
-    public async Task ValidateBodySignatureAsync_WithInvalidSignature_ShouldReturnFalse()
-    {
-        // Arrange - 这是 P0 修复的核心验证：之前签名计算后从未比较
-        var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-        var nonce = "test-nonce-789";
-        var encryptKey = "test-encrypt-key-0123456789abcdef";
-        var encryptData = "encrypted-data-content";
-        var invalidSignature = "aabbccddee000000invalid-signature";
-
-        var validator = CreateValidator();
-
-        // Act
-        var result = await validator.ValidateBodySignatureAsync(timestamp, nonce, encryptData, encryptKey, invalidSignature);
-
-        // Assert
-        result.Should().BeFalse("无效的请求体签名应该被拒绝（P0 修复：之前从不比较签名）");
-    }
-
-    [Fact]
-    public async Task ValidateBodySignatureAsync_WithNullExpectedSignature_ShouldReturnTrueWithWarning()
-    {
-        // Arrange - 当未提供期望签名时，记录警告并返回 true（向后兼容）
-        var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-        var nonce = "test-nonce-null";
-        var encryptKey = "test-encrypt-key-0123456789abcdef";
-        var encryptData = "encrypted-data-content";
-
-        var validator = CreateValidator();
-
-        // Act
-        var result = await validator.ValidateBodySignatureAsync(timestamp, nonce, encryptData, encryptKey, null);
-
-        // Assert
-        result.Should().BeTrue("未提供期望签名时应返回 true（向后兼容）");
-        VerifyLogCalled(LogLevel.Warning, "未提供期望签名值");
-    }
-
-    [Fact]
-    public async Task ValidateBodySignatureAsync_WithEmptyExpectedSignature_ShouldReturnTrueWithWarning()
-    {
-        // Arrange
-        var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-        var nonce = "test-nonce-empty";
-        var encryptKey = "test-encrypt-key-0123456789abcdef";
-        var encryptData = "encrypted-data-content";
-
-        var validator = CreateValidator();
-
-        // Act
-        var result = await validator.ValidateBodySignatureAsync(timestamp, nonce, encryptData, encryptKey, "");
-
-        // Assert
-        result.Should().BeTrue("空期望签名应返回 true（向后兼容）");
-        VerifyLogCalled(LogLevel.Warning, "未提供期望签名值");
-    }
-
-    [Fact]
-    public async Task ValidateBodySignatureAsync_WithDisabledValidation_ShouldReturnTrue()
-    {
-        // Arrange
-        _defaultOptions.EnableBodySignatureValidation = false;
-        var validator = CreateValidator();
-
-        // Act
-        var result = await validator.ValidateBodySignatureAsync(
-            1234567890, "nonce", "data", "key", "invalid-signature");
-
-        // Assert
-        result.Should().BeTrue("禁用验证时应跳过并返回 true");
-        VerifyLogCalled(LogLevel.Debug, "请求体签名验证已禁用");
-    }
-
-    [Fact]
-    public async Task ValidateBodySignatureAsync_WithCaseSensitiveSignature_ShouldBeCaseInsensitive()
-    {
-        // Arrange - 签名比较应区分大小写（hex 小写）
-        var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-        var nonce = "test-nonce-case";
-        var encryptKey = "test-encrypt-key-0123456789abcdef";
-        var encryptData = "encrypted-data-content";
-        var signString = $"{timestamp}\n{nonce}\n{encryptData}";
-        var expectedSignature = ComputeHmacSha256Hex(encryptKey, signString);
-
-        // 将签名转为大写，应该不匹配（因为计算结果是小写）
-        var upperSignature = expectedSignature.ToUpperInvariant();
-
-        var validator = CreateValidator();
-
-        // Act
-        var result = await validator.ValidateBodySignatureAsync(timestamp, nonce, encryptData, encryptKey, upperSignature);
-
-        // Assert
-        result.Should().BeFalse("签名比较应区分大小写（计算结果为小写 hex）");
-    }
-
-    [Fact]
-    public async Task ValidateBodySignatureAsync_WithDifferentEncryptKey_ShouldReturnFalse()
-    {
-        // Arrange
-        var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-        var nonce = "test-nonce-diff-key";
-        var correctKey = "test-encrypt-key-0123456789abcdef";
-        var wrongKey = "wrong-encrypt-key-0123456789abcde";
-        var encryptData = "encrypted-data-content";
-        var signString = $"{timestamp}\n{nonce}\n{encryptData}";
-        var expectedSignature = ComputeHmacSha256Hex(correctKey, signString);
-
-        var validator = CreateValidator();
-
-        // Act - 使用错误的密钥验证
-        var result = await validator.ValidateBodySignatureAsync(timestamp, nonce, encryptData, wrongKey, expectedSignature);
-
-        // Assert
-        result.Should().BeFalse("使用不同密钥计算的签名不应匹配");
-    }
-
-    [Fact]
-    public async Task ValidateBodySignatureAsync_WithTamperedEncryptData_ShouldReturnFalse()
-    {
-        // Arrange
-        var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-        var nonce = "test-nonce-tamper";
-        var encryptKey = "test-encrypt-key-0123456789abcdef";
-        var originalData = "original-encrypted-data";
-        var tamperedData = "tampered-encrypted-data";
-
-        // 使用原始数据计算签名
-        var signString = $"{timestamp}\n{nonce}\n{originalData}";
-        var expectedSignature = ComputeHmacSha256Hex(encryptKey, signString);
-
-        var validator = CreateValidator();
-
-        // Act - 使用篡改后的数据验证
-        var result = await validator.ValidateBodySignatureAsync(timestamp, nonce, tamperedData, encryptKey, expectedSignature);
-
-        // Assert
-        result.Should().BeFalse("篡改后的数据不应通过签名验证");
+        result.Should().BeTrue("签名计算应与飞书官方 SDK 兼容");
     }
 
     #endregion
 
     #region 多应用配置继承测试
-
-    [Fact]
-    public async Task ValidateBodySignatureAsync_WithAppLevelDisabled_ShouldReturnTrue()
-    {
-        // Arrange - 应用级配置禁用体验证
-        _defaultOptions.EnableBodySignatureValidation = true;
-        _defaultOptions.Apps = new Dictionary<string, FeishuAppWebhookOptions>
-        {
-            ["test_app"] = new FeishuAppWebhookOptions
-            {
-                AppKey = "test_app",
-                EncryptKey = "test-encrypt-key-0123456789abcdef",
-                VerificationToken = "token",
-                EnableBodySignatureValidation = false // 应用级禁用
-            }
-        };
-
-        var validator = CreateValidator();
-        validator.SetCurrentAppKey("test_app");
-
-        // Act
-        var result = await validator.ValidateBodySignatureAsync(
-            1234567890, "nonce", "data", "key", "invalid-signature");
-
-        // Assert
-        result.Should().BeTrue("应用级配置禁用体验证时应跳过");
-    }
 
     [Fact]
     public async Task ValidateHeaderSignatureAsync_WithAppLevelEnforceFalse_ShouldReturnTrue()
@@ -464,8 +270,8 @@ public class SignatureValidatorTests
     [Fact]
     public void ComputeSha256Signature_ShouldBeConsistentWithGoSdk()
     {
-        // Arrange - 使用与 Go SDK 相同的输入验证
-        // Go: sha256(timestamp + nonce + eventEncryptKey + body)
+        // Arrange - 使用与官方 SDK 相同的输入验证
+        // SHA256(timestamp + nonce + eventEncryptKey + body)
         var timestamp = "1700000000";
         var nonce = "testnonce";
         var encryptKey = "event_encrypt_key_value_0123456789";
@@ -557,20 +363,6 @@ public class SignatureValidatorTests
         result.Should().BeFalse("异常情况应返回 false（安全失败）");
     }
 
-    [Fact]
-    public async Task ValidateBodySignatureAsync_WithException_ShouldReturnFalse()
-    {
-        // Arrange - 使用 null encryptKey 触发异常
-        var validator = CreateValidator();
-
-        // Act
-        var result = await validator.ValidateBodySignatureAsync(
-            1234567890, "nonce", "data", null!, "expected-signature");
-
-        // Assert
-        result.Should().BeFalse("异常情况应返回 false（安全失败）");
-    }
-
     #endregion
 
     #region 辅助方法
@@ -589,22 +381,12 @@ public class SignatureValidatorTests
     }
 
     /// <summary>
-    /// 计算 SHA-256 十六进制小写签名（与 Go SDK 一致）
+    /// 计算 SHA-256 十六进制小写签名（与官方 SDK 一致）
     /// </summary>
     private static string ComputeSha256Hex(string input)
     {
         using var sha256 = SHA256.Create();
         var hashBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(input));
-        return BitConverter.ToString(hashBytes).Replace("-", "").ToLower();
-    }
-
-    /// <summary>
-    /// 计算 HMAC-SHA256 十六进制小写签名
-    /// </summary>
-    private static string ComputeHmacSha256Hex(string key, string input)
-    {
-        using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(key));
-        var hashBytes = hmac.ComputeHash(Encoding.UTF8.GetBytes(input));
         return BitConverter.ToString(hashBytes).Replace("-", "").ToLower();
     }
 

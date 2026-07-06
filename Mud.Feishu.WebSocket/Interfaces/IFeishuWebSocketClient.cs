@@ -62,11 +62,6 @@ public interface IFeishuWebSocketClient : IAsyncDisposable, IDisposable
     /// </summary>
     event EventHandler<WebSocketBinaryMessageEventArgs>? BinaryMessageReceived;
 
-    /// <summary>
-    /// 心跳超时事件，当连续心跳超时达到阈值时触发
-    /// </summary>
-    event EventHandler<WebSocketCloseEventArgs>? HeartbeatTimeout;
-
 
     /// <summary>
     /// 建立WebSocket连接

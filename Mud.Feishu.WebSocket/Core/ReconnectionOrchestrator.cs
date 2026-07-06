@@ -135,9 +135,8 @@ public class ReconnectionOrchestrator : IReconnectionOrchestrator, IDisposable
                         _currentAttempt = 0;
                         _reconnectStartTime = null;
                         _lastError = null;
-                        _logger.LogInformation("重连成功 (尝试次数: {Attempt}, 总次数: {Total})",
-                            attemptCount, _totalReconnectCount);
 
+                        // 仅通过事件通知上层（FeishuWebSocketHostedService 记录日志），避免重复打印
                         OnReconnectSucceeded(attemptCount);
                         break;
                     }

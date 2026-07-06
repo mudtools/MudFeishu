@@ -82,11 +82,6 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
     public event EventHandler<WebSocketBinaryMessageEventArgs>? BinaryMessageReceived;
 
     /// <summary>
-    /// 心跳超时事件，当连续心跳超时达到阈值时触发
-    /// </summary>
-    public event EventHandler<WebSocketCloseEventArgs>? HeartbeatTimeout;
-
-    /// <summary>
     /// 初始化飞书WebSocket客户端
     /// </summary>
     /// <param name="logger">日志记录器</param>

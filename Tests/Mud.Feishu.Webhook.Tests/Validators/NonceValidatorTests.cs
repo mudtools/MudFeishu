@@ -203,6 +203,157 @@ public class NonceValidatorTests
 
     #endregion
 
+    #region CheckNonceAsync 测试（P1 两步验证：仅检查不标记）
+
+    [Fact]
+    public async Task CheckNonceAsync_WithUnusedNonce_ShouldReturnTrue()
+    {
+        // Arrange
+        var nonce = "check-nonce-unused";
+        _deduplicatorMock
+            .Setup(x => x.IsUsedAsync(nonce, It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false); // 未被使用
+
+        // Act
+        var result = await _validator.CheckNonceAsync(nonce);
+
+        // Assert
+        Assert.True(result); // 未被使用返回 true（有效）
+
+        // 验证仅调用 IsUsedAsync，不调用 TryMarkAsUsedAsync
+        _deduplicatorMock.Verify(
+            x => x.IsUsedAsync(nonce, It.IsAny<string?>(), It.IsAny<CancellationToken>()),
+            Times.Once);
+        _deduplicatorMock.Verify(
+            x => x.TryMarkAsUsedAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<TimeSpan?>(), It.IsAny<CancellationToken>()),
+            Times.Never,
+            "CheckNonceAsync 不应标记 Nonce 为已使用");
+    }
+
+    [Fact]
+    public async Task CheckNonceAsync_WithUsedNonce_ShouldReturnFalse()
+    {
+        // Arrange
+        var nonce = "check-nonce-used";
+        _deduplicatorMock
+            .Setup(x => x.IsUsedAsync(nonce, It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true); // 已被使用
+
+        // Act
+        var result = await _validator.CheckNonceAsync(nonce);
+
+        // Assert
+        Assert.False(result); // 已被使用返回 false（无效）
+
+        _deduplicatorMock.Verify(
+            x => x.IsUsedAsync(nonce, It.IsAny<string?>(), It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task CheckNonceAsync_WithEmptyNonce_ShouldReturnTrue()
+    {
+        // Arrange
+        var nonce = "";
+
+        // Act
+        var result = await _validator.CheckNonceAsync(nonce);
+
+        // Assert
+        Assert.True(result); // 空 Nonce 视为有效，由调用方根据环境决定
+
+        // 验证未调用去重服务
+        _deduplicatorMock.Verify(
+            x => x.IsUsedAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task CheckNonceAsync_WithNullNonce_ShouldReturnTrue()
+    {
+        // Arrange
+        string? nonce = null;
+
+        // Act
+        var result = await _validator.CheckNonceAsync(nonce!);
+
+        // Assert
+        Assert.True(result); // null Nonce 视为有效，由调用方根据环境决定
+
+        _deduplicatorMock.Verify(
+            x => x.IsUsedAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task CheckNonceAsync_WithExceptionInRejectMode_ShouldReturnFalse()
+    {
+        // Arrange
+        _optionsMonitorMock.Setup(x => x.CurrentValue).Returns(new FeishuWebhookOptions
+        {
+            NonceValidationFailureMode = NonceFailureMode.Reject
+        });
+        var nonce = "check-nonce-error-reject";
+        _deduplicatorMock
+            .Setup(x => x.IsUsedAsync(nonce, It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("Test exception"));
+
+        // Act
+        var result = await _validator.CheckNonceAsync(nonce);
+
+        // Assert
+        Assert.False(result); // Reject 模式下，异常时返回 false（拒绝请求）
+
+        VerifyLogCalled(LogLevel.Error, "检查 Nonce 使用状态时发生错误");
+    }
+
+    [Fact]
+    public async Task CheckNonceAsync_WithExceptionInAllowMode_ShouldReturnTrue()
+    {
+        // Arrange
+        _optionsMonitorMock.Setup(x => x.CurrentValue).Returns(new FeishuWebhookOptions
+        {
+            NonceValidationFailureMode = NonceFailureMode.Allow
+        });
+        var nonce = "check-nonce-error-allow";
+        _deduplicatorMock
+            .Setup(x => x.IsUsedAsync(nonce, It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("Test exception"));
+
+        // Act
+        var result = await _validator.CheckNonceAsync(nonce);
+
+        // Assert
+        Assert.True(result); // Allow 模式下，异常时返回 true（允许请求）
+
+        VerifyLogCalled(LogLevel.Error, "检查 Nonce 使用状态时发生错误");
+    }
+
+    [Fact]
+    public async Task CheckNonceAsync_WithAppKey_ShouldPassAppKeyToDeduplicator()
+    {
+        // Arrange
+        var nonce = "check-nonce-appkey";
+        var appKey = "test-app-key";
+        _validator.SetCurrentAppKey(appKey);
+        _deduplicatorMock
+            .Setup(x => x.IsUsedAsync(nonce, appKey, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+
+        // Act
+        var result = await _validator.CheckNonceAsync(nonce);
+
+        // Assert
+        Assert.True(result);
+
+        // 验证 AppKey 被正确传递
+        _deduplicatorMock.Verify(
+            x => x.IsUsedAsync(nonce, appKey, It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    #endregion
+
     #region 多应用Nonce隔离测试 (需求 3.3)
 
     [Fact]

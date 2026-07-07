@@ -4,15 +4,73 @@
 
 ## 测试覆盖范围
 
-### 1. 服务测试 (Services)
+### 1. 验证器测试 (Validators)
 
-#### FeishuEventValidatorTests
-测试飞书事件验证服务：
+#### SignatureValidatorTests
+测试飞书事件签名验证器：
+- 请求头签名验证（有效/无效签名）
+- SHA-256 签名计算（与飞书官方 SDK 兼容）
+- 多应用配置继承（应用级强制验证开关）
+- 固定时间比较（防止计时攻击）
+- 空签名处理（强制验证模式/非强制验证模式）
+- 生产环境/开发环境安全策略差异
+
+#### CompositeFeishuEventValidatorTests
+测试组合验证器的验证编排逻辑：
+- 完整验证流程（时间戳→Nonce 检查→签名→Nonce 标记）
+- **P1 修复核心测试：Nonce 消费时机**
+  - 签名验证失败时 Nonce 不被标记为已使用
+  - 签名验证通过后 Nonce 被正确标记
+  - 并发场景下 Nonce 被其他请求标记的处理
+- 时间戳验证失败时跳过后续验证
+- Nonce 已被使用时跳过签名验证
+- 订阅请求验证委托
+- 异常处理（安全失败）
+
+#### NonceValidatorTests
+测试飞书事件 Nonce 验证器：
+- Nonce 去重功能（标记已使用/检测重放攻击）
+- Nonce 检查功能（仅检查不标记）
+- 多应用 Nonce 隔离
+- 降级策略（Reject 模式 / Allow 模式）
+- 生产环境空 Nonce 拒绝
+- 开发环境空 Nonce 允许
+
+#### SubscriptionValidatorTests
+测试飞书事件订阅验证器：
 - 订阅请求验证（有效/无效 Token）
 - 订阅请求类型验证
-- 签名验证（有效/无效签名）
-- 时间戳验证（过期检测）
-- Nonce 去重验证
+- Token 不匹配场景（固定时间比较，日志掩码）
+- 缺失字段处理（空 Token / 空 Challenge / null 请求）
+- 多应用场景验证
+
+#### TimestampValidatorTests
+测试飞书事件时间戳验证器：
+- 有效时间戳验证
+- 过期时间戳检测
+- 时间戳容差范围
+- 多应用配置继承
+
+#### ConfigurationSupportTests
+测试配置支持功能：
+- 多应用配置解析
+- 配置继承逻辑
+
+### 2. 服务测试 (Services)
+
+#### FeishuWebhookServiceTests
+测试飞书 Webhook 核心服务：
+- 事件订阅验证
+- 事件数据处理
+- 重复事件去重（幂等性）
+- 事件解密
+- 签名验证
+- **去重回滚路径测试**
+  - 事件处理异常时回滚去重状态
+  - 事件处理成功时标记为已完成
+  - 事件处理取消时回滚去重状态
+- 多应用隔离（相同 EventId 不同 AppKey）
+- 应用特定处理器和拦截器
 
 #### FeishuEventDecryptorTests
 测试飞书事件解密服务：
@@ -23,52 +81,92 @@
 - 空数据处理
 - 取消令牌支持
 
-#### FeishuWebhookServiceTests
-测试飞书 Webhook 核心服务：
-- 事件订阅验证
-- 事件数据处理
-- 重复事件去重（幂等性）
-- 事件解密
-- 签名验证
-- 并发控制
+#### SecurityAuditServiceTests
+测试安全审计服务：
+- 安全事件记录
+- 成功/失败事件审计
+
+#### FeishuWebhookConcurrencyServiceTests
+测试并发控制服务：
+- 并发限制
 - 超时处理
 
-#### CircuitBreakerServiceTests
-测试断路器服务：
-- 成功执行返回结果
-- 失败次数超过阈值打开断路器
-- 断路器开启时拒绝请求
-- 半开状态允许请求
-- 半开状态成功后关闭断路器
-- 半开状态失败后重新打开
-- 手动重置断路器
-- 手动触发断路器
+#### FailedEventRetryServiceTests
+测试失败事件重试服务：
+- 重试逻辑
+- 指数退避
 
-### 2. 配置测试 (Configuration)
+#### InMemoryFailedEventStoreTests
+测试内存失败事件存储：
+- 事件存储和检索
+- 过期清理
+
+### 3. 配置测试 (Configuration)
 
 #### FeishuWebhookOptionsTests
 测试 Webhook 配置选项：
 - 默认值验证
 - 自定义值设置
-- 验证 Token 格式
-- 加密密钥长度
-- 超时配置
-- 并发事件数配置
+- 配置验证（超时、并发数、请求体大小、时间戳容差）
+- 多应用配置验证
 
-#### CircuitBreakerOptionsTests
-测试断路器配置选项：
+#### FeishuAppWebhookOptionsTests
+测试应用级配置选项：
 - 默认值验证
-- 自定义值设置
-- 异常阈值配置
-- 断开时长配置
-- 成功阈值配置
+- 配置验证（AppKey、Token、EncryptKey）
+- 配置继承逻辑（时间戳容差、超时、签名验证、异常处理、性能监控）
+
+#### ConfigurationValidatorsTests
+测试配置验证器：
+- FeishuWebhookOptionsValidator 验证逻辑
+
+#### ConfigurationValidatorIntegrationTests
+测试配置验证器集成场景
+
+#### RateLimitOptionsTests
+测试限流配置选项
+
+#### FailedEventRetryOptionsTests
+测试失败事件重试配置选项
+
+### 4. 中间件测试 (Middleware)
+
+#### FeishuMultiAppMiddlewareTests
+测试多应用中间件：
+- 路由解析
+- 请求处理流程
+- 错误响应
+
+#### FeishuRateLimitMiddlewareTests
+测试限流中间件：
+- 请求频率限制
+- IP 白名单
+
+#### IpAddressValidationTests
+测试 IP 地址验证：
+- IP 白名单匹配
+- CIDR 格式支持
+
+### 5. 其他测试
+
+#### FeishuWebhookHealthCheckTests
+测试健康检查端点
+
+#### FeishuWebhookHandlerRegistryTests / FeishuWebhookInterceptorRegistryTests
+测试处理器和拦截器注册表
+
+#### FeishuWebhookModelTests
+测试数据模型
+
+#### FeishuWebhookExceptionTests
+测试异常类型
 
 ## 测试技术栈
 
-- **测试框架**: xUnit 2.9.2
-- **Mock 框架**: Moq 4.20.72
-- **测试运行器**: Microsoft.NET.Test.Sdk 17.11.1
-- **代码覆盖**: coverlet.collector 6.0.2
+- **测试框架**: xUnit
+- **Mock 框架**: Moq
+- **断言库**: FluentAssertions
+- **代码覆盖**: coverlet.collector
 
 ## 运行测试
 
@@ -81,7 +179,10 @@ dotnet test Tests/Mud.Feishu.Webhook.Tests/Mud.Feishu.Webhook.Tests.csproj
 dotnet test Tests/Mud.Feishu.Webhook.Tests/Mud.Feishu.Webhook.Tests.csproj --collect:"XPlat Code Coverage"
 
 # 运行特定测试类
-dotnet test Tests/Mud.Feishu.Webhook.Tests/Mud.Feishu.Webhook.Tests.csproj --filter "FullyQualifiedName~CircuitBreakerServiceTests"
+dotnet test Tests/Mud.Feishu.Webhook.Tests/Mud.Feishu.Webhook.Tests.csproj --filter "FullyQualifiedName~CompositeFeishuEventValidatorTests"
+
+# 运行单个测试
+dotnet test Tests/Mud.Feishu.Webhook.Tests/Mud.Feishu.Webhook.Tests.csproj --filter "FullyQualifiedName~CompositeFeishuEventValidatorTests.ValidateHeaderSignatureAsync_WhenSignatureInvalid_ShouldReturnFalse_AndNotMarkNonceAsUsed"
 ```
 
 ### 使用 Visual Studio
@@ -94,16 +195,50 @@ dotnet test Tests/Mud.Feishu.Webhook.Tests/Mud.Feishu.Webhook.Tests.csproj --fil
 ```
 Tests/Mud.Feishu.Webhook.Tests/
 ├── Configuration/
-│   ├── FeishuWebhookOptionsTests.cs      # Webhook 配置测试
-│   └── CircuitBreakerOptionsTests.cs     # 断路器配置测试
+│   ├── FeishuWebhookOptionsTests.cs           # Webhook 配置测试
+│   ├── FeishuAppWebhookOptionsTests.cs         # 应用级配置测试
+│   ├── ConfigurationValidatorsTests.cs         # 配置验证器测试
+│   ├── ConfigurationValidatorIntegrationTests.cs # 配置验证器集成测试
+│   ├── RateLimitOptionsTests.cs                # 限流配置测试
+│   └── FailedEventRetryOptionsTests.cs         # 重试配置测试
+├── Middleware/
+│   ├── FeishuMultiAppMiddlewareTests.cs        # 多应用中间件测试
+│   ├── FeishuRateLimitMiddlewareTests.cs       # 限流中间件测试
+│   └── IpAddressValidationTests.cs             # IP 验证测试
 ├── Services/
-│   ├── FeishuEventValidatorTests.cs      # 事件验证测试
-│   ├── FeishuEventDecryptorTests.cs      # 事件解密测试
-│   ├── FeishuWebhookServiceTests.cs      # Webhook 服务测试
-│   └── CircuitBreakerServiceTests.cs     # 断路器服务测试
-├── GlobalUsings.cs                       # 全局引用
-├── Mud.Feishu.Webhook.Tests.csproj      # 项目文件
-└── README.md                             # 本文档
+│   ├── FeishuWebhookServiceTests.cs            # Webhook 服务测试
+│   ├── FeishuEventDecryptorTests.cs            # 事件解密测试
+│   ├── SecurityAuditServiceTests.cs            # 安全审计测试
+│   ├── FeishuWebhookConcurrencyServiceTests.cs # 并发控制测试
+│   ├── FailedEventRetryServiceTests.cs         # 失败重试测试
+│   ├── InMemoryFailedEventStoreTests.cs        # 内存事件存储测试
+│   └── TimestampValidatorTests.cs              # 时间戳验证器测试
+├── Validators/
+│   ├── SignatureValidatorTests.cs              # 签名验证器测试
+│   ├── CompositeFeishuEventValidatorTests.cs   # 组合验证器测试
+│   ├── NonceValidatorTests.cs                  # Nonce 验证器测试
+│   ├── SubscriptionValidatorTests.cs           # 订阅验证器测试
+│   ├── TimestampValidatorTests.cs              # 时间戳验证器测试
+│   └── ConfigurationSupportTests.cs            # 配置支持测试
+├── Registry/
+│   ├── FeishuWebhookHandlerRegistryTests.cs    # 处理器注册表测试
+│   └── FeishuWebhookInterceptorRegistryTests.cs # 拦截器注册表测试
+├── Models/
+│   └── FeishuWebhookModelTests.cs              # 数据模型测试
+├── Health/
+│   └── FeishuWebhookHealthCheckTests.cs        # 健康检查测试
+├── Exceptions/
+│   └── FeishuWebhookExceptionTests.cs          # 异常测试
+├── Utils/
+│   ├── RequestIdHelperTests.cs                 # 请求 ID 辅助工具测试
+│   └── IpAddressHelperTests.cs                 # IP 地址辅助工具测试
+├── Utilities/
+│   ├── EnvironmentServiceTests.cs              # 环境服务测试
+│   └── TimestampHelperTests.cs                 # 时间戳辅助工具测试
+├── GlobalUsings.cs                             # 全局引用
+├── TestWebhookAppKeyAccessor.cs                # 测试用 AppKey 访问器
+├── Mud.Feishu.Webhook.Tests.csproj             # 项目文件
+└── README.md                                   # 本文档
 ```
 
 ## 测试原则
@@ -118,9 +253,10 @@ Tests/Mud.Feishu.Webhook.Tests/
 
 ### 事件验证
 - ✅ 订阅请求验证（Token 和类型）
-- ✅ 签名验证（HMAC-SHA256）
+- ✅ 签名验证（SHA-256 头部签名，与飞书官方 SDK 一致）
 - ✅ 时间戳验证（防重放攻击）
-- ✅ Nonce 去重验证
+- ✅ Nonce 去重验证（两步验证：检查→标记）
+- ✅ 组合验证器编排逻辑（时间戳→Nonce 检查→签名→Nonce 标记）
 
 ### 事件解密
 - ✅ AES-256-CBC 解密
@@ -132,15 +268,16 @@ Tests/Mud.Feishu.Webhook.Tests/
 - ✅ 事件订阅验证流程
 - ✅ 事件处理流程
 - ✅ 幂等性保证（去重）
+- ✅ 去重回滚路径（异常/取消时回滚去重状态）
 - ✅ 并发控制
 - ✅ 超时处理
 - ✅ 异常处理
 
-### 断路器
-- ✅ 故障检测和断路
-- ✅ 半开状态恢复
-- ✅ 手动控制
-- ✅ 状态转换
+### 安全加固
+- ✅ Token 固定时间比较（防止计时攻击）
+- ✅ 签名固定时间比较
+- ✅ Nonce 消费时机修复（签名失败不消费 Nonce）
+- ✅ 多应用安全隔离
 
 ## 注意事项
 

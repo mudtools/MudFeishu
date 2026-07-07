@@ -750,6 +750,62 @@ Select the event types you want to subscribe to:
 
 After configuration is complete, publish the application, and Feishu servers will start pushing events to your endpoint.
 
+## Security Model and Validation Flow
+
+### Signature Algorithm
+
+This component uses **SHA-256** header signature validation (consistent with the official Feishu SDK Python/Go), not HMAC-SHA256.
+
+Signature string format: `SHA-256(timestamp + nonce + encryptKey + body)`
+
+The signature is passed via the `X-Lark-Signature` request header in lowercase hexadecimal format.
+
+### Validation Order
+
+`CompositeFeishuEventValidator` executes validation in the following order; any failed step rejects the request:
+
+```
+1. Timestamp Validation
+   └─ Check if request timestamp is within tolerance window (replay attack time window)
+
+2. Nonce Check (check only, do not mark)
+   └─ Check if Nonce has already been used (intercept replay attacks)
+   └─ Note: This step does NOT mark the Nonce, preventing premature consumption on signature failure
+
+3. Signature Validation
+   └─ Validate X-Lark-Signature header signature (SHA-256)
+   └─ Use fixed-time comparison to prevent timing attacks
+
+4. Nonce Mark (mark after signature passes)
+   └─ After signature validation passes, mark Nonce as used
+   └─ Safe to mark: no risk of premature consumption on signature failure
+   └─ Concurrency: if already marked by another request during marking, reject
+```
+
+### Two-Step Nonce Validation Design
+
+Nonce validation is split into "check" (`CheckNonceAsync`) and "mark" (`TryMarkNonceAsUsedAsync`) steps:
+
+- **Check step** (before signature validation): Only checks if Nonce exists, does not mark. Intercepts used Nonces (replay attack prevention)
+- **Mark step** (after signature validation): Marks Nonce as used only after signature passes. Ensures Nonce is not consumed on signature failure, allowing Feishu to safely retry
+
+| Scenario | Before (old logic) | After (new logic) |
+|----------|-------------------|-------------------|
+| Signature failure | ❌ Nonce consumed, Feishu retry rejected (event permanently lost) | ✅ Nonce not consumed, Feishu can safely retry |
+| Signature success | ✅ Normal marking | ✅ Normal marking |
+| Replay attack | ✅ Intercepted | ✅ Intercepted (check step still intercepts used Nonces) |
+
+### Security Hardening Measures
+
+| Measure | Description |
+|---------|-------------|
+| Fixed-time comparison | Token and signature comparison uses `FixedTimeEquals` to prevent timing attacks |
+| Production enforcement | Production environment auto-detects and rejects disabled signature validation |
+| Sensitive data masking | Token, EncryptKey and other sensitive fields are automatically masked in logs |
+| Request body size limit | Prevents oversized request body DoS attacks |
+| IP whitelist | Supports configurable source IP address list (CIDR format) |
+| Rate limiting | Sliding window rate limiting based on `(AppKey, IP)` dimension |
+
 ## Monitoring and Diagnostics
 
 ### Performance Monitoring

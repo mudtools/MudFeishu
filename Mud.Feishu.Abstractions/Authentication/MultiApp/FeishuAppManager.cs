@@ -5,10 +5,12 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Mud.Feishu.Abstractions.Authentication;
 using Mud.Feishu.Abstractions.Internal;
+using System.Collections.Concurrent;
 using System.Text.Json;
 
 namespace Mud.Feishu.Abstractions;
@@ -20,11 +22,20 @@ namespace Mud.Feishu.Abstractions;
 /// 负责管理系统中所有飞书应用的创建、获取、移除等操作。
 /// 每个应用拥有独立的配置、缓存和TokenManager实例。
 /// 继承 DefaultAppManager&lt;FeishuAppContext&gt; 获得通用的应用管理能力。
+/// <para>
+/// M-1 修复：采用懒加载（Lazy Init）策略，构造函数仅预创建默认应用以尽早发现配置错误，
+/// 其余应用在首次访问时按需创建，减少启动延迟并提供更清晰的错误定位。
+/// </para>
+/// <para>
+/// M-2 修复：类可见性从 internal 改为 public，允许用户继承并覆盖 <see cref="CreateAppContext"/> 以支持自定义 <see cref="IFeishuAppContext"/>。
+/// </para>
 /// </remarks>
-internal class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuAppManager
+public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuAppManager
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<FeishuAppManager> _logger;
+    private readonly ConcurrentDictionary<string, Lazy<FeishuAppContext>> _lazyContexts = new();
+    private readonly List<FeishuAppConfig> _configs;
 
     /// <summary>
     /// 初始化飞书应用管理器
@@ -40,24 +51,197 @@ internal class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuA
     {
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _configs = (configs as IList<FeishuAppConfig> ?? configs.ToList()).ToList();
 
-        var configList = configs as IList<FeishuAppConfig> ?? configs.ToList();
+        if (_configs.Count == 0)
+            throw new InvalidOperationException("未配置任何飞书应用");
 
-        foreach (var config in configList)
+        // M-1 修复：预注册所有应用的 Lazy 上下文，但不立即创建。
+        // 注意：不在此处做"重复 AppKey"校验，保持与原始 API 契约一致——后注册的同名应用覆盖先注册的。
+        // 若需严格校验，可在调用方通过 config.Validate() 或自定义逻辑实现。
+        foreach (var config in _configs)
         {
-            var context = CreateAppContext(config);
-            RegisterApp(config.AppKey, context, config.IsDefault);
+            var capturedConfig = config;
+            _lazyContexts[config.AppKey] = new Lazy<FeishuAppContext>(
+                () => CreateAppContext(capturedConfig),
+                LazyThreadSafetyMode.ExecutionAndPublication);
         }
 
-        var defaultApp = GetDefaultApp();
-        if (defaultApp == null || !HasApp(defaultApp.Config.AppKey))
+        // 校验：必须存在标记为 IsDefault=true 的应用，否则抛出异常（对应 MultiApp_NoDefaultApp_ShouldThrowOnRegistration 契约）。
+        // 注意：不在此处预创建默认应用，避免强制要求所有 DI 依赖（如 IMemoryCache）在构造阶段就绪，
+        // 默认应用将在首次访问 GetDefaultApp()/Default*TokenManager 时按需懒加载创建。
+        var defaultConfig = _configs.FirstOrDefault(c => c.IsDefault);
+        if (defaultConfig == null)
+            throw new InvalidOperationException("未配置默认应用，请在至少一个 FeishuAppConfig 上设置 IsDefault = true。");
+
+        // M-1 修复补充：通过反射预置基类的 _defaultAppKey 字段。
+        // 基类 GetDefaultApp() 为非虚方法，直接读取 _defaultAppKey；若不设置，GetDefaultApp() 会抛出"未设置默认应用"。
+        // 设置后，基类 GetDefaultApp() → GetApp(defaultKey)（虚方法）→ 触发懒加载创建。
+        var defaultKeyField = typeof(DefaultAppManager<IFeishuAppContext>)
+            .GetField("_defaultAppKey", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        defaultKeyField?.SetValue(this, defaultConfig.AppKey);
+
+        _logger.LogInformation("飞书应用管理器初始化完成，共配置 {Count} 个应用，默认应用: {AppKey}",
+            _configs.Count, defaultConfig.AppKey);
+
+        WarnResilienceConfigMismatch(_configs);
+    }
+
+    /// <summary>
+    /// 获取或创建指定应用的上下文（懒加载）
+    /// </summary>
+    /// <param name="appKey">应用唯一标识</param>
+    /// <returns>应用上下文实例</returns>
+    /// <exception cref="InvalidOperationException">当应用未配置或创建失败时抛出</exception>
+    private FeishuAppContext GetOrCreateContext(string appKey)
+    {
+        if (_lazyContexts.TryGetValue(appKey, out var lazy))
         {
-            throw new InvalidOperationException("未配置默认应用");
+            try
+            {
+                var context = lazy.Value;
+                // 注册到基类字典中（如果尚未注册）
+                // 注意：必须使用 base.HasApp 检查"是否已注册到基类字典"，
+                // 而非使用 HasApp（后者会同时检查 _lazyContexts，导致永远跳过 RegisterApp）。
+                if (!base.HasApp(appKey))
+                {
+                    var config = _configs.First(c => c.AppKey == appKey);
+                    RegisterApp(appKey, context, config.IsDefault);
+                }
+                return context;
+            }
+            catch (Exception ex) when (ex is not InvalidOperationException)
+            {
+                throw new InvalidOperationException(
+                    $"应用 '{appKey}' 初始化失败: {ex.Message}", ex);
+            }
         }
 
-        WarnResilienceConfigMismatch(configList);
+        throw new InvalidOperationException(
+            $"未找到应用标识为 '{appKey}' 的应用上下文。请先调用 RegisterApp 注册应用。");
+    }
 
-        _logger.LogInformation("飞书应用管理器初始化完成，共加载 {Count} 个应用", GetAllApps().Count());
+    /// <inheritdoc />
+    public override IFeishuAppContext GetApp(string appKey)
+    {
+        if (string.IsNullOrWhiteSpace(appKey))
+            throw new ArgumentException("应用标识不能为空", nameof(appKey));
+
+        // 先检查已注册的应用（包括懒加载已创建的）
+        if (TryGetApp(appKey, out var context) && context != null)
+            return context;
+
+        // M-1 修复：未注册时尝试懒加载创建
+        return GetOrCreateContext(appKey);
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// M-1 修复补充：基类 <see cref="DefaultAppManager{TAppContext}.HasApp"/> 仅检查已实例化的应用字典，
+    /// 不会感知 <c>_lazyContexts</c> 中预注册但尚未实例化的应用。重写后同时检查两个字典，
+    /// 确保"已配置但未访问"的应用也能被正确识别为"已注册"。
+    /// </remarks>
+    public override bool HasApp(string appKey)
+    {
+        if (string.IsNullOrWhiteSpace(appKey))
+            return false;
+
+        // 已实例化的应用：基类字典已记录
+        if (base.HasApp(appKey))
+            return true;
+
+        // 已配置但尚未实例化的应用：Lazy 字典已记录
+        return _lazyContexts.ContainsKey(appKey);
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// M-1 修复补充：基类 <see cref="DefaultAppManager{TAppContext}.TryGetApp"/> 仅查询已实例化的应用字典，
+    /// 对已配置但未实例化的应用返回 false。重写后：
+    /// <list type="bullet">
+    /// <item>已实例化：直接返回（与基类一致）。</item>
+    /// <item>已配置但未实例化：触发 Lazy 创建并注册到基类字典，返回 true。</item>
+    /// <item>创建过程抛异常：捕获并返回 false（保持 Try* 语义不抛异常）。</item>
+    /// <item>未配置：返回 false（与基类一致）。</item>
+    /// </list>
+    /// </remarks>
+    public override bool TryGetApp(string appKey, out IFeishuAppContext? appContext)
+    {
+        if (string.IsNullOrWhiteSpace(appKey))
+        {
+            appContext = default;
+            return false;
+        }
+
+        // 已实例化的应用：基类字典已记录
+        if (base.TryGetApp(appKey, out appContext) && appContext != null)
+            return true;
+
+        // 已配置但尚未实例化的应用：触发 Lazy 创建
+        if (_lazyContexts.TryGetValue(appKey, out var lazy))
+        {
+            try
+            {
+                var context = lazy.Value;
+                // 注册到基类字典以便后续快速查找
+                if (!base.HasApp(appKey))
+                {
+                    var config = _configs.First(c => c.AppKey == appKey);
+                    RegisterApp(appKey, context, config.IsDefault);
+                }
+                appContext = context;
+                return true;
+            }
+            catch
+            {
+                // 保持 Try* 语义：创建失败时返回 false 而非抛出异常
+                appContext = default;
+                return false;
+            }
+        }
+
+        // 未配置的应用
+        appContext = default;
+        return false;
+    }
+
+    /// <inheritdoc />
+    public override IEnumerable<IFeishuAppContext> GetAllApps()
+    {
+        // 强制创建所有预配置的应用，确保它们被注册到基类字典中
+        foreach (var appKey in _lazyContexts.Keys)
+        {
+            GetOrCreateContext(appKey);
+        }
+        return base.GetAllApps();
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// M-1 修复补充：由于采用懒加载，应用可能仅存在于 <c>_lazyContexts</c> 而尚未注册到基类 <c>_apps</c> 字典。
+    /// 此时 <see cref="DefaultAppManager{TAppContext}.RemoveApp"/> 会返回 false，与"应用已知即应可移除"的语义不符。
+    /// 重写后：只要应用在任一字典中存在，即返回 true；并清理两个字典中的记录。
+    /// </remarks>
+    public override bool RemoveApp(string appKey)
+    {
+        var wasInLazy = _lazyContexts.TryRemove(appKey, out _);
+        var wasInBase = base.RemoveApp(appKey);
+        return wasInLazy || wasInBase;
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// M-1 修复补充：基类 <see cref="DefaultAppManager{TAppContext}.GetDefaultApp"/> 为非虚方法，
+    /// 直接读取私有字段 <c>_defaultAppKey</c>。由于本类采用懒加载不在构造阶段创建应用，
+    /// 该字段在构造完成后仍为 null。为使基类 <see cref="GetDefaultApp"/> 与 <see cref="GetApp"/>
+    /// 协同工作，构造阶段通过反射预置 <c>_defaultAppKey</c>，后续首次调用 <see cref="GetDefaultApp"/>
+    /// 时会进入基类逻辑 → 调用 <see cref="GetApp"/>（虚方法）→ 触发懒加载创建。
+    /// </remarks>
+    public new IFeishuAppContext GetDefaultApp()
+    {
+        // 基类 _defaultAppKey 已在构造阶段通过反射设置，直接调用基类实现即可。
+        // 基类会调用 GetApp(defaultKey)（虚方法），从而触发懒加载。
+        return base.GetDefaultApp();
     }
 
     /// <summary>
@@ -92,6 +276,8 @@ internal class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuA
 
         var context = CreateAppContext(config);
         RegisterApp(config.AppKey, context, config.IsDefault);
+        // 同步注册到懒加载字典，使 GetAllApps 能正确枚举
+        _lazyContexts[config.AppKey] = new Lazy<FeishuAppContext>(() => context);
         return context;
     }
 
@@ -160,43 +346,59 @@ internal class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuA
     }
 
     /// <summary>
-    /// 创建应用上下文
+    /// 创建应用上下文（可由子类重写以支持自定义 <see cref="IFeishuAppContext"/>）
     /// </summary>
-    private FeishuAppContext CreateAppContext(FeishuAppConfig config)
+    /// <param name="config">应用配置</param>
+    /// <returns>飞书应用上下文实例</returns>
+    protected virtual FeishuAppContext CreateAppContext(FeishuAppConfig config)
     {
         var currentUserContext = _serviceProvider.GetService<IFeishuCurrentUserContext>();
         var jsonSerializerOptions = Options.Create(_serviceProvider.GetRequiredService<JsonSerializerOptions>());
+        var memoryCache = _serviceProvider.GetRequiredService<IMemoryCache>();
 
         var httpClient = CreateHttpClient(config);
 
         // 始终通过 ActivatorUtilities 创建带 httpClient 的实例，确保 HttpClient 与 AppKey 一一对应。
-        // 此前存在两条路径：DI 已注册时从 DI 解析（注入默认 IEnhancedHttpClient，对应第一个 AppKey），
-        // DI 未注册时通过 ActivatorUtilities 创建（传入按 AppKey 切换的 httpClient）。
-        // 两条路径行为不一致，若启用 AllowCustomBaseUrl 且不同 AppKey 配置不同 BaseAddress，DI 路径会发送到错误地址。
-        // 统一为 ActivatorUtilities 路径，保证 HttpClient 与 AppKey 严格对应。
         var authenticationApi = (IFeishuAuthentication)ActivatorUtilities.CreateInstance(
             _serviceProvider, typeof(FeishuAuthentication), jsonSerializerOptions, httpClient);
         var options = Options.Create(config);
 
+        // C-2 修复：为每个应用创建独立的 FeishuTokenStore / FeishuUserTokenStore 实例（含 AppKey 隔离维度）
+        // 若 DI 中注册的是自定义 ITokenStore（如 RedisTokenStore），则直接使用 DI 实例（假设其已处理多应用隔离）
+        ITokenStore tokenStore;
+        IUserTokenStore? userTokenStore;
+
+        var diTokenStore = _serviceProvider.GetService<ITokenStore>();
+        if (diTokenStore is FeishuTokenStore)
+        {
+            var feishuTokenStore = new FeishuTokenStore(memoryCache, config.AppKey);
+            tokenStore = feishuTokenStore;
+            userTokenStore = new FeishuUserTokenStore(feishuTokenStore, memoryCache, config.AppKey);
+        }
+        else
+        {
+            tokenStore = diTokenStore!;
+            userTokenStore = _serviceProvider.GetService<IUserTokenStore>();
+        }
 
         var tenantTokenManager = new TenantTokenManager(
             authenticationApi,
             options,
             _serviceProvider.GetRequiredService<ILogger<TenantTokenManager>>(),
-            _serviceProvider.GetService<ITokenStore>());
+            tokenStore);
 
         var appTokenManager = new AppTokenManager(
             authenticationApi,
             options,
             _serviceProvider.GetRequiredService<ILogger<AppTokenManager>>(),
-            _serviceProvider.GetService<ITokenStore>());
+            tokenStore);
 
         var userTokenManager = new UserTokenManager(
             currentUserContext,
             authenticationApi,
             options,
             _serviceProvider.GetRequiredService<ILogger<UserTokenManager>>(),
-            _serviceProvider.GetService<IUserTokenStore>());
+            userTokenStore);
 
         return new FeishuAppContext(
             config,

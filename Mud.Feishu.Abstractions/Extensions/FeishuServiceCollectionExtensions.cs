@@ -5,6 +5,7 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -82,7 +83,12 @@ public static class FeishuServiceCollectionExtensions
             // 此前未传该参数（默认 false），导致默认 IEnhancedHttpClient 隐式绑定到 configs 列表中的第一个 AppKey，
             // 而非 IsDefault=true 的应用。现在通过显式传入确保默认 HttpClient 与 IsDefault=true 严格对应。
             bool isDefault = config.IsDefault;
+            var appKey = config.AppKey;  // 闭包捕获，供 Handler 工厂使用
 
+            // C-1 修复：为每个命名 HttpClient 注册 TokenRecoveryDelegatingHandler。
+            // 生成器在非默认注入模式下生成 TokenRecoveryContext 并写入请求属性，
+            // TokenRecoveryDelegatingHandler 消费该属性并在 401 时自动刷新令牌重试。
+            // 使用 LazyFeishuTokenRecoveryHandler 延迟解析 IFeishuAppManager，避免构造期间的循环依赖。
             services.AddMudHttpClient(
                 clientName,
                 client =>
@@ -92,7 +98,8 @@ public static class FeishuServiceCollectionExtensions
                     client.DefaultRequestHeaders.Add("User-Agent", "MudFeishuClient/1.0");
                     client.Timeout = TimeSpan.FromSeconds(timeOut);
                 },
-                setAsDefault: isDefault);
+                setAsDefault: isDefault)
+                .AddHttpMessageHandler(sp => new LazyFeishuTokenRecoveryHandler(sp, appKey));
         }
 
         var defaultConfig = configs.FirstOrDefault(c => c.IsDefault) ?? configs.FirstOrDefault();
@@ -126,15 +133,35 @@ public static class FeishuServiceCollectionExtensions
 
         services.TryAddSingleton(_ => HttpClientExtensions.GetDefaultJsonSerializerOptions());
 
-        services.AddMemoryCache();
+        // M-8 修复：使用条件检测避免覆盖用户已配置的 IMemoryCache 选项（如容量限制）。
+        // AddMemoryCache() 会无条件注册 IOptions<MemoryCacheOptions> 配置委托，
+        // 可能覆盖用户在 ConfigureServices 中通过 AddMemoryCache(options => { ... }) 设置的配置。
+        // TryAddMemoryCache() 是 .NET 9+ API，此处使用 Any 检测以兼容 netstandard2.0/net6.0/net8.0。
+        if (!services.Any(s => s.ServiceType == typeof(IMemoryCache)))
+        {
+            services.AddMemoryCache();
+        }
 
         // 注意：必须先注册飞书用户上下文，再调用 AddTokenProvider()。
         // 原因：AddTokenProvider() 内部会 TryAddSingleton<ICurrentUserContext, DefaultCurrentUserContext<CurrentUserInfo>>(),
         // 若先调用，飞书的桥接注册会因 TryAddSingleton 语义（已存在则跳过）而失效，导致两个上下文实例状态不共享。
         services.TryAddSingleton<IFeishuCurrentUserContext, DefaultFeishuCurrentUserContext>();
-        services.TryAddSingleton<Mud.HttpUtils.ICurrentUserContext>(sp => sp.GetRequiredService<IFeishuCurrentUserContext>());
+        services.TryAddSingleton<ICurrentUserContext>(sp => sp.GetRequiredService<IFeishuCurrentUserContext>());
         services.AddTokenProvider();
 
+        // C-3 修复：注册 IAppContextHolder，供生成的 TokenManager 模式实现类构造函数注入。
+        // 代码生成器 ConstructorGenerator 在 TokenManager 模式下生成必需的 IAppContextHolder 构造函数参数（无默认值），
+        // 若未注册此服务，DI 容器解析任何飞书 API 接口时将抛出 InvalidOperationException。
+        // AddTokenProvider() 仅注册 ITokenProvider 和 ICurrentUserContext，不包含 IAppContextHolder。
+        services.TryAddSingleton<IAppContextHolder, AsyncLocalAppContextSwitcher>();
+
+        // M-9 改进：ITokenStore 注册检测。
+        // 此处使用 Any 检测而非 TryAdd 是为了支持 Redis 预注册场景：
+        // 用户通过 AddRedisTokenStore() 在 AddFeishuApp 之前注册自定义 ITokenStore，
+        // 此处检测到已注册则跳过默认的 FeishuTokenStore。
+        // RedisFeishuServiceBuilderExtensions 已通过抛出异常阻止"Redis 在 AddFeishuApp 之后调用"的错误顺序。
+        // 注意：多应用场景下 FeishuAppManager.CreateAppContext 会为每个应用创建独立的 per-app FeishuTokenStore 实例，
+        // 此处的 Singleton 注册仅作为单应用模式的向后兼容回退。
         if (!services.Any(s => s.ServiceType == typeof(ITokenStore)))
         {
             services.AddSingleton<FeishuTokenStore>();
@@ -146,6 +173,10 @@ public static class FeishuServiceCollectionExtensions
             services.AddSingleton<FeishuUserTokenStore>();
             services.AddSingleton<IUserTokenStore>(sp => sp.GetRequiredService<FeishuUserTokenStore>());
         }
+
+        // C-1 修复：注册 TokenRecoveryOptions，使 TokenRecoveryDelegatingHandler 可通过 IOptions<TokenRecoveryOptions> 获取配置。
+        // 用户可通过 IConfiguration 的 "MudHttpTokenRecovery" 节或 services.Configure<TokenRecoveryOptions>(...) 自定义恢复策略。
+        services.AddOptions<TokenRecoveryOptions>();
 
         // 注册令牌主动刷新后台服务（由 Mud.HttpUtils 提供，按目标框架自动选择实现）。
         // 此前该服务仅在 Webhook 模块注册，纯 SDK 使用场景下 Token 仅懒加载刷新，

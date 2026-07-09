@@ -145,10 +145,9 @@ public static class FeishuMultiAppExtensions
 
         if (hasTenantTokenManager)
         {
-            // 注意：此处无法使用 ILogger，因为服务容器尚未构建完成
-            // 使用 Debug 输出作为 ConfigureServices 阶段的日志手段
-            // 仅在 Debug 模式下可见，生产环境建议在应用启动后检查日志确认配置正确
-            System.Diagnostics.Debug.WriteLine(
+            // m-1 修复：使用 Console.Error 替代 Debug.WriteLine，确保 Release 编译模式下警告可见。
+            // ConfigureServices 阶段无法使用 ILogger（服务容器尚未构建），Console.Error 是唯一可靠的输出渠道。
+            Console.Error.WriteLine(
                 "[MudFeishu] 检测到已注册单应用模式的TokenManager。多应用模式已启用，由于使用 TryAddSingleton 语义，" +
                 "单应用模式的TokenManager将优先生效（而非被忽略），可能导致多应用模式下默认应用令牌管理器桥接注册被跳过。" +
                 "建议移除 AddTokenManagers() 等单应用API的调用，统一使用多应用模式。" +
@@ -251,6 +250,44 @@ public static class FeishuMultiAppExtensions
     }
 
     /// <summary>
+    /// 注册飞书多应用支持，使用自定义的 <see cref="FeishuAppManager"/> 实现类型。
+    /// </summary>
+    /// <typeparam name="TAppManager">自定义应用管理器类型，必须继承 <see cref="FeishuAppManager"/>。</typeparam>
+    /// <param name="services">服务集合。</param>
+    /// <param name="configs">应用配置列表。</param>
+    /// <returns>服务集合实例，支持链式调用。</returns>
+    /// <exception cref="ArgumentNullException">当参数为 null 时抛出。</exception>
+    /// <remarks>
+    /// M-2 修复：允许用户继承 <see cref="FeishuAppManager"/> 并覆盖 <c>CreateAppContext</c> 方法，
+    /// 以支持自定义 <see cref="IFeishuAppContext"/> 实现（如添加审计日志、动态配置热更新等）。
+    /// <code>
+    /// services.AddFeishuApp&lt;CustomFeishuAppManager&gt;(configs);
+    /// </code>
+    /// </remarks>
+    public static IServiceCollection AddFeishuApp<TAppManager>(
+        this IServiceCollection services,
+        List<FeishuAppConfig> configs)
+        where TAppManager : FeishuAppManager
+    {
+        if (services == null)
+            throw new ArgumentNullException(nameof(services));
+        if (configs == null)
+            throw new ArgumentNullException(nameof(configs));
+
+        ValidateAndSetDefaultApp(configs);
+        services.AddFeishuAppBaseServices(configs);
+
+        // 注册自定义 AppManager 类型（覆盖默认的 FeishuAppManager 注册）
+        services.AddSingleton<IFeishuAppManager>(sp =>
+            (TAppManager)ActivatorUtilities.CreateInstance(sp, typeof(TAppManager), configs, sp.GetRequiredService<ILogger<TAppManager>>()));
+
+        // 注册默认应用上下文、配置、令牌管理器解析器、桥接注册等
+        RegisterCoreServicesWithoutAppManager(services, configs);
+
+        return services;
+    }
+
+    /// <summary>
     /// 注册核心服务（应用管理器、令牌管理器解析器、默认应用上下文、配置、令牌刷新注册、桥接注册）
     /// </summary>
     /// <param name="services">服务集合</param>
@@ -292,11 +329,28 @@ public static class FeishuMultiAppExtensions
                     refreshService.RegisterTokenManager(app.AppTokenManager, $"app:{app.Config.AppKey}");
                 }
             }
+            else
+            {
+                // M-7 修复：netstandard2.0 路径下 ITokenRefreshBackgroundService 未注册时发出警告。
+                Console.Error.WriteLine(
+                    "[MudFeishu] 警告：ITokenRefreshBackgroundService 未注册，令牌将不会进行后台主动刷新。" +
+                    "请在 AddFeishuApp 之前调用 AddTokenRefreshBackgroundService() 注册后台刷新服务，" +
+                    "或确保 AddFeishuAppBaseServices 中的 AddTokenRefreshBackgroundService() 调用未被跳过。");
+            }
 
             return appManager;
         });
 #endif
 
+        RegisterCoreServicesWithoutAppManager(services, configs);
+    }
+
+    /// <summary>
+    /// 注册核心服务中除 IFeishuAppManager 之外的依赖项。
+    /// 供 <see cref="RegisterCoreServices"/> 和 <see cref="AddFeishuApp{TAppManager}"/> 共用。
+    /// </summary>
+    private static void RegisterCoreServicesWithoutAppManager(IServiceCollection services, List<FeishuAppConfig> configs)
+    {
         services.AddSingleton(sp =>
         {
             var appManager = sp.GetRequiredService<IFeishuAppManager>();
@@ -314,7 +368,6 @@ public static class FeishuMultiAppExtensions
         services.TryAddSingleton<IFeishuTokenManagerResolver, FeishuTokenManagerResolver>();
 
         // 注册令牌注册托管服务：在应用启动时将所有应用的令牌管理器注册到 TokenRefreshHostedService
-        // 此前 TokenRefreshHostedService 虽然注册并启用，但内部令牌字典为空，后台刷新形同虚设
 #if NET6_0_OR_GREATER
         services.AddHostedService<FeishuTokenRegistrationService>();
 #endif

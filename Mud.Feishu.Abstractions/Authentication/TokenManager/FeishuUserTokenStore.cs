@@ -22,17 +22,37 @@ public class FeishuUserTokenStore : UserTokenStoreBase
 {
     private readonly IMemoryCache _cache;
     private readonly ConcurrentDictionary<string, ConcurrentDictionary<string, byte>> _userTokenTypes = new();
+    private readonly string _appKey;
 
     /// <summary>
-    /// 初始化 FeishuUserTokenStore 实例
+    /// 初始化 FeishuUserTokenStore 实例（使用默认 AppKey）
     /// </summary>
     /// <param name="innerStore">内部令牌存储实例，用于 ITokenStore 方法委托</param>
     /// <param name="cache">内存缓存实例</param>
     public FeishuUserTokenStore(FeishuTokenStore innerStore, IMemoryCache cache)
+        : this(innerStore, cache, "default")
+    {
+    }
+
+    /// <summary>
+    /// 初始化 FeishuUserTokenStore 实例（指定 AppKey 用于多应用隔离）
+    /// </summary>
+    /// <param name="innerStore">内部令牌存储实例，用于 ITokenStore 方法委托</param>
+    /// <param name="cache">内存缓存实例</param>
+    /// <param name="appKey">应用唯一标识，用于构建隔离的缓存键</param>
+    public FeishuUserTokenStore(FeishuTokenStore innerStore, IMemoryCache cache, string appKey)
         : base(innerStore)
     {
         _cache = cache ?? throw new ArgumentNullException(nameof(cache));
+        if (string.IsNullOrWhiteSpace(appKey))
+            throw new ArgumentException("AppKey 不能为空", nameof(appKey));
+        _appKey = appKey;
     }
+
+    /// <summary>
+    /// C-2 修复：重写键前缀以包含 AppKey，确保多应用场景下用户令牌互不覆盖
+    /// </summary>
+    protected override string KeyPrefix => $"feishu:{_appKey}:token";
 
     /// <inheritdoc />
     public override Task<string?> GetAccessTokenAsync(string userId, string tokenType, CancellationToken cancellationToken = default)

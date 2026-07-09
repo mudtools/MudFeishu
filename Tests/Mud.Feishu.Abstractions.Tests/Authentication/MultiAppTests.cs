@@ -36,6 +36,10 @@ public class MultiAppTests
         services.AddSingleton<IFeishuCurrentUserContext, CurrentUserContext>();
         services.AddSingleton(_ => HttpClientExtensions.GetDefaultJsonSerializerOptions());
         services.AddLogging();
+        // M-1 修复回归：CreateAppContext 通过 _serviceProvider.GetRequiredService<IMemoryCache>() 创建 per-app TokenStore，
+        // 测试基础设施必须注册 IMemoryCache，否则任何触发 Lazy 创建的测试（GetApp/GetAllApps/GetDefaultApp）都会失败。
+        // 注意：这是测试基础设施补全，不改变测试契约。
+        services.AddMemoryCache();
         // P2-2: 生成代码构造函数通过 DI 注入 IHttpRequestExecutor，测试需注册 mock 以支持 ActivatorUtilities.CreateInstance
         services.AddTransient<IHttpRequestExecutor>(sp => new Mock<IHttpRequestExecutor>().Object);
 

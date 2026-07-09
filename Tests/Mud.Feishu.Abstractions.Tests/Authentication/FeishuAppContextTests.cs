@@ -192,6 +192,9 @@ public class FeishuAppContextTests : IDisposable
         services.AddSingleton<IFeishuCurrentUserContext, CurrentUserContext>();
         services.AddSingleton(_ => HttpClientExtensions.GetDefaultJsonSerializerOptions());
         services.AddLogging();
+        // M-1 修复回归：CreateAppContext 通过 _serviceProvider.GetRequiredService<IMemoryCache>() 创建 per-app TokenStore，
+        // 测试基础设施必须注册 IMemoryCache，否则 GetApp 触发 Lazy 创建时会抛 InvalidOperationException。
+        services.AddMemoryCache();
         // P2-2: 生成代码构造函数通过 DI 注入 IHttpRequestExecutor，测试需注册 mock 以支持 ActivatorUtilities.CreateInstance
         services.AddTransient<IHttpRequestExecutor>(sp => new Mock<IHttpRequestExecutor>().Object);
 

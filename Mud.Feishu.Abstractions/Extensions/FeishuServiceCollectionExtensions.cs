@@ -114,6 +114,16 @@ public static class FeishuServiceCollectionExtensions
             });
         }
 
+        // P1-4: 注册 per-app 弹性策略解析器，使不同应用可使用独立的重试/超时/熝断配置。
+        // DefaultHttpRequestExecutor 优先使用 per-app 解析器，未命中时回退到全局解析器（defaultConfig 配置）。
+        services.TryAddSingleton<IAppResiliencePolicyResolver>(sp =>
+        {
+            var logger = sp.GetService<ILogger<AppResiliencePolicyResolver>>();
+            return new AppResiliencePolicyResolver(
+                appKey => CreateResilienceOptionsFromConfig(configs, appKey),
+                logger);
+        });
+
         services.TryAddSingleton(_ => HttpClientExtensions.GetDefaultJsonSerializerOptions());
 
         services.AddMemoryCache();
@@ -155,6 +165,44 @@ public static class FeishuServiceCollectionExtensions
             });
 
         return services;
+    }
+
+    /// <summary>
+    /// 根据应用配置创建弹性策略选项。
+    /// </summary>
+    /// <param name="configs">所有应用配置列表。</param>
+    /// <param name="appKey">应用键。</param>
+    /// <returns>对应的 <see cref="ResilienceOptions"/>；如果应用不存在则返回 null。</returns>
+    private static ResilienceOptions? CreateResilienceOptionsFromConfig(List<FeishuAppConfig> configs, string appKey)
+    {
+        var config = configs.FirstOrDefault(c =>
+            string.Equals(c.AppKey, appKey, StringComparison.OrdinalIgnoreCase));
+        if (config == null)
+            return null;
+
+        return new ResilienceOptions
+        {
+            Retry =
+            {
+                Enabled = true,
+                MaxRetryAttempts = config.RetryCount,
+                DelayMilliseconds = config.RetryDelayMs,
+                UseExponentialBackoff = true
+            },
+            Timeout =
+            {
+                Enabled = true,
+                TimeoutSeconds = config.TimeOut
+            },
+            CircuitBreaker =
+            {
+                Enabled = config.CircuitBreakerEnabled,
+                FailureThreshold = config.CircuitBreakerFailureThreshold,
+                SamplingDurationSeconds = config.CircuitBreakerSamplingDurationSeconds,
+                BreakDurationSeconds = config.CircuitBreakerBreakDurationSeconds,
+                MinimumThroughput = config.CircuitBreakerMinimumThroughput
+            }
+        };
     }
 
 }

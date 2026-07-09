@@ -192,6 +192,8 @@ public class FeishuAppContextTests : IDisposable
         services.AddSingleton<IFeishuCurrentUserContext, CurrentUserContext>();
         services.AddSingleton(_ => HttpClientExtensions.GetDefaultJsonSerializerOptions());
         services.AddLogging();
+        // P2-2: 生成代码构造函数通过 DI 注入 IHttpRequestExecutor，测试需注册 mock 以支持 ActivatorUtilities.CreateInstance
+        services.AddTransient<IHttpRequestExecutor>(sp => new Mock<IHttpRequestExecutor>().Object);
 
         // 注册一个自定义服务到 DI 容器
         var customService = new TestDiService();

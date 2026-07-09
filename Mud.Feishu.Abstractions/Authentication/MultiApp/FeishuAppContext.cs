@@ -27,6 +27,16 @@ public class FeishuAppContext : IFeishuAppContext, IDisposable
 {
     private bool _disposed;
     private readonly IServiceProvider? _serviceProvider;
+
+    /// <summary>
+    /// 应用唯一标识（AppKey）
+    /// </summary>
+    /// <remarks>
+    /// 返回 <see cref="Config"/>.<see cref="FeishuAppConfig.AppKey"/>，
+    /// 用于在多应用场景下区分不同应用（如 per-app 弹性策略解析）。
+    /// </remarks>
+    public string AppKey => Config.AppKey;
+
     /// <summary>
     /// HTTP客户端
     /// </summary>
@@ -99,7 +109,7 @@ public class FeishuAppContext : IFeishuAppContext, IDisposable
             var t when t == typeof(ITenantTokenManager) => TenantTokenManager as T,
             var t when t == typeof(IAppTokenManager) => AppTokenManager as T,
             var t when t == typeof(IFeishuUserTokenManager) => UserTokenManager as T,
-            _ => _serviceProvider?.GetService(typeof(T)) as T  // 回退到 DI 容器
+            _ => _serviceProvider?.GetService(typeof(T)) as T  // 回退到 DI 容器（含 IAppResiliencePolicyResolver 等扩展服务）
         };
     }
 

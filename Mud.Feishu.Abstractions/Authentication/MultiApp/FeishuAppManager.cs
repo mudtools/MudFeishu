@@ -230,12 +230,10 @@ internal class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuA
 
         if (nonDefaultConfigs.Count > 0)
         {
-            _logger.LogWarning(
-                "多应用模式下弹性策略（重试、超时、熔断）为全局共享配置，当前使用默认应用 '{DefaultAppKey}' 的配置。" +
-                "以下应用的自定义 Resilience 配置将被忽略: {IgnoredApps}。" +
-                "这是 Mud.HttpUtils 框架的设计限制，所有命名客户端共享同一组弹性策略。",
-                defaultConfig.AppKey,
-                string.Join(", ", nonDefaultConfigs.Select(c => c.AppKey)));
+            _logger.LogInformation(
+                "多应用模式下检测到不同应用具有不同的弹性策略配置（重试、超时、熔断）。" +
+                "Per-App 弹性策略已启用，各应用将使用独立的策略配置。默认应用 '{DefaultAppKey}' 的配置用于全局回退（如 ResilientHttpClient 装饰器）。",
+                defaultConfig.AppKey);
         }
     }
 

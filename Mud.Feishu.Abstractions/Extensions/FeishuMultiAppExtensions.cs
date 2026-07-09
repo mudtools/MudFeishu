@@ -370,8 +370,9 @@ public static class FeishuMultiAppExtensions
                 $"检测到多个 IsDefault=true 的应用（{string.Join(", ", defaultAppKeys)}），仅允许一个默认应用。请确保只有一个应用标记为 IsDefault=true。");
         }
 
-        // 多应用模式下，弹性策略不一致的警告由 FeishuAppManager.WarnResilienceConfigMismatch 统一发出（运行时，使用 ILogger）。
-        // v1.1 修复 P1：此前此处使用 Console.Error.WriteLine 发出重复警告，与 FeishuAppManager 的 _logger.LogWarning 重复触发。
-        // 已移除此处的 Console.Error.WriteLine 警告，保留 FeishuAppManager 中更全面的运行时日志警告（覆盖所有弹性参数）。
+        // 多应用模式下，弹性策略不一致的信息由 FeishuAppManager.WarnResilienceConfigMismatch 统一发出（运行时，使用 ILogger）。
+        // v1.1 修复 P1：此前此处使用 Console.Error.WriteLine 发出重复警告，与 FeishuAppManager 的日志重复触发。
+        // 已移除此处的 Console.Error.WriteLine 警告，保留 FeishuAppManager 中更全面的运行时日志（覆盖所有弹性参数）。
+        // P1-4 修复：Per-App 弹性策略已启用，不同应用的配置不再被忽略，日志级别从 Warning 降为 Information。
     }
 }

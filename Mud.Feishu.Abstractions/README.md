@@ -182,6 +182,9 @@ Mud.Feishu.Abstractions 支持三种飞书令牌类型：
 | **租户令牌** | `ITenantTokenManager` | 租户级别的权限验证 | 2 小时           |
 | **用户令牌** | `IUserTokenManager`   | 用户级别的权限验证 | 根据授权类型而定 |
 
+> 💡 使用 `FeishuTokenTypes` 常量类（`Mud.Feishu.Abstractions.Authentication` 命名空间）替代魔法字符串：
+> `FeishuTokenTypes.TenantAccessToken`、`FeishuTokenTypes.AppAccessToken`、`FeishuTokenTypes.UserAccessToken`。
+
 ### 令牌管理器特性
 
 - **自动缓存** - 自动缓存令牌，减少 API 调用
@@ -405,6 +408,9 @@ public class MultiAppService
 
 #### 2. 应用上下文切换
 
+> **推荐**：使用 `UseDefaultAppScope()` / `BeginScope(string)` 进行作用域切换，确保上下文自动恢复。
+> `UseApp()` / `UseDefaultApp()` 已标记 `[Obsolete]`，非 `using` 场景下存在上下文泄漏风险。
+
 ```csharp
 public class AppSwitchingService
 {
@@ -412,24 +418,35 @@ public class AppSwitchingService
 
     public async Task WorkWithAppsAsync()
     {
-        // 切换到默认应用
-        var defaultContext = _switcher.UseDefaultApp();
-        var defaultToken = await defaultContext
-            .GetTokenManager(TokenType.App)
-            .GetTokenAsync();
+        // 推荐方式：使用 scope 模式切换，作用域结束自动恢复上下文
+        using (_switcher.UseDefaultAppScope())
+        {
+            var defaultToken = await _switcher
+                .GetTokenManager(TokenType.App)
+                .GetTokenAsync();
+        }
 
-        // 切换到审批应用
-        var approvalContext = _switcher.UseApp("approval");
-        var approvalToken = await approvalContext
-            .GetTokenManager(TokenType.App)
-            .GetTokenAsync();
-
-        // 使用应用上下文访问资源
-        var httpClient = approvalContext.HttpClient;
-        var auth = approvalContext.Authentication;
+        using (_switcher.BeginScope("approval"))
+        {
+            var approvalToken = await _switcher
+                .GetTokenManager(TokenType.App)
+                .GetTokenAsync();
+        }
     }
 }
 ```
+
+<details>
+<summary>旧方式（已废弃，不推荐）</summary>
+
+```csharp
+// ⚠️ UseApp / UseDefaultApp 已标记 [Obsolete]
+// 直接修改全局上下文，不返回 IDisposable，存在上下文泄漏风险
+var defaultContext = _switcher.UseDefaultApp();
+var approvalContext = _switcher.UseApp("approval");
+```
+
+</details>
 
 #### 3. 多应用最佳实践
 

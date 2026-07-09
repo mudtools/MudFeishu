@@ -188,6 +188,9 @@ Mud.Feishu.Abstractions supports three Feishu token types:
 | **Tenant Token** | `ITenantTokenManager` | Tenant-level permission validation | 2 hours |
 | **User Token** | `IUserTokenManager` | User-level permission validation | Depends on authorization type |
 
+> 💡 Use the `FeishuTokenTypes` constants class (`Mud.Feishu.Abstractions.Authentication` namespace) instead of magic strings:
+> `FeishuTokenTypes.TenantAccessToken`, `FeishuTokenTypes.AppAccessToken`, `FeishuTokenTypes.UserAccessToken`.
+
 ### Token Manager Features
 
 - **Automatic Caching** - Automatically caches tokens to reduce API calls
@@ -411,6 +414,9 @@ public class MultiAppService
 
 #### 2. Application Context Switching
 
+> **Recommended**: Use `UseDefaultAppScope()` / `BeginScope(string)` for scope-based switching with automatic context restoration.
+> `UseApp()` / `UseDefaultApp()` are marked `[Obsolete]` due to context leakage risk in non-`using` scenarios.
+
 ```csharp
 public class AppSwitchingService
 {
@@ -418,24 +424,35 @@ public class AppSwitchingService
 
     public async Task WorkWithAppsAsync()
     {
-        // Switch to default application
-        var defaultContext = _switcher.UseDefaultApp();
-        var defaultToken = await defaultContext
-            .GetTokenManager(TokenType.App)
-            .GetTokenAsync();
+        // Recommended: use scope pattern, context auto-restored when scope ends
+        using (_switcher.UseDefaultAppScope())
+        {
+            var defaultToken = await _switcher
+                .GetTokenManager(TokenType.App)
+                .GetTokenAsync();
+        }
 
-        // Switch to approval application
-        var approvalContext = _switcher.UseApp("approval");
-        var approvalToken = await approvalContext
-            .GetTokenManager(TokenType.App)
-            .GetTokenAsync();
-
-        // Use application context to access resources
-        var httpClient = approvalContext.HttpClient;
-        var auth = approvalContext.Authentication;
+        using (_switcher.BeginScope("approval"))
+        {
+            var approvalToken = await _switcher
+                .GetTokenManager(TokenType.App)
+                .GetTokenAsync();
+        }
     }
 }
 ```
+
+<details>
+<summary>Legacy approach (deprecated, not recommended)</summary>
+
+```csharp
+// ⚠️ UseApp / UseDefaultApp are marked [Obsolete]
+// They modify global context directly without IDisposable, risking context leakage
+var defaultContext = _switcher.UseDefaultApp();
+var approvalContext = _switcher.UseApp("approval");
+```
+
+</details>
 
 #### 3. Dynamic Application Management
 

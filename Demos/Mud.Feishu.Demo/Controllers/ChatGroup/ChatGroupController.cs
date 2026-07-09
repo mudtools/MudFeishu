@@ -43,29 +43,28 @@ public class ChatGroupController : ControllerBase
     {
         try
         {
-            _chatGroupApi.UseApp("hr-app");
-
-            var result = await _chatGroupApi.CreateChatGroupAsync(
-                createChatRequest,
-                userIdType,
-                setBotManager,
-                uuid);
-
-            _chatGroupApi.UseDefaultApp();
-
-            if (result.Code == 0)
+            using (_chatGroupApi.BeginScope("hr-app"))
             {
-                return Ok(new
+                var result = await _chatGroupApi.CreateChatGroupAsync(
+                    createChatRequest,
+                    userIdType,
+                    setBotManager,
+                    uuid);
+
+                if (result.Code == 0)
                 {
-                    success = true,
-                    chatId = result.Data?.ChatId,
-                    result = result.Data,
-                    message = "群聊创建成功"
-                });
-            }
-            else
-            {
-                return BadRequest(new { success = false, error = result.Msg, code = result.Code });
+                    return Ok(new
+                    {
+                        success = true,
+                        chatId = result.Data?.ChatId,
+                        result = result.Data,
+                        message = "群聊创建成功"
+                    });
+                }
+                else
+                {
+                    return BadRequest(new { success = false, error = result.Msg, code = result.Code });
+                }
             }
         }
         catch (Exception ex)

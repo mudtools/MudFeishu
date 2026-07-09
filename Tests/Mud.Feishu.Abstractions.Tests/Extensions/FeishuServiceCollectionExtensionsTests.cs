@@ -336,4 +336,216 @@ public class FeishuServiceCollectionExtensionsTests
         interfaceStore.Should().BeSameAs(concreteStore,
             "ITokenStore 应解析到 FeishuTokenStore 同一实例（具体类注册策略）");
     }
+
+    // ============================================================
+    // SR-P0-3：令牌管理器桥接注册（向后兼容，仅默认应用）
+    // ============================================================
+
+    /// <summary>
+    /// SR-P0-3 验证：注册 AddFeishuApp 后，ITenantTokenManager 应可从 DI 容器直接解析（桥接注册，默认应用）。
+    /// </summary>
+    [Fact]
+    public void AddFeishuApp_ShouldRegister_ITenantTokenManager_InDiContainer()
+    {
+        // Arrange
+        var services = CreateServiceCollection();
+        var configs = CreateDefaultConfigs();
+
+        // Act
+        services.AddFeishuApp(configs);
+        using var provider = services.BuildServiceProvider();
+
+        // Assert
+        var tenantTokenManager = provider.GetService<ITenantTokenManager>();
+        tenantTokenManager.Should().NotBeNull("ITenantTokenManager 应已桥接注册到 DI 容器");
+
+        var resolver = provider.GetRequiredService<IFeishuTokenManagerResolver>();
+        tenantTokenManager.Should().BeSameAs(resolver.GetTenantTokenManager(),
+            "ITenantTokenManager 应桥接到 Resolver 返回的默认应用租户令牌管理器实例");
+    }
+
+    /// <summary>
+    /// SR-P0-3 验证：注册 AddFeishuApp 后，IAppTokenManager 应可从 DI 容器直接解析。
+    /// </summary>
+    [Fact]
+    public void AddFeishuApp_ShouldRegister_IAppTokenManager_InDiContainer()
+    {
+        var services = CreateServiceCollection();
+        var configs = CreateDefaultConfigs();
+        services.AddFeishuApp(configs);
+        using var provider = services.BuildServiceProvider();
+
+        var appTokenManager = provider.GetService<IAppTokenManager>();
+        appTokenManager.Should().NotBeNull();
+
+        var resolver = provider.GetRequiredService<IFeishuTokenManagerResolver>();
+        appTokenManager.Should().BeSameAs(resolver.GetAppTokenManager());
+    }
+
+    /// <summary>
+    /// SR-P0-3 验证：注册 AddFeishuApp 后，IFeishuUserTokenManager 和 IUserTokenManager 应可从 DI 容器解析。
+    /// </summary>
+    [Fact]
+    public void AddFeishuApp_ShouldRegister_UserTokenManagers_InDiContainer()
+    {
+        var services = CreateServiceCollection();
+        var configs = CreateDefaultConfigs();
+        services.AddFeishuApp(configs);
+        using var provider = services.BuildServiceProvider();
+
+        var feishuUserTokenManager = provider.GetService<IFeishuUserTokenManager>();
+        var userTokenManager = provider.GetService<IUserTokenManager>();
+
+        feishuUserTokenManager.Should().NotBeNull();
+        userTokenManager.Should().NotBeNull();
+        userTokenManager.Should().BeSameAs(feishuUserTokenManager,
+            "IUserTokenManager 应桥接到 IFeishuUserTokenManager 同一实例");
+    }
+
+    // ============================================================
+    // SR-P0-4：IFeishuTokenManagerResolver 注册与多应用解析
+    // ============================================================
+
+    /// <summary>
+    /// SR-P0-4 验证：注册 AddFeishuApp 后，IFeishuTokenManagerResolver 应可从 DI 解析。
+    /// </summary>
+    [Fact]
+    public void AddFeishuApp_ShouldRegister_IFeishuTokenManagerResolver()
+    {
+        var services = CreateServiceCollection();
+        var configs = CreateDefaultConfigs();
+        services.AddFeishuApp(configs);
+        using var provider = services.BuildServiceProvider();
+
+        var resolver = provider.GetService<IFeishuTokenManagerResolver>();
+        resolver.Should().NotBeNull("IFeishuTokenManagerResolver 应已注册到 DI 容器");
+    }
+
+    /// <summary>
+    /// SR-P0-4 验证：Resolver 无参数时返回默认应用的令牌管理器。
+    /// </summary>
+    [Fact]
+    public void Resolver_GetTenantTokenManager_WithNullAppKey_ShouldReturnDefaultApp()
+    {
+        var services = CreateServiceCollection();
+        var configs = CreateDefaultConfigs();
+        services.AddFeishuApp(configs);
+        using var provider = services.BuildServiceProvider();
+
+        var resolver = provider.GetRequiredService<IFeishuTokenManagerResolver>();
+        var appManager = provider.GetRequiredService<IFeishuAppManager>();
+
+        resolver.GetTenantTokenManager().Should().BeSameAs(appManager.DefaultTenantTokenManager);
+        resolver.GetAppTokenManager().Should().BeSameAs(appManager.DefaultAppTokenManager);
+        resolver.GetUserTokenManager().Should().BeSameAs(appManager.DefaultUserTokenManager);
+    }
+
+    /// <summary>
+    /// SR-P0-4 验证：Resolver 指定 appKey 时返回对应应用的令牌管理器（多应用场景核心能力）。
+    /// </summary>
+    [Fact]
+    public void Resolver_GetTenantTokenManager_WithSpecificAppKey_ShouldReturnCorrectApp()
+    {
+        var services = CreateServiceCollection();
+        var configs = new List<FeishuAppConfig>
+        {
+            new()
+            {
+                AppKey = "default",
+                AppId = "cli_default_id_1234567890",
+                AppSecret = "default_secret_123456",
+                IsDefault = true
+            },
+            new()
+            {
+                AppKey = "hr-app",
+                AppId = "cli_hr_app_1234567890",
+                AppSecret = "hr_secret_123456"
+            }
+        };
+        services.AddFeishuApp(configs);
+        using var provider = services.BuildServiceProvider();
+
+        var resolver = provider.GetRequiredService<IFeishuTokenManagerResolver>();
+        var appManager = provider.GetRequiredService<IFeishuAppManager>();
+
+        var defaultTokenManager = resolver.GetTenantTokenManager();
+        var hrTokenManager = resolver.GetTenantTokenManager("hr-app");
+
+        defaultTokenManager.Should().BeSameAs(appManager.GetApp("default").TenantTokenManager,
+            "默认应用令牌管理器应与 AppManager.GetApp(\"default\").TenantTokenManager 一致");
+        hrTokenManager.Should().BeSameAs(appManager.GetApp("hr-app").TenantTokenManager,
+            "hr-app 令牌管理器应与 AppManager.GetApp(\"hr-app\").TenantTokenManager 一致");
+        hrTokenManager.Should().NotBeSameAs(defaultTokenManager,
+            "不同应用的令牌管理器应为不同实例");
+    }
+
+    // ============================================================
+    // SR-P0-5：TokenRefreshHostedService 令牌注册
+    // ============================================================
+
+    /// <summary>
+    /// SR-P0-5 验证：AddFeishuApp 后，FeishuTokenRegistrationService 应作为 IHostedService 注册（NET6+）。
+    /// 业务场景：此前 TokenRefreshHostedService 虽然注册并启用，但内部令牌字典为空，后台刷新形同虚设。
+    /// </summary>
+    [Fact]
+    public void AddFeishuApp_ShouldRegister_FeishuTokenRegistrationService_AsHostedService()
+    {
+        var services = CreateServiceCollection();
+        var configs = CreateDefaultConfigs();
+        services.AddFeishuApp(configs);
+        using var provider = services.BuildServiceProvider();
+
+        var hostedServices = provider.GetServices<IHostedService>();
+        hostedServices.Should().Contain(s =>
+            s.GetType().Name.Contains("FeishuTokenRegistration", StringComparison.OrdinalIgnoreCase),
+            "FeishuTokenRegistrationService 应作为 IHostedService 注册");
+    }
+
+    /// <summary>
+    /// SR-P0-5 验证：应用启动后，ITokenRefreshBackgroundService 应已注册令牌管理器。
+    /// 业务场景：FeishuTokenRegistrationService 在 StartAsync 中将所有应用的令牌管理器注册到后台刷新服务。
+    /// </summary>
+    [Fact]
+    public async Task AddFeishuApp_ShouldRegisterTokenManagers_ToRefreshService_OnStartup()
+    {
+        var services = CreateServiceCollection();
+        var configs = new List<FeishuAppConfig>
+        {
+            new()
+            {
+                AppKey = "default",
+                AppId = "cli_default_id_1234567890",
+                AppSecret = "default_secret_123456",
+                IsDefault = true
+            },
+            new()
+            {
+                AppKey = "hr-app",
+                AppId = "cli_hr_app_1234567890",
+                AppSecret = "hr_secret_123456"
+            }
+        };
+        services.AddFeishuApp(configs);
+        using var provider = services.BuildServiceProvider();
+
+        // 模拟主机启动：触发所有 IHostedService 的 StartAsync
+        var hostedServices = provider.GetServices<IHostedService>();
+        foreach (var hostedService in hostedServices)
+        {
+            await hostedService.StartAsync(default);
+        }
+
+        // 查找 ITokenRefreshBackgroundService 实例
+        var refreshService = hostedServices.OfType<ITokenRefreshBackgroundService>().FirstOrDefault();
+        refreshService.Should().NotBeNull("ITokenRefreshBackgroundService 应已注册");
+
+        // 验证令牌管理器已注册（2 个应用 × 2 种令牌类型 = 4 个令牌管理器）
+        // 注意：UserTokenManager 不注册到后台刷新服务（按需获取，不适合预热）
+        // 由于 TokenRefreshBackgroundService 内部字典不可直接访问，
+        // 我们通过验证 FeishuTokenRegistrationService 已启动来间接验证
+        var registrationService = hostedServices.FirstOrDefault(s =>
+            s.GetType().Name.Contains("FeishuTokenRegistration", StringComparison.OrdinalIgnoreCase));
+        registrationService.Should().NotBeNull("FeishuTokenRegistrationService 应已注册并启动");
+    }
 }

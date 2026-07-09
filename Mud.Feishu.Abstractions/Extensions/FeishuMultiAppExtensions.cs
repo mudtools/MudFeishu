@@ -7,7 +7,9 @@
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Mud.Feishu.Abstractions;
+using Mud.HttpUtils;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
@@ -128,6 +130,12 @@ public static class FeishuMultiAppExtensions
     /// <summary>
     /// 检测并警告单应用模式注册
     /// </summary>
+    /// <remarks>
+    /// 检测到单应用模式的 TokenManager 注册时发出警告。
+    /// 注意：由于桥接注册使用 <c>TryAddSingleton</c>（已存在则跳过），
+    /// 单应用模式的注册实际上会优先生效，而非被忽略。
+    /// 此警告提醒用户存在配置冲突，建议统一使用多应用模式。
+    /// </remarks>
     private static void DetectAndWarnSingleAppRegistration(IServiceCollection services)
     {
         var hasTenantTokenManager = services.Any(s =>
@@ -141,8 +149,10 @@ public static class FeishuMultiAppExtensions
             // 使用 Debug 输出作为 ConfigureServices 阶段的日志手段
             // 仅在 Debug 模式下可见，生产环境建议在应用启动后检查日志确认配置正确
             System.Diagnostics.Debug.WriteLine(
-                "[MudFeishu] 检测到已注册单应用模式的TokenManager。多应用模式已启用,单应用模式的TokenManager将被忽略。" +
-                "建议移除 AddTokenManagers() 等单应用API的调用。" +
+                "[MudFeishu] 检测到已注册单应用模式的TokenManager。多应用模式已启用，由于使用 TryAddSingleton 语义，" +
+                "单应用模式的TokenManager将优先生效（而非被忽略），可能导致多应用模式下默认应用令牌管理器桥接注册被跳过。" +
+                "建议移除 AddTokenManagers() 等单应用API的调用，统一使用多应用模式。" +
+                "如需按应用键获取令牌管理器，请使用 IFeishuTokenManagerResolver。" +
                 "请参考文档: https://github.com/mudtools/MudFeishu/wiki/Multi-App-Migration");
         }
     }
@@ -241,10 +251,20 @@ public static class FeishuMultiAppExtensions
     }
 
     /// <summary>
-    /// 注册核心服务（应用管理器、默认应用上下文、配置）
+    /// 注册核心服务（应用管理器、令牌管理器解析器、默认应用上下文、配置、令牌刷新注册、桥接注册）
     /// </summary>
     /// <param name="services">服务集合</param>
     /// <param name="configs">应用配置列表</param>
+    /// <remarks>
+    /// 注册内容包括：
+    /// <list type="bullet">
+    ///   <item><see cref="IFeishuAppManager"/> - 飞书应用管理器（单例）</item>
+    ///   <item><see cref="IFeishuTokenManagerResolver"/> - 令牌管理器解析器（推荐的多应用令牌访问方式）</item>
+    ///   <item><see cref="IFeishuAppContext"/> - 默认应用上下文</item>
+    ///   <item>桥接注册 - 将默认应用的令牌管理器暴露到 DI（向后兼容，仅默认应用）</item>
+    ///   <item><see cref="FeishuTokenRegistrationService"/> - 令牌注册托管服务（NET6+，启动时注册令牌到后台刷新服务）</item>
+    /// </list>
+    /// </remarks>
     private static void RegisterCoreServices(IServiceCollection services, List<FeishuAppConfig> configs)
     {
         services.AddSingleton<IFeishuAppManager>(sp => new FeishuAppManager(
@@ -264,6 +284,43 @@ public static class FeishuMultiAppExtensions
             options.Clear();
             options.AddRange(configs);
         });
+
+        // 注册令牌管理器解析器（多应用模式下获取令牌管理器的推荐方式）
+        services.TryAddSingleton<IFeishuTokenManagerResolver, FeishuTokenManagerResolver>();
+
+        // 注册令牌注册托管服务：在应用启动时将所有应用的令牌管理器注册到 TokenRefreshHostedService
+        // 此前 TokenRefreshHostedService 虽然注册并启用，但内部令牌字典为空，后台刷新形同虚设
+#if NET6_0_OR_GREATER
+        services.AddHostedService<FeishuTokenRegistrationService>();
+#else
+        // netstandard2.0 没有 IHostedService 生命周期，在 IFeishuAppManager 工厂中提前注册令牌
+        services.AddSingleton(sp =>
+        {
+            var appManager = sp.GetRequiredService<IFeishuAppManager>();
+            var refreshService = sp.GetService<ITokenRefreshBackgroundService>();
+            if (refreshService != null)
+            {
+                foreach (var app in appManager.GetAllApps())
+                {
+                    refreshService.RegisterTokenManager(app.TenantTokenManager, $"tenant:{app.Config.AppKey}");
+                    refreshService.RegisterTokenManager(app.AppTokenManager, $"app:{app.Config.AppKey}");
+                }
+            }
+            return appManager;
+        });
+#endif
+
+        // 桥接注册（向后兼容）：将默认应用的令牌管理器暴露到 DI 容器。
+        // 注意：仅暴露默认应用的令牌管理器，非默认应用请使用 IFeishuTokenManagerResolver。
+        // 使用 TryAddSingleton 确保不覆盖应用层的自定义注册。
+        services.TryAddSingleton<ITenantTokenManager>(sp =>
+            sp.GetRequiredService<IFeishuTokenManagerResolver>().GetTenantTokenManager());
+        services.TryAddSingleton<IAppTokenManager>(sp =>
+            sp.GetRequiredService<IFeishuTokenManagerResolver>().GetAppTokenManager());
+        services.TryAddSingleton<IFeishuUserTokenManager>(sp =>
+            sp.GetRequiredService<IFeishuTokenManagerResolver>().GetUserTokenManager());
+        services.TryAddSingleton<IUserTokenManager>(sp =>
+            sp.GetRequiredService<IFeishuUserTokenManager>());
     }
 
     /// <summary>

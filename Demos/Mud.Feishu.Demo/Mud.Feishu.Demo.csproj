@@ -5,14 +5,14 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 		<RootNamespace>Mud.Feishu.Demo</RootNamespace>
 	</PropertyGroup>
-	<ItemGroup>
+	<!--<ItemGroup>
 	  <PackageReference Include="Mud.Feishu" Version="3.0.0-preview5" />
 	  <PackageReference Include="Mud.Feishu.Authentication" Version="3.0.0-preview5" />
-	</ItemGroup>
-	<!-- <ItemGroup>
+	</ItemGroup>-->
+	 <ItemGroup>
 		<ProjectReference Include="..\..\Mud.Feishu.Authentication\Mud.Feishu.Authentication.csproj" />
 		<ProjectReference Include="..\..\Mud.Feishu\Mud.Feishu.csproj" />
-	</ItemGroup> -->
+	</ItemGroup> 
 	<ItemGroup Condition="'$(TargetFramework)' == 'net8.0' or '$(TargetFramework)' == 'net9.0'">
 		<PackageReference Include="Swashbuckle.AspNetCore" Version="10.1.5" />
 	</ItemGroup>

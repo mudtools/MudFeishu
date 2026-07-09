@@ -9,7 +9,7 @@ using FeishuOAuthDemo.Models;
 using FeishuOAuthDemo.Services;
 using Microsoft.AspNetCore.Mvc;
 using Mud.Feishu;
-using Mud.HttpUtils;
+using Mud.Feishu.Abstractions;
 
 namespace FeishuOAuthDemo.Controllers;
 
@@ -31,7 +31,7 @@ namespace FeishuOAuthDemo.Controllers;
 public class OAuthController : ControllerBase
 {
     private readonly IConfiguration _configuration;
-    private readonly IUserTokenManager _userTokenManager;
+    private readonly IFeishuTokenManagerResolver _tokenManagerResolver;
     private readonly IStateStorageService _stateStorageService;
     private readonly IJwtTokenService _jwtTokenService;
     private readonly IUserService _userService;
@@ -40,7 +40,7 @@ public class OAuthController : ControllerBase
 
     public OAuthController(
         IConfiguration configuration,
-        IUserTokenManager userTokenManager,
+        IFeishuTokenManagerResolver tokenManagerResolver,
         IStateStorageService stateStorageService,
         IJwtTokenService jwtTokenService,
         IUserService userService,
@@ -48,7 +48,7 @@ public class OAuthController : ControllerBase
         ILogger<OAuthController> logger)
     {
         _configuration = configuration;
-        _userTokenManager = userTokenManager;
+        _tokenManagerResolver = tokenManagerResolver;
         _stateStorageService = stateStorageService;
         _jwtTokenService = jwtTokenService;
         _userService = userService;
@@ -143,7 +143,7 @@ public class OAuthController : ControllerBase
             var redirectUri = _configuration["OAuth:RedirectUri"];
 
             _logger.LogInformation("开始使用授权码获取用户访问令牌");
-            var tokenResult = await _userTokenManager.GetUserTokenWithCodeAsync(request.Code, redirectUri ?? string.Empty);
+            var tokenResult = await _tokenManagerResolver.GetUserTokenManager().GetUserTokenWithCodeAsync(request.Code, redirectUri ?? string.Empty);
 
             if (tokenResult == null || tokenResult.Code != 0)
             {
@@ -354,7 +354,7 @@ public class OAuthController : ControllerBase
 
             _logger.LogInformation("开始刷新用户令牌，OpenId: {OpenId}", openId);
 
-            var canRefresh = await _userTokenManager.CanRefreshTokenAsync(openId);
+            var canRefresh = await _tokenManagerResolver.GetUserTokenManager().CanRefreshTokenAsync(openId);
             if (!canRefresh)
             {
                 _logger.LogWarning("用户令牌无法刷新，需要重新授权，OpenId: {OpenId}", openId);
@@ -365,7 +365,7 @@ public class OAuthController : ControllerBase
                 });
             }
 
-            var newToken = await _userTokenManager.RefreshUserTokenAsync(openId);
+            var newToken = await _tokenManagerResolver.GetUserTokenManager().RefreshUserTokenAsync(openId);
 
             if (newToken == null || newToken.Code != 0)
             {
@@ -436,10 +436,10 @@ public class OAuthController : ControllerBase
 
             var openId = userInfo.Value.openId;
 
-            var hasValidToken = await _userTokenManager.HasValidTokenAsync(openId);
-            var canRefresh = await _userTokenManager.CanRefreshTokenAsync(openId);
+            var hasValidToken = await _tokenManagerResolver.GetUserTokenManager().HasValidTokenAsync(openId);
+            var canRefresh = await _tokenManagerResolver.GetUserTokenManager().CanRefreshTokenAsync(openId);
 
-            var tokenInfo = await _userTokenManager.GetTokenInfoAsync(openId);
+            var tokenInfo = await _tokenManagerResolver.GetUserTokenManager().GetTokenInfoAsync(openId);
 
             TokenExpirationInfo? expirationInfo = null;
             if (tokenInfo != null)
@@ -504,7 +504,7 @@ public class OAuthController : ControllerBase
 
             if (!string.IsNullOrEmpty(openId))
             {
-                var removed = await _userTokenManager.RemoveTokenAsync(openId);
+                var removed = await _tokenManagerResolver.GetUserTokenManager().RemoveTokenAsync(openId);
                 _logger.LogInformation("用户登出，OpenId: {OpenId}, 令牌缓存清除: {Removed}", openId, removed);
             }
 

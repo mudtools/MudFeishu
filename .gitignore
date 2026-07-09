@@ -21,6 +21,7 @@
 /Mud.Feishu.Test/bin
 /Mud.Feishu.Test/Properties/PublishProfiles
 *.user
+*.local.json
 /Mud.Feishu.WebSocket/bin
 /Mud.Feishu.WebSocket/bin
 /Mud.Feishu.WebSocket/obj

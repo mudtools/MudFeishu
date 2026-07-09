@@ -19,7 +19,7 @@ public class OAuthController : BaseController
 {
     private readonly IFeishuAppManager _feishuAppManager;
     private readonly IConfiguration _configuration;
-    private readonly IFeishuUserTokenManager _userTokenManager;
+    private readonly IFeishuTokenManagerResolver _tokenManagerResolver;
     private readonly IStateStorageService _stateStorageService;
     private readonly IJwtTokenService _jwtTokenService;
     private readonly IUserService _userService;
@@ -29,6 +29,7 @@ public class OAuthController : BaseController
     public OAuthController(
         IConfiguration configuration,
         IFeishuAppManager feishuAppManager,
+        IFeishuTokenManagerResolver tokenManagerResolver,
         IStateStorageService stateStorageService,
         IJwtTokenService jwtTokenService,
         IUserService userService,
@@ -37,7 +38,7 @@ public class OAuthController : BaseController
     {
         _configuration = configuration;
         _feishuAppManager = feishuAppManager;
-        _userTokenManager = _feishuAppManager.DefaultUserTokenManager;
+        _tokenManagerResolver = tokenManagerResolver;
         _stateStorageService = stateStorageService;
         _jwtTokenService = jwtTokenService;
         _userService = userService;
@@ -118,7 +119,7 @@ public class OAuthController : BaseController
 
             var redirectUri = _configuration["OAuth:RedirectUri"];
 
-            var tokenResult = await _userTokenManager.GetUserTokenWithCodeAsync(request.Code, redirectUri ?? string.Empty);
+            var tokenResult = await _tokenManagerResolver.GetUserTokenManager().GetUserTokenWithCodeAsync(request.Code, redirectUri ?? string.Empty);
 
             if (tokenResult == null || tokenResult.Code != 0)
             {
@@ -247,14 +248,14 @@ public class OAuthController : BaseController
                 return UnauthorizedResult("用户不存在");
             }
 
-            var canRefresh = await _userTokenManager.CanRefreshTokenAsync(openId);
+            var canRefresh = await _tokenManagerResolver.GetUserTokenManager().CanRefreshTokenAsync(openId);
 
             if (!canRefresh)
             {
                 return BadRequestResult("无法刷新Token，请重新登录");
             }
 
-            var newToken = await _userTokenManager.RefreshUserTokenAsync(openId);
+            var newToken = await _tokenManagerResolver.GetUserTokenManager().RefreshUserTokenAsync(openId);
 
             if (newToken == null)
             {

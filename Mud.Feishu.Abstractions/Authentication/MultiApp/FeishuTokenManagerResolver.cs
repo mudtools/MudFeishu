@@ -12,7 +12,7 @@ namespace Mud.Feishu.Abstractions;
 /// </summary>
 /// <remarks>
 /// 通过 <see cref="IFeishuAppManager"/> 解析指定应用的令牌管理器。
-/// 当 <paramref name="appKey"/> 为 null 时，返回默认应用的令牌管理器。
+/// 当 appKey 参数为 null 时，返回默认应用的令牌管理器。
 /// 这是多应用模式下获取令牌管理器的推荐方式。
 /// </remarks>
 internal sealed class FeishuTokenManagerResolver : IFeishuTokenManagerResolver
@@ -51,5 +51,32 @@ internal sealed class FeishuTokenManagerResolver : IFeishuTokenManagerResolver
         return string.IsNullOrEmpty(appKey)
             ? _appManager.DefaultUserTokenManager
             : _appManager.GetApp(appKey!).UserTokenManager;
+    }
+
+    /// <inheritdoc />
+    public ITenantTokenManager? TryGetTenantTokenManager(string? appKey = null)
+    {
+        if (string.IsNullOrEmpty(appKey))
+            return _appManager.DefaultTenantTokenManager;
+
+        return _appManager.TryGetApp(appKey!, out var appContext) ? appContext?.TenantTokenManager : null;
+    }
+
+    /// <inheritdoc />
+    public IAppTokenManager? TryGetAppTokenManager(string? appKey = null)
+    {
+        if (string.IsNullOrEmpty(appKey))
+            return _appManager.DefaultAppTokenManager;
+
+        return _appManager.TryGetApp(appKey!, out var appContext) ? appContext?.AppTokenManager : null;
+    }
+
+    /// <inheritdoc />
+    public IFeishuUserTokenManager? TryGetUserTokenManager(string? appKey = null)
+    {
+        if (string.IsNullOrEmpty(appKey))
+            return _appManager.DefaultUserTokenManager;
+
+        return _appManager.TryGetApp(appKey!, out var appContext) ? appContext?.UserTokenManager : null;
     }
 }

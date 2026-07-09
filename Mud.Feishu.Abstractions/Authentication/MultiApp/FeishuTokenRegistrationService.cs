@@ -6,7 +6,6 @@
 // -----------------------------------------------------------------------
 
 #if NET6_0_OR_GREATER
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
@@ -25,67 +24,59 @@ namespace Mud.Feishu.Abstractions;
 /// 本服务在 <see cref="StartAsync"/> 中遍历 <see cref="IFeishuAppManager"/> 中的所有应用，
 /// 将每个应用的 TenantTokenManager 和 AppTokenManager 注册到后台刷新服务。
 /// （UserTokenManager 不注册，因为用户令牌是按需获取的，不适合后台预热。）
-///
-/// 依赖 <see cref="IServiceProvider"/> 而非直接依赖 <see cref="ITokenRefreshBackgroundService"/>，
-/// 以避免循环依赖：ITokenRefreshBackgroundService 在 NET6+ 中以 IHostedService 形式注册，
-/// 直接注入会导致 IHostedService → FeishuTokenRegistrationService → ITokenRefreshBackgroundService → IHostedService 循环。
 /// </remarks>
 internal sealed class FeishuTokenRegistrationService : IHostedService
 {
     private readonly IFeishuAppManager _appManager;
-    private readonly IServiceProvider _serviceProvider;
+    private readonly ITokenRefreshBackgroundService _refreshService;
     private readonly ILogger<FeishuTokenRegistrationService> _logger;
 
     /// <summary>
     /// 初始化 <see cref="FeishuTokenRegistrationService"/> 实例
     /// </summary>
     /// <param name="appManager">飞书应用管理器</param>
-    /// <param name="serviceProvider">服务提供者</param>
+    /// <param name="refreshService">令牌刷新后台服务</param>
     /// <param name="logger">日志记录器</param>
     /// <exception cref="ArgumentNullException">当任何必需参数为 null 时抛出</exception>
     public FeishuTokenRegistrationService(
         IFeishuAppManager appManager,
-        IServiceProvider serviceProvider,
+        ITokenRefreshBackgroundService refreshService,
         ILogger<FeishuTokenRegistrationService> logger)
     {
         _appManager = appManager ?? throw new ArgumentNullException(nameof(appManager));
-        _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
+        _refreshService = refreshService ?? throw new ArgumentNullException(nameof(refreshService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     /// <inheritdoc />
     public Task StartAsync(CancellationToken cancellationToken = default)
     {
-        // 从 IHostedService 集合中查找 ITokenRefreshBackgroundService 实例
-        // NET6+ 中 TokenRefreshHostedService 以 IHostedService 形式注册，不直接暴露为 ITokenRefreshBackgroundService
-        var hostedServices = _serviceProvider.GetServices<IHostedService>();
-        var refreshService = hostedServices.OfType<ITokenRefreshBackgroundService>().FirstOrDefault();
-
-        if (refreshService == null)
-        {
-            _logger.LogWarning("未找到 ITokenRefreshBackgroundService 实例，跳过令牌管理器注册");
-            return Task.CompletedTask;
-        }
-
         var apps = _appManager.GetAllApps();
         var registered = 0;
 
         foreach (var app in apps)
         {
             // 注册租户令牌管理器
-            refreshService.RegisterTokenManager(
-                app.TenantTokenManager,
-                $"tenant:{app.Config.AppKey}");
-            registered++;
+            if (app.TenantTokenManager.SupportsBackgroundRefresh)
+            {
+                _refreshService.RegisterTokenManager(
+                    app.TenantTokenManager,
+                    $"tenant:{app.Config.AppKey}");
+                registered++;
+            }
 
             // 注册应用令牌管理器
-            refreshService.RegisterTokenManager(
-                app.AppTokenManager,
-                $"app:{app.Config.AppKey}");
-            registered++;
+            if (app.AppTokenManager.SupportsBackgroundRefresh)
+            {
+                _refreshService.RegisterTokenManager(
+                    app.AppTokenManager,
+                    $"app:{app.Config.AppKey}");
+                registered++;
+            }
 
             // 注意：不注册 UserTokenManager
             // 用户令牌是按需获取的（通过 OAuth 授权码换取），不适合后台预热
+            // UserTokenManagerBase.SupportsBackgroundRefresh 已为 false，即使误注册也会被防御性跳过
         }
 
         _logger.LogInformation(

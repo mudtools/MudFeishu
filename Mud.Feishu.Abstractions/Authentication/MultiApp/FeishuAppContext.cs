@@ -26,6 +26,7 @@ namespace Mud.Feishu.Abstractions;
 public class FeishuAppContext : IFeishuAppContext, IDisposable
 {
     private bool _disposed;
+    private readonly IServiceProvider? _serviceProvider;
     /// <summary>
     /// HTTP客户端
     /// </summary>
@@ -47,15 +48,18 @@ public class FeishuAppContext : IFeishuAppContext, IDisposable
             return TenantTokenManager;
 
         var trimmed = tokenType.Trim();
-        if (trimmed.Equals("TenantAccessToken", StringComparison.OrdinalIgnoreCase))
+        if (trimmed.Equals(FeishuTokenTypes.TenantAccessToken, StringComparison.OrdinalIgnoreCase))
             return TenantTokenManager;
-        if (trimmed.Equals("AppAccessToken", StringComparison.OrdinalIgnoreCase))
+        if (trimmed.Equals(FeishuTokenTypes.AppAccessToken, StringComparison.OrdinalIgnoreCase))
             return AppTokenManager;
-        if (trimmed.Equals("UserAccessToken", StringComparison.OrdinalIgnoreCase))
+        if (trimmed.Equals(FeishuTokenTypes.UserAccessToken, StringComparison.OrdinalIgnoreCase))
             return UserTokenManager;
 
         throw new InvalidOperationException(
-            $"不支持的令牌类型: '{tokenType}'。支持的类型: TenantAccessToken, AppAccessToken, UserAccessToken");
+            $"不支持的令牌类型: '{tokenType}'。支持的类型: " +
+            $"{FeishuTokenTypes.TenantAccessToken}, " +
+            $"{FeishuTokenTypes.AppAccessToken}, " +
+            $"{FeishuTokenTypes.UserAccessToken}");
     }
 
     /// <summary>
@@ -78,10 +82,16 @@ public class FeishuAppContext : IFeishuAppContext, IDisposable
     /// <summary>
     /// 从应用上下文中获取指定类型的服务实例
     /// </summary>
+    /// <remarks>
+    /// 优先返回上下文直接持有的服务（高性能快速路径），
+    /// 未命中时回退到 DI 容器（<see cref="IServiceProvider"/>）进行解析。
+    /// 当 <see cref="IServiceProvider"/> 为 null 时优雅降级返回 null。
+    /// </remarks>
     /// <typeparam name="T">要获取的服务类型</typeparam>
     /// <returns>指定类型的服务实例；如果服务未注册则返回 null</returns>
     public T? GetService<T>() where T : class
     {
+        // 优先返回上下文直接持有的服务（高性能路径）
         return typeof(T) switch
         {
             var t when t == typeof(IFeishuAuthentication) => Authentication as T,
@@ -89,7 +99,7 @@ public class FeishuAppContext : IFeishuAppContext, IDisposable
             var t when t == typeof(ITenantTokenManager) => TenantTokenManager as T,
             var t when t == typeof(IAppTokenManager) => AppTokenManager as T,
             var t when t == typeof(IFeishuUserTokenManager) => UserTokenManager as T,
-            _ => null
+            _ => _serviceProvider?.GetService(typeof(T)) as T  // 回退到 DI 容器
         };
     }
 
@@ -145,6 +155,7 @@ public class FeishuAppContext : IFeishuAppContext, IDisposable
     /// <param name="userTokenManager">用户令牌管理器</param>
     /// <param name="authenticationApi">认证API客户端</param>
     /// <param name="httpClient">HTTP客户端</param>
+    /// <param name="serviceProvider">服务提供者（可选），用于 <see cref="GetService{T}"/> 回退到 DI 容器解析</param>
     /// <exception cref="ArgumentNullException">当任何必需参数为null时抛出</exception>
     public FeishuAppContext(
         FeishuAppConfig config,
@@ -152,7 +163,8 @@ public class FeishuAppContext : IFeishuAppContext, IDisposable
         IAppTokenManager appTokenManager,
         IFeishuUserTokenManager userTokenManager,
         IFeishuAuthentication authenticationApi,
-        IEnhancedHttpClient httpClient)
+        IEnhancedHttpClient httpClient,
+        IServiceProvider? serviceProvider = null)
     {
         Config = config ?? throw new ArgumentNullException(nameof(config));
         TenantTokenManager = tenantTokenManager ?? throw new ArgumentNullException(nameof(tenantTokenManager));
@@ -160,6 +172,7 @@ public class FeishuAppContext : IFeishuAppContext, IDisposable
         UserTokenManager = userTokenManager ?? throw new ArgumentNullException(nameof(userTokenManager));
         Authentication = authenticationApi ?? throw new ArgumentNullException(nameof(authenticationApi));
         HttpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
+        _serviceProvider = serviceProvider;
     }
 
     /// <summary>

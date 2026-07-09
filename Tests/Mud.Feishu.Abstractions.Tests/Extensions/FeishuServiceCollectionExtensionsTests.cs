@@ -503,8 +503,49 @@ public class FeishuServiceCollectionExtensionsTests
     }
 
     /// <summary>
-    /// SR-P0-5 验证：应用启动后，ITokenRefreshBackgroundService 应已注册令牌管理器。
+    /// SR-P0-5 验证：AddFeishuApp 后，ITokenRefreshBackgroundService 应可直接从 DI 解析。
+    /// 业务场景：Mud.HttpUtils 改进后，TokenRefreshHostedService 同时注册为 IHostedService 和 ITokenRefreshBackgroundService，
+    /// 消费方可直接注入 ITokenRefreshBackgroundService，无需遍历 GetServices&lt;IHostedService&gt;()。
+    /// </summary>
+    [Fact]
+    public void AddFeishuApp_ShouldExpose_ITokenRefreshBackgroundService_Directly()
+    {
+        var services = CreateServiceCollection();
+        var configs = CreateDefaultConfigs();
+        services.AddFeishuApp(configs);
+        using var provider = services.BuildServiceProvider();
+
+        var refreshService = provider.GetService<ITokenRefreshBackgroundService>();
+        refreshService.Should().NotBeNull(
+            "ITokenRefreshBackgroundService 应可直接从 DI 解析（Mud.HttpUtils 改进：同时注册为 IHostedService 和 ITokenRefreshBackgroundService）");
+    }
+
+    /// <summary>
+    /// SR-P0-5 验证：ITokenRefreshBackgroundService 直接解析与 IHostedService 中的实例应为同一对象。
+    /// 业务场景：确保 AddHostedService 工厂和 AddSingleton 工厂指向同一单例实例，避免出现两个独立的刷新服务。
+    /// </summary>
+    [Fact]
+    public void AddFeishuApp_ITokenRefreshBackgroundService_ShouldBeSameInstance_AsHostedService()
+    {
+        var services = CreateServiceCollection();
+        var configs = CreateDefaultConfigs();
+        services.AddFeishuApp(configs);
+        using var provider = services.BuildServiceProvider();
+
+        var directRefreshService = provider.GetRequiredService<ITokenRefreshBackgroundService>();
+        var hostedRefreshService = provider.GetServices<IHostedService>()
+            .OfType<ITokenRefreshBackgroundService>()
+            .FirstOrDefault();
+
+        hostedRefreshService.Should().NotBeNull("TokenRefreshHostedService 应作为 IHostedService 注册");
+        directRefreshService.Should().BeSameAs(hostedRefreshService,
+            "直接解析的 ITokenRefreshBackgroundService 与 IHostedService 中的实例应为同一单例");
+    }
+
+    /// <summary>
+    /// SR-P0-5 验证：应用启动后，FeishuTokenRegistrationService 应成功执行，令牌管理器应已注册到后台刷新服务。
     /// 业务场景：FeishuTokenRegistrationService 在 StartAsync 中将所有应用的令牌管理器注册到后台刷新服务。
+    /// 此前该服务依赖 IServiceProvider 变通方案查找 ITokenRefreshBackgroundService，现在直接注入。
     /// </summary>
     [Fact]
     public async Task AddFeishuApp_ShouldRegisterTokenManagers_ToRefreshService_OnStartup()
@@ -529,23 +570,26 @@ public class FeishuServiceCollectionExtensionsTests
         services.AddFeishuApp(configs);
         using var provider = services.BuildServiceProvider();
 
+        // 直接解析 ITokenRefreshBackgroundService（Mud.HttpUtils 改进后支持直接注入）
+        var refreshService = provider.GetRequiredService<ITokenRefreshBackgroundService>();
+        refreshService.Should().NotBeNull("ITokenRefreshBackgroundService 应可直接解析");
+
         // 模拟主机启动：触发所有 IHostedService 的 StartAsync
+        // 注意：FeishuTokenRegistrationService 直接注入 ITokenRefreshBackgroundService，无需遍历 IHostedService
         var hostedServices = provider.GetServices<IHostedService>();
         foreach (var hostedService in hostedServices)
         {
             await hostedService.StartAsync(default);
         }
 
-        // 查找 ITokenRefreshBackgroundService 实例
-        var refreshService = hostedServices.OfType<ITokenRefreshBackgroundService>().FirstOrDefault();
-        refreshService.Should().NotBeNull("ITokenRefreshBackgroundService 应已注册");
-
-        // 验证令牌管理器已注册（2 个应用 × 2 种令牌类型 = 4 个令牌管理器）
-        // 注意：UserTokenManager 不注册到后台刷新服务（按需获取，不适合预热）
-        // 由于 TokenRefreshBackgroundService 内部字典不可直接访问，
-        // 我们通过验证 FeishuTokenRegistrationService 已启动来间接验证
+        // 验证 FeishuTokenRegistrationService 已成功启动（未抛出异常即表示令牌注册成功）
         var registrationService = hostedServices.FirstOrDefault(s =>
             s.GetType().Name.Contains("FeishuTokenRegistration", StringComparison.OrdinalIgnoreCase));
         registrationService.Should().NotBeNull("FeishuTokenRegistrationService 应已注册并启动");
+
+        // 验证 refreshService 和 hosted service 中的实例为同一对象
+        var hostedRefreshService = hostedServices.OfType<ITokenRefreshBackgroundService>().FirstOrDefault();
+        hostedRefreshService.Should().BeSameAs(refreshService,
+            "FeishuTokenRegistrationService 注入的 ITokenRefreshBackgroundService 应与 DI 容器中的单例一致");
     }
 }

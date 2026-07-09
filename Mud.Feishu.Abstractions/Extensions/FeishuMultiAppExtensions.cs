@@ -262,15 +262,40 @@ public static class FeishuMultiAppExtensions
     ///   <item><see cref="IFeishuTokenManagerResolver"/> - 令牌管理器解析器（推荐的多应用令牌访问方式）</item>
     ///   <item><see cref="IFeishuAppContext"/> - 默认应用上下文</item>
     ///   <item>桥接注册 - 将默认应用的令牌管理器暴露到 DI（向后兼容，仅默认应用）</item>
-    ///   <item><see cref="FeishuTokenRegistrationService"/> - 令牌注册托管服务（NET6+，启动时注册令牌到后台刷新服务）</item>
+    ///   <item>FeishuTokenRegistrationService - 令牌注册托管服务（NET6+，启动时注册令牌到后台刷新服务）</item>
     /// </list>
     /// </remarks>
     private static void RegisterCoreServices(IServiceCollection services, List<FeishuAppConfig> configs)
     {
+#if NET6_0_OR_GREATER
+        // NET6+：使用 FeishuTokenRegistrationService（IHostedService）在应用启动时注册令牌
         services.AddSingleton<IFeishuAppManager>(sp => new FeishuAppManager(
             sp,
             configs,
             sp.GetRequiredService<ILogger<FeishuAppManager>>()));
+#else
+        // netstandard2.0：没有 IHostedService 生命周期，在 IFeishuAppManager 工厂中提前注册令牌
+        // 注意：不能添加第二个 IFeishuAppManager 注册（会导致 GetRequiredService<IFeishuAppManager> 无限递归）
+        services.AddSingleton<IFeishuAppManager>(sp =>
+        {
+            var appManager = new FeishuAppManager(
+                sp,
+                configs,
+                sp.GetRequiredService<ILogger<FeishuAppManager>>());
+
+            var refreshService = sp.GetService<ITokenRefreshBackgroundService>();
+            if (refreshService != null)
+            {
+                foreach (var app in appManager.GetAllApps())
+                {
+                    refreshService.RegisterTokenManager(app.TenantTokenManager, $"tenant:{app.Config.AppKey}");
+                    refreshService.RegisterTokenManager(app.AppTokenManager, $"app:{app.Config.AppKey}");
+                }
+            }
+
+            return appManager;
+        });
+#endif
 
         services.AddSingleton(sp =>
         {
@@ -292,22 +317,6 @@ public static class FeishuMultiAppExtensions
         // 此前 TokenRefreshHostedService 虽然注册并启用，但内部令牌字典为空，后台刷新形同虚设
 #if NET6_0_OR_GREATER
         services.AddHostedService<FeishuTokenRegistrationService>();
-#else
-        // netstandard2.0 没有 IHostedService 生命周期，在 IFeishuAppManager 工厂中提前注册令牌
-        services.AddSingleton(sp =>
-        {
-            var appManager = sp.GetRequiredService<IFeishuAppManager>();
-            var refreshService = sp.GetService<ITokenRefreshBackgroundService>();
-            if (refreshService != null)
-            {
-                foreach (var app in appManager.GetAllApps())
-                {
-                    refreshService.RegisterTokenManager(app.TenantTokenManager, $"tenant:{app.Config.AppKey}");
-                    refreshService.RegisterTokenManager(app.AppTokenManager, $"app:{app.Config.AppKey}");
-                }
-            }
-            return appManager;
-        });
 #endif
 
         // 桥接注册（向后兼容）：将默认应用的令牌管理器暴露到 DI 容器。

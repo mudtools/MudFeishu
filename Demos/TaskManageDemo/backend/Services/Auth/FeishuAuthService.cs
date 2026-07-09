@@ -19,7 +19,7 @@ public class FeishuAuthService : IFeishuAuthService
 {
     private readonly TaskManageDbContext _dbContext;
     private readonly IFeishuAppManager _feishuAppManager;
-    private readonly IFeishuUserTokenManager _userTokenManager;
+    private readonly IFeishuTokenManagerResolver _tokenManagerResolver;
     private readonly IFeishuUserV3User _feishuUserApi;
     private readonly IJwtTokenService _jwtTokenService;
     private readonly IPermissionService _permissionService;
@@ -29,6 +29,7 @@ public class FeishuAuthService : IFeishuAuthService
     public FeishuAuthService(
         TaskManageDbContext dbContext,
         IFeishuAppManager feishuAppManager,
+        IFeishuTokenManagerResolver tokenManagerResolver,
         IFeishuUserV3User feishuUserApi,
         IJwtTokenService jwtTokenService,
         IPermissionService permissionService,
@@ -37,7 +38,7 @@ public class FeishuAuthService : IFeishuAuthService
     {
         _dbContext = dbContext;
         _feishuAppManager = feishuAppManager;
-        _userTokenManager = feishuAppManager.DefaultUserTokenManager;
+        _tokenManagerResolver = tokenManagerResolver;
         _feishuUserApi = feishuUserApi;
         _jwtTokenService = jwtTokenService;
         _permissionService = permissionService;
@@ -87,7 +88,7 @@ public class FeishuAuthService : IFeishuAuthService
             var redirectUri = _configuration["OAuth:RedirectUri"];
 
             // 使用授权码获取用户访问令牌
-            var tokenResult = await _userTokenManager.GetUserTokenWithCodeAsync(code, redirectUri ?? string.Empty);
+            var tokenResult = await _tokenManagerResolver.GetUserTokenManager().GetUserTokenWithCodeAsync(code, redirectUri ?? string.Empty);
 
             if (tokenResult == null || tokenResult.Code != 0)
             {
@@ -192,14 +193,14 @@ public class FeishuAuthService : IFeishuAuthService
                 return null;
             }
 
-            var canRefresh = await _userTokenManager.CanRefreshTokenAsync(openId);
+            var canRefresh = await _tokenManagerResolver.GetUserTokenManager().CanRefreshTokenAsync(openId);
             if (!canRefresh)
             {
                 _logger.LogWarning("无法刷新Token，请重新登录: {OpenId}", openId);
                 return null;
             }
 
-            var newToken = await _userTokenManager.RefreshUserTokenAsync(openId);
+            var newToken = await _tokenManagerResolver.GetUserTokenManager().RefreshUserTokenAsync(openId);
             if (newToken == null)
             {
                 _logger.LogError("刷新Token失败: {OpenId}", openId);
@@ -294,7 +295,7 @@ public class FeishuAuthService : IFeishuAuthService
         {
             var redirectUri = _configuration["OAuth:RedirectUri"];
 
-            var tokenResult = await _userTokenManager.GetUserTokenWithCodeAsync(code, redirectUri ?? string.Empty);
+            var tokenResult = await _tokenManagerResolver.GetUserTokenManager().GetUserTokenWithCodeAsync(code, redirectUri ?? string.Empty);
 
             if (tokenResult == null || tokenResult.Code != 0)
             {

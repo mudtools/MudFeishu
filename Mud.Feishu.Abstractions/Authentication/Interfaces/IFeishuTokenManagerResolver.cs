@@ -66,4 +66,25 @@ public interface IFeishuTokenManagerResolver
     /// <returns>指定应用的用户令牌管理器</returns>
     /// <exception cref="InvalidOperationException">当指定应用不存在时抛出</exception>
     IFeishuUserTokenManager GetUserTokenManager(string? appKey = null);
+
+    /// <summary>
+    /// 尝试获取租户令牌管理器
+    /// </summary>
+    /// <param name="appKey">应用键，为 null 时使用默认应用</param>
+    /// <returns>指定应用的租户令牌管理器；如果应用不存在则返回 null</returns>
+    ITenantTokenManager? TryGetTenantTokenManager(string? appKey = null);
+
+    /// <summary>
+    /// 尝试获取应用令牌管理器
+    /// </summary>
+    /// <param name="appKey">应用键，为 null 时使用默认应用</param>
+    /// <returns>指定应用的应用令牌管理器；如果应用不存在则返回 null</returns>
+    IAppTokenManager? TryGetAppTokenManager(string? appKey = null);
+
+    /// <summary>
+    /// 尝试获取用户令牌管理器
+    /// </summary>
+    /// <param name="appKey">应用键，为 null 时使用默认应用</param>
+    /// <returns>指定应用的用户令牌管理器；如果应用不存在则返回 null</returns>
+    IFeishuUserTokenManager? TryGetUserTokenManager(string? appKey = null);
 }

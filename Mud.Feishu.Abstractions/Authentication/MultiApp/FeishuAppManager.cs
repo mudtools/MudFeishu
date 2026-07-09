@@ -204,7 +204,8 @@ internal class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuA
             appTokenManager,
             userTokenManager,
             authenticationApi,
-            httpClient);
+            httpClient,
+            _serviceProvider);
     }
 
     private IEnhancedHttpClient CreateHttpClient(FeishuAppConfig config)

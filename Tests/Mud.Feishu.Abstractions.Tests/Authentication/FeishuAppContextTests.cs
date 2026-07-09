@@ -182,12 +182,13 @@ public class FeishuAppContextTests : IDisposable
         // Arrange
         var services = new ServiceCollection();
 
-        var httpClientResolverMock = new Mock<IHttpClientResolver>();
-        httpClientResolverMock
-            .Setup(x => x.GetClient(It.IsAny<string>()))
-            .Returns<string>(_ => new Mock<IEnhancedHttpClient>().Object);
+        // 方案 A 重构后，CreateAppContext 直接使用 IHttpClientFactory。
+        var httpClientFactoryMock = new Mock<IHttpClientFactory>();
+        httpClientFactoryMock
+            .Setup(x => x.CreateClient(It.IsAny<string>()))
+            .Returns(new HttpClient());
 
-        services.AddSingleton(httpClientResolverMock.Object);
+        services.AddSingleton(httpClientFactoryMock.Object);
         services.AddSingleton<IFeishuAuthentication>(new Mock<IFeishuAuthentication>().Object);
         services.AddSingleton<IFeishuCurrentUserContext, CurrentUserContext>();
         services.AddSingleton(_ => HttpClientExtensions.GetDefaultJsonSerializerOptions());

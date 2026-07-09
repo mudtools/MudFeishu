@@ -83,12 +83,11 @@ public static class FeishuServiceCollectionExtensions
             // 此前未传该参数（默认 false），导致默认 IEnhancedHttpClient 隐式绑定到 configs 列表中的第一个 AppKey，
             // 而非 IsDefault=true 的应用。现在通过显式传入确保默认 HttpClient 与 IsDefault=true 严格对应。
             bool isDefault = config.IsDefault;
-            var appKey = config.AppKey;  // 闭包捕获，供 Handler 工厂使用
+            var appKey = config.AppKey;
 
-            // C-1 修复：为每个命名 HttpClient 注册 TokenRecoveryDelegatingHandler。
-            // 生成器在非默认注入模式下生成 TokenRecoveryContext 并写入请求属性，
-            // TokenRecoveryDelegatingHandler 消费该属性并在 401 时自动刷新令牌重试。
-            // 使用 LazyFeishuTokenRecoveryHandler 延迟解析 IFeishuAppManager，避免构造期间的循环依赖。
+            // 令牌恢复由 FeishuAppManager.CreateAppContext 中创建的 TokenRecoveryEnhancedClient 实现，
+            // 不再需要在 Handler 管道中注册 LazyFeishuTokenRecoveryHandler。
+            // 这消除了 IFeishuAppManager 构造期间的循环依赖问题。
             services.AddMudHttpClient(
                 clientName,
                 client =>
@@ -98,8 +97,7 @@ public static class FeishuServiceCollectionExtensions
                     client.DefaultRequestHeaders.Add("User-Agent", "MudFeishuClient/1.0");
                     client.Timeout = TimeSpan.FromSeconds(timeOut);
                 },
-                setAsDefault: isDefault)
-                .AddHttpMessageHandler(sp => new LazyFeishuTokenRecoveryHandler(sp, appKey));
+                setAsDefault: isDefault);
         }
 
         var defaultConfig = configs.FirstOrDefault(c => c.IsDefault) ?? configs.FirstOrDefault();

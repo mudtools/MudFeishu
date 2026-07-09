@@ -23,8 +23,9 @@ namespace Mud.Feishu.Abstractions;
 /// 每个应用拥有独立的配置、缓存和TokenManager实例。
 /// 继承 DefaultAppManager&lt;FeishuAppContext&gt; 获得通用的应用管理能力。
 /// <para>
-/// M-1 修复：采用懒加载（Lazy Init）策略，构造函数仅预创建默认应用以尽早发现配置错误，
-/// 其余应用在首次访问时按需创建，减少启动延迟并提供更清晰的错误定位。
+/// M-1 修复：采用懒加载（Lazy Init）策略，构造函数仅预注册所有应用的 Lazy 上下文并通过反射预置基类
+/// <c>_defaultAppKey</c> 字段，不立即创建任何应用实例。应用在首次访问 GetApp/GetDefaultApp/TryGetApp 时按需创建，
+/// 减少启动延迟并避免构造阶段强制要求所有 DI 依赖（如 IMemoryCache）就绪。
 /// </para>
 /// <para>
 /// M-2 修复：类可见性从 internal 改为 public，允许用户继承并覆盖 <see cref="CreateAppContext"/> 以支持自定义 <see cref="IFeishuAppContext"/>。
@@ -355,14 +356,22 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
         var currentUserContext = _serviceProvider.GetService<IFeishuCurrentUserContext>();
         var jsonSerializerOptions = Options.Create(_serviceProvider.GetRequiredService<JsonSerializerOptions>());
         var memoryCache = _serviceProvider.GetRequiredService<IMemoryCache>();
+        var clientName = $"feishu-{config.AppKey}";
 
-        var httpClient = CreateHttpClient(config);
+        // === 步骤 1：创建基础 HttpClient（不含恢复，供 AuthenticationApi 使用） ===
+        var httpClientFactory = _serviceProvider.GetRequiredService<IHttpClientFactory>();
+        var encryptionProvider = _serviceProvider.GetService<IEncryptionProvider>();
+        var enhancedOptions = CreateEnhancedHttpClientOptions(clientName);
 
-        // 始终通过 ActivatorUtilities 创建带 httpClient 的实例，确保 HttpClient 与 AppKey 一一对应。
+        var basicHttpClient = new HttpClientFactoryEnhancedClient(
+            httpClientFactory, clientName, encryptionProvider, enhancedOptions);
+
+        // === 步骤 2：创建 AuthenticationApi（使用基础 HttpClient） ===
         var authenticationApi = (IFeishuAuthentication)ActivatorUtilities.CreateInstance(
-            _serviceProvider, typeof(FeishuAuthentication), jsonSerializerOptions, httpClient);
+            _serviceProvider, typeof(FeishuAuthentication), jsonSerializerOptions, basicHttpClient);
         var options = Options.Create(config);
 
+        // === 步骤 3：创建 TokenManager（依赖 AuthenticationApi） ===
         // C-2 修复：为每个应用创建独立的 FeishuTokenStore / FeishuUserTokenStore 实例（含 AppKey 隔离维度）
         // 若 DI 中注册的是自定义 ITokenStore（如 RedisTokenStore），则直接使用 DI 实例（假设其已处理多应用隔离）
         ITokenStore tokenStore;
@@ -400,21 +409,56 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
             _serviceProvider.GetRequiredService<ILogger<UserTokenManager>>(),
             userTokenStore);
 
+        // === 步骤 4：创建恢复 HttpClient（含令牌恢复，供业务 API 使用） ===
+        var recoveryOptions = _serviceProvider.GetService<IOptions<TokenRecoveryOptions>>()?.Value;
+        var recoveryLogger = _serviceProvider.GetService<ILogger<TokenRecoveryEnhancedClient>>();
+
+        var recoveryExecutor = new TokenRecoveryExecutor(
+            tenantTokenManager,
+            userTokenManager as IUserTokenManager,
+            currentUserContext as ICurrentUserContext,
+            recoveryOptions,
+            recoveryLogger);
+
+        var recoveryHttpClient = new TokenRecoveryEnhancedClient(
+            httpClientFactory, clientName, recoveryExecutor,
+            encryptionProvider, enhancedOptions);
+
+        // === 步骤 5：创建应用上下文（使用恢复 HttpClient） ===
         return new FeishuAppContext(
             config,
             tenantTokenManager,
             appTokenManager,
             userTokenManager,
             authenticationApi,
-            httpClient,
+            recoveryHttpClient,
             _serviceProvider);
     }
 
-    private IEnhancedHttpClient CreateHttpClient(FeishuAppConfig config)
+    /// <summary>
+    /// 从 DI 容器构建 EnhancedHttpClientOptions，与 AddMudHttpClient 内部 CreateEnhancedClient 逻辑保持一致。
+    /// </summary>
+    private EnhancedHttpClientOptions CreateEnhancedHttpClientOptions(string clientName)
     {
-        var httpClientResolver = _serviceProvider.GetRequiredService<IHttpClientResolver>();
-        var clientName = $"feishu-{config.AppKey}";
-        return httpClientResolver.GetClient(clientName);
+        var options = new EnhancedHttpClientOptions
+        {
+            Logger = _serviceProvider.GetService<ILogger<HttpClientFactoryEnhancedClient>>(),
+            RequestInterceptors = _serviceProvider.GetServices<IHttpRequestInterceptor>(),
+            ResponseInterceptors = _serviceProvider.GetServices<IHttpResponseInterceptor>(),
+            SensitiveDataMasker = _serviceProvider.GetService<ISensitiveDataMasker>()
+        };
+
+        var optionsMonitor = _serviceProvider.GetService<IOptionsMonitor<MudHttpClientApplicationOptions>>();
+        if (optionsMonitor != null)
+        {
+            var appOptions = optionsMonitor.CurrentValue;
+            if (appOptions.Clients.TryGetValue(clientName, out var clientOptions))
+            {
+                options.AllowCustomBaseUrls = clientOptions.AllowCustomBaseUrls;
+            }
+        }
+
+        return options;
     }
 
     private void WarnResilienceConfigMismatch(IList<FeishuAppConfig> configs)

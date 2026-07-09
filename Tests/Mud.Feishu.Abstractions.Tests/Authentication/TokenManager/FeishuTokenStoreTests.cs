@@ -162,6 +162,33 @@ public class FeishuTokenStoreTests : IDisposable
         var result = await _sut.GetTokenTypesAsync();
         Assert.Empty(result);
     }
+
+    [Fact]
+    public async Task SetAccessTokenAsync_ShouldThrowArgumentOutOfRangeException_WhenExpiresInSecondsIsZero()
+    {
+        // M-3 修复：非法 expiry 值（0 或负数）应抛出 ArgumentOutOfRangeException，保留原始 API 契约。
+        var ex = await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
+            _sut.SetAccessTokenAsync("TenantAccessToken", "token", 0));
+        Assert.Equal("expiresInSeconds", ex.ParamName);
+    }
+
+    [Fact]
+    public async Task SetAccessTokenAsync_ShouldThrowArgumentOutOfRangeException_WhenExpiresInSecondsIsNegative()
+    {
+        var ex = await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
+            _sut.SetAccessTokenAsync("TenantAccessToken", "token", -100));
+        Assert.Equal("expiresInSeconds", ex.ParamName);
+    }
+
+    [Fact]
+    public async Task SetAccessTokenAsync_ShouldSucceed_WhenExpiresInSecondsIsOne()
+    {
+        // M-3 修复边界：expiresInSeconds=1 时 (long)(1 * 0.9)=0，Math.Max(1, ...) 防止 IMemoryCache 抛异常。
+        await _sut.SetAccessTokenAsync("TenantAccessToken", "boundary-token", 1);
+
+        var result = await _sut.GetAccessTokenAsync("TenantAccessToken");
+        Assert.Equal("boundary-token", result);
+    }
 }
 
 public class FeishuUserTokenStoreTests : IDisposable

@@ -12,7 +12,7 @@ namespace Mud.Feishu;
 /// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/task-v2/tasklist/overview"/></para>
 /// </summary> 
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Task", InheritedFrom = nameof(FeishuV2TaskList))]
-[Token("UserAccessToken", Name = Consts.Authorization)]
+[Token(FeishuTokenTypes.UserAccessToken, Name = Consts.Authorization)]
 public interface IFeishuUserV2TaskList : IFeishuV2TaskList, ICurrentUserId
 {
 }

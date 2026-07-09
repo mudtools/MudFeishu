@@ -12,7 +12,7 @@ namespace Mud.Feishu;
 /// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/docs/CommentAPI/list"/></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Drive", InheritedFrom = nameof(FeishuV1DriveComments))]
-[Token("TenantAccessToken", Name = Consts.Authorization)]
+[Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]
 public interface IFeishuTenantV1DriveComments : IFeishuV1DriveComments
 {
 }

@@ -42,12 +42,12 @@ public class FeishuAppContext : IFeishuAppContext, IMudAppContext, IDisposable
     {
         if (string.IsNullOrEmpty(tokenType))
             return TenantTokenManager; // 默认返回租户令牌管理器
-        tokenType = tokenType.Trim().ToLower();
+        tokenType = tokenType.Trim();
         return tokenType switch
         {
-            "tenantaccesstoken" => TenantTokenManager,
-            "appaccesstoken" => AppTokenManager,
-            "useraccesstoken" => UserTokenManager,
+            FeishuTokenTypes.TenantAccessToken => TenantTokenManager,
+            FeishuTokenTypes.AppAccessToken => AppTokenManager,
+            FeishuTokenTypes.UserAccessToken => UserTokenManager,
             _ => throw new ArgumentOutOfRangeException(nameof(tokenType), $"Unsupported token type: {tokenType}")
         };
     }

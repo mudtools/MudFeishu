@@ -15,7 +15,7 @@ namespace Mud.Feishu;
 /// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/contact-v3/user/field-overview"/></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Organization", InheritedFrom = nameof(FeishuV3User))]
-[Token("TenantAccessToken", Name = Consts.Authorization)]
+[Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]
 public interface IFeishuTenantV3User : IFeishuV3User
 {
     /// <summary>

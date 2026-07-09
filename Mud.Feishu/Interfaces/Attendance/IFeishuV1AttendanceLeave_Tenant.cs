@@ -14,7 +14,7 @@ namespace Mud.Feishu;
 /// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/attendance-v1/leave_employ_expire_record/get"/></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Attendance")]
-[Token("TenantAccessToken", Name = Consts.Authorization)]
+[Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]
 public interface IFeishuTenantV1AttendanceLeave : IFeishuAppContextSwitcher
 {
     /// <summary>

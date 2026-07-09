@@ -13,7 +13,7 @@ namespace Mud.Feishu;
 /// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/contact-v3/work_city/work-city-resources-introduction"/></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Organization", InheritedFrom = nameof(FeishuV3WorkCity))]
-[Token("UserAccessToken", Name = Consts.Authorization)]
+[Token(FeishuTokenTypes.UserAccessToken, Name = Consts.Authorization)]
 public interface IFeishuUserV3WorkCity : IFeishuV3WorkCity, ICurrentUserId
 {
 }

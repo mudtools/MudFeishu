@@ -15,7 +15,7 @@ namespace Mud.Feishu;
 /// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/mail-v1/user_mailbox-event/subscribe"/></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Mail")]
-[Token("UserAccessToken", Name = Consts.Authorization)]
+[Token(FeishuTokenTypes.UserAccessToken, Name = Consts.Authorization)]
 public interface IFeishuUserV1Mail : IFeishuAppContextSwitcher, ICurrentUserId
 {
 

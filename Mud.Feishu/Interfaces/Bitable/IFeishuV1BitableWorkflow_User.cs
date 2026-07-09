@@ -14,7 +14,7 @@ namespace Mud.Feishu.Interfaces;
 /// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/docs/bitable-v1/app-workflow/list"/></para>
 /// </summary>
 [HttpClientApi(RegistryGroupName = "Bitable", TokenManage = nameof(IFeishuAppManager), InheritedFrom = nameof(FeishuV1BitableWorkflow))]
-[Token("UserAccessToken", Name = Consts.Authorization)]
+[Token(FeishuTokenTypes.UserAccessToken, Name = Consts.Authorization)]
 public interface IFeishuUserV1BitableWorkflow : IFeishuV1BitableWorkflow, ICurrentUserId
 {
 

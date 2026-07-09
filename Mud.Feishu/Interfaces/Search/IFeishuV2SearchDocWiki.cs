@@ -15,7 +15,7 @@ namespace Mud.Feishu.Interfaces;
 /// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/search-v2/doc_wiki/search"/></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), IsAbstract = true)]
-[Token("TenantAccessToken", Name = Consts.Authorization)]
+[Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]
 public interface IFeishuV2SearchDocWiki : IFeishuAppContextSwitcher
 {
 

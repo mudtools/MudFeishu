@@ -76,13 +76,13 @@ internal class UserTokenManager : IFeishuUserTokenManager
         if (tokenInfo != null && tokenInfo.IsAccessTokenValid(_options.TokenRefreshThreshold))
         {
             _logger.LogDebug("Using cached access token for user {UserId}", userId);
-            FeishuMetricsHelper.RecordTokenFetch("UserAccessToken", fromCache: true);
+            FeishuMetricsHelper.RecordTokenFetch(FeishuTokenTypes.UserAccessToken, fromCache: true);
             return TokenUtils.FormatBearerToken(tokenInfo.AccessToken);
         }
 
         try
         {
-            FeishuMetricsHelper.RecordTokenFetch("UserAccessToken", fromCache: false);
+            FeishuMetricsHelper.RecordTokenFetch(FeishuTokenTypes.UserAccessToken, fromCache: false);
 
             var lazyTask = _tokenLoadingTasks.GetOrAdd(cacheKey, _ => new Lazy<Task<string?>>(
                 () => GetOrRefreshTokenInternalAsync(userId!, cancellationToken),

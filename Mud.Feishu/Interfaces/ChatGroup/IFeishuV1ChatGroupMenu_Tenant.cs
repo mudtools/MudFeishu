@@ -16,7 +16,7 @@ namespace Mud.Feishu;
 /// 接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/group/chat-menu_tree/overview"/>
 /// </summary>
 [HttpClientApi(RegistryGroupName = "ChatGroup", TokenManage = nameof(IFeishuAppManager))]
-[Token("TenantAccessToken", Name = Consts.Authorization)]
+[Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]
 public interface IFeishuTenantV1ChatGroupMenu : IFeishuAppContextSwitcher
 {
     /// <summary>

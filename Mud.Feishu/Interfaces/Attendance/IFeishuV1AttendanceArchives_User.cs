@@ -14,7 +14,7 @@ namespace Mud.Feishu;
 /// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/attendance-v1/user_task_remedy/create"/></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Attendance", InheritedFrom = nameof(FeishuV1AttendanceArchives))]
-[Token("UserAccessToken", Name = Consts.Authorization)]
+[Token(FeishuTokenTypes.UserAccessToken, Name = Consts.Authorization)]
 public interface IFeishuUserV1AttendanceArchives : IFeishuV1AttendanceArchives, ICurrentUserId
 {
 

@@ -8,14 +8,16 @@
 namespace Mud.Feishu.DataModels.HelpDesk;
 
 /// <summary>
-/// 查询全部客服工作日程响应体
+/// 查询全部客服技能响应体
 /// </summary>
-public class GetAgentScheduleList
+public class GetAgentSkillListResult
 {
     /// <summary>
-    /// <para>客服列表</para>
+    /// <para>客服技能列表</para>
     /// <para>必填：否</para>
     /// </summary>
-    [JsonPropertyName("agent_schedules")]
-    public AgentScheduleInfo[]? AgentSchedules { get; set; }
+    [JsonPropertyName("agent_skills")]
+    public AgentSkillInfo[]? AgentSkills { get; set; }
+
+
 }

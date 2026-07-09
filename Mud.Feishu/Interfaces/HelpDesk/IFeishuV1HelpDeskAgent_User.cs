@@ -83,5 +83,50 @@ public interface IFeishuUserV1HelpDeskAgent : IFeishuV1HelpDeskAgent, ICurrentUs
         CancellationToken cancellationToken = default);
 
 
+    /// <summary>
+    /// 创建客服技能
+    /// <para>用于创建客服技能。注意事项：user_access_token 访问，需要操作者是当前服务台的管理员或所有者</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/helpdesk-v1/agent-function/agent_skill/create">接口文档</see></para>
+    /// </summary> 
+    /// <param name="request">创建客服技能请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Post("/open-apis/helpdesk/v1/agent_skills")]
+    Task<FeishuApiResult<CreateAgentSkillResult>?> CreateAgentSkillAsync(
+       [Body] CreateAgentSkillRequest request,
+       CancellationToken cancellationToken = default);
 
+
+
+    /// <summary>
+    /// 删除客服技能
+    /// <para>用于删除客服技能。注意事项：user_access_token 访问，需要操作者是当前服务台的管理员或所有者</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/helpdesk-v1/agent-function/agent_skill/delete">接口文档</see></para>
+    /// </summary> 
+    /// <param name="agent_skill_id">
+    /// <para>agent group id</para>
+    /// <para>示例值：test-skill-id</para>
+    /// </param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Delete("/open-apis/helpdesk/v1/agent_skills/{agent_skill_id}")]
+    Task<FeishuNullDataApiResult?> DeleteAgentSkillAsync(
+        [Path] string agent_skill_id,
+        CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 更新客服技能
+    /// <para>用于更新客服技能。注意事项：user_access_token 访问，需要操作者是当前服务台的管理员或所有者</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/helpdesk-v1/agent-function/agent_skill/patch">接口文档</see></para>
+    /// </summary> 
+    /// <param name="agent_skill_id">
+    /// <para>agent group id</para>
+    /// <para>示例值：test-skill-id</para>
+    /// </param>
+    /// <param name="request">更新客服技能请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Patch("/open-apis/helpdesk/v1/agent_skills/{agent_skill_id}")]
+    Task<FeishuNullDataApiResult?> UpdateAgentSkillAsync(
+       [Path] string agent_skill_id,
+       [Body] UpdateAgentSkillRequest request,
+       CancellationToken cancellationToken = default);
 }

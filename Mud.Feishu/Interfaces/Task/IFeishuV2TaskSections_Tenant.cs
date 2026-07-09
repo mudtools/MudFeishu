@@ -15,7 +15,7 @@ namespace Mud.Feishu;
 /// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/task-v2/section/section-feature-overview"/></para>
 /// </summary> 
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Task", InheritedFrom = nameof(FeishuV2TaskSections))]
-[Token("TenantAccessToken", Name = Consts.Authorization)]
+[Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]
 public interface IFeishuTenantV2TaskSections : IFeishuV2TaskSections
 {
 }

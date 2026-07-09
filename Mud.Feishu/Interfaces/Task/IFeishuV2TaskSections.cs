@@ -16,7 +16,7 @@ namespace Mud.Feishu.Interfaces;
 /// <item>按类别分组，市场相关、人事相关，...</item></list></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), IsAbstract = true)]
-[Token("TenantAccessToken", Name = Consts.Authorization)]
+[Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]
 public interface IFeishuV2TaskSections : IFeishuAppContextSwitcher
 {
     /// <summary>

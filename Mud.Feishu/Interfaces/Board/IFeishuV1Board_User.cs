@@ -13,7 +13,7 @@ namespace Mud.Feishu;
 /// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/docs/board-v1/overview"/></para>
 /// </summary>
 [HttpClientApi(RegistryGroupName = "Drive", TokenManage = nameof(IFeishuAppManager), InheritedFrom = nameof(FeishuV1Board))]
-[Token("UserAccessToken", Name = Consts.Authorization)]
+[Token(FeishuTokenTypes.UserAccessToken, Name = Consts.Authorization)]
 public interface IFeishuUserV1Board : IFeishuV1Board, ICurrentUserId
 {
 

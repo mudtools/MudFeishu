@@ -15,7 +15,7 @@ namespace Mud.Feishu.Interfaces;
 /// <para>同时也可以将任务分享给感兴趣的成员，或者关注和跟进一些感兴趣的任务。</para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), IsAbstract = true)]
-[Token("TenantAccessToken", Name = Consts.Authorization)]
+[Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]
 public interface IFeishuV2Task : IFeishuAppContextSwitcher
 {
     /// <summary>

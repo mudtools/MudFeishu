@@ -14,7 +14,7 @@ namespace Mud.Feishu;
 /// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/task-v2/attachment/attachment-feature-overview"/></para>
 /// </summary> 
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Task", InheritedFrom = nameof(FeishuV2TaskAttachments))]
-[Token("UserAccessToken", Name = Consts.Authorization)]
+[Token(FeishuTokenTypes.UserAccessToken, Name = Consts.Authorization)]
 public interface IFeishuUserV2TaskAttachments : IFeishuV2TaskAttachments, ICurrentUserId
 {
 }

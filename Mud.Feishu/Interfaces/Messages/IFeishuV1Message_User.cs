@@ -12,7 +12,7 @@ namespace Mud.Feishu;
 /// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/im-v1/message/intro"/></para>
 /// </summary> 
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Message", InheritedFrom = nameof(FeishuV1Message))]
-[Token("UserAccessToken", Name = Consts.Authorization)]
+[Token(FeishuTokenTypes.UserAccessToken, Name = Consts.Authorization)]
 public interface IFeishuUserV1Message : IFeishuV1Message, ICurrentUserId
 {
 }

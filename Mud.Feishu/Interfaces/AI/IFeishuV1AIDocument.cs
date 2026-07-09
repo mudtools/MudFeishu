@@ -14,7 +14,7 @@ namespace Mud.Feishu.Interfaces;
 /// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/ai/document_ai-v1/resume/parse"/></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), IsAbstract = true)]
-[Token("TenantAccessToken", Name = Consts.Authorization)]
+[Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]
 public interface IFeishuV1AIDocument : IFeishuAppContextSwitcher
 {
     /// <summary>

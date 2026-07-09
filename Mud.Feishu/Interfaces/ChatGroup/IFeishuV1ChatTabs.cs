@@ -13,7 +13,7 @@ namespace Mud.Feishu.Interfaces;
 /// 会话标签页是指飞书客户端某一会话顶部的标签页，通过 OpenAPI 支持添加、删除、更新以及获取会话标签页等操作。
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), IsAbstract = true)]
-[Token("TenantAccessToken", Name = Consts.Authorization)]
+[Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]
 public interface IFeishuV1ChatTabs : IFeishuAppContextSwitcher
 {
     /// <summary>

@@ -16,7 +16,7 @@ namespace Mud.Feishu;
 /// 接口详细文档请参见：<see href="https://open.feishu.cn/document/cardkit-v1/feishu-card-resource-overview"/>
 /// </summary>
 [HttpClientApi(RegistryGroupName = "Cards", TokenManage = nameof(IFeishuAppManager))]
-[Token("TenantAccessToken", Name = Consts.Authorization)]
+[Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]
 public interface IFeishuTenantV1CardElements : IFeishuAppContextSwitcher
 {
     /// <summary>

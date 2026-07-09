@@ -17,7 +17,6 @@ namespace Mud.Feishu;
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]
 public interface IFeishuTenantV1HelpDeskAgent : IFeishuV1HelpDeskAgent
 {
-
     /// <summary>
     /// 获取客服邮箱
     /// <para>用于获取客服邮箱地址。</para>
@@ -61,7 +60,17 @@ public interface IFeishuTenantV1HelpDeskAgent : IFeishuV1HelpDeskAgent
     /// </param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Get("/open-apis/helpdesk/v1/agent_schedules")]
-    Task<FeishuApiResult<GetAgentScheduleList>?> GetAgentScheduleListAsync(
+    Task<FeishuApiResult<GetAgentScheduleListResult>?> GetAgentScheduleListAsync(
         [Query] int[] status,
         CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 查询全部客服技能
+    /// <para>获取全部客服技能。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/helpdesk-v1/agent-function/agent_skill/list">接口文档</see></para>
+    /// </summary> 
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Get("/open-apis/helpdesk/v1/agent_skills")]
+    Task<FeishuApiResult<GetAgentSkillListResult>?> GetAgentSkillListAsync(CancellationToken cancellationToken = default);
 }

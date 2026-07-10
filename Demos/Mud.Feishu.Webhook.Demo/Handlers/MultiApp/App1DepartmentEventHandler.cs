@@ -45,7 +45,7 @@ public class App1DepartmentEventHandler : DepartmentCreatedEventHandler
             await ProcessDepartmentEventAsync(eventEntity, cancellationToken);
 
             _logger.LogInformation(">> [App1-部门事件] 部门创建事件处理完成: 部门ID {DepartmentId}, 部门名 {DepartmentName}",
-                eventEntity.DepartmentId, eventEntity.Name);
+                eventEntity.Object?.DepartmentId, eventEntity.Object?.Name);
         }
         catch (Exception ex)
         {
@@ -57,32 +57,32 @@ public class App1DepartmentEventHandler : DepartmentCreatedEventHandler
 
     private async Task ProcessDepartmentEventAsync(DepartmentCreatedResult departmentData, CancellationToken cancellationToken)
     {
-        _logger.LogDebug(">> [App1-部门事件] 开始处理App1部门数据: {DepartmentId}", departmentData.DepartmentId);
+        _logger.LogDebug(">> [App1-部门事件] 开始处理App1部门数据: {DepartmentId}", departmentData.Object?.DepartmentId);
 
         await Task.Delay(100, cancellationToken);
 
         // App1特定的验证逻辑
-        if (string.IsNullOrWhiteSpace(departmentData.DepartmentId))
+        if (string.IsNullOrWhiteSpace(departmentData.Object?.DepartmentId))
         {
             throw new ArgumentException("App1: 部门ID不能为空");
         }
 
         // App1特定的权限初始化
-        _logger.LogInformation(">> [App1-部门事件] 初始化App1部门权限: {DepartmentName}", departmentData.Name);
+        _logger.LogInformation(">> [App1-部门事件] 初始化App1部门权限: {DepartmentName}", departmentData.Object?.Name);
 
         // App1特定的通知逻辑
-        if (!string.IsNullOrWhiteSpace(departmentData.LeaderUserId))
+        if (!string.IsNullOrWhiteSpace(departmentData.Object?.LeaderUserId))
         {
-            _logger.LogInformation(">> [App1-部门事件] 通知App1部门主管: {LeaderUserId}", departmentData.LeaderUserId);
+            _logger.LogInformation(">> [App1-部门事件] 通知App1部门主管: {LeaderUserId}", departmentData.Object?.LeaderUserId);
         }
 
         _eventService.IncrementDepartmentCount();
 
         // App1特定的层级关系处理
-        if (!string.IsNullOrWhiteSpace(departmentData.ParentDepartmentId))
+        if (!string.IsNullOrWhiteSpace(departmentData.Object?.ParentDepartmentId))
         {
             _logger.LogInformation(">> [App1-部门事件] 建立App1层级关系: {DepartmentId} -> {ParentDepartmentId}",
-                departmentData.DepartmentId, departmentData.ParentDepartmentId);
+                departmentData.Object?.DepartmentId, departmentData.Object?.ParentDepartmentId);
         }
 
         await Task.CompletedTask;

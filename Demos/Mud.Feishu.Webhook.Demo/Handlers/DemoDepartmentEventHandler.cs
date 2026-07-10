@@ -42,7 +42,7 @@ public class DemoDepartmentEventHandler : DepartmentCreatedEventHandler
             await ProcessDepartmentEventAsync(eventEntity, cancellationToken);
 
             _logger.LogInformation(">> [部门事件] 部门创建事件处理完成: 部门ID {DepartmentId}, 部门名 {DepartmentName}",
-                eventEntity.DepartmentId, eventEntity.Name);
+                eventEntity.Object?.DepartmentId, eventEntity.Object?.Name);
         }
         catch (Exception ex)
         {
@@ -54,34 +54,34 @@ public class DemoDepartmentEventHandler : DepartmentCreatedEventHandler
 
     private async Task ProcessDepartmentEventAsync(DepartmentCreatedResult departmentData, CancellationToken cancellationToken)
     {
-        _logger.LogDebug(">> [部门事件] 开始处理部门数据: {DepartmentId}", departmentData.DepartmentId);
+        _logger.LogDebug(">> [部门事件] 开始处理部门数据: {DepartmentId}", departmentData.Object?.DepartmentId);
 
         // 模拟异步业务操作
         await Task.Delay(100, cancellationToken);
 
         // 模拟验证逻辑
-        if (string.IsNullOrWhiteSpace(departmentData.DepartmentId))
+        if (string.IsNullOrWhiteSpace(departmentData.Object?.DepartmentId))
         {
             throw new ArgumentException("部门ID不能为空");
         }
 
         // 模拟权限初始化
-        _logger.LogInformation(">> [部门事件] 初始化部门权限: {DepartmentName}", departmentData.Name);
+        _logger.LogInformation(">> [部门事件] 初始化部门权限: {DepartmentName}", departmentData.Object?.Name);
 
         // 模拟通知部门主管
-        if (!string.IsNullOrWhiteSpace(departmentData.LeaderUserId))
+        if (!string.IsNullOrWhiteSpace(departmentData.Object?.LeaderUserId))
         {
-            _logger.LogInformation(">>[部门事件] 通知部门主管: {LeaderUserId}", departmentData.LeaderUserId);
+            _logger.LogInformation(">>[部门事件] 通知部门主管: {LeaderUserId}", departmentData.Object?.LeaderUserId);
         }
 
         // 模拟更新统计信息
         _eventService.IncrementDepartmentCount();
 
         // 模拟层级关系处理
-        if (!string.IsNullOrWhiteSpace(departmentData.ParentDepartmentId))
+        if (!string.IsNullOrWhiteSpace(departmentData.Object?.ParentDepartmentId))
         {
             _logger.LogInformation(">>[部门事件] 建立层级关系: {DepartmentId} -> {ParentDepartmentId}",
-                departmentData.DepartmentId, departmentData.ParentDepartmentId);
+                departmentData.Object?.DepartmentId, departmentData.Object?.ParentDepartmentId);
         }
 
         await Task.CompletedTask;

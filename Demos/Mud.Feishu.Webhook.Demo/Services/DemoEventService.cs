@@ -37,7 +37,7 @@ public class DemoEventService
     {
         _departmentEvents.Add(departmentData);
         _logger.LogInformation(">> [统计] 记录部门事件: {DepartmentId} - {DepartmentName}",
-            departmentData.DepartmentId, departmentData.Name);
+            departmentData.Object?.DepartmentId, departmentData.Object?.Name);
         await Task.CompletedTask;
     }
 
@@ -85,7 +85,7 @@ public class DemoEventService
     {
         return new RecentEvents
         {
-            RecentDepartments = _departmentEvents.OrderByDescending(d => d.Order).Take(count).ToList(),
+            RecentDepartments = _departmentEvents.OrderByDescending(d => d.Object?.Order ?? 0).Take(count).ToList(),
         };
     }
 

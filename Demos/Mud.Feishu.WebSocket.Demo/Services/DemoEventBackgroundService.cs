@@ -42,27 +42,36 @@ public class DemoEventBackgroundService : BackgroundService
             return;
         }
 
-        // 等待WebSocket服务启动
-        await Task.Delay(5000, stoppingToken);
-
-        while (!stoppingToken.IsCancellationRequested)
+        try
         {
-            try
+            // 等待WebSocket服务启动
+            await Task.Delay(5000, stoppingToken);
+
+            while (!stoppingToken.IsCancellationRequested)
             {
-                await GenerateAndProcessRandomEvent(stoppingToken);
-                await Task.Delay(mockEventInterval, stoppingToken);
-            }
-            catch (OperationCanceledException)
-            {
-                _logger.LogInformation(">> [后台服务] 演示事件服务已停止");
-                break;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, ">> [后台服务] 生成模拟事件时发生错误");
-                await Task.Delay(5000, stoppingToken);
+                try
+                {
+                    await GenerateAndProcessRandomEvent(stoppingToken);
+                    await Task.Delay(mockEventInterval, stoppingToken);
+                }
+                catch (OperationCanceledException)
+                {
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, ">> [后台服务] 生成模拟事件时发生错误");
+                    await Task.Delay(5000, stoppingToken);
+                }
             }
         }
+        catch (OperationCanceledException)
+        {
+            // 宿主启动失败或应用关闭时，stoppingToken 被取消，Task.Delay 会抛出此异常。
+            // 这是正常的取消流程，不需要记录为错误。
+        }
+
+        _logger.LogInformation(">> [后台服务] 演示事件服务已停止");
     }
 
     private async Task GenerateAndProcessRandomEvent(CancellationToken stoppingToken)

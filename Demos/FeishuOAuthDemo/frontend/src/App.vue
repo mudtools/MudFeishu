@@ -2,7 +2,22 @@
   <el-container class="app-container">
     <el-header class="app-header">
       <div class="header-content">
-        <h1 class="logo">飞书OAuth登录演示</h1>
+        <div class="header-left">
+          <h1 class="logo">飞书OAuth登录演示</h1>
+          <el-menu
+            :default-active="activeMenu"
+            mode="horizontal"
+            class="nav-menu"
+            :ellipsis="false"
+            background-color="transparent"
+            text-color="#fff"
+            active-text-color="#ffd04b"
+            @select="handleMenuSelect"
+          >
+            <el-menu-item index="home">首页</el-menu-item>
+            <el-menu-item index="departments">部门管理</el-menu-item>
+          </el-menu>
+        </div>
         <div class="user-info" v-if="userStore.isLoggedIn">
           <el-dropdown>
             <span class="user-name">
@@ -25,17 +40,31 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { onMounted, computed } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from './stores/user'
 
 const router = useRouter()
+const route = useRoute()
 const userStore = useUserStore()
+
+const activeMenu = computed(() => {
+  if (route.path === '/departments') return 'departments'
+  return 'home'
+})
 
 onMounted(async () => {
   // 初始化时验证token
   await userStore.validateToken()
 })
+
+const handleMenuSelect = (index: string) => {
+  if (index === 'home') {
+    router.push('/')
+  } else if (index === 'departments') {
+    router.push('/departments')
+  }
+}
 
 const handleLogout = () => {
   userStore.logout()
@@ -65,10 +94,25 @@ const handleLogout = () => {
   align-items: center;
 }
 
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
 .logo {
   margin: 0;
   font-size: 24px;
   font-weight: 600;
+  white-space: nowrap;
+}
+
+.nav-menu {
+  border-bottom: none !important;
+}
+
+.nav-menu .el-menu-item {
+  font-size: 15px;
 }
 
 .user-info {

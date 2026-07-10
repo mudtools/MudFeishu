@@ -36,7 +36,7 @@ public static class FeishuUserAuthenticationExtensions
     ///   <item><description>ICurrentUserContext - 注册为 Singleton（覆盖 AddFeishuApp 中的默认实现）</description></item>
     ///   <item><description>FeishuUserAuthenticationOptions - 配置选项</description></item>
     /// </list>
-    /// <para>此方法会覆盖 <see cref="Mud.Feishu.Abstractions.FeishuServiceCollectionExtensions.AddFeishuAppBaseServices"/> 中注册的默认实现，
+    /// <para>此方法会覆盖 <see cref="FeishuServiceCollectionExtensions.AddFeishuAppBaseServices"/> 中注册的默认实现，
     /// 应在 <c>services.AddFeishuApp()</c> 之后调用。</para>
     /// <para>使用示例：</para>
     /// <code>
@@ -62,7 +62,7 @@ public static class FeishuUserAuthenticationExtensions
     ///   <item><description>ICurrentUserContext - 注册为 Singleton（覆盖 AddFeishuApp 中的默认实现）</description></item>
     ///   <item><description>FeishuUserAuthenticationOptions - 配置选项</description></item>
     /// </list>
-    /// <para>此方法会覆盖 <see cref="Mud.Feishu.Abstractions.FeishuServiceCollectionExtensions.AddFeishuAppBaseServices"/> 中注册的默认实现，
+    /// <para>此方法会覆盖 <see cref="FeishuServiceCollectionExtensions.AddFeishuAppBaseServices"/> 中注册的默认实现，
     /// 应在 <c>services.AddFeishuApp()</c> 之后调用。</para>
     /// <para>使用示例：</para>
     /// <code>

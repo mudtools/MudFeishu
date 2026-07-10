@@ -15,6 +15,7 @@ public abstract class TokenManagerTestsBase : IDisposable
 {
     protected readonly Mock<IFeishuAuthentication> _authenticationApiMock;
     protected readonly Mock<IEnhancedHttpClient> _httpClientMock;
+    protected readonly Mock<IFeishuCurrentUserContext> CurrentUserContextMock;
     protected readonly FeishuAppConfig Config;
     protected readonly FeishuAppContext AppContext;
 
@@ -22,6 +23,7 @@ public abstract class TokenManagerTestsBase : IDisposable
     {
         _authenticationApiMock = new Mock<IFeishuAuthentication>();
         _httpClientMock = new Mock<IEnhancedHttpClient>();
+        CurrentUserContextMock = new Mock<IFeishuCurrentUserContext>();
 
         Config = new FeishuAppConfig
         {
@@ -34,7 +36,6 @@ public abstract class TokenManagerTestsBase : IDisposable
         var loggerMock = new Mock<ILogger<TenantTokenManager>>();
         var appTokenManagerLoggerMock = new Mock<ILogger<AppTokenManager>>();
         var userTokenManagerLoggerMock = new Mock<ILogger<UserTokenManager>>();
-        var currentUserContextMock = new Mock<IFeishuCurrentUserContext>();
         var optionsMock = new Mock<IOptions<FeishuAppConfig>>();
         optionsMock.Setup(x => x.Value).Returns(Config);
 
@@ -49,7 +50,7 @@ public abstract class TokenManagerTestsBase : IDisposable
             appTokenManagerLoggerMock.Object);
 
         var userTokenManager = new UserTokenManager(
-            currentUserContextMock.Object,
+            CurrentUserContextMock.Object,
             _authenticationApiMock.Object,
             optionsMock.Object,
             userTokenManagerLoggerMock.Object);

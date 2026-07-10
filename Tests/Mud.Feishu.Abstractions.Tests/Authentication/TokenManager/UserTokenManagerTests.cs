@@ -96,7 +96,9 @@ public class UserTokenManagerTests : TokenManagerTestsBase
             ExpiresIn = 7200,
             RefreshTokenExpiresIn = 2592000,
             Code = 0,
-            Msg = "ok"
+            Msg = "ok",
+            OpenId = "test-open-id",
+            UnionId = "test-union-id"
         };
 
         _authenticationApiMock
@@ -247,5 +249,92 @@ public class UserTokenManagerTests : TokenManagerTestsBase
 
         var result = await _userTokenManager.CanRefreshTokenAsync("user1", CancellationToken.None);
         Assert.True(result);
+    }
+
+    [Fact]
+    public async Task GetUserTokenWithCodeAsync_ShouldAutoResolveOpenId_WhenOAuthV2NotReturnOpenId()
+    {
+        // OAuth v2 端点不返回 OpenId
+        var apiResult = new OAuthCredentialsResult
+        {
+            AccessToken = "v2-access-token",
+            RefreshToken = "v2-refresh-token",
+            ExpiresIn = 7200,
+            RefreshTokenExpiresIn = 2592000,
+            Code = 0,
+            Msg = "ok",
+            OpenId = null,
+            UnionId = null
+        };
+
+        // 用户信息 API 返回 OpenId
+        var userInfoResult = new FeishuApiResult<GetUserDataResult>
+        {
+            Code = 0,
+            Msg = "ok",
+            Data = new GetUserDataResult
+            {
+                OpenId = "resolved-open-id",
+                UnionId = "resolved-union-id",
+                Name = "Test User"
+            }
+        };
+
+        _authenticationApiMock
+            .Setup(x => x.GetOAuthenAccessTokenAsync(It.IsAny<OAuthTokenRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(apiResult);
+        _authenticationApiMock
+            .Setup(x => x.GetUserInfoAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(userInfoResult);
+
+        var result = await _userTokenManager.GetUserTokenWithCodeAsync("test-code", "https://example.com/callback", CancellationToken.None);
+
+        Assert.NotNull(result);
+        Assert.Equal("v2-access-token", result.AccessToken);
+        Assert.Equal("resolved-open-id", result.OpenId);
+        Assert.Equal("resolved-union-id", result.UnionId);
+        Assert.Equal("resolved-open-id", result.UserId);
+
+        // 验证令牌已缓存
+        var cachedInfo = await _userTokenManager.GetTokenInfoAsync("resolved-open-id", CancellationToken.None);
+        Assert.NotNull(cachedInfo);
+        Assert.Equal("v2-access-token", cachedInfo.AccessToken);
+    }
+
+    [Fact]
+    public async Task GetUserTokenWithCodeAsync_ShouldThrowFeishuException_WhenUserInfoApiFailsAndOpenIdIsEmpty()
+    {
+        // OAuth v2 端点不返回 OpenId
+        var apiResult = new OAuthCredentialsResult
+        {
+            AccessToken = "v2-access-token",
+            RefreshToken = "v2-refresh-token",
+            ExpiresIn = 7200,
+            RefreshTokenExpiresIn = 2592000,
+            Code = 0,
+            Msg = "ok",
+            OpenId = null
+        };
+
+        _authenticationApiMock
+            .Setup(x => x.GetOAuthenAccessTokenAsync(It.IsAny<OAuthTokenRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(apiResult);
+        _authenticationApiMock
+            .Setup(x => x.GetUserInfoAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((FeishuApiResult<GetUserDataResult>?)null);
+
+        var exception = await Assert.ThrowsAsync<FeishuException>(() =>
+            _userTokenManager.GetUserTokenWithCodeAsync("test-code", "https://example.com/callback", CancellationToken.None));
+
+        Assert.Contains("获取用户信息失败", exception.Message);
+    }
+
+    [Fact]
+    public async Task GetTokenAsync_WithoutUserId_ShouldThrowInvalidOperationException_WhenUserNotAuthenticated()
+    {
+        CurrentUserContextMock.Setup(x => x.IsAuthenticated).Returns(false);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            _userTokenManager.GetTokenAsync(CancellationToken.None));
     }
 }

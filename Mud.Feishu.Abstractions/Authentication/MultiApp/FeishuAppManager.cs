@@ -23,8 +23,9 @@ namespace Mud.Feishu.Abstractions;
 /// 每个应用拥有独立的配置、缓存和TokenManager实例。
 /// 继承 DefaultAppManager&lt;FeishuAppContext&gt; 获得通用的应用管理能力。
 /// <para>
-/// M-1 修复：采用懒加载（Lazy Init）策略，构造函数仅预注册所有应用的 Lazy 上下文并通过反射预置基类
-/// <c>_defaultAppKey</c> 字段，不立即创建任何应用实例。应用在首次访问 GetApp/GetDefaultApp/TryGetApp 时按需创建，
+/// M-1 修复：采用懒加载（Lazy Init）策略，构造函数仅预注册所有应用的 Lazy 上下文并通过本类私有字段
+/// <c>_defaultAppKey</c> 记录默认应用键（A-1 修复：不再通过反射设置基类私有字段），不立即创建任何应用实例。
+/// 应用在首次访问 GetApp/GetDefaultApp/TryGetApp 时按需创建，
 /// 减少启动延迟并避免构造阶段强制要求所有 DI 依赖（如 IMemoryCache）就绪。
 /// </para>
 /// <para>

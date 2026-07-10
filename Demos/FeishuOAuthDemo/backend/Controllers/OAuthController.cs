@@ -163,16 +163,12 @@ public class OAuthController : ControllerBase
 
             _logger.LogInformation("成功获取用户访问令牌");
 
-            // OAuth 回调阶段用户尚未持有 JWT，中间件不会自动设置用户上下文。
-            // 需要手动设置用户上下文（OpenId 作为令牌查找键），并切换应用上下文，
-            // 以便 IFeishuUserV3User.GetUserInfoAsync 能正确获取用户访问令牌并发起请求。
-            if (!string.IsNullOrEmpty(tokenResult.OpenId))
-            {
-                _currentUserContext.SetUser(tokenResult.OpenId, tokenResult.UnionId, tokenResult.OpenId, null);
-            }
+            // GetUserTokenWithCodeAsync 内部已处理 OAuth v2 场景：
+            // 当 OAuth 端点不返回 OpenId 时，会自动用 access_token 调用用户信息 API 获取 OpenId，
+            // 并完成令牌缓存。因此此处 tokenResult.OpenId 一定有值。
+            _currentUserContext.SetUser(tokenResult.OpenId!, tokenResult.UnionId, tokenResult.OpenId, null);
 
             _logger.LogInformation("开始获取用户信息");
-            // 应用上下文由框架的 GetDefaultApp 回退机制自动处理，无需显式 BeginScope
             var userInfoResult = await _feishuUserApi.GetUserInfoAsync();
 
             if (userInfoResult?.Data == null)
@@ -186,6 +182,7 @@ public class OAuthController : ControllerBase
             }
 
             var feishuUser = userInfoResult.Data;
+
             _logger.LogInformation("成功获取用户信息: {Name} ({OpenId})", feishuUser.Name ?? "未知", feishuUser.OpenId ?? "未知");
 
             var userId = await _userService.GetOrCreateUserAsync(

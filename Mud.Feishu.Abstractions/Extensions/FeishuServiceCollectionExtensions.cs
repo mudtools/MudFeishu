@@ -181,6 +181,13 @@ public static class FeishuServiceCollectionExtensions
         // 用户可通过 IConfiguration 的 "MudHttpTokenRecovery" 节或 services.Configure<TokenRecoveryOptions>(...) 自定义恢复策略。
         services.AddOptions<TokenRecoveryOptions>();
 
+#if NET6_0_OR_GREATER
+        // SR-P0-2 修复：FeishuTokenRegistrationService 必须在 TokenRefreshBackgroundService 之前注册为 IHostedService，
+        // 确保应用启动时先注册令牌管理器，再启动后台刷新服务。否则后台服务启动时会误报"未注册任何令牌管理器"。
+        // IHostedService 的 StartAsync 按注册顺序执行，DI 解析在所有注册完成后才发生，因此此处注册顺序不影响依赖解析。
+        services.AddHostedService<FeishuTokenRegistrationService>();
+#endif
+
         // 注册令牌主动刷新后台服务（由 Mud.HttpUtils 提供，按目标框架自动选择实现）。
         // 此前该服务仅在 Webhook 模块注册，纯 SDK 使用场景下 Token 仅懒加载刷新，
         // 首次请求延迟增加且无法享受"过期前主动刷新"预热。

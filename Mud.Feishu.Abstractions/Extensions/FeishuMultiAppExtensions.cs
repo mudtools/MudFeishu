@@ -367,10 +367,8 @@ public static class FeishuMultiAppExtensions
         // 注册令牌管理器解析器（多应用模式下获取令牌管理器的推荐方式）
         services.TryAddSingleton<IFeishuTokenManagerResolver, FeishuTokenManagerResolver>();
 
-        // 注册令牌注册托管服务：在应用启动时将所有应用的令牌管理器注册到 TokenRefreshHostedService
-#if NET6_0_OR_GREATER
-        services.AddHostedService<FeishuTokenRegistrationService>();
-#endif
+        // SR-P0-2 修复：FeishuTokenRegistrationService 已移至 AddFeishuAppBaseServices 中注册，
+        // 确保在 TokenRefreshBackgroundService 之前启动，避免误报"未注册任何令牌管理器"警告。
 
         // 桥接注册（向后兼容）：将默认应用的令牌管理器暴露到 DI 容器。
         // 注意：仅暴露默认应用的令牌管理器，非默认应用请使用 IFeishuTokenManagerResolver。

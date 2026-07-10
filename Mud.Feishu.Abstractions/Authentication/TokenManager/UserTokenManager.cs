@@ -132,6 +132,30 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
             UpdateUserTokenCache(res.OpenId!, tokenInfo);
             await PersistUserTokenAsync(res.OpenId!, tokenInfo, cancellationToken).ConfigureAwait(false);
         }
+        else
+        {
+            // OAuth v2 端点不返回 OpenId，使用 access_token 直接调用用户信息 API 获取 OpenId。
+            // IFeishuAuthentication.GetUserInfoAsync 接受显式 token 参数，不走令牌管理基础设施，
+            // 因此不存在循环依赖问题。
+            if (_options.EnableLogging)
+                _logger.LogInformation("OAuth 端点未返回 OpenId，使用 access_token 获取用户信息");
+
+            var userInfo = await _authenticationApi.GetUserInfoAsync(
+                $"Bearer {res.AccessToken}", cancellationToken).ConfigureAwait(false);
+
+            if (userInfo?.Data == null || string.IsNullOrEmpty(userInfo.Data.OpenId))
+            {
+                throw new FeishuException(
+                    userInfo?.Code ?? 500,
+                    $"获取用户信息失败: {userInfo?.Msg ?? "返回结果为null或OpenId为空"}");
+            }
+
+            tokenInfo.UserId = userInfo.Data.OpenId!;
+            tokenInfo.OpenId = userInfo.Data.OpenId;
+            tokenInfo.UnionId = userInfo.Data.UnionId;
+            UpdateUserTokenCache(userInfo.Data.OpenId!, tokenInfo);
+            await PersistUserTokenAsync(userInfo.Data.OpenId!, tokenInfo, cancellationToken).ConfigureAwait(false);
+        }
 
         return tokenInfo;
     }

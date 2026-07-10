@@ -253,6 +253,7 @@ import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'elem
 import { Search, Plus, DocumentCopy, ArrowDown } from '@element-plus/icons-vue'
 import {
   departmentApi,
+  extractErrorMessage,
   type GetDepartmentInfo,
   type DepartmentCreateRequest,
   type DepartmentPartUpdateRequest,
@@ -295,7 +296,7 @@ const handleSearchChildren = async () => {
       ElMessage.info('未查询到子部门')
     }
   } catch (error: any) {
-    ElMessage.error(error.response?.data?.error || error.message || '查询失败')
+    ElMessage.error(extractErrorMessage(error))
   } finally {
     loadingTable.value = false
   }
@@ -310,7 +311,7 @@ const handleLoadMore = async () => {
     hasMore.value = result.has_more
     pageToken.value = result.page_token
   } catch (error: any) {
-    ElMessage.error(error.response?.data?.error || error.message || '加载更多失败')
+    ElMessage.error(extractErrorMessage(error))
   } finally {
     loadingMore.value = false
   }
@@ -334,7 +335,7 @@ const handleViewDetail = async (row: GetDepartmentInfo) => {
     const result = await departmentApi.getDepartment(deptId)
     detailData.value = result.department
   } catch (error: any) {
-    ElMessage.error(error.response?.data?.error || error.message || '获取详情失败')
+    ElMessage.error(extractErrorMessage(error))
   }
 }
 
@@ -385,7 +386,7 @@ const handleCreate = async () => {
         ElMessage.error(result.msg || `创建失败 (code: ${result.code})`)
       }
     } catch (error: any) {
-      ElMessage.error(error.response?.data?.error || error.message || '创建失败')
+      ElMessage.error(extractErrorMessage(error))
     } finally {
       submitting.value = false
     }
@@ -435,7 +436,7 @@ const handleEditPart = async () => {
         ElMessage.error(result.msg || `更新失败 (code: ${result.code})`)
       }
     } catch (error: any) {
-      ElMessage.error(error.response?.data?.error || error.message || '更新失败')
+      ElMessage.error(extractErrorMessage(error))
     } finally {
       submitting.value = false
     }
@@ -464,7 +465,7 @@ const handleEditFull = async () => {
         ElMessage.error(result.msg || `更新失败 (code: ${result.code})`)
       }
     } catch (error: any) {
-      ElMessage.error(error.response?.data?.error || error.message || '更新失败')
+      ElMessage.error(extractErrorMessage(error))
     } finally {
       submitting.value = false
     }
@@ -508,7 +509,7 @@ const handleUpdateId = async () => {
         ElMessage.error(result.msg || `更新失败 (code: ${result.code})`)
       }
     } catch (error: any) {
-      ElMessage.error(error.response?.data?.error || error.message || '更新失败')
+      ElMessage.error(extractErrorMessage(error))
     } finally {
       submitting.value = false
     }
@@ -534,7 +535,7 @@ const handleUnbindChat = async (row: GetDepartmentInfo) => {
     }
   } catch (error: any) {
     if (error === 'cancel') return
-    ElMessage.error(error.response?.data?.error || error.message || '解绑失败')
+    ElMessage.error(extractErrorMessage(error))
   }
 }
 
@@ -570,7 +571,7 @@ const handleBatchQuery = async () => {
       ElMessage.info('未查询到任何部门信息')
     }
   } catch (error: any) {
-    ElMessage.error(error.response?.data?.error || error.message || '批量查询失败')
+    ElMessage.error(extractErrorMessage(error))
   } finally {
     loadingBatch.value = false
   }
@@ -594,7 +595,7 @@ const handleViewParents = async (row: GetDepartmentInfo) => {
       ElMessage.info('未查询到父部门信息')
     }
   } catch (error: any) {
-    ElMessage.error(error.response?.data?.error || error.message || '查询父部门失败')
+    ElMessage.error(extractErrorMessage(error))
   } finally {
     loadingParents.value = false
   }

@@ -8,6 +8,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Mud.Feishu;
 using Mud.Feishu.DataModels.Departments;
+using Mud.Feishu.Exceptions;
+using Mud.HttpUtils;
 using System.ComponentModel.DataAnnotations;
 
 namespace FeishuOAuthDemo.Controllers;
@@ -35,6 +37,14 @@ public class DepartmentController(IFeishuTenantV3Departments departmentApi) : Co
             var result = await _departmentApi.CreateDepartmentAsync(departmentCreateRequest);
             return Ok(result);
         }
+        catch (ApiException ex)
+        {
+            return BadRequest(new { error = ex.Message, statusCode = (int)ex.StatusCode, content = ex.Content, requestUri = ex.RequestUri });
+        }
+        catch (FeishuException ex)
+        {
+            return BadRequest(new { error = ex.Message, errorCode = ex.ErrorCode });
+        }
         catch (Exception ex)
         {
             return BadRequest(new { error = ex.Message });
@@ -58,6 +68,14 @@ public class DepartmentController(IFeishuTenantV3Departments departmentApi) : Co
         {
             var result = await _departmentApi.UpdatePartDepartmentAsync(departmentId, departmentPartUpdateRequest);
             return Ok(result);
+        }
+        catch (ApiException ex)
+        {
+            return BadRequest(new { error = ex.Message, statusCode = (int)ex.StatusCode, content = ex.Content, requestUri = ex.RequestUri });
+        }
+        catch (FeishuException ex)
+        {
+            return BadRequest(new { error = ex.Message, errorCode = ex.ErrorCode });
         }
         catch (Exception ex)
         {
@@ -83,6 +101,14 @@ public class DepartmentController(IFeishuTenantV3Departments departmentApi) : Co
             var result = await _departmentApi.UpdateDepartmentAsync(departmentId, departmentUpdateRequest);
             return Ok(result);
         }
+        catch (ApiException ex)
+        {
+            return BadRequest(new { error = ex.Message, statusCode = (int)ex.StatusCode, content = ex.Content, requestUri = ex.RequestUri });
+        }
+        catch (FeishuException ex)
+        {
+            return BadRequest(new { error = ex.Message, errorCode = ex.ErrorCode });
+        }
         catch (Exception ex)
         {
             return BadRequest(new { error = ex.Message });
@@ -106,6 +132,14 @@ public class DepartmentController(IFeishuTenantV3Departments departmentApi) : Co
             var result = await _departmentApi.UpdateDepartmentIdAsync(departmentId, departMentUpdateIdRequest);
             return Ok(result);
         }
+        catch (ApiException ex)
+        {
+            return BadRequest(new { error = ex.Message, statusCode = (int)ex.StatusCode, content = ex.Content, requestUri = ex.RequestUri });
+        }
+        catch (FeishuException ex)
+        {
+            return BadRequest(new { error = ex.Message, errorCode = ex.ErrorCode });
+        }
         catch (Exception ex)
         {
             return BadRequest(new { error = ex.Message });
@@ -128,6 +162,14 @@ public class DepartmentController(IFeishuTenantV3Departments departmentApi) : Co
             var result = await _departmentApi.UnbindDepartmentChatAsync(departmentRequest, departmentIdType);
             return Ok(result);
         }
+        catch (ApiException ex)
+        {
+            return BadRequest(new { error = ex.Message, statusCode = (int)ex.StatusCode, content = ex.Content, requestUri = ex.RequestUri });
+        }
+        catch (FeishuException ex)
+        {
+            return BadRequest(new { error = ex.Message, errorCode = ex.ErrorCode });
+        }
         catch (Exception ex)
         {
             return BadRequest(new { error = ex.Message });
@@ -149,6 +191,14 @@ public class DepartmentController(IFeishuTenantV3Departments departmentApi) : Co
             var result = await _departmentApi.GetDepartmentInfoByIdAsync(departmentId);
             return Ok(result.Data);
         }
+        catch (ApiException ex)
+        {
+            return BadRequest(new { error = ex.Message, statusCode = (int)ex.StatusCode, content = ex.Content, requestUri = ex.RequestUri });
+        }
+        catch (FeishuException ex)
+        {
+            return BadRequest(new { error = ex.Message, errorCode = ex.ErrorCode });
+        }
         catch (Exception ex)
         {
             return BadRequest(new { error = ex.Message });
@@ -169,6 +219,14 @@ public class DepartmentController(IFeishuTenantV3Departments departmentApi) : Co
         {
             var result = await _departmentApi.GetDepartmentsByIdsAsync(departmentIds);
             return Ok(result.Data);
+        }
+        catch (ApiException ex)
+        {
+            return BadRequest(new { error = ex.Message, statusCode = (int)ex.StatusCode, content = ex.Content, requestUri = ex.RequestUri });
+        }
+        catch (FeishuException ex)
+        {
+            return BadRequest(new { error = ex.Message, errorCode = ex.ErrorCode });
         }
         catch (Exception ex)
         {
@@ -198,6 +256,14 @@ public class DepartmentController(IFeishuTenantV3Departments departmentApi) : Co
             var result = await _departmentApi.GetDepartmentsByParentIdAsync(departmentId, fetchChild, pageSize, pageToken);
             return Ok(result.Data);
         }
+        catch (ApiException ex)
+        {
+            return BadRequest(new { error = ex.Message, statusCode = (int)ex.StatusCode, content = ex.Content, requestUri = ex.RequestUri });
+        }
+        catch (FeishuException ex)
+        {
+            return BadRequest(new { error = ex.Message, errorCode = ex.ErrorCode });
+        }
         catch (Exception ex)
         {
             return BadRequest(new { error = ex.Message });
@@ -225,6 +291,14 @@ public class DepartmentController(IFeishuTenantV3Departments departmentApi) : Co
         {
             var result = await _departmentApi.GetParentDepartmentsByIdAsync(departmentId, pageSize, pageToken, userIdType, departmentIdType);
             return Ok(result.Data);
+        }
+        catch (ApiException ex)
+        {
+            return BadRequest(new { error = ex.Message, statusCode = (int)ex.StatusCode, content = ex.Content, requestUri = ex.RequestUri });
+        }
+        catch (FeishuException ex)
+        {
+            return BadRequest(new { error = ex.Message, errorCode = ex.ErrorCode });
         }
         catch (Exception ex)
         {

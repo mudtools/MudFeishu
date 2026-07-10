@@ -213,7 +213,8 @@ public class RedisFeishuEventDistributedDeduplicator : IFeishuEventDeduplicator,
             await _database.HashSetAsync(redisKey, new[]
             {
                 new HashEntry(StatusField, CompletedStatus),
-                new HashEntry(TimestampField, DateTime.UtcNow.ToString("O"))
+                // P-2 修复：统一使用 Unix 秒时间戳，与 TryMarkAsProcessingAsync 的 Lua 脚本保持一致。
+                new HashEntry(TimestampField, DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString())
             });
 
             _logger?.LogDebug("事件 {EventId} 标记为已完成 (AppKey: {AppKey})", eventId, appKey ?? "default");
@@ -329,9 +330,13 @@ public class RedisFeishuEventDistributedDeduplicator : IFeishuEventDeduplicator,
             if (status == ProcessingStatus)
             {
                 var timestampStr = timestampEntry.Value.ToString();
-                if (DateTime.TryParse(timestampStr, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.RoundtripKind, out var timestamp))
+                // P-2 修复：兼容两种时间戳格式。
+                // TryMarkAsProcessingAsync 的 Lua 脚本写入 Unix 秒（数字字符串）；
+                // 历史 MarkAsCompletedAsync 写入 ISO 8601 字符串（已改为 Unix 秒，但需兼容存量数据）。
+                var timestamp = TryParseTimestamp(timestampStr);
+                if (timestamp.HasValue)
                 {
-                    var elapsed = DateTime.UtcNow - timestamp;
+                    var elapsed = DateTimeOffset.UtcNow - timestamp.Value;
                     if (elapsed > _defaultProcessingTimeout)
                     {
                         return DeduplicationStatus.Pending;
@@ -355,6 +360,39 @@ public class RedisFeishuEventDistributedDeduplicator : IFeishuEventDeduplicator,
         _logger?.LogDebug("Redis 自动清理过期键，无需手动清理");
         await Task.CompletedTask;
         return 0;
+    }
+
+    /// <summary>
+    /// P-2 修复：尝试解析时间戳，兼容 Unix 秒（数字字符串）和 ISO 8601 字符串两种格式。
+    /// </summary>
+    /// <param name="timestampStr">时间戳字符串。</param>
+    /// <returns>解析成功返回 <see cref="DateTimeOffset"/>，否则返回 null。</returns>
+    private static DateTimeOffset? TryParseTimestamp(string timestampStr)
+    {
+        if (string.IsNullOrEmpty(timestampStr))
+        {
+            return null;
+        }
+
+        // 优先尝试 Unix 秒（与 TryMarkAsProcessingAsync 的 Lua 脚本一致）
+        if (long.TryParse(timestampStr, System.Globalization.NumberStyles.Integer,
+            System.Globalization.CultureInfo.InvariantCulture, out var unixSeconds))
+        {
+            // 合理范围校验：Unix 秒应在 2000-01-01 至 2100-01-01 之间
+            if (unixSeconds > 946684800 && unixSeconds < 4102444800)
+            {
+                return DateTimeOffset.FromUnixTimeSeconds(unixSeconds);
+            }
+        }
+
+        // 兼容存量数据：ISO 8601 "O" 格式（历史 MarkAsCompletedAsync 写入）
+        if (DateTimeOffset.TryParse(timestampStr, System.Globalization.CultureInfo.InvariantCulture,
+            System.Globalization.DateTimeStyles.RoundtripKind, out var isoTimestamp))
+        {
+            return isoTimestamp;
+        }
+
+        return null;
     }
 
     /// <summary>

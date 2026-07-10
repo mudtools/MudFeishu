@@ -1,5 +1,36 @@
 import api from './auth'
 
+// ===================== 错误处理工具 =====================
+
+/**
+ * 从 Axios 错误响应中提取最可读的错误信息。
+ * 优先解析后端返回的 content 字段（飞书 API 原始错误 JSON），
+ * 提取其中的 msg 字段；回退到 error 字段；最后回退到原始异常消息。
+ */
+export function extractErrorMessage(error: any): string {
+  const data = error?.response?.data
+  if (!data) return error?.message || '请求失败'
+
+  // 尝试解析 content 中的飞书 API 错误 JSON
+  if (data.content) {
+    try {
+      const feishuError = typeof data.content === 'string' ? JSON.parse(data.content) : data.content
+      if (feishuError?.msg) {
+        return `[${feishuError.code ?? data.statusCode ?? 'ERR'}] ${feishuError.msg}`
+      }
+    } catch {
+      // content 不是合法 JSON，回退
+    }
+  }
+
+  // 回退到后端返回的 error 字段
+  if (data.error) {
+    return data.errorCode ? `[${data.errorCode}] ${data.error}` : data.error
+  }
+
+  return error?.message || '请求失败'
+}
+
 // ===================== 数据模型 =====================
 
 /** 部门负责人 */

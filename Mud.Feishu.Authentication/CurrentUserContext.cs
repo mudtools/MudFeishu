@@ -57,7 +57,7 @@ public class CurrentUserContext(ILogger<CurrentUserContext> logger) : IFeishuCur
             throw new ArgumentException("OpenId cannot be null, empty or whitespace.", nameof(openId));
         }
 
-        if (_currentUser.Value != null)
+        if (_currentUser.Value != null && !string.Equals(_currentUser.Value.OpenId, openId, StringComparison.Ordinal))
         {
             _logger.LogWarning("用户上下文被覆盖: 原 OpenId={OldOpenId}, 新 OpenId={NewOpenId}",
                 MaskSensitiveInfo(_currentUser.Value.OpenId), MaskSensitiveInfo(openId));

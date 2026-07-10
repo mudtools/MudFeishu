@@ -63,13 +63,20 @@ public static class ServiceCollectionExtensions
     /// <param name="services">服务集合</param>
     /// <param name="sectionName">配置节名称</param>
     /// <returns>服务集合</returns>
+    /// <exception cref="InvalidOperationException">未在服务集合中找到 <see cref="IConfiguration"/> 注册。</exception>
     public static FeishuWebhookServiceBuilder CreateFeishuWebhookServiceBuilder(
         this IServiceCollection services,
         string sectionName = "FeishuWebhook")
     {
-        // 从服务集合中获取配置
-        var configuration = services.BuildServiceProvider()
-                                    .GetRequiredService<IConfiguration>();
+        // P-1 修复：移除 BuildServiceProvider() 反模式（会在 ConfigureServices 阶段创建临时容器，
+        // 导致单例被多次实例化、配置变更不生效、实现 IDisposable 的单例资源泄漏）。
+        // 改为直接从已注册的服务描述符中提取 IConfiguration 单例实例。
+        var configuration = services
+            .FirstOrDefault(d => d.ServiceType == typeof(IConfiguration))?
+            .ImplementationInstance as IConfiguration
+            ?? throw new InvalidOperationException(
+                "未找到 IConfiguration 注册。请使用接受 IConfiguration 参数的 CreateFeishuWebhookServiceBuilder 重载，" +
+                "或确保在调用此方法前已注册 IConfiguration（如通过 AddFeishuApp 或框架默认注册）。");
         return services.CreateFeishuWebhookServiceBuilder(configuration, sectionName);
     }
 }

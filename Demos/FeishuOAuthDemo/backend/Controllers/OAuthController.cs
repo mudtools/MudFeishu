@@ -30,29 +30,35 @@ namespace FeishuOAuthDemo.Controllers;
 [Route("api/[controller]")]
 public class OAuthController : ControllerBase
 {
+    private readonly IFeishuAppManager _feishuAppManager;
     private readonly IConfiguration _configuration;
     private readonly IFeishuTokenManagerResolver _tokenManagerResolver;
     private readonly IStateStorageService _stateStorageService;
     private readonly IJwtTokenService _jwtTokenService;
     private readonly IUserService _userService;
     private readonly IFeishuUserV3User _feishuUserApi;
+    private readonly IFeishuCurrentUserContext _currentUserContext;
     private readonly ILogger<OAuthController> _logger;
 
     public OAuthController(
+        IFeishuAppManager feishuAppManager,
         IConfiguration configuration,
         IFeishuTokenManagerResolver tokenManagerResolver,
         IStateStorageService stateStorageService,
         IJwtTokenService jwtTokenService,
         IUserService userService,
         IFeishuUserV3User feishuUserApi,
+        IFeishuCurrentUserContext currentUserContext,
         ILogger<OAuthController> logger)
     {
+        _feishuAppManager = feishuAppManager;
         _configuration = configuration;
         _tokenManagerResolver = tokenManagerResolver;
         _stateStorageService = stateStorageService;
         _jwtTokenService = jwtTokenService;
         _userService = userService;
         _feishuUserApi = feishuUserApi;
+        _currentUserContext = currentUserContext;
         _logger = logger;
     }
 
@@ -65,7 +71,7 @@ public class OAuthController : ControllerBase
     {
         try
         {
-            var appId = _configuration["Feishu:AppId"];
+            var appId = _feishuAppManager.DefaultConfig.AppId;
             var redirectUri = _configuration["OAuth:RedirectUri"];
 
             if (string.IsNullOrEmpty(appId) || string.IsNullOrEmpty(redirectUri))
@@ -157,7 +163,16 @@ public class OAuthController : ControllerBase
 
             _logger.LogInformation("成功获取用户访问令牌");
 
+            // OAuth 回调阶段用户尚未持有 JWT，中间件不会自动设置用户上下文。
+            // 需要手动设置用户上下文（OpenId 作为令牌查找键），并切换应用上下文，
+            // 以便 IFeishuUserV3User.GetUserInfoAsync 能正确获取用户访问令牌并发起请求。
+            if (!string.IsNullOrEmpty(tokenResult.OpenId))
+            {
+                _currentUserContext.SetUser(tokenResult.OpenId, tokenResult.UnionId, tokenResult.OpenId, null);
+            }
+
             _logger.LogInformation("开始获取用户信息");
+            // 应用上下文由框架的 GetDefaultApp 回退机制自动处理，无需显式 BeginScope
             var userInfoResult = await _feishuUserApi.GetUserInfoAsync();
 
             if (userInfoResult?.Data == null)

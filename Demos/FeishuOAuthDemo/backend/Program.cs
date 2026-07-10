@@ -14,6 +14,13 @@ using Serilog;
 using Serilog.Events;
 using System.Text;
 
+// 如果未显式设置环境变量，默认使用 Development（适用于从 bin 目录直接运行的场景）
+// 通过 dotnet run 启动时 launchSettings.json 会自动设置 ASPNETCORE_ENVIRONMENT=Development
+if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")))
+{
+    Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Development");
+}
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Host.UseSerilog((context, services, configuration) => configuration

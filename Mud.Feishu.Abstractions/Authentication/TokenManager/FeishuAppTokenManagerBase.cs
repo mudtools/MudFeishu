@@ -115,7 +115,10 @@ internal abstract class FeishuAppTokenManagerBase : TokenManagerBase
 
             if (_options.EnableLogging)
                 _logger.LogDebug("Restored token from ITokenStore (no expiration info) for AppId: {AppId}, TokenType: {TokenType}", _options.AppId, _tokenTypeKey);
-            var safeExpireSeconds = _options.TokenRefreshThreshold + 60;
+            // T-3 修复：原值为 TokenRefreshThreshold + 60，扣除刷新阈值后有效时间仅 60 秒，过于保守导致频繁刷新。
+            // 飞书 tenant/app token 有效期通常为 2 小时（7200 秒），恢复无过期信息的令牌时使用 30 分钟（1800 秒）作为合理默认。
+            // 扣除 TokenRefreshThreshold 后仍有充足有效窗口，避免不必要的令牌刷新。
+            var safeExpireSeconds = Math.Max(_options.TokenRefreshThreshold + 300, 1800);
             return new CredentialToken
             {
                 AccessToken = accessToken,

@@ -182,6 +182,11 @@ public static class RedisFeishuServiceBuilderExtensions
             return new RedisUserTokenStore(innerStore, redis, logger!);
         });
 
+        // S-3 修复：注册 SingletonFeishuTokenStoreFactory，使 FeishuAppManager.CreateAppContext
+        // 通过工厂接口获取 Redis 单例实例，而非 is FeishuTokenStore 类型检查。
+        // 必须在 AddFeishuApp 之前调用，由 TryAdd 语义保证覆盖默认的 PerAppFeishuTokenStoreFactory。
+        services.TryAddSingleton<IFeishuTokenStoreFactory, SingletonFeishuTokenStoreFactory>();
+
         return services;
     }
 

@@ -6,9 +6,11 @@
 // -----------------------------------------------------------------------
 
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Mud.Feishu.Abstractions;
+using Mud.HttpUtils;
 using System.Diagnostics;
 using System.Security.Claims;
 
@@ -22,7 +24,8 @@ namespace Mud.Feishu.Authentication;
 /// <list type="bullet">
 ///   <item><description>从已认证的 ClaimsPrincipal 中提取飞书用户信息</description></item>
 ///   <item><description>设置 IFeishuCurrentUserContext 供后续请求处理使用</description></item>
-///   <item><description>请求结束后自动清理用户上下文</description></item>
+///   <item><description>设置 IAppContextHolder 默认应用上下文作用域，确保 TokenManager 模式的 API 调用无需显式 BeginScope</description></item>
+///   <item><description>请求结束后自动清理用户上下文和应用上下文作用域</description></item>
 /// </list>
 /// <para>中间件位置：</para>
 /// 应放在 AuthenticationMiddleware 之后、AuthorizationMiddleware 之前：
@@ -68,6 +71,7 @@ public class FeishuUserAuthenticationMiddleware(
             : null;
 
         var user = context.User;
+        IDisposable? appContextScope = null;
 
         if (user?.Identity?.IsAuthenticated == true)
         {
@@ -90,6 +94,11 @@ public class FeishuUserAuthenticationMiddleware(
 
                 _logger.LogDebug("用户上下文已设置: OpenId={OpenId}, UnionId={UnionId}, UserId={UserId}",
                     logOpenId, logUnionId, logUserId);
+
+                // 设置默认应用上下文作用域：当 IAppContextHolder.Current 为 null 时，
+                // 自动切换到默认应用上下文，使 TokenManager 模式的飞书 API 调用无需显式 BeginScope。
+                // 若 Current 已被显式设置（如多应用场景下通过 UseApp/BeginScope 切换），则不覆盖。
+                appContextScope = TryBeginDefaultAppScope(context.RequestServices);
             }
             else
             {
@@ -105,6 +114,9 @@ public class FeishuUserAuthenticationMiddleware(
         }
         finally
         {
+            // 释放应用上下文作用域，恢复之前的上下文状态
+            appContextScope?.Dispose();
+
             try
             {
                 userContext.Clear();
@@ -113,6 +125,39 @@ public class FeishuUserAuthenticationMiddleware(
             {
                 _logger.LogError(ex, "清理用户上下文时发生异常");
             }
+        }
+    }
+
+    /// <summary>
+    /// 尝试为当前请求创建默认应用上下文作用域。
+    /// <para>
+    /// 仅当 IAppContextHolder.Current 为 null 且 IFeishuAppManager 已注册时，
+    /// 使用 BeginScope 切换到默认应用上下文。返回的 IDisposable 在请求结束时释放以恢复原状态。
+    /// </para>
+    /// </summary>
+    /// <param name="serviceProvider">请求作用域的服务提供器</param>
+    /// <returns>应用上下文作用域的 IDisposable；若无需创建则返回 null</returns>
+    private IDisposable? TryBeginDefaultAppScope(IServiceProvider serviceProvider)
+    {
+        try
+        {
+            var appContextHolder = serviceProvider.GetService<IAppContextHolder>();
+            var feishuAppManager = serviceProvider.GetService<IFeishuAppManager>();
+
+            if (appContextHolder == null || feishuAppManager == null)
+                return null;
+
+            // 仅当当前上下文未被显式设置时才创建作用域，避免覆盖多应用场景下的显式切换
+            if (appContextHolder.Current != null)
+                return null;
+
+            var defaultApp = feishuAppManager.GetDefaultApp();
+            return appContextHolder.BeginScope(defaultApp);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "设置默认应用上下文作用域时发生异常，后续 TokenManager 模式 API 调用可能需要显式 BeginScope");
+            return null;
         }
     }
 

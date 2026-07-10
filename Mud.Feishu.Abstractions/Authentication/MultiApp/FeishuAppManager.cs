@@ -307,6 +307,10 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
     /// </summary>
     /// <remarks>
     /// 重写基类方法，从 DI 容器获取已注册的服务并调用 UseApp 切换应用上下文。
+    /// A-2 修复说明：本类使用 DI 解析模式（GetService + UseApp），而非基类 <see cref="DefaultAppManager{TAppContext}.RegisterSwitcherFactory"/>
+    /// 的工厂委托模式。两种模式共存但 <see cref="GetWebApi{TContextSwitcher}"/> 仅走 DI 路径，
+    /// 调用 <c>RegisterSwitcherFactory</c> 注册的工厂不会被本方法使用。
+    /// 统一为 DI 模式可降低理解成本，基类工厂委托路径在中期标记为 [Obsolete]。
     /// </remarks>
     public override IFeishuAppContext GetWebApi<IFeishuAppContext>(string appKey)
     {
@@ -361,6 +365,8 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
         UpdateApp(appKey, ctx);
     }
 
+    // A-2 修复说明：此显式接口实现委托给基类 RegisterSwitcherFactory，但 FeishuAppManager.GetWebApi
+    // 重写为 DI 解析模式，不使用工厂委托。保留此方法仅为接口兼容性，注册的工厂不会被 GetWebApi 调用。
     void IAppManager<IFeishuAppContext>.RegisterSwitcherFactory<TContextSwitcher>(Func<IFeishuAppContext, TContextSwitcher> factory)
     {
         RegisterSwitcherFactory<TContextSwitcher>(ctx => factory(ctx));
@@ -375,7 +381,6 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
     {
         var currentUserContext = _serviceProvider.GetService<IFeishuCurrentUserContext>();
         var jsonSerializerOptions = Options.Create(_serviceProvider.GetRequiredService<JsonSerializerOptions>());
-        var memoryCache = _serviceProvider.GetRequiredService<IMemoryCache>();
         var clientName = $"feishu-{config.AppKey}";
 
         // === 步骤 1：创建基础 HttpClient（不含恢复，供 AuthenticationApi 使用） ===
@@ -392,23 +397,11 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
         var options = Options.Create(config);
 
         // === 步骤 3：创建 TokenManager（依赖 AuthenticationApi） ===
-        // C-2 修复：为每个应用创建独立的 FeishuTokenStore / FeishuUserTokenStore 实例（含 AppKey 隔离维度）
-        // 若 DI 中注册的是自定义 ITokenStore（如 RedisTokenStore），则直接使用 DI 实例（假设其已处理多应用隔离）
-        ITokenStore tokenStore;
-        IUserTokenStore? userTokenStore;
-
-        var diTokenStore = _serviceProvider.GetService<ITokenStore>();
-        if (diTokenStore is FeishuTokenStore)
-        {
-            var feishuTokenStore = new FeishuTokenStore(memoryCache, config.AppKey);
-            tokenStore = feishuTokenStore;
-            userTokenStore = new FeishuUserTokenStore(feishuTokenStore, memoryCache, config.AppKey);
-        }
-        else
-        {
-            tokenStore = diTokenStore!;
-            userTokenStore = _serviceProvider.GetService<IUserTokenStore>();
-        }
+        // S-3 修复：通过 IFeishuTokenStoreFactory 替代 is FeishuTokenStore 类型检查。
+        // 默认注册 PerAppFeishuTokenStoreFactory（per-app FeishuTokenStore 实例）；
+        // Redis 等自定义存储场景注册 SingletonFeishuTokenStoreFactory 返回 DI 单例。
+        var tokenStoreFactory = _serviceProvider.GetRequiredService<IFeishuTokenStoreFactory>();
+        var (tokenStore, userTokenStore) = tokenStoreFactory.Create(config.AppKey);
 
         var tenantTokenManager = new TenantTokenManager(
             authenticationApi,

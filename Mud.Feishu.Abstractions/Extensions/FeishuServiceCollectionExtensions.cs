@@ -172,6 +172,11 @@ public static class FeishuServiceCollectionExtensions
             services.AddSingleton<IUserTokenStore>(sp => sp.GetRequiredService<FeishuUserTokenStore>());
         }
 
+        // S-3 修复：注册 IFeishuTokenStoreFactory，替代 FeishuAppManager 中的 is FeishuTokenStore 类型检查。
+        // 默认使用 PerAppFeishuTokenStoreFactory（per-app FeishuTokenStore 实例）；
+        // Redis 等自定义存储通过预注册 SingletonFeishuTokenStoreFactory 覆盖（TryAdd 语义：已存在则跳过）。
+        services.TryAddSingleton<IFeishuTokenStoreFactory, PerAppFeishuTokenStoreFactory>();
+
         // C-1 修复：注册 TokenRecoveryOptions，使 TokenRecoveryDelegatingHandler 可通过 IOptions<TokenRecoveryOptions> 获取配置。
         // 用户可通过 IConfiguration 的 "MudHttpTokenRecovery" 节或 services.Configure<TokenRecoveryOptions>(...) 自定义恢复策略。
         services.AddOptions<TokenRecoveryOptions>();
@@ -183,11 +188,14 @@ public static class FeishuServiceCollectionExtensions
         services.AddTokenRefreshBackgroundService();
 
         // 启用后台刷新服务（Mud.HttpUtils 默认 Enabled=false，需显式启用）
+        // S-4 修复说明：PostConfigure 在选项首次解析时执行一次，无法感知运行时动态移除应用。
+        // 运行时移除全部应用后后台服务仍会运行（但找不到令牌则空转，无副作用）。
+        // 若需完全停止后台服务，应在移除应用后手动重新配置 TokenRefreshBackgroundOptions.Enabled = false。
         services.AddOptions<TokenRefreshBackgroundOptions>()
             .PostConfigure<IOptions<List<FeishuAppConfig>>>((tokenOptions, appOptions) =>
             {
-                var defaultConfig = appOptions.Value.FirstOrDefault(c => c.IsDefault) ?? appOptions.Value.FirstOrDefault();
-                if (defaultConfig != null)
+                // 仅当存在至少一个已配置应用时启用后台刷新
+                if (appOptions.Value.Count > 0)
                 {
                     tokenOptions.Enabled = true;
                 }

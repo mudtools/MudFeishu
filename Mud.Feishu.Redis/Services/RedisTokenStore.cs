@@ -79,7 +79,8 @@ public class RedisTokenStore : ITokenStore
     public async Task<IEnumerable<string>> GetTokenTypesAsync(CancellationToken cancellationToken = default)
     {
         var pattern = $"{_keyPrefix}:*:access";
-        var keys = GetServer().Keys(pattern: pattern);
+        // S-2 修复：显式传入 pageSize 提升大键空间下 SCAN 迭代效率（默认值亦为 250，此处显式声明意图）
+        var keys = GetServer().Keys(pattern: pattern, pageSize: 250);
         var tokenTypes = new List<string>();
         var prefixLength = $"{_keyPrefix}:".Length;
 
@@ -99,7 +100,7 @@ public class RedisTokenStore : ITokenStore
     {
         var pattern = $"{_keyPrefix}:*";
         var db = GetDatabase();
-        var keys = GetServer().Keys(pattern: pattern);
+        var keys = GetServer().Keys(pattern: pattern, pageSize: 250);
 
         foreach (var key in keys)
             await db.KeyDeleteAsync(key).ConfigureAwait(false);
@@ -107,9 +108,32 @@ public class RedisTokenStore : ITokenStore
 
     private IDatabase GetDatabase() => _redis.GetDatabase();
 
+    /// <summary>
+    /// 获取可用的 Redis 服务器节点。
+    /// </summary>
+    /// <remarks>
+    /// S-2 修复：原实现固定取 <c>endpoints[0]</c>，集群/主从场景下该节点不可用时无故障转移。
+    /// 改为遍历所有 endpoints，选择首个 <c>IsConnected &amp;&amp; !IsReplica</c> 的主节点；
+    /// 若全部不可用或全为副本，回退到首个节点（保持原行为，由调用方处理异常）。
+    /// </remarks>
     private IServer GetServer()
     {
         var endpoints = _redis.GetEndPoints();
+        foreach (var endpoint in endpoints)
+        {
+            try
+            {
+                var server = _redis.GetServer(endpoint);
+                if (server.IsConnected && !server.IsReplica)
+                    return server;
+            }
+            catch
+            {
+                // 跳过不可访问的节点，继续尝试下一个
+            }
+        }
+
+        // 所有节点不可用或全为副本时回退到首个节点
         return _redis.GetServer(endpoints[0]);
     }
 

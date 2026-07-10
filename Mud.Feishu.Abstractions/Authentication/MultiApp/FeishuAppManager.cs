@@ -37,6 +37,9 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
     private readonly ILogger<FeishuAppManager> _logger;
     private readonly ConcurrentDictionary<string, Lazy<FeishuAppContext>> _lazyContexts = new();
     private readonly List<FeishuAppConfig> _configs;
+    // A-1 修复：本类私有的默认应用键，替代反射设置基类 _defaultAppKey 的反模式。
+    // 构造阶段赋值（单线程），AddApp/RemoveApp 时同步更新，GetDefaultApp 直接读取。
+    private string? _defaultAppKey;
 
     /// <summary>
     /// 初始化飞书应用管理器
@@ -75,17 +78,24 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
         if (defaultConfig == null)
             throw new InvalidOperationException("未配置默认应用，请在至少一个 FeishuAppConfig 上设置 IsDefault = true。");
 
-        // M-1 修复补充：通过反射预置基类的 _defaultAppKey 字段。
-        // 基类 GetDefaultApp() 为非虚方法，直接读取 _defaultAppKey；若不设置，GetDefaultApp() 会抛出"未设置默认应用"。
-        // 设置后，基类 GetDefaultApp() → GetApp(defaultKey)（虚方法）→ 触发懒加载创建。
-        var defaultKeyField = typeof(DefaultAppManager<IFeishuAppContext>)
-            .GetField("_defaultAppKey", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-        defaultKeyField?.SetValue(this, defaultConfig.AppKey);
+        // A-1 修复：不再通过反射设置基类私有字段 _defaultAppKey（反模式且基类字段无法加锁）。
+        // 改为本类私有字段，GetDefaultApp() 直接读取，AddApp/RemoveApp 同步更新。
+        _defaultAppKey = defaultConfig.AppKey;
 
         _logger.LogInformation("飞书应用管理器初始化完成，共配置 {Count} 个应用，默认应用: {AppKey}",
             _configs.Count, defaultConfig.AppKey);
 
         WarnResilienceConfigMismatch(_configs);
+
+        // S-1 修复：启动期检测 IEncryptionProvider 注册状态。
+        // 若未注册，使用 [Body(EnableEncrypt=true)] 的 API 将在首次请求时抛 InvalidOperationException（运行时失败而非编译期诊断）。
+        // 此处发出警告使失败模式提前可见，便于用户在首次请求前补注册。
+        if (_serviceProvider.GetService<IEncryptionProvider>() == null)
+        {
+            _logger.LogWarning(
+                "未注册 IEncryptionProvider。若使用 [Body(EnableEncrypt=true)] 标记的 API，" +
+                "首次请求将抛出 InvalidOperationException。请通过 AddMudHttpClient 配置 AesEncryptionOptions 或注册自定义 IEncryptionProvider。");
+        }
     }
 
     /// <summary>
@@ -227,22 +237,27 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
     {
         var wasInLazy = _lazyContexts.TryRemove(appKey, out _);
         var wasInBase = base.RemoveApp(appKey);
+
+        // A-1 修复：若移除的是当前默认应用，清空本类默认应用键
+        if ((wasInLazy || wasInBase) && _defaultAppKey == appKey)
+            _defaultAppKey = null;
+
         return wasInLazy || wasInBase;
     }
 
     /// <inheritdoc />
     /// <remarks>
-    /// M-1 修复补充：基类 <see cref="DefaultAppManager{TAppContext}.GetDefaultApp"/> 为非虚方法，
-    /// 直接读取私有字段 <c>_defaultAppKey</c>。由于本类采用懒加载不在构造阶段创建应用，
-    /// 该字段在构造完成后仍为 null。为使基类 <see cref="GetDefaultApp"/> 与 <see cref="GetApp"/>
-    /// 协同工作，构造阶段通过反射预置 <c>_defaultAppKey</c>，后续首次调用 <see cref="GetDefaultApp"/>
-    /// 时会进入基类逻辑 → 调用 <see cref="GetApp"/>（虚方法）→ 触发懒加载创建。
+    /// A-1 修复：不再依赖基类反射设置的 _defaultAppKey，直接读取本类私有字段。
+    /// 基类 GetDefaultApp() 为非虚方法，若调用方强制转换为 DefaultAppManager&lt;IFeishuAppContext&gt; 并调用基类版本，
+    /// 会因基类 _defaultAppKey 未设置而抛出——该场景属非常规用法，错误信息清晰可接受。
     /// </remarks>
     public new IFeishuAppContext GetDefaultApp()
     {
-        // 基类 _defaultAppKey 已在构造阶段通过反射设置，直接调用基类实现即可。
-        // 基类会调用 GetApp(defaultKey)（虚方法），从而触发懒加载。
-        return base.GetDefaultApp();
+        var defaultKey = _defaultAppKey;
+        if (string.IsNullOrEmpty(defaultKey))
+            throw new InvalidOperationException("未设置默认应用。请在注册应用时设置 isDefault = true。");
+
+        return GetApp(defaultKey!);
     }
 
     /// <summary>
@@ -279,6 +294,11 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
         RegisterApp(config.AppKey, context, config.IsDefault);
         // 同步注册到懒加载字典，使 GetAllApps 能正确枚举
         _lazyContexts[config.AppKey] = new Lazy<FeishuAppContext>(() => context);
+
+        // A-1 修复：若新应用标记为默认，更新本类的默认应用键
+        if (config.IsDefault)
+            _defaultAppKey = config.AppKey;
+
         return context;
     }
 
@@ -476,7 +496,9 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
 
         if (nonDefaultConfigs.Count > 0)
         {
-            _logger.LogInformation(
+            // A-3 修复：方法名 WarnResilienceConfigMismatch 暗示 Warning 级别，原用 LogInformation 与语义不符，
+            // 且降低了多应用弹性策略不一致的可观测性。改回 LogWarning。
+            _logger.LogWarning(
                 "多应用模式下检测到不同应用具有不同的弹性策略配置（重试、超时、熔断）。" +
                 "Per-App 弹性策略已启用，各应用将使用独立的策略配置。默认应用 '{DefaultAppKey}' 的配置用于全局回退（如 ResilientHttpClient 装饰器）。",
                 defaultConfig.AppKey);

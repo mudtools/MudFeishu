@@ -117,6 +117,7 @@ public class FeishuAppConfig
     /// 默认值: 1000毫秒（1秒）
     /// 范围: 100-60000毫秒
     /// 重试之间的基础延迟时间，实际延迟会采用指数退避策略。
+    /// <para>RetryDelayMs 可以大于 TimeOut，两者概念独立。RetryDelayMs 控制重试间隔，TimeOut 控制单次请求超时。</para>
     /// </remarks>
     public int RetryDelayMs { get; set; } = Consts.DefaultRetryDelayMs;
 
@@ -197,7 +198,7 @@ public class FeishuAppConfig
     /// 默认值: false
     /// 当系统中配置了多个应用时，可以指定一个默认应用。
     /// 在未明确指定应用的情况下，将使用默认应用的配置。
-    /// <para>注意：当 AppKey 为 "default" 时，会自动设置为 IsDefault = true</para>
+    /// <para>注意：当 AppKey 为 "default" 时，会自动设置为 IsDefault = true（由 FeishuMultiAppExtensions 统一处理）</para>
     /// <para>当只配置一个应用时，会自动设置为 IsDefault = true</para>
     /// </remarks>
     public bool IsDefault { get; set; } = false;
@@ -294,10 +295,8 @@ public class FeishuAppConfig
             }
         }
 
-        if (AppKey.Equals("default", StringComparison.OrdinalIgnoreCase))
-        {
-            IsDefault = true;
-        }
+        // 注意：IsDefault 的自动推断逻辑已统一至 FeishuMultiAppExtensions.ValidateAndSetDefaultApp() 中。
+        // 此处不再自动修改 IsDefault，避免与 ValidateAndSetDefaultApp 产生双重设置冲突。
     }
 
     /// <summary>

@@ -341,23 +341,21 @@ Mud.Feishu.Abstractions provides complete multi-application management capabilit
 ```csharp
 // Method 1: Use configuration file
 {
-  "Feishu": {
-    "Apps": [
-      {
-        "AppKey": "default",
-        "AppId": "cli_xxxxxx",
-        "AppSecret": "xxxxxx",
-        "BaseUrl": "https://open.feishu.cn",
-        "IsDefault": true
-      },
-      {
-        "AppKey": "approval",
-        "AppId": "cli_yyyyyy",
-        "AppSecret": "yyyyyy",
-        "BaseUrl": "https://open.feishu.cn"
-      }
-    ]
-  }
+  "FeishuApps": [
+    {
+      "AppKey": "default",
+      "AppId": "cli_xxxxxx",
+      "AppSecret": "xxxxxx",
+      "BaseUrl": "https://open.feishu.cn",
+      "IsDefault": true
+    },
+    {
+      "AppKey": "approval",
+      "AppId": "cli_yyyyyy",
+      "AppSecret": "yyyyyy",
+      "BaseUrl": "https://open.feishu.cn"
+    }
+  ]
 }
 
 // Method 2: Use code configuration

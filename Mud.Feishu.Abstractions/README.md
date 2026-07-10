@@ -335,23 +335,21 @@ Mud.Feishu.Abstractions 提供完整的多应用管理能力，允许在同一�
 ```csharp
 // 方式 1: 使用配置文件
 {
-  "Feishu": {
-    "Apps": [
-      {
-        "AppKey": "default",
-        "AppId": "cli_xxxxxx",
-        "AppSecret": "xxxxxx",
-        "BaseUrl": "https://open.feishu.cn",
-        "IsDefault": true
-      },
-      {
-        "AppKey": "approval",
-        "AppId": "cli_yyyyyy",
-        "AppSecret": "yyyyyy",
-        "BaseUrl": "https://open.feishu.cn"
-      }
-    ]
-  }
+  "FeishuApps": [
+    {
+      "AppKey": "default",
+      "AppId": "cli_xxxxxx",
+      "AppSecret": "xxxxxx",
+      "BaseUrl": "https://open.feishu.cn",
+      "IsDefault": true
+    },
+    {
+      "AppKey": "approval",
+      "AppId": "cli_yyyyyy",
+      "AppSecret": "yyyyyy",
+      "BaseUrl": "https://open.feishu.cn"
+    }
+  ]
 }
 
 // 方式 2: 使用代码配置
@@ -551,6 +549,11 @@ public class DynamicAppManager
 | `TimeOut`               | int    | 30                     | HTTP 请求超时时间（秒） |
 | `RetryCount`            | int    | 3                      | 失败重试次数            |
 | `RetryDelayMs`          | int    | 1000                   | 重试延迟时间（毫秒）    |
+| `CircuitBreakerEnabled`                | bool | true  | 是否启用熔断策略                      |
+| `CircuitBreakerFailureThreshold`       | int  | 20    | 熔断失败率阈值（百分比，范围 1-100）  |
+| `CircuitBreakerSamplingDurationSeconds`| int  | 60    | 熔断采样窗口时间（秒，范围 10-300）   |
+| `CircuitBreakerBreakDurationSeconds`   | int  | 60    | 熔断持续时间（秒，范围 10-300）       |
+| `CircuitBreakerMinimumThroughput`      | int  | 10    | 熔断最小吞吐量（范围 2-1000）         |
 | `TokenRefreshThreshold` | int    | 300                    | 令牌刷新阈值（秒）      |
 | `EnableLogging`         | bool   | true                   | 是否启用日志记录        |
 | `IsDefault`             | bool   | false                  | 是否为默认应用          |
@@ -559,13 +562,17 @@ public class DynamicAppManager
 
 Mud.Feishu 使用 `IOptionsMonitor<T>` 模式支持配置热更新，无需重启应用即可动态更新配置。
 
+> **注意**：热更新支持程度取决于各模块的实现。Webhook 模块和 WebSocket 模块的核心组件均已注入 `IOptionsMonitor<T>`，
+> 配置文件变更后可实时生效。但 WebSocket 连接级参数（如心跳间隔、重连策略、SSL 证书配置等）
+> 因涉及活动连接状态，变更后需重连才能生效。
+
 **支持热更新的配置**：
 
-| 配置项                   | 是否支持热更新 | 说明                         |
-| ------------------------ | -------------- | ---------------------------- |
-| `FeishuWebhookOptions`   | ✅ 支持        | Webhook 相关配置             |
-| `FeishuWebSocketOptions` | ✅ 支持        | WebSocket 相关配置           |
-| `FeishuAppConfig`        | ⚠️ 部分支持    | 部分配置热更新，部分需要重启 |
+| 配置项                   | 是否支持热更新 | 说明                                                                                          |
+| ------------------------ | -------------- | --------------------------------------------------------------------------------------------- |
+| `FeishuWebhookOptions`   | ✅ 支持        | Webhook 相关配置，核心组件注入 IOptionsMonitor<T>，配置文件变更后实时生效                      |
+| `FeishuWebSocketOptions` | ✅ 部分支持    | 日志开关、健康检查间隔等运行时参数支持热更新；连接级参数（心跳、重连、SSL）需重连后生效 |
+| `FeishuAppConfig`        | ⚠️ 部分支持    | 部分配置热更新，部分需要重启                                                                  |
 
 **热更新示例**：
 
@@ -624,7 +631,8 @@ public class ConfigurationWatcherService
 **注意事项**：
 
 - ⚠️ `FeishuAppConfig` 的 `AppId`、`AppSecret`、`EncryptKey` 等敏感配置修改后需要重启应用才能生效
-- ✅ `FeishuWebhookOptions` 和 `FeishuWebSocketOptions` 的非敏感配置支持热更新
+- ✅ `FeishuWebhookOptions` 的非敏感配置支持热更新
+- ✅ `FeishuWebSocketOptions` 的日志开关和健康检查间隔支持热更新；连接级参数（心跳间隔、重连策略等）需重连后生效
 - 🔄 热更新后，已创建的实例会使用旧配置，新实例会使用新配置
 - 📊 使用 `IOptionsSnapshot<T>` 可以获取当前请求周期的配置快照
 

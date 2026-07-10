@@ -23,10 +23,6 @@ public class RedisOptionsTests
         // Assert
         Assert.Equal("localhost:6379", options.ServerAddress);
         Assert.Equal(string.Empty, options.Password);
-        Assert.Equal(TimeSpan.FromHours(48), options.EventCacheExpiration);
-        Assert.Equal(TimeSpan.FromMinutes(5), options.NonceTtl);
-        Assert.Equal(TimeSpan.FromHours(48), options.SeqIdCacheExpiration);
-        Assert.Equal("feishu:event:", options.EventKeyPrefix);
         Assert.Equal("feishu:nonce:", options.NonceKeyPrefix);
         Assert.Equal("feishu:seqid:", options.SeqIdKeyPrefix);
         Assert.Equal(5000, options.ConnectTimeout);
@@ -47,10 +43,7 @@ public class RedisOptionsTests
         {
             ServerAddress = "redis.example.com:6380",
             Password = "test_password",
-            EventCacheExpiration = TimeSpan.FromHours(12),
             NonceTtl = TimeSpan.FromMinutes(10),
-            SeqIdCacheExpiration = TimeSpan.FromHours(48),
-            EventKeyPrefix = "custom:event:",
             NonceKeyPrefix = "custom:nonce:",
             SeqIdKeyPrefix = "custom:seqid:",
             ConnectTimeout = 10000,
@@ -66,10 +59,7 @@ public class RedisOptionsTests
         // Assert
         Assert.Equal("redis.example.com:6380", options.ServerAddress);
         Assert.Equal("test_password", options.Password);
-        Assert.Equal(TimeSpan.FromHours(12), options.EventCacheExpiration);
         Assert.Equal(TimeSpan.FromMinutes(10), options.NonceTtl);
-        Assert.Equal(TimeSpan.FromHours(48), options.SeqIdCacheExpiration);
-        Assert.Equal("custom:event:", options.EventKeyPrefix);
         Assert.Equal("custom:nonce:", options.NonceKeyPrefix);
         Assert.Equal("custom:seqid:", options.SeqIdKeyPrefix);
         Assert.Equal(10000, options.ConnectTimeout);
@@ -104,13 +94,11 @@ public class RedisOptionsTests
         // Arrange & Act
         var options = new RedisOptions
         {
-            EventKeyPrefix = "myapp:events:",
             NonceKeyPrefix = "myapp:nonces:",
             SeqIdKeyPrefix = "myapp:seqids:"
         };
 
         // Assert
-        Assert.Equal("myapp:events:", options.EventKeyPrefix);
         Assert.Equal("myapp:nonces:", options.NonceKeyPrefix);
         Assert.Equal("myapp:seqids:", options.SeqIdKeyPrefix);
     }
@@ -136,15 +124,11 @@ public class RedisOptionsTests
         // Arrange & Act
         var options = new RedisOptions
         {
-            EventCacheExpiration = TimeSpan.FromDays(7),
             NonceTtl = TimeSpan.FromSeconds(30),
-            SeqIdCacheExpiration = TimeSpan.FromDays(30)
         };
 
         // Assert
-        Assert.Equal(TimeSpan.FromDays(7), options.EventCacheExpiration);
         Assert.Equal(TimeSpan.FromSeconds(30), options.NonceTtl);
-        Assert.Equal(TimeSpan.FromDays(30), options.SeqIdCacheExpiration);
     }
 
     // ========== Validate() 方法测试 ==========

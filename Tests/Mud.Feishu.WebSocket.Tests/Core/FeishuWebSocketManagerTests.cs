@@ -25,6 +25,7 @@ public class FeishuWebSocketManagerTests
     private readonly Mock<IFeishuAppContext> _appContextMock;
     private readonly Mock<IFeishuWebSocketClient> _clientMock;
     private readonly FeishuWebSocketOptions _options;
+    private readonly Mock<IOptionsMonitor<FeishuWebSocketOptions>> _optionsMonitorMock;
 
     public FeishuWebSocketManagerTests()
     {
@@ -35,6 +36,8 @@ public class FeishuWebSocketManagerTests
         {
             EnableLogging = false
         };
+        _optionsMonitorMock = new Mock<IOptionsMonitor<FeishuWebSocketOptions>>();
+        _optionsMonitorMock.Setup(x => x.CurrentValue).Returns(_options);
 
         SetupAppContextMock();
     }
@@ -77,7 +80,7 @@ public class FeishuWebSocketManagerTests
         var action = () => new FeishuWebSocketManager(
             null!,
             _appContextMock.Object,
-            Options.Create(_options),
+            _optionsMonitorMock.Object,
             _clientMock.Object);
 
         action.Should().Throw<ArgumentNullException>()
@@ -91,7 +94,7 @@ public class FeishuWebSocketManagerTests
         var action = () => new FeishuWebSocketManager(
             _loggerMock.Object,
             null!,
-            Options.Create(_options),
+            _optionsMonitorMock.Object,
             _clientMock.Object);
 
         action.Should().Throw<ArgumentNullException>()
@@ -119,7 +122,7 @@ public class FeishuWebSocketManagerTests
         var action = () => new FeishuWebSocketManager(
             _loggerMock.Object,
             _appContextMock.Object,
-            Options.Create(_options),
+            _optionsMonitorMock.Object,
             null!);
 
         action.Should().Throw<ArgumentNullException>()
@@ -133,7 +136,7 @@ public class FeishuWebSocketManagerTests
         var manager = new FeishuWebSocketManager(
             _loggerMock.Object,
             _appContextMock.Object,
-            Options.Create(_options),
+            _optionsMonitorMock.Object,
             _clientMock.Object);
 
         // Assert
@@ -148,7 +151,7 @@ public class FeishuWebSocketManagerTests
         var manager = new FeishuWebSocketManager(
             _loggerMock.Object,
             _appContextMock.Object,
-            Options.Create(_options),
+            _optionsMonitorMock.Object,
             _clientMock.Object);
 
         // Act
@@ -167,7 +170,7 @@ public class FeishuWebSocketManagerTests
         var manager = new FeishuWebSocketManager(
             _loggerMock.Object,
             _appContextMock.Object,
-            Options.Create(_options),
+            _optionsMonitorMock.Object,
             _clientMock.Object);
 
         // Act & Assert
@@ -182,7 +185,7 @@ public class FeishuWebSocketManagerTests
         var manager = new FeishuWebSocketManager(
             _loggerMock.Object,
             _appContextMock.Object,
-            Options.Create(_options),
+            _optionsMonitorMock.Object,
             _clientMock.Object);
 
         // Act & Assert
@@ -196,7 +199,7 @@ public class FeishuWebSocketManagerTests
         var manager = new FeishuWebSocketManager(
             _loggerMock.Object,
             _appContextMock.Object,
-            Options.Create(_options),
+            _optionsMonitorMock.Object,
             _clientMock.Object);
 
         // Act
@@ -216,7 +219,7 @@ public class FeishuWebSocketManagerTests
         var manager = new FeishuWebSocketManager(
             _loggerMock.Object,
             _appContextMock.Object,
-            Options.Create(_options),
+            _optionsMonitorMock.Object,
             _clientMock.Object);
 
         // Act
@@ -235,7 +238,7 @@ public class FeishuWebSocketManagerTests
         var manager = new FeishuWebSocketManager(
             _loggerMock.Object,
             _appContextMock.Object,
-            Options.Create(_options),
+            _optionsMonitorMock.Object,
             _clientMock.Object);
 
         // Act
@@ -254,7 +257,7 @@ public class FeishuWebSocketManagerTests
         var manager = new FeishuWebSocketManager(
             _loggerMock.Object,
             _appContextMock.Object,
-            Options.Create(_options),
+            _optionsMonitorMock.Object,
             _clientMock.Object);
 
         // Act & Assert
@@ -274,7 +277,7 @@ public class FeishuWebSocketManagerTests
         var manager = new FeishuWebSocketManager(
             _loggerMock.Object,
             _appContextMock.Object,
-            Options.Create(_options),
+            _optionsMonitorMock.Object,
             _clientMock.Object);
 
         // Act
@@ -291,7 +294,7 @@ public class FeishuWebSocketManagerTests
         var manager = new FeishuWebSocketManager(
             _loggerMock.Object,
             _appContextMock.Object,
-            Options.Create(_options),
+            _optionsMonitorMock.Object,
             _clientMock.Object);
 
         // Act & Assert
@@ -306,7 +309,7 @@ public class FeishuWebSocketManagerTests
         var manager = new FeishuWebSocketManager(
             _loggerMock.Object,
             _appContextMock.Object,
-            Options.Create(_options),
+            _optionsMonitorMock.Object,
             _clientMock.Object);
         var eventRaised = false;
         manager.Connected += (s, e) => eventRaised = true;
@@ -322,7 +325,7 @@ public class FeishuWebSocketManagerTests
         var manager = new FeishuWebSocketManager(
             _loggerMock.Object,
             _appContextMock.Object,
-            Options.Create(_options),
+            _optionsMonitorMock.Object,
             _clientMock.Object);
         var eventRaised = false;
         manager.Disconnected += (s, e) => eventRaised = true;
@@ -338,7 +341,7 @@ public class FeishuWebSocketManagerTests
         var manager = new FeishuWebSocketManager(
             _loggerMock.Object,
             _appContextMock.Object,
-            Options.Create(_options),
+            _optionsMonitorMock.Object,
             _clientMock.Object);
         var eventRaised = false;
         manager.MessageReceived += (s, e) => eventRaised = true;
@@ -354,7 +357,7 @@ public class FeishuWebSocketManagerTests
         var manager = new FeishuWebSocketManager(
             _loggerMock.Object,
             _appContextMock.Object,
-            Options.Create(_options),
+            _optionsMonitorMock.Object,
             _clientMock.Object);
         var eventRaised = false;
         manager.Error += (s, e) => eventRaised = true;
@@ -370,7 +373,7 @@ public class FeishuWebSocketManagerTests
         var manager = new FeishuWebSocketManager(
             _loggerMock.Object,
             _appContextMock.Object,
-            Options.Create(_options),
+            _optionsMonitorMock.Object,
             _clientMock.Object);
 
         // Act & Assert
@@ -390,7 +393,7 @@ public class FeishuWebSocketManagerTests
         var manager = new FeishuWebSocketManager(
             _loggerMock.Object,
             _appContextMock.Object,
-            Options.Create(_options),
+            _optionsMonitorMock.Object,
             _clientMock.Object);
 
         // Act

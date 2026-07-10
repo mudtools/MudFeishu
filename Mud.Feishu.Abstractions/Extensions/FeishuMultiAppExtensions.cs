@@ -123,7 +123,7 @@ public static class FeishuMultiAppExtensions
         services.AddFeishuAppBaseServices(configs);
 
         // 注册核心服务（应用管理器、默认应用上下文、配置）
-        RegisterCoreServices(services, configs);
+        RegisterCoreServices(services, configs, configuration, sectionName);
         return services;
     }
 
@@ -292,6 +292,8 @@ public static class FeishuMultiAppExtensions
     /// </summary>
     /// <param name="services">服务集合</param>
     /// <param name="configs">应用配置列表</param>
+    /// <param name="configuration">可选的 IConfiguration 实例，用于绑定 IOptionsMonitor 支持</param>
+    /// <param name="sectionName">配置节名称，当提供 configuration 时使用</param>
     /// <remarks>
     /// 注册内容包括：
     /// <list type="bullet">
@@ -302,7 +304,7 @@ public static class FeishuMultiAppExtensions
     ///   <item>FeishuTokenRegistrationService - 令牌注册托管服务（NET6+，启动时注册令牌到后台刷新服务）</item>
     /// </list>
     /// </remarks>
-    private static void RegisterCoreServices(IServiceCollection services, List<FeishuAppConfig> configs)
+    private static void RegisterCoreServices(IServiceCollection services, List<FeishuAppConfig> configs, IConfiguration? configuration = null, string? sectionName = null)
     {
 #if NET6_0_OR_GREATER
         // NET6+：使用 FeishuTokenRegistrationService（IHostedService）在应用启动时注册令牌
@@ -342,14 +344,14 @@ public static class FeishuMultiAppExtensions
         });
 #endif
 
-        RegisterCoreServicesWithoutAppManager(services, configs);
+        RegisterCoreServicesWithoutAppManager(services, configs, configuration, sectionName);
     }
 
     /// <summary>
     /// 注册核心服务中除 IFeishuAppManager 之外的依赖项。
     /// 供 <see cref="RegisterCoreServices"/> 和 <see cref="AddFeishuApp{TAppManager}"/> 共用。
     /// </summary>
-    private static void RegisterCoreServicesWithoutAppManager(IServiceCollection services, List<FeishuAppConfig> configs)
+    private static void RegisterCoreServicesWithoutAppManager(IServiceCollection services, List<FeishuAppConfig> configs, IConfiguration? configuration = null, string? sectionName = null)
     {
         services.AddSingleton(sp =>
         {
@@ -357,11 +359,42 @@ public static class FeishuMultiAppExtensions
             return appManager.GetDefaultApp();
         });
 
+        // 注册启动时验证过的配置快照（供内部组件使用，如 HttpClient 注册）
         services.AddSingleton(configs);
-        services.Configure<List<FeishuAppConfig>>(options =>
+
+        // 注册 IOptions/IOptionsMonitor 绑定链路：
+        // - 当提供 IConfiguration 时，使用配置节绑定以支持热更新（IOptionsMonitor<List<FeishuAppConfig>>）
+        // - 当未提供 IConfiguration（如代码配置模式）时，回退到闭包绑定
+        if (configuration != null && sectionName != null)
         {
-            options.Clear();
-            options.AddRange(configs);
+            services.Configure<List<FeishuAppConfig>>(configuration.GetSection(sectionName));
+        }
+        else
+        {
+            services.Configure<List<FeishuAppConfig>>(options =>
+            {
+                options.Clear();
+                options.AddRange(configs);
+            });
+        }
+
+        // PostConfigure：统一执行 IsDefault 自动推断逻辑，确保 IOptions<T> 和 IOptionsMonitor<T> 的值与启动快照行为一致
+        services.PostConfigure<List<FeishuAppConfig>>(options =>
+        {
+            // AppKey 为 "default" 时自动设置 IsDefault=true
+            foreach (var config in options)
+            {
+                if (config.AppKey.Equals("default", StringComparison.OrdinalIgnoreCase))
+                {
+                    config.IsDefault = true;
+                }
+            }
+
+            // 如果没有指定默认应用，设置第一个为默认
+            if (options.Count > 0 && !options.Any(c => c.IsDefault))
+            {
+                options[0].IsDefault = true;
+            }
         });
 
         // 注册令牌管理器解析器（多应用模式下获取令牌管理器的推荐方式）
@@ -401,14 +434,22 @@ public static class FeishuMultiAppExtensions
         if (duplicateAppKeys.Any())
             throw new InvalidOperationException($"检测到重复的AppKey: {string.Join(", ", duplicateAppKeys)}");
 
-        // 验证所有配置（包含自动推断逻辑）
+        // 验证所有配置
         foreach (var config in configs)
         {
             config.Validate();
         }
 
+        // 自动推断默认应用：AppKey 为 "default" 时自动设置 IsDefault=true
+        foreach (var config in configs)
+        {
+            if (config.AppKey.Equals("default", StringComparison.OrdinalIgnoreCase))
+            {
+                config.IsDefault = true;
+            }
+        }
+
         // 如果没有指定默认应用，设置第一个为默认
-        // 注意：这里需要重新检查，因为 Validate() 中可能已经自动推断
         var defaultAppCount = configs.Count(c => c.IsDefault);
         if (defaultAppCount == 0)
         {

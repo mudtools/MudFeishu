@@ -19,7 +19,7 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable
 {
     private readonly ILogger<FeishuWebSocketManager> _logger;
     private readonly IFeishuAppContext _appContext;
-    private readonly FeishuWebSocketOptions _webSocketOptions;
+    private readonly IOptionsMonitor<FeishuWebSocketOptions> _webSocketOptionsMonitor;
     private readonly IFeishuWebSocketClient _webSocketClient;
     private readonly SemaphoreSlim _startStopLock = new(1, 1);
     private bool _isRunning = false;
@@ -31,17 +31,17 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable
     /// </summary>
     /// <param name="logger">日志记录器</param>
     /// <param name="appContext">飞书应用上下文</param>
-    /// <param name="webSocketOptions">WebSocket配置选项</param>
+    /// <param name="webSocketOptions">WebSocket配置选项监控器（支持热更新）</param>
     /// <param name="webSocketClient">WebSocket客户端</param>
     public FeishuWebSocketManager(
         ILogger<FeishuWebSocketManager> logger,
         IFeishuAppContext appContext,
-        IOptions<FeishuWebSocketOptions> webSocketOptions,
+        IOptionsMonitor<FeishuWebSocketOptions> webSocketOptions,
         IFeishuWebSocketClient webSocketClient)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _appContext = appContext ?? throw new ArgumentNullException(nameof(appContext));
-        _webSocketOptions = webSocketOptions?.Value ?? throw new ArgumentNullException(nameof(webSocketOptions));
+        _webSocketOptionsMonitor = webSocketOptions ?? throw new ArgumentNullException(nameof(webSocketOptions));
         _webSocketClient = webSocketClient ?? throw new ArgumentNullException(nameof(webSocketClient));
 
         // 订阅客户端事件
@@ -142,7 +142,7 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable
                     _logger.LogError("获取的应用访问令牌为空");
                     throw new InvalidOperationException("无法获取有效的应用访问令牌");
                 }
-                if (_webSocketOptions.EnableLogging)
+                if (_webSocketOptionsMonitor.CurrentValue.EnableLogging)
                     _logger.LogDebug("成功获取应用访问令牌");
             }
             catch (OperationCanceledException) when (timeoutCts.Token.IsCancellationRequested)
@@ -380,13 +380,13 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable
             return;
         }
 
-        if (_webSocketOptions.EnableLogging)
+        if (_webSocketOptionsMonitor.CurrentValue.EnableLogging)
             _logger.LogInformation("Mud飞书WebSocket连接已断开: {Status} - {Description} (服务器端: {IsServerInitiated}, 时间: {Timestamp})",
                 e.CloseStatus, e.CloseStatusDescription, e.IsServerInitiated, e.Timestamp);
 
         if (e.ConnectionDuration.HasValue)
         {
-            if (_webSocketOptions.EnableLogging)
+            if (_webSocketOptionsMonitor.CurrentValue.EnableLogging)
                 _logger.LogInformation("连接持续时间: {Duration}", e.ConnectionDuration);
         }
 
@@ -400,7 +400,7 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable
     /// <param name="e">事件参数</param>
     private void OnClientMessageReceived(object? sender, WebSocketMessageEventArgs e)
     {
-        if (_webSocketOptions.EnableLogging)
+        if (_webSocketOptionsMonitor.CurrentValue.EnableLogging)
             _logger.LogDebug("接收到Mud 飞书WebSocket消息: {Message} (大小: {Size}字节, 队列: {Queue}条, 时间: {Timestamp})",
                 e.Message, e.MessageSize, e.QueueCount, e.Timestamp);
         MessageReceived?.Invoke(this, e);

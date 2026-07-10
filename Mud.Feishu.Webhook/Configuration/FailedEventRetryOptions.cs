@@ -27,27 +27,27 @@ public class FailedEventRetryOptions
     /// <summary>
     /// 初始重试延迟（秒），默认 10
     /// </summary>
-    public int InitialRetryDelaySeconds { get; set; } = 10;
+    public int InitialRetryDelaySeconds { get; set; } = Consts.DefaultEventRetryInitialDelaySeconds;
 
     /// <summary>
     /// 重试延迟倍数（指数退避），默认 2
     /// </summary>
-    public double RetryDelayMultiplier { get; set; } = 2.0;
+    public double RetryDelayMultiplier { get; set; } = Consts.DefaultEventRetryDelayMultiplier;
 
     /// <summary>
     /// 最大重试延迟（秒），默认 300（5分钟）
     /// </summary>
-    public int MaxRetryDelaySeconds { get; set; } = 300;
+    public int MaxRetryDelaySeconds { get; set; } = Consts.DefaultEventRetryMaxDelaySeconds;
 
     /// <summary>
     /// 重试轮询间隔（秒），默认 30
     /// </summary>
-    public int RetryPollIntervalSeconds { get; set; } = 30;
+    public int RetryPollIntervalSeconds { get; set; } = Consts.DefaultEventRetryPollIntervalSeconds;
 
     /// <summary>
     /// 每次轮询处理的最大失败事件数，默认 10
     /// </summary>
-    public int MaxRetryPerPoll { get; set; } = 10;
+    public int MaxRetryPerPoll { get; set; } = Consts.DefaultEventRetryMaxRetryPerPoll;
 
     /// <summary>
     /// 验证配置有效性
@@ -80,25 +80,25 @@ public class FailedEventRetryOptions
                 throw new InvalidOperationException(
                     "EnableRetry 为 false 但 MaxRetryCount 被设置为非默认值，请启用 EnableRetry 或恢复 MaxRetryCount 为默认值");
 
-            if (InitialRetryDelaySeconds != 10)
+            if (InitialRetryDelaySeconds != Consts.DefaultEventRetryInitialDelaySeconds)
                 throw new InvalidOperationException(
-                    "EnableRetry 为 false 但 InitialRetryDelaySeconds 被设置为非默认值，请启用 EnableRetry 或恢复 InitialRetryDelaySeconds 为默认值 10");
+                    "EnableRetry 为 false 但 InitialRetryDelaySeconds 被设置为非默认值，请启用 EnableRetry 或恢复 InitialRetryDelaySeconds 为默认值");
 
-            if (RetryDelayMultiplier != 2.0)
+            if (RetryDelayMultiplier != Consts.DefaultEventRetryDelayMultiplier)
                 throw new InvalidOperationException(
-                    "EnableRetry 为 false 但 RetryDelayMultiplier 被设置为非默认值，请启用 EnableRetry 或恢复 RetryDelayMultiplier 为默认值 2.0");
+                    "EnableRetry 为 false 但 RetryDelayMultiplier 被设置为非默认值，请启用 EnableRetry 或恢复 RetryDelayMultiplier 为默认值");
 
-            if (MaxRetryDelaySeconds != 300)
+            if (MaxRetryDelaySeconds != Consts.DefaultEventRetryMaxDelaySeconds)
                 throw new InvalidOperationException(
-                    "EnableRetry 为 false 但 MaxRetryDelaySeconds 被设置为非默认值，请启用 EnableRetry 或恢复 MaxRetryDelaySeconds 为默认值 300");
+                    "EnableRetry 为 false 但 MaxRetryDelaySeconds 被设置为非默认值，请启用 EnableRetry 或恢复 MaxRetryDelaySeconds 为默认值");
 
-            if (RetryPollIntervalSeconds != 30)
+            if (RetryPollIntervalSeconds != Consts.DefaultEventRetryPollIntervalSeconds)
                 throw new InvalidOperationException(
-                    "EnableRetry 为 false 但 RetryPollIntervalSeconds 被设置为非默认值，请启用 EnableRetry 或恢复 RetryPollIntervalSeconds 为默认值 30");
+                    "EnableRetry 为 false 但 RetryPollIntervalSeconds 被设置为非默认值，请启用 EnableRetry 或恢复 RetryPollIntervalSeconds 为默认值");
 
-            if (MaxRetryPerPoll != 10)
+            if (MaxRetryPerPoll != Consts.DefaultEventRetryMaxRetryPerPoll)
                 throw new InvalidOperationException(
-                    "EnableRetry 为 false 但 MaxRetryPerPoll 被设置为非默认值，请启用 EnableRetry 或恢复 MaxRetryPerPoll 为默认值 10");
+                    "EnableRetry 为 false 但 MaxRetryPerPoll 被设置为非默认值，请启用 EnableRetry 或恢复 MaxRetryPerPoll 为默认值");
         }
     }
 }

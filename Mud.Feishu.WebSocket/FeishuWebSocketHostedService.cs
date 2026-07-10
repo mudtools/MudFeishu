@@ -20,7 +20,7 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
     private readonly ILogger<FeishuWebSocketHostedService> _logger;
     private readonly IFeishuWebSocketManager _webSocketManager;
     private readonly IReconnectionOrchestrator _reconnectionOrchestrator;
-    private readonly FeishuWebSocketOptions _options;
+    private readonly IOptionsMonitor<FeishuWebSocketOptions> _optionsMonitor;
     private bool _disposed;
     private DateTime _lastReconnectTriggerTime = DateTime.MinValue;
     private readonly object _reconnectDebounceLock = new();
@@ -32,17 +32,17 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
     /// <param name="logger">日志记录器</param>
     /// <param name="webSocketManager">WebSocket管理器</param>
     /// <param name="reconnectionOrchestrator">重连协调器</param>
-    /// <param name="options">WebSocket配置选项</param>
+    /// <param name="options">WebSocket配置选项监控器（支持热更新）</param>
     public FeishuWebSocketHostedService(
         ILogger<FeishuWebSocketHostedService> logger,
         IFeishuWebSocketManager webSocketManager,
         IReconnectionOrchestrator reconnectionOrchestrator,
-        IOptions<FeishuWebSocketOptions> options)
+        IOptionsMonitor<FeishuWebSocketOptions> options)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _webSocketManager = webSocketManager ?? throw new ArgumentNullException(nameof(webSocketManager));
         _reconnectionOrchestrator = reconnectionOrchestrator ?? throw new ArgumentNullException(nameof(reconnectionOrchestrator));
-        _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
+        _optionsMonitor = options ?? throw new ArgumentNullException(nameof(options));
 
         _webSocketManager.Connected += OnConnected;
         _webSocketManager.Disconnected += OnDisconnected;
@@ -102,7 +102,7 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
             {
                 try
                 {
-                    await Task.Delay(TimeSpan.FromMilliseconds(_options.HealthCheckIntervalMs), stoppingToken);
+                    await Task.Delay(TimeSpan.FromMilliseconds(_optionsMonitor.CurrentValue.HealthCheckIntervalMs), stoppingToken);
 
                     if (!_webSocketManager.IsConnected)
                     {
@@ -161,7 +161,7 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
     /// </summary>
     private void OnDisconnected(object? sender, WebSocketCloseEventArgs e)
     {
-        if (_options.EnableLogging)
+        if (_optionsMonitor.CurrentValue.EnableLogging)
         {
             var stats = _webSocketManager.GetConnectionStats();
             _logger.LogInformation("飞书WebSocket连接已断开: {Status} - {Description} (持续时间: {Duration})",
@@ -209,7 +209,7 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
     {
         // 可恢复错误已在下层组件以 Warning 级别记录，此处仅在 Debug 级别记录避免重复刷屏。
         // 不可恢复错误仍以 Error 级别记录完整异常。
-        if (!_options.EnableLogging)
+        if (!_optionsMonitor.CurrentValue.EnableLogging)
             return;
 
         if (e.IsRecoverable)

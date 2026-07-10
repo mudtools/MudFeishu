@@ -143,4 +143,39 @@ internal class Consts
     /// 默认最大缓存容量
     /// </summary>
     public const int DefaultMaxCacheSize = 100000;
+
+    /// <summary>
+    /// 默认事件重试初始延迟（秒）：用于 FailedEventRetryOptions.InitialRetryDelaySeconds
+    /// </summary>
+    public const int DefaultEventRetryInitialDelaySeconds = 10;
+
+    /// <summary>
+    /// 默认事件重试延迟倍数：用于 FailedEventRetryOptions.RetryDelayMultiplier
+    /// </summary>
+    public const double DefaultEventRetryDelayMultiplier = 2.0;
+
+    /// <summary>
+    /// 默认事件重试最大延迟（秒）：用于 FailedEventRetryOptions.MaxRetryDelaySeconds
+    /// </summary>
+    public const int DefaultEventRetryMaxDelaySeconds = 300;
+
+    /// <summary>
+    /// 默认事件重试轮询间隔（秒）：用于 FailedEventRetryOptions.RetryPollIntervalSeconds
+    /// </summary>
+    public const int DefaultEventRetryPollIntervalSeconds = 30;
+
+    /// <summary>
+    /// 默认事件重试每次轮询最大处理数：用于 FailedEventRetryOptions.MaxRetryPerPoll
+    /// </summary>
+    public const int DefaultEventRetryMaxRetryPerPoll = 10;
+
+    /// <summary>
+    /// 默认去重初始重试延迟（毫秒）：用于 DeduplicationOptions.InitialRetryDelay
+    /// </summary>
+    public const int DefaultDeduplicationInitialRetryDelayMs = 1000;
+
+    /// <summary>
+    /// 默认去重最大重试延迟（毫秒）：用于 DeduplicationOptions.MaxRetryDelay
+    /// </summary>
+    public const int DefaultDeduplicationMaxRetryDelayMs = 30000;
 }

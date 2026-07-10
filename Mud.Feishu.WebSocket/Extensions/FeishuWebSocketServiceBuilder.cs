@@ -58,7 +58,8 @@ public class FeishuWebSocketServiceBuilder
             throw new ArgumentException("应用键不能为空", nameof(appKey));
 
         var section = sectionName ?? "WebSocket";
-        _services.Configure<FeishuWebSocketOptions>(options => configuration.GetSection(section).Bind(options));
+        // 使用 IConfigurationSection 重载绑定，确保 IOptionsMonitor<T> 能正确接收配置变更通知
+        _services.Configure<FeishuWebSocketOptions>(configuration.GetSection(section));
         return this;
     }
 
@@ -272,7 +273,7 @@ public class FeishuWebSocketServiceBuilder
             _services.AddSingleton<IFeishuEventDeduplicator>(serviceProvider =>
             {
                 var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
-                var options = serviceProvider.GetRequiredService<IOptions<FeishuWebSocketOptions>>().Value;
+                var options = serviceProvider.GetRequiredService<IOptionsMonitor<FeishuWebSocketOptions>>().CurrentValue;
                 var mode = options.EventDeduplication.Mode;
 
                 // None 模式：注册空实现，不进行去重
@@ -312,7 +313,7 @@ public class FeishuWebSocketServiceBuilder
         {
             _services.AddSingleton<IReconnectStrategy>(serviceProvider =>
             {
-                var options = serviceProvider.GetRequiredService<IOptions<FeishuWebSocketOptions>>().Value;
+                var options = serviceProvider.GetRequiredService<IOptionsMonitor<FeishuWebSocketOptions>>().CurrentValue;
                 var logger = serviceProvider.GetService<ILogger<ExponentialBackoffReconnectStrategy>>();
                 return new ExponentialBackoffReconnectStrategy(options, logger);
             });
@@ -324,7 +325,7 @@ public class FeishuWebSocketServiceBuilder
             var logger = serviceProvider.GetRequiredService<ILogger<ReconnectionOrchestrator>>();
             var strategy = serviceProvider.GetRequiredService<IReconnectStrategy>();
             var manager = serviceProvider.GetRequiredService<IFeishuWebSocketManager>();
-            var options = serviceProvider.GetRequiredService<IOptions<FeishuWebSocketOptions>>().Value;
+            var options = serviceProvider.GetRequiredService<IOptionsMonitor<FeishuWebSocketOptions>>().CurrentValue;
             return new ReconnectionOrchestrator(logger, strategy, manager, options);
         });
 
@@ -334,7 +335,7 @@ public class FeishuWebSocketServiceBuilder
             _services.AddSingleton<SessionManager>(serviceProvider =>
             {
                 var logger = serviceProvider.GetRequiredService<ILogger<SessionManager>>();
-                var options = serviceProvider.GetRequiredService<IOptions<FeishuWebSocketOptions>>().Value;
+                var options = serviceProvider.GetRequiredService<IOptionsMonitor<FeishuWebSocketOptions>>().CurrentValue;
                 return new SessionManager(logger, options);
             });
         }
@@ -345,7 +346,7 @@ public class FeishuWebSocketServiceBuilder
             _services.AddSingleton<MessageSequenceValidator>(serviceProvider =>
             {
                 var logger = serviceProvider.GetRequiredService<ILogger<MessageSequenceValidator>>();
-                var options = serviceProvider.GetRequiredService<IOptions<FeishuWebSocketOptions>>().Value;
+                var options = serviceProvider.GetRequiredService<IOptionsMonitor<FeishuWebSocketOptions>>().CurrentValue;
                 return new MessageSequenceValidator(logger, options);
             });
         }
@@ -357,7 +358,7 @@ public class FeishuWebSocketServiceBuilder
             var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
             var eventHandlerFactory = serviceProvider.GetRequiredService<IFeishuEventHandlerFactory>();
             var interceptors = serviceProvider.GetRequiredService<IFeishuEventInterceptor[]>();
-            var options = serviceProvider.GetRequiredService<IOptions<FeishuWebSocketOptions>>().Value;
+            var options = serviceProvider.GetRequiredService<IOptionsMonitor<FeishuWebSocketOptions>>().CurrentValue;
             var seqIdDeduplicator = serviceProvider.GetService<IFeishuSeqIDDeduplicator>();
             var sessionManager = serviceProvider.GetService<SessionManager>();
             var sequenceValidator = serviceProvider.GetService<MessageSequenceValidator>();

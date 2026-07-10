@@ -114,11 +114,53 @@ public class DeduplicationOptionsTests
     }
 
     [Fact]
+    public void InitialRetryDelay_WhenSetToLessThan100Ms_ShouldUseMinimum()
+    {
+        var options = new DeduplicationOptions();
+
+        options.InitialRetryDelay = TimeSpan.FromMilliseconds(50);
+
+        Assert.Equal(TimeSpan.FromMilliseconds(100), options.InitialRetryDelay);
+    }
+
+    [Fact]
+    public void InitialRetryDelay_WhenSetToValidValue_ShouldUpdate()
+    {
+        var options = new DeduplicationOptions();
+        var newDelay = TimeSpan.FromMilliseconds(500);
+
+        options.InitialRetryDelay = newDelay;
+
+        Assert.Equal(newDelay, options.InitialRetryDelay);
+    }
+
+    [Fact]
     public void MaxRetryDelay_ShouldHaveDefaultValue()
     {
         var options = new DeduplicationOptions();
 
         Assert.Equal(TimeSpan.FromSeconds(30), options.MaxRetryDelay);
+    }
+
+    [Fact]
+    public void MaxRetryDelay_WhenSetToLessThanOneSecond_ShouldUseMinimum()
+    {
+        var options = new DeduplicationOptions();
+
+        options.MaxRetryDelay = TimeSpan.FromMilliseconds(500);
+
+        Assert.Equal(TimeSpan.FromSeconds(1), options.MaxRetryDelay);
+    }
+
+    [Fact]
+    public void MaxRetryDelay_WhenSetToValidValue_ShouldUpdate()
+    {
+        var options = new DeduplicationOptions();
+        var newDelay = TimeSpan.FromMinutes(1);
+
+        options.MaxRetryDelay = newDelay;
+
+        Assert.Equal(newDelay, options.MaxRetryDelay);
     }
 
     [Fact]

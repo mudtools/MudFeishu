@@ -147,8 +147,8 @@ dotnet add package Mud.Feishu.Redis
     "GlobalRoutePrefix": "feishu",
     "EnableRequestLogging": true,
     "MaxConcurrentEvents": 10,
-  "EnforceHeaderSignatureValidation": true,
-  "TimestampToleranceSeconds": 30,
+    "EnforceHeaderSignatureValidation": true,
+    "TimestampToleranceSeconds": 30,
     "EventHandlingTimeoutMs": 30000,
     "MaxRequestBodySize": 10485760,
     "Apps": {
@@ -162,6 +162,20 @@ dotnet add package Mud.Feishu.Redis
         "VerificationToken": "your_app2_verification_token",
         "EncryptKey": "your_app2_encrypt_key_32_bytes_long"
       }
+    },
+    "Retry": {
+      "EnableRetry": false,
+      "MaxRetryCount": 3,
+      "InitialRetryDelaySeconds": 10,
+      "RetryDelayMultiplier": 2.0,
+      "MaxRetryDelaySeconds": 300,
+      "RetryPollIntervalSeconds": 30,
+      "MaxRetryPerPoll": 10
+    },
+    "RateLimit": {
+      "EnableRateLimit": false,
+      "MaxRequestsPerSecond": 10,
+      "BurstCapacity": 20
     }
   }
 }

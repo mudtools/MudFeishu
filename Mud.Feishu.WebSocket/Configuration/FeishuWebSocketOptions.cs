@@ -137,6 +137,10 @@ public class FeishuWebSocketOptions
     /// 自定义证书验证回调（可选）
     /// <para>如果设置，将使用此回调进行证书验证</para>
     /// </summary>
+    /// <remarks>
+    /// 此属性仅支持代码配置，无法通过 JSON 配置文件（appsettings.json）设置。
+    /// 请通过 <c>ConfigureOptions</c> 或 <c>ConfigureFrom</c> 后的代码配置方式设置。
+    /// </remarks>
     public System.Net.Security.RemoteCertificateValidationCallback? CustomCertificateValidationCallback { get; set; }
 
     /// <summary>
@@ -174,6 +178,9 @@ public class FeishuWebSocketOptions
 
         if (HeartbeatIntervalMs < 5000)
             throw new InvalidOperationException("HeartbeatIntervalMs必须至少为5000毫秒");
+
+        if (HeartbeatIntervalMs > 30000)
+            throw new InvalidOperationException("HeartbeatIntervalMs不应超过30000毫秒，飞书服务端可能在此时间内断开连接");
 
         if (ConnectionTimeoutMs < 1000)
             throw new InvalidOperationException("ConnectionTimeoutMs必须至少为1000毫秒");

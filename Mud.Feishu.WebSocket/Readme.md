@@ -93,7 +93,7 @@ app.Run();
     "EnableLogging": true,
     "EventDeduplication": {
       "Mode": "InMemory",
-      "CacheExpiration": "48:00:00",
+      "CacheExpiration": "2.00:00:00",
       "CleanupInterval": "00:05:00"
     }
   }
@@ -724,7 +724,7 @@ public class ServiceManager
 | 选项                | 类型                     | 默认值     | 说明                                  |
 | ------------------- | ------------------------ | ---------- | ------------------------------------- |
 | `Mode`              | `EventDeduplicationMode` | `InMemory` | 去重模式（None/InMemory/Distributed） |
-| `CacheExpiration`   | TimeSpan                 | 48:00:00   | 缓存过期时间，默认 48 小时            |
+| `CacheExpiration`   | TimeSpan                 | 2.00:00:00 | 缓存过期时间，默认 48 小时            |
 | `CleanupInterval`   | TimeSpan                 | 00:05:00   | 缓存清理间隔，默认 5 分钟             |
 | `ProcessingTimeout` | TimeSpan                 | 00:10:00   | 处理中超时时间，超时后允许重新处理，默认 10 分钟 |
 | `MaxCacheSize`      | int                      | 100000     | 内存缓存最大条目数，0 表示不限制      |
@@ -742,7 +742,7 @@ public class ServiceManager
   "FeishuWebSocket": {
     "EventDeduplication": {
       "Mode": "InMemory",
-      "CacheExpiration": "48:00:00",
+      "CacheExpiration": "2.00:00:00",
       "CleanupInterval": "00:05:00"
     }
   }
@@ -756,14 +756,14 @@ public class ServiceManager
 | 选项                       | 类型     | 默认值         | 说明                                                       |
 | -------------------------- | -------- | -------------- | ---------------------------------------------------------- |
 | `CacheExpiration`          | TimeSpan | 48 小时        | 缓存过期时间，最小 1 分钟                                  |
-| `ProcessingTimeout`        | TimeSpan | 默认值         | 处理中超时时间，超时后允许重新处理，最小 10 秒             |
+| `ProcessingTimeout`        | TimeSpan | 10 分钟        | 处理中超时时间，超时后允许重新处理，最小 10 秒             |
 | `CleanupInterval`          | TimeSpan | 5 分钟         | 缓存清理间隔（仅内存模式），最小 30 秒                     |
 | `AllowProcessingOnFallback`| bool     | true           | Redis 失败时是否降级处理（false=拒绝，true=降级到内存去重）|
-| `MaxRetryCount`            | int      | 默认值         | Redis 操作最大重试次数，范围 0-10（仅分布式模式）          |
+| `MaxRetryCount`            | int      | 3              | Redis 操作最大重试次数，范围 0-10（仅分布式模式）          |
 | `InitialRetryDelay`        | TimeSpan | 1 秒           | 首次重试延迟，后续使用指数退避（仅分布式模式）             |
 | `MaxRetryDelay`            | TimeSpan | 30 秒          | 指数退避最大延迟上限（仅分布式模式）                       |
 | `KeyPrefix`                | string   | "feishu:event:" | Redis 键前缀，用于应用/环境隔离（仅分布式模式）           |
-| `MaxCacheSize`             | int      | 默认值         | 内存缓存最大条目数，0 表示不限制（仅内存模式）             |
+| `MaxCacheSize`             | int      | 100000         | 内存缓存最大条目数，0 表示不限制（仅内存模式）             |
 | `EnableVerboseLogging`     | bool     | false          | 是否启用详细去重日志（调试用，生产环境建议关闭）           |
 
 **预设配置：**

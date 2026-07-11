@@ -41,20 +41,7 @@ public class CurrentUserContext(ILogger<CurrentUserContext> logger) : IFeishuCur
     public string? UnionId => _currentUser.Value?.UnionId;
 
     /// <inheritdoc />
-    /// <remarks>
-    /// 当 UserId 未显式设置时，回退到 OpenId，因为 UserTokenManager 使用 OpenId 作为令牌缓存键。
-    /// 这确保源生成器生成的代码能正确查找用户令牌。
-    /// </remarks>
-    public string? UserId
-    {
-        get
-        {
-            var current = _currentUser.Value;
-            if (current == null)
-                return null;
-            return !string.IsNullOrEmpty(current.UserId) ? current.UserId : current.OpenId;
-        }
-    }
+    public string? UserId => _currentUser.Value?.UserId;
 
     /// <inheritdoc />
     public string? Name => _currentUser.Value?.Name;
@@ -69,6 +56,11 @@ public class CurrentUserContext(ILogger<CurrentUserContext> logger) : IFeishuCur
         {
             throw new ArgumentException("OpenId cannot be null, empty or whitespace.", nameof(openId));
         }
+
+        // 当 userId 未显式提供（null 或空白）时，回退到 openId，
+        // 因为 UserTokenManager 使用 OpenId 作为令牌缓存键，
+        // 源生成器使用 UserId 属性作为令牌查找键，两者必须一致。
+        userId = string.IsNullOrWhiteSpace(userId) ? openId : userId;
 
         if (_currentUser.Value != null && !string.Equals(_currentUser.Value.OpenId, openId, StringComparison.Ordinal))
         {

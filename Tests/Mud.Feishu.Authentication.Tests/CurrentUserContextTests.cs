@@ -60,7 +60,7 @@ public class CurrentUserContextTests
         // Assert
         Assert.Equal("open_id_123", context.OpenId);
         Assert.Null(context.UnionId);
-        // UserId 应回退到 OpenId，因为 UserTokenManager 使用 OpenId 作为令牌缓存键
+        // UserId 在 SetUser 时已回退到 OpenId，因为 UserTokenManager 使用 OpenId 作为令牌缓存键
         Assert.Equal("open_id_123", context.UserId);
         Assert.Null(context.Name);
         Assert.True(context.IsAuthenticated);
@@ -75,7 +75,7 @@ public class CurrentUserContextTests
         // Act
         context.SetUser("open_id_123", "union_id_456", null, "Test User");
 
-        // Assert - UserId 应回退到 OpenId
+        // Assert - SetUser 时已回退到 OpenId
         Assert.Equal("open_id_123", context.UserId);
     }
 
@@ -101,7 +101,7 @@ public class CurrentUserContextTests
         // Act
         context.SetUser("open_id_123", "union_id_456", "", "Test User");
 
-        // Assert - 空字符串应回退到 OpenId
+        // Assert - 空字符串在 SetUser 时回退到 OpenId
         Assert.Equal("open_id_123", context.UserId);
     }
 

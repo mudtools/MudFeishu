@@ -16,7 +16,8 @@ namespace Mud.Feishu.Abstractions;
 /// <para>UserId 回退机制：</para>
 /// <see cref="ICurrentUserContext.UserId"/> 属性被源生成器用作用户令牌的缓存查找键。
 /// 在飞书生态中，UserTokenManager 使用 <see cref="OpenId"/> 作为令牌缓存键。
-/// 因此当 UserId 未显式设置时，实现类会自动回退到 <see cref="OpenId"/>，确保令牌查找键与存储键一致。
+/// 因此在 <see cref="SetUser"/> 时若 userId 参数未显式提供（null 或空白），
+/// 实现类会自动将其回退到 openId，确保令牌查找键与存储键一致。
 /// <para>典型使用场景：</para>
 /// <list type="bullet">
 ///   <item><description>在业务服务中获取当前用户ID，用于查询用户令牌</description></item>
@@ -66,7 +67,7 @@ public interface IFeishuCurrentUserContext : ICurrentUserContext
     /// </summary>
     /// <param name="openId">飞书用户 OpenId（必需，不能为 null、空字符串或纯空白字符）</param>
     /// <param name="unionId">飞书用户 UnionId（可选）</param>
-    /// <param name="userId">业务系统用户ID（可选）。注意：此值会覆盖 UserId 的 OpenId 回退行为，仅当确需使用非 OpenId 的令牌缓存键时才设置。</param>
+    /// <param name="userId">业务系统用户ID（可选）。若未提供（null 或空白），将自动回退到 openId 作为令牌缓存键。仅当确需使用非 OpenId 的令牌缓存键时才显式设置。</param>
     /// <param name="name">用户名称（可选）</param>
     /// <remarks>
     /// 通常由中间件自动调用，业务代码不应直接调用此方法。

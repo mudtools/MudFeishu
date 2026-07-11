@@ -72,6 +72,19 @@ public static class FeishuServiceCollectionExtensions
     {
         UrlValidator.ConfigureAllowedDomains(["open.feishu.cn", "open.larksuite.com", "larksuite.com", "feishu.cn"]);
 
+        // REG-01 修复：校验重复 AppKey，避免命名 HttpClient 重复注册导致的静默覆盖。
+        // FeishuAppManager 构造函数仅发出警告（保持覆盖语义），但 HttpClient 层重复注册会
+        // 导致 EnhancedHttpClientFactoryOptions.ClientFactories 同名键覆盖，行为不可预测。
+        // 此处在注册阶段即抛出异常，使配置错误快速失败。
+        var duplicateAppKey = configs.GroupBy(c => c.AppKey, StringComparer.Ordinal)
+            .FirstOrDefault(g => g.Count() > 1);
+        if (duplicateAppKey != null)
+        {
+            throw new InvalidOperationException(
+                $"检测到重复的 AppKey '{duplicateAppKey.Key}'。每个应用的 AppKey 必须唯一，" +
+                $"以避免命名 HttpClient 与令牌管理器注册冲突。");
+        }
+
         foreach (var config in configs)
         {
             var clientName = $"feishu-{config.AppKey}";
@@ -177,6 +190,11 @@ public static class FeishuServiceCollectionExtensions
         // Redis 等自定义存储通过预注册 SingletonFeishuTokenStoreFactory 覆盖（TryAdd 语义：已存在则跳过）。
         services.TryAddSingleton<IFeishuTokenStoreFactory, PerAppFeishuTokenStoreFactory>();
 
+        // MA-02 修复：注册 IFeishuTokenManagerFactory，替代 FeishuAppManager 中直接 new TenantTokenManager(...) 的硬编码方式。
+        // 默认使用 DefaultFeishuTokenManagerFactory，行为与原实现完全一致。
+        // 自定义实现可通过预注册覆盖（TryAdd 语义：已存在则跳过）。
+        services.TryAddSingleton<IFeishuTokenManagerFactory, DefaultFeishuTokenManagerFactory>();
+
         // C-1 修复：注册 TokenRecoveryOptions，使 TokenRecoveryDelegatingHandler 可通过 IOptions<TokenRecoveryOptions> 获取配置。
         // 用户可通过 IConfiguration 的 "MudHttpTokenRecovery" 节或 services.Configure<TokenRecoveryOptions>(...) 自定义恢复策略。
         services.AddOptions<TokenRecoveryOptions>();
@@ -196,8 +214,10 @@ public static class FeishuServiceCollectionExtensions
 
         // 启用后台刷新服务（Mud.HttpUtils 默认 Enabled=false，需显式启用）
         // S-4 修复说明：PostConfigure 在选项首次解析时执行一次，无法感知运行时动态移除应用。
-        // 运行时移除全部应用后后台服务仍会运行（但找不到令牌则空转，无副作用）。
-        // 若需完全停止后台服务，应在移除应用后手动重新配置 TokenRefreshBackgroundOptions.Enabled = false。
+        // REG-02 修复说明：运行时移除全部应用后后台服务仍会运行（但找不到令牌则空转，无功能副作用）。
+        // 为减少不必要的空转，在 PostConfigure 中通过 IServiceProvider 延迟解析 IFeishuAppManager，
+        // 若所有应用已被移除则禁用后台刷新。注意：此检查仅在选项首次解析时生效，
+        // 运行时动态移除应用后如需立即停止后台服务，应调用 ITokenRefreshBackgroundService.StopAsync()。
         services.AddOptions<TokenRefreshBackgroundOptions>()
             .PostConfigure<IOptions<List<FeishuAppConfig>>>((tokenOptions, appOptions) =>
             {

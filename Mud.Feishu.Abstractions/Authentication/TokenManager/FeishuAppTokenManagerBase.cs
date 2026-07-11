@@ -19,6 +19,12 @@ namespace Mud.Feishu.Abstractions.Authentication;
 /// </remarks>
 internal abstract class FeishuAppTokenManagerBase : TokenManagerBase
 {
+    // TM-06 修复：将 magic number 抽为常量，便于维护与文档化。
+    /// <summary>无过期信息令牌的安全附加时间（秒），确保恢复后仍有有效窗口。</summary>
+    private const int SafeExpireBonusSeconds = 300;
+    /// <summary>无过期信息令牌的最低安全有效期（秒），对应飞书 token 通常 2 小时的保守下限。</summary>
+    private const int MinSafeExpireSeconds = 1800;
+
     private readonly IFeishuAuthentication _authenticationApi;
     private readonly FeishuAppConfig _options;
     private readonly ILogger _logger;
@@ -118,14 +124,15 @@ internal abstract class FeishuAppTokenManagerBase : TokenManagerBase
             // T-3 修复：原值为 TokenRefreshThreshold + 60，扣除刷新阈值后有效时间仅 60 秒，过于保守导致频繁刷新。
             // 飞书 tenant/app token 有效期通常为 2 小时（7200 秒），恢复无过期信息的令牌时使用 30 分钟（1800 秒）作为合理默认。
             // 扣除 TokenRefreshThreshold 后仍有充足有效窗口，避免不必要的令牌刷新。
-            var safeExpireSeconds = Math.Max(_options.TokenRefreshThreshold + 300, 1800);
+            var safeExpireSeconds = Math.Max(_options.TokenRefreshThreshold + SafeExpireBonusSeconds, MinSafeExpireSeconds);
             return new CredentialToken
             {
                 AccessToken = accessToken,
                 Expire = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + (safeExpireSeconds * 1000L)
             };
         }
-        catch (Exception ex)
+        // TM-03 修复：过滤 OperationCanceledException，避免取消请求被误判为"持久化失败"。
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             _logger.LogWarning(ex, "Failed to restore token from ITokenStore for AppId: {AppId}", _options.AppId);
         }
@@ -148,7 +155,8 @@ internal abstract class FeishuAppTokenManagerBase : TokenManagerBase
             var encodedValue = TokenStoreHelper.EncodeStoredToken(accessToken!, expireTimestampMs);
             await _tokenStore.SetAccessTokenAsync(tokenType, encodedValue, expiresInSeconds, cancellationToken).ConfigureAwait(false);
         }
-        catch (Exception ex)
+        // TM-03 修复：过滤 OperationCanceledException，避免取消请求被误判为"持久化失败"。
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             _logger.LogWarning(ex, "Failed to persist token to ITokenStore for tokenType: {TokenType}", tokenType);
         }

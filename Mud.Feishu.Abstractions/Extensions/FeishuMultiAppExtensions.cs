@@ -313,7 +313,10 @@ public static class FeishuMultiAppExtensions
             configs,
             sp.GetRequiredService<ILogger<FeishuAppManager>>()));
 #else
-        // netstandard2.0：没有 IHostedService 生命周期，在 IFeishuAppManager 工厂中提前注册令牌
+        // netstandard2.0：没有 IHostedService 生命周期，在 IFeishuAppManager 工厂中注册令牌。
+        // REG-03 修复：原实现调用 GetAllApps() 强制创建所有应用，与 NET6+ 的懒加载策略不一致。
+        // 改为仅在首次访问默认应用时注册其令牌管理器（通过 GetDefaultApp 触发懒加载），
+        // 其余应用的令牌管理器在运行时按需注册（调用方通过 GetApp 触发懒加载后再注册到刷新服务）。
         // 注意：不能添加第二个 IFeishuAppManager 注册（会导致 GetRequiredService<IFeishuAppManager> 无限递归）
         services.AddSingleton<IFeishuAppManager>(sp =>
         {
@@ -325,10 +328,17 @@ public static class FeishuMultiAppExtensions
             var refreshService = sp.GetService<ITokenRefreshBackgroundService>();
             if (refreshService != null)
             {
-                foreach (var app in appManager.GetAllApps())
+                // REG-03 修复：仅注册默认应用的令牌管理器（触发默认应用懒加载），
+                // 其余应用在运行时按需注册，保持与 NET6+ 懒加载策略一致。
+                try
                 {
-                    refreshService.RegisterTokenManager(app.TenantTokenManager, $"tenant:{app.Config.AppKey}");
-                    refreshService.RegisterTokenManager(app.AppTokenManager, $"app:{app.Config.AppKey}");
+                    var defaultApp = appManager.GetDefaultApp();
+                    refreshService.RegisterTokenManager(defaultApp.TenantTokenManager, $"tenant:{defaultApp.Config.AppKey}");
+                    refreshService.RegisterTokenManager(defaultApp.AppTokenManager, $"app:{defaultApp.Config.AppKey}");
+                }
+                catch (InvalidOperationException)
+                {
+                    // 默认应用尚未配置或创建失败时忽略，令牌将退化为懒加载刷新
                 }
             }
             else

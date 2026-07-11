@@ -62,10 +62,16 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
             throw new InvalidOperationException("未配置任何飞书应用");
 
         // M-1 修复：预注册所有应用的 Lazy 上下文，但不立即创建。
-        // 注意：不在此处做"重复 AppKey"校验，保持与原始 API 契约一致——后注册的同名应用覆盖先注册的。
-        // 若需严格校验，可在调用方通过 config.Validate() 或自定义逻辑实现。
+        // MA-05 修复：检测重复 AppKey 并发出警告（后注册覆盖先注册），避免静默覆盖导致配置错误难以排查。
+        var seenAppKeys = new HashSet<string>(StringComparer.Ordinal);
         foreach (var config in _configs)
         {
+            if (!seenAppKeys.Add(config.AppKey))
+            {
+                _logger.LogWarning(
+                    "检测到重复的 AppKey '{AppKey}'，后注册的配置将覆盖先注册的配置。请检查应用配置以避免意外行为。",
+                    config.AppKey);
+            }
             var capturedConfig = config;
             _lazyContexts[config.AppKey] = new Lazy<FeishuAppContext>(
                 () => CreateAppContext(capturedConfig),
@@ -240,8 +246,24 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
         var wasInBase = base.RemoveApp(appKey);
 
         // A-1 修复：若移除的是当前默认应用，清空本类默认应用键
+        // MA-03 修复：移除默认应用后自动提升第一个剩余应用为新默认，避免状态不一致窗口。
+        // 若无剩余应用则保持 _defaultAppKey = null，下次 GetDefaultApp 会抛出明确异常。
         if ((wasInLazy || wasInBase) && _defaultAppKey == appKey)
+        {
             _defaultAppKey = null;
+            var firstRemaining = _lazyContexts.Keys.FirstOrDefault();
+            if (firstRemaining != null)
+            {
+                _defaultAppKey = firstRemaining;
+            }
+            else
+            {
+                // 懒加载字典已空，检查基类字典是否有运行时添加但未走懒加载的应用
+                var baseFirst = base.GetAllApps().FirstOrDefault();
+                if (baseFirst != null)
+                    _defaultAppKey = baseFirst.Config.AppKey;
+            }
+        }
 
         return wasInLazy || wasInBase;
     }
@@ -249,10 +271,11 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
     /// <inheritdoc />
     /// <remarks>
     /// A-1 修复：不再依赖基类反射设置的 _defaultAppKey，直接读取本类私有字段。
-    /// 基类 GetDefaultApp() 为非虚方法，若调用方强制转换为 DefaultAppManager&lt;IFeishuAppContext&gt; 并调用基类版本，
-    /// 会因基类 _defaultAppKey 未设置而抛出——该场景属非常规用法，错误信息清晰可接受。
+    /// MA-01 修复：原实现使用 <c>public new</c> 隐藏基类虚方法，通过基类或接口引用调用时
+    /// 会执行基类版本（_defaultAppKey 未设置）抛异常，违背里氏替换原则。
+    /// 现改为 <see cref="override"/> 保持多态一致性。
     /// </remarks>
-    public new IFeishuAppContext GetDefaultApp()
+    public override IFeishuAppContext GetDefaultApp()
     {
         var defaultKey = _defaultAppKey;
         if (string.IsNullOrEmpty(defaultKey))
@@ -368,6 +391,8 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
 
     // A-2 修复说明：此显式接口实现委托给基类 RegisterSwitcherFactory，但 FeishuAppManager.GetWebApi
     // 重写为 DI 解析模式，不使用工厂委托。保留此方法仅为接口兼容性，注册的工厂不会被 GetWebApi 调用。
+    // MA-04 修复：通过 [Obsolete] 明确告知调用方此路径不推荐，统一使用 DI 解析模式。
+    [Obsolete("FeishuAppManager 使用 DI 解析模式，RegisterSwitcherFactory 注册的工厂不会被 GetWebApi 调用。请改用 IServiceProvider 直接解析服务。")]
     void IAppManager<IFeishuAppContext>.RegisterSwitcherFactory<TContextSwitcher>(Func<IFeishuAppContext, TContextSwitcher> factory)
     {
         RegisterSwitcherFactory<TContextSwitcher>(ctx => factory(ctx));
@@ -385,6 +410,9 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
         var clientName = $"feishu-{config.AppKey}";
 
         // === 步骤 1：创建基础 HttpClient（不含恢复，供 AuthenticationApi 使用） ===
+        // HC-03 说明：basicHttpClient 与 recoveryHttpClient 为 per-app 单例（懒加载，每个应用仅创建一次）。
+        // 底层 HttpClient 由 IHttpClientFactory 池化管理（socket 复用），EnhancedClient 包装层本身无状态
+        // （仅持有 clientName 与 options 引用），多应用下实例数与应用数成正比（通常 <50），无需额外池化。
         var httpClientFactory = _serviceProvider.GetRequiredService<IHttpClientFactory>();
         var encryptionProvider = _serviceProvider.GetService<IEncryptionProvider>();
         var enhancedOptions = CreateEnhancedHttpClientOptions(clientName);
@@ -395,7 +423,6 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
         // === 步骤 2：创建 AuthenticationApi（使用基础 HttpClient） ===
         var authenticationApi = (IFeishuAuthentication)ActivatorUtilities.CreateInstance(
             _serviceProvider, typeof(FeishuAuthentication), jsonSerializerOptions, basicHttpClient);
-        var options = Options.Create(config);
 
         // === 步骤 3：创建 TokenManager（依赖 AuthenticationApi） ===
         // S-3 修复：通过 IFeishuTokenStoreFactory 替代 is FeishuTokenStore 类型检查。
@@ -404,24 +431,12 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
         var tokenStoreFactory = _serviceProvider.GetRequiredService<IFeishuTokenStoreFactory>();
         var (tokenStore, userTokenStore) = tokenStoreFactory.Create(config.AppKey);
 
-        var tenantTokenManager = new TenantTokenManager(
-            authenticationApi,
-            options,
-            _serviceProvider.GetRequiredService<ILogger<TenantTokenManager>>(),
-            tokenStore);
-
-        var appTokenManager = new AppTokenManager(
-            authenticationApi,
-            options,
-            _serviceProvider.GetRequiredService<ILogger<AppTokenManager>>(),
-            tokenStore);
-
-        var userTokenManager = new UserTokenManager(
-            currentUserContext,
-            authenticationApi,
-            options,
-            _serviceProvider.GetRequiredService<ILogger<UserTokenManager>>(),
-            userTokenStore);
+        // MA-02 修复：通过 IFeishuTokenManagerFactory 替代直接 new TenantTokenManager(...) 的硬编码方式，
+        // 使自定义 TokenManager 实现可通过注册自定义工厂接入 DI 容器。
+        // 默认注册 DefaultFeishuTokenManagerFactory，行为与原实现完全一致。
+        var tokenManagerFactory = _serviceProvider.GetRequiredService<IFeishuTokenManagerFactory>();
+        var (tenantTokenManager, appTokenManager, userTokenManager) = tokenManagerFactory.Create(
+            config, authenticationApi, tokenStore, userTokenStore);
 
         // === 步骤 4：创建恢复 HttpClient（含令牌恢复，供业务 API 使用） ===
         var recoveryOptions = _serviceProvider.GetService<IOptions<TokenRecoveryOptions>>()?.Value;

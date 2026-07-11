@@ -135,4 +135,13 @@ public class FeishuAppWebhookOptions
     /// <returns>有效的请求头签名验证配置</returns>
     public bool GetEffectiveEnforceHeaderSignatureValidation(bool globalValue) =>
         EnforceHeaderSignatureValidation ?? globalValue;
+
+    /// <summary>
+    /// 返回配置的字符串表示（用于调试和日志记录）
+    /// </summary>
+    public override string ToString()
+    {
+        var description = !string.IsNullOrEmpty(Description) ? $", Description: {Description}" : "";
+        return $"FeishuAppWebhookOptions {{ AppKey: {AppKey}{description}, TimestampToleranceSeconds: {TimestampToleranceSeconds}, EventHandlingTimeoutMs: {EventHandlingTimeoutMs} }}";
+    }
 }

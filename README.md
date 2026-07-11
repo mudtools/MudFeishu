@@ -172,11 +172,13 @@ dotnet add package Mud.Feishu.Redis
       "RetryPollIntervalSeconds": 30,
       "MaxRetryPerPoll": 10
     },
-    "RateLimit": {
-      "EnableRateLimit": false,
-      "MaxRequestsPerSecond": 10,
-      "BurstCapacity": 20
-    }
+  "RateLimit": {
+    "EnableRateLimit": false,
+    "WindowSizeSeconds": 60,
+    "MaxRequestsPerWindow": 100,
+    "EnableIpRateLimit": true,
+    "TooManyRequestsStatusCode": 429,
+    "TooManyRequestsMessage": "请求过于频繁，请稍后再试"
   }
 }
 ```
@@ -306,9 +308,9 @@ SDK 中存在多个 `EnableLogging` / `EnableRequestLogging` 开关，它们**�
 | `EventKeyPrefix`       | string   | "feishu:event:"  | 事件去重键前缀（用于应用/环境隔离）                     |
 | `NonceKeyPrefix`       | string   | "feishu:nonce:"  | Nonce 去重键前缀                                        |
 | `SeqIdKeyPrefix`       | string   | "feishu:seqid:"  | SeqID 去重键前缀                                        |
-| `EventCacheExpiration` | TimeSpan | 48:00:00         | 事件去重缓存过期时间                                    |
-| `NonceTtl`             | TimeSpan | 00:05:00         | Nonce 有效期                                            |
-| `SeqIdCacheExpiration` | TimeSpan | 48:00:00         | SeqID 去重缓存过期时间                                  |
+| `EventCacheExpiration` | TimeSpan | "2.00:00:00"    | 事件去重缓存过期时间                                    |
+| `NonceTtl`             | TimeSpan | "00:05:00"      | Nonce 有效期                                            |
+| `SeqIdCacheExpiration` | TimeSpan | "2.00:00:00"    | SeqID 去重缓存过期时间                                  |
 
 **配置示例：**
 
@@ -326,9 +328,9 @@ SDK 中存在多个 `EnableLogging` / `EnableRequestLogging` 开关，它们**�
     "EventKeyPrefix": "prod:feishu:event:",
     "NonceKeyPrefix": "prod:feishu:nonce:",
     "SeqIdKeyPrefix": "prod:feishu:seqid:",
-    "EventCacheExpiration": "48:00:00",
+    "EventCacheExpiration": "2.00:00:00",
     "NonceTtl": "00:05:00",
-    "SeqIdCacheExpiration": "48:00:00"
+    "SeqIdCacheExpiration": "2.00:00:00"
   }
 }
 ```

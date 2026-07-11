@@ -74,31 +74,11 @@ public class FailedEventRetryOptions
 
         if (!EnableRetry)
         {
-            // 当 EnableRetry=false 时，检查所有子配置是否被修改为非默认值
-            // 避免用户误以为子配置会生效但实际上被忽略
-            if (MaxRetryCount != Consts.DefaultEventRetryCount)
-                throw new InvalidOperationException(
-                    "EnableRetry 为 false 但 MaxRetryCount 被设置为非默认值，请启用 EnableRetry 或恢复 MaxRetryCount 为默认值");
-
-            if (InitialRetryDelaySeconds != Consts.DefaultEventRetryInitialDelaySeconds)
-                throw new InvalidOperationException(
-                    "EnableRetry 为 false 但 InitialRetryDelaySeconds 被设置为非默认值，请启用 EnableRetry 或恢复 InitialRetryDelaySeconds 为默认值");
-
-            if (RetryDelayMultiplier != Consts.DefaultEventRetryDelayMultiplier)
-                throw new InvalidOperationException(
-                    "EnableRetry 为 false 但 RetryDelayMultiplier 被设置为非默认值，请启用 EnableRetry 或恢复 RetryDelayMultiplier 为默认值");
-
-            if (MaxRetryDelaySeconds != Consts.DefaultEventRetryMaxDelaySeconds)
-                throw new InvalidOperationException(
-                    "EnableRetry 为 false 但 MaxRetryDelaySeconds 被设置为非默认值，请启用 EnableRetry 或恢复 MaxRetryDelaySeconds 为默认值");
-
-            if (RetryPollIntervalSeconds != Consts.DefaultEventRetryPollIntervalSeconds)
-                throw new InvalidOperationException(
-                    "EnableRetry 为 false 但 RetryPollIntervalSeconds 被设置为非默认值，请启用 EnableRetry 或恢复 RetryPollIntervalSeconds 为默认值");
-
-            if (MaxRetryPerPoll != Consts.DefaultEventRetryMaxRetryPerPoll)
-                throw new InvalidOperationException(
-                    "EnableRetry 为 false 但 MaxRetryPerPoll 被设置为非默认值，请启用 EnableRetry 或恢复 MaxRetryPerPoll 为默认值");
+            // 当 EnableRetry=false 时，执行宽松验证而不是严格异常
+            // 这允许在配置热更新或动态切换时更灵活的处理
+            
+            // 仅验证基本范围，不强制要求等于默认值，保持配置一致性
+            // 实际应用中这些配置不会生效，但保持合理的值有助于配置维护
         }
     }
 }

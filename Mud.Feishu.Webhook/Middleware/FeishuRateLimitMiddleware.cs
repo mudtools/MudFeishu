@@ -118,7 +118,10 @@ public class FeishuRateLimitMiddleware : IDisposable
 
         var now = DateTime.UtcNow;
 
-        var rateLimitKey = (appKey ?? "global", clientIp);
+        // 根据 EnableIpRateLimit 配置决定是否基于 IP 限流
+        var rateLimitKey = rateLimitOptions.EnableIpRateLimit 
+            ? (appKey ?? "global", clientIp) 
+            : (appKey ?? "global", "global");
 
         if (_requestCounts.Count >= MaxIpEntries)
         {

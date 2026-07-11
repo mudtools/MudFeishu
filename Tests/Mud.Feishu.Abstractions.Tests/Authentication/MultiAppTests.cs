@@ -69,9 +69,13 @@ public class MultiAppTests
     }
 
     [Fact]
-    public void MultiApp_DefaultAppKey_ShouldAutoSetIsDefault()
+    public void MultiApp_DefaultAppKey_ShouldNotAutoSetIsDefault_InValidate()
     {
         // Arrange
+        // IsDefault 的自动推断逻辑已从 FeishuAppConfig.Validate() 移至
+        // FeishuMultiAppExtensions.ValidateAndSetDefaultApp() 中统一处理，
+        // 避免与 ValidateAndSetDefaultApp 产生双重设置冲突。
+        // 此测试验证 Validate() 不再修改 IsDefault。
         var config = new FeishuAppConfig
         {
             AppKey = AppConfigs.AppKeys.Default,
@@ -83,26 +87,34 @@ public class MultiAppTests
         // Act
         config.Validate();
 
-        // Assert
-        Assert.True(config.IsDefault);
+        // Assert: Validate() 不再自动设置 IsDefault
+        Assert.False(config.IsDefault);
     }
 
     [Fact]
     public void MultiApp_DefaultAppKey_AutoInference_ShouldWork()
     {
         // Arrange
-        var config = new FeishuAppConfig
+        // 通过 AddFeishuApp DI 管道验证：AppKey="default" 时自动推断 IsDefault=true
+        // 对应生产代码：FeishuMultiAppExtensions.ValidateAndSetDefaultApp() + PostConfigure<List<FeishuAppConfig>>
+        var services = CreateServiceCollection();
+        var configs = new List<FeishuAppConfig>
         {
-            AppKey = AppConfigs.AppKeys.Default,
-            AppId = AppConfigs.AppIds.Default,
-            AppSecret = AppConfigs.Secrets.Valid
+            new()
+            {
+                AppKey = AppConfigs.AppKeys.Default,
+                AppId = AppConfigs.AppIds.Default,
+                AppSecret = AppConfigs.Secrets.Valid
+            }
         };
 
         // Act
-        config.Validate();
+        services.AddFeishuApp(configs);
+        using var provider = services.BuildServiceProvider();
+        var resolvedConfigs = provider.GetRequiredService<List<FeishuAppConfig>>();
 
-        // Assert
-        Assert.True(config.IsDefault);
+        // Assert: AddFeishuApp 内部的 ValidateAndSetDefaultApp 应将 IsDefault 设为 true
+        Assert.True(resolvedConfigs[0].IsDefault);
     }
 
     [Fact]

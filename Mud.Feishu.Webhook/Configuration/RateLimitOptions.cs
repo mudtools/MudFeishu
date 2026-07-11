@@ -66,19 +66,18 @@ public class RateLimitOptions
         }
         else
         {
-            // 当 EnableRateLimit=false 时，检查子配置是否被修改为非默认值
-            // 避免用户误以为子配置会生效但实际上被忽略
-            if (WindowSizeSeconds != 60)
-                throw new InvalidOperationException(
-                    "EnableRateLimit 为 false 但 WindowSizeSeconds 被设置为非默认值，请启用 EnableRateLimit 或恢复 WindowSizeSeconds 为默认值 60");
+            // 当 EnableRateLimit=false 时，执行宽松验证而不是严格异常
+            // 这允许在配置热更新或动态切换时更灵活的处理
+            
+            // 仅验证基本范围，不强制要求等于默认值
+            if (WindowSizeSeconds < 1)
+                throw new InvalidOperationException("即使禁用限流，WindowSizeSeconds 也必须至少为 1 秒（配置一致性要求）");
 
-            if (MaxRequestsPerWindow != 100)
-                throw new InvalidOperationException(
-                    "EnableRateLimit 为 false 但 MaxRequestsPerWindow 被设置为非默认值，请启用 EnableRateLimit 或恢复 MaxRequestsPerWindow 为默认值 100");
+            if (MaxRequestsPerWindow < 1)
+                throw new InvalidOperationException("即使禁用限流，MaxRequestsPerWindow 也必须至少为 1（配置一致性要求）");
 
-            if (TooManyRequestsStatusCode != 429)
-                throw new InvalidOperationException(
-                    "EnableRateLimit 为 false 但 TooManyRequestsStatusCode 被设置为非默认值，请启用 EnableRateLimit 或恢复 TooManyRequestsStatusCode 为默认值 429");
+            if (TooManyRequestsStatusCode < 400 || TooManyRequestsStatusCode > 599)
+                throw new InvalidOperationException("即使禁用限流，TooManyRequestsStatusCode 也必须在 400-599 之间（配置一致性要求）");
         }
     }
 }

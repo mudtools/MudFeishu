@@ -9,6 +9,8 @@ using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Mud.Feishu.Abstractions.Authentication;
+using Mud.Feishu.Abstractions.Utilities;
+using Mud.Feishu.Authentication;
 using Mud.HttpUtils;
 using static Mud.Feishu.Abstractions.Tests.Helpers.TestDataFactory;
 

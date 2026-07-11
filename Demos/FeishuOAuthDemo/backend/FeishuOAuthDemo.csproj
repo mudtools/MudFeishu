@@ -7,17 +7,17 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.4" />
-		<PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.4" />
+		<PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.9" />
+		<PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.9" />
 		<PackageReference Include="Scalar.AspNetCore" Version="1.2.40" />
 		<PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.15.0" />
 	</ItemGroup>
-	<!--<ItemGroup>
-		<PackageReference Include="Mud.Feishu" Version="3.0.0-preview5" />
-		<PackageReference Include="Mud.Feishu.Authentication" Version="3.0.0-preview5" />
-	</ItemGroup>-->
-	 <ItemGroup>
+	<ItemGroup>
+		<PackageReference Include="Mud.Feishu" Version="3.0.0-rc1" />
+		<PackageReference Include="Mud.Feishu.Authentication" Version="3.0.0-rc1" />
+	</ItemGroup>
+	 <!--<ItemGroup>
 		<ProjectReference Include="..\..\..\Mud.Feishu.Authentication\Mud.Feishu.Authentication.csproj" />
 		<ProjectReference Include="..\..\..\Mud.Feishu\Mud.Feishu.csproj" />
-	</ItemGroup> 
+	</ItemGroup>--> 
 </Project>

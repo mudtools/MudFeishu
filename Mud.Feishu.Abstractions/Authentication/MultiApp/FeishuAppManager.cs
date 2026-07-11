@@ -273,7 +273,7 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
     /// A-1 修复：不再依赖基类反射设置的 _defaultAppKey，直接读取本类私有字段。
     /// MA-01 修复：原实现使用 <c>public new</c> 隐藏基类虚方法，通过基类或接口引用调用时
     /// 会执行基类版本（_defaultAppKey 未设置）抛异常，违背里氏替换原则。
-    /// 现改为 <see cref="override"/> 保持多态一致性。
+    /// 现改为 <c>public override</c> 保持多态一致性。
     /// </remarks>
     public override IFeishuAppContext GetDefaultApp()
     {

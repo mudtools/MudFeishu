@@ -95,8 +95,8 @@ public static class FeishuServiceCollectionExtensions
             // setAsDefault=false 时使用 TryAddTransient（已注册则跳过）。
             // 此前未传该参数（默认 false），导致默认 IEnhancedHttpClient 隐式绑定到 configs 列表中的第一个 AppKey，
             // 而非 IsDefault=true 的应用。现在通过显式传入确保默认 HttpClient 与 IsDefault=true 严格对应。
-            bool isDefault = config.IsDefault;
-            var appKey = config.AppKey;
+            bool isDefault = config!.IsDefault;
+            var appKey = config!.AppKey;
 
             // 令牌恢复由 FeishuAppManager.CreateAppContext 中创建的 TokenRecoveryEnhancedClient 实现，
             // 不再需要在 Handler 管道中注册 LazyFeishuTokenRecoveryHandler。

@@ -13,9 +13,37 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Scalar.AspNetCore;
+using Serilog;
+using Serilog.Events;
 using System.Text;
 
+// 如果未显式设置环境变量，默认使用 Development（适用于从 bin 目录直接运行的场景）
+// 通过 dotnet run 启动时 launchSettings.json 会自动设置 ASPNETCORE_ENVIRONMENT=Development
+if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")))
+{
+    Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Development");
+}
+
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Host.UseSerilog((context, services, configuration) => configuration
+    .MinimumLevel.Information()
+    .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
+    .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
+    .MinimumLevel.Override("Mud.Feishu", LogEventLevel.Debug)
+    .MinimumLevel.Override("Mud.HttpUtils", LogEventLevel.Debug)
+    .Enrich.FromLogContext()
+    .ReadFrom.Configuration(context.Configuration)
+    .ReadFrom.Services(services)
+    .WriteTo.Console()
+    .WriteTo.File(
+        path: "logs/log-.txt",
+        rollingInterval: RollingInterval.Day,
+        rollOnFileSizeLimit: true,
+        fileSizeLimitBytes: 10 * 1024 * 1024, // 10 MB
+        retainedFileCountLimit: 7, // 保留 7 天的日志
+        encoding: System.Text.Encoding.UTF8
+    ));
 
 builder.Configuration.AddJsonFile("appsettings.local.json", optional: true, reloadOnChange: true);
 
@@ -120,7 +148,11 @@ if (app.Environment.IsDevelopment())
     app.MapGet("/", () => Results.Redirect("/scalar"));
 }
 
-app.UseHttpsRedirection();
+// 仅在生产环境启用 HTTPS 重定向（开发环境使用 HTTP，避免端口未配置警告）
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 app.UseCors("AllowVueDev");
 
 app.UseAuthentication();

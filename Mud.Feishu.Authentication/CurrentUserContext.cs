@@ -41,7 +41,20 @@ public class CurrentUserContext(ILogger<CurrentUserContext> logger) : IFeishuCur
     public string? UnionId => _currentUser.Value?.UnionId;
 
     /// <inheritdoc />
-    public string? UserId => _currentUser.Value?.UserId;
+    /// <remarks>
+    /// 当 UserId 未显式设置时，回退到 OpenId，因为 UserTokenManager 使用 OpenId 作为令牌缓存键。
+    /// 这确保源生成器生成的代码能正确查找用户令牌。
+    /// </remarks>
+    public string? UserId
+    {
+        get
+        {
+            var current = _currentUser.Value;
+            if (current == null)
+                return null;
+            return !string.IsNullOrEmpty(current.UserId) ? current.UserId : current.OpenId;
+        }
+    }
 
     /// <inheritdoc />
     public string? Name => _currentUser.Value?.Name;

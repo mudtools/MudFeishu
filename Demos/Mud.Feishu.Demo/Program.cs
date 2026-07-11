@@ -13,8 +13,10 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Host.UseSerilog((context, services, configuration) => configuration
     .MinimumLevel.Information()
-    .MinimumLevel.Override("Microsoft", LogEventLevel.Information)
-    .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Information)
+    .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
+    .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
+    .MinimumLevel.Override("Mud.Feishu", LogEventLevel.Debug)
+    .MinimumLevel.Override("Mud.HttpUtils", LogEventLevel.Debug)
     .Enrich.FromLogContext()
     .ReadFrom.Configuration(context.Configuration)
     .ReadFrom.Services(services)
@@ -84,7 +86,11 @@ if (app.Environment.IsDevelopment())
 #endif
 }
 
-app.UseHttpsRedirection();
+// 仅在生产环境启用 HTTPS 重定向（开发环境使用 HTTP，避免端口未配置警告）
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 app.UseAuthentication();
 // 使用飞书用户认证中间件
 app.UseFeishuUserAuthentication();

@@ -24,6 +24,7 @@ public class FeishuAuthService : IFeishuAuthService
     private readonly IJwtTokenService _jwtTokenService;
     private readonly IPermissionService _permissionService;
     private readonly IConfiguration _configuration;
+    private readonly IFeishuCurrentUserContext _currentUserContext;
     private readonly ILogger<FeishuAuthService> _logger;
 
     public FeishuAuthService(
@@ -34,6 +35,7 @@ public class FeishuAuthService : IFeishuAuthService
         IJwtTokenService jwtTokenService,
         IPermissionService permissionService,
         IConfiguration configuration,
+        IFeishuCurrentUserContext currentUserContext,
         ILogger<FeishuAuthService> logger)
     {
         _dbContext = dbContext;
@@ -43,6 +45,7 @@ public class FeishuAuthService : IFeishuAuthService
         _jwtTokenService = jwtTokenService;
         _permissionService = permissionService;
         _configuration = configuration;
+        _currentUserContext = currentUserContext;
         _logger = logger;
     }
 
@@ -88,6 +91,7 @@ public class FeishuAuthService : IFeishuAuthService
             var redirectUri = _configuration["OAuth:RedirectUri"];
 
             // 使用授权码获取用户访问令牌
+            _logger.LogInformation("开始使用授权码获取用户访问令牌");
             var tokenResult = await _tokenManagerResolver.GetUserTokenManager().GetUserTokenWithCodeAsync(code, redirectUri ?? string.Empty);
 
             if (tokenResult == null || tokenResult.Code != 0)
@@ -96,7 +100,13 @@ public class FeishuAuthService : IFeishuAuthService
                 return null;
             }
 
+            _logger.LogInformation("成功获取用户访问令牌");
+
+            // 必须在调用 GetUserInfoAsync 前设置用户上下文，否则 SDK 无法找到用户令牌
+            _currentUserContext.SetUser(tokenResult.OpenId!, tokenResult.UnionId, tokenResult.OpenId, null);
+
             // 获取用户信息
+            _logger.LogInformation("开始获取用户信息");
             var userInfoResult = await _feishuUserApi.GetUserInfoAsync();
 
             if (userInfoResult?.Data == null)
@@ -302,6 +312,9 @@ public class FeishuAuthService : IFeishuAuthService
                 _logger.LogError("获取用户访问令牌失败: {Message}", tokenResult?.Msg ?? "未知错误");
                 return null;
             }
+
+            // 必须在调用 GetUserInfoAsync 前设置用户上下文，否则 SDK 无法找到用户令牌
+            _currentUserContext.SetUser(tokenResult.OpenId!, tokenResult.UnionId, tokenResult.OpenId, null);
 
             var userInfoResult = await _feishuUserApi.GetUserInfoAsync(cancellationToken);
 

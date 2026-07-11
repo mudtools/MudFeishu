@@ -24,6 +24,7 @@ public class OAuthController : BaseController
     private readonly IJwtTokenService _jwtTokenService;
     private readonly IUserService _userService;
     private readonly IFeishuUserV3User _feishuUserApi;
+    private readonly IFeishuCurrentUserContext _currentUserContext;
     private readonly ILogger<OAuthController> _logger;
 
     public OAuthController(
@@ -34,6 +35,7 @@ public class OAuthController : BaseController
         IJwtTokenService jwtTokenService,
         IUserService userService,
         IFeishuUserV3User feishuUserApi,
+        IFeishuCurrentUserContext currentUserContext,
         ILogger<OAuthController> logger)
     {
         _configuration = configuration;
@@ -43,6 +45,7 @@ public class OAuthController : BaseController
         _jwtTokenService = jwtTokenService;
         _userService = userService;
         _feishuUserApi = feishuUserApi;
+        _currentUserContext = currentUserContext;
         _logger = logger;
     }
 
@@ -102,7 +105,8 @@ public class OAuthController : BaseController
     {
         try
         {
-            _logger.LogInformation("收到飞书OAuth回调，State: {State}", request.State);
+            _logger.LogInformation("收到飞书OAuth回调，Code: {Code}, State: {State}",
+                request.Code.Length > 8 ? request.Code[..8] + "..." : request.Code, request.State);
 
             if (string.IsNullOrEmpty(request.Code) || string.IsNullOrEmpty(request.State))
             {
@@ -119,6 +123,7 @@ public class OAuthController : BaseController
 
             var redirectUri = _configuration["OAuth:RedirectUri"];
 
+            _logger.LogInformation("开始使用授权码获取用户访问令牌");
             var tokenResult = await _tokenManagerResolver.GetUserTokenManager().GetUserTokenWithCodeAsync(request.Code, redirectUri ?? string.Empty);
 
             if (tokenResult == null || tokenResult.Code != 0)
@@ -127,6 +132,15 @@ public class OAuthController : BaseController
                 return BadRequestResult($"获取用户访问令牌失败: {tokenResult?.Msg ?? "未知错误"}");
             }
 
+            _logger.LogInformation("成功获取用户访问令牌");
+
+            // GetUserTokenWithCodeAsync 内部已处理 OAuth v2 场景：
+            // 当 OAuth 端点不返回 OpenId 时，会自动用 access_token 调用用户信息 API 获取 OpenId，
+            // 并完成令牌缓存。因此此处 tokenResult.OpenId 一定有值。
+            // 必须在调用 GetUserInfoAsync 前设置用户上下文，否则 SDK 无法找到用户令牌。
+            _currentUserContext.SetUser(tokenResult.OpenId!, tokenResult.UnionId, tokenResult.OpenId, null);
+
+            _logger.LogInformation("开始获取用户信息");
             var userInfoResult = await _feishuUserApi.GetUserInfoAsync();
 
             if (userInfoResult?.Data == null)
@@ -136,6 +150,8 @@ public class OAuthController : BaseController
             }
 
             var feishuUser = userInfoResult.Data;
+
+            _logger.LogInformation("成功获取用户信息: {Name} ({OpenId})", feishuUser.Name ?? "未知", feishuUser.OpenId ?? "未知");
 
             var userId = await _userService.GetOrCreateUserAsync(
                 feishuUser.OpenId ?? string.Empty,
@@ -154,11 +170,15 @@ public class OAuthController : BaseController
                     : null
             );
 
+            _logger.LogInformation("用户处理完成，本地用户ID: {UserId}", userId);
+
             var jwtToken = _jwtTokenService.GenerateToken(
                 feishuUser.OpenId ?? string.Empty,
                 feishuUser.UnionId ?? string.Empty,
                 feishuUser.Name ?? "未知用户"
             );
+
+            _logger.LogInformation("JWT令牌生成成功");
 
             return Ok(new LoginResponse
             {
@@ -179,6 +199,43 @@ public class OAuthController : BaseController
         {
             _logger.LogError(ex, "处理飞书OAuth回调失败");
             return ServerError("登录失败", ex);
+        }
+    }
+
+    /// <summary>
+    /// 验证JWT令牌
+    /// </summary>
+    /// <param name="token">JWT令牌</param>
+    /// <returns>验证结果</returns>
+    [HttpPost("validate-token")]
+    public IActionResult ValidateToken([FromBody] string token)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(token))
+            {
+                return Fail("令牌不能为空");
+            }
+
+            var isValid = _jwtTokenService.ValidateToken(token, out var principal);
+
+            if (!isValid || principal == null)
+            {
+                return UnauthorizedResult("令牌无效或已过期");
+            }
+
+            var userInfo = _jwtTokenService.GetUserFromToken(token);
+            return Success(new
+            {
+                openId = userInfo?.openId,
+                unionId = userInfo?.unionId,
+                name = userInfo?.name
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "验证令牌失败");
+            return ServerError("验证令牌失败", ex);
         }
     }
 

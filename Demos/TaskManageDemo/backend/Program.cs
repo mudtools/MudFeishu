@@ -25,9 +25,11 @@ using TaskManageDemo.Backend.Services.HealthChecks;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Host.UseSerilog((context, services, configuration) => configuration
-    .MinimumLevel.Debug()
-    .MinimumLevel.Override("Microsoft", LogEventLevel.Information)
+    .MinimumLevel.Information()
+    .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
     .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
+    .MinimumLevel.Override("Mud.Feishu", LogEventLevel.Debug)
+    .MinimumLevel.Override("Mud.HttpUtils", LogEventLevel.Debug)
     .Enrich.FromLogContext()
     .ReadFrom.Configuration(context.Configuration)
     .ReadFrom.Services(services)

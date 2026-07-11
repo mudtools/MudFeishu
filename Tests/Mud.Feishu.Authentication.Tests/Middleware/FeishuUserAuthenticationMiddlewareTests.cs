@@ -268,7 +268,8 @@ public class FeishuUserAuthenticationMiddlewareTests
         // Assert
         Assert.Equal("test_open_id", capturedValues.OpenId);
         Assert.Null(capturedValues.UnionId);
-        Assert.Null(capturedValues.UserId);
+        // UserId 应回退到 OpenId，因为 UserTokenManager 使用 OpenId 作为令牌缓存键
+        Assert.Equal("test_open_id", capturedValues.UserId);
         Assert.Null(capturedValues.Name);
     }
 

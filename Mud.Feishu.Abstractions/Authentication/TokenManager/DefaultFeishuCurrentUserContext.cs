@@ -14,6 +14,10 @@ namespace Mud.Feishu.Abstractions.Authentication;
 /// 作为 IFeishuCurrentUserContext 的默认注册实现，确保在未调用 AddFeishuUserContext() 时
 /// 仍能提供可用的用户上下文。如果需要日志记录等增强功能，请使用
 /// Mud.Feishu.Authentication 中的 CurrentUserContext 并调用 AddFeishuUserContext()。
+/// <para>UserId 回退机制：</para>
+/// 在飞书生态中，用户访问令牌（UserAccessToken）以 OpenId 为缓存键存储。
+/// 源生成器使用 ICurrentUserContext.UserId 作为令牌查找键，
+/// 因此当 UserId 未显式设置时，自动回退到 OpenId，确保令牌查找键与存储键一致。
 /// </remarks>
 internal sealed class DefaultFeishuCurrentUserContext : IFeishuCurrentUserContext
 {
@@ -21,7 +25,22 @@ internal sealed class DefaultFeishuCurrentUserContext : IFeishuCurrentUserContex
 
     public string? OpenId => _currentUser.Value?.OpenId;
     public string? UnionId => _currentUser.Value?.UnionId;
-    public string? UserId => _currentUser.Value?.UserId;
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// 当 UserId 未显式设置时，回退到 OpenId，因为 UserTokenManager 使用 OpenId 作为令牌缓存键。
+    /// 这确保源生成器生成的代码能正确查找用户令牌。
+    /// </remarks>
+    public string? UserId
+    {
+        get
+        {
+            var current = _currentUser.Value;
+            if (current == null)
+                return null;
+            return !string.IsNullOrEmpty(current.UserId) ? current.UserId : current.OpenId;
+        }
+    }
     public string? Name => _currentUser.Value?.Name;
     public bool IsAuthenticated => !string.IsNullOrEmpty(_currentUser.Value?.OpenId);
 

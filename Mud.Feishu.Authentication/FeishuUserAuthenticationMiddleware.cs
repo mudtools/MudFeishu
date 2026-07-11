@@ -90,7 +90,11 @@ public class FeishuUserAuthenticationMiddleware(
 
                 var logOpenId = _options.EnableSensitiveLog ? openId : MaskSensitiveInfo(openId!);
                 var logUnionId = _options.EnableSensitiveLog ? unionId ?? "N/A" : (unionId != null ? MaskSensitiveInfo(unionId) : "N/A");
-                var logUserId = userId ?? "N/A";
+                // 使用 userContext.UserId 获取有效 UserId（当 Claim 中未提供 user_id 时回退到 OpenId）
+                var effectiveUserId = userContext.UserId;
+                var logUserId = effectiveUserId != null
+                    ? (_options.EnableSensitiveLog ? effectiveUserId : MaskSensitiveInfo(effectiveUserId))
+                    : "N/A";
 
                 _logger.LogDebug("用户上下文已设置: OpenId={OpenId}, UnionId={UnionId}, UserId={UserId}",
                     logOpenId, logUnionId, logUserId);

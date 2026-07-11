@@ -189,7 +189,7 @@ public class DepartmentController(IFeishuTenantV3Departments departmentApi) : Co
         try
         {
             var result = await _departmentApi.GetDepartmentInfoByIdAsync(departmentId);
-            return Ok(result.Data);
+            return Ok(result?.Data);
         }
         catch (ApiException ex)
         {
@@ -218,7 +218,7 @@ public class DepartmentController(IFeishuTenantV3Departments departmentApi) : Co
         try
         {
             var result = await _departmentApi.GetDepartmentsByIdsAsync(departmentIds);
-            return Ok(result.Data);
+            return Ok(result?.Data);
         }
         catch (ApiException ex)
         {
@@ -254,7 +254,7 @@ public class DepartmentController(IFeishuTenantV3Departments departmentApi) : Co
         try
         {
             var result = await _departmentApi.GetDepartmentsByParentIdAsync(departmentId, fetchChild, pageSize, pageToken);
-            return Ok(result.Data);
+            return Ok(result?.Data);
         }
         catch (ApiException ex)
         {
@@ -290,7 +290,7 @@ public class DepartmentController(IFeishuTenantV3Departments departmentApi) : Co
         try
         {
             var result = await _departmentApi.GetParentDepartmentsByIdAsync(departmentId, pageSize, pageToken, userIdType, departmentIdType);
-            return Ok(result.Data);
+            return Ok(result?.Data);
         }
         catch (ApiException ex)
         {

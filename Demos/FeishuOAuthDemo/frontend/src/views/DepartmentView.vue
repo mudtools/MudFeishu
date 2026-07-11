@@ -6,7 +6,7 @@
         <div class="toolbar-left">
           <el-input
             v-model="searchDepartmentId"
-            placeholder="输入部门ID（0为根部门）"
+            placeholder="输入开放部门ID（0为根部门，od-开头）"
             style="width: 320px"
             clearable
             @keyup.enter="handleSearchChildren"
@@ -318,7 +318,7 @@ const handleLoadMore = async () => {
 }
 
 const handleViewChildren = (row: GetDepartmentInfo) => {
-  searchDepartmentId.value = row.department_id || row.open_department_id
+  searchDepartmentId.value = row.open_department_id || row.department_id
   handleSearchChildren()
 }
 
@@ -330,7 +330,7 @@ const detailData = ref<GetDepartmentInfo | null>(null)
 const handleViewDetail = async (row: GetDepartmentInfo) => {
   detailDialogVisible.value = true
   detailData.value = null
-  const deptId = row.department_id || row.open_department_id
+  const deptId = row.open_department_id || row.department_id
   try {
     const result = await departmentApi.getDepartment(deptId)
     detailData.value = result.department
@@ -412,7 +412,7 @@ const editRules: FormRules = {
 }
 
 const openEditDialog = (row: GetDepartmentInfo) => {
-  editingDepartmentId.value = row.department_id || row.open_department_id
+  editingDepartmentId.value = row.open_department_id || row.department_id
   editForm.name = row.name
   editForm.parent_department_id = row.parent_department_id
   editForm.leader_user_id = row.leader_user_id || ''
@@ -486,7 +486,7 @@ const updateIdRules: FormRules = {
 }
 
 const openUpdateIdDialog = (row: GetDepartmentInfo) => {
-  updateIdForm.currentId = row.department_id || row.open_department_id
+  updateIdForm.currentId = row.open_department_id || row.department_id
   updateIdForm.new_department_id = ''
   updateIdDialogVisible.value = true
 }
@@ -519,7 +519,7 @@ const handleUpdateId = async () => {
 // ===================== 解绑群聊 =====================
 
 const handleUnbindChat = async (row: GetDepartmentInfo) => {
-  const deptId = row.department_id || row.open_department_id
+  const deptId = row.open_department_id || row.department_id
   try {
     await ElMessageBox.confirm(
       `确定要解绑部门「${row.name}」的群聊吗？此操作将把部门群转为普通群。`,
@@ -584,7 +584,7 @@ const parentList = ref<GetDepartmentInfo[]>([])
 const loadingParents = ref(false)
 
 const handleViewParents = async (row: GetDepartmentInfo) => {
-  const deptId = row.department_id || row.open_department_id
+  const deptId = row.open_department_id || row.department_id
   parentDialogVisible.value = true
   parentList.value = []
   loadingParents.value = true

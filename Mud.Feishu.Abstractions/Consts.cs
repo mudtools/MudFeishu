@@ -78,13 +78,6 @@ internal class Consts
     public const int DefaultDeduplicationRetryCount = 3;
 
     /// <summary>
-    /// 默认重试次数（向后兼容别名，等同于 DefaultHttpRetryCount）。
-    /// <para>新代码应使用语义明确的常量：DefaultHttpRetryCount / DefaultRedisConnectRetry /
-    /// DefaultEventRetryCount / DefaultDeduplicationRetryCount。</para>
-    /// </summary>
-    public const int DefaultRetryCount = DefaultHttpRetryCount;
-
-    /// <summary>
     /// 默认重试延迟时间（毫秒）
     /// </summary>
     public const int DefaultRetryDelayMs = 1000;
@@ -178,4 +171,9 @@ internal class Consts
     /// 默认去重最大重试延迟（毫秒）：用于 DeduplicationOptions.MaxRetryDelay
     /// </summary>
     public const int DefaultDeduplicationMaxRetryDelayMs = 30000;
+
+    /// <summary>
+    /// 飞书开放平台 API 默认 BaseUrl
+    /// </summary>
+    public const string DefaultFeishuBaseUrl = "https://open.feishu.cn";
 }

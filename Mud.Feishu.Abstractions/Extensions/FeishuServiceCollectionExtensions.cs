@@ -90,7 +90,7 @@ public static class FeishuServiceCollectionExtensions
         foreach (var config in configs)
         {
             var clientName = $"feishu-{config.AppKey}";
-            var baseAddress = config.BaseUrl ?? "https://open.feishu.cn";
+            var baseAddress = config.BaseUrl ?? Consts.DefaultFeishuBaseUrl;
             bool allowCustomBaseUrl = config?.AllowCustomBaseUrl ?? false;
             var timeOut = config?.TimeOut ?? 30;
             // 显式标记默认应用：AddMudHttpClient 内部 setAsDefault=true 时强制覆盖 IEnhancedHttpClient 默认注册，

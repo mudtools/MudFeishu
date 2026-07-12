@@ -102,4 +102,10 @@ public class EventData
     /// </summary>
     [JsonIgnore]
     public string? Schema => Header?.Schema;
+
+    /// <summary>
+    /// 运行时上下文项袋，用于在拦截器与处理器之间传递非序列化辅助对象（如 Activity）。
+    /// </summary>
+    [JsonIgnore]
+    public Dictionary<string, object?>? Items { get; set; }
 }

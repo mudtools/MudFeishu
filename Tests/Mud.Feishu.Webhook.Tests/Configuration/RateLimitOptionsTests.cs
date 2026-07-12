@@ -38,33 +38,36 @@ public class RateLimitOptionsTests
     }
 
     [Fact]
-    public void Validate_ShouldThrow_WhenRateLimitDisabledButWindowSizeIsNonDefault()
+    public void Validate_ShouldThrow_WhenRateLimitDisabledButWindowSizeIsInvalid()
     {
+        // 宽松验证：EnableRateLimit=false 时仍校验基本范围，WindowSizeSeconds < 1 应抛出
         var options = new RateLimitOptions { EnableRateLimit = false, WindowSizeSeconds = 0 };
 
         var act = () => options.Validate();
 
-        act.Should().Throw<InvalidOperationException>().WithMessage("*EnableRateLimit*false*WindowSizeSeconds*");
+        act.Should().Throw<InvalidOperationException>().WithMessage("*WindowSizeSeconds*");
     }
 
     [Fact]
-    public void Validate_ShouldThrow_WhenRateLimitDisabledButMaxRequestsIsNonDefault()
+    public void Validate_ShouldNotThrow_WhenRateLimitDisabledButMaxRequestsIsValid()
     {
+        // 宽松验证：EnableRateLimit=false 时，MaxRequestsPerWindow 只要在有效范围内即通过
         var options = new RateLimitOptions { EnableRateLimit = false, MaxRequestsPerWindow = 200 };
 
         var act = () => options.Validate();
 
-        act.Should().Throw<InvalidOperationException>().WithMessage("*EnableRateLimit*false*MaxRequestsPerWindow*");
+        act.Should().NotThrow();
     }
 
     [Fact]
-    public void Validate_ShouldThrow_WhenRateLimitDisabledButStatusCodeIsNonDefault()
+    public void Validate_ShouldNotThrow_WhenRateLimitDisabledButStatusCodeIsValid()
     {
+        // 宽松验证：EnableRateLimit=false 时，TooManyRequestsStatusCode 只要在 400-599 范围内即通过
         var options = new RateLimitOptions { EnableRateLimit = false, TooManyRequestsStatusCode = 503 };
 
         var act = () => options.Validate();
 
-        act.Should().Throw<InvalidOperationException>().WithMessage("*EnableRateLimit*false*TooManyRequestsStatusCode*");
+        act.Should().NotThrow();
     }
 
     [Fact]

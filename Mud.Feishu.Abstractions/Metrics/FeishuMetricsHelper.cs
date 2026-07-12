@@ -11,90 +11,121 @@ using System.Diagnostics.Metrics;
 namespace Mud.Feishu.Abstractions.Metrics;
 
 /// <summary>
-/// 飞书 Metrics 辅助类，提供便捷的指标记录方法
+/// 飞书 Metrics 辅助类，提供便捷的指标记录方法。
+/// 所有方法均以 app_key 为首要维度，确保多应用场景指标可区分。
 /// </summary>
 public static class FeishuMetricsHelper
 {
     /// <summary>
-    /// 记录事件处理指标
+    /// 记录事件处理指标，返回 IDisposable 用于标记耗时。
     /// </summary>
-    public static IDisposable RecordEventHandling(string eventType, string? handlerType = null)
+    /// <param name="appKey">飞书应用 AppKey</param>
+    /// <param name="eventType">事件类型</param>
+    /// <param name="handlerType">处理器类型名（可选）</param>
+    /// <returns>可释放的耗时记录器</returns>
+    public static IDisposable RecordEventHandling(string appKey, string eventType, string? handlerType = null)
     {
-        var tags = new TagList { { "event_type", eventType } };
+        var tags = new TagList
+        {
+            { FeishuMetrics.Tags.AppKey, appKey },
+            { FeishuMetrics.Tags.EventType, eventType },
+        };
 
         if (handlerType != null)
-        {
-            tags.Add(new("handler_type", handlerType));
-        }
+            tags.Add(new(FeishuMetrics.Tags.HandlerType, handlerType));
 
         FeishuMetrics.EventHandlingCount.Add(1, tags);
-
         return FeishuMetrics.EventHandlingDuration.RecordDuration(tags);
     }
 
     /// <summary>
-    /// 记录事件处理成功
+    /// 记录事件处理结果。
     /// </summary>
-    public static void RecordEventHandlingSuccess(string eventType)
-    {
-        FeishuMetrics.EventHandlingSuccessCount.Add(1, new TagList { { "event_type", eventType } });
-    }
-
-    /// <summary>
-    /// 记录事件处理失败
-    /// </summary>
-    public static void RecordEventHandlingFailure(string eventType, string? errorType = null)
-    {
-        var tags = new TagList { { "event_type", eventType } };
-
-        if (errorType != null)
-        {
-            tags.Add(new("error_type", errorType));
-        }
-
-        FeishuMetrics.EventHandlingFailureCount.Add(1, tags);
-    }
-
-    /// <summary>
-    /// 记录事件去重命中
-    /// </summary>
-    public static void RecordEventDeduplicationHit(string dedupType)
-    {
-        FeishuMetrics.EventDeduplicationHitCount.Add(1, new TagList { { "dedup_type", dedupType } });
-    }
-
-    /// <summary>
-    /// 记录 HTTP 请求指标
-    /// </summary>
-    public static IDisposable RecordHttpRequest(string method, string url)
+    /// <param name="appKey">飞书应用 AppKey</param>
+    /// <param name="eventType">事件类型</param>
+    /// <param name="success">是否成功</param>
+    /// <param name="errorType">错误类型名（可选，仅失败时填充）</param>
+    public static void RecordEventOutcome(string appKey, string eventType, bool success, string? errorType = null)
     {
         var tags = new TagList
         {
-            { "method", method },
-            { "url", TruncateUrl(url, 50) }
+            { FeishuMetrics.Tags.AppKey, appKey },
+            { FeishuMetrics.Tags.EventType, eventType },
+            { FeishuMetrics.Tags.Outcome, success ? "success" : "failure" },
         };
 
-        FeishuMetrics.HttpRequestCount.Add(1, tags);
+        if (!success && errorType != null)
+            tags.Add(new(FeishuMetrics.Tags.ErrorType, errorType));
 
-        return FeishuMetrics.HttpRequestDuration.RecordDuration(tags);
+        FeishuMetrics.EventHandlingCount.Add(1, tags);
     }
 
     /// <summary>
-    /// 截断 URL 以避免标签过长
+    /// 记录事件去重命中。
     /// </summary>
-    private static string TruncateUrl(string url, int maxLength)
+    /// <param name="appKey">飞书应用 AppKey</param>
+    /// <param name="dedupType">去重类型</param>
+    /// <param name="hit">是否命中去重</param>
+    public static void RecordEventDeduplication(string appKey, string dedupType, bool hit)
     {
-        if (url.Length <= maxLength)
-            return url;
+        var tags = new TagList
+        {
+            { FeishuMetrics.Tags.AppKey, appKey },
+            { FeishuMetrics.Tags.DedupType, dedupType },
+            { FeishuMetrics.Tags.Outcome, hit ? "deduplicated" : "passed" },
+        };
 
-        return string.Concat(url.Substring(0, maxLength), "...");
+        FeishuMetrics.EventDeduplicationCount.Add(1, tags);
     }
 
     /// <summary>
-    /// 记录 WebSocket 消息处理持续时间
+    /// 记录 WebSocket 消息处理耗时。
     /// </summary>
-    public static IDisposable RecordWebSocketMessageProcessing()
+    /// <param name="appKey">飞书应用 AppKey</param>
+    /// <param name="messageType">消息类型（可选）</param>
+    /// <returns>可释放的耗时记录器</returns>
+    public static IDisposable RecordWebSocketMessageProcessing(string appKey, string? messageType = null)
     {
-        return FeishuMetrics.WebSocketMessageProcessingDuration.RecordDuration();
+        var tags = new TagList
+        {
+            { FeishuMetrics.Tags.AppKey, appKey },
+        };
+
+        if (messageType != null)
+            tags.Add(new(FeishuMetrics.Tags.MessageType, messageType));
+
+        return FeishuMetrics.WebSocketMessageDuration.RecordDuration(tags);
+    }
+
+    /// <summary>
+    /// 记录 WebSocket 重连。
+    /// </summary>
+    /// <param name="appKey">飞书应用 AppKey</param>
+    /// <param name="success">重连是否成功</param>
+    public static void RecordWebSocketReconnect(string appKey, bool success)
+    {
+        var tags = new TagList
+        {
+            { FeishuMetrics.Tags.AppKey, appKey },
+            { FeishuMetrics.Tags.Outcome, success ? "success" : "failure" },
+        };
+
+        FeishuMetrics.WebSocketReconnectCount.Add(1, tags);
+    }
+
+    /// <summary>
+    /// 记录 Webhook 请求。
+    /// </summary>
+    /// <param name="appKey">飞书应用 AppKey</param>
+    /// <returns>可释放的耗时记录器</returns>
+    public static IDisposable RecordWebhookRequest(string appKey)
+    {
+        var tags = new TagList
+        {
+            { FeishuMetrics.Tags.AppKey, appKey },
+        };
+
+        FeishuMetrics.WebhookRequestCount.Add(1, tags);
+        return FeishuMetrics.WebhookRequestDuration.RecordDuration(tags);
     }
 }

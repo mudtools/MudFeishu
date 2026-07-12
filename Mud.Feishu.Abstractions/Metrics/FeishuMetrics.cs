@@ -10,86 +10,158 @@ using System.Diagnostics.Metrics;
 namespace Mud.Feishu.Abstractions.Metrics;
 
 /// <summary>
-/// 飞书 SDK 性能指标收集器
+/// 飞书 SDK 性能指标源。
+/// 仅包含 Feishu 特有指标（事件处理、WebSocket、Webhook）。
+/// HTTP 请求指标由 Mud.HttpUtils.MudHttpMeter 自动采集（mud.http.requests / mud.http.request.duration）。
+/// Token 刷新指标由 Mud.HttpUtils.TokenManagerBase 自动采集（mud.token.refresh / mud.token.refresh.duration）。
 /// </summary>
-public class FeishuMetrics
+public static class FeishuMetrics
 {
-    private static readonly Meter Meter = new("Mud.Feishu", "3.0.0");
+    /// <summary>
+    /// Meter 名称，遵循 OTel 命名约定。
+    /// </summary>
+    public const string MeterName = "Mud.Feishu";
 
     /// <summary>
-    /// 记录事件处理次数
+    /// Meter 版本。
     /// </summary>
-    public static readonly Counter<long> EventHandlingCount = Meter.CreateCounter<long>(
-        "feishu_event_handling_total",
-        description: "事件处理总次数");
+    public const string Version = "3.0.0";
 
     /// <summary>
-    /// 记录事件处理成功次数
+    /// 静态 Meter 实例。
     /// </summary>
-    public static readonly Counter<long> EventHandlingSuccessCount = Meter.CreateCounter<long>(
-        "feishu_event_handling_success_total",
-        description: "事件处理成功次数");
+    public static readonly Meter Instance = new(MeterName, Version);
+
+    // ── 事件处理指标 ──
 
     /// <summary>
-    /// 记录事件处理失败次数
+    /// 事件处理总次数（维度：app_key, event_type, handler_type, outcome）。
     /// </summary>
-    public static readonly Counter<long> EventHandlingFailureCount = Meter.CreateCounter<long>(
-        "feishu_event_handling_failure_total",
-        description: "事件处理失败次数");
+    public static readonly Counter<long> EventHandlingCount = Instance.CreateCounter<long>(
+        "feishu.event.handling",
+        unit: "{event}",
+        description: "飞书事件处理总次数");
 
     /// <summary>
-    /// 记录事件去重命中次数
+    /// 事件处理耗时直方图（毫秒，维度：app_key, event_type, handler_type）。
     /// </summary>
-    public static readonly Counter<long> EventDeduplicationHitCount = Meter.CreateCounter<long>(
-        "feishu_event_deduplication_hit_total",
-        description: "事件去重命中次数");
-
-    /// <summary>
-    /// 记录 HTTP 请求次数
-    /// </summary>
-    public static readonly Counter<long> HttpRequestCount = Meter.CreateCounter<long>(
-        "feishu_http_request_total",
-        description: "HTTP 请求总次数");
-
-    /// <summary>
-    /// 记录 HTTP 请求持续时间（毫秒）
-    /// </summary>
-    public static readonly Histogram<double> HttpRequestDuration = Meter.CreateHistogram<double>(
-        "feishu_http_request_duration_ms",
+    public static readonly Histogram<double> EventHandlingDuration = Instance.CreateHistogram<double>(
+        "feishu.event.handling.duration",
         unit: "ms",
-        description: "HTTP 请求持续时间（毫秒）");
+        description: "飞书事件处理耗时分布");
 
     /// <summary>
-    /// 记录事件处理持续时间（毫秒）
+    /// 事件去重命中计数（维度：app_key, dedup_type, outcome）。
     /// </summary>
-    public static readonly Histogram<double> EventHandlingDuration = Meter.CreateHistogram<double>(
-        "feishu_event_handling_duration_ms",
+    public static readonly Counter<long> EventDeduplicationCount = Instance.CreateCounter<long>(
+        "feishu.event.deduplication",
+        unit: "{operation}",
+        description: "飞书事件去重命中/未命中计数");
+
+    // ── WebSocket 指标 ──
+
+    /// <summary>
+    /// WebSocket 活跃连接数（维度：app_key）。
+    /// </summary>
+    public static readonly ObservableGauge<int> WebSocketConnectionGauge;
+
+    /// <summary>
+    /// WebSocket 连接数提供器（按 app_key 分组）。
+    /// </summary>
+    public static Func<IEnumerable<Measurement<int>>>? WebSocketConnectionObserver { get; set; }
+
+    /// <summary>
+    /// WebSocket 消息处理耗时直方图（毫秒，维度：app_key, message_type）。
+    /// </summary>
+    public static readonly Histogram<double> WebSocketMessageDuration = Instance.CreateHistogram<double>(
+        "feishu.websocket.message.duration",
         unit: "ms",
-        description: "事件处理持续时间（毫秒）");
+        description: "WebSocket 消息处理耗时分布");
 
     /// <summary>
-    /// 记录 WebSocket 连接数
+    /// WebSocket 重连次数计数（维度：app_key, outcome）。
     /// </summary>
-    public static readonly ObservableGauge<int> WebSocketConnectionCount;
+    public static readonly Counter<long> WebSocketReconnectCount = Instance.CreateCounter<long>(
+        "feishu.websocket.reconnect",
+        unit: "{reconnect}",
+        description: "WebSocket 重连次数");
 
     /// <summary>
-    /// WebSocket 连接数提供器
+    /// WebSocket 待处理消息积压数（维度：app_key）。
     /// </summary>
-    public static Func<int> WebSocketConnectionCountProvider { get; set; } = () => 0;
+    public static readonly ObservableGauge<int> WebSocketBacklogGauge;
+
+    /// <summary>
+    /// WebSocket 消息积压数提供器（按 app_key 分组）。
+    /// </summary>
+    public static Func<IEnumerable<Measurement<int>>>? WebSocketBacklogObserver { get; set; }
+
+    // ── Webhook 指标 ──
+
+    /// <summary>
+    /// Webhook 请求计数（维度：app_key, outcome）。
+    /// </summary>
+    public static readonly Counter<long> WebhookRequestCount = Instance.CreateCounter<long>(
+        "feishu.webhook.request",
+        unit: "{request}",
+        description: "Webhook 入站请求计数");
+
+    /// <summary>
+    /// Webhook 请求处理耗时直方图（毫秒，维度：app_key, outcome）。
+    /// </summary>
+    public static readonly Histogram<double> WebhookRequestDuration = Instance.CreateHistogram<double>(
+        "feishu.webhook.request.duration",
+        unit: "ms",
+        description: "Webhook 请求处理耗时分布");
 
     static FeishuMetrics()
     {
-        WebSocketConnectionCount = Meter.CreateObservableGauge<int>(
-            "feishu_websocket_connections",
-            observeValue: () => WebSocketConnectionCountProvider(),
-            description: "WebSocket 连接数");
+        WebSocketConnectionGauge = Instance.CreateObservableGauge<int>(
+            "feishu.websocket.connections",
+            observeValues: () => WebSocketConnectionObserver?.Invoke() ?? [],
+            unit: "{connection}",
+            description: "WebSocket 活跃连接数");
+
+        WebSocketBacklogGauge = Instance.CreateObservableGauge<int>(
+            "feishu.websocket.backlog",
+            observeValues: () => WebSocketBacklogObserver?.Invoke() ?? [],
+            unit: "{message}",
+            description: "WebSocket 待处理消息积压数");
     }
 
     /// <summary>
-    /// 记录 WebSocket 消息处理持续时间（毫秒）
+    /// OTel 语义约定与 Feishu 自定义标签的常量集合。
     /// </summary>
-    public static readonly Histogram<double> WebSocketMessageProcessingDuration = Meter.CreateHistogram<double>(
-        "feishu_websocket_message_processing_duration_ms",
-        unit: "ms",
-        description: "WebSocket 消息处理持续时间（毫秒）");
+    public static class Tags
+    {
+        /// <summary>飞书应用 AppKey（多应用区分维度）</summary>
+        public const string AppKey = "feishu.app_key";
+
+        /// <summary>飞书应用 AppId</summary>
+        public const string AppId = "feishu.app_id";
+
+        /// <summary>事件类型</summary>
+        public const string EventType = "feishu.event.type";
+
+        /// <summary>事件处理器类型名</summary>
+        public const string HandlerType = "feishu.event.handler_type";
+
+        /// <summary>去重类型（redis/memory/seqid）</summary>
+        public const string DedupType = "feishu.dedup.type";
+
+        /// <summary>操作结果（success/failure/deduplicated）</summary>
+        public const string Outcome = "outcome";
+
+        /// <summary>错误类型名</summary>
+        public const string ErrorType = "error.type";
+
+        /// <summary>WebSocket 消息类型</summary>
+        public const string MessageType = "feishu.websocket.message_type";
+
+        /// <summary>事件 ID</summary>
+        public const string EventId = "feishu.event.id";
+
+        /// <summary>租户 Key</summary>
+        public const string TenantKey = "feishu.tenant_key";
+    }
 }

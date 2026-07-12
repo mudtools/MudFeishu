@@ -17,18 +17,22 @@ namespace Mud.Feishu.WebSocket.Handlers;
 public class AuthMessageHandler : JsonMessageHandler
 {
     private readonly Action<bool> _onAuthResult;
+    private readonly string _appKey;
 
     /// <summary>
     /// 初始化认证消息处理器
     /// </summary>
     /// <param name="logger">日志记录器</param>
     /// <param name="onAuthResult">认证结果回调</param>
+    /// <param name="appKey">飞书应用 AppKey，用于指标维度</param>
     public AuthMessageHandler(
         ILogger<AuthMessageHandler> logger,
-        Action<bool> onAuthResult)
+        Action<bool> onAuthResult,
+        string appKey = "websocket")
         : base(logger)
     {
         _onAuthResult = onAuthResult ?? throw new ArgumentNullException(nameof(onAuthResult));
+        _appKey = appKey;
     }
     /// <inheritdoc/>
     public override bool CanHandle(string messageType)
@@ -42,13 +46,13 @@ public class AuthMessageHandler : JsonMessageHandler
 
         if (authResponse?.Code == 0)
         {
-            FeishuMetricsHelper.RecordEventHandlingSuccess("auth");
+            FeishuMetricsHelper.RecordEventOutcome(_appKey, "auth", success: true);
             _onAuthResult(true);
         }
         else
         {
             var errorType = authResponse?.Code.ToString() ?? "unknown";
-            FeishuMetricsHelper.RecordEventHandlingFailure("auth", errorType);
+            FeishuMetricsHelper.RecordEventOutcome(_appKey, "auth", success: false, errorType);
             _logger.LogError("WebSocket认证失败: {Code} - {Message}", authResponse?.Code, authResponse?.Message);
             _onAuthResult(false);
         }

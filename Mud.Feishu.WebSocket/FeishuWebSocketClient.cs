@@ -7,11 +7,13 @@
 
 using Microsoft.Extensions.Logging;
 using Mud.Feishu.Abstractions.Metrics;
+using Mud.Feishu.Abstractions.Observability;
 using Mud.Feishu.Abstractions.Services;
 using Mud.Feishu.DataModels.WsEndpoint;
 using Mud.Feishu.WebSocket.Exceptions;
 using Mud.Feishu.WebSocket.Handlers;
 using Mud.Feishu.WebSocket.SocketEventArgs;
+using System.Diagnostics;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
@@ -225,7 +227,8 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
                 {
                     _authManager.HandleAuthResponse("{\"code\":-1,\"msg\":\"Authentication failed\"}");
                 }
-            });
+            },
+            _options.AppKey);
 
         var heartbeatHandler = new HeartbeatMessageHandler(_loggerFactory.CreateLogger<HeartbeatMessageHandler>(), _options);
 
@@ -277,6 +280,12 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
         if (endpoint == null)
             throw new ArgumentNullException(nameof(endpoint));
 
+        // P0-2 修复：为 WebSocket 连接建立创建分布式追踪 Span
+        using var connectActivity = FeishuActivitySource.Instance.StartActivity(
+            FeishuActivitySource.ActivityNameWebSocketConnect,
+            ActivityKind.Client);
+        connectActivity?.SetTag(FeishuActivitySource.Tags.AppKey, _options.AppKey);
+
         await _connectLock.WaitAsync(cancellationToken);
         try
         {
@@ -285,10 +294,7 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
 
             Volatile.Write(ref _connectionState, 2);
 
-            using (FeishuMetricsHelper.RecordHttpRequest("GET", endpoint.Url))
-            {
-                await _connectionManager.ConnectAsync(endpoint.Url, cancellationToken);
-            }
+            await _connectionManager.ConnectAsync(endpoint.Url, cancellationToken);
 
             // 从 WebSocket URL 中提取 service_id 并注入心跳管理器（对照 Java SDK）
             var serviceId = FrameBuilder.ExtractServiceId(endpoint.Url);
@@ -312,6 +318,13 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
 
             // 启动心跳
             _heartbeatTask = Task.Run(() => _heartbeatManager.StartHeartbeatAsync(token), token);
+
+            connectActivity?.SetStatus(ActivityStatusCode.Ok);
+        }
+        catch (Exception ex)
+        {
+            connectActivity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            throw;
         }
         finally
         {
@@ -584,11 +597,20 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
                 {
                     try
                     {
-                        using (FeishuMetricsHelper.RecordEventHandling("websocket_message", "text"))
-                        using (FeishuMetricsHelper.RecordWebSocketMessageProcessing())
+                        // P0-2 修复：为 WebSocket 消息处理创建分布式追踪 Span
+                        using var wsActivity = FeishuActivitySource.Instance.StartActivity(
+                            FeishuActivitySource.ActivityNameWebSocketMessage,
+                            ActivityKind.Internal);
+                        wsActivity?.SetTag(FeishuActivitySource.Tags.AppKey, _options.AppKey);
+                        wsActivity?.SetTag(FeishuActivitySource.Tags.MessageType, "text");
+
+                        using (FeishuMetricsHelper.RecordEventHandling(_options.AppKey, "websocket_message", "text"))
+                        using (FeishuMetricsHelper.RecordWebSocketMessageProcessing(_options.AppKey, "text"))
                         {
                             await _messageRouter.RouteMessageAsync(message, cancellationToken);
                         }
+
+                        wsActivity?.SetStatus(ActivityStatusCode.Ok);
                     }
                     catch (Exception ex)
                     {
@@ -610,11 +632,20 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
                 {
                     try
                     {
-                        using (FeishuMetricsHelper.RecordEventHandling("websocket_message", "binary"))
-                        using (FeishuMetricsHelper.RecordWebSocketMessageProcessing())
+                        // P0-2 修复：为 WebSocket 二进制消息处理创建分布式追踪 Span
+                        using var wsActivity = FeishuActivitySource.Instance.StartActivity(
+                            FeishuActivitySource.ActivityNameWebSocketMessage,
+                            ActivityKind.Internal);
+                        wsActivity?.SetTag(FeishuActivitySource.Tags.AppKey, _options.AppKey);
+                        wsActivity?.SetTag(FeishuActivitySource.Tags.MessageType, "binary");
+
+                        using (FeishuMetricsHelper.RecordEventHandling(_options.AppKey, "websocket_message", "binary"))
+                        using (FeishuMetricsHelper.RecordWebSocketMessageProcessing(_options.AppKey, "binary"))
                         {
                             await _binaryProcessor.ProcessBinaryDataAsync(buffer.Array!, buffer.Offset, buffer.Count, result.EndOfMessage, cancellationToken);
                         }
+
+                        wsActivity?.SetStatus(ActivityStatusCode.Ok);
                     }
                     catch (Exception ex)
                     {

@@ -204,7 +204,7 @@ public class FeishuWebhookService : IFeishuWebhookService
         try
         {
             // 记录事件处理开始
-            using var eventMetrics = FeishuMetricsHelper.RecordEventHandling(eventData.EventType, "webhook");
+            using var eventMetrics = FeishuMetricsHelper.RecordEventHandling(appKey ?? "unknown", eventData.EventType, "webhook");
 
             // 前置拦截器
             foreach (var interceptor in interceptors)
@@ -214,7 +214,7 @@ public class FeishuWebhookService : IFeishuWebhookService
                 {
                     _logger.LogWarning("事件被拦截器中断: {EventType}, EventId: {EventId}, Interceptor: {InterceptorType}, AppKey: {AppKey}",
                         eventData.EventType, eventData.EventId, interceptor.GetType().Name, appKey ?? "null");
-                    FeishuMetricsHelper.RecordEventHandlingFailure(eventData.EventType, "intercepted");
+                    FeishuMetricsHelper.RecordEventOutcome(appKey ?? "unknown", eventData.EventType, success: false, "intercepted");
                     return (false, "Event intercepted");
                 }
             }
@@ -224,7 +224,7 @@ public class FeishuWebhookService : IFeishuWebhookService
             if (deduplicationResult.shouldSkip)
             {
                 _logger.LogWarning("检测到重复事件 {EventId}（AppKey: {AppKey}），跳过处理（幂等性）", eventData.EventId, appKey ?? "null");
-                FeishuMetricsHelper.RecordEventDeduplicationHit("event_id");
+                FeishuMetricsHelper.RecordEventDeduplication(appKey ?? "unknown", "event_id", hit: true);
                 return (true, null); // 幂等性：返回成功避免飞书重试
             }
 
@@ -244,7 +244,7 @@ public class FeishuWebhookService : IFeishuWebhookService
                 await MarkDeduplicationCompletedAsync(eventData.EventId, appKey);
 
                 // 记录事件处理成功
-                FeishuMetricsHelper.RecordEventHandlingSuccess(eventData.EventType);
+                FeishuMetricsHelper.RecordEventOutcome(appKey ?? "unknown", eventData.EventType, success: true);
 
                 if (Options.EnableRequestLogging)
                 {
@@ -260,7 +260,7 @@ public class FeishuWebhookService : IFeishuWebhookService
 
                 _logger.LogWarning("事件处理超时: {EventType}, 事件ID: {EventId}, 超时时间: {TimeoutMs}ms, AppKey: {AppKey}",
                     eventData.EventType, eventData.EventId, Options.EventHandlingTimeoutMs, appKey ?? "null");
-                FeishuMetricsHelper.RecordEventHandlingFailure(eventData.EventType, "timeout");
+                FeishuMetricsHelper.RecordEventOutcome(appKey ?? "unknown", eventData.EventType, success: false, "timeout");
                 throw;
             }
         }
@@ -268,7 +268,7 @@ public class FeishuWebhookService : IFeishuWebhookService
         {
             await RollbackDeduplicationAsync(eventData.EventId, appKey);
             _logger.LogWarning("事件处理被取消，EventId: {EventId}, AppKey: {AppKey}", eventData.EventId, appKey ?? "null");
-            FeishuMetricsHelper.RecordEventHandlingFailure(eventData.EventType, "canceled");
+            FeishuMetricsHelper.RecordEventOutcome(appKey ?? "unknown", eventData.EventType, success: false, "canceled");
             throw;
         }
         catch (Exception ex)
@@ -278,7 +278,7 @@ public class FeishuWebhookService : IFeishuWebhookService
             _logger.LogError(ex, "处理飞书事件时发生错误，EventId: {EventId}, AppKey: {AppKey}", eventData.EventId, appKey ?? "null");
 
             // 记录事件处理失败
-            FeishuMetricsHelper.RecordEventHandlingFailure(eventData.EventType, ex.GetType().Name);
+            FeishuMetricsHelper.RecordEventOutcome(appKey ?? "unknown", eventData.EventType, success: false, ex.GetType().Name);
 
             var effectiveEnableExceptionHandling = Options.EnableExceptionHandling;
             if (appConfig != null)
@@ -342,7 +342,7 @@ public class FeishuWebhookService : IFeishuWebhookService
     public async Task<EventData?> DecryptEventAsync(string encryptedData, CancellationToken cancellationToken = default)
     {
         // 记录事件解密开始
-        using var decryptMetrics = FeishuMetricsHelper.RecordEventHandling("event_decryption", "webhook");
+        using var decryptMetrics = FeishuMetricsHelper.RecordEventHandling(_appKeyAccessor.CurrentAppKey ?? "unknown", "event_decryption", "webhook");
 
         try
         {
@@ -356,18 +356,18 @@ public class FeishuWebhookService : IFeishuWebhookService
             if (string.IsNullOrEmpty(encryptKey))
             {
                 _logger.LogError("缺少加密密钥，无法解密事件数据, AppKey: {AppKey}", _appKeyAccessor.CurrentAppKey ?? "null");
-                FeishuMetricsHelper.RecordEventHandlingFailure("event_decryption", "missing_encrypt_key");
+                FeishuMetricsHelper.RecordEventOutcome(_appKeyAccessor.CurrentAppKey ?? "unknown", "event_decryption", success: false, "missing_encrypt_key");
                 return null;
             }
 
             var eventData = await _decryptor.DecryptAsync(encryptedData, encryptKey!, cancellationToken);
             if (eventData != null)
             {
-                FeishuMetricsHelper.RecordEventHandlingSuccess("event_decryption");
+                FeishuMetricsHelper.RecordEventOutcome(_appKeyAccessor.CurrentAppKey ?? "unknown", "event_decryption", success: true);
             }
             else
             {
-                FeishuMetricsHelper.RecordEventHandlingFailure("event_decryption", "decryption_failed");
+                FeishuMetricsHelper.RecordEventOutcome(_appKeyAccessor.CurrentAppKey ?? "unknown", "event_decryption", success: false, "decryption_failed");
             }
 
             return eventData;
@@ -375,7 +375,7 @@ public class FeishuWebhookService : IFeishuWebhookService
         catch (Exception ex)
         {
             _logger.LogError(ex, "解密事件数据时发生错误, AppKey: {AppKey}", _appKeyAccessor.CurrentAppKey ?? "null");
-            FeishuMetricsHelper.RecordEventHandlingFailure("event_decryption", ex.GetType().Name);
+            FeishuMetricsHelper.RecordEventOutcome(_appKeyAccessor.CurrentAppKey ?? "unknown", "event_decryption", success: false, ex.GetType().Name);
             return null;
         }
     }

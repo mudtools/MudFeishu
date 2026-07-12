@@ -23,6 +23,7 @@
     <Project Path="Mud.Feishu.Webhook/Mud.Feishu.Webhook.csproj" />
     <Project Path="Mud.Feishu.WebSocket/Mud.Feishu.WebSocket.csproj" />
     <Project Path="Mud.Feishu/Mud.Feishu.csproj" />
+    <Project Path="Mud.Feishu.OpenTelemetry/Mud.Feishu.OpenTelemetry.csproj" />
   </Folder>
   <Folder Name="/Tests/">
     <File Path="Tests/Directory.Build.props" />
@@ -30,6 +31,7 @@
     <Project Path="Tests/Mud.Feishu.Authentication.Tests/Mud.Feishu.Authentication.Tests.csproj" />
     <Project Path="Tests/Mud.Feishu.Redis.Tests/Mud.Feishu.Redis.Tests.csproj" />
     <Project Path="Tests/Mud.Feishu.Tests/Mud.Feishu.Tests.csproj" />
+    <Project Path="Tests/Mud.Feishu.OpenTelemetry.Tests/Mud.Feishu.OpenTelemetry.Tests.csproj" />
     <Project Path="Tests/Mud.Feishu.Webhook.Tests/Mud.Feishu.Webhook.Tests.csproj" />
     <Project Path="Tests/Mud.Feishu.WebSocket.Tests/Mud.Feishu.WebSocket.Tests.csproj" />
   </Folder>

@@ -12,6 +12,7 @@ using Microsoft.Extensions.Options;
 using Mud.Feishu.Abstractions.EventHandlers;
 using Mud.Feishu.Abstractions.Services;
 using Mud.Feishu.WebSocket;
+using System.Diagnostics.Metrics;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
@@ -60,6 +61,8 @@ public class FeishuWebSocketServiceBuilder
         var section = sectionName ?? "WebSocket";
         // 使用 IConfigurationSection 重载绑定，确保 IOptionsMonitor<T> 能正确接收配置变更通知
         _services.Configure<FeishuWebSocketOptions>(configuration.GetSection(section));
+        // 设置 AppKey 用于指标维度区分
+        _services.Configure<FeishuWebSocketOptions>(o => o.AppKey = appKey);
         return this;
     }
 
@@ -368,15 +371,15 @@ public class FeishuWebSocketServiceBuilder
         // 注册WebSocket管理器
         _services.AddSingleton<IFeishuWebSocketManager, FeishuWebSocketManager>();
 
-        // 设置 WebSocket 连接数提供器
-        Mud.Feishu.Abstractions.Metrics.FeishuMetrics.WebSocketConnectionCountProvider = () => WebSocketConnectionManager.ConnectionCount;
+        // P1-5/P1-6 修复：WebSocket 指标观察器在 FeishuWebSocketHostedService 中初始化，
+        // 以便从 IOptionsMonitor<FeishuWebSocketOptions> 解析实际 AppKey，
+        // 避免此处硬编码 "websocket" 字面量导致多应用指标无法区分。
+        // 此处仅注册服务，观察器赋值延迟到 hosted service 构造时执行（DI 已就绪）。
 
         // 添加后台服务
         _services.AddHostedService<FeishuWebSocketHostedService>();
 
-#if NET8_0_OR_GREATER
-        // 注册健康检查（仅在 .NET 8+ 框架可用）
+        // 注册健康检查（全目标框架可用）
         _services.AddSingleton<FeishuWebSocketHealthCheck>();
-#endif
     }
 }

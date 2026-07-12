@@ -8,7 +8,9 @@
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Mud.Feishu.Abstractions.Metrics;
 using Mud.Feishu.WebSocket.SocketEventArgs;
+using System.Diagnostics.Metrics;
 
 namespace Mud.Feishu.WebSocket;
 
@@ -51,6 +53,46 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
         _reconnectionOrchestrator.ReconnectSucceeded += OnReconnectSucceeded;
         _reconnectionOrchestrator.ReconnectFailed += OnReconnectFailed;
         _reconnectionOrchestrator.ReconnectLimitReached += OnReconnectLimitReached;
+
+        // P1-5/P1-6 修复：在此处初始化 WebSocket 指标观察器，使用实际 AppKey 而非硬编码 "websocket"。
+        // 此时 DI 容器已就绪，可从 IOptionsMonitor 解析当前 FeishuWebSocketOptions.AppKey。
+        // 观察器在每次指标采集时动态读取 _optionsMonitor.CurrentValue.AppKey，支持配置热更新。
+        InitializeMetricsObservers();
+    }
+
+    /// <summary>
+    /// 初始化 WebSocket 指标观察器，使用实际 AppKey 作为维度标签。
+    /// </summary>
+    private void InitializeMetricsObservers()
+    {
+        var appKey = _optionsMonitor.CurrentValue.AppKey;
+
+        // WebSocket 活跃连接数观察器（按 app_key 分组）
+        FeishuMetrics.WebSocketConnectionObserver = () =>
+        {
+            var currentAppKey = _optionsMonitor.CurrentValue.AppKey;
+            return new[]
+            {
+                new Measurement<int>(
+                    WebSocketConnectionManager.ConnectionCount,
+                    new KeyValuePair<string, object?>(FeishuMetrics.Tags.AppKey, currentAppKey))
+            };
+        };
+
+        // WebSocket 消息积压数观察器（当前架构同步处理消息无队列，积压始终为 0）
+        // 预留接口供未来引入消息队列时填充实际积压数
+        FeishuMetrics.WebSocketBacklogObserver = () =>
+        {
+            var currentAppKey = _optionsMonitor.CurrentValue.AppKey;
+            return new[]
+            {
+                new Measurement<int>(
+                    0,
+                    new KeyValuePair<string, object?>(FeishuMetrics.Tags.AppKey, currentAppKey))
+            };
+        };
+
+        _logger.LogDebug("WebSocket 指标观察器已初始化，AppKey: {AppKey}", appKey);
     }
 
     /// <summary>
@@ -225,6 +267,9 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
     {
         _logger.LogInformation("重连成功 (尝试次数: {Attempt}, 总次数: {Total})",
             e.AttemptCount, e.TotalReconnectCount);
+
+        // P1-5 修复：记录 WebSocket 重连成功指标
+        FeishuMetricsHelper.RecordWebSocketReconnect(_optionsMonitor.CurrentValue.AppKey, success: true);
     }
 
     /// <summary>
@@ -233,6 +278,9 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
     private void OnReconnectFailed(object? sender, ReconnectFailedEventArgs e)
     {
         _logger.LogError(e.Error, "重连失败 (尝试次数: {Attempt})", e.AttemptCount);
+
+        // P1-5 修复：记录 WebSocket 重连失败指标
+        FeishuMetricsHelper.RecordWebSocketReconnect(_optionsMonitor.CurrentValue.AppKey, success: false);
     }
 
     /// <summary>
@@ -242,6 +290,9 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
     {
         _logger.LogError("已达到重连限制 (总尝试次数: {TotalAttempts}, 总时间: {ElapsedTime})",
             e.TotalAttempts, e.TotalElapsedTime);
+
+        // P1-5 修复：达到重连上限视为最终失败，记录重连失败指标
+        FeishuMetricsHelper.RecordWebSocketReconnect(_optionsMonitor.CurrentValue.AppKey, success: false);
     }
 
     /// <summary>

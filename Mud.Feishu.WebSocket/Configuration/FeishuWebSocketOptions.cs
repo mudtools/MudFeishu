@@ -20,6 +20,11 @@ public class FeishuWebSocketOptions
     private int _messageHandlerTimeoutMs = 30000; // 默认消息处理超时30秒
 
     /// <summary>
+    /// 飞书应用 AppKey，用于指标维度区分。
+    /// </summary>
+    public string AppKey { get; set; } = "websocket";
+
+    /// <summary>
     /// 自动重连，默认为true
     /// </summary>
     public bool AutoReconnect { get; set; } = true;

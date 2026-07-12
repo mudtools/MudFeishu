@@ -69,94 +69,141 @@ public class FeishuMetricsTests
     [Fact]
     public void RecordEventHandling_ShouldIncrementCounter_AndRecordDuration()
     {
+        var appKey = "test_app";
         var eventType = "im.message.receive_v1";
         var handlerType = "webhook";
 
-        using (FeishuMetricsHelper.RecordEventHandling(eventType, handlerType))
+        using (FeishuMetricsHelper.RecordEventHandling(appKey, eventType, handlerType))
         {
             Thread.Sleep(50);
         }
 
-        _counterValues.Should().ContainKey("feishu_event_handling_total");
-        _counterValues["feishu_event_handling_total"].Should().Be(1);
-        _histogramValues.Should().ContainKey("feishu_event_handling_duration_ms");
-        _histogramValues["feishu_event_handling_duration_ms"].Should().HaveCount(1);
-        _histogramValues["feishu_event_handling_duration_ms"][0].Should().BeGreaterThan(0);
+        _counterValues.Should().ContainKey("feishu.event.handling");
+        _counterValues["feishu.event.handling"].Should().Be(1);
+        _histogramValues.Should().ContainKey("feishu.event.handling.duration");
+        _histogramValues["feishu.event.handling.duration"].Should().HaveCount(1);
+        _histogramValues["feishu.event.handling.duration"][0].Should().BeGreaterThan(0);
     }
 
     [Fact]
-    public void RecordEventHandlingSuccess_ShouldIncrementCounter()
+    public void RecordEventOutcome_WhenSuccess_ShouldIncrementCounter()
     {
+        var appKey = "test_app";
         var eventType = "im.message.receive_v1";
 
-        FeishuMetricsHelper.RecordEventHandlingSuccess(eventType);
+        FeishuMetricsHelper.RecordEventOutcome(appKey, eventType, success: true);
 
-        _counterValues.Should().ContainKey("feishu_event_handling_success_total");
-        _counterValues["feishu_event_handling_success_total"].Should().Be(1);
+        _counterValues.Should().ContainKey("feishu.event.handling");
+        _counterValues["feishu.event.handling"].Should().Be(1);
     }
 
     [Fact]
-    public void RecordEventHandlingFailure_ShouldIncrementCounter()
+    public void RecordEventOutcome_WhenFailure_ShouldIncrementCounter()
     {
+        var appKey = "test_app";
         var eventType = "im.message.receive_v1";
         var errorType = "timeout";
 
-        FeishuMetricsHelper.RecordEventHandlingFailure(eventType, errorType);
+        FeishuMetricsHelper.RecordEventOutcome(appKey, eventType, success: false, errorType);
 
-        _counterValues.Should().ContainKey("feishu_event_handling_failure_total");
-        _counterValues["feishu_event_handling_failure_total"].Should().Be(1);
+        _counterValues.Should().ContainKey("feishu.event.handling");
+        _counterValues["feishu.event.handling"].Should().Be(1);
     }
 
     [Fact]
-    public void RecordEventDeduplicationHit_ShouldIncrementCounter()
+    public void RecordEventDeduplication_ShouldIncrementCounter()
     {
+        var appKey = "test_app";
         var dedupType = "event_id";
 
-        FeishuMetricsHelper.RecordEventDeduplicationHit(dedupType);
+        FeishuMetricsHelper.RecordEventDeduplication(appKey, dedupType, hit: true);
 
-        _counterValues.Should().ContainKey("feishu_event_deduplication_hit_total");
-        _counterValues["feishu_event_deduplication_hit_total"].Should().Be(1);
+        _counterValues.Should().ContainKey("feishu.event.deduplication");
+        _counterValues["feishu.event.deduplication"].Should().Be(1);
     }
 
     [Fact]
-    public void RecordHttpRequest_ShouldIncrementCounter_AndRecordDuration()
-    {
-        var method = "GET";
-        var url = "https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal";
-
-        using (FeishuMetricsHelper.RecordHttpRequest(method, url))
-        {
-            Thread.Sleep(50);
-        }
-
-        _counterValues.Should().ContainKey("feishu_http_request_total");
-        _counterValues["feishu_http_request_total"].Should().Be(1);
-        _histogramValues.Should().ContainKey("feishu_http_request_duration_ms");
-        _histogramValues["feishu_http_request_duration_ms"].Should().HaveCount(1);
-        _histogramValues["feishu_http_request_duration_ms"][0].Should().BeGreaterThan(0);
-    }
-
-    [Fact]
-    public void WebSocketConnectionCount_ShouldReturnProviderValue()
+    public void WebSocketConnectionObserver_ShouldReturnProvidedValues()
     {
         var expectedCount = 5;
 
-        FeishuMetrics.WebSocketConnectionCountProvider = () => expectedCount;
+        FeishuMetrics.WebSocketConnectionObserver = () =>
+        {
+            return new[]
+            {
+                new Measurement<int>(
+                    expectedCount,
+                    new KeyValuePair<string, object?>(FeishuMetrics.Tags.AppKey, "test_app"))
+            };
+        };
 
-        FeishuMetrics.WebSocketConnectionCountProvider.Should().NotBeNull();
-        FeishuMetrics.WebSocketConnectionCountProvider().Should().Be(expectedCount);
+        FeishuMetrics.WebSocketConnectionObserver.Should().NotBeNull();
+        var measurements = FeishuMetrics.WebSocketConnectionObserver!().ToList();
+        measurements.Should().HaveCount(1);
+        measurements[0].Value.Should().Be(expectedCount);
     }
 
     [Fact]
     public void RecordWebSocketMessageProcessing_ShouldRecordDuration()
     {
-        using (FeishuMetricsHelper.RecordWebSocketMessageProcessing())
+        var appKey = "test_app";
+
+        using (FeishuMetricsHelper.RecordWebSocketMessageProcessing(appKey, "text"))
         {
             Thread.Sleep(50);
         }
 
-        _histogramValues.Should().ContainKey("feishu_websocket_message_processing_duration_ms");
-        _histogramValues["feishu_websocket_message_processing_duration_ms"].Should().HaveCount(1);
-        _histogramValues["feishu_websocket_message_processing_duration_ms"][0].Should().BeGreaterThan(0);
+        _histogramValues.Should().ContainKey("feishu.websocket.message.duration");
+        _histogramValues["feishu.websocket.message.duration"].Should().HaveCount(1);
+        _histogramValues["feishu.websocket.message.duration"][0].Should().BeGreaterThan(0);
+    }
+
+    [Fact]
+    public void RecordWebhookRequest_ShouldIncrementCounter_AndRecordDuration()
+    {
+        var appKey = "test_app";
+
+        using (FeishuMetricsHelper.RecordWebhookRequest(appKey))
+        {
+            Thread.Sleep(50);
+        }
+
+        _counterValues.Should().ContainKey("feishu.webhook.request");
+        _counterValues["feishu.webhook.request"].Should().Be(1);
+        _histogramValues.Should().ContainKey("feishu.webhook.request.duration");
+        _histogramValues["feishu.webhook.request.duration"].Should().HaveCount(1);
+        _histogramValues["feishu.webhook.request.duration"][0].Should().BeGreaterThan(0);
+    }
+
+    [Fact]
+    public void RecordWebSocketReconnect_ShouldIncrementCounter()
+    {
+        var appKey = "test_app";
+
+        FeishuMetricsHelper.RecordWebSocketReconnect(appKey, success: true);
+
+        _counterValues.Should().ContainKey("feishu.websocket.reconnect");
+        _counterValues["feishu.websocket.reconnect"].Should().Be(1);
+    }
+
+    [Fact]
+    public void WebSocketBacklogObserver_ShouldReturnProvidedValues()
+    {
+        var expectedBacklog = 3;
+
+        FeishuMetrics.WebSocketBacklogObserver = () =>
+        {
+            return new[]
+            {
+                new Measurement<int>(
+                    expectedBacklog,
+                    new KeyValuePair<string, object?>(FeishuMetrics.Tags.AppKey, "test_app"))
+            };
+        };
+
+        FeishuMetrics.WebSocketBacklogObserver.Should().NotBeNull();
+        var measurements = FeishuMetrics.WebSocketBacklogObserver!().ToList();
+        measurements.Should().HaveCount(1);
+        measurements[0].Value.Should().Be(expectedBacklog);
     }
 }

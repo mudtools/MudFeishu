@@ -178,8 +178,7 @@ public static class RedisFeishuServiceBuilderExtensions
         {
             var innerStore = sp.GetRequiredService<RedisTokenStore>();
             var redis = sp.GetRequiredService<IConnectionMultiplexer>();
-            var logger = sp.GetService<ILogger<RedisUserTokenStore>>();
-            return new RedisUserTokenStore(innerStore, redis, logger!);
+            return new RedisUserTokenStore(innerStore, redis);
         });
 
         // S-3 修复：注册 SingletonFeishuTokenStoreFactory，使 FeishuAppManager.CreateAppContext

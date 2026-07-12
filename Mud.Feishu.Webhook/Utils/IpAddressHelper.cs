@@ -7,7 +7,7 @@
 
 using System.Net;
 
-namespace Mud.Feishu.Webhook;
+namespace Mud.Feishu.Webhook.Utils;
 
 /// <summary>
 /// IP 地址验证工具类

@@ -1,9 +1,8 @@
 // -----------------------------------------------------------------------
-//  作者：Mud Studio  版权所有 (c) Mud Studio 2026   
+//  作者：Mud Studio  版权所有 (c) Mud Studio 2026
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
-//  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
-//  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！
+//  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
 using StackExchange.Redis;
@@ -21,7 +20,6 @@ namespace Mud.Feishu.Redis.Services;
 public class RedisUserTokenStore : UserTokenStoreBase
 {
     private readonly IConnectionMultiplexer _redis;
-    private readonly ILogger<RedisUserTokenStore> _logger;
     private readonly string _keyPrefix;
 
     /// <summary>
@@ -29,17 +27,14 @@ public class RedisUserTokenStore : UserTokenStoreBase
     /// </summary>
     /// <param name="innerStore">内部令牌存储实例，用于 ITokenStore 方法委托</param>
     /// <param name="redis">Redis 连接复用器</param>
-    /// <param name="logger">日志记录器</param>
     /// <param name="keyPrefix">Redis 键前缀，默认 "feishu:token"</param>
     public RedisUserTokenStore(
         RedisTokenStore innerStore,
         IConnectionMultiplexer redis,
-        ILogger<RedisUserTokenStore> logger,
         string keyPrefix = "feishu:token")
         : base(innerStore)
     {
         _redis = redis ?? throw new ArgumentNullException(nameof(redis));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _keyPrefix = keyPrefix ?? "feishu:token";
     }
 
@@ -50,7 +45,7 @@ public class RedisUserTokenStore : UserTokenStoreBase
     public override async Task<string?> GetAccessTokenAsync(string userId, string tokenType, CancellationToken cancellationToken = default)
     {
         var key = BuildUserAccessTokenKey(userId, tokenType);
-        var value = await GetDatabase().StringGetAsync(key).ConfigureAwait(false);
+        var value = await _redis.GetDatabase().StringGetAsync(key, flags: RedisStoreHelper.ToCommandFlags(cancellationToken)).ConfigureAwait(false);
         return value.HasValue ? value.ToString() : null;
     }
 
@@ -58,14 +53,14 @@ public class RedisUserTokenStore : UserTokenStoreBase
     public override async Task SetAccessTokenAsync(string userId, string tokenType, string accessToken, long expiresInSeconds, CancellationToken cancellationToken = default)
     {
         var key = BuildUserAccessTokenKey(userId, tokenType);
-        await GetDatabase().StringSetAsync(key, accessToken, TimeSpan.FromSeconds(expiresInSeconds)).ConfigureAwait(false);
+        await _redis.GetDatabase().StringSetAsync(key, accessToken, TimeSpan.FromSeconds(expiresInSeconds), flags: RedisStoreHelper.ToCommandFlags(cancellationToken)).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
     public override async Task<string?> GetRefreshTokenAsync(string userId, string tokenType, CancellationToken cancellationToken = default)
     {
         var key = BuildUserRefreshTokenKey(userId, tokenType);
-        var value = await GetDatabase().StringGetAsync(key).ConfigureAwait(false);
+        var value = await _redis.GetDatabase().StringGetAsync(key, flags: RedisStoreHelper.ToCommandFlags(cancellationToken)).ConfigureAwait(false);
         return value.HasValue ? value.ToString() : null;
     }
 
@@ -73,21 +68,20 @@ public class RedisUserTokenStore : UserTokenStoreBase
     public override async Task SetRefreshTokenAsync(string userId, string tokenType, string refreshToken, CancellationToken cancellationToken = default)
     {
         var key = BuildUserRefreshTokenKey(userId, tokenType);
-        await GetDatabase().StringSetAsync(key, refreshToken, TimeSpan.FromDays(30)).ConfigureAwait(false);
+        await _redis.GetDatabase().StringSetAsync(key, refreshToken, TimeSpan.FromDays(30), flags: RedisStoreHelper.ToCommandFlags(cancellationToken)).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
     public override async Task RemoveAsync(string userId, string tokenType, CancellationToken cancellationToken = default)
     {
-        var db = GetDatabase();
-        await db.KeyDeleteAsync(new RedisKey[] { BuildUserAccessTokenKey(userId, tokenType), BuildUserRefreshTokenKey(userId, tokenType) }).ConfigureAwait(false);
+        await _redis.GetDatabase().KeyDeleteAsync(new RedisKey[] { BuildUserAccessTokenKey(userId, tokenType), BuildUserRefreshTokenKey(userId, tokenType) }, flags: RedisStoreHelper.ToCommandFlags(cancellationToken)).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
     public override async Task<IEnumerable<string>> GetTokenTypesAsync(string userId, CancellationToken cancellationToken = default)
     {
         var pattern = $"{_keyPrefix}:user:{userId}:*:access";
-        var keys = GetServer().Keys(pattern: pattern);
+        var keys = RedisStoreHelper.GetServer(_redis).Keys(pattern: pattern, pageSize: 250, flags: RedisStoreHelper.ToCommandFlags(cancellationToken));
         var tokenTypes = new List<string>();
         var prefixLength = $"{_keyPrefix}:user:{userId}:".Length;
 
@@ -106,18 +100,10 @@ public class RedisUserTokenStore : UserTokenStoreBase
     public override async Task ClearUserAsync(string userId, CancellationToken cancellationToken = default)
     {
         var pattern = $"{_keyPrefix}:user:{userId}:*";
-        var db = GetDatabase();
-        var keys = GetServer().Keys(pattern: pattern);
+        var db = _redis.GetDatabase();
+        var keys = RedisStoreHelper.GetServer(_redis).Keys(pattern: pattern, pageSize: 250, flags: RedisStoreHelper.ToCommandFlags(cancellationToken));
 
         foreach (var key in keys)
-            await db.KeyDeleteAsync(key).ConfigureAwait(false);
-    }
-
-    private IDatabase GetDatabase() => _redis.GetDatabase();
-
-    private IServer GetServer()
-    {
-        var endpoints = _redis.GetEndPoints();
-        return _redis.GetServer(endpoints[0]);
+            await db.KeyDeleteAsync(key, flags: RedisStoreHelper.ToCommandFlags(cancellationToken)).ConfigureAwait(false);
     }
 }

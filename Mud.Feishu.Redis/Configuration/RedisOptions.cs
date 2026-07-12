@@ -29,33 +29,9 @@ public class RedisOptions
     public string Password { get; set; } = string.Empty;
 
     /// <summary>
-    /// 事件去重缓存过期时间，默认 48 小时
-    /// <para><b>已弃用</b>：请改用 <see cref="Mud.Feishu.Abstractions.Configuration.DeduplicationOptions.CacheExpiration"/> 配置去重缓存过期时间。
-    /// 此属性仍可用于 Redis 特定覆盖，但建议统一使用 DeduplicationOptions。</para>
-    /// </summary>
-    [Obsolete("请改用 DeduplicationOptions.CacheExpiration 统一配置去重缓存过期时间。此属性仍可使用但建议迁移。")]
-    public TimeSpan EventCacheExpiration { get; set; } = TimeSpan.FromMilliseconds(Mud.Feishu.Abstractions.Consts.DefaultCacheExpirationMs);
-
-    /// <summary>
     /// Nonce 有效期，默认 5 分钟
     /// </summary>
     public TimeSpan NonceTtl { get; set; } = TimeSpan.FromMinutes(5);
-
-    /// <summary>
-    /// SeqID 去重缓存过期时间，默认 48 小时
-    /// <para><b>已弃用</b>：请改用 <see cref="Mud.Feishu.Abstractions.Configuration.DeduplicationOptions.CacheExpiration"/> 配置去重缓存过期时间。
-    /// 此属性仍可用于 Redis 特定覆盖，但建议统一使用 DeduplicationOptions。</para>
-    /// </summary>
-    [Obsolete("请改用 DeduplicationOptions.CacheExpiration 统一配置去重缓存过期时间。此属性仍可使用但建议迁移。")]
-    public TimeSpan SeqIdCacheExpiration { get; set; } = TimeSpan.FromMilliseconds(Mud.Feishu.Abstractions.Consts.DefaultCacheExpirationMs);
-
-    /// <summary>
-    /// 事件去重键前缀
-    /// <para><b>已弃用</b>：请改用 <see cref="Mud.Feishu.Abstractions.Configuration.DeduplicationOptions.KeyPrefix"/> 统一配置去重键前缀。
-    /// 此属性仍可用于 Redis 特定覆盖，但建议统一使用 DeduplicationOptions。</para>
-    /// </summary>
-    [Obsolete("请改用 DeduplicationOptions.KeyPrefix 统一配置去重键前缀。此属性仍可使用但建议迁移。")]
-    public string EventKeyPrefix { get; set; } = Mud.Feishu.Abstractions.Consts.DefaultEventKeyPrefix;
 
     /// <summary>
     /// Nonce 去重键前缀

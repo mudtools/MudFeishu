@@ -73,4 +73,14 @@ public interface IFeishuTenantV1HelpDeskAgent : IFeishuV1HelpDeskAgent
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Get("/open-apis/helpdesk/v1/agent_skills")]
     Task<FeishuApiResult<GetAgentSkillListResult>?> GetAgentSkillListAsync(CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 获取客服技能列表
+    /// <para>用于获取全部客服技能。仅支持自建应用。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/helpdesk-v1/agent-function/agent_skill_rule/list">接口文档</see></para>
+    /// </summary> 
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Get("/open-apis/helpdesk/v1/agent_skill_rules")]
+    Task<FeishuApiResult<GetAgentSkillRuleListResult>?> GetAgentSkillRuleListAsync(CancellationToken cancellationToken = default);
 }

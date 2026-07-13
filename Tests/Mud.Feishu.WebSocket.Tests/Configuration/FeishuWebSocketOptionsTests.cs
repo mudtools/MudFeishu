@@ -367,9 +367,9 @@ public class FeishuWebSocketOptionsTests
     }
 
     [Fact]
-    public void Validate_ShouldThrow_WhenReconnectDelayMsGreaterThanConnectionTimeoutMs()
+    public void Validate_ShouldNotThrow_WhenReconnectDelayMsGreaterThanConnectionTimeoutMs()
     {
-        // Arrange
+        // Arrange - ReconnectDelayMs 与 ConnectionTimeoutMs 语义独立，不存在交叉约束
         var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions
         {
             AutoReconnect = true,
@@ -380,8 +380,8 @@ public class FeishuWebSocketOptionsTests
         // Act
         var act = () => options.Validate();
 
-        // Assert
-        act.Should().Throw<InvalidOperationException>().WithMessage("*ReconnectDelayMs*ConnectionTimeoutMs*");
+        // Assert - 交叉校验已移除，两者语义独立（前者为两次重连尝试间的等待，后者为单次 TCP 握手超时）
+        act.Should().NotThrow();
     }
 
     [Fact]

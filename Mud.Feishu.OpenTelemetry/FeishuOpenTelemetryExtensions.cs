@@ -7,6 +7,7 @@
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using OpenTelemetry;
 using OpenTelemetry.Exporter;
 using OpenTelemetry.Logs;
@@ -107,10 +108,16 @@ public static class FeishuOpenTelemetryExtensions
         IServiceCollection services,
         FeishuOpenTelemetryOptions options)
     {
-        // 校验 SamplingRatio 范围
+        // 校验 SamplingRatio 范围（即时反馈）
         if (options.SamplingRatio < 0 || options.SamplingRatio > 1)
             throw new ArgumentOutOfRangeException(nameof(options.SamplingRatio),
                 $"SamplingRatio 必须在 0.0~1.0 范围内，当前值为 {options.SamplingRatio}。");
+
+        // 注册 IValidateOptions 以支持 IOptions<> / ValidateOnStart 集成
+        services.AddSingleton<IValidateOptions<FeishuOpenTelemetryOptions>, FeishuOpenTelemetryOptions>();
+
+        // 将预构建的 options 注册为 IOptions<>，使 DI 容器中的消费者可以获取到一致的配置
+        services.AddSingleton<IOptions<FeishuOpenTelemetryOptions>>(new OptionsWrapper<FeishuOpenTelemetryOptions>(options));
 
         // 配置 Resource：service.name / service.version / deployment.environment
         var builder = services.AddOpenTelemetry()

@@ -70,5 +70,10 @@ public class EventDeduplicationOptions
     /// 内存缓存最大条目数，0 表示不限制
     /// <para>默认为 100000，与 Abstractions 层 DeduplicationOptions.MaxCacheSize 对齐</para>
     /// </summary>
-    public int MaxCacheSize { get; set; } = Mud.Feishu.Abstractions.Consts.DefaultMaxCacheSize;
+    public int MaxCacheSize
+    {
+        get => _maxCacheSize;
+        set => _maxCacheSize = Math.Max(0, value);
+    }
+    private int _maxCacheSize = Mud.Feishu.Abstractions.Consts.DefaultMaxCacheSize;
 }

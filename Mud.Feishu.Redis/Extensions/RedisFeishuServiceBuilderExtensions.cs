@@ -102,11 +102,30 @@ public static class RedisFeishuServiceBuilderExtensions
         services.AddSingleton<IFeishuEventDeduplicator>(sp =>
         {
             var redis = sp.GetRequiredService<IConnectionMultiplexer>();
+            var redisOptions = sp.GetRequiredService<RedisOptions>();
             var logger = sp.GetService<ILogger<RedisFeishuEventDistributedDeduplicator>>();
+
+            // 从 DI 解析 DeduplicationOptions（可通过 FeishuRedis:Deduplication 节点配置高级参数）
+            var dedupOptions = sp.GetService<IOptions<DeduplicationOptions>>()?.Value ?? DeduplicationOptions.Default;
+
+            // RedisOptions 中的 EventCacheExpiration / EventKeyPrefix 优先（与文档承诺一致）
+            var effectiveOptions = new DeduplicationOptions
+            {
+                CacheExpiration = redisOptions.EventCacheExpiration,
+                ProcessingTimeout = dedupOptions.ProcessingTimeout,
+                CleanupInterval = dedupOptions.CleanupInterval,
+                AllowProcessingOnFallback = dedupOptions.AllowProcessingOnFallback,
+                MaxRetryCount = dedupOptions.MaxRetryCount,
+                InitialRetryDelay = dedupOptions.InitialRetryDelay,
+                MaxRetryDelay = dedupOptions.MaxRetryDelay,
+                KeyPrefix = redisOptions.EventKeyPrefix,
+                MaxCacheSize = dedupOptions.MaxCacheSize,
+                EnableVerboseLogging = dedupOptions.EnableVerboseLogging
+            };
 
             return new RedisFeishuEventDistributedDeduplicator(
                 redis,
-                DeduplicationOptions.Default,
+                effectiveOptions,
                 logger);
         });
 
@@ -150,7 +169,7 @@ public static class RedisFeishuServiceBuilderExtensions
             return new RedisFeishuSeqIDDeduplicator(
                 redis,
                 logger,
-                cacheExpiration: DeduplicationOptions.Default.CacheExpiration,
+                cacheExpiration: options.SeqIdCacheExpiration,
                 keyPrefix: options.SeqIdKeyPrefix);
         });
 
@@ -223,6 +242,13 @@ public static class RedisFeishuServiceBuilderExtensions
         services.Configure<RedisOptions>(options =>
         {
             configuration.GetSection(section).Bind(options);
+        });
+
+        // 绑定 DeduplicationOptions（高级参数：ProcessingTimeout、MaxRetryCount、AllowProcessingOnFallback 等）
+        // 注意：CacheExpiration 和 KeyPrefix 由 RedisOptions 中的 EventCacheExpiration / EventKeyPrefix 优先覆盖
+        services.Configure<DeduplicationOptions>(options =>
+        {
+            configuration.GetSection($"{section}:Deduplication").Bind(options);
         });
 
         return services

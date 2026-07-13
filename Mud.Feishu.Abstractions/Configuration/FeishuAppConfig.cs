@@ -254,18 +254,19 @@ public class FeishuAppConfig
         }
         else
         {
-            // 禁用熔断器时，检查是否有子配置被修改为非默认值
-            var hasNonDefaultCircuitBreakerSettings =
-                CircuitBreakerFailureThreshold != Consts.DefaultCircuitBreakerFailureThreshold ||
-                CircuitBreakerSamplingDurationSeconds != Consts.DefaultCircuitBreakerSamplingDurationSeconds ||
-                CircuitBreakerBreakDurationSeconds != Consts.DefaultCircuitBreakerBreakDurationSeconds ||
-                CircuitBreakerMinimumThroughput != Consts.DefaultCircuitBreakerMinimumThroughput;
+            // 禁用熔断器时，仅校验子配置范围（不强制要求等于默认值），与 RateLimit/Retry 策略保持一致。
+            // 子配置在熔断器禁用时不会生效，但保留范围校验以提前发现配置错误。
+            if (CircuitBreakerFailureThreshold < 1 || CircuitBreakerFailureThreshold > 100)
+                throw new InvalidOperationException("CircuitBreakerFailureThreshold 必须在 1-100 之间（即使熔断器禁用也需校验范围）");
 
-            if (hasNonDefaultCircuitBreakerSettings)
-            {
-                throw new InvalidOperationException(
-                    "熔断器已禁用（CircuitBreakerEnabled=false），但配置了非默认的熔断器子参数。请移除熔断器相关配置或启用熔断器。");
-            }
+            if (CircuitBreakerSamplingDurationSeconds < 10 || CircuitBreakerSamplingDurationSeconds > 300)
+                throw new InvalidOperationException("CircuitBreakerSamplingDurationSeconds 必须在 10-300 秒之间（即使熔断器禁用也需校验范围）");
+
+            if (CircuitBreakerBreakDurationSeconds < 10 || CircuitBreakerBreakDurationSeconds > 300)
+                throw new InvalidOperationException("CircuitBreakerBreakDurationSeconds 必须在 10-300 秒之间（即使熔断器禁用也需校验范围）");
+
+            if (CircuitBreakerMinimumThroughput < 2 || CircuitBreakerMinimumThroughput > 1000)
+                throw new InvalidOperationException("CircuitBreakerMinimumThroughput 必须在 2-1000 之间（即使熔断器禁用也需校验范围）");
         }
 
         if (TokenRefreshThreshold < 60 || TokenRefreshThreshold > 3600)

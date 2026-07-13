@@ -6,6 +6,7 @@
 // -----------------------------------------------------------------------
 
 using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using Mud.Feishu.Abstractions;
@@ -77,6 +78,58 @@ public static class FeishuUserAuthenticationExtensions
     public static IServiceCollection AddFeishuUserContext(this IServiceCollection services, Action<FeishuUserAuthenticationOptions> configure)
     {
         services.Configure(configure);
+
+        services.AddSingleton<IValidateOptions<FeishuUserAuthenticationOptions>, FeishuUserAuthenticationOptions>();
+
+        services.RemoveAll<IFeishuCurrentUserContext>();
+        services.RemoveAll<ICurrentUserContext>();
+
+        services.AddSingleton<CurrentUserContext>();
+        services.AddSingleton<IFeishuCurrentUserContext>(sp => sp.GetRequiredService<CurrentUserContext>());
+        services.AddSingleton<ICurrentUserContext>(sp => sp.GetRequiredService<CurrentUserContext>());
+
+        return services;
+    }
+
+    /// <summary>
+    /// 添加飞书用户上下文服务并从配置节绑定选项
+    /// </summary>
+    /// <param name="services">服务集合</param>
+    /// <param name="configuration">配置源</param>
+    /// <param name="sectionName">配置节名称，默认为 "FeishuUserAuthentication"</param>
+    /// <returns>服务集合实例，支持链式调用</returns>
+    /// <remarks>
+    /// <para>注册内容：</para>
+    /// <list type="bullet">
+    ///   <item><description>IFeishuCurrentUserContext - 注册为 Singleton（覆盖 AddFeishuApp 中的默认实现）</description></item>
+    ///   <item><description>ICurrentUserContext - 注册为 Singleton（覆盖 AddFeishuApp 中的默认实现）</description></item>
+    ///   <item><description>FeishuUserAuthenticationOptions - 从 IConfiguration 绑定</description></item>
+    /// </list>
+    /// <para>此方法会覆盖 <see cref="FeishuServiceCollectionExtensions.AddFeishuAppBaseServices"/> 中注册的默认实现，
+    /// 应在 <c>services.AddFeishuApp()</c> 之后调用。</para>
+    /// <para>使用示例：</para>
+    /// <code>
+    /// // appsettings.json:
+    /// // "FeishuUserAuthentication": { "OpenIdClaimType": "custom_open_id", "EnableSensitiveLog": false }
+    ///
+    /// services.AddFeishuApp(builder.Configuration, "FeishuApps");
+    /// services.AddFeishuUserContext(builder.Configuration);
+    /// </code>
+    /// </remarks>
+    public static IServiceCollection AddFeishuUserContext(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        string sectionName = "FeishuUserAuthentication")
+    {
+        if (configuration == null)
+            throw new ArgumentNullException(nameof(configuration));
+        if (string.IsNullOrWhiteSpace(sectionName))
+            throw new ArgumentException("配置节名称不能为空", nameof(sectionName));
+
+        services.Configure<FeishuUserAuthenticationOptions>(options =>
+        {
+            configuration.GetSection(sectionName).Bind(options);
+        });
 
         services.AddSingleton<IValidateOptions<FeishuUserAuthenticationOptions>, FeishuUserAuthenticationOptions>();
 

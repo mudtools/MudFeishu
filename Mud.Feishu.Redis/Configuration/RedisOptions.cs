@@ -44,6 +44,38 @@ public class RedisOptions
     public string SeqIdKeyPrefix { get; set; } = Mud.Feishu.Abstractions.Consts.DefaultSeqIdKeyPrefix;
 
     /// <summary>
+    /// 事件去重缓存过期时间，默认 48 小时
+    /// <para>应用于 RedisFeishuEventDistributedDeduplicator 的默认 TTL。</para>
+    /// </summary>
+    public TimeSpan EventCacheExpiration
+    {
+        get => _eventCacheExpiration;
+        set => _eventCacheExpiration = value >= TimeSpan.FromMinutes(1) ? value : TimeSpan.FromMinutes(1);
+    }
+    private TimeSpan _eventCacheExpiration = TimeSpan.FromMilliseconds(Mud.Feishu.Abstractions.Consts.DefaultCacheExpirationMs);
+
+    /// <summary>
+    /// 事件去重键前缀，默认 "feishu:event:"
+    /// </summary>
+    public string EventKeyPrefix
+    {
+        get => _eventKeyPrefix;
+        set => _eventKeyPrefix = string.IsNullOrEmpty(value) ? Mud.Feishu.Abstractions.Consts.DefaultEventKeyPrefix : value;
+    }
+    private string _eventKeyPrefix = Mud.Feishu.Abstractions.Consts.DefaultEventKeyPrefix;
+
+    /// <summary>
+    /// SeqID 去重缓存过期时间，默认 48 小时
+    /// <para>应用于 RedisFeishuSeqIDDeduplicator 的缓存过期时间。</para>
+    /// </summary>
+    public TimeSpan SeqIdCacheExpiration
+    {
+        get => _seqIdCacheExpiration;
+        set => _seqIdCacheExpiration = value >= TimeSpan.FromMinutes(1) ? value : TimeSpan.FromMinutes(1);
+    }
+    private TimeSpan _seqIdCacheExpiration = TimeSpan.FromMilliseconds(Mud.Feishu.Abstractions.Consts.DefaultCacheExpirationMs);
+
+    /// <summary>
     /// 连接超时时间，默认 5000 毫秒
     /// </summary>
     public int ConnectTimeout { get; set; } = 5000;
@@ -114,6 +146,6 @@ public class RedisOptions
     /// </summary>
     public override string ToString()
     {
-        return $"RedisOptions {{ ServerAddress: {ServerAddress}, Password: {SensitiveDataUtils.MaskSensitiveData(Password)}, DefaultDatabase: {DefaultDatabase?.ToString() ?? "默认"}, ConnectTimeout: {ConnectTimeout}ms, SyncTimeout: {SyncTimeout}ms, Ssl: {Ssl} }}";
+        return $"RedisOptions {{ ServerAddress: {ServerAddress}, Password: {SensitiveDataUtils.MaskSensitiveData(Password)}, DefaultDatabase: {DefaultDatabase?.ToString() ?? "默认"}, ConnectTimeout: {ConnectTimeout}ms, SyncTimeout: {SyncTimeout}ms, Ssl: {Ssl}, EventCacheExpiration: {EventCacheExpiration}, SeqIdCacheExpiration: {SeqIdCacheExpiration}, EventKeyPrefix: {EventKeyPrefix} }}";
     }
 }

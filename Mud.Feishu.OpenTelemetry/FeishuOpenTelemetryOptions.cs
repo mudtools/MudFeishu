@@ -5,6 +5,7 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using Microsoft.Extensions.Options;
 using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
@@ -18,7 +19,7 @@ namespace Mud.Feishu.OpenTelemetry;
 /// 用于 <see cref="FeishuOpenTelemetryExtensions.AddFeishuOpenTelemetry"/> 配置追踪、指标、导出器等。
 /// 所有开关默认开启（除日志导出），调用方按需关闭。
 /// </remarks>
-public class FeishuOpenTelemetryOptions
+public class FeishuOpenTelemetryOptions : IValidateOptions<FeishuOpenTelemetryOptions>
 {
     /// <summary>
     /// 是否启用追踪（Tracing）。默认 <c>true</c>。
@@ -95,4 +96,31 @@ public class FeishuOpenTelemetryOptions
     /// 自定义日志配置委托。在 Feishu 默认配置之后执行，可追加/覆盖配置。
     /// </summary>
     public Action<LoggerProviderBuilder>? ConfigureLogging { get; set; }
+
+    /// <summary>
+    /// 验证配置有效性
+    /// </summary>
+    /// <returns>验证结果，失败时返回错误信息</returns>
+    public ValidateOptionsResult Validate(string? name, FeishuOpenTelemetryOptions options)
+    {
+        var failures = new List<string>();
+
+        if (options.SamplingRatio < 0 || options.SamplingRatio > 1)
+            failures.Add($"SamplingRatio 必须在 0.0~1.0 范围内，当前值为 {options.SamplingRatio}。");
+
+        if (string.IsNullOrWhiteSpace(options.ServiceName))
+            failures.Add("ServiceName 不能为空。");
+
+        if (string.IsNullOrWhiteSpace(options.ServiceVersion))
+            failures.Add("ServiceVersion 不能为空。");
+
+        if (string.IsNullOrWhiteSpace(options.DeploymentEnvironment))
+            failures.Add("DeploymentEnvironment 不能为空。");
+
+        // OtlpEndpoint 为非空时必须为绝对 URI
+        if (options.OtlpEndpoint != null && !options.OtlpEndpoint.IsAbsoluteUri)
+            failures.Add($"OtlpEndpoint 必须为绝对 URI，当前值为 '{options.OtlpEndpoint}'。");
+
+        return failures.Count > 0 ? ValidateOptionsResult.Fail(failures) : ValidateOptionsResult.Success;
+    }
 }

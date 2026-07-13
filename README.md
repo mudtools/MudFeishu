@@ -172,13 +172,14 @@ dotnet add package Mud.Feishu.Redis
       "RetryPollIntervalSeconds": 30,
       "MaxRetryPerPoll": 10
     },
-  "RateLimit": {
-    "EnableRateLimit": false,
-    "WindowSizeSeconds": 60,
-    "MaxRequestsPerWindow": 100,
-    "EnableIpRateLimit": true,
-    "TooManyRequestsStatusCode": 429,
-    "TooManyRequestsMessage": "请求过于频繁，请稍后再试"
+    "RateLimit": {
+      "EnableRateLimit": false,
+      "WindowSizeSeconds": 60,
+      "MaxRequestsPerWindow": 100,
+      "EnableIpRateLimit": true,
+      "TooManyRequestsStatusCode": 429,
+      "TooManyRequestsMessage": "请求过于频繁，请稍后再试"
+    }
   }
 }
 ```
@@ -202,8 +203,8 @@ dotnet add package Mud.Feishu.Redis
 | `SequenceGapThreshold`        | ulong    | 0       | 消息序号跳跃阈值，0 表示禁用跳跃检测                               |
 | `MessageSizeLimits`           | object   | 见下方  | 消息大小限制配置                                                   |
 | `EventDeduplication`          | object   | 见下方  | 事件去重配置                                                       |
-| `TokenRefreshInterval`        | TimeSpan | 2 小时  | ⚠️ 已移除，令牌刷新由 `FeishuAppConfig.TokenRefreshThreshold` 控制 |
-| `TokenRefreshAhead`           | TimeSpan | 5 分钟  | ⚠️ 已移除，令牌刷新由 `FeishuAppConfig.TokenRefreshThreshold` 控制 |
+
+> ℹ️ **迁移提示**：旧版本的 `TokenRefreshInterval` / `TokenRefreshAhead` 配置已移除。令牌刷新现由 `FeishuAppConfig.TokenRefreshThreshold`（HTTP 层）统一控制，WebSocket 连接复用同一应用的令牌管理器，无需单独配置。
 
 **MessageSizeLimits 子配置：**
 
@@ -281,6 +282,7 @@ SDK 中存在多个 `EnableLogging` / `EnableRequestLogging` 开关，它们**�
 | `TimestampToleranceSeconds`        | int                   | 30     | 时间戳容差（秒），超过此时间视为无效请求                     |
 | `MaxConcurrentEvents`              | int                   | 10     | 最大并发事件处理数                                           |
 | `EnableRequestLogging`             | bool                  | true   | 是否启用请求日志                                             |
+| `EnablePerformanceMonitoring`      | bool                  | false  | 是否启用性能监控（处理耗时、队列深度等指标）                 |
 | `MaxRequestBodySize`               | long                  | 10MB   | 最大请求体大小（字节）                                       |
 | `EventHandlingTimeoutMs`           | int                   | 30000  | 事件处理超时时间（毫秒）                                     |
 
@@ -311,6 +313,8 @@ SDK 中存在多个 `EnableLogging` / `EnableRequestLogging` 开关，它们**�
 | `EventCacheExpiration` | TimeSpan | "2.00:00:00"    | 事件去重缓存过期时间                                    |
 | `NonceTtl`             | TimeSpan | "00:05:00"      | Nonce 有效期                                            |
 | `SeqIdCacheExpiration` | TimeSpan | "2.00:00:00"    | SeqID 去重缓存过期时间                                  |
+
+> ℹ️ **高级去重参数**：在 `FeishuRedis:Deduplication` 节点下可配置 `ProcessingTimeout`、`MaxRetryCount`、`AllowProcessingOnFallback` 等高级参数（类型 `DeduplicationOptions`）。注意：`CacheExpiration` 和 `KeyPrefix` 由上表中的 `EventCacheExpiration` / `EventKeyPrefix` 优先覆盖。
 
 **配置示例：**
 
@@ -368,6 +372,21 @@ SDK 中存在多个 `EnableLogging` / `EnableRequestLogging` 开关，它们**�
 }
 ```
 
+**服务注册：**
+
+```csharp
+// 方式一：从 IConfiguration 绑定（推荐，与上方 appsettings.json 配合使用）
+builder.Services.AddFeishuApp(builder.Configuration, "FeishuApps");
+builder.Services.AddFeishuUserContext(builder.Configuration);
+
+// 方式二：代码配置
+builder.Services.AddFeishuUserContext(options =>
+{
+    options.OpenIdClaimType = "custom_open_id";
+    options.EnableSensitiveLog = false;
+});
+```
+
 > 🔒 生产环境强烈建议保持 `EnableSensitiveLog=false`，避免在日志中泄露用户 OpenId/UnionId 等敏感信息。
 
 </details>
@@ -375,7 +394,7 @@ SDK 中存在多个 `EnableLogging` / `EnableRequestLogging` 开关，它们**�
 <details>
 <summary>📋 失败事件重试配置参考（FailedEventRetryOptions）</summary>
 
-> Webhook 模块支持失败事件的自动重试，以下配置在 `FeishuWebhook:FailedEventRetry` 节点下生效。
+> Webhook 模块支持失败事件的自动重试，以下配置在 `FeishuWebhook:Retry` 节点下生效。
 
 | 配置项                     | 类型   | 默认值 | 说明                         |
 | -------------------------- | ------ | ------ | ---------------------------- |
@@ -392,7 +411,7 @@ SDK 中存在多个 `EnableLogging` / `EnableRequestLogging` 开关，它们**�
 ```json
 {
   "FeishuWebhook": {
-    "FailedEventRetry": {
+    "Retry": {
       "EnableRetry": true,
       "MaxRetryCount": 5,
       "InitialRetryDelaySeconds": 10,
@@ -405,7 +424,7 @@ SDK 中存在多个 `EnableLogging` / `EnableRequestLogging` 开关，它们**�
 }
 ```
 
-> ⚠️ 当 `EnableRetry=false` 时，所有子配置必须保持默认值，否则将在配置校验时抛出异常。这是为了避免用户误以为子配置会生效但实际上被忽略。
+> ℹ️ 当 `EnableRetry=false` 时，子配置不会影响运行时行为，但仍会进行范围校验（如 `MaxRetryCount >= 0`），以确保配置值在启用时立即可用。无需强制保持默认值，便于热更新场景下动态切换。
 
 </details>
 
@@ -494,7 +513,7 @@ SDK 中存在多个 `EnableLogging` / `EnableRequestLogging` 开关，它们**�
 }
 ```
 
-> ⚠️ 当 `EnableRateLimit=false` 时，所有子配置必须保持默认值，否则将在配置校验时抛出异常。这是为了避免用户误以为子配置会生效但实际上被忽略。
+> ℹ️ 当 `EnableRateLimit=false` 时，子配置不会影响运行时行为，但仍会进行范围校验（如 `WindowSizeSeconds >= 1`），以确保配置值在启用时立即可用。无需强制保持默认值，便于热更新场景下动态切换。
 
 </details>
 

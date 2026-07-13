@@ -381,7 +381,10 @@ public static class FeishuMultiAppExtensions
             });
         }
 
-        // PostConfigure：统一执行 IsDefault 自动推断逻辑，确保 IOptions<T> 和 IOptionsMonitor<T> 的值与启动快照行为一致
+        // PostConfigure：统一执行 IsDefault 自动推断逻辑。
+        // 此逻辑对 IConfiguration 绑定路径是必需的（该路径不调用 ValidateAndSetDefaultApp）。
+        // 对直接传入 List<FeishuAppConfig> 的路径，ValidateAndSetDefaultApp 已执行相同推断，此处为幂等操作（无害重复）。
+        // 同时确保 IOptionsMonitor<T> 热更新时 IsDefault 推断仍然生效。
         services.PostConfigure<List<FeishuAppConfig>>(options =>
         {
             // AppKey 为 "default" 时自动设置 IsDefault=true

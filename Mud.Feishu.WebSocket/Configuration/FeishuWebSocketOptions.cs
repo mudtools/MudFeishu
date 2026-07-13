@@ -22,7 +22,7 @@ public class FeishuWebSocketOptions
     /// <summary>
     /// 飞书应用 AppKey，用于指标维度区分。
     /// </summary>
-    public string AppKey { get; set; } = "websocket";
+    public string AppKey { get; set; } = "default";
 
     /// <summary>
     /// 自动重连，默认为true
@@ -190,8 +190,8 @@ public class FeishuWebSocketOptions
         if (ConnectionTimeoutMs < 1000)
             throw new InvalidOperationException("ConnectionTimeoutMs必须至少为1000毫秒");
 
-        if (AutoReconnect && ReconnectDelayMs > ConnectionTimeoutMs)
-            throw new InvalidOperationException("ReconnectDelayMs不应大于ConnectionTimeoutMs，否则重连将在连接超时后才触发");
+        // 注：ReconnectDelayMs 与 ConnectionTimeoutMs 语义独立（前者为两次重连尝试间的等待，后者为单次 TCP 握手超时），
+        // 不存在必然的约束关系，故移除交叉校验。
 
 
         // 验证消息大小限制配置

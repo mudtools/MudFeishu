@@ -25,6 +25,10 @@ public class RedisOptionsTests
         Assert.Equal(string.Empty, options.Password);
         Assert.Equal("feishu:nonce:", options.NonceKeyPrefix);
         Assert.Equal("feishu:seqid:", options.SeqIdKeyPrefix);
+        Assert.Equal("feishu:event:", options.EventKeyPrefix);
+        Assert.Equal(TimeSpan.FromHours(48), options.EventCacheExpiration);
+        Assert.Equal(TimeSpan.FromHours(48), options.SeqIdCacheExpiration);
+        Assert.Equal(TimeSpan.FromMinutes(5), options.NonceTtl);
         Assert.Equal(5000, options.ConnectTimeout);
         Assert.Equal(5000, options.SyncTimeout);
         Assert.False(options.Ssl);

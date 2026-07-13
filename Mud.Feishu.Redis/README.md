@@ -127,6 +127,8 @@ app.Run();
 | `DefaultDatabase`      | int?     | null             | 默认数据库索引                                                           |
 | `ClientName`           | string?  | null             | 客户端名称（默认自动生成）                                               |
 
+> ℹ️ **高级去重参数**：在 `FeishuRedis:Deduplication` 子节下可配置 `ProcessingTimeout`、`MaxRetryCount`、`AllowProcessingOnFallback`、`InitialRetryDelay`、`MaxRetryDelay` 等参数（类型 `DeduplicationOptions`）。注意：`CacheExpiration` 和 `KeyPrefix` 由上表中的 `EventCacheExpiration` / `EventKeyPrefix` 优先覆盖。
+
 ## 去重服务详解
 
 ### 事件去重（Event Deduplication）

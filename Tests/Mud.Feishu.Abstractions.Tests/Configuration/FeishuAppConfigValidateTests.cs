@@ -196,20 +196,36 @@ public class FeishuAppConfigValidateTests
     }
 
     /// <summary>
-    /// CFG-6: 熔断器禁用但有非默认子配置时应抛异常
+    /// CFG-6: 熔断器禁用但子配置在有效范围内时不应抛异常（宽松策略，与 RateLimit/Retry 一致）
     /// </summary>
     [Fact]
-    public void Validate_ShouldThrow_WhenCircuitBreakerDisabledButSubConfigModified()
+    public void Validate_ShouldNotThrow_WhenCircuitBreakerDisabledButSubConfigInValidRange()
     {
         var config = CreateValidConfig();
         config.CircuitBreakerEnabled = false;
-        // 修改熔断器子配置为非默认值
-        config.CircuitBreakerFailureThreshold = 30; // 默认为20
+        // 修改熔断器子配置为非默认值，但在有效范围内
+        config.CircuitBreakerFailureThreshold = 30; // 默认为20，30 在 1-100 范围内
+
+        var act = () => config.Validate();
+
+        // 宽松策略：禁用时仅校验范围，不强制要求等于默认值
+        act.Should().NotThrow();
+    }
+
+    /// <summary>
+    /// CFG-6: 熔断器禁用但子配置超出有效范围时应抛异常（保留范围校验）
+    /// </summary>
+    [Fact]
+    public void Validate_ShouldThrow_WhenCircuitBreakerDisabledButSubConfigOutOfRange()
+    {
+        var config = CreateValidConfig();
+        config.CircuitBreakerEnabled = false;
+        config.CircuitBreakerFailureThreshold = 150; // 超出范围 1-100
 
         var act = () => config.Validate();
 
         act.Should().Throw<InvalidOperationException>()
-            .WithMessage("*熔断器已禁用*");
+            .WithMessage("*CircuitBreakerFailureThreshold*");
     }
 
     /// <summary>

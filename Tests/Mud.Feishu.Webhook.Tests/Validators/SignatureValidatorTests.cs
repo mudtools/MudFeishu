@@ -181,7 +181,8 @@ public class SignatureValidatorTests
     [Fact]
     public async Task ValidateHeaderSignatureAsync_WithZeroTimestampInDevelopment_ShouldReturnTrue()
     {
-        // Arrange
+        // Arrange - NEW-SEC-01 修复后，跳过验证由 EnforceHeaderSignatureValidation 控制，而非环境判断
+        _defaultOptions.EnforceHeaderSignatureValidation = false;
         _environmentServiceMock.Setup(x => x.IsProduction).Returns(false);
         _environmentServiceMock.Setup(x => x.IsDevelopment).Returns(true);
         var validator = CreateValidator();
@@ -190,7 +191,7 @@ public class SignatureValidatorTests
         var result = await validator.ValidateHeaderSignatureAsync(0, "", "body", "some-signature", "key");
 
         // Assert
-        result.Should().BeTrue("开发环境下时间戳为 0 应跳过验证");
+        result.Should().BeTrue("非强制验证模式下时间戳为 0 应跳过验证");
     }
 
     [Fact]

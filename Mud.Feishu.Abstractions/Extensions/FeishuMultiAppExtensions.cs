@@ -427,7 +427,8 @@ public static class FeishuMultiAppExtensions
             throw new InvalidOperationException("至少需要配置一个飞书应用");
 
         // 检查是否有重复的AppKey
-        var duplicateAppKeys = configs.GroupBy(c => c.AppKey, StringComparer.OrdinalIgnoreCase)
+        // NEW-REG-03 修复：AppKey 应严格大小写敏感，统一使用 StringComparer.Ordinal
+        var duplicateAppKeys = configs.GroupBy(c => c.AppKey, StringComparer.Ordinal)
                                        .Where(g => g.Count() > 1)
                                        .Select(g => g.Key)
                                        .ToList();

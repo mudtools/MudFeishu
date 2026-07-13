@@ -23,6 +23,8 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
     private readonly IFeishuWebSocketManager _webSocketManager;
     private readonly IReconnectionOrchestrator _reconnectionOrchestrator;
     private readonly IOptionsMonitor<FeishuWebSocketOptions> _optionsMonitor;
+    // NEW-WS-01 修复：保存 host stoppingToken 用于链接重连任务的取消令牌，支持优雅关闭
+    private CancellationToken _stoppingToken;
     private bool _disposed;
     private DateTime _lastReconnectTriggerTime = DateTime.MinValue;
     private readonly object _reconnectDebounceLock = new();
@@ -102,6 +104,8 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
     /// <returns>执行任务</returns>
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        // NEW-WS-01 修复：保存 stoppingToken 供 TryTriggerReconnect 中的 fire-and-forget 重连任务使用
+        _stoppingToken = stoppingToken;
         _logger.LogInformation("飞书WebSocket后台服务正在启动...");
 
         // 初始连接重试：首次启动失败时进行有限次重试
@@ -234,14 +238,20 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
         {
             try
             {
-                using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(5));
-                await _reconnectionOrchestrator.TryReconnectAsync(reason, cts.Token);
+                // NEW-WS-01 修复：链接 host stoppingToken，支持优雅关闭
+                using var timeoutCts = new CancellationTokenSource(TimeSpan.FromMinutes(5));
+                using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(_stoppingToken, timeoutCts.Token);
+                await _reconnectionOrchestrator.TryReconnectAsync(reason, linkedCts.Token);
+            }
+            catch (OperationCanceledException) when (_stoppingToken.IsCancellationRequested)
+            {
+                // 应用关闭导致的取消，正常退出
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "断线重连时发生错误");
             }
-        });
+        }, _stoppingToken);  // 也传入 stoppingToken 作为任务取消令牌
     }
 
     /// <summary>

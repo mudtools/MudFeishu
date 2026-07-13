@@ -17,6 +17,8 @@ namespace Mud.Feishu.Webhook;
 public class FailedEventRetryService : BackgroundService
 {
     private readonly FailedEventRetryOptions _options;
+    // NEW-REG-01 修复：使用 IOptionsMonitor<FeishuWebhookOptions> 读取 Retry.EnableRetry，支持热更新
+    private readonly IOptionsMonitor<FeishuWebhookOptions>? _webhookOptions;
     private readonly ILogger<FailedEventRetryService> _logger;
     private readonly IFeishuWebhookService _webhookService;
     private readonly IFailedEventStore? _failedEventStore;
@@ -28,9 +30,11 @@ public class FailedEventRetryService : BackgroundService
         IOptions<FailedEventRetryOptions> options,
         ILogger<FailedEventRetryService> logger,
         IFeishuWebhookService webhookService,
-        IFailedEventStore? failedEventStore = null)
+        IFailedEventStore? failedEventStore = null,
+        IOptionsMonitor<FeishuWebhookOptions>? webhookOptions = null)
     {
         _options = options.Value;
+        _webhookOptions = webhookOptions;
         _logger = logger;
         _webhookService = webhookService;
         _failedEventStore = failedEventStore;
@@ -46,7 +50,11 @@ public class FailedEventRetryService : BackgroundService
     /// </summary>
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        if (!_options.EnableRetry)
+        // NEW-REG-01 修复：从 IOptionsMonitor<FeishuWebhookOptions> 读取 Retry.EnableRetry 决定是否启动
+        // 由于 HostedService 现在无条件注册，必须在此处检查配置决定是否真正启动后台循环
+        // _webhookOptions 为 null 时（如单元测试场景）回退到 FailedEventRetryOptions.EnableRetry
+        var enableRetry = _webhookOptions?.CurrentValue.Retry.EnableRetry ?? _options.EnableRetry;
+        if (!enableRetry)
         {
             _logger.LogInformation("失败事件重试服务未启用");
             return;

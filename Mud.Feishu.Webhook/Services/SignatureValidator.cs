@@ -99,26 +99,26 @@ public class SignatureValidator(
     {
         try
         {
+            // 获取当前配置
+            var options = _options.CurrentValue;
+            var enforceValidation = options.EnforceHeaderSignatureValidation;
+
+            // 多应用场景：检查应用特定配置
+            if (!string.IsNullOrEmpty(CurrentAppKey))
+            {
+                var appConfig = options.GetAppConfig(CurrentAppKey!);
+                if (appConfig != null)
+                {
+                    // 使用应用级配置，null 时继承全局配置
+                    enforceValidation = appConfig.GetEffectiveEnforceHeaderSignatureValidation(enforceValidation);
+                    Logger.LogDebug("使用应用 {AppKey} 的签名验证配置: {EnforceValidation}",
+                        CurrentAppKey, enforceValidation);
+                }
+            }
+
             // 检查请求头签名是否为空
             if (string.IsNullOrEmpty(headerSignature))
             {
-                // 获取当前配置
-                var options = _options.CurrentValue;
-                var enforceValidation = options.EnforceHeaderSignatureValidation;
-
-                // 多应用场景：检查应用特定配置
-                if (!string.IsNullOrEmpty(CurrentAppKey))
-                {
-                    var appConfig = options.GetAppConfig(CurrentAppKey!);
-                    if (appConfig != null)
-                    {
-                        // 使用应用级配置，null 时继承全局配置
-                        enforceValidation = appConfig.GetEffectiveEnforceHeaderSignatureValidation(enforceValidation);
-                        Logger.LogDebug("使用应用 {AppKey} 的签名验证配置: {EnforceValidation}",
-                            CurrentAppKey, enforceValidation);
-                    }
-                }
-
                 // 如果配置为强制验证，则拒绝请求
                 if (enforceValidation)
                 {
@@ -143,22 +143,23 @@ public class SignatureValidator(
             // 检查必要参数
             if (timestamp == 0 || string.IsNullOrEmpty(nonce))
             {
-                if (_environmentService.IsProduction)
+                // NEW-SEC-01 修复：统一使用 enforceValidation 配置控制，而非环境判断
+                if (enforceValidation)
                 {
                     Logger.LogError(
-                        "时间戳或 nonce 为空（Timestamp: {Timestamp}, Nonce: {Nonce}），拒绝请求（生产环境不允许跳过签名验证）",
+                        "时间戳或 nonce 为空（Timestamp: {Timestamp}, Nonce: {Nonce}），拒绝请求（enforceValidation=true 不允许跳过签名验证）",
                         timestamp, nonce);
 
-                    LogSecurityFailure($"时间戳或 nonce 为空（Timestamp: {timestamp}, Nonce: {nonce}），拒绝请求");
+                    LogSecurityFailure($"时间戳或 nonce 为空（Timestamp: {timestamp}, Nonce: {nonce}），拒绝请求（enforceValidation=true）");
 
                     return false;
                 }
 
                 Logger.LogWarning(
-                    "时间戳或 nonce 为空（Timestamp: {Timestamp}, Nonce: {Nonce}），跳过签名验证（开发环境，警告：此配置存在安全风险）",
+                    "时间戳或 nonce 为空（Timestamp: {Timestamp}, Nonce: {Nonce}），跳过签名验证（enforceValidation=false，警告：此配置存在安全风险）",
                     timestamp, nonce);
 
-                LogSecurityFailure($"开发环境：时间戳或 nonce 为空（Timestamp: {timestamp}, Nonce: {nonce}），跳过签名验证");
+                LogSecurityFailure($"timestamp/nonce 缺失但 enforceValidation=false，跳过验证");
 
                 return true;
             }

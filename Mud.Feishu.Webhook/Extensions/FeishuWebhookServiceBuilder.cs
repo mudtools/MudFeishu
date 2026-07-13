@@ -565,13 +565,8 @@ public class FeishuWebhookServiceBuilder
     private void RegisterRetryServices()
     {
         _services.TryAddSingleton<IFailedEventStore, InMemoryFailedEventStore>();
-
-        _services.PostConfigure<FeishuWebhookOptions>(options =>
-        {
-            if (options.Retry.EnableRetry)
-            {
-                _services.AddHostedService<FailedEventRetryService>();
-            }
-        });
+        // NEW-REG-01 修复：无条件注册 HostedService，由其内部读取 IOptionsMonitor 决定是否启动
+        // 不能在 PostConfigure 回调中注册，因为 ServiceProvider 构建后 IServiceCollection 修改无效
+        _services.AddHostedService<FailedEventRetryService>();
     }
 }

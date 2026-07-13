@@ -155,6 +155,8 @@ public static class FeishuServiceCollectionExtensions
         });
 
         services.TryAddSingleton(_ => HttpClientExtensions.GetDefaultJsonSerializerOptions());
+        // NEW-GEN-01 修复：同时注册 IOptions<JsonSerializerOptions>，与生成器构造函数契约对齐
+        services.TryAddSingleton<IOptions<System.Text.Json.JsonSerializerOptions>>(sp => Microsoft.Extensions.Options.Options.Create(sp.GetRequiredService<System.Text.Json.JsonSerializerOptions>()));
 
         // M-8 修复：使用条件检测避免覆盖用户已配置的 IMemoryCache 选项（如容量限制）。
         // AddMemoryCache() 会无条件注册 IOptions<MemoryCacheOptions> 配置委托，
@@ -265,8 +267,9 @@ public static class FeishuServiceCollectionExtensions
     /// <returns>对应的 <see cref="ResilienceOptions"/>；如果应用不存在则返回 null。</returns>
     private static ResilienceOptions? CreateResilienceOptionsFromConfig(List<FeishuAppConfig> configs, string appKey)
     {
+        // NEW-REG-03 修复：AppKey 应严格大小写敏感，统一使用 StringComparison.Ordinal
         var config = configs.FirstOrDefault(c =>
-            string.Equals(c.AppKey, appKey, StringComparison.OrdinalIgnoreCase));
+            string.Equals(c.AppKey, appKey, StringComparison.Ordinal));
         if (config == null)
             return null;
 

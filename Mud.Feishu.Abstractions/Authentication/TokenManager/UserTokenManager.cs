@@ -311,7 +311,8 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
                 await _userTokenStore.SetRefreshTokenAsync(userId, _tokenTypeKey, encodedRefreshToken, cancellationToken).ConfigureAwait(false);
             }
         }
-        catch (Exception ex)
+        // NEW-TM-01 修复：过滤 OperationCanceledException，避免取消操作被误记录为失败
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             _logger.LogWarning(ex, "Failed to persist user token to IUserTokenStore for userId: {UserId}", userId);
         }
@@ -357,7 +358,8 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
                 RefreshTokenExpireTime = refreshTokenExpireMs > 0 ? refreshTokenExpireMs : 0
             };
         }
-        catch (Exception ex)
+        // NEW-TM-01 修复：过滤 OperationCanceledException，避免取消操作被误记录为失败
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             _logger.LogWarning(ex, "Failed to restore user token from IUserTokenStore for userId: {UserId}", userId);
             return null;

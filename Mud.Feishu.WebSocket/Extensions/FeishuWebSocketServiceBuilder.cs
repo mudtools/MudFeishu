@@ -90,8 +90,9 @@ public class FeishuWebSocketServiceBuilder
         where THandler : class, IFeishuEventHandler
     {
         _handlerTypes.Add(typeof(THandler));
-        _services.AddSingleton<IFeishuEventHandler, THandler>();
-        _services.AddSingleton<THandler>();
+        // NEW-REG-02 修复：处理器注册为 Scoped，避免 Captive Dependency 风险，与 Webhook 保持一致
+        _services.AddScoped<IFeishuEventHandler, THandler>();
+        _services.AddScoped<THandler>();
         return this;
     }
 
@@ -108,8 +109,9 @@ public class FeishuWebSocketServiceBuilder
             throw new ArgumentNullException(nameof(handlerInstance));
 
         _handlerTypes.Add(typeof(THandler));
-        _services.AddSingleton<IFeishuEventHandler>(_ => handlerInstance);
-        _services.AddSingleton<THandler>(_ => handlerInstance);
+        // NEW-REG-02 修复：处理器实例注册为 Scoped，避免 Captive Dependency 风险，与 Webhook 保持一致
+        _services.AddScoped<IFeishuEventHandler>(_ => handlerInstance);
+        _services.AddScoped<THandler>(_ => handlerInstance);
         return this;
     }
 
@@ -126,8 +128,9 @@ public class FeishuWebSocketServiceBuilder
             throw new ArgumentNullException(nameof(handlerFactory));
 
         _handlerTypes.Add(typeof(THandler));
-        _services.AddSingleton<IFeishuEventHandler>(handlerFactory);
-        _services.AddSingleton<THandler>(handlerFactory);
+        // NEW-REG-02 修复：处理器工厂注册为 Scoped，避免 Captive Dependency 风险，与 Webhook 保持一致
+        _services.AddScoped<IFeishuEventHandler>(handlerFactory);
+        _services.AddScoped<THandler>(handlerFactory);
         return this;
     }
 
@@ -140,8 +143,9 @@ public class FeishuWebSocketServiceBuilder
         where TInterceptor : class, IFeishuEventInterceptor
     {
         _interceptorTypes.Add(typeof(TInterceptor));
-        _services.AddSingleton<IFeishuEventInterceptor, TInterceptor>();
-        _services.AddSingleton<TInterceptor>();
+        // NEW-REG-02 修复：拦截器注册为 Scoped，避免 Captive Dependency 风险，与 Webhook 保持一致
+        _services.AddScoped<IFeishuEventInterceptor, TInterceptor>();
+        _services.AddScoped<TInterceptor>();
         return this;
     }
 
@@ -158,8 +162,9 @@ public class FeishuWebSocketServiceBuilder
             throw new ArgumentNullException(nameof(interceptorInstance));
 
         _interceptorTypes.Add(typeof(TInterceptor));
-        _services.AddSingleton<IFeishuEventInterceptor>(_ => interceptorInstance);
-        _services.AddSingleton<TInterceptor>(_ => interceptorInstance);
+        // NEW-REG-02 修复：拦截器实例注册为 Scoped，避免 Captive Dependency 风险，与 Webhook 保持一致
+        _services.AddScoped<IFeishuEventInterceptor>(_ => interceptorInstance);
+        _services.AddScoped<TInterceptor>(_ => interceptorInstance);
         return this;
     }
 
@@ -176,8 +181,9 @@ public class FeishuWebSocketServiceBuilder
             throw new ArgumentNullException(nameof(interceptorFactory));
 
         _interceptorTypes.Add(typeof(TInterceptor));
-        _services.AddSingleton<IFeishuEventInterceptor>(interceptorFactory);
-        _services.AddSingleton<TInterceptor>(interceptorFactory);
+        // NEW-REG-02 修复：拦截器工厂注册为 Scoped，避免 Captive Dependency 风险，与 Webhook 保持一致
+        _services.AddScoped<IFeishuEventInterceptor>(interceptorFactory);
+        _services.AddScoped<TInterceptor>(interceptorFactory);
         return this;
     }
 

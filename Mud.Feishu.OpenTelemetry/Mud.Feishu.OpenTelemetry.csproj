@@ -29,12 +29,11 @@
 		<PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.16.0" />
 	</ItemGroup>
 
-	<!-- 覆盖 Directory.Build.props 中的低版本引用，满足 OpenTelemetry 1.16.0 的传递依赖要求 -->
 	<ItemGroup Condition="'$(TargetFramework)' == 'net6.0' or '$(TargetFramework)' == 'netstandard2.0'">
-		<PackageReference Update="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.9" />
-		<PackageReference Update="Microsoft.Extensions.Options" Version="10.0.9" />
-		<PackageReference Update="Microsoft.Extensions.Configuration.Binder" Version="10.0.9" />
-		<PackageReference Update="Microsoft.Extensions.Logging.Abstractions" Version="10.0.9" />
+		<PackageReference Update="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.0" />
+		<PackageReference Update="Microsoft.Extensions.Options" Version="10.0.0" />
+		<PackageReference Update="Microsoft.Extensions.Configuration.Binder" Version="10.0.0" />
+		<PackageReference Update="Microsoft.Extensions.Logging.Abstractions" Version="10.0.0" />
 	</ItemGroup>
 
 	<ItemGroup>

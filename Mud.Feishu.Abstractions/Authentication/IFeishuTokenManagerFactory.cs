@@ -61,6 +61,13 @@ public class DefaultFeishuTokenManagerFactory : IFeishuTokenManagerFactory
         ITokenStore tokenStore,
         IUserTokenStore? userTokenStore)
     {
+        if (config == null)
+            throw new ArgumentNullException(nameof(config));
+        if (authenticationApi == null)
+            throw new ArgumentNullException(nameof(authenticationApi));
+        if (tokenStore == null)
+            throw new ArgumentNullException(nameof(tokenStore));
+
         var options = Options.Create(config);
         var currentUserContext = _serviceProvider.GetService<IFeishuCurrentUserContext>();
 

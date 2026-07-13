@@ -40,6 +40,8 @@
 /Mud.Feishu.Webhook.Demo/obj
 /Mud.Feishu.Authentication/bin
 /Mud.Feishu.Authentication/obj
+/Mud.Feishu.OpenTelemetry/bin
+/Mud.Feishu.OpenTelemetry/obj
 /docs
 /Mud.Feishu.Redis/obj
 /Mud.Feishu.Webhook.Demo/bin
@@ -56,6 +58,8 @@
 /Demos/TaskManageDemo/tests/bin
 /Tests/Mud.Feishu.Abstractions.Tests/bin
 /Tests/Mud.Feishu.Abstractions.Tests/obj
+/Tests/Mud.Feishu.OpenTelemetry.Tests/bin
+/Tests/Mud.Feishu.OpenTelemetry.Tests/obj
 /Tests/Mud.Feishu.Redis.Tests/bin
 /Tests/Mud.Feishu.Redis.Tests/obj
 /Tests/Mud.Feishu.Webhook.Tests/bin

@@ -63,6 +63,8 @@ public class TimestampHelperTests
 
     #region NormalizeToSeconds 测试
 
+#pragma warning disable CS0618 // 测试已标记 [Obsolete] 的方法，故抑制过时警告
+
     [Fact]
     public void NormalizeToSeconds_WithSecondsTimestamp_ShouldReturnSameValue()
     {
@@ -122,6 +124,8 @@ public class TimestampHelperTests
     }
 
     #endregion
+
+#pragma warning restore CS0618
 
     #region IsMilliseconds 测试
 

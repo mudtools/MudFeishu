@@ -42,7 +42,7 @@ public class RedisTokenStore : ITokenStore
     public async Task<string?> GetAccessTokenAsync(string tokenType, CancellationToken cancellationToken = default)
     {
         var key = BuildAccessTokenKey(tokenType);
-        var value = await GetDatabase().StringGetAsync(key, flags: ToCommandFlags(cancellationToken)).ConfigureAwait(false);
+        var value = await GetDatabase().StringGetAsync(key, flags: RedisStoreHelper.ToCommandFlags(cancellationToken)).ConfigureAwait(false);
         return value.HasValue ? value.ToString() : null;
     }
 
@@ -50,14 +50,14 @@ public class RedisTokenStore : ITokenStore
     public async Task SetAccessTokenAsync(string tokenType, string accessToken, long expiresInSeconds, CancellationToken cancellationToken = default)
     {
         var key = BuildAccessTokenKey(tokenType);
-        await GetDatabase().StringSetAsync(key, accessToken, TimeSpan.FromSeconds(expiresInSeconds), flags: ToCommandFlags(cancellationToken)).ConfigureAwait(false);
+        await GetDatabase().StringSetAsync(key, accessToken, TimeSpan.FromSeconds(expiresInSeconds), flags: RedisStoreHelper.ToCommandFlags(cancellationToken)).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
     public async Task<string?> GetRefreshTokenAsync(string tokenType, CancellationToken cancellationToken = default)
     {
         var key = BuildRefreshTokenKey(tokenType);
-        var value = await GetDatabase().StringGetAsync(key, flags: ToCommandFlags(cancellationToken)).ConfigureAwait(false);
+        var value = await GetDatabase().StringGetAsync(key, flags: RedisStoreHelper.ToCommandFlags(cancellationToken)).ConfigureAwait(false);
         return value.HasValue ? value.ToString() : null;
     }
 
@@ -65,14 +65,14 @@ public class RedisTokenStore : ITokenStore
     public async Task SetRefreshTokenAsync(string tokenType, string refreshToken, CancellationToken cancellationToken = default)
     {
         var key = BuildRefreshTokenKey(tokenType);
-        await GetDatabase().StringSetAsync(key, refreshToken, TimeSpan.FromDays(30), flags: ToCommandFlags(cancellationToken)).ConfigureAwait(false);
+        await GetDatabase().StringSetAsync(key, refreshToken, TimeSpan.FromDays(30), flags: RedisStoreHelper.ToCommandFlags(cancellationToken)).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
     public async Task RemoveAsync(string tokenType, CancellationToken cancellationToken = default)
     {
         var db = GetDatabase();
-        await db.KeyDeleteAsync(new RedisKey[] { BuildAccessTokenKey(tokenType), BuildRefreshTokenKey(tokenType) }, flags: ToCommandFlags(cancellationToken)).ConfigureAwait(false);
+        await db.KeyDeleteAsync(new RedisKey[] { BuildAccessTokenKey(tokenType), BuildRefreshTokenKey(tokenType) }, flags: RedisStoreHelper.ToCommandFlags(cancellationToken)).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -80,7 +80,7 @@ public class RedisTokenStore : ITokenStore
     {
         var pattern = $"{_keyPrefix}:*:access";
         // S-2 修复：显式传入 pageSize 提升大键空间下 SCAN 迭代效率（默认值亦为 250，此处显式声明意图）
-        var keys = GetServer().Keys(pattern: pattern, pageSize: 250, flags: ToCommandFlags(cancellationToken));
+        var keys = RedisStoreHelper.GetServer(_redis).Keys(pattern: pattern, pageSize: 250, flags: RedisStoreHelper.ToCommandFlags(cancellationToken));
         var tokenTypes = new List<string>();
         // TM-04 修复：键格式为 {prefix}:{tokenType}:access，其中 tokenType 可能含 ":"（如 "tenant:cli_xxx"）。
         // 原 Split(':')[0] 会截断 tokenType，改为移除已知前缀与 ":access" 后缀，保留完整 tokenType。
@@ -106,58 +106,13 @@ public class RedisTokenStore : ITokenStore
     {
         var pattern = $"{_keyPrefix}:*";
         var db = GetDatabase();
-        var keys = GetServer().Keys(pattern: pattern, pageSize: 250, flags: ToCommandFlags(cancellationToken));
+        var keys = RedisStoreHelper.GetServer(_redis).Keys(pattern: pattern, pageSize: 250, flags: RedisStoreHelper.ToCommandFlags(cancellationToken));
 
         foreach (var key in keys)
-            await db.KeyDeleteAsync(key, flags: ToCommandFlags(cancellationToken)).ConfigureAwait(false);
+            await db.KeyDeleteAsync(key, flags: RedisStoreHelper.ToCommandFlags(cancellationToken)).ConfigureAwait(false);
     }
-
-    /// <summary>
-    /// 将 <see cref="CancellationToken"/> 转换为 StackExchange.Redis 的 <see cref="CommandFlags"/>。
-    /// </summary>
-    /// <remarks>
-    /// TM-02 修复：StackExchange.Redis 不直接接受 CancellationToken，通过注册回调将取消请求映射为
-    /// <see cref="CommandFlags.FireAndForget"/> 不可行（会丢失响应），故采用以下策略：
-    /// 1. 预先注册 cancellation callback，在取消时通过物理中断等待中的 Task（Task.WhenAny 竞速）。
-    /// 2. 未取消时正常等待 Redis 响应。
-    /// 此处返回 None，实际取消由调用方的 await 配合 cancellationToken 实现。
-    /// </remarks>
-    private static CommandFlags ToCommandFlags(CancellationToken cancellationToken) => CommandFlags.None;
 
     private IDatabase GetDatabase() => _redis.GetDatabase();
-
-    /// <summary>
-    /// 获取可用的 Redis 服务器节点。
-    /// </summary>
-    /// <remarks>
-    /// S-2 修复：原实现固定取 <c>endpoints[0]</c>，集群/主从场景下该节点不可用时无故障转移。
-    /// 改为遍历所有 endpoints，选择首个 <c>IsConnected &amp;&amp; !IsReplica</c> 的主节点；
-    /// 若全部不可用或全为副本，回退到首个节点（保持原行为，由调用方处理异常）。
-    /// </remarks>
-    private IServer GetServer()
-    {
-        var endpoints = _redis.GetEndPoints();
-        // TM-01 修复：防御 endpoints 为空集合（极端故障场景），避免 IndexOutOfRangeException。
-        if (endpoints.Length == 0)
-            throw new InvalidOperationException("Redis 连接多路复器未配置任何端点，无法获取服务器实例。");
-
-        foreach (var endpoint in endpoints)
-        {
-            try
-            {
-                var server = _redis.GetServer(endpoint);
-                if (server.IsConnected && !server.IsReplica)
-                    return server;
-            }
-            catch
-            {
-                // 跳过不可访问的节点，继续尝试下一个
-            }
-        }
-
-        // 所有节点不可用或全为副本时回退到首个节点
-        return _redis.GetServer(endpoints[0]);
-    }
 
     private string BuildAccessTokenKey(string tokenType) => $"{_keyPrefix}:{tokenType}:access";
     private string BuildRefreshTokenKey(string tokenType) => $"{_keyPrefix}:{tokenType}:refresh";

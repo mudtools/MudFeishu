@@ -24,9 +24,7 @@ public class DeduplicationOptions
 {
     /// <summary>
     /// 缓存过期时间
-    /// <para>此配置统一应用于内存去重和 Redis 分布式去重。
-    /// RedisOptions.EventCacheExpiration / SeqIdCacheExpiration 已标记为 [Obsolete]，
-    /// 建议通过此属性统一配置。</para>
+    /// <para>此配置统一应用于内存去重和 Redis 分布式去重。</para>
     /// </summary>
     /// <remarks>
     /// 建议设置为大于飞书官方事件重试窗口期，避免长延时场景下的重复处理。
@@ -119,9 +117,7 @@ public class DeduplicationOptions
 
     /// <summary>
     /// Redis 键前缀（仅分布式模式）
-    /// <para>此配置统一应用于 Redis 去重键前缀。
-    /// RedisOptions.EventKeyPrefix 已标记为 [Obsolete]，
-    /// 建议通过此属性统一配置。</para>
+    /// <para>此配置统一应用于 Redis 去重键前缀。</para>
     /// </summary>
     /// <remarks>
     /// 用于区分不同应用或环境的 Redis 键。

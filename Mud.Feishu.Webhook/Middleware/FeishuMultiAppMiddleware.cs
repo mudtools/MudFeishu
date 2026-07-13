@@ -6,6 +6,8 @@
 // -----------------------------------------------------------------------
 
 using Mud.Feishu.Abstractions;
+using Mud.Feishu.Abstractions.Metrics;
+using Mud.Feishu.Abstractions.Observability;
 using Mud.Feishu.Webhook.Configuration;
 using Mud.Feishu.Webhook.Exceptions;
 using Mud.Feishu.Webhook.Models;
@@ -21,11 +23,6 @@ namespace Mud.Feishu.Webhook;
 /// </summary>
 public class FeishuMultiAppMiddleware
 {
-    private static class FeishuWebhookActivitySource
-    {
-        public static readonly ActivitySource Source = new ActivitySource("Mud.Feishu.Webhook.MultiApp");
-    }
-
     private readonly RequestDelegate _next;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<FeishuMultiAppMiddleware> _logger;
@@ -149,20 +146,30 @@ public class FeishuMultiAppMiddleware
         var requestId = RequestIdHelper.GetOrGenerateRequestId(context);
         var clientIp = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
 
-        using var activity = FeishuWebhookActivitySource.Source.StartActivity("FeishuWebhook.MultiApp");
-        activity?.SetTag("app_key", appKey);
+        using var activity = FeishuActivitySource.Instance.StartActivity(
+            FeishuActivitySource.ActivityNameWebhookRequest,
+            ActivityKind.Server);
+        activity?.SetTag(FeishuActivitySource.Tags.AppKey, appKey);
         activity?.SetTag("request.id", requestId);
         activity?.SetTag("request.path", path);
         activity?.SetTag("request.client_ip", clientIp);
 
-        // 使用日志作用域自动注入 AppKey 和 RequestId
+        // 生成 CorrelationId，贯穿日志与 Trace
+        var correlationId = Activity.Current?.TraceId.ToString() ?? Guid.NewGuid().ToString("N");
+        activity?.SetTag(FeishuActivitySource.Tags.CorrelationId, correlationId);
+
+        // 使用日志作用域自动注入 AppKey、RequestId 和 CorrelationId
         using var logScope = _logger.BeginScope(new Dictionary<string, object>
         {
+            ["CorrelationId"] = correlationId,
             ["AppKey"] = appKey ?? "unknown",
             ["RequestId"] = requestId,
             ["ClientIp"] = clientIp,
             ["Path"] = path
         });
+
+        // P0-1 修复：记录 Webhook 请求指标（计数 + 耗时），使用实际 AppKey 作为维度
+        using var webhookMetrics = FeishuMetricsHelper.RecordWebhookRequest(appKey ?? "unknown");
 
         try
         {

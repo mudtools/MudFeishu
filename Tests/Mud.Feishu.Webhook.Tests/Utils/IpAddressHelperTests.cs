@@ -7,6 +7,7 @@
 
 using System.Net;
 using FluentAssertions;
+using Mud.Feishu.Webhook.Utils;
 
 namespace Mud.Feishu.Webhook.Tests.Utils;
 

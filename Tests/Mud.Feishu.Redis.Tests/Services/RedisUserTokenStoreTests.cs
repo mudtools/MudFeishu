@@ -14,14 +14,12 @@ public class RedisUserTokenStoreTests
     private readonly Mock<IConnectionMultiplexer> _connectionMultiplexerMock;
     private readonly Mock<IDatabase> _databaseMock;
     private readonly Mock<ILogger<RedisTokenStore>> _tokenStoreLoggerMock;
-    private readonly Mock<ILogger<RedisUserTokenStore>> _loggerMock;
 
     public RedisUserTokenStoreTests()
     {
         _connectionMultiplexerMock = new Mock<IConnectionMultiplexer>();
         _databaseMock = new Mock<IDatabase>();
         _tokenStoreLoggerMock = new Mock<ILogger<RedisTokenStore>>();
-        _loggerMock = new Mock<ILogger<RedisUserTokenStore>>();
 
         _connectionMultiplexerMock
             .Setup(x => x.GetDatabase(It.IsAny<int>(), It.IsAny<object>()))
@@ -44,24 +42,18 @@ public class RedisUserTokenStoreTests
         new RedisTokenStore(_connectionMultiplexerMock.Object, _tokenStoreLoggerMock.Object);
 
     private RedisUserTokenStore CreateSut() =>
-        new RedisUserTokenStore(CreateInnerStore(), _connectionMultiplexerMock.Object, _loggerMock.Object);
+        new RedisUserTokenStore(CreateInnerStore(), _connectionMultiplexerMock.Object);
 
     [Fact]
     public void Constructor_WhenInnerStoreIsNull_ShouldThrowArgumentNullException()
     {
-        Assert.Throws<ArgumentNullException>(() => new RedisUserTokenStore(null!, _connectionMultiplexerMock.Object, _loggerMock.Object));
+        Assert.Throws<ArgumentNullException>(() => new RedisUserTokenStore(null!, _connectionMultiplexerMock.Object));
     }
 
     [Fact]
     public void Constructor_WhenRedisIsNull_ShouldThrowArgumentNullException()
     {
-        Assert.Throws<ArgumentNullException>(() => new RedisUserTokenStore(CreateInnerStore(), null!, _loggerMock.Object));
-    }
-
-    [Fact]
-    public void Constructor_WhenLoggerIsNull_ShouldThrowArgumentNullException()
-    {
-        Assert.Throws<ArgumentNullException>(() => new RedisUserTokenStore(CreateInnerStore(), _connectionMultiplexerMock.Object, null!));
+        Assert.Throws<ArgumentNullException>(() => new RedisUserTokenStore(CreateInnerStore(), null!));
     }
 
     [Fact]

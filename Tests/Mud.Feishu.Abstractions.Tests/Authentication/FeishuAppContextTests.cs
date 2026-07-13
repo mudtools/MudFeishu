@@ -202,6 +202,9 @@ public class FeishuAppContextTests : IDisposable
         // S-3 修复回归：CreateAppContext 通过 GetRequiredService<IFeishuTokenStoreFactory> 创建 per-app TokenStore，
         // 测试基础设施必须注册工厂，否则 GetApp 触发 Lazy 创建时会抛 InvalidOperationException。
         services.TryAddSingleton<IFeishuTokenStoreFactory, PerAppFeishuTokenStoreFactory>();
+        // MA-02 修复回归：CreateAppContext 通过 GetRequiredService<IFeishuTokenManagerFactory> 创建 per-app TokenManager，
+        // 测试基础设施必须注册工厂，否则 GetApp 触发 Lazy 创建时会抛 InvalidOperationException。
+        services.TryAddSingleton<IFeishuTokenManagerFactory, DefaultFeishuTokenManagerFactory>();
 
         // 注册一个自定义服务到 DI 容器
         var customService = new TestDiService();

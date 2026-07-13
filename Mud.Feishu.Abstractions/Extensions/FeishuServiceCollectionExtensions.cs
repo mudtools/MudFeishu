@@ -11,6 +11,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using Mud.Feishu.Abstractions.Authentication;
+using Mud.HttpUtils;
+using Mud.HttpUtils.Observability;
 using Mud.HttpUtils.Resilience;
 
 namespace Mud.Feishu.Abstractions;
@@ -88,7 +90,7 @@ public static class FeishuServiceCollectionExtensions
         foreach (var config in configs)
         {
             var clientName = $"feishu-{config.AppKey}";
-            var baseAddress = config.BaseUrl ?? "https://open.feishu.cn";
+            var baseAddress = config.BaseUrl ?? Consts.DefaultFeishuBaseUrl;
             bool allowCustomBaseUrl = config?.AllowCustomBaseUrl ?? false;
             var timeOut = config?.TimeOut ?? 30;
             // 显式标记默认应用：AddMudHttpClient 内部 setAsDefault=true 时强制覆盖 IEnhancedHttpClient 默认注册，
@@ -110,7 +112,17 @@ public static class FeishuServiceCollectionExtensions
                     client.DefaultRequestHeaders.Add("User-Agent", "MudFeishuClient/1.0");
                     client.Timeout = TimeSpan.FromSeconds(timeOut);
                 },
-                setAsDefault: isDefault);
+                setAsDefault: isDefault)
+            // P1-1 修复：注册 TracingDelegatingHandler，为所有 Feishu API 出站请求自动注入
+            // W3C TraceContext（traceparent header）并产生 Mud.HttpUtils.HttpClient.Request Span。
+            // AddMudHttpClient 不会自动注册此 Handler，需显式链式调用。
+            // 使用工厂方式创建新实例：HttpMessageHandlerBuilder 要求每个 HttpClient 拥有独立的
+            // DelegatingHandler 实例（InnerHandler 不可复用），因此不能用 TracingDelegatingHandler.Shared 单例。
+            // AddMudHttpClient 返回的 IHttpClientBuilder 未将 AddHttpMessageHandler<T>() 的
+            // AddTransient<T>() 转发到主 IServiceCollection，故泛型重载会抛
+            // "No service for type TracingDelegatingHandler has been registered"。
+            // 改用 Func<IServiceProvider, DelegatingHandler> 工厂重载，直接 new 实例，绕过 DI 解析。
+            .AddHttpMessageHandler(_ => new TracingDelegatingHandler());
         }
 
         var defaultConfig = configs.FirstOrDefault(c => c.IsDefault) ?? configs.FirstOrDefault();
@@ -227,6 +239,20 @@ public static class FeishuServiceCollectionExtensions
                     tokenOptions.Enabled = true;
                 }
             });
+
+        // 注册 Mud.HttpUtils 健康检查（Token 刷新 + 熔断器）
+        // Token 刷新健康检查：5 分钟窗口，失败率 ≥30% Degraded，≥50% Unhealthy
+        // 熔断器健康检查：任何 Open → Unhealthy
+        services.AddMudHttpHealthChecks(options =>
+        {
+            options.TokenRefresh.WindowSeconds = 300;
+            options.TokenRefresh.DegradedThreshold = 0.3;
+            options.TokenRefresh.CriticalThreshold = 0.5;
+            options.TokenRefresh.MinSampleSize = 3;
+
+            options.CircuitBreaker.MaxOpenCount = 0;
+            options.CircuitBreaker.MaxHalfOpenCount = 2;
+        });
 
         return services;
     }

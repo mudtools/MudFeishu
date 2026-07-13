@@ -114,7 +114,7 @@ public class FeishuEventMessageHandler : JsonMessageHandler
                     _logger.LogDebug("事件 {EventId} 已在处理中或已处理，跳过 (WasProcessing: {WasProcessing}, Status: {Status})",
                         eventData.EventId, dedupResult.WasProcessing, dedupResult.Status);
                     shouldSkip = true;
-                    FeishuMetricsHelper.RecordEventDeduplicationHit("event_id");
+                    FeishuMetricsHelper.RecordEventDeduplication(_options.AppKey, "event_id", hit: true);
                 }
             }
 
@@ -123,7 +123,7 @@ public class FeishuEventMessageHandler : JsonMessageHandler
                 Exception? processingException = null;
                 bool isInterrupted = false;
 
-                using (FeishuMetricsHelper.RecordEventHandling(eventData.EventType))
+                using (FeishuMetricsHelper.RecordEventHandling(_options.AppKey, eventData.EventType))
                 {
                     try
                     {
@@ -152,7 +152,7 @@ public class FeishuEventMessageHandler : JsonMessageHandler
                             }
 
                             // 记录事件处理成功
-                            FeishuMetricsHelper.RecordEventHandlingSuccess(eventData.EventType);
+                            FeishuMetricsHelper.RecordEventOutcome(_options.AppKey, eventData.EventType, success: true);
                         }
                     }
                     catch (Exception ex)
@@ -166,7 +166,7 @@ public class FeishuEventMessageHandler : JsonMessageHandler
                         }
 
                         // 记录事件处理失败
-                        FeishuMetricsHelper.RecordEventHandlingFailure(eventData.EventType, ex.GetType().Name);
+                        FeishuMetricsHelper.RecordEventOutcome(_options.AppKey, eventData.EventType, success: false, ex.GetType().Name);
                         throw;
                     }
                     finally

@@ -37,6 +37,7 @@ public static class TimestampHelper
     /// </summary>
     /// <param name="timestamp">原始时间戳</param>
     /// <returns>秒级时间戳</returns>
+    [Obsolete("此方法在 SDK 内部未被使用，计划在 v4.0 移除。如需类似功能请直接使用 IsMilliseconds + 手动换算。")]
     public static long NormalizeToSeconds(long timestamp)
     {
         return timestamp < MillisecondThreshold ? timestamp : timestamp / 1000;
@@ -48,6 +49,7 @@ public static class TimestampHelper
     /// </summary>
     /// <param name="timestamp">原始时间戳</param>
     /// <returns>毫秒级时间戳</returns>
+    [Obsolete("此方法在 SDK 内部未被使用，计划在 v4.0 移除。如需类似功能请直接使用 IsMilliseconds + 手动换算。")]
     public static long NormalizeToMilliseconds(long timestamp)
     {
         return timestamp < MillisecondThreshold ? timestamp * 1000 : timestamp;

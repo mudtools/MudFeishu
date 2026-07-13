@@ -95,7 +95,7 @@ public static class ServiceCollectionExtensions
     {
         services.CreateFeishuWebhookServiceBuilder(configuration, "FeishuWebhook")
             .AddInterceptor<LoggingEventInterceptor>()
-            .AddInterceptor<TelemetryEventInterceptor>(sp => new TelemetryEventInterceptor("TaskManageDemo.Backend"))
+            .AddInterceptor<TelemetryEventInterceptor>(sp => new TelemetryEventInterceptor("task_manage_demo"))
             .AddInterceptor<AuditLogInterceptor>()
             .AddInterceptor<PerformanceMonitoringInterceptor>()
             .AddHandler<UserCreatedEventHandler>()

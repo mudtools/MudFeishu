@@ -50,6 +50,10 @@ public class MultiAppTests
         // 测试基础设施必须注册工厂，否则任何触发 Lazy 创建的测试都会抛 InvalidOperationException。
         services.TryAddSingleton<IFeishuTokenStoreFactory, PerAppFeishuTokenStoreFactory>();
 
+        // MA-02 修复回归：CreateAppContext 通过 GetRequiredService<IFeishuTokenManagerFactory> 创建 per-app TokenManager，
+        // 测试基础设施必须注册工厂，否则任何触发 Lazy 创建的测试都会抛 InvalidOperationException。
+        services.TryAddSingleton<IFeishuTokenManagerFactory, DefaultFeishuTokenManagerFactory>();
+
         return services;
     }
 

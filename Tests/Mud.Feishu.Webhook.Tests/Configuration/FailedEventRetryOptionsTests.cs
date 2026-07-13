@@ -155,7 +155,9 @@ public class FailedEventRetryOptionsTests
         act.Should().NotThrow();
     }
 
-    // ========== EnableRetry=false 时子配置一致性校验测试 ==========
+    // ========== EnableRetry=false 时宽松验证测试 ==========
+    // 实现已改为宽松验证：EnableRetry=false 时仅校验基本范围，不强制要求子配置等于默认值。
+    // 这允许在配置热更新或动态切换时更灵活的处理。
 
     [Fact]
     public void Validate_ShouldNotThrow_WhenEnableRetryFalseAndAllDefaults()
@@ -169,62 +171,68 @@ public class FailedEventRetryOptionsTests
     }
 
     [Fact]
-    public void Validate_ShouldThrow_WhenEnableRetryFalseButMaxRetryCountNonDefault()
+    public void Validate_ShouldNotThrow_WhenEnableRetryFalseButMaxRetryCountNonDefault()
     {
+        // 宽松验证：EnableRetry=false 时，MaxRetryCount 只要在有效范围内（>= 0）即通过
         var options = new FailedEventRetryOptions { EnableRetry = false, MaxRetryCount = 5 };
 
         var act = () => options.Validate();
 
-        act.Should().Throw<InvalidOperationException>().WithMessage("*EnableRetry 为 false 但 MaxRetryCount*");
+        act.Should().NotThrow();
     }
 
     [Fact]
-    public void Validate_ShouldThrow_WhenEnableRetryFalseButInitialRetryDelaySecondsNonDefault()
+    public void Validate_ShouldNotThrow_WhenEnableRetryFalseButInitialRetryDelaySecondsNonDefault()
     {
+        // 宽松验证：EnableRetry=false 时，InitialRetryDelaySeconds 只要在有效范围内（>= 1）即通过
         var options = new FailedEventRetryOptions { EnableRetry = false, InitialRetryDelaySeconds = 30 };
 
         var act = () => options.Validate();
 
-        act.Should().Throw<InvalidOperationException>().WithMessage("*EnableRetry 为 false 但 InitialRetryDelaySeconds*");
+        act.Should().NotThrow();
     }
 
     [Fact]
-    public void Validate_ShouldThrow_WhenEnableRetryFalseButRetryDelayMultiplierNonDefault()
+    public void Validate_ShouldNotThrow_WhenEnableRetryFalseButRetryDelayMultiplierNonDefault()
     {
+        // 宽松验证：EnableRetry=false 时，RetryDelayMultiplier 只要在有效范围内（>= 1.0）即通过
         var options = new FailedEventRetryOptions { EnableRetry = false, RetryDelayMultiplier = 3.0 };
 
         var act = () => options.Validate();
 
-        act.Should().Throw<InvalidOperationException>().WithMessage("*EnableRetry 为 false 但 RetryDelayMultiplier*");
+        act.Should().NotThrow();
     }
 
     [Fact]
-    public void Validate_ShouldThrow_WhenEnableRetryFalseButMaxRetryDelaySecondsNonDefault()
+    public void Validate_ShouldNotThrow_WhenEnableRetryFalseButMaxRetryDelaySecondsNonDefault()
     {
+        // 宽松验证：EnableRetry=false 时，MaxRetryDelaySeconds 只要 >= InitialRetryDelaySeconds 即通过
         var options = new FailedEventRetryOptions { EnableRetry = false, MaxRetryDelaySeconds = 600 };
 
         var act = () => options.Validate();
 
-        act.Should().Throw<InvalidOperationException>().WithMessage("*EnableRetry 为 false 但 MaxRetryDelaySeconds*");
+        act.Should().NotThrow();
     }
 
     [Fact]
-    public void Validate_ShouldThrow_WhenEnableRetryFalseButRetryPollIntervalSecondsNonDefault()
+    public void Validate_ShouldNotThrow_WhenEnableRetryFalseButRetryPollIntervalSecondsNonDefault()
     {
+        // 宽松验证：EnableRetry=false 时，RetryPollIntervalSeconds 只要在有效范围内（>= 1）即通过
         var options = new FailedEventRetryOptions { EnableRetry = false, RetryPollIntervalSeconds = 60 };
 
         var act = () => options.Validate();
 
-        act.Should().Throw<InvalidOperationException>().WithMessage("*EnableRetry 为 false 但 RetryPollIntervalSeconds*");
+        act.Should().NotThrow();
     }
 
     [Fact]
-    public void Validate_ShouldThrow_WhenEnableRetryFalseButMaxRetryPerPollNonDefault()
+    public void Validate_ShouldNotThrow_WhenEnableRetryFalseButMaxRetryPerPollNonDefault()
     {
+        // 宽松验证：EnableRetry=false 时，MaxRetryPerPoll 只要在有效范围内（>= 1）即通过
         var options = new FailedEventRetryOptions { EnableRetry = false, MaxRetryPerPoll = 20 };
 
         var act = () => options.Validate();
 
-        act.Should().Throw<InvalidOperationException>().WithMessage("*EnableRetry 为 false 但 MaxRetryPerPoll*");
+        act.Should().NotThrow();
     }
 }

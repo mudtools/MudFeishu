@@ -32,14 +32,22 @@ public class FeishuWebhookHealthCheckTests
         };
     }
 
+    private FeishuWebhookConcurrencyService CreateConcurrencyService(int maxConcurrent)
+    {
+        var opts = new FeishuWebhookOptions
+        {
+            MaxConcurrentEvents = maxConcurrent,
+            EventHandlingTimeoutMs = 30000
+        };
+        _optionsMock.Setup(x => x.CurrentValue).Returns(opts);
+        return new FeishuWebhookConcurrencyService(_optionsMock.Object, Mock.Of<ILogger<FeishuWebhookConcurrencyService>>());
+    }
+
     [Fact]
-    public async Task CheckHealthAsync_WithValidOptions_ShouldReturnHealthy()
+    public async Task CheckHealthAsync_WithAvailableSlots_ShouldReturnHealthy()
     {
         // Arrange
-        _optionsMock.Setup(x => x.CurrentValue).Returns(_options);
-
-        // 使用真实的 FeishuWebhookConcurrencyService 实例
-        var concurrencyService = new FeishuWebhookConcurrencyService(_optionsMock.Object, Mock.Of<ILogger<FeishuWebhookConcurrencyService>>());
+        var concurrencyService = CreateConcurrencyService(10);
 
         var healthCheck = new FeishuWebhookHealthCheck(
             _optionsMock.Object,
@@ -50,10 +58,9 @@ public class FeishuWebhookHealthCheckTests
 
         // Assert
         result.Status.Should().Be(HealthStatus.Healthy);
-        result.Description.Should().Be("飞书 Webhook 服务运行正常");
-        result.Data.Should().ContainKey("configuration_valid");
-        result.Data["configuration_valid"].Should().Be(true);
+        result.Data.Should().ContainKey("max_concurrent_events");
         result.Data["max_concurrent_events"].Should().Be(10);
+        result.Data.Should().ContainKey("available_concurrent_slots");
         result.Data["timeout_ms"].Should().Be(30000);
     }
 
@@ -61,15 +68,7 @@ public class FeishuWebhookHealthCheckTests
     public async Task CheckHealthAsync_WithDifferentConcurrencySettings_ShouldReturnCorrectData()
     {
         // Arrange
-        var customOptions = new FeishuWebhookOptions
-        {
-            MaxConcurrentEvents = 50,
-            EventHandlingTimeoutMs = 60000
-        };
-        _optionsMock.Setup(x => x.CurrentValue).Returns(customOptions);
-
-        // 使用真实的 FeishuWebhookConcurrencyService 实例
-        var concurrencyService = new FeishuWebhookConcurrencyService(_optionsMock.Object, Mock.Of<ILogger<FeishuWebhookConcurrencyService>>());
+        var concurrencyService = CreateConcurrencyService(50);
 
         var healthCheck = new FeishuWebhookHealthCheck(
             _optionsMock.Object,
@@ -80,17 +79,16 @@ public class FeishuWebhookHealthCheckTests
 
         // Assert
         result.Data["max_concurrent_events"].Should().Be(50);
-        result.Data["timeout_ms"].Should().Be(60000);
+        result.Data["timeout_ms"].Should().Be(30000);
     }
 
     [Fact]
-    public async Task CheckHealthAsync_ShouldContainHealthCheckNotes()
+    public async Task CheckHealthAsync_WhenSlotsExhausted_ShouldReturnUnhealthy()
     {
-        // Arrange
-        _optionsMock.Setup(x => x.CurrentValue).Returns(_options);
-
-        // 使用真实的 FeishuWebhookConcurrencyService 实例
-        var concurrencyService = new FeishuWebhookConcurrencyService(_optionsMock.Object, Mock.Of<ILogger<FeishuWebhookConcurrencyService>>());
+        // Arrange - 占满所有并发槽位
+        var concurrencyService = CreateConcurrencyService(2);
+        await concurrencyService.AcquireAsync(CancellationToken.None);
+        await concurrencyService.AcquireAsync(CancellationToken.None);
 
         var healthCheck = new FeishuWebhookHealthCheck(
             _optionsMock.Object,
@@ -100,7 +98,29 @@ public class FeishuWebhookHealthCheckTests
         var result = await healthCheck.CheckHealthAsync(new HealthCheckContext());
 
         // Assert
-        result.Data.Should().ContainKey("health_check_notes");
-        result.Data["health_check_notes"].ToString().Should().Contain("TelemetryEventInterceptor");
+        result.Status.Should().Be(HealthStatus.Unhealthy);
+        result.Description.Should().Contain("并发槽位已耗尽");
+    }
+
+    [Fact]
+    public async Task CheckHealthAsync_WhenUtilizationAbove80Percent_ShouldReturnDegraded()
+    {
+        // Arrange - 10 个槽位，占用 9 个（90% 利用率）
+        var concurrencyService = CreateConcurrencyService(10);
+        for (int i = 0; i < 9; i++)
+        {
+            await concurrencyService.AcquireAsync(CancellationToken.None);
+        }
+
+        var healthCheck = new FeishuWebhookHealthCheck(
+            _optionsMock.Object,
+            concurrencyService);
+
+        // Act
+        var result = await healthCheck.CheckHealthAsync(new HealthCheckContext());
+
+        // Assert
+        result.Status.Should().Be(HealthStatus.Degraded);
+        result.Description.Should().Contain("并发利用率");
     }
 }

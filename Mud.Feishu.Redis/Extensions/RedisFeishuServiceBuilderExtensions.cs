@@ -10,6 +10,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using Mud.Feishu.Abstractions;
+using Mud.Feishu.Abstractions.Configuration;
 using Mud.Feishu.Redis.Configuration;
 using Mud.Feishu.Redis.HealthChecks;
 using Mud.Feishu.Redis.Services;
@@ -101,15 +102,12 @@ public static class RedisFeishuServiceBuilderExtensions
         services.AddSingleton<IFeishuEventDeduplicator>(sp =>
         {
             var redis = sp.GetRequiredService<IConnectionMultiplexer>();
-            var options = sp.GetRequiredService<RedisOptions>();
             var logger = sp.GetService<ILogger<RedisFeishuEventDistributedDeduplicator>>();
 
             return new RedisFeishuEventDistributedDeduplicator(
                 redis,
-                logger,
-                options.EventCacheExpiration,
-                processingTimeout: null,
-                keyPrefix: options.EventKeyPrefix);
+                DeduplicationOptions.Default,
+                logger);
         });
 
         return services;
@@ -152,8 +150,8 @@ public static class RedisFeishuServiceBuilderExtensions
             return new RedisFeishuSeqIDDeduplicator(
                 redis,
                 logger,
-                options.SeqIdCacheExpiration,
-                options.SeqIdKeyPrefix);
+                cacheExpiration: DeduplicationOptions.Default.CacheExpiration,
+                keyPrefix: options.SeqIdKeyPrefix);
         });
 
         return services;
@@ -178,8 +176,7 @@ public static class RedisFeishuServiceBuilderExtensions
         {
             var innerStore = sp.GetRequiredService<RedisTokenStore>();
             var redis = sp.GetRequiredService<IConnectionMultiplexer>();
-            var logger = sp.GetService<ILogger<RedisUserTokenStore>>();
-            return new RedisUserTokenStore(innerStore, redis, logger!);
+            return new RedisUserTokenStore(innerStore, redis);
         });
 
         // S-3 修复：注册 SingletonFeishuTokenStoreFactory，使 FeishuAppManager.CreateAppContext

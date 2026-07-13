@@ -298,17 +298,16 @@ public static class FeishuMultiAppExtensions
     {
 #if NET6_0_OR_GREATER
         // NET6+：使用 FeishuTokenRegistrationService（IHostedService）在应用启动时注册令牌
-        services.AddSingleton<IFeishuAppManager>(sp => new FeishuAppManager(
+        services.AddSingleton<FeishuAppManager>(sp => new FeishuAppManager(
             sp,
             configs,
             sp.GetRequiredService<ILogger<FeishuAppManager>>()));
 #else
-        // netstandard2.0：没有 IHostedService 生命周期，在 IFeishuAppManager 工厂中注册令牌。
+        // netstandard2.0：没有 IHostedService 生命周期，在 FeishuAppManager 工厂中注册令牌。
         // REG-03 修复：原实现调用 GetAllApps() 强制创建所有应用，与 NET6+ 的懒加载策略不一致。
         // 改为仅在首次访问默认应用时注册其令牌管理器（通过 GetDefaultApp 触发懒加载），
         // 其余应用的令牌管理器在运行时按需注册（调用方通过 GetApp 触发懒加载后再注册到刷新服务）。
-        // 注意：不能添加第二个 IFeishuAppManager 注册（会导致 GetRequiredService<IFeishuAppManager> 无限递归）
-        services.AddSingleton<IFeishuAppManager>(sp =>
+        services.AddSingleton<FeishuAppManager>(sp =>
         {
             var appManager = new FeishuAppManager(
                 sp,
@@ -343,6 +342,10 @@ public static class FeishuMultiAppExtensions
             return appManager;
         });
 #endif
+        // 桥接注册：将 FeishuAppManager 具体类型映射到 IFeishuAppManager 接口，
+        // 确保通过 GetRequiredService<IFeishuAppManager>() 与 GetRequiredService<FeishuAppManager>() 返回同一单例实例，
+        // 便于测试与需要调用 FeishuAppManager 特有方法（如 RemoveApp override）的场景访问具体类型。
+        services.AddSingleton<IFeishuAppManager>(sp => sp.GetRequiredService<FeishuAppManager>());
 
         RegisterCoreServicesWithoutAppManager(services, configs, configuration, sectionName);
     }
@@ -426,15 +429,9 @@ public static class FeishuMultiAppExtensions
         if (configs.Count == 0)
             throw new InvalidOperationException("至少需要配置一个飞书应用");
 
-        // 检查是否有重复的AppKey
-        // NEW-REG-03 修复：AppKey 应严格大小写敏感，统一使用 StringComparer.Ordinal
-        var duplicateAppKeys = configs.GroupBy(c => c.AppKey, StringComparer.Ordinal)
-                                       .Where(g => g.Count() > 1)
-                                       .Select(g => g.Key)
-                                       .ToList();
-        if (duplicateAppKeys.Any())
-            throw new InvalidOperationException($"检测到重复的AppKey: {string.Join(", ", duplicateAppKeys)}");
-
+        // MA-05 设计：重复 AppKey 不在验证阶段抛异常，改由 FeishuAppManager 构造函数记录警告日志
+        // 并按"后注册覆盖先注册"语义处理，避免静默覆盖导致配置错误难以排查。
+        // 此处仅校验单条配置的合法性（AppKey/AppId/AppSecret 非空等），跨配置的重复检查交由 FeishuAppManager。
         // 验证所有配置
         foreach (var config in configs)
         {
@@ -450,15 +447,23 @@ public static class FeishuMultiAppExtensions
             }
         }
 
+        // 按 AppKey 去重（保留最后一个），用于后续默认应用数量检查。
+        // MA-05 设计：重复 AppKey 由 FeishuAppManager 构造函数记录警告 + 后注册覆盖先注册处理，
+        // 此处不应因重复 AppKey 触发"多个 IsDefault=true"异常（重复的 config 在运行时会被覆盖）。
+        var dedupedConfigs = configs
+            .GroupBy(c => c.AppKey, StringComparer.Ordinal)
+            .Select(g => g.Last())
+            .ToList();
+
         // 如果没有指定默认应用，设置第一个为默认
-        var defaultAppCount = configs.Count(c => c.IsDefault);
+        var defaultAppCount = dedupedConfigs.Count(c => c.IsDefault);
         if (defaultAppCount == 0)
         {
             configs[0].IsDefault = true;
         }
         else if (defaultAppCount > 1)
         {
-            var defaultAppKeys = configs.Where(c => c.IsDefault).Select(c => c.AppKey);
+            var defaultAppKeys = dedupedConfigs.Where(c => c.IsDefault).Select(c => c.AppKey);
             throw new InvalidOperationException(
                 $"检测到多个 IsDefault=true 的应用（{string.Join(", ", defaultAppKeys)}），仅允许一个默认应用。请确保只有一个应用标记为 IsDefault=true。");
         }

@@ -11,6 +11,8 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Mud.Feishu.Abstractions.Authentication;
+using Mud.Feishu.Abstractions.Utilities;
+using Mud.Feishu.Authentication;
 using Mud.HttpUtils;
 using static Mud.Feishu.Abstractions.Tests.Helpers.TestDataFactory;
 
@@ -183,11 +185,16 @@ public class FeishuAppManagerTests
     }
 
     // ============================================================
-    // MA-05：检测重复 AppKey 并发出警告
+    // MA-05 / REG-01：检测重复 AppKey 时快速失败
     // ============================================================
+    // 设计权衡：MA-05 原设计为"警告 + 后注册覆盖先注册"，但 REG-01 修复指出
+    // HttpClient 命名注册的 ClientFactories 同名键覆盖行为不可预测，
+    // 因此在 AddFeishuAppBaseServices 阶段即抛异常实现快速失败，避免运行时不可预测行为。
+    // FeishuAppManager 构造函数中的 MA-05 警告逻辑作为防御性兜底保留，
+    // 用于绕过 AddFeishuApp 直接构造 FeishuAppManager 的场景。
 
     [Fact]
-    public void Constructor_WhenDuplicateAppKeyExists_ShouldLogWarning()
+    public void AddFeishuApp_WhenDuplicateAppKeyExists_ShouldThrowInvalidOperationException()
     {
         // Arrange
         var services = CreateServiceCollection();
@@ -208,21 +215,10 @@ public class FeishuAppManagerTests
             }
         };
 
-        // 使用可验证的 Logger
-        var loggerProvider = new TestLoggerProvider();
-        services.AddLogging(builder => builder.AddProvider(loggerProvider));
-
-        // Act
-        services.AddFeishuApp(configs);
-        using var provider = services.BuildServiceProvider();
-
-        // 触发 FeishuAppManager 创建
-        _ = provider.GetRequiredService<IFeishuAppManager>();
-
-        // Assert: 应记录警告日志
-        loggerProvider.LogEntries.Should().Contain(
-            e => e.LogLevel == LogLevel.Warning && e.Message.Contains("重复的 AppKey"),
-            "检测到重复 AppKey 时应发出警告日志");
+        // Act & Assert: REG-01 设计 - 重复 AppKey 在 AddFeishuAppBaseServices 阶段快速失败
+        Action act = () => services.AddFeishuApp(configs);
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*检测到重复的 AppKey*");
     }
 
     [Fact]

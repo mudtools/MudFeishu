@@ -112,18 +112,13 @@ public static class FeishuServiceCollectionExtensions
                     client.DefaultRequestHeaders.Add("User-Agent", "MudFeishuClient/1.0");
                     client.Timeout = TimeSpan.FromSeconds(timeOut);
                 },
-                setAsDefault: isDefault)
-            // P1-1 修复：注册 TracingDelegatingHandler，为所有 Feishu API 出站请求自动注入
-            // W3C TraceContext（traceparent header）并产生 Mud.HttpUtils.HttpClient.Request Span。
-            // AddMudHttpClient 不会自动注册此 Handler，需显式链式调用。
-            // 使用工厂方式创建新实例：HttpMessageHandlerBuilder 要求每个 HttpClient 拥有独立的
-            // DelegatingHandler 实例（InnerHandler 不可复用），因此不能用 TracingDelegatingHandler.Shared 单例。
-            // AddMudHttpClient 返回的 IHttpClientBuilder 未将 AddHttpMessageHandler<T>() 的
-            // AddTransient<T>() 转发到主 IServiceCollection，故泛型重载会抛
-            // "No service for type TracingDelegatingHandler has been registered"。
-            // 改用 Func<IServiceProvider, DelegatingHandler> 工厂重载，直接 new 实例，绕过 DI 解析。
-            .AddHttpMessageHandler(_ => new TracingDelegatingHandler());
-        }
+                setAsDefault: isDefault);
+            // P1-1 修复说明：TracingDelegatingHandler 已由 AddMudHttpClient 内部通过
+            // httpClientBuilder.AddHttpMessageHandler(() => new TracingDelegatingHandler()) 注册，
+            // 无需在此重复链式调用。重复注册会导致同一 named client 的 HttpMessageHandlerBuilderActions
+            // 包含两个 TracingDelegatingHandler 工厂委托，在批量测试场景下触发
+            // "The 'InnerHandler' property must be null" 异常（HttpMessageHandlerBuilder 禁止复用 DelegatingHandler）。
+            }
 
         var defaultConfig = configs.FirstOrDefault(c => c.IsDefault) ?? configs.FirstOrDefault();
         if (defaultConfig != null)

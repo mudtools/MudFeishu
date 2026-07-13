@@ -9,10 +9,16 @@ using Microsoft.Extensions.Logging;
 
 namespace Mud.Feishu.WebSocket;
 
+/// <summary>
+/// 重试帮助类
+/// </summary>
 public static class RetryHelper
 {
     private static readonly Random JitterRandom = new();
 
+    /// <summary>
+    /// 重试执行异步操作，使用指数退避策略和随机抖动。
+    /// </summary>
     public static async Task<T> RetryWithExponentialBackoffAsync<T>(
         ILogger logger,
         Func<Task<T>> operation,

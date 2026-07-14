@@ -11,6 +11,7 @@ namespace Mud.Feishu.DataModels.AI;
 /// 提取文件中的合同字段请求体
 /// </summary>
 [FormContent]
+[HttpJsonSerializable(SerializerClassName = "AI")]
 public partial class ContractFileUploadRequest
 {
     /// <summary>

@@ -10,6 +10,7 @@ namespace Mud.Feishu.EventCallback.IM;
 /// <summary>
 /// 
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "IM")]
 public class MessageReader
 {
     /// <summary>

@@ -10,6 +10,7 @@ namespace Mud.Feishu.EventCallback.Organization;
 /// <summary>
 /// 人员类型的选项信息。
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Organization")]
 public class EmployeeTypeEnum
 {
     /// <summary>

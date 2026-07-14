@@ -17,6 +17,7 @@ namespace Mud.Feishu.EventCallback.Approval;
 /// </summary>
 [GenerateEventHandler(EventType = FeishuEventTypes.WorkApprovalRevert, HandlerNamespace = Consts.HandlerNamespace,
               InheritedFrom = Consts.InheritedFrom)]
+[HttpJsonSerializable(SerializerClassName = "Approval")]
 public class WorkApprovalRevertResult : IEventResult
 {
 

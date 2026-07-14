@@ -10,6 +10,7 @@ namespace Mud.Feishu.EventCallback.Organization;
 /// <summary>
 /// 
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Organization")]
 public class OldDepartmentObject
 {
     /// <summary>

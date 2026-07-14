@@ -7,6 +7,7 @@
 
 using Microsoft.Extensions.Logging;
 using Mud.Feishu.Abstractions.Metrics;
+using Mud.Feishu.Abstractions.Utilities;
 using Mud.Feishu.WebSocket.DataModels;
 using Mud.Feishu.WebSocket.SocketEventArgs;
 using System.Text.Json;
@@ -244,7 +245,8 @@ public class AuthenticationManager
     {
         try
         {
-            var authResponse = JsonSerializer.Deserialize<AuthResponseMessage>(responseMessage);
+            var authResponse = JsonSerializer.Deserialize<AuthResponseMessage>(
+                responseMessage, FeishuJsonDefaults.DeserializerOptions);
 
             if (authResponse?.Code == 0)
             {

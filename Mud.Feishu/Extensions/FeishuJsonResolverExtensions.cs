@@ -46,6 +46,7 @@ public static class FeishuJsonResolverExtensions
     {
         // 合并所有已生成的 DataModels Context（均为 internal，通过 InternalsVisibleTo 访问）
         var dataModelsResolver = JsonTypeInfoResolver.Combine(
+            FeishuApiResultJsonContext.Default,    // P0-1: 优先匹配响应包装
             AIJsonContext.Default,
             ApprovalJsonContext.Default,
             AttendanceJsonContext.Default,

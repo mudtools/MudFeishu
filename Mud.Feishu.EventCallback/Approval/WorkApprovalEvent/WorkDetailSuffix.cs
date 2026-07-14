@@ -10,6 +10,7 @@ namespace Mud.Feishu.EventCallback.Approval;
 /// <summary>
 /// 每日加班明细
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Approval")]
 public class WorkDetailSuffix
 {
     /// <summary>

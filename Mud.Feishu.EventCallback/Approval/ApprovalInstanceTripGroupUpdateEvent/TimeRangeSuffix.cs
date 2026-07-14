@@ -10,6 +10,7 @@ namespace Mud.Feishu.EventCallback.Approval;
 /// <summary>
 /// 时间段信息
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Approval")]
 public class TimeRangeSuffix
 {
     /// <summary>

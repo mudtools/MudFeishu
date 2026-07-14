@@ -11,6 +11,7 @@ namespace Mud.Feishu.EventCallback.IM;
 /// <summary>
 /// 群可发言成员名单的变更信息
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "IM")]
 public class ModeratorChangeList
 {
     /// <summary>

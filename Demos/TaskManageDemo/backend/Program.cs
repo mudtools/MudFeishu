@@ -95,8 +95,6 @@ builder.Services.AddDatabaseServices(builder.Configuration);
 builder.Services.AddFeishuServices(builder.Configuration);
 builder.Services.AddWebhookServices(builder.Configuration);
 builder.Services.AddBusinessServices(builder.Configuration);
-
-// 添加飞书用户上下文服务
 builder.Services.AddFeishuUserContext(o =>
 {
     o.OpenIdClaimType = "open_id";

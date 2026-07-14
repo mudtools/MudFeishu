@@ -10,6 +10,7 @@ namespace Mud.Feishu.EventCallback.Organization;
 /// <summary>
 /// 用户操作结果信息类，包含飞书平台中用户的详细信息
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Organization")]
 public class UserResultInfo
 {
     /// <summary>

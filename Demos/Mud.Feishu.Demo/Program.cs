@@ -40,16 +40,7 @@ builder.Configuration
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-#if net8 || net9
-builder.Services.AddSwaggerGen(options =>
-{
-    options.CustomSchemaIds(type => type.FullName);
-});
-#endif
-
-#if net10
-builder.Services.AddOpenApi();
-#endif
+builder.Services.AddOpenApi(); // 替换Swagger为OpenApi (P1-5)
 
 // 添加飞书服务 - 使用多应用模式
 builder.Services.AddFeishuApp(builder.Configuration, "FeishuApps");
@@ -74,16 +65,8 @@ var app = builder.Build();
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
-#if net8 || net9
-    app.UseSwagger();
-    app.UseSwaggerUI(options =>
-    {
-        options.RoutePrefix = "swagger";
-    });
-
-    // 重定向根路径到 Swagger UI
-    app.MapGet("/", () => Results.Redirect("/swagger/index.html"));
-#endif
+    // 注意：OpenApi没有UI，保留重定向到 Swagger 或通过其他文档方式
+    // app.MapGet("/", () => Results.Redirect("/api/index.html")); // OpenApi端点在 /api
 }
 
 // 仅在生产环境启用 HTTPS 重定向（开发环境使用 HTTP，避免端口未配置警告）

@@ -55,6 +55,19 @@ jobs:
       - name: Build
         run: dotnet build ${{ env.SOLUTION_FILE }} --no-restore --configuration ${{ env.CONFIGURATION }}
 
+      # P3-1：AOT 发布验证（仅 net8.0 及以上）
+      - name: AOT Publish Verification
+        run: |
+          # 发布 AotVerification 示例进行 Smoke Test
+          dotnet publish Demos/Mud.Feishu.AotVerification \
+            --framework net8.0 \
+            --configuration ${{ env.CONFIGURATION }} \
+            --runtime linux-x64 \
+            --self-contained true
+          # 验证可执行文件存在
+          test -f "Demos/Mud.Feishu.AotVerification/bin/${{ env.CONFIGURATION }}/net8.0/linux-x64/publish/Mud.Feishu.AotVerification" || exit 1
+          echo "✅ AOT publish verification passed"
+
       # 步骤5：运行单元测试（排除不完善的项目）
       - name: Run tests
         run: dotnet test ${{ env.SOLUTION_FILE }} --no-build --configuration ${{ env.CONFIGURATION }} --logger trx --verbosity normal --filter "FullyQualifiedName!~Mud.Feishu.Tests"

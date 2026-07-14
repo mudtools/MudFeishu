@@ -17,6 +17,7 @@ namespace Mud.Feishu.EventCallback.Mail;
 /// </summary>
 [GenerateEventHandler(EventType = FeishuEventTypes.MessageReceived, HandlerNamespace = Consts.HandlerNamespace,
               InheritedFrom = Consts.InheritedFrom, HeaderType = nameof(FeishuEventHeader))]
+[HttpJsonSerializable(SerializerClassName = "Mail")]
 public class MessageReceivedResult : IEventResult
 {
     /// <summary>
@@ -63,6 +64,7 @@ public class MessageReceivedResult : IEventResult
 /// <summary>
 /// 订阅者
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Mail")]
 public class MailSubscriber
 {
     /// <summary>

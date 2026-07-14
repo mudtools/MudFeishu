@@ -497,8 +497,8 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
             httpClientFactory, clientName, encryptionProvider, enhancedOptions);
 
         // === 步骤 2：创建 AuthenticationApi（使用基础 HttpClient） ===
-        var authenticationApi = (IFeishuAuthentication)ActivatorUtilities.CreateInstance(
-            _serviceProvider, typeof(FeishuAuthentication), jsonSerializerOptions, basicHttpClient);
+        // N-01 修复：改用 DI 解析，消除 ActivatorUtilities.CreateInstance 的 "new" 调用编译限制
+        var authenticationApi = _serviceProvider.GetRequiredService<IFeishuAuthentication>();
 
         // === 步骤 3：创建 TokenManager（依赖 AuthenticationApi） ===
         // S-3 修复：通过 IFeishuTokenStoreFactory 替代 is FeishuTokenStore 类型检查。

@@ -15,6 +15,14 @@
 		<WarningsNotAsErrors>$(WarningsNotAsErrors);NU1605</WarningsNotAsErrors>
 	</PropertyGroup>
 
+	<!-- AOT 全局配置 -->
+	<PropertyGroup Condition="'$(TargetFramework)' == 'net8.0' or '$(TargetFramework)' == 'net10.0'">
+		<!-- P2-4.5：集中管理 AOT 设置 -->
+		<IsAotCompatible>true</IsAotCompatible>
+		<WarningsAsErrors>$(WarningsAsErrors);AOT001;AOT002;AOT003;AOT004;AOT007</WarningsAsErrors>
+		<!-- 注意：排除 AOT005/AOT006，因其在 net10.0 下误报 -->
+	</PropertyGroup>
+
 	<ItemGroup Condition="'$(TargetFramework)' == 'net10.0' or '$(TargetFramework)' == 'net9.0' or '$(TargetFramework)' == 'net8.0'">
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.9" />
 		<PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.9" />

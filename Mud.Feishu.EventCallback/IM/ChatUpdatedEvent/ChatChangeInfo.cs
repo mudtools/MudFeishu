@@ -11,6 +11,7 @@ namespace Mud.Feishu.EventCallback.IM;
 /// <summary>
 /// 群更新信息
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "IM")]
 public class ChatChangeInfo
 {
     /// <summary>

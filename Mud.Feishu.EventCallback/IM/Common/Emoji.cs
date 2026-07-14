@@ -10,6 +10,7 @@ namespace Mud.Feishu.EventCallback.IM;
 /// <summary>
 /// 表情回复的资源类型
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "IM")]
 public class Emoji
 {
     /// <summary>

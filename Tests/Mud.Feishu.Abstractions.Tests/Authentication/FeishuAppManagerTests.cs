@@ -5,6 +5,7 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using System.Collections.Concurrent;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -26,6 +27,8 @@ namespace Mud.Feishu.Abstractions.Tests.Authentication;
 /// - MA-01：GetDefaultApp 使用 override 而非 new（里氏替换原则）
 /// - MA-03：移除默认应用后自动提升第一个剩余应用为新默认
 /// - MA-05：检测重复 AppKey 并发出警告
+/// - NEW-MA-08：Lazy&lt;&gt; 异常缓存重建（GetOrCreateContext/TryGetApp 在捕获非 InvalidOperationException 时重建 Lazy）
+/// - NEW-MA-09：volatile + lock 保护 GetDefaultApp/RemoveApp/AddApp 的 TOCTOU 竞态
 /// </remarks>
 public class FeishuAppManagerTests
 {
@@ -243,6 +246,203 @@ public class FeishuAppManagerTests
         // Assert: 不应有重复 AppKey 警告
         loggerProvider.LogEntries.Should().NotContain(
             e => e.LogLevel == LogLevel.Warning && e.Message.Contains("重复的 AppKey"));
+    }
+
+    // ============================================================
+    // NEW-MA-08：Lazy<> 异常缓存重建
+    // ============================================================
+
+    /// <summary>
+    /// NEW-MA-08 验证：当 Lazy 初始化抛出非 InvalidOperationException 异常时，
+    /// GetApp 应抛出包装后的 InvalidOperationException，并在下次调用时重建 Lazy 允许重试。
+    /// 业务场景：首次初始化因瞬时故障（如 Redis 短暂不可用）失败，
+    /// Lazy&lt;ExecutionAndPublication&gt; 会缓存异常导致永久不可用；
+    /// 修复后通过双检锁重建 Lazy 实例，允许下次调用重试初始化。
+    /// </summary>
+    [Fact]
+    public void GetApp_WhenLazyInitializationFails_ShouldRebuildLazyOnNextCall()
+    {
+        // Arrange：通过 mock IFeishuTokenStoreFactory.Create（CreateAppContext 中同步调用）
+        // 首次抛 HttpRequestException 触发初始化失败，第二次返回有效的 store 实例
+        var tokenStoreFactoryMock = new Mock<IFeishuTokenStoreFactory>();
+        var callCount = 0;
+        tokenStoreFactoryMock
+            .Setup(x => x.Create(It.IsAny<string>()))
+            .Returns(() =>
+            {
+                callCount++;
+                if (callCount == 1)
+                    throw new HttpRequestException("模拟首次初始化失败（如 Redis 短暂故障）");
+                return (new Mock<ITokenStore>().Object, new Mock<IUserTokenStore>().Object);
+            });
+
+        var services = CreateServiceCollection();
+        // 替换已注册的 IFeishuTokenStoreFactory，注入会首次抛异常的 mock
+        var existingDescriptor = services.FirstOrDefault(d => d.ServiceType == typeof(IFeishuTokenStoreFactory));
+        if (existingDescriptor != null) services.Remove(existingDescriptor);
+        services.AddSingleton(tokenStoreFactoryMock.Object);
+
+        var configs = new List<FeishuAppConfig> { CreateDefaultConfig() };
+        services.AddFeishuApp(configs);
+        using var provider = services.BuildServiceProvider();
+
+        var appManager = provider.GetRequiredService<FeishuAppManager>();
+
+        // Act & Assert：首次访问应抛 InvalidOperationException（包装 HttpRequestException）
+        var act1 = () => appManager.GetApp(AppConfigs.AppKeys.Default);
+        act1.Should().Throw<InvalidOperationException>()
+            .WithMessage("*应用*初始化失败*")
+            .WithInnerException<HttpRequestException>();
+
+        // 第二次访问应成功（Lazy 已重建，CreateAppContext 重新执行）
+        var app = appManager.GetApp(AppConfigs.AppKeys.Default);
+        app.Should().NotBeNull();
+        app.Config.AppKey.Should().Be(AppConfigs.AppKeys.Default);
+    }
+
+    /// <summary>
+    /// NEW-MA-08 验证：当 Lazy 初始化抛出非 InvalidOperationException 异常时，
+    /// TryGetApp 应返回 false（保持 Try* 语义不抛异常），并在下次调用时重建 Lazy 允许重试。
+    /// </summary>
+    [Fact]
+    public void TryGetApp_WhenLazyInitializationFails_ShouldRebuildLazyAndReturnFalse()
+    {
+        // Arrange：通过 mock IFeishuTokenStoreFactory.Create 触发同步失败
+        var tokenStoreFactoryMock = new Mock<IFeishuTokenStoreFactory>();
+        var callCount = 0;
+        tokenStoreFactoryMock
+            .Setup(x => x.Create(It.IsAny<string>()))
+            .Returns(() =>
+            {
+                callCount++;
+                if (callCount == 1)
+                    throw new HttpRequestException("模拟初始化失败");
+                return (new Mock<ITokenStore>().Object, new Mock<IUserTokenStore>().Object);
+            });
+
+        var services = CreateServiceCollection();
+        var existingDescriptor = services.FirstOrDefault(d => d.ServiceType == typeof(IFeishuTokenStoreFactory));
+        if (existingDescriptor != null) services.Remove(existingDescriptor);
+        services.AddSingleton(tokenStoreFactoryMock.Object);
+
+        var configs = new List<FeishuAppConfig> { CreateDefaultConfig() };
+        services.AddFeishuApp(configs);
+        using var provider = services.BuildServiceProvider();
+
+        var appManager = provider.GetRequiredService<FeishuAppManager>();
+
+        // Act & Assert：首次 TryGetApp 应返回 false（保持 Try* 语义不抛异常）
+        var result1 = appManager.TryGetApp(AppConfigs.AppKeys.Default, out var ctx1);
+        result1.Should().BeFalse("首次初始化失败时 TryGetApp 应返回 false");
+        ctx1.Should().BeNull();
+
+        // 第二次 TryGetApp 应成功（Lazy 已重建）
+        var result2 = appManager.TryGetApp(AppConfigs.AppKeys.Default, out var ctx2);
+        result2.Should().BeTrue("Lazy 重建后应成功");
+        ctx2.Should().NotBeNull();
+    }
+
+    // ============================================================
+    // NEW-MA-09：volatile + lock 保护 GetDefaultApp/RemoveApp TOCTOU
+    // ============================================================
+
+    /// <summary>
+    /// NEW-MA-09 验证：并发场景下 GetDefaultApp 与 RemoveApp 交替执行时，
+    /// 不应抛出 NullReferenceException 或其他非 InvalidOperationException 异常。
+    /// 业务场景：GetDefaultApp 读取 _defaultAppKey 后调用 GetApp(defaultKey)，
+    /// 若另一线程同时 RemoveApp(defaultKey) 并清空 _defaultAppKey，
+    /// 修复前可能出现 defaultKey 为 null 导致 NullReferenceException；
+    /// 修复后通过 volatile + _defaultAppLock 保护复合操作。
+    /// </summary>
+    [Fact]
+    public void GetDefaultApp_WhenConcurrentWithRemoveApp_ShouldNotReturnStaleOrThrowNRE()
+    {
+        // Arrange：两个应用，默认为 Default，并发场景：一个线程持续读 GetDefaultApp，
+        // 另一个线程 RemoveApp(Default) 触发默认应用提升为 Hr
+        var services = CreateServiceCollection();
+        var configs = new List<FeishuAppConfig>
+        {
+            CreateDefaultConfig(),
+            CreateSecondaryConfig()
+        };
+        services.AddFeishuApp(configs);
+        using var provider = services.BuildServiceProvider();
+
+        var appManager = provider.GetRequiredService<FeishuAppManager>();
+        var exceptions = new ConcurrentBag<Exception>();
+        var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+
+        // Act：并发读取 GetDefaultApp
+        var readerTask = Task.Run(() =>
+        {
+            while (!cts.IsCancellationRequested)
+            {
+                try
+                {
+                    var app = appManager.GetDefaultApp();
+                    app.Should().NotBeNull();
+                }
+                catch (InvalidOperationException)
+                {
+                    // InvalidOperationException 在 RemoveApp 与 GetDefaultApp 之间是合法的瞬时状态：
+                    // RemoveApp 在 _defaultAppLock 外移除 _lazyContexts，GetDefaultApp 在锁内调用
+                    // GetApp(defaultKey) 时可能发现 app 已被移除，抛出"未找到应用"异常。
+                    // 这是 NEW-MA-09 修复的预期行为范围（未引入 NRE），忽略即可。
+                }
+                catch (Exception ex) when (ex is not InvalidOperationException)
+                {
+                    // NullReferenceException / 其他异常不应出现
+                    exceptions.Add(ex);
+                }
+            }
+        });
+
+        // 并发执行 RemoveApp(Default)
+        var writerTask = Task.Run(() =>
+        {
+            // 先确保 GetDefaultApp 已被多次调用（让 reader 启动）
+            Thread.Sleep(50);
+            appManager.RemoveApp(AppConfigs.AppKeys.Default);
+        });
+
+        Task.WaitAll(readerTask, writerTask);
+
+        // Assert：不应有任何非 InvalidOperationException 异常（特别是 NullReferenceException）
+        exceptions.Should().BeEmpty(
+            "并发场景下 GetDefaultApp 不应抛出 NullReferenceException 或其他异常。Actual: {0}",
+            string.Join(", ", exceptions.Select(e => e.GetType().Name)));
+    }
+
+    /// <summary>
+    /// NEW-MA-09 验证：AddApp 标记 IsDefault=true 时，应在 _defaultAppLock 保护下更新 _defaultAppKey。
+    /// 业务场景：AddApp 写入 _defaultAppKey 必须与 GetDefaultApp/RemoveApp 的读取互斥，
+    /// 避免写入期间其他线程读到部分更新的状态。
+    /// </summary>
+    [Fact]
+    public void AddApp_WhenMarkedAsDefault_ShouldUpdateDefaultAppKeyUnderLock()
+    {
+        // Arrange
+        var services = CreateServiceCollection();
+        var configs = new List<FeishuAppConfig> { CreateDefaultConfig() };
+        services.AddFeishuApp(configs);
+        using var provider = services.BuildServiceProvider();
+
+        var appManager = provider.GetRequiredService<FeishuAppManager>();
+
+        // Act：动态添加新的默认应用
+        var newDefaultConfig = new FeishuAppConfig
+        {
+            AppKey = "new-default",
+            AppId = AppConfigs.AppIds.Hr,
+            AppSecret = AppConfigs.Secrets.Hr,
+            IsDefault = true
+        };
+        appManager.AddApp(newDefaultConfig);
+
+        // Assert：GetDefaultApp 应返回新添加的默认应用
+        var defaultApp = appManager.GetDefaultApp();
+        defaultApp.Config.AppKey.Should().Be("new-default",
+            "AddApp 标记 IsDefault=true 应在锁保护下更新 _defaultAppKey");
     }
 }
 

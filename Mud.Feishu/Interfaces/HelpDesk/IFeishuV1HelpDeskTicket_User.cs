@@ -5,6 +5,8 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using Mud.Feishu.DataModels.HelpDesk;
+
 namespace Mud.Feishu;
 
 /// <summary>
@@ -15,5 +17,20 @@ namespace Mud.Feishu;
 [Token(FeishuTokenTypes.UserAccessToken, Name = Consts.Authorization)]
 public interface IFeishuUserV1HelpDeskTicket : IFeishuV1HelpDeskTicket, ICurrentUserId
 {
-
+    /// <summary>
+    /// 更新工单详情
+    /// <para>用于更新服务台工单详情。只会更新数据，不会触发相关操作。如修改工单状态到关单，不会关闭聊天页面。仅支持自建应用。要更新的工单字段必须至少输入一项。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/helpdesk-v1/ticket-management/ticket/update">接口文档</see></para>
+    /// </summary>   
+    /// <param name="request">更新工单请求体</param>
+    /// <param name="ticket_id">
+    /// <para>工单 ID。可通过[查询全部工单详情](<see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/helpdesk-v1/ticket/list">获取</see>)</para>
+    /// <para>示例值：123456</para>
+    /// </param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Put("/open-apis/helpdesk/v1/tickets/{ticket_id}")]
+    Task<FeishuNullDataApiResult?> UpdateTicketAsync(
+       [Path] string ticket_id,
+       [Body] UpdateTicketRequest request,
+       CancellationToken cancellationToken = default);
 }

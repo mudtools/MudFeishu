@@ -203,7 +203,7 @@ public interface IFeishuTenantV1HelpDeskTicket : IFeishuV1HelpDeskTicket
     Task<FeishuNullDataApiResult?> AnswerUserQueryTicketAsync(
       [Path] string ticket_id,
       [Body] AnswerUserQueryTicketRequest request,
-     CancellationToken cancellationToken = default);
+      CancellationToken cancellationToken = default);
 
 
     /// <summary>
@@ -221,4 +221,87 @@ public interface IFeishuTenantV1HelpDeskTicket : IFeishuV1HelpDeskTicket
     Task<FeishuApiResult<GetCustomizedFieldsListResult>?> GetCustomizedFieldsListAsync(
        [Query] bool? visible_only = null,
        CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 发送工单消息
+    /// <para>用于发送工单消息。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/helpdesk-v1/ticket-management/ticket-message/create">接口文档</see></para>
+    /// </summary>   
+    /// <param name="ticket_id">
+    /// <para>工单 ID。可通过[查询全部工单详情](<see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/helpdesk-v1/ticket/list">获取</see>)</para>
+    /// <para>示例值：123456</para>
+    /// </param>
+    /// <param name="request">发送工单消息请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Post("/open-apis/helpdesk/v1/tickets/{ticket_id}/messages")]
+    Task<FeishuApiResult<CreateTicketMessageResult>?> CreateTicketMessageAsync(
+          [Path] string ticket_id,
+          [Body] CreateTicketMessageRequest request,
+          CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 获取工单消息详情
+    /// <para>用于获取服务台工单消息详情。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/helpdesk-v1/ticket-management/ticket-message/list">接口文档</see></para>
+    /// </summary>   
+    /// <param name="ticket_id">
+    /// <para>工单 ID。可通过[查询全部工单详情](<see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/helpdesk-v1/ticket/list">获取</see>)</para>
+    /// <para>示例值：123456</para>
+    /// </param>
+    /// <param name="time_start">
+    /// <para>起始时间</para>
+    /// <para>示例值：1617960686</para>
+    /// <para>默认值：null</para>
+    /// </param>
+    /// <param name="time_end">
+    /// <para>结束时间</para>
+    /// <para>示例值：1617960687</para>
+    /// <para>默认值：null</para>
+    /// </param>
+    /// <param name="page">
+    /// <para>页数ID</para>
+    /// <para>示例值：1</para>
+    /// <para>默认值：null</para>
+    /// </param>
+    /// <param name="page_size">
+    /// <para>消息数量，最大200，默认20</para>
+    /// <para>示例值：10</para>
+    /// <para>默认值：10</para>
+    /// </param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Get("/open-apis/helpdesk/v1/tickets/{ticket_id}/messages")]
+    Task<FeishuApiResult<GetTicketMessageListResult>?> GetTicketMessageListAsync(
+        [Path] string ticket_id,
+        [Query] int? time_start = null,
+        [Query] int? time_end = null,
+        [Query] int? page = null,
+        [Query] int? page_size = 10,
+        CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 服务台机器人向工单绑定的群内发送消息
+    /// <para>通过服务台机器人给指定用户的服务台专属群或私聊发送消息，支持文本、富文本、卡片、图片。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/helpdesk-v1/ticket-management/ticket-message/create-2">接口文档</see></para>
+    /// </summary>  
+    /// <param name="request">服务台机器人向工单绑定的群内发送消息请求体</param>
+    /// <param name="user_id_type">
+    /// <para>必填：否</para>
+    /// <para>用户 ID 类型</para>
+    /// <para>示例值：open_id</para>
+    /// <list type="bullet">
+    /// <item>open_id：标识一个用户在某个应用中的身份。同一个用户在不同应用中的 Open ID 不同。[了解更多：如何获取 Open ID](https://open.feishu.cn/document/uAjLw4CM/ugTN1YjL4UTN24CO1UjN/trouble-shooting/how-to-obtain-openid)</item>
+    /// <item>union_id：标识一个用户在某个应用开发商下的身份。同一用户在同一开发商下的应用中的 Union ID 是相同的，在不同开发商下的应用中的 Union ID 是不同的。通过 Union ID，应用开发商可以把同个用户在多个应用中的身份关联起来。[了解更多：如何获取 Union ID？](https://open.feishu.cn/document/uAjLw4CM/ugTN1YjL4UTN24CO1UjN/trouble-shooting/how-to-obtain-union-id)</item>
+    /// <item>user_id：标识一个用户在某个租户内的身份。同一个用户在租户 A 和租户 B 内的 User ID 是不同的。在同一个租户内，一个用户的 User ID 在所有应用（包括商店应用）中都保持一致。User ID 主要用于在不同的应用间打通用户数据。[了解更多：如何获取 User ID？](https://open.feishu.cn/document/uAjLw4CM/ugTN1YjL4UTN24CO1UjN/trouble-shooting/how-to-obtain-user-id)</item>
+    /// </list>
+    /// <para>默认值：open_id</para>
+    /// </param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Post("/open-apis/helpdesk/v1/message")]
+    Task<FeishuApiResult<CreateTicketMessageResult>?> CreateBotMessageAsync(
+        [Body] CreateBotMessageRequest request,
+        [Query] string? user_id_type = Consts.User_Id_Type,
+        CancellationToken cancellationToken = default);
 }

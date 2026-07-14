@@ -6,32 +6,60 @@
 // -----------------------------------------------------------------------
 
 using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Text.Json.Serialization.Metadata;
 
 namespace Mud.Feishu.Abstractions.Utilities;
 
-/// <summary>
-/// 飞书 SDK 统一的 JSON 序列化默认选项
-/// </summary>
 public static class FeishuJsonDefaults
 {
-    /// <summary>
-    /// 默认的反序列化选项（忽略大小写、驼峰命名、忽略 null 值写入）
-    /// </summary>
-    public static readonly JsonSerializerOptions DeserializerOptions = new()
-    {
-        PropertyNameCaseInsensitive = true,
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        WriteIndented = false,
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
-    };
+    private static IJsonTypeInfoResolver? _userResolver;
 
     /// <summary>
-    /// 默认的序列化选项（驼峰命名、不缩进、忽略 null 值写入）
+    /// 合并 SDK 内置 Context 与用户自定义 Context（AOT 必需）。
+    /// 必须在任何反序列化发生前调用一次。
     /// </summary>
-    public static readonly JsonSerializerOptions SerializerOptions = new()
+    public static void ConfigureUserResolver(IJsonTypeInfoResolver userResolver)
     {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        WriteIndented = false,
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
-    };
+        _userResolver = userResolver ?? throw new ArgumentNullException(nameof(userResolver));
+        
+        // TODO: Phase 1 - 临时使用基础设置，后续连接真实的 Context
+        // var combined = JsonTypeInfoResolver.Combine(FeishuJsonContext.Default, userResolver);
+        
+        // 临时方案：仅设置用户 resolver，后续阶段连接 DataModels Context
+        DeserializerOptions = new JsonSerializerOptions(GetDefaultOptions())
+        {
+            TypeInfoResolver = userResolver
+        };
+        SerializerOptions = new JsonSerializerOptions(GetDefaultOptions())
+        {
+            TypeInfoResolver = userResolver
+        };
+    }
+
+    private static JsonSerializerOptions GetDefaultOptions()
+    {
+        return new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true,
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            WriteIndented = false,
+            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+        };
+    }
+
+    public static JsonSerializerOptions DeserializerOptions { get; private set; } =
+        new() {
+            PropertyNameCaseInsensitive = true,
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            WriteIndented = false,
+            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+        };
+
+    public static JsonSerializerOptions SerializerOptions { get; private set; } =
+        new() {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            WriteIndented = false,
+            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+        };
 }

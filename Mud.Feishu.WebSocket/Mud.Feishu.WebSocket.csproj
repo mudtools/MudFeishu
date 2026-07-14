@@ -9,6 +9,7 @@
 		<PackageProjectUrl>http://www.mudtools.cn/</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/mudtools/MudFeishu</RepositoryUrl>
 		<RepositoryType>git</RepositoryType>
+		<IsAotCompatible>true</IsAotCompatible>
 		<PackageIcon>Icon.png</PackageIcon>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<Description>适用于 .NET 全平台的飞书 WebSocket 长连接事件订阅组件，提供开箱即用的客户端实现，支持自动重连、心跳检测与事件分发，并基于策略模式构建可扩展的事件处理机制，帮助开发者在 .NET 应用中便捷、可靠地接收和处理飞书实时事件。</Description>
@@ -35,5 +36,10 @@
 	<ItemGroup>
 		<None Include=".\README.md" Pack="true" PackagePath="\" />
 		<None Include="..\Icon.png" Pack="true" PackagePath="\" />
+	</ItemGroup>
+
+	<!-- protobuf-net AOT 源生成器支持 -->
+	<ItemGroup>
+		<PackageReference Include="protobuf-net.BuildTools" Version="3.2.52" PrivateAssets="all" />
 	</ItemGroup>
 </Project>

@@ -14,6 +14,7 @@
 		<Description>飞书用户认证中间件，提供用户上下文管理功能。基于 AsyncLocal 实现线程安全的用户信息存储，支持从 JWT Claims 中提取飞书用户信息。</Description>
 		<PackageTags>Feishu;Lark;飞书;Authentication;认证;UserContext;用户上下文;Middleware;中间件;MudFeishu</PackageTags>
 		<BaseOutputPath>..\bin</BaseOutputPath>
+		<IsAotCompatible>true</IsAotCompatible>
 	</PropertyGroup>
 
 	<!-- ASP.NET Core 框架引用 -->

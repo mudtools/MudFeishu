@@ -14,6 +14,7 @@
 		<Description>飞书事件订阅组件 Redis 分布式去重扩展，提供基于 Redis 的事件去重、Nonce 去重和 SeqID 去重功能，适用于多实例分布式部署场景。</Description>
 		<PackageTags>Feishu;Lark;飞书;ByteDance;字节跳动;Feishu-Redis;Lark-Redis;Redis;Event-Deduplication;事件去重;MudFeishu</PackageTags>
 		<BaseOutputPath>..\bin</BaseOutputPath>
+		<IsAotCompatible>true</IsAotCompatible>
 	</PropertyGroup>
 
 	<ItemGroup Condition="'$(TargetFramework)' == 'net10.0' or '$(TargetFramework)' == 'net8.0'">

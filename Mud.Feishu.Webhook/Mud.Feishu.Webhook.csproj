@@ -9,6 +9,7 @@
 		<PackageProjectUrl>http://www.mudtools.cn/</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/mudtools/MudFeishu</RepositoryUrl>
 		<RepositoryType>git</RepositoryType>
+		<IsAotCompatible>true</IsAotCompatible>
 		<PackageIcon>Icon.png</PackageIcon>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<Description>适用于 .NET 全平台的飞书 Webhook 事件订阅组件，提供开箱即用的客户端实现，基于策略模式构建可扩展的事件处理机制，帮助开发者在 .NET 应用中便捷、可靠地接收和处理飞书实时事件。</Description>

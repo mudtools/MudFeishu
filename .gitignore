@@ -58,6 +58,8 @@
 /Demos/TaskManageDemo/backend/bin
 /Demos/TaskManageDemo/tests/obj
 /Demos/TaskManageDemo/tests/bin
+/Demos/Mud.Feishu.AotVerification/obj
+/Demos/Mud.Feishu.AotVerification/bin
 /Tests/Mud.Feishu.Abstractions.Tests/bin
 /Tests/Mud.Feishu.Abstractions.Tests/obj
 /Tests/Mud.Feishu.OpenTelemetry.Tests/bin

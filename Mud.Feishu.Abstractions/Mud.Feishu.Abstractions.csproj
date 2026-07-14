@@ -14,6 +14,7 @@
 		<Description>飞书服务端 SDK 的 .NET 适配版，支持.NET4.6+、.NET 5 至 .NET 10 平台。提供抽象层接口和基础数据模型封装。</Description>
 		<PackageTags>Feishu;Lark;飞书;ByteDance;字节跳动;Feishu-SDK;Lark-SDK;Feishu-API;Lark-API;Webhook;WebSocket;Event-Subscription;事件订阅;MudFeishu</PackageTags>
 		<BaseOutputPath>..\bin</BaseOutputPath>
+		<IsAotCompatible>true</IsAotCompatible>
 	</PropertyGroup>
 
 	<ItemGroup Condition="'$(TargetFramework)' == 'net8.0' Or '$(TargetFramework)' == 'net10.0'">

@@ -254,10 +254,12 @@ public class FeishuAppManagerTests
 
     /// <summary>
     /// NEW-MA-08 验证：当 Lazy 初始化抛出非 InvalidOperationException 异常时，
-    /// GetApp 应抛出包装后的 InvalidOperationException，并在下次调用时重建 Lazy 允许重试。
+    /// GetOrCreateContext 应抛出包装后的 InvalidOperationException，并在下次调用时重建 Lazy 允许重试。
     /// 业务场景：首次初始化因瞬时故障（如 Redis 短暂不可用）失败，
     /// Lazy&lt;ExecutionAndPublication&gt; 会缓存异常导致永久不可用；
     /// 修复后通过双检锁重建 Lazy 实例，允许下次调用重试初始化。
+    /// 注意：GetApp 内部先调用 TryGetApp（已有独立的重建测试），
+    /// 因此本测试通过 GetAllApps 直接调用 GetOrCreateContext 验证其重建路径。
     /// </summary>
     [Fact]
     public void GetApp_WhenLazyInitializationFails_ShouldRebuildLazyOnNextCall()
@@ -288,16 +290,17 @@ public class FeishuAppManagerTests
 
         var appManager = provider.GetRequiredService<FeishuAppManager>();
 
-        // Act & Assert：首次访问应抛 InvalidOperationException（包装 HttpRequestException）
-        var act1 = () => appManager.GetApp(AppConfigs.AppKeys.Default);
+        // Act & Assert：首次通过 GetAllApps 访问应抛 InvalidOperationException（包装 HttpRequestException）
+        // GetAllApps 内部直接调用 GetOrCreateContext（不经过 TryGetApp），可验证 GetOrCreateContext 的重建路径
+        var act1 = () => appManager.GetAllApps();
         act1.Should().Throw<InvalidOperationException>()
             .WithMessage("*应用*初始化失败*")
             .WithInnerException<HttpRequestException>();
 
         // 第二次访问应成功（Lazy 已重建，CreateAppContext 重新执行）
-        var app = appManager.GetApp(AppConfigs.AppKeys.Default);
-        app.Should().NotBeNull();
-        app.Config.AppKey.Should().Be(AppConfigs.AppKeys.Default);
+        var apps = appManager.GetAllApps();
+        apps.Should().NotBeEmpty();
+        apps.First().Config.AppKey.Should().Be(AppConfigs.AppKeys.Default);
     }
 
     /// <summary>

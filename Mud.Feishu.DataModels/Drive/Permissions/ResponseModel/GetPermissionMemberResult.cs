@@ -11,6 +11,7 @@ namespace Mud.Feishu.DataModels.Drive;
 /// 获取云文档协作者响应体
 /// <para>获取指定云文档的协作者，支持查询人、群、组织架构、用户组、知识库成员五种类型的协作者。</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Drive")]
 public class GetPermissionMemberResult
 {
     /// <summary>

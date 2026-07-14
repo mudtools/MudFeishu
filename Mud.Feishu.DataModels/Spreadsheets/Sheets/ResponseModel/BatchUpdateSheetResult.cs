@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Spreadsheets;
 /// <summary>
 ///  操作工作表响应体
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Spreadsheets")]
 public class BatchUpdateSheetResult
 {
     /// <summary>
@@ -22,6 +23,7 @@ public class BatchUpdateSheetResult
 }
 
 /// <summary></summary>
+[HttpJsonSerializable(SerializerClassName = "Spreadsheets")]
 public class BatchUpdateReply
 {
     /// <summary>
@@ -48,6 +50,7 @@ public class BatchUpdateReply
 }
 
 /// <summary></summary>
+[HttpJsonSerializable(SerializerClassName = "Spreadsheets")]
 public class SheetResultInfo
 {
     /// <summary>
@@ -61,6 +64,7 @@ public class SheetResultInfo
 }
 
 /// <summary></summary>
+[HttpJsonSerializable(SerializerClassName = "Spreadsheets")]
 public class DeleteSheetSuffix
 {
     /// <summary>
@@ -79,6 +83,7 @@ public class DeleteSheetSuffix
 }
 
 /// <summary></summary>
+[HttpJsonSerializable(SerializerClassName = "Spreadsheets")]
 public class SheetPropertyInfo : SheetPropertyData
 {
     /// <summary>

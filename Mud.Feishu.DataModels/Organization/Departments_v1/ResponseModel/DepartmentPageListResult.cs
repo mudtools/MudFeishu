@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.DepartmentsV1;
 /// <summary>
 /// 部门分页列表结果类，包含部门详细信息、分页信息和异常信息列表
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Organization")]
 public class DepartmentPageListResult : PageListResult
 {
     /// <summary>

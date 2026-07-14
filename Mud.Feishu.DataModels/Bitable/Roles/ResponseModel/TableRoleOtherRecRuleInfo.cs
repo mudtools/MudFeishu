@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Bitable;
 /// <summary>
 /// <para>记录筛选条件，在 `rec_rule.other_perm` 为 0 时生效。对于未命中 `rec_rule` 的记录，通过 `other_rec_rule` 指定可阅读记录范围；此时，既未命中 `rec_rule`、也未命中 `other_rec_rule` 的记录会被禁止阅读。</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Bitable")]
 public class TableRoleOtherRecRuleInfo
 {
     /// <summary>

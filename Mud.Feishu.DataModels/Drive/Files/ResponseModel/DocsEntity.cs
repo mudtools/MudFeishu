@@ -8,6 +8,7 @@
 namespace Mud.Feishu.DataModels.Drive.Files;
 
 /// <summary>文件信息</summary>
+[HttpJsonSerializable(SerializerClassName = "Drive")]
 public class DocsEntity
 {
     /// <summary>

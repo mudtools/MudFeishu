@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.ApprovalQuery;
 /// <summary>
 /// 查询抄送列表响应体
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Approval")]
 public class ApprovalInstancesCcQueryResult : ApiPageListResult
 {
     /// <summary>

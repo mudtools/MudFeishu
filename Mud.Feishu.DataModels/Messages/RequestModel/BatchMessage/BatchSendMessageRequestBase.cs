@@ -11,6 +11,7 @@ namespace Mud.Feishu.DataModels.Messages;
 /// 批量发送消息请求体基类。
 /// </summary>
 /// <typeparam name="T">消息内容类型</typeparam>
+[HttpJsonSerializable(SerializerClassName = "Messages")]
 public abstract class BatchSendMessageRequestBase<T>
 {
     /// <summary>

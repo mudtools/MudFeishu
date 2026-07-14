@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Spreadsheets;
 /// <summary>
 /// 创建浮动图片请求体
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Spreadsheets")]
 public class CreateFloatImageRequest : SheetFloatImageData
 {
 

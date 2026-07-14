@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Spreadsheets;
 /// <summary>
 /// 样式与范围
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Spreadsheets")]
 public class RangesStyle
 {
     /// <summary>

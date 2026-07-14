@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.VideoConferencing;
 /// <summary>
 /// <para>可预定成员列表</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "VideoConferencing")]
 public class SubscribeUser
 {
     /// <summary>

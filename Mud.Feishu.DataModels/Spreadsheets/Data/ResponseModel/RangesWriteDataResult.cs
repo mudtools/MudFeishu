@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Spreadsheets;
 /// <summary>
 /// 向多个范围写入数据响应体
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Spreadsheets")]
 public class RangesWriteDataResult
 {
     /// <summary>

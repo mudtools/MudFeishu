@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.VideoConferencing;
 /// <summary>
 /// 设置主持人响应体
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "VideoConferencing")]
 public class SetHostMeetingResult
 {
     /// <summary>

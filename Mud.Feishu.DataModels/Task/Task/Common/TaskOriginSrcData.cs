@@ -11,6 +11,7 @@ namespace Mud.Feishu.DataModels.Tasks;
 /// <summary>
 /// <para>任务关联的第三方平台来源信息，用于来源信息在飞书任务界面的展示。只能创建任务时设置，一旦设置后就不可变更。详见[功能概述](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/task-v2/overview)中的“ 如何使用Origin? ”章节。</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Task")]
 public class TaskOriginSrcData
 {
     /// <summary>

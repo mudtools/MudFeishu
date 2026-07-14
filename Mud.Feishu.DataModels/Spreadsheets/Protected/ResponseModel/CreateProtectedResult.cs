@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Spreadsheets;
 /// <summary>
 /// 创建保护范围的响应体
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Spreadsheets")]
 public class CreateProtectedResult
 {
     /// <summary>

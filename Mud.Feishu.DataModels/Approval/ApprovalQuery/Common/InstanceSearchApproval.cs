@@ -11,6 +11,7 @@ namespace Mud.Feishu.DataModels.ApprovalQuery;
 /// <summary>
 /// <para>审批定义信息</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Approval")]
 public class InstanceSearchApproval
 {
     /// <summary>

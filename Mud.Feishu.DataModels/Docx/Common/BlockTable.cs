@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Docx;
 /// <summary>
 /// <para>表格 Block</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Docx")]
 public class BlockTable
 {
     /// <summary>
@@ -32,6 +33,7 @@ public class BlockTable
 /// <summary>
 /// <para>表格属性</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Docx")]
 public class TableProperty
 {
     /// <summary>
@@ -92,6 +94,7 @@ public class TableProperty
 /// <summary>
 /// <para>单元格合并信息</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Docx")]
 public class TableMergeInfo
 {
     /// <summary>

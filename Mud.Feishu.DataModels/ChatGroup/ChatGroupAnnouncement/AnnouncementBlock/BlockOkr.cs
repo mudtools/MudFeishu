@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.ChatGroupNotice;
 /// <summary>
 /// <para>OKR Block</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "ChatGroup")]
 public class BlockOkr
 {
     /// <summary>

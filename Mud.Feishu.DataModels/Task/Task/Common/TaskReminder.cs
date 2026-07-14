@@ -1,4 +1,4 @@
-﻿// -----------------------------------------------------------------------
+// -----------------------------------------------------------------------
 //  作者：Mud Studio  版权所有 (c) Mud Studio 2026   
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Tasks;
 /// <summary>
 /// <para>任务提醒。要设置提醒必须同时设置任务的截止时间。一个任务最多只能设置1个提醒。</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Task")]
 public class TaskReminder
 {
     /// <summary>
@@ -25,6 +26,7 @@ public class TaskReminder
 /// <summary>
 /// <para>任务的提醒配置列表。目前每个任务最多有1个。</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Task")]
 public class TaskReminderInfo : TaskReminder
 {
     /// <summary>

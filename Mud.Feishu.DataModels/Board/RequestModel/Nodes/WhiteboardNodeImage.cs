@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Board;
 /// <summary>
 /// <para>图片</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Board")]
 public class WhiteboardNodeImage
 {
     /// <summary>

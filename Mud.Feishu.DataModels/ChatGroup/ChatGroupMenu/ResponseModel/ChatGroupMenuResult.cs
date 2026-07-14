@@ -1,4 +1,4 @@
-﻿// -----------------------------------------------------------------------
+// -----------------------------------------------------------------------
 //  作者：Mud Studio  版权所有 (c) Mud Studio 2026   
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.ChatGroupMenu;
 /// <summary>
 /// 群菜单操作返回结果
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "ChatGroup")]
 public class ChatGroupMenuResult
 {
     /// <summary>
@@ -24,6 +25,7 @@ public class ChatGroupMenuResult
 /// <summary>
 /// <para>添加群菜单后，该群组内所有群菜单的信息。</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "ChatGroup")]
 public class ChatMenuTreeInfo
 {
     /// <summary>
@@ -40,6 +42,7 @@ public class ChatMenuTreeInfo
 /// <summary>
 /// <para>一级菜单列表</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "ChatGroup")]
 public class ChatMenuTopLevelInfo
 {
     /// <summary>
@@ -70,6 +73,7 @@ public class ChatMenuTopLevelInfo
 /// <summary>
 /// <para>二级菜单列表</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "ChatGroup")]
 public class ChatMenuSecondLevelInfo : ChatMenuSecondLevel
 {
     /// <summary>

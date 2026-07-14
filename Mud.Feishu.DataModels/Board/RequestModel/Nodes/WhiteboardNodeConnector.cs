@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Board;
 /// <summary>
 /// <para>连线属性</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Board")]
 public class WhiteboardNodeConnector
 {
     /// <summary>

@@ -11,6 +11,7 @@ namespace Mud.Feishu.DataModels.Calendar;
 /// <summary>
 /// <para>日程 instance 列表。</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Calendar")]
 public class CalendarEventInstanceView
 {
     /// <summary>

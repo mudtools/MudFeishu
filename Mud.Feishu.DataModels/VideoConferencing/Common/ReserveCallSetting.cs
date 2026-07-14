@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.VideoConferencing;
 /// <summary>
 /// <para>1v1呼叫相关参数</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "VideoConferencing")]
 public class ReserveCallSetting
 {
     /// <summary>

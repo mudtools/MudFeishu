@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.ApprovalForm;
 /// <summary>
 /// 单选按钮控件V2
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Approval")]
 public class RadioV2Widget() : WidgetBase<string>("radioV2")
 {
 }

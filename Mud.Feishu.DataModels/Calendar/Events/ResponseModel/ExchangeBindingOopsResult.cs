@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Calendar;
 /// <summary>
 /// 将 Exchange 账户绑定到飞书账户响应体
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Calendar")]
 public class ExchangeBindingOopsResult
 {
     /// <summary>

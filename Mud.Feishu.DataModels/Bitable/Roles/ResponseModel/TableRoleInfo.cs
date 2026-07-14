@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Bitable;
 /// <summary>
 /// <para>针对数据表的权限设置</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Bitable")]
 public class TableRoleInfo
 {
     /// <summary>

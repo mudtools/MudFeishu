@@ -12,6 +12,7 @@ namespace Mud.Feishu.DataModels.VideoConferencing;
 /// <summary>
 /// <para>视频</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "VideoConferencing")]
 public class QualityVideoSharing
 {
     /// <summary>

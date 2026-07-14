@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Bitable;
 /// <summary>
 /// 更新自动化流程状态请求体
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Bitable")]
 public class UpdateAppWorkflowRequest
 {
     /// <summary>

@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.ChatGroupNotice;
 /// <summary>
 /// <para>思维笔记 Block</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "ChatGroup")]
 public class BlockMindnote
 {
     /// <summary>

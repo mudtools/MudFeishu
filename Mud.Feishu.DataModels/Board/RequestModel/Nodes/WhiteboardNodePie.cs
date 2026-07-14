@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Board;
 /// <summary>
 /// <para>圆环属性，type=circular_ring时需要设置</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Board")]
 public class WhiteboardNodePie
 {
     /// <summary>

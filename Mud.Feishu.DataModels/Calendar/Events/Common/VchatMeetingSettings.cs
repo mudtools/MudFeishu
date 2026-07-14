@@ -12,6 +12,7 @@ namespace Mud.Feishu.DataModels.Calendar;
 /// <para>- 当 `vc_type` 为 `vc` 时生效。</para>
 /// <para>- 需要有日程的编辑权限。</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Calendar")]
 public class VchatMeetingSettings
 {
     /// <summary>

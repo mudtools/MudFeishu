@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Employees;
 /// <summary>
 /// 员工列表结果类，包含员工详细信息和异常信息列表
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Organization")]
 public class EmployeeListResult
 {
     /// <summary>

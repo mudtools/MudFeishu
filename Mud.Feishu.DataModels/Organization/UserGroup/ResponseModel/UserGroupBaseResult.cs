@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.UserGroup;
 /// <summary>
 /// 用户组基础结果类，包含用户组的基本信息。
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Organization")]
 public abstract class UserGroupBaseResult
 {
     /// <summary>

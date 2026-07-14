@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Messages;
 /// <summary>
 /// 消息结果基类，包含所有消息类型的共同属性
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Messages")]
 public abstract class BaseMessageResult
 {
     /// <summary>

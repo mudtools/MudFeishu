@@ -11,6 +11,7 @@ namespace Mud.Feishu.DataModels.Calendar;
 /// <summary>
 /// 获取日历访问控制列表响应体
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Calendar")]
 public class GetCalendarAclsResult : ApiPageListResult
 {
     /// <summary>

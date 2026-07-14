@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Tasks;
 /// <summary>
 /// <para>pc客户端自定义完成配置（含mac和windows）</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Task")]
 public class TaskPlatformCompleteItem
 {
     /// <summary>

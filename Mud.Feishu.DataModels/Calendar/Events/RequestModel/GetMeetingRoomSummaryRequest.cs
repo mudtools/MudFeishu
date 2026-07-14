@@ -11,6 +11,7 @@ namespace Mud.Feishu.DataModels.Calendar;
 /// <summary>
 /// 查询会议室日程主题和会议详情请求体
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Calendar")]
 public class GetMeetingRoomSummaryRequest
 {
     /// <summary>
@@ -23,6 +24,7 @@ public class GetMeetingRoomSummaryRequest
 }
 
 /// <summary>日程 Uid 和 Original time</summary>
+[HttpJsonSerializable(SerializerClassName = "Calendar")]
 public class EventUid
 {
     /// <summary>

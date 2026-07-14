@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Docx;
 /// <summary>
 /// <para>多维表格 Block</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Docx")]
 public class BlockBitable
 {
     /// <summary>

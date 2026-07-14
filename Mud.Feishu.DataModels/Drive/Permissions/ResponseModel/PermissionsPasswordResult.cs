@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Drive;
 /// <summary>
 /// 云文档密码响应体
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Drive")]
 public class PermissionsPasswordResult
 {
     /// <summary>

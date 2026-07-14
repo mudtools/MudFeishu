@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Docx;
 /// <summary>
 /// <para>源同步块</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Docx")]
 public class BlockSourceSynced
 {
     /// <summary>

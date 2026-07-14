@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Messages;
 /// <summary>
 /// 图片更新结果类，用于封装图片更新操作后的响应数据
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Messages")]
 public class ImageUpdateResult
 {
     /// <summary>

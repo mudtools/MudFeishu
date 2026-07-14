@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Calendar;
 /// <summary>
 /// 查询会议室忙闲响应体
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Calendar")]
 public class QueryMeetingRoomFreebusyResult
 {
     /// <summary>

@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Messages;
 /// <summary>
 /// 批量消息发送结果类，用于封装批量发送消息接口的响应数据
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Messages")]
 public class BatchMessageResult
 {
     /// <summary>

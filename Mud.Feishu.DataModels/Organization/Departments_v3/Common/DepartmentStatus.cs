@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Departments;
 /// <summary>
 /// 部门状态信息类，用于表示部门是否被删除的状态
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Organization")]
 public class DepartmentStatus
 {
     /// <summary>

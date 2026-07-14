@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.DepartmentsV1;
 /// <summary>
 /// 创建部门请求体
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Organization")]
 public class DepartmentCreateUpdateRequest
 {
     /// <summary>

@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Users;
 /// <summary>
 /// 分配信息类，表示用户的许可分配相关信息
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Organization")]
 public class AssignInfo
 {
     /// <summary>

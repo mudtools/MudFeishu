@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Calendar;
 /// <summary>
 /// <para>视频会议信息。仅当日程至少有一位参与人时生效。</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Calendar")]
 public class InstanceVchat
 {
     /// <summary>

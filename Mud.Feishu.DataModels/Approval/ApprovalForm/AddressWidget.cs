@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.ApprovalForm;
 /// <summary>
 /// 地址控件
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Approval")]
 public class AddressWidget() : WidgetBase<List<AddressValue>>("address")
 {
 }
@@ -17,6 +18,7 @@ public class AddressWidget() : WidgetBase<List<AddressValue>>("address")
 /// <summary>
 /// 表示地址信息的值对象
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Approval")]
 public class AddressValue
 {
     /// <summary>

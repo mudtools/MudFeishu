@@ -8,6 +8,7 @@
 namespace Mud.Feishu.DataModels.Spreadsheets;
 
 /// <summary>单元格样式</summary>
+[HttpJsonSerializable(SerializerClassName = "Spreadsheets")]
 public class CellStyle
 {
     /// <summary>

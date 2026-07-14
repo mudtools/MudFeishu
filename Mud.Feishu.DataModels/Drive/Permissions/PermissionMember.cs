@@ -11,6 +11,7 @@ namespace Mud.Feishu.DataModels.Drive;
 /// 协作者权限成员
 /// <para>协作者权限成员，包括用户、群组、部门、用户组等。</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Drive")]
 public class PermissionMember : BasePermissionMember
 {
 

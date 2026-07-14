@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Board;
 /// <summary>
 /// <para>@用户类别信息（当前元素为@用户类别时候需要有当前字段）</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Board")]
 public class RichTextElementMentionUser
 {
     /// <summary>

@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Bitable;
 /// <summary>
 /// <para>tables</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Bitable")]
 public class AppTableBase
 {
     /// <summary>

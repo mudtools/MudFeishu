@@ -8,6 +8,7 @@
 namespace Mud.Feishu.DataModels.Spreadsheets;
 
 /// <summary>电子表格工作表的条件格式信息</summary>
+[HttpJsonSerializable(SerializerClassName = "Spreadsheets")]
 public class SheetConditionFormat
 {
     /// <summary>

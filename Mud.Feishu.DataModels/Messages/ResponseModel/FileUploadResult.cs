@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Messages;
 /// <summary>
 /// 文件上传结果类，用于表示文件上传操作的结果信息
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Messages")]
 public class FileUploadResult
 {
     /// <summary>

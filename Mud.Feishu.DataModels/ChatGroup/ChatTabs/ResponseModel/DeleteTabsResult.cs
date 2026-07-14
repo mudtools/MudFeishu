@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.ChatTabs;
 /// <summary>
 /// 删除会话标签页 响应体
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "ChatGroup")]
 public class DeleteTabsResult
 {
     /// <summary>
@@ -30,6 +31,7 @@ public class DeleteTabsResult
 /// <summary>
 /// <para>会话标签页</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "ChatGroup")]
 public class ChatTabDeleteResult
 {
     /// <summary>
@@ -76,6 +78,7 @@ public class ChatTabDeleteResult
 /// <summary>
 /// <para>会话标签页内容</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "ChatGroup")]
 public class ChatTabContentDeleteResult
 {
     /// <summary>
@@ -105,6 +108,7 @@ public class ChatTabContentDeleteResult
 /// <summary>
 /// <para>会话标签页配置</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "ChatGroup")]
 public class ChatTabConfigDeleteResult
 {
     /// <summary>

@@ -11,6 +11,7 @@ namespace Mud.Feishu.DataModels.Board;
 /// <summary>
 /// <para>文字样式</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Board")]
 public class RichTextElementTextStyle
 {
     /// <summary>

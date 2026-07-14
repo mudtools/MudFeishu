@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Messages;
 /// <summary>
 /// 消息数据结果类，表示从飞书获取的消息相关信息
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Messages")]
 public class MessageDataResult : BaseMessageResult
 {
     /// <summary>

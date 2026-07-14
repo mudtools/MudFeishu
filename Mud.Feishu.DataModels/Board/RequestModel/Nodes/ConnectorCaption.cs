@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Board;
 /// <summary>
 /// <para>连线文本</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Board")]
 public class ConnectorCaption
 {
     /// <summary>

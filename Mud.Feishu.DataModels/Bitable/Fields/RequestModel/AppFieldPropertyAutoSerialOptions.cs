@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Bitable;
 /// <summary>
 /// <para>自动编号规则列表</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Bitable")]
 public class AppFieldPropertyAutoSerialOptions
 {
     /// <summary>

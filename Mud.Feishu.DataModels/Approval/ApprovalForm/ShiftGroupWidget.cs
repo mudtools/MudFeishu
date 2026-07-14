@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.ApprovalForm;
 /// <summary>
 /// 换班控件组控件
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Approval")]
 public class ShiftGroupWidget() : WidgetBase<ShiftGroupValue>("shiftGroup")
 {
 }
@@ -17,6 +18,7 @@ public class ShiftGroupWidget() : WidgetBase<ShiftGroupValue>("shiftGroup")
 /// <summary>
 /// 换班组控件值
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Approval")]
 public class ShiftGroupValue
 {
     /// <summary>

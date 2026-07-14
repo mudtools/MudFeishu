@@ -11,6 +11,7 @@ namespace Mud.Feishu.DataModels.Calendar;
 /// <para>日程签到开始时间。</para>
 /// <para>**注意**：签到开始时间不能大于或者等于签到结束时间。</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Calendar")]
 public class CheckInTime
 {
     /// <summary>

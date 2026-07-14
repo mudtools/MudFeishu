@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.ApprovalExternal;
 /// <summary>
 /// <para>用户提交审批时填写的表单数据，用于所有审批列表中展示。可传多个值，最多展示前 3 个，长度不超过 2048 字符。</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Approval")]
 public class ExternalInstanceForm
 {
     /// <summary>

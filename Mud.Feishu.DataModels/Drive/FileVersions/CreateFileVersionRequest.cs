@@ -11,6 +11,7 @@ namespace Mud.Feishu.DataModels.Drive.FileVersions;
 /// 创建文档版本请求体
 /// <para>创建文档版本。文档支持在线文档或电子表格。该接口为异步接口。</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Drive")]
 public class CreateFileVersionRequest
 {
     /// <summary>

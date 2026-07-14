@@ -1,4 +1,4 @@
-﻿// -----------------------------------------------------------------------
+// -----------------------------------------------------------------------
 //  作者：Mud Studio  版权所有 (c) Mud Studio 2026   
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
@@ -11,6 +11,7 @@ namespace Mud.Feishu.DataModels.ChatTabs;
 /// 添加会话标签页请求体
 /// <para>在指定会话内添加自定义会话标签页，仅支持添加文档类型（doc）或 URL （url）类型的标签页。</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "ChatGroup")]
 public class CreateChatTabsRequest
 {
     /// <summary>
@@ -32,6 +33,7 @@ public class CreateChatTabsRequest
 /// <para>会话标签页</para>
 /// <para>**注意**：一个会话内最多只允许添加 20 个自定义会话标签页</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "ChatGroup")]
 public class ChatTabCreateData
 {
     /// <summary>
@@ -91,6 +93,7 @@ public class ChatTabCreateData
 /// <summary>
 /// <para>会话标签页的内容</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "ChatGroup")]
 public class ChatTabContentData
 {
     /// <summary>
@@ -137,6 +140,7 @@ public class ChatTabContentData
 /// <para>会话标签页的配置</para>
 /// <para>**注意**：仅当 tab_type 取值为 url 时，该参数生效</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "ChatGroup")]
 public class ChatTabConfigData
 {
     /// <summary>

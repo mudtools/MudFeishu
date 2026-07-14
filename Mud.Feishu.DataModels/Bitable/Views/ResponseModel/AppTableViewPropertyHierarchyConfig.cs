@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Bitable;
 /// <summary>
 /// <para>表格视图层级结构设置</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Bitable")]
 public class AppTableViewPropertyHierarchyConfig
 {
     /// <summary>

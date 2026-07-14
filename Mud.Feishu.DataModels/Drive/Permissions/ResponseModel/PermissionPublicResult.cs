@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Drive;
 /// <summary>
 /// 云文档权限设置信息响应体
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Drive")]
 public class PermissionPublicResult
 {
     /// <summary>
@@ -24,6 +25,7 @@ public class PermissionPublicResult
 /// <summary>
 /// 云文档权限设置详情
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Drive")]
 public class DrivePermissionsDetail : DrivePermissions
 {
     /// <summary>

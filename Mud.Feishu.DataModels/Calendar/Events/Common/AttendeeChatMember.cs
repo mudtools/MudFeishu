@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Calendar;
 /// <summary>
 /// <para>群中的群成员，当参与人类型（type）为 chat 时有效。群成员不支持编辑。</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Calendar")]
 public class AttendeeChatMember
 {
     /// <summary>

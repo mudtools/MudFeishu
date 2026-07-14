@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Calendar;
 /// <summary>
 /// 创建请假日程响应体
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Calendar")]
 public class CreateTimeoffEventResult
 {
     /// <summary>

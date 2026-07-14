@@ -8,6 +8,7 @@
 namespace Mud.Feishu.DataModels.Spreadsheets;
 
 /// <summary></summary>
+[HttpJsonSerializable(SerializerClassName = "Spreadsheets")]
 public class SheetRangeBaseDimension
 {
     /// <summary>

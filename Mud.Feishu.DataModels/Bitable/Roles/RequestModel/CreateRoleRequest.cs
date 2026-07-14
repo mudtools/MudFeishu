@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Bitable;
 /// <summary>
 /// <para>新增自定义角色请求体</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Bitable")]
 public class CreateRoleRequest : AppRole
 {
 

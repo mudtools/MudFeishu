@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Drive;
 /// <summary>
 /// <para>文本内容</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Drive")]
 public class ReplyElementTextRun
 {
     /// <summary>

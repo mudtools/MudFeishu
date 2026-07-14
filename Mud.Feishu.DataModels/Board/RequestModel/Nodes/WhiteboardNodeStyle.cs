@@ -11,6 +11,7 @@ namespace Mud.Feishu.DataModels.Board;
 /// <summary>
 /// <para>样式</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Board")]
 public class WhiteboardNodeStyle
 {
     /// <summary>

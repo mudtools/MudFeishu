@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Spreadsheets;
 /// <summary>
 /// <para>读取多个范围响应体</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Spreadsheets")]
 public class GetRangesDataResult
 {
     /// <summary>

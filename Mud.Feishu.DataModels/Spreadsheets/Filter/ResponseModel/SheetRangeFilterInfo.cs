@@ -11,6 +11,7 @@ namespace Mud.Feishu.DataModels.Spreadsheets;
 /// <summary>
 /// <para>筛选信息</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Spreadsheets")]
 public class SheetRangeFilterInfo
 {
     /// <summary>

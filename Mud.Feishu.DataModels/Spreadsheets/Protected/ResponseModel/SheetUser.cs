@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Spreadsheets;
 /// <summary>
 /// 保护范围的用户信息
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Spreadsheets")]
 public class SheetUser
 {
     /// <summary>

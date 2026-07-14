@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.ApprovalExternal;
 /// <summary>
 /// <para>同步的实例数据</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Approval")]
 public class ExternalInstance
 {
     /// <summary>

@@ -11,6 +11,7 @@ namespace Mud.Feishu.DataModels.Drive;
 /// 更新协作者权限成员请求模型
 /// <para>更新指定云文档中指定协作者的权限，包括可阅读、可编辑、可管理权限。</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Drive")]
 public class UpdatePermissionMemberRequest : BasePermissionMember
 {
 

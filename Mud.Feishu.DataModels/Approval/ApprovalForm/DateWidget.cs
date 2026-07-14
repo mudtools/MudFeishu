@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.ApprovalForm;
 /// <summary>
 /// 日期控件（RFC3339格式）
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Approval")]
 public class DateWidget() : WidgetBase<DateTimeOffset>("date")
 {
 }

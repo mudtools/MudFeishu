@@ -11,6 +11,7 @@ namespace Mud.Feishu.DataModels.Calendar;
 /// <para>参与人类型对应的 ID，该 ID 是 attendee_ids 字段的补充字段。</para>
 /// <para>- 一次最多删除500个参与人（与attendee_ids一起计算）</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Calendar")]
 public class CalendarEventAttendeeId
 {
     /// <summary>

@@ -11,6 +11,7 @@ namespace Mud.Feishu.DataModels.Calendar;
 /// <summary>
 /// <para>飞书视频会议（VC）的会前设置。</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Calendar")]
 public class CalendarEventVchatMeetingSettings : VchatMeetingSettings
 {
 

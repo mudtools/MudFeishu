@@ -11,6 +11,7 @@ namespace Mud.Feishu.DataModels.Bitable;
 /// 新增多个数据表请求体
 /// <para>多维表格数据表的请求参数列表</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Bitable")]
 public class CreateTablesRequest
 {
     /// <summary>

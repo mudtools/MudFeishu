@@ -1,8 +1,9 @@
-﻿namespace Mud.Feishu.DataModels.Departments;
+namespace Mud.Feishu.DataModels.Departments;
 
 /// <summary>
 /// 部门创建结果，包含创建的部门详细信息。
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Organization")]
 public class DepartmentCreateUpdateResult
 {
     /// <summary>

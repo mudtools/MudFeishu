@@ -11,6 +11,7 @@ namespace Mud.Feishu.DataModels.ApprovalExternal;
 /// <para>任务级别的快捷审批操作配置。</para>
 /// <para>**注意**：快捷审批目前仅支持在飞书移动端操作。</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Approval")]
 public class ExternalActionConfig
 {
     /// <summary>

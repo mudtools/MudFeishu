@@ -11,6 +11,7 @@ namespace Mud.Feishu.DataModels.Spreadsheets;
 /// 创建电子表格请求体
 /// <para>在云空间指定目录下创建电子表格。可自定义表格标题。不支持带内容创建表格。</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Spreadsheets")]
 public class CreateSpreadsheetRequest
 {
     /// <summary>

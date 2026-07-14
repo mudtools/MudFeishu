@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Docx;
 /// <summary>
 /// 内容转换响应结果
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Docx")]
 public class ContentConvertResult
 {
     /// <summary>
@@ -34,6 +35,7 @@ public class ContentConvertResult
 /// <summary>
 /// 块图片 URL 映射关系
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Docx")]
 public class BlockImageUrl
 {
     /// <summary>

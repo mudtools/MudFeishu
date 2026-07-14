@@ -11,6 +11,7 @@ namespace Mud.Feishu.DataModels.Spreadsheets;
 /// <summary>
 /// <para>创建的筛选视图的信息</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Spreadsheets")]
 public class FilterViewInfo
 {
     /// <summary>

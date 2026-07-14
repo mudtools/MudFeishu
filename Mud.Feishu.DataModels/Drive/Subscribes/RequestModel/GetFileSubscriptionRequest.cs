@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Drive;
 /// <summary>
 /// 获取订阅状态请求体
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Drive")]
 public class GetFileSubscriptionRequest
 {
     /// <summary>

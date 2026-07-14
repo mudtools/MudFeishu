@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Bitable;
 /// <summary>
 /// 新增多条记录请求体
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Bitable")]
 public class AddRecordsRequest
 {
     /// <summary>

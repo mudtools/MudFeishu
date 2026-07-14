@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Messages;
 /// <summary>
 /// 富文本消息本地内容模型类，用于定义飞书富文本消息的结构
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Messages")]
 public class RichTextMessageLocalContent
 {
     /// <summary>

@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Spreadsheets;
 /// <summary>
 /// 创建筛选视图请求体
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Spreadsheets")]
 public class CreateFilterViewRequest : UpdateFilterViewRequest
 {
     /// <summary>

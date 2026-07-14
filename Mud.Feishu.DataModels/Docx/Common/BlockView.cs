@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Docx;
 /// <summary>
 /// <para>视图 Block</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Docx")]
 public class BlockView
 {
     /// <summary>

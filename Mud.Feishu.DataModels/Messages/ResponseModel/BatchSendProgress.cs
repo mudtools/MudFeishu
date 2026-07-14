@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Messages;
 /// <summary>
 /// 批量消息发送进度信息
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Messages")]
 public class BatchMessageSendProgress
 {
     /// <summary>

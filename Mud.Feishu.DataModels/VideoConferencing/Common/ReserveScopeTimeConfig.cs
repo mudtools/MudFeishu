@@ -12,6 +12,7 @@ namespace Mud.Feishu.DataModels.VideoConferencing;
 /// <summary>
 /// <para>预定时间设置</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "VideoConferencing")]
 public class ReserveScopeTimeConfig
 {
     /// <summary>

@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Calendar;
 /// <summary>
 /// 创建共享日历请求体
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Calendar")]
 public class CreateCalendarRequest : CalendarBaseData
 {
 

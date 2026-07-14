@@ -12,6 +12,7 @@ namespace Mud.Feishu.DataModels.Departments;
 /// <summary>
 /// 部门创建更新请求基类，包含部门请求的通用属性。
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Organization")]
 public abstract class DepartmentRequestBase
 {
     /// <summary>

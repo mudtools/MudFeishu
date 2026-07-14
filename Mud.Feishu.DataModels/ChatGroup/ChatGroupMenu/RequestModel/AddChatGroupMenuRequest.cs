@@ -1,4 +1,4 @@
-﻿// -----------------------------------------------------------------------
+// -----------------------------------------------------------------------
 //  作者：Mud Studio  版权所有 (c) Mud Studio 2026   
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
@@ -11,6 +11,7 @@ namespace Mud.Feishu.DataModels.ChatGroupMenu;
 /// 添加群菜单请求体
 /// <para>在指定群组中添加一个或多个群菜单。成功调用后接口会返回当前群组内所有群菜单信息。</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "ChatGroup")]
 public class AddChatGroupMenuRequest
 {
     /// <summary>
@@ -32,6 +33,7 @@ public class AddChatGroupMenuRequest
 /// <summary>
 /// <para>要向群内追加的菜单</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "ChatGroup")]
 public class ChatMenuTreeData
 {
     /// <summary>

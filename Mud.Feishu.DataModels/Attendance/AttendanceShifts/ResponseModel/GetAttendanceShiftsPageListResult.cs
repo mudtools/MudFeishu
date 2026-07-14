@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.AttendanceShifts;
 /// <summary>
 /// 查询所有班次响应体
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Attendance")]
 public class GetAttendanceShiftsPageListResult : ApiPageListResult
 {
     /// <summary>

@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Messages;
 /// <summary>
 /// 国际化富文本消息内容类，用于存储不同语言的富文本消息内容
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Messages")]
 public class I18nRichTextMessageContent
 {
     /// <summary>

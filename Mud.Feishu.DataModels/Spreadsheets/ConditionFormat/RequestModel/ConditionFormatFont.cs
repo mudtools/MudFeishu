@@ -8,6 +8,7 @@
 namespace Mud.Feishu.DataModels.Spreadsheets;
 
 /// <summary>条件的数据的字体样式</summary>
+[HttpJsonSerializable(SerializerClassName = "Spreadsheets")]
 public class ConditionFormatFont
 {
     /// <summary>

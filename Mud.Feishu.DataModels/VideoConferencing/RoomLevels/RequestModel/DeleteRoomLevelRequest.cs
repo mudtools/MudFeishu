@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.VideoConferencing;
 /// <summary>
 /// 删除会议室层级请求体
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "VideoConferencing")]
 public class DeleteRoomLevelRequest
 {
     /// <summary>

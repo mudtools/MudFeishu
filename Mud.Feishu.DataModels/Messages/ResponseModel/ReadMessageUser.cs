@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Messages;
 /// <summary>
 /// 表示已读取消息的用户信息
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Messages")]
 public class ReadMessageUser
 {
     /// <summary>

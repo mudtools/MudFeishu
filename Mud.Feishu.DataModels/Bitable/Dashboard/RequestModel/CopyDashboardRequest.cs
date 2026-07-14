@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Bitable;
 /// <summary>
 /// 复制仪表盘请求体
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Bitable")]
 public class CopyDashboardRequest
 {
     /// <summary>

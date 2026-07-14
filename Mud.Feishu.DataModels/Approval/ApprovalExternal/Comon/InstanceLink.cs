@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.ApprovalExternal;
 /// <summary>
 /// <para>审批实例链接信息。设置的链接用于在审批中心 **已发起** 列表内点击跳转，跳回三方审批系统查看审批详情。</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Approval")]
 public class InstanceLink
 {
     /// <summary>

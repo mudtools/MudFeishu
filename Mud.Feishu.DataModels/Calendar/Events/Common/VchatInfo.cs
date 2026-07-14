@@ -8,6 +8,7 @@
 namespace Mud.Feishu.DataModels.Calendar;
 
 /// <summary>视频会议信息</summary>
+[HttpJsonSerializable(SerializerClassName = "Calendar")]
 public class VchatInfo
 {
     /// <summary>

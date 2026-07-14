@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Calendar;
 /// <summary>
 /// 查询会议室日程主题和会议详情响应体
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Calendar")]
 public class GetMeetingRoomSummaryResult
 {
     /// <summary>

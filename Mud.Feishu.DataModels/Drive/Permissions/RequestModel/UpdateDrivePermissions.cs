@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Drive;
 /// <summary>
 /// 更新云文档权限设置请求体
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Drive")]
 public class UpdateDrivePermissionsRequest : DrivePermissions
 {
 

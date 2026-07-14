@@ -8,6 +8,7 @@
 namespace Mud.Feishu.DataModels.Spreadsheets;
 
 /// <summary>字体相关样式</summary>
+[HttpJsonSerializable(SerializerClassName = "Spreadsheets")]
 public class CellFont
 {
     /// <summary>

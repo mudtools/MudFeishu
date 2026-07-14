@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Docx;
 /// <summary>
 /// <para>图片 Block</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Docx")]
 public class BlockImage
 {
     /// <summary>
@@ -61,6 +62,7 @@ public class BlockImage
 /// <summary>
 /// <para>图片描述</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Docx")]
 public class BlockImageCaption
 {
     /// <summary>

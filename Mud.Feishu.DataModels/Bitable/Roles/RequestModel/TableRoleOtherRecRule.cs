@@ -11,6 +11,7 @@ namespace Mud.Feishu.DataModels.Bitable;
 /// <para>记录筛选条件，在 `rec_rule.other_perm` 为 0 时生效。对于未命中 `rec_rule` 的记录，通过 `other_rec_rule` 指定可阅读记录范围；此时，既未命中 `rec_rule`、也未命中 `other_rec_rule` 的记录会被禁止阅读。</para>
 /// <para>**注意**：仅高级权限为 v2 版本的多维表格支持该参数。是否是 v2 版本可调用[获取多维表格元数据](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/bitable-v1/app/get)查看。</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Bitable")]
 public class TableRoleOtherRecRule
 {
     /// <summary>

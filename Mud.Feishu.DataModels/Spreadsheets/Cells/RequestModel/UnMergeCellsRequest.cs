@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Spreadsheets;
 /// <summary>
 /// 拆分单元格请求体
 /// </summary> 
+[HttpJsonSerializable(SerializerClassName = "Spreadsheets")]
 public class UnMergeCellsRequest
 {
     /// <summary>

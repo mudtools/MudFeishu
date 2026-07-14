@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.ApprovalForm;
 /// <summary>
 /// 文档控件
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Approval")]
 public class DocumentWidget() : WidgetBase<DocumentValue>("document")
 {
 }
@@ -17,6 +18,7 @@ public class DocumentWidget() : WidgetBase<DocumentValue>("document")
 /// <summary>
 /// 文档控件值
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Approval")]
 public class DocumentValue
 {
     /// <summary>

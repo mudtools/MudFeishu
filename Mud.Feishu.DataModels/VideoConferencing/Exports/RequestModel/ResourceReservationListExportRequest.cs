@@ -11,6 +11,7 @@ namespace Mud.Feishu.DataModels.VideoConferencing;
 /// <summary>
 /// 导出会议室预定数据请求体
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "VideoConferencing")]
 public class ResourceReservationListExportRequest
 {
     /// <summary>

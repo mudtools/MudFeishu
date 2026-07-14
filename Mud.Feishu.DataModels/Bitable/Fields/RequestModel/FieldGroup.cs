@@ -11,6 +11,7 @@ namespace Mud.Feishu.DataModels.Bitable;
 /// <summary>
 /// <para>要新增字段编组列表</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Bitable")]
 public class FieldGroup
 {
     /// <summary>

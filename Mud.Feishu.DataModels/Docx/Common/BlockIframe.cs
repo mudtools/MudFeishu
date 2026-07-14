@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Docx;
 /// <summary>
 /// <para>内嵌 Block</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Docx")]
 public class BlockIframe
 {
     /// <summary>
@@ -25,6 +26,7 @@ public class BlockIframe
 /// <summary>
 /// <para>iframe 的组成元素</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Docx")]
 public class IframeComponent
 {
     /// <summary>

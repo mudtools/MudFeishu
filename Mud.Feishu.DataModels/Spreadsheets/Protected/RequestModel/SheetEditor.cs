@@ -8,6 +8,7 @@
 namespace Mud.Feishu.DataModels.Spreadsheets;
 
 /// <summary>可编辑保护范围的用户 ID</summary>
+[HttpJsonSerializable(SerializerClassName = "Spreadsheets")]
 public class SheetEditor
 {
     /// <summary>

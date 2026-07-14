@@ -11,6 +11,7 @@ namespace Mud.Feishu.DataModels.Board;
 /// <summary>
 /// <para>坐标</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Board")]
 public class Point
 {
     /// <summary>

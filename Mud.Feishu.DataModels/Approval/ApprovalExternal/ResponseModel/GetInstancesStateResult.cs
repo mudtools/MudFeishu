@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.ApprovalExternal;
 /// <summary>
 /// 获取三方审批任务状态响应体
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Approval")]
 public class GetInstancesStateResult : ApiPageListResult
 {
     /// <summary>

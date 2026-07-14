@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Spreadsheets;
 /// <summary>
 /// 电子表格的基础信息
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Spreadsheets")]
 public class Spreadsheetnfo
 {
     /// <summary>

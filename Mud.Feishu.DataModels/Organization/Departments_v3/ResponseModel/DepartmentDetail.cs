@@ -1,10 +1,11 @@
-﻿using Mud.Feishu.DataModels.Users;
+using Mud.Feishu.DataModels.Users;
 
 namespace Mud.Feishu.DataModels.Departments;
 
 /// <summary>
 /// 部门详细信息，包含部门的基本信息、配置和状态以及HRBP信息。
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Organization")]
 public class DepartmentDetail : DepartmentBase
 {
     /// <summary>

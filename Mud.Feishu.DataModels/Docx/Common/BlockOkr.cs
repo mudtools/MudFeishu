@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Docx;
 /// <summary>
 /// <para>OKR Block</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Docx")]
 public class BlockOkr
 {
     /// <summary>
@@ -80,6 +81,7 @@ public class BlockOkr
 /// <summary>
 /// <para>OKR Block 中的 objective ID 和 key result ID，此值为空时插入 okr 下所有的 objective 和 key result</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Docx")]
 public class ObjectiveIdWithKrId
 {
     /// <summary>
@@ -103,6 +105,7 @@ public class ObjectiveIdWithKrId
 /// <summary>
 /// <para>可见性设置</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Docx")]
 public class OkrVisibleSetting
 {
     /// <summary>

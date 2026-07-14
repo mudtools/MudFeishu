@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.JobFamilies;
 /// <summary>
 /// 表示职位族信息的数据模型类，用于存储和传输职位族相关数据
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Organization")]
 public class JobFamilyInfo
 {
 

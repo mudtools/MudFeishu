@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Spreadsheets;
 /// <summary>
 /// 电子表格浮动图片
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Spreadsheets")]
 public class SheetFloatImage
 {
     /// <summary>
@@ -68,6 +69,7 @@ public class SheetFloatImage
 /// <summary>
 /// 电子表格浮动图片数据
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Spreadsheets")]
 public class SheetFloatImageData : SheetFloatImage
 {
     /// <summary>

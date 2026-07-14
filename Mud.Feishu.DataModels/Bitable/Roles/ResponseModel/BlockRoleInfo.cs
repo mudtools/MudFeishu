@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Bitable;
 /// <summary>
 /// <para>针对仪表盘的权限设置</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Bitable")]
 public class BlockRoleInfo : BlockRole
 {
 

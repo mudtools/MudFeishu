@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Docx;
 /// <summary>
 /// <para>文本元素</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Docx")]
 public class TextElement
 {
     /// <summary>
@@ -79,6 +80,7 @@ public class TextElement
 /// <summary>
 /// <para>文本局部样式</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Docx")]
 public class TextElementStyle
 {
     /// <summary>
@@ -188,6 +190,7 @@ public class TextElementStyle
 /// <summary>
 /// <para>链接</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Docx")]
 public class TextElementStyleLink
 {
     /// <summary>
@@ -202,6 +205,7 @@ public class TextElementStyleLink
 /// <summary>
 /// <para>文字</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Docx")]
 public class TextElementTextRun
 {
     /// <summary>
@@ -223,6 +227,7 @@ public class TextElementTextRun
 /// <summary>
 /// <para>@用户</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Docx")]
 public class TextElementMentionUser
 {
     /// <summary>
@@ -244,6 +249,7 @@ public class TextElementMentionUser
 /// <summary>
 /// <para>@文档</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Docx")]
 public class TextElementMentionDoc
 {
     /// <summary>
@@ -314,6 +320,7 @@ public class TextElementMentionDoc
 /// <summary>
 /// <para>日期提醒</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Docx")]
 public class TextElementReminder
 {
     /// <summary>
@@ -369,6 +376,7 @@ public class TextElementReminder
 /// <summary>
 /// <para>内联附件</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Docx")]
 public class InlineFile
 {
     /// <summary>
@@ -399,6 +407,7 @@ public class InlineFile
 /// <summary>
 /// <para>内联 block</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Docx")]
 public class TextElementInlineBlock
 {
     /// <summary>
@@ -420,6 +429,7 @@ public class TextElementInlineBlock
 /// <summary>
 /// <para>公式</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Docx")]
 public class TextElementEquation
 {
     /// <summary>

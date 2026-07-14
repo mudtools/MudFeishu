@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.ApprovalForm;
 /// <summary>
 /// 多选按钮控件V2
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Approval")]
 public class CheckboxV2Widget() : WidgetBase<List<string>>("checkboxV2")
 {
 }

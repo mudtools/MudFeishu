@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Bitable;
 /// <summary>
 /// <para>记录筛选条件，当 `table_perm` 为 1 或 2 时生效。用于指定可编辑或可阅读的记录。</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Bitable")]
 public class TableRoleRecRuleInfo
 {
     /// <summary>

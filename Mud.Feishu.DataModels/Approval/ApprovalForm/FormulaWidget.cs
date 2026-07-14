@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.ApprovalForm;
 /// <summary>
 /// 公式控件
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Approval")]
 public class FormulaWidget() : WidgetBase<double>("formula")
 {
 }

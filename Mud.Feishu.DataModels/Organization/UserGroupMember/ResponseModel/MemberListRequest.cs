@@ -1,4 +1,4 @@
-﻿// -----------------------------------------------------------------------
+// -----------------------------------------------------------------------
 //  作者：Mud Studio  版权所有 (c) Mud Studio 2026   
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
@@ -12,6 +12,7 @@ namespace Mud.Feishu.DataModels.UserGroupMember;
 /// 成员列表请求/响应模型，包含用户组成员列表信息。
 /// 用于获取用户组成员列表或批量操作时的成员数据传输。
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Organization")]
 public class MemberListRequest : ApiPageListResult
 {
     /// <summary>

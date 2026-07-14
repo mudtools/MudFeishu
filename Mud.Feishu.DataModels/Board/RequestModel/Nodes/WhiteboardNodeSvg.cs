@@ -11,6 +11,7 @@ namespace Mud.Feishu.DataModels.Board;
 /// <summary>
 /// <para>svg图形属性</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Board")]
 public class WhiteboardNodeSvg
 {
     /// <summary>

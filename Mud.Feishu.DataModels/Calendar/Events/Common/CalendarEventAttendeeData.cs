@@ -13,6 +13,7 @@ namespace Mud.Feishu.DataModels.Calendar;
 /// <para>- 单次请求可设置的参与人数量（含会议室）上限为 1000。</para>
 /// <para>- 单次请求可设置的会议室数量上限为 100。</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Calendar")]
 public class CalendarEventAttendeeData
 {
     /// <summary>

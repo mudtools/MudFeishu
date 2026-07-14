@@ -9,6 +9,7 @@ namespace Mud.Feishu.DataModels.Users;
 /// <summary>
 /// 更新用户 user_id 请求体。
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Organization")]
 public class UpdateUserIdRequest
 {
     /// <summary>

@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Messages;
 /// <summary>
 /// 富文本消息元素类，用于表示飞书富文本消息中的单个元素
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Messages")]
 public class RichTextMessageElement
 {
     /// <summary>

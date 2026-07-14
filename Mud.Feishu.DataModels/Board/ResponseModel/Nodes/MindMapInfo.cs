@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Board;
 /// <summary>
 /// <para>思维导图节点（v1版本，只读，写操作请使用mind_map_root/mind_map_node结构）</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Board")]
 public class MindMapInfo
 {
     /// <summary>

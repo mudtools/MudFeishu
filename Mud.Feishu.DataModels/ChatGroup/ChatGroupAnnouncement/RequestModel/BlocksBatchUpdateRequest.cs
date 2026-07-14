@@ -1,4 +1,4 @@
-﻿// -----------------------------------------------------------------------
+// -----------------------------------------------------------------------
 //  作者：Mud Studio  版权所有 (c) Mud Studio 2026   
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.ChatGroupNotice;
 /// <summary>
 /// 批量更新群公告块的内容请求体
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "ChatGroup")]
 public class BlocksBatchUpdateRequest
 {
     /// <summary>
@@ -26,6 +27,7 @@ public class BlocksBatchUpdateRequest
 /// <summary>
 /// <para>批量更新 Block</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "ChatGroup")]
 public class UpdateBlockInfo
 {
     /// <summary>
@@ -173,6 +175,7 @@ public class UpdateBlockInfo
 /// <summary>
 /// <para>更新文本元素请求</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "ChatGroup")]
 public class UpdateTextElementsInfo
 {
     /// <summary>
@@ -187,6 +190,7 @@ public class UpdateTextElementsInfo
 /// <summary>
 /// <para>更新文本样式请求</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "ChatGroup")]
 public class UpdateTextStyleInfo
 {
     /// <summary>
@@ -215,6 +219,7 @@ public class UpdateTextStyleInfo
 /// <summary>
 /// <para>更新表格属性请求</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "ChatGroup")]
 public class UpdateTablePropertyInfo
 {
     /// <summary>
@@ -255,6 +260,7 @@ public class UpdateTablePropertyInfo
 /// <summary>
 /// <para>表格插入新行请求</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "ChatGroup")]
 public class InsertTableRowInfo
 {
     /// <summary>
@@ -270,6 +276,7 @@ public class InsertTableRowInfo
 /// <summary>
 /// <para>表格插入新列请求</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "ChatGroup")]
 public class InsertTableColumnInfo
 {
     /// <summary>
@@ -285,6 +292,7 @@ public class InsertTableColumnInfo
 /// <summary>
 /// <para>表格批量删除行请求</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "ChatGroup")]
 public class DeleteTableRowsInfo
 {
     /// <summary>
@@ -309,6 +317,7 @@ public class DeleteTableRowsInfo
 /// <summary>
 /// <para>表格批量删除列请求</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "ChatGroup")]
 public class DeleteTableColumnsInfo
 {
     /// <summary>
@@ -332,6 +341,7 @@ public class DeleteTableColumnsInfo
 /// <summary>
 /// <para>表格合并单元格请求</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "ChatGroup")]
 public class MergeTableCellsInfo
 {
     /// <summary>
@@ -374,6 +384,7 @@ public class MergeTableCellsInfo
 /// <summary>
 /// <para>表格取消单元格合并状态请求</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "ChatGroup")]
 public class UnmergeTableCellsInfo
 {
     /// <summary>
@@ -398,6 +409,7 @@ public class UnmergeTableCellsInfo
 /// <summary>
 /// <para>分栏删除列请求</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "ChatGroup")]
 public class DeleteGridColumnInfo
 {
     /// <summary>
@@ -413,6 +425,7 @@ public class DeleteGridColumnInfo
 /// <summary>
 /// <para>更新分栏列宽比例请求</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "ChatGroup")]
 public class UpdateGridColumnWidthRatioInfo
 {
     /// <summary>
@@ -429,6 +442,7 @@ public class UpdateGridColumnWidthRatioInfo
 /// <summary>
 /// <para>分栏插入新的分栏列请求</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "ChatGroup")]
 public class InsertGridColumnInfo
 {
     /// <summary>
@@ -444,6 +458,7 @@ public class InsertGridColumnInfo
 /// <summary>
 /// <para>替换图片请求</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "ChatGroup")]
 public class ReplaceImageInfo
 {
     /// <summary>
@@ -487,6 +502,7 @@ public class ReplaceImageInfo
 /// <summary>
 /// <para>替换附件请求</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "ChatGroup")]
 public class ReplaceFileInfo
 {
     /// <summary>
@@ -500,6 +516,7 @@ public class ReplaceFileInfo
 /// <summary>
 /// <para>更新任务 Block 请求</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "ChatGroup")]
 public class UpdateTaskInfo
 {
     /// <summary>
@@ -522,6 +539,7 @@ public class UpdateTaskInfo
 /// <summary>
 /// <para>更新文本元素及样式请求</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "ChatGroup")]
 public class UpdateTextInfo
 {
     /// <summary>

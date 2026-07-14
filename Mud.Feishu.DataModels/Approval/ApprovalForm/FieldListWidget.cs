@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.ApprovalForm;
 /// <summary>
 /// 明细/表格控件
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Approval")]
 public class FieldListWidget() : WidgetBase<List<List<IWidget>>>("fieldList")
 {
 }

@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Bitable;
 /// <summary>
 /// 更新表单请求体
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Bitable")]
 public class UpdateFormRequest : AppTableFormData
 {
 

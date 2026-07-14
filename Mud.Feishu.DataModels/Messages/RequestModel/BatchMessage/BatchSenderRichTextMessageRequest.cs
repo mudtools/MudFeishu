@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Messages;
 /// <summary>
 /// 批量发送富文本消息请求体。
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Messages")]
 public class BatchSenderRichTextMessageRequest : BatchSendMessageRequestBase<MessageRichTextContent>
 {
     /// <summary>

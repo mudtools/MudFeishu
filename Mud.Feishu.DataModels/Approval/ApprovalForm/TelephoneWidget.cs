@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.ApprovalForm;
 /// <summary>
 /// 电话控件
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Approval")]
 public class TelephoneWidget() : WidgetBase<TelephoneValue>("telephone")
 {
 }
@@ -17,6 +18,7 @@ public class TelephoneWidget() : WidgetBase<TelephoneValue>("telephone")
 /// <summary>
 /// 表示电话号码的值对象，包含国家代码和国内号码
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Approval")]
 public class TelephoneValue
 {
     /// <summary>

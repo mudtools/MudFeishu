@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Spreadsheets;
 /// <summary>
 /// 筛选条件
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Spreadsheets")]
 public class FilterViewCondition
 {
     /// <summary>

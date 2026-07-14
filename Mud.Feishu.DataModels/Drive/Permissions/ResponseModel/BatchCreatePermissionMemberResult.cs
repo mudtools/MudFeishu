@@ -11,6 +11,7 @@ namespace Mud.Feishu.DataModels.Drive;
 /// 批量增加协作者权限响应体
 /// <para>批量添加协作者权限的响应体，包含每个协作者的权限信息。</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Drive")]
 public class BatchCreatePermissionMemberResult
 {
     /// <summary>

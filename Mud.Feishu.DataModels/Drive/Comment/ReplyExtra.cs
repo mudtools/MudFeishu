@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Drive;
 /// <summary>
 /// <para>回复的其他内容，图片 Token 等</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Drive")]
 public class ReplyExtra
 {
     /// <summary>

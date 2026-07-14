@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Messages;
 /// <summary>
 /// 合并接收消息结果类，用于表示批量获取消息的结果
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Messages")]
 public class MergeReceiveMessageResult
 {
     /// <summary>

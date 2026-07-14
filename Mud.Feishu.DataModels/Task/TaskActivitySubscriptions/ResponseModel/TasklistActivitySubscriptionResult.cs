@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.TasksActivitySubscriptions;
 /// <summary>
 /// 创建动态订响应体
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Task")]
 public class TasklistActivitySubscriptionResult
 {
     /// <summary>

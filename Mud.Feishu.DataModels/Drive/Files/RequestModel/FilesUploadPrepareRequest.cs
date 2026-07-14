@@ -1,4 +1,4 @@
-﻿// -----------------------------------------------------------------------
+// -----------------------------------------------------------------------
 //  作者：Mud Studio  版权所有 (c) Mud Studio 2026   
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
@@ -17,6 +17,7 @@ namespace Mud.Feishu.DataModels.Drive.Files;
 /// <para>- 该接口不支持并发调用，且调用频率上限为 5 QPS，10000 次/天。否则会返回 1061045 错误码，可通过稍后重试解决。</para>
 /// <para>- 上传文件的大小限制因飞书版本而异，详情参考[文件上传、在线预览的大小及格式要求](https://www.feishu.cn/hc/zh-CN/articles/360049067549-%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0-%E5%9C%A8%E7%BA%BF%E9%A2%84%E8%A7%88%E7%9A%84%E5%A4%A7%E5%B0%8F%E5%8F%8A%E6%A0%BC%E5%BC%8F%E8%A6%81%E6%B1%82)。</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Drive")]
 public class FilesUploadPrepareRequest
 {
     /// <summary>

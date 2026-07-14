@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Spreadsheets;
 /// <summary>
 /// 删除保护范围响应
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Spreadsheets")]
 public class DeleteProtectedResult
 {
     /// <summary>

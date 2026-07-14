@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Drive.FileVersions;
 /// <summary>
 /// 版本文档列表
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Drive")]
 public class FileVersionInfo
 {
     /// <summary>

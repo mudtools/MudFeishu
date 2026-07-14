@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Drive.Files;
 /// <summary>
 /// <para>快捷方式文件信息（该参数不会返回）</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Drive")]
 public class CopyFileShortcutInfo
 {
     /// <summary>

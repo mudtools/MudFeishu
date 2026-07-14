@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Board;
 /// <summary>
 /// <para>文本元素信息（当前元素为文本类别时候需要填写当前字段）</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Board")]
 public class RichTextElementText
 {
     /// <summary>

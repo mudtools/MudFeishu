@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.ApprovalExternal;
 /// <summary>
 /// <para>抄送列表</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Approval")]
 public record ExternalCcNode
 {
     /// <summary>

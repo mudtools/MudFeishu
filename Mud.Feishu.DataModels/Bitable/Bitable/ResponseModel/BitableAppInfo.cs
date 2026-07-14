@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Bitable;
 /// <summary>
 /// 多维表格应用信息
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Bitable")]
 public class BitableAppInfo : BitableApp
 {
     /// <summary>

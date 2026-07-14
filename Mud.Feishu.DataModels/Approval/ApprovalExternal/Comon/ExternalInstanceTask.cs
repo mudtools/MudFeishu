@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels;
 /// <summary>
 /// <para>任务信息</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Approval")]
 public class ExternalInstanceTask
 {
     /// <summary>

@@ -11,6 +11,7 @@ namespace Mud.Feishu.DataModels.Drive;
 /// 增加协作者权限响应体
 /// <para>为指定云文档添加协作者，协作者可以是用户、群组、部门、用户组等。</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Drive")]
 public class PermissionMemberOopsResult
 {
     /// <summary>

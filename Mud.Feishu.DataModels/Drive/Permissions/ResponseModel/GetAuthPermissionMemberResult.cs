@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Drive;
 /// <summary>
 /// 判断用户云文档权限响应体
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Drive")]
 public class GetAuthPermissionMemberResult
 {
     /// <summary>

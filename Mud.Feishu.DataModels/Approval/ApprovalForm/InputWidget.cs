@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.ApprovalForm;
 /// <summary>
 /// 输入框控件
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Approval")]
 public class InputWidget() : WidgetBase<string>("input")
 {
 }

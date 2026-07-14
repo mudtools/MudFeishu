@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Board;
 /// <summary>
 /// 更新画板主题请求体
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Board")]
 public class UpdateWhiteboardThemeRequest : WhiteboardsTheme
 {
 

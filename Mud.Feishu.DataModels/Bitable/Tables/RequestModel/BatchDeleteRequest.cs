@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Bitable;
 /// <summary>
 /// 批量删除多维表格应用数据表记录请求体
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Bitable")]
 public class BatchDeleteRequest
 {
     /// <summary>

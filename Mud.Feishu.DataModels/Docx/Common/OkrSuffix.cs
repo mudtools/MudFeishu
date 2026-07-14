@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Docx;
 /// <summary>
 /// <para>OKR Block</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Docx")]
 public abstract class OkrSuffix
 {
     /// <summary>
@@ -71,6 +72,7 @@ public abstract class OkrSuffix
 /// <summary>
 /// <para>OKR Objective Block</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Docx")]
 public class BlockOkrObjective : OkrSuffix
 {
     /// <summary>
@@ -85,6 +87,7 @@ public class BlockOkrObjective : OkrSuffix
 /// <summary>
 /// <para>OKR Key Result</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Docx")]
 public class BlockOkrKeyResult : OkrSuffix
 {
     /// <summary>
@@ -99,6 +102,7 @@ public class BlockOkrKeyResult : OkrSuffix
 /// <summary>
 /// <para>进展信息</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Docx")]
 public class OkrProgressRate
 {
     /// <summary>

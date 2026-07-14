@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Spreadsheets;
 /// <summary>
 /// 删除下拉列表设置的结果
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Spreadsheets")]
 public class DeleteRangeResult
 {
     /// <summary>

@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Spreadsheets;
 /// <summary>
 /// 获取数据验证响应
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Spreadsheets")]
 public class GetDataValidationsResult
 {
     /// <summary>

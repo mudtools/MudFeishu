@@ -8,6 +8,7 @@
 namespace Mud.Feishu.DataModels.Spreadsheets;
 
 /// <summary>获取条件格式响应体</summary>
+[HttpJsonSerializable(SerializerClassName = "Spreadsheets")]
 public class GetConditionFormatsResult
 {
     /// <summary>

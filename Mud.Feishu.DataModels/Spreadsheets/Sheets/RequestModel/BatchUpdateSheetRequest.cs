@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Spreadsheets;
 /// <summary>
 /// 操作工作表请求体
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Spreadsheets")]
 public class BatchUpdateSheetRequest
 {
     /// <summary>
@@ -21,6 +22,7 @@ public class BatchUpdateSheetRequest
 }
 
 /// <summary></summary>
+[HttpJsonSerializable(SerializerClassName = "Spreadsheets")]
 public class SheetRequest
 {
     /// <summary>
@@ -46,6 +48,7 @@ public class SheetRequest
 }
 
 /// <summary></summary>
+[HttpJsonSerializable(SerializerClassName = "Spreadsheets")]
 public class AddsheetSuffix
 {
     /// <summary>
@@ -57,6 +60,7 @@ public class AddsheetSuffix
 }
 
 /// <summary></summary>
+[HttpJsonSerializable(SerializerClassName = "Spreadsheets")]
 public class CopysheetSuffix
 {
     /// <summary>
@@ -75,6 +79,7 @@ public class CopysheetSuffix
 }
 
 /// <summary></summary>
+[HttpJsonSerializable(SerializerClassName = "Spreadsheets")]
 public class DestinationSheetProperty
 {
     /// <summary>
@@ -86,6 +91,7 @@ public class DestinationSheetProperty
 }
 
 /// <summary></summary>
+[HttpJsonSerializable(SerializerClassName = "Spreadsheets")]
 public class SheetInfo
 {
     /// <summary>
@@ -97,6 +103,7 @@ public class SheetInfo
 }
 
 /// <summary></summary>
+[HttpJsonSerializable(SerializerClassName = "Spreadsheets")]
 public class SheetPropertyData
 {
     /// <summary>

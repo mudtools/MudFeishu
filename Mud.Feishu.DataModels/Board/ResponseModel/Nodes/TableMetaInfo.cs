@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Board;
 /// <summary>
 /// <para>元信息</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Board")]
 public class TableMetaInfo : TableMeta
 {
     /// <summary>

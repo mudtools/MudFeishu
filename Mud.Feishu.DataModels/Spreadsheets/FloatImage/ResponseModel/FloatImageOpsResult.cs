@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Spreadsheets;
 /// <summary>
 /// 表格浮动图片操作响应模型
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Spreadsheets")]
 public class FloatImageOpsResult
 {
     /// <summary>

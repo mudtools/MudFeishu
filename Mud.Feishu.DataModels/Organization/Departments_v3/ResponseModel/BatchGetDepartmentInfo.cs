@@ -1,9 +1,10 @@
-﻿namespace Mud.Feishu.DataModels.Departments;
+namespace Mud.Feishu.DataModels.Departments;
 
 /// <summary>
 /// 获取部门信息的响结果
 /// 用于一次请求获取多个部门的信息。
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Organization")]
 public class BatchGetDepartmentRequest
 {
     /// <summary>

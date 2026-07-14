@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Spreadsheets;
 /// <summary>
 /// 删除数据验证请求
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Spreadsheets")]
 public class DeleteDataValidationRequest
 {
     /// <summary>

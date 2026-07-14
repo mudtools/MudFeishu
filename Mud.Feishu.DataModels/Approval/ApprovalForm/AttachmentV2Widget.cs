@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.ApprovalForm;
 /// <summary>
 /// 附件控件V2
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Approval")]
 public class AttachmentV2Widget() : WidgetBase<List<string>>("attachmentV2")
 {
 }

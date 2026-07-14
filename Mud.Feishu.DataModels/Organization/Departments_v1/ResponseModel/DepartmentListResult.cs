@@ -1,4 +1,4 @@
-﻿// -----------------------------------------------------------------------
+// -----------------------------------------------------------------------
 //  作者：Mud Studio  版权所有 (c) Mud Studio 2026   
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
@@ -11,6 +11,7 @@ namespace Mud.Feishu.DataModels.DepartmentsV1;
 /// 部门列表查询结果模型，用于表示部门批量查询的响应数据结构。
 /// 该模型包含正常部门列表和异常部门信息两部分，提供完整的查询结果。
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Organization")]
 public class DepartmentListResult
 {
     /// <summary>

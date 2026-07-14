@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Messages;
 /// <summary>
 /// 消息图片内容模型类，用于表示飞书消息中图片内容的相关信息
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Messages")]
 public class MessageImageContent
 {
     /// <summary>

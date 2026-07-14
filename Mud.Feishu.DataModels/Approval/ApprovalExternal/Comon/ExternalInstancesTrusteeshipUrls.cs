@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.ApprovalExternal;
 /// <summary>
 /// <para>单据托管回调接入方的接口 URL 地址。</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Approval")]
 public record ExternalInstancesTrusteeshipUrls
 {
     /// <summary>

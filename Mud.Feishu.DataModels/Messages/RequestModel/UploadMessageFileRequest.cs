@@ -11,6 +11,7 @@ namespace Mud.Feishu.DataModels.Messages;
 /// 文件上传请求体。
 /// </summary>
 [FormContent]
+[HttpJsonSerializable(SerializerClassName = "Messages")]
 public partial class UploadMessageFileRequest
 {
     /// <summary>

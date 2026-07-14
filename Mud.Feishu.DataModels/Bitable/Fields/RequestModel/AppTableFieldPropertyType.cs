@@ -11,6 +11,7 @@ namespace Mud.Feishu.DataModels.Bitable;
 /// <para>设置公式字段的数据类型</para>
 /// <para>**注意**：非所有多维表格都支持该能力。请参考[获取多维表格元数据](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/bitable-v1/app/get)接口返回的formula_type 判断，当 `formula_type` 等于 2 时，表示需要设置该字段。</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Bitable")]
 public class AppTableFieldPropertyType
 {
     /// <summary>

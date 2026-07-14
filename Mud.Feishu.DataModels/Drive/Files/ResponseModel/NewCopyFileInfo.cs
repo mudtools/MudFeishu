@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Drive.Files;
 /// <summary>
 /// <para>复制的新文件信息</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Drive")]
 public class NewCopyFileInfo
 {
     /// <summary>

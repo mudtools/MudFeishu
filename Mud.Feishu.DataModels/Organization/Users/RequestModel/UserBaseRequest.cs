@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Users;
 /// <summary>
 /// 用户基础请求类，包含创建和更新用户的共同属性。
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Organization")]
 public abstract class UserBaseRequest : UserData
 {
     /// <summary>

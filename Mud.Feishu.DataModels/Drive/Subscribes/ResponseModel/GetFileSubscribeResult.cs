@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Drive;
 /// <summary>
 /// 查询云文档事件订阅状态响应体
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Drive")]
 public class GetFileSubscribeResult
 {
     /// <summary>
@@ -23,6 +24,7 @@ public class GetFileSubscribeResult
 /// <summary>
 /// 查询用户云文档事件订阅状态响应体
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Drive")]
 public class GetUserFileSubscribeResult
 {
     /// <summary>

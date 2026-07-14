@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Drive;
 /// <summary>
 /// <para>更新文件评论回复请求</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Drive")]
 public class UpdateFileCommentReplyRequest
 {
     /// <summary>

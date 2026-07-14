@@ -4,6 +4,7 @@ namespace Mud.Feishu.DataModels.DepartmentsV1;
 /// <summary>
 /// 部门创建结果
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Organization")]
 public class DepartmentCreateResult
 {
     /// <summary>

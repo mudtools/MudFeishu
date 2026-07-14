@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Calendar;
 /// <summary>
 /// 生成 CalDAV 配置 请求体
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Calendar")]
 public class GenerateCaldavConfSettingRequest
 {
     /// <summary>

@@ -1,4 +1,4 @@
-﻿// -----------------------------------------------------------------------
+// -----------------------------------------------------------------------
 //  作者：Mud Studio  版权所有 (c) Mud Studio 2026   
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
@@ -14,6 +14,7 @@ namespace Mud.Feishu.DataModels.Approval;
 /// <para>- 当 viewer_type 为 TENANT 或 NONE 时，无需填写 viewer_user_id 和 viewer_department_id</para>
 /// <para>**注意**：列表最大长度为 200。</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Approval")]
 public class ApprovalCreateViewers
 {
     /// <summary>

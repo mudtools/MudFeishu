@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Messages;
 /// <summary>
 /// 消息发送者信息类，包含消息发送者的身份标识和类型信息
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Messages")]
 public class MessageSender
 {
     /// <summary>

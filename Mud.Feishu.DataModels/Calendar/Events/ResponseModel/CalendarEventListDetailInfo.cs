@@ -11,6 +11,7 @@ namespace Mud.Feishu.DataModels.Calendar;
 /// <summary>
 /// <para>日程列表，当返回为空时，请根据has_more的值判断是否还有更多数据。</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Calendar")]
 public class CalendarEventListDetailInfo
 {
     /// <summary>

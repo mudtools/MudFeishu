@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.ApprovalExternal;
 /// <summary>
 /// <para>托管预缓存策略。</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Approval")]
 public record ExternalTrusteeshipInstanceCacheConfig
 {
     /// <summary>

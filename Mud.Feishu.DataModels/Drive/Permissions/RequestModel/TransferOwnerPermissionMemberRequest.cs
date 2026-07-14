@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Drive;
 /// <summary>
 /// 转移云文档所有者请求体
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Drive")]
 public class TransferOwnerPermissionMemberRequest
 {
     /// <summary>

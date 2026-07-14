@@ -11,6 +11,7 @@ namespace Mud.Feishu.DataModels.Spreadsheets;
 /// <summary>
 /// 保护范围的维度信息
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Spreadsheets")]
 public class ProtectedDimension
 {
     /// <summary>

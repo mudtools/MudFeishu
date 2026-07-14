@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.AttendanceShifts;
 /// <summary>
 /// <para>休息弹性设置</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Attendance")]
 public class RestTimeFlexibleConfig
 {
     /// <summary>

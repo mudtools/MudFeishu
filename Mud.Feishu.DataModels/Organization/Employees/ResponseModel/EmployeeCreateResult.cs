@@ -1,4 +1,4 @@
-﻿// -----------------------------------------------------------------------
+// -----------------------------------------------------------------------
 //  作者：Mud Studio  版权所有 (c) Mud Studio 2026   
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
@@ -15,6 +15,7 @@ namespace Mud.Feishu.DataModels.Employees;
 /// 当成功创建员工后，API将返回包含新员工唯一标识符的结果对象。
 /// 此模型主要用于处理员工创建接口的响应数据，提供新创建员工的基本标识信息。
 /// </remarks>
+[HttpJsonSerializable(SerializerClassName = "Organization")]
 public class EmployeeCreateResult
 {
     /// <summary>

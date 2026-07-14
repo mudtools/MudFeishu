@@ -11,6 +11,7 @@ namespace Mud.Feishu.DataModels.Spreadsheets;
 /// <summary>
 /// <para>单元格属性，仅当 `resource_type` 为 `sheet` 即工作表类型为电子表格时返回。</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Spreadsheets")]
 public class SheetGridProperties
 {
     /// <summary>

@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Bitable;
 /// <summary>
 /// <para>筛选条件</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Bitable")]
 public class AppTableViewPropertyFilterInfoConditionData : AppTableViewPropertyFilterInfoCondition
 {
     /// <summary>

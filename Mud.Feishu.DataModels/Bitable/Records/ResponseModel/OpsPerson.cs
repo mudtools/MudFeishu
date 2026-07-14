@@ -11,6 +11,7 @@ namespace Mud.Feishu.DataModels.Bitable;
 /// <summary>
 /// <para>该记录的创建人信息。本接口不返回该参数</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Bitable")]
 public class OpsPerson
 {
     /// <summary>

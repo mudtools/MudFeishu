@@ -11,6 +11,7 @@ namespace Mud.Feishu.DataModels.Messages;
 /// 消息群组分享内容模型类
 /// 用于表示飞书消息中群组分享的内容信息
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Messages")]
 public class MessageGroupShareContent
 {
     /// <summary>

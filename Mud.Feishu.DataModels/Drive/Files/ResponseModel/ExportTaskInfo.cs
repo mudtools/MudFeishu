@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Drive.Files;
 /// <summary>
 /// <para>导出任务结果</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Drive")]
 public class ExportTaskInfo
 {
     /// <summary>

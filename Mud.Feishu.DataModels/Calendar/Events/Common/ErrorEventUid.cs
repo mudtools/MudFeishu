@@ -9,6 +9,7 @@ namespace Mud.Feishu.DataModels.Calendar;
 
 
 /// <summary>错误日程信息</summary>
+[HttpJsonSerializable(SerializerClassName = "Calendar")]
 public class ErrorEventUid
 {
     /// <summary>

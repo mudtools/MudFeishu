@@ -14,6 +14,7 @@ namespace Mud.Feishu.DataModels.Drive;
 /// <para>- 文件大小不得超过 20 MB，且不可上传空文件。要上传大于 20 MB 的文件，你需使用分片上传文件相关接口。详情参考[上传文件概述](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/drive-v1/file/multipart-upload-file-/introduction)。</para>
 /// <para>- 该接口调用频率上限为 5 QPS，10000 次/天。否则会返回 1061045 错误码，可通过稍后重试解决。</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Drive")]
 public class FilesUploadAllResult
 {
     /// <summary>

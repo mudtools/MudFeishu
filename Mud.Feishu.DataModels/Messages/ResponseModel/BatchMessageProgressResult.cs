@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Messages;
 /// <summary>
 /// 批量消息处理进度结果类，包含发送进度和撤回进度信息
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Messages")]
 public class BatchMessageProgressResult
 {
     /// <summary>

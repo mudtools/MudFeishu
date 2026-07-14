@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.ApprovalForm;
 /// <summary>
 /// 日期区间控件
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Approval")]
 public class DateIntervalWidget() : WidgetBase<DateIntervalValue>("dateInterval")
 {
 }
@@ -17,6 +18,7 @@ public class DateIntervalWidget() : WidgetBase<DateIntervalValue>("dateInterval"
 /// <summary>
 /// 表示日期间隔值的数据模型，包含开始时间、结束时间和间隔
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Approval")]
 public class DateIntervalValue
 {
     /// <summary>

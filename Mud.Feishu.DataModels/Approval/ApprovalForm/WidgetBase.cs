@@ -37,6 +37,7 @@ public interface IWidget<TValue> : IWidget
 /// 控件数据泛型基类
 /// </summary>
 /// <typeparam name="TValue">值类型</typeparam>
+[HttpJsonSerializable(SerializerClassName = "Approval")]
 public abstract class WidgetBase<TValue>(string type) : IWidget<TValue>
 {
     /// <summary>

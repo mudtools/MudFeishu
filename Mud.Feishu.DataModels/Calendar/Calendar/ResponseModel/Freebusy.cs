@@ -12,6 +12,7 @@ namespace Mud.Feishu.DataModels.Calendar;
 /// <summary>
 /// <para>在请求的时间区间内的忙碌时间段列表。</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Calendar")]
 public class Freebusy
 {
     /// <summary>

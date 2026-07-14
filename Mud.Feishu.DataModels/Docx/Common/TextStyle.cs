@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Docx;
 /// <summary>
 /// <para>文本样式</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Docx")]
 public class TextStyle
 {
     /// <summary>

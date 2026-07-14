@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Drive.Files;
 /// <summary>
 /// 移动文件或文件夹请求体
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Drive")]
 public class MoveFileRequest
 {
     /// <summary>

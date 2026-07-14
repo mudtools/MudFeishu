@@ -11,6 +11,7 @@ namespace Mud.Feishu.DataModels.Board;
 /// <summary>
 /// <para>思维导图节点属性</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Board")]
 public class MindMapNodeInfo : WhiteboardNodeMindMapNode
 {
 

@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Messages;
 /// <summary>
 /// 批量消息已读用户统计信息类，用于封装消息的已读和总数统计
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Messages")]
 public class BatchMessageReadUser
 {
     /// <summary>

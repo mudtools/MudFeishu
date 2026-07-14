@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.EmployeeType;
 /// <summary>
 /// 员工类型枚举结果类，用于封装员工类型枚举信息的响应数据
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Organization")]
 public class EmployeeTypeEnumResult
 {
     /// <summary>

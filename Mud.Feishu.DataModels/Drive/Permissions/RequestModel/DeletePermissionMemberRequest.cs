@@ -11,6 +11,7 @@ namespace Mud.Feishu.DataModels.Drive;
 /// 删除云文档协作者请求体
 /// <para>通过云文档 token 和协作者 ID 移除指定云文档协作者的权限。</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Drive")]
 public class DeletePermissionMemberRequest
 {
     /// <summary>

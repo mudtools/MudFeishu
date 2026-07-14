@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Board;
 /// <summary>
 /// <para>单元格合并信息</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Board")]
 public class TableCellMergeInfo
 {
     /// <summary>

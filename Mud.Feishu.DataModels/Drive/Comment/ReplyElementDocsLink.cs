@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Drive;
 /// <summary>
 /// <para>添加云文档链接</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Drive")]
 public class ReplyElementDocsLink
 {
     /// <summary>

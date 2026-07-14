@@ -9,6 +9,7 @@ namespace Mud.Feishu.DataModels.Messages;
 /// <summary>
 /// 消息提及对象类，用于表示飞书消息中提及的用户或群组信息
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Messages")]
 public class MessageMention
 {
     /// <summary>

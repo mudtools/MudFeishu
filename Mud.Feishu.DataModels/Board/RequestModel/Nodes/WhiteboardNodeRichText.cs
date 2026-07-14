@@ -11,6 +11,7 @@ namespace Mud.Feishu.DataModels.Board;
 /// <para>富文本（富文本有值时候会覆盖上面的text信息）</para>
 /// <para>如果整段文本只有一个样式，不推荐使用富文本</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Board")]
 public class WhiteboardNodeRichText
 {
     /// <summary>

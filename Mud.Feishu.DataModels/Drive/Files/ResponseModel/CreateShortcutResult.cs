@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Drive.Files;
 /// <summary>
 /// 创建文件快捷方式响应体
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Drive")]
 public class CreateShortcutResult
 {
     /// <summary>

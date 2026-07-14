@@ -11,6 +11,7 @@ namespace Mud.Feishu.DataModels.Messages;
 /// 消息加急操作的结果信息。
 /// 包含无效的用户ID列表，用于标识在执行加急操作时哪些用户ID是无效的。
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Messages")]
 public class MessageUrgentResult
 {
     /// <summary>

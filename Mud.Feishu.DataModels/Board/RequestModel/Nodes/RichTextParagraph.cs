@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Board;
 /// <summary>
 /// <para>段落列表</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Board")]
 public class RichTextParagraph
 {
     /// <summary>

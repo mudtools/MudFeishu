@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Spreadsheets;
 /// <summary>
 /// 替换单元格请求体
 /// </summary> 
+[HttpJsonSerializable(SerializerClassName = "Spreadsheets")]
 public class ReplaceCellsRequest
 {
     /// <summary>

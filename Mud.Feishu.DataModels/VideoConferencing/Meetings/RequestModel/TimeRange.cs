@@ -11,6 +11,7 @@ namespace Mud.Feishu.DataModels.VideoConferencing;
 /// <summary>
 /// <para>按会议开始时间过滤，传入时间范围对象。其中 start_time 必须小于等于 end_time（即 meeting_filter.start_time.end_time）。</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "VideoConferencing")]
 public class TimeRange
 {
     /// <summary>

@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Messages;
 /// <summary>
 /// 回复消息请体求
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Messages")]
 public class ReplyMessageRequest
 {
     /// <summary>

@@ -9,6 +9,7 @@ namespace Mud.Feishu.DataModels.Spreadsheets;
 
 
 /// <summary>设置单元格样式的范围</summary>
+[HttpJsonSerializable(SerializerClassName = "Spreadsheets")]
 public class RangeStyle
 {
     /// <summary>

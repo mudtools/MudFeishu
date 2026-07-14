@@ -22,6 +22,7 @@ namespace Mud.Feishu.DataModels.Bitable;
 /// <para>- 20：公式</para>
 /// <para>- 22：地理位置</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Bitable")]
 public class AppTableHeader
 {
     /// <summary>

@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.ApprovalForm;
 /// <summary>
 /// 多行文本控件
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Approval")]
 public class TextareaWidget() : WidgetBase<string>("textarea")
 {
 }

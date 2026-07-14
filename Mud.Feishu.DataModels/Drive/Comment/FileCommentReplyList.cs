@@ -11,6 +11,7 @@ namespace Mud.Feishu.DataModels.Drive;
 /// <summary>
 /// <para>评论里的回复列表</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Drive")]
 public class FileCommentReplyList
 {
     /// <summary>

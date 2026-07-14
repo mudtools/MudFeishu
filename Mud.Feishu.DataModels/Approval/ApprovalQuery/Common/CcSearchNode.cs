@@ -13,6 +13,7 @@ namespace Mud.Feishu.DataModels.ApprovalQuery;
 /// <summary>
 /// <para>审批抄送信息</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Approval")]
 public class CcSearchNode
 {
     /// <summary>

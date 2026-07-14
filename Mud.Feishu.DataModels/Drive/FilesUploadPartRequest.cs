@@ -11,6 +11,7 @@ namespace Mud.Feishu.DataModels.Drive.Files;
 /// 分片上传文件-上传分片请求体
 /// </summary>
 [FormContent]
+[HttpJsonSerializable(SerializerClassName = "Drive")]
 public partial class FilesUploadPartRequest
 {
     /// <summary>

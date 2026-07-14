@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Calendar;
 /// <summary>
 /// 删除日程参与人请求体
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Calendar")]
 public class DeleteCalendarEventAttendeeRequest
 {
     /// <summary>

@@ -1,4 +1,4 @@
-﻿// -----------------------------------------------------------------------
+// -----------------------------------------------------------------------
 //  作者：Mud Studio  版权所有 (c) Mud Studio 2026   
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
@@ -11,6 +11,7 @@ namespace Mud.Feishu.DataModels.Tasks;
 /// 列取任务所在清单 响应体
 /// <para>列取一个任务所在的所有清单的信息，包括清单的GUID和所在自定义分组的GUID。</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Task")]
 public class TaskGuidTaskListsResult
 {
     /// <summary>

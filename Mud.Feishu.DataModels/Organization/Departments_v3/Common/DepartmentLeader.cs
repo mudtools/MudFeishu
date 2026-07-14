@@ -9,6 +9,7 @@ namespace Mud.Feishu.DataModels.Departments;
 /// <summary>
 /// 表示部门领导者的数据模型
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Organization")]
 public class DepartmentLeader
 {
     /// <summary>

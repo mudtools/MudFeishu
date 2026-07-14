@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Spreadsheets;
 /// <summary>
 /// 查找单元格请求体
 /// </summary> 
+[HttpJsonSerializable(SerializerClassName = "Spreadsheets")]
 public class FindCellsRequest
 {
     /// <summary>

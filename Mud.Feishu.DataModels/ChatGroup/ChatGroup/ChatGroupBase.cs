@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.ChatGroup;
 /// <summary>
 /// 聊天群组基础类，包含所有聊天群组相关的通用属性
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "ChatGroup")]
 public class ChatGroupBase
 {
     /// <summary>

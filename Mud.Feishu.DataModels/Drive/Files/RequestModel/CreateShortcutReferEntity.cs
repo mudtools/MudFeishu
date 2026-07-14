@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Drive.Files;
 /// <summary>
 /// <para>源文件的信息</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Drive")]
 public class CreateShortcutReferEntity
 {
     /// <summary>

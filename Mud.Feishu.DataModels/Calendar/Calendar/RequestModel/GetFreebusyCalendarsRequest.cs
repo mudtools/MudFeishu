@@ -11,6 +11,7 @@ namespace Mud.Feishu.DataModels.Calendar;
 /// <summary>
 /// 批量查询主日历日程忙闲信息请求体
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Calendar")]
 public class GetFreebusyCalendarsRequest
 {
     /// <summary>

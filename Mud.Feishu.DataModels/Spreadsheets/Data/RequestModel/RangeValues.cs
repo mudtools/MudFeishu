@@ -11,6 +11,7 @@ namespace Mud.Feishu.DataModels.Spreadsheets;
 /// <summary>
 /// 写入数据请求体中的范围值
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Spreadsheets")]
 public class RangeValues
 {
     /// <summary>

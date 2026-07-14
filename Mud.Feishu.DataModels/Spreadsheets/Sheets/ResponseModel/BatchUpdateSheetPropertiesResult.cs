@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Spreadsheets;
 /// <summary>
 /// 更新工作表属性响应体
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Spreadsheets")]
 public class BatchUpdateSheetPropertiesResult
 {
     /// <summary>
@@ -21,6 +22,7 @@ public class BatchUpdateSheetPropertiesResult
 }
 
 /// <summary></summary>
+[HttpJsonSerializable(SerializerClassName = "Spreadsheets")]
 public class BatchUpdateSheetReplyInfo
 {
     /// <summary>

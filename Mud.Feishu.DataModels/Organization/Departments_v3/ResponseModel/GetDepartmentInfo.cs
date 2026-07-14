@@ -1,9 +1,10 @@
-﻿namespace Mud.Feishu.DataModels.Departments;
+namespace Mud.Feishu.DataModels.Departments;
 
 /// <summary>
 /// 获取部门信息响应模型，包含部门的详细信息。
 /// 用于获取单个部门或批量获取部门信息时的响应数据格式。
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Organization")]
 public class GetDepartmentInfo : DepartmentBase
 {
     /// <summary>

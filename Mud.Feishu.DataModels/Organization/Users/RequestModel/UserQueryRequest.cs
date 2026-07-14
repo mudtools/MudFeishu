@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Users;
 /// <summary>
 /// 用户信息查询请求体
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Organization")]
 public class UserQueryRequest
 {
     /// <summary>

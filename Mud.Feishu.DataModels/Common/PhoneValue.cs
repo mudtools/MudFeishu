@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels;
 /// <summary>
 /// 表示电话号码信息的数据模型类
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Common")]
 public class PhoneValue
 {
     /// <summary>

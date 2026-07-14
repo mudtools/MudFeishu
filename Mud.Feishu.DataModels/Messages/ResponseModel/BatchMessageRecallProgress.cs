@@ -11,6 +11,7 @@ namespace Mud.Feishu.DataModels.Messages;
 /// 批量消息撤回进度信息类
 /// 用于表示飞书平台批量消息撤回操作的执行状态和统计信息
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Messages")]
 public class BatchMessageRecallProgress
 {
     /// <summary>

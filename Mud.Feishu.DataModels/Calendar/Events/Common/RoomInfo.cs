@@ -9,6 +9,7 @@ namespace Mud.Feishu.DataModels.Calendar;
 
 
 /// <summary>会议室忙闲信息</summary>
+[HttpJsonSerializable(SerializerClassName = "Calendar")]
 public class RoomInfo
 {
     /// <summary>

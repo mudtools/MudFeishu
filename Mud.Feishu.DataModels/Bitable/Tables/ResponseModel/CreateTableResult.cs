@@ -12,6 +12,7 @@ namespace Mud.Feishu.DataModels.Bitable;
 /// 创建多维表格数据表的响应结果
 /// <para>多维表格数据表的 ID、默认表格视图的 ID、数据表初始字段的 ID 列表</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Bitable")]
 public class CreateTableResult
 {
     /// <summary>

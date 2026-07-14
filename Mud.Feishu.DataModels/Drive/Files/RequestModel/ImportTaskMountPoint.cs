@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Drive.Files;
 /// <summary>
 /// <para>挂载点（导入后的云文档所在位置）</para>
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Drive")]
 public class ImportTaskMountPoint
 {
     /// <summary>

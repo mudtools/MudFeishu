@@ -11,6 +11,7 @@ namespace Mud.Feishu.DataModels.Messages;
 /// 表示飞书消息反应的结果信息
 /// 包含关于谁在何时添加或移除了哪种类型的表情反应的信息
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Messages")]
 public class EmojiReactionResult
 {
     /// <summary>
@@ -42,6 +43,7 @@ public class EmojiReactionResult
 /// 表示执行反应操作的用户信息
 /// 包含操作者的ID和类型（如用户或应用）
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Messages")]
 public class ReactionOperator
 {
     /// <summary>

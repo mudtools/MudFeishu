@@ -10,6 +10,7 @@ namespace Mud.Feishu.DataModels.Departments;
 /// <summary>
 /// 部门基础信息类，包含部门的基本信息和配置。
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Organization")]
 public abstract class DepartmentBase
 {
     /// <summary>

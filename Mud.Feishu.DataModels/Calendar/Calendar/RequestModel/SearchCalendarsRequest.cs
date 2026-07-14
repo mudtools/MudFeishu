@@ -11,6 +11,7 @@ namespace Mud.Feishu.DataModels.Calendar;
 /// <summary>
 /// 搜索日历请求体
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Calendar")]
 public class SearchCalendarsRequest
 {
     /// <summary>

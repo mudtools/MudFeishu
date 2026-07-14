@@ -157,4 +157,68 @@ public interface IFeishuTenantV1HelpDeskTicket : IFeishuV1HelpDeskTicket
         [Query] int? update_time_start = null,
         [Query] int? update_time_end = null,
         CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 获取工单内图像
+    /// <para>用于获取服务台工单消息图象。仅支持自建应用。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/helpdesk-v1/ticket-management/ticket/ticket_image">接口文档</see></para>
+    /// </summary>   
+    /// <param name="ticket_id">
+    /// <para>工单 ID。可通过[查询全部工单详情](<see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/helpdesk-v1/ticket/list">获取</see>)</para>
+    /// <para>示例值：123456</para>
+    /// </param>
+    /// <param name="msg_id">
+    /// <para>消息ID</para>
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/helpdesk-v1/ticket-message/list">[查询消息ID]</see></para>
+    /// <para>示例值：12345</para>
+    /// </param>
+    /// <param name="index">
+    /// <para>index，当消息类型为post时，需指定图片index，index从0开始。当消息类型为img时，无需index</para>
+    /// <para>示例值：0</para>
+    /// <para>默认值：null</para>
+    /// </param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns>返回文件二进制流</returns>
+    [Get("/open-apis/helpdesk/v1/ticket_images")]
+    Task<byte[]?> GetTicketImageAsync(
+        [Query] string ticket_id,
+        [Query] string msg_id,
+        [Query] int? index = null,
+       CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 回复用户在工单里的提问
+    /// <para>用于回复用户提问结果至工单，需要工单仍处于进行中且未接入人工状态。仅支持自建应用。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/helpdesk-v1/ticket-management/ticket/answer_user_query">接口文档</see></para>
+    /// </summary>   
+    /// <param name="ticket_id">
+    /// <para>工单 ID。可通过[查询全部工单详情](<see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/helpdesk-v1/ticket/list">获取</see>)</para>
+    /// <para>示例值：123456</para>
+    /// </param>
+    /// <param name="request">回复用户在工单里的提问请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Post("/open-apis/helpdesk/v1/tickets/{ticket_id}/answer_user_query")]
+    Task<FeishuNullDataApiResult?> AnswerUserQueryTicketAsync(
+      [Path] string ticket_id,
+      [Body] AnswerUserQueryTicketRequest request,
+     CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 获取服务台自定义字段
+    /// <para>用于获取服务台自定义字段详情。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/helpdesk-v1/ticket-management/ticket/customized_fields">接口文档</see></para>
+    /// </summary>   
+    /// <param name="visible_only">
+    /// <para>visible only</para>
+    /// <para>示例值：true</para>
+    /// <para>默认值：null</para>
+    /// </param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Get("/open-apis/helpdesk/v1/customized_fields")]
+    Task<FeishuApiResult<GetCustomizedFieldsListResult>?> GetCustomizedFieldsListAsync(
+       [Query] bool? visible_only = null,
+       CancellationToken cancellationToken = default);
 }

@@ -25,6 +25,9 @@ namespace Mud.Feishu.Webhook.Serialization;
 [JsonSerializable(typeof(EventVerificationRequest))]
 [JsonSerializable(typeof(EventVerificationResponse))]
 [JsonSerializable(typeof(EventData))]
+[JsonSerializable(typeof(WebhookErrorResponse))]
+[JsonSerializable(typeof(WebhookErrorDetail))]
+[JsonSerializable(typeof(WebhookEmptyResponse))]
 internal partial class FeishuJsonContext : JsonSerializerContext
 {
 }

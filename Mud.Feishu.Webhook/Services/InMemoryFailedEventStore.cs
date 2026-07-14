@@ -6,6 +6,7 @@
 // -----------------------------------------------------------------------
 
 using Mud.Feishu.Abstractions;
+using Mud.Feishu.Abstractions.Utilities;
 using System.Collections.Concurrent;
 
 namespace Mud.Feishu.Webhook;
@@ -57,7 +58,7 @@ public class InMemoryFailedEventStore : IFailedEventStore, IDisposable
         {
             EventId = eventData.EventId,
             EventType = eventData.EventType,
-            SerializedEventData = JsonSerializer.Serialize(eventData),
+            SerializedEventData = JsonSerializer.Serialize(eventData, FeishuJsonDefaults.SerializerOptions),
             ExceptionMessage = exception.Message,
             ExceptionStackTrace = exception.StackTrace ?? string.Empty,
             FailedAt = DateTime.UtcNow,

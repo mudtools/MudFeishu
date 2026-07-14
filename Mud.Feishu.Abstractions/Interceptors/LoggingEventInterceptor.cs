@@ -57,7 +57,7 @@ public class LoggingEventInterceptor : IFeishuEventInterceptor
             {
                 try
                 {
-                    var eventDataJson = JsonSerializer.Serialize(eventData);
+                    var eventDataJson = JsonSerializer.Serialize(eventData, FeishuJsonDefaults.SerializerOptions);
                     var sanitizedData = MessageSanitizer.Sanitize(eventDataJson, maxLength: 200);
                     _logger.LogDebug("事件数据（已脱敏）: {EventData}", sanitizedData);
                 }

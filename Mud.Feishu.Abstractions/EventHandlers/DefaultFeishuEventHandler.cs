@@ -96,7 +96,13 @@ public abstract class DefaultFeishuEventHandler<T> : IFeishuEventHandler
         {
             string? eventJson;
 
-            if (eventData.Event is JsonDocument jsonDocument)
+            // 源生成模式下 Event(object?) 被反序列化为 JsonElement（AOT 路径）
+            if (eventData.Event is JsonElement jsonElement)
+            {
+                eventJson = jsonElement.GetRawText();
+            }
+            // 反射模式下可能为 JsonDocument（非 AOT 向后兼容路径）
+            else if (eventData.Event is JsonDocument jsonDocument)
             {
                 eventJson = jsonDocument.RootElement.GetRawText();
             }

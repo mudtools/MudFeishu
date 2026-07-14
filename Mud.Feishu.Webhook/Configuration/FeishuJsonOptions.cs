@@ -16,9 +16,11 @@ namespace Mud.Feishu.Webhook.Configuration;
 public static class FeishuJsonOptions
 {
     /// <summary>
-    /// 请求体反序列化选项（基于共享默认选项，增加严格校验配置）
+    /// 请求体反序列化选项（基于共享默认选项，增加严格校验配置）。
+    /// 使用 getter 实时引用 FeishuJsonDefaults.DeserializerOptions，
+    /// 确保 ConfigureUserResolver 后 TypeInfoResolver 变更能传播到 Webhook 层。
     /// </summary>
-    public static JsonSerializerOptions Deserialize { get; } = new(FeishuJsonDefaults.DeserializerOptions)
+    public static JsonSerializerOptions Deserialize => new(FeishuJsonDefaults.DeserializerOptions)
     {
         ReadCommentHandling = JsonCommentHandling.Disallow,
         AllowTrailingCommas = false,

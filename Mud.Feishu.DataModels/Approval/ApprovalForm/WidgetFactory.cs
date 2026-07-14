@@ -6,6 +6,7 @@
 // -----------------------------------------------------------------------
 
 using System.Text.Json;
+using Mud.Feishu.Abstractions.Utilities;
 
 namespace Mud.Feishu.DataModels.ApprovalForm;
 
@@ -97,13 +98,10 @@ public class WidgetFactory
 }
 
 /// <summary>
-/// 序列化选项配置
+/// 序列化选项配置。
+/// 使用 FeishuJsonDefaults.SerializerOptions 作为基础，确保 AOT 源生成器 resolver 可用。
 /// </summary>
 internal static class WidgetSerializerOptions
 {
-    public static JsonSerializerOptions Options => new JsonSerializerOptions
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        WriteIndented = false,
-    };
+    public static JsonSerializerOptions Options => new(FeishuJsonDefaults.SerializerOptions);
 }

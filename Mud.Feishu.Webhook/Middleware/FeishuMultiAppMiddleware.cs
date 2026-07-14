@@ -352,7 +352,7 @@ public class FeishuMultiAppMiddleware
                 decryptedData.EventId ?? "(null)",
                 appKey);
 
-            await WriteJsonResponse(context, 200, new { });
+            await WriteJsonResponse(context, 200, new WebhookEmptyResponse());
         }
         catch (JsonException ex)
         {
@@ -542,14 +542,14 @@ public class FeishuMultiAppMiddleware
 
         RequestIdHelper.AddRequestIdToResponse(context);
 
-        var errorResponse = new
+        var errorResponse = new WebhookErrorResponse
         {
-            success = false,
-            request_id = requestId,
-            error = new
+            Success = false,
+            RequestId = requestId,
+            Error = new WebhookErrorDetail
             {
-                code = statusCode,
-                message
+                Code = statusCode,
+                Message = message
             }
         };
 

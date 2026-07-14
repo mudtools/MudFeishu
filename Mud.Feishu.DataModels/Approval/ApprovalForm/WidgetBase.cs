@@ -8,8 +8,28 @@
 namespace Mud.Feishu.DataModels.ApprovalForm;
 
 /// <summary>
-/// 非泛型接口，用于处理混合类型的集合
+/// 非泛型接口，用于处理混合类型的集合。
+/// 使用 [JsonDerivedType] 注册所有具体 Widget 类型，使 AOT 源生成器可处理多态序列化。
 /// </summary>
+[JsonDerivedType(typeof(InputWidget))]
+[JsonDerivedType(typeof(TextareaWidget))]
+[JsonDerivedType(typeof(DateWidget))]
+[JsonDerivedType(typeof(DateIntervalWidget))]
+[JsonDerivedType(typeof(RadioV2Widget))]
+[JsonDerivedType(typeof(CheckboxV2Widget))]
+[JsonDerivedType(typeof(NumberWidget))]
+[JsonDerivedType(typeof(AmountWidget))]
+[JsonDerivedType(typeof(FormulaWidget))]
+[JsonDerivedType(typeof(ConnectWidget))]
+[JsonDerivedType(typeof(DocumentWidget))]
+[JsonDerivedType(typeof(AttachmentV2Widget))]
+[JsonDerivedType(typeof(ImageWidget))]
+[JsonDerivedType(typeof(ImageV2Widget))]
+[JsonDerivedType(typeof(FieldListWidget))]
+[JsonDerivedType(typeof(DepartmentWidget))]
+[JsonDerivedType(typeof(TelephoneWidget))]
+[JsonDerivedType(typeof(AddressWidget))]
+[JsonDerivedType(typeof(ShiftGroupWidget))]
 public interface IWidget
 {
     /// <summary>

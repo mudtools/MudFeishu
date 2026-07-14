@@ -6,6 +6,7 @@
 // -----------------------------------------------------------------------
 
 using Mud.Feishu.Webhook.Configuration;
+using Mud.Feishu.Webhook.Models;
 using Mud.Feishu.Webhook.Utils;
 using System.Collections.Concurrent;
 
@@ -237,17 +238,17 @@ public class FeishuRateLimitMiddleware : IDisposable
         context.Response.StatusCode = rateLimitOptions.TooManyRequestsStatusCode;
         context.Response.ContentType = "application/json";
 
-        var errorResponse = new
+        var errorResponse = new WebhookErrorResponse
         {
-            success = false,
-            error = new
+            Success = false,
+            Error = new WebhookErrorDetail
             {
-                code = context.Response.StatusCode,
-                message
+                Code = context.Response.StatusCode,
+                Message = message
             }
         };
 
-        await context.Response.WriteAsync(JsonSerializer.Serialize(errorResponse));
+        await context.Response.WriteAsync(JsonSerializer.Serialize(errorResponse, FeishuJsonOptions.Serialize));
     }
 
     /// <summary>

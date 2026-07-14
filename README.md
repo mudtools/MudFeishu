@@ -46,11 +46,13 @@ MudFeishu 是一套现代化的企业级 .NET 飞书 API 集成 SDK，提供完�
 | ----------------------------- | ------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
 | **Mud.Feishu.Abstractions**   | 事件订阅抽象层，提供策略模式和工厂模式的事件处理架构，内置 FeishuMetrics 指标收集和事件去重      | [![Nuget](https://img.shields.io/nuget/v/Mud.Feishu.Abstractions.svg)](https://www.nuget.org/packages/Mud.Feishu.Abstractions/)     | ![Nuget](https://img.shields.io/nuget/dt/Mud.Feishu.Abstractions.svg)   |
 | **Mud.Feishu**                | 核心 HTTP API 客户端库，支持组织架构、消息、群聊、云文档、画板、电子表格、多维表格等完整飞书功能 | [![Nuget](https://img.shields.io/nuget/v/Mud.Feishu.svg)](https://www.nuget.org/packages/Mud.Feishu/)                               | ![Nuget](https://img.shields.io/nuget/dt/Mud.Feishu.svg)                |
+| **Mud.Feishu.DataModels**     | 飞书 HTTP API 强类型数据模型库，覆盖全部 API 模块的请求/响应模型                                 | [![Nuget](https://img.shields.io/nuget/v/Mud.Feishu.DataModels.svg)](https://www.nuget.org/packages/Mud.Feishu.DataModels/)         | ![Nuget](https://img.shields.io/nuget/dt/Mud.Feishu.DataModels.svg)     |
 | **Mud.Feishu.Authentication** | 飞书用户认证中间件，基于 AsyncLocal 实现线程安全的用户上下文管理                                 | [![Nuget](https://img.shields.io/nuget/v/Mud.Feishu.Authentication.svg)](https://www.nuget.org/packages/Mud.Feishu.Authentication/) | ![Nuget](https://img.shields.io/nuget/dt/Mud.Feishu.Authentication.svg) |
 | **Mud.Feishu.EventCallback**  | 飞书事件回调强类型数据模型，支持源代码生成器自动生成事件处理器                                   | [![Nuget](https://img.shields.io/nuget/v/Mud.Feishu.EventCallback.svg)](https://www.nuget.org/packages/Mud.Feishu.EventCallback/)   | ![Nuget](https://img.shields.io/nuget/dt/Mud.Feishu.EventCallback.svg)  |
 | **Mud.Feishu.WebSocket**      | 飞书 WebSocket 客户端，支持实时事件订阅、事件去重、消息序号验证和智能重连                        | [![Nuget](https://img.shields.io/nuget/v/Mud.Feishu.WebSocket.svg)](https://www.nuget.org/packages/Mud.Feishu.WebSocket/)           | ![Nuget](https://img.shields.io/nuget/dt/Mud.Feishu.WebSocket.svg)      |
 | **Mud.Feishu.Webhook**        | 飞书 Webhook 事件处理组件，支持自定义验证器、频率限制、多应用模式和健康检查                      | [![Nuget](https://img.shields.io/nuget/v/Mud.Feishu.Webhook.svg)](https://www.nuget.org/packages/Mud.Feishu.Webhook/)               | ![Nuget](https://img.shields.io/nuget/dt/Mud.Feishu.Webhook.svg)        |
 | **Mud.Feishu.Redis**          | Redis 分布式去重扩展，支持事件/Nonce/SeqID 去重、降级策略和多应用隔离                            | [![Nuget](https://img.shields.io/nuget/v/Mud.Feishu.Redis.svg)](https://www.nuget.org/packages/Mud.Feishu.Redis/)                   | ![Nuget](https://img.shields.io/nuget/dt/Mud.Feishu.Redis.svg)          |
+| **Mud.Feishu.OpenTelemetry**  | OpenTelemetry 适配包，一键开启飞书 SDK 的分布式追踪与指标采集                                    | [![Nuget](https://img.shields.io/nuget/v/Mud.Feishu.OpenTelemetry.svg)](https://www.nuget.org/packages/Mud.Feishu.OpenTelemetry/)   | ![Nuget](https://img.shields.io/nuget/dt/Mud.Feishu.OpenTelemetry.svg)  |
 
 ---
 
@@ -64,6 +66,9 @@ dotnet add package Mud.Feishu
 
 # 事件处理抽象层 (核心模块，Mud.Feishu/WebSocket/Webhook 依赖)
 dotnet add package Mud.Feishu.Abstractions
+
+# HTTP API 强类型数据模型 (Mud.Feishu 隐式依赖，通常无需单独安装)
+dotnet add package Mud.Feishu.DataModels
 
 # WebSocket 实时事件订阅 (可选)
 dotnet add package Mud.Feishu.WebSocket
@@ -79,9 +84,12 @@ dotnet add package Mud.Feishu.EventCallback
 
 # Redis 分布式去重扩展 (可选)
 dotnet add package Mud.Feishu.Redis
+
+# OpenTelemetry 可观测性扩展 (可选)
+dotnet add package Mud.Feishu.OpenTelemetry
 ```
 
-> 💡 **提示**：根据实际需求安装对应包，`Mud.Feishu` 是核心包，`Mud.Feishu.Abstractions` 已作为 Mud.Feishu\WebSocket\Webhook 的依赖自动安装。
+> 💡 **提示**：根据实际需求安装对应包，`Mud.Feishu` 是核心包，`Mud.Feishu.Abstractions` 和 `Mud.Feishu.DataModels` 已作为 Mud.Feishu\WebSocket\Webhook 的依赖自动安装。
 
 ### 2️⃣ 配置文件 (appsettings.json)
 
@@ -569,6 +577,12 @@ builder.Services.CreateFeishuServicesBuilder()
     .AddDocxApi()
     .AddSpreadsheetsApi()
     .AddBiTableApi()
+    .AddCalendarApi()
+    .AddVideoConferencingApi()
+    .AddMailApi()
+    .AddAIApi()
+    .AddSearchApi()
+    .AddHelpDeskApi()
     .Build();
 
 // 注册 HTTP API 服务（按模块注册）
@@ -577,7 +591,13 @@ builder.Services.AddFeishuServices(
     FeishuModule.Message,
     FeishuModule.ChatGroup,
     FeishuModule.Spreadsheets,
-    FeishuModule.Bitable
+    FeishuModule.Bitable,
+    FeishuModule.Calendar,
+    FeishuModule.VideoConferencing,
+    FeishuModule.Mail,
+    FeishuModule.AI,
+    FeishuModule.Search,
+    FeishuModule.HelpDesk
 );
 
 // 注册 WebSocket 事件订阅服务
@@ -636,7 +656,8 @@ Mud.Feishu 提供完整的飞书 HTTP API 覆盖，支持以下模块：
 | **💬 消息服务** | V1       | 文本/图片/卡片消息、批量发送、群聊管理               |
 | **📋 审批流程** | V4       | 审批定义、审批实例、审批任务、审批消息、审批订阅     |
 | **📝 任务管理** | V2       | 任务创建、更新、分组、附件、评论、自定义字段         |
-| **📅 日程会议** | V4       | 日程事件、会议管理                                   |
+| **📅 日程会议** | V4       | 日历管理、日程事件、ACL 访问控制                     |
+| **📹 视频会议** | V1       | 会议管理、会议室、配置、导出、会议数据、纪要、录制、报告 |
 | **📄 文档管理** | V1       | 飞书文档、文档块、内容转换                           |
 | **📚 知识库**   | V2       | 知识空间、节点管理、节点复制移动                     |
 | **☁️ 云盘管理** | V1       | 云空间、文件夹、文件上传、版本管理、权限、评论、订阅 |
@@ -645,6 +666,10 @@ Mud.Feishu 提供完整的飞书 HTTP API 覆盖，支持以下模块：
 | **📋 多维表格** | V1/V2    | 数据表、记录、字段、视图、表单、仪表盘、角色、自动化 |
 | **⏰ 考勤管理** | V1       | 考勤组、打卡记录、班次、请假审批、考勤统计、档案     |
 | **🎴 卡片管理** | V1/V2    | 卡片管理、卡片元素、消息流卡片                       |
+| **🤖 AI 能力**  | V1       | 文档解析、OCR 识别、语音转文字、文本翻译             |
+| **📧 邮箱管理** | V1       | 邮件别名、联系人、草稿、文件夹、邮件组、标签、模板、消息、公共邮箱、规则、会话 |
+| **🔍 搜索**     | V2       | 数据源搜索、文档/知识库搜索、套件搜索               |
+| **🎧 服务台**   | V1       | 客服管理、技能、排班、工单、工单消息                 |
 
 ### 📄 文档管理 (Docx)
 
@@ -1007,6 +1032,191 @@ public interface IFeishuV1BitableView
 - 角色权限控制
 - 自动化流程管理
 
+### 📅 日历日程 (Calendar)
+
+飞书日历 API，支持日历管理和日程事件管理。
+
+```csharp
+public interface IFeishuV4Calendar
+{
+    // 日历管理
+}
+
+public interface IFeishuV4CalendarAcl
+{
+    // 日历访问控制
+}
+
+public interface IFeishuV4CalendarEvent
+{
+    // 日程事件管理
+}
+```
+
+**功能列表**：
+
+- 主日历和次要日历管理
+- 日程事件创建、更新、查询
+- 日历访问控制（ACL）
+- 日历共享和权限管理
+
+### 📹 视频会议 (VideoConferencing)
+
+飞书视频会议 API，支持会议管理、会议室、配置和导出等。
+
+```csharp
+public interface IFeishuV1VideoConferencingMeeting
+{
+    // 会议管理
+}
+
+public interface IFeishuV1VideoConferencingConfig
+{
+    // 会议配置
+}
+
+public interface IFeishuV1VideoConferencingRoom
+{
+    // 会议室管理
+}
+
+public interface IFeishuV1VideoConferencingRecording
+{
+    // 录制管理
+}
+
+public interface IFeishuV1VideoConferencingReserves
+{
+    // 会议室预定
+}
+```
+
+**功能列表**：
+
+- 会议查询、邀请、踢出、设置主持人
+- 会议室管理和会议室层级管理
+- 会议配置和预定管理
+- 会议数据导出和报表
+- 会议录制和纪要管理
+
+### 🤖 AI 能力 (AI)
+
+飞书 AI 能力 API，支持文档解析、OCR 识别、语音转文字和文本翻译。
+
+```csharp
+public interface IFeishuV1AIDocument
+{
+    // AI 文档解析
+}
+
+public interface IFeishuV1AIOpticalCharRecognition
+{
+    // OCR 识别
+}
+
+public interface IFeishuV1AISpeechToText
+{
+    // 语音转文字
+}
+
+public interface IFeishuV1AITranslation
+{
+    // 文本翻译
+}
+```
+
+**功能列表**：
+
+- 文档解析（简历解析、合同字段提取）
+- OCR 识别（身份证、银行卡、营业执照、驾驶证等 18 种证件票据）
+- 语音转文字（文件识别、流式识别）
+- 文本翻译和多语言检测
+
+### 📧 邮箱管理 (Mail)
+
+飞书邮箱管理 API，支持邮件消息、联系人、草稿、文件夹、邮件组等全功能。
+
+```csharp
+public interface IFeishuV1MailMessage
+{
+    // 邮件消息管理
+}
+
+public interface IFeishuV1MailGroup
+{
+    // 邮件组管理
+}
+
+public interface IFeishuV1MailPublicMailbox
+{
+    // 公共邮箱管理
+}
+
+public interface IFeishuV1MailTemplate
+{
+    // 邮件模板管理
+}
+```
+
+**功能列表**：
+
+- 邮件消息发送和管理
+- 邮件别名和联系人管理
+- 草稿和文件夹管理
+- 邮件组、标签、规则管理
+- 公共邮箱和邮件模板管理
+- 邮件会话和事件订阅
+
+### 🔍 搜索 (Search)
+
+飞书搜索 API，支持数据源搜索、文档/知识库搜索和套件搜索。
+
+```csharp
+public interface IFeishuV2SearchDataSource
+{
+    // 数据源管理
+}
+
+public interface IFeishuV2SearchDocWiki
+{
+    // 文档/知识库搜索
+}
+
+public interface IFeishuV2SearchSuite
+{
+    // 套件搜索
+}
+```
+
+**功能列表**：
+
+- 搜索数据源管理
+- 文档和知识库内容搜索
+- 套件搜索
+
+### 🎧 服务台 (HelpDesk)
+
+飞书服务台 API，支持客服管理、技能配置和工单处理。
+
+```csharp
+public interface IFeishuV1HelpDeskAgent
+{
+    // 客服管理
+}
+
+public interface IFeishuV1HelpDeskTicket
+{
+    // 工单管理
+}
+```
+
+**功能列表**：
+
+- 客服信息和技能管理
+- 客服排班管理
+- 工单创建、更新和查询
+- 工单消息和自定义字段管理
+
 ---
 
 ## 🎯 核心功能
@@ -1112,6 +1322,27 @@ public interface IFeishuV1BitableView
 
 > 💡 **提示**：[查看完整文档](./Mud.Feishu.Redis/README.md)
 
+### 📊 Mud.Feishu.OpenTelemetry - 可观测性扩展
+
+- ✅ 一键开启飞书 SDK 分布式追踪与指标采集
+- ✅ 自动注册 Feishu ActivitySource 和 Meter（事件处理、Webhook、WebSocket）
+- ✅ 自动注册 Mud.HttpUtils 可观测性源（HTTP 请求、Token 刷新、重试）
+- ✅ OTLP gRPC 导出，支持 Jaeger/Tempo/Prometheus/Grafana
+- ✅ 采样策略配置（ParentBased + TraceIdRatioBased）
+- ✅ 资源标签自动填充（service.name、service.version、deployment.environment）
+
+> 💡 **提示**：[查看完整文档](./Mud.Feishu.OpenTelemetry/README.md)
+
+### 📦 Mud.Feishu.DataModels - 强类型数据模型
+
+- ✅ 覆盖全部飞书 API 模块的请求/响应数据模型
+- ✅ 强类型设计，编译时类型安全保障
+- ✅ 完整 JSON 标注和 XML 文档注释
+- ✅ 按模块分目录组织，结构清晰
+- ✅ 公共模型复用（分页、筛选等）
+
+> 💡 **提示**：[查看完整文档](./Mud.Feishu.DataModels/README.md)
+
 ---
 
 ## 💡 快速开始示例
@@ -1214,11 +1445,13 @@ builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
 
 - [Mud.Feishu.Abstractions 详细文档](./Mud.Feishu.Abstractions/README.md) - 事件处理抽象层使用指南
 - [Mud.Feishu 详细文档](./Mud.Feishu/README.md) - HTTP API 完整使用指南
+- [Mud.Feishu.DataModels 详细文档](./Mud.Feishu.DataModels/README.md) - HTTP API 强类型数据模型使用指南
 - [Mud.Feishu.EventCallback 详细文档](./Mud.Feishu.EventCallback/README.md) - 飞书事件回调强类型数据模型使用指南
 - [Mud.Feishu.WebSocket 详细文档](./Mud.Feishu.WebSocket/Readme.md) - WebSocket 实时事件订阅指南
 - [Mud.Feishu.Webhook 详细文档](./Mud.Feishu.Webhook/README.md) - Webhook HTTP 回调事件处理指南
 - [Mud.Feishu.Authentication 详细文档](./Mud.Feishu.Authentication/README.md) - 飞书用户认证中间件使用指南
 - [Mud.Feishu.Redis 详细文档](./Mud.Feishu.Redis/README.md) - Redis 分布式去重扩展指南
+- [Mud.Feishu.OpenTelemetry 详细文档](./Mud.Feishu.OpenTelemetry/README.md) - OpenTelemetry 可观测性扩展指南
 
 ---
 
@@ -1259,11 +1492,13 @@ builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
 
 - [Mud.Feishu.Abstractions](https://www.nuget.org/packages/Mud.Feishu.Abstractions/) - 事件处理抽象层
 - [Mud.Feishu](https://www.nuget.org/packages/Mud.Feishu/) - 核心 HTTP API 客户端库
+- [Mud.Feishu.DataModels](https://www.nuget.org/packages/Mud.Feishu.DataModels/) - HTTP API 强类型数据模型库
 - [Mud.Feishu.WebSocket](https://www.nuget.org/packages/Mud.Feishu.WebSocket/) - WebSocket 实时事件订阅库
 - [Mud.Feishu.Webhook](https://www.nuget.org/packages/Mud.Feishu.Webhook/) - Webhook HTTP 回调事件处理库
 - [Mud.Feishu.Authentication](https://www.nuget.org/packages/Mud.Feishu.Authentication/) - 飞书用户认证中间件库
 - [Mud.Feishu.EventCallback](https://www.nuget.org/packages/Mud.Feishu.EventCallback/) - 飞书事件回调强类型数据模型
 - [Mud.Feishu.Redis](https://www.nuget.org/packages/Mud.Feishu.Redis/) - Redis 分布式去重扩展库
+- [Mud.Feishu.OpenTelemetry](https://www.nuget.org/packages/Mud.Feishu.OpenTelemetry/) - OpenTelemetry 可观测性扩展库
 
 ### 🛠️ 开发资源
 

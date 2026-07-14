@@ -314,10 +314,13 @@ Mud.Feishu.EventCallback/
 ## 相关项目
 
 - **Mud.Feishu** - 核心 HTTP API 客户端
+- **Mud.Feishu.DataModels** - HTTP API 强类型数据模型
 - **Mud.Feishu.Abstractions** - 事件处理抽象
+- **Mud.Feishu.Authentication** - 用户认证中间件
 - **Mud.Feishu.Webhook** - Webhook 事件处理
 - **Mud.Feishu.WebSocket** - WebSocket 实时事件
 - **Mud.Feishu.Redis** - Redis 分布式去重
+- **Mud.Feishu.OpenTelemetry** - OpenTelemetry 可观测性扩展
 
 ## 文档与资源
 

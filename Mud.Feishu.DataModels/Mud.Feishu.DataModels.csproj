@@ -1,8 +1,19 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
-  <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
-  </PropertyGroup>
+	<PropertyGroup>
+		<TargetFramework>netstandard2.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<AssemblyName>Mud.Feishu.DataModels</AssemblyName>
+		<GenerateDocumentationFile>True</GenerateDocumentationFile>
+		<PackageProjectUrl>http://www.mudtools.cn/</PackageProjectUrl>
+		<RepositoryUrl>https://github.com/mudtools/MudFeishu</RepositoryUrl>
+		<RepositoryType>git</RepositoryType>
+		<PackageIcon>Icon.png</PackageIcon>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<Description>飞书服务端 SDK 的 .NET 适配版，支持.NET4.6+、.NET 5 至 .NET 10 平台。提供类型安全的 API 封装，让开发者能够在 .NET 应用程序中便捷、高效地集成飞书服务端功能。</Description>
+		<PackageTags>Feishu;Lark;飞书;ByteDance;字节跳动;Feishu-SDK;Lark-SDK;Feishu-API;Lark-API;Webhook;WebSocket;Event-Subscription;事件订阅;MudFeishu</PackageTags>
+		<BaseOutputPath>..\bin</BaseOutputPath>
+	</PropertyGroup>
 
 	<ItemGroup>
 		<PackageReference Include="Mud.HttpUtils.Generator" Version="2.0.2" PrivateAssets="all" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />

@@ -12,7 +12,7 @@ Mud.Feishu 是飞书服务端 SDK 的 .NET 适配版，提供完整的 HTTP API 
 - **自动令牌管理** - 智能缓存和刷新，无需手动维护
 - **智能重试机制** - 内置重试策略，提高调用成功率
 - **多应用支持** - 统一管理多个飞书应用
-- **完整 API 覆盖** - 支持组织架构、消息、群聊、审批、任务、云文档、画板、电子表格、多维表格等飞书核心功能
+- **完整 API 覆盖** - 支持组织架构、消息、群聊、审批、任务、云文档、画板、电子表格、多维表格、日历日程、视频会议、邮箱、AI、搜索、服务台等全部飞书核心功能
 
 ## 安装
 
@@ -71,6 +71,12 @@ builder.Services.CreateFeishuServicesBuilder()
     .AddDocxApi()
     .AddSpreadsheetsApi()
     .AddBiTableApi()
+    .AddCalendarApi()
+    .AddVideoConferencingApi()
+    .AddMailApi()
+    .AddAIApi()
+    .AddSearchApi()
+    .AddHelpDeskApi()
     .Build();
 
 // 方式三：模块枚举模式
@@ -79,7 +85,13 @@ builder.Services.AddFeishuServices(
     FeishuModule.Message,
     FeishuModule.ChatGroup,
     FeishuModule.Spreadsheets,
-    FeishuModule.Bitable
+    FeishuModule.Bitable,
+    FeishuModule.Calendar,
+    FeishuModule.VideoConferencing,
+    FeishuModule.Mail,
+    FeishuModule.AI,
+    FeishuModule.Search,
+    FeishuModule.HelpDesk
 );
 
 var app = builder.Build();
@@ -538,6 +550,140 @@ IFeishuV1DocxBlocks // 文档块操作
 | `IFeishuUserV2BitableRole` → `IFeishuV2BitableRole` | 继承父类 | 角色管理 |
 | `IFeishuV1BitableWorkflow` | - | 自动化流程管理 |
 
+### 日历日程 (Calendar)
+
+**继承关系**：`IFeishuTenantV4Calendar` / `IFeishuUserV4Calendar` → `IFeishuV4Calendar`
+
+| 接口类型 | 接口名称 | 说明 |
+|---------|---------|------|
+| **父类接口（公共）** | `IFeishuV4Calendar` | 日历管理 |
+| **租户令牌接口** | `IFeishuTenantV4Calendar` | 日历管理（租户令牌） |
+| **用户令牌接口** | `IFeishuUserV4Calendar` | 日历管理（用户令牌） |
+| `IFeishuTenantV4CalendarAcl` → `IFeishuV4CalendarAcl` | 继承父类 | 日历访问控制（ACL） |
+| `IFeishuTenantV4CalendarEvent` → `IFeishuV4CalendarEvent` | 继承父类 | 日程事件管理 |
+
+**功能列表**：
+
+- 主日历和次要日历管理
+- 日程事件创建、更新、查询
+- 日历访问控制（ACL）
+- 日历共享和权限管理
+
+***
+
+### 视频会议 (VideoConferencing)
+
+| 接口名称 | 继承关系 | 说明 |
+|---------|---------|------|
+| `IFeishuTenantV1VideoConferencingMeeting` → `IFeishuV1VideoConferencingMeeting` | 继承父类 | 会议管理 |
+| `IFeishuTenantV1VideoConferencingConfig` | - | 会议配置（仅租户令牌） |
+| `IFeishuTenantV1VideoConferencingRoom` → `IFeishuV1VideoConferencingRoom` | 继承父类 | 会议室管理 |
+| `IFeishuTenantV1VideoConferencingRoomLevel` | - | 会议室层级管理（仅租户令牌） |
+| `IFeishuTenantV1VideoConferencingReserves` → `IFeishuV1VideoConferencingReserves` | 继承父类 | 会议室预定 |
+| `IFeishuTenantV1VideoConferencingRecording` → `IFeishuV1VideoConferencingRecording` | 继承父类 | 录制管理 |
+| `IFeishuTenantV1VideoConferencingNotes` | - | 会议纪要管理 |
+| `IFeishuTenantV1VideoConferencingExports` → `IFeishuV1VideoConferencingExports` | 继承父类 | 会议导出 |
+| `IFeishuTenantV1VideoConferencingMeetinData` → `IFeishuV1VideoConferencingMeetinData` | 继承父类 | 会议数据 |
+| `IFeishuTenantV1VideoConferencingReport` | - | 会议报表（仅租户令牌） |
+
+**功能列表**：
+
+- 会议查询、邀请、踢出、设置主持人
+- 会议室管理和会议室层级管理
+- 会议配置和预定管理
+- 会议数据导出和报表
+- 会议录制和纪要管理
+
+***
+
+### AI 能力 (AI)
+
+| 接口名称 | 继承关系 | 说明 |
+|---------|---------|------|
+| `IFeishuTenantV1AIDocument` → `IFeishuV1AIDocument` | 继承父类 | AI 文档解析 |
+| `IFeishuTenantV1AIOpticalCharRecognition` | - | OCR 识别（仅租户令牌） |
+| `IFeishuTenantV1AISpeechToText` | - | 语音转文字（仅租户令牌） |
+| `IFeishuTenantV1AITranslation` | - | 文本翻译（仅租户令牌） |
+
+**功能列表**：
+
+- 文档解析（简历解析、合同字段提取）
+- OCR 识别（身份证、银行卡、营业执照、驾驶证等 18 种证件票据）
+- 语音转文字（文件识别、流式识别）
+- 文本翻译和多语言检测
+
+***
+
+### 邮箱管理 (Mail)
+
+**继承关系**：`IFeishuTenantV1MailMessage` / `IFeishuUserV1MailMessage` → `IFeishuV1MailMessage`
+
+| 接口类型 | 接口名称 | 说明 |
+|---------|---------|------|
+| **父类接口（公共）** | `IFeishuV1MailMessage` | 邮件消息管理 |
+| **租户令牌接口** | `IFeishuTenantV1MailMessage` | 邮件消息管理（租户令牌） |
+| **用户令牌接口** | `IFeishuUserV1MailMessage` | 邮件消息管理（用户令牌） |
+
+**其他邮箱相关接口**：
+
+| 接口名称 | 继承关系 | 说明 |
+|---------|---------|------|
+| `IFeishuTenantV1MailAlias` | - | 邮件别名管理（仅租户令牌） |
+| `IFeishuTenantV1MailContact` → `IFeishuV1MailContact` | 继承父类 | 联系人管理 |
+| `IFeishuTenantV1MailDraft` | - | 草稿管理（仅用户令牌） |
+| `IFeishuTenantV1MailFolder` → `IFeishuV1MailFolder` | 继承父类 | 文件夹管理 |
+| `IFeishuTenantV1MailGroup` | - | 邮件组管理（仅租户令牌） |
+| `IFeishuTenantV1MailLabel` → `IFeishuV1MailLabel` | 继承父类 | 标签管理 |
+| `IFeishuTenantV1MailPublicMailbox` | - | 公共邮箱管理 |
+| `IFeishuTenantV1MailRule` → `IFeishuV1MailRule` | 继承父类 | 邮件规则管理 |
+| `IFeishuTenantV1MailTemplate` → `IFeishuV1MailTemplate` | 继承父类 | 邮件模板管理 |
+| `IFeishuTenantV1MailThread` → `IFeishuV1MailThread` | 继承父类 | 邮件会话管理 |
+
+**功能列表**：
+
+- 邮件消息发送和管理
+- 邮件别名和联系人管理
+- 草稿和文件夹管理
+- 邮件组、标签、规则管理
+- 公共邮箱和邮件模板管理
+- 邮件会话和事件订阅
+
+***
+
+### 搜索 (Search)
+
+| 接口名称 | 继承关系 | 说明 |
+|---------|---------|------|
+| `IFeishuTenantV2SearchDataSource` | - | 数据源管理（仅租户令牌） |
+| `IFeishuTenantV2SearchDocWiki` → `IFeishuV2SearchDocWiki` | 继承父类 | 文档/知识库搜索 |
+| `IFeishuUserV2SearchSuite` | - | 套件搜索（仅用户令牌） |
+
+**功能列表**：
+
+- 搜索数据源管理
+- 文档和知识库内容搜索
+- 套件搜索
+
+***
+
+### 服务台 (HelpDesk)
+
+**继承关系**：`IFeishuTenantV1HelpDeskAgent` / `IFeishuUserV1HelpDeskAgent` → `IFeishuV1HelpDeskAgent`
+
+| 接口类型 | 接口名称 | 说明 |
+|---------|---------|------|
+| **父类接口（公共）** | `IFeishuV1HelpDeskAgent` | 客服管理 |
+| **租户令牌接口** | `IFeishuTenantV1HelpDeskAgent` | 客服管理（租户令牌） |
+| **用户令牌接口** | `IFeishuUserV1HelpDeskAgent` | 客服管理（用户令牌） |
+| `IFeishuTenantV1HelpDeskTicket` → `IFeishuV1HelpDeskTicket` | 继承父类 | 工单管理 |
+
+**功能列表**：
+
+- 客服信息和技能管理
+- 客服排班管理
+- 工单创建、更新和查询
+- 工单消息和自定义字段管理
+
 ## 多应用支持
 
 Mud.Feishu 支持在同一个系统中管理多个飞书应用：
@@ -645,9 +791,10 @@ SDK 内置了智能的令牌管理机制：
 
 | 包                           | 版本     | 说明                 |
 | --------------------------- | ------ | ------------------ |
-| **Mud.HttpUtils**           | v2.0.0-preview4 | HTTP 客户端工具类（含源代码生成器） |
-| **Mud.HttpUtils.Generator** | v2.0.0-preview4 | HTTP 客户端代码生成器（编译时） |
+| **Mud.HttpUtils**           | v2.0.0 | HTTP 客户端工具类（含源代码生成器） |
+| **Mud.HttpUtils.Generator** | v2.0.0 | HTTP 客户端代码生成器（编译时） |
 | **Mud.Feishu.Abstractions** | \*     | 飞书 SDK 抽象层（同版本依赖）  |
+| **Mud.Feishu.DataModels**   | \*     | 飞书 API 强类型数据模型（同版本依赖） |
 
 ## 框架支持
 
@@ -659,10 +806,13 @@ SDK 内置了智能的令牌管理机制：
 ## 相关项目
 
 - [Mud.Feishu.Abstractions](../Mud.Feishu.Abstractions) - 事件订阅抽象层
+- [Mud.Feishu.DataModels](../Mud.Feishu.DataModels) - HTTP API 强类型数据模型
+- [Mud.Feishu.Authentication](../Mud.Feishu.Authentication) - 用户认证中间件
+- [Mud.Feishu.EventCallback](../Mud.Feishu.EventCallback) - 事件回调强类型数据模型
 - [Mud.Feishu.WebSocket](../Mud.Feishu.WebSocket) - WebSocket 实时事件订阅
 - [Mud.Feishu.Webhook](../Mud.Feishu.Webhook) - Webhook HTTP 回调事件处理
-- [Mud.Feishu.Authentication](../Mud.Feishu.Authentication) - 用户认证中间件
 - [Mud.Feishu.Redis](../Mud.Feishu.Redis) - Redis 分布式去重扩展
+- [Mud.Feishu.OpenTelemetry](../Mud.Feishu.OpenTelemetry) - OpenTelemetry 可观测性扩展
 
 ## 许可证
 

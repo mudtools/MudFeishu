@@ -1543,11 +1543,15 @@ dotnet test
 
 ## 📚 相关项目
 
-- [Mud.Feishu](../Mud.Feishu) - 主要的飞书 SDK 实现
+- [Mud.Feishu](../Mud.Feishu) - 核心 HTTP API 客户端
+- [Mud.Feishu.DataModels](../Mud.Feishu.DataModels) - HTTP API 强类型数据模型
+- [Mud.Feishu.Authentication](../Mud.Feishu.Authentication) - 用户认证中间件
+- [Mud.Feishu.EventCallback](../Mud.Feishu.EventCallback) - 事件回调强类型数据模型
 - [Mud.Feishu.WebSocket](../Mud.Feishu.WebSocket) - WebSocket 事件订阅实现
 - [Mud.Feishu.Webhook](../Mud.Feishu.Webhook) - HTTP Webhook 事件订阅实现
-- [Mud.Feishu.Redis](../Mud.Feishu.Redis) - Redis 缓存实现
-- [Mud.Feishu.Test](../Tests) - 测试项目和使用示例
+- [Mud.Feishu.Redis](../Mud.Feishu.Redis) - Redis 分布式去重扩展
+- [Mud.Feishu.OpenTelemetry](../Mud.Feishu.OpenTelemetry) - OpenTelemetry 可观测性扩展
+- [Tests](../Tests) - 测试项目和使用示例
 
 ## 🤝 贡献
 

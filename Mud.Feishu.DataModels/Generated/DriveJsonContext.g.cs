@@ -120,9 +120,9 @@ namespace Mud.Feishu.DataModels.Drive;
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Drive.FileSubscriptionOOpsResult))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Drive.GetFileSubscribeResult))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Drive.GetUserFileSubscribeResult))]
-[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Drive.Files.FilesUploadPartRequest))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Drive.Files.UploadAllFileRequest))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Drive.Media.MediasUploadAllRequest))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Drive.Files.FilesUploadPartRequest))]
 internal partial class DriveJsonContext : JsonSerializerContext
 {
 }

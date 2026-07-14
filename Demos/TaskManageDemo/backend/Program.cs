@@ -129,23 +129,7 @@ builder.Services.AddControllers()
         options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
         options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
     });
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(c =>
-{
-    c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
-    {
-        Title = "TaskManage API",
-        Version = "v1",
-        Description = "任务分配与跟踪管理系统 API"
-    });
-
-    var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
-    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
-    if (File.Exists(xmlPath))
-    {
-        c.IncludeXmlComments(xmlPath);
-    }
-});
+// OpenAPI 文档由 Microsoft.AspNetCore.OpenApi 包提供
 
 builder.Services.AddCors(options =>
 {
@@ -230,8 +214,7 @@ using (var scope = app.Services.CreateScope())
 
 if (app.Environment.IsDevelopment())
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
+    // OpenAPI 文档端点由 Microsoft.AspNetCore.OpenApi 包提供（.NET 9+ 使用 AddOpenApi()/MapOpenApi()）
 }
 
 app.UseRequestLogging();

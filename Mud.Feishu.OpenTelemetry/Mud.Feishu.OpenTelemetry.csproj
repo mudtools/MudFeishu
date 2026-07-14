@@ -14,7 +14,6 @@
 		<Description>Mud.Feishu OpenTelemetry 适配包，一键开启飞书 SDK 的分布式追踪与指标采集，自动注册 Feishu ActivitySource、Meter 以及 Mud.HttpUtils 可观测性源。</Description>
 		<PackageTags>Feishu;Lark;飞书;OpenTelemetry;OTel;Tracing;Metrics;Observability;MudFeishu</PackageTags>
 		<BaseOutputPath>..\bin</BaseOutputPath>
-		<IsAotCompatible>true</IsAotCompatible>
 	</PropertyGroup>
 
 	<ItemGroup>

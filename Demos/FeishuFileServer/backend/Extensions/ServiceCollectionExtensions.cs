@@ -36,9 +36,7 @@ public static class ServiceCollectionExtensions
         // 添加控制器
         services.AddControllers();
 
-        // 添加Swagger
-        services.AddEndpointsApiExplorer();
-        services.AddSwaggerGen();
+        // OpenAPI 文档由 Microsoft.AspNetCore.OpenApi 包提供
 
         return services;
     }

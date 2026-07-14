@@ -9,21 +9,38 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Mud.Feishu.DataModels;
+using Mud.Feishu.DataModels.WsEndpoint;
 
 namespace Mud.Feishu.Abstractions.Utilities;
 
 /// <summary>
 /// FeishuApiResult 系列泛型响应包装的 JSON 源生成上下文。
-/// 手工兜底实现，待 Scaffolder 工具扩展后替换为自动生成版本。
+/// 覆盖 Abstractions 程序集中定义的请求/响应 DTO 类型（认证接口等）。
 /// </summary>
 [JsonSourceGenerationOptions(
     PropertyNameCaseInsensitive = true,
     PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
     WriteIndented = false)]
-// 注册基本的 FeishuApiResult 类型
+// FeishuApiResult 基础类型
 [JsonSerializable(typeof(FeishuApiResult))]
 [JsonSerializable(typeof(FeishuApiResult<object>))]
 [JsonSerializable(typeof(FeishuNullDataApiResult))]
-internal partial class FeishuApiResultJsonContext : JsonSerializerContext { }
+// 认证接口请求 DTO
+[JsonSerializable(typeof(AppCredentials))]
+[JsonSerializable(typeof(OAuthTokenBaseRequest))]
+[JsonSerializable(typeof(OAuthTokenRequest))]
+[JsonSerializable(typeof(OAuthRefreshTokenRequest))]
+[JsonSerializable(typeof(WsAppCredentials))]
+// 认证接口响应 DTO
+[JsonSerializable(typeof(TenantAppCredentialResult))]
+[JsonSerializable(typeof(AppCredentialResult))]
+[JsonSerializable(typeof(OAuthCredentialsResult))]
+[JsonSerializable(typeof(AuthorizeResult))]
+[JsonSerializable(typeof(GetUserDataResult))]
+[JsonSerializable(typeof(WsEndpointResult))]
+// FeishuApiResult<T> 闭合泛型（认证接口返回的包装类型）
+[JsonSerializable(typeof(FeishuApiResult<GetUserDataResult>))]
+[JsonSerializable(typeof(FeishuApiResult<WsEndpointResult>))]
+public partial class FeishuApiResultJsonContext : JsonSerializerContext { }
 #endif

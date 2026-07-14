@@ -29,7 +29,14 @@ public static class FeishuJsonDefaults
     /// 必须在任何反序列化发生前调用。
     /// </summary>
     /// <param name="userResolver">用户自定义类型的 JsonTypeInfoResolver。</param>
+#if NET8_0_OR_GREATER
     public static void ConfigureUserResolver(IJsonTypeInfoResolver userResolver)
+#else
+#if NET6_0_OR_GREATER
+    [System.Diagnostics.CodeAnalysis.RequiresUnreferencedCode("netstandard2.0/net6.0 路径使用 DefaultJsonTypeInfoResolver 反射兜底，不支持 AOT。AOT 部署请使用 net8.0+ 目标框架。")]
+#endif
+    public static void ConfigureUserResolver(IJsonTypeInfoResolver userResolver)
+#endif
     {
         if (userResolver == null) throw new ArgumentNullException(nameof(userResolver));
 

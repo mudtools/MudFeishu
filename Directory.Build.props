@@ -15,13 +15,19 @@
 		<WarningsNotAsErrors>$(WarningsNotAsErrors);NU1605</WarningsNotAsErrors>
 	</PropertyGroup>
 
-	<!-- AOT 全局配置 -->
-	<PropertyGroup Condition="'$(TargetFramework)' == 'net8.0' or '$(TargetFramework)' == 'net10.0'">
-		<!-- P2-4.5：集中管理 AOT 设置 -->
-		<IsAotCompatible>true</IsAotCompatible>
-		<WarningsAsErrors>$(WarningsAsErrors);AOT001;AOT002;AOT003;AOT004;AOT007</WarningsAsErrors>
-		<!-- 注意：排除 AOT005/AOT006，因其在 net10.0 下误报 -->
-	</PropertyGroup>
+<!-- AOT 全局配置：仅在 .NET 8+ TFM 上启用 AOT 分析器。 -->
+<PropertyGroup Condition="'$(TargetFramework)' != 'netstandard2.0' AND '$(TargetFramework)' != 'net6.0'">
+    <IsAotCompatible>true</IsAotCompatible>
+    <EnableAotAnalyzer>true</EnableAotAnalyzer>
+    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
+    <TrimMode>full</TrimMode>
+    <WarningsAsErrors>$(WarningsAsErrors);AOT001;AOT002;AOT003;AOT004;AOT007</WarningsAsErrors>
+</PropertyGroup>
+
+<!-- 严格模式（可选）：将 IL2xxx/IL3xxx/AOT00x 升级为错误 -->
+<PropertyGroup Condition="'$(AotStrictMode)' == 'true'">
+    <WarningsAsErrors>$(WarningsAsErrors);IL2026;IL2046;IL2050;IL2057;IL2067;IL2070;IL2072;IL2075;IL2080;IL3050</WarningsAsErrors>
+</PropertyGroup>
 
 	<ItemGroup Condition="'$(TargetFramework)' == 'net10.0' or '$(TargetFramework)' == 'net9.0' or '$(TargetFramework)' == 'net8.0'">
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.9" />

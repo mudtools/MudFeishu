@@ -26,9 +26,6 @@ public class FeishuAppConfig
     /// 示例值: "default", "hr-app", "approval-app"
     /// 用于在代码中通过名称引用特定应用，不与飞书平台关联。
     /// </remarks>
-#if NET7_0_OR_GREATER
-    [RequiredMember]
-#endif
     public
 #if NET7_0_OR_GREATER
         required

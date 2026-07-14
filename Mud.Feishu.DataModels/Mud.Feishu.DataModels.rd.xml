@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Directives xmlns="http://schemas.microsoft.com/netfx/2013/01/metadata">
+  <Application>
+    <!-- 兜底保留 WidgetBase 及其派生类型的多态元数据（类型在 DataModels 程序集） -->
+    <Type Name="Mud.Feishu.DataModels.Approval.ApprovalForm.WidgetBase" Dynamic="Required All" />
+  </Application>
+</Directives>

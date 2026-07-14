@@ -6,8 +6,18 @@
 // -----------------------------------------------------------------------
 
 #if NET8_0_OR_GREATER
+using System.Text.Json.Serialization.Metadata;
 using Mud.Feishu.Abstractions.Utilities;
-using Mud.Feishu.EventCallback;  // EventCallbackJsonContext 所在命名空间
+using Mud.Feishu.EventCallback.Approval;
+using Mud.Feishu.EventCallback.Attendance;
+using Mud.Feishu.EventCallback.Bitable;
+using Mud.Feishu.EventCallback.Calendar;
+using Mud.Feishu.EventCallback.Drive;
+using Mud.Feishu.EventCallback.IM;
+using Mud.Feishu.EventCallback.Mail;
+using Mud.Feishu.EventCallback.Organization;
+using Mud.Feishu.EventCallback.Task;
+using Mud.Feishu.EventCallback.VideoConferencing;
 
 namespace Mud.Feishu.EventCallback.Extensions;
 
@@ -19,13 +29,27 @@ public static class FeishuEventCallbackJsonResolverExtensions
 {
     /// <summary>
     /// 配置EventCallback解析器。
-    /// 将EventCallbackJsonContext注入到FeishuJsonDefaults累加resolver链。
+    /// 将所有事件回调类型的JsonContext注入到FeishuJsonDefaults累加resolver链。
     /// 必须在应用程序启动时调用。
     /// </summary>
     public static void ConfigureEventCallbackResolver()
     {
+        // 合并所有事件回调域的 JsonContext（由 mud-jsonctx 工具生成）
+        var eventCallbackResolver = JsonTypeInfoResolver.Combine(
+            ApprovalJsonContext.Default,
+            AttendanceJsonContext.Default,
+            BitableJsonContext.Default,
+            CalendarJsonContext.Default,
+            DriveJsonContext.Default,
+            IMJsonContext.Default,
+            MailJsonContext.Default,
+            OrganizationJsonContext.Default,
+            TaskJsonContext.Default,
+            VideoConferencingJsonContext.Default
+        );
+
         // 复用 Webhook 项目的模块自治模式
-        FeishuJsonDefaults.ConfigureUserResolver(EventCallbackJsonContext.Default);
+        FeishuJsonDefaults.ConfigureUserResolver(eventCallbackResolver);
     }
 }
 #endif

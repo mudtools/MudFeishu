@@ -8,6 +8,9 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+#if NET6_0_OR_GREATER
+using System.Diagnostics.CodeAnalysis;
+#endif
 using Mud.Feishu.Abstractions;
 using Mud.HttpUtils;
 
@@ -261,7 +264,11 @@ public static class FeishuMultiAppExtensions
     /// services.AddFeishuApp&lt;CustomFeishuAppManager&gt;(configs);
     /// </code>
     /// </remarks>
+#if NET6_0_OR_GREATER
+    public static IServiceCollection AddFeishuApp<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] TAppManager>(
+#else
     public static IServiceCollection AddFeishuApp<TAppManager>(
+#endif
         this IServiceCollection services,
         List<FeishuAppConfig> configs)
         where TAppManager : FeishuAppManager

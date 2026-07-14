@@ -34,4 +34,9 @@
 		<PackageReference Include="Mud.HttpUtils" Version="2.0.3" />
 	</ItemGroup>
 
+	<!-- AOT 裁剪兜底：保留 FeishuApiResult/FeishuEventHeader/EventData 等核心类型的反射元数据 -->
+	<ItemGroup>
+		<TrimmerRootDescriptor Include="Mud.Feishu.Abstractions.rd.xml" />
+	</ItemGroup>
+
 </Project>

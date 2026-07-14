@@ -9,7 +9,6 @@
 		<PackageProjectUrl>http://www.mudtools.cn/</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/mudtools/MudFeishu</RepositoryUrl>
 		<RepositoryType>git</RepositoryType>
-		<IsAotCompatible>true</IsAotCompatible>
 		<PackageIcon>Icon.png</PackageIcon>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<Description>飞书服务端 SDK 的 .NET 适配版，支持.NET4.6+、.NET 5 至 .NET 10 平台。提供事件与回调功能强数据模型封装。</Description>

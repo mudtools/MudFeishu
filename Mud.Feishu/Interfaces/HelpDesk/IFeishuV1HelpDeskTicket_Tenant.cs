@@ -17,7 +17,6 @@ namespace Mud.Feishu;
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]
 public interface IFeishuTenantV1HelpDeskTicket : IFeishuV1HelpDeskTicket
 {
-
     /// <summary>
     /// 创建服务台对话
     /// <para>用于创建服务台对话。</para>
@@ -27,8 +26,8 @@ public interface IFeishuTenantV1HelpDeskTicket : IFeishuV1HelpDeskTicket
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Post("/open-apis/helpdesk/v1/start_service")]
     Task<FeishuApiResult<StartServiceTicketResult>?> StartServiceTicketAsync(
-       [Body] StartServiceTicketRequest request,
-       CancellationToken cancellationToken = default);
+           [Body] StartServiceTicketRequest request,
+           CancellationToken cancellationToken = default);
 
 
     /// <summary>
@@ -304,4 +303,49 @@ public interface IFeishuTenantV1HelpDeskTicket : IFeishuV1HelpDeskTicket
         [Body] CreateBotMessageRequest request,
         [Query] string? user_id_type = Consts.User_Id_Type,
         CancellationToken cancellationToken = default);
+
+
+
+    /// <summary>
+    /// 获取指定工单自定义字段
+    /// <para>用于获取工单自定义字段详情。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/helpdesk-v1/ticket-management/ticket_customized_field/get-ticket-customized-field">接口文档</see></para>
+    /// </summary>   
+    /// <param name="ticket_customized_field_id">
+    /// <para>工单自定义字段ID</para>
+    /// <para>示例值：6948728206392295444</para>
+    /// </param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Get("/open-apis/helpdesk/v1/ticket_customized_fields/{ticket_customized_field_id}")]
+    Task<FeishuApiResult<GetCustomizedFieldResult>?> GetCustomizedFieldAsync(
+      [Path] string ticket_customized_field_id,
+      CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 获取全部工单自定义字段
+    /// <para>用于获取全部工单自定义字段。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/helpdesk-v1/ticket-management/ticket_customized_field/get-ticket-customized-field">接口文档</see></para>
+    /// </summary>
+    /// <param name="request">获取工单自定义字段请求体</param>
+    /// <param name="page_token">
+    /// <para>必填：否</para>
+    /// <para>分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</para>
+    /// <para>**示例值**："6948728206392295444"</para>
+    /// <para>默认值：null</para>
+    /// </param>
+    /// <param name="page_size">
+    /// <para>必填：否</para>
+    /// <para>分页大小</para>
+    /// <para>**示例值**：10；默认为20</para>
+    /// <para>**数据校验规则**：</para>
+    /// <para>- 最大值：`100`</para>
+    /// <para>默认值：10</para>
+    /// </param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Get("/open-apis/helpdesk/v1/ticket_customized_fields")]
+    Task<FeishuApiResult<GetCustomizedFieldListResult>?> GetCustomizedFieldPageListAsync(
+         [Body] GetCustomizedFieldRequest request,
+         [Query] string? page_token = null,
+         [Query] int? page_size = 10,
+         CancellationToken cancellationToken = default);
 }

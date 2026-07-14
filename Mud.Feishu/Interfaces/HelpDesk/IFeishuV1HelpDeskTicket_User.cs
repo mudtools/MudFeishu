@@ -33,4 +33,55 @@ public interface IFeishuUserV1HelpDeskTicket : IFeishuV1HelpDeskTicket, ICurrent
        [Path] string ticket_id,
        [Body] UpdateTicketRequest request,
        CancellationToken cancellationToken = default);
+
+
+
+
+    /// <summary>
+    /// 创建工单自定义字段
+    /// <para>用于创建自定义字段。注意事项：user_access_token 访问，需要操作者是当前服务台的管理员或所有者</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/helpdesk-v1/ticket-management/ticket_customized_field/create-ticket-customized-field">接口文档</see></para>
+    /// </summary>   
+    /// <param name="request">创建工单自定义字段请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Post("/open-apis/helpdesk/v1/ticket_customized_fields")]
+    Task<FeishuNullDataApiResult?> CreateCustomizedFieldAsync(
+      [Body] CreateCustomizedFieldRequest request,
+      CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 删除工单自定义字段
+    /// <para>用于删除工单自定义字段。注意事项：user_access_token 访问，需要操作者是当前服务台的管理员或所有者</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/helpdesk-v1/ticket-management/ticket_customized_field/create-ticket-customized-field">接口文档</see></para>
+    /// </summary>   
+    /// <param name="ticket_customized_field_id">
+    /// <para>工单自定义字段ID</para>
+    /// <para>示例值：6948728206392295444</para>
+    /// </param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Delete("/open-apis/helpdesk/v1/ticket_customized_fields/{ticket_customized_field_id}")]
+    Task<FeishuNullDataApiResult?> DeleteCustomizedFieldAsync(
+       [Path] string ticket_customized_field_id,
+       CancellationToken cancellationToken = default);
+
+
+
+    /// <summary>
+    /// 更新工单自定义字段
+    /// <para>用于更新自定义字段。注意事项：user_access_token 访问，需要操作者是当前服务台的管理员或所有者</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/helpdesk-v1/ticket-management/ticket_customized_field/update-ticket-customized-field">接口文档</see></para>
+    /// </summary>   
+    /// <param name="ticket_customized_field_id">
+    /// <para>工单自定义字段ID</para>
+    /// <para>示例值：6948728206392295444</para>
+    /// </param>
+    /// <param name="request">更新工单自定义字段请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Patch("/open-apis/helpdesk/v1/ticket_customized_fields/{ticket_customized_field_id}")]
+    Task<FeishuNullDataApiResult?> UpdateCustomizedFieldAsync(
+         [Path] string ticket_customized_field_id,
+         [Body] UpdateCustomizedFieldRequest request,
+         CancellationToken cancellationToken = default);
+
 }

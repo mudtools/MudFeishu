@@ -46,4 +46,115 @@ public interface IFeishuTenantV1HelpDeskTicket : IFeishuV1HelpDeskTicket
         [Path] string ticket_id,
         CancellationToken cancellationToken = default);
 
+
+    /// <summary>
+    /// 查询全部工单详情
+    /// <para>用于获取全部工单详情。仅支持自建应用。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/helpdesk-v1/ticket-management/ticket/list">接口文档</see></para>
+    /// </summary>   
+    /// <param name="ticket_id">
+    /// <para>工单 ID。可通过[查询全部工单详情](<see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/helpdesk-v1/ticket/list">获取</see>)</para>
+    /// <para>示例值：123456</para>
+    /// </param>
+    /// <param name="agent_id">
+    /// <para>搜索条件: 客服id</para>
+    /// <para>示例值：ou_b5de90429xxx</para>
+    /// <para>默认值：null</para>
+    /// </param>
+    /// <param name="closed_by_id">
+    /// <para>搜索条件: 关单客服id</para>
+    /// <para>示例值：ou_b5de90429xxx</para>
+    /// <para>默认值：null</para>
+    /// </param>
+    /// <param name="type">
+    /// <para>搜索条件: 工单类型 1:bot 2:人工</para>
+    /// <para>示例值：1</para>
+    /// <para>默认值：null</para>
+    /// </param>
+    /// <param name="channel">
+    /// <para>搜索条件: 工单渠道</para>
+    /// <para>示例值：0</para>
+    /// <para>默认值：null</para>
+    /// </param>
+    /// <param name="solved">
+    /// <para>搜索条件: 工单是否解决 1:没解决 2:已解决</para>
+    /// <para>示例值：1</para>
+    /// <para>默认值：null</para>
+    /// </param>
+    /// <param name="score">
+    /// <para>搜索条件: 工单评分</para>
+    /// <para>示例值：1</para>
+    /// <para>默认值：null</para>
+    /// </param>
+    /// <param name="status_list">
+    /// <para>搜索条件: 工单状态列表</para>
+    /// <para>示例值：1</para>
+    /// <para>默认值：null</para>
+    /// </param>
+    /// <param name="guest_name">
+    /// <para>搜索条件: 用户名称</para>
+    /// <para>示例值：abc</para>
+    /// <para>默认值：null</para>
+    /// </param>
+    /// <param name="guest_id">
+    /// <para>搜索条件: 用户id</para>
+    /// <para>示例值：ou_b5de90429xxx</para>
+    /// <para>默认值：null</para>
+    /// </param>
+    /// <param name="tags">
+    /// <para>搜索条件: 用户标签列表</para>
+    /// <para>示例值：备注</para>
+    /// <para>默认值：null</para>
+    /// </param>
+    /// <param name="page">
+    /// <para>页数, 从1开始, 默认为1</para>
+    /// <para>示例值：1</para>
+    /// <para>默认值：null</para>
+    /// </param>
+    /// <param name="page_size">
+    /// <para>当前页大小，最大为200， 默认为20。分页查询最多累计返回一万条数据，超过一万条请更改查询条件，推荐通过时间查询。</para>
+    /// <para>示例值：20</para>
+    /// <para>默认值：10</para>
+    /// </param>
+    /// <param name="create_time_start">
+    /// <para>搜索条件: 工单创建起始时间 ms (也需要填上create_time_end)，相当于&gt;=create_time_start</para>
+    /// <para>示例值：1616920429000</para>
+    /// <para>默认值：null</para>
+    /// </param>
+    /// <param name="create_time_end">
+    /// <para>搜索条件: 工单创建结束时间 ms (也需要填上create_time_start)，相当于&lt;=create_time_end</para>
+    /// <para>示例值：1616920429000</para>
+    /// <para>默认值：null</para>
+    /// </param>
+    /// <param name="update_time_start">
+    /// <para>搜索条件: 工单修改起始时间 ms (也需要填上update_time_end)</para>
+    /// <para>示例值：1616920429000</para>
+    /// <para>默认值：null</para>
+    /// </param>
+    /// <param name="update_time_end">
+    /// <para>搜索条件: 工单修改结束时间 ms(也需要填上update_time_start)</para>
+    /// <para>示例值：1616920429000</para>
+    /// <para>默认值：null</para>
+    /// </param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Get("/open-apis/helpdesk/v1/tickets")]
+    Task<FeishuApiResult<GetTicketListResult>?> GetTicketListAsync(
+        [Query] string? ticket_id = null,
+        [Query] string? agent_id = null,
+        [Query] string? closed_by_id = null,
+        [Query] int? type = null,
+        [Query] int? channel = null,
+        [Query] int? solved = null,
+        [Query] int? score = null,
+        [Query] int[]? status_list = null,
+        [Query] string? guest_name = null,
+        [Query] string? guest_id = null,
+        [Query] string[]? tags = null,
+        [Query] int? page = null,
+        [Query] int? page_size = 10,
+        [Query] int? create_time_start = null,
+        [Query] int? create_time_end = null,
+        [Query] int? update_time_start = null,
+        [Query] int? update_time_end = null,
+        CancellationToken cancellationToken = default);
 }

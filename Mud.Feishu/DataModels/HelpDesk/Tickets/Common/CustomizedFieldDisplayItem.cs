@@ -9,11 +9,9 @@ namespace Mud.Feishu.DataModels.HelpDesk;
 
 
 /// <summary>
-/// <para>自定义字段列表，没有值时不设置</para>
-/// <para>下拉菜单的value对应工单字段里面的children.display_name</para>
-/// <para>[获取全部工单自定义字段](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/helpdesk-v1/ticket_customized_field/list-ticket-customized-fields)</para>
+/// <para>自定义字段</para>
 /// </summary>
-public class CustomizedFieldDisplayItem
+public class CustomizedFieldPutDisplayItem
 {
     /// <summary>
     /// <para>自定义字段ID</para>
@@ -38,7 +36,16 @@ public class CustomizedFieldDisplayItem
     /// </summary>
     [JsonPropertyName("key_name")]
     public string? KeyName { get; set; }
+}
 
+
+/// <summary>
+/// <para>自定义字段列表，没有值时不设置</para>
+/// <para>下拉菜单的value对应工单字段里面的children.display_name</para>
+/// <para>[获取全部工单自定义字段](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/helpdesk-v1/ticket_customized_field/list-ticket-customized-fields)</para>
+/// </summary>
+public class CustomizedFieldDisplayItem : CustomizedFieldPutDisplayItem
+{
     /// <summary>
     /// <para>展示名称</para>
     /// <para>必填：否</para>

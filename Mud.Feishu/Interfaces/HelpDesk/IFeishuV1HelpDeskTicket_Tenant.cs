@@ -30,4 +30,20 @@ public interface IFeishuTenantV1HelpDeskTicket : IFeishuV1HelpDeskTicket
        [Body] StartServiceTicketRequest request,
        CancellationToken cancellationToken = default);
 
+
+    /// <summary>
+    /// 查询指定工单详情
+    /// <para>用于获取单个服务台工单详情。仅支持自建应用。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/helpdesk-v1/ticket-management/ticket/get">接口文档</see></para>
+    /// </summary>   
+    /// <param name="ticket_id">
+    /// <para>工单 ID。可通过[查询全部工单详情](<see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/helpdesk-v1/ticket/list">获取</see>)</para>
+    /// <para>示例值：123456</para>
+    /// </param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Get("/open-apis/helpdesk/v1/tickets/{ticket_id}")]
+    Task<FeishuApiResult<GetTicketResult>?> GetTicketAsync(
+        [Path] string ticket_id,
+        CancellationToken cancellationToken = default);
+
 }

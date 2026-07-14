@@ -15,21 +15,36 @@ namespace Mud.Feishu.Webhook.Configuration;
 /// </summary>
 public static class FeishuJsonOptions
 {
+    private static JsonSerializerOptions? _cachedDeserialize;
+    private static JsonSerializerOptions? _cachedDeserializeSource;
+
     /// <summary>
     /// 请求体反序列化选项（基于共享默认选项，增加严格校验配置）。
-    /// 使用 getter 实时引用 FeishuJsonDefaults.DeserializerOptions，
-    /// 确保 ConfigureUserResolver 后 TypeInfoResolver 变更能传播到 Webhook 层。
+    /// 使用缓存+引用比较策略：仅当 FeishuJsonDefaults.DeserializerOptions 引用变更时重新计算，
+    /// 确保 ConfigureUserResolver 后 TypeInfoResolver 变更能传播到 Webhook 层，同时避免每次调用创建新对象。
     /// </summary>
-    public static JsonSerializerOptions Deserialize => new(FeishuJsonDefaults.DeserializerOptions)
+    public static JsonSerializerOptions Deserialize
     {
-        ReadCommentHandling = JsonCommentHandling.Disallow,
-        AllowTrailingCommas = false,
-        MaxDepth = 64
+        get
+        {
+            var source = FeishuJsonDefaults.DeserializerOptions;
+            if (_cachedDeserialize == null || !ReferenceEquals(_cachedDeserializeSource, source))
+            {
+                _cachedDeserializeSource = source;
+                _cachedDeserialize = new JsonSerializerOptions(source)
+                {
+                    ReadCommentHandling = JsonCommentHandling.Disallow,
+                    AllowTrailingCommas = false,
+                    MaxDepth = 64
 #if NET8_0_OR_GREATER
-        ,
-        UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow
+                    ,
+                    UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow
 #endif
-    };
+                };
+            }
+            return _cachedDeserialize;
+        }
+    }
 
     /// <summary>
     /// 响应体序列化选项

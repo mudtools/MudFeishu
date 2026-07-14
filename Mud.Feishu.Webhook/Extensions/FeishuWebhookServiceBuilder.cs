@@ -384,6 +384,12 @@ public class FeishuWebhookServiceBuilder
     /// </summary>
     private void RegisterServices()
     {
+        // AOT: 将 Webhook 专用 JsonSerializerContext 注入 FeishuJsonDefaults 的 resolver 链。
+        // 必须在任何 JSON 序列化/反序列化发生前执行。ConfigureUserResolver 是幂等的累加模式。
+#if NET8_0_OR_GREATER
+        global::Mud.Feishu.Webhook.Extensions.FeishuWebhookJsonResolverExtensions.ConfigureWebhookResolver();
+#endif
+
         // 配置选项
         RegisterOptions();
 

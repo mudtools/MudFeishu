@@ -17,28 +17,27 @@ namespace Mud.Feishu.Abstractions.Utilities;
 /// </summary>
 public static class FeishuJsonDefaults
 {
-    private static IJsonTypeInfoResolver? _userResolver;
+#if NET8_0_OR_GREATER
     private static IJsonTypeInfoResolver? _combinedResolver;
+#else
+    private static IJsonTypeInfoResolver? _userResolver;
+#endif
 
     /// <summary>
     /// 合并 SDK 内置 Context 与用户自定义 Context（AOT 必需）。
-    /// 必须在任何反序列化发生前调用一次。
+    /// 支持多次调用（累加模式），每次调用将新 resolver 追加到解析器链。
+    /// 必须在任何反序列化发生前调用。
     /// </summary>
     /// <param name="userResolver">用户自定义类型的 JsonTypeInfoResolver。</param>
     public static void ConfigureUserResolver(IJsonTypeInfoResolver userResolver)
     {
-        _userResolver = userResolver ?? throw new ArgumentNullException(nameof(userResolver));
+        if (userResolver == null) throw new ArgumentNullException(nameof(userResolver));
 
 #if NET8_0_OR_GREATER
         // 累加模式：若已有 resolver，则合并新 resolver
-        if (_combinedResolver != null)
-        {
-            _combinedResolver = JsonTypeInfoResolver.Combine(_combinedResolver, userResolver);
-        }
-        else
-        {
-            _combinedResolver = JsonTypeInfoResolver.Combine(FeishuJsonContext.Default, userResolver);
-        }
+        _combinedResolver = _combinedResolver != null
+            ? JsonTypeInfoResolver.Combine(_combinedResolver, userResolver)
+            : JsonTypeInfoResolver.Combine(FeishuJsonContext.Default, userResolver);
 
         DeserializerOptions = new JsonSerializerOptions(FeishuJsonContext.Default.Options)
         {
@@ -50,11 +49,12 @@ public static class FeishuJsonDefaults
         };
 #else
         // 非 AOT 路径：使用用户 resolver + 反射兜底
-        DeserializerOptions = new JsonSerializerOptions(GetDefaultDeserializerOptions())
+        _userResolver = userResolver;
+        DeserializerOptions = new JsonSerializerOptions(DeserializerOptions)
         {
             TypeInfoResolver = JsonTypeInfoResolver.Combine(userResolver, new DefaultJsonTypeInfoResolver())
         };
-        SerializerOptions = new JsonSerializerOptions(GetDefaultSerializerOptions())
+        SerializerOptions = new JsonSerializerOptions(SerializerOptions)
         {
             TypeInfoResolver = JsonTypeInfoResolver.Combine(userResolver, new DefaultJsonTypeInfoResolver())
         };
@@ -83,25 +83,4 @@ public static class FeishuJsonDefaults
             WriteIndented = false,
             DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
         };
-
-    private static JsonSerializerOptions GetDefaultDeserializerOptions()
-    {
-        return new JsonSerializerOptions
-        {
-            PropertyNameCaseInsensitive = true,
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            WriteIndented = false,
-            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
-        };
-    }
-
-    private static JsonSerializerOptions GetDefaultSerializerOptions()
-    {
-        return new JsonSerializerOptions
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            WriteIndented = false,
-            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
-        };
-    }
 }

@@ -279,6 +279,12 @@ public class FeishuServiceBuilder
                 "示例：services.AddFeishuApp(configuration, \"FeishuApps\").AddFeishu(builder => builder.AddMessageApi());");
         }
 
+        // AOT: 将 DataModels 的 20 个 JsonSerializerContext 注入 FeishuJsonDefaults 的 resolver 链。
+        // 必须在任何 JSON 序列化/反序列化发生前执行。ConfigureUserResolver 是幂等的累加模式。
+#if NET8_0_OR_GREATER
+        global::Mud.Feishu.Extensions.FeishuJsonResolverExtensions.ConfigureDataModelsResolver();
+#endif
+
         return _services;
     }
 }

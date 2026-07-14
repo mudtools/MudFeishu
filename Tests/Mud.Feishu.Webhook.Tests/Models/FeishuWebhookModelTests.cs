@@ -248,3 +248,90 @@ public class FeishuWebhookRequestTests
         json.Should().NotContain("AppId");
     }
 }
+
+/// <summary>
+/// WebhookErrorResponse 单元测试
+/// </summary>
+public class WebhookErrorResponseTests
+{
+    [Fact]
+    public void Constructor_ShouldInitializeWithDefaultValues()
+    {
+        // Act
+        var response = new WebhookErrorResponse();
+
+        // Assert
+        response.Success.Should().BeFalse();
+        response.RequestId.Should().BeNull();
+        response.Error.Should().BeNull();
+    }
+
+    [Fact]
+    public void Properties_ShouldBeSettable()
+    {
+        // Arrange & Act
+        var response = new WebhookErrorResponse
+        {
+            Success = false,
+            RequestId = "req-001",
+            Error = new WebhookErrorDetail { Code = 429, Message = "Too Many Requests" }
+        };
+
+        // Assert
+        response.Success.Should().BeFalse();
+        response.RequestId.Should().Be("req-001");
+        response.Error.Should().NotBeNull();
+        response.Error!.Code.Should().Be(429);
+        response.Error.Message.Should().Be("Too Many Requests");
+    }
+
+    [Fact]
+    public void Serialize_ShouldProduceCorrectJson_WhenFullyPopulated()
+    {
+        // Arrange
+        var response = new WebhookErrorResponse
+        {
+            Success = false,
+            RequestId = "req-001",
+            Error = new WebhookErrorDetail { Code = 500, Message = "Internal Server Error" }
+        };
+
+        // Act
+        var json = JsonSerializer.Serialize(response);
+
+        // Assert
+        json.Should().Contain("\"success\":false");
+        json.Should().Contain("\"request_id\":\"req-001\"");
+        json.Should().Contain("\"code\":500");
+        json.Should().Contain("\"message\":\"Internal Server Error\"");
+    }
+}
+
+/// <summary>
+/// WebhookEmptyResponse 单元测试
+/// </summary>
+public class WebhookEmptyResponseTests
+{
+    [Fact]
+    public void Constructor_ShouldInitializeSuccessAsTrue()
+    {
+        // Act
+        var response = new WebhookEmptyResponse();
+
+        // Assert
+        response.Success.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Serialize_ShouldProduceCorrectJson()
+    {
+        // Arrange
+        var response = new WebhookEmptyResponse();
+
+        // Act
+        var json = JsonSerializer.Serialize(response);
+
+        // Assert
+        json.Should().Contain("\"success\":true");
+    }
+}

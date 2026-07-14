@@ -40,7 +40,13 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
     private readonly List<FeishuAppConfig> _configs;
     // A-1 修复：本类私有的默认应用键，替代反射设置基类 _defaultAppKey 的反模式。
     // 构造阶段赋值（单线程），AddApp/RemoveApp 时同步更新，GetDefaultApp 直接读取。
-    private string? _defaultAppKey;
+    // NEW-MA-09 修复：标记 volatile 确保 RemoveApp 的写入对 GetDefaultApp 的读取立即可见，
+    // 配合 _defaultAppLock 保证"读取 key → GetApp(key)"的 TOCTOU 区间内 key 不被移除。
+    private volatile string? _defaultAppKey;
+    // NEW-MA-09 修复：保护 _defaultAppKey 的"读取+提升"复合操作与 RemoveApp 的"清空+提升"复合操作互斥。
+    private readonly object _defaultAppLock = new();
+    // NEW-MA-08 修复：保护 Lazy<> 重建逻辑，避免并发线程同时重建同一应用的 Lazy 上下文。
+    private readonly object _lazyRebuildLock = new();
 
     /// <summary>
     /// 初始化飞书应用管理器
@@ -111,6 +117,12 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
     /// <param name="appKey">应用唯一标识</param>
     /// <returns>应用上下文实例</returns>
     /// <exception cref="InvalidOperationException">当应用未配置或创建失败时抛出</exception>
+    /// <remarks>
+    /// NEW-MA-08 修复：<see cref="Lazy{T}"/> 在 <see cref="LazyThreadSafetyMode.ExecutionAndPublication"/>
+    /// 模式下会缓存工厂委托抛出的异常，导致首次初始化失败的应用在进程剩余生命周期内不可用。
+    /// 此方法在检测到缓存异常时重建 <see cref="Lazy{T}"/> 实例，允许后续调用重试初始化。
+    /// </para>
+    /// </remarks>
     private FeishuAppContext GetOrCreateContext(string appKey)
     {
         if (_lazyContexts.TryGetValue(appKey, out var lazy))
@@ -130,6 +142,20 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
             }
             catch (Exception ex) when (ex is not InvalidOperationException)
             {
+                // NEW-MA-08 修复：Lazy<ExecutionAndPublication> 缓存异常后，后续 .Value 访问会重新抛出同一异常。
+                // 此处重建 Lazy<> 以允许下次调用重试初始化（如 Redis 短暂故障恢复后可自愈）。
+                // 使用双检锁避免并发线程同时重建：仅当字典中仍是原 Lazy 实例时才重建。
+                lock (_lazyRebuildLock)
+                {
+                    if (_lazyContexts.TryGetValue(appKey, out var current) && ReferenceEquals(current, lazy))
+                    {
+                        var config = _configs.First(c => c.AppKey == appKey);
+                        var capturedConfig = config;
+                        _lazyContexts[appKey] = new Lazy<FeishuAppContext>(
+                            () => CreateAppContext(capturedConfig),
+                            LazyThreadSafetyMode.ExecutionAndPublication);
+                    }
+                }
                 throw new InvalidOperationException(
                     $"应用 '{appKey}' 初始化失败: {ex.Message}", ex);
             }
@@ -210,9 +236,27 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
                 appContext = context;
                 return true;
             }
+            catch (Exception ex) when (ex is not InvalidOperationException)
+            {
+                // NEW-MA-08 修复：与 GetOrCreateContext 一致，检测到 Lazy 缓存异常时重建 Lazy<> 以允许下次重试。
+                // 保持 Try* 语义：重建后仍返回 false，调用方可下次重试。
+                lock (_lazyRebuildLock)
+                {
+                    if (_lazyContexts.TryGetValue(appKey, out var current) && ReferenceEquals(current, lazy))
+                    {
+                        var config = _configs.First(c => c.AppKey == appKey);
+                        var capturedConfig = config;
+                        _lazyContexts[appKey] = new Lazy<FeishuAppContext>(
+                            () => CreateAppContext(capturedConfig),
+                            LazyThreadSafetyMode.ExecutionAndPublication);
+                    }
+                }
+                appContext = default;
+                return false;
+            }
             catch
             {
-                // 保持 Try* 语义：创建失败时返回 false 而非抛出异常
+                // InvalidOperationException 或其他预期异常：保持 Try* 语义返回 false
                 appContext = default;
                 return false;
             }
@@ -248,20 +292,28 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
         // A-1 修复：若移除的是当前默认应用，清空本类默认应用键
         // MA-03 修复：移除默认应用后自动提升第一个剩余应用为新默认，避免状态不一致窗口。
         // 若无剩余应用则保持 _defaultAppKey = null，下次 GetDefaultApp 会抛出明确异常。
+        // NEW-MA-09 修复：使用 _defaultAppLock 保护"清空+提升"复合操作，避免与 GetDefaultApp 的"读取+GetApp"竞态。
         if ((wasInLazy || wasInBase) && _defaultAppKey == appKey)
         {
-            _defaultAppKey = null;
-            var firstRemaining = _lazyContexts.Keys.FirstOrDefault();
-            if (firstRemaining != null)
+            lock (_defaultAppLock)
             {
-                _defaultAppKey = firstRemaining;
-            }
-            else
-            {
-                // 懒加载字典已空，检查基类字典是否有运行时添加但未走懒加载的应用
-                var baseFirst = base.GetAllApps().FirstOrDefault();
-                if (baseFirst != null)
-                    _defaultAppKey = baseFirst.Config.AppKey;
+                // 双检锁：进入锁后再次确认 _defaultAppKey 仍是 appKey（可能已被其他线程提升）
+                if (_defaultAppKey == appKey)
+                {
+                    _defaultAppKey = null;
+                    var firstRemaining = _lazyContexts.Keys.FirstOrDefault();
+                    if (firstRemaining != null)
+                    {
+                        _defaultAppKey = firstRemaining;
+                    }
+                    else
+                    {
+                        // 懒加载字典已空，检查基类字典是否有运行时添加但未走懒加载的应用
+                        var baseFirst = base.GetAllApps().FirstOrDefault();
+                        if (baseFirst != null)
+                            _defaultAppKey = baseFirst.Config.AppKey;
+                    }
+                }
             }
         }
 
@@ -277,11 +329,20 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
     /// </remarks>
     public override IFeishuAppContext GetDefaultApp()
     {
-        var defaultKey = _defaultAppKey;
-        if (string.IsNullOrEmpty(defaultKey))
-            throw new InvalidOperationException("未设置默认应用。请在注册应用时设置 isDefault = true。");
+        // NEW-MA-09 修复：使用 _defaultAppLock 保护"读取 key → GetApp(key)"的 TOCTOU 区间，
+        // 防止读取 defaultKey 后另一线程通过 RemoveApp 将其置为 null 或提升为其他应用。
+        // volatile 读取保证可见性，锁保证复合操作的原子性。
+        string? defaultKey;
+        lock (_defaultAppLock)
+        {
+            defaultKey = _defaultAppKey;
+            if (string.IsNullOrEmpty(defaultKey))
+                throw new InvalidOperationException("未设置默认应用。请在注册应用时设置 isDefault = true。");
 
-        return GetApp(defaultKey!);
+            // 在锁内调用 GetApp，确保 defaultKey 对应的应用在解析期间不会被 RemoveApp 移除。
+            // 注意：GetApp 内部走懒加载路径，不会反向获取 _defaultAppLock，无死锁风险。
+            return GetApp(defaultKey!);
+        }
     }
 
     /// <summary>
@@ -320,8 +381,14 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
         _lazyContexts[config.AppKey] = new Lazy<FeishuAppContext>(() => context);
 
         // A-1 修复：若新应用标记为默认，更新本类的默认应用键
+        // NEW-MA-09 修复：使用 _defaultAppLock 保护 _defaultAppKey 的写入，与 GetDefaultApp/RemoveApp 保持一致。
         if (config.IsDefault)
-            _defaultAppKey = config.AppKey;
+        {
+            lock (_defaultAppLock)
+            {
+                _defaultAppKey = config.AppKey;
+            }
+        }
 
         return context;
     }
@@ -335,6 +402,14 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
     /// 的工厂委托模式。两种模式共存但 <see cref="GetWebApi{TContextSwitcher}"/> 仅走 DI 路径，
     /// 调用 <c>RegisterSwitcherFactory</c> 注册的工厂不会被本方法使用。
     /// 统一为 DI 模式可降低理解成本，基类工厂委托路径在中期标记为 [Obsolete]。
+    /// <para>
+    /// NEW-MA-11 说明：<see cref="UseApp"/> 的生成实现通过 <c>_appContextHolder.Current = context</c>
+    /// 切换上下文，而 <c>IAppContextHolder</c> 的默认实现 <c>AsyncLocalAppContextSwitcher</c> 基于
+    /// <see cref="AsyncLocal{T}"/>，因此即使 T 注册为 Singleton，并发调用 <see cref="UseApp"/>
+    /// 也不会互相覆盖（每个异步流持有独立的 Current 值）。
+    /// 但仍建议将 T 注册为 Scoped（通过 <c>AddFeishuApi&lt;T&gt;</c> 或 <c>AddFeishuApp&lt;T&gt;</c>），
+    /// 以避免 Singleton 实例长期持有已释放的 <see cref="IFeishuAppContext"/> 引用。
+    /// </para>
     /// </remarks>
     public override IFeishuAppContext GetWebApi<IFeishuAppContext>(string appKey)
     {

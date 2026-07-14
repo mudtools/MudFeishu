@@ -51,6 +51,13 @@ public static class FeishuMultiAppExtensions
     ///   ]
     /// }
     /// </code>
+    /// <para>
+    /// <b>热更新说明（NEW-MA-10）</b>：虽然此重载使用 <c>IConfiguration</c> 绑定并注册了
+    /// <c>IOptionsMonitor&lt;List&lt;FeishuAppConfig&gt;&gt;</c>，但 <see cref="IFeishuAppManager"/>
+    /// 在构造时捕获启动期配置快照，不订阅 <c>IOptionsMonitor.OnChange</c>。
+    /// 修改 <c>appsettings.json</c> 后仅 <c>IOptionsMonitor</c> 消费方看到新值，
+    /// <see cref="IFeishuAppManager"/> 与所有 HttpClient 仍使用旧配置。<b>配置变更需重启应用</b>。
+    /// </para>
     /// </remarks>
     public static IServiceCollection AddFeishuApp(
         this IServiceCollection services,
@@ -384,7 +391,15 @@ public static class FeishuMultiAppExtensions
         // PostConfigure：统一执行 IsDefault 自动推断逻辑。
         // 此逻辑对 IConfiguration 绑定路径是必需的（该路径不调用 ValidateAndSetDefaultApp）。
         // 对直接传入 List<FeishuAppConfig> 的路径，ValidateAndSetDefaultApp 已执行相同推断，此处为幂等操作（无害重复）。
-        // 同时确保 IOptionsMonitor<T> 热更新时 IsDefault 推断仍然生效。
+        //
+        // NEW-MA-10 修复说明（热更新语义澄清）：
+        // PostConfigure 仅影响 IOptions<IList<FeishuAppConfig>> 消费方（如直接注入 IOptionsMonitor 的组件），
+        // **不会**传播到 FeishuAppManager —— FeishuAppManager 在构造时捕获启动期 configs 快照，
+        // 不订阅 IOptionsMonitor.OnChange。因此：
+        //   - 修改 appsettings.json 中的飞书应用配置后，IOptionsMonitor 消费方会看到新值
+        //   - 但 FeishuAppManager 与所有 HttpClient 仍使用旧配置，直到应用重启
+        // 如需真正支持热更新，需让 FeishuAppManager 订阅 IOptionsMonitor.OnChange 并重建受影响的 FeishuAppContext
+        // （注意线程安全与令牌迁移），这属于中期重构任务，当前版本明确不支持。
         services.PostConfigure<List<FeishuAppConfig>>(options =>
         {
             // AppKey 为 "default" 时自动设置 IsDefault=true

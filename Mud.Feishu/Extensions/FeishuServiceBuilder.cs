@@ -216,12 +216,24 @@ public class FeishuServiceBuilder
     /// </summary>
     /// <param name="module">模块类型</param>
     /// <returns>建造者实例，支持链式调用</returns>
+    /// <remarks>
+    /// NEW-SR-07 修复：原实现先调用 <c>_configuration.TryAdd(module)</c> 标记为已添加，
+    /// 再查 <c>_registrars</c>。若用户先 <c>AddModule(Custom)</c> 再 <c>RegisterModule(customRegistrar)</c>，
+    /// Custom 会被标记为已添加但 registrar.Register 不执行；后续 RegisterModule 因 TryAdd 返回 false 再次跳过。
+    /// 修复后：仅在 registrar 存在时才标记为 added 并执行注册；自定义模块（不在 _registrars 中）
+    /// 不在此处标记 added，由 <see cref="RegisterModule"/> 显式注册时标记。
+    /// </remarks>
     private FeishuServiceBuilder AddModule(FeishuModule module)
     {
-        if (_configuration.TryAdd(module) && _registrars.TryGetValue(module, out var registrar))
+        if (_registrars.TryGetValue(module, out var registrar))
         {
-            registrar.Register(_services);
+            if (_configuration.TryAdd(module))
+            {
+                registrar.Register(_services);
+            }
         }
+        // 自定义模块（不在 _registrars 中）不在此处标记 added，
+        // 由 RegisterModule 显式注册时标记，避免静默跳过。
         return this;
     }
 
@@ -247,6 +259,7 @@ public class FeishuServiceBuilder
     /// 构建服务注册
     /// </summary>
     /// <returns>服务集合，支持链式调用</returns>
+    /// <exception cref="InvalidOperationException">当未添加任何服务或未注册 <see cref="IFeishuAppManager"/> 时抛出</exception>
     public IServiceCollection Build()
     {
         // 验证至少添加了一个服务
@@ -254,6 +267,18 @@ public class FeishuServiceBuilder
         {
             throw new InvalidOperationException("至少需要添加一个服务，请使用相应的 Add 方法。");
         }
+
+        // NEW-SR-08 修复：验证基础服务依赖，避免配置错误延迟到运行时暴露。
+        // 原实现仅校验"至少添加一个服务"，不检查 AddFeishuApp 是否已调用、IFeishuAppManager 是否已注册。
+        // 用户可能写出 services.AddFeishu(builder => builder.AddMessageApi()) 而未调用 AddFeishuApp，
+        // Build() 通过但运行时解析 IFeishuV1Message 会因 IFeishuAppManager 未注册而抛异常。
+        if (!_services.Any(s => s.ServiceType == typeof(IFeishuAppManager)))
+        {
+            throw new InvalidOperationException(
+                "未注册 IFeishuAppManager。请在 AddFeishu 之前调用 AddFeishuApp 注册飞书应用配置。" +
+                "示例：services.AddFeishuApp(configuration, \"FeishuApps\").AddFeishu(builder => builder.AddMessageApi());");
+        }
+
         return _services;
     }
 }

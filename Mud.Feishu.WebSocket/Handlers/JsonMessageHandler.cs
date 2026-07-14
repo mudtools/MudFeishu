@@ -1,4 +1,4 @@
-﻿// -----------------------------------------------------------------------
+// -----------------------------------------------------------------------
 //  作者：Mud Studio  版权所有 (c) Mud Studio 2026
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
@@ -21,11 +21,6 @@ public abstract class JsonMessageHandler : IMessageHandler
     protected readonly ILogger _logger;
 
     /// <summary>
-    /// Json序列化选项
-    /// </summary>
-    protected readonly JsonSerializerOptions _jsonOptions;
-
-    /// <summary>
     /// 默认的构造函数
     /// </summary>
     /// <param name="logger">日志记录器</param>
@@ -33,7 +28,6 @@ public abstract class JsonMessageHandler : IMessageHandler
     protected JsonMessageHandler(ILogger logger)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _jsonOptions = JsonOptions.Default;
     }
 
     /// <inheritdoc/>
@@ -52,7 +46,8 @@ public abstract class JsonMessageHandler : IMessageHandler
     {
         try
         {
-            return JsonSerializer.Deserialize<T>(json, _jsonOptions);
+            // 使用 getter 实时获取最新的反序列化选项，确保 resolver 链变更已传播
+            return JsonSerializer.Deserialize<T>(json, JsonOptions.Deserializer);
         }
         catch (JsonException ex)
         {

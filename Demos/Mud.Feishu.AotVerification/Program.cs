@@ -13,6 +13,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Mud.Feishu.Abstractions.Utilities;
 using Mud.Feishu.Abstractions;
+using Mud.Feishu.DataModels;
 using Mud.Feishu.Webhook.Models;
 using Mud.Feishu.Webhook.Configuration;
 
@@ -50,6 +51,14 @@ public class Program
             // 配置 Webhook resolver - 添加 Webhook 专用类型到 resolver 链
             Mud.Feishu.Webhook.Extensions.FeishuWebhookJsonResolverExtensions.ConfigureWebhookResolver();
             Console.WriteLine("  [PASS] ConfigureWebhookResolver 调用成功");
+
+            // P1-1：配置 WebSocket resolver - 添加 WebSocket 协议消息类型到 resolver 链
+            Mud.Feishu.WebSocket.Extensions.FeishuWebSocketJsonResolverExtensions.ConfigureWebSocketResolver();
+            Console.WriteLine("  [PASS] ConfigureWebSocketResolver 调用成功");
+
+            // P1-2：配置 EventCallback resolver - 添加事件回调类型到 resolver 链
+            Mud.Feishu.EventCallback.Extensions.FeishuEventCallbackJsonResolverExtensions.ConfigureEventCallbackResolver();
+            Console.WriteLine("  [PASS] ConfigureEventCallbackResolver 调用成功");
 
             // 验证 resolver 已传播到 FeishuJsonDefaults
             var options = FeishuJsonDefaults.SerializerOptions;
@@ -201,6 +210,110 @@ public class Program
             allPassed = false;
         }
         Console.WriteLine();
+
+#if NET8_0_OR_GREATER
+        // 8. P0-2：FeishuEventHeader 反序列化验证（通过 FeishuJsonContext 强类型路径）
+        Console.WriteLine("[8] P0-2: FeishuEventHeader 反序列化验证");
+        try
+        {
+            var headerJson = """{"event_id":"evt_123","event_type":"contact.user.created_v3","create_time":"1700000000","token":"xxx","app_id":"cli_xxx","tenant_key":"xxx"}""";
+            var header = System.Text.Json.JsonSerializer.Deserialize(
+                headerJson, Mud.Feishu.Abstractions.Utilities.FeishuJsonContext.Default.FeishuEventHeader);
+            if (header?.EventId != "evt_123")
+                throw new InvalidOperationException("FeishuEventHeader.EventId 反序列化不匹配");
+            Console.WriteLine($"  [PASS] FeishuEventHeader 反序列化成功 (EventId={header?.EventId})");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"  [FAIL] P0-2 FeishuEventHeader 反序列化失败: {ex.Message}");
+            allPassed = false;
+        }
+        Console.WriteLine();
+
+        // 9. P0-1：FeishuApiResult<T> 反序列化验证（通过 FeishuApiResultJsonContext 强类型路径）
+        Console.WriteLine("[9] P0-1: FeishuApiResult<T> 反序列化验证");
+        try
+        {
+            // 验证 FeishuApiResult<GetUserDataResult> 闭合泛型反序列化
+            var apiResponseJson = """{"code":0,"msg":"success","data":{"name":"test_user","open_id":"ou_xxx","union_id":"on_xxx","tenant_key":"tk_xxx"}}""";
+            var result = System.Text.Json.JsonSerializer.Deserialize(
+                apiResponseJson,
+                Mud.Feishu.Abstractions.Utilities.FeishuApiResultJsonContext.Default.FeishuApiResultGetUserDataResult);
+            if (result?.Code != 0 || result?.Data?.OpenId != "ou_xxx")
+                throw new InvalidOperationException("FeishuApiResult<GetUserDataResult> 反序列化不匹配");
+            Console.WriteLine($"  [PASS] FeishuApiResult<GetUserDataResult> 反序列化成功 (Code={result?.Code}, OpenId={result?.Data?.OpenId})");
+
+            // 验证非泛型 FeishuApiResult 基类反序列化
+            var baseJson = """{"code":10001,"msg":"invalid app_id"}""";
+            var baseResult = System.Text.Json.JsonSerializer.Deserialize(
+                baseJson, Mud.Feishu.Abstractions.Utilities.FeishuApiResultJsonContext.Default.FeishuApiResult);
+            if (baseResult?.Code != 10001)
+                throw new InvalidOperationException("FeishuApiResult 基类反序列化不匹配");
+            Console.WriteLine($"  [PASS] FeishuApiResult 基类反序列化成功 (Code={baseResult?.Code})");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"  [FAIL] P0-1 FeishuApiResult<T> 反序列化失败: {ex.Message}");
+            allPassed = false;
+        }
+        Console.WriteLine();
+
+        // 10. P1-1：WebSocket 协议消息反序列化验证（通过 FeishuJsonDefaults resolver 链）
+        Console.WriteLine("[10] P1-1: WebSocket 协议消息反序列化验证");
+        try
+        {
+            // AuthResponseMessage 在 WebSocketJsonContext 中注册（internal），
+            // 通过 FeishuJsonDefaults.DeserializerOptions 的合并 resolver 链反序列化
+            var authRespJson = """{"code":0,"msg":"success","session_id":"sess_xxx","type":"auth"}""";
+            var authResp = System.Text.Json.JsonSerializer.Deserialize<Mud.Feishu.WebSocket.DataModels.AuthResponseMessage>(
+                authRespJson, FeishuJsonDefaults.DeserializerOptions);
+            if (authResp?.Code != 0 || authResp?.SessionId != "sess_xxx")
+                throw new InvalidOperationException("AuthResponseMessage 反序列化不匹配");
+            Console.WriteLine($"  [PASS] AuthResponseMessage 反序列化成功 (Code={authResp?.Code}, SessionId={authResp?.SessionId})");
+
+            // 验证 PingMessage
+            var pingJson = """{"type":"ping"}""";
+            var ping = System.Text.Json.JsonSerializer.Deserialize<Mud.Feishu.WebSocket.DataModels.PingMessage>(
+                pingJson, FeishuJsonDefaults.DeserializerOptions);
+            if (ping?.Type != "ping")
+                throw new InvalidOperationException("PingMessage 反序列化不匹配");
+            Console.WriteLine($"  [PASS] PingMessage 反序列化成功 (Type={ping?.Type})");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"  [FAIL] P1-1 WebSocket 协议消息反序列化失败: {ex.Message}");
+            allPassed = false;
+        }
+        Console.WriteLine();
+
+        // 11. P1-2：EventCallback 事件反序列化验证（通过 FeishuJsonDefaults resolver 链）
+        Console.WriteLine("[11] P1-2: EventCallback 事件反序列化验证");
+        try
+        {
+            // MessageReceiveResult 在 EventCallback 的 IMJsonContext 中注册（internal），
+            // 通过 FeishuJsonDefaults.DeserializerOptions 的合并 resolver 链反序列化
+            var eventJson = """{"sender":{"sender_id":{"open_id":"ou_xxx","union_id":"on_xxx","user_id":"u_xxx"},"sender_type":"user"},"message":{"message_id":"om_xxx","chat_id":"oc_xxx","message_type":"text","content":"{\"text\":\"hello\"}"}}""";
+            var result = System.Text.Json.JsonSerializer.Deserialize<Mud.Feishu.EventCallback.IM.MessageReceiveResult>(
+                eventJson, FeishuJsonDefaults.DeserializerOptions);
+            if (result?.Sender?.SenderId?.OpenId != "ou_xxx")
+                throw new InvalidOperationException("MessageReceiveResult 反序列化不匹配");
+            Console.WriteLine($"  [PASS] MessageReceiveResult 反序列化成功 (OpenId={result?.Sender?.SenderId?.OpenId})");
+
+            // 验证 DriveFileEventHeader 子类反序列化（N-03 联动验证）
+            var driveHeaderJson = """{"event_id":"evt_456","event_type":"drive.file.edit_v1","resource_id":"file_xxx","user_list":[{"user_id":"u1"}]}""";
+            var driveHeader = System.Text.Json.JsonSerializer.Deserialize<Mud.Feishu.EventCallback.Drive.DriveFileEventHeader>(
+                driveHeaderJson, FeishuJsonDefaults.DeserializerOptions);
+            if (driveHeader?.ResourceId != "file_xxx")
+                throw new InvalidOperationException("DriveFileEventHeader 反序列化不匹配");
+            Console.WriteLine($"  [PASS] DriveFileEventHeader 子类反序列化成功 (ResourceId={driveHeader?.ResourceId})");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"  [FAIL] P1-2 EventCallback 事件反序列化失败: {ex.Message}");
+            allPassed = false;
+        }
+        Console.WriteLine();
+#endif
 
         // 结果汇总
         Console.WriteLine("=== 验证结果 ===");

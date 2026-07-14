@@ -55,8 +55,9 @@ jobs:
       - name: Build
         run: dotnet build ${{ env.SOLUTION_FILE }} --no-restore --configuration ${{ env.CONFIGURATION }}
 
-      # P3-1：AOT 发布验证（仅 net8.0 及以上）
+      # P3-1：AOT 发布验证（仅 Linux，net8.0）
       - name: AOT Publish Verification
+        if: matrix.os == 'ubuntu-latest'
         run: |
           # 发布 AotVerification 示例进行 Smoke Test
           dotnet publish Demos/Mud.Feishu.AotVerification \

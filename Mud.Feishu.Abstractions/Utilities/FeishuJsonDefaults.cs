@@ -35,6 +35,9 @@ public static class FeishuJsonDefaults
 #if NET6_0_OR_GREATER
     [System.Diagnostics.CodeAnalysis.RequiresUnreferencedCode("netstandard2.0/net6.0 路径使用 DefaultJsonTypeInfoResolver 反射兜底，不支持 AOT。AOT 部署请使用 net8.0+ 目标框架。")]
 #endif
+#if NET7_0_OR_GREATER
+    [System.Diagnostics.CodeAnalysis.RequiresDynamicCode("netstandard2.0/net6.0 路径使用 DefaultJsonTypeInfoResolver 反射兜底，不支持 AOT。AOT 部署请使用 net8.0+ 目标框架。")]
+#endif
     public static void ConfigureUserResolver(IJsonTypeInfoResolver userResolver)
 #endif
     {

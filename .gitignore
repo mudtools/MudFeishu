@@ -32,6 +32,8 @@
 /bin
 /Mud.Feishu.Abstractions/bin
 /Mud.Feishu.Abstractions/obj
+/Mud.Feishu.DataModels/bin
+/Mud.Feishu.DataModels/obj
 /Mud.Feishu.Webbook/obj
 /Mud.Feishu.Webbook.Demo/obj
 /Mud.Feishu.Webbook.Demo

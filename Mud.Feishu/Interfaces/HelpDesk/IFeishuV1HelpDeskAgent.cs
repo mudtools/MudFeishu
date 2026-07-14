@@ -16,4 +16,12 @@ namespace Mud.Feishu.Interfaces;
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]
 public interface IFeishuV1HelpDeskAgent : IFeishuAppContextSwitcher
 {
+    /// <summary>
+    /// 用于在服务台请求Header中添加“服务台token”参数
+    /// <para>服务台的详细接入指南：<see href="https://open.feishu.cn/document/server-docs/helpdesk-v1/access-guide">服务台接入指南</see></para>
+    /// <para>Key: X-Lark-Helpdesk-Authorization</para>
+    /// <para>Value: base64(helpdesk_id:helpdesk_token)，通过base64加密将helpdesk_id和helpdesk_token用':'连接而成的字符串。</para>
+    /// </summary>
+    [Header("X-Lark-Helpdesk-Authorization")]
+    string HelpdeskTokenAndId { get; set; }
 }

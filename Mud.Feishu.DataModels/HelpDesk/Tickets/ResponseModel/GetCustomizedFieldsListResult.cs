@@ -8,7 +8,7 @@
 namespace Mud.Feishu.DataModels.HelpDesk;
 
 /// <summary>
-/// para>获取自定义字段列表结果</para>
+/// <para>获取自定义字段列表结果</para>
 /// </summary>
 public class GetCustomizedFieldsListResult
 {

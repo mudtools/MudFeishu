@@ -16,6 +16,7 @@ using System.Runtime.CompilerServices;
 
 
 [assembly: InternalsVisibleTo("Mud.Feishu")]
+[assembly: InternalsVisibleTo("Mud.Feishu.DataModels")]
 [assembly: InternalsVisibleTo("Mud.Feishu.Redis")]
 [assembly: InternalsVisibleTo("Mud.Feishu.Webhook")]
 [assembly: InternalsVisibleTo("Mud.Feishu.WebSocket")]

@@ -25,5 +25,6 @@
 	</ItemGroup>
 	<ItemGroup>
 	  <ProjectReference Include="..\Mud.Feishu.Abstractions\Mud.Feishu.Abstractions.csproj" />
+	  <ProjectReference Include="..\Mud.Feishu.DataModels\Mud.Feishu.DataModels.csproj" />
 	</ItemGroup>
 </Project>

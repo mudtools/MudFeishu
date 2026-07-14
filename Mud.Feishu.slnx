@@ -18,20 +18,21 @@
   <Folder Name="/Sources/">
     <Project Path="Mud.Feishu.Abstractions/Mud.Feishu.Abstractions.csproj" Id="b04973d2-c477-49a7-a00f-04288a8cabac" />
     <Project Path="Mud.Feishu.Authentication/Mud.Feishu.Authentication.csproj" />
+    <Project Path="Mud.Feishu.DataModels/Mud.Feishu.DataModels.csproj" Id="d1068109-7be0-4c64-a97e-c7aba02d132b" />
     <Project Path="Mud.Feishu.EventCallback/Mud.Feishu.EventCallback.csproj" Id="21f330ea-c8c3-4d9e-9f72-0e9e9f4d28c1" />
+    <Project Path="Mud.Feishu.OpenTelemetry/Mud.Feishu.OpenTelemetry.csproj" />
     <Project Path="Mud.Feishu.Redis/Mud.Feishu.Redis.csproj" />
     <Project Path="Mud.Feishu.Webhook/Mud.Feishu.Webhook.csproj" />
     <Project Path="Mud.Feishu.WebSocket/Mud.Feishu.WebSocket.csproj" />
     <Project Path="Mud.Feishu/Mud.Feishu.csproj" />
-    <Project Path="Mud.Feishu.OpenTelemetry/Mud.Feishu.OpenTelemetry.csproj" />
   </Folder>
   <Folder Name="/Tests/">
     <File Path="Tests/Directory.Build.props" />
     <Project Path="Tests/Mud.Feishu.Abstractions.Tests/Mud.Feishu.Abstractions.Tests.csproj" />
     <Project Path="Tests/Mud.Feishu.Authentication.Tests/Mud.Feishu.Authentication.Tests.csproj" />
+    <Project Path="Tests/Mud.Feishu.OpenTelemetry.Tests/Mud.Feishu.OpenTelemetry.Tests.csproj" />
     <Project Path="Tests/Mud.Feishu.Redis.Tests/Mud.Feishu.Redis.Tests.csproj" />
     <Project Path="Tests/Mud.Feishu.Tests/Mud.Feishu.Tests.csproj" />
-    <Project Path="Tests/Mud.Feishu.OpenTelemetry.Tests/Mud.Feishu.OpenTelemetry.Tests.csproj" />
     <Project Path="Tests/Mud.Feishu.Webhook.Tests/Mud.Feishu.Webhook.Tests.csproj" />
     <Project Path="Tests/Mud.Feishu.WebSocket.Tests/Mud.Feishu.WebSocket.Tests.csproj" />
   </Folder>

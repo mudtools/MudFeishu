@@ -1,42 +1,53 @@
 <#
 .SYNOPSIS
-    运行 Mud.HttpUtils.JsonContextScaffolder，为 Mud.Feishu.DataModels 项目生成 JsonSerializerContext 源文件。
+    Runs Mud.HttpUtils.JsonContextScaffolder to generate JsonSerializerContext source files
+    for the Mud.Feishu.DataModels project.
 .DESCRIPTION
-    脚手架工具以 NuGet 包形式分发（dotnet tool，命令名 mud-jsonctx）。本脚本不依赖任何本地源码/构建路径，
-    可在任意机器、任意克隆目录下运行：
-      1. 自动定位仓库内的目标项目（基于脚本所在目录，而非硬编码绝对路径）；
-      2. 检测 mud-jsonctx 是否可用，缺失时按需安装（全局 dotnet tool）；
-      3. 运行工具扫描 [HttpJsonSerializable]，按 SerializerClassName 分组生成 *_JsonContext.g.cs。
-    生成的文件应提交版本控制（仅在 [HttpJsonSerializable] 标注新增/变更时重跑）。
-    详见工具文档（NuGet 包 README / 仓库 Tools/Mud.HttpUtils.JsonContextScaffolder/README.md）。
+    The scaffolder is distributed as a NuGet dotnet tool (command: mud-jsonctx). This script
+    does NOT depend on any local source/build path, so it works on any machine / any clone
+    location:
+      1. Resolves the target project relative to the script's own directory (no hardcoded paths).
+      2. Detects the tool (global `mud-jsonctx` or local `dotnet mud-jsonctx`), installing it
+         globally when missing (unless -NoInstall).
+      3. Runs the tool to scan [HttpJsonSerializable] and emit *_JsonContext.g.cs grouped by
+         SerializerClassName.
+    Generated files should be committed (re-run only when [HttpJsonSerializable] annotations
+    are added/changed).
+    See the tool README (NuGet package / repo Tools/Mud.HttpUtils.JsonContextScaffolder) for details.
 
-    可选：通过 .csproj 中 <MudEnableJsonContextScaffolder>true</MudEnableJsonContextScaffolder> 启用内置 MSBuild 目标，
-    使脚手架随消费方构建自动运行（无需手动跑本脚本）。本脚本适用于“手动生成并签入 .g.cs”的工作流。
+    Alternative: enable the built-in MSBuild target in the .csproj
+    (<MudEnableJsonContextScaffolder>true</MudEnableJsonContextScaffolder>) to run the scaffolder
+    automatically during the consumer build. This script is for the "generate and commit .g.cs"
+    workflow.
 #>
 
 param(
-    # NuGet 包 Id（仅用于自动安装）
+    # NuGet package id (used only for auto-install)
     [string]$ToolPackageId = "Mud.HttpUtils.JsonContextScaffolder",
-    # 自动安装时使用的包版本；留空表示安装最新稳定版
+    # Version to install; empty = latest stable
     [string]$ToolVersion = "",
-    # 目标数据模型项目（相对脚本目录或绝对路径均可）
+    # Target data-model project (relative to script dir or absolute)
     [string]$TargetProject = "Mud.Feishu.DataModels/Mud.Feishu.DataModels.csproj",
-    # 生成输出目录（相对脚本目录或绝对路径均可）
+    # Output directory for generated context files (relative to script dir or absolute)
     [string]$OutputDir = "Mud.Feishu.DataModels/Generated",
-    # 自动补全同程序集内的多态派生类
+    # Auto-complete polymorphic derived types within the same assembly
     [switch]$AutoDerivedTypes = $true,
-    # 仅预览不写入
+    # Preview only, do not write files
     [switch]$DryRun = $false,
-    # 当 mud-jsonctx 未安装时，自动安装为全局 dotnet tool（默认开启）
+    # Auto-install the tool as a global dotnet tool when missing (default on)
     [switch]$InstallTool = $true,
-    # 跳过自动安装（使用已存在的工具，缺失则报错）
+    # Do not auto-install; error if the tool is missing
     [switch]$NoInstall = $false
 )
 
-# 仓库根目录 = 脚本所在目录（与脚本位置绑定，跨机器/任意克隆路径均有效）
+# Repo root = script directory (bound to the script location, works on any clone path)
 $RepoRoot = $PSScriptRoot
 
-# 将相对路径解析为基于仓库根目录的绝对路径
+# Fix working directory to the repo root so relative paths and any local dotnet tool
+# manifest are resolved consistently.
+Set-Location $RepoRoot
+
+# Resolve a path relative to the repo root into an absolute path.
 function Resolve-RepoPath([string]$p) {
     if ([System.IO.Path]::IsPathRooted($p)) { return $p }
     return Join-Path $RepoRoot $p
@@ -46,56 +57,74 @@ $TargetProject = Resolve-RepoPath $TargetProject
 $OutputDir     = Resolve-RepoPath $OutputDir
 
 if (-not (Test-Path $TargetProject)) {
-    Write-Error "找不到目标项目：$TargetProject"
+    Write-Error "Target project not found: $TargetProject"
     exit 1
 }
 
 # ---------------------------------------------------------------------------
-# 定位 / 安装脚手架工具（dotnet tool 方式，不依赖本地源码路径）
+# Locate / install the scaffolder tool (dotnet tool, no local source path).
+# Supports both install shapes:
+#   - global tool: `mud-jsonctx` on PATH
+#   - local tool : `dotnet mud-jsonctx` within a dotnet-tools manifest directory
 # ---------------------------------------------------------------------------
-$toolCmd = "mud-jsonctx"
 
-function Test-ToolAvailable {
+# Returns the invocation array for the tool, or $null if not found.
+function Find-ToolInvocation {
+    # 1) global: command on PATH
     try {
-        $null = Get-Command $toolCmd -ErrorAction Stop
-        return $true
-    } catch {
-        return $false
-    }
+        $null = Get-Command "mud-jsonctx" -ErrorAction Stop
+        return @("mud-jsonctx")
+    } catch { }
+
+    # 2) local: dotnet can resolve the manifest tool (run from manifest dir or subdir)
+    try {
+        $out = & dotnet mud-jsonctx --help 2>&1
+        if ($LASTEXITCODE -eq 0) {
+            return @("dotnet", "mud-jsonctx")
+        }
+    } catch { }
+
+    return $null
 }
 
-if (-not (Test-ToolAvailable)) {
+$toolInvocation = Find-ToolInvocation
+
+if ($null -eq $toolInvocation) {
     if ($NoInstall -or -not $InstallTool) {
-        Write-Error "未找到命令 '$toolCmd'。请先安装工具：" +
-                    "`n  dotnet tool install --global $ToolPackageId" +
-                    "`n或传入 -InstallTool 让脚本自动安装（默认即会自动安装）。"
+        Write-Error ("Tool 'mud-jsonctx' not found (neither global nor local). Install it first:" +
+                     "  global: dotnet tool install --global $ToolPackageId" +
+                     "  local : dotnet new tool-manifest; dotnet tool install $ToolPackageId" +
+                     "  or pass -InstallTool to let this script install it automatically.")
         exit 1
     }
 
-    Write-Host "未找到 '$toolCmd'，开始安装全局 dotnet tool：$ToolPackageId …"
+    Write-Host "Tool '$ToolPackageId' not detected, installing as global dotnet tool..."
     $installArgs = @("tool", "install", "--global", $ToolPackageId)
     if ($ToolVersion) { $installArgs += "--version"; $installArgs += $ToolVersion }
 
     & dotnet @installArgs
     if ($LASTEXITCODE -ne 0) {
-        Write-Error "工具安装失败，退出码：$LASTEXITCODE"
+        Write-Error "Tool installation failed, exit code: $LASTEXITCODE"
         exit $LASTEXITCODE
     }
 
-    # 安装后确保工具所在目录在 PATH 中（dotnet tools 通常已在用户 PATH）
     $dotnetToolsPath = Join-Path $env:USERPROFILE ".dotnet\tools"
     if ($env:PATH -notlike "*$dotnetToolsPath*") {
         $env:PATH = "$dotnetToolsPath;$env:PATH"
     }
 
-    if (-not (Test-ToolAvailable)) {
-        Write-Error "安装后仍未找到命令 '$toolCmd'。请确认 dotnet tools 路径已加入 PATH：$dotnetToolsPath"
+    $toolInvocation = Find-ToolInvocation
+    if ($null -eq $toolInvocation) {
+        Write-Error "Tool still not found after install. Ensure dotnet tools path is on PATH: $dotnetToolsPath"
         exit 1
     }
 }
 
+$toolMode = if ($toolInvocation.Count -eq 1) { "global (mud-jsonctx)" } else { "local (dotnet mud-jsonctx)" }
+Write-Host "Detected tool invocation: $toolMode"
+
 # ---------------------------------------------------------------------------
-# 组装并运行工具参数
+# Build and run the tool arguments
 # ---------------------------------------------------------------------------
 $toolArgs = @(
     "--project", (Resolve-Path $TargetProject)
@@ -105,24 +134,24 @@ if ($AutoDerivedTypes) { $toolArgs += "--auto-derived-types" }
 if ($DryRun)           { $toolArgs += "--dry-run" }
 
 Write-Host "==== Mud.HttpUtils JsonContext Scaffolder ===="
-Write-Host "命令      : $toolCmd (dotnet tool: $ToolPackageId)"
-Write-Host "目标项目  : $TargetProject"
-Write-Host "输出目录  : $OutputDir"
-Write-Host "自动派生  : $AutoDerivedTypes"
+Write-Host "Command   : $($toolInvocation -join ' ') (dotnet tool: $ToolPackageId)"
+Write-Host "Project   : $TargetProject"
+Write-Host "Output    : $OutputDir"
+Write-Host "AutoDerived: $AutoDerivedTypes"
 Write-Host "Dry run   : $DryRun"
 Write-Host ""
 
-& $toolCmd @toolArgs
+& $toolInvocation @toolArgs
 $exitCode = $LASTEXITCODE
 
 if ($exitCode -ne 0) {
-    Write-Error "脚手架执行失败，退出码：$exitCode"
+    Write-Error "Scaffolder failed, exit code: $exitCode"
     exit $exitCode
 }
 
 Write-Host ""
-Write-Host "==== 完成 ===="
+Write-Host "==== Done ===="
 if (-not $DryRun) {
-    Write-Host "生成的 Context 文件位于：$OutputDir"
-    Write-Host "请将其加入版本控制：git add $OutputDir"
+    Write-Host "Generated context files are in: $OutputDir"
+    Write-Host "Add them to version control, e.g.: git add $OutputDir"
 }

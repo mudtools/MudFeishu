@@ -15,7 +15,6 @@ namespace Mud.Feishu.DataModels.Messages;
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Messages.BatchSenderMessageImageRequest))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Messages.BatchSenderRichTextMessageRequest))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Messages.BatchSenderTextMessageRequest))]
-[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Messages.BatchSendMessageRequestBase<>))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Messages.MessageGroupShareContent))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Messages.MessageImageContent))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Messages.MessageRichTextContent))]

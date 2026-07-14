@@ -11,16 +11,32 @@ namespace Mud.Feishu.DataModels.Messages;
 /// 批量发送图片消息请求体。
 /// </summary>
 [HttpJsonSerializable(SerializerClassName = "Messages")]
-public class BatchSenderMessageImageRequest : BatchSendMessageRequestBase<MessageImageContent>
+public class BatchSenderMessageImageRequest
 {
     /// <summary>
     /// 消息类型。
     /// </summary>
     [JsonPropertyName("msg_type")]
-    public
-#if NET7_0_OR_GREATER
-        required
-#endif
-        override string? MsgType
-    { get; set; } = "image";
+    public string? MsgType { get; set; } = "image";
+
+    /// <summary>
+    /// 用户 open_id 列表。
+    /// <para>示例值：["ou_18eac85d35a26f989317ad4f02e8bbbb","ou_461cf042d9eedaa60d445f26dc747d5e"]</para>
+    /// </summary>
+    [JsonPropertyName("open_ids")]
+    public List<string> OpenIds { get; set; } = [];
+
+    /// <summary>
+    /// 部门 ID 列表。列表内支持传入部门 department_id 和 open_department_id
+    /// <para>示例值：["3dceba33a33226","d502aaa9514059", "od-5b91c9affb665451a16b90b4be367efa"]</para>
+    /// </summary>
+    [JsonPropertyName("department_ids")]
+    public List<string> DepartmentIds { get; set; } = [];
+
+    /// <summary>
+    /// 消息内容，JSON 结构。
+    /// </summary>
+    [JsonPropertyName("content")]
+    public MessageImageContent? Content { get; set; }
+
 }

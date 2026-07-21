@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
     <PropertyGroup>
         <TargetFramework>net8.0</TargetFramework>
@@ -25,8 +25,8 @@
         <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
     </ItemGroup>
 	<ItemGroup>
-		<PackageReference Include="Mud.Feishu" Version="2.1.5" />
-		<PackageReference Include="Mud.Feishu.Authentication" Version="2.1.5" />
+		<PackageReference Include="Mud.Feishu" Version="2.1.6" />
+		<PackageReference Include="Mud.Feishu.Authentication" Version="2.1.6" />
 	</ItemGroup>
     <!--<ItemGroup>
 		<ProjectReference Include="..\..\..\Mud.Feishu.Authentication\Mud.Feishu.Authentication.csproj" />

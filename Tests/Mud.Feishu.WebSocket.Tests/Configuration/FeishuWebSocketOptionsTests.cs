@@ -22,9 +22,10 @@ public class FeishuWebSocketOptionsTests
 
         // Assert
         options.AutoReconnect.Should().BeTrue();
-        options.MaxReconnectAttempts.Should().Be(5);
+        options.MaxReconnectAttempts.Should().Be(-1);
         options.ReconnectDelayMs.Should().Be(5000);
         options.MaxReconnectDelayMs.Should().Be(30000);
+        options.ReconnectNonceMs.Should().Be(30000);
         options.InitialReceiveBufferSize.Should().Be(4096);
         options.HeartbeatIntervalMs.Should().Be(25000);
         options.ConnectionTimeoutMs.Should().Be(10000);
@@ -314,5 +315,84 @@ public class FeishuWebSocketOptionsTests
         options.MessageSizeLimits.MaxTextMessageSize.Should().Be(2 * 1024 * 1024);
         options.MessageQueueCapacity.Should().Be(2000);
         options.MessageSizeLimits.MaxBinaryMessageSize.Should().Be(20 * 1024 * 1024);
+    }
+
+    [Fact]
+    public void ApplyClientConfig_WithValidConfig_ShouldOverrideLocalSettings()
+    {
+        // Arrange
+        var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions();
+        var serverConfig = new Mud.Feishu.DataModels.WsEndpoint.ClientConfigInfo
+        {
+            ReconnectCount = 10,
+            ReconnectInterval = 8000,
+            ReconnectNonce = 15000,
+            PingInterval = 45000
+        };
+
+        // Act
+        options.ApplyClientConfig(serverConfig);
+
+        // Assert
+        options.MaxReconnectAttempts.Should().Be(10);
+        options.ReconnectDelayMs.Should().Be(8000);
+        options.ReconnectNonceMs.Should().Be(15000);
+        options.HeartbeatIntervalMs.Should().Be(45000);
+    }
+
+    [Fact]
+    public void ApplyClientConfig_WithNullConfig_ShouldNotChangeSettings()
+    {
+        // Arrange
+        var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions();
+        var originalMaxAttempts = options.MaxReconnectAttempts;
+        var originalDelayMs = options.ReconnectDelayMs;
+
+        // Act
+        options.ApplyClientConfig(null);
+
+        // Assert
+        options.MaxReconnectAttempts.Should().Be(originalMaxAttempts);
+        options.ReconnectDelayMs.Should().Be(originalDelayMs);
+    }
+
+    [Fact]
+    public void ApplyClientConfig_WithZeroValues_ShouldNotOverrideLocalSettings()
+    {
+        // Arrange
+        var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions();
+        var originalDelayMs = options.ReconnectDelayMs;
+        var originalHeartbeatMs = options.HeartbeatIntervalMs;
+        var serverConfig = new Mud.Feishu.DataModels.WsEndpoint.ClientConfigInfo
+        {
+            ReconnectCount = 0, // 0 表示不覆盖
+            ReconnectInterval = 0, // 0 表示不覆盖
+            ReconnectNonce = 0,
+            PingInterval = 0 // 0 表示不覆盖
+        };
+
+        // Act
+        options.ApplyClientConfig(serverConfig);
+
+        // Assert
+        options.ReconnectDelayMs.Should().Be(originalDelayMs);
+        options.HeartbeatIntervalMs.Should().Be(originalHeartbeatMs);
+    }
+
+    [Fact]
+    public void ApplyClientConfig_WithInfiniteReconnect_ShouldSetNegativeOne()
+    {
+        // Arrange
+        var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions();
+        var serverConfig = new Mud.Feishu.DataModels.WsEndpoint.ClientConfigInfo
+        {
+            ReconnectCount = -1 // 无限重连
+        };
+
+        // Act
+        options.ApplyClientConfig(serverConfig);
+
+        // Assert
+        options.MaxReconnectAttempts.Should().Be(-1);
     }
 }

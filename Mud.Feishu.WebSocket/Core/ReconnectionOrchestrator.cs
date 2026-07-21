@@ -18,6 +18,7 @@ public class ReconnectionOrchestrator : IReconnectionOrchestrator, IDisposable
     private readonly IReconnectStrategy _strategy;
     private readonly IFeishuWebSocketManager _webSocketManager;
     private readonly FeishuWebSocketOptions _options;
+    private readonly ErrorRecoveryStrategy? _errorRecoveryStrategy;
 
     private readonly SemaphoreSlim _reconnectLock = new(1, 1);
     private bool _isReconnecting;
@@ -27,6 +28,7 @@ public class ReconnectionOrchestrator : IReconnectionOrchestrator, IDisposable
     private DateTime? _reconnectStartTime;
     private string? _lastReconnectReason;
     private Exception? _lastError;
+    private readonly Random _random = new();
 
     private bool _disposed;
 
@@ -52,16 +54,19 @@ public class ReconnectionOrchestrator : IReconnectionOrchestrator, IDisposable
     /// <param name="strategy">重连策略</param>
     /// <param name="webSocketManager">WebSocket管理器</param>
     /// <param name="options">WebSocket配置选项</param>
+    /// <param name="errorRecoveryStrategy">错误恢复策略（可选，用于判断错误是否可恢复）</param>
     public ReconnectionOrchestrator(
         ILogger<ReconnectionOrchestrator> logger,
         IReconnectStrategy strategy,
         IFeishuWebSocketManager webSocketManager,
-        FeishuWebSocketOptions options)
+        FeishuWebSocketOptions options,
+        ErrorRecoveryStrategy? errorRecoveryStrategy = null)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _strategy = strategy ?? throw new ArgumentNullException(nameof(strategy));
         _webSocketManager = webSocketManager ?? throw new ArgumentNullException(nameof(webSocketManager));
         _options = options ?? throw new ArgumentNullException(nameof(options));
+        _errorRecoveryStrategy = errorRecoveryStrategy;
     }
 
     /// <summary>
@@ -109,6 +114,19 @@ public class ReconnectionOrchestrator : IReconnectionOrchestrator, IDisposable
 
             _logger.LogInformation("开始重连流程，原因: {Reason}", reason);
 
+            // 在首次重连前加入随机抖动
+            // 防止多个客户端同时断线后同时发起重连（惊群效应）
+            if (_options.ReconnectNonceMs > 0)
+            {
+                int jitterMs;
+                lock (_random)
+                {
+                    jitterMs = _random.Next(0, _options.ReconnectNonceMs);
+                }
+                _logger.LogDebug("首次重连随机抖动: {JitterMs}ms（范围: 0-{MaxMs}ms）", jitterMs, _options.ReconnectNonceMs);
+                await Task.Delay(jitterMs, cancellationToken);
+            }
+
             var reconnected = false;
             while (!reconnected && !cancellationToken.IsCancellationRequested)
             {
@@ -152,6 +170,18 @@ public class ReconnectionOrchestrator : IReconnectionOrchestrator, IDisposable
                 {
                     _lastError = ex;
                     _logger.LogWarning(ex, "第 {Attempt} 次重连尝试失败", _currentAttempt);
+
+                    // 遇到不可恢复错误时立即终止重连循环
+                    if (_errorRecoveryStrategy != null)
+                    {
+                        var recoveryResult = _errorRecoveryStrategy.AnalyzeError(ex, $"重连尝试 #{_currentAttempt}");
+                        if (!recoveryResult.IsRecoverable)
+                        {
+                            _logger.LogError("检测到不可恢复错误，终止重连: {ErrorType} - {Recommendation}",
+                                recoveryResult.ErrorType, recoveryResult.RecoveryRecommendation);
+                            break;
+                        }
+                    }
                 }
             }
 

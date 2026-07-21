@@ -296,6 +296,16 @@ public class FeishuWebSocketServiceBuilder
             });
         }
 
+        // 注册错误恢复策略（单例，如果未手动注册则使用默认实现）
+        if (!_services.Any(s => s.ServiceType == typeof(ErrorRecoveryStrategy)))
+        {
+            _services.AddSingleton<ErrorRecoveryStrategy>(serviceProvider =>
+            {
+                var logger = serviceProvider.GetRequiredService<ILogger<ErrorRecoveryStrategy>>();
+                return new ErrorRecoveryStrategy(logger);
+            });
+        }
+
         // 注册重连协调器（单例）
         _services.AddSingleton<IReconnectionOrchestrator>(serviceProvider =>
         {
@@ -303,7 +313,8 @@ public class FeishuWebSocketServiceBuilder
             var strategy = serviceProvider.GetRequiredService<IReconnectStrategy>();
             var manager = serviceProvider.GetRequiredService<IFeishuWebSocketManager>();
             var options = serviceProvider.GetRequiredService<IOptions<FeishuWebSocketOptions>>().Value;
-            return new ReconnectionOrchestrator(logger, strategy, manager, options);
+            var errorRecoveryStrategy = serviceProvider.GetService<ErrorRecoveryStrategy>();
+            return new ReconnectionOrchestrator(logger, strategy, manager, options, errorRecoveryStrategy);
         });
 
         // 注册SessionManager（单例）

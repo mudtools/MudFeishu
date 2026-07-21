@@ -5,6 +5,8 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using Mud.Feishu.DataModels.WsEndpoint;
+
 namespace Mud.Feishu.WebSocket;
 
 /// <summary>
@@ -46,9 +48,11 @@ public class FeishuWebSocketOptions
     public bool AutoReconnect { get; set; } = true;
 
     /// <summary>
-    /// 最大重连次数，默认为5次
+    /// 最大重连次数，默认为-1（无限重连）
+    /// <para>默认无限重连，适合长时间运行的服务。</para>
+    /// <para>设为0则禁用重连，设为正数则限制最大重连次数。</para>
     /// </summary>
-    public int MaxReconnectAttempts { get; set; } = 5;
+    public int MaxReconnectAttempts { get; set; } = -1;
 
     /// <summary>
     /// 重连延迟时间（毫秒），默认为5000毫秒，最小为1000毫秒
@@ -79,6 +83,14 @@ public class FeishuWebSocketOptions
     /// <para>两次重连尝试之间的最小间隔时间，防止过于频繁的重连</para>
     /// </summary>
     public TimeSpan ReconnectCooldownTime { get; set; } = TimeSpan.FromSeconds(5);
+
+    /// <summary>
+    /// 首次重连随机抖动时间（毫秒），默认为30000毫秒（30秒）
+    /// <para>在首次重连前加入随机抖动延迟，</para>
+    /// <para>防止多个客户端同时断线后同时发起重连（惊群效应）。</para>
+    /// <para>设为0则禁用抖动。实际抖动时间为 0 到 ReconnectNonceMs 之间的随机值。</para>
+    /// </summary>
+    public int ReconnectNonceMs { get; set; } = 30000;
 
     /// <summary>
     /// 是否启用重连指标收集，默认为true
@@ -202,11 +214,14 @@ public class FeishuWebSocketOptions
     /// <exception cref="InvalidOperationException">当配置项无效时抛出</exception>
     public void Validate()
     {
-        if (MaxReconnectAttempts < 0)
-            throw new InvalidOperationException("MaxReconnectAttempts必须大于等于0");
+        if (MaxReconnectAttempts < -1)
+            throw new InvalidOperationException("MaxReconnectAttempts必须大于等于-1（-1表示无限重连）");
 
         if (ReconnectDelayMs < 1000)
             throw new InvalidOperationException("ReconnectDelayMs必须至少为1000毫秒");
+
+        if (ReconnectNonceMs < 0)
+            throw new InvalidOperationException("ReconnectNonceMs不能为负数");
 
         if (MaxReconnectDelayMs < ReconnectDelayMs)
             throw new InvalidOperationException("MaxReconnectDelayMs必须大于等于ReconnectDelayMs");
@@ -246,7 +261,46 @@ public class FeishuWebSocketOptions
     /// </summary>
     public override string ToString()
     {
-        return $"FeishuWebSocketOptions {{ AutoReconnect: {AutoReconnect}, MaxReconnectAttempts: {MaxReconnectAttempts}, ReconnectDelayMs: {ReconnectDelayMs}, MaxTotalReconnectTime: {MaxTotalReconnectTime}, ReconnectCooldownTime: {ReconnectCooldownTime}, HeartbeatIntervalMs: {HeartbeatIntervalMs}, EnableLogging: {EnableLogging}, EventDeduplicationMode: {EventDeduplication.Mode} }}";
+        return $"FeishuWebSocketOptions {{ AutoReconnect: {AutoReconnect}, MaxReconnectAttempts: {MaxReconnectAttempts}, ReconnectDelayMs: {ReconnectDelayMs}, ReconnectNonceMs: {ReconnectNonceMs}, MaxTotalReconnectTime: {MaxTotalReconnectTime}, ReconnectCooldownTime: {ReconnectCooldownTime}, HeartbeatIntervalMs: {HeartbeatIntervalMs}, EnableLogging: {EnableLogging}, EventDeduplicationMode: {EventDeduplication.Mode} }}";
+    }
+
+    /// <summary>
+    /// 应用服务端下发的客户端配置
+    /// </summary>
+    /// <param name="config">服务端下发的客户端配置</param>
+    /// <remarks>
+    /// 服务端通过端点响应和 Pong 消息下发 ClientConfig，
+    /// 客户端动态调整重连次数、重连间隔、重连抖动和心跳间隔等参数。
+    /// 仅当服务端配置值大于0时才覆盖本地配置，0或负值表示使用本地默认值。
+    /// </remarks>
+    public void ApplyClientConfig(ClientConfigInfo? config)
+    {
+        if (config == null)
+            return;
+
+        // ReconnectCount: -1 表示无限重连，0 表示不重连，正数表示最大重连次数
+        if (config.ReconnectCount != 0)
+        {
+            MaxReconnectAttempts = config.ReconnectCount;
+        }
+
+        // ReconnectInterval: 服务端下发的间隔时间（毫秒）
+        if (config.ReconnectInterval > 0)
+        {
+            ReconnectDelayMs = Math.Max(1000, config.ReconnectInterval);
+        }
+
+        // ReconnectNonce: 服务端下发的抖动时间（毫秒）
+        if (config.ReconnectNonce >= 0)
+        {
+            ReconnectNonceMs = config.ReconnectNonce;
+        }
+
+        // PingInterval: 服务端下发的心跳间隔（毫秒）
+        if (config.PingInterval > 0)
+        {
+            HeartbeatIntervalMs = Math.Max(5000, config.PingInterval);
+        }
     }
 }
 

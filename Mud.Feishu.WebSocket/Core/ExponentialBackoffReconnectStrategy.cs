@@ -59,9 +59,14 @@ public class ExponentialBackoffReconnectStrategy : IReconnectStrategy
     /// <param name="attemptCount">当前尝试次数</param>
     /// <param name="totalElapsedTime">已消耗的总时间</param>
     /// <returns>是否应该继续重连</returns>
+    /// <remarks>
+    /// 当 MaxReconnectAttempts 为 -1 时表示无限重连，
+    /// 仅受 MaxTotalReconnectTime 时间限制约束。
+    /// </remarks>
     public bool ShouldContinueReconnect(int attemptCount, TimeSpan totalElapsedTime)
     {
-        if (attemptCount > _options.MaxReconnectAttempts)
+        // -1 表示无限重连
+        if (_options.MaxReconnectAttempts >= 0 && attemptCount > _options.MaxReconnectAttempts)
         {
             _logger?.LogDebug("已达到最大重连次数限制: {AttemptCount}/{MaxAttempts}",
                 attemptCount, _options.MaxReconnectAttempts);

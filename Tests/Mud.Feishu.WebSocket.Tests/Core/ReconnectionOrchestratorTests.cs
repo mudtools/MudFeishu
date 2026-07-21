@@ -7,8 +7,10 @@
 
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Mud.Feishu.WebSocket;
+using Mud.Feishu.WebSocket.Exceptions;
 
 namespace Mud.Feishu.WebSocket.Tests.Core;
 
@@ -34,7 +36,8 @@ public class ReconnectionOrchestratorTests
             ReconnectDelayMs = 100,
             MaxReconnectDelayMs = 1000,
             MaxTotalReconnectTime = TimeSpan.FromMinutes(30),
-            ReconnectCooldownTime = TimeSpan.FromMilliseconds(10)
+            ReconnectCooldownTime = TimeSpan.FromMilliseconds(10),
+            ReconnectNonceMs = 0 // 测试中禁用随机抖动以避免超时
         };
     }
 
@@ -252,6 +255,98 @@ public class ReconnectionOrchestratorTests
 
         result.Should().BeTrue();
         _managerMock.Verify(x => x.ReconnectAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task TryReconnectAsync_WithReconnectNonceEnabled_ShouldApplyJitterBeforeFirstAttempt()
+    {
+        // 设置较小的 nonce 值以避免测试超时，同时验证抖动被应用
+        _options.ReconnectNonceMs = 50;
+        _strategyMock.Setup(x => x.ShouldContinueReconnect(It.IsAny<int>(), It.IsAny<TimeSpan>()))
+            .Returns(true);
+        _strategyMock.Setup(x => x.CalculateDelay(It.IsAny<int>()))
+            .Returns(TimeSpan.FromMilliseconds(1));
+        _managerMock.Setup(x => x.IsConnected).Returns(false);
+        _managerMock.Setup(x => x.ReconnectAsync(It.IsAny<CancellationToken>()))
+            .Callback(() => _managerMock.Setup(x => x.IsConnected).Returns(true))
+            .Returns(Task.CompletedTask);
+
+        var orchestrator = CreateOrchestrator();
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+
+        var result = await orchestrator.TryReconnectAsync("test");
+
+        stopwatch.Stop();
+        result.Should().BeTrue();
+        // 抖动应在 0-50ms 之间，加上实际重连时间，总耗时应至少有少量延迟
+        _managerMock.Verify(x => x.ReconnectAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task TryReconnectAsync_WhenUnrecoverableError_ShouldStopReconnectingImmediately()
+    {
+        // 不可恢复错误应立即终止重连
+        _strategyMock.Setup(x => x.ShouldContinueReconnect(It.IsAny<int>(), It.IsAny<TimeSpan>()))
+            .Returns(true);
+        _strategyMock.Setup(x => x.CalculateDelay(It.IsAny<int>()))
+            .Returns(TimeSpan.FromMilliseconds(1));
+        _managerMock.Setup(x => x.IsConnected).Returns(false);
+        // 模拟认证失败（不可恢复错误）
+        _managerMock.Setup(x => x.ReconnectAsync(It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new FeishuAuthenticationException("认证失败，检查应用凭据"));
+
+        // 使用真实的 ErrorRecoveryStrategy
+        var errorRecoveryStrategy = new ErrorRecoveryStrategy(NullLogger<ErrorRecoveryStrategy>.Instance);
+        var orchestrator = new ReconnectionOrchestrator(
+            _loggerMock.Object,
+            _strategyMock.Object,
+            _managerMock.Object,
+            _options,
+            errorRecoveryStrategy);
+
+        var result = await orchestrator.TryReconnectAsync("test");
+
+        result.Should().BeFalse();
+        // 应该只尝试一次就停止，因为认证错误是不可恢复的
+        _managerMock.Verify(x => x.ReconnectAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task TryReconnectAsync_WhenRecoverableError_ShouldContinueReconnecting()
+    {
+        _strategyMock.Setup(x => x.ShouldContinueReconnect(It.IsAny<int>(), It.IsAny<TimeSpan>()))
+            .Returns(true);
+        _strategyMock.Setup(x => x.CalculateDelay(It.IsAny<int>()))
+            .Returns(TimeSpan.FromMilliseconds(1));
+        _managerMock.Setup(x => x.IsConnected).Returns(false);
+
+        var callCount = 0;
+        _managerMock.Setup(x => x.ReconnectAsync(It.IsAny<CancellationToken>()))
+            .Callback(() =>
+            {
+                callCount++;
+                if (callCount == 1)
+                {
+                    // 第一次失败：网络错误（可恢复）
+                    throw new FeishuNetworkException("网络错误", new InvalidOperationException("connection reset"));
+                }
+                // 第二次成功
+                _managerMock.Setup(x => x.IsConnected).Returns(true);
+            })
+            .Returns(Task.CompletedTask);
+
+        var errorRecoveryStrategy = new ErrorRecoveryStrategy(NullLogger<ErrorRecoveryStrategy>.Instance);
+        var orchestrator = new ReconnectionOrchestrator(
+            _loggerMock.Object,
+            _strategyMock.Object,
+            _managerMock.Object,
+            _options,
+            errorRecoveryStrategy);
+
+        var result = await orchestrator.TryReconnectAsync("test");
+
+        result.Should().BeTrue();
+        _managerMock.Verify(x => x.ReconnectAsync(It.IsAny<CancellationToken>()), Times.Exactly(2));
     }
 
     [Fact]

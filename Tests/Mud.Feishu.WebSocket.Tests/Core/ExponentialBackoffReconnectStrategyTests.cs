@@ -152,4 +152,28 @@ public class ExponentialBackoffReconnectStrategyTests
 
         result.Should().BeTrue();
     }
+
+    [Fact]
+    public void ShouldContinueReconnect_WhenInfiniteReconnect_ShouldAlwaysReturnTrueForAttempts()
+    {
+        // -1 表示无限重连
+        _options.MaxReconnectAttempts = -1;
+        var strategy = new ExponentialBackoffReconnectStrategy(_options, _loggerMock.Object);
+
+        // 即使尝试次数很大，也应该返回 true（仅受时间限制）
+        var result = strategy.ShouldContinueReconnect(10000, TimeSpan.FromMinutes(1));
+
+        result.Should().BeTrue();
+    }
+
+    [Fact]
+    public void ShouldContinueReconnect_WhenInfiniteReconnectButExceedsTime_ShouldReturnFalse()
+    {
+        _options.MaxReconnectAttempts = -1;
+        var strategy = new ExponentialBackoffReconnectStrategy(_options, _loggerMock.Object);
+
+        var result = strategy.ShouldContinueReconnect(1, _options.MaxTotalReconnectTime + TimeSpan.FromMinutes(1));
+
+        result.Should().BeFalse();
+    }
 }

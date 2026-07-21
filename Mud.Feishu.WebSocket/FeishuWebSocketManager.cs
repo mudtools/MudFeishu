@@ -22,7 +22,6 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable
     private readonly FeishuWebSocketOptions _webSocketOptions;
     private readonly IFeishuWebSocketClient _webSocketClient;
     private readonly SemaphoreSlim _startStopLock = new(1, 1);
-    private bool _isRunning = false;
     private bool _disposed = false;
 
     private string? _cachedAccessToken;
@@ -143,12 +142,17 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable
     /// </summary>
     /// <param name="cancellationToken">取消令牌</param>
     /// <returns>启动任务</returns>
+    /// <remarks>
+    /// 使用实际连接状态 (IsConnected) 判断是否已启动，
+    /// 而非维护独立的 _isRunning 标志，避免状态不同步导致的死循环问题。
+    /// </remarks>
     public async Task StartAsync(CancellationToken cancellationToken = default)
     {
         await _startStopLock.WaitAsync(cancellationToken);
         try
         {
-            if (_isRunning)
+            // 使用实际连接状态判断，而非独立的 _isRunning 标志
+            if (IsConnected)
             {
                 _logger.LogWarning("WebSocket服务已在运行中");
                 return;
@@ -210,12 +214,22 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable
                 throw new InvalidOperationException("无法获取WebSocket端点信息");
             }
 
+            // 应用服务端下发的 ClientConfig
+            if (wsEndpointData.ClientConfig != null)
+            {
+                _logger.LogInformation("应用服务端下发的客户端配置: ReconnectCount={ReconnectCount}, ReconnectInterval={ReconnectInterval}ms, ReconnectNonce={ReconnectNonce}ms, PingInterval={PingInterval}ms",
+                    wsEndpointData.ClientConfig.ReconnectCount,
+                    wsEndpointData.ClientConfig.ReconnectInterval,
+                    wsEndpointData.ClientConfig.ReconnectNonce,
+                    wsEndpointData.ClientConfig.PingInterval);
+                _webSocketOptions.ApplyClientConfig(wsEndpointData.ClientConfig);
+            }
+
             // 建立WebSocket连接并认证
             var appAccessToken = await GetValidAccessTokenAsync(combinedCts.Token);
             await _webSocketClient.ConnectAsync(wsEndpointData, appAccessToken, cancellationToken);
 
-            _isRunning = true;
-
+            // 连接状态由 WebSocket 客户端的 State 属性反映，无需维护独立标志
             lock (_stateLock)
             {
                 _connectedTime = DateTime.UtcNow;
@@ -249,9 +263,9 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable
         await _startStopLock.WaitAsync(cancellationToken);
         try
         {
-            if (!_isRunning)
+            // 使用实际连接状态判断，而非 _isRunning 标志
+            if (!IsConnected)
             {
-
                 _logger.LogWarning("WebSocket服务未在运行");
                 return;
             }
@@ -260,8 +274,7 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable
 
             await _webSocketClient.DisconnectAsync(cancellationToken);
 
-            _isRunning = false;
-
+            // 断开后连接状态由 WebSocket 客户端反映，无需手动重置标志
             lock (_stateLock)
             {
                 _connectedTime = DateTime.MinValue;
@@ -306,10 +319,9 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable
     /// <param name="cancellationToken">取消令牌</param>
     /// <returns>重连任务</returns>
     /// <remarks>
-    /// 重连时必须强制重置 <see cref="_isRunning"/> 状态标志，因为连接异常断开时
-    /// （如远程主机关闭连接、心跳超时等），<see cref="_isRunning"/> 不会被重置为 false，
-    /// 导致 <see cref="StartAsync"/> 误认为服务仍在运行而跳过实际连接逻辑。
-    /// 同时，无论当前连接状态如何，都应先断开旧连接以释放底层资源。
+    /// 连接状态完全由 WebSocket 客户端的 State 属性反映，
+    /// 无需维护独立的 _isRunning 标志。DisconnectAsync 会将连接状态重置为 Closed，
+    /// 随后 StartAsync 检测到 IsConnected == false 即会执行实际连接逻辑。
     /// </remarks>
     public async Task ReconnectAsync(CancellationToken cancellationToken = default)
     {
@@ -329,23 +341,8 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable
                 _logger.LogWarning(ex, "重连前断开旧连接时发生错误（可忽略，继续重连）");
             }
 
-            // 强制重置运行状态标志
-            // 连接异常断开时 _isRunning 不会被重置，若不手动重置，
-            // StartAsync 会检测到 _isRunning==true 而直接返回，导致重连变成空操作
-            await _startStopLock.WaitAsync(cancellationToken);
-            try
-            {
-                if (_isRunning)
-                {
-                    _logger.LogDebug("重置运行状态标志（_isRunning: true -> false），确保 StartAsync 执行实际连接");
-                    _isRunning = false;
-                }
-            }
-            finally
-            {
-                _startStopLock.Release();
-            }
-
+            // 无需手动重置状态标志：DisconnectAsync 已将 WebSocket 状态置为 Closed，
+            // StartAsync 中的 IsConnected 检查会判定为 false，从而执行实际连接
             await StartAsync(cancellationToken);
 
             lock (_stateLock)
@@ -475,7 +472,7 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable
         try
         {
             // 使用异步方式停止服务
-            if (_isRunning)
+            if (IsConnected)
             {
                 using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
                 try
@@ -538,7 +535,7 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable
             {
                 try
                 {
-                    if (_isRunning)
+                    if (IsConnected)
                     {
                         // 使用更安全的方式停止服务
                         // 注意：在Dispose中无法使用await，所以使用同步方式但要做好超时处理

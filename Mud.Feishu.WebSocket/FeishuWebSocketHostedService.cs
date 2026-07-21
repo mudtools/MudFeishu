@@ -1,5 +1,5 @@
 // -----------------------------------------------------------------------
-//  作者：Mud Studio  版权所有 (c) Mud Studio 2026
+//  作者：Mud Studio  版权所有 (c) Mud Studio 2026   
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
@@ -15,6 +15,12 @@ namespace Mud.Feishu.WebSocket;
 /// <summary>
 /// 飞书WebSocket后台服务，用于自动启动和管理WebSocket连接
 /// </summary>
+/// <remarks>
+/// 重连仅由 Disconnected 事件单一触发，不使用健康检查轮询。
+/// 通过 Disconnected 事件（包括心跳超时）实现等效的单一触发源。
+/// ReconnectionOrchestrator 内部的 _isReconnecting 标志提供去重保护，
+/// 无需额外的防抖机制。
+/// </remarks>
 public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposable
 {
     private readonly ILogger<FeishuWebSocketHostedService> _logger;
@@ -22,9 +28,6 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
     private readonly IReconnectionOrchestrator _reconnectionOrchestrator;
     private readonly FeishuWebSocketOptions _options;
     private bool _disposed;
-    private DateTime _lastReconnectTriggerTime = DateTime.MinValue;
-    private readonly object _reconnectDebounceLock = new();
-    private static readonly TimeSpan ReconnectDebounceInterval = TimeSpan.FromSeconds(3);
 
     /// <summary>
     /// 构造函数
@@ -58,6 +61,10 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
     /// </summary>
     /// <param name="stoppingToken">停止令牌</param>
     /// <returns>执行任务</returns>
+    /// <remarks>
+    /// 启动连接后阻塞等待，不进行健康检查轮询。
+    /// 重连完全由 Disconnected 事件驱动，ReconnectionOrchestrator 负责去重和重试。
+    /// </remarks>
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         _logger.LogInformation("飞书WebSocket后台服务正在启动...");
@@ -66,26 +73,13 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
         {
             await _webSocketManager.StartAsync(stoppingToken);
 
-            while (!stoppingToken.IsCancellationRequested)
-            {
-                try
-                {
-                    await Task.Delay(TimeSpan.FromMilliseconds(_options.HealthCheckIntervalMs), stoppingToken);
-
-                    if (!_webSocketManager.IsConnected)
-                    {
-                        TryTriggerReconnect("健康检查发现连接断开");
-                    }
-                }
-                catch (TaskCanceledException)
-                {
-                    break;
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "检查连接状态时发生错误");
-                }
-            }
+            // 阻塞等待直到服务停止，不进行健康检查轮询
+            // 重连由 Disconnected 事件（包括心跳超时）单一触发
+            await Task.Delay(Timeout.Infinite, stoppingToken);
+        }
+        catch (TaskCanceledException)
+        {
+            // 正常停止
         }
         catch (Exception ex)
         {
@@ -94,7 +88,14 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
         finally
         {
             _logger.LogInformation("飞书WebSocket后台服务正在停止...");
-            await _webSocketManager.StopAsync(stoppingToken);
+            try
+            {
+                await _webSocketManager.StopAsync(stoppingToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "停止WebSocket服务时发生错误");
+            }
             _logger.LogInformation("飞书WebSocket后台服务已停止");
         }
     }
@@ -140,22 +141,15 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
     }
 
     /// <summary>
-    /// 尝试触发重连（带防抖机制）
+    /// 尝试触发重连
     /// </summary>
+    /// <param name="reason">重连原因</param>
+    /// <remarks>
+    /// 重连由单一事件触发，去重由 ReconnectionOrchestrator 内部的
+    /// _isReconnecting 标志和 _reconnectLock 信号量保证，无需额外的防抖机制。
+    /// </remarks>
     private void TryTriggerReconnect(string reason)
     {
-        lock (_reconnectDebounceLock)
-        {
-            var timeSinceLastTrigger = DateTime.UtcNow - _lastReconnectTriggerTime;
-            if (timeSinceLastTrigger < ReconnectDebounceInterval)
-            {
-                _logger.LogDebug("重连防抖：距上次触发仅 {Elapsed}ms，跳过本次重连触发（原因: {Reason}）",
-                    timeSinceLastTrigger.TotalMilliseconds, reason);
-                return;
-            }
-            _lastReconnectTriggerTime = DateTime.UtcNow;
-        }
-
         _ = Task.Run(async () =>
         {
             try

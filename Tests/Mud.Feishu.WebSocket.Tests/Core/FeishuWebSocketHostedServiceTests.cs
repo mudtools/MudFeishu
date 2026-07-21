@@ -37,7 +37,6 @@ public class FeishuWebSocketHostedServiceTests
             MaxReconnectAttempts = 3,
             ReconnectDelayMs = 1000,
             MaxReconnectDelayMs = 5000,
-            HealthCheckIntervalMs = 60000,
             HeartbeatIntervalMs = 30000
         };
     }

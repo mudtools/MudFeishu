@@ -7,6 +7,9 @@
 
 using FluentAssertions;
 
+// 测试文件中包含对 [Obsolete] 属性 HealthCheckIntervalMs 的测试，抑制警告
+#pragma warning disable CS0618
+
 namespace Mud.Feishu.WebSocket.Tests.Configuration;
 
 /// <summary>
@@ -361,13 +364,15 @@ public class FeishuWebSocketOptionsTests
     {
         // Arrange
         var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions();
+        var originalMaxAttempts = options.MaxReconnectAttempts;
         var originalDelayMs = options.ReconnectDelayMs;
+        var originalNonceMs = options.ReconnectNonceMs;
         var originalHeartbeatMs = options.HeartbeatIntervalMs;
         var serverConfig = new Mud.Feishu.DataModels.WsEndpoint.ClientConfigInfo
         {
             ReconnectCount = 0, // 0 表示不覆盖
             ReconnectInterval = 0, // 0 表示不覆盖
-            ReconnectNonce = 0,
+            ReconnectNonce = 0, // 0 表示不覆盖
             PingInterval = 0 // 0 表示不覆盖
         };
 
@@ -375,7 +380,9 @@ public class FeishuWebSocketOptionsTests
         options.ApplyClientConfig(serverConfig);
 
         // Assert
+        options.MaxReconnectAttempts.Should().Be(originalMaxAttempts);
         options.ReconnectDelayMs.Should().Be(originalDelayMs);
+        options.ReconnectNonceMs.Should().Be(originalNonceMs);
         options.HeartbeatIntervalMs.Should().Be(originalHeartbeatMs);
     }
 
@@ -396,3 +403,5 @@ public class FeishuWebSocketOptionsTests
         options.MaxReconnectAttempts.Should().Be(-1);
     }
 }
+
+#pragma warning restore CS0618

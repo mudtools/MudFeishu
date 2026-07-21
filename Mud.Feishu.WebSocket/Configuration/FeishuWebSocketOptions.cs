@@ -158,7 +158,10 @@ public class FeishuWebSocketOptions
 
     /// <summary>
     /// 健康检查间隔（毫秒），默认为60000毫秒
+    /// <para>[Obsolete] 健康检查轮询已移除，重连改为纯事件驱动（由 Disconnected 事件触发）。</para>
+    /// <para>此属性保留仅为向后兼容，设置后不会产生任何效果。</para>
     /// </summary>
+    [Obsolete("健康检查轮询已移除，重连改为纯事件驱动。此属性保留仅为向后兼容，不再生效。")]
     public int HealthCheckIntervalMs
     {
         get => _healthCheckIntervalMs;
@@ -290,8 +293,8 @@ public class FeishuWebSocketOptions
             ReconnectDelayMs = Math.Max(1000, config.ReconnectInterval);
         }
 
-        // ReconnectNonce: 服务端下发的抖动时间（毫秒）
-        if (config.ReconnectNonce >= 0)
+        // ReconnectNonce: 服务端下发的抖动时间（毫秒），0 或负值表示不覆盖
+        if (config.ReconnectNonce > 0)
         {
             ReconnectNonceMs = config.ReconnectNonce;
         }

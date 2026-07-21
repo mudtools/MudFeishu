@@ -13,9 +13,11 @@ Enterprise-grade Feishu event subscription WebSocket client, providing reliable 
 - 🎯 **Strategy Pattern Event Handling** - Extensible event handler architecture
 - 🔌 **Event Interceptors** - Support inserting custom logic before/after event handling (logging, telemetry, rate limiting, etc.)
 - 🛡️ **Enterprise-Grade Stability** - Comprehensive error handling, resource management, logging
+- 🔄 **Server-Driven Config** - Supports server-pushed ClientConfig to dynamically adjust reconnection and heartbeat parameters
+- 🧠 **Error Classification Recovery** - ErrorRecoveryStrategy distinguishes recoverable/non-recoverable errors, intelligently terminates invalid reconnection
 - ⚙️ **Flexible Configuration** - Supports configuration files, code configuration, and builder pattern
 - 📊 **Monitoring-Friendly** - Detailed event notifications, performance metrics, heartbeat statistics, FeishuMetrics integration
-- 🔁 **Exponential Backoff Reconnection** - Pluggable reconnection strategy, dual limits on attempts and time, debounce mechanism
+- 🔁 **Exponential Backoff Reconnection** - Pluggable reconnection strategy, dual limits on attempts and time, jitter to prevent thundering herd
 - 🔐 **Message Sequence Validation** - Replay attack detection, message loss detection, sequence rollback detection
 - 📦 **Message Queue Backpressure** - Three backpressure strategies (DropOldest/DropNewest/Block)
 - 🔑 **Event Deduplication** - In-memory/Distributed deduplication (Redis), prevent duplicate processing
@@ -85,8 +87,9 @@ app.Run();
   ],
   "FeishuWebSocket": {
     "AutoReconnect": true,
-    "MaxReconnectAttempts": 5,
+    "MaxReconnectAttempts": -1,
     "ReconnectDelayMs": 5000,
+    "ReconnectNonceMs": 30000,
     "HeartbeatIntervalMs": 25000,
     "EnableLogging": true,
     "EventDeduplication": {
@@ -120,8 +123,9 @@ The Feishu WebSocket client adopts modular design, breaking down complex functio
 | **MessageQueueManager**                 | Queue Manager            | Message queuing, backpressure strategy, concurrency control                               |
 | **EventSubscriptionManager**            | Subscription Manager     | Event type subscription, subscription request sending                                     |
 | **ConnectionMetrics**                   | Metrics Manager          | Message statistics, performance metrics, FeishuMetrics integration                        |
-| **ReconnectionOrchestrator**            | Reconnection Coordinator | Unified reconnection management, debounce mechanism, cooldown time                        |
-| **ExponentialBackoffReconnectStrategy** | Backoff Strategy         | Exponential backoff delay, dual limits on attempts and time                               |
+| **ReconnectionOrchestrator**            | Reconnection Coordinator | Unified reconnection management, jitter, event-driven deduplication, cooldown time          |
+| **ExponentialBackoffReconnectStrategy** | Backoff Strategy         | Exponential backoff delay, dual limits on attempts and time, supports infinite reconnection |
+| **ErrorRecoveryStrategy**               | Error Recovery Strategy  | Error classification, recoverability analysis, terminates reconnection on non-recoverable errors |
 
 #### Message Handlers
 
@@ -241,7 +245,8 @@ builder.Services.CreateFeishuWebSocketServiceBuilder(options =>
 {
     options.AutoReconnect = true;
     options.HeartbeatIntervalMs = 25000;
-    options.MaxReconnectAttempts = 5;
+    options.MaxReconnectAttempts = -1; // -1 means infinite reconnection
+    options.ReconnectNonceMs = 30000; // Jitter to prevent thundering herd
     options.MaxTotalReconnectTime = TimeSpan.FromMinutes(30);
     options.EventDeduplication.Mode = EventDeduplicationMode.InMemory;
 })
@@ -676,11 +681,12 @@ public class ServiceManager
 | Option                                | Type                                 | Default    | Description                                                      |
 | ------------------------------------- | ------------------------------------ | ---------- | ---------------------------------------------------------------- |
 | `AutoReconnect`                       | bool                                 | true       | Auto reconnect                                                   |
-| `MaxReconnectAttempts`                | int                                  | 5          | Max reconnect attempts                                           |
+| `MaxReconnectAttempts`                | int                                  | -1         | Max reconnect attempts, -1=infinite, 0=disabled, positive=limited |
 | `ReconnectDelayMs`                    | int                                  | 5000       | Base reconnect delay (ms), min 1000                              |
 | `MaxReconnectDelayMs`                 | int                                  | 30000      | Max reconnect delay (ms), ≥ReconnectDelayMs                      |
 | `MaxTotalReconnectTime`               | TimeSpan                             | 30min      | Max total reconnection time, stops retrying after                |
 | `ReconnectCooldownTime`               | TimeSpan                             | 5s         | Minimum interval between reconnection attempts                   |
+| `ReconnectNonceMs`                    | int                                  | 30000      | Jitter before first reconnect (ms), prevents thundering herd, 0=disabled |
 | `EnableReconnectMetrics`              | bool                                 | true       | Enable reconnection metrics collection                           |
 | `HeartbeatIntervalMs`                 | int                                  | 25000      | Heartbeat interval (ms), min 5000 (Feishu recommends ≤25s)       |
 | `ConnectionTimeoutMs`                 | int                                  | 10000      | Connection timeout (ms)                                          |
@@ -691,7 +697,7 @@ public class ServiceManager
 | `BackpressureStrategy`                | QueueBackpressureStrategy            | DropOldest | Backpressure strategy (DropOldest/DropNewest/Block)              |
 | `BackpressureBlockTimeoutMs`          | int                                  | 5000       | Backpressure block wait timeout (ms), Block mode only            |
 | `EmptyQueueCheckIntervalMs`           | int                                  | 100        | Empty queue check interval (ms), min 10                          |
-| `HealthCheckIntervalMs`               | int                                  | 60000      | Health check interval (ms), min 1000                             |
+| `HealthCheckIntervalMs`               | int                                  | 60000      | [Obsolete] Health check interval (ms), deprecated, no longer effective |
 | `MaxConcurrentMessageProcessing`      | int                                  | 10         | Max concurrent message processing, min 1                         |
 | `ValidateServerCertificate`           | bool                                 | true       | Validate SSL certificate (recommended true in production)        |
 | `AllowSelfSignedCertificates`         | bool                                 | false      | Allow self-signed certificates (recommended false in production) |
@@ -960,6 +966,35 @@ public class FixedIntervalReconnectStrategy : IReconnectStrategy
 // Register custom strategy (before CreateFeishuWebSocketServiceBuilder)
 builder.Services.AddSingleton<IReconnectStrategy>(
     new FixedIntervalReconnectStrategy(TimeSpan.FromSeconds(10)));
+```
+
+### Server-Driven Configuration (ClientConfig)
+
+Feishu server pushes `ClientConfig` via WebSocket endpoint response and Pong messages, automatically applied on connection:
+
+```csharp
+// No manual configuration needed, ApplyClientConfig is called automatically in StartAsync
+// Server-pushed config overrides local defaults (only when server value > 0)
+```
+
+| Server Field          | Local Config           | Override Rule                                |
+| --------------------- | ---------------------- | -------------------------------------------- |
+| `ReconnectCount`      | `MaxReconnectAttempts` | 0=no override, -1=infinite, positive=limited |
+| `ReconnectInterval`   | `ReconnectDelayMs`     | Override when >0, min 1000ms                 |
+| `ReconnectNonce`      | `ReconnectNonceMs`     | Override when >0, 0=no override              |
+| `PingInterval`        | `HeartbeatIntervalMs`  | Override when >0, min 5000ms                 |
+
+### Error Recovery Strategy
+
+`ErrorRecoveryStrategy` analyzes exception types on reconnection failure to determine recoverability:
+
+- **Recoverable errors**: Network exceptions, connection reset, timeout, etc. → Continue reconnecting
+- **Non-recoverable errors**: Authentication failure, address config error, etc. → Terminate reconnection immediately
+
+```csharp
+// Registered by default, no extra configuration needed
+// Can be replaced via DI with custom implementation
+builder.Services.AddSingleton<ErrorRecoveryStrategy>(new CustomErrorRecoveryStrategy(logger));
 ```
 
 ### Access Token Management

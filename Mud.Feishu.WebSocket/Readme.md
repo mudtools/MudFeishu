@@ -13,12 +13,14 @@
 - 🎯 **策略模式事件处理** - 可扩展的事件处理器架构
 - 🔌 **事件拦截器** - 支持在事件处理前后插入自定义逻辑（日志、遥测、限流等）
 - 🛡️ **企业级稳定性** - 完善的错误处理、资源管理、日志记录
+- 🔄 **服务端驱动配置** - 支持服务端下发 ClientConfig 动态调整重连参数和心跳间隔
+- 🧠 **错误分类恢复** - ErrorRecoveryStrategy 区分可恢复/不可恢复错误，智能终止无效重连
 - ⚙️ **灵活配置** - 支持配置文件、代码配置和建造者模式
 - 📊 **监控友好** - 详细的事件通知、性能指标、心跳统计、FeishuMetrics 集成
 - 🛡️ **错误分类处理** - 区分可恢复和不可恢复错误
 - 🛡️ **认证失败详细追踪** - 按错误码分类认证失败原因，统计失败次数和时间
 - 🔧 **资源管理优化** - 实现 IHostedService 生命周期管理，避免资源泄漏
-- 🔁 **指数退避重连** - 可插拔重连策略，次数和时间双重限制，防抖机制
+- 🔁 **指数退避重连** - 可插拔重连策略，次数和时间双重限制，随机抖动（Jitter）防惊群效应
 - 🔐 **消息序号验证** - 重放攻击检测、消息丢失检测、序号回退检测
 - 📦 **消息队列背压** - 三种背压策略（DropOldest/DropNewest/Block）
 - 🔑 **事件去重** - 内存去重/分布式去重（Redis），防止重复处理
@@ -88,8 +90,9 @@ app.Run();
   ],
   "FeishuWebSocket": {
     "AutoReconnect": true,
-    "MaxReconnectAttempts": 5,
+    "MaxReconnectAttempts": -1,
     "ReconnectDelayMs": 5000,
+    "ReconnectNonceMs": 30000,
     "HeartbeatIntervalMs": 25000,
     "EnableLogging": true,
     "EventDeduplication": {
@@ -123,8 +126,9 @@ app.Run();
 | **MessageQueueManager**                 | 消息队列管理器   | 消息队列、背压策略、并发控制               |
 | **EventSubscriptionManager**            | 事件订阅管理器   | 事件类型订阅、订阅请求发送                 |
 | **ConnectionMetrics**                   | 连接指标管理器   | 消息统计、性能指标、FeishuMetrics 集成     |
-| **ReconnectionOrchestrator**            | 重连协调器       | 统一重连管理、防抖机制、冷却时间           |
-| **ExponentialBackoffReconnectStrategy** | 指数退避重连策略 | 指数退避延迟、次数和时间双重限制           |
+| **ReconnectionOrchestrator**            | 重连协调器       | 统一重连管理、随机抖动、事件驱动去重、冷却时间 |
+| **ExponentialBackoffReconnectStrategy** | 指数退避重连策略 | 指数退避延迟、次数和时间双重限制、支持无限重连 |
+| **ErrorRecoveryStrategy**               | 错误恢复策略     | 错误分类、可恢复性分析、不可恢复错误终止重连   |
 
 #### 消息处理器
 
@@ -244,7 +248,8 @@ builder.Services.CreateFeishuWebSocketServiceBuilder(options =>
 {
     options.AutoReconnect = true;
     options.HeartbeatIntervalMs = 25000;
-    options.MaxReconnectAttempts = 5;
+    options.MaxReconnectAttempts = -1; // -1 表示无限重连
+    options.ReconnectNonceMs = 30000; // 随机抖动防惊群
     options.MaxTotalReconnectTime = TimeSpan.FromMinutes(30);
     options.EventDeduplication.Mode = EventDeduplicationMode.InMemory;
 })
@@ -681,11 +686,12 @@ public class ServiceManager
 | 选项                                  | 类型                                 | 默认值     | 说明                                        |
 | ------------------------------------- | ------------------------------------ | ---------- | ------------------------------------------- |
 | `AutoReconnect`                       | bool                                 | true       | 自动重连                                    |
-| `MaxReconnectAttempts`                | int                                  | 5          | 最大重连次数                                |
+| `MaxReconnectAttempts`                | int                                  | -1         | 最大重连次数，-1=无限重连，0=禁用，正数=限制次数 |
 | `ReconnectDelayMs`                    | int                                  | 5000       | 重连基础延迟(ms)，最小 1000                 |
 | `MaxReconnectDelayMs`                 | int                                  | 30000      | 最大重连延迟(ms)，≥ReconnectDelayMs         |
 | `MaxTotalReconnectTime`               | TimeSpan                             | 30 分钟    | 最大重连总时间，超时后停止重连              |
 | `ReconnectCooldownTime`               | TimeSpan                             | 5 秒       | 两次重连尝试间的最小间隔                    |
+| `ReconnectNonceMs`                    | int                                  | 30000      | 首次重连随机抖动(ms)，防惊群效应，0=禁用     |
 | `EnableReconnectMetrics`              | bool                                 | true       | 是否启用重连指标收集                        |
 | `HeartbeatIntervalMs`                 | int                                  | 25000      | 心跳间隔(ms)，最小 5000（飞书建议 25 秒内） |
 | `ConnectionTimeoutMs`                 | int                                  | 10000      | 连接超时(ms)                                |
@@ -696,7 +702,7 @@ public class ServiceManager
 | `BackpressureStrategy`                | QueueBackpressureStrategy            | DropOldest | 背压策略（DropOldest/DropNewest/Block）     |
 | `BackpressureBlockTimeoutMs`          | int                                  | 5000       | 背压阻塞等待超时(ms)，仅 Block 模式         |
 | `EmptyQueueCheckIntervalMs`           | int                                  | 100        | 空队列检查间隔(ms)，最小 10                 |
-| `HealthCheckIntervalMs`               | int                                  | 60000      | 健康检查间隔(ms)，最小 1000                 |
+| `HealthCheckIntervalMs`               | int                                  | 60000      | [Obsolete] 健康检查间隔(ms)，已废弃，不再生效 |
 | `MaxConcurrentMessageProcessing`      | int                                  | 10         | 最大并发消息处理数，最小 1                  |
 | `ValidateServerCertificate`           | bool                                 | true       | 是否验证 SSL 证书（生产环境建议 true）      |
 | `AllowSelfSignedCertificates`         | bool                                 | false      | 是否允许自签名证书（生产环境建议 false）    |
@@ -968,6 +974,35 @@ public class FixedIntervalReconnectStrategy : IReconnectStrategy
 // 注册自定义策略（在 CreateFeishuWebSocketServiceBuilder 之前）
 builder.Services.AddSingleton<IReconnectStrategy>(
     new FixedIntervalReconnectStrategy(TimeSpan.FromSeconds(10)));
+```
+
+### 服务端驱动配置（ClientConfig）
+
+飞书服务端通过 WebSocket 端点响应和 Pong 消息下发 `ClientConfig`，客户端在连接建立时自动应用：
+
+```csharp
+// 无需手动配置，StartAsync 中自动调用 ApplyClientConfig
+// 服务端下发的配置会覆盖本地默认值（仅当服务端值 > 0 时生效）
+```
+
+| 服务端字段           | 对应本地配置           | 覆盖规则                          |
+| -------------------- | ---------------------- | --------------------------------- |
+| `ReconnectCount`     | `MaxReconnectAttempts` | 0=不覆盖，-1=无限重连，正数=限制次数 |
+| `ReconnectInterval`  | `ReconnectDelayMs`     | >0 时覆盖，最小 1000ms            |
+| `ReconnectNonce`     | `ReconnectNonceMs`     | >0 时覆盖，0=不覆盖               |
+| `PingInterval`       | `HeartbeatIntervalMs`  | >0 时覆盖，最小 5000ms            |
+
+### 错误恢复策略
+
+`ErrorRecoveryStrategy` 在重连失败时分析异常类型，判断是否可恢复：
+
+- **可恢复错误**：网络异常、连接重置、超时等 → 继续重连
+- **不可恢复错误**：认证失败、地址配置错误等 → 立即终止重连，避免无效重试
+
+```csharp
+// 默认已注册，无需额外配置
+// 可通过 DI 替换自定义实现
+builder.Services.AddSingleton<ErrorRecoveryStrategy>(new CustomErrorRecoveryStrategy(logger));
 ```
 
 ### 访问令牌管理

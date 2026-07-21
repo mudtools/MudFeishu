@@ -81,6 +81,13 @@ public class ReconnectionOrchestrator : IReconnectionOrchestrator, IDisposable
         await _reconnectLock.WaitAsync(cancellationToken);
         try
         {
+            // 如果连接已恢复（可能由其他重连流程完成），直接返回成功
+            if (_webSocketManager.IsConnected)
+            {
+                _logger.LogDebug("连接已恢复，跳过重连");
+                return true;
+            }
+
             if (_isReconnecting)
             {
                 _logger.LogDebug("重连已在进行中，跳过重复重连请求");

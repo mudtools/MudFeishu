@@ -305,15 +305,45 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable
     /// </summary>
     /// <param name="cancellationToken">取消令牌</param>
     /// <returns>重连任务</returns>
+    /// <remarks>
+    /// 重连时必须强制重置 <see cref="_isRunning"/> 状态标志，因为连接异常断开时
+    /// （如远程主机关闭连接、心跳超时等），<see cref="_isRunning"/> 不会被重置为 false，
+    /// 导致 <see cref="StartAsync"/> 误认为服务仍在运行而跳过实际连接逻辑。
+    /// 同时，无论当前连接状态如何，都应先断开旧连接以释放底层资源。
+    /// </remarks>
     public async Task ReconnectAsync(CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("正在重新连接Mud飞书WebSocket服务...");
 
         try
         {
-            if (IsConnected)
+            // 无论连接状态如何，先断开旧连接以清理底层资源
+            // 连接异常断开后 WebSocket 可能处于 Aborted 状态，IsConnected 返回 false，
+            // 但底层 ClientWebSocket 资源仍需释放
+            try
             {
                 await _webSocketClient.DisconnectAsync(cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "重连前断开旧连接时发生错误（可忽略，继续重连）");
+            }
+
+            // 强制重置运行状态标志
+            // 连接异常断开时 _isRunning 不会被重置，若不手动重置，
+            // StartAsync 会检测到 _isRunning==true 而直接返回，导致重连变成空操作
+            await _startStopLock.WaitAsync(cancellationToken);
+            try
+            {
+                if (_isRunning)
+                {
+                    _logger.LogDebug("重置运行状态标志（_isRunning: true -> false），确保 StartAsync 执行实际连接");
+                    _isRunning = false;
+                }
+            }
+            finally
+            {
+                _startStopLock.Release();
             }
 
             await StartAsync(cancellationToken);

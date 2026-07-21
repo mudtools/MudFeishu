@@ -160,8 +160,12 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
         {
             try
             {
-                using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(5));
+                using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(10));
                 await _reconnectionOrchestrator.TryReconnectAsync(reason, cts.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogDebug("重连任务被取消（超时或服务停止），原因: {Reason}", reason);
             }
             catch (Exception ex)
             {

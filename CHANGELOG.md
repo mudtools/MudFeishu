@@ -28,6 +28,11 @@
   `BaseAddress` / `Timeout`，因此多区域切换（`open.feishu.cn` ↔ `open.larksuite.com`）
   与超时调整无需重启进程（此前 `BaseAddress` 在注册期固化，配置变更不生效——见
   `.docs/MudHttpUtils-2.0.5-Review-Remediation-Plan.md`）。
+- **NuGet 包来源锁定（SEC-1）**：`nuget.config` 新增 `<clear />`（切断用户级/机器级继承源）与
+  `packageSourceMapping`：组件族 `Mud.HttpUtils*` 同时映射本地源（优先）与 nuget.org（兜底），
+  其余包由 nuget.org `*` 兜底。**注意**：`Mud.HttpUtils 2.0.5` 尚未发布到 nuget.org
+  （实测最高 2.0.2），托管 CI runner 上不存在本地源 ⇒ Restore 无法满足精确版本约束
+  （`NU1603` 被本仓库提升为错误）。该缺陷为存量问题，需组件发版或为 CI 注入组件源（COMP-5）。
 
 ### ✨ Added
 
@@ -46,6 +51,17 @@
   格式校验（默认告警，`-StrictFormat` 可阻断）；`-CacheCheckOnly` 供 CI 在 Restore 前调用。
 - `FeishuJsonDefaults.Reset()`：供测试隔离静态 resolver 状态。
 
+### Added（2026-09-15 组件使用审查修订：`MudHttpUtils-2.0.5-Review-Remediation-Plan.md` v2）
+
+- **加密存储 marker 契约（ENH-2）**：`EncryptedTokenStore` / `EncryptedUserTokenStore` 同时实现组件
+  `IEncryptedTokenStore`（`IsEncryptionEnabled => true`），为组件 v2 把该契约接入 `ITokenManager` 管线做前向兼容；
+  两者新增**可选** `ILogger?` 构造参数（源/二进制兼容）。
+- **文档**：新增 `documents/ErrorHandling.md`（统一响应模型、`ApiException` 语义、**9 个 `Task<byte[]?>` 下载方法的
+  错误契约与「HTTP 200 + JSON 错误体」残余风险及自检范式**）与 `documents/ResponseCaching.md`
+  （`[Cache]` 接入方式、**多应用缓存键不含 appKey 的强制隔离约束**与装饰器实现示例）。
+- **测试**：`FeishuClientEndpointHotReloadTests`（6 用例，锁定 BaseUrl/TimeOut 热更新）、
+  `DownloadErrorSemanticsTests`（3 用例，锁定下载错误语义）、`EncryptedTokenStoreTests` 新增 4 用例（marker + 节流告警）。
+
 ### 🐛 Fixed
 
 - **net8+/net10 反序列化未覆盖类型直接抛 `NotSupportedException`**（跨 TFM 行为不一致）：
@@ -54,6 +70,21 @@
 - **`IFeishuAuthentication` 从未注册**，导致任何触发应用上下文创建的路径都抛
   `No service for type 'IFeishuAuthentication' has been registered.`：现调用源生成器产出的
   `AddAuthenticationWebApiHttpClient()`（置于 `AddMudHttpClient` 循环之后，保证执行器注册优先）。
+- **`BaseUrl` / `Timeout` 不参与配置热更新**（ARC-7）：命名客户端的注册委托捕获的是**注册期**快照，
+  `IConfiguration` 变更后新建客户端仍指向旧地址，多区域切换只能重启。现通过
+  `IHttpClientBuilder.ConfigureHttpClient(IServiceProvider, HttpClient)` 在每次 `CreateClient` 时
+  从 `IOptionsMonitor<List<FeishuAppConfig>>` 读取当前值并按 diff 覆盖；未变化时短路，
+  未接入配置管线时回退注册期快照（行为与修复前一致）。
+  *（未采用组件 `HttpClientFactoryEnhancedClient.WithBaseAddress`：`TokenRecoveryEnhancedClient` 为
+  `sealed` 且未重写该方法，基类实现返回普通客户端 —— 会静默丢失 401 令牌恢复并令强转抛
+  `InvalidCastException`，详见方案附录 B-1。）*
+- **per-app 弹性策略的选项工厂固化注册期配置**（ARC-7b）：`IAppResiliencePolicyResolver` 的
+  `optionsFactory` 闭包捕获启动期 `configs`，导致热更新后**新增应用**永远拿不到专属弹性策略。
+  现改为读取 `IOptionsMonitor` 的当前配置。残余限制：组件 `AppResiliencePolicyResolver` 按 appKey
+  缓存已解析策略，且 `InvalidateAll` 未暴露在接口上，故**已解析过**应用的弹性参数变更仍需重启（组件侧 COMP-4）。
+- **解密失败完全静默**（ENH-2）：`EncryptedTokenStore` / `EncryptedUserTokenStore` 的 `Decrypt`
+  捕获所有异常返回 `null`（语义保持不变），但密钥轮换等故障因此不可观测。现补充**节流** Warning
+  （首次 + 每 100 次一次），日志含累计次数、异常与密文长度，**不含明文密钥/密文**。
 - **多应用 Redis 令牌键无 `appKey` 维度**（TOK-1，见破坏性变更）；并修复
   `RedisUserTokenStore.GetTokenTypesAsync` / `RedisTokenStore.GetTokenTypesAsync` 对含 `:` 的
   `tokenType` 的截断（TM-04）。

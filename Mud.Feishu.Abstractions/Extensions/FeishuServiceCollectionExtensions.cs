@@ -273,6 +273,11 @@ public static class FeishuServiceCollectionExtensions
             options.CircuitBreaker.MaxHalfOpenCount = 2;
         });
 
+        // ENH-1：按需为令牌存储工厂叠加加密装饰器。
+        // 必须放在**本方法末尾**——需在 IFeishuTokenStoreFactory 的默认注册（PerAppFeishuTokenStoreFactory）
+        // 以及 Redis 等其他扩展先行注册之后，才能捕获到「最后生效的那个描述符」。
+        DecorateTokenStoreFactoryForEncryption(services);
+
         return services;
     }
 
@@ -282,6 +287,81 @@ public static class FeishuServiceCollectionExtensions
     /// <param name="configs">所有应用配置列表。</param>
     /// <param name="appKey">应用键。</param>
     /// <returns>对应的 <see cref="ResilienceOptions"/>；如果应用不存在则返回 null。</returns>
+    /// <summary>
+    /// ENH-1：把 <see cref="IFeishuTokenStoreFactory"/> 的既有注册包上加密装饰器。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 采用「捕获并替换最后一个描述符」的方式而非直接改具体类型：令牌存储工厂的具体实现
+    /// 可能是本包默认的 <c>PerAppFeishuTokenStoreFactory</c>，也可能是
+    /// <c>Mud.Feishu.Redis</c> 在 <c>AddFeishuApp</c> 之前注册的 <c>PerAppRedisTokenStoreFactory</c>，
+    /// 装饰器不需要知道具体类型。
+    /// </para>
+    /// <para>
+    /// 是否真正启用（<see cref="FeishuAppOptions.EnableTokenEncryption"/> 与 <c>IEncryptionProvider</c> 是否注册）
+    /// 在**解析时**判断，因此调用顺序（<c>AddFeishuRedisTokenStore</c> 在 <c>AddFeishuApp</c> 之前/之后）
+    /// 与配置绑定时机都不影响结果。
+    /// </para>
+    /// </remarks>
+    private static void DecorateTokenStoreFactoryForEncryption(IServiceCollection services)
+    {
+        var descriptor = services.LastOrDefault(d => d.ServiceType == typeof(IFeishuTokenStoreFactory));
+        if (descriptor == null)
+        {
+            return;
+        }
+
+        services.Remove(descriptor);
+        services.AddSingleton<IFeishuTokenStoreFactory>(sp =>
+        {
+            var inner = CreateTokenStoreFactoryFromDescriptor(sp, descriptor);
+
+            var options = sp.GetService<IOptions<FeishuAppOptions>>()?.Value;
+            if (options == null || !options.EnableTokenEncryption)
+            {
+                return inner;
+            }
+
+            var encryption = sp.GetService<IEncryptionProvider>();
+            if (encryption == null)
+            {
+                sp.GetService<ILogger<EncryptedFeishuTokenStoreFactory>>()?.LogWarning(
+                    "FeishuAppOptions.EnableTokenEncryption = true，但未注册 IEncryptionProvider，" +
+                    "令牌将以明文存储。请调用 AddMudHttpAesEncryption() 注册 AES 加密提供程序，或注册自定义 IEncryptionProvider。");
+                return inner;
+            }
+
+            return new EncryptedFeishuTokenStoreFactory(
+                inner,
+                encryption,
+                sp.GetService<ILogger<EncryptedFeishuTokenStoreFactory>>());
+        });
+    }
+
+    /// <summary>
+    /// 依据原始 <see cref="ServiceDescriptor"/> 的具体注册形式重建实例。
+    /// </summary>
+    private static IFeishuTokenStoreFactory CreateTokenStoreFactoryFromDescriptor(IServiceProvider sp, ServiceDescriptor descriptor)
+    {
+        if (descriptor.ImplementationInstance is IFeishuTokenStoreFactory instance)
+        {
+            return instance;
+        }
+
+        if (descriptor.ImplementationFactory != null)
+        {
+            return (IFeishuTokenStoreFactory)descriptor.ImplementationFactory(sp);
+        }
+
+        if (descriptor.ImplementationType != null)
+        {
+            return (IFeishuTokenStoreFactory)ActivatorUtilities.GetServiceOrCreateInstance(sp, descriptor.ImplementationType);
+        }
+
+        throw new InvalidOperationException(
+            $"无法从 IFeishuTokenStoreFactory 的注册描述符（{descriptor.Lifetime}）构建实例。");
+    }
+
     private static ResilienceOptions? CreateResilienceOptionsFromConfig(List<FeishuAppConfig> configs, string appKey)
     {
         // NEW-REG-03 修复：AppKey 应严格大小写敏感，统一使用 StringComparison.Ordinal

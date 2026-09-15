@@ -40,4 +40,30 @@ public class FeishuAppOptions
     /// </para>
     /// </remarks>
     public bool EnableConfigReload { get; set; } = true;
+
+    /// <summary>
+    /// 是否启用令牌存储加密（ENH-1）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 启用后 <c>IFeishuTokenStoreFactory</c> 产出的租户/用户令牌存储会被
+    /// <c>EncryptedTokenStore</c> / <c>EncryptedUserTokenStore</c> 装饰，写入前加密、读取后解密，
+    /// 令牌不再以明文落在存储后端。加密能力依赖已注册的 <c>IEncryptionProvider</c>
+    /// （通过 <c>AddMudHttpAesEncryption()</c> 或自定义实现注册）；未注册时降级为明文并记录警告。
+    /// </para>
+    /// <para>
+    /// <b>默认 <c>false</c></b>：加密属于存储策略选择，应由使用方显式决策。
+    /// </para>
+    /// <para>
+    /// <b>启用后的注意点</b>：
+    /// <list type="bullet">
+    /// <item>键布局不变，不影响多应用隔离语义；</item>
+    /// <item>已存在的明文令牌无法自动迁移——解密失败会按「缓存未命中」处理并重新获取令牌（预期行为）；</item>
+    /// <item>加密密钥丢失会使全部已存令牌不可恢复，需要重新获取；</item>
+    /// <item>进程内 MemoryCache 场景下 refresh token 本就随进程重启丢失，加密收益主要体现在
+    /// Redis 等持久化、跨进程共享的后端上。</item>
+    /// </list>
+    /// </para>
+    /// </remarks>
+    public bool EnableTokenEncryption { get; set; }
 }

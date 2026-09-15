@@ -116,6 +116,53 @@ public class FeishuHttpClientFactoryTests
     }
 
     /// <summary>
+    /// 防退化守卫：<see cref="FeishuHttpClientFactory"/> 的 Clone 必须覆盖
+    /// <see cref="EnhancedHttpClientOptions"/> 的**全部**公共属性。
+    /// </summary>
+    /// <remarks>
+    /// 组件升级（如 2.0.4 → 2.0.5）若新增配置属性而本仓库 Clone 未同步补全，
+    /// 会导致新属性在 MudFeishu 路径上被静默丢弃（且不会有任何编译错误）。
+    /// 本用例把属性清单固化为契约：组件新增字段时此处会失败，强制同步 Clone。
+    /// 期望清单需与 <c>EnhancedHttpClientOptions</c> 中按 TFM 的 <c>#if</c> 条件保持一致。
+    /// </remarks>
+    [Fact]
+    public void EnhancedHttpClientOptions_PropertySet_ShouldMatchClonedContract()
+    {
+        var expected = new List<string>
+        {
+            "AllowCustomBaseUrls",
+            "AppAccessAuthorizer",
+            "CaptureRequestContent",
+            "ExceptionRedactor",
+            "HttpRequestMessageOptions",
+            "Logger",
+            "MaxExceptionContentLength",
+            "MaxSuccessResponseBytes",
+            "RequestBodySerialization",
+            "RequestInterceptors",
+            "ResponseInterceptors",
+            "SensitiveDataMasker",
+            "UrlResolution",
+#if NET6_0_OR_GREATER
+            "HttpVersion",
+            "HttpVersionPolicy",
+#endif
+#if NET8_0_OR_GREATER
+            "JsonTypeInfoResolver",
+#endif
+        };
+
+        var actual = typeof(EnhancedHttpClientOptions)
+            .GetProperties()
+            .Select(p => p.Name)
+            .OrderBy(n => n, StringComparer.Ordinal)
+            .ToList();
+
+        actual.Should().Equal(expected.OrderBy(n => n, StringComparer.Ordinal).ToList(),
+            "组件新增/删除配置属性时必须同步更新 FeishuHttpClientFactory.Clone 与本清单，否则新属性会被静默丢弃");
+    }
+
+    /// <summary>
     /// 客户端名称必须与 AddMudHttpClient 注册的命名保持一致。
     /// </summary>
     [Theory]

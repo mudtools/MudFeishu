@@ -43,16 +43,19 @@ pwsh ./scripts/verify-build.ps1 -ClearStaleCache # Also auto-clear a stale Mud.H
 The gate enforces: 0 build errors, 0 `CS1750`, 0 `NU1603` (version drift), and 0
 `HTTPCLIENT0xx` / `MUD001-002` / `FORM0xx` / `AOT001-007` diagnostics.
 
-## Dependency cache caveat (Mud.HttpUtils local source)
+## Dependency version policy (Mud.HttpUtils)
 
 This repo consumes `Mud.HttpUtils` from a **local folder source** (`nuget.config` ->
-`D:/Repos/MudHttpUtils/artifacts`). NuGet keys the global package cache by
-`id + version`, so **re-packing the component under the same version does NOT
-invalidate the downstream cache**. Symptom: the component source is already fixed,
-but the build still fails with `CS1750`.
+`D:/Repos/MudHttpUtils/artifacts`). The currently pinned version is **2.0.5**.
 
-After updating the component local source, always refresh the cache **and then do a clean
-rebuild**:
+**Always bump the component version when packing.** NuGet keys the global package cache by
+`id + version`, so re-packing under the *same* version does **not** invalidate the
+downstream cache. Symptom: the component source is already fixed, but the build still fails
+with `CS1750`. This anti-pattern occurred three times during 2.0.4
+(23:16 / 20:59 / 21:23 re-packs), each polluting every downstream cache.
+
+When you must refresh the cache manually (local component development), do it as a
+three-step sequence:
 
 ```bash
 dotnet nuget locals global-packages --clear

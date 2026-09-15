@@ -73,6 +73,10 @@ if (Test-Path $localSource) {
         $version = ($pkg.Name -replace 'Mud.HttpUtils.Generator\.', '' -replace '\.nupkg$', '')
         $cachedDll = Join-Path $globalPackages "mud.httputils.generator/$version/analyzers/dotnet/cs/Mud.HttpUtils.Generator.dll"
 
+        if (-not (Test-Path $cachedDll)) {
+            Write-Host "  [ OK ] 缓存中尚无 $version，将由本次还原首次解包（无陈旧风险）" -ForegroundColor Green
+        }
+
         if (Test-Path $cachedDll) {
             # 使用 SHA256 比较包内 DLL 与缓存 DLL 的实际内容。
             # 不用文件字节数：组件重新打包（时间戳/PDB 路径变化）会改变大小从而误报，

@@ -140,6 +140,9 @@ public class FeishuHttpClientFactory : IFeishuHttpClientFactory
         UrlResolution = source.UrlResolution,
         MaxSuccessResponseBytes = source.MaxSuccessResponseBytes,
         HttpRequestMessageOptions = source.HttpRequestMessageOptions,
+        // Mud.HttpUtils 2.0.5 新增：应用访问授权器。由 FeishuHttpClientFactoryTests 的
+        // 属性契约守卫发现——若不在此同步，该能力会在 MudFeishu 路径上被静默丢弃。
+        AppAccessAuthorizer = source.AppAccessAuthorizer,
 #if NET6_0_OR_GREATER
         HttpVersion = source.HttpVersion,
         HttpVersionPolicy = source.HttpVersionPolicy,

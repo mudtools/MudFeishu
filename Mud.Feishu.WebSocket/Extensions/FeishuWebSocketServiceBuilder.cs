@@ -12,6 +12,7 @@ using Microsoft.Extensions.Options;
 using Mud.Feishu.Abstractions.EventHandlers;
 using Mud.Feishu.Abstractions.Services;
 using Mud.Feishu.WebSocket;
+using Mud.Feishu.WebSocket.Handlers;
 using System.Diagnostics.Metrics;
 
 namespace Microsoft.Extensions.DependencyInjection;
@@ -90,7 +91,9 @@ public class FeishuWebSocketServiceBuilder
         where THandler : class, IFeishuEventHandler
     {
         _handlerTypes.Add(typeof(THandler));
-        // NEW-REG-02 修复：处理器注册为 Scoped，避免 Captive Dependency 风险，与 Webhook 保持一致
+        // 处理器注册为 Scoped：由 ScopedFeishuEventHandlerFactory 在每次事件分发时
+        // 创建独立 IServiceScope 解析并释放，保证处理器及其 Scoped 依赖（如 DbContext）
+        // 的生命周期与单个事件对齐（P0-7）。
         _services.AddScoped<IFeishuEventHandler, THandler>();
         _services.AddScoped<THandler>();
         return this;
@@ -143,9 +146,11 @@ public class FeishuWebSocketServiceBuilder
         where TInterceptor : class, IFeishuEventInterceptor
     {
         _interceptorTypes.Add(typeof(TInterceptor));
-        // NEW-REG-02 修复：拦截器注册为 Scoped，避免 Captive Dependency 风险，与 Webhook 保持一致
-        _services.AddScoped<IFeishuEventInterceptor, TInterceptor>();
-        _services.AddScoped<TInterceptor>();
+        // 注册为 Singleton：拦截器是横切关注点组件（日志/指标/审计），按约定无请求级状态。
+        // 若注册为 Scoped，会被同样为 Singleton 的 IFeishuEventInterceptor[] 消费者
+        // 从根容器解析，构成 Captive Dependency（Development 环境下启动即抛异常）。
+        _services.AddSingleton<IFeishuEventInterceptor, TInterceptor>();
+        _services.AddSingleton<TInterceptor>();
         return this;
     }
 
@@ -162,9 +167,8 @@ public class FeishuWebSocketServiceBuilder
             throw new ArgumentNullException(nameof(interceptorInstance));
 
         _interceptorTypes.Add(typeof(TInterceptor));
-        // NEW-REG-02 修复：拦截器实例注册为 Scoped，避免 Captive Dependency 风险，与 Webhook 保持一致
-        _services.AddScoped<IFeishuEventInterceptor>(_ => interceptorInstance);
-        _services.AddScoped<TInterceptor>(_ => interceptorInstance);
+        _services.AddSingleton<IFeishuEventInterceptor>(_ => interceptorInstance);
+        _services.AddSingleton<TInterceptor>(_ => interceptorInstance);
         return this;
     }
 
@@ -181,9 +185,8 @@ public class FeishuWebSocketServiceBuilder
             throw new ArgumentNullException(nameof(interceptorFactory));
 
         _interceptorTypes.Add(typeof(TInterceptor));
-        // NEW-REG-02 修复：拦截器工厂注册为 Scoped，避免 Captive Dependency 风险，与 Webhook 保持一致
-        _services.AddScoped<IFeishuEventInterceptor>(interceptorFactory);
-        _services.AddScoped<TInterceptor>(interceptorFactory);
+        _services.AddSingleton<IFeishuEventInterceptor>(interceptorFactory);
+        _services.AddSingleton<TInterceptor>(interceptorFactory);
         return this;
     }
 
@@ -243,22 +246,29 @@ public class FeishuWebSocketServiceBuilder
     /// <summary>
     /// 注册事件处理器工厂
     /// </summary>
+    /// <remarks>
+    /// P0-7 修复：此前这里在 Singleton 工厂委托中直接通过根容器解析 Scoped 的
+    /// <see cref="IFeishuEventHandler"/>，构成 Captive Dependency：
+    /// Development 环境（默认开启 <c>ValidateScopes</c>）下应用启动即抛异常；
+    /// 其它环境下处理器被单例永久持有，Scoped 依赖（如 DbContext）生命周期与实例均被破坏。
+    /// 现改为注册 <see cref="ScopedFeishuEventHandlerFactory"/>，
+    /// 由其在每次事件分发时创建并释放 <see cref="IServiceScope"/>。
+    /// </remarks>
     private void RegisterEventHandlerFactory()
     {
-        var defaultHandlerType = _handlerTypes.First();
+        var defaultHandlerType = _handlerTypes.FirstOrDefault();
+        var handlerTypes = _handlerTypes.ToArray();
 
         _services.AddSingleton<IFeishuEventHandlerFactory>(serviceProvider =>
         {
-            var logger = serviceProvider.GetRequiredService<ILogger<DefaultFeishuEventHandlerFactory>>();
-            var handlers = serviceProvider.GetRequiredService<IEnumerable<IFeishuEventHandler>>()
-                .Where(h => _handlerTypes.Contains(h.GetType()))
-                .ToList();
-            var defaultHandler = serviceProvider.GetService(defaultHandlerType) as IFeishuEventHandler
-                ?? handlers.FirstOrDefault(h => h.GetType() == defaultHandlerType);
-            return new DefaultFeishuEventHandlerFactory(logger, handlers, defaultHandler!);
+            var logger = serviceProvider.GetRequiredService<ILogger<ScopedFeishuEventHandlerFactory>>();
+            var scopeFactory = serviceProvider.GetRequiredService<IServiceScopeFactory>();
+            return new ScopedFeishuEventHandlerFactory(logger, scopeFactory, handlerTypes, defaultHandlerType);
         });
 
         // 注册事件拦截器集合（单例，按注册顺序排序）
+        // 说明：拦截器是横切关注点组件（日志、指标、审计），按约定无请求级状态，
+        // 因此注册为 Singleton；若注册为 Scoped 会与 Singleton 消费者构成 Captive Dependency。
         _services.AddSingleton<IFeishuEventInterceptor[]>(serviceProvider =>
         {
             return serviceProvider.GetRequiredService<IEnumerable<IFeishuEventInterceptor>>()
@@ -273,6 +283,15 @@ public class FeishuWebSocketServiceBuilder
     /// </summary>
     private void RegisterCoreServices()
     {
+#if NET8_0_OR_GREATER
+        // P1-9 修复：必须在任何 JSON 序列化/反序列化发生之前，
+        // 将 WebSocketJsonContext 合并到 FeishuJsonDefaults 的 resolver 链。
+        // 此前该调用在本模块内缺失（Webhook 模块已在 Builder 内调用），
+        // 导致 AuthResponseMessage / PingMessage / PongMessage 等协议类型在
+        // net8+ 上只能落到反射兜底，Native AOT/Trimming 下存在失败风险。
+        Mud.Feishu.WebSocket.Extensions.FeishuWebSocketJsonResolverExtensions.ConfigureWebSocketResolver();
+#endif
+
         // 注册事件去重服务（单例，根据 EventDeduplication.Mode 选择实现）
         // - Mode == None：注册 NoopFeishuEventDeduplicator，不进行去重
         // - Mode == InMemory：注册 FeishuEventDeduplicator（内存实现）
@@ -371,7 +390,10 @@ public class FeishuWebSocketServiceBuilder
             var seqIdDeduplicator = serviceProvider.GetService<IFeishuSeqIDDeduplicator>();
             var sessionManager = serviceProvider.GetService<SessionManager>();
             var sequenceValidator = serviceProvider.GetService<MessageSequenceValidator>();
-            return new FeishuWebSocketClient(logger, eventHandlerFactory, loggerFactory, interceptors, options, seqIdDeduplicator, sessionManager, sequenceValidator);
+            // P1-5 修复：注入事件级去重器。此前 FeishuWebSocketClient 不接受该依赖，
+            // 导致 EventDeduplication 配置（默认 InMemory）在 WebSocket 路径上完全失效。
+            var eventDeduplicator = serviceProvider.GetService<IFeishuEventDeduplicator>();
+            return new FeishuWebSocketClient(logger, eventHandlerFactory, loggerFactory, eventDeduplicator, interceptors, options, seqIdDeduplicator, sessionManager, sequenceValidator);
         });
 
         // 注册WebSocket管理器
@@ -382,8 +404,14 @@ public class FeishuWebSocketServiceBuilder
         // 避免此处硬编码 "websocket" 字面量导致多应用指标无法区分。
         // 此处仅注册服务，观察器赋值延迟到 hosted service 构造时执行（DI 已就绪）。
 
-        // 添加后台服务
-        _services.AddHostedService<FeishuWebSocketHostedService>();
+        // P1-8 修复：AddHostedService<T>() 只会注册 IHostedService→T 的描述符，
+        // MS.DI 不会按具体类型 T 解析。FeishuWebSocketHealthCheck 的构造函数依赖
+        // 具体类型 FeishuWebSocketHostedService，若不显式注册该实现类型，
+        // 解析健康检查时必然抛 "Unable to resolve service for type ..."。
+        // 这里先注册实现类型，再让 AddHostedService 复用同一实例，保证单例唯一。
+        _services.AddSingleton<FeishuWebSocketHostedService>();
+        _services.AddHostedService<FeishuWebSocketHostedService>(
+            serviceProvider => serviceProvider.GetRequiredService<FeishuWebSocketHostedService>());
 
         // 注册健康检查（全目标框架可用）
         _services.AddSingleton<FeishuWebSocketHealthCheck>();

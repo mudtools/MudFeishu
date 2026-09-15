@@ -19,6 +19,13 @@ namespace Mud.Feishu.WebSocket;
 /// <remarks>
 /// 该类负责WebSocket连接的建立、维护、断开和消息收发功能。
 /// 支持自动重连、连接超时、错误处理和资源清理等企业级特性。
+/// 锁策略（P0-2/P0-6 修复）：
+/// <list type="bullet">
+/// <item><c>_connectionLock</c>：仅保护连接生命周期（建立/断开/替换 socket），<b>不可重入</b>；
+/// 内部方法一律使用无锁版本 <c>DisconnectCoreAsync</c>。</item>
+/// <item><c>_sendLock</c>：仅保护发送，与生命周期解耦，避免慢发送阻塞连接/重连。</item>
+/// </list>
+/// 事件策略（P0-5 修复）：所有用户事件均在锁外触发，避免在持锁期间回调用户代码造成死锁。
 /// </remarks>
 public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
 {
@@ -26,27 +33,40 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
     private readonly ILogger<WebSocketConnectionManager> _logger;
     private readonly FeishuWebSocketOptions _options;
     private readonly SemaphoreSlim _connectionLock = new(1, 1);
+    private readonly SemaphoreSlim _sendLock = new(1, 1);
     private ClientWebSocket? _webSocket;
     private CancellationTokenSource? _cancellationTokenSource;
-    private bool _disposed = false;
+    private volatile bool _disposed = false;
     private byte[]? _receiveBuffer;
     private readonly ErrorRecoveryStrategy _errorRecoveryStrategy;
     private readonly ILoggerFactory _loggerFactory;
-    private volatile bool _disconnectedFired = true;
+
+    /// <summary>
+    /// 断线事件触发标志（原子）：0=已连接且尚未触发断线事件，1=已触发/未连接。
+    /// <para>使用 <see cref="Interlocked"/> 保证 check-then-set 的原子性（P0-4 修复）。</para>
+    /// </summary>
+    private int _disconnectedFired = 1;
+
+    /// <summary>
+    /// 关闭握手超时时间，避免服务端不应答时无限等待（P1-4 修复）。
+    /// </summary>
+    private static readonly TimeSpan CloseHandshakeTimeout = TimeSpan.FromSeconds(5);
 
     /// <summary>
     /// 获取当前WebSocket连接数
     /// </summary>
-    public static int ConnectionCount => _connectionCount;
+    public static int ConnectionCount => Volatile.Read(ref _connectionCount);
 
     /// <summary>
     /// WebSocket连接成功建立时触发的事件
     /// </summary>
+    /// <remarks>该事件保证在连接锁之外触发，回调中可安全调用发送等需要加锁的方法。</remarks>
     public event EventHandler<EventArgs>? Connected;
 
     /// <summary>
     /// WebSocket连接断开时触发的事件
     /// </summary>
+    /// <remarks>该事件保证在连接锁之外触发；对同一次连接最多触发一次。</remarks>
     public event EventHandler<WebSocketCloseEventArgs>? Disconnected;
 
     /// <summary>
@@ -113,24 +133,30 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
             throw new ArgumentException("WebSocket URL使用不安全的ws://协议。如需在开发/测试环境使用，请设置 AllowInsecureWebSocket = true", nameof(url));
 
         await _connectionLock.WaitAsync(cancellationToken);
+        WebSocketCloseEventArgs? pendingClose = null;
         try
         {
-            // 如果已经连接，先断开
+            // P0-2 修复：此处已持有 _connectionLock，SemaphoreSlim 不可重入，
+            // 必须调用无锁版本 DisconnectCoreAsync，否则将永久挂起。
             if (_webSocket != null && _webSocket.State == WebSocketState.Open)
             {
-                await DisconnectAsync(cancellationToken);
+                pendingClose = await DisconnectCoreAsync(cancellationToken);
             }
+
+            // P1-2 修复：创建连接前彻底释放上一次连接的 socket 与 CTS
+            DisposeCurrentSocket();
 
             // 创建新的WebSocket连接
             _webSocket = new ClientWebSocket();
             _cancellationTokenSource = new CancellationTokenSource();
-            _disconnectedFired = false; // 新连接建立，重置断开事件标志
 
             // 启用协议级 WebSocket Ping/Pong 保活（对齐 Python websockets 库默认行为）。
             // Python SDK 的 websockets 库默认每 20 秒发送协议级 Ping 帧，
             // .NET ClientWebSocket 默认 KeepAliveInterval=Zero（禁用）。
             // 启用后，.NET 运行时会自动发送 WebSocket Ping (opcode 0x9)，
             // 服务端回复 Pong (opcode 0xA)，保持中间网络设备（NAT/负载均衡器）的连接表项不超时。
+            // 注意：该值与 FeishuWebSocketOptions.HeartbeatIntervalMs（应用层 ProtoBuf Ping）职责不同：
+            // 前者用于链路存活检测，后者用于维持飞书应用层会话，二者不应互相替代。
             _webSocket.Options.KeepAliveInterval = TimeSpan.FromSeconds(20);
 
             // 配置SSL/TLS证书验证
@@ -151,8 +177,11 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
                 {
                     _logger.LogInformation("已连接到飞书WebSocket服务: {Url}", url);
                 }
+
+                // P0-4 修复：只有连接真正成功后才配平计数并允许触发断线事件。
+                // 顺序必须为 Increment → 清除断线标志，避免连接失败后 Decrement 未配平导致计数为负。
                 Interlocked.Increment(ref _connectionCount);
-                Connected?.Invoke(this, EventArgs.Empty);
+                Interlocked.Exchange(ref _disconnectedFired, 0);
             }
             catch (OperationCanceledException) when (timeoutCts.Token.IsCancellationRequested)
             {
@@ -164,6 +193,14 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
         {
             _connectionLock.Release();
         }
+
+        // P0-5 修复：事件在锁外触发，允许回调安全地调用 SendMessageAsync / DisconnectAsync 等加锁方法。
+        if (pendingClose != null)
+        {
+            SafeInvokeDisconnected(pendingClose);
+        }
+
+        SafeInvokeConnected();
     }
 
     /// <summary>
@@ -173,45 +210,136 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
     /// <returns>表示异步断开操作的任务</returns>
     /// <remarks>
     /// 如果连接已经关闭，此方法会直接返回而不执行任何操作。
-    /// 断开连接时会触发<see cref="Disconnected"/>事件。
+    /// 断开连接时会触发<see cref="Disconnected"/>事件（锁外触发，最多一次）。
     /// </remarks>
     public async Task DisconnectAsync(CancellationToken cancellationToken = default)
     {
+        WebSocketCloseEventArgs? pendingClose = null;
+
         await _connectionLock.WaitAsync(cancellationToken);
         try
         {
-            if (_webSocket == null || _webSocket.State == WebSocketState.Closed)
-                return;
-
-            _cancellationTokenSource?.Cancel();
-
-            if (_webSocket.State == WebSocketState.Open)
-            {
-                await _webSocket.CloseAsync(
-                    WebSocketCloseStatus.NormalClosure,
-                    "客户端主动断开连接",
-                    cancellationToken);
-            }
-
-            if (_options.EnableLogging)
-            {
-                _logger.LogInformation("已断开飞书WebSocket连接");
-            }
-
-            NotifyDisconnected(
-                WebSocketCloseStatus.NormalClosure,
-                "客户端主动断开连接",
-                isServerInitiated: false);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "断开飞书WebSocket连接时发生错误");
-            OnError(ex, "断开连接错误");
+            pendingClose = await DisconnectCoreAsync(cancellationToken);
         }
         finally
         {
             _connectionLock.Release();
         }
+
+        if (pendingClose != null)
+        {
+            SafeInvokeDisconnected(pendingClose);
+        }
+    }
+
+    /// <summary>
+    /// 断开连接的无锁核心实现。
+    /// </summary>
+    /// <param name="cancellationToken">用于取消操作的取消令牌</param>
+    /// <returns>需要在锁外触发的断开事件参数；若无需触发则为 <c>null</c></returns>
+    /// <remarks>
+    /// P0-2 修复的关键：本方法<b>不得</b>获取 <c>_connectionLock</c>，
+    /// 供 <see cref="ConnectAsync"/> 与 <see cref="DisconnectAsync"/> 复用。
+    /// <para>
+    /// P0-5 修复：本方法内部只做"原子占位"，不触发事件；事件由调用方在锁外触发，
+    /// 否则用户回调中调用 SendMessageAsync 等加锁方法会立即死锁。
+    /// </para>
+    /// </remarks>
+    private async Task<WebSocketCloseEventArgs?> DisconnectCoreAsync(CancellationToken cancellationToken)
+    {
+        if (_webSocket == null || _webSocket.State == WebSocketState.Closed)
+            return null;
+
+        var webSocket = _webSocket;
+
+        try
+        {
+            _cancellationTokenSource?.Cancel();
+        }
+        catch (ObjectDisposedException) { }
+
+        if (webSocket.State == WebSocketState.Open)
+        {
+            try
+            {
+                // P1-4 修复：关闭握手必须限时，服务端不应答时强制 Abort
+                using var closeCts = new CancellationTokenSource(CloseHandshakeTimeout);
+                using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, closeCts.Token);
+                await webSocket.CloseAsync(
+                    WebSocketCloseStatus.NormalClosure,
+                    "客户端主动断开连接",
+                    linked.Token);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "关闭握手未正常完成，强制中止连接");
+                TryAbort(webSocket);
+            }
+        }
+
+        if (_options.EnableLogging)
+        {
+            _logger.LogInformation("已断开飞书WebSocket连接");
+        }
+
+        var args = new WebSocketCloseEventArgs
+        {
+            CloseStatus = WebSocketCloseStatus.NormalClosure,
+            CloseStatusDescription = "客户端主动断开连接",
+            IsServerInitiated = false
+        };
+
+        // 原子占位：只有首次声明断线才需要对外触发事件（P0-4）
+        return TryClaimDisconnected() ? args : null;
+    }
+
+    /// <summary>
+    /// 原子地声明"本次连接已断开"，成功占位返回 <c>true</c>。
+    /// </summary>
+    /// <returns>是否成功占位（即调用方需要触发事件）</returns>
+    private bool TryClaimDisconnected()
+    {
+        if (Interlocked.CompareExchange(ref _disconnectedFired, 1, 0) == 1)
+            return false;
+
+        Interlocked.Decrement(ref _connectionCount);
+        return true;
+    }
+
+    /// <summary>
+    /// 释放当前 socket 与关联的取消令牌源（无锁，调用方需自行保证同步）。
+    /// </summary>
+    /// <remarks>P1-2 修复：重连前必须释放旧连接，否则每次重连泄漏一个 ClientWebSocket。</remarks>
+    private void DisposeCurrentSocket()
+    {
+        var webSocket = _webSocket;
+        var cts = _cancellationTokenSource;
+
+        if (webSocket != null)
+        {
+            TryAbort(webSocket);
+            try { webSocket.Dispose(); }
+            catch (Exception ex) { _logger.LogDebug(ex, "释放旧 WebSocket 实例时发生异常（可忽略）"); }
+        }
+
+        if (cts != null)
+        {
+            try { cts.Dispose(); }
+            catch (Exception ex) { _logger.LogDebug(ex, "释放旧 CancellationTokenSource 时发生异常（可忽略）"); }
+        }
+
+        _webSocket = null;
+        _cancellationTokenSource = null;
+    }
+
+    /// <summary>
+    /// 尝试强制中止WebSocket连接
+    /// </summary>
+    /// <param name="webSocket">WebSocket实例</param>
+    private void TryAbort(ClientWebSocket webSocket)
+    {
+        try { webSocket.Abort(); }
+        catch (Exception ex) { _logger.LogDebug(ex, "中止 WebSocket 时发生异常（可忽略）"); }
     }
 
     /// <summary>
@@ -240,21 +368,32 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
     /// <exception cref="InvalidOperationException">当WebSocket未连接时抛出</exception>
     /// <remarks>
     /// 使用WebSocketMessageType.Binary消息类型发送数据。
+    /// <para>
+    /// P0-6 修复：本方法与 <see cref="SendMessageAsync"/> 统一使用 <c>_sendLock</c>。
+    /// ClientWebSocket 同一时刻只允许一个未完成的 SendAsync，
+    /// 此前二进制发送完全无锁，心跳帧与事件 ACK 并发时会抛 InvalidOperationException 并静默丢失 ACK，
+    /// 导致服务端重复投递事件。
+    /// </para>
     /// 发送成功后会记录调试日志（如果启用日志记录）。
     /// </remarks>
     public async Task SendBinaryMessageAsync(ArraySegment<byte> data, CancellationToken cancellationToken = default)
     {
         if (data == null || data.Count == 0)
             throw new ArgumentException("二进制数据不能为空", nameof(data));
-        if (_webSocket == null || _webSocket.State != WebSocketState.Open)
-            throw new InvalidOperationException("WebSocket未连接，无法发送消息");
+
+        await _sendLock.WaitAsync(cancellationToken);
         try
         {
-            await _webSocket.SendAsync(
+            var webSocket = _webSocket;
+            if (webSocket == null || webSocket.State != WebSocketState.Open)
+                throw new InvalidOperationException("WebSocket未连接，无法发送消息");
+
+            await webSocket.SendAsync(
                 data,
                 WebSocketMessageType.Binary,
                 true,
                 cancellationToken);
+
             if (_options.EnableLogging)
             {
                 _logger.LogDebug("已发送二进制消息，大小: {Size} 字节", data.Count);
@@ -265,6 +404,10 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
             _logger.LogError(ex, "发送二进制消息时发生错误");
             OnError(ex, "发送二进制消息错误");
             throw;
+        }
+        finally
+        {
+            _sendLock.Release();
         }
     }
 
@@ -289,36 +432,35 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
         if (message.Length > _options.MessageSizeLimits.MaxTextMessageSize)
             throw new ArgumentException($"消息大小超过限制 ({_options.MessageSizeLimits.MaxTextMessageSize} 字符)", nameof(message));
 
-        await _connectionLock.WaitAsync(cancellationToken);
+        // P0-6 修复：统一使用 _sendLock（此前使用 _connectionLock，与二进制发送不互斥且粒度过粗）
+        await _sendLock.WaitAsync(cancellationToken);
         try
         {
-            if (_webSocket == null || _webSocket.State != WebSocketState.Open)
+            var webSocket = _webSocket;
+            if (webSocket == null || webSocket.State != WebSocketState.Open)
                 throw new InvalidOperationException("WebSocket未连接，无法发送消息");
 
-            try
-            {
-                var buffer = System.Text.Encoding.UTF8.GetBytes(message);
-                await _webSocket.SendAsync(
-                    new ArraySegment<byte>(buffer),
-                    WebSocketMessageType.Text,
-                    true,
-                    cancellationToken);
+            var buffer = System.Text.Encoding.UTF8.GetBytes(message);
+            await webSocket.SendAsync(
+                new ArraySegment<byte>(buffer),
+                WebSocketMessageType.Text,
+                true,
+                cancellationToken);
 
-                if (_options.EnableLogging)
-                {
-                    _logger.LogDebug("已发送消息: {Message}", MessageSanitizer.Sanitize(message));
-                }
-            }
-            catch (Exception ex)
+            if (_options.EnableLogging)
             {
-                _logger.LogError(ex, "发送消息时发生错误");
-                OnError(ex, "发送消息错误");
-                throw;
+                _logger.LogDebug("已发送消息: {Message}", MessageSanitizer.Sanitize(message));
             }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "发送消息时发生错误");
+            OnError(ex, "发送消息错误");
+            throw;
         }
         finally
         {
-            _connectionLock.Release();
+            _sendLock.Release();
         }
     }
 
@@ -334,23 +476,26 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
     /// 接收到的消息会通过提供的messageHandler回调函数处理。
     /// 如果接收到关闭消息，会自动调用<see cref="HandleCloseMessageAsync"/>处理关闭逻辑。
     /// 初始缓冲区大小由<see cref="FeishuWebSocketOptions.InitialReceiveBufferSize"/>配置决定。
+    /// <para>
+    /// P1-2 修复：循环内固定使用进入循环时的 socket 局部引用；
+    /// 此前每轮重新读取 <c>_webSocket</c> 字段，重连后旧循环会与新循环同时读取同一新 socket，造成"双接收循环"。
+    /// </para>
     /// </remarks>
     public async Task StartReceivingAsync(Func<ArraySegment<byte>, WebSocketReceiveResult, Task> messageHandler, CancellationToken cancellationToken = default)
     {
-        if (_webSocket == null)
-            throw new InvalidOperationException("WebSocket未初始化");
+        var webSocket = _webSocket ?? throw new InvalidOperationException("WebSocket未初始化");
 
         _receiveBuffer ??= new byte[_options.InitialReceiveBufferSize];
 
         try
         {
-            while (_webSocket.State == WebSocketState.Open && !cancellationToken.IsCancellationRequested)
+            while (webSocket.State == WebSocketState.Open && !cancellationToken.IsCancellationRequested)
             {
-                var result = await _webSocket.ReceiveAsync(new ArraySegment<byte>(_receiveBuffer), cancellationToken);
+                var result = await webSocket.ReceiveAsync(new ArraySegment<byte>(_receiveBuffer), cancellationToken);
 
                 if (result.MessageType == WebSocketMessageType.Close)
                 {
-                    await HandleCloseMessageAsync(result);
+                    await HandleCloseMessageAsync(result, webSocket);
                     break;
                 }
 
@@ -360,7 +505,7 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
                 }
                 else
                 {
-                    await HandleFragmentedMessageAsync(result, messageHandler, cancellationToken);
+                    await HandleFragmentedMessageAsync(result, messageHandler, webSocket, cancellationToken);
                 }
             }
         }
@@ -378,19 +523,24 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
             // 远程方未完成关闭握手就断开连接时，WebSocket 状态为 Aborted 而非 Closed，
             // 不会走 HandleCloseMessageAsync 路径，因此需要在此处主动触发 Disconnected 事件，
             // 否则重连只能等待心跳管理器检测到连接断开后才触发（延迟可达数十秒）。
-            NotifyDisconnected(
-                WebSocketCloseStatus.NormalClosure,
-                "WebSocket接收错误导致连接断开",
-                isServerInitiated: true);
+            // P1-1 修复：不再硬编码 NormalClosure，按异常类型映射真实关闭状态码。
+            NotifyDisconnected(new WebSocketCloseEventArgs
+            {
+                CloseStatus = MapExceptionToCloseStatus(ex),
+                CloseStatusDescription = $"WebSocket接收错误导致连接断开: {ex.WebSocketErrorCode}",
+                IsServerInitiated = false
+            });
         }
         catch (Exception ex)
         {
             _logger.LogDebug(ex, "接收消息时发生错误");
             OnError(ex, "接收消息错误");
-            NotifyDisconnected(
-                WebSocketCloseStatus.NormalClosure,
-                "接收消息错误导致连接断开",
-                isServerInitiated: true);
+            NotifyDisconnected(new WebSocketCloseEventArgs
+            {
+                CloseStatus = MapExceptionToCloseStatus(ex),
+                CloseStatusDescription = $"接收消息错误导致连接断开: {ex.GetType().Name}",
+                IsServerInitiated = false
+            });
         }
     }
 
@@ -399,10 +549,12 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
     /// </summary>
     /// <param name="firstResult">第一帧的接收结果</param>
     /// <param name="messageHandler">消息处理器回调</param>
+    /// <param name="webSocket">接收所使用的WebSocket实例</param>
     /// <param name="cancellationToken">取消令牌</param>
     private async Task HandleFragmentedMessageAsync(
         WebSocketReceiveResult firstResult,
         Func<ArraySegment<byte>, WebSocketReceiveResult, Task> messageHandler,
+        ClientWebSocket webSocket,
         CancellationToken cancellationToken)
     {
         using var messageStream = new MemoryStream();
@@ -410,28 +562,37 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
             ? _options.MessageSizeLimits.MaxBinaryMessageSize
             : _options.MessageSizeLimits.MaxTextMessageSize;
 
+        // P2-1 修复：首帧同样先校验后写入
+        if (firstResult.Count > maxMessageSize)
+        {
+            _logger.LogError("分片消息首帧大小 {Size} 已超过最大限制 {MaxSize}，丢弃消息",
+                firstResult.Count, maxMessageSize);
+            OnError(new InvalidOperationException($"分片消息大小超过最大限制 {maxMessageSize}"), "分片消息大小超限");
+            return;
+        }
+
         messageStream.Write(_receiveBuffer, 0, firstResult.Count);
 
-        while (_webSocket?.State == WebSocketState.Open && !cancellationToken.IsCancellationRequested)
+        while (webSocket.State == WebSocketState.Open && !cancellationToken.IsCancellationRequested)
         {
-            var result = await _webSocket.ReceiveAsync(new ArraySegment<byte>(_receiveBuffer), cancellationToken);
+            var result = await webSocket.ReceiveAsync(new ArraySegment<byte>(_receiveBuffer), cancellationToken);
 
             if (result.MessageType == WebSocketMessageType.Close)
             {
-                await HandleCloseMessageAsync(result);
+                await HandleCloseMessageAsync(result, webSocket);
+                return;
+            }
+
+            // P2-1 修复：写入前拦截，避免超限数据先进入内存
+            if (messageStream.Length + result.Count > maxMessageSize)
+            {
+                _logger.LogError("分片消息大小将超过最大限制 {MaxSize}（当前 {Size}，本帧 {FrameSize}），丢弃消息",
+                    maxMessageSize, messageStream.Length, result.Count);
+                OnError(new InvalidOperationException($"分片消息大小超过最大限制 {maxMessageSize}"), "分片消息大小超限");
                 return;
             }
 
             messageStream.Write(_receiveBuffer, 0, result.Count);
-
-            // 检查分片消息是否超过大小限制
-            if (messageStream.Length > maxMessageSize)
-            {
-                _logger.LogError("分片消息大小 {Size} 超过最大限制 {MaxSize}，丢弃消息",
-                    messageStream.Length, maxMessageSize);
-                OnError(new InvalidOperationException($"分片消息大小 {messageStream.Length} 超过最大限制 {maxMessageSize}"), "分片消息大小超限");
-                return;
-            }
 
             if (result.EndOfMessage)
             {
@@ -447,7 +608,7 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
 
         var receivedBytes = messageStream.Length;
         _logger.LogWarning("分片消息重组中断，已接收 {ReceivedBytes} 字节但未收到 EndOfMessage 信号。连接状态: {State}, 取消请求: {Cancelled}",
-            receivedBytes, _webSocket?.State, cancellationToken.IsCancellationRequested);
+            receivedBytes, webSocket.State, cancellationToken.IsCancellationRequested);
 
         OnError(new InvalidOperationException($"分片消息重组中断，已接收 {receivedBytes} 字节但未完成"), "分片消息重组中断");
     }
@@ -456,12 +617,13 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
     /// 处理WebSocket关闭消息
     /// </summary>
     /// <param name="result">WebSocket接收结果，包含关闭状态和描述</param>
+    /// <param name="webSocket">接收所使用的WebSocket实例</param>
     /// <returns>表示异步处理操作的任务</returns>
     /// <remarks>
     /// 该方法会触发<see cref="Disconnected"/>事件，通知订阅者连接已关闭。
     /// 重连逻辑由<see cref="ReconnectionOrchestrator"/>统一处理。
     /// </remarks>
-    private async Task HandleCloseMessageAsync(WebSocketReceiveResult result)
+    private async Task HandleCloseMessageAsync(WebSocketReceiveResult result, ClientWebSocket webSocket)
     {
         if (_options.EnableLogging)
         {
@@ -470,27 +632,62 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
         }
 
         // 通过 NotifyDisconnected 统一处理连接计数递减和 Disconnected 事件触发，
-        // _disconnectedFired 标志确保不会与 StartReceivingAsync 异常路径或 DisconnectAsync 重复触发。
-        try
+        // _disconnectedFired 标志（Interlocked）确保不会与 StartReceivingAsync 异常路径或 DisconnectAsync 重复触发。
+        if (webSocket.State == WebSocketState.Open)
         {
-            if (_webSocket != null && _webSocket.State == WebSocketState.Open)
+            try
             {
-                await _webSocket.CloseAsync(
+                // P1-4 修复：关闭握手限时，避免服务端不应答时接收循环永久阻塞
+                using var closeCts = new CancellationTokenSource(CloseHandshakeTimeout);
+                await webSocket.CloseAsync(
                     WebSocketCloseStatus.NormalClosure,
                     "客户端确认关闭连接",
-                    CancellationToken.None);
+                    closeCts.Token);
             }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogDebug(ex, "确认关闭连接时发生异常（可忽略）");
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "确认关闭连接时发生异常（可忽略）");
+                TryAbort(webSocket);
+            }
         }
 
         // 递减连接计数并触发断开事件（仅一次）
-        NotifyDisconnected(
-            result.CloseStatus ?? WebSocketCloseStatus.NormalClosure,
-            result.CloseStatusDescription,
-            isServerInitiated: true);
+        NotifyDisconnected(new WebSocketCloseEventArgs
+        {
+            CloseStatus = result.CloseStatus ?? WebSocketCloseStatus.NormalClosure,
+            CloseStatusDescription = result.CloseStatusDescription,
+            IsServerInitiated = true
+        });
+    }
+
+    /// <summary>
+    /// 将异常映射为语义准确的WebSocket关闭状态码
+    /// </summary>
+    /// <param name="exception">导致连接断开的异常</param>
+    /// <returns>对应的关闭状态码</returns>
+    /// <remarks>
+    /// P1-1 修复：此前所有异常断线一律上报 <see cref="WebSocketCloseStatus.NormalClosure"/>，
+    /// 掩盖了真实断线原因，会误导上层（健康检查、重连策略）判定为"主动关闭"而放弃重连。
+    /// </remarks>
+    private static WebSocketCloseStatus MapExceptionToCloseStatus(Exception exception)
+    {
+        switch (exception)
+        {
+            case WebSocketException wsEx when wsEx.WebSocketErrorCode == WebSocketError.ConnectionClosedPrematurely:
+            case WebSocketException wsEx2 when wsEx2.WebSocketErrorCode == WebSocketError.Faulted:
+                return WebSocketCloseStatus.EndpointUnavailable;
+            case WebSocketException:
+                return WebSocketCloseStatus.ProtocolError;
+            case System.IO.IOException:
+            case System.Net.Sockets.SocketException:
+                return WebSocketCloseStatus.EndpointUnavailable;
+            case TimeoutException:
+                return WebSocketCloseStatus.EndpointUnavailable;
+            case OperationCanceledException:
+                return WebSocketCloseStatus.NormalClosure;
+            default:
+                return WebSocketCloseStatus.InternalServerError;
+        }
     }
 
     /// <summary>
@@ -592,28 +789,57 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
     /// <summary>
     /// 通知连接已断开（线程安全，仅触发一次）
     /// </summary>
-    /// <param name="closeStatus">关闭状态码</param>
-    /// <param name="description">关闭描述</param>
-    /// <param name="isServerInitiated">是否为服务端发起</param>
+    /// <param name="args">断开事件参数</param>
     /// <remarks>
-    /// 使用 <see cref="_disconnectedFired"/> 标志确保对同一次连接只递减一次连接计数并触发一次
-    /// <see cref="Disconnected"/> 事件，避免 <see cref="StartReceivingAsync"/> 异常路径与
-    /// <see cref="DisconnectAsync"/> / <see cref="HandleCloseMessageAsync"/> 之间的重复触发。
+    /// P0-4 修复：使用 <see cref="Interlocked.CompareExchange"/> 实现原子的 check-then-set，
+    /// 确保对同一次连接只递减一次连接计数并触发一次 <see cref="Disconnected"/> 事件。
     /// </remarks>
-    private void NotifyDisconnected(WebSocketCloseStatus closeStatus, string? description, bool isServerInitiated)
+    private void NotifyDisconnected(WebSocketCloseEventArgs args)
     {
-        if (_disconnectedFired)
+        if (!TryClaimDisconnected())
             return;
-        _disconnectedFired = true;
 
-        Interlocked.Decrement(ref _connectionCount);
+        SafeInvokeDisconnected(args);
+    }
 
-        Disconnected?.Invoke(this, new WebSocketCloseEventArgs
+    /// <summary>
+    /// 在锁外安全地触发 <see cref="Connected"/> 事件
+    /// </summary>
+    /// <remarks>P0-5 修复：捕获用户回调异常，避免异常沿接收/连接线程冒泡导致进程崩溃。</remarks>
+    private void SafeInvokeConnected()
+    {
+        var handler = Connected;
+        if (handler == null)
+            return;
+
+        try
         {
-            CloseStatus = closeStatus,
-            CloseStatusDescription = description,
-            IsServerInitiated = isServerInitiated
-        });
+            handler.Invoke(this, EventArgs.Empty);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Connected 事件处理器抛出异常");
+        }
+    }
+
+    /// <summary>
+    /// 在锁外安全地触发 <see cref="Disconnected"/> 事件
+    /// </summary>
+    /// <param name="args">断开事件参数</param>
+    private void SafeInvokeDisconnected(WebSocketCloseEventArgs args)
+    {
+        var handler = Disconnected;
+        if (handler == null)
+            return;
+
+        try
+        {
+            handler.Invoke(this, args);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Disconnected 事件处理器抛出异常");
+        }
     }
 
     /// <summary>
@@ -624,6 +850,7 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
     /// <remarks>
     /// 该方法会创建<see cref="WebSocketErrorEventArgs"/>并触发<see cref="Error"/>事件。
     /// 会自动检测异常类型，设置网络错误和认证错误的标志。
+    /// 用户回调抛出的异常会被捕获并记录，不会影响调用方。
     /// </remarks>
     private void OnError(Exception ex, string context)
     {
@@ -655,47 +882,79 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
                 recoveryResult.ErrorType, recoveryResult.RecoveryRecommendation);
         }
 
-        Error?.Invoke(this, errorArgs);
+        var handler = Error;
+        if (handler == null)
+            return;
+
+        try
+        {
+            handler.Invoke(this, errorArgs);
+        }
+        catch (Exception callbackEx)
+        {
+            _logger.LogError(callbackEx, "Error 事件处理器抛出异常");
+        }
     }
 
     /// <summary>
     /// 异步释放资源
     /// </summary>
+    /// <remarks>
+    /// 会执行限时关闭握手（P1-4）、释放 socket、CTS 与所有信号量。重复调用安全。
+    /// </remarks>
     public async ValueTask DisposeAsync()
     {
         if (_disposed)
             return;
+        _disposed = true;
 
         try
         {
-            _cancellationTokenSource?.Cancel();
-            if (_webSocket != null && _webSocket.State == WebSocketState.Open)
+            var webSocket = _webSocket;
+            var cts = _cancellationTokenSource;
+
+            try { cts?.Cancel(); }
+            catch (ObjectDisposedException) { }
+
+            if (webSocket != null && webSocket.State == WebSocketState.Open)
             {
                 try
                 {
-                    await _webSocket.CloseAsync(
+                    // P1-4 修复：关闭握手限时，超时强制 Abort，避免 Dispose 永久阻塞
+                    using var closeCts = new CancellationTokenSource(CloseHandshakeTimeout);
+                    await webSocket.CloseAsync(
                         WebSocketCloseStatus.NormalClosure,
                         "客户端释放资源",
-                        CancellationToken.None);
+                        closeCts.Token);
                 }
                 catch (Exception ex)
                 {
                     _logger.LogDebug(ex, "关闭 WebSocket 时发生异常（可忽略）");
+                    TryAbort(webSocket);
                 }
             }
-            _webSocket?.Dispose();
-            _cancellationTokenSource?.Dispose();
-            _connectionLock.Dispose();
+
+            if (webSocket != null)
+            {
+                try { webSocket.Dispose(); }
+                catch (Exception ex) { _logger.LogDebug(ex, "释放 WebSocket 时发生异常（可忽略）"); }
+            }
+
+            try { cts?.Dispose(); }
+            catch (Exception ex) { _logger.LogDebug(ex, "释放 CancellationTokenSource 时发生异常（可忽略）"); }
+
+            _webSocket = null;
+            _cancellationTokenSource = null;
             _receiveBuffer = null;
+
+            _connectionLock.Dispose();
+            _sendLock.Dispose();
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "异步释放连接管理器资源时发生错误");
         }
-        finally
-        {
-            _disposed = true;
-        }
+
         GC.SuppressFinalize(this);
     }
 
@@ -703,7 +962,8 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
     /// 释放WebSocket连接管理器占用的资源
     /// </summary>
     /// <remarks>
-    /// 该方法会取消所有正在进行的操作，关闭WebSocket连接，并释放相关资源。
+    /// 该方法会取消所有正在进行的操作，执行限时关闭握手（P1-3 修复：此前直接 Dispose 等价 Abort，
+    /// 与 DisposeAsync 行为不一致，服务端记录为异常断线），并释放相关资源。
     /// 实现IDisposable模式，确保资源正确清理。
     /// 如果已经释放过，重复调用不会产生副作用。
     /// </remarks>
@@ -711,23 +971,59 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
     {
         if (_disposed)
             return;
+        _disposed = true;
 
         try
         {
-            _cancellationTokenSource?.Cancel();
-            _webSocket?.Dispose();
-            _cancellationTokenSource?.Dispose();
-            _connectionLock.Dispose();
+            var webSocket = _webSocket;
+            var cts = _cancellationTokenSource;
+
+            try { cts?.Cancel(); }
+            catch (ObjectDisposedException) { }
+
+            if (webSocket != null && webSocket.State == WebSocketState.Open)
+            {
+                try
+                {
+                    // 同步路径下无法 await，使用限时同步等待完成关闭握手；
+                    // 通过 Task.Run 脱离调用方同步上下文，降低死锁风险（P1-3）。
+                    Task.Run(() => webSocket.CloseAsync(
+                            WebSocketCloseStatus.NormalClosure,
+                            "客户端释放资源",
+                            CancellationToken.None))
+                        .Wait(CloseHandshakeTimeout);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogDebug(ex, "同步释放时关闭握手未正常完成（可忽略）");
+                }
+                finally
+                {
+                    TryAbort(webSocket);
+                }
+            }
+
+            if (webSocket != null)
+            {
+                try { webSocket.Dispose(); }
+                catch (Exception ex) { _logger.LogDebug(ex, "释放 WebSocket 时发生异常（可忽略）"); }
+            }
+
+            try { cts?.Dispose(); }
+            catch (Exception ex) { _logger.LogDebug(ex, "释放 CancellationTokenSource 时发生异常（可忽略）"); }
+
+            _webSocket = null;
+            _cancellationTokenSource = null;
             _receiveBuffer = null;
+
+            _connectionLock.Dispose();
+            _sendLock.Dispose();
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "释放连接管理器资源时发生错误");
         }
-        finally
-        {
-            _disposed = true;
-        }
+
         GC.SuppressFinalize(this);
     }
 }

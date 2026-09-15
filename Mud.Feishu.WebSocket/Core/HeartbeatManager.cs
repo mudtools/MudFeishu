@@ -124,10 +124,16 @@ public class HeartbeatManager
         if (config == null)
             return;
 
-        // PingInterval 单位为秒，转换为毫秒
-        if (config.PingInterval > 0)
+        // P2-2 修复：服务端下发值必须做上下界钳制。
+        // 此前直接写入共享的 Options 实例且无任何限制，服务端（或被劫持的响应）
+        // 可下发超大 PingInterval 使心跳实质停止，或下发 reconnectCount=-1 把客户端
+        // 改成无限重连，形成难以定位的线上故障。
+        // PingInterval 单位为秒，转换为毫秒（钳制 5~300 秒，
+        // 上界放宽以容纳服务端合理的长间隔策略，同时阻断 int.MaxValue 之类的病态值）
+        var pingIntervalSeconds = Clamp(config.PingInterval, 5, 300);
+        if (pingIntervalSeconds > 0)
         {
-            var newIntervalMs = config.PingInterval * 1000;
+            var newIntervalMs = pingIntervalSeconds * 1000;
             if (newIntervalMs != _options.HeartbeatIntervalMs)
             {
                 var oldIntervalMs = _options.HeartbeatIntervalMs;
@@ -138,22 +144,39 @@ public class HeartbeatManager
             }
         }
 
-        // ReconnectInterval 单位为秒，转换为毫秒
-        if (config.ReconnectInterval > 0)
+        // ReconnectInterval 单位为秒，转换为毫秒（钳制 1~300 秒）
+        var reconnectIntervalSeconds = Clamp(config.ReconnectInterval, 1, 300);
+        if (reconnectIntervalSeconds > 0)
         {
-            _options.ReconnectDelayMs = config.ReconnectInterval * 1000;
+            _options.ReconnectDelayMs = reconnectIntervalSeconds * 1000;
             if (_options.EnableLogging)
                 _logger.LogDebug("重连间隔已更新: {Ms}ms", _options.ReconnectDelayMs);
         }
 
         // MaxReconnectAttempts: reconnectCount=-1 表示无限重连
-        //  MaxReconnectAttempts=0 → 无限重连；>0 → 有限重连
+        //  MaxReconnectAttempts=0 → 无限重连；>0 → 有限重连（钳制上限 20 次）
         if (config.ReconnectCount >= -1)
         {
             // Java reconnectCount=-1 映射为 .NET MaxReconnectAttempts=0（无限重连）
-            _options.MaxReconnectAttempts = config.ReconnectCount == -1 ? 0 : config.ReconnectCount;
+            _options.MaxReconnectAttempts = config.ReconnectCount == -1
+                ? 0
+                : Clamp(config.ReconnectCount, 1, 100);
             if (_options.EnableLogging)
                 _logger.LogDebug("最大重连次数已更新: {Count}", _options.MaxReconnectAttempts);
         }
+    }
+
+    /// <summary>
+    /// 将服务端下发的整数配置钳制到合法区间，避免异常值破坏客户端行为。
+    /// </summary>
+    /// <param name="value">原始值</param>
+    /// <param name="min">下界</param>
+    /// <param name="max">上界</param>
+    /// <returns>钳制后的值</returns>
+    private int Clamp(int value, int min, int max)
+    {
+        if (value < min) return min;
+        if (value > max) return max;
+        return value;
     }
 }

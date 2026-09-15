@@ -501,21 +501,17 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable
                 {
                     if (_isRunning)
                     {
-                        // 使用更安全的方式停止服务
-                        // 注意：在Dispose中无法使用await，所以使用同步方式但要做好超时处理
+                        // P1-3 修复：StopAsync 内部包含真实异步 I/O（关闭握手），
+                        // 直接在同步上下文 Wait 是 sync-over-async，可能死锁且 3 秒几乎必然超时。
+                        // 改为 Task.Run 脱离调用方同步上下文后限时等待。
                         try
                         {
-                            // 创建一个超时的CancellationTokenSource
                             using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
-                            using var cts = CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token);
+                            var stopTask = Task.Run(() => StopAsync(timeoutCts.Token));
 
-                            // 尝试停止服务
-                            var stopTask = StopAsync(cts.Token);
-
-                            // 使用WaitAsync来避免死锁（如果可用）或使用短超时的Wait
-                            if (!stopTask.Wait(TimeSpan.FromSeconds(3)))
+                            if (!stopTask.Wait(TimeSpan.FromSeconds(5)))
                             {
-                                _logger.LogWarning("停止WebSocket服务超时（3秒），强制释放资源");
+                                _logger.LogWarning("停止WebSocket服务超时（5秒），强制释放资源");
                             }
                         }
                         catch (OperationCanceledException)

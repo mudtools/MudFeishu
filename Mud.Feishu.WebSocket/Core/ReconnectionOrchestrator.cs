@@ -20,7 +20,8 @@ public class ReconnectionOrchestrator : IReconnectionOrchestrator, IDisposable
     private readonly FeishuWebSocketOptions _options;
 
     private readonly SemaphoreSlim _reconnectLock = new(1, 1);
-    private bool _isReconnecting;
+    // P2-6 修复：该字段被重连线程写、被监控/查询线程读，必须保证可见性
+    private volatile bool _isReconnecting;
     private int _currentAttempt;
     private int _totalReconnectCount;
     private DateTime _lastReconnectAttempt = DateTime.MinValue;
@@ -99,6 +100,9 @@ public class ReconnectionOrchestrator : IReconnectionOrchestrator, IDisposable
             _lastReconnectAttempt = DateTime.UtcNow;
             _lastReconnectReason = reason;
             _currentAttempt = 0;
+            // P2-12 修复：标记是否已达重连上限，避免同一轮重连同时触发
+            // ReconnectLimitReached 与 ReconnectFailed，导致上层重复记录失败指标。
+            var limitReached = false;
 
             _logger.LogInformation("开始重连流程，原因: {Reason}", reason);
 
@@ -113,6 +117,7 @@ public class ReconnectionOrchestrator : IReconnectionOrchestrator, IDisposable
                     _logger.LogError("已达到重连限制 (次数: {Attempt}, 时间: {ElapsedTime})",
                         _currentAttempt, elapsedTime);
 
+                    limitReached = true;
                     OnReconnectLimitReached(_currentAttempt, elapsedTime);
                     break;
                 }
@@ -148,7 +153,7 @@ public class ReconnectionOrchestrator : IReconnectionOrchestrator, IDisposable
                 }
             }
 
-            if (!reconnected && !cancellationToken.IsCancellationRequested)
+            if (!reconnected && !limitReached && !cancellationToken.IsCancellationRequested)
             {
                 OnReconnectFailed(_currentAttempt, _lastError);
             }

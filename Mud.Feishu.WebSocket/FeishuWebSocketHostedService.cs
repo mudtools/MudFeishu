@@ -172,7 +172,19 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
         finally
         {
             _logger.LogInformation("飞书WebSocket后台服务正在停止...");
-            await _webSocketManager.StopAsync(stoppingToken);
+            try
+            {
+                // P1-11 修复：stoppingToken 在 finally 中必然已取消，
+                // 直接传给 StopAsync 会让 _startStopLock.WaitAsync(已取消token) 立即抛
+                // OperationCanceledException，导致关停流程异常收尾且 _isRunning 无法复位。
+                // 这里使用独立的宽限令牌。
+                using var graceCts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                await _webSocketManager.StopAsync(graceCts.Token);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "停止WebSocket服务时发生异常，已强制结束");
+            }
             _logger.LogInformation("飞书WebSocket后台服务已停止");
         }
     }
@@ -239,7 +251,15 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
             try
             {
                 // NEW-WS-01 修复：链接 host stoppingToken，支持优雅关闭
-                using var timeoutCts = new CancellationTokenSource(TimeSpan.FromMinutes(5));
+                // P1-12 修复：重连窗口此前被硬编码为 5 分钟，会让
+                // FeishuWebSocketOptions.MaxTotalReconnectTime（默认 30 分钟）永远无法生效。
+                // 现在以配置值为准（+1 分钟余量用于收尾）。
+                var window = _optionsMonitor.CurrentValue.MaxTotalReconnectTime;
+                if (window <= TimeSpan.Zero)
+                {
+                    window = TimeSpan.FromMinutes(30);
+                }
+                using var timeoutCts = new CancellationTokenSource(window + TimeSpan.FromMinutes(1));
                 using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(_stoppingToken, timeoutCts.Token);
                 await _reconnectionOrchestrator.TryReconnectAsync(reason, linkedCts.Token);
             }

@@ -6,6 +6,7 @@
 // -----------------------------------------------------------------------
 
 using Microsoft.Extensions.Logging;
+using Mud.Feishu.Abstractions.Utilities;
 using Mud.Feishu.WebSocket.DataModels;
 using System.Text.Json;
 
@@ -72,7 +73,7 @@ public class PingPongMessageHandler : JsonMessageHandler
             Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
         };
 
-        var pongJson = JsonSerializer.Serialize(pongMessage, JsonOptions.Default);
+        var pongJson = FeishuJsonAot.Serialize(pongMessage, JsonOptions.Default);
         await _sendMessageCallback(pongJson);
 
         if (_options.EnableLogging)

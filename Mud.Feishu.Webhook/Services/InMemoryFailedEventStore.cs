@@ -58,7 +58,7 @@ public class InMemoryFailedEventStore : IFailedEventStore, IDisposable
         {
             EventId = eventData.EventId,
             EventType = eventData.EventType,
-            SerializedEventData = JsonSerializer.Serialize(eventData, FeishuJsonDefaults.SerializerOptions),
+            SerializedEventData = FeishuJsonAot.Serialize(eventData, FeishuJsonDefaults.SerializerOptions),
             ExceptionMessage = exception.Message,
             ExceptionStackTrace = exception.StackTrace ?? string.Empty,
             FailedAt = DateTime.UtcNow,

@@ -86,6 +86,20 @@ Notes:
 - `IsAotCompatible` / AOT analyzers are enabled only for `net8.0+` (`Directory.Build.props`).
   `AOT006` is suppressed for `netstandard2.0` / `net6.0`, where the source-generated
   `JsonSerializerContext` files are not compiled.
+- `IL2026` / `IL3050` must stay at **0** (`-p:AotStrictMode=true` is part of the quality gate).
+  Rules for keeping it that way:
+  - **Never** call the reflection `JsonSerializer.Serialize<TValue>(TValue, JsonSerializerOptions)` /
+    `Deserialize<TValue>(string, JsonSerializerOptions)` overloads. Use
+    `Mud.Feishu.Abstractions.Utilities.FeishuJsonAot.Serialize/Deserialize` instead — it resolves
+    `JsonTypeInfo` from the options on net8+ (AOT-safe) and transparently falls back to the
+    reflection overload only when `options.TypeInfoResolver` is `null` (where the AOT path is
+    impossible anyway).
+  - Configuration binding is source-generated
+    (`EnableConfigurationBindingGenerator=true`). Consequence: **configuration DTOs must not use
+    `required`** — the generator constructs via `new T()` and emits `CS9035` otherwise. Validate in a
+    `Validate()` method instead (see `FeishuAppConfig`).
+  - `UnconditionalSuppressMessageAttribute` is `internal` on `net10.0` and cannot be referenced from
+    user code; use `#pragma warning disable IL2026, IL3050` with a justification comment.
 - `Tests/Directory.Build.props` and `Demos/Directory.Build.props` **shadow** the root
   `Directory.Build.props`. Any governance property (e.g. `WarningsAsErrors`) must be
   repeated there, otherwise tests/demos become gate blind spots.

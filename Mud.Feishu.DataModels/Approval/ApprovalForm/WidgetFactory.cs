@@ -81,7 +81,7 @@ public class WidgetFactory
         {
             WriteIndented = writeIndented
         };
-        return JsonSerializer.Serialize(widget, options);
+        return FeishuJsonAot.Serialize(widget, options);
     }
 
     /// <summary>
@@ -93,7 +93,7 @@ public class WidgetFactory
         {
             WriteIndented = writeIndented
         };
-        return JsonSerializer.Serialize(widgets, options);
+        return FeishuJsonAot.Serialize(widgets, options);
     }
 }
 

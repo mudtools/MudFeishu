@@ -6,6 +6,7 @@
 // -----------------------------------------------------------------------
 
 using Microsoft.Extensions.Logging;
+using Mud.Feishu.Abstractions.Utilities;
 using System.Text.Json;
 
 namespace Mud.Feishu.WebSocket;
@@ -113,7 +114,7 @@ public class EventSubscriptionManager
                 timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
             };
 
-            var messageJson = JsonSerializer.Serialize(subscriptionMessage, JsonOptions.Default);
+            var messageJson = FeishuJsonAot.Serialize(subscriptionMessage, JsonOptions.Default);
             await _sendMessageCallback(messageJson);
 
             _hasSubscribed = true;

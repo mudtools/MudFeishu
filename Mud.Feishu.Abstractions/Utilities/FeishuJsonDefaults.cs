@@ -64,7 +64,7 @@ public static class FeishuJsonDefaults
                 FeishuJsonContext.Default
             };
             chain.AddRange(_userResolvers);
-            chain.Add(new DefaultJsonTypeInfoResolver());
+            chain.Add(CreateReflectionFallback());
 
             var combined = JsonTypeInfoResolver.Combine(chain.ToArray());
             ApplyOptions(FeishuJsonContext.Default.Options, combined);
@@ -107,7 +107,7 @@ public static class FeishuJsonDefaults
                 chain.Add(r);
             }
         }
-        chain.Add(new DefaultJsonTypeInfoResolver());
+        chain.Add(CreateReflectionFallback());
         return chain.ToArray();
     }
 
@@ -134,7 +134,7 @@ public static class FeishuJsonDefaults
             _userResolvers.Clear();
 #if NET8_0_OR_GREATER
             var combined = JsonTypeInfoResolver.Combine(
-                FeishuJsonContext.Default, new DefaultJsonTypeInfoResolver());
+                FeishuJsonContext.Default, CreateReflectionFallback());
             ApplyOptions(FeishuJsonContext.Default.Options, combined);
 #else
             DeserializerOptions = CreateDefaultDeserializerOptions();
@@ -151,6 +151,25 @@ public static class FeishuJsonDefaults
             WriteIndented = false,
             DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
         };
+
+    /// <summary>
+    /// 创建反射兜底解析器（AOT-3）。
+    /// </summary>
+    /// <remarks>
+    /// <b>此处有意使用反射</b>，因此显式抑制 AOT 分析器告警：
+    /// <list type="bullet">
+    /// <item>源生成 <c>FeishuJsonContext</c> 位于解析器链<b>首位</b>，被覆盖的类型仍走 AOT 安全路径；</item>
+    /// <item>反射兜底仅处理未被任何源生成 Context 覆盖的类型（典型为用户自定义事件负载）。
+    /// 缺少兜底会使 net8+/net10 直接抛 <c>NotSupportedException</c>，而 net6.0/netstandard2.0 正常，
+    /// 构成跨 TFM 行为不一致（见 ARC-3 衍生）；</item>
+    /// <item>真 AOT（<c>PublishAot</c>）下此类未被覆盖的类型本就无法序列化，故该回退不削弱 AOT 保证。</item>
+    /// </list>
+    /// </remarks>
+    // 使用 #pragma 而非 UnconditionalSuppressMessage：后者在 net10.0 上为 internal，无法从用户代码引用。
+    // IL2026/IL3050 在此处为「有意为之」，抑制理由见上方 remarks。
+#pragma warning disable IL2026, IL3050
+    private static DefaultJsonTypeInfoResolver CreateReflectionFallback() => new();
+#pragma warning restore IL2026, IL3050
 
     private static JsonSerializerOptions CreateDefaultSerializerOptions() =>
         new()

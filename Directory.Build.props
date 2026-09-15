@@ -34,6 +34,9 @@
     <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
     <TrimMode>full</TrimMode>
     <WarningsAsErrors>$(WarningsAsErrors);AOT001;AOT002;AOT003;AOT004;AOT007</WarningsAsErrors>
+    <!-- AOT-3：ConfigurationBinder.Bind / Configure<T>(IConfiguration) 的反射实现会触发 IL2026/IL3050。
+         启用配置绑定源生成器后，绑定代码在编译期生成，消除这两类告警。 -->
+    <EnableConfigurationBindingGenerator>true</EnableConfigurationBindingGenerator>
 </PropertyGroup>
 
 <!-- 严格模式（可选）：将 IL2xxx/IL3xxx/AOT00x 升级为错误 -->

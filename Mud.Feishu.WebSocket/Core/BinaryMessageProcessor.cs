@@ -7,6 +7,7 @@
 
 using Microsoft.Extensions.Logging;
 using Mud.Feishu.Abstractions.Services;
+using Mud.Feishu.Abstractions.Utilities;
 using Mud.Feishu.DataModels.WsEndpoint;
 using Mud.Feishu.WebSocket.SocketEventArgs;
 using System.Diagnostics;
@@ -479,7 +480,7 @@ public class BinaryMessageProcessor : IDisposable
             data = Convert.ToBase64String(responseData)
         };
 
-        var ackJson = JsonSerializer.Serialize(responseObj, JsonOptions.Default);
+        var ackJson = FeishuJsonAot.Serialize(responseObj, JsonOptions.Default);
         var ackPayload = Encoding.UTF8.GetBytes(ackJson);
 
         stopwatch.Stop();

@@ -6,6 +6,7 @@
 // -----------------------------------------------------------------------
 
 using Mud.Feishu.Abstractions;
+using Mud.Feishu.Abstractions.Utilities;
 using Mud.Feishu.Webhook.Configuration;
 
 namespace Mud.Feishu.Webhook;
@@ -116,7 +117,11 @@ public class FailedEventRetryService : BackgroundService
                 }
 
                 // 反序列化事件数据
-                var eventData = JsonSerializer.Deserialize<EventData>(failedEvent.SerializedEventData);
+                // AOT-3：改用 AOT 安全入口；同时统一序列化/反序列化选项——
+                // 事件数据由 InMemoryFailedEventStore 以 FeishuJsonDefaults.SerializerOptions（camelCase）写出，
+                // 原实现用无 options 的默认重载读取（大小写敏感），存在 round-trip 失配风险。
+                var eventData = FeishuJsonAot.Deserialize<EventData>(
+                    failedEvent.SerializedEventData, FeishuJsonDefaults.DeserializerOptions);
                 if (eventData == null)
                 {
                     _logger.LogError("无法反序列化事件 {EventId} 的数据，放弃重试", failedEvent.EventId);

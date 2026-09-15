@@ -5,6 +5,7 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using Mud.Feishu.Abstractions.Utilities;
 using Mud.Feishu.Webhook.Configuration;
 using Mud.Feishu.Webhook.Models;
 using Mud.Feishu.Webhook.Utils;
@@ -248,7 +249,7 @@ public class FeishuRateLimitMiddleware : IDisposable
             }
         };
 
-        await context.Response.WriteAsync(JsonSerializer.Serialize(errorResponse, FeishuJsonOptions.Serialize));
+        await context.Response.WriteAsync(FeishuJsonAot.Serialize(errorResponse, FeishuJsonOptions.Serialize));
     }
 
     /// <summary>

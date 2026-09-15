@@ -182,7 +182,7 @@ public class AuthenticationManager
                 }
             };
 
-            var authJson = JsonSerializer.Serialize(authMessage, JsonOptions.Default);
+            var authJson = FeishuJsonAot.Serialize(authMessage, JsonOptions.Default);
 
             lock (_authCompletionLock)
             {
@@ -245,7 +245,7 @@ public class AuthenticationManager
     {
         try
         {
-            var authResponse = JsonSerializer.Deserialize<AuthResponseMessage>(
+            var authResponse = FeishuJsonAot.Deserialize<AuthResponseMessage>(
                 responseMessage, FeishuJsonDefaults.DeserializerOptions);
 
             if (authResponse?.Code == 0)

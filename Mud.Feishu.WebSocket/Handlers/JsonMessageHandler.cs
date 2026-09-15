@@ -6,6 +6,7 @@
 // -----------------------------------------------------------------------
 
 using Microsoft.Extensions.Logging;
+using Mud.Feishu.Abstractions.Utilities;
 using System.Text.Json;
 
 namespace Mud.Feishu.WebSocket.Handlers;
@@ -47,7 +48,7 @@ public abstract class JsonMessageHandler : IMessageHandler
         try
         {
             // 使用 getter 实时获取最新的反序列化选项，确保 resolver 链变更已传播
-            return JsonSerializer.Deserialize<T>(json, JsonOptions.Deserializer);
+            return FeishuJsonAot.Deserialize<T>(json, JsonOptions.Deserializer);
         }
         catch (JsonException ex)
         {

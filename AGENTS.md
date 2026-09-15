@@ -38,10 +38,20 @@ Project uses `.editorconfig` for code style. `TreatWarningsAsErrors` is disabled
 ```bash
 pwsh ./scripts/verify-build.ps1                  # Full gate (build + diagnostics + tests + format)
 pwsh ./scripts/verify-build.ps1 -ClearStaleCache # Also auto-clear a stale Mud.HttpUtils package cache
+pwsh ./scripts/verify-build.ps1 -CacheCheckOnly  # Step 0 only (used by CI before restore)
+pwsh ./scripts/verify-build.ps1 -StrictFormat    # Promote format diffs to a gate failure
 ```
 
 The gate enforces: 0 build errors, 0 `CS1750`, 0 `NU1603` (version drift), and 0
 `HTTPCLIENT0xx` / `MUD001-002` / `FORM0xx` / `AOT001-007` diagnostics.
+
+Step 3 (`AotStrictMode` smoke, net8.0) builds the **9 source projects one by one** — never the whole
+solution with `-f net8.0`: `Demos/` contains single-TFM projects (net9.0 / net10.0) that make MSBuild
+fail with `NETSDK1005`. The step asserts **0 build errors** *and* `AOT00x` / `IL2026` / `IL3050` = 0 —
+asserting only the diagnostic counts is a false green when the build itself fails.
+
+CI runs the same checks: `Restore dependencies` is preceded by `-CacheCheckOnly`, and the `Build` log is
+asserted for the diagnostic whitelist afterwards (`.github/workflows/dotnet-publish.yml`).
 
 ## Dependency version policy (Mud.HttpUtils)
 

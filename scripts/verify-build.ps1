@@ -25,14 +25,20 @@
     将步骤 5 的格式差异视为门禁失败。默认仅告警，因为仓库存在历史格式偏差，
     强制通过会产生与本次改动无关的大量 diff。
 
+.PARAMETER CacheCheckOnly
+    仅执行步骤 0（依赖缓存新鲜度自检）后退出。供 CI 在 Restore 之前调用
+    （CI runner 为全新环境，本地源通常不存在，此时会输出 [SKIP] 并通过）。
+
 .EXAMPLE
     ./scripts/verify-build.ps1
     ./scripts/verify-build.ps1 -ClearStaleCache -StrictFormat
+    ./scripts/verify-build.ps1 -CacheCheckOnly
 #>
 [CmdletBinding()]
 param(
     [switch]$ClearStaleCache,
-    [switch]$StrictFormat
+    [switch]$StrictFormat,
+    [switch]$CacheCheckOnly
 )
 
 $ErrorActionPreference = 'Continue'
@@ -67,8 +73,33 @@ $localSource = 'D:/Repos/MudHttpUtils/artifacts'
 $globalPackages = ((dotnet nuget locals global-packages --list) -replace 'global-packages:\s*', '').Trim()
 $staleDetected = $false
 
+# 版本号以仓库 csproj 中的实际声明为准，而不是"artifacts 里的第一个包"：
+# CACHE-1 事故期间 artifacts 曾同时存在多个历史版本，取第一个会校验到错误的包并给出误导性结论。
+$declaredVersion = ''
+$csprojFiles = Get-ChildItem -Path $repoRoot -Recurse -Filter '*.csproj' -File -ErrorAction SilentlyContinue |
+    Where-Object { $_.FullName -notmatch '\\(obj|bin)\\' } |
+    Select-Object -ExpandProperty FullName
+if ($csprojFiles) {
+    $declaration = Select-String -Path $csprojFiles -Pattern 'Mud\.HttpUtils\.Generator"\s+Version="([^"]+)"' |
+        Select-Object -First 1
+    if ($declaration) {
+        $declaredVersion = $declaration.Matches[0].Groups[1].Value
+    }
+}
+
 if (Test-Path $localSource) {
-    $pkg = Get-ChildItem $localSource -Filter 'Mud.HttpUtils.Generator.*.nupkg' | Select-Object -First 1
+    $pkg = if ($declaredVersion) {
+        Get-ChildItem $localSource -Filter "Mud.HttpUtils.Generator.$declaredVersion.nupkg" | Select-Object -First 1
+    }
+    else {
+        Get-ChildItem $localSource -Filter 'Mud.HttpUtils.Generator.*.nupkg' | Select-Object -First 1
+    }
+
+    if (-not $pkg -and $declaredVersion) {
+        Write-Host "  [WARN] 本地源 $localSource 中缺少 csproj 声明的 Mud.HttpUtils.Generator $declaredVersion。" -ForegroundColor Yellow
+        Write-Host "         声明版本与本地源不一致时还原会回退到 nuget.org 或直接失败，请先发布对应版本的组件包。" -ForegroundColor Yellow
+    }
+
     if ($pkg) {
         $version = ($pkg.Name -replace 'Mud.HttpUtils.Generator\.', '' -replace '\.nupkg$', '')
         $cachedDll = Join-Path $globalPackages "mud.httputils.generator/$version/analyzers/dotnet/cs/Mud.HttpUtils.Generator.dll"
@@ -129,6 +160,17 @@ else {
 
 Assert-Zero -Name '依赖缓存陈旧' -Count $(if ($staleDetected) { 1 } else { 0 }) -Hint '见 CACHE-1'
 
+if ($CacheCheckOnly) {
+    Write-Host ''
+    if ($failures.Count -gt 0) {
+        Write-Host "缓存自检未通过，共 $($failures.Count) 项：" -ForegroundColor Red
+        $failures | ForEach-Object { Write-Host "  - $_" -ForegroundColor Red }
+        exit 1
+    }
+    Write-Host '缓存自检通过（-CacheCheckOnly）。' -ForegroundColor Green
+    exit 0
+}
+
 # ---------------------------------------------------------------- 步骤 1
 Write-Host "[步骤 1] 全 TFM Release 构建" -ForegroundColor Cyan
 
@@ -159,11 +201,38 @@ Assert-Zero -Name 'FORM0xx'       -Count ((Select-String -Path $buildLog -Patter
 Assert-Zero -Name 'AOT001-007'    -Count ((Select-String -Path $buildLog -Pattern 'AOT00[1-7]' -AllMatches).Count) -Hint 'AOT006 已在 netstandard2.0/net6.0 豁免，net8+ 必须净零'
 
 # ---------------------------------------------------------------- 步骤 3
-Write-Host "[步骤 3] AotStrictMode 冒烟（net8.0）" -ForegroundColor Cyan
+Write-Host "[步骤 3] AotStrictMode 冒烟（net8.0，源项目）" -ForegroundColor Cyan
+# 两处必须注意，否则本步骤会「假绿」：
+#  ① 不能对整个解决方案使用 -f net8.0。Demos 下存在单 TFM 项目（net9.0/net10.0/net8.0 各不相同），
+#     MSBuild 会报 NETSDK1005「资产文件没有 net8.0 的目标」，构建实际失败；
+#  ② 只断言 AOT00x 计数会掩盖上述失败（构建失败时 AOT00x 天然为 0），必须同时断言错误数=0。
+#     历史实现即因此长期输出 [ OK ]，实际从未完成过一次严格的 AOT 冒烟。
+# 因此改为逐个构建**源项目**（均含 net8.0 目标），并同时断言错误数与 IL2026/IL3050。
+# 注意：只取仓库根下的 Mud.Feishu* **源项目目录**（Tests/Demos 不在 AOT-3 范围内：
+#   - Tests 被 Tests/Directory.Build.props 遮蔽，不启用 AOT 分析器；
+#   - Demos 被 Demos/Directory.Build.props 遮蔽，且 Mud.Feishu.AotVerification 有意保留反射调用
+#     以验证「用户自行使用反射 JsonSerializer 仍可工作」，纳入严格模式只会产生与库无关的噪音）。
+$sourceRoots = @(Get-ChildItem -Path $repoRoot -Directory -Filter 'Mud.Feishu*' -ErrorAction SilentlyContinue)
+$strictProjects = @($sourceRoots |
+    ForEach-Object { Get-ChildItem -Path $_.FullName -Filter '*.csproj' -File -ErrorAction SilentlyContinue } |
+    Where-Object { $_.FullName -notmatch '\\(obj|bin)\\' } |
+    Sort-Object FullName)
 $strictLog = Join-Path $env:TEMP "mudfeishu-verify-strict-$([guid]::NewGuid().ToString('N')).log"
-dotnet build $solution -c Release -f net8.0 -p:AotStrictMode=true --nologo 2>&1 | Tee-Object -FilePath $strictLog | Out-Null
-$strictAot = (Select-String -Path $strictLog -Pattern 'AOT00[1-7]' -AllMatches).Count
-Assert-Zero -Name 'AotStrictMode AOT00x' -Count $strictAot -Hint "详见 $strictLog"
+if ($strictProjects.Count -eq 0) {
+    $script:failures.Add('未找到任何源项目，AotStrictMode 冒烟无法执行')
+    Write-Host '  [FAIL] 未找到任何源项目' -ForegroundColor Red
+}
+else {
+    foreach ($proj in $strictProjects) {
+        Write-Host "  -> $($proj.Name)" -ForegroundColor DarkGray
+        dotnet build $proj.FullName -c Release -f net8.0 -p:AotStrictMode=true --nologo 2>&1 |
+            Tee-Object -FilePath $strictLog -Append | Out-Null
+    }
+    Assert-Zero -Name 'AotStrictMode 构建错误' -Count ((Select-String -Path $strictLog -Pattern ': error ' -AllMatches).Count) -Hint "详见 $strictLog"
+    Assert-Zero -Name 'AotStrictMode AOT00x'    -Count ((Select-String -Path $strictLog -Pattern 'AOT00[1-7]' -AllMatches).Count) -Hint "详见 $strictLog"
+    Assert-Zero -Name 'AotStrictMode IL2026'    -Count ((Select-String -Path $strictLog -Pattern 'IL2026' -AllMatches).Count) -Hint "详见 $strictLog"
+    Assert-Zero -Name 'AotStrictMode IL3050'    -Count ((Select-String -Path $strictLog -Pattern 'IL3050' -AllMatches).Count) -Hint "详见 $strictLog"
+}
 
 # ---------------------------------------------------------------- 步骤 4
 Write-Host "[步骤 4] 单元测试" -ForegroundColor Cyan

@@ -1,5 +1,84 @@
 # Mud.Feishu 更新日志
 
+## [Unreleased]
+
+> 对应《.docs/MudHttpUtils-2.0.4-Repair-and-Enhancement-Plan.md》的 M1–M5 全部条目（Mud.HttpUtils 同步升级至 2.0.5）。
+> 本项目尚未发布，以下破坏性变更无需数据迁移。
+
+### ⚠️ 破坏性变更 / 行为变更
+
+- **多应用 Redis 令牌键布局变更（TOK-1）**：`PerAppRedisTokenStoreFactory` 取代
+  `SingletonFeishuTokenStoreFactory`，Redis 键由 `feishu:token:*` 改为 `feishu:{appKey}:token*`，
+  与 Memory 路径键布局对齐。修复前多应用共享同一键空间会互相覆盖（随机 401 / 令牌串号）。
+  **键布局已变更，升级后旧键不再被读取**（未发布版本，无存量数据）。
+- **`FeishuAppConfig` 移除 `required`**：配置绑定改为源生成（AOT 安全），而绑定源生成器以 `new T()`
+  构造实例、无法满足 `required` 成员。非空/格式/长度校验统一由 `FeishuAppConfig.Validate()` 承担
+  （`AddFeishuApp` 与 `FeishuAppManager.AddApp` 均会调用）。
+- **增强 HttpClient 装配基线化（ARC-2 Step 1）**：`FeishuAppManager` 的客户端装配改为以
+  `IOptions<EnhancedHttpClientOptions>` 为基线。此前手工 `new` 导致 10 个字段静默取默认值
+  （`RequestBodySerialization` / `ExceptionRedactor` / `MaxExceptionContentLength` / `CaptureRequestContent` /
+  `UrlResolution` / `MaxSuccessResponseBytes` / `HttpVersion` / `HttpVersionPolicy` /
+  `HttpRequestMessageOptions` / `JsonTypeInfoResolver`），现均与注册路径同源；
+  Mud.HttpUtils 2.0.5 新增的 `AppAccessAuthorizer` 亦已同步（由属性契约守卫测试守护）。
+- **配置热更新默认开启（ARC-1）**：新增 `FeishuAppOptions.EnableConfigReload`，**默认 `true`**。
+  `appsettings.json` 变更会按 AppKey 增量应用到 `IFeishuAppManager`（新增/重建/移除/默认应用切换）。
+  如需「配置变更需重启」的旧语义，显式配置 `EnableConfigReload = false`。
+  注意：应用的 `BaseAddress` / `Timeout` 由命名客户端注册固化，这类字段仍需重启或重建应用上下文才生效。
+
+### ✨ Added
+
+- **`IFeishuHttpClientFactory`**（`Mud.Feishu.Abstractions.Authentication.MultiApp`）：收敛 `FeishuAppManager`
+  内散装装配，使「注册路径」与「创建路径」共享同一份配置基线。
+- **令牌存储加密（ENH-1）**：`EncryptedTokenStore` / `EncryptedUserTokenStore` /
+  `EncryptedFeishuTokenStoreFactory` + `FeishuAppOptions.EnableTokenEncryption`（默认 `false`，按需开启；
+  未注册 `IEncryptionProvider` 时降级为明文并告警；解密失败按缓存未命中处理）。
+- **多应用配置热更新（ARC-1）**：`FeishuAppManager` 订阅 `IOptionsMonitor<List<FeishuAppConfig>>.OnChange`，
+  Diff 增量应用 + 快照节流，实现 `IDisposable`。
+- **AOT 安全 JSON 入口** `Mud.Feishu.Abstractions.Utilities.FeishuJsonAot`：内部改用
+  `JsonSerializerOptions.GetTypeInfo` + `JsonTypeInfo` 重载，语义与泛型重载一致；`TypeInfoResolver` 为
+  `null` 时保留反射路径（契约与原行为一致，`Deserialize(null)` 仍抛 `ArgumentNullException`）。
+- **门禁脚本** `scripts/verify-build.ps1`：依赖缓存新鲜度自检（SHA256）、全 TFM 构建与诊断白名单断言、
+  `AotStrictMode` 冒烟（净零错误 + `AOT00x` / `IL2026` / `IL3050`）、单元测试（按实际失败数）、
+  格式校验（默认告警，`-StrictFormat` 可阻断）；`-CacheCheckOnly` 供 CI 在 Restore 前调用。
+- `FeishuJsonDefaults.Reset()`：供测试隔离静态 resolver 状态。
+
+### 🐛 Fixed
+
+- **net8+/net10 反序列化未覆盖类型直接抛 `NotSupportedException`**（跨 TFM 行为不一致）：
+  `FeishuJsonDefaults` 的 net8+ 解析器链补齐**链尾反射兜底**，并改为**幂等**（按引用去重）、
+  全程加锁消除静态状态竞态；`SerializerOptions.PropertyNameCaseInsensitive` 与反序列化选项对齐。
+- **`IFeishuAuthentication` 从未注册**，导致任何触发应用上下文创建的路径都抛
+  `No service for type 'IFeishuAuthentication' has been registered.`：现调用源生成器产出的
+  `AddAuthenticationWebApiHttpClient()`（置于 `AddMudHttpClient` 循环之后，保证执行器注册优先）。
+- **多应用 Redis 令牌键无 `appKey` 维度**（TOK-1，见破坏性变更）；并修复
+  `RedisUserTokenStore.GetTokenTypesAsync` / `RedisTokenStore.GetTokenTypesAsync` 对含 `:` 的
+  `tokenType` 的截断（TM-04）。
+- **开放泛型标注 `[HttpJsonSerializable]`** 导致 net8+/net10 `AOT006` 与 `SYSLIB1030`
+  （`WidgetBase<TValue>` / `SelectSettingData<T>` / `TasksSectionsInfo<T>`）：移除三处标注，
+  保留闭合子类覆盖，并新增架构约束测试防止复发。
+- **配置热更新下 `UpdateApp` 报「未找到应用」**：改用 `RegisterApp`（懒加载应用可能尚未进入基类字典）。
+- **`FailedEventRetryService` 反序列化未传 options**（默认大小写敏感）与存储写入端
+  （camelCase）失配，统一为 `FeishuJsonDefaults.DeserializerOptions`。
+- **204 条 `NU1603` 版本漂移**：5 个项目 7 处 `PackageReference` 由 `2.0.3` 统一升级为 **2.0.5**；
+  另修复 `Tests/*` 中不存在的 `Microsoft.Extensions.Configuration 8.0.2` → `8.0.0`。
+- 低 TFM（`netstandard2.0` / `net6.0`）上 7486 条无语义的 `AOT006` 噪音，按 TFM 精确豁免
+  （`NoWarn` + `WarningsNotAsErrors`，三份 props 同步）。
+
+### 👷 CI/CD
+
+- `.github/workflows/dotnet-publish.yml`：`Restore` 前加入依赖缓存自检（`-CacheCheckOnly`），
+  `Build` 日志落盘后断言 `NU1603` / `CS1750` / `HTTPCLIENT0xx` / `MUD001-002` / `FORM0xx` / `AOT001-007` 全为 0；
+  移除 `--filter "FullyQualifiedName!~Mud.Feishu.Tests"`，使 `Mud.Feishu.Tests` 中的
+  `AotJsonSerializableCoverageTests` 等架构约束守卫在 CI 中真实生效。
+
+### 📝 Documentation
+
+- `AGENTS.md`：补充质量门禁命令、`Mud.HttpUtils` 本地源缓存刷新三步法
+  （清缓存 → `dotnet clean` → 构建）与 `TypeLoadException` 症状识别、`Tests`/`Demos` props
+  遮蔽根 props 的注意事项。
+- `.docs/MudHttpUtils-2.0.4-Repair-and-Enhancement-Plan.md`：新增 §8.2（逐条验证与缺陷修复记录）
+  与附录 E（OBS-1 ADR：用户令牌缓存键与 `ScopeKeyBuilder`）。
+
 ## [2.1.5] - 2026-06-25
 
 ### ✨ Added

@@ -1,5 +1,47 @@
 # Mud.Feishu Change Log
 
+## [Unreleased]
+
+> Corresponds to M1–M5 of `.docs/MudHttpUtils-2.0.4-Repair-and-Enhancement-Plan.md` (Mud.HttpUtils upgraded to 2.0.5).
+> The project is not released yet, so the breaking changes below require no data migration.
+> See `CHANGELOG.md` for the full list.
+
+### ⚠️ Breaking Changes / Behavior Changes
+
+- **Redis token key layout changed (TOK-1)**: `PerAppRedisTokenStoreFactory` replaces
+  `SingletonFeishuTokenStoreFactory`; keys move from `feishu:token:*` to `feishu:{appKey}:token*`,
+  matching the in-memory layout. Previously all apps shared one key space and overwrote each other's
+  tokens (random 401s / crossed tokens).
+- **`FeishuAppConfig` no longer uses `required`**: configuration binding is now source-generated
+  (AOT-safe) and cannot satisfy `required` members. Validation is fully covered by
+  `FeishuAppConfig.Validate()`.
+- **Enhanced HttpClient assembly is now baseline-driven (ARC-2 Step 1)**: the client assembly in
+  `FeishuAppManager` starts from `IOptions<EnhancedHttpClientOptions>`, so the 10 fields that silently
+  fell back to defaults (plus `AppAccessAuthorizer` added in 2.0.5) now take effect.
+- **Configuration hot reload is enabled by default (ARC-1)**: `FeishuAppOptions.EnableConfigReload`
+  defaults to `true`. Set it to `false` to restore the previous "restart required" semantics.
+  `BaseAddress` / `Timeout` are still baked into the named client registration.
+
+### ✨ Added
+
+- `IFeishuHttpClientFactory` for unified per-app client assembly.
+- Token store encryption (ENH-1): `EncryptedTokenStore` / `EncryptedUserTokenStore` /
+  `EncryptedFeishuTokenStoreFactory` + `FeishuAppOptions.EnableTokenEncryption` (off by default).
+- Multi-app configuration hot reload (ARC-1).
+- AOT-safe JSON entry point `FeishuJsonAot`.
+- Build/quality gate script `scripts/verify-build.ps1` and CI wiring for cache freshness + diagnostics.
+
+### 🐛 Fixed
+
+- net8.0+/net10.0 threw `NotSupportedException` for types not covered by a source-generated
+  `JsonSerializerContext` (cross-TFM inconsistency); the resolver chain now ends with a reflection
+  fallback and `ConfigureUserResolver` is idempotent and thread-safe.
+- `IFeishuAuthentication` was never registered, making the multi-app context path unreachable.
+- Multi-app Redis token keys had no `appKey` dimension; `GetTokenTypesAsync` truncated token types
+  containing `:` (TM-04).
+- `[HttpJsonSerializable]` on open generics caused `AOT006` / `SYSLIB1030` on net8.0+.
+- 204 `NU1603` version-drift warnings (5 projects, 7 `PackageReference` entries now pinned to 2.0.5).
+
 ## [2.0.7] - 2026-04-07
 
 ### ✨ Added

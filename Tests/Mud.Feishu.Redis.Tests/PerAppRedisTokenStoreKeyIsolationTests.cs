@@ -22,7 +22,7 @@ namespace Mud.Feishu.Redis.Tests;
 /// </remarks>
 public class PerAppRedisTokenStoreKeyIsolationTests
 {
-    private static (PerAppRedisTokenStoreFactory Factory, List<string> Keys) BuildFactory()
+    private static (PerAppRedisTokenStoreFactory Factory, List<string> Keys) BuildFactory(IEnumerable<string>? serverKeys = null)
     {
         var accessedKeys = new List<string>();
 
@@ -35,6 +35,29 @@ public class PerAppRedisTokenStoreKeyIsolationTests
 
         var redis = new Mock<IConnectionMultiplexer>();
         redis.Setup(r => r.GetDatabase(It.IsAny<int>(), It.IsAny<object>())).Returns(db.Object);
+
+        if (serverKeys != null)
+        {
+            // GetTokenTypesAsync / ClearAsync 走 GetServer(...).Keys(...)，需要额外的服务器端桩。
+            var server = new Mock<IServer>();
+            server.Setup(s => s.IsConnected).Returns(true);
+            server.Setup(s => s.IsReplica).Returns(false);
+            // StackExchange.Redis 2.10 的 4 参数 Keys(...) 重载内部转发到 6 参数重载
+            // （database, pattern, pageSize, cursor, pageOffset, flags），
+            // 因此在 Moq 代理上被拦截的是 6 参数版本，必须按该签名做桩。
+            server.Setup(s => s.Keys(
+                    It.IsAny<int>(),
+                    It.IsAny<RedisValue>(),
+                    It.IsAny<int>(),
+                    It.IsAny<long>(),
+                    It.IsAny<int>(),
+                    It.IsAny<CommandFlags>()))
+                .Returns(serverKeys.Select(k => (RedisKey)k));
+
+            var endpoint = new System.Net.DnsEndPoint("localhost", 6379);
+            redis.Setup(r => r.GetEndPoints(It.IsAny<bool>())).Returns(new System.Net.EndPoint[] { endpoint });
+            redis.Setup(r => r.GetServer(It.IsAny<System.Net.EndPoint>(), It.IsAny<object>())).Returns(server.Object);
+        }
 
         return (new PerAppRedisTokenStoreFactory(redis.Object), accessedKeys);
     }
@@ -114,5 +137,47 @@ public class PerAppRedisTokenStoreKeyIsolationTests
         await store.GetAccessTokenAsync("tenant:cli_a");
 
         keys[0].Should().Be("feishu:cli_a:token:tenant:cli_a:access");
+    }
+
+    /// <summary>
+    /// TM-04 回归：<c>GetTokenTypesAsync</c> 必须返回**完整** tokenType。
+    /// 原实现按 <c>Split(':')[0]</c> 取首段，会把 <c>tenant:cli_a</c> 截断为 <c>tenant</c>，
+    /// 导致上层无法按 tokenType 精确失效/刷新令牌。修复方式为剥离已知前缀与 <c>:access</c> 后缀。
+    /// </summary>
+    /// <remarks>
+    /// 这里必须走 <c>GetServer(...).Keys(...)</c> 路径（而非仅校验键构造），
+    /// 否则修复本身不会被覆盖：键构造一直是对的，出问题的是键 → tokenType 的反解。
+    /// </remarks>
+    [Fact]
+    public async Task GetTokenTypesAsync_ShouldReturnFullTokenType_WhenTokenTypeContainsColon()
+    {
+        var (factory, _) = BuildFactory(new[]
+        {
+            "feishu:cli_a:token:tenant:cli_a:access",   // 期望：tenant:cli_a
+            "feishu:cli_a:token:tenant:cli_a:refresh",  // refresh 键应被忽略
+            "feishu:cli_a:token:app:cli_a:access"       // 期望：app:cli_a
+        });
+
+        var (store, _) = factory.Create("cli_a");
+        var tokenTypes = (await store.GetTokenTypesAsync()).ToList();
+
+        tokenTypes.Should().BeEquivalentTo(new[] { "tenant:cli_a", "app:cli_a" });
+    }
+
+    /// <summary>
+    /// TM-04 回归（用户令牌路径）：<c>RedisUserTokenStore.GetTokenTypesAsync</c> 同样不得截断 tokenType。
+    /// </summary>
+    [Fact]
+    public async Task UserTokenStore_GetTokenTypesAsync_ShouldReturnFullTokenType_WhenTokenTypeContainsColon()
+    {
+        var (factory, _) = BuildFactory(new[]
+        {
+            "feishu:cli_a:token:user:ou_1:user:cli_a:access"
+        });
+
+        var (_, userStore) = factory.Create("cli_a");
+        var tokenTypes = (await userStore!.GetTokenTypesAsync("ou_1")).ToList();
+
+        tokenTypes.Should().ContainSingle().Which.Should().Be("user:cli_a");
     }
 }

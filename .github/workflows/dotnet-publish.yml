@@ -47,13 +47,50 @@ jobs:
         with:
           dotnet-version: ${{ env.DOTNET_VERSIONS }}
 
+      # 步骤2.5：依赖缓存新鲜度自检（CACHE-1）
+      # 本地源（nuget.config → D:/Repos/MudHttpUtils/artifacts）仅存在于开发机/自托管环境，
+      # 托管 runner 上脚本会输出 [SKIP] 并以 0 退出；自托管 runner 上则能真正拦截
+      # 「组件同版本覆盖打包 → 下游缓存陈旧 → CS1750 假性断路」这一类事故。
+      - name: Dependency cache freshness self-check (CACHE-1)
+        shell: pwsh
+        run: '& ./scripts/verify-build.ps1 -CacheCheckOnly'
+
       # 步骤3：还原依赖包
       - name: Restore dependencies
         run: dotnet restore ${{ env.SOLUTION_FILE }}
 
-      # 步骤4：编译整个解决方案
+      # 步骤4：编译整个解决方案（输出同时写入日志，供下一步做诊断断言）
       - name: Build
-        run: dotnet build ${{ env.SOLUTION_FILE }} --no-restore --configuration ${{ env.CONFIGURATION }}
+        shell: pwsh
+        run: |
+          $log = Join-Path $env:RUNNER_TEMP 'mudfeishu-build.log'
+          dotnet build $env:SOLUTION_FILE --no-restore --configuration $env:CONFIGURATION --nologo 2>&1 |
+            Tee-Object -FilePath $log
+          if ($LASTEXITCODE -ne 0) { Write-Host '构建失败。' -ForegroundColor Red; exit 1 }
+          "MUD_BUILD_LOG=$log" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      # 步骤4.5：诊断白名单断言（与 scripts/verify-build.ps1 步骤 2 的判定口径保持一致）
+      - name: Assert diagnostics whitelist
+        shell: pwsh
+        run: |
+          $log = $env:MUD_BUILD_LOG
+          $failed = $false
+          function Assert-Zero([string]$name, [int]$count, [string]$hint = '') {
+            if ($count -ne 0) {
+              Write-Host "  [FAIL] $name = $count $hint" -ForegroundColor Red
+              $script:failed = $true
+            }
+            else {
+              Write-Host "  [ OK ] $name = 0" -ForegroundColor Green
+            }
+          }
+          Assert-Zero 'NU1603 版本漂移'  (Select-String -Path $log -Pattern 'NU1603' -AllMatches).Count '声明版本与解析版本不一致'
+          Assert-Zero 'CS1750 断路'      (Select-String -Path $log -Pattern 'CS1750' -AllMatches).Count '生成器默认值回归或依赖缓存陈旧'
+          Assert-Zero 'HTTPCLIENT0xx'    (Select-String -Path $log -Pattern 'HTTPCLIENT0\d\d' -AllMatches).Count
+          Assert-Zero 'MUD001/002'       (Select-String -Path $log -Pattern 'MUD00[12]' -AllMatches).Count
+          Assert-Zero 'FORM0xx'          (Select-String -Path $log -Pattern 'FORM0\d\d' -AllMatches).Count
+          Assert-Zero 'AOT001-007'       (Select-String -Path $log -Pattern 'AOT00[1-7]' -AllMatches).Count 'AOT006 已在 ns2.0/net6.0 豁免，net8+ 必须净零'
+          if ($failed) { exit 1 }
 
       # P3-1：AOT 发布验证（仅 Linux，net8.0）
       - name: AOT Publish Verification
@@ -69,9 +106,12 @@ jobs:
           test -f "Demos/Mud.Feishu.AotVerification/bin/${{ env.CONFIGURATION }}/net8.0/linux-x64/publish/Mud.Feishu.AotVerification" || exit 1
           echo "✅ AOT publish verification passed"
 
-      # 步骤5：运行单元测试（排除不完善的项目）
+      # 步骤5：运行单元测试
+      # 此前使用 --filter "FullyQualifiedName!~Mud.Feishu.Tests" 排除了 Mud.Feishu.Tests，
+      # 而 AOT-2 的架构约束守卫 AotJsonSerializableCoverageTests 正位于该项目 —— 等于门禁对新加的反回归守卫无效。
+      # 该项目 395 个用例在 net6.0/net8.0/net10.0 上均全绿（全部基于 Moq，无外部依赖），故恢复执行。
       - name: Run tests
-        run: dotnet test ${{ env.SOLUTION_FILE }} --no-build --configuration ${{ env.CONFIGURATION }} --logger trx --verbosity normal --filter "FullyQualifiedName!~Mud.Feishu.Tests"
+        run: dotnet test ${{ env.SOLUTION_FILE }} --no-build --configuration ${{ env.CONFIGURATION }} --logger trx --verbosity normal
 
       # 步骤6：上传测试报告，方便在GitHub上查看
       - name: Publish test results

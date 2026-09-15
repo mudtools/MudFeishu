@@ -41,9 +41,16 @@ public interface IFeishuHttpClientFactory
     IEnhancedHttpClient Create(string appKey, TokenRecoveryExecutor recoveryExecutor);
 
     /// <summary>
-    /// 创建不带令牌恢复的基础客户端，供 <c>IFeishuAuthentication</c> 等认证接口使用
-    /// （避免恢复逻辑递归触发令牌请求）。
+    /// 创建不带令牌恢复（401 自动恢复）装饰的基础客户端。
     /// </summary>
+    /// <remarks>
+    /// 适用于「不得递归触发令牌请求」的场景（例如使用方自行调用认证接口获取令牌）。
+    /// <para>
+    /// <b>注意</b>：<c>IFeishuAuthentication</c> 的注册路径（ARC-6）已改为从 DI 解析源生成的实现，
+    /// 其 HttpClient 由 <c>AddMudHttpClient</c> 提供，<b>不再经由本方法</b>；
+    /// 本方法当前没有仓库内的生产调用方，保留为装配能力出口。
+    /// </para>
+    /// </remarks>
     /// <param name="appKey">应用唯一标识。</param>
     /// <returns>基础增强 HTTP 客户端。</returns>
     IEnhancedHttpClient CreateBasic(string appKey);

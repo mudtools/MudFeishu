@@ -178,7 +178,16 @@ public interface IFeishuTenantV1HelpDeskTicket : IFeishuV1HelpDeskTicket
     /// <para>默认值：null</para>
     /// </param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
-    /// <returns>返回文件二进制流</returns>
+    /// <returns>
+    /// 成功时返回响应的二进制内容（取自 <c>HttpContent.ReadAsByteArrayAsync</c>，不会为 <see langword="null"/>；空响应体对应空数组）。
+    /// </returns>
+    /// <exception cref="ApiException">
+    /// 服务端返回非 2xx 状态码时抛出（由 HTTP 执行器统一抛出，异常携带 <c>StatusCode</c> 与响应内容）。
+    /// <para>
+    /// 注意：飞书部分业务错误以 HTTP 200 + JSON 错误体（<c>{"code":...,"msg":...}</c>）返回，
+    /// 此时本方法会把错误 JSON 当作文件内容返回。落盘前应按 <c>Content-Type</c> 自检，详见 <c>documents/ErrorHandling.md</c>。
+    /// </para>
+    /// </exception>
     [Get("/open-apis/helpdesk/v1/ticket_images")]
     Task<byte[]?> GetTicketImageAsync(
         [Query] string ticket_id,

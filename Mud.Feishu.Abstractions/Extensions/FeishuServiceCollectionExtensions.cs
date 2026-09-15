@@ -90,7 +90,8 @@ public static class FeishuServiceCollectionExtensions
 
         foreach (var config in configs)
         {
-            var clientName = $"feishu-{config.AppKey}";
+            var appKey = config.AppKey;
+            var clientName = $"feishu-{appKey}";
             var baseAddress = config.BaseUrl ?? Consts.DefaultFeishuBaseUrl;
             bool allowCustomBaseUrl = config?.AllowCustomBaseUrl ?? false;
             var timeOut = config?.TimeOut ?? 30;
@@ -103,7 +104,7 @@ public static class FeishuServiceCollectionExtensions
             // 令牌恢复由 FeishuAppManager.CreateAppContext 中创建的 TokenRecoveryEnhancedClient 实现，
             // 不再需要在 Handler 管道中注册 LazyFeishuTokenRecoveryHandler。
             // 这消除了 IFeishuAppManager 构造期间的循环依赖问题。
-            services.AddMudHttpClient(
+            var httpClientBuilder = services.AddMudHttpClient(
                 clientName,
                 client =>
                 {
@@ -118,6 +119,42 @@ public static class FeishuServiceCollectionExtensions
             // 无需在此重复链式调用。重复注册会导致同一 named client 的 HttpMessageHandlerBuilderActions
             // 包含两个 TracingDelegatingHandler 工厂委托，在批量测试场景下触发
             // "The 'InnerHandler' property must be null" 异常（HttpMessageHandlerBuilder 禁止复用 DelegatingHandler）。
+
+            // ARC-7：BaseUrl / TimeOut 热更新。
+            // 上面注册委托捕获的是**注册期**快照，而 IHttpClientFactory 的命名客户端配置委托虽然每次
+            // CreateClient 都会执行，却不会重新读取最新配置 —— 因此 IConfiguration 变更后 BaseUrl 仍为旧值
+            // （多区域切换 feishu.cn ↔ larksuite.com 只能靠重启）。
+            // 这里追加一个带 IServiceProvider 的配置动作（官方支持的 DI 感知配置入口），
+            // 在每次 CreateClient 时从 IOptionsMonitor<List<FeishuAppConfig>> 读取**当前**配置，
+            // 仅在发生实际变化时覆盖 BaseAddress / Timeout，从而让热更新链路真正贯通到命名客户端。
+            //
+            // 为什么不用组件 HttpClientFactoryEnhancedClient.WithBaseAddress：
+            // TokenRecoveryEnhancedClient（sealed）未重写 WithBaseAddress，基类实现返回的是
+            // **普通 HttpClientFactoryEnhancedClient**，既丢失令牌恢复能力又会令 (TokenRecoveryEnhancedClient)
+            // 强制转换抛 InvalidCastException。详见 .docs/MudHttpUtils-2.0.5-Review-Remediation-Plan.md 附录 B-1。
+            httpClientBuilder.ConfigureHttpClient((sp, client) =>
+            {
+                var latest = ResolveLatestAppConfig(sp, appKey);
+                if (latest == null)
+                {
+                    // 可选依赖缺失（如仅注册了 HttpClient 而未接配置管线）时保持注册期快照，行为与修复前一致。
+                    return;
+                }
+
+                var latestBaseUrl = string.IsNullOrWhiteSpace(latest.BaseUrl)
+                    ? Consts.DefaultFeishuBaseUrl
+                    : latest.BaseUrl;
+                if (!string.Equals(latestBaseUrl, baseAddress, StringComparison.Ordinal))
+                {
+                    UrlValidator.ValidateBaseUrl(latestBaseUrl, latest.AllowCustomBaseUrl);
+                    client.BaseAddress = new Uri(latestBaseUrl);
+                }
+
+                if (latest.TimeOut > 0 && latest.TimeOut != timeOut)
+                {
+                    client.Timeout = TimeSpan.FromSeconds(latest.TimeOut);
+                }
+            });
             }
 
         var defaultConfig = configs.FirstOrDefault(c => c.IsDefault) ?? configs.FirstOrDefault();
@@ -141,11 +178,17 @@ public static class FeishuServiceCollectionExtensions
 
         // P1-4: 注册 per-app 弹性策略解析器，使不同应用可使用独立的重试/超时/熝断配置。
         // DefaultHttpRequestExecutor 优先使用 per-app 解析器，未命中时回退到全局解析器（defaultConfig 配置）。
+        //
+        // ARC-7b：选项工厂改为读取**当前**配置（IOptionsMonitor）而非注册期快照 `configs`，
+        // 否则配置热更新后「新增应用」永远拿不到 per-app 弹性策略（只能落到全局回退）。
+        // 残余限制：AppResiliencePolicyResolver 会按 appKey 缓存已解析的策略实例，且清空缓存所需的
+        // InvalidateAll 未暴露在 IAppResiliencePolicyResolver 接口上（仅具体类型可见），
+        // 因此**已解析过**的应用其弹性参数变更仍需重启进程 —— 见组件侧需求 COMP-4。
         services.TryAddSingleton<IAppResiliencePolicyResolver>(sp =>
         {
             var logger = sp.GetService<ILogger<AppResiliencePolicyResolver>>();
             return new AppResiliencePolicyResolver(
-                appKey => CreateResilienceOptionsFromConfig(configs, appKey),
+                appKey => CreateResilienceOptionsFromConfig(ResolveLatestAppConfigs(sp) ?? configs, appKey),
                 logger);
         });
 
@@ -360,6 +403,55 @@ public static class FeishuServiceCollectionExtensions
 
         throw new InvalidOperationException(
             $"无法从 IFeishuTokenStoreFactory 的注册描述符（{descriptor.Lifetime}）构建实例。");
+    }
+
+    /// <summary>
+    /// ARC-7：从 <see cref="IOptionsMonitor{T}"/> 读取指定应用在**当前时刻**的配置。
+    /// </summary>
+    /// <param name="serviceProvider">服务提供者（来自 <c>ConfigureHttpClient(IServiceProvider, HttpClient)</c>）。</param>
+    /// <param name="appKey">应用唯一标识（严格序数比较）。</param>
+    /// <returns>匹配到的配置；未接入配置管线或应用已下线时返回 <c>null</c>。</returns>
+    /// <remarks>
+    /// <para>
+    /// 该读取发生在每次 <c>IHttpClientFactory.CreateClient</c> 时（而非注册期），因此能拿到
+    /// <c>IConfiguration</c> 重载后的最新值。成本为一次 OptionsMonitor 缓存读取 + 一次线性遍历
+    /// （应用数量为个位数），且仅在创建客户端时发生，不在请求热路径上。
+    /// </para>
+    /// <para>
+    /// 使用 <see cref="IOptionsMonitor{T}"/> 而非 DI 中的 <c>List&lt;FeishuAppConfig&gt;</c> 单例：
+    /// 后者是注册期快照，热更新不会更新它（见 <c>FeishuMultiAppExtensions.RegisterCoreServicesWithoutAppManager</c>）。
+    /// </para>
+    /// </remarks>
+    internal static FeishuAppConfig? ResolveLatestAppConfig(IServiceProvider serviceProvider, string appKey)
+    {
+        var current = ResolveLatestAppConfigs(serviceProvider);
+        if (current == null)
+        {
+            return null;
+        }
+
+        for (var i = 0; i < current.Count; i++)
+        {
+            var candidate = current[i];
+            if (candidate != null && string.Equals(candidate.AppKey, appKey, StringComparison.Ordinal))
+            {
+                return candidate;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// ARC-7 / ARC-7b：读取当前生效的应用配置快照；未接入配置管线时返回 <c>null</c>。
+    /// </summary>
+    /// <param name="serviceProvider">服务提供者。</param>
+    /// <returns>当前配置列表；不可用时返回 <c>null</c>（调用方回退到注册期快照）。</returns>
+    internal static List<FeishuAppConfig>? ResolveLatestAppConfigs(IServiceProvider serviceProvider)
+    {
+        var monitor = serviceProvider.GetService<IOptionsMonitor<List<FeishuAppConfig>>>();
+        var current = monitor?.CurrentValue;
+        return current is { Count: > 0 } ? current : null;
     }
 
     private static ResilienceOptions? CreateResilienceOptionsFromConfig(List<FeishuAppConfig> configs, string appKey)

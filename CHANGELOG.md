@@ -23,7 +23,11 @@
 - **配置热更新默认开启（ARC-1）**：新增 `FeishuAppOptions.EnableConfigReload`，**默认 `true`**。
   `appsettings.json` 变更会按 AppKey 增量应用到 `IFeishuAppManager`（新增/重建/移除/默认应用切换）。
   如需「配置变更需重启」的旧语义，显式配置 `EnableConfigReload = false`。
-  注意：应用的 `BaseAddress` / `Timeout` 由命名客户端注册固化，这类字段仍需重启或重建应用上下文才生效。
+  热更新范围包含 `BaseUrl` / `TimeOut`（ARC-7）：命名客户端追加了 DI 感知的配置动作，
+  每次创建客户端时从 `IOptionsMonitor<List<FeishuAppConfig>>` 读取当前值并覆盖
+  `BaseAddress` / `Timeout`，因此多区域切换（`open.feishu.cn` ↔ `open.larksuite.com`）
+  与超时调整无需重启进程（此前 `BaseAddress` 在注册期固化，配置变更不生效——见
+  `.docs/MudHttpUtils-2.0.5-Review-Remediation-Plan.md`）。
 
 ### ✨ Added
 

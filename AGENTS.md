@@ -204,6 +204,21 @@ public class DefaultFeishuEventHandler : IFeishuEventHandler
 ### Documentation
 
 - Use XML documentation for public APIs with `<summary>`, `<param>`, `<returns>`, `<exception>` tags
+- 文件下载类接口（返回 `Task<byte[]?>`）必须声明 `<exception cref="ApiException">`，
+  并说明「HTTP 200 + JSON 错误体」这一残余风险（参见 `documents/ErrorHandling.md`）
+
+### 接口查询参数规范（API-2）
+
+**仅对新增接口生效，不迁移存量接口**（改造 259 个接口的公共签名收益不成比例）。
+
+- 查询参数 ≥ 6 个时，优先采用**查询对象模式**：定义一个实现 `Mud.HttpUtils.IQueryParameter`
+  的 DTO，接口签名写 `[Query] MyQuery query`。
+  - 生成器会识别 `IQueryParameter` 实现并调用 `ToQueryParameters()` 整体展开
+    （`Mud.HttpUtils.Generator/Generators/Implementation/Binders/QueryParameterBinder.cs`），
+    不会把 DTO 序列化成单个查询值；该类型也不会触发 AOT005（不涉及 JSON 序列化）。
+  - 收益：飞书新增可选参数时只改 DTO，接口签名与调用方不变。
+- 参数 < 6 个时继续使用逐参 `[Query("name")]` 绑定，保持与存量接口一致的风格。
+- 接口文档（`documents/`）需同步给出 DTO 的字段与对应查询参数名。
 
 ## Test Guidelines
 

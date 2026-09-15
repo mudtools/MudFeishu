@@ -33,10 +33,19 @@ public class FeishuAppOptions
     /// 且本项目尚无需要保持的存量行为。如需回滚，显式置为 <c>false</c> 即可恢复「配置变更需重启」的旧语义。
     /// </para>
     /// <para>
-    /// <b>注意</b>：应用自身的 <c>BaseAddress</c> / <c>Timeout</c> 由 <c>AddMudHttpClient</c> 的
-    /// 命名客户端注册固化（组件 <c>IEnhancedHttpClientFactory.Invalidate</c> 只会清空客户端实例缓存，
-    /// 不会改写已注册的 <c>HttpClient</c> 配置）。因此 <b>BaseUrl / TimeOut 的变更需要重建命名客户端才能生效</b>，
-    /// 本开关对这类字段的生效范围以「重建应用上下文」为界。
+    /// <b>ARC-7（已支持 BaseUrl / TimeOut 热更新）</b>：命名客户端的注册委托捕获的是注册期快照，
+    /// 因此 <c>AddFeishuAppBaseServices</c> 额外通过 <c>IHttpClientBuilder.ConfigureHttpClient(IServiceProvider, HttpClient)</c>
+    /// 追加了一个 DI 感知的配置动作，在每次 <c>CreateClient</c> 时从
+    /// <c>IOptionsMonitor&lt;List&lt;FeishuAppConfig&gt;&gt;</c> 读取<b>当前</b> <c>BaseUrl</c> / <c>TimeOut</c>，
+    /// 检测到差异时覆盖新客户端的 <c>BaseAddress</c> / <c>Timeout</c>。
+    /// 配合本开关触发的「应用上下文重建 → 新建 <c>TokenRecoveryEnhancedClient</c> → 重新 <c>CreateClient</c>」链路，
+    /// 多区域切换（feishu.cn ↔ larksuite.com）与超时调整无需重启进程。
+    /// 在途请求仍持有旧客户端实例（其 <c>HttpClient</c> 已固化旧基地址），自然完成收敛。
+    /// </para>
+    /// <para>
+    /// <b>生效范围</b>：仅当应用使用 <see cref="FeishuAppOptions.EnableConfigReload"/> 且配置经
+    /// <c>IConfiguration</c> 绑定（<c>AddFeishuApp(configuration, sectionName)</c>）时才会有变更通知；
+    /// 纯代码配置（<c>AddFeishuApp(List&lt;FeishuAppConfig&gt;)</c>）没有变更源，配置只在启动期生效。
     /// </para>
     /// </remarks>
     public bool EnableConfigReload { get; set; } = true;

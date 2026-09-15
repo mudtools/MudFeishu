@@ -122,6 +122,13 @@ public class MyController : ControllerBase
 | [考勤（Attendance）](./Attendance/index.md) | 考勤组管理、班次管理、打卡记录、考勤统计、请假审批 |
 | [任务（Task）](./Task/index.md)             | 任务创建与管理，清单管理，评论、附件、自定义字段   |
 
+### 跨模块通用主题
+
+| 主题 | 说明 |
+| --- | --- |
+| [错误处理指南](./ErrorHandling.md) | 统一响应模型、`ApiException` 语义、**文件下载类接口（`Task<byte[]?>`）的错误契约与残余风险** |
+| [响应缓存使用指南](./ResponseCaching.md) | `[Cache]` 特性接入方式、**多应用缓存键隔离约束**、适合缓存的接口清单 |
+
 ## 命名空间与版本信息
 
 - **根命名空间**：`Mud.Feishu`

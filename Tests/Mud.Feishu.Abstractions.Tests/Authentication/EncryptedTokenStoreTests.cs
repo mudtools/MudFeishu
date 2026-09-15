@@ -7,6 +7,7 @@
 
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Mud.Feishu.Abstractions.Authentication;
 using Mud.Feishu.Abstractions.Tests.Helpers;
 using Xunit;
@@ -81,6 +82,70 @@ public class EncryptedTokenStoreTests
     {
         Assert.Throws<ArgumentNullException>(() => new EncryptedTokenStore(null!, new TestEncryptionProvider()));
         Assert.Throws<ArgumentNullException>(() => new EncryptedTokenStore(new InMemoryTokenStore(), null!));
+    }
+
+    // ---------------------------------------------------------------- ENH-2 契约与可观测性
+
+    [Fact]
+    public void EncryptedTokenStore_ShouldImplementIEncryptedTokenStoreMarker()
+    {
+        ITokenStore store = new EncryptedTokenStore(new InMemoryTokenStore(), new TestEncryptionProvider());
+
+        var marker = store.Should().BeAssignableTo<IEncryptedTokenStore>().Subject;
+        marker.IsEncryptionEnabled.Should().BeTrue(
+            "组件 marker 契约（TMR-12）当前不被 ITokenManager 消费，实现它是零成本的向前兼容");
+    }
+
+    [Fact]
+    public void EncryptedUserTokenStore_ShouldImplementIEncryptedTokenStoreMarker()
+    {
+        var inner = new InMemoryUserTokenStore();
+        IUserTokenStore store = new EncryptedUserTokenStore(
+            inner,
+            new EncryptedTokenStore(new InMemoryTokenStore(), new TestEncryptionProvider()),
+            new TestEncryptionProvider());
+
+        var marker = store.Should().BeAssignableTo<IEncryptedTokenStore>().Subject;
+        marker.IsEncryptionEnabled.Should().BeTrue("IUserTokenStore 继承 ITokenStore，契约兼容");
+    }
+
+    [Fact]
+    public async Task Decrypt_ShouldLogThrottledWarning_WhenDecryptionKeepsFailing()
+    {
+        var inner = new InMemoryTokenStore();
+        // 模拟加密启用前的存量明文：解密必失败
+        await inner.SetAccessTokenAsync("tenant:app1", "legacy_plain_text", 3600);
+
+        var logger = new CollectingLogger();
+        var store = new EncryptedTokenStore(inner, new TestEncryptionProvider(), logger);
+
+        var rounds = EncryptedTokenStore.DecryptFailureLogInterval * 2 + 3;
+        for (var i = 0; i < rounds; i++)
+        {
+            (await store.GetAccessTokenAsync("tenant:app1")).Should().BeNull(
+                "解密失败必须按缓存未命中处理（语义不变）");
+        }
+
+        var warnings = logger.Entries.Where(e => e.Level == LogLevel.Warning).ToList();
+        warnings.Should().HaveCount(3,
+            "节流策略为「首次 + 每 N 次一次」：N=100、共 203 次失败时恰好 3 条告警（第 1/100/200 次）");
+        warnings[0].Message.Should().Contain("累计 1 次");
+        warnings[1].Message.Should().Contain("累计 100 次");
+        warnings.Should().OnlyContain(e => e.Exception is FormatException,
+            "密钥轮换/存量明文类故障根因必须可从日志定位");
+    }
+
+    [Fact]
+    public async Task Decrypt_ShouldNotThrow_WhenLoggerIsNotProvided()
+    {
+        var inner = new InMemoryTokenStore();
+        await inner.SetAccessTokenAsync("tenant:app1", "legacy_plain_text", 3600);
+
+        var store = new EncryptedTokenStore(inner, new TestEncryptionProvider());
+
+        var act = async () => await store.GetAccessTokenAsync("tenant:app1");
+
+        await act.Should().NotThrowAsync("日志为可选依赖，缺失时行为与修复前一致");
     }
 
     // ---------------------------------------------------------------- 工厂装饰器
@@ -239,6 +304,29 @@ public class EncryptedTokenStoreTests
         public byte[] EncryptBytes(byte[] data) => data ?? Array.Empty<byte>();
 
         public byte[] DecryptBytes(byte[] encryptedData) => encryptedData ?? Array.Empty<byte>();
+    }
+
+    /// <summary>ENH-2：收集日志条目（用于断言解密失败告警的节流行为）。</summary>
+    private sealed class CollectingLogger : ILogger
+    {
+        public List<(LogLevel Level, string Message, Exception? Exception)> Entries { get; } = new();
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter)
+        {
+            lock (Entries)
+            {
+                Entries.Add((logLevel, formatter(state, exception), exception));
+            }
+        }
     }
 
     private sealed class InMemoryTokenStore : ITokenStore

@@ -29,21 +29,38 @@ namespace Mud.Feishu.Abstractions.Authentication;
 /// 属预期行为（本项目未发布，无存量数据）。
 /// </para>
 /// </remarks>
-public sealed class EncryptedTokenStore : ITokenStore
+public sealed class EncryptedTokenStore : ITokenStore, IEncryptedTokenStore
 {
+    /// <summary>ENH-2：解密失败日志的节流间隔（首次必记，之后每 N 次记一次，防日志风暴）。</summary>
+    internal const int DecryptFailureLogInterval = 100;
+
     private readonly ITokenStore _inner;
     private readonly IEncryptionProvider _encryption;
+    private readonly ILogger? _logger;
+    private int _decryptFailureCount;
 
     /// <summary>
     /// 初始化 <see cref="EncryptedTokenStore"/> 实例。
     /// </summary>
     /// <param name="inner">被装饰的底层令牌存储。</param>
     /// <param name="encryption">加密提供程序。</param>
-    public EncryptedTokenStore(ITokenStore inner, IEncryptionProvider encryption)
+    /// <param name="logger">日志记录器（可选，用于记录解密失败告警）。</param>
+    public EncryptedTokenStore(ITokenStore inner, IEncryptionProvider encryption, ILogger? logger = null)
     {
         _inner = inner ?? throw new ArgumentNullException(nameof(inner));
         _encryption = encryption ?? throw new ArgumentNullException(nameof(encryption));
+        _logger = logger;
     }
+
+    /// <summary>
+    /// ENH-2：实现组件 marker 契约 <see cref="IEncryptedTokenStore"/>，表明写入前已加密。
+    /// </summary>
+    /// <remarks>
+    /// 组件 2.0.5 注释（TMR-12）明确该契约当前<b>不被</b> <c>ITokenManager</c> 管线消费，
+    /// 因此实现它不改变任何运行时行为；一旦组件 v2 把该契约接入管线（例如用于启动期校验或
+    /// 存储能力探测），本类型无需再发版即可被正确识别。
+    /// </remarks>
+    public bool IsEncryptionEnabled => true;
 
     /// <inheritdoc />
     public async Task<string?> GetAccessTokenAsync(string tokenType, CancellationToken cancellationToken = default)
@@ -77,6 +94,11 @@ public sealed class EncryptedTokenStore : ITokenStore
     /// 解密失败（如旧明文数据、密钥轮换）时按「未命中」返回 null，
     /// 使上层回退到重新获取令牌，而不是因异常导致整个请求链路失败。
     /// </summary>
+    /// <remarks>
+    /// ENH-2：失败不再静默 —— 记录**节流**告警（首次与每 <see cref="DecryptFailureLogInterval"/> 次一次）。
+    /// 修复前密钥轮换故障完全不可观测，运维只能看到令牌命中率下降而无法定位根因。
+    /// 日志只包含异常类型/消息与密文长度，不落明文密钥或密文内容。
+    /// </remarks>
     private string? Decrypt(string? cipherText)
     {
         if (cipherText == null)
@@ -88,8 +110,18 @@ public sealed class EncryptedTokenStore : ITokenStore
         {
             return _encryption.Decrypt(cipherText);
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            var failures = Interlocked.Increment(ref _decryptFailureCount);
+            if (_logger != null && (failures == 1 || failures % DecryptFailureLogInterval == 0))
+            {
+                _logger.LogWarning(ex,
+                    "租户令牌解密失败（累计 {FailureCount} 次，每 {LogInterval} 次记录一次）。" +
+                    "常见原因：加密密钥已轮换或密钥配置错误、存储中存在加密启用前的明文数据。" +
+                    "当前按「缓存未命中」处理并回退为重新获取令牌。密文长度：{CipherTextLength}。",
+                    failures, DecryptFailureLogInterval, cipherText.Length);
+            }
+
             return null;
         }
     }
@@ -106,11 +138,13 @@ public sealed class EncryptedTokenStore : ITokenStore
 /// 避免同一存储出现「一处加密、一处明文」的不一致。
 /// </para>
 /// </remarks>
-public sealed class EncryptedUserTokenStore : IUserTokenStore
+public sealed class EncryptedUserTokenStore : IUserTokenStore, IEncryptedTokenStore
 {
     private readonly IUserTokenStore _inner;
     private readonly EncryptedTokenStore _encryptedTenantStore;
     private readonly IEncryptionProvider _encryption;
+    private readonly ILogger? _logger;
+    private int _decryptFailureCount;
 
     /// <summary>
     /// 初始化 <see cref="EncryptedUserTokenStore"/> 实例。
@@ -118,12 +152,24 @@ public sealed class EncryptedUserTokenStore : IUserTokenStore
     /// <param name="inner">被装饰的底层用户令牌存储。</param>
     /// <param name="encryptedTenantStore">用于实现继承的 <see cref="ITokenStore"/> 成员的已加密租户存储。</param>
     /// <param name="encryption">加密提供程序。</param>
-    public EncryptedUserTokenStore(IUserTokenStore inner, EncryptedTokenStore encryptedTenantStore, IEncryptionProvider encryption)
+    /// <param name="logger">日志记录器（可选，用于记录解密失败告警）。</param>
+    public EncryptedUserTokenStore(
+        IUserTokenStore inner,
+        EncryptedTokenStore encryptedTenantStore,
+        IEncryptionProvider encryption,
+        ILogger? logger = null)
     {
         _inner = inner ?? throw new ArgumentNullException(nameof(inner));
         _encryptedTenantStore = encryptedTenantStore ?? throw new ArgumentNullException(nameof(encryptedTenantStore));
         _encryption = encryption ?? throw new ArgumentNullException(nameof(encryption));
+        _logger = logger;
     }
+
+    /// <summary>
+    /// ENH-2：实现组件 marker 契约 <see cref="IEncryptedTokenStore"/>（<see cref="IUserTokenStore"/> 继承
+    /// <see cref="ITokenStore"/>，故契约兼容）。语义与 <see cref="EncryptedTokenStore.IsEncryptionEnabled"/> 一致。
+    /// </summary>
+    public bool IsEncryptionEnabled => true;
 
     #region 用户维度（本次装饰）
 
@@ -200,8 +246,19 @@ public sealed class EncryptedUserTokenStore : IUserTokenStore
         {
             return _encryption.Decrypt(cipherText);
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            // ENH-2：与 EncryptedTokenStore 同口径的节流告警（首次 + 每 N 次）。
+            var failures = Interlocked.Increment(ref _decryptFailureCount);
+            if (_logger != null && (failures == 1 || failures % EncryptedTokenStore.DecryptFailureLogInterval == 0))
+            {
+                _logger.LogWarning(ex,
+                    "用户令牌解密失败（累计 {FailureCount} 次，每 {LogInterval} 次记录一次）。" +
+                    "常见原因：加密密钥已轮换或密钥配置错误、存储中存在加密启用前的明文数据。" +
+                    "当前按「缓存未命中」处理并回退为重新获取令牌。密文长度：{CipherTextLength}。",
+                    failures, EncryptedTokenStore.DecryptFailureLogInterval, cipherText.Length);
+            }
+
             return null;
         }
     }
@@ -237,7 +294,7 @@ public sealed class EncryptedFeishuTokenStoreFactory : IFeishuTokenStoreFactory
     public (ITokenStore TokenStore, IUserTokenStore? UserTokenStore) Create(string appKey)
     {
         var (tokenStore, userTokenStore) = _inner.Create(appKey);
-        var encryptedTenant = new EncryptedTokenStore(tokenStore, _encryption);
+        var encryptedTenant = new EncryptedTokenStore(tokenStore, _encryption, _logger);
 
         if (userTokenStore == null)
         {
@@ -245,6 +302,6 @@ public sealed class EncryptedFeishuTokenStoreFactory : IFeishuTokenStoreFactory
         }
 
         _logger?.LogDebug("应用 {AppKey} 的租户/用户令牌存储已启用加密。", appKey);
-        return (encryptedTenant, new EncryptedUserTokenStore(userTokenStore, encryptedTenant, _encryption));
+        return (encryptedTenant, new EncryptedUserTokenStore(userTokenStore, encryptedTenant, _encryption, _logger));
     }
 }

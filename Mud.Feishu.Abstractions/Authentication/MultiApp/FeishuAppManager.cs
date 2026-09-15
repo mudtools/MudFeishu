@@ -190,6 +190,7 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
             {
                 if (HasApp(config.AppKey))
                 {
+                    LogClientEndpointChanges(config);
                     RebuildAppContext(config);
                     _logger.LogInformation("配置热更新：已重建应用 {AppKey}", config.AppKey);
                 }
@@ -293,6 +294,42 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
             {
                 _defaultAppKey = config.AppKey;
             }
+        }
+    }
+
+    /// <summary>
+    /// ARC-7：记录命名客户端端点（<c>BaseUrl</c> / <c>TimeOut</c>）的热更新，使
+    /// 「配置是否真的作用到了 HTTP 客户端」在日志中可观测（修复前这两项变更完全不生效且无任何提示）。
+    /// </summary>
+    /// <param name="incoming">新配置。</param>
+    private void LogClientEndpointChanges(FeishuAppConfig incoming)
+    {
+        FeishuAppConfig? previous;
+        lock (_defaultAppLock)
+        {
+            previous = _configs.FirstOrDefault(c =>
+                string.Equals(c.AppKey, incoming.AppKey, StringComparison.Ordinal));
+        }
+
+        if (previous == null)
+        {
+            return;
+        }
+
+        var previousBaseUrl = string.IsNullOrWhiteSpace(previous.BaseUrl)
+            ? Consts.DefaultFeishuBaseUrl
+            : previous.BaseUrl;
+        var incomingBaseUrl = string.IsNullOrWhiteSpace(incoming.BaseUrl)
+            ? Consts.DefaultFeishuBaseUrl
+            : incoming.BaseUrl;
+
+        if (!string.Equals(previousBaseUrl, incomingBaseUrl, StringComparison.Ordinal) ||
+            previous.TimeOut != incoming.TimeOut)
+        {
+            _logger.LogInformation(
+                "配置热更新：应用 {AppKey} 的 HTTP 客户端端点已变更（BaseUrl: {PreviousBaseUrl} → {IncomingBaseUrl}，TimeOut: {PreviousTimeOut}s → {IncomingTimeOut}s），" +
+                "重建后的客户端将使用新端点，无需重启进程。",
+                incoming.AppKey, previousBaseUrl, incomingBaseUrl, previous.TimeOut, incoming.TimeOut);
         }
     }
 

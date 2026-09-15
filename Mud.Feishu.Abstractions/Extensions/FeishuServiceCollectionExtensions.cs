@@ -11,6 +11,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using Mud.Feishu.Abstractions.Authentication;
+using Mud.Feishu.Abstractions.Authentication.MultiApp;
 using Mud.HttpUtils;
 using Mud.HttpUtils.Observability;
 using Mud.HttpUtils.Resilience;
@@ -98,7 +99,6 @@ public static class FeishuServiceCollectionExtensions
             // 此前未传该参数（默认 false），导致默认 IEnhancedHttpClient 隐式绑定到 configs 列表中的第一个 AppKey，
             // 而非 IsDefault=true 的应用。现在通过显式传入确保默认 HttpClient 与 IsDefault=true 严格对应。
             bool isDefault = config!.IsDefault;
-            var appKey = config!.AppKey;
 
             // 令牌恢复由 FeishuAppManager.CreateAppContext 中创建的 TokenRecoveryEnhancedClient 实现，
             // 不再需要在 Handler 管道中注册 LazyFeishuTokenRecoveryHandler。
@@ -149,9 +149,31 @@ public static class FeishuServiceCollectionExtensions
                 logger);
         });
 
+        // ARC-6 修复：注册 IFeishuAuthentication 的源生成实现。
+        // FeishuAppManager.CreateAppContext 通过 GetRequiredService<IFeishuAuthentication>() 获取认证 API，
+        // 但此前从未调用生成器产出的注册扩展（HttpClientApiExtensions.AddAuthenticationWebApiHttpClient），
+        // 导致任何触发应用上下文创建的路径都抛 "No service for type 'IFeishuAuthentication' has been registered."
+        // ——「多应用上下文」这条核心链路完全不可达。
+        // 必须放在 AddMudHttpClient 循环之后：该扩展内部用 TryAdd 注册 IHttpRequestExecutor / IBaseHttpClient，
+        // 先注册者胜出，需保证 AddMudHttpClient 的 DI 装配版本优先。
+        services.AddAuthenticationWebApiHttpClient();
+
+        // ARC-2 Step 1：注册统一的飞书 HTTP 客户端工厂，收敛 CreateAppContext 内的散装装配。
+        services.TryAddSingleton<IFeishuHttpClientFactory, FeishuHttpClientFactory>();
+
+        // ARC-1：注册多应用管理器行为选项（EnableConfigReload 默认 true，支持配置节覆盖）。
+        services.AddOptions<FeishuAppOptions>();
+
         services.TryAddSingleton(_ => HttpClientExtensions.GetDefaultJsonSerializerOptions());
         // NEW-GEN-01 修复：同时注册 IOptions<JsonSerializerOptions>，与生成器构造函数契约对齐
         services.TryAddSingleton<IOptions<System.Text.Json.JsonSerializerOptions>>(sp => Microsoft.Extensions.Options.Options.Create(sp.GetRequiredService<System.Text.Json.JsonSerializerOptions>()));
+
+        // ARC-3：把 SDK 认证/通用源生成上下文接入组件 IOptions<JsonSerializerOptions> 管道。
+        // AddMudHttpClientJsonContext 仅在 net8+ 提供（组件 ServiceCollectionExtensions 中位于
+        // #if NET8_0_OR_GREATER 块内），低 TFM 必须跳过，否则编译失败。
+#if NET8_0_OR_GREATER
+        services.AddMudHttpClientJsonContext(FeishuApiResultJsonContext.Default);
+#endif
 
         // M-8 修复：使用条件检测避免覆盖用户已配置的 IMemoryCache 选项（如容量限制）。
         // AddMemoryCache() 会无条件注册 IOptions<MemoryCacheOptions> 配置委托，

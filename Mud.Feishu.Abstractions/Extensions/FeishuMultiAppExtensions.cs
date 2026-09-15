@@ -55,11 +55,18 @@ public static class FeishuMultiAppExtensions
     /// }
     /// </code>
     /// <para>
-    /// <b>热更新说明（NEW-MA-10）</b>：虽然此重载使用 <c>IConfiguration</c> 绑定并注册了
-    /// <c>IOptionsMonitor&lt;List&lt;FeishuAppConfig&gt;&gt;</c>，但 <see cref="IFeishuAppManager"/>
-    /// 在构造时捕获启动期配置快照，不订阅 <c>IOptionsMonitor.OnChange</c>。
-    /// 修改 <c>appsettings.json</c> 后仅 <c>IOptionsMonitor</c> 消费方看到新值，
-    /// <see cref="IFeishuAppManager"/> 与所有 HttpClient 仍使用旧配置。<b>配置变更需重启应用</b>。
+    /// <b>热更新说明（ARC-1）</b>：此重载使用 <c>IConfiguration</c> 绑定并注册
+    /// <c>IOptionsMonitor&lt;List&lt;FeishuAppConfig&gt;&gt;</c>；<see cref="IFeishuAppManager"/>
+    /// 默认订阅 <c>IOptionsMonitor.OnChange</c>（由 <see cref="FeishuAppOptions.EnableConfigReload"/> 控制，
+    /// 默认 <c>true</c>）。修改 <c>appsettings.json</c> 后，新增应用会被注册、更新应用会重建上下文、
+    /// 删除应用会被移除、默认应用切换会同步。
+    /// </para>
+    /// <para>
+    /// <b>生效边界</b>：<c>AppId</c>/<c>AppSecret</c>/<c>IsDefault</c> 等字段通过重建
+    /// <see cref="IFeishuAppContext"/> 即时生效；但 <c>BaseUrl</c>/<c>TimeOut</c> 由
+    /// <c>AddMudHttpClient</c> 的命名客户端注册固化（组件 <c>IEnhancedHttpClientFactory.Invalidate</c>
+    /// 只清空客户端实例缓存，不改写已注册 <c>HttpClient</c> 配置），需重建命名客户端才能完全生效。
+    /// 置 <c>FeishuAppOptions.EnableConfigReload = false</c> 可回到「配置变更需重启」的旧语义。
     /// </para>
     /// </remarks>
     public static IServiceCollection AddFeishuApp(
@@ -399,14 +406,17 @@ public static class FeishuMultiAppExtensions
         // 此逻辑对 IConfiguration 绑定路径是必需的（该路径不调用 ValidateAndSetDefaultApp）。
         // 对直接传入 List<FeishuAppConfig> 的路径，ValidateAndSetDefaultApp 已执行相同推断，此处为幂等操作（无害重复）。
         //
-        // NEW-MA-10 修复说明（热更新语义澄清）：
-        // PostConfigure 仅影响 IOptions<IList<FeishuAppConfig>> 消费方（如直接注入 IOptionsMonitor 的组件），
-        // **不会**传播到 FeishuAppManager —— FeishuAppManager 在构造时捕获启动期 configs 快照，
-        // 不订阅 IOptionsMonitor.OnChange。因此：
-        //   - 修改 appsettings.json 中的飞书应用配置后，IOptionsMonitor 消费方会看到新值
-        //   - 但 FeishuAppManager 与所有 HttpClient 仍使用旧配置，直到应用重启
-        // 如需真正支持热更新，需让 FeishuAppManager 订阅 IOptionsMonitor.OnChange 并重建受影响的 FeishuAppContext
-        // （注意线程安全与令牌迁移），这属于中期重构任务，当前版本明确不支持。
+        // ARC-1 修复说明（热更新语义）：
+        // PostConfigure 保证 IOptions<IList<FeishuAppConfig>> 消费方（含 FeishuAppManager 的
+        // OnChange 回调）看到的配置已完成默认应用推断。
+        // FeishuAppManager 现已在构造时订阅 IOptionsMonitor<List<FeishuAppConfig>>.OnChange
+        // （受 FeishuAppOptions.EnableConfigReload 控制，默认 true），按 AppKey 计算差异并增量应用：
+        //   - 新增应用 → RegisterApp（触发 Added）
+        //   - 更新应用 → 重建 FeishuAppContext 后 RegisterApp（触发 Updated），旧上下文延迟回收
+        //   - 删除应用 → RemoveApp（触发 Removed），默认应用自动提升
+        // 令牌热迁移：per-app 存储键含 appKey 维度（feishu:{appKey}:token:*），存储后端独立于上下文实例，
+        // 重建后可从既有令牌恢复，无需额外逻辑。
+        // 若需回到「配置变更需重启」的旧语义，设置 FeishuAppOptions.EnableConfigReload = false。
         services.PostConfigure<List<FeishuAppConfig>>(options =>
         {
             // AppKey 为 "default" 时自动设置 IsDefault=true

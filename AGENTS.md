@@ -33,6 +33,60 @@ dotnet format Mud.Feishu.slnx
 
 Project uses `.editorconfig` for code style. `TreatWarningsAsErrors` is disabled.
 
+## Quality Gate
+
+```bash
+pwsh ./scripts/verify-build.ps1                  # Full gate (build + diagnostics + tests + format)
+pwsh ./scripts/verify-build.ps1 -ClearStaleCache # Also auto-clear a stale Mud.HttpUtils package cache
+```
+
+The gate enforces: 0 build errors, 0 `CS1750`, 0 `NU1603` (version drift), and 0
+`HTTPCLIENT0xx` / `MUD001-002` / `FORM0xx` / `AOT001-007` diagnostics.
+
+## Dependency cache caveat (Mud.HttpUtils local source)
+
+This repo consumes `Mud.HttpUtils` from a **local folder source** (`nuget.config` ->
+`D:/Repos/MudHttpUtils/artifacts`). NuGet keys the global package cache by
+`id + version`, so **re-packing the component under the same version does NOT
+invalidate the downstream cache**. Symptom: the component source is already fixed,
+but the build still fails with `CS1750`.
+
+After updating the component local source, always refresh the cache **and then do a clean
+rebuild**:
+
+```bash
+dotnet nuget locals global-packages --clear
+dotnet clean  Mud.Feishu.slnx -c Release
+dotnet build  Mud.Feishu.slnx -c Release
+```
+
+The clean step is **mandatory**. An incremental build after a cache refresh leaves old
+component assemblies next to new ones, which surfaces at runtime as:
+
+```
+System.TypeLoadException : Method 'set_Current' in type '...' does not have an implementation.
+```
+
+(Observed: 54 test failures from a stale incremental build; all green after `dotnet clean`.)
+
+`scripts/verify-build.ps1` detects the stale cache (step 0, SHA256 comparison) and runs
+`dotnet clean` automatically when it clears the cache (`-ClearStaleCache`).
+
+## Target Frameworks
+
+`netstandard2.0`, `net6.0`, `net8.0` (recommended), `net10.0`
+
+Use conditional compilation: `#if NET7_0_OR_GREATER` for framework-specific code.
+
+Notes:
+
+- `IsAotCompatible` / AOT analyzers are enabled only for `net8.0+` (`Directory.Build.props`).
+  `AOT006` is suppressed for `netstandard2.0` / `net6.0`, where the source-generated
+  `JsonSerializerContext` files are not compiled.
+- `Tests/Directory.Build.props` and `Demos/Directory.Build.props` **shadow** the root
+  `Directory.Build.props`. Any governance property (e.g. `WarningsAsErrors`) must be
+  repeated there, otherwise tests/demos become gate blind spots.
+
 ## Project Structure
 
 ```

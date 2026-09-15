@@ -10,7 +10,8 @@ namespace Mud.Feishu.DataModels.TasksCustomFields;
 /// <summary>
 /// <para>单选设置</para>
 /// </summary>
-[HttpJsonSerializable(SerializerClassName = "Task")]
+// 开放泛型不能被 JsonSerializerContext 覆盖（SYSLIB1030），不标注 [HttpJsonSerializable]；
+// 由闭合子类 SelectSettingData / SelectSettingInfo 标注，二者已在 TaskJsonContext 中覆盖。
 public class SelectSettingData<T> where T : SelectOptionData
 {
     /// <summary>

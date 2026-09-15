@@ -13,7 +13,19 @@
 		<LangVersion>13.0</LangVersion>
 		<NoWarn>$(NoWarn);NU1605</NoWarn>
 		<WarningsNotAsErrors>$(WarningsNotAsErrors);NU1605</WarningsNotAsErrors>
+		<!-- 版本漂移防护（BLK-1）：声明版本与解析版本不一致时立即失败，避免"声明 2.0.3、编译 2.0.4"的非确定性构建。 -->
+		<WarningsAsErrors>$(WarningsAsErrors);NU1603</WarningsAsErrors>
 	</PropertyGroup>
+
+<!-- AOT006 仅在启用 AOT 分析的 TFM（net8+）上有语义。
+     netstandard2.0 / net6.0 不启用 IsAotCompatible（见上方条件），且脚手架生成的 JsonSerializerContext
+     由 #if NET8_0_OR_GREATER 包裹而不参与编译，[HttpJsonSerializable] 却在任何 TFM 都存在，
+     因此这两个 TFM 上 AOT006 是纯噪音（实测各 3740 条），按 TFM 精确豁免。
+     WarningsNotAsErrors 必须同时设置：组件 targets 在 AotStrictMode=true 下会把 AOT006 提升为 error。 -->
+<PropertyGroup Condition="'$(TargetFramework)' == 'netstandard2.0' OR '$(TargetFramework)' == 'net6.0'">
+    <NoWarn>$(NoWarn);AOT006</NoWarn>
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);AOT006</WarningsNotAsErrors>
+</PropertyGroup>
 
 <!-- AOT 全局配置：仅在 .NET 8+ TFM 上启用 AOT 分析器。 -->
 <PropertyGroup Condition="'$(TargetFramework)' != 'netstandard2.0' AND '$(TargetFramework)' != 'net6.0'">

@@ -11,6 +11,15 @@
 		<Authors>Mud Studio</Authors>
 		<Company>Mud Studio</Company>
 		<LangVersion>13.0</LangVersion>
+		<!-- 本文件会遮蔽仓库根的 Directory.Build.props，故此处显式继承治理设置，避免示例项目成为门禁盲区 -->
+		<NoWarn>$(NoWarn);NU1605</NoWarn>
+		<WarningsNotAsErrors>$(WarningsNotAsErrors);NU1605</WarningsNotAsErrors>
+		<WarningsAsErrors>$(WarningsAsErrors);NU1603</WarningsAsErrors>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(TargetFramework)' == 'netstandard2.0' OR '$(TargetFramework)' == 'net6.0'">
+		<NoWarn>$(NoWarn);AOT006</NoWarn>
+		<WarningsNotAsErrors>$(WarningsNotAsErrors);AOT006</WarningsNotAsErrors>
 	</PropertyGroup>
 
 	<ItemGroup>

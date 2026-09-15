@@ -57,7 +57,9 @@ public interface IWidget<TValue> : IWidget
 /// 控件数据泛型基类
 /// </summary>
 /// <typeparam name="TValue">值类型</typeparam>
-[HttpJsonSerializable(SerializerClassName = "Approval")]
+// 注意：开放泛型不能被 JsonSerializerContext 覆盖（STJ 会报 SYSLIB1030 "未生成序列化元数据"），
+// 因此此处不标注 [HttpJsonSerializable]；具体控件由各闭合子类（如 InputWidget、TextareaWidget）自行标注，
+// 它们已被 ApprovalJsonContext 覆盖。
 public abstract class WidgetBase<TValue>(string type) : IWidget<TValue>
 {
     /// <summary>

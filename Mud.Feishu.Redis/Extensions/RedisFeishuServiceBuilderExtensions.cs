@@ -198,10 +198,14 @@ public static class RedisFeishuServiceBuilderExtensions
             return new RedisUserTokenStore(innerStore, redis);
         });
 
-        // S-3 修复：注册 SingletonFeishuTokenStoreFactory，使 FeishuAppManager.CreateAppContext
-        // 通过工厂接口获取 Redis 单例实例，而非 is FeishuTokenStore 类型检查。
+        // TOK-1 修复：注册 PerAppRedisTokenStoreFactory，使每个应用拥有独立的 Redis 键空间
+        // （feishu:{appKey}:token），与 Memory 路径 FeishuTokenStore / FeishuUserTokenStore 的键布局一致。
+        // 原 SingletonFeishuTokenStoreFactory 忽略 appKey 并返回共享单例，多应用下令牌会互相覆盖。
+        // 所有 per-app 实例共享同一 IConnectionMultiplexer，不会造成连接池膨胀。
         // 必须在 AddFeishuApp 之前调用，由 TryAdd 语义保证覆盖默认的 PerAppFeishuTokenStoreFactory。
-        services.TryAddSingleton<IFeishuTokenStoreFactory, SingletonFeishuTokenStoreFactory>();
+        services.TryAddSingleton<IFeishuTokenStoreFactory>(sp => new PerAppRedisTokenStoreFactory(
+            sp.GetRequiredService<IConnectionMultiplexer>(),
+            sp.GetService<ILoggerFactory>()));
 
         return services;
     }

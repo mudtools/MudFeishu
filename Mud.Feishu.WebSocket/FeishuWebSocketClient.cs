@@ -6,6 +6,7 @@
 // -----------------------------------------------------------------------
 
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Mud.Feishu.Abstractions.Metrics;
 using Mud.Feishu.Abstractions.Observability;
 using Mud.Feishu.Abstractions.Services;
@@ -26,6 +27,10 @@ namespace Mud.Feishu.WebSocket;
 public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDisposable, IDisposable
 {
     private readonly ILogger<FeishuWebSocketClient> _logger;
+    // F4 修复：持有 IOptionsMonitor 而非一次性快照，保证配置热更新一致性。
+    // _options 仍保留为 CurrentValue 快照供构造期组件初始化使用；运行期需热更新的路径
+    // （如 AppKey 指标维度、AuthGateTimeoutMs 等）改为读取 _optionsMonitor.CurrentValue。
+    private readonly IOptionsMonitor<FeishuWebSocketOptions> _optionsMonitor;
     private readonly FeishuWebSocketOptions _options;
     private readonly IFeishuEventHandlerFactory _eventHandlerFactory;
     private readonly IFeishuEventInterceptor[] _interceptors;
@@ -36,7 +41,8 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
     private readonly EventSubscriptionManager _subscriptionManager;
     private readonly HeartbeatManager _heartbeatManager;
     private readonly ILoggerFactory _loggerFactory;
-    private bool _disposed = false;
+    // WS-15 修复（P1-12）：_disposed 改为 int + Interlocked.Exchange 实现原子 check-then-set
+    private int _disposed = 0;
     private CancellationTokenSource? _cancellationTokenSource;
     private Task? _receiveTask;
     private Task? _heartbeatTask;
@@ -45,6 +51,9 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
     private readonly IFeishuEventDeduplicator? _eventDeduplicator;
     private readonly MessageSequenceValidator? _sequenceValidator;
     private readonly SessionManager? _sessionManager;
+    private readonly FeishuWebSocketConcurrencyService? _concurrencyService;
+    // F7 修复：统一去重中间件（可选），提供 EventId + SeqID 双重去重。
+    private readonly IUnifiedDeduplicationMiddleware? _unifiedDedupMiddleware;
 
     // 保存事件处理器委托引用，用于正确的取消订阅，避免内存泄漏
     private readonly EventHandler<EventArgs> _onConnected;
@@ -96,6 +105,13 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
     /// <param name="seqIdDeduplicator">SeqID去重服务（可选）</param>
     /// <param name="sessionManager">会话管理器（可选）</param>
     /// <param name="sequenceValidator">消息序号验证器（可选）</param>
+    /// <param name="concurrencyService">并发控制服务（可选，WS-03 修复引入）</param>
+    /// <param name="optionsMonitor">WebSocket 配置选项监控器（可选，F4 修复引入，支持热更新）</param>
+    /// <param name="unifiedDedupMiddleware">统一去重中间件（可选，F7 修复引入）</param>
+    /// <remarks>
+    /// F4 修复：优先使用 <paramref name="optionsMonitor"/>；为兼容存量调用方，
+    /// 当其为 null 时回退到 <paramref name="options"/> 快照。
+    /// </remarks>
     public FeishuWebSocketClient(
         ILogger<FeishuWebSocketClient> logger,
         IFeishuEventHandlerFactory eventHandlerFactory,
@@ -105,25 +121,28 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
         FeishuWebSocketOptions? options = null,
         IFeishuSeqIDDeduplicator? seqIdDeduplicator = null,
         SessionManager? sessionManager = null,
-        MessageSequenceValidator? sequenceValidator = null)
+        MessageSequenceValidator? sequenceValidator = null,
+        FeishuWebSocketConcurrencyService? concurrencyService = null,
+        IOptionsMonitor<FeishuWebSocketOptions>? optionsMonitor = null,
+        IUnifiedDeduplicationMiddleware? unifiedDedupMiddleware = null)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _eventHandlerFactory = eventHandlerFactory ?? throw new ArgumentNullException(nameof(eventHandlerFactory));
         _interceptors = interceptors ?? Array.Empty<IFeishuEventInterceptor>();
-        _options = options ?? new FeishuWebSocketOptions();
+        _optionsMonitor = optionsMonitor!;
+        _options = optionsMonitor?.CurrentValue ?? options ?? new FeishuWebSocketOptions();
         _loggerFactory = loggerFactory;
         _seqIdDeduplicator = seqIdDeduplicator;
         _sessionManager = sessionManager;
         _sequenceValidator = sequenceValidator;
         _eventDeduplicator = eventDeduplicator;
+        _concurrencyService = concurrencyService;
+        _unifiedDedupMiddleware = unifiedDedupMiddleware;
 
         // 初始化事件处理器委托，保存引用以便正确取消订阅
-        // P1-7 修复：此前这里是 async 的 void lambda（async void），
-        // await 之后的 handler?.Invoke 抛出的异常无法被任何 try/catch 捕获，
-        // 会直接投递到同步上下文/线程池导致进程崩溃；且用户 Connected 事件
-        // 会在 await 之后才触发，顺序可能晚于 Disconnected。
-        // 现在改为同步 lambda：先同步触发用户事件（并捕获异常），
-        // 状态重置放到后台任务中执行。
+        // WS-10 修复（P1-7/P1-2）：此前 _onConnected 使用 Task.Run fire-and-forget
+        // 调用 ResetStateOnReconnectAsync，与首帧处理存在竞态（重置可能晚于首条消息处理）。
+        // 现在改为纯事件转发，状态重置移到 ConnectAsync 中在启动 _receiveTask 之前 await。
         _onConnected = (s, e) =>
         {
             var handler = Connected;
@@ -138,18 +157,6 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
                     _logger.LogError(ex, "Connected 事件处理器抛出异常");
                 }
             }
-
-            _ = Task.Run(async () =>
-            {
-                try
-                {
-                    await ResetStateOnReconnectAsync();
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "重连状态重置失败");
-                }
-            }, CancellationToken.None);
         };
         _onDisconnected = (s, e) =>
         {
@@ -259,13 +266,15 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
         // P1-5 修复：此前第三个参数（事件级去重器）恒为 null，
         // 导致 EventDeduplication 配置（默认 InMemory）在 WebSocket 路径上完全失效，
         // 服务端重发事件必然重复消费。
+        // WS-21 修复（P2-10）：删除未使用的 seqIdDeduplicator 参数。
+        // F7 修复：传入统一去重中间件，由 FeishuEventMessageHandler 优先使用双重去重路径。
         var eventHandler = new FeishuEventMessageHandler(
             _loggerFactory.CreateLogger<FeishuEventMessageHandler>(),
             _eventHandlerFactory,
             _eventDeduplicator,
-            _seqIdDeduplicator,
             _interceptors,
-            _options);
+            _options,
+            _unifiedDedupMiddleware);
 
         _messageRouter.RegisterHandler(pingPongHandler);
         _messageRouter.RegisterHandler(authHandler);
@@ -339,6 +348,11 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
             }
 
             Volatile.Write(ref _connectionState, 1);
+
+            // WS-10 修复（P1-2）：在启动 _receiveTask 之前 await ResetStateOnReconnectAsync，
+            // 确保重连后的首条消息不会被旧连接的残留状态污染。
+            // 首次连接时 ResetStateOnReconnectAsync 是幂等的（各组件初始状态即清零）。
+            await ResetStateOnReconnectAsync();
 
             // 创建与调用方 Token 链接的新 CTS
             _cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -473,8 +487,19 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
     /// <param name="cancellationToken">取消令牌</param>
     /// <returns>表示异步接收操作的任务</returns>
     /// <remarks>P2-8 修复：补齐默认参数，与 <see cref="IFeishuWebSocketClient"/> 契约保持一致。</remarks>
+    /// <remarks>
+    /// WS-16 修复（P1-14）：补齐幂等保护，防止重复调用创建双接收循环。
+    /// </remarks>
     public async Task StartReceivingAsync(CancellationToken cancellationToken = default)
     {
+        // WS-16：幂等保护 - 如果已有接收循环在运行，直接返回
+        if (_receiveTask is { IsCompleted: false })
+        {
+            if (_options.EnableLogging)
+                _logger.LogWarning("StartReceivingAsync 已被调用且接收循环仍在运行，跳过重复调用");
+            return;
+        }
+
         await StartReceivingAsyncInternal(cancellationToken);
     }
 
@@ -642,8 +667,22 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
                 });
 
                 // 消息仅由 MessageRouter 处理，不再同时入队 MessageQueueManager 避免双重处理
+                // WS-03 修复：并发租约在 Task.Run 内部获取，保持 fire-and-forget 语义的同时引入并发上界
                 _ = Task.Run(async () =>
                 {
+                    // WS-03：租约在 Task.Run 内部获取，避免阻塞接收循环
+                    IDisposable? lease = null;
+                    if (_concurrencyService != null)
+                    {
+                        try
+                        {
+                            lease = await _concurrencyService.AcquireAsync(cancellationToken);
+                        }
+                        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                        {
+                            return;
+                        }
+                    }
                     try
                     {
                         // P0-2 修复：为 WebSocket 消息处理创建分布式追踪 Span
@@ -673,6 +712,10 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
                             IsRecoverable = true
                         });
                     }
+                    finally
+                    {
+                        lease?.Dispose();
+                    }
                 }, cancellationToken);
             }
             else if (result.MessageType == WebSocketMessageType.Binary)
@@ -695,8 +738,22 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
                     }
                 }
 
+                // WS-03 修复：并发租约在 Task.Run 内部获取，保持 fire-and-forget 语义的同时引入并发上界
                 _ = Task.Run(async () =>
                 {
+                    // WS-03：租约在 Task.Run 内部获取，避免阻塞接收循环
+                    IDisposable? lease = null;
+                    if (_concurrencyService != null)
+                    {
+                        try
+                        {
+                            lease = await _concurrencyService.AcquireAsync(cancellationToken);
+                        }
+                        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                        {
+                            return;
+                        }
+                    }
                     try
                     {
                         // P0-2 修复：为 WebSocket 二进制消息处理创建分布式追踪 Span
@@ -725,6 +782,10 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
                             ErrorType = "BinaryMessageProcessingError",
                             IsRecoverable = true
                         });
+                    }
+                    finally
+                    {
+                        lease?.Dispose();
                     }
                 }, cancellationToken);
             }
@@ -786,18 +847,36 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
     /// </remarks>
     private async Task<bool> WaitForAuthenticationAsync(int timeoutMs, CancellationToken cancellationToken)
     {
-        var deadline = Environment.TickCount + timeoutMs;
+        // WS-27 修复（P2-18）：Environment.TickCount 是 int，运行 ~24.8 天后溢出变负数，
+        // 导致 deadline 计算错误。net6+ 使用 Environment.TickCount64（long），
+        // ns2.0 退化为 Stopwatch（兼容性最佳）。
+#if NET6_0_OR_GREATER
+        var deadline = Environment.TickCount64 + timeoutMs;
         while (!_authManager.IsAuthenticated)
         {
             if (cancellationToken.IsCancellationRequested)
                 return false;
 
-            var remaining = deadline - Environment.TickCount;
+            var remaining = deadline - Environment.TickCount64;
+            if (remaining <= 0)
+                return false;
+
+            await Task.Delay((int)Math.Min(remaining, 50), cancellationToken);
+        }
+#else
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        while (!_authManager.IsAuthenticated)
+        {
+            if (cancellationToken.IsCancellationRequested)
+                return false;
+
+            var remaining = timeoutMs - (int)stopwatch.ElapsedMilliseconds;
             if (remaining <= 0)
                 return false;
 
             await Task.Delay(Math.Min(remaining, 50), cancellationToken);
         }
+#endif
 
         return true;
     }
@@ -828,7 +907,7 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
     /// </summary>
     public async ValueTask DisposeAsync()
     {
-        if (_disposed)
+        if (Interlocked.Exchange(ref _disposed, 1) == 1)
             return;
 
         try
@@ -854,10 +933,6 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
         {
             _logger.LogError(ex, "异步释放资源时发生错误");
         }
-        finally
-        {
-            _disposed = true;
-        }
 
         GC.SuppressFinalize(this);
     }
@@ -865,14 +940,41 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
     /// <summary>
     /// <inheritdoc/>
     /// </summary>
+    /// <remarks>
+    /// WS-08 修复（P1-3）：同步释放路径补齐对在途后台任务的尽力等待（2s 超时）
+    /// 和链接 CTS 的释放。需确定性停止请调用 <see cref="DisposeAsync"/>。
+    /// </remarks>
     public void Dispose()
     {
-        if (_disposed)
+        if (Interlocked.Exchange(ref _disposed, 1) == 1)
             return;
 
         try
         {
             _cancellationTokenSource?.Cancel();
+
+            // WS-08：同步路径尽力等待在途后台任务退出（2s 超时）
+            var tasks = new List<Task>();
+            if (_receiveTask != null) tasks.Add(_receiveTask);
+            if (_heartbeatTask != null) tasks.Add(_heartbeatTask);
+            if (tasks.Count > 0)
+            {
+                try
+                {
+                    Task.WhenAll(tasks).Wait(TimeSpan.FromSeconds(2));
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogDebug(ex, "同步释放等待后台任务退出时发生异常（可忽略）");
+                }
+            }
+
+            // WS-08：释放链接 CTS 并置 null
+            _cancellationTokenSource?.Dispose();
+            _cancellationTokenSource = null;
+            _receiveTask = null;
+            _heartbeatTask = null;
+
             UnsubscribeFromComponentEvents();
             UnsubscribeFromHandlerEvents();
             _connectionManager?.Dispose();
@@ -882,10 +984,6 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
         catch (Exception ex)
         {
             _logger.LogError(ex, "释放资源时发生错误");
-        }
-        finally
-        {
-            _disposed = true;
         }
 
         GC.SuppressFinalize(this);

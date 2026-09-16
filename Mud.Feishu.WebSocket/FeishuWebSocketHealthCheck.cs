@@ -20,18 +20,22 @@ namespace Mud.Feishu.WebSocket;
 public class FeishuWebSocketHealthCheck : IHealthCheck
 {
     private readonly FeishuWebSocketHostedService _hostedService;
+    private readonly IReconnectionOrchestrator _reconnectionOrchestrator;
     private readonly ILogger<FeishuWebSocketHealthCheck>? _logger;
 
     /// <summary>
     /// 初始化健康检查实例
     /// </summary>
     /// <param name="hostedService">WebSocket 后台服务</param>
+    /// <param name="reconnectionOrchestrator">重连协调器</param>
     /// <param name="logger">日志记录器（可选）</param>
     public FeishuWebSocketHealthCheck(
         FeishuWebSocketHostedService hostedService,
+        IReconnectionOrchestrator reconnectionOrchestrator,
         ILogger<FeishuWebSocketHealthCheck>? logger = null)
     {
         _hostedService = hostedService ?? throw new ArgumentNullException(nameof(hostedService));
+        _reconnectionOrchestrator = reconnectionOrchestrator ?? throw new ArgumentNullException(nameof(reconnectionOrchestrator));
         _logger = logger;
     }
 
@@ -48,13 +52,54 @@ public class FeishuWebSocketHealthCheck : IHealthCheck
             var state = _hostedService.GetConnectionState();
             var stats = _hostedService.GetConnectionStats();
 
+                var reconnectState = _reconnectionOrchestrator.GetReconnectState();
+
             var data = new Dictionary<string, object>
             {
                 ["connected"] = state.IsConnected,
                 ["uptime"] = stats.Uptime.ToString(),
                 ["reconnectCount"] = stats.ReconnectCount,
-                ["lastError"] = stats.LastError?.Message ?? "none"
+                ["lastError"] = stats.LastError?.Message ?? "none",
+                ["is_reconnecting"] = reconnectState.IsReconnecting,
+                ["is_circuit_open"] = reconnectState.IsCircuitOpen
             };
+
+            // F2 修复：补充并发指标，对齐 Webhook 健康检查
+            var concurrencyService = _hostedService.GetConcurrencyService();
+            if (concurrencyService != null)
+            {
+                var maxConcurrent = concurrencyService.MaxConcurrentHandlers;
+                var available = concurrencyService.AvailableCount;
+                var pending = concurrencyService.PendingCount;
+                var utilizationPct = maxConcurrent > 0
+                    ? Math.Round((1.0 - (double)available / maxConcurrent) * 100, 1)
+                    : 0;
+
+                data["max_concurrent_handlers"] = maxConcurrent;
+                data["available_concurrent_slots"] = available;
+                data["backlog"] = pending;
+                data["concurrent_utilization_pct"] = utilizationPct;
+
+                // F2：槽位耗尽 → Unhealthy
+                if (maxConcurrent > 0 && available <= 0)
+                {
+                    _logger?.LogWarning("WebSocket健康检查: Unhealthy (并发槽位耗尽 0/{MaxConcurrent})", maxConcurrent);
+                    return Task.FromResult(HealthCheckResult.Unhealthy(
+                        $"WebSocket并发槽位已耗尽 (0/{maxConcurrent})，事件可能被拒绝",
+                        null,
+                        data));
+                }
+
+                // F2：利用率 ≥ 90% → Degraded
+                if (maxConcurrent > 0 && utilizationPct >= 90)
+                {
+                    _logger?.LogWarning("WebSocket健康检查: Degraded (并发利用率 {UtilizationPct}%)", utilizationPct);
+                    return Task.FromResult(HealthCheckResult.Degraded(
+                        $"WebSocket并发利用率 {utilizationPct}%，接近上限",
+                        null,
+                        data));
+                }
+            }
 
             if (state.IsConnected)
             {
@@ -62,6 +107,17 @@ public class FeishuWebSocketHealthCheck : IHealthCheck
                     stats.Uptime, stats.ReconnectCount);
                 return Task.FromResult(HealthCheckResult.Healthy(
                     $"WebSocket连接正常 (已运行: {stats.Uptime}, 重连次数: {stats.ReconnectCount})",
+                    data));
+            }
+
+            // F3：熔断器打开时返回 Degraded 而非 Unhealthy，
+            // 表明系统已主动停止重连以保护飞书侧
+            if (reconnectState.IsCircuitOpen)
+            {
+                _logger?.LogWarning("WebSocket健康检查: Degraded (重连熔断器已打开)");
+                return Task.FromResult(HealthCheckResult.Degraded(
+                    "WebSocket未连接且重连熔断器已打开，需人工介入或等待配置变更",
+                    stats.LastError,
                     data));
             }
 

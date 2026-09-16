@@ -29,14 +29,19 @@ namespace Mud.Feishu.WebSocket;
 /// </remarks>
 public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
 {
-    private static int _connectionCount = 0;
+    // WS-17 修复（P1-13）：将 _connectionCount 从 static 改为实例字段。
+    // 此前所有 manager 实例共享一个静态计数器，多应用场景下各实例的连接数互相干扰。
+    // 现在每个 manager 实例独立维护自己的连接计数。
+    private int _connectionCount = 0;
     private readonly ILogger<WebSocketConnectionManager> _logger;
     private readonly FeishuWebSocketOptions _options;
     private readonly SemaphoreSlim _connectionLock = new(1, 1);
     private readonly SemaphoreSlim _sendLock = new(1, 1);
     private ClientWebSocket? _webSocket;
     private CancellationTokenSource? _cancellationTokenSource;
-    private volatile bool _disposed = false;
+    // WS-15 修复（P1-12）：_disposed 改为 int + Interlocked.Exchange 实现原子 check-then-set。
+    // 此前 volatile bool 的 check-then-set 非原子，并发调用 Dispose/DisposeAsync 可能双进入释放逻辑。
+    private int _disposed = 0;
     private byte[]? _receiveBuffer;
     private readonly ErrorRecoveryStrategy _errorRecoveryStrategy;
     private readonly ILoggerFactory _loggerFactory;
@@ -48,14 +53,24 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
     private int _disconnectedFired = 1;
 
     /// <summary>
+    /// WS-17 修复（P1-13）：实例级连接计数标记，标识当前实例是否已计入连接数。
+    /// 与 <c>_disconnectedFired</c> 互补：<c>true</c> = 已连接且计入计数。
+    /// </summary>
+    private volatile bool _isCountedAsConnected = false;
+
+    /// <summary>
     /// 关闭握手超时时间，避免服务端不应答时无限等待（P1-4 修复）。
     /// </summary>
     private static readonly TimeSpan CloseHandshakeTimeout = TimeSpan.FromSeconds(5);
 
     /// <summary>
-    /// 获取当前WebSocket连接数
+    /// 获取当前WebSocket连接数（实例级别）
     /// </summary>
-    public static int ConnectionCount => Volatile.Read(ref _connectionCount);
+    /// <remarks>
+    /// WS-17 修复（P1-13）：从 static 改为实例属性，每个 manager 独立计数，
+    /// 避免多应用场景下各实例连接数互相干扰。
+    /// </remarks>
+    public int ConnectionCount => Volatile.Read(ref _connectionCount);
 
     /// <summary>
     /// WebSocket连接成功建立时触发的事件
@@ -157,7 +172,9 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
             // 服务端回复 Pong (opcode 0xA)，保持中间网络设备（NAT/负载均衡器）的连接表项不超时。
             // 注意：该值与 FeishuWebSocketOptions.HeartbeatIntervalMs（应用层 ProtoBuf Ping）职责不同：
             // 前者用于链路存活检测，后者用于维持飞书应用层会话，二者不应互相替代。
-            _webSocket.Options.KeepAliveInterval = TimeSpan.FromSeconds(20);
+            // F5 修复：从 FeishuWebSocketOptions.ProtocolKeepAliveInterval 读取配置（默认 20s），
+            // 替代硬编码值。设为 Zero 时禁用协议级保活。
+            _webSocket.Options.KeepAliveInterval = _options.ProtocolKeepAliveInterval;
 
             // 配置SSL/TLS证书验证
             ConfigureCertificateValidation(_webSocket, uri);
@@ -182,6 +199,8 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
                 // 顺序必须为 Increment → 清除断线标志，避免连接失败后 Decrement 未配平导致计数为负。
                 Interlocked.Increment(ref _connectionCount);
                 Interlocked.Exchange(ref _disconnectedFired, 0);
+                // WS-17 修复：标记当前实例已计入连接数
+                _isCountedAsConnected = true;
             }
             catch (OperationCanceledException) when (timeoutCts.Token.IsCancellationRequested)
             {
@@ -303,6 +322,8 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
             return false;
 
         Interlocked.Decrement(ref _connectionCount);
+        // WS-17 修复：清除实例连接标记
+        _isCountedAsConnected = false;
         return true;
     }
 
@@ -487,11 +508,16 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
 
         _receiveBuffer ??= new byte[_options.InitialReceiveBufferSize];
 
+        // WS-13 修复（P1-10）：将 _receiveBuffer 固化为局部变量，避免 Dispose/DisposeAsync
+        // 将 _receiveBuffer 置为 null 后，接收循环或分片重组仍尝试访问该字段导致 NullReferenceException。
+        // 局部引用在循环期间不会被外部置 null 操作影响。
+        var buffer = _receiveBuffer;
+
         try
         {
             while (webSocket.State == WebSocketState.Open && !cancellationToken.IsCancellationRequested)
             {
-                var result = await webSocket.ReceiveAsync(new ArraySegment<byte>(_receiveBuffer), cancellationToken);
+                var result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), cancellationToken);
 
                 if (result.MessageType == WebSocketMessageType.Close)
                 {
@@ -501,11 +527,11 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
 
                 if (result.EndOfMessage)
                 {
-                    await messageHandler(new ArraySegment<byte>(_receiveBuffer, 0, result.Count), result);
+                    await messageHandler(new ArraySegment<byte>(buffer, 0, result.Count), result);
                 }
                 else
                 {
-                    await HandleFragmentedMessageAsync(result, messageHandler, webSocket, cancellationToken);
+                    await HandleFragmentedMessageAsync(result, messageHandler, webSocket, buffer, cancellationToken);
                 }
             }
         }
@@ -550,11 +576,13 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
     /// <param name="firstResult">第一帧的接收结果</param>
     /// <param name="messageHandler">消息处理器回调</param>
     /// <param name="webSocket">接收所使用的WebSocket实例</param>
+    /// <param name="buffer">接收缓冲区（WS-13 修复：由调用方传入局部引用，避免 Dispose 竞态置 null）</param>
     /// <param name="cancellationToken">取消令牌</param>
     private async Task HandleFragmentedMessageAsync(
         WebSocketReceiveResult firstResult,
         Func<ArraySegment<byte>, WebSocketReceiveResult, Task> messageHandler,
         ClientWebSocket webSocket,
+        byte[] buffer,
         CancellationToken cancellationToken)
     {
         using var messageStream = new MemoryStream();
@@ -571,11 +599,12 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
             return;
         }
 
-        messageStream.Write(_receiveBuffer, 0, firstResult.Count);
+        // WS-13 修复：使用调用方传入的局部 buffer 引用，而非 _receiveBuffer 字段
+        messageStream.Write(buffer, 0, firstResult.Count);
 
         while (webSocket.State == WebSocketState.Open && !cancellationToken.IsCancellationRequested)
         {
-            var result = await webSocket.ReceiveAsync(new ArraySegment<byte>(_receiveBuffer), cancellationToken);
+            var result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), cancellationToken);
 
             if (result.MessageType == WebSocketMessageType.Close)
             {
@@ -592,7 +621,8 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
                 return;
             }
 
-            messageStream.Write(_receiveBuffer, 0, result.Count);
+            // WS-13 修复：使用局部 buffer 引用
+            messageStream.Write(buffer, 0, result.Count);
 
             if (result.EndOfMessage)
             {
@@ -733,27 +763,63 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
             }
 
             // 配置标准证书验证，支持自签名证书选项
+            // WS-12 修复（P1-8）：收紧自签名判定逻辑。
+            // 此前放行所有 RemoteCertificateChainErrors，含过期/已撤销证书。
+            // 现在仅在「链中仅 1 个元素且 ChainStatus 仅 UntrustedRoot」时才放行，
+            // 显式拒绝 NotTimeValid/Revoked 等链错误。
+            // RemoteCertificateNameMismatch 改为由独立的 AllowCertificateNameMismatch 选项控制。
             webSocket.Options.RemoteCertificateValidationCallback = (sender, certificate, chain, sslPolicyErrors) =>
             {
                 // 如果没有错误，直接通过
                 if (sslPolicyErrors == SslPolicyErrors.None)
                     return true;
 
-                // 如果允许自签名证书且错误仅为自签名相关
-                if (_options.AllowSelfSignedCertificates)
+                // WS-12 修复：处理名称不匹配 — 仅在显式允许时放行
+                if ((sslPolicyErrors & SslPolicyErrors.RemoteCertificateNameMismatch) != 0)
                 {
-                    if (sslPolicyErrors == SslPolicyErrors.RemoteCertificateChainErrors ||
-                        sslPolicyErrors == SslPolicyErrors.RemoteCertificateNameMismatch)
+                    if (_options.AllowCertificateNameMismatch)
                     {
                         if (_options.EnableLogging)
                         {
-                            _logger.LogWarning("允许自签名证书: {Errors}", sslPolicyErrors);
+                            _logger.LogWarning("允许证书名称不匹配: {Errors}", sslPolicyErrors);
                         }
-                        return true;
+                        // 清除名称不匹配标志，继续检查其他错误
+                        sslPolicyErrors &= ~SslPolicyErrors.RemoteCertificateNameMismatch;
+                    }
+                    else
+                    {
+                        if (_options.EnableLogging)
+                        {
+                            _logger.LogError("SSL证书验证失败（名称不匹配）: {Errors}", sslPolicyErrors);
+                        }
+                        return false;
                     }
                 }
 
-                // 其他情况严格验证
+                // 如果清除名称不匹配后已无错误，直接通过
+                if (sslPolicyErrors == SslPolicyErrors.None)
+                    return true;
+
+                // WS-12 修复：处理链错误 — 仅在「自签名根证书」场景放行
+                if ((sslPolicyErrors & SslPolicyErrors.RemoteCertificateChainErrors) != 0)
+                {
+                    if (_options.AllowSelfSignedCertificates && IsSelfSignedRoot(chain))
+                    {
+                        if (_options.EnableLogging)
+                        {
+                            _logger.LogWarning("允许自签名根证书（仅 UntrustedRoot）: {Errors}", sslPolicyErrors);
+                        }
+                        return true;
+                    }
+
+                    if (_options.EnableLogging)
+                    {
+                        _logger.LogError("SSL证书验证失败（链错误，非自签名根或含其他链状态）: {Errors}", sslPolicyErrors);
+                    }
+                    return false;
+                }
+
+                // 其他错误严格拒绝
                 if (_options.EnableLogging)
                 {
                     _logger.LogError("SSL证书验证失败: {Errors}", sslPolicyErrors);
@@ -784,6 +850,41 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
             }
         }
 #endif
+    }
+
+    /// <summary>
+    /// 判断证书链是否为「自签名根证书」场景。
+    /// </summary>
+    /// <param name="chain">SSL 证书链，可能为 null（服务端未提供链时）。</param>
+    /// <returns>
+    /// 仅当链中恰好 1 个元素且该元素的 <c>ChainStatus</c> 仅含 <c>UntrustedRoot</c> 时返回 <c>true</c>；
+    /// 显式拒绝 <c>NotTimeValid</c>（过期）、<c>Revoked</c>（已撤销）等链状态。
+    /// </returns>
+    /// <remarks>
+    /// WS-12 修复（P1-8）：此前放行所有 <c>RemoteCertificateChainErrors</c>，
+    /// 含过期/已撤销证书。现在收紧为仅接受「自签名根」——即链中仅有 1 个证书，
+    /// 且唯一错误是「不受信任的根」（自签名证书的典型特征）。
+    /// </remarks>
+    private static bool IsSelfSignedRoot(System.Security.Cryptography.X509Certificates.X509Chain? chain)
+    {
+        if (chain is null)
+            return false;
+
+        // 链中必须恰好 1 个元素（自签名证书：自身即根）
+        if (chain.ChainElements.Count != 1)
+            return false;
+
+        var element = chain.ChainElements[0];
+
+        // ChainStatus 为空数组表示无错误（不会走到这里），非空时逐条检查
+        // 仅允许 UntrustedRoot，其他状态（NotTimeValid/Revoked 等）一律拒绝
+        foreach (var status in element.ChainStatus)
+        {
+            if (status.Status != System.Security.Cryptography.X509Certificates.X509ChainStatusFlags.UntrustedRoot)
+                return false;
+        }
+
+        return true;
     }
 
     /// <summary>
@@ -904,9 +1005,9 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
     /// </remarks>
     public async ValueTask DisposeAsync()
     {
-        if (_disposed)
+        // WS-15：原子 check-then-set，确保并发调用安全
+        if (Interlocked.Exchange(ref _disposed, 1) == 1)
             return;
-        _disposed = true;
 
         try
         {
@@ -969,9 +1070,9 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
     /// </remarks>
     public void Dispose()
     {
-        if (_disposed)
+        // WS-15：原子 check-then-set，确保并发调用安全
+        if (Interlocked.Exchange(ref _disposed, 1) == 1)
             return;
-        _disposed = true;
 
         try
         {
@@ -985,12 +1086,14 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
             {
                 try
                 {
-                    // 同步路径下无法 await，使用限时同步等待完成关闭握手；
+                    // WS-09 修复（P1-4）：同步路径下使用独立 closeCts（5s）而非 CancellationToken.None，
+                    // 确保服务端不应答时 CloseAsync 能被取消而非悬挂。
                     // 通过 Task.Run 脱离调用方同步上下文，降低死锁风险（P1-3）。
+                    using var closeCts = new CancellationTokenSource(CloseHandshakeTimeout);
                     Task.Run(() => webSocket.CloseAsync(
                             WebSocketCloseStatus.NormalClosure,
                             "客户端释放资源",
-                            CancellationToken.None))
+                            closeCts.Token))
                         .Wait(CloseHandshakeTimeout);
                 }
                 catch (Exception ex)

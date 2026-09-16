@@ -24,6 +24,10 @@ public class HeartbeatManager
     private readonly FeishuWebSocketOptions _options;
     private readonly Func<byte[], CancellationToken, Task> _sendBinaryCallback;
     private int? _serviceId;
+    // WS-07 修复（P1-9）：心跳间隔使用私有字段，不再回写共享 Options 实例。
+    // 服务端下发的 ClientConfig 仅允许影响心跳间隔，且必须钳制到 5–30 秒区间。
+    // ReconnectDelayMs / MaxReconnectAttempts 属于本地运维策略，禁止被运行时改写。
+    private int _heartbeatIntervalMs;
 
     /// <summary>
     /// 初始化心跳管理器
@@ -39,6 +43,8 @@ public class HeartbeatManager
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _options = options ?? throw new ArgumentNullException(nameof(options));
         _sendBinaryCallback = sendBinaryCallback ?? throw new ArgumentNullException(nameof(sendBinaryCallback));
+        // WS-07：从 Options 初始化心跳间隔到私有字段，后续热更新仅影响此字段
+        _heartbeatIntervalMs = _options.HeartbeatIntervalMs;
     }
 
     /// <summary>
@@ -62,14 +68,15 @@ public class HeartbeatManager
     /// <param name="cancellationToken">取消令牌</param>
     public async Task StartHeartbeatAsync(CancellationToken cancellationToken)
     {
-        _logger.LogInformation("心跳管理器已启动，心跳间隔: {IntervalMs}ms", _options.HeartbeatIntervalMs);
+        _logger.LogInformation("心跳管理器已启动，心跳间隔: {IntervalMs}ms", _heartbeatIntervalMs);
 
         try
         {
             while (!cancellationToken.IsCancellationRequested)
             {
                 // 与 Python SDK 一致：先等待间隔，再发送 Ping
-                await Task.Delay(_options.HeartbeatIntervalMs, cancellationToken);
+                // WS-07：使用私有字段而非共享 Options 实例
+                await Task.Delay(_heartbeatIntervalMs, cancellationToken);
 
                 try
                 {
@@ -115,54 +122,48 @@ public class HeartbeatManager
     }
 
     /// <summary>
-    /// 应用服务端下发的 ClientConfig，动态更新心跳间隔等配置
-    /// <para>ClientConfig 中的 PingInterval 单位为秒，需转换为毫秒</para>
+    /// 应用服务端下发的 ClientConfig，仅动态更新心跳间隔。
     /// </summary>
+    /// <remarks>
+    /// WS-07 修复（P1-9/D4）：服务端下发的 ClientConfig 仅允许影响心跳间隔，
+    /// 且必须钳制到 5–30 秒区间。<see cref="FeishuWebSocketOptions.ReconnectDelayMs"/> 
+    /// 与 <see cref="FeishuWebSocketOptions.MaxReconnectAttempts"/> 属于本地运维策略，
+    /// 禁止被运行时改写。心跳间隔写入私有字段 <see cref="_heartbeatIntervalMs"/>，
+    /// 不再回写共享 <see cref="FeishuWebSocketOptions"/> 实例。
+    /// </remarks>
     /// <param name="config">客户端配置信息</param>
     private void ApplyClientConfig(ClientConfigInfo config)
     {
         if (config == null)
             return;
 
-        // P2-2 修复：服务端下发值必须做上下界钳制。
-        // 此前直接写入共享的 Options 实例且无任何限制，服务端（或被劫持的响应）
-        // 可下发超大 PingInterval 使心跳实质停止，或下发 reconnectCount=-1 把客户端
-        // 改成无限重连，形成难以定位的线上故障。
-        // PingInterval 单位为秒，转换为毫秒（钳制 5~300 秒，
-        // 上界放宽以容纳服务端合理的长间隔策略，同时阻断 int.MaxValue 之类的病态值）
-        var pingIntervalSeconds = Clamp(config.PingInterval, 5, 300);
+        // PingInterval 单位为秒，转换为毫秒（钳制 5~30 秒）
+        // 上界收窄为 30 秒：超过 30 秒的心跳间隔在大多数场景下等同于心跳停止，
+        // 不应由服务端单方面决定。阻断 int.MaxValue 之类的病态值。
+        var pingIntervalSeconds = Clamp(config.PingInterval, 5, 30);
         if (pingIntervalSeconds > 0)
         {
             var newIntervalMs = pingIntervalSeconds * 1000;
-            if (newIntervalMs != _options.HeartbeatIntervalMs)
+            if (newIntervalMs != _heartbeatIntervalMs)
             {
-                var oldIntervalMs = _options.HeartbeatIntervalMs;
-                _options.HeartbeatIntervalMs = newIntervalMs;
+                var oldIntervalMs = _heartbeatIntervalMs;
+                _heartbeatIntervalMs = newIntervalMs;
                 if (_options.EnableLogging)
                     _logger.LogInformation("心跳间隔已动态更新: {OldMs}ms → {NewMs}ms (服务端下发 PingInterval={PingInterval}s)",
                         oldIntervalMs, newIntervalMs, config.PingInterval);
             }
         }
 
-        // ReconnectInterval 单位为秒，转换为毫秒（钳制 1~300 秒）
-        var reconnectIntervalSeconds = Clamp(config.ReconnectInterval, 1, 300);
-        if (reconnectIntervalSeconds > 0)
+        // WS-07：ReconnectDelayMs / MaxReconnectAttempts 不再被服务端改写。
+        // 这些参数属于本地运维策略，仅可通过配置文件或 IOptionsMonitor 热更新修改。
+        // 若服务端下发了 ReconnectInterval / ReconnectCount，仅记录为提示信息。
+        if (config.ReconnectInterval > 0 && _options.EnableLogging)
         {
-            _options.ReconnectDelayMs = reconnectIntervalSeconds * 1000;
-            if (_options.EnableLogging)
-                _logger.LogDebug("重连间隔已更新: {Ms}ms", _options.ReconnectDelayMs);
+            _logger.LogDebug("服务端建议重连间隔: {Seconds}s（已忽略，使用本地配置）", config.ReconnectInterval);
         }
-
-        // MaxReconnectAttempts: reconnectCount=-1 表示无限重连
-        //  MaxReconnectAttempts=0 → 无限重连；>0 → 有限重连（钳制上限 20 次）
-        if (config.ReconnectCount >= -1)
+        if (config.ReconnectCount >= -1 && _options.EnableLogging)
         {
-            // Java reconnectCount=-1 映射为 .NET MaxReconnectAttempts=0（无限重连）
-            _options.MaxReconnectAttempts = config.ReconnectCount == -1
-                ? 0
-                : Clamp(config.ReconnectCount, 1, 100);
-            if (_options.EnableLogging)
-                _logger.LogDebug("最大重连次数已更新: {Count}", _options.MaxReconnectAttempts);
+            _logger.LogDebug("服务端建议重连次数: {Count}（已忽略，使用本地配置）", config.ReconnectCount);
         }
     }
 

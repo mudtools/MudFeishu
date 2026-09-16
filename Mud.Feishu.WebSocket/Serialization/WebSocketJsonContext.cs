@@ -31,5 +31,9 @@ namespace Mud.Feishu.WebSocket.Serialization;
 [JsonSerializable(typeof(PongMessage))]
 [JsonSerializable(typeof(HeartbeatMessage))]
 [JsonSerializable(typeof(HeartbeatData))]            // HeartbeatMessage.Data 引用的子类型
+[JsonSerializable(typeof(AckResponse))]               // P1-5 修复：ACK 响应 DTO，替代匿名类型
+[JsonSerializable(typeof(SubscriptionRequest))]       // P1-5 修复：订阅请求 DTO，替代匿名类型
+[JsonSerializable(typeof(SubscriptionRequestData))]   // P1-5 修复：订阅请求数据 DTO
+[JsonSerializable(typeof(ClientConfigInfo))]          // P2-17 修复：Pong 下发的 ClientConfig
 internal partial class WebSocketJsonContext : JsonSerializerContext { }
 #endif

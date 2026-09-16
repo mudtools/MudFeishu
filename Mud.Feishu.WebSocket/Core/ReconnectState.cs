@@ -46,4 +46,11 @@ public class ReconnectState
     /// 最后一次错误
     /// </summary>
     public Exception? LastError { get; set; }
+
+    /// <summary>
+    /// 重连熔断器是否已打开（F3 修复引入）。
+    /// <para>当达到重连上限后熔断器打开，阻止后续健康检查触发无效重连，
+    /// 直到下一次连接成功后由 OnConnected 清除。</para>
+    /// </summary>
+    public bool IsCircuitOpen { get; set; }
 }

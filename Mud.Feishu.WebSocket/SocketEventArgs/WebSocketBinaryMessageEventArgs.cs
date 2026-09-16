@@ -78,15 +78,6 @@ public class WebSocketBinaryMessageEventArgs : EventArgs
     public int QueueCount { get; set; }
 
     /// <summary>
-    /// 处理任务（由事件处理器设置，用于异步等待处理完成）
-    /// </summary>
-    /// <remarks>
-    /// 如果事件处理器需要异步处理，应设置此属性为一个表示处理完成的任务。
-    /// BinaryMessageProcessor 会等待此任务完成后根据结果调用 MarkCompletedAsync 或 RollbackAsync。
-    /// </remarks>
-    public Task? ProcessingTask { get; set; }
-
-    /// <summary>
     /// 处理是否成功（由事件处理器设置）
     /// </summary>
     /// <remarks>

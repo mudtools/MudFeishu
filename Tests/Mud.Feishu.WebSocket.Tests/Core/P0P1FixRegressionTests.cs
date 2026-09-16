@@ -218,18 +218,21 @@ public class P0P1FixRegressionTests
         var flagField = typeof(WebSocketConnectionManager)
             .GetField("_disconnectedFired", BindingFlags.NonPublic | BindingFlags.Instance);
         var countField = typeof(WebSocketConnectionManager)
-            .GetField("_connectionCount", BindingFlags.NonPublic | BindingFlags.Static);
+            .GetField("_connectionCount", BindingFlags.NonPublic | BindingFlags.Instance);
 
         notifyMethod.Should().NotBeNull();
         flagField.Should().NotBeNull();
         countField.Should().NotBeNull();
 
-        var before = WebSocketConnectionManager.ConnectionCount;
+        // WS-17 修复后 _connectionCount 为实例字段，不再需要静态计数器的串行保护
+        var before = manager.ConnectionCount;
 
         try
         {
             // 模拟"已连接、尚未触发断线"的状态
             flagField!.SetValue(manager, 0);
+            // 模拟已连接：设置计数为 1
+            countField!.SetValue(manager, 1);
 
             // Act：32 个线程并发声明断线
             Parallel.For(0, 32, _ =>
@@ -239,12 +242,11 @@ public class P0P1FixRegressionTests
 
             // Assert：Interlocked.CompareExchange 保证仅触发一次、计数仅递减一次
             fired.Should().Be(1);
-            WebSocketConnectionManager.ConnectionCount.Should().Be(before - 1);
+            manager.ConnectionCount.Should().Be(0);
         }
         finally
         {
-            // 还原静态计数器，避免影响同集合内的其它用例
-            countField!.SetValue(null, before);
+            // WS-17 修复后为实例字段，无需还原静态计数器
         }
     }
 

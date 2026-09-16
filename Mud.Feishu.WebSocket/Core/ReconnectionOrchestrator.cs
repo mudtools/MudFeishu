@@ -12,7 +12,7 @@ namespace Mud.Feishu.WebSocket;
 /// <summary>
 /// 统一重连协调器实现
 /// </summary>
-public class ReconnectionOrchestrator : IReconnectionOrchestrator, IDisposable
+public class ReconnectionOrchestrator : IReconnectionOrchestrator, IAsyncDisposable, IDisposable
 {
     private readonly ILogger<ReconnectionOrchestrator> _logger;
     private readonly IReconnectStrategy _strategy;
@@ -30,6 +30,10 @@ public class ReconnectionOrchestrator : IReconnectionOrchestrator, IDisposable
     private Exception? _lastError;
 
     private bool _disposed;
+
+    // F3 修复：重连熔断标志。达到重连上限后打开，阻止后续健康检查触发无效重连。
+    // 仅在连接成功后由 ResetReconnectCounter 清除。
+    private volatile bool _circuitOpen;
 
     /// <summary>
     /// 重连成功事件
@@ -79,6 +83,13 @@ public class ReconnectionOrchestrator : IReconnectionOrchestrator, IDisposable
             return false;
         }
 
+        // F3：熔断器打开时拒绝重连，避免对飞书侧造成持续连接压力
+        if (_circuitOpen)
+        {
+            _logger.LogDebug("重连熔断器已打开，跳过重连尝试（需等待连接成功后清除）");
+            return false;
+        }
+
         await _reconnectLock.WaitAsync(cancellationToken);
         try
         {
@@ -118,6 +129,10 @@ public class ReconnectionOrchestrator : IReconnectionOrchestrator, IDisposable
                         _currentAttempt, elapsedTime);
 
                     limitReached = true;
+                    // F3：达到重连上限后打开熔断器
+                    _circuitOpen = true;
+                    _logger.LogWarning("重连熔断器已打开：已达到重连上限（次数: {Attempt}, 时间: {ElapsedTime}），" +
+                        "熔断期间健康检查不会触发重连，直到连接成功后自动清除", _currentAttempt, elapsedTime);
                     OnReconnectLimitReached(_currentAttempt, elapsedTime);
                     break;
                 }
@@ -170,11 +185,22 @@ public class ReconnectionOrchestrator : IReconnectionOrchestrator, IDisposable
     /// <summary>
     /// 重置重连计数器（在连接成功建立时调用）
     /// </summary>
+    /// <remarks>
+    /// F3 修复：同时清除熔断标志，恢复正常重连能力。
+    /// </remarks>
     public void ResetReconnectCounter()
     {
         _currentAttempt = 0;
         _reconnectStartTime = null;
         _lastError = null;
+
+        // F3：连接成功，清除熔断标志
+        if (_circuitOpen)
+        {
+            _circuitOpen = false;
+            _logger.LogInformation("重连熔断器已关闭（连接成功建立）");
+        }
+
         _logger.LogDebug("重连计数器已重置");
     }
 
@@ -192,7 +218,8 @@ public class ReconnectionOrchestrator : IReconnectionOrchestrator, IDisposable
             LastReconnectAttempt = _lastReconnectAttempt,
             ReconnectStartTime = _reconnectStartTime,
             LastReconnectReason = _lastReconnectReason,
-            LastError = _lastError
+            LastError = _lastError,
+            IsCircuitOpen = _circuitOpen
         };
     }
 
@@ -234,6 +261,36 @@ public class ReconnectionOrchestrator : IReconnectionOrchestrator, IDisposable
     {
         if (_disposed)
             return;
+
+        _reconnectLock.Dispose();
+        _disposed = true;
+
+        GC.SuppressFinalize(this);
+    }
+
+    /// <summary>
+    /// WS-29 修复（P2-19）：异步释放资源，等待在途重连任务完成后再释放锁。
+    /// </summary>
+    /// <remarks>
+    /// 此前同步 <see cref="Dispose()"/> 直接释放 <c>_reconnectLock</c>，
+    /// 若重连任务正在持锁执行，<c>SemaphoreSlim.Dispose</c> 会抛异常或死锁。
+    /// 异步路径等待最多 5 秒后释放，确保在途重连安全退出。
+    /// </remarks>
+    public async ValueTask DisposeAsync()
+    {
+        if (_disposed)
+            return;
+
+        // 等待在途重连完成（最多 5 秒）
+        try
+        {
+            await _reconnectLock.WaitAsync(TimeSpan.FromSeconds(5));
+            _reconnectLock.Release();
+        }
+        catch
+        {
+            // 超时或已释放，忽略
+        }
 
         _reconnectLock.Dispose();
         _disposed = true;

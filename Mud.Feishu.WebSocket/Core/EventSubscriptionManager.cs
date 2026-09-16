@@ -7,6 +7,7 @@
 
 using Microsoft.Extensions.Logging;
 using Mud.Feishu.Abstractions.Utilities;
+using Mud.Feishu.WebSocket.DataModels;
 using System.Text.Json;
 
 namespace Mud.Feishu.WebSocket;
@@ -104,14 +105,14 @@ public class EventSubscriptionManager
         {
             _logger.LogInformation("发送事件订阅请求，事件类型: {EventTypes}", string.Join(", ", events));
 
-            var subscriptionMessage = new
+            // P1-5 修复（WS-06）：使用具名 DTO 替代匿名类型，避免 AOT 反射依赖。
+            var subscriptionMessage = new SubscriptionRequest
             {
-                type = "subscribe",
-                data = new
+                Type = "subscribe",
+                Data = new SubscriptionRequestData
                 {
-                    events = events
-                },
-                timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+                    Events = new List<string>(events)
+                }
             };
 
             var messageJson = FeishuJsonAot.Serialize(subscriptionMessage, JsonOptions.Default);

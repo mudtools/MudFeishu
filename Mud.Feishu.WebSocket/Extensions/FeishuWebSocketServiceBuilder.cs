@@ -25,6 +25,10 @@ public class FeishuWebSocketServiceBuilder
     private readonly IServiceCollection _services;
     private readonly List<Type> _handlerTypes = new();
     private readonly List<Type> _interceptorTypes = new();
+    // WS-04 修复：区分「类型注册」与「实例注册」两个集合。
+    // 实例注册的处理器由 ScopedFeishuEventHandlerFactory 直接复用，不经过 DI 作用域解析，
+    // 避免用户提供的实例被 DI 容器 Dispose（P1-6）。
+    private readonly List<IFeishuEventHandler> _handlerInstances = new();
     private bool _configured = false;
 
     /// <summary>
@@ -105,6 +109,12 @@ public class FeishuWebSocketServiceBuilder
     /// <typeparam name="THandler">处理器类型</typeparam>
     /// <param name="handlerInstance">处理器实例</param>
     /// <returns>建造者实例，支持链式调用</returns>
+    /// <remarks>
+    /// WS-04 修复（P1-6）：用户提供的处理器实例不经过 DI 容器解析，
+    /// 由 <see cref="ScopedFeishuEventHandlerFactory"/> 直接复用。
+    /// 这避免了将实例注册为 Scoped 后，首个事件处理完成时 IServiceScope.Dispose
+    /// 会连带释放用户实例的问题（Captive Dependency 的反面：实例被容器意外回收）。
+    /// </remarks>
     public FeishuWebSocketServiceBuilder AddHandler<THandler>(THandler handlerInstance)
         where THandler : class, IFeishuEventHandler
     {
@@ -112,9 +122,8 @@ public class FeishuWebSocketServiceBuilder
             throw new ArgumentNullException(nameof(handlerInstance));
 
         _handlerTypes.Add(typeof(THandler));
-        // NEW-REG-02 修复：处理器实例注册为 Scoped，避免 Captive Dependency 风险，与 Webhook 保持一致
-        _services.AddScoped<IFeishuEventHandler>(_ => handlerInstance);
-        _services.AddScoped<THandler>(_ => handlerInstance);
+        _handlerInstances.Add(handlerInstance);
+        // 不再将用户实例注册到 DI 容器，避免容器 Dispose 回收用户实例
         return this;
     }
 
@@ -124,6 +133,10 @@ public class FeishuWebSocketServiceBuilder
     /// <typeparam name="THandler">处理器类型</typeparam>
     /// <param name="handlerFactory">处理器工厂</param>
     /// <returns>建造者实例，支持链式调用</returns>
+    /// <remarks>
+    /// 工厂委托注册为 Scoped，每次事件分发时由 DI 在独立作用域内调用，
+    /// 与 Webhook 模块保持一致。
+    /// </remarks>
     public FeishuWebSocketServiceBuilder AddHandler<THandler>(Func<IServiceProvider, THandler> handlerFactory)
         where THandler : class, IFeishuEventHandler
     {
@@ -131,7 +144,6 @@ public class FeishuWebSocketServiceBuilder
             throw new ArgumentNullException(nameof(handlerFactory));
 
         _handlerTypes.Add(typeof(THandler));
-        // NEW-REG-02 修复：处理器工厂注册为 Scoped，避免 Captive Dependency 风险，与 Webhook 保持一致
         _services.AddScoped<IFeishuEventHandler>(handlerFactory);
         _services.AddScoped<THandler>(handlerFactory);
         return this;
@@ -258,12 +270,14 @@ public class FeishuWebSocketServiceBuilder
     {
         var defaultHandlerType = _handlerTypes.FirstOrDefault();
         var handlerTypes = _handlerTypes.ToArray();
+        var handlerInstances = _handlerInstances.ToArray();
 
         _services.AddSingleton<IFeishuEventHandlerFactory>(serviceProvider =>
         {
             var logger = serviceProvider.GetRequiredService<ILogger<ScopedFeishuEventHandlerFactory>>();
             var scopeFactory = serviceProvider.GetRequiredService<IServiceScopeFactory>();
-            return new ScopedFeishuEventHandlerFactory(logger, scopeFactory, handlerTypes, defaultHandlerType);
+            return new ScopedFeishuEventHandlerFactory(
+                logger, scopeFactory, handlerTypes, defaultHandlerType, handlerInstances);
         });
 
         // 注册事件拦截器集合（单例，按注册顺序排序）
@@ -379,21 +393,37 @@ public class FeishuWebSocketServiceBuilder
             });
         }
 
+        // WS-03 修复：注册并发控制服务（背压闸门），与 Webhook 模块对齐
+        _services.AddSingleton<FeishuWebSocketConcurrencyService>();
+        _services.AddHostedService<FeishuWebSocketConcurrencyService>(
+            serviceProvider => serviceProvider.GetRequiredService<FeishuWebSocketConcurrencyService>());
+
         // 注册WebSocket客户端
+        // F4 修复：改为注入 IOptionsMonitor<FeishuWebSocketOptions>，保证配置热更新一致性。
+        // 此前一次性捕获 CurrentValue，FeishuWebSocketManager 每次读取 → 两者行为不一致。
         _services.AddSingleton<IFeishuWebSocketClient>(serviceProvider =>
         {
             var logger = serviceProvider.GetRequiredService<ILogger<FeishuWebSocketClient>>();
             var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
             var eventHandlerFactory = serviceProvider.GetRequiredService<IFeishuEventHandlerFactory>();
             var interceptors = serviceProvider.GetRequiredService<IFeishuEventInterceptor[]>();
-            var options = serviceProvider.GetRequiredService<IOptionsMonitor<FeishuWebSocketOptions>>().CurrentValue;
+            // F4：传入 IOptionsMonitor 而非 CurrentValue 快照
+            var optionsMonitor = serviceProvider.GetRequiredService<IOptionsMonitor<FeishuWebSocketOptions>>();
             var seqIdDeduplicator = serviceProvider.GetService<IFeishuSeqIDDeduplicator>();
             var sessionManager = serviceProvider.GetService<SessionManager>();
             var sequenceValidator = serviceProvider.GetService<MessageSequenceValidator>();
             // P1-5 修复：注入事件级去重器。此前 FeishuWebSocketClient 不接受该依赖，
             // 导致 EventDeduplication 配置（默认 InMemory）在 WebSocket 路径上完全失效。
             var eventDeduplicator = serviceProvider.GetService<IFeishuEventDeduplicator>();
-            return new FeishuWebSocketClient(logger, eventHandlerFactory, loggerFactory, eventDeduplicator, interceptors, options, seqIdDeduplicator, sessionManager, sequenceValidator);
+            // WS-03：注入并发控制服务
+            var concurrencyService = serviceProvider.GetRequiredService<FeishuWebSocketConcurrencyService>();
+            // F7 修复：注入统一去重中间件（可选）
+            var unifiedDedupMiddleware = serviceProvider.GetService<IUnifiedDeduplicationMiddleware>();
+            return new FeishuWebSocketClient(
+                logger, eventHandlerFactory, loggerFactory,
+                eventDeduplicator, interceptors, options: optionsMonitor.CurrentValue,
+                seqIdDeduplicator, sessionManager, sequenceValidator,
+                concurrencyService, optionsMonitor, unifiedDedupMiddleware);
         });
 
         // 注册WebSocket管理器
@@ -409,11 +439,26 @@ public class FeishuWebSocketServiceBuilder
         // 具体类型 FeishuWebSocketHostedService，若不显式注册该实现类型，
         // 解析健康检查时必然抛 "Unable to resolve service for type ..."。
         // 这里先注册实现类型，再让 AddHostedService 复用同一实例，保证单例唯一。
-        _services.AddSingleton<FeishuWebSocketHostedService>();
+        _services.AddSingleton<FeishuWebSocketHostedService>(serviceProvider =>
+        {
+            var logger = serviceProvider.GetRequiredService<ILogger<FeishuWebSocketHostedService>>();
+            var manager = serviceProvider.GetRequiredService<IFeishuWebSocketManager>();
+            var orchestrator = serviceProvider.GetRequiredService<IReconnectionOrchestrator>();
+            var options = serviceProvider.GetRequiredService<IOptionsMonitor<FeishuWebSocketOptions>>();
+            var concurrency = serviceProvider.GetRequiredService<FeishuWebSocketConcurrencyService>();
+            return new FeishuWebSocketHostedService(logger, manager, orchestrator, options, concurrency);
+        });
         _services.AddHostedService<FeishuWebSocketHostedService>(
             serviceProvider => serviceProvider.GetRequiredService<FeishuWebSocketHostedService>());
 
         // 注册健康检查（全目标框架可用）
-        _services.AddSingleton<FeishuWebSocketHealthCheck>();
+        // F2/F3：健康检查依赖 IReconnectionOrchestrator 获取熔断状态
+        _services.AddSingleton<FeishuWebSocketHealthCheck>(serviceProvider =>
+        {
+            var hostedService = serviceProvider.GetRequiredService<FeishuWebSocketHostedService>();
+            var orchestrator = serviceProvider.GetRequiredService<IReconnectionOrchestrator>();
+            var logger = serviceProvider.GetService<ILogger<FeishuWebSocketHealthCheck>>();
+            return new FeishuWebSocketHealthCheck(hostedService, orchestrator, logger);
+        });
     }
 }

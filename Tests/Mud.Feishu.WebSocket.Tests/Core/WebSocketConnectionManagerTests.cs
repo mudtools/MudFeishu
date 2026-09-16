@@ -65,11 +65,13 @@ public class WebSocketConnectionManagerTests
     [Fact]
     public void ConnectionCount_ShouldStartAtZero()
     {
-        // Arrange
-        var initialCount = WebSocketConnectionManager.ConnectionCount;
+        // Arrange - WS-17 修复后 ConnectionCount 为实例属性
+        var manager = new WebSocketConnectionManager(_loggerMock.Object, _options, _loggerFactoryMock.Object);
 
         // Assert
-        initialCount.Should().BeGreaterThanOrEqualTo(0);
+        manager.ConnectionCount.Should().Be(0);
+
+        manager.Dispose();
     }
 
     [Fact]

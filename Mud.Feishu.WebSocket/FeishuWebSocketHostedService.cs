@@ -23,6 +23,7 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
     private readonly IFeishuWebSocketManager _webSocketManager;
     private readonly IReconnectionOrchestrator _reconnectionOrchestrator;
     private readonly IOptionsMonitor<FeishuWebSocketOptions> _optionsMonitor;
+    private readonly FeishuWebSocketConcurrencyService? _concurrencyService;
     // NEW-WS-01 修复：保存 host stoppingToken 用于链接重连任务的取消令牌，支持优雅关闭
     private CancellationToken _stoppingToken;
     private bool _disposed;
@@ -41,12 +42,14 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
         ILogger<FeishuWebSocketHostedService> logger,
         IFeishuWebSocketManager webSocketManager,
         IReconnectionOrchestrator reconnectionOrchestrator,
-        IOptionsMonitor<FeishuWebSocketOptions> options)
+        IOptionsMonitor<FeishuWebSocketOptions> options,
+        FeishuWebSocketConcurrencyService? concurrencyService = null)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _webSocketManager = webSocketManager ?? throw new ArgumentNullException(nameof(webSocketManager));
         _reconnectionOrchestrator = reconnectionOrchestrator ?? throw new ArgumentNullException(nameof(reconnectionOrchestrator));
         _optionsMonitor = options ?? throw new ArgumentNullException(nameof(options));
+        _concurrencyService = concurrencyService;
 
         _webSocketManager.Connected += OnConnected;
         _webSocketManager.Disconnected += OnDisconnected;
@@ -69,27 +72,30 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
     {
         var appKey = _optionsMonitor.CurrentValue.AppKey;
 
-        // WebSocket 活跃连接数观察器（按 app_key 分组）
+        // WS-17 修复（P1-13）：连接数从静态改为实例级，避免多应用场景下各实例计数互相干扰。
+        // FeishuWebSocketHostedService 只持有一个 IFeishuWebSocketManager，
+        // 用其 IsConnected 状态作为当前实例的连接数（1 或 0）。
         FeishuMetrics.WebSocketConnectionObserver = () =>
         {
             var currentAppKey = _optionsMonitor.CurrentValue.AppKey;
+            var connectionCount = _webSocketManager.IsConnected ? 1 : 0;
             return new[]
             {
                 new Measurement<int>(
-                    WebSocketConnectionManager.ConnectionCount,
+                    connectionCount,
                     new KeyValuePair<string, object?>(FeishuMetrics.Tags.AppKey, currentAppKey))
             };
         };
 
-        // WebSocket 消息积压数观察器（当前架构同步处理消息无队列，积压始终为 0）
-        // 预留接口供未来引入消息队列时填充实际积压数
+        // WebSocket 消息积压数观察器（F1 修复：从并发闸门获取真实积压数）
         FeishuMetrics.WebSocketBacklogObserver = () =>
         {
             var currentAppKey = _optionsMonitor.CurrentValue.AppKey;
+            var backlog = _concurrencyService?.PendingCount ?? 0;
             return new[]
             {
                 new Measurement<int>(
-                    0,
+                    backlog,
                     new KeyValuePair<string, object?>(FeishuMetrics.Tags.AppKey, currentAppKey))
             };
         };
@@ -342,6 +348,12 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
     {
         return _webSocketManager.GetConnectionState();
     }
+
+    /// <summary>
+    /// 获取并发控制服务实例（供健康检查读取并发指标）。
+    /// </summary>
+    /// <returns>并发控制服务，未注入时返回 null</returns>
+    internal FeishuWebSocketConcurrencyService? GetConcurrencyService() => _concurrencyService;
 
     /// <summary>
     /// 重写Dispose方法，确保资源正确释放

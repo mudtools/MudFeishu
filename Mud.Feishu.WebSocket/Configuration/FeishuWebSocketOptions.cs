@@ -173,9 +173,18 @@ public class FeishuWebSocketOptions
     public bool ValidateServerCertificate { get; set; } = true;
 
     /// <summary>
-    /// 是否允许自签名证书，默认为false（生产环境建议为false）
+    /// 是否允许自签名证书，默认为false（生产环境建议为false）。
+    /// <para>WS-12 修复（P1-8）：收紧为「链中仅 1 个元素且 ChainStatus 仅 UntrustedRoot」时才放行，
+    /// 显式拒绝 NotTimeValid/Revoked 等链错误。此前放行所有 ChainErrors，含过期/已撤销证书。</para>
     /// </summary>
     public bool AllowSelfSignedCertificates { get; set; } = false;
+
+    /// <summary>
+    /// 是否允许证书名称不匹配（RemoteCertificateNameMismatch），默认为 false。
+    /// <para>WS-12 修复（P1-8）引入：仅在显式开启时才放行名称不匹配错误，
+    /// 与自签名判定独立配置。生产环境建议保持 false。</para>
+    /// </summary>
+    public bool AllowCertificateNameMismatch { get; set; } = false;
 
     /// <summary>
     /// 自定义证书验证回调（可选）
@@ -197,6 +206,20 @@ public class FeishuWebSocketOptions
     public ulong SequenceGapThreshold { get; set; } = 0;
 
     /// <summary>
+    /// 最大并发事件处理器数量（背压闸门），默认 32。设为 0 或负数表示无限制。
+    /// <para>WS-03 修复引入：为 WebSocket 事件分发提供并发上界，与 Webhook 的
+    /// <c>MaxConcurrentEvents</c> 语义一致。支持 <c>IOptionsMonitor</c> 热更新。</para>
+    /// </summary>
+    public int MaxConcurrentHandlers { get; set; } = 32;
+
+    /// <summary>
+    /// 协议级 WebSocket Ping/Pong 保活间隔（F5 修复引入）。
+    /// 默认为 20 秒，设为 <c>TimeSpan.Zero</c> 表示禁用。
+    /// <para>允许范围为 0（禁用）或 5 秒至 300 秒。</para>
+    /// </summary>
+    public TimeSpan ProtocolKeepAliveInterval { get; set; } = TimeSpan.FromSeconds(20);
+
+    /// <summary>
     /// 事件去重配置
     /// </summary>
     public EventDeduplicationOptions EventDeduplication { get; set; } = new();
@@ -208,6 +231,9 @@ public class FeishuWebSocketOptions
     /// <exception cref="InvalidOperationException">当配置项无效时抛出</exception>
     public void Validate()
     {
+        if (MaxConcurrentHandlers < -1)
+            throw new InvalidOperationException("MaxConcurrentHandlers必须为-1（无限制）或非负整数");
+
         if (MaxReconnectAttempts < 0)
             throw new InvalidOperationException("MaxReconnectAttempts必须大于等于0");
 
@@ -248,6 +274,15 @@ public class FeishuWebSocketOptions
         // 注：ReconnectDelayMs 与 ConnectionTimeoutMs 语义独立（前者为两次重连尝试间的等待，后者为单次 TCP 握手超时），
         // 不存在必然的约束关系，故移除交叉校验。
 
+
+        // F5 修复：校验 ProtocolKeepAliveInterval 范围（0=禁用，或 5s~300s）
+        if (ProtocolKeepAliveInterval != TimeSpan.Zero)
+        {
+            if (ProtocolKeepAliveInterval < TimeSpan.FromSeconds(5))
+                throw new InvalidOperationException("ProtocolKeepAliveInterval 必须为 0（禁用）或至少 5 秒");
+            if (ProtocolKeepAliveInterval > TimeSpan.FromSeconds(300))
+                throw new InvalidOperationException("ProtocolKeepAliveInterval 不应超过 300 秒");
+        }
 
         // 验证消息大小限制配置
         if (MessageSizeLimits.MaxTextMessageSize < 1024)

@@ -200,7 +200,12 @@ public class MessageRouter
         try
         {
             var handlerTask = handler.HandleAsync(message, linkedCts.Token);
-            var completed = await Task.WhenAny(handlerTask, Task.Delay(timeoutMs, cancellationToken));
+            // P1-1 修复（WS-05）：此前 Task.Delay 使用外部 cancellationToken 而非 linkedCts.Token，
+            // 处理器完成后 Delay 不会被取消，每条消息泄漏一个定时器直到超时。
+            // 现使用 linkedCts.Token：处理器正常完成时通过 finally 取消 timeoutCts，
+            // Delay 提前结束，定时器即时回收。
+            var delayTask = Task.Delay(timeoutMs, linkedCts.Token);
+            var completed = await Task.WhenAny(handlerTask, delayTask);
 
             if (completed != handlerTask)
             {
@@ -214,8 +219,9 @@ public class MessageRouter
 
                 // 超时，取消处理器
                 timeoutCts.Cancel();
+                var truncatedMsg = message.Length > 200 ? message.Substring(0, 200) + "..." : message;
                 _logger.LogWarning("消息处理器超时 ({TimeoutMs}ms): {HandlerType}, 消息类型可能为: {Message}",
-                    timeoutMs, handler.GetType().Name, message.Length > 200 ? message.Substring(0, 200) + "..." : message);
+                    timeoutMs, handler.GetType().Name, truncatedMsg);
 
                 // 等待处理器响应取消（短超时避免无限阻塞）
                 try
@@ -242,6 +248,12 @@ public class MessageRouter
         {
             _logger.LogWarning("消息处理器被超时取消: {HandlerType}", handler.GetType().Name);
             return false;
+        }
+        finally
+        {
+            // P1-1 修复：显式取消 timeoutCts，确保 Task.Delay 提前结束，定时器即时回收。
+            // linkedCts 的 Dispose 会传播取消，但显式 Cancel 更确定。
+            timeoutCts.Cancel();
         }
     }
 

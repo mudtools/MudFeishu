@@ -38,12 +38,15 @@ namespace Mud.Feishu.WebSocket.Handlers;
 /// 复用一个惰性创建的长期作用域实例，避免每次查询都创建/释放作用域。
 /// </para>
 /// </remarks>
-public class ScopedFeishuEventHandlerFactory : IFeishuEventHandlerFactory
+public class ScopedFeishuEventHandlerFactory : IFeishuEventHandlerFactory, IDisposable
 {
     private readonly ILogger<ScopedFeishuEventHandlerFactory> _logger;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IReadOnlyList<Type> _handlerTypes;
     private readonly Type? _defaultHandlerType;
+    // WS-04 修复（P1-6）：用户通过 AddHandler(instance) 注册的处理器实例。
+    // 这些实例不经过 DI 作用域解析，由工厂直接复用，避免被 IServiceScope.Dispose 回收。
+    private readonly IReadOnlyList<IFeishuEventHandler> _handlerInstances;
     private readonly object _inspectionLock = new();
 
     private IServiceScope? _inspectionScope;
@@ -56,19 +59,23 @@ public class ScopedFeishuEventHandlerFactory : IFeishuEventHandlerFactory
     /// <param name="scopeFactory">服务作用域工厂，用于按事件创建作用域</param>
     /// <param name="handlerTypes">通过建造者注册的事件处理器类型集合</param>
     /// <param name="defaultHandlerType">默认事件处理器类型（可选）</param>
+    /// <param name="handlerInstances">用户通过 AddHandler(instance) 注册的处理器实例集合（可选）</param>
     /// <exception cref="ArgumentNullException">当 logger 或 scopeFactory 为 null 时抛出</exception>
     public ScopedFeishuEventHandlerFactory(
         ILogger<ScopedFeishuEventHandlerFactory> logger,
         IServiceScopeFactory scopeFactory,
         IReadOnlyList<Type> handlerTypes,
-        Type? defaultHandlerType = null)
+        Type? defaultHandlerType = null,
+        IReadOnlyList<IFeishuEventHandler>? handlerInstances = null)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _scopeFactory = scopeFactory ?? throw new ArgumentNullException(nameof(scopeFactory));
         _handlerTypes = handlerTypes ?? throw new ArgumentNullException(nameof(handlerTypes));
         _defaultHandlerType = defaultHandlerType;
+        _handlerInstances = handlerInstances ?? Array.Empty<IFeishuEventHandler>();
 
-        _logger.LogDebug("作用域感知事件处理器工厂已初始化，注册处理器类型 {Count} 个", _handlerTypes.Count);
+        _logger.LogDebug("作用域感知事件处理器工厂已初始化，注册处理器类型 {Count} 个，实例 {InstanceCount} 个",
+            _handlerTypes.Count, _handlerInstances.Count);
     }
 
     /// <inheritdoc/>
@@ -129,8 +136,20 @@ public class ScopedFeishuEventHandlerFactory : IFeishuEventHandlerFactory
                      ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<DefaultFeishuEventHandlerFactory>.Instance;
 
         var handlers = new List<IFeishuEventHandler>();
+
+        // WS-04 修复（P1-6）：优先添加用户通过 AddHandler(instance) 注册的处理器实例。
+        // 这些实例不经过 DI 作用域解析，不会被 IServiceScope.Dispose 回收。
+        if (_handlerInstances.Count > 0)
+        {
+            handlers.AddRange(_handlerInstances);
+        }
+
         foreach (var type in _handlerTypes)
         {
+            // 跳过已通过实例注册的类型，避免重复添加
+            if (_handlerInstances.Any(h => h.GetType() == type))
+                continue;
+
             var resolved = provider.GetService(type) as IFeishuEventHandler;
             if (resolved != null)
             {
@@ -147,7 +166,12 @@ public class ScopedFeishuEventHandlerFactory : IFeishuEventHandlerFactory
         IFeishuEventHandler? defaultHandler = null;
         if (_defaultHandlerType != null)
         {
-            defaultHandler = provider.GetService(_defaultHandlerType) as IFeishuEventHandler;
+            // 优先从实例集合中查找默认处理器
+            defaultHandler = _handlerInstances.FirstOrDefault(h => h.GetType() == _defaultHandlerType);
+            if (defaultHandler == null)
+            {
+                defaultHandler = provider.GetService(_defaultHandlerType) as IFeishuEventHandler;
+            }
         }
         defaultHandler ??= handlers.FirstOrDefault(h => _defaultHandlerType != null && h.GetType() == _defaultHandlerType)
                           ?? handlers.FirstOrDefault()
@@ -173,6 +197,26 @@ public class ScopedFeishuEventHandlerFactory : IFeishuEventHandlerFactory
             _inspectionScope = _scopeFactory.CreateScope();
             _inspectionFactory = CreateFactory(_inspectionScope.ServiceProvider);
             return _inspectionFactory;
+        }
+    }
+
+    /// <summary>
+    /// WS-11 修复（P1-7）：释放元数据查询作用域，避免作用域泄漏。
+    /// </summary>
+    public void Dispose()
+    {
+        if (_inspectionScope != null)
+        {
+            try
+            {
+                _inspectionScope.Dispose();
+            }
+            catch (Exception)
+            {
+                // 尽力释放，忽略异常
+            }
+            _inspectionScope = null;
+            _inspectionFactory = null;
         }
     }
 

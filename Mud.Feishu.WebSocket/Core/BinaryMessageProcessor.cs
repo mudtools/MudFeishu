@@ -13,6 +13,7 @@ using Mud.Feishu.WebSocket.SocketEventArgs;
 using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
 
 namespace Mud.Feishu.WebSocket;
 
@@ -26,10 +27,18 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
     private MemoryStream? _binaryDataStream;
     private readonly object _binaryDataStreamLock = new object();
     private DateTime _binaryDataReceiveStartTime = DateTime.MinValue;
-    private bool _disposed = false;
+    // WS-15 修复（P1-12）：_disposed 改为 int + Interlocked.Exchange 实现原子 check-then-set。
+    // 此前 bool check-then-set 非原子，并发调用 Dispose/DisposeAsync 可能双进入释放逻辑。
+    private int _disposed = 0;
     private readonly MessageRouter? _messageRouter;
     private readonly WebSocketConnectionManager? _connectionManager;
     private readonly List<Task> _activeProcessingTasks = new();
+
+    /// <summary>
+    /// _activeProcessingTasks 的硬上界，防止突发帧暴增导致 OOM（WS-03 修复）。
+    /// 超过此值时执行硬背压：<see cref="Task.WhenAny"/> 等待至少一个任务完成后再继续。
+    /// </summary>
+    private const int MaxActiveProcessingTasks = 1024;
     private readonly IFeishuSeqIDDeduplicator? _seqIdDeduplicator;
     private readonly MessageSequenceValidator? _sequenceValidator;
     private readonly IUnifiedDeduplicationMiddleware? _unifiedDeduplicationMiddleware;
@@ -169,6 +178,32 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
                     {
                         completeData = new byte[actualLength];
                         Buffer.BlockCopy(buffer, 0, completeData, 0, actualLength);
+                    }
+
+                    // WS-03 修复：_activeProcessingTasks 加硬上界，防止突发帧暴增导致 OOM。
+                    // 超过 MaxActiveProcessingTasks 时执行硬背压：等待至少一个任务完成。
+                    Task[]? snapshot = null;
+                    lock (_activeProcessingTasks)
+                    {
+                        if (_activeProcessingTasks.Count >= MaxActiveProcessingTasks)
+                        {
+                            if (_options.EnableLogging)
+                                _logger.LogWarning("活跃处理任务数已达上界 {MaxTasks}，执行硬背压等待", MaxActiveProcessingTasks);
+
+                            snapshot = _activeProcessingTasks.ToArray();
+                        }
+                    }
+
+                    if (snapshot != null && snapshot.Length > 0)
+                    {
+                        try
+                        {
+                            Task.WaitAny(snapshot, 200);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogDebug(ex, "硬背压等待时发生异常（可忽略）");
+                        }
                     }
 
                     // 异步处理完整的二进制消息并跟踪任务
@@ -361,19 +396,9 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
                         }
                     }
 
-                    if (eventArgs.ProcessingTask != null)
-                    {
-                        try
-                        {
-                            await eventArgs.ProcessingTask;
-                        }
-                        catch (Exception ex)
-                        {
-                            eventArgs.ProcessingSuccess = false;
-                            eventArgs.ProcessingException = ex;
-                            _logger.LogError(ex, "事件处理器处理失败: EventId={EventId}, SeqId={SeqId}", extractedEventId, frame.SeqID);
-                        }
-                    }
+                    // WS-25 修复（P2-12）：删除恒为 null 的 ProcessingTask 分支。
+                    // 该属性从未被赋值，此分支从不执行，属于纯死代码。
+                    // 路由结果已由上方 RouteBinaryMessageWithResultAsync 返回值处理。
 
                     if (_unifiedDeduplicationMiddleware != null && (!string.IsNullOrEmpty(extractedEventId) || frame.SeqID > 0))
                     {
@@ -520,13 +545,16 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
         // 同时在 Frame headers 中添加 biz_rt（业务处理耗时）
         var stopwatch = Stopwatch.StartNew();
 
+        // P1-5 修复（WS-06）：使用具名 DTO 替代匿名类型，避免 AOT 反射依赖。
+        // Headers 使用空字典而非 null，保证序列化后始终包含 "headers": {} 字段，
+        // 与飞书协议 {"code":..,"headers":{},"data":".."} 一致。
         var responseData = System.Array.Empty<byte>();
 
-        var responseObj = new
+        var responseObj = new AckResponse
         {
-            code = success ? 200 : 500,
-            headers = (Dictionary<string, string>?)null,
-            data = Convert.ToBase64String(responseData)
+            Code = success ? 200 : 500,
+            Headers = new Dictionary<string, string>(),
+            Data = Convert.ToBase64String(responseData)
         };
 
         var ackJson = FeishuJsonAot.Serialize(responseObj, JsonOptions.Default);
@@ -620,9 +648,9 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
     /// <inheritdoc/>
     public void Dispose()
     {
-        if (_disposed)
+        // WS-15：原子 check-then-set，确保并发调用安全
+        if (Interlocked.Exchange(ref _disposed, 1) == 1)
             return;
-        _disposed = true;
 
         try
         {
@@ -665,9 +693,9 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
     /// <returns>表示异步释放操作的任务</returns>
     public async ValueTask DisposeAsync()
     {
-        if (_disposed)
+        // WS-15：原子 check-then-set，确保并发调用安全
+        if (Interlocked.Exchange(ref _disposed, 1) == 1)
             return;
-        _disposed = true;
 
         try
         {

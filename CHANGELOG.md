@@ -33,6 +33,17 @@
   其余包由 nuget.org `*` 兜底。**注意**：`Mud.HttpUtils 2.0.5` 尚未发布到 nuget.org
   （实测最高 2.0.2），托管 CI runner 上不存在本地源 ⇒ Restore 无法满足精确版本约束
   （`NU1603` 被本仓库提升为错误）。该缺陷为存量问题，需组件发版或为 CI 注入组件源（COMP-5）。
+- **WebSocket 事件处理失败不再静默吞异常（P0-1 / WS-01）**：`FeishuEventMessageHandler.HandleAsync`
+  此前会捕获并记录所有异常后正常返回，导致 ACK 恒为 `code=200`、飞书服务端不再重发，
+  事件永久丢失。现异常向上传播，`MessageRouter` 返回失败并回 `code=500`，服务端将重发。
+  **请确保业务处理器幂等。**
+- **`FeishuWebSocketManager.Dispose()`（同步）不再尝试停止服务（P0-2 / WS-02）**：
+  原实现持有 `_startStopLock` 后同步等待需要同一把锁的 `StopAsync`，必然超时（约 3 秒）且服务未停止。
+  同步路径现仅做尽力释放；需确定性停止请调用 `await StopAsync(...)` 或 `await DisposeAsync()`。
+- **`FeishuEventMessageHandler` 构造函数移除未使用的 `seqIdDeduplicator` 参数（WS-21）**。
+- **`WebSocketBinaryMessageEventArgs.ProcessingTask` 移除（WS-25）**（该属性从未被赋值）。
+- **服务端 Pong 下发的 ClientConfig 不再覆盖本地重连策略（P1-9 / WS-07）**：
+  `ReconnectDelayMs` / `MaxReconnectAttempts` 不再被运行时改写；`PingInterval` 仍生效但钳制至 5–30 秒。
 
 ### ✨ Added
 
@@ -50,6 +61,15 @@
   `AotStrictMode` 冒烟（净零错误 + `AOT00x` / `IL2026` / `IL3050`）、单元测试（按实际失败数）、
   格式校验（默认告警，`-StrictFormat` 可阻断）；`-CacheCheckOnly` 供 CI 在 Restore 前调用。
 - `FeishuJsonDefaults.Reset()`：供测试隔离静态 resolver 状态。
+- **`FeishuWebSocketConcurrencyService`（WS-03）**：为 WebSocket 事件分发提供并发闸门，
+  与 Webhook 的 `MaxConcurrentEvents` 语义与运维体验保持一致，支持配置热更新。
+  新增选项 `FeishuWebSocketOptions.MaxConcurrentHandlers`（默认 32，0 = 无限制）。
+- **`feishu.websocket.backlog` 指标真实化（F1）**：从恒 0 改为真实积压数；
+  连接数指标改为按 app_key 分组（WS-17），避免多实例互相覆盖。
+- **`AckResponse` / `SubscriptionRequest` DTO（WS-06）**：替代匿名类型序列化，
+  消除 Native AOT 反射依赖；ACK 的 `headers` 字段使用空字典保证协议一致性。
+- **`FeishuWebSocketOptions.AllowCertificateNameMismatch`（WS-12）**：独立控制证书名称不匹配放行，
+  与 `AllowSelfSignedCertificates` 解耦。
 
 ### Added（2026-09-15 组件使用审查修订：`MudHttpUtils-2.0.5-Review-Remediation-Plan.md` v2）
 
@@ -98,6 +118,27 @@
   另修复 `Tests/*` 中不存在的 `Microsoft.Extensions.Configuration 8.0.2` → `8.0.0`。
 - 低 TFM（`netstandard2.0` / `net6.0`）上 7486 条无语义的 `AOT006` 噪音，按 TFM 精确豁免
   （`NoWarn` + `WarningsNotAsErrors`，三份 props 同步）。
+- **WebSocket 健康检查缺少并发指标（F2）**：`FeishuWebSocketHealthCheck` 此前仅报告连接状态，
+  无法反映并发槽位耗尽导致的背压。现补充 `max_concurrent_handlers` / `available_concurrent_slots` /
+  `backlog` / `concurrent_utilization_pct` 指标，并按利用率分级返回（槽位耗尽 → Unhealthy，
+  利用率 ≥90% → Degraded），与 Webhook 健康检查对齐。
+- **WebSocket 重连无熔断保护（F3）**：达到重连上限后健康检查仍持续触发无效重连，
+  对飞书侧造成持续连接压力。现引入熔断器：`ReconnectState.IsCircuitOpen` 在达到上限时打开、
+  连接成功后清除；`ReconnectionOrchestrator.TryReconnectAsync` 开头检查熔断器并跳过；
+  健康检查在熔断器打开时返回 Degraded（而非 Unhealthy），表明系统已主动停止重连。
+- **WebSocket 配置热更新不一致（F4）**：`FeishuWebSocketClient` 此前一次性捕获
+  `IOptionsMonitor.CurrentValue` 快照，而 `FeishuWebSocketManager` 每次读取当前值，
+  两者配置热更新行为不一致。现 `FeishuWebSocketClient` 构造函数新增可选
+  `IOptionsMonitor<FeishuWebSocketOptions>` 参数，由 `FeishuWebSocketServiceBuilder` 注入，
+  运行期需热更新的路径改为读取 `_optionsMonitor.CurrentValue`。
+- **WebSocket 协议保活间隔硬编码（F5）**：`WebSocketConnectionManager` 的
+  `KeepAliveInterval` 此前硬编码为固定值。现新增 `FeishuWebSocketOptions.ProtocolKeepAliveInterval`
+  （默认 20 秒，0 = 禁用，范围 5–300 秒），由配置驱动并参与 `Validate()` 校验。
+- **WebSocket 未集成统一去重中间件（F7）**：`FeishuEventMessageHandler` 此前仅使用分离的
+  `IFeishuEventDeduplicator`（按 EventId 去重），无法利用 `IUnifiedDeduplicationMiddleware`
+  的 EventId + SeqID 双重去重能力。现构造函数新增可选 `IUnifiedDeduplicationMiddleware` 参数，
+  由 `FeishuWebSocketClient` 透传注入；当中间件可用时优先使用，否则回退到分离去重路径（向后兼容）。
+  `FeishuWebSocketServiceBuilder` 注册客户端时从 DI 获取中间件实例（可选注入）。
 
 ### 👷 CI/CD
 

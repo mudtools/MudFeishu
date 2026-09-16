@@ -24,6 +24,8 @@ public class FeishuEventMessageHandler : JsonMessageHandler
     private readonly IFeishuEventDeduplicator? _deduplicator;
     private readonly IFeishuEventInterceptor[] _interceptors;
     private readonly FeishuWebSocketOptions _options;
+    // F7 修复：统一去重中间件（可选），优先于分离的 _deduplicator 使用，提供 EventId + SeqID 双重去重。
+    private readonly IUnifiedDeduplicationMiddleware? _unifiedDedupMiddleware;
 
     /// <summary>
     /// 初始化飞书事件消息处理器
@@ -31,22 +33,23 @@ public class FeishuEventMessageHandler : JsonMessageHandler
     /// <param name="logger">日志记录器</param>
     /// <param name="eventHandlerFactory">事件处理器工厂</param>
     /// <param name="deduplicator">事件去重服务（可选）</param>
-    /// <param name="seqIdDeduplicator">SeqID 去重服务（可选）</param>
     /// <param name="interceptors">事件拦截器集合</param>
     /// <param name="options">WebSocket 配置选项</param>
+    /// <param name="unifiedDedupMiddleware">统一去重中间件（可选，F7 修复引入）</param>
     public FeishuEventMessageHandler(
         ILogger<FeishuEventMessageHandler> logger,
         IFeishuEventHandlerFactory eventHandlerFactory,
         IFeishuEventDeduplicator? deduplicator,
-        IFeishuSeqIDDeduplicator? seqIdDeduplicator,
         IFeishuEventInterceptor[]? interceptors,
-        FeishuWebSocketOptions options)
+        FeishuWebSocketOptions options,
+        IUnifiedDeduplicationMiddleware? unifiedDedupMiddleware = null)
         : base(logger)
     {
         _eventHandlerFactory = eventHandlerFactory ?? throw new ArgumentNullException(nameof(eventHandlerFactory));
         _deduplicator = deduplicator;
         _interceptors = interceptors ?? Array.Empty<IFeishuEventInterceptor>();
         _options = options ?? throw new ArgumentNullException(nameof(options));
+        _unifiedDedupMiddleware = unifiedDedupMiddleware;
     }
 
     /// <inheritdoc/>
@@ -87,7 +90,8 @@ public class FeishuEventMessageHandler : JsonMessageHandler
                 var eventMessage = SafeDeserialize<EventMessage>(message);
                 if (eventMessage?.Data == null)
                 {
-                    _logger.LogWarning("无法解析v1.0事件消息: {Message}", message);
+                    var truncatedV1Msg = message.Length > 200 ? message.Substring(0, 200) + "..." : message;
+                    _logger.LogWarning("无法解析v1.0事件消息 (长度: {Length}): {Message}", message.Length, truncatedV1Msg);
                     return;
                 }
                 eventData = eventMessage.Data;
@@ -102,13 +106,27 @@ public class FeishuEventMessageHandler : JsonMessageHandler
             _logger.LogDebug("收到飞书事件: {EventType}, EventId: {EventId}",
                 eventData.EventType, eventData.EventId);
 
-            // 去重检查 - 使用处理中状态机制
-            DeduplicationResult? dedupResult = null;
+            // 去重检查
+            // F7 修复：优先使用统一去重中间件（EventId + SeqID 双重去重），
+            // 未注入时回退到分离的 _deduplicator 路径，保持向后兼容。
             bool shouldSkip = false;
 
-            if (_deduplicator != null)
+            if (_unifiedDedupMiddleware != null)
             {
-                dedupResult = await _deduplicator.TryMarkAsProcessingAsync(eventData.EventId, cancellationToken: cancellationToken);
+                // WebSocket 文本事件路径无 SeqID 上下文，统一中间件内部会跳过 SeqID 检查。
+                var unifiedResult = await _unifiedDedupMiddleware.CheckAsync(eventData.EventId, seqId: null, cancellationToken);
+                if (unifiedResult.ShouldSkip)
+                {
+                    _logger.LogDebug("事件 {EventId} 被统一去重中间件跳过 (类型: {IdentifierType}, 原因: {Reason})",
+                        eventData.EventId, unifiedResult.IdentifierType, unifiedResult.Reason);
+                    shouldSkip = true;
+                    FeishuMetricsHelper.RecordEventDeduplication(_options.AppKey,
+                        unifiedResult.IdentifierType.ToString().ToLowerInvariant(), hit: true);
+                }
+            }
+            else if (_deduplicator != null)
+            {
+                var dedupResult = await _deduplicator.TryMarkAsProcessingAsync(eventData.EventId, cancellationToken: cancellationToken);
                 if (dedupResult.IsDuplicate)
                 {
                     _logger.LogDebug("事件 {EventId} 已在处理中或已处理，跳过 (WasProcessing: {WasProcessing}, Status: {Status})",
@@ -146,7 +164,11 @@ public class FeishuEventMessageHandler : JsonMessageHandler
                             await _eventHandlerFactory.HandleEventParallelAsync(eventData.EventType, eventData, cancellationToken);
 
                             // 处理成功，标记为已完成
-                            if (_deduplicator != null)
+                            if (_unifiedDedupMiddleware != null)
+                            {
+                                await _unifiedDedupMiddleware.MarkCompletedAsync(eventData.EventId, seqId: null, cancellationToken);
+                            }
+                            else if (_deduplicator != null)
                             {
                                 await _deduplicator.MarkAsCompletedAsync(eventData.EventId, cancellationToken: cancellationToken);
                             }
@@ -160,7 +182,11 @@ public class FeishuEventMessageHandler : JsonMessageHandler
                         processingException = ex;
 
                         // 处理失败，回滚处理中状态
-                        if (_deduplicator != null)
+                        if (_unifiedDedupMiddleware != null)
+                        {
+                            await _unifiedDedupMiddleware.RollbackAsync(eventData.EventId, seqId: null, cancellationToken);
+                        }
+                        else if (_deduplicator != null)
                         {
                             await _deduplicator.RollbackProcessingAsync(eventData.EventId, cancellationToken: cancellationToken);
                         }
@@ -180,9 +206,22 @@ public class FeishuEventMessageHandler : JsonMessageHandler
                 }
             }
         }
+        catch (OperationCanceledException)
+        {
+            // 取消异常静默处理，不传播为业务错误
+            throw;
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "处理飞书事件消息时发生错误: {Message}", message);
+            // P0-1 修复（WS-01）：此前外层 catch 吞掉异常后正常返回，
+            // 导致 MessageRouter.RouteBinaryMessageWithResultAsync 恒返回 true、
+            // BinaryMessageProcessor 回 ACK code=200，飞书服务端不再重发，事件永久丢失。
+            // 现重抛异常，让 MessageRouter 感知失败并回 ACK code=500，服务端将重发。
+            // 同时解决 P2-11：日志仅记录结构化字段 + 消息前 200 字符，避免全文入日志。
+            var truncatedMsg = message.Length > 200 ? message.Substring(0, 200) + "..." : message;
+            _logger.LogError(ex, "处理飞书事件消息时发生错误 (消息长度: {Length}, 消息前200字符: {Message})",
+                message.Length, truncatedMsg);
+            throw;
         }
     }
 

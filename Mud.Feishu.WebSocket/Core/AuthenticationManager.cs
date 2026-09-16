@@ -27,8 +27,10 @@ public class AuthenticationManager
     private volatile bool _isAuthenticated = false;
     private readonly FeishuWebSocketOptions _options;
     private readonly SemaphoreSlim _authLock = new(1, 1);
-    private int _authRetryCount = 0;
-    private int _totalAuthFailures = 0;
+    // WS-19 修复（P2-1）：_authRetryCount / _totalAuthFailures 改为 volatile，
+    // 确保跨线程可见性（重连线程写、监控线程读）。
+    private volatile int _authRetryCount = 0;
+    private volatile int _totalAuthFailures = 0;
     private DateTime _lastAuthFailureTime = DateTime.MinValue;
     /// <summary>
     /// 标志位：表示当前失败是否已由 HandleAuthResponse 计数。
@@ -110,14 +112,23 @@ public class AuthenticationManager
             // P2-14 修复：认证重试次数使用独立的 MaxAuthRetryAttempts，
             // 不再复用 MaxReconnectAttempts（该配置语义为"重连次数"，复用会导致
             // "无限重连"配置连带把认证也变成无限重试）。
+            // WS-19 修复（P2-1）：改 for 循环为 while(true) + 显式退出。
+            // 此前 for (attempt <= maxRetries) 当 maxRetries = int.MaxValue 时
+            // 循环可达 2^31 次，且 attempt 递增到 int.MaxValue 后溢出变负数，
+            // 循环条件恒为 true，无法退出。
             var maxRetries = _options.MaxAuthRetryAttempts;
             if (maxRetries == 0)
             {
                 maxRetries = int.MaxValue; // 0 表示无限重试（仅受外部 CancellationToken 与冷却期限制）
             }
 
-            for (int attempt = 0; attempt <= maxRetries; attempt++)
+            var attempt = 0;
+            while (true)
             {
+                // 显式退出条件：超过最大重试次数
+                if (attempt > maxRetries)
+                    break;
+
                 try
                 {
                     _authRetryCount = attempt;
@@ -158,6 +169,8 @@ public class AuthenticationManager
 
                     await Task.Delay(delay, cancellationToken);
                 }
+
+                attempt++;
             }
         }
         finally

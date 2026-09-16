@@ -15,16 +15,18 @@ namespace Mud.Feishu.WebSocket;
 /// <summary>
 /// 飞书WebSocket管理器实现，用于管理WebSocket连接的生命周期
 /// </summary>
-public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable
+public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable, IDisposable
 {
     private readonly ILogger<FeishuWebSocketManager> _logger;
     private readonly IFeishuAppContext _appContext;
     private readonly IOptionsMonitor<FeishuWebSocketOptions> _webSocketOptionsMonitor;
     private readonly IFeishuWebSocketClient _webSocketClient;
     private readonly SemaphoreSlim _startStopLock = new(1, 1);
-    private bool _isRunning = false;
+    // WS-23 修复（P2-13）：_isRunning 改为 volatile bool，确保跨线程可见性
+    private volatile bool _isRunning = false;
     private volatile bool _isReconnecting = false;
-    private bool _disposed = false;
+    // WS-15 修复（P1-12）：_disposed 改为 int + Interlocked.Exchange 实现原子 check-then-set
+    private int _disposed = 0;
 
     /// <summary>
     /// 构造函数
@@ -435,7 +437,7 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable
     /// <returns>表示异步释放操作的任务</returns>
     public async ValueTask DisposeAsync()
     {
-        if (_disposed)
+        if (Interlocked.Exchange(ref _disposed, 1) == 1)
             return;
 
         try
@@ -476,62 +478,32 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable
         {
             _logger.LogError(ex, "异步释放资源时发生错误");
         }
-        finally
-        {
-            _disposed = true;
-        }
 
         GC.SuppressFinalize(this);
     }
 
     /// <summary>
-    /// 释放资源
+    /// 同步释放资源（尽力释放语义）
     /// </summary>
+    /// <remarks>
+    /// P0-2 修复（WS-02）：此前同步 <see cref="Dispose()"/> 会获取 <c>_startStopLock</c> 后调用
+    /// <see cref="StopAsync"/>，而后者同样需要该锁 → 自死锁（约 3~5 秒超时后服务仍未停止）。
+    /// <b>同步路径不再尝试停止服务</b>，仅做尽力释放：取消订阅事件 + Dispose 客户端 + 释放锁。
+    /// 需确定性停止请调用 <see cref="StopAsync"/> 或 <see cref="DisposeAsync"/>。
+    /// </remarks>
     public void Dispose()
     {
-        if (_disposed)
+        if (Interlocked.Exchange(ref _disposed, 1) == 1)
             return;
 
         try
         {
-            // 同步等待锁，设置超时避免死锁
-            if (_startStopLock.Wait(TimeSpan.FromSeconds(5)))
+            // P0-2 修复：同步路径不再获取 _startStopLock，不调用 StopAsync。
+            // StopAsync 内部需要获取同一把锁，构成不可重入的自死锁。
+            // 异步路径 DisposeAsync 是唯一保证完成关闭握手与等待后台任务的路径。
+            if (_isRunning)
             {
-                try
-                {
-                    if (_isRunning)
-                    {
-                        // P1-3 修复：StopAsync 内部包含真实异步 I/O（关闭握手），
-                        // 直接在同步上下文 Wait 是 sync-over-async，可能死锁且 3 秒几乎必然超时。
-                        // 改为 Task.Run 脱离调用方同步上下文后限时等待。
-                        try
-                        {
-                            using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
-                            var stopTask = Task.Run(() => StopAsync(timeoutCts.Token));
-
-                            if (!stopTask.Wait(TimeSpan.FromSeconds(5)))
-                            {
-                                _logger.LogWarning("停止WebSocket服务超时（5秒），强制释放资源");
-                            }
-                        }
-                        catch (OperationCanceledException)
-                        {
-                            _logger.LogWarning("停止WebSocket服务被取消，强制释放资源");
-                        }
-                        catch (AggregateException ex)
-                        {
-                            _logger.LogError(ex, "停止WebSocket服务时发生错误，强制释放资源");
-                        }
-                    }
-                }
-                finally
-                {
-                    _startStopLock.Release();
-                }
-            }
-            else
-            {
-                _logger.LogWarning("获取启动停止锁超时（5秒），强制释放资源");
+                _logger.LogWarning("同步 Dispose() 不保证停止服务，请改用 DisposeAsync() 或 StopAsync() 获取确定性停止");
             }
 
             UnsubscribeClientEvents();
@@ -543,12 +515,7 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable
         {
             _logger.LogError(ex, "释放资源时发生错误");
         }
-        finally
-        {
-            _disposed = true;
-        }
 
-        // 调用 GC.SuppressFinalize 以防止终结器被调用
         GC.SuppressFinalize(this);
     }
 

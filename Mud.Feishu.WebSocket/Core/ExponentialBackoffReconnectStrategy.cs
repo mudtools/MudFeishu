@@ -16,7 +16,15 @@ public class ExponentialBackoffReconnectStrategy : IReconnectStrategy
 {
     private readonly FeishuWebSocketOptions _options;
     private readonly ILogger<ExponentialBackoffReconnectStrategy>? _logger;
-    private static readonly Random JitterRandom = new();
+    // WS-14 修复（P1-11）：static Random 非线程安全，并发调用会损坏内部状态并持续返回 0。
+    // 照抄 RetryHelper 的条件编译模式：net6+ 使用 Random.Shared，ns2.0 使用 [ThreadStatic]。
+#if NET6_0_OR_GREATER
+    private static Random JitterRandom => Random.Shared;
+#else
+    [ThreadStatic]
+    private static Random? _jitterRandom;
+    private static Random JitterRandom => _jitterRandom ??= new Random(Guid.NewGuid().GetHashCode());
+#endif
 
     /// <summary>
     /// 初始化指数退避重连策略

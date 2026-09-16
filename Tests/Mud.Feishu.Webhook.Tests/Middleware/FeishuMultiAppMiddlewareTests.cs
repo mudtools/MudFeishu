@@ -183,8 +183,9 @@ public class FeishuMultiAppMiddlewareTests
     }
 
     [Fact]
-    public async Task InvokeAsync_WithUrlVerificationRequest_WhenNoEncryptKey_ShouldReturnChallenge()
+    public async Task InvokeAsync_WithPlaintextUrlVerification_ShouldAlwaysReturn403()
     {
+        // T2-3: 明文验证在强制 EncryptKey 策略下一律拒绝
         var options = new FeishuWebhookOptions
         {
             GlobalRoutePrefix = "feishu",
@@ -208,13 +209,9 @@ public class FeishuMultiAppMiddlewareTests
         var middleware = CreateMiddlewareWithOptions(options);
         var context = CreateHttpContext("/feishu/nokey_app", "POST", requestBody);
 
-        _webhookServiceMock
-            .Setup(x => x.VerifyEventSubscriptionAsync(It.IsAny<EventVerificationRequest>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new EventVerificationResponse { Challenge = "test_challenge_code" });
-
         await middleware.InvokeAsync(context);
 
-        context.Response.StatusCode.Should().Be(200);
+        context.Response.StatusCode.Should().Be(403);
     }
 
     [Fact]

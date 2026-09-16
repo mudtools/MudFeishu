@@ -63,6 +63,9 @@ public class FailedEventRetryOptions
         if (RetryDelayMultiplier < 1.0)
             throw new InvalidOperationException("RetryDelayMultiplier 必须大于等于 1.0");
 
+        if (RetryDelayMultiplier > 100.0)
+            throw new InvalidOperationException("RetryDelayMultiplier 过大（>100），指数退避将在两次重试后即达上限，请检查配置");
+
         if (MaxRetryDelaySeconds < InitialRetryDelaySeconds)
             throw new InvalidOperationException("MaxRetryDelaySeconds 必须大于等于 InitialRetryDelaySeconds");
 

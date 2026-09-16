@@ -48,6 +48,18 @@ public class RateLimitOptions
     public HashSet<string> WhitelistIPs { get; set; } = [];
 
     /// <summary>
+    /// 可信反向代理地址（CIDR 或精确 IP）。为空时【完全不信任】任何转发头，仅使用 RemoteIpAddress。
+    /// 配置后，仅当直连 IP 命中可信代理时才解析 X-Forwarded-For，并从右向左取第一个非可信 IP。
+    /// </summary>
+    public HashSet<string> TrustedProxies { get; set; } = [];
+
+    /// <summary>
+    /// 是否解析 X-Forwarded-For（仅在直连 IP 命中 TrustedProxies 时生效）。默认 true，
+    /// 但受 TrustedProxies 空集合约束，因此默认行为仍是零信任。
+    /// </summary>
+    public bool UseForwardedHeaders { get; set; } = true;
+
+    /// <summary>
     /// 验证配置有效性
     /// </summary>
     /// <exception cref="InvalidOperationException">配置无效时抛出</exception>

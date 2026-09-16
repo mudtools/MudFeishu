@@ -6,6 +6,7 @@
 // -----------------------------------------------------------------------
 
 using Microsoft.Extensions.Options;
+using Mud.Feishu.Webhook.Utils;
 
 namespace Mud.Feishu.Webhook.Configuration;
 
@@ -18,6 +19,17 @@ namespace Mud.Feishu.Webhook.Configuration;
 /// </remarks>
 public class FeishuWebhookOptionsValidator : IValidateOptions<FeishuWebhookOptions>
 {
+    private readonly IEnvironmentService? _environmentService;
+
+    /// <summary>
+    /// 构造函数
+    /// </summary>
+    /// <param name="environmentService">环境服务（可选，用于生产环境安全项锁定）</param>
+    public FeishuWebhookOptionsValidator(IEnvironmentService? environmentService = null)
+    {
+        _environmentService = environmentService;
+    }
+
     /// <summary>
     /// 验证配置选项
     /// </summary>
@@ -34,11 +46,23 @@ public class FeishuWebhookOptionsValidator : IValidateOptions<FeishuWebhookOptio
         try
         {
             options.Validate();
-            return ValidateOptionsResult.Success;
         }
         catch (InvalidOperationException ex)
         {
             return ValidateOptionsResult.Fail($"FeishuWebhookOptions 配置验证失败: {ex.Message}");
         }
+
+        // 生产环境安全项锁定（ADR-4）：兑现 XML 文档中「系统会在生产环境自动检测并拒绝」的承诺
+        if (_environmentService?.IsProduction == true)
+        {
+            if (!options.EnforceHeaderSignatureValidation)
+            {
+                return ValidateOptionsResult.Fail(
+                    "生产环境禁止 EnforceHeaderSignatureValidation=false（将导致缺少 X-Lark-Signature 的请求被直接放行，" +
+                    "攻击者可伪造事件）。如确需在非生产环境关闭，请设置 ASPNETCORE_ENVIRONMENT=Development。");
+            }
+        }
+
+        return ValidateOptionsResult.Success;
     }
 }

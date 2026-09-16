@@ -6,6 +6,7 @@
 // -----------------------------------------------------------------------
 
 using FluentAssertions;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
@@ -21,11 +22,13 @@ public class FailedEventRetryServiceTests
     private readonly Mock<ILogger<FailedEventRetryService>> _loggerMock;
     private readonly Mock<IFeishuWebhookService> _webhookServiceMock;
     private readonly FailedEventRetryOptions _options;
+    private readonly IServiceScopeFactory _scopeFactory;
 
     public FailedEventRetryServiceTests()
     {
         _loggerMock = new Mock<ILogger<FailedEventRetryService>>();
         _webhookServiceMock = new Mock<IFeishuWebhookService>();
+        _webhookServiceMock.Setup(x => x.SetCurrentAppKey(It.IsAny<string>())).Callback<string>(_ => { });
         _options = new FailedEventRetryOptions
         {
             EnableRetry = true,
@@ -33,6 +36,12 @@ public class FailedEventRetryServiceTests
             MaxRetryPerPoll = 10,
             RetryPollIntervalSeconds = 1
         };
+
+        // 构建 scope factory，使其在 CreateScope 后返回 mock webhook service
+        var services = new ServiceCollection();
+        services.AddScoped(_ => _webhookServiceMock.Object);
+        var provider = services.BuildServiceProvider();
+        _scopeFactory = provider.GetRequiredService<IServiceScopeFactory>();
     }
 
     [Fact]
@@ -45,7 +54,7 @@ public class FailedEventRetryServiceTests
         var service = new FailedEventRetryService(
             optionsMock,
             _loggerMock.Object,
-            _webhookServiceMock.Object);
+            _scopeFactory);
 
         // Assert
         service.Should().NotBeNull();
@@ -68,7 +77,7 @@ public class FailedEventRetryServiceTests
         var service = new FailedEventRetryService(
             optionsMock,
             _loggerMock.Object,
-            _webhookServiceMock.Object,
+            _scopeFactory,
             null);
 
         // Assert - Should not throw, but should log warning
@@ -98,7 +107,7 @@ public class FailedEventRetryServiceTests
         var service = new FailedEventRetryService(
             optionsMock,
             _loggerMock.Object,
-            _webhookServiceMock.Object,
+            _scopeFactory,
             null);
 
         // Assert
@@ -124,7 +133,7 @@ public class FailedEventRetryServiceTests
         var service = new FailedEventRetryService(
             optionsMock,
             _loggerMock.Object,
-            _webhookServiceMock.Object,
+            _scopeFactory,
             eventStoreMock.Object);
 
         // Assert
@@ -146,7 +155,7 @@ public class FailedEventRetryServiceTests
         var service = new FailedEventRetryService(
             optionsMock,
             _loggerMock.Object,
-            _webhookServiceMock.Object,
+            _scopeFactory,
             eventStoreMock.Object);
 
         using var cts = new CancellationTokenSource(500);
@@ -175,7 +184,7 @@ public class FailedEventRetryServiceTests
         var service = new FailedEventRetryService(
             optionsMock,
             _loggerMock.Object,
-            _webhookServiceMock.Object,
+            _scopeFactory,
             eventStoreMock.Object);
 
         using var cts = new CancellationTokenSource(500);
@@ -204,7 +213,8 @@ public class FailedEventRetryServiceTests
             EventType = "test.event",
             SerializedEventData = "{\"eventId\":\"event-001\",\"eventType\":\"test.event\"}",
             RetryCount = 0,
-            FailedAt = DateTime.UtcNow
+            FailedAt = DateTime.UtcNow,
+            NextRetryAt = DateTimeOffset.UtcNow.Subtract(TimeSpan.FromSeconds(1))
         };
 
         eventStoreMock
@@ -218,7 +228,7 @@ public class FailedEventRetryServiceTests
         var service = new FailedEventRetryService(
             optionsMock,
             _loggerMock.Object,
-            _webhookServiceMock.Object,
+            _scopeFactory,
             eventStoreMock.Object);
 
         using var cts = new CancellationTokenSource(1000);
@@ -247,7 +257,8 @@ public class FailedEventRetryServiceTests
             EventType = "test.event",
             SerializedEventData = "{\"eventId\":\"event-002\",\"eventType\":\"test.event\"}",
             RetryCount = 0,
-            FailedAt = DateTime.UtcNow
+            FailedAt = DateTime.UtcNow,
+            NextRetryAt = DateTimeOffset.UtcNow.Subtract(TimeSpan.FromSeconds(1))
         };
 
         eventStoreMock
@@ -261,7 +272,7 @@ public class FailedEventRetryServiceTests
         var service = new FailedEventRetryService(
             optionsMock,
             _loggerMock.Object,
-            _webhookServiceMock.Object,
+            _scopeFactory,
             eventStoreMock.Object);
 
         using var cts = new CancellationTokenSource(1000);
@@ -290,7 +301,8 @@ public class FailedEventRetryServiceTests
             EventType = "test.event",
             SerializedEventData = "{\"eventId\":\"event-003\",\"eventType\":\"test.event\"}",
             RetryCount = 3, // 已达到最大重试次数
-            FailedAt = DateTime.UtcNow
+            FailedAt = DateTime.UtcNow,
+            NextRetryAt = DateTimeOffset.UtcNow.Subtract(TimeSpan.FromSeconds(1))
         };
 
         eventStoreMock
@@ -300,7 +312,7 @@ public class FailedEventRetryServiceTests
         var service = new FailedEventRetryService(
             optionsMock,
             _loggerMock.Object,
-            _webhookServiceMock.Object,
+            _scopeFactory,
             eventStoreMock.Object);
 
         using var cts = new CancellationTokenSource(1000);
@@ -329,7 +341,8 @@ public class FailedEventRetryServiceTests
             EventType = "test.event",
             SerializedEventData = "invalid_json_data",
             RetryCount = 0,
-            FailedAt = DateTime.UtcNow
+            FailedAt = DateTime.UtcNow,
+            NextRetryAt = DateTimeOffset.UtcNow.Subtract(TimeSpan.FromSeconds(1))
         };
 
         eventStoreMock
@@ -339,7 +352,7 @@ public class FailedEventRetryServiceTests
         var service = new FailedEventRetryService(
             optionsMock,
             _loggerMock.Object,
-            _webhookServiceMock.Object,
+            _scopeFactory,
             eventStoreMock.Object);
 
         using var cts = new CancellationTokenSource(1000);
@@ -368,7 +381,8 @@ public class FailedEventRetryServiceTests
             EventType = "test.event",
             SerializedEventData = "{\"eventId\":\"event-005\",\"eventType\":\"test.event\"}",
             RetryCount = 0,
-            FailedAt = DateTime.UtcNow
+            FailedAt = DateTime.UtcNow,
+            NextRetryAt = DateTimeOffset.UtcNow.Subtract(TimeSpan.FromSeconds(1))
         };
 
         eventStoreMock
@@ -382,7 +396,7 @@ public class FailedEventRetryServiceTests
         var service = new FailedEventRetryService(
             optionsMock,
             _loggerMock.Object,
-            _webhookServiceMock.Object,
+            _scopeFactory,
             eventStoreMock.Object);
 
         using var cts = new CancellationTokenSource(1000);

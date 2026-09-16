@@ -10,7 +10,6 @@ using Mud.Feishu.Webhook.Configuration;
 using Mud.Feishu.Webhook.Models;
 using Mud.Feishu.Webhook.Utils;
 using System.Collections.Concurrent;
-using System.Diagnostics.CodeAnalysis;
 
 namespace Mud.Feishu.Webhook;
 
@@ -80,12 +79,6 @@ public class FeishuRateLimitMiddleware : IDisposable
     /// <summary>
     /// 处理 HTTP 请求
     /// </summary>
-    #if NET6_0_OR_GREATER
-    [RequiresUnreferencedCode("限流中间件使用反射式 System.Text.Json 序列化，在裁剪下成员可能被移除")]
-#endif
-#if NET7_0_OR_GREATER
-    [RequiresDynamicCode("限流中间件使用反射式 System.Text.Json 序列化，在 AOT 下不可用")]
-#endif
     public async Task InvokeAsync(HttpContext context)
     {
         var options = Options;
@@ -165,27 +158,37 @@ public class FeishuRateLimitMiddleware : IDisposable
     }
 
     /// <summary>
-    /// 获取客户端真实 IP
+    /// 获取客户端真实 IP（ADR-3 零信任模型）
+    /// 默认不信任任何转发头，仅在直连 IP 命中 TrustedProxies 时解析 X-Forwarded-For
     /// </summary>
-    private static string? GetClientIp(HttpContext context)
+    private string? GetClientIp(HttpContext context)
     {
-        // 优先检查代理头
-        var headers = new[] { "X-Forwarded-For", "X-Real-IP", "CF-Connecting-IP" };
+        var rateLimitOptions = Options.RateLimit;
+        var directIp = context.Connection.RemoteIpAddress?.ToString();
 
-        foreach (var header in headers)
+        // 零信任默认：无可信代理配置 / 转发头关闭 / 直连 IP 非可信代理 → 只认 RemoteIpAddress
+        if (!rateLimitOptions.UseForwardedHeaders
+            || rateLimitOptions.TrustedProxies.Count == 0
+            || string.IsNullOrEmpty(directIp)
+            || !IpAddressHelper.IsIpAllowed(directIp, rateLimitOptions.TrustedProxies))
         {
-            if (context.Request.Headers.TryGetValue(header, out var values))
+            return directIp;
+        }
+
+        // 可信代理后：从右向左取第一个非可信 IP（标准代理链算法，防止最左值被客户端伪造）
+        if (context.Request.Headers.TryGetValue("X-Forwarded-For", out var xff))
+        {
+            var hops = xff.ToString().Split(',');
+            for (var i = hops.Length - 1; i >= 0; i--)
             {
-                var ip = values.FirstOrDefault()?.Split(',')[0].Trim();
-                if (!string.IsNullOrEmpty(ip) && ip != "::1" && ip != "127.0.0.1")
-                {
-                    return ip;
-                }
+                var hop = hops[i].Trim();
+                if (string.IsNullOrEmpty(hop)) continue;
+                if (!IpAddressHelper.IsIpAllowed(hop, rateLimitOptions.TrustedProxies))
+                    return hop;
             }
         }
 
-        // 回退到直接连接 IP
-        return context.Connection.RemoteIpAddress?.ToString();
+        return directIp;
     }
 
     private static string? ExtractAppKeyFromPath(string path, string globalRoutePrefix) => WebhookPathHelper.ExtractAppKeyFromPath(path, globalRoutePrefix);
@@ -241,16 +244,14 @@ public class FeishuRateLimitMiddleware : IDisposable
     /// <summary>
     /// 写入 429 响应
     /// </summary>
-    #if NET6_0_OR_GREATER
-    [RequiresUnreferencedCode("反射式 System.Text.Json 序列化（JsonSerializerOptions）在裁剪下成员可能被移除")]
-#endif
-#if NET7_0_OR_GREATER
-    [RequiresDynamicCode("反射式 System.Text.Json 序列化（JsonSerializerOptions）在 AOT 下不可用")]
-#endif
     private async Task WriteTooManyRequestsResponse(HttpContext context, string message, RateLimitOptions rateLimitOptions)
     {
         context.Response.StatusCode = rateLimitOptions.TooManyRequestsStatusCode;
         context.Response.ContentType = "application/json";
+
+        // Retry-After 头（RFC 9110）：取当前窗口剩余秒数
+        var retryAfter = Math.Max(1, rateLimitOptions.WindowSizeSeconds);
+        context.Response.Headers["Retry-After"] = retryAfter.ToString();
 
         var errorResponse = new WebhookErrorResponse
         {

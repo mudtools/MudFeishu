@@ -12,16 +12,19 @@
 #>
 
 param(
-    # EventCallback 根目录；留空则取「脚本所在目录\Mud.Feishu.EventCallback」。
-    # 也可传入相对路径（相对脚本所在目录）或绝对路径。
+    # EventCallback 根目录；留空则取「仓库根目录\Mud.Feishu.EventCallback」。
+    # 也可传入相对路径（相对仓库根目录）或绝对路径。
     [string]$RootPath
 )
 
-# ---- 解析根目录为绝对路径（相对路径基于脚本所在目录，不依赖当前工作目录）----
+# 脚本位于 <仓库根>\scripts\ 下，仓库根为其上一级目录
+$RepoRoot = Split-Path $PSScriptRoot -Parent
+
+# ---- 解析根目录为绝对路径（相对路径基于仓库根目录，不依赖当前工作目录）----
 if ([string]::IsNullOrWhiteSpace($RootPath)) {
-    $RootPath = Join-Path $PSScriptRoot 'Mud.Feishu.EventCallback'
+    $RootPath = Join-Path $RepoRoot 'Mud.Feishu.EventCallback'
 } elseif (-not [System.IO.Path]::IsPathRooted($RootPath)) {
-    $RootPath = Join-Path $PSScriptRoot $RootPath
+    $RootPath = Join-Path $RepoRoot $RootPath
 }
 $RootPath = [System.IO.Path]::GetFullPath($RootPath).TrimEnd(
     [System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar)

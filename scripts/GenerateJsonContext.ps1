@@ -6,7 +6,7 @@
     The scaffolder is distributed as a NuGet dotnet tool (command: mud-jsonctx). This script
     does NOT depend on any local source/build path, so it works on any machine / any clone
     location:
-      1. Resolves the target project relative to the script's own directory (no hardcoded paths).
+      1. Resolves the target project relative to the repo root (script lives in <repo>\scripts\).
       2. Detects the tool (global `mud-jsonctx` or local `dotnet mud-jsonctx`), installing it
          globally when missing (unless -NoInstall).
       3. Runs the tool to scan [HttpJsonSerializable] and emit *_JsonContext.g.cs grouped by
@@ -40,8 +40,9 @@ param(
     [switch]$NoInstall = $false
 )
 
-# Repo root = script directory (bound to the script location, works on any clone path)
-$RepoRoot = $PSScriptRoot
+# Repo root = parent of the script directory (script lives in <repo>\scripts\),
+# bound to the script location, works on any clone path
+$RepoRoot = Split-Path $PSScriptRoot -Parent
 
 # Fix working directory to the repo root so relative paths and any local dotnet tool
 # manifest are resolved consistently.

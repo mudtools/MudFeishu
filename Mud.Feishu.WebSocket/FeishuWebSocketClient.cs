@@ -14,6 +14,7 @@ using Mud.Feishu.WebSocket.Exceptions;
 using Mud.Feishu.WebSocket.Handlers;
 using Mud.Feishu.WebSocket.SocketEventArgs;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
@@ -94,6 +95,12 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
     /// <param name="seqIdDeduplicator">SeqID去重服务（可选）</param>
     /// <param name="sessionManager">会话管理器（可选）</param>
     /// <param name="sequenceValidator">消息序号验证器（可选）</param>
+    #if NET6_0_OR_GREATER
+    [RequiresUnreferencedCode("反射式System.Text.Json序列化在裁剪下无法静态分析目标类型成员")]
+    #endif
+    #if NET7_0_OR_GREATER
+    [RequiresDynamicCode("反射式System.Text.Json序列化在 AOT/动态代码生成环境下不可用")]
+    #endif
     public FeishuWebSocketClient(
         ILogger<FeishuWebSocketClient> logger,
         IFeishuEventHandlerFactory eventHandlerFactory,
@@ -205,6 +212,12 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
     /// <summary>
     /// 注册消息处理器
     /// </summary>
+    #if NET6_0_OR_GREATER
+    [RequiresUnreferencedCode("反射式System.Text.Json序列化在裁剪下无法静态分析目标类型成员")]
+    #endif
+    #if NET7_0_OR_GREATER
+    [RequiresDynamicCode("反射式System.Text.Json序列化在 AOT/动态代码生成环境下不可用")]
+    #endif
     private void RegisterMessageHandlers()
     {
         var pingPongHandler = new PingPongMessageHandler(
@@ -275,6 +288,12 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
     /// <summary>
     /// 建立WebSocket连接
     /// </summary>
+    #if NET6_0_OR_GREATER
+    [RequiresUnreferencedCode("反射式System.Text.Json序列化在裁剪下无法静态分析目标类型成员")]
+    #endif
+    #if NET7_0_OR_GREATER
+    [RequiresDynamicCode("反射式System.Text.Json序列化在 AOT/动态代码生成环境下不可用")]
+    #endif
     public async Task ConnectAsync(WsEndpointResult endpoint, CancellationToken cancellationToken = default)
     {
         if (endpoint == null)
@@ -375,6 +394,12 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
     /// <summary>
     /// 建立WebSocket连接并进行认证
     /// </summary>
+    #if NET6_0_OR_GREATER
+    [RequiresUnreferencedCode("反射式System.Text.Json序列化在裁剪下无法静态分析目标类型成员")]
+    #endif
+    #if NET7_0_OR_GREATER
+    [RequiresDynamicCode("反射式System.Text.Json序列化在 AOT/动态代码生成环境下不可用")]
+    #endif
     public async Task ConnectAsync(WsEndpointResult endpoint, string appAccessToken, CancellationToken cancellationToken = default)
     {
         await ConnectAsync(endpoint, cancellationToken);
@@ -424,6 +449,12 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
     /// <summary>
     /// 开始接收消息（公共接口实现）
     /// </summary>
+    #if NET6_0_OR_GREATER
+    [RequiresUnreferencedCode("反射式System.Text.Json序列化在裁剪下无法静态分析目标类型成员")]
+    #endif
+    #if NET7_0_OR_GREATER
+    [RequiresDynamicCode("反射式System.Text.Json序列化在 AOT/动态代码生成环境下不可用")]
+    #endif
     public async Task StartReceivingAsync(CancellationToken cancellationToken)
     {
         await StartReceivingAsyncInternal(cancellationToken);
@@ -432,6 +463,12 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
     /// <summary>
     /// 开始接收消息（内部实现）
     /// </summary>
+    #if NET6_0_OR_GREATER
+    [RequiresUnreferencedCode("反射式System.Text.Json序列化在裁剪下无法静态分析目标类型成员")]
+    #endif
+    #if NET7_0_OR_GREATER
+    [RequiresDynamicCode("反射式System.Text.Json序列化在 AOT/动态代码生成环境下不可用")]
+    #endif
     private async Task StartReceivingAsyncInternal(CancellationToken cancellationToken)
     {
         try
@@ -571,6 +608,12 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
     /// <summary>
     /// 处理接收到的消息
     /// </summary>
+    #if NET6_0_OR_GREATER
+    [RequiresUnreferencedCode("反射式System.Text.Json序列化在裁剪下无法静态分析目标类型成员")]
+    #endif
+    #if NET7_0_OR_GREATER
+    [RequiresDynamicCode("反射式System.Text.Json序列化在 AOT/动态代码生成环境下不可用")]
+    #endif
     private async Task HandleReceivedMessageAsync(ArraySegment<byte> buffer, WebSocketReceiveResult result, CancellationToken cancellationToken)
     {
         try

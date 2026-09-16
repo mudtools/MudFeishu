@@ -5,6 +5,7 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using Mud.Feishu.Abstractions.Utilities;
 
@@ -75,6 +76,12 @@ public class WidgetFactory
     /// <summary>
     /// 将组件序列化为JSON字符串
     /// </summary>
+    #if NET6_0_OR_GREATER
+    [RequiresUnreferencedCode("反射式 JsonSerializer.Serialize(widget, options) 在裁剪下无法静态分析目标类型成员")]
+#endif
+#if NET7_0_OR_GREATER
+    [RequiresDynamicCode("反射式 JsonSerializer.Serialize(widget, options) 在 AOT/动态代码生成环境下不可用")]
+#endif
     public static string SerializeToJson(IWidget widget, bool writeIndented = false)
     {
         var options = new JsonSerializerOptions(WidgetSerializerOptions.Options)
@@ -87,6 +94,12 @@ public class WidgetFactory
     /// <summary>
     /// 将组件列表序列化为JSON字符串
     /// </summary>
+    #if NET6_0_OR_GREATER
+    [RequiresUnreferencedCode("反射式 JsonSerializer.Serialize(widgets, options) 在裁剪下无法静态分析目标类型成员")]
+#endif
+#if NET7_0_OR_GREATER
+    [RequiresDynamicCode("反射式 JsonSerializer.Serialize(widgets, options) 在 AOT/动态代码生成环境下不可用")]
+#endif
     public static string SerializeToJson(List<IWidget> widgets, bool writeIndented = false)
     {
         var options = new JsonSerializerOptions(WidgetSerializerOptions.Options)

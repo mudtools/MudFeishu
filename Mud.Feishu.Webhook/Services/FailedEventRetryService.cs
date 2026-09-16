@@ -7,6 +7,7 @@
 
 using Mud.Feishu.Abstractions;
 using Mud.Feishu.Webhook.Configuration;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Mud.Feishu.Webhook;
 
@@ -48,6 +49,10 @@ public class FailedEventRetryService : BackgroundService
     /// <summary>
     /// 后台服务执行方法
     /// </summary>
+    #if NET6_0_OR_GREATER
+    [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCode")]
+    [UnconditionalSuppressMessage("AOT", "IL3050:RequiresDynamicCode")]
+#endif
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         // NEW-REG-01 修复：从 IOptionsMonitor<FeishuWebhookOptions> 读取 Retry.EnableRetry 决定是否启动
@@ -89,6 +94,12 @@ public class FailedEventRetryService : BackgroundService
     /// <summary>
     /// 重试失败的事件
     /// </summary>
+    #if NET6_0_OR_GREATER
+    [RequiresUnreferencedCode("反射式 System.Text.Json 反序列化 EventData（JsonSerializerOptions）在裁剪下成员可能被移除")]
+#endif
+#if NET7_0_OR_GREATER
+    [RequiresDynamicCode("反射式 System.Text.Json 反序列化 EventData（JsonSerializerOptions）在 AOT 下不可用")]
+#endif
     private async Task RetryFailedEventsAsync(CancellationToken cancellationToken)
     {
         var failedEvents = await _failedEventStore!.GetPendingRetryEventsAsync(

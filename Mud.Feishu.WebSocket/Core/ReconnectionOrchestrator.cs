@@ -6,6 +6,7 @@
 // -----------------------------------------------------------------------
 
 using Microsoft.Extensions.Logging;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Mud.Feishu.WebSocket;
 
@@ -70,6 +71,12 @@ public class ReconnectionOrchestrator : IReconnectionOrchestrator, IDisposable
     /// <param name="reason">重连原因</param>
     /// <param name="cancellationToken">取消令牌</param>
     /// <returns>重连是否成功</returns>
+    #if NET6_0_OR_GREATER
+    [RequiresUnreferencedCode("反射式System.Text.Json序列化在裁剪下无法静态分析目标类型成员")]
+    #endif
+    #if NET7_0_OR_GREATER
+    [RequiresDynamicCode("反射式System.Text.Json序列化在 AOT/动态代码生成环境下不可用")]
+    #endif
     public async Task<bool> TryReconnectAsync(string reason, CancellationToken cancellationToken = default)
     {
         if (!_options.AutoReconnect)

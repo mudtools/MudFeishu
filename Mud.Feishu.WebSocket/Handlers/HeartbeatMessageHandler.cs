@@ -1,4 +1,4 @@
-﻿// -----------------------------------------------------------------------
+// -----------------------------------------------------------------------
 //  作者：Mud Studio  版权所有 (c) Mud Studio 2026   
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
@@ -7,6 +7,7 @@
 
 using Microsoft.Extensions.Logging;
 using Mud.Feishu.WebSocket.DataModels;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Mud.Feishu.WebSocket.Handlers;
 
@@ -33,6 +34,12 @@ public class HeartbeatMessageHandler : JsonMessageHandler
         return messageType.ToLowerInvariant() == "heartbeat";
     }
     /// <inheritdoc/>
+    #if NET6_0_OR_GREATER
+    [RequiresUnreferencedCode("反射式System.Text.Json序列化在裁剪下无法静态分析目标类型成员")]
+    #endif
+    #if NET7_0_OR_GREATER
+    [RequiresDynamicCode("反射式System.Text.Json序列化在 AOT/动态代码生成环境下不可用")]
+    #endif
     public override Task HandleAsync(string message, CancellationToken cancellationToken = default)
     {
         var heartbeatMessage = SafeDeserialize<HeartbeatMessage>(message);

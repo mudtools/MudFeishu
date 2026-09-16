@@ -10,6 +10,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Mud.Feishu.Abstractions;
 using Mud.HttpUtils;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
@@ -59,6 +60,12 @@ public static class FeishuMultiAppExtensions
     /// <see cref="IFeishuAppManager"/> 与所有 HttpClient 仍使用旧配置。<b>配置变更需重启应用</b>。
     /// </para>
     /// </remarks>
+    #if NET6_0_OR_GREATER
+    [RequiresUnreferencedCode("反射式配置绑定（ConfigurationBinder.Bind）在裁剪下无法静态分析配置类型成员")]
+#endif
+#if NET7_0_OR_GREATER
+    [RequiresDynamicCode("反射式配置绑定（ConfigurationBinder.Bind）在 AOT/动态代码生成环境下不可用")]
+#endif
     public static IServiceCollection AddFeishuApp(
         this IServiceCollection services,
         IConfiguration configuration,
@@ -101,6 +108,12 @@ public static class FeishuMultiAppExtensions
     /// }
     /// </code>
     /// </remarks>
+    #if NET6_0_OR_GREATER
+    [RequiresUnreferencedCode("反射式配置绑定（ConfigurationBinder.Bind）在裁剪下无法静态分析配置类型成员")]
+#endif
+#if NET7_0_OR_GREATER
+    [RequiresDynamicCode("反射式配置绑定（ConfigurationBinder.Bind）在 AOT/动态代码生成环境下不可用")]
+#endif
     public static IServiceCollection AddFeishuApp(
         this IServiceCollection services,
         Action<List<FeishuAppConfig>>? validateConfig,
@@ -186,6 +199,12 @@ public static class FeishuMultiAppExtensions
     /// });
     /// </code>
     /// </remarks>
+    #if NET6_0_OR_GREATER
+    [RequiresUnreferencedCode("反射式配置绑定（ConfigurationBinder.Bind）在裁剪下无法静态分析配置类型成员")]
+#endif
+#if NET7_0_OR_GREATER
+    [RequiresDynamicCode("反射式配置绑定（ConfigurationBinder.Bind）在 AOT/动态代码生成环境下不可用")]
+#endif
     public static IServiceCollection AddFeishuApp(
         this IServiceCollection services,
         Action<FeishuAppConfigBuilder> configure)
@@ -223,6 +242,12 @@ public static class FeishuMultiAppExtensions
     /// services.AddFeishuApp(configs);
     /// </code>
     /// </remarks>
+    #if NET6_0_OR_GREATER
+    [RequiresUnreferencedCode("反射式配置绑定（ConfigurationBinder.Bind）在裁剪下无法静态分析配置类型成员")]
+#endif
+#if NET7_0_OR_GREATER
+    [RequiresDynamicCode("反射式配置绑定（ConfigurationBinder.Bind）在 AOT/动态代码生成环境下不可用")]
+#endif
     public static IServiceCollection AddFeishuApp(
         this IServiceCollection services,
         List<FeishuAppConfig> configs)
@@ -261,7 +286,17 @@ public static class FeishuMultiAppExtensions
     /// services.AddFeishuApp&lt;CustomFeishuAppManager&gt;(configs);
     /// </code>
     /// </remarks>
-    public static IServiceCollection AddFeishuApp<TAppManager>(
+    #if NET6_0_OR_GREATER
+    [RequiresUnreferencedCode("反射式配置绑定（ConfigurationBinder.Bind）在裁剪下无法静态分析配置类型成员")]
+#endif
+#if NET7_0_OR_GREATER
+    [RequiresDynamicCode("反射式配置绑定（ConfigurationBinder.Bind）在 AOT/动态代码生成环境下不可用")]
+#endif
+    public static IServiceCollection AddFeishuApp<
+#if NET6_0_OR_GREATER
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]
+#endif
+        TAppManager>(
         this IServiceCollection services,
         List<FeishuAppConfig> configs)
         where TAppManager : FeishuAppManager
@@ -301,6 +336,12 @@ public static class FeishuMultiAppExtensions
     ///   <item>FeishuTokenRegistrationService - 令牌注册托管服务（NET6+，启动时注册令牌到后台刷新服务）</item>
     /// </list>
     /// </remarks>
+    #if NET6_0_OR_GREATER
+    [RequiresUnreferencedCode("反射式配置绑定（ConfigurationBinder.Bind）在裁剪下无法静态分析配置类型成员")]
+#endif
+#if NET7_0_OR_GREATER
+    [RequiresDynamicCode("反射式配置绑定（ConfigurationBinder.Bind）在 AOT/动态代码生成环境下不可用")]
+#endif
     private static void RegisterCoreServices(IServiceCollection services, List<FeishuAppConfig> configs, IConfiguration? configuration = null, string? sectionName = null)
     {
 #if NET6_0_OR_GREATER
@@ -361,6 +402,12 @@ public static class FeishuMultiAppExtensions
     /// 注册核心服务中除 IFeishuAppManager 之外的依赖项。
     /// 供 <see cref="RegisterCoreServices"/> 和 <see cref="AddFeishuApp{TAppManager}"/> 共用。
     /// </summary>
+    #if NET6_0_OR_GREATER
+    [RequiresUnreferencedCode("反射式配置绑定（ConfigurationBinder.Bind）在裁剪下无法静态分析配置类型成员")]
+#endif
+#if NET7_0_OR_GREATER
+    [RequiresDynamicCode("反射式配置绑定（ConfigurationBinder.Bind）在 AOT/动态代码生成环境下不可用")]
+#endif
     private static void RegisterCoreServicesWithoutAppManager(IServiceCollection services, List<FeishuAppConfig> configs, IConfiguration? configuration = null, string? sectionName = null)
     {
         services.AddSingleton(sp =>

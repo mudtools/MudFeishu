@@ -11,6 +11,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using Mud.Feishu.Abstractions.Authentication;
+using System.Diagnostics.CodeAnalysis;
 using Mud.HttpUtils;
 using Mud.HttpUtils.Observability;
 using Mud.HttpUtils.Resilience;
@@ -29,6 +30,12 @@ public static class FeishuServiceCollectionExtensions
     /// <param name="sectionName">配置节名称，默认为"Feishu"</param>
     /// <param name="services">服务集合</param>
     /// <returns>服务集合实例。支持链式调用</returns>
+    #if NET6_0_OR_GREATER
+    [RequiresUnreferencedCode("反射式配置绑定（ConfigurationBinder.Bind）在裁剪下无法静态分析配置类型成员")]
+#endif
+#if NET7_0_OR_GREATER
+    [RequiresDynamicCode("反射式配置绑定（ConfigurationBinder.Bind）在 AOT/动态代码生成环境下不可用")]
+#endif
     public static IServiceCollection ConfigureFrom(this IServiceCollection services, IConfiguration configuration, string sectionName = "FeishuApps")
     {
         if (configuration == null)

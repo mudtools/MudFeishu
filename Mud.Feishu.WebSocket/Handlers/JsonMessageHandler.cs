@@ -1,4 +1,4 @@
-﻿// -----------------------------------------------------------------------
+// -----------------------------------------------------------------------
 //  作者：Mud Studio  版权所有 (c) Mud Studio 2026
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
@@ -6,6 +6,7 @@
 // -----------------------------------------------------------------------
 
 using Microsoft.Extensions.Logging;
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 
 namespace Mud.Feishu.WebSocket.Handlers;
@@ -40,6 +41,12 @@ public abstract class JsonMessageHandler : IMessageHandler
     public abstract bool CanHandle(string messageType);
 
     /// <inheritdoc/>
+    #if NET6_0_OR_GREATER
+    [RequiresUnreferencedCode("反射式System.Text.Json序列化在裁剪下无法静态分析目标类型成员")]
+    #endif
+    #if NET7_0_OR_GREATER
+    [RequiresDynamicCode("反射式System.Text.Json序列化在 AOT/动态代码生成环境下不可用")]
+    #endif
     public abstract Task HandleAsync(string message, CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -48,6 +55,12 @@ public abstract class JsonMessageHandler : IMessageHandler
     /// <typeparam name="T">目标类型</typeparam>
     /// <param name="json">JSON字符串</param>
     /// <returns>解析结果</returns>
+    #if NET6_0_OR_GREATER
+    [RequiresUnreferencedCode("反射式System.Text.Json序列化在裁剪下无法静态分析目标类型成员")]
+    #endif
+    #if NET7_0_OR_GREATER
+    [RequiresDynamicCode("反射式System.Text.Json序列化在 AOT/动态代码生成环境下不可用")]
+    #endif
     protected T? SafeDeserialize<T>(string json) where T : class
     {
         try

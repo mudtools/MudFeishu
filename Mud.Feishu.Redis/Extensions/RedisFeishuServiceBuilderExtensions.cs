@@ -15,6 +15,7 @@ using Mud.Feishu.Redis.Configuration;
 using Mud.Feishu.Redis.HealthChecks;
 using Mud.Feishu.Redis.Services;
 using StackExchange.Redis;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Mud.Feishu.Redis.Extensions;
 
@@ -219,6 +220,12 @@ public static class RedisFeishuServiceBuilderExtensions
     /// 颠倒顺序会导致 Redis TokenStore 因 TryAddSingleton 语义而无法覆盖默认 Memory 实现，
     /// 且不会有任何错误抛出（静默失败）。
     /// </exception>
+    #if NET6_0_OR_GREATER
+    [RequiresUnreferencedCode("反射式配置绑定（Configure<TOptions>）在裁剪下无法静态分析配置类型成员")]
+#endif
+#if NET7_0_OR_GREATER
+    [RequiresDynamicCode("反射式配置绑定（Configure<TOptions>）在 AOT/动态代码生成环境下不可用")]
+#endif
     public static IServiceCollection AddFeishuRedisDeduplicators(
         this IServiceCollection services,
         IConfiguration configuration,

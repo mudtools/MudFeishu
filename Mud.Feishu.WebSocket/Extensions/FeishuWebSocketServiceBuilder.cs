@@ -12,6 +12,7 @@ using Microsoft.Extensions.Options;
 using Mud.Feishu.Abstractions.EventHandlers;
 using Mud.Feishu.Abstractions.Services;
 using Mud.Feishu.WebSocket;
+using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.Metrics;
 
 namespace Microsoft.Extensions.DependencyInjection;
@@ -48,6 +49,12 @@ public class FeishuWebSocketServiceBuilder
     /// <remarks>
     /// 注意：使用此方法前需要先注册多应用支持（AddFeishuApp）。
     /// </remarks>
+    #if NET6_0_OR_GREATER
+    [RequiresUnreferencedCode("反射式配置绑定（Configure<TOptions>）在裁剪下无法静态分析配置类型成员")]
+    #endif
+    #if NET7_0_OR_GREATER
+    [RequiresDynamicCode("反射式配置绑定（Configure<TOptions>）在 AOT/动态代码生成环境下不可用")]
+    #endif
     public FeishuWebSocketServiceBuilder ConfigureFrom(
         IConfiguration configuration,
         string sectionName = "FeishuWebSocket",
@@ -86,7 +93,11 @@ public class FeishuWebSocketServiceBuilder
     /// </summary>
     /// <typeparam name="THandler">处理器类型</typeparam>
     /// <returns>建造者实例，支持链式调用</returns>
-    public FeishuWebSocketServiceBuilder AddHandler<THandler>()
+    public FeishuWebSocketServiceBuilder AddHandler<
+#if NET6_0_OR_GREATER
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]
+#endif
+        THandler>()
         where THandler : class, IFeishuEventHandler
     {
         _handlerTypes.Add(typeof(THandler));
@@ -139,7 +150,11 @@ public class FeishuWebSocketServiceBuilder
     /// </summary>
     /// <typeparam name="TInterceptor">拦截器类型</typeparam>
     /// <returns>建造者实例，支持链式调用</returns>
-    public FeishuWebSocketServiceBuilder AddInterceptor<TInterceptor>()
+    public FeishuWebSocketServiceBuilder AddInterceptor<
+#if NET6_0_OR_GREATER
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]
+#endif
+        TInterceptor>()
         where TInterceptor : class, IFeishuEventInterceptor
     {
         _interceptorTypes.Add(typeof(TInterceptor));
@@ -205,6 +220,12 @@ public class FeishuWebSocketServiceBuilder
     /// 构建并注册服务
     /// </summary>
     /// <returns>服务集合，支持链式调用</returns>
+    #if NET6_0_OR_GREATER
+    [RequiresUnreferencedCode("反射式System.Text.Json序列化在裁剪下无法静态分析目标类型成员")]
+    #endif
+    #if NET7_0_OR_GREATER
+    [RequiresDynamicCode("反射式System.Text.Json序列化在 AOT/动态代码生成环境下不可用")]
+    #endif
     public IServiceCollection Build()
     {
         if (_configured)
@@ -231,6 +252,12 @@ public class FeishuWebSocketServiceBuilder
     /// <summary>
     /// 注册服务
     /// </summary>
+    #if NET6_0_OR_GREATER
+    [RequiresUnreferencedCode("反射式System.Text.Json序列化在裁剪下无法静态分析目标类型成员")]
+    #endif
+    #if NET7_0_OR_GREATER
+    [RequiresDynamicCode("反射式System.Text.Json序列化在 AOT/动态代码生成环境下不可用")]
+    #endif
     private void RegisterServices()
     {
         // 注册事件处理器工厂
@@ -361,6 +388,9 @@ public class FeishuWebSocketServiceBuilder
         }
 
         // 注册WebSocket客户端
+        // 说明：该 AddSingleton 工厂 lambda 无法直接添加 Requires 标注，此处用 pragma 屏蔽
+        // FeishuWebSocketClient 构造函数（带标注）反射式序列化的 IL 警告。
+#pragma warning disable IL2026, IL3050
         _services.AddSingleton<IFeishuWebSocketClient>(serviceProvider =>
         {
             var logger = serviceProvider.GetRequiredService<ILogger<FeishuWebSocketClient>>();
@@ -373,6 +403,7 @@ public class FeishuWebSocketServiceBuilder
             var sequenceValidator = serviceProvider.GetService<MessageSequenceValidator>();
             return new FeishuWebSocketClient(logger, eventHandlerFactory, loggerFactory, interceptors, options, seqIdDeduplicator, sessionManager, sequenceValidator);
         });
+#pragma warning restore IL2026, IL3050
 
         // 注册WebSocket管理器
         _services.AddSingleton<IFeishuWebSocketManager, FeishuWebSocketManager>();

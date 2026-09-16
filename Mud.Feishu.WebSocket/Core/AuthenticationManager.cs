@@ -9,6 +9,7 @@ using Microsoft.Extensions.Logging;
 using Mud.Feishu.Abstractions.Metrics;
 using Mud.Feishu.WebSocket.DataModels;
 using Mud.Feishu.WebSocket.SocketEventArgs;
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 
 namespace Mud.Feishu.WebSocket;
@@ -81,6 +82,12 @@ public class AuthenticationManager
     /// <summary>
     /// 发送认证消息（带重试机制和冷却期检查）
     /// </summary>
+    #if NET6_0_OR_GREATER
+    [RequiresUnreferencedCode("反射式System.Text.Json序列化在裁剪下无法静态分析目标类型成员")]
+    #endif
+    #if NET7_0_OR_GREATER
+    [RequiresDynamicCode("反射式System.Text.Json序列化在 AOT/动态代码生成环境下不可用")]
+    #endif
     public async Task AuthenticateAsync(string appAccessToken, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(appAccessToken))
@@ -156,6 +163,12 @@ public class AuthenticationManager
     /// <summary>
     /// 内部认证实现
     /// </summary>
+    #if NET6_0_OR_GREATER
+    [RequiresUnreferencedCode("反射式System.Text.Json序列化在裁剪下无法静态分析目标类型成员")]
+    #endif
+    #if NET7_0_OR_GREATER
+    [RequiresDynamicCode("反射式System.Text.Json序列化在 AOT/动态代码生成环境下不可用")]
+    #endif
     private async Task AuthenticateInternalAsync(string appAccessToken, CancellationToken cancellationToken)
     {
         try
@@ -240,6 +253,12 @@ public class AuthenticationManager
     /// <summary>
     /// 处理认证响应
     /// </summary>
+    #if NET6_0_OR_GREATER
+    [RequiresUnreferencedCode("反射式System.Text.Json序列化在裁剪下无法静态分析目标类型成员")]
+    #endif
+    #if NET7_0_OR_GREATER
+    [RequiresDynamicCode("反射式System.Text.Json序列化在 AOT/动态代码生成环境下不可用")]
+    #endif
     public void HandleAuthResponse(string responseMessage)
     {
         try

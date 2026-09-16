@@ -10,6 +10,7 @@ using Mud.Feishu.Webhook.Configuration;
 using Mud.Feishu.Webhook.Models;
 using Mud.Feishu.Webhook.Utils;
 using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Mud.Feishu.Webhook;
 
@@ -79,6 +80,12 @@ public class FeishuRateLimitMiddleware : IDisposable
     /// <summary>
     /// 处理 HTTP 请求
     /// </summary>
+    #if NET6_0_OR_GREATER
+    [RequiresUnreferencedCode("限流中间件使用反射式 System.Text.Json 序列化，在裁剪下成员可能被移除")]
+#endif
+#if NET7_0_OR_GREATER
+    [RequiresDynamicCode("限流中间件使用反射式 System.Text.Json 序列化，在 AOT 下不可用")]
+#endif
     public async Task InvokeAsync(HttpContext context)
     {
         var options = Options;
@@ -234,6 +241,12 @@ public class FeishuRateLimitMiddleware : IDisposable
     /// <summary>
     /// 写入 429 响应
     /// </summary>
+    #if NET6_0_OR_GREATER
+    [RequiresUnreferencedCode("反射式 System.Text.Json 序列化（JsonSerializerOptions）在裁剪下成员可能被移除")]
+#endif
+#if NET7_0_OR_GREATER
+    [RequiresDynamicCode("反射式 System.Text.Json 序列化（JsonSerializerOptions）在 AOT 下不可用")]
+#endif
     private async Task WriteTooManyRequestsResponse(HttpContext context, string message, RateLimitOptions rateLimitOptions)
     {
         context.Response.StatusCode = rateLimitOptions.TooManyRequestsStatusCode;

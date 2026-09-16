@@ -9,6 +9,7 @@
 
 using Microsoft.Extensions.Configuration;
 using Mud.Feishu.WebSocket;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
@@ -32,6 +33,12 @@ public static class ServiceCollectionExtensions
     /// builder.Services.CreateFeishuWebSocketServiceBuilder(builder.Configuration, "default");
     /// </code>
     /// </remarks>
+    #if NET6_0_OR_GREATER
+    [RequiresUnreferencedCode("反射式配置绑定（Configure<TOptions>）在裁剪下无法静态分析配置类型成员")]
+    #endif
+    #if NET7_0_OR_GREATER
+    [RequiresDynamicCode("反射式配置绑定（Configure<TOptions>）在 AOT/动态代码生成环境下不可用")]
+    #endif
     public static FeishuWebSocketServiceBuilder CreateFeishuWebSocketServiceBuilder(
         this IServiceCollection services,
         IConfiguration configuration,
@@ -74,6 +81,12 @@ public static class ServiceCollectionExtensions
     /// builder.Services.CreateFeishuWebSocketServiceBuilder(builder.Configuration, "FeishuWebSocket", "default");
     /// </code>
     /// </remarks>
+    #if NET6_0_OR_GREATER
+    [RequiresUnreferencedCode("反射式配置绑定（Configure<TOptions>）在裁剪下无法静态分析配置类型成员")]
+    #endif
+    #if NET7_0_OR_GREATER
+    [RequiresDynamicCode("反射式配置绑定（Configure<TOptions>）在 AOT/动态代码生成环境下不可用")]
+    #endif
     public static FeishuWebSocketServiceBuilder CreateFeishuWebSocketServiceBuilder(
         this IServiceCollection services,
         IConfiguration configuration,

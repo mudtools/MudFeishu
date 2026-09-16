@@ -18,6 +18,7 @@ using Mud.Feishu.Webhook.Serialization;
 using Mud.Feishu.Webhook.Services;
 using Mud.Feishu.Webhook.Utils;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Mud.Feishu.Webhook;
 
@@ -120,6 +121,12 @@ public class FeishuMultiAppMiddleware
     /// </summary>
     /// <param name="context">当前 HTTP 上下文</param>
     /// <returns></returns>
+    #if NET6_0_OR_GREATER
+    [RequiresUnreferencedCode("中间件使用反射式 System.Text.Json 序列化/反序列化，在裁剪下成员可能被移除")]
+#endif
+#if NET7_0_OR_GREATER
+    [RequiresDynamicCode("中间件使用反射式 System.Text.Json 序列化/反序列化，在 AOT 下不可用")]
+#endif
     public async Task InvokeAsync(HttpContext context)
     {
         var stopwatch = Stopwatch.StartNew();
@@ -251,6 +258,12 @@ public class FeishuMultiAppMiddleware
     /// <summary>
     /// 处理 Webhook 请求
     /// </summary>
+    #if NET6_0_OR_GREATER
+    [RequiresUnreferencedCode("内部调用反射式 System.Text.Json 序列化辅助方法")]
+#endif
+#if NET7_0_OR_GREATER
+    [RequiresDynamicCode("内部调用反射式 System.Text.Json 序列化辅助方法")]
+#endif
     private async Task ProcessWebhookRequestAsync(
         HttpContext context,
         string requestBody,
@@ -368,6 +381,12 @@ public class FeishuMultiAppMiddleware
     /// 尝试处理明文 URL 验证请求
     /// 当应用配置了 EncryptKey 时，拒绝明文验证请求（安全边界）
     /// </summary>
+    #if NET6_0_OR_GREATER
+    [RequiresUnreferencedCode("内部调用反射式 System.Text.Json 序列化辅助方法")]
+#endif
+#if NET7_0_OR_GREATER
+    [RequiresDynamicCode("内部调用反射式 System.Text.Json 序列化辅助方法")]
+#endif
     private async Task<bool> TryHandlePlaintextVerificationAsync(
         HttpContext context,
         string requestBody,
@@ -412,6 +431,12 @@ public class FeishuMultiAppMiddleware
     /// 处理加密的 URL 验证请求
     /// 验证解密后数据中的 token 字段，确保请求来源合法
     /// </summary>
+    #if NET6_0_OR_GREATER
+    [RequiresUnreferencedCode("内部调用反射式 System.Text.Json 序列化辅助方法")]
+#endif
+#if NET7_0_OR_GREATER
+    [RequiresDynamicCode("内部调用反射式 System.Text.Json 序列化辅助方法")]
+#endif
     private async Task HandleEncryptedVerificationAsync(
         HttpContext context,
         EventData decryptedData,
@@ -524,6 +549,12 @@ public class FeishuMultiAppMiddleware
     /// <summary>
     /// 写入 JSON 响应
     /// </summary>
+    #if NET6_0_OR_GREATER
+    [RequiresUnreferencedCode("反射式 System.Text.Json 序列化（JsonSerializerOptions）在裁剪下成员可能被移除")]
+#endif
+#if NET7_0_OR_GREATER
+    [RequiresDynamicCode("反射式 System.Text.Json 序列化（JsonSerializerOptions）在 AOT 下不可用")]
+#endif
     private async Task WriteJsonResponse<T>(HttpContext context, int statusCode, T data)
     {
         context.Response.StatusCode = statusCode;
@@ -538,6 +569,12 @@ public class FeishuMultiAppMiddleware
     /// <summary>
     /// 写入错误响应
     /// </summary>
+    #if NET6_0_OR_GREATER
+    [RequiresUnreferencedCode("反射式 System.Text.Json 序列化（JsonSerializerOptions）在裁剪下成员可能被移除")]
+#endif
+#if NET7_0_OR_GREATER
+    [RequiresDynamicCode("反射式 System.Text.Json 序列化（JsonSerializerOptions）在 AOT 下不可用")]
+#endif
     private async Task WriteErrorResponse(HttpContext context, int statusCode, string message, string? requestId = null)
     {
         context.Response.StatusCode = statusCode;

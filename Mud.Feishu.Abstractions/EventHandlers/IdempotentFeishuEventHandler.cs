@@ -5,6 +5,7 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 
 namespace Mud.Feishu.Abstractions.EventHandlers;
@@ -47,6 +48,10 @@ public abstract class IdempotentFeishuEventHandler<T>(
     /// </summary>
     /// <param name="eventData">事件数据</param>
     /// <param name="cancellationToken">取消令牌</param>
+    #if NET6_0_OR_GREATER
+    [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCode")]
+    [UnconditionalSuppressMessage("AOT", "IL3050:RequiresDynamicCode")]
+#endif
     public sealed override async Task HandleAsync(EventData eventData, CancellationToken cancellationToken = default)
     {
         var businessKey = GetBusinessKey(eventData);
@@ -149,6 +154,12 @@ public abstract class IdempotentFeishuEventHandler<T, THeader> : IdempotentFeish
     /// </summary>
     /// <param name="eventData">事件数据</param>
     /// <returns>反序列化后的 Header 实体，Header 为 null 或反序列化失败时返回 default</returns>
+    #if NET6_0_OR_GREATER
+    [RequiresUnreferencedCode("反射式System.Text.Json序列化在裁剪下无法静态分析目标类型成员")]
+#endif
+#if NET7_0_OR_GREATER
+    [RequiresDynamicCode("反射式System.Text.Json序列化在 AOT/动态代码生成环境下不可用")]
+#endif
     protected THeader? DeserializeHeader(EventData eventData)
     {
         if (eventData.Header == null)
@@ -190,6 +201,10 @@ public abstract class IdempotentFeishuEventHandler<T, THeader> : IdempotentFeish
     /// 重写基类的 ProcessBusinessLogicAsync，自动注入 Header
     /// <para>此方法为 sealed，不可被进一步重写，确保 Header 注入逻辑不被绕过</para>
     /// </summary>
+    #if NET6_0_OR_GREATER
+    [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCode")]
+    [UnconditionalSuppressMessage("AOT", "IL3050:RequiresDynamicCode")]
+#endif
     protected sealed override Task ProcessBusinessLogicAsync(
         EventData eventData,
         T? eventEntity,

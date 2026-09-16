@@ -8,6 +8,7 @@
 using Microsoft.Extensions.Logging;
 using Mud.Feishu.Abstractions.Utilities;
 using Mud.Feishu.WebSocket.DataModels;
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 
 namespace Mud.Feishu.WebSocket.Handlers;
@@ -47,6 +48,12 @@ public class PingPongMessageHandler : JsonMessageHandler
         return type == "ping" || type == "pong";
     }
     /// <inheritdoc/>
+    #if NET6_0_OR_GREATER
+    [RequiresUnreferencedCode("反射式System.Text.Json序列化在裁剪下无法静态分析目标类型成员")]
+    #endif
+    #if NET7_0_OR_GREATER
+    [RequiresDynamicCode("反射式System.Text.Json序列化在 AOT/动态代码生成环境下不可用")]
+    #endif
     public override async Task HandleAsync(string message, CancellationToken cancellationToken = default)
     {
         var messageType = ExtractMessageType(message);
@@ -61,6 +68,12 @@ public class PingPongMessageHandler : JsonMessageHandler
         }
     }
 
+    #if NET6_0_OR_GREATER
+    [RequiresUnreferencedCode("反射式System.Text.Json序列化在裁剪下无法静态分析目标类型成员")]
+    #endif
+    #if NET7_0_OR_GREATER
+    [RequiresDynamicCode("反射式System.Text.Json序列化在 AOT/动态代码生成环境下不可用")]
+    #endif
     private async Task HandlePingAsync(string message)
     {
         var pingMessage = SafeDeserialize<PingMessage>(message);
@@ -80,6 +93,12 @@ public class PingPongMessageHandler : JsonMessageHandler
             _logger.LogDebug("已发送Pong响应");
     }
 
+    #if NET6_0_OR_GREATER
+    [RequiresUnreferencedCode("反射式System.Text.Json序列化在裁剪下无法静态分析目标类型成员")]
+    #endif
+    #if NET7_0_OR_GREATER
+    [RequiresDynamicCode("反射式System.Text.Json序列化在 AOT/动态代码生成环境下不可用")]
+    #endif
     private async Task HandlePongAsync(string message)
     {
         var pongMessage = SafeDeserialize<PongMessage>(message);

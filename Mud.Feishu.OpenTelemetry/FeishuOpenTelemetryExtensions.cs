@@ -17,6 +17,7 @@ using OpenTelemetry.Trace;
 using Mud.Feishu.Abstractions.Metrics;
 using Mud.Feishu.Abstractions.Observability;
 using Mud.HttpUtils;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Mud.Feishu.OpenTelemetry;
 
@@ -88,6 +89,12 @@ public static class FeishuOpenTelemetryExtensions
     /// builder.Services.AddFeishuOpenTelemetry(builder.Configuration);
     /// </code>
     /// </example>
+    #if NET6_0_OR_GREATER
+    [RequiresUnreferencedCode("反射式配置绑定（Configure<TOptions>）在裁剪下无法静态分析配置类型成员")]
+#endif
+#if NET7_0_OR_GREATER
+    [RequiresDynamicCode("反射式配置绑定（Configure<TOptions>）在 AOT/动态代码生成环境下不可用")]
+#endif
     public static OpenTelemetryBuilder AddFeishuOpenTelemetry(
         this IServiceCollection services,
         IConfiguration configuration,

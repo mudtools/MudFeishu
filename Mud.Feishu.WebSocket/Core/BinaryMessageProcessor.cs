@@ -11,6 +11,7 @@ using Mud.Feishu.Abstractions.Utilities;
 using Mud.Feishu.DataModels.WsEndpoint;
 using Mud.Feishu.WebSocket.SocketEventArgs;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
@@ -255,6 +256,12 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
     /// <summary>
     /// 处理完整的二进制消息
     /// </summary>
+    #if NET6_0_OR_GREATER
+    [RequiresUnreferencedCode("反射式System.Text.Json序列化在裁剪下无法静态分析目标类型成员")]
+    #endif
+    #if NET7_0_OR_GREATER
+    [RequiresDynamicCode("反射式System.Text.Json序列化在 AOT/动态代码生成环境下不可用")]
+    #endif
     private async Task ProcessCompleteBinaryMessageAsync(byte[] completeData, CancellationToken cancellationToken)
     {
         try
@@ -497,6 +504,12 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
     /// </summary>
     /// <param name="frame">ProtoBuf 控制帧</param>
     /// <param name="eventArgs">二进制消息事件参数</param>
+    #if NET6_0_OR_GREATER
+    [RequiresUnreferencedCode("反射式System.Text.Json序列化在裁剪下无法静态分析目标类型成员")]
+    #endif
+    #if NET7_0_OR_GREATER
+    [RequiresDynamicCode("反射式System.Text.Json序列化在 AOT/动态代码生成环境下不可用")]
+    #endif
     private void HandleControlFrame(EventProtoData frame, WebSocketBinaryMessageEventArgs eventArgs)
     {
         var messageType = frame.MessageType;
@@ -535,6 +548,12 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
         }
     }
 
+    #if NET6_0_OR_GREATER
+    [RequiresUnreferencedCode("反射式System.Text.Json序列化在裁剪下无法静态分析目标类型成员")]
+    #endif
+    #if NET7_0_OR_GREATER
+    [RequiresDynamicCode("反射式System.Text.Json序列化在 AOT/动态代码生成环境下不可用")]
+    #endif
     private async Task SendAckMessageAsync(EventProtoData? eventProtoData, bool success, CancellationToken cancellationToken)
     {
         if (eventProtoData == null)

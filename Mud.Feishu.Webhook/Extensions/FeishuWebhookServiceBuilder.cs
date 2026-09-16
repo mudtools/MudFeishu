@@ -13,6 +13,7 @@ using Mud.Feishu.Webhook.Configuration;
 using Mud.Feishu.Webhook.Services;
 using Mud.Feishu.Webhook.Utils;
 using Mud.HttpUtils;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
@@ -48,6 +49,12 @@ public class FeishuWebhookServiceBuilder
     /// <param name="configuration">配置对象</param>
     /// <param name="sectionName">配置节名称，默认为"FeishuWebhook"</param>
     /// <returns>建造者实例，支持链式调用</returns>
+    #if NET6_0_OR_GREATER
+    [RequiresUnreferencedCode("反射式配置绑定（ConfigurationBinder.Bind）在裁剪下无法静态分析配置类型成员")]
+#endif
+#if NET7_0_OR_GREATER
+    [RequiresDynamicCode("反射式配置绑定（ConfigurationBinder.Bind）在 AOT/动态代码生成环境下不可用")]
+#endif
     public FeishuWebhookServiceBuilder ConfigureFrom(IConfiguration configuration, string? sectionName = null)
     {
         if (configuration == null)
@@ -119,7 +126,11 @@ public class FeishuWebhookServiceBuilder
     /// </summary>
     /// <typeparam name="THandler">处理器类型</typeparam>
     /// <returns>建造者实例，支持链式调用</returns>
-    public FeishuWebhookServiceBuilder AddHandler<THandler>()
+    public FeishuWebhookServiceBuilder AddHandler<
+#if NET6_0_OR_GREATER
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]
+#endif
+        THandler>()
         where THandler : class, IFeishuEventHandler
     {
         _handlerTypes.Add(typeof(THandler));
@@ -169,7 +180,11 @@ public class FeishuWebhookServiceBuilder
     /// </summary>
     /// <typeparam name="TInterceptor">拦截器类型</typeparam>
     /// <returns>建造者实例，支持链式调用</returns>
-    public FeishuWebhookServiceBuilder AddInterceptor<TInterceptor>()
+    public FeishuWebhookServiceBuilder AddInterceptor<
+#if NET6_0_OR_GREATER
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]
+#endif
+        TInterceptor>()
         where TInterceptor : class, IFeishuEventInterceptor
     {
         _interceptorTypes.Add(typeof(TInterceptor));
@@ -221,7 +236,11 @@ public class FeishuWebhookServiceBuilder
     /// <typeparam name="THandler">处理器类型</typeparam>
     /// <param name="appKey">应用键</param>
     /// <returns>建造者实例，支持链式调用</returns>
-    public FeishuWebhookServiceBuilder AddHandler<THandler>(string appKey)
+    public FeishuWebhookServiceBuilder AddHandler<
+#if NET6_0_OR_GREATER
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]
+#endif
+        THandler>(string appKey)
         where THandler : class, IFeishuEventHandler
     {
         if (string.IsNullOrEmpty(appKey))
@@ -241,7 +260,11 @@ public class FeishuWebhookServiceBuilder
     /// <typeparam name="TInterceptor">拦截器类型</typeparam>
     /// <param name="appKey">应用键</param>
     /// <returns>建造者实例，支持链式调用</returns>
-    public FeishuWebhookServiceBuilder AddInterceptor<TInterceptor>(string appKey)
+    public FeishuWebhookServiceBuilder AddInterceptor<
+#if NET6_0_OR_GREATER
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]
+#endif
+        TInterceptor>(string appKey)
         where TInterceptor : class, IFeishuEventInterceptor
     {
         if (string.IsNullOrEmpty(appKey))
@@ -259,7 +282,11 @@ public class FeishuWebhookServiceBuilder
     /// </summary>
     /// <typeparam name="TSignatureValidator">自定义签名验证器类型</typeparam>
     /// <returns>建造者实例，支持链式调用</returns>
-    public FeishuWebhookServiceBuilder UseSignatureValidator<TSignatureValidator>()
+    public FeishuWebhookServiceBuilder UseSignatureValidator<
+#if NET6_0_OR_GREATER
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]
+#endif
+        TSignatureValidator>()
         where TSignatureValidator : class, ISignatureValidator
     {
         _services.AddScoped<ISignatureValidator, TSignatureValidator>();
@@ -271,7 +298,11 @@ public class FeishuWebhookServiceBuilder
     /// </summary>
     /// <typeparam name="TTimestampValidator">自定义时间戳验证器类型</typeparam>
     /// <returns>建造者实例，支持链式调用</returns>
-    public FeishuWebhookServiceBuilder UseTimestampValidator<TTimestampValidator>()
+    public FeishuWebhookServiceBuilder UseTimestampValidator<
+#if NET6_0_OR_GREATER
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]
+#endif
+        TTimestampValidator>()
         where TTimestampValidator : class, ITimestampValidator
     {
         _services.AddScoped<ITimestampValidator, TTimestampValidator>();
@@ -283,7 +314,11 @@ public class FeishuWebhookServiceBuilder
     /// </summary>
     /// <typeparam name="TNonceValidator">自定义 Nonce 验证器类型</typeparam>
     /// <returns>建造者实例，支持链式调用</returns>
-    public FeishuWebhookServiceBuilder UseNonceValidator<TNonceValidator>()
+    public FeishuWebhookServiceBuilder UseNonceValidator<
+#if NET6_0_OR_GREATER
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]
+#endif
+        TNonceValidator>()
         where TNonceValidator : class, INonceValidator
     {
         _services.AddScoped<INonceValidator, TNonceValidator>();
@@ -295,7 +330,11 @@ public class FeishuWebhookServiceBuilder
     /// </summary>
     /// <typeparam name="TSubscriptionValidator">自定义订阅验证器类型</typeparam>
     /// <returns>建造者实例，支持链式调用</returns>
-    public FeishuWebhookServiceBuilder UseSubscriptionValidator<TSubscriptionValidator>()
+    public FeishuWebhookServiceBuilder UseSubscriptionValidator<
+#if NET6_0_OR_GREATER
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]
+#endif
+        TSubscriptionValidator>()
         where TSubscriptionValidator : class, ISubscriptionValidator
     {
         _services.AddScoped<ISubscriptionValidator, TSubscriptionValidator>();
@@ -314,7 +353,11 @@ public class FeishuWebhookServiceBuilder
     /// 3. 从环境变量获取密钥
     /// 4. 从自定义密钥管理服务获取密钥
     /// </remarks>
-    public FeishuWebhookServiceBuilder UseEncryptKeyProvider<TEncryptKeyProvider>()
+    public FeishuWebhookServiceBuilder UseEncryptKeyProvider<
+#if NET6_0_OR_GREATER
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]
+#endif
+        TEncryptKeyProvider>()
         where TEncryptKeyProvider : class, IEncryptKeyProvider
     {
         _services.AddScoped<IEncryptKeyProvider, TEncryptKeyProvider>();
@@ -326,7 +369,11 @@ public class FeishuWebhookServiceBuilder
     /// </summary>
     /// <typeparam name="TCompositeValidator">自定义组合验证器类型</typeparam>
     /// <returns>建造者实例，支持链式调用</returns>
-    public FeishuWebhookServiceBuilder UseCompositeValidator<TCompositeValidator>()
+    public FeishuWebhookServiceBuilder UseCompositeValidator<
+#if NET6_0_OR_GREATER
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]
+#endif
+        TCompositeValidator>()
         where TCompositeValidator : class, IFeishuEventValidator
     {
         _services.AddScoped<IFeishuEventValidator, TCompositeValidator>();

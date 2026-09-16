@@ -10,6 +10,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Mud.Feishu.Abstractions.Metrics;
 using Mud.Feishu.WebSocket.SocketEventArgs;
+using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.Metrics;
 
 namespace Mud.Feishu.WebSocket;
@@ -108,6 +109,13 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
     /// </summary>
     /// <param name="stoppingToken">停止令牌</param>
     /// <returns>执行任务</returns>
+    // 说明：BackgroundService.ExecuteAsync 基方法未携带 Requires 标注，override 无法添加
+    // RequiresUnreferencedCode/RequiresDynamicCode（否则触发 IL2046/IL3051）。
+    // 其内部调用的 StartAsync（带标注）的 IL 警告在此处统一用 UnconditionalSuppressMessage 屏蔽。
+    #if NET6_0_OR_GREATER
+    [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2026", Justification = "BackgroundService 基方法不支持 Requires 标注，反射式调用已由 WebSocket 客户端内部处理")]
+    [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "BackgroundService 基方法不支持 Requires 标注，反射式调用已由 WebSocket 客户端内部处理")]
+#endif
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         // NEW-WS-01 修复：保存 stoppingToken 供 TryTriggerReconnect 中的 fire-and-forget 重连任务使用
@@ -232,12 +240,22 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
                 e.CloseStatus, e.CloseStatusDescription, stats.Uptime);
         }
 
+        // OnDisconnected 作为事件处理器无法添加 Requires 标注，其内部调用带标注的
+        // TryTriggerReconnect 时用 pragma 屏蔽 IL 警告。
+#pragma warning disable IL2026, IL3050
         TryTriggerReconnect("连接断开事件触发");
+#pragma warning restore IL2026, IL3050
     }
 
     /// <summary>
     /// 尝试触发重连（带防抖机制）
     /// </summary>
+    #if NET6_0_OR_GREATER
+    [RequiresUnreferencedCode("反射式System.Text.Json序列化在裁剪下无法静态分析目标类型成员")]
+    #endif
+    #if NET7_0_OR_GREATER
+    [RequiresDynamicCode("反射式System.Text.Json序列化在 AOT/动态代码生成环境下不可用")]
+    #endif
     private void TryTriggerReconnect(string reason)
     {
         lock (_reconnectDebounceLock)

@@ -8,6 +8,7 @@
 using Mud.Feishu.Abstractions;
 using Mud.Feishu.Abstractions.Utilities;
 using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Mud.Feishu.Webhook;
 
@@ -52,6 +53,10 @@ public class InMemoryFailedEventStore : IFailedEventStore, IDisposable
     }
 
     /// <inheritdoc />
+    #if NET6_0_OR_GREATER
+    [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCode")]
+    [UnconditionalSuppressMessage("AOT", "IL3050:RequiresDynamicCode")]
+#endif
     public Task StoreFailedEventAsync(EventData eventData, Exception exception, CancellationToken cancellationToken = default)
     {
         var failedEvent = new FailedEventInfo

@@ -6,6 +6,7 @@
 // -----------------------------------------------------------------------
 
 using Mud.Feishu.Abstractions.Utilities;
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 
 namespace Mud.Feishu.Abstractions.Interceptors;
@@ -45,6 +46,10 @@ public class LoggingEventInterceptor : IFeishuEventInterceptor
     /// <summary>
     /// 事件处理后拦截
     /// </summary>
+    #if NET6_0_OR_GREATER
+    [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCode")]
+    [UnconditionalSuppressMessage("AOT", "IL3050:RequiresDynamicCode")]
+#endif
     public Task AfterHandleAsync(string eventType, EventData eventData, Exception? exception, CancellationToken cancellationToken = default)
     {
         if (exception == null)

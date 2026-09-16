@@ -5,6 +5,7 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using Microsoft.Extensions.DependencyInjection;
 using Mud.Feishu.Abstractions.Authentication;
 
 namespace Mud.Feishu.Abstractions;
@@ -27,6 +28,9 @@ public class FeishuAppContext : IFeishuAppContext, IDisposable
 {
     private bool _disposed;
     private readonly IServiceProvider? _serviceProvider;
+    // TMA-13 / P2-10 修复：作用域随上下文 Dispose 释放，确保 Scoped 依赖（如 IFeishuCurrentUserContext）
+    // 的生命周期与 FeishuAppContext 对齐，避免 Captive Dependency。
+    private readonly IServiceScope? _scope;
 
     /// <summary>
     /// 应用唯一标识（AppKey）
@@ -166,6 +170,7 @@ public class FeishuAppContext : IFeishuAppContext, IDisposable
     /// <param name="authenticationApi">认证API客户端</param>
     /// <param name="httpClient">HTTP客户端</param>
     /// <param name="serviceProvider">服务提供者（可选），用于 <see cref="GetService{T}"/> 回退到 DI 容器解析</param>
+    /// <param name="scope">DI 作用域（可选），随上下文 Dispose 释放。TMA-13 修复。</param>
     /// <exception cref="ArgumentNullException">当任何必需参数为null时抛出</exception>
     public FeishuAppContext(
         FeishuAppConfig config,
@@ -174,7 +179,8 @@ public class FeishuAppContext : IFeishuAppContext, IDisposable
         IFeishuUserTokenManager userTokenManager,
         IFeishuAuthentication authenticationApi,
         IEnhancedHttpClient httpClient,
-        IServiceProvider? serviceProvider = null)
+        IServiceProvider? serviceProvider = null,
+        IServiceScope? scope = null)
     {
         Config = config ?? throw new ArgumentNullException(nameof(config));
         TenantTokenManager = tenantTokenManager ?? throw new ArgumentNullException(nameof(tenantTokenManager));
@@ -183,6 +189,7 @@ public class FeishuAppContext : IFeishuAppContext, IDisposable
         Authentication = authenticationApi ?? throw new ArgumentNullException(nameof(authenticationApi));
         HttpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         _serviceProvider = serviceProvider;
+        _scope = scope;
     }
 
     /// <summary>
@@ -206,6 +213,8 @@ public class FeishuAppContext : IFeishuAppContext, IDisposable
                 disposableUser.Dispose();
             if (Authentication is IDisposable disposableAuth)
                 disposableAuth.Dispose();
+            // TMA-13：释放作用域，使 Scoped 依赖随上下文释放。
+            _scope?.Dispose();
         }
         finally
         {

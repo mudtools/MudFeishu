@@ -54,28 +54,71 @@ internal sealed class FeishuTokenManagerResolver : IFeishuTokenManagerResolver
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// TMA-18 / P2-5 修复（D6 契约）：Try* 家族不抛异常。appKey 为空时先取 DefaultAppKey，缺失则返回 null。
+    /// </remarks>
     public ITenantTokenManager? TryGetTenantTokenManager(string? appKey = null)
     {
         if (string.IsNullOrEmpty(appKey))
-            return _appManager.DefaultTenantTokenManager;
+        {
+            // TMA-18：appKey 为空时取默认应用，若无默认应用则返回 null 而非抛出。
+            if (string.IsNullOrEmpty(_appManager.DefaultConfig?.AppKey))
+                return null;
+            try
+            {
+                return _appManager.DefaultTenantTokenManager;
+            }
+            catch
+            {
+                return null;
+            }
+        }
 
         return _appManager.TryGetApp(appKey!, out var appContext) ? appContext?.TenantTokenManager : null;
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// TMA-18 / P2-5 修复（D6 契约）：Try* 家族不抛异常。
+    /// </remarks>
     public IAppTokenManager? TryGetAppTokenManager(string? appKey = null)
     {
         if (string.IsNullOrEmpty(appKey))
-            return _appManager.DefaultAppTokenManager;
+        {
+            if (string.IsNullOrEmpty(_appManager.DefaultConfig?.AppKey))
+                return null;
+            try
+            {
+                return _appManager.DefaultAppTokenManager;
+            }
+            catch
+            {
+                return null;
+            }
+        }
 
         return _appManager.TryGetApp(appKey!, out var appContext) ? appContext?.AppTokenManager : null;
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// TMA-18 / P2-5 修复（D6 契约）：Try* 家族不抛异常。
+    /// </remarks>
     public IFeishuUserTokenManager? TryGetUserTokenManager(string? appKey = null)
     {
         if (string.IsNullOrEmpty(appKey))
-            return _appManager.DefaultUserTokenManager;
+        {
+            if (string.IsNullOrEmpty(_appManager.DefaultConfig?.AppKey))
+                return null;
+            try
+            {
+                return _appManager.DefaultUserTokenManager;
+            }
+            catch
+            {
+                return null;
+            }
+        }
 
         return _appManager.TryGetApp(appKey!, out var appContext) ? appContext?.UserTokenManager : null;
     }

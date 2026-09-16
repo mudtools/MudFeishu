@@ -128,6 +128,7 @@ public class MyController : ControllerBase
 | --- | --- |
 | [错误处理指南](./ErrorHandling.md) | 统一响应模型、`ApiException` 语义、**文件下载类接口（`Task<byte[]?>`）的错误契约与残余风险** |
 | [响应缓存使用指南](./ResponseCaching.md) | `[Cache]` 特性接入方式、**多应用缓存键隔离约束**、适合缓存的接口清单 |
+| [Webhook 安全加固与可靠性完善方案](./WebhookHardeningPlan.md) | Webhook 模块代码审查（P0/P1/P2）修复方案、**AOT 门禁修复（ADR-1）**、失败重试权威路径（ADR-2）、客户端 IP 零信任模型（ADR-3）、生产环境安全项锁定（ADR-4） |
 
 ## 命名空间与版本信息
 

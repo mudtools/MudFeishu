@@ -211,6 +211,11 @@ public static class FeishuServiceCollectionExtensions
         // ARC-2 Step 1：注册统一的飞书 HTTP 客户端工厂，收敛 CreateAppContext 内的散装装配。
         services.TryAddSingleton<IFeishuHttpClientFactory, FeishuHttpClientFactory>();
 
+        // TMA-09 / P1-8 修复（D7 契约）：注册 per-app 认证 API 工厂。
+        // 使认证/取令牌请求使用本应用的命名 HttpClient（per-app 端点），而非默认应用端点。
+        // 若 AOT 门禁不允许 ActivatorUtilities，设 FeishuAppOptions.EnablePerAppAuthenticationClient=false 降级。
+        services.TryAddSingleton<IFeishuAuthenticationFactory, PerAppFeishuAuthenticationFactory>();
+
         // ARC-1：注册多应用管理器行为选项（EnableConfigReload 默认 true，支持配置节覆盖）。
         services.AddOptions<FeishuAppOptions>();
 
@@ -361,6 +366,14 @@ public static class FeishuServiceCollectionExtensions
             return;
         }
 
+        // TMA-19 / P2-7 修复：加密装饰器幂等守卫。
+        // 检测是否已装饰：若实现工厂返回的是 EncryptedFeishuTokenStoreFactory 则跳过。
+        // 通过检查 ImplementationFactory 的目标类型（若为已装饰的工厂类型则跳过）。
+        if (descriptor.ImplementationType == typeof(EncryptedFeishuTokenStoreFactory))
+        {
+            return;
+        }
+
         services.Remove(descriptor);
         services.AddSingleton<IFeishuTokenStoreFactory>(sp =>
         {
@@ -369,6 +382,13 @@ public static class FeishuServiceCollectionExtensions
             var options = sp.GetService<IOptions<FeishuAppOptions>>()?.Value;
             if (options == null || !options.EnableTokenEncryption)
             {
+                // TMA-21 / P2-12 修复：非内存存储且未加密时发出告警。
+                // 检测是否使用 Redis 等持久化存储（非 PerAppFeishuTokenStoreFactory 即视为持久化）
+                if (inner is not PerAppFeishuTokenStoreFactory)
+                {
+                    sp.GetService<ILogger<EncryptedFeishuTokenStoreFactory>>()?.LogWarning(
+                        "令牌将以明文写入持久化存储（Redis 等），建议开启加密（FeishuAppOptions.EnableTokenEncryption = true）。");
+                }
                 return inner;
             }
 

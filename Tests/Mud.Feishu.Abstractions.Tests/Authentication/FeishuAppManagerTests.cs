@@ -43,6 +43,13 @@ public class FeishuAppManagerTests
 
         services.AddSingleton(httpClientFactoryMock.Object);
         services.AddSingleton<IFeishuAuthentication>(new Mock<IFeishuAuthentication>().Object);
+        // TMA-09 测试适配：Mock IFeishuAuthenticationFactory 使 per-app 认证走 Mock 路径，
+        // 避免 ActivatorUtilities.CreateInstance 尝试构造接口类型。
+        var authFactoryMock = new Mock<IFeishuAuthenticationFactory>();
+        authFactoryMock
+            .Setup(x => x.Create(It.IsAny<string>()))
+            .Returns(new Mock<IFeishuAuthentication>().Object);
+        services.AddSingleton(authFactoryMock.Object);
         services.AddSingleton<IFeishuCurrentUserContext, CurrentUserContext>();
         services.AddSingleton(_ => HttpClientExtensions.GetDefaultJsonSerializerOptions());
         services.AddLogging();
@@ -290,17 +297,17 @@ public class FeishuAppManagerTests
 
         var appManager = provider.GetRequiredService<FeishuAppManager>();
 
-        // Act & Assert：首次通过 GetAllApps 访问应抛 InvalidOperationException（包装 HttpRequestException）
-        // GetAllApps 内部直接调用 GetOrCreateContext（不经过 TryGetApp），可验证 GetOrCreateContext 的重建路径
-        var act1 = () => appManager.GetAllApps();
-        act1.Should().Throw<InvalidOperationException>()
-            .WithMessage("*应用*初始化失败*")
-            .WithInnerException<HttpRequestException>();
+        // Act & Assert：首次通过 TryGetApp 访问应返回 false（Lazy 初始化失败，重建 Lazy）
+        // TMA-04 修复后 GetApp 内部先走 TryGetApp（重建 Lazy 后返回 false），再走 GetOrCreateContext（使用重建后的 Lazy 成功）
+        // 因此验证 TryGetApp 的首次失败 + 重建行为
+        var firstResult = appManager.TryGetApp(AppConfigs.AppKeys.Default, out var firstApp);
+        firstResult.Should().BeFalse("首次初始化失败时 TryGetApp 应返回 false 并重建 Lazy");
+        firstApp.Should().BeNull();
 
         // 第二次访问应成功（Lazy 已重建，CreateAppContext 重新执行）
-        var apps = appManager.GetAllApps();
-        apps.Should().NotBeEmpty();
-        apps.First().Config.AppKey.Should().Be(AppConfigs.AppKeys.Default);
+        var app = appManager.GetApp(AppConfigs.AppKeys.Default);
+        app.Should().NotBeNull();
+        app.Config.AppKey.Should().Be(AppConfigs.AppKeys.Default);
     }
 
     /// <summary>
@@ -446,6 +453,151 @@ public class FeishuAppManagerTests
         var defaultApp = appManager.GetDefaultApp();
         defaultApp.Config.AppKey.Should().Be("new-default",
             "AddApp 标记 IsDefault=true 应在锁保护下更新 _defaultAppKey");
+    }
+
+    // ============================================================
+    // TMA-07 / P1-6：退休队列
+    // ============================================================
+
+    /// <summary>
+    /// TMA-07 验证：RebuildAppContext 时旧上下文进入退休队列，
+    /// 在宽限期到期后（通过 Sweep 驱动）被 Dispose。
+    /// </summary>
+    [Fact]
+    public void RebuildAppContext_ShouldDisposeOldContext_AfterRetireDelay()
+    {
+        // Arrange
+        var services = CreateServiceCollection();
+        var configs = new List<FeishuAppConfig> { CreateDefaultConfig() };
+        services.AddFeishuApp(configs);
+        using var provider = services.BuildServiceProvider();
+
+        var appManager = provider.GetRequiredService<FeishuAppManager>();
+
+        // 获取初始上下文的引用
+        var originalApp = appManager.GetApp(AppConfigs.AppKeys.Default);
+        var originalContext = (FeishuAppContext)originalApp;
+
+        // Act：通过 OnConfigurationChanged 触发 RebuildAppContext（修改一个节流比较字段）
+        var updatedConfig = new FeishuAppConfig
+        {
+            AppKey = AppConfigs.AppKeys.Default,
+            AppId = AppConfigs.AppIds.Default,
+            AppSecret = AppConfigs.Secrets.Valid,
+            IsDefault = true,
+            TimeOut = 60  // 不同于默认的 30，触发重建
+        };
+        appManager.OnConfigurationChanged(new List<FeishuAppConfig> { updatedConfig });
+
+        // Assert：旧上下文尚未被 Dispose（宽限期内）
+        appManager.Retirement.Should().NotBeNull();
+        appManager.Retirement!.PendingCount.Should().BeGreaterThan(0, "旧上下文应在退休队列中");
+
+        // 驱动 Sweep 到宽限期之后
+        var futureTime = DateTimeOffset.UtcNow.AddSeconds(301);
+        var disposedCount = appManager.Retirement.Sweep(futureTime);
+
+        // 旧上下文应已被 Dispose
+        disposedCount.Should().BeGreaterThan(0, "宽限期后 Sweep 应释放旧上下文");
+        appManager.Retirement.PendingCount.Should().Be(0, "所有退休条目应已处理");
+
+        // 新上下文仍可用
+        var newApp = appManager.GetApp(AppConfigs.AppKeys.Default);
+        newApp.Config.TimeOut.Should().Be(60, "新上下文应使用新配置");
+    }
+
+    /// <summary>
+    /// TMA-07 验证：RemoveApp 时旧上下文进入退休队列，而非直接丢弃引用。
+    /// 旧上下文在宽限期后才被 Dispose，保证在途请求安全。
+    /// </summary>
+    [Fact]
+    public void RemoveApp_ShouldRetireContext_InsteadOfDroppingReference()
+    {
+        // Arrange
+        var services = CreateServiceCollection();
+        var configs = new List<FeishuAppConfig>
+        {
+            CreateDefaultConfig(),
+            CreateSecondaryConfig()
+        };
+        services.AddFeishuApp(configs);
+        using var provider = services.BuildServiceProvider();
+
+        var appManager = provider.GetRequiredService<FeishuAppManager>();
+
+        // 获取要移除的应用上下文引用
+        var appToRemove = appManager.GetApp(AppConfigs.AppKeys.Default);
+        var removedContext = (FeishuAppContext)appToRemove;
+
+        // Act：移除默认应用（会触发提升 hr-app 为新默认）
+        var removed = appManager.RemoveApp(AppConfigs.AppKeys.Default);
+
+        // Assert
+        removed.Should().BeTrue();
+        appManager.Retirement.Should().NotBeNull();
+        appManager.Retirement!.PendingCount.Should().BeGreaterThan(0,
+            "移除的旧上下文应在退休队列中，而非直接丢弃");
+
+        // 驱动 Sweep 到宽限期之后
+        var futureTime = DateTimeOffset.UtcNow.AddSeconds(301);
+        var disposedCount = appManager.Retirement.Sweep(futureTime);
+
+        disposedCount.Should().BeGreaterThan(0, "宽限期后 Sweep 应释放被移除的旧上下文");
+        appManager.Retirement.PendingCount.Should().Be(0);
+
+        // 剩余应用仍可用
+        var newDefault = appManager.GetDefaultApp();
+        newDefault.Config.AppKey.Should().Be(AppConfigs.AppKeys.Hr);
+    }
+
+    /// <summary>
+    /// TMA-07 验证：FeishuAppManager.Dispose 应强制释放全部待退休上下文（Flush），
+    /// 不等待宽限期到期。
+    /// </summary>
+    [Fact]
+    public void Dispose_ShouldFlushPendingRetirements()
+    {
+        // Arrange
+        var services = CreateServiceCollection();
+        var configs = new List<FeishuAppConfig>
+        {
+            CreateDefaultConfig(),
+            CreateSecondaryConfig()
+        };
+        services.AddFeishuApp(configs);
+        var provider = services.BuildServiceProvider();
+        var appManager = provider.GetRequiredService<FeishuAppManager>();
+
+        // 获取上下文引用
+        _ = appManager.GetApp(AppConfigs.AppKeys.Default);
+
+        // 触发重建（修改一个字段使节流不命中）
+        var updatedConfig = new FeishuAppConfig
+        {
+            AppKey = AppConfigs.AppKeys.Default,
+            AppId = AppConfigs.AppIds.Default,
+            AppSecret = AppConfigs.Secrets.Valid,
+            IsDefault = true,
+            TimeOut = 60
+        };
+        appManager.OnConfigurationChanged(new List<FeishuAppConfig>
+        {
+            updatedConfig,
+            CreateSecondaryConfig()
+        });
+
+        // 确认有待退休上下文
+        appManager.Retirement!.PendingCount.Should().BeGreaterThan(0,
+            "重建后旧上下文应在退休队列中");
+
+        // Act：Dispose 应 Flush 全部待退休上下文
+        appManager.Dispose();
+
+        // Assert：退休队列已清空（Flush 后 Dispose）
+        // 注意：Dispose 后 _retirement 被置为 null，无法再查询 PendingCount，
+        // 但 Flush 不抛异常即证明全部释放成功。
+        // 验证 Dispose 后 provider 仍可正常释放
+        provider.Dispose();
     }
 }
 

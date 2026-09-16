@@ -1,4 +1,4 @@
-// -----------------------------------------------------------------------
+﻿// -----------------------------------------------------------------------
 //  作者：Mud Studio  版权所有 (c) Mud Studio 2026   
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
@@ -56,6 +56,29 @@ internal abstract class FeishuAppTokenManagerBase : TokenManagerBase
         return await GetOrRefreshTokenAsync(cancellationToken).ConfigureAwait(false);
     }
 
+    // TMA-01 / P0-1 修复：失效必须级联持久层，否则 401 恢复会被 store 里的陈旧令牌短路。
+    // D1 契约：ITenantTokenManager / IAppTokenManager 的失效语义统一为「内存 + ITokenStore 双清」。
+    // 清 store 失败不阻断失效流程（catch when (ex is not OperationCanceledException) + LogWarning），
+    // 保证 401 恢复不因存储抖动而中断。
+    public override async Task<TokenResult> InvalidateTokenAsync(string[]? scopes, CancellationToken cancellationToken = default)
+    {
+        if (_tokenStore != null)
+        {
+            try
+            {
+                await _tokenStore.RemoveAsync(_tokenTypeKey, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _logger.LogWarning(ex,
+                    "TMA-01: 清除 ITokenStore 中的令牌失败（不阻断失效流程）。TokenType: {TokenType}, AppId: {AppId}",
+                    _tokenTypeKey, _options.AppId);
+            }
+        }
+
+        return await base.InvalidateTokenAsync(scopes, cancellationToken).ConfigureAwait(false);
+    }
+
     protected override async Task<CredentialToken> RefreshTokenCoreAsync(CancellationToken cancellationToken)
     {
         var restoredToken = await TryRestoreFromStoreAsync(cancellationToken).ConfigureAwait(false);
@@ -103,7 +126,11 @@ internal abstract class FeishuAppTokenManagerBase : TokenManagerBase
             if (expireTimestampMs > 0)
             {
                 var remainingMs = expireTimestampMs - DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-                if (remainingMs <= _options.TokenRefreshThreshold * 1000L)
+                // TMA-10 / P2-1 修复：弃用阈值由 TokenRefreshThreshold 改为 Math.Max(60, TokenRefreshThreshold / 2)。
+                // 算术证明：缓存失效点 = Expire - threshold（store TTL = expiresInSeconds）。
+                // 此刻 store 中令牌剩余 约 threshold > threshold/2，稳态命中。
+                var restoreThresholdMs = Math.Max(60, _options.TokenRefreshThreshold / 2) * 1000L;
+                if (remainingMs <= restoreThresholdMs)
                 {
                     if (_options.EnableLogging)
                         _logger.LogDebug("Restored token from ITokenStore is near expiration for AppId: {AppId}, skipping", _options.AppId);
@@ -119,17 +146,11 @@ internal abstract class FeishuAppTokenManagerBase : TokenManagerBase
                 };
             }
 
-            if (_options.EnableLogging)
-                _logger.LogDebug("Restored token from ITokenStore (no expiration info) for AppId: {AppId}, TokenType: {TokenType}", _options.AppId, _tokenTypeKey);
-            // T-3 修复：原值为 TokenRefreshThreshold + 60，扣除刷新阈值后有效时间仅 60 秒，过于保守导致频繁刷新。
-            // 飞书 tenant/app token 有效期通常为 2 小时（7200 秒），恢复无过期信息的令牌时使用 30 分钟（1800 秒）作为合理默认。
-            // 扣除 TokenRefreshThreshold 后仍有充足有效窗口，避免不必要的令牌刷新。
-            var safeExpireSeconds = Math.Max(_options.TokenRefreshThreshold + SafeExpireBonusSeconds, MinSafeExpireSeconds);
-            return new CredentialToken
-            {
-                AccessToken = accessToken,
-                Expire = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + (safeExpireSeconds * 1000L)
-            };
+            // TMA-15 / P2-2 修复：无过期信息的存储值不再编造有效期，改为返回 null（走 API 刷新）。
+            _logger.LogWarning(
+                "存储值缺少过期时间戳，按未命中处理（TMA-15）。AppId: {AppId}, TokenType: {TokenType}",
+                _options.AppId, _tokenTypeKey);
+            return null;
         }
         // TM-03 修复：过滤 OperationCanceledException，避免取消请求被误判为"持久化失败"。
         catch (Exception ex) when (ex is not OperationCanceledException)

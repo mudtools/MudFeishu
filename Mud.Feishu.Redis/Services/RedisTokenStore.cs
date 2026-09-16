@@ -62,10 +62,18 @@ public class RedisTokenStore : ITokenStore
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// TMA-22 修复：refresh token 存储 TTL 由硬编码 30 天改为优先使用编码值中的过期时间，
+    /// 缺失时才回落 30 天。使 store TTL 与业务过期语义一致。
+    /// </remarks>
     public async Task SetRefreshTokenAsync(string tokenType, string refreshToken, CancellationToken cancellationToken = default)
     {
         var key = BuildRefreshTokenKey(tokenType);
-        await GetDatabase().StringSetAsync(key, refreshToken, TimeSpan.FromDays(30), flags: RedisStoreHelper.ToCommandFlags(cancellationToken)).ConfigureAwait(false);
+        // TMA-22：尝试从编码值中解码过期时间戳。
+        var ttl = TokenStoreHelper.TryDecodeExpiry(refreshToken, out var expireMs)
+            ? TimeSpan.FromMilliseconds(Math.Max(0, expireMs - DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()))
+            : TimeSpan.FromDays(30);
+        await GetDatabase().StringSetAsync(key, refreshToken, ttl, flags: RedisStoreHelper.ToCommandFlags(cancellationToken)).ConfigureAwait(false);
     }
 
     /// <inheritdoc />

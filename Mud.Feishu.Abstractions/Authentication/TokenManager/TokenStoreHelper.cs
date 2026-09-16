@@ -32,4 +32,27 @@ internal static class TokenStoreHelper
         // 视为旧格式或损坏数据，返回原始值并将过期时间置零，由调用方决定是否刷新令牌。
         return (storedValue, 0);
     }
+
+    /// <summary>
+    /// TMA-22 修复：尝试从编码值中解码过期时间戳，不解析令牌本身。
+    /// 用于 refresh token 存储 TTL 计算（Redis 路径需要从编码值推断 TTL）。
+    /// </summary>
+    /// <param name="storedValue">编码后的存储值（格式：{expireTimestampMs}|{token}）。</param>
+    /// <param name="expireTimestampMs">解码出的过期时间戳（毫秒），解码失败时为 0。</param>
+    /// <returns>成功解码返回 true；无有效过期时间戳返回 false。</returns>
+    public static bool TryDecodeExpiry(string storedValue, out long expireTimestampMs)
+    {
+        expireTimestampMs = 0;
+        if (string.IsNullOrEmpty(storedValue))
+            return false;
+
+        var separatorIndex = storedValue.IndexOf('|');
+        if (separatorIndex > 0 && long.TryParse(storedValue.Substring(0, separatorIndex), out var expireMs))
+        {
+            expireTimestampMs = expireMs;
+            return true;
+        }
+
+        return false;
+    }
 }

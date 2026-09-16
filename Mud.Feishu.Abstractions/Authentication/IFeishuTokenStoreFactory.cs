@@ -57,9 +57,11 @@ public class PerAppFeishuTokenStoreFactory : IFeishuTokenStoreFactory
 /// 单例令牌存储工厂，返回 DI 容器中已注册的 <see cref="ITokenStore"/> 单例实例。
 /// </summary>
 /// <remarks>
-/// 适用于分布式部署场景（如 Redis）。自定义存储实现（如 <c>RedisTokenStore</c>）通过 DI 注册后，
-/// 由本工厂统一返回单例实例，避免 per-app 创建导致的连接池膨胀。
+/// <b>TMA-20 / P2-8 修复：已标记 [Obsolete]。</b>
+/// 该工厂忽略 <c>appKey</c>，所有应用共享同一 <c>ITokenStore</c> 实例，
+/// 会重现多应用令牌互相覆盖（TOK-1）。请使用 <c>PerAppRedisTokenStoreFactory</c> 或自定义 per-app 工厂。
 /// </remarks>
+[Obsolete("忽略 appKey，会导致多应用令牌互相覆盖；请使用 PerAppRedisTokenStoreFactory 或自定义 per-app 工厂")]
 public class SingletonFeishuTokenStoreFactory : IFeishuTokenStoreFactory
 {
     private readonly IServiceProvider _serviceProvider;

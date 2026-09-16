@@ -19,6 +19,13 @@ namespace Mud.Feishu.Abstractions.Authentication;
 /// 继承 Mud.HttpUtils v2.0 的 UserTokenManagerBase，获得内置并发安全、自动清理等能力。
 /// 令牌缓存通过基类内置的 IMemoryCache 统一管理，确保读写一致性。
 /// 可选注入 IUserTokenStore 实现分布式令牌持久化（如 Redis）。
+/// <para>
+/// D1 契约例外（TMA-01）：<c>UserTokenManager</c> 的 <c>InvalidateUserTokenAsync</c> 不得清除
+/// <c>IUserTokenStore</c> 中的 refresh_token。理由：用户令牌的唯一续期路径是
+/// <c>RefreshUserTokenAsync</c> → <c>GetTokenInfoAsync</c> → 从 store 取 refresh_token 做 OAuth 交换；
+/// 清 store 会使恢复彻底无路（表现为必然 401），而用户侧"内存+store 双清"已由
+/// <c>RemoveTokenAsync</c>（显式登出语义）承担。
+/// </para>
 /// </remarks>
 internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
 {
@@ -53,6 +60,10 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
     }
 
     protected override int UserExpireThresholdSeconds => _options.TokenRefreshThreshold;
+
+    // TMA-23 修复：覆写 MetricsKey 使指标维度在多应用下可区分。
+    // 返回 {TypeName}:{AppKey}，属性文档明确要求"稳定且不含敏感信息"。
+    protected override string MetricsKey => $"UserTokenManager:{_options.AppKey}";
 
     /// <inheritdoc />
     public override async Task<string> GetTokenAsync(CancellationToken cancellationToken = default)

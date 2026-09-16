@@ -25,11 +25,13 @@ public class FeishuTokenStore : ITokenStore
     private readonly string _appKey;
 
     /// <summary>
-    /// 提前刷新缓冲比例（默认 0.9，即令牌有效期的 90%）。<br/>
-    /// M-3 修复：直接使用飞书返回的 expires_in 作为绝对过期时间，在过期边界的高并发请求会同时触发刷新。
-    /// 引入缓冲后，缓存提前 10% 过期，使 TokenRecoveryDelegatingHandler 或后台刷新服务有充足时间获取新令牌。
+    /// TMA-10 / P2-1 修复：缓存 TTL 改为全量 expiresInSeconds（不再提前 10% 过期）。
+    /// 原 EarlyRefreshRatio=0.9 导致缓存失效点 = Expire - 10% = Expire - 720s（飞书 token 7200s），
+    /// 而恢复弃用阈值 = TokenRefreshThreshold（默认 300s），
+    /// 此刻 store 中令牌剩余 约 720s > 300s 但缓存已失效，导致稳态 store 恢复永不命中。
+    /// 改为全量后，缓存失效点 = Expire，此刻 store 中令牌剩余 约 0 &lt; restoreThreshold，正确弃用。
     /// </summary>
-    private const double EarlyRefreshRatio = 0.9;
+    private const double CacheTtlRatio = 1.0;
 
     /// <summary>
     /// 初始化 FeishuTokenStore 实例（使用默认 AppKey）
@@ -81,9 +83,8 @@ public class FeishuTokenStore : ITokenStore
 
         _tokenTypes.TryAdd(tokenType, 0);
         var key = BuildAccessTokenKey(tokenType);
-        // M-3 修复：使用提前刷新缓冲，实际缓存时间 = expiresInSeconds * EarlyRefreshRatio
-        // Math.Max(1, ...) 防止 expiresInSeconds=1 时 (long)(1 * 0.9)=0 导致 IMemoryCache 抛 ArgumentOutOfRangeException
-        var bufferedExpiry = TimeSpan.FromSeconds(Math.Max(1, (long)(expiresInSeconds * EarlyRefreshRatio)));
+        // TMA-10：缓存 TTL 使用全量 expiresInSeconds（不再提前 10% 过期）。
+        var bufferedExpiry = TimeSpan.FromSeconds(Math.Max(1, (long)(expiresInSeconds * CacheTtlRatio)));
         _cache.Set(key, accessToken, bufferedExpiry);
         return Task.CompletedTask;
     }
@@ -97,9 +98,15 @@ public class FeishuTokenStore : ITokenStore
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// TMA-22 修复：refresh token 存储 TTL 由硬编码 30 天改为优先使用编码值中的过期时间，
+    /// 缺失时才回落 30 天。但 IMemoryCache 场景下此方法不接收过期信息，保持 30 天默认。
+    /// Redis 路径在 RedisTokenStore 中处理。
+    /// </remarks>
     public Task SetRefreshTokenAsync(string tokenType, string refreshToken, CancellationToken cancellationToken = default)
     {
         var key = BuildRefreshTokenKey(tokenType);
+        // TMA-22: 保持 30 天默认（IMemoryCache 路径无过期信息可用）。
         _cache.Set(key, refreshToken, TimeSpan.FromDays(30));
         return Task.CompletedTask;
     }
@@ -114,6 +121,11 @@ public class FeishuTokenStore : ITokenStore
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// TMA-16 / P2-3 修复：仅返回本进程已知类型。由于 FeishuTokenStore 为 per-app 实例，
+    /// 此字典仅记录当前实例生命周期内写入的 tokenType。
+    /// 实例被重建（如配置热更新）后，旧实例的记账不会迁移。
+    /// </remarks>
     public Task<IEnumerable<string>> GetTokenTypesAsync(CancellationToken cancellationToken = default)
     {
         return Task.FromResult(_tokenTypes.Keys.AsEnumerable());

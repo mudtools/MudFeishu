@@ -71,4 +71,9 @@ public interface IFeishuAppManager : IAppManager<IFeishuAppContext>
     /// </remarks>
     FeishuAppConfig DefaultConfig { get; }
 
+    /// <summary>
+    /// TMA-08：获取所有已配置（但未必实例化）的应用键。不触发懒加载。
+    /// </summary>
+    IReadOnlyCollection<string> ConfiguredAppKeys { get; }
+
 }

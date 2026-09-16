@@ -3,7 +3,72 @@
 ## [Unreleased]
 
 > 对应《.docs/MudHttpUtils-2.0.4-Repair-and-Enhancement-Plan.md》的 M1–M5 全部条目（Mud.HttpUtils 同步升级至 2.0.5）。
+> 对应《.docs/MudFeishu-Token-MultiApp-Review-Remediation-Plan.md》的 TMA-01…TMA-24 全部条目。
 > 本项目尚未发布，以下破坏性变更无需数据迁移。
+
+### ⚠️ 破坏性变更 / 行为变更（TMA 系列）
+
+- **令牌失效现在级联到持久层（P0-1 / TMA-01）**：`TenantTokenManager` / `AppTokenManager` 的
+  `InvalidateTokenAsync` 此前只清内存缓存，而刷新核心又会从 `ITokenStore` 恢复**同一个被 401 拒绝**的
+  令牌，导致 401 自动恢复在默认装配下恒为空转（重试仍用旧令牌）。现失效同时清除存储条目，
+  401 恢复将真正获取新令牌。可回退开关：`FeishuAppOptions.PurgeStoreOnTokenInvalidation = false`。
+- **租户请求的 401 恢复不再回退为用户级恢复（P1-1 / TMA-02）**：恢复执行器可从 `ICurrentUserContext`
+  推断用户级恢复，而飞书租户接口默认不生成 `TokenRecoveryContext`，会使重试请求被注入**用户令牌**
+  （凭据类别替换）。现恢复类别完全由显式上下文决定。
+- **`SetDefaultApp` / `TrySetDefaultApp` / `DefaultAppKey` 现在真正生效（P1-2 / TMA-03）**：
+  此前这三个成员读写基类私有字段，与 `GetDefaultApp()` 使用的字段分裂，表现为"调用成功但默认应用未切换"。
+  请复核运行期切换默认应用的调用点。
+- **`GetAllApps()` 不再隐式实例化全部应用（P1-7 / TMA-08）**：语义回归"已实例化应用视图"；
+  需要启动期预热全部应用请显式设置 `FeishuAppOptions.WarmUpAllAppsOnStartup = true`。
+- **后台令牌刷新默认仅覆盖默认应用，其余应用在首次访问时增量注册（P1-7 / TMA-08）**：
+  与懒加载策略对齐；全量预热见上一条选项。
+- **认证/取令牌请求改为使用本应用的命名客户端（P1-8 / TMA-09）**：此前所有应用的
+  tenant/app_access_token 请求都发往**默认应用**的端点（多区域/多 BaseUrl 部署会取错平台端点）。
+  若 AOT 门禁不允许该实现，将通过 `FeishuAppOptions.EnablePerAppAuthenticationClient = false`
+  降级并在启动期告警。
+- **稳态下 `ITokenStore` 恢复边界修正（P2-1 / TMA-10）**：缓存 TTL 从 90% 改为全量，
+  恢复弃用阈值从 `TokenRefreshThreshold` 改为 `Math.Max(60, TokenRefreshThreshold / 2)`，
+  使稳态下 store 恢复真正命中。
+- **无过期信息的存储值不再编造有效期（P2-2 / TMA-15）**：改为返回 null（走 API 刷新）+ LogWarning。
+- **`SingletonFeishuTokenStoreFactory` 标记 `[Obsolete]`（P2-8 / TMA-20）**：
+  该工厂忽略 `appKey`，会重现多应用令牌互相覆盖（TOK-1）；请使用 `PerAppRedisTokenStoreFactory`。
+- **`TryGet*` 令牌管理器解析器不再抛出异常（P2-5 / TMA-18）**：无默认应用时返回 null 而非抛
+  `InvalidOperationException`，符合 Try* 语义。
+- **热更新先校验后应用（P2-13 / TMA-14）**：`OnConfigurationChanged` 现在先校验 AppKey 唯一性、
+  IsDefault 唯一性、逐条 `Validate()`，全部通过才应用；校验失败则整体忽略并 `LogError`。
+
+### ✨ Added（TMA 系列）
+
+- `FeishuAppOptions`：`ContextRetireDelaySeconds`（默认 300）、`EnableContextRetirement`（默认 true）、
+  `WarmUpAllAppsOnStartup`（默认 false）、`EnablePerAppAuthenticationClient`（默认 true）、
+  `PurgeStoreOnTokenInvalidation`（默认 true）、`RemoveRuntimeAddedAppsOnReload`（默认 false）。
+- `IFeishuAuthenticationFactory` / `PerAppFeishuAuthenticationFactory`：按应用构造认证 API（per-app 端点与弹性策略）。
+- `FeishuAppContextRetirement`：旧应用上下文的延迟释放队列（宽限期后 Dispose，停止其令牌维护 Timer）。
+- `IFeishuAppManager.ConfiguredAppKeys`：获取所有已配置应用键（不触发懒加载）。
+
+### 🐛 修复（TMA 系列）
+
+- 401 自动恢复在默认装配下拿到同一被拒令牌（P0-1）。
+- 租户请求 401 重试被注入用户令牌（P1-1）。
+- `SetDefaultApp`/`DefaultAppKey` 与 `GetDefaultApp` 状态分裂、默认应用提升不确定（P1-2 / P2-11）。
+- Lazy 异常缓存自愈对 `InvalidOperationException`（DI 解析失败等）失效，导致应用被永久毒化且 `TryGetApp` 静默返回 false（P1-3）。
+- 配置快照 `List<T>` 锁内改、锁外读，并发热更新可抛 `Collection was modified`（P1-4）。
+- 热更新节流仅比对 5 个字段，`TokenRefreshThreshold`/重试/熔断/`AllowCustomBaseUrl` 变更被静默丢弃（P1-5）。
+- 重建/移除不释放旧上下文，其令牌维护 Timer 永久 root 旧对象图；后台刷新字典驻留旧 TokenManager 且新实例未被注册（P1-6）。
+- 后台刷新 HostedService 启动期强制实例化全部应用，单应用装配失败会阻断宿主启动（P1-7）。
+- 认证/取令牌请求未按应用隔离（使用默认应用端点）（P1-8）。
+- 稳态下 `ITokenStore` 恢复永不命中（边界算术），多实例令牌共享仅在冷启动生效（P2-1）。
+- 无过期信息的存储值被编造 1800 秒有效期（P2-2）。
+- `FeishuTokenManagerResolver.TryGet*` 在无默认应用时抛异常，违背 Try 语义（P2-5）。
+- 重复调用 `AddFeishuApp` 会叠加加密装饰器，导致令牌读写双重加解密（P2-7）。
+- `RemoveApp` 默认应用提升顺序不确定（P2-11）。
+- 热更新缺少 `IsDefault` 唯一性校验（P2-13）。
+- refresh token 存储 TTL 硬编码 30 天，与业务过期语义不一致（TMA-22）。
+- 指标缺 AppKey 维度，多应用下 `token_manager_key` 不可区分（TMA-23）。
+- 加密装饰器非幂等，重复 `AddFeishuApp` 会双重加解密（TMA-19）。
+- 非内存存储未加密时缺少启动告警（TMA-21）。
+- 单例 `FeishuAppManager` 捕获构造期 `IServiceProvider`，解析 Scoped 依赖构成 Captive Dependency（TMA-13）。
+- 注释不实：旧上下文"由 GC 回收"改为"进入退休队列宽限期后 Dispose"；`StopAsync` 注释纠正为"只管理 Timer"；`DetectAndWarnSingleAppRegistration` 文案补迁移指引与 `IFeishuTokenManagerResolver` 用法（TMA-24）。
 
 ### ⚠️ 破坏性变更 / 行为变更
 

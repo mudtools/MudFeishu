@@ -229,9 +229,12 @@ public class AppTokenManagerWithStoreTests : IDisposable
     public async Task GetTokenAsync_ShouldRestoreFromStore_WhenStoreHasToken()
     {
         var storedToken = "stored-app-token";
+        // TMA-15 修复后，存储值必须包含过期时间戳才能被恢复。
+        var expireTimestampMs = DateTimeOffset.UtcNow.AddSeconds(7200).ToUnixTimeMilliseconds();
+        var encodedToken = TokenStoreHelper.EncodeStoredToken(storedToken, expireTimestampMs);
         _tokenStoreMock
             .Setup(x => x.GetAccessTokenAsync("AppAccessToken:test", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(storedToken);
+            .ReturnsAsync(encodedToken);
 
         _authenticationApiMock
             .Setup(x => x.GetAppAccessTokenAsync(It.IsAny<AppCredentials>(), It.IsAny<CancellationToken>()))

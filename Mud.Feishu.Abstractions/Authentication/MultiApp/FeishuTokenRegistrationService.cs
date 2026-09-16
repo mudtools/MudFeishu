@@ -1,13 +1,14 @@
 // -----------------------------------------------------------------------
-//  作者：Mud Studio  版权所有 (c) Mud Studio 2026
+//  作者：Mud Studio  版权所有 (c) Mud Studio 2026   
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
-//  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
+//  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！
 // -----------------------------------------------------------------------
 
 #if NET6_0_OR_GREATER
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Mud.Feishu.Abstractions;
 
@@ -15,74 +16,89 @@ namespace Mud.Feishu.Abstractions;
 /// 飞书令牌注册托管服务
 /// </summary>
 /// <remarks>
-/// 在应用启动时，将所有已注册飞书应用的令牌管理器注册到 <see cref="ITokenRefreshBackgroundService"/>，
-/// 使后台刷新服务能够定时预热和刷新所有应用的令牌。
-///
-/// 此前 <see cref="ITokenRefreshBackgroundService"/> 虽然被注册并启用，但其内部令牌管理器字典始终为空，
-/// 导致后台令牌刷新功能形同虚设（令牌仅依赖懒加载刷新，首次请求延迟高且无法享受"过期前主动刷新"预热）。
-///
-/// 本服务在 <see cref="StartAsync"/> 中遍历 <see cref="IFeishuAppManager"/> 中的所有应用，
-/// 将每个应用的 TenantTokenManager 和 AppTokenManager 注册到后台刷新服务。
-/// （UserTokenManager 不注册，因为用户令牌是按需获取的，不适合后台预热。）
+/// <para>
+/// TMA-08 / P1-7 修复（D6 契约）：
+/// <list type="bullet">
+/// <item>启动期默认不实例化全部应用；仅注册默认应用的令牌管理器到后台刷新服务。</item>
+/// <item>全量预热改为显式选项 <c>FeishuAppOptions.WarmUpAllAppsOnStartup</c>（默认 false）。</item>
+/// <item>逐应用 try/catch + LogError，单应用失败不阻断宿主启动。</item>
+/// <item>订阅 ConfigurationChanged + AppInstantiated 事件做增量注册。</item>
+/// </list>
+/// </para>
+/// <para>
+/// TMA-24 修复注释：后台服务只管理 Timer 与刷新周期，不管理令牌管理器生命周期。
+/// 令牌管理器的生命周期由 FeishuAppManager 管理（含退休队列）。
+/// </para>
 /// </remarks>
 internal sealed class FeishuTokenRegistrationService : IHostedService
 {
     private readonly IFeishuAppManager _appManager;
     private readonly ITokenRefreshBackgroundService _refreshService;
     private readonly ILogger<FeishuTokenRegistrationService> _logger;
+    private readonly FeishuAppOptions _appOptions;
 
-    /// <summary>
-    /// 初始化 <see cref="FeishuTokenRegistrationService"/> 实例
-    /// </summary>
-    /// <param name="appManager">飞书应用管理器</param>
-    /// <param name="refreshService">令牌刷新后台服务</param>
-    /// <param name="logger">日志记录器</param>
-    /// <exception cref="ArgumentNullException">当任何必需参数为 null 时抛出</exception>
     public FeishuTokenRegistrationService(
         IFeishuAppManager appManager,
         ITokenRefreshBackgroundService refreshService,
-        ILogger<FeishuTokenRegistrationService> logger)
+        ILogger<FeishuTokenRegistrationService> logger,
+        IOptions<FeishuAppOptions>? appOptions = null)
     {
         _appManager = appManager ?? throw new ArgumentNullException(nameof(appManager));
         _refreshService = refreshService ?? throw new ArgumentNullException(nameof(refreshService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _appOptions = appOptions?.Value ?? new FeishuAppOptions();
     }
 
     /// <inheritdoc />
     public Task StartAsync(CancellationToken cancellationToken = default)
     {
-        var apps = _appManager.GetAllApps();
+        // TMA-08：默认仅注册默认应用（触发懒加载），其余应用在首次访问时增量注册。
         var registered = 0;
 
-        foreach (var app in apps)
+        // 始终注册默认应用
+        try
         {
-            // 注册租户令牌管理器
-            if (app.TenantTokenManager.SupportsBackgroundRefresh)
-            {
-                _refreshService.RegisterTokenManager(
-                    app.TenantTokenManager,
-                    $"tenant:{app.Config.AppKey}");
-                registered++;
-            }
+            var defaultApp = _appManager.GetDefaultApp();
+            registered += RegisterAppTokenManagers(defaultApp);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogError(ex,
+                "启动期注册默认应用的令牌管理器失败。后台令牌刷新将退化为懒加载模式。");
+        }
 
-            // 注册应用令牌管理器
-            if (app.AppTokenManager.SupportsBackgroundRefresh)
+        // WarmUpAllAppsOnStartup=true 时逐应用预热，单应用失败不阻断
+        if (_appOptions.WarmUpAllAppsOnStartup)
+        {
+            foreach (var appKey in _appManager.ConfiguredAppKeys)
             {
-                _refreshService.RegisterTokenManager(
-                    app.AppTokenManager,
-                    $"app:{app.Config.AppKey}");
-                registered++;
-            }
+                // 默认应用已注册，跳过
+                if (string.Equals(appKey, _appManager.DefaultConfig.AppKey, StringComparison.Ordinal))
+                    continue;
 
-            // 注意：不注册 UserTokenManager
-            // 用户令牌是按需获取的（通过 OAuth 授权码换取），不适合后台预热
-            // UserTokenManagerBase.SupportsBackgroundRefresh 已为 false，即使误注册也会被防御性跳过
+                try
+                {
+                    var app = _appManager.GetApp(appKey);
+                    registered += RegisterAppTokenManagers(app);
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    _logger.LogError(ex,
+                        "启动期预热应用 {AppKey} 失败，已跳过。其余应用不受影响。",
+                        appKey);
+                }
+            }
         }
 
         _logger.LogInformation(
-            "已将 {AppCount} 个飞书应用的 {TokenCount} 个令牌管理器注册到后台刷新服务",
-            apps.Count(),
-            registered);
+            "已将 {TokenCount} 个令牌管理器注册到后台刷新服务（WarmUpAllAppsOnStartup={WarmUp}）",
+            registered, _appOptions.WarmUpAllAppsOnStartup);
+
+        // 订阅配置变更事件，做增量注册
+        if (_appManager is FeishuAppManager feishuAppManager)
+        {
+            feishuAppManager.ConfigurationChanged += OnConfigurationChanged;
+        }
 
         return Task.CompletedTask;
     }
@@ -90,9 +106,65 @@ internal sealed class FeishuTokenRegistrationService : IHostedService
     /// <inheritdoc />
     public Task StopAsync(CancellationToken cancellationToken = default)
     {
-        // TokenRefreshBackgroundService 自身管理令牌管理器的生命周期
-        // 此处无需额外清理
+        // TMA-24 修复注释：后台服务不管理令牌管理器生命周期，只管理 Timer。
+        // 令牌管理器的清理由 FeishuAppManager.Dispose → 退休队列 → ODE 自清完成。
+        if (_appManager is FeishuAppManager feishuAppManager)
+        {
+            feishuAppManager.ConfigurationChanged -= OnConfigurationChanged;
+        }
+
         return Task.CompletedTask;
+    }
+
+    private void OnConfigurationChanged(object? sender, AppConfigurationChangedEventArgs e)
+    {
+        // TMA-08：增量注册——新增/更新应用时重新注册令牌管理器到后台刷新服务。
+        // 同名键覆盖 → 新实例接管；旧实例由退休队列 Dispose 后 ODE 自清。
+        try
+        {
+            if (e.ChangeType == AppConfigurationChangeType.Added ||
+                e.ChangeType == AppConfigurationChangeType.Updated)
+            {
+                if (_appManager.TryGetApp(e.AppKey, out var app) && app != null)
+                {
+                    RegisterAppTokenManagers(app);
+                    _logger.LogInformation(
+                        "配置变更：已将应用 {AppKey} 的令牌管理器增量注册到后台刷新服务（{ChangeType}）",
+                        e.AppKey, e.ChangeType);
+                }
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogError(ex,
+                "配置变更后增量注册应用 {AppKey} 的令牌管理器失败。",
+                e.AppKey);
+        }
+    }
+
+    private int RegisterAppTokenManagers(IFeishuAppContext app)
+    {
+        var count = 0;
+
+        if (app.TenantTokenManager.SupportsBackgroundRefresh)
+        {
+            _refreshService.RegisterTokenManager(
+                app.TenantTokenManager,
+                $"tenant:{app.Config.AppKey}");
+            count++;
+        }
+
+        if (app.AppTokenManager.SupportsBackgroundRefresh)
+        {
+            _refreshService.RegisterTokenManager(
+                app.AppTokenManager,
+                $"app:{app.Config.AppKey}");
+            count++;
+        }
+
+        // 注意：不注册 UserTokenManager
+        // 用户令牌是按需获取的（通过 OAuth 授权码换取），不适合后台预热
+        return count;
     }
 }
 #endif

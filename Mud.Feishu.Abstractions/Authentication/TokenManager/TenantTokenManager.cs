@@ -37,6 +37,10 @@ internal class TenantTokenManager : FeishuAppTokenManagerBase, ITenantTokenManag
     {
     }
 
+    // TMA-23 修复：覆写 MetricsKey 使指标维度在多应用下可区分。
+    // 返回 {TypeName}:{AppKey}，属性文档明确要求"稳定且不含敏感信息"。
+    protected override string MetricsKey => $"TenantTokenManager:{Options.AppKey}";
+
     protected override async Task<(string? AccessToken, int ExpireSeconds)> RefreshTokenFromApiAsync(CancellationToken cancellationToken)
     {
         var credentials = new AppCredentials

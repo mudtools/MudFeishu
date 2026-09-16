@@ -75,4 +75,98 @@ public class FeishuAppOptions
     /// </para>
     /// </remarks>
     public bool EnableTokenEncryption { get; set; }
+
+    /// <summary>
+    /// 应用上下文退休宽限期（秒）（TMA-07 / P1-6 修复，D5 契约）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 当应用配置热更新触发 <c>RebuildAppContext</c> 或 <c>RemoveApp</c> 时，
+    /// 旧的 <c>FeishuAppContext</c> 不再被引用，但其内部的 <c>Timer</c>（令牌定时刷新）
+    /// 会 root 整个对象图，GC 不会自动回收。旧上下文进入退休队列，
+    /// 在此宽限期后显式 <c>Dispose</c>，停止其 Timer 并释放资源。
+    /// </para>
+    /// <para>
+    /// 宽限期的目的是允许在途请求安全完成。在途请求持有旧上下文的 <c>HttpClient</c> 引用，
+    /// 立即 <c>Dispose</c> 会导致在途请求抛 <c>ObjectDisposedException</c>。
+    /// </para>
+    /// <para>
+    /// <b>默认 300 秒</b>（5 分钟），有效范围 1–3600 秒。
+    /// </para>
+    /// </remarks>
+    public int ContextRetireDelaySeconds { get; set; } = 300;
+
+    /// <summary>
+    /// 是否在令牌失效时级联清除持久层存储（TMA-01 / P0-1 修复，D1 契约）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 启用后 <c>InvalidateTokenAsync</c> 会同时清除 <c>ITokenStore</c> 中的令牌条目，
+    /// 确保 401 恢复不再从 store 中恢复同一被拒令牌。
+    /// </para>
+    /// <para>
+    /// <b>默认 <c>true</c></b>：失效级联是正确性收益。设为 <c>false</c> 可回退到旧行为（仅清内存缓存）。
+    /// </para>
+    /// </remarks>
+    public bool PurgeStoreOnTokenInvalidation { get; set; } = true;
+
+    /// <summary>
+    /// 是否启用应用上下文退休队列（TMA-07 / P1-6 修复，D5 契约）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 启用后，热更新或移除应用的旧上下文会在宽限期后被显式 <c>Dispose</c>，
+    /// 停止其 Timer 并释放资源。禁用则恢复"由 GC 回收"的旧语义（接受 Timer 泄漏）。
+    /// </para>
+    /// <para>
+    /// <b>默认 <c>true</c></b>。
+    /// </para>
+    /// </remarks>
+    public bool EnableContextRetirement { get; set; } = true;
+
+    /// <summary>
+    /// 是否在启动时预热全部应用（TMA-08 / P1-7 修复，D6 契约）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 启用后 <c>FeishuTokenRegistrationService</c> 会在启动时逐应用预热并注册到后台刷新服务，
+    /// 单应用失败不阻断宿主启动（仅 <c>LogError</c>）。
+    /// 禁用时仅注册默认应用，其余应用在首次访问时增量注册。
+    /// </para>
+    /// <para>
+    /// <b>默认 <c>false</c></b>：与懒加载策略一致。
+    /// </para>
+    /// </remarks>
+    public bool WarmUpAllAppsOnStartup { get; set; }
+
+    /// <summary>
+    /// 是否启用 per-app 认证客户端（TMA-09 / P1-8 修复，D7 契约）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 启用后认证/取令牌请求会使用本应用的命名 HttpClient（per-app 端点），
+    /// 而非默认应用的端点。多区域/多 BaseUrl 部署必须开启。
+    /// </para>
+    /// <para>
+    /// 若 AOT 门禁不允许该实现，置为 <c>false</c> 会降级为默认应用端点并 <c>LogWarning</c>。
+    /// </para>
+    /// <para>
+    /// <b>默认 <c>true</c></b>。
+    /// </para>
+    /// </remarks>
+    public bool EnablePerAppAuthenticationClient { get; set; } = true;
+
+    /// <summary>
+    /// 是否在热更新时移除运行时添加的应用（TMA-11 / P2-6 修复）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 启用后，通过 <c>AddApp</c> 运行时添加的应用若不在配置文件中，会被热更新移除。
+    /// 禁用时保持旧行为：运行时应用不被热更新删除。
+    /// </para>
+    /// <para>
+    /// <b>默认 <c>false</c></b>：运行时应用由调用方管理生命周期，热更新不应越权删除。
+    /// </para>
+    /// </remarks>
+    public bool RemoveRuntimeAddedAppsOnReload { get; set; }
 }

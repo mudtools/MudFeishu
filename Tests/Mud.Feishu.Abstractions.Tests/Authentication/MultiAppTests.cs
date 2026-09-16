@@ -354,6 +354,11 @@ public class MultiAppTests
         var appManager = provider.GetRequiredService<IFeishuAppManager>();
 
         // Act
+        // TMA-08 修复后 GetAllApps 不再隐式触发懒加载，需先访问每个应用以实例化
+        foreach (var config in configs)
+        {
+            appManager.GetApp(config.AppKey);
+        }
         var allApps = appManager.GetAllApps();
 
         // Assert

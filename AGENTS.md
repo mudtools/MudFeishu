@@ -252,6 +252,16 @@ public class TokenUtilsTests
 - Use `MaskSensitiveData()` when logging configuration
 - Validate URLs to prevent SSRF
 
+## Token & Multi-App Management (TMA Series)
+
+- `FeishuAppManager` is a **Singleton**; it injects `IServiceScopeFactory` and creates a scope per `FeishuAppContext` to avoid Captive Dependency (TMA-13). Never resolve Scoped services directly from the root `IServiceProvider` inside `CreateAppContext`.
+- Old `FeishuAppContext` instances enter the **retirement queue** (`FeishuAppContextRetirement`) and are Disposed after a grace period (default 300s). Never assume GC will reclaim them—Timer roots the object graph (TMA-07/TMA-24).
+- `GetAllApps()` returns only **instantiated** apps; it does not trigger lazy initialization (TMA-08). Use `ConfiguredAppKeys` for all configured app keys without instantiation.
+- `InvalidateTokenAsync` cascades to `ITokenStore` (memory + store double-clear, TMA-01). The `PurgeStoreOnTokenInvalidation` option (default `true`) can disable store purge.
+- Store values must include an expiry timestamp (`{expireTimestampMs}|{token}` format via `TokenStoreHelper.EncodeStoredToken`). Values without expiry are treated as miss (TMA-15).
+- `PerAppFeishuAuthenticationFactory` uses `ActivatorUtilities.CreateInstance<IFeishuAuthentication>`; if the registered type is an interface/abstract, it falls back to the DI singleton (TMA-09).
+- New `IDisposable` members on `FeishuAppContext` **must** be disposed in `FeishuAppContext.Dispose()` to prevent leaks through the retirement queue (TMA-24 maintenance constraint).
+
 ## MSBuild Configuration
 
 `Directory.Build.props`: `LangVersion`: 13.0, `Nullable`: enable, `ImplicitUsings`: enable

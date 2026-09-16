@@ -80,9 +80,15 @@ public class FeishuUserTokenStore : UserTokenStoreBase
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// TMA-22 修复：refresh token 存储 TTL 由硬编码 30 天改为优先使用编码值中的过期时间，
+    /// 缺失时才回落 30 天。但 IMemoryCache 场景下此方法不接收过期信息，保持 30 天默认。
+    /// Redis 路径在 RedisUserTokenStore 中处理。
+    /// </remarks>
     public override Task SetRefreshTokenAsync(string userId, string tokenType, string refreshToken, CancellationToken cancellationToken = default)
     {
         var key = BuildUserRefreshTokenKey(userId, tokenType);
+        // TMA-22: 保持 30 天默认（IMemoryCache 路径无过期信息可用）。
         _cache.Set(key, refreshToken, TimeSpan.FromDays(30));
         return Task.CompletedTask;
     }
@@ -97,6 +103,10 @@ public class FeishuUserTokenStore : UserTokenStoreBase
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// TMA-16 / P2-3 修复：仅返回本进程已知类型。由于 FeishuUserTokenStore 为 per-app 实例，
+    /// 此字典仅记录当前实例生命周期内写入的 (userId, tokenType) 组合。
+    /// </remarks>
     public override Task<IEnumerable<string>> GetTokenTypesAsync(string userId, CancellationToken cancellationToken = default)
     {
         if (_userTokenTypes.TryGetValue(userId, out var tokenTypes))

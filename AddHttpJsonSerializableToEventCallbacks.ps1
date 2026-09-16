@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     为 Mud.Feishu.EventCallback 项目中所有事件结果类添加 [HttpJsonSerializable] 特性。
 .DESCRIPTION
@@ -12,9 +12,24 @@
 #>
 
 param(
-    # EventCallback 根目录
-    [string]$RootPath = "d:\Repos\MudFeishu\FeisshuV3\Mud.Feishu.EventCallback"
+    # EventCallback 根目录；留空则取「脚本所在目录\Mud.Feishu.EventCallback」。
+    # 也可传入相对路径（相对脚本所在目录）或绝对路径。
+    [string]$RootPath
 )
+
+# ---- 解析根目录为绝对路径（相对路径基于脚本所在目录，不依赖当前工作目录）----
+if ([string]::IsNullOrWhiteSpace($RootPath)) {
+    $RootPath = Join-Path $PSScriptRoot 'Mud.Feishu.EventCallback'
+} elseif (-not [System.IO.Path]::IsPathRooted($RootPath)) {
+    $RootPath = Join-Path $PSScriptRoot $RootPath
+}
+$RootPath = [System.IO.Path]::GetFullPath($RootPath).TrimEnd(
+    [System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar)
+
+if (-not (Test-Path -LiteralPath $RootPath -PathType Container)) {
+    throw "根目录不存在：$RootPath（可用 -RootPath 指定）"
+}
+Write-Host "扫描根目录：$RootPath"
 
 $attributeName = 'HttpJsonSerializable'
 $attrPattern  = [regex]'(?<![\w.])HttpJsonSerializable\b'
@@ -36,8 +51,9 @@ foreach ($file in $files) {
     $stats.Total++
 
     # 计算第一级文件夹名（根目录的直接子目录）
-    $relPath  = $file.FullName.Substring($RootPath.TrimEnd('\').Length + 1)
-    $segments = $relPath -split '\\'
+    $relPath  = $file.FullName.Substring($RootPath.Length + 1)
+    $segments = $relPath.Split(
+        [System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar)
     $module   = $segments[0]   # 如 IM / Approval / Drive ...
 
     $lines = Get-Content -Path $file.FullName -Encoding UTF8

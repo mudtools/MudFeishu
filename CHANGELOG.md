@@ -220,6 +220,40 @@
 - `.docs/MudHttpUtils-2.0.4-Repair-and-Enhancement-Plan.md`：新增 §8.2（逐条验证与缺陷修复记录）
   与附录 E（OBS-1 ADR：用户令牌缓存键与 `ScopeKeyBuilder`）。
 
+### ⚠️ 破坏性变更 / 行为变更（Redis 审查整改 R 系列）
+
+- `AddFeishuRedisTokenStore` 不再注册 `ITokenStore`/`IUserTokenStore` 单例，请改用 `IFeishuTokenStoreFactory.Create(appKey)`。
+- `RedisOptions` 的 `NonceTtl`/`SeqIdCacheExpiration`/键前缀非法值（0/负/空）改为**启动期校验失败**（原为静默失效或运行期服务端错误）。
+- 事件去重 `ttl` 亚秒值抛 `ArgumentOutOfRangeException`；`MarkAsCompletedAsync` 不再为不存在的键创建永久记录。
+- SeqID 去重键增加 `scopeKey` 隔离维度（默认 `AppKey|MachineName`），多实例部署不再互相判重；`GetCacheCount`/`GetMaxProcessedSeqId` 语义收窄为 TTL 窗口内。
+- `NonceFailureMode` 仅对 Redis 连接类故障生效；服务端/配置类错误直接抛出。
+- 四类 Redis 键（事件/Nonce/SeqID/令牌）统一走 `RedisKeyBuilder` 构造，分段转义 `:` → `\:`，杜绝跨段碰撞。
+
+### 🐛 修复（Redis 审查整改 R 系列）
+
+- 修复 `SeqIdKeyPrefix` 为空时 `ClearCacheAsync` 退化为全库删除（R-01/P0）。
+- 修复 `redis://`/`rediss://` 地址无法连接（改用 `ConfigurationOptions.Parse`，`rediss://` 自动启用 TLS）（R-13）。
+- 修复 `RollbackProcessingAsync` 与 `MarkAsCompletedAsync` 的并发竞态（Lua 原子化）（R-05/R-06）。
+- 修复处理超时判定依赖客户端时钟（改用 Redis `TIME`）（R-15）。
+- 修复 SeqID Sorted Set 无 TTL 导致的无界增长（写入时刷新 TTL 并裁剪）（R-08）。
+- 修复 `CancellationToken` 全链路失效（循环内显式响应取消）（R-11）。
+- 修复同步释放容器时因"仅 `IAsyncDisposable`"抛 `InvalidOperationException`（补 `IDisposable`）（R-14）。
+- 修复 Cluster 下 `ClearAsync`/`GetTokenTypesAsync` 只覆盖单节点（R-10）。
+- 修复令牌键由裸字符串拼接导致 `:` 跨段碰撞（R-20/R-21）。
+
+### ✨ 新增（Redis 审查整改 R 系列）
+
+- `RedisKeyBuilder`：统一键构造（分段转义、长度上限 256、空前缀防护）。
+- `FeishuRedisException` + `FeishuRedisFailureKind`：可分类的 Redis 失败契约（Connection/Timeout/Server）。
+- `Tests/Mud.Feishu.Redis.IntegrationTests`：真实 Redis（Testcontainers）集成测试，覆盖 P0/P1 缺陷。
+- `RedisOptions.ValidateOnStart()`（net6+）：配置非法值在宿主启动期即失败。
+- `RedisStoreHelper.GetServers()`：Cluster 下遍历全部主节点聚合 SCAN。
+
+### 📝 文档（Redis 审查整改 R 系列）
+
+- 移除不存在的 `RedisFeishuEventDistributedDeduplicatorWithFallback` 及相关降级承诺。
+- 新增"能力 ↔ 实现 ↔ 测试"映射表与令牌明文存储安全披露（README 附录）。
+
 ## [2.1.5] - 2026-06-25
 
 ### ✨ Added

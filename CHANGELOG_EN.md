@@ -57,6 +57,52 @@
 - `[HttpJsonSerializable]` on open generics caused `AOT006` / `SYSLIB1030` on net8.0+.
 - 204 `NU1603` version-drift warnings (5 projects, 7 `PackageReference` entries now pinned to 2.0.5).
 
+### ⚠️ Breaking Changes / Behavior Changes (Redis Review Remediation R-series)
+
+> Corresponds to M0–M4 of `.docs/MudFeishu-Redis-Review-Remediation-Plan.md`.
+
+- `AddFeishuRedisTokenStore` no longer registers `ITokenStore`/`IUserTokenStore` singletons; use
+  `IFeishuTokenStoreFactory.Create(appKey)` instead.
+- `RedisOptions` `NonceTtl`/`SeqIdCacheExpiration`/key prefix illegal values (0/negative/empty) now
+  **fail at startup** (previously silently ineffective or runtime server errors).
+- Event dedup `ttl` sub-second values throw `ArgumentOutOfRangeException`; `MarkAsCompletedAsync` no
+  longer creates permanent records for non-existent keys.
+- SeqID dedup keys now include a `scopeKey` isolation dimension (default `AppKey|MachineName`);
+  multi-instance deployments no longer cross-deduplicate. `GetCacheCount`/`GetMaxProcessedSeqId`
+  semantics narrowed to "within TTL window".
+- `NonceFailureMode` only applies to Redis connection failures; server/config errors propagate directly.
+- All four Redis key families (event/nonce/seqid/token) now use `RedisKeyBuilder` for unified
+  construction with segment escaping (`:` → `\:`) to prevent cross-segment collisions.
+
+### 🐛 Fixed (Redis Review Remediation R-series)
+
+- Fixed `ClearCacheAsync` degrading to full-database deletion when `SeqIdKeyPrefix` is empty (R-01/P0).
+- Fixed `redis://`/`rediss://` addresses not connecting (switched to `ConfigurationOptions.Parse`;
+  `rediss://` auto-enables TLS) (R-13).
+- Fixed concurrent race in `RollbackProcessingAsync` and `MarkAsCompletedAsync` (Lua atomicity) (R-05/R-06).
+- Fixed processing timeout relying on client clock (now uses Redis `TIME`) (R-15).
+- Fixed SeqID Sorted Set unbounded growth (TTL refresh + pruning on write) (R-08).
+- Fixed `CancellationToken` not propagated (explicit cancellation checks in loops) (R-11).
+- Fixed `InvalidOperationException` on sync disposal (added `IDisposable`) (R-14).
+- Fixed Cluster-scoped `ClearAsync`/`GetTokenTypesAsync` only covering a single node (R-10).
+- Fixed token key cross-segment collision from raw string concatenation (R-20/R-21).
+
+### ✨ Added (Redis Review Remediation R-series)
+
+- `RedisKeyBuilder`: unified key construction (segment escaping, 256-byte length limit, empty-prefix guard).
+- `FeishuRedisException` + `FeishuRedisFailureKind`: categorized Redis failure contract
+  (Connection/Timeout/Server).
+- `Tests/Mud.Feishu.Redis.IntegrationTests`: real Redis (Testcontainers) integration tests covering
+  P0/P1 defects.
+- `RedisOptions.ValidateOnStart()` (net6+): illegal config values fail at host startup.
+- `RedisStoreHelper.GetServers()`: Cluster-wide primary node aggregation for SCAN.
+
+### 📝 Documentation (Redis Review Remediation R-series)
+
+- Removed non-existent `RedisFeishuEventDistributedDeduplicatorWithFallback` and related fallback claims.
+- Added "capability ↔ implementation ↔ test" mapping table and plaintext token storage security disclosure
+  (README appendix).
+
 ## [2.0.7] - 2026-04-07
 
 ### ✨ Added

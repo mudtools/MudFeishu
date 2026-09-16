@@ -51,11 +51,17 @@ public class PerAppRedisTokenStoreFactory : IFeishuTokenStoreFactory
     /// 构建指定应用的 Redis 键前缀，与 Memory 路径 <c>feishu:{appKey}:token</c> 对齐。
     /// </summary>
     public static string BuildKeyPrefix(string appKey) =>
-        string.IsNullOrWhiteSpace(appKey) ? "feishu:default:token" : $"feishu:{appKey}:token";
+        string.IsNullOrWhiteSpace(appKey)
+            ? RedisKeyBuilder.Combine("feishu", "default", "token")
+            : RedisKeyBuilder.Combine("feishu", appKey, "token");
 
     /// <inheritdoc />
     public (ITokenStore TokenStore, IUserTokenStore? UserTokenStore) Create(string appKey)
     {
+        // T-M2-11：appKey 为空抛明确异常（替代 ConcurrentDictionary 的 ArgumentNullException）
+        if (string.IsNullOrWhiteSpace(appKey))
+            throw new ArgumentException("appKey 不能为空——空 appKey 会导致令牌键空间退化为 feishu:default:token", nameof(appKey));
+
         var (tokenStore, userTokenStore) = _stores.GetOrAdd(appKey, key =>
         {
             var keyPrefix = BuildKeyPrefix(key);
@@ -67,7 +73,7 @@ public class PerAppRedisTokenStoreFactory : IFeishuTokenStoreFactory
                 keyPrefix);
 
             var userStore = new RedisUserTokenStore(store, _redis, keyPrefix);
-            return ((ITokenStore)store, (IUserTokenStore)userStore);
+            return (store, userStore);
         });
 
         return (tokenStore, userTokenStore);

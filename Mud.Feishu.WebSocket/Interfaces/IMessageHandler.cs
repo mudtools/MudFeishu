@@ -27,11 +27,11 @@ public interface IMessageHandler
     /// <param name="message">消息内容</param>
     /// <param name="cancellationToken">取消令牌</param>
     /// <returns>处理任务</returns>
-    #if NET6_0_OR_GREATER
+#if NET6_0_OR_GREATER
     [RequiresUnreferencedCode("反射式System.Text.Json序列化在裁剪下无法静态分析目标类型成员")]
-    #endif
-    #if NET7_0_OR_GREATER
+#endif
+#if NET7_0_OR_GREATER
     [RequiresDynamicCode("反射式System.Text.Json序列化在 AOT/动态代码生成环境下不可用")]
-    #endif
+#endif
     Task HandleAsync(string message, CancellationToken cancellationToken = default);
 }

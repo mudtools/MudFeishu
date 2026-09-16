@@ -47,7 +47,7 @@ public abstract class DefaultFeishuEventHandler<T> : IFeishuEventHandler
     /// <returns>处理任务</returns>
     /// <exception cref="ArgumentNullException">当eventData为null时抛出</exception>
     /// <exception cref="InvalidOperationException">当事件数据无效时抛出</exception>
-    #if NET6_0_OR_GREATER
+#if NET6_0_OR_GREATER
     [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCode")]
     [UnconditionalSuppressMessage("AOT", "IL3050:RequiresDynamicCode")]
 #endif
@@ -85,7 +85,7 @@ public abstract class DefaultFeishuEventHandler<T> : IFeishuEventHandler
     /// <param name="eventData">事件数据</param>
     /// <returns>反序列化后的事件实体</returns>
     /// <exception cref="InvalidOperationException">当事件数据为空或反序列化失败时抛出</exception>
-    #if NET6_0_OR_GREATER
+#if NET6_0_OR_GREATER
     [RequiresUnreferencedCode("反射式System.Text.Json序列化在裁剪下无法静态分析目标类型成员")]
 #endif
 #if NET7_0_OR_GREATER

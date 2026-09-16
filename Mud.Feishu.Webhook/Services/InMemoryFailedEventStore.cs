@@ -53,7 +53,7 @@ public class InMemoryFailedEventStore : IFailedEventStore, IDisposable
     }
 
     /// <inheritdoc />
-    #if NET6_0_OR_GREATER
+#if NET6_0_OR_GREATER
     [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCode")]
     [UnconditionalSuppressMessage("AOT", "IL3050:RequiresDynamicCode")]
 #endif

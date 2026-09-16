@@ -874,11 +874,9 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
         if (chain.ChainElements.Count != 1)
             return false;
 
-        var element = chain.ChainElements[0];
-
         // ChainStatus 为空数组表示无错误（不会走到这里），非空时逐条检查
         // 仅允许 UntrustedRoot，其他状态（NotTimeValid/Revoked 等）一律拒绝
-        foreach (var status in element.ChainStatus)
+        foreach (var status in chain.ChainStatus)
         {
             if (status.Status != System.Security.Cryptography.X509Certificates.X509ChainStatusFlags.UntrustedRoot)
                 return false;

@@ -7,6 +7,9 @@
 
 using Mud.Feishu.Abstractions.Configuration;
 using StackExchange.Redis;
+using System.Threading;
+
+// ADR-2/ADR-6 修复标记：状态机 v2 三脚本化 + 服务端时钟 + FeishuRedisException
 
 namespace Mud.Feishu.Redis.Services;
 
@@ -29,18 +32,28 @@ public class RedisFeishuEventDistributedDeduplicator : IFeishuEventDeduplicator,
     private readonly TimeSpan _defaultCacheExpiration;
     private readonly TimeSpan _defaultProcessingTimeout;
     private readonly string _keyPrefix;
-    private bool _disposed;
+    private volatile bool _disposed;
 
     private const string StatusField = "status";
     private const string TimestampField = "timestamp";
+    private const string TimeoutField = "timeout";
     private const string ProcessingStatus = "processing";
     private const string CompletedStatus = "completed";
 
+    // ADR-2：状态机 v2 — 三个独立 Lua 脚本，统一使用服务端 redis.call('TIME') 消除时钟漂移（R-15）
+    // 返回值：0=Success, 1=Duplicate(Completed), 2=Duplicate(Processing), 3=TimeoutRecoverable
     private const string TryMarkAsProcessingLuaScript = @"
         local key = KEYS[1]
-        local processingTimeout = ARGV[1]
-        local currentTimestamp = ARGV[2]
-        local ttlSeconds = ARGV[3]
+        local processingTimeoutSeconds = ARGV[1]
+        local ttlSeconds = ARGV[2]
+
+        -- R-15：使用服务端时钟，消除实例间时钟漂移
+        local now = tonumber(redis.call('TIME')[1])
+
+        -- R-04：TTL 非正 → 显式失败而非静默删键
+        if tonumber(ttlSeconds) <= 0 then
+            return redis.error_reply('ttl must be positive')
+        end
 
         local existing = redis.call('HGETALL', key)
         if #existing > 0 then
@@ -60,9 +73,10 @@ public class RedisFeishuEventDistributedDeduplicator : IFeishuEventDeduplicator,
 
             if status == 'processing' then
                 if timestamp then
-                    local elapsed = tonumber(currentTimestamp) - tonumber(timestamp)
-                    if elapsed > tonumber(processingTimeout) then
-                        redis.call('HMSET', key, 'status', 'processing', 'timestamp', currentTimestamp)
+                    local elapsed = now - tonumber(timestamp)
+                    if elapsed > tonumber(processingTimeoutSeconds) then
+                        -- 超时可恢复：重新标记为 processing（T-M2-2：刷新 timeout 字段）
+                        redis.call('HSET', key, 'status', 'processing', 'timestamp', now, 'timeout', processingTimeoutSeconds)
                         redis.call('EXPIRE', key, tonumber(ttlSeconds))
                         return 3
                     end
@@ -71,8 +85,35 @@ public class RedisFeishuEventDistributedDeduplicator : IFeishuEventDeduplicator,
             end
         end
 
-        redis.call('HMSET', key, 'status', 'processing', 'timestamp', currentTimestamp)
+        -- 新标记为 processing（ADR-2/T-M2-2：同时写入 timeout 字段，供 GetStatusAsync 判定）
+        redis.call('HSET', key, 'status', 'processing', 'timestamp', now, 'timeout', processingTimeoutSeconds)
         redis.call('EXPIRE', key, tonumber(ttlSeconds))
+        return 0
+        ";
+
+    // ADR-2 / R-05：MarkAsCompleted — 键不存在则不创建，返回 0 由 C# 端记 Warning
+    private const string MarkAsCompletedLuaScript = @"
+        local key = KEYS[1]
+        local now = ARGV[1]
+        local ttlSeconds = ARGV[2]
+
+        if redis.call('EXISTS', key) == 0 then
+            return 0  -- 键不存在，不创建永久键
+        end
+
+        redis.call('HSET', key, 'status', 'completed', 'timestamp', now)
+        redis.call('EXPIRE', key, tonumber(ttlSeconds))
+        return 1
+        ";
+
+    // ADR-2 / R-06：RollbackProcessing — 读-改-删原子化，竞态下不会误删 completed
+    private const string RollbackProcessingLuaScript = @"
+        local key = KEYS[1]
+
+        if redis.call('HGET', key, 'status') == 'processing' then
+            redis.call('DEL', key)
+            return 1
+        end
         return 0
         ";
 
@@ -130,50 +171,61 @@ public class RedisFeishuEventDistributedDeduplicator : IFeishuEventDeduplicator,
     /// <inheritdoc />
     public async Task<DeduplicationResult> TryMarkAsProcessingAsync(string eventId, string? appKey = null, TimeSpan? ttl = null, TimeSpan? processingTimeout = null, CancellationToken cancellationToken = default)
     {
+        ThrowIfDisposed();
         if (string.IsNullOrEmpty(eventId))
         {
             _logger?.LogWarning("事件ID为空，跳过去重检查");
             return DeduplicationResult.Success(eventId);
         }
 
+        // R-04：TTL 非正直接抛异常，不走 Lua（双保险）
+        var actualTtl = ttl ?? _defaultCacheExpiration;
+        if (actualTtl <= TimeSpan.Zero)
+            throw new ArgumentOutOfRangeException(nameof(ttl), "TTL 必须为正值");
+
         try
         {
-            var actualTtl = ttl ?? _defaultCacheExpiration;
+            cancellationToken.ThrowIfCancellationRequested();
             var actualProcessingTimeout = processingTimeout ?? _defaultProcessingTimeout;
             var redisKey = GetRedisKey(eventId, appKey);
-            var currentTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-            var processingTimeoutSeconds = (long)actualProcessingTimeout.TotalSeconds;
-            var ttlSeconds = (long)actualTtl.TotalSeconds;
+            var processingTimeoutSeconds = Math.Max(1, (long)actualProcessingTimeout.TotalSeconds);
+            var ttlSeconds = Math.Max(1, (long)actualTtl.TotalSeconds);
 
             var result = (long)await _database.ScriptEvaluateAsync(
                 TryMarkAsProcessingLuaScript,
                 new RedisKey[] { redisKey },
-                new RedisValue[] { processingTimeoutSeconds, currentTimestamp, ttlSeconds }
+                new RedisValue[] { processingTimeoutSeconds, ttlSeconds }
             );
 
+            // R-17：未知返回值 fail-closed
             return result switch
             {
                 0 => LogAndReturnSuccess(eventId, appKey, actualTtl),
                 1 => LogAndReturnDuplicate(eventId, appKey, false, DeduplicationStatus.Completed),
                 2 => LogAndReturnDuplicate(eventId, appKey, true, DeduplicationStatus.Processing),
                 3 => LogAndReturnTimeoutRecoverable(eventId, appKey, actualProcessingTimeout),
-                _ => LogAndReturnSuccess(eventId, appKey, actualTtl)
+                _ => throw new InvalidOperationException($"Lua 脚本返回未知值 {result}，无法判定去重状态（fail-closed）")
             };
         }
         catch (RedisConnectionException ex)
         {
             _logger?.LogError(ex, "Redis 连接异常，事件 {EventId} 去重失败", eventId);
-            throw new InvalidOperationException("Redis 连接失败，无法完成去重", ex);
+            throw new FeishuRedisException(FeishuRedisFailureKind.Connection, "Redis 连接失败，无法完成去重", ex);
         }
         catch (RedisTimeoutException ex)
         {
             _logger?.LogWarning(ex, "Redis 超时，事件 {EventId} 去重失败", eventId);
-            throw new InvalidOperationException("Redis 操作超时", ex);
+            throw new FeishuRedisException(FeishuRedisFailureKind.Timeout, "Redis 操作超时", ex);
+        }
+        catch (RedisServerException ex)
+        {
+            _logger?.LogError(ex, "Redis 服务端异常，事件 {EventId} 去重失败", eventId);
+            throw new FeishuRedisException(FeishuRedisFailureKind.Server, "Redis 服务端错误", ex);
         }
         catch (RedisException ex)
         {
             _logger?.LogError(ex, "Redis 操作异常，事件 {EventId} 去重失败", eventId);
-            throw new InvalidOperationException("Redis 操作失败", ex);
+            throw new FeishuRedisException(FeishuRedisFailureKind.Server, "Redis 操作失败", ex);
         }
     }
 
@@ -201,80 +253,101 @@ public class RedisFeishuEventDistributedDeduplicator : IFeishuEventDeduplicator,
     /// <inheritdoc />
     public async Task MarkAsCompletedAsync(string eventId, string? appKey = null, CancellationToken cancellationToken = default)
     {
+        ThrowIfDisposed();
         if (string.IsNullOrEmpty(eventId))
-        {
             return;
-        }
 
         try
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var redisKey = GetRedisKey(eventId, appKey);
+            var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString();
+            var ttlSeconds = Math.Max(1, (long)_defaultCacheExpiration.TotalSeconds);
 
-            await _database.HashSetAsync(redisKey, new[]
+            // ADR-2 / R-05：使用 Lua 脚本，键不存在则不创建
+            var result = (long)await _database.ScriptEvaluateAsync(
+                MarkAsCompletedLuaScript,
+                new RedisKey[] { redisKey },
+                new RedisValue[] { now, ttlSeconds }
+            );
+
+            if (result == 0)
             {
-                new HashEntry(StatusField, CompletedStatus),
-                // P-2 修复：统一使用 Unix 秒时间戳，与 TryMarkAsProcessingAsync 的 Lua 脚本保持一致。
-                new HashEntry(TimestampField, DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString())
-            });
-
-            _logger?.LogDebug("事件 {EventId} 标记为已完成 (AppKey: {AppKey})", eventId, appKey ?? "default");
+                _logger?.LogWarning("事件 {EventId} 的去重键不存在，MarkAsCompleted 未创建新键（R-05 修复行为）(AppKey: {AppKey})",
+                    eventId, appKey ?? "default");
+            }
+            else
+            {
+                _logger?.LogDebug("事件 {EventId} 标记为已完成 (AppKey: {AppKey})", eventId, appKey ?? "default");
+            }
         }
         catch (RedisConnectionException ex)
         {
             _logger?.LogError(ex, "Redis 连接异常，标记事件 {EventId} 为已完成失败", eventId);
-            throw new InvalidOperationException("Redis 连接失败，无法标记事件为已完成", ex);
+            throw new FeishuRedisException(FeishuRedisFailureKind.Connection, "Redis 连接失败，无法标记事件为已完成", ex);
         }
         catch (RedisTimeoutException ex)
         {
             _logger?.LogWarning(ex, "Redis 超时，标记事件 {EventId} 为已完成失败", eventId);
-            throw new InvalidOperationException("Redis 操作超时，无法标记事件为已完成", ex);
+            throw new FeishuRedisException(FeishuRedisFailureKind.Timeout, "Redis 操作超时", ex);
+        }
+        catch (RedisServerException ex)
+        {
+            _logger?.LogError(ex, "Redis 服务端异常，标记事件 {EventId} 为已完成失败", eventId);
+            throw new FeishuRedisException(FeishuRedisFailureKind.Server, "Redis 服务端错误", ex);
         }
         catch (RedisException ex)
         {
             _logger?.LogError(ex, "标记事件 {EventId} 为已完成时发生 Redis 错误", eventId);
-            throw new InvalidOperationException("Redis 操作失败，无法标记事件为已完成", ex);
+            throw new FeishuRedisException(FeishuRedisFailureKind.Server, "Redis 操作失败", ex);
         }
     }
 
     /// <inheritdoc />
     public async Task RollbackProcessingAsync(string eventId, string? appKey = null, CancellationToken cancellationToken = default)
     {
+        ThrowIfDisposed();
         if (string.IsNullOrEmpty(eventId))
-        {
             return;
-        }
 
+        // ADR-6.3：best-effort API — 失败记日志，不抛
         try
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var redisKey = GetRedisKey(eventId, appKey);
 
-            var status = await _database.HashGetAsync(redisKey, StatusField);
-            if (status == ProcessingStatus)
+            // ADR-2 / R-06：使用 Lua 脚本原子化，竞态下不会误删 completed
+            var result = (long)await _database.ScriptEvaluateAsync(
+                RollbackProcessingLuaScript,
+                new RedisKey[] { redisKey },
+                Array.Empty<RedisValue>()
+            );
+
+            if (result == 1)
             {
-                await _database.KeyDeleteAsync(redisKey);
                 _logger?.LogDebug("事件 {EventId} 处理回滚，允许重新处理 (AppKey: {AppKey})", eventId, appKey ?? "default");
             }
             else
             {
-                _logger?.LogDebug("事件 {EventId} 状态为 {Status}，无需回滚 (AppKey: {AppKey})", eventId, status, appKey ?? "default");
+                _logger?.LogDebug("事件 {EventId} 状态非 processing，未回滚 (AppKey: {AppKey})", eventId, appKey ?? "default");
             }
         }
         catch (RedisException ex)
         {
-            _logger?.LogError(ex, "回滚事件 {EventId} 处理状态时发生错误", eventId);
+            _logger?.LogError(ex, "回滚事件 {EventId} 处理状态时发生错误（best-effort，不抛出）", eventId);
         }
     }
 
     /// <inheritdoc />
     public async Task<bool> IsProcessedAsync(string eventId, string? appKey = null, CancellationToken cancellationToken = default)
     {
+        ThrowIfDisposed();
         if (string.IsNullOrEmpty(eventId))
-        {
             return false;
-        }
 
         try
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var redisKey = GetRedisKey(eventId, appKey);
             var status = await _database.HashGetAsync(redisKey, StatusField);
 
@@ -285,79 +358,104 @@ public class RedisFeishuEventDistributedDeduplicator : IFeishuEventDeduplicator,
         catch (RedisConnectionException ex)
         {
             _logger?.LogError(ex, "Redis 连接异常，检查事件 {EventId} 处理状态失败", eventId);
-            throw new InvalidOperationException("Redis 连接失败，无法检查处理状态", ex);
+            throw new FeishuRedisException(FeishuRedisFailureKind.Connection, "Redis 连接失败", ex);
         }
         catch (RedisTimeoutException ex)
         {
             _logger?.LogWarning(ex, "Redis 超时，检查事件 {EventId} 处理状态失败", eventId);
-            throw new InvalidOperationException("Redis 操作超时", ex);
+            throw new FeishuRedisException(FeishuRedisFailureKind.Timeout, "Redis 操作超时", ex);
+        }
+        catch (RedisServerException ex)
+        {
+            _logger?.LogError(ex, "Redis 服务端异常，检查事件 {EventId} 处理状态失败", eventId);
+            throw new FeishuRedisException(FeishuRedisFailureKind.Server, "Redis 服务端错误", ex);
         }
         catch (RedisException ex)
         {
             _logger?.LogError(ex, "Redis 操作异常，检查事件 {EventId} 处理状态失败", eventId);
-            throw new InvalidOperationException("Redis 操作失败", ex);
+            throw new FeishuRedisException(FeishuRedisFailureKind.Server, "Redis 操作失败", ex);
         }
     }
 
     /// <inheritdoc />
     public async Task<DeduplicationStatus> GetStatusAsync(string eventId, string? appKey = null, CancellationToken cancellationToken = default)
     {
+        ThrowIfDisposed();
         if (string.IsNullOrEmpty(eventId))
-        {
             return DeduplicationStatus.Pending;
-        }
 
         try
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var redisKey = GetRedisKey(eventId, appKey);
-            var entries = await _database.HashGetAllAsync(redisKey);
+            var entries = await _database.HashGetAllAsync(redisKey, flags: RedisStoreHelper.ToCommandFlags(cancellationToken)).ConfigureAwait(false);
 
             if (entries.Length == 0)
-            {
                 return DeduplicationStatus.Pending;
-            }
 
             var statusEntry = entries.FirstOrDefault(x => x.Name == StatusField);
             var timestampEntry = entries.FirstOrDefault(x => x.Name == TimestampField);
-
+            var timeoutEntry = entries.FirstOrDefault(x => x.Name == TimeoutField);
             var status = statusEntry.Value.ToString();
 
             if (status == CompletedStatus)
-            {
                 return DeduplicationStatus.Completed;
-            }
 
             if (status == ProcessingStatus)
             {
                 var timestampStr = timestampEntry.Value.ToString();
-                // P-2 修复：兼容两种时间戳格式。
-                // TryMarkAsProcessingAsync 的 Lua 脚本写入 Unix 秒（数字字符串）；
-                // 历史 MarkAsCompletedAsync 写入 ISO 8601 字符串（已改为 Unix 秒，但需兼容存量数据）。
+                // R-15：时间戳由 Lua 脚本写入服务端 Unix 秒，此处读取也用服务端对齐的 UTC
                 var timestamp = TryParseTimestamp(timestampStr);
                 if (timestamp.HasValue)
                 {
-                    var elapsed = DateTimeOffset.UtcNow - timestamp.Value;
-                    if (elapsed > _defaultProcessingTimeout)
+                    // T-M2-2：优先读取 Hash 中的 timeout 字段（per-call），缺省回落默认值
+                    var effectiveTimeout = _defaultProcessingTimeout;
+                    if (timeoutEntry.Value.HasValue)
                     {
-                        return DeduplicationStatus.Pending;
+                        var timeoutStr = timeoutEntry.Value.ToString();
+                        if (long.TryParse(timeoutStr, System.Globalization.NumberStyles.Integer,
+                            System.Globalization.CultureInfo.InvariantCulture, out var timeoutSeconds))
+                        {
+                            effectiveTimeout = TimeSpan.FromSeconds(timeoutSeconds);
+                        }
                     }
+
+                    var elapsed = DateTimeOffset.UtcNow - timestamp.Value;
+                    if (elapsed > effectiveTimeout)
+                        return DeduplicationStatus.Pending;
                 }
                 return DeduplicationStatus.Processing;
             }
 
             return DeduplicationStatus.Pending;
         }
+        catch (RedisConnectionException ex)
+        {
+            _logger?.LogError(ex, "获取事件 {EventId} 状态时发生连接错误", eventId);
+            throw new FeishuRedisException(FeishuRedisFailureKind.Connection, "Redis 连接失败", ex);
+        }
+        catch (RedisTimeoutException ex)
+        {
+            _logger?.LogWarning(ex, "获取事件 {EventId} 状态时超时", eventId);
+            throw new FeishuRedisException(FeishuRedisFailureKind.Timeout, "Redis 操作超时", ex);
+        }
+        catch (RedisServerException ex)
+        {
+            _logger?.LogError(ex, "获取事件 {EventId} 状态时服务端异常", eventId);
+            throw new FeishuRedisException(FeishuRedisFailureKind.Server, "Redis 服务端错误", ex);
+        }
         catch (RedisException ex)
         {
             _logger?.LogError(ex, "获取事件 {EventId} 状态时发生错误", eventId);
-            return DeduplicationStatus.Pending;
+            throw new FeishuRedisException(FeishuRedisFailureKind.Server, "Redis 操作失败", ex);
         }
     }
 
     /// <inheritdoc />
     public async Task<int> CleanupExpiredAsync(CancellationToken cancellationToken = default)
     {
-        _logger?.LogDebug("Redis 自动清理过期键，无需手动清理");
+        ThrowIfDisposed();
+        // Redis 路径恒返回 0（自动过期），接口为兼容内存实现保留
         await Task.CompletedTask;
         return 0;
     }
@@ -401,12 +499,12 @@ public class RedisFeishuEventDistributedDeduplicator : IFeishuEventDeduplicator,
     /// <param name="eventId">事件ID</param>
     /// <param name="appKey">应用键（用于多应用场景，避免跨应用冲突）</param>
     /// <returns>是否成功移除</returns>
+    /// <remarks>best-effort：失败记日志并返回 false，不抛出。</remarks>
     public async Task<bool> RemoveAsync(string eventId, string? appKey = null)
     {
+        ThrowIfDisposed();
         if (string.IsNullOrEmpty(eventId))
-        {
             return false;
-        }
 
         try
         {
@@ -414,15 +512,13 @@ public class RedisFeishuEventDistributedDeduplicator : IFeishuEventDeduplicator,
             var result = await _database.KeyDeleteAsync(redisKey);
 
             if (result)
-            {
                 _logger?.LogDebug("已移除事件 {EventId} 的去重标记 (AppKey: {AppKey})", eventId, appKey ?? "default");
-            }
 
             return result;
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "移除事件 {EventId} 的去重标记时发生错误", eventId);
+            _logger?.LogError(ex, "移除事件 {EventId} 的去重标记时发生错误（best-effort，不抛出）", eventId);
             return false;
         }
     }
@@ -433,12 +529,12 @@ public class RedisFeishuEventDistributedDeduplicator : IFeishuEventDeduplicator,
     /// <param name="eventIds">事件ID集合</param>
     /// <param name="appKey">应用键，用于多应用隔离（可选）</param>
     /// <returns>成功移除的数量</returns>
+    /// <remarks>best-effort：失败记日志并返回 0，不抛出。</remarks>
     public async Task<long> RemoveRangeAsync(IEnumerable<string> eventIds, string? appKey = null)
     {
+        ThrowIfDisposed();
         if (eventIds == null)
-        {
             return 0;
-        }
 
         try
         {
@@ -448,17 +544,15 @@ public class RedisFeishuEventDistributedDeduplicator : IFeishuEventDeduplicator,
                 .ToArray();
 
             if (keys.Length == 0)
-            {
                 return 0;
-            }
-            var count = 0;
-            foreach (var key in keys)
+
+            // T-M3-6：分片批量删除（500/批）
+            var count = 0L;
+            const int batchSize = 500;
+            for (int i = 0; i < keys.Length; i += batchSize)
             {
-                var result = await _database.KeyDeleteAsync(key);
-                if (result)
-                {
-                    count++;
-                }
+                var batch = keys.Skip(i).Take(batchSize).Select(k => (RedisKey)k).ToArray();
+                count += await _database.KeyDeleteAsync(batch);
             }
 
             _logger?.LogDebug("批量移除了 {Count} 个事件的去重标记 (AppKey: {AppKey})", count, appKey ?? "default");
@@ -466,7 +560,7 @@ public class RedisFeishuEventDistributedDeduplicator : IFeishuEventDeduplicator,
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "批量移除去重标记时发生错误");
+            _logger?.LogError(ex, "批量移除去重标记时发生错误（best-effort，不抛出）");
             return 0;
         }
     }
@@ -475,16 +569,21 @@ public class RedisFeishuEventDistributedDeduplicator : IFeishuEventDeduplicator,
     /// 获取当前缓存中的事件数量
     /// </summary>
     /// <returns>事件数量</returns>
+    /// <remarks>best-effort：失败记日志并返回 0，不抛出。</remarks>
     public async Task<long> GetCachedCountAsync()
     {
+        ThrowIfDisposed();
         try
         {
             var totalCount = 0L;
-            var pattern = $"{_keyPrefix}*";
+            // R-01 护栏：空前缀在此抛出
+            var pattern = RedisKeyBuilder.Combine(_keyPrefix) + "*";
 
             foreach (var endPoint in _redis.GetEndPoints())
             {
                 var redisServer = _redis.GetServer(endPoint);
+                if (redisServer.IsReplica)
+                    continue;
 
                 await foreach (var key in redisServer.KeysAsync(pattern: pattern, pageSize: 1000))
                 {
@@ -497,9 +596,21 @@ public class RedisFeishuEventDistributedDeduplicator : IFeishuEventDeduplicator,
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "获取缓存事件数量时发生错误");
+            _logger?.LogError(ex, "获取缓存事件数量时发生错误（best-effort，不抛出）");
             return 0;
         }
+    }
+
+    /// <summary>
+    /// 释放资源（R-14：补 IDisposable，同步释放容器不抛 InvalidOperationException）
+    /// </summary>
+    public void Dispose()
+    {
+        if (_disposed)
+            return;
+
+        _disposed = true;
+        // ConnectionMultiplexer 应由调用者管理，此处不释放
     }
 
     /// <inheritdoc />
@@ -513,14 +624,24 @@ public class RedisFeishuEventDistributedDeduplicator : IFeishuEventDeduplicator,
     }
 
     /// <summary>
-    /// 生成 Redis 键
+    /// 释放检查
+    /// </summary>
+    /// <exception cref="ObjectDisposedException"></exception>
+    private void ThrowIfDisposed()
+    {
+        if (_disposed)
+            throw new ObjectDisposedException(nameof(RedisFeishuEventDistributedDeduplicator));
+    }
+
+    /// <summary>
+    /// 生成 Redis 键（使用 RedisKeyBuilder 统一构造，含转义和护栏）
     /// </summary>
     private string GetRedisKey(string eventId, string? appKey = null)
     {
         if (!string.IsNullOrEmpty(appKey))
         {
-            return $"{_keyPrefix}{appKey}:{eventId}";
+            return RedisKeyBuilder.Combine(_keyPrefix, appKey, eventId);
         }
-        return $"{_keyPrefix}{eventId}";
+        return RedisKeyBuilder.Combine(_keyPrefix, eventId);
     }
 }

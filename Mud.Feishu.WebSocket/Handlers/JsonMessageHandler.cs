@@ -36,12 +36,12 @@ public abstract class JsonMessageHandler : IMessageHandler
     public abstract bool CanHandle(string messageType);
 
     /// <inheritdoc/>
-    #if NET6_0_OR_GREATER
+#if NET6_0_OR_GREATER
     [RequiresUnreferencedCode("反射式System.Text.Json序列化在裁剪下无法静态分析目标类型成员")]
-    #endif
-    #if NET7_0_OR_GREATER
+#endif
+#if NET7_0_OR_GREATER
     [RequiresDynamicCode("反射式System.Text.Json序列化在 AOT/动态代码生成环境下不可用")]
-    #endif
+#endif
     public abstract Task HandleAsync(string message, CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -50,12 +50,12 @@ public abstract class JsonMessageHandler : IMessageHandler
     /// <typeparam name="T">目标类型</typeparam>
     /// <param name="json">JSON字符串</param>
     /// <returns>解析结果</returns>
-    #if NET6_0_OR_GREATER
+#if NET6_0_OR_GREATER
     [RequiresUnreferencedCode("反射式System.Text.Json序列化在裁剪下无法静态分析目标类型成员")]
-    #endif
-    #if NET7_0_OR_GREATER
+#endif
+#if NET7_0_OR_GREATER
     [RequiresDynamicCode("反射式System.Text.Json序列化在 AOT/动态代码生成环境下不可用")]
-    #endif
+#endif
     protected T? SafeDeserialize<T>(string json) where T : class
     {
         try

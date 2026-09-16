@@ -8,6 +8,7 @@
 #if NET8_0_OR_GREATER
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Mud.Feishu.DataModels.WsEndpoint;
 using Mud.Feishu.WebSocket.DataModels;
 
 namespace Mud.Feishu.WebSocket.Serialization;

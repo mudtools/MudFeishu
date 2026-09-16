@@ -62,12 +62,12 @@ public class FeishuEventMessageHandler : JsonMessageHandler
     }
 
     /// <inheritdoc/>
-    #if NET6_0_OR_GREATER
+#if NET6_0_OR_GREATER
     [RequiresUnreferencedCode("反射式System.Text.Json序列化在裁剪下无法静态分析目标类型成员")]
-    #endif
-    #if NET7_0_OR_GREATER
+#endif
+#if NET7_0_OR_GREATER
     [RequiresDynamicCode("反射式System.Text.Json序列化在 AOT/动态代码生成环境下不可用")]
-    #endif
+#endif
     public override async Task HandleAsync(string message, CancellationToken cancellationToken = default)
     {
         try
@@ -79,139 +79,155 @@ public class FeishuEventMessageHandler : JsonMessageHandler
             }
 
             // 尝试解析JSON以判断版本
-            using var jsonDoc = System.Text.Json.JsonDocument.Parse(message);
-            var root = jsonDoc.RootElement;
-
-            EventData eventData;
-
-            // 检查是否为v2.0版本
-            if (root.TryGetProperty("schema", out var schemaElement) &&
-                schemaElement.GetString() == "2.0")
+            // 无效 JSON 时 JsonDocument.Parse 抛出 JsonException，在此阶段捕获并记录警告后返回，
+            // 避免无效消息导致整个处理流程抛异常（P0-1: 外层 catch 会重抛，导致 ACK 500 + 服务端重发死循环）。
+            System.Text.Json.JsonDocument? jsonDoc;
+            try
             {
-                // v2.0版本解析
-                eventData = ParseV2Event(root);
+                jsonDoc = System.Text.Json.JsonDocument.Parse(message);
             }
-            else
+            catch (System.Text.Json.JsonException jex)
             {
-                // v1.0版本解析
-                var eventMessage = SafeDeserialize<EventMessage>(message);
-                if (eventMessage?.Data == null)
-                {
-                    var truncatedV1Msg = message.Length > 200 ? message.Substring(0, 200) + "..." : message;
-                    _logger.LogWarning("无法解析v1.0事件消息 (长度: {Length}): {Message}", message.Length, truncatedV1Msg);
-                    return;
-                }
-                eventData = eventMessage.Data;
-            }
-
-            if (string.IsNullOrEmpty(eventData.EventType))
-            {
-                _logger.LogWarning("事件类型为空: {EventId}", eventData.EventId);
+                var truncatedMsg = message.Length > 200 ? message.Substring(0, 200) + "..." : message;
+                _logger.LogWarning(jex, "收到无效JSON事件消息 (长度: {Length}, 消息前200字符: {Message})",
+                    message.Length, truncatedMsg);
                 return;
             }
-
-            _logger.LogDebug("收到飞书事件: {EventType}, EventId: {EventId}",
-                eventData.EventType, eventData.EventId);
-
-            // 去重检查
-            // F7 修复：优先使用统一去重中间件（EventId + SeqID 双重去重），
-            // 未注入时回退到分离的 _deduplicator 路径，保持向后兼容。
-            bool shouldSkip = false;
-
-            if (_unifiedDedupMiddleware != null)
+            using (jsonDoc)
             {
-                // WebSocket 文本事件路径无 SeqID 上下文，统一中间件内部会跳过 SeqID 检查。
-                var unifiedResult = await _unifiedDedupMiddleware.CheckAsync(eventData.EventId, seqId: null, cancellationToken);
-                if (unifiedResult.ShouldSkip)
+                var root = jsonDoc.RootElement;
+
+                EventData eventData;
+
+                // 检查是否为v2.0版本
+                if (root.TryGetProperty("schema", out var schemaElement) &&
+                    schemaElement.GetString() == "2.0")
                 {
-                    _logger.LogDebug("事件 {EventId} 被统一去重中间件跳过 (类型: {IdentifierType}, 原因: {Reason})",
-                        eventData.EventId, unifiedResult.IdentifierType, unifiedResult.Reason);
-                    shouldSkip = true;
-                    FeishuMetricsHelper.RecordEventDeduplication(_options.AppKey,
-                        unifiedResult.IdentifierType.ToString().ToLowerInvariant(), hit: true);
+                    // v2.0版本解析
+                    eventData = ParseV2Event(root);
                 }
-            }
-            else if (_deduplicator != null)
-            {
-                var dedupResult = await _deduplicator.TryMarkAsProcessingAsync(eventData.EventId, cancellationToken: cancellationToken);
-                if (dedupResult.IsDuplicate)
+                else
                 {
-                    _logger.LogDebug("事件 {EventId} 已在处理中或已处理，跳过 (WasProcessing: {WasProcessing}, Status: {Status})",
-                        eventData.EventId, dedupResult.WasProcessing, dedupResult.Status);
-                    shouldSkip = true;
-                    FeishuMetricsHelper.RecordEventDeduplication(_options.AppKey, "event_id", hit: true);
-                }
-            }
-
-            if (!shouldSkip)
-            {
-                Exception? processingException = null;
-                bool isInterrupted = false;
-
-                using (FeishuMetricsHelper.RecordEventHandling(_options.AppKey, eventData.EventType))
-                {
-                    try
+                    // v1.0版本解析
+                    var eventMessage = SafeDeserialize<EventMessage>(message);
+                    if (eventMessage?.Data == null)
                     {
-                        // 前置拦截器
-                        foreach (var interceptor in _interceptors)
+                        var truncatedV1Msg = message.Length > 200 ? message.Substring(0, 200) + "..." : message;
+                        _logger.LogWarning("无法解析v1.0事件消息 (长度: {Length}): {Message}", message.Length, truncatedV1Msg);
+                        return;
+                    }
+                    eventData = eventMessage.Data;
+                }
+
+                if (string.IsNullOrEmpty(eventData.EventType))
+                {
+                    _logger.LogWarning("事件类型为空: {EventId}", eventData.EventId);
+                    return;
+                }
+
+                _logger.LogDebug("收到飞书事件: {EventType}, EventId: {EventId}",
+                    eventData.EventType, eventData.EventId);
+
+                // 去重检查
+                // F7 修复：优先使用统一去重中间件（EventId + SeqID 双重去重），
+                // 未注入时回退到分离的 _deduplicator 路径，保持向后兼容。
+                bool shouldSkip = false;
+
+                if (_unifiedDedupMiddleware != null)
+                {
+                    // WebSocket 文本事件路径无 SeqID 上下文，统一中间件内部会跳过 SeqID 检查。
+                    var unifiedResult = await _unifiedDedupMiddleware.CheckAsync(eventData.EventId, seqId: null, cancellationToken);
+                    if (unifiedResult.ShouldSkip)
+                    {
+                        _logger.LogDebug("事件 {EventId} 被统一去重中间件跳过 (类型: {IdentifierType}, 原因: {Reason})",
+                            eventData.EventId, unifiedResult.IdentifierType, unifiedResult.Reason);
+                        shouldSkip = true;
+                        FeishuMetricsHelper.RecordEventDeduplication(_options.AppKey,
+                            unifiedResult.IdentifierType.ToString().ToLowerInvariant(), hit: true);
+                    }
+                }
+                else if (_deduplicator != null)
+                {
+                    var dedupResult = await _deduplicator.TryMarkAsProcessingAsync(eventData.EventId, cancellationToken: cancellationToken);
+                    if (dedupResult.IsDuplicate)
+                    {
+                        _logger.LogDebug("事件 {EventId} 已在处理中或已处理，跳过 (WasProcessing: {WasProcessing}, Status: {Status})",
+                            eventData.EventId, dedupResult.WasProcessing, dedupResult.Status);
+                        shouldSkip = true;
+                        FeishuMetricsHelper.RecordEventDeduplication(_options.AppKey, "event_id", hit: true);
+                    }
+                }
+
+                if (!shouldSkip)
+                {
+                    Exception? processingException = null;
+                    bool isInterrupted = false;
+
+                    using (FeishuMetricsHelper.RecordEventHandling(_options.AppKey, eventData.EventType))
+                    {
+                        try
                         {
-                            var shouldContinue = await interceptor.BeforeHandleAsync(eventData.EventType, eventData, cancellationToken);
-                            if (!shouldContinue)
+                            // 前置拦截器
+                            foreach (var interceptor in _interceptors)
                             {
-                                _logger.LogWarning("事件被拦截器中断: {EventType}, EventId: {EventId}, Interceptor: {InterceptorType}",
-                                    eventData.EventType, eventData.EventId, interceptor.GetType().Name);
-                                isInterrupted = true;
-                                break;
+                                var shouldContinue = await interceptor.BeforeHandleAsync(eventData.EventType, eventData, cancellationToken);
+                                if (!shouldContinue)
+                                {
+                                    _logger.LogWarning("事件被拦截器中断: {EventType}, EventId: {EventId}, Interceptor: {InterceptorType}",
+                                        eventData.EventType, eventData.EventId, interceptor.GetType().Name);
+                                    isInterrupted = true;
+                                    break;
+                                }
+                            }
+
+                            if (!isInterrupted)
+                            {
+                                // 使用事件处理器工厂并行处理事件
+                                await _eventHandlerFactory.HandleEventParallelAsync(eventData.EventType, eventData, cancellationToken);
+
+                                // 处理成功，标记为已完成
+                                if (_unifiedDedupMiddleware != null)
+                                {
+                                    await _unifiedDedupMiddleware.MarkCompletedAsync(eventData.EventId, seqId: null, cancellationToken);
+                                }
+                                else if (_deduplicator != null)
+                                {
+                                    await _deduplicator.MarkAsCompletedAsync(eventData.EventId, cancellationToken: cancellationToken);
+                                }
+
+                                // 记录事件处理成功
+                                FeishuMetricsHelper.RecordEventOutcome(_options.AppKey, eventData.EventType, success: true);
                             }
                         }
-
-                        if (!isInterrupted)
+                        catch (Exception ex)
                         {
-                            // 使用事件处理器工厂并行处理事件
-                            await _eventHandlerFactory.HandleEventParallelAsync(eventData.EventType, eventData, cancellationToken);
+                            processingException = ex;
 
-                            // 处理成功，标记为已完成
+                            // 处理失败，回滚处理中状态
                             if (_unifiedDedupMiddleware != null)
                             {
-                                await _unifiedDedupMiddleware.MarkCompletedAsync(eventData.EventId, seqId: null, cancellationToken);
+                                await _unifiedDedupMiddleware.RollbackAsync(eventData.EventId, seqId: null, cancellationToken);
                             }
                             else if (_deduplicator != null)
                             {
-                                await _deduplicator.MarkAsCompletedAsync(eventData.EventId, cancellationToken: cancellationToken);
+                                await _deduplicator.RollbackProcessingAsync(eventData.EventId, cancellationToken: cancellationToken);
                             }
 
-                            // 记录事件处理成功
-                            FeishuMetricsHelper.RecordEventOutcome(_options.AppKey, eventData.EventType, success: true);
+                            // 记录事件处理失败
+                            FeishuMetricsHelper.RecordEventOutcome(_options.AppKey, eventData.EventType, success: false, ex.GetType().Name);
+                            throw;
                         }
-                    }
-                    catch (Exception ex)
-                    {
-                        processingException = ex;
-
-                        // 处理失败，回滚处理中状态
-                        if (_unifiedDedupMiddleware != null)
+                        finally
                         {
-                            await _unifiedDedupMiddleware.RollbackAsync(eventData.EventId, seqId: null, cancellationToken);
-                        }
-                        else if (_deduplicator != null)
-                        {
-                            await _deduplicator.RollbackProcessingAsync(eventData.EventId, cancellationToken: cancellationToken);
-                        }
-
-                        // 记录事件处理失败
-                        FeishuMetricsHelper.RecordEventOutcome(_options.AppKey, eventData.EventType, success: false, ex.GetType().Name);
-                        throw;
-                    }
-                    finally
-                    {
-                        // 后置拦截器（无论成功或失败都执行）
-                        foreach (var interceptor in _interceptors)
-                        {
-                            await interceptor.AfterHandleAsync(eventData.EventType, eventData, processingException, cancellationToken);
+                            // 后置拦截器（无论成功或失败都执行）
+                            foreach (var interceptor in _interceptors)
+                            {
+                                await interceptor.AfterHandleAsync(eventData.EventType, eventData, processingException, cancellationToken);
+                            }
                         }
                     }
                 }
-            }
+            } // end using (jsonDoc)
         }
         catch (OperationCanceledException)
         {

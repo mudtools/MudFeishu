@@ -32,7 +32,7 @@ public static class ServiceCollectionExtensions
     /// <param name="configuration">配置对象</param>
     /// <param name="sectionName">配置节名称，默认为"FeishuWebhook"</param>
     /// <returns>服务集合，支持链式调用</returns>
-    #if NET6_0_OR_GREATER
+#if NET6_0_OR_GREATER
     [RequiresUnreferencedCode("反射式配置绑定（ConfigurationBinder.Bind）在裁剪下无法静态分析配置类型成员")]
 #endif
 #if NET7_0_OR_GREATER
@@ -71,7 +71,7 @@ public static class ServiceCollectionExtensions
     /// <param name="sectionName">配置节名称</param>
     /// <returns>服务集合</returns>
     /// <exception cref="InvalidOperationException">未在服务集合中找到 <see cref="IConfiguration"/> 注册。</exception>
-    #if NET6_0_OR_GREATER
+#if NET6_0_OR_GREATER
     [RequiresUnreferencedCode("反射式配置绑定（ConfigurationBinder.Bind）在裁剪下无法静态分析配置类型成员")]
 #endif
 #if NET7_0_OR_GREATER

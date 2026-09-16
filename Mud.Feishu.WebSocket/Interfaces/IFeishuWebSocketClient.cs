@@ -70,12 +70,12 @@ public interface IFeishuWebSocketClient : IAsyncDisposable, IDisposable
     /// <param name="endpoint">WebSocket端点信息</param>
     /// <param name="cancellationToken">取消令牌</param>
     /// <returns>连接任务</returns>
-    #if NET6_0_OR_GREATER
+#if NET6_0_OR_GREATER
     [RequiresUnreferencedCode("反射式System.Text.Json序列化在裁剪下无法静态分析目标类型成员")]
-    #endif
-    #if NET7_0_OR_GREATER
+#endif
+#if NET7_0_OR_GREATER
     [RequiresDynamicCode("反射式System.Text.Json序列化在 AOT/动态代码生成环境下不可用")]
-    #endif
+#endif
     Task ConnectAsync(WsEndpointResult endpoint, CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -85,12 +85,12 @@ public interface IFeishuWebSocketClient : IAsyncDisposable, IDisposable
     /// <param name="appAccessToken">应用访问令牌</param>
     /// <param name="cancellationToken">取消令牌</param>
     /// <returns>连接任务</returns>
-    #if NET6_0_OR_GREATER
+#if NET6_0_OR_GREATER
     [RequiresUnreferencedCode("反射式System.Text.Json序列化在裁剪下无法静态分析目标类型成员")]
-    #endif
-    #if NET7_0_OR_GREATER
+#endif
+#if NET7_0_OR_GREATER
     [RequiresDynamicCode("反射式System.Text.Json序列化在 AOT/动态代码生成环境下不可用")]
-    #endif
+#endif
     Task ConnectAsync(WsEndpointResult endpoint, string appAccessToken, CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -113,12 +113,12 @@ public interface IFeishuWebSocketClient : IAsyncDisposable, IDisposable
     /// </summary>
     /// <param name="cancellationToken">取消令牌</param>
     /// <returns>接收任务</returns>
-    #if NET6_0_OR_GREATER
+#if NET6_0_OR_GREATER
     [RequiresUnreferencedCode("反射式System.Text.Json序列化在裁剪下无法静态分析目标类型成员")]
-    #endif
-    #if NET7_0_OR_GREATER
+#endif
+#if NET7_0_OR_GREATER
     [RequiresDynamicCode("反射式System.Text.Json序列化在 AOT/动态代码生成环境下不可用")]
-    #endif
+#endif
     Task StartReceivingAsync(CancellationToken cancellationToken = default);
 
 }

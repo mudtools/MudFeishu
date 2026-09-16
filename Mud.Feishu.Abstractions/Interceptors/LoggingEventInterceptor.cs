@@ -46,7 +46,7 @@ public class LoggingEventInterceptor : IFeishuEventInterceptor
     /// <summary>
     /// 事件处理后拦截
     /// </summary>
-    #if NET6_0_OR_GREATER
+#if NET6_0_OR_GREATER
     [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCode")]
     [UnconditionalSuppressMessage("AOT", "IL3050:RequiresDynamicCode")]
 #endif

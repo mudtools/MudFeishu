@@ -76,7 +76,7 @@ public class WidgetFactory
     /// <summary>
     /// 将组件序列化为JSON字符串
     /// </summary>
-    #if NET6_0_OR_GREATER
+#if NET6_0_OR_GREATER
     [RequiresUnreferencedCode("反射式 JsonSerializer.Serialize(widget, options) 在裁剪下无法静态分析目标类型成员")]
 #endif
 #if NET7_0_OR_GREATER
@@ -94,7 +94,7 @@ public class WidgetFactory
     /// <summary>
     /// 将组件列表序列化为JSON字符串
     /// </summary>
-    #if NET6_0_OR_GREATER
+#if NET6_0_OR_GREATER
     [RequiresUnreferencedCode("反射式 JsonSerializer.Serialize(widgets, options) 在裁剪下无法静态分析目标类型成员")]
 #endif
 #if NET7_0_OR_GREATER

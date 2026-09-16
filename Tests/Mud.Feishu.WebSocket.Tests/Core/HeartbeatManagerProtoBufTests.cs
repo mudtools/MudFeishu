@@ -102,7 +102,7 @@ public class HeartbeatManagerProtoBufTests
 
         var config = new ClientConfigInfo
         {
-            PingInterval = 120,  // 秒
+            PingInterval = 120,  // 秒 → 钳制到 30 秒上界
             ReconnectInterval = 60,
             ReconnectCount = 3,
             ReconnectNonce = 10
@@ -111,8 +111,13 @@ public class HeartbeatManagerProtoBufTests
         // Act
         manager.OnPongReceived(config);
 
-        // Assert - PingInterval 从秒转换为毫秒
-        options.HeartbeatIntervalMs.Should().Be(120000);
+        // Assert - WS-07 修复：PingInterval 被钳制到 5~30 秒区间，写入私有字段 _heartbeatIntervalMs
+        // 120 秒被钳制为 30 秒 = 30000 毫秒，不再回写 Options
+        var heartbeatField = typeof(HeartbeatManager).GetField("_heartbeatIntervalMs", BindingFlags.NonPublic | BindingFlags.Instance);
+        heartbeatField.Should().NotBeNull();
+        heartbeatField!.GetValue(manager).Should().Be(30000);
+        // Options 实例不被运行时改写
+        options.HeartbeatIntervalMs.Should().Be(25000);
     }
 
     [Fact]
@@ -134,9 +139,9 @@ public class HeartbeatManagerProtoBufTests
     }
 
     [Fact]
-    public void OnPongReceived_WithClientConfig_ShouldUpdateReconnectDelay()
+    public void OnPongReceived_WithClientConfig_ShouldNotUpdateReconnectDelay()
     {
-        // Arrange
+        // Arrange - WS-07 修复：ReconnectDelayMs 属于本地运维策略，禁止被运行时改写
         var options = new FeishuWebSocketOptions
         {
             ReconnectDelayMs = 5000,
@@ -152,14 +157,14 @@ public class HeartbeatManagerProtoBufTests
         // Act
         manager.OnPongReceived(config);
 
-        // Assert
-        options.ReconnectDelayMs.Should().Be(120000);
+        // Assert - 服务端建议的重连间隔被忽略，使用本地配置
+        options.ReconnectDelayMs.Should().Be(5000);
     }
 
     [Fact]
-    public void OnPongReceived_WithReconnectCountMinusOne_ShouldSetZeroForInfiniteReconnect()
+    public void OnPongReceived_WithReconnectCountMinusOne_ShouldNotUpdateMaxReconnectAttempts()
     {
-        // Arrange
+        // Arrange - WS-07 修复：MaxReconnectAttempts 属于本地运维策略，禁止被运行时改写
         var options = new FeishuWebSocketOptions
         {
             MaxReconnectAttempts = 5,
@@ -175,14 +180,14 @@ public class HeartbeatManagerProtoBufTests
         // Act
         manager.OnPongReceived(config);
 
-        // Assert - .NET: MaxReconnectAttempts=0 表示无限重连
-        options.MaxReconnectAttempts.Should().Be(0);
+        // Assert - 服务端建议的重连次数被忽略，使用本地配置
+        options.MaxReconnectAttempts.Should().Be(5);
     }
 
     [Fact]
-    public void OnPongReceived_WithReconnectCountPositive_ShouldUpdateMaxReconnectAttempts()
+    public void OnPongReceived_WithReconnectCountPositive_ShouldNotUpdateMaxReconnectAttempts()
     {
-        // Arrange
+        // Arrange - WS-07 修复：MaxReconnectAttempts 属于本地运维策略，禁止被运行时改写
         var options = new FeishuWebSocketOptions
         {
             MaxReconnectAttempts = 5,
@@ -198,8 +203,8 @@ public class HeartbeatManagerProtoBufTests
         // Act
         manager.OnPongReceived(config);
 
-        // Assert
-        options.MaxReconnectAttempts.Should().Be(10);
+        // Assert - 服务端建议的重连次数被忽略，使用本地配置
+        options.MaxReconnectAttempts.Should().Be(5);
     }
 
     #endregion

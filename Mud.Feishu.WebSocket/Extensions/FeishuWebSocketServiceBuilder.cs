@@ -54,12 +54,12 @@ public class FeishuWebSocketServiceBuilder
     /// <remarks>
     /// 注意：使用此方法前需要先注册多应用支持（AddFeishuApp）。
     /// </remarks>
-    #if NET6_0_OR_GREATER
+#if NET6_0_OR_GREATER
     [RequiresUnreferencedCode("反射式配置绑定（Configure<TOptions>）在裁剪下无法静态分析配置类型成员")]
-    #endif
-    #if NET7_0_OR_GREATER
+#endif
+#if NET7_0_OR_GREATER
     [RequiresDynamicCode("反射式配置绑定（Configure<TOptions>）在 AOT/动态代码生成环境下不可用")]
-    #endif
+#endif
     public FeishuWebSocketServiceBuilder ConfigureFrom(
         IConfiguration configuration,
         string sectionName = "FeishuWebSocket",
@@ -235,12 +235,12 @@ public class FeishuWebSocketServiceBuilder
     /// 构建并注册服务
     /// </summary>
     /// <returns>服务集合，支持链式调用</returns>
-    #if NET6_0_OR_GREATER
+#if NET6_0_OR_GREATER
     [RequiresUnreferencedCode("反射式System.Text.Json序列化在裁剪下无法静态分析目标类型成员")]
-    #endif
-    #if NET7_0_OR_GREATER
+#endif
+#if NET7_0_OR_GREATER
     [RequiresDynamicCode("反射式System.Text.Json序列化在 AOT/动态代码生成环境下不可用")]
-    #endif
+#endif
     public IServiceCollection Build()
     {
         if (_configured)
@@ -267,12 +267,12 @@ public class FeishuWebSocketServiceBuilder
     /// <summary>
     /// 注册服务
     /// </summary>
-    #if NET6_0_OR_GREATER
+#if NET6_0_OR_GREATER
     [RequiresUnreferencedCode("反射式System.Text.Json序列化在裁剪下无法静态分析目标类型成员")]
-    #endif
-    #if NET7_0_OR_GREATER
+#endif
+#if NET7_0_OR_GREATER
     [RequiresDynamicCode("反射式System.Text.Json序列化在 AOT/动态代码生成环境下不可用")]
-    #endif
+#endif
     private void RegisterServices()
     {
         // 注册事件处理器工厂

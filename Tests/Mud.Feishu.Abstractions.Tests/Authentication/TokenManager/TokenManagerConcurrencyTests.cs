@@ -580,13 +580,13 @@ public class TokenManagerWithStoreConcurrencyTests : IDisposable
     [Fact]
     public async Task GetTokenAsync_ShouldRestoreFromStore_WhenConcurrentRequests()
     {
-    var storedToken = "stored-concurrent-app-token";
-    // TMA-15 修复后，存储值必须包含过期时间戳才能被恢复。
-    var expireTimestampMs = DateTimeOffset.UtcNow.AddSeconds(7200).ToUnixTimeMilliseconds();
-    var encodedToken = TokenStoreHelper.EncodeStoredToken(storedToken, expireTimestampMs);
-    _tokenStoreMock
-    .Setup(x => x.GetAccessTokenAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
-    .ReturnsAsync(encodedToken);
+        var storedToken = "stored-concurrent-app-token";
+        // TMA-15 修复后，存储值必须包含过期时间戳才能被恢复。
+        var expireTimestampMs = DateTimeOffset.UtcNow.AddSeconds(7200).ToUnixTimeMilliseconds();
+        var encodedToken = TokenStoreHelper.EncodeStoredToken(storedToken, expireTimestampMs);
+        _tokenStoreMock
+        .Setup(x => x.GetAccessTokenAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+        .ReturnsAsync(encodedToken);
 
         var tasks = Enumerable.Range(0, 10)
             .Select(_ => _appTokenManager.GetTokenAsync(CancellationToken.None))
@@ -679,15 +679,15 @@ public class TokenManagerWithStoreConcurrencyTests : IDisposable
     }
 
     [Fact]
-public async Task GetTokenAsync_ShouldRestoreTenantTokenFromStore_WhenConcurrentRequests()
-{
-var storedToken = "stored-concurrent-tenant-token";
-// TMA-15 修复后，存储值必须包含过期时间戳才能被恢复。
-var expireTimestampMs = DateTimeOffset.UtcNow.AddSeconds(7200).ToUnixTimeMilliseconds();
-var encodedToken = TokenStoreHelper.EncodeStoredToken(storedToken, expireTimestampMs);
-_tokenStoreMock
-.Setup(x => x.GetAccessTokenAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
-.ReturnsAsync(encodedToken);
+    public async Task GetTokenAsync_ShouldRestoreTenantTokenFromStore_WhenConcurrentRequests()
+    {
+        var storedToken = "stored-concurrent-tenant-token";
+        // TMA-15 修复后，存储值必须包含过期时间戳才能被恢复。
+        var expireTimestampMs = DateTimeOffset.UtcNow.AddSeconds(7200).ToUnixTimeMilliseconds();
+        var encodedToken = TokenStoreHelper.EncodeStoredToken(storedToken, expireTimestampMs);
+        _tokenStoreMock
+        .Setup(x => x.GetAccessTokenAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+        .ReturnsAsync(encodedToken);
 
         var tasks = Enumerable.Range(0, 10)
             .Select(_ => _tenantTokenManager.GetTokenAsync(CancellationToken.None))
@@ -702,15 +702,15 @@ _tokenStoreMock
     }
 
     [Fact]
-public async Task InvalidateTokenAsync_ShouldTriggerApiCallOnNextRequest()
-{
-var storedToken = "stored-before-invalidate";
-// TMA-15 修复后，存储值必须包含过期时间戳才能被恢复。
-var expireTimestampMs = DateTimeOffset.UtcNow.AddSeconds(7200).ToUnixTimeMilliseconds();
-var encodedToken = TokenStoreHelper.EncodeStoredToken(storedToken, expireTimestampMs);
-_tokenStoreMock
-.Setup(x => x.GetAccessTokenAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
-.ReturnsAsync(encodedToken);
+    public async Task InvalidateTokenAsync_ShouldTriggerApiCallOnNextRequest()
+    {
+        var storedToken = "stored-before-invalidate";
+        // TMA-15 修复后，存储值必须包含过期时间戳才能被恢复。
+        var expireTimestampMs = DateTimeOffset.UtcNow.AddSeconds(7200).ToUnixTimeMilliseconds();
+        var encodedToken = TokenStoreHelper.EncodeStoredToken(storedToken, expireTimestampMs);
+        _tokenStoreMock
+        .Setup(x => x.GetAccessTokenAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+        .ReturnsAsync(encodedToken);
 
         var result1 = await _tenantTokenManager.GetTokenAsync(CancellationToken.None);
         Assert.Equal(storedToken, result1);

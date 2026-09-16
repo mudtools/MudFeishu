@@ -80,7 +80,7 @@ public class RateLimitOptions
         {
             // 当 EnableRateLimit=false 时，执行宽松验证而不是严格异常
             // 这允许在配置热更新或动态切换时更灵活的处理
-            
+
             // 仅验证基本范围，不强制要求等于默认值
             if (WindowSizeSeconds < 1)
                 throw new InvalidOperationException("即使禁用限流，WindowSizeSeconds 也必须至少为 1 秒（配置一致性要求）");

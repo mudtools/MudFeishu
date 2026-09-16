@@ -36,8 +36,8 @@ public class FeishuEventMessageHandlerTests
             _handlerFactoryMock.Object,
             null,
             null,
-            null,
-            _options);
+            _options,
+            null);
     }
 
     [Fact]
@@ -49,8 +49,8 @@ public class FeishuEventMessageHandlerTests
             null!,
             null,
             null,
-            null,
-            _options);
+            _options,
+            null);
 
         action.Should().Throw<ArgumentNullException>()
             .WithParameterName("eventHandlerFactory");
@@ -65,8 +65,8 @@ public class FeishuEventMessageHandlerTests
             _handlerFactoryMock.Object,
             null,
             null,
-            null,
-            null!);
+            null!,
+            null);
 
         action.Should().Throw<ArgumentNullException>()
             .WithParameterName("options");

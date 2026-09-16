@@ -74,7 +74,7 @@ public class FeishuWebhookOptions
     /// 安全警告：
     /// - 生产环境必须设置为 true，否则存在严重的安全漏洞
     /// - 仅在开发/测试环境且明确了解风险时设置为 false
-    /// - 系统会在生产环境自动检测并拒绝禁用签名的配置
+    /// - 该约束由 FeishuWebhookOptionsValidator 在生产环境强制执行（详见 documents/WebhookHardeningPlan.md ADR-4）
     /// </remarks>
     public bool EnforceHeaderSignatureValidation { get; set; } = true;
 

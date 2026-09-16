@@ -52,7 +52,7 @@ public class FeishuWebSocketHealthCheck : IHealthCheck
             var state = _hostedService.GetConnectionState();
             var stats = _hostedService.GetConnectionStats();
 
-                var reconnectState = _reconnectionOrchestrator.GetReconnectState();
+            var reconnectState = _reconnectionOrchestrator.GetReconnectState();
 
             var data = new Dictionary<string, object>
             {

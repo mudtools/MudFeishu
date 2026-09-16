@@ -8,6 +8,8 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Mud.Feishu.Abstractions;
 using Mud.Feishu.Abstractions.Configuration;
@@ -33,6 +35,12 @@ public static class RedisFeishuServiceBuilderExtensions
     {
         services.AddSingleton<IValidateOptions<RedisOptions>, RedisOptionsValidator>();
 
+        // T-M3-4：验证时机前移——net6+ 使用 ValidateOnStart，在宿主启动期即触发校验
+        // netstandard2.0 不支持 ValidateOnStart，由 IValidateOptions 在首次解析时触发
+#if NET6_0_OR_GREATER
+        services.AddOptions<RedisOptions>().ValidateOnStart();
+#endif
+
         services.AddSingleton(sp =>
         {
             var options = sp.GetRequiredService<IOptions<RedisOptions>>().Value;
@@ -51,19 +59,18 @@ public static class RedisFeishuServiceBuilderExtensions
             {
                 logger?.LogInformation("Initializing Redis connection to: {ConnectionString}", options.ServerAddress);
 
-                var config = new ConfigurationOptions
-                {
-                    EndPoints = { options.ServerAddress },
-                    ConnectTimeout = options.ConnectTimeout,
-                    SyncTimeout = options.SyncTimeout,
-                    Ssl = options.Ssl,
-                    Password = options.Password,
-                    AllowAdmin = options.AllowAdmin,
-                    AbortOnConnectFail = options.AbortOnConnectFail,
-                    ConnectRetry = options.ConnectRetry,
-                    DefaultDatabase = options.DefaultDatabase,
-                    ClientName = options.ClientName ?? $"Feishu-Deduplicator-{Environment.MachineName}"
-                };
+                // ADR-7.1：使用 ConfigurationOptions.Parse 替代手工 EndPoints.Add，
+                // 原生支持 redis://、rediss://（自动 Ssl）、host:port,password=... 等形态。
+                var config = ConfigurationOptions.Parse(options.ServerAddress);
+                config.ConnectTimeout = options.ConnectTimeout;
+                config.SyncTimeout = options.SyncTimeout;
+                config.Ssl = config.Ssl || options.Ssl;                // rediss:// 已置 Ssl，取或
+                config.Password = string.IsNullOrEmpty(options.Password) ? config.Password : options.Password;
+                config.AllowAdmin = options.AllowAdmin;
+                config.AbortOnConnectFail = options.AbortOnConnectFail;
+                config.ConnectRetry = options.ConnectRetry;
+                config.DefaultDatabase = options.DefaultDatabase;
+                config.ClientName = options.ClientName ?? $"Feishu-Deduplicator-{Environment.MachineName}";
 
                 var redis = ConnectionMultiplexer.Connect(config);
 
@@ -110,15 +117,13 @@ public static class RedisFeishuServiceBuilderExtensions
             var dedupOptions = sp.GetService<IOptions<DeduplicationOptions>>()?.Value ?? DeduplicationOptions.Default;
 
             // RedisOptions 中的 EventCacheExpiration / EventKeyPrefix 优先（与文档承诺一致）
+            // 注意：DeduplicationOptions 的 AllowProcessingOnFallback/MaxRetryCount/InitialRetryDelay/MaxRetryDelay
+            // 在 Redis 路径不消费（无降级能力），已从 effectiveOptions 中删除以避免"配置看起来生效"。
             var effectiveOptions = new DeduplicationOptions
             {
                 CacheExpiration = redisOptions.EventCacheExpiration,
                 ProcessingTimeout = dedupOptions.ProcessingTimeout,
                 CleanupInterval = dedupOptions.CleanupInterval,
-                AllowProcessingOnFallback = dedupOptions.AllowProcessingOnFallback,
-                MaxRetryCount = dedupOptions.MaxRetryCount,
-                InitialRetryDelay = dedupOptions.InitialRetryDelay,
-                MaxRetryDelay = dedupOptions.MaxRetryDelay,
                 KeyPrefix = redisOptions.EventKeyPrefix,
                 MaxCacheSize = dedupOptions.MaxCacheSize,
                 EnableVerboseLogging = dedupOptions.EnableVerboseLogging
@@ -167,11 +172,19 @@ public static class RedisFeishuServiceBuilderExtensions
             var options = sp.GetRequiredService<RedisOptions>();
             var logger = sp.GetService<ILogger<RedisFeishuSeqIDDeduplicator>>();
 
+            // ADR-3（T-M2-4）：合成 scopeKey 以实现多实例/多应用隔离。
+            // 默认策略：AppKey + MachineName（可配置 RedisOptions.SeqIdScopeKey 覆盖）。
+            // scopeKey 为空会在构造函数中抛 ArgumentException（fail-fast，防止退化为全局共享键）。
+            var scopeKey = !string.IsNullOrWhiteSpace(options.SeqIdScopeKey)
+                ? options.SeqIdScopeKey
+                : $"{options.AppKey}|{Environment.MachineName}";
+
             return new RedisFeishuSeqIDDeduplicator(
                 redis,
                 logger,
                 cacheExpiration: options.SeqIdCacheExpiration,
-                keyPrefix: options.SeqIdKeyPrefix);
+                keyPrefix: options.SeqIdKeyPrefix,
+                scopeKey: scopeKey);
         });
 
         return services;
@@ -183,16 +196,25 @@ public static class RedisFeishuServiceBuilderExtensions
     public static IServiceCollection AddFeishuRedisTokenStore(
         this IServiceCollection services)
     {
+        // T-M3-2：确保 AddFeishuRedis() 已调用（幂等化——重复调用不会重复注册）
+        if (!services.Any(s => s.ServiceType == typeof(IConnectionMultiplexer)))
+        {
+            services.AddFeishuRedis();
+        }
+
+        // ADR-5（T-M2-5）：删除 ITokenStore/IUserTokenStore 的 DI 单例注册。
+        // 原注册使用 feishu:token:* 键空间，与工厂路径 feishu:{appKey}:token:* 不一致（R-09）。
+        // 仓库内零消费方，用户应改用 IFeishuTokenStoreFactory.Create(appKey)。
+        // RedisTokenStore/RedisUserTokenStore 具体类型仍注册，供按类型解析。
         services.AddSingleton<RedisTokenStore>(sp =>
         {
             var redis = sp.GetRequiredService<IConnectionMultiplexer>();
-            var logger = sp.GetService<ILogger<RedisTokenStore>>();
-            return new RedisTokenStore(redis, logger!);
+            // R-25：logger 兜底 NullLogger，与 PerAppRedisTokenStoreFactory 一致
+            var logger = sp.GetService<ILogger<RedisTokenStore>>() ?? NullLogger<RedisTokenStore>.Instance;
+            return new RedisTokenStore(redis, logger);
         });
 
-        services.TryAddSingleton<ITokenStore>(sp => sp.GetRequiredService<RedisTokenStore>());
-
-        services.TryAddSingleton<IUserTokenStore>(sp =>
+        services.AddSingleton<RedisUserTokenStore>(sp =>
         {
             var innerStore = sp.GetRequiredService<RedisTokenStore>();
             var redis = sp.GetRequiredService<IConnectionMultiplexer>();
@@ -224,7 +246,7 @@ public static class RedisFeishuServiceBuilderExtensions
     /// 颠倒顺序会导致 Redis TokenStore 因 TryAddSingleton 语义而无法覆盖默认 Memory 实现，
     /// 且不会有任何错误抛出（静默失败）。
     /// </exception>
-    #if NET6_0_OR_GREATER
+#if NET6_0_OR_GREATER
     [RequiresUnreferencedCode("反射式配置绑定（Configure<TOptions>）在裁剪下无法静态分析配置类型成员")]
 #endif
 #if NET7_0_OR_GREATER

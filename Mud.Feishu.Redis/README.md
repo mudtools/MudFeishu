@@ -5,15 +5,17 @@
 ## 功能特性
 
 - **事件去重**: 基于 EventId 的分布式去重，使用 Redis Hash + Lua 脚本实现状态机模式（Processing → Completed），支持超时恢复和异常回滚
-- **Nonce 去重**: 防止重放攻击，使用 Redis SETNX + EXPIRE 确保请求唯一性
-- **SeqID 去重**: WebSocket 二进制消息序列号去重，使用 Redis Sorted Set 支持范围查询
-- **降级策略**: Redis 故障时自动降级到内存去重，支持指数退避重试和告警通知
+- **Nonce 去重**: 防止重放攻击，使用 Redis SET NX EX 确保请求唯一性
+- **SeqID 去重**: WebSocket 二进制消息序列号去重，使用 Redis Sorted Set 支持范围查询，含 TTL 与写入时裁剪（有界增长）
 - **多应用隔离**: 所有去重器支持 `appKey` 参数，避免跨应用事件冲突
+- **SeqID 实例隔离**: `scopeKey` 构造参数，多实例共享 Redis 时不互相判重
+- **统一键构造**: `RedisKeyBuilder` 统一四类键构造，含分段转义、长度上限、空前缀护栏
+- **可分类异常**: `FeishuRedisException` + `FeishuRedisFailureKind`，消费侧可区分连接故障与服务端错误
 - **健康检查**: 内置 Redis 健康检查，自动注册到 ASP.NET Core 健康检查系统
-- **配置验证**: 启动时自动验证配置有效性，敏感信息掩码输出
-- **原子性操作**: 使用 Lua 脚本确保去重操作的原子性
+- **配置验证**: 启动时自动验证配置有效性（`ValidateOnStart`），敏感信息掩码输出
+- **原子性操作**: 使用 Lua 脚本确保去重操作的原子性，服务端时钟消除时钟漂移
 - **自动过期**: Redis 自动清理过期数据，无需手动维护
-- **分布式支持**: 适用于多实例部署场景
+- **分布式支持**: 适用于多实例部署场景，Cluster 下多节点聚合扫描
 
 ## 安装
 
@@ -38,6 +40,8 @@ dotnet add package Mud.Feishu.Redis
     "EventKeyPrefix": "feishu:event:",
     "NonceKeyPrefix": "feishu:nonce:",
     "SeqIdKeyPrefix": "feishu:seqid:",
+    "SeqIdScopeKey": "",  // 可选，为空时自动合成 {AppKey}|{MachineName}
+    "AppKey": "default",  // 用于 SeqID scopeKey 合成
     "ConnectTimeout": 5000,
     "SyncTimeout": 5000,
     "Ssl": false,
@@ -127,7 +131,7 @@ app.Run();
 | `DefaultDatabase`      | int?     | null             | 默认数据库索引                                                           |
 | `ClientName`           | string?  | null             | 客户端名称（默认自动生成）                                               |
 
-> ℹ️ **高级去重参数**：在 `FeishuRedis:Deduplication` 子节下可配置 `ProcessingTimeout`、`MaxRetryCount`、`AllowProcessingOnFallback`、`InitialRetryDelay`、`MaxRetryDelay` 等参数（类型 `DeduplicationOptions`）。注意：`CacheExpiration` 和 `KeyPrefix` 由上表中的 `EventCacheExpiration` / `EventKeyPrefix` 优先覆盖。
+> ℹ️ **高级去重参数**：在 `FeishuRedis:Deduplication` 子节下可配置 `ProcessingTimeout`（处理超时阈值，默认 10 分钟）。注意：`CacheExpiration` 和 `KeyPrefix` 由上表中的 `EventCacheExpiration` / `EventKeyPrefix` 优先覆盖。
 
 ## 去重服务详解
 
@@ -199,9 +203,12 @@ Pending → Processing → Completed
 
 **Redis 数据结构**：
 
-- **Key**: `{keyPrefix}{seqId}` (String 类型，记录已处理状态)
-- **Sorted Set**: `{keyPrefix}set` (记录所有已处理的 SeqID，支持范围查询)
-- **TTL**: 由 `SeqIdCacheExpiration` 指定
+- **Key**: `{keyPrefix}{scopeKey}{seqId}` (String 类型，记录已处理状态)
+- **Sorted Set**: `{keyPrefix}{scopeKey}set` (记录所有已处理的 SeqID，支持范围查询)
+- **TTL**: 由 `SeqIdCacheExpiration` 指定（写入时刷新，Sorted Set 同生命周期）
+
+> 💡 `scopeKey` 默认为 `{AppKey}|{MachineName}`，多实例共享 Redis 时不互相判重。可通过 `RedisOptions.SeqIdScopeKey` 自定义。
+> Sorted Set 在写入时执行 `ZREMRANGEBYSCORE` 裁剪过期成员，确保集合有界增长。
 
 **核心 API**：
 
@@ -213,55 +220,46 @@ Pending → Processing → Completed
 | `GetCacheCount`           | 获取缓存数量            |
 | `ClearCacheAsync`         | 清空缓存                |
 
-## 降级策略
+## 异常处理
 
-### 标准去重器
+所有 Redis 去重器在 Redis 异常时抛出 `FeishuRedisException`，消费侧可按 `FailureKind` 分类处理：
 
-`RedisFeishuEventDistributedDeduplicator` 在 Redis 异常时的行为：
-
-- **Redis 连接异常**: 抛出 `InvalidOperationException`，由上层决定处理策略
-- **Redis 超时**: 抛出 `InvalidOperationException`
-- **处理中超时**: 自动允许重新处理（TimeoutRecoverable）
-
-**适用场景**: 对重复处理容忍度较低、需要精确控制异常行为的场景。
-
-### 带降级的去重器
-
-`RedisFeishuEventDistributedDeduplicatorWithFallback` 提供高可用性保障：
-
-- Redis 正常时使用 Redis 分布式去重
-- Redis 失败时自动降级到内存去重
-- 支持指数退避重试机制（可配置重试次数和延迟）
-- 连续失败超过阈值时标记 Redis 为不可用
-- Redis 恢复后自动切回
-
-**使用示例**:
+| `FeishuRedisFailureKind` | 含义 | 典型场景 | 建议策略 |
+| --- | --- | --- | --- |
+| `Connection` | 连接故障 | 网络中断、Redis 宕机 | 可降级到内存去重或拒绝请求 |
+| `Timeout` | 操作超时 | 大 Value、网络延迟 | 重试或降级 |
+| `Server` | 服务端/配置错误 | Cluster MOVED、权限拒绝 | 不重试，告警运维 |
 
 ```csharp
-// 手动注册带降级的事件去重器
-builder.Services.AddSingleton<IFeishuEventDistributedDeduplicator>(sp =>
+try
 {
-    var redis = sp.GetRequiredService<IConnectionMultiplexer>();
-    var logger = sp.GetService<ILogger<RedisFeishuEventDistributedDeduplicatorWithFallback>>();
-
-    return new RedisFeishuEventDistributedDeduplicatorWithFallback(
-        redis,
-        logger,
-        cacheExpiration: TimeSpan.FromHours(48),
-        processingTimeout: TimeSpan.FromMinutes(10),
-        maxRetryCount: 3,
-        initialRetryDelay: TimeSpan.FromSeconds(1),
-        maxRetryDelay: TimeSpan.FromSeconds(30));
-});
+    var result = await deduplicator.TryMarkAsProcessingAsync(eventId);
+}
+catch (FeishuRedisException ex)
+{
+    if (ex.FailureKind == FeishuRedisFailureKind.Connection)
+    {
+        // 可降级到内存去重
+        logger.LogWarning(ex, "Redis 连接故障，降级到内存去重");
+    }
+    else
+    {
+        // 服务端/配置类错误不降级
+        throw;
+    }
+}
 ```
 
-### 选择建议
+> ⚠️ 本组件不提供内置的 Redis 故障降级到内存去重的能力。如需降级，由上层（Webhook `NonceFailureMode` / WS 异常处理）决定策略。
 
-| 去重器类型                                            | Redis 故障时行为     | 适用场景                                 |
-| ----------------------------------------------------- | -------------------- | ---------------------------------------- |
-| `RedisFeishuEventDistributedDeduplicator`             | 抛出异常，由上层处理 | 需要精确控制异常行为的场景               |
-| `RedisFeishuEventDistributedDeduplicatorWithFallback` | 降级到内存去重       | 对可用性要求高，可接受临时内存存储的场景 |
-| 自定义处理                                            | 自定义逻辑           | 需要特殊降级策略的场景                   |
+### best-effort API
+
+以下 API 设计为 best-effort（失败记日志、不抛出）：
+
+- `RollbackProcessingAsync`（事件回滚）
+- `RemoveAsync` / `RemoveRangeAsync`（手动移除去重标记）
+- `GetCachedCountAsync`（获取缓存数量）
+- `ClearCacheAsync`（清空 SeqID 缓存）
 
 ## 健康检查
 
@@ -338,6 +336,8 @@ Redis 键格式：`{keyPrefix}{appKey}:{eventId}`，不同应用的事件互不�
 }
 ```
 
+> 💡 键前缀非空且不以 `*` 开头，否则启动期校验失败（R-01 护栏）。
+
 ### 3. 如何使用 TLS/SSL 连接 Redis？
 
 在配置文件中启用 SSL：
@@ -411,6 +411,54 @@ catch (Exception ex)
 - `ConnectRetry` 不能为负数
 
 验证失败时应用将无法启动，并在日志中输出具体错误信息。
+
+## 安全
+
+### 令牌明文存储
+
+Redis 令牌存储（`RedisTokenStore` / `RedisUserTokenStore`）默认以**明文**形式将 access token 和 refresh
+token 持久化到 Redis。这意味着：
+
+- 拥有 Redis 访问权限的人员可以直接读取令牌。
+- Redis 数据落盘（RDB/AOF）或备份文件中包含明文令牌。
+
+**如需加密存储**，请启用 `FeishuAppOptions.EnableTokenEncryption = true` 并注册 `IEncryptionProvider`：
+
+```csharp
+builder.Services.AddFeishuApp(options =>
+{
+    options.EnableTokenEncryption = true;
+});
+// 注册 IEncryptionProvider 实现（如 AES-GCM）
+builder.Services.AddSingleton<IEncryptionProvider, AesEncryptionProvider>();
+```
+
+未启用加密时，启动期会产生 TMA-21 告警日志（Warning 级别），提示令牌以明文存储。
+
+### 键前缀护栏
+
+`RedisKeyBuilder` 在构造键时强制：
+
+- 前缀非空（空前缀 + `*` pattern 会退化为全库 SCAN，R-01 护栏）。
+- 前缀不以 `*` 开头（通配符前缀导致 SCAN 匹配所有键）。
+- 分段转义：段内的 `:` 替换为 `\:`，杜绝 `appKey="a:b"` 与 `appKey="a"` + `eventId="b:c"` 产生相同键（R-20）。
+- 单段长度上限 256 字节，防止超长键 DoS。
+
+## 附录 A：能力 ↔ 实现 ↔ 测试 映射表
+
+| 能力 | 实现文件 | 测试文件 | 关联审查编号 |
+| --- | --- | --- | --- |
+| 事件去重状态机 v2（Lua 原子化 + 服务端时钟） | `RedisFeishuEventDistributedDeduplicator.cs` | `EventDeduplicatorIntegrationTests.cs` | R-04/R-05/R-06/R-15/R-17/R-19 |
+| Nonce 去重（SET NX EX + 分类异常） | `RedisFeishuNonceDistributedDeduplicator.cs` | `NonceAndTokenStoreIntegrationTests.cs` | R-12/R-22 |
+| SeqID 去重（scopeKey 隔离 + 有界 Sorted Set） | `RedisFeishuSeqIDDeduplicator.cs` | `SeqIDDeduplicatorIntegrationTests.cs` | R-01/R-07/R-08 |
+| 统一键构造（转义 + 长度 + 护栏） | `RedisKeyBuilder.cs` | `SeqIDDeduplicatorIntegrationTests.cs` | R-01/R-20/R-21 |
+| 分类异常契约 | `FeishuRedisException.cs` | `EventDeduplicatorIntegrationTests.cs` | ADR-6 |
+| Cluster 多节点扫描 | `RedisStoreHelper.GetServers()` | `NonceAndTokenStoreIntegrationTests.cs` | R-10 |
+| 令牌存储（per-app 键空间 + Cluster） | `RedisTokenStore.cs` / `PerAppRedisTokenStoreFactory.cs` | `NonceAndTokenStoreIntegrationTests.cs` | R-09/R-10/R-23 |
+| 用户令牌存储 | `RedisUserTokenStore.cs` | `NonceAndTokenStoreIntegrationTests.cs` | R-09/R-10 |
+| Nonce 降级语义 | `NonceValidator.cs`（Webhook） | — | R-12/R-18 |
+| 配置启动期校验 | `RedisOptions.cs` / `RedisOptionsValidator.cs` | — | R-12/R-26 |
+| 连接字符串原生解析 | `RedisFeishuServiceBuilderExtensions.cs` | — | R-13 |
 
 ## 许可证
 

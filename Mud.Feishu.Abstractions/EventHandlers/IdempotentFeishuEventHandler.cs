@@ -48,7 +48,7 @@ public abstract class IdempotentFeishuEventHandler<T>(
     /// </summary>
     /// <param name="eventData">事件数据</param>
     /// <param name="cancellationToken">取消令牌</param>
-    #if NET6_0_OR_GREATER
+#if NET6_0_OR_GREATER
     [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCode")]
     [UnconditionalSuppressMessage("AOT", "IL3050:RequiresDynamicCode")]
 #endif
@@ -154,7 +154,7 @@ public abstract class IdempotentFeishuEventHandler<T, THeader> : IdempotentFeish
     /// </summary>
     /// <param name="eventData">事件数据</param>
     /// <returns>反序列化后的 Header 实体，Header 为 null 或反序列化失败时返回 default</returns>
-    #if NET6_0_OR_GREATER
+#if NET6_0_OR_GREATER
     [RequiresUnreferencedCode("反射式System.Text.Json序列化在裁剪下无法静态分析目标类型成员")]
 #endif
 #if NET7_0_OR_GREATER
@@ -201,7 +201,7 @@ public abstract class IdempotentFeishuEventHandler<T, THeader> : IdempotentFeish
     /// 重写基类的 ProcessBusinessLogicAsync，自动注入 Header
     /// <para>此方法为 sealed，不可被进一步重写，确保 Header 注入逻辑不被绕过</para>
     /// </summary>
-    #if NET6_0_OR_GREATER
+#if NET6_0_OR_GREATER
     [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCode")]
     [UnconditionalSuppressMessage("AOT", "IL3050:RequiresDynamicCode")]
 #endif

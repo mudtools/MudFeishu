@@ -34,14 +34,24 @@ public class RedisOptions
     public TimeSpan NonceTtl { get; set; } = TimeSpan.FromMinutes(5);
 
     /// <summary>
-    /// Nonce 去重键前缀
+    /// Nonce 去重键前缀（空值时回退默认值，Validator 保证非空）
     /// </summary>
-    public string NonceKeyPrefix { get; set; } = Mud.Feishu.Abstractions.Consts.DefaultNonceKeyPrefix;
+    public string NonceKeyPrefix
+    {
+        get => _nonceKeyPrefix;
+        set => _nonceKeyPrefix = string.IsNullOrEmpty(value) ? Mud.Feishu.Abstractions.Consts.DefaultNonceKeyPrefix : value;
+    }
+    private string _nonceKeyPrefix = Mud.Feishu.Abstractions.Consts.DefaultNonceKeyPrefix;
 
     /// <summary>
-    /// SeqID 去重键前缀
+    /// SeqID 去重键前缀（空值时回退默认值，Validator 保证非空）
     /// </summary>
-    public string SeqIdKeyPrefix { get; set; } = Mud.Feishu.Abstractions.Consts.DefaultSeqIdKeyPrefix;
+    public string SeqIdKeyPrefix
+    {
+        get => _seqIdKeyPrefix;
+        set => _seqIdKeyPrefix = string.IsNullOrEmpty(value) ? Mud.Feishu.Abstractions.Consts.DefaultSeqIdKeyPrefix : value;
+    }
+    private string _seqIdKeyPrefix = Mud.Feishu.Abstractions.Consts.DefaultSeqIdKeyPrefix;
 
     /// <summary>
     /// 事件去重缓存过期时间，默认 48 小时
@@ -74,6 +84,19 @@ public class RedisOptions
         set => _seqIdCacheExpiration = value >= TimeSpan.FromMinutes(1) ? value : TimeSpan.FromMinutes(1);
     }
     private TimeSpan _seqIdCacheExpiration = TimeSpan.FromMilliseconds(Mud.Feishu.Abstractions.Consts.DefaultCacheExpirationMs);
+
+    /// <summary>
+    /// SeqID 隔离维度键（ADR-3/T-M2-4）。
+    /// <para>非空时直接使用；为空时由 DI 合成 <c>{AppKey}|{MachineName}</c>。</para>
+    /// <para>多实例共享 Redis 时，scopeKey 必须包含实例维度，否则跨实例会互相判重。</para>
+    /// </summary>
+    public string? SeqIdScopeKey { get; set; }
+
+    /// <summary>
+    /// 飞书应用 AppKey，用于 SeqID scopeKey 合成。
+    /// <para>仅在 <see cref="SeqIdScopeKey"/> 为空时参与合成，默认 "default"。</para>
+    /// </summary>
+    public string AppKey { get; set; } = "default";
 
     /// <summary>
     /// 连接超时时间，默认 5000 毫秒
@@ -139,6 +162,32 @@ public class RedisOptions
 
         if (ConnectRetry < 0)
             throw new InvalidOperationException("ConnectRetry 不能为负数");
+
+        // R-12/R-21 护栏：TTL 非正、前缀为空或以 * 开头 → 启动失败
+        if (NonceTtl <= TimeSpan.Zero)
+            throw new InvalidOperationException("NonceTtl 必须为正值（建议 5 分钟以上）");
+
+        if (SeqIdCacheExpiration <= TimeSpan.Zero)
+            throw new InvalidOperationException("SeqIdCacheExpiration 必须为正值");
+
+        if (EventCacheExpiration <= TimeSpan.Zero)
+            throw new InvalidOperationException("EventCacheExpiration 必须为正值");
+
+        ValidateKeyPrefix(NonceKeyPrefix, nameof(NonceKeyPrefix));
+        ValidateKeyPrefix(SeqIdKeyPrefix, nameof(SeqIdKeyPrefix));
+        ValidateKeyPrefix(EventKeyPrefix, nameof(EventKeyPrefix));
+    }
+
+    /// <summary>
+    /// 校验键前缀：非空且不以 * 开头。
+    /// </summary>
+    private static void ValidateKeyPrefix(string prefix, string name)
+    {
+        if (string.IsNullOrEmpty(prefix))
+            throw new InvalidOperationException($"{name} 不能为空——空前缀会导致 SCAN 退化为全库匹配（R-01 护栏）");
+
+        if (prefix.StartsWith("*"))
+            throw new InvalidOperationException($"{name} 不能以 '*' 开头——通配符前缀会导致 SCAN 匹配所有键（R-01 护栏）");
     }
 
     /// <summary>
@@ -146,6 +195,9 @@ public class RedisOptions
     /// </summary>
     public override string ToString()
     {
-        return $"RedisOptions {{ ServerAddress: {ServerAddress}, Password: {SensitiveDataUtils.MaskSensitiveData(Password)}, DefaultDatabase: {DefaultDatabase?.ToString() ?? "默认"}, ConnectTimeout: {ConnectTimeout}ms, SyncTimeout: {SyncTimeout}ms, Ssl: {Ssl}, EventCacheExpiration: {EventCacheExpiration}, SeqIdCacheExpiration: {SeqIdCacheExpiration}, EventKeyPrefix: {EventKeyPrefix} }}";
+        // T-M3-8：ServerAddress 可能内联凭据（如 host:port,password=...），剥离后掩码
+        var maskedAddress = SensitiveDataUtils.MaskSensitiveData(ServerAddress);
+        var maskedClientName = ClientName != null ? SensitiveDataUtils.MaskSensitiveData(ClientName) : "null";
+        return $"RedisOptions {{ ServerAddress: {maskedAddress}, Password: {SensitiveDataUtils.MaskSensitiveData(Password)}, DefaultDatabase: {DefaultDatabase?.ToString() ?? "默认"}, ConnectTimeout: {ConnectTimeout}ms, SyncTimeout: {SyncTimeout}ms, Ssl: {Ssl}, EventCacheExpiration: {EventCacheExpiration}, SeqIdCacheExpiration: {SeqIdCacheExpiration}, EventKeyPrefix: {EventKeyPrefix}, NonceKeyPrefix: {NonceKeyPrefix}, SeqIdKeyPrefix: {SeqIdKeyPrefix}, ClientName: {maskedClientName} }}";
     }
 }

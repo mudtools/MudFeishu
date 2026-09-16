@@ -23,6 +23,17 @@ public interface IFailedEventStore
     Task StoreFailedEventAsync(EventData eventData, Exception exception, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// 存储失败的事件（带应用键上下文）
+    /// </summary>
+    /// <param name="eventData">事件数据</param>
+    /// <param name="exception">异常信息</param>
+    /// <param name="appKey">事件所属应用键（多应用场景隔离）</param>
+    /// <param name="nextRetryAt">下次可重试时间（UTC）</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>任务</returns>
+    Task StoreFailedEventAsync(EventData eventData, Exception exception, string? appKey, DateTimeOffset nextRetryAt, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// 获取需要重试的失败事件列表
     /// </summary>
     /// <param name="maxRetryCount">最大重试次数</param>
@@ -94,6 +105,16 @@ public class FailedEventInfo
     /// 异常堆栈
     /// </summary>
     public string ExceptionStackTrace { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 事件所属应用键（多应用场景隔离所必需；重试时必须恢复该上下文）
+    /// </summary>
+    public string? AppKey { get; set; }
+
+    /// <summary>
+    /// 下次可重试时间（UTC），由指数退避计算得出
+    /// </summary>
+    public DateTimeOffset NextRetryAt { get; set; }
 
     /// <summary>
     /// 失败时间

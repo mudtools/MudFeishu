@@ -113,12 +113,12 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
     /// F4 修复：优先使用 <paramref name="optionsMonitor"/>；为兼容存量调用方，
     /// 当其为 null 时回退到 <paramref name="options"/> 快照。
     /// </remarks>
-    #if NET6_0_OR_GREATER
+#if NET6_0_OR_GREATER
     [RequiresUnreferencedCode("反射式System.Text.Json序列化在裁剪下无法静态分析目标类型成员")]
-    #endif
-    #if NET7_0_OR_GREATER
+#endif
+#if NET7_0_OR_GREATER
     [RequiresDynamicCode("反射式System.Text.Json序列化在 AOT/动态代码生成环境下不可用")]
-    #endif
+#endif
     public FeishuWebSocketClient(
         ILogger<FeishuWebSocketClient> logger,
         IFeishuEventHandlerFactory eventHandlerFactory,
@@ -243,12 +243,12 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
     /// <summary>
     /// 注册消息处理器
     /// </summary>
-    #if NET6_0_OR_GREATER
+#if NET6_0_OR_GREATER
     [RequiresUnreferencedCode("反射式System.Text.Json序列化在裁剪下无法静态分析目标类型成员")]
-    #endif
-    #if NET7_0_OR_GREATER
+#endif
+#if NET7_0_OR_GREATER
     [RequiresDynamicCode("反射式System.Text.Json序列化在 AOT/动态代码生成环境下不可用")]
-    #endif
+#endif
     private void RegisterMessageHandlers()
     {
         var pingPongHandler = new PingPongMessageHandler(
@@ -328,12 +328,12 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
     /// <summary>
     /// 建立WebSocket连接
     /// </summary>
-    #if NET6_0_OR_GREATER
+#if NET6_0_OR_GREATER
     [RequiresUnreferencedCode("反射式System.Text.Json序列化在裁剪下无法静态分析目标类型成员")]
-    #endif
-    #if NET7_0_OR_GREATER
+#endif
+#if NET7_0_OR_GREATER
     [RequiresDynamicCode("反射式System.Text.Json序列化在 AOT/动态代码生成环境下不可用")]
-    #endif
+#endif
     public async Task ConnectAsync(WsEndpointResult endpoint, CancellationToken cancellationToken = default)
     {
         if (endpoint == null)
@@ -454,12 +454,12 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
     /// <summary>
     /// 建立WebSocket连接并进行认证
     /// </summary>
-    #if NET6_0_OR_GREATER
+#if NET6_0_OR_GREATER
     [RequiresUnreferencedCode("反射式System.Text.Json序列化在裁剪下无法静态分析目标类型成员")]
-    #endif
-    #if NET7_0_OR_GREATER
+#endif
+#if NET7_0_OR_GREATER
     [RequiresDynamicCode("反射式System.Text.Json序列化在 AOT/动态代码生成环境下不可用")]
-    #endif
+#endif
     public async Task ConnectAsync(WsEndpointResult endpoint, string appAccessToken, CancellationToken cancellationToken = default)
     {
         await ConnectAsync(endpoint, cancellationToken);
@@ -515,6 +515,8 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
     /// <remarks>
     /// WS-16 修复（P1-14）：补齐幂等保护，防止重复调用创建双接收循环。
     /// </remarks>
+    [RequiresUnreferencedCode()]
+    [RequiresDynamicCode()]
     public async Task StartReceivingAsync(CancellationToken cancellationToken = default)
     {
         // WS-16：幂等保护 - 如果已有接收循环在运行，直接返回
@@ -531,12 +533,12 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
     /// <summary>
     /// 开始接收消息（内部实现）
     /// </summary>
-    #if NET6_0_OR_GREATER
+#if NET6_0_OR_GREATER
     [RequiresUnreferencedCode("反射式System.Text.Json序列化在裁剪下无法静态分析目标类型成员")]
-    #endif
-    #if NET7_0_OR_GREATER
+#endif
+#if NET7_0_OR_GREATER
     [RequiresDynamicCode("反射式System.Text.Json序列化在 AOT/动态代码生成环境下不可用")]
-    #endif
+#endif
     private async Task StartReceivingAsyncInternal(CancellationToken cancellationToken)
     {
         try
@@ -676,12 +678,12 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
     /// <summary>
     /// 处理接收到的消息
     /// </summary>
-    #if NET6_0_OR_GREATER
+#if NET6_0_OR_GREATER
     [RequiresUnreferencedCode("反射式System.Text.Json序列化在裁剪下无法静态分析目标类型成员")]
-    #endif
-    #if NET7_0_OR_GREATER
+#endif
+#if NET7_0_OR_GREATER
     [RequiresDynamicCode("反射式System.Text.Json序列化在 AOT/动态代码生成环境下不可用")]
-    #endif
+#endif
     private async Task HandleReceivedMessageAsync(ArraySegment<byte> buffer, WebSocketReceiveResult result, CancellationToken cancellationToken)
     {
         try

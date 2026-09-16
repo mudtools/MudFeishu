@@ -49,7 +49,7 @@ public class FeishuWebhookServiceBuilder
     /// <param name="configuration">配置对象</param>
     /// <param name="sectionName">配置节名称，默认为"FeishuWebhook"</param>
     /// <returns>建造者实例，支持链式调用</returns>
-    #if NET6_0_OR_GREATER
+#if NET6_0_OR_GREATER
     [RequiresUnreferencedCode("反射式配置绑定（ConfigurationBinder.Bind）在裁剪下无法静态分析配置类型成员")]
 #endif
 #if NET7_0_OR_GREATER
@@ -405,6 +405,7 @@ public class FeishuWebhookServiceBuilder
 
         ValidateConfiguration();
         RegisterServices();
+
         _configured = true;
 
         return _services;
@@ -421,9 +422,24 @@ public class FeishuWebhookServiceBuilder
                 "至少需要注册一个事件处理器。请使用 AddHandler<T>() 方法添加处理器。");
         }
 
-        // 验证 FeishuWebhookOptions 配置
-        // 注意：由于此时服务还未完全注册，无法通过 IOptions<T> 获取配置
-        // 配置验证将在 PostConfigure 阶段完成
+        // 重复注册检测：同 (appKey, type) 重复 → 抛异常
+        var duplicateHandler = _pendingHandlerRegistrations
+            .GroupBy(x => (x.AppKey, x.HandlerType))
+            .FirstOrDefault(g => g.Count() > 1);
+        if (duplicateHandler != null)
+        {
+            throw new InvalidOperationException(
+                $"检测到重复注册的处理器: AppKey={duplicateHandler.Key.AppKey}, Type={duplicateHandler.Key.HandlerType.Name}");
+        }
+
+        var duplicateInterceptor = _pendingInterceptorRegistrations
+            .GroupBy(x => (x.AppKey, x.InterceptorType))
+            .FirstOrDefault(g => g.Count() > 1);
+        if (duplicateInterceptor != null)
+        {
+            throw new InvalidOperationException(
+                $"检测到重复注册的拦截器: AppKey={duplicateInterceptor.Key.AppKey}, Type={duplicateInterceptor.Key.InterceptorType.Name}");
+        }
     }
 
     /// <summary>
@@ -504,6 +520,10 @@ public class FeishuWebhookServiceBuilder
                 {
                     interceptorRegistry.Register(appKey, interceptorType);
                 }
+
+                // 冻结注册表，杜绝运行时热注册竞态
+                handlerRegistry.Freeze();
+                interceptorRegistry.Freeze();
             });
     }
 

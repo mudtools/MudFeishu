@@ -66,12 +66,12 @@ public class MessageRouter
     /// <summary>
     /// 路由消息到合适的处理器
     /// </summary>
-    #if NET6_0_OR_GREATER
+#if NET6_0_OR_GREATER
     [RequiresUnreferencedCode("反射式System.Text.Json序列化在裁剪下无法静态分析目标类型成员")]
-    #endif
-    #if NET7_0_OR_GREATER
+#endif
+#if NET7_0_OR_GREATER
     [RequiresDynamicCode("反射式System.Text.Json序列化在 AOT/动态代码生成环境下不可用")]
-    #endif
+#endif
     public async Task RouteMessageAsync(string message, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(message))
@@ -89,12 +89,12 @@ public class MessageRouter
     /// <summary>
     /// 路由从二进制消息转换而来的JSON消息到合适的处理器
     /// </summary>
-    #if NET6_0_OR_GREATER
+#if NET6_0_OR_GREATER
     [RequiresUnreferencedCode("反射式System.Text.Json序列化在裁剪下无法静态分析目标类型成员")]
-    #endif
-    #if NET7_0_OR_GREATER
+#endif
+#if NET7_0_OR_GREATER
     [RequiresDynamicCode("反射式System.Text.Json序列化在 AOT/动态代码生成环境下不可用")]
-    #endif
+#endif
     public async Task RouteBinaryMessageAsync(string jsonContent, string messageType, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(jsonContent))
@@ -138,12 +138,12 @@ public class MessageRouter
     /// <summary>
     /// 内部消息路由处理
     /// </summary>
-    #if NET6_0_OR_GREATER
+#if NET6_0_OR_GREATER
     [RequiresUnreferencedCode("反射式System.Text.Json序列化在裁剪下无法静态分析目标类型成员")]
-    #endif
-    #if NET7_0_OR_GREATER
+#endif
+#if NET7_0_OR_GREATER
     [RequiresDynamicCode("反射式System.Text.Json序列化在 AOT/动态代码生成环境下不可用")]
-    #endif
+#endif
     private async Task RouteMessageInternalAsync(string message, string sourceType, CancellationToken cancellationToken)
     {
         await RouteMessageInternalWithResultAsync(message, sourceType, cancellationToken);
@@ -202,6 +202,8 @@ public class MessageRouter
     /// <param name="message">消息内容</param>
     /// <param name="cancellationToken">外部取消令牌</param>
     /// <returns>处理成功返回 true；超时或处理器抛出异常返回 false</returns>
+    [RequiresUnreferencedCode("Calls Mud.Feishu.WebSocket.IMessageHandler.HandleAsync(String, CancellationToken)")]
+    [RequiresDynamicCode("Calls Mud.Feishu.WebSocket.IMessageHandler.HandleAsync(String, CancellationToken)")]
     private async Task<bool> HandleWithTimeoutAsync(IMessageHandler handler, string message, CancellationToken cancellationToken)
     {
         var timeoutMs = _options.MessageHandlerTimeoutMs;

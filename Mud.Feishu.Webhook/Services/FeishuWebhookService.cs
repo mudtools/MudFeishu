@@ -31,6 +31,7 @@ public class FeishuWebhookService : IFeishuWebhookService
     private readonly FeishuWebhookInterceptorRegistry _interceptorRegistry;
     private readonly IServiceProvider _serviceProvider;
     private readonly IWebhookAppKeyAccessor _appKeyAccessor;
+    private readonly IFailedEventStore? _failedEventStore;
 
     /// <summary>
     /// 获取当前配置选项（支持热更新）
@@ -51,7 +52,8 @@ public class FeishuWebhookService : IFeishuWebhookService
         FeishuWebhookHandlerRegistry handlerRegistry,
         FeishuWebhookInterceptorRegistry interceptorRegistry,
         IServiceProvider serviceProvider,
-        IWebhookAppKeyAccessor appKeyAccessor)
+        IWebhookAppKeyAccessor appKeyAccessor,
+        IFailedEventStore? failedEventStore = null)
     {
         _optionsMonitor = optionsMonitor;
         _validator = validator;
@@ -66,6 +68,7 @@ public class FeishuWebhookService : IFeishuWebhookService
         _interceptorRegistry = interceptorRegistry ?? throw new ArgumentNullException(nameof(interceptorRegistry));
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
         _appKeyAccessor = appKeyAccessor ?? throw new ArgumentNullException(nameof(appKeyAccessor));
+        _failedEventStore = failedEventStore;
 
         // 监听配置变更
         _optionsMonitor.OnChange((newOptions, name) =>
@@ -221,11 +224,18 @@ public class FeishuWebhookService : IFeishuWebhookService
 
             // 去重检查
             var deduplicationResult = await CheckDeduplicationAsync(eventData.EventId, appKey, cancellationToken);
-            if (deduplicationResult.shouldSkip)
+            if (deduplicationResult.ShouldSkip)
             {
                 _logger.LogWarning("检测到重复事件 {EventId}（AppKey: {AppKey}），跳过处理（幂等性）", eventData.EventId, appKey ?? "null");
                 FeishuMetricsHelper.RecordEventDeduplication(appKey ?? "unknown", "event_id", hit: true);
                 return (true, null); // 幂等性：返回成功避免飞书重试
+            }
+
+            // T2-2: 显式处理 WasProcessing 语义——命中 TimeoutRecoverable 时记录并计数
+            if (deduplicationResult.WasProcessing)
+            {
+                _logger.LogInformation("事件 {EventId} 原处理中超时，本次重新处理，AppKey: {AppKey}", eventData.EventId, appKey ?? "null");
+                FeishuMetricsHelper.RecordEventOutcome(appKey ?? "unknown", eventData.EventType, success: true, "timeout_recovered");
             }
 
             // 使用全局并发控制服务
@@ -279,6 +289,21 @@ public class FeishuWebhookService : IFeishuWebhookService
 
             // 记录事件处理失败
             FeishuMetricsHelper.RecordEventOutcome(appKey ?? "unknown", eventData.EventType, success: false, ex.GetType().Name);
+
+            // ADR-2: 失败路径在去重回滚之后写入失败事件存储（仅当启用重试时）
+            if (Options.Retry.EnableRetry && _failedEventStore != null)
+            {
+                try
+                {
+                    var initialRetryDelay = Options.Retry.InitialRetryDelaySeconds;
+                    var nextRetryAt = DateTimeOffset.UtcNow.AddSeconds(initialRetryDelay);
+                    await _failedEventStore.StoreFailedEventAsync(eventData, ex, appKey, nextRetryAt, cancellationToken);
+                }
+                catch (Exception storeEx)
+                {
+                    _logger.LogError(storeEx, "写入失败事件存储失败，EventId: {EventId}", eventData.EventId);
+                }
+            }
 
             var effectiveEnableExceptionHandling = Options.EnableExceptionHandling;
             if (appConfig != null)
@@ -380,7 +405,7 @@ public class FeishuWebhookService : IFeishuWebhookService
         }
     }
 
-    private async Task<(bool shouldSkip, bool isProcessing)> CheckDeduplicationAsync(string eventId, string? appKey, CancellationToken cancellationToken)
+    private async Task<(bool ShouldSkip, bool WasProcessing)> CheckDeduplicationAsync(string eventId, string? appKey, CancellationToken cancellationToken)
     {
         var result = await _deduplicator.TryMarkAsProcessingAsync(eventId, appKey, cancellationToken: cancellationToken);
         return (result.IsDuplicate, result.WasProcessing);

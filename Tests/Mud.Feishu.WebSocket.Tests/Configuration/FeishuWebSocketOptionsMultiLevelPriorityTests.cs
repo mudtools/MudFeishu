@@ -28,12 +28,12 @@ public class FeishuWebSocketOptionsMultiLevelPriorityTests
             ["FeishuWebSocket:HeartbeatIntervalMs"] = "30000",
             ["FeishuWebSocket:AutoReconnect"] = "false"
         });
-        
+
         var configuration = configurationBuilder.Build();
-        
+
         var services = new ServiceCollection();
         services.Configure<FeishuWebSocketOptions>(configuration.GetSection("FeishuWebSocket"));
-        
+
         // 通过 Configure 方法覆盖配置文件中的设置（代码配置优先级更高）
         services.Configure<FeishuWebSocketOptions>(options =>
         {
@@ -63,9 +63,9 @@ public class FeishuWebSocketOptionsMultiLevelPriorityTests
             ["FeishuWebSocket:AutoReconnect"] = "true",
             ["FeishuWebSocket:MaxReconnectAttempts"] = "3"
         });
-        
+
         var configuration = configurationBuilder.Build();
-        
+
         var services = new ServiceCollection();
         services.Configure<FeishuWebSocketOptions>(configuration.GetSection("FeishuWebSocket"));
 
@@ -111,12 +111,12 @@ public class FeishuWebSocketOptionsMultiLevelPriorityTests
             ["FeishuWebSocket:HeartbeatIntervalMs"] = "30000", // 只配置部分属性
             ["FeishuWebSocket:AutoReconnect"] = "false"
         });
-        
+
         var configuration = configurationBuilder.Build();
-        
+
         var services = new ServiceCollection();
         services.Configure<FeishuWebSocketOptions>(configuration.GetSection("FeishuWebSocket"));
-        
+
         // 部分覆盖
         services.Configure<FeishuWebSocketOptions>(options =>
         {
@@ -147,12 +147,12 @@ public class FeishuWebSocketOptionsMultiLevelPriorityTests
             ["FeishuWebSocket:EventDeduplication:Mode"] = "Distributed",
             ["FeishuWebSocket:EventDeduplication:CacheExpiration"] = "24:00:00"
         });
-        
+
         var configuration = configurationBuilder.Build();
-        
+
         var services = new ServiceCollection();
         services.Configure<FeishuWebSocketOptions>(configuration.GetSection("FeishuWebSocket"));
-        
+
         // 代码配置覆盖
         services.Configure<FeishuWebSocketOptions>(options =>
         {
@@ -181,12 +181,12 @@ public class FeishuWebSocketOptionsMultiLevelPriorityTests
             ["FeishuWebSocket:MessageSizeLimits:MaxTextMessageSize"] = "2097152",  // 2MB
             ["FeishuWebSocket:MessageSizeLimits:MaxBinaryMessageSize"] = "31457280" // 30MB
         });
-        
+
         var configuration = configurationBuilder.Build();
-        
+
         var services = new ServiceCollection();
         services.Configure<FeishuWebSocketOptions>(configuration.GetSection("FeishuWebSocket"));
-        
+
         // 代码配置部分覆盖
         services.Configure<FeishuWebSocketOptions>(options =>
         {
@@ -215,12 +215,12 @@ public class FeishuWebSocketOptionsMultiLevelPriorityTests
             ["FeishuWebSocket:HeartbeatIntervalMs"] = "1000", // 低于最小值，会被自动修正
             ["FeishuWebSocket:MaxReconnectAttempts"] = "15"   // 高于默认值，但合法
         });
-        
+
         var configuration = configurationBuilder.Build();
-        
+
         var services = new ServiceCollection();
         services.Configure<FeishuWebSocketOptions>(configuration.GetSection("FeishuWebSocket"));
-        
+
         // 代码配置覆盖部分值
         services.Configure<FeishuWebSocketOptions>(options =>
         {
@@ -236,7 +236,7 @@ public class FeishuWebSocketOptionsMultiLevelPriorityTests
         // Assert - 验证配置有效
         var act = () => options.Validate();
         act.Should().NotThrow();
-        
+
         // 验证优先级：代码配置覆盖文件配置
         options.HeartbeatIntervalMs.Should().Be(15000);      // 代码配置
         options.MaxReconnectAttempts.Should().Be(15);        // 文件配置
@@ -254,12 +254,12 @@ public class FeishuWebSocketOptionsMultiLevelPriorityTests
             ["FeishuWebSocket:EventDeduplication:CleanupInterval"] = "00:03:00",
             ["FeishuWebSocket:EventDeduplication:MaxCacheSize"] = "75000"
         });
-        
+
         var configuration = configurationBuilder.Build();
-        
+
         var services = new ServiceCollection();
         services.Configure<FeishuWebSocketOptions>(configuration.GetSection("FeishuWebSocket"));
-        
+
         // 代码配置部分覆盖嵌套属性
         services.Configure<FeishuWebSocketOptions>(options =>
         {

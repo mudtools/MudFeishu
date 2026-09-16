@@ -217,7 +217,7 @@ public class LogicFixValidationTests
     [Fact]
     public void FeishuWebSocketHealthCheck_Constructor_ShouldThrow_WhenHostedServiceIsNull()
     {
-        var act = () => new FeishuWebSocketHealthCheck(null!);
+        var act = () => new FeishuWebSocketHealthCheck(null!, null!);
         act.Should().Throw<ArgumentNullException>().WithParameterName("hostedService");
     }
 #endif

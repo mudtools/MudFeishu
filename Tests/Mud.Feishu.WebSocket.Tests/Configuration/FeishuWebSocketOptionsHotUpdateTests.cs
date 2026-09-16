@@ -131,7 +131,7 @@ public class FeishuWebSocketOptionsHotUpdateTests
         var updatedOptions = newOptionsMonitor.CurrentValue;
         updatedOptions.HeartbeatIntervalMs.Should().Be(5000); // Auto-corrected to minimum
         updatedOptions.ReconnectDelayMs.Should().Be(1000);    // Auto-corrected to minimum
-        
+
         var actUpdated = () => updatedOptions.Validate();
         actUpdated.Should().NotThrow();
     }

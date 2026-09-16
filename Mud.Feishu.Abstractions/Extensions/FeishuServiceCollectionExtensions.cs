@@ -31,7 +31,7 @@ public static class FeishuServiceCollectionExtensions
     /// <param name="sectionName">配置节名称，默认为"Feishu"</param>
     /// <param name="services">服务集合</param>
     /// <returns>服务集合实例。支持链式调用</returns>
-    #if NET6_0_OR_GREATER
+#if NET6_0_OR_GREATER
     [RequiresUnreferencedCode("反射式配置绑定（ConfigurationBinder.Bind）在裁剪下无法静态分析配置类型成员")]
 #endif
 #if NET7_0_OR_GREATER
@@ -162,7 +162,7 @@ public static class FeishuServiceCollectionExtensions
                     client.Timeout = TimeSpan.FromSeconds(latest.TimeOut);
                 }
             });
-            }
+        }
 
         var defaultConfig = configs.FirstOrDefault(c => c.IsDefault) ?? configs.FirstOrDefault();
         if (defaultConfig != null)

@@ -13,5 +13,5 @@ namespace Mud.Feishu.DataModels.HelpDesk;
 [HttpJsonSerializable(SerializerClassName = "HelpDesk")]
 public class GetCustomizedFieldResult : CustomizedField
 {
-    
+
 }

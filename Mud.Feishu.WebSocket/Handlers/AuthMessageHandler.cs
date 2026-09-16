@@ -41,12 +41,12 @@ public class AuthMessageHandler : JsonMessageHandler
         return messageType.ToLowerInvariant() == "auth";
     }
     /// <inheritdoc/>
-    #if NET6_0_OR_GREATER
+#if NET6_0_OR_GREATER
     [RequiresUnreferencedCode("反射式System.Text.Json序列化在裁剪下无法静态分析目标类型成员")]
-    #endif
-    #if NET7_0_OR_GREATER
+#endif
+#if NET7_0_OR_GREATER
     [RequiresDynamicCode("反射式System.Text.Json序列化在 AOT/动态代码生成环境下不可用")]
-    #endif
+#endif
     public override Task HandleAsync(string message, CancellationToken cancellationToken = default)
     {
         var authResponse = SafeDeserialize<AuthResponseMessage>(message);

@@ -112,7 +112,7 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
     // 说明：BackgroundService.ExecuteAsync 基方法未携带 Requires 标注，override 无法添加
     // RequiresUnreferencedCode/RequiresDynamicCode（否则触发 IL2046/IL3051）。
     // 其内部调用的 StartAsync（带标注）的 IL 警告在此处统一用 UnconditionalSuppressMessage 屏蔽。
-    #if NET6_0_OR_GREATER
+#if NET6_0_OR_GREATER
     [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2026", Justification = "BackgroundService 基方法不支持 Requires 标注，反射式调用已由 WebSocket 客户端内部处理")]
     [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "BackgroundService 基方法不支持 Requires 标注，反射式调用已由 WebSocket 客户端内部处理")]
 #endif
@@ -250,12 +250,12 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
     /// <summary>
     /// 尝试触发重连（带防抖机制）
     /// </summary>
-    #if NET6_0_OR_GREATER
+#if NET6_0_OR_GREATER
     [RequiresUnreferencedCode("反射式System.Text.Json序列化在裁剪下无法静态分析目标类型成员")]
-    #endif
-    #if NET7_0_OR_GREATER
+#endif
+#if NET7_0_OR_GREATER
     [RequiresDynamicCode("反射式System.Text.Json序列化在 AOT/动态代码生成环境下不可用")]
-    #endif
+#endif
     private void TryTriggerReconnect(string reason)
     {
         lock (_reconnectDebounceLock)

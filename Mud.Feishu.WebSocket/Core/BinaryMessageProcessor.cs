@@ -9,6 +9,7 @@ using Microsoft.Extensions.Logging;
 using Mud.Feishu.Abstractions.Services;
 using Mud.Feishu.Abstractions.Utilities;
 using Mud.Feishu.DataModels.WsEndpoint;
+using Mud.Feishu.WebSocket.DataModels;
 using Mud.Feishu.WebSocket.SocketEventArgs;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
@@ -256,12 +257,12 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
     /// <summary>
     /// 处理完整的二进制消息
     /// </summary>
-    #if NET6_0_OR_GREATER
+#if NET6_0_OR_GREATER
     [RequiresUnreferencedCode("反射式System.Text.Json序列化在裁剪下无法静态分析目标类型成员")]
-    #endif
-    #if NET7_0_OR_GREATER
+#endif
+#if NET7_0_OR_GREATER
     [RequiresDynamicCode("反射式System.Text.Json序列化在 AOT/动态代码生成环境下不可用")]
-    #endif
+#endif
     private async Task ProcessCompleteBinaryMessageAsync(byte[] completeData, CancellationToken cancellationToken)
     {
         try
@@ -504,12 +505,12 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
     /// </summary>
     /// <param name="frame">ProtoBuf 控制帧</param>
     /// <param name="eventArgs">二进制消息事件参数</param>
-    #if NET6_0_OR_GREATER
+#if NET6_0_OR_GREATER
     [RequiresUnreferencedCode("反射式System.Text.Json序列化在裁剪下无法静态分析目标类型成员")]
-    #endif
-    #if NET7_0_OR_GREATER
+#endif
+#if NET7_0_OR_GREATER
     [RequiresDynamicCode("反射式System.Text.Json序列化在 AOT/动态代码生成环境下不可用")]
-    #endif
+#endif
     private void HandleControlFrame(EventProtoData frame, WebSocketBinaryMessageEventArgs eventArgs)
     {
         var messageType = frame.MessageType;
@@ -548,12 +549,12 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
         }
     }
 
-    #if NET6_0_OR_GREATER
+#if NET6_0_OR_GREATER
     [RequiresUnreferencedCode("反射式System.Text.Json序列化在裁剪下无法静态分析目标类型成员")]
-    #endif
-    #if NET7_0_OR_GREATER
+#endif
+#if NET7_0_OR_GREATER
     [RequiresDynamicCode("反射式System.Text.Json序列化在 AOT/动态代码生成环境下不可用")]
-    #endif
+#endif
     private async Task SendAckMessageAsync(EventProtoData? eventProtoData, bool success, CancellationToken cancellationToken)
     {
         if (eventProtoData == null)
@@ -620,7 +621,7 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
             {
                 await _connectionManager.SendBinaryMessageAsync(arraySegment, cancellationToken);
                 if (_options.EnableLogging)
-                    _logger.LogDebug("已发送ACK消息: code={Code}, biz_rt={BizRt}ms", responseObj.code, elapsedMs);
+                    _logger.LogDebug("已发送ACK消息: code={Code}, biz_rt={BizRt}ms", responseObj.Code, elapsedMs);
             }
         }
         catch (Exception x)

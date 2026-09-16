@@ -67,7 +67,7 @@ public static class FeishuMultiAppExtensions
     /// 置 <c>FeishuAppOptions.EnableConfigReload = false</c> 可回到「配置变更需重启」的旧语义。
     /// </para>
     /// </remarks>
-    #if NET6_0_OR_GREATER
+#if NET6_0_OR_GREATER
     [RequiresUnreferencedCode("反射式配置绑定（ConfigurationBinder.Bind）在裁剪下无法静态分析配置类型成员")]
 #endif
 #if NET7_0_OR_GREATER
@@ -115,7 +115,7 @@ public static class FeishuMultiAppExtensions
     /// }
     /// </code>
     /// </remarks>
-    #if NET6_0_OR_GREATER
+#if NET6_0_OR_GREATER
     [RequiresUnreferencedCode("反射式配置绑定（ConfigurationBinder.Bind）在裁剪下无法静态分析配置类型成员")]
 #endif
 #if NET7_0_OR_GREATER
@@ -206,7 +206,7 @@ public static class FeishuMultiAppExtensions
     /// });
     /// </code>
     /// </remarks>
-    #if NET6_0_OR_GREATER
+#if NET6_0_OR_GREATER
     [RequiresUnreferencedCode("反射式配置绑定（ConfigurationBinder.Bind）在裁剪下无法静态分析配置类型成员")]
 #endif
 #if NET7_0_OR_GREATER
@@ -249,7 +249,7 @@ public static class FeishuMultiAppExtensions
     /// services.AddFeishuApp(configs);
     /// </code>
     /// </remarks>
-    #if NET6_0_OR_GREATER
+#if NET6_0_OR_GREATER
     [RequiresUnreferencedCode("反射式配置绑定（ConfigurationBinder.Bind）在裁剪下无法静态分析配置类型成员")]
 #endif
 #if NET7_0_OR_GREATER
@@ -293,7 +293,7 @@ public static class FeishuMultiAppExtensions
     /// services.AddFeishuApp&lt;CustomFeishuAppManager&gt;(configs);
     /// </code>
     /// </remarks>
-    #if NET6_0_OR_GREATER
+#if NET6_0_OR_GREATER
     [RequiresUnreferencedCode("反射式配置绑定（ConfigurationBinder.Bind）在裁剪下无法静态分析配置类型成员")]
 #endif
 #if NET7_0_OR_GREATER
@@ -343,7 +343,7 @@ public static class FeishuMultiAppExtensions
     ///   <item>FeishuTokenRegistrationService - 令牌注册托管服务（NET6+，启动时注册令牌到后台刷新服务）</item>
     /// </list>
     /// </remarks>
-    #if NET6_0_OR_GREATER
+#if NET6_0_OR_GREATER
     [RequiresUnreferencedCode("反射式配置绑定（ConfigurationBinder.Bind）在裁剪下无法静态分析配置类型成员")]
 #endif
 #if NET7_0_OR_GREATER
@@ -409,7 +409,7 @@ public static class FeishuMultiAppExtensions
     /// 注册核心服务中除 IFeishuAppManager 之外的依赖项。
     /// 供 <see cref="RegisterCoreServices"/> 和 <see cref="AddFeishuApp{TAppManager}"/> 共用。
     /// </summary>
-    #if NET6_0_OR_GREATER
+#if NET6_0_OR_GREATER
     [RequiresUnreferencedCode("反射式配置绑定（ConfigurationBinder.Bind）在裁剪下无法静态分析配置类型成员")]
 #endif
 #if NET7_0_OR_GREATER

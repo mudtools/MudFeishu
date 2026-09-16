@@ -53,11 +53,17 @@ public class InMemoryFailedEventStore : IFailedEventStore, IDisposable
     }
 
     /// <inheritdoc />
-    #if NET6_0_OR_GREATER
+#if NET6_0_OR_GREATER
     [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCode")]
     [UnconditionalSuppressMessage("AOT", "IL3050:RequiresDynamicCode")]
 #endif
     public Task StoreFailedEventAsync(EventData eventData, Exception exception, CancellationToken cancellationToken = default)
+    {
+        return StoreFailedEventAsync(eventData, exception, null, DateTimeOffset.UtcNow, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public Task StoreFailedEventAsync(EventData eventData, Exception exception, string? appKey, DateTimeOffset nextRetryAt, CancellationToken cancellationToken = default)
     {
         var failedEvent = new FailedEventInfo
         {
@@ -67,14 +73,40 @@ public class InMemoryFailedEventStore : IFailedEventStore, IDisposable
             ExceptionMessage = exception.Message,
             ExceptionStackTrace = exception.StackTrace ?? string.Empty,
             FailedAt = DateTime.UtcNow,
-            RetryCount = 0
+            RetryCount = 0,
+            AppKey = appKey,
+            NextRetryAt = nextRetryAt
         };
 
         // 如果已存在则更新，否则添加新记录
         _failedEvents.AddOrUpdate(eventData.EventId, failedEvent, (_, _) => failedEvent);
 
-        _logger.LogWarning("后台事件处理失败，事件ID: {EventId}, 事件类型: {EventType}, 错误: {Error}",
-            eventData.EventId, eventData.EventType, exception.Message);
+        // 容量上限检查
+        if (_failedEvents.Count > MaxStoredEvents)
+        {
+            lock (_failedEvents)
+            {
+                if (_failedEvents.Count > MaxStoredEvents)
+                {
+                    var toRemoveCount = _failedEvents.Count - MaxStoredEvents;
+                    var oldestEvents = _failedEvents.Values
+                        .OrderBy(e => e.FailedAt)
+                        .Take(toRemoveCount)
+                        .Select(e => e.EventId)
+                        .ToList();
+
+                    foreach (var key in oldestEvents)
+                    {
+                        _failedEvents.TryRemove(key, out _);
+                    }
+
+                    _logger.LogWarning("失败事件存储已满，淘汰了 {Count} 个最旧事件", toRemoveCount);
+                }
+            }
+        }
+
+        _logger.LogWarning("后台事件处理失败，事件ID: {EventId}, 事件类型: {EventType}, AppKey: {AppKey}, 错误: {Error}",
+            eventData.EventId, eventData.EventType, appKey ?? "null", exception.Message);
 
         return Task.CompletedTask;
     }
@@ -93,10 +125,11 @@ public class InMemoryFailedEventStore : IFailedEventStore, IDisposable
     /// <inheritdoc />
     public Task<List<FailedEventInfo>> GetPendingRetryEventsAsync(DateTimeOffset beforeTime, int maxCount, CancellationToken cancellationToken = default)
     {
+        var now = DateTimeOffset.UtcNow;
         var failedEvents = _failedEvents.Values
-            .Where(e => e.RetryCount < maxCount)
-            .OrderBy(e => e.FailedAt)
-            .Take(maxCount)
+            .Where(e => e.NextRetryAt <= now)   // 仅取退避到期的
+            .OrderBy(e => e.NextRetryAt)
+            .Take(maxCount)                     // maxCount 语义 = 本次最多取几条
             .ToList();
 
         return Task.FromResult(failedEvents);
@@ -122,7 +155,10 @@ public class InMemoryFailedEventStore : IFailedEventStore, IDisposable
             failedEvent.RetryCount = eventInfo.RetryCount;
             failedEvent.ExceptionMessage = eventInfo.ExceptionMessage;
             failedEvent.FailedAt = eventInfo.FailedAt;
-            _logger.LogDebug("更新失败事件: {EventId}, 重试次数: {RetryCount}", eventInfo.EventId, eventInfo.RetryCount);
+            failedEvent.NextRetryAt = eventInfo.NextRetryAt;
+            if (!string.IsNullOrEmpty(eventInfo.AppKey))
+                failedEvent.AppKey = eventInfo.AppKey;
+            _logger.LogDebug("更新失败事件: {EventId}, 重试次数: {RetryCount}, 下次重试: {NextRetryAt}", eventInfo.EventId, eventInfo.RetryCount, eventInfo.NextRetryAt);
         }
 
         return Task.CompletedTask;

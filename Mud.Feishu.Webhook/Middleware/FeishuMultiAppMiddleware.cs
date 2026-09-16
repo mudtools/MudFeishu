@@ -18,7 +18,6 @@ using Mud.Feishu.Webhook.Serialization;
 using Mud.Feishu.Webhook.Services;
 using Mud.Feishu.Webhook.Utils;
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
 
 namespace Mud.Feishu.Webhook;
 
@@ -121,12 +120,6 @@ public class FeishuMultiAppMiddleware
     /// </summary>
     /// <param name="context">当前 HTTP 上下文</param>
     /// <returns></returns>
-    #if NET6_0_OR_GREATER
-    [RequiresUnreferencedCode("中间件使用反射式 System.Text.Json 序列化/反序列化，在裁剪下成员可能被移除")]
-#endif
-#if NET7_0_OR_GREATER
-    [RequiresDynamicCode("中间件使用反射式 System.Text.Json 序列化/反序列化，在 AOT 下不可用")]
-#endif
     public async Task InvokeAsync(HttpContext context)
     {
         var stopwatch = Stopwatch.StartNew();
@@ -258,12 +251,6 @@ public class FeishuMultiAppMiddleware
     /// <summary>
     /// 处理 Webhook 请求
     /// </summary>
-    #if NET6_0_OR_GREATER
-    [RequiresUnreferencedCode("内部调用反射式 System.Text.Json 序列化辅助方法")]
-#endif
-#if NET7_0_OR_GREATER
-    [RequiresDynamicCode("内部调用反射式 System.Text.Json 序列化辅助方法")]
-#endif
     private async Task ProcessWebhookRequestAsync(
         HttpContext context,
         string requestBody,
@@ -379,14 +366,8 @@ public class FeishuMultiAppMiddleware
 
     /// <summary>
     /// 尝试处理明文 URL 验证请求
-    /// 当应用配置了 EncryptKey 时，拒绝明文验证请求（安全边界）
+    /// 在强制 EncryptKey 策略下一律拒绝明文验证，加密验证走加密链路
     /// </summary>
-    #if NET6_0_OR_GREATER
-    [RequiresUnreferencedCode("内部调用反射式 System.Text.Json 序列化辅助方法")]
-#endif
-#if NET7_0_OR_GREATER
-    [RequiresDynamicCode("内部调用反射式 System.Text.Json 序列化辅助方法")]
-#endif
     private async Task<bool> TryHandlePlaintextVerificationAsync(
         HttpContext context,
         string requestBody,
@@ -402,25 +383,9 @@ public class FeishuMultiAppMiddleware
         {
             _logger.LogDebug("检测到明文 URL 验证请求");
 
-            var appConfig = Options.GetAppConfig(appKey);
-            if (appConfig != null && !string.IsNullOrEmpty(appConfig.EncryptKey))
-            {
-                _logger.LogWarning("应用已配置 EncryptKey，拒绝明文验证请求（安全边界），AppKey: {AppKey}", appKey);
-                await WriteErrorResponse(context, 403, "Forbidden: Plaintext verification not allowed when EncryptKey is configured", requestId);
-                return true;
-            }
-
-            using var verificationCts = new CancellationTokenSource(TimeSpan.FromSeconds(1));
-            var verificationResponse = await webhookService.VerifyEventSubscriptionAsync(verificationRequest, verificationCts.Token);
-
-            if (verificationResponse == null)
-            {
-                _logger.LogWarning("验证令牌不匹配或验证失败");
-                return false;
-            }
-
-            _logger.LogInformation("明文验证成功，返回挑战码");
-            await WriteJsonResponse(context, 200, verificationResponse);
+            // FeishuWebhookOptions.Validate() 强制 EncryptKey 非空且长度 32，明文验证一律拒绝
+            _logger.LogWarning("明文验证在强制 EncryptKey 策略下一律拒绝，AppKey: {AppKey}", appKey);
+            await WriteErrorResponse(context, 403, "Forbidden: Plaintext verification not allowed, use encrypted verification", requestId);
             return true;
         }
 
@@ -431,12 +396,6 @@ public class FeishuMultiAppMiddleware
     /// 处理加密的 URL 验证请求
     /// 验证解密后数据中的 token 字段，确保请求来源合法
     /// </summary>
-    #if NET6_0_OR_GREATER
-    [RequiresUnreferencedCode("内部调用反射式 System.Text.Json 序列化辅助方法")]
-#endif
-#if NET7_0_OR_GREATER
-    [RequiresDynamicCode("内部调用反射式 System.Text.Json 序列化辅助方法")]
-#endif
     private async Task HandleEncryptedVerificationAsync(
         HttpContext context,
         EventData decryptedData,
@@ -507,7 +466,7 @@ public class FeishuMultiAppMiddleware
     }
 
     /// <summary>
-    /// 读取请求体（带大小限制检查）
+    /// 读取请求体（带字节大小限制检查）
     /// </summary>
     private async Task<string> ReadRequestBodyAsync(HttpRequest request)
     {
@@ -523,38 +482,29 @@ public class FeishuMultiAppMiddleware
         request.EnableBuffering();
         request.Body.Position = 0;
 
-        // 逐块读取，防止无 Content-Length 的攻击
-        var sb = new StringBuilder();
-        var buffer = new char[4096];
-        long totalRead = 0;
-
-        using var reader = new StreamReader(
-            request.Body, Encoding.UTF8, true, bufferSize: 1024, leaveOpen: true);
-
+        // 逐块读取，按字节计数（T2-4: 修复按字符数计量导致多字节内容可超限约3倍的问题）
+        var buffer = new byte[4096];
+        using var ms = new MemoryStream();
+        long totalBytes = 0;
         int read;
-        while ((read = await reader.ReadAsync(buffer, 0, buffer.Length)) > 0)
+
+        while ((read = await request.Body.ReadAsync(buffer, 0, buffer.Length)) > 0)
         {
-            totalRead += read;
-            if (totalRead > maxSize)
+            totalBytes += read;
+            if (totalBytes > maxSize)
             {
                 throw new FeishuWebhookValidationException(
                     $"请求体大小超过限制 {maxSize} 字节");
             }
-            sb.Append(buffer, 0, read);
+            ms.Write(buffer, 0, read);
         }
 
-        return sb.ToString();
+        return Encoding.UTF8.GetString(ms.ToArray());
     }
 
     /// <summary>
     /// 写入 JSON 响应
     /// </summary>
-    #if NET6_0_OR_GREATER
-    [RequiresUnreferencedCode("反射式 System.Text.Json 序列化（JsonSerializerOptions）在裁剪下成员可能被移除")]
-#endif
-#if NET7_0_OR_GREATER
-    [RequiresDynamicCode("反射式 System.Text.Json 序列化（JsonSerializerOptions）在 AOT 下不可用")]
-#endif
     private async Task WriteJsonResponse<T>(HttpContext context, int statusCode, T data)
     {
         context.Response.StatusCode = statusCode;
@@ -569,12 +519,6 @@ public class FeishuMultiAppMiddleware
     /// <summary>
     /// 写入错误响应
     /// </summary>
-    #if NET6_0_OR_GREATER
-    [RequiresUnreferencedCode("反射式 System.Text.Json 序列化（JsonSerializerOptions）在裁剪下成员可能被移除")]
-#endif
-#if NET7_0_OR_GREATER
-    [RequiresDynamicCode("反射式 System.Text.Json 序列化（JsonSerializerOptions）在 AOT 下不可用")]
-#endif
     private async Task WriteErrorResponse(HttpContext context, int statusCode, string message, string? requestId = null)
     {
         context.Response.StatusCode = statusCode;

@@ -6,6 +6,7 @@
 // -----------------------------------------------------------------------
 
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Mud.Feishu.Abstractions;
 using Mud.Feishu.Webhook.Configuration;
 using Mud.Feishu.Webhook.Services;
 
@@ -19,18 +20,22 @@ public class FeishuWebhookHealthCheck : IHealthCheck
 {
     private readonly IOptionsMonitor<FeishuWebhookOptions> _options;
     private readonly FeishuWebhookConcurrencyService _concurrencyService;
+    private readonly IFailedEventStore? _failedEventStore;
 
     /// <summary>
     /// 构造函数。
     /// </summary>
     /// <param name="options">Webhook 配置选项监控器</param>
     /// <param name="concurrencyService">并发控制服务</param>
+    /// <param name="failedEventStore">失败事件存储（可选，用于积压检测）</param>
     public FeishuWebhookHealthCheck(
         IOptionsMonitor<FeishuWebhookOptions> options,
-        FeishuWebhookConcurrencyService concurrencyService)
+        FeishuWebhookConcurrencyService concurrencyService,
+        IFailedEventStore? failedEventStore = null)
     {
         _options = options ?? throw new ArgumentNullException(nameof(options));
         _concurrencyService = concurrencyService ?? throw new ArgumentNullException(nameof(concurrencyService));
+        _failedEventStore = failedEventStore;
     }
 
     /// <inheritdoc />
@@ -71,6 +76,32 @@ public class FeishuWebhookHealthCheck : IHealthCheck
                 $"Webhook 并发利用率 {utilization:P1}，接近上限",
                 null,
                 data));
+        }
+
+        // 失败事件积压检测
+        if (_failedEventStore is InMemoryFailedEventStore memStore)
+        {
+            var backlog = memStore.GetFailedEventCount();
+            data["failed_event_backlog"] = backlog;
+
+            var degradedThreshold = 100;
+            var unhealthyThreshold = 500;
+
+            if (backlog >= unhealthyThreshold)
+            {
+                return Task.FromResult(HealthCheckResult.Unhealthy(
+                    $"失败事件积压 {backlog} 超过硬阈值 {unhealthyThreshold}",
+                    null,
+                    data));
+            }
+
+            if (backlog >= degradedThreshold)
+            {
+                return Task.FromResult(HealthCheckResult.Degraded(
+                    $"失败事件积压 {backlog} 超过软阈值 {degradedThreshold}",
+                    null,
+                    data));
+            }
         }
 
         return Task.FromResult(HealthCheckResult.Healthy(

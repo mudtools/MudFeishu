@@ -375,8 +375,8 @@ public class P0P1FixRegressionTests
             factoryMock.Object,
             null,
             null,
-            Array.Empty<Mud.Feishu.Abstractions.IFeishuEventInterceptor>(),
-            new FeishuWebSocketOptions { EnableLogging = false });
+            new FeishuWebSocketOptions { EnableLogging = false },
+            null);
 
         var message = """
         {

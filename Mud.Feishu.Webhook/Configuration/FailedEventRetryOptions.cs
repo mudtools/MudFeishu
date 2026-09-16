@@ -63,6 +63,9 @@ public class FailedEventRetryOptions
         if (RetryDelayMultiplier < 1.0)
             throw new InvalidOperationException("RetryDelayMultiplier 必须大于等于 1.0");
 
+        if (RetryDelayMultiplier > 100.0)
+            throw new InvalidOperationException("RetryDelayMultiplier 过大（>100），指数退避将在两次重试后即达上限，请检查配置");
+
         if (MaxRetryDelaySeconds < InitialRetryDelaySeconds)
             throw new InvalidOperationException("MaxRetryDelaySeconds 必须大于等于 InitialRetryDelaySeconds");
 
@@ -76,7 +79,7 @@ public class FailedEventRetryOptions
         {
             // 当 EnableRetry=false 时，执行宽松验证而不是严格异常
             // 这允许在配置热更新或动态切换时更灵活的处理
-            
+
             // 仅验证基本范围，不强制要求等于默认值，保持配置一致性
             // 实际应用中这些配置不会生效，但保持合理的值有助于配置维护
         }

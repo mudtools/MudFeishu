@@ -2,8 +2,11 @@
 //  作者：Mud Studio  版权所有 (c) Mud Studio 2026
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
-//  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
+//  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！
+//  本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
+
+using System.Collections.Concurrent;
 
 namespace Mud.Feishu.Webhook;
 
@@ -14,7 +17,13 @@ namespace Mud.Feishu.Webhook;
 /// <typeparam name="T">注册的类型标记接口（如 IFeishuEventHandler、IFeishuEventInterceptor）</typeparam>
 public class FeishuWebhookTypeRegistry<T>
 {
-    private readonly Dictionary<string, List<Type>> _registry = new();
+    private readonly ConcurrentDictionary<string, List<Type>> _registry = new();
+    private volatile bool _isFrozen;
+
+    /// <summary>
+    /// 冻结注册表，冻结后 Register 将抛出 InvalidOperationException
+    /// </summary>
+    public void Freeze() => _isFrozen = true;
 
     /// <summary>
     /// 注册类型
@@ -26,12 +35,15 @@ public class FeishuWebhookTypeRegistry<T>
         if (string.IsNullOrEmpty(appKey))
             throw new ArgumentException("应用键不能为空", nameof(appKey));
 
-        if (!_registry.ContainsKey(appKey))
-        {
-            _registry[appKey] = new List<Type>();
-        }
+        if (_isFrozen)
+            throw new InvalidOperationException("注册表已冻结，不允许运行时热注册");
 
-        _registry[appKey].Add(type);
+        var list = _registry.GetOrAdd(appKey, _ => new List<Type>());
+        lock (list)
+        {
+            if (!list.Contains(type))
+                list.Add(type);
+        }
     }
 
     /// <summary>
@@ -43,7 +55,10 @@ public class FeishuWebhookTypeRegistry<T>
     {
         if (_registry.TryGetValue(appKey, out var types))
         {
-            return types.AsReadOnly();
+            lock (types)
+            {
+                return types.ToArray();
+            }
         }
         return Array.Empty<Type>();
     }
@@ -54,7 +69,7 @@ public class FeishuWebhookTypeRegistry<T>
     /// <returns>应用键列表</returns>
     public virtual IReadOnlyList<string> GetAllAppKeys()
     {
-        return _registry.Keys.ToList().AsReadOnly();
+        return _registry.Keys.ToArray();
     }
 
     /// <summary>
@@ -64,6 +79,6 @@ public class FeishuWebhookTypeRegistry<T>
     /// <returns>是否已注册</returns>
     public virtual bool HasAny(string appKey)
     {
-        return _registry.ContainsKey(appKey) && _registry[appKey].Count > 0;
+        return _registry.TryGetValue(appKey, out var list) && list.Count > 0;
     }
 }

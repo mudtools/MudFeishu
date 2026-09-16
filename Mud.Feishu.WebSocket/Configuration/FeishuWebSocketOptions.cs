@@ -18,6 +18,23 @@ public class FeishuWebSocketOptions
     private int _maxReconnectDelayMs = 30000;
     private int _healthCheckIntervalMs = 60000;
     private int _messageHandlerTimeoutMs = 30000; // 默认消息处理超时30秒
+    private int _authTimeoutMs = DefaultAuthTimeoutMs;
+
+    /// <summary>
+    /// 认证响应超时的默认值（毫秒）：30 秒。
+    /// </summary>
+    public const int DefaultAuthTimeoutMs = 30000;
+
+    /// <summary>
+    /// 认证响应超时时间（毫秒），默认为 30000 毫秒（30 秒）。
+    /// <para>P0-3 修复引入：此前认证等待没有生效的超时通道，服务端不应答时会永久挂起。
+    /// 设为 0 时回退到 <see cref="DefaultAuthTimeoutMs"/>。</para>
+    /// </summary>
+    public int AuthTimeoutMs
+    {
+        get => _authTimeoutMs;
+        set => _authTimeoutMs = value <= 0 ? DefaultAuthTimeoutMs : value;
+    }
 
     /// <summary>
     /// 飞书应用 AppKey，用于指标维度区分。
@@ -34,6 +51,14 @@ public class FeishuWebSocketOptions
     /// 设为 0 表示无限重连（仅受 MaxTotalReconnectTime 限制）。
     /// </summary>
     public int MaxReconnectAttempts { get; set; } = 5;
+
+    /// <summary>
+    /// 认证最大重试次数，默认为 5 次。
+    /// <para>P2-14 修复：此前认证重试次数直接复用 <see cref="MaxReconnectAttempts"/>，
+    /// 造成"无限重连"配置（=0）连带把认证也变成无限重试。
+    /// 设为 0 表示无限重试（仍受 <see cref="AuthTimeoutMs"/> 与认证冷却期约束）。</para>
+    /// </summary>
+    public int MaxAuthRetryAttempts { get; set; } = 5;
 
     /// <summary>
     /// 重连延迟时间（毫秒），默认为5000毫秒，最小为1000毫秒
@@ -123,6 +148,20 @@ public class FeishuWebSocketOptions
     }
 
     /// <summary>
+    /// 认证闸门的等待上限（毫秒），默认为 0（关闭闸门，保持历史行为）。
+    /// <para>P1-14 修复引入：WebSocket 接收循环在认证完成前即已启动，
+    /// 服务端若在认证完成前下发业务帧，会被当作合法事件分发。
+    /// 设为大于 0 的值时，二进制业务帧会等待认证完成（最多该时长）后再处理，超时则丢弃。
+    /// 默认 0 表示不做等待，以避免改变既有行为。</para>
+    /// </summary>
+    public int AuthGateTimeoutMs
+    {
+        get => _authGateTimeoutMs;
+        set => _authGateTimeoutMs = Math.Max(0, value);
+    }
+    private int _authGateTimeoutMs = 0;
+
+    /// <summary>
     /// 是否允许不安全的 WebSocket 连接（ws://），默认为 false。
     /// 生产环境应始终使用 wss://，仅在开发/测试环境启用此项。
     /// </summary>
@@ -180,6 +219,22 @@ public class FeishuWebSocketOptions
 
         if (InitialReceiveBufferSize < 1024)
             throw new InvalidOperationException("InitialReceiveBufferSize必须至少为1024字节");
+
+        // P2-13 修复：补齐此前缺失的边界校验
+        if (InitialReceiveBufferSize > 1024 * 1024)
+            throw new InvalidOperationException("InitialReceiveBufferSize不应超过1MB，过大将造成不必要的内存占用");
+
+        if (MaxTotalReconnectTime <= TimeSpan.Zero)
+            throw new InvalidOperationException("MaxTotalReconnectTime必须大于0");
+
+        if (ReconnectCooldownTime < TimeSpan.Zero)
+            throw new InvalidOperationException("ReconnectCooldownTime不能为负数");
+
+        if (MaxAuthRetryAttempts < 0)
+            throw new InvalidOperationException("MaxAuthRetryAttempts必须大于等于0");
+
+        if (MessageSizeLimits == null)
+            MessageSizeLimits = new MessageSizeLimits();
 
         if (HeartbeatIntervalMs < 5000)
             throw new InvalidOperationException("HeartbeatIntervalMs必须至少为5000毫秒");

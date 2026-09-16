@@ -33,6 +33,87 @@ dotnet format Mud.Feishu.slnx
 
 Project uses `.editorconfig` for code style. `TreatWarningsAsErrors` is disabled.
 
+## Quality Gate
+
+```bash
+pwsh ./scripts/verify-build.ps1                  # Full gate (build + diagnostics + tests + format)
+pwsh ./scripts/verify-build.ps1 -ClearStaleCache # Also auto-clear a stale Mud.HttpUtils package cache
+pwsh ./scripts/verify-build.ps1 -CacheCheckOnly  # Step 0 only (used by CI before restore)
+pwsh ./scripts/verify-build.ps1 -StrictFormat    # Promote format diffs to a gate failure
+```
+
+The gate enforces: 0 build errors, 0 `CS1750`, 0 `NU1603` (version drift), and 0
+`HTTPCLIENT0xx` / `MUD001-002` / `FORM0xx` / `AOT001-007` diagnostics.
+
+Step 3 (`AotStrictMode` smoke, net8.0) builds the **9 source projects one by one** — never the whole
+solution with `-f net8.0`: `Demos/` contains single-TFM projects (net9.0 / net10.0) that make MSBuild
+fail with `NETSDK1005`. The step asserts **0 build errors** *and* `AOT00x` / `IL2026` / `IL3050` = 0 —
+asserting only the diagnostic counts is a false green when the build itself fails.
+
+CI runs the same checks: `Restore dependencies` is preceded by `-CacheCheckOnly`, and the `Build` log is
+asserted for the diagnostic whitelist afterwards (`.github/workflows/dotnet-publish.yml`).
+
+## Dependency version policy (Mud.HttpUtils)
+
+This repo consumes `Mud.HttpUtils` from a **local folder source** (`nuget.config` ->
+`D:/Repos/MudHttpUtils/artifacts`). The currently pinned version is **2.0.5**.
+
+**Always bump the component version when packing.** NuGet keys the global package cache by
+`id + version`, so re-packing under the *same* version does **not** invalidate the
+downstream cache. Symptom: the component source is already fixed, but the build still fails
+with `CS1750`. This anti-pattern occurred three times during 2.0.4
+(23:16 / 20:59 / 21:23 re-packs), each polluting every downstream cache.
+
+When you must refresh the cache manually (local component development), do it as a
+three-step sequence:
+
+```bash
+dotnet nuget locals global-packages --clear
+dotnet clean  Mud.Feishu.slnx -c Release
+dotnet build  Mud.Feishu.slnx -c Release
+```
+
+The clean step is **mandatory**. An incremental build after a cache refresh leaves old
+component assemblies next to new ones, which surfaces at runtime as:
+
+```
+System.TypeLoadException : Method 'set_Current' in type '...' does not have an implementation.
+```
+
+(Observed: 54 test failures from a stale incremental build; all green after `dotnet clean`.)
+
+`scripts/verify-build.ps1` detects the stale cache (step 0, SHA256 comparison) and runs
+`dotnet clean` automatically when it clears the cache (`-ClearStaleCache`).
+
+## Target Frameworks
+
+`netstandard2.0`, `net6.0`, `net8.0` (recommended), `net10.0`
+
+Use conditional compilation: `#if NET7_0_OR_GREATER` for framework-specific code.
+
+Notes:
+
+- `IsAotCompatible` / AOT analyzers are enabled only for `net8.0+` (`Directory.Build.props`).
+  `AOT006` is suppressed for `netstandard2.0` / `net6.0`, where the source-generated
+  `JsonSerializerContext` files are not compiled.
+- `IL2026` / `IL3050` must stay at **0** (`-p:AotStrictMode=true` is part of the quality gate).
+  Rules for keeping it that way:
+  - **Never** call the reflection `JsonSerializer.Serialize<TValue>(TValue, JsonSerializerOptions)` /
+    `Deserialize<TValue>(string, JsonSerializerOptions)` overloads. Use
+    `Mud.Feishu.Abstractions.Utilities.FeishuJsonAot.Serialize/Deserialize` instead — it resolves
+    `JsonTypeInfo` from the options on net8+ (AOT-safe) and transparently falls back to the
+    reflection overload only when `options.TypeInfoResolver` is `null` (where the AOT path is
+    impossible anyway).
+  - Configuration binding is source-generated
+    (`EnableConfigurationBindingGenerator=true`). Consequence: **configuration DTOs must not use
+    `required`** — the generator constructs via `new T()` and emits `CS9035` otherwise. Validate in a
+    `Validate()` method instead (see `FeishuAppConfig`).
+  - `UnconditionalSuppressMessageAttribute` is `internal` on `net10.0` and cannot be referenced from
+    user code; use `#pragma warning disable IL2026, IL3050` with a justification comment.
+- `Tests/Directory.Build.props` and `Demos/Directory.Build.props` **shadow** the root
+  `Directory.Build.props`. Any governance property (e.g. `WarningsAsErrors`) must be
+  repeated there, otherwise tests/demos become gate blind spots.
+
 ## Project Structure
 
 ```
@@ -123,6 +204,21 @@ public class DefaultFeishuEventHandler : IFeishuEventHandler
 ### Documentation
 
 - Use XML documentation for public APIs with `<summary>`, `<param>`, `<returns>`, `<exception>` tags
+- 文件下载类接口（返回 `Task<byte[]?>`）必须声明 `<exception cref="ApiException">`，
+  并说明「HTTP 200 + JSON 错误体」这一残余风险（参见 `documents/ErrorHandling.md`）
+
+### 接口查询参数规范（API-2）
+
+**仅对新增接口生效，不迁移存量接口**（改造 259 个接口的公共签名收益不成比例）。
+
+- 查询参数 ≥ 6 个时，优先采用**查询对象模式**：定义一个实现 `Mud.HttpUtils.IQueryParameter`
+  的 DTO，接口签名写 `[Query] MyQuery query`。
+  - 生成器会识别 `IQueryParameter` 实现并调用 `ToQueryParameters()` 整体展开
+    （`Mud.HttpUtils.Generator/Generators/Implementation/Binders/QueryParameterBinder.cs`），
+    不会把 DTO 序列化成单个查询值；该类型也不会触发 AOT005（不涉及 JSON 序列化）。
+  - 收益：飞书新增可选参数时只改 DTO，接口签名与调用方不变。
+- 参数 < 6 个时继续使用逐参 `[Query("name")]` 绑定，保持与存量接口一致的风格。
+- 接口文档（`documents/`）需同步给出 DTO 的字段与对应查询参数名。
 
 ## Test Guidelines
 

@@ -88,9 +88,17 @@ public class RedisUserTokenStore : UserTokenStoreBase
         foreach (var key in keys)
         {
             var keyStr = key.ToString();
-            var parts = keyStr.Substring(prefixLength).Split(':');
-            if (parts.Length >= 2)
-                tokenTypes.Add(parts[0]);
+
+            // TM-04 修复（与 RedisTokenStore.GetTokenTypesAsync 对齐）：
+            // tokenType 可能自带 ':'（如 "tenant:cli_xxx"），不能用 Split(':') 取首段。
+            // 键布局为 {prefix}:user:{userId}:{tokenType}:access，故剥离前缀后去掉结尾 ":access" 即为 tokenType。
+            const string accessSuffix = ":access";
+            if (!keyStr.EndsWith(accessSuffix, StringComparison.Ordinal))
+                continue;
+
+            var tokenType = keyStr.Substring(prefixLength, keyStr.Length - prefixLength - accessSuffix.Length);
+            if (tokenType.Length > 0)
+                tokenTypes.Add(tokenType);
         }
 
         return tokenTypes.Distinct();

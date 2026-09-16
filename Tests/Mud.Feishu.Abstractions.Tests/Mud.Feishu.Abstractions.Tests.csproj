@@ -8,6 +8,7 @@
     <ProjectReference Include="..\..\Mud.Feishu.Abstractions\Mud.Feishu.Abstractions.csproj" />
     <ProjectReference Include="..\..\Mud.Feishu\Mud.Feishu.csproj" />
     <ProjectReference Include="..\..\Mud.Feishu.Authentication\Mud.Feishu.Authentication.csproj" />
+    <ProjectReference Include="..\..\Mud.Feishu.EventCallback\Mud.Feishu.EventCallback.csproj" />
   </ItemGroup>
 
 </Project>

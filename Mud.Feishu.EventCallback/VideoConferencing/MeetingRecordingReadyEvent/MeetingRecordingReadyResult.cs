@@ -16,6 +16,7 @@ namespace Mud.Feishu.EventCallback.VideoConferencing;
 /// </summary>
 [GenerateEventHandler(EventType = FeishuEventTypes.MeetingRecordingReady, HandlerNamespace = Consts.HandlerNamespace,
               InheritedFrom = Consts.InheritedFrom, HeaderType = nameof(FeishuEventHeader))]
+[HttpJsonSerializable(SerializerClassName = "VideoConferencing")]
 public class MeetingRecordingReadyResult : IEventResult
 {
     /// <summary>

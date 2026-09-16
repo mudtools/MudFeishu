@@ -6,6 +6,7 @@
 // -----------------------------------------------------------------------
 
 using Microsoft.Extensions.Logging;
+using Mud.Feishu.Abstractions.Utilities;
 using Mud.Feishu.DataModels.WsEndpoint;
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
@@ -96,7 +97,7 @@ public static class FrameBuilder
         try
         {
             var json = Encoding.UTF8.GetString(frame.Payload);
-            var config = JsonSerializer.Deserialize<ClientConfigInfo>(json, JsonOptions.Default);
+            var config = FeishuJsonAot.Deserialize<ClientConfigInfo>(json, JsonOptions.Default);
             if (config != null)
             {
                 logger?.LogDebug("成功解析 ClientConfig: PingInterval={PingInterval}s, ReconnectCount={ReconnectCount}, ReconnectInterval={ReconnectInterval}s, ReconnectNonce={ReconnectNonce}s",

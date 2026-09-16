@@ -6,6 +6,7 @@
 // -----------------------------------------------------------------------
 
 using Microsoft.Extensions.DependencyInjection;
+using Mud.Feishu.Abstractions.Tests.Helpers;
 
 namespace Mud.Feishu.Abstractions.Tests.Extensions;
 
@@ -24,6 +25,20 @@ public class FeishuServiceCollectionBuilderExtensionsTests
         // Arrange
         var services = new ServiceCollection();
         var modules = new[] { FeishuModule.Organization };
+
+        // FeishuServiceBuilder.Build() 会做启动期依赖校验（NEW-SR-08）：
+        // 未调用 AddFeishuApp 注册 IFeishuAppManager 时直接抛 InvalidOperationException。
+        // 原夹具省略了这一步，属于夹具缺陷而非产品缺陷，此处补齐前置注册。
+        services.AddFeishuApp(new List<FeishuAppConfig>
+        {
+            new()
+            {
+                AppKey = TestDataFactory.AppConfigs.AppKeys.Default,
+                AppId = TestDataFactory.AppConfigs.AppIds.Default,
+                AppSecret = TestDataFactory.AppConfigs.Secrets.Valid,
+                IsDefault = true
+            }
+        });
 
         // Act
         services.AddFeishuServices(modules);

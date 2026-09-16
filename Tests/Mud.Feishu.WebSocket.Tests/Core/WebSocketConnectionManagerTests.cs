@@ -15,6 +15,7 @@ namespace Mud.Feishu.WebSocket.Tests.Core;
 /// <summary>
 /// WebSocketConnectionManager 单元测试
 /// </summary>
+[Collection("WebSocketConnectionManager")]
 public class WebSocketConnectionManagerTests
 {
     private readonly Mock<ILogger<WebSocketConnectionManager>> _loggerMock;

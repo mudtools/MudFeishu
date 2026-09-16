@@ -11,6 +11,7 @@ namespace Mud.Feishu.EventCallback.VideoConferencing;
 /// <summary>
 /// 会议室层级
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "VideoConferencing")]
 public class RoomLevel
 {
     /// <summary>

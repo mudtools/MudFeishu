@@ -5,6 +5,7 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using System.ComponentModel;
 using Mud.Feishu.Abstractions.Utilities;
 
 namespace Mud.Feishu.Abstractions;
@@ -25,12 +26,10 @@ public class FeishuAppConfig
     /// 示例值: "default", "hr-app", "approval-app"
     /// 用于在代码中通过名称引用特定应用，不与飞书平台关联。
     /// </remarks>
-    public
-#if NET7_0_OR_GREATER
-        required
-#endif
-  string AppKey
-    { get; set; } = string.Empty;
+    // AOT-3：此处**不使用** required。ConfigurationBinder 的源生成器以 new T() 构造实例，
+    // 无法满足 required 成员（会生成 CS9035 导致编译失败），因此 required 与 AOT 安全的配置绑定
+    // 本质不兼容。非空/格式校验统一由 Validate() 承担（AddFeishuApp / FeishuAppManager.AddApp 均会调用）。
+    public string AppKey { get; set; } = string.Empty;
 
     /// <summary>
     /// 飞书应用ID
@@ -39,12 +38,8 @@ public class FeishuAppConfig
     /// 示例值: "cli_a1b2c3d4e5f6g7h8"
     /// 在飞书开放平台创建应用后获得，用于标识你的飞书应用。
     /// </remarks>
-    public
-#if NET7_0_OR_GREATER
-        required
-#endif
-  string AppId
-    { get; set; } = string.Empty;
+    /// <inheritdoc cref="AppKey" />
+    public string AppId { get; set; } = string.Empty;
 
     /// <summary>
     /// 飞书应用密钥
@@ -54,12 +49,8 @@ public class FeishuAppConfig
     /// 在飞书开放平台创建应用后获得，用于应用身份验证。
     /// 请妥善保管，不要在代码中硬编码或提交到版本控制系统。
     /// </remarks>
-    public
-#if NET7_0_OR_GREATER
-        required
-#endif
-  string AppSecret
-    { get; set; } = string.Empty;
+    /// <inheritdoc cref="AppKey" />
+    public string AppSecret { get; set; } = string.Empty;
 
     /// <summary>
     /// API基础地址

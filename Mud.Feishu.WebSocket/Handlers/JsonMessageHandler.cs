@@ -7,6 +7,7 @@
 
 using Microsoft.Extensions.Logging;
 using System.Diagnostics.CodeAnalysis;
+using Mud.Feishu.Abstractions.Utilities;
 using System.Text.Json;
 
 namespace Mud.Feishu.WebSocket.Handlers;
@@ -22,11 +23,6 @@ public abstract class JsonMessageHandler : IMessageHandler
     protected readonly ILogger _logger;
 
     /// <summary>
-    /// Json序列化选项
-    /// </summary>
-    protected readonly JsonSerializerOptions _jsonOptions;
-
-    /// <summary>
     /// 默认的构造函数
     /// </summary>
     /// <param name="logger">日志记录器</param>
@@ -34,7 +30,6 @@ public abstract class JsonMessageHandler : IMessageHandler
     protected JsonMessageHandler(ILogger logger)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _jsonOptions = JsonOptions.Default;
     }
 
     /// <inheritdoc/>
@@ -65,7 +60,8 @@ public abstract class JsonMessageHandler : IMessageHandler
     {
         try
         {
-            return JsonSerializer.Deserialize<T>(json, _jsonOptions);
+            // 使用 getter 实时获取最新的反序列化选项，确保 resolver 链变更已传播
+            return FeishuJsonAot.Deserialize<T>(json, JsonOptions.Deserializer);
         }
         catch (JsonException ex)
         {

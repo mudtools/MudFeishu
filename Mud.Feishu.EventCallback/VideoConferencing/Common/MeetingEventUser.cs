@@ -10,6 +10,7 @@ namespace Mud.Feishu.EventCallback.VideoConferencing;
 /// <summary>
 /// 事件操作人
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "VideoConferencing")]
 public class MeetingEventUser
 {
     /// <summary>

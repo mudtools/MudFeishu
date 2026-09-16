@@ -211,7 +211,8 @@ public class BugFixValidationTests
             _logger,
             _eventHandlerFactoryMock.Object,
             loggerFactory,
-            null,
-            _options);
+            eventDeduplicator: null,
+            interceptors: null,
+            options: _options);
     }
 }

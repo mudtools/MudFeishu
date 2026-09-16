@@ -167,9 +167,9 @@ public abstract class IdempotentFeishuEventHandler<T, THeader> : IdempotentFeish
 
         try
         {
-            var json = JsonSerializer.Serialize(eventData.Header, FeishuJsonDefaults.SerializerOptions);
+            var json = FeishuJsonAot.Serialize(eventData.Header, FeishuJsonDefaults.SerializerOptions);
 
-            return JsonSerializer.Deserialize<THeader>(json, FeishuJsonDefaults.DeserializerOptions);
+            return FeishuJsonAot.Deserialize<THeader>(json, FeishuJsonDefaults.DeserializerOptions);
         }
         catch (JsonException ex)
         {

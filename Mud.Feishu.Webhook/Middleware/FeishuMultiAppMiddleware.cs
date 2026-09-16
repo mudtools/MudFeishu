@@ -7,6 +7,9 @@
 
 using Mud.Feishu.Abstractions;
 using Mud.Feishu.Abstractions.Metrics;
+// 使用类型别名而非命名空间 using：Mud.Feishu.Abstractions.Utilities 与 Mud.Feishu.Webhook.Serialization
+// 都存在 FeishuJsonContext，直接引入命名空间会造成 CS0104 二义性。
+using FeishuJsonAot = Mud.Feishu.Abstractions.Utilities.FeishuJsonAot;
 using Mud.Feishu.Abstractions.Observability;
 using Mud.Feishu.Webhook.Configuration;
 using Mud.Feishu.Webhook.Exceptions;
@@ -559,7 +562,7 @@ public class FeishuMultiAppMiddleware
 
         RequestIdHelper.AddRequestIdToResponse(context);
 
-        var json = JsonSerializer.Serialize(data, FeishuJsonOptions.Serialize);
+        var json = FeishuJsonAot.Serialize(data, FeishuJsonOptions.Serialize);
         await context.Response.WriteAsync(json);
     }
 
@@ -590,7 +593,7 @@ public class FeishuMultiAppMiddleware
             }
         };
 
-        var json = JsonSerializer.Serialize(errorResponse, FeishuJsonOptions.Serialize);
+        var json = FeishuJsonAot.Serialize(errorResponse, FeishuJsonOptions.Serialize);
         await context.Response.WriteAsync(json);
     }
 }

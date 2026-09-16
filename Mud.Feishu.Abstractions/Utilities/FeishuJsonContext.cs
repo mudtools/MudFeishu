@@ -22,6 +22,7 @@ namespace Mud.Feishu.Abstractions.Utilities;
     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
     GenerationMode = JsonSourceGenerationMode.Metadata)]
 [JsonSerializable(typeof(EventData))]
+[JsonSerializable(typeof(FeishuEventHeader))]    // P0-2: 新增事件头注册
 [JsonSerializable(typeof(JsonElement))]
 [JsonSerializable(typeof(JsonDocument))]
 public partial class FeishuJsonContext : JsonSerializerContext

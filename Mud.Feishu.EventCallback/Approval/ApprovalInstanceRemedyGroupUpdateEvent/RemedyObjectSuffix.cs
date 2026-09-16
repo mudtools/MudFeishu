@@ -10,6 +10,7 @@ namespace Mud.Feishu.EventCallback.Approval;
 /// <summary>
 /// 补卡审批事件详细信息
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Approval")]
 public class RemedyObjectSuffix
 {
     /// <summary>

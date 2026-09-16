@@ -12,7 +12,8 @@ namespace Mud.Feishu.DataModels.TasksSections;
 /// <summary>
 /// <para>自定义分组数据</para>
 /// </summary>
-[HttpJsonSerializable(SerializerClassName = "Task")]
+// 开放泛型不能被 JsonSerializerContext 覆盖（SYSLIB1030），不标注 [HttpJsonSerializable]；
+// 由闭合子类 TaskSectionsInfo / TaskSectionsUpdateInfo 标注，二者已在 TaskJsonContext 中覆盖。
 public class TaskSectionsInfo<T>
     where T : TaskMember
 {

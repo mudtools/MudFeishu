@@ -11,6 +11,7 @@ namespace Mud.Feishu.EventCallback.Approval;
 /// <summary>
 /// 出差事件详细信息。
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Approval")]
 public class TripObjectSuffix
 {
     /// <summary>

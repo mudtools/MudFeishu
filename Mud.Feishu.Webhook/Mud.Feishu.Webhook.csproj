@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
 		<TargetFrameworks>netstandard2.0;net6.0;net8.0;net10.0</TargetFrameworks>
 		<ImplicitUsings>enable</ImplicitUsings>
@@ -9,7 +9,6 @@
 		<PackageProjectUrl>http://www.mudtools.cn/</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/mudtools/MudFeishu</RepositoryUrl>
 		<RepositoryType>git</RepositoryType>
-		<IsAotCompatible>true</IsAotCompatible>
 		<PackageIcon>Icon.png</PackageIcon>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<Description>适用于 .NET 全平台的飞书 Webhook 事件订阅组件，提供开箱即用的客户端实现，基于策略模式构建可扩展的事件处理机制，帮助开发者在 .NET 应用中便捷、可靠地接收和处理飞书实时事件。</Description>
@@ -31,10 +30,13 @@
 		<PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" Version="8.0.1" />
 	</ItemGroup>
 
-	<ItemGroup>
+	<!-- P2 4.2.1：netstandard2.0 保留旧包；net6.0+ 使用 FrameworkReference（与 Authentication 项目对齐） -->
+	<ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
 		<PackageReference Include="Microsoft.AspNetCore.Http" Version="2.3.9" />
 		<PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.3.9" />
-		<!-- <PackageReference Include="Mud.Feishu.Abstractions" Version="1.1.2" /> -->
+	</ItemGroup>
+	<ItemGroup Condition="'$(TargetFramework)' != 'netstandard2.0'">
+		<FrameworkReference Include="Microsoft.AspNetCore.App" />
 	</ItemGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\Mud.Feishu.Abstractions\Mud.Feishu.Abstractions.csproj" />

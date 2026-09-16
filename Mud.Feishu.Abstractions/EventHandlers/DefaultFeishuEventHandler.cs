@@ -123,7 +123,7 @@ public abstract class DefaultFeishuEventHandler<T> : IFeishuEventHandler
             }
             else
             {
-                eventJson = JsonSerializer.Serialize(eventData.Event, FeishuJsonDefaults.SerializerOptions);
+                eventJson = FeishuJsonAot.Serialize(eventData.Event, FeishuJsonDefaults.SerializerOptions);
             }
 
             if (string.IsNullOrWhiteSpace(eventJson))
@@ -136,7 +136,7 @@ public abstract class DefaultFeishuEventHandler<T> : IFeishuEventHandler
                 return default;
             }
 
-            var result = JsonSerializer.Deserialize<T>(eventJson!, FeishuJsonDefaults.DeserializerOptions);
+            var result = FeishuJsonAot.Deserialize<T>(eventJson, FeishuJsonDefaults.DeserializerOptions);
             return result ?? default;
         }
         catch (JsonException ex)

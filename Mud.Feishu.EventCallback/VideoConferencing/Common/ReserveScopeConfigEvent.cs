@@ -11,6 +11,7 @@ namespace Mud.Feishu.EventCallback.VideoConferencing;
 /// <summary>
 /// 预定范围设置
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "VideoConferencing")]
 public class ReserveScopeConfigEvent
 {
     /// <summary>
@@ -42,6 +43,7 @@ public class ReserveScopeConfigEvent
 /// <summary>
 /// 可预定部门列表
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "VideoConferencing")]
 public class SubscribeDepartment
 {
     /// <summary>

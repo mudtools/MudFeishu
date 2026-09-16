@@ -67,8 +67,8 @@ namespace Mud.Feishu.DataModels.Messages;
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Messages.ReadMessageUser))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Messages.ReceiveMessageResult))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Messages.ThreadResult))]
-[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Messages.UploadImageRequest))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Messages.UploadMessageFileRequest))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Messages.UploadImageRequest))]
 internal partial class MessagesJsonContext : JsonSerializerContext
 {
 }

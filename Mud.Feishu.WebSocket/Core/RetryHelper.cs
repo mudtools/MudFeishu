@@ -14,7 +14,15 @@ namespace Mud.Feishu.WebSocket;
 /// </summary>
 public static class RetryHelper
 {
-    private static readonly Random JitterRandom = new();
+#if NET6_0_OR_GREATER
+    private static Random JitterRandom => Random.Shared;
+#else
+    // netstandard2.0 无 Random.Shared；Random 实例非线程安全，
+    // 共享静态实例在并发调用下会损坏内部状态并持续返回 0（P2-5）。
+    [ThreadStatic]
+    private static Random? _jitterRandom;
+    private static Random JitterRandom => _jitterRandom ??= new Random(Guid.NewGuid().GetHashCode());
+#endif
 
     /// <summary>
     /// 重试执行异步操作，使用指数退避策略和随机抖动。
@@ -27,6 +35,10 @@ public static class RetryHelper
         string operationName,
         CancellationToken cancellationToken)
     {
+        // 负的重试次数无意义，钳制为 0（至少执行一次操作）
+        if (maxRetries < 0)
+            maxRetries = 0;
+
         for (int i = 0; i <= maxRetries; i++)
         {
             try
@@ -45,9 +57,12 @@ public static class RetryHelper
 
                 await Task.Delay(delay, cancellationToken);
             }
+            // P2-5 修复：for 循环最后一次迭代（i == maxRetries）失败时，
+            // catch 过滤器 when (i < maxRetries) 不成立，异常会直接抛出，
+            // 因此循环后的这行代码在正常情况下不可达，予以移除。
         }
 
         logger.LogError("{OperationName}失败，已达到最大重试次数 {MaxRetries}", operationName, maxRetries + 1);
-        return await operation();
+        throw new InvalidOperationException($"{operationName}失败，已达到最大重试次数 {maxRetries + 1}");
     }
 }

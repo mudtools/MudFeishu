@@ -11,6 +11,7 @@ namespace Mud.Feishu.EventCallback.VideoConferencing;
 /// <summary>
 /// 
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "VideoConferencing")]
 public class MeetingSecuritySetting
 {
     /// <summary>

@@ -7,6 +7,7 @@
 
 using Microsoft.Extensions.Logging;
 using Mud.Feishu.Abstractions.Metrics;
+using Mud.Feishu.Abstractions.Utilities;
 using Mud.Feishu.WebSocket.DataModels;
 using Mud.Feishu.WebSocket.SocketEventArgs;
 using System.Diagnostics.CodeAnalysis;
@@ -23,7 +24,8 @@ public class AuthenticationManager
     private readonly Func<string, Task> _sendMessageCallback;
     private readonly SessionManager? _sessionManager;
     private readonly Random _random = new();
-    private bool _isAuthenticated = false;
+    // P2-6 修复：该字段由接收线程写、由业务线程读，必须保证可见性
+    private volatile bool _isAuthenticated = false;
     private readonly FeishuWebSocketOptions _options;
     private readonly SemaphoreSlim _authLock = new(1, 1);
     private int _authRetryCount = 0;
@@ -112,12 +114,13 @@ public class AuthenticationManager
             }
 
             // 使用指数退避策略重试认证
-            // MaxReconnectAttempts = 0 表示无限重试（仅受外部 CancellationToken 限制）
-            var maxRetries = _options.MaxReconnectAttempts;
-            var isInfiniteRetry = maxRetries == 0;
-            if (isInfiniteRetry)
+            // P2-14 修复：认证重试次数使用独立的 MaxAuthRetryAttempts，
+            // 不再复用 MaxReconnectAttempts（该配置语义为"重连次数"，复用会导致
+            // "无限重连"配置连带把认证也变成无限重试）。
+            var maxRetries = _options.MaxAuthRetryAttempts;
+            if (maxRetries == 0)
             {
-                maxRetries = int.MaxValue; // 转换为无限循环
+                maxRetries = int.MaxValue; // 0 表示无限重试（仅受外部 CancellationToken 与冷却期限制）
             }
 
             for (int attempt = 0; attempt <= maxRetries; attempt++)
@@ -136,6 +139,16 @@ public class AuthenticationManager
 
                     // 记录认证失败
                     RecordAuthFailure(appAccessToken);
+
+                    // P1-13 修复：冷却期必须在重试循环内部重新检查。
+                    // 此前只在 AuthenticateAsync 入口检查一次，导致 MaxAuthRetryAttempts=0（无限重试）时
+                    // 冷却期被设置却永不生效，退化为永久无效重试风暴。
+                    if (IsInAuthCooldown(appAccessToken))
+                    {
+                        var cooldownRemaining = GetAuthCooldownRemaining(appAccessToken);
+                        _logger.LogWarning("认证失败次数已达阈值，进入冷却期，剩余时间: {CooldownRemaining}", cooldownRemaining);
+                        throw new InvalidOperationException($"认证失败过多，请在 {cooldownRemaining:mm\\:ss} 后重试", ex);
+                    }
 
                     // 计算退避延迟时间：baseDelay * (2^attempt)，最大不超过 MaxReconnectDelayMs
                     var baseDelay = TimeSpan.FromMilliseconds(_options.ReconnectDelayMs);
@@ -194,7 +207,7 @@ public class AuthenticationManager
                 }
             };
 
-            var authJson = JsonSerializer.Serialize(authMessage, JsonOptions.Default);
+            var authJson = FeishuJsonAot.Serialize(authMessage, JsonOptions.Default);
 
             lock (_authCompletionLock)
             {
@@ -209,8 +222,24 @@ public class AuthenticationManager
                 _logger.LogInformation("已发送认证消息，等待响应...");
             }
 
+            // P0-3 修复：此前的实现创建了 cts 并 CancelAfter(30s)，但 _authCompletionSource.Task
+            // 与 cts 毫无关联，await 没有任何超时通道 —— 服务端不回应认证帧时会永久挂起，
+            // 进而让 StartAsync / ReconnectAsync 永久阻塞（并持有重连锁）。
+            // 现在通过 Register 将 cts 取消联动到 TCS，并让超时可配置。
+            var authTimeout = TimeSpan.FromMilliseconds(_options.AuthTimeoutMs > 0
+                ? _options.AuthTimeoutMs
+                : FeishuWebSocketOptions.DefaultAuthTimeoutMs);
+
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            cts.CancelAfter(TimeSpan.FromSeconds(30));
+            cts.CancelAfter(authTimeout);
+
+            using var timeoutRegistration = cts.Token.Register(() =>
+            {
+                lock (_authCompletionLock)
+                {
+                    _authCompletionSource?.TrySetCanceled(cts.Token);
+                }
+            });
 
             try
             {
@@ -222,7 +251,7 @@ public class AuthenticationManager
             }
             catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
             {
-                throw new TimeoutException("WebSocket认证响应超时（30秒）");
+                throw new TimeoutException($"WebSocket认证响应超时（{authTimeout.TotalSeconds}秒）");
             }
         }
         catch (Exception ex)
@@ -240,10 +269,11 @@ public class AuthenticationManager
 
             AuthenticationFailed?.Invoke(this, errorArgs);
 
-            // MaxReconnectAttempts = 0 表示无限重试，不抛出“达到最大重试次数”异常
-            if (_authRetryCount >= _options.MaxReconnectAttempts && _options.MaxReconnectAttempts > 0)
+            // P2-14 修复：使用独立的 MaxAuthRetryAttempts 判定
+            var maxAuthRetries = _options.MaxAuthRetryAttempts;
+            if (_authRetryCount >= maxAuthRetries && maxAuthRetries > 0)
             {
-                throw new InvalidOperationException($"WebSocket认证失败，已达到最大重试次数 {_options.MaxReconnectAttempts}", ex);
+                throw new InvalidOperationException($"WebSocket认证失败，已达到最大重试次数 {maxAuthRetries}", ex);
             }
 
             throw;
@@ -263,7 +293,8 @@ public class AuthenticationManager
     {
         try
         {
-            var authResponse = JsonSerializer.Deserialize<AuthResponseMessage>(responseMessage);
+            var authResponse = FeishuJsonAot.Deserialize<AuthResponseMessage>(
+                responseMessage, FeishuJsonDefaults.DeserializerOptions);
 
             if (authResponse?.Code == 0)
             {

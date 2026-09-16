@@ -10,6 +10,7 @@ namespace Mud.Feishu.EventCallback.Approval;
 /// <summary>
 /// 出差详细信息
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Approval")]
 public class Schedule
 {
     /// <summary>

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Directives xmlns="http://schemas.microsoft.com/netfx/2013/01/metadata">
+  <Application>
+    <!-- 兜底保留 FeishuApiResult 全系列（类型在 Abstractions 程序集） -->
+    <Type Name="Mud.Feishu.DataModels.FeishuApiResult" Dynamic="Required All" />
+    <Type Name="Mud.Feishu.DataModels.FeishuApiResult{T}" Dynamic="Required All" />
+    <Type Name="Mud.Feishu.DataModels.FeishuApiPageListResult{T}" Dynamic="Required All" />
+    <Type Name="Mud.Feishu.DataModels.FeishuApiPageListTotalResult{T}" Dynamic="Required All" />
+    <Type Name="Mud.Feishu.DataModels.FeishuApiListResult{T}" Dynamic="Required All" />
+    <Type Name="Mud.Feishu.DataModels.FeishuNullDataApiResult" Dynamic="Required All" />
+    <!-- 兜底保留 FeishuEventHeader 与 EventData（类型在 Abstractions 程序集） -->
+    <Type Name="Mud.Feishu.Abstractions.FeishuEventHeader" Dynamic="Required All" />
+    <Type Name="Mud.Feishu.Abstractions.EventData" Dynamic="Required All" />
+  </Application>
+</Directives>

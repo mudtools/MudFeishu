@@ -14,5 +14,6 @@
     <ProjectReference Include="..\..\Mud.Feishu\Mud.Feishu.csproj" />
     <ProjectReference Include="..\..\Mud.Feishu.Webhook\Mud.Feishu.Webhook.csproj" />
     <ProjectReference Include="..\..\Mud.Feishu.WebSocket\Mud.Feishu.WebSocket.csproj" />
+    <ProjectReference Include="..\..\Mud.Feishu.EventCallback\Mud.Feishu.EventCallback.csproj" />
   </ItemGroup>
 </Project>

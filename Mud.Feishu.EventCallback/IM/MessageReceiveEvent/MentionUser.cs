@@ -10,6 +10,7 @@ namespace Mud.Feishu.EventCallback.IM;
 /// <summary>
 /// 被提及用户
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "IM")]
 public class MentionUser
 {
 

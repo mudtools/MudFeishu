@@ -11,6 +11,7 @@ namespace Mud.Feishu.EventCallback.VideoConferencing;
 /// <summary>
 /// 预定审批设置
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "VideoConferencing")]
 public class ApprovalConfigEvent
 {
     /// <summary>

@@ -1,5 +1,62 @@
 # Mud.Feishu Change Log
 
+## [Unreleased]
+
+> Corresponds to M1–M5 of `.docs/MudHttpUtils-2.0.4-Repair-and-Enhancement-Plan.md` (Mud.HttpUtils upgraded to 2.0.5).
+> The project is not released yet, so the breaking changes below require no data migration.
+> See `CHANGELOG.md` for the full list.
+
+### ⚠️ Breaking Changes / Behavior Changes
+
+- **Redis token key layout changed (TOK-1)**: `PerAppRedisTokenStoreFactory` replaces
+  `SingletonFeishuTokenStoreFactory`; keys move from `feishu:token:*` to `feishu:{appKey}:token*`,
+  matching the in-memory layout. Previously all apps shared one key space and overwrote each other's
+  tokens (random 401s / crossed tokens).
+- **`FeishuAppConfig` no longer uses `required`**: configuration binding is now source-generated
+  (AOT-safe) and cannot satisfy `required` members. Validation is fully covered by
+  `FeishuAppConfig.Validate()`.
+- **Enhanced HttpClient assembly is now baseline-driven (ARC-2 Step 1)**: the client assembly in
+  `FeishuAppManager` starts from `IOptions<EnhancedHttpClientOptions>`, so the 10 fields that silently
+  fell back to defaults (plus `AppAccessAuthorizer` added in 2.0.5) now take effect.
+- **Configuration hot reload is enabled by default (ARC-1)**: `FeishuAppOptions.EnableConfigReload`
+  defaults to `true`. Set it to `false` to restore the previous "restart required" semantics.
+  Hot reload now also covers `BaseUrl` / `TimeOut` (ARC-7): an extra DI-aware
+  `IHttpClientBuilder.ConfigureHttpClient(IServiceProvider, HttpClient)` action reads the current
+  values from `IOptionsMonitor<List<FeishuAppConfig>>` on every `CreateClient`, so multi-region
+  switching (`open.feishu.cn` ↔ `open.larksuite.com`) no longer requires a process restart.
+- **NuGet package source locking (SEC-1)**: `nuget.config` now uses `<clear />` plus
+  `packageSourceMapping` (`Mud.HttpUtils*` mapped to both the local folder source and nuget.org,
+  local first). Note: `Mud.HttpUtils 2.0.5` is not published on nuget.org (highest is 2.0.2), so a
+  hosted CI runner cannot satisfy the exact version constraint (`NU1603` is promoted to an error in
+  this repo). This is a pre-existing issue - see COMP-5.
+
+### ✨ Added
+
+- `IFeishuHttpClientFactory` for unified per-app client assembly.
+- Token store encryption (ENH-1): `EncryptedTokenStore` / `EncryptedUserTokenStore` /
+  `EncryptedFeishuTokenStoreFactory` + `FeishuAppOptions.EnableTokenEncryption` (off by default).
+- Multi-app configuration hot reload (ARC-1).
+- AOT-safe JSON entry point `FeishuJsonAot`.
+- Build/quality gate script `scripts/verify-build.ps1` and CI wiring for cache freshness + diagnostics.
+- Encrypted-store marker contract (ENH-2): `EncryptedTokenStore` / `EncryptedUserTokenStore` now also
+  implement `IEncryptedTokenStore`, and accept an optional `ILogger?` (source/binary compatible).
+- Docs: `documents/ErrorHandling.md` (download-method error contract + the "HTTP 200 with JSON error
+  body" residual risk) and `documents/ResponseCaching.md` (`[Cache]` usage, mandatory per-app key
+  isolation for multi-app deployments).
+- Tests: `FeishuClientEndpointHotReloadTests`, `DownloadErrorSemanticsTests`, plus 4 new
+  `EncryptedTokenStoreTests` cases (marker contract and throttled decrypt-failure logging).
+
+### 🐛 Fixed
+
+- net8.0+/net10.0 threw `NotSupportedException` for types not covered by a source-generated
+  `JsonSerializerContext` (cross-TFM inconsistency); the resolver chain now ends with a reflection
+  fallback and `ConfigureUserResolver` is idempotent and thread-safe.
+- `IFeishuAuthentication` was never registered, making the multi-app context path unreachable.
+- Multi-app Redis token keys had no `appKey` dimension; `GetTokenTypesAsync` truncated token types
+  containing `:` (TM-04).
+- `[HttpJsonSerializable]` on open generics caused `AOT006` / `SYSLIB1030` on net8.0+.
+- 204 `NU1603` version-drift warnings (5 projects, 7 `PackageReference` entries now pinned to 2.0.5).
+
 ## [2.0.7] - 2026-04-07
 
 ### ✨ Added

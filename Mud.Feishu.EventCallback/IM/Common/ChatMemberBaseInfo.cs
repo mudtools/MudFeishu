@@ -10,6 +10,7 @@ namespace Mud.Feishu.EventCallback.IM;
 /// <summary>
 /// 飞书群信息
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "IM")]
 public class ChatMemberBaseInfo
 {
     /// <summary>

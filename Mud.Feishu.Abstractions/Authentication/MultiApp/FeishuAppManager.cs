@@ -9,6 +9,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Mud.Feishu.Abstractions.Authentication;
+using Mud.Feishu.Abstractions.Authentication.MultiApp;
 using Mud.Feishu.Abstractions.Internal;
 using System.Collections.Concurrent;
 using System.Text.Json;
@@ -32,7 +33,7 @@ namespace Mud.Feishu.Abstractions;
 /// M-2 修复：类可见性从 internal 改为 public，允许用户继承并覆盖 <see cref="CreateAppContext"/> 以支持自定义 <see cref="IFeishuAppContext"/>。
 /// </para>
 /// </remarks>
-public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuAppManager
+public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuAppManager, IDisposable
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<FeishuAppManager> _logger;
@@ -47,6 +48,8 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
     private readonly object _defaultAppLock = new();
     // NEW-MA-08 修复：保护 Lazy<> 重建逻辑，避免并发线程同时重建同一应用的 Lazy 上下文。
     private readonly object _lazyRebuildLock = new();
+    // ARC-1：配置变更订阅句柄。FeishuAppManager 为容器单例，Dispose 由容器在关闭时调用。
+    private IDisposable? _configReloadSubscription;
 
     /// <summary>
     /// 初始化飞书应用管理器
@@ -109,6 +112,235 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
                 "未注册 IEncryptionProvider。若使用 [Body(EnableEncrypt=true)] 标记的 API，" +
                 "首次请求将抛出 InvalidOperationException。请通过 AddMudHttpClient 配置 AesEncryptionOptions 或注册自定义 IEncryptionProvider。");
         }
+
+        // ARC-1：订阅应用配置热更新。
+        _configReloadSubscription = TrySubscribeConfigReload();
+    }
+
+    /// <summary>
+    /// 按 <see cref="FeishuAppOptions.EnableConfigReload"/> 决定是否订阅配置变更通知。
+    /// </summary>
+    private IDisposable? TrySubscribeConfigReload()
+    {
+        var options = _serviceProvider.GetService<IOptions<FeishuAppOptions>>()?.Value;
+        if (options != null && !options.EnableConfigReload)
+        {
+            _logger.LogInformation("飞书应用配置热更新已禁用（FeishuAppOptions.EnableConfigReload = false），配置变更需重启应用。");
+            return null;
+        }
+
+        var monitor = _serviceProvider.GetService<IOptionsMonitor<List<FeishuAppConfig>>>();
+        if (monitor == null)
+        {
+            // 代码配置模式（未经 IConfiguration 绑定）下无变更通知源，属预期情况。
+            return null;
+        }
+
+        return monitor.OnChange(OnConfigurationChanged);
+    }
+
+    /// <summary>
+    /// 配置变更回调：按 AppKey 计算差异并增量应用。
+    /// </summary>
+    /// <remarks>
+    /// 与继承自 <see cref="DefaultAppManager{TAppContext}"/> 的 <c>ConfigurationChanged</c> 事件语义对齐：
+    /// 新增触发 <c>Added</c>、更新触发 <c>Updated</c>、删除触发 <c>Removed</c>。
+    /// 异常在此处被吞掉并记录，因为 <c>IOptionsMonitor.OnChange</c> 的回调抛异常会中断 IConfiguration 的变更通知链。
+    /// </remarks>
+    internal void OnConfigurationChanged(List<FeishuAppConfig>? newConfigs)
+    {
+        if (newConfigs == null || newConfigs.Count == 0)
+        {
+            _logger.LogWarning("收到空的飞书应用配置变更通知，已忽略（至少需要保留一个应用配置）。");
+            return;
+        }
+
+        try
+        {
+            var incoming = newConfigs
+                .Where(c => c != null && !string.IsNullOrWhiteSpace(c.AppKey))
+                .ToList();
+
+            if (incoming.Count == 0)
+            {
+                _logger.LogWarning("飞书应用配置变更后没有任何合法 AppKey，已忽略。");
+                return;
+            }
+
+            // 节流：与当前快照完全一致（无新增/删除/更新）时不做任何重建。
+            if (IsSameAsCurrentSnapshot(incoming))
+            {
+                return;
+            }
+
+            var incomingKeys = new HashSet<string>(incoming.Select(c => c.AppKey), StringComparer.Ordinal);
+            var currentKeys = _configs.Select(c => c.AppKey).ToList();
+
+            // 1) 删除已下线应用
+            foreach (var removedKey in currentKeys.Where(k => !incomingKeys.Contains(k)).ToList())
+            {
+                if (RemoveApp(removedKey))
+                {
+                    _logger.LogInformation("配置热更新：已移除应用 {AppKey}", removedKey);
+                }
+            }
+
+            // 2) 新增 / 更新
+            foreach (var config in incoming)
+            {
+                if (HasApp(config.AppKey))
+                {
+                    LogClientEndpointChanges(config);
+                    RebuildAppContext(config);
+                    _logger.LogInformation("配置热更新：已重建应用 {AppKey}", config.AppKey);
+                }
+                else
+                {
+                    AddApp(config);
+                    _logger.LogInformation("配置热更新：已新增应用 {AppKey}", config.AppKey);
+                }
+            }
+
+            // 3) 同步配置快照
+            lock (_defaultAppLock)
+            {
+                _configs.Clear();
+                _configs.AddRange(incoming);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "飞书应用配置热更新失败，已保持原配置继续运行。请检查新的应用配置是否合法（AppKey/AppId/AppSecret 校验）。");
+        }
+    }
+
+    /// <summary>
+    /// 判断配置快照是否与当前一致（用于节流，避免每次变更通知都重建上下文）。
+    /// </summary>
+    private bool IsSameAsCurrentSnapshot(List<FeishuAppConfig> incoming)
+    {
+        List<FeishuAppConfig> current;
+        lock (_defaultAppLock)
+        {
+            current = _configs.ToList();
+        }
+
+        if (current.Count != incoming.Count)
+        {
+            return false;
+        }
+
+        foreach (var config in incoming)
+        {
+            var existing = current.FirstOrDefault(c => string.Equals(c.AppKey, config.AppKey, StringComparison.Ordinal));
+            if (existing == null)
+            {
+                return false;
+            }
+
+            // 只比较影响运行时的关键字段；AppSecret 用序数比较（不记录日志）。
+            if (!string.Equals(existing.AppId, config.AppId, StringComparison.Ordinal) ||
+                !string.Equals(existing.AppSecret, config.AppSecret, StringComparison.Ordinal) ||
+                !string.Equals(existing.BaseUrl, config.BaseUrl, StringComparison.Ordinal) ||
+                existing.TimeOut != config.TimeOut ||
+                existing.IsDefault != config.IsDefault)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// 用新配置重建指定应用的上下文。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 旧上下文<b>不立即 Dispose</b>（与 <c>DefaultAppManager.RemoveApp</c> 的 NEW-MA-01 语义一致），
+    /// 避免在途请求抛 <c>ObjectDisposedException</c>；旧实例由 GC 回收。
+    /// </para>
+    /// <para>
+    /// 令牌热迁移：per-app 存储键含 appKey 维度（<c>feishu:{appKey}:token:*</c>），
+    /// 存储后端（MemoryCache / Redis）独立于上下文实例，重建后可从既有令牌恢复，无需额外逻辑。
+    /// </para>
+    /// </remarks>
+    private void RebuildAppContext(FeishuAppConfig config)
+    {
+        config.Validate();
+
+        FeishuAppContext context;
+        lock (_lazyRebuildLock)
+        {
+            _lazyContexts[config.AppKey] = new Lazy<FeishuAppContext>(
+                () => CreateAppContext(config),
+                LazyThreadSafetyMode.ExecutionAndPublication);
+
+            // 立即实例化以便触发 Updated 事件；CreateAppContext 为纯内存装配（无网络往返）。
+            context = _lazyContexts[config.AppKey].Value;
+        }
+
+        // 使用 RegisterApp 而非 UpdateApp：基类 UpdateApp 要求应用已存在于其 _apps 字典，
+        // 而本类采用懒加载——应用可能仅存在于 _lazyContexts 中（从未被访问过），此时 UpdateApp 会抛
+        // "未找到应用标识为 'xxx' 的应用上下文，无法更新"。
+        // RegisterApp 内部以 _apps.ContainsKey 判定 isUpdate，首次注册触发 Added、已存在触发 Updated，
+        // 语义与本方法的两种来源（新建 / 重建）天然吻合。
+        RegisterApp(config.AppKey, context, config.IsDefault);
+
+        if (config.IsDefault)
+        {
+            lock (_defaultAppLock)
+            {
+                _defaultAppKey = config.AppKey;
+            }
+        }
+    }
+
+    /// <summary>
+    /// ARC-7：记录命名客户端端点（<c>BaseUrl</c> / <c>TimeOut</c>）的热更新，使
+    /// 「配置是否真的作用到了 HTTP 客户端」在日志中可观测（修复前这两项变更完全不生效且无任何提示）。
+    /// </summary>
+    /// <param name="incoming">新配置。</param>
+    private void LogClientEndpointChanges(FeishuAppConfig incoming)
+    {
+        FeishuAppConfig? previous;
+        lock (_defaultAppLock)
+        {
+            previous = _configs.FirstOrDefault(c =>
+                string.Equals(c.AppKey, incoming.AppKey, StringComparison.Ordinal));
+        }
+
+        if (previous == null)
+        {
+            return;
+        }
+
+        var previousBaseUrl = string.IsNullOrWhiteSpace(previous.BaseUrl)
+            ? Consts.DefaultFeishuBaseUrl
+            : previous.BaseUrl;
+        var incomingBaseUrl = string.IsNullOrWhiteSpace(incoming.BaseUrl)
+            ? Consts.DefaultFeishuBaseUrl
+            : incoming.BaseUrl;
+
+        if (!string.Equals(previousBaseUrl, incomingBaseUrl, StringComparison.Ordinal) ||
+            previous.TimeOut != incoming.TimeOut)
+        {
+            _logger.LogInformation(
+                "配置热更新：应用 {AppKey} 的 HTTP 客户端端点已变更（BaseUrl: {PreviousBaseUrl} → {IncomingBaseUrl}，TimeOut: {PreviousTimeOut}s → {IncomingTimeOut}s），" +
+                "重建后的客户端将使用新端点，无需重启进程。",
+                incoming.AppKey, previousBaseUrl, incomingBaseUrl, previous.TimeOut, incoming.TimeOut);
+        }
+    }
+
+    /// <summary>
+    /// 释放配置变更订阅。
+    /// </summary>
+    public void Dispose()
+    {
+        _configReloadSubscription?.Dispose();
+        _configReloadSubscription = null;
+        GC.SuppressFinalize(this);
     }
 
     /// <summary>
@@ -482,23 +714,20 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
     protected virtual FeishuAppContext CreateAppContext(FeishuAppConfig config)
     {
         var currentUserContext = _serviceProvider.GetService<IFeishuCurrentUserContext>();
-        var jsonSerializerOptions = Options.Create(_serviceProvider.GetRequiredService<JsonSerializerOptions>());
-        var clientName = $"feishu-{config.AppKey}";
 
-        // === 步骤 1：创建基础 HttpClient（不含恢复，供 AuthenticationApi 使用） ===
-        // HC-03 说明：basicHttpClient 与 recoveryHttpClient 为 per-app 单例（懒加载，每个应用仅创建一次）。
-        // 底层 HttpClient 由 IHttpClientFactory 池化管理（socket 复用），EnhancedClient 包装层本身无状态
-        // （仅持有 clientName 与 options 引用），多应用下实例数与应用数成正比（通常 <50），无需额外池化。
-        var httpClientFactory = _serviceProvider.GetRequiredService<IHttpClientFactory>();
-        var encryptionProvider = _serviceProvider.GetService<IEncryptionProvider>();
-        var enhancedOptions = CreateEnhancedHttpClientOptions(clientName);
-
-        var basicHttpClient = new HttpClientFactoryEnhancedClient(
-            httpClientFactory, clientName, encryptionProvider, enhancedOptions);
+        // ARC-2 Step 1：客户端装配统一委托给 IFeishuHttpClientFactory，
+        // 消除与 AddMudHttpClient 注册路径的配置双源（此前手工 new 会导致 10 个 EnhancedHttpClientOptions
+        // 字段静默取默认值，且完全忽略 IOptions<EnhancedHttpClientOptions> 基线）。
+        // DED-1：同时删除此前声明后未使用的 jsonSerializerOptions / basicHttpClient 两个死变量。
+        // 使用 GetService 而非 GetRequiredService：IFeishuHttpClientFactory 是装配收敛的可选服务，
+        // 直接手工构造 FeishuAppManager（未经 AddFeishuApp）的场景下回退到默认实现，
+        // 避免把新增依赖变成破坏性变更。
+        var httpClientFactory = _serviceProvider.GetService<IFeishuHttpClientFactory>()
+            ?? new FeishuHttpClientFactory(_serviceProvider);
 
         // === 步骤 2：创建 AuthenticationApi（使用基础 HttpClient） ===
-        var authenticationApi = (IFeishuAuthentication)ActivatorUtilities.CreateInstance(
-            _serviceProvider, typeof(FeishuAuthentication), jsonSerializerOptions, basicHttpClient);
+        // N-01 修复：改用 DI 解析，消除 ActivatorUtilities.CreateInstance 的 "new" 调用编译限制
+        var authenticationApi = _serviceProvider.GetRequiredService<IFeishuAuthentication>();
 
         // === 步骤 3：创建 TokenManager（依赖 AuthenticationApi） ===
         // S-3 修复：通过 IFeishuTokenStoreFactory 替代 is FeishuTokenStore 类型检查。
@@ -525,9 +754,7 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
             recoveryOptions,
             recoveryLogger);
 
-        var recoveryHttpClient = new TokenRecoveryEnhancedClient(
-            httpClientFactory, clientName, recoveryExecutor,
-            encryptionProvider, enhancedOptions);
+        var recoveryHttpClient = httpClientFactory.Create(config.AppKey, recoveryExecutor);
 
         // === 步骤 5：创建应用上下文（使用恢复 HttpClient） ===
         return new FeishuAppContext(
@@ -538,32 +765,6 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
             authenticationApi,
             recoveryHttpClient,
             _serviceProvider);
-    }
-
-    /// <summary>
-    /// 从 DI 容器构建 EnhancedHttpClientOptions，与 AddMudHttpClient 内部 CreateEnhancedClient 逻辑保持一致。
-    /// </summary>
-    private EnhancedHttpClientOptions CreateEnhancedHttpClientOptions(string clientName)
-    {
-        var options = new EnhancedHttpClientOptions
-        {
-            Logger = _serviceProvider.GetService<ILogger<HttpClientFactoryEnhancedClient>>(),
-            RequestInterceptors = _serviceProvider.GetServices<IHttpRequestInterceptor>(),
-            ResponseInterceptors = _serviceProvider.GetServices<IHttpResponseInterceptor>(),
-            SensitiveDataMasker = _serviceProvider.GetService<ISensitiveDataMasker>()
-        };
-
-        var optionsMonitor = _serviceProvider.GetService<IOptionsMonitor<MudHttpClientApplicationOptions>>();
-        if (optionsMonitor != null)
-        {
-            var appOptions = optionsMonitor.CurrentValue;
-            if (appOptions.Clients.TryGetValue(clientName, out var clientOptions))
-            {
-                options.AllowCustomBaseUrls = clientOptions.AllowCustomBaseUrls;
-            }
-        }
-
-        return options;
     }
 
     private void WarnResilienceConfigMismatch(IList<FeishuAppConfig> configs)

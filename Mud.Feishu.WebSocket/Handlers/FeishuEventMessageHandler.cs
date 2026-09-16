@@ -106,7 +106,7 @@ public class FeishuEventMessageHandler : JsonMessageHandler
                 return;
             }
 
-            _logger.LogInformation("收到飞书事件: {EventType}, EventId: {EventId}",
+            _logger.LogDebug("收到飞书事件: {EventType}, EventId: {EventId}",
                 eventData.EventType, eventData.EventId);
 
             // 去重检查 - 使用处理中状态机制
@@ -266,8 +266,12 @@ public class FeishuEventMessageHandler : JsonMessageHandler
         // 解析event
         if (root.TryGetProperty("event", out var eventElement))
         {
-            // 将event对象转换为JsonElement供后续使用
-            eventData.Event = eventElement;
+            // P1-10 修复：eventElement 隶属于 using var jsonDoc 所租用的 ArrayPool 缓冲，
+            // 直接赋值会让 JsonElement 逃逸出 JsonDocument 生命周期：文档 Dispose 后缓冲被归还池中，
+            // 任何在 HandleAsync 返回之后读取 eventData.Event 的代码（例如把事件排入后台队列延迟处理）
+            // 都会读到已被其它 JSON 解析覆写的内存，造成静默数据损坏或抛 ObjectDisposedException。
+            // Clone() 会分配独立的文档副本，脱离原生命周期。
+            eventData.Event = eventElement.Clone();
         }
 
         return eventData;

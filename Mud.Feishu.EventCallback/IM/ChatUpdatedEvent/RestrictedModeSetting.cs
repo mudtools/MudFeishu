@@ -11,6 +11,7 @@ namespace Mud.Feishu.EventCallback.IM;
 /// <summary>
 /// 防泄密模式设置
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "IM")]
 public class RestrictedModeSetting
 {
     /// <summary>

@@ -105,11 +105,7 @@ async Task InitializeAdminUserAsync(FeishuFileDbContext dbContext)
 
 if (app.Environment.IsDevelopment())
 {
-    app.UseSwagger();
-    app.UseSwaggerUI(c =>
-    {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Feishu File Server API V1");
-    });
+    // OpenAPI 文档端点由 Microsoft.AspNetCore.OpenApi 包提供（.NET 9+ 使用 AddOpenApi()/MapOpenApi()）
 }
 
 app.UseGlobalExceptionHandler();

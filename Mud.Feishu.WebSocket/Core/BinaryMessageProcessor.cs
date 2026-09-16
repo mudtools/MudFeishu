@@ -7,6 +7,7 @@
 
 using Microsoft.Extensions.Logging;
 using Mud.Feishu.Abstractions.Services;
+using Mud.Feishu.Abstractions.Utilities;
 using Mud.Feishu.DataModels.WsEndpoint;
 using Mud.Feishu.WebSocket.SocketEventArgs;
 using System.Diagnostics;
@@ -19,7 +20,7 @@ namespace Mud.Feishu.WebSocket;
 /// <summary>
 /// 二进制消息处理器 - 负责处理二进制数据的增量接收和解析
 /// </summary>
-public class BinaryMessageProcessor : IDisposable
+public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
 {
     private readonly ILogger<BinaryMessageProcessor> _logger;
     private readonly FeishuWebSocketOptions _options;
@@ -33,6 +34,12 @@ public class BinaryMessageProcessor : IDisposable
     private readonly IFeishuSeqIDDeduplicator? _seqIdDeduplicator;
     private readonly MessageSequenceValidator? _sequenceValidator;
     private readonly IUnifiedDeduplicationMiddleware? _unifiedDeduplicationMiddleware;
+
+    /// <summary>
+    /// 串行化整条二进制消息的处理，避免并发调用把不同消息的片段交错写入
+    /// 同一个 <c>_binaryDataStream</c>（P0-1 修复）。
+    /// </summary>
+    private readonly SemaphoreSlim _processLock = new(1, 1);
 
     /// <summary>
     /// 大对象阈值（字节），超过此阈值使用 ToArray() 避免 GetBuffer() 的额外数据
@@ -69,7 +76,7 @@ public class BinaryMessageProcessor : IDisposable
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _options = options ?? new FeishuWebSocketOptions();
-        _connectionManager = webSocketConnectionManager ?? throw new ArgumentNullException(nameof(_connectionManager));
+        _connectionManager = webSocketConnectionManager ?? throw new ArgumentNullException(nameof(webSocketConnectionManager));
         _messageRouter = messageRouter ?? throw new ArgumentNullException(nameof(messageRouter));
         _seqIdDeduplicator = seqIdDeduplicator;
         _sequenceValidator = sequenceValidator;
@@ -79,13 +86,32 @@ public class BinaryMessageProcessor : IDisposable
     /// <summary>
     /// 处理二进制数据
     /// </summary>
-    #if NET6_0_OR_GREATER
-    [RequiresUnreferencedCode("反射式System.Text.Json序列化在裁剪下无法静态分析目标类型成员")]
-    #endif
-    #if NET7_0_OR_GREATER
-    [RequiresDynamicCode("反射式System.Text.Json序列化在 AOT/动态代码生成环境下不可用")]
-    #endif
+    /// <remarks>
+    /// P0-1 修复：整体串行化。此前多个消息的片段会并发进入同一 <c>_binaryDataStream</c>，
+    /// 产生"A 头 + B 身"的畸形 protobuf 帧。
+    /// </remarks>
     public async Task ProcessBinaryDataAsync(byte[] data, int offset, int count, bool endOfMessage, CancellationToken cancellationToken = default)
+    {
+        await _processLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            ProcessBinaryDataCore(data, offset, count, endOfMessage, cancellationToken);
+        }
+        finally
+        {
+            _processLock.Release();
+        }
+    }
+
+    /// <summary>
+    /// 二进制数据处理的同步核心实现（调用方需持有 <see cref="_processLock"/>）。
+    /// </summary>
+    /// <param name="data">数据缓冲区</param>
+    /// <param name="offset">起始偏移</param>
+    /// <param name="count">数据长度</param>
+    /// <param name="endOfMessage">是否为消息的最后一片</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    private void ProcessBinaryDataCore(byte[] data, int offset, int count, bool endOfMessage, CancellationToken cancellationToken)
     {
         try
         {
@@ -131,7 +157,8 @@ public class BinaryMessageProcessor : IDisposable
                     var receiveDuration = DateTime.UtcNow - _binaryDataReceiveStartTime;
 
                     if (_options.EnableLogging)
-                        _logger.LogInformation("二进制消息接收完成，大小: {Size} 字节，耗时: {Duration}ms",
+                        // P2-7 修复：每条消息一条 Information 属高频日志，降级为 Debug
+                        _logger.LogDebug("二进制消息接收完成，大小: {Size} 字节，耗时: {Duration}ms",
                             actualLength, receiveDuration.TotalMilliseconds);
 
                     byte[] completeData;
@@ -326,11 +353,19 @@ public class BinaryMessageProcessor : IDisposable
 
                     BinaryMessageReceived?.Invoke(this, eventArgs);
 
+                    // P1-5 修复：此前 RouteBinaryMessageAsync 内部吞掉异常，而 eventArgs.ProcessingTask
+                    // 永远为 null（MessageRouter 从不设置），导致 ProcessingSuccess 恒为 true、
+                    // 业务处理失败也回 ACK 200，服务端不再重发 → 事件永久丢失。
+                    // 现在路由返回可观测的结果，并据此决定 ACK 的 code。
                     if (_messageRouter != null)
                     {
                         if (_options.EnableLogging)
                             _logger.LogDebug("路由二进制转换的JSON消息到MessageRouter");
-                        await _messageRouter.RouteBinaryMessageAsync(jsonPayload, "Frame", cancellationToken);
+                        var routed = await _messageRouter.RouteBinaryMessageWithResultAsync(jsonPayload, "Frame", cancellationToken);
+                        if (!routed)
+                        {
+                            eventArgs.ProcessingSuccess = false;
+                        }
                     }
 
                     if (eventArgs.ProcessingTask != null)
@@ -368,9 +403,9 @@ public class BinaryMessageProcessor : IDisposable
                     eventArgs.ParseError = "Frame 解析成功但 Payload 为空";
                     BinaryMessageReceived?.Invoke(this, eventArgs);
 
-                    if (_unifiedDeduplicationMiddleware != null && (!string.IsNullOrEmpty(extractedEventId) || frame.SeqID > 0))
+                    if (_unifiedDeduplicationMiddleware != null && (!string.IsNullOrEmpty(extractedEventId) || (frame?.SeqID ?? 0) > 0))
                     {
-                        await _unifiedDeduplicationMiddleware.RollbackAsync(extractedEventId, frame.SeqID, cancellationToken);
+                        await _unifiedDeduplicationMiddleware.RollbackAsync(extractedEventId, frame?.SeqID ?? 0, cancellationToken);
                     }
 
                     await SendAckMessageAsync(frame, false, cancellationToken);
@@ -381,6 +416,15 @@ public class BinaryMessageProcessor : IDisposable
                 _logger.LogError(ex, "ProtoBuf 反序列化失败，尝试直接解析为 JSON");
 
                 eventArgs.ParseError = $"ProtoBuf 反序列化失败: {ex.Message}";
+
+                // P2-3 修复：回退路径此前缺少大小校验，超限负载会直接进入 JSON 解析与路由
+                if (completeData.Length > _options.MessageSizeLimits.MaxBinaryMessageSize)
+                {
+                    _logger.LogError("二进制消息大小 {Size} 超过最大限制 {MaxSize}，放弃 JSON 回退解析",
+                        completeData.Length, _options.MessageSizeLimits.MaxBinaryMessageSize);
+                    BinaryMessageReceived?.Invoke(this, eventArgs);
+                    return;
+                }
 
                 var jsonString = Encoding.UTF8.GetString(completeData);
                 if (!string.IsNullOrWhiteSpace(jsonString))
@@ -504,7 +548,7 @@ public class BinaryMessageProcessor : IDisposable
             data = Convert.ToBase64String(responseData)
         };
 
-        var ackJson = JsonSerializer.Serialize(responseObj, JsonOptions.Default);
+        var ackJson = FeishuJsonAot.Serialize(responseObj, JsonOptions.Default);
         var ackPayload = Encoding.UTF8.GetBytes(ackJson);
 
         stopwatch.Stop();
@@ -571,33 +615,51 @@ public class BinaryMessageProcessor : IDisposable
         });
     }
 
+    /// <summary>
+    /// 重置接收状态，清空尚未完成的分片缓冲。
+    /// </summary>
+    /// <remarks>
+    /// P1-6 修复：连接中途断开时，半包会残留在 <c>_binaryDataStream</c> 中。
+    /// 重连后首条消息会被拼上旧残片，导致 protobuf 解析失败或解析出错误字段，
+    /// 且该状态无法自愈（每次重连都保留），只能重启进程。必须在重连时调用。
+    /// </remarks>
+    public void Reset()
+    {
+        lock (_binaryDataStreamLock)
+        {
+            if (_binaryDataStream != null)
+            {
+                _binaryDataStream.Dispose();
+                _binaryDataStream = null;
+                _logger.LogDebug("二进制消息处理器已重置，清空未完成的分片缓冲");
+            }
+        }
+    }
+
     /// <inheritdoc/>
     public void Dispose()
     {
         if (_disposed)
             return;
+        _disposed = true;
 
         try
         {
-            Task[] tasksToWait;
+            // P1-3 修复：此前使用 Task.WaitAll(...TimeSpan.FromSeconds(5)) 做同步阻塞等待
+            // （注释声称"使用异步等待"，与代码矛盾）。同步阻塞会占用线程并可能在
+            // 同步上下文/线程池饥饿时死锁。这里改为仅记录并继续释放，不阻塞调用方；
+            // 需要确定性等待请改用 DisposeAsync。
+            Task[] pendingTasks;
             lock (_activeProcessingTasks)
             {
-                tasksToWait = _activeProcessingTasks.ToArray();
+                pendingTasks = _activeProcessingTasks.ToArray();
+                _activeProcessingTasks.Clear();
             }
 
-            // 使用异步等待而不是同步等待，避免死锁风险
-            // 注意：在同步Dispose方法中无法使用await，这里使用Wait但设置较短超时
-            // 如果超时，只记录警告而不阻塞
-            try
+            var notCompleted = pendingTasks.Count(t => !t.IsCompleted);
+            if (notCompleted > 0)
             {
-                if (!Task.WaitAll(tasksToWait, TimeSpan.FromSeconds(5)))
-                {
-                    _logger.LogWarning("等待所有处理任务完成超时（5秒），部分任务可能仍在运行");
-                }
-            }
-            catch (AggregateException ex)
-            {
-                _logger.LogError(ex, "等待处理任务时发生错误");
+                _logger.LogWarning("释放时仍有 {Count} 个二进制处理任务未完成，将在后台继续运行", notCompleted);
             }
 
             lock (_binaryDataStreamLock)
@@ -606,19 +668,59 @@ public class BinaryMessageProcessor : IDisposable
                 _binaryDataStream = null;
             }
 
-            lock (_activeProcessingTasks)
-            {
-                _activeProcessingTasks.Clear();
-            }
+            _processLock.Dispose();
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "释放二进制处理器资源时发生错误");
         }
-        finally
+
+        GC.SuppressFinalize(this);
+    }
+
+    /// <summary>
+    /// 异步释放资源并等待处理中的任务结束。
+    /// </summary>
+    /// <returns>表示异步释放操作的任务</returns>
+    public async ValueTask DisposeAsync()
+    {
+        if (_disposed)
+            return;
+        _disposed = true;
+
+        try
         {
-            _disposed = true;
+            Task[] pendingTasks;
+            lock (_activeProcessingTasks)
+            {
+                pendingTasks = _activeProcessingTasks.ToArray();
+                _activeProcessingTasks.Clear();
+            }
+
+            if (pendingTasks.Length > 0)
+            {
+                var allTask = Task.WhenAll(pendingTasks);
+                var completed = await Task.WhenAny(allTask, Task.Delay(TimeSpan.FromSeconds(5)))
+                                          .ConfigureAwait(false);
+                if (completed != allTask)
+                {
+                    _logger.LogWarning("等待所有处理任务完成超时（5秒），部分任务可能仍在运行");
+                }
+            }
+
+            lock (_binaryDataStreamLock)
+            {
+                _binaryDataStream?.Dispose();
+                _binaryDataStream = null;
+            }
+
+            _processLock.Dispose();
         }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "异步释放二进制处理器资源时发生错误");
+        }
+
         GC.SuppressFinalize(this);
     }
 }

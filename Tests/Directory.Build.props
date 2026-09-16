@@ -14,6 +14,17 @@
 		<Authors>Mud Studio</Authors>
 		<Company>Mud Studio</Company>
 		<LangVersion>13.0</LangVersion>
+		<!-- 本文件会遮蔽仓库根的 Directory.Build.props，故此处显式继承治理设置，避免测试项目成为门禁盲区 -->
+		<NoWarn>$(NoWarn);NU1605</NoWarn>
+		<WarningsNotAsErrors>$(WarningsNotAsErrors);NU1605</WarningsNotAsErrors>
+		<!-- 版本漂移防护：声明版本与解析版本不一致时立即失败 -->
+		<WarningsAsErrors>$(WarningsAsErrors);NU1603</WarningsAsErrors>
+	</PropertyGroup>
+
+	<!-- AOT006 仅在启用 AOT 分析的 TFM（net8+）上有语义，net6.0 精确豁免（与根目录策略一致） -->
+	<PropertyGroup Condition="'$(TargetFramework)' == 'net6.0'">
+		<NoWarn>$(NoWarn);AOT006</NoWarn>
+		<WarningsNotAsErrors>$(WarningsNotAsErrors);AOT006</WarningsNotAsErrors>
 	</PropertyGroup>
 
 	<ItemGroup>

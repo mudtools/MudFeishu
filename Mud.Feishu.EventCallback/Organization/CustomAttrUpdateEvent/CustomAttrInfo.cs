@@ -10,6 +10,7 @@ namespace Mud.Feishu.EventCallback.Organization;
 /// <summary>
 /// 信息
 /// </summary>
+[HttpJsonSerializable(SerializerClassName = "Organization")]
 public class CustomAttrInfo
 {
     /// <summary>

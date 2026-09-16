@@ -16,6 +16,7 @@ namespace Mud.Feishu.EventCallback.VideoConferencing;
 /// </summary>
 [GenerateEventHandler(EventType = FeishuEventTypes.RoomDeletedEvent, HandlerNamespace = Consts.HandlerNamespace,
               InheritedFrom = Consts.InheritedFrom, HeaderType = nameof(FeishuEventHeader))]
+[HttpJsonSerializable(SerializerClassName = "VideoConferencing")]
 public class RoomDeletedResult : IEventResult
 {
     /// <summary>

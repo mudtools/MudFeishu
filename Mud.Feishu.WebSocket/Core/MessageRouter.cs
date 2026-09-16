@@ -106,7 +106,33 @@ public class MessageRouter
             return;
         }
 
-        await RouteMessageInternalAsync(jsonContent, $"Binary_{messageType}", cancellationToken);
+        await RouteBinaryMessageWithResultAsync(jsonContent, messageType, cancellationToken);
+    }
+
+    /// <summary>
+    /// 路由从二进制消息转换而来的JSON消息，并返回路由是否成功。
+    /// </summary>
+    /// <param name="jsonContent">JSON内容</param>
+    /// <param name="messageType">消息类型</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>处理成功返回 true；未找到处理器、解析失败或处理器抛出异常时返回 false</returns>
+    /// <remarks>
+    /// P1-5 修复：<see cref="RouteBinaryMessageAsync"/> 会把处理器异常吞掉，
+    /// 调用方（BinaryMessageProcessor）无法感知失败，导致 ACK 恒为 200、服务端不再重发。
+    /// 本方法把失败结果回传给调用方，用于决定 ACK 的 code。
+    /// </remarks>
+    public async Task<bool> RouteBinaryMessageWithResultAsync(string jsonContent, string messageType, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(jsonContent))
+        {
+            if (_options.EnableLogging)
+            {
+                _logger.LogWarning("收到空的二进制转换消息，跳过路由");
+            }
+            return true;
+        }
+
+        return await RouteMessageInternalWithResultAsync(jsonContent, $"Binary_{messageType}", cancellationToken);
     }
 
     /// <summary>
@@ -120,6 +146,18 @@ public class MessageRouter
     #endif
     private async Task RouteMessageInternalAsync(string message, string sourceType, CancellationToken cancellationToken)
     {
+        await RouteMessageInternalWithResultAsync(message, sourceType, cancellationToken);
+    }
+
+    /// <summary>
+    /// 内部消息路由处理（带结果）
+    /// </summary>
+    /// <param name="message">消息内容</param>
+    /// <param name="sourceType">来源类型</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>是否处理成功</returns>
+    private async Task<bool> RouteMessageInternalWithResultAsync(string message, string sourceType, CancellationToken cancellationToken)
+    {
         try
         {
             // 提取消息类型
@@ -129,7 +167,7 @@ public class MessageRouter
                 var truncatedMsg = message.Length > 200 ? message.Substring(0, 200) + "..." : message;
                 _logger.LogWarning("无法提取消息类型 (来源: {SourceType}): {Message}", sourceType, truncatedMsg);
 
-                return;
+                return true;
             }
 
             // 查找能处理该消息类型的处理器（加锁保证线程安全，保持注册顺序）
@@ -141,16 +179,17 @@ public class MessageRouter
             if (handler == null)
             {
                 _logger.LogWarning("未找到能处理消息类型 {MessageType} 的处理器 (来源: {SourceType})", messageType, sourceType);
-                return;
+                return true;
             }
             _logger.LogDebug("将消息路由到处理器: {HandlerType} (来源: {SourceType}, 消息类型: {MessageType})",
                     handler.GetType().Name, sourceType, messageType);
-            await HandleWithTimeoutAsync(handler, message, cancellationToken);
+            return await HandleWithTimeoutAsync(handler, message, cancellationToken);
         }
         catch (Exception ex)
         {
             var truncatedMsg = message.Length > 200 ? message.Substring(0, 200) + "..." : message;
             _logger.LogError(ex, "路由消息时发生错误 (来源: {SourceType}): {Message}", sourceType, truncatedMsg);
+            return false;
         }
     }
 
@@ -162,13 +201,8 @@ public class MessageRouter
     /// <param name="handler">消息处理器</param>
     /// <param name="message">消息内容</param>
     /// <param name="cancellationToken">外部取消令牌</param>
-    #if NET6_0_OR_GREATER
-    [RequiresUnreferencedCode("反射式System.Text.Json序列化在裁剪下无法静态分析目标类型成员")]
-    #endif
-    #if NET7_0_OR_GREATER
-    [RequiresDynamicCode("反射式System.Text.Json序列化在 AOT/动态代码生成环境下不可用")]
-    #endif
-    private async Task HandleWithTimeoutAsync(IMessageHandler handler, string message, CancellationToken cancellationToken)
+    /// <returns>处理成功返回 true；超时或处理器抛出异常返回 false</returns>
+    private async Task<bool> HandleWithTimeoutAsync(IMessageHandler handler, string message, CancellationToken cancellationToken)
     {
         var timeoutMs = _options.MessageHandlerTimeoutMs;
 
@@ -176,7 +210,7 @@ public class MessageRouter
         if (timeoutMs <= 0)
         {
             await handler.HandleAsync(message, cancellationToken);
-            return;
+            return true;
         }
 
         using var timeoutCts = new CancellationTokenSource(timeoutMs);
@@ -189,6 +223,14 @@ public class MessageRouter
 
             if (completed != handlerTask)
             {
+                // P2-10 修复：外部取消时 Task.Delay 会提前结束，此前沿用同一分支
+                // 会误报"消息处理器超时"。这里区分两种情形。
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    _logger.LogDebug("消息处理被外部取消: {HandlerType}", handler.GetType().Name);
+                    return false;
+                }
+
                 // 超时，取消处理器
                 timeoutCts.Cancel();
                 _logger.LogWarning("消息处理器超时 ({TimeoutMs}ms): {HandlerType}, 消息类型可能为: {Message}",
@@ -207,16 +249,18 @@ public class MessageRouter
                 {
                     // 处理器未响应取消，忽略
                 }
+
+                return false;
             }
-            else
-            {
-                // 正常完成，传播可能的异常
-                await handlerTask;
-            }
+
+            // 正常完成，传播可能的异常
+            await handlerTask;
+            return true;
         }
         catch (OperationCanceledException) when (timeoutCts.Token.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
         {
             _logger.LogWarning("消息处理器被超时取消: {HandlerType}", handler.GetType().Name);
+            return false;
         }
     }
 

@@ -5,6 +5,8 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using FluentAssertions;
+using Mud.Feishu.Abstractions.Authentication;
 using Mud.Feishu.DataModels;
 using Mud.Feishu.Exceptions;
 
@@ -336,5 +338,182 @@ public class UserTokenManagerTests : TokenManagerTestsBase
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             _userTokenManager.GetTokenAsync(CancellationToken.None));
+    }
+
+    // ============================================================
+    // TMA2-01 / P0-1（§7.2 #1/#2/#3）：refresh token 可达性独立于 access token
+    // ============================================================
+
+    private static string EncodeToken(string token, long expireTimestampMs)
+        => TokenStoreHelper.EncodeStoredToken(token, expireTimestampMs);
+
+    private static long NowMs => DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+    private void SetupStoreTokens(string? encodedAccess, string? encodedRefresh)
+    {
+        UserTokenStoreMock
+            .Setup(x => x.GetAccessTokenAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(encodedAccess);
+        UserTokenStoreMock
+            .Setup(x => x.GetRefreshTokenAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(encodedRefresh);
+    }
+
+    /// <summary>
+    /// TMA2-01（§7.2 #1）核心：store 中 access token 已过期但 refresh token 有效时，
+    /// RefreshUserTokenAsync 必须能完成 OAuth 续期（修复前 GetTokenInfoAsync 在 access 过期时
+    /// 返回 null，refresh token 永久不可达 → 用户必然 401 直到重新授权）。
+    /// 强断言：必须真实调用 OAuth 刷新接口。
+    /// </summary>
+    [Fact]
+    public async Task RefreshUserTokenAsync_ShouldRefreshWithStoredRefreshToken_WhenStoredAccessTokenExpired()
+    {
+        // Arrange：store 中 access 已过期，refresh 仍有效
+        SetupStoreTokens(
+            encodedAccess: EncodeToken("expired-access", NowMs - 60_000),
+            encodedRefresh: EncodeToken("stored-refresh", NowMs + 30L * 24 * 3600 * 1000));
+
+        var refreshedResult = new OAuthCredentialsResult
+        {
+            AccessToken = "refreshed-access",
+            RefreshToken = "refreshed-refresh",
+            ExpiresIn = 7200,
+            RefreshTokenExpiresIn = 2592000,
+            Code = 0,
+            Msg = "ok"
+        };
+        _authenticationApiMock
+            .Setup(x => x.GetOAuthenRefreshAccessTokenAsync(It.IsAny<OAuthRefreshTokenRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(refreshedResult);
+
+        // Act
+        var result = await _userTokenManager.RefreshUserTokenAsync("user1", CancellationToken.None);
+
+        // Assert：不重新打桩 store（强断言原则），续期必须真实发生
+        result.Should().NotBeNull();
+        result!.AccessToken.Should().Be("refreshed-access");
+        result.RefreshToken.Should().Be("refreshed-refresh");
+        _authenticationApiMock.Verify(
+            x => x.GetOAuthenRefreshAccessTokenAsync(It.IsAny<OAuthRefreshTokenRequest>(), It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    /// <summary>
+    /// TMA2-01（§7.2 #2）：store 中只有 refresh token（access 缺失）时同样可续期。
+    /// 业务场景：进程重启后 IMemoryCache 清空、store 中 access 过期被消费侧丢弃。
+    /// </summary>
+    [Fact]
+    public async Task RefreshUserTokenAsync_ShouldSucceed_WhenOnlyStoredRefreshTokenIsUsable()
+    {
+        SetupStoreTokens(
+            encodedAccess: null,
+            encodedRefresh: EncodeToken("stored-refresh", NowMs + 30L * 24 * 3600 * 1000));
+
+        _authenticationApiMock
+            .Setup(x => x.GetOAuthenRefreshAccessTokenAsync(It.IsAny<OAuthRefreshTokenRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new OAuthCredentialsResult
+            {
+                AccessToken = "new-access",
+                RefreshToken = "new-refresh",
+                ExpiresIn = 7200,
+                RefreshTokenExpiresIn = 2592000,
+                Code = 0,
+                Msg = "ok"
+            });
+
+        var result = await _userTokenManager.RefreshUserTokenAsync("user1", CancellationToken.None);
+
+        result.Should().NotBeNull();
+        result!.AccessToken.Should().Be("new-access");
+        _authenticationApiMock.Verify(
+            x => x.GetOAuthenRefreshAccessTokenAsync(It.IsAny<OAuthRefreshTokenRequest>(), It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    /// <summary>
+    /// TMA2-01（§7.2 #3）：CanRefreshTokenAsync 在 access 过期但 refresh 有效时返回 true
+    /// （修复前经 GetTokenInfoAsync 在 access 过期时返回 false，与语义不符）。
+    /// </summary>
+    [Fact]
+    public async Task CanRefreshTokenAsync_ShouldReturnTrue_WhenStoredAccessExpiredButRefreshValid()
+    {
+        SetupStoreTokens(
+            encodedAccess: EncodeToken("expired-access", NowMs - 60_000),
+            encodedRefresh: EncodeToken("stored-refresh", NowMs + 30L * 24 * 3600 * 1000));
+
+        var result = await _userTokenManager.CanRefreshTokenAsync("user1", CancellationToken.None);
+
+        result.Should().BeTrue();
+    }
+
+    // ============================================================
+    // TMA2-06 / D12（§7.2 补充）：OAuth 失败语义分类
+    // ============================================================
+
+    /// <summary>
+    /// TMA2-06：OAuth 返回 invalid_grant（不可重试）→ 清 store refresh token + 返回 null（进退避）。
+    /// 强断言：store.RemoveAsync 被调用（副作用），且不再有后续 OAuth 调用输入。
+    /// </summary>
+    [Fact]
+    public async Task RefreshUserTokenAsync_ShouldReturnNullAndPurgeRefreshToken_WhenOAuthReturnsInvalidGrant()
+    {
+        SetupStoreTokens(
+            encodedAccess: EncodeToken("valid-access", NowMs + 7200_000),
+            encodedRefresh: EncodeToken("stored-refresh", NowMs + 30L * 24 * 3600 * 1000));
+
+        _authenticationApiMock
+            .Setup(x => x.GetOAuthenRefreshAccessTokenAsync(It.IsAny<OAuthRefreshTokenRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new OAuthCredentialsResult { Code = 99991664, Msg = "refresh token has been revoked" });
+
+        var result = await _userTokenManager.RefreshUserTokenAsync("user1", CancellationToken.None);
+
+        result.Should().BeNull("invalid_grant 属不可重试错误，应返回 null 进入组件退避而非抛异常");
+        UserTokenStoreMock.Verify(
+            x => x.RemoveAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Once,
+            "不可重试错误必须清除 store 中的 refresh token，避免死令牌反复打 OAuth");
+    }
+
+    /// <summary>
+    /// TMA2-06：OAuth 返回服务端错误（可重试）→ 抛 FeishuException 保留可见性（组件会记退避/负缓存）。
+    /// </summary>
+    [Fact]
+    public async Task RefreshUserTokenAsync_ShouldThrow_WhenOAuthReturnsServerError()
+    {
+        SetupStoreTokens(
+            encodedAccess: EncodeToken("valid-access", NowMs + 7200_000),
+            encodedRefresh: EncodeToken("stored-refresh", NowMs + 30L * 24 * 3600 * 1000));
+
+        _authenticationApiMock
+            .Setup(x => x.GetOAuthenRefreshAccessTokenAsync(It.IsAny<OAuthRefreshTokenRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new OAuthCredentialsResult { Code = 500, Msg = "internal server error" });
+
+        var act = async () => await _userTokenManager.RefreshUserTokenAsync("user1", CancellationToken.None);
+
+        var exception = await act.Should().ThrowAsync<FeishuException>();
+        exception.Which.ErrorCode.Should().Be(500);
+        UserTokenStoreMock.Verify(
+            x => x.RemoveAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Never,
+            "可重试错误不得清除 refresh token");
+    }
+
+    /// <summary>
+    /// TMA2-06：store 中的 refresh token 已过期 → 返回 null 且不打 OAuth（避免用死令牌反复交换）。
+    /// </summary>
+    [Fact]
+    public async Task RefreshUserTokenAsync_ShouldReturnNull_WhenStoredRefreshTokenExpired()
+    {
+        SetupStoreTokens(
+            encodedAccess: EncodeToken("expired-access", NowMs - 60_000),
+            encodedRefresh: EncodeToken("dead-refresh", NowMs - 120_000));
+
+        var result = await _userTokenManager.RefreshUserTokenAsync("user1", CancellationToken.None);
+
+        result.Should().BeNull();
+        _authenticationApiMock.Verify(
+            x => x.GetOAuthenRefreshAccessTokenAsync(It.IsAny<OAuthRefreshTokenRequest>(), It.IsAny<CancellationToken>()),
+            Times.Never,
+            "过期的 refresh token 不得用于发起 OAuth 交换");
     }
 }

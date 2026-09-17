@@ -10,6 +10,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using Mud.Feishu.Abstractions.Authentication;
 using Mud.Feishu.Abstractions.Tests.Helpers;
 using Xunit;
 
@@ -288,6 +289,64 @@ public class MultiAppHotReloadTests
 
         act.Should().NotThrow();
         provider.Dispose();
+    }
+
+    /// <summary>
+    /// TMA2-09 / D13（§7.2 #12）核心：热更新中任一应用的上下文构造失败时，
+    /// 必须<b>整体放弃</b>本次变更（Phase-A 失败 → 不动注册表与快照），
+    /// 不得出现"app1 已重建为 TimeOut=60、app2 保持旧配置"的部分应用状态。
+    /// </summary>
+    [Fact]
+    public void OnConfigurationChanged_ShouldNotPartiallyApply_WhenSecondAppAssemblyFails()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+
+        // 令牌存储工厂桩：前 2 次（两个应用的初始实例化）成功；
+        // 之后 app2 的构造（Phase-A 中的重建预构造）抛出瞬时可重试异常。
+        var callCount = 0;
+        var tokenStoreFactoryMock = new Mock<IFeishuTokenStoreFactory>();
+        tokenStoreFactoryMock
+            .Setup(x => x.Create(It.IsAny<string>()))
+            .Returns((string appKey) =>
+            {
+                callCount++;
+                if (callCount > 2 && appKey == "app2")
+                    throw new HttpRequestException("模拟 app2 上下文构造失败（如存储瞬时故障）");
+                return (new Mock<ITokenStore>().Object, new Mock<IUserTokenStore>().Object);
+            });
+
+        var existingDescriptor = services.FirstOrDefault(d => d.ServiceType == typeof(IFeishuTokenStoreFactory));
+        if (existingDescriptor != null) services.Remove(existingDescriptor);
+        services.AddSingleton(tokenStoreFactoryMock.Object);
+
+        services.AddFeishuApp(new List<FeishuAppConfig>
+        {
+            CreateConfig("app1", TestDataFactory.AppConfigs.AppIds.Default, TestDataFactory.AppConfigs.Secrets.Default, isDefault: true, timeOut: 30),
+            CreateConfig("app2", TestDataFactory.AppConfigs.AppIds.Hr, TestDataFactory.AppConfigs.Secrets.Hr)
+        });
+        using var provider = services.BuildServiceProvider();
+        var manager = (FeishuAppManager)provider.GetRequiredService<IFeishuAppManager>();
+
+        // 初始实例化 app1（消耗工厂桩的前 2 次调用预算中 app1 的份额）
+        var before = manager.GetApp("app1");
+        before.Config.TimeOut.Should().Be(30);
+
+        // Act：同时更新两个应用（app1 → TimeOut=60；app2 配置合法但工厂桩抛异常）
+        var act = () => manager.OnConfigurationChanged(new List<FeishuAppConfig>
+        {
+            CreateConfig("app1", TestDataFactory.AppConfigs.AppIds.Default, TestDataFactory.AppConfigs.Secrets.Default, isDefault: true, timeOut: 60),
+            CreateConfig("app2", TestDataFactory.AppConfigs.AppIds.Hr, TestDataFactory.AppConfigs.Secrets.Hr)
+        });
+
+        act.Should().NotThrow("Phase-A 失败应被吞掉并记录日志（IOptionsMonitor 回调不允许抛异常）");
+
+        // Assert：不得部分应用——app1 保持旧配置与旧实例
+        manager.GetApp("app1").Should().BeSameAs(before,
+            "Phase-A 任一应用构造失败时必须整体放弃，app1 不得被部分应用");
+        manager.GetApp("app1").Config.TimeOut.Should().Be(30,
+            "变更未应用，配置快照保持原状");
+        manager.HasApp("app2").Should().BeTrue();
     }
 
     private sealed class ProviderScope : IDisposable

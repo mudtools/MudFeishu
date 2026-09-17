@@ -5,6 +5,7 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using FluentAssertions;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using Mud.Feishu.Abstractions.Authentication;
@@ -701,8 +702,14 @@ public class TokenManagerWithStoreConcurrencyTests : IDisposable
             Times.Never);
     }
 
+    /// <summary>
+    /// TMA2-21（§7.2 #6，替换弱断言 InvalidateTokenAsync_ShouldTriggerApiCallOnNextRequest）：
+    /// InvalidateTokenAsync 必须级联清除 ITokenStore 中的令牌（TMA-01 守护补强）。
+    /// 强断言：验证 <c>ITokenStore.RemoveAsync</c> 被真实调用（副作用断言），
+    /// 而非"重新打桩 store 后自证"——后者即使失效未清 store 也能通过，无法守护级联语义。
+    /// </summary>
     [Fact]
-    public async Task InvalidateTokenAsync_ShouldTriggerApiCallOnNextRequest()
+    public async Task InvalidateTokenAsync_ShouldPurgeStore_SoNextCallHitsApi()
     {
         var storedToken = "stored-before-invalidate";
         // TMA-15 修复后，存储值必须包含过期时间戳才能被恢复。
@@ -716,6 +723,12 @@ public class TokenManagerWithStoreConcurrencyTests : IDisposable
         Assert.Equal(storedToken, result1);
 
         await _tenantTokenManager.InvalidateTokenAsync(cancellationToken: CancellationToken.None);
+
+        // 强断言：失效必须级联清 store（TMA-01 / D1 契约）。
+        _tokenStoreMock.Verify(
+            x => x.RemoveAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Once,
+            "InvalidateTokenAsync 必须清除 ITokenStore 中的陈旧令牌，否则 401 恢复会被 store 短路");
 
         var newToken = "new-api-token";
         _tokenStoreMock
@@ -734,6 +747,66 @@ public class TokenManagerWithStoreConcurrencyTests : IDisposable
 
         var result2 = await _tenantTokenManager.GetTokenAsync(CancellationToken.None);
         Assert.Equal(newToken, result2);
+    }
+
+    // ============================================================
+    // TMA2-04 / D9（§7.2 #4/#5）：恢复阈值与缓存有效性阈值同源（数值化边界断言）
+    // ============================================================
+
+    /// <summary>
+    /// TMA2-04（§7.2 #4）：store 中令牌剩余有效期恰好等于 TokenRefreshThreshold 时必须弃用（走 API 刷新）。
+    /// 不变式：恢复命中要求 remaining &gt; threshold；等于阈值不命中。数值化断言，不用时序。
+    /// </summary>
+    [Fact]
+    public async Task GetTokenAsync_ShouldCallApi_WhenStoredTokenRemainingEqualsThreshold()
+    {
+        // 剩余有效期 == threshold（300s）：恢复必须不命中（命中要求严格大于）。
+        var expireTimestampMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + _config.TokenRefreshThreshold * 1000L;
+        var storedToken = "stored-at-threshold-boundary";
+        _tokenStoreMock
+            .Setup(x => x.GetAccessTokenAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(TokenStoreHelper.EncodeStoredToken(storedToken, expireTimestampMs));
+
+        var apiToken = "api-token-at-threshold";
+        _authenticationApiMock
+            .Setup(x => x.GetTenantAccessTokenAsync(It.IsAny<AppCredentials>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new TenantAppCredentialResult
+            {
+                TenantAccessToken = apiToken,
+                Expire = 7200,
+                Code = 0,
+                Msg = "ok"
+            });
+
+        var result = await _tenantTokenManager.GetTokenAsync(CancellationToken.None);
+
+        // 注意：返回值是 API 新令牌（经缓存后同一实例），不可与 store 值比较。
+        result.Should().NotBe(storedToken, "剩余有效期等于阈值时不得从 store 恢复");
+        _authenticationApiMock.Verify(
+            x => x.GetTenantAccessTokenAsync(It.IsAny<AppCredentials>(), It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    /// <summary>
+    /// TMA2-04（§7.2 #5）：store 中令牌剩余有效期高于 TokenRefreshThreshold 时命中恢复，不打 API。
+    /// </summary>
+    [Fact]
+    public async Task GetTokenAsync_ShouldReuseStoredToken_WhenStoredTokenRemainingAboveThreshold()
+    {
+        // 剩余有效期 = threshold + 5s（留出断言执行的耗时余量，仍严格大于阈值）。
+        var expireTimestampMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+            + (_config.TokenRefreshThreshold + 5) * 1000L;
+        var storedToken = "stored-above-threshold";
+        _tokenStoreMock
+            .Setup(x => x.GetAccessTokenAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(TokenStoreHelper.EncodeStoredToken(storedToken, expireTimestampMs));
+
+        var result = await _tenantTokenManager.GetTokenAsync(CancellationToken.None);
+
+        result.Should().Be(storedToken, "剩余有效期高于阈值时应从 store 恢复");
+        _authenticationApiMock.Verify(
+            x => x.GetTenantAccessTokenAsync(It.IsAny<AppCredentials>(), It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 }
 

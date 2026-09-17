@@ -16,6 +16,10 @@ public abstract class TokenManagerTestsBase : IDisposable
     protected readonly Mock<IFeishuAuthentication> _authenticationApiMock;
     protected readonly Mock<IEnhancedHttpClient> _httpClientMock;
     protected readonly Mock<IFeishuCurrentUserContext> CurrentUserContextMock;
+    // TMA2-01⑤ / TMA2-21：支持注入 IUserTokenStore 以覆盖用户令牌的 store 恢复/持久化/续期路径。
+    // 默认返回 null（与无 store 场景一致），不破坏既有测试行为；需要 store 路径的用例
+    // 通过 UserTokenStoreMock.Setup 桩定。
+    protected readonly Mock<IUserTokenStore> UserTokenStoreMock = new();
     protected readonly FeishuAppConfig Config;
     protected readonly FeishuAppContext AppContext;
 
@@ -53,7 +57,8 @@ public abstract class TokenManagerTestsBase : IDisposable
             CurrentUserContextMock.Object,
             _authenticationApiMock.Object,
             optionsMock.Object,
-            userTokenManagerLoggerMock.Object);
+            userTokenManagerLoggerMock.Object,
+            UserTokenStoreMock.Object);
 
         AppContext = new FeishuAppContext(
             Config,

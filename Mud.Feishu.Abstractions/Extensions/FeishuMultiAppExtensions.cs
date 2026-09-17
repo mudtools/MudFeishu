@@ -147,7 +147,7 @@ public static class FeishuMultiAppExtensions
         validateConfig?.Invoke(configs);
 
         // 注册基础服务（HttpClient工厂）
-        services.AddFeishuAppBaseServices(configs);
+        services.AddFeishuAppBaseServices(configs, configuration);
 
         // 注册核心服务（应用管理器、默认应用上下文、配置）
         RegisterCoreServices(services, configs, configuration, sectionName);

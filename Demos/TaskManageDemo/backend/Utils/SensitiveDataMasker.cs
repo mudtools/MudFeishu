@@ -10,8 +10,17 @@ using System.Text.RegularExpressions;
 namespace TaskManageDemo.Backend.Utils;
 
 /// <summary>
-/// 敏感数据脱敏器接口
+/// 本示例应用自有的敏感数据脱敏器接口。
 /// </summary>
+/// <remarks>
+/// <b>注意：与 <c>Mud.HttpUtils.ISensitiveDataMasker</c> 同名但契约不同，且位于不同命名空间</b>
+/// （组件接口为 <c>Mask(string)</c> / <c>MaskObject(object)</c>；本接口为
+/// <c>Mask(string?, SensitiveDataType)</c> / <c>MaskObject&lt;T&gt;(T)</c>）。
+/// 因此在本示例的 <c>Program.cs</c> 中注册本接口<b>不会</b>替换组件 HTTP 日志的脱敏掩码器
+/// （组件侧应调用 <c>services.AddSensitiveDataMasker()</c> 或注册组件命名空间下的
+/// <c>ISensitiveDataMasker</c> 实现）。未注册时组件会回退到内置敏感字段词表脱敏，
+/// 不会出现明文泄漏，仅无法启用自定义脱敏规则。
+/// </remarks>
 public interface ISensitiveDataMasker
 {
     /// <summary>

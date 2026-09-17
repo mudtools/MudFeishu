@@ -112,7 +112,39 @@ public class FeishuWebhookOptions
     /// 定期刷新即将过期的访问令牌，确保后台处理事件时令牌始终有效。
     /// 参见 <see cref="Mud.HttpUtils.TokenRefreshBackgroundOptions"/> 了解更多令牌刷新配置。
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>与令牌后台刷新的关系（默认值语义）</b>：本属性会被映射到
+    /// <see cref="Mud.HttpUtils.TokenRefreshBackgroundOptions.Enabled"/>。默认值 <c>false</c> 意味着
+    /// <b>启用 Webhook 模块的宿主默认不会开启令牌后台主动刷新</b>（即使已注册了应用）——
+    /// 令牌退化为首次请求时懒加载 + 过期前无预热。若宿主在关闭 Webhook 后台处理的同时仍需令牌预热，
+    /// 请显式设置 <see cref="EnableTokenBackgroundRefresh"/> = <c>true</c>。
+    /// </para>
+    /// <para>
+    /// 本属性仅描述 Webhook 模块自身的后台处理模式，运行时变更由
+    /// <c>FeishuWebhookService</c> 响应；与令牌刷新解耦请改用
+    /// <see cref="EnableTokenBackgroundRefresh"/>。
+    /// </para>
+    /// </remarks>
     public bool EnableBackgroundProcessing { get; set; } = false;
+
+    /// <summary>
+    /// 是否启用 Mud.HttpUtils 的令牌后台主动刷新服务（<see cref="Mud.HttpUtils.TokenRefreshBackgroundOptions.Enabled"/>）
+    /// 的<b>显式覆盖开关</b>。
+    /// </summary>
+    /// <remarks>
+    /// <list type="bullet">
+    ///   <item><c>null</c>（默认）：<b>不干预</b> —— 沿用 <see cref="EnableBackgroundProcessing"/> 的映射
+    ///     （保持既有行为，不改变默认语义）。</item>
+    ///   <item><c>true</c>/<c>false</c>：显式覆盖映射结果，用于把「令牌刷新」与「Webhook 后台处理」解耦。</item>
+    /// </list>
+    /// <para>
+    /// 背景：此前 <c>TokenRefreshBackgroundOptions.Enabled</c> 被直接赋值为
+    /// <see cref="EnableBackgroundProcessing"/>，当宿主已配置应用（基础注册判定为启用）而 Webhook 后台处理
+    /// 未开启时，令牌后台刷新会被静默关闭且无任何显式开关可恢复。本属性补齐该逃生口。
+    /// </para>
+    /// </remarks>
+    public bool? EnableTokenBackgroundRefresh { get; set; }
 
     /// <summary>
     /// 失败事件重试配置

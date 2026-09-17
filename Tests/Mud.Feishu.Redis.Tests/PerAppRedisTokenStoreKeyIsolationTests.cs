@@ -22,7 +22,9 @@ namespace Mud.Feishu.Redis.Tests;
 /// </remarks>
 public class PerAppRedisTokenStoreKeyIsolationTests
 {
-    private static (PerAppRedisTokenStoreFactory Factory, List<string> Keys) BuildFactory(IEnumerable<string>? serverKeys = null)
+    private static (PerAppRedisTokenStoreFactory Factory, List<string> Keys) BuildFactory(
+        IEnumerable<string>? serverKeys = null,
+        List<RedisKey>? deletedKeysCapture = null)
     {
         var accessedKeys = new List<string>();
 
@@ -32,6 +34,15 @@ public class PerAppRedisTokenStoreKeyIsolationTests
                 It.IsAny<CommandFlags>()))
             .Callback<RedisKey, CommandFlags>((key, _) => accessedKeys.Add(key.ToString()))
             .ReturnsAsync(RedisValue.Null);
+
+        if (deletedKeysCapture != null)
+        {
+            db.Setup(d => d.KeyDeleteAsync(
+                    It.IsAny<RedisKey[]>(),
+                    It.IsAny<CommandFlags>()))
+                .Callback<RedisKey[], CommandFlags>((keys, _) => deletedKeysCapture.AddRange(keys))
+                .ReturnsAsync(1L);
+        }
 
         var redis = new Mock<IConnectionMultiplexer>();
         redis.Setup(r => r.GetDatabase(It.IsAny<int>(), It.IsAny<object>())).Returns(db.Object);
@@ -182,5 +193,31 @@ public class PerAppRedisTokenStoreKeyIsolationTests
         var tokenTypes = (await userStore!.GetTokenTypesAsync("ou_1")).ToList();
 
         tokenTypes.Should().ContainSingle().Which.Should().Be("user:cli_a");
+    }
+
+    /// <summary>
+    /// TMA2-21（§7.2 #14 补充）：GetTokenTypesAsync 枚举出的 tokenType 必须可原样回灌给
+    /// RemoveAsync（幂等回灌契约，D8/COMP2-3）——枚举值直接删除对应 access/refresh 两个键。
+    /// </summary>
+    [Fact]
+    public async Task RedisTokenStore_GetTokenTypesAsync_ShouldReturnRoundTrippableTokenType()
+    {
+        var deletedKeys = new List<RedisKey>();
+        var (factory, _) = BuildFactory(
+            new[] { "feishu:cli_a:token:tenant\\:cli_a:access" },
+            deletedKeysCapture: deletedKeys);
+
+        var (store, _) = factory.Create("cli_a");
+
+        // Act 1：枚举
+        var tokenTypes = (await store.GetTokenTypesAsync()).ToList();
+        tokenTypes.Should().BeEquivalentTo(new[] { "tenant:cli_a" });
+
+        // Act 2：回灌——用枚举出的原始 tokenType 直接调用 RemoveAsync
+        await store.RemoveAsync(tokenTypes[0]);
+
+        // Assert：RemoveAsync 以枚举值构造出的键与服务器上的物理键逐字节一致（转义还原无损）
+        deletedKeys.Should().Contain((RedisKey)"feishu:cli_a:token:tenant\\:cli_a:access",
+            "RemoveAsync 必须能以 GetTokenTypesAsync 的返回值命中服务器物理键（枚举可回灌）");
     }
 }

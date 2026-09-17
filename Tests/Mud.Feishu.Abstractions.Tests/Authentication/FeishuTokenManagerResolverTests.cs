@@ -58,6 +58,43 @@ public class FeishuTokenManagerResolverTests
     }
 
     /// <summary>
+    /// TMA2-10 / D6（§7.2 #13）核心：默认应用被移除后，TryGet* 必须返回 null 而非抛出异常。
+    /// 修复前 Try* 通过 <c>DefaultConfig</c>（经 GetDefaultApp）读取默认键，默认应用缺失时抛
+    /// InvalidOperationException，破坏"Try* 永不抛出，缺失返回 null"的契约。
+    /// </summary>
+    [Fact]
+    public void TryGet_ShouldReturnNull_WhenDefaultAppRemoved()
+    {
+        var services = CreateServiceCollection();
+        services.AddFeishuApp(new List<FeishuAppConfig>
+        {
+            new FeishuAppConfig
+            {
+                AppKey = "solo",
+                AppId = "cli_solo_app_id_123456",
+                AppSecret = "solo_secret_123456",
+                IsDefault = true
+            }
+        });
+        using var provider = services.BuildServiceProvider();
+
+        var resolver = provider.GetRequiredService<IFeishuTokenManagerResolver>();
+        var appManager = provider.GetRequiredService<IFeishuAppManager>();
+
+        // 前置：默认应用存在且可解析（显式实例化，确保注册链路完整）
+        appManager.GetDefaultApp();
+        resolver.TryGetTenantTokenManager().Should().NotBeNull();
+
+        // Act：移除默认应用（唯一应用，无提升候选）
+        appManager.RemoveApp("solo").Should().BeTrue();
+
+        // Assert：三个 Try* 都不抛、都返回 null
+        resolver.TryGetTenantTokenManager().Should().BeNull();
+        resolver.TryGetAppTokenManager().Should().BeNull();
+        resolver.TryGetUserTokenManager().Should().BeNull();
+    }
+
+    /// <summary>
     /// TryGetTenantTokenManager 使用存在的 appKey 应返回对应应用的租户令牌管理器
     /// </summary>
     [Fact]

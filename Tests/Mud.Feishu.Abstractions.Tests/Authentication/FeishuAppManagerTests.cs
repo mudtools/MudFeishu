@@ -424,12 +424,12 @@ public class FeishuAppManagerTests
     }
 
     /// <summary>
-    /// NEW-MA-09 验证：AddApp 标记 IsDefault=true 时，应在 _defaultAppLock 保护下更新 _defaultAppKey。
-    /// 业务场景：AddApp 写入 _defaultAppKey 必须与 GetDefaultApp/RemoveApp 的读取互斥，
-    /// 避免写入期间其他线程读到部分更新的状态。
+    /// TMA2-21（§7.2 #11 配套，原弱断言改名）：AddApp 标记 IsDefault=true 时应更新 _defaultAppKey。
+    /// 原名称"...UnderLock"宣称"在锁保护下"但仅断言结果，无法证明锁语义；
+    /// 锁语义由 <see cref="DefaultAppKey_ShouldNotLoseUpdate_WhenAddAppConcurrentWithRemoveDefault"/> 以确定性交错断言守护。
     /// </summary>
     [Fact]
-    public void AddApp_WhenMarkedAsDefault_ShouldUpdateDefaultAppKeyUnderLock()
+    public void AddApp_WhenMarkedAsDefault_ShouldUpdateDefaultAppKey()
     {
         // Arrange
         var services = CreateServiceCollection();
@@ -598,6 +598,279 @@ public class FeishuAppManagerTests
         // 但 Flush 不抛异常即证明全部释放成功。
         // 验证 Dispose 后 provider 仍可正常释放
         provider.Dispose();
+    }
+
+    // ============================================================
+    // TMA2-05 / D10（§7.2 #7/#8）：凭据变更即清库
+    // ============================================================
+
+    /// <summary>
+    /// 构造带 spy 令牌存储工厂的服务集合（替换 AddFeishuApp 的默认注册）。
+    /// </summary>
+    private static ServiceCollection CreateServiceCollectionWithTokenStoreFactory(
+        out Mock<ITokenStore> tokenStoreMock,
+        out Mock<IUserTokenStore> userTokenStoreMock)
+    {
+        tokenStoreMock = new Mock<ITokenStore>();
+        userTokenStoreMock = new Mock<IUserTokenStore>();
+
+        var factoryMock = new Mock<IFeishuTokenStoreFactory>();
+        factoryMock
+            .Setup(x => x.Create(It.IsAny<string>()))
+            .Returns((tokenStoreMock.Object, userTokenStoreMock.Object));
+
+        var services = CreateServiceCollection();
+        var existingDescriptor = services.FirstOrDefault(d => d.ServiceType == typeof(IFeishuTokenStoreFactory));
+        if (existingDescriptor != null) services.Remove(existingDescriptor);
+        services.AddSingleton(factoryMock.Object);
+        return services;
+    }
+
+    /// <summary>
+    /// TMA2-05 / D10（§7.2 #7）核心：热更新检测到 AppSecret 变更时，必须清除该 appKey 的持久化令牌。
+    /// 强断言：spy 存储 <c>ClearAsync</c> 被真实调用（副作用断言）。
+    /// </summary>
+    [Fact]
+    public void RebuildAppContext_ShouldPurgeStoredTokens_WhenAppSecretChanged()
+    {
+        // Arrange
+        var services = CreateServiceCollectionWithTokenStoreFactory(out var tokenStoreMock, out _);
+        services.AddFeishuApp(new List<FeishuAppConfig> { CreateDefaultConfig() });
+        using var provider = services.BuildServiceProvider();
+        var appManager = provider.GetRequiredService<FeishuAppManager>();
+
+        // 实例化应用（旧上下文），否则 Phase-A 中 oldContext 为 null 无法做凭据比对
+        _ = appManager.GetApp(AppConfigs.AppKeys.Default);
+
+        var changedConfig = new FeishuAppConfig
+        {
+            AppKey = AppConfigs.AppKeys.Default,
+            AppId = AppConfigs.AppIds.Default,
+            AppSecret = "changed_secret_987654",
+            IsDefault = true
+        };
+
+        // Act
+        appManager.OnConfigurationChanged(new List<FeishuAppConfig> { changedConfig });
+
+        // Assert
+        tokenStoreMock.Verify(x => x.ClearAsync(It.IsAny<CancellationToken>()), Times.Once,
+            "凭据（AppSecret）变更必须清除该应用的持久化令牌");
+    }
+
+    /// <summary>
+    /// TMA2-05 / D10（§7.2 #8）：仅非凭据字段（TimeOut）变化时保留令牌热迁移，不清库。
+    /// </summary>
+    [Fact]
+    public void RebuildAppContext_ShouldNotPurgeStoredTokens_WhenOnlyTimeOutChanged()
+    {
+        var services = CreateServiceCollectionWithTokenStoreFactory(out var tokenStoreMock, out _);
+        services.AddFeishuApp(new List<FeishuAppConfig> { CreateDefaultConfig() });
+        using var provider = services.BuildServiceProvider();
+        var appManager = provider.GetRequiredService<FeishuAppManager>();
+        _ = appManager.GetApp(AppConfigs.AppKeys.Default);
+
+        appManager.OnConfigurationChanged(new List<FeishuAppConfig>
+        {
+            new FeishuAppConfig
+            {
+                AppKey = AppConfigs.AppKeys.Default,
+                AppId = AppConfigs.AppIds.Default,
+                AppSecret = AppConfigs.Secrets.Valid,
+                IsDefault = true,
+                TimeOut = 99
+            }
+        });
+
+        tokenStoreMock.Verify(x => x.ClearAsync(It.IsAny<CancellationToken>()), Times.Never,
+            "仅非凭据字段变化应保留令牌热迁移");
+    }
+
+    /// <summary>
+    /// TMA2-05 / D10：仅 BaseUrl 变化时同样保留令牌（多区域切换不掉令牌的既有收益）。
+    /// </summary>
+    [Fact]
+    public void RebuildAppContext_ShouldNotPurgeStoredTokens_WhenOnlyBaseUrlChanged()
+    {
+        var services = CreateServiceCollectionWithTokenStoreFactory(out var tokenStoreMock, out _);
+        services.AddFeishuApp(new List<FeishuAppConfig> { CreateDefaultConfig() });
+        using var provider = services.BuildServiceProvider();
+        var appManager = provider.GetRequiredService<FeishuAppManager>();
+        _ = appManager.GetApp(AppConfigs.AppKeys.Default);
+
+        appManager.OnConfigurationChanged(new List<FeishuAppConfig>
+        {
+            new FeishuAppConfig
+            {
+                AppKey = AppConfigs.AppKeys.Default,
+                AppId = AppConfigs.AppIds.Default,
+                AppSecret = AppConfigs.Secrets.Valid,
+                IsDefault = true,
+                AllowCustomBaseUrl = true,
+                BaseUrl = "https://open.example.com"
+            }
+        });
+
+        tokenStoreMock.Verify(x => x.ClearAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    // ============================================================
+    // TMA2-08 / D13（§7.2 #11）：AddApp 默认键写入与 RemoveDefault 的确定性交错
+    // ============================================================
+
+    /// <summary>
+    /// TMA2-08 / D13（§7.2 #11）核心：AddApp 的默认键写入持 _defaultAppLock 后，
+    /// 与 RemoveApp("旧默认") 的"清空+提升"复合操作并发时不得丢失更新。
+    /// 修复前的丢失窗口：AddApp 写入 newKey 后、RemoveApp 的锁内段检查 `_defaultAppKey == oldKey`
+    /// 仍为 true → 将 newKey 覆写为 null/提升值。加锁后两种交错顺序的最终结果都必然是 newKey。
+    /// </summary>
+    [Fact]
+    public void DefaultAppKey_ShouldNotLoseUpdate_WhenAddAppConcurrentWithRemoveDefault()
+    {
+        for (var iteration = 0; iteration < 10; iteration++)
+        {
+            var services = CreateServiceCollection();
+            services.AddFeishuApp(new List<FeishuAppConfig> { CreateDefaultConfig() });
+            using var provider = services.BuildServiceProvider();
+            var appManager = provider.GetRequiredService<FeishuAppManager>();
+
+            var newDefaultConfig = new FeishuAppConfig
+            {
+                AppKey = $"new-default-{iteration}",
+                AppId = AppConfigs.AppIds.Hr,
+                AppSecret = AppConfigs.Secrets.Hr,
+                IsDefault = true
+            };
+
+            var removeTask = Task.Run(() => appManager.RemoveApp(AppConfigs.AppKeys.Default));
+            var addTask = Task.Run(() => appManager.AddApp(newDefaultConfig));
+            Task.WaitAll(removeTask, addTask);
+
+            appManager.DefaultAppKey.Should().Be(newDefaultConfig.AppKey,
+                $"第 {iteration} 轮：AddApp 声明的默认键不得被并发 RemoveApp 的清空/提升覆盖");
+        }
+    }
+
+    // ============================================================
+    // TMA2-11 / D13：装配失败释放 scope；Dispose 释放在册上下文
+    // ============================================================
+
+    /// <summary>
+    /// Scoped 的失败工厂：装配时抛出瞬时可重试异常，并记录自身是否被 scope 释放。
+    /// 用作 scope Dispose 的可观测点（scope.Dispose 会释放其中创建的所有 IDisposable 实例）。
+    /// 实例由 DI 容器在 scope 内创建，因此会随 scope 释放。
+    /// </summary>
+    private sealed class FailingScopedTokenStoreFactory : IFeishuTokenStoreFactory, IDisposable
+    {
+        public static readonly List<FailingScopedTokenStoreFactory> Instances = new();
+
+        public bool Disposed { get; private set; }
+
+        public FailingScopedTokenStoreFactory() => Instances.Add(this);
+
+        public (ITokenStore TokenStore, IUserTokenStore? UserTokenStore) Create(string appKey)
+            => throw new HttpRequestException("模拟装配失败（如存储瞬时故障）");
+
+        public void Dispose() => Disposed = true;
+    }
+
+    /// <summary>
+    /// TMA2-11 / D13：CreateAppContext 装配失败时必须释放已创建的 IServiceScope
+    /// （所有权仅在成功时转移给 FeishuAppContext），避免 Captive Dependency 泄漏。
+    /// 可观测点：scope 内创建的 Scoped 工厂实例实现 IDisposable，scope 被释放时其 Disposed 标记置位。
+    /// </summary>
+    [Fact]
+    public void CreateAppContext_ShouldDisposeScope_WhenAssemblyFails()
+    {
+        FailingScopedTokenStoreFactory.Instances.Clear();
+
+        var services = CreateServiceCollection();
+        services.AddFeishuApp(new List<FeishuAppConfig> { CreateDefaultConfig() });
+        // 注意：必须放在 AddFeishuApp 之后——AddFeishuApp 末尾的加密装饰器会把"当时的最后一个描述符"
+        // 用根 SP 包裹重建（脱离 scope 生命周期），导致 Scoped 实例不再随 scope 释放。
+        // 追加在最后，使解析直接命中本工厂（Scoped：实例随 CreateAppContext 创建的 scope 一起创建与释放）。
+        services.AddScoped<IFeishuTokenStoreFactory, FailingScopedTokenStoreFactory>();
+        using var provider = services.BuildServiceProvider();
+
+        var appManager = provider.GetRequiredService<FeishuAppManager>();
+
+        // Act：GetApp 触发懒加载装配 → factory.Create 抛出 → scope 应被释放
+        var act = () => appManager.GetApp(AppConfigs.AppKeys.Default);
+
+        // Assert
+        act.Should().Throw<InvalidOperationException>("瞬时装配失败经 GetOrCreateContext 包装后上抛");
+        FailingScopedTokenStoreFactory.Instances.Should().NotBeEmpty("装配流程应在 scope 内创建过工厂实例");
+        FailingScopedTokenStoreFactory.Instances.Should().OnlyContain(
+            f => f.Disposed, "装配失败时创建的 IServiceScope 必须被释放（Scoped 实例随 scope 释放）");
+    }
+
+    /// <summary>
+    /// TMA2-11 / D13：FeishuAppManager.Dispose 必须释放全部在册上下文（含 _lazyContexts 已实例化者），幂等。
+    /// 通过反射读取 FeishuAppContext 私有 _disposed 状态做副作用断言。
+    /// </summary>
+    [Fact]
+    public void Dispose_ShouldDisposeAllRegisteredContexts()
+    {
+        var services = CreateServiceCollection();
+        services.AddFeishuApp(new List<FeishuAppConfig>
+        {
+            CreateDefaultConfig(),
+            CreateSecondaryConfig()
+        });
+        var provider = services.BuildServiceProvider();
+        var appManager = provider.GetRequiredService<FeishuAppManager>();
+
+        // 实例化两个应用
+        _ = appManager.GetApp(AppConfigs.AppKeys.Default);
+        _ = appManager.GetApp(AppConfigs.AppKeys.Hr);
+        var contexts = appManager.InstantiatedApps.ToList();
+        contexts.Should().HaveCount(2);
+
+        // Act
+        appManager.Dispose();
+
+        // Assert：每个在册上下文都已被 Dispose（幂等标记置位）
+        var disposedField = typeof(FeishuAppContext).GetField("_disposed",
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        disposedField.Should().NotBeNull("FeishuAppContext 应存在 _disposed 标记");
+        foreach (var context in contexts)
+        {
+            var isDisposed = (bool)disposedField!.GetValue(context)!;
+            isDisposed.Should().BeTrue($"在册上下文 {context.Config.AppKey} 应随 FeishuAppManager.Dispose 释放");
+        }
+
+        provider.Dispose();
+    }
+
+    // ============================================================
+    // TMA2-12 / D6：非瞬时异常不被吞
+    // ============================================================
+
+    /// <summary>
+    /// TMA2-12 / D6：Lazy 装配抛出非瞬时异常（如 TypeLoadException）时，
+    /// TryGetApp 必须原样上抛而非吞掉返回 false（修复前 catch-all 会把非瞬时故障
+    /// 误报为"应用初始化失败"并无限重试）。
+    /// </summary>
+    [Fact]
+    public void TryGetApp_ShouldRethrow_WhenNonTransientExceptionOccurs()
+    {
+        var tokenStoreFactoryMock = new Mock<IFeishuTokenStoreFactory>();
+        tokenStoreFactoryMock
+            .Setup(x => x.Create(It.IsAny<string>()))
+            .Throws(new TypeLoadException("模拟非瞬时装配故障"));
+
+        var services = CreateServiceCollection();
+        var existingDescriptor = services.FirstOrDefault(d => d.ServiceType == typeof(IFeishuTokenStoreFactory));
+        if (existingDescriptor != null) services.Remove(existingDescriptor);
+        services.AddSingleton(tokenStoreFactoryMock.Object);
+        services.AddFeishuApp(new List<FeishuAppConfig> { CreateDefaultConfig() });
+        using var provider = services.BuildServiceProvider();
+
+        var appManager = provider.GetRequiredService<FeishuAppManager>();
+
+        var act = () => appManager.TryGetApp(AppConfigs.AppKeys.Default, out _);
+
+        act.Should().Throw<TypeLoadException>("非瞬时异常必须原样上抛，不得被异常过滤吞掉");
     }
 }
 

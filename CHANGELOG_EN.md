@@ -2,9 +2,44 @@
 
 ## [Unreleased]
 
-> Corresponds to M1–M5 of `.docs/MudHttpUtils-2.0.4-Repair-and-Enhancement-Plan.md` (Mud.HttpUtils upgraded to 2.0.5).
+> Corresponds to M1–M5 of `.docs/MudHttpUtils-2.0.4-Repair-and-Enhancement-Plan.md` (Mud.HttpUtils 2.0.4).
+> Corresponds to TMA-01…TMA-24 of `.docs/MudFeishu-Token-MultiApp-Review-Remediation-Plan.md` (R1).
+> Corresponds to TMA2-01…TMA2-23 of `.docs/MudFeishu-Token-MultiApp-Review-Remediation-Plan-R2.md` (R2).
 > The project is not released yet, so the breaking changes below require no data migration.
 > See `CHANGELOG.md` for the full list.
+
+### ⚠️ Breaking Changes / Behavior Changes (Token & Multi-App R2)
+
+- **User tokens remain renewable after the access token expires (P0-1 / TMA2-01)**: previously
+  `RefreshUserTokenAsync` read the refresh token through `GetTokenInfoAsync`, which returns `null`
+  once the access token is expired — after a restart or multi-instance takeover the refresh token was
+  unreachable and the user got a permanent 401 until re-authorization. A dedicated
+  `LoadRefreshCandidateAsync` now reads the refresh token independently of access-token validity and
+  validates the refresh token's own expiry.
+- **Token key layout unified into a single source of truth (P0-2 / TMA2-02)**: the Memory and Redis
+  backends previously built keys independently (Redis escaped `:` inside `tokenType`, Memory did not),
+  so the same token type landed on different physical keys and enumerated values could not be fed back
+  to `RemoveAsync`. All keys are now produced by `TokenKeyBuilder` and are byte-identical on both
+  backends.
+- **Restore threshold is now the same as the cache-validity threshold (P1-1 / TMA2-04)**: the restore
+  deprecation threshold previously used `threshold/2`, which caused a "restore → immediately
+  invalidated → restore again" self-loop; `TokenRefreshThreshold` is now the single threshold.
+- **Credential changes purge stored tokens immediately (P1-2 / TMA2-05)**: `RebuildAppContext` now
+  detects `(AppId, AppSecret)` changes and clears the app's persisted tokens; non-credential changes
+  (e.g. `BaseUrl`/`TimeOut`) still keep the token hot-migration.
+- **OAuth refresh failures are classified (TMA2-06)**: non-retryable errors (`invalid_grant`,
+  revoked/expired refresh token, scope mismatch) purge the stored refresh token and return `null`
+  (entering component back-off); retryable errors throw `FeishuException` for visibility.
+- **`AppInstantiated` event (TMA2-07)**: fired on first access of an app to incrementally register
+  its token managers with the background refresh service (netstandard2.0 has no HostedService host —
+  see README for its background-refresh coverage).
+- **`AddApp` default-app write is now locked (TMA2-08)**, **hot reload is two-phase transactional
+  (TMA2-09)**, **`TryGet*` never throws (TMA2-10)**, **assembly-failure scope leak and registered-context
+  disposal fixed (TMA2-11)**, **exception filter narrowed to a transient whitelist (TMA2-12)**,
+  **dead switches/constants removed (TMA2-13/14)**, **Redis expired refresh tokens are deleted instead
+  of written with an endless TTL (TMA2-15)**, **restore backfills OpenId (TMA2-16)**,
+  **Redis token store registration-order guard (TMA2-17)**, **docs/version consistency (TMA2-18)**,
+  **Redis connection string masked in logs (TMA2-19)**, **multi-tenant deployment guide (TMA2-20)**.
 
 ### ⚠️ Breaking Changes / Behavior Changes
 

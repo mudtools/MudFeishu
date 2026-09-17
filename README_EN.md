@@ -652,6 +652,56 @@ builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
 
 ---
 
+## 🏢 Multi-Tenant Deployment Guide
+
+> **Multi-tenant = Multi-app.** Each tenant maps to a `FeishuAppConfig` (independent AppId/AppSecret); switch the app context via `UseApp`/`BeginScope`.
+
+**Minimal wiring snippet**:
+
+```csharp
+// 1. Register an app config per tenant
+builder.Services.AddFeishuApp(configure =>
+{
+    configure.AddDefaultApp("tenant-a", "cli_aaa", "dsk_aaa");
+    configure.AddApp("tenant-b", "cli_bbb", "dsk_bbb");
+});
+
+// 2. Register HTTP API services
+builder.Services.CreateFeishuServicesBuilder()
+    .AddAllApis()
+    .Build();
+
+// 3. Switch the app context per tenant in a request
+public class TenantController : ControllerBase
+{
+    private readonly IFeishuAppManager _appManager;
+
+    public TenantController(IFeishuAppManager appManager)
+    {
+        _appManager = appManager;
+    }
+
+    [HttpGet("tenant/{tenantKey}/users/{userId}")]
+    public async Task<IActionResult> GetUser(string tenantKey, string userId)
+    {
+        // using ensures the default app is restored when the scope ends
+        using var scope = _appManager.GetAppContextSwitcher().UseApp(tenantKey);
+        var userApi = _appManager.GetFeishuApi<IFeishuTenantV3User>();
+        var result = await userApi.GetUserInfoByIdAsync(userId);
+        return Ok(result);
+    }
+}
+```
+
+> ⚠️ **Security note**: `UseApp`/`BeginScope` only switches the app context (token/endpoint); it does **NOT enforce tenant isolation authorization**.
+> To restrict a caller to its own tenant's data, implement custom authorization in the business layer (e.g., a Claim-based tenant validation middleware).
+> The component-side `IAppAccessAuthorizer` reports an error when it is missing, but this SDK does not bundle an authorization implementation.
+
+> 🔒 **Multi-tenant Redis isolation**: when using Redis distributed deduplication, set distinct key prefixes
+> (`EventKeyPrefix`/`NonceKeyPrefix`/`SeqIdKeyPrefix`) per tenant to prevent cross-tenant event conflicts.
+
+---
+
 ## 📸 Demo Screenshots
 
 Below are actual screenshots of **FeishuWikiManager** (Feishu Wiki Management Demo), demonstrating the SDK in a real project:

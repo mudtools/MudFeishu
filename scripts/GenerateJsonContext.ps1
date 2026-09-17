@@ -1,16 +1,18 @@
 <#
 .SYNOPSIS
     Runs Mud.HttpUtils.JsonContextScaffolder to generate JsonSerializerContext source files
-    for the Mud.Feishu.DataModels project.
+    for the Mud.Feishu.DataModels and Mud.Feishu.EventCallback projects.
 .DESCRIPTION
     The scaffolder is distributed as a NuGet dotnet tool (command: mud-jsonctx). This script
     does NOT depend on any local source/build path, so it works on any machine / any clone
     location:
-      1. Resolves the target project relative to the script's own directory (no hardcoded paths).
+      1. Resolves the target projects relative to the repo root (script lives in <repo>\scripts\).
       2. Detects the tool (global `mud-jsonctx` or local `dotnet mud-jsonctx`), installing it
          globally when missing (unless -NoInstall).
-      3. Runs the tool to scan [HttpJsonSerializable] and emit *_JsonContext.g.cs grouped by
-         SerializerClassName.
+      3. Runs the tool for EACH (project, output) pair to scan [HttpJsonSerializable] and emit
+         *_JsonContext.g.cs grouped by SerializerClassName.
+    Default targets: Mud.Feishu.DataModels and Mud.Feishu.EventCallback. Pass -TargetProject /
+    -OutputDir arrays (paired by index) to override.
     Generated files should be committed (re-run only when [HttpJsonSerializable] annotations
     are added/changed).
     See the tool README (NuGet package / repo Tools/Mud.HttpUtils.JsonContextScaffolder) for details.
@@ -26,10 +28,16 @@ param(
     [string]$ToolPackageId = "Mud.HttpUtils.JsonContextScaffolder",
     # Version to install; empty = latest stable
     [string]$ToolVersion = "",
-    # Target data-model project (relative to script dir or absolute)
-    [string]$TargetProject = "Mud.Feishu.DataModels/Mud.Feishu.DataModels.csproj",
-    # Output directory for generated context files (relative to script dir or absolute)
-    [string]$OutputDir = "Mud.Feishu.DataModels/Generated",
+    # Target projects, paired by index with -OutputDir (relative to repo root or absolute)
+    [string[]]$TargetProject = @(
+        "Mud.Feishu.DataModels/Mud.Feishu.DataModels.csproj",
+        "Mud.Feishu.EventCallback/Mud.Feishu.EventCallback.csproj"
+    ),
+    # Output directories, paired by index with -TargetProject (relative to repo root or absolute)
+    [string[]]$OutputDir = @(
+        "Mud.Feishu.DataModels/Generated",
+        "Mud.Feishu.EventCallback/Generated"
+    ),
     # Auto-complete polymorphic derived types within the same assembly
     [switch]$AutoDerivedTypes = $true,
     # Preview only, do not write files
@@ -40,8 +48,9 @@ param(
     [switch]$NoInstall = $false
 )
 
-# Repo root = script directory (bound to the script location, works on any clone path)
-$RepoRoot = $PSScriptRoot
+# Repo root = parent of the script directory (script lives in <repo>\scripts\),
+# bound to the script location, works on any clone path
+$RepoRoot = Split-Path $PSScriptRoot -Parent
 
 # Fix working directory to the repo root so relative paths and any local dotnet tool
 # manifest are resolved consistently.
@@ -53,12 +62,25 @@ function Resolve-RepoPath([string]$p) {
     return Join-Path $RepoRoot $p
 }
 
-$TargetProject = Resolve-RepoPath $TargetProject
-$OutputDir     = Resolve-RepoPath $OutputDir
-
-if (-not (Test-Path $TargetProject)) {
-    Write-Error "Target project not found: $TargetProject"
+# -TargetProject 与 -OutputDir 必须按索引一一配对
+if ($TargetProject.Count -ne $OutputDir.Count) {
+    Write-Error ("-TargetProject ($($TargetProject.Count) items) and -OutputDir ($($OutputDir.Count) items) " +
+                 "must be paired by index and have the same length.")
     exit 1
+}
+
+$targets = for ($i = 0; $i -lt $TargetProject.Count; $i++) {
+    [pscustomobject]@{
+        Project = Resolve-RepoPath $TargetProject[$i]
+        Output  = Resolve-RepoPath $OutputDir[$i]
+    }
+}
+
+foreach ($t in $targets) {
+    if (-not (Test-Path $t.Project)) {
+        Write-Error "Target project not found: $($t.Project)"
+        exit 1
+    }
 }
 
 # ---------------------------------------------------------------------------
@@ -124,34 +146,42 @@ $toolMode = if ($toolInvocation.Count -eq 1) { "global (mud-jsonctx)" } else { "
 Write-Host "Detected tool invocation: $toolMode"
 
 # ---------------------------------------------------------------------------
-# Build and run the tool arguments
+# Build and run the tool arguments for each (project, output) pair
 # ---------------------------------------------------------------------------
-$toolArgs = @(
-    "--project", (Resolve-Path $TargetProject)
-    "-o", $OutputDir
-)
-if ($AutoDerivedTypes) { $toolArgs += "--auto-derived-types" }
-if ($DryRun)           { $toolArgs += "--dry-run" }
-
 Write-Host "==== Mud.HttpUtils JsonContext Scaffolder ===="
-Write-Host "Command   : $($toolInvocation -join ' ') (dotnet tool: $ToolPackageId)"
-Write-Host "Project   : $TargetProject"
-Write-Host "Output    : $OutputDir"
+Write-Host "Command    : $($toolInvocation -join ' ') (dotnet tool: $ToolPackageId)"
 Write-Host "AutoDerived: $AutoDerivedTypes"
-Write-Host "Dry run   : $DryRun"
+Write-Host "Dry run    : $DryRun"
+Write-Host "Targets    : $($targets.Count)"
 Write-Host ""
 
-& $toolInvocation @toolArgs
-$exitCode = $LASTEXITCODE
+foreach ($t in $targets) {
+    $toolArgs = @(
+        "--project", (Resolve-Path $t.Project)
+        "-o", $t.Output
+    )
+    if ($AutoDerivedTypes) { $toolArgs += "--auto-derived-types" }
+    if ($DryRun)           { $toolArgs += "--dry-run" }
 
-if ($exitCode -ne 0) {
-    Write-Error "Scaffolder failed, exit code: $exitCode"
-    exit $exitCode
+    Write-Host "---- [$($targets.IndexOf($t) + 1)/$($targets.Count)] ----"
+    Write-Host "Project   : $($t.Project)"
+    Write-Host "Output    : $($t.Output)"
+    Write-Host ""
+
+    & $toolInvocation @toolArgs
+    $exitCode = $LASTEXITCODE
+
+    if ($exitCode -ne 0) {
+        Write-Error "Scaffolder failed for $($t.Project), exit code: $exitCode"
+        exit $exitCode
+    }
 }
 
 Write-Host ""
 Write-Host "==== Done ===="
 if (-not $DryRun) {
-    Write-Host "Generated context files are in: $OutputDir"
-    Write-Host "Add them to version control, e.g.: git add $OutputDir"
+    foreach ($t in $targets) {
+        Write-Host "Generated context files are in: $($t.Output)"
+        Write-Host "Add them to version control, e.g.: git add $($t.Output)"
+    }
 }

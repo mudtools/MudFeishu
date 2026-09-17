@@ -1,25 +1,30 @@
 ﻿<#
 .SYNOPSIS
-    为 Mud.Feishu.DataModels 项目中所有 DTO 类型添加 [HttpJsonSerializable] 特性。
+    为 Mud.Feishu.EventCallback 项目中所有事件结果类添加 [HttpJsonSerializable] 特性。
 .DESCRIPTION
     - 遍历指定根目录下所有 .cs 文件（排除 obj 目录与已标注文件）。
-    - 以文件相对于根目录的“第一级文件夹名”作为 SerializerClassName 取值。
+    - 以文件相对于根目录的"第一级文件夹名"作为 SerializerClassName 取值。
     - 仅对顶层的 class / record / struct 添加特性；跳过 enum / interface /
       delegate / static class，以及嵌套类型。
-    - 幂等：文件已包含 [HttpJsonSerializable 则跳过。
+    - 幂等：文件已包含 [HttpJsonSerializable] 则跳过。
+    - 自动覆盖 DriveFileEventHeader 等非 Result 类（N-03），无需单独处理。
+    - 新增特性与已有的 [GenerateEventHandler] 并存，互不影响。
 #>
 
 param(
-    # 数据模型根目录；留空则取「脚本所在目录\Mud.Feishu.DataModels」。
-    # 也可传入相对路径（相对脚本所在目录）或绝对路径。
+    # EventCallback 根目录；留空则取「仓库根目录\Mud.Feishu.EventCallback」。
+    # 也可传入相对路径（相对仓库根目录）或绝对路径。
     [string]$RootPath
 )
 
-# ---- 解析根目录为绝对路径（相对路径基于脚本所在目录，不依赖当前工作目录）----
+# 脚本位于 <仓库根>\scripts\ 下，仓库根为其上一级目录
+$RepoRoot = Split-Path $PSScriptRoot -Parent
+
+# ---- 解析根目录为绝对路径（相对路径基于仓库根目录，不依赖当前工作目录）----
 if ([string]::IsNullOrWhiteSpace($RootPath)) {
-    $RootPath = Join-Path $PSScriptRoot 'Mud.Feishu.DataModels'
+    $RootPath = Join-Path $RepoRoot 'Mud.Feishu.EventCallback'
 } elseif (-not [System.IO.Path]::IsPathRooted($RootPath)) {
-    $RootPath = Join-Path $PSScriptRoot $RootPath
+    $RootPath = Join-Path $RepoRoot $RootPath
 }
 $RootPath = [System.IO.Path]::GetFullPath($RootPath).TrimEnd(
     [System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar)
@@ -52,7 +57,7 @@ foreach ($file in $files) {
     $relPath  = $file.FullName.Substring($RootPath.Length + 1)
     $segments = $relPath.Split(
         [System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar)
-    $module   = $segments[0]   # 如 AI / Approval / Common ...
+    $module   = $segments[0]   # 如 IM / Approval / Drive ...
 
     $lines = Get-Content -Path $file.FullName -Encoding UTF8
 
@@ -85,7 +90,7 @@ foreach ($file in $files) {
         continue
     }
 
-    # 通过缩进过滤嵌套类型：取所有候选行的最小缩进作为“顶层”基准
+    # 通过缩进过滤嵌套类型：取所有候选行的最小缩进作为"顶层"基准
     $minIndent = ($candidates | ForEach-Object { $lines[$_ - 1].Length - $lines[$_ - 1].TrimStart().Length } | Measure-Object -Minimum).Minimum
 
     # 从后往前插入，避免行号偏移

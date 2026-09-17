@@ -171,7 +171,18 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
         return tokenInfo;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 刷新用户令牌
+    /// </summary>
+    /// <remarks>
+    /// TMA2-01 / D11：refresh token 的可达性独立于 access token。
+    /// 此前 <c>RefreshUserTokenAsync</c> 调用 <c>GetTokenInfoAsync</c>，后者在 access token 过期时返回 <c>null</c>，
+    /// 导致 refresh token 不可达——access 过期后（含进程重启、多实例接管）该用户必然 401 直到重新走 OAuth 授权。
+    /// 现在使用 <c>LoadRefreshCandidateAsync</c> 读取 refresh token，即使 access token 已过期或缺失。
+    /// </remarks>
+    /// <param name="userId">用户标识</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>刷新后的用户令牌信息，刷新失败返回 null</returns>
     public override async Task<UserTokenInfo?> RefreshUserTokenAsync(
         string userId,
         CancellationToken cancellationToken = default)
@@ -179,12 +190,30 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
         if (string.IsNullOrEmpty(userId))
             return null;
 
-        var cachedInfo = await GetTokenInfoAsync(userId, cancellationToken).ConfigureAwait(false);
-        if (cachedInfo == null)
+        // TMA2-01 / D11：使用 LoadRefreshCandidateAsync 而非 GetTokenInfoAsync，
+        // 允许在 access token 过期或缺失时仍能读取 refresh token。
+        var candidate = await LoadRefreshCandidateAsync(userId, cancellationToken).ConfigureAwait(false);
+        if (candidate == null || string.IsNullOrEmpty(candidate.RefreshToken))
             return null;
 
-        if (string.IsNullOrEmpty(cachedInfo.RefreshToken))
+        // TMA2-06 / D12：校验 refresh token 自身的过期时间。
+        // 过期 → 删 store 条目、返回 null（进入退避）。
+        if (candidate.RefreshTokenExpireTime > 0 && candidate.RefreshTokenExpireTime <= DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())
+        {
+            _logger.LogWarning("Refresh token expired for userId: {UserId}, purging store entry", userId);
+            if (_userTokenStore != null)
+            {
+                try
+                {
+                    await _userTokenStore.RemoveAsync(userId, _tokenTypeKey, cancellationToken).ConfigureAwait(false);
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    _logger.LogWarning(ex, "Failed to purge expired refresh token for userId: {UserId}", userId);
+                }
+            }
             return null;
+        }
 
         if (_options.EnableLogging)
             _logger.LogInformation("Refreshing user token for userId: {UserId}", userId);
@@ -194,27 +223,52 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
             GrantType = "refresh_token",
             ClientId = _options.AppId,
             ClientSecret = _options.AppSecret,
-            RefreshToken = cachedInfo.RefreshToken
+            RefreshToken = candidate.RefreshToken
         };
 
         var res = await _authenticationApi.GetOAuthenRefreshAccessTokenAsync(credentials, cancellationToken);
 
         if (res == null || res.Code != 0)
         {
-            _logger.LogWarning("Failed to refresh user token for userId: {UserId}, error: {Msg}", userId, res?.Msg);
+            // TMA2-06 / D12：OAuth 失败按错误码分类。
+            // 不可重试集合（invalid_grant / refresh token 失效 / scope 不符）→ 清 store refresh token + 返回 null（进退避）。
+            if (FeishuOAuthErrorClassifier.IsUnretryable(res?.Code, res?.Msg))
+            {
+                _logger.LogWarning(
+                    "OAuth refresh failed with non-retryable error for userId: {UserId}, code: {Code}, msg: {Msg}. Purging refresh token.",
+                    userId, res?.Code, res?.Msg);
+                if (_userTokenStore != null)
+                {
+                    try
+                    {
+                        var encodedRefreshToken = await _userTokenStore.GetRefreshTokenAsync(userId, _tokenTypeKey, cancellationToken).ConfigureAwait(false);
+                        if (!string.IsNullOrEmpty(encodedRefreshToken))
+                        {
+                            await _userTokenStore.RemoveAsync(userId, _tokenTypeKey, cancellationToken).ConfigureAwait(false);
+                        }
+                    }
+                    catch (Exception ex) when (ex is not OperationCanceledException)
+                    {
+                        _logger.LogWarning(ex, "Failed to purge refresh token after non-retryable error for userId: {UserId}", userId);
+                    }
+                }
+                return null;
+            }
+
+            // 可重试失败 → 抛异常（保留可见性，组件会记退避/负缓存）
             throw new FeishuException(res?.Code ?? 500, $"刷新 UserAccessToken 失败: {res?.Msg ?? "返回结果为null"}");
         }
 
         var tokenInfo = new UserTokenInfo
         {
-            UserId = cachedInfo.UserId,
-            OpenId = cachedInfo.OpenId,
-            UnionId = cachedInfo.UnionId,
-            AccessToken = res.AccessToken ?? cachedInfo.AccessToken,
-            RefreshToken = res.RefreshToken ?? cachedInfo.RefreshToken,
+            UserId = candidate.UserId,
+            OpenId = candidate.OpenId ?? userId,
+            UnionId = candidate.UnionId,
+            AccessToken = res.AccessToken ?? candidate.AccessToken,
+            RefreshToken = res.RefreshToken ?? candidate.RefreshToken,
             AccessTokenExpireTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + ((res.ExpiresIn > 0 ? res.ExpiresIn : 7200) * 1000L),
             RefreshTokenExpireTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + ((res.RefreshTokenExpiresIn > 0 ? res.RefreshTokenExpiresIn : 30 * 24 * 3600) * 1000L),
-            Scope = cachedInfo.Scope,
+            Scope = candidate.Scope,
             Code = res.Code,
             Msg = res.Msg
         };
@@ -251,13 +305,27 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// TMA2-01 / D11：在 access token 过期但 refresh token 有效时返回 true。
+    /// 此前使用 <c>GetTokenInfoAsync</c>，后者在 access 过期时返回 null → <c>CanRefreshTokenAsync</c> 返回 false。
+    /// </remarks>
     public override async Task<bool> CanRefreshTokenAsync(string userId, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(userId))
             return false;
 
-        var cachedInfo = await GetTokenInfoAsync(userId, cancellationToken).ConfigureAwait(false);
-        return cachedInfo != null && !string.IsNullOrEmpty(cachedInfo.RefreshToken);
+        // TMA2-01：先检查缓存（可能含未过期的 refresh token）
+        var cachedInfo = GetUserTokenFromCache(userId);
+        if (cachedInfo != null && !string.IsNullOrEmpty(cachedInfo.RefreshToken))
+        {
+            // 即使 access 过期，只要 refresh 有效就返回 true
+            if (cachedInfo.RefreshTokenExpireTime <= 0 || cachedInfo.RefreshTokenExpireTime > DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())
+                return true;
+        }
+
+        // TMA2-01：缓存未命中或 refresh 过期时，从 store 加载候选
+        var candidate = await LoadRefreshCandidateAsync(userId, cancellationToken).ConfigureAwait(false);
+        return candidate != null && !string.IsNullOrEmpty(candidate.RefreshToken);
     }
 
     /// <inheritdoc />
@@ -373,6 +441,83 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             _logger.LogWarning(ex, "Failed to restore user token from IUserTokenStore for userId: {UserId}", userId);
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// TMA2-01 / D11：加载 refresh token 候选——独立于 access token 的存在性与有效性。
+    /// 仅服务 <see cref="RefreshUserTokenAsync"/> 与 <see cref="CanRefreshTokenAsync"/>，
+    /// 允许返回 <c>AccessToken = null</c> 的候选（<c>AccessTokenExpireTime = 0</c>）。
+    /// </summary>
+    /// <param name="userId">用户标识</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>含 refresh token 的候选信息，无可用 refresh token 时返回 null</returns>
+    private async Task<UserTokenInfo?> LoadRefreshCandidateAsync(string userId, CancellationToken cancellationToken)
+    {
+        // 先检查缓存（可能含有效 refresh token）
+        var cachedInfo = GetUserTokenFromCache(userId);
+        if (cachedInfo != null && !string.IsNullOrEmpty(cachedInfo.RefreshToken))
+            return cachedInfo;
+
+        if (_userTokenStore == null)
+            return null;
+
+        try
+        {
+            // 先读 refresh token（D11：refresh 的可达性独立于 access）
+            var storedRefreshToken = await _userTokenStore.GetRefreshTokenAsync(userId, _tokenTypeKey, cancellationToken).ConfigureAwait(false);
+            if (string.IsNullOrEmpty(storedRefreshToken))
+                return null;
+
+            var (refreshToken, refreshTokenExpireMs) = TokenStoreHelper.DecodeStoredToken(storedRefreshToken!);
+            if (string.IsNullOrEmpty(refreshToken))
+                return null;
+
+            // TMA2-06 / D12：校验 refresh token 自身的过期时间。
+            if (refreshTokenExpireMs > 0 && refreshTokenExpireMs <= DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())
+            {
+                _logger.LogDebug("Refresh token expired for userId: {UserId}, not loading candidate", userId);
+                return null;
+            }
+
+            // 再读 access token（可能过期或缺失，不影响 refresh 的可达性）
+            var storedAccessToken = await _userTokenStore.GetAccessTokenAsync(userId, _tokenTypeKey, cancellationToken).ConfigureAwait(false);
+            string? accessToken = null;
+            long accessTokenExpireMs = 0;
+            if (!string.IsNullOrEmpty(storedAccessToken))
+            {
+                var (decodedToken, decodedExpireMs) = TokenStoreHelper.DecodeStoredToken(storedAccessToken!);
+                accessToken = decodedToken;
+                accessTokenExpireMs = decodedExpireMs;
+
+                // access 过期则不返回（但不影响 refresh 的可达性）
+                if (accessTokenExpireMs > 0 && accessTokenExpireMs <= DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())
+                {
+                    accessToken = null;
+                    accessTokenExpireMs = 0;
+                }
+            }
+
+            _logger.LogDebug("Loaded refresh token candidate from IUserTokenStore for userId: {UserId}", userId);
+
+            // TMA2-16 / P2-6：恢复时回填 OpenId/UnionId
+            // store 中不持久化 OpenId/UnionId（编码值仅含 token + 过期戳），
+            // 此处以 userId 兑底填充 OpenId，避免后续调用丢失用户标识。
+            return new UserTokenInfo
+            {
+                UserId = userId,
+                OpenId = userId,
+                UnionId = null,
+                AccessToken = accessToken,
+                RefreshToken = refreshToken,
+                AccessTokenExpireTime = accessTokenExpireMs,
+                RefreshTokenExpireTime = refreshTokenExpireMs > 0 ? refreshTokenExpireMs : 0
+            };
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogWarning(ex, "Failed to load refresh token candidate from IUserTokenStore for userId: {UserId}", userId);
             return null;
         }
     }

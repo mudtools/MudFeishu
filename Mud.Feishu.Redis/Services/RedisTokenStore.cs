@@ -77,16 +77,32 @@ public class RedisTokenStore : ITokenStore
     /// <remarks>
     /// TMA-22 修复：refresh token 存储 TTL 由硬编码 30 天改为优先使用编码值中的过期时间，
     /// 缺失时才回落 30 天。使 store TTL 与业务过期语义一致。
+    /// TMA2-15 / P2-5 修复：过期戳已过时（expireMs &lt;= now）删除条目而非写 TTL=0（Redis TTL=0 等于永不过期）。
     /// </remarks>
     public async Task SetRefreshTokenAsync(string tokenType, string refreshToken, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         var key = BuildRefreshTokenKey(tokenType);
+        var nowMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
         // TMA-22：尝试从编码值中解码过期时间戳。
-        var ttl = TokenStoreHelper.TryDecodeExpiry(refreshToken, out var expireMs)
-            ? TimeSpan.FromMilliseconds(Math.Max(0, expireMs - DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()))
-            : TimeSpan.FromDays(30);
-        await GetDatabase().StringSetAsync(key, refreshToken, ttl, flags: RedisStoreHelper.ToCommandFlags(cancellationToken)).ConfigureAwait(false);
+        if (TokenStoreHelper.TryDecodeExpiry(refreshToken, out var expireMs))
+        {
+            // TMA2-15：过期戳已过时 → 删除条目，不写入（Redis TTL=0 会造成永不过期）。
+            if (expireMs <= nowMs)
+            {
+                await GetDatabase().KeyDeleteAsync(key, flags: RedisStoreHelper.ToCommandFlags(cancellationToken)).ConfigureAwait(false);
+                return;
+            }
+
+            var ttl = TimeSpan.FromMilliseconds(expireMs - nowMs);
+            await GetDatabase().StringSetAsync(key, refreshToken, ttl, flags: RedisStoreHelper.ToCommandFlags(cancellationToken)).ConfigureAwait(false);
+        }
+        else
+        {
+            // 无编码过期戳 → 回落 30 天。
+            await GetDatabase().StringSetAsync(key, refreshToken, TimeSpan.FromDays(30), flags: RedisStoreHelper.ToCommandFlags(cancellationToken)).ConfigureAwait(false);
+        }
     }
 
     /// <inheritdoc />
@@ -100,15 +116,12 @@ public class RedisTokenStore : ITokenStore
     /// <inheritdoc />
     /// <remarks>
     /// T-M2-6（R-10）：Cluster 化扫描——遍历全部主节点聚合 SCAN，避免 Cluster 下漏列。
+    /// TMA2-02 / D8：键模式改用 TokenKeyBuilder 统一产出。
     /// </remarks>
     public async Task<IEnumerable<string>> GetTokenTypesAsync(CancellationToken cancellationToken = default)
     {
-        // T-M3-1：pattern 改用 RedisKeyBuilder 构造前缀部分（R-01 护栏 + R-20 转义一致性）
-        var pattern = RedisKeyBuilder.Combine(_keyPrefix) + ":*:access";
+        var pattern = TokenKeyBuilder.TenantScanPattern(_keyPrefix);
         var tokenTypes = new List<string>();
-        // TM-04 修复：键格式为 {prefix}:{tokenType}:access，其中 tokenType 可能含 ":"（如 "tenant:cli_xxx"）。
-        var prefixWithColon = RedisKeyBuilder.Combine(_keyPrefix) + ":";
-        const string accessSuffix = ":access";
 
         // T-M2-6：遍历全部主节点
         foreach (var server in RedisStoreHelper.GetServers(_redis))
@@ -122,12 +135,8 @@ public class RedisTokenStore : ITokenStore
                 cancellationToken.ThrowIfCancellationRequested();
 
                 var keyStr = key.ToString();
-                if (!keyStr.StartsWith(prefixWithColon, StringComparison.Ordinal) || !keyStr.EndsWith(accessSuffix, StringComparison.Ordinal))
-                    continue;
-
-                var middle = keyStr.Substring(prefixWithColon.Length, keyStr.Length - prefixWithColon.Length - accessSuffix.Length);
-                if (middle.Length > 0)
-                    tokenTypes.Add(middle);
+                if (TokenKeyBuilder.TryParseTenantTokenType(keyStr, _keyPrefix, out var tokenType) && tokenType != null)
+                    tokenTypes.Add(tokenType);
             }
         }
 
@@ -140,11 +149,11 @@ public class RedisTokenStore : ITokenStore
     /// 此方法会删除该前缀下全部令牌键（含 <c>{prefix}:*:access</c>、<c>{prefix}:*:refresh</c>、
     /// <c>{prefix}:user:*:*</c>），即租户令牌与用户令牌一并清除。
     /// 部分节点失败时已删除的键不可回滚（声明"部分失败"语义）。
+    /// TMA2-02 / D8：键模式改用 TokenKeyBuilder 统一产出。
     /// </remarks>
     public async Task ClearAsync(CancellationToken cancellationToken = default)
     {
-        // T-M3-1：pattern 改用 RedisKeyBuilder 构造前缀部分（R-01 护栏）
-        var pattern = RedisKeyBuilder.Combine(_keyPrefix) + ":*";
+        var pattern = TokenKeyBuilder.TenantScanPattern(_keyPrefix);
         var db = GetDatabase();
 
         // T-M2-6：遍历全部主节点
@@ -164,7 +173,7 @@ public class RedisTokenStore : ITokenStore
 
     private IDatabase GetDatabase() => _redis.GetDatabase();
 
-    // T-M3-1：令牌键改用 RedisKeyBuilder 统一构造（R-20/R-21 转义 + 长度护栏）
-    private string BuildAccessTokenKey(string tokenType) => RedisKeyBuilder.Combine(_keyPrefix, tokenType, "access");
-    private string BuildRefreshTokenKey(string tokenType) => RedisKeyBuilder.Combine(_keyPrefix, tokenType, "refresh");
+    // TMA2-02 / D8：令牌键改用 TokenKeyBuilder 统一产出，与 Memory 路径逐字节一致。
+    private string BuildAccessTokenKey(string tokenType) => TokenKeyBuilder.TenantAccessKey(_keyPrefix, tokenType);
+    private string BuildRefreshTokenKey(string tokenType) => TokenKeyBuilder.TenantRefreshKey(_keyPrefix, tokenType);
 }

@@ -1409,6 +1409,54 @@ builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
     .Build();
 ```
 
+### 多租户部署指引
+
+> **多租户 = 多应用**。每个租户对应一个 `FeishuAppConfig`（独立 AppId/AppSecret），通过 `UseApp`/`BeginScope` 切换应用上下文。
+
+**最小装配片段**：
+
+```csharp
+// 1. 为每个租户注册应用配置
+builder.Services.AddFeishuApp(configure =>
+{
+    configure.AddDefaultApp("tenant-a", "cli_aaa", "dsk_aaa");
+    configure.AddApp("tenant-b", "cli_bbb", "dsk_bbb");
+});
+
+// 2. 注册 HTTP API 服务
+builder.Services.CreateFeishuServicesBuilder()
+    .AddAllApis()
+    .Build();
+
+// 3. 在请求中按租户切换应用上下文
+public class TenantController : ControllerBase
+{
+    private readonly IFeishuAppManager _appManager;
+
+    public TenantController(IFeishuAppManager appManager)
+    {
+        _appManager = appManager;
+    }
+
+    [HttpGet("tenant/{tenantKey}/users/{userId}")]
+    public async Task<IActionResult> GetUser(string tenantKey, string userId)
+    {
+        // 使用 using 确保作用域结束后自动恢复默认应用
+        using var scope = _appManager.GetAppContextSwitcher().UseApp(tenantKey);
+        var userApi = _appManager.GetFeishuApi<IFeishuTenantV3User>();
+        var result = await userApi.GetUserInfoByIdAsync(userId);
+        return Ok(result);
+    }
+}
+```
+
+> ⚠️ **安全提示**：`UseApp`/`BeginScope` 仅切换应用上下文（令牌/端点），**不做租户隔离授权**。
+> 如需限制请求方只能访问其所属租户的数据，应在业务层注册自定义授权逻辑（如基于 Claim 的租户校验中间件）。
+> 组件侧的 `IAppAccessAuthorizer` 已对缺失给出错误提示，但本 SDK 不内置授权实现。
+
+> 🔒 **多租户 Redis 隔离**：使用 Redis 分布式去重时，应为每个租户设置独立的键前缀
+> （`EventKeyPrefix`/`NonceKeyPrefix`/`SeqIdKeyPrefix`），避免跨租户事件冲突。
+
 ---
 
 ## 📸 演示界面展示
@@ -1468,9 +1516,9 @@ builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
 
 | 包                            | 版本             | 说明                                |
 | ----------------------------- | ---------------- | ----------------------------------- |
-| **Mud.HttpUtils**             | v2.0.0-preview4  | HTTP 客户端工具类（含源代码生成器） |
-| **Mud.HttpUtils.Generator**   | v2.0.0-preview4  | HTTP 客户端代码生成器（编译时）     |
-| **Mud.HttpUtils.Resilience**  | v2.0.0-preview4  | 弹性策略装饰器（重试/超时/熔断）    |
+| **Mud.HttpUtils**             | v2.0.4  | HTTP 客户端工具类（含源代码生成器） |
+| **Mud.HttpUtils.Generator**   | v2.0.4  | HTTP 客户端代码生成器（编译时）     |
+| **Mud.HttpUtils.Resilience**  | v2.0.4  | 弹性策略装饰器（重试/超时/熔断）    |
 | **Microsoft.Extensions.Http** | v8.0.1 / v10.0.4 | HTTP 客户端工厂                     |
 
 ---

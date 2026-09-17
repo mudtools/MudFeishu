@@ -79,16 +79,32 @@ public class RedisUserTokenStore : UserTokenStoreBase
     /// <remarks>
     /// TMA-22 修复：refresh token 存储 TTL 由硬编码 30 天改为优先使用编码值中的过期时间，
     /// 缺失时才回落 30 天。使 store TTL 与业务过期语义一致。
+    /// TMA2-15 / P2-5 修复：过期戳已过时（expireMs &lt;= now）删除条目而非写 TTL=0（Redis TTL=0 等于永不过期）。
     /// </remarks>
     public override async Task SetRefreshTokenAsync(string userId, string tokenType, string refreshToken, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         var key = BuildUserRefreshTokenKey(userId, tokenType);
+        var nowMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
         // TMA-22：尝试从编码值中解码过期时间戳。
-        var ttl = TokenStoreHelper.TryDecodeExpiry(refreshToken, out var expireMs)
-            ? TimeSpan.FromMilliseconds(Math.Max(0, expireMs - DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()))
-            : TimeSpan.FromDays(30);
-        await _redis.GetDatabase().StringSetAsync(key, refreshToken, ttl, flags: RedisStoreHelper.ToCommandFlags(cancellationToken)).ConfigureAwait(false);
+        if (TokenStoreHelper.TryDecodeExpiry(refreshToken, out var expireMs))
+        {
+            // TMA2-15：过期戳已过时 → 删除条目，不写入（Redis TTL=0 会造成永不过期）。
+            if (expireMs <= nowMs)
+            {
+                await _redis.GetDatabase().KeyDeleteAsync(key, flags: RedisStoreHelper.ToCommandFlags(cancellationToken)).ConfigureAwait(false);
+                return;
+            }
+
+            var ttl = TimeSpan.FromMilliseconds(expireMs - nowMs);
+            await _redis.GetDatabase().StringSetAsync(key, refreshToken, ttl, flags: RedisStoreHelper.ToCommandFlags(cancellationToken)).ConfigureAwait(false);
+        }
+        else
+        {
+            // 无编码过期戳 → 回落 30 天。
+            await _redis.GetDatabase().StringSetAsync(key, refreshToken, TimeSpan.FromDays(30), flags: RedisStoreHelper.ToCommandFlags(cancellationToken)).ConfigureAwait(false);
+        }
     }
 
     /// <inheritdoc />
@@ -100,28 +116,27 @@ public class RedisUserTokenStore : UserTokenStoreBase
 
     /// <inheritdoc />
     /// <remarks>
-    /// T-M3-1：覆写基类方法，改用 RedisKeyBuilder 统一构造（R-20/R-21 转义 + 长度护栏）。
+    /// TMA2-02 / D8：键改用 TokenKeyBuilder 统一产出。
     /// </remarks>
     protected override string BuildUserAccessTokenKey(string userId, string tokenType)
-        => RedisKeyBuilder.Combine(_keyPrefix, "user", userId, tokenType, "access");
+        => TokenKeyBuilder.UserAccessKey(_keyPrefix, userId, tokenType);
 
     /// <inheritdoc />
     /// <remarks>
-    /// T-M3-1：覆写基类方法，改用 RedisKeyBuilder 统一构造。
+    /// TMA2-02 / D8：键改用 TokenKeyBuilder 统一产出。
     /// </remarks>
     protected override string BuildUserRefreshTokenKey(string userId, string tokenType)
-        => RedisKeyBuilder.Combine(_keyPrefix, "user", userId, tokenType, "refresh");
+        => TokenKeyBuilder.UserRefreshKey(_keyPrefix, userId, tokenType);
 
     /// <inheritdoc />
     /// <remarks>
     /// T-M2-6（R-10）：Cluster 化扫描——遍历全部主节点聚合 SCAN。
+    /// TMA2-02 / D8：键模式与反向解析改用 TokenKeyBuilder 统一产出。
     /// </remarks>
     public override async Task<IEnumerable<string>> GetTokenTypesAsync(string userId, CancellationToken cancellationToken = default)
     {
-        // T-M3-1：pattern 前缀部分改用 RedisKeyBuilder 构造（R-01 护栏 + 转义一致性）
-        var pattern = RedisKeyBuilder.Combine(_keyPrefix, "user", userId) + ":*:access";
+        var pattern = TokenKeyBuilder.UserScanPattern(_keyPrefix, userId);
         var tokenTypes = new List<string>();
-        var prefixLength = (RedisKeyBuilder.Combine(_keyPrefix, "user", userId) + ":").Length;
 
         foreach (var server in RedisStoreHelper.GetServers(_redis))
         {
@@ -134,14 +149,7 @@ public class RedisUserTokenStore : UserTokenStoreBase
                 cancellationToken.ThrowIfCancellationRequested();
 
                 var keyStr = key.ToString();
-
-                // TM-04 修复（与 RedisTokenStore.GetTokenTypesAsync 对齐）：
-                const string accessSuffix = ":access";
-                if (!keyStr.EndsWith(accessSuffix, StringComparison.Ordinal))
-                    continue;
-
-                var tokenType = keyStr.Substring(prefixLength, keyStr.Length - prefixLength - accessSuffix.Length);
-                if (tokenType.Length > 0)
+                if (TokenKeyBuilder.TryParseUserTokenType(keyStr, _keyPrefix, userId, out var tokenType) && tokenType != null)
                     tokenTypes.Add(tokenType);
             }
         }
@@ -153,10 +161,11 @@ public class RedisUserTokenStore : UserTokenStoreBase
     /// <remarks>
     /// T-M2-6（R-10）：Cluster 化扫描——遍历全部主节点聚合 SCAN + 删除。
     /// 部分节点失败时已删除的键不可回滚（声明"部分失败"语义）。
+    /// TMA2-02 / D8：键模式改用 TokenKeyBuilder 统一产出。
     /// </remarks>
     public override async Task ClearUserAsync(string userId, CancellationToken cancellationToken = default)
     {
-        var pattern = RedisKeyBuilder.Combine(_keyPrefix, "user", userId) + ":*";
+        var pattern = TokenKeyBuilder.UserScanPattern(_keyPrefix, userId);
         var db = _redis.GetDatabase();
 
         foreach (var server in RedisStoreHelper.GetServers(_redis))

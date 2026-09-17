@@ -50,7 +50,7 @@ public class FeishuUserTokenStore : UserTokenStoreBase
     }
 
     /// <summary>
-    /// C-2 修复：重写键前缀以包含 AppKey，确保多应用场景下用户令牌互不覆盖
+    /// TMA2-02 / D8：键前缀含 AppKey 维度，确保多应用场景下用户令牌互不覆盖。
     /// </summary>
     protected override string KeyPrefix => $"feishu:{_appKey}:token";
 
@@ -84,6 +84,8 @@ public class FeishuUserTokenStore : UserTokenStoreBase
     /// TMA-22 修复：refresh token 存储 TTL 由硬编码 30 天改为优先使用编码值中的过期时间，
     /// 缺失时才回落 30 天。但 IMemoryCache 场景下此方法不接收过期信息，保持 30 天默认。
     /// Redis 路径在 RedisUserTokenStore 中处理。
+    /// TMA2-15 / P2-5：Memory 路径保留 30 天默认。仅本进程；过期语义由消费侧校验
+    /// （TMA2-06 的 RefreshTokenExpireTime 校验）。
     /// </remarks>
     public override Task SetRefreshTokenAsync(string userId, string tokenType, string refreshToken, CancellationToken cancellationToken = default)
     {
@@ -129,6 +131,12 @@ public class FeishuUserTokenStore : UserTokenStoreBase
 
         return Task.CompletedTask;
     }
+
+    // TMA2-02 / D8：用户令牌键由 TokenKeyBuilder 统一产出，与 Redis 路径逐字节一致。
+    protected override string BuildUserAccessTokenKey(string userId, string tokenType)
+        => TokenKeyBuilder.UserAccessKey(KeyPrefix, userId, tokenType);
+    protected override string BuildUserRefreshTokenKey(string userId, string tokenType)
+        => TokenKeyBuilder.UserRefreshKey(KeyPrefix, userId, tokenType);
 
     private void TrackUserTokenType(string userId, string tokenType)
     {

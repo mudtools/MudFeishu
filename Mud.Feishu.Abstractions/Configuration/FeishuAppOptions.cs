@@ -97,34 +97,6 @@ public class FeishuAppOptions
     public int ContextRetireDelaySeconds { get; set; } = 300;
 
     /// <summary>
-    /// 是否在令牌失效时级联清除持久层存储（TMA-01 / P0-1 修复，D1 契约）。
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// 启用后 <c>InvalidateTokenAsync</c> 会同时清除 <c>ITokenStore</c> 中的令牌条目，
-    /// 确保 401 恢复不再从 store 中恢复同一被拒令牌。
-    /// </para>
-    /// <para>
-    /// <b>默认 <c>true</c></b>：失效级联是正确性收益。设为 <c>false</c> 可回退到旧行为（仅清内存缓存）。
-    /// </para>
-    /// </remarks>
-    public bool PurgeStoreOnTokenInvalidation { get; set; } = true;
-
-    /// <summary>
-    /// 是否启用应用上下文退休队列（TMA-07 / P1-6 修复，D5 契约）。
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// 启用后，热更新或移除应用的旧上下文会在宽限期后被显式 <c>Dispose</c>，
-    /// 停止其 Timer 并释放资源。禁用则恢复"由 GC 回收"的旧语义（接受 Timer 泄漏）。
-    /// </para>
-    /// <para>
-    /// <b>默认 <c>true</c></b>。
-    /// </para>
-    /// </remarks>
-    public bool EnableContextRetirement { get; set; } = true;
-
-    /// <summary>
     /// 是否在启动时预热全部应用（TMA-08 / P1-7 修复，D6 契约）。
     /// </summary>
     /// <remarks>

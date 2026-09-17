@@ -2,9 +2,87 @@
 
 ## [Unreleased]
 
-> 对应《.docs/MudHttpUtils-2.0.4-Repair-and-Enhancement-Plan.md》的 M1–M5 全部条目（Mud.HttpUtils 同步升级至 2.0.5）。
+> 对应《.docs/MudHttpUtils-2.0.4-Repair-and-Enhancement-Plan.md》的 M1–M5 全部条目（Mud.HttpUtils 2.0.4）。
 > 对应《.docs/MudFeishu-Token-MultiApp-Review-Remediation-Plan.md》的 TMA-01…TMA-24 全部条目。
+> 对应《.docs/MudFeishu-Token-MultiApp-Review-Remediation-Plan-R2.md》的 TMA2-01…TMA2-23 全部条目。
 > 本项目尚未发布，以下破坏性变更无需数据迁移。
+
+### ⚠️ 破坏性变更 / 行为变更（TMA2 系列 / R2 复审）
+
+- **用户令牌续期可达（P0-1 / TMA2-01）**：`UserTokenManager.RefreshUserTokenAsync` 此前通过 `GetTokenInfoAsync`
+  获取刷新候选，后者在 access token 过期时即返回 null，导致 refresh token 不可达、用户令牌无法续期。
+  现新增 `LoadRefreshCandidateAsync` 独立从 store 读取 refresh token，不依赖 access token 有效性。
+- **令牌键布局统一收敛（P0-2 / TMA2-02）**：Memory 与 Redis 两后端的令牌键构造各自实现，
+  Memory 不做转义而 Redis 做，同一 tokenType（如 `tenant:cli_a`）在两后端键不同。
+  现收敛为 `TokenKeyBuilder` 统一产出，两侧逐字节一致。
+- **门禁不再依赖中文输出（P0-3 / TMA2-03）**：`verify-build.ps1` 此前依赖中文正则解析测试结果，
+  在非中文环境下全部误判。现改用 TRX 文件解析 + locale-independent 检查。
+- **恢复阈值同源（P1-1 / TMA2-04）**：恢复弃用阈值此前取 `threshold/2`，低于缓存失效阈值 `threshold`，
+  导致稳态下 store 恢永不命中。现统一使用 `TokenRefreshThreshold`。
+- **凭据变更即清库（P1-2 / TMA2-05）**：`RebuildAppContext` 此前不检测 (AppId, AppSecret) 变更，
+  凭据变更后旧令牌仍可恢复。现检测到凭据变更时立即清除持久化令牌。
+- **OAuth 失败语义分类（TMA2-06）**：用户令牌刷新失败此前一律抛 `FeishuException`，
+  未区分可重试/不可重试。现通过 `FeishuOAuthErrorClassifier` 分类，`invalid_grant` 等不可重试错误
+  清除 refresh token 并返回 null（触发重新授权），可重试错误抛出异常。
+- **AppInstantiated 事件（TMA2-07）**：新增 `AppInstantiated` 事件，首次访问应用时触发
+  后台令牌刷新的增量注册，替代启动期全量预热。
+- **AddApp 默认键加锁（TMA2-08）**：`AddApp` 写入 `_defaultAppKey` 此前未持 `_defaultAppLock`，
+  与 `GetDefaultApp`/`RemoveApp` 的读取存在竞态。现统一加锁。
+- **热更新两阶段事务化（TMA2-09）**：`OnConfigurationChanged` 此前在 `_lazyRebuildLock` 内
+  完成完整装配，全局锁与装配耗时耦合。现拆为两阶段：Phase-A 预装配（锁外）、Phase-B 提交（锁内）。
+- **Try* 不抛异常（TMA2-10）**：`FeishuTokenManagerResolver.TryGet*` 此前通过 `DefaultConfig`
+  读取默认 AppKey，无默认应用时抛 `InvalidOperationException`。现改用 `DefaultAppKey` 属性（返回 null）。
+- **作用域/在册上下文释放（TMA2-11）**：`CreateAppContext` 装配失败时不释放 scope（泄漏）；
+  `Dispose` 不遍历在册上下文。现装配失败时 catch + scope.Dispose()；Dispose 遍历全部在册上下文。
+- **异常过滤收敛（TMA2-12）**：异常过滤此前为"除取消外全部"，会吞 `OutOfMemoryException`/`TypeLoadException`
+  等。现改为可重试异常白名单（`IsTransientInitFailure`），非瞬时异常直接上抛。
+- **删除死配置项（TMA2-13）**：`FeishuAppOptions.EnableContextRetirement` 和
+  `PurgeStoreOnTokenInvalidation` 的关闭态即缺陷态，已删除。保留默认安全行为。
+- **删除死常量（TMA2-14）**：`FeishuAppTokenManagerBase.SafeExpireBonusSeconds` 和
+  `MinSafeExpireSeconds` 无引用，已删除。
+- **Redis 过期令牌删除（TMA2-15）**：`RedisTokenStore.SetRefreshTokenAsync` 此前对过期 token
+  设置 TTL=0，Redis TTL=0 等于永不过期。现改为 `KeyDeleteAsync` 删除条目。
+- **Redis TokenStore 调用顺序守卫（TMA2-17）**：`AddFeishuRedisTokenStore` 此前缺少
+  `AddFeishuApp` 已调用的守卫检查。现新增 `EnsureFeishuAppNotRegistered` 辅助方法。
+- **文档/版本一致性（TMA2-18）**：`AGENTS.md` 中 Mud.HttpUtils 版本从 2.0.5 修正为 2.0.4；
+  `CreateBasic` 注释修正为有生产调用方（`PerAppFeishuAuthenticationFactory`）。
+- **Redis 连接串日志脱敏（TMA2-19）**：`RedisFeishuServiceBuilderExtensions` 中 `LogInformation`
+  此前直接输出 `options.ServerAddress`（含口令）。现通过 `SensitiveDataUtils.MaskSensitiveData` 脱敏。
+- **多租户部署指引（TMA2-20）**：README.md 和 AGENTS.md 新增多租户部署指引，明确
+  `UseApp`/`BeginScope` 仅切换应用上下文，不做租户隔离授权。
+
+### ✨ Added（TMA2 系列）
+
+- `TokenKeyBuilder`：令牌键构造的唯一真相源，统一 Memory 与 Redis 两后端的键产出（TMA2-02）。
+- `FeishuOAuthErrorClassifier`：OAuth 错误分类器，区分可重试/不可重试错误（TMA2-06）。
+- `FeishuTokenRegistrationHelper`：令牌注册逻辑提取，供测试性与 AppInstantiated 事件复用（TMA2-07）。
+- `FeishuAppInstantiatedEventArgs`：AppInstantiated 事件参数（TMA2-07）。
+- 6 条契约守卫测试（TMA2-21 / §7.4）：`TokenKeyLayout_ShouldBeSingleSourceOfTruth`、
+  `MudHttpUtils_PackageReference_ShouldBeSingleVersion`、`FeishuAppConfig_PropertySet_ShouldMatchThrottleComparisonContract`、
+  `FeishuApiResultJsonContext_ShouldCoverAuthenticationDtos`、`ConfigDtos_ShouldNotUseRequired`、
+  `FeishuAppOptions_ShouldNotDeclareUnconsumedSwitches`。
+
+### 🐛 修复（TMA2 系列）
+
+- 用户令牌续期在 access token 过期时不可达（P0-1）。
+- Memory 与 Redis 令牌键布局不一致（P0-2）。
+- 门禁在非中文环境下全部误判（P0-3）。
+- 恢复阈值取 threshold/2 导致稳态下 store 恢永不命中（P1-1）。
+- 凭据变更后旧令牌仍可恢复（P1-2）。
+- OAuth 失败未区分可重试/不可重试（TMA2-06）。
+- 首次访问应用不触发后台令牌刷新增量注册（TMA2-07）。
+- AddApp 默认键写入存在竞态（TMA2-08）。
+- 热更新全局锁与装配耗时耦合（TMA2-09）。
+- Try* 在无默认应用时抛异常（TMA2-10）。
+- 装配失败泄漏 scope；Dispose 不释放在册上下文（TMA2-11）。
+- 异常过滤过宽，吞非瞬时异常（TMA2-12）。
+- 死配置项 EnableContextRetirement / PurgeStoreOnTokenInvalidation（TMA2-13）。
+- 死常量 SafeExpireBonusSeconds / MinSafeExpireSeconds（TMA2-14）。
+- Redis 过期令牌 TTL=0 等于永不过期（TMA2-15）。
+- Redis TokenStore 缺少调用顺序守卫（TMA2-17）。
+- 文档版本号不一致（TMA2-18）。
+- Redis 连接串日志含口令（TMA2-19）。
+- 缺少多租户部署指引（TMA2-20）。
 
 ### ⚠️ 破坏性变更 / 行为变更（TMA 系列）
 

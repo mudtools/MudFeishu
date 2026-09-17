@@ -138,7 +138,7 @@ public static class FeishuServiceCollectionExtensions
             // 为什么不用组件 HttpClientFactoryEnhancedClient.WithBaseAddress：
             // TokenRecoveryEnhancedClient（sealed）未重写 WithBaseAddress，基类实现返回的是
             // **普通 HttpClientFactoryEnhancedClient**，既丢失令牌恢复能力又会令 (TokenRecoveryEnhancedClient)
-            // 强制转换抛 InvalidCastException。详见 .docs/MudHttpUtils-2.0.5-Review-Remediation-Plan.md 附录 B-1。
+            // 强制转换抛 InvalidCastException。详见 .docs/MudHttpUtils-2.0.4-Review-Remediation-Plan.md 附录 B-1。
             httpClientBuilder.ConfigureHttpClient((sp, client) =>
             {
                 var latest = ResolveLatestAppConfig(sp, appKey);
@@ -273,7 +273,7 @@ public static class FeishuServiceCollectionExtensions
 
         // S-3 修复：注册 IFeishuTokenStoreFactory，替代 FeishuAppManager 中的 is FeishuTokenStore 类型检查。
         // 默认使用 PerAppFeishuTokenStoreFactory（per-app FeishuTokenStore 实例）；
-        // Redis 等自定义存储通过预注册 SingletonFeishuTokenStoreFactory 覆盖（TryAdd 语义：已存在则跳过）。
+        // Redis 等自定义存储通过预注册 PerAppRedisTokenStoreFactory 覆盖（TryAdd 语义：已存在则跳过）。
         services.TryAddSingleton<IFeishuTokenStoreFactory, PerAppFeishuTokenStoreFactory>();
 
         // MA-02 修复：注册 IFeishuTokenManagerFactory，替代 FeishuAppManager 中直接 new TenantTokenManager(...) 的硬编码方式。

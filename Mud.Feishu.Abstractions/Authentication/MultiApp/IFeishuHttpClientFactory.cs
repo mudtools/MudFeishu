@@ -48,7 +48,7 @@ public interface IFeishuHttpClientFactory
     /// <para>
     /// <b>注意</b>：<c>IFeishuAuthentication</c> 的注册路径（ARC-6）已改为从 DI 解析源生成的实现，
     /// 其 HttpClient 由 <c>AddMudHttpClient</c> 提供，<b>不再经由本方法</b>；
-    /// 本方法当前没有仓库内的生产调用方，保留为装配能力出口。
+    /// 本方法的生产调用方为 <see cref="PerAppFeishuAuthenticationFactory"/>（per-app 认证客户端装配）。
     /// </para>
     /// </remarks>
     /// <param name="appKey">应用唯一标识。</param>
@@ -147,7 +147,7 @@ public class FeishuHttpClientFactory : IFeishuHttpClientFactory
         UrlResolution = source.UrlResolution,
         MaxSuccessResponseBytes = source.MaxSuccessResponseBytes,
         HttpRequestMessageOptions = source.HttpRequestMessageOptions,
-        // Mud.HttpUtils 2.0.5 新增：应用访问授权器。由 FeishuHttpClientFactoryTests 的
+        // Mud.HttpUtils 2.0.4 既有：应用访问授权器。由 FeishuHttpClientFactoryTests 的
         // 属性契约守卫发现——若不在此同步，该能力会在 MudFeishu 路径上被静默丢弃。
         AppAccessAuthorizer = source.AppAccessAuthorizer,
 #if NET6_0_OR_GREATER

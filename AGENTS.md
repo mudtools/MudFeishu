@@ -56,7 +56,7 @@ asserted for the diagnostic whitelist afterwards (`.github/workflows/dotnet-publ
 ## Dependency version policy (Mud.HttpUtils)
 
 This repo consumes `Mud.HttpUtils` from a **local folder source** (`nuget.config` ->
-`D:/Repos/MudHttpUtils/artifacts`). The currently pinned version is **2.0.5**.
+`D:/Repos/MudHttpUtils/artifacts`). The currently pinned version is **2.0.4**.
 
 **Always bump the component version when packing.** NuGet keys the global package cache by
 `id + version`, so re-packing under the *same* version does **not** invalidate the
@@ -261,6 +261,20 @@ public class TokenUtilsTests
 - Store values must include an expiry timestamp (`{expireTimestampMs}|{token}` format via `TokenStoreHelper.EncodeStoredToken`). Values without expiry are treated as miss (TMA-15).
 - `PerAppFeishuAuthenticationFactory` uses `ActivatorUtilities.CreateInstance<IFeishuAuthentication>`; if the registered type is an interface/abstract, it falls back to the DI singleton (TMA-09).
 - New `IDisposable` members on `FeishuAppContext` **must** be disposed in `FeishuAppContext.Dispose()` to prevent leaks through the retirement queue (TMA-24 maintenance constraint).
+
+## Multi-Tenant Deployment (TMA2-20)
+
+Multi-tenant scenarios use the same multi-app infrastructure: each tenant maps to a `FeishuAppConfig` with its own `AppId`/`AppSecret`. Context switching via `UseApp`/`BeginScope` switches token and endpoint, but does **not** enforce tenant-level authorization. Business layers must implement custom authorization (e.g., Claim-based tenant validation middleware) to restrict access. The component-side `IAppAccessAuthorizer` provides error prompts when missing, but this SDK does not bundle an authorization implementation. For Redis deduplication, set distinct key prefixes (`EventKeyPrefix`/`NonceKeyPrefix`/`SeqIdKeyPrefix`) per tenant to prevent cross-tenant event conflicts.
+
+## Contract Addenda (TMA2-22 / D8–D14)
+
+1. **D8 键布局**：令牌键只允许由 `TokenKeyBuilder` 构造；变更须同步两后端 + 等价与回灌测试。禁止在各 Store 中内联键拼接逻辑。
+2. **D9 阈值同源**：恢复阈值必须等于缓存有效性阈值（`TokenRefreshThreshold`）；禁止第二套阈值（如 `threshold/2`）。
+3. **D10 凭据变更清库**：`RebuildAppContext` 检测到 `(AppId, AppSecret)` 变更时必须清除该 appKey 的持久化令牌。仅 `BaseUrl`/`TimeOut` 等变更保留令牌热迁移。
+4. **D11 OAuth 失败语义**：`RefreshUserTokenAsync` 必须通过 `FeishuOAuthErrorClassifier` 区分可重试/不可重试错误。`invalid_grant` 等不可重试错误清除 refresh token 并返回 null；可重试错误抛异常。
+5. **D12 AppInstantiated 事件**：首次访问应用时必须触发 `AppInstantiated` 事件，后台令牌刷新订阅此事件实现增量注册。禁止启动期全量预热。
+6. **D13 两阶段事务化**：`OnConfigurationChanged` 必须拆为两阶段——Phase-A 预装配（锁外）、Phase-B 提交（锁内）。禁止在锁内完成完整装配。
+7. **D14 异常过滤白名单**：`CreateAppContext` / `TryGetApp` 的异常过滤必须使用 `IsTransientInitFailure` 白名单。禁止 `catch (Exception ex) when (ex is not OperationCanceledException)` 的宽过滤。
 
 ## MSBuild Configuration
 

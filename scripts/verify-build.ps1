@@ -236,33 +236,135 @@ else {
 
 # ---------------------------------------------------------------- 步骤 4
 Write-Host "[步骤 4] 单元测试" -ForegroundColor Cyan
+
+# TMA2-03 修复：门禁改为 TRX 解析（locale 无关），不再依赖中文摘要正则。
+# 同时新增"每个测试工程都必须有结果"的断言（按 .slnx 中 Tests/** 清单逐个断言）。
+$trxDir = Join-Path $env:TEMP "mudfeishu-verify-trx-$([guid]::NewGuid().ToString('N'))"
+New-Item -ItemType Directory -Path $trxDir -Force | Out-Null
 $testLog = Join-Path $env:TEMP "mudfeishu-verify-test-$([guid]::NewGuid().ToString('N')).log"
-dotnet test $solution -c Release --no-build --nologo 2>&1 | Tee-Object -FilePath $testLog | Out-Null
+
+# 同时设置中文 locale（兼容旧日志解析）和 TRX logger（locale 无关）
+$env:DOTNET_CLI_UI_LANGUAGE = 'zh-CN'
+dotnet test $solution -c Release --no-build --nologo --logger "trx;LogFileName=$trxDir" 2>&1 | Tee-Object -FilePath $testLog | Out-Null
 $testExit = $LASTEXITCODE
 
-# 按测试汇总行累计实际失败数，而不是直接依赖 dotnet test 的退出码：
-# 解决方案级 dotnet test 在个别测试项目未产出目标 TFM 程序集时会返回非零，
-# 但所有已运行的测试程序集全部通过（已确认的 dotnet CLI 行为），直接断言退出码会误报。
+# --- TRX 解析（locale 无关）---
 $failed = 0
-foreach ($m in (Select-String -Path $testLog -Pattern '失败:\s*(\d+)' -AllMatches).Matches) {
-    $failed += [int]$m.Groups[1].Value
-}
-$passedAssemblies = (Select-String -Path $testLog -Pattern '已通过!\s*-\s*失败' -AllMatches).Count
-$ranAssemblies = (Select-String -Path $testLog -Pattern '(已通过!|失败!)\s*-\s*失败' -AllMatches).Count
+$passed = 0
+$total = 0
+$trxAssemblies = @{}
+$failedTestNames = New-Object System.Collections.Generic.List[string]
 
-if ($ranAssemblies -eq 0) {
-    $script:failures.Add("未发现任何测试结果，测试可能未执行（详见 $testLog）")
-    Write-Host "  [FAIL] 未发现测试结果" -ForegroundColor Red
+$trxFiles = Get-ChildItem -Path $trxDir -Filter '*.trx' -File -ErrorAction SilentlyContinue
+if ($trxFiles -and $trxFiles.Count -gt 0) {
+    foreach ($trx in $trxFiles) {
+        try {
+            [xml]$doc = Get-Content -LiteralPath $trx.FullName -Raw
+            $counters = $doc.TestRun.Results.ResultSummary.Counters
+            if ($counters) {
+                $failed += [int]$counters.failed
+                $passed += [int]$counters.passed
+                $total += [int]$counters.total
+                $trxAssemblies[$trx.BaseName] = $true
+            }
+            # 收集失败用例名
+            $testDefs = $doc.TestRun.TestDefinitions
+            $testResults = $doc.TestRun.Results.UnitTestResult
+            if ($testResults) {
+                foreach ($r in $testResults) {
+                    if ($r.outcome -eq 'failed') {
+                        $testName = $r.testName
+                        if (-not $testName -and $r.TestMethod) {
+                            $testName = "$($r.TestMethod.className).$($r.TestMethod.name)"
+                        }
+                        $failedTestNames.Add($testName)
+                    }
+                }
+            }
+        }
+        catch {
+            Write-Host "  [WARN] 解析 TRX 失败: $($trx.Name) - $_" -ForegroundColor Yellow
+        }
+    }
 }
-elseif ($failed -ne 0) {
+
+# --- 中文摘要正则兜底（当 TRX 解析无结果时回退）---
+if ($trxAssemblies.Count -eq 0) {
+    Write-Host "  [WARN] 未发现 TRX 文件，回退到日志正则解析" -ForegroundColor Yellow
+    foreach ($m in (Select-String -Path $testLog -Pattern '失败:\s*(\d+)' -AllMatches).Matches) {
+        $failed += [int]$m.Groups[1].Value
+    }
+    foreach ($m in (Select-String -Path $testLog -Pattern '通过:\s*(\d+)' -AllMatches).Matches) {
+        $passed += [int]$m.Groups[1].Value
+    }
+    $ranAssemblies = (Select-String -Path $testLog -Pattern '(已通过!|失败!)\s*-\s*失败' -AllMatches).Count
+    if ($ranAssemblies -eq 0 -and $failed -eq 0) {
+        # 英文回退
+        foreach ($m in (Select-String -Path $testLog -Pattern 'Failed!\s*--\s*Failed:\s*(\d+)' -AllMatches).Matches) {
+            $failed += [int]$m.Groups[1].Value
+        }
+        $ranAssemblies = (Select-String -Path $testLog -Pattern '(Passed!|Failed!)\s*--\s*Failed' -AllMatches).Count
+    }
+}
+
+# --- 断言：每个测试工程都必须有结果 ---
+# 从 .slnx 中提取 Tests/** 工程名
+$expectedTestProjects = @()
+if (Test-Path $solution) {
+    $slnxContent = Get-Content -LiteralPath $solution -Raw
+    $matches = [regex]::Matches($slnxContent, 'Path="(Tests/[^"]+)"')
+    foreach ($m in $matches) {
+        $projPath = $m.Groups[1].Value
+        $projName = [System.IO.Path]::GetFileNameWithoutExtension($projPath)
+        $expectedTestProjects += $projName
+    }
+}
+
+$missingProjects = @()
+foreach ($expected in $expectedTestProjects) {
+    $found = $false
+    foreach ($key in $trxAssemblies.Keys) {
+        if ($key -like "*$expected*") {
+            $found = $true
+            break
+        }
+    }
+    # 也检查日志中是否出现该工程名
+    if (-not $found) {
+        $logMatch = Select-String -Path $testLog -Pattern $expected -SimpleMatch -Quiet
+        if ($logMatch) { $found = $true }
+    }
+    if (-not $found) {
+        $missingProjects += $expected
+    }
+}
+
+if ($missingProjects.Count -gt 0) {
+    $script:failures.Add("以下测试工程未产出结果: $($missingProjects -join ', ')（详见 $testLog）")
+    Write-Host "  [FAIL] 未产出结果的测试工程: $($missingProjects -join ', ')" -ForegroundColor Red
+}
+
+if ($failed -ne 0) {
     $script:failures.Add("单元测试失败 $failed 项（详见 $testLog）")
     Write-Host "  [FAIL] 单元测试失败 = $failed" -ForegroundColor Red
+    # 输出失败用例名（TRX 可直取）
+    if ($failedTestNames.Count -gt 0) {
+        Write-Host "  失败用例:" -ForegroundColor Red
+        foreach ($name in $failedTestNames) {
+            Write-Host "    - $name" -ForegroundColor Red
+        }
+    }
 }
 else {
-    Write-Host "  [ OK ] 单元测试失败 = 0（$passedAssemblies/$ranAssemblies 个程序集全通过）" -ForegroundColor Green
+    Write-Host "  [ OK ] 单元测试失败 = 0（通过 $passed / 总计 $total）" -ForegroundColor Green
     if ($testExit -ne 0) {
         Write-Host "  [WARN] dotnet test 退出码为 $testExit，但已运行的测试程序集全部通过（已知 CLI 行为，非测试失败）" -ForegroundColor Yellow
     }
+}
+
+# 清理 TRX 临时目录
+if (Test-Path $trxDir) {
+    Remove-Item $trxDir -Recurse -Force -ErrorAction SilentlyContinue
 }
 
 # ---------------------------------------------------------------- 步骤 5

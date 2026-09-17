@@ -55,14 +55,15 @@ internal sealed class FeishuTokenManagerResolver : IFeishuTokenManagerResolver
 
     /// <inheritdoc />
     /// <remarks>
-    /// TMA-18 / P2-5 修复（D6 契约）：Try* 家族不抛异常。appKey 为空时先取 DefaultAppKey，缺失则返回 null。
+    /// TMA2-10 / D6 修复：Try* 家族不抛异常。appKey 为空时取 DefaultAppKey，缺失则返回 null。
+    /// 不使用 DefaultConfig（会抛异常），改为直接读取 DefaultAppKey。
     /// </remarks>
     public ITenantTokenManager? TryGetTenantTokenManager(string? appKey = null)
     {
         if (string.IsNullOrEmpty(appKey))
         {
-            // TMA-18：appKey 为空时取默认应用，若无默认应用则返回 null 而非抛出。
-            if (string.IsNullOrEmpty(_appManager.DefaultConfig?.AppKey))
+            // TMA2-10：appKey 为空时取默认应用键，不触发懒加载、不抛。
+            if (string.IsNullOrEmpty(_appManager.DefaultAppKey))
                 return null;
             try
             {
@@ -79,13 +80,13 @@ internal sealed class FeishuTokenManagerResolver : IFeishuTokenManagerResolver
 
     /// <inheritdoc />
     /// <remarks>
-    /// TMA-18 / P2-5 修复（D6 契约）：Try* 家族不抛异常。
+    /// TMA2-10 / D6 修复：Try* 家族不抛异常。
     /// </remarks>
     public IAppTokenManager? TryGetAppTokenManager(string? appKey = null)
     {
         if (string.IsNullOrEmpty(appKey))
         {
-            if (string.IsNullOrEmpty(_appManager.DefaultConfig?.AppKey))
+            if (string.IsNullOrEmpty(_appManager.DefaultAppKey))
                 return null;
             try
             {
@@ -102,13 +103,13 @@ internal sealed class FeishuTokenManagerResolver : IFeishuTokenManagerResolver
 
     /// <inheritdoc />
     /// <remarks>
-    /// TMA-18 / P2-5 修复（D6 契约）：Try* 家族不抛异常。
+    /// TMA2-10 / D6 修复：Try* 家族不抛异常。
     /// </remarks>
     public IFeishuUserTokenManager? TryGetUserTokenManager(string? appKey = null)
     {
         if (string.IsNullOrEmpty(appKey))
         {
-            if (string.IsNullOrEmpty(_appManager.DefaultConfig?.AppKey))
+            if (string.IsNullOrEmpty(_appManager.DefaultAppKey))
                 return null;
             try
             {

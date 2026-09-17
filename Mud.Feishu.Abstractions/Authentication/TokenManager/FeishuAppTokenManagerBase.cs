@@ -19,12 +19,6 @@ namespace Mud.Feishu.Abstractions.Authentication;
 /// </remarks>
 internal abstract class FeishuAppTokenManagerBase : TokenManagerBase
 {
-    // TM-06 修复：将 magic number 抽为常量，便于维护与文档化。
-    /// <summary>无过期信息令牌的安全附加时间（秒），确保恢复后仍有有效窗口。</summary>
-    private const int SafeExpireBonusSeconds = 300;
-    /// <summary>无过期信息令牌的最低安全有效期（秒），对应飞书 token 通常 2 小时的保守下限。</summary>
-    private const int MinSafeExpireSeconds = 1800;
-
     private readonly IFeishuAuthentication _authenticationApi;
     private readonly FeishuAppConfig _options;
     private readonly ILogger _logger;
@@ -126,10 +120,10 @@ internal abstract class FeishuAppTokenManagerBase : TokenManagerBase
             if (expireTimestampMs > 0)
             {
                 var remainingMs = expireTimestampMs - DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-                // TMA-10 / P2-1 修复：弃用阈值由 TokenRefreshThreshold 改为 Math.Max(60, TokenRefreshThreshold / 2)。
-                // 算术证明：缓存失效点 = Expire - threshold（store TTL = expiresInSeconds）。
-                // 此刻 store 中令牌剩余 约 threshold > threshold/2，稳态命中。
-                var restoreThresholdMs = Math.Max(60, _options.TokenRefreshThreshold / 2) * 1000L;
+                // TMA2-04 / D9：恢复阈值与缓存有效性阈值同源（TokenRefreshThreshold）。
+                // 不变式：命中 ⇒ remaining > threshold*1000 ⇒ expire - threshold > now ⇒ 缓存视角下仍有效。
+                // 此前取 threshold/2 导致"恢复命中 → 立即判失效 → 再恢复"的自循环。
+                var restoreThresholdMs = _options.TokenRefreshThreshold * 1000L;
                 if (remainingMs <= restoreThresholdMs)
                 {
                     if (_options.EnableLogging)

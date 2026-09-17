@@ -146,7 +146,8 @@ public class MultiAppTokenKeyIsolationTests
         await userA!.SetAccessTokenAsync("ou_1", "tenant:cli_a", "v", 3600);
 
         (await userA.GetAccessTokenAsync("ou_1", "tenant:cli_a")).Should().Be("v");
-        cache.TryGetValue<string>($"feishu:{AppA}:token:user:ou_1:tenant:cli_a:access", out _).Should().BeTrue();
+        // TMA2-02: tokenType 中的 ':' 被转义为 '\:'
+        cache.TryGetValue<string>($"feishu:{AppA}:token:user:ou_1:tenant\\:cli_a:access", out _).Should().BeTrue();
     }
 
     /// <summary>

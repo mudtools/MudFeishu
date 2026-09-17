@@ -13,6 +13,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Mud.Feishu.Abstractions;
 using Mud.Feishu.Abstractions.Configuration;
+using Mud.Feishu.Abstractions.Utilities;
 using Mud.Feishu.Redis.Configuration;
 using Mud.Feishu.Redis.HealthChecks;
 using Mud.Feishu.Redis.Services;
@@ -46,7 +47,8 @@ public static class RedisFeishuServiceBuilderExtensions
             var options = sp.GetRequiredService<IOptions<RedisOptions>>().Value;
             var logger = sp.GetService<ILogger<RedisOptions>>();
 
-            logger?.LogInformation("Redis options loaded. Server: {ServerAddress}", options.ServerAddress);
+            // TMA2-19 / P2-10：连接串含口令时脱敏后再记录。
+            logger?.LogInformation("Redis options loaded. Server: {ServerAddress}", SensitiveDataUtils.MaskSensitiveData(options.ServerAddress));
             return options;
         });
 
@@ -57,7 +59,8 @@ public static class RedisFeishuServiceBuilderExtensions
 
             try
             {
-                logger?.LogInformation("Initializing Redis connection to: {ConnectionString}", options.ServerAddress);
+                // TMA2-19 / P2-10：连接串含口令时脱敏后再记录。
+                logger?.LogInformation("Initializing Redis connection to: {ConnectionString}", SensitiveDataUtils.MaskSensitiveData(options.ServerAddress));
 
                 // ADR-7.1：使用 ConfigurationOptions.Parse 替代手工 EndPoints.Add，
                 // 原生支持 redis://、rediss://（自动 Ssl）、host:port,password=... 等形态。
@@ -196,6 +199,12 @@ public static class RedisFeishuServiceBuilderExtensions
     public static IServiceCollection AddFeishuRedisTokenStore(
         this IServiceCollection services)
     {
+        // TMA2-17 / P2-7：检测 AddFeishuApp 是否已调用（与 AddFeishuRedisDeduplicators 一致的抛异常语义）。
+        // 若已注册 IFeishuAppManager，则 AddFeishuAppBaseServices 已注册默认 Memory TokenStoreFactory，
+        // 此时 Redis 的 TryAddSingleton<IFeishuTokenStoreFactory> 会因已存在而跳过，
+        // 导致 Redis 实现永不生效（静默退化为内存存储）。
+        EnsureFeishuAppNotRegistered(services, nameof(AddFeishuRedisTokenStore));
+
         // T-M3-2：确保 AddFeishuRedis() 已调用（幂等化——重复调用不会重复注册）
         if (!services.Any(s => s.ServiceType == typeof(IConnectionMultiplexer)))
         {
@@ -260,16 +269,8 @@ public static class RedisFeishuServiceBuilderExtensions
         if (configuration == null)
             throw new ArgumentNullException(nameof(configuration));
 
-        // 检测 AddFeishuApp 是否已调用：若已注册 IFeishuAppManager，则 AddFeishuAppBaseServices 已注册默认 FeishuTokenStore，
-        // 此时 Redis 实现的 TryAddSingleton<ITokenStore> 会因已存在而跳过，导致 Redis TokenStore 无法生效（静默失败）。
-        if (services.Any(s => s.ServiceType == typeof(IFeishuAppManager)))
-        {
-            throw new InvalidOperationException(
-                "AddFeishuRedisDeduplicators 必须在 AddFeishuApp 之前调用。" +
-                "当前检测到 AddFeishuApp 已被调用，FeishuTokenStore（Memory 实现）已注册为 ITokenStore，" +
-                "Redis TokenStore 将因 TryAddSingleton 语义（已存在则跳过）而无法覆盖，导致 Redis 实现永不生效。" +
-                "请调整调用顺序：services.AddFeishuRedisDeduplicators(...); services.AddFeishuApp(...);");
-        }
+        // TMA2-17：复用统一守卫。
+        EnsureFeishuAppNotRegistered(services, nameof(AddFeishuRedisDeduplicators));
 
         var section = sectionName ?? "FeishuRedis";
         services.Configure<RedisOptions>(options =>
@@ -308,15 +309,8 @@ public static class RedisFeishuServiceBuilderExtensions
         if (configureOptions == null)
             throw new ArgumentNullException(nameof(configureOptions));
 
-        // 检测 AddFeishuApp 是否已调用（同 IConfiguration 重载）
-        if (services.Any(s => s.ServiceType == typeof(IFeishuAppManager)))
-        {
-            throw new InvalidOperationException(
-                "AddFeishuRedisDeduplicators 必须在 AddFeishuApp 之前调用。" +
-                "当前检测到 AddFeishuApp 已被调用，FeishuTokenStore（Memory 实现）已注册为 ITokenStore，" +
-                "Redis TokenStore 将因 TryAddSingleton 语义（已存在则跳过）而无法覆盖，导致 Redis 实现永不生效。" +
-                "请调整调用顺序：services.AddFeishuRedisDeduplicators(...); services.AddFeishuApp(...);");
-        }
+        // TMA2-17：复用统一守卫（同 IConfiguration 重载）。
+        EnsureFeishuAppNotRegistered(services, nameof(AddFeishuRedisDeduplicators));
 
         services.Configure(configureOptions);
 
@@ -326,5 +320,25 @@ public static class RedisFeishuServiceBuilderExtensions
             .AddFeishuRedisNonceDeduplicator()
             .AddFeishuRedisSeqIDDeduplicator()
             .AddFeishuRedisTokenStore();
+    }
+
+    /// <summary>
+    /// TMA2-17 / P2-7：检测 AddFeishuApp 是否已调用。
+    /// 若已注册 IFeishuAppManager，则 AddFeishuAppBaseServices 已注册默认 Memory TokenStoreFactory，
+    /// 此时 Redis 的 TryAddSingleton 会因已存在而跳过，导致 Redis 实现永不生效（静默失败）。
+    /// </summary>
+    /// <param name="services">服务集合</param>
+    /// <param name="callerName">调用方方法名（用于错误消息）</param>
+    /// <exception cref="InvalidOperationException">当 IFeishuAppManager 已注册时抛出</exception>
+    private static void EnsureFeishuAppNotRegistered(IServiceCollection services, string callerName)
+    {
+        if (services.Any(s => s.ServiceType == typeof(IFeishuAppManager)))
+        {
+            throw new InvalidOperationException(
+                $"{callerName} 必须在 AddFeishuApp 之前调用。" +
+                "当前检测到 AddFeishuApp 已被调用，Memory TokenStoreFactory 已注册为 IFeishuTokenStoreFactory，" +
+                "Redis TokenStore 将因 TryAddSingleton 语义（已存在则跳过）而无法覆盖，导致 Redis 实现永不生效。" +
+                "请调整调用顺序：services.AddFeishuRedisTokenStore(); services.AddFeishuApp(...);");
+        }
     }
 }

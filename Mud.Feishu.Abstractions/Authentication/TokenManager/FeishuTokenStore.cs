@@ -102,6 +102,8 @@ public class FeishuTokenStore : ITokenStore
     /// TMA-22 修复：refresh token 存储 TTL 由硬编码 30 天改为优先使用编码值中的过期时间，
     /// 缺失时才回落 30 天。但 IMemoryCache 场景下此方法不接收过期信息，保持 30 天默认。
     /// Redis 路径在 RedisTokenStore 中处理。
+    /// TMA2-15 / P2-5：Memory 路径保留 30 天默认。仅本进程；过期语义由消费侧校验
+    /// （TMA2-06 的 RefreshTokenExpireTime 校验）。
     /// </remarks>
     public Task SetRefreshTokenAsync(string tokenType, string refreshToken, CancellationToken cancellationToken = default)
     {
@@ -144,8 +146,10 @@ public class FeishuTokenStore : ITokenStore
         return Task.CompletedTask;
     }
 
-    // C-2 修复：缓存键增加 AppKey 维度，确保多应用场景下令牌互不覆盖
-    private string BuildAccessTokenKey(string tokenType) => $"feishu:{_appKey}:token:{tokenType}:access";
-    private string BuildRefreshTokenKey(string tokenType) => $"feishu:{_appKey}:token:{tokenType}:refresh";
+    // TMA2-02 / D8：令牌键构造收敛到 TokenKeyBuilder 统一产出。
+    // 键前缀含 AppKey 维度，确保多应用场景下令牌互不覆盖。
+    private string KeyPrefix => $"feishu:{_appKey}:token";
+    private string BuildAccessTokenKey(string tokenType) => TokenKeyBuilder.TenantAccessKey(KeyPrefix, tokenType);
+    private string BuildRefreshTokenKey(string tokenType) => TokenKeyBuilder.TenantRefreshKey(KeyPrefix, tokenType);
 }
 

@@ -26,6 +26,14 @@ namespace Mud.Feishu.Abstractions;
 /// </list>
 /// </para>
 /// <para>
+/// TMA2-07 / P1-4 修复：
+/// <list type="bullet">
+/// <item>落地显式 <c>AppInstantiated</c> 事件，在应用首次实例化后触发增量注册。</item>
+/// <item>注册逻辑抽取为 <see cref="FeishuTokenRegistrationHelper.RegisterAppTokenManagers"/>，使 net8/10 可直接单测。</item>
+/// <item>ns2.0 路径无 HostedService 载体，按 C-5② 决策仅文档声明限制。</item>
+/// </list>
+/// </para>
+/// <para>
 /// TMA-24 修复注释：后台服务只管理 Timer 与刷新周期，不管理令牌管理器生命周期。
 /// 令牌管理器的生命周期由 FeishuAppManager 管理（含退休队列）。
 /// </para>
@@ -98,6 +106,8 @@ internal sealed class FeishuTokenRegistrationService : IHostedService
         if (_appManager is FeishuAppManager feishuAppManager)
         {
             feishuAppManager.ConfigurationChanged += OnConfigurationChanged;
+            // TMA2-07：订阅 AppInstantiated 事件，非默认应用首次访问后增量注册。
+            feishuAppManager.AppInstantiated += OnAppInstantiated;
         }
 
         return Task.CompletedTask;
@@ -111,9 +121,28 @@ internal sealed class FeishuTokenRegistrationService : IHostedService
         if (_appManager is FeishuAppManager feishuAppManager)
         {
             feishuAppManager.ConfigurationChanged -= OnConfigurationChanged;
+            // TMA2-07：退订 AppInstantiated 事件。
+            feishuAppManager.AppInstantiated -= OnAppInstantiated;
         }
 
         return Task.CompletedTask;
+    }
+
+    private void OnAppInstantiated(object? sender, FeishuAppInstantiatedEventArgs e)
+    {
+        // TMA2-07：非默认应用首次访问后增量注册到后台刷新服务（同名键覆盖）。
+        try
+        {
+            var count = FeishuTokenRegistrationHelper.RegisterAppTokenManagers(e.Context, _refreshService);
+            _logger.LogInformation(
+                "应用 {AppKey} 首次实例化，已将 {TokenCount} 个令牌管理器增量注册到后台刷新服务。",
+                e.AppKey, count);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogError(ex,
+                "应用 {AppKey} 实例化后增量注册令牌管理器失败。", e.AppKey);
+        }
     }
 
     private void OnConfigurationChanged(object? sender, AppConfigurationChangedEventArgs e)
@@ -127,7 +156,7 @@ internal sealed class FeishuTokenRegistrationService : IHostedService
             {
                 if (_appManager.TryGetApp(e.AppKey, out var app) && app != null)
                 {
-                    RegisterAppTokenManagers(app);
+                    FeishuTokenRegistrationHelper.RegisterAppTokenManagers(app, _refreshService);
                     _logger.LogInformation(
                         "配置变更：已将应用 {AppKey} 的令牌管理器增量注册到后台刷新服务（{ChangeType}）",
                         e.AppKey, e.ChangeType);
@@ -144,27 +173,7 @@ internal sealed class FeishuTokenRegistrationService : IHostedService
 
     private int RegisterAppTokenManagers(IFeishuAppContext app)
     {
-        var count = 0;
-
-        if (app.TenantTokenManager.SupportsBackgroundRefresh)
-        {
-            _refreshService.RegisterTokenManager(
-                app.TenantTokenManager,
-                $"tenant:{app.Config.AppKey}");
-            count++;
-        }
-
-        if (app.AppTokenManager.SupportsBackgroundRefresh)
-        {
-            _refreshService.RegisterTokenManager(
-                app.AppTokenManager,
-                $"app:{app.Config.AppKey}");
-            count++;
-        }
-
-        // 注意：不注册 UserTokenManager
-        // 用户令牌是按需获取的（通过 OAuth 授权码换取），不适合后台预热
-        return count;
+        return FeishuTokenRegistrationHelper.RegisterAppTokenManagers(app, _refreshService);
     }
 }
 #endif

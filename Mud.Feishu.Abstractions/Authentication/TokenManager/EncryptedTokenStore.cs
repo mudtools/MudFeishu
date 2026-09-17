@@ -56,7 +56,7 @@ public sealed class EncryptedTokenStore : ITokenStore, IEncryptedTokenStore
     /// ENH-2：实现组件 marker 契约 <see cref="IEncryptedTokenStore"/>，表明写入前已加密。
     /// </summary>
     /// <remarks>
-    /// 组件 2.0.5 注释（TMR-12）明确该契约当前<b>不被</b> <c>ITokenManager</c> 管线消费，
+    /// 组件 2.0.4 注释（TMR-12）明确该契约当前<b>不被</b> <c>ITokenManager</c> 管线消费，
     /// 因此实现它不改变任何运行时行为；一旦组件 v2 把该契约接入管线（例如用于启动期校验或
     /// 存储能力探测），本类型无需再发版即可被正确识别。
     /// </remarks>

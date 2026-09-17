@@ -127,6 +127,7 @@ public class PerAppRedisTokenStoreKeyIsolationTests
 
     /// <summary>
     /// tokenType 自带 ':' 时键仍需正确（TM-04 回归，原实现用 Split(':') 会截断）。
+    /// TMA2-02：键段统一转义，tokenType 中的 ':' 被转义为 '\:'。
     /// </summary>
     [Fact]
     public async Task GetAccessTokenAsync_ShouldPreserveTokenType_WhenTokenTypeContainsColon()
@@ -136,13 +137,14 @@ public class PerAppRedisTokenStoreKeyIsolationTests
         var (store, _) = factory.Create("cli_a");
         await store.GetAccessTokenAsync("tenant:cli_a");
 
-        keys[0].Should().Be("feishu:cli_a:token:tenant:cli_a:access");
+        keys[0].Should().Be("feishu:cli_a:token:tenant\\:cli_a:access");
     }
 
     /// <summary>
     /// TM-04 回归：<c>GetTokenTypesAsync</c> 必须返回**完整** tokenType。
     /// 原实现按 <c>Split(':')[0]</c> 取首段，会把 <c>tenant:cli_a</c> 截断为 <c>tenant</c>，
     /// 导致上层无法按 tokenType 精确失效/刷新令牌。修复方式为剥离已知前缀与 <c>:access</c> 后缀。
+    /// TMA2-02：键段统一转义，tokenType 中的 ':' 被转义为 '\:'，反解析时还原。
     /// </summary>
     /// <remarks>
     /// 这里必须走 <c>GetServer(...).Keys(...)</c> 路径（而非仅校验键构造），
@@ -153,9 +155,9 @@ public class PerAppRedisTokenStoreKeyIsolationTests
     {
         var (factory, _) = BuildFactory(new[]
         {
-            "feishu:cli_a:token:tenant:cli_a:access",   // 期望：tenant:cli_a
-            "feishu:cli_a:token:tenant:cli_a:refresh",  // refresh 键应被忽略
-            "feishu:cli_a:token:app:cli_a:access"       // 期望：app:cli_a
+            "feishu:cli_a:token:tenant\\:cli_a:access",   // 期望：tenant:cli_a
+            "feishu:cli_a:token:tenant\\:cli_a:refresh",  // refresh 键应被忽略
+            "feishu:cli_a:token:app\\:cli_a:access"       // 期望：app:cli_a
         });
 
         var (store, _) = factory.Create("cli_a");
@@ -166,13 +168,14 @@ public class PerAppRedisTokenStoreKeyIsolationTests
 
     /// <summary>
     /// TM-04 回归（用户令牌路径）：<c>RedisUserTokenStore.GetTokenTypesAsync</c> 同样不得截断 tokenType。
+    /// TMA2-02：键段统一转义，tokenType 中的 ':' 被转义为 '\:'，反解析时还原。
     /// </summary>
     [Fact]
     public async Task UserTokenStore_GetTokenTypesAsync_ShouldReturnFullTokenType_WhenTokenTypeContainsColon()
     {
         var (factory, _) = BuildFactory(new[]
         {
-            "feishu:cli_a:token:user:ou_1:user:cli_a:access"
+            "feishu:cli_a:token:user:ou_1:user\\:cli_a:access"
         });
 
         var (_, userStore) = factory.Create("cli_a");

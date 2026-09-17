@@ -7,6 +7,36 @@
 > 对应《.docs/MudFeishu-Token-MultiApp-Review-Remediation-Plan-R2.md》的 TMA2-01…TMA2-23 全部条目。
 > 本项目尚未发布，以下破坏性变更无需数据迁移。
 
+### 🔧 依赖升级与门禁加固（Mud.HttpUtils 2.0.5 正式版，2026-09-17）
+
+- **依赖升级**：5 个工程的 `Mud.HttpUtils` / `Mud.HttpUtils.Generator` 统一钉住 **2.0.5**
+  ——组件首个 NuGet 正式版，实机验证期间的过渡迭代包已由组件侧全部折叠进该版本（下游不残留
+  过渡版本号；`AGENTS.md`、`README.md` 依赖表、契约守卫 `ExpectedVersion` 同步）。
+  实测 restore 解析 Abstractions/Attributes/Client/Resilience 均为 2.0.5；全 TFM 构建 0 错误、
+  门禁用例全通过、AOT 严格模式净零、生成器诊断（`HTTPCLIENT0xx` / `MUD001-002` / `AOT001-007`）全零。
+- **组件侧缺陷修复（随 2.0.5 发布）**：实机升级验证发现的全部组件缺陷均已修复——
+  打包配置防呆（Release 打包 + 包内 DLL 与 `bin/<Configuration>` 逐字节校验，Debug 产物不得进入发布目录）、
+  打包清单漂移防护（补齐 `Mud.HttpUtils.Xml` / `JsonContextScaffolder`，包集合校验）、三处 DI 构造歧义
+  （`TokenRecoveryDelegatingHandler` 使文档推荐的 `AddHttpMessageHandler<T>()` 用法在首个请求即失败、
+  `StandardOAuth2TokenManager`、`PollyResiliencePolicyProvider`）、`TokenRefreshHealthCheck` 构造歧义、
+  `RequiresDynamicCodeAttribute` polyfill 边界与 net7.0 资产缺口（下游标注即 CS0433）、
+  `UserTokenInfo` 两个复制入口丢失 `IssuedAt`。组件侧新增 10 条机器护栏用例（DI 歧义扫描、
+  polyfill 边界与资产矩阵、`IssuedAt` 守恒）。
+- **门禁步骤 3 假绿修复（P0）**：`MSBuild` 的 `CoreCompile` 增量判定不比较 csc 命令行，
+  `-p:AotStrictMode=true` 紧接全量构建执行时会被"跳过 CoreCompile"吞掉 ⇒ `IL2026/IL3050` 恒为 0。
+  改用 `--no-incremental` 后暴露出 `Mud.Feishu.WebSocket` 4 条违规并已补齐标注链
+  （`MessageRouter.RouteBinaryMessageWithResultAsync` / `RouteMessageInternalWithResultAsync`、
+  `BinaryMessageProcessor.ProcessBinaryDataAsync` / `ProcessBinaryDataCore`）。
+- **门禁步骤 4 修复（P0）**：① TRX 计数器路径写成 `TestRun.Results.ResultSummary.Counters`（恒 `$null`），
+  `TRX 解析从未生效`并静默回退到已废弃的中文正则；② 单条 `dotnet test $solution` 只落盘**最后一次**运行的 TRX
+  （14 次运行得 1 个），且"每工程必须有结果"用日志文本匹配判定 ⇒ 恒真；
+  ③ 逐工程 TFM 用文本正则扫自身 csproj，对 TFM 定义在 `Tests/Directory.Build.props` 的工程得到空集
+  （7 个工程只跑了 4 个）；④ 缺 .NET 6 运行时导致的 net6.0 testhost 中止被当作"已知 CLI 行为"放过。
+  现改为逐 `(工程, TFM)` 运行、逐组合断言 TRX 存在且 `total > 0`、按 `dotnet --list-runtimes` 显式播报跳过。
+- **用户令牌 `IssuedAt` 补齐（P1）**：`UserTokenManager` 的换取与刷新路径填充 `IssuedAt`，
+  使组件的 TTL 感知过期提前量 `min(配置阈值, ttl/2)`（MT-07 / TMX-22）真正生效；
+  新增 2 条回归用例锁定（其中短 TTL 用例在未填充时必然失败）。
+
 ### ⚠️ 破坏性变更 / 行为变更（TMA2 系列 / R2 复审）
 
 - **用户令牌续期可达（P0-1 / TMA2-01）**：`UserTokenManager.RefreshUserTokenAsync` 此前通过 `GetTokenInfoAsync`

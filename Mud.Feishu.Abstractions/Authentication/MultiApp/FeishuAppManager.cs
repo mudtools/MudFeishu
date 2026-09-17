@@ -1294,7 +1294,7 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
             config, authenticationApi, tokenStore, userTokenStore);
 
         // === 步骤 4：创建恢复 HttpClient（含令牌恢复，供业务 API 使用） ===
-        // TMR-07/TMX-19（MudHttpUtils 2.0.6）：统一使用 IOptionsMonitor<TokenRecoveryOptions> 构造
+        // TMR-07/TMX-19（MudHttpUtils 2.0.5）：统一使用 IOptionsMonitor<TokenRecoveryOptions> 构造
         // （组件唯一的公共用户级构造），TokenRecoveryOptions 支持运行期热更新。
         // IOptionsMonitor 由上方 AddOptions<TokenRecoveryOptions>() 注册，缺失时 fail-fast 暴露装配错误。
         var recoveryLogger = scopedSp.GetService<ILogger<TokenRecoveryEnhancedClient>>();

@@ -123,6 +123,12 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
             throw new FeishuException(443, "获取 UserAccessToken 失败: AccessToken为空");
         }
 
+        // MT-07 / TMX-22（Mud.HttpUtils 2.0.5）：IssuedAt 必须由 IdP 侧填充。
+        // 组件仅在 IssuedAt > 0 时才启用「TTL 感知的过期提前量」min(配置阈值, ttl/2)；
+        // 缺失（0）会退化为纯配置阈值——对短 TTL 用户令牌（ttl <= 阈值）意味着
+        // expire - threshold <= now 恒成立，令牌"刚签发即被判为需刷新"，缓存永不命中，
+        // 每次取令牌都触发一次 OAuth 调用。此处以本次换取时刻作为签发时间。
+        var issuedAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         var tokenInfo = new UserTokenInfo
         {
             UserId = string.Empty,
@@ -130,8 +136,9 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
             UnionId = res.UnionId,
             AccessToken = res.AccessToken,
             RefreshToken = res.RefreshToken,
-            AccessTokenExpireTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + ((res.ExpiresIn > 0 ? res.ExpiresIn : 7200) * 1000L),
-            RefreshTokenExpireTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + ((res.RefreshTokenExpiresIn > 0 ? res.RefreshTokenExpiresIn : 30 * 24 * 3600) * 1000L),
+            AccessTokenExpireTime = issuedAt + ((res.ExpiresIn > 0 ? res.ExpiresIn : 7200) * 1000L),
+            RefreshTokenExpireTime = issuedAt + ((res.RefreshTokenExpiresIn > 0 ? res.RefreshTokenExpiresIn : 30 * 24 * 3600) * 1000L),
+            IssuedAt = issuedAt,
             Scope = res.Scope,
             Code = res.Code,
             Msg = res.Msg
@@ -259,6 +266,9 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
             throw new FeishuException(res?.Code ?? 500, $"刷新 UserAccessToken 失败: {res?.Msg ?? "返回结果为null"}");
         }
 
+        // MT-07 / TMX-22：同 GetUserTokenWithCodeAsync——刷新得到的令牌以本次刷新时刻为签发时间，
+        // 使 TTL 感知阈值（min(配置阈值, ttl/2)）真正生效。
+        var refreshedAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         var tokenInfo = new UserTokenInfo
         {
             UserId = candidate.UserId,
@@ -266,8 +276,9 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
             UnionId = candidate.UnionId,
             AccessToken = res.AccessToken ?? candidate.AccessToken,
             RefreshToken = res.RefreshToken ?? candidate.RefreshToken,
-            AccessTokenExpireTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + ((res.ExpiresIn > 0 ? res.ExpiresIn : 7200) * 1000L),
-            RefreshTokenExpireTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + ((res.RefreshTokenExpiresIn > 0 ? res.RefreshTokenExpiresIn : 30 * 24 * 3600) * 1000L),
+            AccessTokenExpireTime = refreshedAt + ((res.ExpiresIn > 0 ? res.ExpiresIn : 7200) * 1000L),
+            RefreshTokenExpireTime = refreshedAt + ((res.RefreshTokenExpiresIn > 0 ? res.RefreshTokenExpiresIn : 30 * 24 * 3600) * 1000L),
+            IssuedAt = refreshedAt,
             Scope = candidate.Scope,
             Code = res.Code,
             Msg = res.Msg

@@ -107,7 +107,7 @@ public class FeishuHttpClientFactoryTests
     {
         var provider = BuildProvider();
         var factory = new FeishuHttpClientFactory(provider);
-        // TMX-19（组件 2.0.6）：快照构造已 internal，统一改用 IOptionsMonitor 公共构造（TMR-07 热更新路径）
+        // TMX-19（组件 2.0.5）：快照构造已 internal，统一改用 IOptionsMonitor 公共构造（TMR-07 热更新路径）
         var executor = new TokenRecoveryExecutor(
             new Mock<ITokenManager>().Object,
             new Mock<IUserTokenManager>().Object,

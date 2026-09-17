@@ -49,20 +49,46 @@ Step 3 (`AotStrictMode` smoke, net8.0) builds the **9 source projects one by one
 solution with `-f net8.0`: `Demos/` contains single-TFM projects (net9.0 / net10.0) that make MSBuild
 fail with `NETSDK1005`. The step asserts **0 build errors** *and* `AOT00x` / `IL2026` / `IL3050` = 0 —
 asserting only the diagnostic counts is a false green when the build itself fails.
+It must also pass `--no-incremental`: MSBuild's `CoreCompile` up-to-date check compares only input/output
+timestamps and **not the csc command line**, so a strict-mode build issued right after the step-1 build
+skips compilation entirely and reports 0 diagnostics (this was a long-standing false green; see
+`documents/MudHttpUtils-2.0.7-升级验证报告.md` §F1).
+
+Step 4 runs `dotnet test` **per (test project, TFM)** with a dedicated TRX per combination, and asserts both
+"TRX exists" and `Counters.total > 0` (a testhost that fails to start still writes an empty TRX with exit
+code 1). TFMs are resolved via `dotnet msbuild -getProperty:TargetFrameworks`, because several test projects
+inherit `<TargetFrameworks>` from `Tests/Directory.Build.props`. Combinations whose .NET runtime is not
+installed are reported as skipped (this machine only has .NET 8/9/10, so all `net6.0` test runs are skipped).
 
 CI runs the same checks: `Restore dependencies` is preceded by `-CacheCheckOnly`, and the `Build` log is
 asserted for the diagnostic whitelist afterwards (`.github/workflows/dotnet-publish.yml`).
 
 ## Dependency version policy (Mud.HttpUtils)
 
-This repo consumes `Mud.HttpUtils` from a **local folder source** (`nuget.config` ->
-`D:/Repos/MudHttpUtils/artifacts`). The currently pinned version is **2.0.6**.
+This repo consumes `Mud.HttpUtils` **2.0.5** — the first official NuGet release, into which every fix
+from the pre-release local iterations was folded — **from nuget.org**. `nuget.config` declares
+nuget.org as the single source; the former local folder source (`D:/Repos/MudHttpUtils/artifacts`)
+was removed once 2.0.5 was published. To consume a newer component version: bump the version in the
+`PackageReference`s and sync `AGENTS.md` / README dependency table / `TokenMultiAppContractGuards.ExpectedVersion`.
 
-**Always bump the component version when packing.** NuGet keys the global package cache by
-`id + version`, so re-packing under the *same* version does **not** invalidate the
-downstream cache. Symptom: the component source is already fixed, but the build still fails
-with `CS1750`. This anti-pattern occurred three times during 2.0.4
+> **Packaging rules (component repo `D:/Repos/MudHttpUtils`)**: release packages must be produced by
+> `pack.ps1 Release` (writes to `artifacts/`) **and published to nuget.org**. `pack_debug.ps1` produces
+> **Debug** builds into `artifacts-debug/` for local debugging only — never publish them or use them
+> for release verification. `pack.ps1` verifies after packing that (a) the package set matches the
+> expected list (10 packages, including `Mud.HttpUtils.Xml` / `Mud.HttpUtils.JsonContextScaffolder`)
+> and (b) every DLL inside every package is SHA256-identical to its `bin/<Configuration>/…` build
+> output (prevents "Debug posing as Release" and stale-cache mis-packs).
+> Details: `documents/MudHttpUtils-2.0.7-升级验证报告.md` (the report filename keeps its pre-release
+> iteration label).
+
+**During local component development** (fix not yet on nuget.org): temporarily re-add the local
+folder source to `nuget.config`
+(`<add key="MudHttpUtils-local" value="D:/Repos/MudHttpUtils/artifacts" />`), and remember that NuGet
+keys the global package cache by `id + version`, so re-packing under the *same* version does **not**
+invalidate the downstream cache. Symptom: the component source is already fixed, but the build still
+fails with `CS1750`. This anti-pattern occurred three times during 2.0.4
 (23:16 / 20:59 / 21:23 re-packs), each polluting every downstream cache.
+**Always bump the component version when packing.**
 
 When you must refresh the cache manually (local component development), do it as a
 three-step sequence:

@@ -112,6 +112,69 @@ public class UserTokenManagerTests : TokenManagerTestsBase
         Assert.Equal("user-refresh-token-456", result.RefreshToken);
     }
 
+    /// <summary>
+    /// MT-07 / TMX-22（Mud.HttpUtils 2.0.5）：换取的令牌必须填充 IssuedAt。
+    /// 组件仅在 IssuedAt &gt; 0 时才启用「TTL 感知的过期提前量」min(配置阈值, ttl/2)；
+    /// 缺失会退化为纯配置阈值，使短 TTL 令牌"刚签发即被判为需刷新"、缓存永不命中。
+    /// </summary>
+    [Fact]
+    public async Task GetUserTokenWithCodeAsync_ShouldPopulateIssuedAt_MatchingAccessTokenExpiry()
+    {
+        var apiResult = new OAuthCredentialsResult
+        {
+            AccessToken = "issued-at-access",
+            RefreshToken = "issued-at-refresh",
+            ExpiresIn = 7200,
+            RefreshTokenExpiresIn = 2592000,
+            Code = 0,
+            Msg = "ok",
+            OpenId = "issued-at-open-id"
+        };
+
+        _authenticationApiMock
+            .Setup(x => x.GetOAuthenAccessTokenAsync(It.IsAny<OAuthTokenRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(apiResult);
+
+        var before = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        var result = await _userTokenManager.GetUserTokenWithCodeAsync("test-code", "https://example.com/callback", CancellationToken.None);
+        var after = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+        Assert.NotNull(result);
+        Assert.InRange(result.IssuedAt, before, after);
+        Assert.Equal(result.IssuedAt + 7200_000L, result.AccessTokenExpireTime);
+    }
+
+    /// <summary>
+    /// MT-07 / TMX-22：TTL 短于配置阈值时，TTL 感知阈值必须生效——
+    /// ttl=120s、阈值=300s 时提前量被钳位为 60s，签发瞬间令牌仍是"有效"的。
+    /// 若 IssuedAt 未填充（= 0），提前量恒为 300s &gt; ttl，该断言必然失败。
+    /// </summary>
+    [Fact]
+    public async Task GetUserTokenWithCodeAsync_ShouldKeepShortTtlTokenValid_RightAfterIssuance()
+    {
+        var apiResult = new OAuthCredentialsResult
+        {
+            AccessToken = "short-ttl-access",
+            RefreshToken = "short-ttl-refresh",
+            ExpiresIn = 120,
+            RefreshTokenExpiresIn = 2592000,
+            Code = 0,
+            Msg = "ok",
+            OpenId = "short-ttl-open-id"
+        };
+
+        _authenticationApiMock
+            .Setup(x => x.GetOAuthenAccessTokenAsync(It.IsAny<OAuthTokenRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(apiResult);
+
+        var result = await _userTokenManager.GetUserTokenWithCodeAsync("test-code", "https://example.com/callback", CancellationToken.None);
+
+        Assert.NotNull(result);
+        Assert.True(result.IssuedAt > 0, "短 TTL 令牌必须填充 IssuedAt，否则 TTL 感知阈值失效");
+        Assert.True(result.IsAccessTokenValid(300),
+            "ttl=120s 的令牌在签发瞬间应判定为有效（提前量被钳位为 ttl/2=60s）");
+    }
+
     [Fact]
     public async Task RemoveTokenAsync_ShouldReturnFalse_WhenUserIdIsEmpty()
     {

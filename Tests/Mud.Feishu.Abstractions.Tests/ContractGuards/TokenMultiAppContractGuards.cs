@@ -81,7 +81,7 @@ public class TokenMultiAppContractGuards
     // ────────────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// 扫描全部 csproj，Mud.HttpUtils* 版本唯一且等于 AGENTS.md 声明值（2.0.4）。
+    /// 扫描全部 csproj，Mud.HttpUtils* 版本唯一且等于 AGENTS.md 声明值（2.0.5）。
     /// </summary>
     [Fact]
     public void MudHttpUtils_PackageReference_ShouldBeSingleVersion()
@@ -127,8 +127,8 @@ public class TokenMultiAppContractGuards
             }
         }
 
-        // AGENTS.md 声明的当前固定版本为 2.0.6。
-        const string ExpectedVersion = "2.0.6";
+        // AGENTS.md 声明的当前固定版本为 2.0.5。
+        const string ExpectedVersion = "2.0.5";
 
         versions.Should().NotBeEmpty("应至少有一个 Mud.HttpUtils* 包引用");
         versions.Should().ContainSingle(

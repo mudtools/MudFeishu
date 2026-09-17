@@ -99,7 +99,18 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
     /// <remarks>
     /// P0-1 修复：整体串行化。此前多个消息的片段会并发进入同一 <c>_binaryDataStream</c>，
     /// 产生"A 头 + B 身"的畸形 protobuf 帧。
+    /// <para>
+    /// AOT-STRICT：处理链路最终经 <see cref="MessageRouter.RouteBinaryMessageWithResultAsync"/>
+    /// 调用处理器（可能使用反射式 System.Text.Json），故必须携带裁剪/AOT 标注，
+    /// 否则 net8+ 的 <c>IL2026</c>/<c>IL3050</c> 会在 <c>AotStrictMode</c> 下升级为错误。
+    /// </para>
     /// </remarks>
+#if NET6_0_OR_GREATER
+    [RequiresUnreferencedCode("反射式System.Text.Json序列化在裁剪下无法静态分析目标类型成员")]
+#endif
+#if NET7_0_OR_GREATER
+    [RequiresDynamicCode("反射式System.Text.Json序列化在 AOT/动态代码生成环境下不可用")]
+#endif
     public async Task ProcessBinaryDataAsync(byte[] data, int offset, int count, bool endOfMessage, CancellationToken cancellationToken = default)
     {
         await _processLock.WaitAsync(cancellationToken).ConfigureAwait(false);
@@ -121,6 +132,12 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
     /// <param name="count">数据长度</param>
     /// <param name="endOfMessage">是否为消息的最后一片</param>
     /// <param name="cancellationToken">取消令牌</param>
+#if NET6_0_OR_GREATER
+    [RequiresUnreferencedCode("反射式System.Text.Json序列化在裁剪下无法静态分析目标类型成员")]
+#endif
+#if NET7_0_OR_GREATER
+    [RequiresDynamicCode("反射式System.Text.Json序列化在 AOT/动态代码生成环境下不可用")]
+#endif
     private void ProcessBinaryDataCore(byte[] data, int offset, int count, bool endOfMessage, CancellationToken cancellationToken)
     {
         try

@@ -223,9 +223,14 @@ if ($strictProjects.Count -eq 0) {
     Write-Host '  [FAIL] 未找到任何源项目' -ForegroundColor Red
 }
 else {
+    # ③ 必须强制重编译（--no-incremental）。CoreCompile 的"最新"判定只看输入/输出时间戳，
+    #    **不比较 csc 命令行**；步骤 1 已用同一 TFM 构建过一次，本步骤即便带上
+    #    -p:AotStrictMode=true 也会命中「正在跳过目标 CoreCompile」，于是 IL2026/IL3050
+    #    一条都不产生，步骤 3 恒为 [ OK ]。实测：成功构建后再跑严格模式得到 0 错误，
+    #    而同一命令加 --no-incremental 立刻暴露出 Mud.Feishu.WebSocket 的 4 条违规。
     foreach ($proj in $strictProjects) {
         Write-Host "  -> $($proj.Name)" -ForegroundColor DarkGray
-        dotnet build $proj.FullName -c Release -f net8.0 -p:AotStrictMode=true --nologo 2>&1 |
+        dotnet build $proj.FullName -c Release -f net8.0 -p:AotStrictMode=true --no-incremental --nologo 2>&1 |
             Tee-Object -FilePath $strictLog -Append | Out-Null
     }
     Assert-Zero -Name 'AotStrictMode 构建错误' -Count ((Select-String -Path $strictLog -Pattern ': error ' -AllMatches).Count) -Hint "详见 $strictLog"
@@ -245,8 +250,85 @@ $testLog = Join-Path $env:TEMP "mudfeishu-verify-test-$([guid]::NewGuid().ToStri
 
 # 同时设置中文 locale（兼容旧日志解析）和 TRX logger（locale 无关）
 $env:DOTNET_CLI_UI_LANGUAGE = 'zh-CN'
-dotnet test $solution -c Release --no-build --nologo --logger "trx;LogFileName=$trxDir" 2>&1 | Tee-Object -FilePath $testLog | Out-Null
-$testExit = $LASTEXITCODE
+
+# GATE-4 修复（2026-09-17）：改为**逐测试工程 + 逐 TFM** 运行。此前单条 `dotnet test $solution`
+# 把结果目录当作 LogFileName 传入，VSTest 实际只落盘最后一次运行的 TRX（实测 7 个工程 × 2 个
+# TFM 共 14 次运行仅得 1 个），造成两个假绿：
+#   ① 「每个测试工程都必须有结果」的断言从未真正成立（靠日志文本匹配兜过）；
+#   ② 一旦解析到任意 TRX，日志正则兜底会被跳过，其余工程/TFM 的失败用例被静默忽略。
+# 同一工程多 TFM 会写同名 TRX 互相覆盖，故每个 (工程, TFM) 组合单独指定结果目录与文件名。
+$testProjectPaths = @()
+if (Test-Path $solution) {
+    $slnxContent = Get-Content -LiteralPath $solution -Raw -Encoding utf8
+    # 仅匹配 Project 条目（排除 File 条目，如 Tests/Directory.Build.props）
+    foreach ($m in [regex]::Matches($slnxContent, '<Project Path="(Tests/[^"]+)"')) {
+        $testProjectPaths += (Join-Path $repoRoot ($m.Groups[1].Value -replace '/', '\'))
+    }
+}
+if ($testProjectPaths.Count -eq 0) {
+    $script:failures.Add('未从 .slnx 解析到任何测试工程')
+    Write-Host '  [FAIL] 未从 .slnx 解析到任何测试工程' -ForegroundColor Red
+}
+
+$testRuns = @()
+foreach ($testProject in $testProjectPaths) {
+    $projectName = [System.IO.Path]::GetFileNameWithoutExtension($testProject)
+    # TFM 必须取**求值后**的属性：多个测试工程把 <TargetFrameworks> 放在 Tests/Directory.Build.props，
+    # 只用文本正则扫自身 csproj 会得到空集，该工程会被静默跳过（实测 7 个工程只跑了 4 个）。
+    $tfmRaw = (dotnet msbuild $testProject -getProperty:TargetFrameworks -p:Configuration=Release -nologo 2>$null |
+        Where-Object { $_ -match '^net' } | Select-Object -Last 1)
+    if (-not $tfmRaw) {
+        $tfmRaw = (dotnet msbuild $testProject -getProperty:TargetFramework -p:Configuration=Release -nologo 2>$null |
+            Where-Object { $_ -match '^net' } | Select-Object -Last 1)
+    }
+    $tfms = if ($tfmRaw) {
+        @($tfmRaw.Split(';') | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+    }
+    else { @($null) }
+
+    foreach ($tfm in $tfms) {
+        $label = if ($tfm) { "$projectName.$tfm" } else { $projectName }
+        $testRuns += [pscustomobject]@{ Label = $label; Project = $testProject; Tfm = $tfm }
+    }
+}
+
+# 目标 TFM 的运行时缺失时 testhost 会「启动后中止」——此时 VSTest 仍会落盘一个 total=0 的 TRX，
+# 退出码为 1。原实现对退出码 1 只发一条 WARN（注释称"已知 CLI 行为"），于是本机（仅装 .NET 8/9/10）
+# 上全部 net6.0 测试实际从未执行，却一路绿灯。这里显式按运行时可用性过滤并单独播报。
+$installedRuntimeMajors = @(dotnet --list-runtimes 2>$null |
+    ForEach-Object { if ($_ -match '^Microsoft\.NETCore\.App (\d+)\.') { [int]$Matches[1] } } |
+    Sort-Object -Unique)
+
+$testExit = 0
+$skippedRuns = New-Object System.Collections.Generic.List[string]
+$executedLabels = New-Object System.Collections.Generic.List[string]
+$runTotals = @{}
+foreach ($run in $testRuns) {
+    if ($run.Tfm -and $run.Tfm -match '^net(\d+)\.') {
+        $major = [int]$Matches[1]
+        if ($installedRuntimeMajors -notcontains $major) {
+            $skippedRuns.Add("$($run.Label)（未安装 .NET $major 运行时）")
+            Write-Host "  -- $($run.Label)：跳过（未安装 .NET $major 运行时）" -ForegroundColor Yellow
+            continue
+        }
+    }
+
+    $runDir = Join-Path $trxDir $run.Label
+    New-Item -ItemType Directory -Path $runDir -Force | Out-Null
+
+    Write-Host "  -> $($run.Label)" -ForegroundColor DarkGray
+    $testArgs = @('test', $run.Project, '-c', 'Release', '--no-build', '--nologo',
+        '--results-directory', $runDir, '--logger', "trx;LogFileName=$($run.Label).trx")
+    if ($run.Tfm) { $testArgs += @('-f', $run.Tfm) }
+    dotnet @testArgs 2>&1 | Tee-Object -FilePath $testLog -Append | Out-Null
+    if ($LASTEXITCODE -ne 0) { $testExit = $LASTEXITCODE }
+    $executedLabels.Add($run.Label)
+}
+$testRunLabels = @($executedLabels)
+
+if ($skippedRuns.Count -gt 0) {
+    Write-Host "  [WARN] 因缺少运行时未执行的组合（本机不阻断；CI 需补齐对应运行时）: $($skippedRuns -join ', ')" -ForegroundColor Yellow
+}
 
 # --- TRX 解析（locale 无关）---
 $failed = 0
@@ -255,17 +337,23 @@ $total = 0
 $trxAssemblies = @{}
 $failedTestNames = New-Object System.Collections.Generic.List[string]
 
-$trxFiles = Get-ChildItem -Path $trxDir -Filter '*.trx' -File -ErrorAction SilentlyContinue
+$trxFiles = Get-ChildItem -Path $trxDir -Filter '*.trx' -File -Recurse -ErrorAction SilentlyContinue
 if ($trxFiles -and $trxFiles.Count -gt 0) {
     foreach ($trx in $trxFiles) {
         try {
-            [xml]$doc = Get-Content -LiteralPath $trx.FullName -Raw
-            $counters = $doc.TestRun.Results.ResultSummary.Counters
+            [xml]$doc = Get-Content -LiteralPath $trx.FullName -Raw -Encoding utf8
+            # GATE-5 修复（2026-09-17）：计数器节点路径错误。TRX 的实际结构是
+            # <TestRun><ResultSummary><Counters .../></ResultSummary><Results>...，
+            # 原实现写成 $doc.TestRun.Results.ResultSummary.Counters（Results 之下并无 ResultSummary），
+            # 恒为 $null → 从未累计任何计数 → 每次都打印"未发现 TRX 文件"并回退到
+            # TMA2-03 本已废弃的中文正则解析，TRX 机制形同虚设。
+            $counters = $doc.TestRun.ResultSummary.Counters
             if ($counters) {
                 $failed += [int]$counters.failed
                 $passed += [int]$counters.passed
                 $total += [int]$counters.total
                 $trxAssemblies[$trx.BaseName] = $true
+                $runTotals[$trx.BaseName] = [int]$counters.total
             }
             # 收集失败用例名
             $testDefs = $doc.TestRun.TestDefinitions
@@ -307,35 +395,14 @@ if ($trxAssemblies.Count -eq 0) {
     }
 }
 
-# --- 断言：每个测试工程都必须有结果 ---
-# 从 .slnx 中提取 Tests/** 工程名
-$expectedTestProjects = @()
-if (Test-Path $solution) {
-    $slnxContent = Get-Content -LiteralPath $solution -Raw
-    # 仅匹配 Project 条目（排除 File 条目，如 Tests/Directory.Build.props，避免误报"未产出结果"）
-    $matches = [regex]::Matches($slnxContent, '<Project Path="(Tests/[^"]+)"')
-    foreach ($m in $matches) {
-        $projPath = $m.Groups[1].Value
-        $projName = [System.IO.Path]::GetFileNameWithoutExtension($projPath)
-        $expectedTestProjects += $projName
-    }
-}
-
+# --- 断言：每个（测试工程, TFM）组合都必须有结果 ---
 $missingProjects = @()
-foreach ($expected in $expectedTestProjects) {
-    $found = $false
-    foreach ($key in $trxAssemblies.Keys) {
-        if ($key -like "*$expected*") {
-            $found = $true
-            break
-        }
-    }
-    # 也检查日志中是否出现该工程名
-    if (-not $found) {
-        $logMatch = Select-String -Path $testLog -Pattern $expected -SimpleMatch -Quiet
-        if ($logMatch) { $found = $true }
-    }
-    if (-not $found) {
+foreach ($expected in $testRunLabels) {
+    # GATE-4：改为按「该运行组合专属 TRX 是否存在」严格断言。
+    # 原实现把"日志里出现过工程名"也算命中，而 dotnet test 正常输出必然包含工程名，
+    # 断言因此恒真（即便该工程根本没产出 TRX、甚至整个工程被跳过也不会失败）。
+    $projectTrx = @(Get-ChildItem -Path (Join-Path $trxDir $expected) -Filter '*.trx' -File -ErrorAction SilentlyContinue)
+    if ($projectTrx.Count -eq 0) {
         $missingProjects += $expected
     }
 }
@@ -343,6 +410,17 @@ foreach ($expected in $expectedTestProjects) {
 if ($missingProjects.Count -gt 0) {
     $script:failures.Add("以下测试工程未产出结果: $($missingProjects -join ', ')（详见 $testLog）")
     Write-Host "  [FAIL] 未产出结果的测试工程: $($missingProjects -join ', ')" -ForegroundColor Red
+}
+
+# --- 断言：每个已执行的（工程, TFM）组合都必须真的跑过用例 ---
+# testhost 启动失败（缺运行时、架构不符等）时 VSTest 仍会写出一个 total=0 的 TRX 并以退出码 1 结束。
+# 仅断言"TRX 存在"会把这种"什么都没跑"当成通过；这里追加 total>0 的门槛。
+$emptyRuns = @($testRunLabels | Where-Object {
+        (-not $runTotals.ContainsKey($_)) -or ($runTotals[$_] -le 0)
+    })
+if ($emptyRuns.Count -gt 0) {
+    $script:failures.Add("以下测试运行组合未执行任何用例（testhost 启动失败？）: $($emptyRuns -join ', ')")
+    Write-Host "  [FAIL] 未执行任何用例的组合: $($emptyRuns -join ', ')" -ForegroundColor Red
 }
 
 if ($failed -ne 0) {
@@ -359,7 +437,9 @@ if ($failed -ne 0) {
 else {
     Write-Host "  [ OK ] 单元测试失败 = 0（通过 $passed / 总计 $total）" -ForegroundColor Green
     if ($testExit -ne 0) {
-        Write-Host "  [WARN] dotnet test 退出码为 $testExit，但已运行的测试程序集全部通过（已知 CLI 行为，非测试失败）" -ForegroundColor Yellow
+        # 已执行的组合全部有 TRX 且 total>0（上方空跑断言已把关），退出码非零只可能来自
+        # 被跳过的组合之外的 CLR 级原因；如实提示而不再断言"已知 CLI 行为"。
+        Write-Host "  [WARN] dotnet test 退出码为 $testExit，但已执行组合均产出有效 TRX 且未执行用例数为 0" -ForegroundColor Yellow
     }
 }
 

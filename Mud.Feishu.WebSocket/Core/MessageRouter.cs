@@ -120,7 +120,18 @@ public class MessageRouter
     /// P1-5 修复：<see cref="RouteBinaryMessageAsync"/> 会把处理器异常吞掉，
     /// 调用方（BinaryMessageProcessor）无法感知失败，导致 ACK 恒为 200、服务端不再重发。
     /// 本方法把失败结果回传给调用方，用于决定 ACK 的 code。
+    /// <para>
+    /// AOT-STRICT：本方法最终调用 <see cref="IMessageHandler.HandleAsync"/>（其实现可能使用反射式
+    /// System.Text.Json 反序列化），故必须与 <see cref="RouteMessageAsync"/> 一致地携带裁剪/AOT 标注，
+    /// 否则 net8+ 的 <c>IL2026</c>/<c>IL3050</c> 会在 <c>AotStrictMode</c> 下升级为错误。
+    /// </para>
     /// </remarks>
+#if NET6_0_OR_GREATER
+    [RequiresUnreferencedCode("反射式System.Text.Json序列化在裁剪下无法静态分析目标类型成员")]
+#endif
+#if NET7_0_OR_GREATER
+    [RequiresDynamicCode("反射式System.Text.Json序列化在 AOT/动态代码生成环境下不可用")]
+#endif
     public async Task<bool> RouteBinaryMessageWithResultAsync(string jsonContent, string messageType, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(jsonContent))
@@ -156,6 +167,12 @@ public class MessageRouter
     /// <param name="sourceType">来源类型</param>
     /// <param name="cancellationToken">取消令牌</param>
     /// <returns>是否处理成功</returns>
+#if NET6_0_OR_GREATER
+    [RequiresUnreferencedCode("反射式System.Text.Json序列化在裁剪下无法静态分析目标类型成员")]
+#endif
+#if NET7_0_OR_GREATER
+    [RequiresDynamicCode("反射式System.Text.Json序列化在 AOT/动态代码生成环境下不可用")]
+#endif
     private async Task<bool> RouteMessageInternalWithResultAsync(string message, string sourceType, CancellationToken cancellationToken)
     {
         try

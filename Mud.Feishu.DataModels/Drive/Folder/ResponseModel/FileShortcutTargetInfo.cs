@@ -10,8 +10,14 @@ namespace Mud.Feishu.DataModels.Drive.Folder;
 /// <summary>
 /// <para>快捷方式类型文件的信息</para>
 /// </summary>
+/// <remarks>
+/// 本类型描述快捷方式指向的源文件（target_type / target_token），与
+/// <see cref="Mud.Feishu.DataModels.Drive.Files.FileShortcutInfo"/>（快捷方式文件条目本身）不同。
+/// 两者同处 <c>Drive</c> JsonSerializerContext，必须保持类名唯一，否则源生成器（SYSLIB1031）
+/// 只会为其中一个生成元数据。
+/// </remarks>
 [HttpJsonSerializable(SerializerClassName = "Drive")]
-public class FileShortcutInfo
+public class FileShortcutTargetInfo
 {
     /// <summary>
     /// <para>快捷方式指向的原文件类型，包括：</para>

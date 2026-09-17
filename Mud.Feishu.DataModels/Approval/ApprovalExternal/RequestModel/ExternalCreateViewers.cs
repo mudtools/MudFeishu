@@ -10,8 +10,13 @@ namespace Mud.Feishu.DataModels.ApprovalExternal;
 /// <summary>
 /// <para>审批可见人列表，列表长度上限 200，只有在审批可见人列表内的用户，才可以在审批发起页看到该审批。若该参数不传值，则表示任何人不可见。</para>
 /// </summary>
+/// <remarks>
+/// 本类型为三方审批（ApprovalExternal）专用，与 <see cref="Mud.Feishu.DataModels.Approval.ApprovalCreateViewers"/>
+/// 结构相同但归属不同命名空间。两者同处 <c>Approval</c> JsonSerializerContext，必须保持类名唯一，
+/// 否则源生成器（SYSLIB1031）只会为其中一个生成元数据。
+/// </remarks>
 [HttpJsonSerializable(SerializerClassName = "Approval")]
-public class ApprovalCreateViewers
+public class ExternalCreateViewers
 {
     /// <summary>
     /// <para>可见人类型，生效优先级NONE&gt;TENANT&gt;指定范围</para>

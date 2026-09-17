@@ -7,10 +7,15 @@
 
 namespace Mud.Feishu.DataModels.DepartmentsV1;
 /// <summary>
-/// 表示部门路径信息的数据模型，用于描述部门在层级结构中的路径信息
+/// 表示部门路径信息的数据模型，用于描述部门在层级结构中的路径信息（v1 接口模型）
 /// </summary>
+/// <remarks>
+/// 类名带 V1 后缀以与 <see cref="Mud.Feishu.DataModels.Users.DepartmentPathInfo"/> 区分：
+/// 同一 <c>Organization</c> JsonSerializerContext 内不允许存在同名类型，否则源生成器
+/// （SYSLIB1031）只会为其中一个生成元数据。
+/// </remarks>
 [HttpJsonSerializable(SerializerClassName = "Organization")]
-public class DepartmentPathInfo
+public class DepartmentPathInfoV1
 {
     /// <summary>
     /// 获取或设置部门ID

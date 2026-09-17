@@ -11,8 +11,13 @@ namespace Mud.Feishu.DataModels.DepartmentsV1;
 /// 部门详细信息模型，用于表示飞书组织架构中部门的完整信息。
 /// 该模型包含部门的基本属性、层级关系、统计数据和扩展字段等全方位信息。
 /// </summary>
+/// <remarks>
+/// 类名带 V1 后缀以与 <see cref="Mud.Feishu.DataModels.Departments.DepartmentDetail"/> 区分：
+/// 同一 <c>Organization</c> JsonSerializerContext 内不允许存在同名类型，否则源生成器
+/// （SYSLIB1031）只会为其中一个生成元数据。
+/// </remarks>
 [HttpJsonSerializable(SerializerClassName = "Organization")]
-public class DepartmentDetail
+public class DepartmentDetailV1
 {
     /// <summary>
     /// 部门唯一标识符，用于在系统中唯一标识一个部门。
@@ -36,7 +41,7 @@ public class DepartmentDetail
     /// 部门领导列表，包含该部门所有具有管理权限的人员信息。
     /// </summary>
     [JsonPropertyName("leaders")]
-    public List<DepartmentLeader> Leaders { get; set; } = [];
+    public List<DepartmentLeaderV1> Leaders { get; set; } = [];
 
     /// <summary>
     /// 父部门标识符，用于表示部门在组织架构中的层级关系。
@@ -72,7 +77,7 @@ public class DepartmentDetail
     /// 部门路径信息列表，包含从根部门到当前部门的完整路径信息。
     /// </summary>
     [JsonPropertyName("department_path_infos")]
-    public List<DepartmentPathInfo>? DepartmentPathInfos { get; set; }
+    public List<DepartmentPathInfoV1>? DepartmentPathInfos { get; set; }
 
     /// <summary>
     /// 数据源标识，表示部门数据的来源或同步方式。

@@ -8,10 +8,15 @@
 namespace Mud.Feishu.DataModels.DepartmentsV1;
 
 /// <summary>
-/// 部门负责人
+/// 部门负责人（v1 接口模型）
 /// </summary>
+/// <remarks>
+/// 类名带 V1 后缀以与 <see cref="Mud.Feishu.DataModels.Departments.DepartmentLeader"/> 区分：
+/// 同一 <c>Organization</c> JsonSerializerContext 内不允许存在同名类型，否则源生成器
+/// （SYSLIB1031）只会为其中一个生成元数据。
+/// </remarks>
 [HttpJsonSerializable(SerializerClassName = "Organization")]
-public class DepartmentLeader
+public class DepartmentLeaderV1
 {
     /// <summary>
     /// 部门负责人类型 可选值有：1：主 2：副

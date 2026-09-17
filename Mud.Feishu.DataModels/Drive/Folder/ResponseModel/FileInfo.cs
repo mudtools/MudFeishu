@@ -67,7 +67,7 @@ public class FileInfo
     /// <para>必填：否</para>
     /// </summary>
     [JsonPropertyName("shortcut_info")]
-    public FileShortcutInfo? ShortcutInfo { get; set; }
+    public FileShortcutTargetInfo? ShortcutInfo { get; set; }
 
     /// <summary>
     /// <para>文件创建时间，秒级时间戳</para>

@@ -18,7 +18,7 @@ public class DepartmentListResult
     /// 正常部门列表，包含查询到的所有有效部门详细信息。
     /// </summary>
     [JsonPropertyName("departments")]
-    public List<DepartmentDetail> Departments { get; set; } = [];
+    public List<DepartmentDetailV1> Departments { get; set; } = [];
 
     /// <summary>
     /// 异常部门信息列表，包含查询过程中发现的问题或异常情况。

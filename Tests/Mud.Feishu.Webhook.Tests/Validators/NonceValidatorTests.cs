@@ -162,7 +162,8 @@ public class NonceValidatorTests
             NonceValidationFailureMode = NonceFailureMode.Reject
         });
         var nonce = "error-nonce-789";
-        var exception = new InvalidOperationException("Test exception");
+        // T-M2-10：仅 FeishuRedisException(Connection/Timeout) 走降级策略
+        var exception = new FeishuRedisException(FeishuRedisFailureKind.Connection, "Test exception");
         _deduplicatorMock
             .Setup(x => x.TryMarkAsUsedAsync(nonce, null, It.IsAny<TimeSpan?>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(exception);
@@ -174,7 +175,7 @@ public class NonceValidatorTests
         Assert.True(result); // Reject 模式下，异常时返回 true（认为已使用，拒绝请求）
 
         // 验证错误日志被记录
-        VerifyLogCalled(LogLevel.Error, "检查 Nonce 使用状态时发生错误");
+        VerifyLogCalled(LogLevel.Error, "标记 Nonce 时发生可降级错误");
     }
 
     [Fact]
@@ -186,7 +187,7 @@ public class NonceValidatorTests
             NonceValidationFailureMode = NonceFailureMode.Allow
         });
         var nonce = "error-nonce-allow";
-        var exception = new InvalidOperationException("Test exception");
+        var exception = new FeishuRedisException(FeishuRedisFailureKind.Connection, "Test exception");
         _deduplicatorMock
             .Setup(x => x.TryMarkAsUsedAsync(nonce, null, It.IsAny<TimeSpan?>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(exception);
@@ -198,7 +199,7 @@ public class NonceValidatorTests
         Assert.False(result); // Allow 模式下，异常时返回 false（认为未使用，允许请求）
 
         // 验证错误日志被记录
-        VerifyLogCalled(LogLevel.Error, "检查 Nonce 使用状态时发生错误");
+        VerifyLogCalled(LogLevel.Error, "标记 Nonce 时发生可降级错误");
     }
 
     #endregion
@@ -296,7 +297,7 @@ public class NonceValidatorTests
         var nonce = "check-nonce-error-reject";
         _deduplicatorMock
             .Setup(x => x.IsUsedAsync(nonce, It.IsAny<string?>(), It.IsAny<CancellationToken>()))
-            .ThrowsAsync(new InvalidOperationException("Test exception"));
+            .ThrowsAsync(new FeishuRedisException(FeishuRedisFailureKind.Connection, "Test exception"));
 
         // Act
         var result = await _validator.CheckNonceAsync(nonce);
@@ -304,7 +305,7 @@ public class NonceValidatorTests
         // Assert
         Assert.False(result); // Reject 模式下，异常时返回 false（拒绝请求）
 
-        VerifyLogCalled(LogLevel.Error, "检查 Nonce 使用状态时发生错误");
+        VerifyLogCalled(LogLevel.Error, "检查 Nonce 使用状态时发生可降级错误");
     }
 
     [Fact]
@@ -318,7 +319,7 @@ public class NonceValidatorTests
         var nonce = "check-nonce-error-allow";
         _deduplicatorMock
             .Setup(x => x.IsUsedAsync(nonce, It.IsAny<string?>(), It.IsAny<CancellationToken>()))
-            .ThrowsAsync(new InvalidOperationException("Test exception"));
+            .ThrowsAsync(new FeishuRedisException(FeishuRedisFailureKind.Connection, "Test exception"));
 
         // Act
         var result = await _validator.CheckNonceAsync(nonce);
@@ -326,7 +327,7 @@ public class NonceValidatorTests
         // Assert
         Assert.True(result); // Allow 模式下，异常时返回 true（允许请求）
 
-        VerifyLogCalled(LogLevel.Error, "检查 Nonce 使用状态时发生错误");
+        VerifyLogCalled(LogLevel.Error, "检查 Nonce 使用状态时发生可降级错误");
     }
 
     [Fact]
@@ -504,7 +505,8 @@ public class NonceValidatorTests
     {
         // Arrange
         var nonce = "exception-nonce";
-        var exception = new InvalidOperationException("Test exception");
+        // T-M2-10：仅 FeishuRedisException(Connection/Timeout) 走降级策略
+        var exception = new FeishuRedisException(FeishuRedisFailureKind.Connection, "Test exception");
         _deduplicatorMock
             .Setup(x => x.TryMarkAsUsedAsync(nonce, null, It.IsAny<TimeSpan?>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(exception);
@@ -514,7 +516,7 @@ public class NonceValidatorTests
 
         // Assert
         Assert.False(result); // 异常情况下验证失败
-        VerifyLogCalled(LogLevel.Error, "检查 Nonce 使用状态时发生错误");
+        VerifyLogCalled(LogLevel.Error, "标记 Nonce 时发生可降级错误");
     }
 
     #endregion

@@ -515,8 +515,12 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
     /// <remarks>
     /// WS-16 修复（P1-14）：补齐幂等保护，防止重复调用创建双接收循环。
     /// </remarks>
-    [RequiresUnreferencedCode()]
-    [RequiresDynamicCode()]
+#if NET6_0_OR_GREATER
+    [RequiresUnreferencedCode("反射式System.Text.Json序列化在裁剪下无法静态分析目标类型成员")]
+#endif
+#if NET7_0_OR_GREATER
+    [RequiresDynamicCode("反射式System.Text.Json序列化在 AOT/动态代码生成环境下不可用")]
+#endif
     public async Task StartReceivingAsync(CancellationToken cancellationToken = default)
     {
         // WS-16：幂等保护 - 如果已有接收循环在运行，直接返回

@@ -45,9 +45,11 @@ public class RedisTokenStoreTests
     }
 
     [Fact]
-    public void Constructor_WhenLoggerIsNull_ShouldThrowArgumentNullException()
+    public void Constructor_WhenLoggerIsNull_ShouldFallbackToNullLogger()
     {
-        Assert.Throws<ArgumentNullException>(() => new RedisTokenStore(_connectionMultiplexerMock.Object, null!));
+        // R-25：logger 兜底 NullLogger（防无日志宿主抛 ANE），不再抛 ArgumentNullException
+        var store = new RedisTokenStore(_connectionMultiplexerMock.Object, null!);
+        Assert.NotNull(store);
     }
 
     [Fact]

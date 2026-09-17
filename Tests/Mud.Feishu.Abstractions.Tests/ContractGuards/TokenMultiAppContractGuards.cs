@@ -127,8 +127,8 @@ public class TokenMultiAppContractGuards
             }
         }
 
-        // AGENTS.md 声明的当前固定版本为 2.0.4。
-        const string ExpectedVersion = "2.0.4";
+        // AGENTS.md 声明的当前固定版本为 2.0.6。
+        const string ExpectedVersion = "2.0.6";
 
         versions.Should().NotBeEmpty("应至少有一个 Mud.HttpUtils* 包引用");
         versions.Should().ContainSingle(

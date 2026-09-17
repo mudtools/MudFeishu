@@ -56,7 +56,7 @@ asserted for the diagnostic whitelist afterwards (`.github/workflows/dotnet-publ
 ## Dependency version policy (Mud.HttpUtils)
 
 This repo consumes `Mud.HttpUtils` from a **local folder source** (`nuget.config` ->
-`D:/Repos/MudHttpUtils/artifacts`). The currently pinned version is **2.0.4**.
+`D:/Repos/MudHttpUtils/artifacts`). The currently pinned version is **2.0.6**.
 
 **Always bump the component version when packing.** NuGet keys the global package cache by
 `id + version`, so re-packing under the *same* version does **not** invalidate the

@@ -202,8 +202,12 @@ public class MessageRouter
     /// <param name="message">消息内容</param>
     /// <param name="cancellationToken">外部取消令牌</param>
     /// <returns>处理成功返回 true；超时或处理器抛出异常返回 false</returns>
+#if NET6_0_OR_GREATER
     [RequiresUnreferencedCode("Calls Mud.Feishu.WebSocket.IMessageHandler.HandleAsync(String, CancellationToken)")]
+#endif
+#if NET7_0_OR_GREATER
     [RequiresDynamicCode("Calls Mud.Feishu.WebSocket.IMessageHandler.HandleAsync(String, CancellationToken)")]
+#endif
     private async Task<bool> HandleWithTimeoutAsync(IMessageHandler handler, string message, CancellationToken cancellationToken)
     {
         var timeoutMs = _options.MessageHandlerTimeoutMs;

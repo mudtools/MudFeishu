@@ -1,42 +1,42 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
-	<PropertyGroup>
-		<TargetFrameworks>netstandard2.0;net6.0;net8.0;net10.0</TargetFrameworks>
-		<ImplicitUsings>enable</ImplicitUsings>
-		<Nullable>enable</Nullable>
-		<AssemblyName>Mud.Feishu.Abstractions</AssemblyName>
-		<GenerateDocumentationFile>True</GenerateDocumentationFile>
-		<PackageProjectUrl>http://www.mudtools.cn/</PackageProjectUrl>
-		<RepositoryUrl>https://github.com/mudtools/MudFeishu</RepositoryUrl>
-		<RepositoryType>git</RepositoryType>
-		<PackageIcon>Icon.png</PackageIcon>
-		<PackageReadmeFile>README.md</PackageReadmeFile>
-		<Description>飞书服务端 SDK 的 .NET 适配版，支持.NET4.6+、.NET 5 至 .NET 10 平台。提供抽象层接口和基础数据模型封装。</Description>
-		<PackageTags>Feishu;Lark;飞书;ByteDance;字节跳动;Feishu-SDK;Lark-SDK;Feishu-API;Lark-API;Webhook;WebSocket;Event-Subscription;事件订阅;MudFeishu</PackageTags>
-		<BaseOutputPath>..\bin</BaseOutputPath>
-	</PropertyGroup>
+    <PropertyGroup>
+        <TargetFrameworks>netstandard2.0;net6.0;net8.0;net10.0</TargetFrameworks>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <AssemblyName>Mud.Feishu.Abstractions</AssemblyName>
+        <GenerateDocumentationFile>True</GenerateDocumentationFile>
+        <PackageProjectUrl>http://www.mudtools.cn/</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/mudtools/MudFeishu</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+        <PackageIcon>Icon.png</PackageIcon>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <Description>飞书服务端 SDK 的 .NET 适配版，支持.NET4.6+、.NET 5 至 .NET 10 平台。提供抽象层接口和基础数据模型封装。</Description>
+        <PackageTags>Feishu;Lark;飞书;ByteDance;字节跳动;Feishu-SDK;Lark-SDK;Feishu-API;Lark-API;Webhook;WebSocket;Event-Subscription;事件订阅;MudFeishu</PackageTags>
+        <BaseOutputPath>..\bin</BaseOutputPath>
+    </PropertyGroup>
 
-	<ItemGroup Condition="'$(TargetFramework)' == 'net8.0' Or '$(TargetFramework)' == 'net10.0'">
-		<PackageReference Include="Microsoft.Extensions.Http" Version="10.0.9" />
-	</ItemGroup>
+    <ItemGroup Condition="'$(TargetFramework)' == 'net8.0' Or '$(TargetFramework)' == 'net10.0'">
+        <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.9" />
+    </ItemGroup>
 
-	<ItemGroup Condition="'$(TargetFramework)' == 'net6.0' or '$(TargetFramework)' == 'netstandard2.0'">
-		<PackageReference Include="Microsoft.Extensions.Http" Version="8.0.1" />
-	</ItemGroup>
+    <ItemGroup Condition="'$(TargetFramework)' == 'net6.0' or '$(TargetFramework)' == 'netstandard2.0'">
+        <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.1" />
+    </ItemGroup>
 
-	<ItemGroup>
-		<PackageReference Include="Mud.HttpUtils.Generator" Version="2.0.4" PrivateAssets="all" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
-		<None Include=".\README.md" Pack="true" PackagePath="\" />
-		<None Include="..\Icon.png" Pack="true" PackagePath="\" />
-	</ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="Mud.HttpUtils.Generator" Version="2.0.6" PrivateAssets="all" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+        <None Include=".\README.md" Pack="true" PackagePath="\" />
+        <None Include="..\Icon.png" Pack="true" PackagePath="\" />
+    </ItemGroup>
 
-	<ItemGroup>
-		<PackageReference Include="Mud.HttpUtils" Version="2.0.4" />
-	</ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="Mud.HttpUtils" Version="2.0.6" />
+    </ItemGroup>
 
-	<!-- AOT 裁剪兜底：保留 FeishuApiResult/FeishuEventHeader/EventData 等核心类型的反射元数据 -->
-	<ItemGroup>
-		<TrimmerRootDescriptor Include="Mud.Feishu.Abstractions.rd.xml" />
-	</ItemGroup>
+    <!-- AOT 裁剪兜底：保留 FeishuApiResult/FeishuEventHeader/EventData 等核心类型的反射元数据 -->
+    <ItemGroup>
+        <TrimmerRootDescriptor Include="Mud.Feishu.Abstractions.rd.xml" />
+    </ItemGroup>
 
 </Project>

@@ -312,7 +312,8 @@ if ($trxAssemblies.Count -eq 0) {
 $expectedTestProjects = @()
 if (Test-Path $solution) {
     $slnxContent = Get-Content -LiteralPath $solution -Raw
-    $matches = [regex]::Matches($slnxContent, 'Path="(Tests/[^"]+)"')
+    # 仅匹配 Project 条目（排除 File 条目，如 Tests/Directory.Build.props，避免误报"未产出结果"）
+    $matches = [regex]::Matches($slnxContent, '<Project Path="(Tests/[^"]+)"')
     foreach ($m in $matches) {
         $projPath = $m.Groups[1].Value
         $projName = [System.IO.Path]::GetFileNameWithoutExtension($projPath)

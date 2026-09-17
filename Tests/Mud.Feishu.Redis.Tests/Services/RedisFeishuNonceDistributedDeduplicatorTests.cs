@@ -33,13 +33,14 @@ public class RedisFeishuNonceDistributedDeduplicatorTests
     public async Task TryMarkAsUsedAsync_WhenFirstNonce_ShouldReturnFalse()
     {
         // Arrange
+        // R-24：生产代码经 StringSetAsync(..., flags:) 五参重载调用（CancellationToken → CommandFlags）
         _databaseMock
             .Setup(x => x.StringSetAsync(
                 It.IsAny<RedisKey>(),
                 It.IsAny<RedisValue>(),
-                It.IsAny<TimeSpan>(),
-                When.NotExists
-                ))
+                It.IsAny<TimeSpan?>(),
+                When.NotExists,
+                It.IsAny<CommandFlags>()))
             .ReturnsAsync(true);
 
         var deduplicator = new RedisFeishuNonceDistributedDeduplicator(
@@ -55,7 +56,8 @@ public class RedisFeishuNonceDistributedDeduplicatorTests
             It.IsAny<RedisKey>(),
             It.IsAny<RedisValue>(),
             It.IsAny<TimeSpan?>(),
-            When.NotExists), Times.Once);
+            When.NotExists,
+            It.IsAny<CommandFlags>()), Times.Once);
     }
 
     [Fact]
@@ -66,9 +68,9 @@ public class RedisFeishuNonceDistributedDeduplicatorTests
             .Setup(x => x.StringSetAsync(
                 It.IsAny<RedisKey>(),
                 It.IsAny<RedisValue>(),
-                It.IsAny<TimeSpan>(),
-                When.NotExists
-                ))
+                It.IsAny<TimeSpan?>(),
+                When.NotExists,
+                It.IsAny<CommandFlags>()))
             .ReturnsAsync(false);
 
         var deduplicator = new RedisFeishuNonceDistributedDeduplicator(
@@ -107,8 +109,8 @@ public class RedisFeishuNonceDistributedDeduplicatorTests
                 It.IsAny<RedisKey>(),
                 It.IsAny<RedisValue>(),
                 customTtl,
-                When.NotExists
-                ))
+                When.NotExists,
+                It.IsAny<CommandFlags>()))
             .ReturnsAsync(true);
 
         var deduplicator = new RedisFeishuNonceDistributedDeduplicator(
@@ -124,7 +126,8 @@ public class RedisFeishuNonceDistributedDeduplicatorTests
             It.IsAny<RedisKey>(),
             It.IsAny<RedisValue>(),
             customTtl,
-            When.NotExists), Times.Once);
+            When.NotExists,
+            It.IsAny<CommandFlags>()), Times.Once);
     }
 
     [Fact]
@@ -181,16 +184,17 @@ public class RedisFeishuNonceDistributedDeduplicatorTests
     }
 
     [Fact]
-    public async Task TryMarkAsUsedAsync_WhenRedisConnectionFails_ShouldThrowInvalidOperationException()
+    public async Task TryMarkAsUsedAsync_WhenRedisConnectionFails_ShouldThrowFeishuRedisException()
     {
         // Arrange
+        // R-04：Redis 异常统一包装为 FeishuRedisException（InvalidOperationException 子类）
         _databaseMock
             .Setup(x => x.StringSetAsync(
                 It.IsAny<RedisKey>(),
                 It.IsAny<RedisValue>(),
-                It.IsAny<TimeSpan>(),
-                When.NotExists
-                ))
+                It.IsAny<TimeSpan?>(),
+                When.NotExists,
+                It.IsAny<CommandFlags>()))
             .ThrowsAsync(new RedisConnectionException(ConnectionFailureType.UnableToConnect, "Connection failed"));
 
         var deduplicator = new RedisFeishuNonceDistributedDeduplicator(
@@ -198,21 +202,21 @@ public class RedisFeishuNonceDistributedDeduplicatorTests
             _loggerMock.Object);
 
         // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(
+        await Assert.ThrowsAsync<FeishuRedisException>(
             async () => await deduplicator.TryMarkAsUsedAsync("test_nonce_123"));
     }
 
     [Fact]
-    public async Task TryMarkAsUsedAsync_WhenRedisTimeout_ShouldThrowInvalidOperationException()
+    public async Task TryMarkAsUsedAsync_WhenRedisTimeout_ShouldThrowFeishuRedisException()
     {
         // Arrange
         _databaseMock
             .Setup(x => x.StringSetAsync(
                 It.IsAny<RedisKey>(),
                 It.IsAny<RedisValue>(),
-                It.IsAny<TimeSpan>(),
-                When.NotExists
-                ))
+                It.IsAny<TimeSpan?>(),
+                When.NotExists,
+                It.IsAny<CommandFlags>()))
             .ThrowsAsync(new RedisTimeoutException("Timeout", CommandStatus.Unknown));
 
         var deduplicator = new RedisFeishuNonceDistributedDeduplicator(
@@ -220,7 +224,7 @@ public class RedisFeishuNonceDistributedDeduplicatorTests
             _loggerMock.Object);
 
         // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(
+        await Assert.ThrowsAsync<FeishuRedisException>(
             async () => await deduplicator.TryMarkAsUsedAsync("test_nonce_123"));
     }
 

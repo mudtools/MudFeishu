@@ -1294,8 +1294,11 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
             config, authenticationApi, tokenStore, userTokenStore);
 
         // === 步骤 4：创建恢复 HttpClient（含令牌恢复，供业务 API 使用） ===
-        var recoveryOptions = scopedSp.GetService<IOptions<TokenRecoveryOptions>>()?.Value;
+        // TMR-07/TMX-19（MudHttpUtils 2.0.6）：统一使用 IOptionsMonitor<TokenRecoveryOptions> 构造
+        // （组件唯一的公共用户级构造），TokenRecoveryOptions 支持运行期热更新。
+        // IOptionsMonitor 由上方 AddOptions<TokenRecoveryOptions>() 注册，缺失时 fail-fast 暴露装配错误。
         var recoveryLogger = scopedSp.GetService<ILogger<TokenRecoveryEnhancedClient>>();
+        var recoveryOptionsMonitor = scopedSp.GetRequiredService<IOptionsMonitor<TokenRecoveryOptions>>();
 
         var recoveryExecutor = new TokenRecoveryExecutor(
             tenantTokenManager,
@@ -1305,7 +1308,7 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
             // TokenRecoveryContext，会导致重试请求被注入用户令牌（凭据类别替换）。
             // 用户级恢复仍由组件生成的显式 TokenRecoveryContext.UserId 触发，不受影响。
             null,
-            recoveryOptions,
+            recoveryOptionsMonitor,
             recoveryLogger);
 
         var recoveryHttpClient = httpClientFactory.Create(config.AppKey, recoveryExecutor);

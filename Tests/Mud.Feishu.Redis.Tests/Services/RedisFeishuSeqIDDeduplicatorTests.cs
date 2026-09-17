@@ -33,43 +33,30 @@ public class RedisFeishuSeqIDDeduplicatorTests
     public async Task TryMarkAsProcessedAsync_WhenFirstSeqId_ShouldReturnFalse()
     {
         // Arrange
+        // ADR-4：写入路径已改为原子化 Lua 脚本（SETNX + ZADD + 裁剪 + EXPIRE）。
+        // 脚本返回 0 表示 SETNX 成功（新 SeqID）。
         _databaseMock
-            .Setup(x => x.StringSetAsync(
-                It.IsAny<RedisKey>(),
-                It.IsAny<RedisValue>(),
-                It.IsAny<TimeSpan>(),
-                When.NotExists
-                ))
-            .ReturnsAsync(true);
-        _databaseMock
-            .Setup(x => x.SortedSetAddAsync(
-                It.IsAny<RedisKey>(),
-                It.IsAny<RedisValue>(),
-                It.IsAny<double>(),
-                It.IsAny<SortedSetWhen>(),
-                It.IsAny<CommandFlags>()
-                ))
-            .ReturnsAsync(true);
+            .Setup(x => x.ScriptEvaluateAsync(
+                It.IsAny<string>(),
+                It.IsAny<RedisKey[]>(),
+                It.IsAny<RedisValue[]>(),
+                It.IsAny<CommandFlags>()))
+            .ReturnsAsync(RedisResult.Create(0L));
 
         var deduplicator = new RedisFeishuSeqIDDeduplicator(
             _connectionMultiplexerMock.Object,
-            _loggerMock.Object);
+            _loggerMock.Object,
+            scopeKey: "test-scope");
 
         // Act
         var result = await deduplicator.TryMarkAsProcessedAsync(12345);
 
         // Assert
-        Assert.False(result); // StringSetAsync 返回 true（设置成功），表示新 SeqID，所以 TryMarkAsProcessedAsync 返回 false
-        _databaseMock.Verify(x => x.StringSetAsync(
-            It.IsAny<RedisKey>(),
-            It.IsAny<RedisValue>(),
-            It.IsAny<TimeSpan?>(),
-            When.NotExists), Times.Once);
-        _databaseMock.Verify(x => x.SortedSetAddAsync(
-            It.IsAny<RedisKey>(),
-            It.IsAny<RedisValue>(),
-            It.IsAny<double>(),
-            It.IsAny<SortedSetWhen>(),
+        Assert.False(result); // Lua 脚本返回 0（SETNX 成功），表示新 SeqID
+        _databaseMock.Verify(x => x.ScriptEvaluateAsync(
+            It.IsAny<string>(),
+            It.IsAny<RedisKey[]>(),
+            It.IsAny<RedisValue[]>(),
             It.IsAny<CommandFlags>()), Times.Once);
     }
 
@@ -77,24 +64,25 @@ public class RedisFeishuSeqIDDeduplicatorTests
     public async Task TryMarkAsProcessedAsync_WhenDuplicateSeqId_ShouldReturnTrue()
     {
         // Arrange
+        // ADR-4：脚本返回 1 表示键已存在（SETNX 失败）→ 重复 SeqID
         _databaseMock
-            .Setup(x => x.StringSetAsync(
-                It.IsAny<RedisKey>(),
-                It.IsAny<RedisValue>(),
-                It.IsAny<TimeSpan>(),
-                When.NotExists
-                ))
-            .ReturnsAsync(false);
+            .Setup(x => x.ScriptEvaluateAsync(
+                It.IsAny<string>(),
+                It.IsAny<RedisKey[]>(),
+                It.IsAny<RedisValue[]>(),
+                It.IsAny<CommandFlags>()))
+            .ReturnsAsync(RedisResult.Create(1L));
 
         var deduplicator = new RedisFeishuSeqIDDeduplicator(
             _connectionMultiplexerMock.Object,
-            _loggerMock.Object);
+            _loggerMock.Object,
+            scopeKey: "test-scope");
 
         // Act
         var result = await deduplicator.TryMarkAsProcessedAsync(12345);
 
         // Assert
-        Assert.True(result); // StringSetAsync 返回 false（键已存在），表示重复 SeqID，所以 TryMarkAsProcessedAsync 返回 true
+        Assert.True(result);
     }
 
     [Fact]
@@ -107,7 +95,8 @@ public class RedisFeishuSeqIDDeduplicatorTests
 
         var deduplicator = new RedisFeishuSeqIDDeduplicator(
             _connectionMultiplexerMock.Object,
-            _loggerMock.Object);
+            _loggerMock.Object,
+            scopeKey: "test-scope");
 
         // Act
         var result = await deduplicator.IsProcessedAsync(12345);
@@ -126,7 +115,8 @@ public class RedisFeishuSeqIDDeduplicatorTests
 
         var deduplicator = new RedisFeishuSeqIDDeduplicator(
             _connectionMultiplexerMock.Object,
-            _loggerMock.Object);
+            _loggerMock.Object,
+            scopeKey: "test-scope");
 
         // Act
         var result = await deduplicator.IsProcessedAsync(12345);
@@ -145,7 +135,8 @@ public class RedisFeishuSeqIDDeduplicatorTests
 
         var deduplicator = new RedisFeishuSeqIDDeduplicator(
             _connectionMultiplexerMock.Object,
-            _loggerMock.Object);
+            _loggerMock.Object,
+            scopeKey: "test-scope");
 
         // Act
         var result = deduplicator.GetCacheCount();
@@ -174,7 +165,8 @@ public class RedisFeishuSeqIDDeduplicatorTests
 
         var deduplicator = new RedisFeishuSeqIDDeduplicator(
             _connectionMultiplexerMock.Object,
-            _loggerMock.Object);
+            _loggerMock.Object,
+            scopeKey: "test-scope");
 
         // Act
         var result = deduplicator.GetMaxProcessedSeqId();
@@ -202,7 +194,8 @@ public class RedisFeishuSeqIDDeduplicatorTests
 
         var deduplicator = new RedisFeishuSeqIDDeduplicator(
             _connectionMultiplexerMock.Object,
-            _loggerMock.Object);
+            _loggerMock.Object,
+            scopeKey: "test-scope");
 
         // Act
         var result = deduplicator.GetMaxProcessedSeqId();
@@ -212,24 +205,25 @@ public class RedisFeishuSeqIDDeduplicatorTests
     }
 
     [Fact]
-    public async Task TryMarkAsProcessedAsync_WhenRedisConnectionFails_ShouldThrowInvalidOperationException()
+    public async Task TryMarkAsProcessedAsync_WhenRedisConnectionFails_ShouldThrowFeishuRedisException()
     {
         // Arrange
+        // ADR-4 + R-04：Redis 异常统一包装为 FeishuRedisException（InvalidOperationException 子类）
         _databaseMock
-            .Setup(x => x.StringSetAsync(
-                It.IsAny<RedisKey>(),
-                It.IsAny<RedisValue>(),
-                It.IsAny<TimeSpan>(),
-                When.NotExists
-                ))
+            .Setup(x => x.ScriptEvaluateAsync(
+                It.IsAny<string>(),
+                It.IsAny<RedisKey[]>(),
+                It.IsAny<RedisValue[]>(),
+                It.IsAny<CommandFlags>()))
             .ThrowsAsync(new RedisConnectionException(ConnectionFailureType.UnableToConnect, "Connection failed"));
 
         var deduplicator = new RedisFeishuSeqIDDeduplicator(
             _connectionMultiplexerMock.Object,
-            _loggerMock.Object);
+            _loggerMock.Object,
+            scopeKey: "test-scope");
 
         // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(
+        await Assert.ThrowsAsync<FeishuRedisException>(
             async () => await deduplicator.TryMarkAsProcessedAsync(12345));
     }
 

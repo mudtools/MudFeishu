@@ -49,7 +49,8 @@ public static class FrameBuilder
         };
 
         using var stream = new MemoryStream();
-        ProtoBuf.Serializer.Serialize(stream, frame);
+        // AOT：必须走编译期模型实例，静态门面 ProtoBuf.Serializer 走反射路径（Native AOT 下不可用）
+        FeishuWebSocketProtoModel.Instance.Serialize(stream, frame);
         return stream.ToArray();
     }
 

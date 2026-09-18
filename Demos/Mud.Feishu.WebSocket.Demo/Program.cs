@@ -20,7 +20,6 @@ builder.Host.UseSerilog((context, services, configuration) => configuration
     .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
     .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
     .Enrich.FromLogContext()
-    .ReadFrom.Configuration(context.Configuration)
     .ReadFrom.Services(services)
     .WriteTo.Console()
     .WriteTo.File(

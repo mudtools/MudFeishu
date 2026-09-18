@@ -6,6 +6,7 @@
 // -----------------------------------------------------------------------
 
 using ProtoBuf;
+using ProtoBuf.Meta;
 
 namespace Mud.Feishu.WebSocket;
 
@@ -192,4 +193,24 @@ public enum MessageType
     /// <para>用于错误处理和兼容性保证</para>
     /// </summary>
     Unknown
+}
+
+/// <summary>
+/// WebSocket 二进制帧的编译期序列化模型（protobuf-net AOT 支持）
+/// <para>
+/// 遵循 https://docs.protobuf-net.dev/aot ：以 <see cref="ProtoModelAttribute"/> 声明编译期模型，
+/// 生成器在编译时为 <see cref="EventProtoData"/> 及其可达类型（含 <see cref="ProtoHeader"/>）生成
+/// 序列化代码，替代运行时反射 + IL 发射，使 Native AOT 发布与裁剪场景可用。
+/// </para>
+/// <para>
+/// 序列化/反序列化必须经由 <see cref="Instance"/> 调用（如
+/// <c>FeishuWebSocketProtoModel.Instance.Serialize(stream, frame)</c>），
+/// 禁止使用 <c>ProtoBuf.Serializer</c> 静态门面——后者始终走
+/// <c>RuntimeTypeModel.Default</c> 反射路径（PBN3010），在 Native AOT 下会运行时失败。
+/// </para>
+/// </summary>
+[ProtoModel]
+[ProtoSerializable(typeof(EventProtoData))]
+public partial class FeishuWebSocketProtoModel : TypeModel
+{
 }

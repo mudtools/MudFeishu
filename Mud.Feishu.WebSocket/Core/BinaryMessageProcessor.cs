@@ -312,11 +312,13 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
                 // 使用 Buffer.BlockCopy 替代 MemoryMarshal
                 var dataArray = new byte[completeData.Length];
                 Buffer.BlockCopy(completeData, 0, dataArray, 0, completeData.Length);
-                var frame = ProtoBuf.Serializer.Deserialize<EventProtoData>(new MemoryStream(dataArray));
+                // AOT：必须走编译期模型实例，静态门面 ProtoBuf.Serializer 走反射路径（Native AOT 下不可用）
+                var frame = FeishuWebSocketProtoModel.Instance.Deserialize<EventProtoData>(new MemoryStream(dataArray));
 #else
                 // 对于 .NET Core 2.1+
                 var span = new ReadOnlySpan<byte>(completeData);
-                var frame = ProtoBuf.Serializer.Deserialize<EventProtoData>(span);
+                // AOT：必须走编译期模型实例，静态门面 ProtoBuf.Serializer 走反射路径（Native AOT 下不可用）
+                var frame = FeishuWebSocketProtoModel.Instance.Deserialize<EventProtoData>(span);
 #endif
 
                 // protobuf-net 的 Deserialize 标记为 [return: MaybeNull]：显式判空，
@@ -636,7 +638,8 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
             };
 
             using var messageStream = new MemoryStream();
-            ProtoBuf.Serializer.Serialize(messageStream, ackFrame);
+            // AOT：必须走编译期模型实例，静态门面 ProtoBuf.Serializer 走反射路径（Native AOT 下不可用）
+            FeishuWebSocketProtoModel.Instance.Serialize(messageStream, ackFrame);
 
             if (messageStream.TryGetBuffer(out var arraySegment) && _connectionManager != null)
             {

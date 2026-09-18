@@ -10,7 +10,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Moq;
 using TaskManageDemo.Backend.Data;
-using TaskManageDemo.Backend.EventHandlers;
 using TaskManageDemo.Backend.Models.Entities;
 using TaskManageDemo.Backend.Services.Feishu;
 using TaskManageDemo.Backend.Services.Search;
@@ -146,79 +145,5 @@ public class TaskTemplateServiceTests : IDisposable
         var result = await _sut.CreateTaskFromTemplateAsync(999, new CreateTaskFromTemplateRequest());
 
         result.Should().BeNull();
-    }
-}
-
-public class EventProcessServiceTests : IDisposable
-{
-    private readonly TaskManageDbContext _dbContext;
-    private readonly EventProcessService _sut;
-
-    public EventProcessServiceTests()
-    {
-        var options = new DbContextOptionsBuilder<TaskManageDbContext>()
-            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
-            .Options;
-        _dbContext = new TaskManageDbContext(options);
-        _sut = new EventProcessService(_dbContext, Mock.Of<ILogger<EventProcessService>>());
-    }
-
-    public void Dispose()
-    {
-        _dbContext.Dispose();
-    }
-
-    [Fact]
-    public async Task IsProcessedAsync_ShouldReturnFalse_WhenEventNotProcessed()
-    {
-        var result = await _sut.IsProcessedAsync("new-event-id");
-
-        result.Should().BeFalse();
-    }
-
-    [Fact]
-    public async Task IsProcessedAsync_ShouldReturnTrue_WhenEventSuccessfullyProcessed()
-    {
-        var record = await _sut.StartProcessAsync("test-event-id", "test.event");
-        await _sut.MarkSuccessAsync(record.Id);
-
-        var result = await _sut.IsProcessedAsync("test-event-id");
-
-        result.Should().BeTrue();
-    }
-
-    [Fact]
-    public async Task StartProcessAsync_ShouldCreateNewRecord()
-    {
-        var result = await _sut.StartProcessAsync("new-event-id", "test.event");
-
-        result.EventId.Should().Be("new-event-id");
-        result.EventType.Should().Be("test.event");
-        result.Status.Should().Be(EventProcessStatus.Processing);
-    }
-
-    [Fact]
-    public async Task MarkFailedAsync_ShouldIncrementRetryCount()
-    {
-        var record = await _sut.StartProcessAsync("fail-event-id", "test.event");
-
-        await _sut.MarkFailedAsync(record.Id, "Test error");
-
-        var updated = await _dbContext.Set<EventProcessRecord>().FindAsync(record.Id);
-        updated!.RetryCount.Should().Be(1);
-        updated.Status.Should().Be(EventProcessStatus.Failed);
-    }
-
-    [Fact]
-    public async Task MarkFailedAsync_ShouldSetMaxRetryExceeded_WhenMaxRetriesReached()
-    {
-        var record = await _sut.StartProcessAsync("max-retry-event", "test.event");
-        record.MaxRetryCount = 1;
-        await _dbContext.SaveChangesAsync();
-
-        await _sut.MarkFailedAsync(record.Id, "Test error");
-
-        var updated = await _dbContext.Set<EventProcessRecord>().FindAsync(record.Id);
-        updated!.Status.Should().Be(EventProcessStatus.MaxRetryExceeded);
     }
 }

@@ -79,7 +79,16 @@ public class FeishuWebhookConcurrencyService : IAsyncDisposable, IHostedService
     {
         _logger.LogInformation("飞书 Webhook 并发控制服务正在停止...");
 
-        _shutdownCts.Cancel();
+        // DI 容器的 DisposeAsync 可能先于 Host.StopAsync 执行（如 WebApplicationFactory
+        // 及部分宿主的关闭顺序），此时 _shutdownCts 已被释放，直接 Cancel 会抛
+        // ObjectDisposedException；关闭信号已由 DisposeAsync 中的 Cancel 先行发出，此处容错跳过。
+        try
+        {
+            _shutdownCts.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+        }
 
         // 等待当前正在处理的请求完成（最多等待30秒）
         var timeout = TimeSpan.FromSeconds(30);
@@ -203,8 +212,12 @@ public class FeishuWebhookConcurrencyService : IAsyncDisposable, IHostedService
 
         _disposed = true;
 
-        // WHF-13：释放配置变更订阅
+        // WHF-13：释放配置变更订阅，避免热更新回调在销毁过程中再次触发
         _onChangeSubscription?.Dispose();
+
+        // 先发出关闭信号再释放：DisposeAsync 可能先于 Host.StopAsync 执行，
+        // 此时不 Cancel 会让 AcquireAsync 中等待的处理器错过关闭通知
+        _shutdownCts.Cancel();
 
         _shutdownCts.Dispose();
         _semaphore.Dispose();

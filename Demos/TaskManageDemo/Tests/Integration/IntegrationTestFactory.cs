@@ -13,10 +13,13 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Moq;
 using TaskManageDemo.Backend.Data;
 using TaskManageDemo.Backend.Models.Entities;
+using TaskManageDemo.Backend.Services.Feishu;
 
 namespace TaskManageDemo.Backend.Tests.Integration;
 
@@ -43,6 +46,59 @@ public class IntegrationTestFactory : WebApplicationFactory<Program>
 
             services.AddAuthentication("Test")
                 .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>("Test", _ => { });
+
+            // Mock 外部飞书 API 边界：集成测试不依赖真实飞书凭据与网络
+            var feishuTasks = new Dictionary<string, TaskSync>();
+            var feishuTaskServiceMock = new Mock<IFeishuTaskService>();
+
+            feishuTaskServiceMock
+                .Setup(x => x.CreateTaskAsync(
+                    It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<List<string>?>(),
+                    It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<string?>(),
+                    It.IsAny<CancellationToken>()))
+                .Returns<string, string?, List<string>?, DateTime?, DateTime?, string?, CancellationToken>(
+                    (summary, description, _, _, _, _, _) =>
+                    {
+                        var taskGuid = $"mock-{Guid.NewGuid():N}";
+                        feishuTasks[taskGuid] = new TaskSync
+                        {
+                            TaskGuid = taskGuid,
+                            Summary = summary,
+                            Description = description
+                        };
+                        return Task.FromResult<string?>(taskGuid);
+                    });
+
+            feishuTaskServiceMock
+                .Setup(x => x.UpdateTaskAsync(
+                    It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(),
+                    It.IsAny<bool?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
+                .Returns<string, string?, string?, bool?, DateTime?, CancellationToken>(
+                    (taskGuid, summary, description, isCompleted, _, _) =>
+                    {
+                        if (!feishuTasks.TryGetValue(taskGuid, out var task))
+                        {
+                            return Task.FromResult(false);
+                        }
+
+                        if (summary != null) task.Summary = summary;
+                        if (description != null) task.Description = description;
+                        if (isCompleted.HasValue) task.IsCompleted = isCompleted.Value;
+                        return Task.FromResult(true);
+                    });
+
+            feishuTaskServiceMock
+                .Setup(x => x.GetTaskByIdAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .Returns<string, CancellationToken>((taskGuid, _) =>
+                    Task.FromResult(feishuTasks.TryGetValue(taskGuid, out var task) ? task : null));
+
+            feishuTaskServiceMock
+                .Setup(x => x.DeleteTaskAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .Returns<string, CancellationToken>((taskGuid, _) =>
+                    Task.FromResult(feishuTasks.Remove(taskGuid)));
+
+            services.RemoveAll<IFeishuTaskService>();
+            services.AddSingleton(feishuTaskServiceMock.Object);
         });
     }
 

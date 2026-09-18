@@ -41,9 +41,9 @@ public class FeishuApiHealthCheck : IHealthCheck
         {
             // 检查飞书应用配置是否有效
             var config = _feishuAppManager.DefaultConfig;
-            if (string.IsNullOrEmpty(config.AppId) || config.AppId == "cli_xxx")
+            if (string.IsNullOrEmpty(config.AppId) || config.AppId == "cli_a1b2c3d4e5f6g7h8")
             {
-                return HealthCheckResult.Degraded("飞书应用配置未正确设置");
+                return HealthCheckResult.Degraded("飞书应用配置未正确设置（仍是模板占位符）");
             }
 
             // 尝试获取应用访问令牌来验证连通性

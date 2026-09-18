@@ -1,228 +1,259 @@
 @echo off
-
 REM ===============================================================
-REM Auto-publish Mud.Feishu project batch file
+REM Mud.Feishu local publish script (SDK 3.x)
 REM Author: Mud Studio
-REM Date: 2026-01-25
+REM Date: 2026-09-18
+REM
+REM Usage: publish.bat [version] [/preview] [/skipcheck] [/nopause]
+REM
+REM   [version]   Package version, e.g. 3.0.0-rc3.
+REM               Default: the Version property evaluated from
+REM               Directory.Build.props.
+REM   /preview    Append "-preview.<yyyyMMdd-HHmmss>" to the version.
+REM   /skipcheck  Skip the scripts\verify-build.ps1 quality gate
+REM               (build + pack only, much faster).
+REM   /nopause    Do not pause at the end (for scripting / CI).
+REM
+REM Notes:
+REM   * v3 ships 9 packages. Mud.Feishu.DataModels and
+REM     Mud.Feishu.OpenTelemetry are new since v2 - without them the
+REM     package set is unusable because Mud.Feishu depends on
+REM     Mud.Feishu.DataModels.
+REM   * Directory.Build.props declares <Version> explicitly, so
+REM     "dotnet pack --version-suffix" is silently ignored by
+REM     MSBuild/NuGet. The version is passed as -p:Version=<value> to
+REM     both the build and the pack so that the assembly version and
+REM     the package version cannot drift apart.
+REM   * The whole solution is built before packing, so a compile error
+REM     in any source project (or demo/test project) aborts the run.
 REM ===============================================================
+setlocal enabledelayedexpansion
 
-echo ===============================================================
-echo Starting Mud.Feishu project publish process
-echo Current directory: %cd%
-echo Execution time: %date% %time%
-echo ===============================================================
+cd /d "%~dp0"
 
-REM Check if we're in the project root directory
-if not exist "Mud.Feishu.Abstractions" (
-    echo Error: Current directory is not the project root. Please run this script in the MudFeishu directory
-    pause
-    exit /b 1
+set "OUTPUT_DIR=artifacts"
+set "PROJECTS=Mud.Feishu.Abstractions Mud.Feishu.DataModels Mud.Feishu.EventCallback Mud.Feishu.OpenTelemetry Mud.Feishu.Redis Mud.Feishu.Webhook Mud.Feishu.WebSocket Mud.Feishu.Authentication Mud.Feishu"
+set "VERSION_ARG="
+set "VERSION_SOURCE="
+set "ADD_PREVIEW=0"
+set "SKIP_CHECK=0"
+set "NO_PAUSE=0"
+set "PS_EXE="
+set "EXIT_CODE=0"
+
+REM --------------------------------------------------------------- arguments
+:parse_args
+if "%~1"=="" goto :args_done
+set "ARG=%~1"
+if /i "!ARG!"=="/preview" (
+    set "ADD_PREVIEW=1"
+    shift
+    goto :parse_args
 )
+if /i "!ARG!"=="/skipcheck" (
+    set "SKIP_CHECK=1"
+    shift
+    goto :parse_args
+)
+if /i "!ARG!"=="/nopause" (
+    set "NO_PAUSE=1"
+    shift
+    goto :parse_args
+)
+if /i "!ARG!"=="/?" goto :usage
+if /i "!ARG!"=="/help" goto :usage
+if /i "!ARG!"=="-h" goto :usage
+echo !ARG! | findstr /b /c:"/" >nul
+if not errorlevel 1 (
+    echo Error: unknown option !ARG!
+    goto :usage
+)
+if defined VERSION_ARG (
+    echo Error: version already set to !VERSION_ARG! ^(received !ARG! again^)
+    goto :usage
+)
+set "VERSION_ARG=!ARG!"
+set "VERSION_SOURCE=command line"
+shift
+goto :parse_args
 
-REM Check if dotnet command is available
+:args_done
+echo ===============================================================
+echo  Mud.Feishu publish
+echo  Working directory : %cd%
+echo  Started at        : %date% %time%
+echo ===============================================================
+echo.
+
+REM ------------------------------------------------------ 1. environment
+echo [1/6] Checking environment...
+if not exist "Mud.Feishu.slnx" (
+    echo   Error: not running from the repository root ^(Mud.Feishu.slnx not found^).
+    set "EXIT_CODE=1"
+    goto :finish
+)
 where dotnet >nul 2>nul
-if %errorlevel% neq 0 (
-    echo Error: dotnet command not found. Please ensure .NET SDK is installed
-    pause
-    exit /b 1
+if errorlevel 1 (
+    echo   Error: 'dotnet' was not found. Install the .NET SDK first.
+    set "EXIT_CODE=1"
+    goto :finish
 )
-
-echo 1. Restoring dependencies...
-echo ===============================================================
-dotnet restore
-if %errorlevel% neq 0 (
-    echo Error: Failed to restore dependencies
-    pause
-    exit /b 1
+where pwsh >nul 2>nul
+if not errorlevel 1 set "PS_EXE=pwsh"
+if not defined PS_EXE (
+    where powershell >nul 2>nul
+    if not errorlevel 1 set "PS_EXE=powershell"
 )
+if not defined PS_EXE (
+    echo   Error: PowerShell ^(pwsh / powershell^) was not found.
+    set "EXIT_CODE=1"
+    goto :finish
+)
+echo   dotnet     : OK
+echo   PowerShell : !PS_EXE!
 
+REM ---------------------------------------------------------- 2. version
 echo.
-echo 2. Building core projects...
-echo ===============================================================
+if not defined VERSION_ARG (
+    for /f "usebackq delims=" %%V in (`dotnet msbuild "Mud.Feishu\Mud.Feishu.csproj" -getProperty:Version -nologo`) do set "VERSION_ARG=%%V"
+    set "VERSION_SOURCE=Directory.Build.props"
+)
+if not defined VERSION_ARG (
+    echo [2/6] Error: cannot evaluate the Version property from Directory.Build.props.
+    set "EXIT_CODE=1"
+    goto :finish
+)
+set "PACKAGE_VERSION=!VERSION_ARG!"
+if "!ADD_PREVIEW!"=="1" (
+    "!PS_EXE!" -NoProfile -Command "Get-Date -Format 'yyyyMMdd-HHmmss'" > "%TEMP%\mudfeishu-timestamp.txt" 2>nul
+    set "TIMESTAMP="
+    set /p TIMESTAMP=<"%TEMP%\mudfeishu-timestamp.txt"
+    del /q "%TEMP%\mudfeishu-timestamp.txt" >nul 2>nul
+    if not defined TIMESTAMP (
+        echo [2/6] Error: cannot build the preview timestamp.
+        set "EXIT_CODE=1"
+        goto :finish
+    )
+    set "PACKAGE_VERSION=!VERSION_ARG!-preview.!TIMESTAMP!"
+)
+echo [2/6] Package version : !PACKAGE_VERSION! ^(from !VERSION_SOURCE!^)
 
-echo Building Mud.Feishu...
-dotnet build Mud.Feishu --configuration Release
-if %errorlevel% neq 0 (
-    echo Error: Failed to build Mud.Feishu
-    pause
-    exit /b 1
+REM ---------------------------------------------------------- 3. restore
+echo.
+echo [3/6] Restoring dependencies...
+dotnet restore "Mud.Feishu.slnx" --nologo
+if errorlevel 1 (
+    echo   Error: restore failed.
+    set "EXIT_CODE=1"
+    goto :finish
 )
 
-echo Building Mud.Feishu.Abstractions...
-dotnet build Mud.Feishu.Abstractions --configuration Release
-if %errorlevel% neq 0 (
-    echo Error: Failed to build Mud.Feishu.Abstractions
-    pause
-    exit /b 1
-)
-
-echo Building Mud.Feishu.WebSocket...
-dotnet build Mud.Feishu.WebSocket --configuration Release
-if %errorlevel% neq 0 (
-    echo Error: Failed to build Mud.Feishu.WebSocket
-    pause
-    exit /b 1
-)
-
-echo Building Mud.Feishu.Webhook...
-dotnet build Mud.Feishu.Webhook --configuration Release
-if %errorlevel% neq 0 (
-    echo Error: Failed to build Mud.Feishu.Webhook
-    pause
-    exit /b 1
-)
-
-echo Building Mud.Feishu.Authentication...
-dotnet build Mud.Feishu.Authentication --configuration Release
-if %errorlevel% neq 0 (
-    echo Error: Failed to build Mud.Feishu.Authentication
-    pause
-    exit /b 1
-)
-
-echo Building Mud.Feishu.EventCallback...
-dotnet build Mud.Feishu.EventCallback --configuration Release
-if %errorlevel% neq 0 (
-    echo Error: Failed to build Mud.Feishu.EventCallback
-    pause
-    exit /b 1
-)
-
-REM Build Redis project if exists
-if exist "Mud.Feishu.Redis" (
-    echo Building Mud.Feishu.Redis...
-    dotnet build Mud.Feishu.Redis --configuration Release
-    if %errorlevel% neq 0 (
-        echo Warning: Failed to build Mud.Feishu.Redis. Continue publishing...
+REM ------------------------------------------------------ 4. quality gate
+echo.
+if "!SKIP_CHECK!"=="1" (
+    echo [4/6] Quality gate SKIPPED ^(/skipcheck^).
+) else (
+    echo [4/6] Quality gate: scripts\verify-build.ps1
+    echo       ^(build + AOT strict smoke + unit tests + format check^)
+    "!PS_EXE!" -NoProfile -ExecutionPolicy Bypass -File ".\scripts\verify-build.ps1"
+    if errorlevel 1 (
+        echo   Error: quality gate failed - publish aborted.
+        echo          Use /skipcheck only if you know what you are doing.
+        set "EXIT_CODE=1"
+        goto :finish
     )
 )
 
+REM -------------------------------------------------------- 5. build+pack
 echo.
-echo 3. Running critical tests...
-echo ===============================================================
-
-echo Running WebSocket tests...
-dotnet test Tests\Mud.Feishu.WebSocket.Tests --configuration Release
-if %errorlevel% neq 0 (
-    echo Warning: WebSocket tests failed! Continue publishing...
+echo [5/6] Building solution with version !PACKAGE_VERSION!...
+dotnet build "Mud.Feishu.slnx" -c Release --nologo -p:Version=!PACKAGE_VERSION!
+if errorlevel 1 (
+    echo   Error: build failed.
+    set "EXIT_CODE=1"
+    goto :finish
 )
 
 echo.
-echo Running Webhook tests...
-dotnet test Tests\Mud.Feishu.Webhook.Tests --configuration Release
-if %errorlevel% neq 0 (
-    echo Warning: Webhook tests failed! Continue publishing...
-)
-
-echo.
-echo Running Authentication tests...
-dotnet test Tests\Mud.Feishu.Authentication.Tests --configuration Release
-if %errorlevel% neq 0 (
-    echo Warning: Authentication tests failed! Continue publishing...
-)
-
-echo.
-echo 4. Publishing packages...
-echo ===============================================================
-
-REM Define publish parameters
-set VERSION_SUFFIX=-preview-%date:~0,4%%date:~5,2%%date:~8,2%-%time:~0,2%%time:~3,2%
-set OUTPUT_DIR=artifacts
-
-REM Create output directory
+echo       Packing packages ^(9 expected^)...
 if not exist "%OUTPUT_DIR%" mkdir "%OUTPUT_DIR%"
-
-echo Publishing Mud.Feishu...
-dotnet pack Mud.Feishu --configuration Release --output "%OUTPUT_DIR%" --version-suffix %VERSION_SUFFIX%
-if %errorlevel% neq 0 (
-    echo Error: Failed to publish Mud.Feishu
-    pause
-    exit /b 1
+for %%P in (%PROJECTS%) do (
+    if exist "%OUTPUT_DIR%\%%P.!PACKAGE_VERSION!.nupkg" del /q "%OUTPUT_DIR%\%%P.!PACKAGE_VERSION!.nupkg"
+)
+set "PACK_FAILED="
+for %%P in (%PROJECTS%) do (
+    echo       - %%P
+    dotnet pack "%%P\%%P.csproj" -c Release --nologo -o "%OUTPUT_DIR%" -p:Version=!PACKAGE_VERSION!
+    if errorlevel 1 set "PACK_FAILED=!PACK_FAILED! %%P"
+)
+if defined PACK_FAILED (
+    echo   Error: packing failed for:!PACK_FAILED!
+    set "EXIT_CODE=1"
+    goto :finish
 )
 
+REM ------------------------------------------------------------ 6. verify
 echo.
-echo Publishing Mud.Feishu.Abstractions...
-dotnet pack Mud.Feishu.Abstractions --configuration Release --output "%OUTPUT_DIR%" --version-suffix %VERSION_SUFFIX%
-if %errorlevel% neq 0 (
-    echo Error: Failed to publish Mud.Feishu.Abstractions
-    pause
-    exit /b 1
-)
-
-echo.
-echo Publishing Mud.Feishu.WebSocket...
-dotnet pack Mud.Feishu.WebSocket --configuration Release --output "%OUTPUT_DIR%" --version-suffix %VERSION_SUFFIX%
-if %errorlevel% neq 0 (
-    echo Error: Failed to publish Mud.Feishu.WebSocket
-    pause
-    exit /b 1
-)
-
-echo.
-echo Publishing Mud.Feishu.Webhook...
-dotnet pack Mud.Feishu.Webhook --configuration Release --output "%OUTPUT_DIR%" --version-suffix %VERSION_SUFFIX%
-if %errorlevel% neq 0 (
-    echo Error: Failed to publish Mud.Feishu.Webhook
-    pause
-    exit /b 1
-)
-
-echo.
-echo Publishing Mud.Feishu.Authentication...
-dotnet pack Mud.Feishu.Authentication --configuration Release --output "%OUTPUT_DIR%" --version-suffix %VERSION_SUFFIX%
-if %errorlevel% neq 0 (
-    echo Error: Failed to publish Mud.Feishu.Authentication
-    pause
-    exit /b 1
-)
-
-echo.
-echo Publishing Mud.Feishu.EventCallback...
-dotnet pack Mud.Feishu.EventCallback --configuration Release --output "%OUTPUT_DIR%" --version-suffix %VERSION_SUFFIX%
-if %errorlevel% neq 0 (
-    echo Error: Failed to publish Mud.Feishu.EventCallback
-    pause
-    exit /b 1
-)
-
-REM Check if Redis project exists
-if exist "Mud.Feishu.Redis" (
-    echo.
-    echo Publishing Mud.Feishu.Redis...
-    dotnet pack Mud.Feishu.Redis --configuration Release --output "%OUTPUT_DIR%" --version-suffix %VERSION_SUFFIX%
-    if %errorlevel% neq 0 (
-        echo Warning: Failed to publish Mud.Feishu.Redis. Continue...
+echo [6/6] Verifying packages...
+set "PACKAGE_COUNT=0"
+set "MISSING_PACKAGES="
+for %%P in (%PROJECTS%) do (
+    if exist "%OUTPUT_DIR%\%%P.!PACKAGE_VERSION!.nupkg" (
+        set /a PACKAGE_COUNT+=1
+    ) else (
+        set "MISSING_PACKAGES=!MISSING_PACKAGES! %%P"
     )
 )
+if defined MISSING_PACKAGES (
+    echo   Error: missing packages for:!MISSING_PACKAGES!
+    set "EXIT_CODE=1"
+    goto :finish
+)
+echo   Produced !PACKAGE_COUNT! package^(s^):
+dir "%OUTPUT_DIR%\*!PACKAGE_VERSION!.nupkg" /b
 
+set "STALE_LIST="
+for %%F in ("%OUTPUT_DIR%\*.nupkg") do (
+    echo %%~nxF | findstr /c:"!PACKAGE_VERSION!." >nul
+    if errorlevel 1 set "STALE_LIST=!STALE_LIST! %%~nxF"
+)
+if defined STALE_LIST (
+    echo.
+    echo   Warning: packages of other versions are still in "%OUTPUT_DIR%":
+    echo            !STALE_LIST!
+    echo            Do not push the whole directory blindly.
+)
+
+REM ------------------------------------------------------------- finish
+:finish
 echo.
-echo 5. Verifying published packages...
-echo ===============================================================
-
-REM List published packages
-dir "%OUTPUT_DIR%" /b
-if %errorlevel% neq 0 (
-    echo Error: Failed to list published packages
-    pause
-    exit /b 1
+if !EXIT_CODE! neq 0 (
+    echo ===============================================================
+    echo  PUBLISH FAILED ^(exit code !EXIT_CODE!^)
+    echo ===============================================================
+) else (
+    echo ===============================================================
+    echo  PUBLISH SUCCEEDED
+    echo  Version : !PACKAGE_VERSION!
+    echo  Output  : %cd%\%OUTPUT_DIR%
+    echo  Finished: %date% %time%
+    echo ===============================================================
+    echo.
+    echo  Next step - push to nuget.org:
+    echo    dotnet nuget push "%OUTPUT_DIR%\*.nupkg" --api-key ^<API_KEY^> --source https://api.nuget.org/v3/index.json --skip-duplicate
 )
+if "!NO_PAUSE!"=="0" pause
+endlocal & exit /b %EXIT_CODE%
 
-REM Count published packages
-set PACKAGE_COUNT=0
-for /f %%i in ('dir "%OUTPUT_DIR%" /b ^| find /c ".nupkg"') do set PACKAGE_COUNT=%%i
-
-echo Total published packages: %PACKAGE_COUNT%
-
-if %PACKAGE_COUNT% equ 0 (
-    echo Error: No packages were published
-    pause
-    exit /b 1
-)
-
-echo ===============================================================
-echo Publish process completed successfully!
-echo Output directory: %cd%\%OUTPUT_DIR%
-echo Execution time: %date% %time%
-echo ===============================================================
-
-pause
+:usage
+echo.
+echo Usage: publish.bat [version] [/preview] [/skipcheck] [/nopause]
+echo.
+echo   [version]   Package version, e.g. 3.0.0-rc3.
+echo               Default: the Version evaluated from Directory.Build.props.
+echo   /preview    Append "-preview.<yyyyMMdd-HHmmss>" to the version.
+echo   /skipcheck  Skip the scripts\verify-build.ps1 quality gate.
+echo   /nopause    Do not pause at the end.
+echo.
+set "EXIT_CODE=1"
+goto :finish

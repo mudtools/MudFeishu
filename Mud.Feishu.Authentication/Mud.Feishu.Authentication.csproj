@@ -11,8 +11,8 @@
     <RepositoryType>git</RepositoryType>
     <PackageIcon>Icon.png</PackageIcon>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <Description>飞书用户认证中间件，提供用户上下文管理功能。基于 AsyncLocal 实现线程安全的用户信息存储，支持从 JWT Claims 中提取飞书用户信息。</Description>
-    <PackageTags>Feishu;Lark;飞书;Authentication;认证;UserContext;用户上下文;Middleware;中间件;MudFeishu</PackageTags>
+    <Description>飞书用户认证中间件，提供用户上下文管理功能。基于 AsyncLocal 实现线程安全的用户信息存储，支持从 JWT Claims 中提取飞书用户信息，net8.0+ 原生 AOT 兼容。</Description>
+    <PackageTags>Feishu;Lark;飞书;Authentication;认证;UserContext;用户上下文;Middleware;中间件;AOT;NativeAOT;MudFeishu</PackageTags>
     <BaseOutputPath>..\bin</BaseOutputPath>
   </PropertyGroup>
 

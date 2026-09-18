@@ -35,6 +35,7 @@ MudFeishu 是一套现代化的企业级 .NET 飞书 API 集成 SDK，提供完�
 - 🛡️ **企业级稳定** - 统一异常处理、智能重试、详细日志
 - 🎯 **事件驱动** - 策略模式事件处理，灵活扩展
 - 📊 **多框架支持** - .NET Standard 2.0、.NET 6.0、.NET 8.0、.NET 10.0
+- ⚡ **原生 AOT 支持** - net8.0+ 一等公民支持 Native AOT 发布，全链路源生成 JSON 序列化与配置绑定，严格模式下 IL 警告归零
 - 🔒 **安全防护** - SSRF 防护、URL 白名单验证、签名验证、加密解密
 - 📈 **可观测性** - 内置 FeishuMetrics 指标收集，支持 OpenTelemetry 集成
 
@@ -1457,6 +1458,17 @@ public class TenantController : ControllerBase
 > 🔒 **多租户 Redis 隔离**：使用 Redis 分布式去重时，应为每个租户设置独立的键前缀
 > （`EventKeyPrefix`/`NonceKeyPrefix`/`SeqIdKeyPrefix`），避免跨租户事件冲突。
 
+> 🔄 **凭据轮换与令牌清库（D10）**：配置热更新检测到某应用的 `AppId` 或 `AppSecret` 变更时，
+> 会立即清除该应用在令牌存储后端的**全部**持久化令牌（租户令牌 + 全部用户令牌，Memory 与 Redis
+> 后端语义一致），旧凭据换取的令牌不会经存储恢复路径「复活」。仅 `BaseUrl`/`TimeOut`/弹性参数等
+> 非凭据字段变更时保留令牌热迁移。
+>
+> ℹ️ **残余窗口**：热更新清库后、旧上下文退休宽限期（`ContextRetireDelaySeconds`，默认 300s）结束前，
+> 旧上下文的在途请求仍可能以旧凭据刷新并写入新令牌条目（将在下一次凭据变更时清除）。
+>
+> ℹ️ **短 TTL 部署提示**：令牌存储恢复路径（跨进程重启恢复）中的令牌签发时间不可知，其有效性
+> 按配置阈值保守判定；若用户令牌 TTL ≤ `TokenRefreshThreshold`（默认 300s），不应依赖 store 恢复路径。
+
 ---
 
 ## 📸 演示界面展示
@@ -1509,8 +1521,29 @@ public class TenantController : ControllerBase
 
 - **.NET Standard 2.0** - 兼容 .NET Framework 4.6.1+
 - **.NET 6.0** - LTS 长期支持版本
-- **.NET 8.0** - LTS 长期支持版本（推荐）
-- **.NET 10.0** - LTS 长期支持版本（推荐）
+- **.NET 8.0** - LTS 长期支持版本（推荐，支持 Native AOT 发布）
+- **.NET 10.0** - LTS 长期支持版本（推荐，支持 Native AOT 发布）
+
+## ⚡ Native AOT 支持
+
+MudFeishu 自 3.0.0 起全面适配 .NET **Native AOT**（net8.0 及以上目标框架一等公民支持），可直接发布为自包含单文件原生二进制：
+
+- **全链路源生成 JSON 序列化** - 所有包内置 `JsonSerializerContext`（`FeishuJsonContext`、`WebSocketJsonContext`、`EventCallbackJsonContext` 等），运行时零反射序列化/反序列化
+- **源生成配置绑定** - 启用 `EnableConfigurationBindingGenerator`，配置 DTO（如 `FeishuAppConfig`）在编译期生成绑定代码；配置 DTO 不使用 `required` 修饰，改为 `Validate()` 方法校验
+- **全局 AOT 分析管控** - net8.0+ 全部工程启用 `IsAotCompatible` / `EnableAotAnalyzer` / `EnableTrimAnalyzer` / `TrimMode=full`，并提供 `FeishuJsonAot` AOT 安全序列化辅助类与 rd.xml 裁剪兜底
+- **质量门禁保障** - `verify-build.ps1` 集成 AOT 严格模式冒烟构建（逐工程 `AotStrictMode` + `--no-incremental`），断言构建成功且 `AOT00x` / `IL2026` / `IL3050` 诊断为 0
+- **专用验证工程** - `Demos/Mud.Feishu.AotVerification` 覆盖 JSON 序列化、HTTP 客户端、事件处理、WebSocket 协议消息在 AOT 下的端到端验证（win-x64 / linux-x64 双 RID）
+
+发布 AOT 应用示例：
+
+```bash
+dotnet publish -r win-x64 -c Release /p:PublishAot=true
+```
+
+> ⚠️ **注意事项**：
+> - Native AOT 仅支持 net8.0+ 目标框架；netstandard2.0 / net6.0 目标不启用 AOT 分析
+> - 自定义类型的序列化请通过 `FeishuJsonDefaults.ConfigureUserResolver` 等入口注册自定义 `JsonSerializerContext`，避免运行时反射序列化
+> - 扩展配置 DTO 时不要使用 `required` 修饰（源生成绑定器通过 `new T()` 构造），请在 `Validate()` 方法中完成必填校验
 
 ### 核心依赖
 
@@ -1553,11 +1586,14 @@ public class TenantController : ControllerBase
 - [项目仓库](https://gitee.com/mudtools/MudFeishu) - 源代码和开发文档
 - [Mud.ServiceCodeGenerator](https://gitee.com/mudtools/mud-code-generator) - HTTP 客户端代码生成器
 - [示例项目](./Demos) - 完整的使用示例和演示代码
+  - [Mud.Feishu.Demo](./Demos/Mud.Feishu.Demo) - HTTP API 完整功能示例（REST API + ASP.NET Core）
+  - [Mud.Feishu.Webhook.Demo](./Demos/Mud.Feishu.Webhook.Demo) - Webhook HTTP 回调事件处理示例（**原生支持AOT发布**）
+  - [WebSocket Demo](./Demos/Mud.Feishu.WebSocket.Demo) - WebSocket 实时事件订阅演示（含 Redis 分布式去重）（**原生支持AOT发布**）
+  - [FeishuOAuthDemo](./Demos/FeishuOAuthDemo) - OAuth 2.0 用户身份认证与统一登录 Demo（Vue3 + .NET）
   - [FeishuWikiManager](./Demos/FeishuWikiManager) - 飞书知识库管理 Demo（Vue3 + .NET）
   - [FeishuFileServer](./Demos/FeishuFileServer) - 飞书云文档文件服务 Demo（Vue3 + .NET）
-  - [FeishuOAuthDemo](./Demos/FeishuOAuthDemo) - 飞书 OAuth 认证 Demo（Vue3 + .NET）
   - [TaskManageDemo](./Demos/TaskManageDemo) - 飞书任务管理 Demo（Vue3 + .NET）
-  - [WebSocket Demo](./Demos/Mud.Feishu.WebSocket.Demo) - WebSocket 实时事件演示
+  - [AotVerification](./Demos/Mud.Feishu.AotVerification) - Native AOT 兼容性验证工程（win-x64 / linux-x64 双 RID）
 - [测试项目](./Tests) - 完整的单元测试和集成测试
 
 ### 🤝 社区支持

@@ -95,6 +95,13 @@ internal static class TokenKeyBuilder
         => $"{NormalizePrefix(keyPrefix)}{Separator}user{Separator}{NormalizeSegment(userId)}{Separator}*";
 
     /// <summary>
+    /// 构建用于 SCAN 的全用户键模式（通配 userId、tokenType 与 access/refresh）。
+    /// TMF-01：IFeishuUserTokenStorePurge.ClearAllUsersAsync 的键模式单一出口（D8 契约）。
+    /// </summary>
+    internal static string AllUsersScanPattern(string keyPrefix)
+        => $"{NormalizePrefix(keyPrefix)}{Separator}user{Separator}*";
+
+    /// <summary>
     /// 尝试从完整键中解析出租户级 tokenType。
     /// </summary>
     /// <param name="key">完整存储键</param>

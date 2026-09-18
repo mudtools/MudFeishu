@@ -15,7 +15,8 @@ namespace Mud.Feishu.Abstractions;
 /// </summary>
 /// <remarks>
 /// <para>
-/// 当 <see cref="FeishuAppManager"/> 执行 <c>RebuildAppContext</c> 或 <c>RemoveApp</c> 时，
+/// 当 <see cref="FeishuAppManager"/> 执行配置热更新（<c>ApplyConfigurationChanges</c>，
+/// TMF-04：原 <c>RebuildAppContext</c> 已并入热更新路径）或 <c>RemoveApp</c> 时，
 /// 旧的 <see cref="FeishuAppContext"/> 不再被引用，但其内部的 <c>Timer</c>（令牌定时刷新）
 /// 会 root 整个对象图，GC 不会自动回收。此队列在宽限期后显式 <c>Dispose</c> 旧上下文，
 /// 停止其 Timer，释放资源。

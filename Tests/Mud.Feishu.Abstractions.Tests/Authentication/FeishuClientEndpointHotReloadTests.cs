@@ -131,7 +131,7 @@ public class FeishuClientEndpointHotReloadTests
             var manager = (FeishuAppManager)provider.GetRequiredService<IFeishuAppManager>();
             manager.GetApp("app1").HttpClient.BaseAddress!.Host.Should().Be("open.feishu.cn");
 
-            // 真实热更新链路：Reload → IOptionsMonitor.OnChange → RebuildAppContext → 新建 TokenRecoveryEnhancedClient
+            // 真实热更新链路：Reload → IOptionsMonitor.OnChange → ApplyConfigurationChanges → 新建 TokenRecoveryEnhancedClient
             SetAndReload(configuration, $"{SectionName}:0:BaseUrl", LarkBaseUrl);
 
             manager.GetApp("app1").HttpClient.BaseAddress!.Host.Should().Be(

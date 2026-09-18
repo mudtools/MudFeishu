@@ -19,7 +19,10 @@ public class FeishuTokenStoreTests : IDisposable
     public FeishuTokenStoreTests()
     {
         _cache = new MemoryCache(new MemoryCacheOptions());
-        _sut = new FeishuTokenStore(_cache);
+        // TMF-01：GetTokenTypesAsync 语义改为「本进程本前缀已知」（跨实例共享记账）。
+        // 夹具使用唯一 appKey → 唯一 KeyPrefix，使「初始为空」类断言拥有显式前置状态，
+        // 不受同进程其他用例（共享默认前缀）的记账残留影响。
+        _sut = new FeishuTokenStore(_cache, $"test-{Guid.NewGuid():N}");
     }
 
     public void Dispose()
@@ -200,8 +203,10 @@ public class FeishuUserTokenStoreTests : IDisposable
     public FeishuUserTokenStoreTests()
     {
         _cache = new MemoryCache(new MemoryCacheOptions());
-        _innerStore = new FeishuTokenStore(_cache);
-        _sut = new FeishuUserTokenStore(_innerStore, _cache);
+        // TMF-01：唯一 appKey → 唯一 KeyPrefix，隔离共享记账的跨用例残留（同上）。
+        var appKey = $"test-{Guid.NewGuid():N}";
+        _innerStore = new FeishuTokenStore(_cache, appKey);
+        _sut = new FeishuUserTokenStore(_innerStore, _cache, appKey);
     }
 
     public void Dispose()

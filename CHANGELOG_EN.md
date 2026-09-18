@@ -1,12 +1,29 @@
 # Mud.Feishu Change Log
 
-## [Unreleased]
+## [3.0.0-rc2] - 2026-09-18
 
-> Corresponds to M1–M5 of `.docs/MudHttpUtils-2.0.4-Repair-and-Enhancement-Plan.md` (Mud.HttpUtils 2.0.4).
-> Corresponds to TMA-01…TMA-24 of `.docs/MudFeishu-Token-MultiApp-Review-Remediation-Plan.md` (R1).
-> Corresponds to TMA2-01…TMA2-23 of `.docs/MudFeishu-Token-MultiApp-Review-Remediation-Plan-R2.md` (R2).
-> The project is not released yet, so the breaking changes below require no data migration.
-> See `CHANGELOG.md` for the full list.
+### ⚡ Full Native AOT Adaptation
+
+- All source projects enable `IsAotCompatible` / `EnableAotAnalyzer` / `EnableTrimAnalyzer` /
+  `TrimMode=full` on net8.0+ (not enabled on netstandard2.0 / net6.0).
+- Source-generated configuration binding via `EnableConfigurationBindingGenerator`; config DTOs avoid
+  the `required` modifier in favor of `Validate()` methods, removing the runtime reflection binding path.
+- New `FeishuJsonAot` AOT-safe serialization helper (net8+ resolves `JsonTypeInfo` from options, with a
+  reflection fallback only when no resolver is present) plus custom-context entry points such as
+  `FeishuJsonDefaults.ConfigureUserResolver`.
+- Protobuf static (reflection-based) serialization calls replaced with compile-time models
+  (`FeishuWebSocketProtoModel`); rd.xml trim roots ship with Abstractions / DataModels.
+- `verify-build.ps1` now includes an AOT strict-mode smoke gate: per-project `AotStrictMode` +
+  `--no-incremental` builds asserting a successful build and 0 `AOT00x` / `IL2026` / `IL3050` diagnostics.
+- New `Demos/Mud.Feishu.AotVerification` end-to-end verification project (win-x64 / linux-x64 dual RID).
+- READMEs and NuGet package descriptions (including `AOT;NativeAOT` tags) updated to document AOT support.
+
+### 🔧 Dependency Upgrade (Mud.HttpUtils 2.0.67)
+
+- `Mud.HttpUtils` / `Mud.HttpUtils.Generator` pinned to **2.0.7** in 5 projects: the generator-side
+  `JsonContextScaffolder` now emits `TypeInfoPropertyName` for duplicate type-info names, fixing the
+  9 `SYSLIB1031` warnings from 7 duplicate DTO names in `Mud.Feishu.DataModels`; the contract guard
+  `TokenMultiAppContractGuards.ExpectedVersion` is synced to 2.0.6.
 
 ### ⚠️ Breaking Changes / Behavior Changes (Token & Multi-App R2)
 

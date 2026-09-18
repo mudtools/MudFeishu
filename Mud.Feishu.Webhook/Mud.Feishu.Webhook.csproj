@@ -11,8 +11,8 @@
 		<RepositoryType>git</RepositoryType>
 		<PackageIcon>Icon.png</PackageIcon>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
-		<Description>适用于 .NET 全平台的飞书 Webhook 事件订阅组件，提供开箱即用的客户端实现，基于策略模式构建可扩展的事件处理机制，帮助开发者在 .NET 应用中便捷、可靠地接收和处理飞书实时事件。</Description>
-		<PackageTags>Feishu;Lark;飞书;ByteDance;字节跳动;Feishu-SDK;Lark-SDK;Feishu-Webhook;Lark-Webhook;Webhook;HTTP-Callback;回调;Event-Subscription;事件订阅;Signature-Verification;签名验证;MudFeishu</PackageTags>
+		<Description>适用于 .NET 全平台的飞书 Webhook 事件订阅组件，提供开箱即用的客户端实现，基于策略模式构建可扩展的事件处理机制，支持 Native AOT 发布（net8.0+），帮助开发者在 .NET 应用中便捷、可靠地接收和处理飞书实时事件。</Description>
+		<PackageTags>Feishu;Lark;飞书;ByteDance;字节跳动;Feishu-SDK;Lark-SDK;Feishu-Webhook;Lark-Webhook;Webhook;HTTP-Callback;回调;Event-Subscription;事件订阅;Signature-Verification;签名验证;AOT;NativeAOT;MudFeishu</PackageTags>
 		<BaseOutputPath>..\bin</BaseOutputPath>
 	</PropertyGroup>
 

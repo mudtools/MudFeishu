@@ -191,6 +191,51 @@ public class MultiAppHotReloadTests
         errors.Should().BeEmpty("热更新与并发读取必须线程安全，且旧上下文延迟回收不得抛 ObjectDisposedException");
     }
 
+    /// <summary>
+    /// TMF-02：凭据变更热更新（Phase-P 锁外清库 + Task.Run 同步等待）与 GetApp/GetAllApps
+    /// 并发交错——必须完成且无死锁（Task.WhenAll + 总超时护栏，不依赖 Thread.Sleep 时序）。
+    /// 修复前清库 IO 在 <c>_configApplyLock</c> 锁内同步阻塞，并发热更新回调被串行拖住。
+    /// </summary>
+    [Fact]
+    public async Task OnConfigurationChanged_WithCredentialChange_ShouldNotDeadlock_WhenConcurrentWithReads()
+    {
+        using var ctx = new ProviderScope(CreateManager(
+            CreateConfig("app1", TestDataFactory.AppConfigs.AppIds.Default, TestDataFactory.AppConfigs.Secrets.Default, isDefault: true),
+            CreateConfig("app2", TestDataFactory.AppConfigs.AppIds.Hr, TestDataFactory.AppConfigs.Secrets.Hr)));
+
+        _ = ctx.Manager.GetApp("app1");
+
+        var hotReload = Task.Run(() =>
+        {
+            for (var i = 0; i < 20; i++)
+            {
+                // 每轮交替轮换 AppSecret → 每轮都触发 Phase-P 凭据变更清库。
+                ctx.Manager.OnConfigurationChanged(new List<FeishuAppConfig>
+                {
+                    CreateConfig("app1", TestDataFactory.AppConfigs.AppIds.Default,
+                        i % 2 == 0 ? "rotated_secret_a" : "rotated_secret_b", isDefault: true),
+                    CreateConfig("app2", TestDataFactory.AppConfigs.AppIds.Hr, TestDataFactory.AppConfigs.Secrets.Hr)
+                });
+            }
+        });
+
+        var reads = Task.Run(async () =>
+        {
+            for (var i = 0; i < 50; i++)
+            {
+                _ = ctx.Manager.GetApp("app1");
+                _ = ctx.Manager.GetAllApps().ToList();
+                await Task.Yield();
+            }
+        });
+
+        // 总超时护栏：若死锁则 30s 超时使测试失败（而非无限挂起）。
+        await Task.WhenAll(hotReload, reads).WaitAsync(TimeSpan.FromSeconds(30));
+
+        ctx.Manager.HasApp("app1").Should().BeTrue("并发热更新完成后应用注册表必须完整");
+        ctx.Manager.HasApp("app2").Should().BeTrue();
+    }
+
     [Fact]
     public void FeishuAppOptions_ShouldDefaultToEnabledReload()
     {

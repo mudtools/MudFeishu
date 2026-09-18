@@ -7,6 +7,7 @@
 
 using System.Collections.Concurrent;
 using FluentAssertions;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
@@ -460,11 +461,11 @@ public class FeishuAppManagerTests
     // ============================================================
 
     /// <summary>
-    /// TMA-07 验证：RebuildAppContext 时旧上下文进入退休队列，
+    /// TMA-07 验证：配置热更新（OnConfigurationChanged）时旧上下文进入退休队列，
     /// 在宽限期到期后（通过 Sweep 驱动）被 Dispose。
     /// </summary>
     [Fact]
-    public void RebuildAppContext_ShouldDisposeOldContext_AfterRetireDelay()
+    public void HotReload_ShouldDisposeOldContext_AfterRetireDelay()
     {
         // Arrange
         var services = CreateServiceCollection();
@@ -478,7 +479,7 @@ public class FeishuAppManagerTests
         var originalApp = appManager.GetApp(AppConfigs.AppKeys.Default);
         var originalContext = (FeishuAppContext)originalApp;
 
-        // Act：通过 OnConfigurationChanged 触发 RebuildAppContext（修改一个节流比较字段）
+        // Act：通过 OnConfigurationChanged 触发热更新（修改一个节流比较字段）
         var updatedConfig = new FeishuAppConfig
         {
             AppKey = AppConfigs.AppKeys.Default,
@@ -631,7 +632,7 @@ public class FeishuAppManagerTests
     /// 强断言：spy 存储 <c>ClearAsync</c> 被真实调用（副作用断言）。
     /// </summary>
     [Fact]
-    public void RebuildAppContext_ShouldPurgeStoredTokens_WhenAppSecretChanged()
+    public void HotReload_ShouldPurgeStoredTokens_WhenAppSecretChanged()
     {
         // Arrange
         var services = CreateServiceCollectionWithTokenStoreFactory(out var tokenStoreMock, out _);
@@ -662,7 +663,7 @@ public class FeishuAppManagerTests
     /// TMA2-05 / D10（§7.2 #8）：仅非凭据字段（TimeOut）变化时保留令牌热迁移，不清库。
     /// </summary>
     [Fact]
-    public void RebuildAppContext_ShouldNotPurgeStoredTokens_WhenOnlyTimeOutChanged()
+    public void HotReload_ShouldNotPurgeStoredTokens_WhenOnlyTimeOutChanged()
     {
         var services = CreateServiceCollectionWithTokenStoreFactory(out var tokenStoreMock, out _);
         services.AddFeishuApp(new List<FeishuAppConfig> { CreateDefaultConfig() });
@@ -690,7 +691,7 @@ public class FeishuAppManagerTests
     /// TMA2-05 / D10：仅 BaseUrl 变化时同样保留令牌（多区域切换不掉令牌的既有收益）。
     /// </summary>
     [Fact]
-    public void RebuildAppContext_ShouldNotPurgeStoredTokens_WhenOnlyBaseUrlChanged()
+    public void HotReload_ShouldNotPurgeStoredTokens_WhenOnlyBaseUrlChanged()
     {
         var services = CreateServiceCollectionWithTokenStoreFactory(out var tokenStoreMock, out _);
         services.AddFeishuApp(new List<FeishuAppConfig> { CreateDefaultConfig() });
@@ -712,6 +713,193 @@ public class FeishuAppManagerTests
         });
 
         tokenStoreMock.Verify(x => x.ClearAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    // ============================================================
+    // TMF-01（P0）：D10 凭据变更清库——真实内存后端回归（替换 spy 盲区）
+    // 复现根因：工厂每次 Create 新实例 → per-instance 记账为空 →
+    // ClearAsync no-op，共享 IMemoryCache 中的旧令牌键残留 → 经 store
+    // 恢复路径「复活」旧凭据换取的令牌（用户侧同款缺陷：userStore 被丢弃）。
+    // 修复后：跨实例共享记账 + PurgeTokenStoreAsync 探测 IFeishuUserTokenStorePurge。
+    // ============================================================
+
+    /// <summary>
+    /// 构造走默认 PerAppFeishuTokenStoreFactory + 真实 IMemoryCache 的服务提供者
+    /// （与生产装配一致，store 经 DI 注册的 IFeishuTokenStoreFactory 创建）。
+    /// </summary>
+    private static (ServiceProvider Provider, FeishuAppManager Manager, IMemoryCache Cache)
+        CreateManagerWithRealMemoryStore()
+    {
+        var services = CreateServiceCollection();
+        services.AddFeishuApp(new List<FeishuAppConfig> { CreateDefaultConfig() });
+        var provider = services.BuildServiceProvider();
+        var manager = provider.GetRequiredService<FeishuAppManager>();
+        var cache = provider.GetRequiredService<IMemoryCache>();
+        return (provider, manager, cache);
+    }
+
+    [Fact]
+    public async Task OnConfigurationChanged_ShouldRemoveTenantAndUserTokensFromRealMemoryCache_WhenAppSecretChanged()
+    {
+        // Arrange：实例化旧上下文，经工厂实例 A 预写租户+用户令牌。
+        // 预写值经 TokenStoreHelper.EncodeStoredToken 编码，与生产持久化格式一致。
+        var (provider, manager, cache) = CreateManagerWithRealMemoryStore();
+        using var providerLease = provider;
+        var factory = provider.GetRequiredService<IFeishuTokenStoreFactory>();
+        var appKey = AppConfigs.AppKeys.Default;
+        var tokenType = FeishuTokenTypes.TenantAccessToken;
+        var userTokenType = $"UserAccessToken:{appKey}";
+        var userId = "ou_test_user";
+
+        var (storeA, userStoreA) = factory.Create(appKey);
+        var nowMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        var encodedTenantAccess = TokenStoreHelper.EncodeStoredToken("tenant-access-old", nowMs + 7200_000);
+        var encodedUserAccess = TokenStoreHelper.EncodeStoredToken("user-access-old", nowMs + 7200_000);
+        var encodedUserRefresh = TokenStoreHelper.EncodeStoredToken("user-refresh-old", nowMs + 30L * 24 * 3600 * 1000);
+
+        _ = manager.GetApp(appKey);
+        await storeA.SetAccessTokenAsync(tokenType, encodedTenantAccess, 7200, CancellationToken.None);
+        await userStoreA!.SetAccessTokenAsync(userId, userTokenType, encodedUserAccess, 7200, CancellationToken.None);
+        await userStoreA.SetRefreshTokenAsync(userId, userTokenType, encodedUserRefresh, CancellationToken.None);
+
+        // 断言预写命中
+        (await storeA.GetAccessTokenAsync(tokenType, CancellationToken.None)).Should().Be(encodedTenantAccess);
+        (await userStoreA.GetAccessTokenAsync(userId, userTokenType, CancellationToken.None)).Should().Be(encodedUserAccess);
+
+        var changedConfig = new FeishuAppConfig
+        {
+            AppKey = appKey,
+            AppId = AppConfigs.AppIds.Default,
+            AppSecret = "changed_secret_987654",
+            IsDefault = true
+        };
+
+        // Act：凭据变更热更新（PurgeTokenStoreAsync 经工厂新实例清库）
+        manager.OnConfigurationChanged(new List<FeishuAppConfig> { changedConfig });
+
+        // Assert：经工厂新实例 B 断言租户+用户令牌均被清除（根因修复的强断言）
+        var (storeB, userStoreB) = factory.Create(appKey);
+        (await storeB.GetAccessTokenAsync(tokenType, CancellationToken.None)).Should().BeNull(
+            "凭据变更后旧租户令牌键必须被跨实例共享记账清除");
+        (await userStoreB!.GetAccessTokenAsync(userId, userTokenType, CancellationToken.None)).Should().BeNull(
+            "凭据变更后旧用户 access 令牌键必须被 IFeishuUserTokenStorePurge 清除");
+        (await userStoreB.GetRefreshTokenAsync(userId, userTokenType, CancellationToken.None)).Should().BeNull(
+            "凭据变更后旧用户 refresh 令牌键必须被 IFeishuUserTokenStorePurge 清除");
+    }
+
+    [Fact]
+    public async Task OnConfigurationChanged_ShouldKeepTokens_WhenOnlyTimeOutChanged_RealBackend()
+    {
+        // Arrange
+        var (provider, manager, unusedCache) = CreateManagerWithRealMemoryStore();
+        using var providerLease = provider;
+        var factory = provider.GetRequiredService<IFeishuTokenStoreFactory>();
+        var appKey = AppConfigs.AppKeys.Default;
+        var tokenType = FeishuTokenTypes.TenantAccessToken;
+
+        _ = manager.GetApp(appKey);
+        var (storeA, _) = factory.Create(appKey);
+        var encoded = TokenStoreHelper.EncodeStoredToken("tenant-access-keep", DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + 7200_000);
+        await storeA.SetAccessTokenAsync(tokenType, encoded, 7200, CancellationToken.None);
+
+        // Act：仅 TimeOut 变更（非凭据字段）
+        manager.OnConfigurationChanged(new List<FeishuAppConfig>
+        {
+            new()
+            {
+                AppKey = appKey,
+                AppId = AppConfigs.AppIds.Default,
+                AppSecret = AppConfigs.Secrets.Valid,
+                IsDefault = true,
+                TimeOut = 99
+            }
+        });
+
+        // Assert：令牌应保留（令牌热迁移）
+        var (storeB, _) = factory.Create(appKey);
+        (await storeB.GetAccessTokenAsync(tokenType, CancellationToken.None)).Should().Be(encoded,
+            "仅非凭据字段变更应保留令牌热迁移");
+    }
+
+    /// <summary>
+    /// TMF-01 跨实例清库不变式：同一 KeyPrefix 下，实例 B 的 ClearAsync 必须能删除
+    /// 实例 A 写入的键（共享记账的构造性保证——修复前必然失败）。
+    /// </summary>
+    [Fact]
+    public async Task FeishuTokenStore_ClearAsync_ShouldRemoveKeysWrittenByOtherInstance_WhenSameKeyPrefix()
+    {
+        using var cache = new MemoryCache(new MemoryCacheOptions());
+        var storeA = new FeishuTokenStore(cache, "app-cross");
+        var storeB = new FeishuTokenStore(cache, "app-cross");
+
+        await storeA.SetAccessTokenAsync("tenant", "access-v", 100, CancellationToken.None);
+        await storeA.SetRefreshTokenAsync("tenant", "refresh-v", CancellationToken.None);
+
+        await storeB.ClearAsync(CancellationToken.None);
+
+        (await storeA.GetAccessTokenAsync("tenant", CancellationToken.None)).Should().BeNull(
+            "ClearAsync 必须删除同前缀其他实例写入的 access 键");
+        (await storeA.GetRefreshTokenAsync("tenant", CancellationToken.None)).Should().BeNull(
+            "ClearAsync 必须删除同前缀其他实例写入的 refresh 键");
+    }
+
+    /// <summary>
+    /// TMF-01 跨实例清库不变式（用户侧）：实例 B 的 ClearAllUsersAsync 必须能删除
+    /// 实例 A 写入的用户令牌键。
+    /// </summary>
+    [Fact]
+    public async Task FeishuUserTokenStore_ClearAllUsersAsync_ShouldRemoveKeysWrittenByOtherInstance_WhenSameKeyPrefix()
+    {
+        using var cache = new MemoryCache(new MemoryCacheOptions());
+        var tenantA = new FeishuTokenStore(cache, "app-cross-user");
+        var userA = new FeishuUserTokenStore(tenantA, cache, "app-cross-user");
+        var tenantB = new FeishuTokenStore(cache, "app-cross-user");
+        var userB = new FeishuUserTokenStore(tenantB, cache, "app-cross-user");
+
+        await userA.SetAccessTokenAsync("ou_u1", "UserAccessToken", "access-v", 100, CancellationToken.None);
+        await userA.SetRefreshTokenAsync("ou_u1", "UserAccessToken", "refresh-v", CancellationToken.None);
+        await userA.SetAccessTokenAsync("ou_u2", "UserAccessToken", "access-v2", 100, CancellationToken.None);
+
+        await userB.ClearAllUsersAsync(CancellationToken.None);
+
+        (await userA.GetAccessTokenAsync("ou_u1", "UserAccessToken", CancellationToken.None)).Should().BeNull();
+        (await userA.GetRefreshTokenAsync("ou_u1", "UserAccessToken", CancellationToken.None)).Should().BeNull();
+        (await userA.GetAccessTokenAsync("ou_u2", "UserAccessToken", CancellationToken.None)).Should().BeNull();
+    }
+
+    /// <summary>
+    /// TMF-03：清库被取消（OCE）不得向上传播——热更新继续完成（与「清库失败不阻断重建」语义一致）。
+    /// 修复前 OCE 穿透 Phase-A 的 <c>ex is not OperationCanceledException</c> 过滤后被外层 catch 吞掉，
+    /// 一次取消信号使整次热更新静默放弃。
+    /// </summary>
+    [Fact]
+    public void OnConfigurationChanged_ShouldCompleteHotReload_WhenStoreClearCanceled()
+    {
+        // Arrange：spy 工厂返回 ClearAsync 抛 OCE 的存储
+        var services = CreateServiceCollectionWithTokenStoreFactory(out var tokenStoreMock, out _);
+        tokenStoreMock
+            .Setup(x => x.ClearAsync(It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new OperationCanceledException("store clear canceled"));
+        services.AddFeishuApp(new List<FeishuAppConfig> { CreateDefaultConfig() });
+        using var provider = services.BuildServiceProvider();
+        var appManager = provider.GetRequiredService<FeishuAppManager>();
+        _ = appManager.GetApp(AppConfigs.AppKeys.Default);
+
+        // Act：凭据变更热更新（Phase-P 清库抛 OCE）
+        appManager.OnConfigurationChanged(new List<FeishuAppConfig>
+        {
+            new FeishuAppConfig
+            {
+                AppKey = AppConfigs.AppKeys.Default,
+                AppId = AppConfigs.AppIds.Default,
+                AppSecret = "changed_secret_987654",
+                IsDefault = true
+            }
+        });
+
+        // Assert：热更新正常完成——新上下文已生效
+        appManager.GetApp(AppConfigs.AppKeys.Default).Config.AppSecret.Should().Be(
+            "changed_secret_987654", "清库取消不得使整次热更新静默放弃");
     }
 
     // ============================================================

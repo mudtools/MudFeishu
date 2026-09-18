@@ -21,6 +21,7 @@ Enterprise-grade Feishu event subscription WebSocket client, providing reliable 
 - 🔑 **Event Deduplication** - In-memory/Distributed deduplication (Redis), prevent duplicate processing
 - 🔒 **SSL/TLS Certificate Validation** - Configurable certificate validation policy, custom validation callback
 - 🎫 **Auto Token Refresh** - Access token caching and early refresh to avoid expiration
+- ⚡ **Native AOT Support** - First-class Native AOT publishing on net8.0+, with compile-time protobuf models and source-generated JSON serialization
 
 ## 🚀 Quick Start
 

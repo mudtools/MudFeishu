@@ -18,11 +18,22 @@ namespace Mud.Feishu.Abstractions.Authentication;
 /// 支持按用户标识隔离令牌数据。
 /// ITokenStore 的方法通过 UserTokenStoreBase 基类委托给内部 FeishuTokenStore 实现。
 /// </remarks>
-public class FeishuUserTokenStore : UserTokenStoreBase
+public class FeishuUserTokenStore : UserTokenStoreBase, IFeishuUserTokenStorePurge
 {
     private readonly IMemoryCache _cache;
-    private readonly ConcurrentDictionary<string, ConcurrentDictionary<string, byte>> _userTokenTypes = new();
     private readonly string _appKey;
+
+    // TMF-01：跨实例共享记账（D10）。静态注册表按 KeyPrefix → userId → tokenType 隔离：
+    // 任意实例写入均注册到共享表，ClearAllUsersAsync/ClearUserAsync 由此可删除
+    // 「任意实例曾写入」的全部用户令牌键——工厂每次 Create 新实例不再导致清库 no-op。
+    // 重复/过期注册只导致对不存在键的无害 no-op Remove。
+    private static readonly ConcurrentDictionary<
+        string,                        // KeyPrefix
+        ConcurrentDictionary<string,   // userId
+            ConcurrentDictionary<string, byte>>> SharedUserTypes = new();  // tokenType
+
+    private ConcurrentDictionary<string, ConcurrentDictionary<string, byte>> SharedUsers
+        => SharedUserTypes.GetOrAdd(KeyPrefix, _ => new ConcurrentDictionary<string, ConcurrentDictionary<string, byte>>());
 
     /// <summary>
     /// 初始化 FeishuUserTokenStore 实例（使用默认 AppKey）
@@ -106,12 +117,13 @@ public class FeishuUserTokenStore : UserTokenStoreBase
 
     /// <inheritdoc />
     /// <remarks>
-    /// TMA-16 / P2-3 修复：仅返回本进程已知类型。由于 FeishuUserTokenStore 为 per-app 实例，
-    /// 此字典仅记录当前实例生命周期内写入的 (userId, tokenType) 组合。
+    /// TMA-16 / P2-3 修复：仅返回本进程已知类型。
+    /// TMF-01：记账改为按 KeyPrefix 的跨实例共享表，语义从「本实例已知」放宽为
+    /// 「本进程本前缀已知」，保证凭据变更清库（D10）的完整性。
     /// </remarks>
     public override Task<IEnumerable<string>> GetTokenTypesAsync(string userId, CancellationToken cancellationToken = default)
     {
-        if (_userTokenTypes.TryGetValue(userId, out var tokenTypes))
+        if (SharedUsers.TryGetValue(userId, out var tokenTypes))
             return Task.FromResult(tokenTypes.Keys.AsEnumerable());
 
         return Task.FromResult(Enumerable.Empty<string>());
@@ -120,7 +132,7 @@ public class FeishuUserTokenStore : UserTokenStoreBase
     /// <inheritdoc />
     public override Task ClearUserAsync(string userId, CancellationToken cancellationToken = default)
     {
-        if (_userTokenTypes.TryRemove(userId, out var tokenTypes))
+        if (SharedUsers.TryRemove(userId, out var tokenTypes))
         {
             foreach (var tokenType in tokenTypes.Keys)
             {
@@ -129,6 +141,30 @@ public class FeishuUserTokenStore : UserTokenStoreBase
             }
         }
 
+        return Task.CompletedTask;
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// TMF-01（D10）：清除「任意实例曾写入本 KeyPrefix」的全部用户令牌键。
+    /// 枚举共享记账（快照语义：枚举期间新写入的 (userId, tokenType) 由残余窗口覆盖，
+    /// 与 Redis SCAN 语义一致），逐键删除后仅清空表内容。
+    /// </remarks>
+    public Task ClearAllUsersAsync(CancellationToken cancellationToken = default)
+    {
+        var users = SharedUsers;
+        foreach (var pair in users)
+        {
+            var userId = pair.Key;
+            var tokenTypes = pair.Value;
+            foreach (var tokenType in tokenTypes.Keys)
+            {
+                _cache.Remove(BuildUserAccessTokenKey(userId, tokenType));
+                _cache.Remove(BuildUserRefreshTokenKey(userId, tokenType));
+            }
+        }
+
+        users.Clear();
         return Task.CompletedTask;
     }
 
@@ -153,13 +189,13 @@ public class FeishuUserTokenStore : UserTokenStoreBase
 
     private void TrackUserTokenType(string userId, string tokenType)
     {
-        var userTokens = _userTokenTypes.GetOrAdd(userId, _ => new ConcurrentDictionary<string, byte>());
+        var userTokens = SharedUsers.GetOrAdd(userId, _ => new ConcurrentDictionary<string, byte>());
         userTokens.TryAdd(tokenType, 0);
     }
 
     private void UntrackUserTokenType(string userId, string tokenType)
     {
-        if (_userTokenTypes.TryGetValue(userId, out var userTokens))
+        if (SharedUsers.TryGetValue(userId, out var userTokens))
             userTokens.TryRemove(tokenType, out _);
     }
 }

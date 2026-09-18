@@ -101,6 +101,14 @@ public static class RedisFeishuServiceBuilderExtensions
         services.AddHealthChecks()
             .AddCheck<RedisHealthCheck>("feishu-redis", tags: ["redis", "feishu"]);
 
+        // WHF-10：启动期连接预热——解析 IConnectionMultiplexer（触发 Connect）并 PING，
+        // 把首个 Webhook 请求承担的连接建立延迟移到宿主启动阶段。
+        // AbortOnConnectFail 语义与 RedisOptions 对齐：true 时预热失败终止启动（fail-fast）
+        services.AddHostedService(sp => new RedisConnectionWarmupService(
+            sp.GetRequiredService<IConnectionMultiplexer>(),
+            sp.GetService<ILogger<RedisConnectionWarmupService>>(),
+            sp.GetRequiredService<RedisOptions>().AbortOnConnectFail));
+
         return services;
     }
 

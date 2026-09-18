@@ -168,6 +168,11 @@ public class DepartmentController : ControllerBase
         try
         {
             var result = await _departmentApi.GetDepartmentInfoByIdAsync(departmentId, userIdType, departmentIdType);
+            if (result == null)
+            {
+                return BadRequest(new { error = "接口返回为空" });
+            }
+
             return Ok(result.Data);
         }
         catch (Exception ex)
@@ -192,6 +197,11 @@ public class DepartmentController : ControllerBase
         try
         {
             var result = await _departmentApi.GetDepartmentsByIdsAsync(departmentIds, userIdType, departmentIdType);
+            if (result == null)
+            {
+                return BadRequest(new { error = "接口返回为空" });
+            }
+
             return Ok(result.Data);
         }
         catch (Exception ex)
@@ -222,6 +232,11 @@ public class DepartmentController : ControllerBase
         try
         {
             var result = await _departmentApi.GetDepartmentsByParentIdAsync(departmentId, fetchChild, pageSize, pageToken, userIdType, departmentIdType);
+            if (result == null)
+            {
+                return BadRequest(new { error = "接口返回为空" });
+            }
+
             return Ok(result.Data);
         }
         catch (Exception ex)
@@ -250,6 +265,11 @@ public class DepartmentController : ControllerBase
         try
         {
             var result = await _departmentApi.GetParentDepartmentsByIdAsync(departmentId, pageSize, pageToken, userIdType, departmentIdType);
+            if (result == null)
+            {
+                return BadRequest(new { error = "接口返回为空" });
+            }
+
             return Ok(result.Data);
         }
         catch (Exception ex)

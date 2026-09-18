@@ -175,7 +175,7 @@ public class FeishuAuthService : IFeishuAuthService
                 User = new UserDto
                 {
                     Id = 0,
-                    FeishuId = feishuUser.OpenId,
+                    FeishuId = feishuUser.OpenId ?? string.Empty,
                     Name = feishuUser.Name ?? "未知用户",
                     AvatarUrl = feishuUser.AvatarUrl,
                     Role = UserRoles.User,
@@ -230,8 +230,8 @@ public class FeishuAuthService : IFeishuAuthService
 
             return new TokenRefreshResponse
             {
-                AccessToken = newToken.AccessToken,
-                RefreshToken = newToken.RefreshToken,
+                AccessToken = newToken.AccessToken ?? string.Empty,
+                RefreshToken = newToken.RefreshToken ?? string.Empty,
                 ExpiresIn = (int)((user.TokenExpiresAt?.ToUniversalTime() - DateTime.UtcNow)?.TotalSeconds ?? 0)
             };
         }

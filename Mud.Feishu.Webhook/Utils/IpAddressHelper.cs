@@ -6,6 +6,7 @@
 // -----------------------------------------------------------------------
 
 using System.Net;
+using System.Net.Sockets;
 
 namespace Mud.Feishu.Webhook.Utils;
 
@@ -21,6 +22,10 @@ internal static class IpAddressHelper
     /// <param name="ipAddress">要检查的 IP 地址</param>
     /// <param name="allowedIps">允许的 IP 地址列表（支持精确 IP 和 CIDR 格式）</param>
     /// <returns>如果在允许列表中返回 true，否则返回 false</returns>
+    /// <remarks>
+    /// WHF-18：IPv4-mapped IPv6 地址（如 <c>::ffff:192.168.1.1</c>，Kestrel 对 IPv4 连接的
+    /// 常见报告形态）会先归一为 IPv4 再比较，避免与 IPv4 规则因地址族不同而误拒。
+    /// </remarks>
     public static bool IsIpAllowed(string? ipAddress, HashSet<string> allowedIps)
     {
         if (string.IsNullOrEmpty(ipAddress))
@@ -32,6 +37,10 @@ internal static class IpAddressHelper
         // 标准化 IP 地址
         if (!IPAddress.TryParse(ipAddress, out var ip))
             return false;
+
+        // WHF-18：IPv4-mapped 归一
+        if (ip.AddressFamily == AddressFamily.InterNetworkV6 && ip.IsIPv4MappedToIPv6)
+            ip = ip.MapToIPv4();
 
         // 检查每个允许的规则
         foreach (var allowedIp in allowedIps)
@@ -54,15 +63,21 @@ internal static class IpAddressHelper
         if (string.IsNullOrEmpty(rule))
             return false;
 
+        // WHF-18：被检侧 IPv4-mapped 归一（规则侧归一在精确匹配与 CIDR 内部完成）
+        if (ip.AddressFamily == AddressFamily.InterNetworkV6 && ip.IsIPv4MappedToIPv6)
+            ip = ip.MapToIPv4();
+
         // 检查是否为 CIDR 格式
         if (rule.Contains('/'))
         {
             return IsIpInCidrRange(ip, rule);
         }
 
-        // 精确 IP 匹配
+        // 精确 IP 匹配（规则侧同样做 IPv4-mapped 归一）
         if (IPAddress.TryParse(rule, out var allowedIp))
         {
+            if (allowedIp.AddressFamily == AddressFamily.InterNetworkV6 && allowedIp.IsIPv4MappedToIPv6)
+                allowedIp = allowedIp.MapToIPv4();
             return ip.Equals(allowedIp);
         }
 
@@ -89,6 +104,17 @@ internal static class IpAddressHelper
 
         if (!int.TryParse(parts[1], out var prefixLength))
             return false;
+
+        // WHF-18 安全护栏：负数前缀会生成全零掩码 → CIDR 恒匹配（白名单失效），必须拒绝
+        var bytesLength = networkAddress.GetAddressBytes().Length;
+        if (prefixLength < 0 || prefixLength > bytesLength * 8)
+            return false;
+
+        // WHF-18：网络地址侧 IPv4-mapped 归一（被检侧已在 IsIpInRange 归一，直调本方法时再兜底一次）
+        if (networkAddress.AddressFamily == AddressFamily.InterNetworkV6 && networkAddress.IsIPv4MappedToIPv6)
+            networkAddress = networkAddress.MapToIPv4();
+        if (ip.AddressFamily == AddressFamily.InterNetworkV6 && ip.IsIPv4MappedToIPv6)
+            ip = ip.MapToIPv4();
 
         if (ip.AddressFamily != networkAddress.AddressFamily)
             return false;

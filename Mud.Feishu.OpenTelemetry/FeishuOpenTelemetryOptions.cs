@@ -16,7 +16,7 @@ namespace Mud.Feishu.OpenTelemetry;
 /// Mud.Feishu OpenTelemetry 配置选项。
 /// </summary>
 /// <remarks>
-/// 用于 <see cref="FeishuOpenTelemetryExtensions.AddFeishuOpenTelemetry"/> 配置追踪、指标、导出器等。
+/// 用于 <see cref="FeishuOpenTelemetryExtensions.AddFeishuOpenTelemetry(Microsoft.Extensions.DependencyInjection.IServiceCollection, Action{FeishuOpenTelemetryOptions})"/> 配置追踪、指标、导出器等。
 /// 所有开关默认开启（除日志导出），调用方按需关闭。
 /// </remarks>
 public class FeishuOpenTelemetryOptions : IValidateOptions<FeishuOpenTelemetryOptions>

@@ -20,7 +20,6 @@ namespace Mud.Feishu.EventCallback.Organization;
 [JsonSerializable(typeof(global::Mud.Feishu.EventCallback.Organization.UserCustomAttrValue))]
 [JsonSerializable(typeof(global::Mud.Feishu.EventCallback.Organization.UserOrder))]
 [JsonSerializable(typeof(global::Mud.Feishu.EventCallback.Organization.UserResultInfo))]
-[JsonSerializable(typeof(global::Mud.Feishu.EventCallback.Organization.UserCreateResult))]
 [JsonSerializable(typeof(global::Mud.Feishu.EventCallback.Organization.UserStatus))]
 [JsonSerializable(typeof(global::Mud.Feishu.EventCallback.Organization.CustomAttrInfo))]
 [JsonSerializable(typeof(global::Mud.Feishu.EventCallback.Organization.CustomAttrUpdateResult))]
@@ -38,6 +37,7 @@ namespace Mud.Feishu.EventCallback.Organization;
 [JsonSerializable(typeof(global::Mud.Feishu.EventCallback.Organization.OldUserObject))]
 [JsonSerializable(typeof(global::Mud.Feishu.EventCallback.Organization.UserDeleteResult))]
 [JsonSerializable(typeof(global::Mud.Feishu.EventCallback.Organization.UserUpdateResult))]
+[JsonSerializable(typeof(global::Mud.Feishu.EventCallback.Organization.UserCreateResult), TypeInfoPropertyName = "Mud_Feishu_EventCallback_Organization_UserCreateResult")] // SYSLIB1031 防护：默认 TypeInfo 属性名与本 Context 内其他根冲突，已显式重命名 // 派生类型已注册为独立根；多态（以基类类型序列化）仍需在基类上标注 [JsonDerivedType]
 internal partial class OrganizationJsonContext : JsonSerializerContext
 {
 }

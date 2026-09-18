@@ -53,12 +53,6 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
     private int _disconnectedFired = 1;
 
     /// <summary>
-    /// WS-17 修复（P1-13）：实例级连接计数标记，标识当前实例是否已计入连接数。
-    /// 与 <c>_disconnectedFired</c> 互补：<c>true</c> = 已连接且计入计数。
-    /// </summary>
-    private volatile bool _isCountedAsConnected = false;
-
-    /// <summary>
     /// 关闭握手超时时间，避免服务端不应答时无限等待（P1-4 修复）。
     /// </summary>
     private static readonly TimeSpan CloseHandshakeTimeout = TimeSpan.FromSeconds(5);
@@ -199,8 +193,6 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
                 // 顺序必须为 Increment → 清除断线标志，避免连接失败后 Decrement 未配平导致计数为负。
                 Interlocked.Increment(ref _connectionCount);
                 Interlocked.Exchange(ref _disconnectedFired, 0);
-                // WS-17 修复：标记当前实例已计入连接数
-                _isCountedAsConnected = true;
             }
             catch (OperationCanceledException) when (timeoutCts.Token.IsCancellationRequested)
             {
@@ -322,8 +314,6 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
             return false;
 
         Interlocked.Decrement(ref _connectionCount);
-        // WS-17 修复：清除实例连接标记
-        _isCountedAsConnected = false;
         return true;
     }
 
@@ -385,7 +375,7 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
     /// <param name="data">要发送的二进制数据段</param>
     /// <param name="cancellationToken">用于取消操作的取消令牌</param>
     /// <returns>表示异步发送操作的任务</returns>
-    /// <exception cref="ArgumentException">当data为null或长度为0时抛出</exception>
+    /// <exception cref="ArgumentException">当data为空（长度为0）时抛出</exception>
     /// <exception cref="InvalidOperationException">当WebSocket未连接时抛出</exception>
     /// <remarks>
     /// 使用WebSocketMessageType.Binary消息类型发送数据。
@@ -399,7 +389,7 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
     /// </remarks>
     public async Task SendBinaryMessageAsync(ArraySegment<byte> data, CancellationToken cancellationToken = default)
     {
-        if (data == null || data.Count == 0)
+        if (data.Count == 0)
             throw new ArgumentException("二进制数据不能为空", nameof(data));
 
         await _sendLock.WaitAsync(cancellationToken);
@@ -890,7 +880,7 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
     /// </summary>
     /// <param name="args">断开事件参数</param>
     /// <remarks>
-    /// P0-4 修复：使用 <see cref="Interlocked.CompareExchange"/> 实现原子的 check-then-set，
+    /// P0-4 修复：使用 <see cref="System.Threading.Interlocked.CompareExchange(ref int, int, int)"/> 实现原子的 check-then-set，
     /// 确保对同一次连接只递减一次连接计数并触发一次 <see cref="Disconnected"/> 事件。
     /// </remarks>
     private void NotifyDisconnected(WebSocketCloseEventArgs args)

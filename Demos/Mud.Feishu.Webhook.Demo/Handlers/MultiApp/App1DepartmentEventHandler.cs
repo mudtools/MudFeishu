@@ -36,6 +36,12 @@ public class App1DepartmentEventHandler : DepartmentCreatedEventHandler
 
         _logger.LogInformation(">> [App1-部门事件] 开始处理部门创建事件: {EventId}", eventData.EventId);
 
+        if (eventEntity == null)
+        {
+            _logger.LogWarning(">> [App1-部门事件] 部门创建事件数据为空，跳过处理: {EventId}", eventData.EventId);
+            return;
+        }
+
         try
         {
             // 记录事件到服务

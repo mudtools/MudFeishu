@@ -186,7 +186,7 @@ public class AuthMessageHandlerTests
         {
             Type = "auth",
             Code = 1,
-            Message = null,
+            Message = null!, // 有意传 null：验证 message 为 null 时的认证失败处理
             Timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
         };
         var jsonMessage = JsonSerializer.Serialize(authResponseMessage, JsonOptions.Default);

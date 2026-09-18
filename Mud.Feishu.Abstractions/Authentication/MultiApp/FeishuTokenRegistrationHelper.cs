@@ -13,7 +13,7 @@ namespace Mud.Feishu.Abstractions;
 /// </summary>
 /// <remarks>
 /// ns2.0 路径无 HostedService 载体，按 C-5② 决策仅文档声明限制。
-/// 此 helper 在 net6+ 路径被 <see cref="FeishuTokenRegistrationService"/> 调用，
+/// 此 helper 在 net6+ 路径被 <c>FeishuTokenRegistrationService</c> 调用，
 /// 也可被测试直接调用。
 /// </remarks>
 internal static class FeishuTokenRegistrationHelper

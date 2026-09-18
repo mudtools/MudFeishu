@@ -79,6 +79,33 @@ public class FeishuWebhookOptionsBindingTests
         options.EnableBackgroundProcessing.Should().BeTrue();
     }
 
+    /// <summary>
+    /// 逃生开关（bool? 可空布尔）的配置绑定三态验证：
+    /// "true"/"false" 字符串分别绑定 true/false，缺省键保留 null（= 不干预映射）。
+    /// </summary>
+    [Fact]
+    public void Bind_ShouldMapNullableBoolEscapeHatch_WhenEnableTokenBackgroundRefreshBound()
+    {
+        var options = BindFromDictionary(new Dictionary<string, string?>
+        {
+            ["FeishuWebhook:EnableTokenBackgroundRefresh"] = "true",
+        });
+        options.EnableTokenBackgroundRefresh.Should().BeTrue();
+
+        var disabled = BindFromDictionary(new Dictionary<string, string?>
+        {
+            ["FeishuWebhook:EnableTokenBackgroundRefresh"] = "false",
+        });
+        disabled.EnableTokenBackgroundRefresh.Should().BeFalse();
+
+        var absent = BindFromDictionary(new Dictionary<string, string?>
+        {
+            ["FeishuWebhook:EnableBackgroundProcessing"] = "true",
+        });
+        absent.EnableTokenBackgroundRefresh.Should().BeNull(
+            "未配置时必须保留 null（= 沿用 EnableBackgroundProcessing 映射，不干预）");
+    }
+
     [Fact]
     public void Bind_ShouldMapEnumField_WhenJsonContainsEnumValue()
     {

@@ -162,7 +162,7 @@ public class IFeishuTenantV1CardTests
 
         Assert.NotNull(requestBody);
         Assert.NotNull(requestBody.Card);
-        Assert.NotEmpty(requestBody.Uuid);
+        Assert.NotEmpty(requestBody.Uuid!);
     }
 
     /// <summary>

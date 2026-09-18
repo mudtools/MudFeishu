@@ -50,7 +50,7 @@ public class AuthDataTests
         var authData = new AuthData();
 
         // Act
-        authData.AppAccessToken = null;
+        authData.AppAccessToken = null!; // 有意赋 null：验证属性可接受 null
 
         // Assert
         authData.AppAccessToken.Should().BeNull();
@@ -220,7 +220,7 @@ public class AuthDataTests
         // Arrange
         var authData = new AuthData
         {
-            AppAccessToken = null,
+            AppAccessToken = null!, // 有意赋 null：验证序列化时忽略 null 属性
             AppId = "cli_1234567890"
         };
 

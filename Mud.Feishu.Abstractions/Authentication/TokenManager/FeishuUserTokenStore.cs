@@ -133,8 +133,21 @@ public class FeishuUserTokenStore : UserTokenStoreBase
     }
 
     // TMA2-02 / D8：用户令牌键由 TokenKeyBuilder 统一产出，与 Redis 路径逐字节一致。
+    /// <summary>
+    /// 构建用户访问令牌在存储中的键（D8 契约：统一由 TokenKeyBuilder 产出）。
+    /// </summary>
+    /// <param name="userId">用户标识</param>
+    /// <param name="tokenType">令牌类型</param>
+    /// <returns>存储键</returns>
     protected override string BuildUserAccessTokenKey(string userId, string tokenType)
         => TokenKeyBuilder.UserAccessKey(KeyPrefix, userId, tokenType);
+
+    /// <summary>
+    /// 构建用户刷新令牌在存储中的键（D8 契约：统一由 TokenKeyBuilder 产出）。
+    /// </summary>
+    /// <param name="userId">用户标识</param>
+    /// <param name="tokenType">令牌类型</param>
+    /// <returns>存储键</returns>
     protected override string BuildUserRefreshTokenKey(string userId, string tokenType)
         => TokenKeyBuilder.UserRefreshKey(KeyPrefix, userId, tokenType);
 

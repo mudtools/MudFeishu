@@ -39,6 +39,11 @@ public class BatchMessageController : ControllerBase
         {
             var result = await _batchMessageApi.BatchSendTextMessageAsync(sendMessageRequest);
 
+            if (result == null)
+            {
+                return StatusCode(500, new { success = false, message = "接口返回为空" });
+            }
+
             if (result.Code == 0)
             {
                 return Ok(new
@@ -73,6 +78,11 @@ public class BatchMessageController : ControllerBase
         try
         {
             var result = await _batchMessageApi.BatchSendRichTextMessageAsync(sendMessageRequest);
+
+            if (result == null)
+            {
+                return StatusCode(500, new { success = false, message = "接口返回为空" });
+            }
 
             if (result.Code == 0)
             {
@@ -109,6 +119,11 @@ public class BatchMessageController : ControllerBase
         {
             var result = await _batchMessageApi.BatchSendImageMessageAsync(sendMessageRequest);
 
+            if (result == null)
+            {
+                return StatusCode(500, new { success = false, message = "接口返回为空" });
+            }
+
             if (result.Code == 0)
             {
                 return Ok(new
@@ -144,6 +159,11 @@ public class BatchMessageController : ControllerBase
         {
             var result = await _batchMessageApi.BatchSendGroupShareMessageAsync(sendMessageRequest);
 
+            if (result == null)
+            {
+                return StatusCode(500, new { success = false, message = "接口返回为空" });
+            }
+
             if (result.Code == 0)
             {
                 return Ok(new
@@ -178,6 +198,11 @@ public class BatchMessageController : ControllerBase
         {
             var result = await _batchMessageApi.RevokeMessageAsync(batchMessageId);
 
+            if (result == null)
+            {
+                return StatusCode(500, new { success = false, message = "接口返回为空" });
+            }
+
             if (result.Code == 0)
             {
                 return Ok(new { success = true, message = "批量消息撤回成功" });
@@ -205,6 +230,11 @@ public class BatchMessageController : ControllerBase
         try
         {
             var result = await _batchMessageApi.GetUserReadMessageInfosAsync(batchMessageId);
+
+            if (result == null)
+            {
+                return StatusCode(500, new { success = false, message = "接口返回为空" });
+            }
 
             if (result.Code == 0)
             {
@@ -238,6 +268,11 @@ public class BatchMessageController : ControllerBase
         try
         {
             var result = await _batchMessageApi.GetBatchMessageProgressAsync(batchMessageId);
+
+            if (result == null)
+            {
+                return StatusCode(500, new { success = false, message = "接口返回为空" });
+            }
 
             if (result.Code == 0)
             {

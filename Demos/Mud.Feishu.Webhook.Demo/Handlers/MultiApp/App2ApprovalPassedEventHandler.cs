@@ -35,7 +35,7 @@ public class App2ApprovalPassedEventHandler : ApprovalApprovalUpdatedEventHandle
             await ProcessApprovalPassedAsync(eventEntity, cancellationToken);
 
             _logger.LogInformation(">> [App2-审批通过] 审批通过事件处理完成: 审批单号 {ApprovalNumber}",
-                eventEntity?.Object.ApprovalCode);
+                eventEntity?.Object?.ApprovalCode);
         }
         catch (Exception ex)
         {

@@ -51,7 +51,7 @@ public class FeishuWebSocketMessageTests
         var message = new TestFeishuWebSocketMessage();
 
         // Act
-        message.Type = null;
+        message.Type = null!; // 有意赋 null：验证属性运行时可接受 null
 
         // Assert
         message.Type.Should().BeNull();

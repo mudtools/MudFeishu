@@ -84,11 +84,24 @@ public class FeishuWebhookOptions
     /// </summary>
     /// <remarks>
     /// 安全建议：
-    /// - 生产环境建议设置为 30 秒或更短，以减少重放攻击时间窗口
-    /// - 开发环境可以适当放宽到 300 秒
-    /// - 飞书官方建议的时间戳容错范围为 60 秒以内
+    /// <list type="bullet">
+    /// <item><description>生产环境建议设置为 30 秒或更短，以减少重放攻击时间窗口</description></item>
+    /// <item><description>开发环境可以适当放宽到 300 秒</description></item>
+    /// <item><description>飞书官方建议的时间戳容错范围为 60 秒以内</description></item>
+    /// </list>
+    /// <para>
+    /// 重放窗口不变量（WHF-03）：<b>NonceTtl 必须 ≥ 本值</b>——否则在 Nonce 过期后、
+    /// 容差窗口结束前的区间内重放攻击可行。默认组合（NonceTtl=300s / 容差上限=300s）天然满足。
+    /// 本值上限 300 秒由 <see cref="Validate"/> 强制；NonceTtl 侧声明见 Redis 工程的
+    /// <c>RedisOptions.NonceTtl</c> XML 注释（跨工程 Options 无法在单一库内联断言）。
+    /// </para>
     /// </remarks>
     public int TimestampToleranceSeconds { get; set; } = 30;
+
+    /// <summary>
+    /// 重放窗口上限（秒）：TimestampToleranceSeconds 的最大允许值（WHF-03）。
+    /// </summary>
+    public const int MaxTimestampToleranceSeconds = 300;
 
     /// <summary>
     /// Nonce 验证异常时的降级策略
@@ -100,6 +113,37 @@ public class FeishuWebhookOptions
     /// 生产环境建议保持 Reject 模式；仅在去重服务短暂不可用且明确了解风险时切换为 Allow
     /// </remarks>
     public NonceFailureMode NonceValidationFailureMode { get; set; } = NonceFailureMode.Reject;
+
+    /// <summary>
+    /// 空 EventId/Nonce 是否拒绝请求（true=fail-closed），默认 <c>true</c>（WHF-05）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 空 EventId 无法去重（每次都会按新事件处理，幂等性失效）；空 Nonce 无法防重放。
+    /// 二者只会出现在畸形或恶意流量中（飞书正常事件必带 event_id 与 nonce），默认拒绝。
+    /// </para>
+    /// <para>
+    /// 策略落点（评审修订 R-3）：本开关仅在 Webhook 层消费——<c>NonceValidator</c> 的
+    /// Check/Mark 路径与 <c>FeishuMultiAppMiddleware</c> 的事件数据校验；去重器本身对空键
+    /// 「防御性放行」的库级语义不受影响。
+    /// </para>
+    /// </remarks>
+    public bool RejectEmptyIdentifiers { get; set; } = true;
+
+    /// <summary>
+    /// 未注册 eventType 的事件是否静默忽略（记 Debug + <c>unhandled</c> 指标），默认 <c>true</c>（WHF-09）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 设为 <c>false</c> 时回退为调用工厂默认处理器兜底——注意默认处理器是「第一个注册的处理器」
+    /// （<c>DefaultFeishuEventHandlerFactory</c> 以 <c>_handlerTypes.First()</c> 充当），并非专用兜底实现，
+    /// 未知事件被意外路由到首个处理器属于隐式意外语义，故默认改为显式忽略。
+    /// </para>
+    /// <para>
+    /// 门控位于 <c>FeishuWebhookService.DispatchEventAsync</c> 的全局工厂路径（应用专属处理器路径不受影响）。
+    /// </para>
+    /// </remarks>
+    public bool IgnoreUnknownEventTypes { get; set; } = true;
 
     /// <summary>
     /// 请求频率限制配置
@@ -173,6 +217,12 @@ public class FeishuWebhookOptions
 
         if (TimestampToleranceSeconds < 0)
             throw new InvalidOperationException("TimestampToleranceSeconds 不能为负数");
+
+        // WHF-03：重放窗口上限（详见 TimestampToleranceSeconds XML 注释的不变量说明）
+        if (TimestampToleranceSeconds > MaxTimestampToleranceSeconds)
+            throw new InvalidOperationException(
+                $"TimestampToleranceSeconds 不能超过 {MaxTimestampToleranceSeconds} 秒（重放窗口上限，" +
+                "飞书官方建议 ≤60 秒）。如需更长窗口请同步调大 NonceTtl（NonceTtl 必须 ≥ TimestampToleranceSeconds）。");
 
         // 验证重试配置
         Retry.Validate();

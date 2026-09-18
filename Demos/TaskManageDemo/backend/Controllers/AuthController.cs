@@ -476,7 +476,7 @@ public class AuthController : BaseController
             }
 
             var response = await _localAuthService.BindFeishuAsync(userId, request.Code, request.State, cancellationToken);
-            return Success(response, response.Message);
+            return Success(response, response.Message ?? "操作成功");
         }
         catch (Exception ex)
         {

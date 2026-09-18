@@ -78,7 +78,7 @@ public class JsonMessageHandlerTests
         // Act & Assert
         // SafeDeserialize catches JsonException but not ArgumentNullException
         // When json is null, JsonSerializer.Deserialize throws ArgumentNullException
-        Assert.Throws<ArgumentNullException>(() => _handler.TestSafeDeserialize<TestData>(nullJson));
+        Assert.Throws<ArgumentNullException>(() => _handler.TestSafeDeserialize<TestData>(nullJson!)); // 有意传 null：验证 null 入参抛出 ArgumentNullException
     }
 
     [Fact]

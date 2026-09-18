@@ -316,9 +316,9 @@ public class AuthenticationManager
 
                 FeishuMetricsHelper.RecordEventOutcome(_options.AppKey, "auth", success: true);
 
-                if (!string.IsNullOrEmpty(authResponse.SessionId) && _sessionManager != null)
+                if (authResponse.SessionId is { Length: > 0 } sessionId && _sessionManager != null)
                 {
-                    _sessionManager.SetSessionId(authResponse.SessionId);
+                    _sessionManager.SetSessionId(sessionId);
                 }
 
                 lock (_authCompletionLock)

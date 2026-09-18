@@ -38,7 +38,7 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
 
     /// <summary>
     /// _activeProcessingTasks 的硬上界，防止突发帧暴增导致 OOM（WS-03 修复）。
-    /// 超过此值时执行硬背压：<see cref="Task.WhenAny"/> 等待至少一个任务完成后再继续。
+    /// 超过此值时执行硬背压：<c>Task.WhenAny</c> 等待至少一个任务完成后再继续。
     /// </summary>
     private const int MaxActiveProcessingTasks = 1024;
     private readonly IFeishuSeqIDDeduplicator? _seqIdDeduplicator;
@@ -319,6 +319,10 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
                 var frame = ProtoBuf.Serializer.Deserialize<EventProtoData>(span);
 #endif
 
+                // protobuf-net 的 Deserialize 标记为 [return: MaybeNull]：显式判空，
+                // 避免空 Frame 在后续 frame.SeqID 等解引用处退化为 NullReferenceException。
+                frame = frame ?? throw new InvalidDataException("二进制消息反序列化结果为空");
+
                 if (_options.EnableLogging)
                     _logger.LogDebug("成功反序列化为 Frame 对象: Service={Service}, Method={Method}, PayloadType={PayloadType}, SeqID={SeqID}",
                         frame.Service, frame.Method, frame.PayloadType, frame.SeqID);
@@ -347,7 +351,7 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
                 }
 
                 string? extractedEventId = null;
-                if (frame?.Payload != null)
+                if (frame.Payload != null) // frame 已在上方 ?? throw 处收敛为非空；用 ?. 会在条件为假的路径上把状态重新降级为可空
                 {
                     var jsonPayload = Encoding.UTF8.GetString(frame.Payload);
                     try
@@ -395,7 +399,7 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
                     }
                 }
 
-                if (frame?.Payload != null)
+                if (frame.Payload != null) // 同上：避免条件为假路径上的可空状态降级
                 {
                     var jsonPayload = System.Text.Encoding.UTF8.GetString(frame.Payload);
                     eventArgs.JsonContent = jsonPayload;

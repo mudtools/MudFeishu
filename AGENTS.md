@@ -67,16 +67,20 @@ asserted for the diagnostic whitelist afterwards (`.github/workflows/dotnet-publ
 
 ## Dependency version policy (Mud.HttpUtils)
 
-This repo consumes `Mud.HttpUtils` **2.0.6** — the release that carries the generator-side warning
-fixes (generated code no longer emits `CS0108` on inheritance — neither for the `_appAuthorizer`
-field nor for `[Query]`/`[Path]`/`[Header]` interface properties re-declared in derived classes —
-plus the `CS0472` value-type array filter and the `CS8604` nullable path-parameter escaping fixes).
-Because 2.0.6 is **not yet published on nuget.org**, it is currently consumed **from the local
-component build output**: `nuget.config` declares nuget.org **plus** the `MudHttpUtils-local` folder
-source pointing at `D:/Repos/MudHttpUtils/artifacts` (produced by `pack.ps1 Release`). Once 2.0.6 is
-published, delete that folder source again to restore the "nuget.org only" policy. To consume a newer
-component version: bump the version in the `PackageReference`s and sync `AGENTS.md` / README
-dependency table / `TokenMultiAppContractGuards.ExpectedVersion`.
+This repo consumes `Mud.HttpUtils` **2.0.6** — the release that carries the generator-side fixes:
+inherited-interface clients forward `appAuthorizer` to the base generated class and no longer
+re-declare the field (fixes a P0 where `UseApp`/`BeginScope` on inherited-interface clients always
+threw under the MT-02 default-deny authorizer, plus ~1184 `CS0108` — neither for the
+`_appAuthorizer` field nor for `[Query]`/`[Path]`/`[Header]` interface properties re-declared in
+derived classes), the `CS0472` value-type array filter and the `CS8604` nullable path-parameter
+escaping fixes, and the JsonContextScaffolder now emits `TypeInfoPropertyName` for duplicate
+type-info names — SYSLIB1031. Because 2.0.6 is **not yet published on nuget.org**, it is currently
+consumed **from the local component build output**: `nuget.config` declares nuget.org **plus** the
+`MudHttpUtils-local` folder source pointing at `D:/Repos/MudHttpUtils/artifacts` (produced by
+`pack.ps1 Release`). Once 2.0.6 is published, delete that folder source again to restore the
+"nuget.org only" policy. To consume a newer component version: bump the version in the
+`PackageReference`s and sync `AGENTS.md` / README dependency table /
+`TokenMultiAppContractGuards.ExpectedVersion`.
 
 > **Packaging rules (component repo `D:/Repos/MudHttpUtils`)**: release packages must be produced by
 > `pack.ps1 Release` (writes to `artifacts/`) **and published to nuget.org**. `pack_debug.ps1` produces

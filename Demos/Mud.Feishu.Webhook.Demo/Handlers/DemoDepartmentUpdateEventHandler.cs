@@ -32,11 +32,17 @@ public class DemoDepartmentUpdateEventHandler : DepartmentUpdateEventHandler
 
         _logger.LogInformation(">> [部门事件] 开始处理部门更新事件: {EventId}", eventData.EventId);
 
+        if (eventEntity == null)
+        {
+            _logger.LogWarning(">> [部门事件] 部门更新事件数据为空，跳过处理: {EventId}", eventData.EventId);
+            return;
+        }
+
         try
         {
 
             _logger.LogInformation(">> [部门事件] 部门更新事件处理完成: 部门ID {DepartmentId}, 部门名 {DepartmentName}",
-                eventEntity.Object.DepartmentId, eventEntity.Object.Name);
+                eventEntity.Object?.DepartmentId, eventEntity.Object?.Name);
         }
         catch (Exception ex)
         {

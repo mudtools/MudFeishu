@@ -391,7 +391,7 @@ public class OAuthController : BaseController
             return Success(new UserInfoResponse
             {
                 OpenId = user.OpenId,
-                UnionId = user.UnionId,
+                UnionId = user.UnionId ?? string.Empty,
                 Name = user.Name,
                 Avatar = user.Avatar,
                 Email = user.Email
@@ -432,7 +432,7 @@ public class OAuthController : BaseController
                 return Success(new DetailedUserInfoResponse
                 {
                     OpenId = localUser.OpenId,
-                    UnionId = localUser.UnionId,
+                    UnionId = localUser.UnionId ?? string.Empty,
                     Name = localUser.Name,
                     Avatar = localUser.Avatar,
                     Email = localUser.Email

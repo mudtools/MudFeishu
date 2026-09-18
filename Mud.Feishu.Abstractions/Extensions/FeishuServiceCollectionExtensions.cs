@@ -299,12 +299,20 @@ public static class FeishuServiceCollectionExtensions
         // RefreshDedupWindowSeconds=2 / MaxDedupEntries=1024），使这些可调参数无法通过配置下发。
         // 组件侧等价入口为 AddMudHttpTokenRecoveryFromConfiguration(IConfiguration)（内部即
         // Configure + GetSection.Bind + 校验器 + 可解析实例）；此处按本仓库既有约定
-        // （services.Configure<T>(o => section.Bind(o))，与 FeishuWebhook/OpenTelemetry/Redis 一致）等价实现。
+        // （services.Configure<T>(o => section.Bind(o))，与 FeishuWebhook/OpenTelemetry/Redis 一致）等价实现，
+        // 并经 ChangeTokenSource 补齐组件入口的热更新语义（见下方注释）。
         services.AddOptions<TokenRecoveryOptions>();
         if (configuration != null)
         {
-            services.Configure<TokenRecoveryOptions>(options =>
-                configuration.GetSection(TokenRecoveryOptions.SectionName).Bind(options));
+            var tokenRecoverySection = configuration.GetSection(TokenRecoveryOptions.SectionName);
+            services.Configure<TokenRecoveryOptions>(options => tokenRecoverySection.Bind(options));
+            // 与组件 AddMudHttpTokenRecoveryFromConfiguration 的热更新语义对齐：注册 ChangeTokenSource，
+            // 配置重载时使 IOptionsMonitor（TokenRecoveryExecutor / FeishuAppManager 经此读取）的共享缓存失效，
+            // 下次解析重新执行上述 Bind 委托，从而读到重载后的值。
+            // 采用「委托式 Bind + 显式 ChangeTokenSource」而非 Configure<T>(IConfiguration) 重载：
+            // 后者经 BindConfiguration 的反射绑定调用点无法被配置绑定源生成器拦截（AOT-3，IL2026/IL3050 须保持 0）。
+            services.AddSingleton<IOptionsChangeTokenSource<TokenRecoveryOptions>>(
+                new ConfigurationChangeTokenSource<TokenRecoveryOptions>(Options.DefaultName, tokenRecoverySection));
         }
 
         // 与组件 AddMudHttpTokenRecoveryFromConfiguration 对齐：注册校验器（非法取值在选项解析期暴露，
@@ -364,12 +372,6 @@ public static class FeishuServiceCollectionExtensions
         return services;
     }
 
-    /// <summary>
-    /// 根据应用配置创建弹性策略选项。
-    /// </summary>
-    /// <param name="configs">所有应用配置列表。</param>
-    /// <param name="appKey">应用键。</param>
-    /// <returns>对应的 <see cref="ResilienceOptions"/>；如果应用不存在则返回 null。</returns>
     /// <summary>
     /// ENH-1：把 <see cref="IFeishuTokenStoreFactory"/> 的既有注册包上加密装饰器。
     /// </summary>

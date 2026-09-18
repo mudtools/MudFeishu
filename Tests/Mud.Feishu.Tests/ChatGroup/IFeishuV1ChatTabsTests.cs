@@ -238,10 +238,10 @@ public class IFeishuV1ChatTabsTests
 
         Assert.NotNull(result);
         Assert.NotNull(result.Data);
-        Assert.NotEmpty(result.Data.ChatTabs);
-        Assert.NotEmpty(result.Data.ChatTabs[1].TabId);
+        Assert.NotEmpty(result.Data.ChatTabs!);
+        Assert.NotEmpty(result.Data.ChatTabs![1].TabId!);
         Assert.NotNull(result.Data.ChatTabs[1].TabContent);
-        Assert.NotEmpty(result.Data.ChatTabs[1].TabContent.Doc);
+        Assert.NotEmpty(result.Data.ChatTabs[1].TabContent!.Doc!); // 上一行已 NotNull 断言，索引器取值编译器无法跟踪，用 ! 收窄
     }
 
     /// <summary>
@@ -326,8 +326,8 @@ public class IFeishuV1ChatTabsTests
 
         Assert.NotNull(result);
         Assert.NotNull(result.Data);
-        Assert.NotEmpty(result.Data.ChatTabs);
-        Assert.NotNull(result.Data.ChatTabs[2].TabContent);
+        Assert.NotEmpty(result.Data.ChatTabs!);
+        Assert.NotNull(result.Data.ChatTabs![2].TabContent);
         Assert.NotEmpty(result.Data.ChatTabs[0].TabType);
     }
 

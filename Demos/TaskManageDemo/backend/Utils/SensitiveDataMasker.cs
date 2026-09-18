@@ -104,7 +104,7 @@ public class SensitiveDataMasker : ISensitiveDataMasker
     public T MaskObject<T>(T obj) where T : class
     {
         if (obj == null)
-            return obj;
+            return null!; // 输入为 null 时返回 null，由调用方自行判空（保持原行为，不改签名）
 
         var type = typeof(T);
         var properties = type.GetProperties()

@@ -121,11 +121,16 @@ public class FeishuRateLimitMiddleware : IDisposable
         var now = DateTime.UtcNow;
 
         // 根据 EnableIpRateLimit 配置决定是否基于 IP 限流
+        // clientIp 已在上方 IsNullOrEmpty 守卫中确保非空，此处 ! 消除元组与字典键 (string, string) 的可空性差异。
         var rateLimitKey = rateLimitOptions.EnableIpRateLimit
-            ? (appKey ?? "global", clientIp)
+            ? (appKey ?? "global", clientIp!)
             : (appKey ?? "global", "global");
 
-        if (_requestCounts.Count >= MaxIpEntries)
+        // WHF-16：满员时仅拒绝「导致新键插入」的请求——已跟踪键（正常客户端）不受
+        // 攻击者用伪造 IP 撑满字典的影响，仍可正常计数与限流。
+        // 已存在键的窗口滚动（过期重建）由下方 AddOrUpdate 的 update 路径保留。
+        var existed = _requestCounts.TryGetValue(rateLimitKey, out _);
+        if (!existed && _requestCounts.Count >= MaxIpEntries)
         {
             _logger.LogWarning("IP 条目数已达上限 {MaxIpEntries}，拒绝新 IP {ClientIP} 的请求", MaxIpEntries, clientIp);
             await WriteTooManyRequestsResponse(context, "服务繁忙，请稍后重试", rateLimitOptions);

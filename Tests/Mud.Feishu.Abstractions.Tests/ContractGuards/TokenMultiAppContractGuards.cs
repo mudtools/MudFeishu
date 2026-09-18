@@ -81,7 +81,7 @@ public class TokenMultiAppContractGuards
     // ────────────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// 扫描全部 csproj，Mud.HttpUtils* 版本唯一且等于 AGENTS.md 声明值（2.0.5）。
+    /// 扫描全部 csproj，Mud.HttpUtils* 版本唯一且等于 AGENTS.md 声明值（2.0.6）。
     /// </summary>
     [Fact]
     public void MudHttpUtils_PackageReference_ShouldBeSingleVersion()

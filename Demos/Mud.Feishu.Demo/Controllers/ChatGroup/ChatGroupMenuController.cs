@@ -46,6 +46,11 @@ public class ChatGroupMenuController : ControllerBase
                 chat_id,
                 addChatGroupMenuRequest);
 
+            if (result == null)
+            {
+                return StatusCode(500, new { success = false, message = "接口返回为空" });
+            }
+
             if (result.Code == 0)
             {
                 return Ok(new
@@ -96,6 +101,11 @@ public class ChatGroupMenuController : ControllerBase
                 menu_item_id,
                 updateChatMenuItemRequest);
 
+            if (result == null)
+            {
+                return StatusCode(500, new { success = false, message = "接口返回为空" });
+            }
+
             if (result.Code == 0)
             {
                 return Ok(new
@@ -142,6 +152,11 @@ public class ChatGroupMenuController : ControllerBase
             var result = await _chatGroupMenuApi.DeleteMenuByIdAsync(
                 chat_id,
                 deleteMenuIdsRequest);
+
+            if (result == null)
+            {
+                return StatusCode(500, new { success = false, message = "接口返回为空" });
+            }
 
             if (result.Code == 0)
             {
@@ -190,6 +205,11 @@ public class ChatGroupMenuController : ControllerBase
                 chat_id,
                 sortMenuRequest);
 
+            if (result == null)
+            {
+                return StatusCode(500, new { success = false, message = "接口返回为空" });
+            }
+
             if (result.Code == 0)
             {
                 return Ok(new
@@ -236,6 +256,11 @@ public class ChatGroupMenuController : ControllerBase
             var result = await _chatGroupMenuApi.GetMenuByIdAsync(
                 chat_id,
                 cancellationToken);
+
+            if (result == null)
+            {
+                return StatusCode(500, new { success = false, message = "接口返回为空" });
+            }
 
             if (result.Code == 0)
             {

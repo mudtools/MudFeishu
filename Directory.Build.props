@@ -25,6 +25,10 @@
 <PropertyGroup Condition="'$(TargetFramework)' == 'netstandard2.0' OR '$(TargetFramework)' == 'net6.0'">
     <NoWarn>$(NoWarn);AOT006</NoWarn>
     <WarningsNotAsErrors>$(WarningsNotAsErrors);AOT006</WarningsNotAsErrors>
+    <!-- Mud.HttpUtils 传递依赖（Microsoft.Extensions.* 10.0.0，均为 netstandard2.0 兼容程序集）
+         在 net6.0/ns2.0 目标上触发 "doesn't support net6.0" targets 警告（仅 OpenTelemetry 项目出现，
+         因其未直接钉住全部 M.E.* 包版本）。程序集本身 TFM 兼容，按官方属性抑制该 targets 警告。 -->
+    <SuppressTfmSupportBuildWarnings>true</SuppressTfmSupportBuildWarnings>
 </PropertyGroup>
 
 <!-- AOT 全局配置：仅在 .NET 8+ TFM 上启用 AOT 分析器。 -->

@@ -241,6 +241,51 @@ public class FeishuRateLimitMiddlewareTests : IDisposable
             _loggerMock.Object);
     }
 
+    [Fact]
+    public async Task InvokeAsync_WhenAtCapacity_ShouldAllowTrackedKey_AndRejectNewKey()
+    {
+        // Arrange - WHF-16：满员时仅拒绝「新键」，已跟踪键仍可通行
+        var middleware = CreateMiddleware();
+
+        // 经反射预填充至满员（MaxIpEntries 为 private const，直填字典避免 100k 次管道调用）
+        var dictField = typeof(FeishuRateLimitMiddleware).GetField("_requestCounts",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        Assert.NotNull(dictField);
+        var dict = (System.Collections.IDictionary)dictField!.GetValue(middleware)!;
+        var counterType = dict.GetType().GetGenericArguments()[1];
+
+        var now = DateTime.UtcNow;
+        // 99,999 个填充键 + 1 个已跟踪键 = 100,000（= MaxIpEntries）
+        var filled = 0;
+        for (var i = 0; i < 99999; i++)
+        {
+            var key = ("app1", $"10.{i / 65536 % 256}.{i / 256 % 256}.{i % 256}");
+            if (!dict.Contains(key))
+            {
+                dict[key] = Activator.CreateInstance(counterType, now)!;
+                filled++;
+            }
+        }
+        Assert.Equal(100000, filled + 1);
+
+        var trackedKey = ("app1", "1.2.3.4");
+        dict[trackedKey] = Activator.CreateInstance(counterType, now)!;
+
+        // Act 1 - 已跟踪键请求：应放行
+        var trackedContext = CreateHttpContext("/feishu/app1", "1.2.3.4");
+        await middleware.InvokeAsync(trackedContext);
+
+        // Assert 1
+        _nextMock.Verify(x => x(trackedContext), Times.Once, "已跟踪键在满员状态下仍应放行");
+
+        // Act 2 - 新键请求：应被 429 拒绝
+        var newContext = CreateHttpContext("/feishu/app1", "5.6.7.8");
+        await middleware.InvokeAsync(newContext);
+
+        // Assert 2
+        newContext.Response.StatusCode.Should().Be(429, "满员状态下新键（新 IP）应被限流拒绝");
+    }
+
     private static HttpContext CreateHttpContext(string path, string remoteIp)
     {
         var context = new DefaultHttpContext();

@@ -51,6 +51,11 @@ public class ChatGroupController : ControllerBase
                     setBotManager,
                     uuid);
 
+                if (result == null)
+                {
+                    return StatusCode(500, new { success = false, message = "接口返回为空" });
+                }
+
                 if (result.Code == 0)
                 {
                     return Ok(new
@@ -94,6 +99,11 @@ public class ChatGroupController : ControllerBase
                 updateChatRequest,
                 userIdType);
 
+            if (result == null)
+            {
+                return StatusCode(500, new { success = false, message = "接口返回为空" });
+            }
+
             if (result.Code == 0)
             {
                 return Ok(new
@@ -127,6 +137,11 @@ public class ChatGroupController : ControllerBase
         try
         {
             var result = await _chatGroupApi.DeleteChatGroupAsync(chatId);
+
+            if (result == null)
+            {
+                return StatusCode(500, new { success = false, message = "接口返回为空" });
+            }
 
             if (result.Code == 0)
             {
@@ -164,6 +179,11 @@ public class ChatGroupController : ControllerBase
                 updateChatModerationRequest,
                 userIdType);
 
+            if (result == null)
+            {
+                return StatusCode(500, new { success = false, message = "接口返回为空" });
+            }
+
             if (result.Code == 0)
             {
                 return Ok(new { success = true, message = "群发言权限更新成功" });
@@ -194,6 +214,11 @@ public class ChatGroupController : ControllerBase
         try
         {
             var result = await _chatGroupApi.GetChatGroupInoByIdAsync(chatId, userIdType);
+
+            if (result == null)
+            {
+                return StatusCode(500, new { success = false, message = "接口返回为空" });
+            }
 
             if (result.Code == 0)
             {
@@ -231,6 +256,11 @@ public class ChatGroupController : ControllerBase
         {
             var result = await _chatGroupApi.PutChatGroupTopNoticeAsync(chatId, chatTopNoticeRequest);
 
+            if (result == null)
+            {
+                return StatusCode(500, new { success = false, message = "接口返回为空" });
+            }
+
             if (result.Code == 0)
             {
                 return Ok(new { success = true, message = "群置顶设置成功" });
@@ -258,6 +288,11 @@ public class ChatGroupController : ControllerBase
         try
         {
             var result = await _chatGroupApi.DeleteChatGroupTopNoticeAsync(chatId);
+
+            if (result == null)
+            {
+                return StatusCode(500, new { success = false, message = "接口返回为空" });
+            }
 
             if (result.Code == 0)
             {
@@ -298,8 +333,18 @@ public class ChatGroupController : ControllerBase
                 pageSize,
                 pageToken);
 
+            if (result == null)
+            {
+                return StatusCode(500, new { success = false, message = "接口返回为空" });
+            }
+
             if (result.Code == 0)
             {
+                if (result.Data == null)
+                {
+                    return StatusCode(500, new { success = false, message = "接口返回数据为空" });
+                }
+
                 return Ok(new
                 {
                     success = true,
@@ -347,8 +392,18 @@ public class ChatGroupController : ControllerBase
                 pageSize,
                 pageToken);
 
+            if (result == null)
+            {
+                return StatusCode(500, new { success = false, message = "接口返回为空" });
+            }
+
             if (result.Code == 0)
             {
+                if (result.Data == null)
+                {
+                    return StatusCode(500, new { success = false, message = "接口返回数据为空" });
+                }
+
                 return Ok(new
                 {
                     success = true,
@@ -393,8 +448,18 @@ public class ChatGroupController : ControllerBase
                 pageSize,
                 pageToken);
 
+            if (result == null)
+            {
+                return StatusCode(500, new { success = false, message = "接口返回为空" });
+            }
+
             if (result.Code == 0)
             {
+                if (result.Data == null)
+                {
+                    return StatusCode(500, new { success = false, message = "接口返回数据为空" });
+                }
+
                 return Ok(new
                 {
                     success = true,
@@ -430,6 +495,11 @@ public class ChatGroupController : ControllerBase
         try
         {
             var result = await _chatGroupApi.GetChatGroupShareLinkByIdAsync(chatId, shareLinkRequest);
+
+            if (result == null)
+            {
+                return StatusCode(500, new { success = false, message = "接口返回为空" });
+            }
 
             if (result.Code == 0)
             {

@@ -160,7 +160,7 @@ public class CommentsController : ControllerBase
                 Message = "评论更新成功"
             });
         }
-        catch (UnauthorizedAccessException ex)
+        catch (UnauthorizedAccessException)
         {
             return Forbid();
         }

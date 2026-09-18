@@ -30,7 +30,8 @@ public class FeishuEventDecryptor(ILogger<FeishuEventDecryptor> logger) : IFeish
             // 使用 AES-256-CBC 解密
             var decryptedJson = await DecryptAes256CbcAsync(encryptedBytes, encryptKey, cancellationToken);
 
-            if (string.IsNullOrEmpty(decryptedJson))
+            // 等价于 string.IsNullOrEmpty 判断（is not 模式保证后续 decryptedJson 非空的流分析在所有 TFM 下成立）
+            if (decryptedJson is not { Length: > 0 })
             {
                 _logger.LogError("事件数据解密失败");
                 return null;

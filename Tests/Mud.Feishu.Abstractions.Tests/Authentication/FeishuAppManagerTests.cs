@@ -365,7 +365,7 @@ public class FeishuAppManagerTests
     /// 修复后通过 volatile + _defaultAppLock 保护复合操作。
     /// </summary>
     [Fact]
-    public void GetDefaultApp_WhenConcurrentWithRemoveApp_ShouldNotReturnStaleOrThrowNRE()
+    public async Task GetDefaultApp_WhenConcurrentWithRemoveApp_ShouldNotReturnStaleOrThrowNRE()
     {
         // Arrange：两个应用，默认为 Default，并发场景：一个线程持续读 GetDefaultApp，
         // 另一个线程 RemoveApp(Default) 触发默认应用提升为 Hr
@@ -415,7 +415,7 @@ public class FeishuAppManagerTests
             appManager.RemoveApp(AppConfigs.AppKeys.Default);
         });
 
-        Task.WaitAll(readerTask, writerTask);
+        await Task.WhenAll(readerTask, writerTask);
 
         // Assert：不应有任何非 InvalidOperationException 异常（特别是 NullReferenceException）
         exceptions.Should().BeEmpty(
@@ -725,7 +725,7 @@ public class FeishuAppManagerTests
     /// 仍为 true → 将 newKey 覆写为 null/提升值。加锁后两种交错顺序的最终结果都必然是 newKey。
     /// </summary>
     [Fact]
-    public void DefaultAppKey_ShouldNotLoseUpdate_WhenAddAppConcurrentWithRemoveDefault()
+    public async Task DefaultAppKey_ShouldNotLoseUpdate_WhenAddAppConcurrentWithRemoveDefault()
     {
         for (var iteration = 0; iteration < 10; iteration++)
         {
@@ -744,7 +744,7 @@ public class FeishuAppManagerTests
 
             var removeTask = Task.Run(() => appManager.RemoveApp(AppConfigs.AppKeys.Default));
             var addTask = Task.Run(() => appManager.AddApp(newDefaultConfig));
-            Task.WaitAll(removeTask, addTask);
+            await Task.WhenAll(removeTask, addTask);
 
             appManager.DefaultAppKey.Should().Be(newDefaultConfig.AppKey,
                 $"第 {iteration} 轮：AddApp 声明的默认键不得被并发 RemoveApp 的清空/提升覆盖");

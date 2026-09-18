@@ -43,6 +43,11 @@ public class MessageController : ControllerBase
                 sendMessageRequest,
                 receiveIdType);
 
+            if (result == null)
+            {
+                return StatusCode(500, new { success = false, message = "接口返回为空" });
+            }
+
             if (result.Code == 0)
             {
                 return Ok(new
@@ -82,6 +87,11 @@ public class MessageController : ControllerBase
                 messageId,
                 replyMessageRequest);
 
+            if (result == null)
+            {
+                return StatusCode(500, new { success = false, message = "接口返回为空" });
+            }
+
             if (result.Code == 0)
             {
                 return Ok(new
@@ -120,6 +130,11 @@ public class MessageController : ControllerBase
             var result = await _messageApi.EditMessageAsync(
                 messageId,
                 editMessageRequest);
+
+            if (result == null)
+            {
+                return StatusCode(500, new { success = false, message = "接口返回为空" });
+            }
 
             if (result.Code == 0)
             {
@@ -166,6 +181,11 @@ public class MessageController : ControllerBase
                 receiveIdType,
                 uuid);
 
+            if (result == null)
+            {
+                return StatusCode(500, new { success = false, message = "接口返回为空" });
+            }
+
             if (result.Code == 0)
             {
                 return Ok(new
@@ -206,6 +226,11 @@ public class MessageController : ControllerBase
                 mergeReceiveMessageRequest,
                 receiveIdType,
                 uuid);
+
+            if (result == null)
+            {
+                return StatusCode(500, new { success = false, message = "接口返回为空" });
+            }
 
             if (result.Code == 0)
             {
@@ -251,6 +276,11 @@ public class MessageController : ControllerBase
                 receiveIdType,
                 uuid);
 
+            if (result == null)
+            {
+                return StatusCode(500, new { success = false, message = "接口返回为空" });
+            }
+
             if (result.Code == 0)
             {
                 return Ok(new
@@ -284,6 +314,11 @@ public class MessageController : ControllerBase
         {
             var result = await _messageApi.RevokeMessageAsync(messageId);
 
+            if (result == null)
+            {
+                return StatusCode(500, new { success = false, message = "接口返回为空" });
+            }
+
             if (result.Code == 0)
             {
                 return Ok(new { success = true, message = "消息撤回成功" });
@@ -316,6 +351,11 @@ public class MessageController : ControllerBase
             var result = await _messageApi.CreateMessageFollowUpAsync(
                 messageId,
                 messageFollowUpRequest);
+
+            if (result == null)
+            {
+                return StatusCode(500, new { success = false, message = "接口返回为空" });
+            }
 
             if (result.Code == 0)
             {
@@ -356,8 +396,18 @@ public class MessageController : ControllerBase
                 pageToken,
                 userIdType);
 
+            if (result == null)
+            {
+                return StatusCode(500, new { success = false, message = "接口返回为空" });
+            }
+
             if (result.Code == 0)
             {
+                if (result.Data == null)
+                {
+                    return StatusCode(500, new { success = false, message = "接口返回数据为空" });
+                }
+
                 return Ok(new
                 {
                     success = true,
@@ -411,8 +461,18 @@ public class MessageController : ControllerBase
                 pageSize,
                 pageToken);
 
+            if (result == null)
+            {
+                return StatusCode(500, new { success = false, message = "接口返回为空" });
+            }
+
             if (result.Code == 0)
             {
+                if (result.Data == null)
+                {
+                    return StatusCode(500, new { success = false, message = "接口返回数据为空" });
+                }
+
                 return Ok(new
                 {
                     success = true,
@@ -450,6 +510,11 @@ public class MessageController : ControllerBase
             var result = await _messageApi.GetContentListByMessageIdAsync(
                 messageId,
                 userIdType);
+
+            if (result == null)
+            {
+                return StatusCode(500, new { success = false, message = "接口返回为空" });
+            }
 
             if (result.Code == 0)
             {
@@ -489,6 +554,10 @@ public class MessageController : ControllerBase
         try
         {
             var fileData = await _messageApi.GetMessageFile(messageId, fileKey, type);
+            if (fileData == null)
+            {
+                return NotFound(new { success = false, error = "文件不存在或下载失败" });
+            }
 
             // 根据文件类型设置Content-Type
             var contentType = type.ToLower() switch
@@ -679,6 +748,11 @@ public class MessageController : ControllerBase
                 urgentRequest,
                 receiveIdType);
 
+            if (result == null)
+            {
+                return StatusCode(500, new { success = false, message = "接口返回为空" });
+            }
+
             if (result.Code == 0)
             {
                 return Ok(new
@@ -720,6 +794,11 @@ public class MessageController : ControllerBase
                 urgentRequest,
                 receiveIdType);
 
+            if (result == null)
+            {
+                return StatusCode(500, new { success = false, message = "接口返回为空" });
+            }
+
             if (result.Code == 0)
             {
                 return Ok(new
@@ -760,6 +839,11 @@ public class MessageController : ControllerBase
                 messageId,
                 urgentRequest,
                 receiveIdType);
+
+            if (result == null)
+            {
+                return StatusCode(500, new { success = false, message = "接口返回为空" });
+            }
 
             if (result.Code == 0)
             {

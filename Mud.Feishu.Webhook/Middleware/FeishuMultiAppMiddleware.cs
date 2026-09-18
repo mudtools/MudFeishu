@@ -11,6 +11,7 @@ using Mud.Feishu.Abstractions.Metrics;
 // 都存在 FeishuJsonContext，直接引入命名空间会造成 CS0104 二义性。
 using FeishuJsonAot = Mud.Feishu.Abstractions.Utilities.FeishuJsonAot;
 using Mud.Feishu.Abstractions.Observability;
+using Mud.Feishu.Abstractions.Services;
 using Mud.Feishu.Webhook.Configuration;
 using Mud.Feishu.Webhook.Exceptions;
 using Mud.Feishu.Webhook.Models;
@@ -24,13 +25,15 @@ namespace Mud.Feishu.Webhook;
 /// <summary>
 /// 飞书多应用 Webhook 中间件
 /// </summary>
-public class FeishuMultiAppMiddleware
+public class FeishuMultiAppMiddleware : IDisposable
 {
     private readonly RequestDelegate _next;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<FeishuMultiAppMiddleware> _logger;
     private readonly IOptionsMonitor<FeishuWebhookOptions> _options;
     private readonly FeishuWebhookHandlerRegistry _handlerRegistry;
+    private readonly IDisposable? _onChangeSubscription;
+    private bool _disposed;
 
     /// <summary>
     /// 获取当前配置选项（支持热更新）
@@ -53,8 +56,8 @@ public class FeishuMultiAppMiddleware
         _options = options;
         _handlerRegistry = handlerRegistry;
 
-        // 监听配置变更
-        _options.OnChange((newOptions, name) =>
+        // 监听配置变更（WHF-13：持有订阅句柄，宿主关停时释放，防止句柄泄漏）
+        _onChangeSubscription = _options.OnChange((newOptions, name) =>
         {
             var oldOptions = Options;
             var changes = new List<string>();
@@ -112,6 +115,18 @@ public class FeishuMultiAppMiddleware
                 _logger.LogDebug("飞书多应用 Webhook 配置已更新，来源: {ChangeSource}（无关键配置变更）", name);
             }
         });
+    }
+
+    /// <summary>
+    /// 释放资源（WHF-13：释放 IOptionsMonitor.OnChange 订阅，宿主关停时由 WebHost 调用）
+    /// </summary>
+    public void Dispose()
+    {
+        if (_disposed)
+            return;
+
+        _disposed = true;
+        _onChangeSubscription?.Dispose();
     }
 
     /// <summary>
@@ -207,7 +222,9 @@ public class FeishuMultiAppMiddleware
             var requestBody = await ReadRequestBodyAsync(context.Request);
             if (string.IsNullOrEmpty(requestBody))
             {
-                await WriteErrorResponse(context, 400, "Bad Request: Empty body", requestId);
+                // WHF-17：错误文案收敛（阶段差异仅记录在日志）
+                _logger.LogWarning("请求体为空, AppKey: {AppKey}", appKey ?? "unknown");
+                await WriteErrorResponse(context, 400, "Bad Request", requestId);
                 return;
             }
 
@@ -226,6 +243,20 @@ public class FeishuMultiAppMiddleware
             activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
             _logger.LogWarning("请求体验证失败: {Message}, AppKey: {AppKey}", ex.Message, appKey ?? "unknown");
             await WriteErrorResponse(context, 413, "Request Entity Too Large", requestId);
+        }
+        catch (FeishuRedisException ex) when (ex.FailureKind == FeishuRedisFailureKind.Server)
+        {
+            // WHF-02：去重服务致命故障（Server）——返回 503 让飞书按重推策略稍后重试，
+            // 而非伪装成 403（攻击面）或 500（会被误认为业务失败）
+            activity?.SetStatus(ActivityStatusCode.Error, "Deduplication server failure");
+            _logger.LogError(ex, "去重服务致命故障（Server），返回 503 以便飞书重推, AppKey: {AppKey}", appKey ?? "unknown");
+            await WriteErrorResponse(context, 503, "Service Unavailable", requestId);
+        }
+        catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
+        {
+            // WHF-16：客户端已断开——记日志后直接返回，禁止再向已中止连接写响应
+            activity?.SetStatus(ActivityStatusCode.Error, "Request aborted");
+            _logger.LogWarning("Webhook 请求处理期间客户端断开连接, AppKey: {AppKey}", appKey ?? "unknown");
         }
         catch (Exception ex)
         {
@@ -265,21 +296,43 @@ public class FeishuMultiAppMiddleware
 
         try
         {
-            // 尝试处理明文 URL 验证请求（仅在未配置 EncryptKey 时允许）
-            if (await TryHandlePlaintextVerificationAsync(context, requestBody, webhookService, appKey, requestId))
+            // WHF-17：单次 JsonDocument 解析——明文验证探测与 encrypt 提取一次完成
+            // （原实现每个请求完整反序列化两次：EventVerificationRequest + FeishuWebhookRequest）
+            FeishuWebhookRequest eventRequest;
+            using (var doc = JsonDocument.Parse(requestBody))
             {
-                return;
-            }
+                var root = doc.RootElement;
 
-            // 解析加密请求
-            var eventRequest = JsonSerializer.Deserialize(
-                requestBody,
-                FeishuJsonContext.Default.FeishuWebhookRequest);
+                if (root.ValueKind != JsonValueKind.Object)
+                {
+                    _logger.LogWarning("请求体根元素不是 JSON 对象, AppKey: {AppKey}", appKey);
+                    await WriteErrorResponse(context, 400, "Bad Request", requestId);
+                    return;
+                }
 
-            if (eventRequest == null || string.IsNullOrEmpty(eventRequest.Encrypt))
-            {
-                await WriteErrorResponse(context, 400, "Bad Request: Missing encrypt field", requestId);
-                return;
+                // 明文 URL 验证探测：明文验证在强制 EncryptKey 策略下一律拒绝（加密验证走加密链路）
+                if (root.TryGetProperty("type", out var typeElement) &&
+                    typeElement.ValueKind == JsonValueKind.String &&
+                    typeElement.GetString() == "url_verification")
+                {
+                    _logger.LogWarning("明文验证在强制 EncryptKey 策略下一律拒绝，AppKey: {AppKey}", appKey);
+                    await WriteErrorResponse(context, 403, "Forbidden: Plaintext verification not allowed, use encrypted verification", requestId);
+                    return;
+                }
+
+                // encrypt 字段提取（缺失或非字符串 → 400）
+                if (!root.TryGetProperty("encrypt", out var encryptElement) ||
+                    encryptElement.ValueKind != JsonValueKind.String)
+                {
+                    _logger.LogWarning("请求缺少 encrypt 字段, AppKey: {AppKey}", appKey);
+                    await WriteErrorResponse(context, 400, "Bad Request", requestId);
+                    return;
+                }
+
+                eventRequest = new FeishuWebhookRequest
+                {
+                    Encrypt = encryptElement.GetString() ?? string.Empty
+                };
             }
 
             // 从请求头提取签名相关信息
@@ -297,7 +350,8 @@ public class FeishuMultiAppMiddleware
             }
 
             // 先验证请求签名，再解密（安全原则：先验签后解密）
-            if (!await webhookService.HandleEventAsync(eventRequest, requestBody))
+            // WHF-16：透传 RequestAborted，客户端断开时尽早取消验签链路
+            if (!await webhookService.HandleEventAsync(eventRequest, requestBody, context.RequestAborted))
             {
                 _logger.LogWarning("签名验证失败 - Timestamp: {Timestamp}, Nonce: {Nonce}, SignaturePrefix: {SignaturePrefix}, AppKey: {AppKey}",
                     eventRequest.Timestamp,
@@ -314,8 +368,9 @@ public class FeishuMultiAppMiddleware
 
             if (decryptedData == null)
             {
-                _logger.LogError("解密失败");
-                await WriteErrorResponse(context, 400, "Bad Request: Decryption failed", requestId);
+                // WHF-17：错误文案收敛（解密失败细节仅在服务端日志）
+                _logger.LogError("解密失败, AppKey: {AppKey}", appKey);
+                await WriteErrorResponse(context, 400, "Bad Request", requestId);
                 return;
             }
 
@@ -335,12 +390,23 @@ public class FeishuMultiAppMiddleware
             if (string.IsNullOrEmpty(decryptedData.EventType) && string.IsNullOrEmpty(decryptedData.EventId))
             {
                 _logger.LogError("事件数据无效：EventType 和 EventId 均为空");
-                await WriteErrorResponse(context, 400, "Bad Request: Invalid event data", requestId);
+                await WriteErrorResponse(context, 400, "Bad Request", requestId);
+                return;
+            }
+
+            // WHF-05：空 EventId 无法去重（每次都会按新事件处理，幂等性失效）——fail-closed
+            if (Options.RejectEmptyIdentifiers && string.IsNullOrEmpty(decryptedData.EventId))
+            {
+                _logger.LogWarning("事件 EventId 为空，RejectEmptyIdentifiers=true 拒绝处理, EventType: {EventType}, AppKey: {AppKey}",
+                    decryptedData.EventType, appKey);
+                await WriteErrorResponse(context, 400, "Bad Request", requestId);
                 return;
             }
 
             // 使用已解密的数据直接处理事件
-            var result = await webhookService.HandleEventAsync(decryptedData);
+            // WHF-16：分发路径透传 RequestAborted（客户端断开即取消）；
+            // 去重标记路径使用 CancellationToken.None（标记必须完成），由 HandleEventWithInterceptorsAsync 内部保证
+            var result = await webhookService.HandleEventAsync(decryptedData, context.RequestAborted);
 
             // 检查事件处理结果
             if (!result.Success)
@@ -359,37 +425,10 @@ public class FeishuMultiAppMiddleware
         }
         catch (JsonException ex)
         {
-            _logger.LogError(ex, "反序列化请求体时发生错误, RequestId: {RequestId}", requestId);
-            await WriteErrorResponse(context, 400, "Bad Request: Invalid JSON", requestId);
+            // WHF-17：错误文案收敛——阶段差异仅写入服务端日志，响应统一为 "Bad Request"
+            _logger.LogError(ex, "解析请求体失败（非法 JSON）, RequestId: {RequestId}", requestId);
+            await WriteErrorResponse(context, 400, "Bad Request", requestId);
         }
-    }
-
-    /// <summary>
-    /// 尝试处理明文 URL 验证请求
-    /// 在强制 EncryptKey 策略下一律拒绝明文验证，加密验证走加密链路
-    /// </summary>
-    private async Task<bool> TryHandlePlaintextVerificationAsync(
-        HttpContext context,
-        string requestBody,
-        IFeishuWebhookService webhookService,
-        string appKey,
-        string requestId)
-    {
-        var verificationRequest = JsonSerializer.Deserialize(
-            requestBody,
-            FeishuJsonContext.Default.EventVerificationRequest);
-
-        if (verificationRequest?.Type == "url_verification")
-        {
-            _logger.LogDebug("检测到明文 URL 验证请求");
-
-            // FeishuWebhookOptions.Validate() 强制 EncryptKey 非空且长度 32，明文验证一律拒绝
-            _logger.LogWarning("明文验证在强制 EncryptKey 策略下一律拒绝，AppKey: {AppKey}", appKey);
-            await WriteErrorResponse(context, 403, "Forbidden: Plaintext verification not allowed, use encrypted verification", requestId);
-            return true;
-        }
-
-        return false;
     }
 
     /// <summary>

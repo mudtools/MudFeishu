@@ -72,8 +72,9 @@ public class MemoryDeduplicator<TKey> : IAsyncDisposable, IDisposable where TKey
 
         lock (_lock)
         {
-            CleanupExpiredEntriesLocked();
-
+            // WHF-12：移除每次 TryMark 的全表扫描（O(n) 锁内扫描在高频 Nonce 路径造成锁竞争）。
+            // 过期正确性由下方命中分支的逐条过期判断保证；全量内存回收交给 Timer 周期清理
+            // 与 EnsureCapacityLocked 的容量触发清理。
             if (_cache.TryGetValue(cacheKey, out var entry))
             {
                 if (DateTimeOffset.UtcNow - entry.ProcessedAt <= _cacheExpiration)

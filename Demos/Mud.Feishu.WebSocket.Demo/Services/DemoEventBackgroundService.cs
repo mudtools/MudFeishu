@@ -112,7 +112,7 @@ public class DemoEventBackgroundService : BackgroundService
             // 模拟事件处理
             await Task.Delay(100, stoppingToken);
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             //_logger.LogError(ex, "❌ [后台服务] 处理模拟事件失败: {EventId}", mockEvent.EventId);
         }

@@ -102,6 +102,60 @@ public class FeishuAppWebhookOptionsTests
     }
 
     [Fact]
+    public void Validate_ShouldThrow_WhenTimestampToleranceExceedsMax()
+    {
+        // WHF-03：应用级正整数同样受重放窗口上限（300 秒）约束
+        var options = new FeishuAppWebhookOptions
+        {
+            AppKey = "test-app",
+            VerificationToken = "token",
+            EncryptKey = "12345678901234567890123456789012",
+            TimestampToleranceSeconds = 301
+        };
+
+        var act = () => options.Validate();
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*不能超过 300 秒*");
+    }
+
+    [Fact]
+    public void Validate_ShouldNotThrow_WhenTimestampToleranceAtMax()
+    {
+        // WHF-03：上限边界值（300）合法
+        var options = new FeishuAppWebhookOptions
+        {
+            AppKey = "test-app",
+            VerificationToken = "token",
+            EncryptKey = "12345678901234567890123456789012",
+            TimestampToleranceSeconds = 300
+        };
+
+        var act = () => options.Validate();
+
+        act.Should().NotThrow();
+    }
+
+    [Fact]
+    public void Validate_ShouldNotThrow_WhenTimestampToleranceIsInheritValue()
+    {
+        // WHF-03：null/-1/0 表示继承全局配置，不受上限约束
+        foreach (var inheritValue in new int?[] { null, -1, 0 })
+        {
+            var options = new FeishuAppWebhookOptions
+            {
+                AppKey = "test-app",
+                VerificationToken = "token",
+                EncryptKey = "12345678901234567890123456789012",
+                TimestampToleranceSeconds = inheritValue
+            };
+
+            var act = () => options.Validate();
+
+            act.Should().NotThrow($"继承值 {inheritValue} 不应触发上限校验");
+        }
+    }
+
+    [Fact]
     public void Validate_ShouldThrow_WhenEventHandlingTimeoutMsIsLessThanMinus1()
     {
         var options = new FeishuAppWebhookOptions

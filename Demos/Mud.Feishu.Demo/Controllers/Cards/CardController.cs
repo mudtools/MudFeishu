@@ -41,6 +41,11 @@ public class CardController : ControllerBase
         {
             var result = await _cardApi.CreateCardAsync(createCardRequest);
 
+            if (result == null)
+            {
+                return StatusCode(500, new { success = false, message = "接口返回为空" });
+            }
+
             if (result.Code == 0)
             {
                 return Ok(new
@@ -85,6 +90,11 @@ public class CardController : ControllerBase
         try
         {
             var result = await _cardApi.UpdateCardSettingsByIdAsync(card_id, updateCardRequest);
+
+            if (result == null)
+            {
+                return StatusCode(500, new { success = false, message = "接口返回为空" });
+            }
 
             if (result.Code == 0)
             {
@@ -132,6 +142,11 @@ public class CardController : ControllerBase
                 card_id,
                 partialUpdateCardRequest);
 
+            if (result == null)
+            {
+                return StatusCode(500, new { success = false, message = "接口返回为空" });
+            }
+
             if (result.Code == 0)
             {
                 return Ok(new
@@ -177,6 +192,11 @@ public class CardController : ControllerBase
             var result = await _cardApi.UpdateCardByIdAsync(
                 card_id,
                 updateCardRequest);
+
+            if (result == null)
+            {
+                return StatusCode(500, new { success = false, message = "接口返回为空" });
+            }
 
             if (result.Code == 0)
             {

@@ -5,6 +5,7 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
@@ -252,16 +253,16 @@ public class NonceValidatorTests
     }
 
     [Fact]
-    public async Task CheckNonceAsync_WithEmptyNonce_ShouldReturnTrue()
+    public async Task CheckNonceAsync_WithEmptyNonce_ShouldReturnFalse_WhenRejectEmptyIdentifiersDefaultTrue()
     {
-        // Arrange
+        // Arrange - WHF-05：默认 fail-closed，空 Nonce 无法防重放必须拒绝
         var nonce = "";
 
         // Act
         var result = await _validator.CheckNonceAsync(nonce);
 
         // Assert
-        Assert.True(result); // 空 Nonce 视为有效，由调用方根据环境决定
+        Assert.False(result); // 默认 RejectEmptyIdentifiers=true：空 Nonce 拒绝
 
         // 验证未调用去重服务
         _deduplicatorMock.Verify(
@@ -270,16 +271,16 @@ public class NonceValidatorTests
     }
 
     [Fact]
-    public async Task CheckNonceAsync_WithNullNonce_ShouldReturnTrue()
+    public async Task CheckNonceAsync_WithNullNonce_ShouldReturnFalse_WhenRejectEmptyIdentifiersDefaultTrue()
     {
-        // Arrange
+        // Arrange - WHF-05：默认 fail-closed
         string? nonce = null;
 
         // Act
         var result = await _validator.CheckNonceAsync(nonce!);
 
         // Assert
-        Assert.True(result); // null Nonce 视为有效，由调用方根据环境决定
+        Assert.False(result); // 默认 RejectEmptyIdentifiers=true：null Nonce 拒绝
 
         _deduplicatorMock.Verify(
             x => x.IsUsedAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()),
@@ -517,6 +518,70 @@ public class NonceValidatorTests
         // Assert
         Assert.False(result); // 异常情况下验证失败
         VerifyLogCalled(LogLevel.Error, "标记 Nonce 时发生可降级错误");
+    }
+
+    #endregion
+
+    #region WHF-05：空标识符 fail-closed 策略
+
+    [Fact]
+    public async Task TryMarkNonceAsUsedAsync_WithEmptyNonce_ShouldReturnTrue_WhenRejectEmptyIdentifiersDefaultTrue()
+    {
+        // Arrange - WHF-05：TryMark 语义 true=已使用（拒绝），空 Nonce 默认拒绝
+        // Act
+        var result = await _validator.TryMarkNonceAsUsedAsync("");
+
+        // Assert
+        Assert.True(result);
+        _deduplicatorMock.Verify(
+            x => x.TryMarkAsUsedAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<TimeSpan?>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task TryMarkNonceAsUsedAsync_WithEmptyNonce_ShouldReturnFalse_WhenRejectEmptyIdentifiersDisabled()
+    {
+        // Arrange - 开关关闭时保留旧行为（空 Nonce 放行）
+        _optionsMonitorMock.Setup(x => x.CurrentValue).Returns(new FeishuWebhookOptions
+        {
+            NonceValidationFailureMode = NonceFailureMode.Reject,
+            RejectEmptyIdentifiers = false
+        });
+        var validator = new NonceValidator(_loggerMock.Object, _deduplicatorMock.Object, _appKeyAccessorMock.Object, _optionsMonitorMock.Object);
+
+        // Act
+        var result = await validator.TryMarkNonceAsUsedAsync("");
+
+        // Assert
+        Assert.False(result);
+        _deduplicatorMock.Verify(
+            x => x.TryMarkAsUsedAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<TimeSpan?>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task CheckNonceAsync_WithEmptyNonce_ShouldReturnTrue_WhenRejectEmptyIdentifiersDisabled()
+    {
+        // Arrange - 开关关闭时保留旧行为
+        _optionsMonitorMock.Setup(x => x.CurrentValue).Returns(new FeishuWebhookOptions
+        {
+            NonceValidationFailureMode = NonceFailureMode.Reject,
+            RejectEmptyIdentifiers = false
+        });
+        var validator = new NonceValidator(_loggerMock.Object, _deduplicatorMock.Object, _appKeyAccessorMock.Object, _optionsMonitorMock.Object);
+
+        // Act
+        var result = await validator.CheckNonceAsync("");
+
+        // Assert
+        Assert.True(result); // 旧行为：空 Nonce 视为有效
+    }
+
+    [Fact]
+    public void RejectEmptyIdentifiers_ShouldDefaultTrue()
+    {
+        // Arrange & Act & Assert - WHF-05：默认 fail-closed（项目未发布，一步到位取安全默认）
+        new FeishuWebhookOptions().RejectEmptyIdentifiers.Should().BeTrue();
     }
 
     #endregion

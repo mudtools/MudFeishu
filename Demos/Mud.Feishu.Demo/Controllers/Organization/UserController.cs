@@ -120,6 +120,11 @@ public class UserController : ControllerBase
         try
         {
             var result = await _user_tenantApi.GetUserInfoByIdAsync(userId, userIdType, departmentIdType);
+            if (result == null)
+            {
+                return BadRequest(new { error = "接口返回为空" });
+            }
+
             return Ok(result.Data);
         }
         catch (Exception ex)
@@ -144,6 +149,11 @@ public class UserController : ControllerBase
         try
         {
             var result = await _user_tenantApi.GetUserByIdsAsync(userIds, userIdType, departmentIdType);
+            if (result == null)
+            {
+                return BadRequest(new { error = "接口返回为空" });
+            }
+
             return Ok(result.Data);
         }
         catch (Exception ex)
@@ -172,6 +182,11 @@ public class UserController : ControllerBase
         try
         {
             var result = await _user_tenantApi.GetUserByDepartmentIdAsync(departmentId, pageSize, pageToken, userIdType, departmentIdType);
+            if (result == null)
+            {
+                return BadRequest(new { error = "接口返回为空" });
+            }
+
             return Ok(result.Data);
         }
         catch (Exception ex)
@@ -194,6 +209,11 @@ public class UserController : ControllerBase
         try
         {
             var result = await _user_tenantApi.GetBatchUsersAsync(queryRequest, userIdType);
+            if (result == null)
+            {
+                return BadRequest(new { error = "接口返回为空" });
+            }
+
             return Ok(result.Data);
         }
         catch (Exception ex)
@@ -218,6 +238,11 @@ public class UserController : ControllerBase
         try
         {
             var result = await _user_tenantApi.GetUsersByKeywordAsync(query, pageSize, pageToken);
+            if (result == null)
+            {
+                return BadRequest(new { error = "接口返回为空" });
+            }
+
             return Ok(result.Data);
         }
         catch (Exception ex)
@@ -286,6 +311,11 @@ public class UserController : ControllerBase
         try
         {
             var result = await _user_Api.GetUserInfoAsync();
+            if (result == null)
+            {
+                return BadRequest(new { error = "接口返回为空" });
+            }
+
             return Ok(result.Data);
         }
         catch (Exception ex)

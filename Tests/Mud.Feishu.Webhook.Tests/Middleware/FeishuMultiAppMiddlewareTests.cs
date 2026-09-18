@@ -1,4 +1,4 @@
-// -----------------------------------------------------------------------
+﻿// -----------------------------------------------------------------------
 //  作者：Mud Studio  版权所有 (c) Mud Studio 2026
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
@@ -9,6 +9,7 @@ using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using Mud.Feishu.Abstractions.Services;
 using Mud.Feishu.Webhook.Configuration;
 using Mud.Feishu.Webhook.Models;
 using System.Text;
@@ -104,7 +105,7 @@ public class FeishuMultiAppMiddlewareTests
         _webhookServiceMock.Setup(x => x.SetCurrentAppKey(It.IsAny<string>()));
         _webhookServiceMock.Setup(x => x.DecryptEventAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new EventData { EventType = "test_event", EventId = "test_id" });
-        _webhookServiceMock.Setup(x => x.HandleEventAsync(It.IsAny<FeishuWebhookRequest>(), It.IsAny<string>()))
+        _webhookServiceMock.Setup(x => x.HandleEventAsync(It.IsAny<FeishuWebhookRequest>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
         _webhookServiceMock.Setup(x => x.HandleEventAsync(It.IsAny<EventData>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((true, null));
@@ -249,7 +250,7 @@ public class FeishuMultiAppMiddlewareTests
         var context = CreateHttpContext("/feishu/app1", "POST", body);
 
         _webhookServiceMock.Setup(x => x.SetCurrentAppKey(It.IsAny<string>()));
-        _webhookServiceMock.Setup(x => x.HandleEventAsync(It.IsAny<FeishuWebhookRequest>(), It.IsAny<string>()))
+        _webhookServiceMock.Setup(x => x.HandleEventAsync(It.IsAny<FeishuWebhookRequest>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
 
         await middleware.InvokeAsync(context);
@@ -265,7 +266,7 @@ public class FeishuMultiAppMiddlewareTests
         var context = CreateHttpContext("/feishu/app1", "POST", body);
 
         _webhookServiceMock.Setup(x => x.SetCurrentAppKey(It.IsAny<string>()));
-        _webhookServiceMock.Setup(x => x.HandleEventAsync(It.IsAny<FeishuWebhookRequest>(), It.IsAny<string>()))
+        _webhookServiceMock.Setup(x => x.HandleEventAsync(It.IsAny<FeishuWebhookRequest>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
         _webhookServiceMock.Setup(x => x.DecryptEventAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((EventData?)null);
@@ -295,7 +296,7 @@ public class FeishuMultiAppMiddlewareTests
         };
 
         _webhookServiceMock.Setup(x => x.SetCurrentAppKey(It.IsAny<string>()));
-        _webhookServiceMock.Setup(x => x.HandleEventAsync(It.IsAny<FeishuWebhookRequest>(), It.IsAny<string>()))
+        _webhookServiceMock.Setup(x => x.HandleEventAsync(It.IsAny<FeishuWebhookRequest>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
         _webhookServiceMock.Setup(x => x.DecryptEventAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(decryptedData);
@@ -339,7 +340,7 @@ public class FeishuMultiAppMiddlewareTests
         };
 
         _webhookServiceMock.Setup(x => x.SetCurrentAppKey(It.IsAny<string>()));
-        _webhookServiceMock.Setup(x => x.HandleEventAsync(It.IsAny<FeishuWebhookRequest>(), It.IsAny<string>()))
+        _webhookServiceMock.Setup(x => x.HandleEventAsync(It.IsAny<FeishuWebhookRequest>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
         _webhookServiceMock.Setup(x => x.DecryptEventAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(decryptedData);
@@ -369,7 +370,7 @@ public class FeishuMultiAppMiddlewareTests
         };
 
         _webhookServiceMock.Setup(x => x.SetCurrentAppKey(It.IsAny<string>()));
-        _webhookServiceMock.Setup(x => x.HandleEventAsync(It.IsAny<FeishuWebhookRequest>(), It.IsAny<string>()))
+        _webhookServiceMock.Setup(x => x.HandleEventAsync(It.IsAny<FeishuWebhookRequest>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
         _webhookServiceMock.Setup(x => x.DecryptEventAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(decryptedData);
@@ -377,6 +378,94 @@ public class FeishuMultiAppMiddlewareTests
         await middleware.InvokeAsync(context);
 
         context.Response.StatusCode.Should().Be(200);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_WhenSignatureValidationThrowsRedisServerException_ShouldReturn503()
+    {
+        // Arrange - WHF-02：去重体系致命故障（Server）必须返回 503 让飞书重推，而非 403
+        var body = JsonSerializer.Serialize(new { encrypt = "test_encrypted_data" });
+        var middleware = CreateMiddleware();
+        var context = CreateHttpContext("/feishu/app1", "POST", body);
+
+        _webhookServiceMock.Setup(x => x.SetCurrentAppKey(It.IsAny<string>()));
+        _webhookServiceMock.Setup(x => x.HandleEventAsync(It.IsAny<FeishuWebhookRequest>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new FeishuRedisException(FeishuRedisFailureKind.Server, "Redis 服务端配置错误"));
+
+        // Act
+        await middleware.InvokeAsync(context);
+
+        // Assert
+        context.Response.StatusCode.Should().Be(503, "Server 类故障应返回 503 以便飞书按重推策略稍后重试");
+    }
+
+    [Fact]
+    public async Task InvokeAsync_WhenSignatureValidationReturnsFalse_ShouldReturn403_ExistingBehavior()
+    {
+        // Arrange - T-M2-10 回归：Connection 类异常在验证器层降级为验证失败 → 维持 403
+        var body = JsonSerializer.Serialize(new { encrypt = "test_encrypted_data" });
+        var middleware = CreateMiddleware();
+        var context = CreateHttpContext("/feishu/app1", "POST", body);
+
+        _webhookServiceMock.Setup(x => x.SetCurrentAppKey(It.IsAny<string>()));
+        _webhookServiceMock.Setup(x => x.HandleEventAsync(It.IsAny<FeishuWebhookRequest>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+
+        // Act
+        await middleware.InvokeAsync(context);
+
+        // Assert
+        context.Response.StatusCode.Should().Be(403, "验签失败（含 Connection 类降级）维持 403");
+    }
+
+    [Fact]
+    public async Task InvokeAsync_WithEmptyEventId_ShouldReturn400_WhenRejectEmptyIdentifiersDefaultTrue()
+    {
+        // Arrange - WHF-05：空 EventId 无法去重（幂等性失效）——默认 fail-closed
+        var body = JsonSerializer.Serialize(new { encrypt = "test_encrypted_data" });
+        var middleware = CreateMiddleware();
+        var context = CreateHttpContext("/feishu/app1", "POST", body);
+
+        _webhookServiceMock.Setup(x => x.SetCurrentAppKey(It.IsAny<string>()));
+        _webhookServiceMock.Setup(x => x.HandleEventAsync(It.IsAny<FeishuWebhookRequest>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+        _webhookServiceMock.Setup(x => x.DecryptEventAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new EventData { EventType = "test_event", EventId = "" });
+
+        // Act
+        await middleware.InvokeAsync(context);
+
+        // Assert
+        context.Response.StatusCode.Should().Be(400, "空 EventId 在 RejectEmptyIdentifiers=true 时应被拒绝");
+    }
+
+    [Fact]
+    public async Task InvokeAsync_WithEmptyEventId_ShouldProcess_WhenRejectEmptyIdentifiersDisabled()
+    {
+        // Arrange - 开关关闭时保留旧行为（仅拒绝两者均空的无效数据）
+        var options = new FeishuWebhookOptions
+        {
+            GlobalRoutePrefix = "feishu",
+            RejectEmptyIdentifiers = false,
+            Apps = _options.Apps
+        };
+        var body = JsonSerializer.Serialize(new { encrypt = "test_encrypted_data" });
+        var middleware = CreateMiddlewareWithOptions(options);
+        var context = CreateHttpContext("/feishu/app1", "POST", body);
+
+        _webhookServiceMock.Setup(x => x.SetCurrentAppKey(It.IsAny<string>()));
+        _webhookServiceMock.Setup(x => x.HandleEventAsync(It.IsAny<FeishuWebhookRequest>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+        _webhookServiceMock.Setup(x => x.DecryptEventAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new EventData { EventType = "test_event", EventId = "" });
+        _webhookServiceMock.Setup(x => x.HandleEventAsync(It.IsAny<EventData>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((true, null));
+
+        // Act
+        await middleware.InvokeAsync(context);
+
+        // Assert
+        context.Response.StatusCode.Should().Be(200, "开关关闭时空 EventId 事件按旧行为处理");
     }
 
     private FeishuMultiAppMiddleware CreateMiddleware()

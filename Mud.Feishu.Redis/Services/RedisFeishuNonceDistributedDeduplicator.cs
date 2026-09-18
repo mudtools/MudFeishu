@@ -6,6 +6,7 @@
 //  本项目基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using Mud.Feishu.Abstractions.Utilities;
 using StackExchange.Redis;
 
 namespace Mud.Feishu.Redis.Services;
@@ -81,31 +82,31 @@ public class RedisFeishuNonceDistributedDeduplicator : IFeishuNonceDistributedDe
 
             if (!setResult)
             {
-                _logger?.LogWarning("Nonce {Nonce} 已使用过，拒绝重放攻击 (AppKey: {AppKey})", nonce, appKey ?? "default");
+                _logger?.LogWarning("Nonce {Nonce} 已使用过，拒绝重放攻击 (AppKey: {AppKey})", LogSanitizer.Clean(nonce), appKey ?? "default");
                 return true; // 已使用且未过期
             }
 
-            _logger?.LogDebug("Nonce {Nonce} 标记为已使用，TTL: {Ttl} (AppKey: {AppKey})", nonce, actualTtl, appKey ?? "default");
+            _logger?.LogDebug("Nonce {Nonce} 标记为已使用，TTL: {Ttl} (AppKey: {AppKey})", LogSanitizer.Clean(nonce), actualTtl, appKey ?? "default");
             return false; // 未使用
         }
         catch (RedisConnectionException ex)
         {
-            _logger?.LogError(ex, "Redis 连接异常，Nonce {Nonce} 去重失败", nonce);
+            _logger?.LogError(ex, "Redis 连接异常，Nonce {Nonce} 去重失败", LogSanitizer.Clean(nonce));
             throw new FeishuRedisException(FeishuRedisFailureKind.Connection, "Redis 连接失败，无法完成 Nonce 去重", ex);
         }
         catch (RedisTimeoutException ex)
         {
-            _logger?.LogWarning(ex, "Redis 超时，Nonce {Nonce} 去重失败", nonce);
+            _logger?.LogWarning(ex, "Redis 超时，Nonce {Nonce} 去重失败", LogSanitizer.Clean(nonce));
             throw new FeishuRedisException(FeishuRedisFailureKind.Timeout, "Redis 操作超时", ex);
         }
         catch (RedisServerException ex)
         {
-            _logger?.LogError(ex, "Redis 服务端异常，Nonce {Nonce} 去重失败", nonce);
+            _logger?.LogError(ex, "Redis 服务端异常，Nonce {Nonce} 去重失败", LogSanitizer.Clean(nonce));
             throw new FeishuRedisException(FeishuRedisFailureKind.Server, "Redis 服务端错误", ex);
         }
         catch (RedisException ex)
         {
-            _logger?.LogError(ex, "Redis 操作异常，Nonce {Nonce} 去重失败", nonce);
+            _logger?.LogError(ex, "Redis 操作异常，Nonce {Nonce} 去重失败", LogSanitizer.Clean(nonce));
             throw new FeishuRedisException(FeishuRedisFailureKind.Server, "Redis 操作失败", ex);
         }
     }
@@ -126,7 +127,7 @@ public class RedisFeishuNonceDistributedDeduplicator : IFeishuNonceDistributedDe
             var redisKey = GetRedisKey(nonce, appKey);
             var exists = await _database.KeyExistsAsync(redisKey, flags: RedisStoreHelper.ToCommandFlags(cancellationToken)).ConfigureAwait(false);
 
-            _logger?.LogDebug("Nonce {Nonce} 使用状态: {Status} (AppKey: {AppKey})", nonce, exists ? "已使用" : "未使用", appKey ?? "default");
+            _logger?.LogDebug("Nonce {Nonce} 使用状态: {Status} (AppKey: {AppKey})", LogSanitizer.Clean(nonce), exists ? "已使用" : "未使用", appKey ?? "default");
             return exists;
         }
         catch (RedisConnectionException ex)

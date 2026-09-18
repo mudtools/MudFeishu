@@ -16,7 +16,7 @@ namespace Mud.Feishu.WebSocket;
 /// </summary>
 /// <remarks>
 /// WS-03 修复引入：为 WebSocket 事件分发提供并发上界，与 Webhook 的
-/// <see cref="Mud.Feishu.Webhook.Services.FeishuWebhookConcurrencyService"/> 语义一致。
+/// <c>FeishuWebhookConcurrencyService</c> 语义一致。
 /// <para>
 /// 使用 <see cref="SemaphoreSlim"/> 控制并发处理数；支持 <c>IOptionsMonitor</c> 热更新，
 /// 原子替换信号量并延迟 60 秒释放旧信号量。实现 <see cref="IHostedService"/>，
@@ -28,7 +28,10 @@ public class FeishuWebSocketConcurrencyService : IAsyncDisposable, IHostedServic
     private readonly IOptionsMonitor<FeishuWebSocketOptions> _optionsMonitor;
     private readonly ILogger<FeishuWebSocketConcurrencyService> _logger;
     private readonly SemaphoreSlim _semaphoreLock = new(1, 1);
-    private volatile SemaphoreSlim _semaphore;
+    // WS-03：本字段仅经 Interlocked.Exchange（原子替换）与 Volatile.Read（快照读）访问，自带完整栅栏语义，
+    // 等效 volatile 的发布/获取保证；volatile 与 Interlocked/Volatile API 混用会产生 CS0420，故不标记 volatile。
+    // 所有裸读一律通过 Volatile.Read 获取快照，不得直接读取本字段。
+    private SemaphoreSlim _semaphore;
     private bool _disposed;
     private volatile int _currentMaxConcurrentHandlers;
     private readonly CancellationTokenSource _shutdownCts = new();
@@ -95,12 +98,12 @@ public class FeishuWebSocketConcurrencyService : IAsyncDisposable, IHostedServic
         var timeout = TimeSpan.FromSeconds(30);
         var startTime = DateTime.UtcNow;
 
-        while (_semaphore.CurrentCount < _currentMaxConcurrentHandlers)
+        while (Volatile.Read(ref _semaphore).CurrentCount < _currentMaxConcurrentHandlers)
         {
             if (DateTime.UtcNow - startTime > timeout)
             {
                 _logger.LogWarning("等待并发处理完成超时，当前等待的处理数: {WaitingCount}",
-                    _currentMaxConcurrentHandlers - _semaphore.CurrentCount);
+                    _currentMaxConcurrentHandlers - Volatile.Read(ref _semaphore).CurrentCount);
                 break;
             }
 
@@ -184,7 +187,7 @@ public class FeishuWebSocketConcurrencyService : IAsyncDisposable, IHostedServic
     /// <summary>
     /// 当前可用并发槽位数量
     /// </summary>
-    internal int AvailableCount => _semaphore.CurrentCount;
+    internal int AvailableCount => Volatile.Read(ref _semaphore).CurrentCount;
 
     /// <summary>
     /// 当前配置的最大并发数（0 或负数表示无限制）
@@ -196,7 +199,7 @@ public class FeishuWebSocketConcurrencyService : IAsyncDisposable, IHostedServic
     /// </summary>
     internal int PendingCount =>
         _currentMaxConcurrentHandlers > 0
-            ? _currentMaxConcurrentHandlers - _semaphore.CurrentCount
+            ? _currentMaxConcurrentHandlers - Volatile.Read(ref _semaphore).CurrentCount
             : 0;
 
     /// <summary>
@@ -209,7 +212,7 @@ public class FeishuWebSocketConcurrencyService : IAsyncDisposable, IHostedServic
 
         _disposed = true;
         _shutdownCts.Dispose();
-        _semaphore.Dispose();
+        Volatile.Read(ref _semaphore).Dispose();
         _semaphoreLock.Dispose();
         GC.SuppressFinalize(this);
     }

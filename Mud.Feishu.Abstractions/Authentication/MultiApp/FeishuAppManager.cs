@@ -43,7 +43,10 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
     private readonly ConcurrentDictionary<string, Lazy<FeishuAppContext>> _lazyContexts = new();
     // TMA-05 / P1-4 修复（D4 契约）：配置快照改为不可变数组 + Volatile.Write/Read 原子交换，
     // 消灭"锁内 Clear/AddRange × 锁外枚举"的数据竞争。
-    private volatile FeishuAppConfig[] _configs;
+    // MT-1：本字段仅经 Volatile.Read/Volatile.Write 原子访问（自带完整栅栏语义，等效 volatile 的发布/获取保证），
+    // 不再标记 volatile——volatile 与 Volatile/Interlocked API 混用会产生 CS0420。
+    // 构造函数内的裸读/赋值为发布前单线程初始化，无并发访问。
+    private FeishuAppConfig[] _configs;
     // A-1 修复：本类私有的默认应用键，替代反射设置基类 _defaultAppKey 的反模式。
     // 构造阶段赋值（单线程），AddApp/RemoveApp 时同步更新，GetDefaultApp 直接读取。
     // NEW-MA-09 修复：标记 volatile 确保 RemoveApp 的写入对 GetDefaultApp 的读取立即可见，
@@ -72,9 +75,9 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
     /// </summary>
     /// <remarks>
     /// 在 <see cref="GetOrCreateContext"/> / <see cref="TryGetApp"/> 成功注册到基类字典后、
-    /// <b>锁外</b>触发。<c>AddApp</c> / <c>RebuildAppContext</c> 已由 <see cref="RegisterApp"/>
+    /// <b>锁外</b>触发。<c>AddApp</c> / <c>RebuildAppContext</c> 已由 <c>RegisterApp</c>
     /// 触发的 <c>ConfigurationChanged</c> 事件覆盖，不重复触发此事件。
-    /// <see cref="FeishuTokenRegistrationService" /> 订阅此事件做增量注册。
+    /// <c>FeishuTokenRegistrationService</c> 订阅此事件做增量注册。
     /// </remarks>
     internal event EventHandler<FeishuAppInstantiatedEventArgs>? AppInstantiated;
 
@@ -1149,9 +1152,9 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
     /// 调用 <c>RegisterSwitcherFactory</c> 注册的工厂不会被本方法使用。
     /// 统一为 DI 模式可降低理解成本，基类工厂委托路径在中期标记为 [Obsolete]。
     /// <para>
-    /// NEW-MA-11 说明：<see cref="UseApp"/> 的生成实现通过 <c>_appContextHolder.Current = context</c>
+    /// NEW-MA-11 说明：<c>UseApp</c> 的生成实现通过 <c>_appContextHolder.Current = context</c>
     /// 切换上下文，而 <c>IAppContextHolder</c> 的默认实现 <c>AsyncLocalAppContextSwitcher</c> 基于
-    /// <see cref="AsyncLocal{T}"/>，因此即使 T 注册为 Singleton，并发调用 <see cref="UseApp"/>
+    /// <see cref="AsyncLocal{T}"/>，因此即使 T 注册为 Singleton，并发调用 <c>UseApp</c>
     /// 也不会互相覆盖（每个异步流持有独立的 Current 值）。
     /// 但仍建议将 T 注册为 Scoped（通过 <c>AddFeishuApi&lt;T&gt;</c> 或 <c>AddFeishuApp&lt;T&gt;</c>），
     /// 以避免 Singleton 实例长期持有已释放的 <see cref="IFeishuAppContext"/> 引用。
@@ -1215,6 +1218,12 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
 
     // TMA-17 / P2-4 修复：覆盖隐藏基类方法，直接抛 NotSupportedException，
     // 杜绝"经具体类调用无警告却静默无效"的问题。
+    /// <summary>
+    /// 覆盖基类的工厂委托注册方法：FeishuAppManager 采用 DI 解析模式，本方法始终抛出 <see cref="NotSupportedException"/>。
+    /// </summary>
+    /// <typeparam name="TContextSwitcher">上下文切换器类型</typeparam>
+    /// <param name="factory">工厂委托（不会被调用）</param>
+    /// <exception cref="NotSupportedException">始终抛出，请改用 IServiceProvider 直接解析服务</exception>
     [Obsolete("FeishuAppManager 使用 DI 解析模式，RegisterSwitcherFactory 注册的工厂不会被 GetWebApi 调用。请改用 IServiceProvider 直接解析服务。", true)]
     public new void RegisterSwitcherFactory<TContextSwitcher>(Func<IFeishuAppContext, TContextSwitcher> factory)
         => throw new NotSupportedException(

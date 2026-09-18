@@ -43,6 +43,11 @@ public class JobTitleController : ControllerBase
             using (_userJobTitleApi.BeginScope("hr-app"))
             {
                 var result = await _tenantJobTitleApi.GetJobTitlesListAsync(pageSize, pageToken);
+                if (result == null)
+                {
+                    return BadRequest(new { error = "接口返回为空" });
+                }
+
                 return Ok(result.Data);
             }
         }
@@ -66,6 +71,11 @@ public class JobTitleController : ControllerBase
         try
         {
             var result = await _userJobTitleApi.GetJobTitlesListAsync(pageSize, pageToken);
+            if (result == null)
+            {
+                return BadRequest(new { error = "接口返回为空" });
+            }
+
             return Ok(result.Data);
         }
         catch (Exception ex)
@@ -85,6 +95,11 @@ public class JobTitleController : ControllerBase
         try
         {
             var result = await _tenantJobTitleApi.GetJobTitleByIdAsync(jobTitleId);
+            if (result == null)
+            {
+                return BadRequest(new { error = "接口返回为空" });
+            }
+
             return Ok(result.Data);
         }
         catch (Exception ex)
@@ -104,6 +119,11 @@ public class JobTitleController : ControllerBase
         try
         {
             var result = await _userJobTitleApi.GetJobTitleByIdAsync(jobTitleId);
+            if (result == null)
+            {
+                return BadRequest(new { error = "接口返回为空" });
+            }
+
             return Ok(result.Data);
         }
         catch (Exception ex)

@@ -73,7 +73,7 @@ public class FolderService : IFolderService
 
         var folderRecord = new FolderRecord
         {
-            FolderToken = result.Data.Token,
+            FolderToken = result.Data.Token ?? string.Empty,
             FolderName = request.Name,
             ParentFolderToken = request.ParentFolderToken,
             CreatedTime = DateTime.UtcNow,

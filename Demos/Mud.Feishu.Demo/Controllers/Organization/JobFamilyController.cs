@@ -81,6 +81,11 @@ public class JobFamilyController : ControllerBase
         try
         {
             var result = await _jobFamiliesApi.GetJobFamilyByIdAsync(jobFamilyId);
+            if (result == null)
+            {
+                return BadRequest(new { error = "接口返回为空" });
+            }
+
             return Ok(result.Data);
         }
         catch (Exception ex)

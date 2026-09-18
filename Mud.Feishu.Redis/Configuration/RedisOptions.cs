@@ -31,6 +31,12 @@ public class RedisOptions
     /// <summary>
     /// Nonce 有效期，默认 5 分钟
     /// </summary>
+    /// <remarks>
+    /// 重放窗口不变量（WHF-03）：<b>本值必须 ≥ FeishuWebhookOptions.TimestampToleranceSeconds</b>——
+    /// 否则在 Nonce 过期后、时间戳容差窗口结束前的区间内重放攻击可行。
+    /// 默认组合（300s / 容差上限 300s）天然满足；跨工程 Options 无法在单一库内联断言，
+    /// 由两侧 XML 文档共同声明该约束。
+    /// </remarks>
     public TimeSpan NonceTtl { get; set; } = TimeSpan.FromMinutes(5);
 
     /// <summary>

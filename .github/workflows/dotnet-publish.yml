@@ -23,7 +23,17 @@ permissions:
   contents: write # 需要写权限来创建 tag 和 release
 
 env:
-  DOTNET_VERSIONS: "6.0.x 8.0.x 9.0.x 10.0.x" # .NET SDK 版本（支持构建 netstandard2.0, net6.0, net8.0, net9.0, net10.0）
+  # .NET SDK 版本（支持构建 netstandard2.0, net6.0, net8.0, net9.0, net10.0）。
+  # 多版本必须用「多行」写法（每行一个版本）。不要写成空格分隔的
+  # "6.0.x 8.0.x 9.0.x 10.0.x"：semver 会把空格当作 AND 连接符使其通过格式校验，
+  # 随后 setup-dotnet 的版本解析只取首段并静默归一为单个 channel（6.0），
+  # 即除 .NET 6 之外的版本实际来自 runner 预装镜像，一旦镜像调整就会以
+  # 「testhost 无法启动」（VSTestTask 返回 false 却不记录错误）的形式炸开。
+  DOTNET_VERSIONS: |
+    6.0.x
+    8.0.x
+    9.0.x
+    10.0.x
   CONFIGURATION: "Release" # 构建配置
   SOLUTION_FILE: "Mud.Feishu.slnx" # 解决方案文件
 
@@ -110,8 +120,24 @@ jobs:
       # 此前使用 --filter "FullyQualifiedName!~Mud.Feishu.Tests" 排除了 Mud.Feishu.Tests，
       # 而 AOT-2 的架构约束守卫 AotJsonSerializableCoverageTests 正位于该项目 —— 等于门禁对新加的反回归守卫无效。
       # 该项目 395 个用例在 net6.0/net8.0/net10.0 上均全绿（全部基于 Moq，无外部依赖），故恢复执行。
+      #
+      # 失败可读性（本次 CI 事故教训）：用例断言失败时 VSTestTask 返回 false 却不记录 MSBuild 错误
+      # （MSB4181），MSBuild 末尾只会打印「生成失败 / 0 个错误」，并把整个构建里仅有的无关警告
+      # （net6.0 测试工程传递引用 10.0.x 包的 NETStandardCompatError_*）列进失败摘要，极易误判为警告导致失败。
+      # 因此保留完整测试日志，并在失败时高亮失败用例 / 中止信息。
       - name: Run tests
-        run: dotnet test ${{ env.SOLUTION_FILE }} --no-build --configuration ${{ env.CONFIGURATION }} --logger trx --verbosity normal
+        shell: pwsh
+        run: |
+          $log = Join-Path $env:RUNNER_TEMP 'mudfeishu-test.log'
+          dotnet test $env:SOLUTION_FILE --no-build --configuration $env:CONFIGURATION --logger trx --verbosity normal 2>&1 |
+            Tee-Object -FilePath $log
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host ''
+            Write-Host '==== 测试阶段失败：以下为失败用例 / 中止信息（MSBuild 摘要中的“0 个错误”不代表成功）====' -ForegroundColor Red
+            Select-String -Path $log -Pattern '^\s*(失败|Failed)\s+Mud\.|\[FAIL\]|测试运行失败|测试运行已中止|Test Run Failed|Test Run Aborted|(失败|Failed)! - (失败|Failed):\s*[1-9]' |
+              ForEach-Object { Write-Host $_.Line.Trim() -ForegroundColor Red }
+            exit 1
+          }
 
       # 步骤6：上传测试报告，方便在GitHub上查看
       - name: Publish test results

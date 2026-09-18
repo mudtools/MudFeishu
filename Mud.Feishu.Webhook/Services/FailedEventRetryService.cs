@@ -82,18 +82,30 @@ public class FailedEventRetryService : BackgroundService
                     await RetryFailedEventsAsync(stoppingToken);
                 }
             }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                // WHF-14：RetryFailedEventsAsync 内部转发外部 token 时，关停引发的 OCE 不应视为处理失败
+                break;
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "重试失败事件时发生错误");
             }
 
+            // WHF-14：Task.Delay 在已取消 token 上会以 Canceled 态完成；await 会在调度时机抛 OCE。
+            // 直接 await 在 net8.0 的 BackgroundService 调度下存在 OCE 经 Status 而非 catch 路径逃逸的窗口
+            // （net10 的 StartAsync 改为 Task.Run，行为不同）。改为：
+            // ① 若 token 已取消，不进入 Delay，直接退出循环；
+            // ② 若未取消，Delay 正常 await；其 OCE 仅来自关停取消，无条件捕获后退出。
+            if (stoppingToken.IsCancellationRequested)
+                break;
+
             try
             {
                 await Task.Delay(TimeSpan.FromSeconds(_options.RetryPollIntervalSeconds), stoppingToken);
             }
-            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            catch (OperationCanceledException)
             {
-                // WHF-14：关停时优雅退出，避免 Task.Delay 抛出 OCE 导致 BackgroundService 异常告警
                 break;
             }
         }

@@ -193,18 +193,20 @@ public class FeishuWebhookService : IFeishuWebhookService
                 // 分发事件到处理器（优先使用应用专属处理器，回退到全局工厂）
                 await DispatchEventAsync(eventData.EventType, eventData, appKey, timeoutCts.Token);
 
-                // WHF-07：业务分发已成功——Mark 失败禁止回滚（回滚将导致飞书重推后重复消费）。
-                // 保留 processing 态，由 ProcessingTimeout/TTL 兜底；记录 Warning 供对账。
                 try
                 {
                     await MarkDeduplicationCompletedAsync(eventData.EventId, appKey);
                 }
                 catch (Exception markEx)
                 {
+                    // WHF-07：业务分发已成功——Mark 失败禁止回滚（回滚将导致飞书重推后重复消费）。
+                    // 保留 processing 态，由 ProcessingTimeout/TTL 兜底；记录 Warning 供对账。
+                    // 本分支捕获 Exception（含 Server 类 FeishuRedisException——内层 catch 先于外层
+                    // 过滤器命中）：任何 Mark 失败的语义都相同（业务已成功），按成功口径返回，
+                    // 不抛、不写失败存储。
                     _logger.LogWarning(markEx,
                         "事件 {EventId} 处理成功但完成标记失败，保留 processing 态等待超时恢复, AppKey: {AppKey}",
                         eventData.EventId, appKey ?? "null");
-                    // 成功路径返回：不抛、不写失败存储（业务副作用已发生）
                     FeishuMetricsHelper.RecordEventOutcome(appKey ?? "unknown", eventData.EventType, success: true, "mark_completed_failed");
 
                     if (Options.EnableRequestLogging)

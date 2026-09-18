@@ -322,4 +322,75 @@ public class RedisFeishuEventDistributedDeduplicatorTests
         await Assert.ThrowsAsync<FeishuRedisException>(
             async () => await deduplicator.MarkAsCompletedAsync("test_event_123"));
     }
+
+    #region WHF-11（R-15 完全兑现）：时钟统一为 Redis 服务端 TIME
+
+    [Fact]
+    public async Task MarkAsCompletedAsync_ShouldUseServerSideClock_AndPassNoTimestampArgument()
+    {
+        // Arrange - 捕获实际下发的脚本与参数
+        string? capturedScript = null;
+        RedisValue[]? capturedValues = null;
+        _databaseMock
+            .Setup(x => x.ScriptEvaluateAsync(
+                It.IsAny<string>(),
+                It.IsAny<RedisKey[]>(),
+                It.IsAny<RedisValue[]>(),
+                It.IsAny<CommandFlags>()))
+            .Callback((string script, RedisKey[] _, RedisValue[] values, CommandFlags _) =>
+            {
+                capturedScript = script;
+                capturedValues = values;
+            })
+            .ReturnsAsync(RedisResult.Create(1L));
+
+        var deduplicator = new RedisFeishuEventDistributedDeduplicator(
+            _connectionMultiplexerMock.Object,
+            _loggerMock.Object);
+
+        // Act
+        await deduplicator.MarkAsCompletedAsync("whf11_event");
+
+        // Assert
+        Assert.NotNull(capturedScript);
+        Assert.Contains("redis.call('TIME')", capturedScript!);
+        // WHF-11：时间戳必须取自 Redis 服务端时钟，消除与 C# DateTimeOffset.UtcNow 的漂移
+        // MarkAsCompleted 只传 TTL，不再有 C# 端时间戳参数
+        Assert.Equal(1, capturedValues!.Length);
+    }
+
+    [Fact]
+    public async Task TryMarkAsProcessingAsync_ShouldUseServerSideClock_AndPassNoTimestampArgument()
+    {
+        // Arrange - TryMark 脚本同样以 redis.call('TIME') 为唯一时钟源（ARGV 仅有超时与 TTL）
+        string? capturedScript = null;
+        RedisValue[]? capturedValues = null;
+        _databaseMock
+            .Setup(x => x.ScriptEvaluateAsync(
+                It.IsAny<string>(),
+                It.IsAny<RedisKey[]>(),
+                It.IsAny<RedisValue[]>(),
+                It.IsAny<CommandFlags>()))
+            .Callback((string script, RedisKey[] _, RedisValue[] values, CommandFlags _) =>
+            {
+                capturedScript = script;
+                capturedValues = values;
+            })
+            .ReturnsAsync(RedisResult.Create(0L));
+
+        var deduplicator = new RedisFeishuEventDistributedDeduplicator(
+            _connectionMultiplexerMock.Object,
+            _loggerMock.Object);
+
+        // Act
+        await deduplicator.TryMarkAsProcessingAsync("whf11_event");
+
+        // Assert
+        Assert.NotNull(capturedScript);
+        Assert.Contains("redis.call('TIME')", capturedScript!);
+        // TryMark 仅传 processingTimeout 与 ttl 两个参数，无 C# 端时间戳
+        Assert.Equal(2, capturedValues!.Length);
+    }
+
+    #endregion
 }

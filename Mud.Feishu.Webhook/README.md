@@ -416,12 +416,18 @@ public class DemoDepartmentEventHandler : DepartmentCreatedEventHandler
 
 | 选项                               | 类型              | 默认值   | 说明                                           |
 | ---------------------------------- | ----------------- | -------- | ---------------------------------------------- |
-| `AllowedSourceIPs`                 | HashSet\<string\> | []       | 允许的源 IP 地址列表（非空时自动启用 IP 验证） |
+| `AllowedSourceIPs`                 | HashSet\<string\> | []       | 允许的源 IP 地址列表（非空时自动启用 IP 验证，支持 CIDR 与 IPv4-mapped IPv6） |
 | `AllowedHttpMethods`               | HashSet\<string\> | ["POST"] | 允许的 HTTP 方法                               |
 | `MaxRequestBodySize`               | long              | 10MB     | 最大请求体大小                                 |
-| `EnforceHeaderSignatureValidation` | bool              | true     | 是否强制验证请求头签名                         |
-| `TimestampToleranceSeconds`        | int               | 30       | 时间戳验证容错范围（秒）                       |
+| `EnforceHeaderSignatureValidation` | bool              | true     | 是否强制验证请求头签名（生产环境禁止关闭，含应用级覆盖） |
+| `TimestampToleranceSeconds`        | int               | 30       | 时间戳验证容错范围（秒），上限 300 秒（重放窗口上限） |
 | `NonceValidationFailureMode`       | NonceFailureMode  | Reject  | Nonce 去重服务不可用时的降级策略（Reject=安全优先拒绝，Allow=可用性优先放行） |
+| `RejectEmptyIdentifiers`           | bool              | true     | 空 EventId/Nonce 是否拒绝请求（fail-closed）   |
+| `IgnoreUnknownEventTypes`          | bool              | true     | 未注册 eventType 的事件是否静默忽略（记 Debug + unhandled 指标） |
+
+> **重放窗口不变量**：`NonceTtl`（Redis 工程 `RedisOptions`）必须 ≥ `TimestampToleranceSeconds`，
+> 否则在 Nonce 过期后、容差窗口结束前的区间内重放攻击可行。默认组合（NonceTtl=5min /
+> 容差上限=300s）天然满足；跨工程配置无法在单一库内联断言，由两侧 XML 文档共同声明。
 
 ### 性能配置
 
@@ -943,11 +949,17 @@ builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
 | 措施 | 说明 |
 |------|------|
 | 固定时间比较 | Token 和签名比较使用 `FixedTimeEquals`，防止计时攻击 |
-| 生产环境强制验证 | 生产环境自动检测并拒绝禁用签名验证的配置 |
+| 生产环境强制验证 | 生产环境自动检测并拒绝禁用签名验证的配置（含应用级 `EnforceHeaderSignatureValidation=false` 覆盖，启动期 fail-fast） |
+| 重放窗口上限 | `TimestampToleranceSeconds` 上限 300 秒（飞书官方建议 ≤60 秒），应用级同受约束 |
+| 空标识符 fail-closed | 空 EventId/Nonce 默认拒绝（`RejectEmptyIdentifiers=true`），畸形/恶意流量不进入业务链路 |
+| 日志清洗 | nonce/eventId 等外部输入写入日志前经 `LogSanitizer.Clean` 清洗（防日志注入），超长截断 |
+| Redis 故障语义分离 | 去重体系 Server 类致命故障返回 503（让飞书稍后重推），不伪装成 403/500；连接类故障按 `NonceValidationFailureMode` 降级 |
+| 事件处理 at-least-once | 业务成功后完成标记（Mark）失败不回滚不报错，保留 processing 态由超时恢复/TTL 兜底——处理器需自身幂等（详见 `IFeishuEventDeduplicator` 语义声明） |
 | 敏感信息掩码 | 日志中自动掩码 Token、EncryptKey 等敏感字段 |
 | 请求体大小限制 | 防止超大请求体 DoS 攻击 |
-| IP 白名单 | 支持配置允许的源 IP 地址列表（CIDR 格式） |
-| 频率限制 | 滑动窗口限流，基于 `(AppKey, IP)` 维度 |
+| IP 白名单 | 支持配置允许的源 IP 地址列表（CIDR 格式，负数前缀/超宽前缀直接拒绝，IPv4-mapped IPv6 自动归一） |
+| 频率限制 | 滑动窗口限流，基于 `(AppKey, IP)` 维度；满员时仅拒绝新键（已跟踪客户端不受伪造 IP 撑满字典影响） |
+| 未注册事件忽略 | 未注册 eventType 默认静默忽略（`IgnoreUnknownEventTypes=true`），不回退到"第一个注册的处理器"兜底 |
 
 ## 安全审计
 

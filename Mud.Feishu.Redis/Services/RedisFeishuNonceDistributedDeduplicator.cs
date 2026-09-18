@@ -132,22 +132,22 @@ public class RedisFeishuNonceDistributedDeduplicator : IFeishuNonceDistributedDe
         }
         catch (RedisConnectionException ex)
         {
-            _logger?.LogError(ex, "Redis 连接异常，检查 Nonce {Nonce} 使用状态失败", nonce);
+            _logger?.LogError(ex, "Redis 连接异常，检查 Nonce {Nonce} 使用状态失败", LogSanitizer.Clean(nonce));
             throw new FeishuRedisException(FeishuRedisFailureKind.Connection, "Redis 连接失败，无法检查 Nonce 状态", ex);
         }
         catch (RedisTimeoutException ex)
         {
-            _logger?.LogWarning(ex, "Redis 超时，检查 Nonce {Nonce} 使用状态失败", nonce);
+            _logger?.LogWarning(ex, "Redis 超时，检查 Nonce {Nonce} 使用状态失败", LogSanitizer.Clean(nonce));
             throw new FeishuRedisException(FeishuRedisFailureKind.Timeout, "Redis 操作超时", ex);
         }
         catch (RedisServerException ex)
         {
-            _logger?.LogError(ex, "Redis 服务端异常，检查 Nonce {Nonce} 使用状态失败", nonce);
+            _logger?.LogError(ex, "Redis 服务端异常，检查 Nonce {Nonce} 使用状态失败", LogSanitizer.Clean(nonce));
             throw new FeishuRedisException(FeishuRedisFailureKind.Server, "Redis 服务端错误", ex);
         }
         catch (RedisException ex)
         {
-            _logger?.LogError(ex, "Redis 操作异常，检查 Nonce {Nonce} 使用状态失败", nonce);
+            _logger?.LogError(ex, "Redis 操作异常，检查 Nonce {Nonce} 使用状态失败", LogSanitizer.Clean(nonce));
             throw new FeishuRedisException(FeishuRedisFailureKind.Server, "Redis 操作失败", ex);
         }
     }
@@ -185,7 +185,7 @@ public class RedisFeishuNonceDistributedDeduplicator : IFeishuNonceDistributedDe
 
             if (result)
             {
-                _logger?.LogDebug("已移除 Nonce {Nonce} 的去重标记 (AppKey: {AppKey})", nonce, appKey ?? "default");
+                _logger?.LogDebug("已移除 Nonce {Nonce} 的去重标记 (AppKey: {AppKey})", LogSanitizer.Clean(nonce), appKey ?? "default");
             }
 
             return result;

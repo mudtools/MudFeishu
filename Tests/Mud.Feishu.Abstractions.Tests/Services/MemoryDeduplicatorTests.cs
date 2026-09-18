@@ -342,6 +342,44 @@ public class MemoryDeduplicatorTests
         // Assert
         Assert.Equal(2, deduplicator.Count);
     }
+
+    [Fact]
+    public async Task TryMarkAsProcessed_ConcurrentSameKey_ShouldMarkExactlyOnce()
+    {
+        // Arrange - WHF-12：移除锁内全表扫描后的并发正确性冒烟——
+        // 同一键并发标记必须恰好一次返回 false（仅首次成功），其余全部判重
+        var deduplicator = new MemoryDeduplicator<string>(_loggerMock.Object);
+        const int concurrency = 32;
+        var firstMarkCount = 0;
+
+        // Act
+        var tasks = Enumerable.Range(0, concurrency).Select(_ => Task.Run(() =>
+        {
+            if (!deduplicator.TryMarkAsProcessed("hot_key"))
+                Interlocked.Increment(ref firstMarkCount);
+        }));
+        await Task.WhenAll(tasks);
+
+        // Assert
+        Assert.Equal(1, firstMarkCount);
+    }
+
+    [Fact]
+    public async Task TryMarkAsProcessed_ConcurrentDistinctKeys_AllFirstMarkSucceed()
+    {
+        // Arrange - WHF-12 冒烟：多键并发下无死锁/无丢失，每个键恰好一次首次标记成功
+        //（首次标记返回 false=未处理过并成功标记）
+        var deduplicator = new MemoryDeduplicator<string>(_loggerMock.Object);
+        const int keyCount = 200;
+
+        // Act
+        var results = await Task.WhenAll(Enumerable.Range(0, keyCount).Select(i => Task.Run(
+            () => deduplicator.TryMarkAsProcessed($"key_{i}"))));
+
+        // Assert - 全部为首次标记（返回 false），缓存恰好 keyCount 条
+        Assert.Equal(keyCount, results.Count(r => !r));
+        Assert.Equal(keyCount, deduplicator.Count);
+    }
 }
 
 /// <summary>

@@ -1281,7 +1281,7 @@ public interface IFeishuV1HelpDeskTicket
 
 **企业级 Webhook 处理**：
 
-- ✅ 安全验证（签名验证、时间戳验证、Nonce 验证、订阅验证）
+- ✅ 安全验证（签名验证、时间戳验证、Nonce 验证、订阅验证、空标识符 fail-closed、日志清洗防注入）
 - ✅ 加密解密（内置 AES-256-CBC 解密，自动处理飞书加密事件）
 - ✅ 自定义验证器（ISignatureValidator、ITimestampValidator、INonceValidator、IEncryptKeyProvider）
 - ✅ 请求频率限制（内置滑动窗口限流中间件）

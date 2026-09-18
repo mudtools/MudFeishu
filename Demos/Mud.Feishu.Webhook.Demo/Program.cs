@@ -21,7 +21,6 @@ builder.Host.UseSerilog((context, services, configuration) => configuration
     .MinimumLevel.Override("Microsoft", LogEventLevel.Debug)
     .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Debug)
     .Enrich.FromLogContext()
-    .ReadFrom.Configuration(context.Configuration)
     .ReadFrom.Services(services)
     .WriteTo.Console()
     .WriteTo.File(
@@ -38,6 +37,13 @@ builder.Configuration
     .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true)
     .AddJsonFile("appsettings.local.json", optional: true, reloadOnChange: true)
     .AddEnvironmentVariables();
+
+// AOT: 为 Minimal API 的 JSON 请求/响应序列化注入源生成上下文
+// （反射序列化在 Native AOT 下不可用，匿名类型已改为具名 DTO 并注册于 WebhookDemoJsonContext）
+builder.Services.ConfigureHttpJsonOptions(options =>
+{
+    options.SerializerOptions.TypeInfoResolverChain.Add(WebhookDemoJsonContext.Default);
+});
 
 // 注册演示服务
 builder.Services.AddSingleton<DemoEventService>();

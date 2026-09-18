@@ -21,7 +21,7 @@ public static class MultiAppEndpointExtensions
     {
         app.MapGet("/multi-app/info", () =>
         {
-            return Results.Ok(new
+            return Results.Ok(new MultiAppInfoResponse
             {
                 Message = "多应用飞书Webhook服务",
                 Mode = "MultiApp",
@@ -34,9 +34,9 @@ public static class MultiAppEndpointExtensions
                     "独立的配置和路由",
                     "完整的事件隔离"
                 },
-                Examples = new
+                Examples = new MultiAppInfoExamples
                 {
-                    WebhookEndpoints = new
+                    WebhookEndpoints = new WebhookEndpointsInfo
                     {
                         App1 = "/feishu/app1",
                         App2 = "/feishu/app2"
@@ -51,19 +51,19 @@ public static class MultiAppEndpointExtensions
 
         app.MapGet("/multi-app/routes", () =>
         {
-            return Results.Ok(new
+            return Results.Ok(new MultiAppRoutesResponse
             {
                 Message = "多应用路由映射",
                 Routes = new[]
                 {
-                    new
+                    new AppRouteInfo
                     {
                         AppKey = "app1",
                         RoutePrefix = "/feishu/app1",
                         Description = "组织架构相关事件",
                         EventTypes = new[] { "department.user.created_v4", "department.deleted_v3", "department.updated_v3" }
                     },
-                    new
+                    new AppRouteInfo
                     {
                         AppKey = "app2",
                         RoutePrefix = "/feishu/app2",
@@ -78,4 +78,55 @@ public static class MultiAppEndpointExtensions
 
         return app;
     }
+}
+
+/// <summary>
+/// 多应用信息响应
+/// </summary>
+internal class MultiAppInfoResponse
+{
+    public string Message { get; set; } = string.Empty;
+    public string Mode { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public string[] Features { get; set; } = Array.Empty<string>();
+    public MultiAppInfoExamples Examples { get; set; } = new();
+}
+
+/// <summary>
+/// 多应用信息示例
+/// </summary>
+internal class MultiAppInfoExamples
+{
+    public WebhookEndpointsInfo WebhookEndpoints { get; set; } = new();
+    public string ConfigurationSection { get; set; } = string.Empty;
+    public string Documentation { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// Webhook 端点信息
+/// </summary>
+internal class WebhookEndpointsInfo
+{
+    public string App1 { get; set; } = string.Empty;
+    public string App2 { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// 多应用路由映射响应
+/// </summary>
+internal class MultiAppRoutesResponse
+{
+    public string Message { get; set; } = string.Empty;
+    public AppRouteInfo[] Routes { get; set; } = Array.Empty<AppRouteInfo>();
+}
+
+/// <summary>
+/// 应用路由信息
+/// </summary>
+internal class AppRouteInfo
+{
+    public string AppKey { get; set; } = string.Empty;
+    public string RoutePrefix { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public string[] EventTypes { get; set; } = Array.Empty<string>();
 }

@@ -204,6 +204,85 @@ public class FeishuServiceCollectionExtensionsTests
     }
 
     // ============================================================
+    // C-1 补强：TokenRecoveryOptions 热更新（IOptionsChangeTokenSource 注册）
+    // ============================================================
+
+    /// <summary>
+    /// C-1 补强验证：经 <c>AddFeishuApp(IConfiguration)</c> 注册后，<see cref="IOptionsMonitor{TokenRecoveryOptions}"/>
+    /// 必须随 <c>MudHttpTokenRecovery</c> 配置节运行时重载而刷新（组件
+    /// <c>AddMudHttpTokenRecoveryFromConfiguration</c> 的热更新语义）。
+    /// 业务场景：仅调用委托式 <c>Configure&lt;T&gt;(o =&gt; section.Bind(o))</c> 不注册
+    /// <c>IOptionsChangeTokenSource</c>，IOptionsMonitor 缓存在首解析后冻结——配置重载后
+    /// TokenRecoveryExecutor / FeishuAppManager 仍读到旧恢复策略。
+    /// </summary>
+    [Fact]
+    public void AddFeishuApp_ShouldReloadTokenRecoveryOptions_WhenConfigurationReloads()
+    {
+        // Arrange — 使用可重载的内存配置源（等价于 appsettings.json 的 reload token 触发路径）。
+        var reloadableSource = new ReloadableMemoryConfigurationSource(new Dictionary<string, string?>
+        {
+            ["FeishuApps:0:AppKey"] = "default",
+            ["FeishuApps:0:AppId"] = "cli_default_id_1234567890",
+            ["FeishuApps:0:AppSecret"] = "default_secret_123456",
+            ["FeishuApps:0:IsDefault"] = "true",
+            ["MudHttpTokenRecovery:RecoveryMaxRetries"] = "3",
+        });
+        var configuration = new ConfigurationBuilder()
+            .Add(reloadableSource)
+            .Build();
+        var services = CreateServiceCollection();
+
+        // Act & Assert — 初始绑定生效。
+        services.AddFeishuApp(configuration);
+        using var provider = services.BuildServiceProvider();
+
+        var optionsMonitor = provider.GetRequiredService<IOptionsMonitor<Mud.HttpUtils.TokenRecoveryOptions>>();
+        optionsMonitor.CurrentValue.RecoveryMaxRetries.Should().Be(3,
+            "初始配置应绑定（否则 MudHttpTokenRecovery 节被静默忽略）");
+
+        // Act — 模拟配置运行时重载（FileConfigurationSource.Reload 的等价内存版：写 Data + 触发 reload token）。
+        reloadableSource.Provider.Data["MudHttpTokenRecovery:RecoveryMaxRetries"] = "7";
+        reloadableSource.Provider.Reload();
+
+        // Assert — IOptionsMonitor 必须读到重载后的值；未注册 IOptionsChangeTokenSource 时缓存不失效，仍为 3。
+        optionsMonitor.CurrentValue.RecoveryMaxRetries.Should().Be(7,
+            "IOptionsMonitor 必须随配置重载刷新（IOptionsChangeTokenSource 已注册）");
+    }
+
+    /// <summary>
+    /// 可重载的内存配置源：模拟 JSON 文件源的运行时重载行为（<see cref="ConfigurationProvider.Set"/>
+    /// 不触发 reload token，故用显式 <see cref="ReloadableMemoryConfigurationProvider.Reload"/> 触发）。
+    /// </summary>
+    private sealed class ReloadableMemoryConfigurationSource : IConfigurationSource
+    {
+        private readonly ReloadableMemoryConfigurationProvider _provider;
+
+        public ReloadableMemoryConfigurationSource(Dictionary<string, string?> initialData)
+        {
+            _provider = new ReloadableMemoryConfigurationProvider(initialData);
+        }
+
+        public ReloadableMemoryConfigurationProvider Provider => _provider;
+
+        public IConfigurationProvider Build(IConfigurationBuilder builder) => _provider;
+    }
+
+    private sealed class ReloadableMemoryConfigurationProvider : ConfigurationProvider
+    {
+        public ReloadableMemoryConfigurationProvider(Dictionary<string, string?> initialData)
+        {
+            foreach (var (key, value) in initialData)
+            {
+                Data[key] = value;
+            }
+        }
+
+        public new IDictionary<string, string?> Data => base.Data;
+
+        public void Reload() => OnReload();
+    }
+
+    // ============================================================
     // SR-P1-2：AddMudHttpClient 显式传递 setAsDefault
     // ============================================================
 

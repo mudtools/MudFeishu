@@ -23,14 +23,14 @@
         <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.25" />
         <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
     </ItemGroup>
-	<!--<ItemGroup>
-		<PackageReference Include="Mud.Feishu" Version="3.0.0-rc1" />
-		<PackageReference Include="Mud.Feishu.Authentication" Version="3.0.0-rc1" />
-	</ItemGroup>-->
-     <ItemGroup>
+	<ItemGroup>
+		<PackageReference Include="Mud.Feishu" Version="3.0.0-rc2" />
+		<PackageReference Include="Mud.Feishu.Authentication" Version="3.0.0-rc2" />
+	</ItemGroup>
+     <!--<ItemGroup>
 		<ProjectReference Include="..\..\..\Mud.Feishu.Authentication\Mud.Feishu.Authentication.csproj" />
 		<ProjectReference Include="..\..\..\Mud.Feishu\Mud.Feishu.csproj" />
-    </ItemGroup> 
+    </ItemGroup>--> 
 
     <ItemGroup>
         <Content Update="appsettings.local.json">

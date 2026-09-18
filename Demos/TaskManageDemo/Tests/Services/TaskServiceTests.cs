@@ -203,6 +203,8 @@ public class TaskServiceTests : IDisposable
                 request.Description,
                 It.IsAny<List<string>?>(),
                 It.IsAny<DateTime?>(),
+                It.IsAny<DateTime?>(),
+                It.IsAny<string?>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync("new-task-guid");
 
@@ -246,6 +248,8 @@ public class TaskServiceTests : IDisposable
                 It.IsAny<string?>(),
                 It.IsAny<List<string>?>(),
                 It.IsAny<DateTime?>(),
+                It.IsAny<DateTime?>(),
+                It.IsAny<string?>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync((string?)null);
 

@@ -464,7 +464,7 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
                 AccessToken = accessToken,
                 RefreshToken = refreshToken,
                 AccessTokenExpireTime = accessTokenExpireMs > 0 ? accessTokenExpireMs : now + (safeExpireSeconds * 1000L),
-                RefreshTokenExpireTime = refreshTokenExpireMs > 0 ? refreshTokenExpireMs : 0
+                RefreshTokenExpireTime = refreshTokenExpireMs
             };
         }
         // NEW-TM-01 修复：过滤 OperationCanceledException，避免取消操作被误记录为失败
@@ -542,7 +542,7 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
                 AccessToken = accessToken,
                 RefreshToken = refreshToken,
                 AccessTokenExpireTime = accessTokenExpireMs,
-                RefreshTokenExpireTime = refreshTokenExpireMs > 0 ? refreshTokenExpireMs : 0
+                RefreshTokenExpireTime = refreshTokenExpireMs
             };
         }
         catch (Exception ex) when (ex is not OperationCanceledException)

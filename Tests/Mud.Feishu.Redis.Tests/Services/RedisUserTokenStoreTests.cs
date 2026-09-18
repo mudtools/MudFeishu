@@ -179,4 +179,62 @@ public class RedisUserTokenStoreTests
 
         await store.RemoveAsync("ou_xxx", "user");
     }
+
+    /// <summary>
+    /// TMF-01（验收补测）：ClearAllUsersAsync 以 TokenKeyBuilder.AllUsersScanPattern
+    /// 产出的全用户键模式 SCAN（D8 单一出口）并逐键删除，Cluster 化遍历模式与 ClearUserAsync 一致。
+    /// SCAN mock 遵循 ADR-4 约定：StackExchange.Redis 2.10 的 Keys(...) 在 Moq 代理上
+    /// 被拦截的是 6 参数重载（database, pattern, pageSize, cursor, pageOffset, flags）。
+    /// </summary>
+    [Fact]
+    public async Task ClearAllUsersAsync_ShouldScanAllUsersPattern_AndDeleteReturnedKeys()
+    {
+        RedisValue capturedPattern = RedisValue.Null;
+        var deletedKeys = new List<string>();
+
+        var db = new Mock<IDatabase>();
+        db.Setup(d => d.KeyDeleteAsync(It.IsAny<RedisKey>(), It.IsAny<CommandFlags>()))
+            .Callback<RedisKey, CommandFlags>((key, _) => deletedKeys.Add(key.ToString()))
+            .ReturnsAsync(true);
+
+        var server = new Mock<IServer>();
+        server.Setup(s => s.IsConnected).Returns(true);
+        server.Setup(s => s.IsReplica).Returns(false);
+        server.Setup(s => s.Keys(
+                It.IsAny<int>(),
+                It.IsAny<RedisValue>(),
+                It.IsAny<int>(),
+                It.IsAny<long>(),
+                It.IsAny<int>(),
+                It.IsAny<CommandFlags>()))
+            .Callback<int, RedisValue, int, long, int, CommandFlags>((_, pattern, _, _, _, _) => capturedPattern = pattern)
+            .Returns(new[]
+            {
+                (RedisKey)"feishu:token:user:ou_1:UserAccessToken:access",
+                (RedisKey)"feishu:token:user:ou_1:UserAccessToken:refresh",
+                (RedisKey)"feishu:token:user:ou_2:CustomToken:access"
+            });
+
+        var redis = new Mock<IConnectionMultiplexer>();
+        redis.Setup(r => r.GetDatabase(It.IsAny<int>(), It.IsAny<object>())).Returns(db.Object);
+        var endpoint = new System.Net.DnsEndPoint("localhost", 6379);
+        redis.Setup(r => r.GetEndPoints(It.IsAny<bool>())).Returns(new System.Net.EndPoint[] { endpoint });
+        redis.Setup(r => r.GetServer(It.IsAny<System.Net.EndPoint>(), It.IsAny<object>())).Returns(server.Object);
+
+        var store = new RedisUserTokenStore(
+            new RedisTokenStore(redis.Object, Mock.Of<ILogger<RedisTokenStore>>()),
+            redis.Object);
+
+        await store.ClearAllUsersAsync();
+
+        Assert.Equal("feishu:token:user:*", capturedPattern.ToString());
+        Assert.Equal(
+            new[]
+            {
+                "feishu:token:user:ou_1:UserAccessToken:access",
+                "feishu:token:user:ou_1:UserAccessToken:refresh",
+                "feishu:token:user:ou_2:CustomToken:access"
+            },
+            deletedKeys);
+    }
 }

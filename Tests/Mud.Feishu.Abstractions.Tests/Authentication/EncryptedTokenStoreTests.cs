@@ -109,6 +109,25 @@ public class EncryptedTokenStoreTests
         marker.IsEncryptionEnabled.Should().BeTrue("IUserTokenStore 继承 ITokenStore，契约兼容");
     }
 
+    /// <summary>
+    /// TMF-01（验收补测）：加密装饰器必须透传全用户清库能力——加密只作用于值、不改变键布局，
+    /// 不透传会导致「加密开启时用户令牌凭据变更清库静默失效」（与清库 no-op 问题同构的装饰层陷阱）。
+    /// </summary>
+    [Fact]
+    public async Task EncryptedUserTokenStore_ShouldForwardClearAllUsersAsync_ToInnerStore()
+    {
+        var inner = new InMemoryUserTokenStore();
+        var store = new EncryptedUserTokenStore(
+            inner,
+            new EncryptedTokenStore(new InMemoryTokenStore(), new TestEncryptionProvider()),
+            new TestEncryptionProvider());
+
+        await store.ClearAllUsersAsync();
+
+        inner.ClearAllUsersCallCount.Should().Be(1,
+            "加密装饰器必须透传 IFeishuUserTokenStorePurge.ClearAllUsersAsync 到内层存储");
+    }
+
     [Fact]
     public async Task Decrypt_ShouldLogThrottledWarning_WhenDecryptionKeepsFailing()
     {
@@ -374,9 +393,12 @@ public class EncryptedTokenStoreTests
         }
     }
 
-    private sealed class InMemoryUserTokenStore : IUserTokenStore
+    private sealed class InMemoryUserTokenStore : IUserTokenStore, IFeishuUserTokenStorePurge
     {
         private readonly Dictionary<(string UserId, string TokenType), string> _access = new();
+
+        /// <summary>IFeishuUserTokenStorePurge.ClearAllUsersAsync 的调用计数（透传断言用）。</summary>
+        public int ClearAllUsersCallCount { get; private set; }
 
         public string? RawAccessToken(string userId, string tokenType)
             => _access.TryGetValue((userId, tokenType), out var v) ? v : null;
@@ -412,6 +434,12 @@ public class EncryptedTokenStoreTests
                 _access.Remove(key);
             }
 
+            return Task.CompletedTask;
+        }
+
+        public Task ClearAllUsersAsync(CancellationToken cancellationToken = default)
+        {
+            ClearAllUsersCallCount++;
             return Task.CompletedTask;
         }
 

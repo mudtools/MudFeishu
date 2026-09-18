@@ -100,6 +100,11 @@ public class FeishuUserTokenStore : UserTokenStoreBase, IFeishuUserTokenStorePur
     /// </remarks>
     public override Task SetRefreshTokenAsync(string userId, string tokenType, string refreshToken, CancellationToken cancellationToken = default)
     {
+        // TMF-01（验收修复）：refresh 写入同样必须记账。若仅写 refresh 而从未写 access
+        // （如 PersistUserTokenAsync 在 access 剩余秒数 ≤ 0 时只持久化 refresh，
+        // 或宿主经 StoreUserTokenAsync 传入已过期的 access），该 (userId, tokenType)
+        // 不在共享记账中 → ClearAllUsersAsync 无法删除其 refresh 键（清库盲区）。
+        TrackUserTokenType(userId, tokenType);
         var key = BuildUserRefreshTokenKey(userId, tokenType);
         // TMA-22: 保持 30 天默认（IMemoryCache 路径无过期信息可用）。
         _cache.Set(key, refreshToken, TimeSpan.FromDays(30));
@@ -130,15 +135,25 @@ public class FeishuUserTokenStore : UserTokenStoreBase, IFeishuUserTokenStorePur
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// 删除该用户全部已记账令牌键。<b>保留外层 (KeyPrefix → userId) 条目、仅清空内层 tokenType
+    /// 内容</b>——与 <see cref="FeishuTokenStore.ClearAsync"/> 的防孤儿字典模式一致：
+    /// 若此处 TryRemove 外层条目，与 <see cref="TrackUserTokenType"/> 的 GetOrAdd 并发交错时，
+    /// TryAdd 会落入已脱离注册表的孤儿字典（注册丢失），该并发写入的新令牌将对后续
+    /// <see cref="ClearAllUsersAsync"/>（凭据变更清库，D10）不可见。保留空条目的代价是
+    /// 每历史用户一个空字典（下次凭据变更 <see cref="ClearAllUsersAsync"/> 整体重置）。
+    /// </remarks>
     public override Task ClearUserAsync(string userId, CancellationToken cancellationToken = default)
     {
-        if (SharedUsers.TryRemove(userId, out var tokenTypes))
+        if (SharedUsers.TryGetValue(userId, out var tokenTypes))
         {
             foreach (var tokenType in tokenTypes.Keys)
             {
                 _cache.Remove(BuildUserAccessTokenKey(userId, tokenType));
                 _cache.Remove(BuildUserRefreshTokenKey(userId, tokenType));
             }
+
+            tokenTypes.Clear();
         }
 
         return Task.CompletedTask;

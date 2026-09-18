@@ -116,6 +116,10 @@ public class FeishuTokenStore : ITokenStore
     /// </remarks>
     public Task SetRefreshTokenAsync(string tokenType, string refreshToken, CancellationToken cancellationToken = default)
     {
+        // TMF-01（验收修复）：refresh 写入同样必须记账。若仅写 refresh 而从未写 access
+        // （如 PersistUserTokenAsync 在 access 剩余秒数 ≤ 0 时只持久化 refresh），
+        // 该 tokenType 不在共享记账中 → ClearAsync 无法删除其 refresh 键（清库盲区）。
+        SharedTypes.TryAdd(tokenType, 0);
         var key = BuildRefreshTokenKey(tokenType);
         // TMA-22: 保持 30 天默认（IMemoryCache 路径无过期信息可用）。
         _cache.Set(key, refreshToken, TimeSpan.FromDays(30));

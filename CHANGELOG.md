@@ -169,6 +169,11 @@
 - TMF-04（P2）：删除产品代码零调用的 `RebuildAppContext` 死代码（含第二份清库副本）。
 - TMF-05（P2）：刷新失败清库前 CAS 比对 store 现值，防止误删并发刷新刚持久化的新令牌。
 - TMF-06（P2）：恢复令牌 IssuedAt 不可知按阈值保守判定，文档化短 TTL 部署不应依赖 store 恢复路径。
+- TMF 验收收口：Memory 双存储 `SetRefreshTokenAsync` 补共享记账（仅写 refresh 的 tokenType
+  不再成为凭据变更清库盲区）；`FeishuUserTokenStore.ClearUserAsync` 改为「保留外层记账条目、
+  仅清内容」，消除与并发写令牌交错的孤儿字典注册丢失；补齐 Redis `ClearAllUsersAsync` SCAN 用例、
+  加密装饰器透传用例；重建 `Demos/Mud.Feishu.Webhook.Demo` 缺失的 `WebhookDemoJsonContext`
+  （3c099cf4 引用未定义类型导致 Demo 构建失败）。
 
 **TMA（R1）逐任务**
 - P0-1：令牌失效级联清 store，401 恢复真正生效。

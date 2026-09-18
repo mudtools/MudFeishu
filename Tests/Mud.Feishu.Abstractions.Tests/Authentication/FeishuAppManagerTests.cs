@@ -834,6 +834,8 @@ public class FeishuAppManagerTests
 
         await storeA.SetAccessTokenAsync("tenant", "access-v", 100, CancellationToken.None);
         await storeA.SetRefreshTokenAsync("tenant", "refresh-v", CancellationToken.None);
+        // 验收修复回归：仅写 refresh（从未写 access）的 tokenType 也必须被记账并被清库。
+        await storeA.SetRefreshTokenAsync("refresh-only", "refresh-only-v", CancellationToken.None);
 
         await storeB.ClearAsync(CancellationToken.None);
 
@@ -841,6 +843,8 @@ public class FeishuAppManagerTests
             "ClearAsync 必须删除同前缀其他实例写入的 access 键");
         (await storeA.GetRefreshTokenAsync("tenant", CancellationToken.None)).Should().BeNull(
             "ClearAsync 必须删除同前缀其他实例写入的 refresh 键");
+        (await storeA.GetRefreshTokenAsync("refresh-only", CancellationToken.None)).Should().BeNull(
+            "仅写 refresh 的 tokenType 同样必须被记账并清除（清库盲区回归）");
     }
 
     /// <summary>
@@ -859,12 +863,16 @@ public class FeishuAppManagerTests
         await userA.SetAccessTokenAsync("ou_u1", "UserAccessToken", "access-v", 100, CancellationToken.None);
         await userA.SetRefreshTokenAsync("ou_u1", "UserAccessToken", "refresh-v", CancellationToken.None);
         await userA.SetAccessTokenAsync("ou_u2", "UserAccessToken", "access-v2", 100, CancellationToken.None);
+        // 验收修复回归：仅写 refresh（从未写 access）的 (userId, tokenType) 也必须被记账并被清库。
+        await userA.SetRefreshTokenAsync("ou_u3", "UserAccessToken", "refresh-only-v", CancellationToken.None);
 
         await userB.ClearAllUsersAsync(CancellationToken.None);
 
         (await userA.GetAccessTokenAsync("ou_u1", "UserAccessToken", CancellationToken.None)).Should().BeNull();
         (await userA.GetRefreshTokenAsync("ou_u1", "UserAccessToken", CancellationToken.None)).Should().BeNull();
         (await userA.GetAccessTokenAsync("ou_u2", "UserAccessToken", CancellationToken.None)).Should().BeNull();
+        (await userA.GetRefreshTokenAsync("ou_u3", "UserAccessToken", CancellationToken.None)).Should().BeNull(
+            "仅写 refresh 的 (userId, tokenType) 同样必须被记账并清除（清库盲区回归）");
     }
 
     /// <summary>

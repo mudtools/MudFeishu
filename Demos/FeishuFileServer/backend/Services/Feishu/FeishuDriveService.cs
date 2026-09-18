@@ -21,8 +21,6 @@ public class FeishuDriveService : IFeishuDriveService
 {
     private readonly IFeishuTenantV1DriveFiles _driveFiles;
     private readonly IFeishuTenantV1DriveFolder _driveFolder;
-    private readonly IFeishuTenantV1BatchMessage _message;
-    private readonly IFeishuTenantV1ChatGroup _chatGroup;
     private readonly ILogger<FeishuDriveService> _logger;
     private readonly string _tempDirectory;
 
@@ -35,14 +33,10 @@ public class FeishuDriveService : IFeishuDriveService
     public FeishuDriveService(
         IFeishuTenantV1DriveFiles driveFiles,
         IFeishuTenantV1DriveFolder driveFolder,
-        IFeishuTenantV1BatchMessage message,
-        IFeishuTenantV1ChatGroup chatGroup,
         ILogger<FeishuDriveService> logger)
     {
         _driveFiles = driveFiles;
         _driveFolder = driveFolder;
-        _message = message;
-        _chatGroup = chatGroup;
         _logger = logger;
         _tempDirectory = Path.Combine(Path.GetTempPath(), "FeishuFileServer");
         Directory.CreateDirectory(_tempDirectory);

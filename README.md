@@ -238,7 +238,7 @@ dotnet add package Mud.Feishu.OpenTelemetry
 > - `InMemory`：注册 `FeishuEventDeduplicator` 内存实现，进程内缓存事件 ID，重启后失效。
 > - `Distributed`：需通过 `services.AddSingleton<IFeishuEventDeduplicator, RedisFeishuEventDistributedDeduplicator>()` 手动注册分布式实现。若未注册，SDK 将记录警告并降级为内存实现（不抛异常以保证启动可用性）。
 
-> 💡 TimeSpan 配置说明：`Microsoft.Extensions.Configuration` 绑定 TimeSpan 时使用 `TypeDescriptor` 解析，"24:00:00" 会被解释为 **24 天** 而非 24 小时。请使用 `"d.hh:mm:ss"` 格式（如 `"2.00:00:00"` 表示 48 小时）或 `"hh:mm:ss"` 格式（如 `"00:30:00"` 表示 30 分钟）。
+> 💡 TimeSpan 配置说明：`Microsoft.Extensions.Configuration` 绑定 TimeSpan 时使用 `TypeDescriptor` 解析，`"hh:mm:ss"` 三段格式的首段是**小时**（如 `"24:00:00"` 表示 24 小时）；需要按天配置时使用 `"d.hh:mm:ss"` 四段格式（如 `"2.00:00:00"` 表示 48 小时），注意四段格式首段是**天**而非小时。
 
 > 💡 更多配置详情请参考 [Mud.Feishu.WebSocket 详细文档](./Mud.Feishu.WebSocket/Readme.md)
 
@@ -775,12 +775,12 @@ public interface IFeishuV1AttendanceGroups
     // 考勤组管理
 }
 
-public interface IFeishuV1AttendanceUserFlows
+public interface IFeishuTenantV1AttendanceUserFlows
 {
     // 打卡流水
 }
 
-public interface IFeishuV1AttendanceStats
+public interface IFeishuTenantV1AttendanceStats
 {
     // 考勤统计
 }
@@ -800,12 +800,12 @@ public interface IFeishuV1AttendanceStats
 企业审批全流程管理 API。
 
 ```csharp
-public interface IFeishuV4Approval
+public interface IFeishuTenantV4Approval
 {
     // 审批定义和实例
 }
 
-public interface IFeishuV4ApprovalTask
+public interface IFeishuTenantV4ApprovalTask
 {
     // 审批任务管理
 }
@@ -877,7 +877,7 @@ public interface IFeishuV1Message
     // 消息发送
 }
 
-public interface IFeishuV1BatchMessage
+public interface IFeishuTenantV1BatchMessage
 {
     // 批量消息
 }
@@ -895,12 +895,12 @@ public interface IFeishuV1BatchMessage
 卡片和消息流卡片 API。
 
 ```csharp
-public interface IFeishuV1Card
+public interface IFeishuTenantV1Card
 {
     // 卡片管理
 }
 
-public interface IFeishuV1CardElements
+public interface IFeishuTenantV1CardElements
 {
     // 卡片元素
 }
@@ -917,7 +917,7 @@ public interface IFeishuV1CardElements
 群组和会话管理 API。
 
 ```csharp
-public interface IFeishuTenantV3ChatGroup
+public interface IFeishuTenantV1ChatGroup
 {
     // 群组管理
 }
@@ -1071,12 +1071,12 @@ public interface IFeishuV1VideoConferencingMeeting
     // 会议管理
 }
 
-public interface IFeishuV1VideoConferencingConfig
+public interface IFeishuTenantV1VideoConferencingConfig
 {
     // 会议配置
 }
 
-public interface IFeishuV1VideoConferencingRoom
+public interface IFeishuTenantV1VideoConferencingRoom
 {
     // 会议室管理
 }
@@ -1105,22 +1105,22 @@ public interface IFeishuV1VideoConferencingReserves
 飞书 AI 能力 API，支持文档解析、OCR 识别、语音转文字和文本翻译。
 
 ```csharp
-public interface IFeishuV1AIDocument
+public interface IFeishuTenantV1AIDocument
 {
     // AI 文档解析
 }
 
-public interface IFeishuV1AIOpticalCharRecognition
+public interface IFeishuTenantV1AIOpticalCharRecognition
 {
     // OCR 识别
 }
 
-public interface IFeishuV1AISpeechToText
+public interface IFeishuTenantV1AISpeechToText
 {
     // 语音转文字
 }
 
-public interface IFeishuV1AITranslation
+public interface IFeishuTenantV1AITranslation
 {
     // 文本翻译
 }
@@ -1173,7 +1173,7 @@ public interface IFeishuV1MailTemplate
 飞书搜索 API，支持数据源搜索、文档/知识库搜索和套件搜索。
 
 ```csharp
-public interface IFeishuV2SearchDataSource
+public interface IFeishuTenantV2SearchDataSource
 {
     // 数据源管理
 }
@@ -1183,7 +1183,7 @@ public interface IFeishuV2SearchDocWiki
     // 文档/知识库搜索
 }
 
-public interface IFeishuV2SearchSuite
+public interface IFeishuUserV2SearchSuite
 {
     // 套件搜索
 }
@@ -1243,7 +1243,7 @@ public interface IFeishuV1HelpDeskTicket
 - `FeishuMetrics` / `FeishuMetricsHelper` - 统一性能指标收集（Token 缓存、事件处理、HTTP 请求、WebSocket 连接）
 - `FeishuEventDeduplicator` - 事件去重服务（支持内存和分布式模式）
 - `FeishuSeqIDDeduplicator` - WebSocket 消息序列号去重
-- `TokenUtils` - 令牌工具类
+- `IFeishuAppContext.GetTokenManager(tokenType)` - 令牌管理器入口（按 `FeishuTokenTypes` 常量获取租户/应用/用户令牌管理器，令牌管理实现位于 Mud.HttpUtils）
 - `UrlValidator` - URL 白名单验证和 SSRF 防护（来自 Mud.HttpUtils）
 
 ### 🌐 Mud.Feishu - HTTP API 客户端
@@ -1362,14 +1362,13 @@ public async Task<IActionResult> CreateUser([FromBody] CreateUserRequest request
 }
 
 // 多应用场景下使用 IFeishuAppManager
-var tenantJobTitleApi = _feishuAppManager.GetFeishuApi<IFeishuTenantV3JobTitle>("hr-app");
+var tenantJobTitleApi = _feishuAppManager.GetWebApi<IFeishuTenantV3JobTitle>("hr-app");
 var result = await tenantJobTitleApi.GetJobTitlesListAsync(10, null);
 
-// 使用应用上下文切换器
-var contextSwitcher = _feishuAppManager.GetAppContextSwitcher();
-using (contextSwitcher.UseApp("hr-app"))
+// 使用作用域切换应用上下文，using 结束后自动恢复
+var userApi = _feishuAppManager.GetDefaultWebApi<IFeishuTenantV3User>();
+using (userApi.BeginScope("hr-app"))
 {
-    var userApi = _feishuAppManager.GetFeishuApi<IFeishuTenantV3User>();
     var userResult = await userApi.GetUserInfoByIdAsync("user_123");
 }
 ```
@@ -1443,8 +1442,8 @@ public class TenantController : ControllerBase
     public async Task<IActionResult> GetUser(string tenantKey, string userId)
     {
         // 使用 using 确保作用域结束后自动恢复默认应用
-        using var scope = _appManager.GetAppContextSwitcher().UseApp(tenantKey);
-        var userApi = _appManager.GetFeishuApi<IFeishuTenantV3User>();
+        var userApi = _appManager.GetDefaultWebApi<IFeishuTenantV3User>();
+        using var scope = userApi.BeginScope(tenantKey);
         var result = await userApi.GetUserInfoByIdAsync(userId);
         return Ok(result);
     }
@@ -1551,8 +1550,7 @@ dotnet publish -r win-x64 -c Release /p:PublishAot=true
 | ----------------------------- | ---------------- | ----------------------------------- |
 | **Mud.HttpUtils**             | v2.0.6  | HTTP 客户端工具类（含源代码生成器） |
 | **Mud.HttpUtils.Generator**   | v2.0.6  | HTTP 客户端代码生成器（编译时）     |
-| **Mud.HttpUtils.Resilience**  | v2.0.6  | 弹性策略装饰器（重试/超时/熔断）    |
-| **Microsoft.Extensions.Http** | v8.0.1 / v10.0.4 | HTTP 客户端工厂                     |
+| **Microsoft.Extensions.Http** | v8.0.1 / v10.0.9 | HTTP 客户端工厂                     |
 
 ---
 

@@ -49,7 +49,7 @@ graph TB
     subgraph "Mud.Feishu.Abstractions"
         subgraph 认证与授权
             A[ITokenManager]
-            B[ITokenCache]
+            B[ITokenCache&lt;T&gt;]
             C[IFeishuAuth]
         end
 
@@ -131,10 +131,9 @@ graph LR
 - **`IAppTokenManager`** - 应用令牌管理器
 - **`ITenantTokenManager`** - 租户令牌管理器
 - **`IUserTokenManager`** - 用户令牌管理器（支持多用户）
-- **`ITokenCache`** - 令牌缓存抽象接口
+- **`ITokenCache<T>`** - 令牌缓存抽象接口（泛型同步接口，来自 Mud.HttpUtils）
+- **`ITokenStore`** - 令牌持久化存储接口（配合 `IFeishuTokenStoreFactory` 按应用创建）
 - **`IFeishuAuthentication`** - 飞书认证 API 客户端
-- **`TokenManagerWithCache`** - 带缓存的令牌管理器基类
-- **`MemoryTokenCache`** - 内存缓存实现
 
 #### 多应用管理
 
@@ -183,7 +182,7 @@ Mud.Feishu.Abstractions 支持三种飞书令牌类型：
 | **租户令牌** | `ITenantTokenManager` | 租户级别的权限验证 | 2 小时           |
 | **用户令牌** | `IUserTokenManager`   | 用户级别的权限验证 | 根据授权类型而定 |
 
-> 💡 使用 `FeishuTokenTypes` 常量类（`Mud.Feishu.Abstractions.Authentication` 命名空间）替代魔法字符串：
+> 💡 使用 `FeishuTokenTypes` 常量类（`Mud.Feishu.Abstractions` 命名空间）替代魔法字符串：
 > `FeishuTokenTypes.TenantAccessToken`、`FeishuTokenTypes.AppAccessToken`、`FeishuTokenTypes.UserAccessToken`。
 
 ### 令牌管理器特性
@@ -238,76 +237,68 @@ public class UserService
     }
 
     // 获取特定用户的令牌
-    public async Task<string> GetUserTokenAsync(string userId)
+    public async Task<string?> GetUserTokenAsync(string userId)
     {
         return await _userTokenManager.GetTokenAsync(userId);
     }
 
     // 使用授权码获取用户令牌
-    public async Task<string> GetUserTokenWithCodeAsync(string code, string redirectUri)
+    public async Task<UserTokenInfo?> GetUserTokenWithCodeAsync(string code, string redirectUri)
     {
         return await _userTokenManager.GetUserTokenWithCodeAsync(code, redirectUri);
     }
 
-    // 刷新用户令牌
-    public async Task<string> RefreshUserTokenAsync(string userId, string refreshToken)
+    // 刷新用户令牌（refresh token 由 SDK 内部令牌存储读取，无需调用方传入）
+    public async Task<UserTokenInfo?> RefreshUserTokenAsync(string userId, CancellationToken cancellationToken = default)
     {
-        return await _userTokenManager.RefreshUserTokenAsync(userId, refreshToken);
+        return await _userTokenManager.RefreshUserTokenAsync(userId, cancellationToken);
     }
 }
 ```
 
-#### 3. 自定义令牌缓存
+#### 3. 令牌缓存（ITokenCache<T>）
+
+令牌管理器内部的令牌缓存由 `ITokenCache<T>`（来自 `Mud.HttpUtils` 命名空间）提供。这是一个**泛型同步接口**，默认实现为基于 `ConcurrentDictionary` 的内存缓存：
 
 ```csharp
-// 实现 ITokenCache 接口
-public class RedisTokenCache : ITokenCache
+public interface ITokenCache<T> : IDisposable where T : class
 {
-    private readonly IConnectionMultiplexer _redis;
-    private readonly IDatabase _db;
-
-    public RedisTokenCache(IConnectionMultiplexer redis)
-    {
-        _redis = redis;
-        _db = _redis.GetDatabase();
-    }
-
-    public async Task<string?> GetAsync(string key, CancellationToken cancellationToken = default)
-    {
-        return await _db.StringGetAsync(key);
-    }
-
-    public async Task SetAsync(string key, string value, TimeSpan expiration, CancellationToken cancellationToken = default)
-    {
-        await _db.StringSetAsync(key, value, expiration);
-    }
-
-    public async Task<bool> RemoveAsync(string key, CancellationToken cancellationToken = default)
-    {
-        return await _db.KeyDeleteAsync(key);
-    }
-
-    // 实现其他方法...
+    bool TryGet(string key, out T? value);
+    void Set(string key, T? value);
+    void Set(string key, T? value, TimeSpan? absoluteExpirationRelativeToNow,
+             TimeSpan? slidingExpiration, Action<string>? postEvictionCallback = null);
+    bool TryRemove(string key, out T? removed);
+    int Count { get; }
+    IEnumerable<string> Keys { get; }
+    void Clear();
+    void Compact(double percentage);
 }
-
-// 注册自定义缓存
-builder.Services.AddTokenCache<RedisTokenCache>();
 ```
 
-#### 4. 获取缓存统计
+令牌的缓存与过期刷新由令牌管理器基类（`TokenManagerBase`）自动管理，缓存条目按应用（AppKey）通过键前缀隔离，
+多数场景下**无需自行实现**；如确需替换为 Redis 等实现，可参照上述契约编写自定义 `ITokenCache<T>`。
+
+#### 4. 令牌持久化（ITokenStore）
+
+如需将令牌持久化到外部存储（例如跨重启恢复、分布式部署），应实现 `ITokenStore` 接口，
+并通过 `IFeishuTokenStoreFactory` 为每个应用创建独立的存储实例（多应用隔离）：
 
 ```csharp
-public class TokenStatisticsService
+public class MyTokenStore : ITokenStore
 {
-    private readonly ITokenManager _tokenManager;
-
-    public async Task PrintStatisticsAsync()
-    {
-        var (total, expired) = await _tokenManager.GetCacheStatisticsAsync();
-        Console.WriteLine($"缓存统计: 总数={total}, 过期={expired}");
-    }
+    public Task<string?> GetAccessTokenAsync(string tokenType, CancellationToken cancellationToken = default) { /* ... */ }
+    public Task SetAccessTokenAsync(string tokenType, string accessToken, long expiresInSeconds, CancellationToken cancellationToken = default) { /* ... */ }
+    public Task<string?> GetRefreshTokenAsync(string tokenType, CancellationToken cancellationToken = default) { /* ... */ }
+    public Task SetRefreshTokenAsync(string tokenType, string refreshToken, CancellationToken cancellationToken = default) { /* ... */ }
+    public Task RemoveAsync(string tokenType, CancellationToken cancellationToken = default) { /* ... */ }
+    public Task<IEnumerable<string>> GetTokenTypesAsync(CancellationToken cancellationToken = default) { /* ... */ }
+    public Task ClearAsync(CancellationToken cancellationToken = default) { /* ... */ }
 }
 ```
+
+> 注意：持久化的令牌值必须携带过期时间戳（`TokenStoreHelper.EncodeStoredToken` 编码为
+> `{expireTimestampMs}|{token}` 格式），缺失过期时间戳的值会被视为缓存未命中。
+> SDK 内置 `FeishuTokenStore`（IMemoryCache，单实例）与 `RedisTokenStore`（`Mud.Feishu.Redis`，分布式）两种实现。
 
 ### 令牌缓存策略
 
@@ -353,20 +344,24 @@ Mud.Feishu.Abstractions 提供完整的多应用管理能力，允许在同一�
   ]
 }
 
-// 方式 2: 使用代码配置
+// 方式 2: 使用代码配置（FeishuAppConfigBuilder + 配置委托）
 builder.Services.AddFeishuApp(configs =>
 {
-    configs.AddDefaultApp("default", "cli_xxxxxx", "xxxxxx")
-            .SetBaseUrl("https://open.feishu.cn")
-            .SetTimeout(30)
-            .SetRetryCount(3);
+    configs.AddDefaultApp("default", "cli_xxxxxx", "xxxxxx", opt =>
+    {
+        opt.BaseUrl = "https://open.feishu.cn";
+        opt.TimeOut = 30;
+        opt.RetryCount = 3;
+    });
 
-    configs.AddApp("approval", "cli_yyyyyy", "yyyyyy")
-            .SetTimeout(60)
-            .SetRetryCount(5);
+    configs.AddApp("approval", "cli_yyyyyy", "yyyyyy", opt =>
+    {
+        opt.TimeOut = 60;
+        opt.RetryCount = 5;
+    });
 });
 
-// 方式 3: 使用构建器
+// 方式 3: 使用构建器链式调用
 builder.Services.AddFeishuApp(builder =>
 {
     builder.AddDefaultApp("default", "cli_xxxxxx", "xxxxxx")
@@ -391,15 +386,15 @@ public class MultiAppService
 
     public async Task UseDefaultAppAsync()
     {
-        // 获取默认应用的 API
-        var api = _appManager.GetFeishuApi<IMyApi>();
+        // 获取默认应用的 API（T 为源生成器生成的 API 客户端接口，需实现 IAppContextSwitcher）
+        var api = _appManager.GetDefaultWebApi<IMyApi>();
         await api.DoSomethingAsync();
     }
 
     public async Task UseSpecificAppAsync(string appKey)
     {
-        // 获取指定应用的 API
-        var api = _appManager.GetFeishuApi<IMyApi>(appKey);
+        // 获取指定应用的 API（内部已调用 UseApp(appKey) 切换上下文）
+        var api = _appManager.GetWebApi<IMyApi>(appKey);
         await api.DoSomethingAsync();
     }
 }
@@ -407,42 +402,56 @@ public class MultiAppService
 
 #### 2. 应用上下文切换
 
-> **推荐**：使用 `UseDefaultAppScope()` / `BeginScope(string)` 进行作用域切换，确保上下文自动恢复。
-> `UseApp()` / `UseDefaultApp()` 已标记 `[Obsolete]`，非 `using` 场景下存在上下文泄漏风险。
+> **推荐**：使用 `BeginScope(string)` 进行作用域切换（`IFeishuAppContextSwitcher` 接口成员），
+> 作用域结束自动恢复上下文；生成的 API 客户端还提供 `UseDefaultAppScope()` / `UseAppScope(appKey)`
+> 便捷方法（同为 `using` 语义）。`UseApp()` / `UseDefaultApp()` 为无作用域切换，不会自动归还上下文。
 
 ```csharp
+using Mud.Feishu.Abstractions;
+
 public class AppSwitchingService
 {
-    private readonly IFeishuAppContextSwitcher _switcher;
+    private readonly IFeishuAppManager _appManager;
+    private readonly IMyApi _api; // 源生成器生成的 API 客户端接口，实现了 IFeishuAppContextSwitcher
 
-    public async Task WorkWithAppsAsync()
+    public AppSwitchingService(IFeishuAppManager appManager, IMyApi api)
     {
-        // 推荐方式：使用 scope 模式切换，作用域结束自动恢复上下文
-        using (_switcher.UseDefaultAppScope())
+        _appManager = appManager;
+        _api = api;
+    }
+
+    public async Task WorkWithAppsAsync(string approvalAppKey)
+    {
+        // 推荐方式：BeginScope(appKey) 作用域切换，作用域结束自动恢复上下文
+        using (_api.BeginScope(approvalAppKey))
         {
-            var defaultToken = await _switcher
-                .GetTokenManager(TokenType.App)
-                .GetTokenAsync();
+            var approvalToken = await _api.GetTokenAsync();
+            // 作用域内的 API 调用均使用 approval 应用的上下文
         }
 
-        using (_switcher.BeginScope("approval"))
-        {
-            var approvalToken = await _switcher
-                .GetTokenManager(TokenType.App)
-                .GetTokenAsync();
-        }
+        // 获取指定应用的令牌管理器：先经 GetApp(appKey) 取应用上下文，
+        // 再用 FeishuTokenTypes 常量指定令牌类型
+        var tenantToken = await _appManager
+            .GetApp(approvalAppKey)
+            .GetTokenManager(FeishuTokenTypes.TenantAccessToken)
+            .GetTokenAsync();
+
+        // 其他令牌类型同理：
+        // _appManager.GetApp(approvalAppKey).GetTokenManager(FeishuTokenTypes.AppAccessToken)
+        // _appManager.GetApp(approvalAppKey).GetTokenManager(FeishuTokenTypes.UserAccessToken)
     }
 }
 ```
 
 <details>
-<summary>旧方式（已废弃，不推荐）</summary>
+<summary>旧方式（不推荐）</summary>
 
 ```csharp
-// ⚠️ UseApp / UseDefaultApp 已标记 [Obsolete]
-// 直接修改全局上下文，不返回 IDisposable，存在上下文泄漏风险
-var defaultContext = _switcher.UseDefaultApp();
-var approvalContext = _switcher.UseApp("approval");
+// ⚠️ UseApp / UseDefaultApp 为无作用域切换：直接写入当前上下文，
+// 不返回 IDisposable、不会自动恢复，长生命周期宿主（后台服务、单例编排等）
+// 中存在上下文泄漏风险，应优先使用 BeginScope(appKey)
+var approvalContext = _api.UseApp("approval");
+var defaultContext = _api.UseDefaultApp();
 ```
 
 </details>
@@ -478,7 +487,7 @@ public class MessageService
         var appManager = _serviceProvider.GetRequiredService<IFeishuAppManager>();
 
         // 方法1: 直接使用 IFeishuAppManager 获取指定应用的 API（推荐）
-        var approvalUserApi = appManager.GetFeishuApi<IFeishuTenantV3User>("approval-app");
+        var approvalUserApi = appManager.GetWebApi<IFeishuTenantV3User>("approval-app");
 
         // 方法2: 使用 UseApp 切换（注意：有线程安全问题）
         // var userApi = _serviceProvider.GetRequiredService<IFeishuTenantV3User>();
@@ -491,7 +500,7 @@ public class MessageService
 
 **重要提示**：
 
-- ⚠️ **线程安全警告**：直接使用 `UseApp()` 方法会改变服务实例的状态，在多线程环境下可能导致应用上下文混乱。**推荐使用 `IFeishuAppManager.GetFeishuApi<T>(appKey)` 方法获取独立的服务实例。**
+- ⚠️ **线程安全警告**：直接使用 `UseApp()` 方法会改变服务实例的状态，在多线程环境下可能导致应用上下文混乱。**推荐使用 `IFeishuAppManager.GetWebApi<T>(appKey)` 方法获取独立的服务实例。**
 
 - ✅ **推荐做法**：始终通过 `IFeishuAppManager` 获取指定应用的 API 实例，这样可以确保每次都使用正确的应用凭证，并避免线程安全问题。
 
@@ -726,6 +735,7 @@ public class MyService
 
 ```csharp
 using Mud.Feishu.Abstractions;
+using Mud.Feishu.EventCallback; // FeishuEventTypes 常量所在命名空间
 using System.Text.Json;
 
 namespace YourProject.Handlers;
@@ -826,8 +836,9 @@ public class DemoUserEventHandler : IFeishuEventHandler
 
 ```csharp
 using Mud.Feishu.Abstractions;
-using Mud.Feishu.Abstractions.DataModels.Organization;
-using Mud.Feishu.Abstractions.EventHandlers;
+using Mud.Feishu.Abstractions.Services;
+using Mud.Feishu.EventCallback;               // DepartmentCreatedEventHandler（源生成）
+using Mud.Feishu.EventCallback.Organization; // DepartmentCreatedResult（源生成）
 
 namespace YourProject.Handlers;
 
@@ -838,14 +849,18 @@ public class DemoDepartmentEventHandler : DepartmentCreatedEventHandler
 {
     private readonly YourEventService _eventService;
 
-    public DemoDepartmentEventHandler(ILogger<DemoDepartmentEventHandler> logger, YourEventService eventService) : base(logger)
+    public DemoDepartmentEventHandler(
+        IFeishuEventDeduplicator businessDeduplicator,
+        ILogger<DemoDepartmentEventHandler> logger,
+        YourEventService eventService) : base(businessDeduplicator, logger)
     {
         _eventService = eventService ?? throw new ArgumentNullException(nameof(eventService));
     }
 
     protected override async Task ProcessBusinessLogicAsync(
         EventData eventData,
-        ObjectEventResult<DepartmentCreatedResult>? departmentData,
+        DepartmentCreatedResult? departmentData,
+        FeishuEventHeader? header,
         CancellationToken cancellationToken = default)
     {
         if (eventData == null)
@@ -853,10 +868,16 @@ public class DemoDepartmentEventHandler : DepartmentCreatedEventHandler
 
         _logger.LogInformation("[部门事件] 开始处理部门创建事件: {EventId}", eventData.EventId);
 
+        if (departmentData?.Object == null)
+        {
+            _logger.LogWarning("[部门事件] 部门创建事件数据为空，跳过处理: {EventId}", eventData.EventId);
+            return;
+        }
+
         try
         {
             // 记录事件到服务
-            await _eventService.RecordDepartmentEventAsync(departmentData.Object, cancellationToken);
+            await _eventService.RecordDepartmentEventAsync(departmentData, cancellationToken);
 
             // 模拟业务处理
             await ProcessDepartmentEventAsync(departmentData.Object, cancellationToken);
@@ -871,7 +892,7 @@ public class DemoDepartmentEventHandler : DepartmentCreatedEventHandler
         }
     }
 
-    private async Task ProcessDepartmentEventAsync(DepartmentCreatedResult departmentData, CancellationToken cancellationToken)
+    private async Task ProcessDepartmentEventAsync(DepartmentResultInfo departmentData, CancellationToken cancellationToken)
     {
         // 模拟异步业务操作
         await Task.Delay(100, cancellationToken);
@@ -906,10 +927,8 @@ public class DemoDepartmentEventHandler : DepartmentCreatedEventHandler
 ### 3. 在 Program.cs 中配置服务和事件处理器
 
 ```csharp
-using Mud.Feishu.WebSocket;
 using Mud.Feishu.WebSocket.Demo.Handlers;
 using Mud.Feishu.WebSocket.Demo.Services;
-using Mud.Feishu.WebSocket.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -918,7 +937,7 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
-    c.SwaggerDoc("v1", new Microsoft.OpenApi.OpenApiInfo
+    c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
     {
         Title = "飞书WebSocket测试API",
         Version = "v1",
@@ -926,17 +945,17 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// 配置飞书服务
-builder.Services.CreateFeishuServicesBuilder(builder.Configuration)
-                .AddAuthenticationApi()
-                .AddTokenManagers()
+// 注册多应用支持（应用配置从 appsettings.json 的 "FeishuApps" 配置节读取）
+builder.Services.AddFeishuApp(builder.Configuration);
+
+// 注册飞书 API 服务模块（CreateFeishuServicesBuilder 为无参扩展方法）
+builder.Services.CreateFeishuServicesBuilder()
+                .AddAuthenticationApi() // 按需注册模块，也可用 AddModules(FeishuModule.All)
                 .Build();
 
-// 配置飞书WebSocket服务（推荐方式）
-builder.Services.AddFeishuWebSocketBuilder()
-    .ConfigureFrom(builder.Configuration)
-    .UseMultiHandler()  // 使用多处理器模式
-    .AddHandler<DemoDepartmentEventHandler>()      // 添加部门创建事件处理器
+// 配置飞书 WebSocket 服务（CreateFeishuWebSocketServiceBuilder：配置节名 + 应用键）
+builder.Services.CreateFeishuWebSocketServiceBuilder(builder.Configuration, "FeishuWebSocket", "default")
+    .AddHandler<DemoDepartmentEventHandler>()       // 添加部门创建事件处理器
     .AddHandler<DemoDepartmentDeleteEventHandler>() // 添加部门删除事件处理器
     .Build();
 
@@ -1080,20 +1099,19 @@ public class ApiClient
 public class DeduplicatedEventHandler : IFeishuEventHandler
 {
     private readonly IFeishuEventDeduplicator _deduplicator;
+    private readonly ILogger<DeduplicatedEventHandler> _logger;
 
     public async Task HandleAsync(EventData eventData, CancellationToken cancellationToken = default)
     {
-        // 检查事件是否已处理
-        if (_deduplicator.IsProcessed(eventData.EventId))
-        {
-            _logger.LogInformation("事件 {EventId} 已处理，跳过", eventData.EventId);
-            return;
-        }
+        // 标记事件为处理中（接口方法均为异步）。
+        // appKey 参数用于多应用场景隔离（避免跨应用事件键冲突），单应用可传 null。
+        var result = await _deduplicator.TryMarkAsProcessingAsync(
+            eventData.EventId, appKey: null, cancellationToken: cancellationToken);
 
-        // 标记事件为处理中
-        if (!_deduplicator.TryMarkAsProcessing(eventData.EventId))
+        if (result.IsDuplicate)
         {
-            _logger.LogInformation("事件 {EventId} 正在处理中，跳过", eventData.EventId);
+            // IsDuplicate=true 表示事件已完成或正在处理中，跳过
+            _logger.LogInformation("事件 {EventId} 已处理或正在处理中，跳过", eventData.EventId);
             return;
         }
 
@@ -1103,17 +1121,20 @@ public class DeduplicatedEventHandler : IFeishuEventHandler
             await ProcessEventAsync(eventData, cancellationToken);
 
             // 标记事件为已完成
-            _deduplicator.MarkAsCompleted(eventData.EventId);
+            await _deduplicator.MarkAsCompletedAsync(eventData.EventId, cancellationToken: cancellationToken);
         }
         catch
         {
             // 处理失败，回滚状态以便重试
-            _deduplicator.RollbackProcessing(eventData.EventId);
+            await _deduplicator.RollbackProcessingAsync(eventData.EventId, cancellationToken: cancellationToken);
             throw;
         }
     }
 }
 ```
+
+> 也可使用 `IsProcessedAsync(eventId, appKey, ct)` 查询处理状态、`GetStatusAsync(...)` 获取
+> `DeduplicationStatus`（Pending / Processing / Completed）。
 
 ### 失败事件存储 (IFailedEventStore)
 
@@ -1125,14 +1146,14 @@ public class FailedEventRetryService
     private readonly IFailedEventStore _failedEventStore;
     private readonly IFeishuEventHandlerFactory _factory;
 
-    // 存储失败事件
-    public async Task StoreFailedEventAsync(EventData eventData, Exception exception)
+    // 存储失败事件（带应用键与下次可重试时间；FailedEventInfo 只保存序列化后的事件数据）
+    public async Task StoreFailedEventAsync(EventData eventData, Exception exception, string? appKey)
     {
         await _failedEventStore.StoreFailedEventAsync(
             eventData,
             exception,
-            retryCount: 0,
-            nextRetryTime: DateTimeOffset.Now.AddMinutes(5)
+            appKey,
+            nextRetryAt: DateTimeOffset.UtcNow.AddMinutes(5)
         );
     }
 
@@ -1140,31 +1161,27 @@ public class FailedEventRetryService
     public async Task<List<FailedEventInfo>> GetPendingRetryEventsAsync()
     {
         return await _failedEventStore.GetPendingRetryEventsAsync(
-            beforeTime: DateTimeOffset.Now,
+            beforeTime: DateTimeOffset.UtcNow,
             maxCount: 10
         );
     }
 
-    // 重试失败事件
-    public async Task RetryFailedEventAsync(FailedEventInfo eventInfo)
+    // 重试失败事件（需先用 SerializedEventData 反序列化还原 EventData）
+    public async Task RetryFailedEventAsync(FailedEventInfo eventInfo, EventData eventData)
     {
-        var handler = _factory.GetHandler(eventInfo.EventData.EventType);
+        var handler = _factory.GetHandler(eventInfo.EventType);
 
         try
         {
-            await handler.HandleAsync(eventInfo.EventData);
+            await handler.HandleAsync(eventData);
 
             // 重试成功，移除失败记录
             await _failedEventStore.RemoveFailedEventAsync(eventInfo.EventId);
         }
         catch
         {
-            // 重试失败，增加重试次数并更新下次重试时间
-            await _failedEventStore.UpdateRetryCountAsync(
-                eventInfo.EventId,
-                eventInfo.RetryCount + 1,
-                DateTimeOffset.Now.AddMinutes(5 * (eventInfo.RetryCount + 1))
-            );
+            // 重试失败，更新重试次数（下次可重试时间由存储实现按退避策略计算）
+            await _failedEventStore.UpdateRetryCountAsync(eventInfo.EventId, eventInfo.RetryCount + 1);
         }
     }
 }
@@ -1221,25 +1238,22 @@ builder.Services.AddSingleton<IFeishuEventInterceptor, CustomEventInterceptor>()
 ```csharp
 public class SafeUrlDownloader
 {
-    private readonly UrlValidator _urlValidator;
     private readonly IHttpClientFactory _httpClientFactory;
 
     public async Task<byte[]> DownloadFromUrlAsync(string url)
     {
-        // 验证 URL 是否安全
-        if (!_urlValidator.Validate(url))
-        {
-            throw new InvalidOperationException($"URL 不被允许: {url}");
-        }
+        // 验证 URL 是否安全（UrlValidator 为静态类，来自 Mud.HttpUtils；
+        // URL 不在白名单内时抛出异常）
+        UrlValidator.ValidateUrl(url);
 
         var client = _httpClientFactory.CreateClient();
         return await client.GetByteArrayAsync(url);
     }
 }
 
-// 默认配置：仅允许飞书官方域名
-// 可以自定义添加信任域名
-urlValidator.AddTrustedDomain("https://api.yourcompany.com");
+// 默认配置：仅允许飞书官方域名（open.feishu.cn、open.larksuite.com 等）
+// 可以运行时追加信任域名（传入域名，而非完整 URL）
+UrlValidator.AddAllowedDomain("api.yourcompany.com");
 ```
 
 ### 性能指标 (FeishuMetrics)
@@ -1251,12 +1265,19 @@ using Mud.Feishu.Abstractions.Metrics;
 
 public class MetricsAwareEventHandler : IFeishuEventHandler
 {
-    public string SupportedEventType => FeishuEventTypes.UserCreated;
+    // appKey 来源：注入 IAppKeyAccessor 取 CurrentAppKey，或由业务上下文提供
+    private readonly string _appKey;
+    private readonly IAppKeyAccessor? _appKeyAccessor;
+
+    private string AppKey => _appKeyAccessor?.CurrentAppKey ?? _appKey;
+
+    public string SupportedEventType => FeishuEventTypes.UserCreated; // 来自 Mud.Feishu.EventCallback 命名空间
 
     public async Task HandleAsync(EventData eventData, CancellationToken cancellationToken = default)
     {
-        // 记录事件处理指标
-        using var _ = FeishuMetricsHelper.RecordEventHandling(eventData.EventType, nameof(MetricsAwareEventHandler));
+        // 记录事件处理指标（首参为 appKey，多应用场景指标可区分；
+        // 返回的 IDisposable 用于标记耗时，离开作用域时自动记录）
+        using var _ = FeishuMetricsHelper.RecordEventHandling(AppKey, eventData.EventType, nameof(MetricsAwareEventHandler));
 
         try
         {
@@ -1264,32 +1285,32 @@ public class MetricsAwareEventHandler : IFeishuEventHandler
             await ProcessEventAsync(eventData, cancellationToken);
 
             // 记录成功
-            FeishuMetricsHelper.RecordEventHandlingSuccess(eventData.EventType);
+            FeishuMetricsHelper.RecordEventOutcome(AppKey, eventData.EventType, success: true);
         }
         catch (Exception ex)
         {
             // 记录失败
-            FeishuMetricsHelper.RecordEventHandlingFailure(eventData.EventType, ex.GetType().Name);
+            FeishuMetricsHelper.RecordEventOutcome(AppKey, eventData.EventType, success: false, ex.GetType().Name);
             throw;
         }
     }
 }
 ```
 
-**支持的指标类型**：
+**支持的仪器（Instrument）名称**（Meter 名称 `Mud.Feishu`）：
 
-- `feishu_token_fetch_total` - 令牌获取总次数
-- `feishu_token_cache_hit_total` - 令牌缓存命中次数
-- `feishu_token_cache_miss_total` - 令牌缓存未命中次数
-- `feishu_token_refresh_total` - 令牌刷新次数
-- `feishu_event_handling_total` - 事件处理总次数
-- `feishu_event_handling_success_total` - 事件处理成功次数
-- `feishu_event_handling_failure_total` - 事件处理失败次数
-- `feishu_event_handling_duration_ms` - 事件处理持续时间（毫秒）
-- `feishu_http_request_total` - HTTP 请求总次数
-- `feishu_http_request_duration_ms` - HTTP 请求持续时间（毫秒）
-- `feishu_websocket_connections` - WebSocket 连接数
-- `feishu_cached_tokens` - 当前缓存的令牌数
+- `feishu.event.handling` - 事件处理计数（维度：app_key、event_type、handler_type、outcome）
+- `feishu.event.handling.duration` - 事件处理耗时直方图（毫秒）
+- `feishu.event.deduplication` - 事件去重命中计数
+- `feishu.websocket.connections` - WebSocket 活跃连接数（Gauge）
+- `feishu.websocket.backlog` - WebSocket 待处理消息积压数（Gauge）
+- `feishu.websocket.message.duration` - WebSocket 消息处理耗时直方图（毫秒）
+- `feishu.websocket.reconnect` - WebSocket 重连计数
+- `feishu.webhook.request` - Webhook 入站请求计数
+- `feishu.webhook.request.duration` - Webhook 请求处理耗时直方图（毫秒）
+
+> HTTP 请求指标（`mud.http.requests` / `mud.http.request.duration`）与令牌刷新指标
+> （`mud.token.refresh` / `mud.token.refresh.duration`）由 Mud.HttpUtils 自动采集。
 
 ### 消息脱敏 (MessageSanitizer)
 
@@ -1358,13 +1379,18 @@ public class MultiHandlerService
 ### 幂等性事件处理器
 
 ```csharp
-public class IdempotentUserEventHandler : IdempotentFeishuEventHandler<UserCreateEvent>
-{
-    private readonly IFeishuEventDeduplicator _deduplicator;
+using Mud.Feishu.Abstractions;
+using Mud.Feishu.Abstractions.EventHandlers;
+using Mud.Feishu.Abstractions.Services;
+using Mud.Feishu.EventCallback;
+using Mud.Feishu.EventCallback.Organization;
 
+public class IdempotentUserEventHandler : IdempotentFeishuEventHandler<UserCreateResult>
+{
     public IdempotentUserEventHandler(
+        IFeishuEventDeduplicator deduplicator,
         ILogger<IdempotentUserEventHandler> logger,
-        IFeishuEventDeduplicator deduplicator) : base(logger, deduplicator)
+        IAppKeyAccessor? appKeyAccessor = null) : base(deduplicator, logger, appKeyAccessor)
     {
     }
 
@@ -1372,47 +1398,73 @@ public class IdempotentUserEventHandler : IdempotentFeishuEventHandler<UserCreat
 
     protected override async Task ProcessBusinessLogicAsync(
         EventData eventData,
-        UserCreateEvent? eventEntity,
+        UserCreateResult? eventEntity,
         CancellationToken cancellationToken = default)
     {
-        // 处理业务逻辑，基类已自动保证幂等性
+        // 处理业务逻辑，基类已自动保证幂等性（基类 HandleAsync 为 sealed，不可重写；
+        // 事件实体类型为 XxxResult，通过重写 ProcessBusinessLogicAsync 实现业务）
         if (eventEntity != null)
         {
-            await CreateUserAsync(eventEntity.User, cancellationToken);
+            await CreateUserAsync(eventEntity, cancellationToken);
         }
+    }
+
+    // 可选：重写 GetBusinessKey 定义业务去重键（默认使用 EventId）
+    protected override string? GetBusinessKey(EventData eventData)
+    {
+        return $"{eventData.EventType}:{eventData.EventId}";
     }
 }
 ```
 
+> 💡 对内置事件，`Mud.Feishu.EventCallback` 已生成对应的类型化处理器（如 `UserCreateEventHandler`，
+> 命名空间 `Mud.Feishu.EventCallback.Organization`），直接继承并重写
+> `ProcessBusinessLogicAsync(EventData, XxxResult?, FeishuEventHeader?, ct)` 即可，
+> 参考 `Demos/Mud.Feishu.Webhook.Demo/Handlers/DemoDepartmentEventHandler.cs`。
+
 ### 条件事件处理
 
 ```csharp
+using System.Text.Json;
+using Mud.Feishu.Abstractions;
+using Mud.Feishu.EventCallback;
+
 public class ConditionalEventHandler : IFeishuEventHandler
 {
     public string SupportedEventType => FeishuEventTypes.ReceiveMessage;
 
     public async Task HandleAsync(EventData eventData, CancellationToken cancellationToken = default)
     {
-        // 只处理特定类型的消息
-        if (eventData.Event is MessageReceiveEvent msgEvent)
+        // ⚠️ eventData.Event 是 object?，运行时为 JsonElement，
+        // `eventData.Event is XxxEvent` 模式匹配恒为 false。
+        // 应通过 EventType 字符串（对照 FeishuEventTypes 常量）判断事件类型，
+        // 再自行反序列化，或改用生成的类型化处理器（见下文）。
+        if (eventData.EventType == FeishuEventTypes.ReceiveMessage &&
+            eventData.Event is JsonElement json &&
+            json.TryGetProperty("message", out var message))
         {
-            if (msgEvent.Message.MessageType == "text")
+            var messageType = message.TryGetProperty("message_type", out var type)
+                ? type.GetString()
+                : null;
+
+            // 只处理特定类型的消息
+            if (messageType == "text")
             {
-                await HandleTextMessage(msgEvent);
+                await HandleTextMessage(json, cancellationToken);
             }
-            else if (msgEvent.Message.MessageType == "image")
+            else if (messageType == "image")
             {
-                await HandleImageMessage(msgEvent);
+                await HandleImageMessage(json, cancellationToken);
             }
         }
     }
 
-    private async Task HandleTextMessage(MessageReceiveEvent msgEvent)
+    private async Task HandleTextMessage(JsonElement eventJson, CancellationToken cancellationToken)
     {
         // 处理文本消息逻辑
     }
 
-    private async Task HandleImageMessage(MessageReceiveEvent msgEvent)
+    private async Task HandleImageMessage(JsonElement eventJson, CancellationToken cancellationToken)
     {
         // 处理图片消息逻辑
     }
@@ -1450,8 +1502,12 @@ public class MyCustomEventHandler : IFeishuEventHandler
 
     public async Task HandleAsync(EventData eventData, CancellationToken cancellationToken = default)
     {
-        if (eventData.Event is MyCustomEvent customEvent)
+        // ⚠️ eventData.Event 是 object?，运行时为 JsonElement，
+        // 不能使用 `is MyCustomEvent` 模式匹配，需自行反序列化
+        if (eventData.Event is JsonElement json &&
+            json.TryGetProperty("custom_data", out var data))
         {
+            var customData = data.GetString();
             // 处理自定义事件
         }
     }
@@ -1495,10 +1551,10 @@ public class MyCustomEventHandler : DefaultFeishuEventHandler<MyCustomEvent>
 
 ### 令牌缓存选择策略
 
-| 缓存类型             | 优点                        | 缺点                   | 适用场景               |
-| -------------------- | --------------------------- | ---------------------- | ---------------------- |
-| `MemoryTokenCache`   | 简单、无需外部依赖          | 重启丢失、不支持分布式 | 单实例部署             |
-| 自定义 `ITokenCache` | 灵活、支持 Redis 等多种实现 | 需要自己实现           | 分布式部署、需要持久化 |
+| 缓存类型                       | 优点                        | 缺点                   | 适用场景               |
+| ------------------------------ | --------------------------- | ---------------------- | ---------------------- |
+| 内置 `ITokenCache<T>`（内存）  | 简单、无需外部依赖          | 重启丢失、不支持分布式 | 单实例部署             |
+| 自定义 `ITokenStore`（持久化） | 支持 Redis 等外部存储       | 需要自己实现           | 分布式部署、需要持久化 |
 
 ### 性能建议
 
@@ -1522,7 +1578,6 @@ public class MyCustomEventHandler : DefaultFeishuEventHandler<MyCustomEvent>
 ### 依赖项
 
 - **Microsoft.Extensions.Http** - HTTP 客户端支持
-- **Microsoft.Extensions.Http.Polly** - HTTP 重试策略支持
 - **Mud.HttpUtils** - HTTP 工具类及HttpClient代码生成器
 
 ### 构建项目

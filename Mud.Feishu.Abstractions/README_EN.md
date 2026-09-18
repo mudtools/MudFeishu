@@ -46,7 +46,7 @@ graph TB
     subgraph "Mud.Feishu.Abstractions"
         subgraph "Authentication & Authorization"
             A[ITokenManager]
-            B[ITokenCache]
+            B[ITokenCache&lt;T&gt;]
             C[IFeishuAuth]
         end
 
@@ -141,10 +141,10 @@ graph LR
 - **`IAppTokenManager`** - Application token manager
 - **`ITenantTokenManager`** - Tenant token manager
 - **`IUserTokenManager`** - User token manager (supports multiple users)
-- **`ITokenCache`** - Token cache abstraction interface
+- **`ITokenCache<T>`** - Token cache abstraction interface (from `Mud.HttpUtils`, synchronous generic contract)
 - **`IFeishuAuthentication`** - Feishu authentication API client
-- **`TokenManagerWithCache`** - Token manager base class with caching
-- **`MemoryTokenCache`** - Memory cache implementation
+- **`TokenManagerBase`** - Token manager base class with caching (from `Mud.HttpUtils`)
+- **`TenantTokenManager`** / **`AppTokenManager`** / **`UserTokenManager`** - Built-in token manager implementations
 
 #### Multi-Application Management
 - **`IFeishuAppManager`** - Application manager interface
@@ -189,7 +189,7 @@ Mud.Feishu.Abstractions supports three Feishu token types:
 | **Tenant Token** | `ITenantTokenManager` | Tenant-level permission validation | 2 hours |
 | **User Token** | `IUserTokenManager` | User-level permission validation | Depends on authorization type |
 
-> 💡 Use the `FeishuTokenTypes` constants class (`Mud.Feishu.Abstractions.Authentication` namespace) instead of magic strings:
+> 💡 Use the `FeishuTokenTypes` constants class (`Mud.Feishu.Abstractions` namespace) instead of magic strings:
 > `FeishuTokenTypes.TenantAccessToken`, `FeishuTokenTypes.AppAccessToken`, `FeishuTokenTypes.UserAccessToken`.
 
 ### Token Manager Features
@@ -199,7 +199,7 @@ Mud.Feishu.Abstractions supports three Feishu token types:
 - **Concurrency Control** - Uses Lazy loading to prevent cache penetration from concurrent requests
 - **Retry Mechanism** - Automatically retries (up to 2 times with exponential backoff) when token acquisition fails
 - **Thread Safety** - All operations are thread-safe
-- **Statistics** - Provides cache statistics (total count, expired count)
+- **Cache Inspection** - The underlying `ITokenCache<T>` exposes entry `Count` and `Keys` for inspection
 
 ### Usage Examples
 
@@ -250,24 +250,26 @@ public class UserService
     }
 
     // Get user token using authorization code
-    public async Task<string> GetUserTokenWithCodeAsync(string code, string redirectUri)
+    public async Task<UserTokenInfo?> GetUserTokenWithCodeAsync(string code, string redirectUri)
     {
         return await _userTokenManager.GetUserTokenWithCodeAsync(code, redirectUri);
     }
 
-    // Refresh user token
-    public async Task<string> RefreshUserTokenAsync(string userId, string refreshToken)
+    // Refresh user token (uses the stored refresh token; returns null when refresh is not possible)
+    public async Task<UserTokenInfo?> RefreshUserTokenAsync(string userId)
     {
-        return await _userTokenManager.RefreshUserTokenAsync(userId, refreshToken);
+        return await _userTokenManager.RefreshUserTokenAsync(userId);
     }
 }
 ```
 
 #### 3. Custom Token Cache
 
+Token caching is abstracted by the generic synchronous `ITokenCache<T>` interface (provided by `Mud.HttpUtils`, where `T` is the cached token type such as `UserTokenInfo`). Built-in implementations include `MemoryCacheTokenCache<T>` and `ConcurrentDictionaryTokenCache<T>`.
+
 ```csharp
-// Implement ITokenCache interface
-public class RedisTokenCache : ITokenCache
+// Implement the ITokenCache<T> interface with your own backend (e.g. Redis)
+public class RedisTokenCache : ITokenCache<UserTokenInfo>
 {
     private readonly IConnectionMultiplexer _redis;
     private readonly IDatabase _db;
@@ -278,39 +280,65 @@ public class RedisTokenCache : ITokenCache
         _db = _redis.GetDatabase();
     }
 
-    public async Task<string?> GetAsync(string key, CancellationToken cancellationToken = default)
+    public bool TryGet(string key, out UserTokenInfo? value)
     {
-        return await _db.StringGetAsync(key);
+        var json = _db.StringGet(key);
+        if (json.IsNull)
+        {
+            value = null;
+            return false;
+        }
+
+        value = JsonSerializer.Deserialize<UserTokenInfo>(json!);
+        return value != null;
     }
 
-    public async Task SetAsync(string key, string value, TimeSpan expiration, CancellationToken cancellationToken = default)
+    public void Set(string key, UserTokenInfo? value)
     {
-        await _db.StringSetAsync(key, value, expiration);
+        _db.StringSet(key, JsonSerializer.Serialize(value));
     }
 
-    public async Task<bool> RemoveAsync(string key, CancellationToken cancellationToken = default)
+    public void Set(string key, UserTokenInfo? value, TimeSpan? absoluteExpirationRelativeToNow,
+        TimeSpan? slidingExpiration, Action<string>? postEvictionCallback = null)
     {
-        return await _db.KeyDeleteAsync(key);
+        _db.StringSet(key, JsonSerializer.Serialize(value), absoluteExpirationRelativeToNow);
     }
 
-    // Implement other methods...
+    public bool TryRemove(string key, out UserTokenInfo? removed)
+    {
+        var json = _db.StringGet(key);
+        removed = json.IsNull ? null : JsonSerializer.Deserialize<UserTokenInfo>(json!);
+        return _db.KeyDelete(key);
+    }
+
+    // ITokenCache<T> also exposes Count, Keys, Clear() and Compact(percentage),
+    // plus Dispose() - implement them for your backend.
+
+    public int Count => throw new NotSupportedException();
+    public IEnumerable<string> Keys => throw new NotSupportedException();
+    public void Clear() => throw new NotSupportedException();
+    public void Compact(double percentage) { }
+    public void Dispose() => _redis.Dispose();
 }
-
-// Register custom cache
-builder.Services.AddTokenCache<RedisTokenCache>();
 ```
 
-#### 4. Get Cache Statistics
+#### 4. Inspect the Cache
+
+The cache contract exposes the current entry count and keys synchronously:
 
 ```csharp
 public class TokenStatisticsService
 {
-    private readonly ITokenManager _tokenManager;
+    private readonly ITokenCache<UserTokenInfo> _userTokenCache;
 
-    public async Task PrintStatisticsAsync()
+    public TokenStatisticsService(ITokenCache<UserTokenInfo> userTokenCache)
     {
-        var (total, expired) = await _tokenManager.GetCacheStatisticsAsync();
-        Console.WriteLine($"Cache Statistics: Total={total}, Expired={expired}");
+        _userTokenCache = userTokenCache;
+    }
+
+    public void PrintStatistics()
+    {
+        Console.WriteLine($"User token cache entries: {_userTokenCache.Count}");
     }
 }
 ```
@@ -335,7 +363,7 @@ Mud.Feishu.Abstractions provides complete multi-application management capabilit
 - **Independent Resources** - Each application has independent token manager, cache, and HTTP client
 - **Unified Management** - Unified management of all applications through IFeishuAppManager
 - **Dynamic Switching** - Supports runtime dynamic addition, removal, and switching of applications
-- **Cache Isolation** - Uses PrefixedTokenCache to ensure token caches of different applications do not interfere
+- **Cache Isolation** - Each application gets an isolated token store (`ITokenStore` implementations such as `FeishuTokenStore` / `RedisTokenStore`), and token caches are managed per-app inside the token managers
 
 ### Application Configuration
 
@@ -359,17 +387,21 @@ Mud.Feishu.Abstractions provides complete multi-application management capabilit
   ]
 }
 
-// Method 2: Use code configuration
+// Method 2: Use code configuration (via the Action<FeishuAppConfigBuilder> delegate)
 builder.Services.AddFeishuApp(configs =>
 {
-    configs.AddDefaultApp("default", "cli_xxxxxx", "xxxxxx")
-            .SetBaseUrl("https://open.feishu.cn")
-            .SetTimeout(30)
-            .SetRetryCount(3);
+    configs.AddDefaultApp("default", "cli_xxxxxx", "xxxxxx", opt =>
+    {
+        opt.BaseUrl = "https://open.feishu.cn";
+        opt.TimeOut = 30;
+        opt.RetryCount = 3;
+    });
 
-    configs.AddApp("approval", "cli_yyyyyy", "yyyyyy")
-            .SetTimeout(60)
-            .SetRetryCount(5);
+    configs.AddApp("approval", "cli_yyyyyy", "yyyyyy", opt =>
+    {
+        opt.TimeOut = 60;
+        opt.RetryCount = 5;
+    });
 });
 
 // Method 3: Use builder
@@ -397,15 +429,17 @@ public class MultiAppService
 
     public async Task UseDefaultAppAsync()
     {
-        // Get API for default application
-        var api = _appManager.GetFeishuApi<IMyApi>();
+        // Get the generated Feishu API client for the default application.
+        // T must implement IFeishuAppContextSwitcher (satisfied by the
+        // source-generated [HttpClientApi] interfaces).
+        var api = _appManager.GetDefaultWebApi<IMyApi>();
         await api.DoSomethingAsync();
     }
 
     public async Task UseSpecificAppAsync(string appKey)
     {
-        // Get API for specific application
-        var api = _appManager.GetFeishuApi<IMyApi>(appKey);
+        // Get the API client for a specific application
+        var api = _appManager.GetWebApi<IMyApi>(appKey);
         await api.DoSomethingAsync();
     }
 }
@@ -413,40 +447,44 @@ public class MultiAppService
 
 #### 2. Application Context Switching
 
-> **Recommended**: Use `UseDefaultAppScope()` / `BeginScope(string)` for scope-based switching with automatic context restoration.
-> `UseApp()` / `UseDefaultApp()` are marked `[Obsolete]` due to context leakage risk in non-`using` scenarios.
+> **Recommended**: Use `BeginScope(string)` for scope-based switching with automatic context restoration.
+> `UseApp()` / `UseDefaultApp()` modify the current context in place, which risks context leakage
+> outside of `using` scenarios in multi-threaded code.
 
 ```csharp
 public class AppSwitchingService
 {
     private readonly IFeishuAppContextSwitcher _switcher;
+    private readonly IFeishuAppContext _defaultAppContext;
+
+    public AppSwitchingService(IFeishuAppContextSwitcher switcher, IFeishuAppContext defaultAppContext)
+    {
+        _switcher = switcher;
+        _defaultAppContext = defaultAppContext;
+    }
 
     public async Task WorkWithAppsAsync()
     {
-        // Recommended: use scope pattern, context auto-restored when scope ends
-        using (_switcher.UseDefaultAppScope())
-        {
-            var defaultToken = await _switcher
-                .GetTokenManager(TokenType.App)
-                .GetTokenAsync();
-        }
+        // The default app context can be resolved directly from DI
+        var defaultToken = await _defaultAppContext
+            .GetTokenManager(FeishuTokenTypes.TenantAccessToken)
+            .GetTokenAsync();
 
+        // Recommended: scope pattern, context auto-restored when the scope ends
         using (_switcher.BeginScope("approval"))
         {
-            var approvalToken = await _switcher
-                .GetTokenManager(TokenType.App)
-                .GetTokenAsync();
+            var approvalToken = await _switcher.GetTokenAsync();
         }
     }
 }
 ```
 
 <details>
-<summary>Legacy approach (deprecated, not recommended)</summary>
+<summary>Legacy approach (not recommended)</summary>
 
 ```csharp
-// ⚠️ UseApp / UseDefaultApp are marked [Obsolete]
-// They modify global context directly without IDisposable, risking context leakage
+// ⚠️ UseApp / UseDefaultApp switch the global context in place without an IDisposable scope,
+// risking context leakage in non-`using` scenarios. Prefer BeginScope(appKey).
 var defaultContext = _switcher.UseDefaultApp();
 var approvalContext = _switcher.UseApp("approval");
 ```
@@ -480,8 +518,8 @@ public class DynamicAppManager
         return _appManager.HasApp(appKey);
     }
 
-    // Get all applications
-    public IEnumerable<IMudAppContext> GetAllApps()
+    // Get all instantiated applications
+    public IEnumerable<IFeishuAppContext> GetAllApps()
     {
         return _appManager.GetAllApps();
     }
@@ -502,9 +540,15 @@ public class DynamicAppManager
 | `AppId` | string | - | Feishu application ID (required) |
 | `AppSecret` | string | - | Feishu application secret (required) |
 | `BaseUrl` | string | https://open.feishu.cn | API base URL |
+| `AllowCustomBaseUrl` | bool | false | Allow custom base URLs (SSRF risk; only for special scenarios) |
 | `TimeOut` | int | 30 | HTTP request timeout (seconds) |
 | `RetryCount` | int | 3 | Failure retry count |
 | `RetryDelayMs` | int | 1000 | Retry delay (milliseconds) |
+| `CircuitBreakerEnabled` | bool | true | Whether the circuit breaker strategy is enabled |
+| `CircuitBreakerFailureThreshold` | int | 20 | Circuit breaker failure rate threshold (percentage, range 1-100) |
+| `CircuitBreakerSamplingDurationSeconds` | int | 60 | Circuit breaker sampling window (seconds, range 10-300) |
+| `CircuitBreakerBreakDurationSeconds` | int | 60 | Circuit breaker break duration (seconds, range 10-300) |
+| `CircuitBreakerMinimumThroughput` | int | 10 | Circuit breaker minimum throughput (range 2-1000) |
 | `TokenRefreshThreshold` | int | 300 | Token refresh threshold (seconds) |
 | `EnableLogging` | bool | true | Whether to enable logging |
 | `IsDefault` | bool | false | Whether it's the default application |
@@ -571,6 +615,7 @@ public class DynamicAppManager
 
 ```csharp
 using Mud.Feishu.Abstractions;
+using Mud.Feishu.EventCallback;
 using System.Text.Json;
 
 namespace YourProject.Handlers;
@@ -671,43 +716,59 @@ public class DemoUserEventHandler : IFeishuEventHandler
 
 ```csharp
 using Mud.Feishu.Abstractions;
-using Mud.Feishu.Abstractions.DataModels.Organization;
 using Mud.Feishu.Abstractions.EventHandlers;
+using Mud.Feishu.Abstractions.Services;
+using Mud.Feishu.EventCallback;
+using Mud.Feishu.EventCallback.Organization;
 
 namespace YourProject.Handlers;
 
 /// <summary>
-/// Demo department event handler - inherits from predefined department creation event handler
+/// Demo department event handler - inherits from the generated department creation event handler
 /// </summary>
 public class DemoDepartmentEventHandler : DepartmentCreatedEventHandler
 {
     private readonly YourEventService _eventService;
 
-    public DemoDepartmentEventHandler(ILogger<DemoDepartmentEventHandler> logger, YourEventService eventService) : base(logger)
+    public DemoDepartmentEventHandler(IFeishuEventDeduplicator businessDeduplicator,
+        ILogger<DemoDepartmentEventHandler> logger, YourEventService eventService)
+        : base(businessDeduplicator, logger)
     {
         _eventService = eventService ?? throw new ArgumentNullException(nameof(eventService));
     }
 
     protected override async Task ProcessBusinessLogicAsync(
         EventData eventData,
-        ObjectEventResult<DepartmentCreatedResult>? departmentData,
+        DepartmentCreatedResult? eventEntity,
+        FeishuEventHeader? header,
         CancellationToken cancellationToken = default)
     {
         if (eventData == null)
             throw new ArgumentNullException(nameof(eventData));
 
+        if (eventEntity == null)
+        {
+            _logger.LogWarning("[Department Event] Department creation event data is empty, skipping: {EventId}", eventData.EventId);
+            return;
+        }
+
         _logger.LogInformation("[Department Event] Starting to process department creation event: {EventId}", eventData.EventId);
 
         try
         {
+            // DepartmentCreatedResult wraps the department payload in its Object property
+            var department = eventEntity.Object;
+            if (department == null)
+                return;
+
             // Record event to service
-            await _eventService.RecordDepartmentEventAsync(departmentData.Object, cancellationToken);
+            await _eventService.RecordDepartmentEventAsync(department, cancellationToken);
 
             // Simulate business processing
-            await ProcessDepartmentEventAsync(departmentData.Object, cancellationToken);
+            await ProcessDepartmentEventAsync(department, cancellationToken);
 
             _logger.LogInformation("[Department Event] Department creation event processed successfully: DepartmentID {DepartmentId}, DepartmentName {DepartmentName}",
-                departmentData.Object.DepartmentId, departmentData.Object.Name);
+                department.DepartmentId, department.Name);
         }
         catch (Exception ex)
         {
@@ -716,7 +777,7 @@ public class DemoDepartmentEventHandler : DepartmentCreatedEventHandler
         }
     }
 
-    private async Task ProcessDepartmentEventAsync(DepartmentCreatedResult departmentData, CancellationToken cancellationToken)
+    private async Task ProcessDepartmentEventAsync(DepartmentResultInfo departmentData, CancellationToken cancellationToken)
     {
         // Simulate async business operation
         await Task.Delay(100, cancellationToken);
@@ -751,10 +812,8 @@ public class DemoDepartmentEventHandler : DepartmentCreatedEventHandler
 ### 3. Configure Services and Event Handlers in Program.cs
 
 ```csharp
-using Mud.Feishu.WebSocket;
 using Mud.Feishu.WebSocket.Demo.Handlers;
 using Mud.Feishu.WebSocket.Demo.Services;
-using Mud.Feishu.WebSocket.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -771,17 +830,17 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// Configure Feishu services
-builder.Services.CreateFeishuServicesBuilder(builder.Configuration)
+// Register multi-app support first (required by the WebSocket builder below)
+builder.Services.AddFeishuApp(builder.Configuration);
+
+// Register Feishu HTTP services with the module-based builder (parameterless overload)
+builder.Services.CreateFeishuServicesBuilder()
                 .AddAuthenticationApi()
-                .AddTokenManagers()
                 .Build();
 
-// Configure Feishu WebSocket service (recommended approach)
-builder.Services.AddFeishuWebSocketBuilder()
-    .ConfigureFrom(builder.Configuration)
-    .UseMultiHandler()  // Use multi-handler mode
-    .AddHandler<DemoDepartmentEventHandler>()      // Add department creation event handler
+// Configure the Feishu WebSocket service
+builder.Services.CreateFeishuWebSocketServiceBuilder(builder.Configuration, "default")
+    .AddHandler<DemoDepartmentEventHandler>()       // Add department creation event handler
     .AddHandler<DemoDepartmentDeleteEventHandler>() // Add department deletion event handler
     .Build();
 
@@ -830,7 +889,7 @@ public class DemoEventService
 {
     private readonly ILogger<DemoEventService> _logger;
     private readonly ConcurrentBag<UserData> _userEvents = new();
-    private readonly ConcurrentBag<DepartmentData> _departmentEvents = new();
+    private readonly ConcurrentBag<DepartmentResultInfo> _departmentEvents = new();
     private int _userCount = 0;
     private int _departmentCount = 0;
 
@@ -846,7 +905,7 @@ public class DemoEventService
         await Task.CompletedTask;
     }
 
-    public async Task RecordDepartmentEventAsync(DepartmentData departmentData, CancellationToken cancellationToken = default)
+    public async Task RecordDepartmentEventAsync(DepartmentResultInfo departmentData, CancellationToken cancellationToken = default)
     {
         _logger.LogDebug("Recording department event: {DepartmentId}", departmentData.DepartmentId);
         _departmentEvents.Add(departmentData);
@@ -866,7 +925,7 @@ public class DemoEventService
     }
 
     public IEnumerable<UserData> GetUserEvents() => _userEvents.ToList();
-    public IEnumerable<DepartmentData> GetDepartmentEvents() => _departmentEvents.ToList();
+    public IEnumerable<DepartmentResultInfo> GetDepartmentEvents() => _departmentEvents.ToList();
     public int GetUserCount() => _userCount;
     public int GetDepartmentCount() => _departmentCount;
 }
@@ -910,33 +969,44 @@ public class MultiHandlerService
 
 ### Conditional Event Handling
 
+`EventData.Event` carries the raw event payload (a `JsonElement`, `JsonDocument`, or `string` depending on the pipeline) — it is not a strongly-typed model. Branch on the event type string, parse the raw JSON yourself, or prefer the typed `DefaultFeishuEventHandler<T>` base class which deserializes for you:
+
 ```csharp
+using System.Text.Json;
+using Mud.Feishu.Abstractions;
+using Mud.Feishu.EventCallback;
+
 public class ConditionalEventHandler : IFeishuEventHandler
 {
     public string SupportedEventType => FeishuEventTypes.ReceiveMessage;
 
     public async Task HandleAsync(EventData eventData, CancellationToken cancellationToken = default)
     {
+        // SupportedEventType already scopes dispatch; the payload must be parsed manually here
+        var json = eventData.Event?.ToString() ?? "{}";
+        var payload = JsonSerializer.Deserialize<JsonElement>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
         // Only handle specific types of messages
-        if (eventData.Event is MessageReceiveEvent msgEvent)
+        if (payload.TryGetProperty("message_type", out var messageType))
         {
-            if (msgEvent.Message.MessageType == "text")
+            switch (messageType.GetString())
             {
-                await HandleTextMessage(msgEvent);
-            }
-            else if (msgEvent.Message.MessageType == "image")
-            {
-                await HandleImageMessage(msgEvent);
+                case "text":
+                    await HandleTextMessage(json);
+                    break;
+                case "image":
+                    await HandleImageMessage(json);
+                    break;
             }
         }
     }
 
-    private async Task HandleTextMessage(MessageReceiveEvent msgEvent)
+    private async Task HandleTextMessage(string rawEvent)
     {
         // Text message handling logic
     }
 
-    private async Task HandleImageMessage(MessageReceiveEvent msgEvent)
+    private async Task HandleImageMessage(string rawEvent)
     {
         // Image message handling logic
     }
@@ -974,7 +1044,9 @@ public class MyCustomEventHandler : IFeishuEventHandler
 
     public async Task HandleAsync(EventData eventData, CancellationToken cancellationToken = default)
     {
-        if (eventData.Event is MyCustomEvent customEvent)
+        // EventData.Event is the raw payload (JsonElement/string) - deserialize it explicitly
+        var json = eventData.Event?.ToString() ?? string.Empty;
+        if (JsonSerializer.Deserialize<MyCustomEvent>(json) is { } customEvent)
         {
             // Handle custom event
         }
@@ -1012,7 +1084,7 @@ public class MyCustomEventHandler : DefaultFeishuEventHandler<MyCustomEvent>
 
 | Strategy | Advantages | Disadvantages | Use Cases |
 |----------|-------------|----------------|-----------|
-| `IEventHandler` Direct Implementation | Maximum flexibility | Need manual deserialization | Simple events or special requirements |
+| `IFeishuEventHandler` Direct Implementation | Maximum flexibility | Need manual deserialization | Simple events or special requirements |
 | `DefaultFeishuEventHandler<T>` | Auto deserialization, error handling | Increased inheritance hierarchy | Most standard events |
 | `DefaultFeishuObjectEventHandler<T>` | Optimized for object results | Relatively fixed functionality | Events returning objects |
 
@@ -1051,7 +1123,13 @@ dotnet test
 
 - [Mud.Feishu](../Mud.Feishu) - Main Feishu SDK implementation
 - [Mud.Feishu.WebSocket](../Mud.Feishu.WebSocket) - WebSocket event subscription implementation
-- [Mud.Feishu.Test](../Mud.Feishu.Test) - Test project and usage examples
+- [Mud.Feishu.Webhook](../Mud.Feishu.Webhook) - Webhook event handling implementation
+- [Mud.Feishu.Authentication](../Mud.Feishu.Authentication) - User authentication middleware
+- [Mud.Feishu.Redis](../Mud.Feishu.Redis) - Redis distributed deduplication
+- [Mud.Feishu.EventCallback](../Mud.Feishu.EventCallback) - Strongly-typed event models and generated handlers
+- [Mud.Feishu.DataModels](../Mud.Feishu.DataModels) - Shared data models
+- [Mud.Feishu.OpenTelemetry](../Mud.Feishu.OpenTelemetry) - OpenTelemetry instrumentation
+- [Tests](../Tests) - Test projects mirroring the source structure
 
 ## 🤝 Contributing
 

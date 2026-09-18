@@ -45,7 +45,7 @@ dotnet add package Mud.Feishu
 
 ```csharp
 using Mud.Feishu;
-using Mud.Feishu.Extensions;
+using Microsoft.Extensions.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -102,17 +102,19 @@ app.Run();
 
 ```csharp
 using Mud.Feishu;
+using Mud.Feishu.DataModels;
+using Mud.Feishu.DataModels.Users;
 
 public class UserService
 {
-    private readonly IFeishuV3User_Tenant _userApi;
+    private readonly IFeishuTenantV3User _userApi;
 
-    public UserService(IFeishuV3User_Tenant userApi)
+    public UserService(IFeishuTenantV3User userApi)
     {
         _userApi = userApi;
     }
 
-    public async Task<FeishuApiResult<UserInfoResult>?> GetUserAsync(string userId)
+    public async Task<FeishuApiResult<GetUserInfoResult>?> GetUserAsync(string userId)
     {
         return await _userApi.GetUserInfoByIdAsync(userId);
     }
@@ -222,7 +224,7 @@ public class UserService
 | <br />       | <br />                         | `MessageUrgentPhoneAsync`          | 电话消息加急         |
 | <br />       | <br />                         | `UpdateUrlPreviewAsync`            | 更新 URL 预览      |
 | **用户令牌接口**   | `IFeishuUserV1Message`         | -                                  | 仅继承父类方法        |
-| **批量消息**     | `IFeishuV1BatchMessage_Tenant` | 批量消息相关                             | 批量消息管理         |
+| **批量消息**     | `IFeishuTenantV1BatchMessage` | 批量消息相关                             | 批量消息管理         |
 
 ***
 
@@ -267,7 +269,7 @@ public class UserService
 | `IFeishuTenantV4ApprovalTask`                             | -    | 审批任务管理（租户令牌）    |
 | `IFeishuTenantV4ApprovalComments`                         | -    | 审批评论管理（租户令牌）    |
 | `IFeishuTenantV4ApprovalExternal`                         | -    | 第三方审批（租户令牌）     |
-| `IFeishuTenantV4ApprovalFile`                             | -    | 审批文件管理（租户令牌）    |
+| `IFeishuTenantV2ApprovalFile`                             | -    | 审批文件管理（租户令牌）    |
 | `IFeishuTenantV4ApprovalQuery` → `IFeishuV4ApprovalQuery` | 继承父类 | 审批查询（租户令牌） |
 | `IFeishuUserV4ApprovalQuery` → `IFeishuV4ApprovalQuery` | 继承父类 | 审批查询（用户令牌） |
 | `IFeishuTenantV4ApprovalSubscribe` | - | 审批订阅（租户令牌） |
@@ -395,8 +397,8 @@ public class UserService
 | `IFeishuUserV1DrivePermissions` → `IFeishuV1DrivePermissions`       | 继承父类 | 云文档权限管理 |
 | `IFeishuTenantV1DriveSubscribe` → `IFeishuV1DriveSubscribe`         | 继承父类 | 云文档事件订阅 |
 | `IFeishuUserV1DriveSubscribe` → `IFeishuV1DriveSubscribe`           | 继承父类 | 云文档事件订阅 |
-| `IFeishuTenantV1Comments` → `IFeishuV1Comments`                     | 继承父类 | 云文档评论管理 |
-| `IFeishuUserV1Comments` → `IFeishuV1Comments`                       | 继承父类 | 云文档评论管理 |
+| `IFeishuTenantV1DriveComments` → `IFeishuV1DriveComments`           | 继承父类 | 云文档评论管理 |
+| `IFeishuUserV1DriveComments` → `IFeishuV1DriveComments`             | 继承父类 | 云文档评论管理 |
 
 #### 云文档权限管理 (Drive Permissions)
 
@@ -419,7 +421,7 @@ public class UserService
 
 #### 云文档评论 (Drive Comments)
 
-**继承关系**：`IFeishuTenantV1Comments` / `IFeishuUserV1Comments` → `IFeishuV1Comments`
+**继承关系**：`IFeishuTenantV1DriveComments` / `IFeishuUserV1DriveComments` → `IFeishuV1DriveComments`
 
 | API 函数 | 说明 |
 |---------|------|
@@ -581,7 +583,7 @@ IFeishuV1DocxBlocks // 文档块操作
 | `IFeishuTenantV1VideoConferencingRoomLevel` | - | 会议室层级管理（仅租户令牌） |
 | `IFeishuTenantV1VideoConferencingReserves` → `IFeishuV1VideoConferencingReserves` | 继承父类 | 会议室预定 |
 | `IFeishuTenantV1VideoConferencingRecording` → `IFeishuV1VideoConferencingRecording` | 继承父类 | 录制管理 |
-| `IFeishuTenantV1VideoConferencingNotes` | - | 会议纪要管理 |
+| `IFeishuUserV1VideoConferencingNotes` | - | 会议纪要管理（仅用户令牌） |
 | `IFeishuTenantV1VideoConferencingExports` → `IFeishuV1VideoConferencingExports` | 继承父类 | 会议导出 |
 | `IFeishuTenantV1VideoConferencingMeetinData` → `IFeishuV1VideoConferencingMeetinData` | 继承父类 | 会议数据 |
 | `IFeishuTenantV1VideoConferencingReport` | - | 会议报表（仅租户令牌） |
@@ -630,11 +632,11 @@ IFeishuV1DocxBlocks // 文档块操作
 |---------|---------|------|
 | `IFeishuTenantV1MailAlias` | - | 邮件别名管理（仅租户令牌） |
 | `IFeishuTenantV1MailContact` → `IFeishuV1MailContact` | 继承父类 | 联系人管理 |
-| `IFeishuTenantV1MailDraft` | - | 草稿管理（仅用户令牌） |
+| `IFeishuUserV1MailDraft` | - | 草稿管理（仅用户令牌） |
 | `IFeishuTenantV1MailFolder` → `IFeishuV1MailFolder` | 继承父类 | 文件夹管理 |
 | `IFeishuTenantV1MailGroup` | - | 邮件组管理（仅租户令牌） |
 | `IFeishuTenantV1MailLabel` → `IFeishuV1MailLabel` | 继承父类 | 标签管理 |
-| `IFeishuTenantV1MailPublicMailbox` | - | 公共邮箱管理 |
+| `IFeishuTenantV1MailPublicMailbox` → `IFeishuV1MailPublicMailbox` | 继承父类 | 公共邮箱管理 |
 | `IFeishuTenantV1MailRule` → `IFeishuV1MailRule` | 继承父类 | 邮件规则管理 |
 | `IFeishuTenantV1MailTemplate` → `IFeishuV1MailTemplate` | 继承父类 | 邮件模板管理 |
 | `IFeishuTenantV1MailThread` → `IFeishuV1MailThread` | 继承父类 | 邮件会话管理 |
@@ -707,18 +709,18 @@ public class MultiAppService
 
     public async Task UseSpecificAppAsync()
     {
-        // 获取指定应用的 API
-        var userApi = _appManager.GetFeishuApi<IFeishuV3User_Tenant>("hr-app");
+        // 获取指定应用的 API，并切换到该应用上下文
+        var userApi = _appManager.GetWebApi<IFeishuTenantV3User>("hr-app");
         var result = await userApi.GetUserInfoByIdAsync("user_123");
     }
 
-    // 使用应用上下文切换器
-    public async Task UseContextSwitcherAsync()
+    // 使用 BeginScope 在作用域内切换应用上下文
+    public async Task UseScopedAppAsync(IFeishuTenantV3User userApi)
     {
-        var contextSwitcher = _appManager.GetAppContextSwitcher();
-        using (contextSwitcher.UseApp("hr-app"))
+        using (userApi.BeginScope("hr-app"))
         {
-            // 在此作用域内，所有 API 调用都使用 hr-app 的凭证
+            // 在此作用域内，userApi 的所有调用都使用 hr-app 的凭证
+            var result = await userApi.GetUserInfoByIdAsync("user_123");
         }
     }
 }

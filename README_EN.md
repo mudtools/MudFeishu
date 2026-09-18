@@ -157,26 +157,31 @@ dotnet add package Mud.Feishu.Redis
     "AutoReconnect": true,
     "MaxReconnectAttempts": 5,
     "ReconnectDelayMs": 5000,
-    "HeartbeatIntervalMs": 30000,
+    "HeartbeatIntervalMs": 25000,
     "EnableLogging": true,
     "ConnectionTimeoutMs": 10000,
-    "EnableMessageQueue": true,
-    "MessageQueueCapacity": 1000,
-    "MaxConcurrentMessageProcessing": 10,
     "HealthCheckIntervalMs": 60000,
+    "MessageHandlerTimeoutMs": 30000,
     "ValidateServerCertificate": true,
     "EventDeduplication": {
       "Mode": "InMemory",
-      "CacheExpiration": "48:00:00",
+      "CacheExpiration": "2.00:00:00",
       "CleanupInterval": "00:05:00"
     }
   },
   "FeishuWebhook": {
-    "VerificationToken": "your_verification_token",
-    "EncryptKey": "your_encrypt_key_32_bytes_long",
-    "RoutePrefix": "feishu/webhook",
+    "GlobalRoutePrefix": "feishu",
     "EnableRequestLogging": true,
-    "MaxConcurrentEvents": 10
+    "MaxConcurrentEvents": 10,
+    "EnforceHeaderSignatureValidation": true,
+    "TimestampToleranceSeconds": 30,
+    "Apps": {
+      "default": {
+        "AppKey": "cli_xxx",
+        "VerificationToken": "your_verification_token",
+        "EncryptKey": "your_encrypt_key_32_bytes_long"
+      }
+    }
   }
 }
 ```
@@ -194,14 +199,14 @@ dotnet add package Mud.Feishu.Redis
 | `InitialReceiveBufferSize` | int | 4096 | Initial receive buffer size (bytes) |
 | `ValidateServerCertificate` | bool | true | Validate SSL certificates |
 | `AllowSelfSignedCertificates` | bool | false | Allow self-signed certificates |
-| `EnableMessageQueue` | bool | true | Enable message queue processing |
-| `MessageQueueCapacity` | int | 1000 | Maximum message queue capacity |
-| `BackpressureStrategy` | enum | DropOldest | Backpressure strategy (DropOldest/DropNewest/Block) |
-| `BackpressureBlockTimeoutMs` | int | 5000 | Backpressure block timeout (ms) |
+| `AllowInsecureWebSocket` | bool | false | Allow insecure ws:// connections (dev/test only) |
 | `HealthCheckIntervalMs` | int | 60000 | Health check interval (ms) |
-| `MaxConcurrentMessageProcessing` | int | 10 | Max concurrent message processing |
-| `TokenRefreshInterval` | TimeSpan | 2h | ⚠️ Obsolete, token lifecycle managed by IAppTokenManager |
-| `TokenRefreshAhead` | TimeSpan | 5min | ⚠️ Obsolete, token refresh strategy managed by IAppTokenManager |
+| `MessageHandlerTimeoutMs` | int | 30000 | Per-message processing timeout (ms), 0 disables the limit |
+| `SequenceGapThreshold` | ulong | 0 | Message sequence gap threshold, 0 disables gap detection |
+| `MessageSizeLimits` | object | 1MB / 10MB | Max text (chars) / binary (bytes) message size |
+| `EventDeduplication` | object | InMemory | Event deduplication (`Mode`/`CacheExpiration`/`CleanupInterval`) |
+
+> ℹ️ **Migration note**: the legacy `TokenRefreshInterval` / `TokenRefreshAhead` options have been removed. Token refresh is now controlled by `FeishuAppConfig.TokenRefreshThreshold` (HTTP layer); the WebSocket connection reuses the same app token manager and needs no extra configuration.
 
 > 💡 For more details, see [Mud.Feishu.WebSocket Documentation](./Mud.Feishu.WebSocket/Readme.md)
 
@@ -217,13 +222,13 @@ using Mud.Feishu.Webhook;
 var builder = WebApplication.CreateBuilder(args);
 
 // Register multi-application mode (Option 1: Load from configuration file)
-builder.Services.AddFeishuMultiApp(builder.Configuration);
+builder.Services.AddFeishuApp(builder.Configuration);
 
 // Register multi-application mode (Option 2: Code configuration)
-builder.Services.AddFeishuMultiApp(configure =>
+builder.Services.AddFeishuApp(configure =>
 {
-    config.AddDefaultApp("default", "cli_xxx", "dsk_xxx");
-    config.AddApp("hr-app", "cli_yyy", "dsk_yyy", opt =>
+    configure.AddDefaultApp("default", "cli_xxx", "dsk_xxx");
+    configure.AddApp("hr-app", "cli_yyy", "dsk_yyy", opt =>
     {
         opt.TimeOut = 45;
         opt.RetryCount = 5;
@@ -236,10 +241,12 @@ var configs = new List<FeishuAppConfig>
     new FeishuAppConfig { AppKey = "default", AppId = "cli_xxx", AppSecret = "dsk_xxx", IsDefault = true },
     new FeishuAppConfig { AppKey = "hr-app", AppId = "cli_yyy", AppSecret = "dsk_yyy" }
 };
-builder.Services.AddFeishuMultiApp(configs);
+builder.Services.AddFeishuApp(configs);
 
-// Register HTTP API services (All services)
-builder.Services.AddFeishuHttpClient();
+// Register HTTP API services (lazy mode - register all APIs)
+builder.Services.CreateFeishuServicesBuilder()
+    .AddAllApis()
+    .Build();
 
 // Or use builder pattern for selective registration
 builder.Services.CreateFeishuServicesBuilder()
@@ -469,7 +476,6 @@ sequenceDiagram
 - `FeishuWebhookConcurrencyService` - Concurrency control service with hot config reload
 - `FailedEventRetryService` - Failed event retry service, automatic background retry
 - `SecurityAuditService` - Security audit service, records security events
-- `ThreatDetectionService` - Threat detection service, identifies abnormal request patterns
 - `LoggingEventInterceptor` - Logging event interceptor
 - `TelemetryEventInterceptor` - Telemetry event interceptor
 
@@ -519,15 +525,14 @@ public async Task<IActionResult> CreateUser([FromBody] CreateUserRequest request
 private readonly IFeishuAppManager _feishuAppManager;
 
 // Use IFeishuAppManager to get API interface objects and flexibly switch between Feishu apps
-var tenantJobTitleApi = _feishuAppManager.GetFeishuApi<IFeishuTenantV3JobTitle>("hr-app");
+var tenantJobTitleApi = _feishuAppManager.GetWebApi<IFeishuTenantV3JobTitle>("hr-app");
 var result = await tenantJobTitleApi.GetJobTitlesListAsync(10, null);
 
-// Use app context switcher
-var contextSwitcher = _feishuAppManager.GetAppContextSwitcher();
-using (contextSwitcher.UseApp("hr-app"))
+// Scope-based app switching with automatic context restoration (BeginScope)
+var userApi = _feishuAppManager.GetDefaultWebApi<IFeishuTenantV3User>();
+using (userApi.BeginScope("hr-app"))
 {
     // All API calls within this scope use hr-app
-    var userApi = _feishuAppManager.GetFeishuApi<IFeishuTenantV3User>();
     var userResult = await userApi.GetUserInfoByIdAsync("user_123");
 }
 
@@ -551,7 +556,7 @@ public class MessageHandler : IFeishuEventHandler
 
     public async Task HandleAsync(EventData eventData, CancellationToken cancellationToken = default)
     {
-        var messageEvent = JsonSerializer.Deserialize<MessageReceiveEvent>(
+        var messageEvent = JsonSerializer.Deserialize<MessageReceiveResult>(
             eventData.Event?.ToString() ?? "{}");
 
         Console.WriteLine($"Message received: {messageEvent.Message.Content}");
@@ -567,12 +572,20 @@ builder.Services.CreateFeishuWebSocketServiceBuilder(builder.Configuration)
 ### Webhook Event Processing
 
 ```csharp
-// Department creation event handler (inherit base class)
+// Department creation event handler (inherit the generated base handler)
 public class DepartmentCreatedHandler : DepartmentCreatedEventHandler
 {
+    public DepartmentCreatedHandler(
+        IFeishuEventDeduplicator businessDeduplicator,
+        ILogger<DepartmentCreatedHandler> logger)
+        : base(businessDeduplicator, logger)
+    {
+    }
+
     protected override async Task ProcessBusinessLogicAsync(
         EventData eventData,
         DepartmentCreatedResult? departmentData,
+        FeishuEventHeader? header,
         CancellationToken cancellationToken = default)
     {
         // Sync to local database
@@ -592,63 +605,78 @@ app.UseFeishuWebhook();
 ### Performance Monitoring
 
 ```csharp
-// Get real-time WebSocket connection count
-var connectionCountProvider = app.Services.GetRequiredService<IWebSocketConnectionCountProvider>();
-var connectionCount = await connectionCountProvider.GetConnectionCountAsync();
-
-// Use FeishuMetrics to record custom metrics
-FeishuMetrics.RecordTokenRefresh("default", true);
-FeishuMetrics.RecordHttpRequest("default", "user.get", 200, TimeSpan.FromMilliseconds(150));
+// The SDK publishes metrics on the "Mud.Feishu" meter (FeishuMetrics), e.g.:
+// - feishu.websocket.connections  (observable gauge, per app_key) - real-time WebSocket connection count
+// - feishu.event.handling / feishu.event.handling.duration - event processing count and latency
+// - feishu.websocket.reconnect / feishu.websocket.message.duration - WebSocket health
+// - feishu.webhook.request / feishu.webhook.request.duration - webhook traffic
+// HTTP requests (mud.http.requests) and token refreshes (mud.token.refresh) are recorded
+// automatically by the underlying Mud.HttpUtils component.
+//
+// Subscribe with a MeterListener or any OpenTelemetry exporter to consume them:
+using var listener = new MeterListener();
+listener.InstrumentPublished = (instrument, meterListener) =>
+{
+    var enable = instrument.Meter.Name == FeishuMetrics.MeterName;
+    if (enable)
+    {
+        meterListener.EnableMeasurementEvents(instrument);
+    }
+    return enable;
+};
+listener.Start();
 ```
 
 ### URL Whitelist and SSRF Protection
 
 ```csharp
-// Configure URL whitelist
+// Webhook security options (signature, replay window, IP whitelist)
 var options = new FeishuWebhookOptions
 {
-    SsrfProtection = new SsrfProtectionOptions
-    {
-        Enabled = true,
-        BlockPrivateIps = true,
-        AllowList = new[]
-        {
-            "https://open.feishu.cn",
-            "https://*.example.com"
-        }
-    }
+    // Force validation of the X-Lark-Signature header (recommended in production)
+    EnforceHeaderSignatureValidation = true,
+    // Replay window tolerance (seconds), max 300
+    TimestampToleranceSeconds = 30,
+    // Optional source IP whitelist (supports CIDR, e.g. "192.168.1.0/24")
+    AllowedSourceIPs = new HashSet<string> { "10.0.0.0/8" }
 };
 
-// Validate URL
-UrlValidator.ValidateBaseUrl("https://open.feishu.cn/api", true);
+// Base URL whitelist validation (SSRF protection, provided by Mud.HttpUtils)
+UrlValidator.ConfigureAllowedDomains(["open.feishu.cn", "open.larksuite.com"]);
+UrlValidator.ValidateBaseUrl("https://open.feishu.cn/api", allowCustomBaseUrl: false);
 ```
 
 ### Event Interceptors
 
 ```csharp
-// Create logging interceptor
-public class CustomLoggingInterceptor : LoggingEventInterceptor
+// Register the built-in logging interceptor directly (constructor takes ILogger<LoggingEventInterceptor>)
+builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
+    .AddInterceptor<LoggingEventInterceptor>()
+    .AddHandler<DepartmentCreatedHandler>()
+    .Build();
+
+// Or implement IFeishuEventInterceptor for custom pre/post processing
+public class AuditLogInterceptor : IFeishuEventInterceptor
 {
-    public CustomLoggingInterceptor(ILogger<CustomLoggingInterceptor> logger)
-        : base(logger)
+    private readonly ILogger<AuditLogInterceptor> _logger;
+
+    public AuditLogInterceptor(ILogger<AuditLogInterceptor> logger)
     {
+        _logger = logger;
     }
 
-    protected override Task LogBeforeHandleAsync(
-        string eventType,
-        string? eventId,
-        CancellationToken cancellationToken)
+    public Task<bool> BeforeHandleAsync(string eventType, EventData eventData, CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation("Start processing event: {EventType}, EventId: {EventId}", eventType, eventId);
+        _logger.LogInformation("Start processing event: {EventType}, EventId: {EventId}", eventType, eventData.EventId);
+        return Task.FromResult(true);
+    }
+
+    public Task AfterHandleAsync(string eventType, EventData eventData, Exception? exception, CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("Finished processing event: {EventType}, EventId: {EventId}", eventType, eventData.EventId);
         return Task.CompletedTask;
     }
 }
-
-// Register interceptor
-builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
-    .AddInterceptor<CustomLoggingInterceptor>()
-    .AddHandler<DepartmentCreatedHandler>()
-    .Build();
 ```
 
 ---
@@ -685,9 +713,9 @@ public class TenantController : ControllerBase
     [HttpGet("tenant/{tenantKey}/users/{userId}")]
     public async Task<IActionResult> GetUser(string tenantKey, string userId)
     {
+        var userApi = _appManager.GetDefaultWebApi<IFeishuTenantV3User>();
         // using ensures the default app is restored when the scope ends
-        using var scope = _appManager.GetAppContextSwitcher().UseApp(tenantKey);
-        var userApi = _appManager.GetFeishuApi<IFeishuTenantV3User>();
+        using var scope = userApi.BeginScope(tenantKey);
         var result = await userApi.GetUserInfoByIdAsync(userId);
         return Ok(result);
     }
@@ -736,12 +764,11 @@ Below are actual screenshots of **FeishuWikiManager** (Feishu Wiki Management De
 ## 📖 Detailed Documentation
 
 - [Mud.Feishu.Abstractions Documentation](./Mud.Feishu.Abstractions/README_EN.md) - Event processing abstraction layer guide
-- [Mud.Feishu Documentation](./Mud.Feishu/README_EN.md) - HTTP API complete usage guide
+- [Mud.Feishu Documentation](./Mud.Feishu/README.md) - HTTP API complete usage guide
 - [Mud.Feishu.WebSocket Documentation](./Mud.Feishu.WebSocket/Readme_EN.md) - WebSocket real-time event subscription guide
 - [Mud.Feishu.Webhook Documentation](./Mud.Feishu.Webhook/README_EN.md) - Webhook HTTP callback event processing guide
 - [Mud.Feishu.Authentication Documentation](./Mud.Feishu.Authentication/README.md) - Feishu user authentication middleware guide
 - [Mud.Feishu.Redis Documentation](./Mud.Feishu.Redis/README.md) - Redis distributed deduplication extension guide
-- [Security Enhancements](./docs/SECURITY_IMPROVEMENTS.md) - SSRF protection, URL validation and other security features
 
 ## 🛠️ Technology Stack
 
@@ -775,15 +802,12 @@ dotnet publish -r win-x64 -c Release /p:PublishAot=true
 
 ### Core Dependencies
 
-| Package                                       | Version          | Description                             |
-| --------------------------------------------- | ---------------- | --------------------------------------- |
-| **Mud.ServiceCodeGenerator**                  | v1.4.6           | HTTP client code generator              |
-| **System.Text.Json**                          | v10.0.1          | High-performance JSON serialization     |
-| **Microsoft.Extensions.Http**                 | v8.0.1 / v10.0.1 | HTTP client factory                     |
-| **Microsoft.Extensions.Http.Polly**           | v8.0.2 / v10.0.1 | Resilience and transient fault handling |
-| **Microsoft.Extensions.DependencyInjection**  | v8.0.2 / v10.0.1 | Dependency injection                    |
-| **Microsoft.Extensions.Logging**              | v8.0.3 / v10.0.1 | Logging                                 |
-| **Microsoft.Extensions.Configuration.Binder** | v8.0.2 / v10.0.1 | Configuration binding                   |
+| Package                                       | Version          | Description                                           |
+| --------------------------------------------- | ---------------- | ----------------------------------------------------- |
+| **Mud.HttpUtils**                             | v2.0.6           | HTTP client utilities with source generator (incl. resilience policies) |
+| **Mud.HttpUtils.Generator**                   | v2.0.6           | HTTP client code generator (compile-time)             |
+| **System.Text.Json**                          | v10.0.9          | High-performance JSON serialization (netstandard2.0 target) |
+| **Microsoft.Extensions.***                    | v8.0.2 / v10.0.9 | Dependency injection, logging, configuration binding, options |
 
 ---
 

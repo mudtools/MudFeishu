@@ -1,12 +1,12 @@
 // -----------------------------------------------------------------------
-//  作者：Mud Studio  版权所有 (c) Mud Studio 2026   
+//  作者：Mud Studio  版权所有 (c) Mud Studio 2026
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
-//  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！
-//  本项目基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
+//  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
 using Mud.Feishu.Abstractions.Services;
+using Mud.Feishu.Abstractions.Utilities;
 using Mud.Feishu.Webhook.Configuration;
 
 namespace Mud.Feishu.Webhook.Services;
@@ -37,6 +37,11 @@ public class NonceValidator(
     private NonceFailureMode FailureMode => _optionsMonitor.CurrentValue.NonceValidationFailureMode;
 
     /// <summary>
+    /// 空标识符是否拒绝（WHF-05，fail-closed 默认）
+    /// </summary>
+    private bool RejectEmptyIdentifiers => _optionsMonitor.CurrentValue.RejectEmptyIdentifiers;
+
+    /// <summary>
     /// 判断异常是否为可降级的 Redis 连接类故障（T-M2-10 / ADR-6.2）。
     /// <para>仅 <see cref="FeishuRedisFailureKind.Connection"/>（可配置扩展为 <see cref="FeishuRedisFailureKind.Timeout"/>）
     /// 走 <see cref="NonceFailureMode"/> 降级；<see cref="FeishuRedisFailureKind.Server"/> 类故障（如配置错误）按致命错误抛出。</para>
@@ -55,14 +60,19 @@ public class NonceValidator(
     /// <inheritdoc />
     public async Task<bool> CheckNonceAsync(string nonce)
     {
+        // WHF-05：空 Nonce 无法防重放——fail-closed
+        if (string.IsNullOrEmpty(nonce))
+        {
+            if (RejectEmptyIdentifiers)
+            {
+                Logger.LogWarning("Nonce 为空，拒绝请求（RejectEmptyIdentifiers=true），AppKey: {AppKey}", CurrentAppKey ?? "null");
+                return false;
+            }
+            return true; // 空 Nonce 视为有效（允许通过），由调用方根据环境决定
+        }
+
         try
         {
-            // 空Nonce 处理逻辑与 ValidateNonceAsync 一致
-            if (string.IsNullOrEmpty(nonce))
-            {
-                return true; // 空Nonce视为有效（允许通过），由调用方根据环境决定
-            }
-
             // 仅检查是否已被使用，不标记
             var isUsed = await _nonceDeduplicator.IsUsedAsync(nonce, CurrentAppKey);
             return !isUsed; // 未被使用返回 true（有效）
@@ -71,7 +81,7 @@ public class NonceValidator(
         {
             // T-M2-10：仅 Connection/Timeout 类故障走降级策略
             Logger.LogError(ex, "检查 Nonce 使用状态时发生可降级错误, Nonce: {Nonce}, AppKey: {AppKey}, 降级策略: {FailureMode}",
-                nonce, CurrentAppKey ?? "null", FailureMode);
+                LogSanitizer.Clean(nonce), CurrentAppKey ?? "null", FailureMode);
 
             return FailureMode != NonceFailureMode.Reject;
         }
@@ -81,6 +91,17 @@ public class NonceValidator(
     /// <inheritdoc />
     public async Task<bool> TryMarkNonceAsUsedAsync(string nonce)
     {
+        // WHF-05：空 Nonce 无法标记去重——fail-closed（返回 true=已使用，上层判定拒绝）
+        if (string.IsNullOrEmpty(nonce))
+        {
+            if (RejectEmptyIdentifiers)
+            {
+                Logger.LogWarning("Nonce 为空，拒绝请求（RejectEmptyIdentifiers=true），AppKey: {AppKey}", CurrentAppKey ?? "null");
+                return true;
+            }
+            return false;
+        }
+
         try
         {
             // TryMarkAsUsedAsync 返回 true 表示 Nonce 已被使用（重放攻击）
@@ -89,11 +110,11 @@ public class NonceValidator(
 
             if (isAlreadyUsed)
             {
-                Logger.LogWarning("Nonce {Nonce} 已使用过（AppKey: {AppKey}），检测到重放攻击", nonce, CurrentAppKey ?? "null");
+                Logger.LogWarning("Nonce {Nonce} 已使用过（AppKey: {AppKey}），检测到重放攻击", LogSanitizer.Clean(nonce), CurrentAppKey ?? "null");
             }
             else
             {
-                Logger.LogDebug("Nonce {Nonce} 验证通过并已标记为已使用（AppKey: {AppKey}）", nonce, CurrentAppKey ?? "null");
+                Logger.LogDebug("Nonce {Nonce} 验证通过并已标记为已使用（AppKey: {AppKey}）", LogSanitizer.Clean(nonce), CurrentAppKey ?? "null");
             }
 
             return isAlreadyUsed;
@@ -104,7 +125,7 @@ public class NonceValidator(
             // - Reject: 认为已使用（返回 true = 拒绝请求，安全优先）
             // - Allow: 认为未使用（返回 false = 允许请求，可用性优先）
             Logger.LogError(ex, "标记 Nonce 时发生可降级错误, Nonce: {Nonce}, AppKey: {AppKey}, 降级策略: {FailureMode}",
-                nonce, CurrentAppKey ?? "null", FailureMode);
+                LogSanitizer.Clean(nonce), CurrentAppKey ?? "null", FailureMode);
 
             return FailureMode != NonceFailureMode.Allow;
         }
@@ -144,7 +165,7 @@ public class NonceValidator(
         catch (Exception ex) when (IsDegradableException(ex))
         {
             // T-M2-10：仅 Connection/Timeout 类故障走降级
-            Logger.LogError(ex, "验证 Nonce 时发生可降级错误, Nonce: {Nonce}, AppKey: {AppKey}", nonce, CurrentAppKey ?? "null");
+            Logger.LogError(ex, "验证 Nonce 时发生可降级错误, Nonce: {Nonce}, AppKey: {AppKey}", LogSanitizer.Clean(nonce), CurrentAppKey ?? "null");
             return FailureMode == NonceFailureMode.Allow;
         }
         // Server 类故障直接抛出（不做降级）

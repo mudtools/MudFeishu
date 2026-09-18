@@ -42,6 +42,7 @@ public class FeishuAppWebhookOptions
     /// 时间戳容差范围（秒），默认 <c>null</c> 表示继承全局配置。
     /// <para>设置为正整数时使用应用级配置；设置为 <c>null</c>、<c>-1</c> 或 <c>0</c> 时继承全局 <c>TimestampToleranceSeconds</c>。</para>
     /// <para>推荐使用 <c>null</c> 表示继承（与其他可空字段一致）；<c>-1</c> 仍向后兼容但已弃用。</para>
+    /// <para>WHF-03：应用级正整数同样受重放窗口上限约束（≤ 300 秒），由 <see cref="Validate"/> 强制。</para>
     /// </summary>
     public int? TimestampToleranceSeconds { get; set; }
 
@@ -56,6 +57,11 @@ public class FeishuAppWebhookOptions
     /// 是否强制验证请求头签名，默认 null 表示继承全局配置
     /// 设置为 true 或 false 时使用应用级配置，设置为 null 时继承全局 EnforceHeaderSignatureValidation
     /// </summary>
+    /// <remarks>
+    /// 安全约束（WHF-01）：生产环境（<c>IEnvironmentService.IsProduction == true</c>）该字段
+    /// 不允许显式设置为 <c>false</c>——由 <see cref="FeishuWebhookOptionsValidator"/> 在启动期强制拒绝，
+    /// 与 <see cref="GetEffectiveEnforceHeaderSignatureValidation"/> 的运行时继承解析路径保持一致。
+    /// </remarks>
     public bool? EnforceHeaderSignatureValidation { get; set; }
 
     /// <summary>
@@ -88,6 +94,11 @@ public class FeishuAppWebhookOptions
 
         // TimestampToleranceSeconds: null/-1/0 表示继承全局配置，正整数表示应用级配置
         // 不需要验证负数，因为 -1 是合法的向后兼容特殊值
+        // WHF-03：应用级正整数同样受重放窗口上限约束
+        if (TimestampToleranceSeconds is > FeishuWebhookOptions.MaxTimestampToleranceSeconds)
+            throw new InvalidOperationException(
+                $"TimestampToleranceSeconds 不能超过 {FeishuWebhookOptions.MaxTimestampToleranceSeconds} 秒" +
+                "（重放窗口上限，飞书官方建议 ≤60 秒）");
 
         // EventHandlingTimeoutMs: null/-1/0 表示继承全局配置，正整数表示应用级配置
         if (EventHandlingTimeoutMs.HasValue && EventHandlingTimeoutMs.Value < -1)

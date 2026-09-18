@@ -56,13 +56,6 @@ public class FailedEventRetryService : BackgroundService
 #endif
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        var enableRetry = _webhookOptions?.CurrentValue.Retry.EnableRetry ?? _options.EnableRetry;
-        if (!enableRetry)
-        {
-            _logger.LogInformation("失败事件重试服务未启用");
-            return;
-        }
-
         if (_failedEventStore == null)
         {
             _logger.LogWarning("未配置失败事件存储(IFailedEventStore)，失败事件重试服务无法启动");
@@ -77,18 +70,32 @@ public class FailedEventRetryService : BackgroundService
 
         _logger.LogInformation("失败事件重试服务已启动，轮询间隔: {Interval} 秒", _options.RetryPollIntervalSeconds);
 
+        // WHF-14：每轮循环重新读取 EnableRetry（支持配置热更新——禁用态进入轻量轮询，启用即恢复工作），
+        // 不再在启动期一次性判定后永久退出
         while (!stoppingToken.IsCancellationRequested)
         {
             try
             {
-                await RetryFailedEventsAsync(stoppingToken);
+                var enableRetry = _webhookOptions?.CurrentValue.Retry.EnableRetry ?? _options.EnableRetry;
+                if (enableRetry)
+                {
+                    await RetryFailedEventsAsync(stoppingToken);
+                }
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "重试失败事件时发生错误");
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(_options.RetryPollIntervalSeconds), stoppingToken);
+            try
+            {
+                await Task.Delay(TimeSpan.FromSeconds(_options.RetryPollIntervalSeconds), stoppingToken);
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                // WHF-14：关停时优雅退出，避免 Task.Delay 抛出 OCE 导致 BackgroundService 异常告警
+                break;
+            }
         }
 
         _logger.LogInformation("失败事件重试服务已停止");

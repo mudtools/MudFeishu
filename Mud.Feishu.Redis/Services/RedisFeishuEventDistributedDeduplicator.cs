@@ -92,15 +92,17 @@ public class RedisFeishuEventDistributedDeduplicator : IFeishuEventDeduplicator,
         ";
 
     // ADR-2 / R-05：MarkAsCompleted — 键不存在则不创建，返回 0 由 C# 端记 Warning
+    // WHF-11（R-15 完全兑现）：时间戳改用脚本内 redis.call('TIME')（与 TryMark 脚本一致），
+    // 消除 C# 端 DateTimeOffset.UtcNow 与 Redis 服务端时钟漂移
     private const string MarkAsCompletedLuaScript = @"
         local key = KEYS[1]
-        local now = ARGV[1]
-        local ttlSeconds = ARGV[2]
+        local ttlSeconds = ARGV[1]
 
         if redis.call('EXISTS', key) == 0 then
             return 0  -- 键不存在，不创建永久键
         end
 
+        local now = tonumber(redis.call('TIME')[1])
         redis.call('HSET', key, 'status', 'completed', 'timestamp', now)
         redis.call('EXPIRE', key, tonumber(ttlSeconds))
         return 1
@@ -261,14 +263,13 @@ public class RedisFeishuEventDistributedDeduplicator : IFeishuEventDeduplicator,
         {
             cancellationToken.ThrowIfCancellationRequested();
             var redisKey = GetRedisKey(eventId, appKey);
-            var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString();
             var ttlSeconds = Math.Max(1, (long)_defaultCacheExpiration.TotalSeconds);
 
-            // ADR-2 / R-05：使用 Lua 脚本，键不存在则不创建
+            // ADR-2 / R-05 / WHF-11：使用 Lua 脚本（键不存在则不创建），时间戳由服务端时钟写入
             var result = (long)await _database.ScriptEvaluateAsync(
                 MarkAsCompletedLuaScript,
                 new RedisKey[] { redisKey },
-                new RedisValue[] { now, ttlSeconds }
+                new RedisValue[] { ttlSeconds }
             );
 
             if (result == 0)

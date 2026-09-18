@@ -5,6 +5,7 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using Mud.Feishu.Abstractions.Utilities;
 using Mud.Feishu.Webhook.Configuration;
 using Mud.Feishu.Webhook.Utils;
 
@@ -67,31 +68,49 @@ public class SignatureValidator(
     private string CurrentClientIp => _httpContextAccessor?.HttpContext?.Connection?.RemoteIpAddress?.ToString() ?? "unknown";
 
     /// <summary>
-    /// 记录安全审计失败日志
+    /// 记录安全审计失败日志（WHF-19：异常可观察——审计实现故障记入日志，不再静默丢失）
     /// </summary>
     private void LogSecurityFailure(string message)
     {
-        _ = _securityAuditService?.LogSecurityFailureAsync(
+        if (_securityAuditService is null) return;
+        _ = SafeAuditAsync(() => _securityAuditService.LogSecurityFailureAsync(
             SecurityEventType.SignatureValidation,
             CurrentClientIp,
             "SignatureValidator",
             message,
             "",
-            CurrentAppKey);
+            CurrentAppKey));
     }
 
     /// <summary>
-    /// 记录安全审计成功日志
+    /// 记录安全审计成功日志（WHF-19：异常可观察——审计实现故障记入日志，不再静默丢失）
     /// </summary>
     private void LogSecuritySuccess(string message)
     {
-        _ = _securityAuditService?.LogSecuritySuccessAsync(
+        if (_securityAuditService is null) return;
+        _ = SafeAuditAsync(() => _securityAuditService.LogSecuritySuccessAsync(
             SecurityEventType.SignatureValidation,
             CurrentClientIp,
             "SignatureValidator",
             message,
             "",
-            CurrentAppKey);
+            CurrentAppKey));
+    }
+
+    /// <summary>
+    /// WHF-19：fire-and-forget 审计调用的异常防护——未观察的 Task 异常会被静默丢弃，
+    /// 此处显式捕获并经构造注入的 Logger 记录，保证自定义审计实现的故障可诊断
+    /// </summary>
+    private async Task SafeAuditAsync(Func<Task> audit)
+    {
+        try
+        {
+            await audit();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "安全审计服务调用失败");
+        }
     }
 
     /// <inheritdoc />
@@ -147,17 +166,17 @@ public class SignatureValidator(
                 if (enforceValidation)
                 {
                     Logger.LogError(
-                        "时间戳或 nonce 为空（Timestamp: {Timestamp}, Nonce: {Nonce}），拒绝请求（enforceValidation=true 不允许跳过签名验证）",
-                        timestamp, nonce);
+                        "时间戳或 nonce 为空（Timestamp: {Timestamp}），拒绝请求（enforceValidation=true 不允许跳过签名验证）",
+                        timestamp);
 
-                    LogSecurityFailure($"时间戳或 nonce 为空（Timestamp: {timestamp}, Nonce: {nonce}），拒绝请求（enforceValidation=true）");
+                    LogSecurityFailure($"时间戳或 nonce 为空（Timestamp: {timestamp}），拒绝请求（enforceValidation=true）");
 
                     return false;
                 }
 
                 Logger.LogWarning(
-                    "时间戳或 nonce 为空（Timestamp: {Timestamp}, Nonce: {Nonce}），跳过签名验证（enforceValidation=false，警告：此配置存在安全风险）",
-                    timestamp, nonce);
+                    "时间戳或 nonce 为空（Timestamp: {Timestamp}），跳过签名验证（enforceValidation=false，警告：此配置存在安全风险）",
+                    timestamp);
 
                 LogSecurityFailure($"timestamp/nonce 缺失但 enforceValidation=false，跳过验证");
 
@@ -169,24 +188,30 @@ public class SignatureValidator(
             // 注意：这里不使用换行符连接！
             var signString = $"{timestamp}{nonce}{encryptKey}{body}";
 
-            // 调试日志：显示签名计算信息（不记录敏感的 EncryptKey 内容，仅记录长度）
+            // 调试日志：显示签名计算信息（不记录敏感的 EncryptKey 内容，仅记录长度；nonce 经清洗防日志注入）
             Logger.LogDebug("请求头签名计算 - Timestamp: {Timestamp}, Nonce: {Nonce}, EncryptKey长度: {KeyLength}, Body长度: {BodyLength}",
-                timestamp, nonce, encryptKey.Length, body.Length);
+                timestamp, LogSanitizer.Clean(nonce), encryptKey.Length, body.Length);
 
             // 使用 SHA-256 计算签名（不是 HMAC-SHA256！）
             var computedSignature = ComputeSha256Signature(signString);
 
+            // WHF-04：仅对请求头侧做规范化（trim + 小写化），修复「大写 hex / 尾随空白」造成的误拒；
+            // computedSignature 恒为小写 hex 无需处理。规范化不影响计时安全——比较仍走 FixedTimeEquals，
+            // 且 ToLowerInvariant 的耗时与签名内容无关（单遍长度驱动的映射）。
+            var normalizedHeader = headerSignature.Trim().ToLowerInvariant();
+
             // 使用固定时间比较防止计时攻击
-            var isValid = !string.IsNullOrEmpty(headerSignature) &&
+            var isValid = normalizedHeader.Length > 0 &&
                 FixedTimeEquals(
                     Encoding.UTF8.GetBytes(computedSignature),
-                    Encoding.UTF8.GetBytes(headerSignature));
+                    Encoding.UTF8.GetBytes(normalizedHeader));
 
             if (!isValid)
             {
                 var computedPrefix = computedSignature.Length > 8 ? computedSignature.Substring(0, 8) : computedSignature;
-                var headerPrefix = headerSignature is null ? "null" :
-                    (headerSignature.Length > 8 ? headerSignature.Substring(0, 8) : headerSignature);
+                // WHF-06：headerSignature 来自外部请求头，日志前缀同样走清洗（控制符/换行防注入）
+                var headerPrefix = string.IsNullOrEmpty(normalizedHeader) ? "(empty)" :
+                    (normalizedHeader.Length > 8 ? normalizedHeader.Substring(0, 8) : normalizedHeader);
                 Logger.LogDebug("请求头签名验证失败: 计算 {ComputedSignaturePrefix}..., 期望 {ExpectedSignaturePrefix}..., AppKey: {AppKey}",
                     computedPrefix + "...",
                     headerPrefix + "...",

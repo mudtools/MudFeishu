@@ -9,6 +9,7 @@ using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
+using Mud.Feishu.Abstractions.Services;
 using Mud.Feishu.Webhook.Configuration;
 using Mud.Feishu.Webhook.Models;
 using Mud.Feishu.Webhook.Services;
@@ -295,6 +296,60 @@ public class CompositeFeishuEventValidatorTests
 
         // Assert
         result.Should().BeFalse("异常情况应安全失败");
+    }
+
+    [Fact]
+    public async Task ValidateHeaderSignatureAsync_ShouldRethrow_WhenRedisServerException()
+    {
+        // Arrange - WHF-02 核心断言：Server 类 FeishuRedisException 不得被吞成 false（403）
+        var serverException = new FeishuRedisException(
+            FeishuRedisFailureKind.Server, "Lua 脚本执行失败（模拟配置错误）");
+        _timestampValidatorMock.Setup(x => x.ValidateTimestamp(It.IsAny<long>(), null)).Returns(true);
+        _nonceValidatorMock.Setup(x => x.CheckNonceAsync(It.IsAny<string>())).ThrowsAsync(serverException);
+
+        // Act
+        var act = async () => await _sut.ValidateHeaderSignatureAsync(
+            DateTimeOffset.UtcNow.ToUnixTimeSeconds(), "nonce", "body", "sig", "key");
+
+        // Assert
+        await act.Should().ThrowAsync<FeishuRedisException>().Where(ex => ex.FailureKind == FeishuRedisFailureKind.Server);
+    }
+
+    [Fact]
+    public async Task ValidateHeaderSignatureAsync_ShouldRethrow_WhenTryMarkThrowsServerException()
+    {
+        // Arrange - Server 类异常在 TryMark 阶段同样必须上抛
+        var serverException = new FeishuRedisException(
+            FeishuRedisFailureKind.Server, "标记 Nonce 时服务端错误");
+        _timestampValidatorMock.Setup(x => x.ValidateTimestamp(It.IsAny<long>(), null)).Returns(true);
+        _nonceValidatorMock.Setup(x => x.CheckNonceAsync(It.IsAny<string>())).ReturnsAsync(true);
+        _signatureValidatorMock.Setup(x => x.ValidateHeaderSignatureAsync(
+                It.IsAny<long>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
+            .ReturnsAsync(true);
+        _nonceValidatorMock.Setup(x => x.TryMarkNonceAsUsedAsync(It.IsAny<string>())).ThrowsAsync(serverException);
+
+        // Act
+        var act = async () => await _sut.ValidateHeaderSignatureAsync(
+            DateTimeOffset.UtcNow.ToUnixTimeSeconds(), "nonce", "body", "sig", "key");
+
+        // Assert
+        await act.Should().ThrowAsync<FeishuRedisException>().Where(ex => ex.FailureKind == FeishuRedisFailureKind.Server);
+    }
+
+    [Fact]
+    public async Task ValidateHeaderSignatureAsync_ShouldReturnFalse_WhenConnectionExceptionSwallowed()
+    {
+        // Arrange - T-M2-10 回归：Connection 类异常在组合验证器层维持 fail-closed（返回 false）
+        _timestampValidatorMock.Setup(x => x.ValidateTimestamp(It.IsAny<long>(), null)).Returns(true);
+        _nonceValidatorMock.Setup(x => x.CheckNonceAsync(It.IsAny<string>()))
+            .ThrowsAsync(new FeishuRedisException(FeishuRedisFailureKind.Connection, "Redis 连接失败"));
+
+        // Act
+        var result = await _sut.ValidateHeaderSignatureAsync(
+            DateTimeOffset.UtcNow.ToUnixTimeSeconds(), "nonce", "body", "sig", "key");
+
+        // Assert
+        result.Should().BeFalse("Connection 类异常由 NonceValidator 降级策略决定，组合层维持 fail-closed");
     }
 
     #endregion

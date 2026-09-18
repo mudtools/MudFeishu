@@ -217,6 +217,45 @@ public class SignatureValidatorTests
         result.Should().BeTrue("签名计算应与飞书官方 SDK 兼容");
     }
 
+    [Fact]
+    public async Task ValidateHeaderSignatureAsync_WithUppercaseHexSignature_ShouldReturnTrue()
+    {
+        // Arrange - WHF-04：大写 hex 不应被误拒（仅修误拒方向，规范化不影响计时安全）
+        var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        var nonce = "test-nonce-123";
+        var encryptKey = "test-encrypt-key-0123456789abcdef";
+        var body = "{\"encrypt\":\"test-encrypt-data\"}";
+        var expectedSignature = ComputeSha256Hex($"{timestamp}{nonce}{encryptKey}{body}");
+        var uppercaseSignature = expectedSignature.ToUpperInvariant();
+
+        var validator = CreateValidator();
+
+        // Act
+        var result = await validator.ValidateHeaderSignatureAsync(timestamp, nonce, body, uppercaseSignature, encryptKey);
+
+        // Assert
+        result.Should().BeTrue("大写 hex 签名经规范化后应通过验证");
+    }
+
+    [Fact]
+    public async Task ValidateHeaderSignatureAsync_WithTrailingWhitespaceSignature_ShouldReturnTrue()
+    {
+        // Arrange - WHF-04：尾随空白不应造成误拒
+        var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        var nonce = "test-nonce-123";
+        var encryptKey = "test-encrypt-key-0123456789abcdef";
+        var body = "{\"encrypt\":\"test-encrypt-data\"}";
+        var expectedSignature = ComputeSha256Hex($"{timestamp}{nonce}{encryptKey}{body}") + "  \t";
+
+        var validator = CreateValidator();
+
+        // Act
+        var result = await validator.ValidateHeaderSignatureAsync(timestamp, nonce, body, expectedSignature, encryptKey);
+
+        // Assert
+        result.Should().BeTrue("尾随空白经 Trim 后应通过验证");
+    }
+
     #endregion
 
     #region 多应用配置继承测试
@@ -362,6 +401,26 @@ public class SignatureValidatorTests
 
         // Assert
         result.Should().BeFalse("异常情况应返回 false（安全失败）");
+    }
+
+    [Fact]
+    public async Task ValidateHeaderSignatureAsync_ShouldNotThrow_WhenSecurityAuditServiceFails()
+    {
+        // Arrange - WHF-19：自定义审计实现抛异常时，验证结果不受影响（异常被 SafeAuditAsync 捕获）
+        _securityAuditMock
+            .Setup(x => x.LogSecurityFailureAsync(
+                It.IsAny<SecurityEventType>(), It.IsAny<string>(), It.IsAny<string>(),
+                It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>()))
+            .ThrowsAsync(new InvalidOperationException("审计存储不可用"));
+
+        var validator = CreateValidator();
+
+        // Act - 无效签名触发 LogSecurityFailure（其内部审计调用抛异常）
+        var result = await validator.ValidateHeaderSignatureAsync(
+            DateTimeOffset.UtcNow.ToUnixTimeSeconds(), "nonce", "body", "invalid-signature", "key");
+
+        // Assert
+        result.Should().BeFalse("签名验证结果不应受审计服务故障影响");
     }
 
     #endregion

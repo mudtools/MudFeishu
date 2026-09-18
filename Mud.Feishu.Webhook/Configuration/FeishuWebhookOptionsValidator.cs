@@ -61,6 +61,19 @@ public class FeishuWebhookOptionsValidator : IValidateOptions<FeishuWebhookOptio
                     "生产环境禁止 EnforceHeaderSignatureValidation=false（将导致缺少 X-Lark-Signature 的请求被直接放行，" +
                     "攻击者可伪造事件）。如确需在非生产环境关闭，请设置 ASPNETCORE_ENVIRONMENT=Development。");
             }
+
+            // WHF-01：应用级覆盖同样受生产锁定约束，与 SignatureValidator 的
+            // GetEffectiveEnforceHeaderSignatureValidation 解析路径对齐，
+            // 防止应用级显式 false 绕过全局锁定（校验面与运行时面视野一致）
+            var violatedApp = options.Apps.Values
+                .FirstOrDefault(a => a.EnforceHeaderSignatureValidation == false);
+            if (violatedApp != null)
+            {
+                return ValidateOptionsResult.Fail(
+                    $"生产环境禁止应用 {violatedApp.AppKey} 设置 " +
+                    "EnforceHeaderSignatureValidation=false（应用级覆盖将绕过签名强制验证）。" +
+                    "如确需在非生产环境关闭，请设置 ASPNETCORE_ENVIRONMENT=Development。");
+            }
         }
 
         return ValidateOptionsResult.Success;

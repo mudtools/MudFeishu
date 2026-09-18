@@ -129,6 +129,84 @@ public class IpAddressHelperTests
         result.Should().BeFalse();
     }
 
+    [Fact]
+    public void IsIpAllowed_WithIpv4MappedExactRule_ShouldReturnTrue()
+    {
+        // Arrange - WHF-18：Kestrel 常见的 IPv4-mapped IPv6 形态不应因地址族不同被误拒
+        var allowedIps = new HashSet<string> { "192.168.1.1" };
+
+        // Act
+        var result = IpAddressHelper.IsIpAllowed("::ffff:192.168.1.1", allowedIps);
+
+        // Assert
+        result.Should().BeTrue("IPv4-mapped IPv6 应归一为 IPv4 后匹配");
+    }
+
+    [Fact]
+    public void IsIpAllowed_WithIpv4MappedCidrRule_ShouldReturnTrue()
+    {
+        // Arrange - WHF-18：mapped IPv6 对 CIDR 规则
+        var allowedIps = new HashSet<string> { "192.168.1.0/24" };
+
+        // Act
+        var result = IpAddressHelper.IsIpAllowed("::ffff:192.168.1.5", allowedIps);
+
+        // Assert
+        result.Should().BeTrue("IPv4-mapped IPv6 应归一后命中 CIDR");
+    }
+
+    [Fact]
+    public void IsIpAllowed_WithMappedRuleAndPlainIp_ShouldReturnTrue()
+    {
+        // Arrange - WHF-18：规则侧为 mapped IPv6、被检侧为 IPv4
+        var allowedIps = new HashSet<string> { "::ffff:192.168.1.1" };
+
+        // Act
+        var result = IpAddressHelper.IsIpAllowed("192.168.1.1", allowedIps);
+
+        // Assert
+        result.Should().BeTrue("规则侧 mapped IPv6 应归一后匹配");
+    }
+
+    [Fact]
+    public void IsIpInRange_WithNegativePrefix_ShouldReturnFalse()
+    {
+        // Arrange - WHF-18 安全护栏：负数前缀曾生成全零掩码导致 CIDR 恒匹配（白名单失效）
+        var ip = IPAddress.Parse("8.8.8.8");
+
+        // Act
+        var result = IpAddressHelper.IsIpInRange(ip, "10.0.0.0/-5");
+
+        // Assert
+        result.Should().BeFalse("负数前缀必须拒绝，不能退化为『匹配一切』");
+    }
+
+    [Fact]
+    public void IsIpInRange_WithPrefixExceedingAddressBits_ShouldReturnFalse()
+    {
+        // Arrange - WHF-18：前缀超过地址位宽（IPv4 最大 32）
+        var ip = IPAddress.Parse("10.0.0.1");
+
+        // Act
+        var result = IpAddressHelper.IsIpInRange(ip, "10.0.0.0/33");
+
+        // Assert
+        result.Should().BeFalse("超出位宽的前缀必须拒绝");
+    }
+
+    [Fact]
+    public void IsIpInRange_WithValidMaxPrefix_ShouldMatchOnlyExactAddress()
+    {
+        // Arrange - IPv4 /32 与 IPv6 /128 为合法上限边界
+        var ip = IPAddress.Parse("10.0.0.1");
+        var ipv6 = IPAddress.Parse("fe80::1");
+
+        // Act & Assert
+        IpAddressHelper.IsIpInRange(ip, "10.0.0.1/32").Should().BeTrue();
+        IpAddressHelper.IsIpInRange(ip, "10.0.0.2/32").Should().BeFalse();
+        IpAddressHelper.IsIpInRange(ipv6, "fe80::1/128").Should().BeTrue();
+    }
+
     #endregion
 
     #region IsIpInRange Tests
@@ -281,16 +359,16 @@ public class IpAddressHelperTests
     }
 
     [Fact]
-    public void IsIpInCidrRange_WithIPv4MappedToIPv6_ShouldReturnFalse()
+    public void IsIpInCidrRange_WithIPv4MappedToIPv6_ShouldMatchAfterNormalization()
     {
-        // Arrange
+        // Arrange - WHF-18：IPv4-mapped IPv6 归一后应命中 IPv4 CIDR（原实现因地址族不同误拒）
         var ip = IPAddress.Parse("::ffff:192.168.1.1");
 
         // Act
         var result = IpAddressHelper.IsIpInCidrRange(ip, "192.168.1.0/24");
 
         // Assert
-        result.Should().BeFalse();
+        result.Should().BeTrue("IPv4-mapped IPv6 应归一为 IPv4 后参与 CIDR 比较");
     }
 
     #endregion

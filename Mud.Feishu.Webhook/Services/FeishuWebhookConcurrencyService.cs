@@ -23,6 +23,7 @@ public class FeishuWebhookConcurrencyService : IAsyncDisposable, IHostedService
     private volatile int _currentMaxConcurrentEvents;
     private volatile bool _semaphoreUpgraded = false;
     private readonly CancellationTokenSource _shutdownCts = new();
+    private readonly IDisposable? _onChangeSubscription;
 
     /// <summary>
     /// 构造函数
@@ -44,9 +45,21 @@ public class FeishuWebhookConcurrencyService : IAsyncDisposable, IHostedService
             _currentMaxConcurrentEvents, actualMaxConcurrent);
 
         // 监听配置变更，支持热更新
-        _optionsMonitor.OnChange(async newOptions =>
+        // WHF-13：消除 async-void——OnChange 回调必须是同步 void，异步体显式丢弃到线程池并
+        // 全覆盖 try/catch（异常只记日志，不上抛线程池导致进程崩溃）；订阅句柄在 DisposeAsync 释放
+        _onChangeSubscription = optionsMonitor.OnChange(newOptions =>
         {
-            await UpdateSemaphoreAsync(newOptions.MaxConcurrentEvents);
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await UpdateSemaphoreAsync(newOptions.MaxConcurrentEvents);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "并发控制配置热更新失败，最大并发数: {NewMax}", newOptions.MaxConcurrentEvents);
+                }
+            });
         });
     }
 
@@ -189,6 +202,10 @@ public class FeishuWebhookConcurrencyService : IAsyncDisposable, IHostedService
         }
 
         _disposed = true;
+
+        // WHF-13：释放配置变更订阅
+        _onChangeSubscription?.Dispose();
+
         _shutdownCts.Dispose();
         _semaphore.Dispose();
         _semaphoreLock.Dispose();

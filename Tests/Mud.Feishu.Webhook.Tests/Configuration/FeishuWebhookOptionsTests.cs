@@ -138,6 +138,45 @@ public class FeishuWebhookOptionsTests
     }
 
     [Fact]
+    public void Validate_WithTolerance301_ShouldThrow()
+    {
+        // WHF-03：重放窗口上限 300 秒
+        var options = new FeishuWebhookOptions
+        {
+            TimestampToleranceSeconds = 301
+        };
+
+        var ex = Assert.Throws<InvalidOperationException>(() => options.Validate());
+        Assert.Contains("不能超过 300 秒", ex.Message);
+    }
+
+    [Fact]
+    public void Validate_WithTolerance300_ShouldPass()
+    {
+        // WHF-03：上限边界值（300）合法
+        var options = new FeishuWebhookOptions
+        {
+            TimestampToleranceSeconds = 300
+        };
+
+        options.Validate();
+    }
+
+    [Fact]
+    public void RejectEmptyIdentifiers_ShouldDefaultTrue()
+    {
+        // WHF-05：默认 fail-closed（项目未发布，一步到位取安全默认）
+        Assert.True(new FeishuWebhookOptions().RejectEmptyIdentifiers);
+    }
+
+    [Fact]
+    public void IgnoreUnknownEventTypes_ShouldDefaultTrue()
+    {
+        // WHF-09：默认忽略未注册事件类型（显式关闭可回退默认处理器兜底）
+        Assert.True(new FeishuWebhookOptions().IgnoreUnknownEventTypes);
+    }
+
+    [Fact]
     public void Validate_WithMissingEncryptKey_ShouldThrow()
     {
         var options = new FeishuWebhookOptions

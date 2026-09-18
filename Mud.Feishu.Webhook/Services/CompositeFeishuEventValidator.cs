@@ -5,6 +5,8 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using Mud.Feishu.Abstractions.Services;
+using Mud.Feishu.Abstractions.Utilities;
 using Mud.Feishu.Webhook.Configuration;
 using Mud.Feishu.Webhook.Models;
 using Mud.Feishu.Webhook.Utils;
@@ -74,7 +76,8 @@ public class CompositeFeishuEventValidator : WebhookValidatorBase, IFeishuEventV
     /// <inheritdoc />
     public async Task<bool> ValidateHeaderSignatureAsync(long timestamp, string nonce, string body, string? headerSignature, string encryptKey)
     {
-        Logger.LogDebug("开始验证请求头签名 - Timestamp: {Timestamp}, Nonce: {Nonce}", timestamp, nonce);
+        Logger.LogDebug("开始验证请求头签名 - Timestamp: {Timestamp}, Nonce: {Nonce}",
+            timestamp, LogSanitizer.Clean(nonce));
 
         try
         {
@@ -113,11 +116,13 @@ public class CompositeFeishuEventValidator : WebhookValidatorBase, IFeishuEventV
             Logger.LogDebug("请求头签名验证成功");
             return true;
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not FeishuRedisException { FailureKind: FeishuRedisFailureKind.Server })
         {
             Logger.LogError(ex, "验证请求头签名时发生错误");
             return false;
         }
+        // WHF-02：Server 类 FeishuRedisException 直接上抛，由中间件转为 503——
+        // T-M2-10 契约：去重体系致命故障不得伪装成“验签失败 403”
     }
 
     /// <inheritdoc />

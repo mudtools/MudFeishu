@@ -51,8 +51,13 @@ public interface IFeishuWebhookService
     /// </summary>
     /// <param name="request">Webhook 请求</param>
     /// <param name="body">原始请求体</param>
+    /// <param name="cancellationToken">取消令牌（WHF-16：中间件传 <c>context.RequestAborted</c>）</param>
     /// <returns>签名验证是否通过</returns>
-    Task<bool> HandleEventAsync(FeishuWebhookRequest request, string body);
+    /// <remarks>
+    /// Server 类 <see cref="FeishuRedisException"/>（去重体系致命故障）将直接上抛（T-M2-10 契约，
+    /// WHF-02），由中间件转 503；其余异常安全失败返回 false。
+    /// </remarks>
+    Task<bool> HandleEventAsync(FeishuWebhookRequest request, string body, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 解密事件数据

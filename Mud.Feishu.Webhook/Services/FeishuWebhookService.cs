@@ -70,67 +70,10 @@ public class FeishuWebhookService : IFeishuWebhookService
         _appKeyAccessor = appKeyAccessor ?? throw new ArgumentNullException(nameof(appKeyAccessor));
         _failedEventStore = failedEventStore;
 
-        // 监听配置变更
-        _optionsMonitor.OnChange((newOptions, name) =>
-        {
-            var oldOptions = Options;
-            var changes = new List<string>();
-
-            // 检测关键配置项的变更
-            if (oldOptions.EventHandlingTimeoutMs != newOptions.EventHandlingTimeoutMs)
-            {
-                changes.Add($"EventHandlingTimeoutMs: {oldOptions.EventHandlingTimeoutMs}ms → {newOptions.EventHandlingTimeoutMs}ms");
-            }
-
-            if (oldOptions.MaxConcurrentEvents != newOptions.MaxConcurrentEvents)
-            {
-                changes.Add($"MaxConcurrentEvents: {oldOptions.MaxConcurrentEvents} → {newOptions.MaxConcurrentEvents}");
-            }
-
-            if (oldOptions.EnableExceptionHandling != newOptions.EnableExceptionHandling)
-            {
-                changes.Add($"EnableExceptionHandling: {oldOptions.EnableExceptionHandling} → {newOptions.EnableExceptionHandling}");
-            }
-
-            if (oldOptions.EnableBackgroundProcessing != newOptions.EnableBackgroundProcessing)
-            {
-                changes.Add($"EnableBackgroundProcessing: {oldOptions.EnableBackgroundProcessing} → {newOptions.EnableBackgroundProcessing}");
-            }
-
-            if (oldOptions.EnablePerformanceMonitoring != newOptions.EnablePerformanceMonitoring)
-            {
-                changes.Add($"EnablePerformanceMonitoring: {oldOptions.EnablePerformanceMonitoring} → {newOptions.EnablePerformanceMonitoring}");
-            }
-
-            // 检测应用配置的变更
-            var oldAppKeys = oldOptions.Apps.Keys.OrderBy(k => k).ToList();
-            var newAppKeys = newOptions.Apps.Keys.OrderBy(k => k).ToList();
-
-            if (!oldAppKeys.SequenceEqual(newAppKeys))
-            {
-                var addedApps = newAppKeys.Except(oldAppKeys).ToList();
-                var removedApps = oldAppKeys.Except(newAppKeys).ToList();
-
-                if (addedApps.Count > 0)
-                {
-                    changes.Add($"新增应用: {string.Join(", ", addedApps)}");
-                }
-
-                if (removedApps.Count > 0)
-                {
-                    changes.Add($"移除应用: {string.Join(", ", removedApps)}");
-                }
-            }
-
-            if (changes.Count > 0)
-            {
-                _logger.LogInformation("飞书 Webhook 配置已更新，来源: {ChangeSource}，变更内容:\n{Changes}", name, string.Join("\n  - ", changes));
-            }
-            else
-            {
-                _logger.LogDebug("飞书 Webhook 配置已更新，来源: {ChangeSource}（无关键配置变更）", name);
-            }
-        });
+        // WHF-13：本服务为 Scoped（每个 Webhook 请求创建一个实例），构造函数内的 OnChange 订阅
+        // 会随请求数线性泄漏（订阅挂在 Singleton IOptionsMonitor 上，且每次配置变更会对所有
+        // 历史 scope 重放回调）。变更日志由 FeishuMultiAppMiddleware 与 FeishuWebhookConcurrencyService
+        // 两个 Singleton 持有者承接，此处不再订阅。
     }
 
     /// <inheritdoc />
@@ -250,8 +193,28 @@ public class FeishuWebhookService : IFeishuWebhookService
                 // 分发事件到处理器（优先使用应用专属处理器，回退到全局工厂）
                 await DispatchEventAsync(eventData.EventType, eventData, appKey, timeoutCts.Token);
 
-                // 处理成功，标记为已完成
-                await MarkDeduplicationCompletedAsync(eventData.EventId, appKey);
+                // WHF-07：业务分发已成功——Mark 失败禁止回滚（回滚将导致飞书重推后重复消费）。
+                // 保留 processing 态，由 ProcessingTimeout/TTL 兜底；记录 Warning 供对账。
+                try
+                {
+                    await MarkDeduplicationCompletedAsync(eventData.EventId, appKey);
+                }
+                catch (Exception markEx)
+                {
+                    _logger.LogWarning(markEx,
+                        "事件 {EventId} 处理成功但完成标记失败，保留 processing 态等待超时恢复, AppKey: {AppKey}",
+                        eventData.EventId, appKey ?? "null");
+                    // 成功路径返回：不抛、不写失败存储（业务副作用已发生）
+                    FeishuMetricsHelper.RecordEventOutcome(appKey ?? "unknown", eventData.EventType, success: true, "mark_completed_failed");
+
+                    if (Options.EnableRequestLogging)
+                    {
+                        _logger.LogInformation("事件处理完成（完成标记失败，按成功口径）: {EventType}, 事件ID: {EventId}, AppKey: {AppKey}",
+                            eventData.EventType, eventData.EventId, appKey ?? "null");
+                    }
+
+                    return (true, null);
+                }
 
                 // 记录事件处理成功
                 FeishuMetricsHelper.RecordEventOutcome(appKey ?? "unknown", eventData.EventType, success: true);
@@ -264,14 +227,18 @@ public class FeishuWebhookService : IFeishuWebhookService
 
                 return (true, null);
             }
-            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+            catch (OperationCanceledException oce) when (!cancellationToken.IsCancellationRequested)
             {
+                // WHF-08：超时路径就地收尾，不再 rethrow——消除外层 OCE catch 的二次回滚/metrics；
+                // processingException 赋值保证 AfterHandleAsync 收到非空异常
                 await RollbackDeduplicationAsync(eventData.EventId, appKey);
 
                 _logger.LogWarning("事件处理超时: {EventType}, 事件ID: {EventId}, 超时时间: {TimeoutMs}ms, AppKey: {AppKey}",
                     eventData.EventType, eventData.EventId, Options.EventHandlingTimeoutMs, appKey ?? "null");
                 FeishuMetricsHelper.RecordEventOutcome(appKey ?? "unknown", eventData.EventType, success: false, "timeout");
-                throw;
+
+                processingException = oce;
+                return (false, "Event handling timeout");
             }
         }
         catch (OperationCanceledException)
@@ -279,6 +246,13 @@ public class FeishuWebhookService : IFeishuWebhookService
             await RollbackDeduplicationAsync(eventData.EventId, appKey);
             _logger.LogWarning("事件处理被取消，EventId: {EventId}, AppKey: {AppKey}", eventData.EventId, appKey ?? "null");
             FeishuMetricsHelper.RecordEventOutcome(appKey ?? "unknown", eventData.EventType, success: false, "canceled");
+            throw;
+        }
+        catch (FeishuRedisException ex) when (ex.FailureKind == FeishuRedisFailureKind.Server)
+        {
+            // WHF-02：去重体系致命故障不是业务失败——不回滚（TryMark 失败时无状态可回滚，
+            // Rollback 对不存在键本就安全）、不写失败存储（避免重试服务后续重复消费），上抛由中间件转 503
+            _logger.LogError(ex, "去重服务致命故障（Server），EventId: {EventId}, AppKey: {AppKey}", eventData.EventId, appKey ?? "null");
             throw;
         }
         catch (Exception ex)
@@ -334,12 +308,12 @@ public class FeishuWebhookService : IFeishuWebhookService
     }
 
     /// <inheritdoc />
-    public async Task<bool> HandleEventAsync(FeishuWebhookRequest request, string body)
+    public async Task<bool> HandleEventAsync(FeishuWebhookRequest request, string body, CancellationToken cancellationToken = default)
     {
         try
         {
             // 使用密钥提供程序获取加密密钥
-            var encryptKey = await _encryptKeyProvider.GetEncryptKeyAsync(_appKeyAccessor.CurrentAppKey ?? string.Empty);
+            var encryptKey = await _encryptKeyProvider.GetEncryptKeyAsync(_appKeyAccessor.CurrentAppKey ?? string.Empty, cancellationToken);
             if (string.IsNullOrEmpty(encryptKey))
             {
                 _logger.LogError("无法获取加密密钥, AppKey: {AppKey}", _appKeyAccessor.CurrentAppKey ?? "null");
@@ -354,11 +328,13 @@ public class FeishuWebhookService : IFeishuWebhookService
                 request.Signature,
                 encryptKey!);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not FeishuRedisException { FailureKind: FeishuRedisFailureKind.Server })
         {
             _logger.LogError(ex, "验证请求签名时发生错误, AppKey: {AppKey}", _appKeyAccessor.CurrentAppKey ?? "null");
             return false;
         }
+        // WHF-02：Server 类 FeishuRedisException 直接上抛（T-M2-10 契约），
+        // 由中间件转为 503，不得在此层伪装成“验签失败”返回 false（→ 403）
     }
 
 
@@ -446,6 +422,15 @@ public class FeishuWebhookService : IFeishuWebhookService
         }
         else
         {
+            // WHF-09：未注册 eventType 门控——静默忽略（unhandled），不回退默认处理器兜底
+            if (Options.IgnoreUnknownEventTypes && !_handlerFactory.IsHandlerRegistered(eventType))
+            {
+                _logger.LogDebug("事件类型 {EventType} 未注册处理器，已忽略（IgnoreUnknownEventTypes=true）, AppKey: {AppKey}",
+                    eventType, appKey ?? "null");
+                FeishuMetricsHelper.RecordEventOutcome(appKey ?? "unknown", eventType, success: true, "unhandled");
+                return;
+            }
+
             // 回退到全局处理器工厂
             _logger.LogDebug("使用全局处理器工厂分发事件: {EventType}, AppKey: {AppKey}",
                 eventType, appKey ?? "null");

@@ -112,17 +112,24 @@ public class InMemoryFailedEventStore : IFailedEventStore, IDisposable
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// WHF-15：返回 <see cref="FailedEventInfo"/> 的<b>深拷贝快照</b>——调用方对返回对象的修改
+    /// 不会影响存储内的条目（须通过 <see cref="UpdateFailedEventAsync"/> 按 EventId 写回）；
+    /// 多次 Get 之间互不可见。
+    /// </remarks>
     public Task<IEnumerable<FailedEventInfo>> GetFailedEventsForRetryAsync(int maxRetryCount, CancellationToken cancellationToken = default)
     {
         var failedEvents = _failedEvents.Values
             .Where(e => e.RetryCount < maxRetryCount)
             .OrderBy(e => e.FailedAt)
+            .Select(CloneSnapshot)
             .ToList();
 
         return Task.FromResult<IEnumerable<FailedEventInfo>>(failedEvents);
     }
 
     /// <inheritdoc />
+    /// <remarks>WHF-15：返回深拷贝快照，语义见 <see cref="GetFailedEventsForRetryAsync"/>。</remarks>
     public Task<List<FailedEventInfo>> GetPendingRetryEventsAsync(DateTimeOffset beforeTime, int maxCount, CancellationToken cancellationToken = default)
     {
         var now = DateTimeOffset.UtcNow;
@@ -130,6 +137,7 @@ public class InMemoryFailedEventStore : IFailedEventStore, IDisposable
             .Where(e => e.NextRetryAt <= now)   // 仅取退避到期的
             .OrderBy(e => e.NextRetryAt)
             .Take(maxCount)                     // maxCount 语义 = 本次最多取几条
+            .Select(CloneSnapshot)
             .ToList();
 
         return Task.FromResult(failedEvents);
@@ -171,6 +179,22 @@ public class InMemoryFailedEventStore : IFailedEventStore, IDisposable
         _logger.LogDebug("删除成功重试的失败事件记录: {EventId}", eventId);
         return Task.CompletedTask;
     }
+
+    /// <summary>
+    /// WHF-15：构造 <see cref="FailedEventInfo"/> 深拷贝快照（消除共享可变引用）
+    /// </summary>
+    private static FailedEventInfo CloneSnapshot(FailedEventInfo source) => new()
+    {
+        EventId = source.EventId,
+        EventType = source.EventType,
+        SerializedEventData = source.SerializedEventData,
+        ExceptionMessage = source.ExceptionMessage,
+        ExceptionStackTrace = source.ExceptionStackTrace,
+        AppKey = source.AppKey,
+        NextRetryAt = source.NextRetryAt,
+        FailedAt = source.FailedAt,
+        RetryCount = source.RetryCount
+    };
 
     /// <summary>
     /// 清理过期的失败事件记录

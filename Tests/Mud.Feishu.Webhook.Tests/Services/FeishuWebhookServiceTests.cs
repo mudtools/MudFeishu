@@ -5,6 +5,7 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using FluentAssertions;
 using Mud.Feishu.Abstractions.Services;
 using Mud.Feishu.Webhook.Configuration;
 using Mud.Feishu.Webhook.Models;
@@ -47,6 +48,8 @@ public class FeishuWebhookServiceTests
         };
 
         _optionsMonitorMock.Setup(x => x.CurrentValue).Returns(_options);
+        // 既有测试聚焦分发/状态机路径；WHF-09 门控（默认开启）在专属用例中覆盖
+        _options.IgnoreUnknownEventTypes = false;
 
         var concurrencyLoggerMock = new Mock<ILogger<FeishuWebhookConcurrencyService>>();
         _concurrencyService = new FeishuWebhookConcurrencyService(_optionsMonitorMock.Object, concurrencyLoggerMock.Object);
@@ -307,7 +310,7 @@ public class FeishuWebhookServiceTests
             timestamp, nonce, body, computedSignature, encryptKey), Times.Once);
     }
 
-    private FeishuWebhookService CreateService()
+    private FeishuWebhookService CreateService(IFailedEventStore? failedEventStore = null)
     {
         return new FeishuWebhookService(
             _optionsMonitorMock.Object,
@@ -322,7 +325,8 @@ public class FeishuWebhookServiceTests
             new FeishuWebhookHandlerRegistry(),
             new FeishuWebhookInterceptorRegistry(),
             _serviceProviderMock.Object,
-            _appKeyAccessorMock.Object);
+            _appKeyAccessorMock.Object,
+            failedEventStore);
     }
 
     [Fact]
@@ -547,12 +551,12 @@ public class FeishuWebhookServiceTests
     }
 
     [Fact]
-    public async Task HandleEventAsync_WithCancellation_ShouldRollbackDeduplication()
+    public async Task HandleEventAsync_WhenTimeout_ShouldReturnTimeoutResult_AndRollbackOnce()
     {
-        // Arrange - 事件处理被取消时应回滚去重状态
+        // Arrange - WHF-08：超时路径就地收尾（不 rethrow）——仅一次回滚、返回超时结果
         var eventData = new EventData
         {
-            EventId = "cancel_test_event",
+            EventId = "timeout_test_event",
             EventType = "test.event"
         };
 
@@ -566,13 +570,267 @@ public class FeishuWebhookServiceTests
 
         var service = CreateService();
 
-        // Act
-        await Assert.ThrowsAsync<OperationCanceledException>(() => service.HandleEventAsync(eventData));
+        // Act - 未发生外部取消：工厂抛出的 OCE 属于处理超时
+        var result = await service.HandleEventAsync(eventData);
 
-        // Assert - 验证去重状态被回滚（OperationCanceledException 会被两个 catch 块捕获，可能调用两次）
-        _deduplicatorMock.Verify(x => x.RollbackProcessingAsync(eventData.EventId, It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.AtLeastOnce);
+        // Assert
+        Assert.False(result.Success);
+        Assert.Equal("Event handling timeout", result.ErrorReason);
+        _deduplicatorMock.Verify(x => x.RollbackProcessingAsync(eventData.EventId, It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Once,
+            "超时路径应仅回滚一次（WHF-08 消除双重回滚）");
         _deduplicatorMock.Verify(x => x.MarkAsCompletedAsync(eventData.EventId, It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Never);
     }
+
+    [Fact]
+    public async Task HandleEventAsync_WhenExternallyCancelled_ShouldRollbackAndThrow()
+    {
+        // Arrange - WHF-08：真取消（外部 token）路径保留原有语义——回滚一次并上抛
+        var eventData = new EventData
+        {
+            EventId = "cancel_test_event",
+            EventType = "test.event"
+        };
+
+        _deduplicatorMock
+            .Setup(x => x.TryMarkAsProcessingAsync(eventData.EventId, It.IsAny<string?>(), null, null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new DeduplicationResult { IsDuplicate = false, WasProcessing = false });
+
+        var service = CreateService();
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        // Act
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => service.HandleEventAsync(eventData, cts.Token));
+
+        // Assert
+        _deduplicatorMock.Verify(x => x.RollbackProcessingAsync(eventData.EventId, It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Once);
+        _deduplicatorMock.Verify(x => x.MarkAsCompletedAsync(eventData.EventId, It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    #region WHF-07：Mark 失败不得回滚已成功的业务
+
+    [Fact]
+    public async Task HandleEventAsync_WhenMarkCompletedFails_ShouldReturnSuccess_AndNotRollback()
+    {
+        // Arrange - WHF-07 核心断言：业务分发成功后 Mark 失败 → 保留 processing 态、按成功口径返回
+        var eventData = new EventData { EventId = "whf07_event", EventType = "test.event" };
+
+        _deduplicatorMock
+            .Setup(x => x.TryMarkAsProcessingAsync(eventData.EventId, It.IsAny<string?>(), null, null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new DeduplicationResult { IsDuplicate = false, WasProcessing = false });
+
+        _handlerFactoryMock
+            .Setup(x => x.HandleEventParallelAsync(eventData.EventType, eventData, It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        _deduplicatorMock
+            .Setup(x => x.MarkAsCompletedAsync(eventData.EventId, It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new FeishuRedisException(FeishuRedisFailureKind.Connection, "Redis 连接失败，完成标记写入失败"));
+
+        var service = CreateService();
+
+        // Act
+        var result = await service.HandleEventAsync(eventData);
+
+        // Assert
+        Assert.True(result.Success, "业务已成功执行，Mark 失败不得视为失败（回滚将导致重复消费）");
+        _deduplicatorMock.Verify(x => x.MarkAsCompletedAsync(eventData.EventId, It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Once);
+        _deduplicatorMock.Verify(x => x.RollbackProcessingAsync(eventData.EventId, It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Never,
+            "WHF-07 核心断言：Mark 失败禁止回滚");
+    }
+
+    [Fact]
+    public async Task HandleEventAsync_WhenMarkCompletedFailsWithGenericException_ShouldReturnSuccess()
+    {
+        // Arrange - Mark 失败的语义与异常类型无关（业务已成功）
+        var eventData = new EventData { EventId = "whf07_generic_event", EventType = "test.event" };
+
+        _deduplicatorMock
+            .Setup(x => x.TryMarkAsProcessingAsync(eventData.EventId, It.IsAny<string?>(), null, null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new DeduplicationResult { IsDuplicate = false, WasProcessing = false });
+
+        _handlerFactoryMock
+            .Setup(x => x.HandleEventParallelAsync(eventData.EventType, eventData, It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        _deduplicatorMock
+            .Setup(x => x.MarkAsCompletedAsync(eventData.EventId, It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("去重器内部错误"));
+
+        var service = CreateService();
+
+        // Act
+        var result = await service.HandleEventAsync(eventData);
+
+        // Assert
+        Assert.True(result.Success);
+        _deduplicatorMock.Verify(x => x.RollbackProcessingAsync(eventData.EventId, It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    #endregion
+
+    #region WHF-09：未注册 eventType 门控
+
+    [Fact]
+    public async Task HandleEventAsync_WhenEventTypeUnregistered_ShouldSkipDispatch_WhenIgnoreUnknownEventTypesEnabled()
+    {
+        // Arrange - WHF-09：默认开启——未注册事件类型静默忽略，不回退默认处理器兜底
+        _options.IgnoreUnknownEventTypes = true;
+        _handlerFactoryMock
+            .Setup(x => x.IsHandlerRegistered("unknown.event"))
+            .Returns(false);
+
+        var eventData = new EventData { EventId = "whf09_event", EventType = "unknown.event" };
+
+        _deduplicatorMock
+            .Setup(x => x.TryMarkAsProcessingAsync(eventData.EventId, It.IsAny<string?>(), null, null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new DeduplicationResult { IsDuplicate = false, WasProcessing = false });
+
+        var service = CreateService();
+
+        // Act
+        var result = await service.HandleEventAsync(eventData);
+
+        // Assert
+        Assert.True(result.Success, "unhandled 不是业务失败，不应触发回滚/重试");
+        _handlerFactoryMock.Verify(x => x.HandleEventParallelAsync(
+            It.IsAny<string>(), It.IsAny<EventData>(), It.IsAny<CancellationToken>()), Times.Never,
+            "未注册事件类型不应分发到默认处理器兜底");
+    }
+
+    [Fact]
+    public async Task HandleEventAsync_WhenEventTypeRegistered_ShouldDispatch_WhenIgnoreUnknownEventTypesEnabled()
+    {
+        // Arrange - 已注册事件类型正常分发
+        _options.IgnoreUnknownEventTypes = true;
+        _handlerFactoryMock
+            .Setup(x => x.IsHandlerRegistered("test.event"))
+            .Returns(true);
+
+        var eventData = new EventData { EventId = "whf09_registered_event", EventType = "test.event" };
+
+        _deduplicatorMock
+            .Setup(x => x.TryMarkAsProcessingAsync(eventData.EventId, It.IsAny<string?>(), null, null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new DeduplicationResult { IsDuplicate = false, WasProcessing = false });
+
+        _handlerFactoryMock
+            .Setup(x => x.HandleEventParallelAsync(eventData.EventType, eventData, It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var service = CreateService();
+
+        // Act
+        var result = await service.HandleEventAsync(eventData);
+
+        // Assert
+        Assert.True(result.Success);
+        _handlerFactoryMock.Verify(x => x.HandleEventParallelAsync(
+            eventData.EventType, eventData, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleEventAsync_WhenEventTypeUnregistered_ShouldFallbackToFactory_WhenIgnoreUnknownEventTypesDisabled()
+    {
+        // Arrange - 开关关闭时保留旧行为（默认处理器兜底）
+        _options.IgnoreUnknownEventTypes = false;
+        _handlerFactoryMock
+            .Setup(x => x.IsHandlerRegistered("unknown.event"))
+            .Returns(false);
+
+        var eventData = new EventData { EventId = "whf09_fallback_event", EventType = "unknown.event" };
+
+        _deduplicatorMock
+            .Setup(x => x.TryMarkAsProcessingAsync(eventData.EventId, It.IsAny<string?>(), null, null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new DeduplicationResult { IsDuplicate = false, WasProcessing = false });
+
+        _handlerFactoryMock
+            .Setup(x => x.HandleEventParallelAsync(eventData.EventType, eventData, It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var service = CreateService();
+
+        // Act
+        var result = await service.HandleEventAsync(eventData);
+
+        // Assert
+        Assert.True(result.Success);
+        _handlerFactoryMock.Verify(x => x.HandleEventParallelAsync(
+            eventData.EventType, eventData, It.IsAny<CancellationToken>()), Times.Once, "开关关闭时应回退工厂兜底");
+    }
+
+    #endregion
+
+    #region WHF-02：Server 类 FeishuRedisException 三层上抛
+
+    [Fact]
+    public async Task HandleEventAsync_ShouldRethrowServerException_WhenSignatureValidationThrowsServerException()
+    {
+        // Arrange - 验签路径：组合验证器上抛的 Server 类异常不得在服务层被吞成 false（403）
+        _options.Apps["app1"] = new FeishuAppWebhookOptions
+        {
+            AppKey = "app1",
+            VerificationToken = "token_1",
+            EncryptKey = "12345678901234567890123456789012"
+        };
+        _validatorMock
+            .Setup(x => x.ValidateHeaderSignatureAsync(
+                It.IsAny<long>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
+            .ThrowsAsync(new FeishuRedisException(FeishuRedisFailureKind.Server, "Lua 脚本执行失败"));
+
+        var service = CreateService();
+        service.SetCurrentAppKey("app1");
+        var request = new FeishuWebhookRequest { Timestamp = 1, Nonce = "n", Signature = "s", Encrypt = "e" };
+
+        // Act
+        var act = async () => await service.HandleEventAsync(request, "{}");
+
+        // Assert
+        await act.Should().ThrowAsync<FeishuRedisException>().Where(ex => ex.FailureKind == FeishuRedisFailureKind.Server);
+    }
+
+    [Fact]
+    public async Task HandleEventAsync_ShouldRethrowServerException_WhenDeduplicationThrowsServerException()
+    {
+        // Arrange - 事件处理路径：去重阶段的 Server 类异常必须上抛（由中间件转 503）
+        var eventData = new EventData { EventId = "whf02_event", EventType = "test.event" };
+        _deduplicatorMock
+            .Setup(x => x.TryMarkAsProcessingAsync(eventData.EventId, It.IsAny<string?>(), null, null, It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new FeishuRedisException(FeishuRedisFailureKind.Server, "Redis 服务端配置错误"));
+
+        var service = CreateService();
+
+        // Act
+        var act = async () => await service.HandleEventAsync(eventData);
+
+        // Assert
+        await act.Should().ThrowAsync<FeishuRedisException>().Where(ex => ex.FailureKind == FeishuRedisFailureKind.Server);
+        // 关键次生断言：Server 类故障不写失败事件存储（避免重试服务后续重复消费）
+        _deduplicatorMock.Verify(x => x.RollbackProcessingAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task HandleEventAsync_ShouldNotWriteFailedEventStore_WhenDeduplicationThrowsServerException()
+    {
+        // Arrange - WHF-02 核心次生断言：失败事件存储不得在 Server 类故障路径被写入
+        var eventData = new EventData { EventId = "whf02_store_event", EventType = "test.event" };
+        _deduplicatorMock
+            .Setup(x => x.TryMarkAsProcessingAsync(eventData.EventId, It.IsAny<string?>(), null, null, It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new FeishuRedisException(FeishuRedisFailureKind.Server, "Redis 服务端配置错误"));
+
+        var failedEventStoreMock = new Mock<IFailedEventStore>();
+        _options.Retry.EnableRetry = true;
+        var service = CreateService(failedEventStoreMock.Object);
+
+        // Act
+        var act = async () => await service.HandleEventAsync(eventData);
+
+        // Assert
+        await act.Should().ThrowAsync<FeishuRedisException>();
+        failedEventStoreMock.Verify(x => x.StoreFailedEventAsync(
+            It.IsAny<EventData>(), It.IsAny<Exception>(), It.IsAny<string?>(), It.IsAny<DateTimeOffset>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    #endregion
 
     private class TestAppHandler : IFeishuEventHandler
     {

@@ -1,5 +1,5 @@
 // -----------------------------------------------------------------------
-//  作者：Mud Studio  版权所有 (c) Mud Studio 2025   
+//  作者：Mud Studio  版权所有 (c) Mud Studio 2025
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
@@ -56,12 +56,12 @@ public static class TestEndpoint
                     }
                 }
 
-                return Results.Ok(new
+                return Results.Ok(new CaptureResponse
                 {
-                    message = "✅ 请求已捕获",
-                    requestId = captured.Timestamp.Ticks,
-                    bodyLength = body.Length,
-                    preview = body.Length > 200 ? body.Substring(0, 200) + "..." : body
+                    Message = "✅ 请求已捕获",
+                    RequestId = captured.Timestamp.Ticks,
+                    BodyLength = body.Length,
+                    Preview = body.Length > 200 ? body.Substring(0, 200) + "..." : body
                 });
             }
             catch (Exception ex)
@@ -75,18 +75,18 @@ public static class TestEndpoint
         {
             lock (_lock)
             {
-                return Results.Ok(new
+                return Results.Ok(new CapturedRequestsResponse
                 {
-                    total = _capturedRequests.Count,
-                    requests = _capturedRequests.OrderByDescending(r => r.Timestamp).Take(10).Select(r => new
+                    Total = _capturedRequests.Count,
+                    Requests = _capturedRequests.OrderByDescending(r => r.Timestamp).Take(10).Select(r => new CapturedRequestSummary
                     {
-                        r.Timestamp,
-                        r.Method,
-                        r.Path,
-                        r.ClientIp,
-                        bodyPreview = r.Body.Length > 100 ? r.Body.Substring(0, 100) + "..." : r.Body,
-                        bodyLength = r.Body.Length
-                    })
+                        Timestamp = r.Timestamp,
+                        Method = r.Method,
+                        Path = r.Path,
+                        ClientIp = r.ClientIp,
+                        BodyPreview = r.Body.Length > 100 ? r.Body.Substring(0, 100) + "..." : r.Body,
+                        BodyLength = r.Body.Length
+                    }).ToList()
                 });
             }
         }).WithName("GetCapturedRequests").WithTags("Test");
@@ -113,7 +113,7 @@ public static class TestEndpoint
             {
                 var count = _capturedRequests.Count;
                 _capturedRequests.Clear();
-                return Results.Ok(new { message = $"已清空 {count} 个捕获的请求" });
+                return Results.Ok(new ClearResponse { Message = $"已清空 {count} 个捕获的请求" });
             }
         }).WithName("ClearCapturedRequests").WithTags("Test");
 
@@ -123,19 +123,19 @@ public static class TestEndpoint
             try
             {
                 // 构造标准的飞书Webhook格式
-                var feishuRequest = new
+                var feishuRequest = new MockFeishuRequest
                 {
-                    encrypt = mockEvent.EncryptedData,
-                    timestamp = DateTimeOffset.Now.ToUnixTimeSeconds().ToString(),
-                    nonce = Guid.NewGuid().ToString("N"),
-                    signature = "mock_signature_" + Guid.NewGuid().ToString("N")
+                    Encrypt = mockEvent.EncryptedData,
+                    Timestamp = DateTimeOffset.Now.ToUnixTimeSeconds().ToString(),
+                    Nonce = Guid.NewGuid().ToString("N"),
+                    Signature = "mock_signature_" + Guid.NewGuid().ToString("N")
                 };
 
-                return Results.Ok(new
+                return Results.Ok(new MockFeishuEventResponse
                 {
-                    message = "✅ 模拟飞书事件已生成",
-                    feishuRequest,
-                    hint = "请将此数据POST到 /feishu/webhook 端点进行测试"
+                    Message = "✅ 模拟飞书事件已生成",
+                    FeishuRequest = feishuRequest,
+                    Hint = "请将此数据POST到 /feishu/webhook 端点进行测试"
                 });
             }
             catch (Exception ex)
@@ -144,20 +144,88 @@ public static class TestEndpoint
             }
         }).WithName("MockFeishuEvent").WithTags("Test");
     }
+}
 
-    private class CapturedRequest
-    {
-        public DateTime Timestamp { get; set; }
-        public string Path { get; set; } = string.Empty;
-        public string Method { get; set; } = string.Empty;
-        public Dictionary<string, string> Headers { get; set; } = new();
-        public string Body { get; set; } = string.Empty;
-        public string ContentType { get; set; } = string.Empty;
-        public string ClientIp { get; set; } = string.Empty;
-    }
+/// <summary>
+/// 捕获响应
+/// </summary>
+internal class CaptureResponse
+{
+    public string Message { get; set; } = string.Empty;
+    public long RequestId { get; set; }
+    public int BodyLength { get; set; }
+    public string Preview { get; set; } = string.Empty;
+}
 
-    private class MockFeishuEvent
-    {
-        public string EncryptedData { get; set; } = string.Empty;
-    }
+/// <summary>
+/// 捕获请求列表响应
+/// </summary>
+internal class CapturedRequestsResponse
+{
+    public int Total { get; set; }
+    public List<CapturedRequestSummary> Requests { get; set; } = new();
+}
+
+/// <summary>
+/// 捕获请求摘要
+/// </summary>
+internal class CapturedRequestSummary
+{
+    public DateTime Timestamp { get; set; }
+    public string Method { get; set; } = string.Empty;
+    public string Path { get; set; } = string.Empty;
+    public string ClientIp { get; set; } = string.Empty;
+    public string BodyPreview { get; set; } = string.Empty;
+    public int BodyLength { get; set; }
+}
+
+/// <summary>
+/// 清空操作响应
+/// </summary>
+internal class ClearResponse
+{
+    public string Message { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// 模拟飞书事件响应
+/// </summary>
+internal class MockFeishuEventResponse
+{
+    public string Message { get; set; } = string.Empty;
+    public MockFeishuRequest FeishuRequest { get; set; } = new();
+    public string Hint { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// 模拟飞书请求体
+/// </summary>
+internal class MockFeishuRequest
+{
+    public string Encrypt { get; set; } = string.Empty;
+    public string Timestamp { get; set; } = string.Empty;
+    public string Nonce { get; set; } = string.Empty;
+    public string Signature { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// 已捕获的请求（internal：AOT 下 RDG/源生成 JSON 需要可访问类型）
+/// </summary>
+internal class CapturedRequest
+{
+    public DateTime Timestamp { get; set; }
+    public string Path { get; set; } = string.Empty;
+    public string Method { get; set; } = string.Empty;
+    public Dictionary<string, string> Headers { get; set; } = new();
+    public string Body { get; set; } = string.Empty;
+    public string ContentType { get; set; } = string.Empty;
+    public string ClientIp { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// 模拟飞书事件请求体（internal：AOT 下 RDG 需要可访问类型，私有嵌套类会触发 RDG012）
+/// </summary>
+internal class MockFeishuEvent
+{
+    public string EncryptedData { get; set; } = string.Empty;
 }

@@ -22,7 +22,6 @@ namespace Mud.Feishu.DataModels.ApprovalComments;
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.ApprovalExternal.ExternalActionConfig))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.ApprovalExternal.ExternalCcNode))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.ApprovalExternal.ExternalInstance))]
-[JsonSerializable(typeof(global::Mud.Feishu.DataModels.ApprovalExternal.SyncApprovalInstancesRequest))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.ApprovalExternal.ExternalInstanceForm))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.ApprovalExternal.ExternalInstancesTrusteeshipUrls))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.ExternalInstanceTask))]
@@ -105,7 +104,7 @@ namespace Mud.Feishu.DataModels.ApprovalComments;
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.ApprovalTask.TransferApprovalTasksRequest))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Approval.ApprovalApproverCcer))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Approval.ApprovalConfig))]
-[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Approval.ApprovalCreateViewers))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Approval.ApprovalCreateViewers), TypeInfoPropertyName = "Mud_Feishu_DataModels_Approval_ApprovalCreateViewers")] // SYSLIB1031 防护：默认 TypeInfo 属性名与本 Context 内其他根冲突，已显式重命名
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Approval.ApprovalForm))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Approval.ApprovalNode))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Approval.ApprovalSetting))]
@@ -134,7 +133,8 @@ namespace Mud.Feishu.DataModels.ApprovalComments;
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Approval.InstanceTimelineInfo))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Approval.PreviewNodeInfo))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Approval.PreviewNodeResult))]
-[JsonSerializable(typeof(global::Mud.Feishu.DataModels.ApprovalFile.UploadApprovalRequest))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.ApprovalFile.UploadApprovalRequest), TypeInfoPropertyName = "Mud_Feishu_DataModels_ApprovalFile_UploadApprovalRequest")] // SYSLIB1031 防护：默认 TypeInfo 属性名与本 Context 内其他根冲突，已显式重命名
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.ApprovalExternal.SyncApprovalInstancesRequest), TypeInfoPropertyName = "Mud_Feishu_DataModels_ApprovalExternal_SyncApprovalInstancesRequest")] // SYSLIB1031 防护：默认 TypeInfo 属性名与本 Context 内其他根冲突，已显式重命名 // 派生类型已注册为独立根；多态（以基类类型序列化）仍需在基类上标注 [JsonDerivedType]
 internal partial class ApprovalJsonContext : JsonSerializerContext
 {
 }

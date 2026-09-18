@@ -345,12 +345,6 @@ public static class FeishuServiceCollectionExtensions
     }
 
     /// <summary>
-    /// 根据应用配置创建弹性策略选项。
-    /// </summary>
-    /// <param name="configs">所有应用配置列表。</param>
-    /// <param name="appKey">应用键。</param>
-    /// <returns>对应的 <see cref="ResilienceOptions"/>；如果应用不存在则返回 null。</returns>
-    /// <summary>
     /// ENH-1：把 <see cref="IFeishuTokenStoreFactory"/> 的既有注册包上加密装饰器。
     /// </summary>
     /// <remarks>

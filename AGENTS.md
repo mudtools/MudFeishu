@@ -65,10 +65,14 @@ asserted for the diagnostic whitelist afterwards (`.github/workflows/dotnet-publ
 
 ## Dependency version policy (Mud.HttpUtils)
 
-This repo consumes `Mud.HttpUtils` **2.0.5** — the first official NuGet release, into which every fix
-from the pre-release local iterations was folded — **from nuget.org**. `nuget.config` declares
-nuget.org as the single source; the former local folder source (`D:/Repos/MudHttpUtils/artifacts`)
-was removed once 2.0.5 was published. To consume a newer component version: bump the version in the
+This repo consumes `Mud.HttpUtils` **2.0.6** (source-generator fix release: inherited-interface
+clients forward `appAuthorizer` to the base generated class and no longer re-declare the field —
+fixes a P0 where `UseApp`/`BeginScope` on inherited-interface clients always threw under the
+MT-02 default-deny authorizer, plus ~1184 CS0108; the JsonContextScaffolder now emits
+`TypeInfoPropertyName` for duplicate type-info names — SYSLIB1031). Until 2.0.6 is published to
+nuget.org, `nuget.config` temporarily re-adds the local folder source
+(`D:/Repos/MudHttpUtils/artifacts`); remove that entry once 2.0.6 is live and the consumption
+returns to nuget.org-only. To consume a newer component version: bump the version in the
 `PackageReference`s and sync `AGENTS.md` / README dependency table / `TokenMultiAppContractGuards.ExpectedVersion`.
 
 > **Packaging rules (component repo `D:/Repos/MudHttpUtils`)**: release packages must be produced by

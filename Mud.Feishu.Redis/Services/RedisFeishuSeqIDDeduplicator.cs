@@ -16,7 +16,7 @@ namespace Mud.Feishu.Redis.Services;
 /// <para>适用于多实例部署场景</para>
 /// </summary>
 /// <remarks>
-/// <para><b>ADR-3（T-M2-4）</b>：新增 <paramref name="scopeKey"/> 构造参数，用于多实例/多应用隔离。
+/// <para><b>ADR-3（T-M2-4）</b>：新增 <c>scopeKey</c> 构造参数，用于多实例/多应用隔离。
 /// 键格式为 <c>{prefix}{scopeKey}{seqId}</c>，Sorted Set 为 <c>{prefix}{scopeKey}set</c>。</para>
 /// <para><b>ADR-4（T-M2-3）</b>：Sorted Set 在写入时刷新 TTL 并执行 <c>ZREMRANGEBYSCORE</c> 裁剪，
 /// 使集合大小 ≈ TTL 窗口内的消息量（有界）。<see cref="GetMaxProcessedSeqId"/> 语义收窄为
@@ -89,7 +89,8 @@ return 0
         _keyPrefix = keyPrefix ?? Mud.Feishu.Abstractions.Consts.DefaultSeqIdKeyPrefix;
 
         // ADR-3：scopeKey 必须非空（fail-fast，防止退化为全局共享键导致多实例丢帧）
-        if (string.IsNullOrWhiteSpace(scopeKey))
+        // is null 显式判空，保证后续 _scopeKey = scopeKey 的非空流分析在所有 TFM 下成立
+        if (scopeKey is null || string.IsNullOrWhiteSpace(scopeKey))
             throw new ArgumentException(
                 "scopeKey 不能为空——空 scopeKey 会导致多实例互相判重（R-07 修复）。" +
                 "多实例共享 Redis 时，scopeKey 必须包含实例维度（如 AppKey+MachineName）。",
@@ -205,11 +206,12 @@ return 0
     }
 
     /// <summary>
-    /// 异步清空缓存
+    /// 异步清空缓存。
     /// <para><b>⚠️ 破坏性操作</b>：此方法会删除所有匹配 <c>{keyPrefix}{scopeKey}*</c> 的键。
     /// 跨实例共享 Redis 时会清空<b>所有匹配该 scopeKey 的实例</b>的 SeqID 状态，仅用于运维场景，
     /// 勿在常规重连路径调用。</para>
-    /// <remarks>best-effort：失败记日志，不抛出。</remarks>
+    /// <para>best-effort：失败记日志，不抛出。</para>
+    /// </summary>
     public async Task ClearCacheAsync()
     {
         ThrowIfDisposed();

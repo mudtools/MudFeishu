@@ -55,6 +55,11 @@ public class ChatTabsController : ControllerBase
                 set_bot_manager,
                 uuid);
 
+            if (result == null)
+            {
+                return StatusCode(500, new { success = false, message = "接口返回为空" });
+            }
+
             if (result.Code == 0)
             {
                 return Ok(new
@@ -101,6 +106,11 @@ public class ChatTabsController : ControllerBase
             var result = await _chatTabsApi.DeleteChatTabsByIdAsync(
                 chat_id,
                 deleteChatTabsRequest);
+
+            if (result == null)
+            {
+                return StatusCode(500, new { success = false, message = "接口返回为空" });
+            }
 
             if (result.Code == 0)
             {
@@ -149,6 +159,11 @@ public class ChatTabsController : ControllerBase
                 chat_id,
                 updateChatTabsRequest);
 
+            if (result == null)
+            {
+                return StatusCode(500, new { success = false, message = "接口返回为空" });
+            }
+
             if (result.Code == 0)
             {
                 return Ok(new
@@ -191,6 +206,11 @@ public class ChatTabsController : ControllerBase
         try
         {
             var result = await _chatTabsApi.GetChatTabsListByIdAsync(chat_id);
+
+            if (result == null)
+            {
+                return StatusCode(500, new { success = false, message = "接口返回为空" });
+            }
 
             if (result.Code == 0)
             {
@@ -238,6 +258,11 @@ public class ChatTabsController : ControllerBase
             var result = await _chatTabsApi.ChatTabsSortByIdAsync(
                 chat_id,
                 chatTabsSortRequest);
+
+            if (result == null)
+            {
+                return StatusCode(500, new { success = false, message = "接口返回为空" });
+            }
 
             if (result.Code == 0)
             {

@@ -41,6 +41,11 @@ public class AppCardMessageStreamController : ControllerBase
         {
             var result = await _appCardMessageStreamApi.CreateCardMessageStreamAsync(appCardMessageStreamRequest);
 
+            if (result == null)
+            {
+                return StatusCode(500, new { success = false, message = "接口返回为空" });
+            }
+
             if (result.Code == 0)
             {
                 return Ok(new
@@ -83,6 +88,11 @@ public class AppCardMessageStreamController : ControllerBase
         {
             var result = await _appCardMessageStreamApi.UpdateCardMessageStreamAsync(appCardMessageStreamRequest);
 
+            if (result == null)
+            {
+                return StatusCode(500, new { success = false, message = "接口返回为空" });
+            }
+
             if (result.Code == 0)
             {
                 return Ok(new
@@ -124,6 +134,11 @@ public class AppCardMessageStreamController : ControllerBase
         try
         {
             var result = await _appCardMessageStreamApi.DeleteCardMessageStreamAsync(appCardMessageStreamRequest);
+
+            if (result == null)
+            {
+                return StatusCode(500, new { success = false, message = "接口返回为空" });
+            }
 
             if (result.Code == 0)
             {
@@ -168,6 +183,11 @@ public class AppCardMessageStreamController : ControllerBase
         {
             var result = await _appCardMessageStreamApi.BotTimeSentiveAsync(timeSentiveRequest);
 
+            if (result == null)
+            {
+                return StatusCode(500, new { success = false, message = "接口返回为空" });
+            }
+
             if (result.Code == 0)
             {
                 return Ok(new
@@ -210,6 +230,11 @@ public class AppCardMessageStreamController : ControllerBase
         {
             var result = await _appCardMessageStreamApi.UpdateCardMessageStreamButtonAsync(
                 updateCardMessageStreamButtonRequest);
+
+            if (result == null)
+            {
+                return StatusCode(500, new { success = false, message = "接口返回为空" });
+            }
 
             if (result.Code == 0)
             {
@@ -257,6 +282,11 @@ public class AppCardMessageStreamController : ControllerBase
             var result = await _appCardMessageStreamApi.FeedCardsByFeedCardIdAsync(
                 feed_card_id,
                 feedCardsByFeedCardIdRequest);
+
+            if (result == null)
+            {
+                return StatusCode(500, new { success = false, message = "接口返回为空" });
+            }
 
             if (result.Code == 0)
             {

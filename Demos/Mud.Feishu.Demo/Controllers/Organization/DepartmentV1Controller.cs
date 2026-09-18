@@ -47,6 +47,11 @@ public class DepartmentV1Controller : ControllerBase
                 employeeIdType,
                 departmentIdType);
 
+            if (result == null)
+            {
+                return StatusCode(500, new { success = false, message = "接口返回为空" });
+            }
+
             if (result.Code == 0)
             {
                 return Ok(new
@@ -91,6 +96,11 @@ public class DepartmentV1Controller : ControllerBase
                 employeeIdType,
                 departmentIdType);
 
+            if (result == null)
+            {
+                return StatusCode(500, new { success = false, message = "接口返回为空" });
+            }
+
             if (result.Code == 0)
             {
                 return Ok(new { success = true, message = "部门更新成功" });
@@ -123,6 +133,11 @@ public class DepartmentV1Controller : ControllerBase
             var result = await _departmentApi.DeleteDepartmentByIdAsync(
                 departmentId,
                 departmentIdType);
+
+            if (result == null)
+            {
+                return StatusCode(500, new { success = false, message = "接口返回为空" });
+            }
 
             if (result.Code == 0)
             {
@@ -159,6 +174,11 @@ public class DepartmentV1Controller : ControllerBase
                 departmentQueryRequest,
                 employeeIdType,
                 departmentIdType);
+
+            if (result == null)
+            {
+                return StatusCode(500, new { success = false, message = "接口返回为空" });
+            }
 
             if (result.Code == 0)
             {
@@ -201,6 +221,11 @@ public class DepartmentV1Controller : ControllerBase
                 employeeIdType,
                 departmentIdType);
 
+            if (result == null)
+            {
+                return StatusCode(500, new { success = false, message = "接口返回为空" });
+            }
+
             if (result.Code == 0)
             {
                 return Ok(new
@@ -242,14 +267,24 @@ public class DepartmentV1Controller : ControllerBase
                 employeeIdType,
                 departmentIdType);
 
+            if (result == null)
+            {
+                return StatusCode(500, new { success = false, message = "接口返回为空" });
+            }
+
             if (result.Code == 0)
             {
+                if (result.Data == null)
+                {
+                    return StatusCode(500, new { success = false, message = "接口返回数据为空" });
+                }
+
                 return Ok(new
                 {
                     success = true,
                     data = result.Data,
-                    pageToken = result.Data.Page.PageToken,
-                    hasMore = result.Data.Page.HasMore,
+                    pageToken = result.Data.Page?.PageToken,
+                    hasMore = result.Data.Page?.HasMore ?? false,
                     message = "搜索部门成功"
                 });
             }

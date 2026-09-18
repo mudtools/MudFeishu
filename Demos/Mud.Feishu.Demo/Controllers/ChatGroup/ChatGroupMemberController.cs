@@ -43,6 +43,11 @@ public class ChatGroupMemberController : ControllerBase
                 chatId,
                 addGroupManagerRequest);
 
+            if (result == null)
+            {
+                return StatusCode(500, new { success = false, message = "接口返回为空" });
+            }
+
             if (result.Code == 0)
             {
                 return Ok(new
@@ -80,6 +85,11 @@ public class ChatGroupMemberController : ControllerBase
             var result = await _chatGroupMemberApi.DeleteManagersAsync(
                 chatId,
                 deleteGroupManagerRequest);
+
+            if (result == null)
+            {
+                return StatusCode(500, new { success = false, message = "接口返回为空" });
+            }
 
             if (result.Code == 0)
             {
@@ -119,6 +129,11 @@ public class ChatGroupMemberController : ControllerBase
                 chatId,
                 addMemberRequest);
 
+            if (result == null)
+            {
+                return StatusCode(500, new { success = false, message = "接口返回为空" });
+            }
+
             if (result.Code == 0)
             {
                 return Ok(new
@@ -152,6 +167,11 @@ public class ChatGroupMemberController : ControllerBase
         {
             var result = await _chatGroupMemberApi.MeJoinChatGroupAsync(chatId);
 
+            if (result == null)
+            {
+                return StatusCode(500, new { success = false, message = "接口返回为空" });
+            }
+
             if (result.Code == 0)
             {
                 return Ok(new { success = true, message = "加入群聊成功" });
@@ -184,6 +204,11 @@ public class ChatGroupMemberController : ControllerBase
             var result = await _chatGroupMemberApi.RemoveMemberAsync(
                 chatId,
                 membersRequest);
+
+            if (result == null)
+            {
+                return StatusCode(500, new { success = false, message = "接口返回为空" });
+            }
 
             if (result.Code == 0)
             {
@@ -226,8 +251,18 @@ public class ChatGroupMemberController : ControllerBase
                page_size: pageSize,
               page_token: pageToken);
 
+            if (result == null)
+            {
+                return StatusCode(500, new { success = false, message = "接口返回为空" });
+            }
+
             if (result.Code == 0)
             {
+                if (result.Data == null)
+                {
+                    return StatusCode(500, new { success = false, message = "接口返回数据为空" });
+                }
+
                 return Ok(new
                 {
                     success = true,
@@ -260,6 +295,11 @@ public class ChatGroupMemberController : ControllerBase
         try
         {
             var result = await _chatGroupMemberApi.GetMemberInChatByIdAsync(chatId);
+
+            if (result == null)
+            {
+                return StatusCode(500, new { success = false, message = "接口返回为空" });
+            }
 
             if (result.Code == 0)
             {

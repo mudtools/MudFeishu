@@ -23,7 +23,7 @@ public class FeishuWebSocketOptionsMultiLevelPriorityTests
     {
         // Arrange
         var configurationBuilder = new ConfigurationBuilder();
-        configurationBuilder.AddInMemoryCollection(new Dictionary<string, string>
+        configurationBuilder.AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["FeishuWebSocket:HeartbeatIntervalMs"] = "30000",
             ["FeishuWebSocket:AutoReconnect"] = "false"
@@ -57,7 +57,7 @@ public class FeishuWebSocketOptionsMultiLevelPriorityTests
     {
         // Arrange
         var configurationBuilder = new ConfigurationBuilder();
-        configurationBuilder.AddInMemoryCollection(new Dictionary<string, string>
+        configurationBuilder.AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["FeishuWebSocket:HeartbeatIntervalMs"] = "20000",
             ["FeishuWebSocket:AutoReconnect"] = "true",
@@ -106,7 +106,7 @@ public class FeishuWebSocketOptionsMultiLevelPriorityTests
     {
         // Arrange
         var configurationBuilder = new ConfigurationBuilder();
-        configurationBuilder.AddInMemoryCollection(new Dictionary<string, string>
+        configurationBuilder.AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["FeishuWebSocket:HeartbeatIntervalMs"] = "30000", // 只配置部分属性
             ["FeishuWebSocket:AutoReconnect"] = "false"
@@ -142,7 +142,7 @@ public class FeishuWebSocketOptionsMultiLevelPriorityTests
     {
         // Arrange
         var configurationBuilder = new ConfigurationBuilder();
-        configurationBuilder.AddInMemoryCollection(new Dictionary<string, string>
+        configurationBuilder.AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["FeishuWebSocket:EventDeduplication:Mode"] = "Distributed",
             ["FeishuWebSocket:EventDeduplication:CacheExpiration"] = "24:00:00"
@@ -176,7 +176,7 @@ public class FeishuWebSocketOptionsMultiLevelPriorityTests
     {
         // Arrange
         var configurationBuilder = new ConfigurationBuilder();
-        configurationBuilder.AddInMemoryCollection(new Dictionary<string, string>
+        configurationBuilder.AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["FeishuWebSocket:MessageSizeLimits:MaxTextMessageSize"] = "2097152",  // 2MB
             ["FeishuWebSocket:MessageSizeLimits:MaxBinaryMessageSize"] = "31457280" // 30MB
@@ -210,7 +210,7 @@ public class FeishuWebSocketOptionsMultiLevelPriorityTests
     {
         // Arrange - 文件配置包含无效值
         var configurationBuilder = new ConfigurationBuilder();
-        configurationBuilder.AddInMemoryCollection(new Dictionary<string, string>
+        configurationBuilder.AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["FeishuWebSocket:HeartbeatIntervalMs"] = "1000", // 低于最小值，会被自动修正
             ["FeishuWebSocket:MaxReconnectAttempts"] = "15"   // 高于默认值，但合法
@@ -247,7 +247,7 @@ public class FeishuWebSocketOptionsMultiLevelPriorityTests
     {
         // Arrange - 三层配置：默认值 < 文件配置 < 代码配置
         var configurationBuilder = new ConfigurationBuilder();
-        configurationBuilder.AddInMemoryCollection(new Dictionary<string, string>
+        configurationBuilder.AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["FeishuWebSocket:EventDeduplication:Mode"] = "Distributed",
             ["FeishuWebSocket:EventDeduplication:CacheExpiration"] = "12:00:00",

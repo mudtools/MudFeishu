@@ -42,7 +42,11 @@ public class WebSocketTelemetryInterceptor : IFeishuEventInterceptor
         }
 
         var eventId = eventData.EventId ?? Guid.NewGuid().ToString();
-        _activities.TryAdd(eventId, activity);
+        // activity 可能为 null（未启用监听时 StartActivity 返回 null），此时无需记录遥测
+        if (activity != null)
+        {
+            _activities.TryAdd(eventId, activity);
+        }
 
         Interlocked.Increment(ref _totalEvents);
         _logger.LogDebug("[遥测] 开始处理 WebSocket 事件: EventType={EventType}, EventId={EventId}",

@@ -86,7 +86,7 @@ public class IFeishuTenantV3UnitTests
 
         // 验证顶层对象非空
         Assert.NotNull(requestBody);
-        Assert.NotEmpty(requestBody.Name);
+        Assert.NotEmpty(requestBody.Name!);
     }
 
     /// <summary>

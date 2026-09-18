@@ -92,7 +92,7 @@ public class FeishuDriveService : IFeishuDriveService
 
             var fileInfo = new FileRecord
             {
-                FileToken = fileToken,
+                FileToken = fileToken ?? string.Empty,
                 FolderToken = folderToken,
                 FileName = fileName,
                 FileSize = fileSize,

@@ -46,6 +46,11 @@ public class CardElementsController : ControllerBase
                 card_id,
                 cardElementRequest);
 
+            if (result == null)
+            {
+                return StatusCode(500, new { success = false, message = "接口返回为空" });
+            }
+
             if (result.Code == 0)
             {
                 return Ok(new
@@ -94,6 +99,11 @@ public class CardElementsController : ControllerBase
                 card_id,
                 element_id,
                 cardElementRequest);
+
+            if (result == null)
+            {
+                return StatusCode(500, new { success = false, message = "接口返回为空" });
+            }
 
             if (result.Code == 0)
             {
@@ -144,6 +154,11 @@ public class CardElementsController : ControllerBase
                 element_id,
                 cardElementRequest);
 
+            if (result == null)
+            {
+                return StatusCode(500, new { success = false, message = "接口返回为空" });
+            }
+
             if (result.Code == 0)
             {
                 return Ok(new
@@ -193,6 +208,11 @@ public class CardElementsController : ControllerBase
                 element_id,
                 cardElementRequest);
 
+            if (result == null)
+            {
+                return StatusCode(500, new { success = false, message = "接口返回为空" });
+            }
+
             if (result.Code == 0)
             {
                 return Ok(new
@@ -241,6 +261,11 @@ public class CardElementsController : ControllerBase
                 card_id,
                 element_id,
                 cardElementRequest);
+
+            if (result == null)
+            {
+                return StatusCode(500, new { success = false, message = "接口返回为空" });
+            }
 
             if (result.Code == 0)
             {

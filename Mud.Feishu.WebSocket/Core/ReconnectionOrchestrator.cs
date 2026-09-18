@@ -114,7 +114,8 @@ public class ReconnectionOrchestrator : IReconnectionOrchestrator, IAsyncDisposa
             }
 
             _isReconnecting = true;
-            _reconnectStartTime = DateTime.UtcNow;
+            var reconnectStart = DateTime.UtcNow;
+            _reconnectStartTime = reconnectStart;
             _lastReconnectAttempt = DateTime.UtcNow;
             _lastReconnectReason = reason;
             _currentAttempt = 0;
@@ -129,7 +130,7 @@ public class ReconnectionOrchestrator : IReconnectionOrchestrator, IAsyncDisposa
             {
                 _currentAttempt++;
 
-                var elapsedTime = DateTime.UtcNow - _reconnectStartTime.Value;
+                var elapsedTime = DateTime.UtcNow - reconnectStart;
                 if (!_strategy.ShouldContinueReconnect(_currentAttempt, elapsedTime))
                 {
                     _logger.LogError("已达到重连限制 (次数: {Attempt}, 时间: {ElapsedTime})",

@@ -187,7 +187,7 @@ public class ErrorRecoveryStrategyTests
     public void AnalyzeError_WithFeishuAuthenticationException_Recoverable_ShouldReturnRecoverable()
     {
         // Arrange - 使用内部构造函数传入 isRecoverable: true
-        var exception = new FeishuAuthenticationException("Token expired", inner: null, errorCode: null, isRecoverable: true);
+        var exception = new FeishuAuthenticationException("Token expired", inner: null!, errorCode: null, isRecoverable: true); // 有意传 null：验证内部构造在无内部异常时可标记可恢复
 
         // Act
         var result = _strategy.AnalyzeError(exception);

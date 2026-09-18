@@ -42,6 +42,11 @@ public class EmployeeController : ControllerBase
         try
         {
             var result = await _v1EmployeeApi.CreateEmployeeAsync(userModel, employeeIdType, departmentIdType);
+            if (result == null)
+            {
+                return BadRequest(new { error = "接口返回为空" });
+            }
+
             return Ok(result.Data);
         }
         catch (Exception ex)
@@ -192,6 +197,11 @@ public class EmployeeController : ControllerBase
         try
         {
             var result = await _v1EmployeeApi.QueryEmployeesAsync(employeeQueryRequest, employeeIdType, departmentIdType);
+            if (result == null)
+            {
+                return BadRequest(new { error = "接口返回为空" });
+            }
+
             return Ok(result.Data);
         }
         catch (Exception ex)
@@ -216,6 +226,11 @@ public class EmployeeController : ControllerBase
         try
         {
             var result = await _v1EmployeeApi.QueryEmployeePageListAsync(employeeQueryRequest, employeeIdType, departmentIdType);
+            if (result == null)
+            {
+                return BadRequest(new { error = "接口返回为空" });
+            }
+
             return Ok(result.Data);
         }
         catch (Exception ex)
@@ -240,6 +255,11 @@ public class EmployeeController : ControllerBase
         try
         {
             var result = await _v1EmployeeApi.SearchEmployeePageListAsync(employeeQueryRequest, employeeIdType, departmentIdType);
+            if (result == null)
+            {
+                return BadRequest(new { error = "接口返回为空" });
+            }
+
             return Ok(result.Data);
         }
         catch (Exception ex)

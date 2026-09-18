@@ -40,6 +40,11 @@ public class WorkCityController : ControllerBase
         try
         {
             var result = await _tenantWorkCityApi.GetWorkCitesListAsync(pageSize, pageToken);
+            if (result == null)
+            {
+                return BadRequest(new { error = "接口返回为空" });
+            }
+
             return Ok(result.Data);
         }
         catch (Exception ex)
@@ -62,6 +67,11 @@ public class WorkCityController : ControllerBase
         try
         {
             var result = await _userWorkCityApi.GetWorkCitesListAsync(pageSize, pageToken);
+            if (result == null)
+            {
+                return BadRequest(new { error = "接口返回为空" });
+            }
+
             return Ok(result.Data);
         }
         catch (Exception ex)
@@ -81,6 +91,11 @@ public class WorkCityController : ControllerBase
         try
         {
             var result = await _tenantWorkCityApi.GetWorkCityByIdAsync(workCityId);
+            if (result == null)
+            {
+                return BadRequest(new { error = "接口返回为空" });
+            }
+
             return Ok(result.Data);
         }
         catch (Exception ex)
@@ -100,6 +115,11 @@ public class WorkCityController : ControllerBase
         try
         {
             var result = await _userWorkCityApi.GetWorkCityByIdAsync(workCityId);
+            if (result == null)
+            {
+                return BadRequest(new { error = "接口返回为空" });
+            }
+
             return Ok(result.Data);
         }
         catch (Exception ex)

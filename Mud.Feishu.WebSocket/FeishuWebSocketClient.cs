@@ -195,15 +195,6 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
             var handler = Error;
             handler?.Invoke(this, e);
         };
-        _onPongReceivedBinary = (object? s, ClientConfigInfo? config) =>
-        {
-            _heartbeatManager.OnPongReceived(config);
-        };
-        _onPongReceivedText = (object? s, EventArgs e) =>
-        {
-            _heartbeatManager.OnPongReceived(null);
-        };
-
         // 初始化组件
         _connectionManager = new WebSocketConnectionManager(_loggerFactory.CreateLogger<WebSocketConnectionManager>(), _options, _loggerFactory);
         _authManager = new AuthenticationManager(_loggerFactory.CreateLogger<AuthenticationManager>(), _options, (message) => SendMessageAsync(message), _sessionManager);
@@ -214,6 +205,17 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
             _loggerFactory.CreateLogger<HeartbeatManager>(),
             _options,
             (data, token) => _connectionManager.SendBinaryMessageAsync(data, token));
+
+        // Pong 回调委托必须在 _heartbeatManager 赋值之后创建：
+        // 此前定义在构造函数前段，委托体解引用尚未赋值的 _heartbeatManager 触发 CS8602。
+        _onPongReceivedBinary = (object? s, ClientConfigInfo? config) =>
+        {
+            _heartbeatManager.OnPongReceived(config);
+        };
+        _onPongReceivedText = (object? s, EventArgs e) =>
+        {
+            _heartbeatManager.OnPongReceived(null);
+        };
 
         // 订阅组件事件
         SubscribeToComponentEvents();

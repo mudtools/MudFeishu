@@ -1516,9 +1516,9 @@ public class TenantController : ControllerBase
 
 | 包                            | 版本             | 说明                                |
 | ----------------------------- | ---------------- | ----------------------------------- |
-| **Mud.HttpUtils**             | v2.0.5  | HTTP 客户端工具类（含源代码生成器） |
-| **Mud.HttpUtils.Generator**   | v2.0.5  | HTTP 客户端代码生成器（编译时）     |
-| **Mud.HttpUtils.Resilience**  | v2.0.5  | 弹性策略装饰器（重试/超时/熔断）    |
+| **Mud.HttpUtils**             | v2.0.6  | HTTP 客户端工具类（含源代码生成器） |
+| **Mud.HttpUtils.Generator**   | v2.0.6  | HTTP 客户端代码生成器（编译时）     |
+| **Mud.HttpUtils.Resilience**  | v2.0.6  | 弹性策略装饰器（重试/超时/熔断）    |
 | **Microsoft.Extensions.Http** | v8.0.1 / v10.0.4 | HTTP 客户端工厂                     |
 
 ---

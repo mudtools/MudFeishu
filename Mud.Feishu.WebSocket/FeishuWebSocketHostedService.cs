@@ -39,6 +39,7 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
     /// <param name="webSocketManager">WebSocket管理器</param>
     /// <param name="reconnectionOrchestrator">重连协调器</param>
     /// <param name="options">WebSocket配置选项监控器（支持热更新）</param>
+    /// <param name="concurrencyService">并发控制服务（可选背压闸门；为 null 时不启用并发上界）</param>
     public FeishuWebSocketHostedService(
         ILogger<FeishuWebSocketHostedService> logger,
         IFeishuWebSocketManager webSocketManager,

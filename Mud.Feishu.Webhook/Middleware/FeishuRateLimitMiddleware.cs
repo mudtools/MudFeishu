@@ -121,8 +121,9 @@ public class FeishuRateLimitMiddleware : IDisposable
         var now = DateTime.UtcNow;
 
         // 根据 EnableIpRateLimit 配置决定是否基于 IP 限流
+        // clientIp 已在上方 IsNullOrEmpty 守卫中确保非空，此处 ! 消除元组与字典键 (string, string) 的可空性差异。
         var rateLimitKey = rateLimitOptions.EnableIpRateLimit
-            ? (appKey ?? "global", clientIp)
+            ? (appKey ?? "global", clientIp!)
             : (appKey ?? "global", "global");
 
         if (_requestCounts.Count >= MaxIpEntries)

@@ -52,11 +52,15 @@ public interface ISecurityAuditService
 /// </summary>
 public enum SecurityEventType
 {
+    /// <summary>签名（Encrypt Key 签名）验证相关安全事件。</summary>
     SignatureValidation,
 
+    /// <summary>时间戳（防重放）验证相关安全事件。</summary>
     TimestampValidation,
 
+    /// <summary>事件订阅验证（URL 验证挑战）相关安全事件。</summary>
     SubscriptionValidation,
 
+    /// <summary>其他类型的安全事件。</summary>
     Other
 }

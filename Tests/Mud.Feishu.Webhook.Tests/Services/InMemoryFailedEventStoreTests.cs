@@ -198,4 +198,62 @@ public class InMemoryFailedEventStoreTests
             TenantKey = "test-tenant"
         };
     }
+
+    #region WHF-15：快照语义（深拷贝，消除共享可变引用）
+
+    [Fact]
+    public async Task GetPendingRetryEventsAsync_ShouldReturnSnapshot_MutationDoesNotAffectStore()
+    {
+        // Arrange
+        var eventData = CreateEventData("snapshot-001", 0);
+        await _store.StoreFailedEventAsync(eventData, new Exception("Error"));
+
+        // Act - 取出快照并修改
+        var snapshot = (await _store.GetPendingRetryEventsAsync(DateTimeOffset.UtcNow, 10)).First();
+        snapshot.RetryCount = 99;
+        snapshot.ExceptionMessage = "mutated";
+
+        // Assert - 存储内条目不受影响（须通过 UpdateFailedEventAsync 写回）
+        var fresh = (await _store.GetPendingRetryEventsAsync(DateTimeOffset.UtcNow, 10)).First();
+        fresh.RetryCount.Should().Be(0, "Get 返回的是深拷贝快照，调用方修改不得影响存储");
+        fresh.ExceptionMessage.Should().NotBe("mutated");
+    }
+
+    [Fact]
+    public async Task GetFailedEventsForRetryAsync_ShouldReturnIndependentSnapshots_AcrossCalls()
+    {
+        // Arrange
+        var eventData = CreateEventData("snapshot-002", 0);
+        await _store.StoreFailedEventAsync(eventData, new Exception("Error"));
+
+        // Act
+        var first = (await _store.GetFailedEventsForRetryAsync(5)).First();
+        first.RetryCount = 42;
+        var second = (await _store.GetFailedEventsForRetryAsync(5)).First();
+
+        // Assert - 多次 Get 之间互不可见
+        second.RetryCount.Should().Be(0, "两次 Get 之间互不可见（WHF-15 快照语义）");
+    }
+
+    [Fact]
+    public async Task UpdateFailedEventAsync_ShouldWriteBack_ThroughSnapshot()
+    {
+        // Arrange - 快照修改后经 UpdateFailedEventAsync 写回是唯一合法变更路径
+        var eventData = CreateEventData("snapshot-003", 0);
+        await _store.StoreFailedEventAsync(eventData, new Exception("Error"));
+
+        var snapshot = (await _store.GetPendingRetryEventsAsync(DateTimeOffset.UtcNow, 10)).First();
+        snapshot.RetryCount = 3;
+        snapshot.NextRetryAt = DateTimeOffset.UtcNow.AddMinutes(5);
+
+        // Act
+        await _store.UpdateFailedEventAsync(snapshot);
+
+        // Assert
+        var fresh = (await _store.GetFailedEventsForRetryAsync(5)).First();
+        fresh.RetryCount.Should().Be(3);
+        fresh.NextRetryAt.Should().BeCloseTo(DateTimeOffset.UtcNow.AddMinutes(5), TimeSpan.FromSeconds(5));
+    }
+
+    #endregion
 }

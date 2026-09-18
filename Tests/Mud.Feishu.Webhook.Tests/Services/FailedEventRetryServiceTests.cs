@@ -411,4 +411,112 @@ public class FailedEventRetryServiceTests
             x => x.UpdateFailedEventAsync(It.Is<FailedEventInfo>(e => e.RetryCount > 0), It.IsAny<CancellationToken>()),
             Times.AtLeastOnce);
     }
+
+    #region WHF-14：热更新与优雅关停
+
+    /// <summary>
+    /// 可变 IOptionsMonitor 桩：模拟 FeishuWebhookOptions.Retry.EnableRetry 的运行期热更新
+    /// </summary>
+    private sealed class MutableWebhookOptionsMonitor : IOptionsMonitor<FeishuWebhookOptions>
+    {
+        public FeishuWebhookOptions CurrentValue { get; set; } = new();
+
+        public FeishuWebhookOptions Get(string? name) => CurrentValue;
+
+        public IDisposable? OnChange(Action<FeishuWebhookOptions, string?> listener) => null;
+    }
+
+    /// <summary>
+    /// 测试用子类：暴露受保护的 ExecuteAsync，绕过 BackgroundService.StartAsync 的
+    /// Task.Run 排队竞态（stop 早于委托启动时任务合法地进入 Canceled 态且委托不运行——
+    /// 框架语义，与被测的优雅退出逻辑无关）。
+    /// </summary>
+    private sealed class TestableRetryService : FailedEventRetryService
+    {
+        public TestableRetryService(
+            IOptions<FailedEventRetryOptions> options,
+            ILogger<FailedEventRetryService> logger,
+            IServiceScopeFactory scopeFactory,
+            IFailedEventStore? failedEventStore = null,
+            IOptionsMonitor<FeishuWebhookOptions>? webhookOptions = null)
+            : base(options, logger, scopeFactory, failedEventStore, webhookOptions)
+        {
+        }
+
+        public Task ExecuteCoreForTest(CancellationToken stoppingToken) => ExecuteAsync(stoppingToken);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenRetryEnabledAtRuntime_ShouldResumeProcessing()
+    {
+        // Arrange - WHF-14：启动期禁用 → 运行期启用 → 重试服务应恢复工作（不再永久退出）
+        var webhookOptions = new FeishuWebhookOptions
+        {
+            Retry = new FailedEventRetryOptions { EnableRetry = false }
+        };
+        var monitor = new MutableWebhookOptionsMonitor { CurrentValue = webhookOptions };
+
+        var eventStoreMock = new Mock<IFailedEventStore>();
+        eventStoreMock
+            .Setup(x => x.GetPendingRetryEventsAsync(It.IsAny<DateTimeOffset>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<FailedEventInfo>());
+
+        var service = new TestableRetryService(
+            Options.Create(_options),
+            _loggerMock.Object,
+            _scopeFactory,
+            eventStoreMock.Object,
+            monitor);
+
+        // Act - 直接驱动 ExecuteAsync：禁用态运行一轮（1s 轮询间隔），300ms 时热更新为启用，
+        // 下一轮（约 1s 处）应恢复轮询；2.2s 处取消并验证优雅退出
+        using var cts = new CancellationTokenSource(2200);
+        var executeTask = service.ExecuteCoreForTest(cts.Token);
+        await Task.Delay(300);
+        monitor.CurrentValue.Retry.EnableRetry = true;
+        var exception = await Record.ExceptionAsync(() => executeTask);
+
+        // Assert - 禁用期间不轮询存储，启用后恢复轮询，且关停无 OCE 逃逸
+        exception.Should().BeNull("WHF-14：关停时 OCE 应被捕获并优雅退出");
+        eventStoreMock.Verify(
+            x => x.GetPendingRetryEventsAsync(It.IsAny<DateTimeOffset>(), It.IsAny<int>(), It.IsAny<CancellationToken>()),
+            Times.AtLeastOnce,
+            "运行期启用后重试服务应恢复工作（WHF-14 热更新）");
+    }
+
+    [Fact]
+    public async Task StopAsync_WhileRunning_ShouldExitGracefully_WithoutFaultedTask()
+    {
+        // Arrange - WHF-14：关停时 Task.Delay 的 OCE 应被捕获并优雅退出（不异常逃逸）
+        var loggerMock = new Mock<ILogger<FailedEventRetryService>>();
+        var eventStoreMock = new Mock<IFailedEventStore>();
+        eventStoreMock
+            .Setup(x => x.GetPendingRetryEventsAsync(It.IsAny<DateTimeOffset>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<FailedEventInfo>());
+
+        var service = new TestableRetryService(
+            Options.Create(_options),
+            loggerMock.Object,
+            _scopeFactory,
+            eventStoreMock.Object);
+
+        // Act - 直接驱动 ExecuteAsync，300ms 后关停（远小于 1s 轮询间隔，取消落在 Delay 内）
+        using var cts = new CancellationTokenSource(300);
+        var executeTask = service.ExecuteCoreForTest(cts.Token);
+        var exception = await Record.ExceptionAsync(() => executeTask);
+
+        // Assert - ExecuteAsync 正常完成（OCE 被捕获、无逃逸），且走到退出日志
+        exception.Should().BeNull("WHF-14：关停时 OCE 应被捕获并优雅退出，BackgroundService 不产生异常告警");
+        loggerMock.Verify(
+            x => x.Log(
+                LogLevel.Information,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("失败事件重试服务已停止")),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Once,
+            "WHF-14：关停后应写入停止日志，证明 ExecuteAsync 走到了正常退出路径");
+    }
+
+    #endregion
 }

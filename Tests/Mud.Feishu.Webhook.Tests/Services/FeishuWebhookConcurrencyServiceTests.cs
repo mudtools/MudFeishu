@@ -187,4 +187,42 @@ public class FeishuWebhookConcurrencyServiceTests
             _loggerMock.Object);
     }
 
+    /// <summary>
+    /// WHF-13：DisposeAsync 必须释放 IOptionsMonitor.OnChange 订阅——
+    /// 释放后再触发热更新回调，信号量不得重建（防句柄泄漏回归）
+    /// </summary>
+    [Fact]
+    public async Task OnChange_AfterDisposeAsync_ShouldNotRebuildSemaphore()
+    {
+        // Arrange - 捕获构造函数注册的 OnChange 回调（单参回调经 OptionsMonitorExtensions 转发到双参接口方法）
+        Action<FeishuWebhookOptions>? onChangeCallback = null;
+        _optionsMonitorMock
+            .Setup(x => x.OnChange(It.IsAny<Action<FeishuWebhookOptions, string?>>()))
+            .Callback<Action<FeishuWebhookOptions, string?>>(listener => onChangeCallback = o => listener(o, null))
+            .Returns(Mock.Of<IDisposable>());
+
+        var service = CreateService();
+        var originalSemaphore = service.Semaphore;
+        onChangeCallback.Should().NotBeNull("构造函数应注册配置热更新回调");
+
+        // Act 1 - 释放前：热更新应触发信号量重建（异步 Task.Run，轮询等待）
+        onChangeCallback!(new FeishuWebhookOptions { MaxConcurrentEvents = 5 });
+        for (var i = 0; i < 100 && ReferenceEquals(service.Semaphore, originalSemaphore); i++)
+        {
+            await Task.Delay(20);
+        }
+        service.Semaphore.Should().NotBeSameAs(originalSemaphore, "DisposeAsync 前热更新应重建信号量");
+        await Task.Delay(100); // 等待 UpdateSemaphoreAsync 完全退出（锁释放）
+
+        // Act 2 - 释放订阅后：再次触发回调，信号量不得重建
+        var beforeDispose = service.Semaphore;
+        await service.DisposeAsync();
+        onChangeCallback(new FeishuWebhookOptions { MaxConcurrentEvents = 7 });
+        await Task.Delay(200);
+
+        // Assert
+        service.Semaphore.Should().BeSameAs(beforeDispose,
+            "DisposeAsync 后 OnChange 回调不应再重建信号量（WHF-13 订阅释放）");
+    }
+
 }

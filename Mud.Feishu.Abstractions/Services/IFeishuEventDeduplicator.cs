@@ -32,6 +32,15 @@ public enum DeduplicationStatus
 /// 飞书事件去重服务接口
 /// 用于防止重复事件的处理，保证事件处理的幂等性
 /// </summary>
+/// <remarks>
+/// <para>
+/// 语义声明（at-least-once）：去重器提供的是<b>尽力幂等</b>而非严格一次性语义。
+/// 「processing 双活窗口」（P2-7）为有意的可用性设计——原处理者超时未 Mark 时，
+/// TimeoutRecoverable 允许重推事件被另一实例重新处理；若原实例随后完成 Mark 失败
+/// （WHF-07：业务已成功，不回滚），该事件可能在 TTL 窗口后被重复消费。
+/// 消费方处理器必须自身幂等，或以业务侧唯一键兜底。
+/// </para>
+/// </remarks>
 public interface IFeishuEventDeduplicator : IAsyncDisposable
 {
     /// <summary>

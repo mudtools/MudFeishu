@@ -21,8 +21,17 @@ namespace Mud.Feishu.Abstractions.Authentication;
 public class FeishuTokenStore : ITokenStore
 {
     private readonly IMemoryCache _cache;
-    private readonly ConcurrentDictionary<string, byte> _tokenTypes = new();
     private readonly string _appKey;
+
+    // TMF-01：跨实例共享记账（D10）。静态注册表按 KeyPrefix 隔离：
+    // 任意实例 SetAccessTokenAsync 均注册到共享表，ClearAsync 由此可删除
+    // 「任意实例曾写入」的全部键——工厂每次 Create 新实例不再导致清库 no-op。
+    // 原子性由 GetOrAdd/TryAdd 保证（注册永不丢失）；重复/过期注册只导致对
+    // 不存在键的无害 no-op Remove（如并行测试使用不同 IMemoryCache 的场景）。
+    private static readonly ConcurrentDictionary<string, ConcurrentDictionary<string, byte>> SharedTenantTypes = new();
+
+    private ConcurrentDictionary<string, byte> SharedTypes
+        => SharedTenantTypes.GetOrAdd(KeyPrefix, _ => new ConcurrentDictionary<string, byte>());
 
     /// <summary>
     /// TMA-10 / P2-1 修复：缓存 TTL 改为全量 expiresInSeconds（不再提前 10% 过期）。
@@ -81,7 +90,7 @@ public class FeishuTokenStore : ITokenStore
         if (expiresInSeconds <= 0)
             throw new ArgumentOutOfRangeException(nameof(expiresInSeconds), expiresInSeconds, "过期时间必须为正数（秒）");
 
-        _tokenTypes.TryAdd(tokenType, 0);
+        SharedTypes.TryAdd(tokenType, 0);
         var key = BuildAccessTokenKey(tokenType);
         // TMA-10：缓存 TTL 使用全量 expiresInSeconds（不再提前 10% 过期）。
         var bufferedExpiry = TimeSpan.FromSeconds(Math.Max(1, (long)(expiresInSeconds * CacheTtlRatio)));
@@ -116,7 +125,7 @@ public class FeishuTokenStore : ITokenStore
     /// <inheritdoc />
     public Task RemoveAsync(string tokenType, CancellationToken cancellationToken = default)
     {
-        _tokenTypes.TryRemove(tokenType, out _);
+        SharedTypes.TryRemove(tokenType, out _);
         _cache.Remove(BuildAccessTokenKey(tokenType));
         _cache.Remove(BuildRefreshTokenKey(tokenType));
         return Task.CompletedTask;
@@ -124,25 +133,32 @@ public class FeishuTokenStore : ITokenStore
 
     /// <inheritdoc />
     /// <remarks>
-    /// TMA-16 / P2-3 修复：仅返回本进程已知类型。由于 FeishuTokenStore 为 per-app 实例，
-    /// 此字典仅记录当前实例生命周期内写入的 tokenType。
-    /// 实例被重建（如配置热更新）后，旧实例的记账不会迁移。
+    /// TMA-16 / P2-3 修复：仅返回本进程已知类型。
+    /// TMF-01：记账改为按 KeyPrefix 的跨实例共享表，语义从「本实例已知」放宽为
+    /// 「本进程本前缀已知」——实例被重建（如配置热更新）后，旧实例写入的 tokenType
+    /// 记账仍然可见，从而保证凭据变更清库（D10）的完整性。
     /// </remarks>
     public Task<IEnumerable<string>> GetTokenTypesAsync(CancellationToken cancellationToken = default)
     {
-        return Task.FromResult(_tokenTypes.Keys.AsEnumerable());
+        return Task.FromResult(SharedTypes.Keys.AsEnumerable());
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// TMF-01（D10）：清除「任意实例曾写入本 KeyPrefix」的全部租户令牌键。
+    /// 先对共享记账做键快照再逐键删除，最后仅清空表内容（保留外层条目，
+    /// 避免并发实例持有的孤儿字典）。与并发写入之间存在固有 TOCTOU 残余窗口
+    /// （清库后写入的新令牌不受本次清库影响），与 Redis SCAN 语义一致。
+    /// </remarks>
     public Task ClearAsync(CancellationToken cancellationToken = default)
     {
-        foreach (var tokenType in _tokenTypes.Keys)
+        foreach (var tokenType in SharedTypes.Keys)
         {
             _cache.Remove(BuildAccessTokenKey(tokenType));
             _cache.Remove(BuildRefreshTokenKey(tokenType));
         }
 
-        _tokenTypes.Clear();
+        SharedTypes.Clear();
         return Task.CompletedTask;
     }
 

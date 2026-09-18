@@ -800,8 +800,22 @@ SDK 内置了智能的令牌管理机制：
 
 - .NET Standard 2.0
 - .NET 6.0
-- .NET 8.0
-- .NET 10.0
+- .NET 8.0（支持 Native AOT 发布）
+- .NET 10.0（支持 Native AOT 发布）
+
+## ⚡ Native AOT 支持
+
+自 3.0.0 起，Mud.Feishu 在 net8.0+ 目标框架下一等公民支持 .NET Native AOT 发布：全链路源生成 JSON 序列化
+（内置 `FeishuJsonContext`）、源生成配置绑定（`EnableConfigurationBindingGenerator`）、AOT 安全辅助类
+`FeishuJsonAot`，并通过 AOT 严格模式质量门禁保证 `AOT00x` / `IL2026` / `IL3050` 诊断为 0。
+发布示例：
+
+```bash
+dotnet publish -r win-x64 -c Release /p:PublishAot=true
+```
+
+> 注意：自定义类型的序列化请通过 `FeishuJsonDefaults.ConfigureUserResolver` 注册自定义 `JsonSerializerContext`；
+> 扩展配置 DTO 请勿使用 `required` 修饰，改在 `Validate()` 方法中校验。
 
 ## 相关项目
 

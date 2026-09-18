@@ -28,6 +28,7 @@ Mud.Feishu.Abstractions is the abstraction layer of the MudFeishu library, provi
 - **🔄 Extensible** - Easy to extend with new event types and handlers
 - **🛡️ Built-in Base Classes** - Provides default event handler base classes to simplify development
 - **📦 Multi-Framework Support** - Supports netstandard2.0, .NET 6.0 - .NET 10.0
+- **⚡ Native AOT Support** - First-class Native AOT publishing on net8.0+, with source-generated JSON serialization and configuration binding
 - **🌐 HTTP Client** - Enhanced HTTP client with retry, logging, and file download support
 
 ## 📦 Installation

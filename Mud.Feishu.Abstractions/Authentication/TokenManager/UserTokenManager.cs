@@ -186,6 +186,11 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
     /// 此前 <c>RefreshUserTokenAsync</c> 调用 <c>GetTokenInfoAsync</c>，后者在 access token 过期时返回 <c>null</c>，
     /// 导致 refresh token 不可达——access 过期后（含进程重启、多实例接管）该用户必然 401 直到重新走 OAuth 授权。
     /// 现在使用 <c>LoadRefreshCandidateAsync</c> 读取 refresh token，即使 access token 已过期或缺失。
+    /// <para>
+    /// TMF-05：本方法为公共 API，宿主管线外直调<b>不</b>被组件 <c>KeyedLockTable</c> 键控锁
+    /// 串行化（组件仅在 <c>GetOrRefreshTokenCoreAsync</c> 管线内持锁调用刷新，属 TMX-15-4
+    /// 锁非重入不变式的姊妹约束）；不可重试失败清库前经 CAS 比对防御误删并发刷新刚持久化的新令牌。
+    /// </para>
     /// </remarks>
     /// <param name="userId">用户标识</param>
     /// <param name="cancellationToken">取消令牌</param>
@@ -251,7 +256,15 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
                         var encodedRefreshToken = await _userTokenStore.GetRefreshTokenAsync(userId, _tokenTypeKey, cancellationToken).ConfigureAwait(false);
                         if (!string.IsNullOrEmpty(encodedRefreshToken))
                         {
-                            await _userTokenStore.RemoveAsync(userId, _tokenTypeKey, cancellationToken).ConfigureAwait(false);
+                            // TMF-05（CAS）：仅当 store 仍持有本次尝试所用的 refresh token 时才清除，
+                            // 防止宿主直调（绕过组件 KeyedLockTable）场景下误删并发刷新刚持久化的新令牌。
+                            // 比较失败时跳过清库——新令牌由持有者管理；已知保守代价：Feishu 复用旧
+                            // refresh_token 且两次持久化时间戳不同时会跳过清库（活性损失，非正确性问题）。
+                            var attempted = TokenStoreHelper.EncodeStoredToken(candidate.RefreshToken!, candidate.RefreshTokenExpireTime);
+                            if (string.Equals(encodedRefreshToken, attempted, StringComparison.Ordinal))
+                            {
+                                await _userTokenStore.RemoveAsync(userId, _tokenTypeKey, cancellationToken).ConfigureAwait(false);
+                            }
                         }
                     }
                     catch (Exception ex) when (ex is not OperationCanceledException)
@@ -438,6 +451,12 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
 
             var safeExpireSeconds = _options.TokenRefreshThreshold + 60;
 
+            // TMF-06（方案 A）：恢复令牌的 IssuedAt 不可知——{expire}|{token} 存储格式不含签发时间，
+            // UserTokenInfo.IssuedAt 保持 0 → 组件 TTL 感知阈值（min(阈值, ttl/2)）退化为纯配置阈值
+            // （TMX-22 语义）。默认配置（TTL 7200s ≫ 阈值 300s）下判定结果与 TTL 感知完全一致
+            // （恢复令牌必为过去签发，纯阈值判定偏保守但正确）；短 TTL（ttl ≤ TokenRefreshThreshold）
+            // 部署不应依赖跨重启的 store 恢复路径（README 部署提示同步声明）。
+            // 格式升级备选（方案 B，短 TTL 场景真实落地时启用）见 .docs/令牌与多应用管理-审查修复与完善方案.md §七。
             return new UserTokenInfo
             {
                 UserId = userId,

@@ -62,11 +62,11 @@ dotnet publish -r linux-x64 -c Release /p:PublishAot=true
 - ✅ protobuf-net.BuildTools 版本对齐 3.2.56
 - ✅ WebSocket JsonOptions 增加 Deserializer 字段（R-06 修正）
 
-### 阶段 4 — CI 标准化（待实现）
+### 阶段 4 — CI 标准化（部分完成）
 - ⬜ CI 增加 win-x64 + linux-x64 双 RID AOT 发布验证
-- ⬜ 引入 AotStrictMode 将 IL2xxx 警告升级为错误
+- ✅ 引入 AotStrictMode 将 IL2xxx 警告升级为错误（`verify-build.ps1` 步骤 3：逐工程 `AotStrictMode` + `--no-incremental` 冒烟构建，断言 `AOT00x`/`IL2026`/`IL3050` 为 0）
 - ⬜ 发布配置 .pubxml 标准化
-- ⬜ 根 README 增加 AOT 部署前置条件章节
+- ✅ 根 README 增加 AOT 部署前置条件章节（README.md / README_EN.md「Native AOT 支持」章节）
 
 ## 验证用例清单
 

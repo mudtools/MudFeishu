@@ -17,6 +17,7 @@
 - ✅ **请求/响应分离** - 每个模块下 `RequestModel` 和 `ResponseModel` 独立管理
 - ✅ **公共模型复用** - `Common` 命名空间提供分页、通用筛选等共享模型
 - ✅ **多框架支持** - 支持 .NET Standard 2.0，兼容 .NET Framework 4.6.1+
+- ✅ **原生 AOT 支持** - 全量 DTO 由源生成 `JsonSerializerContext` 覆盖，net8.0+ 一等公民支持 Native AOT 发布
 
 ## 数据模型模块总览
 

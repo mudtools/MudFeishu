@@ -129,7 +129,7 @@ public class FeishuTokenRegistrationServiceTests
     /// （ConfigurationChanged → 同名键覆盖注册），旧实例退休后由组件 ODE 自清。
     /// </summary>
     [Fact]
-    public async Task RebuildAppContext_ShouldReplaceBackgroundRegistration_ToNewInstance()
+    public async Task HotReload_ShouldReplaceBackgroundRegistration_ToNewInstance()
     {
         var (provider, manager) = CreateHost(CreateConfigs(
             ("app1", AppConfigs.AppIds.Default, AppConfigs.Secrets.Default, IsDefault: true)));

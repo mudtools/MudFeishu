@@ -145,9 +145,12 @@ public class RedisTokenStore : ITokenStore
 
     /// <inheritdoc />
     /// <remarks>
-    /// T-M2-6（R-10）：Cluster 化扫描——遍历全部主节点聚合 SCAN + 删除。
+    /// T-M2-6（R-10）：Cluster 化扫描——遍历全部主节点聚合 SCAN，避免 Cluster 下漏列。
     /// 此方法会删除该前缀下全部令牌键（含 <c>{prefix}:*:access</c>、<c>{prefix}:*:refresh</c>、
     /// <c>{prefix}:user:*:*</c>），即租户令牌与用户令牌一并清除。
+    /// TMF-01：与 Memory 后端（<c>FeishuTokenStore.ClearAsync</c> + 用户侧
+    /// <c>IFeishuUserTokenStorePurge.ClearAllUsersAsync</c>）语义统一为
+    /// 「清空该 appKey 全部租户 + 用户持久化令牌」。
     /// 部分节点失败时已删除的键不可回滚（声明"部分失败"语义）。
     /// TMA2-02 / D8：键模式改用 TokenKeyBuilder 统一产出。
     /// </remarks>

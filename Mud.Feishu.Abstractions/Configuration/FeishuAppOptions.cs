@@ -81,7 +81,8 @@ public class FeishuAppOptions
     /// </summary>
     /// <remarks>
     /// <para>
-    /// 当应用配置热更新触发 <c>RebuildAppContext</c> 或 <c>RemoveApp</c> 时，
+    /// 当应用配置热更新（<c>ApplyConfigurationChanges</c>，TMF-04：原 <c>RebuildAppContext</c>
+    /// 已并入热更新路径）或 <c>RemoveApp</c> 触发旧上下文退役时，
     /// 旧的 <c>FeishuAppContext</c> 不再被引用，但其内部的 <c>Timer</c>（令牌定时刷新）
     /// 会 root 整个对象图，GC 不会自动回收。旧上下文进入退休队列，
     /// 在此宽限期后显式 <c>Dispose</c>，停止其 Timer 并释放资源。

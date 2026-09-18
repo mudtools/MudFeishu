@@ -21,6 +21,7 @@ Mud.Feishu OpenTelemetry 适配包，一键开启飞书 SDK 的分布式追踪�
 - ✅ **配置验证** - 内置 `IValidateOptions` 验证，支持 `ValidateOnStart`
 - ✅ **灵活扩展** - 提供自定义配置委托，可追加/覆盖默认配置
 - ✅ **多框架支持** - 支持 .NET Standard 2.0、.NET 6.0、.NET 8.0、.NET 10.0
+- ✅ **原生 AOT 支持** - net8.0+ 一等公民支持 Native AOT 发布，指标与追踪源自动注册零反射
 
 ## 安装
 

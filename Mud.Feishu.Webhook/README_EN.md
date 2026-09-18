@@ -28,6 +28,7 @@ A webhook component for Feishu event subscription and handling, providing comple
 - ✅ **Background Processing**: Supports async background processing to avoid Feishu timeout retries
 - ✅ **Security Hardening**: Enhanced IP validation, signature validation, and encryption key security checks
 - ✅ **Cross-Platform**: Supports .NET Standard 2.0, .NET 6.0, .NET 8.0, .NET 10.0
+- ✅ **Native AOT**: First-class Native AOT publishing on net8.0+, with source-generated JSON serialization and configuration binding
 
 ## Quick Start
 

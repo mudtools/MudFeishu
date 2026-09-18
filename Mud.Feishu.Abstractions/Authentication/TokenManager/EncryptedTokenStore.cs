@@ -87,6 +87,11 @@ public sealed class EncryptedTokenStore : ITokenStore, IEncryptedTokenStore
         => _inner.GetTokenTypesAsync(cancellationToken);
 
     /// <inheritdoc />
+    /// <remarks>
+    /// TMF-01：透传内层存储——加密只作用于值、不改变键布局，键删除天然透明。
+    /// 统一语义（TMF-08）：清空该 appKey 全部租户持久化令牌（用户令牌经
+    /// <see cref="EncryptedUserTokenStore.ClearAllUsersAsync"/> 同步清除）。
+    /// </remarks>
     public Task ClearAsync(CancellationToken cancellationToken = default)
         => _inner.ClearAsync(cancellationToken);
 
@@ -138,7 +143,7 @@ public sealed class EncryptedTokenStore : ITokenStore, IEncryptedTokenStore
 /// 避免同一存储出现「一处加密、一处明文」的不一致。
 /// </para>
 /// </remarks>
-public sealed class EncryptedUserTokenStore : IUserTokenStore, IEncryptedTokenStore
+public sealed class EncryptedUserTokenStore : IUserTokenStore, IEncryptedTokenStore, IFeishuUserTokenStorePurge
 {
     private readonly IUserTokenStore _inner;
     private readonly EncryptedTokenStore _encryptedTenantStore;
@@ -200,6 +205,19 @@ public sealed class EncryptedUserTokenStore : IUserTokenStore, IEncryptedTokenSt
     /// <inheritdoc />
     public Task ClearUserAsync(string userId, CancellationToken cancellationToken = default)
         => _inner.ClearUserAsync(userId, cancellationToken);
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// TMF-01（D10）：透传内层存储的全用户清库能力。加密只作用于值、不改变键布局，
+    /// 键删除天然透明；不透传会导致「加密开启时用户令牌清库静默失效」
+    /// （与凭据变更清库 no-op 问题同构的装饰层陷阱）。
+    /// 内层未实现 <see cref="IFeishuUserTokenStorePurge"/>（如宿主自定义存储）时按
+    /// optional-capability 语义跳过。
+    /// </remarks>
+    public Task ClearAllUsersAsync(CancellationToken cancellationToken = default)
+        => _inner is IFeishuUserTokenStorePurge purgeable
+            ? purgeable.ClearAllUsersAsync(cancellationToken)
+            : Task.CompletedTask;
 
     #endregion
 

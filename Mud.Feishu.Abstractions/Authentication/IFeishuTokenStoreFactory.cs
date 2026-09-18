@@ -81,3 +81,29 @@ public class SingletonFeishuTokenStoreFactory : IFeishuTokenStoreFactory
         return (tokenStore, userTokenStore);
     }
 }
+
+/// <summary>
+/// D10（TMF-01）：按 appKey 全量清除用户令牌的内部能力契约。
+/// </summary>
+/// <remarks>
+/// 组件接口 <c>IUserTokenStore</c> 只有按 <c>(userId, tokenType)</c> 粒度的
+/// <c>RemoveAsync</c>/<c>ClearUserAsync</c>，无「跨用户全清」方法；
+/// 凭据变更清库（<c>FeishuAppManager.PurgeTokenStoreAsync</c>）需要整体清除该 appKey
+/// 的全部用户令牌，本接口以 optional-capability 模式补齐——调用方按能力探测
+/// （<c>is IFeishuUserTokenStorePurge</c>），未实现该能力的存储被跳过（租户侧清库不受影响）。
+/// 实现方：<see cref="FeishuTokenStore"/> 同目录的 <see cref="FeishuUserTokenStore"/>（记账驱动）、
+/// Redis 路径的 <c>RedisUserTokenStore</c>（SCAN 全用户键模式）、
+/// 加密装饰器 <c>EncryptedUserTokenStore</c>（透传内层）。
+/// </remarks>
+internal interface IFeishuUserTokenStorePurge
+{
+    /// <summary>
+    /// 清除当前键前缀（含 appKey 维度）下全部用户的持久化令牌。
+    /// </summary>
+    /// <remarks>
+    /// 与并发写入之间存在固有残余窗口（清库期间新写入的令牌不受本次清库影响），
+    /// 与 <see cref="ITokenStore.ClearAsync"/> 的 SCAN/快照语义一致。
+    /// </remarks>
+    /// <param name="cancellationToken">取消令牌</param>
+    Task ClearAllUsersAsync(CancellationToken cancellationToken = default);
+}

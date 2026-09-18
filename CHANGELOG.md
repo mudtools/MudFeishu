@@ -1,386 +1,246 @@
 # Mud.Feishu 更新日志
 
-## [Unreleased]
+## [3.0.0-rc2] - 2026-09-18
 
-> 对应《.docs/MudHttpUtils-2.0.4-Repair-and-Enhancement-Plan.md》的 M1–M5 全部条目（Mud.HttpUtils 2.0.4）。
-> 对应《.docs/MudFeishu-Token-MultiApp-Review-Remediation-Plan.md》的 TMA-01…TMA-24 全部条目。
-> 对应《.docs/MudFeishu-Token-MultiApp-Review-Remediation-Plan-R2.md》的 TMA2-01…TMA2-23 全部条目。
-> 本项目尚未发布，以下破坏性变更无需数据迁移。
+### 🌟 亮点
 
-### 🐛 源生成 JsonContext 同名类型冲突修复（SYSLIB1031，2026-09-17）
+- ⚡ **原生 AOT 全面适配**：net8.0+ 一等公民支持 Native AOT 发布——全链路源生成 JSON 序列化与
+  配置绑定、AOT 严格模式质量门禁保证 0 反射告警，附带端到端验证工程与完整文档。
+- 🔐 **令牌与多应用管理三轮专项加固**：用户令牌可续期、401 恢复真正生效、
+  凭据变更即清库、Memory/Redis 令牌键统一、配置热更新事务化、OAuth 失败语义分类等 60+ 项修复。
+- 🪝 **WebSocket 可靠性**：事件处理失败不再静默吞异常（飞书将重发）、重连熔断、并发闸门、健康检查并发指标。
+- 🗄️ **Redis 去重加固**：四类键统一构造与转义、Cluster 全节点覆盖、竞态 Lua 原子化、失败可分类、新增 Testcontainers 集成测试。
+- 🛡️ **质量门禁**：`verify-build.ps1` 全新门禁（缓存自检、全 TFM 构建 + 诊断白名单、AOT 严格模式冒烟、TRX 测试计数断言），CI 同步接入。
+- 📦 **依赖升级**：`Mud.HttpUtils` / `Mud.HttpUtils.Generator` 统一钉住 **2.0.7** （组件首个正式版系列，生成器修复源生成同名类型冲突 SYSLIB1031）。
 
-- **问题**：STJ 源生成器按**类型简单名**为 `JsonSerializerContext` 生成元数据成员，因此同一 Context 内
-  不允许出现同名类型。`Mud.Feishu.DataModels` 存在 7 组同名 DTO，编译期报 9 条 `SYSLIB1031`
-  （net8.0/net10.0 各一遍）——且警告的实质后果是**只为其一生成元数据**：`Departments.DepartmentLeader` /
-  `DepartmentDetail`、`Users.DepartmentPathInfo`、`Approval.ApprovalCreateViewers`、
-  `Drive.Files.FileShortcutInfo`、`TasksList.TaskSummary` 均未进入源生成解析器，运行时静默退化为反射兜底
-  （AOT 下即失效）。派生的集合类型（`ListDepartmentLeader`、`ApprovalCreateViewersArray`）同理被丢弃。
-- **修复**：按命名空间语义重命名冲突类型，并移除 Bitable 视图属性里与顶层类型完全重复的嵌套定义。
-- **破坏性变更（重命名的公开 DTO）**：
-  - `DepartmentsV1.DepartmentLeader` → `DepartmentLeaderV1`
-  - `DepartmentsV1.DepartmentDetail` → `DepartmentDetailV1`
-  - `DepartmentsV1.DepartmentPathInfo` → `DepartmentPathInfoV1`
-  - `ApprovalExternal.ApprovalCreateViewers` → `ExternalCreateViewers`
-  - `Drive.Folder.FileShortcutInfo` → `FileShortcutTargetInfo`（描述快捷方式指向的源文件）
-  - `TasksSections.TaskSummary` → `TaskSectionSummary`
-  - 移除嵌套类型 `AppTableViewProperty.AppTableViewPropertyHierarchyConfig`（改用同名的顶层类型）
-  - 受影响的接口签名：`IFeishuV2TaskSections.GetTaskSectionsPageListByIdAsync` 返回
-    `FeishuApiPageListResult<TaskSectionSummary>`
+### ⚠️ 升级须知（破坏性变更 / 行为变更）
 
-### 🔧 依赖升级与门禁加固（Mud.HttpUtils 2.0.5 正式版，2026-09-17）
+**令牌与多应用**
+- 令牌失效现在级联清除持久层存储——401 恢复才真正生效（此前重试仍用被拒旧令牌）。
+- Redis 令牌键布局变更：`feishu:token:*` → `feishu:{appKey}:token*`，升级后旧键不再读取；
+  `SingletonFeishuTokenStoreFactory` 已废弃，请改用 `PerAppRedisTokenStoreFactory`。
+- `AddFeishuRedisTokenStore` 不再注册 `ITokenStore`/`IUserTokenStore` 单例，
+  改用 `IFeishuTokenStoreFactory.Create(appKey)`。
+- 租户请求的 401 恢复不再回退为用户级恢复（重试不会被注入用户令牌）。
+- `GetAllApps()` 不再隐式实例化全部应用；后台令牌刷新默认仅覆盖默认应用，其余应用首次访问时增量注册。
+  需要启动期预热请设 `WarmUpAllAppsOnStartup = true`。
+- `SetDefaultApp` / `TrySetDefaultApp` / `DefaultAppKey` 现在真正生效，请复核运行期切换默认应用的调用点。
+- `TryGet*` 令牌管理器解析器无默认应用时返回 null（不再抛异常）。
+- 认证/取令牌请求改用本应用的命名客户端（多区域部署不再取错平台端点）；
+  必要时以 `EnablePerAppAuthenticationClient = false` 降级。
+- 配置热更新默认开启（`EnableConfigReload = true`），`BaseUrl`/`TimeOut` 变更无需重启；
+  如需「配置变更需重启」的旧语义，显式设为 `false`。
+- OAuth 刷新失败按可重试/不可重试分类：`invalid_grant` 等将清除 refresh token 并要求重新授权。
+- 凭据变更即清库：热更新检测到 (AppId, AppSecret) 变更，立即清除该应用全部持久化令牌。
+- 已删除死配置项：`EnableContextRetirement` / `PurgeStoreOnTokenInvalidation`（默认安全行为保留）。
 
-- **依赖升级**：5 个工程的 `Mud.HttpUtils` / `Mud.HttpUtils.Generator` 统一钉住 **2.0.5**
-  ——组件首个 NuGet 正式版，实机验证期间的过渡迭代包已由组件侧全部折叠进该版本（下游不残留
-  过渡版本号；`AGENTS.md`、`README.md` 依赖表、契约守卫 `ExpectedVersion` 同步）。
-  实测 restore 解析 Abstractions/Attributes/Client/Resilience 均为 2.0.5；全 TFM 构建 0 错误、
-  门禁用例全通过、AOT 严格模式净零、生成器诊断（`HTTPCLIENT0xx` / `MUD001-002` / `AOT001-007`）全零。
-- **组件侧缺陷修复（随 2.0.5 发布）**：实机升级验证发现的全部组件缺陷均已修复——
-  打包配置防呆（Release 打包 + 包内 DLL 与 `bin/<Configuration>` 逐字节校验，Debug 产物不得进入发布目录）、
-  打包清单漂移防护（补齐 `Mud.HttpUtils.Xml` / `JsonContextScaffolder`，包集合校验）、三处 DI 构造歧义
-  （`TokenRecoveryDelegatingHandler` 使文档推荐的 `AddHttpMessageHandler<T>()` 用法在首个请求即失败、
-  `StandardOAuth2TokenManager`、`PollyResiliencePolicyProvider`）、`TokenRefreshHealthCheck` 构造歧义、
-  `RequiresDynamicCodeAttribute` polyfill 边界与 net7.0 资产缺口（下游标注即 CS0433）、
-  `UserTokenInfo` 两个复制入口丢失 `IssuedAt`。组件侧新增 10 条机器护栏用例（DI 歧义扫描、
-  polyfill 边界与资产矩阵、`IssuedAt` 守恒）。
-- **门禁步骤 3 假绿修复（P0）**：`MSBuild` 的 `CoreCompile` 增量判定不比较 csc 命令行，
-  `-p:AotStrictMode=true` 紧接全量构建执行时会被"跳过 CoreCompile"吞掉 ⇒ `IL2026/IL3050` 恒为 0。
-  改用 `--no-incremental` 后暴露出 `Mud.Feishu.WebSocket` 4 条违规并已补齐标注链
-  （`MessageRouter.RouteBinaryMessageWithResultAsync` / `RouteMessageInternalWithResultAsync`、
-  `BinaryMessageProcessor.ProcessBinaryDataAsync` / `ProcessBinaryDataCore`）。
-- **门禁步骤 4 修复（P0）**：① TRX 计数器路径写成 `TestRun.Results.ResultSummary.Counters`（恒 `$null`），
-  `TRX 解析从未生效`并静默回退到已废弃的中文正则；② 单条 `dotnet test $solution` 只落盘**最后一次**运行的 TRX
-  （14 次运行得 1 个），且"每工程必须有结果"用日志文本匹配判定 ⇒ 恒真；
-  ③ 逐工程 TFM 用文本正则扫自身 csproj，对 TFM 定义在 `Tests/Directory.Build.props` 的工程得到空集
-  （7 个工程只跑了 4 个）；④ 缺 .NET 6 运行时导致的 net6.0 testhost 中止被当作"已知 CLI 行为"放过。
-  现改为逐 `(工程, TFM)` 运行、逐组合断言 TRX 存在且 `total > 0`、按 `dotnet --list-runtimes` 显式播报跳过。
-- **用户令牌 `IssuedAt` 补齐（P1）**：`UserTokenManager` 的换取与刷新路径填充 `IssuedAt`，
-  使组件的 TTL 感知过期提前量 `min(配置阈值, ttl/2)`（MT-07 / TMX-22）真正生效；
-  新增 2 条回归用例锁定（其中短 TTL 用例在未填充时必然失败）。
+**配置与 HTTP**
+- `FeishuAppConfig` 移除 `required`：AOT 源生成绑定要求，校验统一由 `Validate()` 承担。
+- 增强 HttpClient 装配基线化：此前手工 `new` 静默取默认值的 10 个字段现与注册路径同源。
+- `nuget.config` 收紧为包来源锁定（`<clear />` + `packageSourceMapping`）。
 
-### ⚠️ 破坏性变更 / 行为变更（TMA2 系列 / R2 复审）
+**WebSocket**
+- 事件处理失败不再静默吞异常：ACK 返回 `code=500`，飞书服务端将重发——**请确保业务处理器幂等**。
+- 同步 `Dispose()` 不再尝试停止服务；确定性停止请 `await StopAsync()` 或 `await DisposeAsync()`。
+- 服务端 Pong 下发的 ClientConfig 不再覆盖本地重连策略（`PingInterval` 仍生效，钳制 5–30 秒）。
+- 构造签名变更：`FeishuEventMessageHandler` 移除 `seqIdDeduplicator` 参数；
+  `WebSocketBinaryMessageEventArgs.ProcessingTask` 移除。
 
-- **用户令牌续期可达（P0-1 / TMA2-01）**：`UserTokenManager.RefreshUserTokenAsync` 此前通过 `GetTokenInfoAsync`
-  获取刷新候选，后者在 access token 过期时即返回 null，导致 refresh token 不可达、用户令牌无法续期。
-  现新增 `LoadRefreshCandidateAsync` 独立从 store 读取 refresh token，不依赖 access token 有效性。
-- **令牌键布局统一收敛（P0-2 / TMA2-02）**：Memory 与 Redis 两后端的令牌键构造各自实现，
-  Memory 不做转义而 Redis 做，同一 tokenType（如 `tenant:cli_a`）在两后端键不同。
-  现收敛为 `TokenKeyBuilder` 统一产出，两侧逐字节一致。
-- **门禁不再依赖中文输出（P0-3 / TMA2-03）**：`verify-build.ps1` 此前依赖中文正则解析测试结果，
-  在非中文环境下全部误判。现改用 TRX 文件解析 + locale-independent 检查。
-- **恢复阈值同源（P1-1 / TMA2-04）**：恢复弃用阈值此前取 `threshold/2`，低于缓存失效阈值 `threshold`，
-  导致稳态下 store 恢永不命中。现统一使用 `TokenRefreshThreshold`。
-- **凭据变更即清库（P1-2 / TMA2-05）**：`RebuildAppContext` 此前不检测 (AppId, AppSecret) 变更，
-  凭据变更后旧令牌仍可恢复。现检测到凭据变更时立即清除持久化令牌。
-- **OAuth 失败语义分类（TMA2-06）**：用户令牌刷新失败此前一律抛 `FeishuException`，
-  未区分可重试/不可重试。现通过 `FeishuOAuthErrorClassifier` 分类，`invalid_grant` 等不可重试错误
-  清除 refresh token 并返回 null（触发重新授权），可重试错误抛出异常。
-- **AppInstantiated 事件（TMA2-07）**：新增 `AppInstantiated` 事件，首次访问应用时触发
-  后台令牌刷新的增量注册，替代启动期全量预热。
-- **AddApp 默认键加锁（TMA2-08）**：`AddApp` 写入 `_defaultAppKey` 此前未持 `_defaultAppLock`，
-  与 `GetDefaultApp`/`RemoveApp` 的读取存在竞态。现统一加锁。
-- **热更新两阶段事务化（TMA2-09）**：`OnConfigurationChanged` 此前在 `_lazyRebuildLock` 内
-  完成完整装配，全局锁与装配耗时耦合。现拆为两阶段：Phase-A 预装配（锁外）、Phase-B 提交（锁内）。
-- **Try* 不抛异常（TMA2-10）**：`FeishuTokenManagerResolver.TryGet*` 此前通过 `DefaultConfig`
-  读取默认 AppKey，无默认应用时抛 `InvalidOperationException`。现改用 `DefaultAppKey` 属性（返回 null）。
-- **作用域/在册上下文释放（TMA2-11）**：`CreateAppContext` 装配失败时不释放 scope（泄漏）；
-  `Dispose` 不遍历在册上下文。现装配失败时 catch + scope.Dispose()；Dispose 遍历全部在册上下文。
-- **异常过滤收敛（TMA2-12）**：异常过滤此前为"除取消外全部"，会吞 `OutOfMemoryException`/`TypeLoadException`
-  等。现改为可重试异常白名单（`IsTransientInitFailure`），非瞬时异常直接上抛。
-- **删除死配置项（TMA2-13）**：`FeishuAppOptions.EnableContextRetirement` 和
-  `PurgeStoreOnTokenInvalidation` 的关闭态即缺陷态，已删除。保留默认安全行为。
-- **删除死常量（TMA2-14）**：`FeishuAppTokenManagerBase.SafeExpireBonusSeconds` 和
-  `MinSafeExpireSeconds` 无引用，已删除。
-- **Redis 过期令牌删除（TMA2-15）**：`RedisTokenStore.SetRefreshTokenAsync` 此前对过期 token
-  设置 TTL=0，Redis TTL=0 等于永不过期。现改为 `KeyDeleteAsync` 删除条目。
-- **Redis TokenStore 调用顺序守卫（TMA2-17）**：`AddFeishuRedisTokenStore` 此前缺少
-  `AddFeishuApp` 已调用的守卫检查。现新增 `EnsureFeishuAppNotRegistered` 辅助方法。
-- **文档/版本一致性（TMA2-18）**：`AGENTS.md` 中 Mud.HttpUtils 版本从 2.0.5 修正为 2.0.4；
-  `CreateBasic` 注释修正为有生产调用方（`PerAppFeishuAuthenticationFactory`）。
-- **Redis 连接串日志脱敏（TMA2-19）**：`RedisFeishuServiceBuilderExtensions` 中 `LogInformation`
-  此前直接输出 `options.ServerAddress`（含口令）。现通过 `SensitiveDataUtils.MaskSensitiveData` 脱敏。
-- **多租户部署指引（TMA2-20）**：README.md 和 AGENTS.md 新增多租户部署指引，明确
-  `UseApp`/`BeginScope` 仅切换应用上下文，不做租户隔离授权。
+**DTO 重命名（修复 SYSLIB1031，AOT 源生成要求）**
+- `DepartmentsV1.DepartmentLeader` → `DepartmentLeaderV1`、`DepartmentDetail` → `DepartmentDetailV1`、
+  `DepartmentPathInfo` → `DepartmentPathInfoV1`
+- `ApprovalExternal.ApprovalCreateViewers` → `ExternalCreateViewers`；
+  `Drive.Folder.FileShortcutInfo` → `FileShortcutTargetInfo`；`TasksSections.TaskSummary` → `TaskSectionSummary`
+- 移除嵌套类型 `AppTableViewProperty.AppTableViewPropertyHierarchyConfig`；
+  `IFeishuV2TaskSections.GetTaskSectionsPageListByIdAsync` 返回类型变更为
+  `FeishuApiPageListResult<TaskSectionSummary>`
 
-### ✨ Added（TMA2 系列）
-
-- `TokenKeyBuilder`：令牌键构造的唯一真相源，统一 Memory 与 Redis 两后端的键产出（TMA2-02）。
-- `FeishuOAuthErrorClassifier`：OAuth 错误分类器，区分可重试/不可重试错误（TMA2-06）。
-- `FeishuTokenRegistrationHelper`：令牌注册逻辑提取，供测试性与 AppInstantiated 事件复用（TMA2-07）。
-- `FeishuAppInstantiatedEventArgs`：AppInstantiated 事件参数（TMA2-07）。
-- 6 条契约守卫测试（TMA2-21 / §7.4）：`TokenKeyLayout_ShouldBeSingleSourceOfTruth`、
-  `MudHttpUtils_PackageReference_ShouldBeSingleVersion`、`FeishuAppConfig_PropertySet_ShouldMatchThrottleComparisonContract`、
-  `FeishuApiResultJsonContext_ShouldCoverAuthenticationDtos`、`ConfigDtos_ShouldNotUseRequired`、
-  `FeishuAppOptions_ShouldNotDeclareUnconsumedSwitches`。
-
-### 🐛 修复（TMA2 系列）
-
-- 用户令牌续期在 access token 过期时不可达（P0-1）。
-- Memory 与 Redis 令牌键布局不一致（P0-2）。
-- 门禁在非中文环境下全部误判（P0-3）。
-- 恢复阈值取 threshold/2 导致稳态下 store 恢永不命中（P1-1）。
-- 凭据变更后旧令牌仍可恢复（P1-2）。
-- OAuth 失败未区分可重试/不可重试（TMA2-06）。
-- 首次访问应用不触发后台令牌刷新增量注册（TMA2-07）。
-- AddApp 默认键写入存在竞态（TMA2-08）。
-- 热更新全局锁与装配耗时耦合（TMA2-09）。
-- Try* 在无默认应用时抛异常（TMA2-10）。
-- 装配失败泄漏 scope；Dispose 不释放在册上下文（TMA2-11）。
-- 异常过滤过宽，吞非瞬时异常（TMA2-12）。
-- 死配置项 EnableContextRetirement / PurgeStoreOnTokenInvalidation（TMA2-13）。
-- 死常量 SafeExpireBonusSeconds / MinSafeExpireSeconds（TMA2-14）。
-- Redis 过期令牌 TTL=0 等于永不过期（TMA2-15）。
-- Redis TokenStore 缺少调用顺序守卫（TMA2-17）。
-- 文档版本号不一致（TMA2-18）。
-- Redis 连接串日志含口令（TMA2-19）。
-- 缺少多租户部署指引（TMA2-20）。
-
-### ⚠️ 破坏性变更 / 行为变更（TMA 系列）
-
-- **令牌失效现在级联到持久层（P0-1 / TMA-01）**：`TenantTokenManager` / `AppTokenManager` 的
-  `InvalidateTokenAsync` 此前只清内存缓存，而刷新核心又会从 `ITokenStore` 恢复**同一个被 401 拒绝**的
-  令牌，导致 401 自动恢复在默认装配下恒为空转（重试仍用旧令牌）。现失效同时清除存储条目，
-  401 恢复将真正获取新令牌。可回退开关：`FeishuAppOptions.PurgeStoreOnTokenInvalidation = false`。
-- **租户请求的 401 恢复不再回退为用户级恢复（P1-1 / TMA-02）**：恢复执行器可从 `ICurrentUserContext`
-  推断用户级恢复，而飞书租户接口默认不生成 `TokenRecoveryContext`，会使重试请求被注入**用户令牌**
-  （凭据类别替换）。现恢复类别完全由显式上下文决定。
-- **`SetDefaultApp` / `TrySetDefaultApp` / `DefaultAppKey` 现在真正生效（P1-2 / TMA-03）**：
-  此前这三个成员读写基类私有字段，与 `GetDefaultApp()` 使用的字段分裂，表现为"调用成功但默认应用未切换"。
-  请复核运行期切换默认应用的调用点。
-- **`GetAllApps()` 不再隐式实例化全部应用（P1-7 / TMA-08）**：语义回归"已实例化应用视图"；
-  需要启动期预热全部应用请显式设置 `FeishuAppOptions.WarmUpAllAppsOnStartup = true`。
-- **后台令牌刷新默认仅覆盖默认应用，其余应用在首次访问时增量注册（P1-7 / TMA-08）**：
-  与懒加载策略对齐；全量预热见上一条选项。
-- **认证/取令牌请求改为使用本应用的命名客户端（P1-8 / TMA-09）**：此前所有应用的
-  tenant/app_access_token 请求都发往**默认应用**的端点（多区域/多 BaseUrl 部署会取错平台端点）。
-  若 AOT 门禁不允许该实现，将通过 `FeishuAppOptions.EnablePerAppAuthenticationClient = false`
-  降级并在启动期告警。
-- **稳态下 `ITokenStore` 恢复边界修正（P2-1 / TMA-10）**：缓存 TTL 从 90% 改为全量，
-  恢复弃用阈值从 `TokenRefreshThreshold` 改为 `Math.Max(60, TokenRefreshThreshold / 2)`，
-  使稳态下 store 恢复真正命中。
-- **无过期信息的存储值不再编造有效期（P2-2 / TMA-15）**：改为返回 null（走 API 刷新）+ LogWarning。
-- **`SingletonFeishuTokenStoreFactory` 标记 `[Obsolete]`（P2-8 / TMA-20）**：
-  该工厂忽略 `appKey`，会重现多应用令牌互相覆盖（TOK-1）；请使用 `PerAppRedisTokenStoreFactory`。
-- **`TryGet*` 令牌管理器解析器不再抛出异常（P2-5 / TMA-18）**：无默认应用时返回 null 而非抛
-  `InvalidOperationException`，符合 Try* 语义。
-- **热更新先校验后应用（P2-13 / TMA-14）**：`OnConfigurationChanged` 现在先校验 AppKey 唯一性、
-  IsDefault 唯一性、逐条 `Validate()`，全部通过才应用；校验失败则整体忽略并 `LogError`。
-
-### ✨ Added（TMA 系列）
-
-- `FeishuAppOptions`：`ContextRetireDelaySeconds`（默认 300）、`EnableContextRetirement`（默认 true）、
-  `WarmUpAllAppsOnStartup`（默认 false）、`EnablePerAppAuthenticationClient`（默认 true）、
-  `PurgeStoreOnTokenInvalidation`（默认 true）、`RemoveRuntimeAddedAppsOnReload`（默认 false）。
-- `IFeishuAuthenticationFactory` / `PerAppFeishuAuthenticationFactory`：按应用构造认证 API（per-app 端点与弹性策略）。
-- `FeishuAppContextRetirement`：旧应用上下文的延迟释放队列（宽限期后 Dispose，停止其令牌维护 Timer）。
-- `IFeishuAppManager.ConfiguredAppKeys`：获取所有已配置应用键（不触发懒加载）。
-
-### 🐛 修复（TMA 系列）
-
-- 401 自动恢复在默认装配下拿到同一被拒令牌（P0-1）。
-- 租户请求 401 重试被注入用户令牌（P1-1）。
-- `SetDefaultApp`/`DefaultAppKey` 与 `GetDefaultApp` 状态分裂、默认应用提升不确定（P1-2 / P2-11）。
-- Lazy 异常缓存自愈对 `InvalidOperationException`（DI 解析失败等）失效，导致应用被永久毒化且 `TryGetApp` 静默返回 false（P1-3）。
-- 配置快照 `List<T>` 锁内改、锁外读，并发热更新可抛 `Collection was modified`（P1-4）。
-- 热更新节流仅比对 5 个字段，`TokenRefreshThreshold`/重试/熔断/`AllowCustomBaseUrl` 变更被静默丢弃（P1-5）。
-- 重建/移除不释放旧上下文，其令牌维护 Timer 永久 root 旧对象图；后台刷新字典驻留旧 TokenManager 且新实例未被注册（P1-6）。
-- 后台刷新 HostedService 启动期强制实例化全部应用，单应用装配失败会阻断宿主启动（P1-7）。
-- 认证/取令牌请求未按应用隔离（使用默认应用端点）（P1-8）。
-- 稳态下 `ITokenStore` 恢复永不命中（边界算术），多实例令牌共享仅在冷启动生效（P2-1）。
-- 无过期信息的存储值被编造 1800 秒有效期（P2-2）。
-- `FeishuTokenManagerResolver.TryGet*` 在无默认应用时抛异常，违背 Try 语义（P2-5）。
-- 重复调用 `AddFeishuApp` 会叠加加密装饰器，导致令牌读写双重加解密（P2-7）。
-- `RemoveApp` 默认应用提升顺序不确定（P2-11）。
-- 热更新缺少 `IsDefault` 唯一性校验（P2-13）。
-- refresh token 存储 TTL 硬编码 30 天，与业务过期语义不一致（TMA-22）。
-- 指标缺 AppKey 维度，多应用下 `token_manager_key` 不可区分（TMA-23）。
-- 加密装饰器非幂等，重复 `AddFeishuApp` 会双重加解密（TMA-19）。
-- 非内存存储未加密时缺少启动告警（TMA-21）。
-- 单例 `FeishuAppManager` 捕获构造期 `IServiceProvider`，解析 Scoped 依赖构成 Captive Dependency（TMA-13）。
-- 注释不实：旧上下文"由 GC 回收"改为"进入退休队列宽限期后 Dispose"；`StopAsync` 注释纠正为"只管理 Timer"；`DetectAndWarnSingleAppRegistration` 文案补迁移指引与 `IFeishuTokenManagerResolver` 用法（TMA-24）。
-
-### ⚠️ 破坏性变更 / 行为变更
-
-- **多应用 Redis 令牌键布局变更（TOK-1）**：`PerAppRedisTokenStoreFactory` 取代
-  `SingletonFeishuTokenStoreFactory`，Redis 键由 `feishu:token:*` 改为 `feishu:{appKey}:token*`，
-  与 Memory 路径键布局对齐。修复前多应用共享同一键空间会互相覆盖（随机 401 / 令牌串号）。
-  **键布局已变更，升级后旧键不再被读取**（未发布版本，无存量数据）。
-- **`FeishuAppConfig` 移除 `required`**：配置绑定改为源生成（AOT 安全），而绑定源生成器以 `new T()`
-  构造实例、无法满足 `required` 成员。非空/格式/长度校验统一由 `FeishuAppConfig.Validate()` 承担
-  （`AddFeishuApp` 与 `FeishuAppManager.AddApp` 均会调用）。
-- **增强 HttpClient 装配基线化（ARC-2 Step 1）**：`FeishuAppManager` 的客户端装配改为以
-  `IOptions<EnhancedHttpClientOptions>` 为基线。此前手工 `new` 导致 10 个字段静默取默认值
-  （`RequestBodySerialization` / `ExceptionRedactor` / `MaxExceptionContentLength` / `CaptureRequestContent` /
-  `UrlResolution` / `MaxSuccessResponseBytes` / `HttpVersion` / `HttpVersionPolicy` /
-  `HttpRequestMessageOptions` / `JsonTypeInfoResolver`），现均与注册路径同源；
-  Mud.HttpUtils 2.0.5 新增的 `AppAccessAuthorizer` 亦已同步（由属性契约守卫测试守护）。
-- **配置热更新默认开启（ARC-1）**：新增 `FeishuAppOptions.EnableConfigReload`，**默认 `true`**。
-  `appsettings.json` 变更会按 AppKey 增量应用到 `IFeishuAppManager`（新增/重建/移除/默认应用切换）。
-  如需「配置变更需重启」的旧语义，显式配置 `EnableConfigReload = false`。
-  热更新范围包含 `BaseUrl` / `TimeOut`（ARC-7）：命名客户端追加了 DI 感知的配置动作，
-  每次创建客户端时从 `IOptionsMonitor<List<FeishuAppConfig>>` 读取当前值并覆盖
-  `BaseAddress` / `Timeout`，因此多区域切换（`open.feishu.cn` ↔ `open.larksuite.com`）
-  与超时调整无需重启进程（此前 `BaseAddress` 在注册期固化，配置变更不生效——见
-  `.docs/MudHttpUtils-2.0.5-Review-Remediation-Plan.md`）。
-- **NuGet 包来源锁定（SEC-1）**：`nuget.config` 新增 `<clear />`（切断用户级/机器级继承源）与
-  `packageSourceMapping`：组件族 `Mud.HttpUtils*` 同时映射本地源（优先）与 nuget.org（兜底），
-  其余包由 nuget.org `*` 兜底。**注意**：`Mud.HttpUtils 2.0.5` 尚未发布到 nuget.org
-  （实测最高 2.0.2），托管 CI runner 上不存在本地源 ⇒ Restore 无法满足精确版本约束
-  （`NU1603` 被本仓库提升为错误）。该缺陷为存量问题，需组件发版或为 CI 注入组件源（COMP-5）。
-- **WebSocket 事件处理失败不再静默吞异常（P0-1 / WS-01）**：`FeishuEventMessageHandler.HandleAsync`
-  此前会捕获并记录所有异常后正常返回，导致 ACK 恒为 `code=200`、飞书服务端不再重发，
-  事件永久丢失。现异常向上传播，`MessageRouter` 返回失败并回 `code=500`，服务端将重发。
-  **请确保业务处理器幂等。**
-- **`FeishuWebSocketManager.Dispose()`（同步）不再尝试停止服务（P0-2 / WS-02）**：
-  原实现持有 `_startStopLock` 后同步等待需要同一把锁的 `StopAsync`，必然超时（约 3 秒）且服务未停止。
-  同步路径现仅做尽力释放；需确定性停止请调用 `await StopAsync(...)` 或 `await DisposeAsync()`。
-- **`FeishuEventMessageHandler` 构造函数移除未使用的 `seqIdDeduplicator` 参数（WS-21）**。
-- **`WebSocketBinaryMessageEventArgs.ProcessingTask` 移除（WS-25）**（该属性从未被赋值）。
-- **服务端 Pong 下发的 ClientConfig 不再覆盖本地重连策略（P1-9 / WS-07）**：
-  `ReconnectDelayMs` / `MaxReconnectAttempts` 不再被运行时改写；`PingInterval` 仍生效但钳制至 5–30 秒。
-
-### ✨ Added
-
-- **`IFeishuHttpClientFactory`**（`Mud.Feishu.Abstractions.Authentication.MultiApp`）：收敛 `FeishuAppManager`
-  内散装装配，使「注册路径」与「创建路径」共享同一份配置基线。
-- **令牌存储加密（ENH-1）**：`EncryptedTokenStore` / `EncryptedUserTokenStore` /
-  `EncryptedFeishuTokenStoreFactory` + `FeishuAppOptions.EnableTokenEncryption`（默认 `false`，按需开启；
-  未注册 `IEncryptionProvider` 时降级为明文并告警；解密失败按缓存未命中处理）。
-- **多应用配置热更新（ARC-1）**：`FeishuAppManager` 订阅 `IOptionsMonitor<List<FeishuAppConfig>>.OnChange`，
-  Diff 增量应用 + 快照节流，实现 `IDisposable`。
-- **AOT 安全 JSON 入口** `Mud.Feishu.Abstractions.Utilities.FeishuJsonAot`：内部改用
-  `JsonSerializerOptions.GetTypeInfo` + `JsonTypeInfo` 重载，语义与泛型重载一致；`TypeInfoResolver` 为
-  `null` 时保留反射路径（契约与原行为一致，`Deserialize(null)` 仍抛 `ArgumentNullException`）。
-- **门禁脚本** `scripts/verify-build.ps1`：依赖缓存新鲜度自检（SHA256）、全 TFM 构建与诊断白名单断言、
-  `AotStrictMode` 冒烟（净零错误 + `AOT00x` / `IL2026` / `IL3050`）、单元测试（按实际失败数）、
-  格式校验（默认告警，`-StrictFormat` 可阻断）；`-CacheCheckOnly` 供 CI 在 Restore 前调用。
-- `FeishuJsonDefaults.Reset()`：供测试隔离静态 resolver 状态。
-- **`FeishuWebSocketConcurrencyService`（WS-03）**：为 WebSocket 事件分发提供并发闸门，
-  与 Webhook 的 `MaxConcurrentEvents` 语义与运维体验保持一致，支持配置热更新。
-  新增选项 `FeishuWebSocketOptions.MaxConcurrentHandlers`（默认 32，0 = 无限制）。
-- **`feishu.websocket.backlog` 指标真实化（F1）**：从恒 0 改为真实积压数；
-  连接数指标改为按 app_key 分组（WS-17），避免多实例互相覆盖。
-- **`AckResponse` / `SubscriptionRequest` DTO（WS-06）**：替代匿名类型序列化，
-  消除 Native AOT 反射依赖；ACK 的 `headers` 字段使用空字典保证协议一致性。
-- **`FeishuWebSocketOptions.AllowCertificateNameMismatch`（WS-12）**：独立控制证书名称不匹配放行，
-  与 `AllowSelfSignedCertificates` 解耦。
-
-### Added（2026-09-15 组件使用审查修订：`MudHttpUtils-2.0.5-Review-Remediation-Plan.md` v2）
-
-- **加密存储 marker 契约（ENH-2）**：`EncryptedTokenStore` / `EncryptedUserTokenStore` 同时实现组件
-  `IEncryptedTokenStore`（`IsEncryptionEnabled => true`），为组件 v2 把该契约接入 `ITokenManager` 管线做前向兼容；
-  两者新增**可选** `ILogger?` 构造参数（源/二进制兼容）。
-- **文档**：新增 `documents/ErrorHandling.md`（统一响应模型、`ApiException` 语义、**9 个 `Task<byte[]?>` 下载方法的
-  错误契约与「HTTP 200 + JSON 错误体」残余风险及自检范式**）与 `documents/ResponseCaching.md`
-  （`[Cache]` 接入方式、**多应用缓存键不含 appKey 的强制隔离约束**与装饰器实现示例）。
-- **测试**：`FeishuClientEndpointHotReloadTests`（6 用例，锁定 BaseUrl/TimeOut 热更新）、
-  `DownloadErrorSemanticsTests`（3 用例，锁定下载错误语义）、`EncryptedTokenStoreTests` 新增 4 用例（marker + 节流告警）。
-
-### 🐛 Fixed
-
-- **net8+/net10 反序列化未覆盖类型直接抛 `NotSupportedException`**（跨 TFM 行为不一致）：
-  `FeishuJsonDefaults` 的 net8+ 解析器链补齐**链尾反射兜底**，并改为**幂等**（按引用去重）、
-  全程加锁消除静态状态竞态；`SerializerOptions.PropertyNameCaseInsensitive` 与反序列化选项对齐。
-- **`IFeishuAuthentication` 从未注册**，导致任何触发应用上下文创建的路径都抛
-  `No service for type 'IFeishuAuthentication' has been registered.`：现调用源生成器产出的
-  `AddAuthenticationWebApiHttpClient()`（置于 `AddMudHttpClient` 循环之后，保证执行器注册优先）。
-- **`BaseUrl` / `Timeout` 不参与配置热更新**（ARC-7）：命名客户端的注册委托捕获的是**注册期**快照，
-  `IConfiguration` 变更后新建客户端仍指向旧地址，多区域切换只能重启。现通过
-  `IHttpClientBuilder.ConfigureHttpClient(IServiceProvider, HttpClient)` 在每次 `CreateClient` 时
-  从 `IOptionsMonitor<List<FeishuAppConfig>>` 读取当前值并按 diff 覆盖；未变化时短路，
-  未接入配置管线时回退注册期快照（行为与修复前一致）。
-  *（未采用组件 `HttpClientFactoryEnhancedClient.WithBaseAddress`：`TokenRecoveryEnhancedClient` 为
-  `sealed` 且未重写该方法，基类实现返回普通客户端 —— 会静默丢失 401 令牌恢复并令强转抛
-  `InvalidCastException`，详见方案附录 B-1。）*
-- **per-app 弹性策略的选项工厂固化注册期配置**（ARC-7b）：`IAppResiliencePolicyResolver` 的
-  `optionsFactory` 闭包捕获启动期 `configs`，导致热更新后**新增应用**永远拿不到专属弹性策略。
-  现改为读取 `IOptionsMonitor` 的当前配置。残余限制：组件 `AppResiliencePolicyResolver` 按 appKey
-  缓存已解析策略，且 `InvalidateAll` 未暴露在接口上，故**已解析过**应用的弹性参数变更仍需重启（组件侧 COMP-4）。
-- **解密失败完全静默**（ENH-2）：`EncryptedTokenStore` / `EncryptedUserTokenStore` 的 `Decrypt`
-  捕获所有异常返回 `null`（语义保持不变），但密钥轮换等故障因此不可观测。现补充**节流** Warning
-  （首次 + 每 100 次一次），日志含累计次数、异常与密文长度，**不含明文密钥/密文**。
-- **多应用 Redis 令牌键无 `appKey` 维度**（TOK-1，见破坏性变更）；并修复
-  `RedisUserTokenStore.GetTokenTypesAsync` / `RedisTokenStore.GetTokenTypesAsync` 对含 `:` 的
-  `tokenType` 的截断（TM-04）。
-- **开放泛型标注 `[HttpJsonSerializable]`** 导致 net8+/net10 `AOT006` 与 `SYSLIB1030`
-  （`WidgetBase<TValue>` / `SelectSettingData<T>` / `TasksSectionsInfo<T>`）：移除三处标注，
-  保留闭合子类覆盖，并新增架构约束测试防止复发。
-- **配置热更新下 `UpdateApp` 报「未找到应用」**：改用 `RegisterApp`（懒加载应用可能尚未进入基类字典）。
-- **`FailedEventRetryService` 反序列化未传 options**（默认大小写敏感）与存储写入端
-  （camelCase）失配，统一为 `FeishuJsonDefaults.DeserializerOptions`。
-- **204 条 `NU1603` 版本漂移**：5 个项目 7 处 `PackageReference` 由 `2.0.3` 统一升级为 **2.0.5**；
-  另修复 `Tests/*` 中不存在的 `Microsoft.Extensions.Configuration 8.0.2` → `8.0.0`。
-- 低 TFM（`netstandard2.0` / `net6.0`）上 7486 条无语义的 `AOT006` 噪音，按 TFM 精确豁免
-  （`NoWarn` + `WarningsNotAsErrors`，三份 props 同步）。
-- **WebSocket 健康检查缺少并发指标（F2）**：`FeishuWebSocketHealthCheck` 此前仅报告连接状态，
-  无法反映并发槽位耗尽导致的背压。现补充 `max_concurrent_handlers` / `available_concurrent_slots` /
-  `backlog` / `concurrent_utilization_pct` 指标，并按利用率分级返回（槽位耗尽 → Unhealthy，
-  利用率 ≥90% → Degraded），与 Webhook 健康检查对齐。
-- **WebSocket 重连无熔断保护（F3）**：达到重连上限后健康检查仍持续触发无效重连，
-  对飞书侧造成持续连接压力。现引入熔断器：`ReconnectState.IsCircuitOpen` 在达到上限时打开、
-  连接成功后清除；`ReconnectionOrchestrator.TryReconnectAsync` 开头检查熔断器并跳过；
-  健康检查在熔断器打开时返回 Degraded（而非 Unhealthy），表明系统已主动停止重连。
-- **WebSocket 配置热更新不一致（F4）**：`FeishuWebSocketClient` 此前一次性捕获
-  `IOptionsMonitor.CurrentValue` 快照，而 `FeishuWebSocketManager` 每次读取当前值，
-  两者配置热更新行为不一致。现 `FeishuWebSocketClient` 构造函数新增可选
-  `IOptionsMonitor<FeishuWebSocketOptions>` 参数，由 `FeishuWebSocketServiceBuilder` 注入，
-  运行期需热更新的路径改为读取 `_optionsMonitor.CurrentValue`。
-- **WebSocket 协议保活间隔硬编码（F5）**：`WebSocketConnectionManager` 的
-  `KeepAliveInterval` 此前硬编码为固定值。现新增 `FeishuWebSocketOptions.ProtocolKeepAliveInterval`
-  （默认 20 秒，0 = 禁用，范围 5–300 秒），由配置驱动并参与 `Validate()` 校验。
-- **WebSocket 未集成统一去重中间件（F7）**：`FeishuEventMessageHandler` 此前仅使用分离的
-  `IFeishuEventDeduplicator`（按 EventId 去重），无法利用 `IUnifiedDeduplicationMiddleware`
-  的 EventId + SeqID 双重去重能力。现构造函数新增可选 `IUnifiedDeduplicationMiddleware` 参数，
-  由 `FeishuWebSocketClient` 透传注入；当中间件可用时优先使用，否则回退到分离去重路径（向后兼容）。
-  `FeishuWebSocketServiceBuilder` 注册客户端时从 DI 获取中间件实例（可选注入）。
-
-### 👷 CI/CD
-
-- `.github/workflows/dotnet-publish.yml`：`Restore` 前加入依赖缓存自检（`-CacheCheckOnly`），
-  `Build` 日志落盘后断言 `NU1603` / `CS1750` / `HTTPCLIENT0xx` / `MUD001-002` / `FORM0xx` / `AOT001-007` 全为 0；
-  移除 `--filter "FullyQualifiedName!~Mud.Feishu.Tests"`，使 `Mud.Feishu.Tests` 中的
-  `AotJsonSerializableCoverageTests` 等架构约束守卫在 CI 中真实生效。
-
-### 📝 Documentation
-
-- `AGENTS.md`：补充质量门禁命令、`Mud.HttpUtils` 本地源缓存刷新三步法
-  （清缓存 → `dotnet clean` → 构建）与 `TypeLoadException` 症状识别、`Tests`/`Demos` props
-  遮蔽根 props 的注意事项。
-- `.docs/MudHttpUtils-2.0.4-Repair-and-Enhancement-Plan.md`：新增 §8.2（逐条验证与缺陷修复记录）
-  与附录 E（OBS-1 ADR：用户令牌缓存键与 `ScopeKeyBuilder`）。
-
-### ⚠️ 破坏性变更 / 行为变更（Redis 审查整改 R 系列）
-
-- `AddFeishuRedisTokenStore` 不再注册 `ITokenStore`/`IUserTokenStore` 单例，请改用 `IFeishuTokenStoreFactory.Create(appKey)`。
-- `RedisOptions` 的 `NonceTtl`/`SeqIdCacheExpiration`/键前缀非法值（0/负/空）改为**启动期校验失败**（原为静默失效或运行期服务端错误）。
-- 事件去重 `ttl` 亚秒值抛 `ArgumentOutOfRangeException`；`MarkAsCompletedAsync` 不再为不存在的键创建永久记录。
-- SeqID 去重键增加 `scopeKey` 隔离维度（默认 `AppKey|MachineName`），多实例部署不再互相判重；`GetCacheCount`/`GetMaxProcessedSeqId` 语义收窄为 TTL 窗口内。
+**Redis 去重**
+- `RedisOptions` 非法值（0/负 TTL/空前缀）改为启动期校验失败；事件去重亚秒 `ttl` 抛异常；
+  `MarkAsCompletedAsync` 不再为不存在的键创建永久记录。
+- SeqID 去重键增加 `scopeKey` 隔离维度（默认 `AppKey|MachineName`），多实例不再互相判重；
+  `GetCacheCount`/`GetMaxProcessedSeqId` 语义收窄为 TTL 窗口内。
 - `NonceFailureMode` 仅对 Redis 连接类故障生效；服务端/配置类错误直接抛出。
-- 四类 Redis 键（事件/Nonce/SeqID/令牌）统一走 `RedisKeyBuilder` 构造，分段转义 `:` → `\:`，杜绝跨段碰撞。
+- 四类 Redis 键（事件/Nonce/SeqID/令牌）统一走 `RedisKeyBuilder` 构造（分段转义 `:`，杜绝跨段碰撞）。
 
-### 🐛 修复（Redis 审查整改 R 系列）
+### ✨ 新增
 
-- 修复 `SeqIdKeyPrefix` 为空时 `ClearCacheAsync` 退化为全库删除（R-01/P0）。
-- 修复 `redis://`/`rediss://` 地址无法连接（改用 `ConfigurationOptions.Parse`，`rediss://` 自动启用 TLS）（R-13）。
-- 修复 `RollbackProcessingAsync` 与 `MarkAsCompletedAsync` 的并发竞态（Lua 原子化）（R-05/R-06）。
-- 修复处理超时判定依赖客户端时钟（改用 Redis `TIME`）（R-15）。
-- 修复 SeqID Sorted Set 无 TTL 导致的无界增长（写入时刷新 TTL 并裁剪）（R-08）。
-- 修复 `CancellationToken` 全链路失效（循环内显式响应取消）（R-11）。
-- 修复同步释放容器时因"仅 `IAsyncDisposable`"抛 `InvalidOperationException`（补 `IDisposable`）（R-14）。
-- 修复 Cluster 下 `ClearAsync`/`GetTokenTypesAsync` 只覆盖单节点（R-10）。
-- 修复令牌键由裸字符串拼接导致 `:` 跨段碰撞（R-20/R-21）。
+- **令牌存储加密**：`EncryptedTokenStore` 系列 + `FeishuAppOptions.EnableTokenEncryption`
+  （默认关闭；未注册加密提供程序时降级明文并告警，解密失败按缓存未命中处理）。
+- **多应用配置热更新**：`appsettings.json` 变更按 AppKey 增量应用；`BaseUrl`/`TimeOut` 运行期热更新，
+  多区域切换无需重启。
+- **AOT 安全 JSON 入口**：`FeishuJsonAot`（`JsonTypeInfo` 重载）+
+  `FeishuJsonDefaults.ConfigureUserResolver` 自定义 Context 注册。
+- **多应用 API**：`IFeishuAuthenticationFactory` / `PerAppFeishuAuthenticationFactory`、
+  `IFeishuAppManager.ConfiguredAppKeys`、`AppInstantiated` 事件、`FeishuAppContextRetirement` 退休队列、
+  `TokenKeyBuilder`、`FeishuOAuthErrorClassifier`。
+- **WebSocket**：并发闸门 `FeishuWebSocketConcurrencyService`（`MaxConcurrentHandlers` 默认 32）、
+  真实 `backlog` 指标、按 app_key 分组连接指标、`AllowCertificateNameMismatch`、
+  `ProtocolKeepAliveInterval`（默认 20s）、统一去重中间件接入、健康检查并发指标与重连熔断态、
+  `AckResponse`/`SubscriptionRequest` 强类型 DTO。
+- **Redis**：`RedisKeyBuilder`、`FeishuRedisException` + `FeishuRedisFailureKind` 可分类失败契约、
+  `RedisOptions.ValidateOnStart()`、Cluster 全节点聚合 `GetServers()`、Testcontainers 集成测试工程。
+- **文档**：`documents/ErrorHandling.md`（下载方法错误契约与「HTTP 200 + JSON 错误体」残余风险）、
+  `documents/ResponseCaching.md`（多应用缓存键隔离约束）；README 多租户部署指引。
 
-### ✨ 新增（Redis 审查整改 R 系列）
+### 🐛 修复（按模块摘要）
 
-- `RedisKeyBuilder`：统一键构造（分段转义、长度上限 256、空前缀防护）。
-- `FeishuRedisException` + `FeishuRedisFailureKind`：可分类的 Redis 失败契约（Connection/Timeout/Server）。
-- `Tests/Mud.Feishu.Redis.IntegrationTests`：真实 Redis（Testcontainers）集成测试，覆盖 P0/P1 缺陷。
-- `RedisOptions.ValidateOnStart()`（net6+）：配置非法值在宿主启动期即失败。
-- `RedisStoreHelper.GetServers()`：Cluster 下遍历全部主节点聚合 SCAN。
+- **多应用/令牌**：401 恢复拿到同一被拒令牌（P0）；租户重试被注入用户令牌；默认应用状态分裂；
+  Lazy 异常缓存自愈失效致应用永久毒化；热更新快照并发修改 / 节流漏比对字段 / 缺 IsDefault 校验；
+  旧上下文令牌维护 Timer 泄漏；HostedService 启动期强制实例化阻断宿主启动；稳态 store 恢复永不命中；
+  无过期存储值编造有效期；重复 `AddFeishuApp` 双重加解密；凭据变更清库在内存后端无效（TMF-01）；
+  热更新锁内同步阻塞 IO（TMF-02）；恢复路径 IssuedAt 缺失；指标缺 appKey 维度；
+  Redis 过期令牌 TTL=0 永不过期；Redis 连接串日志含口令等。
+- **JSON / AOT**：net8+ 未覆盖类型抛 `NotSupportedException`（补链尾反射兜底 + 幂等 + 加锁）；
+  开放泛型误标 `[HttpJsonSerializable]`（AOT006 / SYSLIB1030）；DataModels 7 组同名 DTO 触发
+  SYSLIB1031（重命名修复）；低 TFM 7486 条 AOT006 噪音豁免。
+- **HTTP / 配置**：`IFeishuAuthentication` 未注册；`BaseUrl`/`Timeout` 不参与热更新；
+  per-app 弹性策略固化注册期配置；解密失败完全静默（补节流告警）；
+  `FailedEventRetryService` 反序列化选项失配；204 条 NU1603 版本漂移。
+- **WebSocket**：健康检查并发指标缺失、重连无熔断、配置热更新不一致、协议保活硬编码、
+  未接入统一去重中间件、ACK 恒 200 致事件永久丢失。
+- **Redis**：空前缀 `ClearCacheAsync` 误删全库（P0）；`redis://`/`rediss://` 地址无法连接；
+  Rollback/Mark 并发竞态（Lua 原子化）；超时判定依赖客户端时钟；Sorted Set 无界增长；
+  `CancellationToken` 全链路失效；Cluster 单节点覆盖；键 `:` 跨段碰撞。
 
-### 📝 文档（Redis 审查整改 R 系列）
+<details>
+<summary><strong>📎 附录：逐任务工程明细（面向维护者，点开展开）</strong></summary>
 
-- 移除不存在的 `RedisFeishuEventDistributedDeduplicatorWithFallback` 及相关降级承诺。
-- 新增"能力 ↔ 实现 ↔ 测试"映射表与令牌明文存储安全披露（README 附录）。
+> 完整方案与逐条验证记录见 `.docs/` 各方案文档（MudHttpUtils-2.0.4-Repair-and-Enhancement-Plan、
+> MudHttpUtils-2.0.5-Review-Remediation-Plan、MudFeishu-Token-MultiApp-Review-Remediation-Plan-R1/R2）
+> 与 `AGENTS.md` 质量门禁章节。
+
+**AOT 适配**
+- net8.0+ 全部源工程启用 `IsAotCompatible` / `EnableAotAnalyzer` / `EnableTrimAnalyzer` / `TrimMode=full`
+  （netstandard2.0 / net6.0 按 TFM 精确豁免噪音 AOT006）；启用 `EnableConfigurationBindingGenerator`，
+  配置 DTO 不用 `required`、改由 `Validate()` 校验。
+- WebSocket 二进制链路替换 Protobuf 静态（反射式）序列化为编译期 `FeishuWebSocketProtoModel`
+  （禁止 `ProtoBuf.Serializer` 静态门面）；Abstractions / DataModels 附 rd.xml 裁剪兜底。
+- `verify-build.ps1` 步骤 3 以 `AotStrictMode` + `--no-incremental` 冒烟（修复 CoreCompile 增量判定
+  不比较 csc 命令行导致的假绿，暴露并补齐 WebSocket 4 条标注链），断言 `AOT00x` / `IL2026` / `IL3050` 为 0。
+- 新增 `FeishuJsonAot`（net8+ 从 options 解析 `JsonTypeInfo`，无 resolver 时回退反射）；
+  `FeishuJsonDefaults.ConfigureUserResolver` 自定义 Context 注册；`Demos/Mud.Feishu.AotVerification`
+  双 RID 端到端验证（JSON 序列化 / HTTP 客户端 / 事件处理 / WebSocket 协议消息）。
+
+**SYSLIB1031（同名 DTO 冲突）**
+- STJ 源生成器按类型简单名生成元数据，DataModels 7 组同名 DTO 编译期报 9 条 SYSLIB1031
+  （net8.0/net10.0 各一遍），且仅为其一生成元数据——其余运行时静默退化为反射兜底（AOT 下失效），
+  派生集合类型（`ListDepartmentLeader`、`ApprovalCreateViewersArray`）同理被丢弃。
+  修复：按命名空间语义重命名（见升级须知）并移除重复嵌套定义。
+
+**Mud.HttpUtils 2.0.6 组件侧**
+- 打包防呆（Release 打包 + 包内 DLL 与 `bin/<Configuration>` 逐字节校验）与清单漂移防护
+  （补齐 `Mud.HttpUtils.Xml` / `JsonContextScaffolder`）；修复三处 DI 构造歧义
+  （`TokenRecoveryDelegatingHandler` / `StandardOAuth2TokenManager` / `PollyResiliencePolicyProvider`）
+  与 `TokenRefreshHealthCheck` 构造歧义；`RequiresDynamicCodeAttribute` polyfill 边界与 net7.0 资产缺口；
+  `UserTokenInfo` 复制入口丢失 `IssuedAt`（TMX-22：TTL 感知过期提前量 `min(阈值, ttl/2)` 生效）。
+  组件侧新增 10 条机器护栏用例。
+- `AGENTS.md` / README 依赖表 / 契约守卫 `TokenMultiAppContractGuards.ExpectedVersion` 同步为 2.0.6。
+
+**门禁（verify-build.ps1 / CI）**
+- 步骤 4 重写：TRX 计数器路径修复（原写错恒 `$null` 且回退中文正则）、逐 `(工程, TFM)` 运行并逐组合
+  断言 TRX 存在且 `total > 0`、按 `dotnet --list-runtimes` 显式播报跳过组合；门禁不再依赖中文输出。
+- CI（`dotnet-publish.yml`）：Restore 前 `-CacheCheckOnly`；Build 日志断言 `NU1603` / `CS1750` /
+  `HTTPCLIENT0xx` / `MUD001-002` / `FORM0xx` / `AOT001-007` 全零；移除 filter 使
+  `AotJsonSerializableCoverageTests` 等架构守卫真实生效。
+
+**TMA2 / TMF（令牌多应用 R2 复审 + 后续修复）逐任务**
+- TMA2-P0-1：用户令牌续期可达——新增 `LoadRefreshCandidateAsync` 独立读取 refresh token，
+  不依赖 access token 有效性。
+- TMA2-P0-2：`TokenKeyBuilder` 统一 Memory / Redis 键布局（逐字节一致）。
+- TMA2-P0-3：门禁去中文依赖（TRX + locale-independent）。
+- TMA2-P1-1：恢复弃用阈值与缓存失效阈值同源（`TokenRefreshThreshold`）。
+- TMA2-P1-2：凭据变更即清库（检测 (AppId, AppSecret) 变更）。
+- TMA2-06：`FeishuOAuthErrorClassifier` OAuth 失败分类；-07：`AppInstantiated` 增量注册 +
+  `FeishuTokenRegistrationHelper`；-08：`AddApp` 默认键加锁；-09：热更新两阶段事务化
+  （Phase-A 预装配锁外 / Phase-B 提交锁内）；-10：`TryGet*` 改用 `DefaultAppKey` 属性不抛异常；
+  -11：装配失败 scope 释放 + Dispose 遍历在册上下文；-12：异常过滤收敛为瞬时白名单
+  （`IsTransientInitFailure`）；-13/-14：删除死配置项与死常量；-15：Redis 过期刷新令牌改
+  `KeyDeleteAsync`；-17：`EnsureFeishuAppNotRegistered` 调用顺序守卫；-18/-19/-20：文档版本一致性 /
+  Redis 连接串脱敏 / 多租户部署指引；-21：六条契约守卫测试（键布局单一真相源、包版本唯一、
+  配置属性集契约、认证 DTO 覆盖、ConfigDto 禁 required、无未消费开关）。
+- TMF-01（P0）：凭据变更清库在内存后端无效——记账改为按 KeyPrefix 的进程级共享注册表，
+  新增 `IFeishuUserTokenStorePurge.ClearAllUsersAsync`（Redis 走 SCAN 模式
+  `TokenKeyBuilder.AllUsersScanPattern`），Memory 与 Redis 清库语义统一；
+  `GetTokenTypesAsync` 语义放宽为「本进程本前缀已知」。
+- TMF-02（P1）：热更新 Phase-P——凭据检测与清库（IO）移到 `_configApplyLock` 之外，
+  消除锁内同步阻塞；`ResolveExistingContext` 收敛三份旧上下文解析副本。
+- TMF-03（P2）：`PurgeTokenStoreAsync` 收口 `OperationCanceledException`，取消信号不再使整次热更新被放弃。
+- TMF-04（P2）：删除产品代码零调用的 `RebuildAppContext` 死代码（含第二份清库副本）。
+- TMF-05（P2）：刷新失败清库前 CAS 比对 store 现值，防止误删并发刷新刚持久化的新令牌。
+- TMF-06（P2）：恢复令牌 IssuedAt 不可知按阈值保守判定，文档化短 TTL 部署不应依赖 store 恢复路径。
+
+**TMA（R1）逐任务**
+- P0-1：令牌失效级联清 store，401 恢复真正生效。
+- P1-1：租户 401 恢复不回退用户级（凭据类别由显式上下文决定）；P1-2：`SetDefaultApp` 状态分裂修复；
+  P1-3：Lazy 异常缓存自愈覆盖 `InvalidOperationException`（DI 解析失败不再永久毒化应用）；
+  P1-4：配置快照 `List<T>` 锁内改锁外读；P1-5：热更新节流漏比对字段（`TokenRefreshThreshold` /
+  重试 / 熔断 / `AllowCustomBaseUrl`）；P1-6：旧上下文 Timer 泄漏 + 后台刷新字典驻留旧实例；
+  P1-7：`GetAllApps()` 语义回归 + 后台刷新仅默认应用 + `WarmUpAllAppsOnStartup`；
+  P1-8：per-app 认证客户端（`EnablePerAppAuthenticationClient` 可降级）。
+- P2-1/-2：store 恢复边界修正（缓存 TTL 全量化、弃用阈值 `Math.Max(60, threshold/2)`）/
+  无过期存储值不再编造 1800 秒有效期；P2-5：`TryGet*` Try 语义；P2-7：重复 `AddFeishuApp`
+  双重加解密（加密装饰器幂等）；P2-11：`RemoveApp` 默认应用提升确定性；P2-13：热更新先校验后应用
+  （AppKey / IsDefault 唯一性 + 逐条 `Validate()`）。
+- TMA-13：`FeishuAppManager` Captive Dependency（改注入 `IServiceScopeFactory`）；
+  TMA-19/-21：加密幂等 / 非内存存储未加密启动告警；TMA-22：refresh token TTL 不再硬编码 30 天；
+  TMA-23：指标补 appKey 维度（`token_manager_key` 可区分）；TMA-24：注释纠偏
+  （退休队列 / `StopAsync` / 单应用注册提示）。
+- 新增：`FeishuAppContextRetirement`（宽限期后 Dispose，停止令牌维护 Timer）、
+  `IFeishuAuthenticationFactory` / `PerAppFeishuAuthenticationFactory`（per-app 端点与弹性策略）、
+  `IFeishuAppManager.ConfiguredAppKeys`（不触发懒加载）、
+  `ContextRetireDelaySeconds` / `RemoveRuntimeAddedAppsOnReload` 选项。
+
+**ARC / SEC / ENH / TOK**
+- ARC-1：多应用配置热更新（`IOptionsMonitor<List<FeishuAppConfig>>.OnChange` Diff 增量 + 快照节流）；
+  ARC-2：增强 HttpClient 装配基线化（`RequestBodySerialization` / `ExceptionRedactor` / `HttpVersion` /
+  `JsonTypeInfoResolver` 等 10 字段与注册路径同源，`AppAccessAuthorizer` 同步）；
+  ARC-7/-7b：`BaseUrl`/`TimeOut` 运行期热更新（`ConfigureHttpClient(IServiceProvider, HttpClient)` 按 diff
+  覆盖，未变化短路）与 per-app 弹性策略读 `IOptionsMonitor` 当前配置（残余：组件侧已解析策略缓存
+  需重启，COMP-4）。
+- SEC-1：`nuget.config` 包来源锁定（`<clear />` + `packageSourceMapping`）；组件 2.0.6 发布到
+  nuget.org 前，托管 CI 需注入组件源（COMP-5）。
+- ENH-1：令牌存储加密（`EncryptedTokenStore` / `EncryptedUserTokenStore` /
+  `EncryptedFeishuTokenStoreFactory`）；ENH-2：加密 marker 契约（`IEncryptedTokenStore`，组件 v2
+  前向兼容）+ 解密失败节流告警（首次 + 每 100 次一次，不含明文密钥/密文）。
+- TOK-1：Redis 令牌键 `feishu:{appKey}:token*`（与 Memory 对齐，旧键不再读取）；
+  TM-04：`GetTokenTypesAsync` 对含 `:` 的 tokenType 截断修复。
+- 其他修复：`IFeishuAuthentication` 从未注册（改调源生成 `AddAuthenticationWebApiHttpClient()`）；
+  热更新下 `UpdateApp` 报「未找到应用」（改 `RegisterApp`）；`FailedEventRetryService` 反序列化
+  选项失配（统一 `FeishuJsonDefaults.DeserializerOptions`）；204 条 NU1603 漂移（钉版本 +
+  修正 Tests 中不存在的包引用）。
+- 文档与测试：`documents/ErrorHandling.md`（统一响应模型、9 个 `Task<byte[]?>` 下载方法错误契约与
+  「HTTP 200 + JSON 错误体」残余风险）、`documents/ResponseCaching.md`（`[Cache]` 接入与
+  多应用缓存键隔离约束）；`FeishuClientEndpointHotReloadTests`（6）/ `DownloadErrorSemanticsTests`（3）/
+  `EncryptedTokenStoreTests` +4；`FeishuJsonDefaults.Reset()` 供测试隔离。
+
+**WebSocket（WS 系列）**
+- WS-01（P0）：事件处理失败向上传播、回 `code=500` 让飞书重发（原 ACK 恒 200 致事件永久丢失）；
+  WS-02（P0）：同步 `Dispose()` 不再持锁等待 `StopAsync` 死锁（约 3 秒超时且服务未停止）。
+- 新增：WS-03 并发闸门 `FeishuWebSocketConcurrencyService`（`MaxConcurrentHandlers` 默认 32，热更新）；
+  WS-06 `AckResponse` / `SubscriptionRequest` 强类型 DTO（消除 AOT 反射依赖）；
+  WS-12 `AllowCertificateNameMismatch`（与 `AllowSelfSignedCertificates` 解耦）。
+- 修复：WS-07 服务端 Pong 不覆盖本地重连策略（`PingInterval` 钳制 5–30 秒）；WS-17 连接指标按
+  app_key 分组；WS-21/-25 移除死参数 `seqIdDeduplicator` / 死属性 `ProcessingTask`；
+  F1 `backlog` 指标真实化；F2 健康检查并发指标（槽位耗尽 Unhealthy / ≥90% Degraded）；
+  F3 重连熔断器（达上限打开、连接成功清除，健康检查返回 Degraded）；F4 客户端配置热更新一致
+  （注入 `IOptionsMonitor`）；F5 `ProtocolKeepAliveInterval` 可配置（默认 20s，5–300s）；
+  F7 接入 `IUnifiedDeduplicationMiddleware` EventId + SeqID 双重去重（可用时优先，否则回退）。
+
+**Redis（审查整改 R 系列）**
+- R-01（P0）：`SeqIdKeyPrefix` 为空时 `ClearCacheAsync` 退化为全库删除；R-05/R-06：
+  Rollback/Mark 并发竞态 Lua 原子化；R-08：SeqID Sorted Set 无界增长（写入时刷新 TTL 并裁剪）；
+  R-10：Cluster 下 `ClearAsync`/`GetTokenTypesAsync` 全主节点覆盖（`RedisStoreHelper.GetServers()`）；
+  R-11：`CancellationToken` 全链路失效；R-13：`redis://`/`rediss://` 地址支持
+  （`ConfigurationOptions.Parse`，自动 TLS）；R-14：同步释放补 `IDisposable`；
+  R-15：超时判定改用 Redis `TIME`；R-20/R-21：令牌键裸拼接 `:` 跨段碰撞。
+- 新增：`RedisKeyBuilder`（分段转义、长度上限 256、空前缀防护）、`FeishuRedisException` +
+  `FeishuRedisFailureKind`、`RedisOptions.ValidateOnStart()`（net6+）、
+  `Tests/Mud.Feishu.Redis.IntegrationTests`（Testcontainers 真实 Redis）。
+- 文档：移除不存在的 `RedisFeishuEventDistributedDeduplicatorWithFallback` 及降级承诺；
+  README 新增「能力 ↔ 实现 ↔ 测试」映射表与令牌明文存储安全披露。
+
+</details>
 
 ## [2.1.5] - 2026-06-25
 

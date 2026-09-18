@@ -34,6 +34,7 @@ MudFeishu is a modern enterprise-grade .NET SDK for Feishu (Lark) API integratio
 - 🛡️ **Enterprise Stability** - Unified exception handling, intelligent retry, detailed logging
 - 🎯 **Event-Driven** - Strategy pattern event processing, flexible extension
 - 📊 **Multi-Framework Support** - .NET Standard 2.0, .NET 6.0, .NET 8.0, .NET 10.0
+- ⚡ **Native AOT Support** - First-class Native AOT publishing on net8.0+, with source-generated JSON serialization and configuration binding across the entire pipeline (zero IL warnings in strict mode)
 
 ---
 
@@ -748,8 +749,29 @@ Below are actual screenshots of **FeishuWikiManager** (Feishu Wiki Management De
 
 - **.NET Standard 2.0** - Compatible with .NET Framework 4.6.1+
 - **.NET 6.0** - LTS long-term support version
-- **.NET 8.0** - LTS long-term support version (recommended)
-- **.NET 10.0** - LTS long-term support version
+- **.NET 8.0** - LTS long-term support version (recommended, Native AOT publishing supported)
+- **.NET 10.0** - LTS long-term support version (recommended, Native AOT publishing supported)
+
+## ⚡ Native AOT Support
+
+Since 3.0.0, MudFeishu fully supports .NET **Native AOT** (first-class support on net8.0+ target frameworks) and can be published as self-contained single-file native binaries:
+
+- **End-to-end source-generated JSON serialization** - every package ships built-in `JsonSerializerContext` types (`FeishuJsonContext`, `WebSocketJsonContext`, `EventCallbackJsonContext`, etc.), reflection-free serialization/deserialization at runtime
+- **Source-generated configuration binding** - `EnableConfigurationBindingGenerator` is enabled so config DTOs (e.g. `FeishuAppConfig`) get compile-time binding code; config DTOs avoid the `required` modifier in favor of `Validate()` methods
+- **Global AOT analyzer governance** - all projects on net8.0+ enable `IsAotCompatible` / `EnableAotAnalyzer` / `EnableTrimAnalyzer` / `TrimMode=full`, with the `FeishuJsonAot` AOT-safe serialization helper and rd.xml trim roots
+- **Quality gate enforcement** - `verify-build.ps1` includes an AOT strict-mode smoke build (per-project `AotStrictMode` + `--no-incremental`) asserting a successful build and **0** `AOT00x` / `IL2026` / `IL3050` diagnostics
+- **Dedicated verification project** - `Demos/Mud.Feishu.AotVerification` covers JSON serialization, HTTP clients, event handling, and WebSocket protocol messages under AOT (win-x64 / linux-x64 dual RID)
+
+Publishing an AOT application:
+
+```bash
+dotnet publish -r win-x64 -c Release /p:PublishAot=true
+```
+
+> ⚠️ **Notes**:
+> - Native AOT is only supported on net8.0+ target frameworks; AOT analyzers are not enabled for netstandard2.0 / net6.0
+> - Register custom `JsonSerializerContext` types via entry points such as `FeishuJsonDefaults.ConfigureUserResolver` to avoid runtime reflection-based serialization
+> - Do not mark extended config DTO properties with `required` (the source-generated binder constructs via `new T()`); perform validation in a `Validate()` method instead
 
 ### Core Dependencies
 

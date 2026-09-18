@@ -20,7 +20,7 @@ namespace Mud.Feishu.Redis.Services;
 /// 支持按用户标识隔离令牌数据，适用于多实例分布式部署场景。
 /// ITokenStore 的方法通过 UserTokenStoreBase 基类委托给内部 RedisTokenStore 实现。
 /// </remarks>
-public class RedisUserTokenStore : UserTokenStoreBase
+public class RedisUserTokenStore : UserTokenStoreBase, IFeishuUserTokenStorePurge
 {
     private readonly IConnectionMultiplexer _redis;
     private readonly string _keyPrefix;
@@ -166,6 +166,32 @@ public class RedisUserTokenStore : UserTokenStoreBase
     public override async Task ClearUserAsync(string userId, CancellationToken cancellationToken = default)
     {
         var pattern = TokenKeyBuilder.UserScanPattern(_keyPrefix, userId);
+        var db = _redis.GetDatabase();
+
+        foreach (var server in RedisStoreHelper.GetServers(_redis))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var keys = server.Keys(pattern: pattern, pageSize: 250, flags: RedisStoreHelper.ToCommandFlags(cancellationToken));
+
+            foreach (var key in keys)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                await db.KeyDeleteAsync(key, flags: RedisStoreHelper.ToCommandFlags(cancellationToken)).ConfigureAwait(false);
+            }
+        }
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// TMF-01（D10）：凭据变更清库的全用户删除能力——SCAN 全用户键模式
+    /// （<see cref="TokenKeyBuilder.AllUsersScanPattern"/>，通配 userId/tokenType/access|refresh）
+    /// 逐键删除，Cluster 化遍历模式与 <see cref="ClearUserAsync"/> 一致。
+    /// 与并发写入之间存在固有残余窗口（SCAN 语义）。
+    /// </remarks>
+    public async Task ClearAllUsersAsync(CancellationToken cancellationToken = default)
+    {
+        var pattern = TokenKeyBuilder.AllUsersScanPattern(_keyPrefix);
         var db = _redis.GetDatabase();
 
         foreach (var server in RedisStoreHelper.GetServers(_redis))

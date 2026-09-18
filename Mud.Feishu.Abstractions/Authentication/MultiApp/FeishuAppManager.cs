@@ -75,8 +75,9 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
     /// </summary>
     /// <remarks>
     /// 在 <see cref="GetOrCreateContext"/> / <see cref="TryGetApp"/> 成功注册到基类字典后、
-    /// <b>锁外</b>触发。<c>AddApp</c> / <c>RebuildAppContext</c> 已由 <c>RegisterApp</c>
-    /// 触发的 <c>ConfigurationChanged</c> 事件覆盖，不重复触发此事件。
+    /// <b>锁外</b>触发。<c>AddApp</c> 与配置热更新（<c>ApplyConfigurationChanges</c>，TMF-04：原
+    /// <c>RebuildAppContext</c> 已删除）已由 <c>RegisterApp</c> 触发的 <c>ConfigurationChanged</c>
+    /// 事件覆盖，不重复触发此事件。
     /// <c>FeishuTokenRegistrationService</c> 订阅此事件做增量注册。
     /// </remarks>
     internal event EventHandler<FeishuAppInstantiatedEventArgs>? AppInstantiated;
@@ -189,9 +190,10 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
     /// 新增触发 <c>Added</c>、更新触发 <c>Updated</c>、删除触发 <c>Removed</c>。
     /// 异常在此处被吞掉并记录，因为 <c>IOptionsMonitor.OnChange</c> 的回调抛异常会中断 IConfiguration 的变更通知链。
     /// <para>
-    /// TMA2-09 / D13：热更新改为两阶段事务化：
+    /// TMA2-09 / D13：热更新改为「Phase-P 锁外预清库 + 两阶段事务化」（TMF-02）：
     /// <list type="bullet">
-    /// <item>Phase-A（锁外预构造）：计算 diff，对新增/更新应用预构造上下文。任一失败则整体放弃。</item>
+    /// <item>Phase-P（锁外）：检测凭据变更并清库（IO），完成后才进入锁内，避免锁内同步阻塞。</item>
+    /// <item>Phase-A（锁内预构造）：计算 diff，对新增/更新应用预构造上下文。任一失败则整体放弃。</item>
     /// <item>Phase-B（短临界区提交）：逐应用在 <c>_lazyRebuildLock</c> 内仅做引用交换，锁外 RegisterApp + 退休 + 快照提交。</item>
     /// </list>
     /// </para>
@@ -263,6 +265,10 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
                 return;
             }
 
+            // TMF-02 / D13：Phase-P——清库（IO）在获取 _configApplyLock 之前完成，
+            // 维持「清库 → 重建」严格时序，同时消除锁内 sync-over-async 阻塞。
+            PurgeCredentialChangedTokens(incoming);
+
             // TMA2-09 / D13：两阶段事务化——Phase-A 预构造，Phase-B 提交。
             // 锁序：_configApplyLock → _lazyRebuildLock / _registryLock / _defaultAppLock。
             lock (_configApplyLock)
@@ -305,31 +311,8 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
 
                 try
                 {
-                    // 获取旧上下文引用以入退休队列。
-                    FeishuAppContext? oldContext = null;
-                    if (_lazyContexts.TryGetValue(config.AppKey, out var oldLazy) && oldLazy.IsValueCreated)
-                    {
-                        try { oldContext = oldLazy.Value; }
-                        catch { /* 旧 Lazy 初始化失败的上下文无需退休。 */ }
-                    }
-                    if (oldContext == null && base.TryGetApp(config.AppKey, out var registeredOld) && registeredOld is FeishuAppContext registeredCtx)
-                    {
-                        oldContext = registeredCtx;
-                    }
-
-                    // TMA2-05 / D10：凭据变更即清库。
-                    if (oldContext != null)
-                    {
-                        var oldConfig = oldContext.Config;
-                        if (!string.Equals(oldConfig?.AppId, config.AppId, StringComparison.Ordinal) ||
-                            !string.Equals(oldConfig?.AppSecret, config.AppSecret, StringComparison.Ordinal))
-                        {
-                            _logger.LogInformation(
-                                "应用 {AppKey} 的凭据已变更（AppId 或 AppSecret 变化），清除该应用的持久化令牌。",
-                                config.AppKey);
-                            PurgeTokenStoreAsync(config.AppKey).ConfigureAwait(false).GetAwaiter().GetResult();
-                        }
-                    }
+                    // TMF-02：获取旧上下文引用以入退休队列；凭据变更清库已上移至 Phase-P（锁外）执行。
+                    var oldContext = ResolveExistingContext(config.AppKey);
 
                     // 锁外预构造上下文。
                     var context = CreateAppContext(config);
@@ -421,6 +404,88 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
     }
 
     /// <summary>
+    /// TMF-02 / D13：Phase-P——在获取 <c>_configApplyLock</c> 之前完成凭据变更检测与清库。
+    /// </summary>
+    /// <remarks>
+    /// 清库是 IO（Redis 为 SCAN + 逐键 DELETE），禁止在锁内执行（修复前锁内
+    /// <c>GetAwaiter().GetResult()</c> 同步阻塞并发热更新回调并放大线程池饥饿风险）。
+    /// <c>IOptionsMonitor.OnChange</c> 回调为同步签名无法 await，以 <c>Task.Run</c> 将清库
+    /// 隔离到线程池后同步等待，维持「清库 → 重建」严格时序——新上下文不得在清库完成前
+    /// 从 store 恢复旧凭据令牌（D10 语义）。宿主无 SynchronizationContext（ASP.NET Core /
+    /// 控制台），无死锁面；配置变更是低频运维事件，回调线程短暂阻塞可接受。
+    /// <para>
+    /// 并发语义：两个并发 <c>OnChange</c> 各自执行 Phase-P 可能对同一 appKey 清库两次——
+    /// ClearAsync 幂等（删除不存在键为 no-op），且第二次清库发生在后者 Phase-A 之前，
+    /// 时序安全性不弱于串行。清库内部吞掉全部异常（含 OCE，TMF-03），不会中断热更新。
+    /// </para>
+    /// </remarks>
+    private void PurgeCredentialChangedTokens(List<FeishuAppConfig> incoming)
+    {
+        var toPurge = new List<string>();
+        foreach (var config in incoming)
+        {
+            var oldContext = ResolveExistingContext(config.AppKey);
+            if (oldContext == null)
+            {
+                continue;
+            }
+
+            var oldConfig = oldContext.Config;
+            if (!string.Equals(oldConfig?.AppId, config.AppId, StringComparison.Ordinal) ||
+                !string.Equals(oldConfig?.AppSecret, config.AppSecret, StringComparison.Ordinal))
+            {
+                toPurge.Add(config.AppKey);
+            }
+        }
+
+        if (toPurge.Count == 0)
+        {
+            return;
+        }
+
+        _logger.LogInformation(
+            "检测到 {Count} 个应用的凭据已变更（AppId 或 AppSecret 变化），清除其持久化令牌：{AppKeys}",
+            toPurge.Count, string.Join(", ", toPurge));
+
+        Task.Run(async () =>
+        {
+            foreach (var appKey in toPurge)
+            {
+                await PurgeTokenStoreAsync(appKey).ConfigureAwait(false);
+            }
+        }).GetAwaiter().GetResult();
+    }
+
+    /// <summary>
+    /// 解析已实例化的旧上下文：<c>_lazyContexts</c> 中已创建的 Lazy → 基类注册字典兜底。
+    /// </summary>
+    /// <remarks>
+    /// TMF-02：Phase-P 凭据比对、Phase-A 退休入队与 <see cref="RemoveApp"/> 复用，
+    /// 消除三份「TryGetValue + TryGetApp」副本。
+    /// </remarks>
+    private FeishuAppContext? ResolveExistingContext(string appKey)
+    {
+        if (_lazyContexts.TryGetValue(appKey, out var lazy) && lazy.IsValueCreated)
+        {
+            try
+            {
+                return lazy.Value;
+            }
+            catch
+            {
+                // 旧 Lazy 初始化失败的上下文无需退休/比对。
+            }
+        }
+
+        if (base.TryGetApp(appKey, out var registered) && registered is FeishuAppContext ctx)
+        {
+            return ctx;
+        }
+
+        return null;
+    }
+
+    /// <summary>
     /// 判断配置快照是否与当前一致（用于节流，避免每次变更通知都重建上下文）。
     /// TMA-06 / P1-5 修复（D4 契约）：逐字段比较全部运行期字段，消除节流漏比。
     /// </summary>
@@ -474,98 +539,17 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
             && a.IsDefault == b.IsDefault;
     }
 
-    /// <summary>
-    /// 用新配置重建指定应用的上下文。
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// 旧上下文<b>不立即 Dispose</b>（与 <c>DefaultAppManager.RemoveApp</c> 的 NEW-MA-01 语义一致），
-    /// 避免在途请求抛 <c>ObjectDisposedException</c>。
-    /// TMA-07 / P1-6 修复（D5 契约）：旧上下文进入退休队列，宽限期后 Dispose（停止其 Timer），
-    /// 不再依赖 GC 回收（Timer 会 root 旧对象图，GC 不会代劳）。
-    /// </para>
-    /// <para>
-    /// 令牌热迁移：per-app 存储键含 appKey 维度（<c>feishu:{appKey}:token:*</c>），
-    /// 存储后端（MemoryCache / Redis）独立于上下文实例，重建后可从既有令牌恢复，无需额外逻辑。
-    /// </para>
-    /// </remarks>
-    private void RebuildAppContext(FeishuAppConfig config)
-    {
-        config.Validate();
-
-        // TMA-07 / P1-6 修复：在替换 Lazy 之前，尝试获取旧上下文引用以入退休队列。
-        FeishuAppContext? oldContext = null;
-        if (_lazyContexts.TryGetValue(config.AppKey, out var oldLazy) && oldLazy.IsValueCreated)
-        {
-            try
-            {
-                oldContext = oldLazy.Value;
-            }
-            catch
-            {
-                // 旧 Lazy 初始化失败的上下文无需退休（无 Timer 等资源）。
-            }
-        }
-
-        // 同时检查基类字典中已注册的旧上下文
-        if (oldContext == null && base.TryGetApp(config.AppKey, out var registeredOld) && registeredOld is FeishuAppContext registeredCtx)
-        {
-            oldContext = registeredCtx;
-        }
-
-        // TMA2-05 / D10：凭据变更即清库。
-        // 热更新/重建上下文时，若 (AppId, AppSecret) 任一发生变化 → 立即清除该 appKey 的持久化令牌。
-        // 仅 BaseUrl/TimeOut/弹性参数等变化时保留令牌热迁移。
-        if (oldContext != null)
-        {
-            var oldConfig = oldContext.Config;
-            if (!string.Equals(oldConfig?.AppId, config.AppId, StringComparison.Ordinal) ||
-                !string.Equals(oldConfig?.AppSecret, config.AppSecret, StringComparison.Ordinal))
-            {
-                _logger.LogInformation(
-                    "应用 {AppKey} 的凭据已变更（AppId 或 AppSecret 变化），清除该应用的持久化令牌。",
-                    config.AppKey);
-                PurgeTokenStoreAsync(config.AppKey).ConfigureAwait(false).GetAwaiter().GetResult();
-            }
-        }
-
-        FeishuAppContext context;
-        lock (_lazyRebuildLock)
-        {
-            _lazyContexts[config.AppKey] = new Lazy<FeishuAppContext>(
-                () => CreateAppContext(config),
-                LazyThreadSafetyMode.ExecutionAndPublication);
-
-            // 立即实例化以便触发 Updated 事件；CreateAppContext 为纯内存装配（无网络往返）。
-            context = _lazyContexts[config.AppKey].Value;
-        }
-
-        // TMA-07：旧上下文进入退休队列，宽限期后 Dispose（停止其 Timer），
-        // 不再依赖 GC 回收（Timer 会 root 旧对象图，GC 不会代劳）。
-        if (oldContext != null)
-        {
-            _retirement?.Enqueue(config.AppKey, oldContext);
-        }
-
-        // 使用 RegisterApp 而非 UpdateApp：基类 UpdateApp 要求应用已存在于其 _apps 字典，
-        // 而本类采用懒加载——应用可能仅存在于 _lazyContexts 中（从未被访问过），此时 UpdateApp 会抛
-        // "未找到应用标识为 'xxx' 的应用上下文，无法更新"。
-        // RegisterApp 内部以 _apps.ContainsKey 判定 isUpdate，首次注册触发 Added、已存在触发 Updated，
-        // 语义与本方法的两种来源（新建 / 重建）天然吻合。
-        RegisterApp(config.AppKey, context, config.IsDefault);
-
-        if (config.IsDefault)
-        {
-            lock (_defaultAppLock)
-            {
-                _defaultAppKey = config.AppKey;
-            }
-        }
-    }
+    // TMF-04：RebuildAppContext 已删除——产品代码零调用方（唯一热更新路径为
+    // ApplyConfigurationChanges，测试经 OnConfigurationChanged 间接触发同等逻辑），
+    // 且其内部维护第二份 D10 比对+清库副本，与主路径双份漂移。详见
+    // .docs/令牌与多应用管理-审查修复与完善方案.md §五。
 
     /// <summary>
     /// TMA2-05 / D10：清除指定 appKey 的持久化令牌。
-    /// ClearAsync 失败不阻断重建（LogWarning + 计数）。
+    /// TMF-01：租户令牌经 <see cref="ITokenStore.ClearAsync"/>，用户令牌经
+    /// <see cref="IFeishuUserTokenStorePurge.ClearAllUsersAsync"/> 能力探测（工厂每次 Create
+    /// 新实例的 Memory 后端依赖跨实例共享记账才能清干净，用户存储此前被整段丢弃）。
+    /// ClearAsync/ClearAllUsersAsync 失败不阻断重建（LogWarning）。
     /// </summary>
     /// <param name="appKey">应用唯一标识</param>
     private async Task PurgeTokenStoreAsync(string appKey)
@@ -575,13 +559,18 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
             var tokenStoreFactory = _serviceProvider.GetService<IFeishuTokenStoreFactory>();
             if (tokenStoreFactory != null)
             {
-                var (store, _) = tokenStoreFactory.Create(appKey);
+                var (store, userStore) = tokenStoreFactory.Create(appKey);
                 await store.ClearAsync().ConfigureAwait(false);
+                if (userStore is IFeishuUserTokenStorePurge purgeable)
+                {
+                    await purgeable.ClearAllUsersAsync().ConfigureAwait(false);
+                }
                 _logger.LogInformation("已清除应用 {AppKey} 的持久化令牌。", appKey);
             }
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (Exception ex)
         {
+            // TMF-03：取消不向上传播——清库被取消视为「未清」，热更新继续（与失败不阻断语义一致）。
             _logger.LogWarning(ex, "清除应用 {AppKey} 的持久化令牌失败（不阻断重建）。", appKey);
         }
     }
@@ -900,25 +889,9 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
     /// </remarks>
     public override bool RemoveApp(string appKey)
     {
-        // TMA-07 / P1-6 修复：在移除前获取旧上下文引用以入退休队列。
-        FeishuAppContext? oldContext = null;
-        if (_lazyContexts.TryGetValue(appKey, out var oldLazy) && oldLazy.IsValueCreated)
-        {
-            try
-            {
-                oldContext = oldLazy.Value;
-            }
-            catch
-            {
-                // 旧 Lazy 初始化失败的上下文无需退休。
-            }
-        }
-
-        // 同时检查基类字典中已注册的旧上下文
-        if (oldContext == null && base.TryGetApp(appKey, out var registeredOld) && registeredOld is FeishuAppContext registeredCtx)
-        {
-            oldContext = registeredCtx;
-        }
+        // TMA-07 / P1-6 修复：在移除前获取旧上下文引用以入退休队列
+        //（TMF-02：ResolveExistingContext 方法化，消除第三份副本）。
+        var oldContext = ResolveExistingContext(appKey);
 
         var wasInLazy = _lazyContexts.TryRemove(appKey, out _);
         var wasInBase = base.RemoveApp(appKey);

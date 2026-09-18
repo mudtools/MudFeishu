@@ -538,6 +538,41 @@ public class UserTokenManagerTests : TokenManagerTestsBase
     }
 
     /// <summary>
+    /// TMF-05（CAS）：不可重试错误清库前比对 store 现值——store 已被并发刷新轮换为
+    /// 新令牌（与本次尝试的 candidate 编码值不同）时，不得误删新令牌。
+    /// 场景：宿主直调 RefreshUserTokenAsync 绕过组件 KeyedLockTable，竞态窗口重新打开。
+    /// </summary>
+    [Fact]
+    public async Task RefreshUserTokenAsync_ShouldKeepNewerStoredToken_WhenStoreValueDiffersFromAttemptedCandidate()
+    {
+        // Arrange：第 1 次 Get（LoadRefreshCandidateAsync）返回本次尝试的旧令牌；
+        // 第 2 次 Get（CAS 比对）返回并发刷新刚持久化的新令牌（编码值不同）。
+        var oldEncoded = EncodeToken("old-refresh", NowMs + 30L * 24 * 3600 * 1000);
+        var newerEncoded = EncodeToken("newer-refresh", NowMs + 30L * 24 * 3600 * 1000);
+        var getRefreshCalls = 0;
+        UserTokenStoreMock
+            .Setup(x => x.GetRefreshTokenAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => getRefreshCalls++ == 0 ? oldEncoded : newerEncoded);
+        UserTokenStoreMock
+            .Setup(x => x.GetAccessTokenAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((string?)null);
+
+        _authenticationApiMock
+            .Setup(x => x.GetOAuthenRefreshAccessTokenAsync(It.IsAny<OAuthRefreshTokenRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new OAuthCredentialsResult { Code = 99991664, Msg = "refresh token has been revoked" });
+
+        // Act
+        var result = await _userTokenManager.RefreshUserTokenAsync("user1", CancellationToken.None);
+
+        // Assert
+        result.Should().BeNull("invalid_grant 属不可重试错误，应返回 null 进入组件退避");
+        UserTokenStoreMock.Verify(
+            x => x.RemoveAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Never,
+            "store 已被并发刷新轮换为新令牌（与本次尝试的编码值不同），CAS 比对失败必须跳过清库");
+    }
+
+    /// <summary>
     /// TMA2-06：OAuth 返回服务端错误（可重试）→ 抛 FeishuException 保留可见性（组件会记退避/负缓存）。
     /// </summary>
     [Fact]

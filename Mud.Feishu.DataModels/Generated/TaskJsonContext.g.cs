@@ -65,7 +65,7 @@ namespace Mud.Feishu.DataModels.TasksActivitySubscriptions;
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.TasksSections.TaskSectionsInfo))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.TasksSections.TaskSectionsUpdateInfo))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.TasksSections.TaskSectionsOperationResult))]
-[JsonSerializable(typeof(global::Mud.Feishu.DataModels.TasksSections.TaskSummary))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.TasksSections.TaskSectionSummary))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.TasksSections.UpdateTaskSectionsResult))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Tasks.InputCustomFieldValue))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Tasks.CustomFieldValue))]

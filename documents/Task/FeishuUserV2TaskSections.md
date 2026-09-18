@@ -253,7 +253,7 @@ Task<FeishuApiPageListResult<SectionSummaryInfo>?> GetTaskSectionsPageListAsync(
 
 **函数签名**：
 ```csharp
-Task<FeishuApiPageListResult<TaskSummary>?> GetTaskSectionsPageListByIdAsync(
+Task<FeishuApiPageListResult<TaskSectionSummary>?> GetTaskSectionsPageListByIdAsync(
     [Path] string section_guid,
     [Query("completed")] bool? completed = null,
     [Query("created_from")] string? created_from = null,

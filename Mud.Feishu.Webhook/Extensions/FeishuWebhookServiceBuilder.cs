@@ -539,15 +539,18 @@ public class FeishuWebhookServiceBuilder
         _services.TryAddSingleton<IFeishuNonceDistributedDeduplicator, FeishuNonceDistributedDeduplicator>();
 
         // 令牌自动刷新后台服务已在 AddFeishuAppBaseServices 中注册（由 Mud.HttpUtils 提供）。
-        // 此处仅保留 Webhook 模块的配置覆盖：将 FeishuWebhookOptions.EnableBackgroundProcessing 映射到 TokenRefreshBackgroundOptions.Enabled。
+        // 此处仅保留 Webhook 模块的配置覆盖：把 FeishuWebhookOptions 映射到 TokenRefreshBackgroundOptions.Enabled。
         // 注意：此 PostConfigure 在 AddFeishuAppBaseServices 的 PostConfigure 之后执行，因此会覆盖基础的 Enabled=true 设置。
-        // - 当 Webhook 启用后台处理（EnableBackgroundProcessing=true）：保持启用（与基础设置一致）
-        // - 当 Webhook 禁用后台处理（EnableBackgroundProcessing=false，默认值）：覆盖为基础 false，禁用后台刷新
-        // Webhook 模块默认不启用后台处理，因此默认行为是禁用 TokenRefreshBackgroundService。
+        // 映射优先级（2026-09 修复「静默关闭令牌刷新」）：
+        //   1. FeishuWebhookOptions.EnableTokenBackgroundRefresh（显式覆盖，null = 不干预）
+        //   2. 回退到 FeishuWebhookOptions.EnableBackgroundProcessing（既有映射，默认 false）
+        // 即：默认行为不变（Webhook 宿主默认不开启令牌后台刷新），但宿主现在可以用 EnableTokenBackgroundRefresh
+        // 独立于 Webhook 后台处理开关来控制令牌刷新，不再被静默关闭而无可恢复的入口。
         _services.AddOptions<TokenRefreshBackgroundOptions>()
             .PostConfigure<IOptions<FeishuWebhookOptions>>((tokenOptions, webhookOptions) =>
             {
-                tokenOptions.Enabled = webhookOptions.Value.EnableBackgroundProcessing;
+                tokenOptions.Enabled = webhookOptions.Value.EnableTokenBackgroundRefresh
+                                       ?? webhookOptions.Value.EnableBackgroundProcessing;
             });
 
         // 注册 HttpContext 访问器（用于在 SignatureValidator 中获取客户端 IP）

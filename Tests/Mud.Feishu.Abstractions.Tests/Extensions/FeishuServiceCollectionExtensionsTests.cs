@@ -6,6 +6,7 @@
 // -----------------------------------------------------------------------
 
 using FluentAssertions;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
@@ -153,6 +154,53 @@ public class FeishuServiceCollectionExtensionsTests
         var tokenOptions = provider.GetRequiredService<IOptions<TokenRefreshBackgroundOptions>>().Value;
         tokenOptions.Enabled.Should().BeTrue(
             "存在默认应用时，TokenRefreshBackgroundOptions.Enabled 应被 PostConfigure 设为 true");
+    }
+
+    // ============================================================
+    // C-1 补强：MudHttpTokenRecovery 配置节绑定（配置绑定断层修复）
+    // ============================================================
+
+    /// <summary>
+    /// C-1 补强验证：经 <c>AddFeishuApp(IConfiguration)</c> 注册后，<c>MudHttpTokenRecovery</c> 配置节
+    /// 必须被真正绑定到 <see cref="Mud.HttpUtils.TokenRecoveryOptions"/>。
+    /// 业务场景：此前仅调用 <c>services.AddOptions&lt;TokenRecoveryOptions&gt;()</c>（不绑定任何配置节），
+    /// 该节被**静默忽略**，RecoveryMaxRetries / RefreshTimeoutSeconds 等在配置中设置后不生效，
+    /// 与 <c>AddFeishuAppBaseServices</c> 中"可通过 IConfiguration 的 MudHttpTokenRecovery 节自定义"的注释不符。
+    /// </summary>
+    [Fact]
+    public void AddFeishuApp_ShouldBindTokenRecoveryOptions_FromConfigurationSection()
+    {
+        // Arrange
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["FeishuApps:0:AppKey"] = "default",
+                ["FeishuApps:0:AppId"] = "cli_default_id_1234567890",
+                ["FeishuApps:0:AppSecret"] = "default_secret_123456",
+                ["FeishuApps:0:IsDefault"] = "true",
+                ["MudHttpTokenRecovery:RecoveryMaxRetries"] = "5",
+                ["MudHttpTokenRecovery:RefreshTimeoutSeconds"] = "7.5"
+            })
+            .Build();
+        var services = CreateServiceCollection();
+
+        // Act
+        services.AddFeishuApp(configuration);
+        using var provider = services.BuildServiceProvider();
+
+        // Assert
+        var options = provider.GetRequiredService<IOptions<Mud.HttpUtils.TokenRecoveryOptions>>().Value;
+        options.RecoveryMaxRetries.Should().Be(5,
+            "MudHttpTokenRecovery:RecoveryMaxRetries 必须绑定（否则该配置节被静默忽略）");
+        options.RefreshTimeoutSeconds.Should().Be(7.5,
+            "MudHttpTokenRecovery:RefreshTimeoutSeconds 必须绑定");
+
+        // 与组件 AddMudHttpTokenRecoveryFromConfiguration 对齐：校验器 + 可直接解析的实例。
+        provider.GetServices<IValidateOptions<Mud.HttpUtils.TokenRecoveryOptions>>()
+            .Should().Contain(v => v is Mud.HttpUtils.TokenRecoveryOptionsValidator,
+                "应注册组件的 TokenRecoveryOptionsValidator，使非法取值在选项解析期暴露而非静默生效");
+        provider.GetRequiredService<Mud.HttpUtils.TokenRecoveryOptions>().RecoveryMaxRetries.Should().Be(5,
+            "TMR-07：TokenRecoveryOptions 应可直接解析，且与 IOptions<T> 同源");
     }
 
     // ============================================================

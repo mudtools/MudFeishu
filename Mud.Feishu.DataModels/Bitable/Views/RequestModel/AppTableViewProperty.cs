@@ -33,20 +33,11 @@ public class AppTableViewProperty
     /// <para>表格视图层级结构设置</para>
     /// <para>必填：否</para>
     /// </summary>
+    /// <remarks>
+    /// 层级结构设置复用同命名空间的 <see cref="Bitable.AppTableViewPropertyHierarchyConfig"/>：
+    /// 同一 <c>Bitable</c> JsonSerializerContext 内不允许存在同名类型，否则源生成器（SYSLIB1031）
+    /// 只会为其中一个生成元数据。
+    /// </remarks>
     [JsonPropertyName("hierarchy_config")]
     public AppTableViewPropertyHierarchyConfig? HierarchyConfig { get; set; }
-
-    /// <summary>
-    /// <para>表格视图层级结构设置</para>
-    /// </summary>
-    public class AppTableViewPropertyHierarchyConfig
-    {
-        /// <summary>
-        /// <para>层级结构的关联列 ID</para>
-        /// <para>必填：否</para>
-        /// <para>示例值：fldmeqmpVA</para>
-        /// </summary>
-        [JsonPropertyName("field_id")]
-        public string? FieldId { get; set; }
-    }
 }

@@ -298,7 +298,7 @@ public class IFeishuV2TaskSectionsTests
                 }
             }
             """;
-        var result = JsonSerializer.Deserialize<FeishuApiPageListResult<TaskSummary>>(resultStr, _jsonSerializerOptions);
+        var result = JsonSerializer.Deserialize<FeishuApiPageListResult<TaskSectionSummary>>(resultStr, _jsonSerializerOptions);
 
         // 验证顶层对象非空
         Assert.NotNull(result);

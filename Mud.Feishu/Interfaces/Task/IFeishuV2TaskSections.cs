@@ -109,7 +109,7 @@ public interface IFeishuV2TaskSections : IFeishuAppContextSwitcher
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Get("/open-apis/task/v2/sections/{section_guid}/tasks")]
-    Task<FeishuApiPageListResult<TaskSummary>?> GetTaskSectionsPageListByIdAsync(
+    Task<FeishuApiPageListResult<TaskSectionSummary>?> GetTaskSectionsPageListByIdAsync(
         [Path] string section_guid,
         [Query("completed")] bool? completed = null,
         [Query("created_from")] string? created_from = null,

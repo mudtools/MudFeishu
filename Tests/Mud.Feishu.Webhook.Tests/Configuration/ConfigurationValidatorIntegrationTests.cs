@@ -184,4 +184,85 @@ public class ConfigurationValidatorIntegrationTests
         Assert.False(webhookOptions.Value.EnableBackgroundProcessing);
         Assert.False(tokenOptions.Value.Enabled);
     }
+
+    /// <summary>
+    /// 逃生开关验证：<see cref="FeishuWebhookOptions.EnableTokenBackgroundRefresh"/> 显式设为 true 时，
+    /// 即使 Webhook 后台处理关闭（EnableBackgroundProcessing=false），也应开启令牌后台刷新。
+    /// 业务场景：修复"宿主已配置应用、但因 Webhook 后台处理默认关闭而令牌后台刷新被静默关闭且无恢复入口"。
+    /// </summary>
+    [Fact]
+    public void EnableTokenBackgroundRefresh_ShouldOverrideMapping_WhenExplicitlyEnabled()
+    {
+        var services = new ServiceCollection();
+        services.AddOptions<FeishuWebhookOptions>()
+            .Configure(options =>
+            {
+                options.EnableBackgroundProcessing = false;
+                options.EnableTokenBackgroundRefresh = true;
+            });
+        services.AddOptions<TokenRefreshBackgroundOptions>()
+            .PostConfigure<IOptions<FeishuWebhookOptions>>((tokenOptions, webhookOptions) =>
+            {
+                tokenOptions.Enabled = webhookOptions.Value.EnableTokenBackgroundRefresh
+                                       ?? webhookOptions.Value.EnableBackgroundProcessing;
+            });
+
+        var serviceProvider = services.BuildServiceProvider();
+        var tokenOptions = serviceProvider.GetRequiredService<IOptions<TokenRefreshBackgroundOptions>>();
+
+        Assert.True(tokenOptions.Value.Enabled,
+            "显式 EnableTokenBackgroundRefresh=true 必须覆盖 EnableBackgroundProcessing 的映射");
+    }
+
+    /// <summary>
+    /// 逃生开关验证：显式设为 false 时应关闭令牌后台刷新，即使 Webhook 后台处理已启用。
+    /// </summary>
+    [Fact]
+    public void EnableTokenBackgroundRefresh_ShouldOverrideMapping_WhenExplicitlyDisabled()
+    {
+        var services = new ServiceCollection();
+        services.AddOptions<FeishuWebhookOptions>()
+            .Configure(options =>
+            {
+                options.EnableBackgroundProcessing = true;
+                options.EnableTokenBackgroundRefresh = false;
+            });
+        services.AddOptions<TokenRefreshBackgroundOptions>()
+            .PostConfigure<IOptions<FeishuWebhookOptions>>((tokenOptions, webhookOptions) =>
+            {
+                tokenOptions.Enabled = webhookOptions.Value.EnableTokenBackgroundRefresh
+                                       ?? webhookOptions.Value.EnableBackgroundProcessing;
+            });
+
+        var serviceProvider = services.BuildServiceProvider();
+        var tokenOptions = serviceProvider.GetRequiredService<IOptions<TokenRefreshBackgroundOptions>>();
+
+        Assert.False(tokenOptions.Value.Enabled,
+            "显式 EnableTokenBackgroundRefresh=false 必须关闭令牌后台刷新");
+    }
+
+    /// <summary>
+    /// 逃生开关默认值验证：<c>null</c> = 不干预，沿用 EnableBackgroundProcessing 映射（保持既有行为）。
+    /// </summary>
+    [Fact]
+    public void EnableTokenBackgroundRefresh_DefaultNull_ShouldNotIntervene()
+    {
+        var services = new ServiceCollection();
+        services.AddOptions<FeishuWebhookOptions>();
+        services.AddOptions<TokenRefreshBackgroundOptions>()
+            .PostConfigure<IOptions<FeishuWebhookOptions>>((tokenOptions, webhookOptions) =>
+            {
+                tokenOptions.Enabled = webhookOptions.Value.EnableTokenBackgroundRefresh
+                                       ?? webhookOptions.Value.EnableBackgroundProcessing;
+            });
+
+        var serviceProvider = services.BuildServiceProvider();
+        var webhookOptions = serviceProvider.GetRequiredService<IOptions<FeishuWebhookOptions>>();
+        var tokenOptions = serviceProvider.GetRequiredService<IOptions<TokenRefreshBackgroundOptions>>();
+
+        Assert.Null(webhookOptions.Value.EnableTokenBackgroundRefresh);
+        Assert.False(webhookOptions.Value.EnableBackgroundProcessing);
+        Assert.False(tokenOptions.Value.Enabled,
+            "null 表示不干预：结果应与 EnableBackgroundProcessing 的映射一致");
+    }
 }

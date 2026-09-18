@@ -6,21 +6,32 @@
 // -----------------------------------------------------------------------
 
 namespace Mud.Feishu.DataModels.DepartmentsV1;
+
 /// <summary>
-/// 表示部门路径信息的数据模型，用于描述部门在层级结构中的路径信息
+/// 部门负责人（v1 接口模型）
 /// </summary>
+/// <remarks>
+/// 类名带 V1 后缀以与 <see cref="Mud.Feishu.DataModels.Departments.DepartmentLeader"/> 区分：
+/// 同一 <c>Organization</c> JsonSerializerContext 内不允许存在同名类型，否则源生成器
+/// （SYSLIB1031）只会为其中一个生成元数据。
+/// </remarks>
 [HttpJsonSerializable(SerializerClassName = "Organization")]
-public class DepartmentPathInfo
+public class DepartmentLeaderV1
 {
     /// <summary>
-    /// 获取或设置部门ID
+    /// 部门负责人类型 可选值有：1：主 2：副
     /// </summary>
-    [JsonPropertyName("department_id")]
-    public string? DepartmentId { get; set; }
+    [JsonPropertyName("leader_type")]
+    public int LeaderType { get; set; }
 
     /// <summary>
-    /// 获取或设置部门名称（支持国际化）
+    /// 部门负责人ID，与employee_id_type类型保持一致
     /// </summary>
-    [JsonPropertyName("department_name")]
-    public I18nContent? DepartmentName { get; set; }
+    [JsonPropertyName("leader_id")]
+    public
+#if NET7_0_OR_GREATER
+        required
+#endif
+        string? LeaderId
+    { get; set; }
 }

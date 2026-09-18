@@ -17,5 +17,5 @@ public class DepartmentPageListResult : PageListResult
     /// 部门分页列表结果
     /// </summary>
     [JsonPropertyName("departments")]
-    public List<DepartmentDetail>? Departments { get; set; }
+    public List<DepartmentDetailV1>? Departments { get; set; }
 }

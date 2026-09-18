@@ -59,7 +59,7 @@ public class GetApprovalExternalResult
     /// <para>可见人列表，在可见范围内的用户可在审批发起页看到当前审批。</para>
     /// </summary>
     [JsonPropertyName("viewers")]
-    public ApprovalCreateViewers[]? Viewers { get; set; }
+    public ExternalCreateViewers[]? Viewers { get; set; }
 
     /// <summary>
     /// <para>国际化文案</para>

@@ -80,7 +80,7 @@ namespace Mud.Feishu.DataModels.Drive;
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Drive.Folder.CreateFolderRequest))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Drive.Folder.CreateFolderResult))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Drive.Folder.FileInfo))]
-[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Drive.Folder.FileShortcutInfo))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Drive.Folder.FileShortcutTargetInfo))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Drive.Folder.GetDriveFilesResult))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Drive.Folder.GetDriveRootFolderMetaReuslt))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Drive.Folder.GetFolderMetaResult))]

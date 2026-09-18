@@ -10,10 +10,15 @@ using Mud.Feishu.DataModels.Tasks;
 namespace Mud.Feishu.DataModels.TasksSections;
 
 /// <summary>
-/// 任务摘要信息
+/// 任务摘要信息（自定义分组 task/v2/sections 接口模型）
 /// </summary>
+/// <remarks>
+/// 类名带 Section 前缀以与 <see cref="Mud.Feishu.DataModels.TasksList.TaskSummary"/> 区分：
+/// 两者同处 <c>Task</c> JsonSerializerContext，必须保持类名唯一，否则源生成器（SYSLIB1031）
+/// 只会为其中一个生成元数据。
+/// </remarks>
 [HttpJsonSerializable(SerializerClassName = "Task")]
-public class TaskSummary
+public class TaskSectionSummary
 {
     /// <summary>
     /// <para>任务GUID</para>

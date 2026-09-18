@@ -31,7 +31,7 @@ namespace Mud.Feishu.DataModels.ApprovalComments;
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.ApprovalExternal.ExternalTrusteeshipInstanceCacheConfig))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.ApprovalExternal.InstanceLink))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.ApprovalExternal.ApprovalCreateExternal))]
-[JsonSerializable(typeof(global::Mud.Feishu.DataModels.ApprovalExternal.ApprovalCreateViewers))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.ApprovalExternal.ExternalCreateViewers))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.ApprovalExternal.CheckExternalInstancesRequest))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.ApprovalExternal.CreateApprovalExternalRequest))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.ApprovalExternal.GetExternalInstancesStateRequest))]

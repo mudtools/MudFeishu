@@ -74,11 +74,13 @@ public static class FeishuServiceCollectionExtensions
     /// </summary>
     /// <param name="services">服务集合</param>
     /// <param name="configs">飞书配置列表</param>
+    /// <param name="configuration">宿主配置（可选）。用于绑定组件的 <c>MudHttpTokenRecovery</c> 配置节；
+    /// 为 <c>null</c>（无 IConfiguration 的代码式注册路径）时该节不参与绑定。</param>
     /// <returns>服务集合实例。支持链式调用</returns>
     /// <remarks>
     /// 此方法用于多应用系统，注册了基础依赖项但不注册全局TokenManager。
     /// </remarks>
-    internal static IServiceCollection AddFeishuAppBaseServices(this IServiceCollection services, List<FeishuAppConfig> configs)
+    internal static IServiceCollection AddFeishuAppBaseServices(this IServiceCollection services, List<FeishuAppConfig> configs, IConfiguration? configuration = null)
     {
         UrlValidator.ConfigureAllowedDomains(["open.feishu.cn", "open.larksuite.com", "larksuite.com", "feishu.cn"]);
 
@@ -289,9 +291,27 @@ public static class FeishuServiceCollectionExtensions
         // 自定义实现可通过预注册覆盖（TryAdd 语义：已存在则跳过）。
         services.TryAddSingleton<IFeishuTokenManagerFactory, DefaultFeishuTokenManagerFactory>();
 
-        // C-1 修复：注册 TokenRecoveryOptions，使 TokenRecoveryDelegatingHandler 可通过 IOptions<TokenRecoveryOptions> 获取配置。
-        // 用户可通过 IConfiguration 的 "MudHttpTokenRecovery" 节或 services.Configure<TokenRecoveryOptions>(...) 自定义恢复策略。
+        // C-1 修复：注册 TokenRecoveryOptions，使 TokenRecoveryExecutor 可经
+        // IOptionsMonitor<TokenRecoveryOptions> 获取恢复策略。
+        // C-1 补强（配置绑定断层修复）：**仅调用 AddOptions<T>() 并不会绑定任何配置节** ——
+        // "MudHttpTokenRecovery" 节会被静默忽略，TokenRecoveryOptions 永远取默认值
+        // （RecoveryMaxRetries=1 / RefreshTimeoutSeconds=30 / MaxCachedRequestBodyBytes=1MB /
+        // RefreshDedupWindowSeconds=2 / MaxDedupEntries=1024），使这些可调参数无法通过配置下发。
+        // 组件侧等价入口为 AddMudHttpTokenRecoveryFromConfiguration(IConfiguration)（内部即
+        // Configure + GetSection.Bind + 校验器 + 可解析实例）；此处按本仓库既有约定
+        // （services.Configure<T>(o => section.Bind(o))，与 FeishuWebhook/OpenTelemetry/Redis 一致）等价实现。
         services.AddOptions<TokenRecoveryOptions>();
+        if (configuration != null)
+        {
+            services.Configure<TokenRecoveryOptions>(options =>
+                configuration.GetSection(TokenRecoveryOptions.SectionName).Bind(options));
+        }
+
+        // 与组件 AddMudHttpTokenRecoveryFromConfiguration 对齐：注册校验器（非法取值在选项解析期暴露，
+        // 而非静默生效）与可直接解析的 TokenRecoveryOptions 实例（TMR-07，兼容以 TokenRecoveryOptions
+        // 为参数的旧构造函数）。
+        services.TryAddSingleton<IValidateOptions<TokenRecoveryOptions>, TokenRecoveryOptionsValidator>();
+        services.TryAddSingleton(sp => sp.GetRequiredService<IOptions<TokenRecoveryOptions>>().Value);
 
 #if NET6_0_OR_GREATER
         // SR-P0-2 修复：FeishuTokenRegistrationService 必须在 TokenRefreshBackgroundService 之前注册为 IHostedService，

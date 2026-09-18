@@ -2,8 +2,7 @@
 //  作者：Mud Studio  版权所有 (c) Mud Studio 2026   
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
-//  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！
-//  本项目基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
+//  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
 using StackExchange.Redis;
@@ -58,7 +57,9 @@ end
 redis.call('ZADD', sortedSetKey, tonumber(seqId), seqId)
 
 -- 写入时裁剪：移除 TTL 窗口外的旧成员（ADR-4）
-redis.call('ZREMRANGEBYSCORE', sortedSetKey, '-inf', '(' .. tostring(expireBefore) .. ')')
+-- 注意：Redis 排他区间语法仅有前导 '('，没有闭括号——'(1789691238)' 会导致
+-- ERR min or max is not a float（strtod 在尾部 ')' 处解析失败）
+redis.call('ZREMRANGEBYSCORE', sortedSetKey, '-inf', '(' .. tostring(expireBefore))
 
 -- 刷新 Sorted Set TTL（与 String 键同生命周期）
 redis.call('EXPIRE', sortedSetKey, tonumber(ttlSeconds))
@@ -210,8 +211,8 @@ return 0
     /// <para><b>⚠️ 破坏性操作</b>：此方法会删除所有匹配 <c>{keyPrefix}{scopeKey}*</c> 的键。
     /// 跨实例共享 Redis 时会清空<b>所有匹配该 scopeKey 的实例</b>的 SeqID 状态，仅用于运维场景，
     /// 勿在常规重连路径调用。</para>
-    /// <para>best-effort：失败记日志，不抛出。</para>
     /// </summary>
+    /// <remarks>best-effort：失败记日志，不抛出。</remarks>
     public async Task ClearCacheAsync()
     {
         ThrowIfDisposed();

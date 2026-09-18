@@ -52,7 +52,9 @@ asserting only the diagnostic counts is a false green when the build itself fail
 It must also pass `--no-incremental`: MSBuild's `CoreCompile` up-to-date check compares only input/output
 timestamps and **not the csc command line**, so a strict-mode build issued right after the step-1 build
 skips compilation entirely and reports 0 diagnostics (this was a long-standing false green; see
-`documents/MudHttpUtils-2.0.7-升级验证报告.md` §F1).
+§F1 of the historical upstream report `documents/MudHttpUtils-2.0.7-升级验证报告.md`, which is **not
+committed to this repo** — the conclusion is now enforced by the `--no-incremental` flag in
+`scripts/verify-build.ps1`).
 
 Step 4 runs `dotnet test` **per (test project, TFM)** with a dedicated TRX per combination, and asserts both
 "TRX exists" and `Counters.total > 0` (a testhost that fails to start still writes an empty TRX with exit
@@ -65,15 +67,20 @@ asserted for the diagnostic whitelist afterwards (`.github/workflows/dotnet-publ
 
 ## Dependency version policy (Mud.HttpUtils)
 
-This repo consumes `Mud.HttpUtils` **2.0.6** (source-generator fix release: inherited-interface
-clients forward `appAuthorizer` to the base generated class and no longer re-declare the field —
-fixes a P0 where `UseApp`/`BeginScope` on inherited-interface clients always threw under the
-MT-02 default-deny authorizer, plus ~1184 CS0108; the JsonContextScaffolder now emits
-`TypeInfoPropertyName` for duplicate type-info names — SYSLIB1031). Until 2.0.6 is published to
-nuget.org, `nuget.config` temporarily re-adds the local folder source
-(`D:/Repos/MudHttpUtils/artifacts`); remove that entry once 2.0.6 is live and the consumption
-returns to nuget.org-only. To consume a newer component version: bump the version in the
-`PackageReference`s and sync `AGENTS.md` / README dependency table / `TokenMultiAppContractGuards.ExpectedVersion`.
+This repo consumes `Mud.HttpUtils` **2.0.6** — the release that carries the generator-side fixes:
+inherited-interface clients forward `appAuthorizer` to the base generated class and no longer
+re-declare the field (fixes a P0 where `UseApp`/`BeginScope` on inherited-interface clients always
+threw under the MT-02 default-deny authorizer, plus ~1184 `CS0108` — neither for the
+`_appAuthorizer` field nor for `[Query]`/`[Path]`/`[Header]` interface properties re-declared in
+derived classes), the `CS0472` value-type array filter and the `CS8604` nullable path-parameter
+escaping fixes, and the JsonContextScaffolder now emits `TypeInfoPropertyName` for duplicate
+type-info names — SYSLIB1031. Because 2.0.6 is **not yet published on nuget.org**, it is currently
+consumed **from the local component build output**: `nuget.config` declares nuget.org **plus** the
+`MudHttpUtils-local` folder source pointing at `D:/Repos/MudHttpUtils/artifacts` (produced by
+`pack.ps1 Release`). Once 2.0.6 is published, delete that folder source again to restore the
+"nuget.org only" policy. To consume a newer component version: bump the version in the
+`PackageReference`s and sync `AGENTS.md` / README dependency table /
+`TokenMultiAppContractGuards.ExpectedVersion`.
 
 > **Packaging rules (component repo `D:/Repos/MudHttpUtils`)**: release packages must be produced by
 > `pack.ps1 Release` (writes to `artifacts/`) **and published to nuget.org**. `pack_debug.ps1` produces
@@ -83,7 +90,8 @@ returns to nuget.org-only. To consume a newer component version: bump the versio
 > and (b) every DLL inside every package is SHA256-identical to its `bin/<Configuration>/…` build
 > output (prevents "Debug posing as Release" and stale-cache mis-packs).
 > Details: `documents/MudHttpUtils-2.0.7-升级验证报告.md` (the report filename keeps its pre-release
-> iteration label).
+> iteration label; the file itself is **not committed to this repo** — the rules above are enforced
+> by `pack.ps1`'s post-pack validation and by `scripts/verify-build.ps1` step 0).
 
 **During local component development** (fix not yet on nuget.org): temporarily re-add the local
 folder source to `nuget.config`

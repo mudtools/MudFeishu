@@ -78,7 +78,7 @@ public class CreateApprovalExternalRequest
     /// <para>必填：否</para>
     /// </summary>
     [JsonPropertyName("viewers")]
-    public ApprovalCreateViewers[]? Viewers { get; set; } = [];
+    public ExternalCreateViewers[]? Viewers { get; set; } = [];
 
     /// <summary>
     /// <para>国际化文案</para>

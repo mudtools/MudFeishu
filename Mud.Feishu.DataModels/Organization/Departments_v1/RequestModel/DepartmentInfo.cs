@@ -33,7 +33,7 @@ public class DepartmentInfo
     /// 部门负责人
     /// </summary>
     [JsonPropertyName("leaders")]
-    public List<DepartmentLeader>? Leaders { get; set; } = [];
+    public List<DepartmentLeaderV1>? Leaders { get; set; } = [];
 
     /// <summary>
     /// 在上级部门下的排序权重，返回结果按order_weight降序排列

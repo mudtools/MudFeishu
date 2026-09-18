@@ -299,6 +299,14 @@ $installedRuntimeMajors = @(dotnet --list-runtimes 2>$null |
     ForEach-Object { if ($_ -match '^Microsoft\.NETCore\.App (\d+)\.') { [int]$Matches[1] } } |
     Sort-Object -Unique)
 
+# ASP.NET Core 是**独立**的共享框架：只探测 Microsoft.NETCore.App 会把"依赖 AspNetCore 的测试工程"
+# （如 Mud.Feishu.Webhook.Tests 经 ProjectReference 传递依赖）误判为可运行，随后 testhost 启动即中止、
+# TRX total=0，最终以误导性的"testhost 启动失败？"计入门禁失败。这里单独探测该框架族，
+# 并按被测工程的**实际构建产物**（runtimeconfig.json 的 frameworks 列表）判定是否依赖它。
+$installedAspNetCoreMajors = @(dotnet --list-runtimes 2>$null |
+    ForEach-Object { if ($_ -match '^Microsoft\.AspNetCore\.App (\d+)\.') { [int]$Matches[1] } } |
+    Sort-Object -Unique)
+
 $testExit = 0
 $skippedRuns = New-Object System.Collections.Generic.List[string]
 $executedLabels = New-Object System.Collections.Generic.List[string]
@@ -309,6 +317,20 @@ foreach ($run in $testRuns) {
         if ($installedRuntimeMajors -notcontains $major) {
             $skippedRuns.Add("$($run.Label)（未安装 .NET $major 运行时）")
             Write-Host "  -- $($run.Label)：跳过（未安装 .NET $major 运行时）" -ForegroundColor Yellow
+            continue
+        }
+
+        # 该运行的构建产物是否声明依赖 ASP.NET Core 共享框架（传递依赖由 runtimeconfig 体现）。
+        # 产物缺失时按"不依赖"处理（保持原行为，不引入回归）。
+        $needsAspNetCore = $false
+        $binDir = Join-Path (Split-Path -Parent $run.Project) "bin\Release\$($run.Tfm)"
+        $runtimeConfig = Join-Path $binDir (([System.IO.Path]::GetFileNameWithoutExtension($run.Project)) + '.runtimeconfig.json')
+        if (Test-Path $runtimeConfig) {
+            $needsAspNetCore = (Get-Content -Path $runtimeConfig -Raw) -match 'Microsoft\.AspNetCore\.App'
+        }
+        if ($needsAspNetCore -and ($installedAspNetCoreMajors -notcontains $major)) {
+            $skippedRuns.Add("$($run.Label)（未安装 ASP.NET Core $major 运行时）")
+            Write-Host "  -- $($run.Label)：跳过（未安装 ASP.NET Core $major 运行时）" -ForegroundColor Yellow
             continue
         }
     }

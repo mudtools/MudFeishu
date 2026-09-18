@@ -7,6 +7,26 @@
 > 对应《.docs/MudFeishu-Token-MultiApp-Review-Remediation-Plan-R2.md》的 TMA2-01…TMA2-23 全部条目。
 > 本项目尚未发布，以下破坏性变更无需数据迁移。
 
+### 🐛 源生成 JsonContext 同名类型冲突修复（SYSLIB1031，2026-09-17）
+
+- **问题**：STJ 源生成器按**类型简单名**为 `JsonSerializerContext` 生成元数据成员，因此同一 Context 内
+  不允许出现同名类型。`Mud.Feishu.DataModels` 存在 7 组同名 DTO，编译期报 9 条 `SYSLIB1031`
+  （net8.0/net10.0 各一遍）——且警告的实质后果是**只为其一生成元数据**：`Departments.DepartmentLeader` /
+  `DepartmentDetail`、`Users.DepartmentPathInfo`、`Approval.ApprovalCreateViewers`、
+  `Drive.Files.FileShortcutInfo`、`TasksList.TaskSummary` 均未进入源生成解析器，运行时静默退化为反射兜底
+  （AOT 下即失效）。派生的集合类型（`ListDepartmentLeader`、`ApprovalCreateViewersArray`）同理被丢弃。
+- **修复**：按命名空间语义重命名冲突类型，并移除 Bitable 视图属性里与顶层类型完全重复的嵌套定义。
+- **破坏性变更（重命名的公开 DTO）**：
+  - `DepartmentsV1.DepartmentLeader` → `DepartmentLeaderV1`
+  - `DepartmentsV1.DepartmentDetail` → `DepartmentDetailV1`
+  - `DepartmentsV1.DepartmentPathInfo` → `DepartmentPathInfoV1`
+  - `ApprovalExternal.ApprovalCreateViewers` → `ExternalCreateViewers`
+  - `Drive.Folder.FileShortcutInfo` → `FileShortcutTargetInfo`（描述快捷方式指向的源文件）
+  - `TasksSections.TaskSummary` → `TaskSectionSummary`
+  - 移除嵌套类型 `AppTableViewProperty.AppTableViewPropertyHierarchyConfig`（改用同名的顶层类型）
+  - 受影响的接口签名：`IFeishuV2TaskSections.GetTaskSectionsPageListByIdAsync` 返回
+    `FeishuApiPageListResult<TaskSectionSummary>`
+
 ### 🔧 依赖升级与门禁加固（Mud.HttpUtils 2.0.5 正式版，2026-09-17）
 
 - **依赖升级**：5 个工程的 `Mud.HttpUtils` / `Mud.HttpUtils.Generator` 统一钉住 **2.0.5**

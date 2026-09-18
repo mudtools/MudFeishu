@@ -17,15 +17,16 @@
 	</PropertyGroup>
 
 	<ItemGroup Condition="'$(TargetFramework)' == 'net10.0' or '$(TargetFramework)' == 'net8.0'">
-		<PackageReference Include="StackExchange.Redis" Version="2.10.1" />
 		<PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" Version="10.0.5" />
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0' or '$(TargetFramework)' == 'net6.0'">
-		<PackageReference Include="StackExchange.Redis" Version="2.8.16" />
 		<PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" Version="8.0.1" />
 	</ItemGroup>
-	
+
+	<ItemGroup>
+        <PackageReference Include="StackExchange.Redis" Version="3.3.0" />
+	</ItemGroup>		
 	<ItemGroup>
 		<!-- <PackageReference Include="Mud.Feishu.Abstractions" Version="1.1.2" /> -->
 		<None Include="README.md" Pack="true" PackagePath="\" />

@@ -443,6 +443,9 @@ public class DemoDepartmentEventHandler : DepartmentCreatedEventHandler
 
 ### 失败事件重试配置
 
+> R5.1 起真实生效（写入侧与轮询侧同源于 `FeishuWebhookOptions.Retry`）；此前除 `EnableRetry` 外
+> 其余键静默无效，升级前请核对取值，详见 `documents/Configuration/ConfigMigration-R5.md`。
+
 | 选项                             | 类型   | 默认值 | 说明                         |
 | -------------------------------- | ------ | ------ | ---------------------------- |
 | `Retry.EnableRetry`              | bool   | false  | 是否启用失败事件重试         |

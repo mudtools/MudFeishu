@@ -38,12 +38,23 @@ public class WebSocketCertificateOptions
     public bool AllowInsecureWebSocket { get; set; } = false;
 
     /// <summary>是否校验 SSL 证书，默认 true</summary>
+    /// <remarks>
+    /// R5/X5 优先级链：<c>CustomCallback</c> &gt; <c>ValidateServerCertificate=false</c>（完全关闭校验）
+    /// &gt; <c>Mode=Dev</c> &gt; <c>Mode=Strict</c>。即「完全关闭校验」的能力优先于一切模式。
+    /// </remarks>
     public bool ValidateServerCertificate { get; set; } = true;
 
     /// <summary>是否允许自签名，默认 false</summary>
+    /// <remarks>
+    /// R5/X5 起 <c>Mode</c> 是运行时主开关：<c>Mode=Dev</c> 无条件放宽「自签名根」与「名称不匹配」
+    /// （本属性不参与 Dev 分支判定）；<c>Mode=Strict</c> 时本属性必须为 false
+    /// （由 <c>ValidateCertificateOptions</c> 强制）。保留本属性仅用于 Strict 的一致性校验与
+    /// 运行期防御性读取，计划下个 major 删除——新配置请改用 <c>Mode=Dev</c>。
+    /// </remarks>
     public bool AllowSelfSignedCertificates { get; set; } = false;
 
     /// <summary>是否允许证书名称不匹配，默认 false</summary>
+    /// <remarks>语义与 <see cref="AllowSelfSignedCertificates"/> 相同（R5/X5 后由 <c>Mode</c> 主导）。</remarks>
     public bool AllowCertificateNameMismatch { get; set; } = false;
 
     /// <summary>自定义证书回调（仅代码配置；Mode=Custom 时必须提供）</summary>

@@ -419,7 +419,7 @@ builder.Services.AddFeishuUserContext(options =>
 <details>
 <summary>📋 失败事件重试配置参考（FailedEventRetryOptions）</summary>
 
-> Webhook 模块支持失败事件的自动重试，以下配置在 `FeishuWebhook:Retry` 节点下生效。
+> Webhook 模块支持失败事件的自动重试，以下配置在 `FeishuWebhook:Retry` 节点下生效（R5.1 起真实生效；此前这些键静默无效，升级前请核对取值，详见 `documents/Configuration/ConfigMigration-R5.md`）。
 
 | 配置项                     | 类型   | 默认值 | 说明                         |
 | -------------------------- | ------ | ------ | ---------------------------- |

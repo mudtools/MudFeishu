@@ -895,24 +895,31 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
             //     > Mode=Strict（默认：拒绝自签名 / 名称不匹配 / 其他链错误）
             // ────────────────────────────────────────────────────────────────
 
-            // 兼容分支：Mode 未显式设为 Custom 却提供了回调。
+            // 兼容分支（G-05）：Mode 未显式设为 Custom 却提供了回调 —— 回调**最高优先级**，立即安装并返回。
             // 改造前 CustomCallback 的优先级最高且**完全不看 Mode**，若改为「只在 Mode=Custom 时使用，
             // 会让「只配回调、不配 Mode」的存量部署静默改用严格回调 —— 属安全面行为突变，必须显式告警而非静默。
+            // 注意：此分支必须在此处 return —— 若仅告警后继续下落，Mode=Dev 会安装 Dev 回调把用户回调
+            // 覆盖掉（警告与行为互相矛盾，且违反上方优先级链）。
             if (cert.CustomCallback is not null && cert.Mode != CertificateValidationMode.Custom)
             {
                 _logger.LogWarning(
                     "Certificate.CustomCallback 已配置但 Certificate.Mode={Mode}；为兼容既有行为仍使用该回调。" +
                     "请显式设置 Certificate.Mode=Custom 以消除歧义。",
                     cert.Mode);
+                webSocket.Options.RemoteCertificateValidationCallback = cert.CustomCallback;
+                return;
             }
 
             if (cert.Mode == CertificateValidationMode.Custom && cert.CustomCallback is null)
             {
                 // 启动期 ValidateCertificateOptions 应已拦截该组合；走到这里说明运行期被代码改写。
-                // 此处**不抛异常**（避免把可用的连接路径变成硬失败），而是回退为严格校验（更安全的一侧）。
+                // 此处**不抛异常**（避免把可用的连接路径变成硬失败），而是回落到既有布尔驱动的行为：
+                // ValidateServerCertificate=true → 严格校验（更安全的一侧）；=false → 完全关闭（既有能力）。
                 _logger.LogError(
                     "Certificate.Mode=Custom 但未提供 Certificate.CustomCallback——" +
-                    "启动期校验应已拦截该组合；运行期回退为严格校验证书。");
+                    "启动期校验应已拦截该组合；运行期回落为布尔驱动行为" +
+                    "（ValidateServerCertificate={Validate}：true=严格校验，false=完全关闭校验）。",
+                    cert.ValidateServerCertificate);
             }
 
             if (cert.Mode == CertificateValidationMode.Dev)
@@ -962,8 +969,10 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
                 return;
             }
 
-            // ↓↓↓ 以下为 Mode=Strict（及 Custom 兼容路径）的既有逻辑，保持改造前行为不变 ↓↓↓
-            // 使用自定义证书验证回调（优先级最高）
+            // ↓↓↓ 以下为 Mode=Strict 与「Mode=Custom 且回调存在」的既有逻辑，保持改造前行为不变 ↓↓↓
+            // （Mode≠Custom 的回调已由上方兼容分支接管并提前返回；此处 CustomCallback 分支
+            //   实际只会服务 Mode=Custom 且回调非 null 的组合。）
+            // 使用自定义证书验证回调（Mode=Custom 的主路径）
             if (_options.Certificate.CustomCallback != null)
             {
                 webSocket.Options.RemoteCertificateValidationCallback = _options.Certificate.CustomCallback;

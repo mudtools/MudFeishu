@@ -24,6 +24,13 @@
    SDK 内部状态位不得对外可写、计划 Obsolete 的成员必须保持 Obsolete 标记。
 4. `AGENTS.md` 新增「配置面治理（R5）」6 条条款，并修正其此前**与代码不符**的声明
    （原 `:331` 声称三个日志开关「已移除」，而 `EnableRequestLogging` 实际仍在）。
+5. **修复审计脚本的跨平台路径分隔符缺陷（CI 阻断）**：`$excludePathFragments` / `$allowedPathFragments`
+   此前用 `\` 书写（`\bin\` / `\Demos\` / `documents\Configuration\`），而 `-like` 不做分隔符归一化，
+   在 ubuntu-latest runner 的 `/` 分隔路径上**全部失配**——`Demos/`、`bin/` 与 `documents/Configuration/`
+   的命中因此全部涌入 `-Strict` 判据（CI 报告 31 条假阳性「已删除配置键残留」而阻断）。
+   现统一改为 `/` 片段，并在匹配前经 `ConvertTo-AuditPath` 把被扫描路径归一化为 `/`，Windows/Linux 行为一致。
+   注：脚本仍须保持 **ASCII-only**（Windows PowerShell 5.1 按 ANSI 代码页读取无 BOM 文件，
+   注释中的多字节字符会吞掉换行并引发 `Unexpected token ')'` 解析错误）。
 
 ### R5.1 — 绑定与生效修复（**含行为变更**）
 

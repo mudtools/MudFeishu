@@ -77,29 +77,36 @@ $warnPatterns = @(
 
 $include = @('*.cs', '*.md', '*.json', '*.jsonc')
 
-# Paths that never contain SDK configuration surfaces, intentionally keep pre-migration shapes,
-# or must be able to *name* removed keys in order to assert their absence (Tests / ContractGuards).
+# Cross-platform note (fixes a CI-only failure): the fragments below are matched against a path
+# that has been normalised to '/' (see ConvertTo-AuditPath).  Do NOT reintroduce '\' here:
+# CI's ubuntu-latest runner gets '/'-separated paths from Get-ChildItem / Select-String, so a
+# '\bin\' fragment matches nothing and the exclusion silently evaporates.  That is exactly how
+# the excluded Demos/ + bin/ hits and the allowed documents/Configuration/ hits all leaked into
+# the -Strict verdict on Linux (31 bogus "removed config API residues").
 $excludePathFragments = @(
-    '\bin\',
-    '\obj\',
-    '\.git\',
-    '\.docs\',
-    '\.tmp\',
-    '\Demos\'          # R5/G-03: demos keep legacy config shapes on purpose
+    '/bin/',
+    '/obj/',
+    '/.git/',
+    '/.docs/',
+    '/.tmp/',
+    '/Demos/'          # R5/G-03: demos keep legacy config shapes on purpose
 )
 
 # The only legitimate *whole-file* exemptions: assets that document what was removed.
 $allowedPathFragments = @(
-    'documents\Configuration\',
-    'scripts\audit-config-keys.ps1',
+    'documents/Configuration/',
+    'scripts/audit-config-keys.ps1',
     'CHANGELOG'
 )
 
 $inlineAllowMarker = 'audit-allow:'
 
+# Normalise to forward slashes so fragment matching is separator-agnostic (Windows + Linux).
+function ConvertTo-AuditPath([string]$path) { return $path.Replace('\', '/') }
+
 $files = Get-ChildItem -Path $repoRoot -Recurse -Include $include -File -ErrorAction SilentlyContinue |
     Where-Object {
-        $p = $_.FullName
+        $p = ConvertTo-AuditPath $_.FullName
         $skip = $false
         foreach ($frag in $excludePathFragments) {
             if ($p -like "*$frag*") { $skip = $true; break }
@@ -137,10 +144,13 @@ function Invoke-Audit([string[]]$patterns, [switch]$CaseSensitive) {
 
         foreach ($item in $found) {
             $path = $item.Path
+            # $path keeps native separators for file IO; fragment matching always uses the
+            # normalised form so Linux and Windows behave identically.
+            $matchPath = ConvertTo-AuditPath $path
 
             $allowed = $false
             foreach ($frag in $allowedPathFragments) {
-                if ($path -like "*$frag*") { $allowed = $true; break }
+                if ($matchPath -like "*$frag*") { $allowed = $true; break }
             }
             if ($allowed) { continue }
             if (Test-InlineAllowed $path ([int]$item.LineNumber)) { continue }

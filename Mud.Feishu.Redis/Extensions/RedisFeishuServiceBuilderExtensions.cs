@@ -289,7 +289,8 @@ public static class RedisFeishuServiceBuilderExtensions
             var logger = sp.GetService<ILogger<RedisFeishuSeqIDDeduplicator>>();
 
             // ADR-3（T-M2-4）：合成 scopeKey 以实现多实例/多应用隔离。
-            // 默认策略：AppKey + MachineName（可配置 RedisOptions.SeqIdScopeKey 覆盖）。
+            // R5.3.1/X13（G-12）：scopeKey 的 AppKey 部分在**解析期**推断（见 ResolveUnifiedSeqIdScopeKey），
+            // 不再固定取 RedisOptions.AppKey（默认 "default"）。
             // scopeKey 为空会在构造函数中抛 ArgumentException（fail-fast，防止退化为全局共享键）。
             var scopeKey = ResolveUnifiedSeqIdScopeKey(sp, options);
 
@@ -298,7 +299,7 @@ public static class RedisFeishuServiceBuilderExtensions
                 logger,
                 cacheExpiration: ResolveUnifiedSeqIdTtl(sp, options),
                 keyPrefix: ResolveUnifiedSeqIdKeyPrefix(sp, options),
-                scopeKey: ResolveUnifiedSeqIdScopeKey(sp, options));
+                scopeKey: scopeKey);
         });
 
         return services;
@@ -440,9 +441,26 @@ public static class RedisFeishuServiceBuilderExtensions
         var unified = GetUnifiedDeduplication(sp);
         if (!string.IsNullOrWhiteSpace(unified?.SeqId?.ScopeKey))
             return unified!.SeqId!.ScopeKey!;
-        return !string.IsNullOrWhiteSpace(options.SeqIdScopeKey)
-            ? options.SeqIdScopeKey
-            : $"{options.AppKey}|{Environment.MachineName}";
+
+        if (!string.IsNullOrWhiteSpace(options.SeqIdScopeKey))
+            return options.SeqIdScopeKey;
+
+        // R5.3.1/X13（G-12）：AppKey 默认从 FeishuApps 默认应用推断。
+        // 推断必须发生在**解析期**（工厂委托内）——文档化调用顺序是「Redis 先于 AddFeishuApp」，
+        // 绑定期拿不到应用列表。读取 IOptionsMonitor（与 FeishuAppManager 同形）而非
+        // IFeishuAppManager：避免触发默认应用懒加载装配的副作用；GetService（非 GetRequiredService）
+        // 保证宿主未接多应用时不硬失败。
+        // 显式配置的 RedisOptions.SeqIdScopeKey / FeishuDeduplication:SeqId:ScopeKey 恒优先于推断。
+        var appConfigs = sp.GetService<IOptionsMonitor<List<FeishuAppConfig>>>()?.CurrentValue
+            ?? sp.GetService<IOptions<List<FeishuAppConfig>>>()?.Value;
+        var defaultAppKey = appConfigs?.FirstOrDefault(c => c.IsDefault)?.AppKey
+            ?? appConfigs?.FirstOrDefault()?.AppKey;
+        if (!string.IsNullOrWhiteSpace(defaultAppKey))
+            return $"{defaultAppKey}|{Environment.MachineName}";
+
+        // 拿不到默认应用（宿主未接多应用）→ 回落 RedisOptions.AppKey 合成；
+        // 空 scopeKey 由 RedisFeishuSeqIDDeduplicator 构造函数 fail-fast（绝不静默退化为全局共享键）。
+        return $"{options.AppKey}|{Environment.MachineName}";
     }
 
     /// <summary>

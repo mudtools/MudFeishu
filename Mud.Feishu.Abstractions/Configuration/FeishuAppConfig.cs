@@ -45,6 +45,11 @@ public class FeishuAppConfig
     public bool AllowCustomBaseUrl { get; set; } = false;
 
     /// <summary>HTTP 请求超时（秒）。默认 30，范围 1-300。</summary>
+    /// <remarks>
+    /// R5.3/X12 命名对齐：本属性为<b>秒</b>，而 <c>RedisOptions.Connection.ConnectTimeout/SyncTimeout</c>
+    /// 为<b>毫秒</b>——单位混用是有意保留（不做 <c>TimeoutMs</c> 别名，避免同一配置树内秒/毫秒语义并存，
+    /// 见方案 §2.11/RK15）；单位变更须作为独立 major 的破坏性迁移立项。
+    /// </remarks>
     public int TimeoutSeconds { get; set; } = 30;
 
     /// <summary>HTTP 重试嵌套配置（C2/R4）</summary>

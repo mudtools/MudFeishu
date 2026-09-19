@@ -45,14 +45,15 @@
 > `FeishuWebhookServiceBuilder.EnableAutoEndpoint()` / `DisableAutoEndpoint()` 同步 `[Obsolete]`；
 > 它们**并非 no-op**——会写入 `AutoRegisterEndpoint`（该写入本身无运行时效果）。
 
-## 4. R5.2 — 计划中（本表随实现更新）
+## 4. R5.2 / R5.3 — 实现记录（本表随实现更新）
 
 | 键 | 计划处置 | 替代 |
 | -- | -------- | ---- |
 | `FeishuWebhook:EnablePerformanceMonitoring`（全局 + 应用级） | 删除（先把耗时日志无条件降为 `Debug`，删开关不丢可诊断性） | `Logging:LogLevel:Mud.Feishu.Webhook=Debug` |
 | `FeishuWebhook:Apps:{key}:AppKey` | `[Obsolete]`（由 `Apps` 字典键自动回填） | 直接使用 `Apps` 字典键 |
-| `FeishuRedis:Event*` / `Nonce*` / `SeqId*` | `[Obsolete]`（仍作回落基座） | `FeishuDeduplication:Event/Nonce/SeqId` |
-| `FeishuRedis:Deduplication:*`、`FeishuWebSocket:EventDeduplication:*` | `[Obsolete]`（仍作回落基座） | `FeishuDeduplication` |
+| `FeishuRedis:Event*` / `Nonce*` / `SeqId*` | 保留为双读回落基座；统一节存在时**字段级覆盖**并输出 `Warning`（R5.2/X6） | `FeishuDeduplication:Event/Nonce/SeqId` |
+| `FeishuRedis:Deduplication:*`、`FeishuWebSocket:EventDeduplication:*` | 保留为双读回落基座（同上） | `FeishuDeduplication` |
+| `RedisOptions.AppKey` | **R5.3.1/X13 收口**：仅作 SeqID scopeKey 合成的最后回落；scopeKey 的 AppKey 部分**默认从 `FeishuApps` 默认应用推断**（解析期），优先级：`FeishuDeduplication:SeqId:ScopeKey` > `RedisOptions.SeqIdScopeKey` > 默认应用 AppKey > `RedisOptions.AppKey`；推断失败保留构造期 fail-fast，绝不静默退化为全局共享键 | 不再需要配置；多实例隔离请显式配置 `FeishuDeduplication:SeqId:ScopeKey` |
 | `FeishuWebSocket:Certificate:AllowSelfSignedCertificates` / `AllowCertificateNameMismatch` | `[Obsolete]` | `Certificate:Mode=Dev` |
 | `FeishuDeduplication:Mode=Dev` 在生产环境 | 加固：启动期 `LogError` | — |
 

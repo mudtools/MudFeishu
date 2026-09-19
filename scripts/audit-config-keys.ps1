@@ -35,16 +35,31 @@ $repoRoot = Split-Path -Parent $PSScriptRoot
 # Append the pattern for a key in the SAME phase that removes the key, so the gate never
 # fails on a still-supported configuration surface.
 #   R5.0: EnableRequestLogging (X2) + the 3 unused dedup Consts (X14)
-#   R5.1: 'IOptions<FailedEventRetryOptions>' (X3)  -- not added: the obsolete-bound phrase is still
-#         legitimate in migration docs; enforce via ContractGuards reflection instead.
+#   R5.1: 'IOptions<FailedEventRetryOptions>' (X3)  -- added in R5.3.3: migration docs live in
+#         allowedPathFragments (documents\Configuration\, CHANGELOG) and Demos is excluded, so the
+#         phrase cannot legitimately appear in source; direct DI consumption of the removed entry
+#         must not come back. (ContractGuards reflection remains the second lock.)
 #   R5.2: 'EnablePerformanceMonitoring' (X10), '\.AutoRegisterEndpoint\s*=' (X4)
+#   R5.3: 'public\s+int\??\s+TimeoutMs' (X12) -- locks the RK15 re-judgment: no TimeoutMs alias next
+#         to TimeoutSeconds (seconds/milliseconds semantics must not coexist in one config tree).
+#         Declaration-shaped so legitimate "...Ms"-suffixed properties elsewhere don't match.
+#   Not added (deliberately):
+#     - '\.Description\s*=' -- too broad (Description exists on unrelated types); the removed
+#       FeishuAppWebhookOptions.Description is locked by ContractGuards reflection instead.
+#     - certificate contradiction regex -- FeishuWebSocketOptions.ValidateCertificateOptions
+#       already throws on the Strict+Allow* combos at startup; a regex would be fragile.
+#     - X13/X6 legacy dedup keys (FeishuRedis:Event* / Nonce* / SeqId* / AppKey) -- still the
+#       documented dual-read fallback base in this minor; add blocking patterns in the major
+#       (R5.4) when the keys are actually deleted (see plan §2.6).
 $strictPatterns = @(
     'EnableRequestLogging',
     'EnablePerformanceMonitoring',
     '\.AutoRegisterEndpoint\s*=',
     'DefaultDeduplicationRetryCount',
     'DefaultDeduplicationInitialRetryDelayMs',
-    'DefaultDeduplicationMaxRetryDelayMs'
+    'DefaultDeduplicationMaxRetryDelayMs',
+    'IOptions<FailedEventRetryOptions>',
+    'public\s+int\??\s+TimeoutMs'
 )
 
 # --- Tier 2: broad R4-era heuristics. Warn only (false positives are expected). ---------------
@@ -62,29 +77,36 @@ $warnPatterns = @(
 
 $include = @('*.cs', '*.md', '*.json', '*.jsonc')
 
-# Paths that never contain SDK configuration surfaces, intentionally keep pre-migration shapes,
-# or must be able to *name* removed keys in order to assert their absence (Tests / ContractGuards).
+# Cross-platform note (fixes a CI-only failure): the fragments below are matched against a path
+# that has been normalised to '/' (see ConvertTo-AuditPath).  Do NOT reintroduce '\' here:
+# CI's ubuntu-latest runner gets '/'-separated paths from Get-ChildItem / Select-String, so a
+# '\bin\' fragment matches nothing and the exclusion silently evaporates.  That is exactly how
+# the excluded Demos/ + bin/ hits and the allowed documents/Configuration/ hits all leaked into
+# the -Strict verdict on Linux (31 bogus "removed config API residues").
 $excludePathFragments = @(
-    '\bin\',
-    '\obj\',
-    '\.git\',
-    '\.docs\',
-    '\.tmp\',
-    '\Demos\'          # R5/G-03: demos keep legacy config shapes on purpose
+    '/bin/',
+    '/obj/',
+    '/.git/',
+    '/.docs/',
+    '/.tmp/',
+    '/Demos/'          # R5/G-03: demos keep legacy config shapes on purpose
 )
 
 # The only legitimate *whole-file* exemptions: assets that document what was removed.
 $allowedPathFragments = @(
-    'documents\Configuration\',
-    'scripts\audit-config-keys.ps1',
+    'documents/Configuration/',
+    'scripts/audit-config-keys.ps1',
     'CHANGELOG'
 )
 
 $inlineAllowMarker = 'audit-allow:'
 
+# Normalise to forward slashes so fragment matching is separator-agnostic (Windows + Linux).
+function ConvertTo-AuditPath([string]$path) { return $path.Replace('\', '/') }
+
 $files = Get-ChildItem -Path $repoRoot -Recurse -Include $include -File -ErrorAction SilentlyContinue |
     Where-Object {
-        $p = $_.FullName
+        $p = ConvertTo-AuditPath $_.FullName
         $skip = $false
         foreach ($frag in $excludePathFragments) {
             if ($p -like "*$frag*") { $skip = $true; break }
@@ -122,10 +144,13 @@ function Invoke-Audit([string[]]$patterns, [switch]$CaseSensitive) {
 
         foreach ($item in $found) {
             $path = $item.Path
+            # $path keeps native separators for file IO; fragment matching always uses the
+            # normalised form so Linux and Windows behave identically.
+            $matchPath = ConvertTo-AuditPath $path
 
             $allowed = $false
             foreach ($frag in $allowedPathFragments) {
-                if ($path -like "*$frag*") { $allowed = $true; break }
+                if ($matchPath -like "*$frag*") { $allowed = $true; break }
             }
             if ($allowed) { continue }
             if (Test-InlineAllowed $path ([int]$item.LineNumber)) { continue }

@@ -7,21 +7,26 @@
 
 using FluentAssertions;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Configuration.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Mud.Feishu.Abstractions.Tests.Helpers;
-using Xunit;
 
 namespace Mud.Feishu.Abstractions.Tests.Configuration;
 
 /// <summary>
-/// R5/X1：<see cref="FeishuAppOptions"/> 必须真正绑定 <c>FeishuAppOptions</c> 配置节。
+/// R5/X1：<see cref="FeishuAppOptions"/> 的配置节绑定与启动期校验。
 /// </summary>
 /// <remarks>
 /// <para>
 /// 修复前 <c>AddFeishuAppBaseServices</c> 只调用 <c>AddOptions&lt;FeishuAppOptions&gt;()</c>——
-/// 「仅注册 Options」<b>不会绑定任何配置节</b>，6 个行为开关（<c>EnableConfigReload</c> 等）
-/// 无法经 appsettings 下发，<see cref="FeishuAppOptions.SectionName"/> 是死常量。
+/// 「仅注册 Options」<b>不会绑定任何配置节</b>，<see cref="FeishuAppOptions.SectionName"/> 是死常量，
+/// 6 个行为开关无法经 appsettings 下发，越界值也只能在运行期由
+/// <c>FeishuAppContextRetirement</c> 才暴露。
+/// </para>
+/// <para>
+/// 本组测试锁定三件事：<b>绑定真实生效</b>（DoD「绑定真实」）、<b>越界值在选项解析期失败</b>
+/// （fail-fast）、以及 <b>绑定 ≠ 可热更</b>。
 /// </para>
 /// <para>
 /// 实现形态约束（G-02）：绑定走「委托式 <c>Configure&lt;T&gt;(o =&gt; section.Bind(o))</c>」而非
@@ -31,23 +36,18 @@ namespace Mud.Feishu.Abstractions.Tests.Configuration;
 /// <para>
 /// <b>不注册 <c>IOptionsChangeTokenSource</c></b>：本类型 6 个属性全部是「启动快照」语义
 /// （消费方一律为 <c>IOptions&lt;T&gt;</c>），本文件用
-/// <see cref="Bind_ShouldKeepStartupSnapshot_WhenConfigurationReloaded"/> 锁定「绑定 ≠ 可热更」：
-/// 配置源变更后 <c>IOptions&lt;T&gt;.Value</c> 仍是快照（与 README 的「一次性读取语义清单」一致）。
+/// <see cref="Bind_ShouldKeepStartupSnapshot_WhenConfigurationReloaded"/> 与
+/// <see cref="ShouldNotRegisterChangeTokenSource_ForFeishuAppOptions"/> 从<b>行为</b>与
+/// <b>注册面</b>两侧锁定「绑定 ≠ 可热更」（与 README 的「一次性读取语义清单」一致）。
 /// </para>
 /// </remarks>
 public class FeishuAppOptionsBindingTests
 {
     private const string AppSection = "FeishuApps";
 
-    private static ServiceProvider BuildProvider(Dictionary<string, string?> data)
-    {
-        var configuration = new ConfigurationBuilder().AddInMemoryCollection(data).Build();
-        var services = new ServiceCollection();
-        services.AddLogging();
-        services.AddFeishuApp(configuration, AppSection);
-        return services.BuildServiceProvider();
-    }
-
+    /// <summary>
+    /// 单应用基础配置（保证 <c>AddFeishuApp</c> 的配置校验可通过，被测点全部落在 FeishuAppOptions 节）。
+    /// </summary>
     private static Dictionary<string, string?> SingleAppData() => new()
     {
         [$"{AppSection}:0:AppKey"] = "app1",
@@ -56,56 +56,107 @@ public class FeishuAppOptionsBindingTests
         [$"{AppSection}:0:IsDefault"] = "true"
     };
 
-    [Fact]
-    public void Bind_ShouldApplySectionValues_WhenSectionExists()
+    /// <summary>
+    /// 基础应用配置 + 覆盖项（覆盖项既可写 <c>FeishuAppOptions:*</c>，也可写应用节键）。
+    /// </summary>
+    private static IConfigurationRoot BuildConfig(Dictionary<string, string?> overrides)
     {
         var data = SingleAppData();
-        data["FeishuAppOptions:ContextRetireDelaySeconds"] = "600";
-        data["FeishuAppOptions:EnableTokenEncryption"] = "true";
-        data["FeishuAppOptions:WarmUpAllAppsOnStartup"] = "true";
-        data["FeishuAppOptions:EnableConfigReload"] = "false";
+        foreach (var kv in overrides)
+            data[kv.Key] = kv.Value;
 
-        using var provider = BuildProvider(data);
+        return new ConfigurationBuilder().AddInMemoryCollection(data).Build();
+    }
 
-        var options = provider.GetRequiredService<IOptions<FeishuAppOptions>>().Value;
-
-        options.ContextRetireDelaySeconds.Should().Be(600,
-            "FeishuAppOptions 配置节必须真实绑定（X1 修复点：此前该节完全无效）");
-        options.EnableTokenEncryption.Should().BeTrue();
-        options.WarmUpAllAppsOnStartup.Should().BeTrue();
-        options.EnableConfigReload.Should().BeFalse();
+    private static ServiceProvider BuildProvider(Dictionary<string, string?> overrides)
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddFeishuApp(BuildConfig(overrides), AppSection);
+        return services.BuildServiceProvider();
     }
 
     [Fact]
-    public void Bind_ShouldKeepDefaults_WhenSectionMissing()
+    public void SectionName_ShouldBe_FeishuAppOptions()
     {
-        using var provider = BuildProvider(SingleAppData());
+        FeishuAppOptions.SectionName.Should().Be("FeishuAppOptions");
+    }
+
+    [Fact]
+    public void Bind_ShouldApplyBehaviourSwitches_FromFeishuAppOptionsSection()
+    {
+        using var provider = BuildProvider(new Dictionary<string, string?>
+        {
+            ["FeishuAppOptions:EnableTokenEncryption"] = "true",
+            ["FeishuAppOptions:WarmUpAllAppsOnStartup"] = "true",
+            ["FeishuAppOptions:ContextRetireDelaySeconds"] = "600",
+            ["FeishuAppOptions:EnableConfigReload"] = "false",
+            ["FeishuAppOptions:EnablePerAppAuthenticationClient"] = "false",
+            ["FeishuAppOptions:RemoveRuntimeAddedAppsOnReload"] = "true"
+        });
 
         var options = provider.GetRequiredService<IOptions<FeishuAppOptions>>().Value;
 
+        options.EnableTokenEncryption.Should().BeTrue();
+        options.WarmUpAllAppsOnStartup.Should().BeTrue();
+        options.ContextRetireDelaySeconds.Should().Be(600,
+            "FeishuAppOptions 配置节必须真实绑定（X1 修复点：此前该节完全无效）");
+        options.EnableConfigReload.Should().BeFalse();
+        options.EnablePerAppAuthenticationClient.Should().BeFalse();
+        options.RemoveRuntimeAddedAppsOnReload.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Bind_ShouldKeepDefaults_WhenSectionAbsent()
+    {
+        using var provider = BuildProvider(new Dictionary<string, string?>());
+
+        var options = provider.GetRequiredService<IOptions<FeishuAppOptions>>().Value;
+
+        options.EnableConfigReload.Should().BeTrue("默认 true（ARC-1 热更新）");
+        options.EnableTokenEncryption.Should().BeFalse("加密属存储策略选择，默认不开启");
         options.ContextRetireDelaySeconds.Should().Be(300);
-        options.EnableTokenEncryption.Should().BeFalse();
         options.WarmUpAllAppsOnStartup.Should().BeFalse();
-        options.EnableConfigReload.Should().BeTrue();
         options.EnablePerAppAuthenticationClient.Should().BeTrue();
         options.RemoveRuntimeAddedAppsOnReload.Should().BeFalse();
     }
 
-    [Fact]
-    public void Resolve_ShouldThrow_WhenContextRetireDelaySecondsOutOfRange()
+    [Theory]
+    [InlineData("0")]
+    [InlineData("3601")]
+    [InlineData("-1")]
+    public void Validation_ShouldFail_WhenContextRetireDelaySecondsOutOfRange(string value)
     {
-        // 启动期校验（fail-fast）：net6+ 由 ValidateOnStart 在宿主启动时触发；
-        // 无宿主环境（本测试）由 IValidateOptions 在首次解析时触发——两者共享同一校验器，
-        // 也正是 netstandard2.0（无 ValidateOnStart）路径的触发方式。
-        var data = SingleAppData();
-        data["FeishuAppOptions:ContextRetireDelaySeconds"] = "0";
+        using var provider = BuildProvider(new Dictionary<string, string?>
+        {
+            ["FeishuAppOptions:ContextRetireDelaySeconds"] = value
+        });
 
-        using var provider = BuildProvider(data);
+        // 越界值此前只在运行期由 FeishuAppContextRetirement 抛出（R5/X1 新增 FeishuAppOptionsValidator）；
+        // 现在解析 IOptions<T>.Value 即触发校验（net6+ 另由 ValidateOnStart 在宿主启动期触发）。
+        var act = () => _ = provider.GetRequiredService<IOptions<FeishuAppOptions>>().Value;
 
-        var act = () => provider.GetRequiredService<IOptions<FeishuAppOptions>>().Value;
+        var exception = act.Should().Throw<OptionsValidationException>().Which;
 
-        act.Should().Throw<OptionsValidationException>()
-            .WithMessage("*ContextRetireDelaySeconds*3600*");
+        exception.Message.Should().Contain("ContextRetireDelaySeconds");
+        exception.Message.Should().Contain(
+            $"{FeishuAppOptionsValidator.MinContextRetireDelaySeconds}–{FeishuAppOptionsValidator.MaxContextRetireDelaySeconds}",
+            "错误消息必须给出合法区间（1–3600），否则集成方无法从日志定位越界原因");
+    }
+
+    [Theory]
+    [InlineData("1")]
+    [InlineData("3600")]
+    public void Validation_ShouldPass_AtBoundaries(string value)
+    {
+        using var provider = BuildProvider(new Dictionary<string, string?>
+        {
+            ["FeishuAppOptions:ContextRetireDelaySeconds"] = value
+        });
+
+        var act = () => _ = provider.GetRequiredService<IOptions<FeishuAppOptions>>().Value;
+
+        act.Should().NotThrow();
     }
 
     [Fact]
@@ -123,13 +174,24 @@ public class FeishuAppOptionsBindingTests
         provider.GetRequiredService<IOptions<FeishuAppOptions>>().Value.ContextRetireDelaySeconds
             .Should().Be(600);
 
-        configuration.Providers.OfType<Microsoft.Extensions.Configuration.Memory.MemoryConfigurationProvider>()
+        configuration.Providers.OfType<MemoryConfigurationProvider>()
             .First().Set("FeishuAppOptions:ContextRetireDelaySeconds", "1200");
-        ((IConfigurationRoot)configuration).Reload();
+        configuration.Reload();
 
         provider.GetRequiredService<IOptions<FeishuAppOptions>>().Value.ContextRetireDelaySeconds
             .Should().Be(600,
                 "FeishuAppOptions 是启动快照（IOptions 缓存不失效）：绑定不等于可热更，" +
                 "也不得注册 ChangeTokenSource 制造「可热更」假象（R5/X1 修订）");
+    }
+
+    [Fact]
+    public void ShouldNotRegisterChangeTokenSource_ForFeishuAppOptions()
+    {
+        using var provider = BuildProvider(new Dictionary<string, string?>());
+
+        // R5/X1 有意裁决：全仓库无 IOptionsMonitor<FeishuAppOptions> 消费方，
+        // 注册变更令牌只会把「启动快照」伪装成「可热更」——属要清理的死接线。
+        provider.GetService<IOptionsChangeTokenSource<FeishuAppOptions>>()
+            .Should().BeNull("FeishuAppOptions 的 6 个属性均被文档化为启动快照，不注册变更令牌");
     }
 }

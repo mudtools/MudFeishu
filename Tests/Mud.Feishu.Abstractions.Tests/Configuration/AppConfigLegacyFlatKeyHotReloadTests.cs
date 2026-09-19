@@ -9,8 +9,8 @@ using FluentAssertions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.Memory;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Mud.Feishu.Abstractions.Tests.Helpers;
-using Xunit;
 
 namespace Mud.Feishu.Abstractions.Tests.Configuration;
 
@@ -29,14 +29,33 @@ namespace Mud.Feishu.Abstractions.Tests.Configuration;
 /// 热更绑定必须保留 <c>Configure&lt;List&lt;FeishuAppConfig&gt;&gt;(IConfiguration)</c> 重载
 /// （其内部经 <c>OptionsBuilder.Bind</c> 注册 <c>IConfigurationChangeTokenSource</c>），
 /// 回填并入既有 <c>PostConfigure</c>。若后续重构把手写委托换进来而丢失变更令牌，
-/// <see cref="HotReload_ShouldReapplyLegacyFlatKeys_WhenOnlyLegacyKeyChanges"/> 等
-/// 依赖真实 <c>IConfiguration.Reload()</c> 传导的用例会整体变红。
+/// <see cref="HotReload_ShouldReapplyLegacyFlatKeys_WhenOnlyLegacyKeyChanges"/> 与
+/// <see cref="HotReload_ShouldStillFireChangeNotification"/> 这类依赖真实
+/// <c>IConfiguration.Reload()</c> 传导的用例会整体变红。
+/// </para>
+/// <para>
+/// 另锁定两条不变量：热更对 <c>List&lt;FeishuAppConfig&gt;</c> 是<b>重绑</b>而非<b>追加</b>语义，
+/// 且回填不得打乱 <c>PostConfigure</c> 中的 <c>IsDefault</c> 推断。
 /// </para>
 /// </remarks>
 public class AppConfigLegacyFlatKeyHotReloadTests
 {
     private const string SectionName = "FeishuApps";
 
+    /// <summary>
+    /// 单应用基础配置（<c>IsDefault=true</c>，AppKey 固定为 app1）。
+    /// </summary>
+    private static Dictionary<string, string?> BaseData() => new()
+    {
+        [$"{SectionName}:0:AppKey"] = "app1",
+        [$"{SectionName}:0:AppId"] = TestDataFactory.AppConfigs.AppIds.Default,
+        [$"{SectionName}:0:AppSecret"] = TestDataFactory.AppConfigs.Secrets.Default,
+        [$"{SectionName}:0:IsDefault"] = "true"
+    };
+
+    /// <summary>
+    /// 热更夹具：持有容器、应用管理器与可触发真实 <c>Reload()</c> 的配置根。
+    /// </summary>
     private sealed record HotReloadContext(
         ServiceProvider Provider,
         IFeishuAppManager Manager,
@@ -53,13 +72,7 @@ public class AppConfigLegacyFlatKeyHotReloadTests
 
     private static HotReloadContext Build(string legacyTimeOut)
     {
-        var data = new Dictionary<string, string?>
-        {
-            [$"{SectionName}:0:AppKey"] = "app1",
-            [$"{SectionName}:0:AppId"] = TestDataFactory.AppConfigs.AppIds.Default,
-            [$"{SectionName}:0:AppSecret"] = TestDataFactory.AppConfigs.Secrets.Default,
-            [$"{SectionName}:0:IsDefault"] = "true"
-        };
+        var data = BaseData();
         if (legacyTimeOut is not null)
             data[$"{SectionName}:0:TimeOut"] = legacyTimeOut;
 
@@ -70,6 +83,38 @@ public class AppConfigLegacyFlatKeyHotReloadTests
         var provider = services.BuildServiceProvider();
         var manager = provider.GetRequiredService<IFeishuAppManager>();
         return new HotReloadContext(provider, manager, configuration);
+    }
+
+    private static (ServiceProvider Provider, IConfigurationRoot Configuration, MemoryConfigurationProvider MemoryProvider) Build(
+        Dictionary<string, string?> data)
+    {
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(data)
+            .Build();
+
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddFeishuApp(configuration, SectionName);
+
+        return (services.BuildServiceProvider(),
+            configuration,
+            configuration.Providers.OfType<MemoryConfigurationProvider>().First());
+    }
+
+    [Fact]
+    public void Startup_ShouldBackfillLegacyFlatKey()
+    {
+        var data = BaseData();
+        data[$"{SectionName}:0:TimeOut"] = "60";
+
+        var (provider, _, _) = Build(data);
+        using (provider)
+        {
+            var manager = (FeishuAppManager)provider.GetRequiredService<IFeishuAppManager>();
+
+            manager.GetApp("app1").Config.TimeoutSeconds.Should().Be(60,
+                "启动链的旧扁平键回填是既有行为（X7 只要求热更链与之对齐）");
+        }
     }
 
     [Fact]
@@ -85,6 +130,29 @@ public class AppConfigLegacyFlatKeyHotReloadTests
 
         ctx.Manager.GetApp("app1").Config.TimeoutSeconds.Should().Be(90,
             "热更后旧扁平键 TimeOut=90 必须回填生效，不得回退为默认 30（X7 修复点）");
+    }
+
+    [Fact]
+    public void HotReload_ShouldStillFireChangeNotification()
+    {
+        var data = BaseData();
+        data[$"{SectionName}:0:TimeOut"] = "60";
+
+        var (provider, configuration, memoryProvider) = Build(data);
+        using (provider)
+        {
+            var monitor = provider.GetRequiredService<IOptionsMonitor<List<FeishuAppConfig>>>();
+            var fired = 0;
+            using var subscription = monitor.OnChange(_ => Interlocked.Increment(ref fired));
+
+            memoryProvider.Set($"{SectionName}:0:TimeOut", "120");
+            configuration.Reload();
+
+            fired.Should().BeGreaterThan(0,
+                "G-01/RK11：修复必须保留 Configure<T>(IConfiguration) 重载注册的 ConfigurationChangeTokenSource；" +
+                "手写委托会让 OnChange 永不触发（热更新静默失效）");
+            monitor.CurrentValue.Single().TimeoutSeconds.Should().Be(120);
+        }
     }
 
     [Fact]
@@ -116,6 +184,27 @@ public class AppConfigLegacyFlatKeyHotReloadTests
     }
 
     [Fact]
+    public void HotReload_MultipleTimes_ShouldNotDuplicateApps()
+    {
+        var data = BaseData();
+
+        var (provider, configuration, memoryProvider) = Build(data);
+        using (provider)
+        {
+            var monitor = provider.GetRequiredService<IOptionsMonitor<List<FeishuAppConfig>>>();
+
+            for (var i = 1; i <= 3; i++)
+            {
+                memoryProvider.Set($"{SectionName}:0:TimeOut", (30 + i * 10).ToString());
+                configuration.Reload();
+            }
+
+            monitor.CurrentValue.Should().HaveCount(1,
+                "热更以 PostConfigure 重建选项，不得重复追加应用（G-01 锁定项）");
+        }
+    }
+
+    [Fact]
     public void HotReload_ShouldKeepIsDefaultInference_WhenConfigurationReloaded()
     {
         // G-01 不变量：PostConfigure 内回填与 IsDefault 推断共存，热更后推断仍生效。
@@ -138,7 +227,7 @@ public class AppConfigLegacyFlatKeyHotReloadTests
 
         configuration.Providers.OfType<MemoryConfigurationProvider>().First()
             .Set($"{SectionName}:0:TimeOut", "90");
-        ((IConfigurationRoot)configuration).Reload();
+        configuration.Reload();
 
         manager.GetDefaultApp().Config.AppKey.Should().Be("default",
             "热更后 IsDefault 推断必须仍然生效（回填不得打乱 PostConfigure 顺序）");

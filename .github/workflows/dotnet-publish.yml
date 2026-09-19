@@ -224,8 +224,10 @@ jobs:
             }
           }
           Write-Host ''
-          # 注意用单引号：矩阵表达式由 GitHub 在交给 pwsh 之前展开，双引号里会出现 ${{ ... }} 这种
-          # 非法 PowerShell 插值（ParserError: 变量名称中应使用 `{ 而不是 {）。
+          # 注意用单引号：矩阵表达式由 GitHub 在交给 pwsh 之前展开，若放进双引号字符串会被
+          # PowerShell 当成非法插值并报 ParserError（“变量名称中应使用反引号加左花括号”）。
+          # 另：本文件任何地方都不要在注释/字符串里写出插值起始符号加省略号的样式，
+          # GitHub 的表达式扫描器会把它当成表达式而拒绝整个工作流文件（Unexpected symbol: '...'）。
           Write-Host '制品：test-results-${{ matrix.os }}（含 TestResults/*.trx 与 TestResults/mudfeishu-test.log）' -ForegroundColor Cyan
 
       # 步骤6：上传测试报告（TRX + 完整测试日志），测试失败时同样上传，便于下载排查

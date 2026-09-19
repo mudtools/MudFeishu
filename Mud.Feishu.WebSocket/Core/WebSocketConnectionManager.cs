@@ -840,6 +840,80 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
 #if NETCOREAPP2_1_OR_GREATER || NET5_0_OR_GREATER
         try
         {
+            var cert = _options.Certificate;
+
+            // ────────────────────────────────────────────────────────────────
+            // R5/X5：Certificate.Mode 驱动运行时（改造前 Mode 只被 Validate/ToString 读取，
+            // 而 Validate 的报错文案却引导用户「请改 Mode=Dev」——用户改完仍被拒绝，陷入无效循环）。
+            //
+            // 优先级链（唯一权威表述，勿在别处另立一套）：
+            //   CustomCallback（Mode=Custom，或 Mode≠Custom 但回调非 null 的兼容分支）
+            //     > ValidateServerCertificate=false（完全关闭校验）
+            //     > Mode=Dev（仍校验，仅放宽「自签名根」与「名称不匹配」）
+            //     > Mode=Strict（默认：拒绝自签名 / 名称不匹配 / 其他链错误）
+            // ────────────────────────────────────────────────────────────────
+
+            // 兼容分支：Mode 未显式设为 Custom 却提供了回调。
+            // 改造前 CustomCallback 的优先级最高且**完全不看 Mode**，若改为「只在 Mode=Custom 时使用，
+            // 会让「只配回调、不配 Mode」的存量部署静默改用严格回调 —— 属安全面行为突变，必须显式告警而非静默。
+            if (cert.CustomCallback is not null && cert.Mode != CertificateValidationMode.Custom)
+            {
+                _logger.LogWarning(
+                    "Certificate.CustomCallback 已配置但 Certificate.Mode={Mode}；为兼容既有行为仍使用该回调。" +
+                    "请显式设置 Certificate.Mode=Custom 以消除歧义。",
+                    cert.Mode);
+            }
+
+            if (cert.Mode == CertificateValidationMode.Custom && cert.CustomCallback is null)
+            {
+                // 启动期 ValidateCertificateOptions 应已拦截该组合；走到这里说明运行期被代码改写。
+                // 此处**不抛异常**（避免把可用的连接路径变成硬失败），而是回退为严格校验（更安全的一侧）。
+                _logger.LogError(
+                    "Certificate.Mode=Custom 但未提供 Certificate.CustomCallback——" +
+                    "启动期校验应已拦截该组合；运行期回退为严格校验证书。");
+            }
+
+            if (cert.Mode == CertificateValidationMode.Dev)
+            {
+                if (!cert.ValidateServerCertificate)
+                {
+                    // 完全关闭校验的能力优先于 Mode=Dev（保持与改造前一致的安全能力可见性）
+                    webSocket.Options.RemoteCertificateValidationCallback = (_, _, _, _) => true;
+                    _logger.LogWarning(
+                        "已禁用 SSL 证书验证（ValidateServerCertificate=false 优先于 Mode=Dev），此配置仅应在开发/测试环境使用");
+                    return;
+                }
+
+                webSocket.Options.RemoteCertificateValidationCallback = (sender, certificate, chain, sslPolicyErrors) =>
+                {
+                    if (sslPolicyErrors == SslPolicyErrors.None)
+                        return true;
+
+                    if ((sslPolicyErrors & SslPolicyErrors.RemoteCertificateNameMismatch) != 0)
+                    {
+                        _logger.LogWarning("Dev 模式：放行证书名称不匹配: {Errors}", sslPolicyErrors);
+                        // 名称不匹配已放行，继续检查其余错误
+                        sslPolicyErrors &= ~SslPolicyErrors.RemoteCertificateNameMismatch;
+                        if (sslPolicyErrors == SslPolicyErrors.None)
+                            return true;
+                    }
+
+                    if ((sslPolicyErrors & SslPolicyErrors.RemoteCertificateChainErrors) != 0 && IsSelfSignedRoot(chain))
+                    {
+                        _logger.LogWarning("Dev 模式：放行自签名根证书（仅 UntrustedRoot）: {Errors}", sslPolicyErrors);
+                        return true;
+                    }
+
+                    // 过期/已撤销等其他链错误一律拒绝——即使处于 Dev 模式也不放宽（沿用 WS-12 的收紧语义）
+                    _logger.LogError("SSL证书验证失败（Dev 模式：链错误非自签名根或含其他错误）: {Errors}", sslPolicyErrors);
+                    return false;
+                };
+
+                _logger.LogWarning("WebSocket 证书校验处于 Dev 模式（允许自签名/名称不匹配），仅应用于开发与测试环境");
+                return;
+            }
+
+            // ↓↓↓ 以下为 Mode=Strict（及 Custom 兼容路径）的既有逻辑，保持改造前行为不变 ↓↓↓
             // 使用自定义证书验证回调（优先级最高）
             if (_options.Certificate.CustomCallback != null)
             {

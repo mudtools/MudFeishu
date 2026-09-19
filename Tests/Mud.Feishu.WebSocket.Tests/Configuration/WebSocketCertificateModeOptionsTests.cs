@@ -32,18 +32,26 @@ public class WebSocketCertificateModeOptionsTests
         options.Reconnect.MaxAttempts.Should().Be(5);
     }
 
+    /// <summary>
+    /// R5/X5：<c>Mode</c> 与两个细粒度布尔各自独立（Mode 不隐式改写配置值）。
+    /// </summary>
+    /// <remarks>
+    /// 原 <c>FlatAndNested_ShouldShareStorage</c> 已删除：它是**恒真断言**（先赋
+    /// <c>true</c> 再断言 <c>true</c>），且其名暗示的「扁平/嵌套共享存储」契约已随 R4 删除扁平属性而消失，
+    /// 属假安全网（见 .docs/配置面可用性修复与收敛方案-R5.md §0.5.4）。
+    /// 运行时行为改由 <c>WebSocketCertificateModeRuntimeTests</c> 按优先级矩阵逐格锁定。
+    /// </remarks>
     [Fact]
-    public void FlatAndNested_ShouldShareStorage()
+    public void Mode_ShouldNotImplicitlyMutateFineGrainedBooleans()
     {
-#pragma warning disable CS0618
-        var options = new FeishuWebSocketOptions();
-        options.Reconnect.Auto = false;
-        options.Reconnect.Auto.Should().BeFalse();
-        options.Certificate.AllowSelfSignedCertificates = true;
-        options.Certificate.AllowSelfSignedCertificates.Should().BeTrue();
-        options.Certificate.Mode = CertificateValidationMode.Dev;
-        options.Certificate.AllowSelfSignedCertificates.Should().BeTrue();
-#pragma warning restore CS0618
+        var options = new FeishuWebSocketOptions
+        {
+            Certificate = new WebSocketCertificateOptions { Mode = CertificateValidationMode.Dev }
+        };
+
+        options.Certificate.AllowSelfSignedCertificates.Should().BeFalse(
+            "Mode 与细粒度布尔相互独立：Dev 的放宽由运行时回调实现，不改写配置值");
+        options.Certificate.AllowCertificateNameMismatch.Should().BeFalse();
     }
 
     [Fact]

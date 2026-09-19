@@ -65,14 +65,12 @@ public class FeishuWebhookOptionsBindingTests
     {
         var options = BindFromDictionary(new Dictionary<string, string?>
         {
-            ["FeishuWebhook:EnableRequestLogging"] = "false",
             ["FeishuWebhook:EnableExceptionHandling"] = "false",
             ["FeishuWebhook:EnablePerformanceMonitoring"] = "true",
             ["FeishuWebhook:EnforceHeaderSignatureValidation"] = "false",
             ["FeishuWebhook:EnableTokenBackgroundRefresh"] = "true",
         });
 
-        options.EnableRequestLogging.Should().BeFalse();
         options.EnableExceptionHandling.Should().BeFalse();
         options.EnablePerformanceMonitoring.Should().BeTrue();
         options.EnforceHeaderSignatureValidation.Should().BeFalse();
@@ -183,8 +181,9 @@ public class FeishuWebhookOptionsBindingTests
         var options = BindFromDictionary(new Dictionary<string, string?>());
 
         options.GlobalRoutePrefix.Should().Be("feishu");
+#pragma warning disable CS0618 // R5/X4：该开关已 Obsolete，但仍须能从配置绑定（不得静默失效）
         options.AutoRegisterEndpoint.Should().BeTrue();
-        options.EnableRequestLogging.Should().BeTrue();
+#pragma warning restore CS0618
         options.EnableExceptionHandling.Should().BeTrue();
         options.EventHandlingTimeoutMs.Should().Be(30000);
         options.MaxConcurrentEvents.Should().Be(10);

@@ -328,7 +328,7 @@ MudFeishu 配置面以**嵌套 Options** 为唯一公共 API（旧扁平属性�
 | Webhook 令牌刷新 | `EnableTokenBackgroundRefresh`（bool?；null=不干预基座） | `FeishuWebhook:EnableTokenBackgroundRefresh` |
 | Webhook 超时 | 全局 `EventHandlingTimeoutMs` + 应用级同名键（正整数覆盖）；过渡闸 `LegacyGlobalTimeoutOnly` | — |
 
-**日志**：不要再使用配置属性 `EnableLogging` / `EnableRequestLogging` / `EnableVerboseLogging`（已移除）。请用 `Logging:LogLevel:{Category}`，例如：
+**日志**：**禁止**再新增任何「日志开关」类配置属性（历史上曾以 `Enable*Logging` / `Enable*Monitoring` 之类的名字出现，其中若干从未被运行时读取，属死配置）。日志级别统一由 `Logging:LogLevel:{Category}` 控制，例如：
 
 ```jsonc
 "Logging": {
@@ -346,7 +346,32 @@ MudFeishu 配置面以**嵌套 Options** 为唯一公共 API（旧扁平属性�
 
 **包安全跨校验**：`NonceTtl >= TimestampToleranceSeconds`（WHF-03）由宿主在同时引用 Webhook+Redis 时通过 `AddFeishuConfigurationConsistencyChecks` 注入 Webhook 容差后校验；Redis/Webhook 单包不做跨包类型耦合。
 
-**配置审计**：`scripts/audit-config-keys.ps1` 扫描仓库内是否出现已删除的旧配置键/属性名。
+**配置审计**：`scripts/audit-config-keys.ps1` 扫描仓库内是否出现已删除的旧配置键/属性名，
+分两档：`$strictPatterns`（精确的「已删除键名」，`-Strict` 与 CI 门禁以此为判据）与
+`$warnPatterns`（R4 遗留的宽口径启发式，含已知误报，仅告警）。
+脚本排除 `Demos\`（演示刻意保留旧形态）；`allowlist` **不再整文件豁免**，改为行内
+`// audit-allow: <reason>`（匹配行或其上一行）。**新增死键模式必须与「删除该键」同阶段落地**，
+否则门禁会对仍受支持的配置面误报。
+
+### 配置面治理（R5）
+
+1. **禁止新增「日志开关」类配置属性**：日志级别只能由 `Logging:LogLevel:{Category}` 控制。
+   历史上 `Enable*Logging` / `Enable*Monitoring` 之类开关多次出现「配了但运行时从不读取」，
+   属死配置，已按 R5 逐步删除。
+2. **每个公开配置属性必须有真实消费点**：新增属性必须同时接线（README 表格里的每一项都要能
+   在源码中找到读取处，`Validate` / `ToString` **不算**）。由
+   `Tests/**/ContractGuards/ConfigSurfaceContractGuards.cs` 锁定。
+3. **配置 DTO 必须有配置节绑定**：仅 `services.AddOptions<T>()` **不会**绑定任何节。
+   绑定必须走 `Configure<T>(o => section.Bind(o))`（**不要**用 `Configure<T>(IConfiguration)`
+   重载——其反射绑定调用点无法被配置绑定源生成器拦截，会破坏 `IL2026`/`IL3050` 净零，见
+   `FeishuServiceCollectionExtensions.cs` 中 `TokenRecoveryOptions` 的 AOT-3 记录），
+   并按需显式注册 `IOptionsChangeTokenSource` 以保留热更新语义。
+4. **两处「同名配置」不得并存**：同一个语义只能有一个配置节（真相源）。新增别名必须同时提供
+   字段级回填与迁移表，并标注 `[Obsolete]` 的下线版本。
+5. **行为变更必须可回滚**：使某项此前静默无效的配置**首次生效**，与「删除从未生效的开关」
+   同属对外可见行为变更，必须写入 `documents/Configuration/CHANGELOG-Config.md` 与发布说明。
+6. **审计脚本与契约守卫同批更新**：删除键 → 同一批次把模式加入 `$strictPatterns`；
+   新增配置属性 → 同一批次补契约守卫登记。`audit-config-keys.ps1 -Strict` 是 CI 门禁的一部分。
 
 **安全默认不得削弱**：wss、Strict 证书、`EnforceHeaderSignatureValidation`、`RejectEmptyIdentifiers`、三键前缀隔离、BaseUrl HTTPS 白名单。
 4. **D11 OAuth 失败语义**：`RefreshUserTokenAsync` 必须通过 `FeishuOAuthErrorClassifier` 区分可重试/不可重试错误。`invalid_grant` 等不可重试错误清除 refresh token 并返回 null；可重试错误抛异常。

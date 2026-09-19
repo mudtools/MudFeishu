@@ -185,7 +185,6 @@ dotnet add package Mud.Feishu.Redis
   },
   "FeishuWebhook": {
     "GlobalRoutePrefix": "feishu",
-    "EnableRequestLogging": true,
     "MaxConcurrentEvents": 10,
     "EnforceHeaderSignatureValidation": true,
     "TimestampToleranceSeconds": 30,

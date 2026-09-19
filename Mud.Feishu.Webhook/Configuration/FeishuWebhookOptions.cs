@@ -18,14 +18,21 @@ public class FeishuWebhookOptions
     public string GlobalRoutePrefix { get; set; } = "feishu";
 
     /// <summary>
-    /// 是否自动注册 Webhook 端点
+    /// 是否自动注册 Webhook 端点。
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>R5/X4：该开关无运行时效果。</b>路由始终由宿主显式调用
+    /// <c>app.UseFeishuWebhook()</c> 注册；设为 <c>false</c> 既不会自动注册、也不会停止接收事件
+    /// （历史上同样从未产生过效果，仅被 <c>FeishuMultiAppMiddleware</c> 的配置变更日志引用）。
+    /// </para>
+    /// <para>
+    /// 若不需要 Webhook 处理，请**不要**调用该中间件。本属性为源码级兼容保留，
+    /// 将在下个 major 删除。
+    /// </para>
+    /// </remarks>
+    [Obsolete("该开关无运行时效果：路由由 app.UseFeishuWebhook() 显式注册。若不需要 Webhook 处理，请不要调用该中间件。将在下个 major 移除。")]
     public bool AutoRegisterEndpoint { get; set; } = true;
-
-    /// <summary>
-    /// 是否启用请求日志记录
-    /// </summary>
-    public bool EnableRequestLogging { get; set; } = true;
 
     /// <summary>
     /// 是否启用事件处理异常捕获
@@ -49,6 +56,7 @@ public class FeishuWebhookOptions
     /// </para>
     /// <para><b>默认 <c>false</c></b>（应用级配置生效）。建议在核对配置后移除本开关。</para>
     /// </remarks>
+    [Obsolete("B1 修复的过渡开关：仅用于在升级后临时保持「全局超时」的旧语义。核对配置后请移除，将在下个 major 删除。")]
     public bool LegacyGlobalTimeoutOnly { get; set; }
 
     /// <summary>
@@ -57,8 +65,10 @@ public class FeishuWebhookOptions
     /// <param name="appConfig">当前应用的 Webhook 配置；无应用级配置时为 null</param>
     internal int ResolveEventHandlingTimeoutMs(FeishuAppWebhookOptions? appConfig)
     {
+#pragma warning disable CS0618 // 过渡开关的唯一读取点：下个 major 随属性一并移除
         if (LegacyGlobalTimeoutOnly || appConfig is null)
             return EventHandlingTimeoutMs;
+#pragma warning restore CS0618
         return appConfig.GetEffectiveEventHandlingTimeout(EventHandlingTimeoutMs);
     }
 

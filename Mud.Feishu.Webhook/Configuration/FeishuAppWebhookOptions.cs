@@ -34,11 +34,6 @@ public class FeishuAppWebhookOptions
     public string EncryptKey { get; set; } = string.Empty;
 
     /// <summary>
-    /// 应用描述（可选）
-    /// </summary>
-    public string? Description { get; set; }
-
-    /// <summary>
     /// 时间戳容差范围（秒），默认 <c>null</c> 表示继承全局配置。
     /// <para>设置为正整数时使用应用级配置；设置为 <c>null</c>、<c>-1</c> 或 <c>0</c> 时继承全局 <c>TimestampToleranceSeconds</c>。</para>
     /// <para>推荐使用 <c>null</c> 表示继承（与其他可空字段一致）；<c>-1</c> 仍向后兼容但已弃用。</para>
@@ -152,7 +147,6 @@ public class FeishuAppWebhookOptions
     /// </summary>
     public override string ToString()
     {
-        var description = !string.IsNullOrEmpty(Description) ? $", Description: {Description}" : "";
-        return $"FeishuAppWebhookOptions {{ AppKey: {AppKey}{description}, TimestampToleranceSeconds: {TimestampToleranceSeconds}, EventHandlingTimeoutMs: {EventHandlingTimeoutMs} }}";
+        return $"FeishuAppWebhookOptions {{ AppKey: {AppKey}, TimestampToleranceSeconds: {TimestampToleranceSeconds}, EventHandlingTimeoutMs: {EventHandlingTimeoutMs} }}";
     }
 }

@@ -98,7 +98,6 @@ app.Run();
   "FeishuWebhook": {
     "GlobalRoutePrefix": "feishu",
     "AutoRegisterEndpoint": true,
-    "EnableRequestLogging": true,
     "EnableExceptionHandling": true,
     "EventHandlingTimeoutMs": 30000,
     "MaxConcurrentEvents": 10,
@@ -174,7 +173,6 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.CreateFeishuWebhookServiceBuilder(options =>
 {
     options.GlobalRoutePrefix = "feishu";
-    options.EnableRequestLogging = true;
     options.EnableExceptionHandling = true;
     options.MaxConcurrentEvents = 10;
 })
@@ -414,10 +412,11 @@ public class DemoDepartmentEventHandler : DepartmentCreatedEventHandler
 
 ### Logging Configuration
 
-| Option                    | Type | Default | Description                          |
-| ------------------------- | ---- | ------- | ------------------------------------ |
-| `EnableRequestLogging`    | bool | true    | Whether to enable request logging    |
-| `EnableExceptionHandling` | bool | true    | Whether to enable exception handling |
+Log levels are controlled exclusively via `Logging:LogLevel:Mud.Feishu.Webhook`; there is **no** module-private logging switch.
+
+| Option                    | Type | Default | Description                                                    |
+| ------------------------- | ---- | ------- | -------------------------------------------------------------- |
+| `EnableExceptionHandling` | bool | true    | Whether to swallow event-handling exceptions (error strategy, not a logging switch) |
 
 ### Rate Limiting Configuration
 
@@ -1106,10 +1105,9 @@ app.MapDiagnostics();          // Diagnostics endpoints
 builder.Logging.AddConsole();
 builder.Logging.SetMinimumLevel(LogLevel.Debug);
 
-// Enable request logging and performance monitoring
+// Enable performance monitoring (log level is controlled separately via Logging:LogLevel:Mud.Feishu.Webhook)
 builder.Services.CreateFeishuWebhookServiceBuilder(options =>
 {
-    options.EnableRequestLogging = true;
     options.EnablePerformanceMonitoring = true;
     options.RateLimit.EnableRateLimit = true; // Enable rate limiting debugging
 }).AddHandler<MessageEventHandler>()

@@ -164,7 +164,6 @@ dotnet add package Mud.Feishu.OpenTelemetry
   },
   "FeishuWebhook": {
     "GlobalRoutePrefix": "feishu",
-    "EnableRequestLogging": true,
     "MaxConcurrentEvents": 10,
     "EnforceHeaderSignatureValidation": true,
     "TimestampToleranceSeconds": 30,
@@ -269,7 +268,7 @@ R4 起，`FeishuAppConfig` 与 `FeishuWebSocketOptions` 上的 `EnableLogging` �
 | ---------------------------------------- | --------------------------------------------------------------------------------- |
 | HTTP API 客户端层（`Mud.Feishu`）        | `Logging:LogLevel:Mud.Feishu`（令牌相关：`Mud.Feishu.Abstractions.TokenManager`） |
 | WebSocket 模块（`Mud.Feishu.WebSocket`） | `Logging:LogLevel:Mud.Feishu.WebSocket`                                           |
-| Webhook 模块（`Mud.Feishu.Webhook`）     | `Logging:LogLevel:Mud.Feishu.Webhook`（另保留 `FeishuWebhook:EnableRequestLogging`，默认 `true`） |
+| Webhook 模块（`Mud.Feishu.Webhook`）     | `Logging:LogLevel:Mud.Feishu.Webhook`                                             |
 
 > 💡 **说明**：
 >
@@ -306,8 +305,7 @@ R4 起，`FeishuAppConfig` 与 `FeishuWebSocketOptions` 上的 `EnableLogging` �
 | `EnforceHeaderSignatureValidation` | bool                  | true   | 是否强制验证 X-Lark-Signature 请求头签名（生产环境必须启用） |
 | `TimestampToleranceSeconds`        | int                   | 30     | 时间戳容差（秒），超过此时间视为无效请求                     |
 | `MaxConcurrentEvents`              | int                   | 10     | 最大并发事件处理数                                           |
-| `EnableRequestLogging`             | bool                  | true   | 是否启用请求日志                                             |
-| `EnablePerformanceMonitoring`      | bool                  | false  | 是否启用性能监控（处理耗时、队列深度等指标）                 |
+| `EnablePerformanceMonitoring`      | bool                  | false  | 是否输出事件处理耗时日志（`Information`；开关默认关闭）      |
 | `MaxRequestBodySize`               | long                  | 10MB   | 最大请求体大小（字节）                                       |
 | `EventHandlingTimeoutMs`           | int                   | 30000  | 事件处理超时时间（毫秒）                                     |
 | `EnableTokenBackgroundRefresh`     | bool?                 | null   | 是否覆盖基座令牌后台刷新（null=不干预；替代已移除的 `EnableBackgroundProcessing`） |

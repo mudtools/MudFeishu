@@ -71,10 +71,21 @@ public class FeishuDeduplicationOptions
     public SeqIdDeduplicationOptions SeqId { get; set; } = new();
 
     /// <summary>
-    /// 是否从 IConfiguration 的 FeishuDeduplication 节完成绑定。
-    /// 仅当该节存在时由 SDK 置 true；为 true 时新节对旧键优先。
+    /// SDK 内部状态：该 Options 是否来自 <c>FeishuDeduplication</c> 配置节（面向宿主只读）。
     /// </summary>
-    public bool IsConfiguredFromConfiguration { get; set; }
+    /// <remarks>
+    /// <para>
+    /// R5/X11：此前是 <c>public set</c>。用户在代码里手写 <c>IsConfiguredFromConfiguration = true</c>
+    /// 会让 SDK 在**没有任何新节字段**的情况下断定统一节有效，从而绕过「新节不存在 → 回退旧键」的双读逻辑。
+    /// </para>
+    /// <para>
+    /// 改为 <c>internal set</c> 后：① 外部只读，写入点仅存在于同程序集的绑定器
+    /// （<c>FeishuDeduplicationServiceCollectionExtensions</c>）；
+    /// ② 反射式/源生成式 ConfigurationBinder 只写**公开** setter，因此配置 JSON 里的
+    /// <c>FeishuDeduplication:IsConfiguredFromConfiguration=true</c> 也无法再伪造节存在性。
+    /// </para>
+    /// </remarks>
+    public bool IsConfiguredFromConfiguration { get; internal set; }
 
     /// <summary>
     /// 校验 Mode/Profile/三前缀等不变量。

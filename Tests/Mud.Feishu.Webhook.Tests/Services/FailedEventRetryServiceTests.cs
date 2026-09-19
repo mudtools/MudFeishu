@@ -44,11 +44,23 @@ public class FailedEventRetryServiceTests
         _scopeFactory = provider.GetRequiredService<IServiceScopeFactory>();
     }
 
+    /// <summary>
+    /// R5/X3：失败事件重试配置的唯一真相源是 <see cref="FeishuWebhookOptions.Retry"/>
+    /// （此前服务注入 <c>IOptions&lt;FailedEventRetryOptions&gt;</c>，而该 Options 从未被注册/绑定，
+    /// 导致 <c>FeishuWebhook:Retry:*</c> 的 6 个字段恒为默认值）。
+    /// </summary>
+    private static IOptionsMonitor<FeishuWebhookOptions> CreateWebhookOptionsMonitor(FailedEventRetryOptions retry)
+    {
+        var monitor = new Mock<IOptionsMonitor<FeishuWebhookOptions>>();
+        monitor.SetupGet(x => x.CurrentValue).Returns(new FeishuWebhookOptions { Retry = retry });
+        return monitor.Object;
+    }
+
     [Fact]
     public void Constructor_WithValidParameters_ShouldCreateInstance()
     {
         // Arrange
-        var optionsMock = Options.Create(_options);
+        var optionsMock = CreateWebhookOptionsMonitor(_options);
 
         // Act
         var service = new FailedEventRetryService(
@@ -71,7 +83,7 @@ public class FailedEventRetryServiceTests
             MaxRetryPerPoll = 10,
             RetryPollIntervalSeconds = 1
         };
-        var optionsMock = Options.Create(options);
+        var optionsMock = CreateWebhookOptionsMonitor(options);
 
         // Act
         var service = new FailedEventRetryService(
@@ -101,7 +113,7 @@ public class FailedEventRetryServiceTests
             EnableRetry = false,
             RetryPollIntervalSeconds = 1
         };
-        var optionsMock = Options.Create(options);
+        var optionsMock = CreateWebhookOptionsMonitor(options);
 
         // Act
         var service = new FailedEventRetryService(
@@ -127,7 +139,7 @@ public class FailedEventRetryServiceTests
     {
         // Arrange
         var eventStoreMock = new Mock<IFailedEventStore>();
-        var optionsMock = Options.Create(_options);
+        var optionsMock = CreateWebhookOptionsMonitor(_options);
 
         // Act
         var service = new FailedEventRetryService(
@@ -149,7 +161,7 @@ public class FailedEventRetryServiceTests
             EnableRetry = false,
             RetryPollIntervalSeconds = 1
         };
-        var optionsMock = Options.Create(options);
+        var optionsMock = CreateWebhookOptionsMonitor(options);
         var eventStoreMock = new Mock<IFailedEventStore>();
 
         var service = new FailedEventRetryService(
@@ -175,7 +187,7 @@ public class FailedEventRetryServiceTests
     public async Task ExecuteAsync_WithNoFailedEvents_ShouldNotProcess()
     {
         // Arrange
-        var optionsMock = Options.Create(_options);
+        var optionsMock = CreateWebhookOptionsMonitor(_options);
         var eventStoreMock = new Mock<IFailedEventStore>();
         eventStoreMock
             .Setup(x => x.GetPendingRetryEventsAsync(It.IsAny<DateTimeOffset>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
@@ -204,7 +216,7 @@ public class FailedEventRetryServiceTests
     public async Task ExecuteAsync_WithFailedEvent_ShouldRetryAndSucceed()
     {
         // Arrange
-        var optionsMock = Options.Create(_options);
+        var optionsMock = CreateWebhookOptionsMonitor(_options);
         var eventStoreMock = new Mock<IFailedEventStore>();
 
         var failedEvent = new FailedEventInfo
@@ -248,7 +260,7 @@ public class FailedEventRetryServiceTests
     public async Task ExecuteAsync_WithFailedEvent_ShouldRetryAndFail()
     {
         // Arrange
-        var optionsMock = Options.Create(_options);
+        var optionsMock = CreateWebhookOptionsMonitor(_options);
         var eventStoreMock = new Mock<IFailedEventStore>();
 
         var failedEvent = new FailedEventInfo
@@ -292,7 +304,7 @@ public class FailedEventRetryServiceTests
     public async Task ExecuteAsync_WithMaxRetryExceeded_ShouldRemoveEvent()
     {
         // Arrange
-        var optionsMock = Options.Create(_options);
+        var optionsMock = CreateWebhookOptionsMonitor(_options);
         var eventStoreMock = new Mock<IFailedEventStore>();
 
         var failedEvent = new FailedEventInfo
@@ -332,7 +344,7 @@ public class FailedEventRetryServiceTests
     public async Task ExecuteAsync_WithInvalidJsonData_ShouldUpdateRetryCount()
     {
         // Arrange
-        var optionsMock = Options.Create(_options);
+        var optionsMock = CreateWebhookOptionsMonitor(_options);
         var eventStoreMock = new Mock<IFailedEventStore>();
 
         var failedEvent = new FailedEventInfo
@@ -372,7 +384,7 @@ public class FailedEventRetryServiceTests
     public async Task ExecuteAsync_WithException_ShouldUpdateRetryCount()
     {
         // Arrange
-        var optionsMock = Options.Create(_options);
+        var optionsMock = CreateWebhookOptionsMonitor(_options);
         var eventStoreMock = new Mock<IFailedEventStore>();
 
         var failedEvent = new FailedEventInfo
@@ -434,12 +446,11 @@ public class FailedEventRetryServiceTests
     private sealed class TestableRetryService : FailedEventRetryService
     {
         public TestableRetryService(
-            IOptions<FailedEventRetryOptions> options,
+            IOptionsMonitor<FeishuWebhookOptions> webhookOptions,
             ILogger<FailedEventRetryService> logger,
             IServiceScopeFactory scopeFactory,
-            IFailedEventStore? failedEventStore = null,
-            IOptionsMonitor<FeishuWebhookOptions>? webhookOptions = null)
-            : base(options, logger, scopeFactory, failedEventStore, webhookOptions)
+            IFailedEventStore? failedEventStore = null)
+            : base(webhookOptions, logger, scopeFactory, failedEventStore)
         {
         }
 
@@ -452,7 +463,15 @@ public class FailedEventRetryServiceTests
         // Arrange - WHF-14：启动期禁用 → 运行期启用 → 重试服务应恢复工作（不再永久退出）
         var webhookOptions = new FeishuWebhookOptions
         {
-            Retry = new FailedEventRetryOptions { EnableRetry = false }
+            // R5/X3：重试参数唯一真相源是 FeishuWebhookOptions.Retry——本用例同时验证
+            // FeishuWebhook:Retry:RetryPollIntervalSeconds 等字段现在真的能驱动轮询节奏。
+            Retry = new FailedEventRetryOptions
+            {
+                EnableRetry = false,
+                MaxRetryCount = _options.MaxRetryCount,
+                MaxRetryPerPoll = _options.MaxRetryPerPoll,
+                RetryPollIntervalSeconds = 1
+            }
         };
         var monitor = new MutableWebhookOptionsMonitor { CurrentValue = webhookOptions };
 
@@ -462,11 +481,10 @@ public class FailedEventRetryServiceTests
             .ReturnsAsync(new List<FailedEventInfo>());
 
         var service = new TestableRetryService(
-            Options.Create(_options),
+            monitor,
             _loggerMock.Object,
             _scopeFactory,
-            eventStoreMock.Object,
-            monitor);
+            eventStoreMock.Object);
 
         // Act - 直接驱动 ExecuteAsync：禁用态运行一轮（1s 轮询间隔），300ms 时热更新为启用，
         // 下一轮（约 1s 处）应恢复轮询；2.2s 处取消并验证优雅退出
@@ -495,7 +513,7 @@ public class FailedEventRetryServiceTests
             .ReturnsAsync(new List<FailedEventInfo>());
 
         var service = new TestableRetryService(
-            Options.Create(_options),
+            CreateWebhookOptionsMonitor(_options),
             loggerMock.Object,
             _scopeFactory,
             eventStoreMock.Object);

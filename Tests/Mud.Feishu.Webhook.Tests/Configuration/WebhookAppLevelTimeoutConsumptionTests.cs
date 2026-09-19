@@ -11,6 +11,10 @@ using Mud.Feishu.Webhook.Configuration;
 
 namespace Mud.Feishu.Webhook.Tests.Configuration;
 
+// R5/X9：本文件专门验证 LegacyGlobalTimeoutOnly 这一 Obsolete 过渡开关的绑定与运行期语义
+// （Obsolete 化只是下线预告，不得顺带切断绑定）。
+#pragma warning disable CS0618
+
 /// <summary>
 /// B1：应用级 EventHandlingTimeoutMs 运行时消费 + LegacyGlobalTimeoutOnly 兼容闸。
 /// </summary>

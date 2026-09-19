@@ -102,6 +102,15 @@ jobs:
           Assert-Zero 'AOT001-007'       (Select-String -Path $log -Pattern 'AOT00[1-7]' -AllMatches).Count 'AOT006 已在 ns2.0/net6.0 豁免，net8+ 必须净零'
           if ($failed) { exit 1 }
 
+      # 步骤4.6：配置面审计（R5/G1）。
+      # 只断言「已删除的配置键/属性名不得在源码中复活」这一高精度桶（脚本的 $strictPatterns）；
+      # R4 遗留的宽口径启发式模式仅告警（$warnPatterns），不阻断——详见 script 头部说明与
+      # .docs/配置面可用性修复与收敛方案-R5.md §5.4（G-03 / RK13）。
+      # 注意：不要把它并入上面的 -CacheCheckOnly 段，后者只在 Restore 之前跑且在托管 runner 上 [SKIP]。
+      - name: Config key audit (strict)
+        shell: pwsh
+        run: '& ./scripts/audit-config-keys.ps1 -Strict'
+
       # P3-1：AOT 发布验证（仅 Linux，net8.0）
       - name: AOT Publish Verification
         if: matrix.os == 'ubuntu-latest'

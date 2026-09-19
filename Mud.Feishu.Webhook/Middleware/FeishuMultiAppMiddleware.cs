@@ -68,10 +68,12 @@ public class FeishuMultiAppMiddleware : IDisposable
                 changes.Add($"GlobalRoutePrefix: {oldOptions.GlobalRoutePrefix} → {newOptions.GlobalRoutePrefix}");
             }
 
+#pragma warning disable CS0618 // R5/X4：该开关无运行时效果；此处仅保留配置变更可观测性
             if (oldOptions.AutoRegisterEndpoint != newOptions.AutoRegisterEndpoint)
             {
-                changes.Add($"AutoRegisterEndpoint: {oldOptions.AutoRegisterEndpoint} → {newOptions.AutoRegisterEndpoint}");
+                changes.Add($"AutoRegisterEndpoint: {oldOptions.AutoRegisterEndpoint} → {newOptions.AutoRegisterEndpoint}（注意：该开关无运行时效果，路由由 app.UseFeishuWebhook() 决定）");
             }
+#pragma warning restore CS0618
 
             if (oldOptions.MaxRequestBodySize != newOptions.MaxRequestBodySize)
             {

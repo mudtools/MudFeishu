@@ -119,7 +119,6 @@ app.Run();
   "FeishuWebhook": {
     "GlobalRoutePrefix": "feishu",
     "AutoRegisterEndpoint": true,
-    "EnableRequestLogging": true,
     "EnableExceptionHandling": true,
     "EventHandlingTimeoutMs": 30000,
     "MaxConcurrentEvents": 10,
@@ -195,7 +194,6 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.CreateFeishuWebhookServiceBuilder(options =>
 {
     options.GlobalRoutePrefix = "feishu";
-    options.EnableRequestLogging = true;
     options.EnableExceptionHandling = true;
     options.MaxConcurrentEvents = 10;
 })
@@ -441,10 +439,11 @@ public class DemoDepartmentEventHandler : DepartmentCreatedEventHandler
 
 ### 日志配置
 
-| 选项                      | 类型 | 默认值 | 说明                 |
-| ------------------------- | ---- | ------ | -------------------- |
-| `EnableRequestLogging`    | bool | true   | 是否启用请求日志记录 |
-| `EnableExceptionHandling` | bool | true   | 是否启用异常处理     |
+日志级别统一由 `Logging:LogLevel:Mud.Feishu.Webhook` 控制，**不存在**模块私有日志开关。
+
+| 选项                      | 类型 | 默认值 | 说明                                     |
+| ------------------------- | ---- | ------ | ---------------------------------------- |
+| `EnableExceptionHandling` | bool | true   | 是否吞并事件处理异常（错误处理策略，非日志开关） |
 
 ### 失败事件重试配置
 
@@ -1284,10 +1283,9 @@ app.MapDiagnostics();          // 诊断端点
 builder.Logging.AddConsole();
 builder.Logging.SetMinimumLevel(LogLevel.Debug);
 
-// 启用请求日志记录和性能监控
+// 启用性能监控（日志级别另由 Logging:LogLevel:Mud.Feishu.Webhook 控制）
 builder.Services.CreateFeishuWebhookServiceBuilder(options =>
 {
-    options.EnableRequestLogging = true;
     options.EnablePerformanceMonitoring = true;
     options.RateLimit.EnableRateLimit = true; // 启用限流调试
 }).AddHandler<MessageEventHandler>()

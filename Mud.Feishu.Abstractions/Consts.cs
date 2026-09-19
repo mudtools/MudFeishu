@@ -73,11 +73,6 @@ internal class Consts
     public const int DefaultEventRetryCount = 3;
 
     /// <summary>
-    /// 默认去重操作重试次数（用于 DeduplicationOptions.MaxRetryCount，Redis 操作失败时的重试）
-    /// </summary>
-    public const int DefaultDeduplicationRetryCount = 3;
-
-    /// <summary>
     /// 默认重试延迟时间（毫秒）
     /// </summary>
     public const int DefaultRetryDelayMs = 1000;
@@ -161,16 +156,6 @@ internal class Consts
     /// 默认事件重试每次轮询最大处理数：用于 FailedEventRetryOptions.MaxRetryPerPoll
     /// </summary>
     public const int DefaultEventRetryMaxRetryPerPoll = 10;
-
-    /// <summary>
-    /// 默认去重初始重试延迟（毫秒）：用于 DeduplicationOptions.InitialRetryDelay
-    /// </summary>
-    public const int DefaultDeduplicationInitialRetryDelayMs = 1000;
-
-    /// <summary>
-    /// 默认去重最大重试延迟（毫秒）：用于 DeduplicationOptions.MaxRetryDelay
-    /// </summary>
-    public const int DefaultDeduplicationMaxRetryDelayMs = 30000;
 
     /// <summary>
     /// 飞书开放平台 API 默认 BaseUrl

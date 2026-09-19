@@ -21,7 +21,6 @@ public class FeishuAppWebhookOptionsTests
         options.AppKey.Should().BeEmpty();
         options.VerificationToken.Should().BeEmpty();
         options.EncryptKey.Should().BeEmpty();
-        options.Description.Should().BeNull();
         options.TimestampToleranceSeconds.Should().BeNull();
         options.EventHandlingTimeoutMs.Should().BeNull();
         options.EnforceHeaderSignatureValidation.Should().BeNull();

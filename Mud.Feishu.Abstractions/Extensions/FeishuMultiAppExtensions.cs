@@ -8,6 +8,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 using Mud.Feishu.Abstractions;
 using Mud.Feishu.Abstractions.Authentication.MultiApp;
 using Mud.HttpUtils;
@@ -154,9 +155,57 @@ public static class FeishuMultiAppExtensions
         // 注册基础服务（HttpClient工厂）
         services.AddFeishuAppBaseServices(configs, configuration);
 
+        // R5/X1：FeishuAppOptions 配置节绑定。
+        // 此前 AddFeishuAppBaseServices 只调用 AddOptions<FeishuAppOptions>()——「仅注册 Options」
+        // **不会绑定任何配置节**，FeishuAppOptions.SectionName 因此是死常量，6 个行为开关无法经
+        // appsettings 下发（README 的「读取点」表会让读者误以为可配）。
+        RegisterFeishuAppOptionsBinding(services, configuration);
+
         // 注册核心服务（应用管理器、默认应用上下文、配置）
         RegisterCoreServices(services, configs, configuration, sectionName);
         return services;
+    }
+
+    /// <summary>
+    /// R5/X1：把 <c>FeishuAppOptions</c> 绑定到 <c>FeishuAppOptions</c> 配置节，并注册启动期校验器。
+    /// </summary>
+    /// <param name="services">服务集合。</param>
+    /// <param name="configuration">宿主配置。</param>
+    /// <remarks>
+    /// <para>
+    /// <b>为什么用委托式 <c>Configure</c> 而不是 <c>Configure&lt;T&gt;(IConfiguration)</c> 重载</b>：
+    /// 后者的反射绑定调用点无法被配置绑定源生成器拦截，会让严格 AOT 冒烟出现
+    /// <c>IL2026</c>/<c>IL3050</c>（该结论已记录在
+    /// <c>FeishuServiceCollectionExtensions</c> 中 <c>TokenRecoveryOptions</c> 的 AOT-3 注释里）。
+    /// 因此本方法必须带 <c>RequiresUnreferencedCode</c> / <c>RequiresDynamicCode</c> 标注，
+    /// 并由同样带标注的 <c>AddFeishuApp</c> 重载调用——**不得**下沉到未标注的
+    /// internal <c>AddFeishuAppBaseServices</c>。
+    /// </para>
+    /// <para>
+    /// <b>为什么不注册 <c>IOptionsChangeTokenSource</c></b>：<see cref="FeishuAppOptions"/> 的 6 个属性
+    /// 全部被文档化为「启动快照」，且全仓库**没有任何** <c>IOptionsMonitor&lt;FeishuAppOptions&gt;</c>
+    /// 消费方（消费方一律为 <c>IOptions&lt;FeishuAppOptions&gt;</c>，其 <c>OptionsManager</c> 自带私有缓存、
+    /// 不观察变更令牌）。注册变更令牌只会制造「可热更」的假象，属 R5 要清理的死接线，故不注册。
+    /// </para>
+    /// </remarks>
+#if NET6_0_OR_GREATER
+    [RequiresUnreferencedCode("反射式配置绑定（ConfigurationBinder.Bind）在裁剪下无法静态分析配置类型成员")]
+#endif
+#if NET7_0_OR_GREATER
+    [RequiresDynamicCode("反射式配置绑定（ConfigurationBinder.Bind）在 AOT/动态代码生成环境下不可用")]
+#endif
+    private static void RegisterFeishuAppOptionsBinding(IServiceCollection services, IConfiguration configuration)
+    {
+        var appOptionsSection = configuration.GetSection(FeishuAppOptions.SectionName);
+        services.Configure<FeishuAppOptions>(options => appOptionsSection.Bind(options));
+
+        services.TryAddSingleton<IValidateOptions<FeishuAppOptions>, FeishuAppOptionsValidator>();
+
+#if NET6_0_OR_GREATER
+        // 与 RedisOptions 的 T-M3-4 模式一致：net6+ 在宿主启动期即触发校验（fail-fast）；
+        // netstandard2.0 无 ValidateOnStart，由 IValidateOptions 在首次解析时触发。
+        services.AddOptions<FeishuAppOptions>().ValidateOnStart();
+#endif
     }
 
     /// <summary>
@@ -464,6 +513,30 @@ public static class FeishuMultiAppExtensions
         // 若需回到「配置变更需重启」的旧语义，设置 FeishuAppOptions.EnableConfigReload = false。
         services.PostConfigure<List<FeishuAppConfig>>(options =>
         {
+            // R5/X7：热更链补齐旧扁平键回填，使启动链（AddFeishuApp 中的 section.Bind + 回填）
+            // 与热更链（IOptionsMonitor<List<FeishuAppConfig>> 重建）行为一致。
+            //
+            // 背景：启动链在 AddFeishuApp 里显式调用 configs[i].ApplyLegacyFlatKeys(children[i])，
+            // 而热更链只经过上面的 Configure<List<FeishuAppConfig>>(IConfiguration) —— 不回填。
+            // 结果是「首次热更即以默认值重建上下文」，旧扁平键（TimeOut / RetryCount /
+            // CircuitBreaker* 等）的兼容读取静默失效。
+            //
+            // 为什么放在 PostConfigure 而不是把 Configure(IConfiguration) 改写成手写委托：
+            // Configure<T>(IConfiguration) 重载内部经 OptionsBuilder.Bind 注册了
+            // IConfigurationChangeTokenSource，手写委托**不会**注册它 —— 那会让热更新整体静默失效
+            // （远比丢回填严重）。PostConfigure 在每次选项重建时都会重跑，语义完整且 diff 最小。
+            //
+            // 与下方 IsDefault 推断可安全共存：ApplyLegacyFlatKeys 仅在嵌套值为默认时才覆盖。
+            if (configuration != null && sectionName != null)
+            {
+                var legacySection = configuration.GetSection(sectionName);
+                var children = legacySection.GetChildren().ToList();
+                for (var i = 0; i < children.Count && i < options.Count; i++)
+                {
+                    options[i].ApplyLegacyFlatKeys(children[i]);
+                }
+            }
+
             // AppKey 为 "default" 时自动设置 IsDefault=true
             foreach (var config in options)
             {

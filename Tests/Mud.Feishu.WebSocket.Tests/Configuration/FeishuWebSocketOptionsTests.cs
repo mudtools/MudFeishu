@@ -34,6 +34,10 @@ public class FeishuWebSocketOptionsTests
         options.EventDeduplication.Mode.Should().Be(Mud.Feishu.WebSocket.EventDeduplicationMode.InMemory);
         options.EventDeduplication.CacheExpiration.Should().Be(TimeSpan.FromHours(48));
         options.EventDeduplication.CleanupInterval.Should().Be(TimeSpan.FromMinutes(5));
+        // P1-2/M1-4：空 EventId 默认 fail-closed（与 Webhook WHF-05 对齐）
+        options.RejectEmptyEventIds.Should().BeTrue();
+        // M3-2：未知事件默认 false（保守，保持 WS 现状）
+        options.IgnoreUnknownEventTypes.Should().BeFalse();
     }
 
     [Fact]

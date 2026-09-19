@@ -47,6 +47,7 @@ public class ScopedFeishuEventHandlerFactory : IFeishuEventHandlerFactory, IDisp
     // WS-04 修复（P1-6）：用户通过 AddHandler(instance) 注册的处理器实例。
     // 这些实例不经过 DI 作用域解析，由工厂直接复用，避免被 IServiceScope.Dispose 回收。
     private readonly IReadOnlyList<IFeishuEventHandler> _handlerInstances;
+    private readonly bool _ignoreUnknownEventTypes;
     private readonly object _inspectionLock = new();
 
     private IServiceScope? _inspectionScope;
@@ -60,22 +61,25 @@ public class ScopedFeishuEventHandlerFactory : IFeishuEventHandlerFactory, IDisp
     /// <param name="handlerTypes">通过建造者注册的事件处理器类型集合</param>
     /// <param name="defaultHandlerType">默认事件处理器类型（可选）</param>
     /// <param name="handlerInstances">用户通过 AddHandler(instance) 注册的处理器实例集合（可选）</param>
+    /// <param name="ignoreUnknownEventTypes">未注册事件类型是否静默忽略（WHF-09 对齐，默认 false 保现状）</param>
     /// <exception cref="ArgumentNullException">当 logger 或 scopeFactory 为 null 时抛出</exception>
     public ScopedFeishuEventHandlerFactory(
         ILogger<ScopedFeishuEventHandlerFactory> logger,
         IServiceScopeFactory scopeFactory,
         IReadOnlyList<Type> handlerTypes,
         Type? defaultHandlerType = null,
-        IReadOnlyList<IFeishuEventHandler>? handlerInstances = null)
+        IReadOnlyList<IFeishuEventHandler>? handlerInstances = null,
+        bool ignoreUnknownEventTypes = false)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _scopeFactory = scopeFactory ?? throw new ArgumentNullException(nameof(scopeFactory));
         _handlerTypes = handlerTypes ?? throw new ArgumentNullException(nameof(handlerTypes));
         _defaultHandlerType = defaultHandlerType;
         _handlerInstances = handlerInstances ?? Array.Empty<IFeishuEventHandler>();
+        _ignoreUnknownEventTypes = ignoreUnknownEventTypes;
 
-        _logger.LogDebug("作用域感知事件处理器工厂已初始化，注册处理器类型 {Count} 个，实例 {InstanceCount} 个",
-            _handlerTypes.Count, _handlerInstances.Count);
+        _logger.LogDebug("作用域感知事件处理器工厂已初始化，注册处理器类型 {Count} 个，实例 {InstanceCount} 个，IgnoreUnknownEventTypes={IgnoreUnknown}",
+            _handlerTypes.Count, _handlerInstances.Count, _ignoreUnknownEventTypes);
     }
 
     /// <inheritdoc/>
@@ -89,6 +93,10 @@ public class ScopedFeishuEventHandlerFactory : IFeishuEventHandlerFactory, IDisp
     public IReadOnlyList<IFeishuEventHandler> GetHandlers(string eventType) => GetInspectionFactory().GetHandlers(eventType);
 
     /// <inheritdoc/>
+    /// <remarks>
+    /// P2-2：运行期注册<b>仅作用于元数据查询作用域</b>（GetHandler/GetHandlers/GetRegisteredEventTypes），
+    /// <b>不参与</b> <see cref="HandleEventParallelAsync"/> 事件分发；分发处理器集合由 Builder 注册期决定。
+    /// </remarks>
     public void RegisterHandler(IFeishuEventHandler handler) => GetInspectionFactory().RegisterHandler(handler);
 
     /// <inheritdoc/>
@@ -106,6 +114,12 @@ public class ScopedFeishuEventHandlerFactory : IFeishuEventHandlerFactory, IDisp
     /// <summary>
     /// 并行处理事件：为本次调用创建独立作用域，在作用域内解析处理器并分发。
     /// </summary>
+    /// <remarks>
+    /// P2-2：运行期 <see cref="RegisterHandler"/> 仅作用于元数据查询作用域，不参与本分发路径；
+    /// 分发处理器集合由 Builder 注册期决定。
+    /// P2-7：多处理器扇出为 at-least-once——任一处理器失败将整体回滚去重并依赖服务端重发，
+    /// 已成功的处理器会被重复执行；处理器必须幂等或以业务唯一键兜底。
+    /// </remarks>
     /// <param name="eventType">事件类型</param>
     /// <param name="eventData">事件数据</param>
     /// <param name="cancellationToken">取消令牌</param>
@@ -116,6 +130,16 @@ public class ScopedFeishuEventHandlerFactory : IFeishuEventHandlerFactory, IDisp
         try
         {
             var factory = CreateFactory(scope.ServiceProvider);
+
+            // M3-2/P2-3：WHF-09 对齐——在工厂分发前按"本作用域实际解析到的注册"门控
+            if (_ignoreUnknownEventTypes && !string.IsNullOrEmpty(eventType) && !factory.IsHandlerRegistered(eventType))
+            {
+                _logger.LogDebug("事件类型 {EventType} 未注册处理器，已忽略（IgnoreUnknownEventTypes=true）", eventType);
+                Mud.Feishu.Abstractions.Metrics.FeishuMetricsHelper.RecordEventOutcome(
+                    eventData.AppId ?? "default", eventType, success: true, "unhandled");
+                return;
+            }
+
             await factory.HandleEventParallelAsync(eventType, eventData, cancellationToken);
         }
         finally

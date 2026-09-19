@@ -104,7 +104,14 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
         _messageRouter = messageRouter ?? throw new ArgumentNullException(nameof(messageRouter));
         _seqIdDeduplicator = seqIdDeduplicator;
         _sequenceValidator = sequenceValidator;
+        // P1-6/M2-4：分层后传输层不再依赖统一中间件；参数仅为源兼容保留。
+        // SDK 内唯一生产构造点（FeishuWebSocketClient）本就不传该参数。
         _unifiedDeduplicationMiddleware = unifiedDeduplicationMiddleware;
+        if (unifiedDeduplicationMiddleware != null)
+        {
+            _logger.LogWarning(
+                "BinaryMessageProcessor 已不再推荐注入 IUnifiedDeduplicationMiddleware：SeqID/EventId 去重已分层，该参数将在后续版本移除");
+        }
     }
 
     /// <summary>
@@ -314,6 +321,8 @@ _logger.LogDebug("二进制消息接收完成，大小: {Size} 字节，耗时: 
             ulong? markedSeqId = null; // 跟踪已标记的 SeqID，用于失败时回滚
             // P2-14 修复：frame 声明上提到 try 之外，使异常路径也能拿到已解析的帧并回 ACK(500)。
             EventProtoData? frame = null;
+            // P0-1：extractedEventId 同步上提，供失败收尾回滚统一中间件路径使用
+            string? extractedEventId = null;
             try
             {
                 _logger.LogDebug("尝试使用 ProtoBuf 反序列化二进制消息");
@@ -362,10 +371,11 @@ _logger.LogDebug("二进制消息接收完成，大小: {Size} 字节，耗时: 
                     }
                 }
 
-                string? extractedEventId = null;
+                // P2-10a：payload 只 GetString 一次，后续路由/事件提取复用同一字符串
+                string? jsonPayload = null;
                 if (frame.Payload != null) // frame 已在上方 ?? throw 处收敛为非空；用 ?. 会在条件为假的路径上把状态重新降级为可空
                 {
-                    var jsonPayload = Encoding.UTF8.GetString(frame.Payload);
+                    jsonPayload = Encoding.UTF8.GetString(frame.Payload);
                     try
                     {
                         using var jsonDoc = JsonDocument.Parse(jsonPayload);
@@ -409,9 +419,8 @@ _logger.LogDebug("二进制消息接收完成，大小: {Size} 字节，耗时: 
                     }
                 }
 
-                if (frame.Payload != null) // 同上：避免条件为假路径上的可空状态降级
+                if (jsonPayload != null) // 复用上方提取结果，避免二次 GetString
                 {
-                    var jsonPayload = System.Text.Encoding.UTF8.GetString(frame.Payload);
                     eventArgs.JsonContent = jsonPayload;
                     eventArgs.MessageType = "Frame";
 
@@ -430,6 +439,9 @@ _logger.LogDebug("二进制消息接收完成，大小: {Size} 字节，耗时: 
                         if (!routed)
                         {
                             eventArgs.ProcessingSuccess = false;
+                            // P0-1：业务失败 → 传输层状态统一回滚（原先此分支不做任何回滚，
+                            // 同 SeqID 重发会被序列验证器 Duplicate 或 SeqID 去重吞掉 → ACK 200 → 事件丢失）
+                            await RollbackTransportStateAsync(frame, markedSeqId, extractedEventId, cancellationToken);
                         }
                     }
 
@@ -437,16 +449,11 @@ _logger.LogDebug("二进制消息接收完成，大小: {Size} 字节，耗时: 
                     // 该属性从未被赋值，此分支从不执行，属于纯死代码。
                     // 路由结果已由上方 RouteBinaryMessageWithResultAsync 返回值处理。
 
-                    if (_unifiedDeduplicationMiddleware != null && (!string.IsNullOrEmpty(extractedEventId) || frame.SeqID > 0))
+                    if (eventArgs.ProcessingSuccess && _unifiedDeduplicationMiddleware != null &&
+                        (!string.IsNullOrEmpty(extractedEventId) || frame.SeqID > 0))
                     {
-                        if (eventArgs.ProcessingSuccess)
-                        {
-                            await _unifiedDeduplicationMiddleware.MarkCompletedAsync(extractedEventId, frame.SeqID, cancellationToken);
-                        }
-                        else
-                        {
-                            await _unifiedDeduplicationMiddleware.RollbackAsync(extractedEventId, frame.SeqID, cancellationToken);
-                        }
+                        // 失败路径已在 RollbackTransportStateAsync 中收尾；成功路径仅做完成标记
+                        await _unifiedDeduplicationMiddleware.MarkCompletedAsync(extractedEventId, frame.SeqID, cancellationToken);
                     }
 
                     await SendAckMessageAsync(frame, eventArgs.ProcessingSuccess, cancellationToken);
@@ -458,10 +465,8 @@ _logger.LogDebug("二进制消息接收完成，大小: {Size} 字节，耗时: 
                     // P2-14 补充：与错误通知路径同理——此处订阅者异常不得阻断后续去重回滚与 ACK(false)。
                     SafeInvokeBinaryMessageReceived(eventArgs, "Payload 为空通知路径");
 
-                    if (_unifiedDeduplicationMiddleware != null && (!string.IsNullOrEmpty(extractedEventId) || (frame?.SeqID ?? 0) > 0))
-                    {
-                        await _unifiedDeduplicationMiddleware.RollbackAsync(extractedEventId, frame?.SeqID ?? 0, cancellationToken);
-                    }
+                    // P0-1：空 Payload 同样须回滚传输层占用的幂等状态
+                    await RollbackTransportStateAsync(frame, markedSeqId, extractedEventId, cancellationToken);
 
                     await SendAckMessageAsync(frame, false, cancellationToken);
                 }
@@ -508,18 +513,8 @@ _logger.LogDebug("二进制消息接收完成，大小: {Size} 字节，耗时: 
                 // 永远执行不到（恰是 P2-14 要修复的"失败不回 ACK"的另一形态）。
                 SafeInvokeBinaryMessageReceived(eventArgs, "错误通知路径");
 
-                // 回滚 SeqID 去重状态，允许服务端重发时重新处理
-                if (markedSeqId.HasValue && _seqIdDeduplicator != null)
-                {
-                    try
-                    {
-                        await _seqIdDeduplicator.RollbackAsync(markedSeqId.Value);
-                    }
-                    catch (Exception rollbackEx)
-                    {
-                        _logger.LogError(rollbackEx, "回滚 SeqId {SeqId} 时发生错误", markedSeqId.Value);
-                    }
-                }
+                // P0-1：传输层失败收尾——回滚验证器窗口 + SeqID 去重（及宿主注入时的统一中间件）
+                await RollbackTransportStateAsync(frame, markedSeqId, extractedEventId, cancellationToken);
 
                 // P2-14 修复：此前异常路径不回 ACK，服务端只能等超时后重投。
                 // 帧已解析成功时补 ACK(500)：与成功路径同一语义（200=成功、500=失败触发服务端重投），
@@ -534,6 +529,68 @@ _logger.LogDebug("二进制消息接收完成，大小: {Size} 字节，耗时: 
         {
             _logger.LogError(ex, "处理完整二进制消息时发生未知错误");
             OnError($"处理完整二进制消息时发生未知错误: {ex.Message}", ex.GetType().Name);
+        }
+    }
+
+    /// <summary>
+    /// 传输层失败收尾：回滚该帧占用过的全部幂等状态，允许服务端重发时重新处理。
+    /// </summary>
+    /// <remarks>
+    /// P0-1 契约：无论服务端重发是否复用 SeqID，回滚均安全
+    ///（复用 → 可重新处理；不复用 → 回滚一个不再出现的键，无副作用）。
+    /// 序列验证器<b>仅移除窗口记录、不回退游标</b>，避免破坏后续合法帧的连续性判定。
+    /// </remarks>
+    /// <param name="frame">已解析的帧（可为 null）</param>
+    /// <param name="markedSeqId">legacy 路径已标记的 SeqID</param>
+    /// <param name="extractedEventId">从 Payload 提取的 EventId（统一中间件路径用）</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    private async Task RollbackTransportStateAsync(
+        EventProtoData? frame,
+        ulong? markedSeqId,
+        string? extractedEventId,
+        CancellationToken cancellationToken)
+    {
+        // ① 序列验证器窗口记录（P0-1：业务失败原先完全不可达任何回滚）
+        if (frame != null)
+        {
+            try
+            {
+                _sequenceValidator?.Remove(frame.SeqID);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "回滚序列验证器状态失败 SeqId={SeqId}", frame.SeqID);
+            }
+        }
+
+        // ② SeqID 去重标记（生产路径：markedSeqId 在统一中间件缺省时被标记）
+        if (markedSeqId.HasValue && _seqIdDeduplicator != null)
+        {
+            try
+            {
+                await _seqIdDeduplicator.RollbackAsync(markedSeqId.Value);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "回滚 SeqId {SeqId} 去重失败", markedSeqId.Value);
+            }
+        }
+
+        // ③ 统一中间件路径（宿主显式注入时；生产 SDK 构造点不注入，分层后 BP 侧依赖将 Obsolete/移除）
+        if (_unifiedDeduplicationMiddleware != null)
+        {
+            try
+            {
+                var seqIdForRollback = frame?.SeqID;
+                await _unifiedDeduplicationMiddleware.RollbackAsync(
+                    extractedEventId,
+                    seqIdForRollback.HasValue && seqIdForRollback.Value > 0 ? seqIdForRollback : null,
+                    cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "回滚统一去重状态失败 EventId={EventId}", extractedEventId);
+            }
         }
     }
 

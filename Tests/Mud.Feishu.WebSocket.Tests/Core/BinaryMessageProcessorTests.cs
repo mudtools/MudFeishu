@@ -484,4 +484,118 @@ public class BinaryMessageProcessorTests
         ProtoBuf.Serializer.Serialize(stream, eventData);
         return stream.ToArray();
     }
+
+    // ===== P0-1：路由失败后传输层状态回滚 =====
+
+    private sealed class ThrowingMessageHandler : IMessageHandler
+    {
+        public bool CanHandle(string messageType) => true;
+
+        public Task HandleAsync(string message, CancellationToken cancellationToken = default)
+            => throw new InvalidOperationException("simulated business failure");
+    }
+
+    private static byte[] CreateDataFrame(ulong seqId, string payloadJson)
+    {
+        var frame = new EventProtoData
+        {
+            Service = 1001,
+            Method = FrameBuilder.MethodData,
+            SeqID = seqId,
+            PayloadType = "JSON",
+            Payload = Encoding.UTF8.GetBytes(payloadJson)
+        };
+        using var stream = new MemoryStream();
+        ProtoBuf.Serializer.Serialize(stream, frame);
+        return stream.ToArray();
+    }
+
+    [Fact]
+    public async Task ProcessCompleteBinaryMessageAsync_WhenRoutingFails_ShouldRollbackSeqIdDedup_AndSendAck500()
+    {
+        // Arrange：真实 Router + 抛异常 handler → RouteBinaryMessageWithResultAsync 返回 false
+        var router = new MessageRouter(NullLogger<MessageRouter>.Instance, new FeishuWebSocketOptions { MessageHandlerTimeoutMs = 0 });
+        router.RegisterHandler(new ThrowingMessageHandler());
+
+        var seqDedupMock = new Mock<Mud.Feishu.Abstractions.Services.IFeishuSeqIDDeduplicator>();
+        seqDedupMock.Setup(d => d.TryMarkAsProcessedAsync(42UL)).ReturnsAsync(false);
+        seqDedupMock.Setup(d => d.RollbackAsync(42UL)).Returns(Task.CompletedTask);
+
+        var connectionManager = new Mock<WebSocketConnectionManager>(
+            Mock.Of<ILogger<WebSocketConnectionManager>>(),
+            new FeishuWebSocketOptions(),
+            Mock.Of<ILoggerFactory>());
+
+        var processor = new BinaryMessageProcessor(
+            _loggerMock.Object,
+            connectionManager.Object,
+            _options,
+            router,
+            seqDedupMock.Object,
+            sequenceValidator: null);
+
+        var payload = Encoding.UTF8.GetBytes("{\"type\":\"event\",\"event_id\":\"evt_p01\"}");
+        var data = CreateDataFrame(42UL, Encoding.UTF8.GetString(payload));
+
+        var ackSent = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        processor.BinaryMessageReceived += (_, args) =>
+        {
+            if (args.ProcessingSuccess == false)
+                ackSent.TrySetResult(true);
+        };
+
+        // Act
+        await processor.ProcessBinaryDataAsync(data, 0, data.Length, true, CancellationToken.None);
+        await Task.WhenAny(ackSent.Task, Task.Delay(3000));
+
+        // Assert：P0-1 生产路径——路由失败必须回滚 SeqID 去重
+        seqDedupMock.Verify(d => d.TryMarkAsProcessedAsync(42UL), Times.Once);
+        seqDedupMock.Verify(d => d.RollbackAsync(42UL), Times.Once);
+
+        processor.Dispose();
+    }
+
+    [Fact]
+    public async Task ProcessCompleteBinaryMessageAsync_WhenRoutingFails_ShouldRemoveSequenceFromValidatorWindow()
+    {
+        var router = new MessageRouter(NullLogger<MessageRouter>.Instance, new FeishuWebSocketOptions { MessageHandlerTimeoutMs = 0 });
+        router.RegisterHandler(new ThrowingMessageHandler());
+
+        var options = new FeishuWebSocketOptions();
+        var validator = new MessageSequenceValidator(NullLogger<MessageSequenceValidator>.Instance, options);
+
+        var seqDedupMock = new Mock<Mud.Feishu.Abstractions.Services.IFeishuSeqIDDeduplicator>();
+        seqDedupMock.Setup(d => d.TryMarkAsProcessedAsync(77UL)).ReturnsAsync(false);
+
+        var connectionManager = new Mock<WebSocketConnectionManager>(
+            Mock.Of<ILogger<WebSocketConnectionManager>>(),
+            new FeishuWebSocketOptions(),
+            Mock.Of<ILoggerFactory>());
+
+        var processor = new BinaryMessageProcessor(
+            _loggerMock.Object,
+            connectionManager.Object,
+            options,
+            router,
+            seqDedupMock.Object,
+            validator);
+
+        var data = CreateDataFrame(77UL, "{\"type\":\"event\",\"event_id\":\"evt_validator\"}");
+        var done = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        processor.BinaryMessageReceived += (_, args) =>
+        {
+            if (args.ProcessingSuccess == false)
+                done.TrySetResult(true);
+        };
+
+        await processor.ProcessBinaryDataAsync(data, 0, data.Length, true, CancellationToken.None);
+        await Task.WhenAny(done.Task, Task.Delay(3000));
+
+        // 回滚后同 SeqID 不应再被判 Duplicate
+        var second = validator.ValidateSequence(77UL);
+        second.Should().NotBe(SequenceValidationResult.Duplicate,
+            "P0-1：路由失败后验证器窗口记录必须被移除，同 SeqID 重发可重新处理");
+
+        processor.Dispose();
+    }
 }

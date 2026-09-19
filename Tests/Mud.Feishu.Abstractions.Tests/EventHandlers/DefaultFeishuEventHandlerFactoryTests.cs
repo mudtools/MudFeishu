@@ -5,6 +5,9 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using FluentAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
+
 namespace Mud.Feishu.Abstractions.Tests.EventHandlers;
 
 /// <summary>
@@ -255,5 +258,87 @@ public class DefaultFeishuEventHandlerFactoryTests
         Assert.Equal(2, result.Count);
         Assert.True(result.ContainsKey("test.event.type1"));
         Assert.True(result.ContainsKey("test.event.type2"));
+    }
+
+    // ===== P1-4：空类型守卫不得依赖日志级别 =====
+
+    [Fact]
+    public void GetHandlers_ShouldReturnDefaultHandler_WhenEventTypeNull_WithNullLogger()
+    {
+        var factory = new DefaultFeishuEventHandlerFactory(
+            NullLogger<DefaultFeishuEventHandlerFactory>.Instance,
+            [_handler1Mock.Object],
+            _defaultHandlerMock.Object);
+
+        var result = factory.GetHandlers(null!);
+
+        Assert.Single(result);
+        Assert.Same(_defaultHandlerMock.Object, result[0]);
+    }
+
+    [Fact]
+    public void GetHandlers_ShouldReturnDefaultHandler_WhenEventTypeEmpty_WithNullLogger()
+    {
+        var factory = new DefaultFeishuEventHandlerFactory(
+            NullLogger<DefaultFeishuEventHandlerFactory>.Instance,
+            [_handler1Mock.Object],
+            _defaultHandlerMock.Object);
+
+        var result = factory.GetHandlers("");
+
+        Assert.Single(result);
+        Assert.Same(_defaultHandlerMock.Object, result[0]);
+    }
+
+    [Fact]
+    public void RegisterHandler_ShouldNotThrow_WhenSupportedEventTypeNull_WithNullLogger()
+    {
+        var factory = new DefaultFeishuEventHandlerFactory(
+            NullLogger<DefaultFeishuEventHandlerFactory>.Instance,
+            [],
+            _defaultHandlerMock.Object);
+
+        var badHandler = new Mock<IFeishuEventHandler>();
+        badHandler.Setup(h => h.SupportedEventType).Returns((string)null!);
+
+        var act = () => factory.RegisterHandler(badHandler.Object);
+
+        act.Should().NotThrow();
+        factory.GetRegisteredEventTypes().Should().BeEmpty();
+    }
+
+    [Fact]
+    public void RegisterHandler_ShouldIgnoreDuplicateInstance()
+    {
+        var factory = new DefaultFeishuEventHandlerFactory(
+            _loggerMock.Object,
+            [_handler1Mock.Object],
+            _defaultHandlerMock.Object);
+
+        factory.RegisterHandler(_handler1Mock.Object);
+
+        var handlers = factory.GetHandlers("test.event.type1");
+        handlers.Count(h => ReferenceEquals(h, _handler1Mock.Object)).Should().Be(1);
+    }
+
+    [Fact]
+    public void GetHandlers_ShouldNotBeAffected_WhenListMutatedAfterReturn()
+    {
+        var factory = new DefaultFeishuEventHandlerFactory(
+            _loggerMock.Object,
+            [_handler1Mock.Object],
+            _defaultHandlerMock.Object);
+
+        var snapshot = factory.GetHandlers("test.event.type1");
+        var countBefore = snapshot.Count;
+
+        factory.RegisterHandler(_handler2Mock.Object);
+        // 即便后续向同类型再注册（通过另一实例），已返回快照长度不应变化
+        // （此处 _handler2 类型不同；用同类型再注册验证快照）
+        var handler1Dup = new Mock<IFeishuEventHandler>();
+        handler1Dup.Setup(h => h.SupportedEventType).Returns("test.event.type1");
+        factory.RegisterHandler(handler1Dup.Object);
+
+        snapshot.Count.Should().Be(countBefore, "GetHandlers 应返回不可变快照");
     }
 }

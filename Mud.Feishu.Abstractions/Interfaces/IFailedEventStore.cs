@@ -112,6 +112,17 @@ public class FailedEventInfo
     public string? AppKey { get; set; }
 
     /// <summary>
+    /// 存储实现使用的键。通常等于 <see cref="EventId"/>；EventId 为空时为实现生成的兜底键。
+    /// <para>外部 <see cref="IFailedEventStore"/> 实现可忽略；InMemory 实现用于避免空 EventId 相互覆盖。</para>
+    /// </summary>
+    public string? StoreKey { get; set; }
+
+    /// <summary>
+    /// 序列化的事件 Header（v2.0）；为 null 表示无 Header 或未序列化。
+    /// </summary>
+    public string? SerializedHeader { get; set; }
+
+    /// <summary>
     /// 下次可重试时间（UTC），由指数退避计算得出
     /// </summary>
     public DateTimeOffset NextRetryAt { get; set; }

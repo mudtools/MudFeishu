@@ -210,6 +210,46 @@ public class UnifiedDeduplicationMiddlewareTests
             Times.Once);
     }
 
+    /// <summary>
+    /// P0-1：RollbackAsync 必须回滚 SeqID（此前实现忽略接口 seqId 参数）
+    /// </summary>
+    [Fact]
+    public async Task RollbackAsync_ShouldRollbackSeqId_WhenSeqIdProvided()
+    {
+        _seqIdDeduplicatorMock
+            .Setup(x => x.RollbackAsync(100UL))
+            .Returns(Task.CompletedTask);
+
+        var middleware = new UnifiedDeduplicationMiddleware(
+            eventDeduplicator: _eventDeduplicatorMock.Object,
+            seqIdDeduplicator: _seqIdDeduplicatorMock.Object,
+            options: _options,
+            logger: _loggerMock.Object);
+
+        await middleware.RollbackAsync("event-123", 100UL);
+
+        _seqIdDeduplicatorMock.Verify(x => x.RollbackAsync(100UL), Times.Once);
+    }
+
+    /// <summary>
+    /// P0-1：seqId 为 null 或 0 时不应回滚 SeqID
+    /// </summary>
+    [Theory]
+    [InlineData(null)]
+    [InlineData(0UL)]
+    public async Task RollbackAsync_ShouldNotRollbackSeqId_WhenSeqIdNullOrEmpty(ulong? seqId)
+    {
+        var middleware = new UnifiedDeduplicationMiddleware(
+            eventDeduplicator: _eventDeduplicatorMock.Object,
+            seqIdDeduplicator: _seqIdDeduplicatorMock.Object,
+            options: _options,
+            logger: _loggerMock.Object);
+
+        await middleware.RollbackAsync("event-123", seqId);
+
+        _seqIdDeduplicatorMock.Verify(x => x.RollbackAsync(It.IsAny<ulong>()), Times.Never);
+    }
+
     [Fact]
     public async Task RollbackAsync_WithNoEventDeduplicator_ShouldNotThrow()
     {

@@ -161,6 +161,9 @@ public class FeishuWebhookService : IFeishuWebhookService
                     _logger.LogWarning("事件被拦截器中断: {EventType}, EventId: {EventId}, Interceptor: {InterceptorType}, AppKey: {AppKey}",
                         eventData.EventType, eventData.EventId, interceptor.GetType().Name, appKey ?? "null");
                     FeishuMetricsHelper.RecordEventOutcome(appKey ?? "unknown", eventData.EventType, success: false, "intercepted");
+                    // P1-7：AfterHandle 可区分拦截终态（接口签名不变）
+                    processingException = new Mud.Feishu.Abstractions.EventHandlers.EventHandlingOutcomeException(
+                        "intercepted", $"事件被 {interceptor.GetType().Name} 拦截");
                     return (false, "Event intercepted");
                 }
             }
@@ -240,17 +243,25 @@ public class FeishuWebhookService : IFeishuWebhookService
                 return (false, "Event handling timeout");
             }
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException oce)
         {
             await RollbackDeduplicationAsync(eventData.EventId, appKey);
             _logger.LogWarning("事件处理被取消，EventId: {EventId}, AppKey: {AppKey}", eventData.EventId, appKey ?? "null");
             FeishuMetricsHelper.RecordEventOutcome(appKey ?? "unknown", eventData.EventType, success: false, "canceled");
+            // P1-7/P2-1：取消以 OCE 传播（保持取消语义），指标已按 canceled 记录
+            processingException = oce;
+            throw;
+        }
+        catch (FeishuDeduplicationFatalException ex)
+        {
+            // WHF-02：语义不变——去重体系致命故障不是业务失败：不回滚、不写失败存储、上抛转 503
+            _logger.LogError(ex, "去重服务致命故障，EventId: {EventId}, AppKey: {AppKey}", eventData.EventId, appKey ?? "null");
+            processingException = new Mud.Feishu.Abstractions.EventHandlers.EventHandlingOutcomeException("dedup_fatal", ex.Message);
             throw;
         }
         catch (FeishuRedisException ex) when (ex.FailureKind == FeishuRedisFailureKind.Server)
         {
-            // WHF-02：去重体系致命故障不是业务失败——不回滚（TryMark 失败时无状态可回滚，
-            // Rollback 对不存在键本就安全）、不写失败存储（避免重试服务后续重复消费），上抛由中间件转 503
+            // 兼容：未包装的 Server 类 Redis 异常仍按 WHF-02 上抛（中间件 503 转换依赖父类型）
             _logger.LogError(ex, "去重服务致命故障（Server），EventId: {EventId}, AppKey: {AppKey}", eventData.EventId, appKey ?? "null");
             throw;
         }
@@ -382,8 +393,16 @@ public class FeishuWebhookService : IFeishuWebhookService
 
     private async Task<(bool ShouldSkip, bool WasProcessing)> CheckDeduplicationAsync(string eventId, string? appKey, CancellationToken cancellationToken)
     {
-        var result = await _deduplicator.TryMarkAsProcessingAsync(eventId, appKey, cancellationToken: cancellationToken);
-        return (result.IsDuplicate, result.WasProcessing);
+        try
+        {
+            var result = await _deduplicator.TryMarkAsProcessingAsync(eventId, appKey, cancellationToken: cancellationToken);
+            return (result.IsDuplicate, result.WasProcessing);
+        }
+        catch (FeishuRedisException ex) when (ex.FailureKind == FeishuRedisFailureKind.Server)
+        {
+            // P1-3/WHF-02：仅去重调用点包装为标记异常，业务侧 Redis 故障不被误吞
+            throw new FeishuDeduplicationFatalException("事件去重检查遭遇 Redis 服务端致命故障", ex);
+        }
     }
 
     private async Task MarkDeduplicationCompletedAsync(string eventId, string? appKey = null)
@@ -409,15 +428,24 @@ public class FeishuWebhookService : IFeishuWebhookService
             _logger.LogDebug("使用应用 {AppKey} 的专属处理器（{Count} 个）分发事件: {EventType}",
                 appKey, handlerTypes.Count, eventType);
 
-            var tasks = new List<Task>();
-            foreach (var handlerType in handlerTypes)
+            var tasks = handlerTypes
+                .Select(t => ProcessAppHandlerSafelyAsync(t, eventData, appKey!, cancellationToken))
+                .ToList();
+            try
             {
-                var handler = (IFeishuEventHandler)_serviceProvider.GetRequiredService(handlerType);
-
-                tasks.Add(handler.HandleAsync(eventData, cancellationToken));
+                await Task.WhenAll(tasks);
             }
-
-            await Task.WhenAll(tasks);
+            catch (Exception ex)
+            {
+                // M3-5/P2-6：多处理器同时失败时补记全部 InnerExceptions，不再只看到第一个
+                if (ex is AggregateException agg)
+                {
+                    foreach (var inner in agg.InnerExceptions)
+                        _logger.LogError(inner, "应用 {AppKey} 专属处理器分发事件 {EventType} 失败（聚合明细）", appKey, eventType);
+                }
+                _logger.LogError(ex, "应用 {AppKey} 专属处理器分发事件 {EventType} 失败", appKey, eventType);
+                throw;
+            }
         }
         else
         {
@@ -434,6 +462,24 @@ public class FeishuWebhookService : IFeishuWebhookService
             _logger.LogDebug("使用全局处理器工厂分发事件: {EventType}, AppKey: {AppKey}",
                 eventType, appKey ?? "null");
             await _handlerFactory.HandleEventParallelAsync(eventType, eventData, cancellationToken);
+        }
+    }
+
+    /// <summary>
+    /// 应用专属处理器安全分发：逐处理器日志，保留聚合重抛（at-least-once 不变）。
+    /// </summary>
+    private async Task ProcessAppHandlerSafelyAsync(Type handlerType, EventData eventData, string appKey, CancellationToken ct)
+    {
+        try
+        {
+            var handler = (IFeishuEventHandler)_serviceProvider.GetRequiredService(handlerType);
+            await handler.HandleAsync(eventData, ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "应用专属处理器 {HandlerType} 处理事件 {EventId} 失败 (AppKey: {AppKey})",
+                handlerType.Name, eventData.EventId, appKey);
+            throw;
         }
     }
 

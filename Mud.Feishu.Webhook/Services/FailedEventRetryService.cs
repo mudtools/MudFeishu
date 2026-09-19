@@ -154,7 +154,7 @@ public class FailedEventRetryService : BackgroundService
                 if (!ShouldRetry(failedEvent))
                 {
                     _logger.LogInformation("事件 {EventId} 已达到最大重试次数 {MaxRetry}，放弃重试", failedEvent.EventId, _options.MaxRetryCount);
-                    await _failedEventStore.RemoveFailedEventAsync(failedEvent.EventId, cancellationToken);
+                    await _failedEventStore.RemoveFailedEventAsync(failedEvent.StoreKey ?? failedEvent.EventId, cancellationToken);
                     continue;
                 }
 
@@ -168,8 +168,22 @@ public class FailedEventRetryService : BackgroundService
                 if (eventData == null)
                 {
                     _logger.LogError("无法反序列化事件 {EventId} 的数据，放弃重试", failedEvent.EventId);
-                    await _failedEventStore.RemoveFailedEventAsync(failedEvent.EventId, cancellationToken);
+                    await _failedEventStore.RemoveFailedEventAsync(failedEvent.StoreKey ?? failedEvent.EventId, cancellationToken);
                     continue;
+                }
+
+                // P2-8：补回失败时序列化的 Header（v2.0 schema/app_id 等），反序列化失败仅告警不阻断
+                if (!string.IsNullOrEmpty(failedEvent.SerializedHeader) && eventData.Header == null)
+                {
+                    try
+                    {
+                        eventData.Header = FeishuJsonAot.Deserialize<Mud.Feishu.Abstractions.FeishuEventHeader>(
+                            failedEvent.SerializedHeader!, FeishuJsonDefaults.DeserializerOptions);
+                    }
+                    catch (Exception headerEx)
+                    {
+                        _logger.LogWarning(headerEx, "恢复事件 {EventId} 的 Header 失败，继续重试（Header 为空）", failedEvent.EventId);
+                    }
                 }
 
                 _logger.LogInformation("开始重试事件 {EventId}，当前重试次数: {RetryCount}/{MaxRetry}，AppKey: {AppKey}",
@@ -181,7 +195,7 @@ public class FailedEventRetryService : BackgroundService
                 if (result.Success)
                 {
                     _logger.LogInformation("事件 {EventId} 重试成功", failedEvent.EventId);
-                    await _failedEventStore.RemoveFailedEventAsync(failedEvent.EventId, cancellationToken);
+                    await _failedEventStore.RemoveFailedEventAsync(failedEvent.StoreKey ?? failedEvent.EventId, cancellationToken);
                 }
                 else
                 {

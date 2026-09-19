@@ -24,6 +24,8 @@ public class InMemoryFailedEventStore : IFailedEventStore, IDisposable
     private readonly ConcurrentDictionary<string, FailedEventInfo> _failedEvents = new();
     private readonly ILogger<InMemoryFailedEventStore> _logger;
     private readonly Timer _cleanupTimer;
+    /// <summary>容量淘汰与定时清理共用的锁；日常读写依赖 ConcurrentDictionary 自身原子性。</summary>
+    private readonly object _evictionLock = new();
 
     /// <summary>
     /// 最大存储的失败事件数量
@@ -65,11 +67,31 @@ public class InMemoryFailedEventStore : IFailedEventStore, IDisposable
     /// <inheritdoc />
     public Task StoreFailedEventAsync(EventData eventData, Exception exception, string? appKey, DateTimeOffset nextRetryAt, CancellationToken cancellationToken = default)
     {
+        // P2-9：空 EventId 用生成键兜底，避免多条空 ID 事件相互覆盖
+        var storeKey = string.IsNullOrEmpty(eventData.EventId)
+            ? $"no-event-id:{Guid.NewGuid():N}"
+            : eventData.EventId;
+
+        string? serializedHeader = null;
+        if (eventData.Header != null)
+        {
+            try
+            {
+                serializedHeader = FeishuJsonAot.Serialize(eventData.Header, FeishuJsonDefaults.SerializerOptions);
+            }
+            catch (Exception serEx)
+            {
+                _logger.LogWarning(serEx, "序列化事件 Header 失败，EventId: {EventId}", eventData.EventId);
+            }
+        }
+
         var failedEvent = new FailedEventInfo
         {
             EventId = eventData.EventId,
             EventType = eventData.EventType,
             SerializedEventData = FeishuJsonAot.Serialize(eventData, FeishuJsonDefaults.SerializerOptions),
+            SerializedHeader = serializedHeader,
+            StoreKey = storeKey,
             ExceptionMessage = exception.Message,
             ExceptionStackTrace = exception.StackTrace ?? string.Empty,
             FailedAt = DateTime.UtcNow,
@@ -78,13 +100,12 @@ public class InMemoryFailedEventStore : IFailedEventStore, IDisposable
             NextRetryAt = nextRetryAt
         };
 
-        // 如果已存在则更新，否则添加新记录
-        _failedEvents.AddOrUpdate(eventData.EventId, failedEvent, (_, _) => failedEvent);
+        _failedEvents.AddOrUpdate(storeKey, failedEvent, (_, _) => failedEvent);
 
         // 容量上限检查
         if (_failedEvents.Count > MaxStoredEvents)
         {
-            lock (_failedEvents)
+            lock (_evictionLock)
             {
                 if (_failedEvents.Count > MaxStoredEvents)
                 {
@@ -92,7 +113,7 @@ public class InMemoryFailedEventStore : IFailedEventStore, IDisposable
                     var oldestEvents = _failedEvents.Values
                         .OrderBy(e => e.FailedAt)
                         .Take(toRemoveCount)
-                        .Select(e => e.EventId)
+                        .Select(e => e.StoreKey ?? e.EventId)
                         .ToList();
 
                     foreach (var key in oldestEvents)
@@ -146,9 +167,9 @@ public class InMemoryFailedEventStore : IFailedEventStore, IDisposable
     /// <inheritdoc />
     public Task UpdateRetryCountAsync(string eventId, int retryCount, CancellationToken cancellationToken = default)
     {
-        if (_failedEvents.TryGetValue(eventId, out var failedEvent))
+        if (TryGetEntry(eventId, out var failedEvent))
         {
-            failedEvent.RetryCount = retryCount;
+            failedEvent!.RetryCount = retryCount;
             _logger.LogDebug("更新失败事件重试次数: {EventId}, 重试次数: {RetryCount}", eventId, retryCount);
         }
 
@@ -158,9 +179,10 @@ public class InMemoryFailedEventStore : IFailedEventStore, IDisposable
     /// <inheritdoc />
     public Task UpdateFailedEventAsync(FailedEventInfo eventInfo, CancellationToken cancellationToken = default)
     {
-        if (_failedEvents.TryGetValue(eventInfo.EventId, out var failedEvent))
+        var lookup = eventInfo.StoreKey ?? eventInfo.EventId;
+        if (TryGetEntry(lookup, out var failedEvent))
         {
-            failedEvent.RetryCount = eventInfo.RetryCount;
+            failedEvent!.RetryCount = eventInfo.RetryCount;
             failedEvent.ExceptionMessage = eventInfo.ExceptionMessage;
             failedEvent.FailedAt = eventInfo.FailedAt;
             failedEvent.NextRetryAt = eventInfo.NextRetryAt;
@@ -176,8 +198,34 @@ public class InMemoryFailedEventStore : IFailedEventStore, IDisposable
     public Task RemoveFailedEventAsync(string eventId, CancellationToken cancellationToken = default)
     {
         _failedEvents.TryRemove(eventId, out _);
+        // 空 EventId 场景：StoreKey 与 EventId 不一致时，按 EventId 再扫一次
+        if (!string.IsNullOrEmpty(eventId))
+        {
+            var orphan = _failedEvents.FirstOrDefault(kv => kv.Value.EventId == eventId && kv.Key != eventId);
+            if (orphan.Key != null)
+                _failedEvents.TryRemove(orphan.Key, out _);
+        }
         _logger.LogDebug("删除成功重试的失败事件记录: {EventId}", eventId);
         return Task.CompletedTask;
+    }
+
+    private bool TryGetEntry(string? key, out FailedEventInfo? info)
+    {
+        info = null;
+        if (string.IsNullOrEmpty(key))
+            return false;
+        if (_failedEvents.TryGetValue(key!, out var direct))
+        {
+            info = direct;
+            return true;
+        }
+        var match = _failedEvents.Values.FirstOrDefault(e => e.EventId == key || e.StoreKey == key);
+        if (match != null)
+        {
+            info = match;
+            return true;
+        }
+        return false;
     }
 
     /// <summary>
@@ -188,6 +236,8 @@ public class InMemoryFailedEventStore : IFailedEventStore, IDisposable
         EventId = source.EventId,
         EventType = source.EventType,
         SerializedEventData = source.SerializedEventData,
+        SerializedHeader = source.SerializedHeader,
+        StoreKey = source.StoreKey,
         ExceptionMessage = source.ExceptionMessage,
         ExceptionStackTrace = source.ExceptionStackTrace,
         AppKey = source.AppKey,
@@ -201,13 +251,12 @@ public class InMemoryFailedEventStore : IFailedEventStore, IDisposable
     /// </summary>
     private void CleanupExpiredEvents(object? state)
     {
-        // 使用锁保护清理操作，确保线程安全
-        lock (_failedEvents)
+        lock (_evictionLock)
         {
             var cutoffTime = DateTime.UtcNow.AddHours(-RetentionHours);
-            var expiredKeys = _failedEvents.Values
-                .Where(e => e.FailedAt < cutoffTime)
-                .Select(e => e.EventId)
+            var expiredKeys = _failedEvents
+                .Where(kv => kv.Value.FailedAt < cutoffTime)
+                .Select(kv => kv.Key)
                 .ToList();
 
             var removedCount = 0;
@@ -223,10 +272,10 @@ public class InMemoryFailedEventStore : IFailedEventStore, IDisposable
             if (_failedEvents.Count > MaxStoredEvents)
             {
                 var toRemoveCount = _failedEvents.Count - MaxStoredEvents;
-                var oldestEvents = _failedEvents.Values
-                    .OrderBy(e => e.FailedAt)
+                var oldestEvents = _failedEvents
+                    .OrderBy(kv => kv.Value.FailedAt)
                     .Take(toRemoveCount)
-                    .Select(e => e.EventId)
+                    .Select(kv => kv.Key)
                     .ToList();
 
                 foreach (var key in oldestEvents)

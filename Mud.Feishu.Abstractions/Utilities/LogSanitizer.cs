@@ -26,6 +26,13 @@ public static class LogSanitizer
     private const int DefaultMaxLength = 64;
 
     /// <summary>
+    /// 报文内敏感字段（token / encrypt / verification_token 等）值剥离模式。
+    /// </summary>
+    private static readonly Regex SensitiveJsonFields = new(
+        "\"(?i)(token|encrypt|verification_token|refresh_token|client_secret|app_secret)\"\\s*:\\s*\"[^\"]*\"",
+        RegexOptions.Compiled);
+
+    /// <summary>
     /// 清洗外部输入用于日志：替换控制符/换行，超长截断。
     /// </summary>
     /// <param name="value">原始值（可为 null/空）。</param>
@@ -41,5 +48,23 @@ public static class LogSanitizer
             return cleaned;
 
         return cleaned.Substring(0, maxLength) + "…";
+    }
+
+    /// <summary>
+    /// 报文日志安全截断：先剥离常见敏感字段值，再截断至 maxLength（P2-4）。
+    /// </summary>
+    /// <param name="message">原始报文（可为 null/空）。</param>
+    /// <param name="maxLength">最大保留长度，默认 200。</param>
+    /// <returns>脱敏并截断后的安全字符串。</returns>
+    public static string CleanMessage(string? message, int maxLength = 200)
+    {
+        if (string.IsNullOrEmpty(message))
+            return string.Empty;
+
+        var masked = SensitiveJsonFields.Replace(message!, "\"$1\":\"***\"");
+        if (masked.Length <= maxLength)
+            return masked;
+
+        return masked.Substring(0, maxLength) + "…";
     }
 }

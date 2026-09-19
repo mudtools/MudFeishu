@@ -95,13 +95,22 @@ public abstract class IdempotentFeishuEventHandler<T>(
     }
 
     /// <summary>
-    /// 获取业务去重键
-    /// <para>重写此方法以定义业务的唯一标识</para>
+    /// 获取业务去重键。默认返回 <c>"{处理器类型名}:{EventId}"</c>。
     /// </summary>
     /// <param name="eventData">事件数据</param>
-    /// <returns>业务唯一标识，返回 null 或空字符串时不进行业务去重</returns>
+    /// <returns>
+    /// 业务唯一标识；返回 null 或空字符串时不进行业务去重。
+    /// EventId 为空时返回 null（交由通道级空 ID 防线处理）。
+    /// </returns>
     /// <remarks>
-    /// 示例：
+    /// <para>历史版本默认返回裸 <see cref="EventData.EventId"/>——与通道级去重键
+    /// （<c>{prefix}:{appKey?}:{eventId}</c>）完全同键：通道级 <c>TryMarkAsProcessing</c>
+    /// 先行标记后，本装饰器对同一去重单例的二次标记必然判重，业务逻辑被静默跳过、
+    /// 事件被标记完成但从未处理（P0-2）。多处理器扇出时裸 EventId 还会导致
+    /// 多个 Idempotent 处理器互相判重。</para>
+    /// <para>重写本方法时必须自带命名空间（如 <c>$"{GetType().Name}:{userId}"</c>），
+    /// 禁止返回裸 <see cref="EventData.EventId"/>。</para>
+    /// <para>示例：</para>
     /// <code>
     /// protected override string? GetBusinessKey(EventData eventData)
     /// {
@@ -113,7 +122,9 @@ public abstract class IdempotentFeishuEventHandler<T>(
     /// </remarks>
     protected virtual string? GetBusinessKey(EventData eventData)
     {
-        return eventData.EventId;
+        return string.IsNullOrEmpty(eventData.EventId)
+            ? null
+            : $"{GetType().Name}:{eventData.EventId}";
     }
 }
 

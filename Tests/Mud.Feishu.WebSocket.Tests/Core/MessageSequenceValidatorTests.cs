@@ -138,4 +138,44 @@ public class MessageSequenceValidatorTests
         results[3].Should().Be(SequenceValidationResult.Duplicate); // 重复序号
         results[4].Should().Be(SequenceValidationResult.Valid);
     }
+
+    /// <summary>
+    /// P0-1：Remove 后同序号应允许再次通过验证（业务失败回滚窗口记录）
+    /// </summary>
+    [Fact]
+    public void Remove_ShouldAllowSameSequenceAgain_AfterRemove()
+    {
+        // Arrange
+        var seq = 20001UL;
+        _validator.ValidateSequence(seq);
+        _validator.ValidateSequence(seq).Should().Be(SequenceValidationResult.Duplicate);
+
+        // Act
+        var removed = _validator.Remove(seq);
+
+        // Assert
+        removed.Should().BeTrue();
+        _validator.ValidateSequence(seq).Should().Be(SequenceValidationResult.Valid);
+    }
+
+    /// <summary>
+    /// P0-1：Remove 不回退 lastProcessed 游标，避免后续合法帧被误判 Rollback
+    /// </summary>
+    [Fact]
+    public void Remove_ShouldNotRegressLastProcessedCursor()
+    {
+        // Arrange
+        var seq1 = 30001UL;
+        var seq2 = 30002UL;
+        _validator.ValidateSequence(seq1);
+        _validator.ValidateSequence(seq2);
+
+        // Act：回滚 seq2 的窗口记录，但不应回退游标
+        _validator.Remove(seq2).Should().BeTrue();
+
+        // Assert：再次收到 seq2（游标相等 → Duplicate 窗口分支已移除，但游标相等仍查重）
+        // 关键：后续新序号 seq3 必须仍可 Valid（游标未回退到 seq1）
+        var seq3 = 30003UL;
+        _validator.ValidateSequence(seq3).Should().Be(SequenceValidationResult.Valid);
+    }
 }

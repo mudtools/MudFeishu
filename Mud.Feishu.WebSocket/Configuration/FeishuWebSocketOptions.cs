@@ -107,6 +107,26 @@ public class FeishuWebSocketOptions
     /// <summary>事件去重配置（WebSocket 传输侧；统一节存在时 FeishuDeduplication 优先）</summary>
     public EventDeduplicationOptions EventDeduplication { get; set; } = new();
 
+    /// <summary>
+    /// 事件 EventId 为空/缺失时是否拒绝处理（true=fail-closed），默认 true。
+    /// </summary>
+    /// <remarks>
+    /// 空 EventId 无法有效去重：内存后端对 null 跳过去重、对空字符串作为同键碰撞
+    /// （首条标记后后续空 ID 事件被静默跳过），服务端重发将失去幂等保护。
+    /// 飞书正常事件必带 event_id，空值只出现在畸形或恶意流量中。
+    /// 对齐 Webhook 通道 <c>FeishuWebhookOptions.RejectEmptyIdentifiers</c>（WHF-05）。
+    /// </remarks>
+    public bool RejectEmptyEventIds { get; set; } = true;
+
+    /// <summary>
+    /// 未注册 eventType 的事件是否静默忽略（记 Debug + unhandled 指标），默认 <c>false</c>（保守，保持 WS 现状回退默认处理器）。
+    /// </summary>
+    /// <remarks>
+    /// 对齐 Webhook 通道 <c>FeishuWebhookOptions.IgnoreUnknownEventTypes</c>（WHF-09，默认 true）。
+    /// WS 默认 false 是行为兼容选择；推荐新宿主设为 true 以与 Webhook 一致。
+    /// </remarks>
+    public bool IgnoreUnknownEventTypes { get; set; }
+
     /// <summary>从配置节回填 R3 前的扁平连接/证书键（仅 JSON 兼容）</summary>
     public void ApplyLegacyFlatKeys(IConfigurationSection section)
     {

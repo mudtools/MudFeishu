@@ -93,8 +93,9 @@ public class UnifiedDeduplicationMiddleware : IUnifiedDeduplicationMiddleware, I
             _logger?.LogDebug("EventId {EventId} 标记为已完成", eventId);
         }
 
-                _logger?.LogDebug("去重标记完成: EventId={EventId}, SeqId={SeqId}", eventId, seqId);
-    
+        // SeqID 在 CheckAsync 的 TryMarkAsProcessedAsync 中已写入"已处理"态，完成阶段无需二次标记。
+        // 保持 no-op 并显式记录，避免调用方误以为需要重复写入。
+        _logger?.LogDebug("去重标记完成: EventId={EventId}, SeqId={SeqId}", eventId, seqId);
     }
 
     /// <inheritdoc />
@@ -106,8 +107,15 @@ public class UnifiedDeduplicationMiddleware : IUnifiedDeduplicationMiddleware, I
             _logger?.LogDebug("EventId {EventId} 处理状态已回滚", eventId);
         }
 
-                _logger?.LogDebug("去重状态回滚: EventId={EventId}, SeqId={SeqId}", eventId, seqId);
-    
+        // P0-1：SeqID 侧状态此前从不回滚（接口参数被忽略），失败重发会被 SeqID 去重吞掉。
+        // 仅在调用方通过 CheckAsync/TryMarkAsProcessedAsync 管理了 SeqID 的同一会话语义下回滚。
+        if (seqId.HasValue && seqId.Value > 0 && _seqIdDeduplicator != null)
+        {
+            await _seqIdDeduplicator.RollbackAsync(seqId.Value);
+            _logger?.LogDebug("SeqId {SeqId} 处理状态已回滚", seqId.Value);
+        }
+
+        _logger?.LogDebug("去重状态回滚: EventId={EventId}, SeqId={SeqId}", eventId, seqId);
     }
 
     /// <inheritdoc />

@@ -16,6 +16,7 @@ public class DefaultFeishuEventHandlerFactory : IFeishuEventHandlerFactory
     private readonly ILogger<DefaultFeishuEventHandlerFactory> _logger;
     private readonly Dictionary<string, List<IFeishuEventHandler>> _handlers;
     private readonly IFeishuEventHandler _defaultHandler;
+    private readonly object _handlersLock = new();
 
     /// <summary>
     /// 构造函数
@@ -43,11 +44,9 @@ public class DefaultFeishuEventHandlerFactory : IFeishuEventHandlerFactory
                     handlersList = [];
                     _handlers[handler.SupportedEventType] = handlersList;
                 }
-                else
-                {
-                    handlersList = _handlers[handler.SupportedEventType];
-                }
-                handlersList.Add(handler);
+                // P2-13：构造期重复实例去重
+                if (!handlersList.Contains(handler))
+                    handlersList.Add(handler);
 
                 if (_logger.IsEnabled(LogLevel.Information))
                     _logger.LogInformation("已注册事件处理器: {EventType} → {HandlerType}",
@@ -67,18 +66,23 @@ public class DefaultFeishuEventHandlerFactory : IFeishuEventHandlerFactory
     /// <returns>事件处理器列表，如果未找到则返回包含默认处理器的列表</returns>
     public IReadOnlyList<IFeishuEventHandler> GetHandlers(string eventType)
     {
-        if (string.IsNullOrEmpty(eventType) && _logger.IsEnabled(LogLevel.Debug))
+        // P1-4：空类型守卫不得依赖日志级别；空/null 一律回退默认处理器，避免 TryGetValue(null) 崩溃
+        if (string.IsNullOrEmpty(eventType))
         {
             _logger.LogWarning("事件类型为空，使用默认处理器");
             return [_defaultHandler];
         }
 
-        if (_handlers.TryGetValue(eventType, out var handlers) && handlers.Count > 0)
+        lock (_handlersLock)
         {
-            if (_logger.IsEnabled(LogLevel.Information))
-                _logger.LogInformation("找到 {Count} 个事件处理器: [{EventType}] → {HandlerNames}",
-                handlers.Count, eventType, string.Join(", ", handlers.Select(h => h.GetType().Name)));
-            return handlers.AsReadOnly();
+            if (_handlers.TryGetValue(eventType, out var handlers) && handlers.Count > 0)
+            {
+                if (_logger.IsEnabled(LogLevel.Information))
+                    _logger.LogInformation("找到 {Count} 个事件处理器: [{EventType}] → {HandlerNames}",
+                    handlers.Count, eventType, string.Join(", ", handlers.Select(h => h.GetType().Name)));
+                // P1-5：返回快照，避免 AsReadOnly 活包装在 WhenAll 枚举期间被并发修改
+                return handlers.ToArray();
+            }
         }
         if (_logger.IsEnabled(LogLevel.Debug))
             _logger.LogWarning("未找到事件类型 [{EventType}] 的处理器，使用默认处理器。已注册的事件类型: {RegisteredTypes}",
@@ -106,23 +110,29 @@ public class DefaultFeishuEventHandlerFactory : IFeishuEventHandlerFactory
         if (handler == null)
             throw new ArgumentNullException(nameof(handler));
 
-        if (string.IsNullOrEmpty(handler.SupportedEventType) && _logger.IsEnabled(LogLevel.Debug))
+        // P1-4：同上，守卫不得依赖日志级别
+        if (string.IsNullOrEmpty(handler.SupportedEventType))
         {
-            _logger.LogWarning("尝试注册不支持任何事件类型的处理器");
+            _logger.LogWarning("尝试注册不支持任何事件类型的处理器: {HandlerType}", handler.GetType().Name);
             return;
         }
 
-        if (!_handlers.TryGetValue(handler.SupportedEventType, out var handlersList))
+        lock (_handlersLock)
         {
-            handlersList = [];
-            _handlers[handler.SupportedEventType] = handlersList;
-        }
+            if (!_handlers.TryGetValue(handler.SupportedEventType, out var handlersList))
+            {
+                handlersList = [];
+                _handlers[handler.SupportedEventType] = handlersList;
+            }
 
-        handlersList.Add(handler);
+            // P2-13：构造期/注册期重复实例去重，避免双重执行
+            if (!handlersList.Contains(handler))
+                handlersList.Add(handler);
+        }
 
         if (_logger.IsEnabled(LogLevel.Debug))
             _logger.LogInformation("已注册事件处理器: {EventType}，该类型现在有 {Count} 个处理器",
-                handler.SupportedEventType, _handlers[handler.SupportedEventType].Count);
+                handler.SupportedEventType, handler.GetType().Name);
     }
 
     /// <summary>
@@ -212,6 +222,13 @@ public class DefaultFeishuEventHandlerFactory : IFeishuEventHandlerFactory
         if (handlers.Count == 0 || (handlers.Count == 1 && handlers[0] == _defaultHandler))
         {
             await _defaultHandler.HandleAsync(eventData, cancellationToken);
+            return;
+        }
+
+        // P2-10d：单处理器直通——跳过 WhenAll 包装（异常语义一致：直接冒泡）
+        if (handlers.Count == 1)
+        {
+            await handlers[0].HandleAsync(eventData, cancellationToken);
             return;
         }
 

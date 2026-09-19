@@ -5,6 +5,7 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using FluentAssertions;
 using Mud.Feishu.Abstractions.Utilities;
 using Xunit;
 
@@ -61,5 +62,29 @@ public class LogSanitizerTests
         var value = new string('a', 64);
 
         Assert.Equal(value, LogSanitizer.Clean(value, 64));
+    }
+
+    // ===== P2-4/M2-6：报文级脱敏 =====
+
+    [Fact]
+    public void CleanMessage_ShouldMaskTokenAndEncrypt_BeforeTruncation()
+    {
+        var message = "{\"token\":\"t-SECRET-VALUE-1234567890\",\"encrypt\":\"enc-SENSITIVE\",\"event\":{\"ok\":true}}"
+                      + new string('x', 300);
+
+        var cleaned = LogSanitizer.CleanMessage(message, 200);
+
+        cleaned.Should().NotContain("t-SECRET-VALUE-1234567890");
+        cleaned.Should().NotContain("enc-SENSITIVE");
+        cleaned.Should().Contain("\"token\":\"***\"");
+        cleaned.Should().Contain("\"encrypt\":\"***\"");
+        cleaned.Length.Should().BeLessThanOrEqualTo(201);
+    }
+
+    [Fact]
+    public void CleanMessage_WithNullOrEmpty_ShouldReturnEmpty()
+    {
+        LogSanitizer.CleanMessage(null).Should().BeEmpty();
+        LogSanitizer.CleanMessage("").Should().BeEmpty();
     }
 }

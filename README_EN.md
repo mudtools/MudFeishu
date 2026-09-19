@@ -222,6 +222,8 @@ dotnet add package Mud.Feishu.Redis
 | `SequenceGapThreshold` | ulong | 0 | Message sequence gap threshold, 0 disables gap detection |
 | `MessageSizeLimits` | object | 1MB / 10MB | Max text (chars) / binary (bytes) message size |
 | `EventDeduplication` | object | InMemory | Event deduplication (`Mode`/`CacheExpiration`/`CleanupInterval`) |
+| `RejectEmptyEventIds` | bool | true | Reject events with empty EventId (fail-closed, WHF-05 aligned) |
+| `IgnoreUnknownEventTypes` | bool | false | Silently ignore unregistered event types (recommended true; default false for compatibility) |
 
 > ℹ️ **Migration note**: the legacy `TokenRefreshInterval` / `TokenRefreshAhead` options have been removed. Token refresh is now controlled by `FeishuAppConfig.TokenRefreshThreshold` (HTTP layer); the WebSocket connection reuses the same app token manager and needs no extra configuration.
 

@@ -9,6 +9,7 @@ using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Mud.Feishu.Abstractions;
+using Mud.Feishu.Abstractions.Interceptors;
 using Mud.Feishu.WebSocket.Handlers;
 
 namespace Mud.Feishu.WebSocket.Tests.Handlers;
@@ -240,5 +241,132 @@ public class FeishuEventMessageHandlerTests
         capturedEventData.Should().NotBeNull();
         capturedEventData!.Header.Should().NotBeNull();
         capturedEventData.Header!.CreateTime.Should().Be("1704067200000");
+    }
+
+    // ===== P1-2：空 EventId fail-closed =====
+
+    [Fact]
+    public async Task HandleAsync_WithEmptyEventId_ShouldSkipDedupAndProcessing_ByDefault()
+    {
+        var factoryMock = new Mock<IFeishuEventHandlerFactory>();
+        var handler = new FeishuEventMessageHandler(
+            _loggerMock.Object,
+            factoryMock.Object,
+            null,
+            null,
+            new FeishuWebSocketOptions { RejectEmptyEventIds = true },
+            null);
+
+        var message = "{\"schema\":\"2.0\",\"header\":{\"event_id\":\"\",\"event_type\":\"drive.file.edit_v1\",\"tenant_key\":\"tk\",\"app_id\":\"app\"},\"event\":{}}";
+
+        await handler.HandleAsync(message);
+
+        factoryMock.Verify(
+            f => f.HandleEventParallelAsync(It.IsAny<string>(), It.IsAny<EventData>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WithEmptyEventId_ShouldProcess_WhenRejectEmptyEventIdsDisabled()
+    {
+        var factoryMock = new Mock<IFeishuEventHandlerFactory>();
+        factoryMock
+            .Setup(f => f.HandleEventParallelAsync(It.IsAny<string>(), It.IsAny<EventData>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var handler = new FeishuEventMessageHandler(
+            _loggerMock.Object,
+            factoryMock.Object,
+            null,
+            null,
+            new FeishuWebSocketOptions { RejectEmptyEventIds = false },
+            null);
+
+        var message = "{\"schema\":\"2.0\",\"header\":{\"event_id\":\"\",\"event_type\":\"drive.file.edit_v1\",\"tenant_key\":\"tk\",\"app_id\":\"app\"},\"event\":{}}";
+
+        await handler.HandleAsync(message);
+
+        factoryMock.Verify(
+            f => f.HandleEventParallelAsync(It.IsAny<string>(), It.IsAny<EventData>(), It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    // ===== P1-1：Mark 失败禁止回滚（WHF-07 WS 对齐） =====
+
+    [Fact]
+    public async Task HandleAsync_WhenMarkCompletedThrows_ShouldNotRollback_AndNotRethrow()
+    {
+        var factoryMock = new Mock<IFeishuEventHandlerFactory>();
+        factoryMock
+            .Setup(f => f.HandleEventParallelAsync(It.IsAny<string>(), It.IsAny<EventData>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var dedupMock = new Mock<Mud.Feishu.Abstractions.Services.IFeishuEventDeduplicator>();
+        dedupMock
+            .Setup(d => d.TryMarkAsProcessingAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<TimeSpan?>(), It.IsAny<TimeSpan?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Mud.Feishu.Abstractions.Services.DeduplicationResult.Success("ws"));
+        dedupMock
+            .Setup(d => d.MarkAsCompletedAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("redis mark failed"));
+
+        var handler = new FeishuEventMessageHandler(
+            _loggerMock.Object,
+            factoryMock.Object,
+            dedupMock.Object,
+            null,
+            new FeishuWebSocketOptions(),
+            null);
+
+        var message = "{\"schema\":\"2.0\",\"header\":{\"event_id\":\"evt_mark_fail\",\"event_type\":\"drive.file.edit_v1\",\"tenant_key\":\"tk\",\"app_id\":\"app\"},\"event\":{}}";
+
+        var act = () => handler.HandleAsync(message);
+
+        await act.Should().NotThrowAsync("Mark 失败不得向上传播（WHF-07）");
+        factoryMock.Verify(
+            f => f.HandleEventParallelAsync(It.IsAny<string>(), It.IsAny<EventData>(), It.IsAny<CancellationToken>()),
+            Times.Once);
+        dedupMock.Verify(
+            d => d.RollbackProcessingAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    // ===== P1-7：拦截回滚 + 终态标记 =====
+
+    [Fact]
+    public async Task HandleAsync_WhenInterceptorBlocks_ShouldRollbackDedup_AndRethrow()
+    {
+        var factoryMock = new Mock<IFeishuEventHandlerFactory>();
+        var interceptorMock = new Mock<IFeishuEventInterceptor>();
+        interceptorMock
+            .Setup(i => i.BeforeHandleAsync(It.IsAny<string>(), It.IsAny<EventData>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+
+        var dedupMock = new Mock<Mud.Feishu.Abstractions.Services.IFeishuEventDeduplicator>();
+        dedupMock
+            .Setup(d => d.TryMarkAsProcessingAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<TimeSpan?>(), It.IsAny<TimeSpan?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Mud.Feishu.Abstractions.Services.DeduplicationResult.Success("ws"));
+        dedupMock
+            .Setup(d => d.RollbackProcessingAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var handler = new FeishuEventMessageHandler(
+            _loggerMock.Object,
+            factoryMock.Object,
+            dedupMock.Object,
+            [interceptorMock.Object],
+            new FeishuWebSocketOptions(),
+            null);
+
+        var message = "{\"schema\":\"2.0\",\"header\":{\"event_id\":\"evt_intercept\",\"event_type\":\"drive.file.edit_v1\",\"tenant_key\":\"tk\",\"app_id\":\"app\"},\"event\":{}}";
+
+        var act = () => handler.HandleAsync(message);
+
+        await act.Should().ThrowAsync<Mud.Feishu.Abstractions.EventHandlers.EventHandlingOutcomeException>();
+        dedupMock.Verify(
+            d => d.RollbackProcessingAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()),
+            Times.Once);
+        factoryMock.Verify(
+            f => f.HandleEventParallelAsync(It.IsAny<string>(), It.IsAny<EventData>(), It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 }

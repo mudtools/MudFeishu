@@ -111,3 +111,37 @@ await File.WriteAllBytesAsync(localPath, bytes);
 | `EnhancedHttpClientOptions.MaxSuccessResponseBytes` | 成功响应体上限（防 OOM，0 = 不限制） |
 | `EnhancedHttpClientOptions.MaxExceptionContentLength` | 异常内容截断长度 |
 | `EnhancedHttpClientOptions.CaptureRequestContent` | 是否捕获请求体用于诊断（含敏感数据，慎用） |
+
+## 6. 事件处理投递语义（at-least-once）
+
+WebSocket / Webhook 事件链路**不追求严格一次**，契约为 **at-least-once + 尽力幂等**。
+业务失败或服务端超时后，飞书可能重发；处理器必须幂等，或以业务唯一键兜底
+（`IdempotentFeishuEventHandler` 默认业务键为 `"{HandlerType}:{EventId}"`，禁止返回裸 EventId）。
+
+### 去重所有权分层
+
+| 层级 | 负责组件 | 标识 | 失败时 |
+| ---- | -------- | ---- | ------ |
+| 传输层 | WS `BinaryMessageProcessor` + `MessageSequenceValidator` + SeqID 去重 | SeqID | 统一回滚窗口/SeqID 标记，ACK 500 触发重发 |
+| 事件层 | `FeishuEventMessageHandler` / `FeishuWebhookService` | EventId | 回滚 processing 态；Mark 失败**不回滚**（WHF-07） |
+
+### 两通道终态对照
+
+| 终态 | WebSocket | Webhook |
+| ---- | --------- | ------- |
+| 业务成功 | Mark completed → ACK 200 | Mark completed → 200 |
+| 业务失败 | 回滚 + ACK 500（重发） | 回滚 + 失败存储 + 500（或按配置返回） |
+| Mark 失败 | 保留 processing，ACK 200（WHF-07） | 保留 processing，按成功返回 |
+| 被拦截 | 回滚去重 + 重抛 → ACK 500（retry-until-accept） | 不进去重 + `(false,"Event intercepted")` → 500 |
+| 空 EventId | 默认拒绝（`RejectEmptyEventIds=true`） | 默认 400（`RejectEmptyIdentifiers=true`） |
+| 未注册事件 | 默认回退默认处理器；`IgnoreUnknownEventTypes=true` 时忽略 | 默认忽略（`IgnoreUnknownEventTypes=true`） |
+| 去重体系致命故障 | （WS 无对应 WHF-02 中间件转换） | `FeishuDeduplicationFatalException` → 不回滚/不写失败存储 → 503 |
+| 外部取消 / 超时 | OCE 传播（ACK 500/停机） | 超时就地收尾；外部取消回滚后 rethrow |
+
+后置拦截器 `AfterHandleAsync(exception)`：业务成功为 `null`；
+拦截/取消等特殊终态可能收到 `EventHandlingOutcomeException`（`OutcomeKind` 为 `intercepted`/`canceled`/`dedup_fatal`）。
+
+### 失败重试与扇出
+
+- 启用 `Retry.EnableRetry` 时，业务失败会写入 `IFailedEventStore`（ADR-2）；`FailedEventInfo` 可含 `SerializedHeader`/`StoreKey`。
+- 多处理器扇出任一失败将**整体**回滚去重并依赖重发，已成功的处理器会重复执行（见 `IFeishuEventHandlerFactory.HandleEventParallelAsync` XML）。

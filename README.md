@@ -225,6 +225,8 @@ dotnet add package Mud.Feishu.OpenTelemetry
 | `SequenceGapThreshold`        | ulong    | 0       | 消息序号跳跃阈值，0 表示禁用跳跃检测                               |
 | `MessageSizeLimits`           | object   | 见下方  | 消息大小限制配置                                                   |
 | `EventDeduplication`          | object   | 见下方  | 事件去重配置                                                       |
+| `RejectEmptyEventIds`         | bool     | true    | 事件 EventId 为空时是否拒绝处理（fail-closed，对齐 Webhook WHF-05） |
+| `IgnoreUnknownEventTypes`     | bool     | false   | 未注册事件类型是否静默忽略（推荐 true，对齐 Webhook WHF-09；默认 false 保持兼容） |
 
 > ℹ️ **迁移提示**：旧版本的 `TokenRefreshInterval` / `TokenRefreshAhead` 配置已移除。令牌刷新现由 `FeishuAppConfig.TokenRefreshThreshold`（HTTP 层）统一控制，WebSocket 连接复用同一应用的令牌管理器，无需单独配置。
 

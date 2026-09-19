@@ -312,6 +312,7 @@ Multi-tenant scenarios use the same multi-app infrastructure: each tenant maps t
 1. **D8 键布局**：令牌键只允许由 `TokenKeyBuilder` 构造；变更须同步两后端 + 等价与回灌测试。禁止在各 Store 中内联键拼接逻辑。
 2. **D9 阈值同源**：恢复阈值必须等于缓存有效性阈值（`TokenRefreshThreshold`）；禁止第二套阈值（如 `threshold/2`）。
 3. **D10 凭据变更清库**：配置热更新（`ApplyConfigurationChanges`；TMF-04：原 `RebuildAppContext` 死代码已删除）检测到 `(AppId, AppSecret)` 变更时必须清除该 appKey 的持久化令牌——租户经 `ClearAsync`、用户经 `IFeishuUserTokenStorePurge.ClearAllUsersAsync` 能力探测（TMF-01 共享记账保证工厂新实例可清干净）。仅 `BaseUrl`/`TimeoutSeconds` 等变更保留令牌热迁移。
+4. **事件去重分层所有权**：传输层（WebSocket `BinaryMessageProcessor`）归 **SeqID/序列验证器**；事件层（`FeishuEventMessageHandler` / Webhook）归 **EventId**。失败时两侧各自回滚本层幂等状态；Idempotent 业务键必须自带命名空间（禁止裸 `EventId`）。投递语义为 at-least-once，不追求严格一次。
 
 ## 配置面约定（R4）
 
@@ -323,6 +324,7 @@ MudFeishu 配置面以**嵌套 Options** 为唯一公共 API（旧扁平属性�
 | 事件去重 | `FeishuDeduplicationOptions`（Mode/Profile/Event/Nonce/SeqId 三前缀） | `FeishuDeduplication:*`；双读期旧 `FeishuRedis:Event*` 等仍可绑 |
 | Redis 连接 | `RedisOptions.Connection` / `Advanced` | `FeishuRedis:Connection:ServerAddress`；旧扁平键由 `ApplyLegacyFlatConnectionKeys` 回填 |
 | WebSocket 重连/证书 | `FeishuWebSocketOptions.Reconnect` / `Certificate` | `FeishuWebSocket:Reconnect:*`、`Certificate:Mode` |
+| WebSocket 事件防线 | `FeishuWebSocketOptions.RejectEmptyEventIds` / `IgnoreUnknownEventTypes` | `FeishuWebSocket:RejectEmptyEventIds`（默认 true）、`IgnoreUnknownEventTypes`（默认 false，推荐 true） |
 | Webhook 令牌刷新 | `EnableTokenBackgroundRefresh`（bool?；null=不干预基座） | `FeishuWebhook:EnableTokenBackgroundRefresh` |
 | Webhook 超时 | 全局 `EventHandlingTimeoutMs` + 应用级同名键（正整数覆盖）；过渡闸 `LegacyGlobalTimeoutOnly` | — |
 

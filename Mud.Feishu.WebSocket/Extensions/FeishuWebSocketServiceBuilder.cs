@@ -309,8 +309,10 @@ public class FeishuWebSocketServiceBuilder
         {
             var logger = serviceProvider.GetRequiredService<ILogger<ScopedFeishuEventHandlerFactory>>();
             var scopeFactory = serviceProvider.GetRequiredService<IServiceScopeFactory>();
+            var ignoreUnknown = serviceProvider.GetService<IOptionsMonitor<FeishuWebSocketOptions>>()?.CurrentValue.IgnoreUnknownEventTypes
+                                ?? false;
             return new ScopedFeishuEventHandlerFactory(
-                logger, scopeFactory, handlerTypes, defaultHandlerType, handlerInstances);
+                logger, scopeFactory, handlerTypes, defaultHandlerType, handlerInstances, ignoreUnknown);
         });
 
         // 注册事件拦截器集合（单例，按注册顺序排序）

@@ -14,6 +14,7 @@ using Mud.Feishu.DataModels.WsEndpoint;
 using Mud.Feishu.WebSocket.Exceptions;
 using Mud.Feishu.WebSocket.Handlers;
 using Mud.Feishu.WebSocket.SocketEventArgs;
+using System.Buffers;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Net.WebSockets;
@@ -799,17 +800,31 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
                     return;
                 }
 
+                // P2-12：池化副本的"所有权跟踪"变量（须声明在 try 之外，finally 才能兜底归还）
+                byte[]? pooledBuffer = null;
                 try
                 {
                     // P0-1 修复：_receiveBuffer 由接收循环复用，而下面的处理是 fire-and-forget，
                     // 直接把 buffer.Array 传出去会让处理线程与下一次 ReceiveAsync 形成数据竞争，
                     // 造成 protobuf 帧内容被覆写（表现为随机解析失败、SeqID 错乱、字段张冠李戴）。
-                    // 必须在返回前拷贝到本次消息私有的数组。
-                    var ownedBuffer = new byte[result.Count];
-                    Buffer.BlockCopy(buffer.Array!, buffer.Offset, ownedBuffer, 0, result.Count);
+                    // 必须在返回前持有本次消息的私有副本。
+                    // P2-12 修复：副本改由 ArrayPool 提供，避免"每帧一次"的 Gen0/LOH 分配
+                    // （大帧上限 10MB，高频投递下会显著放大分配压力）。
+                    // 注意：Rent 返回的数组长度可能大于请求数量（池按 2 的幂分桶），
+                    // 因此必须以 (buffer, 0, count) 三元组传递，绝不能使用 buffer.Length。
+                    if (result.Count == 0)
+                    {
+                        pooledBuffer = Array.Empty<byte>();   // 空帧：不进池，也无需归还
+                    }
+                    else
+                    {
+                        pooledBuffer = ArrayPool<byte>.Shared.Rent(result.Count);
+                        Buffer.BlockCopy(buffer.Array!, buffer.Offset, pooledBuffer, 0, result.Count);
+                    }
 
                     // M3：同文本分支，Task.Run 不传 cancellationToken（避免租约泄漏）
                     var ownedBinaryLease = binaryLease;
+                    var frameBuffer = pooledBuffer;
                     _ = Task.Run(async () =>
                     {
                         try
@@ -838,7 +853,7 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
                             using (FeishuMetricsHelper.RecordEventHandling(Options.AppKey, "websocket_message", "binary"))
                             using (FeishuMetricsHelper.RecordWebSocketMessageProcessing(Options.AppKey, "binary"))
                             {
-                                await _binaryProcessor.ProcessBinaryDataAsync(ownedBuffer, 0, ownedBuffer.Length, result.EndOfMessage, cancellationToken);
+                                await _binaryProcessor.ProcessBinaryDataAsync(frameBuffer, 0, result.Count, result.EndOfMessage, cancellationToken);
                             }
 
                             wsActivity?.SetStatus(ActivityStatusCode.Ok);
@@ -858,14 +873,27 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
                         finally
                         {
                             ownedBinaryLease?.Dispose();
+
+                            // P2-12：副本所有权随任务结束归还池（空帧不归还）
+                            if (frameBuffer.Length > 0)
+                            {
+                                ArrayPool<byte>.Shared.Return(frameBuffer);
+                            }
                         }
                     });
 
-                    binaryLease = null;   // 所有权已随"委托入队"移交
+                    binaryLease = null;    // 租约所有权已随"委托入队"移交
+                    pooledBuffer = null;   // 副本所有权已随"委托入队"移交
                 }
                 finally
                 {
                     binaryLease?.Dispose();   // 派发失败兜底
+
+                    // P2-12：派发失败（未移交所有权）时归还池化副本，避免池泄漏
+                    if (pooledBuffer != null && pooledBuffer.Length > 0)
+                    {
+                        ArrayPool<byte>.Shared.Return(pooledBuffer);
+                    }
                 }
             }
         }

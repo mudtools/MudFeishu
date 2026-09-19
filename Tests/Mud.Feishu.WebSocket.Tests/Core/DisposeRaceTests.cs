@@ -47,10 +47,12 @@ public class DisposeRaceTests
     [Fact]
     public async Task ConnectAsync_AfterDispose_ShouldThrowObjectDisposedException()
     {
+        // 说明：URL 使用默认白名单内的主机（*.feishu.cn），确保异常来自"已释放"守卫
+        // 而非 P2-15 的主机白名单校验（后者先于入口守卫执行）
         var manager = CreateManager();
         manager.Dispose();
 
-        var act = () => manager.ConnectAsync("wss://example.com/ws");
+        var act = () => manager.ConnectAsync("wss://gateway.feishu.cn/ws");
 
         await act.Should().ThrowAsync<ObjectDisposedException>();
     }

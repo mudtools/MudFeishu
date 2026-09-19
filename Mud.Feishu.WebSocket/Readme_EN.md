@@ -698,6 +698,7 @@ public class ServiceManager
 | `AllowSelfSignedCertificates`         | bool                                 | false      | Allow self-signed certificates (recommended false in production) |
 | `AllowCertificateNameMismatch`        | bool                                 | false      | Allow certificate name mismatch (recommended false in production)|
 | `AllowInsecureWebSocket`              | bool                                 | false      | Allow insecure ws:// connections (dev/test only)                 |
+| `AllowedHostSuffixes`                 | string                               | `*.feishu.cn;*.larksuite.com` | Host allow-list: `*.` wildcard suffixes or exact hosts, `;`-separated, case-insensitive; **empty = unrestricted** (use for custom gateways/local test endpoints) |
 | `CustomCertificateValidationCallback` | RemoteCertificateValidationCallback? | null       | Custom certificate validation callback                           |
 | `EventDeduplication`                  | EventDeduplicationOptions            | See below  | Event deduplication configuration                                |
 

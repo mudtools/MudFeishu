@@ -117,4 +117,39 @@ public class BinaryMessageProcessorConcurrencyTests
 
         await processing.WaitAsync(TimeSpan.FromSeconds(5));
     }
+
+    /// <summary>
+    /// P2-12 回归测试：池化副本按 2 的幂超配，处理必须严格按 <c>(buffer, 0, count)</c> 切片，
+    /// count 之外的填充字节不得进入装配/解析链路。
+    /// </summary>
+    [Fact]
+    public async Task ProcessBinaryDataAsync_ShouldHonorCount_WhenBufferIsPadded()
+    {
+        // Arrange
+        var processor = CreateProcessor();
+        Mud.Feishu.WebSocket.SocketEventArgs.WebSocketBinaryMessageEventArgs? received = null;
+        processor.BinaryMessageReceived += (_, e) => received = e;
+
+        var pingFrame = FrameBuilder.BuildPingFrame(serviceId: 7);
+        var padded = new byte[64];                       // 模拟 ArrayPool.Rent 返回的超配数组
+        Buffer.BlockCopy(pingFrame, 0, padded, 0, pingFrame.Length);
+
+        // Act：以 (buffer, 0, count) 三元组传递（与 FeishuWebSocketClient 的池化副本传递方式一致）
+        await processor.ProcessBinaryDataAsync(padded, 0, pingFrame.Length, endOfMessage: true);
+
+        // Assert：处理在后台任务中完成，轮询等待事件
+        var stopwatch = Stopwatch.StartNew();
+        while (received == null)
+        {
+            if (stopwatch.Elapsed > TimeSpan.FromSeconds(5))
+            {
+                throw new TimeoutException("未收到 BinaryMessageReceived 事件（帧可能未按 count 正确切片）");
+            }
+
+            await Task.Delay(10);
+        }
+
+        received!.MessageType.Should().Be("Control_Ping", "帧必须按 count 严格切片后才能被 ProtoBuf 正确解析");
+        received.Data.Length.Should().Be(pingFrame.Length, "count 之外的填充字节不得进入处理链路");
+    }
 }

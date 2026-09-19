@@ -40,7 +40,14 @@ public class ConnectionLifecycleRaceTests
 
     private WebSocketConnectionManager CreateManager(int connectionTimeoutMs = 2000)
         => new(NullLogger<WebSocketConnectionManager>.Instance,
-            new FeishuWebSocketOptions { EnableLogging = false, ConnectionTimeoutMs = connectionTimeoutMs },
+            new FeishuWebSocketOptions
+            {
+                EnableLogging = false,
+                ConnectionTimeoutMs = connectionTimeoutMs,
+                // 本类用例聚焦"生命周期"语义，关闭 P2-15 的主机白名单（默认 *.feishu.cn;*.larksuite.com
+                // 会先于连接失败抛出 ArgumentException，遮蔽被测路径）；白名单语义见 HostAllowListTests
+                AllowedHostSuffixes = string.Empty
+            },
             _loggerFactoryMock.Object);
 
     private static void SetField(object target, string fieldName, object? value)

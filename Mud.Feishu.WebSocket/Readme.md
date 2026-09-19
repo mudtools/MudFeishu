@@ -707,6 +707,7 @@ public class ServiceManager
 | `AllowSelfSignedCertificates`         | bool                                 | false      | 是否允许自签名证书（生产环境建议 false）    |
 | `AllowCertificateNameMismatch`        | bool                                 | false      | 是否允许证书名称不匹配（生产环境建议 false）|
 | `AllowInsecureWebSocket`              | bool                                 | false      | 是否允许 ws:// 不安全连接（仅开发/测试环境）|
+| `AllowedHostSuffixes`                 | string                               | `*.feishu.cn;*.larksuite.com` | 主机白名单：`*.` 通配后缀或精确主机名，分号分隔，大小写不敏感；**置空表示不限制**（连接自建代理/本地测试端点时使用） |
 | `CustomCertificateValidationCallback` | RemoteCertificateValidationCallback? | null       | 自定义证书验证回调                          |
 | `EventDeduplication`                  | EventDeduplicationOptions            | 见下       | 事件去重配置                                |
 

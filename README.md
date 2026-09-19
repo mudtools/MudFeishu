@@ -207,6 +207,7 @@ dotnet add package Mud.Feishu.OpenTelemetry
 | `ValidateServerCertificate`   | bool     | true    | 是否验证 SSL 证书                                                  |
 | `AllowSelfSignedCertificates` | bool     | false   | 是否允许自签名证书                                                 |
 | `AllowInsecureWebSocket`      | bool     | false   | 是否允许 ws:// 不安全连接（仅开发/测试）                           |
+| `AllowedHostSuffixes`         | string   | `*.feishu.cn;*.larksuite.com` | 主机白名单（`*.` 通配后缀或精确主机名，分号分隔）；置空表示不限制 |
 | `HealthCheckIntervalMs`       | int      | 60000   | 健康检查间隔（毫秒）                                               |
 | `MessageHandlerTimeoutMs`     | int      | 30000   | 单条消息处理超时（毫秒），0 表示不限制                             |
 | `SequenceGapThreshold`        | ulong    | 0       | 消息序号跳跃阈值，0 表示禁用跳跃检测                               |

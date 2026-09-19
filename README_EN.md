@@ -200,6 +200,7 @@ dotnet add package Mud.Feishu.Redis
 | `ValidateServerCertificate` | bool | true | Validate SSL certificates |
 | `AllowSelfSignedCertificates` | bool | false | Allow self-signed certificates |
 | `AllowInsecureWebSocket` | bool | false | Allow insecure ws:// connections (dev/test only) |
+| `AllowedHostSuffixes` | string | `*.feishu.cn;*.larksuite.com` | Host allow-list (`*.` wildcard suffixes or exact hosts, `;`-separated); empty = unrestricted |
 | `HealthCheckIntervalMs` | int | 60000 | Health check interval (ms) |
 | `MessageHandlerTimeoutMs` | int | 30000 | Per-message processing timeout (ms), 0 disables the limit |
 | `SequenceGapThreshold` | ulong | 0 | Message sequence gap threshold, 0 disables gap detection |

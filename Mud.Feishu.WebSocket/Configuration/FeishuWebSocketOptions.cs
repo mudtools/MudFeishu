@@ -197,6 +197,16 @@ public class FeishuWebSocketOptions
     public bool AllowCertificateNameMismatch { get; set; } = false;
 
     /// <summary>
+    /// WebSocket 主机白名单（P2-15 修复引入：防御服务端下发端点被篡改导致的 SSRF）。
+    /// <para>分号分隔；支持 <c>*.feishu.cn</c> 通配后缀（匹配任意层级子域）与精确主机名；大小写不敏感。</para>
+    /// <para>
+    /// 默认 <c>*.feishu.cn;*.larksuite.com</c>（飞书/飞书海外域名，端点由服务端 API 下发）。
+    /// 设为<b>空字符串或仅空白</b>表示不限制（恢复历史行为），例如连接本地网关、自建代理或测试桩时。
+    /// </para>
+    /// </summary>
+    public string AllowedHostSuffixes { get; set; } = "*.feishu.cn;*.larksuite.com";
+
+    /// <summary>
     /// 自定义证书验证回调（可选）
     /// <para>如果设置，将使用此回调进行证书验证</para>
     /// </summary>

@@ -141,6 +141,10 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
         if (uri.Scheme == "ws" && !_options.AllowInsecureWebSocket)
             throw new ArgumentException("WebSocket URL使用不安全的ws://协议。如需在开发/测试环境使用，请设置 AllowInsecureWebSocket = true", nameof(url));
 
+        // P2-15 修复：主机白名单校验。此前仅校验 scheme——端点 URL 由服务端 API 下发，
+        // 一旦被篡改（DNS 劫持 / API 响应被篡改 / 配置错误），客户端会向任意主机发起连接（SSRF 面）。
+        ValidateWebSocketHost(uri);
+
         // P1-5 修复：Dispose 之后确定性拒绝（此前为"随机 ObjectDisposedException / 偶发成功"）
         ThrowIfDisposed();
 
@@ -271,6 +275,57 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
     {
         if (Volatile.Read(ref _disposed) == 1)
             throw new ObjectDisposedException(nameof(WebSocketConnectionManager));
+    }
+
+    /// <summary>
+    /// 校验 WebSocket 主机是否在 <see cref="FeishuWebSocketOptions.AllowedHostSuffixes"/> 白名单内（P2-15）。
+    /// </summary>
+    /// <param name="uri">待校验的连接地址</param>
+    /// <exception cref="ArgumentException">当主机不在白名单内时抛出</exception>
+    /// <remarks>
+    /// 匹配规则（大小写不敏感）：
+    /// <list type="bullet">
+    /// <item><c>*.feishu.cn</c>：匹配任意层级的 <c>*.feishu.cn</c> 子域（<c>gateway.feishu.cn</c> ✓、<c>a.b.feishu.cn</c> ✓）；</item>
+    /// <item><c>gateway.feishu.cn</c>：精确匹配；</item>
+    /// <item>列表为空或仅空白：不限制（历史行为）。</item>
+    /// </list>
+    /// 后缀匹配以前导点（<c>.feishu.cn</c>）为界，因此 <c>evil-feishu.cn</c> 不会误匹配 <c>*.feishu.cn</c>。
+    /// </remarks>
+    private void ValidateWebSocketHost(Uri uri)
+    {
+        var allowList = _options.AllowedHostSuffixes;
+        if (string.IsNullOrWhiteSpace(allowList))
+        {
+            return;   // 未配置白名单 = 不限制（历史行为）
+        }
+
+        var host = uri.Host;
+
+        foreach (var rawEntry in allowList.Split(';'))
+        {
+            var entry = rawEntry.Trim();
+            if (entry.Length == 0)
+            {
+                continue;
+            }
+
+            if (entry.StartsWith("*.", StringComparison.Ordinal))
+            {
+                // 通配后缀：以前导点为界匹配任意层级子域（"gateway.feishu.cn".EndsWith(".feishu.cn")）
+                if (host.EndsWith(entry.Substring(1), StringComparison.OrdinalIgnoreCase))
+                {
+                    return;
+                }
+            }
+            else if (host.Equals(entry, StringComparison.OrdinalIgnoreCase))
+            {
+                return;   // 精确匹配
+            }
+        }
+
+        throw new ArgumentException(
+            $"WebSocket 主机 \"{host}\" 不在允许的主机白名单内（AllowedHostSuffixes）。" +
+            "如需连接自定义网关/本地测试端点，请把该主机加入 AllowedHostSuffixes，或将该项置空表示不限制");
     }
 
     /// <summary>

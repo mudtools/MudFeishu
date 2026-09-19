@@ -37,7 +37,9 @@ public class WebSocketConnectionIntegrationTests
             {
                 EnableLogging = false,
                 AllowInsecureWebSocket = true,
-                ConnectionTimeoutMs = 3000
+                ConnectionTimeoutMs = 3000,
+                // P2-15：回环服务端主机需显式列入白名单（同时验证精确主机匹配路径）
+                AllowedHostSuffixes = "127.0.0.1"
             },
             NullLoggerFactory.Instance);
 

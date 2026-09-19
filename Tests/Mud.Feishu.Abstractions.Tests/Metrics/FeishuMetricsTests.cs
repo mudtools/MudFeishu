@@ -122,25 +122,123 @@ public class FeishuMetricsTests
         _counterValues["feishu.event.deduplication"].Should().Be(1);
     }
 
+    /// <summary>
+    /// 从 <see cref="Measurement{T}.Tags"/>（ReadOnlySpan，不可按 key 索引）中取出指定标签值。
+    /// </summary>
+    private static object? GetTag(Measurement<int> measurement, string key)
+    {
+        foreach (var tag in measurement.Tags)
+        {
+            if (tag.Key == key)
+            {
+                return tag.Value;
+            }
+        }
+
+        return null;
+    }
+
     [Fact]
-    public void WebSocketConnectionObserver_ShouldReturnProvidedValues()
+    public void WebSocketMetricsSource_ShouldReturnProvidedValues()
     {
         var expectedCount = 5;
 
-        FeishuMetrics.WebSocketConnectionObserver = () =>
-        {
-            return new[]
-            {
-                new Measurement<int>(
-                    expectedCount,
-                    new KeyValuePair<string, object?>(FeishuMetrics.Tags.AppKey, "test_app"))
-            };
-        };
+        using var registration = FeishuMetrics.RegisterWebSocketMetricsSource(
+            appKeyProvider: () => "test_app",
+            activeConnectionsProvider: () => expectedCount,
+            pendingMessagesProvider: () => 0);
 
-        FeishuMetrics.WebSocketConnectionObserver.Should().NotBeNull();
-        var measurements = FeishuMetrics.WebSocketConnectionObserver!().ToList();
+        var measurements = FeishuMetrics.ObserveWebSocketConnections().ToList();
         measurements.Should().HaveCount(1);
         measurements[0].Value.Should().Be(expectedCount);
+        GetTag(measurements[0], FeishuMetrics.Tags.AppKey).Should().Be("test_app");
+    }
+
+    /// <summary>
+    /// P2-3 核心：多应用（多个注册实例）必须<b>聚合</b>而非互相覆盖。
+    /// </summary>
+    [Fact]
+    public void WebSocketMetricsSource_ShouldAggregateMultipleApps_WhenMultipleRegistered()
+    {
+        using var first = FeishuMetrics.RegisterWebSocketMetricsSource(() => "app_1", () => 1, () => 0);
+        using var second = FeishuMetrics.RegisterWebSocketMetricsSource(() => "app_2", () => 1, () => 7);
+
+        var connections = FeishuMetrics.ObserveWebSocketConnections().ToList();
+        var backlog = FeishuMetrics.ObserveWebSocketBacklog().ToList();
+
+        connections.Should().HaveCount(2, "同一进程内多个应用必须各上报一条序列，而不是只保留最后一个");
+        connections.Select(m => GetTag(m, FeishuMetrics.Tags.AppKey))
+            .Should().BeEquivalentTo(new object?[] { "app_1", "app_2" });
+        backlog.Should().HaveCount(2);
+        backlog.Single(m => Equals(GetTag(m, FeishuMetrics.Tags.AppKey), "app_2")).Value.Should().Be(7);
+    }
+
+    [Fact]
+    public void WebSocketMetricsSource_ShouldRemoveEntry_WhenRegistrationDisposed()
+    {
+        var registration = FeishuMetrics.RegisterWebSocketMetricsSource(() => "app_dispose", () => 1, () => 2);
+        FeishuMetrics.ObserveWebSocketConnections().Should().HaveCount(1);
+
+        registration.Dispose();
+
+        FeishuMetrics.ObserveWebSocketConnections().Should().BeEmpty("注销后不得残留（否则静态集合会持有已释放实例）");
+    }
+
+    [Fact]
+    public void WebSocketMetricsSource_ShouldBeIdempotent_WhenDisposedTwice()
+    {
+        var registration = FeishuMetrics.RegisterWebSocketMetricsSource(() => "app_twice", () => 1, () => 0);
+
+        var act = () =>
+        {
+            registration.Dispose();
+            registration.Dispose();
+        };
+
+        act.Should().NotThrow();
+    }
+
+    [Fact]
+    public void WebSocketMetricsSource_ShouldReadAppKeyDynamically_WhenProviderValueChanges()
+    {
+        var appKey = "app_before";
+        using var registration = FeishuMetrics.RegisterWebSocketMetricsSource(() => appKey, () => 1, () => 0);
+
+        appKey = "app_after";
+
+        var measurement = FeishuMetrics.ObserveWebSocketConnections().Single();
+        GetTag(measurement, FeishuMetrics.Tags.AppKey).Should().Be("app_after",
+            "AppKey 提供器在每次采集时读取，支持配置热更新");
+    }
+
+    [Fact]
+    public void WebSocketMetricsSource_ShouldSkipFaultedSource_WhenProviderThrows()
+    {
+        using var healthy = FeishuMetrics.RegisterWebSocketMetricsSource(() => "app_ok", () => 3, () => 0);
+        using var faulted = FeishuMetrics.RegisterWebSocketMetricsSource(
+            () => throw new InvalidOperationException("提供器故障"),
+            () => 1,
+            () => 0);
+
+        var measurements = FeishuMetrics.ObserveWebSocketConnections().ToList();
+
+        measurements.Should().HaveCount(1, "单个指标源故障不得中断采集，也不得把异常抛进 OTel 回调");
+        measurements[0].Value.Should().Be(3);
+    }
+
+    [Fact]
+    public void RegisterWebSocketMetricsSource_ShouldThrow_WhenProviderIsNull()
+    {
+        var act = () => FeishuMetrics.RegisterWebSocketMetricsSource(null!, () => 0, () => 0);
+
+        act.Should().Throw<ArgumentNullException>().WithParameterName("appKeyProvider");
+    }
+
+    [Fact]
+    public void WebSocketGauges_ShouldBeRegistered()
+    {
+        FeishuMetrics.WebSocketConnectionGauge.Should().NotBeNull();
+        FeishuMetrics.WebSocketBacklogGauge.Should().NotBeNull();
     }
 
     [Fact]
@@ -187,23 +285,25 @@ public class FeishuMetricsTests
     }
 
     [Fact]
-    public void WebSocketBacklogObserver_ShouldReturnProvidedValues()
+    public void WebSocketBacklogMetricsSource_ShouldReturnProvidedValues()
     {
         var expectedBacklog = 3;
 
-        FeishuMetrics.WebSocketBacklogObserver = () =>
-        {
-            return new[]
-            {
-                new Measurement<int>(
-                    expectedBacklog,
-                    new KeyValuePair<string, object?>(FeishuMetrics.Tags.AppKey, "test_app"))
-            };
-        };
+        using var registration = FeishuMetrics.RegisterWebSocketMetricsSource(
+            appKeyProvider: () => "test_app",
+            activeConnectionsProvider: () => 0,
+            pendingMessagesProvider: () => expectedBacklog);
 
-        FeishuMetrics.WebSocketBacklogObserver.Should().NotBeNull();
-        var measurements = FeishuMetrics.WebSocketBacklogObserver!().ToList();
+        var measurements = FeishuMetrics.ObserveWebSocketBacklog().ToList();
         measurements.Should().HaveCount(1);
         measurements[0].Value.Should().Be(expectedBacklog);
+    }
+
+    [Fact]
+    public void ObserveWebSocketConnections_ShouldReturnEmpty_WhenNoSourceRegistered()
+    {
+        // 说明：其余用例均以 using 释放注册，故此处观测结果应为空（验证"无源"路径不抛异常）
+        FeishuMetrics.ObserveWebSocketConnections().Should().BeEmpty();
+        FeishuMetrics.ObserveWebSocketBacklog().Should().BeEmpty();
     }
 }

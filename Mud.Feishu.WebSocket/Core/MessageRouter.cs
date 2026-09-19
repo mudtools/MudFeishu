@@ -273,6 +273,17 @@ public class MessageRouter
                     // 处理器未响应取消，忽略
                 }
 
+                // P2-9 修复：超时分支此前不观察 handlerTask。处理器若在超时之后才抛出，
+                // 该异常无人观察（UnobservedTaskException：表现为进程退出期噪声日志且难以定位）。
+                // 这里只对"故障"挂一个观察型续延，不改变返回值语义。
+                _ = handlerTask.ContinueWith(
+                    t => _logger.LogDebug(t.Exception,
+                        "已被判定超时的消息处理器随后抛出异常（已观察，不影响调用方）: {HandlerType}",
+                        handler.GetType().Name),
+                    CancellationToken.None,
+                    TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
+                    TaskScheduler.Default);
+
                 return false;
             }
 

@@ -117,22 +117,25 @@ app.Run();
 | **AuthenticationManager**               | 认证管理器       | WebSocket 认证流程、状态管理、认证事件     |
 | **MessageRouter**                       | 消息路由器       | 消息路由、版本检测(v1.0/v2.0)、处理器管理  |
 | **BinaryMessageProcessor**              | 二进制消息处理器 | 增量接收、ProtoBuf/JSON 解析、内存优化     |
-| **HeartbeatManager**                    | 心跳管理器       | 心跳检测、超时处理、连续超时触发重连       |
+| **HeartbeatManager**                    | 心跳管理器       | 发送应用层 ProtoBuf Ping（**不据 Pong 判死**，连接断开由接收循环/协议级 Ping 检测） |
 | **SessionManager**                      | 会话管理器       | session_id 管理、会话恢复、24 小时有效期   |
 | **MessageSequenceValidator**            | 消息序号验证器   | 重放检测、消息丢失检测、序号回退检测       |
 | **EventSubscriptionManager**            | 事件订阅管理器   | 事件类型订阅、订阅请求发送                 |
-| **ConnectionMetrics**                   | 连接指标管理器   | 消息统计、性能指标、FeishuMetrics 集成     |
+| **FeishuWebSocketConcurrencyService**   | 并发控制服务     | 并发上界（背压闸门）、配置热更新、关停等待  |
 | **ReconnectionOrchestrator**            | 重连协调器       | 统一重连管理、防抖机制、冷却时间           |
 | **ExponentialBackoffReconnectStrategy** | 指数退避重连策略 | 指数退避延迟、次数和时间双重限制           |
 
 #### 消息处理器
 
-| 处理器                    | 说明                                   |
-| ------------------------- | -------------------------------------- |
-| **IMessageHandler**       | 消息处理器接口，提供通用反序列化功能   |
-| **EventMessageHandler**   | 事件消息处理器，支持 v1.0 和 v2.0 版本 |
-| **BasicMessageHandler**   | 基础消息处理器(Ping/Pong、认证、心跳)  |
-| **FeishuWebSocketClient** | 主客户端，组合所有组件                 |
+| 处理器                       | 说明                                       |
+| ---------------------------- | ------------------------------------------ |
+| **IMessageHandler**          | 消息处理器接口，提供通用反序列化功能       |
+| **JsonMessageHandler**       | 处理器基类（安全反序列化辅助）             |
+| **FeishuEventMessageHandler**| 事件消息处理器，支持 v1.0 和 v2.0 版本     |
+| **PingPongMessageHandler**   | Ping/Pong 消息处理器                       |
+| **AuthMessageHandler**       | 认证响应处理器                             |
+| **HeartbeatMessageHandler**  | 心跳消息处理器                             |
+| **FeishuWebSocketClient**    | 主客户端，组合所有组件                     |
 
 ### 架构优势
 
@@ -157,8 +160,10 @@ public class CustomMessageHandler : JsonMessageHandler
     }
 }
 
-// 注册到消息路由器
-client.RegisterMessageProcessor(customMessageHandler);
+// ⚠️ 注意：IMessageHandler 的注册入口（MessageRouter）未对使用方暴露，
+// 无法通过客户端实例注册自定义 IMessageHandler。
+// 业务扩展请实现 IFeishuEventHandler 并通过 IFeishuEventHandlerFactory / DI 注册（见下方"自定义事件处理器"）：
+//   services.AddScoped<IFeishuEventHandler, CustomEventHandler>();
 ```
 
 ### 文件结构
@@ -180,7 +185,7 @@ Mud.Feishu.WebSocket/
 │   ├── SessionManager.cs             # 会话管理
 │   ├── MessageSequenceValidator.cs   # 消息序号验证
 │   ├── EventSubscriptionManager.cs   # 事件订阅管理
-│   ├── ConnectionMetrics.cs          # 连接指标
+│   ├── FeishuWebSocketConcurrencyService.cs # 并发控制（背压闸门）
 │   ├── ReconnectionOrchestrator.cs   # 重连协调器
 │   ├── ExponentialBackoffReconnectStrategy.cs # 指数退避策略
 │   ├── IReconnectStrategy.cs         # 重连策略接口
@@ -195,7 +200,7 @@ Mud.Feishu.WebSocket/
 │   ├── HeartbeatMessageHandler.cs  # 心跳消息处理
 │   ├── PingPongMessageHandler.cs   # Ping/Pong处理
 │   ├── JsonMessageHandler.cs       # JSON消息基类
-│   └── FeishuWebSocketEventHandlerFactory.cs # 事件处理器工厂
+│   └── ScopedFeishuEventHandlerFactory.cs # 事件处理器工厂（Scoped 作用域）
 ├── Interfaces/                    # 公共接口
 │   ├── IFeishuWebSocketClient.cs   # 客户端接口
 │   ├── IFeishuWebSocketManager.cs  # 管理器接口
@@ -678,8 +683,10 @@ public class ServiceManager
 
 | 选项                                  | 类型                                 | 默认值     | 说明                                        |
 | ------------------------------------- | ------------------------------------ | ---------- | ------------------------------------------- |
+| `AppKey`                              | string                               | "default"  | 飞书应用 AppKey，用于指标维度（**支持热更新**） |
 | `AutoReconnect`                       | bool                                 | true       | 自动重连                                    |
-| `MaxReconnectAttempts`                | int                                  | 5          | 最大重连次数                                |
+| `MaxReconnectAttempts`                | int                                  | 5          | 最大重连次数，0 表示无限（仅受最大总时间限制） |
+| `MaxAuthRetryAttempts`                | int                                  | 5          | 认证最大重试次数，0 表示无限（独立于重连次数） |
 | `ReconnectDelayMs`                    | int                                  | 5000       | 重连基础延迟(ms)，最小 1000                 |
 | `MaxReconnectDelayMs`                 | int                                  | 30000      | 最大重连延迟(ms)，≥ReconnectDelayMs         |
 | `MaxTotalReconnectTime`               | TimeSpan                             | 30 分钟    | 最大重连总时间，超时后停止重连              |
@@ -691,19 +698,26 @@ public class ServiceManager
 | `EnableLogging`                       | bool                                 | true       | 启用日志                                    |
 | `HealthCheckIntervalMs`               | int                                  | 60000      | 健康检查间隔(ms)，最小 1000                 |
 | `MessageHandlerTimeoutMs`             | int                                  | 30000      | 单条消息处理超时(ms)，0 表示不限制          |
+| `MaxConcurrentHandlers`               | int                                  | 32         | 并发处理器上界（背压闸门），0/负数表示无限制。**背压已前移到接收路径** |
+| `AuthTimeoutMs`                       | int                                  | 30000      | 认证响应超时(ms)，0 回退默认 30000          |
+| `AuthGateTimeoutMs`                   | int                                  | 0          | 认证闸门等待上限(ms)，0=关闭（**支持热更新**） |
+| `ProtocolKeepAliveInterval`           | TimeSpan                             | 20 秒      | 协议级 Ping/Pong 保活间隔，0=禁用（5–300 秒） |
 | `SequenceGapThreshold`                | ulong                                | 0          | 消息序号跳跃阈值，0 表示禁用跳跃检测      |
 | `ValidateServerCertificate`           | bool                                 | true       | 是否验证 SSL 证书（生产环境建议 true）      |
 | `AllowSelfSignedCertificates`         | bool                                 | false      | 是否允许自签名证书（生产环境建议 false）    |
+| `AllowCertificateNameMismatch`        | bool                                 | false      | 是否允许证书名称不匹配（生产环境建议 false）|
 | `AllowInsecureWebSocket`              | bool                                 | false      | 是否允许 ws:// 不安全连接（仅开发/测试环境）|
+| `AllowedHostSuffixes`                 | string                               | `*.feishu.cn;*.larksuite.com` | 主机白名单：`*.` 通配后缀或精确主机名，分号分隔，大小写不敏感；**置空表示不限制**（连接自建代理/本地测试端点时使用） |
 | `CustomCertificateValidationCallback` | RemoteCertificateValidationCallback? | null       | 自定义证书验证回调                          |
 | `EventDeduplication`                  | EventDeduplicationOptions            | 见下       | 事件去重配置                                |
 
 ### 消息大小限制配置 (`MessageSizeLimits`)
 
-| 选项                   | 类型 | 默认值   | 说明                     |
-| ---------------------- | ---- | -------- | ------------------------ |
-| `MaxTextMessageSize`   | int  | 1048576  | 最大文本消息大小(字符)   |
-| `MaxBinaryMessageSize` | long | 10485760 | 最大二进制消息大小(字节) |
+| 选项                   | 类型 | 默认值   | 说明                                                         |
+| ---------------------- | ---- | -------- | ------------------------------------------------------------ |
+| `MaxTextMessageSize`   | int  | 1048576  | 最大文本消息大小(字符)                                       |
+| `MaxTextMessageBytes`  | int  | 0        | 最大文本消息大小(UTF-8 字节)，0 = 按 3 × `MaxTextMessageSize` 自动推导（发送/接收同源） |
+| `MaxBinaryMessageSize` | long | 10485760 | 最大二进制消息大小(字节)，发送与接收均校验                    |
 
 **配置示例：**
 
@@ -712,6 +726,7 @@ public class ServiceManager
   "FeishuWebSocket": {
     "MessageSizeLimits": {
       "MaxTextMessageSize": 1048576,
+      "MaxTextMessageBytes": 0,
       "MaxBinaryMessageSize": 10485760
     }
   }
@@ -919,24 +934,20 @@ validator.ValidationFailed += (sender, args) =>
 
 ### 连接监控指标
 
-`ConnectionMetrics` 提供实时连接统计，集成 `FeishuMetrics` 全局指标体系：
+> ⚠️ 早期文档中的 `ConnectionMetrics` 组件与 `GetCurrentStats()` API **并不存在**（已核对源码）。
+> 连接统计请使用 `IFeishuWebSocketManager.GetConnectionStats()`（返回 `Uptime` / `ReconnectCount` / `LastError`）
+> 与 `GetConnectionState()`；细粒度指标通过 `FeishuMetrics`（OpenTelemetry）暴露：
 
 ```csharp
-var metrics = serviceProvider.GetRequiredService<ConnectionMetrics>();
-var stats = metrics.GetCurrentStats();
+var manager = serviceProvider.GetRequiredService<IFeishuWebSocketManager>();
+var (uptime, reconnectCount, lastError) = manager.GetConnectionStats();
 
-// 可用指标
-stats.MessagesSent;           // 发送消息数
-stats.MessagesReceived;       // 接收消息数（有效）
-stats.MessagesReceivedTotal;  // 总接收数（含重复）
-stats.BytesSent;              // 发送字节数
-stats.BytesReceived;          // 接收字节数
-stats.ConnectionErrors;       // 连接错误数
-stats.AuthenticationErrors;   // 认证错误数
-stats.AverageProcessingTimeMs;// 平均处理时间
-stats.Uptime;                 // 连接时长
-stats.MessagesPerSecond;      // 每秒消息数
-stats.BytesPerSecond;         // 每秒字节数
+// OTel 指标（按 feishu.app_key 维度）
+//   feishu.websocket.connections          —— 活跃连接数
+//   feishu.websocket.backlog              —— 在途待处理消息数
+//   feishu.websocket.message.duration     —— 消息处理耗时分布
+//   feishu.websocket.reconnect            —— 重连次数（outcome = success/failure）
+//   feishu.event.deduplication            —— 去重命中/未命中
 ```
 
 ### SSL/TLS 证书配置

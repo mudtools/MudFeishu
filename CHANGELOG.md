@@ -45,6 +45,35 @@
 - 服务端 Pong 下发的 ClientConfig 不再覆盖本地重连策略（`PingInterval` 仍生效，钳制 5–30 秒）。
 - 构造签名变更：`FeishuEventMessageHandler` 移除 `seqIdDeduplicator` 参数；
   `WebSocketBinaryMessageEventArgs.ProcessingTask` 移除。
+- 重连协调器不再在持锁期间触发事件：订阅者在回调内**同步阻塞等待**重入 `TryReconnectAsync` 不再死锁，
+  并发重连请求改为立即返回 `false`。**注意：回调内不得同步阻塞**（会占住重连闸门导致后续重连被跳过），
+  耗时操作请自行 `Task.Run` 或改由 `ReconnectFailed`/`ReconnectLimitReached` 触发异步补偿。
+- 旧连接接收循环的迟到异常不再误报为"新连接断开"（断线声明绑定 socket 身份）；
+  "旧连接已关闭 + 新连接握手失败"场景下 `Disconnected` 事件不再丢失。
+- `Dispose()` 之后调用连接/发送 API 现在确定性抛出 `ObjectDisposedException`（此前为随机抛出或偶发成功）；
+  内部 `SemaphoreSlim` 不再随 `Dispose` 释放（消除在途 `Release()`/租约归还的 `ObjectDisposedException` 竞态，
+  未访问 `AvailableWaitHandle`，无 OS 句柄泄漏）。
+- `MaxReconnectDelayMs` setter 不再自动抬升到 `ReconnectDelayMs`：非法组合改由 `Validate()` 在启动期报错
+  （此前赋值结果依赖配置绑定顺序）。
+- 文本消息发送与接收统一按 **UTF-8 字节**计量（新增 `MessageSizeLimits.MaxTextMessageBytes`，
+  0 = 3 × `MaxTextMessageSize` 自动推导）。默认值下属**放宽**：旧"字符语义"的合法消息全部继续通过；
+  二进制发送补齐此前完全缺失的 `MaxBinaryMessageSize` 校验。
+- 背压前移到接收路径：并发槽位耗尽（`MaxConcurrentHandlers`，默认 32）时接收循环被阻塞以施加 TCP 反压
+  （排队任务数与消息副本数一并受上界约束）。需要旧行为可设 `MaxConcurrentHandlers = 0`。
+- 分片文本消息的接收上限由"1MB 字节"改为与发送侧同源（默认 3MB 字节），不再误拒"1MB 字符级"合法消息。
+- 关闭握手回显服务端下发的关闭码/描述（RFC 6455 §5.5.1），不再固定 `NormalClosure`；同步 `Dispose()` 的
+  关闭握手超时后会强制中止并观察残留任务异常（不再遗留无人观察的任务）。
+- **指标 API 变更**：`FeishuMetrics.WebSocketConnectionObserver` / `WebSocketBacklogObserver` 两个静态可写属性**已移除**，
+  改为 `FeishuMetrics.RegisterWebSocketMetricsSource(appKeyProvider, activeConnectionsProvider, pendingMessagesProvider)`
+  （返回注销令牌，`Dispose` 后停止采集）。原因：静态单值属性在多应用场景互相覆盖，且长期持有已释放的服务实例；
+  新形态按注册实例聚合，AppKey 由提供器每次采集时读取（支持热更新）。自定义集成请迁移到新 API。
+- **主机白名单（新默认，可能影响自定义网关）**：`ConnectAsync` 新增 `AllowedHostSuffixes` 主机校验，
+  默认 `*.feishu.cn;*.larksuite.com`；连接白名单之外的主机会抛 `ArgumentException`。
+  连接自建代理/本地测试端点时，请把主机加入该列表（支持 `*.` 通配后缀与精确主机名，分号分隔），
+  或将该项置空表示不限制。
+- **二进制帧副本入池**：`FeishuWebSocketClient` 的帧私有副本改由 `ArrayPool<byte>` 提供
+  （消除每帧一次的 Gen0/LOH 分配，副本以 `(buffer, 0, count)` 三元组传递并在处理完成后归还池）；
+  对外 API 不变，`WebSocketBinaryMessageEventArgs.Data` 仍为按帧精确长度的独立副本。
 
 **DTO 重命名（修复 SYSLIB1031，AOT 源生成要求）**
 - `DepartmentsV1.DepartmentLeader` → `DepartmentLeaderV1`、`DepartmentDetail` → `DepartmentDetailV1`、
@@ -78,6 +107,10 @@
   真实 `backlog` 指标、按 app_key 分组连接指标、`AllowCertificateNameMismatch`、
   `ProtocolKeepAliveInterval`（默认 20s）、统一去重中间件接入、健康检查并发指标与重连熔断态、
   `AckResponse`/`SubscriptionRequest` 强类型 DTO。
+- **WebSocket（本轮加固）**：`MessageSizeLimits.MaxTextMessageBytes`（字节维度上限，0=自动推导）；
+  已解析帧在处理异常时补 ACK `code=500`（服务端即时重投，不再等超时）；`WebSocketBinaryMessageEventArgs.ReceiveStartTime`
+  现在真实赋值（`ReceiveDurationMs` 可用）；`FeishuWebSocketClient` 的 `AppKey`/认证闸门读取支持
+  `IOptionsMonitor` 热更新（其余配置项需重启，已在 XML 注释中口径化）。
 - **Redis**：`RedisKeyBuilder`、`FeishuRedisException` + `FeishuRedisFailureKind` 可分类失败契约、
   `RedisOptions.ValidateOnStart()`、Cluster 全节点聚合 `GetServers()`、Testcontainers 集成测试工程。
 - **文档**：`documents/ErrorHandling.md`（下载方法错误契约与「HTTP 200 + JSON 错误体」残余风险）、

@@ -31,6 +31,10 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
     private DateTime _lastReconnectTriggerTime = DateTime.MinValue;
     private readonly object _reconnectDebounceLock = new();
     private static readonly TimeSpan ReconnectDebounceInterval = TimeSpan.FromSeconds(3);
+    /// <summary>
+    /// WebSocket 指标源注销令牌（P2-3 修复）。
+    /// </summary>
+    private IDisposable? _metricsRegistration;
 
     /// <summary>
     /// 构造函数
@@ -68,41 +72,27 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
     }
 
     /// <summary>
-    /// 初始化 WebSocket 指标观察器，使用实际 AppKey 作为维度标签。
+    /// 注册 WebSocket 指标源（P2-3 修复：按注册实例登记，多应用互不覆盖，Dispose 时注销）。
     /// </summary>
+    /// <remarks>
+    /// 此前直接给 <c>FeishuMetrics.WebSocketConnectionObserver</c> / <c>WebSocketBacklogObserver</c>
+    /// 这两个<b>静态可写属性</b>赋值：同进程多应用互相覆盖，且静态属性长期持有服务实例（不可回收）。
+    /// <para>
+    /// WS-17（P1-13）：连接数取本实例的 <c>IsConnected</c>（1 或 0）；
+    /// F1：积压数取并发闸门的在途处理数。
+    /// AppKey 由提供器在<b>每次采集时</b>读取，支持配置热更新。
+    /// </para>
+    /// </remarks>
     private void InitializeMetricsObservers()
     {
         var appKey = _optionsMonitor.CurrentValue.AppKey;
 
-        // WS-17 修复（P1-13）：连接数从静态改为实例级，避免多应用场景下各实例计数互相干扰。
-        // FeishuWebSocketHostedService 只持有一个 IFeishuWebSocketManager，
-        // 用其 IsConnected 状态作为当前实例的连接数（1 或 0）。
-        FeishuMetrics.WebSocketConnectionObserver = () =>
-        {
-            var currentAppKey = _optionsMonitor.CurrentValue.AppKey;
-            var connectionCount = _webSocketManager.IsConnected ? 1 : 0;
-            return new[]
-            {
-                new Measurement<int>(
-                    connectionCount,
-                    new KeyValuePair<string, object?>(FeishuMetrics.Tags.AppKey, currentAppKey))
-            };
-        };
+        _metricsRegistration = FeishuMetrics.RegisterWebSocketMetricsSource(
+            appKeyProvider: () => _optionsMonitor.CurrentValue.AppKey,
+            activeConnectionsProvider: () => _webSocketManager.IsConnected ? 1 : 0,
+            pendingMessagesProvider: () => _concurrencyService?.PendingCount ?? 0);
 
-        // WebSocket 消息积压数观察器（F1 修复：从并发闸门获取真实积压数）
-        FeishuMetrics.WebSocketBacklogObserver = () =>
-        {
-            var currentAppKey = _optionsMonitor.CurrentValue.AppKey;
-            var backlog = _concurrencyService?.PendingCount ?? 0;
-            return new[]
-            {
-                new Measurement<int>(
-                    backlog,
-                    new KeyValuePair<string, object?>(FeishuMetrics.Tags.AppKey, currentAppKey))
-            };
-        };
-
-        _logger.LogDebug("WebSocket 指标观察器已初始化，AppKey: {AppKey}", appKey);
+        _logger.LogDebug("WebSocket 指标源已注册，AppKey: {AppKey}", appKey);
     }
 
     /// <summary>
@@ -212,8 +202,30 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
     public override async Task StopAsync(CancellationToken cancellationToken)
     {
         _logger.LogInformation("正在停止飞书WebSocket后台服务...");
-        await base.StopAsync(cancellationToken);
-        await _webSocketManager.StopAsync(cancellationToken);
+
+        // P2-16 修复：基类停止流程沿用调用方令牌（用于取消 ExecuteAsync 的等待），
+        // 但底层连接的关闭必须使用<b>独立宽限令牌</b>——宿主常以"已取消的令牌"调用本方法，
+        // 直接透传会让 FeishuWebSocketManager.StopAsync 内的信号量等待立即抛 OperationCanceledException，
+        // 连接无法完成关闭握手（与服务端记录为异常断线）。
+        try
+        {
+            await base.StopAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogDebug("基类停止流程被取消，继续执行连接关闭（可忽略）");
+        }
+
+        using var graceCts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        try
+        {
+            await _webSocketManager.StopAsync(graceCts.Token).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "停止WebSocket连接时发生异常，已强制结束");
+        }
+
         _logger.LogInformation("飞书WebSocket后台服务已停止");
     }
 
@@ -400,6 +412,10 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
                 _reconnectionOrchestrator.ReconnectSucceeded -= OnReconnectSucceeded;
                 _reconnectionOrchestrator.ReconnectFailed -= OnReconnectFailed;
                 _reconnectionOrchestrator.ReconnectLimitReached -= OnReconnectLimitReached;
+
+                // P2-3 修复：注销指标源，避免观测结果残留已释放的实例（此前静态属性无法回收服务实例）
+                _metricsRegistration?.Dispose();
+                _metricsRegistration = null;
 
                 _logger.LogInformation("飞书WebSocket后台服务资源已清理");
             }

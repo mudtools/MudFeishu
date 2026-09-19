@@ -108,6 +108,36 @@ public class ExponentialBackoffReconnectStrategyTests
             .WithParameterName("attemptCount");
     }
 
+    [Theory]
+    [InlineData(1026)]
+    [InlineData(2000)]
+    [InlineData(int.MaxValue)]
+    public void CalculateDelay_ShouldNotOverflow_WhenAttemptCountExceeds1024(int attemptCount)
+    {
+        // P2-6 回归：Math.Pow(2, attemptCount - 1) 在指数 > 1024 时得到 double.PositiveInfinity，
+        // TimeSpan.FromMilliseconds(∞) 抛 OverflowException，使整轮重连被异常中止
+        // （触发条件：MaxReconnectAttempts = 0 无限重连 + 长时断网）。
+        var options = new FeishuWebSocketOptions
+        {
+            Reconnect = new WebSocketReconnectOptions
+            {
+                BaseDelayMs = 1000,
+                MaxDelayMs = 30000
+            }
+        };
+        var strategy = new ExponentialBackoffReconnectStrategy(options, _loggerMock.Object);
+
+        // Act：指数被钳制（MaxExponent=30）后必然被 MaxReconnectDelayMs 截断，
+        // 再叠加 0~25% 抖动 → 结果必须落在 [30s, 37.5s) 且不得抛 OverflowException
+        var delay = strategy.CalculateDelay(attemptCount);
+
+        // Assert
+        delay.Should()
+            .BeGreaterThanOrEqualTo(TimeSpan.FromMilliseconds(30000))
+            .And.BeLessThanOrEqualTo(TimeSpan.FromMilliseconds(37500),
+                "钳制后的指数延迟必然超过 30s 上限被截断，抖动范围为 0~25%（P2-6）");
+    }
+
     [Fact]
     public void CalculateDelay_WithNegativeAttemptCount_ShouldThrowArgumentOutOfRangeException()
     {

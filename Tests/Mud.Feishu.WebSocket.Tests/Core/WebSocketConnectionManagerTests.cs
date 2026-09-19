@@ -328,7 +328,9 @@ public class WebSocketConnectionManagerTests
         // Arrange - 使用非常短的超时来测试取消
         var options = new FeishuWebSocketOptions
         {
-            ConnectionTimeoutMs = 100
+            ConnectionTimeoutMs = 100,
+            // P2-15：回环地址需显式列入白名单，本用例聚焦"取消令牌"语义
+            AllowedHostSuffixes = "127.0.0.1"
         };
         var manager = new WebSocketConnectionManager(_loggerMock.Object, options, _loggerFactoryMock.Object);
         using var cts = new CancellationTokenSource();

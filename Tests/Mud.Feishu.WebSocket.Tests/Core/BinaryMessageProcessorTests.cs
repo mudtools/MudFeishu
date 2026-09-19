@@ -190,6 +190,43 @@ public class BinaryMessageProcessorTests
     }
 
     [Fact]
+    public async Task ProcessBinaryDataAsync_ShouldSetReceiveStartTime_WhenMessageCompleted()
+    {
+        // Arrange（P2-4 回归）：修复前 ReceiveStartTime 从不赋值（恒为 default(DateTime)），
+        // ReceiveDurationMs 恒为 ~6.39e14ms（0001-01-01 至今），观测指标完全失真。
+        var processor = CreateProcessor();
+        var beforeReceive = DateTime.UtcNow.AddSeconds(-1);
+        WebSocketBinaryMessageEventArgs? receivedArgs = null;
+        var argsReady = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        processor.BinaryMessageReceived += (sender, args) =>
+        {
+            if (args.MessageType == "Frame")
+            {
+                receivedArgs = args;
+                argsReady.TrySetResult(true);
+            }
+        };
+
+        var validProtobufData = CreateValidProtobufData();
+
+        // Act
+        await processor.ProcessBinaryDataAsync(validProtobufData, 0, validProtobufData.Length, true, CancellationToken.None);
+
+        var completed = await Task.WhenAny(argsReady.Task, Task.Delay(3000));
+        completed.Should().BeSameAs(argsReady.Task, "有效 DATA 帧必须在异步派发后触发 BinaryMessageReceived（MessageType=Frame）");
+
+        // Assert：ReceiveStartTime 必须是首帧到达时间，而不是 default(DateTime)
+        receivedArgs.Should().NotBeNull();
+        receivedArgs!.ReceiveStartTime.Should().BeAfter(beforeReceive,
+            "修复前 ReceiveStartTime 恒为 default(DateTime)（0001-01-01）");
+        receivedArgs.ReceiveEndTime.Should().BeOnOrAfter(receivedArgs.ReceiveStartTime);
+        receivedArgs.ReceiveDurationMs.Should().BeInRange(0, 60_000,
+            "修复前因 default 起点恒为 ~6.39e14ms");
+
+        processor.Dispose();
+    }
+
+    [Fact]
     public void Dispose_ShouldClearActiveProcessingTasks()
     {
         // Arrange

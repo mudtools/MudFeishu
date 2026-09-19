@@ -223,6 +223,7 @@ dotnet run
 | 配置项 | 类型 | 默认值 | 说明 |
 |--------|------|--------|------|
 | `AutoReconnect` | bool | true | 连接断开时是否自动重连 |
+| `AllowedHostSuffixes` | string | `*.feishu.cn;*.larksuite.com` | 主机白名单（`*.` 通配后缀或精确主机名，分号分隔）；置空表示不限制 |
 | `MaxReconnectAttempts` | int | 5 | 最大重连次数 |
 | `ReconnectDelayMs` | int | 5000 | 重连延迟（毫秒） |
 | `HeartbeatIntervalMs` | int | 30000 | 心跳间隔（毫秒） |
@@ -237,6 +238,7 @@ dotnet run
 | 配置项 | 类型 | 默认值 | 说明 |
 |--------|------|--------|------|
 | `MaxTextMessageSize` | int | 1048576 | 最大文本消息大小（字符） |
+| `MaxTextMessageBytes` | int | 0 | 最大文本消息大小（UTF-8 字节），0 = 3 × `MaxTextMessageSize` 自动推导 |
 | `MaxBinaryMessageSize` | long | 10485760 | 最大二进制消息大小（字节） |
 
 #### 事件去重配置 (`EventDeduplication`)

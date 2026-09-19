@@ -135,31 +135,112 @@ jobs:
       # （net6.0 测试工程传递引用 10.0.x 包的 NETStandardCompatError_*）列进失败摘要，极易误判为警告导致失败。
       # 因此保留完整测试日志，并在失败时高亮失败用例 / 中止信息。
       - name: Run tests
+        id: test
         shell: pwsh
         run: |
-          $log = Join-Path $env:RUNNER_TEMP 'mudfeishu-test.log'
-          dotnet test $env:SOLUTION_FILE --no-build --configuration $env:CONFIGURATION --logger trx --verbosity normal 2>&1 |
+          # TRX 与完整测试日志统一落到工作区下的 TestResults/，作为「上传测试结果」步骤的稳定路径。
+          # 不再依赖 VSTest 的默认结果目录（各测试工程自己的 TestResults/）：路径分散且上传通配符
+          # 与实际落盘位置容易不一致，出现「日志里跑了、制品里没有」的排查死路。
+          $resultsDir = Join-Path $env:GITHUB_WORKSPACE 'TestResults'
+          if (Test-Path $resultsDir) { Remove-Item $resultsDir -Recurse -Force }
+          New-Item -ItemType Directory -Path $resultsDir -Force | Out-Null
+          # 提前写入 GITHUB_ENV：即使本步骤后续失败，摘要/上传步骤（if: always()）也能拿到该路径。
+          "MUD_TEST_RESULTS_DIR=$resultsDir" | Out-File -FilePath $env:GITHUB_ENV -Append
+          $log = Join-Path $resultsDir 'mudfeishu-test.log'
+
+          # --results-directory + --logger trx 的组合下，VSTest 为每个（测试工程, TFM）组合各落盘一个
+          # TRX；同名时自动追加 [1]/[2] 后缀而非覆盖（实测 Mud.Feishu.slnx 的 7 个测试工程 ×
+          # net6.0/net8.0/net10.0 = 18 个组合，结果集 18 个 TRX 全部保留）。故无需逐工程调用。
+          dotnet test $env:SOLUTION_FILE --no-build --configuration $env:CONFIGURATION --results-directory $resultsDir --logger trx --verbosity normal 2>&1 |
             Tee-Object -FilePath $log
           if ($LASTEXITCODE -ne 0) {
             Write-Host ''
             Write-Host '==== 测试阶段失败：以下为失败用例 / 中止信息（MSBuild 摘要中的“0 个错误”不代表成功）====' -ForegroundColor Red
             Select-String -Path $log -Pattern '^\s*(失败|Failed)\s+Mud\.|\[FAIL\]|测试运行失败|测试运行已中止|Test Run Failed|Test Run Aborted|(失败|Failed)! - (失败|Failed):\s*[1-9]' |
               ForEach-Object { Write-Host $_.Line.Trim() -ForegroundColor Red }
+            Write-Host ''
+            Write-Host '完整日志与 TRX 见制品 test-results-${{ matrix.os }}（TestResults/），用例明细见下一步摘要。' -ForegroundColor Yellow
             exit 1
           }
 
-      # 步骤6：上传测试报告，方便在GitHub上查看
+      # 步骤5.5：测试结果摘要（直接解析 TRX，locale 无关）
+      # 目的：不下载制品也能在 Actions 日志里看到「哪个工程/TFM 失败、失败用例叫什么」。
+      # 该步骤恒不改变 job 结论（if: always() 且从不以非零码退出）；失败判定仍由步骤 5 的退出码负责。
+      - name: Test results summary
+        if: always()
+        shell: pwsh
+        run: |
+          $resultsDir = $env:MUD_TEST_RESULTS_DIR
+          if (-not $resultsDir -or -not (Test-Path $resultsDir)) {
+            Write-Host '[WARN] 未找到测试结果目录，跳过摘要。' -ForegroundColor Yellow
+            exit 0
+          }
+          $trxFiles = @(Get-ChildItem -Path $resultsDir -Filter '*.trx' -File -Recurse -ErrorAction SilentlyContinue)
+          if ($trxFiles.Count -eq 0) {
+            Write-Host '[WARN] 未发现任何 TRX 文件（测试可能未执行），详见制品中的 mudfeishu-test.log。' -ForegroundColor Yellow
+            exit 0
+          }
+
+          # TRX 的实际结构是 <TestRun><ResultSummary><Counters .../>；Counters 不在 Results 之下
+          # （写成 $doc.TestRun.Results.ResultSummary.Counters 会恒为 $null，摘要变成全 0）。
+          $failed = 0
+          $passed = 0
+          $total = 0
+          $failedNames = New-Object System.Collections.Generic.List[string]
+          Write-Host '---- 测试结果摘要（按 TRX 文件）----' -ForegroundColor Cyan
+          foreach ($trx in ($trxFiles | Sort-Object Name)) {
+            try {
+              [xml]$doc = Get-Content -LiteralPath $trx.FullName -Raw -Encoding utf8
+              $counters = $doc.TestRun.ResultSummary.Counters
+              $f = if ($counters) { [int]$counters.failed } else { 0 }
+              $p = if ($counters) { [int]$counters.passed } else { 0 }
+              $t = if ($counters) { [int]$counters.total } else { 0 }
+              $failed += $f
+              $passed += $p
+              $total += $t
+              $color = if ($f -gt 0) { 'Red' } else { 'Green' }
+              $state = if ($f -gt 0) { '[FAIL]' } else { '[ OK ]' }
+              Write-Host ("  {0} {1,-44} 总计 {2,5}  通过 {3,5}  失败 {4,5}" -f $state, $trx.BaseName, $t, $p, $f) -ForegroundColor $color
+              foreach ($r in @($doc.TestRun.Results.UnitTestResult)) {
+                if ($r.outcome -eq 'failed') {
+                  $name = if ($r.testName) { $r.testName } else { "$($r.TestMethod.className).$($r.TestMethod.name)" }
+                  $failedNames.Add("[$($trx.BaseName)] $name")
+                }
+              }
+            }
+            catch {
+              Write-Host "  [WARN] 解析 TRX 失败: $($trx.Name) - $_" -ForegroundColor Yellow
+            }
+          }
+          Write-Host ''
+          $summaryColor = if ($failed -gt 0) { 'Red' } else { 'Green' }
+          Write-Host ("合计：总计 {0} / 通过 {1} / 失败 {2}（TRX {3} 个）" -f $total, $passed, $failed, $trxFiles.Count) -ForegroundColor $summaryColor
+          if ($failedNames.Count -gt 0) {
+            Write-Host '失败用例：' -ForegroundColor Red
+            $shown = @($failedNames | Select-Object -First 50)
+            $shown | ForEach-Object { Write-Host "    - $_" -ForegroundColor Red }
+            if ($failedNames.Count -gt $shown.Count) {
+              Write-Host "    ...（其余 $($failedNames.Count - $shown.Count) 条见制品中的 TRX）" -ForegroundColor Red
+            }
+          }
+          Write-Host ''
+          # 注意用单引号：矩阵表达式由 GitHub 在交给 pwsh 之前展开，双引号里会出现 ${{ ... }} 这种
+          # 非法 PowerShell 插值（ParserError: 变量名称中应使用 `{ 而不是 {）。
+          Write-Host '制品：test-results-${{ matrix.os }}（含 TestResults/*.trx 与 TestResults/mudfeishu-test.log）' -ForegroundColor Cyan
+
+      # 步骤6：上传测试报告（TRX + 完整测试日志），测试失败时同样上传，便于下载排查
+      # 注：原先的「步骤7 Check test results（if: steps.test.outcome == 'failure'）」引用了不存在的
+      # 步骤 id，恒不执行，属于死代码；且步骤 5 已在失败时 exit 1，该兜底本就多余，故移除。
       - name: Publish test results
         uses: actions/upload-artifact@v4
         if: always() # 即使测试失败也执行
         with:
           name: test-results-${{ matrix.os }}
-          path: "**/*.trx"
-
-      # 步骤7：检查测试结果，确保测试失败会导致整个 job 失败
-      - name: Check test results
-        if: steps.test.outcome == 'failure'
-        run: exit 1
+          path: |
+            TestResults/**/*.trx
+            TestResults/*.log
+          if-no-files-found: warn
+          retention-days: 7
 
   # 第二个作业：版本管理和创建 Release
   version-and-release:

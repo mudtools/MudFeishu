@@ -24,6 +24,17 @@ internal sealed class DefaultFeishuCurrentUserContext : IFeishuCurrentUserContex
 {
     private static readonly AsyncLocal<UserInfo?> _currentUser = new();
 
+    // TMR-P2-10（F10）：SetUser 覆盖告警的日志通道（对齐 Mud.Feishu.Authentication CurrentUserContext 的既有行为）。
+    // 可选注入：DI 提供；手工 new（无 logger）时为 null 不告警，行为不变。
+    private readonly ILogger<DefaultFeishuCurrentUserContext>? _logger;
+
+    /// <summary>
+    /// 初始化默认用户上下文。
+    /// </summary>
+    /// <param name="logger">日志记录器（可选，用于 SetUser 覆盖告警）。DI 注册时自动提供。</param>
+    public DefaultFeishuCurrentUserContext(ILogger<DefaultFeishuCurrentUserContext>? logger = null)
+        => _logger = logger;
+
     public string? OpenId => _currentUser.Value?.OpenId;
     public string? UnionId => _currentUser.Value?.UnionId;
     public string? UserId => _currentUser.Value?.UserId;
@@ -31,6 +42,11 @@ internal sealed class DefaultFeishuCurrentUserContext : IFeishuCurrentUserContex
     public bool IsAuthenticated => !string.IsNullOrEmpty(_currentUser.Value?.OpenId);
 
     /// <inheritdoc />
+    /// <remarks>
+    /// TMR-P2-10（F10）：同异步流内覆盖写入非同 OpenId 时告警——这是"默认实现下用户串号"
+    /// 的唯一可观测手段（宿主未调用 AddFeishuUserContext() 时本类为默认注册实现）。
+    /// OpenId 经 <see cref="SensitiveDataUtils.MaskSensitiveData"/> 脱敏后入日志。
+    /// </remarks>
     public void SetUser(string openId, string? unionId = null, string? userId = null, string? name = null)
     {
         if (string.IsNullOrWhiteSpace(openId))
@@ -40,6 +56,16 @@ internal sealed class DefaultFeishuCurrentUserContext : IFeishuCurrentUserContex
         // 因为 UserTokenManager 使用 OpenId 作为令牌缓存键，
         // 源生成器使用 UserId 属性作为令牌查找键，两者必须一致。
         userId = string.IsNullOrWhiteSpace(userId) ? openId : userId;
+
+        var previous = _currentUser.Value;
+        if (previous != null && !string.Equals(previous.OpenId, openId, StringComparison.Ordinal))
+        {
+            _logger?.LogWarning(
+                "用户上下文被覆盖: 原 OpenId={OldOpenId}, 新 OpenId={NewOpenId}。" +
+                "若非预期，请检查是否在中间件/拦截器链外重复调用 SetUser。",
+                SensitiveDataUtils.MaskSensitiveData(previous.OpenId),
+                SensitiveDataUtils.MaskSensitiveData(openId));
+        }
 
         _currentUser.Value = new UserInfo
         {

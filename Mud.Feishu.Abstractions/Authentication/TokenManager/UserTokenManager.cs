@@ -99,8 +99,7 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
         if (string.IsNullOrEmpty(redirectUri))
             throw new ArgumentException("RedirectUri cannot be null or empty.", nameof(redirectUri));
 
-        if (_options.EnableLogging)
-            _logger.LogInformation("Exchanging code for user token");
+        _logger.LogInformation("Exchanging code for user token");
 
         var credentials = new OAuthTokenRequest
         {
@@ -155,8 +154,7 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
             // OAuth v2 端点不返回 OpenId，使用 access_token 直接调用用户信息 API 获取 OpenId。
             // IFeishuAuthentication.GetUserInfoAsync 接受显式 token 参数，不走令牌管理基础设施，
             // 因此不存在循环依赖问题。
-            if (_options.EnableLogging)
-                _logger.LogInformation("OAuth 端点未返回 OpenId，使用 access_token 获取用户信息");
+            _logger.LogInformation("OAuth 端点未返回 OpenId，使用 access_token 获取用户信息");
 
             var userInfo = await _authenticationApi.GetUserInfoAsync(
                 $"Bearer {res.AccessToken}", cancellationToken).ConfigureAwait(false);
@@ -227,8 +225,7 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
             return null;
         }
 
-        if (_options.EnableLogging)
-            _logger.LogInformation("Refreshing user token for userId: {UserId}", userId);
+        _logger.LogInformation("Refreshing user token for userId: {UserId}", userId);
 
         var credentials = new OAuthRefreshTokenRequest
         {

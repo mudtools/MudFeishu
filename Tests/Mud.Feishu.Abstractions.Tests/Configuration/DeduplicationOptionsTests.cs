@@ -2,7 +2,7 @@
 //  作者：Mud Studio  版权所有 (c) Mud Studio 2026
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
-//  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
+//  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！
 // -----------------------------------------------------------------------
 
 using Mud.Feishu.Abstractions.Configuration;
@@ -10,8 +10,9 @@ using Xunit;
 
 namespace Mud.Feishu.Abstractions.Tests.Configuration;
 
-#pragma warning disable CS0618 // 覆盖 Obsolete 字段的绑定/预设契约（双读期仍需可绑）
-
+/// <summary>
+/// R4：DeduplicationOptions 主路径字段契约。分布式失败语义字段已从公共 API 移除。
+/// </summary>
 public class DeduplicationOptionsTests
 {
     [Fact]
@@ -23,8 +24,8 @@ public class DeduplicationOptionsTests
         Assert.Equal(TimeSpan.FromHours(48), options.CacheExpiration);
         Assert.Equal(TimeSpan.FromMinutes(10), options.ProcessingTimeout);
         Assert.Equal(TimeSpan.FromMinutes(5), options.CleanupInterval);
-        Assert.True(options.AllowProcessingOnFallback);
-        Assert.Equal(Consts.DefaultDeduplicationRetryCount, options.MaxRetryCount);
+        Assert.Equal(Consts.DefaultEventKeyPrefix, options.KeyPrefix);
+        Assert.Equal(Consts.DefaultMaxCacheSize, options.MaxCacheSize);
     }
 
     [Fact]
@@ -100,85 +101,19 @@ public class DeduplicationOptionsTests
     }
 
     [Fact]
-    public void MaxRetryCount_ShouldHaveDefaultValue()
-    {
-        var options = new DeduplicationOptions();
-
-        Assert.Equal(3, options.MaxRetryCount);
-    }
-
-    [Fact]
-    public void InitialRetryDelay_ShouldHaveDefaultValue()
-    {
-        var options = new DeduplicationOptions();
-
-        Assert.Equal(TimeSpan.FromSeconds(1), options.InitialRetryDelay);
-    }
-
-    [Fact]
-    public void InitialRetryDelay_WhenSetToLessThan100Ms_ShouldUseMinimum()
-    {
-        var options = new DeduplicationOptions();
-
-        options.InitialRetryDelay = TimeSpan.FromMilliseconds(50);
-
-        Assert.Equal(TimeSpan.FromMilliseconds(100), options.InitialRetryDelay);
-    }
-
-    [Fact]
-    public void InitialRetryDelay_WhenSetToValidValue_ShouldUpdate()
-    {
-        var options = new DeduplicationOptions();
-        var newDelay = TimeSpan.FromMilliseconds(500);
-
-        options.InitialRetryDelay = newDelay;
-
-        Assert.Equal(newDelay, options.InitialRetryDelay);
-    }
-
-    [Fact]
-    public void MaxRetryDelay_ShouldHaveDefaultValue()
-    {
-        var options = new DeduplicationOptions();
-
-        Assert.Equal(TimeSpan.FromSeconds(30), options.MaxRetryDelay);
-    }
-
-    [Fact]
-    public void MaxRetryDelay_WhenSetToLessThanOneSecond_ShouldUseMinimum()
-    {
-        var options = new DeduplicationOptions();
-
-        options.MaxRetryDelay = TimeSpan.FromMilliseconds(500);
-
-        Assert.Equal(TimeSpan.FromSeconds(1), options.MaxRetryDelay);
-    }
-
-    [Fact]
-    public void MaxRetryDelay_WhenSetToValidValue_ShouldUpdate()
-    {
-        var options = new DeduplicationOptions();
-        var newDelay = TimeSpan.FromMinutes(1);
-
-        options.MaxRetryDelay = newDelay;
-
-        Assert.Equal(newDelay, options.MaxRetryDelay);
-    }
-
-    [Fact]
     public void KeyPrefix_ShouldHaveDefaultValue()
     {
         var options = new DeduplicationOptions();
 
-        Assert.Equal("feishu:event:", options.KeyPrefix);
+        Assert.Equal(Consts.DefaultEventKeyPrefix, options.KeyPrefix);
     }
 
     [Fact]
-    public void EnableVerboseLogging_ShouldHaveDefaultValue()
+    public void MaxCacheSize_ShouldHaveDefaultValue()
     {
         var options = new DeduplicationOptions();
 
-        Assert.False(options.EnableVerboseLogging);
+        Assert.Equal(Consts.DefaultMaxCacheSize, options.MaxCacheSize);
     }
 
     [Fact]
@@ -189,23 +124,15 @@ public class DeduplicationOptionsTests
             CacheExpiration = TimeSpan.FromHours(24),
             ProcessingTimeout = TimeSpan.FromMinutes(15),
             CleanupInterval = TimeSpan.FromMinutes(3),
-            AllowProcessingOnFallback = false,
-            MaxRetryCount = 5,
-            InitialRetryDelay = TimeSpan.FromMilliseconds(200),
-            MaxRetryDelay = TimeSpan.FromSeconds(10),
             KeyPrefix = "custom:prefix:",
-            EnableVerboseLogging = true
+            MaxCacheSize = 12345
         };
 
         Assert.Equal(TimeSpan.FromHours(24), options.CacheExpiration);
         Assert.Equal(TimeSpan.FromMinutes(15), options.ProcessingTimeout);
         Assert.Equal(TimeSpan.FromMinutes(3), options.CleanupInterval);
-        Assert.False(options.AllowProcessingOnFallback);
-        Assert.Equal(5, options.MaxRetryCount);
-        Assert.Equal(TimeSpan.FromMilliseconds(200), options.InitialRetryDelay);
-        Assert.Equal(TimeSpan.FromSeconds(10), options.MaxRetryDelay);
         Assert.Equal("custom:prefix:", options.KeyPrefix);
-        Assert.True(options.EnableVerboseLogging);
+        Assert.Equal(12345, options.MaxCacheSize);
     }
 
     [Fact]
@@ -215,8 +142,6 @@ public class DeduplicationOptionsTests
 
         Assert.Equal(TimeSpan.FromHours(72), options.CacheExpiration);
         Assert.Equal(TimeSpan.FromMinutes(5), options.ProcessingTimeout);
-        Assert.False(options.AllowProcessingOnFallback);
-        Assert.Equal(5, options.MaxRetryCount);
     }
 
     [Fact]
@@ -226,7 +151,5 @@ public class DeduplicationOptionsTests
 
         Assert.Equal(TimeSpan.FromHours(48), options.CacheExpiration);
         Assert.Equal(TimeSpan.FromMinutes(15), options.ProcessingTimeout);
-        Assert.True(options.AllowProcessingOnFallback);
-        Assert.Equal(3, options.MaxRetryCount);
     }
 }

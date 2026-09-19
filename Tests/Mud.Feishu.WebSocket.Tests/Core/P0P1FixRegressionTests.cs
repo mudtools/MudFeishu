@@ -87,7 +87,7 @@ public class P0P1FixRegressionTests
         var processor = new BinaryMessageProcessor(
             logger,
             connectionManager.Object,
-            options ?? new FeishuWebSocketOptions { EnableLogging = false },
+            options ?? new Mud.Feishu.WebSocket.FeishuWebSocketOptions {  },
             router.Object);
 
         if (onReceived != null)
@@ -207,7 +207,7 @@ public class P0P1FixRegressionTests
         // Arrange
         var manager = new WebSocketConnectionManager(
             NullLogger<WebSocketConnectionManager>.Instance,
-            new FeishuWebSocketOptions { EnableLogging = false },
+            new Mud.Feishu.WebSocket.FeishuWebSocketOptions {  },
             NullLoggerFactory.Instance);
 
         var fired = 0;
@@ -331,7 +331,7 @@ public class P0P1FixRegressionTests
     public async Task RouteBinaryMessageWithResultAsync_ShouldReturnFalse_WhenHandlerThrows()
     {
         // Arrange
-        var options = new FeishuWebSocketOptions { EnableLogging = false, MessageHandlerTimeoutMs = 0 };
+        var options = new FeishuWebSocketOptions { MessageHandlerTimeoutMs = 0 };
         var router = new MessageRouter(NullLogger<MessageRouter>.Instance, options);
         router.RegisterHandler(new ThrowingHandler());
 
@@ -346,7 +346,7 @@ public class P0P1FixRegressionTests
     public async Task RouteBinaryMessageWithResultAsync_ShouldReturnTrue_WhenNoHandlerRegistered()
     {
         // Arrange
-        var options = new FeishuWebSocketOptions { EnableLogging = false };
+        var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions {  };
         var router = new MessageRouter(NullLogger<MessageRouter>.Instance, options);
 
         // Act
@@ -375,7 +375,7 @@ public class P0P1FixRegressionTests
             factoryMock.Object,
             null,
             null,
-            new FeishuWebSocketOptions { EnableLogging = false },
+            new Mud.Feishu.WebSocket.FeishuWebSocketOptions {  },
             null);
 
         var message = """
@@ -425,7 +425,7 @@ public class P0P1FixRegressionTests
     public void Validate_ShouldThrow_WhenMaxTotalReconnectTimeIsNotPositive()
     {
         // Arrange
-        var options = new FeishuWebSocketOptions { MaxTotalReconnectTime = TimeSpan.Zero };
+        var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions { Reconnect = new Mud.Feishu.WebSocket.WebSocketReconnectOptions { TotalBudget = TimeSpan.Zero } };
 
         // Act
         var act = () => options.Validate();
@@ -451,7 +451,7 @@ public class P0P1FixRegressionTests
     public void Validate_ShouldThrow_WhenMaxAuthRetryAttemptsIsNegative()
     {
         // Arrange
-        var options = new FeishuWebSocketOptions { MaxAuthRetryAttempts = -1 };
+        var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions { Reconnect = new Mud.Feishu.WebSocket.WebSocketReconnectOptions { MaxAuthRetryAttempts = -1 } };
 
         // Act
         var act = () => options.Validate();

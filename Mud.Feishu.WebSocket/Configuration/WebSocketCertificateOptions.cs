@@ -61,10 +61,10 @@ public class WebSocketReconnectOptions
     /// <summary>最大重连次数，0=无限（受 TotalBudget 限制），默认 5</summary>
     public int MaxAttempts { get; set; } = 5;
 
-    /// <summary>基础重连延迟（毫秒），默认 5000</summary>
+    /// <summary>基础重连延迟（毫秒），默认 5000；非法值由 FeishuWebSocketOptions.Validate 拒绝</summary>
     public int BaseDelayMs { get; set; } = 5000;
 
-    /// <summary>最大重连延迟（毫秒），默认 30000</summary>
+    /// <summary>最大重连延迟（毫秒），默认 30000；须 ≥ BaseDelayMs，由 Validate 拒绝</summary>
     public int MaxDelayMs { get; set; } = 30000;
 
     /// <summary>重连总时间预算，默认 30 分钟</summary>

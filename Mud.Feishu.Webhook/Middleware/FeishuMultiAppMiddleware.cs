@@ -154,8 +154,7 @@ public class FeishuMultiAppMiddleware : IDisposable
         // 验证应用是否存在
         if (!Options.Apps.ContainsKey(appKey ?? string.Empty))
         {
-            if (Options.EnableRequestLogging)
-                _logger.LogWarning("未知的应用键: {AppKey}", appKey);
+            _logger.LogWarning("未知的应用键: {AppKey}", appKey);
             await _next(context);
             return;
         }
@@ -228,8 +227,7 @@ public class FeishuMultiAppMiddleware : IDisposable
                 return;
             }
 
-            if (Options.EnableRequestLogging)
-                _logger.LogInformation("收到应用的 Webhook 请求");
+            _logger.LogInformation("收到应用的 Webhook 请求");
 
             // 处理请求
             await ProcessWebhookRequestAsync(
@@ -268,8 +266,7 @@ public class FeishuMultiAppMiddleware : IDisposable
         {
             stopwatch.Stop();
             activity?.SetTag("request.duration_ms", stopwatch.ElapsedMilliseconds);
-            if (Options.EnableRequestLogging)
-                _logger.LogInformation("请求处理完成, 耗时: {DurationMs}ms, AppKey: {AppKey}", stopwatch.ElapsedMilliseconds, appKey ?? "unknown");
+            _logger.LogInformation("请求处理完成, 耗时: {DurationMs}ms, AppKey: {AppKey}", stopwatch.ElapsedMilliseconds, appKey ?? "unknown");
         }
     }
 

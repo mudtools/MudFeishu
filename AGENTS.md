@@ -311,7 +311,42 @@ Multi-tenant scenarios use the same multi-app infrastructure: each tenant maps t
 
 1. **D8 键布局**：令牌键只允许由 `TokenKeyBuilder` 构造；变更须同步两后端 + 等价与回灌测试。禁止在各 Store 中内联键拼接逻辑。
 2. **D9 阈值同源**：恢复阈值必须等于缓存有效性阈值（`TokenRefreshThreshold`）；禁止第二套阈值（如 `threshold/2`）。
-3. **D10 凭据变更清库**：配置热更新（`ApplyConfigurationChanges`；TMF-04：原 `RebuildAppContext` 死代码已删除）检测到 `(AppId, AppSecret)` 变更时必须清除该 appKey 的持久化令牌——租户经 `ClearAsync`、用户经 `IFeishuUserTokenStorePurge.ClearAllUsersAsync` 能力探测（TMF-01 共享记账保证工厂新实例可清干净）。仅 `BaseUrl`/`TimeOut` 等变更保留令牌热迁移。
+3. **D10 凭据变更清库**：配置热更新（`ApplyConfigurationChanges`；TMF-04：原 `RebuildAppContext` 死代码已删除）检测到 `(AppId, AppSecret)` 变更时必须清除该 appKey 的持久化令牌——租户经 `ClearAsync`、用户经 `IFeishuUserTokenStorePurge.ClearAllUsersAsync` 能力探测（TMF-01 共享记账保证工厂新实例可清干净）。仅 `BaseUrl`/`TimeoutSeconds` 等变更保留令牌热迁移。
+
+## 配置面约定（R4）
+
+MudFeishu 配置面以**嵌套 Options** 为唯一公共 API（旧扁平属性已删除）：
+
+| 区域 | 权威形状 | 配置节示例 |
+| ---- | -------- | ---------- |
+| 应用 HTTP/熔断 | `FeishuAppConfig.TimeoutSeconds` / `HttpRetry` / `CircuitBreaker` | `FeishuApps:0:TimeoutSeconds`、`HttpRetry:MaxAttempts`、`CircuitBreaker:Enabled` |
+| 事件去重 | `FeishuDeduplicationOptions`（Mode/Profile/Event/Nonce/SeqId 三前缀） | `FeishuDeduplication:*`；双读期旧 `FeishuRedis:Event*` 等仍可绑 |
+| Redis 连接 | `RedisOptions.Connection` / `Advanced` | `FeishuRedis:Connection:ServerAddress`；旧扁平键由 `ApplyLegacyFlatConnectionKeys` 回填 |
+| WebSocket 重连/证书 | `FeishuWebSocketOptions.Reconnect` / `Certificate` | `FeishuWebSocket:Reconnect:*`、`Certificate:Mode` |
+| Webhook 令牌刷新 | `EnableTokenBackgroundRefresh`（bool?；null=不干预基座） | `FeishuWebhook:EnableTokenBackgroundRefresh` |
+| Webhook 超时 | 全局 `EventHandlingTimeoutMs` + 应用级同名键（正整数覆盖）；过渡闸 `LegacyGlobalTimeoutOnly` | — |
+
+**日志**：不要再使用配置属性 `EnableLogging` / `EnableRequestLogging` / `EnableVerboseLogging`（已移除）。请用 `Logging:LogLevel:{Category}`，例如：
+
+```jsonc
+"Logging": {
+  "LogLevel": {
+    "Mud.Feishu.WebSocket": "Information",
+    "Mud.Feishu.Webhook": "Information",
+    "Mud.Feishu.Abstractions.TokenManager": "Warning"
+  }
+}
+```
+
+**去重主路径仅消费**：`CacheExpiration` / `ProcessingTimeout` / `CleanupInterval` / `KeyPrefix` / `MaxCacheSize`。事件失败重试用 `FailedEventRetryOptions`，勿与去重键混淆。
+
+**多租户**：`FeishuDeduplication` / Redis 去重键 **Event/Nonce/SeqId 三个 KeyPrefix 必须互异**（TMA2-20）。
+
+**包安全跨校验**：`NonceTtl >= TimestampToleranceSeconds`（WHF-03）由宿主在同时引用 Webhook+Redis 时通过 `AddFeishuConfigurationConsistencyChecks` 注入 Webhook 容差后校验；Redis/Webhook 单包不做跨包类型耦合。
+
+**配置审计**：`scripts/audit-config-keys.ps1` 扫描仓库内是否出现已删除的旧配置键/属性名。
+
+**安全默认不得削弱**：wss、Strict 证书、`EnforceHeaderSignatureValidation`、`RejectEmptyIdentifiers`、三键前缀隔离、BaseUrl HTTPS 白名单。
 4. **D11 OAuth 失败语义**：`RefreshUserTokenAsync` 必须通过 `FeishuOAuthErrorClassifier` 区分可重试/不可重试错误。`invalid_grant` 等不可重试错误清除 refresh token 并返回 null；可重试错误抛异常。
 5. **D12 AppInstantiated 事件**：首次访问应用时必须触发 `AppInstantiated` 事件，后台令牌刷新订阅此事件实现增量注册。禁止启动期全量预热。
 6. **D13 两阶段事务化**：`OnConfigurationChanged` 必须拆为 Phase-P（`_configApplyLock` 外预清库——凭据变更是 IO，禁止锁内执行；TMF-02）、Phase-A 预构造（纯内存装配）、Phase-B 提交（`_lazyRebuildLock` 内仅引用交换）。禁止在锁内执行清库 IO 或完整装配。

@@ -150,8 +150,7 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
                     _binaryDataStream = new MemoryStream();
                     _binaryDataReceiveStartTime = DateTime.UtcNow;
 
-                    if (_options.EnableLogging)
-                        _logger.LogDebug("开始接收新的二进制消息");
+                    _logger.LogDebug("开始接收新的二进制消息");
                 }
 
                 // 预先检查数据大小限制（写入前检查，防止内存溢出）
@@ -183,9 +182,8 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
                     var actualLength = (int)_binaryDataStream.Length;
                     var receiveDuration = DateTime.UtcNow - _binaryDataReceiveStartTime;
 
-                    if (_options.EnableLogging)
-                        // P2-7 修复：每条消息一条 Information 属高频日志，降级为 Debug
-                        _logger.LogDebug("二进制消息接收完成，大小: {Size} 字节，耗时: {Duration}ms",
+                    // P2-7 修复：每条消息一条 Information 属高频日志，降级为 Debug
+_logger.LogDebug("二进制消息接收完成，大小: {Size} 字节，耗时: {Duration}ms",
                             actualLength, receiveDuration.TotalMilliseconds);
 
                     byte[] completeData;
@@ -206,8 +204,7 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
                     {
                         if (_activeProcessingTasks.Count >= MaxActiveProcessingTasks)
                         {
-                            if (_options.EnableLogging)
-                                _logger.LogWarning("活跃处理任务数已达上界 {MaxTasks}，执行硬背压等待", MaxActiveProcessingTasks);
+                            _logger.LogWarning("活跃处理任务数已达上界 {MaxTasks}，执行硬背压等待", MaxActiveProcessingTasks);
 
                             snapshot = _activeProcessingTasks.ToArray();
                         }
@@ -251,8 +248,7 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
                 }
                 else
                 {
-                    if (_options.EnableLogging)
-                        _logger.LogDebug("已接收二进制消息片段，当前总大小: {Size} 字节", _binaryDataStream.Length);
+                    _logger.LogDebug("已接收二进制消息片段，当前总大小: {Size} 字节", _binaryDataStream.Length);
                 }
             }
         }
@@ -265,8 +261,7 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
                 _binaryDataStream = null;
             }
 
-            if (_options.EnableLogging)
-                _logger.LogError(ex, "处理二进制消息时发生错误");
+            _logger.LogError(ex, "处理二进制消息时发生错误");
             OnError($"处理二进制消息时发生错误: {ex.Message}", ex.GetType().Name);
         }
     }
@@ -292,8 +287,7 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
 
             if (completeData == null || completeData.Length == 0)
             {
-                if (_options.EnableLogging)
-                    _logger.LogWarning("接收到空的二进制消息");
+                _logger.LogWarning("接收到空的二进制消息");
                 eventArgs.ParseError = "接收到空的二进制消息";
                 BinaryMessageReceived?.Invoke(this, eventArgs);
                 return;
@@ -303,8 +297,7 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
             ulong? markedSeqId = null; // 跟踪已标记的 SeqID，用于失败时回滚
             try
             {
-                if (_options.EnableLogging)
-                    _logger.LogDebug("尝试使用 ProtoBuf 反序列化二进制消息");
+                _logger.LogDebug("尝试使用 ProtoBuf 反序列化二进制消息");
 
                 // 使用 Memory<byte> 的 Pin 方法或创建 MemoryStream
                 // 对于 netstandard2.0
@@ -325,8 +318,7 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
                 // 避免空 Frame 在后续 frame.SeqID 等解引用处退化为 NullReferenceException。
                 frame = frame ?? throw new InvalidDataException("二进制消息反序列化结果为空");
 
-                if (_options.EnableLogging)
-                    _logger.LogDebug("成功反序列化为 Frame 对象: Service={Service}, Method={Method}, PayloadType={PayloadType}, SeqID={SeqID}",
+                _logger.LogDebug("成功反序列化为 Frame 对象: Service={Service}, Method={Method}, PayloadType={PayloadType}, SeqID={SeqID}",
                         frame.Service, frame.Method, frame.PayloadType, frame.SeqID);
 
                 // 区分 CONTROL 帧和 DATA 帧进行不同处理（
@@ -343,8 +335,7 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
                     if (validationResult == SequenceValidationResult.Duplicate ||
                         validationResult == SequenceValidationResult.Rollback)
                     {
-                        if (_options.EnableLogging)
-                            _logger.LogWarning("消息序号验证失败: {ValidationResult}, SeqID={SeqID}", validationResult, frame.SeqID);
+                        _logger.LogWarning("消息序号验证失败: {ValidationResult}, SeqID={SeqID}", validationResult, frame.SeqID);
                         eventArgs.SkipReason = $"消息序号验证失败: {validationResult}";
                         BinaryMessageReceived?.Invoke(this, eventArgs);
                         await SendAckMessageAsync(frame, true, cancellationToken);
@@ -374,8 +365,7 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
                     var dedupResult = await _unifiedDeduplicationMiddleware.CheckAsync(extractedEventId, frame.SeqID, cancellationToken);
                     if (dedupResult.ShouldSkip)
                     {
-                        if (_options.EnableLogging)
-                            _logger.LogDebug("统一去重检查跳过: {Reason}, EventId={EventId}, SeqId={SeqId}",
+                        _logger.LogDebug("统一去重检查跳过: {Reason}, EventId={EventId}, SeqId={SeqId}",
                                 dedupResult.Reason, extractedEventId, frame.SeqID);
                         eventArgs.SkipReason = dedupResult.Reason;
                         BinaryMessageReceived?.Invoke(this, eventArgs);
@@ -387,8 +377,7 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
                 {
                     if (_seqIdDeduplicator != null && await _seqIdDeduplicator.TryMarkAsProcessedAsync(frame.SeqID))
                     {
-                        if (_options.EnableLogging)
-                            _logger.LogDebug("SeqID {SeqID} 已处理过，跳过", frame.SeqID);
+                        _logger.LogDebug("SeqID {SeqID} 已处理过，跳过", frame.SeqID);
                         eventArgs.SkipReason = $"SeqID {frame.SeqID} 已处理过";
                         BinaryMessageReceived?.Invoke(this, eventArgs);
                         await SendAckMessageAsync(frame, true, cancellationToken);
@@ -407,8 +396,7 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
                     eventArgs.JsonContent = jsonPayload;
                     eventArgs.MessageType = "Frame";
 
-                    if (_options.EnableLogging)
-                        _logger.LogDebug("成功解析 Frame Payload 为 JSON 内容（长度: {PayloadLength}）", jsonPayload.Length);
+                    _logger.LogDebug("成功解析 Frame Payload 为 JSON 内容（长度: {PayloadLength}）", jsonPayload.Length);
 
                     BinaryMessageReceived?.Invoke(this, eventArgs);
 
@@ -418,8 +406,7 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
                     // 现在路由返回可观测的结果，并据此决定 ACK 的 code。
                     if (_messageRouter != null)
                     {
-                        if (_options.EnableLogging)
-                            _logger.LogDebug("路由二进制转换的JSON消息到MessageRouter");
+                        _logger.LogDebug("路由二进制转换的JSON消息到MessageRouter");
                         var routed = await _messageRouter.RouteBinaryMessageWithResultAsync(jsonPayload, "Frame", cancellationToken);
                         if (!routed)
                         {
@@ -447,8 +434,7 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
                 }
                 else
                 {
-                    if (_options.EnableLogging)
-                        _logger.LogWarning("Frame 解析成功但 Payload 为空");
+                    _logger.LogWarning("Frame 解析成功但 Payload 为空");
                     eventArgs.ParseError = "Frame 解析成功但 Payload 为空";
                     BinaryMessageReceived?.Invoke(this, eventArgs);
 
@@ -484,8 +470,7 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
 
                     if (_messageRouter != null)
                     {
-                        if (_options.EnableLogging)
-                            _logger.LogDebug("路由二进制转换的JSON消息到MessageRouter (Fallback模式)");
+                        _logger.LogDebug("路由二进制转换的JSON消息到MessageRouter (Fallback模式)");
                         await _messageRouter.RouteBinaryMessageAsync(jsonString, "JSON_Fallback", cancellationToken);
                     }
                 }
@@ -544,8 +529,7 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
         {
             case MessageType.Ping:
                 // 服务端发送的 Ping，忽略（对照 Java SDK: case PING: return;）
-                if (_options.EnableLogging)
-                    _logger.LogDebug("收到服务端 Ping 控制帧，已忽略");
+                _logger.LogDebug("收到服务端 Ping 控制帧，已忽略");
                 eventArgs.SkipReason = "服务端 Ping 控制帧，无需处理";
                 BinaryMessageReceived?.Invoke(this, eventArgs);
                 break;
@@ -564,8 +548,7 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
                 break;
 
             default:
-                if (_options.EnableLogging)
-                    _logger.LogDebug("收到未知控制帧类型: {MessageType}", messageType);
+                _logger.LogDebug("收到未知控制帧类型: {MessageType}", messageType);
                 eventArgs.SkipReason = $"未知控制帧类型: {messageType}";
                 BinaryMessageReceived?.Invoke(this, eventArgs);
                 break;
@@ -644,8 +627,7 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
             if (messageStream.TryGetBuffer(out var arraySegment) && _connectionManager != null)
             {
                 await _connectionManager.SendBinaryMessageAsync(arraySegment, cancellationToken);
-                if (_options.EnableLogging)
-                    _logger.LogDebug("已发送ACK消息: code={Code}, biz_rt={BizRt}ms", responseObj.Code, elapsedMs);
+                _logger.LogDebug("已发送ACK消息: code={Code}, biz_rt={BizRt}ms", responseObj.Code, elapsedMs);
             }
         }
         catch (Exception x)

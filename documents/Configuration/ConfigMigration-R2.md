@@ -128,11 +128,30 @@ services.AddFeishuConfigurationConsistencyChecks(o =>
 - `Mode=Custom` 无回调 → Validate **失败**
 - 默认 Strict + wss + 校验证书，**不得回退**
 
-### Webhook / TokenRefresh
+## R4：Obsolete 属性已删除（代码 Breaking）
 
-- `EnableBackgroundProcessing` 已 `[Obsolete]`，运行时仍映射 TokenRefresh。
-- 令牌刷新请用 `EnableTokenBackgroundRefresh`。
-- 应用级 `EventHandlingTimeoutMs` 已生效；过渡期可 `FeishuWebhook:LegacyGlobalTimeoutOnly=true`。
+JSON 配置旧扁平键仍可通过绑定回填；**C# 代码必须使用嵌套 API**：
+
+| 已删除属性 | 替代 |
+| ---------- | ---- |
+| `FeishuAppConfig.TimeOut` | `TimeoutSeconds` |
+| `FeishuAppConfig.RetryCount` / `RetryDelayMs` | `HttpRetry.MaxAttempts` / `HttpRetry.DelayMs` |
+| `FeishuAppConfig.CircuitBreaker*` 扁平 | `CircuitBreaker.*` |
+| `FeishuAppConfig.EnableLogging` | `Logging:LogLevel:Mud.Feishu.Abstractions.TokenManager` |
+| `FeishuWebhookOptions.EnableBackgroundProcessing` | `EnableTokenBackgroundRefresh`（null=不干预基座） |
+| `FeishuWebSocketOptions.AutoReconnect` 等 | `Reconnect.*` |
+| `FeishuWebSocketOptions.AllowSelfSignedCertificates` 等 | `Certificate.*` |
+| `RedisOptions.ServerAddress` 等连接扁平键 | `Connection.*` / `Advanced.*` |
+| `DeduplicationOptions.AllowProcessingOnFallback` 等 | 已删除（主路径不消费） |
+
+### Webhook / TokenRefresh（R4）
+
+```jsonc
+"FeishuWebhook": {
+  "EnableTokenBackgroundRefresh": null,  // null=不干预基座；true/false=显式覆盖
+  "LegacyGlobalTimeoutOnly": false       // B1 过渡闸
+}
+```
 
 ### 日志开关
 
@@ -141,6 +160,13 @@ services.AddFeishuConfigurationConsistencyChecks(o =>
 | `FeishuAppConfig.EnableLogging` | `Logging:LogLevel:Mud.Feishu.Abstractions.TokenManager` |
 | `FeishuWebSocketOptions.EnableLogging` | `Logging:LogLevel:Mud.Feishu.WebSocket` |
 | `FeishuWebhookOptions.EnableRequestLogging` | `Logging:LogLevel:Mud.Feishu.Webhook` |
+
+### 配置审计
+
+```powershell
+powershell -File ./scripts/audit-config-keys.ps1
+powershell -File ./scripts/audit-config-keys.ps1 -Strict   # CI 阻断
+```
 
 ## 最小配置（目标态）
 

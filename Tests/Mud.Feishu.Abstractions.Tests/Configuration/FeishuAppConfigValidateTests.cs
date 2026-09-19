@@ -37,9 +37,9 @@ public class FeishuAppConfigValidateTests
     public void Validate_ShouldAcceptRetryDelayGreaterThanTimeout()
     {
         var config = CreateValidConfig();
-        config.TimeOut = 3;
-        config.RetryDelayMs = 5000;
-        config.RetryCount = 3;
+        config.TimeoutSeconds = 3;
+        config.HttpRetry.DelayMs = 5000;
+        config.HttpRetry.MaxAttempts = 3;
 
         var act = () => config.Validate();
 
@@ -50,9 +50,9 @@ public class FeishuAppConfigValidateTests
     public void Validate_ShouldNotThrow_WhenRetryDelayMsEqualsTimeOut()
     {
         var config = CreateValidConfig();
-        config.TimeOut = 1;
-        config.RetryDelayMs = 1000;
-        config.RetryCount = 3;
+        config.TimeoutSeconds = 1;
+        config.HttpRetry.DelayMs = 1000;
+        config.HttpRetry.MaxAttempts = 3;
 
         var act = () => config.Validate();
 
@@ -63,9 +63,9 @@ public class FeishuAppConfigValidateTests
     public void Validate_ShouldNotThrow_WhenRetryCountIsZeroEvenIfRetryDelayMsExceedsTimeOut()
     {
         var config = CreateValidConfig();
-        config.TimeOut = 5;
-        config.RetryDelayMs = 10000;
-        config.RetryCount = 0;
+        config.TimeoutSeconds = 5;
+        config.HttpRetry.DelayMs = 10000;
+        config.HttpRetry.MaxAttempts = 0;
 
         var act = () => config.Validate();
 
@@ -76,7 +76,7 @@ public class FeishuAppConfigValidateTests
     public void Validate_ShouldThrow_WhenTimeOutIsZero()
     {
         var config = CreateValidConfig();
-        config.TimeOut = 0;
+        config.TimeoutSeconds = 0;
 
         var act = () => config.Validate();
 
@@ -88,7 +88,7 @@ public class FeishuAppConfigValidateTests
     public void Validate_ShouldThrow_WhenTimeOutExceeds300()
     {
         var config = CreateValidConfig();
-        config.TimeOut = 301;
+        config.TimeoutSeconds = 301;
 
         var act = () => config.Validate();
 
@@ -100,7 +100,7 @@ public class FeishuAppConfigValidateTests
     public void Validate_ShouldThrow_WhenRetryCountExceeds10()
     {
         var config = CreateValidConfig();
-        config.RetryCount = 11;
+        config.HttpRetry.MaxAttempts = 11;
 
         var act = () => config.Validate();
 
@@ -112,7 +112,7 @@ public class FeishuAppConfigValidateTests
     public void Validate_ShouldThrow_WhenRetryDelayMsIsLessThan100()
     {
         var config = CreateValidConfig();
-        config.RetryDelayMs = 50;
+        config.HttpRetry.DelayMs = 50;
 
         var act = () => config.Validate();
 
@@ -124,7 +124,7 @@ public class FeishuAppConfigValidateTests
     public void Validate_ShouldThrow_WhenCircuitBreakerFailureThresholdIsZero()
     {
         var config = CreateValidConfig();
-        config.CircuitBreakerFailureThreshold = 0;
+        config.CircuitBreaker.FailureThreshold = 0;
 
         var act = () => config.Validate();
 
@@ -136,7 +136,7 @@ public class FeishuAppConfigValidateTests
     public void Validate_ShouldThrow_WhenCircuitBreakerMinimumThroughputIsLessThan2()
     {
         var config = CreateValidConfig();
-        config.CircuitBreakerMinimumThroughput = 1;
+        config.CircuitBreaker.MinimumThroughput = 1;
 
         var act = () => config.Validate();
 
@@ -187,7 +187,7 @@ public class FeishuAppConfigValidateTests
     public void Validate_ShouldNotThrow_WhenCircuitBreakerDisabledWithDefaults()
     {
         var config = CreateValidConfig();
-        config.CircuitBreakerEnabled = false;
+        config.CircuitBreaker.Enabled = false;
         // 熔断器子配置保持默认值（未修改）
 
         var act = () => config.Validate();
@@ -202,9 +202,9 @@ public class FeishuAppConfigValidateTests
     public void Validate_ShouldNotThrow_WhenCircuitBreakerDisabledButSubConfigInValidRange()
     {
         var config = CreateValidConfig();
-        config.CircuitBreakerEnabled = false;
+        config.CircuitBreaker.Enabled = false;
         // 修改熔断器子配置为非默认值，但在有效范围内
-        config.CircuitBreakerFailureThreshold = 30; // 默认为20，30 在 1-100 范围内
+        config.CircuitBreaker.FailureThreshold = 30; // 默认为20，30 在 1-100 范围内
 
         var act = () => config.Validate();
 
@@ -219,8 +219,8 @@ public class FeishuAppConfigValidateTests
     public void Validate_ShouldThrow_WhenCircuitBreakerDisabledButSubConfigOutOfRange()
     {
         var config = CreateValidConfig();
-        config.CircuitBreakerEnabled = false;
-        config.CircuitBreakerFailureThreshold = 150; // 超出范围 1-100
+        config.CircuitBreaker.Enabled = false;
+        config.CircuitBreaker.FailureThreshold = 150; // 超出范围 1-100
 
         var act = () => config.Validate();
 
@@ -235,8 +235,8 @@ public class FeishuAppConfigValidateTests
     public void Validate_ShouldThrow_WhenCircuitBreakerEnabledAndSubConfigOutOfRange()
     {
         var config = CreateValidConfig();
-        config.CircuitBreakerEnabled = true;
-        config.CircuitBreakerFailureThreshold = 150; // 超出范围 1-100
+        config.CircuitBreaker.Enabled = true;
+        config.CircuitBreaker.FailureThreshold = 150; // 超出范围 1-100
 
         var act = () => config.Validate();
 

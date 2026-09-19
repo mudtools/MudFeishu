@@ -2,34 +2,28 @@
 //  作者：Mud Studio  版权所有 (c) Mud Studio 2026
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
-//  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
+//  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！
 // -----------------------------------------------------------------------
 
 namespace Mud.Feishu.Abstractions.Configuration;
 
 /// <summary>
-/// 去重配置选项
-/// 集中管理事件去重相关的配置参数
+/// 去重配置选项（通用内存/高级参数）。
 /// </summary>
 /// <remarks>
-/// 此配置类统一管理内存去重和分布式去重的通用配置。
-/// 建议根据实际业务场景调整以下参数：
-/// <list type="bullet">
-///   <item><description>CacheExpiration: 应大于飞书官方事件重试窗口期（通常 1-24 小时）</description></item>
-///   <item><description>ProcessingTimeout: 应根据业务最长处理时间设置</description></item>
-///   <item><description>AllowProcessingOnFallback: 高可靠性场景建议设为 false</description></item>
-/// </list>
+/// <para>
+/// R4：主路径仅消费 <see cref="CacheExpiration"/> / <see cref="ProcessingTimeout"/> /
+/// <see cref="CleanupInterval"/> / <see cref="KeyPrefix"/> / <see cref="MaxCacheSize"/>。
+/// 分布式失败语义（AllowProcessingOnFallback / 重试延迟等）在 Redis 主路径<strong>不消费</strong>，
+/// 已从公共 API 移除；事件失败重试请使用 <c>FailedEventRetryOptions</c>。
+/// </para>
+/// <para>推荐配置入口：<c>FeishuDeduplication</c> 统一节（见 FeishuDeduplicationOptions）。</para>
 /// </remarks>
 public class DeduplicationOptions
 {
     /// <summary>
-    /// 缓存过期时间
-    /// <para>此配置统一应用于内存去重和 Redis 分布式去重。</para>
+    /// 缓存过期时间（默认 48h，引用 Consts）
     /// </summary>
-    /// <remarks>
-    /// 建议设置为大于飞书官方事件重试窗口期，避免长延时场景下的重复处理。
-    /// 飞书官方重试窗口通常为 1-24 小时，建议设置为 48 小时。
-    /// </remarks>
     public TimeSpan CacheExpiration
     {
         get => _cacheExpiration;
@@ -38,12 +32,8 @@ public class DeduplicationOptions
     private TimeSpan _cacheExpiration = TimeSpan.FromMilliseconds(Consts.DefaultCacheExpirationMs);
 
     /// <summary>
-    /// 处理中超时时间
+    /// 处理中超时时间（默认 10min，引用 Consts）
     /// </summary>
-    /// <remarks>
-    /// 当事件标记为"处理中"后，超过此时间未完成，将允许重新处理。
-    /// 应根据业务最长处理时间设置，建议设置为业务处理时间的 2-3 倍。
-    /// </remarks>
     public TimeSpan ProcessingTimeout
     {
         get => _processingTimeout;
@@ -52,11 +42,8 @@ public class DeduplicationOptions
     private TimeSpan _processingTimeout = TimeSpan.FromMilliseconds(Consts.DefaultProcessingTimeoutMs);
 
     /// <summary>
-    /// 缓存清理间隔（仅内存模式）
+    /// 缓存清理间隔（仅内存模式，默认 5min）
     /// </summary>
-    /// <remarks>
-    /// 定期清理过期的缓存条目，避免内存泄漏。
-    /// </remarks>
     public TimeSpan CleanupInterval
     {
         get => _cleanupInterval;
@@ -65,73 +52,8 @@ public class DeduplicationOptions
     private TimeSpan _cleanupInterval = TimeSpan.FromMilliseconds(Consts.DefaultCleanupIntervalMs);
 
     /// <summary>
-    /// 降级策略：是否在 Redis 失败时允许处理事件（仅分布式模式）
+    /// Redis/事件键前缀（默认 Consts.DefaultEventKeyPrefix）
     /// </summary>
-    /// <remarks>
-    /// <list type="bullet">
-    ///   <item><description>true: Redis 失败时降级到内存去重并允许处理（高可用性，可能重复处理）</description></item>
-    ///   <item><description>false: Redis 失败时拒绝处理（高可靠性，可能丢失事件）</description></item>
-    /// </list>
-    /// 对于关键业务，建议设为 false 以确保数据一致性。
-    /// <para><b>B3/R2：</b>当前 SDK Redis 主路径不消费本字段（工厂已从 effectiveOptions 剔除）。
-    /// 仅自定义 IDistributedDeduplicator 可用。见 documents/Configuration/DeduplicationTruthSource.md。</para>
-    /// </remarks>
-    [Obsolete("当前 Redis/SDK 主路径不消费 AllowProcessingOnFallback；仅自定义 IDistributedDeduplicator 可用")]
-    public bool AllowProcessingOnFallback { get; set; } = true;
-
-    /// <summary>
-    /// 最大重试次数（仅分布式模式）
-    /// </summary>
-    /// <remarks>
-    /// Redis 操作失败时的最大重试次数。
-    /// <para><b>B3/R2：</b>当前 SDK Redis 主路径不消费。勿与 FailedEventRetryOptions.MaxRetryCount 混淆。</para>
-    /// </remarks>
-    [Obsolete("当前 Redis/SDK 主路径不消费去重 MaxRetryCount；事件重试请使用 FailedEventRetryOptions.MaxRetryCount")]
-    public int MaxRetryCount
-    {
-        get => _maxRetryCount;
-        set => _maxRetryCount = Math.Max(0, Math.Min(value, 10));
-    }
-    private int _maxRetryCount = Consts.DefaultDeduplicationRetryCount;
-
-    /// <summary>
-    /// 初始重试延迟（仅分布式模式）
-    /// </summary>
-    /// <remarks>
-    /// 首次重试前的等待时间，后续重试将使用指数退避策略。
-    /// <para><b>B3/R2：</b>当前 SDK Redis 主路径不消费。</para>
-    /// </remarks>
-    [Obsolete("当前 Redis/SDK 主路径不消费 InitialRetryDelay")]
-    public TimeSpan InitialRetryDelay
-    {
-        get => _initialRetryDelay;
-        set => _initialRetryDelay = value >= TimeSpan.FromMilliseconds(100) ? value : TimeSpan.FromMilliseconds(100);
-    }
-    private TimeSpan _initialRetryDelay = TimeSpan.FromMilliseconds(Consts.DefaultDeduplicationInitialRetryDelayMs);
-
-    /// <summary>
-    /// 最大重试延迟（仅分布式模式）
-    /// </summary>
-    /// <remarks>
-    /// 指数退避策略的最大延迟时间上限。
-    /// <para><b>B3/R2：</b>当前 SDK Redis 主路径不消费。</para>
-    /// </remarks>
-    [Obsolete("当前 Redis/SDK 主路径不消费 MaxRetryDelay")]
-    public TimeSpan MaxRetryDelay
-    {
-        get => _maxRetryDelay;
-        set => _maxRetryDelay = value >= TimeSpan.FromSeconds(1) ? value : TimeSpan.FromSeconds(1);
-    }
-    private TimeSpan _maxRetryDelay = TimeSpan.FromMilliseconds(Consts.DefaultDeduplicationMaxRetryDelayMs);
-
-    /// <summary>
-    /// Redis 键前缀（仅分布式模式）
-    /// <para>此配置统一应用于 Redis 去重键前缀。</para>
-    /// </summary>
-    /// <remarks>
-    /// 用于区分不同应用或环境的 Redis 键。
-    /// 格式：{prefix}{appKey}:{eventId}
-    /// </remarks>
     public string KeyPrefix
     {
         get => _keyPrefix;
@@ -140,12 +62,8 @@ public class DeduplicationOptions
     private string _keyPrefix = Consts.DefaultEventKeyPrefix;
 
     /// <summary>
-    /// 最大缓存容量（仅内存模式）
+    /// 最大缓存容量（仅内存模式，默认 100000）
     /// </summary>
-    /// <remarks>
-    /// 内存缓存的最大条目数，超过此数量将触发清理。
-    /// 设置为 0 表示不限制。
-    /// </remarks>
     public int MaxCacheSize
     {
         get => _maxCacheSize;
@@ -154,56 +72,28 @@ public class DeduplicationOptions
     private int _maxCacheSize = Consts.DefaultMaxCacheSize;
 
     /// <summary>
-    /// 是否启用详细日志
-    /// </summary>
-    /// <remarks>
-    /// 启用后将记录每次去重检查的详细日志，用于调试。
-    /// 生产环境建议关闭以减少日志量。
-    /// </remarks>
-    public bool EnableVerboseLogging { get; set; } = false;
-
-    /// <summary>
     /// 创建默认配置
     /// </summary>
     public static DeduplicationOptions Default => new();
 
     /// <summary>
-    /// 创建高可靠性配置
+    /// 高可靠性预设：更长 TTL、更短处理超时。
     /// </summary>
     /// <remarks>
-    /// 适用于关键业务场景：
-    /// - 更长的缓存过期时间
-    /// - 更短的处理超时
-    /// - Redis 失败时拒绝处理
+    /// 仅覆盖主路径已消费字段；分布式失败语义不在本预设范围内。
     /// </remarks>
     public static DeduplicationOptions HighReliability => new()
     {
         CacheExpiration = TimeSpan.FromHours(72),
-        ProcessingTimeout = TimeSpan.FromMinutes(5),
-#pragma warning disable CS0618 // 预设仍写入字段；主路径是否消费见 B3 注释
-        AllowProcessingOnFallback = false,
-        MaxRetryCount = 5,
-#pragma warning restore CS0618
-        EnableVerboseLogging = false
+        ProcessingTimeout = TimeSpan.FromMinutes(5)
     };
 
     /// <summary>
-    /// 创建高可用性配置
+    /// 高可用预设：标准 TTL、更长处理超时。
     /// </summary>
-    /// <remarks>
-    /// 适用于高吞吐场景：
-    /// - 标准缓存过期时间
-    /// - 较长的处理超时
-    /// - Redis 失败时降级处理
-    /// </remarks>
     public static DeduplicationOptions HighAvailability => new()
     {
         CacheExpiration = TimeSpan.FromHours(48),
-        ProcessingTimeout = TimeSpan.FromMinutes(15),
-#pragma warning disable CS0618
-        AllowProcessingOnFallback = true,
-        MaxRetryCount = 3,
-#pragma warning restore CS0618
-        EnableVerboseLogging = false
+        ProcessingTimeout = TimeSpan.FromMinutes(15)
     };
 }

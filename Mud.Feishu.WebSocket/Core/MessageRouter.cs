@@ -55,7 +55,7 @@ public class MessageRouter
         lock (_handlersLock)
         {
             var removed = _handlers.Remove(handler);
-            if (removed && _options.EnableLogging)
+            if (removed)
             {
                 _logger.LogDebug("已移除消息处理器: {HandlerType}", handler.GetType().Name);
             }
@@ -76,10 +76,8 @@ public class MessageRouter
     {
         if (string.IsNullOrWhiteSpace(message))
         {
-            if (_options.EnableLogging)
-            {
-                _logger.LogWarning("收到空消息，跳过路由");
-            }
+                        _logger.LogWarning("收到空消息，跳过路由");
+        
             return;
         }
 
@@ -99,10 +97,8 @@ public class MessageRouter
     {
         if (string.IsNullOrWhiteSpace(jsonContent))
         {
-            if (_options.EnableLogging)
-            {
-                _logger.LogWarning("收到空的二进制转换消息，跳过路由");
-            }
+                        _logger.LogWarning("收到空的二进制转换消息，跳过路由");
+        
             return;
         }
 
@@ -136,10 +132,8 @@ public class MessageRouter
     {
         if (string.IsNullOrWhiteSpace(jsonContent))
         {
-            if (_options.EnableLogging)
-            {
-                _logger.LogWarning("收到空的二进制转换消息，跳过路由");
-            }
+                        _logger.LogWarning("收到空的二进制转换消息，跳过路由");
+        
             return true;
         }
 

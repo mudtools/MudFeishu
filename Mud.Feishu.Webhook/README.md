@@ -130,7 +130,7 @@ app.Run();
     "EnforceHeaderSignatureValidation": true,
     "TimestampToleranceSeconds": 30,
     "NonceValidationFailureMode": "Reject",
-    "EnableBackgroundProcessing": false,
+    "EnableTokenBackgroundRefresh": null,
     "Retry": {
       "EnableRetry": false,
       "MaxRetryCount": 3,
@@ -437,7 +437,7 @@ public class DemoDepartmentEventHandler : DepartmentCreatedEventHandler
 | `MaxConcurrentEvents`         | int  | 10     | 最大并发事件数，支持热更新                             |
 | `EventHandlingTimeoutMs`      | int  | 30000  | 事件处理超时时间（毫秒）                               |
 | `EnablePerformanceMonitoring` | bool | false  | 是否启用性能监控                                       |
-| `EnableBackgroundProcessing`  | bool | false  | 是否启用后台处理模式（启用后激活令牌自动刷新后台服务） |
+| `EnableTokenBackgroundRefresh`  | bool? | null   | 令牌后台刷新显式覆盖（null=不干预基座；R4 已移除 EnableBackgroundProcessing） |
 
 ### 日志配置
 
@@ -538,7 +538,7 @@ app.Run();
 ```json
 {
   "FeishuWebhook": {
-    "EnableBackgroundProcessing": true
+    "EnableTokenBackgroundRefresh": true
   }
 }
 ```
@@ -548,7 +548,7 @@ app.Run();
 // 然后在后台异步处理事件，适用于耗时较长的业务逻辑
 builder.Services.CreateFeishuWebhookServiceBuilder(options =>
 {
-    options.EnableBackgroundProcessing = true;
+    options.EnableTokenBackgroundRefresh = true;
 }).AddHandler<LongRunningEventHandler>()
     .Build();
 ```
@@ -1217,7 +1217,7 @@ builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
 // appsettings.json
 {
   "FeishuWebhook": {
-    "EnableBackgroundProcessing": true,  // 立即返回成功，后台处理
+    "EnableTokenBackgroundRefresh": true,
     "EventHandlingTimeoutMs": 60000      // 增加超时时间
   }
 }
@@ -1441,7 +1441,7 @@ builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
 | `EncryptKey`                       | -          | 加密密钥（32字节）                     |
 | `MaxConcurrentEvents`              | `10`       | 最大并发事件数，支持热更新             |
 | `EventHandlingTimeoutMs`           | `30000`    | 事件处理超时（毫秒）                   |
-| `EnableBackgroundProcessing`       | `false`    | 后台处理模式（启用后激活令牌自动刷新） |
+| `EnableTokenBackgroundRefresh`       | `null`    | 令牌后台刷新覆盖（null=不干预） |
 | `EnablePerformanceMonitoring`      | `false`    | 性能监控                               |
 | `EnforceHeaderSignatureValidation` | `true`     | 强制签名验证（生产环境必须启用）       |
 | `TimestampToleranceSeconds`        | `30`       | 时间戳容错范围（秒）                   |

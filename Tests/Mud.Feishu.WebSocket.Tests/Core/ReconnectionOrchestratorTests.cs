@@ -29,12 +29,15 @@ public class ReconnectionOrchestratorTests
         _managerMock = new Mock<IFeishuWebSocketManager>();
         _options = new FeishuWebSocketOptions
         {
-            AutoReconnect = true,
-            MaxReconnectAttempts = 5,
-            ReconnectDelayMs = 100,
-            MaxReconnectDelayMs = 1000,
-            MaxTotalReconnectTime = TimeSpan.FromMinutes(30),
-            ReconnectCooldownTime = TimeSpan.FromMilliseconds(10)
+            Reconnect = new WebSocketReconnectOptions
+            {
+                Auto = true,
+                MaxAttempts = 5,
+                BaseDelayMs = 100,
+                MaxDelayMs = 1000,
+                TotalBudget = TimeSpan.FromMinutes(30),
+                Cooldown = TimeSpan.FromMilliseconds(10)
+            }
         };
     }
 
@@ -105,7 +108,7 @@ public class ReconnectionOrchestratorTests
     [Fact]
     public async Task TryReconnectAsync_WhenAutoReconnectDisabled_ShouldReturnFalse()
     {
-        _options.AutoReconnect = false;
+        _options.Reconnect.Auto = false;
 
         var orchestrator = CreateOrchestrator();
 

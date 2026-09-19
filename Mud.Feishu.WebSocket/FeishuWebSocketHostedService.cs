@@ -234,12 +234,10 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
     /// </summary>
     private void OnDisconnected(object? sender, WebSocketCloseEventArgs e)
     {
-        if (_optionsMonitor.CurrentValue.EnableLogging)
-        {
-            var stats = _webSocketManager.GetConnectionStats();
-            _logger.LogInformation("飞书WebSocket连接已断开: {Status} - {Description} (持续时间: {Duration})",
-                e.CloseStatus, e.CloseStatusDescription, stats.Uptime);
-        }
+                var stats = _webSocketManager.GetConnectionStats();
+        _logger.LogInformation("飞书WebSocket连接已断开: {Status} - {Description} (持续时间: {Duration})",
+            e.CloseStatus, e.CloseStatusDescription, stats.Uptime);
+    
 
         // OnDisconnected 作为事件处理器无法添加 Requires 标注，其内部调用带标注的
         // TryTriggerReconnect 时用 pragma 屏蔽 IL 警告。
@@ -277,9 +275,9 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
             {
                 // NEW-WS-01 修复：链接 host stoppingToken，支持优雅关闭
                 // P1-12 修复：重连窗口此前被硬编码为 5 分钟，会让
-                // FeishuWebSocketOptions.MaxTotalReconnectTime（默认 30 分钟）永远无法生效。
+                // FeishuWebSocketOptions.Reconnect.TotalBudget（默认 30 分钟）永远无法生效。
                 // 现在以配置值为准（+1 分钟余量用于收尾）。
-                var window = _optionsMonitor.CurrentValue.MaxTotalReconnectTime;
+                var window = _optionsMonitor.CurrentValue.Reconnect.TotalBudget;
                 if (window <= TimeSpan.Zero)
                 {
                     window = TimeSpan.FromMinutes(30);
@@ -306,8 +304,6 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
     {
         // 可恢复错误已在下层组件以 Warning 级别记录，此处仅在 Debug 级别记录避免重复刷屏。
         // 不可恢复错误仍以 Error 级别记录完整异常。
-        if (!_optionsMonitor.CurrentValue.EnableLogging)
-            return;
 
         if (e.IsRecoverable)
             _logger.LogDebug("飞书WebSocket发生可恢复错误: {Message} (类型: {Type})", e.ErrorMessage, e.ErrorType);

@@ -22,13 +22,7 @@ public class ExponentialBackoffReconnectStrategyTests
 
     public ExponentialBackoffReconnectStrategyTests()
     {
-        _options = new FeishuWebSocketOptions
-        {
-            MaxReconnectAttempts = 10,
-            ReconnectDelayMs = 1000,
-            MaxReconnectDelayMs = 60000,
-            MaxTotalReconnectTime = TimeSpan.FromMinutes(30)
-        };
+        _options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions { Reconnect = new Mud.Feishu.WebSocket.WebSocketReconnectOptions { MaxAttempts = 10, BaseDelayMs = 1000, MaxDelayMs = 60000, TotalBudget = TimeSpan.FromMinutes(30) } };
         _loggerMock = new Mock<ILogger<ExponentialBackoffReconnectStrategy>>();
     }
 
@@ -57,8 +51,8 @@ public class ExponentialBackoffReconnectStrategyTests
         var delay = strategy.CalculateDelay(1);
 
         // 抖动范围：baseDelay ~ baseDelay * 1.25
-        var baseDelay = TimeSpan.FromMilliseconds(_options.ReconnectDelayMs);
-        var maxDelayWithJitter = TimeSpan.FromMilliseconds(_options.ReconnectDelayMs * 1.25);
+        var baseDelay = TimeSpan.FromMilliseconds(_options.Reconnect.BaseDelayMs);
+        var maxDelayWithJitter = TimeSpan.FromMilliseconds(_options.Reconnect.BaseDelayMs * 1.25);
         delay.Should().BeGreaterThanOrEqualTo(baseDelay).And.BeLessThanOrEqualTo(maxDelayWithJitter);
     }
 
@@ -70,8 +64,8 @@ public class ExponentialBackoffReconnectStrategyTests
         var delay = strategy.CalculateDelay(2);
 
         // 抖动范围：baseDelay*2 ~ baseDelay*2 * 1.25
-        var baseDelay = TimeSpan.FromMilliseconds(_options.ReconnectDelayMs * 2);
-        var maxDelayWithJitter = TimeSpan.FromMilliseconds(_options.ReconnectDelayMs * 2 * 1.25);
+        var baseDelay = TimeSpan.FromMilliseconds(_options.Reconnect.BaseDelayMs * 2);
+        var maxDelayWithJitter = TimeSpan.FromMilliseconds(_options.Reconnect.BaseDelayMs * 2 * 1.25);
         delay.Should().BeGreaterThanOrEqualTo(baseDelay).And.BeLessThanOrEqualTo(maxDelayWithJitter);
     }
 
@@ -83,23 +77,23 @@ public class ExponentialBackoffReconnectStrategyTests
         var delay = strategy.CalculateDelay(3);
 
         // 抖动范围：baseDelay*4 ~ baseDelay*4 * 1.25
-        var baseDelay = TimeSpan.FromMilliseconds(_options.ReconnectDelayMs * 4);
-        var maxDelayWithJitter = TimeSpan.FromMilliseconds(_options.ReconnectDelayMs * 4 * 1.25);
+        var baseDelay = TimeSpan.FromMilliseconds(_options.Reconnect.BaseDelayMs * 4);
+        var maxDelayWithJitter = TimeSpan.FromMilliseconds(_options.Reconnect.BaseDelayMs * 4 * 1.25);
         delay.Should().BeGreaterThanOrEqualTo(baseDelay).And.BeLessThanOrEqualTo(maxDelayWithJitter);
     }
 
     [Fact]
     public void CalculateDelay_WhenExceedsMaxDelay_ShouldReturnMaxDelayWithJitter()
     {
-        _options.ReconnectDelayMs = 1000;
-        _options.MaxReconnectDelayMs = 5000;
+        _options.Reconnect.BaseDelayMs = 1000;
+        _options.Reconnect.MaxDelayMs = 5000;
         var strategy = new ExponentialBackoffReconnectStrategy(_options, _loggerMock.Object);
 
         var delay = strategy.CalculateDelay(10);
 
         // 抖动在封顶后添加，范围：maxDelay ~ maxDelay * 1.25
-        var maxDelay = TimeSpan.FromMilliseconds(_options.MaxReconnectDelayMs);
-        var maxDelayWithJitter = TimeSpan.FromMilliseconds(_options.MaxReconnectDelayMs * 1.25);
+        var maxDelay = TimeSpan.FromMilliseconds(_options.Reconnect.MaxDelayMs);
+        var maxDelayWithJitter = TimeSpan.FromMilliseconds(_options.Reconnect.MaxDelayMs * 1.25);
         delay.Should().BeGreaterThanOrEqualTo(maxDelay).And.BeLessThanOrEqualTo(maxDelayWithJitter);
     }
 
@@ -140,7 +134,7 @@ public class ExponentialBackoffReconnectStrategyTests
     {
         var strategy = new ExponentialBackoffReconnectStrategy(_options, _loggerMock.Object);
 
-        var result = strategy.ShouldContinueReconnect(_options.MaxReconnectAttempts + 1, TimeSpan.FromMinutes(1));
+        var result = strategy.ShouldContinueReconnect(_options.Reconnect.MaxAttempts + 1, TimeSpan.FromMinutes(1));
 
         result.Should().BeFalse();
     }
@@ -150,7 +144,7 @@ public class ExponentialBackoffReconnectStrategyTests
     {
         var strategy = new ExponentialBackoffReconnectStrategy(_options, _loggerMock.Object);
 
-        var result = strategy.ShouldContinueReconnect(1, _options.MaxTotalReconnectTime + TimeSpan.FromMinutes(1));
+        var result = strategy.ShouldContinueReconnect(1, _options.Reconnect.TotalBudget + TimeSpan.FromMinutes(1));
 
         result.Should().BeFalse();
     }
@@ -160,7 +154,7 @@ public class ExponentialBackoffReconnectStrategyTests
     {
         var strategy = new ExponentialBackoffReconnectStrategy(_options, _loggerMock.Object);
 
-        var result = strategy.ShouldContinueReconnect(_options.MaxReconnectAttempts, _options.MaxTotalReconnectTime);
+        var result = strategy.ShouldContinueReconnect(_options.Reconnect.MaxAttempts, _options.Reconnect.TotalBudget);
 
         result.Should().BeTrue();
     }

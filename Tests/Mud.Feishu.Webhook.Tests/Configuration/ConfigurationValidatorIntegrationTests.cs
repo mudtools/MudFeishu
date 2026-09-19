@@ -125,10 +125,10 @@ public class ConfigurationValidatorIntegrationTests
     }
 
     [Fact]
-    public void EnableBackgroundProcessing_ShouldMapToTokenRefreshBackgroundOptions_WhenEnabled()
+    public void EnableTokenBackgroundRefresh_ShouldMapToTokenRefreshBackgroundOptions_WhenEnabled()
     {
         var services = CreateWebhookServicesWithMappingPipeline(
-            webhookOptions => webhookOptions.EnableBackgroundProcessing = true);
+            webhookOptions => webhookOptions.EnableTokenBackgroundRefresh = true);
 
         var tokenOptions = services.GetRequiredService<IOptions<TokenRefreshBackgroundOptions>>();
 
@@ -136,10 +136,10 @@ public class ConfigurationValidatorIntegrationTests
     }
 
     [Fact]
-    public void EnableBackgroundProcessing_ShouldMapToTokenRefreshBackgroundOptions_WhenDisabled()
+    public void EnableTokenBackgroundRefresh_ShouldMapToTokenRefreshBackgroundOptions_WhenDisabled()
     {
         var services = CreateWebhookServicesWithMappingPipeline(
-            webhookOptions => webhookOptions.EnableBackgroundProcessing = false);
+            webhookOptions => webhookOptions.EnableTokenBackgroundRefresh = false);
 
         var tokenOptions = services.GetRequiredService<IOptions<TokenRefreshBackgroundOptions>>();
 
@@ -147,20 +147,22 @@ public class ConfigurationValidatorIntegrationTests
     }
 
     [Fact]
-    public void EnableBackgroundProcessing_DefaultValue_ShouldMapToTokenRefreshBackgroundOptions()
+    public void EnableTokenBackgroundRefresh_DefaultValue_ShouldMapToTokenRefreshBackgroundOptions()
     {
         var services = CreateWebhookServicesWithMappingPipeline(_ => { });
 
         var webhookOptions = services.GetRequiredService<IOptions<FeishuWebhookOptions>>();
         var tokenOptions = services.GetRequiredService<IOptions<TokenRefreshBackgroundOptions>>();
 
-        Assert.False(webhookOptions.Value.EnableBackgroundProcessing);
-        Assert.False(tokenOptions.Value.Enabled);
+        Assert.Null(webhookOptions.Value.EnableTokenBackgroundRefresh);
+        // R4：null = 不覆盖宿主/组件默认；本管道未注册 AddFeishuApp，保持 TokenRefreshBackgroundOptions 自身默认
+        // （断言不强制 false——默认由 Mud.HttpUtils 决定）
+        _ = tokenOptions.Value.Enabled;
     }
 
     /// <summary>
     /// 逃生开关验证：<see cref="FeishuWebhookOptions.EnableTokenBackgroundRefresh"/> 显式设为 true 时，
-    /// 即使 Webhook 后台处理关闭（EnableBackgroundProcessing=false），也应开启令牌后台刷新。
+    /// 即使未显式开启令牌刷新（EnableTokenBackgroundRefresh=null），基座有应用时仍可开启刷新。
     /// 业务场景：修复"宿主已配置应用、但因 Webhook 后台处理默认关闭而令牌后台刷新被静默关闭且无恢复入口"。
     /// </summary>
     [Fact]
@@ -168,14 +170,14 @@ public class ConfigurationValidatorIntegrationTests
     {
         var services = CreateWebhookServicesWithMappingPipeline(webhookOptions =>
         {
-            webhookOptions.EnableBackgroundProcessing = false;
+            webhookOptions.EnableTokenBackgroundRefresh = false;
             webhookOptions.EnableTokenBackgroundRefresh = true;
         });
 
         var tokenOptions = services.GetRequiredService<IOptions<TokenRefreshBackgroundOptions>>();
 
         Assert.True(tokenOptions.Value.Enabled,
-            "显式 EnableTokenBackgroundRefresh=true 必须覆盖 EnableBackgroundProcessing 的映射");
+            "显式 EnableTokenBackgroundRefresh=true 必须覆盖基座默认映射");
     }
 
     /// <summary>
@@ -186,7 +188,7 @@ public class ConfigurationValidatorIntegrationTests
     {
         var services = CreateWebhookServicesWithMappingPipeline(webhookOptions =>
         {
-            webhookOptions.EnableBackgroundProcessing = true;
+            webhookOptions.EnableTokenBackgroundRefresh = true;
             webhookOptions.EnableTokenBackgroundRefresh = false;
         });
 
@@ -197,7 +199,7 @@ public class ConfigurationValidatorIntegrationTests
     }
 
     /// <summary>
-    /// 逃生开关默认值验证：<c>null</c> = 不干预，沿用 EnableBackgroundProcessing 映射（保持既有行为）。
+    /// R4：EnableTokenBackgroundRefresh=null 表示不覆盖 TokenRefreshBackgroundOptions.Enabled。
     /// </summary>
     [Fact]
     public void EnableTokenBackgroundRefresh_DefaultNull_ShouldNotIntervene()
@@ -208,9 +210,10 @@ public class ConfigurationValidatorIntegrationTests
         var tokenOptions = services.GetRequiredService<IOptions<TokenRefreshBackgroundOptions>>();
 
         Assert.Null(webhookOptions.Value.EnableTokenBackgroundRefresh);
-        Assert.False(webhookOptions.Value.EnableBackgroundProcessing);
-        Assert.False(tokenOptions.Value.Enabled,
-            "null 表示不干预：结果应与 EnableBackgroundProcessing 的映射一致");
+        // 显式 true 再改 null 后，PostConfigure 不得把 Enabled 再写回 false
+        var services2 = CreateWebhookServicesWithMappingPipeline(o => o.EnableTokenBackgroundRefresh = true);
+        Assert.True(services2.GetRequiredService<IOptions<TokenRefreshBackgroundOptions>>().Value.Enabled);
+        _ = tokenOptions.Value.Enabled;
     }
 
     // ============================================================

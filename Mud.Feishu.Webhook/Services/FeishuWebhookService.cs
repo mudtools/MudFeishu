@@ -210,11 +210,9 @@ public class FeishuWebhookService : IFeishuWebhookService
                         eventData.EventId, appKey ?? "null");
                     FeishuMetricsHelper.RecordEventOutcome(appKey ?? "unknown", eventData.EventType, success: true, "mark_completed_failed");
 
-                    if (Options.EnableRequestLogging)
-                    {
-                        _logger.LogInformation("事件处理完成（完成标记失败，按成功口径）: {EventType}, 事件ID: {EventId}, AppKey: {AppKey}",
-                            eventData.EventType, eventData.EventId, appKey ?? "null");
-                    }
+                                        _logger.LogInformation("事件处理完成（完成标记失败，按成功口径）: {EventType}, 事件ID: {EventId}, AppKey: {AppKey}",
+                        eventData.EventType, eventData.EventId, appKey ?? "null");
+                
 
                     return (true, null);
                 }
@@ -222,11 +220,9 @@ public class FeishuWebhookService : IFeishuWebhookService
                 // 记录事件处理成功
                 FeishuMetricsHelper.RecordEventOutcome(appKey ?? "unknown", eventData.EventType, success: true);
 
-                if (Options.EnableRequestLogging)
-                {
-                    _logger.LogInformation("事件处理完成: {EventType}, 事件ID: {EventId}, AppKey: {AppKey}",
-                        eventData.EventType, eventData.EventId, appKey ?? "null");
-                }
+                                _logger.LogInformation("事件处理完成: {EventType}, 事件ID: {EventId}, AppKey: {AppKey}",
+                    eventData.EventType, eventData.EventId, appKey ?? "null");
+            
 
                 return (true, null);
             }

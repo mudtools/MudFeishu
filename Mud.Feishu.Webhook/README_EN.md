@@ -109,7 +109,7 @@ app.Run();
     "EnforceHeaderSignatureValidation": true,
     "TimestampToleranceSeconds": 30,
     "NonceValidationFailureMode": "Reject",
-    "EnableBackgroundProcessing": false,
+    "EnableTokenBackgroundRefresh": null,
     "Retry": {
       "EnableRetry": false,
       "MaxRetryCount": 3,
@@ -410,7 +410,7 @@ public class DemoDepartmentEventHandler : DepartmentCreatedEventHandler
 | `MaxConcurrentEvents`         | int  | 10      | Max concurrent events, supports hot reload                                                                  |
 | `EventHandlingTimeoutMs`      | int  | 30000   | Event handling timeout (milliseconds)                                                                       |
 | `EnablePerformanceMonitoring` | bool | false   | Whether to enable performance monitoring                                                                    |
-| `EnableBackgroundProcessing`  | bool | false   | Whether to enable background processing mode (activates token auto-refresh background service when enabled) |
+| `EnableTokenBackgroundRefresh`  | bool? | null   | Explicit override for token background refresh (null = leave host default). R4 removed EnableBackgroundProcessing |
 
 ### Logging Configuration
 
@@ -499,7 +499,7 @@ Enable background processing mode to avoid Feishu timeout retries:
 ```json
 {
   "FeishuWebhook": {
-    "EnableBackgroundProcessing": true
+    "EnableTokenBackgroundRefresh": true
   }
 }
 ```
@@ -509,7 +509,7 @@ Enable background processing mode to avoid Feishu timeout retries:
 // Then processes events asynchronously in the background, suitable for long-running business logic
 builder.Services.CreateFeishuWebhookServiceBuilder(options =>
 {
-    options.EnableBackgroundProcessing = true;
+    options.EnableTokenBackgroundRefresh = true;
 }).AddHandler<LongRunningEventHandler>()
     .Build();
 ```
@@ -1039,7 +1039,7 @@ For time-consuming tasks, enable background processing mode:
 // appsettings.json
 {
   "FeishuWebhook": {
-    "EnableBackgroundProcessing": true,  // Return success immediately, process in background
+    "EnableTokenBackgroundRefresh": true,  // Return success immediately, process in background
     "EventHandlingTimeoutMs": 60000      // Increase timeout duration
   }
 }
@@ -1249,7 +1249,7 @@ builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
 | `EncryptKey`                  | -                  | Encryption key (32 bytes)                                 |
 | `MaxConcurrentEvents`         | `10`               | Max concurrent events                                     |
 | `EventHandlingTimeoutMs`      | `30000`            | Event handling timeout (ms)                               |
-| `EnableBackgroundProcessing`  | `false`            | Background processing mode (activates token auto-refresh) |
+| `EnableTokenBackgroundRefresh`  | `null`    | Token refresh override (null = host default; R4 removed EnableBackgroundProcessing) |
 | `EnablePerformanceMonitoring` | `false`            | Performance monitoring                                    |
 
 ---

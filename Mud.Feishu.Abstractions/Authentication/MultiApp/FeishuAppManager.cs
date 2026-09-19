@@ -522,23 +522,25 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
     /// </summary>
     internal static bool IsSameAs(FeishuAppConfig a, FeishuAppConfig b)
     {
-#pragma warning disable CS0618 // 热更比较仍走 Obsolete 标量垫片（与嵌套 Options 同存储）
+        var aRetry = a.HttpRetry ?? new Configuration.HttpRetryOptions();
+        var bRetry = b.HttpRetry ?? new Configuration.HttpRetryOptions();
+        var aCb = a.CircuitBreaker ?? new Configuration.CircuitBreakerOptions();
+        var bCb = b.CircuitBreaker ?? new Configuration.CircuitBreakerOptions();
+
         return string.Equals(a.AppId, b.AppId, StringComparison.Ordinal)
             && string.Equals(a.AppSecret, b.AppSecret, StringComparison.Ordinal)
             && string.Equals(a.BaseUrl, b.BaseUrl, StringComparison.Ordinal)
             && a.AllowCustomBaseUrl == b.AllowCustomBaseUrl
-            && a.TimeOut == b.TimeOut
-            && a.RetryCount == b.RetryCount
-            && a.RetryDelayMs == b.RetryDelayMs
-            && a.CircuitBreakerEnabled == b.CircuitBreakerEnabled
-            && a.CircuitBreakerFailureThreshold == b.CircuitBreakerFailureThreshold
-            && a.CircuitBreakerSamplingDurationSeconds == b.CircuitBreakerSamplingDurationSeconds
-            && a.CircuitBreakerBreakDurationSeconds == b.CircuitBreakerBreakDurationSeconds
-            && a.CircuitBreakerMinimumThroughput == b.CircuitBreakerMinimumThroughput
+            && a.TimeoutSeconds == b.TimeoutSeconds
+            && aRetry.MaxAttempts == bRetry.MaxAttempts
+            && aRetry.DelayMs == bRetry.DelayMs
+            && aCb.Enabled == bCb.Enabled
+            && aCb.FailureThreshold == bCb.FailureThreshold
+            && aCb.SamplingDurationSeconds == bCb.SamplingDurationSeconds
+            && aCb.BreakDurationSeconds == bCb.BreakDurationSeconds
+            && aCb.MinimumThroughput == bCb.MinimumThroughput
             && a.TokenRefreshThreshold == b.TokenRefreshThreshold
-            && a.EnableLogging == b.EnableLogging
             && a.IsDefault == b.IsDefault;
-#pragma warning restore CS0618
     }
 
     // TMF-04：RebuildAppContext 已删除——产品代码零调用方（唯一热更新路径为
@@ -578,7 +580,7 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
     }
 
     /// <summary>
-    /// ARC-7：记录命名客户端端点（<c>BaseUrl</c> / <c>TimeOut</c>）的热更新，使
+    /// ARC-7：记录命名客户端端点（<c>BaseUrl</c> / <c>TimeoutSeconds</c>）的热更新，使
     /// 「配置是否真的作用到了 HTTP 客户端」在日志中可观测（修复前这两项变更完全不生效且无任何提示）。
     /// </summary>
     /// <param name="incoming">新配置。</param>
@@ -602,12 +604,12 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
             : incoming.BaseUrl;
 
         if (!string.Equals(previousBaseUrl, incomingBaseUrl, StringComparison.Ordinal) ||
-            previous.TimeOut != incoming.TimeOut)
+            previous.TimeoutSeconds != incoming.TimeoutSeconds)
         {
             _logger.LogInformation(
-                "配置热更新：应用 {AppKey} 的 HTTP 客户端端点已变更（BaseUrl: {PreviousBaseUrl} → {IncomingBaseUrl}，TimeOut: {PreviousTimeOut}s → {IncomingTimeOut}s），" +
+                "配置热更新：应用 {AppKey} 的 HTTP 客户端端点已变更（BaseUrl: {PreviousBaseUrl} → {IncomingBaseUrl}，TimeoutSeconds: {PreviousTimeOut}s → {IncomingTimeOut}s），" +
                 "重建后的客户端将使用新端点，无需重启进程。",
-                incoming.AppKey, previousBaseUrl, incomingBaseUrl, previous.TimeOut, incoming.TimeOut);
+                incoming.AppKey, previousBaseUrl, incomingBaseUrl, previous.TimeoutSeconds, incoming.TimeoutSeconds);
         }
     }
 
@@ -1344,13 +1346,18 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
 
     private static bool HasResilienceMismatch(FeishuAppConfig app, FeishuAppConfig defaultApp)
     {
-        return app.RetryCount != defaultApp.RetryCount
-            || app.RetryDelayMs != defaultApp.RetryDelayMs
-            || app.TimeOut != defaultApp.TimeOut
-            || app.CircuitBreakerEnabled != defaultApp.CircuitBreakerEnabled
-            || app.CircuitBreakerFailureThreshold != defaultApp.CircuitBreakerFailureThreshold
-            || app.CircuitBreakerSamplingDurationSeconds != defaultApp.CircuitBreakerSamplingDurationSeconds
-            || app.CircuitBreakerBreakDurationSeconds != defaultApp.CircuitBreakerBreakDurationSeconds
-            || app.CircuitBreakerMinimumThroughput != defaultApp.CircuitBreakerMinimumThroughput;
+        var appRetry = app.HttpRetry ?? new Configuration.HttpRetryOptions();
+        var defRetry = defaultApp.HttpRetry ?? new Configuration.HttpRetryOptions();
+        var appCb = app.CircuitBreaker ?? new Configuration.CircuitBreakerOptions();
+        var defCb = defaultApp.CircuitBreaker ?? new Configuration.CircuitBreakerOptions();
+
+        return appRetry.MaxAttempts != defRetry.MaxAttempts
+            || appRetry.DelayMs != defRetry.DelayMs
+            || app.TimeoutSeconds != defaultApp.TimeoutSeconds
+            || appCb.Enabled != defCb.Enabled
+            || appCb.FailureThreshold != defCb.FailureThreshold
+            || appCb.SamplingDurationSeconds != defCb.SamplingDurationSeconds
+            || appCb.BreakDurationSeconds != defCb.BreakDurationSeconds
+            || appCb.MinimumThroughput != defCb.MinimumThroughput;
     }
 }

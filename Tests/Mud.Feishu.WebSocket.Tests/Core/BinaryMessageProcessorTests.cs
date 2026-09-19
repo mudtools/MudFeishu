@@ -40,7 +40,6 @@ public class BinaryMessageProcessorTests
 
         _options = new FeishuWebSocketOptions
         {
-            EnableLogging = true,
             MessageSizeLimits = new MessageSizeLimits
             {
                 MaxBinaryMessageSize = 1024 * 1024 // 1MB for testing
@@ -123,7 +122,6 @@ public class BinaryMessageProcessorTests
         // Arrange
         var smallOptions = new FeishuWebSocketOptions
         {
-            EnableLogging = false,
             MessageSizeLimits = new MessageSizeLimits
             {
                 MaxBinaryMessageSize = 10 // Very small limit
@@ -380,7 +378,7 @@ public class BinaryMessageProcessorTests
     public async Task ProcessBinaryDataAsync_ShouldNotRouteToMessageRouter_WhenControlFrameReceived()
     {
         // Arrange - 使用真实的 MessageRouter，注册一个可追踪的 handler
-        var options = new FeishuWebSocketOptions { EnableLogging = false };
+        var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions {  };
         var realRouter = new MessageRouter(NullLogger<MessageRouter>.Instance, options);
 
         var handlerCalled = false;

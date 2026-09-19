@@ -69,14 +69,14 @@ public class FeishuWebhookOptionsBindingTests
             ["FeishuWebhook:EnableExceptionHandling"] = "false",
             ["FeishuWebhook:EnablePerformanceMonitoring"] = "true",
             ["FeishuWebhook:EnforceHeaderSignatureValidation"] = "false",
-            ["FeishuWebhook:EnableBackgroundProcessing"] = "true",
+            ["FeishuWebhook:EnableTokenBackgroundRefresh"] = "true",
         });
 
         options.EnableRequestLogging.Should().BeFalse();
         options.EnableExceptionHandling.Should().BeFalse();
         options.EnablePerformanceMonitoring.Should().BeTrue();
         options.EnforceHeaderSignatureValidation.Should().BeFalse();
-        options.EnableBackgroundProcessing.Should().BeTrue();
+        options.EnableTokenBackgroundRefresh.Should().BeTrue();
     }
 
     /// <summary>
@@ -100,10 +100,10 @@ public class FeishuWebhookOptionsBindingTests
 
         var absent = BindFromDictionary(new Dictionary<string, string?>
         {
-            ["FeishuWebhook:EnableBackgroundProcessing"] = "true",
+            // 未配置 EnableTokenBackgroundRefresh：必须保留 null
         });
         absent.EnableTokenBackgroundRefresh.Should().BeNull(
-            "未配置时必须保留 null（= 沿用 EnableBackgroundProcessing 映射，不干预）");
+            "未配置时必须保留 null（= 不干预基座 TokenRefresh 映射）");
     }
 
     [Fact]
@@ -191,7 +191,7 @@ public class FeishuWebhookOptionsBindingTests
         options.EnablePerformanceMonitoring.Should().BeFalse();
         options.EnforceHeaderSignatureValidation.Should().BeTrue();
         options.TimestampToleranceSeconds.Should().Be(30);
-        options.EnableBackgroundProcessing.Should().BeFalse();
+        options.EnableTokenBackgroundRefresh.Should().BeNull("R4：未配置时为 null，不覆盖宿主令牌刷新默认");
         options.NonceValidationFailureMode.Should().Be(NonceFailureMode.Reject);
     }
 

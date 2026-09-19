@@ -148,15 +148,15 @@ public class FeishuAppConfigNestedOptionsTests
             CircuitBreaker = new CircuitBreakerOptions { Enabled = false, FailureThreshold = 30 }
         };
 
-        config.TimeOut.Should().Be(45);
-        config.RetryCount.Should().Be(5);
-        config.RetryDelayMs.Should().Be(2000);
-        config.CircuitBreakerEnabled.Should().BeFalse();
-        config.CircuitBreakerFailureThreshold.Should().Be(30);
+        config.TimeoutSeconds.Should().Be(45);
+        config.HttpRetry.MaxAttempts.Should().Be(5);
+        config.HttpRetry.DelayMs.Should().Be(2000);
+        config.CircuitBreaker.Enabled.Should().BeFalse();
+        config.CircuitBreaker.FailureThreshold.Should().Be(30);
 
-        config.TimeOut = 60;
+        config.TimeoutSeconds = 60;
         config.TimeoutSeconds.Should().Be(60);
-        config.CircuitBreakerEnabled = true;
+        config.CircuitBreaker.Enabled = true;
         config.CircuitBreaker.Enabled.Should().BeTrue();
 #pragma warning restore CS0618
     }
@@ -184,9 +184,9 @@ public class FeishuAppConfigNestedOptionsTests
         configs[0].CircuitBreaker.Enabled.Should().BeFalse();
         configs[0].HttpRetry.MaxAttempts.Should().Be(7);
 #pragma warning disable CS0618
-        configs[0].TimeOut.Should().Be(42);
-        configs[0].CircuitBreakerEnabled.Should().BeFalse();
-        configs[0].RetryCount.Should().Be(7);
+        configs[0].TimeoutSeconds.Should().Be(42);
+        configs[0].CircuitBreaker.Enabled.Should().BeFalse();
+        configs[0].HttpRetry.MaxAttempts.Should().Be(7);
 #pragma warning restore CS0618
     }
 }

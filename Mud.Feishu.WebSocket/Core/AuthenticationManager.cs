@@ -123,7 +123,7 @@ public class AuthenticationManager
             // 此前 for (attempt <= maxRetries) 当 maxRetries = int.MaxValue 时
             // 循环可达 2^31 次，且 attempt 递增到 int.MaxValue 后溢出变负数，
             // 循环条件恒为 true，无法退出。
-            var maxRetries = _options.MaxAuthRetryAttempts;
+            var maxRetries = _options.Reconnect.MaxAuthRetryAttempts;
             if (maxRetries == 0)
             {
                 maxRetries = int.MaxValue; // 0 表示无限重试（仅受外部 CancellationToken 与冷却期限制）
@@ -162,9 +162,9 @@ public class AuthenticationManager
                     }
 
                     // 计算退避延迟时间：baseDelay * (2^attempt)，最大不超过 MaxReconnectDelayMs
-                    var baseDelay = TimeSpan.FromMilliseconds(_options.ReconnectDelayMs);
+                    var baseDelay = TimeSpan.FromMilliseconds(_options.Reconnect.BaseDelayMs);
                     var exponentialDelay = TimeSpan.FromMilliseconds(baseDelay.TotalMilliseconds * Math.Pow(2, attempt));
-                    var maxDelay = TimeSpan.FromMilliseconds(_options.MaxReconnectDelayMs);
+                    var maxDelay = TimeSpan.FromMilliseconds(_options.Reconnect.MaxDelayMs);
 
                     // 添加随机抖动，避免多个客户端同时重试造成雪崩
                     var jitter = _random.Next(0, 1000); // 0-1000ms 的随机抖动
@@ -230,10 +230,8 @@ public class AuthenticationManager
 
             await _sendMessageCallback(authJson);
 
-            if (_options.EnableLogging)
-            {
-                _logger.LogInformation("已发送认证消息，等待响应...");
-            }
+                        _logger.LogInformation("已发送认证消息，等待响应...");
+        
 
             // P0-3 修复：此前的实现创建了 cts 并 CancelAfter(30s)，但 _authCompletionSource.Task
             // 与 cts 毫无关联，await 没有任何超时通道 —— 服务端不回应认证帧时会永久挂起，
@@ -283,7 +281,7 @@ public class AuthenticationManager
             AuthenticationFailed?.Invoke(this, errorArgs);
 
             // P2-14 修复：使用独立的 MaxAuthRetryAttempts 判定
-            var maxAuthRetries = _options.MaxAuthRetryAttempts;
+            var maxAuthRetries = _options.Reconnect.MaxAuthRetryAttempts;
             if (_authRetryCount >= maxAuthRetries && maxAuthRetries > 0)
             {
                 throw new InvalidOperationException($"WebSocket认证失败，已达到最大重试次数 {maxAuthRetries}", ex);

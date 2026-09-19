@@ -49,7 +49,7 @@ public class FeishuClientEndpointHotReloadTests
             data[$"{SectionName}:{i}:AppId"] = appId;
             data[$"{SectionName}:{i}:AppSecret"] = appSecret;
             data[$"{SectionName}:{i}:BaseUrl"] = baseUrl;
-            data[$"{SectionName}:{i}:TimeOut"] = timeOut.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            data[$"{SectionName}:{i}:TimeoutSeconds"] = timeOut.ToString(System.Globalization.CultureInfo.InvariantCulture);
             data[$"{SectionName}:{i}:IsDefault"] = isDefault ? "true" : "false";
         }
 
@@ -102,11 +102,11 @@ public class FeishuClientEndpointHotReloadTests
             var factory = provider.GetRequiredService<IHttpClientFactory>();
             factory.CreateClient("feishu-app1").Timeout.Should().Be(TimeSpan.FromSeconds(30));
 
-            SetAndReload(configuration, $"{SectionName}:0:TimeOut", "90");
+            SetAndReload(configuration, $"{SectionName}:0:TimeoutSeconds", "90");
 
             factory.CreateClient("feishu-app1").Timeout.Should().Be(
                 TimeSpan.FromSeconds(90),
-                "TimeOut 变更必须作用到新建的命名客户端");
+                "TimeoutSeconds（原 TimeOut）变更必须作用到新建的命名客户端");
         }
         finally
         {

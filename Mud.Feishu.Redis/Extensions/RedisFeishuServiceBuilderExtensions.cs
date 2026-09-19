@@ -49,7 +49,7 @@ public static class RedisFeishuServiceBuilderExtensions
             var logger = sp.GetService<ILogger<RedisOptions>>();
 
             // TMA2-19 / P2-10：连接串含口令时脱敏后再记录。
-            logger?.LogInformation("Redis options loaded. Server: {ServerAddress}", SensitiveDataUtils.MaskSensitiveData(options.ServerAddress));
+            logger?.LogInformation("Redis options loaded. Server: {ServerAddress}", SensitiveDataUtils.MaskSensitiveData(options.Connection.ServerAddress));
             return options;
         });
 
@@ -95,7 +95,7 @@ public static class RedisFeishuServiceBuilderExtensions
             catch (Exception ex)
             {
                 logger?.LogError(ex, "Failed to initialize Redis connection");
-                throw new InvalidOperationException($"Failed to initialize Redis connection to {options.ServerAddress}", ex);
+                throw new InvalidOperationException($"Failed to initialize Redis connection to {options.Connection.ServerAddress}", ex);
             }
         });
 
@@ -109,7 +109,7 @@ public static class RedisFeishuServiceBuilderExtensions
         services.AddHostedService(sp => new RedisConnectionWarmupService(
             sp.GetRequiredService<IConnectionMultiplexer>(),
             sp.GetService<ILogger<RedisConnectionWarmupService>>(),
-            sp.GetRequiredService<RedisOptions>().AbortOnConnectFail));
+            sp.GetRequiredService<RedisOptions>().Connection.AbortOnConnectFail));
 
         return services;
     }
@@ -163,8 +163,7 @@ public static class RedisFeishuServiceBuilderExtensions
                 ProcessingTimeout = effectiveProcessing,
                 CleanupInterval = effectiveCleanup,
                 KeyPrefix = effectiveEventPrefix,
-                MaxCacheSize = effectiveMaxCache,
-                EnableVerboseLogging = dedupOptions.EnableVerboseLogging
+                MaxCacheSize = effectiveMaxCache
             };
 
             return new RedisFeishuEventDistributedDeduplicator(
@@ -206,16 +205,6 @@ public static class RedisFeishuServiceBuilderExtensions
                 redisOptions.EventKeyPrefix);
         }
 
-        // B3：分布式降级/重试字段在 Redis 主路径不消费——用户显式改过非默认值时提示
-#pragma warning disable CS0618
-        if (!dedupOptions.AllowProcessingOnFallback
-            || dedupOptions.MaxRetryCount != Consts.DefaultDeduplicationRetryCount)
-#pragma warning restore CS0618
-        {
-            logger.LogWarning(
-                "DeduplicationOptions.AllowProcessingOnFallback/MaxRetryCount 等字段在当前 Redis 主路径不消费（已从 effectiveOptions 剔除）。" +
-                "请勿依赖这些键改变分布式失败语义；详见 documents/Configuration/DeduplicationTruthSource.md。");
-        }
     }
 
     /// <summary>
@@ -351,6 +340,8 @@ public static class RedisFeishuServiceBuilderExtensions
         services.Configure<RedisOptions>(options =>
         {
             configuration.GetSection(section).Bind(options);
+            // R4：公共扁平连接属性已删除；配置 JSON 旧键回填嵌套 Connection/Advanced
+            options.ApplyLegacyFlatConnectionKeys(configuration.GetSection(section));
         });
 
         // 绑定 DeduplicationOptions（高级参数：ProcessingTimeout 等）

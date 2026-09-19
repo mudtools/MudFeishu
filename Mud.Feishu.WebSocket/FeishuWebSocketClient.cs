@@ -309,8 +309,7 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
     /// </remarks>
     private async Task ResetStateOnReconnectAsync()
     {
-        if (_options.EnableLogging)
-            _logger.LogDebug("重连成功，重置消息序号验证器和去重器状态");
+        _logger.LogDebug("重连成功，重置消息序号验证器和去重器状态");
 
         _sequenceValidator?.Reset();
 
@@ -323,8 +322,7 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
             await _seqIdDeduplicator.ClearCacheAsync();
         }
 
-        if (_options.EnableLogging)
-            _logger.LogInformation("重连状态重置完成");
+        _logger.LogInformation("重连状态重置完成");
     }
 
     /// <summary>
@@ -363,7 +361,7 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
             {
                 _heartbeatManager.SetServiceId(serviceId.Value);
             }
-            else if (_options.EnableLogging)
+            else
             {
                 _logger.LogWarning("无法从 WebSocket URL 提取 service_id，心跳将使用默认值 0");
             }
@@ -475,8 +473,7 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
         // 认证成功后，自动订阅事件
         if (_subscriptionManager.HasSubscribed)
         {
-            if (_options.EnableLogging)
-                _logger.LogInformation("自动重新订阅事件类型...");
+            _logger.LogInformation("自动重新订阅事件类型...");
             await _subscriptionManager.SendSubscriptionRequestAsync(cancellationToken);
         }
     }
@@ -528,8 +525,7 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
         // WS-16：幂等保护 - 如果已有接收循环在运行，直接返回
         if (_receiveTask is { IsCompleted: false })
         {
-            if (_options.EnableLogging)
-                _logger.LogWarning("StartReceivingAsync 已被调用且接收循环仍在运行，跳过重复调用");
+            _logger.LogWarning("StartReceivingAsync 已被调用且接收循环仍在运行，跳过重复调用");
             return;
         }
 
@@ -698,8 +694,7 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
             {
                 var message = Encoding.UTF8.GetString(buffer.Array!, buffer.Offset, buffer.Count);
 
-                if (_options.EnableLogging)
-                    _logger.LogDebug("接收到文本消息，长度: {MessageLength}",
+                _logger.LogDebug("接收到文本消息，长度: {MessageLength}",
                         message.Length);
 
                 var messageReceivedHandler = MessageReceived;

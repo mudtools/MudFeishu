@@ -103,8 +103,7 @@ public class EventSubscriptionManager
 
         if (events.Length == 0)
         {
-            if (_options.EnableLogging)
-                _logger.LogDebug("没有要订阅的事件类型");
+            _logger.LogDebug("没有要订阅的事件类型");
             return;
         }
 
@@ -134,8 +133,7 @@ public class EventSubscriptionManager
                 Message = "订阅请求已发送"
             });
 
-            if (_options.EnableLogging)
-                _logger.LogInformation("事件订阅请求发送成功");
+            _logger.LogInformation("事件订阅请求发送成功");
         }
         catch (Exception ex)
         {

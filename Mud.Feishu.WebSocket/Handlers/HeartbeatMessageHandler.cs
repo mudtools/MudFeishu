@@ -44,8 +44,7 @@ public class HeartbeatMessageHandler : JsonMessageHandler
     {
         var heartbeatMessage = SafeDeserialize<HeartbeatMessage>(message);
 
-        if (_options.EnableLogging)
-            _logger.LogDebug("收到心跳消息，时间戳: {Timestamp}, 状态: {Status}",
+        _logger.LogDebug("收到心跳消息，时间戳: {Timestamp}, 状态: {Status}",
                 heartbeatMessage?.Data?.Timestamp, heartbeatMessage?.Data?.Status);
 
         return Task.CompletedTask;

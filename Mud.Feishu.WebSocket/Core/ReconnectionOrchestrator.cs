@@ -84,7 +84,7 @@ public class ReconnectionOrchestrator : IReconnectionOrchestrator, IAsyncDisposa
 #endif
     public async Task<bool> TryReconnectAsync(string reason, CancellationToken cancellationToken = default)
     {
-        if (!_options.AutoReconnect)
+        if (!_options.Reconnect.Auto)
         {
             _logger.LogInformation("自动重连已禁用，跳过重连");
             return false;
@@ -107,7 +107,7 @@ public class ReconnectionOrchestrator : IReconnectionOrchestrator, IAsyncDisposa
             }
 
             var timeSinceLastAttempt = DateTime.UtcNow - _lastReconnectAttempt;
-            if (timeSinceLastAttempt < _options.ReconnectCooldownTime)
+            if (timeSinceLastAttempt < _options.Reconnect.Cooldown)
             {
                 _logger.LogDebug("重连冷却期内，跳过重连尝试");
                 return false;

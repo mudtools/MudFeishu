@@ -27,7 +27,11 @@ public class FeishuAppConfigBindingTests
             .Build();
 
         var configs = new List<FeishuAppConfig>();
-        configuration.GetSection("FeishuApps").Bind(configs);
+        var section = configuration.GetSection("FeishuApps");
+        section.Bind(configs);
+        var children = section.GetChildren().ToList();
+        for (var i = 0; i < children.Count && i < configs.Count; i++)
+            configs[i].ApplyLegacyFlatKeys(children[i]);
         return configs;
     }
 
@@ -63,9 +67,9 @@ public class FeishuAppConfigBindingTests
             ["FeishuApps:0:TokenRefreshThreshold"] = "600",
         });
 
-        configs[0].TimeOut.Should().Be(60);
-        configs[0].RetryCount.Should().Be(5);
-        configs[0].RetryDelayMs.Should().Be(2000);
+        configs[0].TimeoutSeconds.Should().Be(60);
+        configs[0].HttpRetry.MaxAttempts.Should().Be(5);
+        configs[0].HttpRetry.DelayMs.Should().Be(2000);
         configs[0].TokenRefreshThreshold.Should().Be(600);
     }
 
@@ -82,9 +86,10 @@ public class FeishuAppConfigBindingTests
             ["FeishuApps:0:AllowCustomBaseUrl"] = "true",
         });
 
-        configs[0].EnableLogging.Should().BeFalse();
+        configs[0].AppKey.Should().Be("test");
         configs[0].IsDefault.Should().BeTrue();
         configs[0].AllowCustomBaseUrl.Should().BeTrue();
+        // EnableLogging 已移除（R4）
     }
 
     [Fact]
@@ -102,11 +107,11 @@ public class FeishuAppConfigBindingTests
             ["FeishuApps:0:CircuitBreakerMinimumThroughput"] = "20",
         });
 
-        configs[0].CircuitBreakerEnabled.Should().BeTrue();
-        configs[0].CircuitBreakerFailureThreshold.Should().Be(50);
-        configs[0].CircuitBreakerSamplingDurationSeconds.Should().Be(120);
-        configs[0].CircuitBreakerBreakDurationSeconds.Should().Be(30);
-        configs[0].CircuitBreakerMinimumThroughput.Should().Be(20);
+        configs[0].CircuitBreaker.Enabled.Should().BeTrue();
+        configs[0].CircuitBreaker.FailureThreshold.Should().Be(50);
+        configs[0].CircuitBreaker.SamplingDurationSeconds.Should().Be(120);
+        configs[0].CircuitBreaker.BreakDurationSeconds.Should().Be(30);
+        configs[0].CircuitBreaker.MinimumThroughput.Should().Be(20);
     }
 
     [Fact]
@@ -120,13 +125,13 @@ public class FeishuAppConfigBindingTests
         });
 
         // 默认值应被保留
-        configs[0].TimeOut.Should().Be(30);
-        configs[0].RetryCount.Should().Be(3);
-        configs[0].RetryDelayMs.Should().Be(1000);
-        configs[0].EnableLogging.Should().BeTrue();
+        configs[0].TimeoutSeconds.Should().Be(30);
+        configs[0].HttpRetry.MaxAttempts.Should().Be(3);
+        configs[0].HttpRetry.DelayMs.Should().Be(1000);
+        // EnableLogging 已移除（R4）
         configs[0].IsDefault.Should().BeFalse();
-        configs[0].CircuitBreakerEnabled.Should().BeTrue();
-        configs[0].CircuitBreakerFailureThreshold.Should().Be(20);
+        configs[0].CircuitBreaker.Enabled.Should().BeTrue();
+        configs[0].CircuitBreaker.FailureThreshold.Should().Be(20);
         configs[0].TokenRefreshThreshold.Should().Be(300);
         configs[0].BaseUrl.Should().Be("https://open.feishu.cn");
     }
@@ -176,10 +181,10 @@ public class FeishuAppConfigBindingTests
         });
 
         // 熔断器默认开启
-        configs[0].CircuitBreakerEnabled.Should().BeTrue();
-        configs[0].CircuitBreakerFailureThreshold.Should().Be(20);
-        configs[0].CircuitBreakerSamplingDurationSeconds.Should().Be(60);
-        configs[0].CircuitBreakerBreakDurationSeconds.Should().Be(60);
-        configs[0].CircuitBreakerMinimumThroughput.Should().Be(10);
+        configs[0].CircuitBreaker.Enabled.Should().BeTrue();
+        configs[0].CircuitBreaker.FailureThreshold.Should().Be(20);
+        configs[0].CircuitBreaker.SamplingDurationSeconds.Should().Be(60);
+        configs[0].CircuitBreaker.BreakDurationSeconds.Should().Be(60);
+        configs[0].CircuitBreaker.MinimumThroughput.Should().Be(10);
     }
 }

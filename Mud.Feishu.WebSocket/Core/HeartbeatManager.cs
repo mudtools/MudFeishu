@@ -55,8 +55,7 @@ public class HeartbeatManager
     public void SetServiceId(int serviceId)
     {
         _serviceId = serviceId;
-        if (_options.EnableLogging)
-            _logger.LogDebug("心跳管理器已设置 ServiceId={ServiceId}", serviceId);
+        _logger.LogDebug("心跳管理器已设置 ServiceId={ServiceId}", serviceId);
     }
 
     /// <summary>
@@ -85,8 +84,7 @@ public class HeartbeatManager
                     var pingFrameData = FrameBuilder.BuildPingFrame(serviceId);
                     await _sendBinaryCallback(pingFrameData, cancellationToken);
 
-                    if (_options.EnableLogging)
-                        _logger.LogDebug("已发送 ProtoBuf 心跳 (ServiceId={ServiceId})", serviceId);
+                    _logger.LogDebug("已发送 ProtoBuf 心跳 (ServiceId={ServiceId})", serviceId);
                 }
                 catch (OperationCanceledException)
                 {
@@ -126,8 +124,8 @@ public class HeartbeatManager
     /// </summary>
     /// <remarks>
     /// WS-07 修复（P1-9/D4）：服务端下发的 ClientConfig 仅允许影响心跳间隔，
-    /// 且必须钳制到 5–30 秒区间。<see cref="FeishuWebSocketOptions.ReconnectDelayMs"/> 
-    /// 与 <see cref="FeishuWebSocketOptions.MaxReconnectAttempts"/> 属于本地运维策略，
+    /// 且必须钳制到 5–30 秒区间。<see cref="FeishuWebSocketOptions.Reconnect.BaseDelayMs"/> 
+    /// 与 <see cref="FeishuWebSocketOptions.Reconnect.MaxAttempts"/> 属于本地运维策略，
     /// 禁止被运行时改写。心跳间隔写入私有字段 <see cref="_heartbeatIntervalMs"/>，
     /// 不再回写共享 <see cref="FeishuWebSocketOptions"/> 实例。
     /// </remarks>
@@ -148,8 +146,7 @@ public class HeartbeatManager
             {
                 var oldIntervalMs = _heartbeatIntervalMs;
                 _heartbeatIntervalMs = newIntervalMs;
-                if (_options.EnableLogging)
-                    _logger.LogInformation("心跳间隔已动态更新: {OldMs}ms → {NewMs}ms (服务端下发 PingInterval={PingInterval}s)",
+                _logger.LogInformation("心跳间隔已动态更新: {OldMs}ms → {NewMs}ms (服务端下发 PingInterval={PingInterval}s)",
                         oldIntervalMs, newIntervalMs, config.PingInterval);
             }
         }
@@ -157,11 +154,11 @@ public class HeartbeatManager
         // WS-07：ReconnectDelayMs / MaxReconnectAttempts 不再被服务端改写。
         // 这些参数属于本地运维策略，仅可通过配置文件或 IOptionsMonitor 热更新修改。
         // 若服务端下发了 ReconnectInterval / ReconnectCount，仅记录为提示信息。
-        if (config.ReconnectInterval > 0 && _options.EnableLogging)
+        if (config.ReconnectInterval > 0)
         {
             _logger.LogDebug("服务端建议重连间隔: {Seconds}s（已忽略，使用本地配置）", config.ReconnectInterval);
         }
-        if (config.ReconnectCount >= -1 && _options.EnableLogging)
+        if (config.ReconnectCount >= -1)
         {
             _logger.LogDebug("服务端建议重连次数: {Count}（已忽略，使用本地配置）", config.ReconnectCount);
         }

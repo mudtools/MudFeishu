@@ -74,6 +74,11 @@ public class FeishuWebSocketServiceBuilder
         var section = sectionName ?? "WebSocket";
         // 使用 IConfigurationSection 重载绑定，确保 IOptionsMonitor<T> 能正确接收配置变更通知
         _services.Configure<FeishuWebSocketOptions>(configuration.GetSection(section));
+        // R4：配置 JSON 兼容——扁平重连/证书键回填到 Reconnect/Certificate
+        _services.Configure<FeishuWebSocketOptions>(o =>
+        {
+            o.ApplyLegacyFlatKeys(configuration.GetSection(section));
+        });
         // 设置 AppKey 用于指标维度区分
         _services.Configure<FeishuWebSocketOptions>(o => o.AppKey = appKey);
         return this;

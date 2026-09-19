@@ -138,7 +138,7 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
             throw new ArgumentException("WebSocket URL必须使用ws://或wss://协议", nameof(url));
 
         // 安全校验：默认禁止不安全的 ws:// 连接
-        if (uri.Scheme == "ws" && !_options.AllowInsecureWebSocket)
+        if (uri.Scheme == "ws" && !_options.Certificate.AllowInsecureWebSocket)
             throw new ArgumentException("WebSocket URL使用不安全的ws://协议。如需在开发/测试环境使用，请设置 AllowInsecureWebSocket = true", nameof(url));
 
         await _connectionLock.WaitAsync(cancellationToken);
@@ -184,10 +184,8 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
             {
                 await _webSocket.ConnectAsync(uri, combinedCts.Token);
 
-                if (_options.EnableLogging)
-                {
-                    _logger.LogInformation("已连接到飞书WebSocket服务: {Url}", url);
-                }
+                                _logger.LogInformation("已连接到飞书WebSocket服务: {Url}", url);
+            
 
                 // P0-4 修复：只有连接真正成功后才配平计数并允许触发断线事件。
                 // 顺序必须为 Increment → 清除断线标志，避免连接失败后 Decrement 未配平导致计数为负。
@@ -288,10 +286,8 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
             }
         }
 
-        if (_options.EnableLogging)
-        {
-            _logger.LogInformation("已断开飞书WebSocket连接");
-        }
+                _logger.LogInformation("已断开飞书WebSocket连接");
+    
 
         var args = new WebSocketCloseEventArgs
         {
@@ -405,10 +401,8 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
                 true,
                 cancellationToken);
 
-            if (_options.EnableLogging)
-            {
-                _logger.LogDebug("已发送二进制消息，大小: {Size} 字节", data.Count);
-            }
+                        _logger.LogDebug("已发送二进制消息，大小: {Size} 字节", data.Count);
+        
         }
         catch (Exception ex)
         {
@@ -458,10 +452,8 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
                 true,
                 cancellationToken);
 
-            if (_options.EnableLogging)
-            {
-                _logger.LogDebug("已发送消息: {Message}", MessageSanitizer.Sanitize(message));
-            }
+                        _logger.LogDebug("已发送消息: {Message}", MessageSanitizer.Sanitize(message));
+        
         }
         catch (Exception ex)
         {
@@ -645,11 +637,9 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
     /// </remarks>
     private async Task HandleCloseMessageAsync(WebSocketReceiveResult result, ClientWebSocket webSocket)
     {
-        if (_options.EnableLogging)
-        {
-            _logger.LogInformation("服务器请求关闭连接: {Status} - {Description}",
-                result.CloseStatus, result.CloseStatusDescription);
-        }
+                _logger.LogInformation("服务器请求关闭连接: {Status} - {Description}",
+            result.CloseStatus, result.CloseStatusDescription);
+    
 
         // 通过 NotifyDisconnected 统一处理连接计数递减和 Disconnected 事件触发，
         // _disconnectedFired 标志（Interlocked）确保不会与 StartReceivingAsync 异常路径或 DisconnectAsync 重复触发。
@@ -730,25 +720,21 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
         try
         {
             // 使用自定义证书验证回调（优先级最高）
-            if (_options.CustomCertificateValidationCallback != null)
+            if (_options.Certificate.CustomCallback != null)
             {
-                webSocket.Options.RemoteCertificateValidationCallback = _options.CustomCertificateValidationCallback;
-                if (_options.EnableLogging)
-                {
-                    _logger.LogDebug("已配置自定义证书验证回调");
-                }
+                webSocket.Options.RemoteCertificateValidationCallback = _options.Certificate.CustomCallback;
+                                _logger.LogDebug("已配置自定义证书验证回调");
+            
                 return;
             }
 
             // 根据配置决定是否验证证书
-            if (!_options.ValidateServerCertificate)
+            if (!_options.Certificate.ValidateServerCertificate)
             {
                 // 禁用证书验证（仅用于开发/测试环境）
                 webSocket.Options.RemoteCertificateValidationCallback = (sender, certificate, chain, sslPolicyErrors) => true;
-                if (_options.EnableLogging)
-                {
-                    _logger.LogWarning("已禁用SSL证书验证，此配置仅应在开发/测试环境使用");
-                }
+                                _logger.LogWarning("已禁用SSL证书验证，此配置仅应在开发/测试环境使用");
+            
                 return;
             }
 
@@ -767,21 +753,17 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
                 // WS-12 修复：处理名称不匹配 — 仅在显式允许时放行
                 if ((sslPolicyErrors & SslPolicyErrors.RemoteCertificateNameMismatch) != 0)
                 {
-                    if (_options.AllowCertificateNameMismatch)
+                    if (_options.Certificate.AllowCertificateNameMismatch)
                     {
-                        if (_options.EnableLogging)
-                        {
-                            _logger.LogWarning("允许证书名称不匹配: {Errors}", sslPolicyErrors);
-                        }
+                                                _logger.LogWarning("允许证书名称不匹配: {Errors}", sslPolicyErrors);
+                    
                         // 清除名称不匹配标志，继续检查其他错误
                         sslPolicyErrors &= ~SslPolicyErrors.RemoteCertificateNameMismatch;
                     }
                     else
                     {
-                        if (_options.EnableLogging)
-                        {
-                            _logger.LogError("SSL证书验证失败（名称不匹配）: {Errors}", sslPolicyErrors);
-                        }
+                                                _logger.LogError("SSL证书验证失败（名称不匹配）: {Errors}", sslPolicyErrors);
+                    
                         return false;
                     }
                 }
@@ -793,34 +775,26 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
                 // WS-12 修复：处理链错误 — 仅在「自签名根证书」场景放行
                 if ((sslPolicyErrors & SslPolicyErrors.RemoteCertificateChainErrors) != 0)
                 {
-                    if (_options.AllowSelfSignedCertificates && IsSelfSignedRoot(chain))
+                    if (_options.Certificate.AllowSelfSignedCertificates && IsSelfSignedRoot(chain))
                     {
-                        if (_options.EnableLogging)
-                        {
-                            _logger.LogWarning("允许自签名根证书（仅 UntrustedRoot）: {Errors}", sslPolicyErrors);
-                        }
+                                                _logger.LogWarning("允许自签名根证书（仅 UntrustedRoot）: {Errors}", sslPolicyErrors);
+                    
                         return true;
                     }
 
-                    if (_options.EnableLogging)
-                    {
-                        _logger.LogError("SSL证书验证失败（链错误，非自签名根或含其他链状态）: {Errors}", sslPolicyErrors);
-                    }
+                                        _logger.LogError("SSL证书验证失败（链错误，非自签名根或含其他链状态）: {Errors}", sslPolicyErrors);
+                
                     return false;
                 }
 
                 // 其他错误严格拒绝
-                if (_options.EnableLogging)
-                {
-                    _logger.LogError("SSL证书验证失败: {Errors}", sslPolicyErrors);
-                }
+                                _logger.LogError("SSL证书验证失败: {Errors}", sslPolicyErrors);
+            
                 return false;
             };
 
-            if (_options.EnableLogging)
-            {
-                _logger.LogDebug("已配置SSL证书验证 (允许自签名: {AllowSelfSigned})", _options.AllowSelfSignedCertificates);
-            }
+                        _logger.LogDebug("已配置SSL证书验证 (允许自签名: {AllowSelfSigned})", _options.Certificate.AllowSelfSignedCertificates);
+        
         }
         catch (Exception ex)
         {
@@ -828,17 +802,15 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
         }
 #else
         // .NET Standard 2.0 不支持 RemoteCertificateValidationCallback
-        if (_options.EnableLogging)
+                if (!_options.Certificate.ValidateServerCertificate)
         {
-            if (!_options.ValidateServerCertificate)
-            {
-                _logger.LogWarning(".NET Standard 2.0 不支持自定义证书验证回调，ValidateServerCertificate 配置无效");
-            }
-            if (_options.AllowSelfSignedCertificates)
-            {
-                _logger.LogWarning(".NET Standard 2.0 不支持自定义证书验证回调，AllowSelfSignedCertificates 配置无效");
-            }
+            _logger.LogWarning(".NET Standard 2.0 不支持自定义证书验证回调，ValidateServerCertificate 配置无效");
         }
+        if (_options.Certificate.AllowSelfSignedCertificates)
+        {
+            _logger.LogWarning(".NET Standard 2.0 不支持自定义证书验证回调，AllowSelfSignedCertificates 配置无效");
+        }
+    
 #endif
     }
 

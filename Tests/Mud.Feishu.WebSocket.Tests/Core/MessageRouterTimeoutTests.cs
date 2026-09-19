@@ -43,8 +43,7 @@ public class MessageRouterTimeoutTests
         // Arrange
         var options = new FeishuWebSocketOptions
         {
-            MessageHandlerTimeoutMs = 5000,
-            EnableLogging = false
+            MessageHandlerTimeoutMs = 5000
         };
         var router = new MessageRouter(NullLogger<MessageRouter>.Instance, options);
 
@@ -68,11 +67,7 @@ public class MessageRouterTimeoutTests
     public async Task RouteMessageAsync_ShouldNotBlock_WhenHandlerExceedsTimeout()
     {
         // Arrange
-        var options = new FeishuWebSocketOptions
-        {
-            MessageHandlerTimeoutMs = 200, // 200ms 超时
-            EnableLogging = false
-        };
+        var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions { MessageHandlerTimeoutMs = 200 };
         var router = new MessageRouter(NullLogger<MessageRouter>.Instance, options);
 
         var handlerStarted = new TaskCompletionSource<bool>();
@@ -111,11 +106,7 @@ public class MessageRouterTimeoutTests
     public async Task RouteMessageAsync_ShouldNotApplyTimeout_WhenTimeoutIsZero()
     {
         // Arrange
-        var options = new FeishuWebSocketOptions
-        {
-            MessageHandlerTimeoutMs = 0, // 不限制超时
-            EnableLogging = false
-        };
+        var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions { MessageHandlerTimeoutMs = 0 };
         var router = new MessageRouter(NullLogger<MessageRouter>.Instance, options);
 
         var handlerMock = new Mock<IMessageHandler>();

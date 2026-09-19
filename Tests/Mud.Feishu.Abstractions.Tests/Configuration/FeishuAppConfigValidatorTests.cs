@@ -102,13 +102,13 @@ public class FeishuAppConfigValidatorTests
             AppKey = "test-app",
             AppId = "cli_test123456789012",
             AppSecret = "test_secret_key_12345",
-            TimeOut = 0
+            TimeoutSeconds = 0
         };
 
         var result = _validator.Validate(null, options);
 
         Assert.True(result.Failed);
-        Assert.Contains("TimeOut", result.FailureMessage);
+        Assert.Contains("TimeoutSeconds", result.FailureMessage);
     }
 
     [Fact]
@@ -119,13 +119,13 @@ public class FeishuAppConfigValidatorTests
             AppKey = "test-app",
             AppId = "cli_test123456789012",
             AppSecret = "test_secret_key_12345",
-            RetryCount = -1
+            HttpRetry = new Mud.Feishu.Abstractions.Configuration.HttpRetryOptions { MaxAttempts = -1 }
         };
 
         var result = _validator.Validate(null, options);
 
         Assert.True(result.Failed);
-        Assert.Contains("RetryCount", result.FailureMessage);
+        Assert.Contains("HttpRetry.MaxAttempts", result.FailureMessage);
     }
 
     [Fact]
@@ -387,9 +387,8 @@ public class FeishuAppConfigListValidatorTests
                 AppId = "cli_test123456789012",
                 AppSecret = "test_secret_key_12345",
                 IsDefault = true,
-                TimeOut = 30,
-                RetryCount = 3,
-                RetryDelayMs = 1000
+                TimeoutSeconds = 30,
+                HttpRetry = new Mud.Feishu.Abstractions.Configuration.HttpRetryOptions { MaxAttempts = 3, DelayMs = 1000 }
             },
             new()
             {
@@ -397,9 +396,8 @@ public class FeishuAppConfigListValidatorTests
                 AppId = "cli_another123456789",
                 AppSecret = "another_secret_key_12",
                 IsDefault = false,
-                TimeOut = 60,
-                RetryCount = 5,
-                RetryDelayMs = 2000
+                TimeoutSeconds = 60,
+                HttpRetry = new Mud.Feishu.Abstractions.Configuration.HttpRetryOptions { MaxAttempts = 5, DelayMs = 2000 }
             }
         };
 

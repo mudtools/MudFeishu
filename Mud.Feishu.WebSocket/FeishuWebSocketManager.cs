@@ -135,7 +135,7 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable,
             _logger.LogInformation("正在启动飞书WebSocket服务...");
 
             // 获取应用访问令牌，使用配置的超时时间
-            int timeoutSeconds = _appContext.Config.TimeOut;
+            int timeoutSeconds = _appContext.Config.TimeoutSeconds;
 
             using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSeconds));
             using var combinedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
@@ -151,8 +151,7 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable,
                     _logger.LogError("获取的应用访问令牌为空");
                     throw new InvalidOperationException("无法获取有效的应用访问令牌");
                 }
-                if (_webSocketOptionsMonitor.CurrentValue.EnableLogging)
-                    _logger.LogDebug("成功获取应用访问令牌");
+                _logger.LogDebug("成功获取应用访问令牌");
             }
             catch (OperationCanceledException) when (timeoutCts.Token.IsCancellationRequested)
             {
@@ -168,7 +167,7 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable,
             };
 
             // 使用重试策略获取WebSocket端点（使用 combinedToken 传递超时控制）
-            var maxRetries = _appContext.Config.RetryCount;
+            var maxRetries = _appContext.Config.HttpRetry.MaxAttempts;
             WsEndpointResult? wsEndpointData = null;
 
             wsEndpointData = await RetryHelper.RetryWithExponentialBackoffAsync(
@@ -183,7 +182,7 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable,
                     return wsEndpointResult.Data;
                 },
                 maxRetries,
-                _appContext.Config.RetryDelayMs,
+                _appContext.Config.HttpRetry.DelayMs,
                 "获取WebSocket端点",
                 combinedToken);
 
@@ -395,14 +394,12 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable,
             return;
         }
 
-        if (_webSocketOptionsMonitor.CurrentValue.EnableLogging)
-            _logger.LogInformation("Mud飞书WebSocket连接已断开: {Status} - {Description} (服务器端: {IsServerInitiated}, 时间: {Timestamp})",
-                e.CloseStatus, e.CloseStatusDescription, e.IsServerInitiated, e.Timestamp);
+        _logger.LogInformation("Mud飞书WebSocket连接已断开: {Status} - {Description} (服务器端: {IsServerInitiated}, 时间: {Timestamp})",
+            e.CloseStatus, e.CloseStatusDescription, e.IsServerInitiated, e.Timestamp);
 
         if (e.ConnectionDuration.HasValue)
         {
-            if (_webSocketOptionsMonitor.CurrentValue.EnableLogging)
-                _logger.LogInformation("连接持续时间: {Duration}", e.ConnectionDuration);
+            _logger.LogInformation("连接持续时间: {Duration}", e.ConnectionDuration);
         }
 
         Disconnected?.Invoke(this, e);
@@ -415,8 +412,7 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable,
     /// <param name="e">事件参数</param>
     private void OnClientMessageReceived(object? sender, WebSocketMessageEventArgs e)
     {
-        if (_webSocketOptionsMonitor.CurrentValue.EnableLogging)
-            _logger.LogDebug("接收到Mud 飞书WebSocket消息: {Message} (大小: {Size}字节, 队列: {Queue}条, 时间: {Timestamp})",
+        _logger.LogDebug("接收到Mud 飞书WebSocket消息: {Message} (大小: {Size}字节, 队列: {Queue}条, 时间: {Timestamp})",
                 e.Message, e.MessageSize, e.QueueCount, e.Timestamp);
         MessageReceived?.Invoke(this, e);
     }

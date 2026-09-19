@@ -32,10 +32,7 @@ public class FeishuWebSocketManagerTests
         _loggerMock = new Mock<ILogger<FeishuWebSocketManager>>();
         _appContextMock = new Mock<IFeishuAppContext>();
         _clientMock = new Mock<IFeishuWebSocketClient>();
-        _options = new FeishuWebSocketOptions
-        {
-            EnableLogging = false
-        };
+        _options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions {  };
         _optionsMonitorMock = new Mock<IOptionsMonitor<FeishuWebSocketOptions>>();
         _optionsMonitorMock.Setup(x => x.CurrentValue).Returns(_options);
 
@@ -44,15 +41,7 @@ public class FeishuWebSocketManagerTests
 
     private void SetupAppContextMock()
     {
-        var config = new FeishuAppConfig
-        {
-            AppKey = "test_app_key",
-            AppId = "cli_test_app_id",
-            AppSecret = "test_app_secret_key_123",
-            TimeOut = 30,
-            RetryCount = 3,
-            RetryDelayMs = 1000
-        };
+        var config = new Mud.Feishu.Abstractions.FeishuAppConfig { AppKey = "test_app_key", AppId = "cli_test_app_id", AppSecret = "test_app_secret_key_123", TimeoutSeconds = 30, HttpRetry = new Mud.Feishu.Abstractions.Configuration.HttpRetryOptions { MaxAttempts = 3, DelayMs = 1000 } };
 
         _appContextMock.Setup(x => x.Config).Returns(config);
 

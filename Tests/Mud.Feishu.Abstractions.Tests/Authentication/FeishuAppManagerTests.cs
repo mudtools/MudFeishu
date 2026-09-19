@@ -486,7 +486,7 @@ public class FeishuAppManagerTests
             AppId = AppConfigs.AppIds.Default,
             AppSecret = AppConfigs.Secrets.Valid,
             IsDefault = true,
-            TimeOut = 60  // 不同于默认的 30，触发重建
+            TimeoutSeconds = 60  // 不同于默认的 30，触发重建
         };
         appManager.OnConfigurationChanged(new List<FeishuAppConfig> { updatedConfig });
 
@@ -504,7 +504,7 @@ public class FeishuAppManagerTests
 
         // 新上下文仍可用
         var newApp = appManager.GetApp(AppConfigs.AppKeys.Default);
-        newApp.Config.TimeOut.Should().Be(60, "新上下文应使用新配置");
+        newApp.Config.TimeoutSeconds.Should().Be(60, "新上下文应使用新配置");
     }
 
     /// <summary>
@@ -579,7 +579,7 @@ public class FeishuAppManagerTests
             AppId = AppConfigs.AppIds.Default,
             AppSecret = AppConfigs.Secrets.Valid,
             IsDefault = true,
-            TimeOut = 60
+            TimeoutSeconds = 60
         };
         appManager.OnConfigurationChanged(new List<FeishuAppConfig>
         {
@@ -660,7 +660,7 @@ public class FeishuAppManagerTests
     }
 
     /// <summary>
-    /// TMA2-05 / D10（§7.2 #8）：仅非凭据字段（TimeOut）变化时保留令牌热迁移，不清库。
+    /// TMA2-05 / D10（§7.2 #8）：仅非凭据字段（TimeoutSeconds）变化时保留令牌热迁移，不清库。
     /// </summary>
     [Fact]
     public void HotReload_ShouldNotPurgeStoredTokens_WhenOnlyTimeOutChanged()
@@ -679,7 +679,7 @@ public class FeishuAppManagerTests
                 AppId = AppConfigs.AppIds.Default,
                 AppSecret = AppConfigs.Secrets.Valid,
                 IsDefault = true,
-                TimeOut = 99
+                TimeoutSeconds = 99
             }
         });
 
@@ -802,7 +802,7 @@ public class FeishuAppManagerTests
         var encoded = TokenStoreHelper.EncodeStoredToken("tenant-access-keep", DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + 7200_000);
         await storeA.SetAccessTokenAsync(tokenType, encoded, 7200, CancellationToken.None);
 
-        // Act：仅 TimeOut 变更（非凭据字段）
+        // Act：仅 TimeoutSeconds 变更（非凭据字段）
         manager.OnConfigurationChanged(new List<FeishuAppConfig>
         {
             new()
@@ -811,7 +811,7 @@ public class FeishuAppManagerTests
                 AppId = AppConfigs.AppIds.Default,
                 AppSecret = AppConfigs.Secrets.Valid,
                 IsDefault = true,
-                TimeOut = 99
+                TimeoutSeconds = 99
             }
         });
 

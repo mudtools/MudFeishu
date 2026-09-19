@@ -29,19 +29,17 @@ public class PerAppResilienceTests
             AppId = "cli_default_id_1234567890",
             AppSecret = "default_secret_123456",
             IsDefault = true,
-            RetryCount = 3,
-            RetryDelayMs = 1000,
-            TimeOut = 30
+            TimeoutSeconds = 30,
+            HttpRetry = new Mud.Feishu.Abstractions.Configuration.HttpRetryOptions { MaxAttempts = 3, DelayMs = 1000 }
         },
         new FeishuAppConfig
         {
             AppKey = "hr-app",
             AppId = "cli_hr_app_id_1234567890",
             AppSecret = "hr_secret_12345678",
-            RetryCount = 5,
-            RetryDelayMs = 2000,
-            TimeOut = 60,
-            CircuitBreakerEnabled = false
+            TimeoutSeconds = 60,
+            HttpRetry = new Mud.Feishu.Abstractions.Configuration.HttpRetryOptions { MaxAttempts = 5, DelayMs = 2000 },
+            CircuitBreaker = new Mud.Feishu.Abstractions.Configuration.CircuitBreakerOptions { Enabled = false }
         }
     };
 

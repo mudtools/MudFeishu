@@ -30,8 +30,7 @@ public class WebSocketConnectionManagerTests
             .Returns(_loggerMock.Object);
         _options = new FeishuWebSocketOptions
         {
-            ConnectionTimeoutMs = 5000,
-            EnableLogging = false
+            ConnectionTimeoutMs = 5000
         };
     }
 
@@ -329,8 +328,7 @@ public class WebSocketConnectionManagerTests
         // Arrange - 使用非常短的超时来测试取消
         var options = new FeishuWebSocketOptions
         {
-            ConnectionTimeoutMs = 100,
-            EnableLogging = false
+            ConnectionTimeoutMs = 100
         };
         var manager = new WebSocketConnectionManager(_loggerMock.Object, options, _loggerFactoryMock.Object);
         using var cts = new CancellationTokenSource();

@@ -37,9 +37,9 @@ public class WebSocketCertificateModeOptionsTests
     {
 #pragma warning disable CS0618
         var options = new FeishuWebSocketOptions();
-        options.AutoReconnect = false;
+        options.Reconnect.Auto = false;
         options.Reconnect.Auto.Should().BeFalse();
-        options.AllowSelfSignedCertificates = true;
+        options.Certificate.AllowSelfSignedCertificates = true;
         options.Certificate.AllowSelfSignedCertificates.Should().BeTrue();
         options.Certificate.Mode = CertificateValidationMode.Dev;
         options.Certificate.AllowSelfSignedCertificates.Should().BeTrue();

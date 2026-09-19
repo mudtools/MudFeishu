@@ -14,7 +14,6 @@ using Mud.Feishu.Redis.Extensions;
 
 namespace Mud.Feishu.Redis.Tests.Configuration;
 
-#pragma warning disable CS0618 // Obsolete 字段仍作为「伪可配置」诊断场景
 
 /// <summary>
 /// B2/R1.3：Redis 路径下无效 Deduplication 键的诊断日志（方法级单测，无需真实 Redis）。
@@ -69,20 +68,6 @@ public class RedisDeduplicationIneffectiveKeysWarnTests
         logger.Messages.Should().Contain(m => m.Contains("DeduplicationOptions.KeyPrefix"));
     }
 
-    [Fact]
-    public void Warn_ShouldFire_WhenIneffectiveFallbackKnobsAreCustomized()
-    {
-        var logger = new CapturingLogger();
-        var redisOptions = new RedisOptions();
-        var dedupOptions = new DeduplicationOptions
-        {
-            AllowProcessingOnFallback = false
-        };
-
-        RedisFeishuServiceBuilderExtensions.WarnIfDeduplicationKeysAreIneffective(logger, redisOptions, dedupOptions);
-
-        logger.Messages.Should().Contain(m => m.Contains("AllowProcessingOnFallback"));
-    }
 
     [Fact]
     public void Warn_ShouldNotFire_WhenDeduplicationKeysAlignWithRedisDefaults()

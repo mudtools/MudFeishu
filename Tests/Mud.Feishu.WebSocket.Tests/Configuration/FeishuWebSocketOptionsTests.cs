@@ -21,14 +21,13 @@ public class FeishuWebSocketOptionsTests
         var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions();
 
         // Assert
-        options.AutoReconnect.Should().BeTrue();
-        options.MaxReconnectAttempts.Should().Be(5);
-        options.ReconnectDelayMs.Should().Be(5000);
-        options.MaxReconnectDelayMs.Should().Be(30000);
+        options.Reconnect.Auto.Should().BeTrue();
+        options.Reconnect.MaxAttempts.Should().Be(5);
+        options.Reconnect.BaseDelayMs.Should().Be(5000);
+        options.Reconnect.MaxDelayMs.Should().Be(30000);
         options.InitialReceiveBufferSize.Should().Be(4096);
         options.HeartbeatIntervalMs.Should().Be(25000);
         options.ConnectionTimeoutMs.Should().Be(10000);
-        options.EnableLogging.Should().BeTrue();
         options.MessageSizeLimits.MaxTextMessageSize.Should().Be(1024 * 1024); // 1MB
         options.MessageSizeLimits.MaxBinaryMessageSize.Should().Be(10 * 1024 * 1024); // 10MB
         options.HealthCheckIntervalMs.Should().Be(60000);
@@ -38,16 +37,18 @@ public class FeishuWebSocketOptionsTests
     }
 
     [Fact]
-    public void ReconnectDelayMs_ShouldEnforceMinimumValue()
+    public void Reconnect_BaseDelayMs_ShouldRejectInvalidValue_WhenValidateCalled()
     {
-        // Arrange
+        // Arrange — R4：嵌套属性不做 setter clamp，非法值由 Validate 拒绝
         var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions();
+        options.Reconnect.BaseDelayMs = 500;
 
-        // Act
-        options.ReconnectDelayMs = 500;
+        // Assert 存储原值
+        options.Reconnect.BaseDelayMs.Should().Be(500);
 
-        // Assert
-        options.ReconnectDelayMs.Should().Be(1000, "minimum value should be enforced");
+        // Assert Validate 失败
+        var act = () => options.Validate();
+        act.Should().Throw<InvalidOperationException>().WithMessage("*BaseDelayMs*");
     }
 
     [Fact]
@@ -58,24 +59,28 @@ public class FeishuWebSocketOptionsTests
         var expectedValue = 8000;
 
         // Act
-        options.ReconnectDelayMs = expectedValue;
+        options.Reconnect.BaseDelayMs = expectedValue;
 
         // Assert
-        options.ReconnectDelayMs.Should().Be(expectedValue);
+        options.Reconnect.BaseDelayMs.Should().Be(expectedValue);
+        var act = () => options.Validate();
+        act.Should().NotThrow();
     }
 
     [Fact]
-    public void MaxReconnectDelayMs_ShouldEnforceMinimumValue()
+    public void MaxReconnectDelayMs_ShouldRejectInvalidValue_WhenValidateCalled()
     {
         // Arrange
         var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions();
-        options.ReconnectDelayMs = 10000;
+        options.Reconnect.BaseDelayMs = 10000;
+        options.Reconnect.MaxDelayMs = 5000;
 
-        // Act
-        options.MaxReconnectDelayMs = 5000;
+        // Assert 存储原值
+        options.Reconnect.MaxDelayMs.Should().Be(5000);
 
-        // Assert
-        options.MaxReconnectDelayMs.Should().Be(options.ReconnectDelayMs, "should be at least ReconnectDelayMs");
+        // Assert Validate 失败
+        var act = () => options.Validate();
+        act.Should().Throw<InvalidOperationException>().WithMessage("*MaxDelayMs*");
     }
 
     [Fact]
@@ -86,10 +91,10 @@ public class FeishuWebSocketOptionsTests
         var expectedValue = 60000;
 
         // Act
-        options.MaxReconnectDelayMs = expectedValue;
+        options.Reconnect.MaxDelayMs = expectedValue;
 
         // Assert
-        options.MaxReconnectDelayMs.Should().Be(expectedValue);
+        options.Reconnect.MaxDelayMs.Should().Be(expectedValue);
     }
 
     [Fact]
@@ -209,12 +214,10 @@ public class FeishuWebSocketOptionsTests
         var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions();
 
         // Act
-        options.AutoReconnect = value;
-        options.EnableLogging = value;
+        options.Reconnect.Auto = value;
 
         // Assert
-        options.AutoReconnect.Should().Be(value);
-        options.EnableLogging.Should().Be(value);
+        options.Reconnect.Auto.Should().Be(value);
     }
 
     [Theory]
@@ -240,14 +243,14 @@ public class FeishuWebSocketOptionsTests
         var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions();
 
         // Act
-        options.MaxReconnectAttempts = 10;
+        options.Reconnect.MaxAttempts = 10;
         options.InitialReceiveBufferSize = 8192;
         options.ConnectionTimeoutMs = 20000;
         options.MessageSizeLimits.MaxTextMessageSize = 2 * 1024 * 1024; // 2MB
         options.MessageSizeLimits.MaxBinaryMessageSize = 20 * 1024 * 1024; // 20MB
 
         // Assert
-        options.MaxReconnectAttempts.Should().Be(10);
+        options.Reconnect.MaxAttempts.Should().Be(10);
         options.InitialReceiveBufferSize.Should().Be(8192);
         options.ConnectionTimeoutMs.Should().Be(20000);
         options.MessageSizeLimits.MaxTextMessageSize.Should().Be(2 * 1024 * 1024);
@@ -271,10 +274,7 @@ public class FeishuWebSocketOptionsTests
     public void Validate_ShouldThrow_WhenMaxReconnectAttemptsIsNegative()
     {
         // Arrange
-        var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions
-        {
-            MaxReconnectAttempts = -1
-        };
+        var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions { Reconnect = new Mud.Feishu.WebSocket.WebSocketReconnectOptions { MaxAttempts = -1 } };
 
         // Act
         var act = () => options.Validate();
@@ -286,18 +286,21 @@ public class FeishuWebSocketOptionsTests
     [Fact]
     public void Validate_ShouldThrow_WhenReconnectDelayMsLessThan1000()
     {
-        // Arrange — R3：延迟迁入 Reconnect 嵌套；经自动属性 backing field 造非法态（绕过 setter clamp）
-        var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions();
-        var field = typeof(Mud.Feishu.WebSocket.WebSocketReconnectOptions)
-            .GetField("<BaseDelayMs>k__BackingField", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
-            ?? throw new InvalidOperationException("未找到 BaseDelayMs backing field");
-        field.SetValue(options.Reconnect, 500);
+        // Arrange — R4：嵌套 Reconnect 无 setter clamp，非法值由 Validate 拒绝
+        var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions
+        {
+            Reconnect = new Mud.Feishu.WebSocket.WebSocketReconnectOptions
+            {
+                BaseDelayMs = 500,
+                MaxDelayMs = 30000
+            }
+        };
 
         // Act
         var act = () => options.Validate();
 
         // Assert
-        act.Should().Throw<InvalidOperationException>().WithMessage("*ReconnectDelayMs*");
+        act.Should().Throw<InvalidOperationException>().WithMessage("*BaseDelayMs*");
     }
 
     [Fact]
@@ -309,20 +312,15 @@ public class FeishuWebSocketOptionsTests
             Reconnect = new Mud.Feishu.WebSocket.WebSocketReconnectOptions
             {
                 BaseDelayMs = 10000,
-                MaxDelayMs = 30000
+                MaxDelayMs = 5000
             }
         };
-
-        var field = typeof(Mud.Feishu.WebSocket.WebSocketReconnectOptions)
-            .GetField("<MaxDelayMs>k__BackingField", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
-            ?? throw new InvalidOperationException("未找到 MaxDelayMs backing field");
-        field.SetValue(options.Reconnect, 5000);
 
         // Act
         var act = () => options.Validate();
 
         // Assert
-        act.Should().Throw<InvalidOperationException>().WithMessage("*MaxReconnectDelayMs*");
+        act.Should().Throw<InvalidOperationException>().WithMessage("*MaxDelayMs*");
     }
 
     [Fact]
@@ -379,8 +377,7 @@ public class FeishuWebSocketOptionsTests
         // Arrange - ReconnectDelayMs 与 ConnectionTimeoutMs 语义独立，不存在交叉约束
         var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions
         {
-            AutoReconnect = true,
-            ReconnectDelayMs = 15000,
+            Reconnect = new WebSocketReconnectOptions { Auto = true, BaseDelayMs = 15000 },
             ConnectionTimeoutMs = 10000
         };
 
@@ -397,8 +394,7 @@ public class FeishuWebSocketOptionsTests
         // Arrange
         var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions
         {
-            AutoReconnect = false,
-            ReconnectDelayMs = 15000,
+            Reconnect = new WebSocketReconnectOptions { Auto = false, BaseDelayMs = 15000 },
             ConnectionTimeoutMs = 10000
         };
 

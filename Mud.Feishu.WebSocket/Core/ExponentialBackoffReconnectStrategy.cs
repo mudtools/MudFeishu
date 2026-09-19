@@ -49,10 +49,10 @@ public class ExponentialBackoffReconnectStrategy : IReconnectStrategy
         if (attemptCount < 1)
             throw new ArgumentOutOfRangeException(nameof(attemptCount), "尝试次数必须大于0");
 
-        var baseDelay = TimeSpan.FromMilliseconds(_options.ReconnectDelayMs);
+        var baseDelay = TimeSpan.FromMilliseconds(_options.Reconnect.BaseDelayMs);
         var exponentialDelay = TimeSpan.FromMilliseconds(
             baseDelay.TotalMilliseconds * Math.Pow(2, attemptCount - 1));
-        var maxDelay = TimeSpan.FromMilliseconds(_options.MaxReconnectDelayMs);
+        var maxDelay = TimeSpan.FromMilliseconds(_options.Reconnect.MaxDelayMs);
 
         var delay = exponentialDelay > maxDelay ? maxDelay : exponentialDelay;
 
@@ -76,17 +76,17 @@ public class ExponentialBackoffReconnectStrategy : IReconnectStrategy
     public bool ShouldContinueReconnect(int attemptCount, TimeSpan totalElapsedTime)
     {
         // MaxReconnectAttempts = 0 表示无限重连（仅受时间限制）
-        if (_options.MaxReconnectAttempts > 0 && attemptCount > _options.MaxReconnectAttempts)
+        if (_options.Reconnect.MaxAttempts > 0 && attemptCount > _options.Reconnect.MaxAttempts)
         {
             _logger?.LogDebug("已达到最大重连次数限制: {AttemptCount}/{MaxAttempts}",
-                attemptCount, _options.MaxReconnectAttempts);
+                attemptCount, _options.Reconnect.MaxAttempts);
             return false;
         }
 
-        if (totalElapsedTime > _options.MaxTotalReconnectTime)
+        if (totalElapsedTime > _options.Reconnect.TotalBudget)
         {
             _logger?.LogDebug("已达到最大重连时间限制: {ElapsedTime}/{MaxTime}",
-                totalElapsedTime, _options.MaxTotalReconnectTime);
+                totalElapsedTime, _options.Reconnect.TotalBudget);
             return false;
         }
 

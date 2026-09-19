@@ -52,10 +52,8 @@ public class UnifiedDeduplicationMiddleware : IUnifiedDeduplicationMiddleware, I
     /// <inheritdoc />
     public async Task<UnifiedDeduplicationResult> CheckAsync(string? eventId, ulong? seqId, CancellationToken cancellationToken = default)
     {
-        if (_options.EnableVerboseLogging)
-        {
-            _logger?.LogDebug("执行统一去重检查: EventId={EventId}, SeqId={SeqId}", eventId, seqId);
-        }
+                _logger?.LogDebug("执行统一去重检查: EventId={EventId}, SeqId={SeqId}", eventId, seqId);
+    
 
         if (seqId.HasValue && _seqIdDeduplicator != null)
         {
@@ -95,10 +93,8 @@ public class UnifiedDeduplicationMiddleware : IUnifiedDeduplicationMiddleware, I
             _logger?.LogDebug("EventId {EventId} 标记为已完成", eventId);
         }
 
-        if (_options.EnableVerboseLogging)
-        {
-            _logger?.LogDebug("去重标记完成: EventId={EventId}, SeqId={SeqId}", eventId, seqId);
-        }
+                _logger?.LogDebug("去重标记完成: EventId={EventId}, SeqId={SeqId}", eventId, seqId);
+    
     }
 
     /// <inheritdoc />
@@ -110,10 +106,8 @@ public class UnifiedDeduplicationMiddleware : IUnifiedDeduplicationMiddleware, I
             _logger?.LogDebug("EventId {EventId} 处理状态已回滚", eventId);
         }
 
-        if (_options.EnableVerboseLogging)
-        {
-            _logger?.LogDebug("去重状态回滚: EventId={EventId}, SeqId={SeqId}", eventId, seqId);
-        }
+                _logger?.LogDebug("去重状态回滚: EventId={EventId}, SeqId={SeqId}", eventId, seqId);
+    
     }
 
     /// <inheritdoc />

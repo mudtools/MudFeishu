@@ -33,11 +33,13 @@ public class FeishuWebSocketHostedServiceTests
         _orchestratorMock = new Mock<IReconnectionOrchestrator>();
         _options = new FeishuWebSocketOptions
         {
-            EnableLogging = false,
-            AutoReconnect = true,
-            MaxReconnectAttempts = 3,
-            ReconnectDelayMs = 1000,
-            MaxReconnectDelayMs = 5000,
+            Reconnect = new WebSocketReconnectOptions
+            {
+                Auto = true,
+                MaxAttempts = 3,
+                BaseDelayMs = 1000,
+                MaxDelayMs = 5000
+            },
             HealthCheckIntervalMs = 60000,
             HeartbeatIntervalMs = 30000
         };

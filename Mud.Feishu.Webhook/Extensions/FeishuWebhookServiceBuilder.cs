@@ -588,16 +588,14 @@ public class FeishuWebhookServiceBuilder
         _services.TryAddSingleton<IFeishuNonceDistributedDeduplicator, FeishuNonceDistributedDeduplicator>();
 
         // 令牌自动刷新后台服务已在 AddFeishuAppBaseServices 中注册（由 Mud.HttpUtils 提供）。
-        // 映射优先级（B5 验证后保持；EnableBackgroundProcessing 已 Obsolete）：
-        //   1. EnableTokenBackgroundRefresh（显式覆盖，null = 不干预）
-        //   2. 回退到 EnableBackgroundProcessing（既有映射，默认 false）
+        // R4：仅 EnableTokenBackgroundRefresh 控制 TokenRefreshBackgroundOptions.Enabled。
+        // null = 沿用宿主既有默认（不覆盖）；true/false = 显式覆盖。
         _services.AddOptions<TokenRefreshBackgroundOptions>()
             .PostConfigure<IOptions<FeishuWebhookOptions>>((tokenOptions, webhookOptions) =>
             {
-#pragma warning disable CS0618
-                tokenOptions.Enabled = webhookOptions.Value.EnableTokenBackgroundRefresh
-                                       ?? webhookOptions.Value.EnableBackgroundProcessing;
-#pragma warning restore CS0618
+                var explicitRefresh = webhookOptions.Value.EnableTokenBackgroundRefresh;
+                if (explicitRefresh.HasValue)
+                    tokenOptions.Enabled = explicitRefresh.Value;
             });
 
         // 注册 HttpContext 访问器（用于在 SignatureValidator 中获取客户端 IP）

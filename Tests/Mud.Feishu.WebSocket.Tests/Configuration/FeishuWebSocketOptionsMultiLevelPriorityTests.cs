@@ -30,15 +30,20 @@ public class FeishuWebSocketOptionsMultiLevelPriorityTests
         });
 
         var configuration = configurationBuilder.Build();
+        var section = configuration.GetSection("FeishuWebSocket");
 
         var services = new ServiceCollection();
-        services.Configure<FeishuWebSocketOptions>(configuration.GetSection("FeishuWebSocket"));
+        services.Configure<FeishuWebSocketOptions>(options =>
+        {
+            section.Bind(options);
+            options.ApplyLegacyFlatKeys(section);
+        });
 
         // 通过 Configure 方法覆盖配置文件中的设置（代码配置优先级更高）
         services.Configure<FeishuWebSocketOptions>(options =>
         {
             options.HeartbeatIntervalMs = 25000; // 覆盖配置文件中的 30000
-            options.AutoReconnect = true;        // 覆盖配置文件中的 false
+            options.Reconnect.Auto = true;        // 覆盖配置文件中的 false
         });
 
         var serviceProvider = services.BuildServiceProvider();
@@ -49,7 +54,7 @@ public class FeishuWebSocketOptionsMultiLevelPriorityTests
 
         // Assert - 代码配置优先级高于文件配置
         options.HeartbeatIntervalMs.Should().Be(25000);
-        options.AutoReconnect.Should().BeTrue();
+        options.Reconnect.Auto.Should().BeTrue();
     }
 
     [Fact]
@@ -65,9 +70,14 @@ public class FeishuWebSocketOptionsMultiLevelPriorityTests
         });
 
         var configuration = configurationBuilder.Build();
+        var section = configuration.GetSection("FeishuWebSocket");
 
         var services = new ServiceCollection();
-        services.Configure<FeishuWebSocketOptions>(configuration.GetSection("FeishuWebSocket"));
+        services.Configure<FeishuWebSocketOptions>(options =>
+        {
+            section.Bind(options);
+            options.ApplyLegacyFlatKeys(section);
+        });
 
         var serviceProvider = services.BuildServiceProvider();
         var optionsMonitor = serviceProvider.GetRequiredService<IOptionsMonitor<FeishuWebSocketOptions>>();
@@ -77,8 +87,8 @@ public class FeishuWebSocketOptionsMultiLevelPriorityTests
 
         // Assert - 使用配置文件中的值
         options.HeartbeatIntervalMs.Should().Be(20000);
-        options.AutoReconnect.Should().BeTrue();
-        options.MaxReconnectAttempts.Should().Be(3);
+        options.Reconnect.Auto.Should().BeTrue();
+        options.Reconnect.MaxAttempts.Should().Be(3);
     }
 
     [Fact]
@@ -95,10 +105,9 @@ public class FeishuWebSocketOptionsMultiLevelPriorityTests
         var options = optionsMonitor.CurrentValue;
 
         // Assert - 使用默认值
-        options.AutoReconnect.Should().BeTrue();
-        options.MaxReconnectAttempts.Should().Be(5);
+        options.Reconnect.Auto.Should().BeTrue();
+        options.Reconnect.MaxAttempts.Should().Be(5);
         options.HeartbeatIntervalMs.Should().Be(25000);
-        options.EnableLogging.Should().BeTrue();
     }
 
     [Fact]
@@ -113,9 +122,14 @@ public class FeishuWebSocketOptionsMultiLevelPriorityTests
         });
 
         var configuration = configurationBuilder.Build();
+        var section = configuration.GetSection("FeishuWebSocket");
 
         var services = new ServiceCollection();
-        services.Configure<FeishuWebSocketOptions>(configuration.GetSection("FeishuWebSocket"));
+        services.Configure<FeishuWebSocketOptions>(options =>
+        {
+            section.Bind(options);
+            options.ApplyLegacyFlatKeys(section);
+        });
 
         // 部分覆盖
         services.Configure<FeishuWebSocketOptions>(options =>
@@ -132,9 +146,8 @@ public class FeishuWebSocketOptionsMultiLevelPriorityTests
 
         // Assert - 混合配置：HeartbeatIntervalMs 使用代码配置，AutoReconnect 使用文件配置，其他未配置的属性使用默认值
         options.HeartbeatIntervalMs.Should().Be(35000); // 代码配置
-        options.AutoReconnect.Should().BeFalse();       // 文件配置
-        options.MaxReconnectAttempts.Should().Be(5);    // 默认值
-        options.EnableLogging.Should().BeTrue();        // 默认值
+        options.Reconnect.Auto.Should().BeFalse();       // 文件配置
+        options.Reconnect.MaxAttempts.Should().Be(5);    // 默认值
     }
 
     [Fact]
@@ -151,7 +164,12 @@ public class FeishuWebSocketOptionsMultiLevelPriorityTests
         var configuration = configurationBuilder.Build();
 
         var services = new ServiceCollection();
-        services.Configure<FeishuWebSocketOptions>(configuration.GetSection("FeishuWebSocket"));
+        services.Configure<FeishuWebSocketOptions>(options =>
+        {
+            var s = configuration.GetSection("FeishuWebSocket");
+            s.Bind(options);
+            options.ApplyLegacyFlatKeys(s);
+        });
 
         // 代码配置覆盖
         services.Configure<FeishuWebSocketOptions>(options =>
@@ -185,7 +203,12 @@ public class FeishuWebSocketOptionsMultiLevelPriorityTests
         var configuration = configurationBuilder.Build();
 
         var services = new ServiceCollection();
-        services.Configure<FeishuWebSocketOptions>(configuration.GetSection("FeishuWebSocket"));
+        services.Configure<FeishuWebSocketOptions>(options =>
+        {
+            var s = configuration.GetSection("FeishuWebSocket");
+            s.Bind(options);
+            options.ApplyLegacyFlatKeys(s);
+        });
 
         // 代码配置部分覆盖
         services.Configure<FeishuWebSocketOptions>(options =>
@@ -219,7 +242,12 @@ public class FeishuWebSocketOptionsMultiLevelPriorityTests
         var configuration = configurationBuilder.Build();
 
         var services = new ServiceCollection();
-        services.Configure<FeishuWebSocketOptions>(configuration.GetSection("FeishuWebSocket"));
+        services.Configure<FeishuWebSocketOptions>(options =>
+        {
+            var s = configuration.GetSection("FeishuWebSocket");
+            s.Bind(options);
+            options.ApplyLegacyFlatKeys(s);
+        });
 
         // 代码配置覆盖部分值
         services.Configure<FeishuWebSocketOptions>(options =>
@@ -239,7 +267,7 @@ public class FeishuWebSocketOptionsMultiLevelPriorityTests
 
         // 验证优先级：代码配置覆盖文件配置
         options.HeartbeatIntervalMs.Should().Be(15000);      // 代码配置
-        options.MaxReconnectAttempts.Should().Be(15);        // 文件配置
+        options.Reconnect.MaxAttempts.Should().Be(15);        // 文件配置
     }
 
     [Fact]
@@ -258,7 +286,12 @@ public class FeishuWebSocketOptionsMultiLevelPriorityTests
         var configuration = configurationBuilder.Build();
 
         var services = new ServiceCollection();
-        services.Configure<FeishuWebSocketOptions>(configuration.GetSection("FeishuWebSocket"));
+        services.Configure<FeishuWebSocketOptions>(options =>
+        {
+            var s = configuration.GetSection("FeishuWebSocket");
+            s.Bind(options);
+            options.ApplyLegacyFlatKeys(s);
+        });
 
         // 代码配置部分覆盖嵌套属性
         services.Configure<FeishuWebSocketOptions>(options =>

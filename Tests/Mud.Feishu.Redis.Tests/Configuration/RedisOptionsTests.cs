@@ -2,7 +2,7 @@
 //  作者：Mud Studio  版权所有 (c) Mud Studio 2026
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
-//  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
+//  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！
 // -----------------------------------------------------------------------
 
 using Mud.Feishu.Redis.Configuration;
@@ -10,99 +10,97 @@ using Mud.Feishu.Redis.Configuration;
 namespace Mud.Feishu.Redis.Tests.Configuration;
 
 /// <summary>
-/// RedisOptions 单元测试
+/// RedisOptions 单元测试（R4：仅嵌套 Connection/Advanced）
 /// </summary>
 public class RedisOptionsTests
 {
     [Fact]
     public void RedisOptions_DefaultValues_ShouldBeCorrect()
     {
-        // Arrange & Act
         var options = new RedisOptions();
 
-        // Assert
-        Assert.Equal("localhost:6379", options.ServerAddress);
-        Assert.Equal(string.Empty, options.Password);
+        Assert.Equal("localhost:6379", options.Connection.ServerAddress);
+        Assert.Equal(string.Empty, options.Connection.Password);
         Assert.Equal("feishu:nonce:", options.NonceKeyPrefix);
         Assert.Equal("feishu:seqid:", options.SeqIdKeyPrefix);
         Assert.Equal("feishu:event:", options.EventKeyPrefix);
         Assert.Equal(TimeSpan.FromHours(48), options.EventCacheExpiration);
         Assert.Equal(TimeSpan.FromHours(48), options.SeqIdCacheExpiration);
         Assert.Equal(TimeSpan.FromMinutes(5), options.NonceTtl);
-        Assert.Equal(5000, options.ConnectTimeout);
-        Assert.Equal(5000, options.SyncTimeout);
-        Assert.False(options.Ssl);
-        Assert.False(options.AllowAdmin);
-        Assert.True(options.AbortOnConnectFail);
-        Assert.Equal(3, options.ConnectRetry);
-        Assert.Null(options.DefaultDatabase);
-        Assert.Null(options.ClientName);
+        Assert.Equal(5000, options.Connection.ConnectTimeout);
+        Assert.Equal(5000, options.Connection.SyncTimeout);
+        Assert.False(options.Connection.Ssl);
+        Assert.False(options.Advanced.AllowAdmin);
+        Assert.True(options.Connection.AbortOnConnectFail);
+        Assert.Equal(3, options.Connection.ConnectRetry);
+        Assert.Null(options.Connection.DefaultDatabase);
+        Assert.Null(options.Advanced.ClientName);
     }
 
     [Fact]
     public void RedisOptions_SetCustomValues_ShouldWork()
     {
-        // Arrange
         var options = new RedisOptions
         {
-            ServerAddress = "redis.example.com:6380",
-            Password = "test_password",
+            Connection = new RedisConnectionOptions
+            {
+                ServerAddress = "redis.example.com:6380",
+                Password = "test_password",
+                ConnectTimeout = 10000,
+                SyncTimeout = 10000,
+                Ssl = true,
+                AbortOnConnectFail = false,
+                ConnectRetry = 5,
+                DefaultDatabase = 1
+            },
+            Advanced = new RedisAdvancedOptions
+            {
+                AllowAdmin = false,
+                ClientName = "TestClient"
+            },
             NonceTtl = TimeSpan.FromMinutes(10),
             NonceKeyPrefix = "custom:nonce:",
-            SeqIdKeyPrefix = "custom:seqid:",
-            ConnectTimeout = 10000,
-            SyncTimeout = 10000,
-            Ssl = true,
-            AllowAdmin = false,
-            AbortOnConnectFail = false,
-            ConnectRetry = 5,
-            DefaultDatabase = 1,
-            ClientName = "TestClient"
+            SeqIdKeyPrefix = "custom:seqid:"
         };
 
-        // Assert
-        Assert.Equal("redis.example.com:6380", options.ServerAddress);
-        Assert.Equal("test_password", options.Password);
+        Assert.Equal("redis.example.com:6380", options.Connection.ServerAddress);
+        Assert.Equal("test_password", options.Connection.Password);
         Assert.Equal(TimeSpan.FromMinutes(10), options.NonceTtl);
         Assert.Equal("custom:nonce:", options.NonceKeyPrefix);
         Assert.Equal("custom:seqid:", options.SeqIdKeyPrefix);
-        Assert.Equal(10000, options.ConnectTimeout);
-        Assert.Equal(10000, options.SyncTimeout);
-        Assert.True(options.Ssl);
-        Assert.False(options.AllowAdmin);
-        Assert.False(options.AbortOnConnectFail);
-        Assert.Equal(5, options.ConnectRetry);
-        Assert.Equal(1, options.DefaultDatabase);
-        Assert.Equal("TestClient", options.ClientName);
+        Assert.Equal(10000, options.Connection.ConnectTimeout);
+        Assert.Equal(10000, options.Connection.SyncTimeout);
+        Assert.True(options.Connection.Ssl);
+        Assert.False(options.Advanced.AllowAdmin);
+        Assert.False(options.Connection.AbortOnConnectFail);
+        Assert.Equal(5, options.Connection.ConnectRetry);
+        Assert.Equal(1, options.Connection.DefaultDatabase);
+        Assert.Equal("TestClient", options.Advanced.ClientName);
     }
 
     [Fact]
     public void RedisOptions_SetServerAddress_ShouldAcceptDifferentFormats()
     {
-        // Arrange & Act
-        var options1 = new RedisOptions { ServerAddress = "localhost:6379" };
-        var options2 = new RedisOptions { ServerAddress = "127.0.0.1:6379" };
-        var options3 = new RedisOptions { ServerAddress = "redis.example.com:6380" };
-        var options4 = new RedisOptions { ServerAddress = "rediss://secure.redis.com:6380" };
+        var options1 = new RedisOptions { Connection = new RedisConnectionOptions { ServerAddress = "localhost:6379" } };
+        var options2 = new RedisOptions { Connection = new RedisConnectionOptions { ServerAddress = "127.0.0.1:6379" } };
+        var options3 = new RedisOptions { Connection = new RedisConnectionOptions { ServerAddress = "redis.example.com:6380" } };
+        var options4 = new RedisOptions { Connection = new RedisConnectionOptions { ServerAddress = "rediss://secure.redis.com:6380" } };
 
-        // Assert
-        Assert.Equal("localhost:6379", options1.ServerAddress);
-        Assert.Equal("127.0.0.1:6379", options2.ServerAddress);
-        Assert.Equal("redis.example.com:6380", options3.ServerAddress);
-        Assert.Equal("rediss://secure.redis.com:6380", options4.ServerAddress);
+        Assert.Equal("localhost:6379", options1.Connection.ServerAddress);
+        Assert.Equal("127.0.0.1:6379", options2.Connection.ServerAddress);
+        Assert.Equal("redis.example.com:6380", options3.Connection.ServerAddress);
+        Assert.Equal("rediss://secure.redis.com:6380", options4.Connection.ServerAddress);
     }
 
     [Fact]
     public void RedisOptions_SetKeyPrefixes_ShouldAllowCustomPrefixes()
     {
-        // Arrange & Act
         var options = new RedisOptions
         {
             NonceKeyPrefix = "myapp:nonces:",
             SeqIdKeyPrefix = "myapp:seqids:"
         };
 
-        // Assert
         Assert.Equal("myapp:nonces:", options.NonceKeyPrefix);
         Assert.Equal("myapp:seqids:", options.SeqIdKeyPrefix);
     }
@@ -110,40 +108,34 @@ public class RedisOptionsTests
     [Fact]
     public void RedisOptions_SetTimeouts_ShouldAcceptValidValues()
     {
-        // Arrange & Act
         var options = new RedisOptions
         {
-            ConnectTimeout = 15000,
-            SyncTimeout = 20000
+            Connection = new RedisConnectionOptions
+            {
+                ConnectTimeout = 15000,
+                SyncTimeout = 20000
+            }
         };
 
-        // Assert
-        Assert.Equal(15000, options.ConnectTimeout);
-        Assert.Equal(20000, options.SyncTimeout);
+        Assert.Equal(15000, options.Connection.ConnectTimeout);
+        Assert.Equal(20000, options.Connection.SyncTimeout);
     }
 
     [Fact]
     public void RedisOptions_SetCacheExpirations_ShouldAcceptValidTimeSpans()
     {
-        // Arrange & Act
         var options = new RedisOptions
         {
             NonceTtl = TimeSpan.FromSeconds(30),
         };
 
-        // Assert
         Assert.Equal(TimeSpan.FromSeconds(30), options.NonceTtl);
     }
-
-    // ========== Validate() 方法测试 ==========
 
     [Fact]
     public void Validate_ShouldNotThrow_WithDefaultValues()
     {
-        // Arrange
         var options = new RedisOptions();
-
-        // Act & Assert - 默认值应通过校验
         options.Validate();
     }
 
@@ -153,12 +145,13 @@ public class RedisOptionsTests
     [InlineData(null)]
     public void Validate_ShouldThrow_WhenServerAddressIsNullOrWhitespace(string? serverAddress)
     {
-        // Arrange
-        var options = new RedisOptions { ServerAddress = serverAddress! };
+        var options = new RedisOptions
+        {
+            Connection = new RedisConnectionOptions { ServerAddress = serverAddress! }
+        };
 
-        // Act & Assert
         var ex = Assert.Throws<InvalidOperationException>(() => options.Validate());
-        Assert.Contains("ServerAddress 不能为空", ex.Message);
+        Assert.Contains("Connection.ServerAddress", ex.Message);
     }
 
     [Theory]
@@ -167,12 +160,13 @@ public class RedisOptionsTests
     [InlineData("no-port-here")]
     public void Validate_ShouldThrow_WhenServerAddressMissingColonOrScheme(string serverAddress)
     {
-        // Arrange
-        var options = new RedisOptions { ServerAddress = serverAddress };
+        var options = new RedisOptions
+        {
+            Connection = new RedisConnectionOptions { ServerAddress = serverAddress }
+        };
 
-        // Act & Assert
         var ex = Assert.Throws<InvalidOperationException>(() => options.Validate());
-        Assert.Contains("ServerAddress 格式无效", ex.Message);
+        Assert.Contains("Connection.ServerAddress", ex.Message);
     }
 
     [Theory]
@@ -185,73 +179,80 @@ public class RedisOptionsTests
     [InlineData("REDISS://secure.redis.com:6380")]
     public void Validate_ShouldAccept_WhenServerAddressIsValidFormat(string serverAddress)
     {
-        // Arrange
-        var options = new RedisOptions { ServerAddress = serverAddress };
+        var options = new RedisOptions
+        {
+            Connection = new RedisConnectionOptions { ServerAddress = serverAddress }
+        };
 
-        // Act & Assert - 合法格式不应抛出异常
         options.Validate();
     }
 
     [Fact]
     public void Validate_ShouldThrow_WhenConnectTimeoutLessThan1000()
     {
-        // Arrange
-        var options = new RedisOptions { ConnectTimeout = 500 };
+        var options = new RedisOptions
+        {
+            Connection = new RedisConnectionOptions { ConnectTimeout = 500 }
+        };
 
-        // Act & Assert
         var ex = Assert.Throws<InvalidOperationException>(() => options.Validate());
-        Assert.Contains("ConnectTimeout 必须至少为 1000 毫秒", ex.Message);
+        Assert.Contains("Connection.ConnectTimeout", ex.Message);
     }
 
     [Fact]
     public void Validate_ShouldAccept_WhenConnectTimeoutIsExactly1000()
     {
-        // Arrange
-        var options = new RedisOptions { ConnectTimeout = 1000 };
+        var options = new RedisOptions
+        {
+            Connection = new RedisConnectionOptions { ConnectTimeout = 1000 }
+        };
 
-        // Act & Assert - 边界值应通过校验
         options.Validate();
     }
 
     [Fact]
     public void Validate_ShouldThrow_WhenSyncTimeoutLessThan1000()
     {
-        // Arrange
-        var options = new RedisOptions { SyncTimeout = 999 };
+        var options = new RedisOptions
+        {
+            Connection = new RedisConnectionOptions { SyncTimeout = 999 }
+        };
 
-        // Act & Assert
         var ex = Assert.Throws<InvalidOperationException>(() => options.Validate());
-        Assert.Contains("SyncTimeout 必须至少为 1000 毫秒", ex.Message);
+        Assert.Contains("Connection.SyncTimeout", ex.Message);
     }
 
     [Fact]
     public void Validate_ShouldAccept_WhenSyncTimeoutIsExactly1000()
     {
-        // Arrange
-        var options = new RedisOptions { SyncTimeout = 1000 };
+        var options = new RedisOptions
+        {
+            Connection = new RedisConnectionOptions { SyncTimeout = 1000 }
+        };
 
-        // Act & Assert - 边界值应通过校验
         options.Validate();
     }
 
     [Fact]
     public void Validate_ShouldThrow_WhenConnectRetryIsNegative()
     {
-        // Arrange
-        var options = new RedisOptions { ConnectRetry = -1 };
+        var options = new RedisOptions
+        {
+            Connection = new RedisConnectionOptions { ConnectRetry = -1 }
+        };
 
-        // Act & Assert
         var ex = Assert.Throws<InvalidOperationException>(() => options.Validate());
-        Assert.Contains("ConnectRetry 不能为负数", ex.Message);
+        Assert.Contains("Connection.ConnectRetry", ex.Message);
     }
 
     [Fact]
     public void Validate_ShouldAccept_WhenConnectRetryIsZero()
     {
-        // Arrange
-        var options = new RedisOptions { ConnectRetry = 0 };
+        var options = new RedisOptions
+        {
+            Connection = new RedisConnectionOptions { ConnectRetry = 0 }
+        };
 
-        // Act & Assert - 0 表示不重试，应通过校验
         options.Validate();
     }
 }

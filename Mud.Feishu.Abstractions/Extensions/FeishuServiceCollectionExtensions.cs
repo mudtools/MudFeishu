@@ -43,7 +43,15 @@ public static class FeishuServiceCollectionExtensions
             throw new ArgumentNullException(nameof(configuration));
 
         var section = sectionName ?? "FeishuApps";
-        services.Configure<List<FeishuAppConfig>>(options => configuration.GetSection(section).Bind(options));
+        services.Configure<List<FeishuAppConfig>>(options =>
+        {
+            var cfgSection = configuration.GetSection(section);
+            cfgSection.Bind(options);
+            // R4：配置 JSON 兼容——扁平 TimeOut/Retry*/CircuitBreaker* 回填嵌套属性
+            var children = cfgSection.GetChildren().ToList();
+            for (var i = 0; i < children.Count && i < options.Count; i++)
+                options[i].ApplyLegacyFlatKeys(children[i]);
+        });
 
         services.AddSingleton<IValidateOptions<FeishuAppConfig>, FeishuAppConfigValidator>();
         services.AddSingleton<IValidateOptions<List<FeishuAppConfig>>, FeishuAppConfigValidator>();

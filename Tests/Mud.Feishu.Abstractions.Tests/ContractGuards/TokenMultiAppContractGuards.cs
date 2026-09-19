@@ -151,7 +151,6 @@ public class TokenMultiAppContractGuards
     [Fact]
     public void FeishuAppConfig_PropertySet_ShouldMatchThrottleComparisonContract()
     {
-        #pragma warning disable CS0618 // 契约守卫使用 Obsolete 标量垫片初始化基线
         var baseline = new FeishuAppConfig
         {
             AppKey = "test",
@@ -159,16 +158,17 @@ public class TokenMultiAppContractGuards
             AppSecret = "dsk_test",
             BaseUrl = "https://open.feishu.cn",
             AllowCustomBaseUrl = false,
-            TimeOut = 30,
-            RetryCount = 3,
-            RetryDelayMs = 1000,
-            CircuitBreakerEnabled = false,
-            CircuitBreakerFailureThreshold = 10,
-            CircuitBreakerSamplingDurationSeconds = 30,
-            CircuitBreakerBreakDurationSeconds = 60,
-            CircuitBreakerMinimumThroughput = 5,
+            TimeoutSeconds = 30,
+            HttpRetry = new HttpRetryOptions { MaxAttempts = 3, DelayMs = 1000 },
+            CircuitBreaker = new CircuitBreakerOptions
+            {
+                Enabled = false,
+                FailureThreshold = 10,
+                SamplingDurationSeconds = 30,
+                BreakDurationSeconds = 60,
+                MinimumThroughput = 5
+            },
             TokenRefreshThreshold = 300,
-            EnableLogging = false,
             IsDefault = false
         };
 
@@ -185,9 +185,8 @@ public class TokenMultiAppContractGuards
             if (prop.Name == nameof(FeishuAppConfig.AppKey))
                 continue;
 
-            // R3 嵌套 Options：IsSameAs 通过 Obsolete 标量垫片投影比较（HttpRetry.* /
-            // CircuitBreaker.*）。整对象替换且字段值仍为默认时 IsSameAs 仍为 true，属预期；
-            // 标量垫片字段已在本循环中覆盖。
+            // R4：嵌套 Options 由 IsSameAs 字段级比较；整对象替换且字段值仍为默认时
+            // IsSameAs 仍为 true，属预期——嵌套类型本身不在逐属性循环的可写标量内。
             if (prop.PropertyType == typeof(HttpRetryOptions)
                 || prop.PropertyType == typeof(CircuitBreakerOptions))
                 continue;
@@ -199,19 +198,23 @@ public class TokenMultiAppContractGuards
                 AppSecret = baseline.AppSecret,
                 BaseUrl = baseline.BaseUrl,
                 AllowCustomBaseUrl = baseline.AllowCustomBaseUrl,
-                TimeOut = baseline.TimeOut,
-                RetryCount = baseline.RetryCount,
-                RetryDelayMs = baseline.RetryDelayMs,
-                CircuitBreakerEnabled = baseline.CircuitBreakerEnabled,
-                CircuitBreakerFailureThreshold = baseline.CircuitBreakerFailureThreshold,
-                CircuitBreakerSamplingDurationSeconds = baseline.CircuitBreakerSamplingDurationSeconds,
-                CircuitBreakerBreakDurationSeconds = baseline.CircuitBreakerBreakDurationSeconds,
-                CircuitBreakerMinimumThroughput = baseline.CircuitBreakerMinimumThroughput,
+                TimeoutSeconds = baseline.TimeoutSeconds,
+                HttpRetry = new HttpRetryOptions
+                {
+                    MaxAttempts = baseline.HttpRetry.MaxAttempts,
+                    DelayMs = baseline.HttpRetry.DelayMs
+                },
+                CircuitBreaker = new CircuitBreakerOptions
+                {
+                    Enabled = baseline.CircuitBreaker.Enabled,
+                    FailureThreshold = baseline.CircuitBreaker.FailureThreshold,
+                    SamplingDurationSeconds = baseline.CircuitBreaker.SamplingDurationSeconds,
+                    BreakDurationSeconds = baseline.CircuitBreaker.BreakDurationSeconds,
+                    MinimumThroughput = baseline.CircuitBreaker.MinimumThroughput
+                },
                 TokenRefreshThreshold = baseline.TokenRefreshThreshold,
-                EnableLogging = baseline.EnableLogging,
                 IsDefault = baseline.IsDefault
             };
-#pragma warning restore CS0618
 
             // 修改当前属性值
             var originalValue = prop.GetValue(modified);

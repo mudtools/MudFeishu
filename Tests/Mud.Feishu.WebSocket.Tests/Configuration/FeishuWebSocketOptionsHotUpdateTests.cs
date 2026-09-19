@@ -24,9 +24,9 @@ public class FeishuWebSocketOptionsHotUpdateTests
         var services = new ServiceCollection();
         services.Configure<FeishuWebSocketOptions>(options =>
         {
-            options.AutoReconnect = true;
+            options.Reconnect.Auto = true;
             options.HeartbeatIntervalMs = 25000;
-            options.ReconnectDelayMs = 5000;
+            options.Reconnect.BaseDelayMs = 5000;
         });
 
         var serviceProvider = services.BuildServiceProvider();
@@ -36,17 +36,17 @@ public class FeishuWebSocketOptionsHotUpdateTests
         var initialOptions = optionsMonitor.CurrentValue;
 
         // Assert - 验证初始值
-        initialOptions.AutoReconnect.Should().BeTrue();
+        initialOptions.Reconnect.Auto.Should().BeTrue();
         initialOptions.HeartbeatIntervalMs.Should().Be(25000);
-        initialOptions.ReconnectDelayMs.Should().Be(5000);
+        initialOptions.Reconnect.BaseDelayMs.Should().Be(5000);
 
         // Act - 创建新的配置（模拟配置热重载）
         var newServices = new ServiceCollection();
         newServices.Configure<FeishuWebSocketOptions>(options =>
         {
-            options.AutoReconnect = false;
+            options.Reconnect.Auto = false;
             options.HeartbeatIntervalMs = 30000;
-            options.ReconnectDelayMs = 10000;
+            options.Reconnect.BaseDelayMs = 10000;
         });
 
         var newServiceProvider = newServices.BuildServiceProvider();
@@ -54,9 +54,9 @@ public class FeishuWebSocketOptionsHotUpdateTests
 
         // Assert - 验证新值
         var updatedOptions = newOptionsMonitor.CurrentValue;
-        updatedOptions.AutoReconnect.Should().BeFalse();
+        updatedOptions.Reconnect.Auto.Should().BeFalse();
         updatedOptions.HeartbeatIntervalMs.Should().Be(30000);
-        updatedOptions.ReconnectDelayMs.Should().Be(10000);
+        updatedOptions.Reconnect.BaseDelayMs.Should().Be(10000);
     }
 
     [Fact]
@@ -116,24 +116,23 @@ public class FeishuWebSocketOptionsHotUpdateTests
         var act = () => initialOptions.Validate();
         act.Should().NotThrow();
 
-        // Act - 设置会触发自动修正的值
+        // Act — R4：Heartbeat setter 仍 clamp 到最小值；Reconnect.BaseDelayMs 存储原值，由 Validate 拒绝
         var newServices = new ServiceCollection();
         newServices.Configure<FeishuWebSocketOptions>(options =>
         {
-            options.HeartbeatIntervalMs = 1000; // Will be auto-corrected to 5000
-            options.ReconnectDelayMs = 500;     // Will be auto-corrected to 1000
+            options.HeartbeatIntervalMs = 1000; // auto-corrected to 5000
+            options.Reconnect.BaseDelayMs = 500;     // stored as-is; Validate rejects
         });
 
         var newServiceProvider = newServices.BuildServiceProvider();
         var newOptionsMonitor = newServiceProvider.GetRequiredService<IOptionsMonitor<FeishuWebSocketOptions>>();
 
-        // Assert - 验证属性自动修正且配置仍然有效
         var updatedOptions = newOptionsMonitor.CurrentValue;
-        updatedOptions.HeartbeatIntervalMs.Should().Be(5000); // Auto-corrected to minimum
-        updatedOptions.ReconnectDelayMs.Should().Be(1000);    // Auto-corrected to minimum
+        updatedOptions.HeartbeatIntervalMs.Should().Be(5000);
+        updatedOptions.Reconnect.BaseDelayMs.Should().Be(500);
 
         var actUpdated = () => updatedOptions.Validate();
-        actUpdated.Should().NotThrow();
+        actUpdated.Should().Throw<InvalidOperationException>().WithMessage("*BaseDelayMs*");
     }
 
     [Fact]
@@ -229,8 +228,8 @@ public class FeishuWebSocketOptionsHotUpdateTests
         var services = new ServiceCollection();
         services.Configure<FeishuWebSocketOptions>(options =>
         {
-            options.MaxTotalReconnectTime = TimeSpan.FromMinutes(30);
-            options.ReconnectCooldownTime = TimeSpan.FromSeconds(5);
+            options.Reconnect.TotalBudget = TimeSpan.FromMinutes(30);
+            options.Reconnect.Cooldown = TimeSpan.FromSeconds(5);
             options.HealthCheckIntervalMs = 60000;
             options.MessageHandlerTimeoutMs = 30000;
         });
@@ -242,8 +241,8 @@ public class FeishuWebSocketOptionsHotUpdateTests
         var initialOptions = optionsMonitor.CurrentValue;
 
         // Assert - 验证初始值
-        initialOptions.MaxTotalReconnectTime.Should().Be(TimeSpan.FromMinutes(30));
-        initialOptions.ReconnectCooldownTime.Should().Be(TimeSpan.FromSeconds(5));
+        initialOptions.Reconnect.TotalBudget.Should().Be(TimeSpan.FromMinutes(30));
+        initialOptions.Reconnect.Cooldown.Should().Be(TimeSpan.FromSeconds(5));
         initialOptions.HealthCheckIntervalMs.Should().Be(60000);
         initialOptions.MessageHandlerTimeoutMs.Should().Be(30000);
 
@@ -251,8 +250,8 @@ public class FeishuWebSocketOptionsHotUpdateTests
         var newServices = new ServiceCollection();
         newServices.Configure<FeishuWebSocketOptions>(options =>
         {
-            options.MaxTotalReconnectTime = TimeSpan.FromMinutes(45);
-            options.ReconnectCooldownTime = TimeSpan.FromSeconds(10);
+            options.Reconnect.TotalBudget = TimeSpan.FromMinutes(45);
+            options.Reconnect.Cooldown = TimeSpan.FromSeconds(10);
             options.HealthCheckIntervalMs = 120000;
             options.MessageHandlerTimeoutMs = 45000;
         });
@@ -262,8 +261,8 @@ public class FeishuWebSocketOptionsHotUpdateTests
 
         // Assert - 验证新值
         var updatedOptions = newOptionsMonitor.CurrentValue;
-        updatedOptions.MaxTotalReconnectTime.Should().Be(TimeSpan.FromMinutes(45));
-        updatedOptions.ReconnectCooldownTime.Should().Be(TimeSpan.FromSeconds(10));
+        updatedOptions.Reconnect.TotalBudget.Should().Be(TimeSpan.FromMinutes(45));
+        updatedOptions.Reconnect.Cooldown.Should().Be(TimeSpan.FromSeconds(10));
         updatedOptions.HealthCheckIntervalMs.Should().Be(120000);
         updatedOptions.MessageHandlerTimeoutMs.Should().Be(45000);
     }

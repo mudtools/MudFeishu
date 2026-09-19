@@ -140,6 +140,10 @@ public static class FeishuMultiAppExtensions
         var configs = new List<FeishuAppConfig>();
         var section = configuration.GetSection(sectionName);
         section.Bind(configs);
+        // R4：配置 JSON 兼容——扁平 TimeOut/Retry*/CircuitBreaker* 回填嵌套属性
+        var children = section.GetChildren().ToList();
+        for (var i = 0; i < children.Count && i < configs.Count; i++)
+            configs[i].ApplyLegacyFlatKeys(children[i]);
 
         // 验证并设置默认应用
         ValidateAndSetDefaultApp(configs);
@@ -200,8 +204,8 @@ public static class FeishuMultiAppExtensions
     ///     config.AddDefaultApp("default", "cli_xxx", "dsk_xxx");
     ///     config.AddApp("hr-app", "cli_yyy", "dsk_yyy", opt =>
     ///     {
-    ///         opt.TimeOut = 45;
-    ///         opt.RetryCount = 5;
+    ///         opt.TimeoutSeconds = 45;
+    ///         opt.HttpRetry.MaxAttempts = 5;
     ///     });
     /// });
     /// </code>

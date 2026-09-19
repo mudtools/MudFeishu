@@ -74,8 +74,7 @@ public class MessageSequenceValidator
                 _lastProcessedSequenceNumber = sequenceNumber;
                 _recentlyProcessedNumbers.Add(sequenceNumber);
 
-                if (_options.EnableLogging)
-                    _logger.LogDebug("首次接收消息，序号: {SequenceNumber}", sequenceNumber);
+                _logger.LogDebug("首次接收消息，序号: {SequenceNumber}", sequenceNumber);
 
                 return SequenceValidationResult.Valid;
             }
@@ -170,8 +169,7 @@ public class MessageSequenceValidator
         var timeSinceReset = DateTime.UtcNow - _lastResetTime;
         if (timeSinceReset.TotalMinutes > CleanupIntervalMinutes)
         {
-            if (_options.EnableLogging)
-                _logger.LogDebug("清理消息序号验证器的旧数据");
+            _logger.LogDebug("清理消息序号验证器的旧数据");
 
             _recentlyProcessedNumbers.Clear();
             _lastResetTime = DateTime.UtcNow;

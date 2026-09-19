@@ -29,13 +29,7 @@ public class AuthenticationTimeoutFixTests
         // Arrange
         // 修复前：_authCompletionSource.Task 与 30 秒超时 CTS 毫无关联，
         // 服务端不应答时此处会永久挂起（测试会超时失败）。
-        var options = new FeishuWebSocketOptions
-        {
-            EnableLogging = false,
-            AuthTimeoutMs = 300,
-            MaxAuthRetryAttempts = 1,
-            ReconnectDelayMs = 1000
-        };
+        var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions { AuthTimeoutMs = 300, Reconnect = new Mud.Feishu.WebSocket.WebSocketReconnectOptions { MaxAuthRetryAttempts = 1, BaseDelayMs = 1000 } };
         var manager = CreateManager(options);
 
         // Act
@@ -52,13 +46,7 @@ public class AuthenticationTimeoutFixTests
     public async Task AuthenticateAsync_ShouldCompleteWithinTimeoutBudget_WhenServerNeverResponds()
     {
         // Arrange
-        var options = new FeishuWebSocketOptions
-        {
-            EnableLogging = false,
-            AuthTimeoutMs = 200,
-            MaxAuthRetryAttempts = 1,
-            ReconnectDelayMs = 1000
-        };
+        var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions { AuthTimeoutMs = 200, Reconnect = new Mud.Feishu.WebSocket.WebSocketReconnectOptions { MaxAuthRetryAttempts = 1, BaseDelayMs = 1000 } };
         var manager = CreateManager(options);
 
         // Act
@@ -87,13 +75,7 @@ public class AuthenticationTimeoutFixTests
         // Arrange
         // 修复前：冷却期只在 AuthenticateAsync 入口检查一次，
         // 重试循环内部不再感知，导致无限重试场景下冷却机制完全失效。
-        var options = new FeishuWebSocketOptions
-        {
-            EnableLogging = false,
-            AuthTimeoutMs = 200,
-            MaxAuthRetryAttempts = 5,
-            ReconnectDelayMs = 1000
-        };
+        var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions { AuthTimeoutMs = 200, Reconnect = new Mud.Feishu.WebSocket.WebSocketReconnectOptions { MaxAuthRetryAttempts = 5, BaseDelayMs = 1000 } };
         var manager = CreateManager(options);
 
         // Act
@@ -126,14 +108,10 @@ public class AuthenticationTimeoutFixTests
     public void MaxAuthRetryAttempts_ShouldBeIndependentOfMaxReconnectAttempts()
     {
         // Arrange & Act
-        var options = new FeishuWebSocketOptions
-        {
-            MaxReconnectAttempts = 0, // 无限重连
-            MaxAuthRetryAttempts = 3
-        };
+        var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions { Reconnect = new Mud.Feishu.WebSocket.WebSocketReconnectOptions { MaxAttempts = 0, MaxAuthRetryAttempts = 3 } };
 
         // Assert：认证重试次数不再被"无限重连"配置连带放大
-        options.MaxReconnectAttempts.Should().Be(0);
-        options.MaxAuthRetryAttempts.Should().Be(3);
+        options.Reconnect.MaxAttempts.Should().Be(0);
+        options.Reconnect.MaxAuthRetryAttempts.Should().Be(3);
     }
 }

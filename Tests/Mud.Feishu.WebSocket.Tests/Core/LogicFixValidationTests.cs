@@ -26,20 +26,20 @@ public class LogicFixValidationTests
     public void FeishuWebSocketOptions_AllowInsecureWebSocket_DefaultShouldBeFalse()
     {
         var options = new FeishuWebSocketOptions();
-        options.AllowInsecureWebSocket.Should().BeFalse("生产环境默认应禁止不安全的 ws:// 连接");
+        options.Certificate.AllowInsecureWebSocket.Should().BeFalse("生产环境默认应禁止不安全的 ws:// 连接");
     }
 
     [Fact]
     public void FeishuWebSocketOptions_AllowInsecureWebSocket_CanBeSetToTrue()
     {
-        var options = new FeishuWebSocketOptions { AllowInsecureWebSocket = true };
-        options.AllowInsecureWebSocket.Should().BeTrue();
+        var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions { Certificate = new Mud.Feishu.WebSocket.WebSocketCertificateOptions { AllowInsecureWebSocket = true } };
+        options.Certificate.AllowInsecureWebSocket.Should().BeTrue();
     }
 
     [Fact]
     public async Task WebSocketConnectionManager_ConnectAsync_ShouldRejectInsecureWebSocket_WhenAllowInsecureWebSocketIsFalse()
     {
-        var options = new FeishuWebSocketOptions { AllowInsecureWebSocket = false };
+        var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions { Certificate = new Mud.Feishu.WebSocket.WebSocketCertificateOptions { AllowInsecureWebSocket = false } };
         var manager = new WebSocketConnectionManager(
             NullLogger<WebSocketConnectionManager>.Instance,
             options,
@@ -54,7 +54,7 @@ public class LogicFixValidationTests
     [Fact]
     public async Task WebSocketConnectionManager_ConnectAsync_ShouldRejectInsecureWebSocket_WithInvalidUrl()
     {
-        var options = new FeishuWebSocketOptions { AllowInsecureWebSocket = false };
+        var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions { Certificate = new Mud.Feishu.WebSocket.WebSocketCertificateOptions { AllowInsecureWebSocket = false } };
         var manager = new WebSocketConnectionManager(
             NullLogger<WebSocketConnectionManager>.Instance,
             options,
@@ -71,7 +71,7 @@ public class LogicFixValidationTests
     [Fact]
     public void ExponentialBackoffReconnectStrategy_ShouldContinueReconnect_WhenMaxReconnectAttemptsIsZero()
     {
-        var options = new FeishuWebSocketOptions { MaxReconnectAttempts = 0 };
+        var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions { Reconnect = new Mud.Feishu.WebSocket.WebSocketReconnectOptions { MaxAttempts = 0 } };
         var strategy = new ExponentialBackoffReconnectStrategy(options);
 
         var result = strategy.ShouldContinueReconnect(100, TimeSpan.FromMinutes(1));
@@ -82,7 +82,7 @@ public class LogicFixValidationTests
     [Fact]
     public void ExponentialBackoffReconnectStrategy_ShouldStopReconnect_WhenMaxReconnectAttemptsIsPositiveAndExceeded()
     {
-        var options = new FeishuWebSocketOptions { MaxReconnectAttempts = 3 };
+        var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions { Reconnect = new Mud.Feishu.WebSocket.WebSocketReconnectOptions { MaxAttempts = 3 } };
         var strategy = new ExponentialBackoffReconnectStrategy(options);
 
         var result = strategy.ShouldContinueReconnect(4, TimeSpan.FromMinutes(1));
@@ -97,7 +97,7 @@ public class LogicFixValidationTests
     [Fact]
     public void AuthenticationManager_RecordAuthFailure_ShouldIncrementForNetworkErrors()
     {
-        var options = new FeishuWebSocketOptions { MaxReconnectAttempts = 5 };
+        var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions { Reconnect = new Mud.Feishu.WebSocket.WebSocketReconnectOptions { MaxAttempts = 5 } };
         var authManager = new AuthenticationManager(
             NullLogger<AuthenticationManager>.Instance,
             options,
@@ -127,7 +127,7 @@ public class LogicFixValidationTests
     [Fact]
     public void AuthenticationManager_HandleAuthResponse_ShouldNotDoubleCount_WhenServerRejects()
     {
-        var options = new FeishuWebSocketOptions { MaxReconnectAttempts = 5 };
+        var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions { Reconnect = new Mud.Feishu.WebSocket.WebSocketReconnectOptions { MaxAttempts = 5 } };
         var authManager = new AuthenticationManager(
             NullLogger<AuthenticationManager>.Instance,
             options,
@@ -151,7 +151,7 @@ public class LogicFixValidationTests
     [Fact]
     public void AuthenticationManager_ClearAuthCooldown_ShouldResetFailureCount()
     {
-        var options = new FeishuWebSocketOptions { MaxReconnectAttempts = 5 };
+        var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions { Reconnect = new Mud.Feishu.WebSocket.WebSocketReconnectOptions { MaxAttempts = 5 } };
         var authManager = new AuthenticationManager(
             NullLogger<AuthenticationManager>.Instance,
             options,
@@ -229,18 +229,14 @@ public class LogicFixValidationTests
     [Fact]
     public void CalculateDelay_ShouldAlwaysIncludeJitter_WithinExpectedRange()
     {
-        var options = new FeishuWebSocketOptions
-        {
-            ReconnectDelayMs = 1000,
-            MaxReconnectDelayMs = 60000
-        };
+        var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions { Reconnect = new Mud.Feishu.WebSocket.WebSocketReconnectOptions { BaseDelayMs = 1000, MaxDelayMs = 60000 } };
         var strategy = new ExponentialBackoffReconnectStrategy(options);
 
         // 执行多次验证抖动始终在 0~25% 范围内
         for (int i = 0; i < 50; i++)
         {
             var delay = strategy.CalculateDelay(1);
-            var baseMs = (double)options.ReconnectDelayMs;
+            var baseMs = (double)options.Reconnect.BaseDelayMs;
             delay.TotalMilliseconds.Should().BeGreaterThanOrEqualTo(baseMs, "延迟不应低于基础值");
             delay.TotalMilliseconds.Should().BeLessThanOrEqualTo(baseMs * 1.25, "抖动不应超过25%");
         }
@@ -249,11 +245,7 @@ public class LogicFixValidationTests
     [Fact]
     public void CalculateDelay_ShouldNotExceedMaxDelay_EvenWithJitter()
     {
-        var options = new FeishuWebSocketOptions
-        {
-            ReconnectDelayMs = 1000,
-            MaxReconnectDelayMs = 5000
-        };
+        var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions { Reconnect = new Mud.Feishu.WebSocket.WebSocketReconnectOptions { BaseDelayMs = 1000, MaxDelayMs = 5000 } };
         var strategy = new ExponentialBackoffReconnectStrategy(options);
 
         // 高次尝试应被封顶到 MaxReconnectDelayMs
@@ -261,7 +253,7 @@ public class LogicFixValidationTests
         {
             var delay = strategy.CalculateDelay(20);
             delay.TotalMilliseconds.Should().BeLessThanOrEqualTo(
-                options.MaxReconnectDelayMs * 1.25,
+                options.Reconnect.MaxDelayMs * 1.25,
                 "封顶后加抖动不应超过 MaxReconnectDelayMs * 1.25");
         }
     }

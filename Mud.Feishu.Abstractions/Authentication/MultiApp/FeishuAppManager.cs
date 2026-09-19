@@ -1091,6 +1091,17 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
             _retirement?.Enqueue(appKey, oldContext);
         }
 
+        // TMR-P3-16b（F16b）：应用下线后提前回收其持久化令牌（fire-and-forget）。
+        // 现状 TTL（refresh ≤30d）已保证有界，此处收益为提前回收存储空间与
+        // 避免残留键被误诊断；PurgeTokenStoreAsync 内部吞掉全部异常（含 OCE），安全。
+        if (wasInLazy || wasInBase)
+        {
+            _ = Task.Run(async () =>
+            {
+                await PurgeTokenStoreAsync(appKey).ConfigureAwait(false);
+            });
+        }
+
         return wasInLazy || wasInBase;
     }
 

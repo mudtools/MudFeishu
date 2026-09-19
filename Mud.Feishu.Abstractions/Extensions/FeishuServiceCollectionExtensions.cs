@@ -439,6 +439,12 @@ public static class FeishuServiceCollectionExtensions
                 return inner;
             }
 
+            // TMR-P2-8（F8）：EnableTokenEncryption 为启动一次性读取（工厂首次解析时固化），
+            // 运行期修改配置不会生效——输出一次告警使语义显式（工厂为单例，本告警每进程仅一次）。
+            sp.GetService<ILogger<EncryptedFeishuTokenStoreFactory>>()?.LogWarning(
+                "FeishuAppOptions.EnableTokenEncryption = true（启动一次性读取，工厂首次解析时固化）。" +
+                "运行期修改该配置不会生效，如需变更请重启进程。");
+
             return new EncryptedFeishuTokenStoreFactory(
                 inner,
                 encryption,

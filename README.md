@@ -639,6 +639,21 @@ app.UseFeishuWebhook();
 app.Run();
 ```
 
+#### `FeishuAppOptions` 一次性读取语义清单
+
+`FeishuAppOptions` 经 `IOptions<T>` 注入时为**启动快照**（IOptions 缓存不随 `IConfiguration` 变更失效），修改配置源后不热更，需重启进程：
+
+| 选项 | 读取点 | 实际语义 |
+| ---- | ---- | ---- |
+| `EnableConfigReload` | `FeishuAppManager` 构造函数（IOptions） | 仅启动时生效 |
+| `ContextRetireDelaySeconds` | `FeishuAppManager` 构造函数（IOptions） | 仅启动时生效 |
+| `WarmUpAllAppsOnStartup` | `FeishuTokenRegistrationService`（IOptions 注入） | 仅启动时生效 |
+| `RemoveRuntimeAddedAppsOnReload` | 热更新时读 `IOptions<>.Value` | 值仍是启动快照——改此项需重启 |
+| `EnablePerAppAuthenticationClient` | `CreateAppContext` 读 `IOptions<>.Value` | 每次上下文创建时求值，但值本身不热更 |
+| `EnableTokenEncryption` | 存储工厂首次解析时读取（一次性） | 中途开启 → 旧明文解密失败 → 删脏键并重新获取 → 重写密文（自愈）；建议重启后开启 |
+
+> 应用配置本身（`FeishuApps` 节点：AppId/AppSecret/BaseUrl/超时等）支持热更新（`EnableConfigReload`，默认开启）；上表仅针对 `FeishuAppOptions` 行为开关。
+
 ### 4️⃣ 验证配置
 
 ```csharp

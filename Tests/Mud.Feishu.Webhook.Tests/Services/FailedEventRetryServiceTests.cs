@@ -424,6 +424,117 @@ public class FailedEventRetryServiceTests
             Times.AtLeastOnce);
     }
 
+    [Fact]
+    public async Task ExecuteAsync_ShouldPreserveHeader_AfterRetryRoundTrip()
+    {
+        // Arrange - P2-8/M3-3：失败事件重放必须保留 v2.0 Header（schema/app_id/tenant_key 等），
+        // 否则重试路径下的行为与首次投递不一致（如 IdempotentFeishuEventHandler<T,THeader>
+        // 的强类型 Header 注入、依赖 header.app_id 做的多租户判断会静默退化）。
+        var optionsMock = Options.Create(_options);
+        var eventStoreMock = new Mock<IFailedEventStore>();
+
+        var header = new Mud.Feishu.Abstractions.FeishuEventHeader
+        {
+            Schema = "2.0",
+            EventId = "event-hdr",
+            EventType = "test.event",
+            AppId = "cli_roundtrip",
+            TenantKey = "tk_roundtrip"
+        };
+
+        var failedEvent = new FailedEventInfo
+        {
+            EventId = "event-hdr",
+            EventType = "test.event",
+            // 与 InMemoryFailedEventStore 同一路径序列化（反序列化后 Header 为 null，
+            // 才能触发"从 SerializedHeader 回填"的分支）
+            SerializedEventData = Mud.Feishu.Abstractions.Utilities.FeishuJsonAot.Serialize(
+                new EventData { EventId = "event-hdr", EventType = "test.event" },
+                Mud.Feishu.Abstractions.Utilities.FeishuJsonDefaults.SerializerOptions),
+            SerializedHeader = Mud.Feishu.Abstractions.Utilities.FeishuJsonAot.Serialize(
+                header, Mud.Feishu.Abstractions.Utilities.FeishuJsonDefaults.SerializerOptions),
+            RetryCount = 0,
+            FailedAt = DateTime.UtcNow,
+            NextRetryAt = DateTimeOffset.UtcNow.Subtract(TimeSpan.FromSeconds(1))
+        };
+
+        eventStoreMock
+            .Setup(x => x.GetPendingRetryEventsAsync(It.IsAny<DateTimeOffset>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<FailedEventInfo> { failedEvent });
+
+        EventData? replayed = null;
+        _webhookServiceMock
+            .Setup(x => x.HandleEventAsync(It.IsAny<EventData>(), It.IsAny<CancellationToken>()))
+            .Callback<EventData, CancellationToken>((e, _) => replayed = e)
+            .ReturnsAsync((true, (string?)null));
+
+        var service = new TestableRetryService(
+            optionsMock,
+            _loggerMock.Object,
+            _scopeFactory,
+            eventStoreMock.Object);
+
+        using var cts = new CancellationTokenSource(1500);
+
+        // Act
+        var executeTask = service.ExecuteCoreForTest(cts.Token);
+        await Record.ExceptionAsync(() => executeTask);
+
+        // Assert
+        replayed.Should().NotBeNull("重试轮询应至少实际调用一次事件处理");
+        replayed!.Header.Should().NotBeNull("P2-8：重放必须回填序列化时保存的 Header");
+        replayed.Header!.Schema.Should().Be("2.0");
+        replayed.Header.AppId.Should().Be("cli_roundtrip");
+        replayed.Header.TenantKey.Should().Be("tk_roundtrip");
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ShouldNotBlockRetry_WhenSerializedHeaderIsCorrupted()
+    {
+        // Arrange - P2-8 健壮性：Header 反序列化失败只告警、不得阻断重试（Header 置空继续处理）
+        var optionsMock = Options.Create(_options);
+        var eventStoreMock = new Mock<IFailedEventStore>();
+
+        var failedEvent = new FailedEventInfo
+        {
+            EventId = "event-bad-hdr",
+            EventType = "test.event",
+            SerializedEventData = Mud.Feishu.Abstractions.Utilities.FeishuJsonAot.Serialize(
+                new EventData { EventId = "event-bad-hdr", EventType = "test.event" },
+                Mud.Feishu.Abstractions.Utilities.FeishuJsonDefaults.SerializerOptions),
+            SerializedHeader = "{ this is not valid json",
+            RetryCount = 0,
+            FailedAt = DateTime.UtcNow,
+            NextRetryAt = DateTimeOffset.UtcNow.Subtract(TimeSpan.FromSeconds(1))
+        };
+
+        eventStoreMock
+            .Setup(x => x.GetPendingRetryEventsAsync(It.IsAny<DateTimeOffset>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<FailedEventInfo> { failedEvent });
+
+        EventData? replayed = null;
+        _webhookServiceMock
+            .Setup(x => x.HandleEventAsync(It.IsAny<EventData>(), It.IsAny<CancellationToken>()))
+            .Callback<EventData, CancellationToken>((e, _) => replayed = e)
+            .ReturnsAsync((true, (string?)null));
+
+        var service = new TestableRetryService(
+            optionsMock,
+            _loggerMock.Object,
+            _scopeFactory,
+            eventStoreMock.Object);
+
+        using var cts = new CancellationTokenSource(1500);
+
+        // Act
+        var executeTask = service.ExecuteCoreForTest(cts.Token);
+        await Record.ExceptionAsync(() => executeTask);
+
+        // Assert
+        replayed.Should().NotBeNull("损坏的 Header 不得阻断事件重试");
+        replayed!.EventId.Should().Be("event-bad-hdr");
+    }
+
     #region WHF-14：热更新与优雅关停
 
     /// <summary>

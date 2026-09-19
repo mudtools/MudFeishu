@@ -71,6 +71,9 @@ public class FeishuEventMessageHandler : JsonMessageHandler
 #endif
     public override async Task HandleAsync(string message, CancellationToken cancellationToken = default)
     {
+        // P2-1：取消终态的一次性口径标记。内层 try 若已按 canceled 记账，外层 catch 不得再记一次
+        //（此前同一取消会产生两条指标：一条带真实 eventType、一条 eventType="unknown"，且后者污染维度基数）。
+        var cancelOutcomeRecorded = false;
         try
         {
             if (string.IsNullOrWhiteSpace(message))
@@ -113,7 +116,9 @@ public class FeishuEventMessageHandler : JsonMessageHandler
                     var eventMessage = SafeDeserialize<EventMessage>(message);
                     if (eventMessage?.Data == null)
                     {
-                        var truncatedV1Msg = message.Length > 200 ? message.Substring(0, 200) + "..." : message;
+                        // P2-4：截断改走 LogSanitizer.CleanMessage（先剥离 token/encrypt 等敏感字段值再截断）。
+                        // 此前直接 Substring(0,200)：v1.0 报文前 200 字符常含 token/encrypt 键值，属明确泄露面。
+                        var truncatedV1Msg = Mud.Feishu.Abstractions.Utilities.LogSanitizer.CleanMessage(message, 200);
                         _logger.LogWarning("无法解析v1.0事件消息 (长度: {Length}): {Message}", message.Length, truncatedV1Msg);
                         return;
                     }
@@ -194,10 +199,7 @@ public class FeishuEventMessageHandler : JsonMessageHandler
 
                                     // P1-7：被拦截 = 干净回滚（与 Webhook"不进去重即可重试"对齐），
                                     // 服务端重发后拦截器重新决策（retry-until-accept）
-                                    if (_unifiedDedupMiddleware != null)
-                                        await _unifiedDedupMiddleware.RollbackAsync(eventData.EventId, seqId: null, cancellationToken);
-                                    else if (_deduplicator != null)
-                                        await _deduplicator.RollbackProcessingAsync(eventData.EventId, _options.AppKey, cancellationToken);
+                                    await RollbackDeduplicationAsync(eventData.EventId, cancellationToken);
 
                                     FeishuMetricsHelper.RecordEventOutcome(_options.AppKey, eventData.EventType, success: false, "intercepted");
                                     processingException = new EventHandlingOutcomeException(
@@ -239,19 +241,24 @@ public class FeishuEventMessageHandler : JsonMessageHandler
                             _logger.LogWarning(outcomeEx, "事件处理终态: {OutcomeKind}", outcomeEx.OutcomeKind);
                             throw;
                         }
+                        catch (OperationCanceledException)
+                        {
+                            // P2-1：外部取消必须在内层收口——若不在此之前拦截，OCE 会先被下方通用 catch 记为
+                            // "OperationCanceledException" 失败，再由外层 OCE catch 记为 "canceled"（双计数）。
+                            // 此处：回滚去重 + 按 canceled 记一次 + 以终态标记异常交给后置拦截器；
+                            // 异常仍按 OCE 原样传播，保持取消语义（MessageRouter 转为路由失败 → ACK 500）。
+                            processingException = new EventHandlingOutcomeException("canceled", "事件处理被外部取消");
+                            await RollbackDeduplicationAsync(eventData.EventId, cancellationToken);
+                            FeishuMetricsHelper.RecordEventOutcome(_options.AppKey, eventData.EventType, success: false, "canceled");
+                            cancelOutcomeRecorded = true;
+                            throw;
+                        }
                         catch (Exception ex)
                         {
                             processingException = ex;
 
                             // 处理失败，回滚处理中状态
-                            if (_unifiedDedupMiddleware != null)
-                            {
-                                await _unifiedDedupMiddleware.RollbackAsync(eventData.EventId, seqId: null, cancellationToken);
-                            }
-                            else if (_deduplicator != null)
-                            {
-                                await _deduplicator.RollbackProcessingAsync(eventData.EventId, _options.AppKey, cancellationToken);
-                            }
+                            await RollbackDeduplicationAsync(eventData.EventId, cancellationToken);
 
                             // 记录事件处理失败
                             FeishuMetricsHelper.RecordEventOutcome(_options.AppKey, eventData.EventType, success: false, ex.GetType().Name);
@@ -272,7 +279,11 @@ public class FeishuEventMessageHandler : JsonMessageHandler
         catch (OperationCanceledException)
         {
             // P2-1：取消必须传播以触发 ACK 500 / 停机语义
-            FeishuMetricsHelper.RecordEventOutcome(_options.AppKey, "unknown", success: false, "canceled");
+            //（MessageRouter 的 RouteMessageInternalWithResultAsync 将异常转为路由失败 → 不 ACK 200）。
+            // 仅当取消发生在内层 try 之外（JSON 解析 / 去重检查等前置阶段）时才在此记账，
+            // 内层已按真实 eventType 记账的取消不重复计数。
+            if (!cancelOutcomeRecorded)
+                FeishuMetricsHelper.RecordEventOutcome(_options.AppKey, "unknown", success: false, "canceled");
             throw;
         }
         catch (EventHandlingOutcomeException outcomeEx)
@@ -292,6 +303,27 @@ public class FeishuEventMessageHandler : JsonMessageHandler
             _logger.LogError(ex, "处理飞书事件消息时发生错误 (消息长度: {Length}, 消息前200字符: {Message})",
                 message.Length, truncatedMsg);
             throw;
+        }
+    }
+
+    /// <summary>
+    /// 回滚去重状态（统一中间件优先，其次分离去重器）。
+    /// </summary>
+    /// <param name="eventId">事件 ID</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <remarks>
+    /// P1-7/P2-1：拦截、业务失败、外部取消三条路径的回滚必须走同一出口，
+    /// 避免"某条新增失败路径漏回滚"导致事件停在 processing 态。
+    /// </remarks>
+    private async Task RollbackDeduplicationAsync(string eventId, CancellationToken cancellationToken)
+    {
+        if (_unifiedDedupMiddleware != null)
+        {
+            await _unifiedDedupMiddleware.RollbackAsync(eventId, seqId: null, cancellationToken);
+        }
+        else if (_deduplicator != null)
+        {
+            await _deduplicator.RollbackProcessingAsync(eventId, _options.AppKey, cancellationToken);
         }
     }
 

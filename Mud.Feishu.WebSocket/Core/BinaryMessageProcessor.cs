@@ -89,6 +89,29 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
     /// <summary>
     /// 默认构造函数
     /// </summary>
+    /// <param name="logger">日志记录器</param>
+    /// <param name="webSocketConnectionManager">连接管理器（发送 ACK 用）</param>
+    /// <param name="options">WebSocket 配置</param>
+    /// <param name="messageRouter">消息路由器</param>
+    /// <param name="seqIdDeduplicator">SeqID 去重器（传输层帧级幂等，可选）</param>
+    /// <param name="sequenceValidator">消息序号验证器（乱序/回退检测，可选）</param>
+    /// <param name="unifiedDeduplicationMiddleware">
+    /// <b>已弃用，仅为源/二进制兼容保留，将在下一个主版本移除。</b>
+    /// <para>
+    /// M2-4 分层收敛后，SeqID（传输层）与 EventId（事件层）的去重职责已分离：
+    /// 本类只负责 SeqID 全生命周期，EventId 去重由 <c>FeishuEventMessageHandler</c> 承担。
+    /// SDK 内唯一生产构造点（<c>FeishuWebSocketClient</c>）不传该参数。
+    /// </para>
+    /// <para>
+    /// 过渡期若宿主显式注入，本类仍会调用其 <c>CheckAsync</c>/<c>RollbackAsync</c>/<c>MarkCompletedAsync</c>
+    /// 以保持既有行为，但会记录一次 Warning。
+    /// </para>
+    /// <para>
+    /// 说明：C# 不允许把 <see cref="System.ObsoleteAttribute"/> 施加在<b>参数</b>上
+    /// （其 <c>AttributeTargets</c> 不含 <c>Parameter</c>），因此弃用意图只能通过本 XML 注释
+    /// 与构造期 Warning 表达；不另加重载以免扩大公共 API 面。
+    /// </para>
+    /// </param>
     public BinaryMessageProcessor(
         ILogger<BinaryMessageProcessor> logger,
         WebSocketConnectionManager? webSocketConnectionManager,

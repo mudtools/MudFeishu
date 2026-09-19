@@ -322,6 +322,67 @@ public class DefaultFeishuEventHandlerFactoryTests
     }
 
     [Fact]
+    public async Task Registry_ShouldNotThrow_WhenMutatedConcurrentlyWithDispatch()
+    {
+        // P1-5：注册表全部读写必须共用同一把锁。
+        // 此前仅 GetHandlers/RegisterHandler 入锁，UnregisterHandler ×2 / ClearHandlers 未入锁，
+        // 因而锁不提供任何互斥语义——快照 ToArray() 与 List 修改可并发，产生不一致结果或异常。
+        var factory = new DefaultFeishuEventHandlerFactory(
+            NullLogger<DefaultFeishuEventHandlerFactory>.Instance,
+            new List<IFeishuEventHandler> { _handler1Mock.Object },
+            _defaultHandlerMock.Object);
+
+        var extra = new Mock<IFeishuEventHandler>();
+        extra.Setup(h => h.SupportedEventType).Returns("test.event.type1");
+
+        var errors = new System.Collections.Concurrent.ConcurrentBag<Exception>();
+        var stopped = 0;
+
+        var writer = Task.Run(() =>
+        {
+            try
+            {
+                for (var i = 0; i < 5_000; i++)
+                {
+                    factory.RegisterHandler(extra.Object);
+                    factory.UnregisterHandler(extra.Object);
+                }
+            }
+            catch (Exception ex)
+            {
+                errors.Add(ex);
+            }
+            finally
+            {
+                Volatile.Write(ref stopped, 1);
+            }
+        });
+
+        var readers = Enumerable.Range(0, 4).Select(_ => Task.Run(() =>
+        {
+            try
+            {
+                while (Volatile.Read(ref stopped) == 0)
+                {
+                    factory.GetHandlers("test.event.type1");
+                    factory.GetHandler("test.event.type1");
+                    factory.GetHandlerInfo();
+                    factory.GetRegisteredEventTypes();
+                    factory.IsHandlerRegistered("test.event.type1");
+                }
+            }
+            catch (Exception ex)
+            {
+                errors.Add(ex);
+            }
+        })).ToArray();
+
+        await Task.WhenAll(readers.Append(writer));
+
+        errors.Should().BeEmpty("P1-5：注册表读写必须线程安全（不得因并发修改抛异常）");
+    }
+
+    [Fact]
     public void GetHandlers_ShouldNotBeAffected_WhenListMutatedAfterReturn()
     {
         var factory = new DefaultFeishuEventHandlerFactory(

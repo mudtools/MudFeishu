@@ -77,7 +77,15 @@ public class MessageSequenceValidator
             // P0-1：业务失败回滚后的同序号重发——一次性放行，不再落入 Duplicate/Rollback
             if (_reprocessAllowed.Remove(sequenceNumber))
             {
-                _lastProcessedSequenceNumber = sequenceNumber;
+                // P0-1 补强：游标"只进不退"。此前此处无条件赋值，回滚一个<b>旧</b>序号会把游标拖回该序号，
+                // 使紧随其后的旧帧（其窗口记录已被 1000 条滑动窗口淘汰）不再命中 Rollback 分支，
+                // 而是落入"前向跳跃"分支被当作正常帧放行 —— 等于按需关闭了序号回退（重放）检测。
+                // 重发放行由 _reprocessAllowed 自身保证，与游标无关。
+                if (!_lastProcessedSequenceNumber.HasValue || sequenceNumber > _lastProcessedSequenceNumber.Value)
+                {
+                    _lastProcessedSequenceNumber = sequenceNumber;
+                }
+
                 _recentlyProcessedNumbers.Add(sequenceNumber);
                 _logger.LogDebug("业务失败回滚后的重发放行: SeqId={SequenceNumber}", sequenceNumber);
                 return SequenceValidationResult.Valid;

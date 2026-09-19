@@ -6,6 +6,7 @@
 // -----------------------------------------------------------------------
 
 using Microsoft.Extensions.Logging;
+using Mud.Feishu.Abstractions.Utilities;
 using System.Diagnostics.CodeAnalysis;
 
 namespace Mud.Feishu.WebSocket;
@@ -175,7 +176,7 @@ public class MessageRouter
             var messageType = ExtractMessageType(message);
             if (string.IsNullOrEmpty(messageType))
             {
-                var truncatedMsg = message.Length > 200 ? message.Substring(0, 200) + "..." : message;
+                var truncatedMsg = LogSanitizer.CleanMessage(message, 200);
                 _logger.LogWarning("无法提取消息类型 (来源: {SourceType}): {Message}", sourceType, truncatedMsg);
 
                 return true;
@@ -198,7 +199,7 @@ public class MessageRouter
         }
         catch (Exception ex)
         {
-            var truncatedMsg = message.Length > 200 ? message.Substring(0, 200) + "..." : message;
+            var truncatedMsg = LogSanitizer.CleanMessage(message, 200);
             _logger.LogError(ex, "路由消息时发生错误 (来源: {SourceType}): {Message}", sourceType, truncatedMsg);
             return false;
         }
@@ -255,7 +256,7 @@ public class MessageRouter
 
                 // 超时，取消处理器
                 timeoutCts.Cancel();
-                var truncatedMsg = message.Length > 200 ? message.Substring(0, 200) + "..." : message;
+                var truncatedMsg = LogSanitizer.CleanMessage(message, 200);
                 _logger.LogWarning("消息处理器超时 ({TimeoutMs}ms): {HandlerType}, 消息类型可能为: {Message}",
                     timeoutMs, handler.GetType().Name, truncatedMsg);
 
@@ -342,7 +343,8 @@ public class MessageRouter
         catch (System.Text.Json.JsonException ex)
         {
             // 记录更详细的JSON解析错误信息，便于排查问题
-            var truncatedMessage = message.Length > 500 ? message.Substring(0, 500) + "..." : message;
+            // P2-4：截断改走 LogSanitizer.CleanMessage（先剥离 token/encrypt 等敏感字段值再截断）
+            var truncatedMessage = LogSanitizer.CleanMessage(message, 500);
             _logger.LogError(ex, "解析消息JSON失败，消息长度: {Length}, 消息前500字符: {Message}, 错误位置: {ErrorPosition}",
                 message.Length, truncatedMessage, ex.BytePositionInLine);
             return string.Empty;

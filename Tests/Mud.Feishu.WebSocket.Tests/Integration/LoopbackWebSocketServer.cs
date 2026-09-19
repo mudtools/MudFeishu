@@ -42,7 +42,13 @@ internal sealed class LoopbackWebSocketServer : IAsyncDisposable
         CloseImmediately = 1,
 
         /// <summary>接受连接后把一条文本消息拆成两个分片发送（用于验证分片重组）。</summary>
-        SendFragmentedText = 2
+        SendFragmentedText = 2,
+
+        /// <summary>
+        /// 接受连接后读到客户端的关闭帧但<b>不应答</b>关闭握手（保持 TCP 半开），
+        /// 用于验证客户端"服务端不应答关闭"时必须依靠超时 + Abort 收尾（P2-11）。
+        /// </summary>
+        IgnoreCloseHandshake = 3
     }
 
     private static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(10);
@@ -52,6 +58,12 @@ internal sealed class LoopbackWebSocketServer : IAsyncDisposable
     private readonly Task _acceptLoop;
     private readonly string _fragmentFirst;
     private readonly string _fragmentSecond;
+
+    // P2-14 集成断言用：捕获服务端收到的完整二进制帧（ACK 载荷）
+    private readonly object _receivedFramesLock = new();
+    private readonly List<byte[]> _receivedBinaryFrames = new();
+    private readonly TaskCompletionSource<byte[]> _binaryFrameReceived =
+        new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     private LoopbackWebSocketServer(int port, ServerMode mode, string fragmentFirst, string fragmentSecond)
     {
@@ -74,6 +86,25 @@ internal sealed class LoopbackWebSocketServer : IAsyncDisposable
 
     /// <summary>客户端连接地址（ws://，需在客户端开启 <c>AllowInsecureWebSocket</c>）。</summary>
     public string Url => $"ws://127.0.0.1:{Port}/ws/";
+
+    /// <summary>
+    /// 服务端已收到的完整二进制帧快照（P2-14 ACK 断言用；仅捕获单帧内完成的二进制消息）。
+    /// </summary>
+    public byte[][] ReceivedBinaryFrames
+    {
+        get
+        {
+            lock (_receivedFramesLock)
+            {
+                return _receivedBinaryFrames.ToArray();
+            }
+        }
+    }
+
+    /// <summary>
+    /// 等待服务端收到首个完整二进制帧（P2-14 ACK 断言用）。
+    /// </summary>
+    public Task<byte[]> BinaryFrameReceived => _binaryFrameReceived.Task;
 
     /// <summary>
     /// 启动一个回环服务端（自动挑选空闲端口，失败重试 3 次）。
@@ -165,6 +196,14 @@ internal sealed class LoopbackWebSocketServer : IAsyncDisposable
                     _cts.Token).ConfigureAwait(false);
             }
 
+            if (Mode == ServerMode.IgnoreCloseHandshake)
+            {
+                // P2-11：读到客户端的关闭帧后不应答（保持 TCP 半开），
+                // 迫使客户端的关闭握手只能依靠超时 + Abort 收尾。
+                await DrainUntilCloseFrameWithoutAckAsync(socket).ConfigureAwait(false);
+                return;
+            }
+
             await DrainUntilCloseAsync(socket).ConfigureAwait(false);
         }
         catch (Exception)
@@ -179,8 +218,9 @@ internal sealed class LoopbackWebSocketServer : IAsyncDisposable
 
     /// <summary>
     /// 读到关闭帧后完成关闭握手并退出（避免客户端 <c>CloseAsync</c> 等待对端关闭帧而超时）。
+    /// 期间收到的完整二进制帧会被记录（P2-14 ACK 断言用）。
     /// </summary>
-    private static async Task DrainUntilCloseAsync(WebSocket socket)
+    private async Task DrainUntilCloseAsync(WebSocket socket)
     {
         var buffer = new byte[4096];
 
@@ -191,6 +231,8 @@ internal sealed class LoopbackWebSocketServer : IAsyncDisposable
                 var result = await socket
                     .ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None)
                     .ConfigureAwait(false);
+
+                CaptureBinaryFrame(result, buffer);
 
                 if (result.MessageType == WebSocketMessageType.Close)
                 {
@@ -212,6 +254,60 @@ internal sealed class LoopbackWebSocketServer : IAsyncDisposable
         {
             // 对端断开，忽略
         }
+    }
+
+    /// <summary>
+    /// 读到关闭帧后<b>不应答</b>并挂起（P2-11：保持客户端的关闭握手悬挂，直到服务端释放）。
+    /// </summary>
+    private async Task DrainUntilCloseFrameWithoutAckAsync(WebSocket socket)
+    {
+        var buffer = new byte[4096];
+
+        try
+        {
+            while (socket.State == WebSocketState.Open)
+            {
+                var result = await socket
+                    .ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None)
+                    .ConfigureAwait(false);
+
+                if (result.MessageType == WebSocketMessageType.Close)
+                {
+                    // 不回发关闭帧：挂起直到服务端释放（测试结束 / 客户端 Abort），
+                    // 使客户端的 CloseAsync 始终等不到对端关闭帧。
+                    await Task.Delay(Timeout.Infinite, _cts.Token).ConfigureAwait(false);
+                    return;
+                }
+            }
+        }
+        catch (Exception)
+        {
+            // 对端断开（客户端 Abort）或服务端释放，忽略
+        }
+    }
+
+    /// <summary>
+    /// 记录单帧内完成的二进制消息（ACK 帧小于缓冲区，不会分片）。
+    /// </summary>
+    private void CaptureBinaryFrame(WebSocketReceiveResult result, byte[] buffer)
+    {
+        if (result.MessageType != WebSocketMessageType.Binary ||
+            !result.EndOfMessage ||
+            result.Count <= 0 ||
+            result.Count > buffer.Length)
+        {
+            return;
+        }
+
+        var captured = new byte[result.Count];
+        Array.Copy(buffer, captured, result.Count);
+
+        lock (_receivedFramesLock)
+        {
+            _receivedBinaryFrames.Add(captured);
+        }
+
+        _binaryFrameReceived.TrySetResult(captured);
     }
 
     /// <summary>

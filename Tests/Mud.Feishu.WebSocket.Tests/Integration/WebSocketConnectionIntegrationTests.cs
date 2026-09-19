@@ -10,9 +10,12 @@
 using System.Diagnostics;
 using System.Net.WebSockets;
 using System.Text;
+using System.Text.Json;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
+using Mud.Feishu.DataModels.WsEndpoint;
 using Mud.Feishu.WebSocket.SocketEventArgs;
+using ProtoBuf;
 
 namespace Mud.Feishu.WebSocket.Tests.Integration;
 
@@ -193,6 +196,88 @@ public class WebSocketConnectionIntegrationTests
         }
         finally
         {
+            await manager.DisposeAsync();
+        }
+    }
+
+    [Fact]
+    public async Task Dispose_ShouldCompleteWithinBound_WhenServerNeverAcksCloseHandshake()
+    {
+        // Arrange（P2-11）：服务端读到关闭帧后不应答（保持 TCP 半开），
+        // 客户端的关闭握手只能依靠超时 + Abort 收尾，不得留下悬挂的关闭任务。
+        await using var server = LoopbackWebSocketServer.Start(
+            LoopbackWebSocketServer.ServerMode.IgnoreCloseHandshake);
+        var manager = CreateManager();
+        await manager.ConnectAsync(server.Url);
+        manager.IsConnected.Should().BeTrue();
+
+        // Act：同步 Dispose（关闭握手将一直等不到服务端应答）
+        var stopwatch = Stopwatch.StartNew();
+        manager.Dispose();
+        stopwatch.Stop();
+
+        // Assert：CloseHandshakeTimeout=5s + Abort 兜底 → 必须在 10s 内确定性返回
+        stopwatch.Elapsed.Should().BeLessThan(TimeSpan.FromSeconds(10),
+            "关闭握手超时后必须 Abort 收尾，不得因服务端不应答而永久悬挂（P2-11）");
+        // 说明：ConnectionCount 的递减由接收循环驱动的 NotifyDisconnected 负责，
+        // 本用例未启动接收循环（P2-11 的契约是"超时+Abort 收尾、不留下未观察的关闭任务"），
+        // 断言以 IsConnected 收口。
+        manager.IsConnected.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task ProcessBinaryDataAsync_ShouldAckFailureOverWire_WhenSubscriberThrows()
+    {
+        // Arrange（P2-14）：BinaryMessageReceived 订阅者抛异常时仍必须回 ACK(500)——
+        // 订阅者首次抛出会把处理流程带入 catch 分支，错误通知路径若再次抛出（同一订阅者
+        // 必然再次抛出），异常会穿透并吞掉失败 ACK，退化为"服务端等超时后重投"。
+        await using var server = LoopbackWebSocketServer.Start(LoopbackWebSocketServer.ServerMode.Idle);
+        var manager = CreateManager();
+        var options = new FeishuWebSocketOptions { EnableLogging = false };
+        var router = new MessageRouter(NullLogger<MessageRouter>.Instance, options);
+        var processor = new BinaryMessageProcessor(
+            NullLogger<BinaryMessageProcessor>.Instance, manager, options, router);
+
+        try
+        {
+            await manager.ConnectAsync(server.Url);
+
+            processor.BinaryMessageReceived += (_, _) =>
+                throw new InvalidOperationException("订阅者处理失败");
+
+            var frame = new EventProtoData
+            {
+                Service = 1001,
+                Method = 1,
+                SeqID = 42,
+                PayloadType = "JSON",
+                Payload = Encoding.UTF8.GetBytes("{\"type\":\"test\"}")
+            };
+            using var stream = new MemoryStream();
+            Serializer.Serialize(stream, frame);
+            var data = stream.ToArray();
+
+            // Act：投递一条有效 DATA 帧（与真实接收循环相同的入口）
+            await processor.ProcessBinaryDataAsync(data, 0, data.Length, true, CancellationToken.None);
+
+            var ackWait = await Task.WhenAny(server.BinaryFrameReceived, Task.Delay(WaitTimeout));
+            ackWait.Should().BeSameAs(server.BinaryFrameReceived,
+                "订阅者抛异常时仍必须发出失败 ACK，否则服务端只能等超时后重投（P2-14）");
+            var ackBytes = await server.BinaryFrameReceived;
+
+            // Assert：反序列化 ACK 帧，code 必须为 500（触发服务端即时重投）
+            using var ackStream = new MemoryStream(ackBytes);
+            var ackFrame = Serializer.Deserialize<EventProtoData>(ackStream);
+            ackFrame.PayloadType.Should().Be("ack");
+            ackFrame.SeqID.Should().Be(42, "ACK 帧必须回带原帧的 SeqID");
+
+            using var doc = JsonDocument.Parse(Encoding.UTF8.GetString(ackFrame.Payload ?? Array.Empty<byte>()));
+            doc.RootElement.GetProperty("code").GetInt32().Should().Be(500,
+                "失败路径必须回 code=500 触发服务端重投，而不是静默丢弃");
+        }
+        finally
+        {
+            processor.Dispose();
             await manager.DisposeAsync();
         }
     }

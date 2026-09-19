@@ -160,4 +160,21 @@ public class BackpressureTests
         completed.Should().BeSameAs(task, "未注入并发服务时不得引入任何阻塞");
         await task;
     }
+
+    [Fact]
+    public async Task HandleReceivedMessageAsync_ShouldNotBlock_WhenMaxConcurrentHandlersIsZero()
+    {
+        // Arrange：MaxConcurrentHandlers = 0 表示"不限制并发"（信号量上界退化为 int.MaxValue），
+        // 接收路径不得被阻塞——与未注入并发服务的行为保持一致
+        var service = CreateConcurrencyService(maxConcurrent: 0);
+        var client = CreateClient(service);
+
+        // Act
+        var task = InvokeHandleReceivedMessageAsync(client, "{\"type\":\"event_callback\"}", CancellationToken.None);
+        var completed = await Task.WhenAny(task, Task.Delay(1000));
+
+        // Assert
+        completed.Should().BeSameAs(task, "MaxConcurrentHandlers=0 表示不限制并发，接收路径不得被阻塞");
+        await task;
+    }
 }

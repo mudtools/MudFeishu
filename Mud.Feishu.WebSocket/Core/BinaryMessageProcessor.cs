@@ -468,7 +468,8 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
                     if (_options.EnableLogging)
                         _logger.LogWarning("Frame 解析成功但 Payload 为空");
                     eventArgs.ParseError = "Frame 解析成功但 Payload 为空";
-                    BinaryMessageReceived?.Invoke(this, eventArgs);
+                    // P2-14 补充：与错误通知路径同理——此处订阅者异常不得阻断后续去重回滚与 ACK(false)。
+                    SafeInvokeBinaryMessageReceived(eventArgs, "Payload 为空通知路径");
 
                     if (_unifiedDeduplicationMiddleware != null && (!string.IsNullOrEmpty(extractedEventId) || (frame?.SeqID ?? 0) > 0))
                     {
@@ -516,7 +517,10 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
             {
                 _logger.LogError(ex, "处理完整二进制消息时发生错误");
                 eventArgs.ParseError = $"处理完整二进制消息时发生错误: {ex.Message}";
-                BinaryMessageReceived?.Invoke(this, eventArgs);
+                // P2-14 补充：错误通知必须隔离订阅者异常——首次抛出导致进入本 catch 的订阅者
+                // 在此必然再次抛出，若不隔离会穿透到外层 catch，导致下方 SeqID 回滚与 ACK(500)
+                // 永远执行不到（恰是 P2-14 要修复的"失败不回 ACK"的另一形态）。
+                SafeInvokeBinaryMessageReceived(eventArgs, "错误通知路径");
 
                 // 回滚 SeqID 去重状态，允许服务端重发时重新处理
                 if (markedSeqId.HasValue && _seqIdDeduplicator != null)
@@ -678,6 +682,32 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
         {
             _logger.LogError(x, "发送ACK消息时发生错误");
             OnError($"发送ACK消息时发生错误: {x.Message}", x.GetType().Name);
+        }
+    }
+
+    /// <summary>
+    /// 在失败路径上安全触发 <see cref="BinaryMessageReceived"/> 事件。
+    /// </summary>
+    /// <param name="eventArgs">二进制消息事件参数</param>
+    /// <param name="context">触发上下文（用于日志定位）</param>
+    /// <remarks>
+    /// P2-14 补充：失败路径上事件触发之后还必须执行去重回滚与 ACK(500)——订阅者抛出的异常
+    /// 若在此向上穿透，回滚与 ACK 将永远执行不到。对齐 WebSocketConnectionManager.SafeInvokeDisconnected
+    /// 的隔离模式：记录异常，不向上传播。
+    /// </remarks>
+    private void SafeInvokeBinaryMessageReceived(WebSocketBinaryMessageEventArgs eventArgs, string context)
+    {
+        var handler = BinaryMessageReceived;
+        if (handler == null)
+            return;
+
+        try
+        {
+            handler.Invoke(this, eventArgs);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "BinaryMessageReceived 事件处理器在{Context}上抛出异常（已隔离，不影响后续回滚与 ACK 派发）", context);
         }
     }
 

@@ -18,7 +18,13 @@ namespace Mud.Feishu.Abstractions.Configuration;
 /// 已从公共 API 移除；事件失败重试请使用 <c>FailedEventRetryOptions</c>。
 /// </para>
 /// <para>推荐配置入口：<c>FeishuDeduplication</c> 统一节（见 FeishuDeduplicationOptions）。</para>
+/// <para>
+/// <b>R5.2/X6</b>：本类型已标 <c>[Obsolete]</c>。作为「双读期回落基座」**保留不删除**——
+/// SDK 在未检测到 <c>FeishuDeduplication</c> 统一节时仍回退到本类型。
+/// 外部代码请改用 <c>FeishuDeduplication</c> 统一节。
+/// </para>
 /// </remarks>
+[Obsolete("请改用 FeishuDeduplication 统一配置节。本类型作为双读回落基座保留，将在下个 major 删除。")]
 public class DeduplicationOptions
 {
     /// <summary>

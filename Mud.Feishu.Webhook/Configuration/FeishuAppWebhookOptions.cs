@@ -19,9 +19,25 @@ namespace Mud.Feishu.Webhook.Configuration;
 public class FeishuAppWebhookOptions
 {
     /// <summary>
-    /// 应用键（用于标识应用）
+    /// 应用键（诊断用标识）。由 <c>Apps</c> 字典的键**强制派生**，面向宿主只读。
     /// </summary>
-    public string AppKey { get; set; } = string.Empty;
+    /// <remarks>
+    /// <para>
+    /// <b>R5.2/X8：不要再配置这个键，也不要用它做路由。</b>
+    /// </para>
+    /// <para>
+    /// 为什么改为只读：此前该属性仅在为空时回填（<c>if (string.IsNullOrEmpty(config.AppKey))</c>），
+    /// 因此配置值可与字典键**分叉**——而路由只认字典键，分叉会让诊断日志与校验错误消息报出
+    /// 与实际路由不一致的应用标识。现在 <see cref="FeishuWebhookOptions.Validate"/> 一律用字典键覆盖它。
+    /// </para>
+    /// <para>
+    /// 为什么用 <c>internal set</c> 而不是 <c>[Obsolete]</c>：<c>[Obsolete]</c> 只产生**警告**，而且对
+    /// <c>appsettings.json</c> 中的 <c>Apps:&lt;key&gt;:AppKey</c>（真正的误用入口）完全无效；
+    /// <c>internal set</c> 则让宿主程序集在**编译期**就无法赋值，语义也更诚实（派生值 != 可配置项）。
+    /// 与 R5.1 对 <c>FeishuDeduplicationOptions.IsConfiguredFromConfiguration</c> 的处置同构。
+    /// </para>
+    /// </remarks>
+    public string AppKey { get; internal set; } = string.Empty;
 
     /// <summary>
     /// 应用验证 Token
@@ -65,18 +81,13 @@ public class FeishuAppWebhookOptions
     public bool? EnableExceptionHandling { get; set; }
 
     /// <summary>
-    /// 是否启用性能监控，默认 null 表示继承全局配置
-    /// </summary>
-    public bool? EnablePerformanceMonitoring { get; set; }
-
-    /// <summary>
     /// 验证配置有效性
     /// </summary>
     /// <exception cref="InvalidOperationException">配置无效时抛出</exception>
     public void Validate()
     {
-        if (string.IsNullOrWhiteSpace(AppKey))
-            throw new InvalidOperationException("AppKey 不能为空");
+        // R5.2/X8：不再校验 AppKey —— 它是从 Apps 字典键派生的诊断字段（见 AppKey 的 remarks），
+        // 独立构造本对象时为空属正常；字典键的格式由 FeishuWebhookOptions.Validate 单独校验。
 
         if (string.IsNullOrWhiteSpace(VerificationToken))
             throw new InvalidOperationException("VerificationToken 不能为空");
@@ -125,14 +136,6 @@ public class FeishuAppWebhookOptions
     /// <returns>有效的异常处理配置</returns>
     public bool GetEffectiveEnableExceptionHandling(bool globalValue) =>
         EnableExceptionHandling ?? globalValue;
-
-    /// <summary>
-    /// 获取有效的性能监控配置（解析继承逻辑）
-    /// </summary>
-    /// <param name="globalValue">全局配置值</param>
-    /// <returns>有效的性能监控配置</returns>
-    public bool GetEffectiveEnablePerformanceMonitoring(bool globalValue) =>
-        EnablePerformanceMonitoring ?? globalValue;
 
     /// <summary>
     /// 获取有效的请求头签名验证配置（解析继承逻辑）

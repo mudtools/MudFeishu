@@ -33,6 +33,79 @@ public class FeishuWebhookOptionsValidatorTests
         return new FeishuWebhookOptionsValidator(environmentMock.Object);
     }
 
+    // ────────────────────────────────────────────────────────────────────
+    // R5.2/X8：应用级校验的「接线」断言。
+    // 此前 FeishuAppWebhookOptions.Validate() 在生产代码中**零调用**，导致下列两条
+    // 文档化不变量从未生效；现在 FeishuWebhookOptions.Validate() 会逐应用调用它。
+    // ────────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void Validate_ShouldFail_WhenAppLevelTimestampToleranceExceedsReplayWindowCap()
+    {
+        // Arrange - WHF-03：应用级正整数同样受重放窗口上限（≤300 秒）约束
+        var options = CreateValidOptions(o =>
+        {
+            o.Apps["app-a"] = new FeishuAppWebhookOptions
+            {
+                VerificationToken = "token_a",
+                EncryptKey = "12345678901234567890123456789012",
+                TimestampToleranceSeconds = FeishuWebhookOptions.MaxTimestampToleranceSeconds + 1
+            };
+        });
+        var validator = CreateValidator(isProduction: false);
+
+        // Act
+        var result = validator.Validate(null, options);
+
+        // Assert
+        Assert.True(result.Failed, "应用级时间戳容差必须在启动期被拒绝，而不是运行期无声放行");
+        Assert.Contains("TimestampToleranceSeconds", result.FailureMessage);
+    }
+
+    [Fact]
+    public void Validate_ShouldFail_WhenAppLevelEventHandlingTimeoutIsBelowMinimum()
+    {
+        // Arrange - 应用级正整数但 < 1000ms（0/-1 表示继承全局，属合法）
+        var options = CreateValidOptions(o =>
+        {
+            o.Apps["app-a"] = new FeishuAppWebhookOptions
+            {
+                VerificationToken = "token_a",
+                EncryptKey = "12345678901234567890123456789012",
+                EventHandlingTimeoutMs = 500
+            };
+        });
+        var validator = CreateValidator(isProduction: false);
+
+        // Act
+        var result = validator.Validate(null, options);
+
+        // Assert
+        Assert.True(result.Failed);
+        Assert.Contains("EventHandlingTimeoutMs", result.FailureMessage);
+    }
+
+    [Fact]
+    public void Validate_ShouldDeriveAppKeyFromDictionaryKey_IgnoringConfiguredValue()
+    {
+        // Arrange - R5.2/X8：AppKey 一律由 Apps 字典键派生（路由只认字典键，配置值不得使其分叉）
+        var options = CreateValidOptions(o =>
+        {
+            o.Apps["app-a"] = new FeishuAppWebhookOptions
+            {
+                AppKey = "diverged-value",
+                VerificationToken = "token_a",
+                EncryptKey = "12345678901234567890123456789012"
+            };
+        });
+
+        // Act
+        options.Validate();
+
+        // Assert
+        Assert.Equal("app-a", options.Apps["app-a"].AppKey);
+    }
+
     [Fact]
     public void Validate_ShouldFail_WhenAppLevelEnforceHeaderSignatureValidationFalseInProduction()
     {

@@ -122,7 +122,6 @@ app.Run();
     "EnableExceptionHandling": true,
     "EventHandlingTimeoutMs": 30000,
     "MaxConcurrentEvents": 10,
-    "EnablePerformanceMonitoring": false,
     "AllowedHttpMethods": ["POST"],
     "MaxRequestBodySize": 10485760,
     "AllowedSourceIPs": [],
@@ -404,12 +403,10 @@ public class DemoDepartmentEventHandler : DepartmentCreatedEventHandler
 | `Apps.{AppKey}.AppKey`                           | string                                        | -      | 应用键（用于标识应用，仅允许字母、数字、下划线和连字符） |
 | `Apps.{AppKey}.VerificationToken`                | string                                        | -      | 应用验证 Token                                           |
 | `Apps.{AppKey}.EncryptKey`                       | string                                        | -      | 应用加密 Key（32字节）                                   |
-| `Apps.{AppKey}.Description`                      | string?                                       | null   | 应用描述（可选）                                         |
 | `Apps.{AppKey}.TimestampToleranceSeconds`        | int                                           | -1     | 时间戳容差（-1 继承全局）                                |
 | `Apps.{AppKey}.EventHandlingTimeoutMs`           | int                                           | -1     | 事件处理超时（-1 继承全局）                              |
 | `Apps.{AppKey}.EnforceHeaderSignatureValidation` | bool?                                         | null   | 是否强制签名验证（null 继承全局）                        |
 | `Apps.{AppKey}.EnableExceptionHandling`          | bool?                                         | null   | 是否启用异常处理（null 继承全局）                        |
-| `Apps.{AppKey}.EnablePerformanceMonitoring`      | bool?                                         | null   | 是否启用性能监控（null 继承全局）                        |
 
 ### 安全配置
 
@@ -434,7 +431,6 @@ public class DemoDepartmentEventHandler : DepartmentCreatedEventHandler
 | ----------------------------- | ---- | ------ | ------------------------------------------------------ |
 | `MaxConcurrentEvents`         | int  | 10     | 最大并发事件数，支持热更新                             |
 | `EventHandlingTimeoutMs`      | int  | 30000  | 事件处理超时时间（毫秒）                               |
-| `EnablePerformanceMonitoring` | bool | false  | 是否启用性能监控                                       |
 | `EnableTokenBackgroundRefresh`  | bool? | null   | 令牌后台刷新显式覆盖（null=不干预基座；R4 已移除 EnableBackgroundProcessing） |
 
 ### 日志配置
@@ -870,7 +866,6 @@ builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
 | `TimestampToleranceSeconds`        | 设置为 -1 或 0 时继承全局配置，正整数使用应用级配置 |
 | `EventHandlingTimeoutMs`           | 设置为 -1 或 0 时继承全局配置，正整数使用应用级配置 |
 | `EnableExceptionHandling`          | 设置为 null 时继承全局配置，否则使用应用级配置      |
-| `EnablePerformanceMonitoring`      | 设置为 null 时继承全局配置，否则使用应用级配置      |
 | `EnforceHeaderSignatureValidation` | 设置为 null 时继承全局配置，否则使用应用级配置      |
 
 示例：
@@ -1283,10 +1278,9 @@ app.MapDiagnostics();          // 诊断端点
 builder.Logging.AddConsole();
 builder.Logging.SetMinimumLevel(LogLevel.Debug);
 
-// 启用性能监控（日志级别另由 Logging:LogLevel:Mud.Feishu.Webhook 控制）
+// 事件处理耗时日志以 Debug 级别无条件输出：把 Logging:LogLevel:Mud.Feishu.Webhook 设为 Debug 即可获得
 builder.Services.CreateFeishuWebhookServiceBuilder(options =>
 {
-    options.EnablePerformanceMonitoring = true;
     options.RateLimit.EnableRateLimit = true; // 启用限流调试
 }).AddHandler<MessageEventHandler>()
     .Build();
@@ -1440,7 +1434,6 @@ builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
 | `MaxConcurrentEvents`              | `10`       | 最大并发事件数，支持热更新             |
 | `EventHandlingTimeoutMs`           | `30000`    | 事件处理超时（毫秒）                   |
 | `EnableTokenBackgroundRefresh`       | `null`    | 令牌后台刷新覆盖（null=不干预） |
-| `EnablePerformanceMonitoring`      | `false`    | 性能监控                               |
 | `EnforceHeaderSignatureValidation` | `true`     | 强制签名验证（生产环境必须启用）       |
 | `TimestampToleranceSeconds`        | `30`       | 时间戳容错范围（秒）                   |
 

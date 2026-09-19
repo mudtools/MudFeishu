@@ -381,7 +381,7 @@ public class FeishuMultiAppMiddleware : IDisposable
             // 检查是否为加密验证请求
             if (decryptedData.EventType == "url_verification")
             {
-                await HandleEncryptedVerificationAsync(context, decryptedData, appConfig, requestId);
+                await HandleEncryptedVerificationAsync(context, decryptedData, appConfig, appKey, requestId);
                 return;
             }
 
@@ -434,10 +434,15 @@ public class FeishuMultiAppMiddleware : IDisposable
     /// 处理加密的 URL 验证请求
     /// 验证解密后数据中的 token 字段，确保请求来源合法
     /// </summary>
+    /// <param name="appKey">
+    /// 路由得到的应用键（R5.2/X8：日志统一使用路由键，不再读 <c>appConfig.AppKey</c> 这一派生诊断字段——
+    /// 路由只认字典键，直接用它可避免两者分叉时的误导性日志）。
+    /// </param>
     private async Task HandleEncryptedVerificationAsync(
         HttpContext context,
         EventData decryptedData,
         FeishuAppWebhookOptions appConfig,
+        string appKey,
         string requestId)
     {
         string? challenge = null;
@@ -477,7 +482,7 @@ public class FeishuMultiAppMiddleware : IDisposable
 
         if (string.IsNullOrEmpty(appConfig.VerificationToken))
         {
-            _logger.LogWarning("应用未配置 VerificationToken，拒绝加密验证请求（安全边界），AppKey: {AppKey}", appConfig.AppKey);
+            _logger.LogWarning("应用未配置 VerificationToken，拒绝加密验证请求（安全边界），AppKey: {AppKey}", appKey);
             await WriteErrorResponse(context, 403, "Forbidden: VerificationToken not configured", requestId);
             return;
         }
@@ -489,7 +494,7 @@ public class FeishuMultiAppMiddleware : IDisposable
         {
             var actualTokenPrefix = token?.Length > 4 ? token.Substring(0, 4) + "***" : "***";
             _logger.LogWarning("加密验证请求 Token 不匹配: 实际 {ActualToken}, AppKey: {AppKey}",
-                actualTokenPrefix, appConfig.AppKey);
+                actualTokenPrefix, appKey);
             await WriteErrorResponse(context, 403, "Forbidden: Token mismatch", requestId);
             return;
         }

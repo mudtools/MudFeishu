@@ -8,6 +8,7 @@
 using System.Reflection;
 using FluentAssertions;
 using Microsoft.Extensions.Configuration;
+using Mud.Feishu.Abstractions.Configuration;
 using Mud.Feishu.Webhook.Configuration;
 
 namespace Mud.Feishu.Webhook.Tests.ContractGuards;
@@ -46,6 +47,8 @@ public class ConfigSurfaceContractGuards
     [Theory]
     [InlineData(typeof(FeishuWebhookOptions), "EnableRequestLogging")] // audit-allow: guard must name the removed property
     [InlineData(typeof(FeishuAppWebhookOptions), "Description")] // audit-allow: guard must name the removed property
+    [InlineData(typeof(FeishuWebhookOptions), "EnablePerformanceMonitoring")] // audit-allow: guard must name the removed property
+    [InlineData(typeof(FeishuAppWebhookOptions), "EnablePerformanceMonitoring")] // audit-allow: guard must name the removed property
     public void ConfigType_ShouldNotDeclare_RemovedDeadSwitch(Type type, string propertyName)
     {
         type.GetProperty(propertyName, BindingFlags.Public | BindingFlags.Instance)
@@ -101,8 +104,43 @@ public class ConfigSurfaceContractGuards
 
         options.AutoRegisterEndpoint.Should().BeFalse();
         options.LegacyGlobalTimeoutOnly.Should().BeTrue();
-        options.GetAppConfig("default")!.AppKey.Should().Be("legacy-app-key");
 #pragma warning restore CS0618
+
+        // R5.2/X8：AppKey 对宿主只读（internal set），JSON 里的该键**不再被绑定**——
+        // 这是刻意的：路由只认 Apps 字典键，允许配置值写入会让诊断标识与实际路由分叉。
+        options.GetAppConfig("default")!.AppKey.Should().BeEmpty(
+            "配置 JSON 中的 Apps:{key}:AppKey 不得写入派生字段（宿主已无公开 setter）");
+
+        // 派生逻辑：Validate 一律用字典键覆盖。
+        options.Validate();
+        options.GetAppConfig("default")!.AppKey.Should().Be(
+            "default",
+            "AppKey 必须由 Apps 字典键派生，否则诊断信息会与实际路由不一致");
+    }
+
+    // ────────────────────────────────────────────────────────────────────
+    // 守卫 2b：派生/内部状态字段不得对外可写（R5.2/X8，与 X11 同构）
+    // ────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// <see cref="FeishuAppWebhookOptions.AppKey"/> 必须「外读内写」。
+    /// </summary>
+    /// <remarks>
+    /// 为什么不用 <c>[Obsolete]</c>：Obsolete 只产生**警告**，而且对真正的误用入口
+    /// （<c>appsettings.json</c> 的 <c>Apps:&lt;key&gt;:AppKey</c>）完全无效；
+    /// <c>internal set</c> 则让宿主程序集在编译期无法赋值。
+    /// </remarks>
+    [Fact]
+    public void AppKey_ShouldBeReadOnlyOutsideTheAssembly()
+    {
+        var property = typeof(FeishuAppWebhookOptions)
+            .GetProperty(nameof(FeishuAppWebhookOptions.AppKey));
+
+        property.Should().NotBeNull();
+        property!.GetSetMethod(nonPublic: false).Should().BeNull(
+            "该字段由 Apps 字典键派生，宿主赋值会让诊断标识与实际路由分叉；必须为 internal set");
+        property.GetSetMethod(nonPublic: true).Should().NotBeNull(
+            "SDK（同程序集，FeishuWebhookOptions.Validate）仍需写入该派生值");
     }
 
     // ────────────────────────────────────────────────────────────────────
@@ -114,11 +152,14 @@ public class ConfigSurfaceContractGuards
     /// （移除等于把「一个 minor 的过渡期」变成无预告的 breaking）。
     /// </summary>
     [Theory]
-    [InlineData(typeof(FeishuWebhookOptions), "AutoRegisterEndpoint")]
-    [InlineData(typeof(FeishuWebhookOptions), "LegacyGlobalTimeoutOnly")]
-    public void PlannedObsoleteMembers_ShouldKeepObsoleteAttribute(Type type, string memberName)
+    [InlineData(typeof(FeishuWebhookOptions), "AutoRegisterEndpoint", null)]
+    [InlineData(typeof(FeishuWebhookOptions), "LegacyGlobalTimeoutOnly", null)]
+    [InlineData(typeof(DeduplicationOptions), null, "class")]
+    public void PlannedObsoleteMembers_ShouldKeepObsoleteAttribute(Type type, string? memberName, string? kind)
     {
-        var member = (MemberInfo?)type.GetProperty(memberName) ?? type.GetMethod(memberName);
+        MemberInfo? member = kind == "class"
+            ? type  // 类级 [Obsolete] → 检查 Type 本身
+            : (MemberInfo?)type.GetProperty(memberName!) ?? type.GetMethod(memberName!);
 
         if (member is null)
         {
@@ -126,7 +167,7 @@ public class ConfigSurfaceContractGuards
         }
 
         member.GetCustomAttribute<ObsoleteAttribute>().Should().NotBeNull(
-            $"{type.Name}.{memberName} 属 R5 判定「无运行时效果 / 过渡开关」的成员——" +
+            $"{type.Name}.{memberName ?? "<class>"} 属 R5 判定「无运行时效果 / 过渡开关 / 双读回落基座」的成员——" +
             "一旦进入 Obsolete 过渡期，不得在删除前擅自移除 Obsolete 标记。");
     }
 }

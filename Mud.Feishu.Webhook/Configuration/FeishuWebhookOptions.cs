@@ -78,11 +78,6 @@ public class FeishuWebhookOptions
     public int MaxConcurrentEvents { get; set; } = 10;
 
     /// <summary>
-    /// 是否启用事件处理性能监控
-    /// </summary>
-    public bool EnablePerformanceMonitoring { get; set; } = false;
-
-    /// <summary>
     /// 支持的 HTTP 方法
     /// </summary>
     public HashSet<string> AllowedHttpMethods { get; set; } = ["POST"];
@@ -243,8 +238,9 @@ public class FeishuWebhookOptions
 
             var config = appConfig.Value;
 
-            if (string.IsNullOrEmpty(config.AppKey))
-                config.AppKey = appKey;
+            // R5.2/X8：AppKey 一律由字典键**强制派生**（此前仅在为空时回填，允许配置值与其分叉，
+            // 而路由只认字典键 → 诊断信息与实际路由不一致）。属性对宿主只读（internal set）。
+            config.AppKey = appKey;
 
             if (string.IsNullOrEmpty(config.EncryptKey))
                 throw new InvalidOperationException($"应用 {appKey} 的 EncryptKey 不能为空");
@@ -254,6 +250,13 @@ public class FeishuWebhookOptions
 
             if (config.EncryptKey.Length != 32)
                 throw new InvalidOperationException($"应用 {appKey} 的 EncryptKey 长度必须为 32 字符");
+
+            // R5.2/X8：接线应用级校验。
+            // 此前 FeishuAppWebhookOptions.Validate() 在生产代码中**零调用**（仅测试调用），
+            // 于是 WHF-03 声明的「应用级 TimestampToleranceSeconds ≤ 300 秒」与
+            // 「应用级 EventHandlingTimeoutMs ≥ 1000ms」两个约束**从未真正生效**。
+            // 必须放在上面的 EncryptKey 回填/派生之后：Validate 读的是派生后的最终值。
+            config.Validate();
         }
     }
 

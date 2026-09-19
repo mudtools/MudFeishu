@@ -23,8 +23,8 @@
 | `FeishuWebhook:Retry:RetryPollIntervalSeconds` | 恒为 30 | 生效 | 轮询频率会变 |
 | `FeishuWebhook:Retry:MaxRetryPerPoll` | 恒为 10 | 生效 | 单轮处理量会变 |
 | `FeishuWebhook:Retry:EnableRetry` | 生效（唯一生效项） | 生效（不变） | — |
-| `FeishuWebSocket:Certificate:Mode=Dev` | **无运行时效果** | 生效：放行「自签名根」与「名称不匹配」 | **安全面放宽**——确认仅用于开发/测试环境；生产请保持 `Strict` |
-| `FeishuWebSocket:Certificate:ValidateServerCertificate=false` | 完全关闭校验 | 完全关闭校验（**不变**，且优先于 `Mode=Dev`） | — |
+| `FeishuWebSocket:Certificate:Mode=Dev` | **无运行时效果** | 生效：放行「自签名根」与「名称不匹配」 | **安全面放宽**——确认仅用于开发/测试环境；生产请保持 `Strict`。**R5.2.7 生产加固**：生产环境（`IHostEnvironment` 或 `DOTNET_ENVIRONMENT`/`ASPNETCORE_ENVIRONMENT`，缺省按 Production）下该旁路输出 `LogError`（不阻断启动，major 再评估是否 Validate 失败） |
+| `FeishuWebSocket:Certificate:ValidateServerCertificate=false` | 完全关闭校验 | 完全关闭校验（**不变**，且优先于 `Mode=Dev`） | — 。**R5.2.7 生产加固**：生产环境输出 `LogError` |
 | `FeishuWebSocket:Certificate:CustomCallback`（代码配置，`Mode` 未设为 `Custom`） | 使用该回调 | 使用该回调 + `Warning` | 建议显式设置 `Mode=Custom` 消除歧义 |
 | `FeishuApps:{n}:TimeOut` 等旧扁平键 | 启动时回填 | 启动**与热更**均回填 | 无需处理；此前首次热更会回退默认值 |
 | `FeishuDeduplicationOptions.IsConfiguredFromConfiguration`（代码赋值） | 可写 | **不可写**（`internal set`） | 删除该赋值——它本就不该由宿主控制，且可伪造「新节有效」 |
@@ -63,7 +63,7 @@
 | `RateLimitOptions.TooManyRequestsStatusCode` / `TooManyRequestsMessage` | 改为 `internal const` + 固定文案 | **保留公开**，仅补文档 | 二者在 `FeishuRateLimitMiddleware` 中**真实生效**（拼消息 / 写状态码），是可用能力；改 `const` 属功能删减，破坏为正、收益为零 |
 | `FeishuWebSocketOptions.EnableReconnectMetrics` | 并入「诊断开关清理」 | **保持现状** | 它不是日志开关：`false` 会把 `ReconnectState.TotalReconnectCount` 恒置 0，属公共契约可见值 |
 | `FeishuAppConfig.TimeoutSeconds` → 增补 `TimeoutMs` 别名 | 统一为毫秒后缀 | **不改** | 会让同一 `FeishuApps` 元素内并存「秒语义」与「毫秒语义」两个键，人工换算事故高发；单位变更应作为独立 major 立项 |
-| `DeduplicationOptions` / `EventDeduplicationOptions` | R5 删除 | **保留**（R5.2 仅标 Obsolete） | 它们是双读期回落基座，`FeishuEventDeduplicator` 的构造重载与 Redis 回落链仍依赖 |
+| `DeduplicationOptions` / `EventDeduplicationOptions` | R5 删除 | **已完成 `[Obsolete]` 标注（R5.2.6）**，类与双读回落链保留至下个 major | 它们是双读期回落基座，`FeishuEventDeduplicator` 的构造重载与 Redis 回落链仍依赖；标注 `[Obsolete]` 后编译器自动在消费方产生 `CS0618` 提示 |
 | `FeishuAppOptions` 注册 `IOptionsChangeTokenSource` | 「与 `TokenRecoveryOptions` 同形」注册 | **不注册** | 全仓库无 `IOptionsMonitor<FeishuAppOptions>` 消费方（消费方一律用 `IOptions<>`，其 `OptionsManager` 自带私有缓存、不观察变更令牌）；注册只会把「启动快照」伪装成「可热更」 |
 
 ## 6. 升级自检清单

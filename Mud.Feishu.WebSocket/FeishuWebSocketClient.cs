@@ -124,6 +124,7 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
     /// <param name="concurrencyService">并发控制服务（可选，WS-03 修复引入）</param>
     /// <param name="optionsMonitor">WebSocket 配置选项监控器（可选，F4 修复引入，支持热更新）</param>
     /// <param name="unifiedDedupMiddleware">统一去重中间件（可选，F7 修复引入）</param>
+    /// <param name="hostEnvironment">宿主环境（可选，R5.2.7/X5 生产加固引入）。由 DI 自动解析；用于在生产环境把证书安全旁路告警升级为 LogError</param>
     /// <remarks>
     /// F4 修复：优先使用 <paramref name="optionsMonitor"/>；为兼容存量调用方，
     /// 当其为 null 时回退到 <paramref name="options"/> 快照。
@@ -146,7 +147,8 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
         MessageSequenceValidator? sequenceValidator = null,
         FeishuWebSocketConcurrencyService? concurrencyService = null,
         IOptionsMonitor<FeishuWebSocketOptions>? optionsMonitor = null,
-        IUnifiedDeduplicationMiddleware? unifiedDedupMiddleware = null)
+        IUnifiedDeduplicationMiddleware? unifiedDedupMiddleware = null,
+        Microsoft.Extensions.Hosting.IHostEnvironment? hostEnvironment = null)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _eventHandlerFactory = eventHandlerFactory ?? throw new ArgumentNullException(nameof(eventHandlerFactory));
@@ -211,7 +213,7 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
             handler?.Invoke(this, e);
         };
         // 初始化组件
-        _connectionManager = new WebSocketConnectionManager(_loggerFactory.CreateLogger<WebSocketConnectionManager>(), _options, _loggerFactory);
+        _connectionManager = new WebSocketConnectionManager(_loggerFactory.CreateLogger<WebSocketConnectionManager>(), _options, _loggerFactory, hostEnvironment);
         _authManager = new AuthenticationManager(_loggerFactory.CreateLogger<AuthenticationManager>(), _options, (message) => SendMessageAsync(message), _sessionManager);
         _messageRouter = new MessageRouter(_loggerFactory.CreateLogger<MessageRouter>(), _options);
         _binaryProcessor = new BinaryMessageProcessor(_loggerFactory.CreateLogger<BinaryMessageProcessor>(), _connectionManager, _options, _messageRouter, _seqIdDeduplicator, _sequenceValidator);

@@ -42,6 +42,14 @@
 （前者无运行时效果且属 X4，后者是 B1 的过渡闸且属 X9）。二者**仍可正常绑定**——Obsolete 只是下线预告，
 不得顺带切断 appsettings 兼容；`AutoRegisterEndpoint=false` 时启动期会输出一次 Warning 说明其无效果。
 
+### R5.2 — 收敛过渡（**非 breaking，Obsolete 预告**）
+
+| 变更 | 类型 | 说明 |
+| ---- | ---- | ---- |
+| `FeishuWebhookOptions.AppKey` 标 `[Obsolete]` | Obsolete 预告 | 由 `Apps` 字典键自动回填，无需显式设置；编译器产生 `CS0618`，双读期保持回填行为不变 |
+| `DeduplicationOptions` / `EventDeduplicationOptions` 标 `[Obsolete]` | Obsolete 预告 | 二者是双读期回落基座（`FeishuRedis:Deduplication:*` / `FeishuWebSocket:EventDeduplication:*` 的绑定目标）；标记后编译器在消费方产生 `CS0618`，运行时行为完全不变；下个 major 删除时由 `FeishuDeduplication` 新节完全接管 |
+| 证书安全旁路生产加固（R5.2.7/X5） | 行为增强（仅日志级别） | 生产环境（`IHostEnvironment` 判定；未注入时回退 `DOTNET_ENVIRONMENT`/`ASPNETCORE_ENVIRONMENT`，缺省按 Production）下，`Certificate:Mode=Dev` 与 `Certificate:ValidateServerCertificate=false` 的告警由 `Warning` 升级为 `Error`（**不阻断启动**；major 再评估是否 Validate 失败）。非生产行为不变 |
+
 ## R4（**breaking / major**）
 
 ### 删除的公共 API（代码与 appsettings 均需迁移）

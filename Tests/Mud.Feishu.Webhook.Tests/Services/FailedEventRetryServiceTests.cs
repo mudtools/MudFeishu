@@ -430,7 +430,7 @@ public class FailedEventRetryServiceTests
         // Arrange - P2-8/M3-3：失败事件重放必须保留 v2.0 Header（schema/app_id/tenant_key 等），
         // 否则重试路径下的行为与首次投递不一致（如 IdempotentFeishuEventHandler<T,THeader>
         // 的强类型 Header 注入、依赖 header.app_id 做的多租户判断会静默退化）。
-        var optionsMock = Options.Create(_options);
+        var optionsMock = CreateWebhookOptionsMonitor(_options);
         var eventStoreMock = new Mock<IFailedEventStore>();
 
         var header = new Mud.Feishu.Abstractions.FeishuEventHeader
@@ -492,7 +492,7 @@ public class FailedEventRetryServiceTests
     public async Task ExecuteAsync_ShouldNotBlockRetry_WhenSerializedHeaderIsCorrupted()
     {
         // Arrange - P2-8 健壮性：Header 反序列化失败只告警、不得阻断重试（Header 置空继续处理）
-        var optionsMock = Options.Create(_options);
+        var optionsMock = CreateWebhookOptionsMonitor(_options);
         var eventStoreMock = new Mock<IFailedEventStore>();
 
         var failedEvent = new FailedEventInfo

@@ -305,7 +305,6 @@ R4 起，`FeishuAppConfig` 与 `FeishuWebSocketOptions` 上的 `EnableLogging` �
 | `EnforceHeaderSignatureValidation` | bool                  | true   | 是否强制验证 X-Lark-Signature 请求头签名（生产环境必须启用） |
 | `TimestampToleranceSeconds`        | int                   | 30     | 时间戳容差（秒），超过此时间视为无效请求                     |
 | `MaxConcurrentEvents`              | int                   | 10     | 最大并发事件处理数                                           |
-| `EnablePerformanceMonitoring`      | bool                  | false  | 是否输出事件处理耗时日志（`Information`；开关默认关闭）      |
 | `MaxRequestBodySize`               | long                  | 10MB   | 最大请求体大小（字节）                                       |
 | `EventHandlingTimeoutMs`           | int                   | 30000  | 事件处理超时时间（毫秒）                                     |
 | `EnableTokenBackgroundRefresh`     | bool?                 | null   | 是否覆盖基座令牌后台刷新（null=不干预；替代已移除的 `EnableBackgroundProcessing`） |
@@ -464,12 +463,10 @@ builder.Services.AddFeishuUserContext(options =>
 | `AppKey`                           | string | 必填   | 飞书应用 AppId（如 `cli_xxx`）                                          |
 | `VerificationToken`                | string | 必填   | 应用事件订阅 Verification Token                                         |
 | `EncryptKey`                       | string | 必填   | 事件加密 Key（长度必须为 32 字符）                                      |
-| `Description`                      | string | null   | 应用描述（可选）                                                        |
 | `TimestampToleranceSeconds`        | int?   | null   | 时间戳容差（秒）。`null`/`-1`/`0` 继承全局，正整数覆盖全局              |
 | `EventHandlingTimeoutMs`           | int?   | null   | 事件处理超时（毫秒）。`null`/`-1`/`0` 继承全局，正整数（≥1000）覆盖全局 |
 | `EnforceHeaderSignatureValidation` | bool?  | null   | 是否强制验证请求头签名。`null` 继承全局                                 |
 | `EnableExceptionHandling`          | bool?  | null   | 是否启用异常捕获。`null` 继承全局                                       |
-| `EnablePerformanceMonitoring`      | bool?  | null   | 是否启用性能监控。`null` 继承全局                                       |
 
 **配置示例：**
 

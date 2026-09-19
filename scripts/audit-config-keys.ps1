@@ -35,10 +35,13 @@ $repoRoot = Split-Path -Parent $PSScriptRoot
 # Append the pattern for a key in the SAME phase that removes the key, so the gate never
 # fails on a still-supported configuration surface.
 #   R5.0: EnableRequestLogging (X2) + the 3 unused dedup Consts (X14)
-#   R5.1: 'IOptions<FailedEventRetryOptions>' (X3)
-#   R5.2: '\.AutoRegisterEndpoint\s*=', 'EnablePerformanceMonitoring' (X4 / X10)
+#   R5.1: 'IOptions<FailedEventRetryOptions>' (X3)  -- not added: the obsolete-bound phrase is still
+#         legitimate in migration docs; enforce via ContractGuards reflection instead.
+#   R5.2: 'EnablePerformanceMonitoring' (X10), '\.AutoRegisterEndpoint\s*=' (X4)
 $strictPatterns = @(
     'EnableRequestLogging',
+    'EnablePerformanceMonitoring',
+    '\.AutoRegisterEndpoint\s*=',
     'DefaultDeduplicationRetryCount',
     'DefaultDeduplicationInitialRetryDelayMs',
     'DefaultDeduplicationMaxRetryDelayMs'

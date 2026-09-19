@@ -35,6 +35,8 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
     private int _connectionCount = 0;
     private readonly ILogger<WebSocketConnectionManager> _logger;
     private readonly FeishuWebSocketOptions _options;
+    // R5.2.7/X5：生产环境判定 — 用于把证书安全旁路（Mode=Dev / ValidateServerCertificate=false）的告警升级为 LogError
+    private readonly bool _isProduction;
     private readonly SemaphoreSlim _connectionLock = new(1, 1);
     private readonly SemaphoreSlim _sendLock = new(1, 1);
     private ClientWebSocket? _webSocket;
@@ -102,15 +104,55 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
     /// <param name="options">WebSocket配置选项，如果为null则使用默认配置</param>
     /// <param name="loggerFactory">日志工厂，用于创建ErrorRecoveryStrategy的日志记录器</param>
     /// <exception cref="ArgumentNullException">当logger为null时抛出</exception>
+    /// <remarks>
+    /// 保留 3 参构造重载（委托到 4 参版本，宿主环境传 null）：
+    /// Castle/Moq 代理不支持「可选参数为非简单类型」的构造函数（ProxyGeneration 会以
+    /// <c>Can not instantiate proxy</c> 失败），故不能用 <c>= null</c> 默认值形态。
+    /// </remarks>
     public WebSocketConnectionManager(
         ILogger<WebSocketConnectionManager> logger,
         FeishuWebSocketOptions options,
         ILoggerFactory loggerFactory)
+        : this(logger, options, loggerFactory, null)
+    {
+    }
+
+    /// <summary>
+    /// 初始化WebSocket连接管理器实例（R5.2.7/X5：支持注入宿主环境用于生产加固判定）
+    /// </summary>
+    /// <param name="logger">日志记录器实例</param>
+    /// <param name="options">WebSocket配置选项，如果为null则使用默认配置</param>
+    /// <param name="loggerFactory">日志工厂，用于创建ErrorRecoveryStrategy的日志记录器</param>
+    /// <param name="hostEnvironment">宿主环境（可选）。提供时以其 EnvironmentName 是否为 Production 判定；缺省时回退读取 <c>DOTNET_ENVIRONMENT</c>/<c>ASPNETCORE_ENVIRONMENT</c>（均未设置按 Production 处理，与 Webhook 侧 <c>EnvironmentService</c> 语义一致）</param>
+    /// <exception cref="ArgumentNullException">当logger为null时抛出</exception>
+    public WebSocketConnectionManager(
+        ILogger<WebSocketConnectionManager> logger,
+        FeishuWebSocketOptions options,
+        ILoggerFactory loggerFactory,
+        Microsoft.Extensions.Hosting.IHostEnvironment? hostEnvironment)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _options = options ?? new FeishuWebSocketOptions();
         _loggerFactory = loggerFactory ?? Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance;
         _errorRecoveryStrategy = new ErrorRecoveryStrategy(_loggerFactory.CreateLogger<ErrorRecoveryStrategy>());
+        _isProduction = ResolveIsProduction(hostEnvironment);
+    }
+
+    /// <summary>
+    /// R5.2.7/X5：解析「是否生产环境」。
+    /// 优先使用宿主注入的 <see cref="Microsoft.Extensions.Hosting.IHostEnvironment"/>；
+    /// 否则回退环境变量（DOTNET_ENVIRONMENT > ASPNETCORE_ENVIRONMENT > Production），
+    /// 与 Webhook 侧 ADR-4 的 <c>EnvironmentService</c> 保持「缺省即 Production」的安全默认。
+    /// </summary>
+    private static bool ResolveIsProduction(Microsoft.Extensions.Hosting.IHostEnvironment? hostEnvironment)
+    {
+        if (hostEnvironment is not null)
+            return string.Equals(hostEnvironment.EnvironmentName, "Production", StringComparison.OrdinalIgnoreCase);
+
+        var env = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT")
+            ?? Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")
+            ?? "Production";
+        return string.Equals(env, "Production", StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>
@@ -879,8 +921,11 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
                 {
                     // 完全关闭校验的能力优先于 Mode=Dev（保持与改造前一致的安全能力可见性）
                     webSocket.Options.RemoteCertificateValidationCallback = (_, _, _, _) => true;
-                    _logger.LogWarning(
-                        "已禁用 SSL 证书验证（ValidateServerCertificate=false 优先于 Mode=Dev），此配置仅应在开发/测试环境使用");
+                    // R5.2.7/X5 生产加固：生产环境将安全旁路升级为 LogError（不阻断启动；major 再评估是否 Validate 失败）
+                    _logger.Log(
+                        _isProduction ? LogLevel.Error : LogLevel.Warning,
+                        "已禁用 SSL 证书验证（ValidateServerCertificate=false 优先于 Mode=Dev），此配置仅应在开发/测试环境使用{ProductionSuffix}",
+                        _isProduction ? "；检测到当前为生产环境，请立即移除该配置" : string.Empty);
                     return;
                 }
 
@@ -909,7 +954,11 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
                     return false;
                 };
 
-                _logger.LogWarning("WebSocket 证书校验处于 Dev 模式（允许自签名/名称不匹配），仅应用于开发与测试环境");
+                // R5.2.7/X5 生产加固：生产环境将安全旁路升级为 LogError（不阻断启动；major 再评估是否 Validate 失败）
+                _logger.Log(
+                    _isProduction ? LogLevel.Error : LogLevel.Warning,
+                    "WebSocket 证书校验处于 Dev 模式（允许自签名/名称不匹配），仅应用于开发与测试环境{ProductionSuffix}",
+                    _isProduction ? "；检测到当前为生产环境，请改用 Mode=Strict 或自定义回调" : string.Empty);
                 return;
             }
 
@@ -928,7 +977,11 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
             {
                 // 禁用证书验证（仅用于开发/测试环境）
                 webSocket.Options.RemoteCertificateValidationCallback = (sender, certificate, chain, sslPolicyErrors) => true;
-                                _logger.LogWarning("已禁用SSL证书验证，此配置仅应在开发/测试环境使用");
+                // R5.2.7/X5 生产加固：生产环境将安全旁路升级为 LogError（不阻断启动；major 再评估是否 Validate 失败）
+                _logger.Log(
+                    _isProduction ? LogLevel.Error : LogLevel.Warning,
+                    "已禁用SSL证书验证，此配置仅应在开发/测试环境使用{ProductionSuffix}",
+                    _isProduction ? "；检测到当前为生产环境，请立即移除该配置" : string.Empty);
             
                 return;
             }

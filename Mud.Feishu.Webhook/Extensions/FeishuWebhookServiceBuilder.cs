@@ -537,6 +537,7 @@ public class FeishuWebhookServiceBuilder
             // 否则尊重 appsettings.json 中的配置
 #pragma warning disable CS0618 // R5/X4：该开关无运行时效果，仅为源码级兼容而保留
             if (_autoRegisterEndpointExplicitlySet)
+                // audit-allow: X4 - the Obsolete switch must still be assigned so appsettings/Builder 兼容不失效
                 options.AutoRegisterEndpoint = _autoRegisterEndpoint;
 #pragma warning restore CS0618
 

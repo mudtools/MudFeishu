@@ -25,12 +25,12 @@ public class FeishuAppWebhookOptionsTests
         options.EventHandlingTimeoutMs.Should().BeNull();
         options.EnforceHeaderSignatureValidation.Should().BeNull();
         options.EnableExceptionHandling.Should().BeNull();
-        options.EnablePerformanceMonitoring.Should().BeNull();
     }
 
     [Fact]
-    public void Validate_ShouldThrow_WhenAppKeyIsEmpty()
+    public void Validate_ShouldNotRequireAppKey_WhenConstructedStandalone()
     {
+        // R5.2/X8：AppKey 已改为「由 Apps 字典键派生」的诊断字段，不再是校验前置条件。
         var options = new FeishuAppWebhookOptions
         {
             VerificationToken = "token",
@@ -39,7 +39,7 @@ public class FeishuAppWebhookOptionsTests
 
         var act = () => options.Validate();
 
-        act.Should().Throw<InvalidOperationException>().WithMessage("*AppKey*");
+        act.Should().NotThrow("AppKey 由父级从字典键派生；独立构造时为空属正常");
     }
 
     [Fact]
@@ -274,22 +274,6 @@ public class FeishuAppWebhookOptionsTests
         var options = new FeishuAppWebhookOptions { EnableExceptionHandling = null };
 
         options.GetEffectiveEnableExceptionHandling(true).Should().BeTrue();
-    }
-
-    [Fact]
-    public void GetEffectiveEnablePerformanceMonitoring_ShouldReturnLocalValue_WhenSet()
-    {
-        var options = new FeishuAppWebhookOptions { EnablePerformanceMonitoring = true };
-
-        options.GetEffectiveEnablePerformanceMonitoring(false).Should().BeTrue();
-    }
-
-    [Fact]
-    public void GetEffectiveEnablePerformanceMonitoring_ShouldReturnGlobalValue_WhenNull()
-    {
-        var options = new FeishuAppWebhookOptions { EnablePerformanceMonitoring = null };
-
-        options.GetEffectiveEnablePerformanceMonitoring(false).Should().BeFalse();
     }
 
     [Fact]

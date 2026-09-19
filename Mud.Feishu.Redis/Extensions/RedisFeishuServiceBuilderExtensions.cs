@@ -1,4 +1,4 @@
-// -----------------------------------------------------------------------
+﻿// -----------------------------------------------------------------------
 //  作者：Mud Studio  版权所有 (c) Mud Studio 2026   
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
@@ -21,6 +21,8 @@ using Mud.Feishu.Redis.Services;
 using StackExchange.Redis;
 using System.Diagnostics.CodeAnalysis;
 
+
+#pragma warning disable CS0618 // R5/X6: Obsolete dual-read fallback base — intentionally references DeduplicationOptions/EventDeduplicationOptions
 namespace Mud.Feishu.Redis.Extensions;
 
 /// <summary>
@@ -127,9 +129,8 @@ public static class RedisFeishuServiceBuilderExtensions
             var logger = sp.GetService<ILogger<RedisFeishuEventDistributedDeduplicator>>();
 
             // 从 DI 解析 DeduplicationOptions（可通过 FeishuRedis:Deduplication 节点配置高级参数）
-#pragma warning disable CS0618 // 仅读取仍消费的字段；失效字段见 Warn
+            // R5/X6: 文件级 #pragma warning disable CS0618 已覆盖 — 本类型为双读回落基座
             var dedupOptions = sp.GetService<IOptions<DeduplicationOptions>>()?.Value ?? DeduplicationOptions.Default;
-#pragma warning restore CS0618
             var unified = sp.GetService<IOptions<FeishuDeduplicationOptions>>()?.Value;
             var unifiedActive = unified is { IsConfiguredFromConfiguration: true };
             var profileBase = unified?.ResolveProfileDeduplicationOptions() ?? DeduplicationOptions.Default;
@@ -155,7 +156,7 @@ public static class RedisFeishuServiceBuilderExtensions
                 ? uMs
                 : dedupOptions.MaxCacheSize > 0 ? dedupOptions.MaxCacheSize : profileBase.MaxCacheSize;
 
-            WarnIfDeduplicationKeysAreIneffective(logger, redisOptions, dedupOptions);
+            WarnIfDeduplicationKeysAreIneffective(logger, redisOptions, dedupOptions, unified);
 
             var effectiveOptions = new DeduplicationOptions
             {
@@ -176,35 +177,81 @@ public static class RedisFeishuServiceBuilderExtensions
     }
 
     /// <summary>
-    /// Redis 路径下 DeduplicationOptions 的 CacheExpiration/KeyPrefix 会被 RedisOptions 覆盖。
-    /// 两侧值不一致时输出 Warn，避免「文档写了可配、运行时无效」。
+    /// 双读期「配了但无效」的告警（R5.2/X6 扩展为两个方向）。
     /// </summary>
+    /// <param name="logger">日志；为 null 时不输出。</param>
+    /// <param name="redisOptions">Redis 配置（旧键回落基座）。</param>
+    /// <param name="dedupOptions">旧的高级去重配置（<c>FeishuRedis:Deduplication</c>）。</param>
+    /// <param name="unified">统一节配置；<c>IsConfiguredFromConfiguration=true</c> 时视为已生效。</param>
+    /// <remarks>
+    /// <para><b>情形 A（统一节未生效）</b>：<see cref="DeduplicationOptions"/> 的 TTL/前缀会被
+    /// <see cref="RedisOptions"/> 覆盖 → 告警并指向应改用的旧键。</para>
+    /// <para><b>情形 B（统一节已生效，R5.2 新增）</b>：显式配置的旧键被 <c>FeishuDeduplication</c>
+    /// **字段级覆盖**。此前这种情况完全静默——这是「配了但无效」最典型的形态，也正是 X6/X13 的核心风险。</para>
+    /// <para>
+    /// <b>为什么只告警而不给这些属性加 <c>[Obsolete]</c></b>：它们是双读期**合法的**回落基座
+    /// （<c>FeishuDeduplication</c> 未配置时真正生效），给 SDK 自身必须读取的属性加 Obsolete 只会
+    /// 产生大量噪音；而真正的误用入口是 <c>appsettings.json</c>（Obsolete 对它完全无效）。
+    /// 运行时告警能精确指出「哪个键被哪个键覆盖」，比编译期警告更贴合该风险。
+    /// </para>
+    /// </remarks>
     internal static void WarnIfDeduplicationKeysAreIneffective(
         ILogger? logger,
         RedisOptions redisOptions,
-        DeduplicationOptions dedupOptions)
+        DeduplicationOptions dedupOptions,
+        FeishuDeduplicationOptions? unified = null)
     {
         if (logger is null)
             return;
 
-        // 仅当 DeduplicationOptions 使用了非默认（与 RedisOptions 不一致）的值时告警，
-        // 避免默认对齐场景产生噪音。
-        if (dedupOptions.CacheExpiration != redisOptions.EventCacheExpiration)
+        var unifiedActive = unified is { IsConfiguredFromConfiguration: true };
+
+        if (!unifiedActive)
         {
-            logger.LogWarning(
-                "DeduplicationOptions.CacheExpiration({DedupTtl}) 在 Redis 路径不生效，请改用 FeishuRedis:EventCacheExpiration({RedisTtl})。",
-                dedupOptions.CacheExpiration,
-                redisOptions.EventCacheExpiration);
+            // 情形 A：仅当 DeduplicationOptions 使用了非默认（与 RedisOptions 不一致）的值时告警，
+            // 避免默认对齐场景产生噪音。
+            if (dedupOptions.CacheExpiration != redisOptions.EventCacheExpiration)
+            {
+                logger.LogWarning(
+                    "DeduplicationOptions.CacheExpiration({DedupTtl}) 在 Redis 路径不生效，请改用 FeishuRedis:EventCacheExpiration({RedisTtl})。",
+                    dedupOptions.CacheExpiration,
+                    redisOptions.EventCacheExpiration);
+            }
+
+            if (!string.Equals(dedupOptions.KeyPrefix, redisOptions.EventKeyPrefix, StringComparison.Ordinal))
+            {
+                logger.LogWarning(
+                    "DeduplicationOptions.KeyPrefix('{DedupPrefix}') 在 Redis 路径不生效，请改用 FeishuRedis:EventKeyPrefix('{RedisPrefix}')。",
+                    dedupOptions.KeyPrefix,
+                    redisOptions.EventKeyPrefix);
+            }
+
+            return;
         }
 
-        if (!string.Equals(dedupOptions.KeyPrefix, redisOptions.EventKeyPrefix, StringComparison.Ordinal))
+        // 情形 B：统一节已生效。仅当「旧键被显式配置为非默认」且「统一节对应字段确实非空」时才告警——
+        // 若统一节未提供该字段，旧键仍然是实际生效值（不算「无效」），此时告警会误导。
+        var defaultEventTtl = TimeSpan.FromMilliseconds(Consts.DefaultCacheExpirationMs);
+
+        if (unified!.Event?.Ttl is { } unifiedTtl && unifiedTtl > TimeSpan.Zero
+            && redisOptions.EventCacheExpiration != defaultEventTtl)
         {
             logger.LogWarning(
-                "DeduplicationOptions.KeyPrefix('{DedupPrefix}') 在 Redis 路径不生效，请改用 FeishuRedis:EventKeyPrefix('{RedisPrefix}')。",
-                dedupOptions.KeyPrefix,
-                redisOptions.EventKeyPrefix);
+                "FeishuRedis:EventCacheExpiration({LegacyTtl}) 已被 FeishuDeduplication:Event:Ttl({EffectiveTtl}) 覆盖，" +
+                "该旧键不生效。请移除旧键并统一使用 FeishuDeduplication。",
+                redisOptions.EventCacheExpiration,
+                unifiedTtl);
         }
 
+        if (!string.IsNullOrEmpty(unified.Event?.KeyPrefix)
+            && !string.Equals(redisOptions.EventKeyPrefix, Consts.DefaultEventKeyPrefix, StringComparison.Ordinal))
+        {
+            logger.LogWarning(
+                "FeishuRedis:EventKeyPrefix('{LegacyPrefix}') 已被 FeishuDeduplication:Event:KeyPrefix('{EffectivePrefix}') 覆盖，" +
+                "该旧键不生效。请移除旧键并统一使用 FeishuDeduplication。",
+                redisOptions.EventKeyPrefix,
+                unified.Event!.KeyPrefix);
+        }
     }
 
     /// <summary>

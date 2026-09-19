@@ -137,12 +137,14 @@ public class FeishuWebhookService : IFeishuWebhookService
     {
         Exception? processingException = null;
 
-        var enablePerformanceMonitoring = Options.EnablePerformanceMonitoring;
+        // R5.2/X10：已删除的性能监控开关（迁移说明必须引用其键名）。
+        // audit-allow: X10 - migration note must name the removed config key
+        // 耗时改为**无条件**采集、并以 Debug 级别输出：
+        // ① 保留可诊断性——需要时把 `Logging:LogLevel:Mud.Feishu.Webhook` 调到 `Debug` 即可拿到耗时；
+        // ② 与 R4 起「日志级别只由 Logging:LogLevel 控制，不设模块私有开关」的口径一致（AGENTS.md 配置面治理）。
         var appConfig = !string.IsNullOrEmpty(appKey) ? Options.GetAppConfig(appKey!) : null;
-        if (appConfig != null)
-            enablePerformanceMonitoring = appConfig.GetEffectiveEnablePerformanceMonitoring(Options.EnablePerformanceMonitoring);
 
-        var performanceStopwatch = enablePerformanceMonitoring ? System.Diagnostics.Stopwatch.StartNew() : null;
+        var performanceStopwatch = System.Diagnostics.Stopwatch.StartNew();
 
         // 获取拦截器列表（优先使用应用专属拦截器，回退到全局拦截器）
         var interceptors = GetInterceptors(appKey).ToList();
@@ -308,13 +310,10 @@ public class FeishuWebhookService : IFeishuWebhookService
                 await interceptor.AfterHandleAsync(eventData.EventType, eventData, processingException, cancellationToken);
             }
 
-            if (performanceStopwatch != null)
-            {
-                performanceStopwatch.Stop();
-                _logger.LogInformation(
-                    "性能监控: 事件 {EventType} 处理耗时 {ElapsedMs}ms, EventId: {EventId}, AppKey: {AppKey}",
-                    eventData.EventType, performanceStopwatch.ElapsedMilliseconds, eventData.EventId, appKey ?? "null");
-            }
+            performanceStopwatch.Stop();
+            _logger.LogDebug(
+                "事件处理耗时: {EventType} {ElapsedMs}ms, EventId: {EventId}, AppKey: {AppKey}",
+                eventData.EventType, performanceStopwatch.ElapsedMilliseconds, eventData.EventId, appKey ?? "null");
         }
     }
 

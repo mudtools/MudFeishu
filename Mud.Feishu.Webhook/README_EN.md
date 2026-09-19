@@ -101,7 +101,6 @@ app.Run();
     "EnableExceptionHandling": true,
     "EventHandlingTimeoutMs": 30000,
     "MaxConcurrentEvents": 10,
-    "EnablePerformanceMonitoring": false,
     "AllowedHttpMethods": ["POST"],
     "MaxRequestBodySize": 10485760,
     "AllowedSourceIPs": [],
@@ -383,12 +382,10 @@ public class DemoDepartmentEventHandler : DepartmentCreatedEventHandler
 | `Apps.{AppKey}.AppKey`                           | string                                        | -       | Application key (alphanumeric, underscore, hyphen, 1-64 chars) |
 | `Apps.{AppKey}.VerificationToken`                | string                                        | -       | App verification token                                         |
 | `Apps.{AppKey}.EncryptKey`                       | string                                        | -       | App encryption key (32 bytes)                                  |
-| `Apps.{AppKey}.Description`                      | string?                                       | null    | App description (optional)                                     |
 | `Apps.{AppKey}.TimestampToleranceSeconds`        | int                                           | -1      | Timestamp tolerance (-1 inherits global)                       |
 | `Apps.{AppKey}.EventHandlingTimeoutMs`           | int                                           | -1      | Event handling timeout (-1 inherits global)                    |
 | `Apps.{AppKey}.EnforceHeaderSignatureValidation` | bool?                                         | null    | Enforce header signature validation (null inherits global)     |
 | `Apps.{AppKey}.EnableExceptionHandling`          | bool?                                         | null    | Enable exception handling (null inherits global)               |
-| `Apps.{AppKey}.EnablePerformanceMonitoring`      | bool?                                         | null    | Enable performance monitoring (null inherits global)           |
 
 ### Security Configuration
 
@@ -407,7 +404,6 @@ public class DemoDepartmentEventHandler : DepartmentCreatedEventHandler
 | ----------------------------- | ---- | ------- | ----------------------------------------------------------------------------------------------------------- |
 | `MaxConcurrentEvents`         | int  | 10      | Max concurrent events, supports hot reload                                                                  |
 | `EventHandlingTimeoutMs`      | int  | 30000   | Event handling timeout (milliseconds)                                                                       |
-| `EnablePerformanceMonitoring` | bool | false   | Whether to enable performance monitoring                                                                    |
 | `EnableTokenBackgroundRefresh`  | bool? | null   | Explicit override for token background refresh (null = leave host default). R4 removed EnableBackgroundProcessing |
 
 ### Logging Configuration
@@ -1105,10 +1101,9 @@ app.MapDiagnostics();          // Diagnostics endpoints
 builder.Logging.AddConsole();
 builder.Logging.SetMinimumLevel(LogLevel.Debug);
 
-// Enable performance monitoring (log level is controlled separately via Logging:LogLevel:Mud.Feishu.Webhook)
+// The elapsed-time log is emitted unconditionally at Debug level: set Logging:LogLevel:Mud.Feishu.Webhook to Debug
 builder.Services.CreateFeishuWebhookServiceBuilder(options =>
 {
-    options.EnablePerformanceMonitoring = true;
     options.RateLimit.EnableRateLimit = true; // Enable rate limiting debugging
 }).AddHandler<MessageEventHandler>()
     .Build();
@@ -1248,7 +1243,6 @@ builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
 | `MaxConcurrentEvents`         | `10`               | Max concurrent events                                     |
 | `EventHandlingTimeoutMs`      | `30000`            | Event handling timeout (ms)                               |
 | `EnableTokenBackgroundRefresh`  | `null`    | Token refresh override (null = host default; R4 removed EnableBackgroundProcessing) |
-| `EnablePerformanceMonitoring` | `false`            | Performance monitoring                                    |
 
 ---
 

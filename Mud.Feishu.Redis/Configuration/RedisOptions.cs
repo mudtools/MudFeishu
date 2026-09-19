@@ -14,6 +14,25 @@ namespace Mud.Feishu.Redis.Configuration;
 /// <summary>
 /// Redis 配置选项（R4：连接见 <see cref="Connection"/> / <see cref="Advanced"/>，去重键见 RedisOptions 顶层与 FeishuDeduplication）。
 /// </summary>
+/// <remarks>
+/// <para>
+/// <b>R5.2/X6/X13 —— 本类型顶层的去重相关字段均为「双读期回落基座」：</b>
+/// <see cref="EventKeyPrefix"/>、<see cref="EventCacheExpiration"/>、<see cref="NonceTtl"/>、
+/// <see cref="NonceKeyPrefix"/>、<see cref="SeqIdCacheExpiration"/>、<see cref="SeqIdKeyPrefix"/>、
+/// <see cref="SeqIdScopeKey"/>、<see cref="AppKey"/>。
+/// </para>
+/// <para>
+/// 统一节 <c>FeishuDeduplication</c> 存在时，其
+/// <c>Event</c>/<c>Nonce</c>/<c>SeqId</c> 字段按「字段级优先」覆盖上述旧键；
+/// <b>同时配置两者时旧键会被静默忽略</b>（R5.2 起改为输出 Warning 指明覆盖关系）。
+/// 新部署请只使用 <c>FeishuDeduplication</c>，见 <c>documents/Configuration/DeduplicationTruthSource.md</c>。
+/// </para>
+/// <para>
+/// <b>为什么不给这些属性加 <c>[Obsolete]</c></b>：它们在统一节缺失时是**真正生效**的配置面，
+/// 给 SDK 自身必须读取的属性加 Obsolete 只会产生噪音，而真正的误用入口（<c>appsettings.json</c>）
+/// 对 Obsolete 完全免疫。用「运行时精确告警」替代编译期警告。
+/// </para>
+/// </remarks>
 public class RedisOptions
 {
     /// <summary>连接嵌套配置</summary>
@@ -43,7 +62,10 @@ public class RedisOptions
     }
     private string _seqIdKeyPrefix = Consts.DefaultSeqIdKeyPrefix;
 
-    /// <summary>事件去重缓存过期时间，默认 48 小时</summary>
+    /// <summary>
+    /// 事件去重缓存过期时间，默认 48 小时。
+    /// <para>双读期回落基座：<c>FeishuDeduplication:Event:Ttl</c> 存在时会被其覆盖（R5.2 起输出 Warning）。</para>
+    /// </summary>
     public TimeSpan EventCacheExpiration
     {
         get => _eventCacheExpiration;
@@ -51,7 +73,10 @@ public class RedisOptions
     }
     private TimeSpan _eventCacheExpiration = TimeSpan.FromMilliseconds(Consts.DefaultCacheExpirationMs);
 
-    /// <summary>事件去重键前缀</summary>
+    /// <summary>
+    /// 事件去重键前缀。
+    /// <para>双读期回落基座：<c>FeishuDeduplication:Event:KeyPrefix</c> 存在时会被其覆盖（R5.2 起输出 Warning）。</para>
+    /// </summary>
     public string EventKeyPrefix
     {
         get => _eventKeyPrefix;

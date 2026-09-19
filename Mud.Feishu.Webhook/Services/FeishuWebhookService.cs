@@ -184,9 +184,10 @@ public class FeishuWebhookService : IFeishuWebhookService
             // 使用全局并发控制服务
             using var concurrencyLock = await _concurrencyService.AcquireAsync(cancellationToken);
 
-            // 添加超时控制
+            // 添加超时控制（B1：消费应用级 EventHandlingTimeoutMs；LegacyGlobalTimeoutOnly=true 时保持全局-only）
+            var timeoutMs = Options.ResolveEventHandlingTimeoutMs(appConfig);
             using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            timeoutCts.CancelAfter(Options.EventHandlingTimeoutMs);
+            timeoutCts.CancelAfter(timeoutMs);
 
             try
             {
@@ -236,7 +237,7 @@ public class FeishuWebhookService : IFeishuWebhookService
                 await RollbackDeduplicationAsync(eventData.EventId, appKey);
 
                 _logger.LogWarning("事件处理超时: {EventType}, 事件ID: {EventId}, 超时时间: {TimeoutMs}ms, AppKey: {AppKey}",
-                    eventData.EventType, eventData.EventId, Options.EventHandlingTimeoutMs, appKey ?? "null");
+                    eventData.EventType, eventData.EventId, timeoutMs, appKey ?? "null");
                 FeishuMetricsHelper.RecordEventOutcome(appKey ?? "unknown", eventData.EventType, success: false, "timeout");
 
                 processingException = oce;

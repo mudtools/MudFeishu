@@ -522,6 +522,7 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
     /// </summary>
     internal static bool IsSameAs(FeishuAppConfig a, FeishuAppConfig b)
     {
+#pragma warning disable CS0618 // 热更比较仍走 Obsolete 标量垫片（与嵌套 Options 同存储）
         return string.Equals(a.AppId, b.AppId, StringComparison.Ordinal)
             && string.Equals(a.AppSecret, b.AppSecret, StringComparison.Ordinal)
             && string.Equals(a.BaseUrl, b.BaseUrl, StringComparison.Ordinal)
@@ -537,6 +538,7 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
             && a.TokenRefreshThreshold == b.TokenRefreshThreshold
             && a.EnableLogging == b.EnableLogging
             && a.IsDefault == b.IsDefault;
+#pragma warning restore CS0618
     }
 
     // TMF-04：RebuildAppContext 已删除——产品代码零调用方（唯一热更新路径为

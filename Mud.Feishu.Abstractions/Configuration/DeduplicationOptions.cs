@@ -73,7 +73,10 @@ public class DeduplicationOptions
     ///   <item><description>false: Redis 失败时拒绝处理（高可靠性，可能丢失事件）</description></item>
     /// </list>
     /// 对于关键业务，建议设为 false 以确保数据一致性。
+    /// <para><b>B3/R2：</b>当前 SDK Redis 主路径不消费本字段（工厂已从 effectiveOptions 剔除）。
+    /// 仅自定义 IDistributedDeduplicator 可用。见 documents/Configuration/DeduplicationTruthSource.md。</para>
     /// </remarks>
+    [Obsolete("当前 Redis/SDK 主路径不消费 AllowProcessingOnFallback；仅自定义 IDistributedDeduplicator 可用")]
     public bool AllowProcessingOnFallback { get; set; } = true;
 
     /// <summary>
@@ -81,7 +84,9 @@ public class DeduplicationOptions
     /// </summary>
     /// <remarks>
     /// Redis 操作失败时的最大重试次数。
+    /// <para><b>B3/R2：</b>当前 SDK Redis 主路径不消费。勿与 FailedEventRetryOptions.MaxRetryCount 混淆。</para>
     /// </remarks>
+    [Obsolete("当前 Redis/SDK 主路径不消费去重 MaxRetryCount；事件重试请使用 FailedEventRetryOptions.MaxRetryCount")]
     public int MaxRetryCount
     {
         get => _maxRetryCount;
@@ -94,7 +99,9 @@ public class DeduplicationOptions
     /// </summary>
     /// <remarks>
     /// 首次重试前的等待时间，后续重试将使用指数退避策略。
+    /// <para><b>B3/R2：</b>当前 SDK Redis 主路径不消费。</para>
     /// </remarks>
+    [Obsolete("当前 Redis/SDK 主路径不消费 InitialRetryDelay")]
     public TimeSpan InitialRetryDelay
     {
         get => _initialRetryDelay;
@@ -107,7 +114,9 @@ public class DeduplicationOptions
     /// </summary>
     /// <remarks>
     /// 指数退避策略的最大延迟时间上限。
+    /// <para><b>B3/R2：</b>当前 SDK Redis 主路径不消费。</para>
     /// </remarks>
+    [Obsolete("当前 Redis/SDK 主路径不消费 MaxRetryDelay")]
     public TimeSpan MaxRetryDelay
     {
         get => _maxRetryDelay;
@@ -171,8 +180,10 @@ public class DeduplicationOptions
     {
         CacheExpiration = TimeSpan.FromHours(72),
         ProcessingTimeout = TimeSpan.FromMinutes(5),
+#pragma warning disable CS0618 // 预设仍写入字段；主路径是否消费见 B3 注释
         AllowProcessingOnFallback = false,
         MaxRetryCount = 5,
+#pragma warning restore CS0618
         EnableVerboseLogging = false
     };
 
@@ -189,8 +200,10 @@ public class DeduplicationOptions
     {
         CacheExpiration = TimeSpan.FromHours(48),
         ProcessingTimeout = TimeSpan.FromMinutes(15),
+#pragma warning disable CS0618
         AllowProcessingOnFallback = true,
         MaxRetryCount = 3,
+#pragma warning restore CS0618
         EnableVerboseLogging = false
     };
 }

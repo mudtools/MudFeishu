@@ -14,6 +14,8 @@ using Mud.Feishu.Redis.Extensions;
 
 namespace Mud.Feishu.Redis.Tests.Configuration;
 
+#pragma warning disable CS0618 // 双读期旧扁平键/失效去重字段仍需绑定验证
+
 /// <summary>
 /// RedisOptions IConfiguration 绑定测试
 /// 验证从 appsettings.json 风格的配置绑定到 RedisOptions 的正确性

@@ -6,6 +6,7 @@
 // -----------------------------------------------------------------------
 
 using System.ComponentModel;
+using Mud.Feishu.Abstractions.Configuration;
 using Mud.Feishu.Abstractions.Utilities;
 
 namespace Mud.Feishu.Abstractions;
@@ -82,85 +83,15 @@ public class FeishuAppConfig
     public bool AllowCustomBaseUrl { get; set; } = false;
 
     /// <summary>
-    /// HTTP请求超时时间（秒）
+    /// HTTP 请求超时（秒）。默认 30，范围 1-300。
     /// </summary>
-    /// <remarks>
-    /// 默认值: 30秒
-    /// 范围: 1-300秒
-    /// 用于设置API调用的超时时间，网络环境较差时可适当增加此值。
-    /// </remarks>
-    public int TimeOut { get; set; } = 30;
+    public int TimeoutSeconds { get; set; } = 30;
 
-    /// <summary>
-    /// 失败重试次数
-    /// </summary>
-    /// <remarks>
-    /// 默认值: 3次
-    /// 范围: 0-10次
-    /// 当API调用失败时的自动重试次数，提高请求的成功率和稳定性。
-    /// </remarks>
-    public int RetryCount { get; set; } = Consts.DefaultHttpRetryCount;
+    /// <summary>HTTP 重试嵌套配置（C2/R4）</summary>
+    public HttpRetryOptions HttpRetry { get; set; } = new();
 
-    /// <summary>
-    /// 重试延迟时间（毫秒）
-    /// </summary>
-    /// <remarks>
-    /// 默认值: 1000毫秒（1秒）
-    /// 范围: 100-60000毫秒
-    /// 重试之间的基础延迟时间，实际延迟会采用指数退避策略。
-    /// <para>RetryDelayMs 可以大于 TimeOut，两者概念独立。RetryDelayMs 控制重试间隔，TimeOut 控制单次请求超时。</para>
-    /// </remarks>
-    public int RetryDelayMs { get; set; } = Consts.DefaultRetryDelayMs;
-
-    /// <summary>
-    /// 是否启用熔断策略
-    /// </summary>
-    /// <remarks>
-    /// 默认值: true
-    /// 当设置为 true 时，在采样窗口内失败率达到阈值后将触发熔断，阻止请求发送，保护下游服务。
-    /// </remarks>
-    public bool CircuitBreakerEnabled { get; set; } = true;
-
-    /// <summary>
-    /// 熔断失败率阈值（百分比）
-    /// </summary>
-    /// <remarks>
-    /// 默认值: 20（即20%失败率触发熔断）
-    /// 范围: 1-100
-    /// 在采样窗口内，失败率达到此阈值时触发熔断。
-    /// 建议根据飞书API限频特性设置，较低的阈值可以更早感知异常。
-    /// </remarks>
-    public int CircuitBreakerFailureThreshold { get; set; } = Consts.DefaultCircuitBreakerFailureThreshold;
-
-    /// <summary>
-    /// 熔断采样窗口时间（秒）
-    /// </summary>
-    /// <remarks>
-    /// 默认值: 60秒
-    /// 范围: 10-300秒
-    /// 在此时间窗口内统计请求失败率，建议与飞书API限频窗口（通常1分钟）对齐。
-    /// </remarks>
-    public int CircuitBreakerSamplingDurationSeconds { get; set; } = Consts.DefaultCircuitBreakerSamplingDurationSeconds;
-
-    /// <summary>
-    /// 熔断持续时间（秒）
-    /// </summary>
-    /// <remarks>
-    /// 默认值: 60秒
-    /// 范围: 10-300秒
-    /// 熔断触发后，在此时间内阻止请求发送。建议与飞书限频冷却期一致。
-    /// </remarks>
-    public int CircuitBreakerBreakDurationSeconds { get; set; } = Consts.DefaultCircuitBreakerBreakDurationSeconds;
-
-    /// <summary>
-    /// 熔断最小吞吐量
-    /// </summary>
-    /// <remarks>
-    /// 默认值: 10
-    /// 范围: 2-1000
-    /// 在采样窗口内，请求数必须达到此值后才开始计算失败率，防止低流量时误触发熔断。
-    /// </remarks>
-    public int CircuitBreakerMinimumThroughput { get; set; } = Consts.DefaultCircuitBreakerMinimumThroughput;
+    /// <summary>HTTP 熔断嵌套配置（C2/R4）</summary>
+    public CircuitBreakerOptions CircuitBreaker { get; set; } = new();
 
     /// <summary>
     /// 令牌刷新阈值（秒）
@@ -173,16 +104,6 @@ public class FeishuAppConfig
     public int TokenRefreshThreshold { get; set; } = 300;
 
     /// <summary>
-    /// 是否启用日志记录
-    /// </summary>
-    /// <remarks>
-    /// 默认值: true
-    /// 控制是否记录飞书API调用的详细日志信息。
-    /// 生产环境建议开启，便于问题排查和监控。
-    /// </remarks>
-    public bool EnableLogging { get; set; } = true;
-
-    /// <summary>
     /// 是否为默认应用
     /// </summary>
     /// <remarks>
@@ -193,6 +114,67 @@ public class FeishuAppConfig
     /// <para>当只配置一个应用时，会自动设置为 IsDefault = true</para>
     /// </remarks>
     public bool IsDefault { get; set; } = false;
+
+    /// <summary>
+    /// 验证配置项的有效性
+    /// </summary>
+    /// <exception cref="InvalidOperationException">当配置项无效时抛出</exception>
+    public void Validate()
+    {
+        if (string.IsNullOrWhiteSpace(AppKey))
+            throw new InvalidOperationException("AppKey 不能为空");
+
+        if (string.IsNullOrWhiteSpace(AppId))
+            throw new InvalidOperationException("AppId 不能为空");
+
+        if (!AppId.StartsWith("cli_") && !AppId.StartsWith("app_"))
+            throw new InvalidOperationException("AppId 格式无效，应以 'cli_' 或 'app_' 开头");
+
+        if (AppId.Length < 20)
+            throw new InvalidOperationException("AppId 长度无效");
+
+        if (string.IsNullOrWhiteSpace(AppSecret))
+            throw new InvalidOperationException("AppSecret 不能为空");
+
+        if (AppSecret.Length < 16)
+            throw new InvalidOperationException("AppSecret 长度必须至少为 16 字符");
+
+        HttpRetry ??= new HttpRetryOptions();
+        CircuitBreaker ??= new CircuitBreakerOptions();
+
+        if (TimeoutSeconds < 1 || TimeoutSeconds > 300)
+            throw new InvalidOperationException("TimeoutSeconds 必须在 1-300 秒之间");
+
+        if (HttpRetry.MaxAttempts < 0 || HttpRetry.MaxAttempts > 10)
+            throw new InvalidOperationException("HttpRetry.MaxAttempts 必须在 0-10 次之间");
+
+        if (HttpRetry.DelayMs < 100 || HttpRetry.DelayMs > 60000)
+            throw new InvalidOperationException("HttpRetry.DelayMs 必须在 100-60000 毫秒之间");
+
+        if (CircuitBreaker.FailureThreshold < 1 || CircuitBreaker.FailureThreshold > 100)
+            throw new InvalidOperationException("CircuitBreaker.FailureThreshold 必须在 1-100 之间");
+
+        if (CircuitBreaker.SamplingDurationSeconds < 10 || CircuitBreaker.SamplingDurationSeconds > 300)
+            throw new InvalidOperationException("CircuitBreaker.SamplingDurationSeconds 必须在 10-300 秒之间");
+
+        if (CircuitBreaker.BreakDurationSeconds < 10 || CircuitBreaker.BreakDurationSeconds > 300)
+            throw new InvalidOperationException("CircuitBreaker.BreakDurationSeconds 必须在 10-300 秒之间");
+
+        if (CircuitBreaker.MinimumThroughput < 2 || CircuitBreaker.MinimumThroughput > 1000)
+            throw new InvalidOperationException("CircuitBreaker.MinimumThroughput 必须在 2-1000 之间");
+
+        if (TokenRefreshThreshold < 60 || TokenRefreshThreshold > 3600)
+            throw new InvalidOperationException("TokenRefreshThreshold 必须在 60-3600 秒之间");
+    }
+
+    /// <summary>
+    /// 返回配置的字符串表示（敏感信息已掩码）
+    /// </summary>
+    public override string ToString()
+    {
+        return $"FeishuAppConfig {{ AppKey: {AppKey}, AppId: {AppId}, AppSecret: {SensitiveDataUtils.MaskSensitiveData(AppSecret)}, BaseUrl: {BaseUrl}, TimeoutSeconds: {TimeoutSeconds}s, HttpRetry.MaxAttempts: {HttpRetry?.MaxAttempts}, HttpRetry.DelayMs: {HttpRetry?.DelayMs}ms, CircuitBreaker.Enabled: {CircuitBreaker?.Enabled}, CircuitBreaker.FailureThreshold: {CircuitBreaker?.FailureThreshold}%, CircuitBreaker.SamplingDurationSeconds: {CircuitBreaker?.SamplingDurationSeconds}s, CircuitBreaker.BreakDurationSeconds: {CircuitBreaker?.BreakDurationSeconds}s, CircuitBreaker.MinimumThroughput: {CircuitBreaker?.MinimumThroughput}, TokenRefreshThreshold: {TokenRefreshThreshold}s, IsDefault: {IsDefault} }}";
+    }
+}
 
     /// <summary>
     /// 验证配置项的有效性

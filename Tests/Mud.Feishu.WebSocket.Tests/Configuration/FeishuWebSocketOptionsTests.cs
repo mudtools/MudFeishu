@@ -286,11 +286,12 @@ public class FeishuWebSocketOptionsTests
     [Fact]
     public void Validate_ShouldThrow_WhenReconnectDelayMsLessThan1000()
     {
-        // Arrange
+        // Arrange — R3：延迟迁入 Reconnect 嵌套；经自动属性 backing field 造非法态（绕过 setter clamp）
         var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions();
-        typeof(Mud.Feishu.WebSocket.FeishuWebSocketOptions)
-            .GetField("_reconnectDelayMs", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
-            .SetValue(options, 500);
+        var field = typeof(Mud.Feishu.WebSocket.WebSocketReconnectOptions)
+            .GetField("<BaseDelayMs>k__BackingField", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+            ?? throw new InvalidOperationException("未找到 BaseDelayMs backing field");
+        field.SetValue(options.Reconnect, 500);
 
         // Act
         var act = () => options.Validate();
@@ -305,11 +306,17 @@ public class FeishuWebSocketOptionsTests
         // Arrange
         var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions
         {
-            ReconnectDelayMs = 10000
+            Reconnect = new Mud.Feishu.WebSocket.WebSocketReconnectOptions
+            {
+                BaseDelayMs = 10000,
+                MaxDelayMs = 30000
+            }
         };
-        typeof(Mud.Feishu.WebSocket.FeishuWebSocketOptions)
-            .GetField("_maxReconnectDelayMs", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
-            .SetValue(options, 5000);
+
+        var field = typeof(Mud.Feishu.WebSocket.WebSocketReconnectOptions)
+            .GetField("<MaxDelayMs>k__BackingField", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+            ?? throw new InvalidOperationException("未找到 MaxDelayMs backing field");
+        field.SetValue(options.Reconnect, 5000);
 
         // Act
         var act = () => options.Validate();

@@ -10,6 +10,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Mud.Feishu.Abstractions.EventHandlers;
+using Mud.Feishu.Abstractions.Extensions;
 using Mud.Feishu.Abstractions.Services;
 using Mud.Feishu.WebSocket;
 using System.Diagnostics.CodeAnalysis;
@@ -334,19 +335,37 @@ public class FeishuWebSocketServiceBuilder
 #endif
 
         // 注册事件去重服务（单例，根据 EventDeduplication.Mode 选择实现）
-        // - Mode == None：注册 NoopFeishuEventDeduplicator，不进行去重
-        // - Mode == InMemory：注册 FeishuEventDeduplicator（内存实现）
-        // - Mode == Distributed：若未手动注册分布式实现，记录警告并降级为内存实现
+        // C1：FeishuDeduplication 新节存在时 Mode/Ttl 字段级优先
         if (!_services.Any(s => s.ServiceType == typeof(IFeishuEventDeduplicator)))
         {
+            _services.AddFeishuDeduplicationOptions();
             _services.AddSingleton<IFeishuEventDeduplicator>(serviceProvider =>
             {
                 var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
                 var options = serviceProvider.GetRequiredService<IOptionsMonitor<FeishuWebSocketOptions>>().CurrentValue;
-                var mode = options.EventDeduplication.Mode;
+                var unified = serviceProvider.GetService<IOptions<Mud.Feishu.Abstractions.Configuration.FeishuDeduplicationOptions>>()?.Value;
+                var unifiedActive = unified is { IsConfiguredFromConfiguration: true };
+
+                var mode = unifiedActive
+                    ? (unified!.Mode ?? Mud.Feishu.Abstractions.Configuration.FeishuDeduplicationOptions.ModeInMemory)
+                    : options.EventDeduplication.Mode.ToString();
+
+                var cacheExpiration = unifiedActive && unified!.Event?.Ttl is { } uTtl && uTtl > TimeSpan.Zero
+                    ? uTtl
+                    : options.EventDeduplication.CacheExpiration;
+                var cleanupInterval = unifiedActive && unified!.Event?.CleanupInterval is { } uCl && uCl > TimeSpan.Zero
+                    ? uCl
+                    : options.EventDeduplication.CleanupInterval;
+                var processingTimeout = unifiedActive && unified!.Event?.ProcessingTimeout is { } uPt && uPt > TimeSpan.Zero
+                    ? uPt
+                    : options.EventDeduplication.ProcessingTimeout;
+                var maxCacheSize = unifiedActive && unified!.Event?.MaxCacheSize is { } uMs
+                    ? uMs
+                    : options.EventDeduplication.MaxCacheSize;
 
                 // None 模式：注册空实现，不进行去重
-                if (mode == EventDeduplicationMode.None)
+                if (string.Equals(mode, "None", StringComparison.OrdinalIgnoreCase)
+                    || (!unifiedActive && mode == EventDeduplicationMode.None.ToString()))
                 {
                     var noopLogger = loggerFactory.CreateLogger<NoopFeishuEventDeduplicator>();
                     return new NoopFeishuEventDeduplicator(noopLogger);
@@ -355,7 +374,8 @@ public class FeishuWebSocketServiceBuilder
                 var logger = loggerFactory.CreateLogger<FeishuEventDeduplicator>();
 
                 // Distributed 模式：检测是否已注册分布式实现，未注册时记录警告并降级为内存实现
-                if (mode == EventDeduplicationMode.Distributed)
+                if (string.Equals(mode, "Distributed", StringComparison.OrdinalIgnoreCase)
+                    || (!unifiedActive && mode == EventDeduplicationMode.Distributed.ToString()))
                 {
                     logger.LogWarning(
                         "EventDeduplication.Mode=Distributed 但未注册 IFeishuEventDeduplicator 的分布式实现，降级为内存去重。" +
@@ -364,10 +384,10 @@ public class FeishuWebSocketServiceBuilder
 
                 return new FeishuEventDeduplicator(
                     logger,
-                    options.EventDeduplication.CacheExpiration,
-                    options.EventDeduplication.CleanupInterval,
-                    options.EventDeduplication.ProcessingTimeout,
-                    options.EventDeduplication.MaxCacheSize);
+                    cacheExpiration,
+                    cleanupInterval,
+                    processingTimeout,
+                    maxCacheSize);
             });
         }
 

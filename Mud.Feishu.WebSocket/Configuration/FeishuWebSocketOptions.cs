@@ -41,54 +41,84 @@ public class FeishuWebSocketOptions
     /// </summary>
     public string AppKey { get; set; } = "default";
 
+    /// <summary>重连嵌套配置（C3/R3）</summary>
+    public WebSocketReconnectOptions Reconnect { get; set; } = new();
+
+    /// <summary>证书与协议安全嵌套配置（C3/R3）</summary>
+    public WebSocketCertificateOptions Certificate { get; set; } = new();
+
     /// <summary>
-    /// 自动重连，默认为true
+    /// 自动重连，默认为true。R3 起请改用 <see cref="Reconnect"/>.Auto。
     /// </summary>
-    public bool AutoReconnect { get; set; } = true;
+    [Obsolete("请使用 Reconnect.Auto")]
+    public bool AutoReconnect
+    {
+        get => Reconnect.Auto;
+        set => Reconnect.Auto = value;
+    }
 
     /// <summary>
     /// 最大重连次数，默认为5次。
     /// 设为 0 表示无限重连（仅受 MaxTotalReconnectTime 限制）。
     /// </summary>
-    public int MaxReconnectAttempts { get; set; } = 5;
+    [Obsolete("请使用 Reconnect.MaxAttempts")]
+    public int MaxReconnectAttempts
+    {
+        get => Reconnect.MaxAttempts;
+        set => Reconnect.MaxAttempts = value;
+    }
 
     /// <summary>
     /// 认证最大重试次数，默认为 5 次。
-    /// <para>P2-14 修复：此前认证重试次数直接复用 <see cref="MaxReconnectAttempts"/>，
-    /// 造成"无限重连"配置（=0）连带把认证也变成无限重试。
-    /// 设为 0 表示无限重试（仍受 <see cref="AuthTimeoutMs"/> 与认证冷却期约束）。</para>
     /// </summary>
-    public int MaxAuthRetryAttempts { get; set; } = 5;
+    [Obsolete("请使用 Reconnect.MaxAuthRetryAttempts")]
+    public int MaxAuthRetryAttempts
+    {
+        get => Reconnect.MaxAuthRetryAttempts;
+        set => Reconnect.MaxAuthRetryAttempts = value;
+    }
 
     /// <summary>
     /// 重连延迟时间（毫秒），默认为5000毫秒，最小为1000毫秒
     /// </summary>
+    [Obsolete("请使用 Reconnect.BaseDelayMs")]
     public int ReconnectDelayMs
     {
-        get => _reconnectDelayMs;
-        set => _reconnectDelayMs = Math.Max(1000, value);
+        get => Reconnect.BaseDelayMs;
+        set => Reconnect.BaseDelayMs = Math.Max(1000, value);
     }
 
     /// <summary>
     /// 最大重连延迟时间（毫秒），默认为30000毫秒
     /// </summary>
+    [Obsolete("请使用 Reconnect.MaxDelayMs")]
     public int MaxReconnectDelayMs
     {
-        get => _maxReconnectDelayMs;
-        set => _maxReconnectDelayMs = Math.Max(_reconnectDelayMs, value);
+        get => Reconnect.MaxDelayMs;
+        set => Reconnect.MaxDelayMs = Math.Max(Reconnect.BaseDelayMs, value);
     }
 
     /// <summary>
     /// 最大重连总时间，默认为30分钟
     /// <para>超过此时间后将停止重连尝试</para>
     /// </summary>
-    public TimeSpan MaxTotalReconnectTime { get; set; } = TimeSpan.FromMinutes(30);
+    [Obsolete("请使用 Reconnect.TotalBudget")]
+    public TimeSpan MaxTotalReconnectTime
+    {
+        get => Reconnect.TotalBudget;
+        set => Reconnect.TotalBudget = value;
+    }
 
     /// <summary>
     /// 重连冷却时间，默认为5秒
     /// <para>两次重连尝试之间的最小间隔时间，防止过于频繁的重连</para>
     /// </summary>
-    public TimeSpan ReconnectCooldownTime { get; set; } = TimeSpan.FromSeconds(5);
+    [Obsolete("请使用 Reconnect.Cooldown")]
+    public TimeSpan ReconnectCooldownTime
+    {
+        get => Reconnect.Cooldown;
+        set => Reconnect.Cooldown = value;
+    }
 
     /// <summary>
     /// 是否启用重连指标收集，默认为true
@@ -98,6 +128,7 @@ public class FeishuWebSocketOptions
     /// <summary>
     /// 初始接收缓冲区大小（字节），默认为4KB
     /// <para>仅用于初始化WebSocket接收缓冲区，实际消息大小会动态调整</para>
+    /// <para>R3：实现旋钮，文档主路径不展示；仍可绑定。</para>
     /// </summary>
     public int InitialReceiveBufferSize { get; set; } = 4096;
 
@@ -165,36 +196,56 @@ public class FeishuWebSocketOptions
     /// 是否允许不安全的 WebSocket 连接（ws://），默认为 false。
     /// 生产环境应始终使用 wss://，仅在开发/测试环境启用此项。
     /// </summary>
-    public bool AllowInsecureWebSocket { get; set; } = false;
+    [Obsolete("请使用 Certificate.AllowInsecureWebSocket")]
+    public bool AllowInsecureWebSocket
+    {
+        get => Certificate.AllowInsecureWebSocket;
+        set => Certificate.AllowInsecureWebSocket = value;
+    }
 
     /// <summary>
     /// 是否验证SSL证书，默认为true（生产环境建议为true）
     /// </summary>
-    public bool ValidateServerCertificate { get; set; } = true;
+    [Obsolete("请使用 Certificate.ValidateServerCertificate")]
+    public bool ValidateServerCertificate
+    {
+        get => Certificate.ValidateServerCertificate;
+        set => Certificate.ValidateServerCertificate = value;
+    }
 
     /// <summary>
     /// 是否允许自签名证书，默认为false（生产环境建议为false）。
-    /// <para>WS-12 修复（P1-8）：收紧为「链中仅 1 个元素且 ChainStatus 仅 UntrustedRoot」时才放行，
-    /// 显式拒绝 NotTimeValid/Revoked 等链错误。此前放行所有 ChainErrors，含过期/已撤销证书。</para>
     /// </summary>
-    public bool AllowSelfSignedCertificates { get; set; } = false;
+    [Obsolete("请使用 Certificate.AllowSelfSignedCertificates")]
+    public bool AllowSelfSignedCertificates
+    {
+        get => Certificate.AllowSelfSignedCertificates;
+        set => Certificate.AllowSelfSignedCertificates = value;
+    }
 
     /// <summary>
     /// 是否允许证书名称不匹配（RemoteCertificateNameMismatch），默认为 false。
-    /// <para>WS-12 修复（P1-8）引入：仅在显式开启时才放行名称不匹配错误，
-    /// 与自签名判定独立配置。生产环境建议保持 false。</para>
     /// </summary>
-    public bool AllowCertificateNameMismatch { get; set; } = false;
+    [Obsolete("请使用 Certificate.AllowCertificateNameMismatch")]
+    public bool AllowCertificateNameMismatch
+    {
+        get => Certificate.AllowCertificateNameMismatch;
+        set => Certificate.AllowCertificateNameMismatch = value;
+    }
 
     /// <summary>
     /// 自定义证书验证回调（可选）
-    /// <para>如果设置，将使用此回调进行证书验证</para>
     /// </summary>
     /// <remarks>
     /// 此属性仅支持代码配置，无法通过 JSON 配置文件（appsettings.json）设置。
     /// 请通过 <c>ConfigureOptions</c> 或 <c>ConfigureFrom</c> 后的代码配置方式设置。
     /// </remarks>
-    public System.Net.Security.RemoteCertificateValidationCallback? CustomCertificateValidationCallback { get; set; }
+    [Obsolete("请使用 Certificate.CustomCallback")]
+    public System.Net.Security.RemoteCertificateValidationCallback? CustomCertificateValidationCallback
+    {
+        get => Certificate.CustomCallback;
+        set => Certificate.CustomCallback = value;
+    }
 
     /// <summary>
     /// 消息序号跳跃阈值，超过此值认为消息丢失。
@@ -234,6 +285,7 @@ public class FeishuWebSocketOptions
         if (MaxConcurrentHandlers < -1)
             throw new InvalidOperationException("MaxConcurrentHandlers必须为-1（无限制）或非负整数");
 
+#pragma warning disable CS0618
         if (MaxReconnectAttempts < 0)
             throw new InvalidOperationException("MaxReconnectAttempts必须大于等于0");
 
@@ -242,6 +294,7 @@ public class FeishuWebSocketOptions
 
         if (MaxReconnectDelayMs < ReconnectDelayMs)
             throw new InvalidOperationException("MaxReconnectDelayMs必须大于等于ReconnectDelayMs");
+#pragma warning restore CS0618
 
         if (InitialReceiveBufferSize < 1024)
             throw new InvalidOperationException("InitialReceiveBufferSize必须至少为1024字节");
@@ -258,6 +311,7 @@ public class FeishuWebSocketOptions
 
         if (MaxAuthRetryAttempts < 0)
             throw new InvalidOperationException("MaxAuthRetryAttempts必须大于等于0");
+#pragma warning restore CS0618
 
         if (MessageSizeLimits == null)
             MessageSizeLimits = new MessageSizeLimits();
@@ -305,6 +359,29 @@ public class FeishuWebSocketOptions
             // None 模式不阻止启动，仅在文档中建议生产环境启用去重
             // 如需强制警告，可使用日志而非异常
         }
+
+        ValidateCertificateOptions();
+    }
+
+    /// <summary>
+    /// 校验证书/协议安全组合（C3/R3）。
+    /// </summary>
+    /// <exception cref="InvalidOperationException">非法安全组合</exception>
+    public void ValidateCertificateOptions()
+    {
+        Certificate ??= new WebSocketCertificateOptions();
+
+        if (Certificate.Mode == CertificateValidationMode.Strict && Certificate.AllowSelfSignedCertificates)
+            throw new InvalidOperationException(
+                "Certificate.Mode=Strict 时不得 AllowSelfSignedCertificates=true（旧键不得静默绕过安全默认）。请改 Mode=Dev 或关闭 AllowSelfSignedCertificates。");
+
+        if (Certificate.Mode == CertificateValidationMode.Strict && Certificate.AllowCertificateNameMismatch)
+            throw new InvalidOperationException(
+                "Certificate.Mode=Strict 时不得 AllowCertificateNameMismatch=true。请改 Mode=Dev 或关闭该开关。");
+
+        if (Certificate.Mode == CertificateValidationMode.Custom && Certificate.CustomCallback is null)
+            throw new InvalidOperationException(
+                "Certificate.Mode=Custom 时必须提供 Certificate.CustomCallback。");
     }
 
     /// <summary>
@@ -312,7 +389,9 @@ public class FeishuWebSocketOptions
     /// </summary>
     public override string ToString()
     {
+#pragma warning disable CS0618
         return $"FeishuWebSocketOptions {{ AutoReconnect: {AutoReconnect}, MaxReconnectAttempts: {MaxReconnectAttempts}, ReconnectDelayMs: {ReconnectDelayMs}, MaxTotalReconnectTime: {MaxTotalReconnectTime}, ReconnectCooldownTime: {ReconnectCooldownTime}, HeartbeatIntervalMs: {HeartbeatIntervalMs}, EnableLogging: {EnableLogging}, EventDeduplicationMode: {EventDeduplication.Mode} }}";
+#pragma warning restore CS0618
     }
 }
 

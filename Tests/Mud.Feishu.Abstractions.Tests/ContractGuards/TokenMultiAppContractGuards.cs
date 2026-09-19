@@ -151,6 +151,7 @@ public class TokenMultiAppContractGuards
     [Fact]
     public void FeishuAppConfig_PropertySet_ShouldMatchThrottleComparisonContract()
     {
+        #pragma warning disable CS0618 // 契约守卫使用 Obsolete 标量垫片初始化基线
         var baseline = new FeishuAppConfig
         {
             AppKey = "test",
@@ -184,6 +185,13 @@ public class TokenMultiAppContractGuards
             if (prop.Name == nameof(FeishuAppConfig.AppKey))
                 continue;
 
+            // R3 嵌套 Options：IsSameAs 通过 Obsolete 标量垫片投影比较（HttpRetry.* /
+            // CircuitBreaker.*）。整对象替换且字段值仍为默认时 IsSameAs 仍为 true，属预期；
+            // 标量垫片字段已在本循环中覆盖。
+            if (prop.PropertyType == typeof(HttpRetryOptions)
+                || prop.PropertyType == typeof(CircuitBreakerOptions))
+                continue;
+
             var modified = new FeishuAppConfig
             {
                 AppKey = baseline.AppKey,
@@ -203,6 +211,7 @@ public class TokenMultiAppContractGuards
                 EnableLogging = baseline.EnableLogging,
                 IsDefault = baseline.IsDefault
             };
+#pragma warning restore CS0618
 
             // 修改当前属性值
             var originalValue = prop.GetValue(modified);

@@ -18,15 +18,31 @@ public class RedisOptions
     // Nonce 和 SeqID 键前缀已统一至 Consts.DefaultNonceKeyPrefix 和 Consts.DefaultSeqIdKeyPrefix
 
     /// <summary>
-    /// Redis 连接字符串
-    /// <para>示例: "localhost:6379", "127.0.0.1:6379", "rediss://secure.redis.com:6380"</para>
-    /// </summary>
-    public string ServerAddress { get; set; } = "localhost:6379";
+/// Redis 连接字符串
+/// <para>示例: "localhost:6379", "127.0.0.1:6379", "rediss://secure.redis.com:6380"</para>
+/// </summary>
+[Obsolete("请使用 Connection.ServerAddress")]
+public string ServerAddress
+{
+    get => Connection.ServerAddress;
+    set => Connection.ServerAddress = value;
+}
 
-    /// <summary>
-    /// Redis 密码
-    /// </summary>
-    public string Password { get; set; } = string.Empty;
+/// <summary>
+/// Redis 密码
+/// </summary>
+[Obsolete("请使用 Connection.Password")]
+public string Password
+{
+    get => Connection.Password;
+    set => Connection.Password = value;
+}
+
+/// <summary>连接嵌套配置（C7/R3）</summary>
+public RedisConnectionOptions Connection { get; set; } = new();
+
+/// <summary>高级连接旋钮（C7/R3）</summary>
+public RedisAdvancedOptions Advanced { get; set; } = new();
 
     /// <summary>
     /// Nonce 有效期，默认 5 分钟
@@ -104,52 +120,76 @@ public class RedisOptions
     /// </summary>
     public string AppKey { get; set; } = "default";
 
-    /// <summary>
-    /// 连接超时时间，默认 5000 毫秒
-    /// </summary>
-    public int ConnectTimeout { get; set; } = 5000;
+    /// <summary>连接超时时间，默认 5000 毫秒</summary>
+    [Obsolete("请使用 Connection.ConnectTimeout")]
+    public int ConnectTimeout
+    {
+        get => Connection.ConnectTimeout;
+        set => Connection.ConnectTimeout = value;
+    }
 
-    /// <summary>
-    /// 同步超时时间，默认 5000 毫秒
-    /// </summary>
-    public int SyncTimeout { get; set; } = 5000;
+    /// <summary>同步超时时间，默认 5000 毫秒</summary>
+    [Obsolete("请使用 Connection.SyncTimeout")]
+    public int SyncTimeout
+    {
+        get => Connection.SyncTimeout;
+        set => Connection.SyncTimeout = value;
+    }
 
-    /// <summary>
-    /// 是否启用 TLS/SSL，默认 false
-    /// </summary>
-    public bool Ssl { get; set; }
+    /// <summary>是否启用 TLS/SSL，默认 false</summary>
+    [Obsolete("请使用 Connection.Ssl")]
+    public bool Ssl
+    {
+        get => Connection.Ssl;
+        set => Connection.Ssl = value;
+    }
 
-    /// <summary>
-    /// 是否允许管理员操作，默认 false
-    /// <para>仅在生产环境需要执行 FLUSHDB 等管理命令时才应启用</para>
-    /// </summary>
-    public bool AllowAdmin { get; set; } = false;
+    /// <summary>是否允许管理员操作，默认 false</summary>
+    [Obsolete("请使用 Advanced.AllowAdmin")]
+    public bool AllowAdmin
+    {
+        get => Advanced.AllowAdmin;
+        set => Advanced.AllowAdmin = value;
+    }
 
-    /// <summary>
-    /// 是否在连接失败时中止，默认 true
-    /// </summary>
-    public bool AbortOnConnectFail { get; set; } = true;
+    /// <summary>是否在连接失败时中止，默认 true</summary>
+    [Obsolete("请使用 Connection.AbortOnConnectFail")]
+    public bool AbortOnConnectFail
+    {
+        get => Connection.AbortOnConnectFail;
+        set => Connection.AbortOnConnectFail = value;
+    }
 
-    /// <summary>
-    /// 连接重试次数，默认 3 次
-    /// </summary>
-    public int ConnectRetry { get; set; } = Consts.DefaultRedisConnectRetry;
+    /// <summary>连接重试次数，默认 3 次</summary>
+    [Obsolete("请使用 Connection.ConnectRetry")]
+    public int ConnectRetry
+    {
+        get => Connection.ConnectRetry;
+        set => Connection.ConnectRetry = value;
+    }
 
-    /// <summary>
-    /// 默认数据库索引
-    /// </summary>
-    public int? DefaultDatabase { get; set; }
+    /// <summary>默认数据库索引</summary>
+    [Obsolete("请使用 Connection.DefaultDatabase")]
+    public int? DefaultDatabase
+    {
+        get => Connection.DefaultDatabase;
+        set => Connection.DefaultDatabase = value;
+    }
 
-    /// <summary>
-    /// 客户端名称
-    /// </summary>
-    public string? ClientName { get; set; }
+    /// <summary>客户端名称</summary>
+    [Obsolete("请使用 Advanced.ClientName")]
+    public string? ClientName
+    {
+        get => Advanced.ClientName;
+        set => Advanced.ClientName = value;
+    }
 
     /// <summary>
     /// 验证配置的有效性
     /// </summary>
     public void Validate()
     {
+#pragma warning disable CS0618
         if (string.IsNullOrWhiteSpace(ServerAddress))
             throw new InvalidOperationException("ServerAddress 不能为空");
 
@@ -168,6 +208,7 @@ public class RedisOptions
 
         if (ConnectRetry < 0)
             throw new InvalidOperationException("ConnectRetry 不能为负数");
+#pragma warning restore CS0618
 
         // R-12/R-21 护栏：TTL 非正、前缀为空或以 * 开头 → 启动失败
         if (NonceTtl <= TimeSpan.Zero)
@@ -202,8 +243,8 @@ public class RedisOptions
     public override string ToString()
     {
         // T-M3-8：ServerAddress 可能内联凭据（如 host:port,password=...），剥离后掩码
-        var maskedAddress = SensitiveDataUtils.MaskSensitiveData(ServerAddress);
-        var maskedClientName = ClientName != null ? SensitiveDataUtils.MaskSensitiveData(ClientName) : "null";
-        return $"RedisOptions {{ ServerAddress: {maskedAddress}, Password: {SensitiveDataUtils.MaskSensitiveData(Password)}, DefaultDatabase: {DefaultDatabase?.ToString() ?? "默认"}, ConnectTimeout: {ConnectTimeout}ms, SyncTimeout: {SyncTimeout}ms, Ssl: {Ssl}, EventCacheExpiration: {EventCacheExpiration}, SeqIdCacheExpiration: {SeqIdCacheExpiration}, EventKeyPrefix: {EventKeyPrefix}, NonceKeyPrefix: {NonceKeyPrefix}, SeqIdKeyPrefix: {SeqIdKeyPrefix}, ClientName: {maskedClientName} }}";
+        var maskedAddress = SensitiveDataUtils.MaskSensitiveData(Connection.ServerAddress);
+        var maskedClientName = Advanced.ClientName != null ? SensitiveDataUtils.MaskSensitiveData(Advanced.ClientName) : "null";
+        return $"RedisOptions {{ ServerAddress: {maskedAddress}, Password: {SensitiveDataUtils.MaskSensitiveData(Connection.Password)}, DefaultDatabase: {Connection.DefaultDatabase?.ToString() ?? "默认"}, ConnectTimeout: {Connection.ConnectTimeout}ms, SyncTimeout: {Connection.SyncTimeout}ms, Ssl: {Connection.Ssl}, EventCacheExpiration: {EventCacheExpiration}, SeqIdCacheExpiration: {SeqIdCacheExpiration}, EventKeyPrefix: {EventKeyPrefix}, NonceKeyPrefix: {NonceKeyPrefix}, SeqIdKeyPrefix: {SeqIdKeyPrefix}, ClientName: {maskedClientName} }}";
     }
 }

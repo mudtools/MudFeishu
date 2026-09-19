@@ -72,10 +72,8 @@ public class TimestampValidator(
                     var appConfig = options.GetAppConfig(CurrentAppKey!);
                     if (appConfig != null)
                     {
-                        // 优先使用应用特定配置，如果未设置（null/-1/0）则使用全局配置
-                        effectiveToleranceSeconds = appConfig.TimestampToleranceSeconds is > 0
-                            ? appConfig.TimestampToleranceSeconds.Value
-                            : options.TimestampToleranceSeconds;
+                        // C6：统一经 GetEffective* 解析继承，消除双份逻辑
+                        effectiveToleranceSeconds = appConfig.GetEffectiveTimestampTolerance(options.TimestampToleranceSeconds);
                         Logger.LogDebug("使用应用 {AppKey} 的时间戳容错配置: {ToleranceSeconds}秒",
                             CurrentAppKey, effectiveToleranceSeconds);
                     }

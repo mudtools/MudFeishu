@@ -10,6 +10,8 @@ using Xunit;
 
 namespace Mud.Feishu.Abstractions.Tests.Configuration;
 
+#pragma warning disable CS0618 // 覆盖 Obsolete 字段的绑定/预设契约（双读期仍需可绑）
+
 public class DeduplicationOptionsTests
 {
     [Fact]

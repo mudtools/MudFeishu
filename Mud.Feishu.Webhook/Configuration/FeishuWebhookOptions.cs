@@ -39,6 +39,30 @@ public class FeishuWebhookOptions
     public int EventHandlingTimeoutMs { get; set; } = 30000;
 
     /// <summary>
+    /// true 时事件超时仅使用全局 <see cref="EventHandlingTimeoutMs"/>，忽略应用级
+    /// <see cref="FeishuAppWebhookOptions.EventHandlingTimeoutMs"/> 覆盖。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 用于 B1 修复升级过渡：修复前应用级超时键可绑定但运行时不生效；修复后开始生效。
+    /// 若生产 appsettings 中已配置了过小的应用级超时且需保持旧全局语义，临时设为 <c>true</c>。
+    /// </para>
+    /// <para><b>默认 <c>false</c></b>（应用级配置生效）。建议在核对配置后移除本开关。</para>
+    /// </remarks>
+    public bool LegacyGlobalTimeoutOnly { get; set; }
+
+    /// <summary>
+    /// 解析本次事件处理的有效超时（毫秒）。
+    /// </summary>
+    /// <param name="appConfig">当前应用的 Webhook 配置；无应用级配置时为 null</param>
+    internal int ResolveEventHandlingTimeoutMs(FeishuAppWebhookOptions? appConfig)
+    {
+        if (LegacyGlobalTimeoutOnly || appConfig is null)
+            return EventHandlingTimeoutMs;
+        return appConfig.GetEffectiveEventHandlingTimeout(EventHandlingTimeoutMs);
+    }
+
+    /// <summary>
     /// 并行处理事件的最大并发数
     /// </summary>
     public int MaxConcurrentEvents { get; set; } = 10;
@@ -165,11 +189,12 @@ public class FeishuWebhookOptions
     /// 请显式设置 <see cref="EnableTokenBackgroundRefresh"/> = <c>true</c>。
     /// </para>
     /// <para>
-    /// 本属性仅描述 Webhook 模块自身的后台处理模式，运行时变更由
-    /// <c>FeishuWebhookService</c> 响应；与令牌刷新解耦请改用
-    /// <see cref="EnableTokenBackgroundRefresh"/>。
+    /// 本属性仅描述 Webhook 模块自身的后台处理模式名实问题已知（B5）：运行时仅映射
+    /// TokenRefreshBackgroundOptions.Enabled，无独立第二种「后台处理」行为；
+    /// 与令牌刷新解耦请改用 <see cref="EnableTokenBackgroundRefresh"/>。
     /// </para>
     /// </remarks>
+    [Obsolete("运行时仅映射 TokenRefreshBackgroundOptions.Enabled；令牌刷新请改用 EnableTokenBackgroundRefresh")]
     public bool EnableBackgroundProcessing { get; set; } = false;
 
     /// <summary>

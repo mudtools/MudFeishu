@@ -6,7 +6,9 @@
 // -----------------------------------------------------------------------
 
 using Mud.Feishu.Abstractions;
+using Mud.Feishu.Abstractions.Configuration;
 using Mud.Feishu.Abstractions.EventHandlers;
+using Mud.Feishu.Abstractions.Extensions;
 using Mud.Feishu.Abstractions.Services;
 using Mud.Feishu.Webhook;
 using Mud.Feishu.Webhook.Configuration;
@@ -535,22 +537,67 @@ public class FeishuWebhookServiceBuilder
         // 单实例服务（包含 IHostedService）
         _services.AddSingleton<FeishuWebhookConcurrencyService>();
         _services.AddHostedService(sp => sp.GetRequiredService<FeishuWebhookConcurrencyService>());
-        _services.TryAddSingleton<IFeishuEventDeduplicator, FeishuEventDeduplicator>();
+        // B2/R1.2 + C1：内存去重工厂——统一节优先，其次 DeduplicationOptions，否则 Consts
+        // Redis 分布式实现若已先注册则 TryAdd 不会覆盖。
+        _services.AddFeishuDeduplicationOptions();
+        _services.TryAddSingleton<IFeishuEventDeduplicator>(sp =>
+        {
+            var logger = sp.GetService<ILogger<FeishuEventDeduplicator>>();
+            var unified = sp.GetService<IOptions<FeishuDeduplicationOptions>>()?.Value;
+
+            if (unified is { IsConfiguredFromConfiguration: true })
+            {
+                var mode = unified.Mode ?? FeishuDeduplicationOptions.DefaultMode;
+                if (string.Equals(mode, FeishuDeduplicationOptions.ModeNone, StringComparison.OrdinalIgnoreCase))
+                    return new NoopFeishuEventDeduplicator(logger as ILogger<NoopFeishuEventDeduplicator>);
+
+                if (string.Equals(mode, FeishuDeduplicationOptions.ModeDistributed, StringComparison.OrdinalIgnoreCase)
+                    && sp.GetService<IFeishuEventDeduplicator>() is null)
+                {
+                    logger?.LogWarning(
+                        "FeishuDeduplication:Mode=Distributed 但未注册分布式去重实现，Webhook 回退内存去重。请先 AddFeishuRedisDeduplicators。");
+                }
+
+                var ttl = unified.ResolveEventTtl();
+                if (ttl <= TimeSpan.Zero)
+                    ttl = TimeSpan.FromMilliseconds(Consts.DefaultCacheExpirationMs);
+                var processing = unified.ResolveEventProcessingTimeout();
+                if (processing <= TimeSpan.Zero)
+                    processing = TimeSpan.FromMilliseconds(Consts.DefaultProcessingTimeoutMs);
+                var cleanup = unified.Event?.CleanupInterval is { } cl && cl > TimeSpan.Zero
+                    ? cl
+                    : TimeSpan.FromMilliseconds(Consts.DefaultCleanupIntervalMs);
+                var maxSize = unified.Event?.MaxCacheSize ?? Consts.DefaultMaxCacheSize;
+
+                return new FeishuEventDeduplicator(logger, ttl, cleanup, processing, maxSize);
+            }
+
+#pragma warning disable CS0618
+            var dedup = sp.GetService<IOptions<DeduplicationOptions>>()?.Value;
+#pragma warning restore CS0618
+            if (dedup is not null)
+                return new FeishuEventDeduplicator(dedup, logger);
+
+            return new FeishuEventDeduplicator(
+                logger,
+                cacheExpiration: TimeSpan.FromMilliseconds(Consts.DefaultCacheExpirationMs),
+                cleanupInterval: TimeSpan.FromMilliseconds(Consts.DefaultCleanupIntervalMs),
+                processingTimeout: TimeSpan.FromMilliseconds(Consts.DefaultProcessingTimeoutMs),
+                maxCacheSize: Consts.DefaultMaxCacheSize);
+        });
         _services.TryAddSingleton<IFeishuNonceDistributedDeduplicator, FeishuNonceDistributedDeduplicator>();
 
         // 令牌自动刷新后台服务已在 AddFeishuAppBaseServices 中注册（由 Mud.HttpUtils 提供）。
-        // 此处仅保留 Webhook 模块的配置覆盖：把 FeishuWebhookOptions 映射到 TokenRefreshBackgroundOptions.Enabled。
-        // 注意：此 PostConfigure 在 AddFeishuAppBaseServices 的 PostConfigure 之后执行，因此会覆盖基础的 Enabled=true 设置。
-        // 映射优先级（2026-09 修复「静默关闭令牌刷新」）：
-        //   1. FeishuWebhookOptions.EnableTokenBackgroundRefresh（显式覆盖，null = 不干预）
-        //   2. 回退到 FeishuWebhookOptions.EnableBackgroundProcessing（既有映射，默认 false）
-        // 即：默认行为不变（Webhook 宿主默认不开启令牌后台刷新），但宿主现在可以用 EnableTokenBackgroundRefresh
-        // 独立于 Webhook 后台处理开关来控制令牌刷新，不再被静默关闭而无可恢复的入口。
+        // 映射优先级（B5 验证后保持；EnableBackgroundProcessing 已 Obsolete）：
+        //   1. EnableTokenBackgroundRefresh（显式覆盖，null = 不干预）
+        //   2. 回退到 EnableBackgroundProcessing（既有映射，默认 false）
         _services.AddOptions<TokenRefreshBackgroundOptions>()
             .PostConfigure<IOptions<FeishuWebhookOptions>>((tokenOptions, webhookOptions) =>
             {
+#pragma warning disable CS0618
                 tokenOptions.Enabled = webhookOptions.Value.EnableTokenBackgroundRefresh
                                        ?? webhookOptions.Value.EnableBackgroundProcessing;
+#pragma warning restore CS0618
             });
 
         // 注册 HttpContext 访问器（用于在 SignatureValidator 中获取客户端 IP）

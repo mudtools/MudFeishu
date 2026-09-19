@@ -369,4 +369,141 @@ public class FeishuEventMessageHandlerTests
             f => f.HandleEventParallelAsync(It.IsAny<string>(), It.IsAny<EventData>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
+
+    [Fact]
+    public async Task HandleAsync_WhenInterceptorBlocks_ShouldPassInterceptedMarkerToAfterHandle()
+    {
+        // Arrange - P1-7/决策 D：拦截终态必须以 EventHandlingOutcomeException 传给后置拦截器
+        // （接口契约 exception==null 表示成功，拦截不是成功也不是业务异常）
+        var factoryMock = new Mock<IFeishuEventHandlerFactory>();
+
+        Exception? capturedAfterHandle = null;
+        var interceptorMock = new Mock<IFeishuEventInterceptor>();
+        interceptorMock
+            .Setup(i => i.BeforeHandleAsync(It.IsAny<string>(), It.IsAny<EventData>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+        interceptorMock
+            .Setup(i => i.AfterHandleAsync(It.IsAny<string>(), It.IsAny<EventData>(), It.IsAny<Exception?>(), It.IsAny<CancellationToken>()))
+            .Callback<string, EventData, Exception?, CancellationToken>((_, _, ex, _) => capturedAfterHandle = ex)
+            .Returns(Task.CompletedTask);
+
+        var dedupMock = new Mock<Mud.Feishu.Abstractions.Services.IFeishuEventDeduplicator>();
+        dedupMock
+            .Setup(d => d.TryMarkAsProcessingAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<TimeSpan?>(), It.IsAny<TimeSpan?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Mud.Feishu.Abstractions.Services.DeduplicationResult.Success("ws"));
+        dedupMock
+            .Setup(d => d.RollbackProcessingAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var handler = new FeishuEventMessageHandler(
+            _loggerMock.Object,
+            factoryMock.Object,
+            dedupMock.Object,
+            [interceptorMock.Object],
+            new FeishuWebSocketOptions(),
+            null);
+
+        var message = "{\"schema\":\"2.0\",\"header\":{\"event_id\":\"evt_intercept_marker\",\"event_type\":\"drive.file.edit_v1\",\"tenant_key\":\"tk\",\"app_id\":\"app\"},\"event\":{}}";
+
+        // Act
+        var act = () => handler.HandleAsync(message);
+
+        // Assert
+        await act.Should().ThrowAsync<Mud.Feishu.Abstractions.EventHandlers.EventHandlingOutcomeException>();
+        capturedAfterHandle.Should().BeOfType<Mud.Feishu.Abstractions.EventHandlers.EventHandlingOutcomeException>();
+        ((Mud.Feishu.Abstractions.EventHandlers.EventHandlingOutcomeException)capturedAfterHandle!)
+            .OutcomeKind.Should().Be("intercepted");
+    }
+
+    // ===== P2-1：外部取消的终态与指标一次性口径 =====
+
+    [Fact]
+    public async Task HandleAsync_WhenExternallyCancelled_ShouldRollbackOnce_AndPassCanceledMarkerToAfterHandle()
+    {
+        // Arrange - P2-1：此前 OCE 会先被内层通用 catch 记为 failure(OperationCanceledException)，
+        // 再由外层 catch(OperationCanceledException) 记为 failure(canceled) —— 同一事件双计数，
+        // 且第二次的 event_type 退化为 "unknown"（污染维度）。修复后内层收口、只记一次。
+        var factoryMock = new Mock<IFeishuEventHandlerFactory>();
+        factoryMock
+            .Setup(f => f.HandleEventParallelAsync(It.IsAny<string>(), It.IsAny<EventData>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new OperationCanceledException("外部取消"));
+
+        Exception? capturedAfterHandle = null;
+        var interceptorMock = new Mock<IFeishuEventInterceptor>();
+        interceptorMock
+            .Setup(i => i.BeforeHandleAsync(It.IsAny<string>(), It.IsAny<EventData>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+        interceptorMock
+            .Setup(i => i.AfterHandleAsync(It.IsAny<string>(), It.IsAny<EventData>(), It.IsAny<Exception?>(), It.IsAny<CancellationToken>()))
+            .Callback<string, EventData, Exception?, CancellationToken>((_, _, ex, _) => capturedAfterHandle = ex)
+            .Returns(Task.CompletedTask);
+
+        var dedupMock = new Mock<Mud.Feishu.Abstractions.Services.IFeishuEventDeduplicator>();
+        dedupMock
+            .Setup(d => d.TryMarkAsProcessingAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<TimeSpan?>(), It.IsAny<TimeSpan?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Mud.Feishu.Abstractions.Services.DeduplicationResult.Success("ws"));
+        dedupMock
+            .Setup(d => d.RollbackProcessingAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        // 唯一 AppKey：MeterListener 是进程级观测通道，用独立 AppKey 把本用例的测量
+        // 与同程序集内其它用例（默认 AppKey="default"）隔离，避免并行串扰
+        const string probeAppKey = "ws_cancel_probe";
+        var handler = new FeishuEventMessageHandler(
+            _loggerMock.Object,
+            factoryMock.Object,
+            dedupMock.Object,
+            [interceptorMock.Object],
+            new FeishuWebSocketOptions { AppKey = probeAppKey },
+            null);
+
+        var message = "{\"schema\":\"2.0\",\"header\":{\"event_id\":\"evt_cancel\",\"event_type\":\"drive.file.edit_v1\",\"tenant_key\":\"tk\",\"app_id\":\"app\"},\"event\":{}}";
+
+        // Act：观测 feishu.event.handling 指标，断言 canceled 只被记一次且 event_type 不被污染为 unknown
+        var canceledRecords = new List<Dictionary<string, object?>>();
+        using var listener = new System.Diagnostics.Metrics.MeterListener
+        {
+            InstrumentPublished = (instrument, l) =>
+            {
+                if (instrument.Meter.Name == Mud.Feishu.Abstractions.Metrics.FeishuMetrics.MeterName &&
+                    instrument.Name == "feishu.event.handling")
+                {
+                    l.EnableMeasurementEvents(instrument);
+                }
+            }
+        };
+        listener.SetMeasurementEventCallback<long>((_, _, tags, _) =>
+        {
+            var captured = new Dictionary<string, object?>();
+            foreach (var tag in tags)
+            {
+                captured[tag.Key] = tag.Value;
+            }
+            if (captured.TryGetValue(Mud.Feishu.Abstractions.Metrics.FeishuMetrics.Tags.AppKey, out var appKey) &&
+                Equals(appKey, probeAppKey) &&
+                captured.TryGetValue(Mud.Feishu.Abstractions.Metrics.FeishuMetrics.Tags.ErrorType, out var errorType) &&
+                Equals(errorType, "canceled"))
+            {
+                canceledRecords.Add(captured);
+            }
+        });
+        listener.Start();
+
+        var act = () => handler.HandleAsync(message);
+        await act.Should().ThrowAsync<OperationCanceledException>("取消语义必须继续向调用方传播");
+        listener.Dispose();
+
+        // Assert
+        canceledRecords.Should().ContainSingle("P2-1：取消终态只能记一次指标");
+        canceledRecords[0][Mud.Feishu.Abstractions.Metrics.FeishuMetrics.Tags.EventType]
+            .Should().Be("drive.file.edit_v1", "取消指标必须携带真实 event_type，不得退化为 unknown");
+
+        capturedAfterHandle.Should().BeOfType<Mud.Feishu.Abstractions.EventHandlers.EventHandlingOutcomeException>();
+        ((Mud.Feishu.Abstractions.EventHandlers.EventHandlingOutcomeException)capturedAfterHandle!)
+            .OutcomeKind.Should().Be("canceled");
+
+        dedupMock.Verify(
+            d => d.RollbackProcessingAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()),
+            Times.Once, "取消路径必须回滚去重状态（且仅一次）");
+    }
 }

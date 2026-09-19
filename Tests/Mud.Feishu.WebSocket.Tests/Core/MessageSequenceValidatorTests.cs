@@ -178,4 +178,28 @@ public class MessageSequenceValidatorTests
         var seq3 = 30003UL;
         _validator.ValidateSequence(seq3).Should().Be(SequenceValidationResult.Valid);
     }
+
+    /// <summary>
+    /// P0-1 补强：回滚<b>旧</b>序号后，游标不得被拖回该序号——
+    /// 否则紧随其后的旧帧会从"序号回退（Rollback，拒绝）"降级为"前向跳跃（放行）"，
+    /// 等于可被失败路径按需关闭重放防线。
+    /// </summary>
+    [Fact]
+    public void ValidateSequence_ShouldStillRejectOldFrame_AfterRollbackOfOlderSequence()
+    {
+        // Arrange：游标推进到 1000（模拟已处理大量帧）
+        _validator.ValidateSequence(1000).Should().Be(SequenceValidationResult.Valid);
+
+        // Act ①：回滚一个远小于游标的旧序号（其窗口记录可能已被淘汰），再让重发通过一次
+        _validator.Remove(100).Should().BeTrue();
+        _validator.ValidateSequence(100).Should().Be(SequenceValidationResult.Valid,
+            "回滚登记的一次性放行必须生效");
+
+        // Act ②：随后到达的旧帧仍必须被判定为序号回退（而非被当作正常的前向跳跃）
+        var result = _validator.ValidateSequence(500);
+
+        // Assert
+        result.Should().Be(SequenceValidationResult.Rollback,
+            "游标不得因回滚而回退，否则旧帧会绕过序号回退（重放）检测");
+    }
 }

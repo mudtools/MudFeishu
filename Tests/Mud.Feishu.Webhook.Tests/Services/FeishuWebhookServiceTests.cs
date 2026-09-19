@@ -310,7 +310,9 @@ public class FeishuWebhookServiceTests
             timestamp, nonce, body, computedSignature, encryptKey), Times.Once);
     }
 
-    private FeishuWebhookService CreateService(IFailedEventStore? failedEventStore = null)
+    private FeishuWebhookService CreateService(
+        IFailedEventStore? failedEventStore = null,
+        IFeishuEventInterceptor[]? interceptors = null)
     {
         return new FeishuWebhookService(
             _optionsMonitorMock.Object,
@@ -318,7 +320,7 @@ public class FeishuWebhookServiceTests
             _decryptorMock.Object,
             _handlerFactoryMock.Object,
             _loggerMock.Object,
-            Array.Empty<IFeishuEventInterceptor>(),
+            interceptors ?? Array.Empty<IFeishuEventInterceptor>(),
             _concurrencyService,
             _deduplicatorMock.Object,
             _encryptKeyProviderMock.Object,
@@ -830,7 +832,184 @@ public class FeishuWebhookServiceTests
             It.IsAny<EventData>(), It.IsAny<Exception>(), It.IsAny<string?>(), It.IsAny<DateTimeOffset>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
+    [Fact]
+    public async Task HandleEventAsync_WhenBusinessHandlerThrowsRedisServerException_ShouldRollbackAndWriteFailedStore_AndReturn500()
+    {
+        // Arrange - P1-3 / 决策 C 核心回归：
+        // 业务处理器内部因自身使用 Redis 而抛出的 Server 类 FeishuRedisException 属于"业务失败"，
+        // 必须走通用失败路径（回滚 + ADR-2 失败存储 + 500），不得被 WHF-02 过滤器（仅认去重调用点包装的
+        // FeishuDeduplicationFatalException）误判为"去重体系致命故障"（不回滚、不写存储、上抛 503）。
+        var eventData = new EventData { EventId = "p1_3_business_redis", EventType = "test.event" };
+
+        _deduplicatorMock
+            .Setup(x => x.TryMarkAsProcessingAsync(eventData.EventId, It.IsAny<string?>(), null, null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new DeduplicationResult { IsDuplicate = false, WasProcessing = false });
+
+        _handlerFactoryMock
+            .Setup(x => x.HandleEventParallelAsync(eventData.EventType, eventData, It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new FeishuRedisException(FeishuRedisFailureKind.Server, "业务处理器内部的 Redis Lua 脚本失败"));
+
+        var failedEventStoreMock = new Mock<IFailedEventStore>();
+        _options.Retry.EnableRetry = true;
+        var service = CreateService(failedEventStoreMock.Object);
+
+        // Act
+        var result = await service.HandleEventAsync(eventData);
+
+        // Assert
+        Assert.False(result.Success);
+        Assert.Equal("Internal server error", result.ErrorReason);
+
+        _deduplicatorMock.Verify(
+            x => x.RollbackProcessingAsync(eventData.EventId, It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Once,
+            "业务侧 Redis 故障应按业务失败回滚去重");
+        failedEventStoreMock.Verify(
+            x => x.StoreFailedEventAsync(It.IsAny<EventData>(), It.IsAny<Exception>(), It.IsAny<string?>(), It.IsAny<DateTimeOffset>(), It.IsAny<CancellationToken>()),
+            Times.Once, "业务侧 Redis 故障应写入 ADR-2 失败存储以支持重试");
+    }
+
+    [Fact]
+    public async Task HandleEventAsync_WhenExternallyCancelled_ShouldPassCanceledMarkerToAfterHandle()
+    {
+        // Arrange - P1-7/决策 D：AfterHandleAsync 需要可判别的"取消"终态。
+        // 接口契约 null=成功，原始 OCE 无法表达类别，故以 EventHandlingOutcomeException("canceled") 传递；
+        // 对外仍按 OCE 传播（取消语义不得被替换）。
+        var eventData = new EventData { EventId = "cancel_marker_event", EventType = "test.event" };
+
+        _deduplicatorMock
+            .Setup(x => x.TryMarkAsProcessingAsync(eventData.EventId, It.IsAny<string?>(), null, null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new DeduplicationResult { IsDuplicate = false, WasProcessing = false });
+
+        var interceptorMock = new Mock<IFeishuEventInterceptor>();
+        Exception? captured = null;
+        interceptorMock
+            .Setup(x => x.BeforeHandleAsync(eventData.EventType, eventData, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+        interceptorMock
+            .Setup(x => x.AfterHandleAsync(eventData.EventType, eventData, It.IsAny<Exception?>(), It.IsAny<CancellationToken>()))
+            .Callback<string, EventData, Exception?, CancellationToken>((_, _, ex, _) => captured = ex)
+            .Returns(Task.CompletedTask);
+
+        var service = CreateService(interceptors: new[] { interceptorMock.Object });
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        // Act
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => service.HandleEventAsync(eventData, cts.Token));
+
+        // Assert
+        captured.Should().BeOfType<Mud.Feishu.Abstractions.EventHandlers.EventHandlingOutcomeException>(
+            "取消终态必须以致命/终态标记异常传给后置拦截器");
+        ((Mud.Feishu.Abstractions.EventHandlers.EventHandlingOutcomeException)captured!).OutcomeKind.Should().Be("canceled");
+        _deduplicatorMock.Verify(
+            x => x.RollbackProcessingAsync(eventData.EventId, It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Once,
+            "取消路径必须回滚去重状态（且仅回滚一次）");
+    }
+
+    [Fact]
+    public async Task HandleEventAsync_WhenInterceptorBlocks_ShouldPassInterceptedMarkerToAfterHandle()
+    {
+        // Arrange - P1-7：拦截终态标记（决策 D）
+        var eventData = new EventData { EventId = "intercepted_marker_event", EventType = "test.event" };
+
+        var interceptorMock = new Mock<IFeishuEventInterceptor>();
+        interceptorMock
+            .Setup(x => x.BeforeHandleAsync(eventData.EventType, eventData, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+
+        Exception? captured = null;
+        interceptorMock
+            .Setup(x => x.AfterHandleAsync(eventData.EventType, eventData, It.IsAny<Exception?>(), It.IsAny<CancellationToken>()))
+            .Callback<string, EventData, Exception?, CancellationToken>((_, _, ex, _) => captured = ex)
+            .Returns(Task.CompletedTask);
+
+        var service = CreateService(interceptors: new[] { interceptorMock.Object });
+
+        // Act
+        var result = await service.HandleEventAsync(eventData);
+
+        // Assert：拦截 = 不进去重、按 500 口径返回，服务端稍后重试
+        Assert.False(result.Success);
+        Assert.Equal("Event intercepted", result.ErrorReason);
+        _deduplicatorMock.Verify(
+            x => x.TryMarkAsProcessingAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<TimeSpan?>(), It.IsAny<TimeSpan?>(), It.IsAny<CancellationToken>()),
+            Times.Never, "拦截发生在去重之前（retry-until-accept 语义）");
+
+        captured.Should().BeOfType<Mud.Feishu.Abstractions.EventHandlers.EventHandlingOutcomeException>();
+        ((Mud.Feishu.Abstractions.EventHandlers.EventHandlingOutcomeException)captured!).OutcomeKind.Should().Be("intercepted");
+    }
+
+    [Fact]
+    public async Task HandleEventAsync_WhenMultipleAppHandlersFail_ShouldLogAllExceptions_AndRollbackOnce()
+    {
+        // Arrange - M3-5/P2-6：应用专属分支的逐处理器失败必须全部可见（不再只看到第一个 InnerException）
+        var eventData = new EventData { EventId = "multi_app_fail", EventType = "test.event" };
+        _appKeyAccessorMock.Setup(x => x.CurrentAppKey).Returns("app-fail");
+
+        _deduplicatorMock
+            .Setup(x => x.TryMarkAsProcessingAsync(eventData.EventId, "app-fail", null, null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new DeduplicationResult { IsDuplicate = false, WasProcessing = false });
+
+        var registry = new FeishuWebhookHandlerRegistry();
+        registry.Register("app-fail", typeof(FailingAppHandlerA));
+        registry.Register("app-fail", typeof(FailingAppHandlerB));
+
+        _serviceProviderMock
+            .Setup(x => x.GetService(typeof(FailingAppHandlerA)))
+            .Returns(new FailingAppHandlerA());
+        _serviceProviderMock
+            .Setup(x => x.GetService(typeof(FailingAppHandlerB)))
+            .Returns(new FailingAppHandlerB());
+
+        var service = new FeishuWebhookService(
+            _optionsMonitorMock.Object,
+            _validatorMock.Object,
+            _decryptorMock.Object,
+            _handlerFactoryMock.Object,
+            _loggerMock.Object,
+            Array.Empty<IFeishuEventInterceptor>(),
+            _concurrencyService,
+            _deduplicatorMock.Object,
+            _encryptKeyProviderMock.Object,
+            registry,
+            new FeishuWebhookInterceptorRegistry(),
+            _serviceProviderMock.Object,
+            _appKeyAccessorMock.Object,
+            null);
+
+        // Act
+        var result = await service.HandleEventAsync(eventData);
+
+        // Assert
+        Assert.False(result.Success);
+        _deduplicatorMock.Verify(
+            x => x.RollbackProcessingAsync(eventData.EventId, It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Once,
+            "整体回滚一次，at-least-once 语义不变");
+        _loggerMock.Verify(
+            x => x.Log(
+                LogLevel.Error,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, _) => v.ToString()!.Contains("FailingAppHandler")),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.AtLeast(2), "两个失败处理器都必须被逐条记录");
+    }
+
     #endregion
+
+    private class FailingAppHandlerA : IFeishuEventHandler
+    {
+        public string SupportedEventType => "test.event";
+        public Task HandleAsync(EventData eventData, CancellationToken cancellationToken = default)
+            => throw new InvalidOperationException("A failed");
+    }
+
+    private class FailingAppHandlerB : IFeishuEventHandler
+    {
+        public string SupportedEventType => "test.event";
+        public Task HandleAsync(EventData eventData, CancellationToken cancellationToken = default)
+            => throw new InvalidOperationException("B failed");
+    }
 
     private class TestAppHandler : IFeishuEventHandler
     {

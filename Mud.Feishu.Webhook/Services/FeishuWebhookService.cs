@@ -248,8 +248,10 @@ public class FeishuWebhookService : IFeishuWebhookService
             await RollbackDeduplicationAsync(eventData.EventId, appKey);
             _logger.LogWarning("事件处理被取消，EventId: {EventId}, AppKey: {AppKey}", eventData.EventId, appKey ?? "null");
             FeishuMetricsHelper.RecordEventOutcome(appKey ?? "unknown", eventData.EventType, success: false, "canceled");
-            // P1-7/P2-1：取消以 OCE 传播（保持取消语义），指标已按 canceled 记录
-            processingException = oce;
+            // P1-7/P2-1：AfterHandleAsync 需要可判别的终态（接口契约 null=成功，原始 OCE 无法表达"取消"这一类别）；
+            // 但对外仍按 OCE 传播——取消语义不得被替换为普通异常。
+            processingException = new Mud.Feishu.Abstractions.EventHandlers.EventHandlingOutcomeException(
+                "canceled", "事件处理被外部取消");
             throw;
         }
         catch (FeishuDeduplicationFatalException ex)
@@ -259,12 +261,11 @@ public class FeishuWebhookService : IFeishuWebhookService
             processingException = new Mud.Feishu.Abstractions.EventHandlers.EventHandlingOutcomeException("dedup_fatal", ex.Message);
             throw;
         }
-        catch (FeishuRedisException ex) when (ex.FailureKind == FeishuRedisFailureKind.Server)
-        {
-            // 兼容：未包装的 Server 类 Redis 异常仍按 WHF-02 上抛（中间件 503 转换依赖父类型）
-            _logger.LogError(ex, "去重服务致命故障（Server），EventId: {EventId}, AppKey: {AppKey}", eventData.EventId, appKey ?? "null");
-            throw;
-        }
+        // 注意：此处<b>不得</b>再放一个 catch (FeishuRedisException when Server) 的"兼容"分支。
+        // 该分支会把业务处理器内部因自用 Redis 而抛出的 Server 类异常也判为 WHF-02
+        // （不回滚、不写失败存储、上抛 503）——正是决策 C 要消除的过宽过滤。
+        // WHF-02 的对外 503 转换仍成立：FeishuDeduplicationFatalException 继承 FeishuRedisException，
+        // FeishuMultiAppMiddleware 的 catch (FeishuRedisException { FailureKind: Server }) 继续命中。
         catch (Exception ex)
         {
             processingException = ex;

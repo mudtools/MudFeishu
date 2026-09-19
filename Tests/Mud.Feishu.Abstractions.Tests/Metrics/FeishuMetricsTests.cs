@@ -15,6 +15,12 @@ namespace Mud.Feishu.Abstractions.Tests.Metrics;
 /// <summary>
 /// FeishuMetrics 指标系统测试类
 /// </summary>
+/// <remarks>
+/// 必须与其它直接读取 <c>FeishuMetrics</c> 计数的测试类同属
+/// <see cref="FeishuMetricsCollection"/>：MeterListener 为进程级观测通道，
+/// 并行运行会使测量串扰进本类"精确计数"断言。
+/// </remarks>
+[Collection(FeishuMetricsCollection.Name)]
 public class FeishuMetricsTests
 {
     private readonly MeterListener _meterListener;

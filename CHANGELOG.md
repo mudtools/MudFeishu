@@ -28,13 +28,19 @@
 - `TryGet*` 令牌管理器解析器无默认应用时返回 null（不再抛异常）。
 - 认证/取令牌请求改用本应用的命名客户端（多区域部署不再取错平台端点）；
   必要时以 `EnablePerAppAuthenticationClient = false` 降级。
-- 配置热更新默认开启（`EnableConfigReload = true`），`BaseUrl`/`TimeOut` 变更无需重启；
+- 配置热更新默认开启（`EnableConfigReload = true`），`BaseUrl`/`TimeoutSeconds` 变更无需重启；
   如需「配置变更需重启」的旧语义，显式设为 `false`。
 - OAuth 刷新失败按可重试/不可重试分类：`invalid_grant` 等将清除 refresh token 并要求重新授权。
 - 凭据变更即清库：热更新检测到 (AppId, AppSecret) 变更，立即清除该应用全部持久化令牌。
 - 已删除死配置项：`EnableContextRetirement` / `PurgeStoreOnTokenInvalidation`（默认安全行为保留）。
 
 **配置与 HTTP**
+- **配置结构统一为嵌套（R4，C# 代码破坏性）**：扁平属性收敛为分组对象——`FeishuWebSocketOptions` 的重连/证书
+  改为 `Reconnect.*` / `Certificate.*`（`AutoReconnect`→`Reconnect.Auto`、`ReconnectDelayMs`→`Reconnect.BaseDelayMs`、
+  `ValidateServerCertificate`→`Certificate.ValidateServerCertificate` 等），新增 `Certificate.Mode`（`Strict`/`Dev`/`Custom`）；
+  `FeishuAppConfig` 的 `TimeOut`/`RetryCount`/`CircuitBreaker*` 与 `RedisOptions` 连接键同样收敛为
+  `HttpRetry.*` / `CircuitBreaker.*` / `Connection.*`。**JSON 旧扁平键仍可绑定**（启动期自动回填到嵌套属性），
+  C# 代码必须改用嵌套 API；各模块日志开关统一为 `Logging:LogLevel:*`（`EnableLogging` 已移除）。
 - `FeishuAppConfig` 移除 `required`：AOT 源生成绑定要求，校验统一由 `Validate()` 承担。
 - 增强 HttpClient 装配基线化：此前手工 `new` 静默取默认值的 10 个字段现与注册路径同源。
 - `nuget.config` 收紧为包来源锁定（`<clear />` + `packageSourceMapping`）。
@@ -53,7 +59,7 @@
 - `Dispose()` 之后调用连接/发送 API 现在确定性抛出 `ObjectDisposedException`（此前为随机抛出或偶发成功）；
   内部 `SemaphoreSlim` 不再随 `Dispose` 释放（消除在途 `Release()`/租约归还的 `ObjectDisposedException` 竞态，
   未访问 `AvailableWaitHandle`，无 OS 句柄泄漏）。
-- `MaxReconnectDelayMs` setter 不再自动抬升到 `ReconnectDelayMs`：非法组合改由 `Validate()` 在启动期报错
+- `Reconnect.MaxDelayMs` 不再自动抬升到 `Reconnect.BaseDelayMs`：非法组合改由 `Validate()` 在启动期报错
   （此前赋值结果依赖配置绑定顺序）。
 - 文本消息发送与接收统一按 **UTF-8 字节**计量（新增 `MessageSizeLimits.MaxTextMessageBytes`，
   0 = 3 × `MaxTextMessageSize` 自动推导）。默认值下属**放宽**：旧"字符语义"的合法消息全部继续通过；
@@ -96,7 +102,7 @@
 
 - **令牌存储加密**：`EncryptedTokenStore` 系列 + `FeishuAppOptions.EnableTokenEncryption`
   （默认关闭；未注册加密提供程序时降级明文并告警，解密失败按缓存未命中处理）。
-- **多应用配置热更新**：`appsettings.json` 变更按 AppKey 增量应用；`BaseUrl`/`TimeOut` 运行期热更新，
+- **多应用配置热更新**：`appsettings.json` 变更按 AppKey 增量应用；`BaseUrl`/`TimeoutSeconds` 运行期热更新，
   多区域切换无需重启。
 - **AOT 安全 JSON 入口**：`FeishuJsonAot`（`JsonTypeInfo` 重载）+
   `FeishuJsonDefaults.ConfigureUserResolver` 自定义 Context 注册。
@@ -127,7 +133,7 @@
 - **JSON / AOT**：net8+ 未覆盖类型抛 `NotSupportedException`（补链尾反射兜底 + 幂等 + 加锁）；
   开放泛型误标 `[HttpJsonSerializable]`（AOT006 / SYSLIB1030）；DataModels 7 组同名 DTO 触发
   SYSLIB1031（重命名修复）；低 TFM 7486 条 AOT006 噪音豁免。
-- **HTTP / 配置**：`IFeishuAuthentication` 未注册；`BaseUrl`/`Timeout` 不参与热更新；
+- **HTTP / 配置**：`IFeishuAuthentication` 未注册；`BaseUrl`/`TimeoutSeconds` 不参与热更新；
   per-app 弹性策略固化注册期配置；解密失败完全静默（补节流告警）；
   `FailedEventRetryService` 反序列化选项失配；204 条 NU1603 版本漂移。
 - **WebSocket**：健康检查并发指标缺失、重连无熔断、配置热更新不一致、协议保活硬编码、
@@ -233,7 +239,7 @@
 - ARC-1：多应用配置热更新（`IOptionsMonitor<List<FeishuAppConfig>>.OnChange` Diff 增量 + 快照节流）；
   ARC-2：增强 HttpClient 装配基线化（`RequestBodySerialization` / `ExceptionRedactor` / `HttpVersion` /
   `JsonTypeInfoResolver` 等 10 字段与注册路径同源，`AppAccessAuthorizer` 同步）；
-  ARC-7/-7b：`BaseUrl`/`TimeOut` 运行期热更新（`ConfigureHttpClient(IServiceProvider, HttpClient)` 按 diff
+  ARC-7/-7b：`BaseUrl`/`TimeoutSeconds` 运行期热更新（`ConfigureHttpClient(IServiceProvider, HttpClient)` 按 diff
   覆盖，未变化短路）与 per-app 弹性策略读 `IOptionsMonitor` 当前配置（残余：组件侧已解析策略缓存
   需重启，COMP-4）。
 - SEC-1：`nuget.config` 包来源锁定（`<clear />` + `packageSourceMapping`）；组件 2.0.6 发布到

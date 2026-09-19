@@ -105,9 +105,9 @@ await File.WriteAllBytesAsync(localPath, bytes);
 
 | 配置项 | 作用 |
 | --- | --- |
-| `FeishuAppConfig.TimeOut` | 命名客户端超时（秒），支持配置热更新 |
-| `FeishuAppConfig.RetryCount` / `RetryDelayMs` | 弹性重试（指数退避） |
-| `FeishuAppConfig.CircuitBreaker*` | 熔断策略 |
+| `FeishuAppConfig.TimeoutSeconds` | 命名客户端超时（秒），支持配置热更新 |
+| `FeishuAppConfig.HttpRetry.MaxAttempts` / `HttpRetry.DelayMs` | 弹性重试（指数退避） |
+| `FeishuAppConfig.CircuitBreaker.*` | 熔断策略 |
 | `EnhancedHttpClientOptions.MaxSuccessResponseBytes` | 成功响应体上限（防 OOM，0 = 不限制） |
 | `EnhancedHttpClientOptions.MaxExceptionContentLength` | 异常内容截断长度 |
 | `EnhancedHttpClientOptions.CaptureRequestContent` | 是否捕获请求体用于诊断（含敏感数据，慎用） |

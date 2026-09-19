@@ -32,10 +32,11 @@ dotnet add package Mud.Feishu
       "AppId": "your_feishu_app_id",
       "AppSecret": "your_feishu_app_secret",
       "BaseUrl": "https://open.feishu.cn",
-      "TimeOut": 30,
-      "RetryCount": 3,
-      "RetryDelayMs": 1000,
-      "EnableLogging": true
+      "TimeoutSeconds": 30,
+      "HttpRetry": {
+        "MaxAttempts": 3,
+        "DelayMs": 1000
+      }
     }
   ]
 }
@@ -697,8 +698,8 @@ builder.Services.AddFeishuApp(configure =>
     configure.AddDefaultApp("default", "cli_xxx", "dsk_xxx");
     configure.AddApp("hr-app", "cli_yyy", "dsk_yyy", opt =>
     {
-        opt.TimeOut = 45;
-        opt.RetryCount = 5;
+        opt.TimeoutSeconds = 45;
+        opt.HttpRetry.MaxAttempts = 5;
     });
 });
 
@@ -734,11 +735,10 @@ public class MultiAppService
 | `AppId`                 | string | -                        | 飞书应用 ID（必需）    |
 | `AppSecret`             | string | -                        | 飞书应用密钥（必需）     |
 | `BaseUrl`               | string | <https://open.feishu.cn> | API 基础地址       |
-| `TimeOut`               | int    | 30                       | HTTP 请求超时时间（秒） |
-| `RetryCount`            | int    | 3                        | 失败重试次数         |
-| `RetryDelayMs`          | int    | 1000                     | 重试延迟时间（毫秒）     |
+| `TimeoutSeconds`        | int    | 30                       | HTTP 请求超时时间（秒） |
+| `HttpRetry.MaxAttempts` | int    | 3                        | 失败重试次数         |
+| `HttpRetry.DelayMs`     | int    | 1000                     | 重试延迟时间（毫秒）     |
 | `TokenRefreshThreshold` | int    | 300                      | 令牌刷新阈值（秒）      |
-| `EnableLogging`         | bool   | true                     | 是否启用日志记录       |
 | `IsDefault`             | bool   | false                    | 是否为默认应用        |
 
 ## 自定义模块注册

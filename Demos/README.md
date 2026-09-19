@@ -238,13 +238,14 @@ docker run -d -p 6379:6379 redis --requirepass letmein
 
 # 编辑 appsettings.json，填入凭证
 # {
-#   "Feishu": {
-#     "AppId": "cli_xxxxxxxxxxxxxxxx",
-#     "AppSecret": "your-app-secret-here"
-#   },
-#   "Redis": {
-#     "ServerAddress": "localhost:6379",
-#     "Password": "letmein"
+#   "FeishuApps": [
+#     { "AppId": "cli_xxxxxxxxxxxxxxxx", "AppSecret": "your-app-secret-here" }
+#   ],
+#   "FeishuRedis": {
+#     "Connection": {
+#       "ServerAddress": "localhost:6379",
+#       "Password": "letmein"
+#     }
 #   }
 # }
 
@@ -537,10 +538,12 @@ docker exec <container-id> redis-cli ping
 
 ```json
 {
-  "Redis": {
-    "ServerAddress": "localhost:6379",
-    "Password": "letmein",
-    "ConnectTimeout": 5000
+  "FeishuRedis": {
+    "Connection": {
+      "ServerAddress": "localhost:6379",
+      "Password": "letmein",
+      "ConnectTimeout": 5000
+    }
   }
 }
 ```

@@ -68,9 +68,11 @@ cd Demos/FeishuOAuthDemo
     "AppId": "cli_xxxxxxxxxxxxxxxx",        // 替换为你的App ID
     "AppSecret": "your-app-secret-here",     // 替换为你的App Secret
     "BaseUrl": "https://open.feishu.cn",
-    "TimeOut": 30,
-    "RetryCount": 3,
-    "EnableLogging": true
+    "TimeoutSeconds": 30,
+    "HttpRetry": {
+      "MaxAttempts": 3,
+      "DelayMs": 1000
+    }
   },
   "OAuth": {
     "RedirectUri": "http://localhost:5173/auth/feishu/callback",  // 与飞书平台配置一致

@@ -393,14 +393,14 @@ builder.Services.AddFeishuApp(configs =>
     configs.AddDefaultApp("default", "cli_xxxxxx", "xxxxxx", opt =>
     {
         opt.BaseUrl = "https://open.feishu.cn";
-        opt.TimeOut = 30;
-        opt.RetryCount = 3;
+        opt.TimeoutSeconds = 30;
+        opt.HttpRetry.MaxAttempts = 3;
     });
 
     configs.AddApp("approval", "cli_yyyyyy", "yyyyyy", opt =>
     {
-        opt.TimeOut = 60;
-        opt.RetryCount = 5;
+        opt.TimeoutSeconds = 60;
+        opt.HttpRetry.MaxAttempts = 5;
     });
 });
 
@@ -541,16 +541,15 @@ public class DynamicAppManager
 | `AppSecret` | string | - | Feishu application secret (required) |
 | `BaseUrl` | string | https://open.feishu.cn | API base URL |
 | `AllowCustomBaseUrl` | bool | false | Allow custom base URLs (SSRF risk; only for special scenarios) |
-| `TimeOut` | int | 30 | HTTP request timeout (seconds) |
-| `RetryCount` | int | 3 | Failure retry count |
-| `RetryDelayMs` | int | 1000 | Retry delay (milliseconds) |
-| `CircuitBreakerEnabled` | bool | true | Whether the circuit breaker strategy is enabled |
-| `CircuitBreakerFailureThreshold` | int | 20 | Circuit breaker failure rate threshold (percentage, range 1-100) |
-| `CircuitBreakerSamplingDurationSeconds` | int | 60 | Circuit breaker sampling window (seconds, range 10-300) |
-| `CircuitBreakerBreakDurationSeconds` | int | 60 | Circuit breaker break duration (seconds, range 10-300) |
-| `CircuitBreakerMinimumThroughput` | int | 10 | Circuit breaker minimum throughput (range 2-1000) |
+| `TimeoutSeconds` | int | 30 | HTTP request timeout (seconds) |
+| `HttpRetry.MaxAttempts` | int | 3 | Failure retry count |
+| `HttpRetry.DelayMs` | int | 1000 | Retry delay (milliseconds) |
+| `CircuitBreaker.Enabled` | bool | true | Whether the circuit breaker strategy is enabled |
+| `CircuitBreaker.FailureThreshold` | int | 20 | Circuit breaker failure rate threshold (percentage, range 1-100) |
+| `CircuitBreaker.SamplingDurationSeconds` | int | 60 | Circuit breaker sampling window (seconds, range 10-300) |
+| `CircuitBreaker.BreakDurationSeconds` | int | 60 | Circuit breaker break duration (seconds, range 10-300) |
+| `CircuitBreaker.MinimumThroughput` | int | 10 | Circuit breaker minimum throughput (range 2-1000) |
 | `TokenRefreshThreshold` | int | 300 | Token refresh threshold (seconds) |
-| `EnableLogging` | bool | true | Whether to enable logging |
 | `IsDefault` | bool | false | Whether it's the default application |
 
 ## 🎯 Supported Event Types

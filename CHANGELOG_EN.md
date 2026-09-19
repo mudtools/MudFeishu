@@ -43,7 +43,7 @@
   invalidated → restore again" self-loop; `TokenRefreshThreshold` is now the single threshold.
 - **Credential changes purge stored tokens immediately (P1-2 / TMA2-05)**: `RebuildAppContext` now
   detects `(AppId, AppSecret)` changes and clears the app's persisted tokens; non-credential changes
-  (e.g. `BaseUrl`/`TimeOut`) still keep the token hot-migration.
+  (e.g. `BaseUrl`/`TimeoutSeconds`) still keep the token hot-migration.
 - **OAuth refresh failures are classified (TMA2-06)**: non-retryable errors (`invalid_grant`,
   revoked/expired refresh token, scope mismatch) purge the stored refresh token and return `null`
   (entering component back-off); retryable errors throw `FeishuException` for visibility.
@@ -72,7 +72,7 @@
   fell back to defaults (plus `AppAccessAuthorizer` added in 2.0.5) now take effect.
 - **Configuration hot reload is enabled by default (ARC-1)**: `FeishuAppOptions.EnableConfigReload`
   defaults to `true`. Set it to `false` to restore the previous "restart required" semantics.
-  Hot reload now also covers `BaseUrl` / `TimeOut` (ARC-7): an extra DI-aware
+  Hot reload now also covers `BaseUrl` / `TimeoutSeconds` (ARC-7): an extra DI-aware
   `IHttpClientBuilder.ConfigureHttpClient(IServiceProvider, HttpClient)` action reads the current
   values from `IOptionsMonitor<List<FeishuAppConfig>>` on every `CreateClient`, so multi-region
   switching (`open.feishu.cn` ↔ `open.larksuite.com`) no longer requires a process restart.

@@ -350,14 +350,14 @@ builder.Services.AddFeishuApp(configs =>
     configs.AddDefaultApp("default", "cli_xxxxxx", "xxxxxx", opt =>
     {
         opt.BaseUrl = "https://open.feishu.cn";
-        opt.TimeOut = 30;
-        opt.RetryCount = 3;
+        opt.TimeoutSeconds = 30;
+        opt.HttpRetry.MaxAttempts = 3;
     });
 
     configs.AddApp("approval", "cli_yyyyyy", "yyyyyy", opt =>
     {
-        opt.TimeOut = 60;
-        opt.RetryCount = 5;
+        opt.TimeoutSeconds = 60;
+        opt.HttpRetry.MaxAttempts = 5;
     });
 });
 
@@ -556,16 +556,15 @@ public class DynamicAppManager
 | `AppSecret`             | string | -                      | 飞书应用密钥（必需）    |
 | `BaseUrl`               | string | https://open.feishu.cn | API 基础地址            |
 | `AllowCustomBaseUrl`    | bool   | false                  | 是否允许自定义基础 URL（存在 SSRF 风险，仅用于特殊场景） |
-| `TimeOut`               | int    | 30                     | HTTP 请求超时时间（秒） |
-| `RetryCount`            | int    | 3                      | 失败重试次数            |
-| `RetryDelayMs`          | int    | 1000                   | 重试延迟时间（毫秒）    |
-| `CircuitBreakerEnabled`                | bool | true  | 是否启用熔断策略                      |
-| `CircuitBreakerFailureThreshold`       | int  | 20    | 熔断失败率阈值（百分比，范围 1-100）  |
-| `CircuitBreakerSamplingDurationSeconds`| int  | 60    | 熔断采样窗口时间（秒，范围 10-300）   |
-| `CircuitBreakerBreakDurationSeconds`   | int  | 60    | 熔断持续时间（秒，范围 10-300）       |
-| `CircuitBreakerMinimumThroughput`      | int  | 10    | 熔断最小吞吐量（范围 2-1000）         |
+| `TimeoutSeconds`        | int    | 30                     | HTTP 请求超时时间（秒） |
+| `HttpRetry.MaxAttempts` | int    | 3                      | 失败重试次数            |
+| `HttpRetry.DelayMs`     | int    | 1000                   | 重试延迟时间（毫秒）    |
+| `CircuitBreaker.Enabled`                 | bool | true  | 是否启用熔断策略                      |
+| `CircuitBreaker.FailureThreshold`        | int  | 20    | 熔断失败率阈值（百分比，范围 1-100）  |
+| `CircuitBreaker.SamplingDurationSeconds` | int  | 60    | 熔断采样窗口时间（秒，范围 10-300）   |
+| `CircuitBreaker.BreakDurationSeconds`    | int  | 60    | 熔断持续时间（秒，范围 10-300）       |
+| `CircuitBreaker.MinimumThroughput`       | int  | 10    | 熔断最小吞吐量（范围 2-1000）         |
 | `TokenRefreshThreshold` | int    | 300                    | 令牌刷新阈值（秒）      |
-| `EnableLogging`         | bool   | true                   | 是否启用日志记录        |
 | `IsDefault`             | bool   | false                  | 是否为默认应用          |
 
 ### 配置热更新机制

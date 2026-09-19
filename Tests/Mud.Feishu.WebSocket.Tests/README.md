@@ -23,7 +23,7 @@
 #### FeishuWebSocketOptionsTests
 测试 `FeishuWebSocketOptions` 配置类的各种属性和行为：
 - 默认值验证
-- 属性最小值强制（ReconnectDelayMs、HeartbeatIntervalMs 等）
+- 非法值由 `Validate()` 拒绝（`Reconnect.BaseDelayMs` / `Reconnect.MaxDelayMs` 交叉校验、`HeartbeatIntervalMs` 最小值等）
 - 布尔值属性设置
 - 整数属性设置
 

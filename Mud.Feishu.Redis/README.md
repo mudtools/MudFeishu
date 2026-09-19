@@ -33,8 +33,19 @@ dotnet add package Mud.Feishu.Redis
 ```json
 {
   "FeishuRedis": {
-    "ServerAddress": "localhost:6379",
-    "Password": "",
+    "Connection": {
+      "ServerAddress": "localhost:6379",
+      "Password": "",
+      "ConnectTimeout": 5000,
+      "SyncTimeout": 5000,
+      "Ssl": false,
+      "AbortOnConnectFail": true,
+      "ConnectRetry": 3,
+      "DefaultDatabase": 0
+    },
+    "Advanced": {
+      "AllowAdmin": false
+    },
     "EventCacheExpiration": "48:00:00",
     "NonceTtl": "00:05:00",
     "SeqIdCacheExpiration": "48:00:00",
@@ -42,14 +53,7 @@ dotnet add package Mud.Feishu.Redis
     "NonceKeyPrefix": "feishu:nonce:",
     "SeqIdKeyPrefix": "feishu:seqid:",
     "SeqIdScopeKey": "",  // 可选，为空时自动合成 {AppKey}|{MachineName}
-    "AppKey": "default",  // 用于 SeqID scopeKey 合成
-    "ConnectTimeout": 5000,
-    "SyncTimeout": 5000,
-    "Ssl": false,
-    "AllowAdmin": false,
-    "AbortOnConnectFail": true,
-    "ConnectRetry": 3,
-    "DefaultDatabase": 0
+    "AppKey": "default"   // 用于 SeqID scopeKey 合成
   }
 }
 ```
@@ -71,11 +75,11 @@ builder.Services.AddFeishuRedisDeduplicators(builder.Configuration);
 // 通过代码配置 Redis 连接信息
 builder.Services.AddFeishuRedisDeduplicators(options =>
 {
-    options.ServerAddress = "localhost:6379";
-    options.Password = "your_password";
+    options.Connection.ServerAddress = "localhost:6379";
+    options.Connection.Password = "your_password";
+    options.Connection.ConnectRetry = 3;
     options.EventCacheExpiration = TimeSpan.FromHours(48);
     options.NonceTtl = TimeSpan.FromMinutes(5);
-    options.ConnectRetry = 3;
 });
 ```
 
@@ -115,24 +119,24 @@ app.Run();
 
 | 参数                   | 类型     | 默认值           | 说明                                                                     |
 | ---------------------- | -------- | ---------------- | ------------------------------------------------------------------------ |
-| `ServerAddress`        | string   | "localhost:6379" | Redis 服务器地址（host:port 或 redis://host:port 或 rediss://host:port） |
-| `Password`             | string   | ""               | Redis 密码                                                               |
-| `EventCacheExpiration` | TimeSpan | 48 小时          | 事件去重缓存过期时间                                                     |
-| `NonceTtl`             | TimeSpan | 5 分钟           | Nonce 有效期                                                             |
-| `SeqIdCacheExpiration` | TimeSpan | 48 小时          | SeqID 去重缓存过期时间                                                   |
-| `EventKeyPrefix`       | string   | "feishu:event:"  | 事件去重键前缀                                                           |
-| `NonceKeyPrefix`       | string   | "feishu:nonce:"  | Nonce 去重键前缀                                                         |
-| `SeqIdKeyPrefix`       | string   | "feishu:seqid:"  | SeqID 去重键前缀                                                         |
-| `ConnectTimeout`       | int      | 5000ms           | 连接超时时间（最小 1000ms）                                              |
-| `SyncTimeout`          | int      | 5000ms           | 同步超时时间（最小 1000ms）                                              |
-| `Ssl`                  | bool     | false            | 是否启用 TLS/SSL                                                         |
-| `AllowAdmin`           | bool     | false            | 是否允许管理员操作（仅生产环境需要时启用）                               |
-| `AbortOnConnectFail`   | bool     | true             | 是否在连接失败时中止                                                     |
-| `ConnectRetry`         | int      | 3                | 连接重试次数                                                             |
-| `DefaultDatabase`      | int?     | null             | 默认数据库索引                                                           |
-| `ClientName`           | string?  | null             | 客户端名称（默认自动生成）                                               |
+| `Connection.ServerAddress`      | string   | "localhost:6379" | Redis 服务器地址（host:port 或 redis://host:port 或 rediss://host:port） |
+| `Connection.Password`           | string   | ""               | Redis 密码                                                               |
+| `EventCacheExpiration`          | TimeSpan | 48 小时          | 事件去重缓存过期时间                                                     |
+| `NonceTtl`                      | TimeSpan | 5 分钟           | Nonce 有效期                                                             |
+| `SeqIdCacheExpiration`          | TimeSpan | 48 小时          | SeqID 去重缓存过期时间                                                   |
+| `EventKeyPrefix`                | string   | "feishu:event:"  | 事件去重键前缀                                                           |
+| `NonceKeyPrefix`                | string   | "feishu:nonce:"  | Nonce 去重键前缀                                                         |
+| `SeqIdKeyPrefix`                | string   | "feishu:seqid:"  | SeqID 去重键前缀                                                         |
+| `Connection.ConnectTimeout`     | int      | 5000ms           | 连接超时时间（最小 1000ms）                                              |
+| `Connection.SyncTimeout`        | int      | 5000ms           | 同步超时时间（最小 1000ms）                                              |
+| `Connection.Ssl`                | bool     | false            | 是否启用 TLS/SSL                                                         |
+| `Advanced.AllowAdmin`           | bool     | false            | 是否允许管理员操作（仅生产环境需要时启用）                               |
+| `Connection.AbortOnConnectFail` | bool     | true             | 是否在连接失败时中止                                                     |
+| `Connection.ConnectRetry`       | int      | 3                | 连接重试次数                                                             |
+| `Connection.DefaultDatabase`    | int?     | null             | 默认数据库索引                                                           |
+| `Advanced.ClientName`           | string?  | null             | 客户端名称（默认自动生成）                                               |
 
-> ℹ️ **高级去重参数**：在 `FeishuRedis:Deduplication` 子节下可配置 `ProcessingTimeout`（处理超时阈值，默认 10 分钟）。注意：`CacheExpiration` 和 `KeyPrefix` 由上表中的 `EventCacheExpiration` / `EventKeyPrefix` 优先覆盖。
+> ℹ️ **高级去重参数**：推荐使用统一节 `FeishuDeduplication`（`Event` / `Nonce` / `SeqId` 子节点）配置 TTL 与键前缀；`FeishuRedis:Deduplication` 子节仍可绑定 `ProcessingTimeout`（处理超时阈值，默认 10 分钟）、`CleanupInterval`、`MaxCacheSize`。注意：`CacheExpiration` 和 `KeyPrefix` 由上表中的 `EventCacheExpiration` / `EventKeyPrefix` 优先覆盖；`AllowProcessingOnFallback` / `MaxRetryCount` / `InitialRetryDelay` / `MaxRetryDelay` / `EnableVerboseLogging` 已在 R4 移除（Redis 主路径不消费），失败事件重试请改用 `FeishuWebhook:Retry`。
 
 ## 去重服务详解
 
@@ -346,9 +350,11 @@ Redis 键格式：`{keyPrefix}{appKey}:{eventId}`，不同应用的事件互不�
 ```json
 {
   "FeishuRedis": {
-    "ServerAddress": "secure.redis.com:6380",
-    "Password": "your_password",
-    "Ssl": true
+    "Connection": {
+      "ServerAddress": "secure.redis.com:6380",
+      "Password": "your_password",
+      "Ssl": true
+    }
   }
 }
 ```
@@ -358,7 +364,9 @@ Redis 键格式：`{keyPrefix}{appKey}:{eventId}`，不同应用的事件互不�
 ```json
 {
   "FeishuRedis": {
-    "ServerAddress": "rediss://secure.redis.com:6380"
+    "Connection": {
+      "ServerAddress": "rediss://secure.redis.com:6380"
+    }
   }
 }
 ```
@@ -406,10 +414,10 @@ catch (Exception ex)
 
 服务注册时会自动验证配置有效性，常见验证规则：
 
-- `ServerAddress` 不能为空，格式须为 `host:port` 或 `redis://host:port` 或 `rediss://host:port`
-- `ConnectTimeout` 必须至少为 1000 毫秒
-- `SyncTimeout` 必须至少为 1000 毫秒
-- `ConnectRetry` 不能为负数
+- `Connection.ServerAddress` 不能为空，格式须为 `host:port` 或 `redis://host:port` 或 `rediss://host:port`
+- `Connection.ConnectTimeout` 必须至少为 1000 毫秒
+- `Connection.SyncTimeout` 必须至少为 1000 毫秒
+- `Connection.ConnectRetry` 不能为负数
 
 验证失败时应用将无法启动，并在日志中输出具体错误信息。
 

@@ -78,18 +78,33 @@ app.Run();
       "AppId": "your_app_id",
       "AppSecret": "your_app_secret",
       "BaseUrl": "https://open.feishu.cn",
-      "TimeOut": 30,
-      "RetryCount": 3,
-      "EnableLogging": true,
+      "TimeoutSeconds": 30,
+      "HttpRetry": {
+        "MaxAttempts": 3,
+        "DelayMs": 1000
+      },
       "IsDefault": true
     }
   ],
   "FeishuWebSocket": {
-    "AutoReconnect": true,
-    "MaxReconnectAttempts": 5,
-    "ReconnectDelayMs": 5000,
+    "Reconnect": {
+      "Auto": true,
+      "MaxAttempts": 5,
+      "MaxAuthRetryAttempts": 5,
+      "BaseDelayMs": 5000,
+      "MaxDelayMs": 30000,
+      "TotalBudget": "00:30:00",
+      "Cooldown": "00:00:05"
+    },
+    "Certificate": {
+      "Mode": "Strict",
+      "AllowInsecureWebSocket": false,
+      "ValidateServerCertificate": true,
+      "AllowSelfSignedCertificates": false,
+      "AllowCertificateNameMismatch": false
+    },
     "HeartbeatIntervalMs": 25000,
-    "EnableLogging": true,
+    "AllowedHostSuffixes": "*.feishu.cn;*.larksuite.com",
     "EventDeduplication": {
       "Mode": "InMemory",
       "CacheExpiration": "48:00:00",
@@ -238,10 +253,10 @@ builder.Services.CreateFeishuWebSocketServiceBuilder(builder.Configuration)
 // Use delegate to configure options
 builder.Services.CreateFeishuWebSocketServiceBuilder(options =>
 {
-    options.AutoReconnect = true;
+    options.Reconnect.Auto = true;
+    options.Reconnect.MaxAttempts = 5;
+    options.Reconnect.TotalBudget = TimeSpan.FromMinutes(30);
     options.HeartbeatIntervalMs = 25000;
-    options.MaxReconnectAttempts = 5;
-    options.MaxTotalReconnectTime = TimeSpan.FromMinutes(30);
     options.EventDeduplication.Mode = EventDeduplicationMode.InMemory;
 })
 .AddHandler<ReceiveMessageEventHandler>()
@@ -675,18 +690,17 @@ public class ServiceManager
 | Option                                | Type                                 | Default    | Description                                                      |
 | ------------------------------------- | ------------------------------------ | ---------- | ---------------------------------------------------------------- |
 | `AppKey`                              | string                               | "default"  | Feishu app key used as metric dimension (**hot-updatable**)      |
-| `AutoReconnect`                       | bool                                 | true       | Auto reconnect                                                   |
-| `MaxReconnectAttempts`                | int                                  | 5          | Max reconnect attempts; 0 = unlimited (bounded by max total time) |
-| `MaxAuthRetryAttempts`                | int                                  | 5          | Max authentication retries; 0 = unlimited (independent of reconnect) |
-| `ReconnectDelayMs`                    | int                                  | 5000       | Base reconnect delay (ms), min 1000                              |
-| `MaxReconnectDelayMs`                 | int                                  | 30000      | Max reconnect delay (ms), ≥ReconnectDelayMs                      |
-| `MaxTotalReconnectTime`               | TimeSpan                             | 30min      | Max total reconnection time, stops retrying after                |
-| `ReconnectCooldownTime`               | TimeSpan                             | 5s         | Minimum interval between reconnection attempts                   |
+| `Reconnect.Auto`                      | bool                                 | true       | Auto reconnect                                                   |
+| `Reconnect.MaxAttempts`               | int                                  | 5          | Max reconnect attempts; 0 = unlimited (bounded by `Reconnect.TotalBudget`) |
+| `Reconnect.MaxAuthRetryAttempts`      | int                                  | 5          | Max authentication retries; 0 = unlimited (independent of reconnect) |
+| `Reconnect.BaseDelayMs`               | int                                  | 5000       | Base reconnect delay (ms), min 1000                              |
+| `Reconnect.MaxDelayMs`                | int                                  | 30000      | Max reconnect delay (ms), must be ≥ `Reconnect.BaseDelayMs`       |
+| `Reconnect.TotalBudget`               | TimeSpan                             | 30min      | Max total reconnection time, stops retrying after                |
+| `Reconnect.Cooldown`                  | TimeSpan                             | 5s         | Minimum interval between reconnection attempts                   |
 | `EnableReconnectMetrics`              | bool                                 | true       | Enable reconnection metrics collection                           |
 | `HeartbeatIntervalMs`                 | int                                  | 25000      | Heartbeat interval (ms), min 5000 (Feishu recommends ≤25s)       |
 | `ConnectionTimeoutMs`                 | int                                  | 10000      | Connection timeout (ms)                                          |
 | `InitialReceiveBufferSize`            | int                                  | 4096       | Initial receive buffer size (bytes)                              |
-| `EnableLogging`                       | bool                                 | true       | Enable logging                                                   |
 | `HealthCheckIntervalMs`               | int                                  | 60000      | Health check interval (ms), min 1000                             |
 | `MessageHandlerTimeoutMs`             | int                                  | 30000      | Per-message handling timeout (ms); 0 = unlimited                 |
 | `MaxConcurrentHandlers`               | int                                  | 32         | Concurrency gate; 0/negative = unlimited. **Backpressure is applied on the receive path** |
@@ -694,13 +708,16 @@ public class ServiceManager
 | `AuthGateTimeoutMs`                   | int                                  | 0          | Auth gate wait limit (ms); 0 = disabled (**hot-updatable**)      |
 | `ProtocolKeepAliveInterval`           | TimeSpan                             | 20s        | Protocol-level Ping/Pong keep-alive; 0 = disabled (5–300s)       |
 | `SequenceGapThreshold`                | ulong                                | 0          | Sequence gap threshold; 0 = gap detection disabled               |
-| `ValidateServerCertificate`           | bool                                 | true       | Validate SSL certificate (recommended true in production)        |
-| `AllowSelfSignedCertificates`         | bool                                 | false      | Allow self-signed certificates (recommended false in production) |
-| `AllowCertificateNameMismatch`        | bool                                 | false      | Allow certificate name mismatch (recommended false in production)|
-| `AllowInsecureWebSocket`              | bool                                 | false      | Allow insecure ws:// connections (dev/test only)                 |
+| `Certificate.Mode`                    | `CertificateValidationMode`          | `Strict`   | Certificate validation mode: `Strict` / `Dev` / `Custom` (`Custom` requires `Certificate.CustomCallback`) |
+| `Certificate.ValidateServerCertificate` | bool                               | true       | Validate SSL certificate (recommended true in production)        |
+| `Certificate.AllowSelfSignedCertificates` | bool                             | false      | Allow self-signed certificates (only honored when `Mode=Dev`)    |
+| `Certificate.AllowCertificateNameMismatch` | bool                           | false      | Allow certificate name mismatch (only honored when `Mode=Dev`)   |
+| `Certificate.AllowInsecureWebSocket`  | bool                                 | false      | Allow insecure ws:// connections (dev/test only)                 |
+| `Certificate.CustomCallback`          | RemoteCertificateValidationCallback? | null       | Custom certificate validation callback (`Mode=Custom` requires it) |
 | `AllowedHostSuffixes`                 | string                               | `*.feishu.cn;*.larksuite.com` | Host allow-list: `*.` wildcard suffixes or exact hosts, `;`-separated, case-insensitive; **empty = unrestricted** (use for custom gateways/local test endpoints) |
-| `CustomCertificateValidationCallback` | RemoteCertificateValidationCallback? | null       | Custom certificate validation callback                           |
 | `EventDeduplication`                  | EventDeduplicationOptions            | See below  | Event deduplication configuration                                |
+
+> ℹ️ **Legacy flat keys**: the old JSON keys (`AutoReconnect`, `MaxReconnectAttempts`, `ReconnectDelayMs`, `ValidateServerCertificate`, `AllowSelfSignedCertificates`, …) are **still bindable** (filled into `Reconnect.*` / `Certificate.*` at startup), but **C# code must use the nested API**. See the [configuration migration guide](../documents/Configuration/ConfigMigration-R2.md).
 
 ### Message Size Limits (`MessageSizeLimits`)
 
@@ -762,7 +779,6 @@ var webSocketBuilder = builder.Services.CreateFeishuWebSocketServiceBuilder(conf
 if (builder.Environment.IsDevelopment())
 {
     webSocketBuilder.ConfigureOptions(options => {
-        options.EnableLogging = true;
         options.HeartbeatIntervalMs = 15000;
     });
 }
@@ -907,8 +923,8 @@ stats.BytesPerSecond;         // Bytes per second
 builder.Services.CreateFeishuWebSocketServiceBuilder(builder.Configuration)
     .ConfigureOptions(options =>
     {
-        options.ValidateServerCertificate = true;
-        options.AllowSelfSignedCertificates = false;
+        options.Certificate.ValidateServerCertificate = true;
+        options.Certificate.AllowSelfSignedCertificates = false;
     })
     .AddHandler<ReceiveMessageEventHandler>()
     .Build();
@@ -917,7 +933,8 @@ builder.Services.CreateFeishuWebSocketServiceBuilder(builder.Configuration)
 Custom certificate validation:
 
 ```csharp
-options.CustomCertificateValidationCallback = (sender, certificate, chain, sslPolicyErrors) =>
+options.Certificate.Mode = CertificateValidationMode.Custom;
+options.Certificate.CustomCallback = (sender, certificate, chain, sslPolicyErrors) =>
 {
     return sslPolicyErrors == System.Net.Security.SslPolicyErrors.None;
 };

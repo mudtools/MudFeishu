@@ -10,6 +10,18 @@ namespace Mud.Feishu.Abstractions;
 /// <summary>
 /// 飞书多应用管理器的行为选项。
 /// </summary>
+/// <remarks>
+/// <b>TMR-P2-8（F8）一次性读取语义清单</b>——本类选项经 <c>IOptions&lt;T&gt;</c> 注入时为
+/// <b>启动快照</b>（IOptions 缓存不随 IConfiguration 变更失效），修改配置源后不热更，需重启进程：
+/// <list type="table">
+/// <item><term><see cref="EnableConfigReload"/></term><description>FeishuAppManager 构造函数读取（IOptions）——仅启动时生效。</description></item>
+/// <item><term><see cref="ContextRetireDelaySeconds"/></term><description>FeishuAppManager 构造函数读取——仅启动时生效。</description></item>
+/// <item><term><see cref="WarmUpAllAppsOnStartup"/></term><description>FeishuTokenRegistrationService 构造函数读取（IOptions 注入）——仅启动时生效。</description></item>
+/// <item><term><see cref="RemoveRuntimeAddedAppsOnReload"/></term><description>热更新时读 <c>IOptions&lt;&gt;.Value</c>——值仍是启动快照；改此项需重启。</description></item>
+/// <item><term><see cref="EnablePerAppAuthenticationClient"/></term><description>CreateAppContext 每次创建上下文时求值，但值本身不热更（启动快照）。</description></item>
+/// <item><term><see cref="EnableTokenEncryption"/></term><description>存储工厂首次解析时读取（一次性）；中途开启 → 旧明文解密失败 → 按未命中重新获取 → 重写密文（自愈），建议重启后开启。</description></item>
+/// </list>
+/// </remarks>
 public class FeishuAppOptions
 {
     /// <summary>

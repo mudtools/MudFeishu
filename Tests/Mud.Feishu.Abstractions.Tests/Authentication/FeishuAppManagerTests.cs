@@ -654,8 +654,9 @@ public class FeishuAppManagerTests
         // Act
         appManager.OnConfigurationChanged(new List<FeishuAppConfig> { changedConfig });
 
-        // Assert
-        tokenStoreMock.Verify(x => x.ClearAsync(It.IsAny<CancellationToken>()), Times.Once,
+        // Assert：TMR-P1-6（F6）——凭据变更清库为"Phase-P 清库 + 提交后二次清库（D10 闭环）"双阶段，
+        // 二次清库为 fire-and-forget，故这里断言"至少一次"（强语义：清库必须发生）。
+        tokenStoreMock.Verify(x => x.ClearAsync(It.IsAny<CancellationToken>()), Times.AtLeastOnce,
             "凭据（AppSecret）变更必须清除该应用的持久化令牌");
     }
 
@@ -1003,6 +1004,7 @@ public class FeishuAppManagerTests
     /// <summary>
     /// TMA2-11 / D13：FeishuAppManager.Dispose 必须释放全部在册上下文（含 _lazyContexts 已实例化者），幂等。
     /// 通过反射读取 FeishuAppContext 私有 _disposed 状态做副作用断言。
+    /// TMR-P2-13（F13）：_disposed 由 bool 收敛为 int（Interlocked.Exchange 原子 check-then-set）。
     /// </summary>
     [Fact]
     public void Dispose_ShouldDisposeAllRegisteredContexts()
@@ -1025,14 +1027,14 @@ public class FeishuAppManagerTests
         // Act
         appManager.Dispose();
 
-        // Assert：每个在册上下文都已被 Dispose（幂等标记置位）
+        // Assert：每个在册上下文都已被 Dispose（原子标记置位为 1）
         var disposedField = typeof(FeishuAppContext).GetField("_disposed",
             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
         disposedField.Should().NotBeNull("FeishuAppContext 应存在 _disposed 标记");
         foreach (var context in contexts)
         {
-            var isDisposed = (bool)disposedField!.GetValue(context)!;
-            isDisposed.Should().BeTrue($"在册上下文 {context.Config.AppKey} 应随 FeishuAppManager.Dispose 释放");
+            var isDisposed = (int)disposedField!.GetValue(context)!;
+            isDisposed.Should().Be(1, $"在册上下文 {context.Config.AppKey} 应随 FeishuAppManager.Dispose 释放");
         }
 
         provider.Dispose();

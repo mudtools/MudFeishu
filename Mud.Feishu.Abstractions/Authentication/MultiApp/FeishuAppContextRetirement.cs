@@ -66,7 +66,11 @@ internal sealed class FeishuAppContextRetirement : IDisposable
     /// <summary>
     /// 释放标记。
     /// </summary>
-    private volatile bool _disposed;
+    /// <remarks>
+    /// TMR-P2-13（F13）：由 volatile bool 收敛为 int + <see cref="Interlocked"/> 原子 check-then-set——
+    /// 并发 Dispose（容器关闭 Flush 与 Sweep Timer 重叠）下保证释放序列恰好执行一次。
+    /// </remarks>
+    private int _disposed;
 
     /// <summary>
     /// 初始化退休队列。
@@ -185,10 +189,10 @@ internal sealed class FeishuAppContextRetirement : IDisposable
     /// </summary>
     public void Dispose()
     {
-        if (_disposed)
+        // TMR-P2-13（F13）：原子 check-then-set 收敛。
+        if (Interlocked.Exchange(ref _disposed, 1) != 0)
             return;
 
-        _disposed = true;
         _sweepTimer.Dispose();
         Flush();
         GC.SuppressFinalize(this);

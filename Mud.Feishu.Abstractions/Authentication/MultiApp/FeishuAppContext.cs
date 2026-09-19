@@ -25,7 +25,11 @@ namespace Mud.Feishu.Abstractions;
 /// </remarks>
 public class FeishuAppContext : IFeishuAppContext, IDisposable
 {
-    private bool _disposed;
+    // TMR-P2-13（F13）：退休队列并发 Sweep+Flush 下同一实例可能被并发 Dispose；
+    // _disposed 由 bool 收敛为 int + Interlocked.Exchange，保证释放逻辑恰好一次执行
+    // （组件 TokenManagerBase.Dispose 虽已声明幂等，但上下文还持有 Authentication/scope 等
+    // 自有资源，在本地收敛为恰好一次属防御性硬化）。
+    private int _disposed;
     private readonly IServiceProvider? _serviceProvider;
 
     // TMA-13 / P2-10 修复：作用域随上下文 Dispose 释放，确保 Scoped 依赖（如 IFeishuCurrentUserContext）
@@ -199,7 +203,8 @@ public class FeishuAppContext : IFeishuAppContext, IDisposable
     /// </remarks>
     public void Dispose()
     {
-        if (_disposed)
+        // TMR-P2-13（F13）：原子 check-then-set——并发 Sweep+Flush 下同一实例的 Dispose 收敛为恰好一次。
+        if (Interlocked.Exchange(ref _disposed, 1) != 0)
             return;
 
         try
@@ -217,10 +222,8 @@ public class FeishuAppContext : IFeishuAppContext, IDisposable
         }
         finally
         {
-            _disposed = true;
+            GC.SuppressFinalize(this);
         }
-
-        GC.SuppressFinalize(this);
     }
 
     /// <summary>

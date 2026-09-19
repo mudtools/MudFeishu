@@ -9,6 +9,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Mud.Feishu.Abstractions;
+using Mud.Feishu.Abstractions.Authentication.MultiApp;
 using Mud.HttpUtils;
 using System.Diagnostics.CodeAnalysis;
 
@@ -488,12 +489,22 @@ public static class FeishuMultiAppExtensions
         // 桥接注册（向后兼容）：将默认应用的令牌管理器暴露到 DI 容器。
         // 注意：仅暴露默认应用的令牌管理器，非默认应用请使用 IFeishuTokenManagerResolver。
         // 使用 TryAddSingleton 确保不覆盖应用层的自定义注册。
+        //
+        // TMR-P0-1（F1）：桥接从「实例桥接」改为「解析桥接」（转发代理）。
+        // 原实现工厂委托仅在首次解析时执行，容器永久缓存该实例——热更新重建默认应用后
+        // 注入方持已释放管理器（ODE），SetDefaultApp 后注入方继续返回旧应用令牌（凭据串号）。
+        // 代理每次成员调用现取当前默认应用的管理器，代理本身无状态、无资源、Dispose 为 no-op。
+        // 详见 .docs/令牌与多应用管理-审查修复与完善方案.md §2.1 与
+        // MultiApp/ForwardingTokenManagerProxies.cs。
         services.TryAddSingleton<ITenantTokenManager>(sp =>
-            sp.GetRequiredService<IFeishuTokenManagerResolver>().GetTenantTokenManager());
+            new ForwardingTenantTokenManager(
+                () => sp.GetRequiredService<IFeishuTokenManagerResolver>().GetTenantTokenManager()));
         services.TryAddSingleton<IAppTokenManager>(sp =>
-            sp.GetRequiredService<IFeishuTokenManagerResolver>().GetAppTokenManager());
+            new ForwardingAppTokenManager(
+                () => sp.GetRequiredService<IFeishuTokenManagerResolver>().GetAppTokenManager()));
         services.TryAddSingleton<IFeishuUserTokenManager>(sp =>
-            sp.GetRequiredService<IFeishuTokenManagerResolver>().GetUserTokenManager());
+            new ForwardingUserTokenManager(
+                () => sp.GetRequiredService<IFeishuTokenManagerResolver>().GetUserTokenManager()));
         services.TryAddSingleton<IUserTokenManager>(sp =>
             sp.GetRequiredService<IFeishuUserTokenManager>());
     }

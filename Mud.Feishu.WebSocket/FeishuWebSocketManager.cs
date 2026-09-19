@@ -19,7 +19,10 @@ namespace Mud.Feishu.WebSocket;
 public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable, IDisposable
 {
     private readonly ILogger<FeishuWebSocketManager> _logger;
-    private readonly IFeishuAppContext _appContext;
+    // TMR-P0-2（F2）：默认应用身份运行时可变（热更新 / SetDefaultApp），主路径经
+    // IFeishuAppManager 现取当前默认上下文；_appContextFallback 仅为旧构造签名兼容保留。
+    private readonly IFeishuAppManager? _appManager;
+    private readonly IFeishuAppContext _appContextFallback;
     private readonly IOptionsMonitor<FeishuWebSocketOptions> _webSocketOptionsMonitor;
     private readonly IFeishuWebSocketClient _webSocketClient;
     private readonly SemaphoreSlim _startStopLock = new(1, 1);
@@ -28,22 +31,35 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable,
     private volatile bool _isReconnecting = false;
     // WS-15 修复（P1-12）：_disposed 改为 int + Interlocked.Exchange 实现原子 check-then-set
     private int _disposed = 0;
+    // TMR-P0-2（F2）：回退告警只发一次，避免每次连接重复刷日志
+    private int _fallbackWarned = 0;
 
     /// <summary>
-    /// 构造函数
+    /// 构造函数（推荐，DI 最长构造优先选择）。
     /// </summary>
+    /// <remarks>
+    /// TMR-P0-2（F2）：经 <see cref="IFeishuAppManager"/> 在每次启动/重连时现取当前默认应用上下文，
+    /// 使配置热更新与 <c>SetDefaultApp</c> 对 WebSocket 长连接立即生效。
+    /// 修复前经构造期捕获的 <c>IFeishuAppContext</c> Singleton 取令牌与凭据，
+    /// 热更新后指向已退休上下文（ODE / 旧凭据）。
+    /// 注意：与 4 参旧构造保持<b>不同元数</b>——避免同元数重载导致宿主传 <c>null</c> 字面量时
+    /// 编译二义，以及 MS.DI 多构造选择歧义。
+    /// </remarks>
     /// <param name="logger">日志记录器</param>
-    /// <param name="appContext">飞书应用上下文</param>
+    /// <param name="appManager">飞书应用管理器（现取默认应用上下文）</param>
+    /// <param name="appContext">飞书应用上下文（回退通道，当 <paramref name="appManager"/> 不可用时使用）</param>
     /// <param name="webSocketOptions">WebSocket配置选项监控器（支持热更新）</param>
     /// <param name="webSocketClient">WebSocket客户端</param>
     public FeishuWebSocketManager(
         ILogger<FeishuWebSocketManager> logger,
-        IFeishuAppContext appContext,
-        IOptionsMonitor<FeishuWebSocketOptions> webSocketOptions,
-        IFeishuWebSocketClient webSocketClient)
+        IFeishuAppManager appManager,
+        IFeishuAppContext? appContext = null,
+        IOptionsMonitor<FeishuWebSocketOptions>? webSocketOptions = null,
+        IFeishuWebSocketClient? webSocketClient = null)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _appContext = appContext ?? throw new ArgumentNullException(nameof(appContext));
+        _appManager = appManager ?? throw new ArgumentNullException(nameof(appManager));
+        _appContextFallback = appContext!; // 可为 null：仅当 appManager 现取路径不可用时的运行时告警
         _webSocketOptionsMonitor = webSocketOptions ?? throw new ArgumentNullException(nameof(webSocketOptions));
         _webSocketClient = webSocketClient ?? throw new ArgumentNullException(nameof(webSocketClient));
 
@@ -55,13 +71,73 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable,
     }
 
     /// <summary>
+    /// 构造函数（旧签名，向后兼容宿主手工 new）。
+    /// </summary>
+    /// <remarks>
+    /// 无 <see cref="IFeishuAppManager"/> 时无现取通道：取令牌/凭据将固定使用构造期传入的
+    /// <paramref name="appContext"/>，热更新 / <c>SetDefaultApp</c> 后可能失效（运行时告警提示）。
+    /// DI 宿主推荐使用包含 <see cref="IFeishuAppManager"/> 的 5 参构造（最长构造优先）。
+    /// </remarks>
+    /// <param name="logger">日志记录器</param>
+    /// <param name="appContext">飞书应用上下文（构造期快照）</param>
+    /// <param name="webSocketOptions">WebSocket配置选项监控器（支持热更新）</param>
+    /// <param name="webSocketClient">WebSocket客户端</param>
+    public FeishuWebSocketManager(
+        ILogger<FeishuWebSocketManager> logger,
+        IFeishuAppContext appContext,
+        IOptionsMonitor<FeishuWebSocketOptions> webSocketOptions,
+        IFeishuWebSocketClient webSocketClient)
+    {
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _appManager = null;
+        _appContextFallback = appContext ?? throw new ArgumentNullException(nameof(appContext));
+        _webSocketOptionsMonitor = webSocketOptions ?? throw new ArgumentNullException(nameof(webSocketOptions));
+        _webSocketClient = webSocketClient ?? throw new ArgumentNullException(nameof(webSocketClient));
+        _logger.LogWarning(
+            "FeishuWebSocketManager 未注入 IFeishuAppManager：取令牌/凭据将固定使用构造期 IFeishuAppContext，" +
+            "配置热更新 / SetDefaultApp 后不会跟随默认应用。请改用 DI 注册（多应用模式自动注入 IFeishuAppManager）。");
+
+        // 订阅客户端事件
+        _webSocketClient.Connected += OnClientConnected;
+        _webSocketClient.Disconnected += OnClientDisconnected;
+        _webSocketClient.MessageReceived += OnClientMessageReceived;
+        _webSocketClient.Error += OnClientError;
+    }
+
+    /// <summary>
+    /// TMR-P0-2（F2）：现取当前默认应用上下文。
+    /// </summary>
+    /// <remarks>
+    /// 默认应用身份运行时可变（热更新 / <c>SetDefaultApp</c> / <c>RemoveApp</c> 提升），
+    /// 构造期捕获的 <c>IFeishuAppContext</c> Singleton 在热更新后指向已退休上下文。
+    /// 调用方须在同一次启动/重连内对返回值保持单引用，保证令牌与凭据（AppId/AppSecret）
+    /// 取自同一上下文——混用新旧上下文会导致凭据错配。
+    /// </remarks>
+    private IFeishuAppContext ResolveCurrentContext()
+    {
+        if (_appManager != null)
+        {
+            return _appManager.GetDefaultApp();
+        }
+
+        if (Interlocked.Exchange(ref _fallbackWarned, 1) == 0)
+        {
+            _logger.LogWarning(
+                "取令牌/凭据回退到构造期 IFeishuAppContext（未注入 IFeishuAppManager），" +
+                "默认应用热更新后此处将不会跟随。");
+        }
+        return _appContextFallback;
+    }
+
+    /// <summary>
     /// 获取有效的访问令牌
     /// </summary>
+    /// <param name="context">现取的应用上下文（TMR-P0-2：与调用方的凭据/端点取自同一上下文）</param>
     /// <param name="cancellationToken">取消令牌</param>
     /// <returns>有效的访问令牌</returns>
-    private async Task<string> GetValidAccessTokenAsync(CancellationToken cancellationToken)
+    private async Task<string> GetValidAccessTokenAsync(IFeishuAppContext context, CancellationToken cancellationToken)
     {
-        var tokenManager = _appContext.GetTokenManager("TenantAccessToken");
+        var tokenManager = context.GetTokenManager("TenantAccessToken");
         var token = await tokenManager.GetTokenAsync(cancellationToken).ConfigureAwait(false);
 
         if (string.IsNullOrEmpty(token))
@@ -134,8 +210,12 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable,
             }
             _logger.LogInformation("正在启动飞书WebSocket服务...");
 
+            // TMR-P0-2（F2）：本次启动/重连的整条链路（令牌、凭据、超时、重试参数、WS 端点）
+            // 统一使用同一次现取的默认应用上下文，保证凭据一致性（禁止令牌与凭据混用新旧上下文）。
+            var context = ResolveCurrentContext();
+
             // 获取应用访问令牌，使用配置的超时时间
-            int timeoutSeconds = _appContext.Config.TimeoutSeconds;
+            int timeoutSeconds = context.Config.TimeoutSeconds;
 
             using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSeconds));
             using var combinedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
@@ -145,7 +225,7 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable,
             string appAccessToken;
             try
             {
-                appAccessToken = await GetValidAccessTokenAsync(combinedToken);
+                appAccessToken = await GetValidAccessTokenAsync(context, combinedToken);
                 if (string.IsNullOrEmpty(appAccessToken))
                 {
                     _logger.LogError("获取的应用访问令牌为空");
@@ -159,22 +239,22 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable,
                 throw new TimeoutException($"获取应用访问令牌超时，超时时间: {timeoutSeconds}秒");
             }
 
-            // 获取WebSocket端点
+            // 获取WebSocket端点（凭据取自同一现取上下文，TMR-P0-2）
             var credentials = new WsAppCredentials
             {
-                AppId = _appContext.Config.AppId,
-                AppSecret = _appContext.Config.AppSecret
+                AppId = context.Config.AppId,
+                AppSecret = context.Config.AppSecret
             };
 
             // 使用重试策略获取WebSocket端点（使用 combinedToken 传递超时控制）
-            var maxRetries = _appContext.Config.HttpRetry.MaxAttempts;
+            var maxRetries = context.Config.HttpRetry.MaxAttempts;
             WsEndpointResult? wsEndpointData = null;
 
             wsEndpointData = await RetryHelper.RetryWithExponentialBackoffAsync(
                 _logger,
                 async () =>
                 {
-                    var wsEndpointResult = await _appContext.Authentication.GetWebSocketEndpointAsync(credentials, combinedToken);
+                    var wsEndpointResult = await context.Authentication.GetWebSocketEndpointAsync(credentials, combinedToken);
                     if (wsEndpointResult?.Data == null)
                     {
                         throw new InvalidOperationException("获取的WebSocket端点信息为空");
@@ -182,7 +262,7 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable,
                     return wsEndpointResult.Data;
                 },
                 maxRetries,
-                _appContext.Config.HttpRetry.DelayMs,
+                context.Config.HttpRetry.DelayMs,
                 "获取WebSocket端点",
                 combinedToken);
 

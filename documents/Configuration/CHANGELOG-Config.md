@@ -50,6 +50,14 @@
 | `DeduplicationOptions` / `EventDeduplicationOptions` 标 `[Obsolete]` | Obsolete 预告 | 二者是双读期回落基座（`FeishuRedis:Deduplication:*` / `FeishuWebSocket:EventDeduplication:*` 的绑定目标）；标记后编译器在消费方产生 `CS0618`，运行时行为完全不变；下个 major 删除时由 `FeishuDeduplication` 新节完全接管 |
 | 证书安全旁路生产加固（R5.2.7/X5） | 行为增强（仅日志级别） | 生产环境（`IHostEnvironment` 判定；未注入时回退 `DOTNET_ENVIRONMENT`/`ASPNETCORE_ENVIRONMENT`，缺省按 Production）下，`Certificate:Mode=Dev` 与 `Certificate:ValidateServerCertificate=false` 的告警由 `Warning` 升级为 `Error`（**不阻断启动**；major 再评估是否 Validate 失败）。非生产行为不变 |
 
+### R5.3 — 去重收口与命名对齐（**非 breaking**）
+
+| 变更 | 类型 | 说明 |
+| ---- | ---- | ---- |
+| `RedisOptions.AppKey` 收口（R5.3.1/X13，G-12） | 行为增强（scopeKey 默认值更精确） | SeqID scopeKey 的 AppKey 部分**默认从 `FeishuApps` 默认应用推断**（解析期，读取 `IOptionsMonitor<List<FeishuAppConfig>>`；未接多应用时回落 `RedisOptions.AppKey`）。优先级：`FeishuDeduplication:SeqId:ScopeKey` > `RedisOptions.SeqIdScopeKey` > 默认应用 AppKey > `RedisOptions.AppKey`。多应用共享 Redis 的部署不再因未配 AppKey 而全部落在 `"default"` scope；推断失败仍由构造期 fail-fast 兜底。`RedisOptions` 其余去重字段按 R5.2/X6 改判**不加 `[Obsolete]`**（统一节缺失时为真正生效的回落基座，以运行时精确告警替代编译期警告） |
+| `FeishuAppConfig.TimeoutSeconds` 单位标注（R5.3.2/X12） | 仅文档 | 按 §2.11/RK15 改判：**不新增 `TimeoutMs` 别名、不做单位变更**；仅在 XML 注释明确「本属性为秒，Redis `ConnectTimeout/SyncTimeout` 为毫秒」的混用事实，单位变更留待独立 major 立项 |
+| 审计脚本扩充（R5.3.3/G1） | 治理护栏 | `$strictPatterns` 新增：`IOptions<FailedEventRetryOptions>`（X3 移除的消费入口不得复活）、`public\s+int\??\s+TimeoutMs`（锁定 X12「不做毫秒别名」裁决）。`-Strict` 已在 `.github/workflows/dotnet-publish.yml` 独立 step 阻断新增引用；刻意不加的模式（`\.Description\s*=` 过宽、X13/X6 旧键属双读回落基座）在脚本头部注释说明理由 |
+
 ## R4（**breaking / major**）
 
 ### 删除的公共 API（代码与 appsettings 均需迁移）

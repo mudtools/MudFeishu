@@ -35,16 +35,31 @@ $repoRoot = Split-Path -Parent $PSScriptRoot
 # Append the pattern for a key in the SAME phase that removes the key, so the gate never
 # fails on a still-supported configuration surface.
 #   R5.0: EnableRequestLogging (X2) + the 3 unused dedup Consts (X14)
-#   R5.1: 'IOptions<FailedEventRetryOptions>' (X3)  -- not added: the obsolete-bound phrase is still
-#         legitimate in migration docs; enforce via ContractGuards reflection instead.
+#   R5.1: 'IOptions<FailedEventRetryOptions>' (X3)  -- added in R5.3.3: migration docs live in
+#         allowedPathFragments (documents\Configuration\, CHANGELOG) and Demos is excluded, so the
+#         phrase cannot legitimately appear in source; direct DI consumption of the removed entry
+#         must not come back. (ContractGuards reflection remains the second lock.)
 #   R5.2: 'EnablePerformanceMonitoring' (X10), '\.AutoRegisterEndpoint\s*=' (X4)
+#   R5.3: 'public\s+int\??\s+TimeoutMs' (X12) -- locks the RK15 re-judgment: no TimeoutMs alias next
+#         to TimeoutSeconds (seconds/milliseconds semantics must not coexist in one config tree).
+#         Declaration-shaped so legitimate "...Ms"-suffixed properties elsewhere don't match.
+#   Not added (deliberately):
+#     - '\.Description\s*=' -- too broad (Description exists on unrelated types); the removed
+#       FeishuAppWebhookOptions.Description is locked by ContractGuards reflection instead.
+#     - certificate contradiction regex -- FeishuWebSocketOptions.ValidateCertificateOptions
+#       already throws on the Strict+Allow* combos at startup; a regex would be fragile.
+#     - X13/X6 legacy dedup keys (FeishuRedis:Event* / Nonce* / SeqId* / AppKey) -- still the
+#       documented dual-read fallback base in this minor; add blocking patterns in the major
+#       (R5.4) when the keys are actually deleted (see plan §2.6).
 $strictPatterns = @(
     'EnableRequestLogging',
     'EnablePerformanceMonitoring',
     '\.AutoRegisterEndpoint\s*=',
     'DefaultDeduplicationRetryCount',
     'DefaultDeduplicationInitialRetryDelayMs',
-    'DefaultDeduplicationMaxRetryDelayMs'
+    'DefaultDeduplicationMaxRetryDelayMs',
+    'IOptions<FailedEventRetryOptions>',
+    'public\s+int\??\s+TimeoutMs'
 )
 
 # --- Tier 2: broad R4-era heuristics. Warn only (false positives are expected). ---------------

@@ -65,9 +65,12 @@ public class FeishuWebSocketOptionsTests
     }
 
     [Fact]
-    public void MaxReconnectDelayMs_ShouldEnforceMinimumValue()
+    public void MaxReconnectDelayMs_ShouldNotBeRaisedBySetter_WhenLessThanReconnectDelayMs()
     {
         // Arrange
+        // P2-6 行为变更（M8）：setter 不再与 ReconnectDelayMs 耦合。
+        // 此前 setter 内 Math.Max(_reconnectDelayMs, value) 会让赋值结果依赖配置绑定顺序；
+        // 现在原样保存，二者大小关系统一由 Validate() 交叉校验（确定性报错而非静默抬升）。
         var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions();
         options.ReconnectDelayMs = 10000;
 
@@ -75,7 +78,30 @@ public class FeishuWebSocketOptionsTests
         options.MaxReconnectDelayMs = 5000;
 
         // Assert
-        options.MaxReconnectDelayMs.Should().Be(options.ReconnectDelayMs, "should be at least ReconnectDelayMs");
+        options.MaxReconnectDelayMs.Should().Be(5000, "setter 不再隐式改写用户取值（赋值结果与顺序无关）");
+        var act = () => options.Validate();
+        act.Should().Throw<InvalidOperationException>().WithMessage("*MaxReconnectDelayMs*");
+    }
+
+    [Fact]
+    public void Validate_ShouldBeOrderIndependent_WhenMaxReconnectDelayMsLessThanReconnectDelayMs()
+    {
+        // Arrange：两种绑定顺序必须得到同一结论（P2-6 验收项）
+        var maxFirst = new Mud.Feishu.WebSocket.FeishuWebSocketOptions { MaxReconnectDelayMs = 10000 };
+        maxFirst.ReconnectDelayMs = 20000;
+
+        var baseFirst = new Mud.Feishu.WebSocket.FeishuWebSocketOptions { ReconnectDelayMs = 20000 };
+        baseFirst.MaxReconnectDelayMs = 10000;
+
+        // Act
+        var actMaxFirst = () => maxFirst.Validate();
+        var actBaseFirst = () => baseFirst.Validate();
+
+        // Assert
+        maxFirst.MaxReconnectDelayMs.Should().Be(baseFirst.MaxReconnectDelayMs);
+        maxFirst.ReconnectDelayMs.Should().Be(baseFirst.ReconnectDelayMs);
+        actMaxFirst.Should().Throw<InvalidOperationException>();
+        actBaseFirst.Should().Throw<InvalidOperationException>();
     }
 
     [Fact]

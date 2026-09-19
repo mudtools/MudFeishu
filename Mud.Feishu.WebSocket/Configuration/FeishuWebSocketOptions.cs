@@ -72,10 +72,20 @@ public class FeishuWebSocketOptions
     /// <summary>
     /// 最大重连延迟时间（毫秒），默认为30000毫秒
     /// </summary>
+    /// <remarks>
+    /// P2-6 修复（W4）：setter 不再与 <see cref="ReconnectDelayMs"/> 耦合。
+    /// 此前 setter 内执行 <c>Math.Max(_reconnectDelayMs, value)</c>，赋值得结果依赖配置绑定顺序
+    /// （先绑 Max 后绑 Base 与反向绑定结果不同）。现在取值原样保存，二者大小关系统一由
+    /// <see cref="Validate"/> 交叉校验：非法组合在启动期<b>确定性报错</b>，而不是被静默抬升。
+    /// <para>
+    /// 行为变更：<c>MaxReconnectDelayMs = 1000</c>（小于 Base）此前会被抬升为 Base，
+    /// 现在会保留 1000 并在 <see cref="Validate"/> 抛出 <see cref="InvalidOperationException"/>。
+    /// </para>
+    /// </remarks>
     public int MaxReconnectDelayMs
     {
         get => _maxReconnectDelayMs;
-        set => _maxReconnectDelayMs = Math.Max(_reconnectDelayMs, value);
+        set => _maxReconnectDelayMs = value;
     }
 
     /// <summary>
@@ -290,6 +300,11 @@ public class FeishuWebSocketOptions
 
         if (MessageSizeLimits.MaxBinaryMessageSize < 1024)
             throw new InvalidOperationException("MessageSizeLimits.MaxBinaryMessageSize必须至少为1024字节");
+
+        // P1-4 修复：新增字节维度的边界校验（0 = 按 3 × MaxTextMessageSize 自动推导）
+        if (MessageSizeLimits.MaxTextMessageBytes < 0)
+            throw new InvalidOperationException(
+                "MessageSizeLimits.MaxTextMessageBytes必须为非负整数（0 表示按 3 × MaxTextMessageSize 自动推导）");
 
         // 去重配置验证
         if (EventDeduplication.Mode == EventDeduplicationMode.None)

@@ -235,9 +235,12 @@ public class P0P1FixRegressionTests
             countField!.SetValue(manager, 1);
 
             // Act：32 个线程并发声明断线
+            // P1-2 改造同步（M5）：NotifyDisconnected 增加了 owner 参数（socket 身份校验），
+            // MethodInfo.Invoke 的参数个数必须精确匹配（可选参数不会被反射补齐），此处显式传 null
+            // 表示"不做代次过滤"，从而保持本用例原有语义（只验证 P0-4 的原子性）。
             Parallel.For(0, 32, _ =>
             {
-                notifyMethod!.Invoke(manager, new object[] { new WebSocketCloseEventArgs() });
+                notifyMethod!.Invoke(manager, new object?[] { new WebSocketCloseEventArgs(), null });
             });
 
             // Assert：Interlocked.CompareExchange 保证仅触发一次、计数仅递减一次

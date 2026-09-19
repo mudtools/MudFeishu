@@ -34,13 +34,27 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
     private int _disposed = 0;
     private readonly MessageRouter? _messageRouter;
     private readonly WebSocketConnectionManager? _connectionManager;
-    private readonly List<Task> _activeProcessingTasks = new();
 
     /// <summary>
-    /// _activeProcessingTasks 的硬上界，防止突发帧暴增导致 OOM（WS-03 修复）。
-    /// 超过此值时执行硬背压：<c>Task.WhenAny</c> 等待至少一个任务完成后再继续。
+    /// 在途处理任务数的硬上界，防止突发帧暴增导致 OOM（WS-03 修复）。
     /// </summary>
     private const int MaxActiveProcessingTasks = 1024;
+
+    /// <summary>
+    /// "在途处理上界"的异步背压闸门（P1-6 修复）。
+    /// </summary>
+    /// <remarks>
+    /// 此前由 <c>_activeProcessingTasks</c> 列表 + <c>Task.WaitAny(snapshot, 200)</c> 表达同一上界，
+    /// 但等待发生在<b>同时持有</b> <c>_binaryDataStreamLock</c> 与 <c>_processLock</c> 期间，
+    /// 既阻塞线程池又卡住后续帧装配。
+    /// <para>
+    /// 现在：槽位在 <see cref="ProcessBinaryDataAsync"/> 中以异步方式获取；
+    /// 若本次调用"派发了完整消息处理任务"，槽位所有权移交给该任务（由其在 finally 归还），
+    /// 否则（分片累积 / 超限丢弃 / 异常）由本次调用归还。
+    /// </para>
+    /// <para>I9：与 <c>_processLock</c> 一致，本信号量<b>不随 Dispose 释放</b>（未访问 AvailableWaitHandle）。</para>
+    /// </remarks>
+    private readonly SemaphoreSlim _processingSlots = new(MaxActiveProcessingTasks, MaxActiveProcessingTasks);
     private readonly IFeishuSeqIDDeduplicator? _seqIdDeduplicator;
     private readonly MessageSequenceValidator? _sequenceValidator;
     private readonly IUnifiedDeduplicationMiddleware? _unifiedDeduplicationMiddleware;
@@ -113,14 +127,33 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
 #endif
     public async Task ProcessBinaryDataAsync(byte[] data, int offset, int count, bool endOfMessage, CancellationToken cancellationToken = default)
     {
-        await _processLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        // P1-5 修复：Dispose 之后直接返回，避免访问已释放的信号量（此前会抛 ObjectDisposedException）
+        if (Volatile.Read(ref _disposed) == 1)
+            return;
+
+        // P1-6 修复：异步背压。槽位在此获取（异步等待，不阻塞线程、不持锁），
+        // 由"是否派发处理任务"决定所有权归属。
+        await _processingSlots.WaitAsync(cancellationToken).ConfigureAwait(false);
+        var slotTransferred = false;
         try
         {
-            ProcessBinaryDataCore(data, offset, count, endOfMessage, cancellationToken);
+            await _processLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                slotTransferred = ProcessBinaryDataCore(data, offset, count, endOfMessage, cancellationToken);
+            }
+            finally
+            {
+                _processLock.Release();
+            }
         }
         finally
         {
-            _processLock.Release();
+            if (!slotTransferred)
+            {
+                // 分片累积 / 超限丢弃 / 异常路径：本次调用未派发任务，由本次归还槽位
+                _processingSlots.Release();
+            }
         }
     }
 
@@ -132,14 +165,18 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
     /// <param name="count">数据长度</param>
     /// <param name="endOfMessage">是否为消息的最后一片</param>
     /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>
+    /// 是否已将"完整消息的处理"派发为后台任务（P1-6：派发后 <c>_processingSlots</c> 的所有权移交该任务）。
+    /// </returns>
 #if NET6_0_OR_GREATER
     [RequiresUnreferencedCode("反射式System.Text.Json序列化在裁剪下无法静态分析目标类型成员")]
 #endif
 #if NET7_0_OR_GREATER
     [RequiresDynamicCode("反射式System.Text.Json序列化在 AOT/动态代码生成环境下不可用")]
 #endif
-    private void ProcessBinaryDataCore(byte[] data, int offset, int count, bool endOfMessage, CancellationToken cancellationToken)
+    private bool ProcessBinaryDataCore(byte[] data, int offset, int count, bool endOfMessage, CancellationToken cancellationToken)
     {
+        var dispatched = false;
         try
         {
             lock (_binaryDataStreamLock)
@@ -168,7 +205,7 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
 
                     // 触发错误事件
                     OnError(errorMessage, "MessageSizeExceeded");
-                    return;
+                    return false;
                 }
 
                 // 写入数据片段
@@ -199,51 +236,25 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
                         Buffer.BlockCopy(buffer, 0, completeData, 0, actualLength);
                     }
 
-                    // WS-03 修复：_activeProcessingTasks 加硬上界，防止突发帧暴增导致 OOM。
-                    // 超过 MaxActiveProcessingTasks 时执行硬背压：等待至少一个任务完成。
-                    Task[]? snapshot = null;
-                    lock (_activeProcessingTasks)
-                    {
-                        if (_activeProcessingTasks.Count >= MaxActiveProcessingTasks)
-                        {
-                            if (_options.EnableLogging)
-                                _logger.LogWarning("活跃处理任务数已达上界 {MaxTasks}，执行硬背压等待", MaxActiveProcessingTasks);
-
-                            snapshot = _activeProcessingTasks.ToArray();
-                        }
-                    }
-
-                    if (snapshot != null && snapshot.Length > 0)
+                    // P1-6 修复：删除 _activeProcessingTasks 记账 + Task.WaitAny 同步阻塞 + ContinueWith 三件套。
+                    // 背压已由 ProcessBinaryDataAsync 中的 _processingSlots 异步表达（槽位在进入本方法前已获取），
+                    // 此处只需把槽位所有权随"派发成功"移交。
+                    // 注意：Task.Run 不得传入 cancellationToken —— 令牌已取消时委托不会执行，
+                    // 槽位将永久泄漏（最终卡死接收管道）；取消由委托内部观察。
+                    var receiveStartTime = _binaryDataReceiveStartTime;
+                    _ = Task.Run(async () =>
                     {
                         try
                         {
-                            Task.WaitAny(snapshot, 200);
+                            await ProcessCompleteBinaryMessageAsync(completeData, receiveStartTime, cancellationToken)
+                                .ConfigureAwait(false);
                         }
-                        catch (Exception ex)
+                        finally
                         {
-                            _logger.LogDebug(ex, "硬背压等待时发生异常（可忽略）");
+                            _processingSlots.Release();
                         }
-                    }
-
-                    // 异步处理完整的二进制消息并跟踪任务
-                    var processingTask = Task.Run(async () =>
-                    {
-                        await ProcessCompleteBinaryMessageAsync(completeData, cancellationToken);
-                    }, cancellationToken);
-
-                    lock (_activeProcessingTasks)
-                    {
-                        _activeProcessingTasks.Add(processingTask);
-                    }
-
-                    // 清理完成后从列表中移除
-                    _ = processingTask.ContinueWith(t =>
-                    {
-                        lock (_activeProcessingTasks)
-                        {
-                            _activeProcessingTasks.Remove(t);
-                        }
-                    }, CancellationToken.None);
+                    });
+                    dispatched = true;
 
                     // 清理资源
                     _binaryDataStream.Dispose();
@@ -269,6 +280,8 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
                 _logger.LogError(ex, "处理二进制消息时发生错误");
             OnError($"处理二进制消息时发生错误: {ex.Message}", ex.GetType().Name);
         }
+
+        return dispatched;
     }
 
     /// <summary>
@@ -280,13 +293,16 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
 #if NET7_0_OR_GREATER
     [RequiresDynamicCode("反射式System.Text.Json序列化在 AOT/动态代码生成环境下不可用")]
 #endif
-    private async Task ProcessCompleteBinaryMessageAsync(byte[] completeData, CancellationToken cancellationToken)
+    private async Task ProcessCompleteBinaryMessageAsync(byte[] completeData, DateTime receiveStartTime, CancellationToken cancellationToken)
     {
         try
         {
             var eventArgs = new WebSocketBinaryMessageEventArgs
             {
                 Data = completeData ?? Array.Empty<byte>(),
+                // P2-4 修复：此前 ReceiveStartTime 从不赋值，ReceiveDurationMs 恒为 ~6.39e14ms。
+                // 首帧到达时的时间戳已由 _binaryDataReceiveStartTime 记录，这里显式透传。
+                ReceiveStartTime = receiveStartTime,
                 ReceiveEndTime = DateTime.UtcNow
             };
 
@@ -301,6 +317,8 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
 
             // 尝试解析为 Frame 对象
             ulong? markedSeqId = null; // 跟踪已标记的 SeqID，用于失败时回滚
+            // P2-14 修复：frame 声明上提到 try 之外，使异常路径也能拿到已解析的帧并回 ACK(500)。
+            EventProtoData? frame = null;
             try
             {
                 if (_options.EnableLogging)
@@ -313,12 +331,12 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
                 var dataArray = new byte[completeData.Length];
                 Buffer.BlockCopy(completeData, 0, dataArray, 0, completeData.Length);
                 // AOT：必须走编译期模型实例，静态门面 ProtoBuf.Serializer 走反射路径（Native AOT 下不可用）
-                var frame = FeishuWebSocketProtoModel.Instance.Deserialize<EventProtoData>(new MemoryStream(dataArray));
+                frame = FeishuWebSocketProtoModel.Instance.Deserialize<EventProtoData>(new MemoryStream(dataArray));
 #else
                 // 对于 .NET Core 2.1+
                 var span = new ReadOnlySpan<byte>(completeData);
                 // AOT：必须走编译期模型实例，静态门面 ProtoBuf.Serializer 走反射路径（Native AOT 下不可用）
-                var frame = FeishuWebSocketProtoModel.Instance.Deserialize<EventProtoData>(span);
+                frame = FeishuWebSocketProtoModel.Instance.Deserialize<EventProtoData>(span);
 #endif
 
                 // protobuf-net 的 Deserialize 标记为 [return: MaybeNull]：显式判空，
@@ -509,8 +527,16 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
                     }
                     catch (Exception rollbackEx)
                     {
-                        _logger.LogError(rollbackEx, "回滚 SeqID {SeqId} 时发生错误", markedSeqId.Value);
+                        _logger.LogError(rollbackEx, "回滚 SeqId {SeqId} 时发生错误", markedSeqId.Value);
                     }
+                }
+
+                // P2-14 修复：此前异常路径不回 ACK，服务端只能等超时后重投。
+                // 帧已解析成功时补 ACK(500)：与成功路径同一语义（200=成功、500=失败触发服务端重投），
+                // 让重投即时发生而不是等超时。ProtoBuf 解析失败路径（catch(ProtoException)）无可用帧，维持不回。
+                if (frame != null)
+                {
+                    await SendAckMessageAsync(frame, false, cancellationToken);
                 }
             }
         }
@@ -698,21 +724,12 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
 
         try
         {
-            // P1-3 修复：此前使用 Task.WaitAll(...TimeSpan.FromSeconds(5)) 做同步阻塞等待
-            // （注释声称"使用异步等待"，与代码矛盾）。同步阻塞会占用线程并可能在
-            // 同步上下文/线程池饥饿时死锁。这里改为仅记录并继续释放，不阻塞调用方；
-            // 需要确定性等待请改用 DisposeAsync。
-            Task[] pendingTasks;
-            lock (_activeProcessingTasks)
+            // P1-3 修复：不做同步阻塞等待（需要确定性等待请改用 DisposeAsync）。
+            // P1-6 修复：在途任务数改由 _processingSlots 的占用数表达（此前是 _activeProcessingTasks 列表）。
+            var pendingCount = MaxActiveProcessingTasks - _processingSlots.CurrentCount;
+            if (pendingCount > 0)
             {
-                pendingTasks = _activeProcessingTasks.ToArray();
-                _activeProcessingTasks.Clear();
-            }
-
-            var notCompleted = pendingTasks.Count(t => !t.IsCompleted);
-            if (notCompleted > 0)
-            {
-                _logger.LogWarning("释放时仍有 {Count} 个二进制处理任务未完成，将在后台继续运行", notCompleted);
+                _logger.LogWarning("释放时仍有 {Count} 个二进制处理任务未完成，将在后台继续运行", pendingCount);
             }
 
             lock (_binaryDataStreamLock)
@@ -721,7 +738,9 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
                 _binaryDataStream = null;
             }
 
-            _processLock.Dispose();
+            // P1-5 修复（I9）：不再释放 _processLock；_processingSlots 同样不释放。
+            // 本类型从不访问 SemaphoreSlim.AvailableWaitHandle，不释放不会产生任何 OS 句柄泄漏，
+            // 但释放会与在途 WaitAsync/Release（含被派发任务归还槽位）构成 ObjectDisposedException 竞态。
         }
         catch (Exception ex)
         {
@@ -743,23 +762,9 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
 
         try
         {
-            Task[] pendingTasks;
-            lock (_activeProcessingTasks)
-            {
-                pendingTasks = _activeProcessingTasks.ToArray();
-                _activeProcessingTasks.Clear();
-            }
-
-            if (pendingTasks.Length > 0)
-            {
-                var allTask = Task.WhenAll(pendingTasks);
-                var completed = await Task.WhenAny(allTask, Task.Delay(TimeSpan.FromSeconds(5)))
-                                          .ConfigureAwait(false);
-                if (completed != allTask)
-                {
-                    _logger.LogWarning("等待所有处理任务完成超时（5秒），部分任务可能仍在运行");
-                }
-            }
+            // P1-6 修复：改为等待"所有在途处理任务归还槽位"（等价于此前 Task.WhenAll(pendingTasks) 的语义），
+            // 上限 5 秒；不再依赖 _activeProcessingTasks 列表。
+            await WaitForProcessingSlotsAsync(TimeSpan.FromSeconds(5)).ConfigureAwait(false);
 
             lock (_binaryDataStreamLock)
             {
@@ -767,7 +772,7 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
                 _binaryDataStream = null;
             }
 
-            _processLock.Dispose();
+            // P1-5 修复（I9）：同 Dispose()，不释放 _processLock / _processingSlots
         }
         catch (Exception ex)
         {
@@ -775,5 +780,28 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
         }
 
         GC.SuppressFinalize(this);
+    }
+
+    /// <summary>
+    /// 等待所有在途处理任务归还 <see cref="_processingSlots"/> 槽位（P1-6）。
+    /// </summary>
+    /// <param name="timeout">最长等待时间</param>
+    /// <remarks>
+    /// 等价于此前的 <c>Task.WhenAll(pendingTasks)</c> 语义：只要所有槽位归还，即在途处理已全部结束。
+    /// 由于 <c>_disposed</c> 已置位，<see cref="ProcessBinaryDataAsync"/> 不会再占用新槽位，因此不会死等。
+    /// </remarks>
+    private async Task WaitForProcessingSlotsAsync(TimeSpan timeout)
+    {
+        var startTime = DateTime.UtcNow;
+        while (_processingSlots.CurrentCount < MaxActiveProcessingTasks)
+        {
+            if (DateTime.UtcNow - startTime > timeout)
+            {
+                _logger.LogWarning("等待所有处理任务完成超时（{Timeout}），部分任务可能仍在运行", timeout);
+                return;
+            }
+
+            await Task.Delay(50).ConfigureAwait(false);
+        }
     }
 }

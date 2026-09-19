@@ -220,7 +220,8 @@ dotnet add package Mud.Feishu.OpenTelemetry
 | 配置项                 | 类型 | 默认值 | 说明                       |
 | ---------------------- | ---- | ------ | -------------------------- |
 | `MaxTextMessageSize`   | int  | 1MB    | 最大文本消息大小（字符数） |
-| `MaxBinaryMessageSize` | long | 10MB   | 最大二进制消息大小（字节） |
+| `MaxTextMessageBytes`  | int  | 0      | 最大文本消息大小（UTF-8 字节），0 = 3 × `MaxTextMessageSize` 自动推导（发送/接收同源） |
+| `MaxBinaryMessageSize` | long | 10MB   | 最大二进制消息大小（字节），发送与接收均校验 |
 
 **EventDeduplication 子配置：**
 

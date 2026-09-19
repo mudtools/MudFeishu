@@ -674,8 +674,10 @@ public class ServiceManager
 
 | Option                                | Type                                 | Default    | Description                                                      |
 | ------------------------------------- | ------------------------------------ | ---------- | ---------------------------------------------------------------- |
+| `AppKey`                              | string                               | "default"  | Feishu app key used as metric dimension (**hot-updatable**)      |
 | `AutoReconnect`                       | bool                                 | true       | Auto reconnect                                                   |
-| `MaxReconnectAttempts`                | int                                  | 5          | Max reconnect attempts                                           |
+| `MaxReconnectAttempts`                | int                                  | 5          | Max reconnect attempts; 0 = unlimited (bounded by max total time) |
+| `MaxAuthRetryAttempts`                | int                                  | 5          | Max authentication retries; 0 = unlimited (independent of reconnect) |
 | `ReconnectDelayMs`                    | int                                  | 5000       | Base reconnect delay (ms), min 1000                              |
 | `MaxReconnectDelayMs`                 | int                                  | 30000      | Max reconnect delay (ms), ≥ReconnectDelayMs                      |
 | `MaxTotalReconnectTime`               | TimeSpan                             | 30min      | Max total reconnection time, stops retrying after                |
@@ -686,8 +688,16 @@ public class ServiceManager
 | `InitialReceiveBufferSize`            | int                                  | 4096       | Initial receive buffer size (bytes)                              |
 | `EnableLogging`                       | bool                                 | true       | Enable logging                                                   |
 | `HealthCheckIntervalMs`               | int                                  | 60000      | Health check interval (ms), min 1000                             |
+| `MessageHandlerTimeoutMs`             | int                                  | 30000      | Per-message handling timeout (ms); 0 = unlimited                 |
+| `MaxConcurrentHandlers`               | int                                  | 32         | Concurrency gate; 0/negative = unlimited. **Backpressure is applied on the receive path** |
+| `AuthTimeoutMs`                       | int                                  | 30000      | Authentication response timeout (ms); 0 falls back to 30000      |
+| `AuthGateTimeoutMs`                   | int                                  | 0          | Auth gate wait limit (ms); 0 = disabled (**hot-updatable**)      |
+| `ProtocolKeepAliveInterval`           | TimeSpan                             | 20s        | Protocol-level Ping/Pong keep-alive; 0 = disabled (5–300s)       |
+| `SequenceGapThreshold`                | ulong                                | 0          | Sequence gap threshold; 0 = gap detection disabled               |
 | `ValidateServerCertificate`           | bool                                 | true       | Validate SSL certificate (recommended true in production)        |
 | `AllowSelfSignedCertificates`         | bool                                 | false      | Allow self-signed certificates (recommended false in production) |
+| `AllowCertificateNameMismatch`        | bool                                 | false      | Allow certificate name mismatch (recommended false in production)|
+| `AllowInsecureWebSocket`              | bool                                 | false      | Allow insecure ws:// connections (dev/test only)                 |
 | `CustomCertificateValidationCallback` | RemoteCertificateValidationCallback? | null       | Custom certificate validation callback                           |
 | `EventDeduplication`                  | EventDeduplicationOptions            | See below  | Event deduplication configuration                                |
 
@@ -696,7 +706,8 @@ public class ServiceManager
 | Option                 | Type | Default  | Description                        |
 | ---------------------- | ---- | -------- | ---------------------------------- |
 | `MaxTextMessageSize`   | int  | 1048576  | Max text message size (characters) |
-| `MaxBinaryMessageSize` | long | 10485760 | Max binary message size (bytes)    |
+| `MaxTextMessageBytes`  | int  | 0        | Max text message size (UTF-8 bytes); 0 = derive as 3 × `MaxTextMessageSize` (shared by send & receive) |
+| `MaxBinaryMessageSize` | long | 10485760 | Max binary message size (bytes); enforced on send and receive |
 
 **Configuration Example:**
 
@@ -705,6 +716,7 @@ public class ServiceManager
   "FeishuWebSocket": {
     "MessageSizeLimits": {
       "MaxTextMessageSize": 1048576,
+      "MaxTextMessageBytes": 0,
       "MaxBinaryMessageSize": 10485760
     }
   }

@@ -57,6 +57,17 @@ public class FeishuWebhookServiceBuilder
     private static int _removedAutoEndpointSwitchWarned;
 
     /// <summary>
+    /// P1-1（R2）：应用处理器/拦截器注册与注册表冻结的一次性执行标记。
+    /// </summary>
+    /// <remarks>
+    /// PostConfigure 随 <c>IOptionsMonitor</c> 的<b>每次</b> Options 缓存重建重放（任何配置热更都会触发）；
+    /// 若不加以守卫，热更时 <see cref="FeishuWebhookTypeRegistry{T}.Register"/> 会对已冻结注册表抛
+    /// <see cref="InvalidOperationException"/>，导致该次 Options 创建失败——此后中间件与服务读取
+    /// <c>CurrentValue</c> 的每个 Webhook 请求都会 500，直至进程重启。
+    /// </remarks>
+    private int _registryInitialized;
+
+    /// <summary>
     /// 构造函数
     /// </summary>
     /// <param name="services">服务集合</param>
@@ -566,22 +577,29 @@ public class FeishuWebhookServiceBuilder
                 }
 #pragma warning restore CS0618
 
-                // 注册多应用的处理器和拦截器到共享注册表
-                var handlerRegistry = serviceProvider.GetRequiredService<FeishuWebhookHandlerRegistry>();
-                foreach (var (appKey, handlerType) in _pendingHandlerRegistrations)
+                // P1-1（R2）：注册+冻结只在首次 Options 构建时执行（Interlocked 一次性守卫）。
+                // PostConfigure 随 IOptionsMonitor 每次缓存重建重放，若不守卫，配置热更时
+                // Register 会对已冻结注册表抛 InvalidOperationException → 所有后续请求 500。
+                // options.Validate() 与上方告警逻辑留在守卫之外：验证与告警语义应随每次重建生效。
+                if (System.Threading.Interlocked.Exchange(ref _registryInitialized, 1) == 0)
                 {
-                    handlerRegistry.Register(appKey, handlerType);
-                }
+                    // 注册多应用的处理器和拦截器到共享注册表
+                    var handlerRegistry = serviceProvider.GetRequiredService<FeishuWebhookHandlerRegistry>();
+                    foreach (var (appKey, handlerType) in _pendingHandlerRegistrations)
+                    {
+                        handlerRegistry.Register(appKey, handlerType);
+                    }
 
-                var interceptorRegistry = serviceProvider.GetRequiredService<FeishuWebhookInterceptorRegistry>();
-                foreach (var (appKey, interceptorType) in _pendingInterceptorRegistrations)
-                {
-                    interceptorRegistry.Register(appKey, interceptorType);
-                }
+                    var interceptorRegistry = serviceProvider.GetRequiredService<FeishuWebhookInterceptorRegistry>();
+                    foreach (var (appKey, interceptorType) in _pendingInterceptorRegistrations)
+                    {
+                        interceptorRegistry.Register(appKey, interceptorType);
+                    }
 
-                // 冻结注册表，杜绝运行时热注册竞态
-                handlerRegistry.Freeze();
-                interceptorRegistry.Freeze();
+                    // 冻结注册表，杜绝运行时热注册竞态
+                    handlerRegistry.Freeze();
+                    interceptorRegistry.Freeze();
+                }
             });
     }
 

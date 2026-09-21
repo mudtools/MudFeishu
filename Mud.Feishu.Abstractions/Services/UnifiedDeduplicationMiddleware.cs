@@ -54,8 +54,8 @@ public class UnifiedDeduplicationMiddleware : IUnifiedDeduplicationMiddleware, I
     /// <inheritdoc />
     public async Task<UnifiedDeduplicationResult> CheckAsync(string? eventId, ulong? seqId, CancellationToken cancellationToken = default)
     {
-                _logger?.LogDebug("执行统一去重检查: EventId={EventId}, SeqId={SeqId}", eventId, seqId);
-    
+        _logger?.LogDebug("执行统一去重检查: EventId={EventId}, SeqId={SeqId}", eventId, seqId);
+
 
         if (seqId.HasValue && _seqIdDeduplicator != null)
         {

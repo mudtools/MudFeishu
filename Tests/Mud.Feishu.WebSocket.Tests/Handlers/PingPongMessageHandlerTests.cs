@@ -27,7 +27,7 @@ public class PingPongMessageHandlerTests
     public PingPongMessageHandlerTests()
     {
         _loggerMock = new Mock<ILogger<PingPongMessageHandler>>();
-        _options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions {  };
+        _options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions { };
         _sendMessageCallbackMock = new Mock<Func<string, Task>>();
 
         _handler = new PingPongMessageHandler(
@@ -144,7 +144,7 @@ public class PingPongMessageHandlerTests
     public async Task HandleAsync_WithPingMessage_AndLoggingEnabled_ShouldLog()
     {
         // Arrange
-        var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions {  };
+        var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions { };
         var handler = new PingPongMessageHandler(
             _loggerMock.Object,
             options,

@@ -27,6 +27,17 @@ public interface IFeishuEventInterceptor
     /// <param name="eventData">事件数据</param>
     /// <param name="cancellationToken">取消令牌</param>
     /// <returns>如果返回 false，将中断事件处理流程</returns>
+    /// <remarks>
+    /// 返回 false 的后果（P1-7 / R2 §8.3 补注，即 <b>retry-until-accept</b>）：
+    /// <list type="bullet">
+    /// <item>WebSocket 通道：回滚去重状态 + ACK 500，服务端重发后本拦截器<b>重新决策</b>
+    /// ——持续拒绝即持续 500 重发循环，直到放行或服务端放弃；</item>
+    /// <item>Webhook 通道：去重<b>前</b>拦截，返回 500 + 服务端重发（语义同上）。</item>
+    /// </list>
+    /// 对 WebSocket 通道需要校验事件来源时，可在本方法中检查
+    /// <c>eventData.Header?.Token</c>（帧级凭据为连接握手凭据的透传，SDK 不做逐帧重验，
+    /// 见 FeishuEventMessageHandler 的信任模型说明）。
+    /// </remarks>
     Task<bool> BeforeHandleAsync(string eventType, EventData eventData, CancellationToken cancellationToken = default);
 
     /// <summary>

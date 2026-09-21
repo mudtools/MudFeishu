@@ -230,8 +230,8 @@ public class AuthenticationManager
 
             await _sendMessageCallback(authJson);
 
-                        _logger.LogInformation("已发送认证消息，等待响应...");
-        
+            _logger.LogInformation("已发送认证消息，等待响应...");
+
 
             // P0-3 修复：此前的实现创建了 cts 并 CancelAfter(30s)，但 _authCompletionSource.Task
             // 与 cts 毫无关联，await 没有任何超时通道 —— 服务端不回应认证帧时会永久挂起，

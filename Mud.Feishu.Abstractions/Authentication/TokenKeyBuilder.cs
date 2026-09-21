@@ -7,26 +7,26 @@
 
 namespace Mud.Feishu.Abstractions.Authentication;
 
-    /// <summary>
-    /// 令牌键构造的单一真相（D8 契约 / TMA2-02）。
-    /// <para>
-    /// 四类令牌键（租户 access/refresh、用户 access/refresh）由此类统一产出，
-    /// Memory 与 Redis 两条后端路径逐字节一致。键段经 <see cref="NormalizeSegment"/> 统一转义，
-    /// 含 <c>:</c> 的段不会与段间分隔符混淆。反向解析（<see cref="TryParseTenantTokenType"/>/
-    /// <see cref="TryParseUserTokenType"/>）保证 <c>GetTokenTypesAsync</c> 返回值可原样回灌给
-    /// <c>RemoveAsync</c>/<c>GetAccessTokenAsync</c>。
-    /// </para>
-    /// <para>
-    /// TMF2-05：<see cref="BuildKeyPrefix"/> 是键前缀的唯一出口——
-    /// Memory（<c>FeishuTokenStore</c> / <c>FeishuUserTokenStore</c>）和 Redis
-    /// （<c>PerAppRedisTokenStoreFactory</c>）均委派此方法，消除裸拼接与经
-    /// <c>RedisKeyBuilder.Combine</c> 转义的差异（前缀逐字节一致）。
-    /// </para>
-    /// <para>
-    /// TMF2-08：<see cref="NormalizeSegment"/> 转义 glob 元字符（<c>*</c> <c>?</c> <c>[</c> <c>]</c>），
-    /// 防止含这些字符的 appKey/userId 在 SCAN 模式中注入通配符。
-    /// </para>
-    /// </summary>
+/// <summary>
+/// 令牌键构造的单一真相（D8 契约 / TMA2-02）。
+/// <para>
+/// 四类令牌键（租户 access/refresh、用户 access/refresh）由此类统一产出，
+/// Memory 与 Redis 两条后端路径逐字节一致。键段经 <see cref="NormalizeSegment"/> 统一转义，
+/// 含 <c>:</c> 的段不会与段间分隔符混淆。反向解析（<see cref="TryParseTenantTokenType"/>/
+/// <see cref="TryParseUserTokenType"/>）保证 <c>GetTokenTypesAsync</c> 返回值可原样回灌给
+/// <c>RemoveAsync</c>/<c>GetAccessTokenAsync</c>。
+/// </para>
+/// <para>
+/// TMF2-05：<see cref="BuildKeyPrefix"/> 是键前缀的唯一出口——
+/// Memory（<c>FeishuTokenStore</c> / <c>FeishuUserTokenStore</c>）和 Redis
+/// （<c>PerAppRedisTokenStoreFactory</c>）均委派此方法，消除裸拼接与经
+/// <c>RedisKeyBuilder.Combine</c> 转义的差异（前缀逐字节一致）。
+/// </para>
+/// <para>
+/// TMF2-08：<see cref="NormalizeSegment"/> 转义 glob 元字符（<c>*</c> <c>?</c> <c>[</c> <c>]</c>），
+/// 防止含这些字符的 appKey/userId 在 SCAN 模式中注入通配符。
+/// </para>
+/// </summary>
 internal static class TokenKeyBuilder
 {
     /// <summary>

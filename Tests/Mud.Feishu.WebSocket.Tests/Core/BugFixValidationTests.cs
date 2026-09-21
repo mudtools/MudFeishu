@@ -31,7 +31,7 @@ public class BugFixValidationTests
             .Setup(x => x.GetHandler(It.IsAny<string>()))
             .Returns(Mock.Of<IFeishuEventHandler>());
 
-        _options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions {  };
+        _options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions { };
     }
 
     #region Bug修复2: IAsyncDisposable接口实现

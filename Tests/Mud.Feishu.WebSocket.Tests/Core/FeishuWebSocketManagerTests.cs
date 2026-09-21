@@ -32,7 +32,7 @@ public class FeishuWebSocketManagerTests
         _loggerMock = new Mock<ILogger<FeishuWebSocketManager>>();
         _appContextMock = new Mock<IFeishuAppContext>();
         _clientMock = new Mock<IFeishuWebSocketClient>();
-        _options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions {  };
+        _options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions { };
         _optionsMonitorMock = new Mock<IOptionsMonitor<FeishuWebSocketOptions>>();
         _optionsMonitorMock.Setup(x => x.CurrentValue).Returns(_options);
 

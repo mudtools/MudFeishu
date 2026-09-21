@@ -236,8 +236,8 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
             {
                 await _webSocket.ConnectAsync(uri, combinedCts.Token);
 
-                                _logger.LogInformation("已连接到飞书WebSocket服务: {Url}", url);
-            
+                _logger.LogInformation("已连接到飞书WebSocket服务: {Url}", url);
+
 
                 // P0-4 修复：只有连接真正成功后才配平计数并允许触发断线事件。
                 // 顺序必须为 Increment → 清除断线标志，避免连接失败后 Decrement 未配平导致计数为负。
@@ -413,8 +413,8 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
             }
         }
 
-                _logger.LogInformation("已断开飞书WebSocket连接");
-    
+        _logger.LogInformation("已断开飞书WebSocket连接");
+
 
         var args = new WebSocketCloseEventArgs
         {
@@ -544,8 +544,8 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
                 true,
                 cancellationToken);
 
-                        _logger.LogDebug("已发送二进制消息，大小: {Size} 字节", data.Count);
-        
+            _logger.LogDebug("已发送二进制消息，大小: {Size} 字节", data.Count);
+
         }
         catch (Exception ex)
         {
@@ -606,8 +606,8 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
                 true,
                 cancellationToken);
 
-                        _logger.LogDebug("已发送消息: {Message}", MessageSanitizer.Sanitize(message));
-        
+            _logger.LogDebug("已发送消息: {Message}", MessageSanitizer.Sanitize(message));
+
         }
         catch (Exception ex)
         {
@@ -799,9 +799,9 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
     /// </remarks>
     private async Task HandleCloseMessageAsync(WebSocketReceiveResult result, ClientWebSocket webSocket)
     {
-                _logger.LogInformation("服务器请求关闭连接: {Status} - {Description}",
-            result.CloseStatus, result.CloseStatusDescription);
-    
+        _logger.LogInformation("服务器请求关闭连接: {Status} - {Description}",
+    result.CloseStatus, result.CloseStatusDescription);
+
 
         // 通过 NotifyDisconnected 统一处理连接计数递减和 Disconnected 事件触发，
         // _disconnectedFired 标志（Interlocked）确保不会与 StartReceivingAsync 异常路径或 DisconnectAsync 重复触发。
@@ -1059,7 +1059,7 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
         }
 #else
         // .NET Standard 2.0 不支持 RemoteCertificateValidationCallback
-                if (!_options.Certificate.ValidateServerCertificate)
+        if (!_options.Certificate.ValidateServerCertificate)
         {
             _logger.LogWarning(".NET Standard 2.0 不支持自定义证书验证回调，ValidateServerCertificate 配置无效");
         }
@@ -1067,7 +1067,7 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
         {
             _logger.LogWarning(".NET Standard 2.0 不支持自定义证书验证回调，AllowSelfSignedCertificates 配置无效");
         }
-    
+
 #endif
     }
 

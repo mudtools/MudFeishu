@@ -431,6 +431,169 @@ public class FeishuWebhookServiceTests
         handlerMock.Verify(x => x.HandleAsync(eventData, It.IsAny<CancellationToken>()), Times.Once);
     }
 
+    // P1-2（R2）：应用专属处理器必须按 SupportedEventType 过滤（空声明 = 处理全部）
+    [Fact]
+    public async Task HandleEventAsync_WithAppSpecificHandlersOfDifferentTypes_ShouldDispatchOnlyMatchingHandler()
+    {
+        // Arrange
+        var appKey = "app-001";
+        var eventData = new EventData
+        {
+            EventId = "test_event_p12_a",
+            EventType = "event.a"
+        };
+
+        var handlerRegistry = new FeishuWebhookHandlerRegistry();
+        handlerRegistry.Register(appKey, typeof(TestAppHandler));
+        handlerRegistry.Register(appKey, typeof(TestAppHandlerB));
+
+        var handlerAMock = new Mock<IFeishuEventHandler>();
+        handlerAMock.SetupGet(x => x.SupportedEventType).Returns("event.a");
+        var handlerBMock = new Mock<IFeishuEventHandler>();
+        handlerBMock.SetupGet(x => x.SupportedEventType).Returns("event.b");
+
+        _serviceProviderMock
+            .Setup(x => x.GetService(typeof(TestAppHandler)))
+            .Returns(handlerAMock.Object);
+        _serviceProviderMock
+            .Setup(x => x.GetService(typeof(TestAppHandlerB)))
+            .Returns(handlerBMock.Object);
+
+        _deduplicatorMock
+            .Setup(x => x.TryMarkAsProcessingAsync(eventData.EventId, appKey, null, null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new DeduplicationResult { IsDuplicate = false, WasProcessing = false });
+
+        var service = new FeishuWebhookService(
+            _optionsMonitorMock.Object,
+            _validatorMock.Object,
+            _decryptorMock.Object,
+            _handlerFactoryMock.Object,
+            _loggerMock.Object,
+            Array.Empty<IFeishuEventInterceptor>(),
+            _concurrencyService,
+            _deduplicatorMock.Object,
+            _encryptKeyProviderMock.Object,
+            handlerRegistry,
+            new FeishuWebhookInterceptorRegistry(),
+            _serviceProviderMock.Object,
+            _appKeyAccessorMock.Object);
+
+        // Act
+        service.SetCurrentAppKey(appKey);
+        var result = await service.HandleEventAsync(eventData);
+
+        // Assert：声明 event.a 的处理器恰好 1 次，event.b 处理器未被解析（0 次）
+        Assert.True(result.Success);
+        handlerAMock.Verify(x => x.HandleAsync(eventData, It.IsAny<CancellationToken>()), Times.Once);
+        handlerBMock.Verify(x => x.HandleAsync(It.IsAny<EventData>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task HandleEventAsync_WithAppSpecificHandlerDeclaredEmpty_ShouldReceiveAllEventTypes()
+    {
+        // Arrange
+        var appKey = "app-001";
+        var handlerRegistry = new FeishuWebhookHandlerRegistry();
+        handlerRegistry.Register(appKey, typeof(TestAppHandler));
+
+        var handlerMock = new Mock<IFeishuEventHandler>();
+        handlerMock.SetupGet(x => x.SupportedEventType).Returns(string.Empty);
+
+        _serviceProviderMock
+            .Setup(x => x.GetService(typeof(TestAppHandler)))
+            .Returns(handlerMock.Object);
+
+        _deduplicatorMock
+            .Setup(x => x.TryMarkAsProcessingAsync(It.IsAny<string>(), appKey, null, null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new DeduplicationResult { IsDuplicate = false, WasProcessing = false });
+
+        var service = new FeishuWebhookService(
+            _optionsMonitorMock.Object,
+            _validatorMock.Object,
+            _decryptorMock.Object,
+            _handlerFactoryMock.Object,
+            _loggerMock.Object,
+            Array.Empty<IFeishuEventInterceptor>(),
+            _concurrencyService,
+            _deduplicatorMock.Object,
+            _encryptKeyProviderMock.Object,
+            handlerRegistry,
+            new FeishuWebhookInterceptorRegistry(),
+            _serviceProviderMock.Object,
+            _appKeyAccessorMock.Object);
+
+        service.SetCurrentAppKey(appKey);
+
+        // Act：两种不同 eventType 均应投递到空声明处理器
+        var eventA = new EventData { EventId = "test_event_p12_e1", EventType = "event.a" };
+        var eventB = new EventData { EventId = "test_event_p12_e2", EventType = "event.b" };
+        var resultA = await service.HandleEventAsync(eventA);
+        var resultB = await service.HandleEventAsync(eventB);
+
+        // Assert（向后兼容契约锁定）
+        Assert.True(resultA.Success);
+        Assert.True(resultB.Success);
+        handlerMock.Verify(x => x.HandleAsync(eventA, It.IsAny<CancellationToken>()), Times.Once);
+        handlerMock.Verify(x => x.HandleAsync(eventB, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleEventAsync_WhenAllAppHandlersFilteredOut_ShouldSkipDispatch_WithoutRollback()
+    {
+        // Arrange：应用注册了处理器但声明类型与事件不匹配（过滤后 tasks 为空）
+        var appKey = "app-001";
+        var eventData = new EventData
+        {
+            EventId = "test_event_p12_c",
+            EventType = "event.a"
+        };
+
+        var handlerRegistry = new FeishuWebhookHandlerRegistry();
+        handlerRegistry.Register(appKey, typeof(TestAppHandler));
+
+        var handlerMock = new Mock<IFeishuEventHandler>();
+        handlerMock.SetupGet(x => x.SupportedEventType).Returns("event.b");
+
+        _serviceProviderMock
+            .Setup(x => x.GetService(typeof(TestAppHandler)))
+            .Returns(handlerMock.Object);
+
+        _deduplicatorMock
+            .Setup(x => x.TryMarkAsProcessingAsync(eventData.EventId, appKey, null, null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new DeduplicationResult { IsDuplicate = false, WasProcessing = false });
+
+        var service = new FeishuWebhookService(
+            _optionsMonitorMock.Object,
+            _validatorMock.Object,
+            _decryptorMock.Object,
+            _handlerFactoryMock.Object,
+            _loggerMock.Object,
+            Array.Empty<IFeishuEventInterceptor>(),
+            _concurrencyService,
+            _deduplicatorMock.Object,
+            _encryptKeyProviderMock.Object,
+            handlerRegistry,
+            new FeishuWebhookInterceptorRegistry(),
+            _serviceProviderMock.Object,
+            _appKeyAccessorMock.Object);
+
+        // Act
+        service.SetCurrentAppKey(appKey);
+        var result = await service.HandleEventAsync(eventData);
+
+        // Assert：WhenAll 空集正常完成 → Mark completed → 成功；
+        // 不落回滚/失败存储路径，也不回落全局工厂（评审决策：静默成功，与 WHF-09 unhandled 口径一致）
+        Assert.True(result.Success);
+        handlerMock.Verify(x => x.HandleAsync(It.IsAny<EventData>(), It.IsAny<CancellationToken>()), Times.Never);
+        _handlerFactoryMock.Verify(
+            x => x.HandleEventParallelAsync(It.IsAny<string>(), It.IsAny<EventData>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+        _deduplicatorMock.Verify(
+            x => x.MarkAsCompletedAsync(eventData.EventId, appKey, It.IsAny<CancellationToken>()), Times.Once);
+        _deduplicatorMock.Verify(
+            x => x.RollbackProcessingAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
     [Fact]
     public async Task HandleEventAsync_WithAppSpecificInterceptor_ShouldUseAppInterceptor()
     {
@@ -775,10 +938,10 @@ public class FeishuWebhookServiceTests
             VerificationToken = "token_1",
             EncryptKey = "12345678901234567890123456789012"
         };
-_validatorMock
-.Setup(x => x.ValidateHeaderSignatureAsync(
-It.IsAny<long>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-.ThrowsAsync(new FeishuRedisException(FeishuRedisFailureKind.Server, "Lua 脚本执行失败"));
+        _validatorMock
+        .Setup(x => x.ValidateHeaderSignatureAsync(
+        It.IsAny<long>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+        .ThrowsAsync(new FeishuRedisException(FeishuRedisFailureKind.Server, "Lua 脚本执行失败"));
 
         var service = CreateService();
         service.SetCurrentAppKey("app1");
@@ -1015,6 +1178,13 @@ It.IsAny<long>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It
     private class TestAppHandler : IFeishuEventHandler
     {
         public string SupportedEventType => "test.event";
+        public Task HandleAsync(EventData eventData, CancellationToken cancellationToken = default) => Task.CompletedTask;
+    }
+
+    /// <summary>P1-2 测试用第二应用处理器类型（占位声明类型，实际行为由 Mock 提供）</summary>
+    private class TestAppHandlerB : IFeishuEventHandler
+    {
+        public string SupportedEventType => "event.b";
         public Task HandleAsync(EventData eventData, CancellationToken cancellationToken = default) => Task.CompletedTask;
     }
 

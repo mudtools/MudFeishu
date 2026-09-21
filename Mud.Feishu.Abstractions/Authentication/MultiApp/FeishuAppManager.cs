@@ -207,7 +207,7 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
     {
         if (newConfigs == null || newConfigs.Count == 0)
         {
-            _logger.LogWarning("收到空的飞书应用配置变更通知，已忽略（至少需要保留一个应用配置）。" );
+            _logger.LogWarning("收到空的飞书应用配置变更通知，已忽略（至少需要保留一个应用配置）。");
             return;
         }
 
@@ -286,7 +286,7 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
         catch (Exception ex)
         {
             _logger.LogError(ex,
-                "飞书应用配置热更新失败，已保持原配置继续运行。请检查新的应用配置是否合法（AppKey/AppId/AppSecret 校验）。" );
+                "飞书应用配置热更新失败，已保持原配置继续运行。请检查新的应用配置是否合法（AppKey/AppId/AppSecret 校验）。");
         }
     }
 
@@ -361,7 +361,7 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
                 try { (context as IDisposable)?.Dispose(); }
                 catch { /* 幂等。 */ }
             }
-            _logger.LogError("配置热更新变更未应用（Phase-A 失败），注册表与快照保持原状。" );
+            _logger.LogError("配置热更新变更未应用（Phase-A 失败），注册表与快照保持原状。");
             return;
         }
 
@@ -801,84 +801,84 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
         // 并发首访构造的旧上下文经身份校验回收后重试获取当前 Lazy。
         while (true)
         {
-        if (_lazyContexts.TryGetValue(appKey, out var lazy))
-        {
-            FeishuAppContext? createdContext = null;
-            try
+            if (_lazyContexts.TryGetValue(appKey, out var lazy))
             {
-                var context = lazy.Value;
-                createdContext = context;
-
-                // TMF2-01（方案 B）：身份校验——若 Lazy 已被 Phase-B 替换，
-                // 说明当前构造的是旧配置上下文。回收它并重新获取当前 Lazy。
-                if (!_lazyContexts.TryGetValue(appKey, out var currentLazy)
-                    || !ReferenceEquals(currentLazy, lazy))
+                FeishuAppContext? createdContext = null;
+                try
                 {
-                    // Phase-B 已替换 Lazy：旧上下文入退休队列，重新获取。
-                    if (createdContext != null)
+                    var context = lazy.Value;
+                    createdContext = context;
+
+                    // TMF2-01（方案 B）：身份校验——若 Lazy 已被 Phase-B 替换，
+                    // 说明当前构造的是旧配置上下文。回收它并重新获取当前 Lazy。
+                    if (!_lazyContexts.TryGetValue(appKey, out var currentLazy)
+                        || !ReferenceEquals(currentLazy, lazy))
+                    {
+                        // Phase-B 已替换 Lazy：旧上下文入退休队列，重新获取。
+                        if (createdContext != null)
+                        {
+                            // TMF2-06：Enqueue 已检查 _disposed，不再抛 ObjectDisposedException。
+                            _retirement?.Enqueue(appKey, createdContext);
+                        }
+                        continue; // 重新获取当前 Lazy
+                    }
+
+                    // 注册到基类字典中（如果尚未注册）
+                    // 注意：必须使用 base.HasApp 检查"是否已注册到基类字典"，
+                    // 而非使用 HasApp（后者会同时检查 _lazyContexts，导致永远跳过 RegisterApp）。
+                    var wasRegistered = base.HasApp(appKey);
+                    if (!wasRegistered)
+                    {
+                        var config = FindConfigInSnapshot(appKey)
+                            ?? throw new FeishuAppRemovedException(appKey);
+                        RegisterApp(appKey, context, config.IsDefault);
+                    }
+                    // TMA2-07 / P1-4：首次实例化后在锁外触发事件。
+                    if (!wasRegistered)
+                    {
+                        OnAppInstantiated(appKey, context);
+                    }
+                    return context;
+                }
+                // TMA2-12 / D6：异常过滤从"除取消外全部"改为"可重试异常白名单"。
+                // 可重试异常（InvalidOperationException/HttpRequestException/TimeoutException 等）→ 重建 Lazy 允许重试。
+                // 非瞬时异常（OutOfMemoryException/AccessViolationException/TypeLoadException 等）→ 直接上抛。
+                catch (Exception ex) when (IsTransientInitFailure(ex))
+                {
+                    // NEW-MA-08 修复：Lazy<ExecutionAndPublication> 缓存异常后，后续 .Value 访问会重新抛出同一异常。
+                    // 此处重建 Lazy<> 以允许下次调用重试初始化（如 Redis 短暂故障恢复后可自愈）。
+                    // 使用双检锁避免并发线程同时重建：仅当字典中仍是原 Lazy 实例时才重建。
+                    // TMR-P1-3：快照查无该应用时不再重建（确定性终态），抛 FeishuAppRemovedException。
+                    lock (_lazyRebuildLock)
+                    {
+                        if (_lazyContexts.TryGetValue(appKey, out var current) && ReferenceEquals(current, lazy))
+                        {
+                            var config = FindConfigInSnapshot(appKey)
+                                ?? throw new FeishuAppRemovedException(appKey);
+                            var capturedConfig = config;
+                            _lazyContexts[appKey] = new Lazy<FeishuAppContext>(
+                                () => CreateAppContext(capturedConfig),
+                                LazyThreadSafetyMode.ExecutionAndPublication);
+                        }
+                    }
+                    throw new InvalidOperationException(
+                        $"应用 '{appKey}' 初始化失败: {ex.Message}", ex);
+                }
+                finally
+                {
+                    // TMR-P1-3：注册失败路径上已创建的上下文必须显式回收（Timer roots 对象图，GC 不代劳，D5）。
+                    // 经退休队列回收（而非直接 Dispose）：保留宽限期语义，避免打断刚完成装配的管理器的在途初始化。
+                    // TMF2-01：身份校验路径上已 Enqueue 的上下文不再重复回收（createdContext 已被消费）。
+                    if (createdContext != null && !base.HasApp(appKey) && _lazyContexts.TryGetValue(appKey, out var finalLazy) && ReferenceEquals(finalLazy, lazy))
                     {
                         // TMF2-06：Enqueue 已检查 _disposed，不再抛 ObjectDisposedException。
                         _retirement?.Enqueue(appKey, createdContext);
                     }
-                    continue; // 重新获取当前 Lazy
                 }
+            }
 
-                // 注册到基类字典中（如果尚未注册）
-                // 注意：必须使用 base.HasApp 检查"是否已注册到基类字典"，
-                // 而非使用 HasApp（后者会同时检查 _lazyContexts，导致永远跳过 RegisterApp）。
-                var wasRegistered = base.HasApp(appKey);
-                if (!wasRegistered)
-                {
-                    var config = FindConfigInSnapshot(appKey)
-                        ?? throw new FeishuAppRemovedException(appKey);
-                    RegisterApp(appKey, context, config.IsDefault);
-                }
-                // TMA2-07 / P1-4：首次实例化后在锁外触发事件。
-                if (!wasRegistered)
-                {
-                    OnAppInstantiated(appKey, context);
-                }
-                return context;
-            }
-            // TMA2-12 / D6：异常过滤从"除取消外全部"改为"可重试异常白名单"。
-            // 可重试异常（InvalidOperationException/HttpRequestException/TimeoutException 等）→ 重建 Lazy 允许重试。
-            // 非瞬时异常（OutOfMemoryException/AccessViolationException/TypeLoadException 等）→ 直接上抛。
-            catch (Exception ex) when (IsTransientInitFailure(ex))
-            {
-                // NEW-MA-08 修复：Lazy<ExecutionAndPublication> 缓存异常后，后续 .Value 访问会重新抛出同一异常。
-                // 此处重建 Lazy<> 以允许下次调用重试初始化（如 Redis 短暂故障恢复后可自愈）。
-                // 使用双检锁避免并发线程同时重建：仅当字典中仍是原 Lazy 实例时才重建。
-                // TMR-P1-3：快照查无该应用时不再重建（确定性终态），抛 FeishuAppRemovedException。
-                lock (_lazyRebuildLock)
-                {
-                    if (_lazyContexts.TryGetValue(appKey, out var current) && ReferenceEquals(current, lazy))
-                    {
-                        var config = FindConfigInSnapshot(appKey)
-                            ?? throw new FeishuAppRemovedException(appKey);
-                        var capturedConfig = config;
-                        _lazyContexts[appKey] = new Lazy<FeishuAppContext>(
-                            () => CreateAppContext(capturedConfig),
-                            LazyThreadSafetyMode.ExecutionAndPublication);
-                    }
-                }
-                throw new InvalidOperationException(
-                    $"应用 '{appKey}' 初始化失败: {ex.Message}", ex);
-            }
-            finally
-            {
-                // TMR-P1-3：注册失败路径上已创建的上下文必须显式回收（Timer roots 对象图，GC 不代劳，D5）。
-                // 经退休队列回收（而非直接 Dispose）：保留宽限期语义，避免打断刚完成装配的管理器的在途初始化。
-                // TMF2-01：身份校验路径上已 Enqueue 的上下文不再重复回收（createdContext 已被消费）。
-                if (createdContext != null && !base.HasApp(appKey) && _lazyContexts.TryGetValue(appKey, out var finalLazy) && ReferenceEquals(finalLazy, lazy))
-                {
-                    // TMF2-06：Enqueue 已检查 _disposed，不再抛 ObjectDisposedException。
-                    _retirement?.Enqueue(appKey, createdContext);
-                }
-            }
-        }
-
-        throw new InvalidOperationException(
-            $"未找到应用标识为 '{appKey}' 的应用上下文。请先调用 RegisterApp 注册应用。");
+            throw new InvalidOperationException(
+                $"未找到应用标识为 '{appKey}' 的应用上下文。请先调用 RegisterApp 注册应用。");
         }
     }
 
@@ -954,95 +954,95 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
         // TMF2-01（方案 B）：循环重试——Phase-B 替换 Lazy 时重新获取。
         while (true)
         {
-        // 已配置但尚未实例化的应用：触发 Lazy 创建
-        if (_lazyContexts.TryGetValue(appKey, out var lazy))
-        {
-            FeishuAppContext? createdContext = null;
-            try
+            // 已配置但尚未实例化的应用：触发 Lazy 创建
+            if (_lazyContexts.TryGetValue(appKey, out var lazy))
             {
-                var context = lazy.Value;
-                createdContext = context;
-
-                // TMF2-01（方案 B）：身份校验——若 Lazy 已被 Phase-B 替换，
-                // 回收旧上下文并重新获取当前 Lazy。
-                if (!_lazyContexts.TryGetValue(appKey, out var currentLazy)
-                    || !ReferenceEquals(currentLazy, lazy))
+                FeishuAppContext? createdContext = null;
+                try
                 {
-                    if (createdContext != null)
+                    var context = lazy.Value;
+                    createdContext = context;
+
+                    // TMF2-01（方案 B）：身份校验——若 Lazy 已被 Phase-B 替换，
+                    // 回收旧上下文并重新获取当前 Lazy。
+                    if (!_lazyContexts.TryGetValue(appKey, out var currentLazy)
+                        || !ReferenceEquals(currentLazy, lazy))
+                    {
+                        if (createdContext != null)
+                        {
+                            // TMF2-06：Enqueue 已检查 _disposed，不再抛 ObjectDisposedException。
+                            _retirement?.Enqueue(appKey, createdContext);
+                        }
+                        continue;
+                    }
+
+                    // 注册到基类字典以便后续快速查找
+                    var wasRegistered = base.HasApp(appKey);
+                    if (!wasRegistered)
+                    {
+                        // TMR-P1-3（F3）：快照查无该应用（热更新移除窗口）——确定性终态，
+                        // 不注册、不重建、不触发事件，直接返回 false（保持 Try* 语义不抛异常）。
+                        var config = FindConfigInSnapshot(appKey);
+                        if (config == null)
+                        {
+                            appContext = default;
+                            return false;
+                        }
+                        RegisterApp(appKey, context, config.IsDefault);
+                    }
+                    // TMA2-07 / P1-4：首次实例化后在锁外触发事件。
+                    if (!wasRegistered)
+                    {
+                        OnAppInstantiated(appKey, context);
+                    }
+                    appContext = context;
+                    return true;
+                }
+                // TMA2-12 / D6：与 GetOrCreateContext 一致，仅捕获可重试异常。非瞬时异常直接上抛。
+                catch (Exception ex) when (IsTransientInitFailure(ex))
+                {
+                    // NEW-MA-08 修复：与 GetOrCreateContext 一致，检测到 Lazy 缓存异常时重建 Lazy<> 以允许下次重试。
+                    // 保持 Try* 语义：重建后仍返回 false，调用方可下次重试。
+                    // TMR-P1-3：快照查无该应用时跳过重建（确定性终态，不放大资源）。
+                    lock (_lazyRebuildLock)
+                    {
+                        if (_lazyContexts.TryGetValue(appKey, out var current) && ReferenceEquals(current, lazy))
+                        {
+                            var config = FindConfigInSnapshot(appKey);
+                            if (config != null)
+                            {
+                                var capturedConfig = config;
+                                _lazyContexts[appKey] = new Lazy<FeishuAppContext>(
+                                    () => CreateAppContext(capturedConfig),
+                                    LazyThreadSafetyMode.ExecutionAndPublication);
+                            }
+                        }
+                    }
+                    appContext = default;
+                    return false;
+                }
+                catch (OperationCanceledException)
+                {
+                    // TMA2-12：取消异常不重建 Lazy，保持 Try* 语义返回 false
+                    appContext = default;
+                    return false;
+                }
+                finally
+                {
+                    // TMR-P1-3（F3）：与 GetOrCreateContext 同构——注册失败路径上已创建的上下文
+                    // 经退休队列回收，避免孤儿上下文（Scope + 管理器 + Timer）泄漏。
+                    // TMF2-01：身份校验路径上已 Enqueue 的上下文不再重复回收。
+                    if (createdContext != null && !base.HasApp(appKey) && _lazyContexts.TryGetValue(appKey, out var finalLazy) && ReferenceEquals(finalLazy, lazy))
                     {
                         // TMF2-06：Enqueue 已检查 _disposed，不再抛 ObjectDisposedException。
                         _retirement?.Enqueue(appKey, createdContext);
                     }
-                    continue;
                 }
+            }
 
-                // 注册到基类字典以便后续快速查找
-                var wasRegistered = base.HasApp(appKey);
-                if (!wasRegistered)
-                {
-                    // TMR-P1-3（F3）：快照查无该应用（热更新移除窗口）——确定性终态，
-                    // 不注册、不重建、不触发事件，直接返回 false（保持 Try* 语义不抛异常）。
-                    var config = FindConfigInSnapshot(appKey);
-                    if (config == null)
-                    {
-                        appContext = default;
-                        return false;
-                    }
-                    RegisterApp(appKey, context, config.IsDefault);
-                }
-                // TMA2-07 / P1-4：首次实例化后在锁外触发事件。
-                if (!wasRegistered)
-                {
-                    OnAppInstantiated(appKey, context);
-                }
-                appContext = context;
-                return true;
-            }
-            // TMA2-12 / D6：与 GetOrCreateContext 一致，仅捕获可重试异常。非瞬时异常直接上抛。
-            catch (Exception ex) when (IsTransientInitFailure(ex))
-            {
-                // NEW-MA-08 修复：与 GetOrCreateContext 一致，检测到 Lazy 缓存异常时重建 Lazy<> 以允许下次重试。
-                // 保持 Try* 语义：重建后仍返回 false，调用方可下次重试。
-                // TMR-P1-3：快照查无该应用时跳过重建（确定性终态，不放大资源）。
-                lock (_lazyRebuildLock)
-                {
-                    if (_lazyContexts.TryGetValue(appKey, out var current) && ReferenceEquals(current, lazy))
-                    {
-                        var config = FindConfigInSnapshot(appKey);
-                        if (config != null)
-                        {
-                            var capturedConfig = config;
-                            _lazyContexts[appKey] = new Lazy<FeishuAppContext>(
-                                () => CreateAppContext(capturedConfig),
-                                LazyThreadSafetyMode.ExecutionAndPublication);
-                        }
-                    }
-                }
-                appContext = default;
-                return false;
-            }
-            catch (OperationCanceledException)
-            {
-                // TMA2-12：取消异常不重建 Lazy，保持 Try* 语义返回 false
-                appContext = default;
-                return false;
-            }
-            finally
-            {
-                // TMR-P1-3（F3）：与 GetOrCreateContext 同构——注册失败路径上已创建的上下文
-                // 经退休队列回收，避免孤儿上下文（Scope + 管理器 + Timer）泄漏。
-                // TMF2-01：身份校验路径上已 Enqueue 的上下文不再重复回收。
-                if (createdContext != null && !base.HasApp(appKey) && _lazyContexts.TryGetValue(appKey, out var finalLazy) && ReferenceEquals(finalLazy, lazy))
-                {
-                    // TMF2-06：Enqueue 已检查 _disposed，不再抛 ObjectDisposedException。
-                    _retirement?.Enqueue(appKey, createdContext);
-                }
-            }
-        }
-
-        // 未配置的应用
-        appContext = default;
-        return false;
+            // 未配置的应用
+            appContext = default;
+            return false;
         }
     }
 
@@ -1488,88 +1488,88 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
 
         try
         {
-        // ARC-2 Step 1：客户端装配统一委托给 IFeishuHttpClientFactory，
-        // 消除与 AddMudHttpClient 注册路径的配置双源（此前手工 new 会导致 10 个 EnhancedHttpClientOptions
-        // 字段静默取默认值，且完全忽略 IOptions<EnhancedHttpClientOptions> 基线）。
-        // DED-1：同时删除此前声明后未使用的 jsonSerializerOptions / basicHttpClient 两个死变量。
-        // 使用 GetService 而非 GetRequiredService：IFeishuHttpClientFactory 是装配收敛的可选服务，
-        // 直接手工构造 FeishuAppManager（未经 AddFeishuApp）的场景下回退到默认实现，
-        // 避免把新增依赖变成破坏性变更。
-        // TMA-13：使用 scopedSp 解析服务，确保 Scoped 依赖在作用域内解析。
-        // Singleton 注册的服务从根/作用域 SP 解析结果一致；Scoped 服务仅在作用域内可安全解析。
-        var httpClientFactory = scopedSp.GetService<IFeishuHttpClientFactory>()
-            ?? new FeishuHttpClientFactory(scopedSp);
+            // ARC-2 Step 1：客户端装配统一委托给 IFeishuHttpClientFactory，
+            // 消除与 AddMudHttpClient 注册路径的配置双源（此前手工 new 会导致 10 个 EnhancedHttpClientOptions
+            // 字段静默取默认值，且完全忽略 IOptions<EnhancedHttpClientOptions> 基线）。
+            // DED-1：同时删除此前声明后未使用的 jsonSerializerOptions / basicHttpClient 两个死变量。
+            // 使用 GetService 而非 GetRequiredService：IFeishuHttpClientFactory 是装配收敛的可选服务，
+            // 直接手工构造 FeishuAppManager（未经 AddFeishuApp）的场景下回退到默认实现，
+            // 避免把新增依赖变成破坏性变更。
+            // TMA-13：使用 scopedSp 解析服务，确保 Scoped 依赖在作用域内解析。
+            // Singleton 注册的服务从根/作用域 SP 解析结果一致；Scoped 服务仅在作用域内可安全解析。
+            var httpClientFactory = scopedSp.GetService<IFeishuHttpClientFactory>()
+                ?? new FeishuHttpClientFactory(scopedSp);
 
-        // === 步骤 2：创建 AuthenticationApi（使用 per-app HttpClient） ===
-        // TMA-09 / P1-8 修复（D7 契约）：认证/取令牌请求改为使用本应用的命名 HttpClient。
-        // 通过 IFeishuAuthenticationFactory.Create(appKey) 获取 per-app 认证 API 实例。
-        // 若 EnablePerAppAuthenticationClient=false 或工厂未注册，降级为 DI 单例（使用默认应用端点）。
-        IFeishuAuthentication authenticationApi;
-        var appOptions = scopedSp.GetService<IOptions<FeishuAppOptions>>()?.Value;
-        var authFactory = scopedSp.GetService<IFeishuAuthenticationFactory>();
-        if (appOptions?.EnablePerAppAuthenticationClient != false && authFactory != null)
-        {
-            authenticationApi = authFactory.Create(config.AppKey);
-        }
-        else
-        {
-            // 降级路径：使用 DI 单例（默认应用端点）
-            if (appOptions?.EnablePerAppAuthenticationClient == false)
+            // === 步骤 2：创建 AuthenticationApi（使用 per-app HttpClient） ===
+            // TMA-09 / P1-8 修复（D7 契约）：认证/取令牌请求改为使用本应用的命名 HttpClient。
+            // 通过 IFeishuAuthenticationFactory.Create(appKey) 获取 per-app 认证 API 实例。
+            // 若 EnablePerAppAuthenticationClient=false 或工厂未注册，降级为 DI 单例（使用默认应用端点）。
+            IFeishuAuthentication authenticationApi;
+            var appOptions = scopedSp.GetService<IOptions<FeishuAppOptions>>()?.Value;
+            var authFactory = scopedSp.GetService<IFeishuAuthenticationFactory>();
+            if (appOptions?.EnablePerAppAuthenticationClient != false && authFactory != null)
             {
-                _logger.LogWarning(
-                    "EnablePerAppAuthenticationClient=false，应用 {AppKey} 的认证请求将使用默认应用端点。" +
-                    "多区域/多 BaseUrl 部署请显式开启此选项。",
-                    config.AppKey);
+                authenticationApi = authFactory.Create(config.AppKey);
             }
-            authenticationApi = scopedSp.GetRequiredService<IFeishuAuthentication>();
-        }
+            else
+            {
+                // 降级路径：使用 DI 单例（默认应用端点）
+                if (appOptions?.EnablePerAppAuthenticationClient == false)
+                {
+                    _logger.LogWarning(
+                        "EnablePerAppAuthenticationClient=false，应用 {AppKey} 的认证请求将使用默认应用端点。" +
+                        "多区域/多 BaseUrl 部署请显式开启此选项。",
+                        config.AppKey);
+                }
+                authenticationApi = scopedSp.GetRequiredService<IFeishuAuthentication>();
+            }
 
-        // === 步骤 3：创建 TokenManager（依赖 AuthenticationApi） ===
-        // S-3 修复：通过 IFeishuTokenStoreFactory 替代 is FeishuTokenStore 类型检查。
-        // 默认注册 PerAppFeishuTokenStoreFactory（per-app FeishuTokenStore 实例）；
-        // Redis 等自定义存储场景注册 PerAppRedisTokenStoreFactory 返回 per-app 实例。
-        var tokenStoreFactory = scopedSp.GetRequiredService<IFeishuTokenStoreFactory>();
-        var (tokenStore, userTokenStore) = tokenStoreFactory.Create(config.AppKey);
+            // === 步骤 3：创建 TokenManager（依赖 AuthenticationApi） ===
+            // S-3 修复：通过 IFeishuTokenStoreFactory 替代 is FeishuTokenStore 类型检查。
+            // 默认注册 PerAppFeishuTokenStoreFactory（per-app FeishuTokenStore 实例）；
+            // Redis 等自定义存储场景注册 PerAppRedisTokenStoreFactory 返回 per-app 实例。
+            var tokenStoreFactory = scopedSp.GetRequiredService<IFeishuTokenStoreFactory>();
+            var (tokenStore, userTokenStore) = tokenStoreFactory.Create(config.AppKey);
 
-        // MA-02 修复：通过 IFeishuTokenManagerFactory 替代直接 new TenantTokenManager(...) 的硬编码方式，
-        // 使自定义 TokenManager 实现可通过注册自定义工厂接入 DI 容器。
-        // 默认注册 DefaultFeishuTokenManagerFactory，行为与原实现完全一致。
-        var tokenManagerFactory = scopedSp.GetRequiredService<IFeishuTokenManagerFactory>();
-        var (tenantTokenManager, appTokenManager, userTokenManager) = tokenManagerFactory.Create(
-            config, authenticationApi, tokenStore, userTokenStore);
+            // MA-02 修复：通过 IFeishuTokenManagerFactory 替代直接 new TenantTokenManager(...) 的硬编码方式，
+            // 使自定义 TokenManager 实现可通过注册自定义工厂接入 DI 容器。
+            // 默认注册 DefaultFeishuTokenManagerFactory，行为与原实现完全一致。
+            var tokenManagerFactory = scopedSp.GetRequiredService<IFeishuTokenManagerFactory>();
+            var (tenantTokenManager, appTokenManager, userTokenManager) = tokenManagerFactory.Create(
+                config, authenticationApi, tokenStore, userTokenStore);
 
-        // === 步骤 4：创建恢复 HttpClient（含令牌恢复，供业务 API 使用） ===
-        // TMR-07/TMX-19（MudHttpUtils 2.0.5）：统一使用 IOptionsMonitor<TokenRecoveryOptions> 构造
-        // （组件唯一的公共用户级构造），TokenRecoveryOptions 支持运行期热更新。
-        // IOptionsMonitor 由上方 AddOptions<TokenRecoveryOptions>() 注册，缺失时 fail-fast 暴露装配错误。
-        var recoveryLogger = scopedSp.GetService<ILogger<TokenRecoveryEnhancedClient>>();
-        var recoveryOptionsMonitor = scopedSp.GetRequiredService<IOptionsMonitor<TokenRecoveryOptions>>();
+            // === 步骤 4：创建恢复 HttpClient（含令牌恢复，供业务 API 使用） ===
+            // TMR-07/TMX-19（MudHttpUtils 2.0.5）：统一使用 IOptionsMonitor<TokenRecoveryOptions> 构造
+            // （组件唯一的公共用户级构造），TokenRecoveryOptions 支持运行期热更新。
+            // IOptionsMonitor 由上方 AddOptions<TokenRecoveryOptions>() 注册，缺失时 fail-fast 暴露装配错误。
+            var recoveryLogger = scopedSp.GetService<ILogger<TokenRecoveryEnhancedClient>>();
+            var recoveryOptionsMonitor = scopedSp.GetRequiredService<IOptionsMonitor<TokenRecoveryOptions>>();
 
-        var recoveryExecutor = new TokenRecoveryExecutor(
-            tenantTokenManager,
-            userTokenManager as IUserTokenManager,
-            // TMA-02 / P1-1 修复（D2 契约）：不传 ICurrentUserContext 给 TokenRecoveryExecutor。
-            // 组件 SR-L2 会据 ICurrentUserContext 推断用户级恢复，而飞书租户接口默认不生成
-            // TokenRecoveryContext，会导致重试请求被注入用户令牌（凭据类别替换）。
-            // 用户级恢复仍由组件生成的显式 TokenRecoveryContext.UserId 触发，不受影响。
-            null,
-            recoveryOptionsMonitor,
-            recoveryLogger);
+            var recoveryExecutor = new TokenRecoveryExecutor(
+                tenantTokenManager,
+                userTokenManager as IUserTokenManager,
+                // TMA-02 / P1-1 修复（D2 契约）：不传 ICurrentUserContext 给 TokenRecoveryExecutor。
+                // 组件 SR-L2 会据 ICurrentUserContext 推断用户级恢复，而飞书租户接口默认不生成
+                // TokenRecoveryContext，会导致重试请求被注入用户令牌（凭据类别替换）。
+                // 用户级恢复仍由组件生成的显式 TokenRecoveryContext.UserId 触发，不受影响。
+                null,
+                recoveryOptionsMonitor,
+                recoveryLogger);
 
-        var recoveryHttpClient = httpClientFactory.Create(config.AppKey, recoveryExecutor);
+            var recoveryHttpClient = httpClientFactory.Create(config.AppKey, recoveryExecutor);
 
-        // === 步骤 5：创建应用上下文（使用恢复 HttpClient） ===
-        // TMA-13：传入 scopedSp 和 scope，使 FeishuAppContext.GetService<T>() 回退到作用域 SP，
-        // 且 scope 随上下文 Dispose 释放（Scoped 依赖如 IFeishuCurrentUserContext 随之释放）。
-        return new FeishuAppContext(
-            config,
-            tenantTokenManager,
-            appTokenManager,
-            userTokenManager,
-            authenticationApi,
-            recoveryHttpClient,
-            scopedSp,
-            scope);
+            // === 步骤 5：创建应用上下文（使用恢复 HttpClient） ===
+            // TMA-13：传入 scopedSp 和 scope，使 FeishuAppContext.GetService<T>() 回退到作用域 SP，
+            // 且 scope 随上下文 Dispose 释放（Scoped 依赖如 IFeishuCurrentUserContext 随之释放）。
+            return new FeishuAppContext(
+                config,
+                tenantTokenManager,
+                appTokenManager,
+                userTokenManager,
+                authenticationApi,
+                recoveryHttpClient,
+                scopedSp,
+                scope);
         }
         catch
         {

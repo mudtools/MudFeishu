@@ -356,7 +356,7 @@ public class RedisFeishuEventDistributedDeduplicatorTests
         Assert.Contains("redis.call('TIME')", capturedScript!);
         // WHF-11：时间戳必须取自 Redis 服务端时钟，消除与 C# DateTimeOffset.UtcNow 的漂移
         // MarkAsCompleted 只传 TTL，不再有 C# 端时间戳参数
-        Assert.Equal(1, capturedValues!.Length);
+        Assert.Single(capturedValues!);
     }
 
     [Fact]

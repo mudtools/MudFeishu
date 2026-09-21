@@ -415,7 +415,7 @@ public class BinaryMessageProcessorTests
     public async Task ProcessBinaryDataAsync_ShouldNotRouteToMessageRouter_WhenControlFrameReceived()
     {
         // Arrange - 使用真实的 MessageRouter，注册一个可追踪的 handler
-        var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions {  };
+        var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions { };
         var realRouter = new MessageRouter(NullLogger<MessageRouter>.Instance, options);
 
         var handlerCalled = false;

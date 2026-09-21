@@ -22,7 +22,7 @@ public class HeartbeatManagerProtoBufTests
         FeishuWebSocketOptions? options = null,
         Func<byte[], CancellationToken, Task>? sendCallback = null)
     {
-        options ??= new Mud.Feishu.WebSocket.FeishuWebSocketOptions {  };
+        options ??= new Mud.Feishu.WebSocket.FeishuWebSocketOptions { };
         sendCallback ??= (_, _) => Task.CompletedTask;
 
         return new HeartbeatManager(

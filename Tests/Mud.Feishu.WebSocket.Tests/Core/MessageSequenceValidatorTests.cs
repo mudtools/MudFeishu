@@ -24,7 +24,7 @@ public class MessageSequenceValidatorTests
     public MessageSequenceValidatorTests()
     {
         _loggerMock = new Mock<ILogger<MessageSequenceValidator>>();
-        _options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions {  };
+        _options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions { };
         _validator = new MessageSequenceValidator(_loggerMock.Object, _options);
     }
 

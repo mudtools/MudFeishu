@@ -246,10 +246,10 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
     /// </summary>
     private void OnDisconnected(object? sender, WebSocketCloseEventArgs e)
     {
-                var stats = _webSocketManager.GetConnectionStats();
+        var stats = _webSocketManager.GetConnectionStats();
         _logger.LogInformation("飞书WebSocket连接已断开: {Status} - {Description} (持续时间: {Duration})",
             e.CloseStatus, e.CloseStatusDescription, stats.Uptime);
-    
+
 
         // OnDisconnected 作为事件处理器无法添加 Requires 标注，其内部调用带标注的
         // TryTriggerReconnect 时用 pragma 屏蔽 IL 警告。

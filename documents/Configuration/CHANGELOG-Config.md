@@ -1,5 +1,20 @@
 # 配置面变更日志（CHANGELOG-Config）
 
+## 2026-09（事件路由 R2）
+
+> 方案：`.docs/事件路由审查修复方案-R2.md`
+
+- **行为变更（Webhook）**：应用专属处理器（`AddHandler<T>(appKey)`）分发现在按
+  `IFeishuEventHandler.SupportedEventType` 过滤：非空声明与事件类型不符的处理器不再收到该事件；
+  声明为空串仍表示处理该应用全部事件。迁移指引：此前依赖「app 级处理器收全部事件」且声明了
+  SupportedEventType 的处理器，请将声明改为 `string.Empty` 或 override 返回空。
+- **行为变更（WebSocket）**：`FeishuWebSocket:IgnoreUnknownEventTypes` 支持配置热更新
+  （此前在服务启动时快照，热更不生效）。
+- **修复（WebSocket）**：去重回滚/完成标记不再受调用方取消令牌影响（补偿操作语义，
+  见 AGENTS.md D15）；修复外部取消/路由超时场景下 Redis 去重回滚失效导致的重复投递跳过。
+- **指标口径（WebSocket）**：unhandled 事件结果指标的 `appKey` 维度由事件的 `app_id`
+  统一为通道 `FeishuWebSocket:AppKey`（与其他事件结果指标口径一致，消除监控维度分裂）。
+
 ## R5（本批）
 
 > 方案与复核结论：`.docs/配置面可用性修复与收敛方案-R5.md`

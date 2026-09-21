@@ -87,7 +87,7 @@ public class P0P1FixRegressionTests
         var processor = new BinaryMessageProcessor(
             logger,
             connectionManager.Object,
-            options ?? new Mud.Feishu.WebSocket.FeishuWebSocketOptions {  },
+            options ?? new Mud.Feishu.WebSocket.FeishuWebSocketOptions { },
             router.Object);
 
         if (onReceived != null)
@@ -207,7 +207,7 @@ public class P0P1FixRegressionTests
         // Arrange
         var manager = new WebSocketConnectionManager(
             NullLogger<WebSocketConnectionManager>.Instance,
-            new Mud.Feishu.WebSocket.FeishuWebSocketOptions {  },
+            new Mud.Feishu.WebSocket.FeishuWebSocketOptions { },
             NullLoggerFactory.Instance);
 
         var fired = 0;
@@ -349,7 +349,7 @@ public class P0P1FixRegressionTests
     public async Task RouteBinaryMessageWithResultAsync_ShouldReturnTrue_WhenNoHandlerRegistered()
     {
         // Arrange
-        var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions {  };
+        var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions { };
         var router = new MessageRouter(NullLogger<MessageRouter>.Instance, options);
 
         // Act
@@ -378,7 +378,7 @@ public class P0P1FixRegressionTests
             factoryMock.Object,
             null,
             null,
-            new Mud.Feishu.WebSocket.FeishuWebSocketOptions {  },
+            new Mud.Feishu.WebSocket.FeishuWebSocketOptions { },
             null);
 
         var message = """

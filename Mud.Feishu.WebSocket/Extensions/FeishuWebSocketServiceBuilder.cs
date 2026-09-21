@@ -309,10 +309,12 @@ public class FeishuWebSocketServiceBuilder
         {
             var logger = serviceProvider.GetRequiredService<ILogger<ScopedFeishuEventHandlerFactory>>();
             var scopeFactory = serviceProvider.GetRequiredService<IServiceScopeFactory>();
-            var ignoreUnknown = serviceProvider.GetService<IOptionsMonitor<FeishuWebSocketOptions>>()?.CurrentValue.IgnoreUnknownEventTypes
-                                ?? false;
+            // P1-3（R2）：Monitor 一并传入工厂——门控实时读取 CurrentValue，配置热更即时生效；
+            // 初始值仍读 CurrentValue 作为快照回退（Monitor 不可用的直构/测试场景）。
+            var optionsMonitor = serviceProvider.GetService<IOptionsMonitor<FeishuWebSocketOptions>>();
+            var ignoreUnknown = optionsMonitor?.CurrentValue.IgnoreUnknownEventTypes ?? false;
             return new ScopedFeishuEventHandlerFactory(
-                logger, scopeFactory, handlerTypes, defaultHandlerType, handlerInstances, ignoreUnknown);
+                logger, scopeFactory, handlerTypes, defaultHandlerType, handlerInstances, ignoreUnknown, optionsMonitor);
         });
 
         // 注册事件拦截器集合（单例，按注册顺序排序）

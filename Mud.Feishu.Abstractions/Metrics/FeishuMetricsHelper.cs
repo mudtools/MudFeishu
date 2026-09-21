@@ -44,7 +44,11 @@ public static class FeishuMetricsHelper
     /// <param name="appKey">飞书应用 AppKey</param>
     /// <param name="eventType">事件类型</param>
     /// <param name="success">是否成功</param>
-    /// <param name="errorType">错误类型名（可选，仅失败时填充）</param>
+    /// <param name="errorType">
+    /// 结果限定标签（可选）。历史实现仅在 <c>success=false</c> 时写入，
+    /// 导致 success 路径上的 unhandled / timeout_recovered / mark_completed_failed 等标签丢失（P2-5）。
+    /// 调用方须以受控枚举字符串提供标签值，避免高基数；高基数风险由调用方约束。
+    /// </param>
     public static void RecordEventOutcome(string appKey, string eventType, bool success, string? errorType = null)
     {
         var tags = new TagList
@@ -54,7 +58,8 @@ public static class FeishuMetricsHelper
             { FeishuMetrics.Tags.Outcome, success ? "success" : "failure" },
         };
 
-        if (!success && errorType != null)
+        // P2-5：success 路径同样保留限定标签（调用方提供受控枚举值）
+        if (errorType != null)
             tags.Add(new(FeishuMetrics.Tags.ErrorType, errorType));
 
         FeishuMetrics.EventHandlingCount.Add(1, tags);

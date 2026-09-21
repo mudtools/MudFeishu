@@ -43,7 +43,15 @@ public static class FeishuServiceCollectionExtensions
             throw new ArgumentNullException(nameof(configuration));
 
         var section = sectionName ?? "FeishuApps";
-        services.Configure<List<FeishuAppConfig>>(options => configuration.GetSection(section).Bind(options));
+        services.Configure<List<FeishuAppConfig>>(options =>
+        {
+            var cfgSection = configuration.GetSection(section);
+            cfgSection.Bind(options);
+            // R4：配置 JSON 兼容——扁平 TimeOut/Retry*/CircuitBreaker* 回填嵌套属性
+            var children = cfgSection.GetChildren().ToList();
+            for (var i = 0; i < children.Count && i < options.Count; i++)
+                options[i].ApplyLegacyFlatKeys(children[i]);
+        });
 
         services.AddSingleton<IValidateOptions<FeishuAppConfig>, FeishuAppConfigValidator>();
         services.AddSingleton<IValidateOptions<List<FeishuAppConfig>>, FeishuAppConfigValidator>();
@@ -111,7 +119,7 @@ public static class FeishuServiceCollectionExtensions
             var clientName = $"feishu-{appKey}";
             var baseAddress = config.BaseUrl ?? Consts.DefaultFeishuBaseUrl;
             bool allowCustomBaseUrl = config?.AllowCustomBaseUrl ?? false;
-            var timeOut = config?.TimeOut ?? 30;
+            var timeOut = config?.TimeoutSeconds ?? 30;
             // 显式标记默认应用：AddMudHttpClient 内部 setAsDefault=true 时强制覆盖 IEnhancedHttpClient 默认注册，
             // setAsDefault=false 时使用 TryAddTransient（已注册则跳过）。
             // 此前未传该参数（默认 false），导致默认 IEnhancedHttpClient 隐式绑定到 configs 列表中的第一个 AppKey，
@@ -167,9 +175,9 @@ public static class FeishuServiceCollectionExtensions
                     client.BaseAddress = new Uri(latestBaseUrl);
                 }
 
-                if (latest.TimeOut > 0 && latest.TimeOut != timeOut)
+                if (latest.TimeoutSeconds > 0 && latest.TimeoutSeconds != timeOut)
                 {
-                    client.Timeout = TimeSpan.FromSeconds(latest.TimeOut);
+                    client.Timeout = TimeSpan.FromSeconds(latest.TimeoutSeconds);
                 }
             });
         }
@@ -180,16 +188,16 @@ public static class FeishuServiceCollectionExtensions
             services.AddMudHttpResilienceDecorator(resilienceOptions =>
             {
                 resilienceOptions.Retry.Enabled = true;
-                resilienceOptions.Retry.MaxRetryAttempts = defaultConfig.RetryCount;
-                resilienceOptions.Retry.DelayMilliseconds = defaultConfig.RetryDelayMs;
+                resilienceOptions.Retry.MaxRetryAttempts = defaultConfig.HttpRetry.MaxAttempts;
+                resilienceOptions.Retry.DelayMilliseconds = defaultConfig.HttpRetry.DelayMs;
                 resilienceOptions.Retry.UseExponentialBackoff = true;
                 resilienceOptions.Timeout.Enabled = true;
-                resilienceOptions.Timeout.TimeoutSeconds = defaultConfig.TimeOut;
-                resilienceOptions.CircuitBreaker.Enabled = defaultConfig.CircuitBreakerEnabled;
-                resilienceOptions.CircuitBreaker.FailureThreshold = defaultConfig.CircuitBreakerFailureThreshold;
-                resilienceOptions.CircuitBreaker.SamplingDurationSeconds = defaultConfig.CircuitBreakerSamplingDurationSeconds;
-                resilienceOptions.CircuitBreaker.BreakDurationSeconds = defaultConfig.CircuitBreakerBreakDurationSeconds;
-                resilienceOptions.CircuitBreaker.MinimumThroughput = defaultConfig.CircuitBreakerMinimumThroughput;
+                resilienceOptions.Timeout.TimeoutSeconds = defaultConfig.TimeoutSeconds;
+                resilienceOptions.CircuitBreaker.Enabled = defaultConfig.CircuitBreaker.Enabled;
+                resilienceOptions.CircuitBreaker.FailureThreshold = defaultConfig.CircuitBreaker.FailureThreshold;
+                resilienceOptions.CircuitBreaker.SamplingDurationSeconds = defaultConfig.CircuitBreaker.SamplingDurationSeconds;
+                resilienceOptions.CircuitBreaker.BreakDurationSeconds = defaultConfig.CircuitBreaker.BreakDurationSeconds;
+                resilienceOptions.CircuitBreaker.MinimumThroughput = defaultConfig.CircuitBreaker.MinimumThroughput;
             });
         }
 
@@ -431,6 +439,12 @@ public static class FeishuServiceCollectionExtensions
                 return inner;
             }
 
+            // TMR-P2-8（F8）：EnableTokenEncryption 为启动一次性读取（工厂首次解析时固化），
+            // 运行期修改配置不会生效——输出一次告警使语义显式（工厂为单例，本告警每进程仅一次）。
+            sp.GetService<ILogger<EncryptedFeishuTokenStoreFactory>>()?.LogWarning(
+                "FeishuAppOptions.EnableTokenEncryption = true（启动一次性读取，工厂首次解析时固化）。" +
+                "运行期修改该配置不会生效，如需变更请重启进程。");
+
             return new EncryptedFeishuTokenStoreFactory(
                 inner,
                 encryption,
@@ -524,22 +538,22 @@ public static class FeishuServiceCollectionExtensions
             Retry =
             {
                 Enabled = true,
-                MaxRetryAttempts = config.RetryCount,
-                DelayMilliseconds = config.RetryDelayMs,
+                MaxRetryAttempts = config.HttpRetry.MaxAttempts,
+                DelayMilliseconds = config.HttpRetry.DelayMs,
                 UseExponentialBackoff = true
             },
             Timeout =
             {
                 Enabled = true,
-                TimeoutSeconds = config.TimeOut
+                TimeoutSeconds = config.TimeoutSeconds
             },
             CircuitBreaker =
             {
-                Enabled = config.CircuitBreakerEnabled,
-                FailureThreshold = config.CircuitBreakerFailureThreshold,
-                SamplingDurationSeconds = config.CircuitBreakerSamplingDurationSeconds,
-                BreakDurationSeconds = config.CircuitBreakerBreakDurationSeconds,
-                MinimumThroughput = config.CircuitBreakerMinimumThroughput
+                Enabled = config.CircuitBreaker.Enabled,
+                FailureThreshold = config.CircuitBreaker.FailureThreshold,
+                SamplingDurationSeconds = config.CircuitBreaker.SamplingDurationSeconds,
+                BreakDurationSeconds = config.CircuitBreaker.BreakDurationSeconds,
+                MinimumThroughput = config.CircuitBreaker.MinimumThroughput
             }
         };
     }

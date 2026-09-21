@@ -189,14 +189,20 @@ internal static class TokenKeyBuilder
     /// <summary>
     /// 规范化键段：转义分隔符（自洽——先转义 \ 自身，再转义 :）。
     /// </summary>
+    /// <remarks>
+    /// TMR-P2-9（F9）：超长段抛 <see cref="ArgumentException"/> 而非 <see cref="InvalidOperationException"/>——
+    /// 超长段是输入校验失败（外部可控 userId 可触发）而非"对象处于无效状态"，
+    /// 脱离与瞬时白名单（IsTransientInitFailure 白名单含 InvalidOperationException）的语义纠缠，
+    /// 避免被误判为可重试。键布局逐字节不变，D8 契约不受影响。
+    /// </remarks>
     private static string NormalizeSegment(string segment)
     {
         if (string.IsNullOrEmpty(segment))
             return string.Empty;
 
         if (segment.Length > MaxSegmentLength)
-            throw new InvalidOperationException(
-                $"键段长度 {segment.Length} 超过上限 {MaxSegmentLength}");
+            throw new ArgumentException(
+                $"键段长度 {segment.Length} 超过上限 {MaxSegmentLength}", nameof(segment));
 
         // 自洽转义：先 \ → \\，再 : → \:
         return segment

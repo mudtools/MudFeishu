@@ -7,6 +7,7 @@
 
 using Microsoft.Extensions.Logging;
 using Mud.Feishu.Abstractions;
+using Mud.Feishu.Abstractions.EventHandlers;
 using Mud.Feishu.Abstractions.Interceptors;
 using Mud.Feishu.Abstractions.Metrics;
 using Mud.Feishu.Abstractions.Services;
@@ -70,6 +71,9 @@ public class FeishuEventMessageHandler : JsonMessageHandler
 #endif
     public override async Task HandleAsync(string message, CancellationToken cancellationToken = default)
     {
+        // P2-1：取消终态的一次性口径标记。内层 try 若已按 canceled 记账，外层 catch 不得再记一次
+        //（此前同一取消会产生两条指标：一条带真实 eventType、一条 eventType="unknown"，且后者污染维度基数）。
+        var cancelOutcomeRecorded = false;
         try
         {
             if (string.IsNullOrWhiteSpace(message))
@@ -88,7 +92,7 @@ public class FeishuEventMessageHandler : JsonMessageHandler
             }
             catch (System.Text.Json.JsonException jex)
             {
-                var truncatedMsg = message.Length > 200 ? message.Substring(0, 200) + "..." : message;
+                var truncatedMsg = Mud.Feishu.Abstractions.Utilities.LogSanitizer.CleanMessage(message, 200);
                 _logger.LogWarning(jex, "收到无效JSON事件消息 (长度: {Length}, 消息前200字符: {Message})",
                     message.Length, truncatedMsg);
                 return;
@@ -112,7 +116,9 @@ public class FeishuEventMessageHandler : JsonMessageHandler
                     var eventMessage = SafeDeserialize<EventMessage>(message);
                     if (eventMessage?.Data == null)
                     {
-                        var truncatedV1Msg = message.Length > 200 ? message.Substring(0, 200) + "..." : message;
+                        // P2-4：截断改走 LogSanitizer.CleanMessage（先剥离 token/encrypt 等敏感字段值再截断）。
+                        // 此前直接 Substring(0,200)：v1.0 报文前 200 字符常含 token/encrypt 键值，属明确泄露面。
+                        var truncatedV1Msg = Mud.Feishu.Abstractions.Utilities.LogSanitizer.CleanMessage(message, 200);
                         _logger.LogWarning("无法解析v1.0事件消息 (长度: {Length}): {Message}", message.Length, truncatedV1Msg);
                         return;
                     }
@@ -127,6 +133,19 @@ public class FeishuEventMessageHandler : JsonMessageHandler
 
                 _logger.LogDebug("收到飞书事件: {EventType}, EventId: {EventId}",
                     eventData.EventType, eventData.EventId);
+
+                // P1-2：空 EventId 无法有效去重（null 跳过 / 空串同键碰撞）——fail-closed，与 Webhook WHF-05 对齐。
+                // 丢弃而非 ACK 500：空 ID 属确定性畸形，重发不能自愈。
+                if (string.IsNullOrEmpty(eventData.EventId))
+                {
+                    if (_options.RejectEmptyEventIds)
+                    {
+                        _logger.LogWarning("事件 EventId 为空，RejectEmptyEventIds=true 拒绝处理: {EventType}", eventData.EventType);
+                        FeishuMetricsHelper.RecordEventOutcome(_options.AppKey, eventData.EventType, success: false, "empty_event_id");
+                        return;
+                    }
+                    _logger.LogWarning("事件 EventId 为空，已配置放行——本次处理不具备去重保护: {EventType}", eventData.EventType);
+                }
 
                 // 去重检查
                 // F7 修复：优先使用统一去重中间件（EventId + SeqID 双重去重），
@@ -148,7 +167,8 @@ public class FeishuEventMessageHandler : JsonMessageHandler
                 }
                 else if (_deduplicator != null)
                 {
-                    var dedupResult = await _deduplicator.TryMarkAsProcessingAsync(eventData.EventId, cancellationToken: cancellationToken);
+                    // P2-12：WS 去重键带 AppKey，与 MemoryDeduplicator.GetCacheKey 多应用隔离口径一致
+                    var dedupResult = await _deduplicator.TryMarkAsProcessingAsync(eventData.EventId, _options.AppKey, cancellationToken: cancellationToken);
                     if (dedupResult.IsDuplicate)
                     {
                         _logger.LogDebug("事件 {EventId} 已在处理中或已处理，跳过 (WasProcessing: {WasProcessing}, Status: {Status})",
@@ -176,7 +196,15 @@ public class FeishuEventMessageHandler : JsonMessageHandler
                                     _logger.LogWarning("事件被拦截器中断: {EventType}, EventId: {EventId}, Interceptor: {InterceptorType}",
                                         eventData.EventType, eventData.EventId, interceptor.GetType().Name);
                                     isInterrupted = true;
-                                    break;
+
+                                    // P1-7：被拦截 = 干净回滚（与 Webhook"不进去重即可重试"对齐），
+                                    // 服务端重发后拦截器重新决策（retry-until-accept）
+                                    await RollbackDeduplicationAsync(eventData.EventId, cancellationToken);
+
+                                    FeishuMetricsHelper.RecordEventOutcome(_options.AppKey, eventData.EventType, success: false, "intercepted");
+                                    processingException = new EventHandlingOutcomeException(
+                                        "intercepted", $"事件被 {interceptor.GetType().Name} 拦截");
+                                    throw processingException; // → ACK 500 → 服务端重发 → 与 Webhook 语义一致
                                 }
                             }
 
@@ -185,33 +213,52 @@ public class FeishuEventMessageHandler : JsonMessageHandler
                                 // 使用事件处理器工厂并行处理事件
                                 await _eventHandlerFactory.HandleEventParallelAsync(eventData.EventType, eventData, cancellationToken);
 
-                                // 处理成功，标记为已完成
-                                if (_unifiedDedupMiddleware != null)
+                                // WHF-07（WS 对齐）：业务分发已成功——Mark 失败禁止回滚
+                                //（回滚将导致服务端重发后重复消费）。保留 processing 态，由 ProcessingTimeout/TTL 兜底。
+                                try
                                 {
-                                    await _unifiedDedupMiddleware.MarkCompletedAsync(eventData.EventId, seqId: null, cancellationToken);
+                                    if (_unifiedDedupMiddleware != null)
+                                        await _unifiedDedupMiddleware.MarkCompletedAsync(eventData.EventId, seqId: null, cancellationToken);
+                                    else if (_deduplicator != null)
+                                        await _deduplicator.MarkAsCompletedAsync(eventData.EventId, _options.AppKey, cancellationToken);
                                 }
-                                else if (_deduplicator != null)
+                                catch (Exception markEx)
                                 {
-                                    await _deduplicator.MarkAsCompletedAsync(eventData.EventId, cancellationToken: cancellationToken);
+                                    _logger.LogWarning(markEx,
+                                        "事件 {EventId} 处理成功但完成标记失败，保留 processing 态等待超时恢复",
+                                        eventData.EventId);
+                                    FeishuMetricsHelper.RecordEventOutcome(_options.AppKey, eventData.EventType, success: true, "mark_completed_failed");
                                 }
 
                                 // 记录事件处理成功
                                 FeishuMetricsHelper.RecordEventOutcome(_options.AppKey, eventData.EventType, success: true);
                             }
                         }
+                        catch (EventHandlingOutcomeException outcomeEx)
+                        {
+                            // P1-7：拦截等终态已在拦截点完成回滚与指标，此处不得二次回滚/二次记 failure
+                            processingException = outcomeEx;
+                            _logger.LogWarning(outcomeEx, "事件处理终态: {OutcomeKind}", outcomeEx.OutcomeKind);
+                            throw;
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            // P2-1：外部取消必须在内层收口——若不在此之前拦截，OCE 会先被下方通用 catch 记为
+                            // "OperationCanceledException" 失败，再由外层 OCE catch 记为 "canceled"（双计数）。
+                            // 此处：回滚去重 + 按 canceled 记一次 + 以终态标记异常交给后置拦截器；
+                            // 异常仍按 OCE 原样传播，保持取消语义（MessageRouter 转为路由失败 → ACK 500）。
+                            processingException = new EventHandlingOutcomeException("canceled", "事件处理被外部取消");
+                            await RollbackDeduplicationAsync(eventData.EventId, cancellationToken);
+                            FeishuMetricsHelper.RecordEventOutcome(_options.AppKey, eventData.EventType, success: false, "canceled");
+                            cancelOutcomeRecorded = true;
+                            throw;
+                        }
                         catch (Exception ex)
                         {
                             processingException = ex;
 
                             // 处理失败，回滚处理中状态
-                            if (_unifiedDedupMiddleware != null)
-                            {
-                                await _unifiedDedupMiddleware.RollbackAsync(eventData.EventId, seqId: null, cancellationToken);
-                            }
-                            else if (_deduplicator != null)
-                            {
-                                await _deduplicator.RollbackProcessingAsync(eventData.EventId, cancellationToken: cancellationToken);
-                            }
+                            await RollbackDeduplicationAsync(eventData.EventId, cancellationToken);
 
                             // 记录事件处理失败
                             FeishuMetricsHelper.RecordEventOutcome(_options.AppKey, eventData.EventType, success: false, ex.GetType().Name);
@@ -231,7 +278,18 @@ public class FeishuEventMessageHandler : JsonMessageHandler
         }
         catch (OperationCanceledException)
         {
-            // 取消异常静默处理，不传播为业务错误
+            // P2-1：取消必须传播以触发 ACK 500 / 停机语义
+            //（MessageRouter 的 RouteMessageInternalWithResultAsync 将异常转为路由失败 → 不 ACK 200）。
+            // 仅当取消发生在内层 try 之外（JSON 解析 / 去重检查等前置阶段）时才在此记账，
+            // 内层已按真实 eventType 记账的取消不重复计数。
+            if (!cancelOutcomeRecorded)
+                FeishuMetricsHelper.RecordEventOutcome(_options.AppKey, "unknown", success: false, "canceled");
+            throw;
+        }
+        catch (EventHandlingOutcomeException outcomeEx)
+        {
+            // P1-7：拦截/取消等终态已在拦截点记录指标，此处仅补充日志，避免通用 catch 二次记 failure
+            _logger.LogWarning(outcomeEx, "事件处理终态: {OutcomeKind}", outcomeEx.OutcomeKind);
             throw;
         }
         catch (Exception ex)
@@ -241,10 +299,31 @@ public class FeishuEventMessageHandler : JsonMessageHandler
             // BinaryMessageProcessor 回 ACK code=200，飞书服务端不再重发，事件永久丢失。
             // 现重抛异常，让 MessageRouter 感知失败并回 ACK code=500，服务端将重发。
             // 同时解决 P2-11：日志仅记录结构化字段 + 消息前 200 字符，避免全文入日志。
-            var truncatedMsg = message.Length > 200 ? message.Substring(0, 200) + "..." : message;
+            var truncatedMsg = Mud.Feishu.Abstractions.Utilities.LogSanitizer.CleanMessage(message, 200);
             _logger.LogError(ex, "处理飞书事件消息时发生错误 (消息长度: {Length}, 消息前200字符: {Message})",
                 message.Length, truncatedMsg);
             throw;
+        }
+    }
+
+    /// <summary>
+    /// 回滚去重状态（统一中间件优先，其次分离去重器）。
+    /// </summary>
+    /// <param name="eventId">事件 ID</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <remarks>
+    /// P1-7/P2-1：拦截、业务失败、外部取消三条路径的回滚必须走同一出口，
+    /// 避免"某条新增失败路径漏回滚"导致事件停在 processing 态。
+    /// </remarks>
+    private async Task RollbackDeduplicationAsync(string eventId, CancellationToken cancellationToken)
+    {
+        if (_unifiedDedupMiddleware != null)
+        {
+            await _unifiedDedupMiddleware.RollbackAsync(eventId, seqId: null, cancellationToken);
+        }
+        else if (_deduplicator != null)
+        {
+            await _deduplicator.RollbackProcessingAsync(eventId, _options.AppKey, cancellationToken);
         }
     }
 

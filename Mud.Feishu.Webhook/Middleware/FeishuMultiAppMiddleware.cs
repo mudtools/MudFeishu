@@ -68,10 +68,12 @@ public class FeishuMultiAppMiddleware : IDisposable
                 changes.Add($"GlobalRoutePrefix: {oldOptions.GlobalRoutePrefix} → {newOptions.GlobalRoutePrefix}");
             }
 
+#pragma warning disable CS0618 // R5/X4：该开关无运行时效果；此处仅保留配置变更可观测性
             if (oldOptions.AutoRegisterEndpoint != newOptions.AutoRegisterEndpoint)
             {
-                changes.Add($"AutoRegisterEndpoint: {oldOptions.AutoRegisterEndpoint} → {newOptions.AutoRegisterEndpoint}");
+                changes.Add($"AutoRegisterEndpoint: {oldOptions.AutoRegisterEndpoint} → {newOptions.AutoRegisterEndpoint}（注意：该开关无运行时效果，路由由 app.UseFeishuWebhook() 决定）");
             }
+#pragma warning restore CS0618
 
             if (oldOptions.MaxRequestBodySize != newOptions.MaxRequestBodySize)
             {
@@ -154,8 +156,7 @@ public class FeishuMultiAppMiddleware : IDisposable
         // 验证应用是否存在
         if (!Options.Apps.ContainsKey(appKey ?? string.Empty))
         {
-            if (Options.EnableRequestLogging)
-                _logger.LogWarning("未知的应用键: {AppKey}", appKey);
+            _logger.LogWarning("未知的应用键: {AppKey}", appKey);
             await _next(context);
             return;
         }
@@ -228,8 +229,7 @@ public class FeishuMultiAppMiddleware : IDisposable
                 return;
             }
 
-            if (Options.EnableRequestLogging)
-                _logger.LogInformation("收到应用的 Webhook 请求");
+            _logger.LogInformation("收到应用的 Webhook 请求");
 
             // 处理请求
             await ProcessWebhookRequestAsync(
@@ -268,8 +268,7 @@ public class FeishuMultiAppMiddleware : IDisposable
         {
             stopwatch.Stop();
             activity?.SetTag("request.duration_ms", stopwatch.ElapsedMilliseconds);
-            if (Options.EnableRequestLogging)
-                _logger.LogInformation("请求处理完成, 耗时: {DurationMs}ms, AppKey: {AppKey}", stopwatch.ElapsedMilliseconds, appKey ?? "unknown");
+            _logger.LogInformation("请求处理完成, 耗时: {DurationMs}ms, AppKey: {AppKey}", stopwatch.ElapsedMilliseconds, appKey ?? "unknown");
         }
     }
 
@@ -382,7 +381,7 @@ public class FeishuMultiAppMiddleware : IDisposable
             // 检查是否为加密验证请求
             if (decryptedData.EventType == "url_verification")
             {
-                await HandleEncryptedVerificationAsync(context, decryptedData, appConfig, requestId);
+                await HandleEncryptedVerificationAsync(context, decryptedData, appConfig, appKey, requestId);
                 return;
             }
 
@@ -435,10 +434,15 @@ public class FeishuMultiAppMiddleware : IDisposable
     /// 处理加密的 URL 验证请求
     /// 验证解密后数据中的 token 字段，确保请求来源合法
     /// </summary>
+    /// <param name="appKey">
+    /// 路由得到的应用键（R5.2/X8：日志统一使用路由键，不再读 <c>appConfig.AppKey</c> 这一派生诊断字段——
+    /// 路由只认字典键，直接用它可避免两者分叉时的误导性日志）。
+    /// </param>
     private async Task HandleEncryptedVerificationAsync(
         HttpContext context,
         EventData decryptedData,
         FeishuAppWebhookOptions appConfig,
+        string appKey,
         string requestId)
     {
         string? challenge = null;
@@ -478,7 +482,7 @@ public class FeishuMultiAppMiddleware : IDisposable
 
         if (string.IsNullOrEmpty(appConfig.VerificationToken))
         {
-            _logger.LogWarning("应用未配置 VerificationToken，拒绝加密验证请求（安全边界），AppKey: {AppKey}", appConfig.AppKey);
+            _logger.LogWarning("应用未配置 VerificationToken，拒绝加密验证请求（安全边界），AppKey: {AppKey}", appKey);
             await WriteErrorResponse(context, 403, "Forbidden: VerificationToken not configured", requestId);
             return;
         }
@@ -490,7 +494,7 @@ public class FeishuMultiAppMiddleware : IDisposable
         {
             var actualTokenPrefix = token?.Length > 4 ? token.Substring(0, 4) + "***" : "***";
             _logger.LogWarning("加密验证请求 Token 不匹配: 实际 {ActualToken}, AppKey: {AppKey}",
-                actualTokenPrefix, appConfig.AppKey);
+                actualTokenPrefix, appKey);
             await WriteErrorResponse(context, 403, "Forbidden: Token mismatch", requestId);
             return;
         }

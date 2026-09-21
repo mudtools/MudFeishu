@@ -32,9 +32,14 @@ public class FeishuWebSocketConcurrencyService : IAsyncDisposable, IHostedServic
     // 等效 volatile 的发布/获取保证；volatile 与 Interlocked/Volatile API 混用会产生 CS0420，故不标记 volatile。
     // 所有裸读一律通过 Volatile.Read 获取快照，不得直接读取本字段。
     private SemaphoreSlim _semaphore;
-    private bool _disposed;
+    // P1-5b 修复：_disposed 改为 int + Interlocked.Exchange 实现原子 check-then-set（与模块内既有范式统一）
+    private int _disposed = 0;
     private volatile int _currentMaxConcurrentHandlers;
     private readonly CancellationTokenSource _shutdownCts = new();
+    /// <summary>
+    /// 配置变更订阅句柄（P2-5 修复：此前未保存，Dispose 后回调仍会进入）。
+    /// </summary>
+    private readonly IDisposable? _optionsChangeSubscription;
 
     /// <summary>
     /// 构造函数
@@ -58,18 +63,35 @@ public class FeishuWebSocketConcurrencyService : IAsyncDisposable, IHostedServic
         _logger.LogInformation("飞书 WebSocket 并发控制服务初始化完成，最大并发数: {MaxConcurrentHandlers} (实际: {ActualMaxConcurrent})",
             _currentMaxConcurrentHandlers, actualMaxConcurrent);
 
-        // 监听配置变更，支持热更新
-        _optionsMonitor.OnChange(OnOptionsChanged);
+        // 监听配置变更，支持热更新（P2-5：保存句柄以便 Dispose 时注销）
+        _optionsChangeSubscription = _optionsMonitor.OnChange(OnOptionsChanged);
     }
 
     /// <summary>
-    /// 配置变更回调
+    /// 配置变更回调（P2-5 修复：由 <c>async void</c> 改为"返回 Task 的显式 fire-and-forget"）。
     /// </summary>
-    private async void OnOptionsChanged(FeishuWebSocketOptions newOptions)
+    /// <param name="newOptions">新的配置快照</param>
+    /// <remarks>
+    /// <c>async void</c> 无法被观察、无法被等待，异常虽被内部 catch 兜住但语义上不属于回调契约；
+    /// 现改为同步入口 + 独立异步方法，异常处理与生命周期显式化。
+    /// </remarks>
+    private void OnOptionsChanged(FeishuWebSocketOptions newOptions)
+    {
+        _ = UpdateSemaphoreSafeAsync(newOptions.MaxConcurrentHandlers);
+    }
+
+    /// <summary>
+    /// 安全地更新并发配置（吞掉关停竞态与异常，不影响配置监听回调线程）。
+    /// </summary>
+    private async Task UpdateSemaphoreSafeAsync(int newMaxConcurrent)
     {
         try
         {
-            await UpdateSemaphoreAsync(newOptions.MaxConcurrentHandlers);
+            await UpdateSemaphoreAsync(newMaxConcurrent).ConfigureAwait(false);
+        }
+        catch (ObjectDisposedException)
+        {
+            // Dispose 竞态：忽略
         }
         catch (Exception ex)
         {
@@ -121,7 +143,7 @@ public class FeishuWebSocketConcurrencyService : IAsyncDisposable, IHostedServic
         await _semaphoreLock.WaitAsync();
         try
         {
-            if (_disposed || newMaxConcurrent == _currentMaxConcurrentHandlers)
+            if (Volatile.Read(ref _disposed) == 1 || newMaxConcurrent == _currentMaxConcurrentHandlers)
                 return;
 
             var oldMax = _currentMaxConcurrentHandlers;
@@ -205,16 +227,23 @@ public class FeishuWebSocketConcurrencyService : IAsyncDisposable, IHostedServic
     /// <summary>
     /// 释放资源
     /// </summary>
-    public async ValueTask DisposeAsync()
+    /// <remarks>
+    /// P1-5b（I9）：<b>不释放</b> <c>_semaphore</c> / <c>_semaphoreLock</c>。
+    /// 二者均未访问 <c>SemaphoreSlim.AvailableWaitHandle</c>，不释放不产生任何 OS 句柄泄漏；
+    /// 而释放会与"在途租约归还"（<c>SemaphoreLease.Dispose → Release()</c>）以及配置变更回调
+    /// 构成 <see cref="ObjectDisposedException"/> 竞态。
+    /// </remarks>
+    public ValueTask DisposeAsync()
     {
-        if (_disposed)
-            return;
+        // P1-5b：原子 check-then-set
+        if (Interlocked.Exchange(ref _disposed, 1) == 1)
+            return default;
 
-        _disposed = true;
+        // P2-5 修复：注销配置变更订阅，避免 Dispose 之后回调仍进入
+        _optionsChangeSubscription?.Dispose();
         _shutdownCts.Dispose();
-        Volatile.Read(ref _semaphore).Dispose();
-        _semaphoreLock.Dispose();
         GC.SuppressFinalize(this);
+        return default;
     }
 
     /// <summary>

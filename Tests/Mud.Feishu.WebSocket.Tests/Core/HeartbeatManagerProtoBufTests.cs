@@ -22,7 +22,7 @@ public class HeartbeatManagerProtoBufTests
         FeishuWebSocketOptions? options = null,
         Func<byte[], CancellationToken, Task>? sendCallback = null)
     {
-        options ??= new FeishuWebSocketOptions { EnableLogging = false };
+        options ??= new Mud.Feishu.WebSocket.FeishuWebSocketOptions {  };
         sendCallback ??= (_, _) => Task.CompletedTask;
 
         return new HeartbeatManager(
@@ -40,8 +40,7 @@ public class HeartbeatManagerProtoBufTests
         byte[]? sentData = null;
         var options = new FeishuWebSocketOptions
         {
-            HeartbeatIntervalMs = 5000,
-            EnableLogging = false
+            HeartbeatIntervalMs = 5000
         };
 
         var manager = new HeartbeatManager(
@@ -95,8 +94,7 @@ public class HeartbeatManagerProtoBufTests
         // Arrange
         var options = new FeishuWebSocketOptions
         {
-            HeartbeatIntervalMs = 25000,
-            EnableLogging = false
+            HeartbeatIntervalMs = 25000
         };
         var manager = CreateHeartbeatManager(options);
 
@@ -126,8 +124,7 @@ public class HeartbeatManagerProtoBufTests
         // Arrange
         var options = new FeishuWebSocketOptions
         {
-            HeartbeatIntervalMs = 25000,
-            EnableLogging = false
+            HeartbeatIntervalMs = 25000
         };
         var manager = CreateHeartbeatManager(options);
 
@@ -142,11 +139,7 @@ public class HeartbeatManagerProtoBufTests
     public void OnPongReceived_WithClientConfig_ShouldNotUpdateReconnectDelay()
     {
         // Arrange - WS-07 修复：ReconnectDelayMs 属于本地运维策略，禁止被运行时改写
-        var options = new FeishuWebSocketOptions
-        {
-            ReconnectDelayMs = 5000,
-            EnableLogging = false
-        };
+        var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions { Reconnect = new Mud.Feishu.WebSocket.WebSocketReconnectOptions { BaseDelayMs = 5000 } };
         var manager = CreateHeartbeatManager(options);
 
         var config = new ClientConfigInfo
@@ -158,18 +151,14 @@ public class HeartbeatManagerProtoBufTests
         manager.OnPongReceived(config);
 
         // Assert - 服务端建议的重连间隔被忽略，使用本地配置
-        options.ReconnectDelayMs.Should().Be(5000);
+        options.Reconnect.BaseDelayMs.Should().Be(5000);
     }
 
     [Fact]
     public void OnPongReceived_WithReconnectCountMinusOne_ShouldNotUpdateMaxReconnectAttempts()
     {
         // Arrange - WS-07 修复：MaxReconnectAttempts 属于本地运维策略，禁止被运行时改写
-        var options = new FeishuWebSocketOptions
-        {
-            MaxReconnectAttempts = 5,
-            EnableLogging = false
-        };
+        var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions { Reconnect = new Mud.Feishu.WebSocket.WebSocketReconnectOptions { MaxAttempts = 5 } };
         var manager = CreateHeartbeatManager(options);
 
         var config = new ClientConfigInfo
@@ -181,18 +170,14 @@ public class HeartbeatManagerProtoBufTests
         manager.OnPongReceived(config);
 
         // Assert - 服务端建议的重连次数被忽略，使用本地配置
-        options.MaxReconnectAttempts.Should().Be(5);
+        options.Reconnect.MaxAttempts.Should().Be(5);
     }
 
     [Fact]
     public void OnPongReceived_WithReconnectCountPositive_ShouldNotUpdateMaxReconnectAttempts()
     {
         // Arrange - WS-07 修复：MaxReconnectAttempts 属于本地运维策略，禁止被运行时改写
-        var options = new FeishuWebSocketOptions
-        {
-            MaxReconnectAttempts = 5,
-            EnableLogging = false
-        };
+        var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions { Reconnect = new Mud.Feishu.WebSocket.WebSocketReconnectOptions { MaxAttempts = 5 } };
         var manager = CreateHeartbeatManager(options);
 
         var config = new ClientConfigInfo
@@ -204,7 +189,7 @@ public class HeartbeatManagerProtoBufTests
         manager.OnPongReceived(config);
 
         // Assert - 服务端建议的重连次数被忽略，使用本地配置
-        options.MaxReconnectAttempts.Should().Be(5);
+        options.Reconnect.MaxAttempts.Should().Be(5);
     }
 
     #endregion

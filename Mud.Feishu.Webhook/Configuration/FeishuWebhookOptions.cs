@@ -18,14 +18,21 @@ public class FeishuWebhookOptions
     public string GlobalRoutePrefix { get; set; } = "feishu";
 
     /// <summary>
-    /// 是否自动注册 Webhook 端点
+    /// 是否自动注册 Webhook 端点。
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>R5/X4：该开关无运行时效果。</b>路由始终由宿主显式调用
+    /// <c>app.UseFeishuWebhook()</c> 注册；设为 <c>false</c> 既不会自动注册、也不会停止接收事件
+    /// （历史上同样从未产生过效果，仅被 <c>FeishuMultiAppMiddleware</c> 的配置变更日志引用）。
+    /// </para>
+    /// <para>
+    /// 若不需要 Webhook 处理，请**不要**调用该中间件。本属性为源码级兼容保留，
+    /// 将在下个 major 删除。
+    /// </para>
+    /// </remarks>
+    [Obsolete("该开关无运行时效果：路由由 app.UseFeishuWebhook() 显式注册。若不需要 Webhook 处理，请不要调用该中间件。将在下个 major 移除。")]
     public bool AutoRegisterEndpoint { get; set; } = true;
-
-    /// <summary>
-    /// 是否启用请求日志记录
-    /// </summary>
-    public bool EnableRequestLogging { get; set; } = true;
 
     /// <summary>
     /// 是否启用事件处理异常捕获
@@ -39,14 +46,36 @@ public class FeishuWebhookOptions
     public int EventHandlingTimeoutMs { get; set; } = 30000;
 
     /// <summary>
+    /// true 时事件超时仅使用全局 <see cref="EventHandlingTimeoutMs"/>，忽略应用级
+    /// <see cref="FeishuAppWebhookOptions.EventHandlingTimeoutMs"/> 覆盖。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 用于 B1 修复升级过渡：修复前应用级超时键可绑定但运行时不生效；修复后开始生效。
+    /// 若生产 appsettings 中已配置了过小的应用级超时且需保持旧全局语义，临时设为 <c>true</c>。
+    /// </para>
+    /// <para><b>默认 <c>false</c></b>（应用级配置生效）。建议在核对配置后移除本开关。</para>
+    /// </remarks>
+    [Obsolete("B1 修复的过渡开关：仅用于在升级后临时保持「全局超时」的旧语义。核对配置后请移除，将在下个 major 删除。")]
+    public bool LegacyGlobalTimeoutOnly { get; set; }
+
+    /// <summary>
+    /// 解析本次事件处理的有效超时（毫秒）。
+    /// </summary>
+    /// <param name="appConfig">当前应用的 Webhook 配置；无应用级配置时为 null</param>
+    internal int ResolveEventHandlingTimeoutMs(FeishuAppWebhookOptions? appConfig)
+    {
+#pragma warning disable CS0618 // 过渡开关的唯一读取点：下个 major 随属性一并移除
+        if (LegacyGlobalTimeoutOnly || appConfig is null)
+            return EventHandlingTimeoutMs;
+#pragma warning restore CS0618
+        return appConfig.GetEffectiveEventHandlingTimeout(EventHandlingTimeoutMs);
+    }
+
+    /// <summary>
     /// 并行处理事件的最大并发数
     /// </summary>
     public int MaxConcurrentEvents { get; set; } = 10;
-
-    /// <summary>
-    /// 是否启用事件处理性能监控
-    /// </summary>
-    public bool EnablePerformanceMonitoring { get; set; } = false;
 
     /// <summary>
     /// 支持的 HTTP 方法
@@ -151,42 +180,13 @@ public class FeishuWebhookOptions
     public RateLimitOptions RateLimit { get; set; } = new();
 
     /// <summary>
-    /// 是否启用后台处理模式
-    /// 启用后将激活 Mud.HttpUtils 组件的令牌自动刷新后台服务（TokenRefreshBackgroundService），
-    /// 定期刷新即将过期的访问令牌，确保后台处理事件时令牌始终有效。
-    /// 参见 <see cref="Mud.HttpUtils.TokenRefreshBackgroundOptions"/> 了解更多令牌刷新配置。
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// <b>与令牌后台刷新的关系（默认值语义）</b>：本属性会被映射到
-    /// <see cref="Mud.HttpUtils.TokenRefreshBackgroundOptions.Enabled"/>。默认值 <c>false</c> 意味着
-    /// <b>启用 Webhook 模块的宿主默认不会开启令牌后台主动刷新</b>（即使已注册了应用）——
-    /// 令牌退化为首次请求时懒加载 + 过期前无预热。若宿主在关闭 Webhook 后台处理的同时仍需令牌预热，
-    /// 请显式设置 <see cref="EnableTokenBackgroundRefresh"/> = <c>true</c>。
-    /// </para>
-    /// <para>
-    /// 本属性仅描述 Webhook 模块自身的后台处理模式，运行时变更由
-    /// <c>FeishuWebhookService</c> 响应；与令牌刷新解耦请改用
-    /// <see cref="EnableTokenBackgroundRefresh"/>。
-    /// </para>
-    /// </remarks>
-    public bool EnableBackgroundProcessing { get; set; } = false;
-
-    /// <summary>
-    /// 是否启用 Mud.HttpUtils 的令牌后台主动刷新服务（<see cref="Mud.HttpUtils.TokenRefreshBackgroundOptions.Enabled"/>）
-    /// 的<b>显式覆盖开关</b>。
+    /// 是否启用 Mud.HttpUtils 的令牌后台主动刷新服务（TokenRefreshBackgroundOptions.Enabled）的显式开关。
     /// </summary>
     /// <remarks>
     /// <list type="bullet">
-    ///   <item><c>null</c>（默认）：<b>不干预</b> —— 沿用 <see cref="EnableBackgroundProcessing"/> 的映射
-    ///     （保持既有行为，不改变默认语义）。</item>
-    ///   <item><c>true</c>/<c>false</c>：显式覆盖映射结果，用于把「令牌刷新」与「Webhook 后台处理」解耦。</item>
+    ///   <item><c>null</c>（默认）：不干预基座 AddFeishuApp 的令牌刷新策略（有应用时基座默认开启）。</item>
+    ///   <item><c>true</c>/<c>false</c>：显式覆盖。R4：原 EnableBackgroundProcessing 已移除。</item>
     /// </list>
-    /// <para>
-    /// 背景：此前 <c>TokenRefreshBackgroundOptions.Enabled</c> 被直接赋值为
-    /// <see cref="EnableBackgroundProcessing"/>，当宿主已配置应用（基础注册判定为启用）而 Webhook 后台处理
-    /// 未开启时，令牌后台刷新会被静默关闭且无任何显式开关可恢复。本属性补齐该逃生口。
-    /// </para>
     /// </remarks>
     public bool? EnableTokenBackgroundRefresh { get; set; }
 
@@ -238,8 +238,9 @@ public class FeishuWebhookOptions
 
             var config = appConfig.Value;
 
-            if (string.IsNullOrEmpty(config.AppKey))
-                config.AppKey = appKey;
+            // R5.2/X8：AppKey 一律由字典键**强制派生**（此前仅在为空时回填，允许配置值与其分叉，
+            // 而路由只认字典键 → 诊断信息与实际路由不一致）。属性对宿主只读（internal set）。
+            config.AppKey = appKey;
 
             if (string.IsNullOrEmpty(config.EncryptKey))
                 throw new InvalidOperationException($"应用 {appKey} 的 EncryptKey 不能为空");
@@ -249,6 +250,13 @@ public class FeishuWebhookOptions
 
             if (config.EncryptKey.Length != 32)
                 throw new InvalidOperationException($"应用 {appKey} 的 EncryptKey 长度必须为 32 字符");
+
+            // R5.2/X8：接线应用级校验。
+            // 此前 FeishuAppWebhookOptions.Validate() 在生产代码中**零调用**（仅测试调用），
+            // 于是 WHF-03 声明的「应用级 TimestampToleranceSeconds ≤ 300 秒」与
+            // 「应用级 EventHandlingTimeoutMs ≥ 1000ms」两个约束**从未真正生效**。
+            // 必须放在上面的 EncryptKey 回填/派生之后：Validate 读的是派生后的最终值。
+            config.Validate();
         }
     }
 

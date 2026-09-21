@@ -30,8 +30,7 @@ public class WebSocketConnectionManagerTests
             .Returns(_loggerMock.Object);
         _options = new FeishuWebSocketOptions
         {
-            ConnectionTimeoutMs = 5000,
-            EnableLogging = false
+            ConnectionTimeoutMs = 5000
         };
     }
 
@@ -330,7 +329,8 @@ public class WebSocketConnectionManagerTests
         var options = new FeishuWebSocketOptions
         {
             ConnectionTimeoutMs = 100,
-            EnableLogging = false
+            // P2-15：回环地址需显式列入白名单，本用例聚焦"取消令牌"语义
+            AllowedHostSuffixes = "127.0.0.1"
         };
         var manager = new WebSocketConnectionManager(_loggerMock.Object, options, _loggerFactoryMock.Object);
         using var cts = new CancellationTokenSource();

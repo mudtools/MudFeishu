@@ -109,36 +109,46 @@ dotnet add package Mud.Feishu.OpenTelemetry
       "AppSecret": "your_feishu_app_secret",
       "BaseUrl": "https://open.feishu.cn",
       "AllowCustomBaseUrl": false,
-      "TimeOut": 30,
-      "RetryCount": 3,
-      "RetryDelayMs": 1000,
-      "CircuitBreakerEnabled": true,
-      "CircuitBreakerFailureThreshold": 20,
-      "CircuitBreakerSamplingDurationSeconds": 60,
-      "CircuitBreakerBreakDurationSeconds": 60,
-      "CircuitBreakerMinimumThroughput": 10,
+      "TimeoutSeconds": 30,
+      "HttpRetry": {
+        "MaxAttempts": 3,
+        "DelayMs": 1000
+      },
+      "CircuitBreaker": {
+        "Enabled": true,
+        "FailureThreshold": 20,
+        "SamplingDurationSeconds": 60,
+        "BreakDurationSeconds": 60,
+        "MinimumThroughput": 10
+      },
       "TokenRefreshThreshold": 300,
-      "EnableLogging": true,
       "IsDefault": true
     }
   ],
   "FeishuWebSocket": {
-    "AutoReconnect": true,
-    "MaxReconnectAttempts": 5,
-    "ReconnectDelayMs": 5000,
-    "MaxReconnectDelayMs": 30000,
-    "MaxTotalReconnectTime": "00:30:00",
-    "ReconnectCooldownTime": "00:00:05",
+    "Reconnect": {
+      "Auto": true,
+      "MaxAttempts": 5,
+      "MaxAuthRetryAttempts": 5,
+      "BaseDelayMs": 5000,
+      "MaxDelayMs": 30000,
+      "TotalBudget": "00:30:00",
+      "Cooldown": "00:00:05"
+    },
+    "Certificate": {
+      "Mode": "Strict",
+      "AllowInsecureWebSocket": false,
+      "ValidateServerCertificate": true,
+      "AllowSelfSignedCertificates": false,
+      "AllowCertificateNameMismatch": false
+    },
     "EnableReconnectMetrics": true,
     "HeartbeatIntervalMs": 25000,
-    "EnableLogging": true,
     "ConnectionTimeoutMs": 10000,
     "HealthCheckIntervalMs": 60000,
     "InitialReceiveBufferSize": 4096,
     "MessageHandlerTimeoutMs": 30000,
-    "ValidateServerCertificate": true,
-    "AllowSelfSignedCertificates": false,
-    "AllowInsecureWebSocket": false,
+    "AllowedHostSuffixes": "*.feishu.cn;*.larksuite.com",
     "SequenceGapThreshold": 0,
     "MessageSizeLimits": {
       "MaxTextMessageSize": 1048576,
@@ -154,7 +164,6 @@ dotnet add package Mud.Feishu.OpenTelemetry
   },
   "FeishuWebhook": {
     "GlobalRoutePrefix": "feishu",
-    "EnableRequestLogging": true,
     "MaxConcurrentEvents": 10,
     "EnforceHeaderSignatureValidation": true,
     "TimestampToleranceSeconds": 30,
@@ -198,20 +207,25 @@ dotnet add package Mud.Feishu.OpenTelemetry
 
 | 配置项                        | 类型     | 默认值  | 说明                                                               |
 | ----------------------------- | -------- | ------- | ------------------------------------------------------------------ |
-| `MaxReconnectDelayMs`         | int      | 30000   | 最大重连延迟时间（毫秒）                                           |
-| `MaxTotalReconnectTime`       | TimeSpan | 30 分钟 | 最大重连总时间                                                     |
-| `ReconnectCooldownTime`       | TimeSpan | 5 秒    | 两次重连之间的冷却时间                                             |
+| `Reconnect.MaxDelayMs`        | int      | 30000   | 最大重连延迟时间（毫秒）                                           |
+| `Reconnect.TotalBudget`       | TimeSpan | 30 分钟 | 最大重连总时间                                                     |
+| `Reconnect.Cooldown`          | TimeSpan | 5 秒    | 两次重连之间的冷却时间                                             |
 | `EnableReconnectMetrics`      | bool     | true    | 是否启用重连指标收集                                               |
 | `ConnectionTimeoutMs`         | int      | 10000   | 连接超时时间（毫秒）                                               |
 | `InitialReceiveBufferSize`    | int      | 4096    | 初始接收缓冲区大小（字节）                                         |
-| `ValidateServerCertificate`   | bool     | true    | 是否验证 SSL 证书                                                  |
-| `AllowSelfSignedCertificates` | bool     | false   | 是否允许自签名证书                                                 |
-| `AllowInsecureWebSocket`      | bool     | false   | 是否允许 ws:// 不安全连接（仅开发/测试）                           |
+| `Certificate.Mode`            | enum     | Strict  | 证书校验模式：Strict / Dev / Custom                                |
+| `Certificate.ValidateServerCertificate` | bool | true | 是否验证 SSL 证书                                                  |
+| `Certificate.AllowSelfSignedCertificates` | bool | false | 是否允许自签名证书                                               |
+| `Certificate.AllowCertificateNameMismatch` | bool | false | 是否允许证书名称不匹配                                           |
+| `Certificate.AllowInsecureWebSocket` | bool | false | 是否允许 ws:// 不安全连接（仅开发/测试）                           |
+| `AllowedHostSuffixes`         | string   | `*.feishu.cn;*.larksuite.com` | 主机白名单（`*.` 通配后缀或精确主机名，分号分隔）；置空表示不限制 |
 | `HealthCheckIntervalMs`       | int      | 60000   | 健康检查间隔（毫秒）                                               |
 | `MessageHandlerTimeoutMs`     | int      | 30000   | 单条消息处理超时（毫秒），0 表示不限制                             |
 | `SequenceGapThreshold`        | ulong    | 0       | 消息序号跳跃阈值，0 表示禁用跳跃检测                               |
 | `MessageSizeLimits`           | object   | 见下方  | 消息大小限制配置                                                   |
 | `EventDeduplication`          | object   | 见下方  | 事件去重配置                                                       |
+| `RejectEmptyEventIds`         | bool     | true    | 事件 EventId 为空时是否拒绝处理（fail-closed，对齐 Webhook WHF-05） |
+| `IgnoreUnknownEventTypes`     | bool     | false   | 未注册事件类型是否静默忽略（推荐 true，对齐 Webhook WHF-09；默认 false 保持兼容） |
 
 > ℹ️ **迁移提示**：旧版本的 `TokenRefreshInterval` / `TokenRefreshAhead` 配置已移除。令牌刷新现由 `FeishuAppConfig.TokenRefreshThreshold`（HTTP 层）统一控制，WebSocket 连接复用同一应用的令牌管理器，无需单独配置。
 
@@ -220,7 +234,8 @@ dotnet add package Mud.Feishu.OpenTelemetry
 | 配置项                 | 类型 | 默认值 | 说明                       |
 | ---------------------- | ---- | ------ | -------------------------- |
 | `MaxTextMessageSize`   | int  | 1MB    | 最大文本消息大小（字符数） |
-| `MaxBinaryMessageSize` | long | 10MB   | 最大二进制消息大小（字节） |
+| `MaxTextMessageBytes`  | int  | 0      | 最大文本消息大小（UTF-8 字节），0 = 3 × `MaxTextMessageSize` 自动推导（发送/接收同源） |
+| `MaxBinaryMessageSize` | long | 10MB   | 最大二进制消息大小（字节），发送与接收均校验 |
 
 **EventDeduplication 子配置：**
 
@@ -245,21 +260,21 @@ dotnet add package Mud.Feishu.OpenTelemetry
 </details>
 
 <details>
-<summary>📋 EnableLogging 多层级作用域说明</summary>
+<summary>📋 模块日志级别说明（EnableLogging 已移除，统一由 Logging:LogLevel 控制）</summary>
 
-SDK 中存在多个 `EnableLogging` / `EnableRequestLogging` 开关，它们**作用范围相互独立、互不覆盖**，按模块分别控制各自日志输出：
+R4 起，`FeishuAppConfig` 与 `FeishuWebSocketOptions` 上的 `EnableLogging` 开关已**移除**，各模块日志统一通过标准 `Logging:LogLevel` 控制：
 
-| 配置项位置                           | 字段                     | 作用范围                                                               | 默认值 |
-| ------------------------------------ | ------------------------ | ---------------------------------------------------------------------- | ------ |
-| `FeishuApps[*].EnableLogging`        | `FeishuAppConfig`        | HTTP API 客户端层（`Mud.Feishu`）的请求/响应详细日志                   | true   |
-| `FeishuWebSocket:EnableLogging`      | `FeishuWebSocketOptions` | WebSocket 模块（`Mud.Feishu.WebSocket`）的连接/心跳/Ping/Pong 调试日志 | true   |
-| `FeishuWebhook:EnableRequestLogging` | `FeishuWebhookOptions`   | Webhook 模块（`Mud.Feishu.Webhook`）的入站请求日志                     | true   |
+| 模块                                     | 日志控制位置                                                                      |
+| ---------------------------------------- | --------------------------------------------------------------------------------- |
+| HTTP API 客户端层（`Mud.Feishu`）        | `Logging:LogLevel:Mud.Feishu`（令牌相关：`Mud.Feishu.Abstractions.TokenManager`） |
+| WebSocket 模块（`Mud.Feishu.WebSocket`） | `Logging:LogLevel:Mud.Feishu.WebSocket`                                           |
+| Webhook 模块（`Mud.Feishu.Webhook`）     | `Logging:LogLevel:Mud.Feishu.Webhook`                                             |
 
-> 💡 **优先级说明**：
+> 💡 **说明**：
 >
-> - 三个开关**各自独立**，不存在覆盖或继承关系。例如设置 `FeishuApps[0].EnableLogging=false` 不会影响 WebSocket 模块的日志输出。
-> - 如需全局关闭 SDK 日志，请同时将三个开关都设为 `false`，或通过 `ILoggerFactory` 过滤 `Mud.Feishu` 命名空间的日志级别。
-> - 推荐生产环境保持 `EnableLogging=true` 以便问题排查，但将日志级别调整为 `Information` 或 `Warning` 以减少日志量。
+> - 各模块日志级别**各自独立**，不存在覆盖或继承关系。
+> - 旧配置键 `FeishuApps[*].EnableLogging`、`FeishuWebSocket:EnableLogging` 仍可被绑定读取，但已不产生任何效果（属性已移除）；请改用 `Logging:LogLevel`。
+> - 推荐生产环境将级别设为 `Information` 或 `Warning` 以减少日志量。
 
 </details>
 
@@ -268,14 +283,14 @@ SDK 中存在多个 `EnableLogging` / `EnableRequestLogging` 开关，它们**�
 
 | 配置项                                  | 类型 | 默认值 | 说明                                 |
 | --------------------------------------- | ---- | ------ | ------------------------------------ |
-| `TimeOut`                               | int  | 30     | HTTP 请求超时时间（秒），范围 1-300  |
-| `RetryCount`                            | int  | 3      | 重试次数，范围 0-10                  |
-| `RetryDelayMs`                          | int  | 1000   | 重试延迟时间（毫秒），范围 100-60000 |
-| `CircuitBreakerEnabled`                 | bool | true   | 是否启用熔断器                       |
-| `CircuitBreakerFailureThreshold`        | int  | 20     | 熔断失败率阈值（百分比），范围 1-100 |
-| `CircuitBreakerSamplingDurationSeconds` | int  | 60     | 熔断采样窗口时间（秒），范围 10-300  |
-| `CircuitBreakerBreakDurationSeconds`    | int  | 60     | 熔断持续时间（秒），范围 10-300      |
-| `CircuitBreakerMinimumThroughput`       | int  | 10     | 熔断最小吞吐量，范围 2-1000          |
+| `TimeoutSeconds`                         | int  | 30     | HTTP 请求超时时间（秒），范围 1-300  |
+| `HttpRetry.MaxAttempts`                  | int  | 3      | 重试次数，范围 0-10                  |
+| `HttpRetry.DelayMs`                      | int  | 1000   | 重试延迟时间（毫秒），范围 100-60000 |
+| `CircuitBreaker.Enabled`                 | bool | true   | 是否启用熔断器                       |
+| `CircuitBreaker.FailureThreshold`        | int  | 20     | 熔断失败率阈值（百分比），范围 1-100 |
+| `CircuitBreaker.SamplingDurationSeconds` | int  | 60     | 熔断采样窗口时间（秒），范围 10-300  |
+| `CircuitBreaker.BreakDurationSeconds`    | int  | 60     | 熔断持续时间（秒），范围 10-300      |
+| `CircuitBreaker.MinimumThroughput`       | int  | 10     | 熔断最小吞吐量，范围 2-1000          |
 
 > ⚠️ 多应用模式下，弹性策略为全局共享，仅默认应用（`IsDefault=true`）的配置生效。非默认应用的弹性策略配置将被忽略。
 
@@ -290,10 +305,9 @@ SDK 中存在多个 `EnableLogging` / `EnableRequestLogging` 开关，它们**�
 | `EnforceHeaderSignatureValidation` | bool                  | true   | 是否强制验证 X-Lark-Signature 请求头签名（生产环境必须启用） |
 | `TimestampToleranceSeconds`        | int                   | 30     | 时间戳容差（秒），超过此时间视为无效请求                     |
 | `MaxConcurrentEvents`              | int                   | 10     | 最大并发事件处理数                                           |
-| `EnableRequestLogging`             | bool                  | true   | 是否启用请求日志                                             |
-| `EnablePerformanceMonitoring`      | bool                  | false  | 是否启用性能监控（处理耗时、队列深度等指标）                 |
 | `MaxRequestBodySize`               | long                  | 10MB   | 最大请求体大小（字节）                                       |
 | `EventHandlingTimeoutMs`           | int                   | 30000  | 事件处理超时时间（毫秒）                                     |
+| `EnableTokenBackgroundRefresh`     | bool?                 | null   | 是否覆盖基座令牌后台刷新（null=不干预；替代已移除的 `EnableBackgroundProcessing`） |
 
 > 🔒 生产环境强烈建议保持 `EnforceHeaderSignatureValidation=true`，配置 `AllowedSourceIPs` 限制来源 IP，并将 `TimestampToleranceSeconds` 设置为 30 秒或更短以减少重放攻击时间窗口。
 
@@ -306,16 +320,16 @@ SDK 中存在多个 `EnableLogging` / `EnableRequestLogging` 开关，它们**�
 
 | 配置项                 | 类型     | 默认值           | 说明                                                    |
 | ---------------------- | -------- | ---------------- | ------------------------------------------------------- |
-| `ServerAddress`        | string   | "localhost:6379" | Redis 连接地址，格式 `host:port` 或 `redis://host:port` |
-| `Password`             | string   | 空               | Redis 密码                                              |
-| `DefaultDatabase`      | int?     | null             | 默认数据库索引（null 表示使用服务端默认）               |
-| `ClientName`           | string?  | null             | 客户端名称（便于在 Redis 端识别连接来源）               |
-| `ConnectTimeout`       | int      | 5000             | 连接超时（毫秒），最小 1000                             |
-| `SyncTimeout`          | int      | 5000             | 同步操作超时（毫秒），最小 1000                         |
-| `Ssl`                  | bool     | false            | 是否启用 TLS/SSL                                        |
-| `AbortOnConnectFail`   | bool     | true             | 连接失败时是否中止                                      |
-| `AllowAdmin`           | bool     | false            | 是否允许管理员操作（如 FLUSHDB），生产环境应保持 false  |
-| `ConnectRetry`         | int      | 3                | 连接重试次数，不能为负数                                |
+| `Connection.ServerAddress`   | string   | "localhost:6379" | Redis 连接地址，格式 `host:port` 或 `redis://host:port` |
+| `Connection.Password`        | string   | 空               | Redis 密码                                              |
+| `Connection.DefaultDatabase` | int?     | null             | 默认数据库索引（null 表示使用服务端默认）               |
+| `Advanced.ClientName`        | string?  | null             | 客户端名称（便于在 Redis 端识别连接来源）               |
+| `Connection.ConnectTimeout`  | int      | 5000             | 连接超时（毫秒），最小 1000                             |
+| `Connection.SyncTimeout`     | int      | 5000             | 同步操作超时（毫秒），最小 1000                         |
+| `Connection.Ssl`             | bool     | false            | 是否启用 TLS/SSL                                        |
+| `Connection.AbortOnConnectFail` | bool  | true             | 连接失败时是否中止                                      |
+| `Advanced.AllowAdmin`        | bool     | false            | 是否允许管理员操作（如 FLUSHDB），生产环境应保持 false  |
+| `Connection.ConnectRetry`    | int      | 3                | 连接重试次数，不能为负数                                |
 | `EventKeyPrefix`       | string   | "feishu:event:"  | 事件去重键前缀（用于应用/环境隔离）                     |
 | `NonceKeyPrefix`       | string   | "feishu:nonce:"  | Nonce 去重键前缀                                        |
 | `SeqIdKeyPrefix`       | string   | "feishu:seqid:"  | SeqID 去重键前缀                                        |
@@ -323,21 +337,23 @@ SDK 中存在多个 `EnableLogging` / `EnableRequestLogging` 开关，它们**�
 | `NonceTtl`             | TimeSpan | "00:05:00"      | Nonce 有效期                                            |
 | `SeqIdCacheExpiration` | TimeSpan | "2.00:00:00"    | SeqID 去重缓存过期时间                                  |
 
-> ℹ️ **高级去重参数**：在 `FeishuRedis:Deduplication` 节点下可配置 `ProcessingTimeout`、`MaxRetryCount`、`AllowProcessingOnFallback` 等高级参数（类型 `DeduplicationOptions`）。注意：`CacheExpiration` 和 `KeyPrefix` 由上表中的 `EventCacheExpiration` / `EventKeyPrefix` 优先覆盖。
+> ℹ️ **高级去重参数**：推荐使用统一节 `FeishuDeduplication`（`Event` / `Nonce` / `SeqId` 子节点）配置 TTL 与键前缀；`FeishuRedis:Deduplication` 仍可绑定 `ProcessingTimeout` / `CleanupInterval` / `MaxCacheSize`（类型 `DeduplicationOptions`）。注意：`CacheExpiration` 和 `KeyPrefix` 由上表中的 `EventCacheExpiration` / `EventKeyPrefix` 优先覆盖；`AllowProcessingOnFallback` / `MaxRetryCount` / `InitialRetryDelay` / `MaxRetryDelay` 已在 R4 移除（Redis 主路径不消费），失败事件重试请改用 `FeishuWebhook:Retry`（`FailedEventRetryOptions`）。
 
 **配置示例：**
 
 ```json
 {
   "FeishuRedis": {
-    "ServerAddress": "redis://prod-redis.internal:6380",
-    "Password": "your-password",
-    "DefaultDatabase": 1,
-    "ConnectTimeout": 5000,
-    "SyncTimeout": 5000,
-    "Ssl": true,
-    "AbortOnConnectFail": true,
-    "ConnectRetry": 3,
+    "Connection": {
+      "ServerAddress": "redis://prod-redis.internal:6380",
+      "Password": "your-password",
+      "DefaultDatabase": 1,
+      "ConnectTimeout": 5000,
+      "SyncTimeout": 5000,
+      "Ssl": true,
+      "AbortOnConnectFail": true,
+      "ConnectRetry": 3
+    },
     "EventKeyPrefix": "prod:feishu:event:",
     "NonceKeyPrefix": "prod:feishu:nonce:",
     "SeqIdKeyPrefix": "prod:feishu:seqid:",
@@ -348,7 +364,7 @@ SDK 中存在多个 `EnableLogging` / `EnableRequestLogging` 开关，它们**�
 }
 ```
 
-> 🔒 生产环境建议启用 `Ssl=true`，配置独立 `Password`，并为多租户场景设置不同的键前缀（`EventKeyPrefix`/`NonceKeyPrefix`/`SeqIdKeyPrefix`）以实现隔离。
+> 🔒 生产环境建议启用 `Connection.Ssl=true`，配置独立 `Connection.Password`，并为多租户场景设置不同的键前缀（`EventKeyPrefix`/`NonceKeyPrefix`/`SeqIdKeyPrefix`）以实现隔离。
 
 </details>
 
@@ -403,7 +419,7 @@ builder.Services.AddFeishuUserContext(options =>
 <details>
 <summary>📋 失败事件重试配置参考（FailedEventRetryOptions）</summary>
 
-> Webhook 模块支持失败事件的自动重试，以下配置在 `FeishuWebhook:Retry` 节点下生效。
+> Webhook 模块支持失败事件的自动重试，以下配置在 `FeishuWebhook:Retry` 节点下生效（R5.1 起真实生效；此前这些键静默无效，升级前请核对取值，详见 `documents/Configuration/ConfigMigration-R5.md`）。
 
 | 配置项                     | 类型   | 默认值 | 说明                         |
 | -------------------------- | ------ | ------ | ---------------------------- |
@@ -447,12 +463,10 @@ builder.Services.AddFeishuUserContext(options =>
 | `AppKey`                           | string | 必填   | 飞书应用 AppId（如 `cli_xxx`）                                          |
 | `VerificationToken`                | string | 必填   | 应用事件订阅 Verification Token                                         |
 | `EncryptKey`                       | string | 必填   | 事件加密 Key（长度必须为 32 字符）                                      |
-| `Description`                      | string | null   | 应用描述（可选）                                                        |
 | `TimestampToleranceSeconds`        | int?   | null   | 时间戳容差（秒）。`null`/`-1`/`0` 继承全局，正整数覆盖全局              |
 | `EventHandlingTimeoutMs`           | int?   | null   | 事件处理超时（毫秒）。`null`/`-1`/`0` 继承全局，正整数（≥1000）覆盖全局 |
 | `EnforceHeaderSignatureValidation` | bool?  | null   | 是否强制验证请求头签名。`null` 继承全局                                 |
 | `EnableExceptionHandling`          | bool?  | null   | 是否启用异常捕获。`null` 继承全局                                       |
-| `EnablePerformanceMonitoring`      | bool?  | null   | 是否启用性能监控。`null` 继承全局                                       |
 
 **配置示例：**
 
@@ -544,9 +558,9 @@ builder.Services.AddFeishuApp(configure =>
     configure.AddDefaultApp("default", "cli_xxx", "dsk_xxx");
     configure.AddApp("hr-app", "cli_yyy", "dsk_yyy", opt =>
     {
-        opt.TimeOut = 45;
-        opt.RetryCount = 5;
-        opt.RetryDelayMs = 2000; // 自定义重试延迟
+        opt.TimeoutSeconds = 45;
+        opt.HttpRetry.MaxAttempts = 5;
+        opt.HttpRetry.DelayMs = 2000; // 自定义重试延迟
         opt.TokenRefreshThreshold = 300; // Token 刷新阈值（秒）
     });
 });
@@ -619,6 +633,21 @@ app.UseFeishuWebhook();
 
 app.Run();
 ```
+
+#### `FeishuAppOptions` 一次性读取语义清单
+
+`FeishuAppOptions` 经 `IOptions<T>` 注入时为**启动快照**（IOptions 缓存不随 `IConfiguration` 变更失效），修改配置源后不热更，需重启进程：
+
+| 选项 | 读取点 | 实际语义 |
+| ---- | ---- | ---- |
+| `EnableConfigReload` | `FeishuAppManager` 构造函数（IOptions） | 仅启动时生效 |
+| `ContextRetireDelaySeconds` | `FeishuAppManager` 构造函数（IOptions） | 仅启动时生效 |
+| `WarmUpAllAppsOnStartup` | `FeishuTokenRegistrationService`（IOptions 注入） | 仅启动时生效 |
+| `RemoveRuntimeAddedAppsOnReload` | 热更新时读 `IOptions<>.Value` | 值仍是启动快照——改此项需重启 |
+| `EnablePerAppAuthenticationClient` | `CreateAppContext` 读 `IOptions<>.Value` | 每次上下文创建时求值，但值本身不热更 |
+| `EnableTokenEncryption` | 存储工厂首次解析时读取（一次性） | 中途开启 → 旧明文解密失败 → 删脏键并重新获取 → 重写密文（自愈）；建议重启后开启 |
+
+> 应用配置本身（`FeishuApps` 节点：AppId/AppSecret/BaseUrl/超时等）支持热更新（`EnableConfigReload`，默认开启）；上表仅针对 `FeishuAppOptions` 行为开关。
 
 ### 4️⃣ 验证配置
 
@@ -1459,7 +1488,7 @@ public class TenantController : ControllerBase
 
 > 🔄 **凭据轮换与令牌清库（D10）**：配置热更新检测到某应用的 `AppId` 或 `AppSecret` 变更时，
 > 会立即清除该应用在令牌存储后端的**全部**持久化令牌（租户令牌 + 全部用户令牌，Memory 与 Redis
-> 后端语义一致），旧凭据换取的令牌不会经存储恢复路径「复活」。仅 `BaseUrl`/`TimeOut`/弹性参数等
+> 后端语义一致），旧凭据换取的令牌不会经存储恢复路径「复活」。仅 `BaseUrl`/`TimeoutSeconds`/弹性参数等
 > 非凭据字段变更时保留令牌热迁移。
 >
 > ℹ️ **残余窗口**：热更新清库后、旧上下文退休宽限期（`ContextRetireDelaySeconds`，默认 300s）结束前，
@@ -1548,8 +1577,8 @@ dotnet publish -r win-x64 -c Release /p:PublishAot=true
 
 | 包                            | 版本             | 说明                                |
 | ----------------------------- | ---------------- | ----------------------------------- |
-| **Mud.HttpUtils**             | v2.0.6  | HTTP 客户端工具类（含源代码生成器） |
-| **Mud.HttpUtils.Generator**   | v2.0.6  | HTTP 客户端代码生成器（编译时）     |
+| **Mud.HttpUtils**             | v2.0.7  | HTTP 客户端工具类（含源代码生成器） |
+| **Mud.HttpUtils.Generator**   | v2.0.7  | HTTP 客户端代码生成器（编译时）     |
 | **Microsoft.Extensions.Http** | v8.0.1 / v10.0.9 | HTTP 客户端工厂                     |
 
 ---

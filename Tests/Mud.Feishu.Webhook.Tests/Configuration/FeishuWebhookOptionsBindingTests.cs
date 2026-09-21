@@ -65,18 +65,14 @@ public class FeishuWebhookOptionsBindingTests
     {
         var options = BindFromDictionary(new Dictionary<string, string?>
         {
-            ["FeishuWebhook:EnableRequestLogging"] = "false",
             ["FeishuWebhook:EnableExceptionHandling"] = "false",
-            ["FeishuWebhook:EnablePerformanceMonitoring"] = "true",
             ["FeishuWebhook:EnforceHeaderSignatureValidation"] = "false",
-            ["FeishuWebhook:EnableBackgroundProcessing"] = "true",
+            ["FeishuWebhook:EnableTokenBackgroundRefresh"] = "true",
         });
 
-        options.EnableRequestLogging.Should().BeFalse();
         options.EnableExceptionHandling.Should().BeFalse();
-        options.EnablePerformanceMonitoring.Should().BeTrue();
         options.EnforceHeaderSignatureValidation.Should().BeFalse();
-        options.EnableBackgroundProcessing.Should().BeTrue();
+        options.EnableTokenBackgroundRefresh.Should().BeTrue();
     }
 
     /// <summary>
@@ -100,10 +96,10 @@ public class FeishuWebhookOptionsBindingTests
 
         var absent = BindFromDictionary(new Dictionary<string, string?>
         {
-            ["FeishuWebhook:EnableBackgroundProcessing"] = "true",
+            // 未配置 EnableTokenBackgroundRefresh：必须保留 null
         });
         absent.EnableTokenBackgroundRefresh.Should().BeNull(
-            "未配置时必须保留 null（= 沿用 EnableBackgroundProcessing 映射，不干预）");
+            "未配置时必须保留 null（= 不干预基座 TokenRefresh 映射）");
     }
 
     [Fact]
@@ -162,19 +158,27 @@ public class FeishuWebhookOptionsBindingTests
         {
             ["FeishuWebhook:Apps:app1:AppKey"] = "cli_a1b2c3d4e5f6g7h8",
             ["FeishuWebhook:Apps:app1:VerificationToken"] = "token1",
-            ["FeishuWebhook:Apps:app1:EncryptKey"] = "encrypt_key_1_32_bytes_long_1234567890",
+            ["FeishuWebhook:Apps:app1:EncryptKey"] = "0123456789abcdef0123456789abcdef",
             ["FeishuWebhook:Apps:app2:AppKey"] = "cli_b1b2c3d4e5f6g7h8",
             ["FeishuWebhook:Apps:app2:VerificationToken"] = "token2",
-            ["FeishuWebhook:Apps:app2:EncryptKey"] = "encrypt_key_2_32_bytes_long_1234567890",
+            ["FeishuWebhook:Apps:app2:EncryptKey"] = "fedcba9876543210fedcba9876543210",
         });
 
         options.Apps.Should().HaveCount(2);
         options.Apps.Should().ContainKey("app1");
         options.Apps.Should().ContainKey("app2");
-        options.Apps["app1"].AppKey.Should().Be("cli_a1b2c3d4e5f6g7h8");
         options.Apps["app1"].VerificationToken.Should().Be("token1");
-        options.Apps["app2"].AppKey.Should().Be("cli_b1b2c3d4e5f6g7h8");
         options.Apps["app2"].VerificationToken.Should().Be("token2");
+
+        // R5.2/X8：Apps:{key}:AppKey 不再写入派生字段（属性对宿主只读，internal set）。
+        // 应用标识就是字典键本身——JSON 里重复配置 AppKey 只会制造「配置值与路由键分叉」的风险。
+        options.Apps["app1"].AppKey.Should().BeEmpty(
+            "JSON 中的 Apps:app1:AppKey 必须被忽略（应用标识 = 字典键 'app1'）");
+
+        // 需要标识时使用字典键；Validate 会把它派生到 AppKey 供诊断输出。
+        options.Validate();
+        options.Apps["app1"].AppKey.Should().Be("app1");
+        options.Apps["app2"].AppKey.Should().Be("app2");
     }
 
     [Fact]
@@ -183,15 +187,15 @@ public class FeishuWebhookOptionsBindingTests
         var options = BindFromDictionary(new Dictionary<string, string?>());
 
         options.GlobalRoutePrefix.Should().Be("feishu");
+#pragma warning disable CS0618 // R5/X4：该开关已 Obsolete，但仍须能从配置绑定（不得静默失效）
         options.AutoRegisterEndpoint.Should().BeTrue();
-        options.EnableRequestLogging.Should().BeTrue();
+#pragma warning restore CS0618
         options.EnableExceptionHandling.Should().BeTrue();
         options.EventHandlingTimeoutMs.Should().Be(30000);
         options.MaxConcurrentEvents.Should().Be(10);
-        options.EnablePerformanceMonitoring.Should().BeFalse();
         options.EnforceHeaderSignatureValidation.Should().BeTrue();
         options.TimestampToleranceSeconds.Should().Be(30);
-        options.EnableBackgroundProcessing.Should().BeFalse();
+        options.EnableTokenBackgroundRefresh.Should().BeNull("R4：未配置时为 null，不覆盖宿主令牌刷新默认");
         options.NonceValidationFailureMode.Should().Be(NonceFailureMode.Reject);
     }
 

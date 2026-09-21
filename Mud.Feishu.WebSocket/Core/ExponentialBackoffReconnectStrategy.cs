@@ -16,6 +16,16 @@ public class ExponentialBackoffReconnectStrategy : IReconnectStrategy
 {
     private readonly FeishuWebSocketOptions _options;
     private readonly ILogger<ExponentialBackoffReconnectStrategy>? _logger;
+
+    /// <summary>
+    /// 指数上限（P2-6 修复）。
+    /// </summary>
+    /// <remarks>
+    /// 2^30 × <see cref="FeishuWebSocketOptions.Reconnect"/>.<see cref="WebSocketReconnectOptions.BaseDelayMs"/>（默认 1000ms）≈ 34 年，
+    /// 远超任何 <see cref="WebSocketReconnectOptions.MaxDelayMs"/>，
+    /// 钳制后必然被最大延迟截断，故不影响退避语义，只消除 double 溢出。
+    /// </remarks>
+    private const int MaxExponent = 30;
     // WS-14 修复（P1-11）：static Random 非线程安全，并发调用会损坏内部状态并持续返回 0。
     // 照抄 RetryHelper 的条件编译模式：net6+ 使用 Random.Shared，ns2.0 使用 [ThreadStatic]。
 #if NET6_0_OR_GREATER
@@ -49,10 +59,14 @@ public class ExponentialBackoffReconnectStrategy : IReconnectStrategy
         if (attemptCount < 1)
             throw new ArgumentOutOfRangeException(nameof(attemptCount), "尝试次数必须大于0");
 
-        var baseDelay = TimeSpan.FromMilliseconds(_options.ReconnectDelayMs);
+        var baseDelay = TimeSpan.FromMilliseconds(_options.Reconnect.BaseDelayMs);
+        // P2-6 修复：指数必须钳制。此前 Math.Pow(2, attemptCount - 1) 在 attemptCount > 1024 时会得到
+        // double.PositiveInfinity，TimeSpan.FromMilliseconds(∞) 抛 OverflowException，使整轮重连被异常中止
+        // （触发条件：MaxReconnectAttempts = 0 无限重连 + 较大的 MaxTotalReconnectTime + 长时断网）。
+        var clampedExponent = Math.Min(attemptCount - 1, MaxExponent);
         var exponentialDelay = TimeSpan.FromMilliseconds(
-            baseDelay.TotalMilliseconds * Math.Pow(2, attemptCount - 1));
-        var maxDelay = TimeSpan.FromMilliseconds(_options.MaxReconnectDelayMs);
+            baseDelay.TotalMilliseconds * Math.Pow(2, clampedExponent));
+        var maxDelay = TimeSpan.FromMilliseconds(_options.Reconnect.MaxDelayMs);
 
         var delay = exponentialDelay > maxDelay ? maxDelay : exponentialDelay;
 
@@ -76,17 +90,17 @@ public class ExponentialBackoffReconnectStrategy : IReconnectStrategy
     public bool ShouldContinueReconnect(int attemptCount, TimeSpan totalElapsedTime)
     {
         // MaxReconnectAttempts = 0 表示无限重连（仅受时间限制）
-        if (_options.MaxReconnectAttempts > 0 && attemptCount > _options.MaxReconnectAttempts)
+        if (_options.Reconnect.MaxAttempts > 0 && attemptCount > _options.Reconnect.MaxAttempts)
         {
             _logger?.LogDebug("已达到最大重连次数限制: {AttemptCount}/{MaxAttempts}",
-                attemptCount, _options.MaxReconnectAttempts);
+                attemptCount, _options.Reconnect.MaxAttempts);
             return false;
         }
 
-        if (totalElapsedTime > _options.MaxTotalReconnectTime)
+        if (totalElapsedTime > _options.Reconnect.TotalBudget)
         {
             _logger?.LogDebug("已达到最大重连时间限制: {ElapsedTime}/{MaxTime}",
-                totalElapsedTime, _options.MaxTotalReconnectTime);
+                totalElapsedTime, _options.Reconnect.TotalBudget);
             return false;
         }
 

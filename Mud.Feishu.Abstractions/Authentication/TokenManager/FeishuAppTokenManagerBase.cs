@@ -79,8 +79,7 @@ internal abstract class FeishuAppTokenManagerBase : TokenManagerBase
         if (restoredToken != null)
             return restoredToken;
 
-        if (_options.EnableLogging)
-            _logger.LogInformation("Refreshing {TokenType} for AppId: {AppId}", _tokenTypeKey, _options.AppId);
+        _logger.LogInformation("Refreshing {TokenType} for AppId: {AppId}", _tokenTypeKey, _options.AppId);
 
         var result = await RefreshTokenFromApiAsync(cancellationToken).ConfigureAwait(false);
 
@@ -126,13 +125,11 @@ internal abstract class FeishuAppTokenManagerBase : TokenManagerBase
                 var restoreThresholdMs = _options.TokenRefreshThreshold * 1000L;
                 if (remainingMs <= restoreThresholdMs)
                 {
-                    if (_options.EnableLogging)
-                        _logger.LogDebug("Restored token from ITokenStore is near expiration for AppId: {AppId}, skipping", _options.AppId);
+                    _logger.LogDebug("Restored token from ITokenStore is near expiration for AppId: {AppId}, skipping", _options.AppId);
                     return null;
                 }
 
-                if (_options.EnableLogging)
-                    _logger.LogDebug("Restored token from ITokenStore for AppId: {AppId}, TokenType: {TokenType}", _options.AppId, _tokenTypeKey);
+                _logger.LogDebug("Restored token from ITokenStore for AppId: {AppId}, TokenType: {TokenType}", _options.AppId, _tokenTypeKey);
                 return new CredentialToken
                 {
                     AccessToken = accessToken,

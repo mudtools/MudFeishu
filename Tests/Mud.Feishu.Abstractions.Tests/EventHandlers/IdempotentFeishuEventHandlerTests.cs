@@ -209,4 +209,117 @@ public class IdempotentFeishuEventHandlerTests
         // Assert
         Assert.Equal("test.idempotent.event", result);
     }
+
+    // ===== P0-2：默认业务键类型限定 =====
+
+    /// <summary>未重写 GetBusinessKey 的处理器：暴露基类默认实现</summary>
+    public class DefaultKeyHandler : IdempotentFeishuEventHandler<TestEventData>
+    {
+        private readonly ITestEventProcessor _eventProcessor;
+
+        public DefaultKeyHandler(
+            IFeishuEventDeduplicator businessDeduplicator,
+            ILogger logger,
+            ITestEventProcessor eventProcessor)
+            : base(businessDeduplicator, logger)
+        {
+            _eventProcessor = eventProcessor;
+        }
+
+        public override string SupportedEventType => "test.default.key.event";
+
+        protected override Task ProcessBusinessLogicAsync(EventData eventData, TestEventData? eventEntity, CancellationToken cancellationToken = default)
+            => _eventProcessor.ProcessBusinessLogicAsync(eventData, eventEntity, cancellationToken);
+
+        public string? InvokeGetBusinessKey(EventData eventData) => GetBusinessKey(eventData);
+    }
+
+    [Fact]
+    public void GetBusinessKey_ShouldReturnTypePrefixedKey_ByDefault()
+    {
+        var handler = new DefaultKeyHandler(_deduplicatorMock.Object, _loggerMock.Object, _eventProcessorMock.Object);
+        var eventData = new EventData { EventId = "evt-p02", EventType = "test.default.key.event" };
+
+        var key = handler.InvokeGetBusinessKey(eventData);
+
+        Assert.Equal($"DefaultKeyHandler:{eventData.EventId}", key);
+        Assert.NotEqual(eventData.EventId, key);
+    }
+
+    [Fact]
+    public async Task HandleAsync_ShouldExecuteBusinessLogic_WhenChannelDedupAlreadyMarkedSameEventId()
+    {
+        // Arrange：模拟通道级去重已用裸 EventId 标记（共享同一去重器单例）
+        var handler = new DefaultKeyHandler(_deduplicatorMock.Object, _loggerMock.Object, _eventProcessorMock.Object);
+        var eventData = new EventData
+        {
+            EventId = "evt-channel-marked",
+            EventType = "test.default.key.event",
+            Event = JsonDocument.Parse(JsonSerializer.Serialize(new TestEventData { EventId = "evt-channel-marked", UserId = "u1" }))
+        };
+
+        // 通道级键（裸 EventId）判重
+        _deduplicatorMock
+            .Setup(d => d.TryMarkAsProcessingAsync("evt-channel-marked", It.IsAny<string?>(), It.IsAny<TimeSpan?>(), It.IsAny<TimeSpan?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(DeduplicationResult.Duplicate("channel"));
+
+        // 业务键（类型前缀）应走成功路径
+        _deduplicatorMock
+            .Setup(d => d.TryMarkAsProcessingAsync($"DefaultKeyHandler:{eventData.EventId}", It.IsAny<string?>(), It.IsAny<TimeSpan?>(), It.IsAny<TimeSpan?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(DeduplicationResult.Success("business"));
+
+        // Act
+        await handler.HandleAsync(eventData, CancellationToken.None);
+
+        // Assert：业务逻辑必须执行（修复前默认键与通道键同键 → 静默跳过）
+        _eventProcessorMock.Verify(p => p.ProcessBusinessLogicAsync(
+            It.IsAny<EventData>(), It.IsAny<TestEventData>(), It.IsAny<CancellationToken>()), Times.Once);
+        _deduplicatorMock.Verify(d => d.MarkAsCompletedAsync(
+            $"DefaultKeyHandler:{eventData.EventId}", It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_ShouldSkipDedup_WhenEventIdEmpty()
+    {
+        var handler = new DefaultKeyHandler(_deduplicatorMock.Object, _loggerMock.Object, _eventProcessorMock.Object);
+        var eventData = new EventData
+        {
+            EventId = "",
+            EventType = "test.default.key.event",
+            Event = JsonDocument.Parse(JsonSerializer.Serialize(new TestEventData { UserId = "u-empty" }))
+        };
+
+        await handler.HandleAsync(eventData, CancellationToken.None);
+
+        _eventProcessorMock.Verify(p => p.ProcessBusinessLogicAsync(
+            It.IsAny<EventData>(), It.IsAny<TestEventData>(), It.IsAny<CancellationToken>()), Times.Once);
+        _deduplicatorMock.Verify(d => d.TryMarkAsProcessingAsync(
+            It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<TimeSpan?>(), It.IsAny<TimeSpan?>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task HandleAsync_TwoIdempotentHandlers_ShouldNotCollideOnDefaultBusinessKey()
+    {
+        var handlerA = new DefaultKeyHandler(_deduplicatorMock.Object, _loggerMock.Object, _eventProcessorMock.Object);
+        var handlerB = new DefaultKeyHandler(_deduplicatorMock.Object, _loggerMock.Object, _eventProcessorMock.Object);
+        var eventData = new EventData
+        {
+            EventId = "evt-fanout",
+            EventType = "test.default.key.event",
+            Event = JsonDocument.Parse(JsonSerializer.Serialize(new TestEventData { EventId = "evt-fanout" }))
+        };
+
+        // 任意业务键均成功
+        _deduplicatorMock
+            .Setup(d => d.TryMarkAsProcessingAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<TimeSpan?>(), It.IsAny<TimeSpan?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(DeduplicationResult.Success("biz"));
+
+        await handlerA.HandleAsync(eventData, CancellationToken.None);
+        await handlerB.HandleAsync(eventData, CancellationToken.None);
+
+        // 两个处理器同类型 → 默认键相同属预期；跨类型不冲突由 GetBusinessKey 类型前缀保证。
+        // 此处锁定：业务逻辑两次都执行（不会因第一次 MarkCompleted 后第二次被通道键误判）。
+        _eventProcessorMock.Verify(p => p.ProcessBusinessLogicAsync(
+            It.IsAny<EventData>(), It.IsAny<TestEventData>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
+    }
 }

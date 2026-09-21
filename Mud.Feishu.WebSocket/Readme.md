@@ -80,18 +80,33 @@ app.Run();
       "AppId": "your_app_id",
       "AppSecret": "your_app_secret",
       "BaseUrl": "https://open.feishu.cn",
-      "TimeOut": 30,
-      "RetryCount": 3,
-      "EnableLogging": true,
+      "TimeoutSeconds": 30,
+      "HttpRetry": {
+        "MaxAttempts": 3,
+        "DelayMs": 1000
+      },
       "IsDefault": true
     }
   ],
   "FeishuWebSocket": {
-    "AutoReconnect": true,
-    "MaxReconnectAttempts": 5,
-    "ReconnectDelayMs": 5000,
+    "Reconnect": {
+      "Auto": true,
+      "MaxAttempts": 5,
+      "MaxAuthRetryAttempts": 5,
+      "BaseDelayMs": 5000,
+      "MaxDelayMs": 30000,
+      "TotalBudget": "00:30:00",
+      "Cooldown": "00:00:05"
+    },
+    "Certificate": {
+      "Mode": "Strict",
+      "AllowInsecureWebSocket": false,
+      "ValidateServerCertificate": true,
+      "AllowSelfSignedCertificates": false,
+      "AllowCertificateNameMismatch": false
+    },
     "HeartbeatIntervalMs": 25000,
-    "EnableLogging": true,
+    "AllowedHostSuffixes": "*.feishu.cn;*.larksuite.com",
     "EventDeduplication": {
       "Mode": "InMemory",
       "CacheExpiration": "2.00:00:00",
@@ -117,23 +132,25 @@ app.Run();
 | **AuthenticationManager**               | 认证管理器       | WebSocket 认证流程、状态管理、认证事件     |
 | **MessageRouter**                       | 消息路由器       | 消息路由、版本检测(v1.0/v2.0)、处理器管理  |
 | **BinaryMessageProcessor**              | 二进制消息处理器 | 增量接收、ProtoBuf/JSON 解析、内存优化     |
-| **HeartbeatManager**                    | 心跳管理器       | 心跳检测、超时处理、连续超时触发重连       |
+| **HeartbeatManager**                    | 心跳管理器       | 发送应用层 ProtoBuf Ping（**不据 Pong 判死**，连接断开由接收循环/协议级 Ping 检测） |
 | **SessionManager**                      | 会话管理器       | session_id 管理、会话恢复、24 小时有效期   |
 | **MessageSequenceValidator**            | 消息序号验证器   | 重放检测、消息丢失检测、序号回退检测       |
 | **EventSubscriptionManager**            | 事件订阅管理器   | 事件类型订阅、订阅请求发送                 |
+| **FeishuWebSocketConcurrencyService**   | 并发控制服务     | 并发上界（背压闸门）、配置热更新、关停等待  |
 | **ReconnectionOrchestrator**            | 重连协调器       | 统一重连管理、防抖机制、冷却时间           |
 | **ExponentialBackoffReconnectStrategy** | 指数退避重连策略 | 指数退避延迟、次数和时间双重限制           |
 
 #### 消息处理器
 
-| 处理器                    | 说明                                   |
-| ------------------------- | -------------------------------------- |
-| **IMessageHandler**           | 消息处理器接口（CanHandle/HandleAsync） |
-| **FeishuEventMessageHandler** | 事件消息处理器，支持 v1.0 和 v2.0 版本  |
-| **AuthMessageHandler**        | 认证消息处理器                          |
-| **HeartbeatMessageHandler**   | 心跳消息处理器                          |
-| **PingPongMessageHandler**    | Ping/Pong 消息处理器                    |
-| **FeishuWebSocketClient**     | 主客户端，组合所有组件                  |
+| 处理器                       | 说明                                       |
+| ---------------------------- | ------------------------------------------ |
+| **IMessageHandler**          | 消息处理器接口（CanHandle/HandleAsync）    |
+| **JsonMessageHandler**       | 处理器基类（安全反序列化辅助）             |
+| **FeishuEventMessageHandler**| 事件消息处理器，支持 v1.0 和 v2.0 版本     |
+| **PingPongMessageHandler**   | Ping/Pong 消息处理器                       |
+| **AuthMessageHandler**       | 认证响应处理器                             |
+| **HeartbeatMessageHandler**  | 心跳消息处理器                             |
+| **FeishuWebSocketClient**    | 主客户端，组合所有组件                     |
 
 ### 架构优势
 
@@ -161,6 +178,11 @@ public class CustomMessageHandler : JsonMessageHandler
         // 处理逻辑...
     }
 }
+
+// ⚠️ 注意：IMessageHandler 的注册入口（MessageRouter）未对使用方暴露，
+// 无法通过客户端实例注册自定义 IMessageHandler。
+// 业务扩展请实现 IFeishuEventHandler 并通过 IFeishuEventHandlerFactory / DI 注册（见下方"自定义事件处理器"）：
+//   services.AddScoped<IFeishuEventHandler, CustomEventHandler>();
 ```
 
 > 💡 内置消息处理器（Ping/Pong、认证、心跳、事件）由 `FeishuWebSocketClient` 构造时自动注册到内部 `MessageRouter`；`MessageRouter.RegisterHandler(IMessageHandler)` 为公开方法，可在自建消息路由时注册自定义处理器。
@@ -184,6 +206,7 @@ Mud.Feishu.WebSocket/
 │   ├── SessionManager.cs             # 会话管理
 │   ├── MessageSequenceValidator.cs   # 消息序号验证
 │   ├── EventSubscriptionManager.cs   # 事件订阅管理
+│   ├── FeishuWebSocketConcurrencyService.cs # 并发控制（背压闸门）
 │   ├── ReconnectionOrchestrator.cs   # 重连协调器
 │   ├── ExponentialBackoffReconnectStrategy.cs # 指数退避策略
 │   ├── IReconnectStrategy.cs         # 重连策略接口
@@ -197,7 +220,7 @@ Mud.Feishu.WebSocket/
 │   ├── HeartbeatMessageHandler.cs  # 心跳消息处理
 │   ├── PingPongMessageHandler.cs   # Ping/Pong处理
 │   ├── JsonMessageHandler.cs       # JSON消息基类
-│   └── ScopedFeishuEventHandlerFactory.cs # 事件处理器工厂
+│   └── ScopedFeishuEventHandlerFactory.cs # 事件处理器工厂（Scoped 作用域）
 ├── Interfaces/                    # 公共接口
 │   ├── IFeishuWebSocketClient.cs   # 客户端接口
 │   ├── IFeishuWebSocketManager.cs  # 管理器接口
@@ -242,10 +265,10 @@ builder.Services.CreateFeishuWebSocketServiceBuilder(builder.Configuration)
 // 使用委托配置选项
 builder.Services.CreateFeishuWebSocketServiceBuilder(options =>
 {
-    options.AutoReconnect = true;
+    options.Reconnect.Auto = true;
+    options.Reconnect.MaxAttempts = 5;
+    options.Reconnect.TotalBudget = TimeSpan.FromMinutes(30);
     options.HeartbeatIntervalMs = 25000;
-    options.MaxReconnectAttempts = 5;
-    options.MaxTotalReconnectTime = TimeSpan.FromMinutes(30);
     options.EventDeduplication.Mode = EventDeduplicationMode.InMemory;
 })
 .AddHandler<MessageReceiveEventHandler>()
@@ -692,32 +715,43 @@ public class ServiceManager
 
 | 选项                                  | 类型                                 | 默认值     | 说明                                        |
 | ------------------------------------- | ------------------------------------ | ---------- | ------------------------------------------- |
-| `AutoReconnect`                       | bool                                 | true       | 自动重连                                    |
-| `MaxReconnectAttempts`                | int                                  | 5          | 最大重连次数                                |
-| `ReconnectDelayMs`                    | int                                  | 5000       | 重连基础延迟(ms)，最小 1000                 |
-| `MaxReconnectDelayMs`                 | int                                  | 30000      | 最大重连延迟(ms)，≥ReconnectDelayMs         |
-| `MaxTotalReconnectTime`               | TimeSpan                             | 30 分钟    | 最大重连总时间，超时后停止重连              |
-| `ReconnectCooldownTime`               | TimeSpan                             | 5 秒       | 两次重连尝试间的最小间隔                    |
+| `AppKey`                              | string                               | "default"  | 飞书应用 AppKey，用于指标维度（**支持热更新**） |
+| `Reconnect.Auto`                      | bool                                 | true       | 自动重连                                    |
+| `Reconnect.MaxAttempts`               | int                                  | 5          | 最大重连次数，0 表示无限（仅受 `Reconnect.TotalBudget` 限制） |
+| `Reconnect.MaxAuthRetryAttempts`      | int                                  | 5          | 认证最大重试次数，0 表示无限（独立于重连次数） |
+| `Reconnect.BaseDelayMs`               | int                                  | 5000       | 重连基础延迟(ms)，最小 1000                 |
+| `Reconnect.MaxDelayMs`                | int                                  | 30000      | 最大重连延迟(ms)，须 ≥ `Reconnect.BaseDelayMs` |
+| `Reconnect.TotalBudget`               | TimeSpan                             | 30 分钟    | 最大重连总时间，超时后停止重连              |
+| `Reconnect.Cooldown`                  | TimeSpan                             | 5 秒       | 两次重连尝试间的最小间隔                    |
 | `EnableReconnectMetrics`              | bool                                 | true       | 是否启用重连指标收集                        |
 | `HeartbeatIntervalMs`                 | int                                  | 25000      | 心跳间隔(ms)，最小 5000（飞书建议 25 秒内） |
 | `ConnectionTimeoutMs`                 | int                                  | 10000      | 连接超时(ms)                                |
 | `InitialReceiveBufferSize`            | int                                  | 4096       | 初始接收缓冲区大小(字节)                    |
-| `EnableLogging`                       | bool                                 | true       | 启用日志                                    |
 | `HealthCheckIntervalMs`               | int                                  | 60000      | 健康检查间隔(ms)，最小 1000                 |
 | `MessageHandlerTimeoutMs`             | int                                  | 30000      | 单条消息处理超时(ms)，0 表示不限制          |
+| `MaxConcurrentHandlers`               | int                                  | 32         | 并发处理器上界（背压闸门），0/负数表示无限制。**背压已前移到接收路径** |
+| `AuthTimeoutMs`                       | int                                  | 30000      | 认证响应超时(ms)，0 回退默认 30000          |
+| `AuthGateTimeoutMs`                   | int                                  | 0          | 认证闸门等待上限(ms)，0=关闭（**支持热更新**） |
+| `ProtocolKeepAliveInterval`           | TimeSpan                             | 20 秒      | 协议级 Ping/Pong 保活间隔，0=禁用（5–300 秒） |
 | `SequenceGapThreshold`                | ulong                                | 0          | 消息序号跳跃阈值，0 表示禁用跳跃检测      |
-| `ValidateServerCertificate`           | bool                                 | true       | 是否验证 SSL 证书（生产环境建议 true）      |
-| `AllowSelfSignedCertificates`         | bool                                 | false      | 是否允许自签名证书（生产环境建议 false）    |
-| `AllowInsecureWebSocket`              | bool                                 | false      | 是否允许 ws:// 不安全连接（仅开发/测试环境）|
-| `CustomCertificateValidationCallback` | RemoteCertificateValidationCallback? | null       | 自定义证书验证回调                          |
+| `Certificate.Mode`                    | `CertificateValidationMode`          | `Strict`   | 证书校验模式：`Strict` / `Dev` / `Custom`（`Custom` 时必须提供 `Certificate.CustomCallback`） |
+| `Certificate.ValidateServerCertificate` | bool                               | true       | 是否验证 SSL 证书（生产环境建议 true）      |
+| `Certificate.AllowSelfSignedCertificates` | bool                             | false      | 是否允许自签名证书（仅 `Mode=Dev` 放行，生产建议 false） |
+| `Certificate.AllowCertificateNameMismatch` | bool                           | false      | 是否允许证书名称不匹配（仅 `Mode=Dev` 放行）|
+| `Certificate.AllowInsecureWebSocket`  | bool                                 | false      | 是否允许 ws:// 不安全连接（仅开发/测试环境）|
+| `Certificate.CustomCallback`          | RemoteCertificateValidationCallback? | null       | 自定义证书验证回调（`Mode=Custom` 时必须提供）|
+| `AllowedHostSuffixes`                 | string                               | `*.feishu.cn;*.larksuite.com` | 主机白名单：`*.` 通配后缀或精确主机名，分号分隔，大小写不敏感；**置空表示不限制**（连接自建代理/本地测试端点时使用） |
 | `EventDeduplication`                  | EventDeduplicationOptions            | 见下       | 事件去重配置                                |
+
+> ℹ️ **旧扁平键兼容**：JSON 配置里的 `AutoReconnect` / `MaxReconnectAttempts` / `ReconnectDelayMs` / `ValidateServerCertificate` / `AllowSelfSignedCertificates` 等旧键**仍可绑定**（启动时自动回填到 `Reconnect.*` / `Certificate.*`），但 **C# 代码必须使用嵌套 API**。迁移对照见 [配置迁移（R2/R4）](../documents/Configuration/ConfigMigration-R2.md)。
 
 ### 消息大小限制配置 (`MessageSizeLimits`)
 
-| 选项                   | 类型 | 默认值   | 说明                     |
-| ---------------------- | ---- | -------- | ------------------------ |
-| `MaxTextMessageSize`   | int  | 1048576  | 最大文本消息大小(字符)   |
-| `MaxBinaryMessageSize` | long | 10485760 | 最大二进制消息大小(字节) |
+| 选项                   | 类型 | 默认值   | 说明                                                         |
+| ---------------------- | ---- | -------- | ------------------------------------------------------------ |
+| `MaxTextMessageSize`   | int  | 1048576  | 最大文本消息大小(字符)                                       |
+| `MaxTextMessageBytes`  | int  | 0        | 最大文本消息大小(UTF-8 字节)，0 = 按 3 × `MaxTextMessageSize` 自动推导（发送/接收同源） |
+| `MaxBinaryMessageSize` | long | 10485760 | 最大二进制消息大小(字节)，发送与接收均校验                    |
 
 **配置示例：**
 
@@ -726,6 +760,7 @@ public class ServiceManager
   "FeishuWebSocket": {
     "MessageSizeLimits": {
       "MaxTextMessageSize": 1048576,
+      "MaxTextMessageBytes": 0,
       "MaxBinaryMessageSize": 10485760
     }
   }
@@ -773,13 +808,10 @@ public class ServiceManager
 | `CacheExpiration`          | TimeSpan | 48 小时        | 缓存过期时间，最小 1 分钟                                  |
 | `ProcessingTimeout`        | TimeSpan | 10 分钟        | 处理中超时时间，超时后允许重新处理，最小 10 秒             |
 | `CleanupInterval`          | TimeSpan | 5 分钟         | 缓存清理间隔（仅内存模式），最小 30 秒                     |
-| `AllowProcessingOnFallback`| bool     | true           | Redis 失败时是否降级处理（false=拒绝，true=降级到内存去重）|
-| `MaxRetryCount`            | int      | 3              | Redis 操作最大重试次数，范围 0-10（仅分布式模式）          |
-| `InitialRetryDelay`        | TimeSpan | 1 秒           | 首次重试延迟，后续使用指数退避（仅分布式模式）             |
-| `MaxRetryDelay`            | TimeSpan | 30 秒          | 指数退避最大延迟上限（仅分布式模式）                       |
 | `KeyPrefix`                | string   | "feishu:event:" | Redis 键前缀，用于应用/环境隔离（仅分布式模式）           |
 | `MaxCacheSize`             | int      | 100000         | 内存缓存最大条目数，0 表示不限制（仅内存模式）             |
-| `EnableVerboseLogging`     | bool     | false          | 是否启用详细去重日志（调试用，生产环境建议关闭）           |
+
+> ℹ️ R4：`AllowProcessingOnFallback` / `MaxRetryCount` / `InitialRetryDelay` / `MaxRetryDelay` / `EnableVerboseLogging` 已**移除**（Redis 主路径不消费）；失败事件重试请使用 `FeishuWebhook:Retry`（`FailedEventRetryOptions`），去重日志改用 `Logging:LogLevel:*`。
 
 **预设配置：**
 
@@ -811,7 +843,6 @@ var webSocketBuilder = builder.Services.CreateFeishuWebSocketServiceBuilder(conf
 if (builder.Environment.IsDevelopment())
 {
     webSocketBuilder.ConfigureOptions(options => {
-        options.EnableLogging = true;
         options.HeartbeatIntervalMs = 15000;
     });
 }
@@ -931,14 +962,32 @@ validator.ValidationFailed += (sender, args) =>
 - **重连恢复**：通过 `GetSessionIdForReconnect()` 获取有效会话 ID 用于断线恢复
 - **会话事件**：`SessionUpdated` 事件通知会话变更
 
+### 连接监控指标
+
+> ⚠️ 早期文档中的 `ConnectionMetrics` 组件与 `GetCurrentStats()` API **并不存在**（已核对源码）。
+> 连接统计请使用 `IFeishuWebSocketManager.GetConnectionStats()`（返回 `Uptime` / `ReconnectCount` / `LastError`）
+> 与 `GetConnectionState()`；细粒度指标通过 `FeishuMetrics`（OpenTelemetry）暴露：
+
+```csharp
+var manager = serviceProvider.GetRequiredService<IFeishuWebSocketManager>();
+var (uptime, reconnectCount, lastError) = manager.GetConnectionStats();
+
+// OTel 指标（按 feishu.app_key 维度）
+//   feishu.websocket.connections          —— 活跃连接数
+//   feishu.websocket.backlog              —— 在途待处理消息数
+//   feishu.websocket.message.duration     —— 消息处理耗时分布
+//   feishu.websocket.reconnect            —— 重连次数（outcome = success/failure）
+//   feishu.event.deduplication            —— 去重命中/未命中
+```
+
 ### SSL/TLS 证书配置
 
 ```csharp
 builder.Services.CreateFeishuWebSocketServiceBuilder(builder.Configuration)
     .ConfigureOptions(options =>
     {
-        options.ValidateServerCertificate = true;
-        options.AllowSelfSignedCertificates = false;
+        options.Certificate.ValidateServerCertificate = true;
+        options.Certificate.AllowSelfSignedCertificates = false;
     })
     .AddHandler<MessageReceiveEventHandler>()
     .Build();
@@ -947,7 +996,8 @@ builder.Services.CreateFeishuWebSocketServiceBuilder(builder.Configuration)
 自定义证书验证：
 
 ```csharp
-options.CustomCertificateValidationCallback = (sender, certificate, chain, sslPolicyErrors) =>
+options.Certificate.Mode = CertificateValidationMode.Custom;
+options.Certificate.CustomCallback = (sender, certificate, chain, sslPolicyErrors) =>
 {
     return sslPolicyErrors == System.Net.Security.SslPolicyErrors.None;
 };

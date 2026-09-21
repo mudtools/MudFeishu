@@ -131,12 +131,10 @@ public class MultiAppTests
             AppId = AppConfigs.AppIds.Default,
             AppSecret = AppConfigs.Secrets.Valid,
             BaseUrl = "https://open.feishu.cn",
-            TimeOut = 30,
-            RetryCount = 3,
-            RetryDelayMs = 1000,
+            TimeoutSeconds = 30,
             TokenRefreshThreshold = 300,
-            EnableLogging = true,
-            IsDefault = true
+            IsDefault = true,
+            HttpRetry = new Mud.Feishu.Abstractions.Configuration.HttpRetryOptions { MaxAttempts = 3, DelayMs = 1000 }
         };
 
         // Act & Assert
@@ -153,12 +151,12 @@ public class MultiAppTests
             AppKey = "test-app",
             AppId = AppConfigs.AppIds.Default,
             AppSecret = AppConfigs.Secrets.Valid,
-            RetryDelayMs = 50
+            HttpRetry = new Mud.Feishu.Abstractions.Configuration.HttpRetryOptions { DelayMs = 50 }
         };
 
         // Act & Assert
         var ex = Assert.Throws<InvalidOperationException>(() => invalidConfig.Validate());
-        Assert.Contains("RetryDelayMs", ex.Message);
+        Assert.Contains("HttpRetry.DelayMs", ex.Message);
     }
 
     [Fact]

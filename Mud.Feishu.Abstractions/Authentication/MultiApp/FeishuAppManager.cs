@@ -71,6 +71,11 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
     private readonly object _configApplyLock = new();
 
     /// <summary>
+    /// TMR-P1-6（F6）：凭据变更清库失败的结构化事件 ID（供 metric/告警系统按 EventId 过滤接入）。
+    /// </summary>
+    internal static readonly EventId PurgeTokenStoreFailureEvent = new(5601, "PurgeTokenStoreFailed");
+
+    /// <summary>
     /// TMA2-07 / P1-4：应用首次实例化事件。
     /// </summary>
     /// <remarks>
@@ -267,13 +272,14 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
 
             // TMF-02 / D13：Phase-P——清库（IO）在获取 _configApplyLock 之前完成，
             // 维持「清库 → 重建」严格时序，同时消除锁内 sync-over-async 阻塞。
-            PurgeCredentialChangedTokens(incoming);
+            // TMR-P1-6（F6）：返回凭据变更键集，供提交后二次清库（D10 闭环）使用。
+            var credentialChangedKeys = PurgeCredentialChangedTokens(incoming);
 
             // TMA2-09 / D13：两阶段事务化——Phase-A 预构造，Phase-B 提交。
             // 锁序：_configApplyLock → _lazyRebuildLock / _registryLock / _defaultAppLock。
             lock (_configApplyLock)
             {
-                ApplyConfigurationChanges(incoming);
+                ApplyConfigurationChanges(incoming, credentialChangedKeys);
             }
         }
         catch (Exception ex)
@@ -287,7 +293,10 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
     /// TMA2-09 / D13：两阶段事务化应用配置变更。
     /// </summary>
     /// <param name="incoming">新配置列表</param>
-    private void ApplyConfigurationChanges(List<FeishuAppConfig> incoming)
+    /// <param name="credentialChangedKeys">
+    /// TMR-P1-6（F6）：Phase-P 检出的凭据变更键集，提交后对其中的"已提交更新键"发起二次清库（D10 闭环）。
+    /// </param>
+    private void ApplyConfigurationChanges(List<FeishuAppConfig> incoming, IReadOnlyList<string> credentialChangedKeys)
     {
         var incomingKeys = new HashSet<string>(incoming.Select(c => c.AppKey), StringComparer.Ordinal);
         var currentKeys = Volatile.Read(ref _configs).Select(c => c.AppKey).ToList();
@@ -399,8 +408,33 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
             }
         }
 
-        // 3) 同步配置快照（TMA-05：原子交换不可变数组）
-        Volatile.Write(ref _configs, incoming.ToArray());
+        // 3) 同步配置快照（TMA-05：原子交换不可变数组；TMR-P2-14：纳入 _registryLock 与 AddApp 的快照 RMW 互斥）
+        lock (_registryLock)
+        {
+            Volatile.Write(ref _configs, incoming.ToArray());
+        }
+
+        // 4) TMR-P1-6（F6）：提交后二次清库（D10 闭环）。
+        // 窗口期（Phase-P 清库完成 → 本应用提交 → 旧上下文 Enqueue 退休）内，旧上下文的组件后台刷新
+        // Timer / 在途 GetOrRefreshTokenAsync 可能用旧凭据重新调 API 并将令牌写回 store；
+        // 新上下文恢复出"旧凭据来源"的令牌后必然 401。此处对"凭据变更键 ∩ 本轮实际提交（更新）的键"
+        // 发起提交后二次清库——此时旧上下文已停止接管新请求，回写源已被切断，闭环成立。
+        // 与并发写入存在 store SCAN 固有残余窗口（与 Redis 语义一致）。
+        // AddApp 新增键与被移除键无需二次清库（前者无旧凭据、后者旧上下文已 Enqueue 退休且键有 TTL）。
+        // PurgeTokenStoreAsync 内部吞掉全部异常（含 OCE），fire-and-forget 安全。
+        var postCommitPurgeKeys = credentialChangedKeys
+            .Where(k => builtContexts.Any(b => string.Equals(b.appKey, k, StringComparison.Ordinal)))
+            .ToList();
+        if (postCommitPurgeKeys.Count > 0)
+        {
+            _ = Task.Run(async () =>
+            {
+                foreach (var appKey in postCommitPurgeKeys)
+                {
+                    await PurgeTokenStoreAsync(appKey).ConfigureAwait(false);
+                }
+            });
+        }
     }
 
     /// <summary>
@@ -414,12 +448,18 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
     /// 从 store 恢复旧凭据令牌（D10 语义）。宿主无 SynchronizationContext（ASP.NET Core /
     /// 控制台），无死锁面；配置变更是低频运维事件，回调线程短暂阻塞可接受。
     /// <para>
+    /// TMR-P1-6（F6）：同步等待增加 10s 阻塞上界（键量 × RTT 不可预估）；超时后不放弃——
+    /// 剩余键交给提交后二次清库收尾（<see cref="ApplyConfigurationChanges"/> 步骤 4），维持 D10 语义。
+    /// </para>
+    /// <para>
     /// 并发语义：两个并发 <c>OnChange</c> 各自执行 Phase-P 可能对同一 appKey 清库两次——
     /// ClearAsync 幂等（删除不存在键为 no-op），且第二次清库发生在后者 Phase-A 之前，
     /// 时序安全性不弱于串行。清库内部吞掉全部异常（含 OCE，TMF-03），不会中断热更新。
     /// </para>
     /// </remarks>
-    private void PurgeCredentialChangedTokens(List<FeishuAppConfig> incoming)
+    /// <param name="incoming">新配置列表</param>
+    /// <returns>检出的凭据已变更的应用键集（供提交后二次清库使用）。</returns>
+    internal List<string> PurgeCredentialChangedTokens(List<FeishuAppConfig> incoming)
     {
         var toPurge = new List<string>();
         foreach (var config in incoming)
@@ -440,20 +480,31 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
 
         if (toPurge.Count == 0)
         {
-            return;
+            return toPurge;
         }
 
         _logger.LogInformation(
             "检测到 {Count} 个应用的凭据已变更（AppId 或 AppSecret 变化），清除其持久化令牌：{AppKeys}",
             toPurge.Count, string.Join(", ", toPurge));
 
-        Task.Run(async () =>
+        Task purgePhaseP = Task.Run(async () =>
         {
             foreach (var appKey in toPurge)
             {
                 await PurgeTokenStoreAsync(appKey).ConfigureAwait(false);
             }
-        }).GetAwaiter().GetResult();
+        });
+
+        // TMR-P1-6（F6）：OnChange 回调线程上的同步等待必须有上界（键量 × RTT 不可预估）。
+        // 超时后不放弃——剩余键交给提交后的二次清库收尾，维持「清库 → 重建」D10 语义。
+        if (!purgePhaseP.Wait(TimeSpan.FromSeconds(10)))
+        {
+            _logger.LogWarning(
+                "凭据变更清库（Phase-P）超过 10s 未完成，剩余键将由提交后二次清库收尾。AppKeys: {AppKeys}",
+                string.Join(", ", toPurge));
+        }
+
+        return toPurge;
     }
 
     /// <summary>
@@ -471,9 +522,15 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
             {
                 return lazy.Value;
             }
-            catch
+            catch (ObjectDisposedException ex)
             {
-                // 旧 Lazy 初始化失败的上下文无需退休/比对。
+                // TMR-P2-7（F7）：退休期预期路径，Debug 级别即可（原空 catch 使故障不可诊断）。
+                _logger.LogDebug(ex, "解析已实例化上下文时该上下文已释放（退休期预期）。AppKey: {AppKey}", appKey);
+            }
+            catch (Exception ex) when (ex is not (OperationCanceledException or OutOfMemoryException))
+            {
+                // 旧 Lazy 初始化失败的上下文无需退休/比对，但保留可观测性。
+                _logger.LogDebug(ex, "解析已实例化上下文失败（视为不存在）。AppKey: {AppKey}", appKey);
             }
         }
 
@@ -522,20 +579,24 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
     /// </summary>
     internal static bool IsSameAs(FeishuAppConfig a, FeishuAppConfig b)
     {
+        var aRetry = a.HttpRetry ?? new Configuration.HttpRetryOptions();
+        var bRetry = b.HttpRetry ?? new Configuration.HttpRetryOptions();
+        var aCb = a.CircuitBreaker ?? new Configuration.CircuitBreakerOptions();
+        var bCb = b.CircuitBreaker ?? new Configuration.CircuitBreakerOptions();
+
         return string.Equals(a.AppId, b.AppId, StringComparison.Ordinal)
             && string.Equals(a.AppSecret, b.AppSecret, StringComparison.Ordinal)
             && string.Equals(a.BaseUrl, b.BaseUrl, StringComparison.Ordinal)
             && a.AllowCustomBaseUrl == b.AllowCustomBaseUrl
-            && a.TimeOut == b.TimeOut
-            && a.RetryCount == b.RetryCount
-            && a.RetryDelayMs == b.RetryDelayMs
-            && a.CircuitBreakerEnabled == b.CircuitBreakerEnabled
-            && a.CircuitBreakerFailureThreshold == b.CircuitBreakerFailureThreshold
-            && a.CircuitBreakerSamplingDurationSeconds == b.CircuitBreakerSamplingDurationSeconds
-            && a.CircuitBreakerBreakDurationSeconds == b.CircuitBreakerBreakDurationSeconds
-            && a.CircuitBreakerMinimumThroughput == b.CircuitBreakerMinimumThroughput
+            && a.TimeoutSeconds == b.TimeoutSeconds
+            && aRetry.MaxAttempts == bRetry.MaxAttempts
+            && aRetry.DelayMs == bRetry.DelayMs
+            && aCb.Enabled == bCb.Enabled
+            && aCb.FailureThreshold == bCb.FailureThreshold
+            && aCb.SamplingDurationSeconds == bCb.SamplingDurationSeconds
+            && aCb.BreakDurationSeconds == bCb.BreakDurationSeconds
+            && aCb.MinimumThroughput == bCb.MinimumThroughput
             && a.TokenRefreshThreshold == b.TokenRefreshThreshold
-            && a.EnableLogging == b.EnableLogging
             && a.IsDefault == b.IsDefault;
     }
 
@@ -549,7 +610,8 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
     /// TMF-01：租户令牌经 <see cref="ITokenStore.ClearAsync"/>，用户令牌经
     /// <see cref="IFeishuUserTokenStorePurge.ClearAllUsersAsync"/> 能力探测（工厂每次 Create
     /// 新实例的 Memory 后端依赖跨实例共享记账才能清干净，用户存储此前被整段丢弃）。
-    /// ClearAsync/ClearAllUsersAsync 失败不阻断重建（LogWarning）。
+    /// ClearAsync/ClearAllUsersAsync 失败不阻断重建（带 <see cref="PurgeTokenStoreFailureEvent"/>
+    /// 记 Warning，宿主可据此建 metric；OCE 视为「未清」不记为失败——TMF-03 语义）。
     /// </summary>
     /// <param name="appKey">应用唯一标识</param>
     private async Task PurgeTokenStoreAsync(string appKey)
@@ -568,15 +630,22 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
                 _logger.LogInformation("已清除应用 {AppKey} 的持久化令牌。", appKey);
             }
         }
+        catch (OperationCanceledException)
+        {
+            // TMF-03：取消不向上传播——清库被取消视为「未清」，不记为失败，热更新继续。
+        }
         catch (Exception ex)
         {
-            // TMF-03：取消不向上传播——清库被取消视为「未清」，热更新继续（与失败不阻断语义一致）。
-            _logger.LogWarning(ex, "清除应用 {AppKey} 的持久化令牌失败（不阻断重建）。", appKey);
+            // TMR-P1-6（F6）：结构化可观测——EventId 5601 供 metric/告警系统过滤接入。
+            // 新凭据 + 残留旧令牌可能导致 401，需检查存储后端连通性。
+            _logger.LogWarning(PurgeTokenStoreFailureEvent, ex,
+                "清除应用 {AppKey} 的持久化令牌失败（不阻断重建）。新凭据 + 残留旧令牌可能导致 401，" +
+                "请检查存储后端连通性。", appKey);
         }
     }
 
     /// <summary>
-    /// ARC-7：记录命名客户端端点（<c>BaseUrl</c> / <c>TimeOut</c>）的热更新，使
+    /// ARC-7：记录命名客户端端点（<c>BaseUrl</c> / <c>TimeoutSeconds</c>）的热更新，使
     /// 「配置是否真的作用到了 HTTP 客户端」在日志中可观测（修复前这两项变更完全不生效且无任何提示）。
     /// </summary>
     /// <param name="incoming">新配置。</param>
@@ -600,12 +669,12 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
             : incoming.BaseUrl;
 
         if (!string.Equals(previousBaseUrl, incomingBaseUrl, StringComparison.Ordinal) ||
-            previous.TimeOut != incoming.TimeOut)
+            previous.TimeoutSeconds != incoming.TimeoutSeconds)
         {
             _logger.LogInformation(
-                "配置热更新：应用 {AppKey} 的 HTTP 客户端端点已变更（BaseUrl: {PreviousBaseUrl} → {IncomingBaseUrl}，TimeOut: {PreviousTimeOut}s → {IncomingTimeOut}s），" +
+                "配置热更新：应用 {AppKey} 的 HTTP 客户端端点已变更（BaseUrl: {PreviousBaseUrl} → {IncomingBaseUrl}，TimeoutSeconds: {PreviousTimeOut}s → {IncomingTimeOut}s），" +
                 "重建后的客户端将使用新端点，无需重启进程。",
-                incoming.AppKey, previousBaseUrl, incomingBaseUrl, previous.TimeOut, incoming.TimeOut);
+                incoming.AppKey, previousBaseUrl, incomingBaseUrl, previous.TimeoutSeconds, incoming.TimeoutSeconds);
         }
     }
 
@@ -648,27 +717,38 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
     /// <param name="appKey">应用唯一标识</param>
     /// <returns>应用上下文实例</returns>
     /// <exception cref="InvalidOperationException">当应用未配置或创建失败时抛出</exception>
+    /// <exception cref="FeishuAppRemovedException">当应用已从配置快照移除（热更新/RemoveApp 竞态窗口）时抛出</exception>
     /// <remarks>
     /// <para>
     /// NEW-MA-08 修复：<see cref="Lazy{T}"/> 在 <see cref="LazyThreadSafetyMode.ExecutionAndPublication"/>
     /// 模式下会缓存工厂委托抛出的异常，导致首次初始化失败的应用在进程剩余生命周期内不可用。
     /// 此方法在检测到缓存异常时重建 <see cref="Lazy{T}"/> 实例，允许后续调用重试初始化。
     /// </para>
+    /// <para>
+    /// TMR-P1-3（F3）：快照移除竞态改造——原实现四处 <c>First()</c> 在"热更新移除窗口内并发首访"
+    /// 时抛 <see cref="InvalidOperationException"/> 并落入瞬时白名单，触发"反复重建 Lazy、反复失败"的
+    /// 资源放大循环，且已创建的上下文（Scope + 3 管理器 + 恢复客户端）既未注册也未 Dispose → 泄漏。
+    /// 现改为：快照查无 → <see cref="FeishuAppRemovedException"/>（确定性终态，排除出白名单）+
+    /// <c>finally</c> 中对未注册成功的上下文经退休队列回收（Timer root 对象图，GC 不代劳，D5）。
+    /// </para>
     /// </remarks>
     private FeishuAppContext GetOrCreateContext(string appKey)
     {
         if (_lazyContexts.TryGetValue(appKey, out var lazy))
         {
+            FeishuAppContext? createdContext = null;
             try
             {
                 var context = lazy.Value;
+                createdContext = context;
                 // 注册到基类字典中（如果尚未注册）
                 // 注意：必须使用 base.HasApp 检查"是否已注册到基类字典"，
                 // 而非使用 HasApp（后者会同时检查 _lazyContexts，导致永远跳过 RegisterApp）。
                 var wasRegistered = base.HasApp(appKey);
                 if (!wasRegistered)
                 {
-                    var config = Volatile.Read(ref _configs).First(c => c.AppKey == appKey);
+                    var config = FindConfigInSnapshot(appKey)
+                        ?? throw new FeishuAppRemovedException(appKey);
                     RegisterApp(appKey, context, config.IsDefault);
                 }
                 // TMA2-07 / P1-4：首次实例化后在锁外触发事件。
@@ -686,11 +766,13 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
                 // NEW-MA-08 修复：Lazy<ExecutionAndPublication> 缓存异常后，后续 .Value 访问会重新抛出同一异常。
                 // 此处重建 Lazy<> 以允许下次调用重试初始化（如 Redis 短暂故障恢复后可自愈）。
                 // 使用双检锁避免并发线程同时重建：仅当字典中仍是原 Lazy 实例时才重建。
+                // TMR-P1-3：快照查无该应用时不再重建（确定性终态），抛 FeishuAppRemovedException。
                 lock (_lazyRebuildLock)
                 {
                     if (_lazyContexts.TryGetValue(appKey, out var current) && ReferenceEquals(current, lazy))
                     {
-                        var config = Volatile.Read(ref _configs).First(c => c.AppKey == appKey);
+                        var config = FindConfigInSnapshot(appKey)
+                            ?? throw new FeishuAppRemovedException(appKey);
                         var capturedConfig = config;
                         _lazyContexts[appKey] = new Lazy<FeishuAppContext>(
                             () => CreateAppContext(capturedConfig),
@@ -700,11 +782,33 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
                 throw new InvalidOperationException(
                     $"应用 '{appKey}' 初始化失败: {ex.Message}", ex);
             }
+            finally
+            {
+                // TMR-P1-3：注册失败路径上已创建的上下文必须显式回收（Timer roots 对象图，GC 不代劳，D5）。
+                // 经退休队列回收（而非直接 Dispose）：保留宽限期语义，避免打断刚完成装配的管理器的在途初始化。
+                if (createdContext != null && !base.HasApp(appKey))
+                {
+                    try { _retirement?.Enqueue(appKey, createdContext); }
+                    catch (ObjectDisposedException)
+                    {
+                        // 队列已释放（容器关闭中），此处仅放弃回收。
+                    }
+                }
+            }
         }
 
         throw new InvalidOperationException(
             $"未找到应用标识为 '{appKey}' 的应用上下文。请先调用 RegisterApp 注册应用。");
     }
+
+    /// <summary>
+    /// TMR-P1-3（F3）：在配置快照中查找指定应用的配置；查无返回 null（应用已移除或尚未入快照）。
+    /// </summary>
+    /// <param name="appKey">应用唯一标识</param>
+    /// <returns>应用配置；快照中不存在时返回 null。</returns>
+    private FeishuAppConfig? FindConfigInSnapshot(string appKey)
+        => Volatile.Read(ref _configs).FirstOrDefault(c =>
+            string.Equals(c.AppKey, appKey, StringComparison.Ordinal));
 
     /// <inheritdoc />
     public override IFeishuAppContext GetApp(string appKey)
@@ -765,14 +869,23 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
         // 已配置但尚未实例化的应用：触发 Lazy 创建
         if (_lazyContexts.TryGetValue(appKey, out var lazy))
         {
+            FeishuAppContext? createdContext = null;
             try
             {
                 var context = lazy.Value;
+                createdContext = context;
                 // 注册到基类字典以便后续快速查找
                 var wasRegistered = base.HasApp(appKey);
                 if (!wasRegistered)
                 {
-                    var config = Volatile.Read(ref _configs).First(c => c.AppKey == appKey);
+                    // TMR-P1-3（F3）：快照查无该应用（热更新移除窗口）——确定性终态，
+                    // 不注册、不重建、不触发事件，直接返回 false（保持 Try* 语义不抛异常）。
+                    var config = FindConfigInSnapshot(appKey);
+                    if (config == null)
+                    {
+                        appContext = default;
+                        return false;
+                    }
                     RegisterApp(appKey, context, config.IsDefault);
                 }
                 // TMA2-07 / P1-4：首次实例化后在锁外触发事件。
@@ -788,15 +901,19 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
             {
                 // NEW-MA-08 修复：与 GetOrCreateContext 一致，检测到 Lazy 缓存异常时重建 Lazy<> 以允许下次重试。
                 // 保持 Try* 语义：重建后仍返回 false，调用方可下次重试。
+                // TMR-P1-3：快照查无该应用时跳过重建（确定性终态，不放大资源）。
                 lock (_lazyRebuildLock)
                 {
                     if (_lazyContexts.TryGetValue(appKey, out var current) && ReferenceEquals(current, lazy))
                     {
-                        var config = Volatile.Read(ref _configs).First(c => c.AppKey == appKey);
-                        var capturedConfig = config;
-                        _lazyContexts[appKey] = new Lazy<FeishuAppContext>(
-                            () => CreateAppContext(capturedConfig),
-                            LazyThreadSafetyMode.ExecutionAndPublication);
+                        var config = FindConfigInSnapshot(appKey);
+                        if (config != null)
+                        {
+                            var capturedConfig = config;
+                            _lazyContexts[appKey] = new Lazy<FeishuAppContext>(
+                                () => CreateAppContext(capturedConfig),
+                                LazyThreadSafetyMode.ExecutionAndPublication);
+                        }
                     }
                 }
                 appContext = default;
@@ -807,6 +924,19 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
                 // TMA2-12：取消异常不重建 Lazy，保持 Try* 语义返回 false
                 appContext = default;
                 return false;
+            }
+            finally
+            {
+                // TMR-P1-3（F3）：与 GetOrCreateContext 同构——注册失败路径上已创建的上下文
+                // 经退休队列回收，避免孤儿上下文（Scope + 管理器 + Timer）泄漏。
+                if (createdContext != null && !base.HasApp(appKey))
+                {
+                    try { _retirement?.Enqueue(appKey, createdContext); }
+                    catch (ObjectDisposedException)
+                    {
+                        // 队列已释放（容器关闭中），此处仅放弃回收。
+                    }
+                }
             }
         }
 
@@ -863,6 +993,12 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
     {
         // 取消异常不重建 Lazy。
         if (ex is OperationCanceledException)
+            return false;
+
+        // TMR-P1-3（F3）：快照移除是确定性终态，不是瞬时故障——禁止重建 Lazy、禁止重试循环。
+        // 注意：FeishuAppRemovedException 继承 InvalidOperationException 以兼容外部 catch 约定，
+        // 必须先于白名单显式排除，否则会落入"可重试"分支触发"反复重建 Lazy、反复失败"的资源放大循环。
+        if (ex is FeishuAppRemovedException)
             return false;
 
         // 可重试异常白名单：DI 解析失败、网络/存储瞬时故障。
@@ -953,6 +1089,17 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
         if (oldContext != null && (wasInLazy || wasInBase))
         {
             _retirement?.Enqueue(appKey, oldContext);
+        }
+
+        // TMR-P3-16b（F16b）：应用下线后提前回收其持久化令牌（fire-and-forget）。
+        // 现状 TTL（refresh ≤30d）已保证有界，此处收益为提前回收存储空间与
+        // 避免残留键被误诊断；PurgeTokenStoreAsync 内部吞掉全部异常（含 OCE），安全。
+        if (wasInLazy || wasInBase)
+        {
+            _ = Task.Run(async () =>
+            {
+                await PurgeTokenStoreAsync(appKey).ConfigureAwait(false);
+            });
         }
 
         return wasInLazy || wasInBase;
@@ -1090,8 +1237,23 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
                 Volatile.Write(ref _configs, newSnapshot);
 
                 // TMA2-08 / D13：默认应用键写入必须持有 _defaultAppLock。
+                // TMR-P1-5（F5）：AddApp 是第三条默认应用入口（构造期、热更新 OnConfigurationChanged
+                // ②均有 IsDefault 唯一性校验），此前缺失导致"两个 IsDefault=true"且默认应用随运维操作漂移
+                // （下次原默认应用热更新会切回）。语义：后到者胜出（与 AddApp 的既有覆盖语义一致），
+                // 但必须告警使漂移可观测。不做硬失败——硬失败会破坏"运行时切换默认应用"的合法用法。
                 if (config.IsDefault)
                 {
+                    var previousDefault = Volatile.Read(ref _configs)
+                        .FirstOrDefault(c => c.IsDefault &&
+                            !string.Equals(c.AppKey, config.AppKey, StringComparison.Ordinal));
+                    if (previousDefault != null)
+                    {
+                        _logger.LogWarning(
+                            "AddApp({AppKey}) 标记 IsDefault=true，将覆盖原默认应用 {PreviousDefaultKey}。" +
+                            "原应用配置中的 IsDefault 标记未变更，下次其配置热更新时默认应用将被切回，请同步调整配置源。",
+                            config.AppKey, previousDefault.AppKey);
+                    }
+
                     lock (_defaultAppLock)
                     {
                         _defaultAppKey = config.AppKey;
@@ -1342,13 +1504,46 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
 
     private static bool HasResilienceMismatch(FeishuAppConfig app, FeishuAppConfig defaultApp)
     {
-        return app.RetryCount != defaultApp.RetryCount
-            || app.RetryDelayMs != defaultApp.RetryDelayMs
-            || app.TimeOut != defaultApp.TimeOut
-            || app.CircuitBreakerEnabled != defaultApp.CircuitBreakerEnabled
-            || app.CircuitBreakerFailureThreshold != defaultApp.CircuitBreakerFailureThreshold
-            || app.CircuitBreakerSamplingDurationSeconds != defaultApp.CircuitBreakerSamplingDurationSeconds
-            || app.CircuitBreakerBreakDurationSeconds != defaultApp.CircuitBreakerBreakDurationSeconds
-            || app.CircuitBreakerMinimumThroughput != defaultApp.CircuitBreakerMinimumThroughput;
+        var appRetry = app.HttpRetry ?? new Configuration.HttpRetryOptions();
+        var defRetry = defaultApp.HttpRetry ?? new Configuration.HttpRetryOptions();
+        var appCb = app.CircuitBreaker ?? new Configuration.CircuitBreakerOptions();
+        var defCb = defaultApp.CircuitBreaker ?? new Configuration.CircuitBreakerOptions();
+
+        return appRetry.MaxAttempts != defRetry.MaxAttempts
+            || appRetry.DelayMs != defRetry.DelayMs
+            || app.TimeoutSeconds != defaultApp.TimeoutSeconds
+            || appCb.Enabled != defCb.Enabled
+            || appCb.FailureThreshold != defCb.FailureThreshold
+            || appCb.SamplingDurationSeconds != defCb.SamplingDurationSeconds
+            || appCb.BreakDurationSeconds != defCb.BreakDurationSeconds
+            || appCb.MinimumThroughput != defCb.MinimumThroughput;
     }
+}
+
+/// <summary>
+/// TMR-P1-3（F3）：应用已从配置快照移除（热更新 / <c>RemoveApp</c> 竞态窗口内的确定性终态）。
+/// </summary>
+/// <remarks>
+/// <para>
+/// 继承 <see cref="InvalidOperationException"/> 以兼容既有 catch 约定（外部按
+/// <see cref="InvalidOperationException"/> 捕获的宿主代码不受影响），
+/// 但被 <c>FeishuAppManager.IsTransientInitFailure</c> 显式排除出瞬时白名单，
+/// 避免落入"反复重建 Lazy、反复失败"的资源放大循环。此类型为 internal，不进公共 API 面，
+/// 为普通类型（不参与 JSON 序列化），AOT 无涉。
+/// </para>
+/// </remarks>
+internal sealed class FeishuAppRemovedException : InvalidOperationException
+{
+    /// <summary>
+    /// 初始化异常实例。
+    /// </summary>
+    /// <param name="appKey">已从快照移除的应用键。</param>
+    public FeishuAppRemovedException(string appKey)
+        : base($"应用 '{appKey}' 已从配置快照移除（可能正在热更新或已被下线），不再初始化。")
+        => AppKey = appKey;
+
+    /// <summary>
+    /// 已从快照移除的应用键。
+    /// </summary>
+    public string AppKey { get; }
 }

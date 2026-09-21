@@ -148,7 +148,7 @@ public class FeishuTokenRegistrationServiceTests
                     AppId = AppConfigs.AppIds.Default,
                     AppSecret = AppConfigs.Secrets.Default,
                     IsDefault = true,
-                    TimeOut = 60
+                    TimeoutSeconds = 60
                 }
             });
 

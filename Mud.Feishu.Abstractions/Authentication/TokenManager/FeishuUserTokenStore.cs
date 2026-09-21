@@ -136,12 +136,14 @@ public class FeishuUserTokenStore : UserTokenStoreBase, IFeishuUserTokenStorePur
 
     /// <inheritdoc />
     /// <remarks>
-    /// 删除该用户全部已记账令牌键。<b>保留外层 (KeyPrefix → userId) 条目、仅清空内层 tokenType
-    /// 内容</b>——与 <see cref="FeishuTokenStore.ClearAsync"/> 的防孤儿字典模式一致：
-    /// 若此处 TryRemove 外层条目，与 <see cref="TrackUserTokenType"/> 的 GetOrAdd 并发交错时，
-    /// TryAdd 会落入已脱离注册表的孤儿字典（注册丢失），该并发写入的新令牌将对后续
-    /// <see cref="ClearAllUsersAsync"/>（凭据变更清库，D10）不可见。保留空条目的代价是
-    /// 每历史用户一个空字典（下次凭据变更 <see cref="ClearAllUsersAsync"/> 整体重置）。
+    /// 删除该用户全部已记账令牌键，并修剪外层 (KeyPrefix → userId) 条目。
+    /// <para>
+    /// TMR-P3-16a：原实现刻意保留空条目（防孤儿字典），代价是每历史用户 ~64B 空字典
+    /// 长期驻留。现改为修剪——与 <see cref="TrackUserTokenType"/> 的 GetOrAdd 并发交错的
+    /// 残余窗口被容忍：Track 侧 GetOrAdd 重建出的孤儿注册最坏导致一次对不存在键的
+    /// 无害 no-op Remove，且 Memory 后端键自带 TTL（access 按 expire、refresh ≤30d），
+    /// 与既有 TMF-01 残余窗口同级，不产生无界泄漏。
+    /// </para>
     /// </remarks>
     public override Task ClearUserAsync(string userId, CancellationToken cancellationToken = default)
     {
@@ -153,7 +155,8 @@ public class FeishuUserTokenStore : UserTokenStoreBase, IFeishuUserTokenStorePur
                 _cache.Remove(BuildUserRefreshTokenKey(userId, tokenType));
             }
 
-            tokenTypes.Clear();
+            // TMR-P3-16a：修剪空外层条目（先清键再修剪，修剪与 Track 重建的竞态按上述容忍）。
+            SharedUsers.TryRemove(userId, out _);
         }
 
         return Task.CompletedTask;
@@ -210,7 +213,15 @@ public class FeishuUserTokenStore : UserTokenStoreBase, IFeishuUserTokenStorePur
 
     private void UntrackUserTokenType(string userId, string tokenType)
     {
-        if (SharedUsers.TryGetValue(userId, out var userTokens))
-            userTokens.TryRemove(tokenType, out _);
+        if (!SharedUsers.TryGetValue(userId, out var userTokens))
+            return;
+
+        userTokens.TryRemove(tokenType, out _);
+
+        // TMR-P3-16a：内层为空时修剪外层条目（每历史用户 ~64B 空字典驻留 → 0）。
+        // 与 TrackUserTokenType 的 GetOrAdd 并发交错被容忍：Track 侧重建出的孤儿注册
+        // 最坏导致一次对不存在键的无害 no-op Remove（TMF-01 残余窗口同级）。
+        if (userTokens.IsEmpty)
+            SharedUsers.TryRemove(userId, out _);
     }
 }

@@ -20,8 +20,8 @@ namespace Mud.Feishu.Abstractions;
 /// builder.AddApp("default", "cli_xxx", "dsk_xxx", isDefault: true)
 ///        .AddApp("hr-app", "cli_yyy", "dsk_yyy", opt =>
 ///        {
-///            opt.TimeOut = 45;
-///            opt.RetryCount = 5;
+///            opt.TimeoutSeconds = 45;
+///            opt.HttpRetry.MaxAttempts = 5;
 ///        });
 /// var configs = builder.Build();
 /// </code>

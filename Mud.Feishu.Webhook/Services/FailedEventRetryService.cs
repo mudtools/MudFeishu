@@ -19,29 +19,54 @@ namespace Mud.Feishu.Webhook;
 /// </summary>
 public class FailedEventRetryService : BackgroundService
 {
-    private readonly FailedEventRetryOptions _options;
-    private readonly IOptionsMonitor<FeishuWebhookOptions>? _webhookOptions;
+    private readonly IOptionsMonitor<FeishuWebhookOptions> _webhookOptions;
     private readonly ILogger<FailedEventRetryService> _logger;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IFailedEventStore? _failedEventStore;
 
     /// <summary>
+    /// 失败事件重试配置（唯一真相源）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>R5/X3 修复</b>：此前本服务注入 <c>IOptions&lt;FailedEventRetryOptions&gt;</c>，而
+    /// <c>FeishuWebhookServiceBuilder</c> **从未** <c>Configure/AddOptions&lt;FailedEventRetryOptions&gt;</c>
+    /// —— <c>IOptions&lt;T&gt;</c> 的开放泛型注册使其解析为一个全默认实例而不报错。结果是
+    /// <c>FeishuWebhook:Retry</c> 整节（经 Builder 绑定到 <see cref="FeishuWebhookOptions.Retry"/>）
+    /// 的 6 个字段（<c>MaxRetryCount</c> / <c>InitialRetryDelaySeconds</c> / <c>RetryDelayMultiplier</c> /
+    /// <c>MaxRetryDelaySeconds</c> / <c>RetryPollIntervalSeconds</c> / <c>MaxRetryPerPoll</c>）
+    /// <b>恒为默认</b>，只有 <c>EnableRetry</c> 因旧代码的兜底分支偶然生效。
+    /// </para>
+    /// <para>
+    /// 改为直接读 <see cref="FeishuWebhookOptions.Retry"/> 后，写入侧
+    /// （<c>FeishuWebhookService.HandleEventAsync</c> 写 <c>NextRetryAt</c>）与轮询侧**同源**，
+    /// 且保留 <c>IOptionsMonitor</c> 的热更语义（WHF-14）。
+    /// </para>
+    /// </remarks>
+    private FailedEventRetryOptions Retry => _webhookOptions.CurrentValue.Retry ?? new FailedEventRetryOptions();
+
+    /// <summary>
     /// 构造函数
     /// </summary>
+    /// <param name="webhookOptions">
+    /// Webhook 配置（含 <see cref="FeishuWebhookOptions.Retry"/>）。由
+    /// <c>FeishuWebhookServiceBuilder.RegisterOptions()</c> 注册，与本服务同一 DI 容器，必然可解析。
+    /// </param>
+    /// <param name="logger">日志。</param>
+    /// <param name="scopeFactory">作用域工厂（每个待重试事件创建一个作用域）。</param>
+    /// <param name="failedEventStore">失败事件存储；未配置时重试服务不启动。</param>
     public FailedEventRetryService(
-        IOptions<FailedEventRetryOptions> options,
+        IOptionsMonitor<FeishuWebhookOptions> webhookOptions,
         ILogger<FailedEventRetryService> logger,
         IServiceScopeFactory scopeFactory,
-        IFailedEventStore? failedEventStore = null,
-        IOptionsMonitor<FeishuWebhookOptions>? webhookOptions = null)
+        IFailedEventStore? failedEventStore = null)
     {
-        _options = options.Value;
-        _webhookOptions = webhookOptions;
+        _webhookOptions = webhookOptions ?? throw new ArgumentNullException(nameof(webhookOptions));
         _logger = logger;
         _scopeFactory = scopeFactory;
         _failedEventStore = failedEventStore;
 
-        if (_options.EnableRetry && _failedEventStore == null)
+        if (Retry.EnableRetry && _failedEventStore == null)
         {
             _logger.LogWarning("已启用失败事件重试，但未配置失败事件存储(IFailedEventStore)，重试服务将无法工作");
         }
@@ -68,7 +93,7 @@ public class FailedEventRetryService : BackgroundService
             _logger.LogWarning("失败事件重试使用内存存储(InMemoryFailedEventStore)，进程崩溃将导致待重试事件丢失。生产环境建议使用 Redis 实现。");
         }
 
-        _logger.LogInformation("失败事件重试服务已启动，轮询间隔: {Interval} 秒", _options.RetryPollIntervalSeconds);
+        _logger.LogInformation("失败事件重试服务已启动，轮询间隔: {Interval} 秒", Retry.RetryPollIntervalSeconds);
 
         // WHF-14：每轮循环重新读取 EnableRetry（支持配置热更新——禁用态进入轻量轮询，启用即恢复工作），
         // 不再在启动期一次性判定后永久退出
@@ -76,8 +101,7 @@ public class FailedEventRetryService : BackgroundService
         {
             try
             {
-                var enableRetry = _webhookOptions?.CurrentValue.Retry.EnableRetry ?? _options.EnableRetry;
-                if (enableRetry)
+                if (Retry.EnableRetry)
                 {
                     await RetryFailedEventsAsync(stoppingToken);
                 }
@@ -102,7 +126,7 @@ public class FailedEventRetryService : BackgroundService
 
             try
             {
-                await Task.Delay(TimeSpan.FromSeconds(_options.RetryPollIntervalSeconds), stoppingToken);
+                await Task.Delay(TimeSpan.FromSeconds(Retry.RetryPollIntervalSeconds), stoppingToken);
             }
             catch (OperationCanceledException)
             {
@@ -120,9 +144,11 @@ public class FailedEventRetryService : BackgroundService
     /// <returns>退避延迟</returns>
     internal TimeSpan CalculateBackoff(int retryCount)
     {
-        var raw = _options.InitialRetryDelaySeconds * Math.Pow(_options.RetryDelayMultiplier, retryCount);
-        var capped = Math.Min(raw, _options.MaxRetryDelaySeconds);
-        if (double.IsNaN(capped) || capped < 0) capped = _options.MaxRetryDelaySeconds;
+        // R5/X3：先取快照再计算，避免同一次计算中途发生配置热更导致三项参数来自不同版本。
+        var retry = Retry;
+        var raw = retry.InitialRetryDelaySeconds * Math.Pow(retry.RetryDelayMultiplier, retryCount);
+        var capped = Math.Min(raw, retry.MaxRetryDelaySeconds);
+        if (double.IsNaN(capped) || capped < 0) capped = retry.MaxRetryDelaySeconds;
         return TimeSpan.FromSeconds(capped);
     }
 
@@ -133,7 +159,7 @@ public class FailedEventRetryService : BackgroundService
     {
         var failedEvents = await _failedEventStore!.GetPendingRetryEventsAsync(
             DateTimeOffset.UtcNow,
-            _options.MaxRetryPerPoll,
+            Retry.MaxRetryPerPoll,
             cancellationToken);
 
         if (failedEvents.Count == 0)
@@ -153,8 +179,8 @@ public class FailedEventRetryService : BackgroundService
                 // 检查是否应该重试
                 if (!ShouldRetry(failedEvent))
                 {
-                    _logger.LogInformation("事件 {EventId} 已达到最大重试次数 {MaxRetry}，放弃重试", failedEvent.EventId, _options.MaxRetryCount);
-                    await _failedEventStore.RemoveFailedEventAsync(failedEvent.EventId, cancellationToken);
+                    _logger.LogInformation("事件 {EventId} 已达到最大重试次数 {MaxRetry}，放弃重试", failedEvent.EventId, Retry.MaxRetryCount);
+                    await _failedEventStore.RemoveFailedEventAsync(failedEvent.StoreKey ?? failedEvent.EventId, cancellationToken);
                     continue;
                 }
 
@@ -168,12 +194,26 @@ public class FailedEventRetryService : BackgroundService
                 if (eventData == null)
                 {
                     _logger.LogError("无法反序列化事件 {EventId} 的数据，放弃重试", failedEvent.EventId);
-                    await _failedEventStore.RemoveFailedEventAsync(failedEvent.EventId, cancellationToken);
+                    await _failedEventStore.RemoveFailedEventAsync(failedEvent.StoreKey ?? failedEvent.EventId, cancellationToken);
                     continue;
                 }
 
+                // P2-8：补回失败时序列化的 Header（v2.0 schema/app_id 等），反序列化失败仅告警不阻断
+                if (!string.IsNullOrEmpty(failedEvent.SerializedHeader) && eventData.Header == null)
+                {
+                    try
+                    {
+                        eventData.Header = FeishuJsonAot.Deserialize<Mud.Feishu.Abstractions.FeishuEventHeader>(
+                            failedEvent.SerializedHeader!, FeishuJsonDefaults.DeserializerOptions);
+                    }
+                    catch (Exception headerEx)
+                    {
+                        _logger.LogWarning(headerEx, "恢复事件 {EventId} 的 Header 失败，继续重试（Header 为空）", failedEvent.EventId);
+                    }
+                }
+
                 _logger.LogInformation("开始重试事件 {EventId}，当前重试次数: {RetryCount}/{MaxRetry}，AppKey: {AppKey}",
-                    failedEvent.EventId, failedEvent.RetryCount, _options.MaxRetryCount, failedEvent.AppKey ?? "null");
+                    failedEvent.EventId, failedEvent.RetryCount, Retry.MaxRetryCount, failedEvent.AppKey ?? "null");
 
                 // 尝试重新处理
                 var result = await webhookService.HandleEventAsync(eventData, cancellationToken);
@@ -181,7 +221,7 @@ public class FailedEventRetryService : BackgroundService
                 if (result.Success)
                 {
                     _logger.LogInformation("事件 {EventId} 重试成功", failedEvent.EventId);
-                    await _failedEventStore.RemoveFailedEventAsync(failedEvent.EventId, cancellationToken);
+                    await _failedEventStore.RemoveFailedEventAsync(failedEvent.StoreKey ?? failedEvent.EventId, cancellationToken);
                 }
                 else
                 {
@@ -215,6 +255,6 @@ public class FailedEventRetryService : BackgroundService
     /// </summary>
     private bool ShouldRetry(FailedEventInfo failedEvent)
     {
-        return failedEvent.RetryCount < _options.MaxRetryCount;
+        return failedEvent.RetryCount < Retry.MaxRetryCount;
     }
 }

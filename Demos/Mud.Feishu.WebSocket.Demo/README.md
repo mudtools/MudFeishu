@@ -171,25 +171,38 @@ dotnet run
   "FeishuApps": [
     {
       "AppKey": "default",
-      "AppId": "cli_xxxxxxxxxxxxxxxx",
-      "AppSecret": "your-app-secret-here",
+      "AppId": "cli_a1b2c3d4e5f6g7h8",
+      "AppSecret": "your_app_secret_min16chars",
       "BaseUrl": "https://open.feishu.cn",
-      "TimeOut": 30,
-      "RetryCount": 3,
-      "RetryDelayMs": 1000,
-      "EnableLogging": true,
+      "TimeoutSeconds": 30,
+      "HttpRetry": {
+        "MaxAttempts": 3,
+        "DelayMs": 1000
+      },
       "IsDefault": true
     }
   ],
   "FeishuWebSocket": {
-    "AutoReconnect": true,
-    "MaxReconnectAttempts": 5,
-    "ReconnectDelayMs": 5000,
-    "HeartbeatIntervalMs": 25000,
+    "Reconnect": {
+      "Auto": true,
+      "MaxAttempts": 5,
+      "MaxAuthRetryAttempts": 5,
+      "BaseDelayMs": 5000,
+      "MaxDelayMs": 30000,
+      "TotalBudget": "00:30:00",
+      "Cooldown": "00:00:05"
+    },
+    "Certificate": {
+      "Mode": "Strict",
+      "AllowInsecureWebSocket": false,
+      "ValidateServerCertificate": true,
+      "AllowSelfSignedCertificates": false,
+      "AllowCertificateNameMismatch": false
+    },
+    "HeartbeatIntervalMs": 30000,
     "ConnectionTimeoutMs": 10000,
     "InitialReceiveBufferSize": 4096,
-    "EnableLogging": false,
-    "MaxConcurrentHandlers": 32,
+    "AllowedHostSuffixes": "*.feishu.cn;*.larksuite.com",
     "MessageSizeLimits": {
       "MaxTextMessageSize": 1048576,
       "MaxBinaryMessageSize": 10485760
@@ -201,18 +214,22 @@ dotnet run
     }
   },
   "FeishuRedis": {
-    "ServerAddress": "localhost:6379",
-    "Password": "letmein",
+    "Connection": {
+      "ServerAddress": "localhost:6379",
+      "Password": "letmein",
+      "ConnectTimeout": 5000,
+      "SyncTimeout": 5000,
+      "Ssl": false
+    },
+    "Advanced": {
+      "AllowAdmin": false
+    },
     "EventCacheExpiration": "1:00:00",
     "NonceTtl": "00:05:00",
     "SeqIdCacheExpiration": "1:00:00",
     "EventKeyPrefix": "feishu:event:",
     "NonceKeyPrefix": "feishu:nonce:",
-    "SeqIdKeyPrefix": "feishu:seqid:",
-    "ConnectTimeout": 5000,
-    "SyncTimeout": 5000,
-    "Ssl": false,
-    "AllowAdmin": false
+    "SeqIdKeyPrefix": "feishu:seqid:"
   },
   "DemoSettings": {
     "EnableMockEvents": true,
@@ -227,9 +244,17 @@ dotnet run
 
 | 配置项 | 类型 | 默认值 | 说明 |
 |--------|------|--------|------|
-| `AutoReconnect` | bool | true | 连接断开时是否自动重连 |
-| `MaxReconnectAttempts` | int | 5 | 最大重连次数 |
-| `ReconnectDelayMs` | int | 5000 | 重连延迟（毫秒） |
+| `Reconnect.Auto` | bool | true | 连接断开时是否自动重连 |
+| `Reconnect.MaxAttempts` | int | 5 | 最大重连次数，0 表示无限 |
+| `Reconnect.MaxAuthRetryAttempts` | int | 5 | 认证最大重试次数（独立于重连次数） |
+| `Reconnect.BaseDelayMs` | int | 5000 | 重连基础延迟（毫秒） |
+| `Reconnect.MaxDelayMs` | int | 30000 | 最大重连延迟（毫秒），须 ≥ `Reconnect.BaseDelayMs` |
+| `Reconnect.TotalBudget` | TimeSpan | 00:30:00 | 最大重连总时间 |
+| `Reconnect.Cooldown` | TimeSpan | 00:00:05 | 两次重连尝试间的最小间隔 |
+| `Certificate.Mode` | enum | Strict | 证书校验模式：Strict / Dev / Custom |
+| `Certificate.AllowInsecureWebSocket` | bool | false | 是否允许 ws://（仅开发/测试环境） |
+| `Certificate.AllowSelfSignedCertificates` | bool | false | 是否允许自签名证书（需 `Mode=Dev`） |
+| `AllowedHostSuffixes` | string | `*.feishu.cn;*.larksuite.com` | 主机白名单（`*.` 通配后缀或精确主机名，分号分隔）；置空表示不限制 |
 | `HeartbeatIntervalMs` | int | 25000 | 心跳间隔（毫秒），飞书建议 25 秒内，取值范围 5000~30000 |
 | `ConnectionTimeoutMs` | int | 10000 | 连接超时（毫秒） |
 | `InitialReceiveBufferSize` | int | 4096 | 初始接收缓冲区大小（字节） |
@@ -240,6 +265,7 @@ dotnet run
 | 配置项 | 类型 | 默认值 | 说明 |
 |--------|------|--------|------|
 | `MaxTextMessageSize` | int | 1048576 | 最大文本消息大小（字符） |
+| `MaxTextMessageBytes` | int | 0 | 最大文本消息大小（UTF-8 字节），0 = 3 × `MaxTextMessageSize` 自动推导 |
 | `MaxBinaryMessageSize` | long | 10485760 | 最大二进制消息大小（字节） |
 
 #### 事件去重配置 (`EventDeduplication`)
@@ -254,14 +280,16 @@ dotnet run
 
 | 配置项 | 类型 | 默认值 | 说明 |
 |--------|------|--------|------|
-| `ServerAddress` | string | localhost:6379 | Redis 服务器地址 |
-| `Password` | string | - | Redis 密码 |
+| `Connection.ServerAddress` | string | localhost:6379 | Redis 服务器地址 |
+| `Connection.Password` | string | - | Redis 密码 |
+| `Connection.ConnectTimeout` | int | 5000 | 连接超时（毫秒） |
+| `Connection.SyncTimeout` | int | 5000 | 同步超时（毫秒） |
+| `Connection.Ssl` | bool | false | 是否使用 SSL |
+| `Advanced.AllowAdmin` | bool | false | 是否允许管理员操作 |
 | `EventCacheExpiration` | TimeSpan | 1:00:00 | 事件缓存过期时间 |
 | `NonceTtl` | TimeSpan | 00:05:00 | Nonce 缓存过期时间 |
 | `SeqIdCacheExpiration` | TimeSpan | 1:00:00 | 序列号缓存过期时间 |
 | `EventKeyPrefix` | string | feishu:event: | 事件缓存键前缀 |
-| `ConnectTimeout` | int | 5000 | 连接超时（毫秒） |
-| `Ssl` | bool | false | 是否使用 SSL |
 
 ### Demo 配置项
 
@@ -701,8 +729,10 @@ protected override string? GetBusinessKey(EventData eventData)
 ```json
 {
   "FeishuRedis": {
-    "ServerAddress": "localhost:6379",
-    "Password": "letmein",
+    "Connection": {
+      "ServerAddress": "localhost:6379",
+      "Password": "letmein"
+    },
     "EventCacheExpiration": "1:00:00",
     "EventKeyPrefix": "feishu:event:"
   }
@@ -886,8 +916,10 @@ public class UserDeleteHandler : UserDeleteEventHandler
 ```json
 {
   "FeishuRedis": {
-    "ServerAddress": "redis-cluster:6379",
-    "Password": "your-redis-password"
+    "Connection": {
+      "ServerAddress": "redis-cluster:6379",
+      "Password": "your-redis-password"
+    }
   },
   "FeishuWebSocket": {
     "EventDeduplication": {

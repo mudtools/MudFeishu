@@ -64,7 +64,9 @@ public sealed class EncryptedTokenStore : ITokenStore, IEncryptedTokenStore
 
     /// <inheritdoc />
     public async Task<string?> GetAccessTokenAsync(string tokenType, CancellationToken cancellationToken = default)
-        => Decrypt(await _inner.GetAccessTokenAsync(tokenType, cancellationToken).ConfigureAwait(false));
+        => await DecryptAsync(
+            await _inner.GetAccessTokenAsync(tokenType, cancellationToken).ConfigureAwait(false),
+            tokenType, cancellationToken).ConfigureAwait(false);
 
     /// <inheritdoc />
     public Task SetAccessTokenAsync(string tokenType, string accessToken, long expiresInSeconds, CancellationToken cancellationToken = default)
@@ -72,7 +74,9 @@ public sealed class EncryptedTokenStore : ITokenStore, IEncryptedTokenStore
 
     /// <inheritdoc />
     public async Task<string?> GetRefreshTokenAsync(string tokenType, CancellationToken cancellationToken = default)
-        => Decrypt(await _inner.GetRefreshTokenAsync(tokenType, cancellationToken).ConfigureAwait(false));
+        => await DecryptAsync(
+            await _inner.GetRefreshTokenAsync(tokenType, cancellationToken).ConfigureAwait(false),
+            tokenType, cancellationToken).ConfigureAwait(false);
 
     /// <inheritdoc />
     public Task SetRefreshTokenAsync(string tokenType, string refreshToken, CancellationToken cancellationToken = default)
@@ -103,8 +107,13 @@ public sealed class EncryptedTokenStore : ITokenStore, IEncryptedTokenStore
     /// ENH-2：失败不再静默 —— 记录**节流**告警（首次与每 <see cref="DecryptFailureLogInterval"/> 次一次）。
     /// 修复前密钥轮换故障完全不可观测，运维只能看到令牌命中率下降而无法定位根因。
     /// 日志只包含异常类型/消息与密文长度，不落明文密钥或密文内容。
+    /// <para>
+    /// TMR-P3-16c：解密失败后**尽力删除脏键**（<c>RemoveAsync</c> 幂等，删除失败不影响
+    /// 「按未命中」语义）——终止密钥轮换后的持续无效刷新循环（脏键不删则每次读取都解密失败，
+    /// 令牌持续走重新获取路径直至 TTL 到期）。
+    /// </para>
     /// </remarks>
-    private string? Decrypt(string? cipherText)
+    private async Task<string?> DecryptAsync(string? cipherText, string tokenType, CancellationToken cancellationToken)
     {
         if (cipherText == null)
         {
@@ -123,8 +132,18 @@ public sealed class EncryptedTokenStore : ITokenStore, IEncryptedTokenStore
                 _logger.LogWarning(ex,
                     "租户令牌解密失败（累计 {FailureCount} 次，每 {LogInterval} 次记录一次）。" +
                     "常见原因：加密密钥已轮换或密钥配置错误、存储中存在加密启用前的明文数据。" +
-                    "当前按「缓存未命中」处理并回退为重新获取令牌。密文长度：{CipherTextLength}。",
+                    "当前按「缓存未命中」处理、尽力删除脏键并回退为重新获取令牌。密文长度：{CipherTextLength}。",
                     failures, DecryptFailureLogInterval, cipherText.Length);
+            }
+
+            // TMR-P3-16c：尽力删除脏键（幂等）。并发重取写回的是新密钥加密的密文，下次解密成功，无竞态危害。
+            try
+            {
+                await _inner.RemoveAsync(tokenType, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception removeEx) when (removeEx is not OperationCanceledException)
+            {
+                // 删除失败不影响「按未命中」语义（下次读取仍会解密失败并重试删除）。
             }
 
             return null;
@@ -180,7 +199,9 @@ public sealed class EncryptedUserTokenStore : IUserTokenStore, IEncryptedTokenSt
 
     /// <inheritdoc />
     public async Task<string?> GetAccessTokenAsync(string userId, string tokenType, CancellationToken cancellationToken = default)
-        => Decrypt(await _inner.GetAccessTokenAsync(userId, tokenType, cancellationToken).ConfigureAwait(false));
+        => await DecryptAsync(
+            await _inner.GetAccessTokenAsync(userId, tokenType, cancellationToken).ConfigureAwait(false),
+            tokenType, userId, cancellationToken).ConfigureAwait(false);
 
     /// <inheritdoc />
     public Task SetAccessTokenAsync(string userId, string tokenType, string accessToken, long expiresInSeconds, CancellationToken cancellationToken = default)
@@ -188,7 +209,9 @@ public sealed class EncryptedUserTokenStore : IUserTokenStore, IEncryptedTokenSt
 
     /// <inheritdoc />
     public async Task<string?> GetRefreshTokenAsync(string userId, string tokenType, CancellationToken cancellationToken = default)
-        => Decrypt(await _inner.GetRefreshTokenAsync(userId, tokenType, cancellationToken).ConfigureAwait(false));
+        => await DecryptAsync(
+            await _inner.GetRefreshTokenAsync(userId, tokenType, cancellationToken).ConfigureAwait(false),
+            tokenType, userId, cancellationToken).ConfigureAwait(false);
 
     /// <inheritdoc />
     public Task SetRefreshTokenAsync(string userId, string tokenType, string refreshToken, CancellationToken cancellationToken = default)
@@ -253,7 +276,12 @@ public sealed class EncryptedUserTokenStore : IUserTokenStore, IEncryptedTokenSt
 
     #endregion
 
-    private string? Decrypt(string? cipherText)
+    /// <summary>
+    /// TMR-P3-16c：用户维度解密——失败时节流告警并尽力删除脏键（与
+    /// <see cref="EncryptedTokenStore.DecryptAsync"/> 同口径，删除走用户维度
+    /// RemoveAsync 重载）。
+    /// </summary>
+    private async Task<string?> DecryptAsync(string? cipherText, string tokenType, string userId, CancellationToken cancellationToken)
     {
         if (cipherText == null)
         {
@@ -273,8 +301,18 @@ public sealed class EncryptedUserTokenStore : IUserTokenStore, IEncryptedTokenSt
                 _logger.LogWarning(ex,
                     "用户令牌解密失败（累计 {FailureCount} 次，每 {LogInterval} 次记录一次）。" +
                     "常见原因：加密密钥已轮换或密钥配置错误、存储中存在加密启用前的明文数据。" +
-                    "当前按「缓存未命中」处理并回退为重新获取令牌。密文长度：{CipherTextLength}。",
+                    "当前按「缓存未命中」处理、尽力删除脏键并回退为重新获取令牌。密文长度：{CipherTextLength}。",
                     failures, EncryptedTokenStore.DecryptFailureLogInterval, cipherText.Length);
+            }
+
+            // TMR-P3-16c：尽力删除脏键（幂等；并发重取写回新密文后解密成功，无竞态危害）。
+            try
+            {
+                await _inner.RemoveAsync(userId, tokenType, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception removeEx) when (removeEx is not OperationCanceledException)
+            {
+                // 删除失败不影响「按未命中」语义（下次读取仍会解密失败并重试删除）。
             }
 
             return null;

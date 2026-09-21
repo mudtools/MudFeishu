@@ -19,6 +19,12 @@ public class MessageSequenceValidator
     private readonly object _lock = new();
     private ulong? _lastProcessedSequenceNumber;
     private readonly SortedSet<ulong> _recentlyProcessedNumbers = new();
+    /// <summary>
+    /// 业务失败后回滚的序号：允许同序号重发通过一次（one-shot）。
+    /// 仅移除窗口记录不够——若游标已推进到该序号或更大值，
+    /// <see cref="IsDuplicateMessage"/> 的游标相等/回退分支仍会吞掉重发。
+    /// </summary>
+    private readonly HashSet<ulong> _reprocessAllowed = new();
     private DateTime _lastResetTime = DateTime.UtcNow;
 
     /// <summary>
@@ -68,14 +74,30 @@ public class MessageSequenceValidator
             // 定期清理旧数据
             CleanupOldData();
 
+            // P0-1：业务失败回滚后的同序号重发——一次性放行，不再落入 Duplicate/Rollback
+            if (_reprocessAllowed.Remove(sequenceNumber))
+            {
+                // P0-1 补强：游标"只进不退"。此前此处无条件赋值，回滚一个<b>旧</b>序号会把游标拖回该序号，
+                // 使紧随其后的旧帧（其窗口记录已被 1000 条滑动窗口淘汰）不再命中 Rollback 分支，
+                // 而是落入"前向跳跃"分支被当作正常帧放行 —— 等于按需关闭了序号回退（重放）检测。
+                // 重发放行由 _reprocessAllowed 自身保证，与游标无关。
+                if (!_lastProcessedSequenceNumber.HasValue || sequenceNumber > _lastProcessedSequenceNumber.Value)
+                {
+                    _lastProcessedSequenceNumber = sequenceNumber;
+                }
+
+                _recentlyProcessedNumbers.Add(sequenceNumber);
+                _logger.LogDebug("业务失败回滚后的重发放行: SeqId={SequenceNumber}", sequenceNumber);
+                return SequenceValidationResult.Valid;
+            }
+
             // 首次接收消息
             if (!_lastProcessedSequenceNumber.HasValue)
             {
                 _lastProcessedSequenceNumber = sequenceNumber;
                 _recentlyProcessedNumbers.Add(sequenceNumber);
 
-                if (_options.EnableLogging)
-                    _logger.LogDebug("首次接收消息，序号: {SequenceNumber}", sequenceNumber);
+                _logger.LogDebug("首次接收消息，序号: {SequenceNumber}", sequenceNumber);
 
                 return SequenceValidationResult.Valid;
             }
@@ -170,10 +192,10 @@ public class MessageSequenceValidator
         var timeSinceReset = DateTime.UtcNow - _lastResetTime;
         if (timeSinceReset.TotalMinutes > CleanupIntervalMinutes)
         {
-            if (_options.EnableLogging)
-                _logger.LogDebug("清理消息序号验证器的旧数据");
+            _logger.LogDebug("清理消息序号验证器的旧数据");
 
             _recentlyProcessedNumbers.Clear();
+            _reprocessAllowed.Clear();
             _lastResetTime = DateTime.UtcNow;
         }
         else if (_recentlyProcessedNumbers.Count > RecentNumbersWindow)
@@ -183,6 +205,13 @@ public class MessageSequenceValidator
             while (_recentlyProcessedNumbers.Count > RecentNumbersWindow)
             {
                 _recentlyProcessedNumbers.Remove(_recentlyProcessedNumbers.Min);
+            }
+
+            // 放行集合同步限容，避免失败风暴导致无界增长
+            while (_reprocessAllowed.Count > RecentNumbersWindow)
+            {
+                var any = System.Linq.Enumerable.First(_reprocessAllowed);
+                _reprocessAllowed.Remove(any);
             }
         }
     }
@@ -196,7 +225,39 @@ public class MessageSequenceValidator
         {
             _lastProcessedSequenceNumber = null;
             _recentlyProcessedNumbers.Clear();
+            _reprocessAllowed.Clear();
             _logger.LogInformation("消息序号验证器已重置");
+        }
+    }
+
+    /// <summary>
+    /// 回滚指定序号的幂等检测状态（业务处理失败后调用），
+    /// 使服务端重发同序号帧时不再被判定为 Duplicate/Rollback。
+    /// </summary>
+    /// <remarks>
+    /// 实现：从窗口移除 + 写入一次性放行集合。游标本身不主动回退到更小值
+    /// （避免破坏后续新帧的判定），重发放行由 <c>_reprocessAllowed</c> 保证——
+    /// 因为 <see cref="IsDuplicateMessage"/> 在窗口未命中时仍会因
+    ///「游标相等 / 序号回退」吞掉重发。
+    /// </remarks>
+    /// <param name="sequenceNumber">要回滚的序号</param>
+    /// <returns>是否确实登记了回滚（窗口记录存在，或游标等于该序号）</returns>
+    public bool Remove(ulong sequenceNumber)
+    {
+        lock (_lock)
+        {
+            var removedFromWindow = _recentlyProcessedNumbers.Remove(sequenceNumber);
+            var isCursorMatch = _lastProcessedSequenceNumber == sequenceNumber;
+
+            if (!removedFromWindow && !isCursorMatch)
+            {
+                // 未在窗口且非游标：可能是并发路径下已被清理/从未处理，仍登记放行以便安全重试
+                _logger.LogDebug("回滚序号 {SequenceNumber}：窗口无记录，登记一次性放行", sequenceNumber);
+            }
+
+            _reprocessAllowed.Add(sequenceNumber);
+            _logger.LogDebug("已回滚序号 {SequenceNumber} 的重复检测状态", sequenceNumber);
+            return true;
         }
     }
 

@@ -6,6 +6,7 @@
 // -----------------------------------------------------------------------
 
 using FluentAssertions;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 
@@ -43,8 +44,7 @@ public class MessageRouterTimeoutTests
         // Arrange
         var options = new FeishuWebSocketOptions
         {
-            MessageHandlerTimeoutMs = 5000,
-            EnableLogging = false
+            MessageHandlerTimeoutMs = 5000
         };
         var router = new MessageRouter(NullLogger<MessageRouter>.Instance, options);
 
@@ -68,11 +68,7 @@ public class MessageRouterTimeoutTests
     public async Task RouteMessageAsync_ShouldNotBlock_WhenHandlerExceedsTimeout()
     {
         // Arrange
-        var options = new FeishuWebSocketOptions
-        {
-            MessageHandlerTimeoutMs = 200, // 200ms 超时
-            EnableLogging = false
-        };
+        var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions { MessageHandlerTimeoutMs = 200 };
         var router = new MessageRouter(NullLogger<MessageRouter>.Instance, options);
 
         var handlerStarted = new TaskCompletionSource<bool>();
@@ -111,11 +107,7 @@ public class MessageRouterTimeoutTests
     public async Task RouteMessageAsync_ShouldNotApplyTimeout_WhenTimeoutIsZero()
     {
         // Arrange
-        var options = new FeishuWebSocketOptions
-        {
-            MessageHandlerTimeoutMs = 0, // 不限制超时
-            EnableLogging = false
-        };
+        var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions { MessageHandlerTimeoutMs = 0 };
         var router = new MessageRouter(NullLogger<MessageRouter>.Instance, options);
 
         var handlerMock = new Mock<IMessageHandler>();
@@ -135,5 +127,56 @@ public class MessageRouterTimeoutTests
 
         // Assert
         handlerMock.Verify(h => h.HandleAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task RouteMessageAsync_ShouldObserveHandlerException_WhenHandlerFailsAfterTimeout()
+    {
+        // Arrange（P2-9 回归）：修复前超时分支不观察 handlerTask，
+        // 处理器在超时判定后才抛出的异常会成为 UnobservedTaskException。
+        var options = new FeishuWebSocketOptions
+        {
+            MessageHandlerTimeoutMs = 200
+        };
+        var loggerMock = new Mock<ILogger<MessageRouter>>();
+        var router = new MessageRouter(loggerMock.Object, options);
+
+        var handlerMock = new Mock<IMessageHandler>();
+        handlerMock.Setup(h => h.CanHandle("event")).Returns(true);
+        handlerMock.Setup(h => h.HandleAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Returns(async (string msg, CancellationToken ct) =>
+            {
+                try
+                {
+                    await Task.Delay(10000, ct); // 远超 200ms 超时 → 触发超时分支
+                }
+                catch (OperationCanceledException)
+                {
+                    // 超时取消后延迟抛出：确保 fault 发生在超时分支已挂上观察续延之后
+                    // （仍在 2s 宽限期内 → ContinueWith 对已完成任务内联执行，断言确定性）
+                    await Task.Delay(100);
+                    throw new InvalidOperationException("处理器在超时后抛出异常");
+                }
+            });
+
+        router.RegisterHandler(handlerMock.Object);
+
+        var message = """{"type":"event","data":"fail-after-timeout"}""";
+
+        // Act：超时判定 + 处理器随后 fault，均不得使调用方感知异常
+        var act = () => router.RouteMessageAsync(message);
+        await act.Should().NotThrowAsync();
+
+        // Assert：观察续延必须记录"超时后抛出的异常"（P2-9）
+        loggerMock.Verify(
+            l => l.Log(
+                LogLevel.Debug,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((state, _) =>
+                    state.ToString()!.Contains("已被判定超时的消息处理器随后抛出异常")),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Once,
+            "P2-9：超时后处理器抛出的异常必须被观察续延记录，而不是成为 UnobservedTaskException");
     }
 }

@@ -14,6 +14,8 @@ using Mud.Feishu.Redis.Extensions;
 
 namespace Mud.Feishu.Redis.Tests.Configuration;
 
+#pragma warning disable CS0618 // 双读期旧扁平键/失效去重字段仍需绑定验证
+
 /// <summary>
 /// RedisOptions IConfiguration 绑定测试
 /// 验证从 appsettings.json 风格的配置绑定到 RedisOptions 的正确性
@@ -27,19 +29,19 @@ public class RedisOptionsBindingTests
         var config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["FeishuRedis:ServerAddress"] = "redis.example.com:6380",
-                ["FeishuRedis:Password"] = "secret",
+                ["FeishuRedis:Connection:ServerAddress"] = "redis.example.com:6380",
+                ["FeishuRedis:Connection:Password"] = "secret",
                 ["FeishuRedis:EventCacheExpiration"] = "1.00:00:00",
                 ["FeishuRedis:SeqIdCacheExpiration"] = "12:00:00",
                 ["FeishuRedis:NonceTtl"] = "00:10:00",
                 ["FeishuRedis:EventKeyPrefix"] = "myapp:event:",
                 ["FeishuRedis:NonceKeyPrefix"] = "myapp:nonce:",
                 ["FeishuRedis:SeqIdKeyPrefix"] = "myapp:seqid:",
-                ["FeishuRedis:ConnectTimeout"] = "8000",
-                ["FeishuRedis:SyncTimeout"] = "8000",
-                ["FeishuRedis:Ssl"] = "true",
-                ["FeishuRedis:ConnectRetry"] = "5",
-                ["FeishuRedis:DefaultDatabase"] = "2"
+                ["FeishuRedis:Connection:ConnectTimeout"] = "8000",
+                ["FeishuRedis:Connection:SyncTimeout"] = "8000",
+                ["FeishuRedis:Connection:Ssl"] = "true",
+                ["FeishuRedis:Connection:ConnectRetry"] = "5",
+                ["FeishuRedis:Connection:DefaultDatabase"] = "2"
             })
             .Build();
 
@@ -51,19 +53,19 @@ public class RedisOptionsBindingTests
         var options = sp.GetRequiredService<RedisOptions>();
 
         // Assert
-        Assert.Equal("redis.example.com:6380", options.ServerAddress);
-        Assert.Equal("secret", options.Password);
+        Assert.Equal("redis.example.com:6380", options.Connection.ServerAddress);
+        Assert.Equal("secret", options.Connection.Password);
         Assert.Equal(TimeSpan.FromHours(24), options.EventCacheExpiration);
         Assert.Equal(TimeSpan.FromHours(12), options.SeqIdCacheExpiration);
         Assert.Equal(TimeSpan.FromMinutes(10), options.NonceTtl);
         Assert.Equal("myapp:event:", options.EventKeyPrefix);
         Assert.Equal("myapp:nonce:", options.NonceKeyPrefix);
         Assert.Equal("myapp:seqid:", options.SeqIdKeyPrefix);
-        Assert.Equal(8000, options.ConnectTimeout);
-        Assert.Equal(8000, options.SyncTimeout);
-        Assert.True(options.Ssl);
-        Assert.Equal(5, options.ConnectRetry);
-        Assert.Equal(2, options.DefaultDatabase);
+        Assert.Equal(8000, options.Connection.ConnectTimeout);
+        Assert.Equal(8000, options.Connection.SyncTimeout);
+        Assert.True(options.Connection.Ssl);
+        Assert.Equal(5, options.Connection.ConnectRetry);
+        Assert.Equal(2, options.Connection.DefaultDatabase);
     }
 
     [Fact]
@@ -73,7 +75,7 @@ public class RedisOptionsBindingTests
         var config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["FeishuRedis:ServerAddress"] = "localhost:6379",
+                ["FeishuRedis:Connection:ServerAddress"] = "localhost:6379",
                 ["FeishuRedis:EventCacheExpiration"] = "00:00:30"
             })
             .Build();
@@ -96,7 +98,7 @@ public class RedisOptionsBindingTests
         var config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["FeishuRedis:ServerAddress"] = "localhost:6379",
+                ["FeishuRedis:Connection:ServerAddress"] = "localhost:6379",
                 ["FeishuRedis:EventKeyPrefix"] = ""
             })
             .Build();
@@ -115,14 +117,14 @@ public class RedisOptionsBindingTests
     [Fact]
     public void Bind_DeduplicationSubSection_ShouldBindAdvancedOptions()
     {
-        // Arrange - 测试 FeishuRedis:Deduplication 子节绑定
+        // Arrange - 测试 FeishuRedis:Deduplication 子节绑定（R4：仅主路径字段）
         var config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["FeishuRedis:ServerAddress"] = "localhost:6379",
+                ["FeishuRedis:Connection:ServerAddress"] = "localhost:6379",
                 ["FeishuRedis:Deduplication:ProcessingTimeout"] = "00:20:00",
-                ["FeishuRedis:Deduplication:MaxRetryCount"] = "7",
-                ["FeishuRedis:Deduplication:AllowProcessingOnFallback"] = "false"
+                ["FeishuRedis:Deduplication:CacheExpiration"] = "2.00:00:00",
+                ["FeishuRedis:Deduplication:KeyPrefix"] = "custom:dedup:"
             })
             .Build();
 
@@ -136,8 +138,38 @@ public class RedisOptionsBindingTests
         // Assert
         Assert.NotNull(dedupOptions);
         Assert.Equal(TimeSpan.FromMinutes(20), dedupOptions!.ProcessingTimeout);
-        Assert.Equal(7, dedupOptions.MaxRetryCount);
-        Assert.False(dedupOptions.AllowProcessingOnFallback);
+        Assert.Equal(TimeSpan.FromHours(48), dedupOptions.CacheExpiration);
+        Assert.Equal("custom:dedup:", dedupOptions.KeyPrefix);
+    }
+
+    [Fact]
+    public void Bind_LegacyFlatKeys_ShouldMapToNestedConnection()
+    {
+        // R4：配置 JSON 扁平键经 ApplyLegacyFlatConnectionKeys 回填嵌套属性
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["FeishuRedis:ServerAddress"] = "legacy.example.com:6380",
+                ["FeishuRedis:Password"] = "legacy-secret",
+                ["FeishuRedis:ConnectTimeout"] = "7000",
+                ["FeishuRedis:Ssl"] = "true",
+                ["FeishuRedis:AllowAdmin"] = "true",
+                ["FeishuRedis:ClientName"] = "legacy-client"
+            })
+            .Build();
+
+        var services = new ServiceCollection();
+        services.AddFeishuRedisDeduplicators(config);
+        var sp = services.BuildServiceProvider();
+
+        var options = sp.GetRequiredService<RedisOptions>();
+
+        Assert.Equal("legacy.example.com:6380", options.Connection.ServerAddress);
+        Assert.Equal("legacy-secret", options.Connection.Password);
+        Assert.Equal(7000, options.Connection.ConnectTimeout);
+        Assert.True(options.Connection.Ssl);
+        Assert.True(options.Advanced.AllowAdmin);
+        Assert.Equal("legacy-client", options.Advanced.ClientName);
     }
 
     [Fact]
@@ -150,7 +182,7 @@ public class RedisOptionsBindingTests
         var config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["FeishuRedis:ServerAddress"] = "localhost:6379",
+                ["FeishuRedis:Connection:ServerAddress"] = "localhost:6379",
                 ["FeishuRedis:EventCacheExpiration"] = "24:00:00"
             })
             .Build();
@@ -170,7 +202,7 @@ public class RedisOptionsBindingTests
         var correctConfig = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["FeishuRedis:ServerAddress"] = "localhost:6379",
+                ["FeishuRedis:Connection:ServerAddress"] = "localhost:6379",
                 ["FeishuRedis:EventCacheExpiration"] = "1.00:00:00"
             })
             .Build();

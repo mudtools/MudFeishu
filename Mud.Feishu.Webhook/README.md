@@ -119,18 +119,16 @@ app.Run();
   "FeishuWebhook": {
     "GlobalRoutePrefix": "feishu",
     "AutoRegisterEndpoint": true,
-    "EnableRequestLogging": true,
     "EnableExceptionHandling": true,
     "EventHandlingTimeoutMs": 30000,
     "MaxConcurrentEvents": 10,
-    "EnablePerformanceMonitoring": false,
     "AllowedHttpMethods": ["POST"],
     "MaxRequestBodySize": 10485760,
     "AllowedSourceIPs": [],
     "EnforceHeaderSignatureValidation": true,
     "TimestampToleranceSeconds": 30,
     "NonceValidationFailureMode": "Reject",
-    "EnableBackgroundProcessing": false,
+    "EnableTokenBackgroundRefresh": null,
     "Retry": {
       "EnableRetry": false,
       "MaxRetryCount": 3,
@@ -195,7 +193,6 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.CreateFeishuWebhookServiceBuilder(options =>
 {
     options.GlobalRoutePrefix = "feishu";
-    options.EnableRequestLogging = true;
     options.EnableExceptionHandling = true;
     options.MaxConcurrentEvents = 10;
 })
@@ -419,12 +416,10 @@ public class DemoDepartmentEventHandler : DepartmentCreatedEventHandler
 | `Apps.{AppKey}.AppKey`                           | string                                        | -      | 应用键（用于标识应用，仅允许字母、数字、下划线和连字符） |
 | `Apps.{AppKey}.VerificationToken`                | string                                        | -      | 应用验证 Token                                           |
 | `Apps.{AppKey}.EncryptKey`                       | string                                        | -      | 应用加密 Key（32字节）                                   |
-| `Apps.{AppKey}.Description`                      | string?                                       | null   | 应用描述（可选）                                         |
 | `Apps.{AppKey}.TimestampToleranceSeconds`        | int?                                          | null   | 时间戳容差（null 继承全局；-1/0 为兼容写法，同样继承全局） |
 | `Apps.{AppKey}.EventHandlingTimeoutMs`           | int?                                          | null   | 事件处理超时（null 继承全局；-1/0 为兼容写法，同样继承全局） |
 | `Apps.{AppKey}.EnforceHeaderSignatureValidation` | bool?                                         | null   | 是否强制签名验证（null 继承全局）                        |
 | `Apps.{AppKey}.EnableExceptionHandling`          | bool?                                         | null   | 是否启用异常处理（null 继承全局）                        |
-| `Apps.{AppKey}.EnablePerformanceMonitoring`      | bool?                                         | null   | 是否启用性能监控（null 继承全局）                        |
 
 ### 安全配置
 
@@ -449,17 +444,20 @@ public class DemoDepartmentEventHandler : DepartmentCreatedEventHandler
 | ----------------------------- | ---- | ------ | ------------------------------------------------------ |
 | `MaxConcurrentEvents`         | int  | 10     | 最大并发事件数，支持热更新                             |
 | `EventHandlingTimeoutMs`      | int  | 30000  | 事件处理超时时间（毫秒）                               |
-| `EnablePerformanceMonitoring` | bool | false  | 是否启用性能监控                                       |
-| `EnableBackgroundProcessing`  | bool | false  | 是否启用后台处理模式（启用后激活令牌自动刷新后台服务） |
+| `EnableTokenBackgroundRefresh`  | bool? | null   | 令牌后台刷新显式覆盖（null=不干预基座；R4 已移除 EnableBackgroundProcessing） |
 
 ### 日志配置
 
-| 选项                      | 类型 | 默认值 | 说明                 |
-| ------------------------- | ---- | ------ | -------------------- |
-| `EnableRequestLogging`    | bool | true   | 是否启用请求日志记录 |
-| `EnableExceptionHandling` | bool | true   | 是否启用异常处理     |
+日志级别统一由 `Logging:LogLevel:Mud.Feishu.Webhook` 控制，**不存在**模块私有日志开关。
+
+| 选项                      | 类型 | 默认值 | 说明                                     |
+| ------------------------- | ---- | ------ | ---------------------------------------- |
+| `EnableExceptionHandling` | bool | true   | 是否吞并事件处理异常（错误处理策略，非日志开关） |
 
 ### 失败事件重试配置
+
+> R5.1 起真实生效（写入侧与轮询侧同源于 `FeishuWebhookOptions.Retry`）；此前除 `EnableRetry` 外
+> 其余键静默无效，升级前请核对取值，详见 `documents/Configuration/ConfigMigration-R5.md`。
 
 | 选项                             | 类型   | 默认值 | 说明                         |
 | -------------------------------- | ------ | ------ | ---------------------------- |
@@ -551,7 +549,7 @@ app.Run();
 ```json
 {
   "FeishuWebhook": {
-    "EnableBackgroundProcessing": true
+    "EnableTokenBackgroundRefresh": true
   }
 }
 ```
@@ -561,7 +559,7 @@ app.Run();
 // 然后在后台异步处理事件，适用于耗时较长的业务逻辑
 builder.Services.CreateFeishuWebhookServiceBuilder(options =>
 {
-    options.EnableBackgroundProcessing = true;
+    options.EnableTokenBackgroundRefresh = true;
 }).AddHandler<LongRunningEventHandler>()
     .Build();
 ```
@@ -884,7 +882,6 @@ builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
 | `TimestampToleranceSeconds`        | 设置为 -1 或 0 时继承全局配置，正整数使用应用级配置 |
 | `EventHandlingTimeoutMs`           | 设置为 -1 或 0 时继承全局配置，正整数使用应用级配置 |
 | `EnableExceptionHandling`          | 设置为 null 时继承全局配置，否则使用应用级配置      |
-| `EnablePerformanceMonitoring`      | 设置为 null 时继承全局配置，否则使用应用级配置      |
 | `EnforceHeaderSignatureValidation` | 设置为 null 时继承全局配置，否则使用应用级配置      |
 
 示例：
@@ -1235,7 +1232,7 @@ builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
 // appsettings.json
 {
   "FeishuWebhook": {
-    "EnableBackgroundProcessing": true,  // 立即返回成功，后台处理
+    "EnableTokenBackgroundRefresh": true,
     "EventHandlingTimeoutMs": 60000      // 增加超时时间
   }
 }
@@ -1302,11 +1299,9 @@ app.MapDiagnostics();          // 诊断端点
 builder.Logging.AddConsole();
 builder.Logging.SetMinimumLevel(LogLevel.Debug);
 
-// 启用请求日志记录和性能监控
+// 事件处理耗时日志以 Debug 级别无条件输出：把 Logging:LogLevel:Mud.Feishu.Webhook 设为 Debug 即可获得
 builder.Services.CreateFeishuWebhookServiceBuilder(options =>
 {
-    options.EnableRequestLogging = true;
-    options.EnablePerformanceMonitoring = true;
     options.RateLimit.EnableRateLimit = true; // 启用限流调试
 }).AddHandler<MessageEventHandler>()
     .Build();
@@ -1459,8 +1454,7 @@ builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
 | `EncryptKey`                       | -          | 加密密钥（32字节）                     |
 | `MaxConcurrentEvents`              | `10`       | 最大并发事件数，支持热更新             |
 | `EventHandlingTimeoutMs`           | `30000`    | 事件处理超时（毫秒）                   |
-| `EnableBackgroundProcessing`       | `false`    | 后台处理模式（启用后激活令牌自动刷新） |
-| `EnablePerformanceMonitoring`      | `false`    | 性能监控                               |
+| `EnableTokenBackgroundRefresh`       | `null`    | 令牌后台刷新覆盖（null=不干预） |
 | `EnforceHeaderSignatureValidation` | `true`     | 强制签名验证（生产环境必须启用）       |
 | `TimestampToleranceSeconds`        | `30`       | 时间戳容错范围（秒）                   |
 

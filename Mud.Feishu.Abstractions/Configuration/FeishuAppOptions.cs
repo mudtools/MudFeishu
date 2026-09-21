@@ -10,6 +10,18 @@ namespace Mud.Feishu.Abstractions;
 /// <summary>
 /// 飞书多应用管理器的行为选项。
 /// </summary>
+/// <remarks>
+/// <b>TMR-P2-8（F8）一次性读取语义清单</b>——本类选项经 <c>IOptions&lt;T&gt;</c> 注入时为
+/// <b>启动快照</b>（IOptions 缓存不随 IConfiguration 变更失效），修改配置源后不热更，需重启进程：
+/// <list type="table">
+/// <item><term><see cref="EnableConfigReload"/></term><description>FeishuAppManager 构造函数读取（IOptions）——仅启动时生效。</description></item>
+/// <item><term><see cref="ContextRetireDelaySeconds"/></term><description>FeishuAppManager 构造函数读取——仅启动时生效。</description></item>
+/// <item><term><see cref="WarmUpAllAppsOnStartup"/></term><description>FeishuTokenRegistrationService 构造函数读取（IOptions 注入）——仅启动时生效。</description></item>
+/// <item><term><see cref="RemoveRuntimeAddedAppsOnReload"/></term><description>热更新时读 <c>IOptions&lt;&gt;.Value</c>——值仍是启动快照；改此项需重启。</description></item>
+/// <item><term><see cref="EnablePerAppAuthenticationClient"/></term><description>CreateAppContext 每次创建上下文时求值，但值本身不热更（启动快照）。</description></item>
+/// <item><term><see cref="EnableTokenEncryption"/></term><description>存储工厂首次解析时读取（一次性）；中途开启 → 旧明文解密失败 → 按未命中重新获取 → 重写密文（自愈），建议重启后开启。</description></item>
+/// </list>
+/// </remarks>
 public class FeishuAppOptions
 {
     /// <summary>
@@ -67,7 +79,7 @@ public class FeishuAppOptions
     /// <b>启用后的注意点</b>：
     /// <list type="bullet">
     /// <item>键布局不变，不影响多应用隔离语义；</item>
-    /// <item>已存在的明文令牌无法自动迁移——解密失败会按「缓存未命中」处理并重新获取令牌（预期行为）；</item>
+    /// <item>已存在的明文令牌无法自动迁移——解密失败会按「缓存未命中」处理、尽力删除脏键并重新获取令牌（预期自愈行为）；</item>
     /// <item>加密密钥丢失会使全部已存令牌不可恢复，需要重新获取；</item>
     /// <item>进程内 MemoryCache 场景下 refresh token 本就随进程重启丢失，加密收益主要体现在
     /// Redis 等持久化、跨进程共享的后端上。</item>

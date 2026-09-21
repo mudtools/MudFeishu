@@ -65,7 +65,8 @@ public abstract class JsonMessageHandler : IMessageHandler
         }
         catch (JsonException ex)
         {
-            _logger.LogError(ex, "解析JSON消息失败: {Json}", json);
+            // P2-4：异常详情已含位置信息；原文全文入日志无排障增量且可能泄露 token
+            _logger.LogError(ex, "解析JSON消息失败 (长度: {Length})", json?.Length);
             return null;
         }
     }

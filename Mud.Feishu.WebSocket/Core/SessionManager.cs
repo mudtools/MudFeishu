@@ -120,13 +120,11 @@ public class SessionManager
         {
             if (!HasValidSession)
             {
-                if (_options.EnableLogging)
-                    _logger.LogDebug("当前无有效会话，无法恢复");
+                _logger.LogDebug("当前无有效会话，无法恢复");
                 return null;
             }
 
-            if (_options.EnableLogging)
-                _logger.LogDebug("获取会话ID用于重连: {SessionId} (会话时长: {Duration})",
+            _logger.LogDebug("获取会话ID用于重连: {SessionId} (会话时长: {Duration})",
                     _currentSessionId, SessionDuration);
 
             return _currentSessionId;

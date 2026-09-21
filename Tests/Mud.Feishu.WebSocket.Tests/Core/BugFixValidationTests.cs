@@ -31,10 +31,7 @@ public class BugFixValidationTests
             .Setup(x => x.GetHandler(It.IsAny<string>()))
             .Returns(Mock.Of<IFeishuEventHandler>());
 
-        _options = new FeishuWebSocketOptions
-        {
-            EnableLogging = false
-        };
+        _options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions {  };
     }
 
     #region Bug修复2: IAsyncDisposable接口实现
@@ -101,9 +98,9 @@ public class BugFixValidationTests
         var options = new FeishuWebSocketOptions();
 
         // Assert
-        options.ValidateServerCertificate.Should().BeTrue("默认应验证服务器证书");
-        options.AllowSelfSignedCertificates.Should().BeFalse("默认不允许自签名证书");
-        options.CustomCertificateValidationCallback.Should().BeNull();
+        options.Certificate.ValidateServerCertificate.Should().BeTrue("默认应验证服务器证书");
+        options.Certificate.AllowSelfSignedCertificates.Should().BeFalse("默认不允许自签名证书");
+        options.Certificate.CustomCallback.Should().BeNull();
     }
 
     [Fact]
@@ -113,10 +110,10 @@ public class BugFixValidationTests
         var options = new FeishuWebSocketOptions();
 
         // Act
-        options.CustomCertificateValidationCallback = (sender, cert, chain, errors) => true;
+        options.Certificate.CustomCallback = (sender, cert, chain, errors) => true;
 
         // Assert
-        options.CustomCertificateValidationCallback.Should().NotBeNull();
+        options.Certificate.CustomCallback.Should().NotBeNull();
     }
 
     [Fact]
@@ -126,10 +123,10 @@ public class BugFixValidationTests
         var options = new FeishuWebSocketOptions();
 
         // Act
-        options.ValidateServerCertificate = false;
+        options.Certificate.ValidateServerCertificate = false;
 
         // Assert
-        options.ValidateServerCertificate.Should().BeFalse();
+        options.Certificate.ValidateServerCertificate.Should().BeFalse();
     }
 
     #endregion

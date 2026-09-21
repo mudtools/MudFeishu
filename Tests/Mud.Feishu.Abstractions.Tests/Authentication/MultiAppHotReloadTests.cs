@@ -39,7 +39,7 @@ public class MultiAppHotReloadTests
             AppId = appId,
             AppSecret = appSecret,
             IsDefault = isDefault,
-            TimeOut = timeOut
+            TimeoutSeconds = timeOut
         };
 
     private static (ServiceProvider Provider, FeishuAppManager Manager) CreateManager(params FeishuAppConfig[] configs)
@@ -94,7 +94,7 @@ public class MultiAppHotReloadTests
             CreateConfig("app1", TestDataFactory.AppConfigs.AppIds.Default, TestDataFactory.AppConfigs.Secrets.Default, isDefault: true, timeOut: 30)));
 
         var before = ctx.Manager.GetApp("app1");
-        before.Config.TimeOut.Should().Be(30);
+        before.Config.TimeoutSeconds.Should().Be(30);
 
         ctx.Manager.OnConfigurationChanged(new List<FeishuAppConfig>
         {
@@ -103,7 +103,7 @@ public class MultiAppHotReloadTests
 
         var after = ctx.Manager.GetApp("app1");
         after.Should().NotBeSameAs(before, "配置变更必须重建应用上下文，否则仍会走旧配置");
-        after.Config.TimeOut.Should().Be(60);
+        after.Config.TimeoutSeconds.Should().Be(60);
     }
 
     [Fact]
@@ -265,16 +265,16 @@ public class MultiAppHotReloadTests
         {
             var manager = (FeishuAppManager)provider.GetRequiredService<IFeishuAppManager>();
 
-            manager.GetApp("app1").Config.TimeOut.Should().Be(30);
+            manager.GetApp("app1").Config.TimeoutSeconds.Should().Be(30);
 
             // 通过 IConfiguration 真实触发 IOptionsMonitor.OnChange
             var memoryProvider = configuration.Providers
                 .OfType<MemoryConfigurationProvider>()
                 .First();
-            memoryProvider.Set($"{SectionName}:0:TimeOut", "90");
+            memoryProvider.Set($"{SectionName}:0:TimeoutSeconds", "90");
             ((IConfigurationRoot)configuration).Reload();
 
-            manager.GetApp("app1").Config.TimeOut.Should().Be(90,
+            manager.GetApp("app1").Config.TimeoutSeconds.Should().Be(90,
                 "启用热更新后，IConfiguration 变更必须传导到 FeishuAppManager");
         }
         finally
@@ -308,10 +308,10 @@ public class MultiAppHotReloadTests
             var memoryProvider = configuration.Providers
                 .OfType<MemoryConfigurationProvider>()
                 .First();
-            memoryProvider.Set($"{SectionName}:0:TimeOut", "90");
+            memoryProvider.Set($"{SectionName}:0:TimeoutSeconds", "90");
             ((IConfigurationRoot)configuration).Reload();
 
-            manager.GetApp("app1").Config.TimeOut.Should().Be(30,
+            manager.GetApp("app1").Config.TimeoutSeconds.Should().Be(30,
                 "EnableConfigReload = false 时应保持旧语义：配置变更需重启");
         }
         finally
@@ -339,7 +339,7 @@ public class MultiAppHotReloadTests
     /// <summary>
     /// TMA2-09 / D13（§7.2 #12）核心：热更新中任一应用的上下文构造失败时，
     /// 必须<b>整体放弃</b>本次变更（Phase-A 失败 → 不动注册表与快照），
-    /// 不得出现"app1 已重建为 TimeOut=60、app2 保持旧配置"的部分应用状态。
+    /// 不得出现"app1 已重建为 TimeoutSeconds=60、app2 保持旧配置"的部分应用状态。
     /// </summary>
     [Fact]
     public void OnConfigurationChanged_ShouldNotPartiallyApply_WhenSecondAppAssemblyFails()
@@ -375,9 +375,9 @@ public class MultiAppHotReloadTests
 
         // 初始实例化 app1（消耗工厂桩的前 2 次调用预算中 app1 的份额）
         var before = manager.GetApp("app1");
-        before.Config.TimeOut.Should().Be(30);
+        before.Config.TimeoutSeconds.Should().Be(30);
 
-        // Act：同时更新两个应用（app1 → TimeOut=60；app2 配置合法但工厂桩抛异常）
+        // Act：同时更新两个应用（app1 → TimeoutSeconds=60；app2 配置合法但工厂桩抛异常）
         var act = () => manager.OnConfigurationChanged(new List<FeishuAppConfig>
         {
             CreateConfig("app1", TestDataFactory.AppConfigs.AppIds.Default, TestDataFactory.AppConfigs.Secrets.Default, isDefault: true, timeOut: 60),
@@ -389,7 +389,7 @@ public class MultiAppHotReloadTests
         // Assert：不得部分应用——app1 保持旧配置与旧实例
         manager.GetApp("app1").Should().BeSameAs(before,
             "Phase-A 任一应用构造失败时必须整体放弃，app1 不得被部分应用");
-        manager.GetApp("app1").Config.TimeOut.Should().Be(30,
+        manager.GetApp("app1").Config.TimeoutSeconds.Should().Be(30,
             "变更未应用，配置快照保持原状");
         manager.HasApp("app2").Should().BeTrue();
     }

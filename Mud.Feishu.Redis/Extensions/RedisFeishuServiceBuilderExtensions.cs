@@ -1,4 +1,4 @@
-// -----------------------------------------------------------------------
+﻿// -----------------------------------------------------------------------
 //  作者：Mud Studio  版权所有 (c) Mud Studio 2026   
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
@@ -13,6 +13,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Mud.Feishu.Abstractions;
 using Mud.Feishu.Abstractions.Configuration;
+using Mud.Feishu.Abstractions.Extensions;
 using Mud.Feishu.Abstractions.Utilities;
 using Mud.Feishu.Redis.Configuration;
 using Mud.Feishu.Redis.HealthChecks;
@@ -20,6 +21,8 @@ using Mud.Feishu.Redis.Services;
 using StackExchange.Redis;
 using System.Diagnostics.CodeAnalysis;
 
+
+#pragma warning disable CS0618 // R5/X6: Obsolete dual-read fallback base — intentionally references DeduplicationOptions/EventDeduplicationOptions
 namespace Mud.Feishu.Redis.Extensions;
 
 /// <summary>
@@ -48,7 +51,7 @@ public static class RedisFeishuServiceBuilderExtensions
             var logger = sp.GetService<ILogger<RedisOptions>>();
 
             // TMA2-19 / P2-10：连接串含口令时脱敏后再记录。
-            logger?.LogInformation("Redis options loaded. Server: {ServerAddress}", SensitiveDataUtils.MaskSensitiveData(options.ServerAddress));
+            logger?.LogInformation("Redis options loaded. Server: {ServerAddress}", SensitiveDataUtils.MaskSensitiveData(options.Connection.ServerAddress));
             return options;
         });
 
@@ -60,20 +63,21 @@ public static class RedisFeishuServiceBuilderExtensions
             try
             {
                 // TMA2-19 / P2-10：连接串含口令时脱敏后再记录。
-                logger?.LogInformation("Initializing Redis connection to: {ConnectionString}", SensitiveDataUtils.MaskSensitiveData(options.ServerAddress));
+                // C7/R3：优先嵌套 Connection/Advanced，旧扁平键经 Obsolete 垫片写入同一存储
+                logger?.LogInformation("Initializing Redis connection to: {ConnectionString}", SensitiveDataUtils.MaskSensitiveData(options.Connection.ServerAddress));
 
                 // ADR-7.1：使用 ConfigurationOptions.Parse 替代手工 EndPoints.Add，
                 // 原生支持 redis://、rediss://（自动 Ssl）、host:port,password=... 等形态。
-                var config = ConfigurationOptions.Parse(options.ServerAddress);
-                config.ConnectTimeout = options.ConnectTimeout;
-                config.SyncTimeout = options.SyncTimeout;
-                config.Ssl = config.Ssl || options.Ssl;                // rediss:// 已置 Ssl，取或
-                config.Password = string.IsNullOrEmpty(options.Password) ? config.Password : options.Password;
-                config.AllowAdmin = options.AllowAdmin;
-                config.AbortOnConnectFail = options.AbortOnConnectFail;
-                config.ConnectRetry = options.ConnectRetry;
-                config.DefaultDatabase = options.DefaultDatabase;
-                config.ClientName = options.ClientName ?? $"Feishu-Deduplicator-{Environment.MachineName}";
+                var config = ConfigurationOptions.Parse(options.Connection.ServerAddress);
+                config.ConnectTimeout = options.Connection.ConnectTimeout;
+                config.SyncTimeout = options.Connection.SyncTimeout;
+                config.Ssl = config.Ssl || options.Connection.Ssl;                // rediss:// 已置 Ssl，取或
+                config.Password = string.IsNullOrEmpty(options.Connection.Password) ? config.Password : options.Connection.Password;
+                config.AllowAdmin = options.Advanced.AllowAdmin;
+                config.AbortOnConnectFail = options.Connection.AbortOnConnectFail;
+                config.ConnectRetry = options.Connection.ConnectRetry;
+                config.DefaultDatabase = options.Connection.DefaultDatabase;
+                config.ClientName = options.Advanced.ClientName ?? $"Feishu-Deduplicator-{Environment.MachineName}";
 
                 var redis = ConnectionMultiplexer.Connect(config);
 
@@ -93,7 +97,7 @@ public static class RedisFeishuServiceBuilderExtensions
             catch (Exception ex)
             {
                 logger?.LogError(ex, "Failed to initialize Redis connection");
-                throw new InvalidOperationException($"Failed to initialize Redis connection to {options.ServerAddress}", ex);
+                throw new InvalidOperationException($"Failed to initialize Redis connection to {options.Connection.ServerAddress}", ex);
             }
         });
 
@@ -107,7 +111,7 @@ public static class RedisFeishuServiceBuilderExtensions
         services.AddHostedService(sp => new RedisConnectionWarmupService(
             sp.GetRequiredService<IConnectionMultiplexer>(),
             sp.GetService<ILogger<RedisConnectionWarmupService>>(),
-            sp.GetRequiredService<RedisOptions>().AbortOnConnectFail));
+            sp.GetRequiredService<RedisOptions>().Connection.AbortOnConnectFail));
 
         return services;
     }
@@ -125,19 +129,42 @@ public static class RedisFeishuServiceBuilderExtensions
             var logger = sp.GetService<ILogger<RedisFeishuEventDistributedDeduplicator>>();
 
             // 从 DI 解析 DeduplicationOptions（可通过 FeishuRedis:Deduplication 节点配置高级参数）
+            // R5/X6: 文件级 #pragma warning disable CS0618 已覆盖 — 本类型为双读回落基座
             var dedupOptions = sp.GetService<IOptions<DeduplicationOptions>>()?.Value ?? DeduplicationOptions.Default;
+            var unified = sp.GetService<IOptions<FeishuDeduplicationOptions>>()?.Value;
+            var unifiedActive = unified is { IsConfiguredFromConfiguration: true };
+            var profileBase = unified?.ResolveProfileDeduplicationOptions() ?? DeduplicationOptions.Default;
 
-            // RedisOptions 中的 EventCacheExpiration / EventKeyPrefix 优先（与文档承诺一致）
-            // 注意：DeduplicationOptions 的 AllowProcessingOnFallback/MaxRetryCount/InitialRetryDelay/MaxRetryDelay
-            // 在 Redis 路径不消费（无降级能力），已从 effectiveOptions 中删除以避免"配置看起来生效"。
+            // C1 双读：FeishuDeduplication 新节存在时字段级优先，否则保持 RedisOptions 覆盖 DeduplicationOptions
+            var effectiveEventTtl = (unifiedActive && unified!.Event?.Ttl is { } uTtl && uTtl > TimeSpan.Zero)
+                ? uTtl
+                : redisOptions.EventCacheExpiration;
+            var effectiveEventPrefix = (unifiedActive && !string.IsNullOrEmpty(unified.Event?.KeyPrefix))
+                ? unified!.Event!.KeyPrefix!
+                : redisOptions.EventKeyPrefix;
+            var effectiveProcessing = (unifiedActive && unified!.Event?.ProcessingTimeout is { } uPt && uPt > TimeSpan.Zero)
+                ? uPt
+                : dedupOptions.ProcessingTimeout > TimeSpan.Zero
+                    ? dedupOptions.ProcessingTimeout
+                    : profileBase.ProcessingTimeout;
+            var effectiveCleanup = (unifiedActive && unified!.Event?.CleanupInterval is { } uCl && uCl > TimeSpan.Zero)
+                ? uCl
+                : dedupOptions.CleanupInterval > TimeSpan.Zero
+                    ? dedupOptions.CleanupInterval
+                    : profileBase.CleanupInterval;
+            var effectiveMaxCache = (unifiedActive && unified!.Event?.MaxCacheSize is { } uMs)
+                ? uMs
+                : dedupOptions.MaxCacheSize > 0 ? dedupOptions.MaxCacheSize : profileBase.MaxCacheSize;
+
+            WarnIfDeduplicationKeysAreIneffective(logger, redisOptions, dedupOptions, unified);
+
             var effectiveOptions = new DeduplicationOptions
             {
-                CacheExpiration = redisOptions.EventCacheExpiration,
-                ProcessingTimeout = dedupOptions.ProcessingTimeout,
-                CleanupInterval = dedupOptions.CleanupInterval,
-                KeyPrefix = redisOptions.EventKeyPrefix,
-                MaxCacheSize = dedupOptions.MaxCacheSize,
-                EnableVerboseLogging = dedupOptions.EnableVerboseLogging
+                CacheExpiration = effectiveEventTtl,
+                ProcessingTimeout = effectiveProcessing,
+                CleanupInterval = effectiveCleanup,
+                KeyPrefix = effectiveEventPrefix,
+                MaxCacheSize = effectiveMaxCache
             };
 
             return new RedisFeishuEventDistributedDeduplicator(
@@ -147,6 +174,84 @@ public static class RedisFeishuServiceBuilderExtensions
         });
 
         return services;
+    }
+
+    /// <summary>
+    /// 双读期「配了但无效」的告警（R5.2/X6 扩展为两个方向）。
+    /// </summary>
+    /// <param name="logger">日志；为 null 时不输出。</param>
+    /// <param name="redisOptions">Redis 配置（旧键回落基座）。</param>
+    /// <param name="dedupOptions">旧的高级去重配置（<c>FeishuRedis:Deduplication</c>）。</param>
+    /// <param name="unified">统一节配置；<c>IsConfiguredFromConfiguration=true</c> 时视为已生效。</param>
+    /// <remarks>
+    /// <para><b>情形 A（统一节未生效）</b>：<see cref="DeduplicationOptions"/> 的 TTL/前缀会被
+    /// <see cref="RedisOptions"/> 覆盖 → 告警并指向应改用的旧键。</para>
+    /// <para><b>情形 B（统一节已生效，R5.2 新增）</b>：显式配置的旧键被 <c>FeishuDeduplication</c>
+    /// **字段级覆盖**。此前这种情况完全静默——这是「配了但无效」最典型的形态，也正是 X6/X13 的核心风险。</para>
+    /// <para>
+    /// <b>为什么只告警而不给这些属性加 <c>[Obsolete]</c></b>：它们是双读期**合法的**回落基座
+    /// （<c>FeishuDeduplication</c> 未配置时真正生效），给 SDK 自身必须读取的属性加 Obsolete 只会
+    /// 产生大量噪音；而真正的误用入口是 <c>appsettings.json</c>（Obsolete 对它完全无效）。
+    /// 运行时告警能精确指出「哪个键被哪个键覆盖」，比编译期警告更贴合该风险。
+    /// </para>
+    /// </remarks>
+    internal static void WarnIfDeduplicationKeysAreIneffective(
+        ILogger? logger,
+        RedisOptions redisOptions,
+        DeduplicationOptions dedupOptions,
+        FeishuDeduplicationOptions? unified = null)
+    {
+        if (logger is null)
+            return;
+
+        var unifiedActive = unified is { IsConfiguredFromConfiguration: true };
+
+        if (!unifiedActive)
+        {
+            // 情形 A：仅当 DeduplicationOptions 使用了非默认（与 RedisOptions 不一致）的值时告警，
+            // 避免默认对齐场景产生噪音。
+            if (dedupOptions.CacheExpiration != redisOptions.EventCacheExpiration)
+            {
+                logger.LogWarning(
+                    "DeduplicationOptions.CacheExpiration({DedupTtl}) 在 Redis 路径不生效，请改用 FeishuRedis:EventCacheExpiration({RedisTtl})。",
+                    dedupOptions.CacheExpiration,
+                    redisOptions.EventCacheExpiration);
+            }
+
+            if (!string.Equals(dedupOptions.KeyPrefix, redisOptions.EventKeyPrefix, StringComparison.Ordinal))
+            {
+                logger.LogWarning(
+                    "DeduplicationOptions.KeyPrefix('{DedupPrefix}') 在 Redis 路径不生效，请改用 FeishuRedis:EventKeyPrefix('{RedisPrefix}')。",
+                    dedupOptions.KeyPrefix,
+                    redisOptions.EventKeyPrefix);
+            }
+
+            return;
+        }
+
+        // 情形 B：统一节已生效。仅当「旧键被显式配置为非默认」且「统一节对应字段确实非空」时才告警——
+        // 若统一节未提供该字段，旧键仍然是实际生效值（不算「无效」），此时告警会误导。
+        var defaultEventTtl = TimeSpan.FromMilliseconds(Consts.DefaultCacheExpirationMs);
+
+        if (unified!.Event?.Ttl is { } unifiedTtl && unifiedTtl > TimeSpan.Zero
+            && redisOptions.EventCacheExpiration != defaultEventTtl)
+        {
+            logger.LogWarning(
+                "FeishuRedis:EventCacheExpiration({LegacyTtl}) 已被 FeishuDeduplication:Event:Ttl({EffectiveTtl}) 覆盖，" +
+                "该旧键不生效。请移除旧键并统一使用 FeishuDeduplication。",
+                redisOptions.EventCacheExpiration,
+                unifiedTtl);
+        }
+
+        if (!string.IsNullOrEmpty(unified.Event?.KeyPrefix)
+            && !string.Equals(redisOptions.EventKeyPrefix, Consts.DefaultEventKeyPrefix, StringComparison.Ordinal))
+        {
+            logger.LogWarning(
+                "FeishuRedis:EventKeyPrefix('{LegacyPrefix}') 已被 FeishuDeduplication:Event:KeyPrefix('{EffectivePrefix}') 覆盖，" +
+                "该旧键不生效。请移除旧键并统一使用 FeishuDeduplication。",
+                redisOptions.EventKeyPrefix,
+                unified.Event!.KeyPrefix);
+        }
     }
 
     /// <summary>
@@ -164,8 +269,8 @@ public static class RedisFeishuServiceBuilderExtensions
             return new RedisFeishuNonceDistributedDeduplicator(
                 redis,
                 logger,
-                options.NonceTtl,
-                options.NonceKeyPrefix);
+                ResolveUnifiedNonceTtl(sp, options),
+                ResolveUnifiedNonceKeyPrefix(sp, options));
         });
 
         return services;
@@ -184,17 +289,16 @@ public static class RedisFeishuServiceBuilderExtensions
             var logger = sp.GetService<ILogger<RedisFeishuSeqIDDeduplicator>>();
 
             // ADR-3（T-M2-4）：合成 scopeKey 以实现多实例/多应用隔离。
-            // 默认策略：AppKey + MachineName（可配置 RedisOptions.SeqIdScopeKey 覆盖）。
+            // R5.3.1/X13（G-12）：scopeKey 的 AppKey 部分在**解析期**推断（见 ResolveUnifiedSeqIdScopeKey），
+            // 不再固定取 RedisOptions.AppKey（默认 "default"）。
             // scopeKey 为空会在构造函数中抛 ArgumentException（fail-fast，防止退化为全局共享键）。
-            var scopeKey = !string.IsNullOrWhiteSpace(options.SeqIdScopeKey)
-                ? options.SeqIdScopeKey
-                : $"{options.AppKey}|{Environment.MachineName}";
+            var scopeKey = ResolveUnifiedSeqIdScopeKey(sp, options);
 
             return new RedisFeishuSeqIDDeduplicator(
                 redis,
                 logger,
-                cacheExpiration: options.SeqIdCacheExpiration,
-                keyPrefix: options.SeqIdKeyPrefix,
+                cacheExpiration: ResolveUnifiedSeqIdTtl(sp, options),
+                keyPrefix: ResolveUnifiedSeqIdKeyPrefix(sp, options),
                 scopeKey: scopeKey);
         });
 
@@ -284,14 +388,18 @@ public static class RedisFeishuServiceBuilderExtensions
         services.Configure<RedisOptions>(options =>
         {
             configuration.GetSection(section).Bind(options);
+            // R4：公共扁平连接属性已删除；配置 JSON 旧键回填嵌套 Connection/Advanced
+            options.ApplyLegacyFlatConnectionKeys(configuration.GetSection(section));
         });
 
-        // 绑定 DeduplicationOptions（高级参数：ProcessingTimeout、MaxRetryCount、AllowProcessingOnFallback 等）
-        // 注意：CacheExpiration 和 KeyPrefix 由 RedisOptions 中的 EventCacheExpiration / EventKeyPrefix 优先覆盖
+        // 绑定 DeduplicationOptions（高级参数：ProcessingTimeout 等）
         services.Configure<DeduplicationOptions>(options =>
         {
             configuration.GetSection($"{section}:Deduplication").Bind(options);
         });
+
+        // C1：统一去重节（存在时对旧键字段级优先）
+        services.AddFeishuDeduplicationOptions(configuration);
 
         return services
             .AddFeishuRedis()
@@ -299,6 +407,60 @@ public static class RedisFeishuServiceBuilderExtensions
             .AddFeishuRedisNonceDeduplicator()
             .AddFeishuRedisSeqIDDeduplicator()
             .AddFeishuRedisTokenStore();
+    }
+
+    private static FeishuDeduplicationOptions? GetUnifiedDeduplication(IServiceProvider sp) =>
+        sp.GetService<IOptions<FeishuDeduplicationOptions>>()?.Value is { IsConfiguredFromConfiguration: true } u ? u : null;
+
+    private static TimeSpan ResolveUnifiedNonceTtl(IServiceProvider sp, RedisOptions options)
+    {
+        var unified = GetUnifiedDeduplication(sp);
+        return unified?.Nonce?.Ttl is { } ttl && ttl > TimeSpan.Zero ? ttl : options.NonceTtl;
+    }
+
+    private static string ResolveUnifiedNonceKeyPrefix(IServiceProvider sp, RedisOptions options)
+    {
+        var unified = GetUnifiedDeduplication(sp);
+        return !string.IsNullOrEmpty(unified?.Nonce?.KeyPrefix) ? unified!.Nonce!.KeyPrefix! : options.NonceKeyPrefix;
+    }
+
+    private static TimeSpan ResolveUnifiedSeqIdTtl(IServiceProvider sp, RedisOptions options)
+    {
+        var unified = GetUnifiedDeduplication(sp);
+        return unified?.SeqId?.Ttl is { } ttl && ttl > TimeSpan.Zero ? ttl : options.SeqIdCacheExpiration;
+    }
+
+    private static string ResolveUnifiedSeqIdKeyPrefix(IServiceProvider sp, RedisOptions options)
+    {
+        var unified = GetUnifiedDeduplication(sp);
+        return !string.IsNullOrEmpty(unified?.SeqId?.KeyPrefix) ? unified!.SeqId!.KeyPrefix! : options.SeqIdKeyPrefix;
+    }
+
+    private static string ResolveUnifiedSeqIdScopeKey(IServiceProvider sp, RedisOptions options)
+    {
+        var unified = GetUnifiedDeduplication(sp);
+        if (!string.IsNullOrWhiteSpace(unified?.SeqId?.ScopeKey))
+            return unified!.SeqId!.ScopeKey!;
+
+        if (!string.IsNullOrWhiteSpace(options.SeqIdScopeKey))
+            return options.SeqIdScopeKey;
+
+        // R5.3.1/X13（G-12）：AppKey 默认从 FeishuApps 默认应用推断。
+        // 推断必须发生在**解析期**（工厂委托内）——文档化调用顺序是「Redis 先于 AddFeishuApp」，
+        // 绑定期拿不到应用列表。读取 IOptionsMonitor（与 FeishuAppManager 同形）而非
+        // IFeishuAppManager：避免触发默认应用懒加载装配的副作用；GetService（非 GetRequiredService）
+        // 保证宿主未接多应用时不硬失败。
+        // 显式配置的 RedisOptions.SeqIdScopeKey / FeishuDeduplication:SeqId:ScopeKey 恒优先于推断。
+        var appConfigs = sp.GetService<IOptionsMonitor<List<FeishuAppConfig>>>()?.CurrentValue
+            ?? sp.GetService<IOptions<List<FeishuAppConfig>>>()?.Value;
+        var defaultAppKey = appConfigs?.FirstOrDefault(c => c.IsDefault)?.AppKey
+            ?? appConfigs?.FirstOrDefault()?.AppKey;
+        if (!string.IsNullOrWhiteSpace(defaultAppKey))
+            return $"{defaultAppKey}|{Environment.MachineName}";
+
+        // 拿不到默认应用（宿主未接多应用）→ 回落 RedisOptions.AppKey 合成；
+        // 空 scopeKey 由 RedisFeishuSeqIDDeduplicator 构造函数 fail-fast（绝不静默退化为全局共享键）。
+        return $"{options.AppKey}|{Environment.MachineName}";
     }
 
     /// <summary>
@@ -321,6 +483,9 @@ public static class RedisFeishuServiceBuilderExtensions
         EnsureFeishuAppNotRegistered(services, nameof(AddFeishuRedisDeduplicators));
 
         services.Configure(configureOptions);
+
+        // 代码路径也注册统一节 Options/Validator（无 IConfiguration 时不绑定）
+        services.AddFeishuDeduplicationOptions();
 
         return services
             .AddFeishuRedis()

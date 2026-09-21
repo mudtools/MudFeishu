@@ -61,6 +61,14 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
 
     protected override int UserExpireThresholdSeconds => _options.TokenRefreshThreshold;
 
+    /// <summary>
+    /// TMR-P2-11（F11）：用户标识（OpenId/userId）日志脱敏统一出口。
+    /// 与中间件默认脱敏策略一致——用户标识属敏感信息，明文入日志会造成用户画像泄露面。
+    /// </summary>
+    /// <param name="userId">用户标识（OpenId/userId）</param>
+    /// <returns>脱敏后的用户标识</returns>
+    private static string Masked(string? userId) => SensitiveDataUtils.MaskSensitiveData(userId);
+
     // TMA-23 修复：覆写 MetricsKey 使指标维度在多应用下可区分。
     // 返回 {TypeName}:{AppKey}，属性文档明确要求"稳定且不含敏感信息"。
     protected override string MetricsKey => $"UserTokenManager:{_options.AppKey}";
@@ -99,8 +107,7 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
         if (string.IsNullOrEmpty(redirectUri))
             throw new ArgumentException("RedirectUri cannot be null or empty.", nameof(redirectUri));
 
-        if (_options.EnableLogging)
-            _logger.LogInformation("Exchanging code for user token");
+        _logger.LogInformation("Exchanging code for user token");
 
         var credentials = new OAuthTokenRequest
         {
@@ -155,8 +162,7 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
             // OAuth v2 端点不返回 OpenId，使用 access_token 直接调用用户信息 API 获取 OpenId。
             // IFeishuAuthentication.GetUserInfoAsync 接受显式 token 参数，不走令牌管理基础设施，
             // 因此不存在循环依赖问题。
-            if (_options.EnableLogging)
-                _logger.LogInformation("OAuth 端点未返回 OpenId，使用 access_token 获取用户信息");
+            _logger.LogInformation("OAuth 端点未返回 OpenId，使用 access_token 获取用户信息");
 
             var userInfo = await _authenticationApi.GetUserInfoAsync(
                 $"Bearer {res.AccessToken}", cancellationToken).ConfigureAwait(false);
@@ -212,7 +218,7 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
         // 过期 → 删 store 条目、返回 null（进入退避）。
         if (candidate.RefreshTokenExpireTime > 0 && candidate.RefreshTokenExpireTime <= DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())
         {
-            _logger.LogWarning("Refresh token expired for userId: {UserId}, purging store entry", userId);
+            _logger.LogWarning("Refresh token expired for userId: {UserId}, purging store entry", Masked(userId));
             if (_userTokenStore != null)
             {
                 try
@@ -227,8 +233,7 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
             return null;
         }
 
-        if (_options.EnableLogging)
-            _logger.LogInformation("Refreshing user token for userId: {UserId}", userId);
+        _logger.LogInformation("Refreshing user token for userId: {UserId}", Masked(userId));
 
         var credentials = new OAuthRefreshTokenRequest
         {
@@ -248,7 +253,7 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
             {
                 _logger.LogWarning(
                     "OAuth refresh failed with non-retryable error for userId: {UserId}, code: {Code}, msg: {Msg}. Purging refresh token.",
-                    userId, res?.Code, res?.Msg);
+                    Masked(userId), res?.Code, res?.Msg);
                 if (_userTokenStore != null)
                 {
                     try
@@ -269,7 +274,7 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
                     }
                     catch (Exception ex) when (ex is not OperationCanceledException)
                     {
-                        _logger.LogWarning(ex, "Failed to purge refresh token after non-retryable error for userId: {UserId}", userId);
+                        _logger.LogWarning(ex, "Failed to purge refresh token after non-retryable error for userId: {UserId}", Masked(userId));
                     }
                 }
                 return null;
@@ -417,7 +422,7 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
         // NEW-TM-01 修复：过滤 OperationCanceledException，避免取消操作被误记录为失败
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            _logger.LogWarning(ex, "Failed to persist user token to IUserTokenStore for userId: {UserId}", userId);
+            _logger.LogWarning(ex, "Failed to persist user token to IUserTokenStore for userId: {UserId}", Masked(userId));
         }
     }
 
@@ -439,14 +444,28 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
                 ? TokenStoreHelper.DecodeStoredToken(storedRefreshToken!)
                 : (null, 0L);
 
-            _logger.LogDebug("Restored user token from IUserTokenStore for userId: {UserId}", userId);
+            _logger.LogDebug("Restored user token from IUserTokenStore for userId: {UserId}", Masked(userId));
 
             var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
             if (accessTokenExpireMs > 0 && accessTokenExpireMs <= now)
             {
-                _logger.LogDebug("Restored user access token has expired for userId: {UserId}, skipping", userId);
+                _logger.LogDebug("Restored user access token has expired for userId: {UserId}, skipping", Masked(userId));
                 return null;
+            }
+
+            // TMR-P2-12（F12）：与租户路径（FeishuAppTokenManagerBase.TryRestoreFromStoreAsync，D9）同源——
+            // 临近 TokenRefreshThreshold 的恢复结果直接弃用，避免"恢复命中 → 组件判临近过期 → 立即再刷新"
+            // 的自循环（缓存永不命中的资源放大）。IssuedAt=0 的保守代价（TMF-06 方案 A）维持不变，
+            // 本项只对齐恢复弃用阈值，不改存储格式。
+            if (accessTokenExpireMs > 0)
+            {
+                var restoreThresholdMs = _options.TokenRefreshThreshold * 1000L;
+                if ((accessTokenExpireMs - now) <= restoreThresholdMs)
+                {
+                    _logger.LogDebug("Restored user access token is near expiration, skipping. userId: {UserId}", Masked(userId));
+                    return null;
+                }
             }
 
             var safeExpireSeconds = _options.TokenRefreshThreshold + 60;
@@ -470,7 +489,7 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
         // NEW-TM-01 修复：过滤 OperationCanceledException，避免取消操作被误记录为失败
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            _logger.LogWarning(ex, "Failed to restore user token from IUserTokenStore for userId: {UserId}", userId);
+            _logger.LogWarning(ex, "Failed to restore user token from IUserTokenStore for userId: {UserId}", Masked(userId));
             return null;
         }
     }
@@ -507,7 +526,7 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
             // TMA2-06 / D12：校验 refresh token 自身的过期时间。
             if (refreshTokenExpireMs > 0 && refreshTokenExpireMs <= DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())
             {
-                _logger.LogDebug("Refresh token expired for userId: {UserId}, not loading candidate", userId);
+                _logger.LogDebug("Refresh token expired for userId: {UserId}, not loading candidate", Masked(userId));
                 return null;
             }
 
@@ -529,7 +548,7 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
                 }
             }
 
-            _logger.LogDebug("Loaded refresh token candidate from IUserTokenStore for userId: {UserId}", userId);
+            _logger.LogDebug("Loaded refresh token candidate from IUserTokenStore for userId: {UserId}", Masked(userId));
 
             // TMA2-16 / P2-6：恢复时回填 OpenId/UnionId
             // store 中不持久化 OpenId/UnionId（编码值仅含 token + 过期戳），
@@ -547,7 +566,7 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            _logger.LogWarning(ex, "Failed to load refresh token candidate from IUserTokenStore for userId: {UserId}", userId);
+            _logger.LogWarning(ex, "Failed to load refresh token candidate from IUserTokenStore for userId: {UserId}", Masked(userId));
             return null;
         }
     }

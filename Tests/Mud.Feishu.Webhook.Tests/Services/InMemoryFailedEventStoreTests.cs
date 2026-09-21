@@ -256,4 +256,47 @@ public class InMemoryFailedEventStoreTests
     }
 
     #endregion
+
+    // ===== M3-3 / M3-4 =====
+
+    [Fact]
+    public async Task StoreFailedEventAsync_ShouldPreserveHeader_WhenHeaderPresent()
+    {
+        var header = new Mud.Feishu.Abstractions.FeishuEventHeader
+        {
+            Schema = "2.0",
+            EventId = "evt-header",
+            EventType = "drive.file.edit_v1",
+            AppId = "cli_app",
+            TenantKey = "tk"
+        };
+        var eventData = new Mud.Feishu.Abstractions.EventData
+        {
+            EventId = "evt-header",
+            EventType = "drive.file.edit_v1",
+            Header = header
+        };
+
+        await _store.StoreFailedEventAsync(eventData, new Exception("err"), appKey: "app1", DateTimeOffset.UtcNow);
+
+        var stored = (await _store.GetFailedEventsForRetryAsync(5)).Single();
+        stored.SerializedHeader.Should().NotBeNullOrEmpty();
+        stored.SerializedHeader.Should().Contain("cli_app");
+        stored.StoreKey.Should().Be("evt-header");
+    }
+
+    [Fact]
+    public async Task StoreFailedEventAsync_ShouldNotCollapseEvents_WhenEventIdEmpty()
+    {
+        var e1 = new Mud.Feishu.Abstractions.EventData { EventId = "", EventType = "t.a" };
+        var e2 = new Mud.Feishu.Abstractions.EventData { EventId = "", EventType = "t.b" };
+
+        await _store.StoreFailedEventAsync(e1, new Exception("1"));
+        await _store.StoreFailedEventAsync(e2, new Exception("2"));
+
+        var all = (await _store.GetFailedEventsForRetryAsync(5)).ToList();
+        all.Count.Should().Be(2, "空 EventId 必须用 StoreKey 兜底，不得相互覆盖");
+        all.Select(x => x.StoreKey).Should().OnlyHaveUniqueItems();
+        all.All(x => x.StoreKey != null && x.StoreKey.StartsWith("no-event-id:")).Should().BeTrue();
+    }
 }

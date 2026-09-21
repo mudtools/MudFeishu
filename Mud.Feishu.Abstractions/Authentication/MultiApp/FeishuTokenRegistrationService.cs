@@ -78,10 +78,26 @@ internal sealed class FeishuTokenRegistrationService : IHostedService
         // WarmUpAllAppsOnStartup=true 时逐应用预热，单应用失败不阻断
         if (_appOptions.WarmUpAllAppsOnStartup)
         {
+            // TMR-P1-4（F4）：DefaultConfig → GetDefaultApp() 可能抛异常（默认应用初始化失败）。
+            // 原实现位于逐应用 try 之外，异常会传播出 StartAsync 阻断宿主启动，
+            // 违背本类声明的"单应用失败不阻断宿主启动"。改为独立 try 隔离：
+            // 解析失败时 defaultAppKey 保持 null → 退化为全量预热（默认应用不再跳过）。
+            string? defaultAppKey = null;
+            try
+            {
+                defaultAppKey = _appManager.DefaultConfig.AppKey;
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _logger.LogError(ex,
+                    "启动期解析默认应用失败，WarmUp 退化为全量预热（默认应用不再跳过）。");
+            }
+
             foreach (var appKey in _appManager.ConfiguredAppKeys)
             {
-                // 默认应用已注册，跳过
-                if (string.Equals(appKey, _appManager.DefaultConfig.AppKey, StringComparison.Ordinal))
+                // 默认应用已注册，跳过（以循环开始时的快照为准——循环中途默认应用被切换时行为确定）。
+                if (!string.IsNullOrEmpty(defaultAppKey) &&
+                    string.Equals(appKey, defaultAppKey, StringComparison.Ordinal))
                     continue;
 
                 try
@@ -131,6 +147,9 @@ internal sealed class FeishuTokenRegistrationService : IHostedService
     private void OnAppInstantiated(object? sender, FeishuAppInstantiatedEventArgs e)
     {
         // TMA2-07：非默认应用首次访问后增量注册到后台刷新服务（同名键覆盖）。
+        // TMR-P2-15（F15）：与 OnConfigurationChanged 的双路重复注册已确认无害——
+        // 组件 TokenRefreshHelper.TryRegisterTokenManager 对同名键为「覆盖」语义
+        // （tokenManagers[key] = tokenManager，TMX-15-3），不会产生双 Timer，无需去重。
         try
         {
             var count = FeishuTokenRegistrationHelper.RegisterAppTokenManagers(e.Context, _refreshService);
@@ -149,6 +168,8 @@ internal sealed class FeishuTokenRegistrationService : IHostedService
     {
         // TMA-08：增量注册——新增/更新应用时重新注册令牌管理器到后台刷新服务。
         // 同名键覆盖 → 新实例接管；旧实例由退休队列 Dispose 后 ODE 自清。
+        // TMR-P2-15（F15）：覆盖语义已对照组件源码确认（TokenRefreshHelper.TryRegisterTokenManager），
+        // AppInstantiated 双路重复注册幂等，无需去重改造。
         try
         {
             if (e.ChangeType == AppConfigurationChangeType.Added ||

@@ -29,7 +29,9 @@ public class FeishuWebSocketOptionsBindingTests
             .Build();
 
         var options = new FeishuWebSocketOptions();
-        configuration.GetSection("FeishuWebSocket").Bind(options);
+        var section = configuration.GetSection("FeishuWebSocket");
+        section.Bind(options);
+        options.ApplyLegacyFlatKeys(section);
         return options;
     }
 
@@ -46,12 +48,11 @@ public class FeishuWebSocketOptionsBindingTests
             ["FeishuWebSocket:AllowSelfSignedCertificates"] = "true",
         });
 
-        options.AutoReconnect.Should().BeFalse();
-        options.EnableLogging.Should().BeFalse();
+        options.Reconnect.Auto.Should().BeFalse();
         options.EnableReconnectMetrics.Should().BeFalse();
-        options.AllowInsecureWebSocket.Should().BeTrue();
-        options.ValidateServerCertificate.Should().BeFalse();
-        options.AllowSelfSignedCertificates.Should().BeTrue();
+        options.Certificate.AllowInsecureWebSocket.Should().BeTrue();
+        options.Certificate.ValidateServerCertificate.Should().BeFalse();
+        options.Certificate.AllowSelfSignedCertificates.Should().BeTrue();
     }
 
     [Fact]
@@ -69,9 +70,9 @@ public class FeishuWebSocketOptionsBindingTests
             ["FeishuWebSocket:MessageHandlerTimeoutMs"] = "45000",
         });
 
-        options.MaxReconnectAttempts.Should().Be(10);
-        options.ReconnectDelayMs.Should().Be(2000);
-        options.MaxReconnectDelayMs.Should().Be(60000);
+        options.Reconnect.MaxAttempts.Should().Be(10);
+        options.Reconnect.BaseDelayMs.Should().Be(2000);
+        options.Reconnect.MaxDelayMs.Should().Be(60000);
         options.InitialReceiveBufferSize.Should().Be(8192);
         options.HeartbeatIntervalMs.Should().Be(15000);
         options.ConnectionTimeoutMs.Should().Be(20000);
@@ -88,8 +89,8 @@ public class FeishuWebSocketOptionsBindingTests
             ["FeishuWebSocket:ReconnectCooldownTime"] = "00:00:10",
         });
 
-        options.MaxTotalReconnectTime.Should().Be(TimeSpan.FromHours(1.5));
-        options.ReconnectCooldownTime.Should().Be(TimeSpan.FromSeconds(10));
+        options.Reconnect.TotalBudget.Should().Be(TimeSpan.FromHours(1.5));
+        options.Reconnect.Cooldown.Should().Be(TimeSpan.FromSeconds(10));
     }
 
     [Fact]
@@ -180,8 +181,8 @@ public class FeishuWebSocketOptionsBindingTests
         var options = new FeishuWebSocketOptions();
         configuration.GetSection("FeishuWebSocket").Bind(options);
 
-        options.AutoReconnect.Should().BeTrue();
-        options.MaxReconnectAttempts.Should().Be(5);
+        options.Reconnect.Auto.Should().BeTrue();
+        options.Reconnect.MaxAttempts.Should().Be(5);
         options.HeartbeatIntervalMs.Should().Be(25000);
         options.ConnectionTimeoutMs.Should().Be(10000);
         options.EventDeduplication.Mode.Should().Be(EventDeduplicationMode.InMemory);
@@ -200,7 +201,7 @@ public class FeishuWebSocketOptionsBindingTests
         });
 
         // setter 中 Math.Max 应将值提升到最小值
-        options.ReconnectDelayMs.Should().Be(1000);
+        options.Reconnect.BaseDelayMs.Should().Be(1000);
         options.HeartbeatIntervalMs.Should().Be(5000);
     }
 
@@ -217,13 +218,18 @@ public class FeishuWebSocketOptionsBindingTests
             .Build();
 
         var services = new ServiceCollection();
-        services.Configure<FeishuWebSocketOptions>(configuration.GetSection("FeishuWebSocket"));
+        services.Configure<FeishuWebSocketOptions>(o =>
+        {
+            var sec = configuration.GetSection("FeishuWebSocket");
+            sec.Bind(o);
+            o.ApplyLegacyFlatKeys(sec);
+        });
         using var provider = services.BuildServiceProvider();
 
         var options = provider.GetRequiredService<IOptions<FeishuWebSocketOptions>>().Value;
 
-        options.AutoReconnect.Should().BeFalse();
-        options.MaxReconnectAttempts.Should().Be(8);
+        options.Reconnect.Auto.Should().BeFalse();
+        options.Reconnect.MaxAttempts.Should().Be(8);
         options.HeartbeatIntervalMs.Should().Be(20000);
     }
 
@@ -238,13 +244,18 @@ public class FeishuWebSocketOptionsBindingTests
             .Build();
 
         var services = new ServiceCollection();
-        services.Configure<FeishuWebSocketOptions>(configuration.GetSection("FeishuWebSocket"));
+        services.Configure<FeishuWebSocketOptions>(o =>
+        {
+            var sec = configuration.GetSection("FeishuWebSocket");
+            sec.Bind(o);
+            o.ApplyLegacyFlatKeys(sec);
+        });
         using var provider = services.BuildServiceProvider();
 
         var optionsMonitor = provider.GetRequiredService<IOptionsMonitor<FeishuWebSocketOptions>>();
         var options = optionsMonitor.CurrentValue;
 
-        options.MaxReconnectAttempts.Should().Be(12);
+        options.Reconnect.MaxAttempts.Should().Be(12);
     }
 
     [Fact]

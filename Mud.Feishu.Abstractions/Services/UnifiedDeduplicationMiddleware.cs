@@ -1,4 +1,4 @@
-// -----------------------------------------------------------------------
+﻿// -----------------------------------------------------------------------
 //  作者：Mud Studio  版权所有 (c) Mud Studio 2026   
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
@@ -7,6 +7,8 @@
 
 using Mud.Feishu.Abstractions.Configuration;
 
+
+#pragma warning disable CS0618 // R5/X6: Obsolete dual-read fallback base — intentionally references DeduplicationOptions/EventDeduplicationOptions
 namespace Mud.Feishu.Abstractions.Services;
 
 /// <summary>
@@ -52,10 +54,8 @@ public class UnifiedDeduplicationMiddleware : IUnifiedDeduplicationMiddleware, I
     /// <inheritdoc />
     public async Task<UnifiedDeduplicationResult> CheckAsync(string? eventId, ulong? seqId, CancellationToken cancellationToken = default)
     {
-        if (_options.EnableVerboseLogging)
-        {
-            _logger?.LogDebug("执行统一去重检查: EventId={EventId}, SeqId={SeqId}", eventId, seqId);
-        }
+                _logger?.LogDebug("执行统一去重检查: EventId={EventId}, SeqId={SeqId}", eventId, seqId);
+    
 
         if (seqId.HasValue && _seqIdDeduplicator != null)
         {
@@ -95,10 +95,9 @@ public class UnifiedDeduplicationMiddleware : IUnifiedDeduplicationMiddleware, I
             _logger?.LogDebug("EventId {EventId} 标记为已完成", eventId);
         }
 
-        if (_options.EnableVerboseLogging)
-        {
-            _logger?.LogDebug("去重标记完成: EventId={EventId}, SeqId={SeqId}", eventId, seqId);
-        }
+        // SeqID 在 CheckAsync 的 TryMarkAsProcessedAsync 中已写入"已处理"态，完成阶段无需二次标记。
+        // 保持 no-op 并显式记录，避免调用方误以为需要重复写入。
+        _logger?.LogDebug("去重标记完成: EventId={EventId}, SeqId={SeqId}", eventId, seqId);
     }
 
     /// <inheritdoc />
@@ -110,10 +109,15 @@ public class UnifiedDeduplicationMiddleware : IUnifiedDeduplicationMiddleware, I
             _logger?.LogDebug("EventId {EventId} 处理状态已回滚", eventId);
         }
 
-        if (_options.EnableVerboseLogging)
+        // P0-1：SeqID 侧状态此前从不回滚（接口参数被忽略），失败重发会被 SeqID 去重吞掉。
+        // 仅在调用方通过 CheckAsync/TryMarkAsProcessedAsync 管理了 SeqID 的同一会话语义下回滚。
+        if (seqId.HasValue && seqId.Value > 0 && _seqIdDeduplicator != null)
         {
-            _logger?.LogDebug("去重状态回滚: EventId={EventId}, SeqId={SeqId}", eventId, seqId);
+            await _seqIdDeduplicator.RollbackAsync(seqId.Value);
+            _logger?.LogDebug("SeqId {SeqId} 处理状态已回滚", seqId.Value);
         }
+
+        _logger?.LogDebug("去重状态回滚: EventId={EventId}, SeqId={SeqId}", eventId, seqId);
     }
 
     /// <inheritdoc />

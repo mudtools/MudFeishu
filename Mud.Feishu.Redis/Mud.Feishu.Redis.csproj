@@ -36,4 +36,9 @@
 	<ItemGroup>
 		<ProjectReference Include="..\Mud.Feishu.Abstractions\Mud.Feishu.Abstractions.csproj" />
 	</ItemGroup>
+
+	<ItemGroup>
+		<InternalsVisibleTo Include="Mud.Feishu.Redis.Tests" />
+		<InternalsVisibleTo Include="Mud.Feishu.Redis.IntegrationTests" />
+	</ItemGroup>
 </Project>

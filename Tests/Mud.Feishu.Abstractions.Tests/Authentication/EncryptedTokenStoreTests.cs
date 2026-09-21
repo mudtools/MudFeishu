@@ -8,6 +8,7 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Moq;
 using Mud.Feishu.Abstractions.Authentication;
 using Mud.Feishu.Abstractions.Tests.Helpers;
 using Xunit;
@@ -132,15 +133,16 @@ public class EncryptedTokenStoreTests
     public async Task Decrypt_ShouldLogThrottledWarning_WhenDecryptionKeepsFailing()
     {
         var inner = new InMemoryTokenStore();
-        // 模拟加密启用前的存量明文：解密必失败
-        await inner.SetAccessTokenAsync("tenant:app1", "legacy_plain_text", 3600);
-
         var logger = new CollectingLogger();
         var store = new EncryptedTokenStore(inner, new TestEncryptionProvider(), logger);
 
         var rounds = EncryptedTokenStore.DecryptFailureLogInterval * 2 + 3;
         for (var i = 0; i < rounds; i++)
         {
+            // TMR-P3-16c：解密失败后脏键会被尽力删除——每轮重新写入脏键，
+            // 模拟"并发写回旧密文"场景，使解密持续失败以验证节流策略。
+            await inner.SetAccessTokenAsync("tenant:app1", "legacy_plain_text", 3600);
+
             (await store.GetAccessTokenAsync("tenant:app1")).Should().BeNull(
                 "解密失败必须按缓存未命中处理（语义不变）");
         }
@@ -152,6 +154,65 @@ public class EncryptedTokenStoreTests
         warnings[1].Message.Should().Contain("累计 100 次");
         warnings.Should().OnlyContain(e => e.Exception is FormatException,
             "密钥轮换/存量明文类故障根因必须可从日志定位");
+    }
+
+    // ---------------------------------------------------------------- TMR-P3-16c：解密失败删脏键
+
+    /// <summary>
+    /// TMR-P3-16c：解密失败（密钥轮换/存量明文）后必须尽力删除脏键——
+    /// 终止密钥轮换后的持续无效刷新循环（脏键不删则每次读取都解密失败）。
+    /// </summary>
+    [Fact]
+    public async Task DecryptFailure_ShouldRemoveStaleKey_TenantStore()
+    {
+        var inner = new InMemoryTokenStore();
+        await inner.SetAccessTokenAsync("tenant:app1", "legacy_plain_text", 3600);
+        await inner.SetRefreshTokenAsync("tenant:app1", "legacy_plain_refresh");
+
+        var store = new EncryptedTokenStore(inner, new TestEncryptionProvider());
+
+        // Act：读取触发解密失败 → 脏键被删除。
+        (await store.GetAccessTokenAsync("tenant:app1")).Should().BeNull();
+        (await store.GetRefreshTokenAsync("tenant:app1")).Should().BeNull();
+
+        // Assert：脏键已被删除（下次读取为真实未命中，不再重复解密失败）。
+        inner.RawAccessToken("tenant:app1").Should().BeNull("access 脏键应在解密失败后被删除");
+        inner.RawRefreshToken("tenant:app1").Should().BeNull("refresh 脏键应在解密失败后被删除");
+    }
+
+    [Fact]
+    public async Task DecryptFailure_ShouldRemoveStaleKey_UserStore()
+    {
+        var inner = new InMemoryUserTokenStore();
+        await inner.SetAccessTokenAsync("ou_1", "user", "legacy_plain", 3600);
+
+        var store = new EncryptedUserTokenStore(
+            inner,
+            new EncryptedTokenStore(new InMemoryTokenStore(), new TestEncryptionProvider()),
+            new TestEncryptionProvider());
+
+        // Act
+        (await store.GetAccessTokenAsync("ou_1", "user")).Should().BeNull();
+
+        // Assert
+        inner.RawAccessToken("ou_1", "user").Should().BeNull("用户 access 脏键应在解密失败后被删除");
+    }
+
+    [Fact]
+    public async Task DecryptFailure_ShouldNotThrow_WhenInnerRemoveFails()
+    {
+        var innerMock = new Mock<ITokenStore>();
+        innerMock.Setup(x => x.GetAccessTokenAsync("tenant:app1", It.IsAny<CancellationToken>()))
+            .ReturnsAsync("legacy_plain_text");
+        innerMock.Setup(x => x.RemoveAsync("tenant:app1", It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("存储抖动"));
+
+        var store = new EncryptedTokenStore(innerMock.Object, new TestEncryptionProvider());
+
+        // Act + Assert：脏键删除失败不影响「按未命中」语义。
+        var act = async () => await store.GetAccessTokenAsync("tenant:app1");
+        await act.Should().NotThrowAsync("脏键删除失败不影响「按未命中」语义");
+        (await store.GetAccessTokenAsync("tenant:app1")).Should().BeNull();
     }
 
     [Fact]

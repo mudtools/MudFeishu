@@ -1,5 +1,5 @@
 // -----------------------------------------------------------------------
-//  作者：Mud Studio  版权所有 (c) Mud Studio 2026   
+//  作者：Mud Studio  版权所有 (c) Mud Studio 2026
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
@@ -10,7 +10,6 @@ using Mud.Feishu.Abstractions.Authentication;
 
 namespace Mud.Feishu.Abstractions;
 
-
 /// <summary>
 /// 飞书应用上下文
 /// </summary>
@@ -20,14 +19,19 @@ namespace Mud.Feishu.Abstractions;
 /// - 各种类型的令牌管理器（租户令牌、应用令牌、用户令牌）
 /// - 认证API客户端
 /// - HTTP客户端
-/// 
+///
 /// 每个应用上下文是完全独立的，不同应用之间的配置、缓存和资源互不干扰。
 /// 令牌缓存由 Mud.HttpUtils v2.0 的 TokenManagerBase 内部管理。
 /// </remarks>
 public class FeishuAppContext : IFeishuAppContext, IDisposable
 {
-    private bool _disposed;
+    // TMR-P2-13（F13）：退休队列并发 Sweep+Flush 下同一实例可能被并发 Dispose；
+    // _disposed 由 bool 收敛为 int + Interlocked.Exchange，保证释放逻辑恰好一次执行
+    // （组件 TokenManagerBase.Dispose 虽已声明幂等，但上下文还持有 Authentication/scope 等
+    // 自有资源，在本地收敛为恰好一次属防御性硬化）。
+    private int _disposed;
     private readonly IServiceProvider? _serviceProvider;
+
     // TMA-13 / P2-10 修复：作用域随上下文 Dispose 释放，确保 Scoped 依赖（如 IFeishuCurrentUserContext）
     // 的生命周期与 FeishuAppContext 对齐，避免 Captive Dependency。
     private readonly IServiceScope? _scope;
@@ -49,7 +53,6 @@ public class FeishuAppContext : IFeishuAppContext, IDisposable
     /// 每个应用拥有独立的HTTP客户端实例。
     /// </remarks>
     public IEnhancedHttpClient HttpClient { get; }
-
 
     /// <summary>
     /// 根据令牌类型获取对应的令牌管理器
@@ -200,7 +203,8 @@ public class FeishuAppContext : IFeishuAppContext, IDisposable
     /// </remarks>
     public void Dispose()
     {
-        if (_disposed)
+        // TMR-P2-13（F13）：原子 check-then-set——并发 Sweep+Flush 下同一实例的 Dispose 收敛为恰好一次。
+        if (Interlocked.Exchange(ref _disposed, 1) != 0)
             return;
 
         try
@@ -218,10 +222,8 @@ public class FeishuAppContext : IFeishuAppContext, IDisposable
         }
         finally
         {
-            _disposed = true;
+            GC.SuppressFinalize(this);
         }
-
-        GC.SuppressFinalize(this);
     }
 
     /// <summary>

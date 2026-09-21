@@ -14,6 +14,12 @@ namespace Mud.Feishu.WebSocket;
 /// </summary>
 public static class RetryHelper
 {
+    /// <summary>
+    /// 退避指数上限（P2-13 修复）。
+    /// </summary>
+    /// <remarks>2^30 × baseDelayMs 已足够大（默认 base 1000ms 时约 34 年），钳制只消除 double 溢出，不改变退避语义。</remarks>
+    private const int MaxExponent = 30;
+
 #if NET6_0_OR_GREATER
     private static Random JitterRandom => Random.Shared;
 #else
@@ -48,7 +54,11 @@ public static class RetryHelper
             catch (Exception ex) when (i < maxRetries)
             {
                 // 添加随机抖动，避免多个客户端同时重试造成雪崩
-                var baseDelay = Math.Pow(2, i) * baseDelayMs;
+                // P2-13 修复：指数必须钳制。此前 Math.Pow(2, i) 在 i > 1024 时得到 double.PositiveInfinity，
+                // TimeSpan.FromMilliseconds(∞) 抛 OverflowException；而且该异常发生在 catch 块内，
+                // 会以"重试退避溢出"的形式向上抛出，掩盖真实的失败原因。
+                var clampedExponent = Math.Min(i, MaxExponent);
+                var baseDelay = Math.Pow(2, clampedExponent) * baseDelayMs;
                 var jitter = JitterRandom.NextDouble() * baseDelayMs; // 0~baseDelayMs 的随机抖动
                 var delay = TimeSpan.FromMilliseconds(baseDelay + jitter);
 
@@ -57,11 +67,12 @@ public static class RetryHelper
 
                 await Task.Delay(delay, cancellationToken);
             }
-            // P2-5 修复：for 循环最后一次迭代（i == maxRetries）失败时，
-            // catch 过滤器 when (i < maxRetries) 不成立，异常会直接抛出，
-            // 因此循环后的这行代码在正常情况下不可达，予以移除。
         }
 
+        // 说明（P2-13）：for 循环最后一次迭代（i == maxRetries）失败时，catch 过滤器 when (i < maxRetries)
+        // 不成立，异常会直接抛出，因此本分支在运行期<b>不可达</b>。但 C# 编译器无法证明"循环必然返回或抛出"，
+        // 删除此处会触发 CS0161（并非所有代码路径都返回值），故保留为"编译期必需的兜底"，
+        // 仅把此前"已移除/纯死代码"的误导性注释更正为事实描述。
         logger.LogError("{OperationName}失败，已达到最大重试次数 {MaxRetries}", operationName, maxRetries + 1);
         throw new InvalidOperationException($"{operationName}失败，已达到最大重试次数 {maxRetries + 1}");
     }

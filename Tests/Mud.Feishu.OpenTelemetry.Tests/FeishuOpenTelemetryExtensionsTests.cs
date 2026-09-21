@@ -34,7 +34,6 @@ public class FeishuOpenTelemetryExtensionsTests
 
         options.EnableTracing.Should().BeTrue();
         options.EnableMetrics.Should().BeTrue();
-        options.EnableLogging.Should().BeFalse();
         options.IncludeMudHttpUtils.Should().BeTrue();
         options.EnableHttpClientInstrumentation.Should().BeTrue();
         options.EnableAspNetCoreInstrumentation.Should().BeTrue();
@@ -181,7 +180,6 @@ public class FeishuOpenTelemetryExtensionsTests
 
         var act = () => services.AddFeishuOpenTelemetry(options =>
         {
-            options.EnableLogging = true;
             options.OtlpEndpoint = null;
         });
 
@@ -375,8 +373,8 @@ public class FeishuOpenTelemetryExtensionsTests
 
         services.AddFeishuOpenTelemetry(options =>
         {
-            options.EnableLogging = true;
             options.OtlpEndpoint = null;
+            options.EnableLogging = true; // ConfigureLogging 仅在 EnableLogging=true 时调用
             options.ConfigureLogging = _ => callbackInvoked = true;
         });
 

@@ -6,6 +6,7 @@
 // -----------------------------------------------------------------------
 
 using Microsoft.Extensions.Logging;
+using Mud.Feishu.Abstractions.Utilities;
 using System.Diagnostics.CodeAnalysis;
 
 namespace Mud.Feishu.WebSocket;
@@ -55,7 +56,7 @@ public class MessageRouter
         lock (_handlersLock)
         {
             var removed = _handlers.Remove(handler);
-            if (removed && _options.EnableLogging)
+            if (removed)
             {
                 _logger.LogDebug("已移除消息处理器: {HandlerType}", handler.GetType().Name);
             }
@@ -76,10 +77,8 @@ public class MessageRouter
     {
         if (string.IsNullOrWhiteSpace(message))
         {
-            if (_options.EnableLogging)
-            {
-                _logger.LogWarning("收到空消息，跳过路由");
-            }
+                        _logger.LogWarning("收到空消息，跳过路由");
+        
             return;
         }
 
@@ -99,10 +98,8 @@ public class MessageRouter
     {
         if (string.IsNullOrWhiteSpace(jsonContent))
         {
-            if (_options.EnableLogging)
-            {
-                _logger.LogWarning("收到空的二进制转换消息，跳过路由");
-            }
+                        _logger.LogWarning("收到空的二进制转换消息，跳过路由");
+        
             return;
         }
 
@@ -136,10 +133,8 @@ public class MessageRouter
     {
         if (string.IsNullOrWhiteSpace(jsonContent))
         {
-            if (_options.EnableLogging)
-            {
-                _logger.LogWarning("收到空的二进制转换消息，跳过路由");
-            }
+                        _logger.LogWarning("收到空的二进制转换消息，跳过路由");
+        
             return true;
         }
 
@@ -181,7 +176,7 @@ public class MessageRouter
             var messageType = ExtractMessageType(message);
             if (string.IsNullOrEmpty(messageType))
             {
-                var truncatedMsg = message.Length > 200 ? message.Substring(0, 200) + "..." : message;
+                var truncatedMsg = LogSanitizer.CleanMessage(message, 200);
                 _logger.LogWarning("无法提取消息类型 (来源: {SourceType}): {Message}", sourceType, truncatedMsg);
 
                 return true;
@@ -204,7 +199,7 @@ public class MessageRouter
         }
         catch (Exception ex)
         {
-            var truncatedMsg = message.Length > 200 ? message.Substring(0, 200) + "..." : message;
+            var truncatedMsg = LogSanitizer.CleanMessage(message, 200);
             _logger.LogError(ex, "路由消息时发生错误 (来源: {SourceType}): {Message}", sourceType, truncatedMsg);
             return false;
         }
@@ -261,7 +256,7 @@ public class MessageRouter
 
                 // 超时，取消处理器
                 timeoutCts.Cancel();
-                var truncatedMsg = message.Length > 200 ? message.Substring(0, 200) + "..." : message;
+                var truncatedMsg = LogSanitizer.CleanMessage(message, 200);
                 _logger.LogWarning("消息处理器超时 ({TimeoutMs}ms): {HandlerType}, 消息类型可能为: {Message}",
                     timeoutMs, handler.GetType().Name, truncatedMsg);
 
@@ -278,6 +273,17 @@ public class MessageRouter
                 {
                     // 处理器未响应取消，忽略
                 }
+
+                // P2-9 修复：超时分支此前不观察 handlerTask。处理器若在超时之后才抛出，
+                // 该异常无人观察（UnobservedTaskException：表现为进程退出期噪声日志且难以定位）。
+                // 这里只对"故障"挂一个观察型续延，不改变返回值语义。
+                _ = handlerTask.ContinueWith(
+                    t => _logger.LogDebug(t.Exception,
+                        "已被判定超时的消息处理器随后抛出异常（已观察，不影响调用方）: {HandlerType}",
+                        handler.GetType().Name),
+                    CancellationToken.None,
+                    TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
+                    TaskScheduler.Default);
 
                 return false;
             }
@@ -337,7 +343,8 @@ public class MessageRouter
         catch (System.Text.Json.JsonException ex)
         {
             // 记录更详细的JSON解析错误信息，便于排查问题
-            var truncatedMessage = message.Length > 500 ? message.Substring(0, 500) + "..." : message;
+            // P2-4：截断改走 LogSanitizer.CleanMessage（先剥离 token/encrypt 等敏感字段值再截断）
+            var truncatedMessage = LogSanitizer.CleanMessage(message, 500);
             _logger.LogError(ex, "解析消息JSON失败，消息长度: {Length}, 消息前500字符: {Message}, 错误位置: {ErrorPosition}",
                 message.Length, truncatedMessage, ex.BytePositionInLine);
             return string.Empty;

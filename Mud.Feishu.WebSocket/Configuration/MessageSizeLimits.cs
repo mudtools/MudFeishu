@@ -22,4 +22,26 @@ public class MessageSizeLimits
     /// 最大二进制消息大小（字节），默认为10MB
     /// </summary>
     public long MaxBinaryMessageSize { get; set; } = 10 * 1024 * 1024; // 10MB
+
+    /// <summary>
+    /// 最大文本消息字节数（UTF-8 编码后）。0 表示按 3 × <see cref="MaxTextMessageSize"/> 自动推导。
+    /// </summary>
+    /// <remarks>
+    /// P1-4 修复引入：文本发送侧此前按<b>字符数</b>校验，而接收侧（分片重组）按<b>字节数</b>比较同一配置项，
+    /// 二进制发送则完全无上限校验。<see cref="MaxTextMessageSize"/> 的"字符"语义已在 4 份文档中契约化，
+    /// 直接改为字节属破坏性变更，故新增本字段表达字节维度。
+    /// <para>
+    /// UTF-8 对 UTF-16 字符的最坏展开为 3 字节/字符，因此默认值（0 → 3 × <see cref="MaxTextMessageSize"/>）
+    /// 与旧实现的"最大合法消息"完全等价，属<b>放宽</b>而非收紧：现有一切合法消息继续通过。
+    /// </para>
+    /// <para>取值范围：0 ≤ 值；负值会在 <see cref="FeishuWebSocketOptions.Validate"/> 中抛错。</para>
+    /// </remarks>
+    public int MaxTextMessageBytes { get; set; } = 0;
+
+    /// <summary>
+    /// 解析生效的文本字节上限（供发送/接收统一调用，保证收发同源）。
+    /// </summary>
+    /// <returns>配置值大于 0 时返回配置值，否则返回 <c>3 × <see cref="MaxTextMessageSize"/></c>。</returns>
+    public int ResolveMaxTextMessageBytes()
+        => MaxTextMessageBytes > 0 ? MaxTextMessageBytes : MaxTextMessageSize * 3;
 }

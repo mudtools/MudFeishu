@@ -29,6 +29,11 @@ public interface IFeishuEventHandlerFactory
     /// <summary>
     /// 并行处理事件（使用所有匹配的处理器）
     /// </summary>
+    /// <remarks>
+    /// 多处理器扇出为 <b>at-least-once</b>：任一处理器失败将整体回滚去重并依赖服务端重发，
+    /// 已成功的处理器会被重复执行；处理器必须幂等或以业务唯一键兜底
+    /// （参见 <c>IdempotentFeishuEventHandler</c>）。
+    /// </remarks>
     /// <param name="eventType">事件类型</param>
     /// <param name="eventData">事件数据</param>
     /// <param name="cancellationToken">取消令牌</param>

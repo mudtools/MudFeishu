@@ -147,22 +147,36 @@ dotnet add package Mud.Feishu.Redis
       "AppId": "your_feishu_app_id",
       "AppSecret": "your_feishu_app_secret",
       "BaseUrl": "https://open.feishu.cn",
-      "TimeOut": 30,
-      "RetryCount": 3,
-      "EnableLogging": true,
+      "TimeoutSeconds": 30,
+      "HttpRetry": {
+        "MaxAttempts": 3,
+        "DelayMs": 1000
+      },
       "IsDefault": true
     }
   ],
   "FeishuWebSocket": {
-    "AutoReconnect": true,
-    "MaxReconnectAttempts": 5,
-    "ReconnectDelayMs": 5000,
+    "Reconnect": {
+      "Auto": true,
+      "MaxAttempts": 5,
+      "MaxAuthRetryAttempts": 5,
+      "BaseDelayMs": 5000,
+      "MaxDelayMs": 30000,
+      "TotalBudget": "00:30:00",
+      "Cooldown": "00:00:05"
+    },
+    "Certificate": {
+      "Mode": "Strict",
+      "AllowInsecureWebSocket": false,
+      "ValidateServerCertificate": true,
+      "AllowSelfSignedCertificates": false,
+      "AllowCertificateNameMismatch": false
+    },
     "HeartbeatIntervalMs": 25000,
-    "EnableLogging": true,
     "ConnectionTimeoutMs": 10000,
     "HealthCheckIntervalMs": 60000,
     "MessageHandlerTimeoutMs": 30000,
-    "ValidateServerCertificate": true,
+    "AllowedHostSuffixes": "*.feishu.cn;*.larksuite.com",
     "EventDeduplication": {
       "Mode": "InMemory",
       "CacheExpiration": "2.00:00:00",
@@ -171,7 +185,6 @@ dotnet add package Mud.Feishu.Redis
   },
   "FeishuWebhook": {
     "GlobalRoutePrefix": "feishu",
-    "EnableRequestLogging": true,
     "MaxConcurrentEvents": 10,
     "EnforceHeaderSignatureValidation": true,
     "TimestampToleranceSeconds": 30,
@@ -191,20 +204,25 @@ dotnet add package Mud.Feishu.Redis
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
-| `MaxReconnectDelayMs` | int | 30000 | Maximum reconnection delay (ms) |
-| `MaxTotalReconnectTime` | TimeSpan | 30min | Maximum total reconnection time |
-| `ReconnectCooldownTime` | TimeSpan | 5s | Cooldown between reconnection attempts |
+| `Reconnect.MaxDelayMs` | int | 30000 | Maximum reconnection delay (ms) |
+| `Reconnect.TotalBudget` | TimeSpan | 30min | Maximum total reconnection time |
+| `Reconnect.Cooldown` | TimeSpan | 5s | Cooldown between reconnection attempts |
 | `EnableReconnectMetrics` | bool | true | Enable reconnection metrics collection |
 | `ConnectionTimeoutMs` | int | 10000 | Connection timeout (ms) |
 | `InitialReceiveBufferSize` | int | 4096 | Initial receive buffer size (bytes) |
-| `ValidateServerCertificate` | bool | true | Validate SSL certificates |
-| `AllowSelfSignedCertificates` | bool | false | Allow self-signed certificates |
-| `AllowInsecureWebSocket` | bool | false | Allow insecure ws:// connections (dev/test only) |
+| `Certificate.Mode` | enum | Strict | Certificate validation mode: Strict / Dev / Custom |
+| `Certificate.ValidateServerCertificate` | bool | true | Validate SSL certificates |
+| `Certificate.AllowSelfSignedCertificates` | bool | false | Allow self-signed certificates |
+| `Certificate.AllowCertificateNameMismatch` | bool | false | Allow certificate name mismatch |
+| `Certificate.AllowInsecureWebSocket` | bool | false | Allow insecure ws:// connections (dev/test only) |
+| `AllowedHostSuffixes` | string | `*.feishu.cn;*.larksuite.com` | Host allow-list (`*.` wildcard suffixes or exact hosts, `;`-separated); empty = unrestricted |
 | `HealthCheckIntervalMs` | int | 60000 | Health check interval (ms) |
 | `MessageHandlerTimeoutMs` | int | 30000 | Per-message processing timeout (ms), 0 disables the limit |
 | `SequenceGapThreshold` | ulong | 0 | Message sequence gap threshold, 0 disables gap detection |
 | `MessageSizeLimits` | object | 1MB / 10MB | Max text (chars) / binary (bytes) message size |
 | `EventDeduplication` | object | InMemory | Event deduplication (`Mode`/`CacheExpiration`/`CleanupInterval`) |
+| `RejectEmptyEventIds` | bool | true | Reject events with empty EventId (fail-closed, WHF-05 aligned) |
+| `IgnoreUnknownEventTypes` | bool | false | Silently ignore unregistered event types (recommended true; default false for compatibility) |
 
 > ℹ️ **Migration note**: the legacy `TokenRefreshInterval` / `TokenRefreshAhead` options have been removed. Token refresh is now controlled by `FeishuAppConfig.TokenRefreshThreshold` (HTTP layer); the WebSocket connection reuses the same app token manager and needs no extra configuration.
 
@@ -230,8 +248,8 @@ builder.Services.AddFeishuApp(configure =>
     configure.AddDefaultApp("default", "cli_xxx", "dsk_xxx");
     configure.AddApp("hr-app", "cli_yyy", "dsk_yyy", opt =>
     {
-        opt.TimeOut = 45;
-        opt.RetryCount = 5;
+        opt.TimeoutSeconds = 45;
+        opt.HttpRetry.MaxAttempts = 5;
     });
 });
 
@@ -804,8 +822,8 @@ dotnet publish -r win-x64 -c Release /p:PublishAot=true
 
 | Package                                       | Version          | Description                                           |
 | --------------------------------------------- | ---------------- | ----------------------------------------------------- |
-| **Mud.HttpUtils**                             | v2.0.6           | HTTP client utilities with source generator (incl. resilience policies) |
-| **Mud.HttpUtils.Generator**                   | v2.0.6           | HTTP client code generator (compile-time)             |
+| **Mud.HttpUtils**                             | v2.0.7           | HTTP client utilities with source generator (incl. resilience policies) |
+| **Mud.HttpUtils.Generator**                   | v2.0.7           | HTTP client code generator (compile-time)             |
 | **System.Text.Json**                          | v10.0.9          | High-performance JSON serialization (netstandard2.0 target) |
 | **Microsoft.Extensions.***                    | v8.0.2 / v10.0.9 | Dependency injection, logging, configuration binding, options |
 

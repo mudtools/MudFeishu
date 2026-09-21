@@ -6,6 +6,7 @@
 // -----------------------------------------------------------------------
 
 using System.Reflection;
+using System.Text.RegularExpressions;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Mud.Feishu.Abstractions.Authentication;
@@ -81,7 +82,12 @@ public class TokenMultiAppContractGuards
     // ────────────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// 扫描全部 csproj，Mud.HttpUtils* 版本唯一且等于 AGENTS.md 声明值（2.0.6）。
+    /// 扫描全部 csproj（忽略被注释掉的引用），Mud.HttpUtils* 版本必须唯一。
+    /// 守护的故障：只升级了一部分声明 → 各工程对着不同版本编译 → 同一进程混入两个版本的
+    /// 程序集 → TypeLoadException（报错与版本号毫无字面关系，极难定位）。
+    /// 本守卫只断言「多处声明是否一致」，不关心具体版本号，因此升级组件版本时无需修改。
+    /// 文档（AGENTS.md / README 依赖表）的版本同步**不在**本守卫范围内：文档写错版本号不影响
+    /// 运行时正确性，不应以门禁失败的形式绑架升级流程（历史事故正是由此而来）。
     /// </summary>
     [Fact]
     public void MudHttpUtils_PackageReference_ShouldBeSingleVersion()
@@ -97,7 +103,8 @@ public class TokenMultiAppContractGuards
 
         foreach (var csproj in csprojFiles)
         {
-            var content = File.ReadAllText(csproj);
+            // 先剔除 XML 注释：注释掉的旧引用不是有效声明，参与比对会产生误报。
+            var content = Regex.Replace(File.ReadAllText(csproj), "<!--.*?-->", string.Empty, RegexOptions.Singleline);
             var lines = content.Split('\n', StringSplitOptions.RemoveEmptyEntries);
 
             foreach (var line in lines)
@@ -127,14 +134,10 @@ public class TokenMultiAppContractGuards
             }
         }
 
-        // AGENTS.md 声明的当前固定版本为 2.0.6。
-        const string ExpectedVersion = "2.0.6";
-
         versions.Should().NotBeEmpty("应至少有一个 Mud.HttpUtils* 包引用");
         versions.Should().ContainSingle(
-            $"Mud.HttpUtils* 包版本应唯一（期望 {ExpectedVersion}），实际发现: [{string.Join(", ", versions)}]");
-        versions.Single().Should().Be(ExpectedVersion,
-            $"AGENTS.md 声明当前固定版本为 {ExpectedVersion}");
+            "Mud.HttpUtils* 包版本应唯一（防止「部分工程停留在旧版本 → 混版程序集 → TypeLoadException」），" +
+            $"实际发现: [{string.Join(", ", versions)}]。请把全部 Mud.HttpUtils / Mud.HttpUtils.Generator 声明升到同一版本");
     }
 
     // ────────────────────────────────────────────────────────────────────
@@ -155,16 +158,17 @@ public class TokenMultiAppContractGuards
             AppSecret = "dsk_test",
             BaseUrl = "https://open.feishu.cn",
             AllowCustomBaseUrl = false,
-            TimeOut = 30,
-            RetryCount = 3,
-            RetryDelayMs = 1000,
-            CircuitBreakerEnabled = false,
-            CircuitBreakerFailureThreshold = 10,
-            CircuitBreakerSamplingDurationSeconds = 30,
-            CircuitBreakerBreakDurationSeconds = 60,
-            CircuitBreakerMinimumThroughput = 5,
+            TimeoutSeconds = 30,
+            HttpRetry = new HttpRetryOptions { MaxAttempts = 3, DelayMs = 1000 },
+            CircuitBreaker = new CircuitBreakerOptions
+            {
+                Enabled = false,
+                FailureThreshold = 10,
+                SamplingDurationSeconds = 30,
+                BreakDurationSeconds = 60,
+                MinimumThroughput = 5
+            },
             TokenRefreshThreshold = 300,
-            EnableLogging = false,
             IsDefault = false
         };
 
@@ -181,6 +185,12 @@ public class TokenMultiAppContractGuards
             if (prop.Name == nameof(FeishuAppConfig.AppKey))
                 continue;
 
+            // R4：嵌套 Options 由 IsSameAs 字段级比较；整对象替换且字段值仍为默认时
+            // IsSameAs 仍为 true，属预期——嵌套类型本身不在逐属性循环的可写标量内。
+            if (prop.PropertyType == typeof(HttpRetryOptions)
+                || prop.PropertyType == typeof(CircuitBreakerOptions))
+                continue;
+
             var modified = new FeishuAppConfig
             {
                 AppKey = baseline.AppKey,
@@ -188,16 +198,21 @@ public class TokenMultiAppContractGuards
                 AppSecret = baseline.AppSecret,
                 BaseUrl = baseline.BaseUrl,
                 AllowCustomBaseUrl = baseline.AllowCustomBaseUrl,
-                TimeOut = baseline.TimeOut,
-                RetryCount = baseline.RetryCount,
-                RetryDelayMs = baseline.RetryDelayMs,
-                CircuitBreakerEnabled = baseline.CircuitBreakerEnabled,
-                CircuitBreakerFailureThreshold = baseline.CircuitBreakerFailureThreshold,
-                CircuitBreakerSamplingDurationSeconds = baseline.CircuitBreakerSamplingDurationSeconds,
-                CircuitBreakerBreakDurationSeconds = baseline.CircuitBreakerBreakDurationSeconds,
-                CircuitBreakerMinimumThroughput = baseline.CircuitBreakerMinimumThroughput,
+                TimeoutSeconds = baseline.TimeoutSeconds,
+                HttpRetry = new HttpRetryOptions
+                {
+                    MaxAttempts = baseline.HttpRetry.MaxAttempts,
+                    DelayMs = baseline.HttpRetry.DelayMs
+                },
+                CircuitBreaker = new CircuitBreakerOptions
+                {
+                    Enabled = baseline.CircuitBreaker.Enabled,
+                    FailureThreshold = baseline.CircuitBreaker.FailureThreshold,
+                    SamplingDurationSeconds = baseline.CircuitBreaker.SamplingDurationSeconds,
+                    BreakDurationSeconds = baseline.CircuitBreaker.BreakDurationSeconds,
+                    MinimumThroughput = baseline.CircuitBreaker.MinimumThroughput
+                },
                 TokenRefreshThreshold = baseline.TokenRefreshThreshold,
-                EnableLogging = baseline.EnableLogging,
                 IsDefault = baseline.IsDefault
             };
 

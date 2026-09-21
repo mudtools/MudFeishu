@@ -81,11 +81,14 @@ public class FeishuWebSocketHealthCheck : IHealthCheck
                 data["concurrent_utilization_pct"] = utilizationPct;
 
                 // F2：槽位耗尽 → Unhealthy
+                // P1-1 后语义同步（§0.4）：槽位耗尽不再意味着"事件被拒绝/丢弃"——
+                // 租约在接收路径获取，耗尽时接收循环被阻塞以施加 TCP 反压，事件只会延迟处理不会被拒绝；
+                // 判定本身仍成立（持续 Unhealthy 表明消费速度长期跟不上投递速度，需排查慢处理器或扩容）。
                 if (maxConcurrent > 0 && available <= 0)
                 {
                     _logger?.LogWarning("WebSocket健康检查: Unhealthy (并发槽位耗尽 0/{MaxConcurrent})", maxConcurrent);
                     return Task.FromResult(HealthCheckResult.Unhealthy(
-                        $"WebSocket并发槽位已耗尽 (0/{maxConcurrent})，事件可能被拒绝",
+                        $"WebSocket并发槽位已耗尽 (0/{maxConcurrent})，接收循环被反压阻塞（事件延迟处理，不会被拒绝；请排查慢处理器或调大 MaxConcurrentHandlers）",
                         null,
                         data));
                 }

@@ -16,7 +16,7 @@ namespace Mud.Feishu.Abstractions;
 /// - 检查应用是否存在
 /// - 运行时添加/移除应用
 /// - 遍历所有应用
-/// 
+///
 /// 通过此接口可以方便地在多个飞书应用之间切换。
 /// </remarks>
 public interface IFeishuAppManager : IAppManager<IFeishuAppContext>
@@ -33,7 +33,6 @@ public interface IFeishuAppManager : IAppManager<IFeishuAppContext>
     /// 如果应用键已存在，会抛出异常。
     /// </remarks>
     IFeishuAppContext AddApp(FeishuAppConfig config);
-
 
     /// <summary>
     /// 默认的应用租户令牌管理器
@@ -62,7 +61,6 @@ public interface IFeishuAppManager : IAppManager<IFeishuAppContext>
     /// </remarks>
     IFeishuUserTokenManager DefaultUserTokenManager { get; }
 
-
     /// <summary>
     /// 默认的应用配置
     /// </summary>
@@ -75,5 +73,4 @@ public interface IFeishuAppManager : IAppManager<IFeishuAppContext>
     /// TMA-08：获取所有已配置（但未必实例化）的应用键。不触发懒加载。
     /// </summary>
     IReadOnlyCollection<string> ConfiguredAppKeys { get; }
-
 }

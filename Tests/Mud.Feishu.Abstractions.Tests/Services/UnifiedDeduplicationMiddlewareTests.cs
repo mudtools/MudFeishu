@@ -1,4 +1,4 @@
-// -----------------------------------------------------------------------
+﻿// -----------------------------------------------------------------------
 //  作者：Mud Studio  版权所有 (c) Mud Studio 2026
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
@@ -8,6 +8,8 @@
 using Mud.Feishu.Abstractions.Configuration;
 using Xunit;
 
+
+#pragma warning disable CS0618 // R5/X6: tests reference Obsolete dual-read fallback base
 namespace Mud.Feishu.Abstractions.Tests.Services;
 
 public class UnifiedDeduplicationMiddlewareTests
@@ -208,6 +210,46 @@ public class UnifiedDeduplicationMiddlewareTests
         _eventDeduplicatorMock.Verify(
             x => x.RollbackProcessingAsync("event-123", null, It.IsAny<CancellationToken>()),
             Times.Once);
+    }
+
+    /// <summary>
+    /// P0-1：RollbackAsync 必须回滚 SeqID（此前实现忽略接口 seqId 参数）
+    /// </summary>
+    [Fact]
+    public async Task RollbackAsync_ShouldRollbackSeqId_WhenSeqIdProvided()
+    {
+        _seqIdDeduplicatorMock
+            .Setup(x => x.RollbackAsync(100UL))
+            .Returns(Task.CompletedTask);
+
+        var middleware = new UnifiedDeduplicationMiddleware(
+            eventDeduplicator: _eventDeduplicatorMock.Object,
+            seqIdDeduplicator: _seqIdDeduplicatorMock.Object,
+            options: _options,
+            logger: _loggerMock.Object);
+
+        await middleware.RollbackAsync("event-123", 100UL);
+
+        _seqIdDeduplicatorMock.Verify(x => x.RollbackAsync(100UL), Times.Once);
+    }
+
+    /// <summary>
+    /// P0-1：seqId 为 null 或 0 时不应回滚 SeqID
+    /// </summary>
+    [Theory]
+    [InlineData(null)]
+    [InlineData(0UL)]
+    public async Task RollbackAsync_ShouldNotRollbackSeqId_WhenSeqIdNullOrEmpty(ulong? seqId)
+    {
+        var middleware = new UnifiedDeduplicationMiddleware(
+            eventDeduplicator: _eventDeduplicatorMock.Object,
+            seqIdDeduplicator: _seqIdDeduplicatorMock.Object,
+            options: _options,
+            logger: _loggerMock.Object);
+
+        await middleware.RollbackAsync("event-123", seqId);
+
+        _seqIdDeduplicatorMock.Verify(x => x.RollbackAsync(It.IsAny<ulong>()), Times.Never);
     }
 
     [Fact]

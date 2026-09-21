@@ -13,7 +13,6 @@
 		<LangVersion>13.0</LangVersion>
 		<NoWarn>$(NoWarn);NU1605</NoWarn>
 		<WarningsNotAsErrors>$(WarningsNotAsErrors);NU1605</WarningsNotAsErrors>
-		<!-- 版本漂移防护（BLK-1）：声明版本与解析版本不一致时立即失败，避免"声明 2.0.3、编译 2.0.4"的非确定性构建。 -->
 		<WarningsAsErrors>$(WarningsAsErrors);NU1603</WarningsAsErrors>
 	</PropertyGroup>
 

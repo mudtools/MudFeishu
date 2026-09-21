@@ -98,18 +98,16 @@ app.Run();
   "FeishuWebhook": {
     "GlobalRoutePrefix": "feishu",
     "AutoRegisterEndpoint": true,
-    "EnableRequestLogging": true,
     "EnableExceptionHandling": true,
     "EventHandlingTimeoutMs": 30000,
     "MaxConcurrentEvents": 10,
-    "EnablePerformanceMonitoring": false,
     "AllowedHttpMethods": ["POST"],
     "MaxRequestBodySize": 10485760,
     "AllowedSourceIPs": [],
     "EnforceHeaderSignatureValidation": true,
     "TimestampToleranceSeconds": 30,
     "NonceValidationFailureMode": "Reject",
-    "EnableBackgroundProcessing": false,
+    "EnableTokenBackgroundRefresh": null,
     "Retry": {
       "EnableRetry": false,
       "MaxRetryCount": 3,
@@ -174,7 +172,6 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.CreateFeishuWebhookServiceBuilder(options =>
 {
     options.GlobalRoutePrefix = "feishu";
-    options.EnableRequestLogging = true;
     options.EnableExceptionHandling = true;
     options.MaxConcurrentEvents = 10;
 })
@@ -398,12 +395,10 @@ public class DemoDepartmentEventHandler : DepartmentCreatedEventHandler
 | `Apps.{AppKey}.AppKey`                           | string                                        | -       | Application key (alphanumeric, underscore, hyphen, 1-64 chars) |
 | `Apps.{AppKey}.VerificationToken`                | string                                        | -       | App verification token                                         |
 | `Apps.{AppKey}.EncryptKey`                       | string                                        | -       | App encryption key (32 bytes)                                  |
-| `Apps.{AppKey}.Description`                      | string?                                       | null    | App description (optional)                                     |
 | `Apps.{AppKey}.TimestampToleranceSeconds`        | int?                                          | null    | Timestamp tolerance (null inherits global; -1/0 are legacy values that also inherit global)  |
 | `Apps.{AppKey}.EventHandlingTimeoutMs`           | int?                                          | null    | Event handling timeout (null inherits global; -1/0 are legacy values that also inherit global) |
 | `Apps.{AppKey}.EnforceHeaderSignatureValidation` | bool?                                         | null    | Enforce header signature validation (null inherits global)     |
 | `Apps.{AppKey}.EnableExceptionHandling`          | bool?                                         | null    | Enable exception handling (null inherits global)               |
-| `Apps.{AppKey}.EnablePerformanceMonitoring`      | bool?                                         | null    | Enable performance monitoring (null inherits global)           |
 
 ### Security Configuration
 
@@ -422,15 +417,15 @@ public class DemoDepartmentEventHandler : DepartmentCreatedEventHandler
 | ----------------------------- | ---- | ------- | ----------------------------------------------------------------------------------------------------------- |
 | `MaxConcurrentEvents`         | int  | 10      | Max concurrent events, supports hot reload                                                                  |
 | `EventHandlingTimeoutMs`      | int  | 30000   | Event handling timeout (milliseconds)                                                                       |
-| `EnablePerformanceMonitoring` | bool | false   | Whether to enable performance monitoring                                                                    |
-| `EnableBackgroundProcessing`  | bool | false   | Whether to enable background processing mode (activates token auto-refresh background service when enabled) |
+| `EnableTokenBackgroundRefresh`  | bool? | null   | Explicit override for token background refresh (null = leave host default). R4 removed EnableBackgroundProcessing |
 
 ### Logging Configuration
 
-| Option                    | Type | Default | Description                          |
-| ------------------------- | ---- | ------- | ------------------------------------ |
-| `EnableRequestLogging`    | bool | true    | Whether to enable request logging    |
-| `EnableExceptionHandling` | bool | true    | Whether to enable exception handling |
+Log levels are controlled exclusively via `Logging:LogLevel:Mud.Feishu.Webhook`; there is **no** module-private logging switch.
+
+| Option                    | Type | Default | Description                                                    |
+| ------------------------- | ---- | ------- | -------------------------------------------------------------- |
+| `EnableExceptionHandling` | bool | true    | Whether to swallow event-handling exceptions (error strategy, not a logging switch) |
 
 ### Rate Limiting Configuration
 
@@ -512,7 +507,7 @@ Enable background processing mode to avoid Feishu timeout retries:
 ```json
 {
   "FeishuWebhook": {
-    "EnableBackgroundProcessing": true
+    "EnableTokenBackgroundRefresh": true
   }
 }
 ```
@@ -522,7 +517,7 @@ Enable background processing mode to avoid Feishu timeout retries:
 // Then processes events asynchronously in the background, suitable for long-running business logic
 builder.Services.CreateFeishuWebhookServiceBuilder(options =>
 {
-    options.EnableBackgroundProcessing = true;
+    options.EnableTokenBackgroundRefresh = true;
 }).AddHandler<LongRunningEventHandler>()
     .Build();
 ```
@@ -1053,7 +1048,7 @@ For time-consuming tasks, enable background processing mode:
 // appsettings.json
 {
   "FeishuWebhook": {
-    "EnableBackgroundProcessing": true,  // Return success immediately, process in background
+    "EnableTokenBackgroundRefresh": true,  // Return success immediately, process in background
     "EventHandlingTimeoutMs": 60000      // Increase timeout duration
   }
 }
@@ -1120,11 +1115,9 @@ app.MapDiagnostics();          // Diagnostics endpoints
 builder.Logging.AddConsole();
 builder.Logging.SetMinimumLevel(LogLevel.Debug);
 
-// Enable request logging and performance monitoring
+// The elapsed-time log is emitted unconditionally at Debug level: set Logging:LogLevel:Mud.Feishu.Webhook to Debug
 builder.Services.CreateFeishuWebhookServiceBuilder(options =>
 {
-    options.EnableRequestLogging = true;
-    options.EnablePerformanceMonitoring = true;
     options.RateLimit.EnableRateLimit = true; // Enable rate limiting debugging
 }).AddHandler<MessageEventHandler>()
     .Build();
@@ -1263,8 +1256,7 @@ builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
 | `EncryptKey`                  | -                  | Encryption key (32 bytes)                                 |
 | `MaxConcurrentEvents`         | `10`               | Max concurrent events                                     |
 | `EventHandlingTimeoutMs`      | `30000`            | Event handling timeout (ms)                               |
-| `EnableBackgroundProcessing`  | `false`            | Background processing mode (activates token auto-refresh) |
-| `EnablePerformanceMonitoring` | `false`            | Performance monitoring                                    |
+| `EnableTokenBackgroundRefresh`  | `null`    | Token refresh override (null = host default; R4 removed EnableBackgroundProcessing) |
 
 ---
 

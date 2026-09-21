@@ -6,7 +6,9 @@
 // -----------------------------------------------------------------------
 
 using Mud.Feishu.Abstractions;
+using Mud.Feishu.Abstractions.Configuration;
 using Mud.Feishu.Abstractions.EventHandlers;
+using Mud.Feishu.Abstractions.Extensions;
 using Mud.Feishu.Abstractions.Services;
 using Mud.Feishu.Webhook;
 using Mud.Feishu.Webhook.Configuration;
@@ -33,6 +35,26 @@ public class FeishuWebhookServiceBuilder
     private bool _autoRegisterEndpointExplicitlySet = false;
     private bool _configured = false;
     private Action<FeishuWebhookOptions>? _configureOptions;
+
+    /// <summary>
+    /// R5.0.1（X2）：已删除的请求日志开关的迁移提示「每进程一次」标记。
+    /// </summary>
+    private static int _removedRequestLoggingSwitchWarned;
+
+    /// <summary>
+    /// R5.0.1（X2）：已删除的配置键名，仅用于一次性迁移提示。
+    /// </summary>
+    /// <remarks>
+    /// 单独提为常量是为了让本文件对已删除键名只保留**一处**字面量，便于配置审计脚本以单行
+    /// <c>audit-allow</c> 标记精确放行，而不是整文件豁免。
+    /// </remarks>
+    // audit-allow: X2 migration probe must reference the removed key name exactly once
+    private const string RemovedRequestLoggingKey = "EnableRequestLogging";
+
+    /// <summary>
+    /// R5/X4：已失效的端点注册开关「每进程一次」告警标记。
+    /// </summary>
+    private static int _removedAutoEndpointSwitchWarned;
 
     /// <summary>
     /// 构造函数
@@ -62,6 +84,26 @@ public class FeishuWebhookServiceBuilder
 
         var section = sectionName ?? DefaultConfigurationSection;
         _services.Configure<FeishuWebhookOptions>(options => configuration.GetSection(section).Bind(options));
+
+        // R5.0.1（X2）：已删除的请求日志开关（该开关从未被运行时读取）。
+        // 此处做一次性兼容探测：用户若仍配置该键，给出明确迁移指引，避免「配了但无声无息」。
+        // 不能在 ConfigureFrom 就地 LogWarning——本方法在服务注册期执行，此时没有 ILogger；
+        // 故委托给 PostConfigure<IServiceProvider>（与下方 RegisterOptions 的既有模式同形）。
+        var migrationSection = configuration.GetSection(section);
+        _services.AddOptions<FeishuWebhookOptions>().PostConfigure<IServiceProvider>((_, serviceProvider) =>
+        {
+            if (System.Threading.Interlocked.Exchange(ref _removedRequestLoggingSwitchWarned, 1) != 0)
+                return;
+
+            if (migrationSection.GetSection(RemovedRequestLoggingKey).Exists())
+            {
+                serviceProvider.GetService<ILogger<FeishuWebhookOptions>>()?.LogWarning(
+                    "FeishuWebhook:{RemovedKey} 已移除（该开关从未被运行时读取）。" +
+                    "请改用 Logging:LogLevel:Mud.Feishu.Webhook 控制 Webhook 模块日志级别。",
+                    RemovedRequestLoggingKey);
+            }
+        });
+
         return this;
     }
 
@@ -493,8 +535,11 @@ public class FeishuWebhookServiceBuilder
         {
             // 仅在用户显式调用 EnableAutoEndpoint()/DisableAutoEndpoint() 时覆盖配置值
             // 否则尊重 appsettings.json 中的配置
+#pragma warning disable CS0618 // R5/X4：该开关无运行时效果，仅为源码级兼容而保留
             if (_autoRegisterEndpointExplicitlySet)
+                // audit-allow: X4 - the Obsolete switch must still be assigned so appsettings/Builder 兼容不失效
                 options.AutoRegisterEndpoint = _autoRegisterEndpoint;
+#pragma warning restore CS0618
 
             // 如果用户没有配置，使用默认配置
             if (options.AllowedHttpMethods == null || !options.AllowedHttpMethods.Any())
@@ -508,6 +553,19 @@ public class FeishuWebhookServiceBuilder
         _services.AddOptions<FeishuWebhookOptions>()
             .PostConfigure<IServiceProvider>((options, serviceProvider) =>
             {
+                // R5/X4：AutoRegisterEndpoint 无运行时效果——对配置了 false 的部署给出显式告警，
+                // 避免长期误解为「已关闭端点、不再收事件」。每进程仅告警一次。
+#pragma warning disable CS0618 // 该开关无运行时效果，此处仅做迁移提示
+                if (!options.AutoRegisterEndpoint
+                    && System.Threading.Interlocked.Exchange(ref _removedAutoEndpointSwitchWarned, 1) == 0)
+                {
+                    serviceProvider.GetService<ILogger<FeishuWebhookOptions>>()?.LogWarning(
+                        "FeishuWebhook:AutoRegisterEndpoint=false 不产生任何运行时效果：路由由 app.UseFeishuWebhook() " +
+                        "显式注册，事件仍会被接收处理。若不需要 Webhook 处理，请移除该中间件调用；" +
+                        "该属性将在下个 major 删除。");
+                }
+#pragma warning restore CS0618
+
                 // 注册多应用的处理器和拦截器到共享注册表
                 var handlerRegistry = serviceProvider.GetRequiredService<FeishuWebhookHandlerRegistry>();
                 foreach (var (appKey, handlerType) in _pendingHandlerRegistrations)
@@ -535,22 +593,65 @@ public class FeishuWebhookServiceBuilder
         // 单实例服务（包含 IHostedService）
         _services.AddSingleton<FeishuWebhookConcurrencyService>();
         _services.AddHostedService(sp => sp.GetRequiredService<FeishuWebhookConcurrencyService>());
-        _services.TryAddSingleton<IFeishuEventDeduplicator, FeishuEventDeduplicator>();
+        // B2/R1.2 + C1：内存去重工厂——统一节优先，其次 DeduplicationOptions，否则 Consts
+        // Redis 分布式实现若已先注册则 TryAdd 不会覆盖。
+        _services.AddFeishuDeduplicationOptions();
+        _services.TryAddSingleton<IFeishuEventDeduplicator>(sp =>
+        {
+            var logger = sp.GetService<ILogger<FeishuEventDeduplicator>>();
+            var unified = sp.GetService<IOptions<FeishuDeduplicationOptions>>()?.Value;
+
+            if (unified is { IsConfiguredFromConfiguration: true })
+            {
+                var mode = unified.Mode ?? FeishuDeduplicationOptions.DefaultMode;
+                if (string.Equals(mode, FeishuDeduplicationOptions.ModeNone, StringComparison.OrdinalIgnoreCase))
+                    return new NoopFeishuEventDeduplicator(logger as ILogger<NoopFeishuEventDeduplicator>);
+
+                if (string.Equals(mode, FeishuDeduplicationOptions.ModeDistributed, StringComparison.OrdinalIgnoreCase)
+                    && sp.GetService<IFeishuEventDeduplicator>() is null)
+                {
+                    logger?.LogWarning(
+                        "FeishuDeduplication:Mode=Distributed 但未注册分布式去重实现，Webhook 回退内存去重。请先 AddFeishuRedisDeduplicators。");
+                }
+
+                var ttl = unified.ResolveEventTtl();
+                if (ttl <= TimeSpan.Zero)
+                    ttl = TimeSpan.FromMilliseconds(Consts.DefaultCacheExpirationMs);
+                var processing = unified.ResolveEventProcessingTimeout();
+                if (processing <= TimeSpan.Zero)
+                    processing = TimeSpan.FromMilliseconds(Consts.DefaultProcessingTimeoutMs);
+                var cleanup = unified.Event?.CleanupInterval is { } cl && cl > TimeSpan.Zero
+                    ? cl
+                    : TimeSpan.FromMilliseconds(Consts.DefaultCleanupIntervalMs);
+                var maxSize = unified.Event?.MaxCacheSize ?? Consts.DefaultMaxCacheSize;
+
+                return new FeishuEventDeduplicator(logger, ttl, cleanup, processing, maxSize);
+            }
+
+#pragma warning disable CS0618
+            var dedup = sp.GetService<IOptions<DeduplicationOptions>>()?.Value;
+#pragma warning restore CS0618
+            if (dedup is not null)
+                return new FeishuEventDeduplicator(dedup, logger);
+
+            return new FeishuEventDeduplicator(
+                logger,
+                cacheExpiration: TimeSpan.FromMilliseconds(Consts.DefaultCacheExpirationMs),
+                cleanupInterval: TimeSpan.FromMilliseconds(Consts.DefaultCleanupIntervalMs),
+                processingTimeout: TimeSpan.FromMilliseconds(Consts.DefaultProcessingTimeoutMs),
+                maxCacheSize: Consts.DefaultMaxCacheSize);
+        });
         _services.TryAddSingleton<IFeishuNonceDistributedDeduplicator, FeishuNonceDistributedDeduplicator>();
 
         // 令牌自动刷新后台服务已在 AddFeishuAppBaseServices 中注册（由 Mud.HttpUtils 提供）。
-        // 此处仅保留 Webhook 模块的配置覆盖：把 FeishuWebhookOptions 映射到 TokenRefreshBackgroundOptions.Enabled。
-        // 注意：此 PostConfigure 在 AddFeishuAppBaseServices 的 PostConfigure 之后执行，因此会覆盖基础的 Enabled=true 设置。
-        // 映射优先级（2026-09 修复「静默关闭令牌刷新」）：
-        //   1. FeishuWebhookOptions.EnableTokenBackgroundRefresh（显式覆盖，null = 不干预）
-        //   2. 回退到 FeishuWebhookOptions.EnableBackgroundProcessing（既有映射，默认 false）
-        // 即：默认行为不变（Webhook 宿主默认不开启令牌后台刷新），但宿主现在可以用 EnableTokenBackgroundRefresh
-        // 独立于 Webhook 后台处理开关来控制令牌刷新，不再被静默关闭而无可恢复的入口。
+        // R4：仅 EnableTokenBackgroundRefresh 控制 TokenRefreshBackgroundOptions.Enabled。
+        // null = 沿用宿主既有默认（不覆盖）；true/false = 显式覆盖。
         _services.AddOptions<TokenRefreshBackgroundOptions>()
             .PostConfigure<IOptions<FeishuWebhookOptions>>((tokenOptions, webhookOptions) =>
             {
-                tokenOptions.Enabled = webhookOptions.Value.EnableTokenBackgroundRefresh
-                                       ?? webhookOptions.Value.EnableBackgroundProcessing;
+                var explicitRefresh = webhookOptions.Value.EnableTokenBackgroundRefresh;
+                if (explicitRefresh.HasValue)
+                    tokenOptions.Enabled = explicitRefresh.Value;
             });
 
         // 注册 HttpContext 访问器（用于在 SignatureValidator 中获取客户端 IP）

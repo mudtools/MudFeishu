@@ -33,12 +33,17 @@ public class RateLimitOptions
     public bool EnableIpRateLimit { get; set; } = true;
 
     /// <summary>
-    /// 超出限制时的响应状态码
+    /// 超出限制时的响应状态码（R5.2/X15：**保留可配置**，见 remarks）。
     /// </summary>
+    /// <remarks>
+    /// 该字段在 <c>FeishuRateLimitMiddleware</c> 中真实生效（写入响应状态码）。
+    /// 早期方案曾计划把它收敛为 <c>internal const</c>，复核后否决——那属**功能删减**而非收敛：
+    /// 自定义 429 语义是可用能力（前端/网关约定、多语言）。生产环境建议保持 <c>429</c>。
+    /// </remarks>
     public int TooManyRequestsStatusCode { get; set; } = 429;
 
     /// <summary>
-    /// 超出限制时的响应消息
+    /// 超出限制时的响应消息（R5.2/X15：**保留可配置**，理由同 <see cref="TooManyRequestsStatusCode"/>）。
     /// </summary>
     public string TooManyRequestsMessage { get; set; } = "请求过于频繁，请稍后再试";
 

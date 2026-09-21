@@ -18,15 +18,20 @@ namespace Mud.Feishu.Abstractions;
 internal sealed class FeishuTokenManagerResolver : IFeishuTokenManagerResolver
 {
     private readonly IFeishuAppManager _appManager;
+    // TMR-P2-7（F7）：Try* 空 catch 收窄——"无默认应用 / 初始化失败 / 已退休"三态可区分，
+    // 吞 ODE 会使退休期故障不可诊断。
+    private readonly ILogger? _logger;
 
     /// <summary>
     /// 初始化 <see cref="FeishuTokenManagerResolver"/> 实例
     /// </summary>
     /// <param name="appManager">飞书应用管理器</param>
+    /// <param name="logger">日志记录器（可选）</param>
     /// <exception cref="ArgumentNullException">当 <paramref name="appManager"/> 为 null 时抛出</exception>
-    public FeishuTokenManagerResolver(IFeishuAppManager appManager)
+    public FeishuTokenManagerResolver(IFeishuAppManager appManager, ILogger? logger = null)
     {
         _appManager = appManager ?? throw new ArgumentNullException(nameof(appManager));
+        _logger = logger;
     }
 
     /// <inheritdoc />
@@ -57,6 +62,10 @@ internal sealed class FeishuTokenManagerResolver : IFeishuTokenManagerResolver
     /// <remarks>
     /// TMA2-10 / D6 修复：Try* 家族不抛异常。appKey 为空时取 DefaultAppKey，缺失则返回 null。
     /// 不使用 DefaultConfig（会抛异常），改为直接读取 DefaultAppKey。
+    /// <para>
+    /// TMR-P2-7（F7）：空 catch 收窄——区分"无默认应用"（DefaultAppKey 为空，上方已 return null）
+    /// 与"默认应用初始化失败/已退休"（带上下文记 Warning）；吞 ODE 会使退休期故障不可诊断。
+    /// </para>
     /// </remarks>
     public ITenantTokenManager? TryGetTenantTokenManager(string? appKey = null)
     {
@@ -69,8 +78,9 @@ internal sealed class FeishuTokenManagerResolver : IFeishuTokenManagerResolver
             {
                 return _appManager.DefaultTenantTokenManager;
             }
-            catch
+            catch (Exception ex) when (ex is not (OperationCanceledException or OutOfMemoryException))
             {
+                _logger?.LogWarning(ex, "解析默认应用租户令牌管理器失败（按未命中返回 null）。");
                 return null;
             }
         }
@@ -80,7 +90,7 @@ internal sealed class FeishuTokenManagerResolver : IFeishuTokenManagerResolver
 
     /// <inheritdoc />
     /// <remarks>
-    /// TMA2-10 / D6 修复：Try* 家族不抛异常。
+    /// TMA2-10 / D6 修复：Try* 家族不抛异常。TMR-P2-7（F7）：空 catch 收窄（理由同上）。
     /// </remarks>
     public IAppTokenManager? TryGetAppTokenManager(string? appKey = null)
     {
@@ -92,8 +102,9 @@ internal sealed class FeishuTokenManagerResolver : IFeishuTokenManagerResolver
             {
                 return _appManager.DefaultAppTokenManager;
             }
-            catch
+            catch (Exception ex) when (ex is not (OperationCanceledException or OutOfMemoryException))
             {
+                _logger?.LogWarning(ex, "解析默认应用应用令牌管理器失败（按未命中返回 null）。");
                 return null;
             }
         }
@@ -103,7 +114,7 @@ internal sealed class FeishuTokenManagerResolver : IFeishuTokenManagerResolver
 
     /// <inheritdoc />
     /// <remarks>
-    /// TMA2-10 / D6 修复：Try* 家族不抛异常。
+    /// TMA2-10 / D6 修复：Try* 家族不抛异常。TMR-P2-7（F7）：空 catch 收窄（理由同上）。
     /// </remarks>
     public IFeishuUserTokenManager? TryGetUserTokenManager(string? appKey = null)
     {
@@ -115,8 +126,9 @@ internal sealed class FeishuTokenManagerResolver : IFeishuTokenManagerResolver
             {
                 return _appManager.DefaultUserTokenManager;
             }
-            catch
+            catch (Exception ex) when (ex is not (OperationCanceledException or OutOfMemoryException))
             {
+                _logger?.LogWarning(ex, "解析默认应用用户令牌管理器失败（按未命中返回 null）。");
                 return null;
             }
         }

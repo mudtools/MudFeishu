@@ -11,6 +11,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Mud.Feishu.Abstractions.Authentication;
+using Mud.Feishu.Abstractions.Authentication.MultiApp;
 using Mud.HttpUtils;
 using Mud.HttpUtils.Resilience;
 
@@ -471,6 +472,13 @@ public class FeishuServiceCollectionExtensionsTests
     /// <summary>
     /// SR-P0-3 验证：注册 AddFeishuApp 后，ITenantTokenManager 应可从 DI 容器直接解析（桥接注册，默认应用）。
     /// </summary>
+    /// <remarks>
+    /// TMR-P0-1（F1）：桥接从「实例桥接」改为「解析桥接」（转发代理）。代理 DI 单例，
+    /// 成员调用现取当前默认应用的管理器——因此代理实例与 <c>Resolver.GetTenantTokenManager()</c>
+    /// 返回的真实管理器<b>不再是同一实例</b>（这是有意的行为变更：跟随 SetDefaultApp/热更新）。
+    /// 此处断言代理的单例性与类型；"跟随默认应用"的行为语义由
+    /// <c>TokenManagerBridgeProxyTests.BridgedTenantTokenManager_ShouldResolveCurrentDefaultApp_AfterSetDefaultApp</c> 覆盖。
+    /// </remarks>
     [Fact]
     public void AddFeishuApp_ShouldRegister_ITenantTokenManager_InDiContainer()
     {
@@ -482,18 +490,21 @@ public class FeishuServiceCollectionExtensionsTests
         services.AddFeishuApp(configs);
         using var provider = services.BuildServiceProvider();
 
-        // Assert
-        var tenantTokenManager = provider.GetService<ITenantTokenManager>();
-        tenantTokenManager.Should().NotBeNull("ITenantTokenManager 应已桥接注册到 DI 容器");
-
-        var resolver = provider.GetRequiredService<IFeishuTokenManagerResolver>();
-        tenantTokenManager.Should().BeSameAs(resolver.GetTenantTokenManager(),
-            "ITenantTokenManager 应桥接到 Resolver 返回的默认应用租户令牌管理器实例");
+        // Assert：解析两次为同一实例（DI 单例代理），且为转发代理类型。
+        var first = provider.GetService<ITenantTokenManager>();
+        var second = provider.GetService<ITenantTokenManager>();
+        first.Should().NotBeNull("ITenantTokenManager 应已桥接注册到 DI 容器");
+        first.Should().BeSameAs(second, "桥接代理应为 DI 单例");
+        first.Should().BeOfType<ForwardingTenantTokenManager>(
+            "桥接应为解析代理（每次成员调用现取当前默认应用的管理器）");
     }
 
     /// <summary>
     /// SR-P0-3 验证：注册 AddFeishuApp 后，IAppTokenManager 应可从 DI 容器直接解析。
     /// </summary>
+    /// <remarks>
+    /// TMR-P0-1（F1）：与 ITenantTokenManager 同理——桥接为解析代理（解析代理单例 + 类型断言）。
+    /// </remarks>
     [Fact]
     public void AddFeishuApp_ShouldRegister_IAppTokenManager_InDiContainer()
     {
@@ -503,10 +514,11 @@ public class FeishuServiceCollectionExtensionsTests
         using var provider = services.BuildServiceProvider();
 
         var appTokenManager = provider.GetService<IAppTokenManager>();
+        var second = provider.GetService<IAppTokenManager>();
         appTokenManager.Should().NotBeNull();
-
-        var resolver = provider.GetRequiredService<IFeishuTokenManagerResolver>();
-        appTokenManager.Should().BeSameAs(resolver.GetAppTokenManager());
+        appTokenManager.Should().BeSameAs(second, "桥接代理应为 DI 单例");
+        appTokenManager.Should().BeOfType<ForwardingAppTokenManager>(
+            "桥接应为解析代理（每次成员调用现取当前默认应用的管理器）");
     }
 
     /// <summary>

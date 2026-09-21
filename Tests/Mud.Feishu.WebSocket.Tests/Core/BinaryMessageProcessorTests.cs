@@ -40,7 +40,6 @@ public class BinaryMessageProcessorTests
 
         _options = new FeishuWebSocketOptions
         {
-            EnableLogging = true,
             MessageSizeLimits = new MessageSizeLimits
             {
                 MaxBinaryMessageSize = 1024 * 1024 // 1MB for testing
@@ -123,7 +122,6 @@ public class BinaryMessageProcessorTests
         // Arrange
         var smallOptions = new FeishuWebSocketOptions
         {
-            EnableLogging = false,
             MessageSizeLimits = new MessageSizeLimits
             {
                 MaxBinaryMessageSize = 10 // Very small limit
@@ -187,6 +185,43 @@ public class BinaryMessageProcessorTests
 
         // Assert
         receivedArgs.Should().NotBeNull();
+
+        processor.Dispose();
+    }
+
+    [Fact]
+    public async Task ProcessBinaryDataAsync_ShouldSetReceiveStartTime_WhenMessageCompleted()
+    {
+        // Arrange（P2-4 回归）：修复前 ReceiveStartTime 从不赋值（恒为 default(DateTime)），
+        // ReceiveDurationMs 恒为 ~6.39e14ms（0001-01-01 至今），观测指标完全失真。
+        var processor = CreateProcessor();
+        var beforeReceive = DateTime.UtcNow.AddSeconds(-1);
+        WebSocketBinaryMessageEventArgs? receivedArgs = null;
+        var argsReady = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        processor.BinaryMessageReceived += (sender, args) =>
+        {
+            if (args.MessageType == "Frame")
+            {
+                receivedArgs = args;
+                argsReady.TrySetResult(true);
+            }
+        };
+
+        var validProtobufData = CreateValidProtobufData();
+
+        // Act
+        await processor.ProcessBinaryDataAsync(validProtobufData, 0, validProtobufData.Length, true, CancellationToken.None);
+
+        var completed = await Task.WhenAny(argsReady.Task, Task.Delay(3000));
+        completed.Should().BeSameAs(argsReady.Task, "有效 DATA 帧必须在异步派发后触发 BinaryMessageReceived（MessageType=Frame）");
+
+        // Assert：ReceiveStartTime 必须是首帧到达时间，而不是 default(DateTime)
+        receivedArgs.Should().NotBeNull();
+        receivedArgs!.ReceiveStartTime.Should().BeAfter(beforeReceive,
+            "修复前 ReceiveStartTime 恒为 default(DateTime)（0001-01-01）");
+        receivedArgs.ReceiveEndTime.Should().BeOnOrAfter(receivedArgs.ReceiveStartTime);
+        receivedArgs.ReceiveDurationMs.Should().BeInRange(0, 60_000,
+            "修复前因 default 起点恒为 ~6.39e14ms");
 
         processor.Dispose();
     }
@@ -380,7 +415,7 @@ public class BinaryMessageProcessorTests
     public async Task ProcessBinaryDataAsync_ShouldNotRouteToMessageRouter_WhenControlFrameReceived()
     {
         // Arrange - 使用真实的 MessageRouter，注册一个可追踪的 handler
-        var options = new FeishuWebSocketOptions { EnableLogging = false };
+        var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions {  };
         var realRouter = new MessageRouter(NullLogger<MessageRouter>.Instance, options);
 
         var handlerCalled = false;
@@ -448,5 +483,119 @@ public class BinaryMessageProcessorTests
         using var stream = new MemoryStream();
         ProtoBuf.Serializer.Serialize(stream, eventData);
         return stream.ToArray();
+    }
+
+    // ===== P0-1：路由失败后传输层状态回滚 =====
+
+    private sealed class ThrowingMessageHandler : IMessageHandler
+    {
+        public bool CanHandle(string messageType) => true;
+
+        public Task HandleAsync(string message, CancellationToken cancellationToken = default)
+            => throw new InvalidOperationException("simulated business failure");
+    }
+
+    private static byte[] CreateDataFrame(ulong seqId, string payloadJson)
+    {
+        var frame = new EventProtoData
+        {
+            Service = 1001,
+            Method = FrameBuilder.MethodData,
+            SeqID = seqId,
+            PayloadType = "JSON",
+            Payload = Encoding.UTF8.GetBytes(payloadJson)
+        };
+        using var stream = new MemoryStream();
+        ProtoBuf.Serializer.Serialize(stream, frame);
+        return stream.ToArray();
+    }
+
+    [Fact]
+    public async Task ProcessCompleteBinaryMessageAsync_WhenRoutingFails_ShouldRollbackSeqIdDedup_AndSendAck500()
+    {
+        // Arrange：真实 Router + 抛异常 handler → RouteBinaryMessageWithResultAsync 返回 false
+        var router = new MessageRouter(NullLogger<MessageRouter>.Instance, new FeishuWebSocketOptions { MessageHandlerTimeoutMs = 0 });
+        router.RegisterHandler(new ThrowingMessageHandler());
+
+        var seqDedupMock = new Mock<Mud.Feishu.Abstractions.Services.IFeishuSeqIDDeduplicator>();
+        seqDedupMock.Setup(d => d.TryMarkAsProcessedAsync(42UL)).ReturnsAsync(false);
+        seqDedupMock.Setup(d => d.RollbackAsync(42UL)).Returns(Task.CompletedTask);
+
+        var connectionManager = new Mock<WebSocketConnectionManager>(
+            Mock.Of<ILogger<WebSocketConnectionManager>>(),
+            new FeishuWebSocketOptions(),
+            Mock.Of<ILoggerFactory>());
+
+        var processor = new BinaryMessageProcessor(
+            _loggerMock.Object,
+            connectionManager.Object,
+            _options,
+            router,
+            seqDedupMock.Object,
+            sequenceValidator: null);
+
+        var payload = Encoding.UTF8.GetBytes("{\"type\":\"event\",\"event_id\":\"evt_p01\"}");
+        var data = CreateDataFrame(42UL, Encoding.UTF8.GetString(payload));
+
+        var ackSent = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        processor.BinaryMessageReceived += (_, args) =>
+        {
+            if (args.ProcessingSuccess == false)
+                ackSent.TrySetResult(true);
+        };
+
+        // Act
+        await processor.ProcessBinaryDataAsync(data, 0, data.Length, true, CancellationToken.None);
+        await Task.WhenAny(ackSent.Task, Task.Delay(3000));
+
+        // Assert：P0-1 生产路径——路由失败必须回滚 SeqID 去重
+        seqDedupMock.Verify(d => d.TryMarkAsProcessedAsync(42UL), Times.Once);
+        seqDedupMock.Verify(d => d.RollbackAsync(42UL), Times.Once);
+
+        processor.Dispose();
+    }
+
+    [Fact]
+    public async Task ProcessCompleteBinaryMessageAsync_WhenRoutingFails_ShouldRemoveSequenceFromValidatorWindow()
+    {
+        var router = new MessageRouter(NullLogger<MessageRouter>.Instance, new FeishuWebSocketOptions { MessageHandlerTimeoutMs = 0 });
+        router.RegisterHandler(new ThrowingMessageHandler());
+
+        var options = new FeishuWebSocketOptions();
+        var validator = new MessageSequenceValidator(NullLogger<MessageSequenceValidator>.Instance, options);
+
+        var seqDedupMock = new Mock<Mud.Feishu.Abstractions.Services.IFeishuSeqIDDeduplicator>();
+        seqDedupMock.Setup(d => d.TryMarkAsProcessedAsync(77UL)).ReturnsAsync(false);
+
+        var connectionManager = new Mock<WebSocketConnectionManager>(
+            Mock.Of<ILogger<WebSocketConnectionManager>>(),
+            new FeishuWebSocketOptions(),
+            Mock.Of<ILoggerFactory>());
+
+        var processor = new BinaryMessageProcessor(
+            _loggerMock.Object,
+            connectionManager.Object,
+            options,
+            router,
+            seqDedupMock.Object,
+            validator);
+
+        var data = CreateDataFrame(77UL, "{\"type\":\"event\",\"event_id\":\"evt_validator\"}");
+        var done = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        processor.BinaryMessageReceived += (_, args) =>
+        {
+            if (args.ProcessingSuccess == false)
+                done.TrySetResult(true);
+        };
+
+        await processor.ProcessBinaryDataAsync(data, 0, data.Length, true, CancellationToken.None);
+        await Task.WhenAny(done.Task, Task.Delay(3000));
+
+        // 回滚后同 SeqID 不应再被判 Duplicate
+        var second = validator.ValidateSequence(77UL);
+        second.Should().NotBe(SequenceValidationResult.Duplicate,
+            "P0-1：路由失败后验证器窗口记录必须被移除，同 SeqID 重发可重新处理");
+
+        processor.Dispose();
     }
 }

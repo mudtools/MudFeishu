@@ -486,7 +486,7 @@ public class FeishuAppManagerTests
             AppId = AppConfigs.AppIds.Default,
             AppSecret = AppConfigs.Secrets.Valid,
             IsDefault = true,
-            TimeOut = 60  // 不同于默认的 30，触发重建
+            TimeoutSeconds = 60  // 不同于默认的 30，触发重建
         };
         appManager.OnConfigurationChanged(new List<FeishuAppConfig> { updatedConfig });
 
@@ -504,7 +504,7 @@ public class FeishuAppManagerTests
 
         // 新上下文仍可用
         var newApp = appManager.GetApp(AppConfigs.AppKeys.Default);
-        newApp.Config.TimeOut.Should().Be(60, "新上下文应使用新配置");
+        newApp.Config.TimeoutSeconds.Should().Be(60, "新上下文应使用新配置");
     }
 
     /// <summary>
@@ -579,7 +579,7 @@ public class FeishuAppManagerTests
             AppId = AppConfigs.AppIds.Default,
             AppSecret = AppConfigs.Secrets.Valid,
             IsDefault = true,
-            TimeOut = 60
+            TimeoutSeconds = 60
         };
         appManager.OnConfigurationChanged(new List<FeishuAppConfig>
         {
@@ -654,13 +654,14 @@ public class FeishuAppManagerTests
         // Act
         appManager.OnConfigurationChanged(new List<FeishuAppConfig> { changedConfig });
 
-        // Assert
-        tokenStoreMock.Verify(x => x.ClearAsync(It.IsAny<CancellationToken>()), Times.Once,
+        // Assert：TMR-P1-6（F6）——凭据变更清库为"Phase-P 清库 + 提交后二次清库（D10 闭环）"双阶段，
+        // 二次清库为 fire-and-forget，故这里断言"至少一次"（强语义：清库必须发生）。
+        tokenStoreMock.Verify(x => x.ClearAsync(It.IsAny<CancellationToken>()), Times.AtLeastOnce,
             "凭据（AppSecret）变更必须清除该应用的持久化令牌");
     }
 
     /// <summary>
-    /// TMA2-05 / D10（§7.2 #8）：仅非凭据字段（TimeOut）变化时保留令牌热迁移，不清库。
+    /// TMA2-05 / D10（§7.2 #8）：仅非凭据字段（TimeoutSeconds）变化时保留令牌热迁移，不清库。
     /// </summary>
     [Fact]
     public void HotReload_ShouldNotPurgeStoredTokens_WhenOnlyTimeOutChanged()
@@ -679,7 +680,7 @@ public class FeishuAppManagerTests
                 AppId = AppConfigs.AppIds.Default,
                 AppSecret = AppConfigs.Secrets.Valid,
                 IsDefault = true,
-                TimeOut = 99
+                TimeoutSeconds = 99
             }
         });
 
@@ -802,7 +803,7 @@ public class FeishuAppManagerTests
         var encoded = TokenStoreHelper.EncodeStoredToken("tenant-access-keep", DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + 7200_000);
         await storeA.SetAccessTokenAsync(tokenType, encoded, 7200, CancellationToken.None);
 
-        // Act：仅 TimeOut 变更（非凭据字段）
+        // Act：仅 TimeoutSeconds 变更（非凭据字段）
         manager.OnConfigurationChanged(new List<FeishuAppConfig>
         {
             new()
@@ -811,7 +812,7 @@ public class FeishuAppManagerTests
                 AppId = AppConfigs.AppIds.Default,
                 AppSecret = AppConfigs.Secrets.Valid,
                 IsDefault = true,
-                TimeOut = 99
+                TimeoutSeconds = 99
             }
         });
 
@@ -1003,6 +1004,7 @@ public class FeishuAppManagerTests
     /// <summary>
     /// TMA2-11 / D13：FeishuAppManager.Dispose 必须释放全部在册上下文（含 _lazyContexts 已实例化者），幂等。
     /// 通过反射读取 FeishuAppContext 私有 _disposed 状态做副作用断言。
+    /// TMR-P2-13（F13）：_disposed 由 bool 收敛为 int（Interlocked.Exchange 原子 check-then-set）。
     /// </summary>
     [Fact]
     public void Dispose_ShouldDisposeAllRegisteredContexts()
@@ -1025,14 +1027,14 @@ public class FeishuAppManagerTests
         // Act
         appManager.Dispose();
 
-        // Assert：每个在册上下文都已被 Dispose（幂等标记置位）
+        // Assert：每个在册上下文都已被 Dispose（原子标记置位为 1）
         var disposedField = typeof(FeishuAppContext).GetField("_disposed",
             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
         disposedField.Should().NotBeNull("FeishuAppContext 应存在 _disposed 标记");
         foreach (var context in contexts)
         {
-            var isDisposed = (bool)disposedField!.GetValue(context)!;
-            isDisposed.Should().BeTrue($"在册上下文 {context.Config.AppKey} 应随 FeishuAppManager.Dispose 释放");
+            var isDisposed = (int)disposedField!.GetValue(context)!;
+            isDisposed.Should().Be(1, $"在册上下文 {context.Config.AppKey} 应随 FeishuAppManager.Dispose 释放");
         }
 
         provider.Dispose();

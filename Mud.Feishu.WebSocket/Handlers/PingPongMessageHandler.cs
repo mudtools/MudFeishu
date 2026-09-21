@@ -77,8 +77,7 @@ public class PingPongMessageHandler : JsonMessageHandler
     private async Task HandlePingAsync(string message)
     {
         var pingMessage = SafeDeserialize<PingMessage>(message);
-        if (_options.EnableLogging)
-            _logger.LogDebug("收到Ping消息，时间戳: {Timestamp}", pingMessage?.Timestamp);
+        _logger.LogDebug("收到Ping消息，时间戳: {Timestamp}", pingMessage?.Timestamp);
 
         // 发送Pong响应（使用毫秒级时间戳以提高精度）
         var pongMessage = new PongMessage
@@ -89,8 +88,7 @@ public class PingPongMessageHandler : JsonMessageHandler
         var pongJson = FeishuJsonAot.Serialize(pongMessage, JsonOptions.Default);
         await _sendMessageCallback(pongJson);
 
-        if (_options.EnableLogging)
-            _logger.LogDebug("已发送Pong响应");
+        _logger.LogDebug("已发送Pong响应");
     }
 
 #if NET6_0_OR_GREATER
@@ -102,8 +100,7 @@ public class PingPongMessageHandler : JsonMessageHandler
     private async Task HandlePongAsync(string message)
     {
         var pongMessage = SafeDeserialize<PongMessage>(message);
-        if (_options.EnableLogging)
-            _logger.LogDebug("收到Pong消息，时间戳: {Timestamp}", pongMessage?.Timestamp);
+        _logger.LogDebug("收到Pong消息，时间戳: {Timestamp}", pongMessage?.Timestamp);
 
         // 计算延迟（使用毫秒级时间戳，避免秒级精度丢失）
         long? latencyMs = null;
@@ -122,8 +119,7 @@ public class PingPongMessageHandler : JsonMessageHandler
             latencyMs = currentTime - pongTimestamp;
         }
 
-        if (_options.EnableLogging)
-            _logger.LogDebug("Pong延迟: {Latency}ms", latencyMs);
+        _logger.LogDebug("Pong延迟: {Latency}ms", latencyMs);
 
         // 触发PongReceived事件，通知客户端更新最后一次Pong时间
         PongReceived?.Invoke(this, EventArgs.Empty);

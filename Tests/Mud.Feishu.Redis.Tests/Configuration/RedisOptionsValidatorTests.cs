@@ -37,7 +37,7 @@ public class RedisOptionsValidatorTests
     {
         var options = new RedisOptions
         {
-            ServerAddress = "localhost:6379"
+            Connection = new RedisConnectionOptions { ServerAddress = "localhost:6379" }
         };
 
         var result = _validator.Validate(null, options);
@@ -50,7 +50,7 @@ public class RedisOptionsValidatorTests
     {
         var options = new RedisOptions
         {
-            ServerAddress = ""
+            Connection = new RedisConnectionOptions { ServerAddress = "" }
         };
 
         var result = _validator.Validate(null, options);
@@ -64,7 +64,7 @@ public class RedisOptionsValidatorTests
     {
         var options = new RedisOptions
         {
-            ServerAddress = "invalid_address"
+            Connection = new RedisConnectionOptions { ServerAddress = "invalid_address" }
         };
 
         var result = _validator.Validate(null, options);
@@ -78,7 +78,7 @@ public class RedisOptionsValidatorTests
     {
         var options = new RedisOptions
         {
-            ServerAddress = "redis://localhost:6379"
+            Connection = new RedisConnectionOptions { ServerAddress = "redis://localhost:6379" }
         };
 
         var result = _validator.Validate(null, options);
@@ -91,7 +91,7 @@ public class RedisOptionsValidatorTests
     {
         var options = new RedisOptions
         {
-            ServerAddress = "rediss://secure.redis.com:6380"
+            Connection = new RedisConnectionOptions { ServerAddress = "rediss://secure.redis.com:6380" }
         };
 
         var result = _validator.Validate(null, options);
@@ -104,8 +104,7 @@ public class RedisOptionsValidatorTests
     {
         var options = new RedisOptions
         {
-            ServerAddress = "localhost:6379",
-            ConnectTimeout = 500
+            Connection = new RedisConnectionOptions { ServerAddress = "localhost:6379", ConnectTimeout = 500 }
         };
 
         var result = _validator.Validate(null, options);
@@ -119,8 +118,7 @@ public class RedisOptionsValidatorTests
     {
         var options = new RedisOptions
         {
-            ServerAddress = "localhost:6379",
-            SyncTimeout = 500
+            Connection = new RedisConnectionOptions { ServerAddress = "localhost:6379", SyncTimeout = 500 }
         };
 
         var result = _validator.Validate(null, options);
@@ -134,8 +132,7 @@ public class RedisOptionsValidatorTests
     {
         var options = new RedisOptions
         {
-            ServerAddress = "localhost:6379",
-            ConnectRetry = -1
+            Connection = new RedisConnectionOptions { ServerAddress = "localhost:6379", ConnectRetry = -1 }
         };
 
         var result = _validator.Validate(null, options);

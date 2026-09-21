@@ -14,6 +14,7 @@ using Mud.Feishu.DataModels.WsEndpoint;
 using Mud.Feishu.WebSocket.Exceptions;
 using Mud.Feishu.WebSocket.Handlers;
 using Mud.Feishu.WebSocket.SocketEventArgs;
+using System.Buffers;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Net.WebSockets;
@@ -28,10 +29,8 @@ namespace Mud.Feishu.WebSocket;
 public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDisposable, IDisposable
 {
     private readonly ILogger<FeishuWebSocketClient> _logger;
-    // F4 修复：持有 IOptionsMonitor 而非一次性快照，保证配置热更新一致性。
-    // _options 仍保留为 CurrentValue 快照供构造期组件初始化使用；运行期需热更新的路径
-    // （如 AppKey 指标维度、AuthGateTimeoutMs 等）改为读取 _optionsMonitor.CurrentValue。
-    private readonly IOptionsMonitor<FeishuWebSocketOptions> _optionsMonitor;
+    // F4 修复：持有 IOptionsMonitor 而非一次性快照；P2-2 修复后通过 Options 属性真正参与运行期读取。
+    private readonly IOptionsMonitor<FeishuWebSocketOptions>? _optionsMonitor;
     private readonly FeishuWebSocketOptions _options;
     private readonly IFeishuEventHandlerFactory _eventHandlerFactory;
     private readonly IFeishuEventInterceptor[] _interceptors;
@@ -72,6 +71,22 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
 
     // 处理器引用
     private PingPongMessageHandler? _pingPongHandler;
+
+    /// <summary>
+    /// 运行期配置视图（P2-2 修复）。
+    /// </summary>
+    /// <remarks>
+    /// 此前 <c>_optionsMonitor</c> 赋值后从不读取，F4 声称的"热更新"并未落地（属注释与实现不一致）。
+    /// 本属性让<b>确实支持热更新</b>的字段（<see cref="FeishuWebSocketOptions.AppKey"/> 指标维度、
+    /// <see cref="FeishuWebSocketOptions.AuthGateTimeoutMs"/> 认证闸门）在每次读取时取最新值。
+    /// <para>
+    /// <b>口径说明</b>：其余配置项（心跳间隔、连接超时、消息大小限制、并发上界、去重配置等）已在构造期
+    /// 固化到各子组件（<c>MessageRouter</c>/<c>BinaryMessageProcessor</c>/<c>AuthenticationManager</c>/
+    /// <c>HeartbeatManager</c> 等），<b>不支持</b>运行期热更新；需生效请重启进程或重建客户端。
+    /// </para>
+    /// </remarks>
+    private FeishuWebSocketOptions Options => _optionsMonitor?.CurrentValue ?? _options;
+
     /// <inheritdoc/>
     public WebSocketState State => _connectionManager.State;
 
@@ -109,6 +124,7 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
     /// <param name="concurrencyService">并发控制服务（可选，WS-03 修复引入）</param>
     /// <param name="optionsMonitor">WebSocket 配置选项监控器（可选，F4 修复引入，支持热更新）</param>
     /// <param name="unifiedDedupMiddleware">统一去重中间件（可选，F7 修复引入）</param>
+    /// <param name="hostEnvironment">宿主环境（可选，R5.2.7/X5 生产加固引入）。由 DI 自动解析；用于在生产环境把证书安全旁路告警升级为 LogError</param>
     /// <remarks>
     /// F4 修复：优先使用 <paramref name="optionsMonitor"/>；为兼容存量调用方，
     /// 当其为 null 时回退到 <paramref name="options"/> 快照。
@@ -131,12 +147,13 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
         MessageSequenceValidator? sequenceValidator = null,
         FeishuWebSocketConcurrencyService? concurrencyService = null,
         IOptionsMonitor<FeishuWebSocketOptions>? optionsMonitor = null,
-        IUnifiedDeduplicationMiddleware? unifiedDedupMiddleware = null)
+        IUnifiedDeduplicationMiddleware? unifiedDedupMiddleware = null,
+        Microsoft.Extensions.Hosting.IHostEnvironment? hostEnvironment = null)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _eventHandlerFactory = eventHandlerFactory ?? throw new ArgumentNullException(nameof(eventHandlerFactory));
         _interceptors = interceptors ?? Array.Empty<IFeishuEventInterceptor>();
-        _optionsMonitor = optionsMonitor!;
+        _optionsMonitor = optionsMonitor;
         _options = optionsMonitor?.CurrentValue ?? options ?? new FeishuWebSocketOptions();
         _loggerFactory = loggerFactory;
         _seqIdDeduplicator = seqIdDeduplicator;
@@ -196,7 +213,7 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
             handler?.Invoke(this, e);
         };
         // 初始化组件
-        _connectionManager = new WebSocketConnectionManager(_loggerFactory.CreateLogger<WebSocketConnectionManager>(), _options, _loggerFactory);
+        _connectionManager = new WebSocketConnectionManager(_loggerFactory.CreateLogger<WebSocketConnectionManager>(), _options, _loggerFactory, hostEnvironment);
         _authManager = new AuthenticationManager(_loggerFactory.CreateLogger<AuthenticationManager>(), _options, (message) => SendMessageAsync(message), _sessionManager);
         _messageRouter = new MessageRouter(_loggerFactory.CreateLogger<MessageRouter>(), _options);
         _binaryProcessor = new BinaryMessageProcessor(_loggerFactory.CreateLogger<BinaryMessageProcessor>(), _connectionManager, _options, _messageRouter, _seqIdDeduplicator, _sequenceValidator);
@@ -309,8 +326,7 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
     /// </remarks>
     private async Task ResetStateOnReconnectAsync()
     {
-        if (_options.EnableLogging)
-            _logger.LogDebug("重连成功，重置消息序号验证器和去重器状态");
+        _logger.LogDebug("重连成功，重置消息序号验证器和去重器状态");
 
         _sequenceValidator?.Reset();
 
@@ -323,8 +339,7 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
             await _seqIdDeduplicator.ClearCacheAsync();
         }
 
-        if (_options.EnableLogging)
-            _logger.LogInformation("重连状态重置完成");
+        _logger.LogInformation("重连状态重置完成");
     }
 
     /// <summary>
@@ -345,7 +360,7 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
         using var connectActivity = FeishuActivitySource.Instance.StartActivity(
             FeishuActivitySource.ActivityNameWebSocketConnect,
             ActivityKind.Client);
-        connectActivity?.SetTag(FeishuActivitySource.Tags.AppKey, _options.AppKey);
+        connectActivity?.SetTag(FeishuActivitySource.Tags.AppKey, Options.AppKey);
 
         await _connectLock.WaitAsync(cancellationToken);
         try
@@ -363,7 +378,7 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
             {
                 _heartbeatManager.SetServiceId(serviceId.Value);
             }
-            else if (_options.EnableLogging)
+            else
             {
                 _logger.LogWarning("无法从 WebSocket URL 提取 service_id，心跳将使用默认值 0");
             }
@@ -475,8 +490,7 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
         // 认证成功后，自动订阅事件
         if (_subscriptionManager.HasSubscribed)
         {
-            if (_options.EnableLogging)
-                _logger.LogInformation("自动重新订阅事件类型...");
+            _logger.LogInformation("自动重新订阅事件类型...");
             await _subscriptionManager.SendSubscriptionRequestAsync(cancellationToken);
         }
     }
@@ -528,8 +542,7 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
         // WS-16：幂等保护 - 如果已有接收循环在运行，直接返回
         if (_receiveTask is { IsCompleted: false })
         {
-            if (_options.EnableLogging)
-                _logger.LogWarning("StartReceivingAsync 已被调用且接收循环仍在运行，跳过重复调用");
+            _logger.LogWarning("StartReceivingAsync 已被调用且接收循环仍在运行，跳过重复调用");
             return;
         }
 
@@ -698,8 +711,7 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
             {
                 var message = Encoding.UTF8.GetString(buffer.Array!, buffer.Offset, buffer.Count);
 
-                if (_options.EnableLogging)
-                    _logger.LogDebug("接收到文本消息，长度: {MessageLength}",
+                _logger.LogDebug("接收到文本消息，长度: {MessageLength}",
                         message.Length);
 
                 var messageReceivedHandler = MessageReceived;
@@ -712,127 +724,172 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
                 });
 
                 // 消息仅由 MessageRouter 处理，不再同时入队 MessageQueueManager 避免双重处理
-                // WS-03 修复：并发租约在 Task.Run 内部获取，保持 fire-and-forget 语义的同时引入并发上界
-                _ = Task.Run(async () =>
+                // P1-1 修复：并发租约改到<b>接收路径</b>获取。此前租约在 Task.Run 内部获取，
+                // 只限制"同时处理数"，不限制"已排队数"——慢消费时 Task.Run 队列与消息副本无上界（单帧上限 10MB）。
+                // 现在：租约在接收循环获取 → 接收循环被阻塞 = TCP 级反压，排队量与缓冲量一并受 MaxConcurrentHandlers 约束。
+                var (canProcessText, textLease) = await AcquireConcurrencyLeaseAsync(cancellationToken).ConfigureAwait(false);
+                if (!canProcessText)
                 {
-                    // WS-03：租约在 Task.Run 内部获取，避免阻塞接收循环
-                    IDisposable? lease = null;
-                    if (_concurrencyService != null)
+                    _logger.LogDebug("文本消息已丢弃：并发租约获取失败（连接关闭或并发服务已释放）");
+                    return;
+                }
+
+                try
+                {
+                    // M3：Task.Run <b>不得</b>传入 cancellationToken —— 令牌已取消时委托不会执行，
+                    // 而租约所有权即将移交 → 租约永久泄漏 → 接收管道最终卡死。取消由委托内部观察。
+                    var ownedTextLease = textLease;
+                    _ = Task.Run(async () =>
                     {
                         try
                         {
-                            lease = await _concurrencyService.AcquireAsync(cancellationToken);
-                        }
-                        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-                        {
-                            return;
-                        }
-                    }
-                    try
-                    {
-                        // P0-2 修复：为 WebSocket 消息处理创建分布式追踪 Span
-                        using var wsActivity = FeishuActivitySource.Instance.StartActivity(
-                            FeishuActivitySource.ActivityNameWebSocketMessage,
-                            ActivityKind.Internal);
-                        wsActivity?.SetTag(FeishuActivitySource.Tags.AppKey, _options.AppKey);
-                        wsActivity?.SetTag(FeishuActivitySource.Tags.MessageType, "text");
+                            // P0-2 修复：为 WebSocket 消息处理创建分布式追踪 Span
+                            using var wsActivity = FeishuActivitySource.Instance.StartActivity(
+                                FeishuActivitySource.ActivityNameWebSocketMessage,
+                                ActivityKind.Internal);
+                            wsActivity?.SetTag(FeishuActivitySource.Tags.AppKey, Options.AppKey);
+                            wsActivity?.SetTag(FeishuActivitySource.Tags.MessageType, "text");
 
-                        using (FeishuMetricsHelper.RecordEventHandling(_options.AppKey, "websocket_message", "text"))
-                        using (FeishuMetricsHelper.RecordWebSocketMessageProcessing(_options.AppKey, "text"))
-                        {
-                            await _messageRouter.RouteMessageAsync(message, cancellationToken);
-                        }
+                            using (FeishuMetricsHelper.RecordEventHandling(Options.AppKey, "websocket_message", "text"))
+                            using (FeishuMetricsHelper.RecordWebSocketMessageProcessing(Options.AppKey, "text"))
+                            {
+                                await _messageRouter.RouteMessageAsync(message, cancellationToken);
+                            }
 
-                        wsActivity?.SetStatus(ActivityStatusCode.Ok);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "消息处理任务执行失败，不影响接收管道");
-                        var handler = Error;
-                        handler?.Invoke(this, new WebSocketErrorEventArgs
+                            wsActivity?.SetStatus(ActivityStatusCode.Ok);
+                        }
+                        catch (Exception ex)
                         {
-                            Exception = ex,
-                            ErrorMessage = $"消息处理错误: {ex.Message}",
-                            ErrorType = "MessageProcessingError",
-                            IsRecoverable = true
-                        });
-                    }
-                    finally
-                    {
-                        lease?.Dispose();
-                    }
-                }, cancellationToken);
+                            _logger.LogError(ex, "消息处理任务执行失败，不影响接收管道");
+                            var handler = Error;
+                            handler?.Invoke(this, new WebSocketErrorEventArgs
+                            {
+                                Exception = ex,
+                                ErrorMessage = $"消息处理错误: {ex.Message}",
+                                ErrorType = "MessageProcessingError",
+                                IsRecoverable = true
+                            });
+                        }
+                        finally
+                        {
+                            ownedTextLease?.Dispose();
+                        }
+                    });
+
+                    textLease = null;   // 所有权已随"委托入队"移交
+                }
+                finally
+                {
+                    textLease?.Dispose();   // 派发失败（极端调度异常）时兜底，避免租约泄漏
+                }
             }
             else if (result.MessageType == WebSocketMessageType.Binary)
             {
-                // P0-1 修复：_receiveBuffer 由接收循环复用，而下面的处理是 fire-and-forget，
-                // 直接把 buffer.Array 传出去会让处理线程与下一次 ReceiveAsync 形成数据竞争，
-                // 造成 protobuf 帧内容被覆写（表现为随机解析失败、SeqID 错乱、字段张冠李戴）。
-                // 必须在返回前拷贝到本次消息私有的数组。
-                var ownedBuffer = new byte[result.Count];
-                Buffer.BlockCopy(buffer.Array!, buffer.Offset, ownedBuffer, 0, result.Count);
-
-                // P1-14 修复：认证完成前的业务帧闸门（默认 AuthGateTimeoutMs=0，即保持历史行为）
-                if (_options.AuthGateTimeoutMs > 0 && !_authManager.IsAuthenticated)
+                // P1-1 修复：租约在接收路径获取（详见文本分支注释）。
+                // 注意：await AcquireAsync 会挂起接收循环，因此共享 _receiveBuffer 在等待期间不会被覆写，
+                // "先取租约、后拷贝"既能限制排队缓冲数量，又不会与下一次 ReceiveAsync 形成数据竞争。
+                var (canProcessBinary, binaryLease) = await AcquireConcurrencyLeaseAsync(cancellationToken).ConfigureAwait(false);
+                if (!canProcessBinary)
                 {
-                    if (!await WaitForAuthenticationAsync(_options.AuthGateTimeoutMs, cancellationToken))
-                    {
-                        _logger.LogWarning("连接在认证完成前收到二进制业务帧，已丢弃（等待 {TimeoutMs}ms 仍未认证）",
-                            _options.AuthGateTimeoutMs);
-                        return;
-                    }
+                    _logger.LogDebug("二进制消息已丢弃：并发租约获取失败（连接关闭或并发服务已释放）");
+                    return;
                 }
 
-                // WS-03 修复：并发租约在 Task.Run 内部获取，保持 fire-and-forget 语义的同时引入并发上界
-                _ = Task.Run(async () =>
+                // P2-12：池化副本的"所有权跟踪"变量（须声明在 try 之外，finally 才能兜底归还）
+                byte[]? pooledBuffer = null;
+                try
                 {
-                    // WS-03：租约在 Task.Run 内部获取，避免阻塞接收循环
-                    IDisposable? lease = null;
-                    if (_concurrencyService != null)
+                    // P0-1 修复：_receiveBuffer 由接收循环复用，而下面的处理是 fire-and-forget，
+                    // 直接把 buffer.Array 传出去会让处理线程与下一次 ReceiveAsync 形成数据竞争，
+                    // 造成 protobuf 帧内容被覆写（表现为随机解析失败、SeqID 错乱、字段张冠李戴）。
+                    // 必须在返回前持有本次消息的私有副本。
+                    // P2-12 修复：副本改由 ArrayPool 提供，避免"每帧一次"的 Gen0/LOH 分配
+                    // （大帧上限 10MB，高频投递下会显著放大分配压力）。
+                    // 注意：Rent 返回的数组长度可能大于请求数量（池按 2 的幂分桶），
+                    // 因此必须以 (buffer, 0, count) 三元组传递，绝不能使用 buffer.Length。
+                    if (result.Count == 0)
+                    {
+                        pooledBuffer = Array.Empty<byte>();   // 空帧：不进池，也无需归还
+                    }
+                    else
+                    {
+                        pooledBuffer = ArrayPool<byte>.Shared.Rent(result.Count);
+                        Buffer.BlockCopy(buffer.Array!, buffer.Offset, pooledBuffer, 0, result.Count);
+                    }
+
+                    // M3：同文本分支，Task.Run 不传 cancellationToken（避免租约泄漏）
+                    var ownedBinaryLease = binaryLease;
+                    var frameBuffer = pooledBuffer;
+                    _ = Task.Run(async () =>
                     {
                         try
                         {
-                            lease = await _concurrencyService.AcquireAsync(cancellationToken);
-                        }
-                        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-                        {
-                            return;
-                        }
-                    }
-                    try
-                    {
-                        // P0-2 修复：为 WebSocket 二进制消息处理创建分布式追踪 Span
-                        using var wsActivity = FeishuActivitySource.Instance.StartActivity(
-                            FeishuActivitySource.ActivityNameWebSocketMessage,
-                            ActivityKind.Internal);
-                        wsActivity?.SetTag(FeishuActivitySource.Tags.AppKey, _options.AppKey);
-                        wsActivity?.SetTag(FeishuActivitySource.Tags.MessageType, "binary");
+                            // P2-10 修复：认证闸门判断移入任务体。此前在接收循环上轮询等待（最长 AuthGateTimeoutMs）
+                            // 会造成队头阻塞——后续帧（含 Pong 控制帧与认证响应）全部被推迟。
+                            // 默认 AuthGateTimeoutMs=0 时该分支不执行（保持历史行为）。
+                            var authGateTimeoutMs = Options.AuthGateTimeoutMs;
+                            if (authGateTimeoutMs > 0 && !_authManager.IsAuthenticated)
+                            {
+                                if (!await WaitForAuthenticationAsync(authGateTimeoutMs, cancellationToken))
+                                {
+                                    _logger.LogWarning("连接在认证完成前收到二进制业务帧，已丢弃（等待 {TimeoutMs}ms 仍未认证）",
+                                        authGateTimeoutMs);
+                                    return;
+                                }
+                            }
 
-                        using (FeishuMetricsHelper.RecordEventHandling(_options.AppKey, "websocket_message", "binary"))
-                        using (FeishuMetricsHelper.RecordWebSocketMessageProcessing(_options.AppKey, "binary"))
-                        {
-                            await _binaryProcessor.ProcessBinaryDataAsync(ownedBuffer, 0, ownedBuffer.Length, result.EndOfMessage, cancellationToken);
-                        }
+                            // P0-2 修复：为 WebSocket 二进制消息处理创建分布式追踪 Span
+                            using var wsActivity = FeishuActivitySource.Instance.StartActivity(
+                                FeishuActivitySource.ActivityNameWebSocketMessage,
+                                ActivityKind.Internal);
+                            wsActivity?.SetTag(FeishuActivitySource.Tags.AppKey, Options.AppKey);
+                            wsActivity?.SetTag(FeishuActivitySource.Tags.MessageType, "binary");
 
-                        wsActivity?.SetStatus(ActivityStatusCode.Ok);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "二进制消息处理任务执行失败，不影响接收管道");
-                        var handler = Error;
-                        handler?.Invoke(this, new WebSocketErrorEventArgs
+                            using (FeishuMetricsHelper.RecordEventHandling(Options.AppKey, "websocket_message", "binary"))
+                            using (FeishuMetricsHelper.RecordWebSocketMessageProcessing(Options.AppKey, "binary"))
+                            {
+                                await _binaryProcessor.ProcessBinaryDataAsync(frameBuffer, 0, result.Count, result.EndOfMessage, cancellationToken);
+                            }
+
+                            wsActivity?.SetStatus(ActivityStatusCode.Ok);
+                        }
+                        catch (Exception ex)
                         {
-                            Exception = ex,
-                            ErrorMessage = $"二进制消息处理错误: {ex.Message}",
-                            ErrorType = "BinaryMessageProcessingError",
-                            IsRecoverable = true
-                        });
-                    }
-                    finally
+                            _logger.LogError(ex, "二进制消息处理任务执行失败，不影响接收管道");
+                            var handler = Error;
+                            handler?.Invoke(this, new WebSocketErrorEventArgs
+                            {
+                                Exception = ex,
+                                ErrorMessage = $"二进制消息处理错误: {ex.Message}",
+                                ErrorType = "BinaryMessageProcessingError",
+                                IsRecoverable = true
+                            });
+                        }
+                        finally
+                        {
+                            ownedBinaryLease?.Dispose();
+
+                            // P2-12：副本所有权随任务结束归还池（空帧不归还）
+                            if (frameBuffer.Length > 0)
+                            {
+                                ArrayPool<byte>.Shared.Return(frameBuffer);
+                            }
+                        }
+                    });
+
+                    binaryLease = null;    // 租约所有权已随"委托入队"移交
+                    pooledBuffer = null;   // 副本所有权已随"委托入队"移交
+                }
+                finally
+                {
+                    binaryLease?.Dispose();   // 派发失败兜底
+
+                    // P2-12：派发失败（未移交所有权）时归还池化副本，避免池泄漏
+                    if (pooledBuffer != null && pooledBuffer.Length > 0)
                     {
-                        lease?.Dispose();
+                        ArrayPool<byte>.Shared.Return(pooledBuffer);
                     }
-                }, cancellationToken);
+                }
             }
         }
         catch (JsonException jsonEx)
@@ -877,6 +934,41 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
                 ErrorType = "MessageProcessingError",
                 IsRecoverable = true
             });
+        }
+    }
+
+    /// <summary>
+    /// 在接收路径获取并发租约（P1-1 修复：背压前移到"排队阶段"）。
+    /// </summary>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>
+    /// <c>CanProcess</c> 表示是否可以继续处理本帧；<c>Lease</c> 为租约
+    /// （未注入并发服务时为 <c>null</c>，表示不做并发记账）。
+    /// </returns>
+    /// <remarks>
+    /// 该方法是"背压闸门"：等待期间接收循环处于挂起状态，从而把反压传递到 TCP 层，使"已排队任务/已排队缓冲"
+    /// 同样受 <see cref="FeishuWebSocketOptions.MaxConcurrentHandlers"/> 约束。
+    /// 未注入 <see cref="FeishuWebSocketConcurrencyService"/> 时直接返回 <c>(true, null)</c>，行为与改造前一致。
+    /// <para>I10：正因为接收循环会在背压时暂停，消息处理器<b>不得</b>反向依赖接收循环的推进
+    /// （例如在同一 socket 上做请求-响应式等待），否则构成循环等待。</para>
+    /// </remarks>
+    private async Task<(bool CanProcess, IDisposable? Lease)> AcquireConcurrencyLeaseAsync(CancellationToken cancellationToken)
+    {
+        if (_concurrencyService == null)
+            return (true, null);
+
+        try
+        {
+            var lease = await _concurrencyService.AcquireAsync(cancellationToken).ConfigureAwait(false);
+            return (lease != null, lease);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            return (false, null);   // 连接/应用正在关闭：丢弃本帧
+        }
+        catch (ObjectDisposedException)
+        {
+            return (false, null);   // 并发服务已释放（关停竞态）：丢弃本帧，避免异常灌入接收循环
         }
     }
 
@@ -972,7 +1064,8 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
             if (_binaryProcessor != null)
                 await _binaryProcessor.DisposeAsync();
 
-            _connectLock?.Dispose();
+            // P1-5b 修复（I9）：不再释放 _connectLock —— 在途 ConnectAsync/DisconnectAsync 仍可能
+            // WaitAsync/Release 该信号量，释放会构成 ObjectDisposedException 竞态；不释放无 OS 句柄泄漏。
         }
         catch (Exception ex)
         {
@@ -1024,7 +1117,7 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
             UnsubscribeFromHandlerEvents();
             _connectionManager?.Dispose();
             _binaryProcessor?.Dispose();
-            _connectLock?.Dispose();
+            // P1-5b 修复（I9）：同 DisposeAsync，不释放 _connectLock（消除释放竞态，无句柄泄漏）
         }
         catch (Exception ex)
         {

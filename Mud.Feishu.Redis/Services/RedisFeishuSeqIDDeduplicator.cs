@@ -283,6 +283,26 @@ return 0
     }
 
     /// <inheritdoc />
+    public async Task<int> GetCacheCountAsync(CancellationToken cancellationToken = default)
+    {
+        ThrowIfDisposed();
+        try
+        {
+            var sortedSetCount = (long)await _database.SortedSetLengthAsync(_sortedSetKey).ConfigureAwait(false);
+
+            _logger?.LogDebug("SeqID 缓存数量 (ScopeKey: {ScopeKey}): {SortedSetCount}",
+                _scopeKey, sortedSetCount);
+
+            return (int)sortedSetCount;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "获取 SeqID 缓存数量时发生错误（best-effort，返回 0）");
+            return 0;
+        }
+    }
+
+    /// <inheritdoc />
     /// <remarks>
     /// ADR-4：语义收窄为"TTL 窗口内已处理的最大 SeqID"。
     /// Sorted Set 在写入时裁剪过期成员，此值反映当前窗口内的最大值。
@@ -293,6 +313,29 @@ return 0
         try
         {
             var maxSeqId = _database.SortedSetRangeByScore(_sortedSetKey, order: Order.Descending, take: 1);
+
+            if (maxSeqId.Length > 0 && ulong.TryParse(maxSeqId[0], out var seqId))
+            {
+                return seqId;
+            }
+
+            return 0;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "获取最大 SeqID 时发生错误（best-effort，返回 0）");
+            return 0;
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<ulong> GetMaxProcessedSeqIdAsync(CancellationToken cancellationToken = default)
+    {
+        ThrowIfDisposed();
+        try
+        {
+            var maxSeqId = await _database.SortedSetRangeByScoreAsync(_sortedSetKey,
+                order: Order.Descending, take: 1).ConfigureAwait(false);
 
             if (maxSeqId.Length > 0 && ulong.TryParse(maxSeqId[0], out var seqId))
             {

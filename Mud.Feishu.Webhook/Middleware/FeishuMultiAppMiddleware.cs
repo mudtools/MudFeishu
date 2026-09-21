@@ -10,6 +10,7 @@ using Mud.Feishu.Abstractions.Metrics;
 // 使用类型别名而非命名空间 using：Mud.Feishu.Abstractions.Utilities 与 Mud.Feishu.Webhook.Serialization
 // 都存在 FeishuJsonContext，直接引入命名空间会造成 CS0104 二义性。
 using FeishuJsonAot = Mud.Feishu.Abstractions.Utilities.FeishuJsonAot;
+using Mud.Feishu.Abstractions.Utilities;
 using Mud.Feishu.Abstractions.Observability;
 using Mud.Feishu.Abstractions.Services;
 using Mud.Feishu.Webhook.Configuration;
@@ -163,7 +164,12 @@ public class FeishuMultiAppMiddleware : IDisposable
 
         // 获取应用配置
         var requestId = RequestIdHelper.GetOrGenerateRequestId(context);
-        var clientIp = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        // WHF-R2/A3：白名单 IP 认定统一使用 ClientIpResolver（ADR-3 零信任 XFF），
+        // 与 FeishuRateLimitMiddleware 共享同一解析逻辑，消除反代部署下白名单全误拒。
+        var clientIp = ClientIpResolver.GetClientIp(
+            context,
+            Options.RateLimit.UseForwardedHeaders,
+            Options.SourceIpTrustedProxies ?? Options.RateLimit.TrustedProxies) ?? "unknown";
 
         using var activity = FeishuActivitySource.Instance.StartActivity(
             FeishuActivitySource.ActivityNameWebhookRequest,
@@ -354,15 +360,16 @@ public class FeishuMultiAppMiddleware : IDisposable
             {
                 _logger.LogWarning("签名验证失败 - Timestamp: {Timestamp}, Nonce: {Nonce}, SignaturePrefix: {SignaturePrefix}, AppKey: {AppKey}",
                     eventRequest.Timestamp,
-                    eventRequest.Nonce,
-                    eventRequest.Signature?.Length > 8 ? eventRequest.Signature.Substring(0, 8) + "..." : eventRequest.Signature ?? "(null)",
+                    LogSanitizer.Clean(eventRequest.Nonce),
+                    LogSanitizer.Clean(eventRequest.Signature?.Length > 8 ? eventRequest.Signature.Substring(0, 8) + "..." : eventRequest.Signature ?? "(null)"),
                     appKey);
                 await WriteErrorResponse(context, 403, "Forbidden", requestId);
                 return;
             }
 
-            // 签名验证通过后再解密（验证请求使用 1 秒超时，确保飞书要求）
-            using var decryptionCts = new CancellationTokenSource(TimeSpan.FromSeconds(1));
+            // 签名验证通过后再解密（验证请求使用配置的超时，确保飞书要求）
+            // WHF-R2/B6：超时从硬编码 1s 改为可配置
+            using var decryptionCts = new CancellationTokenSource(TimeSpan.FromMilliseconds(Options.DecryptionTimeoutMs));
             var decryptedData = await webhookService.DecryptEventAsync(eventRequest.Encrypt!, decryptionCts.Token);
 
             if (decryptedData == null)
@@ -382,6 +389,16 @@ public class FeishuMultiAppMiddleware : IDisposable
             if (decryptedData.EventType == "url_verification")
             {
                 await HandleEncryptedVerificationAsync(context, decryptedData, appConfig, appKey, requestId);
+                return;
+            }
+
+            // WHF-R2/C7：AppId 交叉校验——防御 EncryptKey 复用误配置导致的跨应用事件串扰
+            if (!string.IsNullOrEmpty(appConfig.ExpectedAppId)
+                && !string.Equals(decryptedData.AppId, appConfig.ExpectedAppId, StringComparison.Ordinal))
+            {
+                _logger.LogWarning("事件 AppId {AppId} 与应用 {AppKey} 声明的 ExpectedAppId 不匹配，拒绝处理",
+                    decryptedData.AppId ?? "(null)", appKey);
+                await WriteErrorResponse(context, 403, "Forbidden: AppId mismatch", requestId);
                 return;
             }
 

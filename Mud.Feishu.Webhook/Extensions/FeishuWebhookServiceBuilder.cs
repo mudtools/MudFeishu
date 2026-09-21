@@ -686,6 +686,42 @@ public class FeishuWebhookServiceBuilder
         _services.TryAddScoped<IFeishuEventDecryptor, FeishuEventDecryptor>();
         _services.TryAddScoped<IFeishuWebhookService, FeishuWebhookService>();
         _services.TryAddScoped<ISecurityAuditService, SecurityAuditService>();
+
+        // WHF-R2/C3：中间件注册为 Singleton 使 IHost 关停时 Dispose 可达。
+        // UseMiddleware<T> 检测到 DI 注册后从容器解析实例，随容器 Dispose 释放
+        // _onChangeSubscription（MultiAppMiddleware）和 _cleanupTimer（RateLimitMiddleware）。
+        _services.TryAddSingleton<FeishuMultiAppMiddleware>();
+        _services.TryAddSingleton<FeishuRateLimitMiddleware>();
+
+        // A1/WHF-R2：Nonce 去重多实例静默降级 → 启动期告警/阻断。
+        // 与事件去重 :610-614 的 LogWarning 兜底口径对齐——Nonce 去重此前无等价告警。
+        // 生产环境 Mode=Distributed + 内存 Nonce 实现 = 已知不可接受风险，fail-fast。
+        _services.AddOptions<FeishuWebhookOptions>()
+            .PostConfigure<IServiceProvider>((options, sp) =>
+            {
+                var unified = sp.GetService<IOptions<FeishuDeduplicationOptions>>()?.Value;
+                var isDistributedIntent = unified is { IsConfiguredFromConfiguration: true }
+                    && string.Equals(unified.Mode, FeishuDeduplicationOptions.ModeDistributed, StringComparison.OrdinalIgnoreCase);
+                var nonceImpl = sp.GetService<IFeishuNonceDistributedDeduplicator>();
+                var isMemoryNonce = nonceImpl is null or FeishuNonceDistributedDeduplicator;
+
+                if (isDistributedIntent && isMemoryNonce)
+                {
+                    var logger = sp.GetService<ILogger<FeishuWebhookOptions>>();
+                    var isProduction = sp.GetService<IEnvironmentService>()?.IsProduction == true;
+
+                    if (isProduction)
+                    {
+                        throw new InvalidOperationException(
+                            "FeishuDeduplication:Mode=Distributed 但 Nonce 去重为进程内内存实现。" +
+                            "多实例部署下跨实例重放攻击不可检测。请调用 AddFeishuRedisDeduplicators() 注册 Redis 实现。");
+                    }
+
+                    logger?.LogWarning(
+                        "FeishuDeduplication:Mode=Distributed 但 Nonce 去重为进程内内存实现。" +
+                        "多实例部署下跨实例重放攻击不可检测。请调用 AddFeishuRedisDeduplicators() 注册 Redis 实现。");
+                }
+            });
     }
 
 

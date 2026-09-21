@@ -83,6 +83,7 @@ public class FeishuWebhookService : IFeishuWebhookService
     }
 
     /// <inheritdoc />
+    [Obsolete("明文验证协议无重放防护，中间件已强制加密验证。请使用加密 url_verification 链路。将在下个 major 移除。")]
     public async Task<EventVerificationResponse?> VerifyEventSubscriptionAsync(EventVerificationRequest request, CancellationToken cancellationToken = default)
     {
         try
@@ -331,12 +332,14 @@ public class FeishuWebhookService : IFeishuWebhookService
             }
 
             // 委托给验证器进行签名验证，消除内联重复代码
+            // WHF-R2/B3：贯穿 CancellationToken，客户端断开时尽早取消验签链路
             return await _validator.ValidateHeaderSignatureAsync(
                 request.Timestamp,
                 request.Nonce,
                 body,
                 request.Signature,
-                encryptKey!);
+                encryptKey!,
+                cancellationToken);
         }
         catch (Exception ex) when (ex is not FeishuRedisException { FailureKind: FeishuRedisFailureKind.Server })
         {

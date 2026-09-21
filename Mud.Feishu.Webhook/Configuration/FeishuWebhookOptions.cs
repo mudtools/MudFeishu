@@ -95,6 +95,13 @@ public class FeishuWebhookOptions
     public HashSet<string> AllowedSourceIPs { get; set; } = [];
 
     /// <summary>
+    /// 白名单/来源校验的可信代理（CIDR 或精确 IP）。
+    /// <para>null = 继承 <see cref="RateLimitOptions.TrustedProxies"/>，避免两处配置漂移。</para>
+    /// <para>配置后，白名单校验将使用与限流一致的 ADR-3 零信任 XFF 解析逻辑还原真实客户端 IP。</para>
+    /// </summary>
+    public HashSet<string>? SourceIpTrustedProxies { get; set; }
+
+    /// <summary>
     /// 是否强制验证 X-Lark-Signature 请求头签名
     /// 当设置为 true 时，如果请求头中缺少签名将拒绝请求
     /// 生产环境建议设置为 true 以提高安全性
@@ -119,8 +126,8 @@ public class FeishuWebhookOptions
     /// <item><description>飞书官方建议的时间戳容错范围为 60 秒以内</description></item>
     /// </list>
     /// <para>
-    /// 重放窗口不变量（WHF-03）：<b>NonceTtl 必须 ≥ 本值</b>——否则在 Nonce 过期后、
-    /// 容差窗口结束前的区间内重放攻击可行。默认组合（NonceTtl=300s / 容差上限=300s）天然满足。
+    /// 重放窗口不变量（WHF-03）：<b>NonceTtl 必须 &gt; 本值</b>——否则在 Nonce 过期后、
+    /// 容差窗口结束前的区间内重放攻击可行。默认组合（NonceTtl=600s / 容差上限=300s）天然满足。
     /// 本值上限 300 秒由 <see cref="Validate"/> 强制；NonceTtl 侧声明见 Redis 工程的
     /// <c>RedisOptions.NonceTtl</c> XML 注释（跨工程 Options 无法在单一库内联断言）。
     /// </para>
@@ -196,6 +203,11 @@ public class FeishuWebhookOptions
     public FailedEventRetryOptions Retry { get; set; } = new();
 
     /// <summary>
+    /// 解密阶段超时（毫秒），默认 1000。AES 毫秒级完成，此值为抗线程池饥饿的兜底（WHF-R2/B6）。
+    /// </summary>
+    public int DecryptionTimeoutMs { get; set; } = 1000;
+
+    /// <summary>
     /// 应用配置集合（AppKey -> 应用配置）
     /// </summary>
     public Dictionary<string, FeishuAppWebhookOptions> Apps { get; set; } = new();
@@ -226,6 +238,15 @@ public class FeishuWebhookOptions
 
         // 验证重试配置
         Retry.Validate();
+
+        // 验证限流配置（WHF-R2/A2：此前遗漏导致 RateLimitOptions.Validate() 永不执行——
+        // RateLimitOptions 作为嵌套属性消费，未注册为独立 IOptions<RateLimitOptions>，
+        // IValidateOptions<RateLimitOptions> 永远不会被框架调用。此处补线消除死配置。）
+        RateLimit.Validate();
+
+        // 验证解密超时配置（WHF-R2/B6）
+        if (DecryptionTimeoutMs is < 100 or > 60_000)
+            throw new InvalidOperationException("DecryptionTimeoutMs 必须在 100~60000 毫秒之间");
 
         // 验证多应用配置
         foreach (var appConfig in Apps)

@@ -117,10 +117,9 @@ public class CompositeFeishuEventValidatorTests
         var encryptKey = "test-key";
 
         _timestampValidatorMock.Setup(x => x.ValidateTimestamp(timestamp, null)).Returns(true);
-        _nonceValidatorMock.Setup(x => x.CheckNonceAsync(nonce)).ReturnsAsync(true);
-        _signatureValidatorMock.Setup(x => x.ValidateHeaderSignatureAsync(timestamp, nonce, body, signature, encryptKey))
+        _signatureValidatorMock.Setup(x => x.ValidateHeaderSignatureAsync(timestamp, nonce, body, signature, encryptKey, It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
-        _nonceValidatorMock.Setup(x => x.TryMarkNonceAsUsedAsync(nonce)).ReturnsAsync(false); // false = 未被使用，成功标记
+        _nonceValidatorMock.Setup(x => x.TryMarkNonceAsUsedAsync(nonce, It.IsAny<CancellationToken>())).ReturnsAsync(false); // false = 未被使用，成功标记
 
         // Act
         var result = await _sut.ValidateHeaderSignatureAsync(timestamp, nonce, body, signature, encryptKey);
@@ -128,9 +127,10 @@ public class CompositeFeishuEventValidatorTests
         // Assert
         result.Should().BeTrue();
         _timestampValidatorMock.Verify(x => x.ValidateTimestamp(timestamp, null), Times.Once);
-        _nonceValidatorMock.Verify(x => x.CheckNonceAsync(nonce), Times.Once);
-        _signatureValidatorMock.Verify(x => x.ValidateHeaderSignatureAsync(timestamp, nonce, body, signature, encryptKey), Times.Once);
-        _nonceValidatorMock.Verify(x => x.TryMarkNonceAsUsedAsync(nonce), Times.Once);
+        // WHF-R2/B2: CheckNonceAsync 预检已移除，不再调用
+        _nonceValidatorMock.Verify(x => x.CheckNonceAsync(It.IsAny<string>()), Times.Never);
+        _signatureValidatorMock.Verify(x => x.ValidateHeaderSignatureAsync(timestamp, nonce, body, signature, encryptKey, It.IsAny<CancellationToken>()), Times.Once);
+        _nonceValidatorMock.Verify(x => x.TryMarkNonceAsUsedAsync(nonce, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -145,8 +145,8 @@ public class CompositeFeishuEventValidatorTests
         // Assert
         result.Should().BeFalse();
         _nonceValidatorMock.Verify(x => x.CheckNonceAsync(It.IsAny<string>()), Times.Never);
-        _signatureValidatorMock.Verify(x => x.ValidateHeaderSignatureAsync(It.IsAny<long>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
-        _nonceValidatorMock.Verify(x => x.TryMarkNonceAsUsedAsync(It.IsAny<string>()), Times.Never);
+        _signatureValidatorMock.Verify(x => x.ValidateHeaderSignatureAsync(It.IsAny<long>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        _nonceValidatorMock.Verify(x => x.TryMarkNonceAsUsedAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     #endregion
@@ -156,9 +156,14 @@ public class CompositeFeishuEventValidatorTests
     [Fact]
     public async Task ValidateHeaderSignatureAsync_WhenNonceAlreadyUsed_ShouldReturnFalse_AndNotCallSignatureValidation()
     {
-        // Arrange - Nonce 已被使用（检测到重放攻击）
+        // Arrange - WHF-R2/B2: CheckNonceAsync 预检已移除，防重放由 TryMarkNonceAsUsedAsync 原子保证。
+        // 签名验证通过后 TryMark 返回 true（已被使用）→ 拒绝
         _timestampValidatorMock.Setup(x => x.ValidateTimestamp(It.IsAny<long>(), null)).Returns(true);
-        _nonceValidatorMock.Setup(x => x.CheckNonceAsync(It.IsAny<string>())).ReturnsAsync(false); // false = 已被使用
+        _signatureValidatorMock.Setup(x => x.ValidateHeaderSignatureAsync(
+            It.IsAny<long>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+        _nonceValidatorMock.Setup(x => x.TryMarkNonceAsUsedAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true); // true = 已被使用（重放攻击）
 
         // Act
         var result = await _sut.ValidateHeaderSignatureAsync(
@@ -166,11 +171,8 @@ public class CompositeFeishuEventValidatorTests
 
         // Assert
         result.Should().BeFalse("Nonce 已被使用时应拒绝请求");
-        _signatureValidatorMock.Verify(x => x.ValidateHeaderSignatureAsync(
-            It.IsAny<long>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never,
-            "Nonce 检查失败时不应调用签名验证");
-        _nonceValidatorMock.Verify(x => x.TryMarkNonceAsUsedAsync(It.IsAny<string>()), Times.Never,
-            "Nonce 检查失败时不应标记 Nonce");
+        _nonceValidatorMock.Verify(x => x.TryMarkNonceAsUsedAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once,
+            "签名通过后应调用 TryMark 检测重放");
     }
 
     [Fact]
@@ -179,9 +181,8 @@ public class CompositeFeishuEventValidatorTests
         // Arrange - P1 核心测试：签名验证失败时 Nonce 不应被标记
         var nonce = "test-nonce-not-to-be-consumed";
         _timestampValidatorMock.Setup(x => x.ValidateTimestamp(It.IsAny<long>(), null)).Returns(true);
-        _nonceValidatorMock.Setup(x => x.CheckNonceAsync(nonce)).ReturnsAsync(true); // Nonce 未被使用
         _signatureValidatorMock.Setup(x => x.ValidateHeaderSignatureAsync(
-            It.IsAny<long>(), nonce, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
+            It.IsAny<long>(), nonce, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(false); // 签名验证失败
 
         // Act
@@ -190,7 +191,7 @@ public class CompositeFeishuEventValidatorTests
 
         // Assert
         result.Should().BeFalse("签名验证失败应返回 false");
-        _nonceValidatorMock.Verify(x => x.TryMarkNonceAsUsedAsync(nonce), Times.Never,
+        _nonceValidatorMock.Verify(x => x.TryMarkNonceAsUsedAsync(nonce, It.IsAny<CancellationToken>()), Times.Never,
             "P1 修复核心断言：签名验证失败时，Nonce 不应被标记为已使用");
     }
 
@@ -200,11 +201,10 @@ public class CompositeFeishuEventValidatorTests
         // Arrange - 签名验证通过后应标记 Nonce
         var nonce = "test-nonce-to-be-marked";
         _timestampValidatorMock.Setup(x => x.ValidateTimestamp(It.IsAny<long>(), null)).Returns(true);
-        _nonceValidatorMock.Setup(x => x.CheckNonceAsync(nonce)).ReturnsAsync(true);
         _signatureValidatorMock.Setup(x => x.ValidateHeaderSignatureAsync(
-            It.IsAny<long>(), nonce, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
+            It.IsAny<long>(), nonce, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
-        _nonceValidatorMock.Setup(x => x.TryMarkNonceAsUsedAsync(nonce)).ReturnsAsync(false); // false = 成功标记
+        _nonceValidatorMock.Setup(x => x.TryMarkNonceAsUsedAsync(nonce, It.IsAny<CancellationToken>())).ReturnsAsync(false); // false = 成功标记
 
         // Act
         var result = await _sut.ValidateHeaderSignatureAsync(
@@ -212,7 +212,7 @@ public class CompositeFeishuEventValidatorTests
 
         // Assert
         result.Should().BeTrue();
-        _nonceValidatorMock.Verify(x => x.TryMarkNonceAsUsedAsync(nonce), Times.Once,
+        _nonceValidatorMock.Verify(x => x.TryMarkNonceAsUsedAsync(nonce, It.IsAny<CancellationToken>()), Times.Once,
             "签名验证通过后应标记 Nonce 为已使用");
     }
 
@@ -222,11 +222,10 @@ public class CompositeFeishuEventValidatorTests
         // Arrange - 并发场景：签名验证通过后标记 Nonce 时发现已被其他请求标记
         var nonce = "concurrent-nonce";
         _timestampValidatorMock.Setup(x => x.ValidateTimestamp(It.IsAny<long>(), null)).Returns(true);
-        _nonceValidatorMock.Setup(x => x.CheckNonceAsync(nonce)).ReturnsAsync(true); // 预检查通过
         _signatureValidatorMock.Setup(x => x.ValidateHeaderSignatureAsync(
-            It.IsAny<long>(), nonce, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
+            It.IsAny<long>(), nonce, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
-        _nonceValidatorMock.Setup(x => x.TryMarkNonceAsUsedAsync(nonce)).ReturnsAsync(true); // true = 已被其他请求标记
+        _nonceValidatorMock.Setup(x => x.TryMarkNonceAsUsedAsync(nonce, It.IsAny<CancellationToken>())).ReturnsAsync(true); // true = 已被其他请求标记
 
         // Act
         var result = await _sut.ValidateHeaderSignatureAsync(
@@ -302,10 +301,14 @@ public class CompositeFeishuEventValidatorTests
     public async Task ValidateHeaderSignatureAsync_ShouldRethrow_WhenRedisServerException()
     {
         // Arrange - WHF-02 核心断言：Server 类 FeishuRedisException 不得被吞成 false（403）
+        // WHF-R2/B2: CheckNonceAsync 预检已移除，Server 异常路径从 TryMarkNonceAsUsedAsync 触发
         var serverException = new FeishuRedisException(
             FeishuRedisFailureKind.Server, "Lua 脚本执行失败（模拟配置错误）");
         _timestampValidatorMock.Setup(x => x.ValidateTimestamp(It.IsAny<long>(), null)).Returns(true);
-        _nonceValidatorMock.Setup(x => x.CheckNonceAsync(It.IsAny<string>())).ThrowsAsync(serverException);
+        _signatureValidatorMock.Setup(x => x.ValidateHeaderSignatureAsync(
+            It.IsAny<long>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+        _nonceValidatorMock.Setup(x => x.TryMarkNonceAsUsedAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ThrowsAsync(serverException);
 
         // Act
         var act = async () => await _sut.ValidateHeaderSignatureAsync(
@@ -322,11 +325,10 @@ public class CompositeFeishuEventValidatorTests
         var serverException = new FeishuRedisException(
             FeishuRedisFailureKind.Server, "标记 Nonce 时服务端错误");
         _timestampValidatorMock.Setup(x => x.ValidateTimestamp(It.IsAny<long>(), null)).Returns(true);
-        _nonceValidatorMock.Setup(x => x.CheckNonceAsync(It.IsAny<string>())).ReturnsAsync(true);
         _signatureValidatorMock.Setup(x => x.ValidateHeaderSignatureAsync(
-                It.IsAny<long>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
+                It.IsAny<long>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
-        _nonceValidatorMock.Setup(x => x.TryMarkNonceAsUsedAsync(It.IsAny<string>())).ThrowsAsync(serverException);
+        _nonceValidatorMock.Setup(x => x.TryMarkNonceAsUsedAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ThrowsAsync(serverException);
 
         // Act
         var act = async () => await _sut.ValidateHeaderSignatureAsync(
@@ -340,8 +342,12 @@ public class CompositeFeishuEventValidatorTests
     public async Task ValidateHeaderSignatureAsync_ShouldReturnFalse_WhenConnectionExceptionSwallowed()
     {
         // Arrange - T-M2-10 回归：Connection 类异常在组合验证器层维持 fail-closed（返回 false）
+        // WHF-R2/B2: CheckNonceAsync 预检已移除，Connection 异常路径从 TryMarkNonceAsUsedAsync 触发
         _timestampValidatorMock.Setup(x => x.ValidateTimestamp(It.IsAny<long>(), null)).Returns(true);
-        _nonceValidatorMock.Setup(x => x.CheckNonceAsync(It.IsAny<string>()))
+        _signatureValidatorMock.Setup(x => x.ValidateHeaderSignatureAsync(
+            It.IsAny<long>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+        _nonceValidatorMock.Setup(x => x.TryMarkNonceAsUsedAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new FeishuRedisException(FeishuRedisFailureKind.Connection, "Redis 连接失败"));
 
         // Act

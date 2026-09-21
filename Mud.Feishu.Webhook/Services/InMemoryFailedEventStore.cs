@@ -100,7 +100,10 @@ public class InMemoryFailedEventStore : IFailedEventStore, IDisposable
             NextRetryAt = nextRetryAt
         };
 
-        _failedEvents.AddOrUpdate(storeKey, failedEvent, (_, _) => failedEvent);
+        // WHF-R2/B4：update 工厂保留存量 RetryCount——覆盖写会丢失已累积的重试计数，
+        // 多实例/并发场景下重试次数可能超 MaxRetryCount
+        _failedEvents.AddOrUpdate(storeKey, failedEvent,
+            (_, existing) => { failedEvent.RetryCount = existing.RetryCount; return failedEvent; });
 
         // 容量上限检查
         if (_failedEvents.Count > MaxStoredEvents)
@@ -189,6 +192,11 @@ public class InMemoryFailedEventStore : IFailedEventStore, IDisposable
             if (!string.IsNullOrEmpty(eventInfo.AppKey))
                 failedEvent.AppKey = eventInfo.AppKey;
             _logger.LogDebug("更新失败事件: {EventId}, 重试次数: {RetryCount}, 下次重试: {NextRetryAt}", eventInfo.EventId, eventInfo.RetryCount, eventInfo.NextRetryAt);
+        }
+        else
+        {
+            // WHF-R2/B4：条目已被淘汰（容量上限清理或过期清理），重试状态更新丢失
+            _logger.LogWarning("失败事件 {EventId} 已被淘汰，重试状态更新丢失", eventInfo.EventId);
         }
 
         return Task.CompletedTask;

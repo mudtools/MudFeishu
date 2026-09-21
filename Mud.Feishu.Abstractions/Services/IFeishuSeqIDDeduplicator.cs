@@ -51,8 +51,19 @@ public interface IFeishuSeqIDDeduplicator : IAsyncDisposable
     int GetCacheCount();
 
     /// <summary>
+    /// 异步获取当前缓存的 SeqID 数量（WHF-R2/C6）。
+    /// </summary>
+    Task<int> GetCacheCountAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// 获取已处理的最大 SeqID
     /// </summary>
     /// <returns>最大的 SeqID 值，如果没有则返回 0</returns>
     ulong GetMaxProcessedSeqId();
+
+    /// <summary>
+    /// 异步获取已处理的最大 SeqID（WHF-R2/C6）。
+    /// </summary>
+    /// <returns>最大的 SeqID 值，如果没有则返回 0</returns>
+    Task<ulong> GetMaxProcessedSeqIdAsync(CancellationToken cancellationToken = default);
 }

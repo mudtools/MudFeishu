@@ -27,6 +27,7 @@ public interface IFeishuWebhookService
     /// <param name="request">验证请求</param>
     /// <param name="cancellationToken">取消令牌</param>
     /// <returns>验证响应</returns>
+    [Obsolete("明文验证协议无重放防护，中间件已强制加密验证。请使用加密 url_verification 链路。将在下个 major 移除。")]
     Task<EventVerificationResponse?> VerifyEventSubscriptionAsync(EventVerificationRequest request, CancellationToken cancellationToken = default);
 
     /// <summary>

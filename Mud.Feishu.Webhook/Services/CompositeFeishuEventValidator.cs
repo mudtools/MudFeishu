@@ -74,7 +74,11 @@ public class CompositeFeishuEventValidator : WebhookValidatorBase, IFeishuEventV
     }
 
     /// <inheritdoc />
-    public async Task<bool> ValidateHeaderSignatureAsync(long timestamp, string nonce, string body, string? headerSignature, string encryptKey)
+    public Task<bool> ValidateHeaderSignatureAsync(long timestamp, string nonce, string body, string? headerSignature, string encryptKey)
+        => ValidateHeaderSignatureAsync(timestamp, nonce, body, headerSignature, encryptKey, CancellationToken.None);
+
+    /// <inheritdoc />
+    public async Task<bool> ValidateHeaderSignatureAsync(long timestamp, string nonce, string body, string? headerSignature, string encryptKey, CancellationToken cancellationToken)
     {
         Logger.LogDebug("开始验证请求头签名 - Timestamp: {Timestamp}, Nonce: {Nonce}",
             timestamp, LogSanitizer.Clean(nonce));
@@ -88,25 +92,22 @@ public class CompositeFeishuEventValidator : WebhookValidatorBase, IFeishuEventV
                 return false;
             }
 
-            // 2. 预检查 Nonce 是否已被使用（仅检查不标记，避免签名失败时 Nonce 被误消费）
-            if (!await _nonceValidator.CheckNonceAsync(nonce))
-            {
-                Logger.LogWarning("Nonce 已被使用，检测到重放攻击");
-                return false;
-            }
+            // WHF-R2/B2：移除 CheckNonceAsync 预检查（原第 2 步），省 1 RTT。
+            // 防重放正确性由 TryMarkNonceAsUsedAsync 的 SET NX EX 单独保证（已核实原子）。
+            // 语义不变：签名失败 → 不触碰 nonce（Mark 在验签后）；签名通过 + nonce 已用 → Mark 返回 true → 拒绝。
 
-            // 3. 验证请求头签名
-            var signatureResult = await _signatureValidator.ValidateHeaderSignatureAsync(timestamp, nonce, body, headerSignature, encryptKey);
+            // 2. 验证请求头签名
+            var signatureResult = await _signatureValidator.ValidateHeaderSignatureAsync(timestamp, nonce, body, headerSignature, encryptKey, cancellationToken);
             if (!signatureResult)
             {
                 Logger.LogWarning("请求头签名验证失败");
                 return false;
             }
 
-            // 4. 签名验证通过后，标记 Nonce 为已使用（防重放攻击）
+            // 3. 签名验证通过后，标记 Nonce 为已使用（防重放攻击）
             // 此时标记是安全的：签名已验证通过，不会因为签名失败导致 Nonce 被误消费
             // TryMarkNonceAsUsedAsync 返回 true 表示 Nonce 已被使用（重放攻击），false 表示成功标记
-            if (await _nonceValidator.TryMarkNonceAsUsedAsync(nonce))
+            if (await _nonceValidator.TryMarkNonceAsUsedAsync(nonce, cancellationToken))
             {
                 // 并发场景：在预检查和标记之间，其他请求可能已标记了同一 Nonce
                 Logger.LogWarning("Nonce 在签名验证后被其他请求标记为已使用，检测到重放攻击");

@@ -114,7 +114,11 @@ public class SignatureValidator(
     }
 
     /// <inheritdoc />
-    public async Task<bool> ValidateHeaderSignatureAsync(long timestamp, string nonce, string body, string? headerSignature, string encryptKey)
+    public Task<bool> ValidateHeaderSignatureAsync(long timestamp, string nonce, string body, string? headerSignature, string encryptKey)
+        => ValidateHeaderSignatureAsync(timestamp, nonce, body, headerSignature, encryptKey, CancellationToken.None);
+
+    /// <inheritdoc />
+    public async Task<bool> ValidateHeaderSignatureAsync(long timestamp, string nonce, string body, string? headerSignature, string encryptKey, CancellationToken cancellationToken)
     {
         try
         {

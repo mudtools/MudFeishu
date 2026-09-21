@@ -288,9 +288,10 @@ public class FeishuWebhookServiceTests
         };
 
         // 设置验证器 mock 返回 true（委托给验证器进行签名验证）
+        // WHF-R2/B3：FeishuWebhookService 调用带 CancellationToken 的重载
         _validatorMock
             .Setup(x => x.ValidateHeaderSignatureAsync(
-                timestamp, nonce, body, computedSignature, encryptKey))
+                timestamp, nonce, body, computedSignature, encryptKey, It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
 
         var service = CreateService();
@@ -307,7 +308,7 @@ public class FeishuWebhookServiceTests
         // Assert
         Assert.True(result);
         _validatorMock.Verify(x => x.ValidateHeaderSignatureAsync(
-            timestamp, nonce, body, computedSignature, encryptKey), Times.Once);
+            timestamp, nonce, body, computedSignature, encryptKey, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     private FeishuWebhookService CreateService(
@@ -774,10 +775,10 @@ public class FeishuWebhookServiceTests
             VerificationToken = "token_1",
             EncryptKey = "12345678901234567890123456789012"
         };
-        _validatorMock
-            .Setup(x => x.ValidateHeaderSignatureAsync(
-                It.IsAny<long>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
-            .ThrowsAsync(new FeishuRedisException(FeishuRedisFailureKind.Server, "Lua 脚本执行失败"));
+_validatorMock
+.Setup(x => x.ValidateHeaderSignatureAsync(
+It.IsAny<long>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+.ThrowsAsync(new FeishuRedisException(FeishuRedisFailureKind.Server, "Lua 脚本执行失败"));
 
         var service = CreateService();
         service.SetCurrentAppKey("app1");

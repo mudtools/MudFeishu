@@ -41,6 +41,18 @@ public interface IFeishuEventValidator
     Task<bool> ValidateHeaderSignatureAsync(long timestamp, string nonce, string body, string? headerSignature, string encryptKey);
 
     /// <summary>
+    /// 验证请求头中的签名（X-Lark-Signature）——带 CancellationToken 的重载（WHF-R2/B3）。
+    /// </summary>
+    /// <param name="timestamp">时间戳</param>
+    /// <param name="nonce">随机数</param>
+    /// <param name="body">请求体内容</param>
+    /// <param name="headerSignature">请求头中的签名</param>
+    /// <param name="encryptKey">加密密钥（Encrypt Key）</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>是否验证通过</returns>
+    Task<bool> ValidateHeaderSignatureAsync(long timestamp, string nonce, string body, string? headerSignature, string encryptKey, CancellationToken cancellationToken);
+
+    /// <summary>
     /// 验证时间戳是否在有效范围内
     /// </summary>
     /// <param name="timestamp">时间戳</param>

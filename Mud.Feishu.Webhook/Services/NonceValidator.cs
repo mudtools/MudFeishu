@@ -58,7 +58,10 @@ public class NonceValidator(
     }
 
     /// <inheritdoc />
-    public async Task<bool> CheckNonceAsync(string nonce)
+    public Task<bool> CheckNonceAsync(string nonce) => CheckNonceAsync(nonce, CancellationToken.None);
+
+    /// <inheritdoc />
+    public async Task<bool> CheckNonceAsync(string nonce, CancellationToken cancellationToken)
     {
         // WHF-05：空 Nonce 无法防重放——fail-closed
         if (string.IsNullOrEmpty(nonce))
@@ -89,7 +92,10 @@ public class NonceValidator(
     }
 
     /// <inheritdoc />
-    public async Task<bool> TryMarkNonceAsUsedAsync(string nonce)
+    public Task<bool> TryMarkNonceAsUsedAsync(string nonce) => TryMarkNonceAsUsedAsync(nonce, CancellationToken.None);
+
+    /// <inheritdoc />
+    public async Task<bool> TryMarkNonceAsUsedAsync(string nonce, CancellationToken cancellationToken)
     {
         // WHF-05：空 Nonce 无法标记去重——fail-closed（返回 true=已使用，上层判定拒绝）
         if (string.IsNullOrEmpty(nonce))

@@ -272,14 +272,15 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
 
             // TMF-02 / D13：Phase-P——清库（IO）在获取 _configApplyLock 之前完成，
             // 维持「清库 → 重建」严格时序，同时消除锁内 sync-over-async 阻塞。
-            // TMR-P1-6（F6）：返回凭据变更键集，供提交后二次清库（D10 闭环）使用。
-            var credentialChangedKeys = PurgeCredentialChangedTokens(incoming);
+            // TMR-P1-6（F6）/ TMF2-02：返回凭据变更清库计划，供提交后二次清库（D10 闭环）使用。
+            // TMF2-02：比对源从活动上下文改为配置快照——未实例化应用的凭据变更也能被检测。
+            var purgePlan = PurgeCredentialChangedTokens(incoming);
 
             // TMA2-09 / D13：两阶段事务化——Phase-A 预构造，Phase-B 提交。
             // 锁序：_configApplyLock → _lazyRebuildLock / _registryLock / _defaultAppLock。
             lock (_configApplyLock)
             {
-                ApplyConfigurationChanges(incoming, credentialChangedKeys);
+                ApplyConfigurationChanges(incoming, purgePlan);
             }
         }
         catch (Exception ex)
@@ -293,10 +294,13 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
     /// TMA2-09 / D13：两阶段事务化应用配置变更。
     /// </summary>
     /// <param name="incoming">新配置列表</param>
-    /// <param name="credentialChangedKeys">
-    /// TMR-P1-6（F6）：Phase-P 检出的凭据变更键集，提交后对其中的"已提交更新键"发起二次清库（D10 闭环）。
+    /// <param name="purgePlan">
+    /// TMR-P1-6（F6）/ TMF2-02/TMF2-03：Phase-P 检出的凭据变更清库计划。
+    /// 提交后对其中的"已提交更新键"发起二次清库（D10 闭环）。
+    /// TMF2-03：正常路径下只对 WriteBackRiskKeys（存在回写风险的键）做二次清库；
+    /// 超时路径下对全部 ToPurge 做收尾清库。
     /// </param>
-    private void ApplyConfigurationChanges(List<FeishuAppConfig> incoming, IReadOnlyList<string> credentialChangedKeys)
+    private void ApplyConfigurationChanges(List<FeishuAppConfig> incoming, CredentialPurgePlan purgePlan)
     {
         var incomingKeys = new HashSet<string>(incoming.Select(c => c.AppKey), StringComparer.Ordinal);
         var currentKeys = Volatile.Read(ref _configs).Select(c => c.AppKey).ToList();
@@ -305,9 +309,11 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
         var appOptions = _serviceProvider.GetService<IOptions<FeishuAppOptions>>()?.Value;
         var removeRuntimeApps = appOptions?.RemoveRuntimeAddedAppsOnReload ?? false;
 
-        // === Phase-A：锁外预构造上下文 ===
-        // 对新增/更新应用预构造上下文（CreateAppContext 为纯内存装配，无网络往返）。
-        // 任一失败 → Dispose 已构造者、不动注册表、LogError("变更未应用") 后返回。
+        // === Phase-A：预构造上下文 ===
+        // D13：Phase-A 在 _configApplyLock 内执行（而非锁外）——
+        // TMF2-04：原注释"锁外预构造"与实际不符（实际在 lock(_configApplyLock) 内），已修正。
+        // Phase-A 纯内存装配（CreateAppContext 无网络往返），锁内执行不会阻塞其他热更新回调。
+        // Phase-P（清库 IO）在 _configApplyLock 外完成，Phase-B 在 _lazyRebuildLock 内仅做引用交换。
         var builtContexts = new List<(string appKey, FeishuAppContext context, FeishuAppConfig config, FeishuAppContext? oldContext)>();
         var phaseASuccess = true;
 
@@ -318,11 +324,20 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
             {
                 LogClientEndpointChanges(config);
 
+                // TMU-01：未实例化的应用在热更新中保持懒加载——
+                // 只替换 Lazy 的配置闭包，不预构造上下文。
+                // 对齐 TMA-08/D12 资源画像：从未访问的应用不在热更新中被强制实例化。
+                var oldContext = ResolveExistingContext(config.AppKey);
+                if (oldContext == null)
+                {
+                    // 未实例化：Phase-A 不构造，Phase-B 仅替换 Lazy 闭包。
+                    builtContexts.Add((config.AppKey, null!, config, null));
+                    continue;
+                }
+
                 try
                 {
                     // TMF-02：获取旧上下文引用以入退休队列；凭据变更清库已上移至 Phase-P（锁外）执行。
-                    var oldContext = ResolveExistingContext(config.AppKey);
-
                     // 锁外预构造上下文。
                     var context = CreateAppContext(config);
                     builtContexts.Add((config.AppKey, context, config, oldContext));
@@ -357,16 +372,23 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
             // Phase-B-1：锁内仅做引用交换。
             lock (_lazyRebuildLock)
             {
-                _lazyContexts[appKey] = new Lazy<FeishuAppContext>(() => context, LazyThreadSafetyMode.ExecutionAndPublication);
+                // TMU-01：未实例化的应用（context == null）重建为真正的 Lazy 闭包，不预构造。
+                _lazyContexts[appKey] = context != null
+                    ? new Lazy<FeishuAppContext>(() => context, LazyThreadSafetyMode.ExecutionAndPublication)
+                    : new Lazy<FeishuAppContext>(() => CreateAppContext(config), LazyThreadSafetyMode.ExecutionAndPublication);
             }
 
             // Phase-B-2：锁外 RegisterApp + 退休旧上下文。
-            if (oldContext != null)
+            // TMU-01：未实例化应用无 oldContext、无 context，不注册也不退休。
+            if (context != null)
             {
-                _retirement?.Enqueue(appKey, oldContext);
-            }
+                if (oldContext != null)
+                {
+                    _retirement?.Enqueue(appKey, oldContext);
+                }
 
-            RegisterApp(appKey, context, config.IsDefault);
+                RegisterApp(appKey, context, config.IsDefault);
+            }
 
             if (config.IsDefault)
             {
@@ -414,16 +436,21 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
             Volatile.Write(ref _configs, incoming.ToArray());
         }
 
-        // 4) TMR-P1-6（F6）：提交后二次清库（D10 闭环）。
+        // 4) TMR-P1-6（F6）/ TMF2-03：提交后二次清库（D10 闭环）。
         // 窗口期（Phase-P 清库完成 → 本应用提交 → 旧上下文 Enqueue 退休）内，旧上下文的组件后台刷新
         // Timer / 在途 GetOrRefreshTokenAsync 可能用旧凭据重新调 API 并将令牌写回 store；
         // 新上下文恢复出"旧凭据来源"的令牌后必然 401。此处对"凭据变更键 ∩ 本轮实际提交（更新）的键"
         // 发起提交后二次清库——此时旧上下文已停止接管新请求，回写源已被切断，闭环成立。
+        // TMF2-03：正常路径下只覆盖 WriteBackRiskKeys（存在回写风险的键），避免删除新凭据刚写入的令牌；
+        // 超时路径（Phase-P 未完成）下覆盖全部 ToPurge，维持 D10 语义闭环。
         // 与并发写入存在 store SCAN 固有残余窗口（与 Redis 语义一致）。
         // AddApp 新增键与被移除键无需二次清库（前者无旧凭据、后者旧上下文已 Enqueue 退休且键有 TTL）。
         // PurgeTokenStoreAsync 内部吞掉全部异常（含 OCE），fire-and-forget 安全。
-        var postCommitPurgeKeys = credentialChangedKeys
+        var postCommitPurgeKeys = (purgePlan.PhasePCompleted
+                ? purgePlan.WriteBackRiskKeys     // 常规：只补"可能回写"的键
+                : purgePlan.ToPurge)             // Phase-P 超时未完成：全部键收尾
             .Where(k => builtContexts.Any(b => string.Equals(b.appKey, k, StringComparison.Ordinal)))
+            .Distinct(StringComparer.Ordinal)
             .ToList();
         if (postCommitPurgeKeys.Count > 0)
         {
@@ -456,31 +483,57 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
     /// ClearAsync 幂等（删除不存在键为 no-op），且第二次清库发生在后者 Phase-A 之前，
     /// 时序安全性不弱于串行。清库内部吞掉全部异常（含 OCE，TMF-03），不会中断热更新。
     /// </para>
+    /// <para>
+    /// TMF2-02：比对源从「活动旧上下文」改为「配置快照（<c>_configs</c>）」——
+    /// 修复前 <see cref="ResolveExistingContext"/> 返回 null 时 <c>continue</c> 跳过，
+    /// 导致未实例化应用的凭据变更检测被完全跳过（D10 不可达）。
+    /// 改为快照比对后，无论应用是否实例化，凭据变更均能被检出。
+    /// </para>
+    /// <para>
+    /// TMF2-03：<see cref="CredentialPurgePlan.WriteBackRiskKeys"/> 仅含「有活动旧上下文」的键
+    /// ——只有这些键在退休宽限期内可能以旧凭据回写 store，提交后二次清库只对这些键做，
+    /// 避免删除新凭据刚写入的令牌。
+    /// </para>
     /// </remarks>
     /// <param name="incoming">新配置列表</param>
-    /// <returns>检出的凭据已变更的应用键集（供提交后二次清库使用）。</returns>
-    internal List<string> PurgeCredentialChangedTokens(List<FeishuAppConfig> incoming)
+    /// <returns>凭据变更清库计划（供提交后二次清库使用）。</returns>
+    internal CredentialPurgePlan PurgeCredentialChangedTokens(List<FeishuAppConfig> incoming)
     {
+        // TMF2-02：以配置快照（_configs）为比对源，而非活动旧上下文。
+        var currentSnapshot = Volatile.Read(ref _configs);
         var toPurge = new List<string>();
+        var writeBackRiskKeys = new List<string>();
+
         foreach (var config in incoming)
         {
-            var oldContext = ResolveExistingContext(config.AppKey);
-            if (oldContext == null)
+            var oldConfig = currentSnapshot.FirstOrDefault(c =>
+                string.Equals(c.AppKey, config.AppKey, StringComparison.Ordinal));
+            if (oldConfig == null)
             {
+                // 新增应用：无旧凭据，无需清库。
                 continue;
             }
 
-            var oldConfig = oldContext.Config;
-            if (!string.Equals(oldConfig?.AppId, config.AppId, StringComparison.Ordinal) ||
-                !string.Equals(oldConfig?.AppSecret, config.AppSecret, StringComparison.Ordinal))
+            if (!string.Equals(oldConfig.AppId, config.AppId, StringComparison.Ordinal) ||
+                !string.Equals(oldConfig.AppSecret, config.AppSecret, StringComparison.Ordinal))
             {
                 toPurge.Add(config.AppKey);
+
+                // TMF2-03：只有「有活动旧上下文」的键才存在回写风险。
+                var oldContext = ResolveExistingContext(config.AppKey);
+                if (oldContext != null)
+                {
+                    writeBackRiskKeys.Add(config.AppKey);
+                }
             }
         }
 
         if (toPurge.Count == 0)
         {
-            return toPurge;
+            return new CredentialPurgePlan(
+                ToPurge: toPurge,
+                WriteBackRiskKeys: writeBackRiskKeys,
+                PhasePCompleted: true);
         }
 
         _logger.LogInformation(
@@ -497,14 +550,18 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
 
         // TMR-P1-6（F6）：OnChange 回调线程上的同步等待必须有上界（键量 × RTT 不可预估）。
         // 超时后不放弃——剩余键交给提交后的二次清库收尾，维持「清库 → 重建」D10 语义。
-        if (!purgePhaseP.Wait(TimeSpan.FromSeconds(10)))
+        var phasePCompleted = purgePhaseP.Wait(TimeSpan.FromSeconds(10));
+        if (!phasePCompleted)
         {
             _logger.LogWarning(
                 "凭据变更清库（Phase-P）超过 10s 未完成，剩余键将由提交后二次清库收尾。AppKeys: {AppKeys}",
                 string.Join(", ", toPurge));
         }
 
-        return toPurge;
+        return new CredentialPurgePlan(
+            ToPurge: toPurge,
+            WriteBackRiskKeys: writeBackRiskKeys,
+            PhasePCompleted: phasePCompleted);
     }
 
     /// <summary>
@@ -731,9 +788,19 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
     /// 现改为：快照查无 → <see cref="FeishuAppRemovedException"/>（确定性终态，排除出白名单）+
     /// <c>finally</c> 中对未注册成功的上下文经退休队列回收（Timer root 对象图，GC 不代劳，D5）。
     /// </para>
+    /// <para>
+    /// TMF2-01（方案 B）：热更新 Phase-B 替换 <c>_lazyContexts[appKey]</c> 与并发首访交错时，
+    /// 并发首访持有的旧 <c>Lazy</c> 已创建旧配置上下文但无法注册（Phase-B 已注册新上下文）。
+    /// 修复：构造后做<strong>身份校验</strong>——若 <c>_lazyContexts</c> 中已非原 <c>Lazy</c>，
+    /// 说明 Phase-B 已提交，回收旧上下文并重新获取当前 <c>Lazy</c>。
+    /// </para>
     /// </remarks>
     private FeishuAppContext GetOrCreateContext(string appKey)
     {
+        // TMF2-01（方案 B）：循环重试——Phase-B 在并发首访执行期间替换 Lazy 时，
+        // 并发首访构造的旧上下文经身份校验回收后重试获取当前 Lazy。
+        while (true)
+        {
         if (_lazyContexts.TryGetValue(appKey, out var lazy))
         {
             FeishuAppContext? createdContext = null;
@@ -741,6 +808,21 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
             {
                 var context = lazy.Value;
                 createdContext = context;
+
+                // TMF2-01（方案 B）：身份校验——若 Lazy 已被 Phase-B 替换，
+                // 说明当前构造的是旧配置上下文。回收它并重新获取当前 Lazy。
+                if (!_lazyContexts.TryGetValue(appKey, out var currentLazy)
+                    || !ReferenceEquals(currentLazy, lazy))
+                {
+                    // Phase-B 已替换 Lazy：旧上下文入退休队列，重新获取。
+                    if (createdContext != null)
+                    {
+                        // TMF2-06：Enqueue 已检查 _disposed，不再抛 ObjectDisposedException。
+                        _retirement?.Enqueue(appKey, createdContext);
+                    }
+                    continue; // 重新获取当前 Lazy
+                }
+
                 // 注册到基类字典中（如果尚未注册）
                 // 注意：必须使用 base.HasApp 检查"是否已注册到基类字典"，
                 // 而非使用 HasApp（后者会同时检查 _lazyContexts，导致永远跳过 RegisterApp）。
@@ -786,19 +868,18 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
             {
                 // TMR-P1-3：注册失败路径上已创建的上下文必须显式回收（Timer roots 对象图，GC 不代劳，D5）。
                 // 经退休队列回收（而非直接 Dispose）：保留宽限期语义，避免打断刚完成装配的管理器的在途初始化。
-                if (createdContext != null && !base.HasApp(appKey))
+                // TMF2-01：身份校验路径上已 Enqueue 的上下文不再重复回收（createdContext 已被消费）。
+                if (createdContext != null && !base.HasApp(appKey) && _lazyContexts.TryGetValue(appKey, out var finalLazy) && ReferenceEquals(finalLazy, lazy))
                 {
-                    try { _retirement?.Enqueue(appKey, createdContext); }
-                    catch (ObjectDisposedException)
-                    {
-                        // 队列已释放（容器关闭中），此处仅放弃回收。
-                    }
+                    // TMF2-06：Enqueue 已检查 _disposed，不再抛 ObjectDisposedException。
+                    _retirement?.Enqueue(appKey, createdContext);
                 }
             }
         }
 
         throw new InvalidOperationException(
             $"未找到应用标识为 '{appKey}' 的应用上下文。请先调用 RegisterApp 注册应用。");
+        }
     }
 
     /// <summary>
@@ -853,6 +934,10 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
     /// <item>创建过程抛异常：捕获并返回 false（保持 Try* 语义不抛异常）。</item>
     /// <item>未配置：返回 false（与基类一致）。</item>
     /// </list>
+    /// <para>
+    /// TMF2-01（方案 B）：与 <see cref="GetOrCreateContext"/> 同构的身份校验——
+    /// 若 Lazy 已被 Phase-B 替换，回收旧上下文并重新获取当前 Lazy。
+    /// </para>
     /// </remarks>
     public override bool TryGetApp(string appKey, out IFeishuAppContext? appContext)
     {
@@ -866,6 +951,9 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
         if (base.TryGetApp(appKey, out appContext) && appContext != null)
             return true;
 
+        // TMF2-01（方案 B）：循环重试——Phase-B 替换 Lazy 时重新获取。
+        while (true)
+        {
         // 已配置但尚未实例化的应用：触发 Lazy 创建
         if (_lazyContexts.TryGetValue(appKey, out var lazy))
         {
@@ -874,6 +962,20 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
             {
                 var context = lazy.Value;
                 createdContext = context;
+
+                // TMF2-01（方案 B）：身份校验——若 Lazy 已被 Phase-B 替换，
+                // 回收旧上下文并重新获取当前 Lazy。
+                if (!_lazyContexts.TryGetValue(appKey, out var currentLazy)
+                    || !ReferenceEquals(currentLazy, lazy))
+                {
+                    if (createdContext != null)
+                    {
+                        // TMF2-06：Enqueue 已检查 _disposed，不再抛 ObjectDisposedException。
+                        _retirement?.Enqueue(appKey, createdContext);
+                    }
+                    continue;
+                }
+
                 // 注册到基类字典以便后续快速查找
                 var wasRegistered = base.HasApp(appKey);
                 if (!wasRegistered)
@@ -929,13 +1031,11 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
             {
                 // TMR-P1-3（F3）：与 GetOrCreateContext 同构——注册失败路径上已创建的上下文
                 // 经退休队列回收，避免孤儿上下文（Scope + 管理器 + Timer）泄漏。
-                if (createdContext != null && !base.HasApp(appKey))
+                // TMF2-01：身份校验路径上已 Enqueue 的上下文不再重复回收。
+                if (createdContext != null && !base.HasApp(appKey) && _lazyContexts.TryGetValue(appKey, out var finalLazy) && ReferenceEquals(finalLazy, lazy))
                 {
-                    try { _retirement?.Enqueue(appKey, createdContext); }
-                    catch (ObjectDisposedException)
-                    {
-                        // 队列已释放（容器关闭中），此处仅放弃回收。
-                    }
+                    // TMF2-06：Enqueue 已检查 _disposed，不再抛 ObjectDisposedException。
+                    _retirement?.Enqueue(appKey, createdContext);
                 }
             }
         }
@@ -943,6 +1043,7 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
         // 未配置的应用
         appContext = default;
         return false;
+        }
     }
 
     /// <inheritdoc />
@@ -1547,3 +1648,24 @@ internal sealed class FeishuAppRemovedException : InvalidOperationException
     /// </summary>
     public string AppKey { get; }
 }
+
+/// <summary>
+/// TMF2-02/TMF2-03：凭据变更清库计划。
+/// </summary>
+/// <remarks>
+/// <para>
+/// <see cref="ToPurge"/> 是所有凭据已变更的应用键集（含未实例化应用，TMF2-02 修复点）。
+/// </para>
+/// <para>
+/// <see cref="WriteBackRiskKeys"/> 是 ToPurge 中「有活动旧上下文」的子集——
+/// 只有这些键在退休宽限期内可能以旧凭据回写 store，提交后二次清库只对这些键做（TMF2-03）。
+/// </para>
+/// <para>
+/// <see cref="PhasePCompleted"/> 指示 Phase-P 清库是否在 10s 上界内完成。
+/// 未完成时，提交后二次清库覆盖全部 ToPurge（而非仅 WriteBackRiskKeys），维持 D10 语义闭环。
+/// </para>
+/// </remarks>
+internal sealed record CredentialPurgePlan(
+    IReadOnlyList<string> ToPurge,
+    IReadOnlyList<string> WriteBackRiskKeys,
+    bool PhasePCompleted);

@@ -168,7 +168,8 @@ public class FeishuTokenStore : ITokenStore
 
     // TMA2-02 / D8：令牌键构造收敛到 TokenKeyBuilder 统一产出。
     // 键前缀含 AppKey 维度，确保多应用场景下令牌互不覆盖。
-    private string KeyPrefix => $"feishu:{_appKey}:token";
+    // TMF2-05：前缀构造委派 TokenKeyBuilder.BuildKeyPrefix，与 Redis 端逐字节一致。
+    private string KeyPrefix => TokenKeyBuilder.BuildKeyPrefix(_appKey);
     private string BuildAccessTokenKey(string tokenType) => TokenKeyBuilder.TenantAccessKey(KeyPrefix, tokenType);
     private string BuildRefreshTokenKey(string tokenType) => TokenKeyBuilder.TenantRefreshKey(KeyPrefix, tokenType);
 }

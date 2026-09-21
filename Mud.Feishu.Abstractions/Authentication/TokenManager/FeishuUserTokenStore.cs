@@ -63,7 +63,8 @@ public class FeishuUserTokenStore : UserTokenStoreBase, IFeishuUserTokenStorePur
     /// <summary>
     /// TMA2-02 / D8：键前缀含 AppKey 维度，确保多应用场景下用户令牌互不覆盖。
     /// </summary>
-    protected override string KeyPrefix => $"feishu:{_appKey}:token";
+    // TMF2-05：前缀构造委派 TokenKeyBuilder.BuildKeyPrefix，与 Redis 端逐字节一致。
+    protected override string KeyPrefix => TokenKeyBuilder.BuildKeyPrefix(_appKey);
 
     /// <inheritdoc />
     public override Task<string?> GetAccessTokenAsync(string userId, string tokenType, CancellationToken cancellationToken = default)

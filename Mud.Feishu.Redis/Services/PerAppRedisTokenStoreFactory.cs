@@ -48,12 +48,12 @@ public class PerAppRedisTokenStoreFactory : IFeishuTokenStoreFactory
     }
 
     /// <summary>
-    /// 构建指定应用的 Redis 键前缀，与 Memory 路径 <c>feishu:{appKey}:token</c> 对齐。
+    /// 构建指定应用的 Redis 键前缀，与 Memory 路径对齐。
+    /// TMF2-05：委派 TokenKeyBuilder.BuildKeyPrefix——
+    /// 消除经 RedisKeyBuilder.Combine 转义与 Memory 裸拼接的差异（前缀逐字节一致）。
     /// </summary>
     public static string BuildKeyPrefix(string appKey) =>
-        string.IsNullOrWhiteSpace(appKey)
-            ? RedisKeyBuilder.Combine("feishu", "default", "token")
-            : RedisKeyBuilder.Combine("feishu", appKey, "token");
+        TokenKeyBuilder.BuildKeyPrefix(appKey);
 
     /// <inheritdoc />
     public (ITokenStore TokenStore, IUserTokenStore? UserTokenStore) Create(string appKey)

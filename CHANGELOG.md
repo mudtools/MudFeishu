@@ -1,5 +1,68 @@
 # Mud.Feishu 更新日志
 
+## [3.0.0-rc3] - 2026-09-21
+
+### 🔐 令牌与多应用管理第四轮加固（TMF2 系列）
+
+#### 热更新竞态修复
+
+- **TMF2-01（方案 A+B）**：热更新 Phase-B 替换 `Lazy<>` 与并发首访交错时，自建旧配置上下文
+  既不登记也不入退休队列，导致永久泄漏（Scope + 令牌管理器 Timer）且返回旧凭据。
+  修复：方案 B（M2）——`GetOrCreateContext` / `TryGetApp` 在 `lazy.Value` 构造后做身份校验，
+  若 `_lazyContexts` 中已非原 `Lazy`（Phase-B 已提交），回收旧上下文并重新获取当前 `Lazy`。
+  方案 A（M5）——`AdoptContext` 助手将 Phase-B 与懒加载路径的「注册表写入」收敛为
+  `_lazyRebuildLock` 内原子操作，消除"注册覆盖窗口"。
+
+- **TMF2-02**：D10 凭据变更清库依赖"活动旧上下文"，未实例化应用的凭据变更检测被跳过
+  （`ResolveExistingContext` 返回 null → `continue`）。修复：`PurgeCredentialChangedTokens`
+  比对源从活动上下文改为配置快照（`_configs`），未实例化应用的凭据变更也能被检出。
+
+- **TMF2-03**：提交后二次清库范围过宽（可能删除新凭据刚写入的令牌）。修复：引入
+  `CredentialPurgePlan` 区分 `ToPurge`（全部变更键）与 `WriteBackRiskKeys`（有活动旧上下文的
+  子集）；正常路径只对 `WriteBackRiskKeys` 做二次清库，超时路径覆盖全部 `ToPurge`。
+
+#### 键布局与转义
+
+- **TMF2-05**：Memory（`FeishuTokenStore.KeyPrefix`）裸拼接 `$"feishu:{appKey}:token"`
+  与 Redis（`PerAppRedisTokenStoreFactory.BuildKeyPrefix`）经 `RedisKeyBuilder.Combine` 转义
+  不一致。修复：两端均委派 `TokenKeyBuilder.BuildKeyPrefix`，前缀逐字节一致。
+
+- **TMF2-08**：`TokenKeyBuilder.NormalizeSegment` 仅转义 `\` 和 `:`，未转义 glob 元字符
+  `* ? [ ]`。appKey 含 `*` 时 `TenantScanPattern` 注入通配符。修复：单遍扫描转义全部
+  6 个特殊字符，`UnescapeSegment` 对称反转义。
+
+#### 收口与可观测
+
+- **TMF2-04**：Phase-A 注释"锁外预构造"与实际在 `lock(_configApplyLock)` 内执行矛盾，已修正。
+- **TMF2-06**：`FeishuAppContextRetirement.Enqueue` 不检查 `_disposed`，容器关闭后的入队
+  条目静默泄漏。修复：`Enqueue` 检查 `_disposed`，已释放时直接 Dispose 上下文。清理调用侧
+  `catch (ObjectDisposedException)` 死代码。
+- **TMU-02**：清库链路可观测性增强——`PurgeTokenStoreFailureEvent`（EventId 5601）
+  结构化事件，宿主可据此建 metric/告警。
+
+#### 结构收敛
+
+- **TMU-01**：未实例化的应用在热更新中保持懒加载——Phase-A 不预构造未实例化应用的上下文，
+  Phase-B 仅替换 `Lazy` 闭包。对齐 TMA-08/D12 资源画像。
+
+#### 测试基建
+
+- **TMF2-07 / TMU-03**：新增 `HotReloadRaceHarness` 门闸基建（`ManualResetEventSlim`，
+  不依赖 `Thread.Sleep`）+ 14 条竞态矩阵用例（TMF2-01×3 + TMF2-02×3 + TMF2-04×1 +
+  TMF2-05×2 + TMF2-06×2 + TMF2-08×3）。
+
+#### 文档同步
+
+- **TMU-05**：`AGENTS.md` D8/D10/D13 表述已同步，README AppKey 命名约束已补充，
+  方案文档执行记录已回填。
+
+### ⚠️ 升级须知
+
+- 含特殊字符（`* ? [ ] : \`）的 appKey 键布局变化：`TokenKeyBuilder` 现转义 glob 元字符，
+  旧键（未经 glob 转义）在热更新后不再匹配。升级前请确认 appKey 不含这些字符。
+- 自定义 `UserTokenStoreBase` 子类若覆写了 `KeyPrefix`，需改为委派
+  `TokenKeyBuilder.BuildKeyPrefix(appKey)` 以保持与 Memory/Redis 端一致。
+
 ## [3.0.0-rc2] - 2026-09-18
 
 ### 🌟 亮点

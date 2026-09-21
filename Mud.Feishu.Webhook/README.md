@@ -284,7 +284,7 @@ app.UseFeishuWebhook(); // 自动处理路由前缀下的请求
 app.Run();
 ```
 
-> 💡 **说明**：Webhook 服务目前仅支持中间件模式，通过配置 `RoutePrefix` 来自定义路由路径。
+> 💡 **说明**：Webhook 服务目前仅支持中间件模式，通过配置 `GlobalRoutePrefix`（默认 `"feishu"`）来自定义路由路径。
 
 ## 创建事件处理器
 
@@ -333,13 +333,17 @@ public class MessageEventData
 
 ### 方式二：继承基类处理器（推荐）
 
-使用 `Mud.Feishu.Abstractions.EventHandlers` 命名空间下的基类处理器，提供类型安全和自动去重：
+基类处理器（如 `DepartmentCreatedEventHandler`）由 `[GenerateEventHandler]` 源生成器生成，位于 **`Mud.Feishu.EventCallback`** 命名空间，提供类型安全和自动去重。
+
+> ⚠️ **注意**：`Mud.Feishu.Webhook` 包本身不依赖 `Mud.Feishu.EventCallback`，使用前需要自行引用 `Mud.Feishu.EventCallback` 包。
 
 ```csharp
 using Mud.Feishu.Abstractions;
 using Mud.Feishu.Abstractions.DataModels.Organization;
 using Mud.Feishu.Abstractions.EventHandlers;
 using Mud.Feishu.Abstractions.Services;
+using Mud.Feishu.EventCallback;                 // 源生成的基类所在命名空间
+using Mud.Feishu.EventCallback.Organization;   // DepartmentCreatedResult
 
 /// <summary>
 /// 部门创建事件处理器
@@ -352,7 +356,7 @@ public class DemoDepartmentEventHandler : DepartmentCreatedEventHandler
         IFeishuEventDeduplicator businessDeduplicator,
         ILogger<DemoDepartmentEventHandler> logger,
         DemoEventService eventService)
-        : base(businessDeduplicator, logger)
+        : base(businessDeduplicator, logger)  // 第三参为可选的 IAppKeyAccessor
     {
         _eventService = eventService;
     }
@@ -360,32 +364,41 @@ public class DemoDepartmentEventHandler : DepartmentCreatedEventHandler
     protected override async Task ProcessBusinessLogicAsync(
         EventData eventData,
         DepartmentCreatedResult? eventEntity,
+        FeishuEventHeader? header,
         CancellationToken cancellationToken = default)
     {
+        // 事件实体字段位于 eventEntity.Object 上
         _logger.LogInformation("处理部门创建事件: 部门ID={DepartmentId}, 部门名={DepartmentName}",
-            eventEntity.DepartmentId, eventEntity.Name);
+            eventEntity?.Object?.DepartmentId, eventEntity?.Object?.Name);
+
+        if (eventEntity?.Object is null)
+        {
+            return;
+        }
 
         // 你的业务逻辑
         await _eventService.RecordDepartmentEventAsync(eventEntity, cancellationToken);
 
         // 模拟权限初始化
-        _logger.LogInformation("初始化部门权限: {DepartmentName}", eventEntity.Name);
+        _logger.LogInformation("初始化部门权限: {DepartmentName}", eventEntity.Object.Name);
 
         // 模拟通知部门主管
-        if (!string.IsNullOrWhiteSpace(eventEntity.LeaderUserId))
+        if (!string.IsNullOrWhiteSpace(eventEntity.Object.LeaderUserId))
         {
-            _logger.LogInformation("通知部门主管: {LeaderUserId}", eventEntity.LeaderUserId);
+            _logger.LogInformation("通知部门主管: {LeaderUserId}", eventEntity.Object.LeaderUserId);
         }
     }
 }
 ```
+
+> 💡 **提示**：基类的 `HandleAsync` 方法为 `sealed`（内置自动去重逻辑），**不可重写**；扩展时只需重写 `ProcessBusinessLogicAsync`。
 
 ### 可用的基类事件处理器
 
 - `DepartmentCreatedEventHandler` - 部门创建事件
 - `DepartmentUpdateEventHandler` - 部门更新事件
 - `DepartmentDeleteEventHandler` - 部门删除事件
-- 更多处理器请参考 `Mud.Feishu.Abstractions.EventHandlers` 命名空间
+- 更多处理器请参考 `Mud.Feishu.EventCallback` 命名空间
 
 ## 配置选项
 
@@ -407,8 +420,8 @@ public class DemoDepartmentEventHandler : DepartmentCreatedEventHandler
 | `Apps.{AppKey}.VerificationToken`                | string                                        | -      | 应用验证 Token                                           |
 | `Apps.{AppKey}.EncryptKey`                       | string                                        | -      | 应用加密 Key（32字节）                                   |
 | `Apps.{AppKey}.Description`                      | string?                                       | null   | 应用描述（可选）                                         |
-| `Apps.{AppKey}.TimestampToleranceSeconds`        | int                                           | -1     | 时间戳容差（-1 继承全局）                                |
-| `Apps.{AppKey}.EventHandlingTimeoutMs`           | int                                           | -1     | 事件处理超时（-1 继承全局）                              |
+| `Apps.{AppKey}.TimestampToleranceSeconds`        | int?                                          | null   | 时间戳容差（null 继承全局；-1/0 为兼容写法，同样继承全局） |
+| `Apps.{AppKey}.EventHandlingTimeoutMs`           | int?                                          | null   | 事件处理超时（null 继承全局；-1/0 为兼容写法，同样继承全局） |
 | `Apps.{AppKey}.EnforceHeaderSignatureValidation` | bool?                                         | null   | 是否强制签名验证（null 继承全局）                        |
 | `Apps.{AppKey}.EnableExceptionHandling`          | bool?                                         | null   | 是否启用异常处理（null 继承全局）                        |
 | `Apps.{AppKey}.EnablePerformanceMonitoring`      | bool?                                         | null   | 是否启用性能监控（null 继承全局）                        |
@@ -759,7 +772,7 @@ builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
 1. 登录飞书开放平台
 2. 进入你的应用详情页
 3. 点击"事件订阅"
-4. 配置请求网址：`https://your-domain.com/feishu/Webhook`
+4. 配置请求网址：`https://your-domain.com/feishu/{your-appKey}`（例如 `https://your-domain.com/feishu/myapp`；URL 最后一段会被解析为 AppKey，用于匹配对应应用的多应用配置，请替换为你实际配置的 AppKey，不要写成固定的 "Webhook"）
 5. 设置验证 Token 和加密 Key
 
 ### 2. 配置事件类型
@@ -987,7 +1000,7 @@ public class MySecurityService
 }
 ```
 
-支持的安全事件类型：`SignatureValidation`、`TimestampValidation`、`IpValidation`、`SubscriptionValidation`、`InvalidContentType`、`RateLimitExceeded`、`RequestSizeLimit`、`ThreatDetection`、`Other`。
+支持的安全事件类型（`SecurityEventType` 枚举，当前版本共 4 种）：`SignatureValidation`（签名验证）、`TimestampValidation`（时间戳防重放验证）、`SubscriptionValidation`（事件订阅 URL 验证）、`Other`（其他安全事件场景归入此类型）。
 
 ## 监控和诊断
 
@@ -1172,7 +1185,7 @@ public class MessageEventHandler : IFeishuEventHandler
 继承基类处理器可以获得自动去重和类型安全：
 
 ```csharp
-using Mud.Feishu.Abstractions.EventHandlers;
+using Mud.Feishu.EventCallback;   // 源生成的基类所在命名空间（需引用 Mud.Feishu.EventCallback 包）
 
 // 继承基类处理器，自动处理去重和类型转换
 public class MyDepartmentHandler : DepartmentCreatedEventHandler
@@ -1184,28 +1197,33 @@ public class MyDepartmentHandler : DepartmentCreatedEventHandler
     {
     }
 
-    // 只需要实现业务逻辑
+    // 只需要实现业务逻辑；基类的 HandleAsync 为 sealed，不可重写
     protected override async Task ProcessBusinessLogicAsync(
         EventData eventData,
-        DepartmentCreatedResult eventEntity,
+        DepartmentCreatedResult? eventEntity,
+        FeishuEventHeader? header,
         CancellationToken cancellationToken = default)
     {
-        // eventEntity 已经是强类型的实体对象
-        _logger.LogInformation("处理部门: {Name}", eventEntity.Name);
+        // eventEntity 已经是强类型的实体对象，事件字段位于 Object 上
+        _logger.LogInformation("处理部门: {Name}", eventEntity?.Object?.Name);
     }
 }
 ```
 
 ### 5. 配置验证
 
-启动时验证配置，尽早发现问题：
+配置验证分两个阶段，尽早发现问题：
+
+- **`Build()` 阶段**：只校验处理器注册——至少注册一个处理器、无重复的处理器/拦截器注册，违规时抛出 `InvalidOperationException`。
+- **配置解析阶段**：选项内容（Token、EncryptKey、应用级配置等）在 `FeishuWebhookOptions` 首次被解析时通过 `PostConfigure` 触发 `Validate()` 校验（通常在处理第一个请求或首次解析 `IOptions<FeishuWebhookOptions>` 时），配置无效同样抛出 `InvalidOperationException`。
 
 ```csharp
-// 配置会在 Build() 时自动验证
+// Build() 只验证处理器注册
 builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
     .AddHandler<MessageEventHandler>()
-    .Build();  // 这里会验证配置
+    .Build();
 
+// 配置内容校验发生在首次解析 Options 时（PostConfigure -> Validate()）
 // 如果配置无效，会抛出 InvalidOperationException
 ```
 

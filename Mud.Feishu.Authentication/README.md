@@ -24,6 +24,8 @@ dotnet add package Mud.Feishu.Authentication
 services.AddFeishuUserContext();
 ```
 
+> 注意：`AddFeishuUserContext()` 会覆盖 `AddFeishuApp` 注册的默认用户上下文实现，因此需在 `services.AddFeishuApp()` 之后调用。
+
 ### 2. 配置中间件
 
 ```csharp

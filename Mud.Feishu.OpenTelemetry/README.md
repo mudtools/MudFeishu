@@ -88,24 +88,26 @@ builder.Services.AddFeishuOpenTelemetry(builder.Configuration);
 | Meter | 说明 |
 | --- | --- |
 | `Mud.Feishu` | 事件处理、WebSocket 连接、Webhook 指标 |
-| `Mud.HttpUtils` | HTTP 请求、Token 刷新、重试、熔断器、下载指标（可选，默认开启） |
+| `Mud.HttpUtils.HttpClient` | HTTP 请求、Token 刷新、重试、熔断器、下载指标（可选，默认开启） |
 
 ### 采集的指标列表
 
+`Mud.Feishu` Meter（`FeishuMetrics`）采集的飞书指标：
+
 | 指标名称 | 类型 | 说明 |
 | --- | --- | --- |
-| `feishu_token_fetch_total` | Counter | 令牌获取总次数 |
-| `feishu_token_cache_hit_total` | Counter | 令牌缓存命中次数 |
-| `feishu_token_cache_miss_total` | Counter | 令牌缓存未命中次数 |
-| `feishu_token_refresh_total` | Counter | 令牌刷新次数 |
-| `feishu_cached_tokens` | ObservableGauge | 当前缓存的令牌数 |
-| `feishu_event_handling_total` | Counter | 事件处理总次数 |
-| `feishu_event_handling_success_total` | Counter | 事件处理成功次数 |
-| `feishu_event_handling_failure_total` | Counter | 事件处理失败次数 |
-| `feishu_event_handling_duration_ms` | Histogram | 事件处理持续时间（毫秒） |
-| `feishu_http_request_total` | Counter | HTTP 请求总次数 |
-| `feishu_http_request_duration_ms` | Histogram | HTTP 请求持续时间（毫秒） |
-| `feishu_websocket_connections` | ObservableGauge | WebSocket 连接数 |
+| `feishu.event.handling` | Counter | 事件处理总次数 |
+| `feishu.event.handling.duration` | Histogram | 事件处理耗时分布（毫秒） |
+| `feishu.event.deduplication` | Counter | 事件去重命中/未命中计数 |
+| `feishu.websocket.connections` | ObservableGauge | WebSocket 活跃连接数 |
+| `feishu.websocket.message.duration` | Histogram | WebSocket 消息处理耗时分布（毫秒） |
+| `feishu.websocket.reconnect` | Counter | WebSocket 重连次数 |
+| `feishu.websocket.backlog` | ObservableGauge | WebSocket 待处理消息积压数 |
+| `feishu.webhook.request` | Counter | Webhook 入站请求计数 |
+| `feishu.webhook.request.duration` | Histogram | Webhook 请求处理耗时分布（毫秒） |
+
+> HTTP 请求与 Token 刷新指标由 Mud.HttpUtils 自动采集（`Mud.HttpUtils.HttpClient` Meter），
+> 包括 `mud.http.requests`、`mud.http.request.duration`、`mud.token.refresh`、`mud.token.refresh.duration`。
 
 ## 配置选项
 
@@ -159,16 +161,19 @@ builder.Services.AddFeishuOpenTelemetry(options =>
 
 ### 配合 ASP.NET Core 启动验证
 
+`AddFeishuOpenTelemetry` 已自动注册 `IValidateOptions<FeishuOpenTelemetryOptions>`（校验 `SamplingRatio` 范围、`ServiceName` / `ServiceVersion` / `DeploymentEnvironment` 非空、`OtlpEndpoint` 为绝对 URI），并在注册时即时校验 `SamplingRatio`（越界直接抛出 `ArgumentOutOfRangeException`）。
+
+如需在应用启动阶段 fail-fast，可追加 `ValidateOnStart`：
+
 ```csharp
 builder.Services.AddFeishuOpenTelemetry(builder.Configuration);
 
-var builder2 = WebApplication.CreateBuilder(args);
+// 扩展已自动注册 IValidateOptions<FeishuOpenTelemetryOptions>，
+// 启用 ValidateOnStart 后，配置无效将在应用启动时失败并给出错误信息
+builder.Services.AddOptions<FeishuOpenTelemetryOptions>()
+    .ValidateOnStart();
 
-var app = builder2.Build();
-
-// 启用配置验证（启动时检查 FeishuOpenTelemetryOptions 有效性）
-app.Services.GetRequiredService<IOptions<FeishuOpenTelemetryOptions>>()
-    .Value.Validate(null, null);
+var app = builder.Build();
 
 app.Run();
 ```
@@ -178,6 +183,7 @@ app.Run();
 | 包 | 版本 | 说明 |
 | --- | --- | --- |
 | **Mud.Feishu.Abstractions** | * | 飞书 SDK 抽象层（提供 ActivitySource 和 Meter 定义） |
+| **Mud.HttpUtils** | 2.0.6 | HTTP 出站请求与 Token 刷新的可观测性源（`MudHttpActivitySource` / `MudHttpMeter`） |
 | **OpenTelemetry** | 1.16.0 | OpenTelemetry .NET SDK |
 | **OpenTelemetry.Extensions.Hosting** | 1.16.0 | 主机集成 |
 | **OpenTelemetry.Exporter.OpenTelemetryProtocol** | 1.16.0 | OTLP 导出器 |

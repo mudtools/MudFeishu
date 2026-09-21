@@ -748,7 +748,7 @@ public interface IFeishuV1DriveSubscribe
     // 云文档事件订阅
 }
 
-public interface IFeishuV1Comments
+public interface IFeishuV1DriveComments
 {
     // 云文档评论管理
 }

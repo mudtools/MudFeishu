@@ -16,7 +16,7 @@
 - ✅ **按模块组织** - 数据模型按飞书 API 模块分目录组织，结构清晰
 - ✅ **请求/响应分离** - 每个模块下 `RequestModel` 和 `ResponseModel` 独立管理
 - ✅ **公共模型复用** - `Common` 命名空间提供分页、通用筛选等共享模型
-- ✅ **多框架支持** - 支持 .NET Standard 2.0，兼容 .NET Framework 4.6.1+
+- ✅ **多框架支持** - 支持 .NET Standard 2.0、.NET 6.0、.NET 8.0、.NET 10.0，兼容 .NET Framework 4.6.1+
 - ✅ **原生 AOT 支持** - 全量 DTO 由源生成 `JsonSerializerContext` 覆盖，net8.0+ 一等公民支持 Native AOT 发布
 
 ## 数据模型模块总览
@@ -128,10 +128,10 @@ public class DepartmentService
     {
         var result = await _deptApi.GetDepartmentsByParentIdAsync(
             parentId,
-            pageSize: 50,
-            pageToken: null);
+            page_size: 50,
+            page_token: null);
 
-        // PageListResult<T> 包含分页信息和数据
+        // FeishuApiPageListResult<T> 包含分页信息和数据
         if (result?.Code == 0)
         {
             var departments = result.Data.Items;
@@ -155,12 +155,13 @@ public class MessageService
         var request = new SendMessageRequest
         {
             ReceiveId = receiveId,
-            ReceiveIdType = "open_id",
             MsgType = "text",
             Content = """{"text":"Hello from Mud.Feishu!"}"""
         };
 
-        var result = await _messageApi.SendMessageAsync(request);
+        // receive_id_type 是 SendMessageAsync 的查询参数（默认 open_id），
+        // 不是请求体属性；如需显式指定，通过方法参数传入
+        var result = await _messageApi.SendMessageAsync(request, receive_id_type: "open_id");
     }
 }
 ```
@@ -172,7 +173,8 @@ public class MessageService
 | 模型 | 说明 |
 | --- | --- |
 | `PageRequest` | 分页请求基类（PageSize、PageToken） |
-| `PageListResult<T>` | 分页列表结果基类（Items、PageToken、HasMore） |
+| `PageListResult` | 输出型分页包装（Page：`ApiPageListResult` 分页信息、Abnormals：异常信息列表） |
+| `FeishuApiPageListResult<T>` | API 分页列表响应结果（Code、Msg、Data.HasMore、Data.PageToken、Data.Items） |
 | `PageSearchRequest` | 分页搜索请求（继承 PageRequest，增加搜索关键词） |
 | `SearchRequest` | 通用搜索请求 |
 | `FilterSearchRequest` | 带筛选条件的搜索请求 |
@@ -189,6 +191,9 @@ public class MessageService
 ## 框架支持
 
 - .NET Standard 2.0（兼容 .NET Framework 4.6.1+、.NET Core 2.0+）
+- .NET 6.0
+- .NET 8.0
+- .NET 10.0
 
 ## 依赖项
 

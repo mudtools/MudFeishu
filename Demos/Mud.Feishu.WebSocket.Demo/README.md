@@ -115,10 +115,14 @@ dotnet restore
 
 ```json
 {
-  "Feishu": {
-    "AppId": "cli_xxxxxxxxxxxxxxxx",
-    "AppSecret": "your-app-secret-here"
-  }
+  "FeishuApps": [
+    {
+      "AppKey": "default",
+      "AppId": "cli_xxxxxxxxxxxxxxxx",
+      "AppSecret": "your-app-secret-here",
+      "IsDefault": true
+    }
+  ]
 }
 ```
 
@@ -128,11 +132,9 @@ dotnet restore
 
 ```json
 {
-  "Feishu": {
-    "Redis": {
-      "ServerAddress": "localhost:6379",
-      "Password": "letmein"
-    }
+  "FeishuRedis": {
+    "ServerAddress": "localhost:6379",
+    "Password": "letmein"
   }
 }
 ```
@@ -166,48 +168,51 @@ dotnet run
 
 ```json
 {
-  "Feishu": {
-    "AppId": "",
-    "AppSecret": "",
-    "BaseUrl": "https://open.feishu.cn",
-    "TimeOut": 30,
-    "RetryCount": 3,
-    "TokenRefreshThreshold": 300,
-    "EnableLogging": true,
-      "WebSocket": {
-        "AutoReconnect": true,
-        "MaxReconnectAttempts": 5,
-        "ReconnectDelayMs": 5000,
-        "HeartbeatIntervalMs": 30000,
-        "ConnectionTimeoutMs": 10000,
-        "InitialReceiveBufferSize": 4096,
-        "EnableLogging": false,
-        "EnableMessageQueue": true,
-        "MessageQueueCapacity": 1000,
-        "MaxConcurrentMessageProcessing": 10,
-        "MessageSizeLimits": {
-          "MaxTextMessageSize": 1048576,
-          "MaxBinaryMessageSize": 10485760
-        },
-        "EventDeduplication": {
-          "Mode": "Distributed",
-          "CacheExpiration": "00:30:00",
-          "CleanupInterval": "00:05:00"
-        }
-      },
-    "Redis": {
-      "ServerAddress": "localhost:6379",
-      "Password": "letmein",
-      "EventCacheExpiration": "1:00:00",
-      "NonceTtl": "00:05:00",
-      "SeqIdCacheExpiration": "1:00:00",
-      "EventKeyPrefix": "feishu:event:",
-      "NonceKeyPrefix": "feishu:nonce:",
-      "SeqIdKeyPrefix": "feishu:seqid:",
-      "ConnectTimeout": 5000,
-      "SyncTimeout": 5000,
-      "Ssl": false
+  "FeishuApps": [
+    {
+      "AppKey": "default",
+      "AppId": "cli_xxxxxxxxxxxxxxxx",
+      "AppSecret": "your-app-secret-here",
+      "BaseUrl": "https://open.feishu.cn",
+      "TimeOut": 30,
+      "RetryCount": 3,
+      "RetryDelayMs": 1000,
+      "EnableLogging": true,
+      "IsDefault": true
     }
+  ],
+  "FeishuWebSocket": {
+    "AutoReconnect": true,
+    "MaxReconnectAttempts": 5,
+    "ReconnectDelayMs": 5000,
+    "HeartbeatIntervalMs": 25000,
+    "ConnectionTimeoutMs": 10000,
+    "InitialReceiveBufferSize": 4096,
+    "EnableLogging": false,
+    "MaxConcurrentHandlers": 32,
+    "MessageSizeLimits": {
+      "MaxTextMessageSize": 1048576,
+      "MaxBinaryMessageSize": 10485760
+    },
+    "EventDeduplication": {
+      "Mode": "Distributed",
+      "CacheExpiration": "00:30:00",
+      "CleanupInterval": "00:05:00"
+    }
+  },
+  "FeishuRedis": {
+    "ServerAddress": "localhost:6379",
+    "Password": "letmein",
+    "EventCacheExpiration": "1:00:00",
+    "NonceTtl": "00:05:00",
+    "SeqIdCacheExpiration": "1:00:00",
+    "EventKeyPrefix": "feishu:event:",
+    "NonceKeyPrefix": "feishu:nonce:",
+    "SeqIdKeyPrefix": "feishu:seqid:",
+    "ConnectTimeout": 5000,
+    "SyncTimeout": 5000,
+    "Ssl": false,
+    "AllowAdmin": false
   },
   "DemoSettings": {
     "EnableMockEvents": true,
@@ -225,12 +230,10 @@ dotnet run
 | `AutoReconnect` | bool | true | 连接断开时是否自动重连 |
 | `MaxReconnectAttempts` | int | 5 | 最大重连次数 |
 | `ReconnectDelayMs` | int | 5000 | 重连延迟（毫秒） |
-| `HeartbeatIntervalMs` | int | 30000 | 心跳间隔（毫秒） |
+| `HeartbeatIntervalMs` | int | 25000 | 心跳间隔（毫秒），飞书建议 25 秒内，取值范围 5000~30000 |
 | `ConnectionTimeoutMs` | int | 10000 | 连接超时（毫秒） |
 | `InitialReceiveBufferSize` | int | 4096 | 初始接收缓冲区大小（字节） |
-| `EnableMessageQueue` | bool | true | 是否启用消息队列 |
-| `MessageQueueCapacity` | int | 1000 | 消息队列容量 |
-| `MaxConcurrentMessageProcessing` | int | 10 | 最大并发消息处理数 |
+| `MaxConcurrentHandlers` | int | 32 | 最大并发事件处理器数量（背压闸门），0 或负数表示无限制 |
 
 #### 消息大小限制 (`MessageSizeLimits`)
 
@@ -300,7 +303,10 @@ var builder = WebApplication.CreateBuilder(args);
 // 1. 配置 Redis 分布式去重服务
 builder.Services.AddFeishuRedisDeduplicators(builder.Configuration);
 
-// 2. 配置飞书 WebSocket 服务（添加拦截器）
+// 2. 注册多应用支持
+builder.Services.AddFeishuApp(builder.Configuration);
+
+// 3. 配置飞书 WebSocket 服务（添加拦截器）
 builder.Services.CreateFeishuWebSocketServiceBuilder(builder.Configuration)
     .AddInterceptor<LoggingEventInterceptor>()                    // 日志拦截器（内置）
     .AddInterceptor<WebSocketTelemetryInterceptor>()               // 遥测拦截器（自定义）
@@ -312,7 +318,7 @@ builder.Services.CreateFeishuWebSocketServiceBuilder(builder.Configuration)
     .AddHandler<DemoDepartmentUpdateEventHandler>()
     .Build();
 
-// 3. 配置演示服务
+// 4. 配置演示服务
 builder.Services.AddSingleton<DemoEventService>();
 builder.Services.AddHostedService<DemoEventBackgroundService>();
 
@@ -349,6 +355,7 @@ public class DemoDepartmentEventHandler : DepartmentCreatedEventHandler
     protected override async Task ProcessBusinessLogicAsync(
         EventData eventData,
         DepartmentCreatedResult? departmentData,
+        FeishuEventHeader? header,
         CancellationToken cancellationToken = default)
     {
         // 记录事件到服务
@@ -363,7 +370,7 @@ public class DemoDepartmentEventHandler : DepartmentCreatedEventHandler
     private Task ProcessDepartmentEventAsync(DepartmentCreatedResult? departmentData, CancellationToken cancellationToken)
     {
         // 实现你的业务逻辑
-        Console.WriteLine($"部门创建: {departmentData?.Department?.Name}");
+        Console.WriteLine($"部门创建: {departmentData?.Object?.Name}");
         return Task.CompletedTask;
     }
 }
@@ -597,7 +604,7 @@ builder.Services.CreateFeishuWebSocketServiceBuilder(builder.Configuration)
 | 部门创建 | `DepartmentCreatedEventHandler` | 处理新部门创建 |
 | 部门删除 | `DepartmentDeleteEventHandler` | 处理部门删除 |
 | 部门更新 | `DepartmentUpdateEventHandler` | 处理部门信息更新 |
-| 用户创建 | `UserCreatedEventHandler` | 处理新用户创建 |
+| 用户创建 | `UserCreateEventHandler` | 处理新用户创建 |
 | 用户删除 | `UserDeleteEventHandler` | 处理用户删除 |
 | 用户更新 | `UserUpdateEventHandler` | 处理用户信息更新 |
 
@@ -606,7 +613,7 @@ builder.Services.CreateFeishuWebSocketServiceBuilder(builder.Configuration)
 1. **继承对应的事件处理器基类**
 
 ```csharp
-public class MyCustomEventHandler : UserCreatedEventHandler
+public class MyCustomEventHandler : UserCreateEventHandler
 {
     public MyCustomEventHandler(
         IFeishuEventDeduplicator businessDeduplicator,
@@ -617,12 +624,14 @@ public class MyCustomEventHandler : UserCreatedEventHandler
 
     protected override async Task ProcessBusinessLogicAsync(
         EventData eventData,
-        UserCreatedResult? userData,
+        UserCreateResult? userData,
+        FeishuEventHeader? header,
         CancellationToken cancellationToken = default)
     {
         // 实现你的业务逻辑
-        var userId = userData?.User?.OpenId;
-        var userName = userData?.User?.Name;
+        // UserCreateResult 直接继承 UserResultInfo，属性直取
+        var userId = userData?.OpenId;
+        var userName = userData?.Name;
 
         // 记录到数据库
         await SaveToDatabase(userId, userName, cancellationToken);
@@ -643,13 +652,16 @@ builder.Services.CreateFeishuWebSocketServiceBuilder(builder.Configuration)
 
 3. **处理去重**
 
-基类已经内置去重逻辑，使用 `IFeishuEventDeduplicator`：
+基类已经内置去重逻辑，使用 `IFeishuEventDeduplicator`。默认以 `EventId` 作为业务去重键
+（`protected virtual string? GetBusinessKey(EventData eventData)`），如需按业务维度去重，
+可重写 `GetBusinessKey`：
 
 ```csharp
-protected override async Task<bool> ShouldProcessAsync(EventData eventData, CancellationToken cancellationToken = default)
+protected override string? GetBusinessKey(EventData eventData)
 {
-    // 基类已实现基于 eventId 的去重
-    return await base.ShouldProcessAsync(eventData, cancellationToken);
+    // 使用事件类型 + 事件ID作为业务键
+    // 返回 null 或空字符串时跳过业务层去重，直接处理事件
+    return $"{eventData.EventType}:{eventData.EventId}";
 }
 ```
 
@@ -688,13 +700,11 @@ protected override async Task<bool> ShouldProcessAsync(EventData eventData, Canc
 
 ```json
 {
-  "Feishu": {
-    "Redis": {
-      "ServerAddress": "localhost:6379",
-      "Password": "letmein",
-      "EventCacheExpiration": "1:00:00",
-      "EventKeyPrefix": "feishu:event:"
-    }
+  "FeishuRedis": {
+    "ServerAddress": "localhost:6379",
+    "Password": "letmein",
+    "EventCacheExpiration": "1:00:00",
+    "EventKeyPrefix": "feishu:event:"
   }
 }
 ```
@@ -791,17 +801,27 @@ public class DepartmentSyncHandler : DepartmentCreatedEventHandler
 {
     private readonly IDepartmentRepository _repository;
 
+    public DepartmentSyncHandler(
+        IFeishuEventDeduplicator businessDeduplicator,
+        ILogger<DepartmentSyncHandler> logger,
+        IDepartmentRepository repository)
+        : base(businessDeduplicator, logger)
+    {
+        _repository = repository;
+    }
+
     protected override async Task ProcessBusinessLogicAsync(
         EventData eventData,
         DepartmentCreatedResult? departmentData,
+        FeishuEventHeader? header,
         CancellationToken cancellationToken = default)
     {
         var department = new Department
         {
-            Id = departmentData?.Department?.OpenDepartmentId,
-            Name = departmentData?.Department?.Name,
-            ParentId = departmentData?.Department?.ParentDepartmentId,
-            LeaderUserId = departmentData?.Department?.LeaderUserId,
+            Id = departmentData?.Object?.OpenDepartmentId,
+            Name = departmentData?.Object?.Name,
+            ParentId = departmentData?.Object?.ParentDepartmentId,
+            LeaderUserId = departmentData?.Object?.LeaderUserId,
             CreatedAt = DateTime.UtcNow
         };
 
@@ -821,12 +841,22 @@ public class UserDeleteHandler : UserDeleteEventHandler
 {
     private readonly IUserService _userService;
 
+    public UserDeleteHandler(
+        IFeishuEventDeduplicator businessDeduplicator,
+        ILogger<UserDeleteHandler> logger,
+        IUserService userService)
+        : base(businessDeduplicator, logger)
+    {
+        _userService = userService;
+    }
+
     protected override async Task ProcessBusinessLogicAsync(
         EventData eventData,
-        UserDeletedResult? userData,
+        UserDeleteResult? userData,
+        FeishuEventHeader? header,
         CancellationToken cancellationToken = default)
     {
-        var userId = userData?.User?.OpenId;
+        var userId = userData?.Object?.OpenId;
         await _userService.DisableUserAsync(userId, cancellationToken);
     }
 }
@@ -899,29 +929,18 @@ builder.Services.AddFeishuRedisDeduplicators(builder.Configuration);
 ```json
 {
   "FeishuWebSocket": {
-    "MaxConcurrentMessageProcessing": 20
+    "MaxConcurrentHandlers": 64
   }
 }
 ```
 
-2. **启用消息队列**：
-
-```json
-{
-  "WebSocket": {
-    "EnableMessageQueue": true,
-    "MessageQueueCapacity": 2000
-  }
-}
-```
-
-3. **添加限流拦截器**：防止事件风暴
+2. **添加限流拦截器**：防止事件风暴
 
 ```csharp
 .AddInterceptor<RateLimitingInterceptor>()
 ```
 
-4. **异步处理业务逻辑**：
+3. **异步处理业务逻辑**：
 
 ```csharp
 protected override async Task ProcessBusinessLogicAsync(...)
@@ -1038,8 +1057,8 @@ public class MyCustomInterceptor : IFeishuEventInterceptor
 
 ## 相关文档
 
-- [拦截器详细文档](./README-INTERCEPTORS.md) - 拦截器深度解析和使用示例
-- [Mud.Feishu.WebSocket 文档](../../docs/websocket.md) - WebSocket SDK 官方文档
+- [拦截器使用](#拦截器使用) - 拦截器深度解析和使用示例（见本文档章节）
+- [Mud.Feishu.WebSocket 文档](../../Mud.Feishu.WebSocket/Readme.md) - WebSocket SDK 官方文档
 - [飞书开放平台文档](https://open.feishu.cn/document) - 飞书官方 API 文档
 
 ## 许可证

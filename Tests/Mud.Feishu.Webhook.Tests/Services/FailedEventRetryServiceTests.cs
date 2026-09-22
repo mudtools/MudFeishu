@@ -340,6 +340,70 @@ public class FailedEventRetryServiceTests
             Times.AtLeastOnce);
     }
 
+    // ===== E10（R2 §9）：重试重放再次失败 → RetryCount 递增而非重置 =====
+
+    [Fact]
+    public async Task ExecuteAsync_WhenReplayFailsAgain_ShouldIncrementRetryCount_NotResetToZero()
+    {
+        // Arrange - 防重置回归：条目已带 RetryCount=1，重放再次失败后必须写回 2。
+        // 若实现误以"new FailedEventInfo"或从 0 起算，写回值会回到 1/0，形成重试死循环。
+        var optionsMock = CreateWebhookOptionsMonitor(_options);
+        var eventStoreMock = new Mock<IFailedEventStore>();
+
+        var failedEvent = new FailedEventInfo
+        {
+            EventId = "event-e10",
+            EventType = "test.event",
+            SerializedEventData = "{\"eventId\":\"event-e10\",\"eventType\":\"test.event\"}",
+            RetryCount = 1,
+            FailedAt = DateTime.UtcNow,
+            NextRetryAt = DateTimeOffset.UtcNow.Subtract(TimeSpan.FromSeconds(1))
+        };
+
+        eventStoreMock
+            .Setup(x => x.GetPendingRetryEventsAsync(It.IsAny<DateTimeOffset>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<FailedEventInfo> { failedEvent });
+
+        _webhookServiceMock
+            .Setup(x => x.HandleEventAsync(It.IsAny<EventData>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((false, "重放仍失败"));
+
+        var service = new FailedEventRetryService(
+            optionsMock,
+            _loggerMock.Object,
+            _scopeFactory,
+            eventStoreMock.Object);
+
+        // CTS 仅作安全网（StopAsync 负责实际关停）；寿命需远大于轮询等待上限，
+        // 避免 net10 上 ExecuteAsync 迟启动时首轮轮询被取消窗口吞掉。
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+
+        // Act
+        await service.StartAsync(cts.Token);
+
+        // net10 的 BackgroundService.StartAsync 经 Task.Run 异步启动 ExecuteAsync，
+        // 固定 Task.Delay 在全量并行套件下存在调度竞态（ExecuteAsync 晚于 StopAsync
+        // 启动则首轮轮询被跳过）。改为确定性等待：轮询直至断言目标副作用
+        // （UpdateFailedEventAsync 写回）被 mock 记录，或超时。
+        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(10);
+        while (!eventStoreMock.Invocations.Any(
+                   i => i.Method.Name == nameof(IFailedEventStore.UpdateFailedEventAsync))
+               && DateTime.UtcNow < deadline)
+        {
+            await Task.Delay(20);
+        }
+
+        await service.StopAsync(CancellationToken.None);
+
+        // Assert
+        eventStoreMock.Verify(
+            x => x.UpdateFailedEventAsync(
+                It.Is<FailedEventInfo>(e => e.EventId == "event-e10" && e.RetryCount == 2),
+                It.IsAny<CancellationToken>()),
+            Times.AtLeastOnce,
+            "重放再次失败后 RetryCount 必须在既有值上递增（1 → 2），不得重置");
+    }
+
     [Fact]
     public async Task ExecuteAsync_WithInvalidJsonData_ShouldUpdateRetryCount()
     {

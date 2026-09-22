@@ -106,12 +106,12 @@ public class FeishuRateLimitMiddleware : IDisposable
         if (string.IsNullOrEmpty(clientIp))
         {
             _logger.LogWarning("无法获取客户端 IP，拒绝请求");
-            await WriteTooManyRequestsResponse(context, "无法识别客户端 IP", rateLimitOptions);
+            await WriteTooManyRequestsResponse(context, "无法识别客户端 IP", rateLimitOptions, DateTime.UtcNow);
             return;
         }
 
-        // 检查是否在白名单中
-        if (!string.IsNullOrEmpty(clientIp) && rateLimitOptions.WhitelistIPs.Contains(clientIp!))
+        // 检查是否在白名单中（WHF-R2/C1：复用 IpAddressHelper 归一化，支持 IPv4-mapped 与 CIDR）
+        if (!string.IsNullOrEmpty(clientIp) && IpAddressHelper.IsIpAllowed(clientIp, rateLimitOptions.WhitelistIPs))
         {
             _logger.LogDebug("客户端 IP {ClientIP} 在白名单中，跳过限流", clientIp);
             await _next(context);
@@ -133,7 +133,7 @@ public class FeishuRateLimitMiddleware : IDisposable
         if (!existed && _requestCounts.Count >= MaxIpEntries)
         {
             _logger.LogWarning("IP 条目数已达上限 {MaxIpEntries}，拒绝新 IP {ClientIP} 的请求", MaxIpEntries, clientIp);
-            await WriteTooManyRequestsResponse(context, "服务繁忙，请稍后重试", rateLimitOptions);
+            await WriteTooManyRequestsResponse(context, "服务繁忙，请稍后重试", rateLimitOptions, DateTime.UtcNow);
             return;
         }
 
@@ -154,8 +154,9 @@ public class FeishuRateLimitMiddleware : IDisposable
             _logger.LogWarning("客户端 IP {ClientIP}（应用: {AppKey}）请求频率超出限制：{Count}/{MaxRequests} 在 {WindowSize}秒内",
                 clientIp, appKey ?? "global", currentCount, rateLimitOptions.MaxRequestsPerWindow, rateLimitOptions.WindowSizeSeconds);
 
+            // WHF-R2/C2：Retry-After 返回窗口剩余秒数（RFC 9110 语义）
             await WriteTooManyRequestsResponse(context,
-                $"{rateLimitOptions.TooManyRequestsMessage}，请在 {rateLimitOptions.WindowSizeSeconds} 秒后重试", rateLimitOptions);
+                $"{rateLimitOptions.TooManyRequestsMessage}，请在 {rateLimitOptions.WindowSizeSeconds} 秒后重试", rateLimitOptions, counter.WindowStart);
             return;
         }
 
@@ -168,32 +169,12 @@ public class FeishuRateLimitMiddleware : IDisposable
     /// </summary>
     private string? GetClientIp(HttpContext context)
     {
+        // WHF-R2/A3：下沉到 ClientIpResolver 共享实现
         var rateLimitOptions = Options.RateLimit;
-        var directIp = context.Connection.RemoteIpAddress?.ToString();
-
-        // 零信任默认：无可信代理配置 / 转发头关闭 / 直连 IP 非可信代理 → 只认 RemoteIpAddress
-        if (!rateLimitOptions.UseForwardedHeaders
-            || rateLimitOptions.TrustedProxies.Count == 0
-            || string.IsNullOrEmpty(directIp)
-            || !IpAddressHelper.IsIpAllowed(directIp, rateLimitOptions.TrustedProxies))
-        {
-            return directIp;
-        }
-
-        // 可信代理后：从右向左取第一个非可信 IP（标准代理链算法，防止最左值被客户端伪造）
-        if (context.Request.Headers.TryGetValue("X-Forwarded-For", out var xff))
-        {
-            var hops = xff.ToString().Split(',');
-            for (var i = hops.Length - 1; i >= 0; i--)
-            {
-                var hop = hops[i].Trim();
-                if (string.IsNullOrEmpty(hop)) continue;
-                if (!IpAddressHelper.IsIpAllowed(hop, rateLimitOptions.TrustedProxies))
-                    return hop;
-            }
-        }
-
-        return directIp;
+        return ClientIpResolver.GetClientIp(
+            context,
+            rateLimitOptions.UseForwardedHeaders,
+            rateLimitOptions.TrustedProxies);
     }
 
     private static string? ExtractAppKeyFromPath(string path, string globalRoutePrefix) => WebhookPathHelper.ExtractAppKeyFromPath(path, globalRoutePrefix);
@@ -249,14 +230,14 @@ public class FeishuRateLimitMiddleware : IDisposable
     /// <summary>
     /// 写入 429 响应
     /// </summary>
-    private async Task WriteTooManyRequestsResponse(HttpContext context, string message, RateLimitOptions rateLimitOptions)
+    private async Task WriteTooManyRequestsResponse(HttpContext context, string message, RateLimitOptions rateLimitOptions, DateTime windowStart)
     {
         context.Response.StatusCode = rateLimitOptions.TooManyRequestsStatusCode;
         context.Response.ContentType = "application/json";
 
-        // Retry-After 头（RFC 9110）：取当前窗口剩余秒数
-        var retryAfter = Math.Max(1, rateLimitOptions.WindowSizeSeconds);
-        context.Response.Headers["Retry-After"] = retryAfter.ToString();
+        // Retry-After 头（RFC 9110）：取当前窗口剩余秒数（WHF-R2/C2）
+        var remaining = Math.Max(1, (int)(rateLimitOptions.WindowSizeSeconds - (DateTime.UtcNow - windowStart).TotalSeconds));
+        context.Response.Headers["Retry-After"] = remaining.ToString();
 
         var errorResponse = new WebhookErrorResponse
         {

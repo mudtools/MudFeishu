@@ -26,7 +26,8 @@ public class RedisOptionsTests
         Assert.Equal("feishu:event:", options.EventKeyPrefix);
         Assert.Equal(TimeSpan.FromHours(48), options.EventCacheExpiration);
         Assert.Equal(TimeSpan.FromHours(48), options.SeqIdCacheExpiration);
-        Assert.Equal(TimeSpan.FromMinutes(5), options.NonceTtl);
+        // WHF-R2/A4：NonceTtl 默认从 5 分钟调整为 10 分钟（2 × 300s 上限容差）
+        Assert.Equal(TimeSpan.FromMinutes(10), options.NonceTtl);
         Assert.Equal(5000, options.Connection.ConnectTimeout);
         Assert.Equal(5000, options.Connection.SyncTimeout);
         Assert.False(options.Connection.Ssl);

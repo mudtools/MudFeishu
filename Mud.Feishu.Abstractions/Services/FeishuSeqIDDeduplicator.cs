@@ -94,11 +94,28 @@ public sealed class FeishuSeqIDDeduplicator : MemoryDeduplicator<ulong>, IFeishu
     }
 
     /// <inheritdoc />
+    public Task<int> GetCacheCountAsync(CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        return Task.FromResult(Count);
+    }
+
+    /// <inheritdoc />
     public ulong GetMaxProcessedSeqId()
     {
         lock (_maxIdLock)
         {
             return _maxProcessedSeqId;
+        }
+    }
+
+    /// <inheritdoc />
+    public Task<ulong> GetMaxProcessedSeqIdAsync(CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        lock (_maxIdLock)
+        {
+            return Task.FromResult(_maxProcessedSeqId);
         }
     }
 }

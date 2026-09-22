@@ -54,6 +54,10 @@ public class FeishuWebSocketHealthCheck : IHealthCheck
 
             var reconnectState = _reconnectionOrchestrator.GetReconnectState();
 
+            // F1/F2（P0-1 的结构性兜底）：把"接收循环是否存活 / 距上次收帧多久"变成可观测事实。
+            // 仅凭 state.IsConnected（= WebSocketState.Open）无法区分"连接可用"与"接收管道已死"。
+            var liveness = _hostedService.GetConnectionLiveness();
+
             var data = new Dictionary<string, object>
             {
                 ["connected"] = state.IsConnected,
@@ -61,8 +65,25 @@ public class FeishuWebSocketHealthCheck : IHealthCheck
                 ["reconnectCount"] = stats.ReconnectCount,
                 ["lastError"] = stats.LastError?.Message ?? "none",
                 ["is_reconnecting"] = reconnectState.IsReconnecting,
-                ["is_circuit_open"] = reconnectState.IsCircuitOpen
+                ["is_circuit_open"] = reconnectState.IsCircuitOpen,
+                // F1/F2 新增维度（-1 表示尚无收帧样本，不代表静默）
+                ["receive_loop_alive"] = liveness.ReceiveLoopAlive,
+                ["last_receive_utc"] = liveness.LastReceiveUtc?.ToString("O") ?? "never",
+                ["idle_ms"] = liveness.IdleMs,
+                ["is_zombie"] = liveness.IsZombie
             };
+
+            // F2：僵尸态 = "被告知已连接，但没有任何循环在读帧"——后续事件永远不会被消费，
+            // 而所有基于 IsConnected 的判定都会因为 State==Open 而拒绝恢复，必须判 Unhealthy。
+            if (liveness.IsZombie)
+            {
+                _logger?.LogWarning("WebSocket健康检查: Unhealthy (僵尸连接 — 接收循环已结束但连接仍为 Open)");
+                return Task.FromResult(HealthCheckResult.Unhealthy(
+                    "WebSocket 连接看似正常（State=Open）但接收循环已结束，无法再接收任何事件；" +
+                    "已由 HostedService 的周期性检查触发重连，若持续出现请检查是否存在外部取消/释放连接的行为",
+                    null,
+                    data));
+            }
 
             // F2 修复：补充并发指标，对齐 Webhook 健康检查
             var concurrencyService = _hostedService.GetConcurrencyService();

@@ -86,7 +86,8 @@ public class SeqIdScopeKeyInferenceTests
         {
             deduplicator.GetCacheCount();
             return captured.ToString();
-        });
+        }
+        );
     }
 
     [Fact]

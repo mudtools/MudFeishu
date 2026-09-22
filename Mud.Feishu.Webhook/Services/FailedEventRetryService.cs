@@ -185,8 +185,8 @@ public class FailedEventRetryService : BackgroundService
                 }
 
                 // 关键：恢复该事件所属应用上下文，保证应用专属处理器 / 去重键 / Nonce 隔离一致
-                if (!string.IsNullOrEmpty(failedEvent.AppKey))
-                    webhookService.SetCurrentAppKey(failedEvent.AppKey!);
+                // WHF-R2/B5：无条件设置（空 AppKey 显式清空），否则 AsyncLocal 继承上一迭代
+                webhookService.SetCurrentAppKey(failedEvent.AppKey ?? string.Empty);
 
                 // 反序列化事件数据
                 var eventData = FeishuJsonAot.Deserialize<EventData>(

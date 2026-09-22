@@ -49,6 +49,8 @@ public class PerAppRedisTokenStoreFactory : IFeishuTokenStoreFactory
 
     /// <summary>
     /// 构建指定应用的 Redis 键前缀，与 Memory 路径 <c>feishu:{appKey}:token</c> <b>逐字节一致</b>（D8）。
+    /// TMF2-05 / TMR2-P1-2：委派 <c>TokenKeyBuilder.BuildKeyPrefix</c>（键前缀的唯一出口）——
+    /// 消除经 <c>RedisKeyBuilder.Combine</c> 预转义与 Memory 裸拼接的差异（前缀逐字节一致）。
     /// </summary>
     /// <remarks>
     /// <para>
@@ -72,9 +74,9 @@ public class PerAppRedisTokenStoreFactory : IFeishuTokenStoreFactory
     /// </para>
     /// </remarks>
     public static string BuildKeyPrefix(string appKey) =>
-        string.IsNullOrWhiteSpace(appKey)
-            ? "feishu:default:token"
-            : $"feishu:{appKey}:token";
+        // TMR2-P1-2：委派唯一出口；TokenKeyBuilder.BuildKeyPrefix 返回**未转义**前缀
+        // （转义单点归口 TokenKeyBuilder.NormalizeSegment，由键构造路径 Combine 施加）。
+        TokenKeyBuilder.BuildKeyPrefix(appKey);
 
     /// <inheritdoc />
     public (ITokenStore TokenStore, IUserTokenStore? UserTokenStore) Create(string appKey)

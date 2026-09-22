@@ -5,6 +5,8 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using Mud.Feishu.Abstractions.Utilities;
+
 namespace Mud.Feishu.Abstractions.Services;
 
 /// <summary>
@@ -41,11 +43,11 @@ public sealed class FeishuNonceDistributedDeduplicator : MemoryDeduplicator<stri
 
         if (result)
         {
-            Logger?.LogWarning("Nonce {Nonce} (AppKey: {AppKey}) 已使用过，拒绝重放攻击", nonce, appKey ?? "default");
+            Logger?.LogWarning("Nonce {Nonce} (AppKey: {AppKey}) 已使用过，拒绝重放攻击", LogSanitizer.Clean(nonce), appKey ?? "default");
         }
         else
         {
-            Logger?.LogDebug("Nonce {Nonce} (AppKey: {AppKey}) 标记为已使用", nonce, appKey ?? "default");
+            Logger?.LogDebug("Nonce {Nonce} (AppKey: {AppKey}) 标记为已使用", LogSanitizer.Clean(nonce), appKey ?? "default");
         }
 
         return Task.FromResult(result);

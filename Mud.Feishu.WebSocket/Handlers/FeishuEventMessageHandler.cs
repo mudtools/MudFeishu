@@ -215,23 +215,28 @@ public class FeishuEventMessageHandler : JsonMessageHandler
 
                                 // WHF-07（WS 对齐）：业务分发已成功——Mark 失败禁止回滚
                                 //（回滚将导致服务端重发后重复消费）。保留 processing 态，由 ProcessingTimeout/TTL 兜底。
+                                // D15/P0-1：Mark 属补偿/终态操作，不消费调用方令牌——外部取消/路由超时路径上
+                                // 令牌已取消，Redis 后端入口会直接 OCE，Mark 应真实尝试完成而非被取消窗口击穿。
+                                var markCompleted = true;
                                 try
                                 {
                                     if (_unifiedDedupMiddleware != null)
-                                        await _unifiedDedupMiddleware.MarkCompletedAsync(eventData.EventId, seqId: null, cancellationToken);
+                                        await _unifiedDedupMiddleware.MarkCompletedAsync(eventData.EventId, seqId: null, CancellationToken.None);
                                     else if (_deduplicator != null)
-                                        await _deduplicator.MarkAsCompletedAsync(eventData.EventId, _options.AppKey, cancellationToken);
+                                        await _deduplicator.MarkAsCompletedAsync(eventData.EventId, _options.AppKey, CancellationToken.None);
                                 }
                                 catch (Exception markEx)
                                 {
+                                    markCompleted = false;
                                     _logger.LogWarning(markEx,
                                         "事件 {EventId} 处理成功但完成标记失败，保留 processing 态等待超时恢复",
                                         eventData.EventId);
                                     FeishuMetricsHelper.RecordEventOutcome(_options.AppKey, eventData.EventType, success: true, "mark_completed_failed");
                                 }
 
-                                // 记录事件处理成功
-                                FeishuMetricsHelper.RecordEventOutcome(_options.AppKey, eventData.EventType, success: true);
+                                // 记录事件处理成功（P2-1：mark 失败分支已带 "mark_completed_failed" 标签，成功口径只记一次）
+                                if (markCompleted)
+                                    FeishuMetricsHelper.RecordEventOutcome(_options.AppKey, eventData.EventType, success: true);
                             }
                         }
                         catch (EventHandlingOutcomeException outcomeEx)
@@ -310,20 +315,37 @@ public class FeishuEventMessageHandler : JsonMessageHandler
     /// 回滚去重状态（统一中间件优先，其次分离去重器）。
     /// </summary>
     /// <param name="eventId">事件 ID</param>
-    /// <param name="cancellationToken">取消令牌</param>
+    /// <param name="cancellationToken">调用方取消令牌（仅签名兼容；补偿操作不消费，见 remarks）</param>
     /// <remarks>
     /// P1-7/P2-1：拦截、业务失败、外部取消三条路径的回滚必须走同一出口，
     /// 避免"某条新增失败路径漏回滚"导致事件停在 processing 态。
+    /// <para>
+    /// D15/P0-1：回滚属补偿终态，必须完成。调用方令牌在外部取消/路由超时路径上<b>已被取消</b>，
+    /// Redis 后端入口 <c>ThrowIfCancellationRequested</c> 会使回滚失效（键停留 processing →
+    /// 服务端重发被判重跳过并 ACK 200 → 事件丢失）。补偿调用一律使用 <see cref="CancellationToken.None"/>，
+    /// 与 Webhook 通道「去重标记路径使用 CancellationToken.None」（WHF-16）对齐。
+    /// 回滚失败不得替换/吞没原始业务异常：仅记录，键停留 processing 由超时恢复兜底。
+    /// </para>
     /// </remarks>
     private async Task RollbackDeduplicationAsync(string eventId, CancellationToken cancellationToken)
     {
-        if (_unifiedDedupMiddleware != null)
+        _ = cancellationToken; // D15：显式标注补偿操作不消费调用方令牌
+
+        try
         {
-            await _unifiedDedupMiddleware.RollbackAsync(eventId, seqId: null, cancellationToken);
+            if (_unifiedDedupMiddleware != null)
+            {
+                await _unifiedDedupMiddleware.RollbackAsync(eventId, seqId: null, CancellationToken.None);
+            }
+            else if (_deduplicator != null)
+            {
+                await _deduplicator.RollbackProcessingAsync(eventId, _options.AppKey, CancellationToken.None);
+            }
         }
-        else if (_deduplicator != null)
+        catch (Exception rollbackEx)
         {
-            await _deduplicator.RollbackProcessingAsync(eventId, _options.AppKey, cancellationToken);
+            _logger.LogError(rollbackEx,
+                "事件 {EventId} 去重回滚失败（保留 processing 态，等待超时恢复）", eventId);
         }
     }
 
@@ -356,21 +378,29 @@ public class FeishuEventMessageHandler : JsonMessageHandler
 
             if (headerElement.TryGetProperty("create_time", out var createTimeElement))
             {
+                // E9（R2 实施）：TryGetInt64 仅在 Number 值类型上合法——字符串/ null /布尔等
+                // 非数字 create_time 会抛 InvalidOperationException，使合法 JSON 报文陷入
+                // ACK 500 重发死循环。非数字值静默为 0（Header.CreateTime 保留原字符串）。
                 header.CreateTime = createTimeElement.ValueKind == JsonValueKind.String
                     ? createTimeElement.GetString()
-                    : createTimeElement.TryGetInt64(out var ct) ? ct.ToString() : null;
+                    : createTimeElement.ValueKind == JsonValueKind.Number && createTimeElement.TryGetInt64(out var ct) ? ct.ToString() : null;
 
                 if (createTimeElement.ValueKind == JsonValueKind.String &&
                     long.TryParse(createTimeElement.GetString(), out var createTimeLong))
                 {
                     eventData.CreateTime = createTimeLong / 1000; // 转换为秒
                 }
-                else if (createTimeElement.TryGetInt64(out var createTimeInt))
+                else if (createTimeElement.ValueKind == JsonValueKind.Number &&
+                         createTimeElement.TryGetInt64(out var createTimeInt))
                 {
                     eventData.CreateTime = createTimeInt / 1000;
                 }
             }
 
+            // P2-4（R2）信任模型说明：WebSocket 长连接的身份认证由 AuthenticationManager 在
+            // 连接握手阶段完成，事件帧内 header.token 是连接级凭据的透传（与官方 SDK 行为一致），
+            // 本 SDK 不做逐帧重验。该字段仅透传至 EventData.Header 供业务处理器按需校验；
+            // 如需帧级来源校验，请在拦截器的 BeforeHandleAsync 中实现（见 IFeishuEventInterceptor）。
             if (headerElement.TryGetProperty("token", out var tokenElement))
                 header.Token = tokenElement.GetString();
 

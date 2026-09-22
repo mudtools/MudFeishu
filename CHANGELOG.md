@@ -36,6 +36,149 @@
   装配失败会抛异常（fail-fast）。需要自定义/替换 `IFeishuAuthentication` 的宿主，
   请在 `AddFeishuApp` **之前**注册自定义 `IFeishuAuthenticationFactory`。
 
+### ⚠️ 破坏性变更 / 行为改变（WebSocket 模块）
+
+- **WebSocket 连接生命周期不再跟随调用方 `CancellationToken`**：
+  `ConnectAsync(endpoint, [appAccessToken,] token)` 的令牌此前被链接为接收循环/心跳的生命周期令牌，
+  取消即导致连接静默停止收帧（socket 仍为 `Open`、无任何断线通知）。现令牌**只约束"建连 + 认证"阶段**；
+  终止连接请调用 `DisconnectAsync()` / `DisposeAsync()`，恢复接收请调用
+  `IFeishuWebSocketManager.ReconnectAsync()`。
+- **接收循环的每一条退出路径都会产生 `Disconnected`**：包括"接收循环因取消退出"。
+  此前该路径完全静默（无事件、只能等 `HealthCheckIntervalMs` 轮询兜底）。
+- **分片消息超限改为"排空至消息边界后丢弃"**：此前直接返回会把被丢弃消息的剩余分片当作**新消息**
+  送入解析链路，污染 WS 消息边界与序号游标。排空有上界（1024 帧 / 64MB），超界即主动断连并重连。
+- **`IFeishuWebSocketClient.StartReceivingAsync` 弃用**：接收循环由 `ConnectAsync` 统一管理；
+  已有循环时为幂等 no-op（记告警），未连接时抛 `InvalidOperationException`。
+- **`MessageReceived` 线程契约变更**：由"接收循环线程同步串行派发、与帧序一致"改为
+  "在并发租约内派发，**可能并发、可能乱序**"。慢订阅者不再阻塞接收管道（只占用一个并发槽位）。
+  需要顺序/超时保护请改用 `IMessageHandler`。
+- **配置上界收紧（启动期 fail-fast）**：`Reconnect.TotalBudget ≤ 7 天`、
+  `Reconnect.BaseDelayMs/MaxDelayMs ≤ 1 小时`、`MessageSizeLimits.MaxTextMessageSize ≤ 10MB`、
+  `ConnectionTimeoutMs/AuthTimeoutMs/AuthGateTimeoutMs ≤ 5 分钟`。
+- **入站报文不再全文入日志**：`MessageReceived`/认证响应的日志改为"长度 + 200 字符脱敏预览"；
+  连接 URL 日志**整体剥离 query**。
+- **`PingPongMessageHandler` / `HeartbeatMessageHandler` 构造函数移除了 `FeishuWebSocketOptions` 参数**
+  （该参数只被赋值给一个从不读取的私有字段）。
+
+### ✨ 新增
+
+- 连接存活探针 `ConnectionLiveness`（`ReceiveLoopAlive` / `LastReceiveUtc` / `IdleMs` / `IsZombie`）。
+- **存活与丢弃指标（F1/F2/F5）**：
+  `feishu.websocket.receive.idle_ms`、`feishu.websocket.receive.loop_alive`、`feishu.websocket.zombie`
+  三个 ObservableGauge，以及 `feishu.websocket.frames.discarded` 计数器（`reason` 维度）。
+  `RegisterWebSocketMetricsSource` 新增三个**可选**存活维度提供器（不传则不上报该维度，
+  不会把"未提供"伪造成 0）；丢弃原因常量见 `FeishuMetrics.DiscardReasons`，
+  记录入口 `FeishuMetricsHelper.RecordWebSocketFramesDiscarded`。
+  四个受控丢弃点（首帧超限 / 累积超限 / 排空上界 / 认证闸门 / 背压拒绝）已全部接入计数，
+  不再只写日志（丢弃是事件丢失的前兆，必须可告警）。
+- 健康检查 `data` 新增 `receive_loop_alive` / `last_receive_utc` / `idle_ms` / `is_zombie`；
+  `State == Open` 且接收循环已结束时判 `Unhealthy`，并由后台服务周期性检查触发重连。
+- 架构不变量 **I13–I16**（连接终止路径穷尽占位 / 接收循环原子占位 / 调用方令牌不构成生命周期 /
+  配置双向约束与 `TimeSpan` 钳制）与源码级契约守卫
+  `Tests/Mud.Feishu.WebSocket.Tests/ContractGuards/WebSocketContractGuards.cs`（7 条）。
+- 内部工具 `Core/TimeSpanGuards.cs`（`ClampToCancellationTokenRange` / `ClampToTaskDelayRange`）。
+- `FeishuWebSocketServiceBuilder`：**不再过滤**直接注册到 DI 的 `IFeishuEventInterceptor`
+  （此前会被静默丢弃），仅按建造者登记顺序排序。
+
+### 🐛 修复
+
+- 接收循环因取消退出时无断线信号，形成"连接看似正常但收不到事件"的僵尸连接（P0-1）。
+- `StartReceivingAsync` 幂等守卫"只读不写"（守卫读取的字段由 `ConnectAsync` 赋值），
+  在两类窄窗口下可创建第二条接收循环（P1-1，违反 I14）。
+- 分片超限丢弃不排空导致 WS 消息边界失步（P1-2）。
+- 重连窗口 `CancellationTokenSource(TimeSpan)` 未钳制 → 超长 `TotalBudget` 使自动重连仅记一条
+  Error 后完全不执行（P1-3）；`FeishuWebSocketManager` 的启动超时（配置派生值）同样补齐钳制。
+- 入站完整报文（未脱敏、未截断）写入日志（P1-4）。
+- `FeishuWebSocketManager` 释放 `_startStopLock`（违反 I9）；并发服务旧信号量固定 60s 释放改为
+  `max(60s, 2 × MessageHandlerTimeoutMs)`，消除慢处理器归还租约时的 `ObjectDisposedException`（P1-5）。
+- **客户端 `Connected`/`Disconnected` 事件此前在 `_connectLock` 持有期内派发**
+  ⇒ 回调中同步调用 `DisconnectAsync()`/`ConnectAsync()`（二者都要抢同一把不可重入信号量）会**自锁死锁**
+  （连接管理器层的同问题早前已由 P0-5 修复，客户端层未覆盖）。
+  现改为与 CM 的 `pendingClose` 同构的"**持锁期内入队、出锁后按原顺序冲刷**"，
+  因此：① 回调内可安全发起连接/断开；② 事件顺序（先"旧连接断开"后"新连接建立"）保持不变；
+  ③ 出锁冲刷自带异常隔离（用户回调异常不再从 `ConnectAsync`/`DisconnectAsync` 的 `finally` 逃逸）。
+- **`WebSocketConnectionManager` 的 socket 类型由 `ClientWebSocket` 收敛到抽象 `WebSocket`**，
+  并新增内部可注入的传输工厂（R1 TD-1 的最小落地）。副作用：`Options.KeepAliveInterval`
+  与证书回调现在显式收敛到 `ClientWebSocket` 分支（抽象基类没有 `Options`，也没有 `ConnectAsync`）。
+- `ResolveMaxTextMessageBytes()` 整型溢出（P2-1）；`IsConnected` 状态双真源（P2-2，I12）；
+- 卫生项：编译警告净零（CS1591/CS0419/CS1574）、`netstandard2.0` 证书配置静默忽略补全 5 项告警、
+  `EventSubscriptionManager.HasSubscribed` 改 volatile、
+  `FeishuWebSocketHostedService._disposed` 与 `ReconnectionOrchestrator` 状态字段改原子访问。
+
+### 🧪 测试与门禁
+
+- 新增契约守卫（7 条）并按"故意违规金丝雀"验证可拦截回归。
+- 新增用例：连接存活/令牌契约（`FeishuWebSocketClientLivenessTests`）、分片排空（`WebSocketFragmentedMessageDrainTests`）、
+  装配与重连重置（`FeishuWebSocketClientWiringTests`）、`TimeSpanGuards`/配置上界/派生上限溢出
+  （`TimeSpanGuardsTests`、`MessageSizeLimitsOverflowTests`、`FeishuWebSocketOptionsTests` 扩充）、
+  压力与静默（`FeishuWebSocketStressTests`，`Category=Stress`）。
+- 回环服务端扩展：超限分片（首帧/累积）、永不结束分片、按需投递文本/二进制帧。
+- `scripts/verify-build.ps1` 步骤 4 追加 `--filter "Category!=Stress"`
+  （xUnit 的 `Trait` 不会自动排除用例，否则全量门禁会执行压力用例）。
+
+## [3.0.0-rc3] - 2026-09-21
+
+### 🔐 令牌与多应用管理第四轮加固（TMF2 系列）
+
+#### 热更新竞态修复
+
+- **TMF2-01（方案 A+B）**：热更新 Phase-B 替换 `Lazy<>` 与并发首访交错时，自建旧配置上下文
+  既不登记也不入退休队列，导致永久泄漏（Scope + 令牌管理器 Timer）且返回旧凭据。
+  修复：方案 B（M2）——`GetOrCreateContext` / `TryGetApp` 在 `lazy.Value` 构造后做身份校验，
+  若 `_lazyContexts` 中已非原 `Lazy`（Phase-B 已提交），回收旧上下文并重新获取当前 `Lazy`。
+  方案 A（M5）——`AdoptContext` 助手将 Phase-B 与懒加载路径的「注册表写入」收敛为
+  `_lazyRebuildLock` 内原子操作，消除"注册覆盖窗口"。
+
+- **TMF2-02**：D10 凭据变更清库依赖"活动旧上下文"，未实例化应用的凭据变更检测被跳过
+  （`ResolveExistingContext` 返回 null → `continue`）。修复：`PurgeCredentialChangedTokens`
+  比对源从活动上下文改为配置快照（`_configs`），未实例化应用的凭据变更也能被检出。
+
+- **TMF2-03**：提交后二次清库范围过宽（可能删除新凭据刚写入的令牌）。修复：引入
+  `CredentialPurgePlan` 区分 `ToPurge`（全部变更键）与 `WriteBackRiskKeys`（有活动旧上下文的
+  子集）；正常路径只对 `WriteBackRiskKeys` 做二次清库，超时路径覆盖全部 `ToPurge`。
+
+#### 键布局与转义
+
+- **TMF2-05**：Memory（`FeishuTokenStore.KeyPrefix`）裸拼接 `$"feishu:{appKey}:token"`
+  与 Redis（`PerAppRedisTokenStoreFactory.BuildKeyPrefix`）经 `RedisKeyBuilder.Combine` 转义
+  不一致。修复：两端均委派 `TokenKeyBuilder.BuildKeyPrefix`，前缀逐字节一致。
+
+- **TMF2-08**：`TokenKeyBuilder.NormalizeSegment` 仅转义 `\` 和 `:`，未转义 glob 元字符
+  `* ? [ ]`。appKey 含 `*` 时 `TenantScanPattern` 注入通配符。修复：单遍扫描转义全部
+  6 个特殊字符，`UnescapeSegment` 对称反转义。
+
+#### 收口与可观测
+
+- **TMF2-04**：Phase-A 注释"锁外预构造"与实际在 `lock(_configApplyLock)` 内执行矛盾，已修正。
+- **TMF2-06**：`FeishuAppContextRetirement.Enqueue` 不检查 `_disposed`，容器关闭后的入队
+  条目静默泄漏。修复：`Enqueue` 检查 `_disposed`，已释放时直接 Dispose 上下文。清理调用侧
+  `catch (ObjectDisposedException)` 死代码。
+- **TMU-02**：清库链路可观测性增强——`PurgeTokenStoreFailureEvent`（EventId 5601）
+  结构化事件，宿主可据此建 metric/告警。
+
+#### 结构收敛
+
+- **TMU-01**：未实例化的应用在热更新中保持懒加载——Phase-A 不预构造未实例化应用的上下文，
+  Phase-B 仅替换 `Lazy` 闭包。对齐 TMA-08/D12 资源画像。
+
+#### 测试基建
+
+- **TMF2-07 / TMU-03**：新增 `HotReloadRaceHarness` 门闸基建（`ManualResetEventSlim`，
+  不依赖 `Thread.Sleep`）+ 14 条竞态矩阵用例（TMF2-01×3 + TMF2-02×3 + TMF2-04×1 +
+  TMF2-05×2 + TMF2-06×2 + TMF2-08×3）。
+
+#### 文档同步
+
+- **TMU-05**：`AGENTS.md` D8/D10/D13 表述已同步，README AppKey 命名约束已补充，
+  方案文档执行记录已回填。
+
+### ⚠️ 升级须知
+
+- 含特殊字符（`* ? [ ] : \`）的 appKey 键布局变化：`TokenKeyBuilder` 现转义 glob 元字符，
+  旧键（未经 glob 转义）在热更新后不再匹配。升级前请确认 appKey 不含这些字符。
+- 自定义 `UserTokenStoreBase` 子类若覆写了 `KeyPrefix`，需改为委派
+  `TokenKeyBuilder.BuildKeyPrefix(appKey)` 以保持与 Memory/Redis 端一致。
+
 ## [3.0.0-rc2] - 2026-09-18
 
 ### 🌟 亮点

@@ -402,9 +402,9 @@ public class MultiAppService
 
 #### 2. 应用上下文切换
 
-> **推荐**：使用 `BeginScope(string)` 进行作用域切换（`IFeishuAppContextSwitcher` 接口成员），
-> 作用域结束自动恢复上下文；生成的 API 客户端还提供 `UseDefaultAppScope()` / `UseAppScope(appKey)`
-> 便捷方法（同为 `using` 语义）。`UseApp()` / `UseDefaultApp()` 为无作用域切换，不会自动归还上下文。
+> **推荐**：使用 `BeginScope(string)` 进行作用域切换（生成客户端实现的 `IFeishuAppContextSwitcher` 接口成员），
+> 返回 `IDisposable`，配合 `using` 在作用域结束自动恢复上下文。
+> `UseApp(appKey)` / `UseDefaultApp()` 为无作用域切换，不会自动归还上下文。
 
 ```csharp
 using Mud.Feishu.Abstractions;

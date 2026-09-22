@@ -7,6 +7,7 @@
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Mud.Feishu.Abstractions.EventHandlers;
 using Mud.Feishu.Abstractions.Services;
 
@@ -48,6 +49,10 @@ public class ScopedFeishuEventHandlerFactory : IFeishuEventHandlerFactory, IDisp
     // 这些实例不经过 DI 作用域解析，由工厂直接复用，避免被 IServiceScope.Dispose 回收。
     private readonly IReadOnlyList<IFeishuEventHandler> _handlerInstances;
     private readonly bool _ignoreUnknownEventTypes;
+    // P1-3（R2）：门控实时读取的 Monitor（可选）。注入时 IgnoreUnknownEventTypes 每次分发
+    // 都读取 CurrentValue，配置热更即时生效——与 Webhook 通道（每请求 CurrentValue）语义对齐；
+    // 未注入（直接构造/测试场景）时回退构造期快照 _ignoreUnknownEventTypes。
+    private readonly IOptionsMonitor<FeishuWebSocketOptions>? _optionsMonitor;
     private readonly object _inspectionLock = new();
 
     private IServiceScope? _inspectionScope;
@@ -62,6 +67,7 @@ public class ScopedFeishuEventHandlerFactory : IFeishuEventHandlerFactory, IDisp
     /// <param name="defaultHandlerType">默认事件处理器类型（可选）</param>
     /// <param name="handlerInstances">用户通过 AddHandler(instance) 注册的处理器实例集合（可选）</param>
     /// <param name="ignoreUnknownEventTypes">未注册事件类型是否静默忽略（WHF-09 对齐，默认 false 保现状）</param>
+    /// <param name="optionsMonitor">WebSocket 配置 Monitor（可选；P1-3：注入时门控实时读取以支持热更）</param>
     /// <exception cref="ArgumentNullException">当 logger 或 scopeFactory 为 null 时抛出</exception>
     public ScopedFeishuEventHandlerFactory(
         ILogger<ScopedFeishuEventHandlerFactory> logger,
@@ -69,7 +75,8 @@ public class ScopedFeishuEventHandlerFactory : IFeishuEventHandlerFactory, IDisp
         IReadOnlyList<Type> handlerTypes,
         Type? defaultHandlerType = null,
         IReadOnlyList<IFeishuEventHandler>? handlerInstances = null,
-        bool ignoreUnknownEventTypes = false)
+        bool ignoreUnknownEventTypes = false,
+        IOptionsMonitor<FeishuWebSocketOptions>? optionsMonitor = null)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _scopeFactory = scopeFactory ?? throw new ArgumentNullException(nameof(scopeFactory));
@@ -77,6 +84,7 @@ public class ScopedFeishuEventHandlerFactory : IFeishuEventHandlerFactory, IDisp
         _defaultHandlerType = defaultHandlerType;
         _handlerInstances = handlerInstances ?? Array.Empty<IFeishuEventHandler>();
         _ignoreUnknownEventTypes = ignoreUnknownEventTypes;
+        _optionsMonitor = optionsMonitor;
 
         _logger.LogDebug("作用域感知事件处理器工厂已初始化，注册处理器类型 {Count} 个，实例 {InstanceCount} 个，IgnoreUnknownEventTypes={IgnoreUnknown}",
             _handlerTypes.Count, _handlerInstances.Count, _ignoreUnknownEventTypes);
@@ -131,12 +139,19 @@ public class ScopedFeishuEventHandlerFactory : IFeishuEventHandlerFactory, IDisp
         {
             var factory = CreateFactory(scope.ServiceProvider);
 
-            // M3-2/P2-3：WHF-09 对齐——在工厂分发前按"本作用域实际解析到的注册"门控
-            if (_ignoreUnknownEventTypes && !string.IsNullOrEmpty(eventType) && !factory.IsHandlerRegistered(eventType))
+            // M3-2/P2-3：WHF-09 对齐——在工厂分发前按"本作用域实际解析到的注册"门控。
+            // P1-3（R2）：门控实时读取，与 Webhook 通道（每请求 CurrentValue）热更语义对齐；
+            // Monitor 不可用时回退构造期快照（直接构造/测试场景）。
+            var currentOptions = _optionsMonitor?.CurrentValue;
+            var ignoreUnknown = currentOptions?.IgnoreUnknownEventTypes ?? _ignoreUnknownEventTypes;
+            if (ignoreUnknown && !string.IsNullOrEmpty(eventType) && !factory.IsHandlerRegistered(eventType))
             {
                 _logger.LogDebug("事件类型 {EventType} 未注册处理器，已忽略（IgnoreUnknownEventTypes=true）", eventType);
+                // P2-3（R2）：指标维度统一为通道 AppKey（与 FeishuEventMessageHandler 各
+                // RecordEventOutcome 口径一致），不再使用 eventData.AppId——事件的 app_id ≠
+                // 路由 AppKey，且原 `?? "default"` 在 AppId 非空约定下是死代码。
                 Mud.Feishu.Abstractions.Metrics.FeishuMetricsHelper.RecordEventOutcome(
-                    eventData.AppId ?? "default", eventType, success: true, "unhandled");
+                    currentOptions?.AppKey ?? "unknown", eventType, success: true, "unhandled");
                 return;
             }
 

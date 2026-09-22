@@ -168,18 +168,22 @@ Pending → Processing → Completed
 - **Fields**: `status` (processing/completed), `timestamp` (UTC 时间)
 - **TTL**: 由 `EventCacheExpiration` 指定
 
+> 💡 键由 `RedisKeyBuilder` 分段构造，段间以 `:` 分隔，段内的 `:` 会被转义为 `\:`，因此 `{appKey}`/`{eventId}` 本身含 `:` 也不会产生键碰撞。
+
 **核心 API**：
 
-| 方法                       | 说明                               |
-| -------------------------- | ---------------------------------- |
-| `TryMarkAsProcessingAsync` | 尝试标记事件为处理中，返回去重结果 |
-| `MarkAsCompletedAsync`     | 标记事件为已完成                   |
-| `RollbackProcessingAsync`  | 回滚处理中状态，允许重新处理       |
-| `IsProcessedAsync`         | 检查事件是否已处理                 |
-| `GetStatusAsync`           | 获取事件当前状态                   |
-| `RemoveAsync`              | 手动移除去重标记                   |
-| `RemoveRangeAsync`         | 批量移除去重标记                   |
-| `GetCachedCountAsync`      | 获取缓存中的事件数量               |
+| 方法                       | 所属                               | 说明                               |
+| -------------------------- | ---------------------------------- | ---------------------------------- |
+| `TryMarkAsProcessingAsync` | `IFeishuEventDeduplicator`（接口） | 尝试标记事件为处理中，返回去重结果 |
+| `MarkAsCompletedAsync`     | `IFeishuEventDeduplicator`（接口） | 标记事件为已完成                   |
+| `RollbackProcessingAsync`  | `IFeishuEventDeduplicator`（接口） | 回滚处理中状态，允许重新处理       |
+| `IsProcessedAsync`         | `IFeishuEventDeduplicator`（接口） | 检查事件是否已处理                 |
+| `GetStatusAsync`           | `IFeishuEventDeduplicator`（接口） | 获取事件当前状态                   |
+| `RemoveAsync`              | 仅 Redis 实现类                    | 手动移除去重标记                   |
+| `RemoveRangeAsync`         | 仅 Redis 实现类                    | 批量移除去重标记                   |
+| `GetCachedCountAsync`      | 仅 Redis 实现类                    | 获取缓存中的事件数量               |
+
+> 💡 DI 注册绑定的是 `IFeishuEventDeduplicator` **接口**；`RemoveAsync` / `RemoveRangeAsync` / `GetCachedCountAsync` 仅在实现类 `RedisFeishuEventDistributedDeduplicator` 上提供，通过接口引用注入时不可调用，如需使用请解析具体实现类型。
 
 ### Nonce 去重（Nonce Deduplication）
 
@@ -192,15 +196,19 @@ Pending → Processing → Completed
 - **Value**: "1"
 - **TTL**: 由 `NonceTtl` 指定
 
+> 💡 键由 `RedisKeyBuilder` 分段构造，段间以 `:` 分隔，段内的 `:` 会被转义为 `\:`。
+
 **核心 API**：
 
-| 方法                  | 说明                    |
-| --------------------- | ----------------------- |
-| `TryMarkAsUsedAsync`  | 尝试标记 Nonce 为已使用 |
-| `IsUsedAsync`         | 检查 Nonce 是否已使用   |
-| `RemoveAsync`         | 手动移除 Nonce 标记     |
-| `RemoveRangeAsync`    | 批量移除 Nonce 标记     |
-| `GetCachedCountAsync` | 获取缓存中的 Nonce 数量 |
+| 方法                  | 所属                                     | 说明                    |
+| --------------------- | ---------------------------------------- | ----------------------- |
+| `TryMarkAsUsedAsync`  | `IFeishuNonceDistributedDeduplicator`（接口） | 尝试标记 Nonce 为已使用 |
+| `IsUsedAsync`         | `IFeishuNonceDistributedDeduplicator`（接口） | 检查 Nonce 是否已使用   |
+| `RemoveAsync`         | 仅 Redis 实现类                          | 手动移除 Nonce 标记     |
+| `RemoveRangeAsync`    | 仅 Redis 实现类                          | 批量移除 Nonce 标记     |
+| `GetCachedCountAsync` | 仅 Redis 实现类                          | 获取缓存中的 Nonce 数量 |
+
+> 💡 DI 注册绑定的是 `IFeishuNonceDistributedDeduplicator` **接口**；`RemoveAsync` / `RemoveRangeAsync` / `GetCachedCountAsync` 仅在实现类 `RedisFeishuNonceDistributedDeduplicator` 上提供，通过接口引用注入时不可调用，如需使用请解析具体实现类型。
 
 ### SeqID 去重（SeqID Deduplication）
 
@@ -211,6 +219,8 @@ Pending → Processing → Completed
 - **Key**: `{keyPrefix}{scopeKey}{seqId}` (String 类型，记录已处理状态)
 - **Sorted Set**: `{keyPrefix}{scopeKey}set` (记录所有已处理的 SeqID，支持范围查询)
 - **TTL**: 由 `SeqIdCacheExpiration` 指定（写入时刷新，Sorted Set 同生命周期）
+
+> 💡 键由 `RedisKeyBuilder` 分段构造，段间以 `:` 分隔，段内的 `:` 会被转义为 `\:`。
 
 > 💡 `scopeKey` 默认为 `{AppKey}|{MachineName}`，多实例共享 Redis 时不互相判重。可通过 `RedisOptions.SeqIdScopeKey` 自定义。
 > Sorted Set 在写入时执行 `ZREMRANGEBYSCORE` 裁剪过期成员，确保集合有界增长。
@@ -225,6 +235,8 @@ Pending → Processing → Completed
 | `GetCacheCount`           | 获取缓存数量            |
 | `ClearCacheAsync`         | 清空缓存                |
 
+> 💡 上表方法均为 `IFeishuSeqIDDeduplicator` **接口**成员，DI 注入的接口引用即可调用。
+
 ## 异常处理
 
 所有 Redis 去重器在 Redis 异常时抛出 `FeishuRedisException`，消费侧可按 `FailureKind` 分类处理：
@@ -234,6 +246,7 @@ Pending → Processing → Completed
 | `Connection` | 连接故障 | 网络中断、Redis 宕机 | 可降级到内存去重或拒绝请求 |
 | `Timeout` | 操作超时 | 大 Value、网络延迟 | 重试或降级 |
 | `Server` | 服务端/配置错误 | Cluster MOVED、权限拒绝 | 不重试，告警运维 |
+| `InvalidArgument` | 无效参数 | 调用方传入非法值（如空键段、超长键段） | 修正调用参数，不重试 |
 
 ```csharp
 try
@@ -261,10 +274,10 @@ catch (FeishuRedisException ex)
 
 以下 API 设计为 best-effort（失败记日志、不抛出）：
 
-- `RollbackProcessingAsync`（事件回滚）
-- `RemoveAsync` / `RemoveRangeAsync`（手动移除去重标记）
-- `GetCachedCountAsync`（获取缓存数量）
-- `ClearCacheAsync`（清空 SeqID 缓存）
+- `RollbackProcessingAsync`（事件回滚，接口成员）
+- `RemoveAsync` / `RemoveRangeAsync`（手动移除去重标记，仅 Redis 实现类提供）
+- `GetCachedCountAsync`（获取缓存数量，仅 Redis 实现类提供）
+- `ClearCacheAsync`（清空 SeqID 缓存，接口成员）
 
 ## 健康检查
 
@@ -434,15 +447,22 @@ token 持久化到 Redis。这意味着：
 **如需加密存储**，请启用 `FeishuAppOptions.EnableTokenEncryption = true` 并注册 `IEncryptionProvider`：
 
 ```csharp
-builder.Services.AddFeishuApp(options =>
+// 1. 开启令牌加密（FeishuAppOptions 经 IOptions 解析，通过 Configure 设置）
+builder.Services.Configure<FeishuAppOptions>(options =>
 {
     options.EnableTokenEncryption = true;
 });
-// 注册 IEncryptionProvider 实现（如 AES-GCM）
-builder.Services.AddSingleton<IEncryptionProvider, AesEncryptionProvider>();
+
+// 2. 注册 IEncryptionProvider（接口由 Mud.HttpUtils 提供，Mud.Feishu 不内置实现）
+//    方式一：使用 Mud.HttpUtils 内置的 AES 加密提供程序（推荐）
+builder.Services.AddMudHttpAesEncryption();
+
+//    方式二：注册自定义实现（由消费方提供，需实现
+//    Encrypt(string) / Decrypt(string) / EncryptBytes(byte[]) / DecryptBytes(byte[]) 四个成员）
+builder.Services.AddSingleton<IEncryptionProvider, MyAesGcmEncryptionProvider>();
 ```
 
-未启用加密时，启动期会产生 TMA-21 告警日志（Warning 级别），提示令牌以明文存储。
+未启用加密时，启动期会产生 TMA-21 告警日志（Warning 级别），提示令牌以明文存储。若已启用加密但未注册 `IEncryptionProvider`，同样会告警并降级为明文存储。
 
 ### 键前缀护栏
 

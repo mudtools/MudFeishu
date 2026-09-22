@@ -33,4 +33,16 @@ public interface ISignatureValidator
     /// 如果 headerSignature 为空且配置允许，可能跳过验证
     /// </remarks>
     Task<bool> ValidateHeaderSignatureAsync(long timestamp, string nonce, string body, string? headerSignature, string encryptKey);
+
+    /// <summary>
+    /// 验证请求头中的签名（使用 SHA-256 算法）——带 CancellationToken 的重载（WHF-R2/B3）。
+    /// </summary>
+    /// <param name="timestamp">请求时间戳</param>
+    /// <param name="nonce">随机数</param>
+    /// <param name="body">请求体内容</param>
+    /// <param name="headerSignature">请求头 X-Lark-Signature 中的签名</param>
+    /// <param name="encryptKey">加密密钥</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>如果签名验证通过返回 true，否则返回 false</returns>
+    Task<bool> ValidateHeaderSignatureAsync(long timestamp, string nonce, string body, string? headerSignature, string encryptKey, CancellationToken cancellationToken);
 }

@@ -57,6 +57,17 @@ public class FeishuWebhookServiceBuilder
     private static int _removedAutoEndpointSwitchWarned;
 
     /// <summary>
+    /// P1-1（R2）：应用处理器/拦截器注册与注册表冻结的一次性执行标记。
+    /// </summary>
+    /// <remarks>
+    /// PostConfigure 随 <c>IOptionsMonitor</c> 的<b>每次</b> Options 缓存重建重放（任何配置热更都会触发）；
+    /// 若不加以守卫，热更时 <see cref="FeishuWebhookTypeRegistry{T}.Register"/> 会对已冻结注册表抛
+    /// <see cref="InvalidOperationException"/>，导致该次 Options 创建失败——此后中间件与服务读取
+    /// <c>CurrentValue</c> 的每个 Webhook 请求都会 500，直至进程重启。
+    /// </remarks>
+    private int _registryInitialized;
+
+    /// <summary>
     /// 构造函数
     /// </summary>
     /// <param name="services">服务集合</param>
@@ -566,22 +577,29 @@ public class FeishuWebhookServiceBuilder
                 }
 #pragma warning restore CS0618
 
-                // 注册多应用的处理器和拦截器到共享注册表
-                var handlerRegistry = serviceProvider.GetRequiredService<FeishuWebhookHandlerRegistry>();
-                foreach (var (appKey, handlerType) in _pendingHandlerRegistrations)
+                // P1-1（R2）：注册+冻结只在首次 Options 构建时执行（Interlocked 一次性守卫）。
+                // PostConfigure 随 IOptionsMonitor 每次缓存重建重放，若不守卫，配置热更时
+                // Register 会对已冻结注册表抛 InvalidOperationException → 所有后续请求 500。
+                // options.Validate() 与上方告警逻辑留在守卫之外：验证与告警语义应随每次重建生效。
+                if (System.Threading.Interlocked.Exchange(ref _registryInitialized, 1) == 0)
                 {
-                    handlerRegistry.Register(appKey, handlerType);
-                }
+                    // 注册多应用的处理器和拦截器到共享注册表
+                    var handlerRegistry = serviceProvider.GetRequiredService<FeishuWebhookHandlerRegistry>();
+                    foreach (var (appKey, handlerType) in _pendingHandlerRegistrations)
+                    {
+                        handlerRegistry.Register(appKey, handlerType);
+                    }
 
-                var interceptorRegistry = serviceProvider.GetRequiredService<FeishuWebhookInterceptorRegistry>();
-                foreach (var (appKey, interceptorType) in _pendingInterceptorRegistrations)
-                {
-                    interceptorRegistry.Register(appKey, interceptorType);
-                }
+                    var interceptorRegistry = serviceProvider.GetRequiredService<FeishuWebhookInterceptorRegistry>();
+                    foreach (var (appKey, interceptorType) in _pendingInterceptorRegistrations)
+                    {
+                        interceptorRegistry.Register(appKey, interceptorType);
+                    }
 
-                // 冻结注册表，杜绝运行时热注册竞态
-                handlerRegistry.Freeze();
-                interceptorRegistry.Freeze();
+                    // 冻结注册表，杜绝运行时热注册竞态
+                    handlerRegistry.Freeze();
+                    interceptorRegistry.Freeze();
+                }
             });
     }
 
@@ -686,6 +704,42 @@ public class FeishuWebhookServiceBuilder
         _services.TryAddScoped<IFeishuEventDecryptor, FeishuEventDecryptor>();
         _services.TryAddScoped<IFeishuWebhookService, FeishuWebhookService>();
         _services.TryAddScoped<ISecurityAuditService, SecurityAuditService>();
+
+        // WHF-R2/C3：中间件注册为 Singleton 使 IHost 关停时 Dispose 可达。
+        // UseMiddleware<T> 检测到 DI 注册后从容器解析实例，随容器 Dispose 释放
+        // _onChangeSubscription（MultiAppMiddleware）和 _cleanupTimer（RateLimitMiddleware）。
+        _services.TryAddSingleton<FeishuMultiAppMiddleware>();
+        _services.TryAddSingleton<FeishuRateLimitMiddleware>();
+
+        // A1/WHF-R2：Nonce 去重多实例静默降级 → 启动期告警/阻断。
+        // 与事件去重 :610-614 的 LogWarning 兜底口径对齐——Nonce 去重此前无等价告警。
+        // 生产环境 Mode=Distributed + 内存 Nonce 实现 = 已知不可接受风险，fail-fast。
+        _services.AddOptions<FeishuWebhookOptions>()
+            .PostConfigure<IServiceProvider>((options, sp) =>
+            {
+                var unified = sp.GetService<IOptions<FeishuDeduplicationOptions>>()?.Value;
+                var isDistributedIntent = unified is { IsConfiguredFromConfiguration: true }
+                    && string.Equals(unified.Mode, FeishuDeduplicationOptions.ModeDistributed, StringComparison.OrdinalIgnoreCase);
+                var nonceImpl = sp.GetService<IFeishuNonceDistributedDeduplicator>();
+                var isMemoryNonce = nonceImpl is null or FeishuNonceDistributedDeduplicator;
+
+                if (isDistributedIntent && isMemoryNonce)
+                {
+                    var logger = sp.GetService<ILogger<FeishuWebhookOptions>>();
+                    var isProduction = sp.GetService<IEnvironmentService>()?.IsProduction == true;
+
+                    if (isProduction)
+                    {
+                        throw new InvalidOperationException(
+                            "FeishuDeduplication:Mode=Distributed 但 Nonce 去重为进程内内存实现。" +
+                            "多实例部署下跨实例重放攻击不可检测。请调用 AddFeishuRedisDeduplicators() 注册 Redis 实现。");
+                    }
+
+                    logger?.LogWarning(
+                        "FeishuDeduplication:Mode=Distributed 但 Nonce 去重为进程内内存实现。" +
+                        "多实例部署下跨实例重放攻击不可检测。请调用 AddFeishuRedisDeduplicators() 注册 Redis 实现。");
+                }
+            });
     }
 
 

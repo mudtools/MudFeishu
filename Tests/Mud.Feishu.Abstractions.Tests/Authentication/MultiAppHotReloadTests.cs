@@ -373,9 +373,11 @@ public class MultiAppHotReloadTests
         using var provider = services.BuildServiceProvider();
         var manager = (FeishuAppManager)provider.GetRequiredService<IFeishuAppManager>();
 
-        // 初始实例化 app1（消耗工厂桩的前 2 次调用预算中 app1 的份额）
+        // 初始实例化 app1 和 app2（消耗工厂桩的前 2 次调用预算）
         var before = manager.GetApp("app1");
         before.Config.TimeoutSeconds.Should().Be(30);
+        // TMU-01：app2 也需实例化——否则 Phase-A 跳过未实例化应用，app2 的构造异常不会被触发。
+        _ = manager.GetApp("app2");
 
         // Act：同时更新两个应用（app1 → TimeoutSeconds=60；app2 配置合法但工厂桩抛异常）
         var act = () => manager.OnConfigurationChanged(new List<FeishuAppConfig>

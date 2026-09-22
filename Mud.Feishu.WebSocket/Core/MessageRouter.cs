@@ -77,8 +77,8 @@ public class MessageRouter
     {
         if (string.IsNullOrWhiteSpace(message))
         {
-                        _logger.LogWarning("收到空消息，跳过路由");
-        
+            _logger.LogWarning("收到空消息，跳过路由");
+
             return;
         }
 
@@ -98,8 +98,8 @@ public class MessageRouter
     {
         if (string.IsNullOrWhiteSpace(jsonContent))
         {
-                        _logger.LogWarning("收到空的二进制转换消息，跳过路由");
-        
+            _logger.LogWarning("收到空的二进制转换消息，跳过路由");
+
             return;
         }
 
@@ -133,8 +133,8 @@ public class MessageRouter
     {
         if (string.IsNullOrWhiteSpace(jsonContent))
         {
-                        _logger.LogWarning("收到空的二进制转换消息，跳过路由");
-        
+            _logger.LogWarning("收到空的二进制转换消息，跳过路由");
+
             return true;
         }
 

@@ -107,7 +107,7 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
     /// 以保持既有行为，但会记录一次 Warning。
     /// </para>
     /// <para>
-    /// 说明：C# 不允许把 <see cref="System.ObsoleteAttribute"/> 施加在<b>参数</b>上
+    /// 说明：C# 不允许把 <c>ObsoleteAttribute</c> 施加在<b>参数</b>上
     /// （其 <c>AttributeTargets</c> 不含 <c>Parameter</c>），因此弃用意图只能通过本 XML 注释
     /// 与构造期 Warning 表达；不另加重载以免扩大公共 API 面。
     /// </para>
@@ -250,8 +250,8 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
                     var receiveDuration = DateTime.UtcNow - _binaryDataReceiveStartTime;
 
                     // P2-7 修复：每条消息一条 Information 属高频日志，降级为 Debug
-_logger.LogDebug("二进制消息接收完成，大小: {Size} 字节，耗时: {Duration}ms",
-                            actualLength, receiveDuration.TotalMilliseconds);
+                    _logger.LogDebug("二进制消息接收完成，大小: {Size} 字节，耗时: {Duration}ms",
+                                                actualLength, receiveDuration.TotalMilliseconds);
 
                     byte[] completeData;
                     if (actualLength > LargeObjectThreshold)
@@ -573,6 +573,8 @@ _logger.LogDebug("二进制消息接收完成，大小: {Size} 字节，耗时: 
         string? extractedEventId,
         CancellationToken cancellationToken)
     {
+        _ = cancellationToken; // D15：本方法全部子操作均为补偿/终态，不消费调用方令牌
+
         // ① 序列验证器窗口记录（P0-1：业务失败原先完全不可达任何回滚）
         if (frame != null)
         {
@@ -605,10 +607,12 @@ _logger.LogDebug("二进制消息接收完成，大小: {Size} 字节，耗时: 
             try
             {
                 var seqIdForRollback = frame?.SeqID;
+                // D15/P0-1：补偿操作不消费调用方令牌——接收管道取消（连接断开）后令牌已取消，
+                // Redis 后端回滚入口会直接 OCE，使该帧占用的幂等状态停留至超时
                 await _unifiedDeduplicationMiddleware.RollbackAsync(
                     extractedEventId,
                     seqIdForRollback.HasValue && seqIdForRollback.Value > 0 ? seqIdForRollback : null,
-                    cancellationToken);
+                    CancellationToken.None);
             }
             catch (Exception ex)
             {

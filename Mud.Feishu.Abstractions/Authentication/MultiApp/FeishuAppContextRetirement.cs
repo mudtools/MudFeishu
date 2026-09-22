@@ -103,10 +103,26 @@ internal sealed class FeishuAppContextRetirement : IDisposable
     /// </summary>
     /// <param name="appKey">应用键（用于日志）。</param>
     /// <param name="context">待退休的应用上下文。</param>
+    /// <remarks>
+    /// TMF2-06：Dispose 后的 Enqueue 直接 Dispose 上下文而非入队——
+    /// 修复前 Enqueue 不检查 _disposed，导致容器关闭后的入队条目静默泄漏
+    /// （队列已释放、Timer 已停，条目永不被扫描）。
+    /// </remarks>
     public void Enqueue(string appKey, FeishuAppContext context)
     {
         if (context == null)
             return;
+
+        // TMF2-06：Dispose 后直接 Dispose 上下文，避免静默泄漏。
+        if (Interlocked.CompareExchange(ref _disposed, 0, 0) != 0)
+        {
+            try { context.Dispose(); }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _logger?.LogWarning(ex, "退休队列已释放，直接 Dispose 应用 {AppKey} 的旧上下文时发生异常。", appKey);
+            }
+            return;
+        }
 
         var retireAt = DateTimeOffset.UtcNow.Add(_retireDelay);
         _entries.Enqueue(new RetirementEntry(appKey, context, retireAt));

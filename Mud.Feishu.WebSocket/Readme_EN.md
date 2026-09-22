@@ -45,7 +45,7 @@ builder.Services.AddFeishuApp(builder.Configuration);
 
 // One line to register WebSocket service (requires at least one event handler)
 builder.Services.CreateFeishuWebSocketServiceBuilder(builder.Configuration, "default")
-    .AddHandler<ReceiveMessageEventHandler>()
+    .AddHandler<MessageReceiveEventHandler>()
     .Build();
 
 var app = builder.Build();
@@ -60,8 +60,8 @@ builder.Services.AddFeishuApp(builder.Configuration);
 
 // Register from configuration file and add event handlers
 builder.Services.CreateFeishuWebSocketServiceBuilder(builder.Configuration, "default")
-    .AddHandler<ReceiveMessageEventHandler>()
-    .AddHandler<UserCreatedEventHandler>()
+    .AddHandler<MessageReceiveEventHandler>()
+    .AddHandler<UserCreateEventHandler>()
     .Build();
 
 var app = builder.Build();
@@ -134,7 +134,6 @@ The Feishu WebSocket client adopts modular design, breaking down complex functio
 | **SessionManager**                      | Session Manager          | session_id management, session recovery, 24-hour validity                                 |
 | **MessageSequenceValidator**            | Sequence Validator       | Replay detection, message loss detection, sequence rollback detection                     |
 | **EventSubscriptionManager**            | Subscription Manager     | Event type subscription, subscription request sending                                     |
-| **ConnectionMetrics**                   | Metrics Manager          | Message statistics, performance metrics, FeishuMetrics integration                        |
 | **ReconnectionOrchestrator**            | Reconnection Coordinator | Unified reconnection management, debounce mechanism, cooldown time                        |
 | **ExponentialBackoffReconnectStrategy** | Backoff Strategy         | Exponential backoff delay, dual limits on attempts and time                               |
 
@@ -142,10 +141,12 @@ The Feishu WebSocket client adopts modular design, breaking down complex functio
 
 | Handler                   | Description                                                               |
 | ------------------------- | ------------------------------------------------------------------------- |
-| **IMessageHandler**       | Message handler interface, provides generic deserialization functionality |
-| **EventMessageHandler**   | Event message handler, supports v1.0 and v2.0 versions                    |
-| **BasicMessageHandler**   | Basic message handler (Ping/Pong, authentication, heartbeat)              |
-| **FeishuWebSocketClient** | Main client, composes all components                                      |
+| **IMessageHandler**           | Message handler interface (CanHandle/HandleAsync) |
+| **FeishuEventMessageHandler** | Event message handler, supports v1.0 and v2.0     |
+| **AuthMessageHandler**        | Auth message handler                              |
+| **HeartbeatMessageHandler**   | Heartbeat message handler                         |
+| **PingPongMessageHandler**    | Ping/Pong message handler                         |
+| **FeishuWebSocketClient**     | Main client, composes all components              |
 
 ### Architecture Advantages
 
@@ -160,6 +161,10 @@ The Feishu WebSocket client adopts modular design, breaking down complex functio
 // Create custom message handler
 public class CustomMessageHandler : JsonMessageHandler
 {
+    public CustomMessageHandler(ILogger<CustomMessageHandler> logger) : base(logger)
+    {
+    }
+
     public override bool CanHandle(string messageType)
         => messageType == "custom_type";
 
@@ -169,10 +174,9 @@ public class CustomMessageHandler : JsonMessageHandler
         // Processing logic...
     }
 }
-
-// Register to message router
-client.RegisterMessageProcessor(customMessageHandler);
 ```
+
+> 💡 Built-in message handlers (Ping/Pong, auth, heartbeat, event) are automatically registered on the internal `MessageRouter` when `FeishuWebSocketClient` is constructed; `MessageRouter.RegisterHandler(IMessageHandler)` is a public method that can be used when building your own message router.
 
 ### File Structure
 
@@ -193,7 +197,6 @@ Mud.Feishu.WebSocket/
 │   ├── SessionManager.cs             # Session management
 │   ├── MessageSequenceValidator.cs   # Message sequence validation
 │   ├── EventSubscriptionManager.cs   # Event subscription management
-│   ├── ConnectionMetrics.cs          # Connection metrics
 │   ├── ReconnectionOrchestrator.cs   # Reconnection coordinator
 │   ├── ExponentialBackoffReconnectStrategy.cs # Exponential backoff strategy
 │   ├── IReconnectStrategy.cs         # Reconnect strategy interface
@@ -202,13 +205,12 @@ Mud.Feishu.WebSocket/
 │   ├── RetryHelper.cs                # Retry utility
 │   └── JsonOptions.cs                # JSON serialization options
 ├── Handlers/                      # Message handlers
-│   ├── IMessageHandler.cs          # Handler interface
 │   ├── FeishuEventMessageHandler.cs # Event message handling
 │   ├── AuthMessageHandler.cs       # Auth message handling
 │   ├── HeartbeatMessageHandler.cs  # Heartbeat message handling
 │   ├── PingPongMessageHandler.cs   # Ping/Pong handling
 │   ├── JsonMessageHandler.cs       # JSON message base class
-│   └── FeishuWebSocketEventHandlerFactory.cs # Event handler factory
+│   └── ScopedFeishuEventHandlerFactory.cs # Event handler factory
 ├── Interfaces/                    # Public interfaces
 │   ├── IFeishuWebSocketClient.cs   # Client interface
 │   ├── IFeishuWebSocketManager.cs  # Manager interface
@@ -232,7 +234,7 @@ Mud.Feishu.WebSocket/
 ```csharp
 // One line to complete basic configuration
 builder.Services.CreateFeishuWebSocketServiceBuilder(builder.Configuration)
-    .AddHandler<ReceiveMessageEventHandler>()
+    .AddHandler<MessageReceiveEventHandler>()
     .Build();
 ```
 
@@ -241,8 +243,8 @@ builder.Services.CreateFeishuWebSocketServiceBuilder(builder.Configuration)
 ```csharp
 // Support chaining, register multiple handlers
 builder.Services.CreateFeishuWebSocketServiceBuilder(builder.Configuration)
-    .AddHandler<ReceiveMessageEventHandler>()
-    .AddHandler<UserCreatedEventHandler>()
+    .AddHandler<MessageReceiveEventHandler>()
+    .AddHandler<UserCreateEventHandler>()
     .AddHandler<MessageReadEventHandler>()
     .Build();
 ```
@@ -259,7 +261,7 @@ builder.Services.CreateFeishuWebSocketServiceBuilder(options =>
     options.HeartbeatIntervalMs = 25000;
     options.EventDeduplication.Mode = EventDeduplicationMode.InMemory;
 })
-.AddHandler<ReceiveMessageEventHandler>()
+.AddHandler<MessageReceiveEventHandler>()
 .Build();
 ```
 
@@ -276,7 +278,7 @@ builder.Services.CreateFeishuWebSocketServiceBuilder(builder.Configuration)
         if (builder.Configuration.GetValue<bool>("Features:EnableAudit"))
             b.AddHandler<AuditEventHandler>();
     })
-    .AddHandler<ReceiveMessageEventHandler>()
+    .AddHandler<MessageReceiveEventHandler>()
     .Build();
 ```
 
@@ -287,7 +289,7 @@ builder.Services.CreateFeishuWebSocketServiceBuilder(builder.Configuration)
 builder.Services.CreateFeishuWebSocketServiceBuilder(builder.Configuration)
     .AddInterceptor<LoggingEventInterceptor>()  // Built-in logging interceptor
     .AddInterceptor<CustomTelemetryInterceptor>()  // Custom telemetry interceptor
-    .AddHandler<ReceiveMessageEventHandler>()
+    .AddHandler<MessageReceiveEventHandler>()
     .Build();
 ```
 
@@ -295,7 +297,7 @@ builder.Services.CreateFeishuWebSocketServiceBuilder(builder.Configuration)
 
 ```csharp
 // Method 1: Type registration (recommended)
-.AddHandler<ReceiveMessageEventHandler>()
+.AddHandler<MessageReceiveEventHandler>()
 
 // Method 2: Factory registration
 .AddHandler(sp => new FactoryEventHandler(
@@ -311,16 +313,16 @@ builder.Services.CreateFeishuWebSocketServiceBuilder(builder.Configuration)
 
 ### Built-in Event Handlers
 
-| Handler                            | Event Type                       | Description                 |
-| ---------------------------------- | -------------------------------- | --------------------------- |
-| `ReceiveMessageEventHandler`       | `im.message.receive_v1`          | Receive message event       |
-| `UserCreatedEventHandler`          | `contact.user.created_v3`        | User created event          |
-| `MessageReadEventHandler`          | `im.message.message_read_v1`     | Message read event          |
-| `UserAddedToGroupEventHandler`     | `im.chat.member.user_added_v1`   | User joins group chat       |
-| `UserRemovedFromGroupEventHandler` | `im.chat.member.user_deleted_v1` | User leaves group chat      |
-| `DefaultFeishuEventHandler`        | -                                | Unknown event type handling |
-| `DepartmentCreatedEventHandler`    | `contact.department.created_v3`  | Department created event    |
-| `DepartmentDeleteEventHandler`     | `contact.department.deleted_v3`  | Department deleted event    |
+| Handler                            | Event Type                       | Description                        |
+| ---------------------------------- | -------------------------------- | ---------------------------------- |
+| `MessageReceiveEventHandler`       | `im.message.receive_v1`          | Receive message event              |
+| `UserCreateEventHandler`           | `contact.user.created_v3`        | User created event                 |
+| `MessageReadEventHandler`          | `im.message.message_read_v1`     | Message read event                 |
+| `ChatMemberUserAddedEventHandler`  | `im.chat.member.user.added_v1`   | User joins group chat              |
+| `ChatMemberUserDeletedEventHandler`| `im.chat.member.user.deleted_v1` | User leaves group chat             |
+| `DefaultFeishuEventHandler<T>`     | -                                | Unknown event handling (abstract)  |
+| `DepartmentCreatedEventHandler`    | `contact.department.created_v3`  | Department created event           |
+| `DepartmentDeleteEventHandler`     | `contact.department.deleted_v3`  | Department deleted event           |
 
 ### Using Built-in Event Handler Base Classes
 
@@ -416,8 +418,9 @@ public class UserData
 
 ```csharp
 using Mud.Feishu.Abstractions;
-using Mud.Feishu.Abstractions.DataModels.Organization;
 using Mud.Feishu.Abstractions.EventHandlers;
+using Mud.Feishu.Abstractions.Services;
+using Mud.Feishu.EventCallback.Organization;
 using Mud.Feishu.WebSocket.Services;
 
 namespace YourProject.Handlers;
@@ -429,14 +432,15 @@ public class DemoDepartmentEventHandler : DepartmentCreatedEventHandler
 {
     private readonly DemoEventService _eventService;
 
-    public DemoDepartmentEventHandler(ILogger<DemoDepartmentEventHandler> logger, DemoEventService eventService) : base(logger)
+    public DemoDepartmentEventHandler(IFeishuEventDeduplicator businessDeduplicator, ILogger<DemoDepartmentEventHandler> logger, DemoEventService eventService) : base(businessDeduplicator, logger)
     {
         _eventService = eventService ?? throw new ArgumentNullException(nameof(eventService));
     }
 
     protected override async Task ProcessBusinessLogicAsync(
         EventData eventData,
-        ObjectEventResult<DepartmentCreatedResult>? departmentData,
+        DepartmentCreatedResult? departmentData,
+        FeishuEventHeader? header,
         CancellationToken cancellationToken = default)
     {
         if (eventData == null)
@@ -444,15 +448,24 @@ public class DemoDepartmentEventHandler : DepartmentCreatedEventHandler
 
         _logger.LogInformation("[Department Event] Starting to process department creation event: {EventId}", eventData.EventId);
 
+        if (departmentData == null)
+        {
+            _logger.LogWarning("[Department Event] Department creation event data is empty, skip processing: {EventId}", eventData.EventId);
+            return;
+        }
+
         try
         {
             // Record event to service
-            await _eventService.RecordDepartmentEventAsync(departmentData.Object, cancellationToken);
+            await _eventService.RecordDepartmentEventAsync(departmentData, cancellationToken);
 
             // Simulate business processing
-            await ProcessDepartmentEventAsync(departmentData.Object, cancellationToken);
+            if (departmentData?.Object != null)
+            {
+                await ProcessDepartmentEventAsync(departmentData.Object, cancellationToken);
+            }
 
-            _logger.LogInformation("[Department Event] Department creation event processing completed: {DepartmentId}", departmentData.Object.DepartmentId);
+            _logger.LogInformation("[Department Event] Department creation event processing completed: {DepartmentId}", departmentData?.Object?.DepartmentId);
         }
         catch (Exception ex)
         {
@@ -461,7 +474,7 @@ public class DemoDepartmentEventHandler : DepartmentCreatedEventHandler
         }
     }
 
-    private async Task ProcessDepartmentEventAsync(DepartmentCreatedResult departmentData, CancellationToken cancellationToken)
+    private async Task ProcessDepartmentEventAsync(DepartmentResultInfo departmentData, CancellationToken cancellationToken)
     {
         _logger.LogDebug("🔄 [Department Event] Starting to process department data: {DepartmentId}", departmentData.DepartmentId);
 
@@ -489,13 +502,14 @@ public class DemoDepartmentEventHandler : DepartmentCreatedEventHandler
 /// </summary>
 public class DemoDepartmentDeleteEventHandler : DepartmentDeleteEventHandler
 {
-    public DemoDepartmentDeleteEventHandler(ILogger<DepartmentDeleteEventHandler> logger) : base(logger)
+    public DemoDepartmentDeleteEventHandler(IFeishuEventDeduplicator businessDeduplicator, ILogger<DepartmentDeleteEventHandler> logger) : base(businessDeduplicator, logger)
     {
     }
 
     protected override async Task ProcessBusinessLogicAsync(
         EventData eventData,
         DepartmentDeleteResult? eventEntity,
+        FeishuEventHeader? header,
         CancellationToken cancellationToken = default)
     {
         if (eventData == null)
@@ -568,7 +582,7 @@ Event interceptors allow executing custom logic before and after event handling,
 ```csharp
 builder.Services.CreateFeishuWebSocketServiceBuilder(builder.Configuration)
     .AddInterceptor<LoggingEventInterceptor>()  // Record event handling start and end
-    .AddHandler<ReceiveMessageEventHandler>()
+    .AddHandler<MessageReceiveEventHandler>()
     .Build();
 ```
 
@@ -819,7 +833,7 @@ builder.Services.AddFeishuRedisDeduplicators(builder.Configuration);
 // Configure Feishu WebSocket service
 builder.Services.CreateFeishuWebSocketServiceBuilder(builder.Configuration)
     .AddInterceptor<LoggingEventInterceptor>()
-    .AddHandler<ReceiveMessageEventHandler>()
+    .AddHandler<MessageReceiveEventHandler>()
     .Build();
 ```
 
@@ -830,7 +844,7 @@ builder.Services.CreateFeishuWebSocketServiceBuilder(builder.Configuration)
 builder.Services.CreateFeishuWebSocketServiceBuilder(
         configuration,
         sectionName: "CustomFeishu")  // Configuration section name
-    .AddHandler<ReceiveMessageEventHandler>()
+    .AddHandler<MessageReceiveEventHandler>()
     .Build();
 ```
 
@@ -868,6 +882,100 @@ public class ConnectionService
 }
 ```
 
+### Connection Token Contract (Breaking behavior change)
+
+The `cancellationToken` passed to `ConnectAsync(endpoint, [appAccessToken,] cancellationToken)`
+**only governs the connection-establishment phase** (handshake + authentication).
+It does **not** represent the connection lifetime:
+
+- Cancelling it after a successful connect will **not** stop the receive loop or the heartbeat
+  (previously it was linked as the lifetime token, so cancelling it silently stopped frame reading);
+- To terminate a connection use `DisconnectAsync()` / `DisposeAsync()`; to recover use
+  `IFeishuWebSocketManager.ReconnectAsync()`.
+
+> Background: the old behavior could produce a **zombie connection** (`WebSocketState.Open` but no
+> frames are read: no events, no disconnect notification, recovery only via health-check polling).
+> Now every termination path raises a disconnect claim, and a liveness probe covers externally silent failures.
+
+**Callback threading contract (important)**: `Connected`/`Disconnected` are raised **outside the lock**,
+so you may safely call `ConnectAsync`/`DisconnectAsync`/`SendMessageAsync` from a handler (no self-deadlock).
+
+- Events raised while the lock is held are **buffered** and flushed **in their original order** after release
+  (when replacing a connection the order is always "`Disconnected` first, then `Connected`");
+- Exceptions thrown by handlers are logged and swallowed — they never change the
+  return/exception semantics of `ConnectAsync`/`DisconnectAsync`;
+- Still avoid **unconditional** reconnection inside a `Disconnected` handler: that causes a reconnect storm
+  (a usage-side discipline, not an SDK property).
+
+### `MessageReceived` Threading Contract (Breaking behavior change)
+
+`MessageReceived` is an **observation hook** (logging/metrics), not a business entry point:
+
+| Aspect | Current contract |
+| --- | --- |
+| Dispatch thread | **Not** the receive loop thread — it is dispatched inside the leased processing task |
+| Concurrency | **May run concurrently** (bounded by `MaxConcurrentHandlers`) |
+| Ordering | Order relative to frame arrival is **not guaranteed** |
+| Blocking | A blocking subscriber only occupies one concurrency slot (backpressure); it does **not** block the receive pipeline |
+
+> For ordered processing protected by `MessageHandlerTimeoutMs`, use `IMessageHandler`
+> (dispatched via `MessageRouter`) instead.
+
+### Liveness Probe & Health Check
+
+`FeishuWebSocketHealthCheck` now exposes liveness fields in its `data` payload:
+
+| Field | Meaning |
+| --- | --- |
+| `receive_loop_alive` | Whether the receive loop task is still running |
+| `last_receive_utc` | Timestamp of the last received frame (`never` if none) |
+| `idle_ms` | Milliseconds since the last received frame (`-1` = no sample yet) |
+| `is_zombie` | `true` = zombie state (`State == Open` while the receive loop has ended) ⇒ `Unhealthy` |
+
+> Only the deterministic contradiction "`State == Open` **and** receive loop ended" is treated as a zombie.
+> A merely idle connection is **not** reported unhealthy (an idle long connection legitimately receives no frames).
+> Zombie state also triggers an automatic reconnect from the hosted service's periodic check.
+
+Liveness is also exported as OTel metrics (dimension `feishu.app_key`), so it can be alerted on as a **trend**:
+
+| Metric | Meaning |
+| --- | --- |
+| `feishu.websocket.receive.idle_ms` | Milliseconds since the last received frame (`-1` = no sample yet) |
+| `feishu.websocket.receive.loop_alive` | `1` = receive loop running, `0` = ended |
+| `feishu.websocket.zombie` | `1` = zombie connection (`State == Open` while the receive loop ended) |
+| `feishu.websocket.frames.discarded` | Controlled frame/message discards, split by `reason` |
+
+> `frames.discarded` reasons: `fragment_size_exceeded`, `drain_bound_exceeded`, `auth_gate_timeout`,
+> `concurrency_rejected`. Discards are a **precursor to event loss** — alert on any sustained increase.
+> Note that `receive.idle_ms` growing on its own is normal for an idle long connection
+> (the heartbeat is client→server only); it is only actionable together with `zombie`/`loop_alive`.
+
+### Configuration Upper Bounds (fail-fast at startup)
+
+`FeishuWebSocketOptions.Validate()` now enforces **both** lower and upper bounds:
+
+| Option | Upper bound |
+| --- | --- |
+| `Reconnect.TotalBudget` | 7 days |
+| `Reconnect.BaseDelayMs` / `Reconnect.MaxDelayMs` | 1 hour |
+| `MessageSizeLimits.MaxTextMessageSize` | 10 MB |
+| `ConnectionTimeoutMs` / `AuthTimeoutMs` / `AuthGateTimeoutMs` | 5 minutes |
+
+> Migration: if an existing deployment uses larger values, reduce them to fit.
+> The bounds prevent configuration values from exceeding implementation-level representable ranges
+> (e.g. an over-long duration handed to `CancellationTokenSource` throws inside the asynchronous
+> reconnect path, which surfaces as a **silently disabled automatic reconnect**).
+
+### `StartReceivingAsync` Is Deprecated
+
+The receive loop is managed by `ConnectAsync` — do **not** call
+`IFeishuWebSocketClient.StartReceivingAsync` explicitly:
+
+- Throws `InvalidOperationException` when not connected;
+- Is an idempotent no-op (with a warning log) when a loop is already running.
+
+> Migration: simply remove the call; use `IFeishuWebSocketManager.ReconnectAsync()` to recover receiving.
+
 ### Message Sequence Validation
 
 Built-in `MessageSequenceValidator` detects message replay and loss:
@@ -896,27 +1004,6 @@ validator.ValidationFailed += (sender, args) =>
 - **Reconnection recovery**: Get valid session ID via `GetSessionIdForReconnect()`
 - **Session events**: `SessionUpdated` event for session changes
 
-### Connection Metrics
-
-`ConnectionMetrics` provides real-time connection statistics, integrated with `FeishuMetrics`:
-
-```csharp
-var metrics = serviceProvider.GetRequiredService<ConnectionMetrics>();
-var stats = metrics.GetCurrentStats();
-
-stats.MessagesSent;           // Sent message count
-stats.MessagesReceived;       // Received message count (valid)
-stats.MessagesReceivedTotal;  // Total received (including duplicates)
-stats.BytesSent;              // Sent bytes
-stats.BytesReceived;          // Received bytes
-stats.ConnectionErrors;       // Connection error count
-stats.AuthenticationErrors;   // Authentication error count
-stats.AverageProcessingTimeMs;// Average processing time
-stats.Uptime;                 // Connection duration
-stats.MessagesPerSecond;      // Messages per second
-stats.BytesPerSecond;         // Bytes per second
-```
-
 ### SSL/TLS Certificate Configuration
 
 ```csharp
@@ -926,7 +1013,7 @@ builder.Services.CreateFeishuWebSocketServiceBuilder(builder.Configuration)
         options.Certificate.ValidateServerCertificate = true;
         options.Certificate.AllowSelfSignedCertificates = false;
     })
-    .AddHandler<ReceiveMessageEventHandler>()
+    .AddHandler<MessageReceiveEventHandler>()
     .Build();
 ```
 

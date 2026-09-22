@@ -19,8 +19,16 @@ namespace Mud.Feishu.WebSocket;
 /// <c>FeishuWebhookConcurrencyService</c> 语义一致。
 /// <para>
 /// 使用 <see cref="SemaphoreSlim"/> 控制并发处理数；支持 <c>IOptionsMonitor</c> 热更新，
-/// 原子替换信号量并延迟 60 秒释放旧信号量。实现 <see cref="IHostedService"/>，
+/// 原子替换信号量并延迟释放旧信号量（保留时长由
+/// <see cref="ResolveLegacySemaphoreRetention"/> 给出）。实现 <see cref="IHostedService"/>，
 /// 关停时最多等待 30 秒在途事件完成。
+/// </para>
+/// <para>
+/// <b>I9 例外登记（唯一）</b>：本类型<b>不释放</b> <c>_semaphore</c> / <c>_semaphoreLock</c>
+/// （见 <see cref="DisposeAsync"/>），但**旧**信号量会在热更新后延迟
+/// <c>max(60s, 2 × MessageHandlerTimeoutMs)</c> 主动释放——这是模块内唯一"延迟释放信号量"的
+/// 合法例外，其阈值必须与在途租约的最长合法持有时间绑定（否则慢处理器归还租约会抛
+/// <see cref="ObjectDisposedException"/>）。新增此类释放点前必须先在此处登记。
 /// </para>
 /// </remarks>
 public class FeishuWebSocketConcurrencyService : IAsyncDisposable, IHostedService
@@ -160,10 +168,16 @@ public class FeishuWebSocketConcurrencyService : IAsyncDisposable, IHostedServic
             var oldSemaphore = Interlocked.Exchange(ref _semaphore,
                 new SemaphoreSlim(actualMaxConcurrent, actualMaxConcurrent));
 
-            // 延迟释放旧信号量，等待可能正在使用的请求完成
+            // 延迟释放旧信号量，等待可能正在使用的请求完成。
+            // WS2-06 ②（I9 例外登记）：阈值改为**动态**公式，照抄 Webhook 侧
+            // FeishuWebhookConcurrencyService 的 max(60s, 2 × 单条消息处理超时)。
+            // 改造前是硬编码 60s：当 MessageHandlerTimeoutMs > 30s 时，"租约最长合法持有时间"
+            // 会超过 60s，慢处理器在新旧信号量切换后归还租约时会命中已释放的信号量并抛
+            // ObjectDisposedException（配置越合理越容易触发，属反直觉的行为）。
+            var retention = ResolveLegacySemaphoreRetention(_optionsMonitor.CurrentValue.MessageHandlerTimeoutMs);
             _ = Task.Run(async () =>
             {
-                await Task.Delay(60000);
+                await Task.Delay(retention);
                 oldSemaphore.Dispose();
             });
         }
@@ -171,6 +185,38 @@ public class FeishuWebSocketConcurrencyService : IAsyncDisposable, IHostedServic
         {
             _semaphoreLock.Release();
         }
+    }
+
+    /// <summary>
+    /// 计算"旧信号量延迟释放"的保留时长（I9 登记的唯一例外）。
+    /// </summary>
+    /// <param name="messageHandlerTimeoutMs">单条消息处理超时（<see cref="FeishuWebSocketOptions.MessageHandlerTimeoutMs"/>）</param>
+    /// <returns>保留时长：<c>max(60 秒, 2 × messageHandlerTimeoutMs)</c>。</returns>
+    /// <remarks>
+    /// <b>为什么必须是动态值</b>：热更新会原子替换 <see cref="SemaphoreSlim"/>，而在途租约仍持有
+    /// <b>旧</b>信号量的引用，归还时调用其 <c>Release()</c>。若保留时长小于"租约最长合法持有时间"
+    /// （即 <c>MessageHandlerTimeoutMs</c>），慢处理器归还租约时会命中已释放的信号量并抛
+    /// <see cref="ObjectDisposedException"/>。取 2 倍是留出超时判定与归还之间的调度余量，
+    /// 并以 60 秒作为下限保证短超时配置下的行为与改造前一致。
+    /// <para>
+    /// 公式与 Webhook 侧 <c>FeishuWebhookConcurrencyService</c> 完全相同（跨模块行为对齐，C5）。
+    /// 抽成 <c>static</c> 纯函数是为了让公式本身可被单元测试覆盖——运行期无法在测试中触发
+    /// <c>IOptionsMonitor.OnChange</c>。
+    /// </para>
+    /// </remarks>
+    internal static TimeSpan ResolveLegacySemaphoreRetention(int messageHandlerTimeoutMs)
+    {
+        const int floorMs = 60_000;
+
+        if (messageHandlerTimeoutMs <= 0)
+        {
+            // 0/负数 = 不限制处理时长：无法推导上界，取保守下限
+            return TimeSpan.FromMilliseconds(floorMs);
+        }
+
+        // netstandard2.0 无 Math.Clamp（netstandard2.1+），使用 Math.Max
+        var dynamicMs = 2.0 * messageHandlerTimeoutMs;
+        return TimeSpan.FromMilliseconds(dynamicMs > floorMs ? dynamicMs : floorMs);
     }
 
     /// <summary>

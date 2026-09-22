@@ -40,6 +40,13 @@ public enum DeduplicationStatus
 /// （WHF-07：业务已成功，不回滚），该事件可能在 TTL 窗口后被重复消费。
 /// 消费方处理器必须自身幂等，或以业务侧唯一键兜底。
 /// </para>
+/// <para>
+/// 补偿性操作（<see cref="RollbackProcessingAsync"/> / <see cref="MarkAsCompletedAsync"/>）
+/// 的调用语义见 AGENTS.md 契约 D15（R2-P0-1）：通道层调用点必须使用
+/// <see cref="CancellationToken.None"/>，补偿失败不得替换/吞没原始业务异常——
+/// 键停留 processing 由 ProcessingTimeout/TTL 兜底，属本接口既有的可恢复设计。
+/// <see cref="TryMarkAsProcessingAsync"/>（进入处理态）不受此约束，取消应即时传播。
+/// </para>
 /// </remarks>
 public interface IFeishuEventDeduplicator : IAsyncDisposable
 {

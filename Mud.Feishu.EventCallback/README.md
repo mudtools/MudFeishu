@@ -125,28 +125,42 @@ dotnet add package Mud.Feishu.EventCallback
 
 ### 1. 定义事件处理器
 
-继承自动生成的事件处理器基类，实现业务逻辑：
+继承自动生成的事件处理器基类，并重写 `ProcessBusinessLogicAsync` 实现业务逻辑：
+
+> **注意**：
+> - 生成的处理器基类 `HandleAsync(EventData, CancellationToken)` 已声明为 `sealed`（内置事件反序列化与业务层幂等保护），**不可重写**；业务逻辑的唯一扩展点是 `ProcessBusinessLogicAsync`。
+> - 生成的处理器构造函数签名为 `(IFeishuEventDeduplicator, ILogger, IAppKeyAccessor?)`，派生类必须显式声明构造函数并调用 `base(businessDeduplicator, logger)`（`IAppKeyAccessor` 为可选参数，用于多应用去重隔离）。
+> - 事件模型显式声明了 `HeaderType = nameof(FeishuEventHeader)` 时，生成的处理器继承双泛型参数基类，应重写带 `header` 参数的 `ProcessBusinessLogicAsync` 重载；未声明时继承单泛型参数基类，应重写不带 `header` 参数的重载。
 
 ```csharp
+using Mud.Feishu.Abstractions;
+using Mud.Feishu.Abstractions.Services;
+using Mud.Feishu.EventCallback;
 using Mud.Feishu.EventCallback.IM;
 
 public class MyMessageHandler : MessageReceiveEventHandler
 {
-    private readonly ILogger<MyMessageHandler> _logger;
-
-    public MyMessageHandler(ILogger<MyMessageHandler> logger)
+    public MyMessageHandler(IFeishuEventDeduplicator businessDeduplicator, ILogger<MyMessageHandler> logger)
+        : base(businessDeduplicator, logger)
     {
-        _logger = logger;
     }
 
-    public override async Task HandleAsync(MessageReceiveResult result, CancellationToken cancellationToken = default)
+    protected override async Task ProcessBusinessLogicAsync(
+        EventData eventData,
+        MessageReceiveResult? eventEntity,
+        FeishuEventHeader? header,
+        CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation("收到消息：{MessageId}", result.Message?.MessageId);
-
-        if (result.Message?.Content != null)
+        if (eventEntity?.Message is null)
         {
-            var content = result.Message.Content;
-            _logger.LogInformation("消息内容：{Content}", content);
+            return;
+        }
+
+        _logger.LogInformation("收到消息：{MessageId}", eventEntity.Message.MessageId);
+
+        if (eventEntity.Message.Content is not null)
+        {
+            _logger.LogInformation("消息内容：{Content}", eventEntity.Message.Content);
         }
 
         await Task.CompletedTask;
@@ -157,26 +171,36 @@ public class MyMessageHandler : MessageReceiveEventHandler
 ### 2. 处理审批事件
 
 ```csharp
+using Mud.Feishu.Abstractions;
+using Mud.Feishu.Abstractions.Services;
+using Mud.Feishu.EventCallback;
 using Mud.Feishu.EventCallback.Approval;
 
 public class LeaveApprovalHandler : LeaveApprovalEventHandler
 {
-    private readonly ILogger<LeaveApprovalHandler> _logger;
-
-    public LeaveApprovalHandler(ILogger<LeaveApprovalHandler> logger)
+    public LeaveApprovalHandler(IFeishuEventDeduplicator businessDeduplicator, ILogger<LeaveApprovalHandler> logger)
+        : base(businessDeduplicator, logger)
     {
-        _logger = logger;
     }
 
-    public override async Task HandleAsync(LeaveApprovalResult result, CancellationToken cancellationToken = default)
+    // leave_approval 未声明 HeaderType，生成的处理器继承 IdempotentFeishuEventHandler<LeaveApprovalResult>，
+    // 因此重写不带 header 参数的重载
+    protected override async Task ProcessBusinessLogicAsync(
+        EventData eventData,
+        LeaveApprovalResult? eventEntity,
+        CancellationToken cancellationToken = default)
     {
+        if (eventEntity is null)
+        {
+            return;
+        }
+
         _logger.LogInformation(
             "员工 {EmployeeId} 请假申请：{StartTime} 至 {EndTime}，时长 {Duration} 秒",
-            result.EmployeeId,
-            result.LeaveStartTime,
-            result.LeaveEndTime,
-            result.LeaveInterval
-        );
+            eventEntity.EmployeeId,
+            eventEntity.LeaveStartTime,
+            eventEntity.LeaveEndTime,
+            eventEntity.LeaveInterval);
 
         await Task.CompletedTask;
     }
@@ -186,24 +210,33 @@ public class LeaveApprovalHandler : LeaveApprovalEventHandler
 ### 3. 处理组织架构事件
 
 ```csharp
+using Mud.Feishu.Abstractions;
+using Mud.Feishu.Abstractions.Services;
+using Mud.Feishu.EventCallback;
 using Mud.Feishu.EventCallback.Organization;
 
 public class UserCreatedHandler : UserCreateEventHandler
 {
-    private readonly ILogger<UserCreatedHandler> _logger;
-
-    public UserCreatedHandler(ILogger<UserCreatedHandler> logger)
+    public UserCreatedHandler(IFeishuEventDeduplicator businessDeduplicator, ILogger<UserCreatedHandler> logger)
+        : base(businessDeduplicator, logger)
     {
-        _logger = logger;
     }
 
-    public override async Task HandleAsync(UserCreateResult result, CancellationToken cancellationToken = default)
+    protected override async Task ProcessBusinessLogicAsync(
+        EventData eventData,
+        UserCreateResult? eventEntity,
+        FeishuEventHeader? header,
+        CancellationToken cancellationToken = default)
     {
+        if (eventEntity is null)
+        {
+            return;
+        }
+
         _logger.LogInformation(
             "新员工入职：{Name} ({UserId})",
-            result.Name,
-            result.UserId
-        );
+            eventEntity.Name,
+            eventEntity.UserId);
 
         await Task.CompletedTask;
     }
@@ -231,7 +264,8 @@ public class UserCreatedHandler : UserCreateEventHandler
 /// </summary>
 [GenerateEventHandler(EventType = FeishuEventTypes.ReceiveMessage,
                       HandlerNamespace = Consts.HandlerNamespace,
-                      InheritedFrom = Consts.InheritedFrom)]
+                      InheritedFrom = Consts.InheritedFrom,
+                      HeaderType = nameof(FeishuEventHeader))]
 public class MessageReceiveResult : IEventResult
 {
     [JsonPropertyName("sender")]

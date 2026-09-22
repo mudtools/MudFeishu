@@ -22,6 +22,21 @@ namespace Microsoft.Extensions.DependencyInjection;
 /// <summary>
 /// 飞书WebSocket服务建造者，用于简化服务注册配置
 /// </summary>
+/// <remarks>
+/// <b>调用约定（WS2-09 / P2-5）</b>：必须调用 <see cref="Build"/> 才会注册<b>核心服务</b>
+/// （<c>IFeishuWebSocketClient</c> / <c>IFeishuWebSocketManager</c> / 后台服务 / 健康检查 / 并发闸门）。
+/// <para>
+/// <b>半装配风险</b>：<see cref="ConfigureFrom"/> / <see cref="ConfigureOptions"/> /
+/// <see cref="AddHandler{THandler}()"/> / <see cref="AddInterceptor{TInterceptor}()"/> 等方法会
+/// <b>立即</b>向 <c>IServiceCollection</c> 写入描述符（Options 配置、处理器/拦截器注册），
+/// 而核心服务只在 <see cref="Build"/> 中注册。因此"配好了但忘了 <c>Build()</c>"的结果**不是**"什么都没注册"，
+/// 而是"处理器与拦截器已在容器内、但没有任何组件消费它们"——从宿主视角看是"WebSocket 静默不工作"。
+/// </para>
+/// <para>
+/// 链式配置完成后请务必以 <c>.Build()</c> 收尾；<see cref="ConfigureFrom"/> 会记录一条 Debug
+/// 级提示（本类型无法感知 <c>Build()</c> 是否被调用，仅做可观测性提示）。
+/// </para>
+/// </remarks>
 public class FeishuWebSocketServiceBuilder
 {
     private readonly IServiceCollection _services;
@@ -309,20 +324,35 @@ public class FeishuWebSocketServiceBuilder
         {
             var logger = serviceProvider.GetRequiredService<ILogger<ScopedFeishuEventHandlerFactory>>();
             var scopeFactory = serviceProvider.GetRequiredService<IServiceScopeFactory>();
-            var ignoreUnknown = serviceProvider.GetService<IOptionsMonitor<FeishuWebSocketOptions>>()?.CurrentValue.IgnoreUnknownEventTypes
-                                ?? false;
+            // P1-3（R2）：Monitor 一并传入工厂——门控实时读取 CurrentValue，配置热更即时生效；
+            // 初始值仍读 CurrentValue 作为快照回退（Monitor 不可用的直构/测试场景）。
+            var optionsMonitor = serviceProvider.GetService<IOptionsMonitor<FeishuWebSocketOptions>>();
+            var ignoreUnknown = optionsMonitor?.CurrentValue.IgnoreUnknownEventTypes ?? false;
             return new ScopedFeishuEventHandlerFactory(
-                logger, scopeFactory, handlerTypes, defaultHandlerType, handlerInstances, ignoreUnknown);
+                logger, scopeFactory, handlerTypes, defaultHandlerType, handlerInstances, ignoreUnknown, optionsMonitor);
         });
 
-        // 注册事件拦截器集合（单例，按注册顺序排序）
+        // 注册事件拦截器集合（单例，按建造者登记顺序排序）
         // 说明：拦截器是横切关注点组件（日志、指标、审计），按约定无请求级状态，
         // 因此注册为 Singleton；若注册为 Scoped 会与 Singleton 消费者构成 Captive Dependency。
+        //
+        // WS2-09 修复（P2-5）：此前实现是
+        //     .Where(i => _interceptorTypes.Contains(i.GetType()))   ← 过滤
+        //     .OrderBy(i => _interceptorTypes.IndexOf(i.GetType()))
+        // 即**只保留**经 AddInterceptor<T>() 显式登记的类型。宿主若直接用
+        // `services.AddSingleton<IFeishuEventInterceptor, MyInterceptor>()` 注册（完全合法的 DI 用法，
+        // 文档也常这么示例），其拦截器会被**静默丢弃**——不报错、不告警，只是审计/日志拦截器不生效。
+        //
+        // 现改为"**只用于排序，不做过滤**"：未登记的类型排在已登记类型之后（保持已登记类型的相对顺序稳定），
+        // 所有容器内可见的 IFeishuEventInterceptor 都会被装配。
         _services.AddSingleton<IFeishuEventInterceptor[]>(serviceProvider =>
         {
             return serviceProvider.GetRequiredService<IEnumerable<IFeishuEventInterceptor>>()
-                .Where(i => _interceptorTypes.Contains(i.GetType()))
-                .OrderBy(i => _interceptorTypes.IndexOf(i.GetType()))
+                .OrderBy(i =>
+                {
+                    var index = _interceptorTypes.IndexOf(i.GetType());
+                    return index < 0 ? int.MaxValue : index;   // 未登记项排到末尾（OrderBy 稳定排序保持原有相对顺序）
+                })
                 .ToArray();
         });
     }

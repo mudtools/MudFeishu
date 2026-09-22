@@ -1,0 +1,50 @@
+// ------------------------------------------------------------------------
+// MudFeishu 目标态最小配置模板（R5 / 方案 §4 交付物）。
+//
+// 使用方法：按场景拷贝对应片段到宿主 appsettings.json（本文件是模板，不能被直接加载）。
+// 唯一配置真相源说明见 documents/Configuration/DeduplicationTruthSource.md；
+// 旧键 → 新键的逐键迁移对照见 documents/Configuration/ConfigMigration-R5.md。
+//
+// 注意（RK9）：跨包不变量 `NonceTtl >= TimestampToleranceSeconds` 仅在宿主同时引用
+// Webhook + Redis 时经 AddFeishuConfigurationConsistencyChecks 校验；默认值已满足。
+// ------------------------------------------------------------------------
+
+// ─────────────────────────────────────────────────────────────────────
+// 场景 A：单应用 + Webhook（内存去重）—— 字段数 ~5
+// ─────────────────────────────────────────────────────────────────────
+/*
+{
+  "FeishuApps": [
+    { "AppKey": "default", "AppId": "cli_xxx", "AppSecret": "YOUR_APP_SECRET" }
+  ],
+  "FeishuWebhook": {
+    "Apps": {
+      "default": {
+        "VerificationToken": "YOUR_VERIFICATION_TOKEN",
+        "EncryptKey": "0123456789abcdef0123456789abcdef"
+      }
+    }
+  }
+}
+*/
+
+// ─────────────────────────────────────────────────────────────────────
+// 场景 B：多应用 + WebSocket + Redis 分布式去重 —— 字段数 ~13
+// （多租户三前缀互异属 TMA2-20 合规必需，不省略）
+// ─────────────────────────────────────────────────────────────────────
+/*
+{
+  "FeishuApps": [
+    { "AppKey": "default", "AppId": "cli_aaa", "AppSecret": "..." },
+    { "AppKey": "tenant-b", "AppId": "cli_bbb", "AppSecret": "...", "BaseUrl": "https://open.larksuite.com" }
+  ],
+  "FeishuWebSocket": { "AppKey": "default" },
+  "FeishuRedis": { "Connection": { "ServerAddress": "rediss://redis:6379", "Password": "..." } },
+  "FeishuDeduplication": {
+    "Mode": "Distributed",
+    "Event": { "KeyPrefix": "t-a:feishu:event:" },
+    "Nonce": { "KeyPrefix": "t-a:feishu:nonce:", "Ttl": "00:05:00" },
+    "SeqId": { "KeyPrefix": "t-a:feishu:seqid:", "ScopeKey": "t-a|node1" }
+  }
+}
+*/

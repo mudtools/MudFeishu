@@ -119,6 +119,34 @@ public static class FeishuMetricsHelper
     }
 
     /// <summary>
+    /// 记录 WebSocket 帧/消息的受控丢弃（F5）。
+    /// </summary>
+    /// <param name="appKey">飞书应用 AppKey</param>
+    /// <param name="reason">
+    /// 丢弃原因，取 <see cref="FeishuMetrics.DiscardReasons"/> 中的常量，
+    /// 便于按原因拆分告警（"分片超限"与"背压拒绝"的处置方式完全不同）。
+    /// </param>
+    /// <param name="count">本次丢弃的帧/消息数量（默认 1）</param>
+    /// <remarks>
+    /// 丢弃是"事件丢失"的前兆，必须可计数；仅写日志无法形成可告警的时序信号。
+    /// </remarks>
+    public static void RecordWebSocketFramesDiscarded(string appKey, string reason, int count = 1)
+    {
+        if (count <= 0)
+        {
+            return;
+        }
+
+        var tags = new TagList
+        {
+            { FeishuMetrics.Tags.AppKey, appKey },
+            { FeishuMetrics.Tags.Reason, reason },
+        };
+
+        FeishuMetrics.WebSocketFramesDiscardedCount.Add(count, tags);
+    }
+
+    /// <summary>
     /// 记录 Webhook 请求。
     /// </summary>
     /// <param name="appKey">飞书应用 AppKey</param>

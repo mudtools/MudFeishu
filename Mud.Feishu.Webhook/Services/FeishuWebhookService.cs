@@ -83,6 +83,7 @@ public class FeishuWebhookService : IFeishuWebhookService
     }
 
     /// <inheritdoc />
+    [Obsolete("明文验证协议无重放防护，中间件已强制加密验证。请使用加密 url_verification 链路。将在下个 major 移除。")]
     public async Task<EventVerificationResponse?> VerifyEventSubscriptionAsync(EventVerificationRequest request, CancellationToken cancellationToken = default)
     {
         try
@@ -215,9 +216,9 @@ public class FeishuWebhookService : IFeishuWebhookService
                         eventData.EventId, appKey ?? "null");
                     FeishuMetricsHelper.RecordEventOutcome(appKey ?? "unknown", eventData.EventType, success: true, "mark_completed_failed");
 
-                                        _logger.LogInformation("事件处理完成（完成标记失败，按成功口径）: {EventType}, 事件ID: {EventId}, AppKey: {AppKey}",
-                        eventData.EventType, eventData.EventId, appKey ?? "null");
-                
+                    _logger.LogInformation("事件处理完成（完成标记失败，按成功口径）: {EventType}, 事件ID: {EventId}, AppKey: {AppKey}",
+    eventData.EventType, eventData.EventId, appKey ?? "null");
+
 
                     return (true, null);
                 }
@@ -225,9 +226,9 @@ public class FeishuWebhookService : IFeishuWebhookService
                 // 记录事件处理成功
                 FeishuMetricsHelper.RecordEventOutcome(appKey ?? "unknown", eventData.EventType, success: true);
 
-                                _logger.LogInformation("事件处理完成: {EventType}, 事件ID: {EventId}, AppKey: {AppKey}",
-                    eventData.EventType, eventData.EventId, appKey ?? "null");
-            
+                _logger.LogInformation("事件处理完成: {EventType}, 事件ID: {EventId}, AppKey: {AppKey}",
+    eventData.EventType, eventData.EventId, appKey ?? "null");
+
 
                 return (true, null);
             }
@@ -331,12 +332,14 @@ public class FeishuWebhookService : IFeishuWebhookService
             }
 
             // 委托给验证器进行签名验证，消除内联重复代码
+            // WHF-R2/B3：贯穿 CancellationToken，客户端断开时尽早取消验签链路
             return await _validator.ValidateHeaderSignatureAsync(
                 request.Timestamp,
                 request.Nonce,
                 body,
                 request.Signature,
-                encryptKey!);
+                encryptKey!,
+                cancellationToken);
         }
         catch (Exception ex) when (ex is not FeishuRedisException { FailureKind: FeishuRedisFailureKind.Server })
         {
@@ -429,7 +432,7 @@ public class FeishuWebhookService : IFeishuWebhookService
                 appKey, handlerTypes.Count, eventType);
 
             var tasks = handlerTypes
-                .Select(t => ProcessAppHandlerSafelyAsync(t, eventData, appKey!, cancellationToken))
+                .Select(t => ProcessAppHandlerSafelyAsync(t, eventData, appKey!, eventType, cancellationToken))
                 .ToList();
             try
             {
@@ -468,11 +471,28 @@ public class FeishuWebhookService : IFeishuWebhookService
     /// <summary>
     /// 应用专属处理器安全分发：逐处理器日志，保留聚合重抛（at-least-once 不变）。
     /// </summary>
-    private async Task ProcessAppHandlerSafelyAsync(Type handlerType, EventData eventData, string appKey, CancellationToken ct)
+    /// <remarks>
+    /// P1-2（R2）：按 <see cref="IFeishuEventHandler.SupportedEventType"/> 过滤——非空声明与当前
+    /// 事件类型不符的处理器跳过（与全局工厂按 SupportedEventType 路由的语义对齐）；
+    /// 显式声明空串表示处理该应用全部事件（与
+    /// <see cref="Mud.Feishu.Abstractions.EventHandlers.DefaultFeishuEventHandler{T}"/>
+    /// 默认约定一致）。拦截器分支不做该过滤（横切组件，与 WS 通道一致）。
+    /// </remarks>
+    private async Task ProcessAppHandlerSafelyAsync(Type handlerType, EventData eventData, string appKey, string eventType, CancellationToken ct)
     {
         try
         {
             var handler = (IFeishuEventHandler)_serviceProvider.GetRequiredService(handlerType);
+
+            if (handler.SupportedEventType is { Length: > 0 } supported &&
+                !string.Equals(supported, eventType, StringComparison.Ordinal))
+            {
+                _logger.LogDebug(
+                    "应用 {AppKey} 处理器 {HandlerType} 声明处理 {Supported}，跳过事件 {EventType}",
+                    appKey, handlerType.Name, supported, eventType);
+                return;
+            }
+
             await handler.HandleAsync(eventData, ct);
         }
         catch (Exception ex)

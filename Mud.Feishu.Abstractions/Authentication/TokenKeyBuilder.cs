@@ -16,6 +16,18 @@ namespace Mud.Feishu.Abstractions.Authentication;
 /// <see cref="TryParseUserTokenType"/>）保证 <c>GetTokenTypesAsync</c> 返回值可原样回灌给
 /// <c>RemoveAsync</c>/<c>GetAccessTokenAsync</c>。
 /// </para>
+/// <para>
+/// TMF2-05 / TMR2-P1-2：<see cref="BuildKeyPrefix"/> 是键前缀的唯一出口——
+/// Memory（<c>FeishuTokenStore</c> / <c>FeishuUserTokenStore</c>）和 Redis
+/// （<c>PerAppRedisTokenStoreFactory</c>）均委派此方法，消除裸拼接与经
+/// <c>RedisKeyBuilder.Combine</c> 预转义的差异（前缀逐字节一致）。
+/// 该方法返回<b>未转义</b>前缀：转义单点归口 <see cref="NormalizeSegment"/>，
+/// 由键构造路径（<c>Combine</c> → <see cref="NormalizePrefix"/>）施加，避免二次转义。
+/// </para>
+/// <para>
+/// TMF2-08：<see cref="NormalizeSegment"/> 转义 glob 元字符（<c>*</c> <c>?</c> <c>[</c> <c>]</c>），
+/// 防止含这些字符的 appKey/userId 在 SCAN 模式中注入通配符。
+/// </para>
 /// </summary>
 internal static class TokenKeyBuilder
 {
@@ -38,6 +50,17 @@ internal static class TokenKeyBuilder
     /// 转义后的转义符。
     /// </summary>
     private const string EscapedEscapeChar = @"\\";
+
+    // TMF2-08：glob 元字符集——这些字符在 Redis SCAN pattern 中具有通配语义，
+    // 必须在键段转义时一并处理，防止 appKey/userId 含这些字符时模式注入。
+    private const char GlobStar = '*';
+    private const char GlobQuestion = '?';
+    private const char GlobBracketOpen = '[';
+    private const char GlobBracketClose = ']';
+    private const string EscapedStar = @"\*";
+    private const string EscapedQuestion = @"\?";
+    private const string EscapedBracketOpen = @"\[";
+    private const string EscapedBracketClose = @"\]";
 
     /// <summary>
     /// 单段最大长度（字符），防止超长键 DoS。
@@ -217,19 +240,57 @@ internal static class TokenKeyBuilder
     }
 
     /// <summary>
+    /// TMF2-05 / TMR2-P1-2：键前缀的唯一出口——Memory 与 Redis 两端均委派此方法。
+    /// </summary>
+    /// <param name="appKey">应用唯一标识（空白视为 <c>default</c>）。</param>
+    /// <returns><b>未转义</b>的键前缀（如 <c>feishu:cli_a:token</c>）。</returns>
+    /// <remarks>
+    /// <para>
+    /// TMR2-P1-2：此处<b>不得预转义</b>。转义/规范化唯一归口
+    /// <see cref="NormalizePrefix"/> → <see cref="NormalizeSegment"/>，由键构造路径
+    /// （<c>Combine</c>，即 <c>TenantAccessKey</c> / <c>UserAccessKey</c> 等的内部实现）施加。
+    /// </para>
+    /// <para>
+    /// 若此方法先行转义 appKey 段（<c>:</c> → <c>\:</c>），前缀在键构造时会被<b>二次转义</b>
+    /// （<c>\</c> → <c>\\</c>）——键与 SCAN pattern 由同一份双重转义前缀产出，而 Redis glob
+    /// 把 <c>\\</c> 解释为<b>单个</b>反斜杠，与键中的两个反斜杠不匹配，导致
+    /// <c>ClearAsync</c> / <c>GetTokenTypesAsync</c> / <c>ClearAllUsersAsync</c> 永不命中
+    /// （凭据变更清库 D10 静默失效）。
+    /// </para>
+    /// <para>
+    /// 长度保护不丢失：键构造路径仍经 <see cref="NormalizeSegment"/>，对超过 256 字符的键段
+    /// 抛 <see cref="ArgumentException"/>。空前缀护栏由固定段 <c>feishu</c> / <c>token</c> 承担
+    /// （永不退化为 <c>*</c>，R-01）。
+    /// </para>
+    /// </remarks>
+    internal static string BuildKeyPrefix(string appKey)
+    {
+        var safeAppKey = string.IsNullOrWhiteSpace(appKey) ? "default" : appKey;
+        // 裸拼接（不转义）：各段转义由 Combine → NormalizePrefix → NormalizeSegment 单点负责。
+        return $"feishu{Separator}{safeAppKey}{Separator}token";
+    }
+
+    /// <summary>
     /// 返回规范化后的键前缀（用于日志和测试诊断）。
     /// </summary>
     internal static string DescribePrefix(string keyPrefix)
         => NormalizePrefix(keyPrefix);
 
     /// <summary>
-    /// 规范化键段：转义分隔符（自洽——先转义 \ 自身，再转义 :）。
+    /// 规范化键段：转义分隔符与 glob 元字符。
     /// </summary>
     /// <remarks>
     /// TMR-P2-9（F9）：超长段抛 <see cref="ArgumentException"/> 而非 <see cref="InvalidOperationException"/>——
     /// 超长段是输入校验失败（外部可控 userId 可触发）而非"对象处于无效状态"，
     /// 脱离与瞬时白名单（IsTransientInitFailure 白名单含 InvalidOperationException）的语义纠缠，
     /// 避免被误判为可重试。键布局逐字节不变，D8 契约不受影响。
+    /// <para>
+    /// TMF2-08：单遍扫描转义 <c>\</c> <c>:</c> <c>*</c> <c>?</c> <c>[</c> <c>]</c>——
+    /// 分两批（先 \ 再 :/*?[]）会导致中间态不一致（如 appKey="*:"
+    /// 先转义 : 得 "*\:"，再转义 * 得 "\*\:"——正确；但反过来先转义 * 得 "\*:"
+    /// 再转义 : 得 "\*\:"——也正确。但若先转义 * 得 "\*" 再转义 \ 得 "\\*"——错误）。
+    /// 单遍扫描避免此问题。
+    /// </para>
     /// </remarks>
     private static string NormalizeSegment(string segment)
     {
@@ -240,10 +301,24 @@ internal static class TokenKeyBuilder
             throw new ArgumentException(
                 $"键段长度 {segment.Length} 超过上限 {MaxSegmentLength}", nameof(segment));
 
-        // 自洽转义：先 \ → \\，再 : → \:
-        return segment
-            .Replace(EscapeChar, EscapedEscapeChar)
-            .Replace(Separator, EscapedSeparator);
+        // TMF2-08：单遍扫描——遇到 \ : * ? [ ] 时在其前插入 \。
+        var sb = new System.Text.StringBuilder(segment.Length * 2);
+        foreach (var ch in segment)
+        {
+            switch (ch)
+            {
+                case '\\':
+                case ':':
+                case '*':
+                case '?':
+                case '[':
+                case ']':
+                    sb.Append('\\');
+                    break;
+            }
+            sb.Append(ch);
+        }
+        return sb.ToString();
     }
 
     /// <summary>
@@ -263,17 +338,32 @@ internal static class TokenKeyBuilder
     }
 
     /// <summary>
-    /// 反转义键段（先 : → :，再 \ → \）。
+    /// 反转义键段（单遍扫描——遇到 \ 时跳过 \ 并输出下一个字符）。
     /// </summary>
+    /// <remarks>
+    /// TMF2-08：与 <see cref="NormalizeSegment"/> 对称的单遍扫描——
+    /// 反转义 <c>\:</c> <c>\\</c> <c>\*</c> <c>\?</c> <c>\[</c> <c>\]</c> 为原始字符。
+    /// </remarks>
     private static string UnescapeSegment(string segment)
     {
         if (string.IsNullOrEmpty(segment))
             return string.Empty;
 
-        // 反转义：先 \: → :，再 \\ → \
-        return segment
-            .Replace(EscapedSeparator, Separator)
-            .Replace(EscapedEscapeChar, EscapeChar);
+        var sb = new System.Text.StringBuilder(segment.Length);
+        for (var i = 0; i < segment.Length; i++)
+        {
+            if (segment[i] == '\\' && i + 1 < segment.Length)
+            {
+                // 跳过 \，输出被转义的字符。
+                sb.Append(segment[i + 1]);
+                i++;
+            }
+            else
+            {
+                sb.Append(segment[i]);
+            }
+        }
+        return sb.ToString();
     }
 
     /// <summary>

@@ -192,7 +192,7 @@ public class RedisFeishuNonceDistributedDeduplicator : IFeishuNonceDistributedDe
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "移除 Nonce {Nonce} 的去重标记时发生错误（best-effort，不抛出）", nonce);
+            _logger?.LogError(ex, "移除 Nonce {Nonce} 的去重标记时发生错误（best-effort，不抛出）", LogSanitizer.Clean(nonce));
             return false;
         }
     }

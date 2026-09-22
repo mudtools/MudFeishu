@@ -9,9 +9,11 @@ using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Moq;
 using Mud.Feishu.Abstractions;
 using Mud.Feishu.WebSocket.Handlers;
+using System.Diagnostics.Metrics;
 
 namespace Mud.Feishu.WebSocket.Tests.Handlers;
 
@@ -116,5 +118,97 @@ public class ScopedFeishuEventHandlerFactoryTests
 
         await act.Should().NotThrowAsync();
         probe.InvokeCount.Should().Be(1, "门控关闭时未知事件回退默认处理器（本工厂默认=唯一实例 probe）");
+    }
+
+    /// <summary>P1-3 测试替身：可变 CurrentValue 的 Options Monitor</summary>
+    private sealed class FakeOptionsMonitor : IOptionsMonitor<FeishuWebSocketOptions>
+    {
+        private FeishuWebSocketOptions _value;
+        public FakeOptionsMonitor(FeishuWebSocketOptions value) => _value = value;
+        public FeishuWebSocketOptions CurrentValue => _value;
+        public FeishuWebSocketOptions Get(string? name) => _value;
+        public IDisposable? OnChange(Action<FeishuWebSocketOptions, string?> listener) => null;
+        public void Set(FeishuWebSocketOptions value) => _value = value;
+    }
+
+    // P1-3（R2）：门控必须读 IOptionsMonitor 实时值，配置热更在同一工厂实例上生效；
+    // 初始 false 阶段同时覆盖 E8（ScopedFactory Monitor 路径的 IgnoreUnknownFalse 回退）。
+    [Fact]
+    public async Task HandleEventParallelAsync_Gate_ShouldFollowOptionsHotUpdate_WithoutRecreatingFactory()
+    {
+        var probe = new DispatchProbeHandler();
+        var services = new ServiceCollection();
+        services.AddSingleton<IFeishuEventHandler>(probe);
+        var provider = services.BuildServiceProvider();
+        var scopeFactory = provider.GetRequiredService<IServiceScopeFactory>();
+
+        var options = new FeishuWebSocketOptions { AppKey = "ws-app-hot", IgnoreUnknownEventTypes = false };
+        var monitor = new FakeOptionsMonitor(options);
+
+        // bool 快照恒为 false，门控完全由 Monitor 实时值驱动
+        var factory = new ScopedFeishuEventHandlerFactory(
+            NullLogger<ScopedFeishuEventHandlerFactory>.Instance,
+            scopeFactory,
+            handlerTypes: [],
+            defaultHandlerType: null,
+            handlerInstances: [probe],
+            ignoreUnknownEventTypes: false,
+            optionsMonitor: monitor);
+
+        // Phase 1（E8 等价用例）：Monitor 值 false → 未注册事件回退默认处理器
+        await factory.HandleEventParallelAsync("unknown.type", new EventData
+        {
+            EventId = "e-hot-1",
+            EventType = "unknown.type"
+        });
+        probe.InvokeCount.Should().Be(1, "Monitor 值 false 时未注册事件回退默认处理器");
+
+        // Phase 2：热更把 IgnoreUnknownEventTypes 翻为 true → 同一工厂实例上
+        // 下一次分发走 unhandled 路径（handler 0 次调用）
+        options.IgnoreUnknownEventTypes = true;
+
+        // P2-3：用 MeterListener 捕获 feishu.event.handling，断言 unhandled 维度为 options.AppKey。
+        // Meter 为进程级静态实例，并行测试可能并发记录 → 用「存在匹配项」而非精确计数断言。
+        // MeasurementEventCallback 的 tags 形状在 net8+ 为 ReadOnlySpan，与 net6/7 不同——
+        // 指标断言仅在 NET8+ 编译（net6/7 只保留行为断言）。
+#if NET8_0_OR_GREATER
+        var matching = new List<KeyValuePair<string, object?>[]>();
+        using var listener = new MeterListener
+        {
+            InstrumentPublished = (instrument, l) =>
+            {
+                if (instrument.Meter.Name == Mud.Feishu.Abstractions.Metrics.FeishuMetrics.MeterName &&
+                    instrument.Name == "feishu.event.handling")
+                {
+                    l.EnableMeasurementEvents(instrument);
+                }
+            }
+        };
+        // 只通过 EnableMeasurementEvents 启用 "feishu.event.handling" 一个仪表，
+        // 因此回调收到的测量值均属于该仪表，无需再按仪表名过滤。
+        listener.SetMeasurementEventCallback<long>((_, measurement, tags, _) =>
+        {
+            var copy = new KeyValuePair<string, object?>[tags.Length];
+            for (var i = 0; i < tags.Length; i++)
+                copy[i] = tags[i];
+            matching.Add(copy);
+        });
+        listener.Start();
+#endif
+
+        await factory.HandleEventParallelAsync("unknown.type", new EventData
+        {
+            EventId = "e-hot-2",
+            EventType = "unknown.type"
+        });
+
+        probe.InvokeCount.Should().Be(1, "热更为 true 后同一工厂实例的后续分发走 unhandled 路径");
+
+#if NET8_0_OR_GREATER
+        matching.Should().Contain(tags => tags.Any(t =>
+                t.Key == Mud.Feishu.Abstractions.Metrics.FeishuMetrics.Tags.AppKey && (string?)t.Value == "ws-app-hot") &&
+            tags.Any(t => t.Key == Mud.Feishu.Abstractions.Metrics.FeishuMetrics.Tags.ErrorType && (string?)t.Value == "unhandled"),
+            "unhandled 指标维度必须为通道 AppKey（P2-3），而非事件的 app_id");
+#endif
     }
 }

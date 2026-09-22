@@ -23,7 +23,17 @@ public class EventSubscriptionManager
     private readonly Func<string, Task> _sendMessageCallback;
     private readonly HashSet<string> _subscribedEventTypes = new();
     private readonly object _lock = new();
-    private bool _hasSubscribed = false;
+
+    /// <summary>
+    /// 是否已发送过订阅请求。
+    /// </summary>
+    /// <remarks>
+    /// WS2-12：改为 <c>volatile</c>。写入点在 <see cref="_lock"/> 内，但读取点
+    /// （<see cref="HasSubscribed"/>）是<b>无锁</b>属性（供
+    /// <c>FeishuWebSocketClient.ConnectAsync(endpoint, appAccessToken, ...)</c> 判断是否自动重新订阅），
+    /// 此前缺少跨线程可见性保障，可能出现"订阅刚刚成功但重连路径仍判定为未订阅"而跳过重新订阅。
+    /// </remarks>
+    private volatile bool _hasSubscribed = false;
 
     /// <summary>
     /// 订阅成功事件

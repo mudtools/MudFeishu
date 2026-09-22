@@ -7,6 +7,7 @@
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Mud.Feishu.Abstractions.Utilities;
 using Mud.Feishu.DataModels.WsEndpoint;
 using Mud.Feishu.WebSocket.SocketEventArgs;
 using System.Diagnostics.CodeAnalysis;
@@ -165,7 +166,22 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable,
     /// <summary>
     /// 连接状态
     /// </summary>
+    /// <remarks>
+    /// 注意：本属性只看 <see cref="System.Net.WebSockets.WebSocketState"/>，因此在
+    /// "接收循环已死但 socket 仍 Open"的僵尸态下为 <c>true</c>。需要"连接是否可用来收事件"
+    /// 请结合 <see cref="Liveness"/>（其 <c>IsZombie</c> 为此组合提供确定性判定）。
+    /// </remarks>
     public bool IsConnected => _webSocketClient.State == System.Net.WebSockets.WebSocketState.Open;
+
+    /// <summary>
+    /// 连接存活探针快照（F1；供健康检查与周期性自愈判定使用）。
+    /// </summary>
+    /// <remarks>
+    /// 客户端未实现具体类型（自定义/替身实现）时返回 <c>default</c>（各项为 false/0），
+    /// 健康检查会因此回落到原有的"仅按连接状态"判定，不产生误报。
+    /// </remarks>
+    internal ConnectionLiveness Liveness
+        => _webSocketClient is FeishuWebSocketClient client ? client.Liveness : default;
 
     /// <summary>
     /// 连接建立事件
@@ -217,7 +233,12 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable,
             // 获取应用访问令牌，使用配置的超时时间
             int timeoutSeconds = context.Config.TimeoutSeconds;
 
-            using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSeconds));
+            // WS2-04 / I16（评审新增点）：TimeoutSeconds 来自 AppConfig，属**配置派生值**。
+            // TimeSpan.FromSeconds(int) 本身不溢出，但 CancellationTokenSource(TimeSpan) 会校验上界
+            // 并在超长时抛 ArgumentOutOfRangeException（.NET Core ≈ 49.7 天 / .NET Framework ≈ 24.8 天）；
+            // 异常会以晦涩的启动失败形式暴露，在生产上极难定位。此处统一走钳制。
+            var startupTimeout = TimeSpanGuards.ClampToCancellationTokenRange(TimeSpan.FromSeconds(timeoutSeconds));
+            using var timeoutCts = new CancellationTokenSource(startupTimeout);
             using var combinedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
             var combinedToken = combinedCts.Token;
 
@@ -490,10 +511,22 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable,
     /// </summary>
     /// <param name="sender">事件发送者</param>
     /// <param name="e">事件参数</param>
+    /// <remarks>
+    /// WS2-05 修复（D5 / P1-4）：此前 <c>{Message}</c> 直传 <c>e.Message</c> —— 入站报文**全文**（未脱敏、
+    /// 未截断）写入 Debug 日志。飞书事件报文内含 <c>header.token</c>、<c>event.*</c> 业务载荷与用户 PII，
+    /// 全文入日志即长期留存于集中式日志系统。
+    /// <para>
+    /// 现与模块内既有正确范式对齐（<c>MessageRouter</c> / <c>FeishuEventMessageHandler</c> 均走
+    /// <c>LogSanitizer.CleanMessage</c>）：只输出**结构化字段 + 脱敏截断预览**。
+    /// 需要完整报文取证请在订阅者侧落库。
+    /// </para>
+    /// </remarks>
     private void OnClientMessageReceived(object? sender, WebSocketMessageEventArgs e)
     {
-        _logger.LogDebug("接收到Mud 飞书WebSocket消息: {Message} (大小: {Size}字节, 队列: {Queue}条, 时间: {Timestamp})",
-                e.Message, e.MessageSize, e.QueueCount, e.Timestamp);
+        _logger.LogDebug("接收到Mud 飞书WebSocket消息: 长度={Length} 预览={Preview} (大小: {Size}字节, 队列: {Queue}条, 时间: {Timestamp})",
+                e.Message?.Length ?? 0,
+                LogSanitizer.CleanMessage(e.Message, 200),
+                e.MessageSize, e.QueueCount, e.Timestamp);
         MessageReceived?.Invoke(this, e);
     }
 
@@ -524,6 +557,14 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable,
     /// 异步释放资源
     /// </summary>
     /// <returns>表示异步释放操作的任务</returns>
+    /// <remarks>
+    /// WS2-06 修复（I9）：<b>不释放</b> <c>_startStopLock</c>。本类型从不访问
+    /// <see cref="SemaphoreSlim.AvailableWaitHandle"/>，不释放不产生任何 OS 句柄泄漏；
+    /// 而释放会与在途 <c>StartAsync</c>/<c>StopAsync</c>/<c>ReconnectAsync</c> 的
+    /// <c>WaitAsync</c>/<c>Release</c> 构成 <see cref="ObjectDisposedException"/> 竞态。
+    /// 与模块内另外四处既有实现（<c>WebSocketConnectionManager</c>、<c>BinaryMessageProcessor</c>、
+    /// <c>FeishuWebSocketConcurrencyService</c>、<c>ReconnectionOrchestrator</c>）保持一致。
+    /// </remarks>
     public async ValueTask DisposeAsync()
     {
         if (Interlocked.Exchange(ref _disposed, 1) == 1)
@@ -561,7 +602,7 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable,
                 _webSocketClient?.Dispose();
             }
 
-            _startStopLock?.Dispose();
+            // WS2-06（I9）：不释放 _startStopLock（见 DisposeAsync 的 remarks）
         }
         catch (Exception ex)
         {
@@ -598,7 +639,7 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable,
             UnsubscribeClientEvents();
 
             _webSocketClient?.Dispose();
-            _startStopLock?.Dispose();
+            // WS2-06（I9）：同 DisposeAsync，不释放 _startStopLock
         }
         catch (Exception ex)
         {

@@ -47,7 +47,7 @@ builder.Services.AddFeishuApp(builder.Configuration);
 
 // 一行代码注册WebSocket服务（需要至少一个事件处理器）
 builder.Services.CreateFeishuWebSocketServiceBuilder(builder.Configuration, "default")
-    .AddHandler<ReceiveMessageEventHandler>()
+    .AddHandler<MessageReceiveEventHandler>()
     .Build();
 
 var app = builder.Build();
@@ -62,8 +62,8 @@ builder.Services.AddFeishuApp(builder.Configuration);
 
 // 从配置文件注册并添加事件处理器
 builder.Services.CreateFeishuWebSocketServiceBuilder(builder.Configuration, "default")
-    .AddHandler<ReceiveMessageEventHandler>()
-    .AddHandler<UserCreatedEventHandler>()
+    .AddHandler<MessageReceiveEventHandler>()
+    .AddHandler<UserCreateEventHandler>()
     .Build();
 
 var app = builder.Build();
@@ -144,7 +144,7 @@ app.Run();
 
 | 处理器                       | 说明                                       |
 | ---------------------------- | ------------------------------------------ |
-| **IMessageHandler**          | 消息处理器接口，提供通用反序列化功能       |
+| **IMessageHandler**          | 消息处理器接口（CanHandle/HandleAsync）    |
 | **JsonMessageHandler**       | 处理器基类（安全反序列化辅助）             |
 | **FeishuEventMessageHandler**| 事件消息处理器，支持 v1.0 和 v2.0 版本     |
 | **PingPongMessageHandler**   | Ping/Pong 消息处理器                       |
@@ -165,6 +165,10 @@ app.Run();
 // 创建自定义消息处理器
 public class CustomMessageHandler : JsonMessageHandler
 {
+    public CustomMessageHandler(ILogger<CustomMessageHandler> logger) : base(logger)
+    {
+    }
+
     public override bool CanHandle(string messageType)
         => messageType == "custom_type";
 
@@ -180,6 +184,8 @@ public class CustomMessageHandler : JsonMessageHandler
 // 业务扩展请实现 IFeishuEventHandler 并通过 IFeishuEventHandlerFactory / DI 注册（见下方"自定义事件处理器"）：
 //   services.AddScoped<IFeishuEventHandler, CustomEventHandler>();
 ```
+
+> 💡 内置消息处理器（Ping/Pong、认证、心跳、事件）由 `FeishuWebSocketClient` 构造时自动注册到内部 `MessageRouter`；`MessageRouter.RegisterHandler(IMessageHandler)` 为公开方法，可在自建消息路由时注册自定义处理器。
 
 ### 文件结构
 
@@ -209,7 +215,6 @@ Mud.Feishu.WebSocket/
 │   ├── RetryHelper.cs                # 重试工具
 │   └── JsonOptions.cs                # JSON序列化选项
 ├── Handlers/                      # 消息处理器
-│   ├── IMessageHandler.cs          # 处理器接口
 │   ├── FeishuEventMessageHandler.cs # 事件消息处理
 │   ├── AuthMessageHandler.cs       # 认证消息处理
 │   ├── HeartbeatMessageHandler.cs  # 心跳消息处理
@@ -239,7 +244,7 @@ Mud.Feishu.WebSocket/
 ```csharp
 // 一行代码完成基础配置
 builder.Services.CreateFeishuWebSocketServiceBuilder(builder.Configuration)
-    .AddHandler<ReceiveMessageEventHandler>()
+    .AddHandler<MessageReceiveEventHandler>()
     .Build();
 ```
 
@@ -248,8 +253,8 @@ builder.Services.CreateFeishuWebSocketServiceBuilder(builder.Configuration)
 ```csharp
 // 支持链式调用，注册多个处理器
 builder.Services.CreateFeishuWebSocketServiceBuilder(builder.Configuration)
-    .AddHandler<ReceiveMessageEventHandler>()
-    .AddHandler<UserCreatedEventHandler>()
+    .AddHandler<MessageReceiveEventHandler>()
+    .AddHandler<UserCreateEventHandler>()
     .AddHandler<MessageReadEventHandler>()
     .Build();
 ```
@@ -266,7 +271,7 @@ builder.Services.CreateFeishuWebSocketServiceBuilder(options =>
     options.HeartbeatIntervalMs = 25000;
     options.EventDeduplication.Mode = EventDeduplicationMode.InMemory;
 })
-.AddHandler<ReceiveMessageEventHandler>()
+.AddHandler<MessageReceiveEventHandler>()
 .Build();
 ```
 
@@ -283,7 +288,7 @@ builder.Services.CreateFeishuWebSocketServiceBuilder(builder.Configuration)
         if (builder.Configuration.GetValue<bool>("Features:EnableAudit"))
             b.AddHandler<AuditEventHandler>();
     })
-    .AddHandler<ReceiveMessageEventHandler>()
+    .AddHandler<MessageReceiveEventHandler>()
     .Build();
 ```
 
@@ -294,7 +299,7 @@ builder.Services.CreateFeishuWebSocketServiceBuilder(builder.Configuration)
 builder.Services.CreateFeishuWebSocketServiceBuilder(builder.Configuration)
     .AddInterceptor<LoggingEventInterceptor>()  // 内置日志拦截器
     .AddInterceptor<CustomTelemetryInterceptor>()  // 自定义遥测拦截器
-    .AddHandler<ReceiveMessageEventHandler>()
+    .AddHandler<MessageReceiveEventHandler>()
     .Build();
 ```
 
@@ -302,7 +307,7 @@ builder.Services.CreateFeishuWebSocketServiceBuilder(builder.Configuration)
 
 ```csharp
 // 方式1：类型注册（推荐）
-.AddHandler<ReceiveMessageEventHandler>()
+.AddHandler<MessageReceiveEventHandler>()
 
 // 方式2：工厂注册
 .AddHandler(sp => new FactoryEventHandler(
@@ -318,18 +323,18 @@ builder.Services.CreateFeishuWebSocketServiceBuilder(builder.Configuration)
 
 ### 内置事件处理器
 
-| 处理器                             | 事件类型                         | 说明             |
-| ---------------------------------- | -------------------------------- | ---------------- |
-| `ReceiveMessageEventHandler`       | `im.message.receive_v1`          | 接收消息事件     |
-| `UserCreatedEventHandler`          | `contact.user.created_v3`        | 用户创建事件     |
-| `MessageReadEventHandler`          | `im.message.message_read_v1`     | 消息已读事件     |
-| `UserAddedToGroupEventHandler`     | `im.chat.member.user_added_v1`   | 用户加入群聊     |
-| `UserRemovedFromGroupEventHandler` | `im.chat.member.user_deleted_v1` | 用户离开群聊     |
-| `DefaultFeishuEventHandler`        | -                                | 未知事件类型处理 |
-| `DepartmentCreatedEventHandler`    | `contact.department.created_v3`  | 部门创建事件     |
-| `DepartmentDeleteEventHandler`     | `contact.department.deleted_v3`  | 部门删除事件     |
+| 处理器                              | 事件类型                         | 说明                         |
+| ----------------------------------- | -------------------------------- | ---------------------------- |
+| `MessageReceiveEventHandler`        | `im.message.receive_v1`          | 接收消息事件                 |
+| `UserCreateEventHandler`            | `contact.user.created_v3`        | 用户创建事件                 |
+| `MessageReadEventHandler`           | `im.message.message_read_v1`     | 消息已读事件                 |
+| `ChatMemberUserAddedEventHandler`   | `im.chat.member.user.added_v1`   | 用户加入群聊                 |
+| `ChatMemberUserDeletedEventHandler` | `im.chat.member.user.deleted_v1` | 用户离开群聊                 |
+| `DefaultFeishuEventHandler<T>`      | -                                | 未知事件类型处理（抽象基类） |
+| `DepartmentCreatedEventHandler`     | `contact.department.created_v3`  | 部门创建事件                 |
+| `DepartmentDeleteEventHandler`      | `contact.department.deleted_v3`  | 部门删除事件                 |
 
-> 💡 **提示**：以上处理器来自 `Mud.Feishu.Abstractions` 项目，通过代码生成器自动生成。你也可以实现 `IFeishuEventHandler` 接口创建自定义处理器。
+> 💡 **提示**：以上处理器来自 `Mud.Feishu.EventCallback` 项目，通过代码生成器自动生成。你也可以实现 `IFeishuEventHandler` 接口创建自定义处理器。
 
 ### 使用内置事件处理器基类
 
@@ -425,8 +430,9 @@ public class UserData
 
 ```csharp
 using Mud.Feishu.Abstractions;
-using Mud.Feishu.Abstractions.DataModels.Organization;
 using Mud.Feishu.Abstractions.EventHandlers;
+using Mud.Feishu.Abstractions.Services;
+using Mud.Feishu.EventCallback.Organization;
 using Mud.Feishu.WebSocket.Services;
 
 namespace YourProject.Handlers;
@@ -438,14 +444,15 @@ public class DemoDepartmentEventHandler : DepartmentCreatedEventHandler
 {
     private readonly DemoEventService _eventService;
 
-    public DemoDepartmentEventHandler(ILogger<DemoDepartmentEventHandler> logger, DemoEventService eventService) : base(logger)
+    public DemoDepartmentEventHandler(IFeishuEventDeduplicator businessDeduplicator, ILogger<DemoDepartmentEventHandler> logger, DemoEventService eventService) : base(businessDeduplicator, logger)
     {
         _eventService = eventService ?? throw new ArgumentNullException(nameof(eventService));
     }
 
     protected override async Task ProcessBusinessLogicAsync(
         EventData eventData,
-        ObjectEventResult<DepartmentCreatedResult>? departmentData,
+        DepartmentCreatedResult? departmentData,
+        FeishuEventHeader? header,
         CancellationToken cancellationToken = default)
     {
         if (eventData == null)
@@ -453,15 +460,24 @@ public class DemoDepartmentEventHandler : DepartmentCreatedEventHandler
 
         _logger.LogInformation("[部门事件] 开始处理部门创建事件: {EventId}", eventData.EventId);
 
+        if (departmentData == null)
+        {
+            _logger.LogWarning("[部门事件] 部门创建事件数据为空，跳过处理: {EventId}", eventData.EventId);
+            return;
+        }
+
         try
         {
             // 记录事件到服务
-            await _eventService.RecordDepartmentEventAsync(departmentData.Object, cancellationToken);
+            await _eventService.RecordDepartmentEventAsync(departmentData, cancellationToken);
 
             // 模拟业务处理
-            await ProcessDepartmentEventAsync(departmentData.Object, cancellationToken);
+            if (departmentData?.Object != null)
+            {
+                await ProcessDepartmentEventAsync(departmentData.Object, cancellationToken);
+            }
 
-            _logger.LogInformation("[部门事件] 部门创建事件处理完成: {DepartmentId}", departmentData.Object.DepartmentId);
+            _logger.LogInformation("[部门事件] 部门创建事件处理完成: {DepartmentId}", departmentData?.Object?.DepartmentId);
         }
         catch (Exception ex)
         {
@@ -470,7 +486,7 @@ public class DemoDepartmentEventHandler : DepartmentCreatedEventHandler
         }
     }
 
-    private async Task ProcessDepartmentEventAsync(DepartmentCreatedResult departmentData, CancellationToken cancellationToken)
+    private async Task ProcessDepartmentEventAsync(DepartmentResultInfo departmentData, CancellationToken cancellationToken)
     {
         _logger.LogDebug("🔄 [部门事件] 开始处理部门数据: {DepartmentId}", departmentData.DepartmentId);
 
@@ -498,13 +514,14 @@ public class DemoDepartmentEventHandler : DepartmentCreatedEventHandler
 /// </summary>
 public class DemoDepartmentDeleteEventHandler : DepartmentDeleteEventHandler
 {
-    public DemoDepartmentDeleteEventHandler(ILogger<DepartmentDeleteEventHandler> logger) : base(logger)
+    public DemoDepartmentDeleteEventHandler(IFeishuEventDeduplicator businessDeduplicator, ILogger<DepartmentDeleteEventHandler> logger) : base(businessDeduplicator, logger)
     {
     }
 
     protected override async Task ProcessBusinessLogicAsync(
         EventData eventData,
         DepartmentDeleteResult? eventEntity,
+        FeishuEventHeader? header,
         CancellationToken cancellationToken = default)
     {
         if (eventData == null)
@@ -577,7 +594,7 @@ builder.Services.CreateFeishuWebSocketServiceBuilder(builder.Configuration)
 ```csharp
 builder.Services.CreateFeishuWebSocketServiceBuilder(builder.Configuration)
     .AddInterceptor<LoggingEventInterceptor>()  // 记录事件处理开始和结束
-    .AddHandler<ReceiveMessageEventHandler>()
+    .AddHandler<MessageReceiveEventHandler>()
     .Build();
 ```
 
@@ -866,7 +883,7 @@ builder.Services.AddFeishuRedisDeduplicators(builder.Configuration);
 // 配置飞书WebSocket服务
 builder.Services.CreateFeishuWebSocketServiceBuilder(builder.Configuration)
     .AddInterceptor<LoggingEventInterceptor>()
-    .AddHandler<ReceiveMessageEventHandler>()
+    .AddHandler<MessageReceiveEventHandler>()
     .Build();
 ```
 
@@ -877,7 +894,7 @@ builder.Services.CreateFeishuWebSocketServiceBuilder(builder.Configuration)
 builder.Services.CreateFeishuWebSocketServiceBuilder(
         configuration,
         sectionName: "CustomFeishu")  // 配置节名称
-    .AddHandler<ReceiveMessageEventHandler>()
+    .AddHandler<MessageReceiveEventHandler>()
     .Build();
 ```
 
@@ -914,6 +931,79 @@ public class ConnectionService
         => _manager.GetConnectionStats();
 }
 ```
+
+### 连接令牌契约（重要：本轮行为变更）
+
+`ConnectAsync(endpoint, [appAccessToken,] cancellationToken)` 的 `cancellationToken`
+**只约束建连阶段**（TCP/WS 握手 + 认证），**不构成连接生命周期**：
+
+- 连接成功后取消该令牌**不会**中断接收循环或心跳（此前会被链接为生命周期令牌，取消即静默停帧）；
+- 终止连接请调用 `DisconnectAsync()` / `DisposeAsync()`；需要重连请调用 `IFeishuWebSocketManager.ReconnectAsync()`。
+
+> 背景：旧行为会在"socket 仍为 `Open` 但不再读帧"时形成**僵尸连接**
+> （无事件、无断线通知、只能等健康检查轮询兜底）。当前实现为：
+> 每一条终止路径都会产生断线声明，并由存活探针兜底外部静默失败（见下）。
+
+**回调线程契约（重要）**：`Connected`/`Disconnected` 事件均在**锁外**派发，
+因此你可以在回调中安全地发起 `ConnectAsync`/`DisconnectAsync`/`SendMessageAsync`（不会自锁）。
+
+- 持锁期间产生的事件会被**缓冲**，并在释放锁后**按原顺序**派发
+  （替换旧连接时顺序固定为"先 `Disconnected`、后 `Connected`"）；
+- 回调内抛出的异常会被记录并吞掉，不会改变 `ConnectAsync`/`DisconnectAsync` 的返回/异常语义；
+- 但请避免在 `Disconnected` 回调中**无条件**重连：这会造成重连风暴（这与 SDK 无关，属使用侧纪律）。
+
+### 接收事件线程契约（重要：本轮行为变更）
+
+`MessageReceived` 是**观测钩子**（日志/指标），不是业务处理入口：
+
+| 项 | 现契约 |
+| --- | --- |
+| 派发线程 | **不在接收循环线程**，而在取得并发租约后的处理任务体内 |
+| 并发性 | **可能并发**（受 `MaxConcurrentHandlers` 约束） |
+| 顺序 | **不保证**与帧到达顺序一致 |
+| 阻塞影响 | 回调内同步阻塞只占用一个并发槽位（形成反压），**不会**阻塞接收管道 |
+
+> 需要"顺序处理"或"受 `MessageHandlerTimeoutMs` 保护"的业务逻辑，请改用
+> `IMessageHandler`（经 `MessageRouter` 分发）。
+
+### 连接存活探针与健康检查
+
+`FeishuWebSocketHealthCheck` 的 `data` 新增存活维度，用于识别"连接看似正常但收不到事件"：
+
+| 字段 | 含义 |
+| --- | --- |
+| `receive_loop_alive` | 接收循环任务是否仍在运行 |
+| `last_receive_utc` | 最近一次收到帧的时间（`never` = 从未收到） |
+| `idle_ms` | 距最近一次收帧的毫秒数（`-1` = 尚无样本） |
+| `is_zombie` | `true` = 僵尸态（`State == Open` 但接收循环已结束）⇒ 判 `Unhealthy` |
+
+> 判定口径：**只有**"`State == Open` 且接收循环已结束"才判僵尸；单纯"长时间无帧"**不**判死
+> （长连接空闲期本就没有事件帧）。僵尸态同时会被后台服务的周期性检查捕获并触发重连。
+
+### 配置上界（启动期 fail-fast）
+
+`FeishuWebSocketOptions.Validate()` 现为**双向**校验（下界 + 上界）。越界会在应用启动时失败：
+
+| 配置 | 上界 |
+| --- | --- |
+| `Reconnect.TotalBudget` | 7 天 |
+| `Reconnect.BaseDelayMs` / `Reconnect.MaxDelayMs` | 1 小时 |
+| `MessageSizeLimits.MaxTextMessageSize` | 10 MB |
+| `ConnectionTimeoutMs` / `AuthTimeoutMs` / `AuthGateTimeoutMs` | 5 分钟 |
+
+> 迁移：若既有部署使用了更大的值，请在配置中收敛到上界之内。上界的存在是为了避免
+> "配置值突破实现层表示域"（例如超长时长进入 `CancellationTokenSource` 会抛异常，
+> 而该异常发生在异步重连路径上，表现为**自动重连静默失效**）。
+
+### `StartReceivingAsync` 已弃用
+
+接收循环由 `ConnectAsync` 统一管理，**无需也不要**显式调用 `IFeishuWebSocketClient.StartReceivingAsync`：
+
+- 未连接时抛 `InvalidOperationException`；
+- 已有循环在途时为**幂等 no-op** 并记录告警。
+
+> 迁移：删除对 `StartReceivingAsync` 的调用即可；需要恢复接收请调用
+> `IFeishuWebSocketManager.ReconnectAsync()`。
 
 ### 消息序号验证
 
@@ -960,8 +1050,24 @@ var (uptime, reconnectCount, lastError) = manager.GetConnectionStats();
 //   feishu.websocket.backlog              —— 在途待处理消息数
 //   feishu.websocket.message.duration     —— 消息处理耗时分布
 //   feishu.websocket.reconnect            —— 重连次数（outcome = success/failure）
+//   feishu.websocket.receive.idle_ms      —— 接收静默时长（-1 = 尚无收帧样本）
+//   feishu.websocket.receive.loop_alive   —— 接收循环是否存活（1/0）
+//   feishu.websocket.zombie               —— 僵尸连接（1 = State 为 Open 但接收循环已结束）
+//   feishu.websocket.frames.discarded     —— 受控丢弃计数（reason 维度）
 //   feishu.event.deduplication            —— 去重命中/未命中
 ```
+
+**告警建议（R2/F1-F5）**：
+
+| 指标条件 | 含义与处置 |
+| --- | --- |
+| `feishu.websocket.zombie == 1` | 僵尸连接：不可能再收到任何事件，HostedService 会自愈重连；持续出现请排查"外部取消/释放连接"的调用方 |
+| `feishu.websocket.receive.loop_alive == 0 且 connections == 1` | 同上（`zombie` 的等价形态，便于不支持复合表达式告警的后端使用） |
+| `receive.idle_ms` 持续增长且 `connections == 1` | 长连接空闲属正常（心跳是客户端→服务端单向）；**只有与 `zombie`/`loop_alive` 联合判读**才构成异常 |
+| `frames.discarded{reason="fragment_size_exceeded"}` 增长 | 对端下发的消息超过 `MessageSizeLimits` 配置：要么调大上限，要么让对端拆分消息 |
+| `frames.discarded{reason="drain_bound_exceeded"}` 增长 | 对端持续投递永不结束的超限分片（**协议层异常/恶意**），客户端已主动断连重连 |
+| `frames.discarded{reason="auth_gate_timeout"}` 增长 | 认证完成前到达的业务帧被丢弃：检查认证耗时或调大 `AuthGateTimeoutMs` |
+| `frames.discarded{reason="concurrency_rejected"}` 增长 | 背压已达极限（`MaxConcurrentHandlers`）或并发服务正在关停：**这是事件可能丢失的前兆** |
 
 ### SSL/TLS 证书配置
 
@@ -972,7 +1078,7 @@ builder.Services.CreateFeishuWebSocketServiceBuilder(builder.Configuration)
         options.Certificate.ValidateServerCertificate = true;
         options.Certificate.AllowSelfSignedCertificates = false;
     })
-    .AddHandler<ReceiveMessageEventHandler>()
+    .AddHandler<MessageReceiveEventHandler>()
     .Build();
 ```
 

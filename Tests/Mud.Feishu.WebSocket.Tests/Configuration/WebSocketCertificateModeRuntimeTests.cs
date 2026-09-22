@@ -168,6 +168,24 @@ public class WebSocketCertificateModeRuntimeTests
             "会让「只配回调、不配 Mode」的存量部署静默改用严格回调 —— 安全面行为突变");
     }
 
+    /// <summary>
+    /// 兼容分支矩阵补格（G-05）：Mode=<see cref="CertificateValidationMode.Dev"/> 且回调非 null 时，
+    /// 兼容分支必须**真的安装用户回调并返回**——若只告警不返回，会继续落入 Dev 分支把回调覆盖成
+    /// Dev 放宽回调（警告与行为互相矛盾，违反优先级链「兼容分支 &gt; Mode=Dev」）。
+    /// </summary>
+    [Fact]
+    public void DevMode_WithCustomCallback_ShouldKeepUsingCallback_NotDevCallback()
+    {
+        RemoteCertificateValidationCallback custom = (_, _, _, _) => false;
+
+        var callback = ResolveRuntimeCallback(
+            OptionsWith(CertificateValidationMode.Dev, customCallback: custom));
+
+        callback.Should().BeSameAs(custom,
+            "兼容分支（Mode≠Custom 且回调非 null）必须使用用户回调；" +
+            "不得被 Dev 放宽回调覆盖（优先级链：CustomCallback 兼容分支 > Mode=Dev）");
+    }
+
     // ────────────────────────────────────────────────────────────────────
     // 优先级链（G-06）：ValidateServerCertificate=false 优先于 Mode
     // ────────────────────────────────────────────────────────────────────

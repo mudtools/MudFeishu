@@ -26,9 +26,17 @@ public interface INonceValidator
     /// <returns>如果 Nonce 已被使用返回 true，否则返回 false</returns>
     /// <remarks>
     /// 此方法仅检查 Nonce 是否已存在，不会标记为已使用。
-    /// 用于在签名验证通过前进行预检查，避免签名失败时 Nonce 被误消费。
+    /// WHF-R2/B2：组合验证器自此版本起不再调用此方法，仅供诊断/自定义编排使用。
     /// </remarks>
     Task<bool> CheckNonceAsync(string nonce);
+
+    /// <summary>
+    /// 检查 Nonce 是否已被使用（仅检查，不标记）——带 CancellationToken 的重载（WHF-R2/B3）。
+    /// </summary>
+    /// <param name="nonce">随机数</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>如果 Nonce 已被使用返回 true，否则返回 false</returns>
+    Task<bool> CheckNonceAsync(string nonce, CancellationToken cancellationToken);
 
     /// <summary>
     /// 检查并标记 Nonce 为已使用
@@ -42,6 +50,14 @@ public interface INonceValidator
     /// - 支持多应用场景下的 Nonce 隔离
     /// </remarks>
     Task<bool> TryMarkNonceAsUsedAsync(string nonce);
+
+    /// <summary>
+    /// 检查并标记 Nonce 为已使用——带 CancellationToken 的重载（WHF-R2/B3）。
+    /// </summary>
+    /// <param name="nonce">随机数</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>如果 Nonce 已被使用返回 true，否则标记为已使用并返回 false</returns>
+    Task<bool> TryMarkNonceAsUsedAsync(string nonce, CancellationToken cancellationToken);
 
     /// <summary>
     /// 验证 Nonce 是否有效（未被使用且不为空）

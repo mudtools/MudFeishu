@@ -50,6 +50,12 @@ public class FeishuAppWebhookOptions
     public string EncryptKey { get; set; } = string.Empty;
 
     /// <summary>
+    /// 期望的 AppId（WHF-R2/C7）。配置后，解密后的事件 AppId 与此值不匹配时拒绝处理。
+    /// <para>防御 EncryptKey 复用误配置导致的跨应用事件串扰。未配置时行为不变。</para>
+    /// </summary>
+    public string? ExpectedAppId { get; set; }
+
+    /// <summary>
     /// 时间戳容差范围（秒），默认 <c>null</c> 表示继承全局配置。
     /// <para>设置为正整数时使用应用级配置；设置为 <c>null</c>、<c>-1</c> 或 <c>0</c> 时继承全局 <c>TimestampToleranceSeconds</c>。</para>
     /// <para>推荐使用 <c>null</c> 表示继承（与其他可空字段一致）；<c>-1</c> 仍向后兼容但已弃用。</para>

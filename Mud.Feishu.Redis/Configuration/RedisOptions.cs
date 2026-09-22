@@ -42,9 +42,10 @@ public class RedisOptions
     public RedisAdvancedOptions Advanced { get; set; } = new();
 
     /// <summary>
-    /// Nonce 有效期，默认 5 分钟（WHF-03：须 ≥ Webhook TimestampToleranceSeconds）
+    /// Nonce 有效期，默认 600 秒（WHF-03：建议为 Webhook TimestampToleranceSeconds 的 2 倍且至少严格大于）。
+    /// <para>WHF-R2/A4：默认从 5 分钟调整为 600 秒（2 × 300s 上限容差），旧默认恰好压线。</para>
     /// </summary>
-    public TimeSpan NonceTtl { get; set; } = TimeSpan.FromMinutes(5);
+    public TimeSpan NonceTtl { get; set; } = TimeSpan.FromSeconds(600);
 
     /// <summary>Nonce 去重键前缀</summary>
     public string NonceKeyPrefix
@@ -122,7 +123,7 @@ public class RedisOptions
             throw new InvalidOperationException("Connection.ConnectRetry 不能为负数");
 
         if (NonceTtl <= TimeSpan.Zero)
-            throw new InvalidOperationException("NonceTtl 必须为正值（建议 5 分钟以上）");
+            throw new InvalidOperationException("NonceTtl 必须为正值（建议为 TimestampToleranceSeconds 的 2 倍且至少严格大于）");
         if (SeqIdCacheExpiration <= TimeSpan.Zero)
             throw new InvalidOperationException("SeqIdCacheExpiration 必须为正值");
         if (EventCacheExpiration <= TimeSpan.Zero)

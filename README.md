@@ -225,7 +225,7 @@ dotnet add package Mud.Feishu.OpenTelemetry
 | `MessageSizeLimits`           | object   | 见下方  | 消息大小限制配置                                                   |
 | `EventDeduplication`          | object   | 见下方  | 事件去重配置                                                       |
 | `RejectEmptyEventIds`         | bool     | true    | 事件 EventId 为空时是否拒绝处理（fail-closed，对齐 Webhook WHF-05） |
-| `IgnoreUnknownEventTypes`     | bool     | false   | 未注册事件类型是否静默忽略（推荐 true，对齐 Webhook WHF-09；默认 false 保持兼容） |
+| `IgnoreUnknownEventTypes`     | bool     | false   | 未注册事件类型是否静默忽略（推荐 true，对齐 Webhook WHF-09；默认 false 保持兼容；支持热更新） |
 
 > ℹ️ **迁移提示**：旧版本的 `TokenRefreshInterval` / `TokenRefreshAhead` 配置已移除。令牌刷新现由 `FeishuAppConfig.TokenRefreshThreshold`（HTTP 层）统一控制，WebSocket 连接复用同一应用的令牌管理器，无需单独配置。
 
@@ -419,7 +419,7 @@ builder.Services.AddFeishuUserContext(options =>
 <details>
 <summary>📋 失败事件重试配置参考（FailedEventRetryOptions）</summary>
 
-> Webhook 模块支持失败事件的自动重试，以下配置在 `FeishuWebhook:Retry` 节点下生效。
+> Webhook 模块支持失败事件的自动重试，以下配置在 `FeishuWebhook:Retry` 节点下生效（R5.1 起真实生效；此前这些键静默无效，升级前请核对取值，详见 `documents/Configuration/ConfigMigration-R5.md`）。
 
 | 配置项                     | 类型   | 默认值 | 说明                         |
 | -------------------------- | ------ | ------ | ---------------------------- |
@@ -777,7 +777,7 @@ public interface IFeishuV1DriveSubscribe
     // 云文档事件订阅
 }
 
-public interface IFeishuV1Comments
+public interface IFeishuV1DriveComments
 {
     // 云文档评论管理
 }

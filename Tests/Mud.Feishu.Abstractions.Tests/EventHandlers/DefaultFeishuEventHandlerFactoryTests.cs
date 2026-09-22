@@ -230,6 +230,57 @@ public class DefaultFeishuEventHandlerFactoryTests
         handler3Mock.Verify(h => h.HandleAsync(It.IsAny<EventData>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
+    // ===== E2（R2 §9）：扇出部分失败 → 成功处理器已执行的回归锁定 =====
+
+    [Fact]
+    public async Task HandleEventParallelAsync_WhenOneOfManyFails_OtherHandlersComplete_BeforeRollback()
+    {
+        // Arrange：锁定 at-least-once 事实——任一处理器失败时，Task.WhenAll 已等待全部任务
+        // 完成，失败前成功执行完毕的处理器不会被中断。调用方随后的去重回滚 + 服务端重发
+        // 将使其再次执行（处理器必须幂等，P2-7）。
+        var completionSignal = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var successCount = 0;
+
+        var successMock = new Mock<IFeishuEventHandler>();
+        successMock.Setup(h => h.SupportedEventType).Returns("test.event.type1");
+        successMock
+            .Setup(h => h.HandleAsync(It.IsAny<EventData>(), It.IsAny<CancellationToken>()))
+            .Returns(async (EventData _, CancellationToken _) =>
+            {
+                await Task.Yield();
+                Interlocked.Increment(ref successCount);
+                completionSignal.TrySetResult();
+            });
+
+        var failingMock = new Mock<IFeishuEventHandler>();
+        failingMock.Setup(h => h.SupportedEventType).Returns("test.event.type1");
+        failingMock
+            .Setup(h => h.HandleAsync(It.IsAny<EventData>(), It.IsAny<CancellationToken>()))
+            .Returns(async (EventData _, CancellationToken _) =>
+            {
+                // 等成功处理器完整跑完后再失败：确保异常传播时成功处理器已收尾
+                await completionSignal.Task;
+                throw new InvalidOperationException("fanout partial failure");
+            });
+
+        var handlers = new List<IFeishuEventHandler> { successMock.Object, failingMock.Object };
+        var factory = new DefaultFeishuEventHandlerFactory(_loggerMock.Object, handlers, _defaultHandlerMock.Object);
+
+        var eventData = new EventData
+        {
+            EventId = "test-event-e2",
+            EventType = "test.event.type1"
+        };
+
+        // Act
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            factory.HandleEventParallelAsync("test.event.type1", eventData, CancellationToken.None));
+
+        // Assert：失败前成功处理器恰好执行 1 次（重发后将被再次执行——at-least-once）
+        successCount.Should().Be(1, "失败处理器不得中断已成功的并行处理器");
+        successMock.Verify(h => h.HandleAsync(It.IsAny<EventData>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
     [Fact]
     public void ClearHandlers_ShouldRemoveAllHandlers()
     {

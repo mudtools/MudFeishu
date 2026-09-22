@@ -139,9 +139,12 @@ public class FeishuWebhookConcurrencyService : IAsyncDisposable, IHostedService
             _logger.LogInformation("{Message}，最大并发数: {NewMax} (实际: {ActualMaxConcurrent})", logMessage, newMaxConcurrent, actualMaxConcurrent);
 
             // 延迟释放旧信号量，等待可能正在使用的请求完成
+            // WHF-R2/C4：固定 60s 改为动态——至少 60s 或有效处理超时的 2 倍
+            var effectiveTimeoutMs = _optionsMonitor.CurrentValue.EventHandlingTimeoutMs;
+            var delayMs = (int)Math.Max(60_000, effectiveTimeoutMs * 2.0);
             _ = Task.Run(async () =>
             {
-                await Task.Delay(60000); // 等待 60 秒
+                await Task.Delay(delayMs);
                 oldSemaphore.Dispose();
             });
         }
@@ -177,6 +180,13 @@ public class FeishuWebhookConcurrencyService : IAsyncDisposable, IHostedService
             _logger.LogDebug("获取信号量成功，当前可用: {AvailableSlots}", currentSemaphore.CurrentCount + 1);
 
             return new SemaphoreLease(currentSemaphore, _logger);
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested && !_shutdownCts.IsCancellationRequested)
+        {
+            // WHF-R2/C4：取消与获取的竞态——WaitAsync 可能在已获取后抛 OCE，必须补还槽位
+            var currentSemaphore = GetCurrentSemaphore();
+            try { currentSemaphore.Release(); } catch (SemaphoreFullException) { /* 已被其他路径补还 */ }
+            throw;
         }
         finally
         {
@@ -246,8 +256,16 @@ public class FeishuWebhookConcurrencyService : IAsyncDisposable, IHostedService
                 return;
 
             _disposed = true;
-            _semaphore.Release();
-            _logger.LogDebug("释放信号量成功，当前可用: {AvailableSlots}", _semaphore.CurrentCount);
+            // WHF-R2/C4：旧信号量可能在延迟释放后被 Dispose，此处容错不再向上传播
+            try
+            {
+                _semaphore.Release();
+                _logger.LogDebug("释放信号量成功，当前可用: {AvailableSlots}", _semaphore.CurrentCount);
+            }
+            catch (ObjectDisposedException)
+            {
+                // 旧信号量已释放，槽位无需归还
+            }
         }
     }
 }

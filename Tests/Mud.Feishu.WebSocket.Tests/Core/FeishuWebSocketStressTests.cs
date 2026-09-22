@@ -188,15 +188,28 @@ public class FeishuWebSocketStressTests
             await WaitUntilAsync(() => client.Liveness.LastReceiveUtc.HasValue, "必须记录最近收帧时刻");
 
             // Act：静默 3 秒（不发任何帧）
+            // 注意：静默时长用 Stopwatch 实测，而 IdleMs 由 DateTime.UtcNow 差值计算——
+            // Task.Delay 基于计时器节拍，相对 UtcNow 可提前约 1ms 触发
+            // （ubuntu-latest 上实测出现过 IdleMs=2999 ⇒ 不得断言 IdleMs >= 3000）。
+            var idleStopwatch = Stopwatch.StartNew();
             await Task.Delay(TimeSpan.FromSeconds(3));
 
-            // Assert
-            client.Liveness.ReceiveLoopAlive.Should().BeTrue("静默期间接收循环仍应在运行");
-            client.Liveness.IsZombie.Should().BeFalse(
+            // 只取一次快照：多次读取会各自重算 UtcNow，无法作为同一事实的两个观测点
+            var liveness = client.Liveness;
+
+            // Assert（结构性断言优先，计时断言仅作量级守护且带容差）
+            liveness.ReceiveLoopAlive.Should().BeTrue("静默期间接收循环仍应在运行");
+            liveness.IsZombie.Should().BeFalse(
                 "空闲不等于僵尸：只有'State==Open 且接收循环已结束'才允许判死");
-            client.Liveness.IdleMs.Should().BeGreaterThanOrEqualTo(3000,
-                "IdleMs 必须如实反映静默时长（供运维取证）");
             client.IsConnected.Should().BeTrue();
+
+            liveness.LastReceiveUtc.Should().NotBeNull();
+            liveness.IdleMs.Should().BeGreaterThanOrEqualTo(0,
+                "-1 表示尚无收帧样本；这里已经收到过一帧，必须有样本");
+            liveness.IdleMs.Should().BeGreaterThanOrEqualTo(
+                (long)idleStopwatch.Elapsed.TotalMilliseconds - 100,
+                "IdleMs 必须如实反映静默时长（容差 100ms 吸收计时器节拍/时钟粒度差异；" +
+                "若该值恒为 0 或远小于实测静默时长，说明收帧时间戳没有被刷新）");
         }
         finally
         {

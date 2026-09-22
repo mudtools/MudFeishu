@@ -38,6 +38,7 @@ public class HeartbeatManagerProtoBufTests
     {
         // Arrange
         byte[]? sentData = null;
+        var pingSent = new TaskCompletionSource<byte[]>(TaskCreationOptions.RunContinuationsAsynchronously);
         var options = new FeishuWebSocketOptions
         {
             HeartbeatIntervalMs = 5000
@@ -46,17 +47,21 @@ public class HeartbeatManagerProtoBufTests
         var manager = new HeartbeatManager(
             NullLogger<HeartbeatManager>.Instance,
             options,
-            (data, _) => { sentData = data; return Task.CompletedTask; });
+            (data, _) => { pingSent.TrySetResult(data); return Task.CompletedTask; });
 
         manager.SetServiceId(1001);
 
         using var cts = new CancellationTokenSource();
         var heartbeatTask = manager.StartHeartbeatAsync(cts.Token);
 
-        // 等待心跳发送（间隔 5000ms，需要等待）
-        await Task.Delay(6000);
+        // 等待心跳发送（间隔 5000ms）：用有界条件等待替代固定 Task.Delay(6000)——
+        // 固定延时在 CI 负载下可能早于心跳触发（计时器节拍 + 线程池排队），造成偶发空引用
+        var completed = await Task.WhenAny(pingSent.Task, Task.Delay(TimeSpan.FromSeconds(10)));
+        completed.Should().BeSameAs(pingSent.Task,
+            "心跳必须按 HeartbeatIntervalMs 触发（上界 10s > 间隔 5s，容差只用于吸收调度延迟）");
 
         // Act
+        sentData = await pingSent.Task;
         cts.Cancel();
         await heartbeatTask;
 

@@ -176,12 +176,16 @@ public class BinaryMessageProcessorTests
         processor.BinaryMessageReceived += (sender, args) => receivedArgs = args;
 
         var validProtobufData = CreateValidProtobufData();
+        var argsReady = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        processor.BinaryMessageReceived += (sender, args) => argsReady.TrySetResult(true);
 
         // Act
         await processor.ProcessBinaryDataAsync(validProtobufData, 0, validProtobufData.Length, true, CancellationToken.None);
 
-        // Wait for async processing
-        await Task.Delay(100);
+        // 等待异步派发（有界条件等待）：固定 Task.Delay(100) 在并行负载下偶发不足
+        // （net10.0 全量运行时曾出现 ProcessBinaryDataAsync_ShouldTriggerEvent_* 因此偶发失败）
+        var completed = await Task.WhenAny(argsReady.Task, Task.Delay(3000));
+        completed.Should().BeSameAs(argsReady.Task, "有效帧必须在异步派发后触发 BinaryMessageReceived");
 
         // Assert
         receivedArgs.Should().NotBeNull();
@@ -280,19 +284,20 @@ public class BinaryMessageProcessorTests
     {
         // Arrange
         var processor = CreateProcessor();
-        var eventTriggered = false;
-        processor.BinaryMessageReceived += (sender, args) => eventTriggered = true;
+        var eventTriggered = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        processor.BinaryMessageReceived += (sender, args) => eventTriggered.TrySetResult(true);
 
         var validProtobufData = CreateValidProtobufData();
 
         // Act
         await processor.ProcessBinaryDataAsync(validProtobufData, 0, validProtobufData.Length, true, CancellationToken.None);
 
-        // Wait for async processing
-        await Task.Delay(200);
+        // Wait for async processing（有界条件等待，替代固定 Task.Delay(200)——并行负载下偶发不足）
+        var completed = await Task.WhenAny(eventTriggered.Task, Task.Delay(3000));
+        completed.Should().BeSameAs(eventTriggered.Task, "BinaryMessageReceived 必须被异步触发");
 
         // Assert
-        eventTriggered.Should().BeTrue();
+        (await eventTriggered.Task).Should().BeTrue();
 
         processor.Dispose();
     }
@@ -315,10 +320,15 @@ public class BinaryMessageProcessorTests
             Payload = Encoding.UTF8.GetBytes("{\"ReconnectCount\":5,\"ReconnectInterval\":120,\"ReconnectNonce\":30,\"PingInterval\":60}")
         };
         var pongData = SerializeFrame(pongFrame);
+        var configReady = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        processor.PongReceived += (sender, config) => configReady.TrySetResult(true);
 
         // Act
         await processor.ProcessBinaryDataAsync(pongData, 0, pongData.Length, true, CancellationToken.None);
-        await Task.Delay(200); // 等待异步处理
+
+        // 等待异步处理（有界条件等待，替代固定 Task.Delay(200)）
+        var completed = await Task.WhenAny(configReady.Task, Task.Delay(3000));
+        completed.Should().BeSameAs(configReady.Task, "Pong 控制帧必须触发 PongReceived");
 
         // Assert
         receivedConfig.Should().NotBeNull();
@@ -372,10 +382,15 @@ public class BinaryMessageProcessorTests
             Payload = Encoding.UTF8.GetBytes("{\"PingInterval\":60}")
         };
         var pongData = SerializeFrame(pongFrame);
+        var argsReady = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        processor.BinaryMessageReceived += (sender, args) => argsReady.TrySetResult(true);
 
         // Act
         await processor.ProcessBinaryDataAsync(pongData, 0, pongData.Length, true, CancellationToken.None);
-        await Task.Delay(200);
+
+        // 等待异步处理（有界条件等待，替代固定 Task.Delay(200)）
+        var completed = await Task.WhenAny(argsReady.Task, Task.Delay(3000));
+        completed.Should().BeSameAs(argsReady.Task, "Pong 控制帧必须触发 BinaryMessageReceived（MessageType=Control_*）");
 
         // Assert
         receivedArgs.Should().NotBeNull();

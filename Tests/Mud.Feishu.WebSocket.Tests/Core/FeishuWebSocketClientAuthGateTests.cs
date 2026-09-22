@@ -73,7 +73,11 @@ public class FeishuWebSocketClientAuthGateTests
         stopwatch.Stop();
 
         // Assert
-        stopwatch.Elapsed.Should().BeLessThan(TimeSpan.FromMilliseconds(300),
+        // 边界取闸门时长（800ms）的 3/4：闸门等待若被错误地放在调用方线程上，
+        // 本次调用至少要阻塞 800ms ⇒ 必然超过 600ms；
+        // 而正确实现是微秒级返回。CI 负载波动远小于该间隔（ubuntu-latest 上曾出现
+        // 计时断言 3000ms 被测成 2999ms 的偏差，量级完全不同）。
+        stopwatch.Elapsed.Should().BeLessThan(TimeSpan.FromMilliseconds(600),
             "P2-10：闸门等待必须在任务体内进行，接收循环不得被阻塞（队头阻塞）");
     }
 
@@ -105,7 +109,9 @@ public class FeishuWebSocketClientAuthGateTests
         stopwatch.Stop();
 
         // Assert
-        stopwatch.Elapsed.Should().BeLessThan(TimeSpan.FromMilliseconds(300));
+        // 闸门关闭时正确路径是微秒级返回；这里只需排除"被闸门等待阻塞"（秒级），
+        // 不做紧边界（纯计时上界在 CI 负载下天然抖动）。强断言见下方回环用例 #18/#19。
+        stopwatch.Elapsed.Should().BeLessThan(TimeSpan.FromSeconds(2));
     }
 
     // ────────────────────────────────────────────────────────────────────────

@@ -306,10 +306,27 @@ R4 起，`FeishuAppConfig` 与 `FeishuWebSocketOptions` 上的 `EnableLogging` �
 | `TimestampToleranceSeconds`        | int                   | 30     | 时间戳容差（秒），超过此时间视为无效请求                     |
 | `MaxConcurrentEvents`              | int                   | 10     | 最大并发事件处理数                                           |
 | `MaxRequestBodySize`               | long                  | 10MB   | 最大请求体大小（字节）                                       |
-| `EventHandlingTimeoutMs`           | int                   | 30000  | 事件处理超时时间（毫秒）                                     |
+| `EventHandlingTimeoutMs`           | int                   | 30000  | 事件处理**软超时**（毫秒）：仅取消令牌，不强制中断处理器     |
 | `EnableTokenBackgroundRefresh`     | bool?                 | null   | 是否覆盖基座令牌后台刷新（null=不干预；替代已移除的 `EnableBackgroundProcessing`） |
+| `AllowInMemoryNonceDedupInProduction` | bool               | false  | 生产环境是否允许内存 Nonce 去重（默认阻断，见下方部署约束）  |
+| `InterceptionAckMode`              | `Ack` / `Retryable`   | Ack    | 拦截器中断事件时的 ACK 语义（`Ack`→200 已消费；`Retryable`→503 要求重推） |
 
 > 🔒 生产环境强烈建议保持 `EnforceHeaderSignatureValidation=true`，配置 `AllowedSourceIPs` 限制来源 IP，并将 `TimestampToleranceSeconds` 设置为 30 秒或更短以减少重放攻击时间窗口。
+
+#### 多实例部署约束（必读）
+
+内存实现只对**单实例**有效。生产环境（`ASPNETCORE_ENVIRONMENT=Production`）若未注册分布式
+Nonce 去重（`AddFeishuRedisDeduplicators()`），**宿主启动即失败**——这是一种静默的安全退化，
+默认必须由代码阻断而非文档建议。确为单实例部署时，显式设置
+`AllowInMemoryNonceDedupInProduction=true` 承担风险（仍会输出 Warning）。
+
+| 能力                | 单实例                     | 多实例（负载均衡）                       |
+| ------------------- | -------------------------- | ---------------------------------------- |
+| Nonce 防重放        | 内存可用（生产需显式豁免） | **必须 Redis**（否则跨实例重放不可检测） |
+| 事件去重（EventId） | 内存可用                   | 建议 Redis（否则重复消费面扩大）         |
+| 请求限流            | 内存可用                   | 每实例独立（等效配额 ×N）                |
+| 并发闸              | 单进程有效                 | 每实例独立                               |
+| 失败事件重投        | 进程内（重启即丢）         | 需自定义 `IFailedEventStore`             |
 
 </details>
 

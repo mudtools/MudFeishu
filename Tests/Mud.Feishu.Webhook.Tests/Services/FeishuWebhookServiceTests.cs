@@ -1261,6 +1261,221 @@ public class FeishuWebhookServiceTests
 
     #endregion
 
+    #region R3-P1-1：未匹配 SupportedEventType 不得静默丢失
+
+    [Fact]
+    public async Task HandleEventAsync_AppSpecificHandlersAllSkipped_ShouldRecordUnhandledMetricAndLogWarning()
+    {
+        // Arrange - R3-P1-1：应用专属路径此前只有 LogDebug，生产 Information 级不可见且无指标
+        var appKey = "app-001";
+        var eventData = new EventData
+        {
+            EventId = "evt_all_skipped",
+            EventType = "event.a"
+        };
+
+        var handlerRegistry = new FeishuWebhookHandlerRegistry();
+        handlerRegistry.Register(appKey, typeof(TestAppHandler));
+
+        var handlerMock = new Mock<IFeishuEventHandler>();
+        handlerMock.SetupGet(x => x.SupportedEventType).Returns("event.b");   // 不匹配 → 跳过
+
+        _serviceProviderMock
+            .Setup(x => x.GetService(typeof(TestAppHandler)))
+            .Returns(handlerMock.Object);
+
+        var service = CreateServiceWithHandlerRegistry(handlerRegistry);
+
+        // Act
+        service.SetCurrentAppKey(appKey);
+        var result = await service.HandleEventAsync(eventData);
+
+        // Assert：事件仍按成功 ack（unhandled 不是失败），但必须留下 Warning
+        Assert.True(result.Success);
+        handlerMock.Verify(x => x.HandleAsync(It.IsAny<EventData>(), It.IsAny<CancellationToken>()), Times.Never);
+
+        _loggerMock.Verify(
+            x => x.Log(
+                LogLevel.Warning,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, _) => v.ToString()!.Contains("均不匹配事件类型")),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Once, "全部处理器跳过时必须 Warning——否则拼错 SupportedEventType 的事件会静默消失");
+    }
+
+    [Fact]
+    public async Task HandleEventAsync_MisspelledSupportedEventType_ShouldNotBeSilent()
+    {
+        // Arrange - 用户把 "im.message.receive_v1" 拼成 "im.message.recieve_v1" 的典型场景
+        var appKey = "app-001";
+        var eventData = new EventData
+        {
+            EventId = "evt_misspelled",
+            EventType = "im.message.receive_v1"
+        };
+
+        var handlerRegistry = new FeishuWebhookHandlerRegistry();
+        handlerRegistry.Register(appKey, typeof(TestAppHandler));
+
+        var handlerMock = new Mock<IFeishuEventHandler>();
+        handlerMock.SetupGet(x => x.SupportedEventType).Returns("im.message.recieve_v1");   // 拼写错误
+
+        _serviceProviderMock
+            .Setup(x => x.GetService(typeof(TestAppHandler)))
+            .Returns(handlerMock.Object);
+
+        var service = CreateServiceWithHandlerRegistry(handlerRegistry);
+
+        // Act
+        service.SetCurrentAppKey(appKey);
+        var result = await service.HandleEventAsync(eventData);
+
+        // Assert：不得静默——必须有 Warning 提示核对 SupportedEventType
+        Assert.True(result.Success);
+        _loggerMock.Verify(
+            x => x.Log(
+                LogLevel.Warning,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, _) => v.ToString()!.Contains("SupportedEventType")),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Once, "拼写错误的 SupportedEventType 必须在生产默认日志级别可见");
+    }
+
+    [Fact]
+    public async Task HandleEventAsync_GlobalBranchUnregisteredType_ShouldLogWarningNotDebug()
+    {
+        // Arrange - 全局门控分支：LogDebug 提升为 Warning（生产 Information 级看不到 Debug）
+        var eventData = new EventData
+        {
+            EventId = "evt_unregistered_global",
+            EventType = "some.unregistered.type"
+        };
+        _options.IgnoreUnknownEventTypes = true;   // 构造函数默认为 false，本用例需走门控分支
+        _handlerFactoryMock.Setup(x => x.IsHandlerRegistered("some.unregistered.type")).Returns(false);
+
+        var service = CreateServiceWithHandlerRegistry(new FeishuWebhookHandlerRegistry());
+
+        // Act
+        var result = await service.HandleEventAsync(eventData);
+
+        // Assert
+        Assert.True(result.Success);
+        _loggerMock.Verify(
+            x => x.Log(
+                LogLevel.Warning,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, _) => v.ToString()!.Contains("未注册处理器")),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Once);
+    }
+
+    #endregion
+
+    #region R3-P1-3：软超时可观测（timeout_overshoot）+ D4 回归保护
+
+    [Fact]
+    public async Task Timeout_WhenHandlerIgnoresCancellation_ShouldStillAwaitAllHandlers()
+    {
+        // Arrange - **D4 回归保护**：软超时不得演变成硬超时。
+        // 处理器忽略取消令牌、直到自身完成才返回；断言它**确实被执行完**（无孤儿任务、无双执行）。
+        var eventData = new EventData
+        {
+            EventId = "evt_ignore_cancel",
+            EventType = "test.event"
+        };
+
+        var completed = new TaskCompletionSource();
+        _handlerFactoryMock
+            .Setup(x => x.HandleEventParallelAsync(It.IsAny<string>(), It.IsAny<EventData>(), It.IsAny<CancellationToken>()))
+            .Returns(async Task () =>
+            {
+                await Task.Delay(50);          // 不响应取消令牌
+                completed.TrySetResult();
+            });
+
+        _options.EventHandlingTimeoutMs = 1000;
+        var service = CreateServiceWithHandlerRegistry(new FeishuWebhookHandlerRegistry());
+
+        // Act
+        var result = await service.HandleEventAsync(eventData);
+
+        // Assert：处理器跑完了（await WhenAll 语义未变）
+        completed.Task.IsCompleted.Should().BeTrue("软超时不得中断处理器——D4 禁止‘状态已释放而任务仍在跑’");
+        Assert.True(result.Success);
+    }
+
+    [Fact]
+    public async Task Timeout_WhenElapsedFarExceedsTimeout_ShouldRecordOvershootWarning()
+    {
+        // Arrange - R3-P1-3：实际耗时远超软超时 → 必须可见（否则"超时"形同虚设却无人知晓）
+        var eventData = new EventData
+        {
+            EventId = "evt_overshoot",
+            EventType = "test.event"
+        };
+
+        // 软超时 1000ms；处理器忽略令牌再跑 1600ms → elapsed > 1000 * 1.5
+        _options.EventHandlingTimeoutMs = 1000;
+        _handlerFactoryMock
+            .Setup(x => x.HandleEventParallelAsync(It.IsAny<string>(), It.IsAny<EventData>(), It.IsAny<CancellationToken>()))
+            .Returns(async Task () =>
+            {
+                await Task.Delay(1600);
+                throw new OperationCanceledException();
+            });
+
+        var service = CreateServiceWithHandlerRegistry(new FeishuWebhookHandlerRegistry());
+
+        // Act
+        var result = await service.HandleEventAsync(eventData);
+
+        // Assert
+        Assert.False(result.Success, "超时仍按失败口径返回（供飞书重推）");
+        _loggerMock.Verify(
+            x => x.Log(
+                LogLevel.Warning,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, _) => v.ToString()!.Contains("显著超过软超时")),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Once, "实际耗时远超软超时时必须告警（软超时无法强制中断处理器）");
+    }
+
+    #endregion
+
+    /// <summary>
+    /// 用指定的处理器注册表构造被测服务（应用专属分支用例需要自定义 registry）。
+    /// </summary>
+    private FeishuWebhookService CreateServiceWithHandlerRegistry(FeishuWebhookHandlerRegistry handlerRegistry)
+    {
+        _optionsMonitorMock.Setup(x => x.CurrentValue).Returns(_options);
+
+        // 去重占位：Moq 默认返回 null DeduplicationResult，会让 CheckDeduplicationAsync 空引用
+        _deduplicatorMock
+            .Setup(x => x.TryMarkAsProcessingAsync(It.IsAny<string>(), It.IsAny<string?>(),
+                It.IsAny<TimeSpan?>(), It.IsAny<TimeSpan?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((string id, string? _, TimeSpan? __, TimeSpan? ___, CancellationToken ____)
+                => DeduplicationResult.Success(id));
+
+        return new FeishuWebhookService(
+            _optionsMonitorMock.Object,
+            _validatorMock.Object,
+            _decryptorMock.Object,
+            _handlerFactoryMock.Object,
+            _loggerMock.Object,
+            Array.Empty<IFeishuEventInterceptor>(),
+            _concurrencyService,
+            _deduplicatorMock.Object,
+            _encryptKeyProviderMock.Object,
+            handlerRegistry,
+            new FeishuWebhookInterceptorRegistry(),
+            _serviceProviderMock.Object,
+            _appKeyAccessorMock.Object);
+    }
+
     private class FailingAppHandlerA : IFeishuEventHandler
     {
         public string SupportedEventType => "test.event";

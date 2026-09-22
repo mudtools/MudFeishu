@@ -25,6 +25,8 @@
 - `FeishuWebhook:InterceptionAckMode`（默认 `Ack`；`Retryable` 时拦截响应 503）
 - 启动期选项校验（宿主启动失败而非首个请求 500）
 - 指标标签：`intercepted`（改为成功口径）/ `intercepted_retryable`
+- 未匹配 `SupportedEventType` 可观测：应用专属路径全部跳过时输出 Warning + `unhandled` 指标
+- 软超时可观测：实际耗时显著超过 `EventHandlingTimeoutMs` 时输出 Warning + `timeout_overshoot` 指标
 
 #### 🐛 修复
 
@@ -37,6 +39,7 @@
 - 拦截事件不再因 HTTP 500 反复触发飞书重推。
 - 客户端断开（`OperationCanceledException`）不再被吞成"验签失败 403"写向已中止连接
   （中间件既有 WHF-16 分支现在真正可达）。
+- 处理器 `SupportedEventType` 不匹配不再静默丢失事件（此前仅 Debug 日志、应用专属路径连指标都无）。
 
 ### 🐛 令牌与多应用管理（TMR2 第一轮，P0/P1）
 

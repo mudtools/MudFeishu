@@ -43,6 +43,19 @@ public class FeishuWebhookOptions
     /// 事件处理超时时间（毫秒）
     /// 超过此时间仍未完成的请求将被取消并返回超时错误
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>这是"软超时"，不是硬超时</b>：到达该时限时 SDK 只取消
+    /// <see cref="CancellationToken"/>，<b>不会</b>强制中断处理器
+    /// （强制中断会制造"状态/去重已释放而任务仍在跑"的双重执行，见方案 D4）。
+    /// </para>
+    /// <para>
+    /// 因此：仅当处理器<b>协作式响应</b>取消令牌时，本值才等于实际耗时的上界。
+    /// 不响应取消的处理器会把本次请求的实际耗时顶到远超本值，并在此期间持续占用
+    /// 并发闸槽位与去重 <c>processing</c> 态。此类情况会以 <c>timeout_overshoot</c>
+    /// 指标与 Warning 日志暴露（R3-P1-3），请据此排查处理器实现。
+    /// </para>
+    /// </remarks>
     public int EventHandlingTimeoutMs { get; set; } = 30000;
 
     /// <summary>

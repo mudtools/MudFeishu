@@ -287,6 +287,15 @@ app.Run();
 
 ### 方式一：实现 IFeishuEventHandler 接口
 
+> **`SupportedEventType` 约定**：
+>
+> - 返回**非空值**时，处理器只接收该类型的事件（**必须与飞书的事件类型字符串完全一致**，
+>   拼错会导致事件被跳过且不产生任何业务效果）。
+> - 返回**空串 / null** 表示"处理该应用（或全局）的**全部**事件"。
+> - 应用专属处理器**全部**因类型不匹配而跳过时，SDK 会输出 Warning
+>   并记录 `unhandled` 指标——请据此核对拼写（生产默认日志级别即可看到）。
+> - 处理器应**协作式响应** `CancellationToken`：超时是软超时，不会强制中断处理器。
+
 ```csharp
 using Microsoft.Extensions.Logging;
 using Mud.Feishu.Abstractions;
@@ -432,19 +441,55 @@ public class DemoDepartmentEventHandler : DepartmentCreatedEventHandler
 | `TimestampToleranceSeconds`        | int               | 30       | 时间戳验证容错范围（秒），上限 300 秒（重放窗口上限） |
 | `NonceValidationFailureMode`       | NonceFailureMode  | Reject  | Nonce 去重服务不可用时的降级策略（Reject=安全优先拒绝，Allow=可用性优先放行） |
 | `RejectEmptyIdentifiers`           | bool              | true     | 空 EventId/Nonce 是否拒绝请求（fail-closed）   |
-| `IgnoreUnknownEventTypes`          | bool              | true     | 未注册 eventType 的事件是否静默忽略（记 Debug + unhandled 指标） |
+| `IgnoreUnknownEventTypes`          | bool              | true     | 未注册 eventType 的事件是否静默忽略（记 **Warning** + `unhandled` 指标） |
+| `AllowInMemoryNonceDedupInProduction` | bool           | false    | 生产环境是否允许使用进程内内存 Nonce 去重（见下方「部署形态约束」） |
+| `InterceptionAckMode`              | InterceptionAckMode | Ack    | 拦截器中断事件时对飞书表达的确认语义（见「拦截器中断语义」） |
 
 > **重放窗口不变量**：`NonceTtl`（Redis 工程 `RedisOptions`）必须 ≥ `TimestampToleranceSeconds`，
 > 否则在 Nonce 过期后、容差窗口结束前的区间内重放攻击可行。默认组合（NonceTtl=5min /
 > 容差上限=300s）天然满足；跨工程配置无法在单一库内联断言，由两侧 XML 文档共同声明。
+
+> **⚠️ 生产环境 Nonce 去重形态**：生产环境（`ASPNETCORE_ENVIRONMENT=Production`）若未注册
+> 分布式 Nonce 去重实现（`AddFeishuRedisDeduplicators()`），**宿主启动即失败**。
+> 确为单实例部署时，显式设置 `AllowInMemoryNonceDedupInProduction=true` 承担风险。
+
+### 部署形态约束（多实例必读）
+
+内存实现只对**单实例**有效——多实例各进程的内存表互不相通。
+
+| 能力                | 单实例                       | 多实例（负载均衡）                        |
+| ------------------- | ---------------------------- | ----------------------------------------- |
+| Nonce 防重放        | 内存可用（生产需显式豁免）   | **必须 Redis**，否则跨实例重放不可检测    |
+| 事件去重（EventId） | 内存可用                     | 建议 Redis（否则重复消费面扩大）          |
+| 请求限流            | 内存可用                     | 每实例独立（等效配额 ×N）                 |
+| 并发闸              | 单进程有效                   | 每实例独立                                |
+| 失败事件重投        | 进程内（重启即丢）           | 需自定义 `IFailedEventStore`              |
 
 ### 性能配置
 
 | 选项                          | 类型 | 默认值 | 说明                                                   |
 | ----------------------------- | ---- | ------ | ------------------------------------------------------ |
 | `MaxConcurrentEvents`         | int  | 10     | 最大并发事件数，支持热更新                             |
-| `EventHandlingTimeoutMs`      | int  | 30000  | 事件处理超时时间（毫秒）                               |
+| `EventHandlingTimeoutMs`      | int  | 30000  | 事件处理**软超时**（毫秒）——仅取消令牌、不中断处理器，详见下方说明 |
 | `EnableTokenBackgroundRefresh`  | bool? | null   | 令牌后台刷新显式覆盖（null=不干预基座；R4 已移除 EnableBackgroundProcessing） |
+
+> **⚠️ `EventHandlingTimeoutMs` 是"软超时"，不是硬超时**：到达该时限时 SDK 只取消
+> `CancellationToken`，**不会**强制中断处理器（强制中断会造成"去重状态已释放而任务仍在跑"的双重执行）。
+> 因此只有**协作式响应取消令牌**的处理器才受该值约束；不响应取消的处理器会持续占用本次请求的
+> 并发闸槽位与去重 `processing` 态，实际耗时可远超该值。
+> 此类情况会以 `timeout_overshoot` 指标与 Warning 日志暴露，请据此排查处理器实现。
+
+### 拦截器中断语义
+
+`BeforeHandleAsync` 返回 `false` 时事件被中断，其对飞书表达的语义由 `InterceptionAckMode` 决定：
+
+| `InterceptionAckMode` | 事件已消费 | HTTP | 落去重 | 说明                                   |
+| --------------------- | ---------- | ---- | ------ | -------------------------------------- |
+| `Ack`（**默认**）     | 是         | 200  | 是     | 拦截 = 有意消费，飞书**不再**重推       |
+| `Retryable`           | 否         | 503  | 否     | 拦截 = 暂时不能处理，要求对端稍后重推   |
+
+两者都会写入指标（`intercepted` / `intercepted_retryable`），并可通过 `AfterHandleAsync`
+收到的 `EventHandlingOutcomeException.OutcomeKind` 判别。
 
 ### 日志配置
 

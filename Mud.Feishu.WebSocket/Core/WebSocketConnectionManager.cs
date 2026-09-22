@@ -36,11 +36,15 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
     private int _connectionCount = 0;
     private readonly ILogger<WebSocketConnectionManager> _logger;
     private readonly FeishuWebSocketOptions _options;
+    // FU-4（R2 遗留项 / R1 TD-1）：socket 工厂（null = 生产路径 new ClientWebSocket()）。
+    // 类型为抽象基类 WebSocket（而非 ClientWebSocket）：后者在 .NET Core 3.0+ 是 **sealed**，
+    // 无法派生出脚本化替身——依赖抽象基类正是 TD-1 的本意（传输实现可替换）。
+    private readonly Func<System.Net.WebSockets.WebSocket>? _socketFactory;
     // R5.2.7/X5：生产环境判定 — 用于把证书安全旁路（Mode=Dev / ValidateServerCertificate=false）的告警升级为 LogError
     private readonly bool _isProduction;
     private readonly SemaphoreSlim _connectionLock = new(1, 1);
     private readonly SemaphoreSlim _sendLock = new(1, 1);
-    private ClientWebSocket? _webSocket;
+    private System.Net.WebSockets.WebSocket? _webSocket;
     private CancellationTokenSource? _cancellationTokenSource;
     // WS-15 修复（P1-12）：_disposed 改为 int + Interlocked.Exchange 实现原子 check-then-set。
     // 此前 volatile bool 的 check-then-set 非原子，并发调用 Dispose/DisposeAsync 可能双进入释放逻辑。
@@ -145,12 +149,53 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
         FeishuWebSocketOptions options,
         ILoggerFactory loggerFactory,
         Microsoft.Extensions.Hosting.IHostEnvironment? hostEnvironment)
+        : this(logger, options, loggerFactory, null, hostEnvironment)
+    {
+    }
+
+    /// <summary>
+    /// 初始化WebSocket连接管理器实例（FU-4 / R1 TD-1：可注入 socket 工厂）。
+    /// </summary>
+    /// <param name="logger">日志记录器实例</param>
+    /// <param name="options">WebSocket配置选项</param>
+    /// <param name="loggerFactory">日志工厂</param>
+    /// <param name="socketFactory">
+    /// 传输工厂；<c>null</c> 时使用 <c>new ClientWebSocket()</c> 并执行真实握手（生产路径）。
+    /// <b>仅内部可见</b>——用于在单元测试中注入"脚本化传输替身"，
+    /// 使分片/排空/状态迁移等语义无需真实端口即可确定性覆盖。
+    /// <para>
+    /// <b>替身的契约</b>：必须返回<b>已处于 <see cref="WebSocketState.Open"/></b> 的实例
+    /// （抽象基类 <c>System.Net.WebSockets.WebSocket</c> 不含 <c>ConnectAsync</c>，
+    /// 只有 <see cref="ClientWebSocket"/> 才有，故非 <see cref="ClientWebSocket"/> 的传输
+    /// 视为"工厂已交付可用连接"）。
+    /// </para>
+    /// </param>
+    /// <param name="hostEnvironment">宿主环境（可为 <c>null</c>）</param>
+    /// <exception cref="ArgumentNullException">当logger为null时抛出</exception>
+    /// <remarks>
+    /// <b>为什么不做成公开的 <c>IWebSocketTransport</c> 抽象</b>（R1 TD-1 的原始主张）：
+    /// 全模块只有 1 处 <c>new ClientWebSocket()</c>，而真实握手路径已由回环集成测试
+    /// （<c>LoopbackWebSocketServer</c>）端到端覆盖。公开抽象会新增一个需要长期维护、
+    /// 且必须考虑裁剪/AOT 的公共扩展点，收益（可替换性）与实际需求（测试可注入性）不匹配。
+    /// 因此收敛为**最小内部 seam**：只解决"测试无法脚本化帧序列"这一具体缺口。
+    /// <para>
+    /// 注意：本重载的 <paramref name="hostEnvironment"/> **不带默认值**——否则
+    /// <c>(logger, options, factory, null)</c> 形态的调用会在两个重载间产生歧义。
+    /// </para>
+    /// </remarks>
+    internal WebSocketConnectionManager(
+        ILogger<WebSocketConnectionManager> logger,
+        FeishuWebSocketOptions options,
+        ILoggerFactory loggerFactory,
+        Func<System.Net.WebSockets.WebSocket>? socketFactory,
+        Microsoft.Extensions.Hosting.IHostEnvironment? hostEnvironment)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _options = options ?? new FeishuWebSocketOptions();
         _loggerFactory = loggerFactory ?? Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance;
         _errorRecoveryStrategy = new ErrorRecoveryStrategy(_loggerFactory.CreateLogger<ErrorRecoveryStrategy>());
         _isProduction = ResolveIsProduction(hostEnvironment);
+        _socketFactory = socketFactory;
     }
 
     /// <summary>
@@ -222,8 +267,9 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
             // P1-2 修复：创建连接前彻底释放上一次连接的 socket 与 CTS
             DisposeCurrentSocket();
 
-            // 创建新的WebSocket连接
-            _webSocket = new ClientWebSocket();
+            // 创建新的WebSocket连接（FU-4：可经内部 seam 注入脚本化传输替身，生产路径为 null）
+            var socket = _socketFactory?.Invoke() ?? new ClientWebSocket();
+            _webSocket = socket;
             _cancellationTokenSource = new CancellationTokenSource();
 
             // 启用协议级 WebSocket Ping/Pong 保活（对齐 Python websockets 库默认行为）。
@@ -235,10 +281,17 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
             // 前者用于链路存活检测，后者用于维持飞书应用层会话，二者不应互相替代。
             // F5 修复：从 FeishuWebSocketOptions.ProtocolKeepAliveInterval 读取配置（默认 20s），
             // 替代硬编码值。设为 Zero 时禁用协议级保活。
-            _webSocket.Options.KeepAliveInterval = _options.ProtocolKeepAliveInterval;
+            //
+            // FU-4：KeepAliveInterval 与证书回调都定义在 ClientWebSocket.Options 上
+            // （抽象基类 WebSocket 没有 Options），故必须显式收敛到真实实现类型。
+            // 这也让"哪些行为只对真实传输成立"在代码上变得可见——脚本化替身不参与这两项配置。
+            if (socket is ClientWebSocket clientSocket)
+            {
+                clientSocket.Options.KeepAliveInterval = _options.ProtocolKeepAliveInterval;
 
-            // 配置SSL/TLS证书验证
-            ConfigureCertificateValidation(_webSocket, uri);
+                // 配置SSL/TLS证书验证
+                ConfigureCertificateValidation(clientSocket, uri);
+            }
 
             // 设置连接超时
             using var timeoutCts = new CancellationTokenSource(_options.ConnectionTimeoutMs);
@@ -249,7 +302,14 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
 
             try
             {
-                await _webSocket.ConnectAsync(uri, combinedCts.Token);
+                // FU-4：抽象的 System.Net.WebSockets.WebSocket **没有** ConnectAsync
+                // （只有客户端实现如 ClientWebSocket 才有——服务端侧 WebSocket 天然已连接）。
+                // 因此这里对真实传输执行握手；脚本化替身按内部 seam 的契约由工厂直接交付
+                // "已处于 Open"的实例（该契约仅测试使用，见内部构造函数 remarks）。
+                if (socket is ClientWebSocket clientWebSocket)
+                {
+                    await clientWebSocket.ConnectAsync(uri, combinedCts.Token);
+                }
 
                 // WS2-05 / F4（D5）：只记录 scheme://host/path，**整体剥离 query**。
                 // 端点 URL 由服务端 API 下发，query 中可能携带一次性凭据类参数（ticket/code/nonce 等）；
@@ -513,7 +573,7 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
     /// 尝试强制中止WebSocket连接
     /// </summary>
     /// <param name="webSocket">WebSocket实例</param>
-    private void TryAbort(ClientWebSocket webSocket)
+    private void TryAbort(System.Net.WebSockets.WebSocket webSocket)
     {
         try { webSocket.Abort(); }
         catch (Exception ex) { _logger.LogDebug(ex, "中止 WebSocket 时发生异常（可忽略）"); }
@@ -852,7 +912,7 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
     private async Task HandleFragmentedMessageAsync(
         WebSocketReceiveResult firstResult,
         Func<ArraySegment<byte>, WebSocketReceiveResult, Task> messageHandler,
-        ClientWebSocket webSocket,
+        System.Net.WebSockets.WebSocket webSocket,
         byte[] buffer,
         CancellationToken cancellationToken)
     {
@@ -962,7 +1022,7 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
     /// （重连会连带重置序号验证器与半包状态）。
     /// </para>
     /// </remarks>
-    private async Task DrainUntilEndOfMessageAsync(ClientWebSocket webSocket, byte[] buffer, CancellationToken cancellationToken)
+    private async Task DrainUntilEndOfMessageAsync(System.Net.WebSockets.WebSocket webSocket, byte[] buffer, CancellationToken cancellationToken)
     {
         long drainedBytes = 0;
         var drainedFrames = 0;
@@ -1030,7 +1090,7 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
     /// 该方法会触发<see cref="Disconnected"/>事件，通知订阅者连接已关闭。
     /// 重连逻辑由<see cref="ReconnectionOrchestrator"/>统一处理。
     /// </remarks>
-    private async Task HandleCloseMessageAsync(WebSocketReceiveResult result, ClientWebSocket webSocket)
+    private async Task HandleCloseMessageAsync(WebSocketReceiveResult result, System.Net.WebSockets.WebSocket webSocket)
     {
         _logger.LogInformation("服务器请求关闭连接: {Status} - {Description}",
     result.CloseStatus, result.CloseStatusDescription);
@@ -1370,7 +1430,7 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
     /// 并吞掉后续真实的断线声明。故这里增加 socket 身份校验：<b>只接受"当前 socket"的断线声明</b>。
     /// </para>
     /// </remarks>
-    private void NotifyDisconnected(WebSocketCloseEventArgs args, ClientWebSocket? owner = null)
+    private void NotifyDisconnected(WebSocketCloseEventArgs args, System.Net.WebSockets.WebSocket? owner = null)
     {
         // I2：非当前 socket 的迟到通知一律丢弃（旧接收循环 / 已替换的连接）
         if (owner != null && !ReferenceEquals(Volatile.Read(ref _webSocket), owner))

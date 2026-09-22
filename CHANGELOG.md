@@ -57,6 +57,15 @@
 - 入站完整报文（未脱敏、未截断）写入日志（P1-4）。
 - `FeishuWebSocketManager` 释放 `_startStopLock`（违反 I9）；并发服务旧信号量固定 60s 释放改为
   `max(60s, 2 × MessageHandlerTimeoutMs)`，消除慢处理器归还租约时的 `ObjectDisposedException`（P1-5）。
+- **客户端 `Connected`/`Disconnected` 事件此前在 `_connectLock` 持有期内派发**
+  ⇒ 回调中同步调用 `DisconnectAsync()`/`ConnectAsync()`（二者都要抢同一把不可重入信号量）会**自锁死锁**
+  （连接管理器层的同问题早前已由 P0-5 修复，客户端层未覆盖）。
+  现改为与 CM 的 `pendingClose` 同构的"**持锁期内入队、出锁后按原顺序冲刷**"，
+  因此：① 回调内可安全发起连接/断开；② 事件顺序（先"旧连接断开"后"新连接建立"）保持不变；
+  ③ 出锁冲刷自带异常隔离（用户回调异常不再从 `ConnectAsync`/`DisconnectAsync` 的 `finally` 逃逸）。
+- **`WebSocketConnectionManager` 的 socket 类型由 `ClientWebSocket` 收敛到抽象 `WebSocket`**，
+  并新增内部可注入的传输工厂（R1 TD-1 的最小落地）。副作用：`Options.KeepAliveInterval`
+  与证书回调现在显式收敛到 `ClientWebSocket` 分支（抽象基类没有 `Options`，也没有 `ConnectAsync`）。
 - `ResolveMaxTextMessageBytes()` 整型溢出（P2-1）；`IsConnected` 状态双真源（P2-2，I12）；
 - 卫生项：编译警告净零（CS1591/CS0419/CS1574）、`netstandard2.0` 证书配置静默忽略补全 5 项告警、
   `EventSubscriptionManager.HasSubscribed` 改 volatile、

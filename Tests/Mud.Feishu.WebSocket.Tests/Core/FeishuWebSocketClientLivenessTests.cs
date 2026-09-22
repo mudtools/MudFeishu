@@ -537,6 +537,178 @@ public class FeishuWebSocketClientLivenessTests
 
     #endregion
 
+    #region FU-3（R2 遗留项）：连接生命周期事件必须"出锁派发"
+
+    /// <summary>
+    /// <c>Connected</c> 回调期间发起的 <c>DisconnectAsync</c> 必须能完成（事件不得在 <c>_connectLock</c> 内派发）。
+    /// </summary>
+    /// <remarks>
+    /// 客户端层的观测手法（与 CM 层用例同构，但**用独立线程发起断开**以避免同步上下文干扰）：
+    /// <list type="bullet">
+    /// <item>回调内阻塞等待"断开已完成"的信号；</item>
+    /// <item>后台线程在回调已进入后调用 <c>DisconnectAsync()</c>；</item>
+    /// <item>若事件仍在 <c>_connectLock</c> 持有期内派发 ⇒ 只能拿到锁，信号永不到达 ⇒ 用例红。</item>
+    /// </list>
+    /// 这与"回调内直接同步调用"具有同等检测力（不可重入信号量被连接线程持有时，任何线程都拿不到），
+    /// 但不依赖测试框架的 SynchronizationContext 行为。
+    /// </remarks>
+    [Fact]
+    public async Task Connected_Handler_ShouldNotDeadlock_WhenDisconnectingFromAnotherThread()
+    {
+        await using var server = LoopbackWebSocketServer.Start(LoopbackWebSocketServer.ServerMode.Idle);
+        var client = CreateClient();
+
+        using var handlerEntered = new ManualResetEventSlim(false);
+        using var releaseHandler = new ManualResetEventSlim(false);
+        var disconnectCompleted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        client.Connected += (_, _) =>
+        {
+            handlerEntered.Set();
+            releaseHandler.Wait(TimeSpan.FromSeconds(10));
+        };
+
+        try
+        {
+            var connectTask = Task.Run(() => client.ConnectAsync(Endpoint(server)));
+
+            await WaitUntilAsync(() => handlerEntered.IsSet, "前置条件：Connected 回调必须已进入");
+
+            // 只要事件是在锁外派发，这把锁此刻就是空闲的，后台线程可以完成整轮断开
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await client.DisconnectAsync();
+                    disconnectCompleted.TrySetResult(true);
+                }
+                catch (Exception ex)
+                {
+                    disconnectCompleted.TrySetException(ex);
+                }
+            });
+
+            var act = async () => await disconnectCompleted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            await act.Should().NotThrowAsync(
+                "FU-3：Connected 事件必须在 _connectLock 之外派发——否则回调期间发起的任何断开/重连都会自锁死锁");
+
+            releaseHandler.Set();
+            await connectTask.WaitAsync(TimeSpan.FromSeconds(5));
+
+            client.IsConnected.Should().BeFalse();
+        }
+        finally
+        {
+            releaseHandler.Set();
+            await client.DisposeAsync();
+        }
+    }
+
+    /// <summary>
+    /// <c>Disconnected</c> 回调期间发起的 <c>DisconnectAsync</c> 必须幂等完成（同上）。
+    /// </summary>
+    [Fact]
+    public async Task Disconnected_Handler_ShouldNotDeadlock_WhenDisconnectingFromAnotherThread()
+    {
+        await using var server = LoopbackWebSocketServer.Start(LoopbackWebSocketServer.ServerMode.Idle);
+        var client = CreateClient();
+
+        using var handlerEntered = new ManualResetEventSlim(false);
+        using var releaseHandler = new ManualResetEventSlim(false);
+        var secondDisconnectCompleted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        var entered = 0;
+        client.Disconnected += (_, _) =>
+        {
+            if (Interlocked.Increment(ref entered) > 1)
+            {
+                return;   // 只阻塞首次派发，避免用例自身造出递归
+            }
+
+            handlerEntered.Set();
+            releaseHandler.Wait(TimeSpan.FromSeconds(10));
+        };
+
+        try
+        {
+            await client.ConnectAsync(Endpoint(server));
+
+            var disconnectTask = Task.Run(() => client.DisconnectAsync());
+
+            await WaitUntilAsync(() => handlerEntered.IsSet, "前置条件：Disconnected 回调必须已进入");
+
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await client.DisconnectAsync();
+                    secondDisconnectCompleted.TrySetResult(true);
+                }
+                catch (Exception ex)
+                {
+                    secondDisconnectCompleted.TrySetException(ex);
+                }
+            });
+
+            var act = async () => await secondDisconnectCompleted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            await act.Should().NotThrowAsync(
+                "FU-3：Disconnected 事件同样必须在 _connectLock 之外派发");
+
+            releaseHandler.Set();
+            await disconnectTask.WaitAsync(TimeSpan.FromSeconds(5));
+        }
+        finally
+        {
+            releaseHandler.Set();
+            await client.DisposeAsync();
+        }
+    }
+
+    /// <summary>
+    /// 出锁缓冲必须**保持事件原始顺序**（替换旧连接时先断开、后连接）。
+    /// </summary>
+    /// <remarks>
+    /// 用有序队列而非"Connected/Disconnected 两个标志位"的原因：
+    /// 标志位会把"旧连接断开"与"新连接建立"的次序丢掉，使重连状态机与日志时间线出现倒序噪音。
+    /// </remarks>
+    [Fact]
+    public async Task DeferredConnectionEvents_ShouldPreserveOrder_WhenReplacingConnection()
+    {
+        await using var server = LoopbackWebSocketServer.Start(LoopbackWebSocketServer.ServerMode.Idle);
+        var client = CreateClient();
+
+        var sequence = new List<string>();
+        client.Connected += (_, _) => { lock (sequence) { sequence.Add("connected"); } };
+        client.Disconnected += (_, _) => { lock (sequence) { sequence.Add("disconnected"); } };
+
+        try
+        {
+            await client.ConnectAsync(Endpoint(server));
+
+            // Act：再次连接同一端点 → 连接管理器先断开旧连接（Disconnected）再建立（Connected）
+            await client.ConnectAsync(Endpoint(server));
+
+            await WaitUntilAsync(
+                () => { lock (sequence) { return sequence.Count >= 3; } },
+                "第二次连接必须派发【旧连接断开 + 新连接建立】两条事件");
+
+            // Assert
+            lock (sequence)
+            {
+                // 注意：StringCollectionAssertions.Equal(params string[]) 会把"理由文本"当成元素，
+                // 故此处显式传数组、理由写在注释里
+                sequence.Should().Equal(new[] { "connected", "disconnected", "connected" },
+                    "FU-3：出锁缓冲必须保持原始顺序（先断开后连接）");
+            }
+        }
+        finally
+        {
+            await client.DisposeAsync();
+        }
+    }
+
+    #endregion
+
     #region 池化副本所有权（#25 的等价替代）
 
     /// <summary>

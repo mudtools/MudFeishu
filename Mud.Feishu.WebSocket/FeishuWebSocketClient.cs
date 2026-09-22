@@ -47,6 +47,24 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
     private Task? _receiveTask;
     private Task? _heartbeatTask;
     private readonly SemaphoreSlim _connectLock = new(1, 1);
+
+    // ────────────────────────────────────────────────────────────────────────
+    // FU-3（R2 遗留项）：连接生命周期事件的"出锁缓冲"。
+    //
+    // 问题：ConnectAsync/DisconnectAsync 在持有 _connectLock 期间调用连接管理器，
+    // 而连接管理器会在**这两个调用内部**抛出 Connected/Disconnected
+    // （CM.ConnectAsync 末尾 SafeInvokeConnected、CM.DisconnectAsync 末尾 SafeInvokeDisconnected）
+    // ⇒ 用户回调实际上是在客户端 _connectLock 持有期内被调用的。
+    // 这与《架构与并发模型》§7 的不变量"所有用户事件均在锁外触发"（CM 层 P0-5 已修）矛盾：
+    // 回调内同步调用 DisconnectAsync/ConnectAsync（它们都要抢同一把不可重入信号量）会**自锁死锁**。
+    //
+    // 方案：与 CM 的 pendingClose 同构——在持锁区内只把事件**入队**，出锁后再按原顺序派发。
+    // 用有序列表而非两个标志位：必须保留 CM 的"先派发旧连接断开，再派发新连接建立"语义
+    // （CM.ConnectAsync 在异常路径上先 SafeInvokeDisconnected 再抛，成功路径上先 Disconnected 再 Connected）。
+    // ────────────────────────────────────────────────────────────────────────
+    private readonly object _deferredConnectionEventLock = new();
+    private List<(bool IsConnected, WebSocketCloseEventArgs? Args)>? _deferredConnectionEvents;
+    private bool _deferringConnectionEvents;
     private readonly IFeishuSeqIDDeduplicator? _seqIdDeduplicator;
     private readonly IFeishuEventDeduplicator? _eventDeduplicator;
     private readonly MessageSequenceValidator? _sequenceValidator;
@@ -156,6 +174,97 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
     public event EventHandler<WebSocketBinaryMessageEventArgs>? BinaryMessageReceived;
 
     /// <summary>
+    /// 派发连接生命周期事件（持锁区内改为入队，见字段区的 FU-3 说明）。
+    /// </summary>
+    /// <param name="isConnected"><c>true</c> = <see cref="Connected"/>，<c>false</c> = <see cref="Disconnected"/></param>
+    /// <param name="args">断开事件参数（<see cref="Connected"/> 时为 <c>null</c>）</param>
+    private void DispatchConnectionEvent(bool isConnected, WebSocketCloseEventArgs? args)
+    {
+        lock (_deferredConnectionEventLock)
+        {
+            if (_deferringConnectionEvents)
+            {
+                (_deferredConnectionEvents ??= new List<(bool, WebSocketCloseEventArgs?)>()).Add((isConnected, args));
+                return;
+            }
+        }
+
+        RaiseConnectionEvent(isConnected, args);
+    }
+
+    /// <summary>
+    /// 真正调用用户回调（锁外）。
+    /// </summary>
+    /// <param name="isConnected">事件类型</param>
+    /// <param name="args">断开事件参数</param>
+    /// <remarks>
+    /// 必须自带异常隔离：**出锁缓冲的派发不再位于连接管理器的 SafeInvoke 保护之下**
+    /// （管理器只在它自己的调用栈内 catch），异常若冒泡会从 <c>ConnectAsync</c>/<c>DisconnectAsync</c>
+    /// 的 <c>finally</c> 逃逸并改变调用方的返回值语义，属"用户回调故障导致控制流污染"。
+    /// </remarks>
+    private void RaiseConnectionEvent(bool isConnected, WebSocketCloseEventArgs? args)
+    {
+        try
+        {
+            if (isConnected)
+            {
+                Connected?.Invoke(this, EventArgs.Empty);
+            }
+            else
+            {
+                Disconnected?.Invoke(this, args!);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, isConnected
+                ? "Connected 事件处理器抛出异常"
+                : "Disconnected 事件处理器抛出异常");
+        }
+    }
+
+    /// <summary>
+    /// 进入"连接生命周期事件入队"模式（在获取 <c>_connectLock</c> 之后立刻调用）。
+    /// </summary>
+    private void BeginDeferConnectionEvents()
+    {
+        lock (_deferredConnectionEventLock)
+        {
+            _deferringConnectionEvents = true;
+        }
+    }
+
+    /// <summary>
+    /// 退出入队模式并按**原始顺序**派发缓冲的事件（必须在释放 <c>_connectLock</c> 之后调用）。
+    /// </summary>
+    /// <remarks>
+    /// 顺序语义：连接管理器在"替换旧连接"路径上会先抛旧连接的 <c>Disconnected</c> 再抛 <c>Connected</c>
+    /// （异常路径则只有 <c>Disconnected</c>）。用有序列表而非两个标志位正是为了保持该次序——
+    /// 若先派发 <c>Connected</c>，"旧连接已断开"的信息会成为倒序噪音，重连状态机与日志时间线都会失真。
+    /// </remarks>
+    private void FlushDeferredConnectionEvents()
+    {
+        List<(bool IsConnected, WebSocketCloseEventArgs? Args)>? pending;
+
+        lock (_deferredConnectionEventLock)
+        {
+            _deferringConnectionEvents = false;
+            pending = _deferredConnectionEvents;
+            _deferredConnectionEvents = null;
+        }
+
+        if (pending == null)
+        {
+            return;
+        }
+
+        foreach (var (isConnected, args) in pending)
+        {
+            RaiseConnectionEvent(isConnected, args);
+        }
+    }
+
+    /// <summary>
     /// 初始化飞书WebSocket客户端
     /// </summary>
     /// <param name="logger">日志记录器</param>
@@ -213,26 +322,8 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
         // WS-10 修复（P1-7/P1-2）：此前 _onConnected 使用 Task.Run fire-and-forget
         // 调用 ResetStateOnReconnectAsync，与首帧处理存在竞态（重置可能晚于首条消息处理）。
         // 现在改为纯事件转发，状态重置移到 ConnectAsync 中在启动 _receiveTask 之前 await。
-        _onConnected = (s, e) =>
-        {
-            var handler = Connected;
-            if (handler != null)
-            {
-                try
-                {
-                    handler.Invoke(this, e);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Connected 事件处理器抛出异常");
-                }
-            }
-        };
-        _onDisconnected = (s, e) =>
-        {
-            var handler = Disconnected;
-            handler?.Invoke(this, e);
-        };
+        _onConnected = (s, e) => DispatchConnectionEvent(isConnected: true, args: null);
+        _onDisconnected = (s, e) => DispatchConnectionEvent(isConnected: false, args: e);
         _onAuthenticated = (s, e) =>
         {
             var handler = Authenticated;
@@ -422,6 +513,9 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
         connectActivity?.SetTag(FeishuActivitySource.Tags.AppKey, Options.AppKey);
 
         await _connectLock.WaitAsync(cancellationToken);
+
+        // FU-3：持锁期间只缓冲连接生命周期事件，出锁后再派发（避免用户回调自锁）
+        BeginDeferConnectionEvents();
         try
         {
             // 取消并释放旧的 CTS，等待旧的后台任务退出
@@ -470,7 +564,10 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
         }
         finally
         {
+            // FU-3：必须先释放锁、再派发（顺序即不变量本身），且异常路径同样要派发
+            // （CM 在握手失败时已先抛旧连接的 Disconnected 再抛异常，缓冲里的事件不能被丢弃）
             _connectLock.Release();
+            FlushDeferredConnectionEvents();
         }
     }
 
@@ -616,6 +713,9 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
     public async Task DisconnectAsync(CancellationToken cancellationToken = default)
     {
         await _connectLock.WaitAsync(cancellationToken);
+
+        // FU-3：同 ConnectAsync —— 持锁期间缓冲 Disconnected，出锁后再派发
+        BeginDeferConnectionEvents();
         try
         {
             await StopBackgroundTasksAsync();
@@ -626,6 +726,7 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
         finally
         {
             _connectLock.Release();
+            FlushDeferredConnectionEvents();
         }
     }
 

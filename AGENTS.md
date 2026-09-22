@@ -402,6 +402,14 @@ MudFeishu 配置面以**嵌套 Options** 为唯一公共 API（旧扁平属性�
    `FeishuMetricsHelper.RecordWebSocketFramesDiscarded(appKey, reason)`，
    且 `reason` **必须**取 `FeishuMetrics.DiscardReasons` 常量（告警规则按该维度聚合，裸字符串会静默改变指标序列）。
    新增原因时同步登记常量、`Readme.md` 告警表与守卫清单。
+8. **I1 覆盖"两层锁"**：`WebSocketConnectionManager._connectionLock` **与** `FeishuWebSocketClient._connectLock`
+   的持有期内都**不得**派发用户事件。客户端层的做法是"入队 + 出锁后按原顺序冲刷"
+   （`BeginDeferConnectionEvents` / `FlushDeferredConnectionEvents`）——
+   新增用户事件或改派发点时，必须确认它不在上述任一锁的持有期内，且冲刷路径自带异常隔离。
+9. **FU-2 隐性耦合**：SeqID 去重键是裸 `SeqID`（无应用维度），前提是"同进程单客户端 + 只绑定默认应用"。
+   **若引入多应用 WebSocket 装配，必须同时给去重键加应用维度**，否则会造成静默事件丢失。
+   该耦合由守卫 `SeqIdDeduplication_ShouldStaySingleAppScoped_OrGainAppDimension` 守护，
+   口径见 `documents/WebSocket/架构与并发模型.md` §8。
 
 > 压力/长稳用例（`Category=Stress`）**不进全量门禁**：xUnit 的 `Trait` 不会自动排除用例，
 > `scripts/verify-build.ps1` 步骤 4 已显式传入 `--filter "Category!=Stress"`。

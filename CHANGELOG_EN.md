@@ -58,6 +58,18 @@
 - Unclamped reconnect window `CancellationTokenSource(TimeSpan)` (P1-3).
 - Inbound full payload written to logs (P1-4).
 - `FeishuWebSocketManager` disposing `_startStopLock` (violating I9); dynamic legacy semaphore retention (P1-5).
+- **The client's `Connected`/`Disconnected` events used to be raised while `_connectLock` was held**
+  ⇒ synchronously calling `DisconnectAsync()`/`ConnectAsync()` from a handler (both take the same
+  non-reentrant semaphore) would **self-deadlock** (the connection-manager layer was fixed by P0-5,
+  but the client layer was not). Now events are **queued while the lock is held and flushed after release,
+  in their original order** (same pattern as the CM's `pendingClose`), so:
+  ① handlers may safely initiate connect/disconnect; ② ordering (old-connection disconnect before
+  new-connection connect) is preserved; ③ the out-of-lock flush has its own exception isolation
+  (handler exceptions no longer escape `ConnectAsync`/`DisconnectAsync`'s `finally`).
+- **`WebSocketConnectionManager`'s socket type narrowed from `ClientWebSocket` to the abstract `WebSocket`**,
+  plus an internal injectable transport factory (the minimal landing of R1 TD-1). Side effect:
+  `Options.KeepAliveInterval` and certificate validation are now explicitly scoped to the
+  `ClientWebSocket` branch (the abstract base has neither `Options` nor `ConnectAsync`).
 - `ResolveMaxTextMessageBytes()` integer overflow (P2-1); `IsConnected` dual source of truth (P2-2).
 - Hygiene: zero compiler warnings, complete `netstandard2.0` certificate-option warnings (5 items),
   `EventSubscriptionManager.HasSubscribed` volatile, atomic disposed/state fields.

@@ -897,6 +897,16 @@ It does **not** represent the connection lifetime:
 > frames are read: no events, no disconnect notification, recovery only via health-check polling).
 > Now every termination path raises a disconnect claim, and a liveness probe covers externally silent failures.
 
+**Callback threading contract (important)**: `Connected`/`Disconnected` are raised **outside the lock**,
+so you may safely call `ConnectAsync`/`DisconnectAsync`/`SendMessageAsync` from a handler (no self-deadlock).
+
+- Events raised while the lock is held are **buffered** and flushed **in their original order** after release
+  (when replacing a connection the order is always "`Disconnected` first, then `Connected`");
+- Exceptions thrown by handlers are logged and swallowed — they never change the
+  return/exception semantics of `ConnectAsync`/`DisconnectAsync`;
+- Still avoid **unconditional** reconnection inside a `Disconnected` handler: that causes a reconnect storm
+  (a usage-side discipline, not an SDK property).
+
 ### `MessageReceived` Threading Contract (Breaking behavior change)
 
 `MessageReceived` is an **observation hook** (logging/metrics), not a business entry point:

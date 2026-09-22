@@ -944,6 +944,14 @@ public class ConnectionService
 > （无事件、无断线通知、只能等健康检查轮询兜底）。当前实现为：
 > 每一条终止路径都会产生断线声明，并由存活探针兜底外部静默失败（见下）。
 
+**回调线程契约（重要）**：`Connected`/`Disconnected` 事件均在**锁外**派发，
+因此你可以在回调中安全地发起 `ConnectAsync`/`DisconnectAsync`/`SendMessageAsync`（不会自锁）。
+
+- 持锁期间产生的事件会被**缓冲**，并在释放锁后**按原顺序**派发
+  （替换旧连接时顺序固定为"先 `Disconnected`、后 `Connected`"）；
+- 回调内抛出的异常会被记录并吞掉，不会改变 `ConnectAsync`/`DisconnectAsync` 的返回/异常语义；
+- 但请避免在 `Disconnected` 回调中**无条件**重连：这会造成重连风暴（这与 SDK 无关，属使用侧纪律）。
+
 ### 接收事件线程契约（重要：本轮行为变更）
 
 `MessageReceived` 是**观测钩子**（日志/指标），不是业务处理入口：

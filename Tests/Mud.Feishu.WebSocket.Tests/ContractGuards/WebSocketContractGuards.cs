@@ -327,6 +327,53 @@ public class WebSocketContractGuards
 
     #endregion
 
+    #region FU-2：多应用装配与 SeqID 去重键的耦合前提
+
+    /// <summary>
+    /// FU-2：SeqID 去重键为裸 SeqID 的**前提**是"单应用装配"——两者必须同时成立。
+    /// </summary>
+    /// <remarks>
+    /// 这条守卫守护的是一处**隐性耦合**，而不是某个可以直接观测的缺陷：
+    /// 现在"无 app 维度的去重键"是安全的，唯一原因是同进程只有一个 WebSocket 客户端、且只绑定默认应用。
+    /// 一旦有人引入多应用装配，去重集合就会开始混装不同应用的 SeqID 序列，
+    /// 从而**静默丢弃**真实事件（无异常、无日志——"重复"属正常跳过路径）。
+    /// <para>
+    /// 因此本守卫用"两条断言互为前提"的方式把它显式化：
+    /// ① 管理器只绑定默认应用；② 去重调用点仍是裸 SeqID。
+    /// 两条同时通过 = 该设计当前成立；任一条失败 = 必须重新评估（多数情况是"要加 app 维度了"）。
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void SeqIdDeduplication_ShouldStaySingleAppScoped_OrGainAppDimension()
+    {
+        // ① 单应用装配：只绑定默认应用，不遍历全部应用
+        var managerSource = ReadModuleSource("FeishuWebSocketManager.cs");
+        managerSource.Should().Contain("GetDefaultApp(",
+            "FU-2：WebSocket 管理器必须绑定默认应用（GetDefaultApp）——这是'单应用装配'的判定依据");
+        managerSource.Should().NotContain("GetAllApps(",
+            "FU-2：检测到多应用装配（GetAllApps）。若这是有意为之，必须**同时**给 SeqID 去重键加入应用维度" +
+            "（TryMarkAsProcessedAsync(seqId, scopeKey)），否则 A 应用的同号 SeqID 会静默抑制 B 应用的事件；" +
+            "并同步更新 documents/WebSocket/架构与并发模型.md 第 8 节与 IFeishuSeqIDDeduplicator 的 remarks");
+
+        // ② 去重调用点仍是裸 SeqID（与 ① 配对成立才安全）
+        var processorSource = ReadModuleSource("Core/BinaryMessageProcessor.cs");
+        processorSource.Should().Contain("TryMarkAsProcessedAsync(frame.SeqID)",
+            "FU-2：SeqID 去重调用点已不再是裸 SeqID。这通常意味着**已引入应用维度**——" +
+            "那就必须同时复核 ①（多应用装配）与文档第 8 节，并把本条断言更新为新的键形态");
+
+        // ③ 文档必须写明该前提（否则下一个维护者只会看到'裸 SeqID'这一实现细节）
+        var architectureDoc = Path.Combine(GetRepositoryRoot(), "documents", "WebSocket", "架构与并发模型.md");
+        File.Exists(architectureDoc).Should().BeTrue("权威架构文档必须存在：架构与并发模型.md");
+
+        var docText = File.ReadAllText(architectureDoc);
+        docText.Should().Contain("多应用",
+            "FU-2：架构文档必须写明'引入多应用装配需同时给 SeqID 去重加入应用维度'这一前提");
+        docText.Should().Contain("GetDefaultApp",
+            "FU-2：文档需给出单应用装配的判定依据（GetDefaultApp），便于后续维护者核对");
+    }
+
+    #endregion
+
     #region 源码读取与解析辅助
 
     private static string GetRepositoryRoot()

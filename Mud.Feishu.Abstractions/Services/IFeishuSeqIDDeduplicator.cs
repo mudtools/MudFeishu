@@ -12,6 +12,23 @@ namespace Mud.Feishu.Abstractions.Services;
 /// <para>用于处理 ProtoBuf 二进制消息中的序列号去重，防止重复处理</para>
 /// <para>可与 EventId 去重配合使用，提供双重防护</para>
 /// </summary>
+/// <remarks>
+/// <b>去重键为裸 <c>SeqID</c>，不含应用/租户维度——这是一条<b>有前提的</b>设计，不是疏漏。</b>
+/// 前提是"同一进程内只有一个 WebSocket 连接"：<c>IFeishuWebSocketClient</c> 与
+/// <see cref="IFeishuSeqIDDeduplicator"/> 均为单例，且 <c>FeishuWebSocketManager</c> 只绑定
+/// <b>默认应用</b>（<c>IFeishuAppManager.GetDefaultApp()</c>），因此不存在"A 应用与 B 应用
+/// 的 SeqID 序列在同一去重集合中交错"的场景。
+/// <para>
+/// <b>若将来引入多应用 WebSocket 装配</b>（每应用一个客户端/连接），则必须同时把
+/// **应用维度**加入去重键（例如 <c>TryMarkAsProcessedAsync(seqId, scopeKey)</c>），
+/// 否则 A 应用已处理的 SeqID 会抑制 B 应用的同号消息 —— 表现为**静默事件丢失**
+/// （既无异常也无日志，因为"重复"是被当作正常路径跳过的）。
+/// </para>
+/// <para>
+/// 该前提由架构守卫 <c>WebSocketContractGuards.SeqIdDeduplication_ShouldStaySingleAppScoped_OrGainAppDimension</c>
+/// 在源码层守护：一旦检测到多应用装配，"裸 SeqID 调用点"的断言会同时失败并提示此处约束。
+/// </para>
+/// </remarks>
 public interface IFeishuSeqIDDeduplicator : IAsyncDisposable
 {
     /// <summary>

@@ -1212,7 +1212,9 @@ public class MyDepartmentHandler : DepartmentCreatedEventHandler
 配置验证分两个阶段，尽早发现问题：
 
 - **`Build()` 阶段**：只校验处理器注册——至少注册一个处理器、无重复的处理器/拦截器注册，违规时抛出 `InvalidOperationException`。
-- **配置解析阶段**：选项内容（Token、EncryptKey、应用级配置等）在 `FeishuWebhookOptions` 首次被解析时通过 `PostConfigure` 触发 `Validate()` 校验（通常在处理第一个请求或首次解析 `IOptions<FeishuWebhookOptions>` 时），配置无效同样抛出 `InvalidOperationException`。
+- **配置解析阶段**：选项内容（Token、EncryptKey、应用级配置等）在 `FeishuWebhookOptions` 被解析时通过 `PostConfigure` 触发 `Validate()` 校验，配置无效抛出 `InvalidOperationException`。
+  **自 R3-P0-5 起该校验在宿主启动期完成**（由 `WebhookOptionsStartupValidator` 这一 `IHostedService` 显式触发），
+  配置错误一律表现为**启动失败**，不再推迟到第一个请求。
 
 ```csharp
 // Build() 只验证处理器注册

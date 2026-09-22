@@ -155,7 +155,7 @@ public class NonceValidatorTests
     }
 
     [Fact]
-    public async Task TryMarkNonceAsUsedAsync_WithExceptionInRejectMode_ShouldReturnTrueAndLogError()
+    public async Task TryMarkNonceAsUsedAsync_WithExceptionInRejectMode_ShouldThrowDeduplicationFatal()
     {
         // Arrange
         _optionsMonitorMock.Setup(x => x.CurrentValue).Returns(new FeishuWebhookOptions
@@ -170,13 +170,39 @@ public class NonceValidatorTests
             .ThrowsAsync(exception);
 
         // Act
-        var result = await _validator.TryMarkNonceAsUsedAsync(nonce);
+        // R3-P0-3/D3：Reject 的语义是“本请求未被处理，要求对端稍后重推”——
+        // **不得**返回 true（=“已使用”），否则上层会记“检测到重放攻击”并映射 403：
+        // 403 是终态、飞书不重推、不写失败存储 → 事件永久丢失，且污染安全审计。
+        var act = () => _validator.TryMarkNonceAsUsedAsync(nonce);
 
         // Assert
-        Assert.True(result); // Reject 模式下，异常时返回 true（认为已使用，拒绝请求）
+        var ex = await act.Should().ThrowAsync<FeishuDeduplicationFatalException>();
+        ex.Which.FailureKind.Should().Be(FeishuRedisFailureKind.Server,
+            "必须复用 Server 类异常以穿透上层 when 过滤器，最终由中间件映射 503");
+        ex.Which.InnerException.Should().BeSameAs(exception);
 
-        // 验证错误日志被记录
+        // 验证错误日志被记录（可观测性不倒退）
         VerifyLogCalled(LogLevel.Error, "标记 Nonce 时发生可降级错误");
+    }
+
+    [Fact]
+    public async Task TryMarkNonceAsUsedAsync_WithTimeoutFailureInRejectMode_ShouldThrowDeduplicationFatal()
+    {
+        // Arrange：复核发现既有 5 个降级用例全部只用 Connection，Timeout 分支从未覆盖
+        _optionsMonitorMock.Setup(x => x.CurrentValue).Returns(new FeishuWebhookOptions
+        {
+            NonceValidationFailureMode = NonceFailureMode.Reject
+        });
+        var nonce = "error-nonce-timeout";
+        var exception = new FeishuRedisException(FeishuRedisFailureKind.Timeout, "Redis 操作超时");
+        _deduplicatorMock
+            .Setup(x => x.TryMarkAsUsedAsync(nonce, null, It.IsAny<TimeSpan?>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(exception);
+
+        // Act / Assert
+        await ((Func<Task>)(() => _validator.TryMarkNonceAsUsedAsync(nonce)))
+            .Should().ThrowAsync<FeishuDeduplicationFatalException>()
+            .WithMessage("*NonceValidationFailureMode=Reject*");
     }
 
     [Fact]
@@ -288,7 +314,7 @@ public class NonceValidatorTests
     }
 
     [Fact]
-    public async Task CheckNonceAsync_WithExceptionInRejectMode_ShouldReturnFalse()
+    public async Task CheckNonceAsync_WithExceptionInRejectMode_ShouldThrowDeduplicationFatal()
     {
         // Arrange
         _optionsMonitorMock.Setup(x => x.CurrentValue).Returns(new FeishuWebhookOptions
@@ -301,10 +327,12 @@ public class NonceValidatorTests
             .ThrowsAsync(new FeishuRedisException(FeishuRedisFailureKind.Connection, "Test exception"));
 
         // Act
-        var result = await _validator.CheckNonceAsync(nonce);
+        // R3-P0-3/D3：不得返回 false（会被上层读作“验证失败/验签失败” → 403 终态）。
+        var act = (Func<Task>)(() => _validator.CheckNonceAsync(nonce));
 
         // Assert
-        Assert.False(result); // Reject 模式下，异常时返回 false（拒绝请求）
+        await act.Should().ThrowAsync<FeishuDeduplicationFatalException>()
+            .Where(e => e.FailureKind == FeishuRedisFailureKind.Server);
 
         VerifyLogCalled(LogLevel.Error, "检查 Nonce 使用状态时发生可降级错误");
     }
@@ -502,9 +530,13 @@ public class NonceValidatorTests
     }
 
     [Fact]
-    public async Task ValidateNonceAsync_WithException_ShouldReturnFalse()
+    public async Task ValidateNonceAsync_WithExceptionInRejectMode_ShouldThrowDeduplicationFatal()
     {
         // Arrange
+        _optionsMonitorMock.Setup(x => x.CurrentValue).Returns(new FeishuWebhookOptions
+        {
+            NonceValidationFailureMode = NonceFailureMode.Reject
+        });
         var nonce = "exception-nonce";
         // T-M2-10：仅 FeishuRedisException(Connection/Timeout) 走降级策略
         var exception = new FeishuRedisException(FeishuRedisFailureKind.Connection, "Test exception");
@@ -513,10 +545,33 @@ public class NonceValidatorTests
             .ThrowsAsync(exception);
 
         // Act
-        var result = await _validator.ValidateNonceAsync(nonce);
+        // R3-P0-3/D3：三个入口（Check / Mark / Validate）语义必须一致——
+        // Reject 一律抛 FeishuDeduplicationFatalException → 503，不得返回 false。
+        var act = (Func<Task>)(() => _validator.ValidateNonceAsync(nonce));
 
         // Assert
-        Assert.False(result); // 异常情况下验证失败
+        await act.Should().ThrowAsync<FeishuDeduplicationFatalException>()
+            .Where(e => e.FailureKind == FeishuRedisFailureKind.Server);
+        VerifyLogCalled(LogLevel.Error, "标记 Nonce 时发生可降级错误");
+    }
+
+    [Fact]
+    public async Task ValidateNonceAsync_WithExceptionInAllowMode_ShouldReturnTrue()
+    {
+        // Arrange
+        _optionsMonitorMock.Setup(x => x.CurrentValue).Returns(new FeishuWebhookOptions
+        {
+            NonceValidationFailureMode = NonceFailureMode.Allow
+        });
+        var nonce = "exception-nonce-allow";
+        var exception = new FeishuRedisException(FeishuRedisFailureKind.Connection, "Test exception");
+        _deduplicatorMock
+            .Setup(x => x.TryMarkAsUsedAsync(nonce, null, It.IsAny<TimeSpan?>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(exception);
+
+        // Act / Assert：Allow 模式可用性优先，放行
+        var result = await _validator.ValidateNonceAsync(nonce);
+        Assert.True(result);
         VerifyLogCalled(LogLevel.Error, "标记 Nonce 时发生可降级错误");
     }
 

@@ -8,12 +8,15 @@
 using FluentAssertions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
 using Mud.Feishu.Abstractions;
+using Mud.Feishu.Abstractions.Services;
 using Mud.Feishu.Webhook;
 using Mud.Feishu.Webhook.Configuration;
+using Mud.Feishu.Webhook.Utils;
 
 namespace Mud.Feishu.Webhook.Tests.Extensions;
 
@@ -26,6 +29,17 @@ public class FeishuWebhookServiceBuilderTests
     private sealed class TestAppHandler : IFeishuEventHandler
     {
         public string SupportedEventType => "test.event";
+        public Task HandleAsync(EventData eventData, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// 全局处理器桩（R3-P1-4）：仅“全局注册”的处理器可充当默认处理器，
+    /// <c>Build()</c> 现在强制要求至少一个（应用专属处理器不得充当全局默认处理器）。
+    /// </summary>
+    private sealed class TestGlobalHandler : IFeishuEventHandler
+    {
+        public string SupportedEventType => "global.event";
         public Task HandleAsync(EventData eventData, CancellationToken cancellationToken = default) =>
             Task.CompletedTask;
     }
@@ -66,7 +80,13 @@ public class FeishuWebhookServiceBuilderTests
         services.CreateFeishuWebhookServiceBuilder(options =>
             {
                 options.EventHandlingTimeoutMs = 5000;
+
+                // R3-P0-1/D1：本套件运行于“生产”判定（EnvironmentService 在
+                // ASPNETCORE_ENVIRONMENT 缺失时默认 Production），内存 Nonce 去重会被启动期阻断。
+                // 本用例关注注册表/校验重放行为，与 Nonce 形态无关，故显式豁免。
+                options.AllowInMemoryNonceDedupInProduction = true;
             })
+            .AddHandler<TestGlobalHandler>()      // R3-P1-4：全局处理器（默认处理器来源）
             .AddHandler<TestAppHandler>("app-001")
             .Build();
 
@@ -108,7 +128,13 @@ public class FeishuWebhookServiceBuilderTests
         services.CreateFeishuWebhookServiceBuilder(options =>
             {
                 options.EventHandlingTimeoutMs = 5000;
+
+                // R3-P0-1/D1：本套件运行于“生产”判定（EnvironmentService 在
+                // ASPNETCORE_ENVIRONMENT 缺失时默认 Production），内存 Nonce 去重会被启动期阻断。
+                // 本用例关注注册表/校验重放行为，与 Nonce 形态无关，故显式豁免。
+                options.AllowInMemoryNonceDedupInProduction = true;
             })
+            .AddHandler<TestGlobalHandler>()      // R3-P1-4：全局处理器（默认处理器来源）
             .AddHandler<TestAppHandler>("app-001")
             .Build();
 
@@ -142,5 +168,295 @@ public class FeishuWebhookServiceBuilderTests
             fireEx.InnerException.Should().BeOfType<InvalidOperationException>()
                 .Which.Message.Should().Contain("EventHandlingTimeoutMs");
         }
+    }
+
+    // ============================================================
+    // R3-P0-1（D1）：Nonce 去重「实现形态」必须与部署形态显式绑定
+    // ============================================================
+
+    /// <summary>记录 Warning 的日志提供程序替身。</summary>
+    private sealed class CapturingLoggerProvider : ILoggerProvider
+    {
+        public readonly List<string> Messages = new();
+        public ILogger CreateLogger(string categoryName) => new CapturingLogger(Messages);
+        public void Dispose() { }
+
+        private sealed class CapturingLogger : ILogger
+        {
+            private readonly List<string> _sink;
+            public CapturingLogger(List<string> sink) => _sink = sink;
+            public IDisposable BeginScope<TState>(TState state) where TState : notnull => new NoopScope();
+            public bool IsEnabled(LogLevel logLevel) => true;
+            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception,
+                Func<TState, Exception?, string> formatter)
+            {
+                if (logLevel is LogLevel.Warning or LogLevel.Error or LogLevel.Critical)
+                    _sink.Add(formatter(state, exception));
+            }
+            private sealed class NoopScope : IDisposable { public void Dispose() { } }
+        }
+    }
+
+    private sealed class StubEnvironmentService : IEnvironmentService
+    {
+        public StubEnvironmentService(bool isProduction) => IsProduction = isProduction;
+        public bool IsProduction { get; }
+        public bool IsDevelopment => !IsProduction;
+        public bool IsStaging => false;
+        public string EnvironmentName => IsProduction ? "Production" : "Development";
+    }
+
+    private static IServiceCollection CreateBaseServices(
+        IEnvironmentService environment,
+        CapturingLoggerProvider? loggerProvider = null)
+    {
+        var services = new ServiceCollection();
+        services.AddLogging(builder =>
+        {
+            builder.SetMinimumLevel(LogLevel.Trace);
+            if (loggerProvider != null)
+                builder.AddProvider(loggerProvider);
+        });
+        services.AddSingleton(environment);
+        return services;
+    }
+
+    [Fact]
+    public void MemoryNonce_InProductionWithoutDistributedMode_ShouldThrow_WhenNoExplicitOptIn()
+    {
+        // Arrange：生产 + 不配置 FeishuDeduplication 节 + 未注册 Redis（= 默认路径）
+        var services = CreateBaseServices(new StubEnvironmentService(isProduction: true));
+
+        services.CreateFeishuWebhookServiceBuilder(options =>
+            {
+                options.EventHandlingTimeoutMs = 5000;
+            })
+            .AddHandler<TestGlobalHandler>()
+            .Build();
+
+        using var provider = services.BuildServiceProvider();
+
+        // Act / Assert：默认路径也必须阻断（v1.0 前：isDistributedIntent=false → 静默放行）
+        var act = () => provider.GetRequiredService<IOptions<FeishuWebhookOptions>>().Value;
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*AddFeishuRedisDeduplicators*")
+            .WithMessage("*AllowInMemoryNonceDedupInProduction*");
+    }
+
+    [Fact]
+    public void MemoryNonce_InProduction_WhenExplicitOptIn_ShouldNotThrowAndLogWarning()
+    {
+        // Arrange
+        var loggerProvider = new CapturingLoggerProvider();
+        var services = CreateBaseServices(new StubEnvironmentService(isProduction: true), loggerProvider);
+
+        services.CreateFeishuWebhookServiceBuilder(options =>
+            {
+                options.EventHandlingTimeoutMs = 5000;
+                options.AllowInMemoryNonceDedupInProduction = true;
+            })
+            .AddHandler<TestGlobalHandler>()
+            .Build();
+
+        using var provider = services.BuildServiceProvider();
+
+        // Act
+        var act = () => provider.GetRequiredService<IOptions<FeishuWebhookOptions>>().Value;
+
+        // Assert：不阻断，但仍保留可观测性
+        act.Should().NotThrow();
+        loggerProvider.Messages.Should().Contain(m => m.Contains("单实例"),
+            "显式豁免也必须留下 Warning，便于审计发现“生产在用内存 Nonce”");
+    }
+
+    [Fact]
+    public void MemoryNonce_InProduction_WhenDistributedNonceRegistered_ShouldNotThrow()
+    {
+        // Arrange：预注册分布式 Nonce 实现（模拟已 AddFeishuRedisDeduplicators）
+        var loggerProvider = new CapturingLoggerProvider();
+        var services = CreateBaseServices(new StubEnvironmentService(isProduction: true), loggerProvider);
+        services.AddSingleton(Mock.Of<IFeishuNonceDistributedDeduplicator>());
+
+        services.CreateFeishuWebhookServiceBuilder(options =>
+            {
+                options.EventHandlingTimeoutMs = 5000;
+            })
+            .AddHandler<TestGlobalHandler>()
+            .Build();
+
+        using var provider = services.BuildServiceProvider();
+
+        // Act / Assert
+        var act = () => provider.GetRequiredService<IOptions<FeishuWebhookOptions>>().Value;
+        act.Should().NotThrow();
+        loggerProvider.Messages.Should().NotContain(m => m.Contains("进程内内存 Nonce 去重"),
+            "已接入分布式实现时不该再有降级告警");
+    }
+
+    [Fact]
+    public void MemoryNonce_InDevelopment_ShouldWarnButNotThrow()
+    {
+        // Arrange
+        var loggerProvider = new CapturingLoggerProvider();
+        var services = CreateBaseServices(new StubEnvironmentService(isProduction: false), loggerProvider);
+
+        services.CreateFeishuWebhookServiceBuilder(options =>
+            {
+                options.EventHandlingTimeoutMs = 5000;
+            })
+            .AddHandler<TestGlobalHandler>()
+            .Build();
+
+        using var provider = services.BuildServiceProvider();
+
+        // Act / Assert
+        var act = () => provider.GetRequiredService<IOptions<FeishuWebhookOptions>>().Value;
+        act.Should().NotThrow("非生产环境不阻断，仅告警");
+        loggerProvider.Messages.Should().Contain(m => m.Contains("进程内内存"));
+    }
+
+    // ============================================================
+    // R3-P0-4：去重工厂不得自解析 IFeishuEventDeduplicator（递归 → StackOverflow）
+    // ============================================================
+
+    [Fact]
+    public void DeduplicatorFactory_ShouldNotResolveItself()
+    {
+        // Arrange：Mode=Distributed + 未注册 Redis 实现——正是原实现会自解析递归的组合。
+        // 修复前：工厂内 `sp.GetService<IFeishuEventDeduplicator>() is null` 强制先求值 GetService，
+        // 而 TryAddSingleton 仅在该服务无其它注册时才注册本工厂 → 无限递归 → StackOverflowException
+        // （不可捕获，进程终止）。因此本用例“能跑完”本身就是回归证明。
+        var services = CreateBaseServices(new StubEnvironmentService(isProduction: false));
+        services.AddSingleton<IConfiguration>(new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["FeishuDeduplication:Mode"] = "Distributed"
+            })
+            .Build());
+
+        services.CreateFeishuWebhookServiceBuilder(options =>
+            {
+                options.EventHandlingTimeoutMs = 5000;
+                options.AllowInMemoryNonceDedupInProduction = true;
+            })
+            .AddHandler<TestGlobalHandler>()
+            .Build();
+
+        using var provider = services.BuildServiceProvider();
+
+        // Act
+        var act = () => provider.GetRequiredService<IFeishuEventDeduplicator>();
+
+        // Assert
+        act.Should().NotThrow();
+        provider.GetRequiredService<IFeishuEventDeduplicator>().Should().BeOfType<FeishuEventDeduplicator>();
+    }
+
+    [Fact]
+    public void DistributedModeWithoutRedis_ShouldLogWarningAndNotThrow()
+    {
+        // Arrange
+        var loggerProvider = new CapturingLoggerProvider();
+        var services = CreateBaseServices(new StubEnvironmentService(isProduction: false), loggerProvider);
+        services.AddSingleton<IConfiguration>(new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["FeishuDeduplication:Mode"] = "Distributed"
+            })
+            .Build());
+
+        services.CreateFeishuWebhookServiceBuilder(options =>
+            {
+                options.EventHandlingTimeoutMs = 5000;
+                options.AllowInMemoryNonceDedupInProduction = true;
+            })
+            .AddHandler<TestGlobalHandler>()
+            .Build();
+
+        using var provider = services.BuildServiceProvider();
+
+        // Act：构建 Options 触发形态检查
+        _ = provider.GetRequiredService<IOptions<FeishuWebhookOptions>>().Value;
+
+        // Assert：v1.0 中该告警**永不触发**（因为自解析先崩溃）；现在必须可见
+        loggerProvider.Messages.Should().Contain(m => m.Contains("事件去重"),
+            "事件去重形态告警必须从工厂下沉到 PostConfigure 并真正生效");
+    }
+
+    // ============================================================
+    // R3-P1-4：默认处理器只能是「全局注册」的处理器
+    // ============================================================
+
+    [Fact]
+    public void AppOnlyHandlers_WithoutGlobalHandler_ShouldThrowOnBuild()
+    {
+        // Arrange
+        var services = CreateBaseServices(new StubEnvironmentService(isProduction: false));
+
+        // Act
+        var act = () => services.CreateFeishuWebhookServiceBuilder(options =>
+            {
+                options.EventHandlingTimeoutMs = 5000;
+            })
+            .AddHandler<TestAppHandler>("app-001")
+            .Build();
+
+        // Assert：v1.0 前静默选 AppHandler 作默认处理器 → 跨应用事件串扰
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*全局*")
+            .WithMessage("*跨应用*");
+    }
+
+    [Fact]
+    public void DefaultHandler_ShouldBeFirstGlobalHandler_NotAppSpecific()
+    {
+        // Arrange：先注册应用专属，再注册全局——默认处理器仍必须是全局的那个
+        var services = CreateBaseServices(new StubEnvironmentService(isProduction: false));
+
+        services.CreateFeishuWebhookServiceBuilder(options =>
+            {
+                options.EventHandlingTimeoutMs = 5000;
+                options.AllowInMemoryNonceDedupInProduction = true;
+            })
+            .AddHandler<TestAppHandler>("app-001")
+            .AddHandler<TestGlobalHandler>()
+            .Build();
+
+        using var provider = services.BuildServiceProvider();
+        _ = provider.GetRequiredService<IOptions<FeishuWebhookOptions>>().Value;
+        using var scope = provider.CreateScope();
+
+        // Act：未注册事件类型 → 工厂回退默认处理器
+        var factory = scope.ServiceProvider.GetRequiredService<IFeishuEventHandlerFactory>();
+        var defaultHandler = factory.GetHandler("some.unregistered.event.type");
+
+        // Assert：默认处理器必须是全局注册的那个，不得是应用专属处理器
+        defaultHandler.Should().BeOfType<TestGlobalHandler>(
+            "默认处理器不得落到应用专属处理器——否则其它应用的事件会被 A 应用处理器处理（跨应用串扰）");
+    }
+
+    // ============================================================
+    // R3-P0-5：启动期校验必须显式注册（不得依赖 ConcurrencyService 的隐式副作用）
+    // ============================================================
+
+    [Fact]
+    public void Build_ShouldRegisterStartupOptionsValidator_AsHostedService()
+    {
+        // Arrange
+        var services = CreateBaseServices(new StubEnvironmentService(isProduction: false));
+
+        services.CreateFeishuWebhookServiceBuilder(options =>
+            {
+                options.EventHandlingTimeoutMs = 5000;
+                options.AllowInMemoryNonceDedupInProduction = true;
+            })
+            .AddHandler<TestGlobalHandler>()
+            .Build();
+
+        // Assert：宿主启动期必须有显式机制触发 Options 构建与校验
+        services.Should().Contain(d =>
+            d.ServiceType == typeof(IHostedService) &&
+            d.ImplementationFactory != null,
+            "R3-P0-5：ValidateOnStart 在 net6.0 下有 CS0121 二义性，改用显式 HostedService");
     }
 }

@@ -36,6 +36,10 @@ public class FeishuWebhookConcurrencyService : IAsyncDisposable, IHostedService
         _logger = logger;
 
         var options = _optionsMonitor.CurrentValue;
+        // R3-P0-5：本行会在宿主启动期（HostedService 构造）触发 FeishuWebhookOptions 的首次构建，
+        // 从而连带执行 PostConfigure 中的 Validate() 与形态检查。这是**既有事实**，
+        // 但**不得**依赖它做 fail-fast——启动期校验由 RegisterOptions() 的 ValidateOnStart() 显式保证。
+        // 请勿删除本行的同时假设校验仍在启动期发生。
         // 处理并发限制值：0 或负数视为无限制
         _currentMaxConcurrentEvents = options.MaxConcurrentEvents;
         int actualMaxConcurrent = _currentMaxConcurrentEvents > 0 ? _currentMaxConcurrentEvents : int.MaxValue;

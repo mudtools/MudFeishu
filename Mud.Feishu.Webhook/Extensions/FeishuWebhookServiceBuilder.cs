@@ -27,6 +27,11 @@ public class FeishuWebhookServiceBuilder
     private const string DefaultConfigurationSection = "FeishuWebhook";
     private readonly IServiceCollection _services;
     private readonly List<Type> _handlerTypes = new();
+    /// <summary>
+    /// 仅“全局注册”（<c>AddHandler&lt;T&gt;()</c> 无 appKey 重载）的处理器类型（R3-P1-4）。
+    /// 与 <see cref="_handlerTypes"/> 的区别：后者混装全局与应用专属，不可用于选取默认处理器。
+    /// </summary>
+    private readonly List<Type> _globalHandlerTypes = new();
     private readonly List<Type> _interceptorTypes = new();
     private readonly List<(string AppKey, Type HandlerType)> _pendingHandlerRegistrations = new();
     private readonly List<(string AppKey, Type InterceptorType)> _pendingInterceptorRegistrations = new();
@@ -187,6 +192,7 @@ public class FeishuWebhookServiceBuilder
         where THandler : class, IFeishuEventHandler
     {
         _handlerTypes.Add(typeof(THandler));
+        _globalHandlerTypes.Add(typeof(THandler));   // R3-P1-4：仅“全局注册”可充当默认处理器
         _services.AddScoped<IFeishuEventHandler, THandler>();
         _services.AddScoped<THandler>();
         return this;
@@ -205,6 +211,7 @@ public class FeishuWebhookServiceBuilder
             throw new ArgumentNullException(nameof(handlerInstance));
 
         _handlerTypes.Add(typeof(THandler));
+        _globalHandlerTypes.Add(typeof(THandler));   // R3-P1-4：实例注册同样是“全局注册”
         _services.AddScoped<IFeishuEventHandler>(_ => handlerInstance);
         _services.AddScoped<THandler>(_ => handlerInstance);
         return this;
@@ -223,6 +230,7 @@ public class FeishuWebhookServiceBuilder
             throw new ArgumentNullException(nameof(handlerFactory));
 
         _handlerTypes.Add(typeof(THandler));
+        _globalHandlerTypes.Add(typeof(THandler));   // R3-P1-4：工厂注册同样是“全局注册”
         _services.AddScoped<IFeishuEventHandler>(handlerFactory);
         _services.AddScoped<THandler>(handlerFactory);
         return this;
@@ -531,6 +539,20 @@ public class FeishuWebhookServiceBuilder
     private void RegisterOptions()
     {
         _services.AddSingleton<IValidateOptions<FeishuWebhookOptions>, FeishuWebhookOptionsValidator>();
+
+        // R3-P0-5：把“启动期阻断”从隐式副作用变成显式机制。
+        // 此前全仓无启动期校验——FeishuWebhookOptions 经 IOptionsMonitor 惰性构建，
+        // 唯一让它在启动期被构建的，是 FeishuWebhookConcurrencyService（Singleton + HostedService）
+        // 构造函数里读了一次 CurrentValue。任何对该行的改动都会让 D1（内存 Nonce 生产阻断）与
+        // D6（多应用 ExpectedAppId 强制）静默退化为“首个请求 500”——服务已起来、已开始收流量才炸，
+        // 比不阻断更糟。此处显式声明：所有配置校验一律在宿主启动期完成，失败即启动失败。
+        //
+        // 注：不用 AddOptions<T>().ValidateOnStart()——该扩展方法在 net6.0 目标下同时存在于
+        // Microsoft.Extensions.Hosting 引用程序集与 Microsoft.Extensions.Options 包中，
+        // 会产生 CS0121 二义性错误。托管服务方式在全部 TFM（含 netstandard2.0）上行为一致。
+        _services.AddHostedService(sp => new WebhookOptionsStartupValidator(
+            sp,
+            sp.GetService<ILogger<WebhookOptionsStartupValidator>>()));
         // 注意：FeishuAppWebhookOptions 不作为 IOptions<T> 独立注册，IValidateOptions 永远不会被框架自动调用。
         // 应用级配置的验证已在 FeishuWebhookOptions.Validate() 中通过遍历 Apps 字典完成。
         _services.AddSingleton<IValidateOptions<RateLimitOptions>, RateLimitOptionsValidator>();
@@ -625,12 +647,13 @@ public class FeishuWebhookServiceBuilder
                 if (string.Equals(mode, FeishuDeduplicationOptions.ModeNone, StringComparison.OrdinalIgnoreCase))
                     return new NoopFeishuEventDeduplicator(logger as ILogger<NoopFeishuEventDeduplicator>);
 
-                if (string.Equals(mode, FeishuDeduplicationOptions.ModeDistributed, StringComparison.OrdinalIgnoreCase)
-                    && sp.GetService<IFeishuEventDeduplicator>() is null)
-                {
-                    logger?.LogWarning(
-                        "FeishuDeduplication:Mode=Distributed 但未注册分布式去重实现，Webhook 回退内存去重。请先 AddFeishuRedisDeduplicators。");
-                }
+                // R3-P0-4：此处**不得**解析 IFeishuEventDeduplicator——本工厂正在构造该服务，
+                // 自解析会无限递归并导致 StackOverflowException（不可捕获，进程终止）。
+                // 原实现写作 `sp.GetService<IFeishuEventDeduplicator>() is null`：`is null` 判据
+                // 强制先求值 GetService，而 TryAddSingleton 仅在本服务无其它注册时才注册本工厂，
+                // 于是「走到该分支」的前提（未注册 Redis）正是使其解析回本工厂的充分条件 → 递归。
+                // “Mode=Distributed 但实现仍为内存”的检测已下沉到 RegisterCoreServices 的
+                // PostConfigure<IServiceProvider>（与 R3-P0-1 的 Nonce 形态检查同处一个委托）。
 
                 var ttl = unified.ResolveEventTtl();
                 if (ttl <= TimeSpan.Zero)
@@ -711,9 +734,19 @@ public class FeishuWebhookServiceBuilder
         _services.TryAddSingleton<FeishuMultiAppMiddleware>();
         _services.TryAddSingleton<FeishuRateLimitMiddleware>();
 
-        // A1/WHF-R2：Nonce 去重多实例静默降级 → 启动期告警/阻断。
-        // 与事件去重 :610-614 的 LogWarning 兜底口径对齐——Nonce 去重此前无等价告警。
-        // 生产环境 Mode=Distributed + 内存 Nonce 实现 = 已知不可接受风险，fail-fast。
+        // R3-P0-1 + R3-P0-4：去重「实现形态」与「部署形态」绑定检查（**单一** PostConfigure）。
+        //
+        // R3-P0-1（D1）：安全能力必须与部署形态显式绑定。原守卫只在「显式配置了
+        // FeishuDeduplication:Mode=Distributed 且该节来自配置」时才触发，而默认路径
+        // （不写该节 → IsConfiguredFromConfiguration=false，Mode 默认 InMemory）既无阻断也无告警，
+        // 生产多实例下跨实例重放不可检测却完全静默。现改为按「实现形态」三态处理。
+        //
+        // R3-P0-4：同时承载事件去重的「Mode=Distributed 但实现仍为内存」告警——
+        // 该检测原先位于 IFeishuEventDeduplicator 工厂内部并自解析该服务（递归 → StackOverflow），
+        // 现下沉至此。两个检测合并为一个委托，避免 Options 每次重建跑两遍、告警次序不确定。
+        //
+        // 启动期保证：本 PostConfigure 在 Options 构建时执行；由 R3-P0-5 的 ValidateOnStart()
+        // 保证其发生在宿主启动期，而非首个请求。
         _services.AddOptions<FeishuWebhookOptions>()
             .PostConfigure<IServiceProvider>((options, sp) =>
             {
@@ -723,21 +756,43 @@ public class FeishuWebhookServiceBuilder
                 var nonceImpl = sp.GetService<IFeishuNonceDistributedDeduplicator>();
                 var isMemoryNonce = nonceImpl is null or FeishuNonceDistributedDeduplicator;
 
-                if (isDistributedIntent && isMemoryNonce)
+                var logger = sp.GetService<ILogger<FeishuWebhookOptions>>();
+                var isProduction = sp.GetService<IEnvironmentService>()?.IsProduction == true;
+
+                // ── 事件去重形态告警（原位于工厂内，R3-P0-4 下沉至此）──
+                if (isDistributedIntent && sp.GetService<IFeishuEventDeduplicator>() is FeishuEventDeduplicator)
                 {
-                    var logger = sp.GetService<ILogger<FeishuWebhookOptions>>();
-                    var isProduction = sp.GetService<IEnvironmentService>()?.IsProduction == true;
-
-                    if (isProduction)
-                    {
-                        throw new InvalidOperationException(
-                            "FeishuDeduplication:Mode=Distributed 但 Nonce 去重为进程内内存实现。" +
-                            "多实例部署下跨实例重放攻击不可检测。请调用 AddFeishuRedisDeduplicators() 注册 Redis 实现。");
-                    }
-
                     logger?.LogWarning(
-                        "FeishuDeduplication:Mode=Distributed 但 Nonce 去重为进程内内存实现。" +
-                        "多实例部署下跨实例重放攻击不可检测。请调用 AddFeishuRedisDeduplicators() 注册 Redis 实现。");
+                        "FeishuDeduplication:Mode=Distributed 但事件去重仍为进程内内存实现，多实例下事件幂等性不成立。" +
+                        "请先 AddFeishuRedisDeduplicators() 再构建 Webhook 服务。");
+                }
+
+                if (!isMemoryNonce)
+                    return;   // 已接入分布式 Nonce 实现：无需干预
+
+                const string risk = "进程内内存 Nonce 去重仅对单实例有效；多实例/负载均衡下跨实例重放攻击不可检测。";
+
+                if (isProduction && !options.AllowInMemoryNonceDedupInProduction)
+                {
+                    // D1：安全能力的部署形态必须显式绑定——默认路径也必须阻断，
+                    // 而非只在显式 Distributed 意图时阻断。
+                    throw new InvalidOperationException(
+                        $"生产环境检测到 Nonce 去重为{risk}" +
+                        "请调用 AddFeishuRedisDeduplicators() 注册 Redis 实现；" +
+                        "若确为单实例部署，请显式设置 FeishuWebhook:AllowInMemoryNonceDedupInProduction=true 以承担风险。");
+                }
+
+                if (isProduction)
+                {
+                    logger?.LogWarning(
+                        "生产环境已显式允许内存 Nonce 去重（FeishuWebhook:AllowInMemoryNonceDedupInProduction=true）。" +
+                        risk + "请确保本部署为单实例且无水平扩容计划。");
+                }
+                else
+                {
+                    logger?.LogWarning(
+                        (isDistributedIntent ? "FeishuDeduplication:Mode=Distributed 但 Nonce 去重仍为" : "Nonce 去重使用") +
+                        "进程内内存实现。" + risk + "生产环境请接入 Redis。");
                 }
             });
     }
@@ -748,7 +803,16 @@ public class FeishuWebhookServiceBuilder
     /// </summary>
     private void RegisterEventHandlerFactory()
     {
-        var defaultHandlerType = _handlerTypes.First();
+        // R3-P1-4：默认处理器只能取自“全局注册”的处理器。
+        // 此前用 _handlerTypes.First()——而 AddHandler<T>(appKey) 同样写入该列表，
+        // 于是 AddHandler<AppAHandler>("appA").AddHandler<GlobalHandler>() 会让 AppAHandler 成为
+        // 全局默认处理器，其它应用（appB）的事件在回退路径被 A 的处理器处理 → 跨应用语义错误，
+        // 且因应用版重载也注册了 AddScoped<THandler>()，GetRequiredService 不会抛，故障静默。
+        var defaultHandlerType = _globalHandlerTypes.Count > 0
+            ? _globalHandlerTypes[0]
+            : throw new InvalidOperationException(
+                "至少需要一个全局注册的事件处理器（AddHandler<T>()）作为默认处理器。" +
+                "应用专属处理器（AddHandler<T>(appKey)）不得充当全局默认处理器——否则会产生跨应用事件串扰。");
 
         _services.TryAddScoped<IFeishuEventHandlerFactory>(serviceProvider =>
         {

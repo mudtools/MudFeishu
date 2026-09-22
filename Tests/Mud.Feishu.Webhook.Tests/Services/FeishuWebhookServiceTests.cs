@@ -313,8 +313,14 @@ public class FeishuWebhookServiceTests
 
     private FeishuWebhookService CreateService(
         IFailedEventStore? failedEventStore = null,
-        IFeishuEventInterceptor[]? interceptors = null)
+        IFeishuEventInterceptor[]? interceptors = null,
+        Action<FeishuWebhookOptions>? configureOptions = null)
     {
+        // 在**共享的** _options 实例上追加配置（不得替换 CurrentValue——既有用例会在
+        // 调用 CreateService 前直接改写 _options.Apps / IgnoreUnknownEventTypes 等字段）。
+        configureOptions?.Invoke(_options);
+        _optionsMonitorMock.Setup(x => x.CurrentValue).Returns(_options);
+
         return new FeishuWebhookService(
             _optionsMonitorMock.Object,
             _validatorMock.Object,
@@ -1092,15 +1098,109 @@ public class FeishuWebhookServiceTests
         // Act
         var result = await service.HandleEventAsync(eventData);
 
-        // Assert：拦截 = 不进去重、按 500 口径返回，服务端稍后重试
-        Assert.False(result.Success);
-        Assert.Equal("Event intercepted", result.ErrorReason);
-        _deduplicatorMock.Verify(
-            x => x.TryMarkAsProcessingAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<TimeSpan?>(), It.IsAny<TimeSpan?>(), It.IsAny<CancellationToken>()),
-            Times.Never, "拦截发生在去重之前（retry-until-accept 语义）");
+        // Assert：R3-P0-2/D2——拦截 = **已消费**（200 ack），并补落去重标记。
+        // 此前返回 (false, "Event intercepted") → 中间件一律 500 → 飞书重推 → 再次拦截，
+        // 事件永不 ack 且不落任何记录（失败存储仅在业务 catch 分支写入），形成重推风暴。
+        Assert.True(result.Success);
+        Assert.Null(result.ErrorReason);
 
+        // 拦截发生在去重之前，因此必须**补落**去重标记，否则重推会再次进入拦截分支。
+        _deduplicatorMock.Verify(
+            x => x.TryMarkAsProcessingAsync(eventData.EventId!, It.IsAny<string?>(), It.IsAny<TimeSpan?>(), It.IsAny<TimeSpan?>(), It.IsAny<CancellationToken>()),
+            Times.Once, "拦截后必须占位去重（内存实现对不存在的键 MarkAsCompleted 是静默 no-op）");
+        _deduplicatorMock.Verify(
+            x => x.MarkAsCompletedAsync(eventData.EventId!, It.IsAny<string?>(), It.IsAny<CancellationToken>()),
+            Times.Once, "拦截后必须置完成，使飞书重推被 dedup_hit 跳过");
+
+        // P1-7 契约不变：AfterHandle 仍可判别拦截终态
         captured.Should().BeOfType<Mud.Feishu.Abstractions.EventHandlers.EventHandlingOutcomeException>();
         ((Mud.Feishu.Abstractions.EventHandlers.EventHandlingOutcomeException)captured!).OutcomeKind.Should().Be("intercepted");
+    }
+
+    [Fact]
+    public async Task HandleEventAsync_WhenInterceptorBlocksTwice_ShouldSkipSecondByDedup()
+    {
+        // Arrange - R3-P0-2 回归锁：同 EventId 第二次调用必须命中去重，拦截器不再被调用
+        var eventData = new EventData { EventId = "intercepted_twice_event", EventType = "test.event" };
+
+        var interceptorMock = new Mock<IFeishuEventInterceptor>();
+        interceptorMock
+            .Setup(x => x.BeforeHandleAsync(eventData.EventType, eventData, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+
+        // 第二次调用时去重器应报告“已完成”（命中）
+        _deduplicatorMock
+            .SetupSequence(x => x.TryMarkAsProcessingAsync(eventData.EventId!, It.IsAny<string?>(), It.IsAny<TimeSpan?>(), It.IsAny<TimeSpan?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(DeduplicationResult.Success(eventData.EventId!))
+            .ReturnsAsync(DeduplicationResult.Duplicate(eventData.EventId!));
+
+        var service = CreateService(interceptors: new[] { interceptorMock.Object });
+
+        // Act
+        var first = await service.HandleEventAsync(eventData);
+        var second = await service.HandleEventAsync(eventData);
+
+        // Assert：两次都成功 ack（D2 核心回归）。
+        // 注：拦截器**先于**去重执行是既有设计（拦截器是横切组件，可对未去重事件做准入判断），
+        // 因此第二次仍会调用 BeforeHandleAsync——本用例锁的是「不再返回 500」：
+        // 修好 HTTP 语义后飞书不会重推，重复投递只会在 dedup_hit 处被安静吸收。
+        Assert.True(first.Success);
+        Assert.True(second.Success, "第二次必须按 dedup_hit 成功 ack，不得再走拦截 → 500 路径");
+
+        _deduplicatorMock.Verify(
+            x => x.TryMarkAsProcessingAsync(eventData.EventId!, It.IsAny<string?>(), It.IsAny<TimeSpan?>(), It.IsAny<TimeSpan?>(), It.IsAny<CancellationToken>()),
+            Times.Exactly(2), "两次调用都应尝试去重（第二次命中 Duplicate → 跳过处理）");
+    }
+
+    [Fact]
+    public async Task HandleEventAsync_WhenInterceptorBlocksAndMarkFails_ShouldStillReturnSuccess()
+    {
+        // Arrange - WHF-07 同口径：去重标记失败不得改变“已消费”结论
+        var eventData = new EventData { EventId = "intercepted_mark_failed", EventType = "test.event" };
+
+        var interceptorMock = new Mock<IFeishuEventInterceptor>();
+        interceptorMock
+            .Setup(x => x.BeforeHandleAsync(eventData.EventType, eventData, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+
+        _deduplicatorMock
+            .Setup(x => x.TryMarkAsProcessingAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<TimeSpan?>(), It.IsAny<TimeSpan?>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("标记失败"));
+
+        var service = CreateService(interceptors: new[] { interceptorMock.Object });
+
+        // Act
+        var result = await service.HandleEventAsync(eventData);
+
+        // Assert
+        Assert.True(result.Success);
+        Assert.Null(result.ErrorReason);
+    }
+
+    [Fact]
+    public async Task HandleEventAsync_WhenInterceptorBlocksAndAckModeRetryable_ShouldReturnRetryableReason()
+    {
+        // Arrange - R3-FEAT-2：InterceptionAckMode=Retryable → 不落去重、要求重推（中间件映射 503）
+        var eventData = new EventData { EventId = "intercepted_retryable_event", EventType = "test.event" };
+
+        var interceptorMock = new Mock<IFeishuEventInterceptor>();
+        interceptorMock
+            .Setup(x => x.BeforeHandleAsync(eventData.EventType, eventData, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+
+        var service = CreateService(
+            interceptors: new[] { interceptorMock.Object },
+            configureOptions: options => options.InterceptionAckMode = InterceptionAckMode.Retryable);
+
+        // Act
+        var result = await service.HandleEventAsync(eventData);
+
+        // Assert
+        Assert.False(result.Success);
+        Assert.Equal(FeishuWebhookService.InterceptedRetryableReason, result.ErrorReason);
+        _deduplicatorMock.Verify(
+            x => x.TryMarkAsProcessingAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<TimeSpan?>(), It.IsAny<TimeSpan?>(), It.IsAny<CancellationToken>()),
+            Times.Never, "Retryable 语义下不得落去重——本事件尚未被消费，重推后必须能再次进入处理流程");
     }
 
     [Fact]

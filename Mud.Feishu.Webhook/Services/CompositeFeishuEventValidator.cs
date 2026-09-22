@@ -117,6 +117,13 @@ public class CompositeFeishuEventValidator : WebhookValidatorBase, IFeishuEventV
             Logger.LogDebug("请求头签名验证成功");
             return true;
         }
+        catch (OperationCanceledException)
+        {
+            // R3-P1-6/WHF-16：客户端断开 / 宿主关停——交由中间件的 OCE 分支处理，
+            // 禁止伪装成“验签失败 403”写向已中止连接（此前该 OCE 被下方 catch 吞成 false，
+            // 使中间件 :261 的 WHF-16 分支在验签链路上永不可达）。
+            throw;
+        }
         catch (Exception ex) when (ex is not FeishuRedisException { FailureKind: FeishuRedisFailureKind.Server })
         {
             Logger.LogError(ex, "验证请求头签名时发生错误");

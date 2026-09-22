@@ -23,6 +23,88 @@ public class FeishuWebhookOptionsTests
         Assert.Equal(30000, options.EventHandlingTimeoutMs);
         Assert.Equal(10, options.MaxConcurrentEvents);
         Assert.True(options.EnableExceptionHandling);
+
+        // R3-P0-1：安全默认——生产环境内存 Nonce 去重默认**必须**被阻断（安全默认不得削弱）
+        Assert.False(options.AllowInMemoryNonceDedupInProduction);
+        // R3-FEAT-2：拦截默认语义 = 已消费（200 ack）
+        Assert.Equal(InterceptionAckMode.Ack, options.InterceptionAckMode);
+    }
+
+    [Fact]
+    public void Validate_MultiAppWithoutExpectedAppId_ShouldThrow()
+    {
+        // Arrange - R3-P1-2/D6：多应用下 ExpectedAppId 是 EncryptKey 误配的唯一兜底（全仓曾零覆盖）
+        var options = new FeishuWebhookOptions
+        {
+            Apps = new Dictionary<string, FeishuAppWebhookOptions>
+            {
+                ["appA"] = new FeishuAppWebhookOptions
+                {
+                    VerificationToken = "token-a",
+                    EncryptKey = "0123456789abcdef0123456789abcdef"
+                },
+                ["appB"] = new FeishuAppWebhookOptions
+                {
+                    VerificationToken = "token-b",
+                    EncryptKey = "fedcba9876543210fedcba9876543210"
+                }
+            }
+        };
+
+        // Act
+        var act = () => options.Validate();
+
+        // Assert
+        var ex = Assert.Throws<InvalidOperationException>(act);
+        Assert.Contains("ExpectedAppId", ex.Message);
+        Assert.Contains("跨应用", ex.Message);
+    }
+
+    [Fact]
+    public void Validate_SingleAppWithoutExpectedAppId_ShouldPass()
+    {
+        // Arrange - 向后兼容：单应用部署保持可选
+        var options = new FeishuWebhookOptions
+        {
+            Apps = new Dictionary<string, FeishuAppWebhookOptions>
+            {
+                ["appA"] = new FeishuAppWebhookOptions
+                {
+                    VerificationToken = "token-a",
+                    EncryptKey = "0123456789abcdef0123456789abcdef"
+                }
+            }
+        };
+
+        // Act / Assert
+        options.Validate();
+    }
+
+    [Fact]
+    public void Validate_MultiAppWithExpectedAppId_ShouldPass()
+    {
+        // Arrange - 补齐 ExpectedAppId 后多应用配置合法
+        var options = new FeishuWebhookOptions
+        {
+            Apps = new Dictionary<string, FeishuAppWebhookOptions>
+            {
+                ["appA"] = new FeishuAppWebhookOptions
+                {
+                    VerificationToken = "token-a",
+                    EncryptKey = "0123456789abcdef0123456789abcdef",
+                    ExpectedAppId = "cli_a"
+                },
+                ["appB"] = new FeishuAppWebhookOptions
+                {
+                    VerificationToken = "token-b",
+                    EncryptKey = "fedcba9876543210fedcba9876543210",
+                    ExpectedAppId = "cli_b"
+                }
+            }
+        };
+
+        // Act / Assert
+        options.Validate();
     }
 
     [Fact]

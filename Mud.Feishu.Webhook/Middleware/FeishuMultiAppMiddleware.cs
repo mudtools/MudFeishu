@@ -427,6 +427,15 @@ public class FeishuMultiAppMiddleware : IDisposable
             // 检查事件处理结果
             if (!result.Success)
             {
+                // R3-FEAT-2/D2：拦截 + InterceptionAckMode=Retryable → 显式 503（要求飞书重推）。
+                // 不复用 500 语义：500 会连带写入失败事件存储（ADR-2），而“拦截”不是业务失败。
+                if (string.Equals(result.ErrorReason, FeishuWebhookService.InterceptedRetryableReason, StringComparison.Ordinal))
+                {
+                    _logger.LogWarning("事件被拦截器中断并要求重推: {Reason}", result.ErrorReason);
+                    await WriteErrorResponse(context, 503, "Service Unavailable", requestId);
+                    return;
+                }
+
                 _logger.LogError("事件处理失败: {Reason}", result.ErrorReason ?? "未知错误");
                 await WriteErrorResponse(context, 500, "Internal Server Error", requestId);
                 return;

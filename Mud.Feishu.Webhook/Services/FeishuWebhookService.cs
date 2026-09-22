@@ -18,6 +18,17 @@ namespace Mud.Feishu.Webhook;
 /// </summary>
 public class FeishuWebhookService : IFeishuWebhookService
 {
+    /// <summary>
+    /// 拦截器中断且 <see cref="InterceptionAckMode"/> 为 <see cref="InterceptionAckMode.Retryable"/>
+    /// 时，<c>EventHandlingResult.ErrorReason</c> 的取值。
+    /// </summary>
+    /// <remarks>
+    /// 中间件据此显式映射 HTTP 503（要求飞书重推），而<b>不</b>复用 500 语义——
+    /// 500 会触发失败事件存储写入，与“拦截不是业务失败”的语义不符。
+    /// 以常量共享，避免宿主与中间件之间的字符串散落。
+    /// </remarks>
+    public const string InterceptedRetryableReason = "Event intercepted (retryable)";
+
     private readonly IOptionsMonitor<FeishuWebhookOptions> _optionsMonitor;
     private readonly IFeishuEventValidator _validator;
     private readonly IFeishuEventDecryptor _decryptor;
@@ -163,11 +174,44 @@ public class FeishuWebhookService : IFeishuWebhookService
                 {
                     _logger.LogWarning("事件被拦截器中断: {EventType}, EventId: {EventId}, Interceptor: {InterceptorType}, AppKey: {AppKey}",
                         eventData.EventType, eventData.EventId, interceptor.GetType().Name, appKey ?? "null");
-                    FeishuMetricsHelper.RecordEventOutcome(appKey ?? "unknown", eventData.EventType, success: false, "intercepted");
-                    // P1-7：AfterHandle 可区分拦截终态（接口签名不变）
+
+                    // R3-P0-2/D2：拦截的默认语义是“已消费”——此前返回 (false, …) 被中间件一律映射 500，
+                    // 飞书重推 → 再次被拦截 → 再 500，事件永不 ack，且不落任何去重/失败存储记录。
+                    // 宿主可通过 InterceptionAckMode=Retryable 表达“暂时不能处理，请稍后重推”（→ 503）。
+                    if (Options.InterceptionAckMode == InterceptionAckMode.Retryable)
+                    {
+                        FeishuMetricsHelper.RecordEventOutcome(appKey ?? "unknown", eventData.EventType, success: false, "intercepted_retryable");
+                        processingException = new Mud.Feishu.Abstractions.EventHandlers.EventHandlingOutcomeException(
+                            "intercepted_retryable", $"事件被 {interceptor.GetType().Name} 拦截，要求对端重推");
+                        // 不落去重标记：本事件尚未被消费，重推后必须能再次进入处理流程。
+                        return (false, InterceptedRetryableReason);
+                    }
+
+                    // 已消费口径：拦截是**有意消费**，指标按 success=true 记（便于与业务失败区分）。
+                    FeishuMetricsHelper.RecordEventOutcome(appKey ?? "unknown", eventData.EventType, success: true, "intercepted");
+
+                    // P1-7：AfterHandle 仍可判别拦截终态（接口签名不变）
                     processingException = new Mud.Feishu.Abstractions.EventHandlers.EventHandlingOutcomeException(
                         "intercepted", $"事件被 {interceptor.GetType().Name} 拦截");
-                    return (false, "Event intercepted");
+
+                    // 关键：拦截发生在去重之前，必须补落去重标记——否则飞书重推会再次进入本分支。
+                    // 注意：MemoryDeduplicator.MarkAsCompleted 对不存在的键是静默 no-op，
+                    // 因此必须**先占位**（TryMarkAsProcessing）再置完成。
+                    if (!string.IsNullOrEmpty(eventData.EventId))
+                    {
+                        try
+                        {
+                            await _deduplicator.TryMarkAsProcessingAsync(eventData.EventId, appKey, cancellationToken: CancellationToken.None);
+                            await MarkDeduplicationCompletedAsync(eventData.EventId, appKey);
+                        }
+                        catch (Exception markEx)
+                        {
+                            // 与 WHF-07 同口径：标记失败不影响“已消费”结论（此处尚未执行业务），仅告警供对账。
+                            _logger.LogWarning(markEx, "拦截事件 {EventId} 的去重标记写入失败，AppKey: {AppKey}", eventData.EventId, appKey ?? "null");
+                        }
+                    }
+
+                    return (true, null);   // 200 → 停止飞书重推
                 }
             }
 
@@ -340,6 +384,12 @@ public class FeishuWebhookService : IFeishuWebhookService
                 request.Signature,
                 encryptKey!,
                 cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            // R3-P1-6/WHF-16：客户端断开 / 宿主关停——交由中间件的 OCE 分支处理，
+            // 禁止伪装成“验签失败 403”写向已中止连接。
+            throw;
         }
         catch (Exception ex) when (ex is not FeishuRedisException { FailureKind: FeishuRedisFailureKind.Server })
         {

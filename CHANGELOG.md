@@ -2,6 +2,42 @@
 
 ## [未发布]
 
+### 🔐 Webhook 防重放与多应用隔离（WHF-R3 批次 A）
+
+#### ⚠️ 破坏性变更 / 行为改变
+
+- **生产环境内存 Nonce 去重默认阻断**：未注册分布式 Nonce 去重（`AddFeishuRedisDeduplicators()`）时，
+  生产环境（`ASPNETCORE_ENVIRONMENT=Production`）启动失败。单实例部署可通过
+  `FeishuWebhook:AllowInMemoryNonceDedupInProduction=true` 显式豁免（并输出风险告警）。
+  迁移：接 Redis，或为确认单实例的部署显式设置该键。
+- **多应用配置必须配置 `ExpectedAppId`**：`FeishuWebhook:Apps` 条目数 > 1 时，缺失 `ExpectedAppId` 将启动失败。
+  它是 `EncryptKey` 误配（把 B 应用的密钥填到 A）导致跨应用事件串扰的唯一兜底。单应用部署保持可选。
+- **拦截器中断的 HTTP 语义变更**：拦截（`BeforeHandleAsync` 返回 `false`）由 `500`（可重试）改为 `200`（已消费），
+  事件同时写入去重标记，不再触发飞书重推。若需要"拦截后要求重推"，请设置
+  `FeishuWebhook:InterceptionAckMode=Retryable`（响应 503，不落去重标记）。
+- **全局默认处理器必须是全局注册的处理器**：`Build()` 现在要求至少一个 `AddHandler<T>()`（无 appKey）注册；
+  仅有应用专属处理器（`AddHandler<T>(appKey)`）时启动失败——此前会静默选应用专属处理器作默认处理器，
+  导致其它应用的事件被错误路由（跨应用串扰）。
+
+#### ✨ 新增
+
+- `FeishuWebhook:AllowInMemoryNonceDedupInProduction`（默认 `false`）
+- `FeishuWebhook:InterceptionAckMode`（默认 `Ack`；`Retryable` 时拦截响应 503）
+- 启动期选项校验（宿主启动失败而非首个请求 500）
+- 指标标签：`intercepted`（改为成功口径）/ `intercepted_retryable`
+
+#### 🐛 修复
+
+- **修复进程崩溃（P0）**：`FeishuDeduplication:Mode=Distributed` 且未注册 Redis 实现时，去重工厂内
+  `sp.GetService<IFeishuEventDeduplicator>()` 自解析导致无限递归 / `StackOverflowException`（不可捕获）。
+  改为正常构建，并在启动期输出"事件去重仍为内存实现"告警。
+- Nonce 去重基础设施故障（Redis Connection/Timeout）不再伪装成 403 验签失败，
+  改由 `FeishuDeduplicationFatalException`（`FailureKind=Server`）转 **503** 触发飞书重推
+  （此前 403 是终态 → 事件永久丢失，且日志误报"检测到重放攻击"污染安全审计）。
+- 拦截事件不再因 HTTP 500 反复触发飞书重推。
+- 客户端断开（`OperationCanceledException`）不再被吞成"验签失败 403"写向已中止连接
+  （中间件既有 WHF-16 分支现在真正可达）。
+
 ### 🐛 令牌与多应用管理（TMR2 第一轮，P0/P1）
 
 - 🛡️ **默认应用上下文 DI 桥接改为「解析桥接」**：注入的 `IFeishuAppContext` 现在每次访问都现取

@@ -86,11 +86,17 @@ public static class FeishuMetrics
         public WebSocketMetricsSource(
             Func<string> appKeyProvider,
             Func<int> activeConnectionsProvider,
-            Func<int> pendingMessagesProvider)
+            Func<int> pendingMessagesProvider,
+            Func<long>? idleMsProvider = null,
+            Func<int>? receiveLoopAliveProvider = null,
+            Func<int>? isZombieProvider = null)
         {
             AppKeyProvider = appKeyProvider;
             ActiveConnectionsProvider = activeConnectionsProvider;
             PendingMessagesProvider = pendingMessagesProvider;
+            IdleMsProvider = idleMsProvider;
+            ReceiveLoopAliveProvider = receiveLoopAliveProvider;
+            IsZombieProvider = isZombieProvider;
         }
 
         public Func<string> AppKeyProvider { get; }
@@ -98,6 +104,15 @@ public static class FeishuMetrics
         public Func<int> ActiveConnectionsProvider { get; }
 
         public Func<int> PendingMessagesProvider { get; }
+
+        /// <summary>距最近一次收帧的毫秒数提供器（<c>null</c> = 该源不上报存活维度）。</summary>
+        public Func<long>? IdleMsProvider { get; }
+
+        /// <summary>接收循环是否存活提供器（0/1；<c>null</c> = 不上报）。</summary>
+        public Func<int>? ReceiveLoopAliveProvider { get; }
+
+        /// <summary>是否僵尸态提供器（0/1；<c>null</c> = 不上报）。</summary>
+        public Func<int>? IsZombieProvider { get; }
     }
 
     /// <summary>
@@ -146,6 +161,42 @@ public static class FeishuMetrics
     public static readonly ObservableGauge<int> WebSocketBacklogGauge;
 
     /// <summary>
+    /// WebSocket 接收静默时长（毫秒；维度：app_key；<c>-1</c> = 尚无收帧样本）。
+    /// </summary>
+    /// <remarks>
+    /// F1/F2（R2）：把"距上次收帧多久"变成可告警的时序指标。健康检查只能给出**某一时刻**的
+    /// <c>idle_ms</c> 快照，而"静默时长持续增长"这一趋势只有在指标面上才能被规则捕获。
+    /// </remarks>
+    public static readonly ObservableGauge<long> WebSocketReceiveIdleMsGauge;
+
+    /// <summary>
+    /// WebSocket 接收循环存活（1=存活，0=已结束；维度：app_key）。
+    /// </summary>
+    /// <remarks>与 <see cref="WebSocketZombieGauge"/> 配合可区分"正常空闲"与"接收管道已死"。</remarks>
+    public static readonly ObservableGauge<int> WebSocketReceiveLoopAliveGauge;
+
+    /// <summary>
+    /// WebSocket 僵尸连接（1=僵尸，0=正常；维度：app_key）。
+    /// </summary>
+    /// <remarks>
+    /// 判定 = "连接被判定为已连接（<c>State == Open</c>）**且**接收循环已结束"这一确定性矛盾。
+    /// 该值为 1 时连接不可能再消费任何事件，且所有基于连接状态的判定都会拒绝恢复 ⇒ 必须告警。
+    /// </remarks>
+    public static readonly ObservableGauge<int> WebSocketZombieGauge;
+
+    /// <summary>
+    /// WebSocket 帧丢弃计数（维度：app_key, reason）。
+    /// </summary>
+    /// <remarks>
+    /// F5（R2）：受控丢弃（分片超限、认证闸门超时、背压拒绝）此前只写日志，无法量化。
+    /// 丢弃是"事件丢失"的前兆，必须可计数、可按 <see cref="Tags.Reason"/> 拆分告警。
+    /// </remarks>
+    public static readonly Counter<long> WebSocketFramesDiscardedCount = Instance.CreateCounter<long>(
+        "feishu.websocket.frames.discarded",
+        unit: "{frame}",
+        description: "WebSocket 帧/消息受控丢弃计数");
+
+    /// <summary>
     /// 注册一个 WebSocket 指标源（P2-3 修复；替代原 <c>WebSocketConnectionObserver</c> / <c>WebSocketBacklogObserver</c> 静态属性）。
     /// </summary>
     /// <param name="appKeyProvider">
@@ -153,8 +204,13 @@ public static class FeishuMetrics
     /// </param>
     /// <param name="activeConnectionsProvider">活跃连接数提供器（当前实例为 1 或 0）。</param>
     /// <param name="pendingMessagesProvider">待处理（在途处理中）消息数提供器。</param>
+    /// <param name="idleMsProvider">
+    /// 接收静默毫秒数提供器（可选；<c>null</c> = 该源不上报存活维度）。无收帧样本时应返回 <c>-1</c>。
+    /// </param>
+    /// <param name="receiveLoopAliveProvider">接收循环是否存活提供器（可选；1/0）。</param>
+    /// <param name="isZombieProvider">是否僵尸态提供器（可选；1/0）。</param>
     /// <returns>注销令牌；释放后该源立即不再参与采集，重复释放安全。</returns>
-    /// <exception cref="ArgumentNullException">任一提供器为 <c>null</c> 时抛出。</exception>
+    /// <exception cref="ArgumentNullException">前三个必填提供器任一为 <c>null</c> 时抛出。</exception>
     /// <remarks>
     /// 每个注册实例独立登记，互不覆盖：同一进程内多个应用会各自产生一条带
     /// <see cref="Tags.AppKey"/> 维度的 Measurement，由 ObservableGauge 聚合上报。
@@ -162,11 +218,18 @@ public static class FeishuMetrics
     /// <b>约束</b>：同一 AppKey 不应重复注册（会产生重复序列）。HostedService 应在构造期注册、
     /// 在 <c>Dispose</c> 中释放令牌。
     /// </para>
+    /// <para>
+    /// 可选存活维度（<paramref name="idleMsProvider"/> 等）为 <c>null</c> 时，
+    /// 对应 gauge **不产生该源的测量值**（而不是上报 0）——避免把"未提供"误读为"存活/不僵尸"。
+    /// </para>
     /// </remarks>
     public static IDisposable RegisterWebSocketMetricsSource(
         Func<string> appKeyProvider,
         Func<int> activeConnectionsProvider,
-        Func<int> pendingMessagesProvider)
+        Func<int> pendingMessagesProvider,
+        Func<long>? idleMsProvider = null,
+        Func<int>? receiveLoopAliveProvider = null,
+        Func<int>? isZombieProvider = null)
     {
         if (appKeyProvider == null)
             throw new ArgumentNullException(nameof(appKeyProvider));
@@ -175,7 +238,13 @@ public static class FeishuMetrics
         if (pendingMessagesProvider == null)
             throw new ArgumentNullException(nameof(pendingMessagesProvider));
 
-        var source = new WebSocketMetricsSource(appKeyProvider, activeConnectionsProvider, pendingMessagesProvider);
+        var source = new WebSocketMetricsSource(
+            appKeyProvider,
+            activeConnectionsProvider,
+            pendingMessagesProvider,
+            idleMsProvider,
+            receiveLoopAliveProvider,
+            isZombieProvider);
 
         lock (WebSocketSourcesLock)
         {
@@ -200,7 +269,70 @@ public static class FeishuMetrics
         => Observe(kind: 1);
 
     /// <summary>
-    /// 按 <paramref name="kind"/> 采集所有已注册指标源（0=连接数，1=积压数）。
+    /// 采集全部已注册 WebSocket 指标源（接收循环存活）。
+    /// </summary>
+    /// <returns>按 app_key 分组的测量值集合（仅含提供了存活提供器的源）</returns>
+    internal static IEnumerable<Measurement<int>> ObserveWebSocketReceiveLoopAlive()
+        => Observe(kind: 2);
+
+    /// <summary>
+    /// 采集全部已注册 WebSocket 指标源（僵尸态）。
+    /// </summary>
+    /// <returns>按 app_key 分组的测量值集合（仅含提供了存活提供器的源）</returns>
+    internal static IEnumerable<Measurement<int>> ObserveWebSocketZombie()
+        => Observe(kind: 3);
+
+    /// <summary>
+    /// 采集全部已注册 WebSocket 指标源（接收静默毫秒数）。
+    /// </summary>
+    /// <returns>按 app_key 分组的测量值集合（仅含提供了存活提供器的源）</returns>
+    internal static IEnumerable<Measurement<long>> ObserveWebSocketReceiveIdleMs()
+    {
+        var snapshot = SnapshotSources();
+        if (snapshot.Length == 0)
+        {
+            return Array.Empty<Measurement<long>>();
+        }
+
+        var results = new List<Measurement<long>>(snapshot.Length);
+        foreach (var source in snapshot)
+        {
+            if (source.IdleMsProvider == null)
+            {
+                continue;
+            }
+
+            try
+            {
+                var appKey = source.AppKeyProvider();
+                results.Add(new Measurement<long>(
+                    source.IdleMsProvider(),
+                    new KeyValuePair<string, object?>(Tags.AppKey, appKey)));
+            }
+            catch (Exception)
+            {
+                // 指标采集不得因单个源故障而中断（也不得把异常抛进 OTel 采集回调）
+            }
+        }
+
+        return results;
+    }
+
+    /// <summary>
+    /// 在锁内取已注册源快照（锁外调用提供器，避免重入等待与长时间持锁）。
+    /// </summary>
+    /// <returns>已注册源的数组快照；无注册时为<see cref="Array.Empty{T}"/>。</returns>
+    private static WebSocketMetricsSource[] SnapshotSources()
+    {
+        lock (WebSocketSourcesLock)
+        {
+            return WebSocketSources.Count == 0 ? Array.Empty<WebSocketMetricsSource>() : WebSocketSources.ToArray();
+        }
+    }
+
+    /// <summary>
+    /// 按 <paramref name="kind"/> 采集所有已注册指标源
+    /// （0=连接数，1=积压数，2=接收循环存活，3=僵尸态）。
     /// </summary>
     /// <remarks>
     /// 先在锁内取快照，再在锁外调用用户提供器：避免提供器内再次注册/注销造成重入等待，
@@ -208,26 +340,34 @@ public static class FeishuMetrics
     /// </remarks>
     private static IEnumerable<Measurement<int>> Observe(int kind)
     {
-        WebSocketMetricsSource[] snapshot;
-        lock (WebSocketSourcesLock)
+        var snapshot = SnapshotSources();
+        if (snapshot.Length == 0)
         {
-            if (WebSocketSources.Count == 0)
-            {
-                return Array.Empty<Measurement<int>>();
-            }
-
-            snapshot = WebSocketSources.ToArray();
+            return Array.Empty<Measurement<int>>();
         }
 
         var results = new List<Measurement<int>>(snapshot.Length);
         foreach (var source in snapshot)
         {
+            var provider = kind switch
+            {
+                0 => source.ActiveConnectionsProvider,
+                1 => source.PendingMessagesProvider,
+                2 => source.ReceiveLoopAliveProvider,
+                _ => source.IsZombieProvider
+            };
+
+            // 未提供该维度 ⇒ 不产生测量值（不把"未提供"上报成 0）
+            if (provider == null)
+            {
+                continue;
+            }
+
             try
             {
                 var appKey = source.AppKeyProvider();
-                var value = kind == 0 ? source.ActiveConnectionsProvider() : source.PendingMessagesProvider();
                 results.Add(new Measurement<int>(
-                    value,
+                    provider(),
                     new KeyValuePair<string, object?>(Tags.AppKey, appKey)));
             }
             catch (Exception)
@@ -270,6 +410,45 @@ public static class FeishuMetrics
             observeValues: ObserveWebSocketBacklog,
             unit: "{message}",
             description: "WebSocket 待处理消息积压数");
+
+        WebSocketReceiveIdleMsGauge = Instance.CreateObservableGauge<long>(
+            "feishu.websocket.receive.idle_ms",
+            observeValues: ObserveWebSocketReceiveIdleMs,
+            unit: "ms",
+            description: "WebSocket 接收静默时长（-1 表示尚无收帧样本）");
+
+        WebSocketReceiveLoopAliveGauge = Instance.CreateObservableGauge<int>(
+            "feishu.websocket.receive.loop_alive",
+            observeValues: ObserveWebSocketReceiveLoopAlive,
+            unit: "1",
+            description: "WebSocket 接收循环是否存活（1=存活，0=已结束）");
+
+        WebSocketZombieGauge = Instance.CreateObservableGauge<int>(
+            "feishu.websocket.zombie",
+            observeValues: ObserveWebSocketZombie,
+            unit: "1",
+            description: "WebSocket 僵尸连接（1=连接为 Open 但接收循环已结束）");
+    }
+
+    /// <summary>
+    /// <see cref="WebSocketFramesDiscardedCount"/> 的受控丢弃原因常量（F5）。
+    /// </summary>
+    /// <remarks>
+    /// 用常量而非裸字符串：告警规则与看板按这些值聚合，散落字面量会在重构时静默改变指标序列。
+    /// </remarks>
+    public static class DiscardReasons
+    {
+        /// <summary>分片消息超过 <c>MessageSizeLimits</c> 上限而被丢弃。</summary>
+        public const string FragmentSizeExceeded = "fragment_size_exceeded";
+
+        /// <summary>排空超限消息时超过排空上界，连接被主动中止。</summary>
+        public const string DrainBoundExceeded = "drain_bound_exceeded";
+
+        /// <summary>未认证且等待认证超过 <c>AuthGateTimeoutMs</c>，二进制帧被丢弃。</summary>
+        public const string AuthGateTimeout = "auth_gate_timeout";
+
+        /// <summary>并发闸门未授予租约（连接关闭或并发服务已释放），消息被丢弃。</summary>
+        public const string ConcurrencyRejected = "concurrency_rejected";
     }
 
     /// <summary>
@@ -300,6 +479,15 @@ public static class FeishuMetrics
 
         /// <summary>WebSocket 消息类型</summary>
         public const string MessageType = "feishu.websocket.message_type";
+
+        /// <summary>
+        /// 受控丢弃原因（用于 <see cref="WebSocketFramesDiscardedCount"/> 维度拆分）。
+        /// </summary>
+        /// <remarks>
+        /// 取值示例：<c>fragment_size_exceeded</c>、<c>drain_bound_exceeded</c>、
+        /// <c>auth_gate_timeout</c>、<c>concurrency_rejected</c>。
+        /// </remarks>
+        public const string Reason = "reason";
 
         /// <summary>事件 ID</summary>
         public const string EventId = "feishu.event.id";

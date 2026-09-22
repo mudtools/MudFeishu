@@ -20,14 +20,13 @@ namespace Mud.Feishu.WebSocket.Tests.Handlers;
 public class HeartbeatMessageHandlerTests
 {
     private readonly Mock<ILogger<HeartbeatMessageHandler>> _loggerMock;
-    private readonly Mud.Feishu.WebSocket.FeishuWebSocketOptions _options;
     private readonly HeartbeatMessageHandler _handler;
 
     public HeartbeatMessageHandlerTests()
     {
         _loggerMock = new Mock<ILogger<HeartbeatMessageHandler>>();
-        _options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions();
-        _handler = new HeartbeatMessageHandler(_loggerMock.Object, _options);
+        // WS2-12：FeishuWebSocketOptions 参数已删除（其唯一去向是从不被读取的私有字段）
+        _handler = new HeartbeatMessageHandler(_loggerMock.Object);
     }
 
     [Fact]

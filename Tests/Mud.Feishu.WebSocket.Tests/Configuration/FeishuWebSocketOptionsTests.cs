@@ -510,4 +510,94 @@ public class FeishuWebSocketOptionsTests
         act.Should().Throw<InvalidOperationException>()
             .WithMessage("*None*CacheExpiration*");
     }
+
+    #region WS2-04 / I16：配置上界（改造前只有下界）
+
+    [Fact]
+    public void Validate_ShouldReject_WhenTotalBudgetExceedsUpperBound()
+    {
+        // 30 天 > 上限 7 天。注意：更大的值（如 30 天）恰好也在 CancellationTokenSource 的
+        // 24.8 天上界之外 —— 这正是"配置面缺上界"会静默禁用自动重连的原因。
+        var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions();
+        options.Reconnect.TotalBudget = TimeSpan.FromDays(30);
+
+        var act = () => options.Validate();
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*TotalBudget*");
+    }
+
+    [Fact]
+    public void Validate_ShouldAccept_WhenTotalBudgetEqualsUpperBound()
+    {
+        var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions();
+        options.Reconnect.TotalBudget = Mud.Feishu.WebSocket.FeishuWebSocketOptions.MaxReconnectTotalBudget;
+
+        var act = () => options.Validate();
+
+        act.Should().NotThrow("上界为闭区间：恰好等于上限必须放行");
+    }
+
+    [Fact]
+    public void Validate_ShouldReject_WhenBaseDelayMsExceedsUpperBound()
+    {
+        var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions();
+        options.Reconnect.BaseDelayMs = Mud.Feishu.WebSocket.FeishuWebSocketOptions.MaxReconnectDelayMs + 1;
+        options.Reconnect.MaxDelayMs = options.Reconnect.BaseDelayMs;
+
+        var act = () => options.Validate();
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*BaseDelayMs*");
+    }
+
+    [Fact]
+    public void Validate_ShouldReject_WhenMaxDelayMsExceedsUpperBound()
+    {
+        var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions();
+        options.Reconnect.MaxDelayMs = Mud.Feishu.WebSocket.FeishuWebSocketOptions.MaxReconnectDelayMs + 1;
+
+        var act = () => options.Validate();
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*MaxDelayMs*");
+    }
+
+    [Fact]
+    public void Validate_ShouldReject_WhenAuthTimeoutMsExceedsUpperBound()
+    {
+        var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions
+        {
+            AuthTimeoutMs = Mud.Feishu.WebSocket.FeishuWebSocketOptions.MaxTimeoutMs + 1
+        };
+
+        var act = () => options.Validate();
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*AuthTimeoutMs*");
+    }
+
+    [Fact]
+    public void Validate_ShouldReject_WhenAuthGateTimeoutMsExceedsUpperBound()
+    {
+        var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions
+        {
+            AuthGateTimeoutMs = Mud.Feishu.WebSocket.FeishuWebSocketOptions.MaxTimeoutMs + 1
+        };
+
+        var act = () => options.Validate();
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*AuthGateTimeoutMs*");
+    }
+
+    [Fact]
+    public void Validate_ShouldReject_WhenConnectionTimeoutMsExceedsUpperBound()
+    {
+        var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions
+        {
+            ConnectionTimeoutMs = Mud.Feishu.WebSocket.FeishuWebSocketOptions.MaxTimeoutMs + 1
+        };
+
+        var act = () => options.Validate();
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*ConnectionTimeoutMs*");
+    }
+
+    #endregion
 }

@@ -6,6 +6,7 @@
 // -----------------------------------------------------------------------
 
 using Microsoft.Extensions.Logging;
+using Mud.Feishu.Abstractions.Metrics;
 using Mud.Feishu.WebSocket.SocketEventArgs;
 using Mud.HttpUtils;
 using System.Net.Security;
@@ -58,6 +59,20 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
     /// 关闭握手超时时间，避免服务端不应答时无限等待（P1-4 修复）。
     /// </summary>
     private static readonly TimeSpan CloseHandshakeTimeout = TimeSpan.FromSeconds(5);
+
+    /// <summary>
+    /// 排空超限消息时的帧数上界（WS2-03）。
+    /// </summary>
+    /// <remarks>
+    /// 排空本身必须有界：恶意/异常对端可以持续投递超限分片让排空永不结束。
+    /// 达到上界即判定为协议层异常并转为 D3 方案 B（Abort + 重连）。
+    /// </remarks>
+    private const int MaxDrainFrames = 1024;
+
+    /// <summary>
+    /// 排空超限消息时的字节上界：64MB（<see cref="MaxDrainFrames"/> 之外的独立兜底）。
+    /// </summary>
+    private const long MaxDrainBytes = 64L * 1024 * 1024;
 
     /// <summary>
     /// 获取当前WebSocket连接数（实例级别）
@@ -236,7 +251,13 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
             {
                 await _webSocket.ConnectAsync(uri, combinedCts.Token);
 
-                _logger.LogInformation("已连接到飞书WebSocket服务: {Url}", url);
+                // WS2-05 / F4（D5）：只记录 scheme://host/path，**整体剥离 query**。
+                // 端点 URL 由服务端 API 下发，query 中可能携带一次性凭据类参数（ticket/code/nonce 等）；
+                // 这类参数一旦入日志即长期留存于集中式日志系统。用"整体剥离"而非"按键名白名单脱敏"，
+                // 是为了避免白名单漏键构成新的泄露面（零白名单 = 零漏键）。
+                // 排障所需的端点定位信息（主机 + 路径）完整保留；service_id 另有独立日志。
+                _logger.LogInformation("已连接到飞书WebSocket服务: {Endpoint}",
+                    uri.GetLeftPart(UriPartial.Path));
 
 
                 // P0-4 修复：只有连接真正成功后才配平计数并允许触发断线事件。
@@ -394,6 +415,32 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
         }
         catch (ObjectDisposedException) { }
 
+        // ────────────────────────────────────────────────────────────────────
+        // WS2-01 ①（I13 顺序约束）：占位必须**先于**关闭握手。
+        //
+        // 改造前顺序是「Cancel → CloseAsync → 占位」：关闭握手会把 socket 推到
+        // CloseSent/Aborted，正在阻塞于 ReceiveAsync 的接收循环随即以
+        // OperationCanceledException / WebSocketException 退出，并在**占位之前**抢先调用
+        // NotifyDisconnected 完成占位 ⇒ 主动断开路径的占位失败、返回 null、不再派发事件。
+        // 结果取决于竞态：要么事件由接收循环派发（描述为"接收错误导致连接断开"，
+        // 与本端主动断开的事实不符），要么两侧都判定"对方已占位"而**谁都不派发**。
+        //
+        // 前移后语义确定：本端主动断开的占位优先，接收循环仅在"非本端主动断开"时补发通知。
+        // ────────────────────────────────────────────────────────────────────
+
+        // P1-2 修复（I2）：只接受"当前 socket"的断线声明；旧连接的迟到声明一律丢弃（不递减计数、不触发事件）
+        if (!ReferenceEquals(Volatile.Read(ref _webSocket), webSocket))
+        {
+            _logger.LogDebug("忽略过期连接（非当前 socket）的断线声明");
+            return null;
+        }
+
+        // 原子占位：只有首次声明断线才需要对外触发事件（P0-4）
+        if (!TryClaimDisconnected())
+        {
+            return null;
+        }
+
         if (webSocket.State == WebSocketState.Open)
         {
             try
@@ -415,23 +462,12 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
 
         _logger.LogInformation("已断开飞书WebSocket连接");
 
-
-        var args = new WebSocketCloseEventArgs
+        return new WebSocketCloseEventArgs
         {
             CloseStatus = WebSocketCloseStatus.NormalClosure,
             CloseStatusDescription = "客户端主动断开连接",
             IsServerInitiated = false
         };
-
-        // P1-2 修复（I2）：只接受"当前 socket"的断线声明；旧连接的迟到声明一律丢弃（不递减计数、不触发事件）
-        if (!ReferenceEquals(Volatile.Read(ref _webSocket), webSocket))
-        {
-            _logger.LogDebug("忽略过期连接（非当前 socket）的断线声明");
-            return null;
-        }
-
-        // 原子占位：只有首次声明断线才需要对外触发事件（P0-4）
-        return TryClaimDisconnected() ? args : null;
     }
 
     /// <summary>
@@ -655,6 +691,9 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
         // 局部引用在循环期间不会被外部置 null 操作影响。
         var buffer = _receiveBuffer;
 
+        // I13 穷尽性辅助标记：区分"已由其它路径完成断线声明"与"循环静默退出"
+        var disconnectDeclared = false;
+
         try
         {
             while (webSocket.State == WebSocketState.Open && !cancellationToken.IsCancellationRequested)
@@ -664,6 +703,7 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
                 if (result.MessageType == WebSocketMessageType.Close)
                 {
                     await HandleCloseMessageAsync(result, webSocket);
+                    disconnectDeclared = true;
                     break;
                 }
 
@@ -681,6 +721,30 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
         {
             // 正常的取消操作（如断开连接或重连时取消接收循环），不应触发错误事件
             _logger.LogInformation("消息接收循环已取消（正常关闭或重连）");
+
+            // P0-1 修复（I13）：取消退出**同样是一条终止路径**，必须参与原子占位。
+            //
+            // 改造前此处只记日志 ⇒ 模块没有任何断线信号（无读循环、无事件、无 Disconnected），
+            // 上层只能等 HealthCheckIntervalMs（默认 60 秒）的轮询兜底。
+            //
+            // 注意这里的**两种取消形态**（实现与用例都必须区分，否则会得出错误的结论）：
+            //   ① 取消发生在 `ReceiveAsync` 期间：`ClientWebSocket` 会以 Abort 中止底层连接
+            //      ⇒ 退出时 State=Aborted，后续由通用兜底分支补发声明；
+            //   ② 取消发生在**派发帧期间**（本循环正处于 await messageHandler / 背压租约等待）：
+            //      循环以"条件不成立"自然退出，**socket 仍为 Open** ⇒ 真僵尸态
+            //      （上层所有 IsConnected 判定都为 true，健康检查判 Healthy，重连永不触发）。
+            //      背压（慢处理器）会显著放大这个窗口。
+            if (webSocket.State == WebSocketState.Open)
+            {
+                NotifyDisconnected(new WebSocketCloseEventArgs
+                {
+                    CloseStatus = WebSocketCloseStatus.EndpointUnavailable,
+                    CloseStatusDescription = "接收循环被取消但连接仍为 Open",
+                    IsServerInitiated = false
+                }, webSocket);
+
+                disconnectDeclared = true;
+            }
         }
         catch (WebSocketException ex)
         {
@@ -698,6 +762,8 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
                 CloseStatusDescription = $"WebSocket接收错误导致连接断开: {ex.WebSocketErrorCode}",
                 IsServerInitiated = false
             }, webSocket);
+
+            disconnectDeclared = true;
         }
         catch (Exception ex)
         {
@@ -709,6 +775,69 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
                 CloseStatusDescription = $"接收消息错误导致连接断开: {ex.GetType().Name}",
                 IsServerInitiated = false
             }, webSocket);
+
+            disconnectDeclared = true;
+        }
+
+        // ────────────────────────────────────────────────────────────────────
+        // I13 兜底（R2/WS2-03 实施中发现）：循环还可能**因 socket 状态变化而自然退出**——
+        // 既没有读到关闭帧（不走 HandleCloseMessageAsync），也没有抛异常（不进任何 catch）。
+        // 典型触发：排空超限消息时达到上界主动 Abort（D3 方案 B）、外部调用 Abort/Dispose socket。
+        // 若不在此补发声明，就会出现"循环已退出（不再读任何帧）但没有任何断线信号"的静默状态——
+        // 与 P0-1 属同一类缺口（唯一存活检测通道失效且不被覆盖）。
+        //
+        // NotifyDisconnected 自身是幂等的（owner 身份校验 + 原子占位），
+        // 因此对"已由其它路径声明过"的情况调用它是安全且无副作用的。
+        // ────────────────────────────────────────────────────────────────────
+        if (!disconnectDeclared)
+        {
+            // 用令牌判定"退出是否由取消引起"（而不是靠某个 catch 分支是否执行）：
+            // 取消发生在 ReceiveAsync 期间会以 Abort 中止连接并走 OCE 分支；
+            // 取消发生在**派发帧期间**则循环以"条件不成立"自然退出、socket 保持 Open——
+            // 后者正是 P0-1 的真僵尸形态，两种形态在此统一收口。
+            var exitedByCancellation = cancellationToken.IsCancellationRequested;
+
+            NotifyDisconnected(new WebSocketCloseEventArgs
+            {
+                // 本地取消触发的退出不属"对端不可达"，语义上按正常关闭上报
+                // （与 MapExceptionToCloseStatus(OperationCanceledException) 的口径一致）；
+                // 其它状态变化（外部 Abort / 对端异常断开 / 排空上界主动 Abort）按真实状态映射。
+                CloseStatus = exitedByCancellation
+                    ? WebSocketCloseStatus.NormalClosure
+                    : MapSocketStateToCloseStatus(webSocket.State),
+                CloseStatusDescription = exitedByCancellation
+                    ? $"接收循环被取消（退出时 socket 状态: {webSocket.State}）"
+                    : $"接收循环因连接状态变化而退出: {webSocket.State}",
+                IsServerInitiated = false
+            }, webSocket);
+        }
+    }
+
+    /// <summary>
+    /// 把"循环退出时的 socket 状态"映射为语义准确的关闭状态码。
+    /// </summary>
+    /// <param name="state">退出时观察到的 socket 状态</param>
+    /// <returns>对应的关闭状态码。</returns>
+    /// <remarks>
+    /// 与 <see cref="MapExceptionToCloseStatus"/> 同一职责（把状态码的语义如实上报给上层，
+    /// 避免健康检查/重连策略把异常断线误判为"主动关闭"而放弃重连）。
+    /// </remarks>
+    private static WebSocketCloseStatus MapSocketStateToCloseStatus(WebSocketState state)
+    {
+        switch (state)
+        {
+            case WebSocketState.Closed:
+            case WebSocketState.CloseSent:
+            case WebSocketState.CloseReceived:
+                return WebSocketCloseStatus.NormalClosure;
+            case WebSocketState.Aborted:
+                return WebSocketCloseStatus.EndpointUnavailable;
+            case WebSocketState.Open:
+                // 仍为 Open 却退出循环：只可能是取消令牌已触发（socket 未受影响），
+                // 属人为终止而非协议错误。
+                return WebSocketCloseStatus.NormalClosure;
+            default:
+                return WebSocketCloseStatus.EndpointUnavailable;
         }
     }
 
@@ -737,9 +866,20 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
         // P2-1 修复：首帧同样先校验后写入
         if (firstResult.Count > maxMessageSize)
         {
-            _logger.LogError("分片消息首帧大小 {Size} 已超过最大限制 {MaxSize}，丢弃消息",
+            _logger.LogError("分片消息首帧大小 {Size} 已超过最大限制 {MaxSize}，将排空至消息边界后丢弃",
                 firstResult.Count, maxMessageSize);
-            OnError(new InvalidOperationException($"分片消息大小超过最大限制 {maxMessageSize}"), "分片消息大小超限");
+            OnError(new InvalidOperationException($"分片消息大小超过最大限制 {maxMessageSize}"),
+                "分片消息大小超限", errorTypeOverride: FragmentSizeExceededErrorType);
+
+            // F5：受控丢弃可计数（消息数 +1）
+            FeishuMetricsHelper.RecordWebSocketFramesDiscarded(
+                _options.AppKey, FeishuMetrics.DiscardReasons.FragmentSizeExceeded);
+
+            // WS2-03（D3 方案 A）：丢弃必须"丢干净"——排空至 EndOfMessage 后再返回。
+            // 此前直接 return 会留下半个消息：相邻消息的字节被重新组帧，
+            // 并被当作独立消息送入 protobuf 解析与序号链路（SequenceGapThreshold 默认 0 = 无跳跃上界）。
+            await DrainUntilEndOfMessageAsync(webSocket, buffer, cancellationToken).ConfigureAwait(false);
+
             return;
         }
 
@@ -752,6 +892,8 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
 
             if (result.MessageType == WebSocketMessageType.Close)
             {
+                // 关闭帧是唯一**允许**不排空即返回的分支：连接即将终止，WS 消息边界已无意义
+                // （后续不再有任何消息会被重新组帧）。
                 await HandleCloseMessageAsync(result, webSocket);
                 return;
             }
@@ -759,9 +901,17 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
             // P2-1 修复：写入前拦截，避免超限数据先进入内存
             if (messageStream.Length + result.Count > maxMessageSize)
             {
-                _logger.LogError("分片消息大小将超过最大限制 {MaxSize}（当前 {Size}，本帧 {FrameSize}），丢弃消息",
+                _logger.LogError("分片消息大小将超过最大限制 {MaxSize}（当前 {Size}，本帧 {FrameSize}），将排空至消息边界后丢弃",
                     maxMessageSize, messageStream.Length, result.Count);
-                OnError(new InvalidOperationException($"分片消息大小超过最大限制 {maxMessageSize}"), "分片消息大小超限");
+                OnError(new InvalidOperationException($"分片消息大小超过最大限制 {maxMessageSize}"),
+                    "分片消息大小超限", errorTypeOverride: FragmentSizeExceededErrorType);
+
+                FeishuMetricsHelper.RecordWebSocketFramesDiscarded(
+                    _options.AppKey, FeishuMetrics.DiscardReasons.FragmentSizeExceeded);
+
+                // WS2-03（D3 方案 A）：同上，先把本条消息的剩余分片读空再返回。
+                await DrainUntilEndOfMessageAsync(webSocket, buffer, cancellationToken).ConfigureAwait(false);
+
                 return;
             }
 
@@ -785,6 +935,89 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
             receivedBytes, webSocket.State, cancellationToken.IsCancellationRequested);
 
         OnError(new InvalidOperationException($"分片消息重组中断，已接收 {receivedBytes} 字节但未完成"), "分片消息重组中断");
+    }
+
+    /// <summary>
+    /// 分片超限时使用的错误类型标识（供告警规则按类型区分"超限丢弃"与其它接收错误）。
+    /// </summary>
+    private const string FragmentSizeExceededErrorType = "FragmentSizeExceeded";
+
+    /// <summary>
+    /// 排空剩余分片直到当前 WS 消息的 <c>EndOfMessage</c>（WS2-03 / D3 方案 A）。
+    /// </summary>
+    /// <param name="webSocket">接收所使用的 WebSocket 实例</param>
+    /// <param name="buffer">接收缓冲区</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>表示排空操作的任务</returns>
+    /// <remarks>
+    /// <b>为什么必须排空</b>：WebSocket 是**消息边界化**的帧协议，分片（continuation）只有在
+    /// <c>EndOfMessage</c> 处才结束一条消息。超限时直接 <c>return</c> 会让本条消息的剩余分片
+    /// 在下一轮 <c>ReceiveAsync</c> 中被当作**新消息**消费——这些字节既不构成合法 protobuf/JSON，
+    /// 又会污染 <c>MessageSequenceValidator</c> 游标与去重状态（默认 <c>SequenceGapThreshold = 0</c>，
+    /// 没有任何跳跃检测能发现它）。
+    /// <para>
+    /// <b>上界保护</b>：排空本身也必须有界——恶意/异常对端可以持续投递超限分片让排空永不结束。
+    /// 超过 <see cref="MaxDrainFrames"/> 帧或 <see cref="MaxDrainBytes"/> 字节即判定为协议层异常，
+    /// 转为 D3 方案 B（快速失败）：<c>Abort</c> 连接，让接收循环以异常退出并触发重连
+    /// （重连会连带重置序号验证器与半包状态）。
+    /// </para>
+    /// </remarks>
+    private async Task DrainUntilEndOfMessageAsync(ClientWebSocket webSocket, byte[] buffer, CancellationToken cancellationToken)
+    {
+        long drainedBytes = 0;
+        var drainedFrames = 0;
+
+        while (webSocket.State == WebSocketState.Open && !cancellationToken.IsCancellationRequested)
+        {
+            WebSocketReceiveResult result;
+
+            try
+            {
+                result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                // 关停/重连：放弃排空（连接即将终止，边界已无意义）
+                return;
+            }
+            catch (Exception ex)
+            {
+                // 对端断开或 socket 已失效：排空不可能完成，交给接收循环的异常路径处理
+                _logger.LogDebug(ex, "排空超限分片时连接已不可用，中止排空");
+                return;
+            }
+
+            if (result.MessageType == WebSocketMessageType.Close)
+            {
+                // 排空途中收到关闭帧：完成关闭握手（与正常接收路径一致），不再继续排空
+                await HandleCloseMessageAsync(result, webSocket).ConfigureAwait(false);
+                return;
+            }
+
+            drainedBytes += result.Count;
+            drainedFrames++;
+
+            if (result.EndOfMessage)
+            {
+                _logger.LogWarning("已排空超限消息的剩余分片（{Frames} 帧 / {Bytes} 字节）并丢弃，连接保持可用",
+                    drainedFrames, drainedBytes);
+                return;
+            }
+
+            if (drainedFrames >= MaxDrainFrames || drainedBytes >= MaxDrainBytes)
+            {
+                _logger.LogError("排空超限消息时达到上界（{Frames} 帧 / {Bytes} 字节）仍未收到 EndOfMessage，" +
+                    "判定为协议层异常，强制中止连接以触发重连",
+                    drainedFrames, drainedBytes);
+
+                // F5：排空上界触发的丢弃与"单条消息超限"是两个不同量级的事件，单独计数
+                FeishuMetricsHelper.RecordWebSocketFramesDiscarded(
+                    _options.AppKey, FeishuMetrics.DiscardReasons.DrainBoundExceeded, drainedFrames);
+
+                TryAbort(webSocket);
+                return;
+            }
+        }
     }
 
     /// <summary>
@@ -1058,7 +1291,11 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
             _logger.LogError(ex, "配置证书验证时发生错误");
         }
 #else
-        // .NET Standard 2.0 不支持 RemoteCertificateValidationCallback
+        // .NET Standard 2.0 不支持 ClientWebSocketOptions.RemoteCertificateValidationCallback，
+        // 因此下列 **5 项** 配置在本目标框架上被**静默忽略**（WS2-11 补全）。
+        // 改造前只告警其中 2 项：Mode=Dev / Mode=Custom / AllowCertificateNameMismatch 三项无任何提示，
+        // 运维按 Readme 配好证书旁路却发现仍被严格校验证书时，日志里找不到任何线索。
+        // 本清单必须与上方 #if 分支实际读取的配置一一对应（含"回调被忽略"的 Custom 组合）。
         if (!_options.Certificate.ValidateServerCertificate)
         {
             _logger.LogWarning(".NET Standard 2.0 不支持自定义证书验证回调，ValidateServerCertificate 配置无效");
@@ -1066,6 +1303,18 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
         if (_options.Certificate.AllowSelfSignedCertificates)
         {
             _logger.LogWarning(".NET Standard 2.0 不支持自定义证书验证回调，AllowSelfSignedCertificates 配置无效");
+        }
+        if (_options.Certificate.AllowCertificateNameMismatch)
+        {
+            _logger.LogWarning(".NET Standard 2.0 不支持自定义证书验证回调，AllowCertificateNameMismatch 配置无效");
+        }
+        if (_options.Certificate.Mode == CertificateValidationMode.Dev)
+        {
+            _logger.LogWarning(".NET Standard 2.0 不支持自定义证书验证回调，Certificate.Mode=Dev 的放宽行为无效（仍按严格校验处理）");
+        }
+        if (_options.Certificate.Mode == CertificateValidationMode.Custom || _options.Certificate.CustomCallback is not null)
+        {
+            _logger.LogWarning(".NET Standard 2.0 不支持自定义证书验证回调，Certificate.CustomCallback 被忽略（Mode=Custom 无效）");
         }
 
 #endif
@@ -1181,12 +1430,17 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
     /// </summary>
     /// <param name="ex">发生的异常</param>
     /// <param name="context">错误发生的上下文描述</param>
+    /// <param name="errorTypeOverride">
+    /// 可选的错误类型覆盖值。用于把"语义明确但异常类型通用"的场景（如分片超限用
+    /// <see cref="InvalidOperationException"/>）映射为可直接用于告警规则的错误类型；
+    /// 为 <c>null</c> 时沿用 <see cref="ErrorRecoveryStrategy"/> 的分析结果。
+    /// </param>
     /// <remarks>
     /// 该方法会创建<see cref="WebSocketErrorEventArgs"/>并触发<see cref="Error"/>事件。
     /// 会自动检测异常类型，设置网络错误和认证错误的标志。
     /// 用户回调抛出的异常会被捕获并记录，不会影响调用方。
     /// </remarks>
-    private void OnError(Exception ex, string context)
+    private void OnError(Exception ex, string context, string? errorTypeOverride = null)
     {
         // 使用错误恢复策略分析异常
         var recoveryResult = _errorRecoveryStrategy.AnalyzeError(ex, context);
@@ -1195,7 +1449,7 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
         {
             Exception = ex,
             ErrorMessage = $"{context}: {ex.Message}",
-            ErrorType = recoveryResult.ErrorType,
+            ErrorType = errorTypeOverride ?? recoveryResult.ErrorType,
             ConnectionState = _webSocket?.State ?? WebSocketState.None,
             IsNetworkError = ex is WebSocketException || ex is IOException,
             IsAuthError = ex.Message.Contains("auth") || ex.Message.Contains("认证"),
@@ -1250,6 +1504,17 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
 
             try { cts?.Cancel(); }
             catch (ObjectDisposedException) { }
+
+            // WS2-01 ③（I13）：释放同样是"使 socket 不再被读取"的终止路径，必须参与原子占位。
+            // 此前 Dispose 只关 socket、不占位：若释放时连接仍为 Open（例如宿主直接释放一个
+            // "接收循环已死但 socket 还 Open"的僵尸态客户端），_disconnectedFired 永远停在 0、
+            // _connectionCount 永远不归零，且任何后续触发的重连/健康检查看到的状态都是矛盾的。
+            // 这里只做**占位**、不派发事件（Dispose 语义下用户已明确要求终止，无需再通知；
+            // 也避免在释放路径上执行用户回调带来新的异常面）。
+            if (webSocket != null && TryClaimDisconnected())
+            {
+                _logger.LogDebug("释放连接管理器时已占位断线声明（连接计数已归零）");
+            }
 
             if (webSocket != null && webSocket.State == WebSocketState.Open)
             {
@@ -1322,6 +1587,12 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
 
             try { cts?.Cancel(); }
             catch (ObjectDisposedException) { }
+
+            // WS2-01 ③（I13）：同 DisposeAsync — 释放路径必须占位（只占位、不派发事件）
+            if (webSocket != null && TryClaimDisconnected())
+            {
+                _logger.LogDebug("同步释放连接管理器时已占位断线声明（连接计数已归零）");
+            }
 
             if (webSocket != null && webSocket.State == WebSocketState.Open)
             {

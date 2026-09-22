@@ -28,6 +28,26 @@ public class FeishuWebSocketOptions
     /// <summary>认证响应超时默认值（毫秒）：30 秒</summary>
     public const int DefaultAuthTimeoutMs = 30000;
 
+    // ────────────────────────────────────────────────────────────────────────
+    // I16（配置面双向约束）：以下三个常量是配置上界的**单一真源**。
+    // 上界不是"越严越好"，而是取"远超运维合理值、同时远离实现层表示域边界"的位置：
+    //   · TotalBudget 上限 7 天 —— 远低于 CancellationTokenSource(TimeSpan) 的 24.8 天上限，
+    //     因此永远不需要依赖 TimeSpanGuards 的钳制来"兜底"；
+    //   · 退避/连接/认证超时上限 1 小时 / 5 分钟 —— 超过即属配置错误（长时断连不可能靠更长的单次等待解决）。
+    // ────────────────────────────────────────────────────────────────────────
+
+    /// <summary>重连总时间预算上限：7 天</summary>
+    public static readonly TimeSpan MaxReconnectTotalBudget = TimeSpan.FromDays(7);
+
+    /// <summary>重连基础/最大延迟上限：1 小时（毫秒）</summary>
+    public const int MaxReconnectDelayMs = 60 * 60 * 1000;
+
+    /// <summary>单次连接/认证超时上限：5 分钟（毫秒）</summary>
+    public const int MaxTimeoutMs = 5 * 60 * 1000;
+
+    /// <summary>文本消息字符上限：10MB</summary>
+    public const int MaxTextMessageSizeUpperBound = 10 * 1024 * 1024;
+
     /// <summary>
     /// 认证响应超时时间（毫秒），默认 30000；0 或负数回退默认值。
     /// </summary>
@@ -185,8 +205,19 @@ public class FeishuWebSocketOptions
         if (Reconnect.BaseDelayMs < 1000)
             throw new InvalidOperationException("Reconnect.BaseDelayMs (原 ReconnectDelayMs) 必须至少为1000毫秒");
 
+        // I16 上界（WS2-04）：此前 BaseDelayMs 无上界，配合 CalculateDelay 的指数放大后会
+        // 在 TimeSpan.FromMilliseconds(double) 处溢出（TimeSpan 上限约 9.22e14 毫秒），
+        // 使整轮重连在策略层异常中止。
+        if (Reconnect.BaseDelayMs > MaxReconnectDelayMs)
+            throw new InvalidOperationException(
+                $"Reconnect.BaseDelayMs 不应超过 {MaxReconnectDelayMs} 毫秒（1 小时），过大值会在指数退避中溢出");
+
         if (Reconnect.MaxDelayMs < Reconnect.BaseDelayMs)
             throw new InvalidOperationException("Reconnect.MaxDelayMs (原 MaxReconnectDelayMs) 必须大于等于Reconnect.BaseDelayMs");
+
+        if (Reconnect.MaxDelayMs > MaxReconnectDelayMs)
+            throw new InvalidOperationException(
+                $"Reconnect.MaxDelayMs 不应超过 {MaxReconnectDelayMs} 毫秒（1 小时）");
 
         if (InitialReceiveBufferSize < 1024)
             throw new InvalidOperationException("InitialReceiveBufferSize必须至少为1024字节");
@@ -196,6 +227,16 @@ public class FeishuWebSocketOptions
 
         if (Reconnect.TotalBudget <= TimeSpan.Zero)
             throw new InvalidOperationException("Reconnect.TotalBudget必须大于0");
+
+        // I16 上界（WS2-04）：FeishuWebSocketHostedService.TryTriggerReconnect 会以
+        // `TotalBudget + 1 分钟` 构造 CancellationTokenSource(TimeSpan)。
+        // 该构造函数对超长时长抛 ArgumentOutOfRangeException（.NET Core 上界 uint.MaxValue-1 ≈ 49.7 天；
+        // .NET Framework / netstandard2.0 上界 int.MaxValue-1 ≈ 24.8 天）——异常发生在 fire-and-forget
+        // 的重连任务体内，被通用 catch 吞掉后表现为"该轮重连完全不执行"，属静默失效。
+        if (Reconnect.TotalBudget > MaxReconnectTotalBudget)
+            throw new InvalidOperationException(
+                $"Reconnect.TotalBudget 不应超过 {MaxReconnectTotalBudget.TotalDays} 天，" +
+                "过大值会超出 CancellationTokenSource 的计时器上界（.NET Core ≈ 49.7 天 / .NET Framework ≈ 24.8 天）并使重连静默失效");
 
         if (Reconnect.Cooldown < TimeSpan.Zero)
             throw new InvalidOperationException("Reconnect.Cooldown不能为负数");
@@ -212,6 +253,19 @@ public class FeishuWebSocketOptions
         if (ConnectionTimeoutMs < 1000)
             throw new InvalidOperationException("ConnectionTimeoutMs必须至少为1000毫秒");
 
+        // I16 上界（WS2-04）
+        if (ConnectionTimeoutMs > MaxTimeoutMs)
+            throw new InvalidOperationException(
+                $"ConnectionTimeoutMs 不应超过 {MaxTimeoutMs} 毫秒（5 分钟），过长会让不可达端点的启动阻塞过久");
+
+        if (AuthTimeoutMs > MaxTimeoutMs)
+            throw new InvalidOperationException(
+                $"AuthTimeoutMs 不应超过 {MaxTimeoutMs} 毫秒（5 分钟）");
+
+        if (AuthGateTimeoutMs > MaxTimeoutMs)
+            throw new InvalidOperationException(
+                $"AuthGateTimeoutMs 不应超过 {MaxTimeoutMs} 毫秒（5 分钟）");
+
         if (ProtocolKeepAliveInterval != TimeSpan.Zero)
         {
             if (ProtocolKeepAliveInterval < TimeSpan.FromSeconds(5))
@@ -222,6 +276,14 @@ public class FeishuWebSocketOptions
 
         if (MessageSizeLimits.MaxTextMessageSize < 1024)
             throw new InvalidOperationException("MessageSizeLimits.MaxTextMessageSize必须至少为1024字符");
+
+        // I16 上界（WS2-04 / P2-1）：无上界时 ResolveMaxTextMessageBytes 的
+        // `MaxTextMessageSize * 3` 会在 > 715,827,882 时整型溢出为负值，
+        // 导致"消息大小校验"恒真（文本发送全失败 + 分片文本全丢弃）。
+        if (MessageSizeLimits.MaxTextMessageSize > MaxTextMessageSizeUpperBound)
+            throw new InvalidOperationException(
+                $"MessageSizeLimits.MaxTextMessageSize 不应超过 {MaxTextMessageSizeUpperBound} 字节（10MB），" +
+                "过大值会使派生字节上限溢出");
 
         if (MessageSizeLimits.MaxBinaryMessageSize < 1024)
             throw new InvalidOperationException("MessageSizeLimits.MaxBinaryMessageSize必须至少为1024字节");
@@ -266,6 +328,10 @@ public class FeishuWebSocketOptions
                 "Certificate.Mode=Custom 时必须提供 Certificate.CustomCallback。");
     }
 
+    /// <summary>
+    /// 返回配置摘要（仅包含排障需要的关键项，**不含任何凭据**）。
+    /// </summary>
+    /// <returns>形如 <c>FeishuWebSocketOptions { Reconnect.MaxAttempts: 5, ... }</c> 的单行摘要。</returns>
     public override string ToString()
     {
         return $"FeishuWebSocketOptions {{ Reconnect.Auto: {Reconnect?.Auto}, Reconnect.MaxAttempts: {Reconnect?.MaxAttempts}, Reconnect.BaseDelayMs: {Reconnect?.BaseDelayMs}, Reconnect.TotalBudget: {Reconnect?.TotalBudget}, Certificate.Mode: {Certificate?.Mode}, HeartbeatIntervalMs: {HeartbeatIntervalMs}, EventDeduplicationMode: {EventDeduplication?.Mode} }}";

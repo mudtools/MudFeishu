@@ -376,6 +376,37 @@ MudFeishu 配置面以**嵌套 Options** 为唯一公共 API（旧扁平属性�
 
 **安全默认不得削弱**：wss、Strict 证书、`EnforceHeaderSignatureValidation`、`RejectEmptyIdentifiers`、三键前缀隔离、BaseUrl HTTPS 白名单。4. **D11 OAuth 失败语义**：`RefreshUserTokenAsync` 必须通过 `FeishuOAuthErrorClassifier` 区分可重试/不可重试错误。`invalid_grant` 等不可重试错误清除 refresh token 并返回 null；可重试错误抛异常。5. **D12 AppInstantiated 事件**：首次访问应用时必须触发 `AppInstantiated` 事件，后台令牌刷新订阅此事件实现增量注册。禁止启动期全量预热。6. **D13 两阶段事务化**：`OnConfigurationChanged` 必须拆为 Phase-P（`_configApplyLock` 外预清库——凭据变更是 IO，禁止锁内执行；TMF-02）、Phase-A 预构造（纯内存装配）、Phase-B 提交（`_lazyRebuildLock` 内仅引用交换）。禁止在锁内执行清库 IO 或完整装配。7. **D14 异常过滤白名单**：`CreateAppContext` / `TryGetApp` 的异常过滤必须使用 `IsTransientInitFailure` 白名单。禁止 `catch (Exception ex) when (ex is not OperationCanceledException)` 的宽过滤。8. **D15 补偿性去重操作**：通道层对 `IFeishuEventDeduplicator` / `IUnifiedDeduplicationMiddleware` 的 `Rollback*` / `Mark*` 调用属补偿/终态操作——落至后端调用点必须使用 `CancellationToken.None`（调用链可接收调用方 token，但补偿不得被取消中断），且补偿失败不得替换/吞没原始业务异常（记日志后继续，键停留 processing 由 ProcessingTimeout/TTL 兜底）。`TryMark*`（进入处理态）不受此约束，取消应即时传播。依据：R2-P0-1（Redis 后端入口 ThrowIfCancellationRequested + 已取消 token = 回滚失效 → 服务端重发被判重跳过并 ACK 200 → 事件丢失）。
 
+## WebSocket 模块强制约束（R2：I13–I16 / D5 / I9）
+
+适用于 `Mud.Feishu.WebSocket`。**新增/修改该模块代码必须逐条自检**；违反者由
+`Tests/Mud.Feishu.WebSocket.Tests/ContractGuards/WebSocketContractGuards.cs`（7 条源码守卫）拦截。
+权威语义见 `documents/WebSocket/架构与并发模型.md` §7。
+
+1. **I13 连接终止路径穷尽占位**：任何"使 socket 不再被读取"的路径（服务端关闭帧、客户端主动断开、
+   接收循环异常、**接收循环因取消退出**、`Dispose`/`DisposeAsync`）都必须经过
+   `WebSocketConnectionManager.TryClaimDisconnected`；**主动断开必须先占位、后关闭握手**。
+2. **I14 接收循环唯一性**：启动必须使用**原子占位**（`Interlocked.CompareExchange`），
+   **禁止**"先检查后使用"地读 `_receiveTask`；循环 Task 必须登记到 `_receiveTask`
+   （否则停机等待与存活判定都失效）。
+3. **I15 令牌归属**：调用方 `CancellationToken` **只约束建连阶段**（握手 + 认证），
+   不得链接为连接生命周期令牌。连接生命周期由客户端自持 CTS 控制。
+4. **I16 配置双向约束**：数值配置必须同时校验下界与上界；任何
+   `new CancellationTokenSource(<TimeSpan>)` / `Task.Delay(<TimeSpan>)` 的**非字面量**参数
+   必须先经 `Core/TimeSpanGuards.cs` 钳制。`netstandard2.0` **禁用 `Math.Clamp`**（用 `Math.Min/Max`）。
+5. **D5 日志最小暴露**：入站报文只能记"结构化字段 + `LogSanitizer.CleanMessage` 脱敏截断预览"；
+   连接 URL 日志**整体剥离 query**（`Uri.GetLeftPart(UriPartial.Path)`）。
+6. **I9 信号量释放**：一律不随 `Dispose` 释放；例外必须在类型 XML 注释中登记。
+   当前**唯一例外**：`FeishuWebSocketConcurrencyService` 热更新时延迟释放**旧**信号量，
+   阈值为 `max(60s, 2 × MessageHandlerTimeoutMs)`（见 `ResolveLegacySemaphoreRetention`）。
+7. **F5 受控丢弃必须可计数**：任何"主动丢弃帧/消息"的新增路径都必须调用
+   `FeishuMetricsHelper.RecordWebSocketFramesDiscarded(appKey, reason)`，
+   且 `reason` **必须**取 `FeishuMetrics.DiscardReasons` 常量（告警规则按该维度聚合，裸字符串会静默改变指标序列）。
+   新增原因时同步登记常量、`Readme.md` 告警表与守卫清单。
+
+> 压力/长稳用例（`Category=Stress`）**不进全量门禁**：xUnit 的 `Trait` 不会自动排除用例，
+> `scripts/verify-build.ps1` 步骤 4 已显式传入 `--filter "Category!=Stress"`。
+> 手工执行：`dotnet test Tests/Mud.Feishu.WebSocket.Tests -c Release -f net8.0 --filter "Category=Stress"`。
+
 ## MSBuild Configuration
 
 `Directory.Build.props`: `LangVersion`: 13.0, `Nullable`: enable, `ImplicitUsings`: enable

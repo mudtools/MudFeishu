@@ -220,6 +220,69 @@ public class FeishuWebSocketServiceBuilderTests
             .WithMessage("*处理器*");
     }
 
+    #region WS2-09 / P2-5：直接注册到 DI 的拦截器不得被静默丢弃
+
+    /// <summary>
+    /// 改造前 <c>IFeishuEventInterceptor[]</c> 会按 <c>_interceptorTypes</c> **过滤**，
+    /// 于是"直接用 DI 注册拦截器"（完全合法且文档常见的用法）会被静默丢弃——
+    /// 不报错、不告警，只是审计/日志拦截器不生效。
+    /// </summary>
+    [Fact]
+    public void InterceptorRegisteredDirectly_ShouldStillBeIncludedInInterceptorArray()
+    {
+        // Arrange：不经 AddInterceptor<T>()，直接注册到 DI
+        var services = CreateBaseServices();
+        services.AddSingleton<IFeishuEventInterceptor, DirectlyRegisteredInterceptor>();
+
+        services.CreateFeishuWebSocketServiceBuilder(_ => { })
+            .AddHandler<TestEventHandler>()
+            .Build();
+
+        var sp = services.BuildServiceProvider();
+
+        // Act
+        var interceptors = sp.GetRequiredService<IFeishuEventInterceptor[]>();
+
+        // Assert
+        interceptors.Should().ContainSingle()
+            .Which.Should().BeOfType<DirectlyRegisteredInterceptor>(
+                "拦截器集合只应按建造者登记顺序排序，不得过滤掉容器内其它合法注册");
+    }
+
+    [Fact]
+    public void Interceptors_ShouldBeOrderedByBuilderRegistrationOrder_WhenRegisteredViaBuilder()
+    {
+        var services = CreateBaseServices();
+        var builder = services.CreateFeishuWebSocketServiceBuilder(_ => { })
+            .AddHandler<TestEventHandler>()
+            .AddInterceptor<SecondInterceptor>()
+            .AddInterceptor<FirstInterceptor>();
+
+        builder.Build();
+        var sp = services.BuildServiceProvider();
+
+        var interceptors = sp.GetRequiredService<IFeishuEventInterceptor[]>();
+
+        interceptors.Should().HaveCount(2);
+        interceptors[0].Should().BeOfType<SecondInterceptor>("登记顺序必须被保持（先登记的排在前面）");
+        interceptors[1].Should().BeOfType<FirstInterceptor>();
+    }
+
+    private class DirectlyRegisteredInterceptor : IFeishuEventInterceptor
+    {
+        public Task<bool> BeforeHandleAsync(string eventType, EventData eventData, CancellationToken cancellationToken = default)
+            => Task.FromResult(true);
+
+        public Task AfterHandleAsync(string eventType, EventData eventData, Exception? exception, CancellationToken cancellationToken = default)
+            => Task.CompletedTask;
+    }
+
+    private class FirstInterceptor : DirectlyRegisteredInterceptor;
+
+    private class SecondInterceptor : DirectlyRegisteredInterceptor;
+
+    #endregion
+
     /// <summary>
     /// 测试用事件处理器
     /// </summary>

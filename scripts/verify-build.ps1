@@ -342,6 +342,10 @@ foreach ($run in $testRuns) {
     $testArgs = @('test', $run.Project, '-c', 'Release', '--no-build', '--nologo',
         '--results-directory', $runDir, '--logger', "trx;LogFileName=$($run.Label).trx")
     if ($run.Tfm) { $testArgs += @('-f', $run.Tfm) }
+    # WSR2-14：xUnit 的 [Trait] **不会**自动排除用例——`dotnet test` 无 --filter 时执行全部。
+    # 压力/长稳用例（Category=Stress：突发帧、静默存活等待）必须显式排除，否则全量门禁
+    # 会变慢并引入不稳定性。手工执行方式见 documents/WebSocket/故障排查手册.md §6。
+    $testArgs += @('--filter', 'Category!=Stress')
     dotnet @testArgs 2>&1 | Tee-Object -FilePath $testLog -Append | Out-Null
     if ($LASTEXITCODE -ne 0) { $testExit = $LASTEXITCODE }
     $executedLabels.Add($run.Label)

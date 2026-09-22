@@ -365,7 +365,13 @@ public class AuthenticationManager
         catch (JsonException ex)
         {
             _isAuthenticated = false;
-            _logger.LogError(ex, "解析认证响应失败: {Message}", responseMessage);
+            // WS2-05 修复（D5 / P1-4）：此前直传 responseMessage 全文。认证响应报文含
+            // AppAccessToken / session 相关的敏感字段，全文入日志即长期留存于集中式日志系统。
+            // 现与模块内既有正确范式（MessageRouter / FeishuEventMessageHandler）对齐：
+            // 只输出长度 + 脱敏截断预览。
+            _logger.LogError(ex, "解析认证响应失败 (长度: {Length}, 前200字符: {Preview})",
+                responseMessage?.Length ?? 0,
+                LogSanitizer.CleanMessage(responseMessage, 200));
 
             FeishuMetricsHelper.RecordEventOutcome(_options.AppKey, "auth", success: false, "json_parse_error");
 

@@ -56,6 +56,60 @@ public class ExponentialBackoffReconnectStrategyTests
         delay.Should().BeGreaterThanOrEqualTo(baseDelay).And.BeLessThanOrEqualTo(maxDelayWithJitter);
     }
 
+    /// <summary>
+    /// WS2-04 ④：必须"先在 double 域钳制到 MaxDelayMs，再构造 TimeSpan"。
+    /// </summary>
+    /// <remarks>
+    /// 改造前的顺序是 <c>TimeSpan.FromMilliseconds(指数放大后的毫秒)</c> → 再比较大小。
+    /// 当 <c>BaseDelayMs × 2^attempt</c> 超过 <see cref="TimeSpan.MaxValue"/> 的毫秒数（约 9.22e14）时，
+    /// <c>TimeSpan.FromMilliseconds(double)</c> 直接抛 <see cref="OverflowException"/>，
+    /// 异常穿透整轮重连（依赖 <c>ReconnectionOrchestrator</c> 的 catch 才不至于崩溃）。
+    /// <para>
+    /// 断言的是**结果上界**（≤ MaxDelayMs × 1.25），而不是仅"不抛异常"——
+    /// "不抛异常"不能证明钳制顺序正确（例如把 MaxDelayMs 顺手调大到 1 天也能不抛）。
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void CalculateDelay_ShouldClampBeforeTimeSpanConstruction_WhenBaseDelayIsLargeAndAttemptIsHigh()
+    {
+        // Arrange：BaseDelayMs 取 int.MaxValue（约 24.8 天），第 31 次尝试（指数已达 MaxExponent=30）
+        // → int.MaxValue × 2^30 ≈ 2.3e18 毫秒，远超 TimeSpan 的毫秒上界 9.22e14。
+        var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions
+        {
+            Reconnect = new Mud.Feishu.WebSocket.WebSocketReconnectOptions
+            {
+                BaseDelayMs = int.MaxValue,
+                MaxDelayMs = int.MaxValue
+            }
+        };
+        var strategy = new ExponentialBackoffReconnectStrategy(options);
+
+        // Act
+        var act = () => strategy.CalculateDelay(31);
+
+        // Assert
+        act.Should().NotThrow<OverflowException>(
+            "钳制必须发生在 TimeSpan 构造之前");
+
+        var delay = strategy.CalculateDelay(31);
+        var upperBoundWithJitter = TimeSpan.FromMilliseconds(int.MaxValue * 1.25);
+        delay.Should().BeGreaterThanOrEqualTo(TimeSpan.FromMilliseconds(int.MaxValue));
+        delay.Should().BeLessThanOrEqualTo(upperBoundWithJitter,
+            "结果必须被 MaxDelayMs 截断（仅允许 0~25% 抖动），证明钳制顺序正确");
+    }
+
+    [Fact]
+    public void CalculateDelay_ShouldBeBoundedByMaxDelay_WhenAttemptCountIsLarge()
+    {
+        // 指数钳制（MaxExponent=30）与上界钳制的组合验证：无论尝试多少次，结果都不得越界
+        var strategy = new ExponentialBackoffReconnectStrategy(_options, _loggerMock.Object);
+
+        var delay = strategy.CalculateDelay(int.MaxValue);
+
+        delay.Should().BeGreaterThanOrEqualTo(TimeSpan.FromMilliseconds(_options.Reconnect.MaxDelayMs));
+        delay.Should().BeLessThanOrEqualTo(TimeSpan.FromMilliseconds(_options.Reconnect.MaxDelayMs * 1.25));
+    }
+
     [Fact]
     public void CalculateDelay_WithAttemptCount2_ShouldReturnDoubleDelayWithJitter()
     {

@@ -124,8 +124,8 @@ public class HeartbeatManager
     /// </summary>
     /// <remarks>
     /// WS-07 修复（P1-9/D4）：服务端下发的 ClientConfig 仅允许影响心跳间隔，
-    /// 且必须钳制到 5–30 秒区间。<see cref="FeishuWebSocketOptions.Reconnect.BaseDelayMs"/> 
-    /// 与 <see cref="FeishuWebSocketOptions.Reconnect.MaxAttempts"/> 属于本地运维策略，
+    /// 且必须钳制到 5–30 秒区间。<see cref="WebSocketReconnectOptions.BaseDelayMs"/>
+    /// 与 <see cref="WebSocketReconnectOptions.MaxAttempts"/> 属于本地运维策略，
     /// 禁止被运行时改写。心跳间隔写入私有字段 <see cref="_heartbeatIntervalMs"/>，
     /// 不再回写共享 <see cref="FeishuWebSocketOptions"/> 实例。
     /// </remarks>

@@ -132,8 +132,17 @@ public class FeishuMetricsTests
     /// 从 <see cref="Measurement{T}.Tags"/>（ReadOnlySpan，不可按 key 索引）中取出指定标签值。
     /// </summary>
     private static object? GetTag(Measurement<int> measurement, string key)
+        => GetTag(measurement.Tags, key);
+
+    /// <summary>
+    /// 从 <c>long</c> 测量值的标签集合中取出指定标签值。
+    /// </summary>
+    private static object? GetLongTag(Measurement<long> measurement, string key)
+        => GetTag(measurement.Tags, key);
+
+    private static object? GetTag(ReadOnlySpan<KeyValuePair<string, object?>> tags, string key)
     {
-        foreach (var tag in measurement.Tags)
+        foreach (var tag in tags)
         {
             if (tag.Key == key)
             {
@@ -246,6 +255,102 @@ public class FeishuMetricsTests
         FeishuMetrics.WebSocketConnectionGauge.Should().NotBeNull();
         FeishuMetrics.WebSocketBacklogGauge.Should().NotBeNull();
     }
+
+    #region F2（R2）：存活维度 gauge
+
+    [Fact]
+    public void WebSocketLivenessGauges_ShouldBeRegistered()
+    {
+        FeishuMetrics.WebSocketReceiveIdleMsGauge.Should().NotBeNull();
+        FeishuMetrics.WebSocketReceiveLoopAliveGauge.Should().NotBeNull();
+        FeishuMetrics.WebSocketZombieGauge.Should().NotBeNull();
+    }
+
+    /// <summary>
+    /// 提供存活维度后必须如实上报（含 <c>-1</c> 这一"尚无收帧样本"哨兵值）。
+    /// </summary>
+    [Fact]
+    public void WebSocketLivenessSource_ShouldReportIdleMsAliveAndZombie()
+    {
+        using var registration = FeishuMetrics.RegisterWebSocketMetricsSource(
+            appKeyProvider: () => "app_liveness",
+            activeConnectionsProvider: () => 1,
+            pendingMessagesProvider: () => 0,
+            idleMsProvider: () => -1,
+            receiveLoopAliveProvider: () => 0,
+            isZombieProvider: () => 1);
+
+        var idle = FeishuMetrics.ObserveWebSocketReceiveIdleMs().Single();
+        var alive = FeishuMetrics.ObserveWebSocketReceiveLoopAlive().Single();
+        var zombie = FeishuMetrics.ObserveWebSocketZombie().Single();
+
+        idle.Value.Should().Be(-1, "-1 是【尚无收帧样本】哨兵值，不得被替换成 0（0 表示【刚刚收到帧】）");
+        alive.Value.Should().Be(0);
+        zombie.Value.Should().Be(1, "僵尸态的判定必须能被指标面捕获（趋势告警的唯一来源）");
+
+        GetTag(alive, FeishuMetrics.Tags.AppKey).Should().Be("app_liveness");
+        GetTag(zombie, FeishuMetrics.Tags.AppKey).Should().Be("app_liveness");
+        GetLongTag(idle, FeishuMetrics.Tags.AppKey).Should().Be("app_liveness");
+    }
+
+    /// <summary>
+    /// 未提供存活维度时**不得**上报 0——否则"未提供"会被读成"存活/不僵尸"，掩盖真实故障。
+    /// </summary>
+    [Fact]
+    public void WebSocketLivenessSource_ShouldReportNothing_WhenProvidersNotProvided()
+    {
+        using var registration = FeishuMetrics.RegisterWebSocketMetricsSource(
+            appKeyProvider: () => "app_no_liveness",
+            activeConnectionsProvider: () => 1,
+            pendingMessagesProvider: () => 0);
+
+        FeishuMetrics.ObserveWebSocketReceiveIdleMs().Should().BeEmpty();
+        FeishuMetrics.ObserveWebSocketReceiveLoopAlive().Should().BeEmpty();
+        FeishuMetrics.ObserveWebSocketZombie().Should().BeEmpty(
+            "未提供存活提供器的源不得产生测量值（0 会被误读为【不僵尸】）");
+
+        // 对照：非存活维度仍须正常上报
+        FeishuMetrics.ObserveWebSocketConnections().Should().HaveCount(1);
+    }
+
+    #endregion
+
+    #region F5（R2）：受控丢弃计数
+
+    [Fact]
+    public void RecordWebSocketFramesDiscarded_ShouldIncrementCounter_ByReason()
+    {
+        FeishuMetricsHelper.RecordWebSocketFramesDiscarded(
+            "test_app", FeishuMetrics.DiscardReasons.FragmentSizeExceeded, count: 3);
+
+        _counterValues.Should().ContainKey("feishu.websocket.frames.discarded");
+        _counterValues["feishu.websocket.frames.discarded"].Should().Be(3,
+            "丢弃必须可计数（仅写日志无法形成可告警的时序信号）");
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void RecordWebSocketFramesDiscarded_ShouldNotIncrement_WhenCountIsNotPositive(int count)
+    {
+        FeishuMetricsHelper.RecordWebSocketFramesDiscarded(
+            "test_app", FeishuMetrics.DiscardReasons.AuthGateTimeout, count);
+
+        _counterValues.Should().NotContainKey("feishu.websocket.frames.discarded",
+            "非正数计数不得写入（负增量会污染 OTel 计数器的 monotonic 语义）");
+    }
+
+    [Fact]
+    public void DiscardReasons_ShouldBeStableWireValues()
+    {
+        // 这些字符串是告警规则/看板的聚合键：改名等于静默改变指标序列，必须显式守护
+        FeishuMetrics.DiscardReasons.FragmentSizeExceeded.Should().Be("fragment_size_exceeded");
+        FeishuMetrics.DiscardReasons.DrainBoundExceeded.Should().Be("drain_bound_exceeded");
+        FeishuMetrics.DiscardReasons.AuthGateTimeout.Should().Be("auth_gate_timeout");
+        FeishuMetrics.DiscardReasons.ConcurrencyRejected.Should().Be("concurrency_rejected");
+    }
+
+    #endregion
 
     [Fact]
     public void RecordWebSocketMessageProcessing_ShouldRecordDuration()

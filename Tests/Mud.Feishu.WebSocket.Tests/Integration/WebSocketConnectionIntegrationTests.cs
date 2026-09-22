@@ -45,6 +45,207 @@ public class WebSocketConnectionIntegrationTests
             },
             NullLoggerFactory.Instance);
 
+    /// <summary>
+    /// 连接生命周期事件的"双锁纪律"（§7.2 #23/#24）：回调内回调加锁 API 不得死锁。
+    /// </summary>
+    /// <remarks>
+    /// 与 <c>P0P1FixRegressionTests</c> 中"原子占位"用例的区别：本组守护的是**锁纪律对外契约**
+    /// （P0-5：所有用户事件在锁外触发），而不是事件次数。
+    /// <para>
+    /// <b>为什么必须同步阻塞在回调内</b>：若事件在 <c>_connectionLock</c> 持有期内触发，
+    /// 回调内发起的 <c>DisconnectAsync</c> 会在同一把不可重入信号量上无限等待——
+    /// 只要回调<b>不阻塞</b>（例如 <c>Task.Run</c> 后立即返回），锁就会被释放，缺陷便无法被观测。
+    /// 用 <c>.GetAwaiter().GetResult()</c> 同步等待，加上外层 <c>WaitAsync(超时)</c>，
+    /// 使"死锁"表现为**超时失败**而不是永久挂起。
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public async Task Connected_Handler_ShouldNotDeadlock_WhenCallingDisconnectAsync()
+    {
+        await using var server = LoopbackWebSocketServer.Start(LoopbackWebSocketServer.ServerMode.Idle);
+        var manager = CreateManager();
+
+        var callbackCompleted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        manager.Connected += (_, _) =>
+        {
+            try
+            {
+                manager.DisconnectAsync().GetAwaiter().GetResult();
+                callbackCompleted.TrySetResult(true);
+            }
+            catch (Exception ex)
+            {
+                callbackCompleted.TrySetException(ex);
+            }
+        };
+
+        try
+        {
+            // Act：若事件在持锁期内触发，ConnectAsync 会因回调死锁而永不返回
+            var connect = manager.ConnectAsync(server.Url);
+            await connect.WaitAsync(WaitTimeout);
+
+            await WaitAsync(callbackCompleted, "Connected 回调内的 DisconnectAsync 必须能完成（事件在锁外触发）");
+
+            manager.ConnectionCount.Should().Be(0);
+        }
+        finally
+        {
+            await manager.DisposeAsync();
+        }
+    }
+
+    /// <summary>
+    /// <c>Disconnected</c> 回调内调用 <c>SendMessageAsync</c> 不得死锁（发送锁与生命周期锁解耦）。
+    /// </summary>
+    [Fact]
+    public async Task Disconnected_Handler_ShouldNotDeadlock_WhenCallingSendMessageAsync()
+    {
+        await using var server = LoopbackWebSocketServer.Start(LoopbackWebSocketServer.ServerMode.Idle);
+        var manager = CreateManager();
+
+        var callbackCompleted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        manager.Disconnected += (_, _) =>
+        {
+            try
+            {
+                manager.SendMessageAsync("{\"type\":\"probe\"}").GetAwaiter().GetResult();
+                callbackCompleted.TrySetResult(true);
+            }
+            catch (InvalidOperationException)
+            {
+                // 连接已关闭 ⇒ 发送被**确定性拒绝**（"WebSocket未连接，无法发送消息"），
+                // 这正是期望的"发送锁与生命周期锁解耦"表现：拒绝而不是在锁上无限等待。
+                callbackCompleted.TrySetResult(true);
+            }
+            catch (Exception ex)
+            {
+                callbackCompleted.TrySetException(ex);
+            }
+        };
+
+        try
+        {
+            await manager.ConnectAsync(server.Url);
+            await manager.DisconnectAsync().WaitAsync(WaitTimeout);
+
+            await WaitAsync(callbackCompleted,
+                "Disconnected 回调内的 SendMessageAsync 必须能返回（_sendLock 与 _connectionLock 解耦）");
+        }
+        finally
+        {
+            await manager.DisposeAsync();
+        }
+    }
+
+    /// <summary>
+    /// <c>Disconnected</c> 回调内再次调用 <c>DisconnectAsync</c> 不得死锁（幂等重入）。
+    /// </summary>
+    [Fact]
+    public async Task Disconnected_Handler_ShouldNotDeadlock_WhenCallingDisconnectAsync()
+    {
+        await using var server = LoopbackWebSocketServer.Start(LoopbackWebSocketServer.ServerMode.Idle);
+        var manager = CreateManager();
+
+        var callbackCompleted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var disconnectCount = 0;
+        manager.Disconnected += (_, _) =>
+        {
+            if (Interlocked.Increment(ref disconnectCount) > 1)
+            {
+                return;   // 防止重入自身无限递归
+            }
+
+            try
+            {
+                manager.DisconnectAsync().GetAwaiter().GetResult();
+                callbackCompleted.TrySetResult(true);
+            }
+            catch (Exception ex)
+            {
+                callbackCompleted.TrySetException(ex);
+            }
+        };
+
+        try
+        {
+            await manager.ConnectAsync(server.Url);
+            await manager.DisconnectAsync().WaitAsync(WaitTimeout);
+
+            await WaitAsync(callbackCompleted, "Disconnected 回调内的 DisconnectAsync 必须幂等返回而不死锁");
+            manager.ConnectionCount.Should().Be(0, "重复断开不得把连接计数减为负数");
+        }
+        finally
+        {
+            await manager.DisposeAsync();
+        }
+    }
+
+    /// <summary>
+    /// 断线竞态下连接计数不得为负（§7.2 #26）。
+    /// </summary>
+    /// <remarks>
+    /// 构造：服务端<b>不应答关闭握手</b>（<see cref="LoopbackWebSocketServer.ServerMode.IgnoreCloseHandshake"/>），
+    /// 客户端主动断开会在关闭握手超时后走 <c>Abort</c>；同时接收循环因 socket 中止抛出
+    /// <c>WebSocketException</c> ⇒ **"主动断开"与"接收异常"同时尝试占位**。
+    /// 必须恰好一次声明、计数归零（不得因两条路径各减一次而变成 <c>-1</c>）。
+    /// </remarks>
+    [Fact]
+    public async Task ConnectionCount_ShouldNotGoNegative_WhenDisconnectRacesWithReceiveError()
+    {
+        await using var server = LoopbackWebSocketServer.Start(
+            LoopbackWebSocketServer.ServerMode.IgnoreCloseHandshake);
+
+        var manager = CreateManager();
+        var closeArgs = new List<WebSocketCloseEventArgs>();
+        manager.Disconnected += (_, e) => { lock (closeArgs) { closeArgs.Add(e); } };
+
+        var minObserved = int.MaxValue;
+        var sampling = true;
+
+        try
+        {
+            await manager.ConnectAsync(server.Url);
+            var receiveTask = manager.StartReceivingAsync((_, _) => Task.CompletedTask);
+
+            var sampler = Task.Run(async () =>
+            {
+                while (Volatile.Read(ref sampling))
+                {
+                    var count = manager.ConnectionCount;
+                    if (count < Volatile.Read(ref minObserved))
+                    {
+                        Volatile.Write(ref minObserved, count);
+                    }
+
+                    await Task.Delay(5);
+                }
+            });
+
+            // Act：主动断开（握手超时后 Abort）与接收异常竞态
+            await manager.DisconnectAsync().WaitAsync(WaitTimeout);
+            await Task.WhenAny(receiveTask, Task.Delay(TimeSpan.FromSeconds(2)));
+
+            Volatile.Write(ref sampling, false);
+            await sampler;
+
+            // Assert
+            manager.ConnectionCount.Should().Be(0);
+            Volatile.Read(ref minObserved).Should().BeGreaterThanOrEqualTo(0,
+                "连接计数是【是否已声明断线】的对外可观测事实：任何路径重复递减都会让它变成 -1，" +
+                "进而使后续的 IsConnected/统计口径全部失真");
+            lock (closeArgs)
+            {
+                closeArgs.Should().ContainSingle("断线声明的原子占位必须让竞态下的两条路径只生效一次");
+            }
+        }
+        finally
+        {
+            Volatile.Write(ref sampling, false);
+            await manager.DisposeAsync();
+        }
+    }
+
     private static async Task<T> WaitAsync<T>(TaskCompletionSource<T> source, string because)
     {
         var completed = await Task.WhenAny(source.Task, Task.Delay(WaitTimeout));
@@ -84,6 +285,76 @@ public class WebSocketConnectionIntegrationTests
             await WaitAsync(connected, "真实握手成功后必须触发 Connected");
             manager.IsConnected.Should().BeTrue();
             manager.ConnectionCount.Should().Be(1);
+        }
+        finally
+        {
+            await manager.DisposeAsync();
+        }
+    }
+
+    /// <summary>
+    /// P0-1 的真僵尸形态：取消发生在**派发帧期间**（接收循环正 await 消息处理器），
+    /// 循环以"条件不成立"自然退出，socket **仍为 Open** ⇒ 必须补发断线声明（I13）。
+    /// </summary>
+    /// <remarks>
+    /// 与"取消发生在 ReceiveAsync 期间"的区别（实测结论）：
+    /// <list type="bullet">
+    /// <item>取消在 <c>ReceiveAsync</c> 期间 → <c>ClientWebSocket</c> 以 Abort 中止底层连接
+    /// ⇒ <c>State = Aborted</c> ⇒ <c>IsConnected</c> 为 false，上层健康检查（默认 60 秒轮询）能兜底；</item>
+    /// <item>取消在**派发帧期间** → 循环自然退出而 <c>State = Open</c> ⇒ <c>IsConnected</c> 恒为 true、
+    /// 健康检查判 Healthy、重连永不触发 ⇒ **彻底静默的僵尸连接**。</item>
+    /// </list>
+    /// 背压（慢处理器）会显著放大后者的窗口，因此这条契约必须在"派发帧卡住"时成立。
+    /// </remarks>
+    [Fact]
+    public async Task ReceiveLoop_ShouldRaiseDisconnected_WhenCancelledWhileDispatchingFrame()
+    {
+        // Arrange
+        await using var server = LoopbackWebSocketServer.Start(LoopbackWebSocketServer.ServerMode.Idle);
+        var manager = CreateManager();
+        var closeArgs = new List<WebSocketCloseEventArgs>();
+        manager.Disconnected += (_, e) => { lock (closeArgs) { closeArgs.Add(e); } };
+
+        using var loopCts = new CancellationTokenSource();
+        using var handlerEntered = new ManualResetEventSlim(false);
+        using var releaseHandler = new ManualResetEventSlim(false);
+
+        try
+        {
+            await manager.ConnectAsync(server.Url);
+
+            var receiveTask = manager.StartReceivingAsync((_, _) =>
+            {
+                handlerEntered.Set();
+                // 让接收循环停留在"派发帧"阶段（而非阻塞在 ReceiveAsync 上）
+                releaseHandler.Wait(TimeSpan.FromSeconds(5));
+                return Task.CompletedTask;
+            }, loopCts.Token);
+
+            await server.SendTextAsync("{\"type\":\"probe\"}");
+            await WaitUntilAsync(() => handlerEntered.IsSet,
+                "前置条件：消息处理器必须已进入（接收循环正停留在派发帧阶段）");
+
+            // Act：在派发阶段取消 → 循环条件不再成立，socket 未被 Abort
+            loopCts.Cancel();
+            releaseHandler.Set();
+
+            // Assert
+            await WaitUntilAsync(
+                () => { lock (closeArgs) { return closeArgs.Count == 1; } },
+                "P0-1/I13：取消导致的自然退出必须补发断线声明（改造前此处完全静默）");
+
+            lock (closeArgs)
+            {
+                closeArgs[0].CloseStatusDescription.Should().Contain("接收循环被取消");
+                closeArgs[0].CloseStatus.Should().Be(WebSocketCloseStatus.NormalClosure);
+            }
+
+            manager.IsConnected.Should().BeTrue(
+                "socket 未被 Abort —— 这正是真僵尸态的特征：所有基于 State 的判定都会认为连接正常");
+            manager.ConnectionCount.Should().Be(0, "断线声明必须完成原子占位");
+
+            await Task.WhenAny(receiveTask, Task.Delay(TimeSpan.FromSeconds(2)));
         }
         finally
         {

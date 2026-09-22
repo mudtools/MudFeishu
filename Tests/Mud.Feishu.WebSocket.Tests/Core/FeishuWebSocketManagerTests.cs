@@ -391,4 +391,211 @@ public class FeishuWebSocketManagerTests
         // Assert
         _clientMock.Verify(x => x.Dispose(), Times.Once);
     }
+
+    #region WS2-06 / I9：_startStopLock 不得随 Dispose 释放
+
+    /// <summary>
+    /// WS2-06 ①（I9）：释放后再次进入公开入口不得抛 <see cref="ObjectDisposedException"/>。
+    /// </summary>
+    /// <remarks>
+    /// 可观测契约形式：<c>_startStopLock</c> 是 private，仅反射读字段无法证明"未释放"。
+    /// 而 <see cref="FeishuWebSocketManager.StopAsync"/> 的第一件事就是 <c>_startStopLock.WaitAsync(...)</c>——
+    /// **若信号量已被释放，该调用必然抛 <see cref="ObjectDisposedException"/>**；
+    /// 反之（未释放）在 <c>_isRunning == false</c> 时它会直接返回。
+    /// 因此"Dispose 后再调 StopAsync 不抛 ODE"是等价且强的断言。
+    /// </remarks>
+    [Fact]
+    public async Task DisposeAsync_ShouldNotDisposeStartStopLock()
+    {
+        var manager = new FeishuWebSocketManager(
+            _loggerMock.Object,
+            _appContextMock.Object,
+            _optionsMonitorMock.Object,
+            _clientMock.Object);
+
+        await manager.DisposeAsync();
+
+        var act = async () => await manager.StopAsync();
+
+        await act.Should().NotThrowAsync<ObjectDisposedException>(
+            "I9：信号量不随 Dispose 释放（未访问 AvailableWaitHandle，无 OS 句柄泄漏；释放会与在途 WaitAsync/Release 构成竞态）");
+    }
+
+    [Fact]
+    public async Task Dispose_ShouldNotDisposeStartStopLock()
+    {
+        var manager = new FeishuWebSocketManager(
+            _loggerMock.Object,
+            _appContextMock.Object,
+            _optionsMonitorMock.Object,
+            _clientMock.Object);
+
+        manager.Dispose();
+
+        var act = async () => await manager.StopAsync();
+
+        await act.Should().NotThrowAsync<ObjectDisposedException>("I9：同步释放路径同样不得释放该信号量");
+    }
+
+    #endregion
+
+    #region WS2-05 / D5：入站报文不得全文入日志
+
+    /// <summary>
+    /// WS2-05（D5）：<c>OnClientMessageReceived</c> 的日志必须是"结构化字段 + 脱敏截断预览"。
+    /// </summary>
+    [Fact]
+    public void OnClientMessageReceived_ShouldLogSanitizedPreview_WhenMessageContainsPii()
+    {
+        // Arrange：构造一个含敏感键值 + PII 的报文（旧实现会把整串打进 Debug 日志）
+        const string secret = "sensitive-ticket-value-9f8e7d6c";
+        const string pii = "13800138000";
+        var payload = $"{{\"ticket\":\"{secret}\",\"header\":{{\"token\":\"t-123\"}},\"mobile\":\"{pii}\"}}";
+
+        var logger = new CapturingLogger<FeishuWebSocketManager>();
+
+        var manager = new FeishuWebSocketManager(
+            logger,
+            _appContextMock.Object,
+            _optionsMonitorMock.Object,
+            _clientMock.Object);
+
+        // Act：经客户端事件触发（与生产路径一致）
+        _clientMock.Raise(
+            x => x.MessageReceived += null,
+            _clientMock.Object,
+            new Mud.Feishu.WebSocket.SocketEventArgs.WebSocketMessageEventArgs
+            {
+                Message = payload,
+                MessageType = WebSocketMessageType.Text,
+                EndOfMessage = true,
+                MessageSize = payload.Length
+            });
+
+        // Assert
+        logger.Messages.Should().NotBeEmpty("OnClientMessageReceived 必须产生日志（用于排障）");
+        logger.Messages.Should().Contain(line => line.Contains("长度="),
+            "D5：日志必须包含**结构化字段**（长度），而不是只留一句无信息量的摘要");
+
+        logger.Messages.Should().NotContain(line => line.Contains(payload),
+            "D5：不得把入站报文全文写入日志");
+    }
+
+    /// <summary>
+    /// 日志捕获替身：直接实现 <see cref="ILogger{T}"/>，避免 Moq 的 callbacks 泛型管道噪音。
+    /// </summary>
+    private sealed class CapturingLogger<T> : ILogger<T>
+    {
+        /// <summary>已记录的日志文本（已由 formatter 渲染，含占位符替换结果）。</summary>
+        public List<string> Messages { get; } = new();
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter)
+        {
+            lock (Messages)
+            {
+                Messages.Add(formatter(state, exception));
+            }
+        }
+    }
+
+    #endregion
+
+    #region 误报守护：重连期不得发布 Disconnected
+
+    /// <summary>
+    /// 误报守护（附录 B.2 #3）：重连过程中的主动断开必须被抑制，不得转发 <c>Disconnected</c>。
+    /// </summary>
+    /// <remarks>
+    /// 该抑制窗口是"防重连风暴"的关键：<c>ReconnectAsync → DisconnectAsync → Disconnected → 触发新重连</c>
+    /// 会形成级联。R1 声称已修复但无回归用例，本用例补上。
+    /// <para>
+    /// 实现要点：<c>DisconnectAsync</c> 必须返回**未完成**的任务，让 <c>ReconnectAsync</c> 悬停在
+    /// <c>await</c> 上（即"重连仍在进行中"），否则抑制窗口尚未被观测就已关闭，用例会恒假通过。
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public async Task ReconnectAsync_ShouldNotPublishDisconnected_WhenReconnecting()
+    {
+        // Arrange
+        var disconnectGate = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        _clientMock.Setup(x => x.State).Returns(WebSocketState.Open);
+        _clientMock.Setup(x => x.DisconnectAsync(It.IsAny<CancellationToken>()))
+            .Returns(disconnectGate.Task);
+
+        var manager = new FeishuWebSocketManager(
+            _loggerMock.Object,
+            _appContextMock.Object,
+            _optionsMonitorMock.Object,
+            _clientMock.Object);
+
+        var disconnectedCount = 0;
+        manager.Disconnected += (_, _) => Interlocked.Increment(ref disconnectedCount);
+
+        // Act：重连先断旧连接（此处悬停），期间客户端上报 Disconnected 必须被抑制
+        var reconnectTask = manager.ReconnectAsync();
+        reconnectTask.IsCompleted.Should().BeFalse("前置条件：重连必须仍在进行中（悬停在 DisconnectAsync 上）");
+
+        _clientMock.Raise(
+            x => x.Disconnected += null,
+            _clientMock.Object,
+            new Mud.Feishu.WebSocket.SocketEventArgs.WebSocketCloseEventArgs
+            {
+                CloseStatus = WebSocketCloseStatus.NormalClosure,
+                CloseStatusDescription = "客户端主动断开连接",
+                IsServerInitiated = false
+            });
+
+        disconnectedCount.Should().Be(0,
+            "重连窗口内必须抑制 Disconnected 转发，否则会形成 Reconnect→Disconnect→Disconnected→Reconnect 级联风暴");
+
+        // 收尾：放行并观察异常（本替身环境下 StartAsync 必然失败，与断言无关）
+        disconnectGate.TrySetResult(true);
+        try
+        {
+            await reconnectTask;
+        }
+        catch
+        {
+            // 忽略：仅用于避免 UnobservedTaskException
+        }
+    }
+
+    /// <summary>
+    /// 抑制窗口之外：<c>Disconnected</c> 必须正常转发（防止"把抑制写成永久吞掉"的反向回归）。
+    /// </summary>
+    [Fact]
+    public void OnClientDisconnected_ShouldPublishDisconnected_WhenNotReconnecting()
+    {
+        var manager = new FeishuWebSocketManager(
+            _loggerMock.Object,
+            _appContextMock.Object,
+            _optionsMonitorMock.Object,
+            _clientMock.Object);
+
+        var published = 0;
+        manager.Disconnected += (_, _) => Interlocked.Increment(ref published);
+
+        _clientMock.Raise(
+            x => x.Disconnected += null,
+            _clientMock.Object,
+            new Mud.Feishu.WebSocket.SocketEventArgs.WebSocketCloseEventArgs
+            {
+                CloseStatus = WebSocketCloseStatus.EndpointUnavailable,
+                CloseStatusDescription = "服务端不可达",
+                IsServerInitiated = true
+            });
+
+        published.Should().Be(1, "非重连期（抑制窗口之外）的断线必须如实转发");
+    }
+
+    #endregion
 }

@@ -20,19 +20,17 @@ namespace Mud.Feishu.WebSocket.Tests.Handlers;
 public class PingPongMessageHandlerTests
 {
     private readonly Mock<ILogger<PingPongMessageHandler>> _loggerMock;
-    private readonly FeishuWebSocketOptions _options;
     private readonly Mock<Func<string, Task>> _sendMessageCallbackMock;
     private readonly PingPongMessageHandler _handler;
 
     public PingPongMessageHandlerTests()
     {
         _loggerMock = new Mock<ILogger<PingPongMessageHandler>>();
-        _options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions { };
         _sendMessageCallbackMock = new Mock<Func<string, Task>>();
 
+        // WS2-12：FeishuWebSocketOptions 参数已删除（其唯一去向是从不被读取的私有字段）
         _handler = new PingPongMessageHandler(
             _loggerMock.Object,
-            _options,
             _sendMessageCallbackMock.Object);
     }
 
@@ -42,7 +40,6 @@ public class PingPongMessageHandlerTests
         // Act & Assert
         var action = () => new PingPongMessageHandler(
             null!,
-            _options,
             _message => Task.CompletedTask);
 
         action.Should().Throw<ArgumentNullException>()
@@ -55,7 +52,6 @@ public class PingPongMessageHandlerTests
         // Act & Assert
         var action = () => new PingPongMessageHandler(
             _loggerMock.Object,
-            _options,
             null!);
 
         action.Should().Throw<ArgumentNullException>()
@@ -144,10 +140,8 @@ public class PingPongMessageHandlerTests
     public async Task HandleAsync_WithPingMessage_AndLoggingEnabled_ShouldLog()
     {
         // Arrange
-        var options = new Mud.Feishu.WebSocket.FeishuWebSocketOptions { };
         var handler = new PingPongMessageHandler(
             _loggerMock.Object,
-            options,
             _sendMessageCallbackMock.Object);
 
         var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();

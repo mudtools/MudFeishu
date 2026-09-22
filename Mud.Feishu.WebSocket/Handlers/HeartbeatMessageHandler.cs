@@ -16,16 +16,18 @@ namespace Mud.Feishu.WebSocket.Handlers;
 /// </summary>
 public class HeartbeatMessageHandler : JsonMessageHandler
 {
-    private readonly FeishuWebSocketOptions _options;
-
     /// <summary>
     /// 初始化心跳消息处理器
     /// </summary>
     /// <param name="logger">日志记录器</param>
-    /// <param name="options">FeishuWebSocketOptions</param>
-    public HeartbeatMessageHandler(ILogger<HeartbeatMessageHandler> logger, FeishuWebSocketOptions options) : base(logger)
+    /// <remarks>
+    /// WS2-12：删除 <c>FeishuWebSocketOptions options</c> 参数——它的唯一去向是一个从不被读取的
+    /// 私有字段。应用层心跳间隔由 <see cref="HeartbeatManager"/>（负责构造并发送 ProtoBuf Ping 帧）
+    /// 持有，本处理器只负责把收到的 JSON <c>heartbeat</c> 消息记入日志，与配置无关。
+    /// 模块未发布，无源兼容包袱。
+    /// </remarks>
+    public HeartbeatMessageHandler(ILogger<HeartbeatMessageHandler> logger) : base(logger)
     {
-        _options = options;
     }
 
     /// <inheritdoc/>

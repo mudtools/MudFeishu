@@ -1,5 +1,78 @@
 # Mud.Feishu 更新日志
 
+## [Unreleased]
+
+### ⚠️ 破坏性变更 / 行为改变（WebSocket 模块）
+
+- **WebSocket 连接生命周期不再跟随调用方 `CancellationToken`**：
+  `ConnectAsync(endpoint, [appAccessToken,] token)` 的令牌此前被链接为接收循环/心跳的生命周期令牌，
+  取消即导致连接静默停止收帧（socket 仍为 `Open`、无任何断线通知）。现令牌**只约束"建连 + 认证"阶段**；
+  终止连接请调用 `DisconnectAsync()` / `DisposeAsync()`，恢复接收请调用
+  `IFeishuWebSocketManager.ReconnectAsync()`。
+- **接收循环的每一条退出路径都会产生 `Disconnected`**：包括"接收循环因取消退出"。
+  此前该路径完全静默（无事件、只能等 `HealthCheckIntervalMs` 轮询兜底）。
+- **分片消息超限改为"排空至消息边界后丢弃"**：此前直接返回会把被丢弃消息的剩余分片当作**新消息**
+  送入解析链路，污染 WS 消息边界与序号游标。排空有上界（1024 帧 / 64MB），超界即主动断连并重连。
+- **`IFeishuWebSocketClient.StartReceivingAsync` 弃用**：接收循环由 `ConnectAsync` 统一管理；
+  已有循环时为幂等 no-op（记告警），未连接时抛 `InvalidOperationException`。
+- **`MessageReceived` 线程契约变更**：由"接收循环线程同步串行派发、与帧序一致"改为
+  "在并发租约内派发，**可能并发、可能乱序**"。慢订阅者不再阻塞接收管道（只占用一个并发槽位）。
+  需要顺序/超时保护请改用 `IMessageHandler`。
+- **配置上界收紧（启动期 fail-fast）**：`Reconnect.TotalBudget ≤ 7 天`、
+  `Reconnect.BaseDelayMs/MaxDelayMs ≤ 1 小时`、`MessageSizeLimits.MaxTextMessageSize ≤ 10MB`、
+  `ConnectionTimeoutMs/AuthTimeoutMs/AuthGateTimeoutMs ≤ 5 分钟`。
+- **入站报文不再全文入日志**：`MessageReceived`/认证响应的日志改为"长度 + 200 字符脱敏预览"；
+  连接 URL 日志**整体剥离 query**。
+- **`PingPongMessageHandler` / `HeartbeatMessageHandler` 构造函数移除了 `FeishuWebSocketOptions` 参数**
+  （该参数只被赋值给一个从不读取的私有字段）。
+
+### ✨ 新增
+
+- 连接存活探针 `ConnectionLiveness`（`ReceiveLoopAlive` / `LastReceiveUtc` / `IdleMs` / `IsZombie`）。
+- **存活与丢弃指标（F1/F2/F5）**：
+  `feishu.websocket.receive.idle_ms`、`feishu.websocket.receive.loop_alive`、`feishu.websocket.zombie`
+  三个 ObservableGauge，以及 `feishu.websocket.frames.discarded` 计数器（`reason` 维度）。
+  `RegisterWebSocketMetricsSource` 新增三个**可选**存活维度提供器（不传则不上报该维度，
+  不会把"未提供"伪造成 0）；丢弃原因常量见 `FeishuMetrics.DiscardReasons`，
+  记录入口 `FeishuMetricsHelper.RecordWebSocketFramesDiscarded`。
+  四个受控丢弃点（首帧超限 / 累积超限 / 排空上界 / 认证闸门 / 背压拒绝）已全部接入计数，
+  不再只写日志（丢弃是事件丢失的前兆，必须可告警）。
+- 健康检查 `data` 新增 `receive_loop_alive` / `last_receive_utc` / `idle_ms` / `is_zombie`；
+  `State == Open` 且接收循环已结束时判 `Unhealthy`，并由后台服务周期性检查触发重连。
+- 架构不变量 **I13–I16**（连接终止路径穷尽占位 / 接收循环原子占位 / 调用方令牌不构成生命周期 /
+  配置双向约束与 `TimeSpan` 钳制）与源码级契约守卫
+  `Tests/Mud.Feishu.WebSocket.Tests/ContractGuards/WebSocketContractGuards.cs`（7 条）。
+- 内部工具 `Core/TimeSpanGuards.cs`（`ClampToCancellationTokenRange` / `ClampToTaskDelayRange`）。
+- `FeishuWebSocketServiceBuilder`：**不再过滤**直接注册到 DI 的 `IFeishuEventInterceptor`
+  （此前会被静默丢弃），仅按建造者登记顺序排序。
+
+### 🐛 修复
+
+- 接收循环因取消退出时无断线信号，形成"连接看似正常但收不到事件"的僵尸连接（P0-1）。
+- `StartReceivingAsync` 幂等守卫"只读不写"（守卫读取的字段由 `ConnectAsync` 赋值），
+  在两类窄窗口下可创建第二条接收循环（P1-1，违反 I14）。
+- 分片超限丢弃不排空导致 WS 消息边界失步（P1-2）。
+- 重连窗口 `CancellationTokenSource(TimeSpan)` 未钳制 → 超长 `TotalBudget` 使自动重连仅记一条
+  Error 后完全不执行（P1-3）；`FeishuWebSocketManager` 的启动超时（配置派生值）同样补齐钳制。
+- 入站完整报文（未脱敏、未截断）写入日志（P1-4）。
+- `FeishuWebSocketManager` 释放 `_startStopLock`（违反 I9）；并发服务旧信号量固定 60s 释放改为
+  `max(60s, 2 × MessageHandlerTimeoutMs)`，消除慢处理器归还租约时的 `ObjectDisposedException`（P1-5）。
+- `ResolveMaxTextMessageBytes()` 整型溢出（P2-1）；`IsConnected` 状态双真源（P2-2，I12）；
+- 卫生项：编译警告净零（CS1591/CS0419/CS1574）、`netstandard2.0` 证书配置静默忽略补全 5 项告警、
+  `EventSubscriptionManager.HasSubscribed` 改 volatile、
+  `FeishuWebSocketHostedService._disposed` 与 `ReconnectionOrchestrator` 状态字段改原子访问。
+
+### 🧪 测试与门禁
+
+- 新增契约守卫（7 条）并按"故意违规金丝雀"验证可拦截回归。
+- 新增用例：连接存活/令牌契约（`FeishuWebSocketClientLivenessTests`）、分片排空（`WebSocketFragmentedMessageDrainTests`）、
+  装配与重连重置（`FeishuWebSocketClientWiringTests`）、`TimeSpanGuards`/配置上界/派生上限溢出
+  （`TimeSpanGuardsTests`、`MessageSizeLimitsOverflowTests`、`FeishuWebSocketOptionsTests` 扩充）、
+  压力与静默（`FeishuWebSocketStressTests`，`Category=Stress`）。
+- 回环服务端扩展：超限分片（首帧/累积）、永不结束分片、按需投递文本/二进制帧。
+- `scripts/verify-build.ps1` 步骤 4 追加 `--filter "Category!=Stress"`
+  （xUnit 的 `Trait` 不会自动排除用例，否则全量门禁会执行压力用例）。
+
 ## [3.0.0-rc3] - 2026-09-21
 
 ### 🔐 令牌与多应用管理第四轮加固（TMF2 系列）

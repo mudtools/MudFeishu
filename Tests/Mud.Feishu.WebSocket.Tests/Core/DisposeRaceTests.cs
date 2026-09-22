@@ -187,4 +187,50 @@ public class DisposeRaceTests
     }
 
     #endregion
+
+    #region WS2-06 ② / I9 例外：旧信号量延迟释放阈值的动态公式
+
+    /// <summary>
+    /// 阈值公式必须与 Webhook 侧一致：<c>max(60s, 2 × MessageHandlerTimeoutMs)</c>。
+    /// </summary>
+    /// <remarks>
+    /// 改造前是硬编码 60 秒：当 <c>MessageHandlerTimeoutMs &gt; 30s</c> 时"租约最长合法持有时间"
+    /// 超过 60 秒，慢处理器在热更新后归还租约时会命中已释放的信号量并抛
+    /// <see cref="ObjectDisposedException"/>——配置越合理越容易触发。
+    /// <para>
+    /// 之所以把公式抽成 <c>internal static</c> 纯函数：**测试无法在运行期触发
+    /// <c>IOptionsMonitor.OnChange</c> 回调**（现有 <c>CreateConcurrencyService</c> 用
+    /// <c>ServiceCollection + Configure</c> 构造的 Monitor 没有可变的配置源）。
+    /// 用纯函数覆盖公式 + 既有"归还租约不抛 ODE"用例做时序兜底，二者组合才是可落地的方案
+    /// （强行伪造热更新回调会引入 flaky）。
+    /// </para>
+    /// </remarks>
+    [Theory]
+    [InlineData(30000, 60)]      // 2×30s = 60s，恰好等于下限
+    [InlineData(120000, 240)]    // 2×120s = 240s > 60s → 取动态值
+    [InlineData(45000, 90)]      // 2×45s = 90s
+    [InlineData(0, 60)]          // 0 = 不限制处理时长 → 无法推导上界，回落下限
+    [InlineData(-1, 60)]         // 负值同样回落下限
+    [InlineData(1000, 60)]       // 2×1s = 2s < 60s → 取下限（保持改造前行为）
+    public void ResolveLegacySemaphoreRetention_ShouldFollowWebhookFormula(int messageHandlerTimeoutMs, int expectedSeconds)
+    {
+        var retention = FeishuWebSocketConcurrencyService.ResolveLegacySemaphoreRetention(messageHandlerTimeoutMs);
+
+        retention.Should().Be(TimeSpan.FromSeconds(expectedSeconds),
+            "I9 例外登记：旧信号量保留时长必须 = max(60s, 2 × MessageHandlerTimeoutMs)（与 Webhook 侧公式一致），" +
+            "使'租约最长合法持有时间'与'信号量回收时机'重新绑定");
+    }
+
+    [Fact]
+    public void ResolveLegacySemaphoreRetention_ShouldAlwaysBeAtLeastSixtySeconds()
+    {
+        foreach (var timeout in new[] { int.MinValue, -1, 0, 1, 29_999, 30_000 })
+        {
+            FeishuWebSocketConcurrencyService.ResolveLegacySemaphoreRetention(timeout)
+                .Should().BeGreaterThanOrEqualTo(TimeSpan.FromSeconds(60),
+                    "下限保证短超时配置下的行为与改造前完全一致（不引入新的资源滞留差异）");
+        }
+    }
+
+    #endregion
 }

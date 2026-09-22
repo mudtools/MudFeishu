@@ -107,7 +107,7 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
     /// 以保持既有行为，但会记录一次 Warning。
     /// </para>
     /// <para>
-    /// 说明：C# 不允许把 <see cref="System.ObsoleteAttribute"/> 施加在<b>参数</b>上
+    /// 说明：C# 不允许把 <c>ObsoleteAttribute</c> 施加在<b>参数</b>上
     /// （其 <c>AttributeTargets</c> 不含 <c>Parameter</c>），因此弃用意图只能通过本 XML 注释
     /// 与构造期 Warning 表达；不另加重载以免扩大公共 API 面。
     /// </para>

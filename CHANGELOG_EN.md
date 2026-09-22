@@ -1,5 +1,67 @@
 # Mud.Feishu Change Log
 
+## [Unreleased]
+
+### ⚠️ Breaking / Behavioral Changes (WebSocket module)
+
+- **Connection lifetime no longer follows the caller's `CancellationToken`**:
+  the token passed to `ConnectAsync(endpoint, [appAccessToken,] token)` was previously linked as the
+  lifetime token for the receive loop and heartbeat — cancelling it silently stopped frame reading
+  (socket still `Open`, no disconnect notification). The token now only governs the
+  **connect + authenticate** phase. Use `DisconnectAsync()` / `DisposeAsync()` to terminate and
+  `IFeishuWebSocketManager.ReconnectAsync()` to recover.
+- **Every receive-loop termination path now raises `Disconnected`**, including cancellation-driven exits
+  (previously fully silent, recoverable only via `HealthCheckIntervalMs` polling).
+- **Oversize fragmented messages are now "drained to the message boundary, then discarded"**.
+  Returning early used to make the remaining fragments of a discarded message be parsed as a **new message**,
+  corrupting the WS message boundary and the sequence cursor. Draining is bounded (1024 frames / 64 MB);
+  exceeding the bound aborts the connection and triggers a reconnect.
+- **`IFeishuWebSocketClient.StartReceivingAsync` is deprecated**: the receive loop is managed by `ConnectAsync`;
+  idempotent no-op (with a warning) when a loop is already running, `InvalidOperationException` when not connected.
+- **`MessageReceived` threading contract changed**: from "synchronous, serialized on the receive-loop thread,
+  frame-ordered" to "dispatched inside the concurrency lease — **may run concurrently and out of order**".
+  Slow subscribers no longer block the receive pipeline (they only occupy one concurrency slot).
+  Use `IMessageHandler` when ordering or timeout protection is required.
+- **Configuration upper bounds tightened (fail-fast at startup)**: `Reconnect.TotalBudget <= 7 days`,
+  `Reconnect.BaseDelayMs/MaxDelayMs <= 1 hour`, `MessageSizeLimits.MaxTextMessageSize <= 10 MB`,
+  `ConnectionTimeoutMs/AuthTimeoutMs/AuthGateTimeoutMs <= 5 minutes`.
+- **Inbound payloads are no longer logged verbatim**: `MessageReceived` / authentication-response logging now
+  emits "length + 200-char redacted preview"; connection URL logging strips the query string entirely.
+- **`PingPongMessageHandler` / `HeartbeatMessageHandler` constructors no longer accept `FeishuWebSocketOptions`**
+  (the parameter was only assigned to a private field that was never read).
+
+### ✨ Added
+
+- Connection liveness probe `ConnectionLiveness` (`ReceiveLoopAlive` / `LastReceiveUtc` / `IdleMs` / `IsZombie`).
+- **Liveness and discard metrics (F1/F2/F5)**: three new observable gauges
+  (`feishu.websocket.receive.idle_ms`, `feishu.websocket.receive.loop_alive`, `feishu.websocket.zombie`)
+  and the `feishu.websocket.frames.discarded` counter (dimension `reason`).
+  `RegisterWebSocketMetricsSource` gained three **optional** liveness providers
+  (when omitted the dimension is not reported at all, so "not provided" is never reported as `0`).
+  Discard reasons live in `FeishuMetrics.DiscardReasons`, recorded via
+  `FeishuMetricsHelper.RecordWebSocketFramesDiscarded`; all controlled discard points
+  (first-frame oversize, accumulated oversize, drain bound, auth gate, backpressure) are now counted
+  instead of merely logged — discards are a precursor to event loss and must be alertable.
+- Health check `data` now exposes `receive_loop_alive` / `last_receive_utc` / `idle_ms` / `is_zombie`;
+  `State == Open` with a stopped receive loop is reported `Unhealthy` and triggers a reconnect.
+- Architecture invariants **I13–I16** and source-level contract guards
+  (`Tests/Mud.Feishu.WebSocket.Tests/ContractGuards/WebSocketContractGuards.cs`, 7 guards).
+- Internal utility `Core/TimeSpanGuards.cs`.
+- `FeishuWebSocketServiceBuilder` no longer **filters out** `IFeishuEventInterceptor` instances registered
+  directly in DI (previously silently dropped); it only orders them by builder registration order.
+
+### 🐛 Fixed
+
+- Zombie connection when the receive loop exited on cancellation without any disconnect signal (P0-1).
+- `StartReceivingAsync` idempotency guard read-only (P1-1 / I14).
+- Oversize fragment discard did not drain, desynchronizing the WS message boundary (P1-2).
+- Unclamped reconnect window `CancellationTokenSource(TimeSpan)` (P1-3).
+- Inbound full payload written to logs (P1-4).
+- `FeishuWebSocketManager` disposing `_startStopLock` (violating I9); dynamic legacy semaphore retention (P1-5).
+- `ResolveMaxTextMessageBytes()` integer overflow (P2-1); `IsConnected` dual source of truth (P2-2).
+- Hygiene: zero compiler warnings, complete `netstandard2.0` certificate-option warnings (5 items),
+  `EventSubscriptionManager.HasSubscribed` volatile, atomic disposed/state fields.
+
 ## [3.0.0-rc2] - 2026-09-18
 
 ### ⚡ Full Native AOT Adaptation

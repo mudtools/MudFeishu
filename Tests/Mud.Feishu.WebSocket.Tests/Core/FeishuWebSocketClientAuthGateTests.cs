@@ -8,10 +8,12 @@
 using System.Diagnostics;
 using System.Net.WebSockets;
 using System.Reflection;
+using System.Text;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Mud.Feishu.Abstractions;
+using Mud.Feishu.DataModels.WsEndpoint;
 
 namespace Mud.Feishu.WebSocket.Tests.Core;
 
@@ -105,4 +107,125 @@ public class FeishuWebSocketClientAuthGateTests
         // Assert
         stopwatch.Elapsed.Should().BeLessThan(TimeSpan.FromMilliseconds(300));
     }
+
+    // ────────────────────────────────────────────────────────────────────────
+    // R2/WS2-15：以上三个用例只断言"耗时 < 300ms"与"无 Error"，属**弱断言**——
+    // 它们无法区分"帧被按时丢弃"与"帧被静默吞掉/走了别的分支"。
+    // 下面的集成用例用回环服务端的**可观测面**（是否回 ACK）做正/负对照。
+    //
+    // 说明（为什么不能用 Mock<MessageRouter> 断言"未被调用"）：
+    //   · MessageRouter.RouteMessageAsync 不是 virtual ⇒ Moq 无法拦截（Verify 会抛 NotSupportedException）；
+    //   · 且 FeishuWebSocketClient 在**构造函数内** new MessageRouter(...) ⇒ 没有注入点。
+    // 因此改用"服务端是否收到 ACK 帧"作为"帧是否进入处理链路"的端到端证据。
+    // ────────────────────────────────────────────────────────────────────────
+#if NET8_0_OR_GREATER
+
+    private static async Task<byte[]?> TryObserveAckAsync(Mud.Feishu.WebSocket.Tests.Integration.LoopbackWebSocketServer server)
+        => await server.TryWaitBinaryFrameAsync(TimeSpan.FromSeconds(1));
+
+    private static byte[] BuildProbeFrame()
+    {
+        var frame = new EventProtoData
+        {
+            Service = 1001,
+            Method = 1,
+            SeqID = 7,
+            PayloadType = "JSON",
+            Payload = Encoding.UTF8.GetBytes("{\"type\":\"probe\"}")
+        };
+
+        using var stream = new MemoryStream();
+        ProtoBuf.Serializer.Serialize(stream, frame);
+        return stream.ToArray();
+    }
+
+    private static FeishuWebSocketClient CreateLoopbackClient(int authGateTimeoutMs)
+    {
+        var factoryMock = new Mock<IFeishuEventHandlerFactory>();
+        factoryMock.Setup(x => x.GetHandler(It.IsAny<string>())).Returns(Mock.Of<IFeishuEventHandler>());
+        factoryMock.Setup(x => x.GetHandlers(It.IsAny<string>())).Returns(new List<IFeishuEventHandler>());
+
+        return new FeishuWebSocketClient(
+            NullLogger<FeishuWebSocketClient>.Instance,
+            factoryMock.Object,
+            NullLoggerFactory.Instance,
+            options: new FeishuWebSocketOptions
+            {
+                AuthGateTimeoutMs = authGateTimeoutMs,
+                Certificate = new WebSocketCertificateOptions { AllowInsecureWebSocket = true },
+                AllowedHostSuffixes = "127.0.0.1",
+                ConnectionTimeoutMs = 3000
+            });
+    }
+
+    /// <summary>
+    /// 闸门超时 ⇒ 二进制帧**不得进入处理链路**（端到端证据：服务端收不到 ACK）。
+    /// </summary>
+    [Fact]
+    [Trait("Category", "Integration")]
+    public async Task HandleReceivedMessageAsync_ShouldDropFrame_WhenAuthGateTimesOut()
+    {
+        // Arrange：未认证 + 闸门 300ms
+        await using var server = Mud.Feishu.WebSocket.Tests.Integration.LoopbackWebSocketServer.Start(
+            Mud.Feishu.WebSocket.Tests.Integration.LoopbackWebSocketServer.ServerMode.Idle);
+
+        var client = CreateLoopbackClient(authGateTimeoutMs: 300);
+        var binaryMessageReceived = 0;
+        client.BinaryMessageReceived += (_, _) => Interlocked.Increment(ref binaryMessageReceived);
+
+        try
+        {
+            await client.ConnectAsync(new WsEndpointResult { Url = server.Url });
+            client.IsAuthenticated.Should().BeFalse("前置条件：本用例不执行认证");
+
+            // Act：由服务端投递一条合法二进制帧
+            await server.SendBinaryAsync(BuildProbeFrame());
+
+            // Assert：闸门超时后丢弃 ⇒ 无 ACK、无事件
+            var ack = await TryObserveAckAsync(server);
+            ack.Should().BeNull("闸门超时属受控丢弃：帧不得进入处理链路（处理链路成功处理会回 ACK）");
+            Volatile.Read(ref binaryMessageReceived).Should().Be(0, "被丢弃的帧不得产生 BinaryMessageReceived 事件");
+        }
+        finally
+        {
+            await client.DisposeAsync();
+        }
+    }
+
+    /// <summary>
+    /// 闸门关闭（默认 0）⇒ 二进制帧**正常进入处理链路**（端到端证据：服务端收到 ACK）。
+    /// </summary>
+    /// <remarks>正对照：证明上一条用例的"无 ACK"确实来自闸门丢弃，而不是环境导致 ACK 永远收不到。</remarks>
+    [Fact]
+    [Trait("Category", "Integration")]
+    public async Task HandleReceivedMessageAsync_ShouldRouteFrame_WhenAuthGateDisabled()
+    {
+        await using var server = Mud.Feishu.WebSocket.Tests.Integration.LoopbackWebSocketServer.Start(
+            Mud.Feishu.WebSocket.Tests.Integration.LoopbackWebSocketServer.ServerMode.Idle);
+
+        var client = CreateLoopbackClient(authGateTimeoutMs: 0);
+
+        try
+        {
+            await client.ConnectAsync(new WsEndpointResult { Url = server.Url });
+
+            // Act
+            await server.SendBinaryAsync(BuildProbeFrame());
+
+            // Assert
+            var ack = await TryObserveAckAsync(server);
+            ack.Should().NotBeNull("闸门关闭时帧必须进入处理链路并回 ACK（否则服务端只能等超时重投）");
+
+            using var ackStream = new MemoryStream(ack!);
+            var ackFrame = ProtoBuf.Serializer.Deserialize<EventProtoData>(ackStream);
+            ackFrame.PayloadType.Should().Be("ack");
+            ackFrame.SeqID.Should().Be(7, "ACK 必须回带原帧 SeqID");
+        }
+        finally
+        {
+            await client.DisposeAsync();
+        }
+    }
+
+#endif
 }

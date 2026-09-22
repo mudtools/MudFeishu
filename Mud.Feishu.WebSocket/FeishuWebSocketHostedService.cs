@@ -27,7 +27,11 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
     private readonly FeishuWebSocketConcurrencyService? _concurrencyService;
     // NEW-WS-01 修复：保存 host stoppingToken 用于链接重连任务的取消令牌，支持优雅关闭
     private CancellationToken _stoppingToken;
-    private bool _disposed;
+    // WS2-12：_disposed 改为 int + Interlocked.Exchange 原子 check-then-set，
+    // 与模块内既有范式（FeishuWebSocketClient/WebSocketConnectionManager/ConcurrencyService/Orchestrator）统一。
+    // Dispose 可能被 DI 容器的关停与宿主显式调用并发触发，非原子 check-then-set 会让退订逻辑执行两次
+    // （事件 -= 幂等，但"日志噪音 + 与 _metricsRegistration 置 null 的竞态"是真实的）。
+    private int _disposed = 0;
     private DateTime _lastReconnectTriggerTime = DateTime.MinValue;
     private readonly object _reconnectDebounceLock = new();
     private static readonly TimeSpan ReconnectDebounceInterval = TimeSpan.FromSeconds(3);
@@ -82,6 +86,11 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
     /// F1：积压数取并发闸门的在途处理数。
     /// AppKey 由提供器在<b>每次采集时</b>读取，支持配置热更新。
     /// </para>
+    /// <para>
+    /// <b>F2（R2/WS2-05 补完）</b>：存活维度（静默毫秒数 / 接收循环存活 / 僵尸态）同样以提供器上报，
+    /// 使"僵尸连接"既能被健康检查判 <c>Unhealthy</c>（瞬时快照），也能被指标规则按**趋势**告警
+    /// （<c>feishu.websocket.zombie</c> 持续为 1、<c>receive.idle_ms</c> 持续增长）。
+    /// </para>
     /// </remarks>
     private void InitializeMetricsObservers()
     {
@@ -90,7 +99,10 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
         _metricsRegistration = FeishuMetrics.RegisterWebSocketMetricsSource(
             appKeyProvider: () => _optionsMonitor.CurrentValue.AppKey,
             activeConnectionsProvider: () => _webSocketManager.IsConnected ? 1 : 0,
-            pendingMessagesProvider: () => _concurrencyService?.PendingCount ?? 0);
+            pendingMessagesProvider: () => _concurrencyService?.PendingCount ?? 0,
+            idleMsProvider: () => GetConnectionLiveness().IdleMs,
+            receiveLoopAliveProvider: () => GetConnectionLiveness().ReceiveLoopAlive ? 1 : 0,
+            isZombieProvider: () => GetConnectionLiveness().IsZombie ? 1 : 0);
 
         _logger.LogDebug("WebSocket 指标源已注册，AppKey: {AppKey}", appKey);
     }
@@ -155,9 +167,24 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
                 {
                     await Task.Delay(TimeSpan.FromMilliseconds(_optionsMonitor.CurrentValue.HealthCheckIntervalMs), stoppingToken);
 
+                    // F1/F2（P0-1 兜底）：除"连接状态非 Open"外，还必须识别**僵尸态**——
+                    // "socket 仍 Open 但接收循环已结束"。该状态下 IsConnected 为 true、
+                    // 健康检查（仅看状态时）判 Healthy，周期性重连也就永远不会被触发，
+                    // 表现为"连接看起来正常却永远收不到事件"。I13 只能覆盖 SDK 自身观察到的终止路径，
+                    // 内核 socket 假死 / 对端半开这类外部静默失败必须由此兜底。
+                    var liveness = GetConnectionLiveness();
                     if (!_webSocketManager.IsConnected)
                     {
                         TryTriggerReconnect("健康检查发现连接断开");
+                    }
+                    else if (liveness.IsZombie)
+                    {
+                        _logger.LogError("健康检查发现僵尸连接：连接状态为 {State} 但接收循环已结束" +
+                            "（最近收帧: {LastReceive}，静默 {IdleMs}ms），触发重连自愈",
+                            _webSocketManager.Client.State,
+                            liveness.LastReceiveUtc?.ToString("O") ?? "从未",
+                            liveness.IdleMs);
+                        TryTriggerReconnect("健康检查发现僵尸连接（接收循环已结束但连接仍为 Open）");
                     }
                 }
                 catch (TaskCanceledException)
@@ -294,7 +321,16 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
                 {
                     window = TimeSpan.FromMinutes(30);
                 }
-                using var timeoutCts = new CancellationTokenSource(window + TimeSpan.FromMinutes(1));
+
+                // WS2-04 / I16 修复：必须钳制后再交给 CancellationTokenSource。
+                // CancellationTokenSource(TimeSpan) 对超长时长抛 ArgumentOutOfRangeException
+                // （.NET Core 上界 uint.MaxValue-1 ≈ 49.7 天；.NET Framework/netstandard2.0 上界
+                // int.MaxValue-1 ≈ 24.8 天）；异常发生在本 fire-and-forget 任务体内，
+                // 被下方通用 catch 吞掉后仅记一条 Error，表现为"该轮自动重连完全不执行"（长时断连不可自愈）。
+                // 配置面已在 FeishuWebSocketOptions.Validate 补了 TotalBudget ≤ 7 天的上界，
+                // 此处为纵深防御（宿主可能绕过 Validate 直接 new Options）。
+                var reconnectWindow = TimeSpanGuards.ClampToCancellationTokenRange(window + TimeSpan.FromMinutes(1));
+                using var timeoutCts = new CancellationTokenSource(reconnectWindow);
                 using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(_stoppingToken, timeoutCts.Token);
                 await _reconnectionOrchestrator.TryReconnectAsync(reason, linkedCts.Token);
             }
@@ -383,6 +419,16 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
     internal FeishuWebSocketConcurrencyService? GetConcurrencyService() => _concurrencyService;
 
     /// <summary>
+    /// 获取连接存活探针快照（F1/F2；供健康检查判定僵尸态）。
+    /// </summary>
+    /// <returns>
+    /// 存活探针快照。管理器不是 <see cref="FeishuWebSocketManager"/> 具体类型（测试替身/自定义实现）
+    /// 时返回 <c>default</c>，调用方应据此回落为"不判定僵尸"。
+    /// </returns>
+    internal ConnectionLiveness GetConnectionLiveness()
+        => _webSocketManager is FeishuWebSocketManager manager ? manager.Liveness : default;
+
+    /// <summary>
     /// 重写Dispose方法，确保资源正确释放
     /// </summary>
     public override void Dispose()
@@ -398,7 +444,8 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
     /// <param name="disposing">是否正在释放托管资源</param>
     private void Dispose(bool disposing)
     {
-        if (_disposed)
+        // WS2-12：原子 check-then-set（此前 volatile bool 的 check-then-set 非原子，可双进入）
+        if (Interlocked.Exchange(ref _disposed, 1) == 1)
             return;
 
         if (disposing)
@@ -424,7 +471,5 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
                 _logger.LogWarning(ex, "清理资源时发生异常");
             }
         }
-
-        _disposed = true;
     }
 }

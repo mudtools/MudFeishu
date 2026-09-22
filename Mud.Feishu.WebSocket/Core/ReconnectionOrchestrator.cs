@@ -31,10 +31,30 @@ public class ReconnectionOrchestrator : IReconnectionOrchestrator, IAsyncDisposa
     /// <para>所有路径（含提前 return、事件回调抛异常）都必须在最外层 finally 复位闸门，见 I11。</para>
     /// </remarks>
     private int _reconnectGate;
+
+    // ────────────────────────────────────────────────────────────────────────
+    // WS2-12：状态字段改为无锁原子访问（Interlocked / Volatile）。
+    //
+    // 必要性：这些字段的**写点分布在两处不同同步域**——
+    //   ① 重连主循环：持有 _reconnectLock；
+    //   ② ResetReconnectCounter()：由 Connected 事件回调触发，**不能**取 _reconnectLock
+    //      （该回调在 ReconnectAsync → StartAsync → ConnectAsync 的调用链内触发，而调用链的
+    //        外层正持有 _reconnectLock ⇒ 取锁必然自死锁）。
+    // 因此"用一个锁保护所有字段"不可行，只能保证**每个字段自身的读写原子性**。
+    //
+    // 说明：64 位值（DateTime/DateTime?）统一以 Ticks（long）存储并用 Interlocked.Read 读取，
+    // 避免 32 位平台上的撕裂读；引用类型用 Volatile。读侧允许看到略陈旧的值——
+    // GetReconnectState() 是观测接口，不做跨字段一致性保证（跨字段快照需要锁，代价不值）。
+    // ────────────────────────────────────────────────────────────────────────
     private int _currentAttempt;
     private int _totalReconnectCount;
-    private DateTime _lastReconnectAttempt = DateTime.MinValue;
-    private DateTime? _reconnectStartTime;
+
+    /// <summary>最近一次重连尝试时刻（<see cref="DateTime.Ticks"/>；0 = <see cref="DateTime.MinValue"/>）。</summary>
+    private long _lastReconnectAttemptTicks;
+
+    /// <summary>本轮重连起始时刻（<see cref="DateTime.Ticks"/>；0 = null = 当前无在途轮次）。</summary>
+    private long _reconnectStartTimeTicks;
+
     private string? _lastReconnectReason;
     private Exception? _lastError;
 
@@ -143,7 +163,7 @@ public class ReconnectionOrchestrator : IReconnectionOrchestrator, IAsyncDisposa
             await _reconnectLock.WaitAsync(cancellationToken).ConfigureAwait(false);
             try
             {
-                var timeSinceLastAttempt = DateTime.UtcNow - _lastReconnectAttempt;
+                var timeSinceLastAttempt = DateTime.UtcNow - ReadLastReconnectAttempt();
                 if (timeSinceLastAttempt < _options.Reconnect.Cooldown)
                 {
                     _logger.LogDebug("重连冷却期内，跳过重连尝试");
@@ -151,23 +171,23 @@ public class ReconnectionOrchestrator : IReconnectionOrchestrator, IAsyncDisposa
                 }
 
                 var reconnectStart = DateTime.UtcNow;
-                _reconnectStartTime = reconnectStart;
-                _lastReconnectAttempt = DateTime.UtcNow;
-                _lastReconnectReason = reason;
-                _currentAttempt = 0;
+                Interlocked.Exchange(ref _reconnectStartTimeTicks, reconnectStart.Ticks);
+                Interlocked.Exchange(ref _lastReconnectAttemptTicks, reconnectStart.Ticks);
+                Volatile.Write(ref _lastReconnectReason, reason);
+                Interlocked.Exchange(ref _currentAttempt, 0);
 
                 _logger.LogInformation("开始重连流程，原因: {Reason}", reason);
 
                 while (!reconnected && !cancellationToken.IsCancellationRequested)
                 {
-                    _currentAttempt++;
-                    attemptCount = _currentAttempt;
+                    var currentAttempt = Interlocked.Increment(ref _currentAttempt);
+                    attemptCount = currentAttempt;
 
                     var elapsedTime = DateTime.UtcNow - reconnectStart;
-                    if (!_strategy.ShouldContinueReconnect(_currentAttempt, elapsedTime))
+                    if (!_strategy.ShouldContinueReconnect(currentAttempt, elapsedTime))
                     {
                         _logger.LogError("已达到重连限制 (次数: {Attempt}, 时间: {ElapsedTime})",
-                            _currentAttempt, elapsedTime);
+                            currentAttempt, elapsedTime);
 
                         // P2-12 修复：标记已达上限，避免同一轮同时触发
                         // ReconnectLimitReached 与 ReconnectFailed，导致上层重复记录失败指标。
@@ -176,16 +196,16 @@ public class ReconnectionOrchestrator : IReconnectionOrchestrator, IAsyncDisposa
                         // F3：达到重连上限后打开熔断器
                         _circuitOpen = true;
                         _logger.LogWarning("重连熔断器已打开：已达到重连上限（次数: {Attempt}, 时间: {ElapsedTime}），" +
-                            "熔断期间健康检查不会触发重连，直到连接成功后自动清除", _currentAttempt, elapsedTime);
+                            "熔断期间健康检查不会触发重连，直到连接成功后自动清除", currentAttempt, elapsedTime);
                         break;
                     }
 
                     try
                     {
                         // W4-P2-6：延迟计算与等待一并纳入 try，避免策略实现抛异常时异常穿透整轮重连。
-                        var delay = _strategy.CalculateDelay(_currentAttempt);
+                        var delay = _strategy.CalculateDelay(currentAttempt);
                         _logger.LogInformation("等待 {Delay}毫秒后进行第 {Attempt} 次重连尝试",
-                            delay.TotalMilliseconds, _currentAttempt);
+                            delay.TotalMilliseconds, currentAttempt);
                         await Task.Delay(delay, cancellationToken);
 
                         await _webSocketManager.ReconnectAsync(cancellationToken);
@@ -194,11 +214,11 @@ public class ReconnectionOrchestrator : IReconnectionOrchestrator, IAsyncDisposa
                         if (reconnected)
                         {
                             if (_options.EnableReconnectMetrics)
-                                _totalReconnectCount++;
-                            attemptCount = _currentAttempt;
-                            _currentAttempt = 0;
-                            _reconnectStartTime = null;
-                            _lastError = null;
+                                Interlocked.Increment(ref _totalReconnectCount);
+                            attemptCount = currentAttempt;
+                            Interlocked.Exchange(ref _currentAttempt, 0);
+                            Interlocked.Exchange(ref _reconnectStartTimeTicks, 0);
+                            Volatile.Write(ref _lastError, null);
                             lastError = null;
                             break;
                         }
@@ -210,9 +230,9 @@ public class ReconnectionOrchestrator : IReconnectionOrchestrator, IAsyncDisposa
                     }
                     catch (Exception ex)
                     {
-                        _lastError = ex;
+                        Volatile.Write(ref _lastError, ex);
                         lastError = ex;
-                        _logger.LogWarning(ex, "第 {Attempt} 次重连尝试失败", _currentAttempt);
+                        _logger.LogWarning(ex, "第 {Attempt} 次重连尝试失败", currentAttempt);
                     }
                 }
             }
@@ -250,12 +270,18 @@ public class ReconnectionOrchestrator : IReconnectionOrchestrator, IAsyncDisposa
     /// </summary>
     /// <remarks>
     /// F3 修复：同时清除熔断标志，恢复正常重连能力。
+    /// <para>
+    /// WS2-12：本方法由 <c>Connected</c> 事件回调触发，且在
+    /// <c>ReconnectAsync → StartAsync → ConnectAsync</c> 调用链内——此时外层正持有
+    /// <c>_reconnectLock</c>，因此**禁止**改为"取锁后统一更新字段"（必然自死锁）。
+    /// 字段更新一律使用 <see cref="Interlocked"/>/<see cref="Volatile"/> 保证单字段原子性。
+    /// </para>
     /// </remarks>
     public void ResetReconnectCounter()
     {
-        _currentAttempt = 0;
-        _reconnectStartTime = null;
-        _lastError = null;
+        Interlocked.Exchange(ref _currentAttempt, 0);
+        Interlocked.Exchange(ref _reconnectStartTimeTicks, 0);
+        Volatile.Write(ref _lastError, null);
 
         // F3：连接成功，清除熔断标志
         if (_circuitOpen)
@@ -271,20 +297,42 @@ public class ReconnectionOrchestrator : IReconnectionOrchestrator, IAsyncDisposa
     /// 获取当前重连状态
     /// </summary>
     /// <returns>重连状态信息</returns>
+    /// <remarks>
+    /// WS2-12：各字段以原子读取值。本方法为**观测接口**，不保证跨字段一致性快照
+    /// （跨字段一致性需要取锁，而写侧存在无法取锁的路径，故该保证不可达）。
+    /// </remarks>
     public ReconnectState GetReconnectState()
     {
         return new ReconnectState
         {
             // I12：单一真源——"是否正在重连"直接由闸门派生（不再维护第二个布尔字段）
             IsReconnecting = Volatile.Read(ref _reconnectGate) == 1,
-            CurrentAttempt = _currentAttempt,
-            TotalReconnectCount = _options.EnableReconnectMetrics ? _totalReconnectCount : 0,
-            LastReconnectAttempt = _lastReconnectAttempt,
-            ReconnectStartTime = _reconnectStartTime,
-            LastReconnectReason = _lastReconnectReason,
-            LastError = _lastError,
+            CurrentAttempt = Volatile.Read(ref _currentAttempt),
+            TotalReconnectCount = _options.EnableReconnectMetrics ? Volatile.Read(ref _totalReconnectCount) : 0,
+            LastReconnectAttempt = ReadLastReconnectAttempt(),
+            ReconnectStartTime = ReadReconnectStartTime(),
+            LastReconnectReason = Volatile.Read(ref _lastReconnectReason),
+            LastError = Volatile.Read(ref _lastError),
             IsCircuitOpen = _circuitOpen
         };
+    }
+
+    /// <summary>
+    /// 读取"最近一次重连尝试时刻"（Ticks=0 映射为 <see cref="DateTime.MinValue"/>）。
+    /// </summary>
+    private DateTime ReadLastReconnectAttempt()
+    {
+        var ticks = Interlocked.Read(ref _lastReconnectAttemptTicks);
+        return ticks == 0 ? DateTime.MinValue : new DateTime(ticks, DateTimeKind.Utc);
+    }
+
+    /// <summary>
+    /// 读取"本轮重连起始时刻"（Ticks=0 表示当前无在途轮次）。
+    /// </summary>
+    private DateTime? ReadReconnectStartTime()
+    {
+        var ticks = Interlocked.Read(ref _reconnectStartTimeTicks);
+        return ticks == 0 ? null : new DateTime(ticks, DateTimeKind.Utc);
     }
 
     private void OnReconnectSucceeded(int attemptCount)

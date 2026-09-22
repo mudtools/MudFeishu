@@ -882,6 +882,90 @@ public class ConnectionService
 }
 ```
 
+### Connection Token Contract (Breaking behavior change)
+
+The `cancellationToken` passed to `ConnectAsync(endpoint, [appAccessToken,] cancellationToken)`
+**only governs the connection-establishment phase** (handshake + authentication).
+It does **not** represent the connection lifetime:
+
+- Cancelling it after a successful connect will **not** stop the receive loop or the heartbeat
+  (previously it was linked as the lifetime token, so cancelling it silently stopped frame reading);
+- To terminate a connection use `DisconnectAsync()` / `DisposeAsync()`; to recover use
+  `IFeishuWebSocketManager.ReconnectAsync()`.
+
+> Background: the old behavior could produce a **zombie connection** (`WebSocketState.Open` but no
+> frames are read: no events, no disconnect notification, recovery only via health-check polling).
+> Now every termination path raises a disconnect claim, and a liveness probe covers externally silent failures.
+
+### `MessageReceived` Threading Contract (Breaking behavior change)
+
+`MessageReceived` is an **observation hook** (logging/metrics), not a business entry point:
+
+| Aspect | Current contract |
+| --- | --- |
+| Dispatch thread | **Not** the receive loop thread — it is dispatched inside the leased processing task |
+| Concurrency | **May run concurrently** (bounded by `MaxConcurrentHandlers`) |
+| Ordering | Order relative to frame arrival is **not guaranteed** |
+| Blocking | A blocking subscriber only occupies one concurrency slot (backpressure); it does **not** block the receive pipeline |
+
+> For ordered processing protected by `MessageHandlerTimeoutMs`, use `IMessageHandler`
+> (dispatched via `MessageRouter`) instead.
+
+### Liveness Probe & Health Check
+
+`FeishuWebSocketHealthCheck` now exposes liveness fields in its `data` payload:
+
+| Field | Meaning |
+| --- | --- |
+| `receive_loop_alive` | Whether the receive loop task is still running |
+| `last_receive_utc` | Timestamp of the last received frame (`never` if none) |
+| `idle_ms` | Milliseconds since the last received frame (`-1` = no sample yet) |
+| `is_zombie` | `true` = zombie state (`State == Open` while the receive loop has ended) ⇒ `Unhealthy` |
+
+> Only the deterministic contradiction "`State == Open` **and** receive loop ended" is treated as a zombie.
+> A merely idle connection is **not** reported unhealthy (an idle long connection legitimately receives no frames).
+> Zombie state also triggers an automatic reconnect from the hosted service's periodic check.
+
+Liveness is also exported as OTel metrics (dimension `feishu.app_key`), so it can be alerted on as a **trend**:
+
+| Metric | Meaning |
+| --- | --- |
+| `feishu.websocket.receive.idle_ms` | Milliseconds since the last received frame (`-1` = no sample yet) |
+| `feishu.websocket.receive.loop_alive` | `1` = receive loop running, `0` = ended |
+| `feishu.websocket.zombie` | `1` = zombie connection (`State == Open` while the receive loop ended) |
+| `feishu.websocket.frames.discarded` | Controlled frame/message discards, split by `reason` |
+
+> `frames.discarded` reasons: `fragment_size_exceeded`, `drain_bound_exceeded`, `auth_gate_timeout`,
+> `concurrency_rejected`. Discards are a **precursor to event loss** — alert on any sustained increase.
+> Note that `receive.idle_ms` growing on its own is normal for an idle long connection
+> (the heartbeat is client→server only); it is only actionable together with `zombie`/`loop_alive`.
+
+### Configuration Upper Bounds (fail-fast at startup)
+
+`FeishuWebSocketOptions.Validate()` now enforces **both** lower and upper bounds:
+
+| Option | Upper bound |
+| --- | --- |
+| `Reconnect.TotalBudget` | 7 days |
+| `Reconnect.BaseDelayMs` / `Reconnect.MaxDelayMs` | 1 hour |
+| `MessageSizeLimits.MaxTextMessageSize` | 10 MB |
+| `ConnectionTimeoutMs` / `AuthTimeoutMs` / `AuthGateTimeoutMs` | 5 minutes |
+
+> Migration: if an existing deployment uses larger values, reduce them to fit.
+> The bounds prevent configuration values from exceeding implementation-level representable ranges
+> (e.g. an over-long duration handed to `CancellationTokenSource` throws inside the asynchronous
+> reconnect path, which surfaces as a **silently disabled automatic reconnect**).
+
+### `StartReceivingAsync` Is Deprecated
+
+The receive loop is managed by `ConnectAsync` — do **not** call
+`IFeishuWebSocketClient.StartReceivingAsync` explicitly:
+
+- Throws `InvalidOperationException` when not connected;
+- Is an idempotent no-op (with a warning log) when a loop is already running.
+
+> Migration: simply remove the call; use `IFeishuWebSocketManager.ReconnectAsync()` to recover receiving.
+
 ### Message Sequence Validation
 
 Built-in `MessageSequenceValidator` detects message replay and loss:

@@ -43,8 +43,22 @@ public interface IFeishuWebSocketClient : IAsyncDisposable, IDisposable
     event EventHandler<WebSocketCloseEventArgs>? Disconnected;
 
     /// <summary>
-    /// 接收到消息事件
+    /// 接收到消息事件（**观测钩子**，非处理入口）
     /// </summary>
+    /// <remarks>
+    /// <b>线程契约（WS2-08 行为变更，请勿沿用旧假设）</b>：
+    /// <list type="bullet">
+    /// <item>本事件<b>不在接收循环线程上派发</b>，而是在取得并发租约后的处理任务体内派发；</item>
+    /// <item>因此<b>可能并发执行</b>（受 <see cref="FeishuWebSocketOptions.MaxConcurrentHandlers"/> 约束），
+    /// 且<b>不保证与帧到达顺序一致</b>；</item>
+    /// <item>回调内可安全执行同步阻塞代码——它只会占用一个并发槽位（形成反压），
+    /// 不会阻塞接收管道（这是本变更的目的）。</item>
+    /// </list>
+    /// <para>
+    /// <b>需要顺序或需要受 <c>MessageHandlerTimeoutMs</c> 保护的业务处理时，请改用
+    /// <c>IMessageHandler</c></b>（经 <c>MessageRouter</c> 分发）；本事件只应用于日志、指标等观测用途。
+    /// </para>
+    /// </remarks>
     event EventHandler<WebSocketMessageEventArgs>? MessageReceived;
 
     /// <summary>
@@ -67,7 +81,11 @@ public interface IFeishuWebSocketClient : IAsyncDisposable, IDisposable
     /// 建立WebSocket连接
     /// </summary>
     /// <param name="endpoint">WebSocket端点信息</param>
-    /// <param name="cancellationToken">取消令牌</param>
+    /// <param name="cancellationToken">
+    /// <b>仅约束建连阶段</b>（握手 + 认证），<b>不构成连接生命周期</b>（架构不变量 I15）：
+    /// 连接成功后再取消该令牌不会中断接收循环或心跳。终止连接请调用
+    /// <see cref="DisconnectAsync"/> 或 <c>DisposeAsync</c>。
+    /// </param>
     /// <returns>连接任务</returns>
 #if NET6_0_OR_GREATER
     [RequiresUnreferencedCode("反射式System.Text.Json序列化在裁剪下无法静态分析目标类型成员")]
@@ -108,16 +126,22 @@ public interface IFeishuWebSocketClient : IAsyncDisposable, IDisposable
     Task SendMessageAsync(string message, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 开始接收消息
+    /// 开始接收消息（**已弃用**：接收循环由 <see cref="ConnectAsync(WsEndpointResult, CancellationToken)"/> 统一管理）
     /// </summary>
     /// <param name="cancellationToken">取消令牌</param>
     /// <returns>接收任务</returns>
+    /// <remarks>
+    /// WS2-02 收口：未连接时抛 <see cref="InvalidOperationException"/>；已有接收循环在运行时为
+    /// 幂等 no-op 并记录告警。需要立即恢复接收循环请调用
+    /// <c>IFeishuWebSocketManager.ReconnectAsync</c>。
+    /// </remarks>
 #if NET6_0_OR_GREATER
     [RequiresUnreferencedCode("反射式System.Text.Json序列化在裁剪下无法静态分析目标类型成员")]
 #endif
 #if NET7_0_OR_GREATER
     [RequiresDynamicCode("反射式System.Text.Json序列化在 AOT/动态代码生成环境下不可用")]
 #endif
+    [Obsolete("接收循环由 ConnectAsync 统一管理，无需显式调用。若需重连请调用 IFeishuWebSocketManager.ReconnectAsync。")]
     Task StartReceivingAsync(CancellationToken cancellationToken = default);
 
 }

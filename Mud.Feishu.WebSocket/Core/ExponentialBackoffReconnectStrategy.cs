@@ -50,32 +50,48 @@ public class ExponentialBackoffReconnectStrategy : IReconnectStrategy
     }
 
     /// <summary>
-    /// 计算延迟时间：delay = baseDelay * (2^attempt) + jitter，不超过最大延迟
+    /// 计算延迟时间：delay = min(baseDelay * (2^attempt), maxDelay) + jitter（抖动为 delay 的 0~25%）
     /// </summary>
     /// <param name="attemptCount">当前尝试次数（从 1 开始）</param>
     /// <returns>延迟时间</returns>
+    /// <remarks>
+    /// <b>顺序约束（WS2-04 ④）</b>：必须"**先在 <c>double</c> 域钳制到 <c>MaxDelayMs</c>，再构造 <see cref="TimeSpan"/>**"。
+    /// 此前实现先 <c>TimeSpan.FromMilliseconds(指数放大后的毫秒)</c> 再比较大小——当
+    /// <c>BaseDelayMs × 2^attempt</c> 超过 <see cref="TimeSpan.MaxValue"/> 的毫秒数（约 9.22e14）时，
+    /// <see cref="TimeSpan.FromMilliseconds(double)"/> 直接抛 <see cref="OverflowException"/>，
+    /// 异常穿透整轮重连（依赖 <c>ReconnectOrchestrator</c> 的 catch 才不至于崩溃）。
+    /// 现在溢出点在钳制之后，数学上不可能到达。
+    /// <para>
+    /// 另有 P2-6 修复：指数本身也必须钳制——<c>Math.Pow(2, attemptCount - 1)</c> 在
+    /// <c>attemptCount &gt; 1024</c> 时得到 <c>double.PositiveInfinity</c>
+    /// （触发条件：<c>MaxAttempts = 0</c> 无限重连 + 长时间断网）。
+    /// </para>
+    /// </remarks>
     public TimeSpan CalculateDelay(int attemptCount)
     {
         if (attemptCount < 1)
             throw new ArgumentOutOfRangeException(nameof(attemptCount), "尝试次数必须大于0");
 
-        var baseDelay = TimeSpan.FromMilliseconds(_options.Reconnect.BaseDelayMs);
-        // P2-6 修复：指数必须钳制。此前 Math.Pow(2, attemptCount - 1) 在 attemptCount > 1024 时会得到
-        // double.PositiveInfinity，TimeSpan.FromMilliseconds(∞) 抛 OverflowException，使整轮重连被异常中止
-        // （触发条件：MaxReconnectAttempts = 0 无限重连 + 较大的 MaxTotalReconnectTime + 长时断网）。
-        var clampedExponent = Math.Min(attemptCount - 1, MaxExponent);
-        var exponentialDelay = TimeSpan.FromMilliseconds(
-            baseDelay.TotalMilliseconds * Math.Pow(2, clampedExponent));
-        var maxDelay = TimeSpan.FromMilliseconds(_options.Reconnect.MaxDelayMs);
+        var baseDelayMs = (double)_options.Reconnect.BaseDelayMs;
+        var maxDelayMs = (double)_options.Reconnect.MaxDelayMs;
 
-        var delay = exponentialDelay > maxDelay ? maxDelay : exponentialDelay;
+        // P2-6：指数钳制（避免 double.PositiveInfinity）
+        var clampedExponent = Math.Min(attemptCount - 1, MaxExponent);
+        var exponentialDelayMs = baseDelayMs * Math.Pow(2, clampedExponent);
+
+        // WS2-04 ④：在 double 域完成钳制，再构造 TimeSpan —— 消除"溢出先于钳制"的顺序缺陷
+        var clampedDelayMs = exponentialDelayMs < 0 || exponentialDelayMs > maxDelayMs
+            ? maxDelayMs
+            : exponentialDelayMs;
 
         // 添加随机抖动（0~25% 的延迟），避免多个客户端同时重连造成雪崩
-        var jitterMs = JitterRandom.NextDouble() * delay.TotalMilliseconds * 0.25;
-        delay = TimeSpan.FromMilliseconds(delay.TotalMilliseconds + jitterMs);
+        var jitterMs = JitterRandom.NextDouble() * clampedDelayMs * 0.25;
+        var finalDelayMs = clampedDelayMs + jitterMs;
+
+        var delay = TimeSpan.FromMilliseconds(finalDelayMs);
 
         _logger?.LogDebug("计算重连延迟: 尝试次数={Attempt}, 基础延迟={BaseDelay}ms, 指数延迟={ExponentialDelay}ms, 抖动={Jitter}ms, 最终延迟={FinalDelay}ms",
-            attemptCount, baseDelay.TotalMilliseconds, exponentialDelay.TotalMilliseconds, jitterMs, delay.TotalMilliseconds);
+            attemptCount, baseDelayMs, exponentialDelayMs, jitterMs, finalDelayMs);
 
         return delay;
     }

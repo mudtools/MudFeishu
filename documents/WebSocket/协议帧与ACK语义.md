@@ -46,12 +46,19 @@
 
 ## 4. 去重链路
 
-| 层 | 键 | 行为 |
-| --- | --- | --- |
-| 序号验证 `MessageSequenceValidator` | `SeqID` | 重复/回退检测（可配置跳跃阈值，默认禁用） |
-| 事件去重 `IFeishuEventDeduplicator` | `event_id` | 内存或 Redis（`EventDeduplication.Mode`） |
-| 统一去重 `IUnifiedDeduplicationMiddleware` | `event_id` + `SeqID` | 优先路径；命中 `ShouldSkip` → 回 ACK(200) |
-| SeqID 去重 `IFeishuSeqIDDeduplicator` | `SeqID`（含 scopeKey 隔离） | 未接入统一去重时的独立路径 |
+| 层 | 键 | 隔离范围 | 行为 |
+| --- | --- | --- | --- |
+| 序号验证 `MessageSequenceValidator` | `SeqID` | **单连接实例**（重连时 `Reset()`） | 重复/回退检测（可配置跳跃阈值，默认禁用） |
+| 事件去重 `IFeishuEventDeduplicator` | `event_id` + **AppKey** | **按 AppKey 隔离**（`TryMarkAsProcessingAsync`/`MarkAsCompletedAsync`/`RollbackProcessingAsync` 均带 AppKey） | 内存或 Redis（`EventDeduplication.Mode`） |
+| 统一去重 `IUnifiedDeduplicationMiddleware` | `event_id` + `SeqID` | 由中间件实现决定 | 优先路径；命中 `ShouldSkip` → 回 ACK(200) |
+| SeqID 去重 `IFeishuSeqIDDeduplicator` | `SeqID` | **进程内全局集合，无租户/应用隔离** | 未接入统一去重时的独立路径 |
+
+> **口径纠正（R2/WS2-10）**：`IFeishuSeqIDDeduplicator`（`FeishuSeqIDDeduplicator` / `MemoryDeduplicator<ulong>`）
+> 的键就是裸 `SeqID`——**不存在 `scopeKey` 隔离**。多实例部署时各实例各自去重（互不可见），
+> 单实例内部也不区分租户：若同一进程内并存多条连接（当前 DI 形态为**非 keyed 单例**，
+> 通常不可能），其 `SeqID` 会互相判重。
+> 需要**真正具备隔离**的一层请用**事件级去重**（`event_id` + AppKey）。
+> 多客户端同容器场景的接口演进（为 `IFeishuSeqIDDeduplicator` 增 `scopeKey`）已登记为后续项，本轮不实施。
 
 失败回滚：处理失败时回滚 `SeqID` 标记（`RollbackAsync`），使服务端重投能够被重新处理。
 
@@ -66,6 +73,28 @@
 - 默认派生值（3 × 字符上限）恰好等于旧"字符语义"的字节上界 ⇒ 属**放宽**，现有一切合法消息继续通过。
 - 默认配置下"字符校验先失败"是常态：字节分支只在显式收紧 `MaxTextMessageBytes` 时才会触发。
 - 超限的二进制消息在写入内存流**之前**被拦截并丢弃（不回 ACK；服务端会按超时重投）。
+- 派生上限为 `3 × MaxTextMessageSize`，以 `int.MaxValue` 饱和（R2/P2-1 修复此前会整型溢出为负数）。
+  配置面另有上界 `MaxTextMessageSize ≤ 10MB`（启动期 `Validate()` fail-fast）。
+
+## 5.1 分片超限的丢弃语义（R2/WS2-03 变更）
+
+**"丢弃"必须在消息边界上完成。** WebSocket 是消息边界化的帧协议：一条消息由若干分片（`EndOfMessage=false`）
+加最后一个 `EndOfMessage=true` 的分片组成。分片重组（`HandleFragmentedMessageAsync`）在超限时若直接
+`return`，本条消息的**剩余分片**会在下一轮 `ReceiveAsync` 中被当作**新消息**消费——这些字节既不构成
+合法 protobuf/JSON，又会污染 `MessageSequenceValidator` 游标与去重状态（`SequenceGapThreshold` 默认 0，
+没有任何跳跃检测能发现它）。
+
+因此现行为：
+
+| 场景 | 行为 |
+| --- | --- |
+| 首帧或累积超限 | 记 `Error`（`ErrorType = FragmentSizeExceeded`）→ **排空至 `EndOfMessage`** → 丢弃 → 连接**保持可用** |
+| 排空期间收到关闭帧 | 完成关闭握手并退出（连接即将终止，边界已无意义） |
+| 排空期间连接失效/被取消 | 中止排空并返回（由接收循环的异常/取消路径收口） |
+| 排空超过上界（1024 帧 / 64MB 仍无 `EndOfMessage`） | 判定协议层异常 → `Abort` 连接 → 接收循环异常退出 → 触发重连（重连会重置序号验证器与半包状态） |
+| 收到关闭帧（正常终止） | **允许不排空**直接返回（这是唯一例外） |
+
+排空上界的存在是必要的：恶意/异常对端可以持续投递超限分片让排空永不结束。
 
 ## 6. 背压对 ACK 的影响
 

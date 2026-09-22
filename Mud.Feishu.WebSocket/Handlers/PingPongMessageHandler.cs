@@ -19,7 +19,8 @@ namespace Mud.Feishu.WebSocket.Handlers;
 public class PingPongMessageHandler : JsonMessageHandler
 {
     private readonly Func<string, Task> _sendMessageCallback;
-    private readonly FeishuWebSocketOptions _options;
+    // WS2-12：删除死字段 _options（构造期赋值后从未被读取；编译期无警告但属可读性负担）。
+    // 构造签名保持 `FeishuWebSocketOptions options`（源兼容，未发布版本亦不构成破坏性变更）。
 
     /// <summary>
     /// 接收到 Pong 消息时触发的事件
@@ -30,16 +31,18 @@ public class PingPongMessageHandler : JsonMessageHandler
     /// 初始化Ping/Pong消息处理器
     /// </summary>
     /// <param name="logger">日志记录器</param>
-    /// <param name="options">WebSocket配置选项</param>
     /// <param name="sendMessageCallback">发送消息回调函数</param>
+    /// <remarks>
+    /// WS2-12：删除 <c>FeishuWebSocketOptions options</c> 参数——它的唯一去向是一个从不被读取的
+    /// 私有字段，对行为零影响。保留该参数会让调用方误以为 Ping/Pong 处理受配置影响
+    /// （实际 Ping 响应构造与心跳间隔无关）。模块未发布，无源兼容包袱。
+    /// </remarks>
     public PingPongMessageHandler(
         ILogger<PingPongMessageHandler> logger,
-        FeishuWebSocketOptions options,
         Func<string, Task> sendMessageCallback)
         : base(logger)
     {
         _sendMessageCallback = sendMessageCallback ?? throw new ArgumentNullException(nameof(sendMessageCallback));
-        _options = options;
     }
     /// <inheritdoc/>
     public override bool CanHandle(string messageType)

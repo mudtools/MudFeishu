@@ -86,20 +86,56 @@ internal static class TokenKeyBuilder
     /// 构建用于 SCAN 的租户键模式（通配 tokenType 与 access/refresh）。
     /// </summary>
     internal static string TenantScanPattern(string keyPrefix)
-        => $"{NormalizePrefix(keyPrefix)}{Separator}*";
+        => $"{TenantScanPatternLiteral(keyPrefix)}*";
 
     /// <summary>
     /// 构建用于 SCAN 的用户键模式（通配 tokenType 与 access/refresh）。
     /// </summary>
     internal static string UserScanPattern(string keyPrefix, string userId)
-        => $"{NormalizePrefix(keyPrefix)}{Separator}user{Separator}{NormalizeSegment(userId)}{Separator}*";
+        => $"{UserScanPatternLiteral(keyPrefix, userId)}*";
 
     /// <summary>
     /// 构建用于 SCAN 的全用户键模式（通配 userId、tokenType 与 access/refresh）。
     /// TMF-01：IFeishuUserTokenStorePurge.ClearAllUsersAsync 的键模式单一出口（D8 契约）。
     /// </summary>
     internal static string AllUsersScanPattern(string keyPrefix)
-        => $"{NormalizePrefix(keyPrefix)}{Separator}user{Separator}*";
+        => $"{AllUsersScanPatternLiteral(keyPrefix)}*";
+
+    /// <summary>
+    /// TMR2-P1-2：返回租户 SCAN 模式的<b>字面量前缀</b>（已规范化，<b>不含</b>尾随通配符）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 供需要"字面量片段 + 后端特有通配语义"两种转义的消费方使用（如
+    /// <c>Mud.Feishu.Redis</c> 需先按 Redis glob 语义对字面量再转义一次，
+    /// 见 <c>RedisGlobPattern.FromLiteralPrefix</c>）。
+    /// </para>
+    /// <para>
+    /// <see cref="TenantScanPattern"/> 保持原语义（规范化前缀 + <c>*</c>），继续作为
+    /// Memory/诊断路径的单一出口。
+    /// </para>
+    /// </remarks>
+    /// <param name="keyPrefix">键前缀（含 appKey 维度，未规范化亦可）。</param>
+    /// <returns>形如 <c>feishu:{appKey}:token:</c> 的规范化字面量前缀。</returns>
+    internal static string TenantScanPatternLiteral(string keyPrefix)
+        => $"{NormalizePrefix(keyPrefix)}{Separator}";
+
+    /// <summary>
+    /// TMR2-P1-2：返回指定用户 SCAN 模式的字面量前缀（不含尾随通配符）。
+    /// </summary>
+    /// <param name="keyPrefix">键前缀（含 appKey 维度）。</param>
+    /// <param name="userId">用户唯一标识符。</param>
+    /// <returns>形如 <c>feishu:{appKey}:token:user:{userId}:</c> 的规范化字面量前缀。</returns>
+    internal static string UserScanPatternLiteral(string keyPrefix, string userId)
+        => $"{NormalizePrefix(keyPrefix)}{Separator}user{Separator}{NormalizeSegment(userId)}{Separator}";
+
+    /// <summary>
+    /// TMR2-P1-2：返回全用户 SCAN 模式的字面量前缀（不含尾随通配符）。
+    /// </summary>
+    /// <param name="keyPrefix">键前缀（含 appKey 维度）。</param>
+    /// <returns>形如 <c>feishu:{appKey}:token:user:</c> 的规范化字面量前缀。</returns>
+    internal static string AllUsersScanPatternLiteral(string keyPrefix)
+        => $"{NormalizePrefix(keyPrefix)}{Separator}user{Separator}";
 
     /// <summary>
     /// 尝试从完整键中解析出租户级 tokenType。

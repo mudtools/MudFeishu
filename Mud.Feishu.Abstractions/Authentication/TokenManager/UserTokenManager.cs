@@ -426,9 +426,45 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
         }
     }
 
+    /// <summary>
+    /// TMR2-P1-5：检查本应用的「待清库」门；返回 true 表示本次必须跳过 <c>IUserTokenStore</c> 访问。
+    /// </summary>
+    /// <remarks>
+    /// 与租户路径（<c>FeishuAppTokenManagerBase.ShouldSkipStoreRestoreForPendingPurge</c>）同构：
+    /// 凭据变更清库进行中不得从 store 恢复/使用旧凭据来源的用户令牌（D10）；
+    /// 超时则 fail-open 并记一次 Warning。
+    /// </remarks>
+    /// <returns>true 表示应跳过用户 store 访问。</returns>
+    private bool ShouldSkipUserStoreAccessForPendingPurge()
+    {
+        switch (TokenStorePurgeGate.Query(_options.AppKey))
+        {
+            case TokenStorePurgeGate.PurgeGateState.Pending:
+                _logger.LogDebug(
+                    "凭据变更清库进行中，跳过 IUserTokenStore 访问以避免使用旧凭据来源的用户令牌（D10）。" +
+                    "TokenType: {TokenType}, AppId: {AppId}",
+                    _tokenTypeKey, _options.AppId);
+                return true;
+
+            case TokenStorePurgeGate.PurgeGateState.TimedOut:
+                _logger.LogWarning(
+                    "凭据变更清库门超过 {TimeoutSeconds}s 未撤除，已 fail-open：用户令牌恢复路径重新启用 store 读取，" +
+                    "可能存在旧凭据令牌残留。TokenType: {TokenType}, AppId: {AppId}",
+                    TokenStorePurgeGate.SafetyTimeoutSeconds, _tokenTypeKey, _options.AppId);
+                return false;
+
+            default:
+                return false;
+        }
+    }
+
     private async Task<UserTokenInfo?> TryRestoreFromUserTokenStoreAsync(string userId, CancellationToken cancellationToken)
     {
         if (_userTokenStore == null)
+            return null;
+
+        // TMR2-P1-5：凭据变更清库进行中则跳过 store（D10）。
+        if (ShouldSkipUserStoreAccessForPendingPurge())
             return null;
 
         try
@@ -510,6 +546,11 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
             return cachedInfo;
 
         if (_userTokenStore == null)
+            return null;
+
+        // TMR2-P1-5：凭据变更清库进行中——不得用旧凭据来源的 refresh token 发起 OAuth 交换。
+        // 短路返回 null ⇒ RefreshUserTokenAsync 返回 null（退避），CanRefreshTokenAsync 返回 false。
+        if (ShouldSkipUserStoreAccessForPendingPurge())
             return null;
 
         try

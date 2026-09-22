@@ -48,12 +48,33 @@ public class PerAppRedisTokenStoreFactory : IFeishuTokenStoreFactory
     }
 
     /// <summary>
-    /// 构建指定应用的 Redis 键前缀，与 Memory 路径 <c>feishu:{appKey}:token</c> 对齐。
+    /// 构建指定应用的 Redis 键前缀，与 Memory 路径 <c>feishu:{appKey}:token</c> <b>逐字节一致</b>（D8）。
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// TMR2-P1-2：<b>此处不得预转义</b>——转义/规范化唯一归口
+    /// <c>Mud.Feishu.Abstractions.Authentication.TokenKeyBuilder</c>（由 <see cref="RedisTokenStore"/> /
+    /// <see cref="RedisUserTokenStore"/> 在键构造时调用）。
+    /// </para>
+    /// <para>
+    /// 修复前经 <c>RedisKeyBuilder.Combine</c>（<c>:</c> → <c>\:</c>）产出<b>已转义</b>前缀，
+    /// 再被 <c>TokenKeyBuilder.NormalizePrefix</c> 二次转义（<c>\</c> → <c>\\</c>），导致：
+    /// ① Memory 与 Redis 键布局不再逐字节一致（D8 失真，后端迁移令牌全部不可见）；
+    /// ② SCAN pattern 由同一份双重转义前缀产出，而 Redis glob 把 <c>\\</c> 解释为<b>单个</b>反斜杠，
+    /// 与键中的两个反斜杠不匹配 ⇒ <c>ClearAsync</c> / <c>GetTokenTypesAsync</c> /
+    /// <c>ClearAllUsersAsync</c> 永不命中（凭据变更清库 D10 静默失效）。
+    /// </para>
+    /// <para>
+    /// 长度保护不丢失：<c>TokenKeyBuilder.NormalizePrefix</c> → <c>NormalizeSegment</c> 仍对
+    /// 超过 256 字符的键段抛 <see cref="ArgumentException"/>（原 <c>RedisKeyBuilder.Combine</c> 抛
+    /// <see cref="InvalidOperationException"/>；语义等价，异常类型见 TMR-P2-9 的收敛约定）。
+    /// 空前缀护栏由本方法的 <c>feishu:</c> 固定前缀承担（永不退化为 <c>*</c>，R-01）。
+    /// </para>
+    /// </remarks>
     public static string BuildKeyPrefix(string appKey) =>
         string.IsNullOrWhiteSpace(appKey)
-            ? RedisKeyBuilder.Combine("feishu", "default", "token")
-            : RedisKeyBuilder.Combine("feishu", appKey, "token");
+            ? "feishu:default:token"
+            : $"feishu:{appKey}:token";
 
     /// <inheritdoc />
     public (ITokenStore TokenStore, IUserTokenStore? UserTokenStore) Create(string appKey)

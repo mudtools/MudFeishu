@@ -61,28 +61,45 @@ internal sealed class PerAppFeishuAuthenticationFactory : IFeishuAuthenticationF
 
         var client = _httpClientFactory.CreateBasic(appKey);
 
-        // 使用 ActivatorUtilities 从 DI 构造 IFeishuAuthentication 实例，
-        // 传入 per-app 的 IEnhancedHttpClient 作为构造参数。
-        // 注意：此处使用 ActivatorUtilities.CreateInstance 有 IL2026 风险（AOT 场景），
-        // 若 AOT 门禁不允许，应通过 FeishuAppOptions.EnablePerAppAuthenticationClient=false 降级。
+        // TMR2-P1-1：per-app 客户端必须装配到**真实实现类型**上。
+        // 修复前使用 ActivatorUtilities.CreateInstance<IFeishuAuthentication>(...)——
+        // T 为接口时该方法恒抛 InvalidOperationException（无公共构造可选中），
+        // 于是每次都走 catch 降级到 GetRequiredService<IFeishuAuthentication>()（默认应用端点），
+        // 使 EnablePerAppAuthenticationClient=true（默认）名存实亡：
+        // 非默认应用的取令牌请求被发往默认应用端点（多区域部署下即凭据发往错区域）。
+        //
+        // 生成的实现 Internal.FeishuAuthentication 与本体同程序集，可编译期直引，
+        // 无需反射 ⇒ 无 IL2026/IL3050/IL2072 增量，AOT 与 netstandard2.0 全 TFM 可用。
+        // 构造参数与生成 ctor 顺序一致：
+        //   (IEnhancedHttpClient httpClient, IHttpRequestExecutor executor,
+        //    IHttpResponseCache? cacheProvider = null, IResiliencePolicyResolver? resilienceResolver = null,
+        //    IHttpContentSerializer? contentSerializer = null, ILogger? logger = null)
+        // 生成器若变更参数集，此处**编译期失败**（正向），另有守卫 8 提供更明确的失败信息。
+        //
+        // 依赖解析：IHttpRequestExecutor / IHttpContentSerializer 由 AddMudHttpClient 与
+        // 生成注册（AddAuthenticationWebApiHttpClient）提供；IHttpResponseCache / IResiliencePolicyResolver /
+        // ILogger<T> 为可空可选项，未注册时传 null 与生成类默认值语义一致。
+        // 说明：本工厂为 Singleton 且持有根 IServiceProvider；上述依赖在注册侧均为
+        // Transient/Singleton（非 Scoped），ValidateScopes=true 的容器下解析安全。
         try
         {
-#pragma warning disable IL2050 // ActivatorUtilities.CreateInstance: Types from IServiceClrProvider are statically known
-            return ActivatorUtilities.CreateInstance<IFeishuAuthentication>(
-                _serviceProvider,
-                client);
-#pragma warning restore IL2050
+            return new Internal.FeishuAuthentication(
+                client,
+                _serviceProvider.GetRequiredService<IHttpRequestExecutor>(),
+                _serviceProvider.GetService<IHttpResponseCache>(),
+                _serviceProvider.GetService<IResiliencePolicyResolver>(),
+                _serviceProvider.GetService<IHttpContentSerializer>(),
+                _serviceProvider.GetService<ILogger<Internal.FeishuAuthentication>>());
         }
-        catch (InvalidOperationException)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            // 回退路径：IFeishuAuthentication 注册为 Mock 或已实例化的 Singleton，
-            // ActivatorUtilities 无法构造。回退到 DI 解析已注册实例。
-            // 此路径下认证请求使用默认应用端点（与 EnablePerAppAuthenticationClient=false 行为一致）。
-            _logger?.LogWarning(
-                "无法通过 ActivatorUtilities 构造 IFeishuAuthentication 实例（类型为接口或抽象类），" +
-                "已回退到 DI 单例。应用 {AppKey} 的认证请求将使用默认应用端点。",
+            // 装配失败必须显式失败（fail-fast），不得静默回退到默认应用端点——
+            // “装配不上就用错端点”正是本缺陷的原始形态。此处仅补充 AppKey 上下文以便定位。
+            _logger?.LogError(ex,
+                "per-app 认证客户端装配失败（应用 {AppKey}）。请检查 IHttpRequestExecutor 等基础服务是否已注册" +
+                "（AddFeishuApp 会注册），或改用 FeishuAppOptions.EnablePerAppAuthenticationClient=false 显式选择默认端点。",
                 appKey);
-            return _serviceProvider.GetRequiredService<IFeishuAuthentication>();
+            throw;
         }
     }
 }

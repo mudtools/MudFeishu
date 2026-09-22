@@ -128,6 +128,15 @@ public class RedisUserTokenStore : UserTokenStoreBase, IFeishuUserTokenStorePurg
     protected override string BuildUserRefreshTokenKey(string userId, string tokenType)
         => TokenKeyBuilder.UserRefreshKey(_keyPrefix, userId, tokenType);
 
+    /// <summary>
+    /// TMR2-P1-2：指定用户的 SCAN pattern —— <c>TokenKeyBuilder</c> 字面量前缀 +
+    /// Redis glob 字面量转义。
+    /// </summary>
+    /// <param name="userId">用户唯一标识符。</param>
+    /// <returns>可直接用于 <c>Keys(pattern:)</c> 的 pattern。</returns>
+    private string BuildUserScanPattern(string userId)
+        => RedisGlobPattern.FromLiteralPrefix(TokenKeyBuilder.UserScanPatternLiteral(_keyPrefix, userId));
+
     /// <inheritdoc />
     /// <remarks>
     /// T-M2-6（R-10）：Cluster 化扫描——遍历全部主节点聚合 SCAN。
@@ -135,7 +144,7 @@ public class RedisUserTokenStore : UserTokenStoreBase, IFeishuUserTokenStorePurg
     /// </remarks>
     public override async Task<IEnumerable<string>> GetTokenTypesAsync(string userId, CancellationToken cancellationToken = default)
     {
-        var pattern = TokenKeyBuilder.UserScanPattern(_keyPrefix, userId);
+        var pattern = BuildUserScanPattern(userId);
         var tokenTypes = new List<string>();
 
         foreach (var server in RedisStoreHelper.GetServers(_redis))
@@ -165,7 +174,7 @@ public class RedisUserTokenStore : UserTokenStoreBase, IFeishuUserTokenStorePurg
     /// </remarks>
     public override async Task ClearUserAsync(string userId, CancellationToken cancellationToken = default)
     {
-        var pattern = TokenKeyBuilder.UserScanPattern(_keyPrefix, userId);
+        var pattern = BuildUserScanPattern(userId);
         var db = _redis.GetDatabase();
 
         foreach (var server in RedisStoreHelper.GetServers(_redis))
@@ -185,13 +194,14 @@ public class RedisUserTokenStore : UserTokenStoreBase, IFeishuUserTokenStorePurg
     /// <inheritdoc />
     /// <remarks>
     /// TMF-01（D10）：凭据变更清库的全用户删除能力——SCAN 全用户键模式
-    /// （<see cref="TokenKeyBuilder.AllUsersScanPattern"/>，通配 userId/tokenType/access|refresh）
+    /// （<see cref="TokenKeyBuilder.AllUsersScanPatternLiteral"/>，通配 userId/tokenType/access|refresh）
     /// 逐键删除，Cluster 化遍历模式与 <see cref="ClearUserAsync"/> 一致。
     /// 与并发写入之间存在固有残余窗口（SCAN 语义）。
+    /// TMR2-P1-2：pattern 经 <see cref="RedisGlobPattern"/> 字面量转义（否则含 <c>:</c>/<c>\</c> 的 appKey 永不命中）。
     /// </remarks>
     public async Task ClearAllUsersAsync(CancellationToken cancellationToken = default)
     {
-        var pattern = TokenKeyBuilder.AllUsersScanPattern(_keyPrefix);
+        var pattern = RedisGlobPattern.FromLiteralPrefix(TokenKeyBuilder.AllUsersScanPatternLiteral(_keyPrefix));
         var db = _redis.GetDatabase();
 
         foreach (var server in RedisStoreHelper.GetServers(_redis))

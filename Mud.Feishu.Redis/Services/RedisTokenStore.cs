@@ -120,7 +120,7 @@ public class RedisTokenStore : ITokenStore
     /// </remarks>
     public async Task<IEnumerable<string>> GetTokenTypesAsync(CancellationToken cancellationToken = default)
     {
-        var pattern = TokenKeyBuilder.TenantScanPattern(_keyPrefix);
+        var pattern = BuildTenantScanPattern();
         var tokenTypes = new List<string>();
 
         // T-M2-6：遍历全部主节点
@@ -156,7 +156,7 @@ public class RedisTokenStore : ITokenStore
     /// </remarks>
     public async Task ClearAsync(CancellationToken cancellationToken = default)
     {
-        var pattern = TokenKeyBuilder.TenantScanPattern(_keyPrefix);
+        var pattern = BuildTenantScanPattern();
         var db = GetDatabase();
 
         // T-M2-6：遍历全部主节点
@@ -179,4 +179,11 @@ public class RedisTokenStore : ITokenStore
     // TMA2-02 / D8：令牌键改用 TokenKeyBuilder 统一产出，与 Memory 路径逐字节一致。
     private string BuildAccessTokenKey(string tokenType) => TokenKeyBuilder.TenantAccessKey(_keyPrefix, tokenType);
     private string BuildRefreshTokenKey(string tokenType) => TokenKeyBuilder.TenantRefreshKey(_keyPrefix, tokenType);
+
+    /// <summary>
+    /// TMR2-P1-2：租户 SCAN pattern —— 由 <c>TokenKeyBuilder</c> 产出字面量前缀后，
+    /// 再经 Redis glob 字面量转义（<c>\</c> 与 <c>*?[]</c>），否则含转义符/通配符的 appKey 下永不命中。
+    /// </summary>
+    private string BuildTenantScanPattern()
+        => RedisGlobPattern.FromLiteralPrefix(TokenKeyBuilder.TenantScanPatternLiteral(_keyPrefix));
 }

@@ -778,6 +778,26 @@ public class FeishuAppManagerTests
         // Act：凭据变更热更新（PurgeTokenStoreAsync 经工厂新实例清库）
         manager.OnConfigurationChanged(new List<FeishuAppConfig> { changedConfig });
 
+        // TMR2-P1-5：清库不再在 OnChange 回调线程上同步等待（原 Task.Run(...).Wait(10s)），
+        // 故此处以「门撤除」为清库完成信号做**有界轮询**（D10 的"清库完成前不得恢复旧令牌"
+        // 由 TokenStorePurgeGate 在恢复路径短路承担，见 TokenStorePurgeGateIntegrationTests）。
+        try
+        {
+            for (var i = 0;
+                 i < 500 && TokenStorePurgeGate.Query(appKey) == TokenStorePurgeGate.PurgeGateState.Pending;
+                 i++)
+            {
+                await Task.Delay(20);
+            }
+
+            TokenStorePurgeGate.Query(appKey).Should().Be(TokenStorePurgeGate.PurgeGateState.NotPending,
+                "凭据变更清库（Phase-P + 提交后二次）必须在有界时间内完成并撤门");
+        }
+        finally
+        {
+            TokenStorePurgeGate.ResetForTest();
+        }
+
         // Assert：经工厂新实例 B 断言租户+用户令牌均被清除（根因修复的强断言）
         var (storeB, userStoreB) = factory.Create(appKey);
         (await storeB.GetAccessTokenAsync(tokenType, CancellationToken.None)).Should().BeNull(

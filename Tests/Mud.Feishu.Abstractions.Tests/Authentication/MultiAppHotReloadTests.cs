@@ -394,6 +394,40 @@ public class MultiAppHotReloadTests
         manager.HasApp("app2").Should().BeTrue();
     }
 
+    /// <summary>
+    /// TMR2-P1-3：运行时添加的应用一旦被配置<b>正式接管</b>（出现在 incoming 中），
+    /// 其"运行时添加"标记必须被撤销——否则在 <c>RemoveRuntimeAddedAppsOnReload=false</c>（默认）下，
+    /// 该应用即使被配置再次删除也会被静默永久保留（日志还称"运行时添加…已保留"，误导运维）。
+    /// </summary>
+    [Fact]
+    public void RuntimeAddedApp_ShouldBeRemovedByConfig_WhenAdoptedThenDeletedFromConfig()
+    {
+        using var ctx = new ProviderScope(CreateManager(
+            CreateConfig("app1", TestDataFactory.AppConfigs.AppIds.Default, TestDataFactory.AppConfigs.Secrets.Default, isDefault: true)));
+
+        // ① 运行时添加 app3
+        ctx.Manager.AddApp(CreateConfig("app3", TestDataFactory.AppConfigs.AppIds.Hr, TestDataFactory.AppConfigs.Secrets.Hr));
+        ctx.Manager.HasApp("app3").Should().BeTrue();
+
+        // ② 配置正式接管 app3（写入配置源）
+        ctx.Manager.OnConfigurationChanged(new List<FeishuAppConfig>
+        {
+            CreateConfig("app1", TestDataFactory.AppConfigs.AppIds.Default, TestDataFactory.AppConfigs.Secrets.Default, isDefault: true),
+            CreateConfig("app3", TestDataFactory.AppConfigs.AppIds.Hr, TestDataFactory.AppConfigs.Secrets.Hr)
+        });
+        ctx.Manager.HasApp("app3").Should().BeTrue();
+
+        // ③ 配置删除 app3 —— 此时它已是"配置中的应用"，删除必须生效
+        ctx.Manager.OnConfigurationChanged(new List<FeishuAppConfig>
+        {
+            CreateConfig("app1", TestDataFactory.AppConfigs.AppIds.Default, TestDataFactory.AppConfigs.Secrets.Default, isDefault: true)
+        });
+
+        ctx.Manager.HasApp("app3").Should().BeFalse(
+            "配置已正式接管的 AppKey 必须撤销运行时标记，否则配置删除会被 RemoveRuntimeAddedAppsOnReload=false 永久忽略");
+        ctx.Manager.ConfiguredAppKeys.Should().NotContain("app3");
+    }
+
     private sealed class ProviderScope : IDisposable
     {
         public ProviderScope((ServiceProvider Provider, FeishuAppManager Manager) pair)

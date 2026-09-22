@@ -214,23 +214,19 @@ public class HotReloadRaceTests
         });
 
         // TMR2-P1-5：Phase-P 清库不再在 OnChange 回调线程上同步等待（原 Task.Run(...).Wait(10s)），
-        // 故此处以「门撤除」为清库完成信号做**有界轮询**（D10 的"清库完成前不得恢复旧令牌"
-        // 由 TokenStorePurgeGate 在恢复路径短路承担），不依赖固定延时。
-        try
+        // 故此处以「清库效果（access/refresh 键均已消失）」为完成信号做**有界轮询**，不依赖固定延时。
+        // 刻意不以 TokenStorePurgeGate.Query 作为完成信号：门是**进程级静态**状态，而本测试程序集
+        // 默认按测试类并行，其他类的 ResetForTest()（或并发租约归零）可使其提前变为 NotPending，
+        // 轮询于是在清库完成前退出并读到清库中间态（access 已删、refresh 未删——实测偶发失败点）。
+        for (var i = 0; i < 500; i++)
         {
-            for (var i = 0;
-                 i < 500 && TokenStorePurgeGate.Query("hr-app") == TokenStorePurgeGate.PurgeGateState.Pending;
-                 i++)
+            if (await store.GetAccessTokenAsync("tenant:hr-app") is null
+                && await store.GetRefreshTokenAsync("tenant:hr-app") is null)
             {
-                await Task.Delay(20);
+                break;
             }
 
-            TokenStorePurgeGate.Query("hr-app").Should().Be(TokenStorePurgeGate.PurgeGateState.NotPending,
-                "凭据变更清库（Phase-P）必须在有界时间内完成并撤门");
-        }
-        finally
-        {
-            TokenStorePurgeGate.ResetForTest();
+            await Task.Delay(20);
         }
 
         // Assert：旧凭据令牌必须被清除

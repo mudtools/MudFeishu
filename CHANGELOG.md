@@ -1,289 +1,69 @@
 # Mud.Feishu 更新日志
 
-## [未发布]
+## [3.0.0-rc3] - 2026-09-23
 
-### 🔐 Webhook 防重放与多应用隔离（WHF-R3 批次 A）
+> 本版聚焦 **Webhook 多地部署安全加固、令牌/多应用热更新稳定性、Redis 去重与令牌存储正确性、WebSocket 连接可靠性**。包含若干破坏性变更，升级前请务必阅读「升级须知」。
 
-#### ⚠️ 破坏性变更 / 行为改变
+### 🌟 本版亮点
 
-- **生产环境内存 Nonce 去重默认阻断**：未注册分布式 Nonce 去重（`AddFeishuRedisDeduplicators()`）时，
-  生产环境（`ASPNETCORE_ENVIRONMENT=Production`）启动失败。单实例部署可通过
-  `FeishuWebhook:AllowInMemoryNonceDedupInProduction=true` 显式豁免（并输出风险告警）。
-  迁移：接 Redis，或为确认单实例的部署显式设置该键。
-- **多应用配置必须配置 `ExpectedAppId`**：`FeishuWebhook:Apps` 条目数 > 1 时，缺失 `ExpectedAppId` 将启动失败。
-  它是 `EncryptKey` 误配（把 B 应用的密钥填到 A）导致跨应用事件串扰的唯一兜底。单应用部署保持可选。
-- **拦截器中断的 HTTP 语义变更**：拦截（`BeforeHandleAsync` 返回 `false`）由 `500`（可重试）改为 `200`（已消费），
-  事件同时写入去重标记，不再触发飞书重推。若需要"拦截后要求重推"，请设置
-  `FeishuWebhook:InterceptionAckMode=Retryable`（响应 503，不落去重标记）。
-- **全局默认处理器必须是全局注册的处理器**：`Build()` 现在要求至少一个 `AddHandler<T>()`（无 appKey）注册；
-  仅有应用专属处理器（`AddHandler<T>(appKey)`）时启动失败——此前会静默选应用专属处理器作默认处理器，
-  导致其它应用的事件被错误路由（跨应用串扰）。
+- **Webhook 防重放与多应用隔离**：生产环境强制分布式去重、多应用必须声明 `ExpectedAppId`、拦截语义与默认处理器路由收敛，杜绝跨应用串扰与事件永久丢失。
+- **令牌与多应用热更新稳定性**：默认应用桥接改为「解析桥接」（DI 注入立即跟随运行时切换）、per-app 认证客户端真正生效、Memory/Redis 令牌键布局逐字节对齐、`OnConfigurationChanged` 不再阻塞配置回调线程。
+- **Redis 去重与令牌存储正确性**：SeqID 改为容量窗口、`ClearCacheAsync` 真正删除、`rediss://` 真正启用 TLS、令牌键前缀可配置、运维诊断门面与指标补齐。
+- **WebSocket 连接可靠性**：连接生命周期与调用方 `CancellationToken` 解耦、僵尸连接消除、分片消息边界保护、并发派发与存活/丢弃指标。
 
-#### ✨ 新增
+### ⚠️ 升级须知（破坏性变更 / 必须处理）
 
-- `FeishuWebhook:AllowInMemoryNonceDedupInProduction`（默认 `false`）
-- `FeishuWebhook:InterceptionAckMode`（默认 `Ack`；`Retryable` 时拦截响应 503）
-- 启动期选项校验（宿主启动失败而非首个请求 500）
-- 指标标签：`intercepted`（改为成功口径）/ `intercepted_retryable`
-- 未匹配 `SupportedEventType` 可观测：应用专属路径全部跳过时输出 Warning + `unhandled` 指标
-- 软超时可观测：实际耗时显著超过 `EventHandlingTimeoutMs` 时输出 Warning + `timeout_overshoot` 指标
+**Webhook**
 
-#### 🐛 修复
+- **生产环境默认禁止内存 Nonce 去重**：未注册分布式去重（`AddFeishuRedisDeduplicators()`）时，生产环境（`ASPNETCORE_ENVIRONMENT=Production`）启动直接失败。单实例部署请显式设置 `FeishuWebhook:AllowInMemoryNonceDedupInProduction=true`（会输出风险告警）。
+- **多应用必须配置 `ExpectedAppId`**：`FeishuWebhook:Apps` 条目 > 1 时缺失该键将启动失败——它是防止 `EncryptKey` 误配导致跨应用串扰的唯一兜底。单应用部署仍可选。
+- **拦截语义变更**：`BeforeHandleAsync` 返回 `false` 由原本的 `500`（可重试）改为 `200`（已消费并落去重标记，飞书不再重推）。如需「拦截后重推」，设置 `FeishuWebhook:InterceptionAckMode=Retryable`（响应 503，不落去重标记）。
+- **必须注册全局默认处理器**：`Build()` 现在要求至少一个不带 appKey 的 `AddHandler<T>()`，否则启动失败（此前会静默用应用专属处理器作默认，导致其它应用事件被错误路由）。
 
-- **修复进程崩溃（P0）**：`FeishuDeduplication:Mode=Distributed` 且未注册 Redis 实现时，去重工厂内
-  `sp.GetService<IFeishuEventDeduplicator>()` 自解析导致无限递归 / `StackOverflowException`（不可捕获）。
-  改为正常构建，并在启动期输出"事件去重仍为内存实现"告警。
-- Nonce 去重基础设施故障（Redis Connection/Timeout）不再伪装成 403 验签失败，
-  改由 `FeishuDeduplicationFatalException`（`FailureKind=Server`）转 **503** 触发飞书重推
-  （此前 403 是终态 → 事件永久丢失，且日志误报"检测到重放攻击"污染安全审计）。
-- 拦截事件不再因 HTTP 500 反复触发飞书重推。
-- 客户端断开（`OperationCanceledException`）不再被吞成"验签失败 403"写向已中止连接
-  （中间件既有 WHF-16 分支现在真正可达）。
-- 处理器 `SupportedEventType` 不匹配不再静默丢失事件（此前仅 Debug 日志、应用专属路径连指标都无）。
+**令牌与多应用**
 
-### 🐛 令牌与多应用管理（TMR2 第一轮，P0/P1）
+- **默认应用上下文桥接语义变更（默认生效）**：注入的 `IFeishuAppContext` 变为无状态转发代理，每次访问都取当前默认应用。若代码强转为具体 `FeishuAppContext`，请设 `FeishuAppOptions.ForwardDefaultAppContext=false` 恢复实例快照语义（需重启生效）。
+- **含特殊字符的 AppKey 键布局变化**：`TokenKeyBuilder` 现转义 glob 元字符（`* ? [ ] : \`）。升级前请确认 AppKey 不含这些字符；否则旧令牌键在热更新后不再匹配。
+- **自定义 `UserTokenStoreBase` 子类**：若覆写了 `KeyPrefix`，需改为委派 `TokenKeyBuilder.BuildKeyPrefix(appKey)`，与 Memory/Redis 端保持一致。
+- **`OnConfigurationChanged` 不再同步等待清库完成**（此前最多约 10s）；需等待的宿主请以清库门撤除为完成信号自行轮询。D10 语义（清库完成前不恢复旧令牌）不受影响。
+- **运行时添加的应用**：一旦由配置声明，其「运行时添加」标记会被撤销，之后从配置删除该应用不再被永久忽略。
 
-- 🛡️ **默认应用上下文 DI 桥接改为「解析桥接」**：注入的 `IFeishuAppContext` 现在每次访问都现取
-  当前默认应用——`SetDefaultApp` / 配置热更新 / `RemoveApp` 后，注入方立即使用新应用的
-  `Config`、令牌管理器与认证客户端（此前为实例快照：继续用旧应用凭据，或指向已被释放的上下文）。
-- 🔐 **per-app 认证客户端真正生效**：修复前 `PerAppFeishuAuthenticationFactory` 恒抛
-  `InvalidOperationException` 并静默降级，导致非默认应用的取令牌请求发往**默认应用端点**
-  （多区域部署下即"凭据发往错区域"）。现改为编译期直引生成实现，装配失败**显式失败**。
-- 🗝️ **Redis 令牌键前缀去预转义 + SCAN pattern glob 字面量转义**：修复前 appKey 含 `:`/`\`
-  时 Memory 与 Redis 键布局不一致（D8 失真），且 SCAN pattern 与键互不匹配 ⇒ 凭据变更清库、
-  键枚举、全用户清库**永不命中**（静默失效）。
-- 🧾 **运行时添加的应用可被配置正确接管**：此前 `AddApp` 引入的应用一旦由配置声明，
-  其"运行时添加"标记不会被撤销 ⇒ 之后从配置删除该应用会被永久忽略
-  （`RemoveRuntimeAddedAppsOnReload = false` 的默认行为下）。
-- 🩺 **OAuth 刷新失败分类收紧**：显式可重试码（5xx / 系统繁忙）优先于错误消息关键字，
-  关键字移除歧义极大的 `refresh token` / `scope`——瞬时故障不再被误判为不可重试而
-  **清空用户的 refresh token**（唯一续期路径）。
-- ⏱️ **凭据变更清库不再阻塞 `IOptionsMonitor.OnChange` 回调线程**：改为「打门（同步、微秒级）+
-  异步清库」，「清库完成前不得恢复旧凭据令牌」（D10）由令牌恢复路径的门短路承担，
-  门带 30s 安全超时（fail-open）。
+**Redis**
 
-### ⚠️ 升级须知（行为变更）
+- **新增 `FeishuRedis:SeqIdWindowCapacity`**（默认 100000，非正值启动失败）：SeqID 去重窗口由「TTL 时间窗口」改为「容量窗口」，`GetCacheCount()` / `GetMaxProcessedSeqId()` 语义收窄为窗口内真实值，不可用于推断剩余去重空间。
+- **新增 `FeishuRedis:TokenKeyPrefix`**（默认 `feishu`）：令牌键前缀由硬编码改为可配置，多环境共用 Redis 时可隔离键空间。
+- 含 `:` / `\` 的 AppKey 旧令牌键不再可达，建议受影响部署轮换 AppSecret（升级后首次取令牌会重新落库）。
 
-- **默认应用桥接语义变更**（默认生效）：注入的 `IFeishuAppContext` 变为无状态转发代理，
-  跟随运行时默认应用切换。若宿主把注入值强转为具体 `FeishuAppContext`，请设
-  `FeishuAppOptions.ForwardDefaultAppContext = false` 恢复实例快照语义（该开关为启动快照，需重启生效）。
-- **`OnConfigurationChanged` 返回不再保证"该轮凭据变更清库已完成"**（此前为同步等待，最多约 10s）。
-  确需等待的宿主请以清库门撤除为完成信号自行轮询；D10 语义（清库完成前不恢复旧令牌）不受影响。
-- **Redis 键布局修正**：appKey 含 `:` 或 `\` 的部署，旧令牌键不再可达（按既有 TTL 自然过期，
-  不会被误读为其他应用令牌）。建议受影响部署**轮换 AppSecret**；升级后首次取令牌会重新落库。
-- `EnablePerAppAuthenticationClient` 不再有"装配不上即静默用默认端点"的降级行为——
-  装配失败会抛异常（fail-fast）。需要自定义/替换 `IFeishuAuthentication` 的宿主，
-  请在 `AddFeishuApp` **之前**注册自定义 `IFeishuAuthenticationFactory`。
+**WebSocket**
 
-### ⚠️ 破坏性变更 / 行为改变（Redis 去重与令牌存储 R2 系列）
-
-- **SeqID Sorted Set 窗口语义由「TTL 时间窗口」改为「容量窗口」（R2-01）**：写入改为
-  `ZADD`(score=SeqID) + `ZREMRANGEBYRANK key 0 -(capacity+1)` + `EXPIRE`。
-  原实现用时间阈值（`now - ttl`，≈1.79e9）比较 SeqID 分数（自增计数器），导致成员**写入即被清除**、
-  `ZCARD` 恒为 0。语义收窄：`GetCacheCount()` = 当前窗口内成员数（≤ `SeqIdWindowCapacity`），
-  `GetMaxProcessedSeqId()` = 窗口内**真实最大值**（此前恒为 0）；
-  两者**不再等于** String 键 TTL 窗口内的去重规模，**不可用于推断剩余去重空间**。
-  新增配置 `FeishuRedis:SeqIdWindowCapacity`（默认 100000，非正值启动期校验失败）。
-- **`ClearCacheAsync()`（SeqID）恢复真实删除（R2-02）**：清理模式统一由 `RedisKeyBuilder.Pattern` 产出，
-  且模式以**分隔符 + `*`** 结尾（段级精确）。历史实现用裸字符串拼接 `{prefix}{scopeKey}*`，
-  缺少 `Combine` 插入的一级 `:`，模式恒不匹配实际键——**一个键都删不掉**（WS 重连时的"重置去重状态"为空操作）。
-  副作用收敛：`scopeKey="a"` 的清理不再越界删除 `scopeKey="ab"` 的键。
-- **新增 `FeishuRedis:TokenKeyPrefix`（默认 `feishu`）**：令牌键前缀由硬编码改为可配置
-  （最终键 `{TokenKeyPrefix}:{appKey}:token:…`），多环境共用 Redis 时可隔离键空间；空值兜底默认值。
-- **具体类型令牌存储键前缀对齐（R2-09）**：`RedisTokenStore`/`RedisUserTokenStore` 按类型解析时，
-  前缀改为「默认应用 + `TokenKeyPrefix`」（与 per-app 工厂一致，此前为 `feishu:token` 固定前缀）。
-  该兼容面**不参与**令牌管理器读取路径（管理器只经 `IFeishuTokenStoreFactory.Create(appKey)`），
-  也**不参与**加密装饰器；若曾依赖类型解析直读旧键，需按新前缀迁移。
-- **集成测试的"环境未启用"由静默通过改为显式跳过（R2-03）**：`Tests/Mud.Feishu.Redis.IntegrationTests`
-  已加入 `Mud.Feishu.slnx`，用例带 `RedisFact`/`RedisTheory` 门控——未设置 `MUDFEISHU_REDIS_TESTS=1`
-  或 Docker 不可用时计入 **skipped**（不再计入 passed），使门禁的 `skipped == 0` 成为有效断言。
-
-### 🐛 修复（Redis 去重与令牌存储 R2 系列）
-
-- **`rediss://` 连接串现在真正启用 TLS（R2-26）**：实测 StackExchange.Redis `ConfigurationOptions.Parse`
-  **不会**因 `rediss://` scheme 自动置 `Ssl`，原实现仅取或配置项 → 按 README 配置
-  `"ServerAddress": "rediss://…"`（未显式 `Ssl=true`）会以明文连接 TLS 端口。现显式按 scheme 推导。
-- **`RedisFeishuEventDistributedDeduplicator` 补声明 `IDisposable`（R2-27）**：类内已有 `Dispose()` 方法
-  但未在基列表声明接口，MS.DI 按实现类型判断可释放性 → 同步 `ServiceProvider.Dispose()`
-  抛「type only implements IAsyncDisposable…」。R-14 声称的修复在 DI 路径上此前并未生效。
-- 事件去重 Lua 补 `tonumber(timestamp)` 护栏（R2-13）：`timestamp` 为 ISO 字符串/非数字时
-  按「仍在处理中」处理，不再抛 Lua 运行时错误（该错误会被包装为不可降级的 `Server` 类异常）。
-- `GetStatusAsync` 改用 Redis 服务端 `TIME` 求差（R2-10），与 Lua 的权威判定同源（此前混用客户端时钟）。
-- 令牌 SCAN 类 API（`GetTokenTypesAsync`/`ClearAsync`/`ClearUserAsync`/`ClearAllUsersAsync`）改为
-  异步枚举 + 分批删除（500/批）（R2-08，落地 R1 ADR-5 §4）：不再同步阻塞 `SyncTimeout` 一页。
-- 健康检查判据修正（R2-12）：**PING 成功即 `Healthy`**；端点级异常只影响
-  `connectedEndpoints`/`totalEndpoints` 计数，不再把 PING 正常的实例整体判 `Unhealthy`。
-- `FeishuRedisFailureKind.InvalidArgument` **首次真实产生**（R2-18）：`RedisKeyBuilder` 对键段长度
-  > 256 字符抛 `FeishuRedisException(InvalidArgument)`；键前缀非法（空 / `*` 开头）仍抛原生
-  `InvalidOperationException`（配置错误）。
-- 清零 Redis 组件 4 处编译警告（CS8602/CS8601/CS8603/CS1591），恢复四 TFM「0 警告 0 错误」。
-
-### ✨ 新增（Redis 去重与令牌存储 R2 系列）
-
-- **运维诊断门面** `Mud.Feishu.Redis.Diagnostics.IRedisDeduplicationDiagnostics.GetSnapshotAsync(CancellationToken)`
-  → `RedisDeduplicationDiagnosticsSnapshot`（`ServerTimeSeconds`、事件/Nonce `*Available` + 键数、
-  SeqID `SeqIdCacheCount`/`SeqIdMaxProcessed`/`SeqIdScopeKey`）。由
-  `AddFeishuRedisDeduplicators`/`AddFeishuRedisTokenStore` 单例注册。
-  **成本警告**：事件/Nonce 计数为全库 SCAN，属运维路径，禁止热路径/高频轮询。
-- **Redis 指标（R2-21）**：`feishu.redis.operation`（Counter；维度 `feishu.redis.command`/
-  `feishu.dedup.type`/`outcome`）、`feishu.redis.operation.duration`（Histogram，ms）、
-  `feishu.redis.scan.keys`（Counter；`outcome=scanned|deleted`）——均挂在既有 `Mud.Feishu` Meter，
-  宿主 `AddMeter(FeishuMetrics.MeterName)` 即可（`Mud.Feishu.OpenTelemetry` 已自动接入）。
-- **健康检查注册可选（R2-12）**：`AddFeishuRedisDeduplicators(...)` 两个重载与
-  `AddFeishuRedisTokenStore(...)` 新增 `bool registerHealthCheck = true`；传 `false` 时不调用
-  `AddHealthChecks()`（避免对未使用健康检查的宿主隐式注册），`RedisHealthCheck` 类型仍注册。
-
-### 📝 文档（Redis 去重与令牌存储 R2 系列）
-
-- `Mud.Feishu.Redis/README.md`：键布局改为**实测样例**（含双冒号与 `\:` 转义）、配置表补
-  `SeqIdWindowCapacity`/`TokenKeyPrefix` 与 1 分钟钳制说明、事件 Hash 字段补 `timeout` 并标注
-  `timestamp` 为服务端 Unix 秒、SeqID 容量窗口与清理范围重写、异常表区分 `InvalidArgument` 与原生
-  `InvalidOperationException`、新增「运维诊断」「可观测性」两节、附录 A 映射表刷新。
-- `Tests/Mud.Feishu.Redis.Tests/README.md`：删除不存在的 `RedisFeishuEventDistributedDeduplicatorWithFallback`
-  章节与目录树条目、按实际结构/技术栈版本刷新、新增「真实 Redis 与显式跳过」一节。
-
-### ⚠️ 破坏性变更 / 行为改变（WebSocket 模块）
-
-- **WebSocket 连接生命周期不再跟随调用方 `CancellationToken`**：
-  `ConnectAsync(endpoint, [appAccessToken,] token)` 的令牌此前被链接为接收循环/心跳的生命周期令牌，
-  取消即导致连接静默停止收帧（socket 仍为 `Open`、无任何断线通知）。现令牌**只约束"建连 + 认证"阶段**；
-  终止连接请调用 `DisconnectAsync()` / `DisposeAsync()`，恢复接收请调用
-  `IFeishuWebSocketManager.ReconnectAsync()`。
-- **接收循环的每一条退出路径都会产生 `Disconnected`**：包括"接收循环因取消退出"。
-  此前该路径完全静默（无事件、只能等 `HealthCheckIntervalMs` 轮询兜底）。
-- **分片消息超限改为"排空至消息边界后丢弃"**：此前直接返回会把被丢弃消息的剩余分片当作**新消息**
-  送入解析链路，污染 WS 消息边界与序号游标。排空有上界（1024 帧 / 64MB），超界即主动断连并重连。
-- **`IFeishuWebSocketClient.StartReceivingAsync` 弃用**：接收循环由 `ConnectAsync` 统一管理；
-  已有循环时为幂等 no-op（记告警），未连接时抛 `InvalidOperationException`。
-- **`MessageReceived` 线程契约变更**：由"接收循环线程同步串行派发、与帧序一致"改为
-  "在并发租约内派发，**可能并发、可能乱序**"。慢订阅者不再阻塞接收管道（只占用一个并发槽位）。
-  需要顺序/超时保护请改用 `IMessageHandler`。
-- **配置上界收紧（启动期 fail-fast）**：`Reconnect.TotalBudget ≤ 7 天`、
-  `Reconnect.BaseDelayMs/MaxDelayMs ≤ 1 小时`、`MessageSizeLimits.MaxTextMessageSize ≤ 10MB`、
-  `ConnectionTimeoutMs/AuthTimeoutMs/AuthGateTimeoutMs ≤ 5 分钟`。
-- **入站报文不再全文入日志**：`MessageReceived`/认证响应的日志改为"长度 + 200 字符脱敏预览"；
-  连接 URL 日志**整体剥离 query**。
-- **`PingPongMessageHandler` / `HeartbeatMessageHandler` 构造函数移除了 `FeishuWebSocketOptions` 参数**
-  （该参数只被赋值给一个从不读取的私有字段）。
+- **连接生命周期不再跟随调用方 `CancellationToken`**：`ConnectAsync` 的令牌只约束「建连 + 认证」；终止连接请调用 `DisconnectAsync()` / `DisposeAsync()`，恢复接收请调用 `ReconnectAsync()`。
+- **`IFeishuWebSocketClient.StartReceivingAsync` 已弃用**：接收循环由 `ConnectAsync` 统一管理；已有循环时为幂等 no-op，未连接时抛 `InvalidOperationException`。
+- **`MessageReceived` 线程契约变更**：由「接收循环同步串行派发」改为「并发租约内派发，可能并发、可能乱序」。需要顺序/超时保护请改用 `IMessageHandler`。
+- **`PingPongMessageHandler` / `HeartbeatMessageHandler` 构造函数移除了 `FeishuWebSocketOptions` 参数。**
+- 配置上界收紧（启动期 fail-fast）：`Reconnect.TotalBudget ≤ 7 天`、`Reconnect.BaseDelayMs/MaxDelayMs ≤ 1 小时`、`MessageSizeLimits.MaxTextMessageSize ≤ 10MB`、`ConnectionTimeoutMs/AuthTimeoutMs/AuthGateTimeoutMs ≤ 5 分钟`。
+- 入站报文不再全文入日志（改为长度 + 200 字符脱敏预览），连接 URL 日志整体剥离 query。
 
 ### ✨ 新增
 
-- 连接存活探针 `ConnectionLiveness`（`ReceiveLoopAlive` / `LastReceiveUtc` / `IdleMs` / `IsZombie`）。
-- **存活与丢弃指标（F1/F2/F5）**：
-  `feishu.websocket.receive.idle_ms`、`feishu.websocket.receive.loop_alive`、`feishu.websocket.zombie`
-  三个 ObservableGauge，以及 `feishu.websocket.frames.discarded` 计数器（`reason` 维度）。
-  `RegisterWebSocketMetricsSource` 新增三个**可选**存活维度提供器（不传则不上报该维度，
-  不会把"未提供"伪造成 0）；丢弃原因常量见 `FeishuMetrics.DiscardReasons`，
-  记录入口 `FeishuMetricsHelper.RecordWebSocketFramesDiscarded`。
-  四个受控丢弃点（首帧超限 / 累积超限 / 排空上界 / 认证闸门 / 背压拒绝）已全部接入计数，
-  不再只写日志（丢弃是事件丢失的前兆，必须可告警）。
-- 健康检查 `data` 新增 `receive_loop_alive` / `last_receive_utc` / `idle_ms` / `is_zombie`；
-  `State == Open` 且接收循环已结束时判 `Unhealthy`，并由后台服务周期性检查触发重连。
-- 架构不变量 **I13–I16**（连接终止路径穷尽占位 / 接收循环原子占位 / 调用方令牌不构成生命周期 /
-  配置双向约束与 `TimeSpan` 钳制）与源码级契约守卫
-  `Tests/Mud.Feishu.WebSocket.Tests/ContractGuards/WebSocketContractGuards.cs`（7 条）。
-- 内部工具 `Core/TimeSpanGuards.cs`（`ClampToCancellationTokenRange` / `ClampToTaskDelayRange`）。
-- `FeishuWebSocketServiceBuilder`：**不再过滤**直接注册到 DI 的 `IFeishuEventInterceptor`
-  （此前会被静默丢弃），仅按建造者登记顺序排序。
+- **Webhook**：`FeishuWebhook:AllowInMemoryNonceDedupInProduction`、`FeishuWebhook:InterceptionAckMode`；启动期选项校验（宿主启动失败而非首个请求 500）；`intercepted` / `intercepted_retryable` 指标标签；未匹配事件类型与软超时可观测（Warning + `unhandled` / `timeout_overshoot` 指标）。
+- **令牌/多应用**：清库链路可观测性 `PurgeTokenStoreFailureEvent`（EventId 5601，宿主可据此建告警）；热更新竞态门闸测试基建 `HotReloadRaceHarness`。
+- **Redis**：运维诊断门面 `IRedisDeduplicationDiagnostics.GetSnapshotAsync` → `RedisDeduplicationDiagnosticsSnapshot`；Redis 指标 `feishu.redis.operation` / `feishu.redis.operation.duration` / `feishu.redis.scan.keys`（挂在既有 `Mud.Feishu` Meter）；健康检查注册可选（`registerHealthCheck=false`）。
+- **WebSocket**：连接存活探针 `ConnectionLiveness`（`ReceiveLoopAlive` / `LastReceiveUtc` / `IdleMs` / `IsZombie`）；存活/丢弃指标 `feishu.websocket.receive.idle_ms` / `.loop_alive` / `.zombie` / `feishu.websocket.frames.discarded`（四个受控丢弃点全部接入计数）；健康检查 `data` 新增 `receive_loop_alive` / `last_receive_utc` / `idle_ms` / `is_zombie`；架构不变量 I13–I16 与 7 条契约守卫；`FeishuWebSocketServiceBuilder` 不再静默丢弃直接注册的 `IFeishuEventInterceptor`。
 
 ### 🐛 修复
 
-- 接收循环因取消退出时无断线信号，形成"连接看似正常但收不到事件"的僵尸连接（P0-1）。
-- `StartReceivingAsync` 幂等守卫"只读不写"（守卫读取的字段由 `ConnectAsync` 赋值），
-  在两类窄窗口下可创建第二条接收循环（P1-1，违反 I14）。
-- 分片超限丢弃不排空导致 WS 消息边界失步（P1-2）。
-- 重连窗口 `CancellationTokenSource(TimeSpan)` 未钳制 → 超长 `TotalBudget` 使自动重连仅记一条
-  Error 后完全不执行（P1-3）；`FeishuWebSocketManager` 的启动超时（配置派生值）同样补齐钳制。
-- 入站完整报文（未脱敏、未截断）写入日志（P1-4）。
-- `FeishuWebSocketManager` 释放 `_startStopLock`（违反 I9）；并发服务旧信号量固定 60s 释放改为
-  `max(60s, 2 × MessageHandlerTimeoutMs)`，消除慢处理器归还租约时的 `ObjectDisposedException`（P1-5）。
-- **客户端 `Connected`/`Disconnected` 事件此前在 `_connectLock` 持有期内派发**
-  ⇒ 回调中同步调用 `DisconnectAsync()`/`ConnectAsync()`（二者都要抢同一把不可重入信号量）会**自锁死锁**
-  （连接管理器层的同问题早前已由 P0-5 修复，客户端层未覆盖）。
-  现改为与 CM 的 `pendingClose` 同构的"**持锁期内入队、出锁后按原顺序冲刷**"，
-  因此：① 回调内可安全发起连接/断开；② 事件顺序（先"旧连接断开"后"新连接建立"）保持不变；
-  ③ 出锁冲刷自带异常隔离（用户回调异常不再从 `ConnectAsync`/`DisconnectAsync` 的 `finally` 逃逸）。
-- **`WebSocketConnectionManager` 的 socket 类型由 `ClientWebSocket` 收敛到抽象 `WebSocket`**，
-  并新增内部可注入的传输工厂（R1 TD-1 的最小落地）。副作用：`Options.KeepAliveInterval`
-  与证书回调现在显式收敛到 `ClientWebSocket` 分支（抽象基类没有 `Options`，也没有 `ConnectAsync`）。
-- `ResolveMaxTextMessageBytes()` 整型溢出（P2-1）；`IsConnected` 状态双真源（P2-2，I12）；
-- 卫生项：编译警告净零（CS1591/CS0419/CS1574）、`netstandard2.0` 证书配置静默忽略补全 5 项告警、
-  `EventSubscriptionManager.HasSubscribed` 改 volatile、
-  `FeishuWebSocketHostedService._disposed` 与 `ReconnectionOrchestrator` 状态字段改原子访问。
+- **进程崩溃**：`FeishuDeduplication:Mode=Distributed` 且未注册 Redis 时，去重工厂自解析导致 `StackOverflowException` 已修复；改为正常构建并告警「事件去重仍为内存实现」。
+- **事件永久丢失**：Nonce 去重基础设施故障（Redis 连接/超时）不再伪装成 403 验签失败，改由 `FeishuDeduplicationFatalException`（`FailureKind=Server`）转 **503** 触发飞书重推；客户端断开（`OperationCanceledException`）不再被吞成「验签失败 403」写向已中止连接；处理器 `SupportedEventType` 不匹配不再静默丢失事件。
+- **令牌/多应用**：默认应用 DI 桥接改为解析桥接（修复继续用旧凭据 / 指向已释放上下文）；per-app 认证客户端编译期直引，装配失败显式失败（修复「凭据发往错区域」）；Redis 令牌键前缀去预转义 + SCAN glob 字面量转义（修复清库/枚举/全用户清库永不命中）；OAuth 刷新失败分类收紧（瞬时故障不再误清 refresh token）；运行时添加的应用可被配置正确接管；凭据变更清库不再阻塞配置回调线程；未实例化应用的凭据变更也能被检出。
+- **Redis**：`rediss://` 现在真正启用 TLS（此前明文连 TLS 端口）；`RedisFeishuEventDistributedDeduplicator` 补声明 `IDisposable`；事件去重 Lua 补 `tonumber(timestamp)` 护栏；`GetStatusAsync` 改用服务端 `TIME` 求差；令牌 SCAN 类 API 改为异步分批删除（500/批）；健康检查 PING 成功即 `Healthy`；`FeishuRedisFailureKind.InvalidArgument` 首次真实产生；清零 4 处编译警告。
+- **WebSocket**：取消退出导致「连接正常但收不到事件」的僵尸连接（P0-1）；`StartReceivingAsync` 幂等守卫可创建第二条接收循环（P1-1）；分片超限丢弃不排空致边界失步（P1-2）；重连窗口未钳制致自动重连失效（P1-3）；入站完整报文未脱敏入日志（P1-4）；释放锁顺序致 `ObjectDisposedException`（P1-5）；`Connected`/`Disconnected` 持锁派发自锁死锁；socket 类型收敛到抽象 `WebSocket`；`ResolveMaxTextMessageBytes` 整型溢出（P2-1）；`IsConnected` 双真源（P2-2）。
 
-### 🧪 测试与门禁
+### 📝 文档与测试
 
-- 新增契约守卫（7 条）并按"故意违规金丝雀"验证可拦截回归。
-- 新增用例：连接存活/令牌契约（`FeishuWebSocketClientLivenessTests`）、分片排空（`WebSocketFragmentedMessageDrainTests`）、
-  装配与重连重置（`FeishuWebSocketClientWiringTests`）、`TimeSpanGuards`/配置上界/派生上限溢出
-  （`TimeSpanGuardsTests`、`MessageSizeLimitsOverflowTests`、`FeishuWebSocketOptionsTests` 扩充）、
-  压力与静默（`FeishuWebSocketStressTests`，`Category=Stress`）。
-- 回环服务端扩展：超限分片（首帧/累积）、永不结束分片、按需投递文本/二进制帧。
-- `scripts/verify-build.ps1` 步骤 4 追加 `--filter "Category!=Stress"`
-  （xUnit 的 `Trait` 不会自动排除用例，否则全量门禁会执行压力用例）。
-
-## [3.0.0-rc3] - 2026-09-21
-
-### 🔐 令牌与多应用管理第四轮加固（TMF2 系列）
-
-#### 热更新竞态修复
-
-- **TMF2-01（方案 A+B）**：热更新 Phase-B 替换 `Lazy<>` 与并发首访交错时，自建旧配置上下文
-  既不登记也不入退休队列，导致永久泄漏（Scope + 令牌管理器 Timer）且返回旧凭据。
-  修复：方案 B（M2）——`GetOrCreateContext` / `TryGetApp` 在 `lazy.Value` 构造后做身份校验，
-  若 `_lazyContexts` 中已非原 `Lazy`（Phase-B 已提交），回收旧上下文并重新获取当前 `Lazy`。
-  方案 A（M5）——`AdoptContext` 助手将 Phase-B 与懒加载路径的「注册表写入」收敛为
-  `_lazyRebuildLock` 内原子操作，消除"注册覆盖窗口"。
-
-- **TMF2-02**：D10 凭据变更清库依赖"活动旧上下文"，未实例化应用的凭据变更检测被跳过
-  （`ResolveExistingContext` 返回 null → `continue`）。修复：`PurgeCredentialChangedTokens`
-  比对源从活动上下文改为配置快照（`_configs`），未实例化应用的凭据变更也能被检出。
-
-- **TMF2-03**：提交后二次清库范围过宽（可能删除新凭据刚写入的令牌）。修复：引入
-  `CredentialPurgePlan` 区分 `ToPurge`（全部变更键）与 `WriteBackRiskKeys`（有活动旧上下文的
-  子集）；正常路径只对 `WriteBackRiskKeys` 做二次清库，超时路径覆盖全部 `ToPurge`。
-
-#### 键布局与转义
-
-- **TMF2-05**：Memory（`FeishuTokenStore.KeyPrefix`）裸拼接 `$"feishu:{appKey}:token"`
-  与 Redis（`PerAppRedisTokenStoreFactory.BuildKeyPrefix`）经 `RedisKeyBuilder.Combine` 转义
-  不一致。修复：两端均委派 `TokenKeyBuilder.BuildKeyPrefix`，前缀逐字节一致。
-
-- **TMF2-08**：`TokenKeyBuilder.NormalizeSegment` 仅转义 `\` 和 `:`，未转义 glob 元字符
-  `* ? [ ]`。appKey 含 `*` 时 `TenantScanPattern` 注入通配符。修复：单遍扫描转义全部
-  6 个特殊字符，`UnescapeSegment` 对称反转义。
-
-#### 收口与可观测
-
-- **TMF2-04**：Phase-A 注释"锁外预构造"与实际在 `lock(_configApplyLock)` 内执行矛盾，已修正。
-- **TMF2-06**：`FeishuAppContextRetirement.Enqueue` 不检查 `_disposed`，容器关闭后的入队
-  条目静默泄漏。修复：`Enqueue` 检查 `_disposed`，已释放时直接 Dispose 上下文。清理调用侧
-  `catch (ObjectDisposedException)` 死代码。
-- **TMU-02**：清库链路可观测性增强——`PurgeTokenStoreFailureEvent`（EventId 5601）
-  结构化事件，宿主可据此建 metric/告警。
-
-#### 结构收敛
-
-- **TMU-01**：未实例化的应用在热更新中保持懒加载——Phase-A 不预构造未实例化应用的上下文，
-  Phase-B 仅替换 `Lazy` 闭包。对齐 TMA-08/D12 资源画像。
-
-#### 测试基建
-
-- **TMF2-07 / TMU-03**：新增 `HotReloadRaceHarness` 门闸基建（`ManualResetEventSlim`，
-  不依赖 `Thread.Sleep`）+ 14 条竞态矩阵用例（TMF2-01×3 + TMF2-02×3 + TMF2-04×1 +
-  TMF2-05×2 + TMF2-06×2 + TMF2-08×3）。
-
-#### 文档同步
-
-- **TMU-05**：`AGENTS.md` D8/D10/D13 表述已同步，README AppKey 命名约束已补充，
-  方案文档执行记录已回填。
-
-### ⚠️ 升级须知
-
-- 含特殊字符（`* ? [ ] : \`）的 appKey 键布局变化：`TokenKeyBuilder` 现转义 glob 元字符，
-  旧键（未经 glob 转义）在热更新后不再匹配。升级前请确认 appKey 不含这些字符。
-- 自定义 `UserTokenStoreBase` 子类若覆写了 `KeyPrefix`，需改为委派
-  `TokenKeyBuilder.BuildKeyPrefix(appKey)` 以保持与 Memory/Redis 端一致。
+- `Mud.Feishu.Redis/README.md`：键布局改为实测样例（含双冒号与 `\:` 转义）、配置表补齐 `SeqIdWindowCapacity` / `TokenKeyPrefix`、新增「运维诊断」「可观测性」两节。
+- `Tests/Mud.Feishu.Redis.Tests/README.md`：删除不存在的 `RedisFeishuEventDistributedDeduplicatorWithFallback` 章节、按实际结构/技术栈刷新。
+- 新增契约守卫（7 条）并以「故意违规金丝雀」验证可拦截回归；WebSocket 新增存活/分片排空/装配重连/配置上界/压力等用例；`verify-build.ps1` 步骤 4 追加 `--filter "Category!=Stress"`。
+- `AGENTS.md` / README 的 D8/D10/D13 表述与 AppKey 命名约束同步。
 
 ## [3.0.0-rc2] - 2026-09-18
 

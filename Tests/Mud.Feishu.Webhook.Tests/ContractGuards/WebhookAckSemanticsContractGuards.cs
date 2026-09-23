@@ -127,6 +127,7 @@ public class WebhookAckSemanticsContractGuards
             { "InterceptedRetryable", 503 }, // R3-FEAT-2：拦截 = 要求重推
             { "BusinessFailure", 500 },    // 业务异常：写失败存储 + 重投
             { "NonceInfraFailure", 503 },  // R3-P0-3：不得伪装成 403
+            { "DecryptionTimeout", 503 },  // R3-P2-2：解密超时 = 可恢复，不得是 400
         };
     }
 
@@ -174,6 +175,14 @@ public class WebhookAckSemanticsContractGuards
                     .Setup(x => x.HandleEventAsync(It.IsAny<EventData>(), It.IsAny<CancellationToken>()))
                     .ThrowsAsync(new FeishuDeduplicationFatalException("Nonce 去重服务不可用",
                         new FeishuRedisException(FeishuRedisFailureKind.Connection, "redis down")));
+                break;
+
+            case "DecryptionTimeout":
+                // R3-P2-2：解密超时抛 OCE（非客户端断开）→ 503。
+                // 修复前：被 DecryptEventAsync 的 catch(Exception) 吞成 null → 400（终态，事件永久丢失）。
+                _webhookServiceMock
+                    .Setup(x => x.DecryptEventAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                    .ThrowsAsync(new OperationCanceledException("解密超时"));
                 break;
 
             default:

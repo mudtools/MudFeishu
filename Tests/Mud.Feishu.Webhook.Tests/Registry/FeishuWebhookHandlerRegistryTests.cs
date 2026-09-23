@@ -191,6 +191,69 @@ public class FeishuWebhookHandlerRegistryTests
         hasHandlers.Should().BeFalse();
     }
 
+    #region R3-P2-12：Freeze / Register 必须原子
+
+    [Fact]
+    public void Freeze_ThenRegister_ShouldThrow()
+    {
+        // Arrange
+        var registry = new FeishuWebhookHandlerRegistry();
+        registry.Register("app-001", typeof(ITestFeishuEventHandler));
+
+        // Act
+        registry.Freeze();
+
+        // Assert：冻结后的写入必须全部拒绝（不得在"检查冻结位 → Add"窗口溜进去）
+        var act = () => registry.Register("app-001", typeof(ITestFeishuEventHandler2));
+        act.Should().Throw<InvalidOperationException>().WithMessage("*已冻结*");
+    }
+
+    [Fact]
+    public void Register_ConcurrentWithFreeze_ShouldNeverHalfWrite()
+    {
+        // Arrange - 并发下：要么写入成功，要么抛"已冻结"；且一旦抛过，禁止再写入。
+        // 断言方式：每轮结束后冻结位必然为真，且表中内容始终自洽（无重复、无半写入）。
+        for (var round = 0; round < 50; round++)
+        {
+            var registry = new FeishuWebhookHandlerRegistry();
+            var barrier = new Barrier(3);
+            var frozenErrors = 0;
+
+            var workers = Enumerable.Range(0, 2).Select(_ => Task.Run(() =>
+            {
+                barrier.SignalAndWait();
+                for (var i = 0; i < 30; i++)
+                {
+                    try
+                    {
+                        registry.Register("app-001", typeof(ITestFeishuEventHandler));
+                    }
+                    catch (InvalidOperationException)
+                    {
+                        Interlocked.Increment(ref frozenErrors);
+                    }
+                }
+            })).ToArray();
+
+            var freezer = Task.Run(() =>
+            {
+                barrier.SignalAndWait();
+                registry.Freeze();
+            });
+
+            Task.WaitAll(workers.Append(freezer).ToArray());
+
+            // Assert：结果自洽——去重后至多 1 条；冻结后不允许再注册
+            registry.GetHandlers("app-001").Should().HaveCountLessThanOrEqualTo(1);
+
+            var afterFreezeAct = () => registry.Register("app-001", typeof(ITestFeishuEventHandler2));
+            afterFreezeAct.Should().Throw<InvalidOperationException>()
+                .WithMessage("*已冻结*", "冻结生效后不得再有任何写入");
+        }
+    }
+
+    #endregion
+
     // Test handler interfaces for testing
     private interface ITestFeishuEventHandler : IFeishuEventHandler { }
     private interface ITestFeishuEventHandler2 : IFeishuEventHandler { }

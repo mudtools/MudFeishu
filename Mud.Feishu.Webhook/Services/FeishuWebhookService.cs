@@ -451,6 +451,16 @@ public class FeishuWebhookService : IFeishuWebhookService
 
             return eventData;
         }
+        catch (OperationCanceledException)
+        {
+            // R3-P2-2：解密超时（中间件 DecryptionTimeoutMs）此前被下方 catch(Exception) 吞成
+            // null → 中间件映射 400（终态，飞书不重推）。解密超时是**可恢复**的服务端问题，
+            // 语义应为 503 让飞书重投，而非"请求体非法 400"。
+            // 同时：客户端断开的 OCE 也在此重抛——禁止写向已中止连接（WHF-16）。
+            _logger.LogWarning("解密事件数据超时/被取消, AppKey: {AppKey}", _appKeyAccessor.CurrentAppKey ?? "null");
+            FeishuMetricsHelper.RecordEventOutcome(_appKeyAccessor.CurrentAppKey ?? "unknown", "event_decryption", success: false, "decryption_timeout");
+            throw;
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "解密事件数据时发生错误, AppKey: {AppKey}", _appKeyAccessor.CurrentAppKey ?? "null");
@@ -501,16 +511,29 @@ public class FeishuWebhookService : IFeishuWebhookService
                 .ToList();
             try
             {
-                await Task.WhenAll(tasks);
+                var all = Task.WhenAll(tasks);
+                try
+                {
+                    await all;
+                }
+                catch
+                {
+                    // R3-P2-9：await Task.WhenAll 只重抛**首个**异常，故 `ex is AggregateException`
+                    // 恒为 false（await 解包成首个 inner）→ 原"补记全部 InnerExceptions"分支永不命中，
+                    // 注释与行为自相矛盾。改为从 `all.Exception` 取完整聚合。
+                    // 仅在**多个**处理器同时失败时补记——单处理器失败已由 ProcessAppHandlerSafelyAsync
+                    // 逐条记录，避免重复日志。
+                    var inners = all.Exception?.InnerExceptions;
+                    if (inners is { Count: > 1 })
+                    {
+                        foreach (var inner in inners)
+                            _logger.LogError(inner, "应用 {AppKey} 专属处理器分发事件 {EventType} 失败（聚合明细）", appKey, eventType);
+                    }
+                    throw;
+                }
             }
             catch (Exception ex)
             {
-                // M3-5/P2-6：多处理器同时失败时补记全部 InnerExceptions，不再只看到第一个
-                if (ex is AggregateException agg)
-                {
-                    foreach (var inner in agg.InnerExceptions)
-                        _logger.LogError(inner, "应用 {AppKey} 专属处理器分发事件 {EventType} 失败（聚合明细）", appKey, eventType);
-                }
                 _logger.LogError(ex, "应用 {AppKey} 专属处理器分发事件 {EventType} 失败", appKey, eventType);
                 throw;
             }
@@ -596,32 +619,56 @@ public class FeishuWebhookService : IFeishuWebhookService
 
     /// <summary>
     /// 获取拦截器列表（支持按 AppKey 隔离）
-    /// 优先使用应用专属拦截器，无专属拦截器时回退到全局拦截器
     /// </summary>
+    /// <remarks>
+    /// R3-P2-3：组合策略由 <see cref="FeishuWebhookOptions.InterceptorFallbackMode"/> 决定
+    /// （默认 <see cref="InterceptorFallbackMode.Merge"/>：全局先行，再应用专属）。
+    /// 旧行为等价于 <see cref="InterceptorFallbackMode.AppOnly"/>——全局拦截器被完全丢弃。
+    /// </remarks>
     private IEnumerable<IFeishuEventInterceptor> GetInterceptors(string? appKey)
     {
-        // 如果有应用专属拦截器，优先使用
-        if (!string.IsNullOrEmpty(appKey) && _interceptorRegistry.HasInterceptors(appKey!))
-        {
-            var interceptorTypes = _interceptorRegistry.GetInterceptors(appKey!);
-            _logger.LogDebug("使用应用 {AppKey} 的专属拦截器（{Count} 个）", appKey, interceptorTypes.Count);
+        var hasAppScoped = !string.IsNullOrEmpty(appKey) && _interceptorRegistry.HasInterceptors(appKey!);
 
-            foreach (var interceptorType in interceptorTypes)
-            {
-                var interceptor = (IFeishuEventInterceptor)_serviceProvider.GetRequiredService(interceptorType);
-                yield return interceptor;
-            }
-        }
-        else
+        // 无应用专属拦截器 → 直接使用全局拦截器（唯一路径）
+        if (!hasAppScoped)
         {
-            // 回退到全局拦截器
             _logger.LogDebug("使用全局拦截器（{Count} 个）, AppKey: {AppKey}",
                 _interceptors.Length, appKey ?? "null");
 
             foreach (var interceptor in _interceptors)
-            {
                 yield return interceptor;
-            }
+
+            yield break;
+        }
+
+        var appScopedTypes = _interceptorRegistry.GetInterceptors(appKey!);
+        _logger.LogDebug("应用 {AppKey} 的专属拦截器（{Count} 个）", appKey, appScopedTypes.Count);
+
+        if (Options.InterceptorFallbackMode == InterceptorFallbackMode.AppOnly)
+        {
+            foreach (var interceptorType in appScopedTypes)
+                yield return (IFeishuEventInterceptor)_serviceProvider.GetRequiredService(interceptorType);
+
+            yield break;
+        }
+
+        var globalFirst = Options.InterceptorFallbackMode == InterceptorFallbackMode.Merge;
+
+        // 按类型去重：同一类型既全局注册又 app 专属注册时只执行一次
+        var emitted = new HashSet<Type>();
+        var ordered = globalFirst
+            ? _interceptors.Select(i => (IFeishuEventInterceptor?)i)
+                .Concat(appScopedTypes.Select(t => (IFeishuEventInterceptor?)_serviceProvider.GetRequiredService(t)))
+            : appScopedTypes.Select(t => (IFeishuEventInterceptor?)_serviceProvider.GetRequiredService(t))
+                .Concat(_interceptors.Select(i => (IFeishuEventInterceptor?)i));
+
+        foreach (var interceptor in ordered)
+        {
+            if (interceptor is null)
+                continue;
+
+            if (emitted.Add(interceptor.GetType()))
+                yield return interceptor;
         }
     }
 }

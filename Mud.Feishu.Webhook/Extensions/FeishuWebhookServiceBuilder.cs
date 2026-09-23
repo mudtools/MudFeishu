@@ -33,6 +33,12 @@ public class FeishuWebhookServiceBuilder
     /// </summary>
     private readonly List<Type> _globalHandlerTypes = new();
     private readonly List<Type> _interceptorTypes = new();
+    /// <summary>
+    /// 仅“全局注册”（<c>AddInterceptor&lt;T&gt;()</c> 无 appKey 重载）的拦截器类型（R3-P2-3）。
+    /// 与 <see cref="_interceptorTypes"/> 的区别：后者混装全局与应用专属。
+    /// 用于 <see cref="InterceptorFallbackMode.AppOnly"/> 下列出被屏蔽的全局拦截器。
+    /// </summary>
+    private readonly List<Type> _globalInterceptorTypes = new();
     private readonly List<(string AppKey, Type HandlerType)> _pendingHandlerRegistrations = new();
     private readonly List<(string AppKey, Type InterceptorType)> _pendingInterceptorRegistrations = new();
     private bool _enableHealthChecks = true;
@@ -249,6 +255,7 @@ public class FeishuWebhookServiceBuilder
         where TInterceptor : class, IFeishuEventInterceptor
     {
         _interceptorTypes.Add(typeof(TInterceptor));
+        _globalInterceptorTypes.Add(typeof(TInterceptor));   // R3-P2-3：全局注册
         _services.AddScoped<IFeishuEventInterceptor, TInterceptor>();
         _services.AddScoped<TInterceptor>();
         return this;
@@ -267,6 +274,7 @@ public class FeishuWebhookServiceBuilder
             throw new ArgumentNullException(nameof(interceptorInstance));
 
         _interceptorTypes.Add(typeof(TInterceptor));
+        _globalInterceptorTypes.Add(typeof(TInterceptor));   // R3-P2-3：实例注册同样是“全局注册”
         _services.AddScoped<IFeishuEventInterceptor>(_ => interceptorInstance);
         _services.AddScoped<TInterceptor>(_ => interceptorInstance);
         return this;
@@ -285,6 +293,7 @@ public class FeishuWebhookServiceBuilder
             throw new ArgumentNullException(nameof(interceptorFactory));
 
         _interceptorTypes.Add(typeof(TInterceptor));
+        _globalInterceptorTypes.Add(typeof(TInterceptor));   // R3-P2-3：工厂注册同样是“全局注册”
         _services.AddScoped<IFeishuEventInterceptor>(interceptorFactory);
         _services.AddScoped<TInterceptor>(interceptorFactory);
         return this;
@@ -621,6 +630,19 @@ public class FeishuWebhookServiceBuilder
                     // 冻结注册表，杜绝运行时热注册竞态
                     handlerRegistry.Freeze();
                     interceptorRegistry.Freeze();
+
+                    // R3-P2-3：InterceptorFallbackMode=AppOnly 时，凡注册了专属拦截器的应用都会
+                    // **静默丢弃全局拦截器**（安全/审计横切失效）。启动期一次性列出被屏蔽的类型。
+                    if (options.InterceptorFallbackMode == InterceptorFallbackMode.AppOnly
+                        && _globalInterceptorTypes.Count > 0
+                        && interceptorRegistry.GetAllAppKeys().Count > 0)
+                    {
+                        serviceProvider.GetService<ILogger<FeishuWebhookOptions>>()?.LogWarning(
+                            "InterceptorFallbackMode=AppOnly：已注册专属拦截器的应用将**完全丢弃**全局拦截器，" +
+                            "安全/审计横切在这些应用上静默失效。被屏蔽的全局拦截器: {Interceptors}。" +
+                            "如非刻意如此，请改用 Merge（默认，全局先行）或 AppThenGlobal。",
+                            string.Join(", ", _globalInterceptorTypes.Select(t => t.Name)));
+                    }
                 }
             });
     }
@@ -757,7 +779,17 @@ public class FeishuWebhookServiceBuilder
                 var isMemoryNonce = nonceImpl is null or FeishuNonceDistributedDeduplicator;
 
                 var logger = sp.GetService<ILogger<FeishuWebhookOptions>>();
-                var isProduction = sp.GetService<IEnvironmentService>()?.IsProduction == true;
+
+                // R3-P2-5 守卫：IEnvironmentService 是 D1（生产内存 Nonce 阻断）的**唯一判据来源**。
+                // 它是可选依赖（?.IsProduction），一旦未被注册（或被宿主覆盖为恒 false 的实现），
+                // 生产锁会**静默失效**而不报错——这正是本条要防的失败模式。
+                // 故此处要求其必然可解析：缺失即启动失败，把"静默失去生产锁"变成显式错误。
+                var environment = sp.GetService<IEnvironmentService>()
+                    ?? throw new InvalidOperationException(
+                        "未注册 IEnvironmentService，无法判定部署环境。" +
+                        "D1（生产环境内存 Nonce 去重阻断）依赖该服务，缺失会导致生产锁静默失效。" +
+                        "请勿移除 FeishuWebhookServiceBuilder 注册的 IEnvironmentService，或自行注册一个实现。");
+                var isProduction = environment.IsProduction;
 
                 // ── 事件去重形态告警（原位于工厂内，R3-P0-4 下沉至此）──
                 if (isDistributedIntent && sp.GetService<IFeishuEventDeduplicator>() is FeishuEventDeduplicator)

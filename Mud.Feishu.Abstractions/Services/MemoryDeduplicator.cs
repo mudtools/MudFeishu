@@ -482,14 +482,23 @@ public class MemoryDeduplicator<TKey> : IAsyncDisposable, IDisposable where TKey
         return new ValueTask();
     }
 
+    /// <summary>空 appKey 的键前缀哨兵（R3-P2-11）：避免裸键造成跨应用碰撞。</summary>
+    private const string DefaultAppKeyPrefix = "__default__:";
+
     private static TKey GetCacheKey(TKey key, string? appKey)
     {
-        if (typeof(TKey).IsValueType || string.IsNullOrEmpty(appKey))
+        if (typeof(TKey).IsValueType)
             return key;
+
+        // R3-P2-11：appKey 为空时键退化为**裸键**（重试路径 `AppKey ?? ""`、直接调用未 Set 时
+        // 均为空）→ 跨应用同 ID 事件共用同一去重键，产生碰撞面（A 应用的事件被 B 应用"去重"掉）。
+        // 改为使用固定哨兵前缀，使"无应用上下文"成为一等键空间，不与任何真实 appKey 冲突
+        // （真实 appKey 不可为空，且哨兵含 ':' 与保留前缀双下划线）。
+        var effectiveAppKey = string.IsNullOrEmpty(appKey) ? DefaultAppKeyPrefix : appKey;
 
         if (key is string strKey)
         {
-            return (TKey)(object)$"{appKey}:{strKey}";
+            return (TKey)(object)$"{effectiveAppKey}{strKey}";
         }
 
         return key;

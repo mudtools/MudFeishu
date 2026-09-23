@@ -73,6 +73,22 @@ public class FeishuWebhookOptions
     public bool LegacyGlobalTimeoutOnly { get; set; }
 
     /// <summary>
+    /// Nonce 有效期（秒）；<c>null</c> 表示未显式配置（由去重实现自身的 TTL 决定）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// R3-P2-4：**重放窗口不变量** <c>NonceTtlSeconds ≥ TimestampToleranceSeconds</c>。
+    /// 若 TTL 短于时间戳容差，则"Nonce 已过期、但时间戳仍在容差窗口内"的区间里重放攻击可行。
+    /// 此前该不变量只存在于文档，无代码强制，且文档口径与默认实现（内存 Nonce TTL=300s）不一致。
+    /// </para>
+    /// <para>
+    /// 显式配置后由 <see cref="Validate"/> 强制该不变量（启动期失败，见 R3-P0-5）；
+    /// 留空时不阻断，仅在启动 Summary 日志中打印实际形态供人工核对。
+    /// </para>
+    /// </remarks>
+    public int? NonceTtlSeconds { get; set; }
+
+    /// <summary>
     /// 解析本次事件处理的有效超时（毫秒）。
     /// </summary>
     /// <param name="appConfig">当前应用的 Webhook 配置；无应用级配置时为 null</param>
@@ -203,6 +219,16 @@ public class FeishuWebhookOptions
     public InterceptionAckMode InterceptionAckMode { get; set; } = InterceptionAckMode.Ack;
 
     /// <summary>
+    /// 应用专属拦截器与全局拦截器的组合策略，默认 <see cref="InterceptorFallbackMode.Merge"/>。
+    /// </summary>
+    /// <remarks>
+    /// R3-P2-3：旧行为等价于 <see cref="InterceptorFallbackMode.AppOnly"/>——应用一旦注册专属拦截器，
+    /// 全局拦截器就被<b>完全丢弃</b>，导致安全/审计横切在多应用下静默失效。
+    /// 详见 <see cref="InterceptorFallbackMode"/>。
+    /// </remarks>
+    public InterceptorFallbackMode InterceptorFallbackMode { get; set; } = InterceptorFallbackMode.Merge;
+
+    /// <summary>
     /// 空 EventId/Nonce 是否拒绝请求（true=fail-closed），默认 <c>true</c>（WHF-05）。
     /// </summary>
     /// <remarks>
@@ -278,6 +304,22 @@ public class FeishuWebhookOptions
 
         if (MaxRequestBodySize < 1024)
             throw new InvalidOperationException("MaxRequestBodySize 必须至少为 1024 字节");
+
+        // R3-P2-4：重放窗口不变量——显式配置 Nonce TTL 时强制 TTL ≥ 时间戳容差。
+        // 未配置（null）时不阻断：SDK 无法得知宿主所用去重实现的实际 TTL，仅由启动 Summary 日志提示。
+        if (NonceTtlSeconds is { } ttl)
+        {
+            if (ttl <= 0)
+                throw new InvalidOperationException("NonceTtlSeconds 必须为正整数（秒）");
+
+            // 要求**严格大于**（不取 ≥）：TTL 与容差相等时余量为零，
+            // 时钟抖动/网络延迟即可让"Nonce 已过期而时间戳仍被接受"的窗口真实存在。
+            if (ttl <= TimestampToleranceSeconds)
+                throw new InvalidOperationException(
+                    $"重放窗口不变量不满足：NonceTtlSeconds({ttl}s) 必须严格大于 " +
+                    $"TimestampToleranceSeconds({TimestampToleranceSeconds}s) 以保留余量。" +
+                    "否则在 Nonce 已过期、时间戳仍被接受的区间内重放攻击可行");
+        }
 
         if (TimestampToleranceSeconds < 0)
             throw new InvalidOperationException("TimestampToleranceSeconds 不能为负数");

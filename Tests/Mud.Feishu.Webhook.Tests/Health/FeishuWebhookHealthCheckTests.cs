@@ -9,7 +9,9 @@ using FluentAssertions;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
 using Moq;
+using Mud.Feishu.Abstractions.Services;
 using Mud.Feishu.Webhook.Configuration;
+using Mud.Feishu.Webhook.Utils;
 
 namespace Mud.Feishu.Webhook.Tests.Health;
 
@@ -123,4 +125,97 @@ public class FeishuWebhookHealthCheckTests
         result.Status.Should().Be(HealthStatus.Degraded);
         result.Description.Should().Contain("并发利用率");
     }
+
+    #region R3-FEAT-4：重放防护形态（nonceDedup）运维可见
+
+    private sealed class StubEnvironmentService : IEnvironmentService
+    {
+        public StubEnvironmentService(bool isProduction) => IsProduction = isProduction;
+        public bool IsProduction { get; }
+        public bool IsDevelopment => !IsProduction;
+        public bool IsStaging => false;
+        public string EnvironmentName => IsProduction ? "Production" : "Development";
+    }
+
+    [Fact]
+    public async Task CheckHealthAsync_ShouldExposeNonceDedupForm()
+    {
+        // Arrange - R3-FEAT-4：形态必须在运行期可见（与启动期阻断/启动 Summary 构成三层）
+        var concurrencyService = CreateConcurrencyService(10);
+
+        var healthCheck = new FeishuWebhookHealthCheck(
+            _optionsMock.Object,
+            concurrencyService,
+            nonceDeduplicator: new FeishuNonceDistributedDeduplicator());   // 内存实现
+
+        // Act
+        var result = await healthCheck.CheckHealthAsync(new HealthCheckContext());
+
+        // Assert
+        result.Data.Should().ContainKey("nonceDedup");
+        result.Data["nonceDedup"].Should().Be("InMemory");
+    }
+
+    [Fact]
+    public async Task CheckHealthAsync_WhenProductionWithInMemoryNonce_ShouldReturnDegraded()
+    {
+        // Arrange
+        var concurrencyService = CreateConcurrencyService(10);
+
+        var healthCheck = new FeishuWebhookHealthCheck(
+            _optionsMock.Object,
+            concurrencyService,
+            nonceDeduplicator: new FeishuNonceDistributedDeduplicator(),
+            environment: new StubEnvironmentService(isProduction: true));
+
+        // Act
+        var result = await healthCheck.CheckHealthAsync(new HealthCheckContext());
+
+        // Assert
+        result.Status.Should().Be(HealthStatus.Degraded,
+            "生产 + 内存 Nonce 去重 = 静默的安全退化，必须被监控系统发现");
+        result.Description.Should().Contain("跨实例重放");
+    }
+
+    [Fact]
+    public async Task CheckHealthAsync_WhenProductionWithDistributedNonce_ShouldReturnHealthy()
+    {
+        // Arrange
+        var concurrencyService = CreateConcurrencyService(10);
+
+        var healthCheck = new FeishuWebhookHealthCheck(
+            _optionsMock.Object,
+            concurrencyService,
+            nonceDeduplicator: Mock.Of<IFeishuNonceDistributedDeduplicator>(),   // 分布式实现
+            environment: new StubEnvironmentService(isProduction: true));
+
+        // Act
+        var result = await healthCheck.CheckHealthAsync(new HealthCheckContext());
+
+        // Assert
+        result.Status.Should().Be(HealthStatus.Healthy);
+        result.Data["nonceDedup"].Should().Be("Distributed");
+    }
+
+    [Fact]
+    public async Task CheckHealthAsync_WhenDevelopmentWithInMemoryNonce_ShouldReturnHealthy()
+    {
+        // Arrange - 非生产不降级（与 R3-P0-1 的"非生产仅告警"口径一致）
+        var concurrencyService = CreateConcurrencyService(10);
+
+        var healthCheck = new FeishuWebhookHealthCheck(
+            _optionsMock.Object,
+            concurrencyService,
+            nonceDeduplicator: new FeishuNonceDistributedDeduplicator(),
+            environment: new StubEnvironmentService(isProduction: false));
+
+        // Act
+        var result = await healthCheck.CheckHealthAsync(new HealthCheckContext());
+
+        // Assert
+        result.Status.Should().Be(HealthStatus.Healthy);
+        result.Data["nonceDedup"].Should().Be("InMemory");
+    }
+
+    #endregion
 }

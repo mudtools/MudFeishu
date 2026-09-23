@@ -45,6 +45,41 @@
 - Handler `SupportedEventType` mismatches are no longer silent: a Warning plus the `unhandled` metric
   are emitted (previously Debug-only, invisible at the default Production log level).
 
+### 🔧 Webhook: tech debt & operational visibility (WHF-R3 batch C)
+
+#### ⚠️ Behavioral Changes
+
+- **App-scoped interceptors no longer silently shadow global interceptors.** The default is now
+  `Merge` (global first, then app-scoped). The old behaviour — a single app-scoped interceptor
+  discarding **all** global ones, silently disabling security/audit cross-cutting — is preserved
+  via `FeishuWebhook:InterceptorFallbackMode=AppOnly` (a startup Warning then lists the shadowed
+  global interceptors). `AppThenGlobal` runs app-scoped first.
+- **Decryption timeout now maps to 503 instead of 400.** It used to be swallowed into `null` → 400
+  (terminal, Feishu does not retry). Timeouts are recoverable, so they now request a redelivery.
+  The decryption CTS is also linked to `RequestAborted`.
+- **A missing `IEnvironmentService` now fails startup.** It is the sole source of the "production
+  in-memory Nonce" decision; without it the production lock would silently disappear.
+- **Empty `appKey` no longer degrades the dedup key to a bare key** (cross-app collision surface);
+  a fixed sentinel prefix is used instead.
+
+#### ✨ Added
+
+- `FeishuWebhook:InterceptorFallbackMode` (default `Merge`)
+- `FeishuWebhook:NonceTtlSeconds` (optional; when set, enforces the replay-window invariant
+  `> TimestampToleranceSeconds`)
+- Health check data item `nonceDedup` (`InMemory` / `Distributed`); **Production + in-memory = `Degraded`**
+- Startup summary log: dedup implementation form, timestamp tolerance, Nonce TTL, replay-window
+  invariant, and per-app handler/interceptor registration self-check
+
+#### 🐛 Fixed
+
+- In-memory Nonce dedup had no capacity bound (default 0 = unbounded growth)
+- Multiple concurrently failing handlers now report **all** exceptions (`await Task.WhenAll`
+  rethrows only the first, so the aggregate branch was unreachable)
+- Removed an unreachable compensation `catch` in `AcquireAsync` (self-contradictory `when` filter)
+- Registry `Freeze`/`Register` are now evaluated under the same lock, closing the check-then-write race
+- Failed-event retry service clears the AppKey context at the end of each poll round
+
 ### ⚠️ Breaking / Behavioral Changes (WebSocket module)
 
 - **Connection lifetime no longer follows the caller's `CancellationToken`**:

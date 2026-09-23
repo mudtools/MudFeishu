@@ -444,6 +444,8 @@ public class DemoDepartmentEventHandler : DepartmentCreatedEventHandler
 | `IgnoreUnknownEventTypes`          | bool              | true     | 未注册 eventType 的事件是否静默忽略（记 **Warning** + `unhandled` 指标） |
 | `AllowInMemoryNonceDedupInProduction` | bool           | false    | 生产环境是否允许使用进程内内存 Nonce 去重（见下方「部署形态约束」） |
 | `InterceptionAckMode`              | InterceptionAckMode | Ack    | 拦截器中断事件时对飞书表达的确认语义（见「拦截器中断语义」） |
+| `InterceptorFallbackMode`          | InterceptorFallbackMode | Merge | 应用专属拦截器与全局拦截器的组合策略（见「拦截器执行顺序」） |
+| `NonceTtlSeconds`                  | int?               | null    | Nonce 有效期（秒）；显式配置时强制 **严格大于** `TimestampToleranceSeconds` |
 
 > **重放窗口不变量**：`NonceTtl`（Redis 工程 `RedisOptions`）必须 ≥ `TimestampToleranceSeconds`，
 > 否则在 Nonce 过期后、容差窗口结束前的区间内重放攻击可行。默认组合（NonceTtl=5min /
@@ -696,6 +698,18 @@ var interceptor = new AuditLogInterceptor(logger);
 ```
 
 ### 拦截器执行顺序
+
+**多应用下的组合策略**（`InterceptorFallbackMode`）：
+
+| 值                  | 行为                                                       |
+| ------------------- | ---------------------------------------------------------- |
+| `Merge`（**默认**） | 全局拦截器**先行**，再执行应用专属拦截器                    |
+| `AppThenGlobal`     | 应用专属拦截器先行，再执行全局拦截器                        |
+| `AppOnly`           | 仅执行应用专属拦截器（**旧行为**，全局拦截器被丢弃并告警）  |
+
+> ⚠️ 旧行为（`AppOnly`）会让安全/审计类全局拦截器在"已注册专属拦截器的应用"上**静默失效**。
+> 升级后默认改为 `Merge`；若确需旧语义，请显式配置 `AppOnly`，启动期会列出被屏蔽的全局拦截器。
+> 同一类型既全局注册又 app 专属注册时只执行一次（按类型去重）。
 
 拦截器按注册顺序依次执行，完整流程：
 
@@ -1065,6 +1079,25 @@ builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
 ```
 
 ### 健康检查
+
+健康检查除并发槽位与失败事件积压外，还暴露**重放防护形态**：
+
+| 数据项 | 取值 | 说明 |
+| ------ | ---- | ---- |
+| `nonceDedup` | `InMemory` / `Distributed` | Nonce 去重的实现形态 |
+| `timestamp_tolerance_seconds` | 数值 | 当前时间戳容差 |
+
+> 生产环境（`ASPNETCORE_ENVIRONMENT=Production`）使用**内存** Nonce 去重时，健康状态判定为
+> **`Degraded`**（多实例下跨实例重放不可检测）。这与启动期阻断、启动 Summary 日志共同构成
+> "启动可见 + 运行可见 + 指标可见"三层。
+
+启动期会输出一次 Summary 日志，便于运维核对：
+
+```
+飞书 Webhook 启动自检 | Nonce 去重: InMemory | 事件去重: InMemory | 时间戳容差: 30s |
+Nonce TTL: (未配置) | 重放窗口不变量(TTL ≥ 容差): 满足 | 应用数: 2
+应用 appA 注册自检：处理器 [MessageHandler]，拦截器 [(无)]
+```
 
 内置健康检查支持，默认启用，可监控 Webhook 服务的运行状态：
 

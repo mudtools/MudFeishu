@@ -18,12 +18,23 @@ namespace Mud.Feishu.Webhook;
 public class FeishuWebhookTypeRegistry<T>
 {
     private readonly ConcurrentDictionary<string, List<Type>> _registry = new();
+    private readonly object _freezeLock = new();
     private volatile bool _isFrozen;
 
     /// <summary>
     /// 冻结注册表，冻结后 Register 将抛出 InvalidOperationException
     /// </summary>
-    public void Freeze() => _isFrozen = true;
+    /// <remarks>
+    /// R3-P2-12：冻结与注册必须在**同一把锁**下判定，否则"检查 <c>_isFrozen</c> → 再 Add"
+    /// 之间存在窗口：并发注册可在冻结生效后仍写入，使冻结语义失效（热更重放期间注册两次）。
+    /// </remarks>
+    public void Freeze()
+    {
+        lock (_freezeLock)
+        {
+            _isFrozen = true;
+        }
+    }
 
     /// <summary>
     /// 注册类型
@@ -35,14 +46,20 @@ public class FeishuWebhookTypeRegistry<T>
         if (string.IsNullOrEmpty(appKey))
             throw new ArgumentException("应用键不能为空", nameof(appKey));
 
-        if (_isFrozen)
-            throw new InvalidOperationException("注册表已冻结，不允许运行时热注册");
-
+        // R3-P2-12：先取 list（GetOrAdd 本身线程安全），再在冻结锁内做"判定 + 写入"，
+        // 保证冻结生效后再无写入。
         var list = _registry.GetOrAdd(appKey, _ => new List<Type>());
-        lock (list)
+
+        lock (_freezeLock)
         {
-            if (!list.Contains(type))
-                list.Add(type);
+            if (_isFrozen)
+                throw new InvalidOperationException("注册表已冻结，不允许运行时热注册");
+
+            lock (list)
+            {
+                if (!list.Contains(type))
+                    list.Add(type);
+            }
         }
     }
 

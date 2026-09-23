@@ -23,11 +23,20 @@ public sealed class FeishuNonceDistributedDeduplicator : MemoryDeduplicator<stri
         ILogger<FeishuNonceDistributedDeduplicator>? logger = null,
         TimeSpan? nonceTtl = null,
         TimeSpan? cleanupInterval = null)
-        : base(logger, nonceTtl ?? TimeSpan.FromMinutes(5), cleanupInterval ?? TimeSpan.FromMinutes(1))
-    {
-        logger?.LogInformation("飞书分布式 Nonce 去重服务初始化完成，Nonce TTL: {Ttl}, 清理间隔: {CleanupInterval}",
+        : base(logger,
             nonceTtl ?? TimeSpan.FromMinutes(5),
-            cleanupInterval ?? TimeSpan.FromMinutes(1));
+            cleanupInterval ?? TimeSpan.FromMinutes(1),
+            processingTimeout: null,
+            // R3-P2-1：内存 Nonce 去重此前**无容量上限**（maxCacheSize 默认 0）。
+            // 非生产 + EnforceHeaderSignatureValidation=false 的组合下，每个请求都会写入一条
+            // Nonce 记录而永不淘汰 → 无界内存增长。此处套用与其他内存去重一致的默认上限。
+            maxCacheSize: Consts.DefaultMaxCacheSize)
+    {
+        logger?.LogInformation(
+            "飞书分布式 Nonce 去重服务初始化完成，Nonce TTL: {Ttl}, 清理间隔: {CleanupInterval}, 最大缓存: {MaxCacheSize}",
+            nonceTtl ?? TimeSpan.FromMinutes(5),
+            cleanupInterval ?? TimeSpan.FromMinutes(1),
+            Consts.DefaultMaxCacheSize);
     }
 
     /// <inheritdoc />

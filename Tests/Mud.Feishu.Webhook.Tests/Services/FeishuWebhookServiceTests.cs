@@ -1446,6 +1446,236 @@ public class FeishuWebhookServiceTests
 
     #endregion
 
+    #region R3-P2-2：解密超时不得被吞成 400
+
+    [Fact]
+    public async Task DecryptEventAsync_WhenDecryptionCancelled_ShouldRethrow_NotReturnNull()
+    {
+        // Arrange - R3-P2-2：修复前 catch(Exception) 吞掉 OCE → 返回 null → 中间件 400（终态）。
+        // 解密超时是可恢复的服务端问题，语义应为 503 让飞书重投。
+        _decryptorMock
+            .Setup(x => x.DecryptAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new OperationCanceledException("解密超时"));
+
+        _encryptKeyProviderMock
+            .Setup(x => x.GetEncryptKeyAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync("0123456789abcdef0123456789abcdef");
+
+        var service = CreateService();
+        service.SetCurrentAppKey("app-001");   // 否则走"缺少加密密钥"分支直接返回 null
+
+        // Act
+        var act = (Func<Task<EventData?>>)(() => service.DecryptEventAsync("cipher"));
+
+        // Assert
+        await act.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [Fact]
+    public async Task DecryptEventAsync_WhenDecryptionFails_ShouldReturnNull()
+    {
+        // Arrange - 非取消类失败保持原语义：返回 null（中间件 → 400）
+        _decryptorMock
+            .Setup(x => x.DecryptAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("密文非法"));
+
+        _encryptKeyProviderMock
+            .Setup(x => x.GetEncryptKeyAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync("0123456789abcdef0123456789abcdef");
+
+        var service = CreateService();
+        service.SetCurrentAppKey("app-001");   // 否则走"缺少加密密钥"分支直接返回 null
+
+        // Act
+        var result = await service.DecryptEventAsync("cipher");
+
+        // Assert
+        result.Should().BeNull("非取消类解密失败仍按 400 口径（请求体非法）");
+    }
+
+    #endregion
+
+    #region R3-P2-3：应用专属拦截器不得静默屏蔽全局拦截器
+
+    private sealed class GlobalAuditInterceptor : IFeishuEventInterceptor
+    {
+        public int BeforeCount;
+        public Task<bool> BeforeHandleAsync(string eventType, EventData eventData, CancellationToken cancellationToken = default)
+        {
+            BeforeCount++;
+            return Task.FromResult(true);
+        }
+
+        public Task AfterHandleAsync(string eventType, EventData eventData, Exception? exception, CancellationToken cancellationToken = default)
+            => Task.CompletedTask;
+    }
+
+    private sealed class AppScopedInterceptor : IFeishuEventInterceptor
+    {
+        public int BeforeCount;
+        public Task<bool> BeforeHandleAsync(string eventType, EventData eventData, CancellationToken cancellationToken = default)
+        {
+            BeforeCount++;
+            return Task.FromResult(true);
+        }
+
+        public Task AfterHandleAsync(string eventType, EventData eventData, Exception? exception, CancellationToken cancellationToken = default)
+            => Task.CompletedTask;
+    }
+
+    private FeishuWebhookService CreateServiceWithInterceptorRegistry(
+        FeishuWebhookInterceptorRegistry interceptorRegistry,
+        IFeishuEventInterceptor[] globalInterceptors,
+        Action<FeishuWebhookOptions>? configureOptions = null)
+    {
+        configureOptions?.Invoke(_options);
+        _optionsMonitorMock.Setup(x => x.CurrentValue).Returns(_options);
+
+        _deduplicatorMock
+            .Setup(x => x.TryMarkAsProcessingAsync(It.IsAny<string>(), It.IsAny<string?>(),
+                It.IsAny<TimeSpan?>(), It.IsAny<TimeSpan?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((string id, string? _, TimeSpan? __, TimeSpan? ___, CancellationToken ____)
+                => DeduplicationResult.Success(id));
+
+        return new FeishuWebhookService(
+            _optionsMonitorMock.Object,
+            _validatorMock.Object,
+            _decryptorMock.Object,
+            _handlerFactoryMock.Object,
+            _loggerMock.Object,
+            globalInterceptors,
+            _concurrencyService,
+            _deduplicatorMock.Object,
+            _encryptKeyProviderMock.Object,
+            new FeishuWebhookHandlerRegistry(),
+            interceptorRegistry,
+            _serviceProviderMock.Object,
+            _appKeyAccessorMock.Object);
+    }
+
+    [Fact]
+    public async Task HandleEventAsync_WithAppScopedInterceptor_ShouldStillRunGlobalInterceptor_ByDefault()
+    {
+        // Arrange - R3-P2-3：默认 Merge——全局拦截器不得被应用专属拦截器静默丢弃
+        var appKey = "app-001";
+        var globalInterceptor = new GlobalAuditInterceptor();
+        var appInterceptor = new AppScopedInterceptor();
+
+        var interceptorRegistry = new FeishuWebhookInterceptorRegistry();
+        interceptorRegistry.Register(appKey, typeof(AppScopedInterceptor));
+        interceptorRegistry.Freeze();
+
+        _serviceProviderMock
+            .Setup(x => x.GetService(typeof(AppScopedInterceptor)))
+            .Returns(appInterceptor);
+
+        var service = CreateServiceWithInterceptorRegistry(
+            interceptorRegistry, new IFeishuEventInterceptor[] { globalInterceptor });
+
+        // Act
+        service.SetCurrentAppKey(appKey);
+        await service.HandleEventAsync(new EventData { EventId = "evt_p23", EventType = "test.event" });
+
+        // Assert：两者都执行（默认 Merge）
+        globalInterceptor.BeforeCount.Should().Be(1, "全局安全/审计横切不得因应用注册了专属拦截器而失效");
+        appInterceptor.BeforeCount.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task HandleEventAsync_WithAppOnlyMode_ShouldSkipGlobalInterceptor()
+    {
+        // Arrange - 兼容旧行为：显式 AppOnly 时保持"应用专属优先、全局丢弃"
+        var appKey = "app-001";
+        var globalInterceptor = new GlobalAuditInterceptor();
+        var appInterceptor = new AppScopedInterceptor();
+
+        var interceptorRegistry = new FeishuWebhookInterceptorRegistry();
+        interceptorRegistry.Register(appKey, typeof(AppScopedInterceptor));
+        interceptorRegistry.Freeze();
+
+        _serviceProviderMock
+            .Setup(x => x.GetService(typeof(AppScopedInterceptor)))
+            .Returns(appInterceptor);
+
+        var service = CreateServiceWithInterceptorRegistry(
+            interceptorRegistry,
+            new IFeishuEventInterceptor[] { globalInterceptor },
+            options => options.InterceptorFallbackMode = InterceptorFallbackMode.AppOnly);
+
+        // Act
+        service.SetCurrentAppKey(appKey);
+        await service.HandleEventAsync(new EventData { EventId = "evt_p23_apponly", EventType = "test.event" });
+
+        // Assert
+        appInterceptor.BeforeCount.Should().Be(1);
+        globalInterceptor.BeforeCount.Should().Be(0, "AppOnly 模式（旧行为）丢弃全局拦截器");
+    }
+
+    [Fact]
+    public async Task HandleEventAsync_WithMergeMode_ShouldRunGlobalBeforeAppScoped()
+    {
+        // Arrange - 全局先行：安全/审计横切应能先于应用逻辑决定是否放行
+        var appKey = "app-001";
+        var order = new List<string>();
+
+        var globalInterceptor = new GlobalOrderingInterceptor(order);
+        var appInterceptor = new AppOrderingInterceptor(order);
+
+        var interceptorRegistry = new FeishuWebhookInterceptorRegistry();
+        interceptorRegistry.Register(appKey, typeof(AppOrderingInterceptor));
+        interceptorRegistry.Freeze();
+
+        _serviceProviderMock
+            .Setup(x => x.GetService(typeof(AppOrderingInterceptor)))
+            .Returns(appInterceptor);
+
+        var service = CreateServiceWithInterceptorRegistry(
+            interceptorRegistry,
+            new IFeishuEventInterceptor[] { globalInterceptor },
+            options => options.InterceptorFallbackMode = InterceptorFallbackMode.Merge);
+
+        // Act
+        service.SetCurrentAppKey(appKey);
+        await service.HandleEventAsync(new EventData { EventId = "evt_p23_order", EventType = "test.event" });
+
+        // Assert
+        order.Should().Equal("global", "app");
+    }
+
+    /// <summary>顺序标记拦截器基类（Merge/AppThenGlobal 的执行次序断言用）。</summary>
+    private abstract class OrderingInterceptorBase : IFeishuEventInterceptor
+    {
+        protected readonly List<string> Order;
+        private readonly string _name;
+
+        protected OrderingInterceptorBase(string name, List<string> order)
+        {
+            _name = name;
+            Order = order;
+        }
+
+        public Task<bool> BeforeHandleAsync(string eventType, EventData eventData, CancellationToken cancellationToken = default)
+        {
+            Order.Add(_name);
+            return Task.FromResult(true);
+        }
+
+        public Task AfterHandleAsync(string eventType, EventData eventData, Exception? exception, CancellationToken cancellationToken = default)
+            => Task.CompletedTask;
+    }
+
+    private sealed class GlobalOrderingInterceptor : OrderingInterceptorBase
+    {
+        public GlobalOrderingInterceptor(List<string> order) : base("global", order) { }
+    }
+
+    private sealed class AppOrderingInterceptor : OrderingInterceptorBase
+    {
+        public AppOrderingInterceptor(List<string> order) : base("app", order) { }
+    }
+
+    #endregion
+
     /// <summary>
     /// 用指定的处理器注册表构造被测服务（应用专属分支用例需要自定义 registry）。
     /// </summary>

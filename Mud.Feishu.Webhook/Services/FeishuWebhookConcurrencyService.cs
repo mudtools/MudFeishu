@@ -183,14 +183,15 @@ public class FeishuWebhookConcurrencyService : IAsyncDisposable, IHostedService
 
             _logger.LogDebug("获取信号量成功，当前可用: {AvailableSlots}", currentSemaphore.CurrentCount + 1);
 
+            // R3-P2-8：此处**原有一段不可达的补偿 catch**已删除。
+            // 原代码：`catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested
+            //          && !_shutdownCts.IsCancellationRequested)`
+            // 而 WaitAsync 等待的是 `combinedCts.Token = linked(cancellationToken, _shutdownCts.Token)`，
+            // 因此 OCE 的**唯一**来源就是这两个令牌之一被取消 → 过滤条件恒为 false → 补偿永不执行。
+            // 且不能简单地放宽过滤：`SemaphoreSlim.WaitAsync(ct)` 在取消时**不会**占用槽位，
+            // 无条件 Release 反而会**超发**槽位（比不补偿更危险）。
+            // 结论：删除死代码并保留本注释，避免后人误以为"获取-取消"竞态已被补偿。
             return new SemaphoreLease(currentSemaphore, _logger);
-        }
-        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested && !_shutdownCts.IsCancellationRequested)
-        {
-            // WHF-R2/C4：取消与获取的竞态——WaitAsync 可能在已获取后抛 OCE，必须补还槽位
-            var currentSemaphore = GetCurrentSemaphore();
-            try { currentSemaphore.Release(); } catch (SemaphoreFullException) { /* 已被其他路径补还 */ }
-            throw;
         }
         finally
         {

@@ -23,6 +23,7 @@ public class FailedEventRetryService : BackgroundService
     private readonly ILogger<FailedEventRetryService> _logger;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IFailedEventStore? _failedEventStore;
+    private readonly IWebhookAppKeyAccessor? _appKeyAccessor;
 
     /// <summary>
     /// 失败事件重试配置（唯一真相源）。
@@ -55,16 +56,19 @@ public class FailedEventRetryService : BackgroundService
     /// <param name="logger">日志。</param>
     /// <param name="scopeFactory">作用域工厂（每个待重试事件创建一个作用域）。</param>
     /// <param name="failedEventStore">失败事件存储；未配置时重试服务不启动。</param>
+    /// <param name="appKeyAccessor">应用键上下文访问器（可选，用于每轮结束时显式清除 AppKey）。</param>
     public FailedEventRetryService(
         IOptionsMonitor<FeishuWebhookOptions> webhookOptions,
         ILogger<FailedEventRetryService> logger,
         IServiceScopeFactory scopeFactory,
-        IFailedEventStore? failedEventStore = null)
+        IFailedEventStore? failedEventStore = null,
+        IWebhookAppKeyAccessor? appKeyAccessor = null)
     {
         _webhookOptions = webhookOptions ?? throw new ArgumentNullException(nameof(webhookOptions));
         _logger = logger;
         _scopeFactory = scopeFactory;
         _failedEventStore = failedEventStore;
+        _appKeyAccessor = appKeyAccessor;
 
         if (Retry.EnableRetry && _failedEventStore == null)
         {
@@ -248,6 +252,13 @@ public class FailedEventRetryService : BackgroundService
                 await _failedEventStore!.UpdateFailedEventAsync(failedEvent, cancellationToken);
             }
         }
+
+        // R3-P2-14：本轮结束后清除 AppKey 上下文（纵深防御）。
+        // 迭代内已通过 SetCurrentAppKey(AppKey ?? "") 无条件覆盖（WHF-R2/B5），跨迭代不会串味；
+        // 但本服务运行在**长生命周期 ExecutionContext** 中，若不清除，最后一批重试事件的 AppKey
+        // 会在进程余下时间残留在 AsyncLocal 里，而 IAppKeyAccessor 与业务去重键、应用上下文
+        // 共用同一实例——显式 Clear 成本近零，可消除该残留面。
+        _appKeyAccessor?.Clear();
     }
 
     /// <summary>

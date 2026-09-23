@@ -81,6 +81,48 @@ public class FeishuWebhookOptionsTests
     }
 
     [Fact]
+    public void Validate_WhenNonceTtlNotStrictlyGreaterThanTolerance_ShouldThrow()
+    {
+        // Arrange - R3-P2-4：重放窗口不变量此前只存在于文档，无代码强制。
+        // 要求**严格大于**：TTL 与容差相等时余量为零，时钟抖动即可让重放窗口真实存在。
+        var options = new FeishuWebhookOptions
+        {
+            TimestampToleranceSeconds = 300,
+            NonceTtlSeconds = 300   // 相等 → 零余量，拒绝
+        };
+
+        // Act / Assert
+        var ex = Assert.Throws<InvalidOperationException>(() => options.Validate());
+        Assert.Contains("重放窗口不变量", ex.Message);
+        Assert.Contains("严格大于", ex.Message);
+
+        // 严格大于 → 通过
+        options.NonceTtlSeconds = 301;
+        options.Validate();
+    }
+
+    [Fact]
+    public void Validate_WhenNonceTtlNotPositive_ShouldThrow()
+    {
+        // Arrange
+        var options = new FeishuWebhookOptions { NonceTtlSeconds = 0 };
+
+        // Act / Assert
+        var ex = Assert.Throws<InvalidOperationException>(() => options.Validate());
+        Assert.Contains("NonceTtlSeconds", ex.Message);
+    }
+
+    [Fact]
+    public void Validate_WhenNonceTtlNotConfigured_ShouldPass()
+    {
+        // Arrange - 未配置（null）时不阻断：SDK 无法得知宿主去重实现的实际 TTL
+        var options = new FeishuWebhookOptions { NonceTtlSeconds = null };
+
+        // Act / Assert
+        options.Validate();
+    }
+
+    [Fact]
     public void Validate_MultiAppWithExpectedAppId_ShouldPass()
     {
         // Arrange - 补齐 ExpectedAppId 后多应用配置合法

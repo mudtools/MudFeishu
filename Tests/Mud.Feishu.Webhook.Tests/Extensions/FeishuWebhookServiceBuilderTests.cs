@@ -440,6 +440,36 @@ public class FeishuWebhookServiceBuilderTests
     // ============================================================
 
     [Fact]
+    public void Build_WithoutEnvironmentService_ShouldFailValidation()
+    {
+        // Arrange - R3-P2-5 守卫：IEnvironmentService 是 D1（生产内存 Nonce 阻断）的唯一判据来源。
+        // 若它缺失（或被宿主覆盖），生产锁会**静默失效**——故要求其必然可解析。
+        var services = new ServiceCollection();
+        services.AddLogging();
+
+        // 故意**不**注册 IEnvironmentService
+        services.CreateFeishuWebhookServiceBuilder(options =>
+            {
+                options.EventHandlingTimeoutMs = 5000;
+                options.AllowInMemoryNonceDedupInProduction = true;
+            })
+            .AddHandler<TestGlobalHandler>()
+            .Build();
+
+        // 移除 TryAddSingleton 注册的默认实现，模拟"宿主未提供环境服务"
+        var descriptor = services.FirstOrDefault(d => d.ServiceType == typeof(IEnvironmentService));
+        descriptor.Should().NotBeNull("Builder 默认注册了 IEnvironmentService");
+        services.Remove(descriptor!);
+
+        using var provider = services.BuildServiceProvider();
+
+        // Act / Assert
+        var act = () => provider.GetRequiredService<IOptions<FeishuWebhookOptions>>().Value;
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*IEnvironmentService*");
+    }
+
+    [Fact]
     public void Build_ShouldRegisterStartupOptionsValidator_AsHostedService()
     {
         // Arrange

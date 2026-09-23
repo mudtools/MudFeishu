@@ -35,6 +35,27 @@ public class MemoryDeduplicatorTests
     }
 
     [Fact]
+    public void TryMarkAsProcessed_WithEmptyAppKey_ShouldUseDistinctKeySpace()
+    {
+        // Arrange - R3-P2-11：appKey 为空时键退化为**裸键**，跨应用同 ID 事件存在碰撞面。
+        // 修复后：空 appKey 使用固定哨兵前缀，与任何真实 appKey 的键空间都不同。
+        var deduplicator = new MemoryDeduplicator<string>(_loggerMock.Object);
+        const string key = "evt_shared";
+
+        // Act：先用**真实** appKey "appA" 标记，再用**空** appKey 标记同一业务键
+        var firstReal = deduplicator.TryMarkAsProcessed(key, "appA");
+        var thenEmpty = deduplicator.TryMarkAsProcessed(key, null);
+
+        // Assert：空 appKey 走独立键空间，不复用 appA 的记录
+        Assert.False(firstReal);
+        Assert.False(thenEmpty, "空 appKey 不得复用真实 appKey 的去重记录（跨应用碰撞面）");
+
+        // 反向：真实 appKey 之间仍互相隔离
+        Assert.False(deduplicator.TryMarkAsProcessed(key, "appB"));
+        Assert.True(deduplicator.TryMarkAsProcessed(key, "appA"), "同 appKey 仍应命中去重");
+    }
+
+    [Fact]
     public void TryMarkAsProcessed_WhenDuplicateKey_ShouldReturnTrue()
     {
         // Arrange

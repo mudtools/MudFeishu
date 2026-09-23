@@ -2,6 +2,35 @@
 
 ## [未发布]
 
+### 🔐 Webhook 技术债与运维可见（WHF-R3 批次 C）
+
+#### ⚠️ 行为改变
+
+- **应用专属拦截器不再静默屏蔽全局拦截器**：默认策略改为 `Merge`（全局先行 → 应用专属）。
+  旧行为（应用一旦注册专属拦截器就**完全丢弃**全局拦截器，导致安全/审计横切在多应用下静默失效）
+  可通过 `FeishuWebhook:InterceptorFallbackMode=AppOnly` 保留（此时启动期会 Warning 列出被屏蔽的
+  全局拦截器）。另提供 `AppThenGlobal`（应用专属先行）。
+- **解密超时由 400 改为 503**：解密超时此前被吞成 `null` → 400（终态，飞书不重推）。
+  超时是可恢复的服务端问题，现按 503 让飞书重投；解密 CTS 同时链接 `RequestAborted`。
+- **`IEnvironmentService` 缺失即启动失败**：它是"生产环境内存 Nonce 去重阻断"的唯一判据来源，
+  缺失会导致生产锁**静默失效**，故要求其必然可解析。
+- **空 `appKey` 的去重键不再退化为裸键**：改用固定哨兵前缀，消除跨应用同 ID 事件的碰撞面。
+
+#### ✨ 新增
+
+- `FeishuWebhook:InterceptorFallbackMode`（默认 `Merge`）
+- `FeishuWebhook:NonceTtlSeconds`（可选；显式配置时**强制** `> TimestampToleranceSeconds` 的重放窗口不变量）
+- 健康检查数据项 `nonceDedup`（`InMemory` / `Distributed`）；**生产 + 内存 Nonce = `Degraded`**
+- 启动 Summary 日志：去重实现形态、时间戳容差、Nonce TTL、重放窗口不变量、各应用处理器/拦截器注册自检
+
+#### 🐛 修复
+
+- 内存 Nonce 去重无容量上限（默认 0 = 无界增长），现套用统一默认上限
+- 多处理器同时失败时补记**全部**异常（此前 `await Task.WhenAll` 只重抛首个，聚合分支恒不命中）
+- 删除 `AcquireAsync` 中不可达的补偿 catch（`when` 过滤自相矛盾），并注明为何不能简单放宽
+- 注册表 `Freeze`/`Register` 改为同一把锁下判定，消除"检查冻结位 → 写入"的竞态窗口
+- 失败事件重试服务每轮结束显式清除 AppKey 上下文（长生命周期 EC 残留面）
+
 ### 🔐 Webhook 防重放与多应用隔离（WHF-R3 批次 A）
 
 #### ⚠️ 破坏性变更 / 行为改变

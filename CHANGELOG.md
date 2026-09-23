@@ -2,6 +2,73 @@
 
 ## [Unreleased]
 
+### ⚠️ 破坏性变更 / 行为改变（Redis 去重与令牌存储 R2 系列）
+
+- **SeqID Sorted Set 窗口语义由「TTL 时间窗口」改为「容量窗口」（R2-01）**：写入改为
+  `ZADD`(score=SeqID) + `ZREMRANGEBYRANK key 0 -(capacity+1)` + `EXPIRE`。
+  原实现用时间阈值（`now - ttl`，≈1.79e9）比较 SeqID 分数（自增计数器），导致成员**写入即被清除**、
+  `ZCARD` 恒为 0。语义收窄：`GetCacheCount()` = 当前窗口内成员数（≤ `SeqIdWindowCapacity`），
+  `GetMaxProcessedSeqId()` = 窗口内**真实最大值**（此前恒为 0）；
+  两者**不再等于** String 键 TTL 窗口内的去重规模，**不可用于推断剩余去重空间**。
+  新增配置 `FeishuRedis:SeqIdWindowCapacity`（默认 100000，非正值启动期校验失败）。
+- **`ClearCacheAsync()`（SeqID）恢复真实删除（R2-02）**：清理模式统一由 `RedisKeyBuilder.Pattern` 产出，
+  且模式以**分隔符 + `*`** 结尾（段级精确）。历史实现用裸字符串拼接 `{prefix}{scopeKey}*`，
+  缺少 `Combine` 插入的一级 `:`，模式恒不匹配实际键——**一个键都删不掉**（WS 重连时的"重置去重状态"为空操作）。
+  副作用收敛：`scopeKey="a"` 的清理不再越界删除 `scopeKey="ab"` 的键。
+- **新增 `FeishuRedis:TokenKeyPrefix`（默认 `feishu`）**：令牌键前缀由硬编码改为可配置
+  （最终键 `{TokenKeyPrefix}:{appKey}:token:…`），多环境共用 Redis 时可隔离键空间；空值兜底默认值。
+- **具体类型令牌存储键前缀对齐（R2-09）**：`RedisTokenStore`/`RedisUserTokenStore` 按类型解析时，
+  前缀改为「默认应用 + `TokenKeyPrefix`」（与 per-app 工厂一致，此前为 `feishu:token` 固定前缀）。
+  该兼容面**不参与**令牌管理器读取路径（管理器只经 `IFeishuTokenStoreFactory.Create(appKey)`），
+  也**不参与**加密装饰器；若曾依赖类型解析直读旧键，需按新前缀迁移。
+- **集成测试的"环境未启用"由静默通过改为显式跳过（R2-03）**：`Tests/Mud.Feishu.Redis.IntegrationTests`
+  已加入 `Mud.Feishu.slnx`，用例带 `RedisFact`/`RedisTheory` 门控——未设置 `MUDFEISHU_REDIS_TESTS=1`
+  或 Docker 不可用时计入 **skipped**（不再计入 passed），使门禁的 `skipped == 0` 成为有效断言。
+
+### 🐛 修复（Redis 去重与令牌存储 R2 系列）
+
+- **`rediss://` 连接串现在真正启用 TLS（R2-26）**：实测 StackExchange.Redis `ConfigurationOptions.Parse`
+  **不会**因 `rediss://` scheme 自动置 `Ssl`，原实现仅取或配置项 → 按 README 配置
+  `"ServerAddress": "rediss://…"`（未显式 `Ssl=true`）会以明文连接 TLS 端口。现显式按 scheme 推导。
+- **`RedisFeishuEventDistributedDeduplicator` 补声明 `IDisposable`（R2-27）**：类内已有 `Dispose()` 方法
+  但未在基列表声明接口，MS.DI 按实现类型判断可释放性 → 同步 `ServiceProvider.Dispose()`
+  抛「type only implements IAsyncDisposable…」。R-14 声称的修复在 DI 路径上此前并未生效。
+- 事件去重 Lua 补 `tonumber(timestamp)` 护栏（R2-13）：`timestamp` 为 ISO 字符串/非数字时
+  按「仍在处理中」处理，不再抛 Lua 运行时错误（该错误会被包装为不可降级的 `Server` 类异常）。
+- `GetStatusAsync` 改用 Redis 服务端 `TIME` 求差（R2-10），与 Lua 的权威判定同源（此前混用客户端时钟）。
+- 令牌 SCAN 类 API（`GetTokenTypesAsync`/`ClearAsync`/`ClearUserAsync`/`ClearAllUsersAsync`）改为
+  异步枚举 + 分批删除（500/批）（R2-08，落地 R1 ADR-5 §4）：不再同步阻塞 `SyncTimeout` 一页。
+- 健康检查判据修正（R2-12）：**PING 成功即 `Healthy`**；端点级异常只影响
+  `connectedEndpoints`/`totalEndpoints` 计数，不再把 PING 正常的实例整体判 `Unhealthy`。
+- `FeishuRedisFailureKind.InvalidArgument` **首次真实产生**（R2-18）：`RedisKeyBuilder` 对键段长度
+  > 256 字符抛 `FeishuRedisException(InvalidArgument)`；键前缀非法（空 / `*` 开头）仍抛原生
+  `InvalidOperationException`（配置错误）。
+- 清零 Redis 组件 4 处编译警告（CS8602/CS8601/CS8603/CS1591），恢复四 TFM「0 警告 0 错误」。
+
+### ✨ 新增（Redis 去重与令牌存储 R2 系列）
+
+- **运维诊断门面** `Mud.Feishu.Redis.Diagnostics.IRedisDeduplicationDiagnostics.GetSnapshotAsync(CancellationToken)`
+  → `RedisDeduplicationDiagnosticsSnapshot`（`ServerTimeSeconds`、事件/Nonce `*Available` + 键数、
+  SeqID `SeqIdCacheCount`/`SeqIdMaxProcessed`/`SeqIdScopeKey`）。由
+  `AddFeishuRedisDeduplicators`/`AddFeishuRedisTokenStore` 单例注册。
+  **成本警告**：事件/Nonce 计数为全库 SCAN，属运维路径，禁止热路径/高频轮询。
+- **Redis 指标（R2-21）**：`feishu.redis.operation`（Counter；维度 `feishu.redis.command`/
+  `feishu.dedup.type`/`outcome`）、`feishu.redis.operation.duration`（Histogram，ms）、
+  `feishu.redis.scan.keys`（Counter；`outcome=scanned|deleted`）——均挂在既有 `Mud.Feishu` Meter，
+  宿主 `AddMeter(FeishuMetrics.MeterName)` 即可（`Mud.Feishu.OpenTelemetry` 已自动接入）。
+- **健康检查注册可选（R2-12）**：`AddFeishuRedisDeduplicators(...)` 两个重载与
+  `AddFeishuRedisTokenStore(...)` 新增 `bool registerHealthCheck = true`；传 `false` 时不调用
+  `AddHealthChecks()`（避免对未使用健康检查的宿主隐式注册），`RedisHealthCheck` 类型仍注册。
+
+### 📝 文档（Redis 去重与令牌存储 R2 系列）
+
+- `Mud.Feishu.Redis/README.md`：键布局改为**实测样例**（含双冒号与 `\:` 转义）、配置表补
+  `SeqIdWindowCapacity`/`TokenKeyPrefix` 与 1 分钟钳制说明、事件 Hash 字段补 `timeout` 并标注
+  `timestamp` 为服务端 Unix 秒、SeqID 容量窗口与清理范围重写、异常表区分 `InvalidArgument` 与原生
+  `InvalidOperationException`、新增「运维诊断」「可观测性」两节、附录 A 映射表刷新。
+- `Tests/Mud.Feishu.Redis.Tests/README.md`：删除不存在的 `RedisFeishuEventDistributedDeduplicatorWithFallback`
+  章节与目录树条目、按实际结构/技术栈版本刷新、新增「真实 Redis 与显式跳过」一节。
+
 ### ⚠️ 破坏性变更 / 行为改变（WebSocket 模块）
 
 - **WebSocket 连接生命周期不再跟随调用方 `CancellationToken`**：

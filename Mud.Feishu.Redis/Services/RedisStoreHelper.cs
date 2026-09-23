@@ -21,11 +21,58 @@ internal static class RedisStoreHelper
     /// </summary>
     /// <remarks>
     /// T-M2-7：StackExchange.Redis 不直接接受 CancellationToken 作为取消信号。
-    /// 当前实现返回 <see cref="CommandFlags.None"/>，实际取消由调用方在循环内调用
-    /// <c>cancellationToken.ThrowIfCancellationRequested()</c> 实现。
-    /// 调用方应在逐键/逐页循环中显式响应取消请求。
+    /// 当前实现返回 <see cref="CommandFlags.None"/>，**入参不被消费**（保留参数仅为调用点形状统一）；
+    /// 实际取消由调用方在命令之间调用 <c>cancellationToken.ThrowIfCancellationRequested()</c> 实现。
+    /// 调用方应在逐键/逐页循环中显式响应取消请求——单次 Redis 命令（含 <c>IServer.Keys</c> 的一页
+    /// SCAN、批量 <c>KeyDeleteAsync</c>）**不可中断**，其等待上限由 <c>SyncTimeout</c> 决定。
     /// </remarks>
     public static CommandFlags ToCommandFlags(CancellationToken cancellationToken) => CommandFlags.None;
+
+    /// <summary>
+    /// 读取 Redis 服务端当前时间（Unix 秒）。
+    /// </summary>
+    /// <remarks>
+    /// ADR-16（R2-10）：事件去重的超时判定在 Lua 内已使用 <c>redis.call('TIME')</c>；
+    /// 读侧（<c>GetStatusAsync</c>）亦须与服务端对齐，否则客户端时钟偏移会让诊断口径与权威判定不一致。
+    /// <para>
+    /// 失败（<c>TIME</c> 被 ACL 禁用等）或返回体异常时回落 <see cref="DateTimeOffset.UtcNow"/>——
+    /// 本方法是诊断路径的辅助，不应因 TIME 不可用而整体失败。
+    /// </para>
+    /// </remarks>
+    /// <param name="database">数据库实例</param>
+    /// <param name="cancellationToken">取消令牌（命令之间生效）</param>
+    /// <returns>服务端 Unix 秒（失败时为客户端 Unix 秒）</returns>
+    public static async Task<long> GetServerTimeSecondsAsync(IDatabase database, CancellationToken cancellationToken = default)
+    {
+        if (database == null)
+            throw new ArgumentNullException(nameof(database));
+
+        cancellationToken.ThrowIfCancellationRequested();
+
+        try
+        {
+            var raw = await database.ExecuteAsync("TIME").ConfigureAwait(false);
+            if (raw is { IsNull: false } && raw.Length >= 1)
+            {
+                var secondsText = raw[0].ToString();
+                if (long.TryParse(secondsText, System.Globalization.NumberStyles.Integer,
+                        System.Globalization.CultureInfo.InvariantCulture, out var parsed))
+                {
+                    return parsed;
+                }
+            }
+        }
+        catch (RedisException)
+        {
+            // 见 remarks：回落客户端时间
+        }
+        catch (InvalidOperationException)
+        {
+            // RedisResult 形状与预期不符（非数组/类型不匹配）时同样回落
+        }
+
+        return DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+    }
 
     /// <summary>
     /// 获取可用的 Redis 服务器节点（单节点，优选主节点）。

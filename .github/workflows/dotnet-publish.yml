@@ -148,9 +148,22 @@ jobs:
           "MUD_TEST_RESULTS_DIR=$resultsDir" | Out-File -FilePath $env:GITHUB_ENV -Append
           $log = Join-Path $resultsDir 'mudfeishu-test.log'
 
+          # T-R2-04：启用真实 Redis 集成测试（Testcontainers.Redis，需 Docker daemon）。
+          # ubuntu-latest runner 自带 Docker；GITHUB_ENV 仅对「后续步骤」生效，
+          # 故同时设置进程级变量，使本步骤的 dotnet test 立即生效。
+          if ('${{ matrix.os }}' -eq 'ubuntu-latest') {
+            "MUDFEISHU_REDIS_TESTS=1" | Out-File -FilePath $env:GITHUB_ENV -Append
+            $env:MUDFEISHU_REDIS_TESTS = '1'
+          }
+          else {
+            Write-Host '[WARN] 非 Linux runner：未启用 Redis 集成测试（集成用例将被显式跳过，覆盖缺口见 scripts/verify-build.ps1 步骤 5）' -ForegroundColor Yellow
+          }
+
           # --results-directory + --logger trx 的组合下，VSTest 为每个（测试工程, TFM）组合各落盘一个
-          # TRX；同名时自动追加 [1]/[2] 后缀而非覆盖（实测 Mud.Feishu.slnx 的 7 个测试工程 ×
-          # net6.0/net8.0/net10.0 = 18 个组合，结果集 18 个 TRX 全部保留）。故无需逐工程调用。
+          # TRX；同名时自动追加 [1]/[2] 后缀而非覆盖（实测 Mud.Feishu.slnx 的 8 个测试工程共
+          # 20 个 (工程, TFM) 组合 —— Abstractions/Authentication/OpenTelemetry/Redis.IntegrationTests
+          # 为 net8.0/net10.0（4×2），Redis/主包/Webhook/WebSocket 为 net6.0/net8.0/net10.0（4×3），
+          # 结果集 20 个 TRX 全部保留）。故无需逐工程调用。
           dotnet test $env:SOLUTION_FILE --no-build --configuration $env:CONFIGURATION --results-directory $resultsDir --logger trx --verbosity normal 2>&1 |
             Tee-Object -FilePath $log
           if ($LASTEXITCODE -ne 0) {

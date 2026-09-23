@@ -21,6 +21,9 @@ namespace Mud.Feishu.Redis.Services;
 /// </remarks>
 public class RedisTokenStore : ITokenStore
 {
+    /// <summary>SCAN 类删除操作的批大小（R2-08）。</summary>
+    private const int DeleteBatchSize = 500;
+
     private readonly IConnectionMultiplexer _redis;
     private readonly ILogger<RedisTokenStore> _logger;
     private readonly string _keyPrefix;
@@ -46,9 +49,20 @@ public class RedisTokenStore : ITokenStore
     public async Task<string?> GetAccessTokenAsync(string tokenType, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var key = BuildAccessTokenKey(tokenType);
-        var value = await GetDatabase().StringGetAsync(key, flags: RedisStoreHelper.ToCommandFlags(cancellationToken)).ConfigureAwait(false);
-        return value.HasValue ? value.ToString() : null;
+        // R2-21：令牌读写同样上报指标（本类型不包装异常，失败按原始异常分类）
+        var startTimestamp = RedisMetricsHelper.Begin();
+        try
+        {
+            var key = BuildAccessTokenKey(tokenType);
+            var value = await GetDatabase().StringGetAsync(key, flags: RedisStoreHelper.ToCommandFlags(cancellationToken)).ConfigureAwait(false);
+            Record(FeishuMetrics.RedisCommands.TokenGet, FeishuMetrics.RedisOutcomes.Success, startTimestamp);
+            return value.HasValue ? value.ToString() : null;
+        }
+        catch (RedisException ex)
+        {
+            Record(FeishuMetrics.RedisCommands.TokenGet, RedisMetricsHelper.FromException(ex), startTimestamp);
+            throw;
+        }
     }
 
     /// <inheritdoc />
@@ -60,9 +74,23 @@ public class RedisTokenStore : ITokenStore
                 "令牌过期时间必须为正数（秒），实际值: " + expiresInSeconds);
 
         cancellationToken.ThrowIfCancellationRequested();
-        var key = BuildAccessTokenKey(tokenType);
-        await GetDatabase().StringSetAsync(key, accessToken, TimeSpan.FromSeconds(expiresInSeconds), flags: RedisStoreHelper.ToCommandFlags(cancellationToken)).ConfigureAwait(false);
+        var startTimestamp = RedisMetricsHelper.Begin();
+        try
+        {
+            var key = BuildAccessTokenKey(tokenType);
+            await GetDatabase().StringSetAsync(key, accessToken, TimeSpan.FromSeconds(expiresInSeconds), flags: RedisStoreHelper.ToCommandFlags(cancellationToken)).ConfigureAwait(false);
+            Record(FeishuMetrics.RedisCommands.TokenSet, FeishuMetrics.RedisOutcomes.Success, startTimestamp);
+        }
+        catch (RedisException ex)
+        {
+            Record(FeishuMetrics.RedisCommands.TokenSet, RedisMetricsHelper.FromException(ex), startTimestamp);
+            throw;
+        }
     }
+
+    /// <summary>上报一次令牌存储操作（R2-21）。</summary>
+    private static void Record(string command, string outcome, long startTimestamp)
+        => RedisMetricsHelper.Record(command, FeishuMetrics.DedupTypes.Token, outcome, startTimestamp);
 
     /// <inheritdoc />
     public async Task<string?> GetRefreshTokenAsync(string tokenType, CancellationToken cancellationToken = default)
@@ -123,14 +151,12 @@ public class RedisTokenStore : ITokenStore
         var pattern = TokenKeyBuilder.TenantScanPattern(_keyPrefix);
         var tokenTypes = new List<string>();
 
-        // T-M2-6：遍历全部主节点
+        // T-M2-6 / R2-08：遍历全部主节点，改用异步 SCAN 枚举（不再同步阻塞一页 5s）
         foreach (var server in RedisStoreHelper.GetServers(_redis))
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            var keys = server.Keys(pattern: pattern, pageSize: 250, flags: RedisStoreHelper.ToCommandFlags(cancellationToken));
-
-            foreach (var key in keys)
+            await foreach (var key in server.KeysAsync(pattern: pattern, pageSize: 250, flags: RedisStoreHelper.ToCommandFlags(cancellationToken)).ConfigureAwait(false))
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
@@ -140,6 +166,8 @@ public class RedisTokenStore : ITokenStore
             }
         }
 
+        // R2-21：SCAN 规模可观测
+        RedisMetricsHelper.RecordScan(FeishuMetrics.RedisCommands.TokenGetTypes, tokenTypes.Count, deleted: false);
         return tokenTypes.Distinct();
     }
 
@@ -158,20 +186,34 @@ public class RedisTokenStore : ITokenStore
     {
         var pattern = TokenKeyBuilder.TenantScanPattern(_keyPrefix);
         var db = GetDatabase();
+        var deletedCount = 0L;
 
-        // T-M2-6：遍历全部主节点
+        // T-M2-6 / R2-08：遍历全部主节点，异步 SCAN + 分批删除（500/批，减少 RTT 与"已删一半后异常"的窗口）
         foreach (var server in RedisStoreHelper.GetServers(_redis))
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            var keys = server.Keys(pattern: pattern, pageSize: 250, flags: RedisStoreHelper.ToCommandFlags(cancellationToken));
-
-            foreach (var key in keys)
+            var batch = new List<RedisKey>(DeleteBatchSize);
+            await foreach (var key in server.KeysAsync(pattern: pattern, pageSize: 250, flags: RedisStoreHelper.ToCommandFlags(cancellationToken)).ConfigureAwait(false))
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                await db.KeyDeleteAsync(key, flags: RedisStoreHelper.ToCommandFlags(cancellationToken)).ConfigureAwait(false);
+                batch.Add(key);
+
+                if (batch.Count >= DeleteBatchSize)
+                {
+                    deletedCount += await db.KeyDeleteAsync(batch.ToArray(), flags: RedisStoreHelper.ToCommandFlags(cancellationToken)).ConfigureAwait(false);
+                    batch.Clear();
+                }
+            }
+
+            if (batch.Count > 0)
+            {
+                deletedCount += await db.KeyDeleteAsync(batch.ToArray(), flags: RedisStoreHelper.ToCommandFlags(cancellationToken)).ConfigureAwait(false);
             }
         }
+
+        // R2-21：删除规模可观测（"清空却删 0 个键"类缺陷一眼可辨）
+        RedisMetricsHelper.RecordScan(FeishuMetrics.RedisCommands.TokenClear, deletedCount, deleted: true);
     }
 
     private IDatabase GetDatabase() => _redis.GetDatabase();

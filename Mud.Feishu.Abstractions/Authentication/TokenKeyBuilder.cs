@@ -205,15 +205,23 @@ internal static class TokenKeyBuilder
     /// TMF2-05：键前缀的唯一出口——Memory 与 Redis 两端均委派此方法。
     /// </summary>
     /// <param name="appKey">应用唯一标识</param>
+    /// <param name="tokenPrefix">
+    /// 环境段前缀（R2-04）。默认 <see cref="Mud.Feishu.Abstractions.Consts.DefaultTokenKeyPrefix"/>（<c>feishu</c>）。
+    /// Redis 路径可由 <c>RedisOptions.TokenKeyPrefix</c> 覆盖，用于多环境共用 Redis 时的键空间隔离；
+    /// Memory 路径保持默认值（单进程无跨环境共享问题），因此默认形态下两端前缀逐字节一致。
+    /// </param>
     /// <returns>规范化后的键前缀（如 <c>feishu:cli_a:token</c>，appKey 含特殊字符时按段转义）</returns>
-    internal static string BuildKeyPrefix(string appKey)
+    internal static string BuildKeyPrefix(string appKey, string? tokenPrefix = null)
     {
+        var safePrefix = string.IsNullOrWhiteSpace(tokenPrefix)
+            ? Mud.Feishu.Abstractions.Consts.DefaultTokenKeyPrefix
+            : tokenPrefix!;
         var safeAppKey = string.IsNullOrWhiteSpace(appKey) ? "default" : appKey;
         // 各段经 NormalizeSegment 转义，段间用 Separator 连接。
         // 注意：此处前缀段的转义与 NormalizePrefix 对已有前缀的二次转义不同——
         // 这是构造前缀的唯一入口，前缀内部不再经 NormalizePrefix。
         return string.Join(Separator,
-            NormalizeSegment("feishu"),
+            NormalizeSegment(safePrefix),
             NormalizeSegment(safeAppKey),
             NormalizeSegment("token"));
     }

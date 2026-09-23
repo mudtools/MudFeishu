@@ -22,6 +22,9 @@ namespace Mud.Feishu.Redis.Services;
 /// </remarks>
 public class RedisUserTokenStore : UserTokenStoreBase, IFeishuUserTokenStorePurge
 {
+    /// <summary>SCAN 类删除操作的批大小（R2-08）。</summary>
+    private const int DeleteBatchSize = 500;
+
     private readonly IConnectionMultiplexer _redis;
     private readonly string _keyPrefix;
 
@@ -138,13 +141,12 @@ public class RedisUserTokenStore : UserTokenStoreBase, IFeishuUserTokenStorePurg
         var pattern = TokenKeyBuilder.UserScanPattern(_keyPrefix, userId);
         var tokenTypes = new List<string>();
 
+        // R2-08：异步 SCAN 枚举（不再同步阻塞）
         foreach (var server in RedisStoreHelper.GetServers(_redis))
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            var keys = server.Keys(pattern: pattern, pageSize: 250, flags: RedisStoreHelper.ToCommandFlags(cancellationToken));
-
-            foreach (var key in keys)
+            await foreach (var key in server.KeysAsync(pattern: pattern, pageSize: 250, flags: RedisStoreHelper.ToCommandFlags(cancellationToken)).ConfigureAwait(false))
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
@@ -168,16 +170,27 @@ public class RedisUserTokenStore : UserTokenStoreBase, IFeishuUserTokenStorePurg
         var pattern = TokenKeyBuilder.UserScanPattern(_keyPrefix, userId);
         var db = _redis.GetDatabase();
 
+        // R2-08：异步 SCAN + 分批删除（500/批）
         foreach (var server in RedisStoreHelper.GetServers(_redis))
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            var keys = server.Keys(pattern: pattern, pageSize: 250, flags: RedisStoreHelper.ToCommandFlags(cancellationToken));
-
-            foreach (var key in keys)
+            var batch = new List<RedisKey>(DeleteBatchSize);
+            await foreach (var key in server.KeysAsync(pattern: pattern, pageSize: 250, flags: RedisStoreHelper.ToCommandFlags(cancellationToken)).ConfigureAwait(false))
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                await db.KeyDeleteAsync(key, flags: RedisStoreHelper.ToCommandFlags(cancellationToken)).ConfigureAwait(false);
+                batch.Add(key);
+
+                if (batch.Count >= DeleteBatchSize)
+                {
+                    await db.KeyDeleteAsync(batch.ToArray(), flags: RedisStoreHelper.ToCommandFlags(cancellationToken)).ConfigureAwait(false);
+                    batch.Clear();
+                }
+            }
+
+            if (batch.Count > 0)
+            {
+                await db.KeyDeleteAsync(batch.ToArray(), flags: RedisStoreHelper.ToCommandFlags(cancellationToken)).ConfigureAwait(false);
             }
         }
     }
@@ -194,16 +207,27 @@ public class RedisUserTokenStore : UserTokenStoreBase, IFeishuUserTokenStorePurg
         var pattern = TokenKeyBuilder.AllUsersScanPattern(_keyPrefix);
         var db = _redis.GetDatabase();
 
+        // R2-08：异步 SCAN + 分批删除（500/批）
         foreach (var server in RedisStoreHelper.GetServers(_redis))
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            var keys = server.Keys(pattern: pattern, pageSize: 250, flags: RedisStoreHelper.ToCommandFlags(cancellationToken));
-
-            foreach (var key in keys)
+            var batch = new List<RedisKey>(DeleteBatchSize);
+            await foreach (var key in server.KeysAsync(pattern: pattern, pageSize: 250, flags: RedisStoreHelper.ToCommandFlags(cancellationToken)).ConfigureAwait(false))
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                await db.KeyDeleteAsync(key, flags: RedisStoreHelper.ToCommandFlags(cancellationToken)).ConfigureAwait(false);
+                batch.Add(key);
+
+                if (batch.Count >= DeleteBatchSize)
+                {
+                    await db.KeyDeleteAsync(batch.ToArray(), flags: RedisStoreHelper.ToCommandFlags(cancellationToken)).ConfigureAwait(false);
+                    batch.Clear();
+                }
+            }
+
+            if (batch.Count > 0)
+            {
+                await db.KeyDeleteAsync(batch.ToArray(), flags: RedisStoreHelper.ToCommandFlags(cancellationToken)).ConfigureAwait(false);
             }
         }
     }

@@ -49,21 +49,21 @@ public class PerAppRedisTokenStoreKeyIsolationTests
 
         if (serverKeys != null)
         {
-            // GetTokenTypesAsync / ClearAsync 走 GetServer(...).Keys(...)，需要额外的服务器端桩。
+            // GetTokenTypesAsync / ClearAsync 走 GetServer(...).KeysAsync(...)，需要额外的服务器端桩。
             var server = new Mock<IServer>();
             server.Setup(s => s.IsConnected).Returns(true);
             server.Setup(s => s.IsReplica).Returns(false);
-            // StackExchange.Redis 2.10 的 4 参数 Keys(...) 重载内部转发到 6 参数重载
-            // （database, pattern, pageSize, cursor, pageOffset, flags），
-            // 因此在 Moq 代理上被拦截的是 6 参数版本，必须按该签名做桩。
-            server.Setup(s => s.Keys(
+            // R2-08：实现已由同步 Keys(...) 改为异步 KeysAsync(...)；
+            // 桩按 IServer.KeysAsync(int database, RedisValue pattern, int pageSize,
+            // long cursor, int pageOffset, CommandFlags flags) 的 6 参数签名做（该成员只有这一个重载）。
+            server.Setup(s => s.KeysAsync(
                     It.IsAny<int>(),
                     It.IsAny<RedisValue>(),
                     It.IsAny<int>(),
                     It.IsAny<long>(),
                     It.IsAny<int>(),
                     It.IsAny<CommandFlags>()))
-                .Returns(serverKeys.Select(k => (RedisKey)k));
+                .Returns(() => ToAsyncKeys(serverKeys.Select(k => (RedisKey)k)));
 
             var endpoint = new System.Net.DnsEndPoint("localhost", 6379);
             redis.Setup(r => r.GetEndPoints(It.IsAny<bool>())).Returns(new System.Net.EndPoint[] { endpoint });
@@ -219,5 +219,17 @@ public class PerAppRedisTokenStoreKeyIsolationTests
         // Assert：RemoveAsync 以枚举值构造出的键与服务器上的物理键逐字节一致（转义还原无损）
         deletedKeys.Should().Contain((RedisKey)"feishu:cli_a:token:tenant\\:cli_a:access",
             "RemoveAsync 必须能以 GetTokenTypesAsync 的返回值命中服务器物理键（枚举可回灌）");
+    }
+
+    /// <summary>
+    /// 把键集合包装为 <c>IAsyncEnumerable&lt;RedisKey&gt;</c>（R2-08：KeysAsync 桩用）。
+    /// </summary>
+    private static async IAsyncEnumerable<RedisKey> ToAsyncKeys(IEnumerable<RedisKey> keys)
+    {
+        await Task.CompletedTask;
+        foreach (var key in keys)
+        {
+            yield return key;
+        }
     }
 }

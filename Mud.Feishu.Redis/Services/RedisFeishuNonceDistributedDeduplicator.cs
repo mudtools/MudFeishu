@@ -66,6 +66,9 @@ public class RedisFeishuNonceDistributedDeduplicator : IFeishuNonceDistributedDe
         if (actualTtl <= TimeSpan.Zero)
             throw new ArgumentOutOfRangeException(nameof(ttl), "Nonce TTL 必须为正值");
 
+        // R2-21：耗时计时（无分配）
+        var startTimestamp = RedisMetricsHelper.Begin();
+
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -83,33 +86,51 @@ public class RedisFeishuNonceDistributedDeduplicator : IFeishuNonceDistributedDe
             if (!setResult)
             {
                 _logger?.LogWarning("Nonce {Nonce} 已使用过，拒绝重放攻击 (AppKey: {AppKey})", LogSanitizer.Clean(nonce), appKey ?? "default");
+                RecordOutcome(FeishuMetrics.RedisOutcomes.Duplicate, startTimestamp);
                 return true; // 已使用且未过期
             }
 
             _logger?.LogDebug("Nonce {Nonce} 标记为已使用，TTL: {Ttl} (AppKey: {AppKey})", LogSanitizer.Clean(nonce), actualTtl, appKey ?? "default");
+            RecordOutcome(FeishuMetrics.RedisOutcomes.Success, startTimestamp);
             return false; // 未使用
         }
         catch (RedisConnectionException ex)
         {
             _logger?.LogError(ex, "Redis 连接异常，Nonce {Nonce} 去重失败", LogSanitizer.Clean(nonce));
+            RecordFailure(FeishuRedisFailureKind.Connection, startTimestamp);
             throw new FeishuRedisException(FeishuRedisFailureKind.Connection, "Redis 连接失败，无法完成 Nonce 去重", ex);
         }
         catch (RedisTimeoutException ex)
         {
             _logger?.LogWarning(ex, "Redis 超时，Nonce {Nonce} 去重失败", LogSanitizer.Clean(nonce));
+            RecordFailure(FeishuRedisFailureKind.Timeout, startTimestamp);
             throw new FeishuRedisException(FeishuRedisFailureKind.Timeout, "Redis 操作超时", ex);
         }
         catch (RedisServerException ex)
         {
             _logger?.LogError(ex, "Redis 服务端异常，Nonce {Nonce} 去重失败", LogSanitizer.Clean(nonce));
+            RecordFailure(FeishuRedisFailureKind.Server, startTimestamp);
             throw new FeishuRedisException(FeishuRedisFailureKind.Server, "Redis 服务端错误", ex);
         }
         catch (RedisException ex)
         {
             _logger?.LogError(ex, "Redis 操作异常，Nonce {Nonce} 去重失败", LogSanitizer.Clean(nonce));
+            RecordFailure(FeishuRedisFailureKind.Server, startTimestamp);
             throw new FeishuRedisException(FeishuRedisFailureKind.Server, "Redis 操作失败", ex);
         }
     }
+
+    /// <summary>上报一次 Nonce 去重结果（R2-21）。</summary>
+    private static void RecordOutcome(string outcome, long startTimestamp)
+        => RedisMetricsHelper.Record(FeishuMetrics.RedisCommands.TryMarkProcessing, FeishuMetrics.DedupTypes.Nonce, outcome, startTimestamp);
+
+    /// <summary>上报一次 Nonce 去重失败（R2-21）。</summary>
+    private static void RecordFailure(FeishuRedisFailureKind kind, long startTimestamp)
+        => RedisMetricsHelper.Record(
+            FeishuMetrics.RedisCommands.TryMarkProcessing,
+            FeishuMetrics.DedupTypes.Nonce,
+            RedisMetricsHelper.FromFailureKind(kind),
+            startTimestamp);
 
     /// <inheritdoc />
     public async Task<bool> IsUsedAsync(string nonce, string? appKey = null, CancellationToken cancellationToken = default)
@@ -254,14 +275,12 @@ public class RedisFeishuNonceDistributedDeduplicator : IFeishuNonceDistributedDe
         try
         {
             var totalCount = 0;
-            var pattern = RedisKeyBuilder.Combine(_keyPrefix) + "*";
+            // R2-02：模式统一经 RedisKeyBuilder.Pattern 产出（与键同源）
+            var pattern = RedisKeyBuilder.Pattern(_keyPrefix);
 
-            foreach (var endPoint in _redis.GetEndPoints())
+            // R2-12：端点策略统一为 RedisStoreHelper.GetServers（跳过不可达/副本节点，全不可用时回退首节点）
+            foreach (var redisServer in RedisStoreHelper.GetServers(_redis))
             {
-                var redisServer = _redis.GetServer(endPoint);
-                if (redisServer.IsReplica)
-                    continue;
-
                 await foreach (var key in redisServer.KeysAsync(pattern: pattern, pageSize: 1000).ConfigureAwait(false))
                 {
                     totalCount++;
@@ -269,6 +288,8 @@ public class RedisFeishuNonceDistributedDeduplicator : IFeishuNonceDistributedDe
             }
 
             _logger?.LogDebug("当前缓存中的 Nonce 数量: {Count}", totalCount);
+            // R2-21：SCAN 计数可观测
+            RedisMetricsHelper.RecordScan(FeishuMetrics.RedisCommands.GetCachedCount, totalCount, deleted: false);
             return totalCount;
         }
         catch (Exception ex)

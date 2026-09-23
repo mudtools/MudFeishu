@@ -113,6 +113,18 @@ internal class Consts
     public const string DefaultSeqIdKeyPrefix = "feishu:seqid:";
 
     /// <summary>
+    /// SeqID 去重 Sorted Set 的默认容量窗口（成员数上限）。
+    /// <para>R2-01：窗口语义由「TTL 时间窗口」改为「容量窗口」——写入时按排名裁剪
+    /// （<c>ZREMRANGEBYRANK</c>），使集合大小有确定性上界，且 <c>GetMaxProcessedSeqId</c> 语义精确。</para>
+    /// </summary>
+    public const int DefaultSeqIdWindowCapacity = 100000;
+
+    /// <summary>
+    /// 默认令牌键前缀（含 appKey 维度前的环境段），对应 <c>RedisOptions.TokenKeyPrefix</c>。
+    /// </summary>
+    public const string DefaultTokenKeyPrefix = "feishu";
+
+    /// <summary>
     /// 默认事件缓存过期时间（毫秒）：48 小时
     /// </summary>
     public const int DefaultCacheExpirationMs = 48 * 60 * 60 * 1000;

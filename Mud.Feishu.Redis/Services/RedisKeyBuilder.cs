@@ -84,12 +84,42 @@ internal static class RedisKeyBuilder
                 continue;
 
             if (segment!.Length > MaxSegmentLength)
-                throw new InvalidOperationException(
+            {
+                // R2-18：键段超长是**调用方输入非法**（外部可控的 eventId/nonce/userId），
+                // 归类为 FeishuRedisFailureKind.InvalidArgument，使消费侧可区分
+                // "参数错误不应重试" 与 "服务端/连接故障可降级"。
+                // FeishuRedisException 继承 InvalidOperationException，既有捕获语义不变。
+                throw new FeishuRedisException(
+                    FeishuRedisFailureKind.InvalidArgument,
                     $"键段长度 {segment.Length} 超过上限 {MaxSegmentLength}");
+            }
 
             parts.Add(Escape(segment));
         }
 
         return string.Join(Separator, parts);
     }
+
+    /// <summary>
+    /// 构造 SCAN 模式：<c>Combine(prefix, segments…) + ":*"</c>（R2-02 单一出口）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>不变量</b>：任何用于 SCAN/Keys 的模式都必须经本方法产出。历史缺陷 R2-02 的根因正是
+    /// SeqID 清理模式用裸字符串拼接 <c>$"{prefix}{scopeKey}*"</c>，而键由 <see cref="Combine"/>
+    /// 构造（段间插入 <c>:</c>）——模式恒不匹配实际键，清理静默变成空操作。
+    /// </para>
+    /// <para>
+    /// <b>为什么以 <c>:</c> + <c>*</c> 结尾（而不是直接 <c>*</c>）</b>：分隔符保证**段级精确匹配**。
+    /// 若用 <c>Combine(...) + "*"</c>，则 <c>scopeKey="cli_a|h1"</c> 的模式会同时命中
+    /// <c>scopeKey="cli_a|h1x"</c> 的键（前者是后者的前缀）——清理/计数会越界到相邻隔离维度。
+    /// 由 <c>RedisKeyLayoutContractGuards</c> 的属性测试锁定该不变量。
+    /// </para>
+    /// </remarks>
+    /// <param name="prefix">键前缀（必须非空且不以 <c>*</c> 开头）</param>
+    /// <param name="segments">零或多个键段</param>
+    /// <returns>SCAN 模式（以 <c>:*</c> 结尾）</returns>
+    /// <exception cref="InvalidOperationException">前缀为空或以 <c>*</c> 开头</exception>
+    public static string Pattern(string prefix, params string?[] segments)
+        => Combine(prefix, segments) + Separator + "*";
 }

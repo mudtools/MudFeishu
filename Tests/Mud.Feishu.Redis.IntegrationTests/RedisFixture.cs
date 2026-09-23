@@ -82,40 +82,45 @@ public class RedisFixture : IAsyncLifetime
 }
 
 /// <summary>
-/// 基于环境门控的集成分测试基类——无 Docker 时跳过全部用例
+/// 基于环境门控的集成测试基类——无 Docker 时全部用例在**发现期**被标记为 skipped
+/// （见 <see cref="RedisFactAttribute"/>）。
 /// </summary>
+/// <remarks>
+/// 只使用集合夹具（<see cref="ICollectionFixture{TFixture}"/>），**不再叠加**
+/// <c>IClassFixture&lt;RedisFixture&gt;</c>：两者同时声明时 xUnit 会为每个测试类各建一个夹具实例，
+/// 造成容器重复启动（一个类一个 Redis 容器）与资源浪费（T-R2-03）。
+/// </remarks>
 [Collection("Redis")]
-public abstract class RedisIntegrationTestBase : IClassFixture<RedisFixture>, IAsyncLifetime
+public abstract class RedisIntegrationTestBase : IAsyncLifetime
 {
+    /// <summary>共享的 Redis 容器夹具（由集合夹具注入）。</summary>
     protected readonly RedisFixture Fixture;
 
+    /// <summary>
+    /// 初始化基类。
+    /// </summary>
+    /// <param name="fixture">集合夹具注入的 Redis 夹具。</param>
     protected RedisIntegrationTestBase(RedisFixture fixture)
     {
         Fixture = fixture;
     }
 
+    /// <inheritdoc />
     public async Task InitializeAsync()
     {
         if (!RedisFixture.ShouldRun)
             return;
 
+        // 测试间隔离：清空当前数据库
         await Fixture.FlushDbAsync();
     }
 
+    /// <inheritdoc />
     public Task DisposeAsync() => Task.CompletedTask;
-
-    /// <summary>
-    /// 如果环境门控未开启，跳过测试（返回 true 表示应跳过）
-    /// </summary>
-    protected bool ShouldSkip()
-    {
-        if (!RedisFixture.ShouldRun)
-        {
-            return true;
-        }
-        return false;
-    }
 }
 
+/// <summary>
+/// Redis 集合定义——全部测试类共享同一个容器夹具。
+/// </summary>
 [CollectionDefinition("Redis")]
 public class RedisCollection : ICollectionFixture<RedisFixture> { }

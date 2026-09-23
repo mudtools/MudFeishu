@@ -2,6 +2,75 @@
 
 ## [Unreleased]
 
+### ⚠️ Breaking / Behavioral Changes (Redis deduplication & token store, R2 series)
+
+- **SeqID Sorted Set window semantics changed from a TTL time window to a capacity window (R2-01)**:
+  writes now perform `ZADD`(score=SeqID) + `ZREMRANGEBYRANK key 0 -(capacity+1)` + `EXPIRE`.
+  The previous implementation compared SeqID scores (a monotonic counter) against a time threshold
+  (`now - ttl`, ≈1.79e9), so every member was trimmed immediately after being added and `ZCARD` was always 0.
+  `GetCacheCount()` now returns the current window size (<= `SeqIdWindowCapacity`) and
+  `GetMaxProcessedSeqId()` the **true maximum** inside the window (previously always 0); neither equals the
+  dedup scale of the String-key TTL window and **must not be used to infer remaining dedup headroom**.
+  New setting `FeishuRedis:SeqIdWindowCapacity` (default 100000; non-positive fails startup validation).
+- **`ClearCacheAsync()` (SeqID) now really deletes (R2-02)**: the pattern is produced by
+  `RedisKeyBuilder.Pattern` and ends with a separator plus `*` (segment-exact). The previous raw concatenation
+  missed the separator inserted by `Combine`, so **not a single key was deleted** (the WS-reconnect
+  "reset dedup state" was a no-op). Side effect fixed: clearing `scopeKey="a"` no longer over-deletes
+  keys of `scopeKey="ab"`.
+- **New `FeishuRedis:TokenKeyPrefix` (default `feishu`)**: token key prefixes are configurable
+  (`{TokenKeyPrefix}:{appKey}:token:…`) for multi-environment isolation on a shared Redis; empty falls back to the default.
+- **Concrete token stores prefixes aligned (R2-09)**: `RedisTokenStore`/`RedisUserTokenStore` resolved by type now use
+  the "default app + `TokenKeyPrefix`" prefix (matching the per-app factory; previously a fixed `feishu:token`).
+  This compatibility surface is **not** part of the token-manager read path (which uses
+  `IFeishuTokenStoreFactory.Create(appKey)`) and **not** part of the encryption decorator.
+- **Integration tests: "not enabled" is now an explicit skip instead of a silent pass (R2-03)**:
+  `Tests/Mud.Feishu.Redis.IntegrationTests` is part of `Mud.Feishu.slnx` and its cases are gated by
+  `RedisFact`/`RedisTheory`; without `MUDFEISHU_REDIS_TESTS=1` or Docker they count as **skipped**, not passed.
+
+### 🐛 Fixed (Redis deduplication & token store, R2 series)
+
+- **`rediss://` connection strings now really enable TLS (R2-26)**: measured on StackExchange.Redis,
+  `ConfigurationOptions.Parse` does **not** set `Ssl` for the `rediss://` scheme, so the previous
+  "OR with the configured flag" logic left TLS disabled and the documented configuration connected in plaintext.
+  The scheme is now explicitly mapped to `Ssl`.
+- **`RedisFeishuEventDistributedDeduplicator` now declares `IDisposable` (R2-27)**: the class had a `Dispose()`
+  method but did not declare the interface, so MS.DI (which inspects the implementation type) threw
+  "type only implements IAsyncDisposable…" on a synchronous `ServiceProvider.Dispose()`.
+- Event Lua now guards `tonumber(timestamp)` (R2-13): a non-numeric timestamp is treated as "still processing"
+  instead of raising a Lua runtime error (which surfaced as a non-degradable `Server` failure).
+- `GetStatusAsync` now uses Redis server `TIME` (R2-10), consistent with the authoritative Lua decision.
+- Token SCAN APIs (`GetTokenTypesAsync`/`ClearAsync`/`ClearUserAsync`/`ClearAllUsersAsync`) now use asynchronous
+  enumeration plus batched deletes (500 per batch) (R2-08, landing R1 ADR-5 §4) instead of blocking `SyncTimeout` per page.
+- Health check criterion fixed (R2-12): **a successful PING means `Healthy`**; endpoint-level failures only affect
+  the `connectedEndpoints`/`totalEndpoints` counters.
+- `FeishuRedisFailureKind.InvalidArgument` is now **actually produced** (R2-18): `RedisKeyBuilder` throws
+  `FeishuRedisException(InvalidArgument)` for key segments longer than 256 chars; illegal prefixes still throw
+  native `InvalidOperationException` (configuration error).
+- Cleared the 4 compiler warnings in the Redis component (CS8602/CS8601/CS8603/CS1591), restoring
+  "0 warnings / 0 errors" across all four TFMs.
+
+### ✨ Added (Redis deduplication & token store, R2 series)
+
+- **Operations diagnostics facade** `IRedisDeduplicationDiagnostics.GetSnapshotAsync(CancellationToken)` →
+  `RedisDeduplicationDiagnosticsSnapshot` (`ServerTimeSeconds`, per-deduplicator `*Available` + counts,
+  `SeqIdCacheCount`, `SeqIdMaxProcessed`, `SeqIdScopeKey`). **Cost warning**: the event/Nonce counts are
+  full-keyspace SCANs — do not call them on hot paths.
+- **Redis metrics (R2-21)**: `feishu.redis.operation` (Counter; `feishu.redis.command`/`feishu.dedup.type`/`outcome`),
+  `feishu.redis.operation.duration` (Histogram, ms) and `feishu.redis.scan.keys` (Counter; `outcome=scanned|deleted`) —
+  all on the existing `Mud.Feishu` Meter.
+- **Optional health-check registration (R2-12)**: `bool registerHealthCheck = true` on both
+  `AddFeishuRedisDeduplicators` overloads and `AddFeishuRedisTokenStore`; `false` skips `AddHealthChecks()`
+  while still registering the `RedisHealthCheck` type.
+
+### 📝 Documentation (Redis deduplication & token store, R2 series)
+
+- Redis README: measured key samples (double colon and `\:` escaping), new configuration rows with the
+  1-minute clamp note, `timeout` field and server-side `timestamp` for the event hash, rewritten SeqID
+  capacity-window and cleanup sections, `InvalidArgument` vs native exception distinction, new
+  "Operations diagnostics" and "Observability" sections, refreshed appendix A.
+- Redis tests README: removed the non-existent fallback deduplicator section, refreshed the directory tree and
+  package versions, added a "real Redis and explicit skip" section.
+
 ### ⚠️ Breaking / Behavioral Changes (WebSocket module)
 
 - **Connection lifetime no longer follows the caller's `CancellationToken`**:

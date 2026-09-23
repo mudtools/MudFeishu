@@ -6,6 +6,7 @@
 // -----------------------------------------------------------------------
 
 global using Mud.Feishu.Abstractions.Authentication;
+global using Mud.Feishu.Abstractions.Metrics;
 global using Mud.Feishu.Abstractions.Services;
 global using Mud.HttpUtils;
 global using Microsoft.Extensions.Logging;

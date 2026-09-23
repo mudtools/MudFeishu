@@ -53,7 +53,14 @@ public class RedisFixture : IAsyncLifetime
             EndPoints = { _container.GetConnectionString() },
             ConnectTimeout = 5000,
             SyncTimeout = 5000,
-            AbortOnConnectFail = false
+            AbortOnConnectFail = false,
+            // 必须开启管理命令：FLUSHDB 属管理命令，StackExchange.Redis 会在**客户端**拦截
+            // （ConnectionMultiplexer.CheckMessage → RedisCommandException），AllowAdmin=false 时
+            // 命令根本不会发往服务端，用例隔离（FlushDbAsync）与夹具初始化会 100% 失败
+            // （CI ubuntu-latest 实测 Redis.IntegrationTests 25/25 全挂）。
+            // 此处连接的是 Testcontainers 一次性 redis:7 容器（无持久数据、无共享实例），故显式开启；
+            // 产品侧 RedisOptions.Advanced.AllowAdmin 的默认值仍为 false。
+            AllowAdmin = true
         };
 
         _redis = await ConnectionMultiplexer.ConnectAsync(config);

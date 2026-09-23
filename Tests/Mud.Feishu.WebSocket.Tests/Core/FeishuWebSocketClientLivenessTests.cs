@@ -424,6 +424,16 @@ public class FeishuWebSocketClientLivenessTests
             await WaitUntilAsync(() => Volatile.Read(ref delivered) >= frameCount,
                 "全部帧都必须被派发（不得因慢订阅者而丢帧）");
 
+            // 判定条件修复：delivered 与 maxConcurrent 虽由回调内相邻语句更新，但
+            // "读到 delivered == frameCount" **不保证**读到 maxConcurrent 的更新——5 个
+            // 回调线程可能在 delivered++ 之后、inFlight++/max 更新之前被同时抢占，
+            // 断言随即读到 0（实测 net8.0 全量并行负载下偶发）。
+            // CountdownEvent.Signal() 位于 maxConcurrent 更新之后，故"5 个订阅者全部进入"
+            // 才是 maxConcurrent 已收敛的可判定条件：旧实现（接收循环线程同步派发）下第 1 个
+            // 回调就阻塞接收管道，计数永远到不了 0，此处以超时失败。
+            await WaitUntilAsync(() => allEntered.CurrentCount == 0,
+                "5 个订阅者必须能同时进入派发（旧实现下第 1 个慢订阅者会串行化整条接收管道）");
+
             // Assert
             Volatile.Read(ref maxConcurrent).Should().BeGreaterThan(1,
                 "WS2-08/P1-6：MessageReceived 必须脱离接收循环线程派发（可并发），" +

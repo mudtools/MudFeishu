@@ -156,12 +156,16 @@ public class FeishuWebhookOptionsBindingTests
     {
         var options = BindFromDictionary(new Dictionary<string, string?>
         {
+            // R3-P1-2/D6：多应用（Apps.Count > 1）下 ExpectedAppId 为必填——
+            // 它是 EncryptKey 误配（把 B 的密钥填到 A）导致跨应用串扰的唯一兜底。
             ["FeishuWebhook:Apps:app1:AppKey"] = "cli_a1b2c3d4e5f6g7h8",
             ["FeishuWebhook:Apps:app1:VerificationToken"] = "token1",
             ["FeishuWebhook:Apps:app1:EncryptKey"] = "0123456789abcdef0123456789abcdef",
+            ["FeishuWebhook:Apps:app1:ExpectedAppId"] = "cli_a1b2c3d4e5f6g7h8",
             ["FeishuWebhook:Apps:app2:AppKey"] = "cli_b1b2c3d4e5f6g7h8",
             ["FeishuWebhook:Apps:app2:VerificationToken"] = "token2",
             ["FeishuWebhook:Apps:app2:EncryptKey"] = "fedcba9876543210fedcba9876543210",
+            ["FeishuWebhook:Apps:app2:ExpectedAppId"] = "cli_b1b2c3d4e5f6g7h8",
         });
 
         options.Apps.Should().HaveCount(2);

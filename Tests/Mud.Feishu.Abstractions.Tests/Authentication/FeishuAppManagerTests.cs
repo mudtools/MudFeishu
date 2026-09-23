@@ -632,10 +632,20 @@ public class FeishuAppManagerTests
     /// 强断言：spy 存储 <c>ClearAsync</c> 被真实调用（副作用断言）。
     /// </summary>
     [Fact]
-    public void HotReload_ShouldPurgeStoredTokens_WhenAppSecretChanged()
+    public async Task HotReload_ShouldPurgeStoredTokens_WhenAppSecretChanged()
     {
         // Arrange
         var services = CreateServiceCollectionWithTokenStoreFactory(out var tokenStoreMock, out _);
+
+        // 观测点：清库调用计数（跨线程自增，需 Interlocked/Volatile）。
+        // 清库为 fire-and-forget（TMR2-P1-5，Phase-P 与提交后二次清库均经 Task.Run 派发），
+        // 故断言前必须先做有界等待，否则断言与 Task.Run 调度竞态。
+        var purgeInvocations = 0;
+        tokenStoreMock
+            .Setup(x => x.ClearAsync(It.IsAny<CancellationToken>()))
+            .Callback(() => Interlocked.Increment(ref purgeInvocations))
+            .Returns(Task.CompletedTask);
+
         services.AddFeishuApp(new List<FeishuAppConfig> { CreateDefaultConfig() });
         using var provider = services.BuildServiceProvider();
         var appManager = provider.GetRequiredService<FeishuAppManager>();
@@ -653,6 +663,16 @@ public class FeishuAppManagerTests
 
         // Act
         appManager.OnConfigurationChanged(new List<FeishuAppConfig> { changedConfig });
+
+        // 有界等待（500 × 20ms = 10s，与同文件 OnConfigurationChanged_ShouldRemoveTenantAndUserTokensFromRealMemoryCache_*
+        // 的效果轮询同构）：等待清库真的落到 spy 存储上。
+        // 修复前此处 OnConfigurationChanged 返回后立即 Verify：CI（ubuntu-latest / net10.0）偶发失败——
+        // 断言时 mock 上 0 次调用，Moq 构造异常消息期间两次调用才被记录（消息里出现
+        // "Performed invocations: ClearAsync ×2" 与 "was never performed" 并存，即竞态指纹）。
+        for (var i = 0; i < 500 && Volatile.Read(ref purgeInvocations) == 0; i++)
+        {
+            await Task.Delay(20);
+        }
 
         // Assert：TMR-P1-6（F6）——凭据变更清库为"Phase-P 清库 + 提交后二次清库（D10 闭环）"双阶段，
         // 二次清库为 fire-and-forget，故这里断言"至少一次"（强语义：清库必须发生）。
@@ -777,6 +797,23 @@ public class FeishuAppManagerTests
 
         // Act：凭据变更热更新（PurgeTokenStoreAsync 经工厂新实例清库）
         manager.OnConfigurationChanged(new List<FeishuAppConfig> { changedConfig });
+
+        // TMR2-P1-5：清库不再在 OnChange 回调线程上同步等待（原 Task.Run(...).Wait(10s)），
+        // 故此处以「清库效果（三类令牌键均已消失）」为完成信号做**有界轮询**（不使用固定延时）。
+        // 刻意不以 TokenStorePurgeGate.Query 作为完成信号：门是**进程级静态**状态，而本测试
+        // 程序集默认按测试类并行，其他类的 ResetForTest()（或并发租约归零）可使其提前变为
+        // NotPending，轮询于是在清库完成前退出——读到"租户令牌已删、用户令牌未删"的中间态。
+        for (var i = 0; i < 500; i++)
+        {
+            if (await storeA.GetAccessTokenAsync(tokenType, CancellationToken.None) is null
+                && await userStoreA!.GetAccessTokenAsync(userId, userTokenType, CancellationToken.None) is null
+                && await userStoreA.GetRefreshTokenAsync(userId, userTokenType, CancellationToken.None) is null)
+            {
+                break;
+            }
+
+            await Task.Delay(20);
+        }
 
         // Assert：经工厂新实例 B 断言租户+用户令牌均被清除（根因修复的强断言）
         var (storeB, userStoreB) = factory.Create(appKey);

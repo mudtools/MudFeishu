@@ -17,10 +17,12 @@ namespace Mud.Feishu.Abstractions.Authentication;
 /// <c>RemoveAsync</c>/<c>GetAccessTokenAsync</c>。
 /// </para>
 /// <para>
-/// TMF2-05：<see cref="BuildKeyPrefix"/> 是键前缀的唯一出口——
+/// TMF2-05 / TMR2-P1-2：<see cref="BuildKeyPrefix"/> 是键前缀的唯一出口——
 /// Memory（<c>FeishuTokenStore</c> / <c>FeishuUserTokenStore</c>）和 Redis
 /// （<c>PerAppRedisTokenStoreFactory</c>）均委派此方法，消除裸拼接与经
-/// <c>RedisKeyBuilder.Combine</c> 转义的差异（前缀逐字节一致）。
+/// <c>RedisKeyBuilder.Combine</c> 预转义的差异（前缀逐字节一致）。
+/// 该方法返回<b>未转义</b>前缀：转义单点归口 <see cref="NormalizeSegment"/>，
+/// 由键构造路径（<c>Combine</c> → <see cref="NormalizePrefix"/>）施加，避免二次转义。
 /// </para>
 /// <para>
 /// TMF2-08：<see cref="NormalizeSegment"/> 转义 glob 元字符（<c>*</c> <c>?</c> <c>[</c> <c>]</c>），
@@ -107,20 +109,56 @@ internal static class TokenKeyBuilder
     /// 构建用于 SCAN 的租户键模式（通配 tokenType 与 access/refresh）。
     /// </summary>
     internal static string TenantScanPattern(string keyPrefix)
-        => $"{NormalizePrefix(keyPrefix)}{Separator}*";
+        => $"{TenantScanPatternLiteral(keyPrefix)}*";
 
     /// <summary>
     /// 构建用于 SCAN 的用户键模式（通配 tokenType 与 access/refresh）。
     /// </summary>
     internal static string UserScanPattern(string keyPrefix, string userId)
-        => $"{NormalizePrefix(keyPrefix)}{Separator}user{Separator}{NormalizeSegment(userId)}{Separator}*";
+        => $"{UserScanPatternLiteral(keyPrefix, userId)}*";
 
     /// <summary>
     /// 构建用于 SCAN 的全用户键模式（通配 userId、tokenType 与 access/refresh）。
     /// TMF-01：IFeishuUserTokenStorePurge.ClearAllUsersAsync 的键模式单一出口（D8 契约）。
     /// </summary>
     internal static string AllUsersScanPattern(string keyPrefix)
-        => $"{NormalizePrefix(keyPrefix)}{Separator}user{Separator}*";
+        => $"{AllUsersScanPatternLiteral(keyPrefix)}*";
+
+    /// <summary>
+    /// TMR2-P1-2：返回租户 SCAN 模式的<b>字面量前缀</b>（已规范化，<b>不含</b>尾随通配符）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 供需要"字面量片段 + 后端特有通配语义"两种转义的消费方使用（如
+    /// <c>Mud.Feishu.Redis</c> 需先按 Redis glob 语义对字面量再转义一次，
+    /// 见 <c>RedisGlobPattern.FromLiteralPrefix</c>）。
+    /// </para>
+    /// <para>
+    /// <see cref="TenantScanPattern"/> 保持原语义（规范化前缀 + <c>*</c>），继续作为
+    /// Memory/诊断路径的单一出口。
+    /// </para>
+    /// </remarks>
+    /// <param name="keyPrefix">键前缀（含 appKey 维度，未规范化亦可）。</param>
+    /// <returns>形如 <c>feishu:{appKey}:token:</c> 的规范化字面量前缀。</returns>
+    internal static string TenantScanPatternLiteral(string keyPrefix)
+        => $"{NormalizePrefix(keyPrefix)}{Separator}";
+
+    /// <summary>
+    /// TMR2-P1-2：返回指定用户 SCAN 模式的字面量前缀（不含尾随通配符）。
+    /// </summary>
+    /// <param name="keyPrefix">键前缀（含 appKey 维度）。</param>
+    /// <param name="userId">用户唯一标识符。</param>
+    /// <returns>形如 <c>feishu:{appKey}:token:user:{userId}:</c> 的规范化字面量前缀。</returns>
+    internal static string UserScanPatternLiteral(string keyPrefix, string userId)
+        => $"{NormalizePrefix(keyPrefix)}{Separator}user{Separator}{NormalizeSegment(userId)}{Separator}";
+
+    /// <summary>
+    /// TMR2-P1-2：返回全用户 SCAN 模式的字面量前缀（不含尾随通配符）。
+    /// </summary>
+    /// <param name="keyPrefix">键前缀（含 appKey 维度）。</param>
+    /// <returns>形如 <c>feishu:{appKey}:token:user:</c> 的规范化字面量前缀。</returns>
+    internal static string AllUsersScanPatternLiteral(string keyPrefix)
+        => $"{NormalizePrefix(keyPrefix)}{Separator}user{Separator}";
 
     /// <summary>
     /// 尝试从完整键中解析出租户级 tokenType。
@@ -202,28 +240,44 @@ internal static class TokenKeyBuilder
     }
 
     /// <summary>
-    /// TMF2-05：键前缀的唯一出口——Memory 与 Redis 两端均委派此方法。
+    /// TMF2-05 / TMR2-P1-2：键前缀的唯一出口——Memory 与 Redis 两端均委派此方法。
     /// </summary>
-    /// <param name="appKey">应用唯一标识</param>
+    /// <param name="appKey">应用唯一标识（空白视为 <c>default</c>）。</param>
     /// <param name="tokenPrefix">
-    /// 环境段前缀（R2-04）。默认 <see cref="Mud.Feishu.Abstractions.Consts.DefaultTokenKeyPrefix"/>（<c>feishu</c>）。
-    /// Redis 路径可由 <c>RedisOptions.TokenKeyPrefix</c> 覆盖，用于多环境共用 Redis 时的键空间隔离；
-    /// Memory 路径保持默认值（单进程无跨环境共享问题），因此默认形态下两端前缀逐字节一致。
+    /// 环境段（R2-04）。默认 <see cref="Mud.Feishu.Abstractions.Consts.DefaultTokenKeyPrefix"/>（<c>feishu</c>）。
+    /// Redis 路径由 <c>RedisOptions.TokenKeyPrefix</c> 注入，用于多环境共用 Redis 时的键空间隔离；
+    /// Memory 路径保持默认值（单进程无跨环境共享问题），故默认形态下两端前缀逐字节一致。
     /// </param>
-    /// <returns>规范化后的键前缀（如 <c>feishu:cli_a:token</c>，appKey 含特殊字符时按段转义）</returns>
+    /// <returns><b>未转义</b>的键前缀（如 <c>feishu:cli_a:token</c>）。</returns>
+    /// <remarks>
+    /// <para>
+    /// TMR2-P1-2：此处<b>不得预转义</b>。转义/规范化唯一归口
+    /// <see cref="NormalizePrefix"/> → <see cref="NormalizeSegment"/>，由键构造路径
+    /// （<c>Combine</c>，即 <c>TenantAccessKey</c> / <c>UserAccessKey</c> 等的内部实现）施加。
+    /// </para>
+    /// <para>
+    /// 若此方法先行转义 appKey 段（<c>:</c> → <c>\:</c>），前缀在键构造时会被<b>二次转义</b>
+    /// （<c>\</c> → <c>\\</c>）——键与 SCAN pattern 由同一份双重转义前缀产出，而 Redis glob
+    /// 把 <c>\\</c> 解释为<b>单个</b>反斜杠，与键中的两个反斜杠不匹配，导致
+    /// <c>ClearAsync</c> / <c>GetTokenTypesAsync</c> / <c>ClearAllUsersAsync</c> 永不命中
+    /// （凭据变更清库 D10 静默失效）。
+    /// </para>
+    /// <para>
+    /// 长度保护不丢失：键构造路径仍经 <see cref="NormalizeSegment"/>，对超过 256 字符的键段
+    /// 抛 <see cref="ArgumentException"/>。空前缀护栏由固定段 <c>token</c> 与
+    /// <see cref="Mud.Feishu.Abstractions.Consts.DefaultTokenKeyPrefix"/> 承担
+    /// （空 <paramref name="tokenPrefix"/> 回落默认值，永不退化为 <c>*</c>，R-01）；
+    /// R2-04 的环境段同样经该路径转义与长度校验。
+    /// </para>
+    /// </remarks>
     internal static string BuildKeyPrefix(string appKey, string? tokenPrefix = null)
     {
         var safePrefix = string.IsNullOrWhiteSpace(tokenPrefix)
             ? Mud.Feishu.Abstractions.Consts.DefaultTokenKeyPrefix
             : tokenPrefix!;
         var safeAppKey = string.IsNullOrWhiteSpace(appKey) ? "default" : appKey;
-        // 各段经 NormalizeSegment 转义，段间用 Separator 连接。
-        // 注意：此处前缀段的转义与 NormalizePrefix 对已有前缀的二次转义不同——
-        // 这是构造前缀的唯一入口，前缀内部不再经 NormalizePrefix。
-        return string.Join(Separator,
-            NormalizeSegment(safePrefix),
-            NormalizeSegment(safeAppKey),
-            NormalizeSegment("token"));
+        // 裸拼接（不转义，含 R2-04 的环境段）：各段转义由 Combine → NormalizePrefix → NormalizeSegment 单点负责。
+        return $"{safePrefix}{Separator}{safeAppKey}{Separator}token";
     }
 
     /// <summary>

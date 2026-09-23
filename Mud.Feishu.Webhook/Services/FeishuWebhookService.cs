@@ -18,6 +18,17 @@ namespace Mud.Feishu.Webhook;
 /// </summary>
 public class FeishuWebhookService : IFeishuWebhookService
 {
+    /// <summary>
+    /// 拦截器中断且 <see cref="InterceptionAckMode"/> 为 <see cref="InterceptionAckMode.Retryable"/>
+    /// 时，<c>EventHandlingResult.ErrorReason</c> 的取值。
+    /// </summary>
+    /// <remarks>
+    /// 中间件据此显式映射 HTTP 503（要求飞书重推），而<b>不</b>复用 500 语义——
+    /// 500 会触发失败事件存储写入，与“拦截不是业务失败”的语义不符。
+    /// 以常量共享，避免宿主与中间件之间的字符串散落。
+    /// </remarks>
+    public const string InterceptedRetryableReason = "Event intercepted (retryable)";
+
     private readonly IOptionsMonitor<FeishuWebhookOptions> _optionsMonitor;
     private readonly IFeishuEventValidator _validator;
     private readonly IFeishuEventDecryptor _decryptor;
@@ -163,11 +174,44 @@ public class FeishuWebhookService : IFeishuWebhookService
                 {
                     _logger.LogWarning("事件被拦截器中断: {EventType}, EventId: {EventId}, Interceptor: {InterceptorType}, AppKey: {AppKey}",
                         eventData.EventType, eventData.EventId, interceptor.GetType().Name, appKey ?? "null");
-                    FeishuMetricsHelper.RecordEventOutcome(appKey ?? "unknown", eventData.EventType, success: false, "intercepted");
-                    // P1-7：AfterHandle 可区分拦截终态（接口签名不变）
+
+                    // R3-P0-2/D2：拦截的默认语义是“已消费”——此前返回 (false, …) 被中间件一律映射 500，
+                    // 飞书重推 → 再次被拦截 → 再 500，事件永不 ack，且不落任何去重/失败存储记录。
+                    // 宿主可通过 InterceptionAckMode=Retryable 表达“暂时不能处理，请稍后重推”（→ 503）。
+                    if (Options.InterceptionAckMode == InterceptionAckMode.Retryable)
+                    {
+                        FeishuMetricsHelper.RecordEventOutcome(appKey ?? "unknown", eventData.EventType, success: false, "intercepted_retryable");
+                        processingException = new Mud.Feishu.Abstractions.EventHandlers.EventHandlingOutcomeException(
+                            "intercepted_retryable", $"事件被 {interceptor.GetType().Name} 拦截，要求对端重推");
+                        // 不落去重标记：本事件尚未被消费，重推后必须能再次进入处理流程。
+                        return (false, InterceptedRetryableReason);
+                    }
+
+                    // 已消费口径：拦截是**有意消费**，指标按 success=true 记（便于与业务失败区分）。
+                    FeishuMetricsHelper.RecordEventOutcome(appKey ?? "unknown", eventData.EventType, success: true, "intercepted");
+
+                    // P1-7：AfterHandle 仍可判别拦截终态（接口签名不变）
                     processingException = new Mud.Feishu.Abstractions.EventHandlers.EventHandlingOutcomeException(
                         "intercepted", $"事件被 {interceptor.GetType().Name} 拦截");
-                    return (false, "Event intercepted");
+
+                    // 关键：拦截发生在去重之前，必须补落去重标记——否则飞书重推会再次进入本分支。
+                    // 注意：MemoryDeduplicator.MarkAsCompleted 对不存在的键是静默 no-op，
+                    // 因此必须**先占位**（TryMarkAsProcessing）再置完成。
+                    if (!string.IsNullOrEmpty(eventData.EventId))
+                    {
+                        try
+                        {
+                            await _deduplicator.TryMarkAsProcessingAsync(eventData.EventId, appKey, cancellationToken: CancellationToken.None);
+                            await MarkDeduplicationCompletedAsync(eventData.EventId, appKey);
+                        }
+                        catch (Exception markEx)
+                        {
+                            // 与 WHF-07 同口径：标记失败不影响“已消费”结论（此处尚未执行业务），仅告警供对账。
+                            _logger.LogWarning(markEx, "拦截事件 {EventId} 的去重标记写入失败，AppKey: {AppKey}", eventData.EventId, appKey ?? "null");
+                        }
+                    }
+
+                    return (true, null);   // 200 → 停止飞书重推
                 }
             }
 
@@ -237,6 +281,21 @@ public class FeishuWebhookService : IFeishuWebhookService
                 // WHF-08：超时路径就地收尾，不再 rethrow——消除外层 OCE catch 的二次回滚/metrics；
                 // processingException 赋值保证 AfterHandleAsync 收到非空异常
                 await RollbackDeduplicationAsync(eventData.EventId, appKey);
+
+                // R3-P1-3：EventHandlingTimeoutMs 是"软超时"——await Task.WhenAll 已确保处理器收尾
+                // （满足 D4：不制造孤儿任务），但不响应 CancellationToken 的处理器会把实际耗时
+                // 顶到远超 timeoutMs。此处只做可观测（指标 + Warning），**不**引入硬超时：
+                // 硬超时会制造 D4 明令禁止的"状态已释放而任务仍在跑"。
+                performanceStopwatch.Stop();
+                var elapsedMs = performanceStopwatch.ElapsedMilliseconds;
+                if (elapsedMs > timeoutMs * 1.5)
+                {
+                    _logger.LogWarning(
+                        "事件处理实际耗时 {ElapsedMs}ms 显著超过软超时 {TimeoutMs}ms（处理器未响应 CancellationToken），" +
+                        "期间并发闸槽位与去重 processing 态被一并占用。请让处理器协作式响应取消令牌。EventId: {EventId}, AppKey: {AppKey}",
+                        elapsedMs, timeoutMs, eventData.EventId, appKey ?? "null");
+                    FeishuMetricsHelper.RecordEventOutcome(appKey ?? "unknown", eventData.EventType, success: false, "timeout_overshoot");
+                }
 
                 _logger.LogWarning("事件处理超时: {EventType}, 事件ID: {EventId}, 超时时间: {TimeoutMs}ms, AppKey: {AppKey}",
                     eventData.EventType, eventData.EventId, timeoutMs, appKey ?? "null");
@@ -340,6 +399,12 @@ public class FeishuWebhookService : IFeishuWebhookService
                 request.Signature,
                 encryptKey!,
                 cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            // R3-P1-6/WHF-16：客户端断开 / 宿主关停——交由中间件的 OCE 分支处理，
+            // 禁止伪装成“验签失败 403”写向已中止连接。
+            throw;
         }
         catch (Exception ex) when (ex is not FeishuRedisException { FailureKind: FeishuRedisFailureKind.Server })
         {
@@ -449,13 +514,28 @@ public class FeishuWebhookService : IFeishuWebhookService
                 _logger.LogError(ex, "应用 {AppKey} 专属处理器分发事件 {EventType} 失败", appKey, eventType);
                 throw;
             }
+
+            // R3-P1-1：全部处理器都因 SupportedEventType 不匹配而跳过 → 事件被静默丢弃。
+            // 此前该路径只有 LogDebug（生产 Information 级不可见），用户把 SupportedEventType 拼错时
+            // 事件消失且无任何告警与指标。此处补 Warning + unhandled 指标，与全局分支口径一致
+            // （unhandled 表示“未处理”，不是失败，故 success:true）。
+            if (tasks.Count > 0 && tasks.All(t => !t.Result))
+            {
+                _logger.LogWarning(
+                    "应用 {AppKey} 的 {Count} 个专属处理器均不匹配事件类型 {EventType}，事件已被忽略" +
+                    "（请核对各处理器的 SupportedEventType 拼写；声明为空串表示处理该应用全部事件）",
+                    appKey, handlerTypes.Count, eventType);
+                FeishuMetricsHelper.RecordEventOutcome(appKey!, eventType, success: true, "unhandled");
+            }
         }
         else
         {
             // WHF-09：未注册 eventType 门控——静默忽略（unhandled），不回退默认处理器兜底
             if (Options.IgnoreUnknownEventTypes && !_handlerFactory.IsHandlerRegistered(eventType))
             {
-                _logger.LogDebug("事件类型 {EventType} 未注册处理器，已忽略（IgnoreUnknownEventTypes=true）, AppKey: {AppKey}",
+                // R3-P1-1：由 Debug 提升为 Warning——生产默认 Information 级看不到 Debug，
+                // 未注册/拼错的事件类型会静默消失（全局分支此前连指标都无，只有日志）。
+                _logger.LogWarning("事件类型 {EventType} 未注册处理器，已忽略（IgnoreUnknownEventTypes=true），请核对 SupportedEventType 拼写, AppKey: {AppKey}",
                     eventType, appKey ?? "null");
                 FeishuMetricsHelper.RecordEventOutcome(appKey ?? "unknown", eventType, success: true, "unhandled");
                 return;
@@ -471,14 +551,24 @@ public class FeishuWebhookService : IFeishuWebhookService
     /// <summary>
     /// 应用专属处理器安全分发：逐处理器日志，保留聚合重抛（at-least-once 不变）。
     /// </summary>
+    /// <returns>
+    /// 是否**实际处理**了该事件：<c>true</c> = 已调用 <c>HandleAsync</c>；
+    /// <c>false</c> = 因 <see cref="IFeishuEventHandler.SupportedEventType"/> 不匹配而跳过。
+    /// 调用方据此判定“全部处理器均跳过”（R3-P1-1：此时记 Warning + <c>unhandled</c> 指标）。
+    /// </returns>
     /// <remarks>
     /// P1-2（R2）：按 <see cref="IFeishuEventHandler.SupportedEventType"/> 过滤——非空声明与当前
     /// 事件类型不符的处理器跳过（与全局工厂按 SupportedEventType 路由的语义对齐）；
     /// 显式声明空串表示处理该应用全部事件（与
     /// <see cref="Mud.Feishu.Abstractions.EventHandlers.DefaultFeishuEventHandler{T}"/>
     /// 默认约定一致）。拦截器分支不做该过滤（横切组件，与 WS 通道一致）。
+    /// <para>
+    /// R3-P1-3：处理器应**协作式响应** <paramref name="ct"/>。<c>EventHandlingTimeoutMs</c> 是
+    /// **软超时**——只取消令牌，不中断处理器；不响应取消的处理器会持续占用本次请求的
+    /// 并发闸槽位与去重 <c>processing</c> 态（等效于把该事件静默限流一段时间）。
+    /// </para>
     /// </remarks>
-    private async Task ProcessAppHandlerSafelyAsync(Type handlerType, EventData eventData, string appKey, string eventType, CancellationToken ct)
+    private async Task<bool> ProcessAppHandlerSafelyAsync(Type handlerType, EventData eventData, string appKey, string eventType, CancellationToken ct)
     {
         try
         {
@@ -490,10 +580,11 @@ public class FeishuWebhookService : IFeishuWebhookService
                 _logger.LogDebug(
                     "应用 {AppKey} 处理器 {HandlerType} 声明处理 {Supported}，跳过事件 {EventType}",
                     appKey, handlerType.Name, supported, eventType);
-                return;
+                return false;   // R3-P1-1：未匹配——调用方据此判定“全部跳过”
             }
 
             await handler.HandleAsync(eventData, ct);
+            return true;
         }
         catch (Exception ex)
         {

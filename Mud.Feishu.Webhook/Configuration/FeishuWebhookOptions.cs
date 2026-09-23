@@ -43,6 +43,19 @@ public class FeishuWebhookOptions
     /// 事件处理超时时间（毫秒）
     /// 超过此时间仍未完成的请求将被取消并返回超时错误
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>这是"软超时"，不是硬超时</b>：到达该时限时 SDK 只取消
+    /// <see cref="CancellationToken"/>，<b>不会</b>强制中断处理器
+    /// （强制中断会制造"状态/去重已释放而任务仍在跑"的双重执行，见方案 D4）。
+    /// </para>
+    /// <para>
+    /// 因此：仅当处理器<b>协作式响应</b>取消令牌时，本值才等于实际耗时的上界。
+    /// 不响应取消的处理器会把本次请求的实际耗时顶到远超本值，并在此期间持续占用
+    /// 并发闸槽位与去重 <c>processing</c> 态。此类情况会以 <c>timeout_overshoot</c>
+    /// 指标与 Warning 日志暴露（R3-P1-3），请据此排查处理器实现。
+    /// </para>
+    /// </remarks>
     public int EventHandlingTimeoutMs { get; set; } = 30000;
 
     /// <summary>
@@ -149,6 +162,45 @@ public class FeishuWebhookOptions
     /// 生产环境建议保持 Reject 模式；仅在去重服务短暂不可用且明确了解风险时切换为 Allow
     /// </remarks>
     public NonceFailureMode NonceValidationFailureMode { get; set; } = NonceFailureMode.Reject;
+
+    /// <summary>
+    /// 生产环境是否允许使用进程内内存 Nonce 去重（默认 <c>false</c>）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 内存实现仅对<b>单实例</b>部署有效：多实例 / 负载均衡下各实例的 Nonce 表互不相通，
+    /// 攻击者可将捕获的合法请求在时间戳容差窗口内重放给另一个实例并通过校验 → 事件被重复消费
+    /// （跨实例重放<b>不可检测</b>）。这是一种<b>静默的安全退化</b>，默认必须由代码阻断而非文档建议
+    /// （与 ADR-4「生产安全默认由代码强制」同口径，见 <c>documents/WebhookHardeningPlan.md</c>）。
+    /// </para>
+    /// <para>
+    /// 生产环境（<c>IEnvironmentService.IsProduction</c>）且未注册分布式实现时，本值为 <c>false</c>
+    /// 将导致启动失败；单实例部署可显式置 <c>true</c> 承担风险（仍会输出 Warning）。
+    /// 多实例请调用 <c>AddFeishuRedisDeduplicators()</c> 注册 Redis 实现。
+    /// </para>
+    /// <para>
+    /// <b>与 <see cref="NonceValidationFailureMode"/> 的区别（两个正交的轴，勿混淆）：</b>
+    /// 本项约束的是「去重服务的<b>实现形态</b>」（内存 vs 分布式）；
+    /// <see cref="NonceValidationFailureMode"/> 约束的是「去重服务<b>运行时故障</b>时的降级策略」。
+    /// </para>
+    /// </remarks>
+    public bool AllowInMemoryNonceDedupInProduction { get; set; }
+
+    /// <summary>
+    /// 事件被前置拦截器中断（<c>BeforeHandleAsync</c> 返回 <c>false</c>）时对飞书表达的确认语义，
+    /// 默认 <see cref="Configuration.InterceptionAckMode.Ack"/>（已消费 → 200）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// WHF/D2：此前拦截一律返回 <c>(false, …)</c>，中间件映射为 HTTP 500 → 飞书重推 → 再次被拦截，
+    /// 事件永不 ack 且不落任何去重/失败存储记录，形成重推风暴。
+    /// </para>
+    /// <para>
+    /// 设为 <see cref="Configuration.InterceptionAckMode.Retryable"/> 可表达「暂时不能处理、请稍后重投」
+    /// （响应 503，不落去重标记）。详见 <see cref="InterceptionAckMode"/> 的语义说明。
+    /// </para>
+    /// </remarks>
+    public InterceptionAckMode InterceptionAckMode { get; set; } = InterceptionAckMode.Ack;
 
     /// <summary>
     /// 空 EventId/Nonce 是否拒绝请求（true=fail-closed），默认 <c>true</c>（WHF-05）。
@@ -271,6 +323,15 @@ public class FeishuWebhookOptions
 
             if (config.EncryptKey.Length != 32)
                 throw new InvalidOperationException($"应用 {appKey} 的 EncryptKey 长度必须为 32 字符");
+
+            // D6/WHF-R2/C7：多应用下 ExpectedAppId 是 EncryptKey 误配的唯一兜底，必须强制。
+            // 缺失时，把 B 应用的 EncryptKey 误填到 A 应用名下，发往 /feishu/appA 的 B 应用密文
+            // 会验签+解密全通，并按 A 的处理器与去重键处理 → 跨应用事件串扰且无任何拦截。
+            // 单应用部署保持可选（向后兼容）。
+            if (Apps.Count > 1 && string.IsNullOrEmpty(config.ExpectedAppId))
+                throw new InvalidOperationException(
+                    $"多应用配置（FeishuWebhook:Apps 共 {Apps.Count} 项）下应用 {appKey} 必须配置 ExpectedAppId。" +
+                    "否则 EncryptKey 误配（如把 B 应用的密钥填到 A）会导致跨应用事件串扰且无任何拦截。");
 
             // R5.2/X8：接线应用级校验。
             // 此前 FeishuAppWebhookOptions.Validate() 在生产代码中**零调用**（仅测试调用），

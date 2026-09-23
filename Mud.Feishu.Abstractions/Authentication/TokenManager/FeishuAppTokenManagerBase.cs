@@ -108,6 +108,12 @@ internal abstract class FeishuAppTokenManagerBase : TokenManagerBase
         if (_tokenStore == null)
             return null;
 
+        // TMR2-P1-5：凭据变更清库进行中则跳过 store（等价于 D10「清库完成前不得恢复旧令牌」）。
+        // 修复前该约束由 Phase-P 在 IOptionsMonitor.OnChange 回调线程上同步等待清库完成来维持，
+        // 现将约束下沉到恢复路径，回调线程不再阻塞（详见 TokenStorePurgeGate）。
+        if (ShouldSkipStoreRestoreForPendingPurge())
+            return null;
+
         try
         {
             var storedValue = await _tokenStore.GetAccessTokenAsync(_tokenTypeKey, cancellationToken).ConfigureAwait(false);
@@ -150,6 +156,37 @@ internal abstract class FeishuAppTokenManagerBase : TokenManagerBase
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// TMR2-P1-5：检查本应用的「待清库」门；返回 true 表示本次必须跳过 store 恢复。
+    /// </summary>
+    /// <remarks>
+    /// <see cref="TokenStorePurgeGate.PurgeGateState.Pending"/> → 跳过（D10）；
+    /// <see cref="TokenStorePurgeGate.PurgeGateState.TimedOut"/> → fail-open（记一次 Warning 后按无门处理，
+    /// 绝不因门而永久禁用 store 恢复）。
+    /// </remarks>
+    /// <returns>true 表示应跳过 store 恢复。</returns>
+    private bool ShouldSkipStoreRestoreForPendingPurge()
+    {
+        switch (TokenStorePurgeGate.Query(_options.AppKey))
+        {
+            case TokenStorePurgeGate.PurgeGateState.Pending:
+                _logger.LogDebug(
+                    "凭据变更清库进行中，跳过 ITokenStore 恢复以避免恢复旧凭据令牌（D10）。TokenType: {TokenType}, AppId: {AppId}",
+                    _tokenTypeKey, _options.AppId);
+                return true;
+
+            case TokenStorePurgeGate.PurgeGateState.TimedOut:
+                _logger.LogWarning(
+                    "凭据变更清库门超过 {TimeoutSeconds}s 未撤除，已 fail-open：恢复路径重新启用 store 读取，" +
+                    "可能存在旧凭据令牌残留。TokenType: {TokenType}, AppId: {AppId}",
+                    TokenStorePurgeGate.SafetyTimeoutSeconds, _tokenTypeKey, _options.AppId);
+                return false;
+
+            default:
+                return false;
+        }
     }
 
     private async Task PersistTokenAsync(string tokenType, string? accessToken, long expiresInSeconds, CancellationToken cancellationToken)

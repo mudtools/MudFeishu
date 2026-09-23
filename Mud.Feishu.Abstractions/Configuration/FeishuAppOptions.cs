@@ -20,6 +20,7 @@ namespace Mud.Feishu.Abstractions;
 /// <item><term><see cref="RemoveRuntimeAddedAppsOnReload"/></term><description>热更新时读 <c>IOptions&lt;&gt;.Value</c>——值仍是启动快照；改此项需重启。</description></item>
 /// <item><term><see cref="EnablePerAppAuthenticationClient"/></term><description>CreateAppContext 每次创建上下文时求值，但值本身不热更（启动快照）。</description></item>
 /// <item><term><see cref="EnableTokenEncryption"/></term><description>存储工厂首次解析时读取（一次性）；中途开启 → 旧明文解密失败 → 按未命中重新获取 → 重写密文（自愈），建议重启后开启。</description></item>
+/// <item><term><see cref="ForwardDefaultAppContext"/></term><description>IFeishuAppContext 桥接工厂首次解析时读取（一次性）——仅启动时生效。</description></item>
 /// </list>
 /// </remarks>
 public class FeishuAppOptions
@@ -133,7 +134,11 @@ public class FeishuAppOptions
     /// 而非默认应用的端点。多区域/多 BaseUrl 部署必须开启。
     /// </para>
     /// <para>
-    /// 若 AOT 门禁不允许该实现，置为 <c>false</c> 会降级为默认应用端点并 <c>LogWarning</c>。
+    /// TMR2-P1-1 修复后，per-app 装配为<b>生成实现类型的编译期直引</b>，不再经
+    /// <c>ActivatorUtilities</c> 反射构造，因此无 AOT 约束、也不会静默降级到默认应用端点。
+    /// </para>
+    /// <para>
+    /// 置为 <c>false</c> 仍可用于显式选择「认证请求走默认应用端点」的旧行为（会 <c>LogWarning</c>）。
     /// </para>
     /// <para>
     /// <b>默认 <c>true</c></b>。
@@ -154,4 +159,24 @@ public class FeishuAppOptions
     /// </para>
     /// </remarks>
     public bool RemoveRuntimeAddedAppsOnReload { get; set; }
+
+    /// <summary>
+    /// 默认应用上下文（<see cref="IFeishuAppContext"/>）的 DI 桥接是否跟随运行时默认应用切换（TMR2-P0-1）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <c>true</c>（默认）：桥接为<b>转发代理</b>——注入方在 <c>SetDefaultApp</c> / 配置热更新后
+    /// 立即使用新默认应用的 <c>Config</c>、令牌管理器与认证客户端；代理本身无状态、无资源。
+    /// </para>
+    /// <para>
+    /// <c>false</c>：恢复首轮前的「实例快照」语义——工厂委托返回 <c>GetDefaultApp()</c> 的实例，
+    /// 容器永久缓存该实例。仅当宿主显式依赖把注入的 <see cref="IFeishuAppContext"/> 强转为具体
+    /// <see cref="FeishuAppContext"/> 时才需要（此时开启代理会抛 <c>InvalidCastException</c>）。
+    /// </para>
+    /// <para>
+    /// 本开关经 <c>IOptions&lt;FeishuAppOptions&gt;</c> 在桥接工厂首次解析时读取，属<b>启动快照</b>
+    /// （运行期修改不生效，需重启进程）。
+    /// </para>
+    /// </remarks>
+    public bool ForwardDefaultAppContext { get; set; } = true;
 }

@@ -264,6 +264,24 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
                 }
             }
 
+            // TMR2-P1-3：配置已「正式接管」（本轮到 incoming 中声明）的 AppKey 撤销运行时标记。
+            // 修复前唯一 Add 点为 AddApp（:1229），**没有任何路径**在应用被配置正式接管时撤销标记，
+            // 于是「AddApp(C) → 配置声明 C → 配置删除 C」序列下 C 在
+            // RemoveRuntimeAddedAppsOnReload=false（默认）时被静默永久保留，日志还称"运行时添加…已保留"（误导运维）。
+            //
+            // 位置必须在**节流判定之前**：标记语义是「运行时添加且未被配置源声明」，属配置源属性；
+            // 若放在提交后（ApplyConfigurationChanges 内），一旦本轮 incoming 与快照逐字段一致（节流直接 return）
+            // 撤销就永不发生，配置删除仍被永久忽略（本轮测试 RuntimeAddedApp_ShouldBeRemovedByConfig_... 已固化）。
+            // 与校验后的"变更未应用"无关：即使后续 Phase-A 失败，"配置源已声明"这一事实仍然成立。
+            // 锁内与 AddApp 的 _runtimeAddedAppKeys 写入互斥（锁序不变：_configApplyLock → _registryLock）。
+            lock (_registryLock)
+            {
+                foreach (var config in incoming)
+                {
+                    _runtimeAddedAppKeys.Remove(config.AppKey);
+                }
+            }
+
             // 节流：与当前快照完全一致（无新增/删除/更新）时不做任何重建。
             if (IsSameAsCurrentSnapshot(incoming))
             {
@@ -454,11 +472,25 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
             .ToList();
         if (postCommitPurgeKeys.Count > 0)
         {
+            // TMR2-P1-5：与 Phase-P 同构——打门（计数与 Phase-P 叠加，覆盖"提交窗口内旧上下文回写"）
+            // + 异步清库 + finally 撤门。两次计数叠加期间门持续有效。
+            foreach (var appKey in postCommitPurgeKeys)
+            {
+                TokenStorePurgeGate.Mark(appKey);
+            }
+
             _ = Task.Run(async () =>
             {
                 foreach (var appKey in postCommitPurgeKeys)
                 {
-                    await PurgeTokenStoreAsync(appKey).ConfigureAwait(false);
+                    try
+                    {
+                        await PurgeTokenStoreAsync(appKey).ConfigureAwait(false);
+                    }
+                    finally
+                    {
+                        TokenStorePurgeGate.Release(appKey);
+                    }
                 }
             });
         }
@@ -468,15 +500,21 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
     /// TMF-02 / D13：Phase-P——在获取 <c>_configApplyLock</c> 之前完成凭据变更检测与清库。
     /// </summary>
     /// <remarks>
-    /// 清库是 IO（Redis 为 SCAN + 逐键 DELETE），禁止在锁内执行（修复前锁内
-    /// <c>GetAwaiter().GetResult()</c> 同步阻塞并发热更新回调并放大线程池饥饿风险）。
-    /// <c>IOptionsMonitor.OnChange</c> 回调为同步签名无法 await，以 <c>Task.Run</c> 将清库
-    /// 隔离到线程池后同步等待，维持「清库 → 重建」严格时序——新上下文不得在清库完成前
-    /// 从 store 恢复旧凭据令牌（D10 语义）。宿主无 SynchronizationContext（ASP.NET Core /
-    /// 控制台），无死锁面；配置变更是低频运维事件，回调线程短暂阻塞可接受。
     /// <para>
-    /// TMR-P1-6（F6）：同步等待增加 10s 阻塞上界（键量 × RTT 不可预估）；超时后不放弃——
-    /// 剩余键交给提交后二次清库收尾（<see cref="ApplyConfigurationChanges"/> 步骤 4），维持 D10 语义。
+    /// 清库是 IO（Redis 为 SCAN + 逐键 DELETE），禁止在锁内执行，也不得在
+    /// <c>IOptionsMonitor.OnChange</c> 回调线程上同步等待。
+    /// </para>
+    /// <para>
+    /// <b>TMR2-P1-5 修复</b>：本方法只做「打门（<see cref="TokenStorePurgeGate"/>.Mark，
+    /// 同步、微秒级）+ 异步清库」，<b>立即返回</b>。
+    /// D10 的实质约束（"新上下文不得在清库完成前从 store 恢复旧凭据令牌"）
+    /// 由恢复路径的门短路承担，因此「阻塞 OnChange 直到清库完成」并非必需。
+    /// 修复前为 <c>Task.Run(...).Wait(10s)</c>：回调线程最长阻塞 10s、宿主存在
+    /// <c>SynchronizationContext</c> 时有死锁面、线程池受限时占用双线程放大饥饿。
+    /// </para>
+    /// <para>
+    /// 门带 30s 安全超时（fail-open）：清库异常/挂死时门自动失效并上报一次
+    /// <c>PurgeGateState.TimedOut</c>，恢复路径重新启用，绝不因门而永久禁用 store 恢复。
     /// </para>
     /// <para>
     /// 并发语义：两个并发 <c>OnChange</c> 各自执行 Phase-P 可能对同一 appKey 清库两次——
@@ -537,31 +575,47 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
         }
 
         _logger.LogInformation(
-            "检测到 {Count} 个应用的凭据已变更（AppId 或 AppSecret 变化），清除其持久化令牌：{AppKeys}",
+            "检测到 {Count} 个应用的凭据已变更（AppId 或 AppSecret 变化），将异步清除其持久化令牌：{AppKeys}",
             toPurge.Count, string.Join(", ", toPurge));
 
-        Task purgePhaseP = Task.Run(async () =>
+        // TMR2-P1-5：打门（同步、微秒级）→ 异步清库；**不再**阻塞 IOptionsMonitor.OnChange 回调线程。
+        // D10 的实质约束（"新上下文不得在清库完成前从 store 恢复旧凭据令牌"）由恢复路径的门短路承担：
+        // FeishuAppTokenManagerBase.TryRestoreFromStoreAsync / UserTokenManager.TryRestoreFromUserTokenStoreAsync /
+        // LoadRefreshCandidateAsync 见门即跳过 store。
+        // 修复前在回调线程上 Task.Run(...).Wait(10s)：线程最长阻塞 10s、宿主有 SynchronizationContext 时
+        // 有死锁面、线程池饥饿时占双线程——而"阻塞 OnChange"从来不是 D10 的实质要求。
+        var purgeKeysPhaseP = toPurge.ToArray();
+        foreach (var appKey in purgeKeysPhaseP)
         {
-            foreach (var appKey in toPurge)
+            TokenStorePurgeGate.Mark(appKey);
+        }
+
+        _ = Task.Run(async () =>
+        {
+            foreach (var appKey in purgeKeysPhaseP)
             {
-                await PurgeTokenStoreAsync(appKey).ConfigureAwait(false);
+                try
+                {
+                    await PurgeTokenStoreAsync(appKey).ConfigureAwait(false);
+                }
+                finally
+                {
+                    // 计数 -1；PurgeTokenStoreAsync 内部吞掉全部异常（含 OCE），finally 保证门必然回落。
+                    TokenStorePurgeGate.Release(appKey);
+                }
             }
         });
 
-        // TMR-P1-6（F6）：OnChange 回调线程上的同步等待必须有上界（键量 × RTT 不可预估）。
-        // 超时后不放弃——剩余键交给提交后的二次清库收尾，维持「清库 → 重建」D10 语义。
-        var phasePCompleted = purgePhaseP.Wait(TimeSpan.FromSeconds(10));
-        if (!phasePCompleted)
-        {
-            _logger.LogWarning(
-                "凭据变更清库（Phase-P）超过 10s 未完成，剩余键将由提交后二次清库收尾。AppKeys: {AppKeys}",
-                string.Join(", ", toPurge));
-        }
-
+        // TMR2-P1-5 × TMF2-03：Phase-P 同步段（打门 + 派发异步清库）恒立即完成——
+        // TMR-P1-6 的 10s 同步等待已按 TMR2-P1-5 移除（回调线程不再阻塞），
+        // 「清库完成 → 重建」的 D10 时序由 TokenStorePurgeGate 的恢复路径短路承担。
+        // 因此 PhasePCompleted 恒为 true：提交后二次清库保持 TMF2-03 的窄范围
+        // （WriteBackRiskKeys——只有存在活动旧上下文的键才有回写风险），
+        // 避免删除新凭据刚写入的令牌；超时路径的「全部 ToPurge」分支不再可达。
         return new CredentialPurgePlan(
             ToPurge: toPurge,
             WriteBackRiskKeys: writeBackRiskKeys,
-            PhasePCompleted: phasePCompleted);
+            PhasePCompleted: true);
     }
 
     /// <summary>

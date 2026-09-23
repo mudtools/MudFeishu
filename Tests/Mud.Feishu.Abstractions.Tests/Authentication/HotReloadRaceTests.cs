@@ -213,6 +213,22 @@ public class HotReloadRaceTests
             CreateConfig("hr-app", TestDataFactory.AppConfigs.AppIds.Hr, "hr_secret_NEW_123456")
         });
 
+        // TMR2-P1-5：Phase-P 清库不再在 OnChange 回调线程上同步等待（原 Task.Run(...).Wait(10s)），
+        // 故此处以「清库效果（access/refresh 键均已消失）」为完成信号做**有界轮询**，不依赖固定延时。
+        // 刻意不以 TokenStorePurgeGate.Query 作为完成信号：门是**进程级静态**状态，而本测试程序集
+        // 默认按测试类并行，其他类的 ResetForTest()（或并发租约归零）可使其提前变为 NotPending，
+        // 轮询于是在清库完成前退出并读到清库中间态（access 已删、refresh 未删——实测偶发失败点）。
+        for (var i = 0; i < 500; i++)
+        {
+            if (await store.GetAccessTokenAsync("tenant:hr-app") is null
+                && await store.GetRefreshTokenAsync("tenant:hr-app") is null)
+            {
+                break;
+            }
+
+            await Task.Delay(20);
+        }
+
         // Assert：旧凭据令牌必须被清除
         // 修复前：oldContext == null → continue → 不清库 → 令牌残留
         // 修复后：以配置快照比对 → 检测到 AppSecret 变更 → 清库 → 令牌为 null

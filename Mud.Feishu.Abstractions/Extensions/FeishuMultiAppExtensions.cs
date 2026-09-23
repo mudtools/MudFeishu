@@ -471,10 +471,21 @@ public static class FeishuMultiAppExtensions
 #endif
     private static void RegisterCoreServicesWithoutAppManager(IServiceCollection services, List<FeishuAppConfig> configs, IConfiguration? configuration = null, string? sectionName = null)
     {
-        services.AddSingleton(sp =>
+        // TMR2-P0-1（同 F1 根因，首轮漏改）：默认应用上下文桥接从「实例桥接」改为「解析桥接」（转发代理）。
+        // 与下方三种令牌管理器桥接（ITenantTokenManager / IAppTokenManager / IFeishuUserTokenManager）
+        // 保持同一语义：每次成员访问现取当前默认应用。
+        // 修复前工厂委托返回 GetDefaultApp() 的实例快照并被容器永久缓存——
+        // SetDefaultApp 后注入方继续使用旧应用的 Config/令牌/认证客户端（跨应用凭据误用），
+        // 热更新重建默认应用后注入方持有已入退休队列、宽限期后被 Dispose 的上下文（ODE）。
+        // ForwardDefaultAppContext=false 可回退实例快照语义（仅当宿主把注入的 IFeishuAppContext
+        // 强转为具体 FeishuAppContext 时才需要），见 FeishuAppOptions。
+        services.AddSingleton<IFeishuAppContext>(sp =>
         {
             var appManager = sp.GetRequiredService<IFeishuAppManager>();
-            return appManager.GetDefaultApp();
+            var forward = sp.GetService<IOptions<FeishuAppOptions>>()?.Value.ForwardDefaultAppContext ?? true;
+            return forward
+                ? new ForwardingFeishuAppContext(() => appManager.GetDefaultApp())
+                : (IFeishuAppContext)appManager.GetDefaultApp();
         });
 
         // 注册启动时验证过的配置快照（供内部组件使用，如 HttpClient 注册）

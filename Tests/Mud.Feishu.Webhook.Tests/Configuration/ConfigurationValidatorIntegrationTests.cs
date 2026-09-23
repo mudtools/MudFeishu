@@ -231,7 +231,16 @@ public class ConfigurationValidatorIntegrationTests
         Action<FeishuWebhookOptions> configureWebhookOptions)
     {
         var services = new ServiceCollection();
-        services.CreateFeishuWebhookServiceBuilder(configureWebhookOptions)
+        services.CreateFeishuWebhookServiceBuilder(options =>
+            {
+                configureWebhookOptions(options);
+
+                // R3-P0-1/D1：本套件运行于“生产”判定（EnvironmentService 在
+                // ASPNETCORE_ENVIRONMENT 缺失时默认 Production），而内存 Nonce 去重在生产下
+                // 会被启动期阻断。本套件的关注点是 TokenRefresh 映射，与 Nonce 形态无关，
+                // 故显式豁免（等价于“本测试进程为单实例”）。
+                options.AllowInMemoryNonceDedupInProduction = true;
+            })
             .AddHandler<NoOpFeishuEventHandler>()
             .Build();
 

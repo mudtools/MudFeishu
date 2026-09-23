@@ -71,6 +71,49 @@
 - Redis tests README: removed the non-existent fallback deduplicator section, refreshed the directory tree and
   package versions, added a "real Redis and explicit skip" section.
 
+### 🔐 Webhook: replay protection & multi-app isolation (WHF-R3)
+
+#### ⚠️ Breaking / Behavioral Changes
+
+- **In-memory Nonce deduplication is now blocked in Production**: when no distributed Nonce deduplicator
+  is registered (`AddFeishuRedisDeduplicators()`), the host **fails to start** in
+  `ASPNETCORE_ENVIRONMENT=Production`. Multi-instance deployments cannot detect cross-instance replays
+  with an in-memory table. Opt out explicitly with
+  `FeishuWebhook:AllowInMemoryNonceDedupInProduction=true` for confirmed single-instance deployments.
+- **`ExpectedAppId` is mandatory in multi-app setups**: with more than one entry under
+  `FeishuWebhook:Apps`, a missing `ExpectedAppId` fails startup. It is the only guard against
+  cross-app event bleed caused by an `EncryptKey` misconfiguration. Single-app deployments: still optional.
+- **Interceptor interception now ACKs with 200 instead of 500**. Interception is "intentionally consumed":
+  the event is also marked as deduplicated so Feishu stops retrying. Previously every interception
+  returned 500 → Feishu retried → intercepted again → the event was never acked.
+  Use `FeishuWebhook:InterceptionAckMode=Retryable` for "cannot handle now, please retry later" (503,
+  no dedup mark).
+- **The global default handler must be a globally registered handler**. `Build()` now requires at
+  least one `AddHandler<T>()` (no appKey); app-scoped-only registration fails startup. Previously an
+  app-specific handler could silently become the global default, mis-routing other apps' events.
+
+#### ✨ Added
+
+- `FeishuWebhook:AllowInMemoryNonceDedupInProduction` (default `false`)
+- `FeishuWebhook:InterceptionAckMode` (default `Ack`; `Retryable` → HTTP 503)
+- Startup-time options validation (invalid config = host fails to start, not first-request 500)
+- Metrics: `unhandled` now also emitted on the app-specific path; new `timeout_overshoot` metric;
+  `intercepted` is now recorded as a success outcome
+
+#### 🐛 Fixed
+
+- **Process crash (P0)**: with `FeishuDeduplication:Mode=Distributed` and no Redis implementation
+  registered, the deduplicator factory resolved itself → infinite recursion → `StackOverflowException`
+  (uncatchable). Warning is now emitted at startup instead.
+- Nonce/dedup infrastructure failures (Redis Connection/Timeout) are no longer disguised as a 403
+  signature failure. They now surface as **503** via `FeishuDeduplicationFatalException` so Feishu
+  retries (403 was terminal → permanent event loss, plus false "replay attack detected" audit noise).
+- Intercepted events no longer trigger an endless Feishu retry loop.
+- Client disconnects (`OperationCanceledException`) are no longer swallowed into a 403 written to an
+  already-aborted connection.
+- Handler `SupportedEventType` mismatches are no longer silent: a Warning plus the `unhandled` metric
+  are emitted (previously Debug-only, invisible at the default Production log level).
+
 ### ⚠️ Breaking / Behavioral Changes (WebSocket module)
 
 - **Connection lifetime no longer follows the caller's `CancellationToken`**:

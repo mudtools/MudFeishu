@@ -58,6 +58,44 @@ public static class FeishuMetrics
         unit: "{operation}",
         description: "飞书事件去重命中/未命中计数");
 
+    // ── Redis 去重/存储指标（R2-21 / E-01） ──
+
+    /// <summary>
+    /// Redis 操作计数（维度：<see cref="Tags.RedisCommand"/>、<see cref="Tags.DedupType"/>、<see cref="Tags.Outcome"/>）。
+    /// </summary>
+    /// <remarks>
+    /// R2-21：Redis 侧此前**零指标**——<c>FeishuRedisException.FailureKind</c>（连接/超时/服务端/非法参数）
+    /// 无任何量化出口，"去重静默失效"类缺陷因此可长期存活。本计数器使失败可分类、可按去重类型拆分告警。
+    /// 取值见 <see cref="RedisCommands"/> 与 <see cref="RedisOutcomes"/>（受控枚举，避免高基数）。
+    /// </remarks>
+    public static readonly Counter<long> RedisOperationCount = Instance.CreateCounter<long>(
+        "feishu.redis.operation",
+        unit: "{operation}",
+        description: "Redis 去重/存储操作计数（含失败分类）");
+
+    /// <summary>
+    /// Redis 操作耗时直方图（毫秒，维度：<see cref="Tags.RedisCommand"/>、<see cref="Tags.DedupType"/>）。
+    /// </summary>
+    public static readonly Histogram<double> RedisOperationDuration = Instance.CreateHistogram<double>(
+        "feishu.redis.operation.duration",
+        unit: "ms",
+        description: "Redis 去重/存储操作耗时分布");
+
+    /// <summary>
+    /// Redis SCAN 类 API 的键计数（维度：<see cref="Tags.RedisCommand"/>、<see cref="Tags.Outcome"/>）。
+    /// </summary>
+    /// <remarks>
+    /// <para>outcome 取值：<c>scanned</c> / <c>deleted</c>。</para>
+    /// <para>
+    /// R2-21：用于验证"键空间有界"（G3）与清理类 API 的真实效果——R2-02 的清理恒为 no-op 若能计数，
+    /// 一眼可见 <c>deleted = 0</c>。仅在调用方显式调用计数/清理 API 时上报，**不引入任何周期性全库扫描**。
+    /// </para>
+    /// </remarks>
+    public static readonly Counter<long> RedisScanKeysCount = Instance.CreateCounter<long>(
+        "feishu.redis.scan.keys",
+        unit: "{key}",
+        description: "Redis SCAN 类 API 扫描/删除的键数");
+
     // ── WebSocket 指标 ──
 
     /// <summary>
@@ -494,5 +532,111 @@ public static class FeishuMetrics
 
         /// <summary>租户 Key</summary>
         public const string TenantKey = "feishu.tenant_key";
+
+        /// <summary>Redis 命令/操作名（用于 <see cref="RedisOperationCount"/> 的维度拆分）</summary>
+        public const string RedisCommand = "feishu.redis.command";
+    }
+
+    /// <summary>
+    /// <see cref="RedisOperationCount"/> / <see cref="RedisOperationDuration"/> 的命令名取值（受控枚举）。
+    /// </summary>
+    public static class RedisCommands
+    {
+        /// <summary>事件去重：尝试标记为处理中</summary>
+        public const string TryMarkProcessing = "try_mark_processing";
+
+        /// <summary>事件去重：标记为已完成</summary>
+        public const string MarkCompleted = "mark_completed";
+
+        /// <summary>事件去重：回滚处理中状态</summary>
+        public const string RollbackProcessing = "rollback_processing";
+
+        /// <summary>事件去重：查询是否已处理</summary>
+        public const string IsProcessed = "is_processed";
+
+        /// <summary>事件去重：查询状态</summary>
+        public const string GetStatus = "get_status";
+
+        /// <summary>手动移除单条去重标记</summary>
+        public const string Remove = "remove";
+
+        /// <summary>批量移除去重标记</summary>
+        public const string RemoveRange = "remove_range";
+
+        /// <summary>获取缓存键数量（SCAN）</summary>
+        public const string GetCachedCount = "get_cached_count";
+
+        /// <summary>清空缓存（SeqID）</summary>
+        public const string ClearCache = "clear_cache";
+
+        /// <summary>令牌：读取</summary>
+        public const string TokenGet = "token_get";
+
+        /// <summary>令牌：写入</summary>
+        public const string TokenSet = "token_set";
+
+        /// <summary>令牌：移除</summary>
+        public const string TokenRemove = "token_remove";
+
+        /// <summary>令牌：清空前缀</summary>
+        public const string TokenClear = "token_clear";
+
+        /// <summary>令牌：枚举 tokenType（SCAN）</summary>
+        public const string TokenGetTypes = "token_get_types";
+    }
+
+    /// <summary>
+    /// <see cref="Tags.Outcome"/> 在 Redis 指标中的取值（受控枚举）。
+    /// </summary>
+    /// <remarks>失败取值与 <c>FeishuRedisFailureKind</c> 一一对应（小写名），便于按失败类型告警。</remarks>
+    public static class RedisOutcomes
+    {
+        /// <summary>操作成功</summary>
+        public const string Success = "success";
+
+        /// <summary>命中重复（事件已完成/处理中、Nonce 已使用、SeqID 已处理）</summary>
+        public const string Duplicate = "duplicate";
+
+        /// <summary>处理中超时且可恢复</summary>
+        public const string TimeoutRecoverable = "timeout_recoverable";
+
+        /// <summary>连接不可用（可降级）</summary>
+        public const string Connection = "connection";
+
+        /// <summary>操作超时（可降级）</summary>
+        public const string Timeout = "timeout";
+
+        /// <summary>服务端错误（不可降级）</summary>
+        public const string Server = "server";
+
+        /// <summary>调用方参数非法（不可降级，不应重试）</summary>
+        public const string InvalidArgument = "invalid_argument";
+
+        /// <summary>SCAN 扫描到的键数</summary>
+        public const string Scanned = "scanned";
+
+        /// <summary>目标键不存在（best-effort 操作未创建键，如 <c>MarkAsCompleted</c> 对缺失键的行为）</summary>
+        public const string KeyMissing = "key_missing";
+
+        /// <summary>SCAN 类删除实际删除的键数</summary>
+        public const string Deleted = "deleted";
+    }
+
+    /// <summary>
+    /// <see cref="Tags.DedupType"/> 的取值（受控枚举）。
+    /// </summary>
+    public static class DedupTypes
+    {
+        /// <summary>事件去重（EventId）</summary>
+        public const string Event = "event";
+
+        /// <summary>Nonce 去重（Webhook 防重放）</summary>
+        public const string Nonce = "nonce";
+
+        /// <summary>SeqID 去重（WebSocket 帧）</summary>
+        public const string SeqId = "seqid";
+
+        /// <summary>令牌持久化存储</summary>
+        public const string Token = "token";
     }
 }

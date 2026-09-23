@@ -16,13 +16,15 @@
       步骤 2  诊断白名单断言（HTTPCLIENT / MUD / FORM / AOT）
       步骤 3  AotStrictMode 冒烟（net8.0）
       步骤 4  单元测试（按实际失败数断言）
-      步骤 5  dotnet format --verify-no-changes（默认仅告警，见 -StrictFormat）
+      步骤 5  Redis 集成测试（Docker 可用时逐 (工程, TFM) 运行，断言 total>0 / failed=0 / skipped=0；
+              无 Docker 时告警并登记覆盖缺口）——T-R2-04
+      步骤 6  dotnet format --verify-no-changes（默认仅告警，见 -StrictFormat）
 
 .PARAMETER ClearStaleCache
     检测到 Mud.HttpUtils 依赖缓存内容与本地源不一致时自动清理，而不是仅报错退出。
 
 .PARAMETER StrictFormat
-    将步骤 5 的格式差异视为门禁失败。默认仅告警，因为仓库存在历史格式偏差，
+    将步骤 6 的格式差异视为门禁失败。默认仅告警，因为仓库存在历史格式偏差，
     强制通过会产生与本次改动无关的大量 diff。
 
 .PARAMETER CacheCheckOnly
@@ -47,6 +49,8 @@ $solution = Join-Path $repoRoot 'Mud.Feishu.slnx'
 
 $failures = New-Object System.Collections.Generic.List[string]
 $cacheCleared = $false
+# T-R2-04：Redis 集成测试覆盖缺口说明（Docker 不可用或运行时缺失时登记，供汇总与 CI 日志捕获）
+$redisIntegrationGap = ''
 
 function Assert-Zero {
     param(
@@ -475,7 +479,120 @@ if (Test-Path $trxDir) {
 }
 
 # ---------------------------------------------------------------- 步骤 5
-Write-Host "[步骤 5] 代码格式校验" -ForegroundColor Cyan
+Write-Host "[步骤 5] Redis 集成测试（条件必跑）" -ForegroundColor Cyan
+
+# T-R2-04：真实 Redis 集成测试（Testcontainers.Redis）需要 Docker。
+# 关键动机：集成用例在未启用环境时是**显式跳过**（RedisFactAttribute 在发现期置 Skip），
+# 步骤 4 的 "total > 0" 断言无法区分"真的跑了"与"全被跳过"，因此这里单独断言
+# total>0 / failed=0 / **skipped=0**，把"全跳过"这类假绿挡在门外。
+# Docker 不可用时不阻断本机开发，但登记明确的覆盖缺口（供汇总与 CI 日志捕获）。
+function Test-DockerAvailable {
+    # docker info 在 daemon 未运行时返回非零退出码。先确认可执行文件存在
+    # （避免"命令未找到"落在非终止错误流上、$LASTEXITCODE 保留陈旧值导致误判），再以退出码判定。
+    if (-not (Get-Command docker -ErrorAction SilentlyContinue)) { return $false }
+    try {
+        & docker info *> $null
+        return ($LASTEXITCODE -eq 0)
+    }
+    catch {
+        return $false
+    }
+}
+
+if (-not (Test-DockerAvailable)) {
+    $redisIntegrationGap = 'Docker 不可用：Redis 集成测试未执行（覆盖缺口：SeqID 生命周期/重连清理等命令语义无回归证明）'
+    Write-Host "  [WARN] $redisIntegrationGap" -ForegroundColor Yellow
+}
+else {
+    $redisRuns = @($testRuns | Where-Object { $_.Label -like '*IntegrationTests*' })
+    if ($redisRuns.Count -eq 0) {
+        $failures.Add('未找到 Redis 集成测试工程（应位于 .slnx 的 Tests/** 且工程名含 IntegrationTests）')
+        Write-Host '  [FAIL] 未找到 Redis 集成测试工程' -ForegroundColor Red
+    }
+    else {
+        $redisTrxDir = Join-Path $env:TEMP "mudfeishu-redis-trx-$([guid]::NewGuid().ToString('N'))"
+        New-Item -ItemType Directory -Path $redisTrxDir -Force | Out-Null
+        $redisTestLog = Join-Path $env:TEMP "mudfeishu-redis-test-$([guid]::NewGuid().ToString('N')).log"
+
+        $previousRedisEnv = $env:MUDFEISHU_REDIS_TESTS
+        $env:MUDFEISHU_REDIS_TESTS = '1'
+        try {
+            foreach ($redisRun in $redisRuns) {
+                # 运行时缺失（本机仅装 8/9/10 时不会命中）→ 不能算"通过"，必须登记为缺口
+                if ($redisRun.Tfm -and $redisRun.Tfm -match '^net(\d+)\.') {
+                    $major = [int]$Matches[1]
+                    if ($installedRuntimeMajors -notcontains $major) {
+                        $script:failures.Add("Redis 集成测试 $($redisRun.Label) 无法执行：未安装 .NET $major 运行时")
+                        Write-Host "  [FAIL] $($redisRun.Label)：未安装 .NET $major 运行时，无法证明真实执行" -ForegroundColor Red
+                        continue
+                    }
+                }
+
+                $runDir = Join-Path $redisTrxDir $redisRun.Label
+                New-Item -ItemType Directory -Path $runDir -Force | Out-Null
+
+                Write-Host "  -> $($redisRun.Label)" -ForegroundColor DarkGray
+                $redisArgs = @('test', $redisRun.Project, '-c', 'Release', '--no-build', '--nologo',
+                    '--results-directory', $runDir, '--logger', "trx;LogFileName=$($redisRun.Label).trx")
+                if ($redisRun.Tfm) { $redisArgs += @('-f', $redisRun.Tfm) }
+                dotnet @redisArgs 2>&1 | Tee-Object -FilePath $redisTestLog -Append | Out-Null
+
+                $redisTrx = Get-ChildItem -Path $runDir -Filter '*.trx' -File -ErrorAction SilentlyContinue |
+                    Select-Object -First 1
+                if (-not $redisTrx) {
+                    $script:failures.Add("Redis 集成测试 $($redisRun.Label) 未产出 TRX（详见 $redisTestLog）")
+                    Write-Host "  [FAIL] $($redisRun.Label) 未产出 TRX（可能 testhost 启动失败）" -ForegroundColor Red
+                    continue
+                }
+
+                try {
+                    [xml]$redisDoc = Get-Content -LiteralPath $redisTrx.FullName -Raw -Encoding utf8
+                    $counters = $redisDoc.TestRun.ResultSummary.Counters
+
+                    $rTotal = if ($counters -and $null -ne $counters.total) { [int]$counters.total } else { 0 }
+                    $rFailed = if ($counters -and $null -ne $counters.failed) { [int]$counters.failed } else { 0 }
+                    # VSTest 的 <Counters> 未必暴露 skipped 属性（跳过用例多以 notExecuted 统计）；
+                    # 缺失时回退 notExecuted，保证"跳过"可被观测而不是恒为 0。
+                    $rawSkipped = $null
+                    if ($counters) {
+                        if ($null -ne $counters.skipped) { $rawSkipped = $counters.skipped }
+                        elseif ($null -ne $counters.notExecuted) { $rawSkipped = $counters.notExecuted }
+                    }
+                    $rSkipped = if ($null -ne $rawSkipped) { [int]$rawSkipped } else { 0 }
+
+                    $problems = New-Object System.Collections.Generic.List[string]
+                    if ($rTotal -le 0) { $problems.Add('total=0（未执行任何用例：MUDFEISHU_REDIS_TESTS 未生效或 testhost 启动失败）') }
+                    if ($rFailed -ne 0) { $problems.Add("failed=$rFailed") }
+                    if ($rSkipped -ne 0) { $problems.Add("skipped=$rSkipped（集成用例被跳过，未能证明真实执行）") }
+
+                    if ($problems.Count -gt 0) {
+                        $script:failures.Add("Redis 集成测试 $($redisRun.Label) 未达门禁：$($problems -join '；')（详见 $redisTestLog）")
+                        Write-Host "  [FAIL] $($redisRun.Label)：$($problems -join '；')" -ForegroundColor Red
+                    }
+                    else {
+                        Write-Host "  [ OK ] $($redisRun.Label)（总计 $rTotal / 失败 0 / 跳过 0）" -ForegroundColor Green
+                    }
+                }
+                catch {
+                    $script:failures.Add("Redis 集成测试 $($redisRun.Label) 的 TRX 解析失败: $_")
+                    Write-Host "  [FAIL] $($redisRun.Label) 的 TRX 解析失败: $_" -ForegroundColor Red
+                }
+            }
+        }
+        finally {
+            # 复原环境变量，避免污染后续步骤与调用环境
+            if ($null -eq $previousRedisEnv) { Remove-Item Env:MUDFEISHU_REDIS_TESTS -ErrorAction SilentlyContinue }
+            else { $env:MUDFEISHU_REDIS_TESTS = $previousRedisEnv }
+
+            if (Test-Path $redisTrxDir) {
+                Remove-Item $redisTrxDir -Recurse -Force -ErrorAction SilentlyContinue
+            }
+        }
+    }
+}
+
+# ---------------------------------------------------------------- 步骤 6
+Write-Host "[步骤 6] 代码格式校验" -ForegroundColor Cyan
 dotnet format $solution --verify-no-changes --no-restore 2>&1 | Out-Null
 if ($LASTEXITCODE -ne 0) {
     if ($StrictFormat) {
@@ -493,6 +610,10 @@ else {
 
 # ---------------------------------------------------------------- 汇总
 Write-Host ''
+if ($redisIntegrationGap) {
+    Write-Host "集成测试覆盖缺口：$redisIntegrationGap" -ForegroundColor Yellow
+}
+
 if ($failures.Count -gt 0) {
     Write-Host "门禁未通过，共 $($failures.Count) 项：" -ForegroundColor Red
     $failures | ForEach-Object { Write-Host "  - $_" -ForegroundColor Red }

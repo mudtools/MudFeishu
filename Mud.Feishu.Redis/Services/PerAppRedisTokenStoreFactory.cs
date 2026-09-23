@@ -33,6 +33,7 @@ public class PerAppRedisTokenStoreFactory : IFeishuTokenStoreFactory
 {
     private readonly IConnectionMultiplexer _redis;
     private readonly ILoggerFactory? _loggerFactory;
+    private readonly string? _tokenKeyPrefix;
     private readonly System.Collections.Concurrent.ConcurrentDictionary<string, (ITokenStore TokenStore, IUserTokenStore UserTokenStore)> _stores =
         new(StringComparer.Ordinal);
 
@@ -41,16 +42,25 @@ public class PerAppRedisTokenStoreFactory : IFeishuTokenStoreFactory
     /// </summary>
     /// <param name="redis">Redis 连接复用器（Singleton，由全部 per-app 存储共享）。</param>
     /// <param name="loggerFactory">日志工厂，可为 null（降级为不记日志）。</param>
-    public PerAppRedisTokenStoreFactory(IConnectionMultiplexer redis, ILoggerFactory? loggerFactory = null)
+    /// <param name="tokenKeyPrefix">
+    /// 令牌键前缀的环境段（R2-04），来自 <c>RedisOptions.TokenKeyPrefix</c>；
+    /// <c>null</c>/空白时使用 <see cref="Mud.Feishu.Abstractions.Consts.DefaultTokenKeyPrefix"/>。
+    /// </param>
+    public PerAppRedisTokenStoreFactory(
+        IConnectionMultiplexer redis,
+        ILoggerFactory? loggerFactory = null,
+        string? tokenKeyPrefix = null)
     {
         _redis = redis ?? throw new ArgumentNullException(nameof(redis));
         _loggerFactory = loggerFactory;
+        _tokenKeyPrefix = tokenKeyPrefix;
     }
 
     /// <summary>
     /// 构建指定应用的 Redis 键前缀，与 Memory 路径 <c>feishu:{appKey}:token</c> <b>逐字节一致</b>（D8）。
     /// TMF2-05 / TMR2-P1-2：委派 <c>TokenKeyBuilder.BuildKeyPrefix</c>（键前缀的唯一出口）——
-    /// 消除经 <c>RedisKeyBuilder.Combine</c> 预转义与 Memory 裸拼接的差异（前缀逐字节一致）。
+    /// 消除经 <c>RedisKeyBuilder.Combine</c> 预转义与 Memory 裸拼接的差异（前缀逐字节一致）；
+    /// R2-04：环境段由 <c>RedisOptions.TokenKeyPrefix</c> 注入（默认 <c>feishu</c>），空值回落默认值。
     /// </summary>
     /// <remarks>
     /// <para>
@@ -78,6 +88,15 @@ public class PerAppRedisTokenStoreFactory : IFeishuTokenStoreFactory
         // （转义单点归口 TokenKeyBuilder.NormalizeSegment，由键构造路径 Combine 施加）。
         TokenKeyBuilder.BuildKeyPrefix(appKey);
 
+    /// <summary>
+    /// 构建指定应用在指定环境段下的 Redis 键前缀（R2-04）。
+    /// </summary>
+    /// <param name="appKey">应用唯一标识</param>
+    /// <param name="tokenKeyPrefix">环境段（如 <c>dev</c>/<c>prod</c>）；<c>null</c> 时取默认 <c>feishu</c></param>
+    /// <returns>如 <c>prod:cli_a:token</c></returns>
+    public static string BuildKeyPrefix(string appKey, string? tokenKeyPrefix) =>
+        TokenKeyBuilder.BuildKeyPrefix(appKey, tokenKeyPrefix);
+
     /// <inheritdoc />
     public (ITokenStore TokenStore, IUserTokenStore? UserTokenStore) Create(string appKey)
     {
@@ -87,7 +106,7 @@ public class PerAppRedisTokenStoreFactory : IFeishuTokenStoreFactory
 
         var (tokenStore, userTokenStore) = _stores.GetOrAdd(appKey, key =>
         {
-            var keyPrefix = BuildKeyPrefix(key);
+            var keyPrefix = BuildKeyPrefix(key, _tokenKeyPrefix);
             var logger = _loggerFactory?.CreateLogger<RedisTokenStore>();
 
             var store = new RedisTokenStore(

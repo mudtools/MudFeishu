@@ -6,10 +6,10 @@
 
 - **事件去重**: 基于 EventId 的分布式去重，使用 Redis Hash + Lua 脚本实现状态机模式（Processing → Completed），支持超时恢复和异常回滚
 - **Nonce 去重**: 防止重放攻击，使用 Redis SET NX EX 确保请求唯一性
-- **SeqID 去重**: WebSocket 二进制消息序列号去重，使用 Redis Sorted Set 支持范围查询，含 TTL 与写入时裁剪（有界增长）
-- **多应用隔离**: 所有去重器支持 `appKey` 参数，避免跨应用事件冲突
-- **SeqID 实例隔离**: `scopeKey` 构造参数，多实例共享 Redis 时不互相判重
-- **统一键构造**: `RedisKeyBuilder` 统一四类键构造，含分段转义、长度上限、空前缀护栏
+- **SeqID 去重**: WebSocket 二进制消息序列号去重，使用 Redis String + Sorted Set，写入时按**容量窗口**裁剪（`ZREMRANGEBYRANK`）并刷新 TTL，集合大小有确定性上界
+- **多应用隔离**: **事件 / Nonce** 去重支持 `appKey` 参数，避免跨应用键冲突
+- **SeqID 实例隔离**: `scopeKey` 构造参数（默认 `{AppKey}|{MachineName}`），多实例共享 Redis 时不互相判重
+- **统一键构造**: `RedisKeyBuilder` 统一键构造，含分段转义、长度上限、空前缀护栏；**所有 SCAN 模式唯一出口为 `RedisKeyBuilder.Pattern`**（与键同源、段级精确）
 - **可分类异常**: `FeishuRedisException` + `FeishuRedisFailureKind`，消费侧可区分连接故障与服务端错误
 - **健康检查**: 内置 Redis 健康检查，自动注册到 ASP.NET Core 健康检查系统
 - **配置验证**: 启动时自动验证配置有效性（`ValidateOnStart`），敏感信息掩码输出
@@ -47,13 +47,15 @@ dotnet add package Mud.Feishu.Redis
       "AllowAdmin": false
     },
     "EventCacheExpiration": "48:00:00",
-    "NonceTtl": "00:05:00",
+    "NonceTtl": "00:10:00",
     "SeqIdCacheExpiration": "48:00:00",
+    "SeqIdWindowCapacity": 100000,  // SeqID Sorted Set 容量窗口上界（必须 > 0）
     "EventKeyPrefix": "feishu:event:",
     "NonceKeyPrefix": "feishu:nonce:",
     "SeqIdKeyPrefix": "feishu:seqid:",
-    "SeqIdScopeKey": "",  // 可选，为空时自动合成 {AppKey}|{MachineName}
-    "AppKey": "default"   // 用于 SeqID scopeKey 合成
+    "SeqIdScopeKey": "",       // 可选，为空时自动合成 {AppKey}|{MachineName}
+    "AppKey": "default",       // 用于 SeqID scopeKey 合成
+    "TokenKeyPrefix": "feishu" // 令牌键环境段：最终键 {TokenKeyPrefix}:{appKey}:token:…
   }
 }
 ```
@@ -122,8 +124,10 @@ app.Run();
 | `Connection.ServerAddress`      | string   | "localhost:6379" | Redis 服务器地址（host:port 或 redis://host:port 或 rediss://host:port） |
 | `Connection.Password`           | string   | ""               | Redis 密码                                                               |
 | `EventCacheExpiration`          | TimeSpan | 48 小时          | 事件去重缓存过期时间                                                     |
-| `NonceTtl`                      | TimeSpan | 5 分钟           | Nonce 有效期                                                             |
+| `NonceTtl`                      | TimeSpan | 600 秒（10 分钟） | Nonce 有效期（建议 ≥ Webhook 时间戳容差的 2 倍）                          |
 | `SeqIdCacheExpiration`          | TimeSpan | 48 小时          | SeqID 去重缓存过期时间                                                   |
+| `SeqIdWindowCapacity`           | int      | 100000           | SeqID Sorted Set 容量窗口上界（成员数），必须 > 0，否则启动期校验失败     |
+| `TokenKeyPrefix`                | string   | "feishu"         | 令牌键环境段：`{TokenKeyPrefix}:{appKey}:token:…`；空值兜底默认值，不能以 `*` 开头 |
 | `EventKeyPrefix`                | string   | "feishu:event:"  | 事件去重键前缀                                                           |
 | `NonceKeyPrefix`                | string   | "feishu:nonce:"  | Nonce 去重键前缀                                                         |
 | `SeqIdKeyPrefix`                | string   | "feishu:seqid:"  | SeqID 去重键前缀                                                         |
@@ -163,12 +167,17 @@ Pending → Processing → Completed
 
 **Redis 数据结构**：
 
-- **Key**: `{keyPrefix}{appKey}:{eventId}`
+- **Key**: `feishu:event::{appKey}:{eventId}`（未传 `appKey` 时为 `feishu:event::{eventId}`）
 - **Type**: Hash
-- **Fields**: `status` (processing/completed), `timestamp` (UTC 时间)
+- **Fields**:
+  - `status` = `processing` | `completed`
+  - `timestamp` = **Redis 服务端 Unix 秒**（Lua `redis.call('TIME')` 写入，消除实例间时钟漂移）
+  - `timeout` = 该事件的处理超时秒数（用于 `GetStatusAsync` 判定，per-call 覆盖默认值）
 - **TTL**: 由 `EventCacheExpiration` 指定
 
 > 💡 键由 `RedisKeyBuilder` 分段构造，段间以 `:` 分隔，段内的 `:` 会被转义为 `\:`，因此 `{appKey}`/`{eventId}` 本身含 `:` 也不会产生键碰撞。
+> 注意默认前缀自带尾 `:`，而 `Combine` 会再插入一级 `:`，故实际键为**双冒号**形态（如 `feishu:event::cli_a:evt1`）；
+> 段内 `:` 转义示例：`appKey="a:b" + eventId="c"` → `feishu:event::a\:b:c`，与 `appKey="a" + eventId="b:c"` → `feishu:event::a:b\:c` 不会碰撞。
 
 **核心 API**：
 
@@ -191,7 +200,7 @@ Pending → Processing → Completed
 
 **Redis 数据结构**：
 
-- **Key**: `{keyPrefix}{appKey}:{nonce}`
+- **Key**: `feishu:nonce::{appKey}:{nonce}`（未传 `appKey` 时为 `feishu:nonce::{nonce}`）
 - **Type**: String
 - **Value**: "1"
 - **TTL**: 由 `NonceTtl` 指定
@@ -214,16 +223,30 @@ Pending → Processing → Completed
 
 使用 Redis String + Sorted Set 实现 WebSocket 消息序列号去重：
 
-**Redis 数据结构**：
+**Redis 数据结构**（键由 `RedisKeyBuilder.Combine` 产出，段间 `:`、段内 `:` 转义为 `\:`）：
 
-- **Key**: `{keyPrefix}{scopeKey}{seqId}` (String 类型，记录已处理状态)
-- **Sorted Set**: `{keyPrefix}{scopeKey}set` (记录所有已处理的 SeqID，支持范围查询)
-- **TTL**: 由 `SeqIdCacheExpiration` 指定（写入时刷新，Sorted Set 同生命周期）
+- **String 键**: `feishu:seqid::{scopeKey}:{seqId}`（值 `"1"`，`SET ... EX ... NX`）
+- **Sorted Set 键**: `feishu:seqid::{scopeKey}:set`（member = `seqId`，score = `SeqID`）
+- **TTL**: 由 `SeqIdCacheExpiration` 指定，两者同生命周期
 
-> 💡 键由 `RedisKeyBuilder` 分段构造，段间以 `:` 分隔，段内的 `:` 会被转义为 `\:`。
+> 💡 **写入语义（容量窗口，R2-01）**：单 Lua 脚本原子执行
+> `SET NX` + `ZADD` + `ZREMRANGEBYRANK key 0 -(capacity+1)` + `EXPIRE`——按**排名**裁剪，
+> 仅保留分数最大的 `SeqIdWindowCapacity` 个成员（历史实现用**时间阈值**比较 SeqID 分数，
+> 阈值 ≈1.79×10⁹ 恒大于任何真实 SeqID，导致成员写入即被清除、计数恒为 0）。
 
-> 💡 `scopeKey` 默认为 `{AppKey}|{MachineName}`，多实例共享 Redis 时不互相判重。可通过 `RedisOptions.SeqIdScopeKey` 自定义。
-> Sorted Set 在写入时执行 `ZREMRANGEBYSCORE` 裁剪过期成员，确保集合有界增长。
+| 方法 | 语义 |
+| --- | --- |
+| `GetCacheCount()` | **当前窗口内成员数**（≤ `SeqIdWindowCapacity`） |
+| `GetMaxProcessedSeqId()` | **窗口内真实最大值**（按 score 降序取首元素） |
+| `ClearCacheAsync()` | 删除 `RedisKeyBuilder.Pattern(SeqIdKeyPrefix, scopeKey)` 命中的全部键，即 `feishu:seqid::{scopeKey}:*`（含 `:set`）；best-effort |
+
+> ⚠️ `GetCacheCount()` **不再等于** String 键 TTL 窗口内的去重规模，**不可用于推断剩余去重空间**。
+> 容量窗口只保证集合有界；TTL 由 String 键与 Sorted Set 各自承担。
+
+> 💡 `scopeKey` 默认为 `{AppKey}|{MachineName}`（多实例共享 Redis 时不互相判重），可用 `RedisOptions.SeqIdScopeKey` 或 `FeishuDeduplication:SeqId:ScopeKey` 覆盖。
+> 清理模式与键**同源**（统一经 `RedisKeyBuilder.Pattern`，且模式以**分隔符 + `*`** 结尾）：
+> 历史缺陷用裸拼接缺少一级 `:`，模式恒不匹配实际键，**一个键都删不掉**；
+> 修复后由 `FeishuWebSocketClient.ResetStateOnReconnectAsync` 在**每次 WebSocket 重连**时调用。
 
 **核心 API**：
 
@@ -231,9 +254,10 @@ Pending → Processing → Completed
 | ------------------------- | ----------------------- |
 | `TryMarkAsProcessedAsync` | 尝试标记 SeqID 为已处理 |
 | `IsProcessedAsync`        | 检查 SeqID 是否已处理   |
-| `GetMaxProcessedSeqId`    | 获取最大已处理 SeqID    |
-| `GetCacheCount`           | 获取缓存数量            |
-| `ClearCacheAsync`         | 清空缓存                |
+| `RollbackAsync`           | 回滚标记，允许重新处理  |
+| `GetMaxProcessedSeqId`    | 获取窗口内最大已处理 SeqID |
+| `GetCacheCount`           | 获取窗口内成员数        |
+| `ClearCacheAsync`         | 清空本 `scopeKey` 的 SeqID 键（含 Sorted Set） |
 
 > 💡 上表方法均为 `IFeishuSeqIDDeduplicator` **接口**成员，DI 注入的接口引用即可调用。
 
@@ -246,7 +270,10 @@ Pending → Processing → Completed
 | `Connection` | 连接故障 | 网络中断、Redis 宕机 | 可降级到内存去重或拒绝请求 |
 | `Timeout` | 操作超时 | 大 Value、网络延迟 | 重试或降级 |
 | `Server` | 服务端/配置错误 | Cluster MOVED、权限拒绝 | 不重试，告警运维 |
-| `InvalidArgument` | 无效参数 | 调用方传入非法值（如空键段、超长键段） | 修正调用参数，不重试 |
+| `InvalidArgument` | 无效参数 | 调用方传入非法键段（空段 / 段长 > 256 字符），由 `RedisKeyBuilder` 在构造键时抛出 | 修正调用参数，不重试 |
+
+> ℹ️ **键前缀非法**（空或以 `*` 开头）抛**原生 `InvalidOperationException`**（配置类错误，非调用参数），
+> 与 `InvalidArgument` 区分；启动期由 `RedisOptions.Validate()`（net6+ 经 `ValidateOnStart`）拦截。
 
 ```csharp
 try
@@ -293,9 +320,21 @@ app.MapHealthChecks("/health");
 
 健康检查会执行 Redis PING 命令，并返回延迟和连接端点信息。
 
+**探活判据（R2-12）**：`PING` 命令成功即 `Healthy`；`data` 含 `latency`、`connectedEndpoints`、`totalEndpoints`。
+端点级异常（副本不可达、集群拓扑变化）**只影响连通计数**，不会把 PING 正常的实例整体判为 `Unhealthy`。
+
+**可选关闭（R2-12）**：库内默认会调用 `AddHealthChecks()`（对未使用健康检查的宿主产生隐式注册）。
+如需自管注册：
+
+```csharp
+// 不注册到健康检查系统，仅注册 RedisHealthCheck 类型；由宿主自行 AddCheck<RedisHealthCheck>("feishu-redis")
+builder.Services.AddFeishuRedisDeduplicators(builder.Configuration, registerHealthCheck: false);
+```
+
 ## 多应用隔离
 
-所有去重器支持 `appKey` 参数，在多应用场景下避免事件冲突：
+**事件 / Nonce** 去重器支持 `appKey` 参数，在多应用场景下避免键冲突；
+**SeqID** 使用 `scopeKey`（默认 `{AppKey}|{MachineName}`，见上文「SeqID 去重」）：
 
 ```csharp
 // 标记事件为处理中（指定应用）
@@ -355,6 +394,13 @@ Redis 键格式：`{keyPrefix}{appKey}:{eventId}`，不同应用的事件互不�
 ```
 
 > 💡 键前缀非空且不以 `*` 开头，否则启动期校验失败（R-01 护栏）。
+>
+> ⚠️ **令牌键的环境隔离**：令牌键前缀为 `{TokenKeyPrefix}:{appKey}:token:…`（`TokenKeyPrefix` 默认 `feishu`）。
+> 多环境共用同一 Redis 时，请为各环境配置不同的 `TokenKeyPrefix`（事件/Nonce/SeqID 的 `*KeyPrefix` 不受其影响）。
+>
+> ⚠️ **过期时间下限**：`EventCacheExpiration` / `SeqIdCacheExpiration` 的 setter 会把小于 1 分钟的值
+> **静默钳制到 1 分钟**（配置 30 秒实际生效 1 分钟）；`SeqIdWindowCapacity` 非正值回落到默认值，
+> 但启动期校验（`ValidateOnStart`）会对非正值直接失败。
 
 ### 3. 如何使用 TLS/SSL 连接 Redis？
 
@@ -471,23 +517,71 @@ builder.Services.AddSingleton<IEncryptionProvider, MyAesGcmEncryptionProvider>()
 - 前缀非空（空前缀 + `*` pattern 会退化为全库 SCAN，R-01 护栏）。
 - 前缀不以 `*` 开头（通配符前缀导致 SCAN 匹配所有键）。
 - 分段转义：段内的 `:` 替换为 `\:`，杜绝 `appKey="a:b"` 与 `appKey="a"` + `eventId="b:c"` 产生相同键（R-20）。
-- 单段长度上限 256 字节，防止超长键 DoS。
+- 单段长度上限 256 字符；超限抛 `FeishuRedisException(InvalidArgument)`（调用方输入非法，不应重试）。
+- SCAN 模式经 `RedisKeyBuilder.Pattern` 产出，且以**分隔符 + `*`** 结尾（段级精确匹配，
+  避免 `scopeKey="a"` 的清理越界删除 `scopeKey="ab"` 的键）。
+
+## 运维诊断
+
+`AddFeishuRedisDeduplicators` / `AddFeishuRedisTokenStore` 会以单例注册诊断门面，
+使宿主无需依赖具体实现类型即可观测三类键空间：
+
+```csharp
+using Mud.Feishu.Redis.Diagnostics;
+
+var diagnostics = sp.GetRequiredService<IRedisDeduplicationDiagnostics>();
+var snapshot = await diagnostics.GetSnapshotAsync(cancellationToken);
+
+// snapshot.ServerTimeSeconds             Redis 服务端 Unix 秒（TIME 不可用时回落客户端时间）
+// snapshot.EventDeduplicatorAvailable   事件去重器是否为 Redis 实现
+// snapshot.EventCachedCount             事件键空间键数
+// snapshot.NonceDeduplicatorAvailable / NonceCachedCount
+// snapshot.SeqIdDeduplicatorAvailable / SeqIdCacheCount / SeqIdMaxProcessed / SeqIdScopeKey
+```
+
+三个去重器若被宿主替换为内存实现，对应 `*Available` 为 `false`（计数恒为 0，**不抛异常**）。
+
+> ⚠️ **成本警告**：`EventCachedCount` / `NonceCachedCount` 为**全库 SCAN** + 服务端 `TIME`，属运维路径。
+> **禁止在热路径或高频轮询（如每请求）中调用**；建议用于健康检查端点或人工排查。
+
+## 可观测性
+
+Redis 指标挂在既有 `Mud.Feishu` Meter 上（`Mud.Feishu.OpenTelemetry` 已自动 `AddMeter`），
+宿主只需启用该 Meter：
+
+| 指标 | 类型 | 单位 | 维度 |
+| --- | --- | --- | --- |
+| `feishu.redis.operation` | Counter | `{operation}` | `feishu.redis.command`、`feishu.dedup.type`、`outcome` |
+| `feishu.redis.operation.duration` | Histogram | `ms` | `feishu.redis.command`、`feishu.dedup.type` |
+| `feishu.redis.scan.keys` | Counter | `{key}` | `feishu.redis.command`、`outcome`（`scanned` / `deleted`） |
+
+- `outcome` 的失败取值与 `FeishuRedisFailureKind` 一一对应（`connection` / `timeout` / `server` / `invalid_argument`），
+  另有 `success`、`duplicate`、`timeout_recoverable`、`key_missing`。
+- `feishu.redis.scan.keys` 仅在调用计数/清理类 API 时上报（**不引入任何周期性全库扫描**），
+  `outcome=deleted` 的计数可直接暴露"清理恒删 0 个键"这类静默失效。
+
+```csharp
+builder.Services.AddOpenTelemetry()
+    .WithMetrics(m => m.AddMeter(FeishuMetrics.MeterName)); // "Mud.Feishu"
+```
 
 ## 附录 A：能力 ↔ 实现 ↔ 测试 映射表
 
 | 能力 | 实现文件 | 测试文件 | 关联审查编号 |
 | --- | --- | --- | --- |
-| 事件去重状态机 v2（Lua 原子化 + 服务端时钟） | `RedisFeishuEventDistributedDeduplicator.cs` | `EventDeduplicatorIntegrationTests.cs` | R-04/R-05/R-06/R-15/R-17/R-19 |
-| Nonce 去重（SET NX EX + 分类异常） | `RedisFeishuNonceDistributedDeduplicator.cs` | `NonceAndTokenStoreIntegrationTests.cs` | R-12/R-22 |
-| SeqID 去重（scopeKey 隔离 + 有界 Sorted Set） | `RedisFeishuSeqIDDeduplicator.cs` | `SeqIDDeduplicatorIntegrationTests.cs` | R-01/R-07/R-08 |
-| 统一键构造（转义 + 长度 + 护栏） | `RedisKeyBuilder.cs` | `SeqIDDeduplicatorIntegrationTests.cs` | R-01/R-20/R-21 |
-| 分类异常契约 | `FeishuRedisException.cs` | `EventDeduplicatorIntegrationTests.cs` | ADR-6 |
-| Cluster 多节点扫描 | `RedisStoreHelper.GetServers()` | `NonceAndTokenStoreIntegrationTests.cs` | R-10 |
-| 令牌存储（per-app 键空间 + Cluster） | `RedisTokenStore.cs` / `PerAppRedisTokenStoreFactory.cs` | `NonceAndTokenStoreIntegrationTests.cs` | R-09/R-10/R-23 |
-| 用户令牌存储 | `RedisUserTokenStore.cs` | `NonceAndTokenStoreIntegrationTests.cs` | R-09/R-10 |
+| 事件去重状态机 v2（Lua 原子化 + 服务端时钟） | `Services/RedisFeishuEventDistributedDeduplicator.cs` | `IntegrationTests/EventDeduplicatorIntegrationTests.cs`、`Tests/Services/RedisFeishuEventDistributedDeduplicatorTests.cs` | R-04/R-05/R-06/R-15/R-17/R-19 |
+| Nonce 去重（SET NX EX + 分类异常） | `Services/RedisFeishuNonceDistributedDeduplicator.cs` | `IntegrationTests/NonceAndTokenStoreIntegrationTests.cs`、`Tests/Services/RedisFeishuNonceDistributedDeduplicatorTests.cs` | R-12/R-22 |
+| SeqID 去重（scopeKey 隔离 + **容量窗口** Sorted Set） | `Services/RedisFeishuSeqIDDeduplicator.cs` | `IntegrationTests/SeqIDDeduplicatorIntegrationTests.cs`、`Tests/Services/RedisFeishuSeqIDDeduplicatorTests.cs` | R-01/R-07/**R2-01** |
+| 统一键构造（转义 + 长度 + 护栏）与 **SCAN 模式单一出口** | `Services/RedisKeyBuilder.cs`（`Pattern`） | `Tests/ContractGuards/RedisKeyLayoutContractGuards.cs` | R-01/R-20/R-21/**R2-02** |
+| 分类异常契约（含 `InvalidArgument` 真实产生） | `Mud.Feishu.Abstractions/Exceptions/FeishuRedisException.cs` | `Tests/ContractGuards/RedisKeyLayoutContractGuards.cs` | ADR-6/**R2-18** |
+| Cluster 多节点扫描 | `Services/RedisStoreHelper.GetServers()` | `IntegrationTests/NonceAndTokenStoreIntegrationTests.cs` | R-10 |
+| 令牌存储（per-app 键空间 + Cluster + 环境前缀） | `Services/RedisTokenStore.cs` / `Services/PerAppRedisTokenStoreFactory.cs` | `Tests/PerAppRedisTokenStoreKeyIsolationTests.cs`、`IntegrationTests/NonceAndTokenStoreIntegrationTests.cs` | R-09/R-10/R-23/**R2-04**/**R2-09** |
+| 用户令牌存储 | `Services/RedisUserTokenStore.cs` | `Tests/Services/RedisUserTokenStoreTests.cs` | R-09/R-10 |
+| **运维诊断门面** | `Diagnostics/IRedisDeduplicationDiagnostics.cs` | `Tests/ContractGuards/RedisKeyLayoutContractGuards.cs` | **R2-22** |
+| **Redis 指标** | `Mud.Feishu.Abstractions/Metrics/FeishuMetrics.cs`、`Services/RedisMetricsHelper.cs` | `Mud.Feishu.OpenTelemetry.Tests` | **R2-21** |
+| **连接选项装配（含 `rediss://` → TLS）** | `Services/RedisConnectionFactory.cs` | `Tests/ContractGuards/RedisKeyLayoutContractGuards.cs` | R-13/**R2-26** |
 | Nonce 降级语义 | `NonceValidator.cs`（Webhook） | — | R-12/R-18 |
-| 配置启动期校验 | `RedisOptions.cs` / `RedisOptionsValidator.cs` | — | R-12/R-26 |
-| 连接字符串原生解析 | `RedisFeishuServiceBuilderExtensions.cs` | — | R-13 |
+| 配置启动期校验 | `Configuration/RedisOptions.cs` / `RedisOptionsValidator.cs` | `Tests/Configuration/RedisOptionsValidatorTests.cs` | R-12/R-26 |
 
 ## 许可证
 

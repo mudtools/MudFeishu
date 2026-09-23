@@ -177,8 +177,11 @@ public class RedisTokenKeyContractGuards
         var server = new Mock<IServer>();
         server.Setup(s => s.IsConnected).Returns(true);
         server.Setup(s => s.IsReplica).Returns(false);
-        // StackExchange.Redis 2.10 的 4 参数 Keys(...) 内部转发到 6 参数重载。
-        server.Setup(s => s.Keys(
+        // R2-08（合并对齐）：令牌 SCAN 已由同步 Keys(...) 改为异步 KeysAsync(...)——
+        // IServer.KeysAsync 只有 (int database, RedisValue pattern, int pageSize,
+        // long cursor, int pageOffset, CommandFlags flags) 一个重载，必须按该签名打桩；
+        // 未打桩时 Moq 返回 null，`await foreach` 会抛 NullReferenceException（假红）。
+        server.Setup(s => s.KeysAsync(
                 It.IsAny<int>(),
                 It.IsAny<RedisValue>(),
                 It.IsAny<int>(),
@@ -187,12 +190,24 @@ public class RedisTokenKeyContractGuards
                 It.IsAny<CommandFlags>()))
             .Callback<int, RedisValue, int, long, int, CommandFlags>(
                 (_, pattern, _, _, _, _) => observedPatterns?.Add(pattern.ToString()))
-            .Returns((serverKeys ?? Enumerable.Empty<string>()).Select(k => (RedisKey)k));
+            .Returns(() => ToAsyncKeys((serverKeys ?? Enumerable.Empty<string>()).Select(k => (RedisKey)k)));
 
         var endpoint = new System.Net.DnsEndPoint("localhost", 6379);
         redis.Setup(r => r.GetEndPoints(It.IsAny<bool>())).Returns(new System.Net.EndPoint[] { endpoint });
         redis.Setup(r => r.GetServer(It.IsAny<System.Net.EndPoint>(), It.IsAny<object>())).Returns(server.Object);
 
         return (new PerAppRedisTokenStoreFactory(redis.Object), observedReadKeys);
+    }
+
+    /// <summary>
+    /// 把键集合包装为 <c>IAsyncEnumerable&lt;RedisKey&gt;</c>（R2-08：KeysAsync 桩用）。
+    /// </summary>
+    private static async IAsyncEnumerable<RedisKey> ToAsyncKeys(IEnumerable<RedisKey> keys)
+    {
+        await Task.CompletedTask;
+        foreach (var key in keys)
+        {
+            yield return key;
+        }
     }
 }

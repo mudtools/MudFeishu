@@ -243,6 +243,11 @@ internal static class TokenKeyBuilder
     /// TMF2-05 / TMR2-P1-2：键前缀的唯一出口——Memory 与 Redis 两端均委派此方法。
     /// </summary>
     /// <param name="appKey">应用唯一标识（空白视为 <c>default</c>）。</param>
+    /// <param name="tokenPrefix">
+    /// 环境段（R2-04）。默认 <see cref="Mud.Feishu.Abstractions.Consts.DefaultTokenKeyPrefix"/>（<c>feishu</c>）。
+    /// Redis 路径由 <c>RedisOptions.TokenKeyPrefix</c> 注入，用于多环境共用 Redis 时的键空间隔离；
+    /// Memory 路径保持默认值（单进程无跨环境共享问题），故默认形态下两端前缀逐字节一致。
+    /// </param>
     /// <returns><b>未转义</b>的键前缀（如 <c>feishu:cli_a:token</c>）。</returns>
     /// <remarks>
     /// <para>
@@ -259,15 +264,20 @@ internal static class TokenKeyBuilder
     /// </para>
     /// <para>
     /// 长度保护不丢失：键构造路径仍经 <see cref="NormalizeSegment"/>，对超过 256 字符的键段
-    /// 抛 <see cref="ArgumentException"/>。空前缀护栏由固定段 <c>feishu</c> / <c>token</c> 承担
-    /// （永不退化为 <c>*</c>，R-01）。
+    /// 抛 <see cref="ArgumentException"/>。空前缀护栏由固定段 <c>token</c> 与
+    /// <see cref="Mud.Feishu.Abstractions.Consts.DefaultTokenKeyPrefix"/> 承担
+    /// （空 <paramref name="tokenPrefix"/> 回落默认值，永不退化为 <c>*</c>，R-01）；
+    /// R2-04 的环境段同样经该路径转义与长度校验。
     /// </para>
     /// </remarks>
-    internal static string BuildKeyPrefix(string appKey)
+    internal static string BuildKeyPrefix(string appKey, string? tokenPrefix = null)
     {
+        var safePrefix = string.IsNullOrWhiteSpace(tokenPrefix)
+            ? Mud.Feishu.Abstractions.Consts.DefaultTokenKeyPrefix
+            : tokenPrefix!;
         var safeAppKey = string.IsNullOrWhiteSpace(appKey) ? "default" : appKey;
-        // 裸拼接（不转义）：各段转义由 Combine → NormalizePrefix → NormalizeSegment 单点负责。
-        return $"feishu{Separator}{safeAppKey}{Separator}token";
+        // 裸拼接（不转义，含 R2-04 的环境段）：各段转义由 Combine → NormalizePrefix → NormalizeSegment 单点负责。
+        return $"{safePrefix}{Separator}{safeAppKey}{Separator}token";
     }
 
     /// <summary>

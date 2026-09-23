@@ -32,6 +32,7 @@
     <Project Path="Tests/Mud.Feishu.Abstractions.Tests/Mud.Feishu.Abstractions.Tests.csproj" />
     <Project Path="Tests/Mud.Feishu.Authentication.Tests/Mud.Feishu.Authentication.Tests.csproj" />
     <Project Path="Tests/Mud.Feishu.OpenTelemetry.Tests/Mud.Feishu.OpenTelemetry.Tests.csproj" />
+    <Project Path="Tests/Mud.Feishu.Redis.IntegrationTests/Mud.Feishu.Redis.IntegrationTests.csproj" />
     <Project Path="Tests/Mud.Feishu.Redis.Tests/Mud.Feishu.Redis.Tests.csproj" />
     <Project Path="Tests/Mud.Feishu.Tests/Mud.Feishu.Tests.csproj" />
     <Project Path="Tests/Mud.Feishu.Webhook.Tests/Mud.Feishu.Webhook.Tests.csproj" />

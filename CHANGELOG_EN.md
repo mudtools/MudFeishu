@@ -1,156 +1,74 @@
 # Mud.Feishu Change Log
 
-## [Unreleased]
+## [3.0.0-rc3] - 2026-09-23
 
-### 🔐 Webhook: replay protection & multi-app isolation (WHF-R3)
+> This release focuses on **Webhook multi-region security hardening, token & multi-app hot-reload stability, Redis dedup & token-store correctness, and WebSocket connection reliability**. It includes breaking changes — read "Upgrade Notes" before upgrading.
 
-#### ⚠️ Breaking / Behavioral Changes
+### 🌟 Highlights
 
-- **In-memory Nonce deduplication is now blocked in Production**: when no distributed Nonce deduplicator
-  is registered (`AddFeishuRedisDeduplicators()`), the host **fails to start** in
-  `ASPNETCORE_ENVIRONMENT=Production`. Multi-instance deployments cannot detect cross-instance replays
-  with an in-memory table. Opt out explicitly with
-  `FeishuWebhook:AllowInMemoryNonceDedupInProduction=true` for confirmed single-instance deployments.
-- **`ExpectedAppId` is mandatory in multi-app setups**: with more than one entry under
-  `FeishuWebhook:Apps`, a missing `ExpectedAppId` fails startup. It is the only guard against
-  cross-app event bleed caused by an `EncryptKey` misconfiguration. Single-app deployments: still optional.
-- **Interceptor interception now ACKs with 200 instead of 500**. Interception is "intentionally consumed":
-  the event is also marked as deduplicated so Feishu stops retrying. Previously every interception
-  returned 500 → Feishu retried → intercepted again → the event was never acked.
-  Use `FeishuWebhook:InterceptionAckMode=Retryable` for "cannot handle now, please retry later" (503,
-  no dedup mark).
-- **The global default handler must be a globally registered handler**. `Build()` now requires at
-  least one `AddHandler<T>()` (no appKey); app-scoped-only registration fails startup. Previously an
-  app-specific handler could silently become the global default, mis-routing other apps' events.
+- **Webhook replay protection & multi-app isolation**: Production now mandates distributed dedup, multi-app setups must declare `ExpectedAppId`, interception semantics and default-handler routing are tightened — eliminating cross-app event bleed and permanent event loss.
+- **Token & multi-app hot-reload stability**: the default-app bridge switches to "resolve-on-access" (DI injection immediately follows runtime switching), per-app auth clients now actually take effect, Memory/Redis token key layouts are byte-identical, and `OnConfigurationChanged` no longer blocks the config callback thread.
+- **Redis dedup & token-store correctness**: SeqID moves to a capacity window, `ClearCacheAsync` really deletes, `rediss://` really enables TLS, the token key prefix is configurable, and an ops diagnostics facade plus metrics are added.
+- **WebSocket connection reliability**: connection lifetime is decoupled from the caller's `CancellationToken`, zombie connections are eliminated, fragmented-message boundaries are protected, and concurrent dispatch plus liveness/discard metrics are added.
 
-#### ✨ Added
+### ⚠️ Upgrade Notes (Breaking Changes / Required Actions)
 
-- `FeishuWebhook:AllowInMemoryNonceDedupInProduction` (default `false`)
-- `FeishuWebhook:InterceptionAckMode` (default `Ack`; `Retryable` → HTTP 503)
-- Startup-time options validation (invalid config = host fails to start, not first-request 500)
-- Metrics: `unhandled` now also emitted on the app-specific path; new `timeout_overshoot` metric;
-  `intercepted` is now recorded as a success outcome
+**Webhook (WHF-R3)**
 
-#### 🐛 Fixed
+- **In-memory Nonce dedup is now blocked in Production**: when no distributed deduplicator is registered (`AddFeishuRedisDeduplicators()`), the host **fails to start** in `ASPNETCORE_ENVIRONMENT=Production`. For confirmed single-instance deployments, set `FeishuWebhook:AllowInMemoryNonceDedupInProduction=true` (emits a risk warning).
+- **`ExpectedAppId` is mandatory in multi-app setups**: with more than one entry under `FeishuWebhook:Apps`, a missing `ExpectedAppId` fails startup — it is the only guard against cross-app event bleed caused by an `EncryptKey` misconfiguration. Single-app deployments: still optional.
+- **Interception semantics changed**: `BeforeHandleAsync` returning `false` now ACKs with `200` (consumed, dedup mark written, Feishu stops retrying) instead of the previous `500` (retryable). For "intercept then retry", set `FeishuWebhook:InterceptionAckMode=Retryable` (responds `503`, no dedup mark).
+- **A globally registered default handler is now required**: `Build()` now requires at least one `AddHandler<T>()` without an appKey, otherwise startup fails (previously an app-specific handler could silently become the default and mis-route other apps' events).
+- **App-scoped interceptors no longer silently shadow global interceptors**: the combination strategy now defaults to `Merge` (global first, then app-scoped). The old behaviour — one app-scoped interceptor discarding **all** global ones, silently disabling security/audit cross-cutting for that app — is preserved via `FeishuWebhook:InterceptorFallbackMode=AppOnly` (a startup Warning then lists the shadowed global interceptors). `AppThenGlobal` runs app-scoped first.
+- **Decryption timeout now maps to 503 instead of 400**: it used to be swallowed into `null` → 400 (terminal, Feishu does not retry). Timeouts are recoverable, so they now request a redelivery; the decryption CTS is also linked to `RequestAborted`.
+- **A missing `IEnvironmentService` now fails startup**: it is the sole source of the "production in-memory Nonce" decision, so without it the production lock would silently disappear.
+- **Empty `appKey` no longer degrades the dedup key to a bare key** (cross-app collision surface); a fixed sentinel prefix is used instead.
 
-- **Process crash (P0)**: with `FeishuDeduplication:Mode=Distributed` and no Redis implementation
-  registered, the deduplicator factory resolved itself → infinite recursion → `StackOverflowException`
-  (uncatchable). Warning is now emitted at startup instead.
-- Nonce/dedup infrastructure failures (Redis Connection/Timeout) are no longer disguised as a 403
-  signature failure. They now surface as **503** via `FeishuDeduplicationFatalException` so Feishu
-  retries (403 was terminal → permanent event loss, plus false "replay attack detected" audit noise).
-- Intercepted events no longer trigger an endless Feishu retry loop.
-- Client disconnects (`OperationCanceledException`) are no longer swallowed into a 403 written to an
-  already-aborted connection.
-- Handler `SupportedEventType` mismatches are no longer silent: a Warning plus the `unhandled` metric
-  are emitted (previously Debug-only, invisible at the default Production log level).
+**Token & Multi-App (TMR2 / TMF2)**
 
-### 🔧 Webhook: tech debt & operational visibility (WHF-R3 batch C)
+- **Default-app context bridging semantics changed (default on)**: the injected `IFeishuAppContext` is now a stateless forwarding proxy that resolves the current default app on every access. If your code casts it to the concrete `FeishuAppContext`, set `FeishuAppOptions.ForwardDefaultAppContext=false` to restore the instance-snapshot semantics (requires a restart).
+- **AppKey key layout changes for special characters**: `TokenKeyBuilder` now escapes glob metacharacters (`* ? [ ] : \`). Before upgrading, make sure your AppKey contains none of these characters; otherwise old token keys will no longer match after a hot reload.
+- **Custom `UserTokenStoreBase` subclasses**: if you override `KeyPrefix`, change it to delegate to `TokenKeyBuilder.BuildKeyPrefix(appKey)` to stay consistent with the Memory/Redis backends.
+- **`OnConfigurationChanged` no longer waits synchronously for the purge to finish** (previously up to ~10s); hosts that must wait should poll for the purge gate to be removed as the completion signal. The D10 semantic (old tokens are not restored until the purge completes) is unchanged.
+- **Runtime-added apps can now be correctly taken over by configuration**: once an app added via `AddApp` is declared in config, its "runtime-added" flag is now revoked, so later removing it from config is no longer permanently ignored.
 
-#### ⚠️ Behavioral Changes
+**Redis (R2 series)**
 
-- **App-scoped interceptors no longer silently shadow global interceptors.** The default is now
-  `Merge` (global first, then app-scoped). The old behaviour — a single app-scoped interceptor
-  discarding **all** global ones, silently disabling security/audit cross-cutting — is preserved
-  via `FeishuWebhook:InterceptorFallbackMode=AppOnly` (a startup Warning then lists the shadowed
-  global interceptors). `AppThenGlobal` runs app-scoped first.
-- **Decryption timeout now maps to 503 instead of 400.** It used to be swallowed into `null` → 400
-  (terminal, Feishu does not retry). Timeouts are recoverable, so they now request a redelivery.
-  The decryption CTS is also linked to `RequestAborted`.
-- **A missing `IEnvironmentService` now fails startup.** It is the sole source of the "production
-  in-memory Nonce" decision; without it the production lock would silently disappear.
-- **Empty `appKey` no longer degrades the dedup key to a bare key** (cross-app collision surface);
-  a fixed sentinel prefix is used instead.
+- **New `FeishuRedis:SeqIdWindowCapacity`** (default 100000; non-positive fails startup): the SeqID dedup window changed from a "TTL time window" to a "capacity window"; `GetCacheCount()` / `GetMaxProcessedSeqId()` are narrowed to the true values inside the window and must not be used to infer remaining dedup headroom.
+- **New `FeishuRedis:TokenKeyPrefix`** (default `feishu`): the token key prefix is now configurable, so multiple environments sharing a Redis can isolate their key spaces.
+- For AppKeys containing `:` / `\`, the old token keys are no longer reachable — rotate the AppSecret on affected deployments (the first token fetch after upgrade re-populates the store).
 
-#### ✨ Added
+**WebSocket**
 
-- `FeishuWebhook:InterceptorFallbackMode` (default `Merge`)
-- `FeishuWebhook:NonceTtlSeconds` (optional; when set, enforces the replay-window invariant
-  `> TimestampToleranceSeconds`)
-- Health check data item `nonceDedup` (`InMemory` / `Distributed`); **Production + in-memory = `Degraded`**
-- Startup summary log: dedup implementation form, timestamp tolerance, Nonce TTL, replay-window
-  invariant, and per-app handler/interceptor registration self-check
-
-#### 🐛 Fixed
-
-- In-memory Nonce dedup had no capacity bound (default 0 = unbounded growth)
-- Multiple concurrently failing handlers now report **all** exceptions (`await Task.WhenAll`
-  rethrows only the first, so the aggregate branch was unreachable)
-- Removed an unreachable compensation `catch` in `AcquireAsync` (self-contradictory `when` filter)
-- Registry `Freeze`/`Register` are now evaluated under the same lock, closing the check-then-write race
-- Failed-event retry service clears the AppKey context at the end of each poll round
-
-### ⚠️ Breaking / Behavioral Changes (WebSocket module)
-
-- **Connection lifetime no longer follows the caller's `CancellationToken`**:
-  the token passed to `ConnectAsync(endpoint, [appAccessToken,] token)` was previously linked as the
-  lifetime token for the receive loop and heartbeat — cancelling it silently stopped frame reading
-  (socket still `Open`, no disconnect notification). The token now only governs the
-  **connect + authenticate** phase. Use `DisconnectAsync()` / `DisposeAsync()` to terminate and
-  `IFeishuWebSocketManager.ReconnectAsync()` to recover.
-- **Every receive-loop termination path now raises `Disconnected`**, including cancellation-driven exits
-  (previously fully silent, recoverable only via `HealthCheckIntervalMs` polling).
-- **Oversize fragmented messages are now "drained to the message boundary, then discarded"**.
-  Returning early used to make the remaining fragments of a discarded message be parsed as a **new message**,
-  corrupting the WS message boundary and the sequence cursor. Draining is bounded (1024 frames / 64 MB);
-  exceeding the bound aborts the connection and triggers a reconnect.
-- **`IFeishuWebSocketClient.StartReceivingAsync` is deprecated**: the receive loop is managed by `ConnectAsync`;
-  idempotent no-op (with a warning) when a loop is already running, `InvalidOperationException` when not connected.
-- **`MessageReceived` threading contract changed**: from "synchronous, serialized on the receive-loop thread,
-  frame-ordered" to "dispatched inside the concurrency lease — **may run concurrently and out of order**".
-  Slow subscribers no longer block the receive pipeline (they only occupy one concurrency slot).
-  Use `IMessageHandler` when ordering or timeout protection is required.
-- **Configuration upper bounds tightened (fail-fast at startup)**: `Reconnect.TotalBudget <= 7 days`,
-  `Reconnect.BaseDelayMs/MaxDelayMs <= 1 hour`, `MessageSizeLimits.MaxTextMessageSize <= 10 MB`,
-  `ConnectionTimeoutMs/AuthTimeoutMs/AuthGateTimeoutMs <= 5 minutes`.
-- **Inbound payloads are no longer logged verbatim**: `MessageReceived` / authentication-response logging now
-  emits "length + 200-char redacted preview"; connection URL logging strips the query string entirely.
-- **`PingPongMessageHandler` / `HeartbeatMessageHandler` constructors no longer accept `FeishuWebSocketOptions`**
-  (the parameter was only assigned to a private field that was never read).
+- **Connection lifetime no longer follows the caller's `CancellationToken`**: the token passed to `ConnectAsync` only governs the "connect + authenticate" phase. To terminate, call `DisconnectAsync()` / `DisposeAsync()`; to recover, call `IFeishuWebSocketManager.ReconnectAsync()`.
+- **`IFeishuWebSocketClient.StartReceivingAsync` is deprecated**: the receive loop is managed by `ConnectAsync`; it is an idempotent no-op when a loop is already running, and throws `InvalidOperationException` when not connected.
+- **`MessageReceived` threading contract changed**: from "synchronous, serialized on the receive-loop thread, frame-ordered" to "dispatched inside the concurrency lease — may run concurrently and out of order". Use `IMessageHandler` when ordering or timeout protection is required.
+- **`PingPongMessageHandler` / `HeartbeatMessageHandler` constructors no longer accept `FeishuWebSocketOptions`**.
+- Configuration upper bounds tightened (fail-fast at startup): `Reconnect.TotalBudget <= 7 days`, `Reconnect.BaseDelayMs/MaxDelayMs <= 1 hour`, `MessageSizeLimits.MaxTextMessageSize <= 10MB`, `ConnectionTimeoutMs/AuthTimeoutMs/AuthGateTimeoutMs <= 5 minutes`.
+- Inbound payloads are no longer logged verbatim (now "length + 200-char redacted preview"); connection URL logging strips the query string entirely.
 
 ### ✨ Added
 
-- Connection liveness probe `ConnectionLiveness` (`ReceiveLoopAlive` / `LastReceiveUtc` / `IdleMs` / `IsZombie`).
-- **Liveness and discard metrics (F1/F2/F5)**: three new observable gauges
-  (`feishu.websocket.receive.idle_ms`, `feishu.websocket.receive.loop_alive`, `feishu.websocket.zombie`)
-  and the `feishu.websocket.frames.discarded` counter (dimension `reason`).
-  `RegisterWebSocketMetricsSource` gained three **optional** liveness providers
-  (when omitted the dimension is not reported at all, so "not provided" is never reported as `0`).
-  Discard reasons live in `FeishuMetrics.DiscardReasons`, recorded via
-  `FeishuMetricsHelper.RecordWebSocketFramesDiscarded`; all controlled discard points
-  (first-frame oversize, accumulated oversize, drain bound, auth gate, backpressure) are now counted
-  instead of merely logged — discards are a precursor to event loss and must be alertable.
-- Health check `data` now exposes `receive_loop_alive` / `last_receive_utc` / `idle_ms` / `is_zombie`;
-  `State == Open` with a stopped receive loop is reported `Unhealthy` and triggers a reconnect.
-- Architecture invariants **I13–I16** and source-level contract guards
-  (`Tests/Mud.Feishu.WebSocket.Tests/ContractGuards/WebSocketContractGuards.cs`, 7 guards).
-- Internal utility `Core/TimeSpanGuards.cs`.
-- `FeishuWebSocketServiceBuilder` no longer **filters out** `IFeishuEventInterceptor` instances registered
-  directly in DI (previously silently dropped); it only orders them by builder registration order.
+- **Webhook**: `FeishuWebhook:AllowInMemoryNonceDedupInProduction`, `FeishuWebhook:InterceptionAckMode`, `FeishuWebhook:InterceptorFallbackMode` (default `Merge`), `FeishuWebhook:NonceTtlSeconds` (when set, enforces the replay-window invariant `> TimestampToleranceSeconds`); startup-time options validation (host fails to start instead of first-request 500); `intercepted` / `intercepted_retryable` metric tags; unmatched event type and soft-timeout observability (Warning + `unhandled` / `timeout_overshoot` metrics); health-check data item `nonceDedup` (Production + in-memory = `Degraded`); a startup summary log (dedup form, timestamp tolerance, Nonce TTL, replay-window invariant, per-app handler/interceptor registration self-check).
+- **Token / Multi-App**: purge-chain observability `PurgeTokenStoreFailureEvent` (EventId 5601, hosts can build alerts on it); hot-reload race harness `HotReloadRaceHarness` test infrastructure.
+- **Redis**: ops diagnostics facade `IRedisDeduplicationDiagnostics.GetSnapshotAsync` → `RedisDeduplicationDiagnosticsSnapshot`; Redis metrics `feishu.redis.operation` / `feishu.redis.operation.duration` / `feishu.redis.scan.keys` (on the existing `Mud.Feishu` Meter); optional health-check registration (`registerHealthCheck=false`).
+- **WebSocket**: connection liveness probe `ConnectionLiveness` (`ReceiveLoopAlive` / `LastReceiveUtc` / `IdleMs` / `IsZombie`); liveness/discard metrics `feishu.websocket.receive.idle_ms` / `.loop_alive` / `.zombie` / `feishu.websocket.frames.discarded` (all four controlled discard points are now counted); health-check `data` adds `receive_loop_alive` / `last_receive_utc` / `idle_ms` / `is_zombie`; architecture invariants I13–I16 and 7 contract guards; `FeishuWebSocketServiceBuilder` no longer silently drops `IFeishuEventInterceptor` registered directly in DI.
 
 ### 🐛 Fixed
 
-- Zombie connection when the receive loop exited on cancellation without any disconnect signal (P0-1).
-- `StartReceivingAsync` idempotency guard read-only (P1-1 / I14).
-- Oversize fragment discard did not drain, desynchronizing the WS message boundary (P1-2).
-- Unclamped reconnect window `CancellationTokenSource(TimeSpan)` (P1-3).
-- Inbound full payload written to logs (P1-4).
-- `FeishuWebSocketManager` disposing `_startStopLock` (violating I9); dynamic legacy semaphore retention (P1-5).
-- **The client's `Connected`/`Disconnected` events used to be raised while `_connectLock` was held**
-  ⇒ synchronously calling `DisconnectAsync()`/`ConnectAsync()` from a handler (both take the same
-  non-reentrant semaphore) would **self-deadlock** (the connection-manager layer was fixed by P0-5,
-  but the client layer was not). Now events are **queued while the lock is held and flushed after release,
-  in their original order** (same pattern as the CM's `pendingClose`), so:
-  ① handlers may safely initiate connect/disconnect; ② ordering (old-connection disconnect before
-  new-connection connect) is preserved; ③ the out-of-lock flush has its own exception isolation
-  (handler exceptions no longer escape `ConnectAsync`/`DisconnectAsync`'s `finally`).
-- **`WebSocketConnectionManager`'s socket type narrowed from `ClientWebSocket` to the abstract `WebSocket`**,
-  plus an internal injectable transport factory (the minimal landing of R1 TD-1). Side effect:
-  `Options.KeepAliveInterval` and certificate validation are now explicitly scoped to the
-  `ClientWebSocket` branch (the abstract base has neither `Options` nor `ConnectAsync`).
-- `ResolveMaxTextMessageBytes()` integer overflow (P2-1); `IsConnected` dual source of truth (P2-2).
-- Hygiene: zero compiler warnings, complete `netstandard2.0` certificate-option warnings (5 items),
-  `EventSubscriptionManager.HasSubscribed` volatile, atomic disposed/state fields.
+- **Process crash (P0)**: with `FeishuDeduplication:Mode=Distributed` and no Redis registered, the dedup factory resolved itself → `StackOverflowException`; now it builds normally and warns that "event dedup is still in-memory".
+- **Permanent event loss**: Nonce/dedup infrastructure failures (Redis connection/timeout) are no longer disguised as a 403 signature failure; they now surface as **503** via `FeishuDeduplicationFatalException` so Feishu retries; client disconnects (`OperationCanceledException`) are no longer swallowed into a 403 written to an already-aborted connection; handler `SupportedEventType` mismatches are no longer silent; decryption timeouts are no longer swallowed into a 400.
+- **Webhook tech debt**: in-memory Nonce dedup now has a capacity bound (was 0 = unbounded growth); multiple concurrently failing handlers now report **all** exceptions (`await Task.WhenAll` rethrows only the first, so the aggregate branch was unreachable); an unreachable compensation `catch` in `AcquireAsync` was removed (self-contradictory `when` filter); registry `Freeze`/`Register` are evaluated under the same lock, closing the check-then-write race; the failed-event retry service clears the AppKey context at the end of each poll round.
+- **Token / Multi-App**: default-app DI bridge switched to resolve-on-access (fixed using stale credentials / a disposed context); per-app auth client now references the generated implementation at compile time and fails fast on assembly error (fixed "credentials sent to the wrong region"); Redis token key prefix de-escaping + SCAN glob literal escaping fixed (fixed purge/enumeration never matching); OAuth refresh-failure classification tightened (transient faults no longer wrongly purge the refresh token); runtime-added apps can be correctly taken over by config; credential-change purge now also catches non-instantiated apps.
+- **Redis**: `rediss://` now really enables TLS (previously plaintext to a TLS port); `RedisFeishuEventDistributedDeduplicator` now declares `IDisposable`; event Lua guards `tonumber(timestamp)`; `GetStatusAsync` uses server `TIME`; token SCAN APIs use async batched deletes (500/batch); health check is `Healthy` on a successful PING; `FeishuRedisFailureKind.InvalidArgument` is now actually produced; 4 compiler warnings cleared.
+- **WebSocket**: zombie connection when the receive loop exited on cancellation (P0-1); `StartReceivingAsync` idempotency guard could start a second loop (P1-1); oversize fragment discard did not drain, desyncing the WS boundary (P1-2); unclamped reconnect window disabled auto-reconnect (P1-3); inbound full payload logged verbatim (P1-4); lock-release order caused `ObjectDisposedException` (P1-5); `Connected`/`Disconnected` raised while the lock was held self-deadlocked; socket type narrowed to the abstract `WebSocket`; `ResolveMaxTextMessageBytes()` integer overflow (P2-1); `IsConnected` dual source of truth (P2-2).
+
+### 📝 Docs & Tests
+
+- `Mud.Feishu.Redis/README.md`: measured key samples (double colon and `\:` escaping), new configuration rows for `SeqIdWindowCapacity` / `TokenKeyPrefix`, new "Operations diagnostics" and "Observability" sections.
+- `Tests/Mud.Feishu.Redis.Tests/README.md`: removed the non-existent `RedisFeishuEventDistributedDeduplicatorWithFallback` section, refreshed to the actual structure/stack.
+- Added 7 contract guards validated by "intentional-violation canary" tests; WebSocket gained liveness / fragment-drain / wiring-reconnect / config-bound / stress cases; `verify-build.ps1` step 4 appends `--filter "Category!=Stress"`.
+- `AGENTS.md` / README D8/D10/D13 wording and AppKey naming constraints synced.
 
 ## [3.0.0-rc2] - 2026-09-18
 

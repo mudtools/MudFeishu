@@ -16,6 +16,7 @@ using Mud.Feishu.Abstractions.Configuration;
 using Mud.Feishu.Abstractions.Extensions;
 using Mud.Feishu.Abstractions.Utilities;
 using Mud.Feishu.Redis.Configuration;
+using Mud.Feishu.Redis.Diagnostics;
 using Mud.Feishu.Redis.HealthChecks;
 using Mud.Feishu.Redis.Services;
 using StackExchange.Redis;
@@ -31,11 +32,16 @@ namespace Mud.Feishu.Redis.Extensions;
 public static class RedisFeishuServiceBuilderExtensions
 {
     /// <summary>
-    /// 注册 Redis 连接服务
+    /// 注册 Redis 连接服务（连接多路复器、选项、健康检查、启动期预热）。
     /// </summary>
     /// <param name="services">服务集合</param>
+    /// <param name="registerHealthCheck">
+    /// 是否把 <see cref="RedisHealthCheck"/> 注册到宿主健康检查系统（R2-12）。
+    /// <c>true</c>（默认）时库内会调用 <c>AddHealthChecks()</c>——对未使用健康检查的宿主产生隐式注册；
+    /// 传 <c>false</c> 则仅注册 <see cref="RedisHealthCheck"/> 类型，由宿主自行 <c>AddCheck</c>。
+    /// </param>
     /// <returns>服务集合</returns>
-    private static IServiceCollection AddFeishuRedis(this IServiceCollection services)
+    private static IServiceCollection AddFeishuRedis(this IServiceCollection services, bool registerHealthCheck = true)
     {
         services.AddSingleton<IValidateOptions<RedisOptions>, RedisOptionsValidator>();
 
@@ -67,17 +73,10 @@ public static class RedisFeishuServiceBuilderExtensions
                 logger?.LogInformation("Initializing Redis connection to: {ConnectionString}", SensitiveDataUtils.MaskSensitiveData(options.Connection.ServerAddress));
 
                 // ADR-7.1：使用 ConfigurationOptions.Parse 替代手工 EndPoints.Add，
-                // 原生支持 redis://、rediss://（自动 Ssl）、host:port,password=... 等形态。
-                var config = ConfigurationOptions.Parse(options.Connection.ServerAddress);
-                config.ConnectTimeout = options.Connection.ConnectTimeout;
-                config.SyncTimeout = options.Connection.SyncTimeout;
-                config.Ssl = config.Ssl || options.Connection.Ssl;                // rediss:// 已置 Ssl，取或
-                config.Password = string.IsNullOrEmpty(options.Connection.Password) ? config.Password : options.Connection.Password;
-                config.AllowAdmin = options.Advanced.AllowAdmin;
-                config.AbortOnConnectFail = options.Connection.AbortOnConnectFail;
-                config.ConnectRetry = options.Connection.ConnectRetry;
-                config.DefaultDatabase = options.Connection.DefaultDatabase;
-                config.ClientName = options.Advanced.ClientName ?? $"Feishu-Deduplicator-{Environment.MachineName}";
+                // 原生支持 redis://、rediss://、host:port,password=... 等形态。
+                // R2-26：连接选项装配抽到 RedisConnectionFactory.Build（可单测），
+                // 并显式推导 rediss:// → Ssl（实测 Parse 不会因 scheme 自动启用 TLS）。
+                var config = RedisConnectionFactory.Build(options);
 
                 var redis = ConnectionMultiplexer.Connect(config);
 
@@ -101,9 +100,15 @@ public static class RedisFeishuServiceBuilderExtensions
             }
         });
 
+        // R2-12：健康检查注册可选——库内无条件 AddHealthChecks() 会向未使用健康检查的宿主
+        // 隐式注册整套 HealthCheck 基础设施（HealthCheckService 等）。传 false 时仅注册类型，
+        // 由宿主自行 AddCheck<RedisHealthCheck>。
         services.AddSingleton<RedisHealthCheck>();
-        services.AddHealthChecks()
-            .AddCheck<RedisHealthCheck>("feishu-redis", tags: ["redis", "feishu"]);
+        if (registerHealthCheck)
+        {
+            services.AddHealthChecks()
+                .AddCheck<RedisHealthCheck>("feishu-redis", tags: ["redis", "feishu"]);
+        }
 
         // WHF-10：启动期连接预热——解析 IConnectionMultiplexer（触发 Connect）并 PING，
         // 把首个 Webhook 请求承担的连接建立延迟移到宿主启动阶段。
@@ -139,8 +144,8 @@ public static class RedisFeishuServiceBuilderExtensions
             var effectiveEventTtl = (unifiedActive && unified!.Event?.Ttl is { } uTtl && uTtl > TimeSpan.Zero)
                 ? uTtl
                 : redisOptions.EventCacheExpiration;
-            var effectiveEventPrefix = (unifiedActive && !string.IsNullOrEmpty(unified.Event?.KeyPrefix))
-                ? unified!.Event!.KeyPrefix!
+            var effectiveEventPrefix = (unifiedActive && !string.IsNullOrEmpty(unified!.Event?.KeyPrefix))
+                ? unified.Event!.KeyPrefix!
                 : redisOptions.EventKeyPrefix;
             var effectiveProcessing = (unifiedActive && unified!.Event?.ProcessingTimeout is { } uPt && uPt > TimeSpan.Zero)
                 ? uPt
@@ -299,7 +304,9 @@ public static class RedisFeishuServiceBuilderExtensions
                 logger,
                 cacheExpiration: ResolveUnifiedSeqIdTtl(sp, options),
                 keyPrefix: ResolveUnifiedSeqIdKeyPrefix(sp, options),
-                scopeKey: scopeKey);
+                scopeKey: scopeKey,
+                // ADR-10（R2-01）：容量窗口来自配置（默认 100000），非正值已在 Validate 期拦截
+                windowCapacity: options.SeqIdWindowCapacity);
         });
 
         return services;
@@ -308,8 +315,23 @@ public static class RedisFeishuServiceBuilderExtensions
     /// <summary>
     /// 注册 Redis 分布式令牌存储服务
     /// </summary>
+    /// <param name="services">服务集合</param>
+    /// <param name="registerHealthCheck">
+    /// 是否把 Redis 健康检查注册到宿主健康检查系统（R2-12）；仅在本次调用顺带初始化
+    /// <see cref="IConnectionMultiplexer"/> 注册时生效（幂等：已注册则忽略）。
+    /// </param>
+    /// <remarks>
+    /// ADR-14（R2-09）：<see cref="RedisTokenStore"/>/<see cref="RedisUserTokenStore"/> 具体类型仍注册，
+    /// 但其键前缀已与 per-app 工厂对齐——<c>{TokenKeyPrefix}:{默认应用AppKey}:token</c>，
+    /// 避免"按类型解析"写入一套令牌管理器永远读不到的键空间。
+    /// <para>
+    /// 该兼容面**不参与**令牌管理器读取路径（管理器只经 <see cref="IFeishuTokenStoreFactory.Create"/>），
+    /// 也**不参与**加密装饰器（装饰器只包裹 <see cref="IFeishuTokenStoreFactory"/>）。
+    /// </para>
+    /// </remarks>
     public static IServiceCollection AddFeishuRedisTokenStore(
-        this IServiceCollection services)
+        this IServiceCollection services,
+        bool registerHealthCheck = true)
     {
         // TMA2-17 / P2-7：检测 AddFeishuApp 是否已调用（与 AddFeishuRedisDeduplicators 一致的抛异常语义）。
         // 若已注册 IFeishuAppManager，则 AddFeishuAppBaseServices 已注册默认 Memory TokenStoreFactory，
@@ -320,26 +342,37 @@ public static class RedisFeishuServiceBuilderExtensions
         // T-M3-2：确保 AddFeishuRedis() 已调用（幂等化——重复调用不会重复注册）
         if (!services.Any(s => s.ServiceType == typeof(IConnectionMultiplexer)))
         {
-            services.AddFeishuRedis();
+            services.AddFeishuRedis(registerHealthCheck);
         }
 
         // ADR-5（T-M2-5）：删除 ITokenStore/IUserTokenStore 的 DI 单例注册。
         // 原注册使用 feishu:token:* 键空间，与工厂路径 feishu:{appKey}:token:* 不一致（R-09）。
         // 仓库内零消费方，用户应改用 IFeishuTokenStoreFactory.Create(appKey)。
-        // RedisTokenStore/RedisUserTokenStore 具体类型仍注册，供按类型解析。
+        // ADR-14（R2-09）：具体类型改为「默认应用 + TokenKeyPrefix」前缀，与工厂同键空间。
+        // 注意：**不得**经 IFeishuTokenStoreFactory 解析——AddFeishuAppBaseServices 末尾会对工厂叠加
+        // EncryptedFeishuTokenStoreFactory 装饰器，工厂返回的可能是 EncryptedTokenStore，
+        // 强制转换回 RedisTokenStore 会抛 InvalidCastException。
         services.AddSingleton<RedisTokenStore>(sp =>
         {
             var redis = sp.GetRequiredService<IConnectionMultiplexer>();
+            var options = sp.GetRequiredService<RedisOptions>();
             // R-25：logger 兜底 NullLogger，与 PerAppRedisTokenStoreFactory 一致
             var logger = sp.GetService<ILogger<RedisTokenStore>>() ?? NullLogger<RedisTokenStore>.Instance;
-            return new RedisTokenStore(redis, logger);
+            var keyPrefix = TokenKeyBuilder.BuildKeyPrefix(
+                RedisDefaultAppKeyResolver.Resolve(sp, options),
+                options.TokenKeyPrefix);
+            return new RedisTokenStore(redis, logger, keyPrefix);
         });
 
         services.AddSingleton<RedisUserTokenStore>(sp =>
         {
             var innerStore = sp.GetRequiredService<RedisTokenStore>();
             var redis = sp.GetRequiredService<IConnectionMultiplexer>();
-            return new RedisUserTokenStore(innerStore, redis);
+            var options = sp.GetRequiredService<RedisOptions>();
+            var keyPrefix = TokenKeyBuilder.BuildKeyPrefix(
+                RedisDefaultAppKeyResolver.Resolve(sp, options),
+                options.TokenKeyPrefix);
+            return new RedisUserTokenStore(innerStore, redis, keyPrefix);
         });
 
         // TOK-1 修复：注册 PerAppRedisTokenStoreFactory，使每个应用拥有独立的 Redis 键空间
@@ -347,9 +380,14 @@ public static class RedisFeishuServiceBuilderExtensions
         // 原 SingletonFeishuTokenStoreFactory 忽略 appKey 并返回共享单例，多应用下令牌会互相覆盖。
         // 所有 per-app 实例共享同一 IConnectionMultiplexer，不会造成连接池膨胀。
         // 必须在 AddFeishuApp 之前调用，由 TryAdd 语义保证覆盖默认的 PerAppFeishuTokenStoreFactory。
+        // R2-04：携带 TokenKeyPrefix 环境段，使多环境共用 Redis 时令牌键空间隔离。
         services.TryAddSingleton<IFeishuTokenStoreFactory>(sp => new PerAppRedisTokenStoreFactory(
             sp.GetRequiredService<IConnectionMultiplexer>(),
-            sp.GetService<ILoggerFactory>()));
+            sp.GetService<ILoggerFactory>(),
+            sp.GetRequiredService<RedisOptions>().TokenKeyPrefix));
+
+        // E-02（R2-22）：运维诊断门面（聚合三类键空间计数/最大 SeqID/服务端时间）
+        services.TryAddSingleton<IRedisDeduplicationDiagnostics, RedisDeduplicationDiagnostics>();
 
         return services;
     }
@@ -360,6 +398,11 @@ public static class RedisFeishuServiceBuilderExtensions
     /// <param name="services">服务集合</param>
     /// <param name="configuration">配置</param>
     /// <param name="sectionName">配置节名称</param>
+    /// <param name="registerHealthCheck">
+    /// 是否把 Redis 健康检查注册到宿主健康检查系统（R2-12，默认 <c>true</c>）。
+    /// 传 <c>false</c> 时不调用 <c>AddHealthChecks()</c>（避免对未使用健康检查的宿主产生隐式注册），
+    /// <see cref="RedisHealthCheck"/> 类型仍注册，可由宿主自行 <c>AddCheck</c>。
+    /// </param>
     /// <returns>服务集合</returns>
     /// <exception cref="InvalidOperationException">
     /// 当 <see cref="IFeishuAppManager"/> 已注册时抛出。<br/>
@@ -376,7 +419,8 @@ public static class RedisFeishuServiceBuilderExtensions
     public static IServiceCollection AddFeishuRedisDeduplicators(
         this IServiceCollection services,
         IConfiguration configuration,
-        string sectionName = "FeishuRedis")
+        string sectionName = "FeishuRedis",
+        bool registerHealthCheck = true)
     {
         if (configuration == null)
             throw new ArgumentNullException(nameof(configuration));
@@ -402,11 +446,11 @@ public static class RedisFeishuServiceBuilderExtensions
         services.AddFeishuDeduplicationOptions(configuration);
 
         return services
-            .AddFeishuRedis()
+            .AddFeishuRedis(registerHealthCheck)
             .AddFeishuRedisEventDeduplicator()
             .AddFeishuRedisNonceDeduplicator()
             .AddFeishuRedisSeqIDDeduplicator()
-            .AddFeishuRedisTokenStore();
+            .AddFeishuRedisTokenStore(registerHealthCheck);
     }
 
     private static FeishuDeduplicationOptions? GetUnifiedDeduplication(IServiceProvider sp) =>
@@ -443,24 +487,12 @@ public static class RedisFeishuServiceBuilderExtensions
             return unified!.SeqId!.ScopeKey!;
 
         if (!string.IsNullOrWhiteSpace(options.SeqIdScopeKey))
-            return options.SeqIdScopeKey;
+            return options.SeqIdScopeKey!;
 
-        // R5.3.1/X13（G-12）：AppKey 默认从 FeishuApps 默认应用推断。
-        // 推断必须发生在**解析期**（工厂委托内）——文档化调用顺序是「Redis 先于 AddFeishuApp」，
-        // 绑定期拿不到应用列表。读取 IOptionsMonitor（与 FeishuAppManager 同形）而非
-        // IFeishuAppManager：避免触发默认应用懒加载装配的副作用；GetService（非 GetRequiredService）
-        // 保证宿主未接多应用时不硬失败。
-        // 显式配置的 RedisOptions.SeqIdScopeKey / FeishuDeduplication:SeqId:ScopeKey 恒优先于推断。
-        var appConfigs = sp.GetService<IOptionsMonitor<List<FeishuAppConfig>>>()?.CurrentValue
-            ?? sp.GetService<IOptions<List<FeishuAppConfig>>>()?.Value;
-        var defaultAppKey = appConfigs?.FirstOrDefault(c => c.IsDefault)?.AppKey
-            ?? appConfigs?.FirstOrDefault()?.AppKey;
-        if (!string.IsNullOrWhiteSpace(defaultAppKey))
-            return $"{defaultAppKey}|{Environment.MachineName}";
-
-        // 拿不到默认应用（宿主未接多应用）→ 回落 RedisOptions.AppKey 合成；
-        // 空 scopeKey 由 RedisFeishuSeqIDDeduplicator 构造函数 fail-fast（绝不静默退化为全局共享键）。
-        return $"{options.AppKey}|{Environment.MachineName}";
+        // R5.3.1/X13（G-12）+ R2-04/R2-09：AppKey 解析收敛到 RedisDefaultAppKeyResolver
+        // （与令牌具体类型注册共用同一解析链）：FeishuApps 默认应用 > 首个应用 > RedisOptions.AppKey。
+        // 显式配置的 FeishuDeduplication:SeqId:ScopeKey / RedisOptions.SeqIdScopeKey 恒优先于推断。
+        return $"{RedisDefaultAppKeyResolver.Resolve(sp, options)}|{Environment.MachineName}";
     }
 
     /// <summary>
@@ -468,13 +500,18 @@ public static class RedisFeishuServiceBuilderExtensions
     /// </summary>
     /// <param name="services">服务集合</param>
     /// <param name="configureOptions">配置选项的回调</param>
+    /// <param name="registerHealthCheck">
+    /// 是否把 Redis 健康检查注册到宿主健康检查系统（R2-12，默认 <c>true</c>）；语义同
+    /// <see cref="AddFeishuRedisDeduplicators(IServiceCollection, IConfiguration, string, bool)"/>。
+    /// </param>
     /// <returns>服务集合</returns>
     /// <exception cref="InvalidOperationException">
-    /// 当 <see cref="IFeishuAppManager"/> 已注册时抛出。详见 <see cref="AddFeishuRedisDeduplicators(IServiceCollection, IConfiguration, string)"/>。
+    /// 当 <see cref="IFeishuAppManager"/> 已注册时抛出。详见 <see cref="AddFeishuRedisDeduplicators(IServiceCollection, IConfiguration, string, bool)"/>。
     /// </exception>
     public static IServiceCollection AddFeishuRedisDeduplicators(
         this IServiceCollection services,
-        Action<RedisOptions> configureOptions)
+        Action<RedisOptions> configureOptions,
+        bool registerHealthCheck = true)
     {
         if (configureOptions == null)
             throw new ArgumentNullException(nameof(configureOptions));
@@ -488,11 +525,11 @@ public static class RedisFeishuServiceBuilderExtensions
         services.AddFeishuDeduplicationOptions();
 
         return services
-            .AddFeishuRedis()
+            .AddFeishuRedis(registerHealthCheck)
             .AddFeishuRedisEventDeduplicator()
             .AddFeishuRedisNonceDeduplicator()
             .AddFeishuRedisSeqIDDeduplicator()
-            .AddFeishuRedisTokenStore();
+            .AddFeishuRedisTokenStore(registerHealthCheck);
     }
 
     /// <summary>

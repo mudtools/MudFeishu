@@ -13,6 +13,7 @@ using Microsoft.Extensions.Options;
 using Moq;
 using Mud.Feishu.Abstractions;
 using Mud.Feishu.WebSocket.Handlers;
+using System.Collections.Concurrent;
 using System.Diagnostics.Metrics;
 
 namespace Mud.Feishu.WebSocket.Tests.Handlers;
@@ -172,7 +173,11 @@ public class ScopedFeishuEventHandlerFactoryTests
         // MeasurementEventCallback 的 tags 形状在 net8+ 为 ReadOnlySpan，与 net6/7 不同——
         // 指标断言仅在 NET8+ 编译（net6/7 只保留行为断言）。
 #if NET8_0_OR_GREATER
-        var matching = new List<KeyValuePair<string, object?>[]>();
+        // 采集缓冲必须**线程安全**且在断言前取快照：Meter 是进程级静态实例，
+        // 同程序集其它用例会在各自线程上并发记录同一仪表，回调也随之在那些线程上执行。
+        // 用 List 采集会在断言枚举期间被并发追加，实测偶发
+        // System.InvalidOperationException: Collection was modified（net8.0 门禁）。
+        var matching = new ConcurrentQueue<KeyValuePair<string, object?>[]>();
         using var listener = new MeterListener
         {
             InstrumentPublished = (instrument, l) =>
@@ -185,13 +190,24 @@ public class ScopedFeishuEventHandlerFactoryTests
             }
         };
         // 只通过 EnableMeasurementEvents 启用 "feishu.event.handling" 一个仪表，
-        // 因此回调收到的测量值均属于该仪表，无需再按仪表名过滤。
+        // 因此回调收到的测量值均属于该仪表，无需再按仪表名过滤；
+        // 但需按本用例唯一 AppKey 过滤，隔离其它用例的并发测量（同 FeishuEventMessageHandlerTests）。
         listener.SetMeasurementEventCallback<long>((_, measurement, tags, _) =>
         {
             var copy = new KeyValuePair<string, object?>[tags.Length];
+            var isOwnMeasurement = false;
             for (var i = 0; i < tags.Length; i++)
+            {
                 copy[i] = tags[i];
-            matching.Add(copy);
+                if (tags[i].Key == Mud.Feishu.Abstractions.Metrics.FeishuMetrics.Tags.AppKey &&
+                    (string?)tags[i].Value == options.AppKey)
+                {
+                    isOwnMeasurement = true;
+                }
+            }
+
+            if (isOwnMeasurement)
+                matching.Enqueue(copy);
         });
         listener.Start();
 #endif
@@ -205,7 +221,9 @@ public class ScopedFeishuEventHandlerFactoryTests
         probe.InvokeCount.Should().Be(1, "热更为 true 后同一工厂实例的后续分发走 unhandled 路径");
 
 #if NET8_0_OR_GREATER
-        matching.Should().Contain(tags => tags.Any(t =>
+        // 断言前取快照：ConcurrentQueue.ToArray() 在并发入队下是安全读取
+        var matchingSnapshot = matching.ToArray();
+        matchingSnapshot.Should().Contain(tags => tags.Any(t =>
                 t.Key == Mud.Feishu.Abstractions.Metrics.FeishuMetrics.Tags.AppKey && (string?)t.Value == "ws-app-hot") &&
             tags.Any(t => t.Key == Mud.Feishu.Abstractions.Metrics.FeishuMetrics.Tags.ErrorType && (string?)t.Value == "unhandled"),
             "unhandled 指标维度必须为通道 AppKey（P2-3），而非事件的 app_id");

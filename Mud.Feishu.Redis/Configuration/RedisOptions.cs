@@ -96,6 +96,36 @@ public class RedisOptions
     /// <summary>SeqID 隔离维度键；空则合成 {AppKey}|{MachineName}</summary>
     public string? SeqIdScopeKey { get; set; }
 
+    /// <summary>
+    /// SeqID 去重 Sorted Set 的容量窗口上界（成员数），默认 <see cref="Consts.DefaultSeqIdWindowCapacity"/>。
+    /// <para>R2-01：Sorted Set 的窗口语义为「容量窗口」——每次写入按排名裁剪，仅保留分数最大的
+    /// 该数量个成员；<c>GetCacheCount</c> 返回当前成员数（≤ 本值），<c>GetMaxProcessedSeqId</c>
+    /// 返回窗口内真实最大值。</para>
+    /// </summary>
+    public int SeqIdWindowCapacity
+    {
+        get => _seqIdWindowCapacity;
+        set => _seqIdWindowCapacity = value > 0 ? value : Consts.DefaultSeqIdWindowCapacity;
+    }
+    private int _seqIdWindowCapacity = Consts.DefaultSeqIdWindowCapacity;
+
+    /// <summary>
+    /// 令牌键前缀的环境段（R2-04），默认 <c>feishu</c>，最终键前缀为
+    /// <c>{TokenKeyPrefix}:{appKey}:token</c>。
+    /// <para>
+    /// 事件/Nonce/SeqID 三类键的前缀均可配置（<c>EventKeyPrefix</c> 等）；令牌键此前硬编码 <c>feishu</c>，
+    /// 导致多环境共用一个 Redis 时租户/用户令牌跨环境串号。需要环境隔离时，
+    /// 各环境配置不同的 <c>TokenKeyPrefix</c>（如 <c>dev</c>/<c>prod</c>）。
+    /// </para>
+    /// <para>空值兜底为默认值；Memory 路径不使用本项（单进程内无跨环境共享）。</para>
+    /// </summary>
+    public string TokenKeyPrefix
+    {
+        get => _tokenKeyPrefix;
+        set => _tokenKeyPrefix = string.IsNullOrEmpty(value) ? Consts.DefaultTokenKeyPrefix : value;
+    }
+    private string _tokenKeyPrefix = Consts.DefaultTokenKeyPrefix;
+
     /// <summary>飞书应用 AppKey，用于 SeqID scopeKey 合成，默认 "default"</summary>
     public string AppKey { get; set; } = "default";
 
@@ -128,10 +158,15 @@ public class RedisOptions
             throw new InvalidOperationException("SeqIdCacheExpiration 必须为正值");
         if (EventCacheExpiration <= TimeSpan.Zero)
             throw new InvalidOperationException("EventCacheExpiration 必须为正值");
+        // R2-01：容量窗口必须为正——非正会让写入时裁剪退化为"每次清空集合"
+        if (SeqIdWindowCapacity <= 0)
+            throw new InvalidOperationException("SeqIdWindowCapacity 必须为正值（Sorted Set 容量窗口上界）");
 
         ValidateKeyPrefix(NonceKeyPrefix, nameof(NonceKeyPrefix));
         ValidateKeyPrefix(SeqIdKeyPrefix, nameof(SeqIdKeyPrefix));
         ValidateKeyPrefix(EventKeyPrefix, nameof(EventKeyPrefix));
+        // R2-04：令牌键前缀同样受护栏约束（非空、不以通配符开头）
+        ValidateKeyPrefix(TokenKeyPrefix, nameof(TokenKeyPrefix));
     }
 
     private static void ValidateKeyPrefix(string prefix, string name)
@@ -158,7 +193,7 @@ public class RedisOptions
 
         var addr = Raw(section, "ServerAddress");
         if (!string.IsNullOrEmpty(addr) && Connection.ServerAddress == "localhost:6379")
-            Connection.ServerAddress = addr;
+            Connection.ServerAddress = addr!;
 
         var password = Raw(section, "Password");
         if (password is not null && Connection.Password.Length == 0)
@@ -183,12 +218,16 @@ public class RedisOptions
             Advanced.ClientName = clientName;
     }
 
+    /// <summary>
+    /// 输出配置摘要（敏感字段经 <see cref="SensitiveDataUtils.MaskSensitiveData"/> 掩码）。
+    /// </summary>
+    /// <returns>用于日志的配置摘要字符串。</returns>
     public override string ToString()
     {
         Connection ??= new RedisConnectionOptions();
         Advanced ??= new RedisAdvancedOptions();
         var maskedAddress = SensitiveDataUtils.MaskSensitiveData(Connection.ServerAddress);
         var maskedClientName = Advanced.ClientName != null ? SensitiveDataUtils.MaskSensitiveData(Advanced.ClientName) : "null";
-        return $"RedisOptions {{ Connection.ServerAddress: {maskedAddress}, Password: {SensitiveDataUtils.MaskSensitiveData(Connection.Password)}, DefaultDatabase: {Connection.DefaultDatabase?.ToString() ?? "默认"}, ConnectTimeout: {Connection.ConnectTimeout}ms, SyncTimeout: {Connection.SyncTimeout}ms, Ssl: {Connection.Ssl}, EventCacheExpiration: {EventCacheExpiration}, SeqIdCacheExpiration: {SeqIdCacheExpiration}, EventKeyPrefix: {EventKeyPrefix}, NonceKeyPrefix: {NonceKeyPrefix}, SeqIdKeyPrefix: {SeqIdKeyPrefix}, ClientName: {maskedClientName} }}";
+        return $"RedisOptions {{ Connection.ServerAddress: {maskedAddress}, Password: {SensitiveDataUtils.MaskSensitiveData(Connection.Password)}, DefaultDatabase: {Connection.DefaultDatabase?.ToString() ?? "默认"}, ConnectTimeout: {Connection.ConnectTimeout}ms, SyncTimeout: {Connection.SyncTimeout}ms, Ssl: {Connection.Ssl}, EventCacheExpiration: {EventCacheExpiration}, SeqIdCacheExpiration: {SeqIdCacheExpiration}, SeqIdWindowCapacity: {SeqIdWindowCapacity}, EventKeyPrefix: {EventKeyPrefix}, NonceKeyPrefix: {NonceKeyPrefix}, SeqIdKeyPrefix: {SeqIdKeyPrefix}, TokenKeyPrefix: {TokenKeyPrefix}, ClientName: {maskedClientName} }}";
     }
 }

@@ -200,7 +200,10 @@ public class RedisUserTokenStoreTests
         var server = new Mock<IServer>();
         server.Setup(s => s.IsConnected).Returns(true);
         server.Setup(s => s.IsReplica).Returns(false);
-        server.Setup(s => s.Keys(
+        // R2-08：实现已改为异步 SCAN（KeysAsync）+ 分批删除（KeyDeleteAsync(RedisKey[])）。
+        // 桩必须按 IServer.KeysAsync(int database, RedisValue pattern, int pageSize,
+        // long cursor, int pageOffset, CommandFlags flags) 的 6 参数签名做。
+        server.Setup(s => s.KeysAsync(
                 It.IsAny<int>(),
                 It.IsAny<RedisValue>(),
                 It.IsAny<int>(),
@@ -208,12 +211,21 @@ public class RedisUserTokenStoreTests
                 It.IsAny<int>(),
                 It.IsAny<CommandFlags>()))
             .Callback<int, RedisValue, int, long, int, CommandFlags>((_, pattern, _, _, _, _) => capturedPattern = pattern)
-            .Returns(new[]
-            {
+            .Returns(() => ToAsyncKeys(
+            [
                 (RedisKey)"feishu:token:user:ou_1:UserAccessToken:access",
                 (RedisKey)"feishu:token:user:ou_1:UserAccessToken:refresh",
                 (RedisKey)"feishu:token:user:ou_2:CustomToken:access"
-            });
+            ]));
+
+        // 批删走 KeyDeleteAsync(RedisKey[]) 重载
+        db.Setup(d => d.KeyDeleteAsync(It.IsAny<RedisKey[]>(), It.IsAny<CommandFlags>()))
+            .Callback<RedisKey[], CommandFlags>((keys, _) =>
+            {
+                foreach (var key in keys)
+                    deletedKeys.Add(key.ToString());
+            })
+            .ReturnsAsync(3L);
 
         var redis = new Mock<IConnectionMultiplexer>();
         redis.Setup(r => r.GetDatabase(It.IsAny<int>(), It.IsAny<object>())).Returns(db.Object);
@@ -236,5 +248,17 @@ public class RedisUserTokenStoreTests
                 "feishu:token:user:ou_2:CustomToken:access"
             },
             deletedKeys);
+    }
+
+    /// <summary>
+    /// 把键集合包装为 <c>IAsyncEnumerable&lt;RedisKey&gt;</c>（R2-08：KeysAsync 桩用）。
+    /// </summary>
+    private static async IAsyncEnumerable<RedisKey> ToAsyncKeys(IEnumerable<RedisKey> keys)
+    {
+        await Task.CompletedTask;
+        foreach (var key in keys)
+        {
+            yield return key;
+        }
     }
 }

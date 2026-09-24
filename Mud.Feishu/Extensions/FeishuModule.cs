@@ -108,6 +108,11 @@ public enum FeishuModule
     HelpDesk,
 
     /// <summary>
+    /// Aily
+    /// </summary>
+    Aily,
+
+    /// <summary>
     /// 所有功能
     /// </summary>
     All

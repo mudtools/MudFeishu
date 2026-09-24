@@ -52,7 +52,8 @@ public class FeishuServiceBuilder
             [FeishuModule.Authentication] = new FeishuModuleRegistrar(FeishuModule.Authentication, s => s.AddAuthenticationWebApiHttpClient()),
             [FeishuModule.AI] = new FeishuModuleRegistrar(FeishuModule.AI, s => s.AddAIWebApiHttpClient()),
             [FeishuModule.Search] = new FeishuModuleRegistrar(FeishuModule.Search, s => s.AddSearchWebApiHttpClient()),
-            [FeishuModule.HelpDesk] = new FeishuModuleRegistrar(FeishuModule.HelpDesk, s => s.AddHelpDeskWebApiHttpClient())
+            [FeishuModule.HelpDesk] = new FeishuModuleRegistrar(FeishuModule.HelpDesk, s => s.AddHelpDeskWebApiHttpClient()),
+            [FeishuModule.Aily] = new FeishuModuleRegistrar(FeishuModule.Aily, s => s.AddAilyWebApiHttpClient())
         };
     }
 
@@ -173,6 +174,14 @@ public class FeishuServiceBuilder
     /// </summary>
     /// <returns>建造者实例，支持链式调用</returns>
     public FeishuServiceBuilder AddAuthenticationApi() => AddModule(FeishuModule.Authentication);
+
+
+    /// <summary>
+    /// 添加 Aily API 服务
+    /// </summary>
+    /// <returns>建造者实例，支持链式调用</returns>
+    public FeishuServiceBuilder AddAilyApi() => AddModule(FeishuModule.Aily);
+
 
     /// <summary>
     /// 添加所有 API 服务

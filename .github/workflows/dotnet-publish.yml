@@ -2,11 +2,11 @@ name: .NET Build, Test and Publish
 
 on:
   push:
-    branches: ["main", "master","v3"]
+    branches: ["main", "master", "v3"]
     tags:
       - "v*" # 当推送版本标签时触发（如 v1.0.0）
   pull_request:
-    branches: ["main", "master","v3"]
+    branches: ["main", "master", "v3"]
   workflow_dispatch:
     inputs:
       version:
@@ -21,6 +21,7 @@ on:
 
 permissions:
   contents: write # 需要写权限来创建 tag 和 release
+  id-token: write # OIDC：用于 NuGet Trusted Publishing 换取临时 API Key
 
 env:
   # .NET SDK 版本（支持构建 netstandard2.0, net6.0, net8.0, net9.0, net10.0）。
@@ -244,8 +245,6 @@ jobs:
           Write-Host '制品：test-results-${{ matrix.os }}（含 TestResults/*.trx 与 TestResults/mudfeishu-test.log）' -ForegroundColor Cyan
 
       # 步骤6：上传测试报告（TRX + 完整测试日志），测试失败时同样上传，便于下载排查
-      # 注：原先的「步骤7 Check test results（if: steps.test.outcome == 'failure'）」引用了不存在的
-      # 步骤 id，恒不执行，属于死代码；且步骤 5 已在失败时 exit 1，该兜底本就多余，故移除。
       - name: Publish test results
         uses: actions/upload-artifact@v4
         if: always() # 即使测试失败也执行
@@ -266,6 +265,7 @@ jobs:
     outputs:
       version: ${{ steps.version_info.outputs.version }}
       new_release: ${{ steps.version_info.outputs.new_release }}
+      tag: ${{ steps.version_info.outputs.tag }}
 
     steps:
       - name: Checkout code
@@ -341,23 +341,30 @@ jobs:
           if [ -n "${{ inputs.version }}" ]; then
             VERSION="${{ inputs.version }}"
             echo "version=$VERSION" >> $GITHUB_OUTPUT
-            echo "new_release=true" >> $GITHUB_OUTPUT
-            
+            # dry_run 只做版本号/changelog 演练，不推 tag：new_release 必须为 false，
+            # 否则 publish-nuget 会按条件尝试检出未推送的 v$VERSION tag 而 checkout 失败。
+            if [ "${{ inputs.dry_run }}" = "true" ]; then
+              echo "new_release=false" >> $GITHUB_OUTPUT
+            else
+              echo "new_release=true" >> $GITHUB_OUTPUT
+            fi
+            echo "tag=v$VERSION" >> $GITHUB_OUTPUT
+
             # 更新 Directory.Build.props
             sed -i "s/<Version>.*<\/Version>/<Version>$VERSION<\/Version>/" Directory.Build.props
-            
+
             # 生成 changelog
             echo "## v$VERSION ($(date '+%Y-%m-%d'))" > RELEASE_NOTES.md
             echo "" >> RELEASE_NOTES.md
             git log --pretty=format:"- %s" $(git describe --tags --abbrev=0 2>/dev/null || echo "")..HEAD >> RELEASE_NOTES.md || echo "- Manual release v$VERSION" >> RELEASE_NOTES.md
-            
+
             # 提交并创建 tag
             git config user.name "github-actions[bot]"
             git config user.email "github-actions[bot]@users.noreply.github.com"
             git add Directory.Build.props
             git commit -m "chore(release): v$VERSION [skip ci]" || true
             git tag -a "v$VERSION" -F RELEASE_NOTES.md
-            
+
             if [ "${{ inputs.dry_run }}" != "true" ]; then
               git push origin HEAD:master
               git push origin "v$VERSION"
@@ -368,11 +375,13 @@ jobs:
               VERSION=$(npx semantic-release --dry-run 2>&1 | grep -oP 'The next release version is \K[0-9.]+')
               echo "version=${VERSION:-skip}" >> $GITHUB_OUTPUT
               echo "new_release=false" >> $GITHUB_OUTPUT
+              echo "tag=" >> $GITHUB_OUTPUT
             else
               npx semantic-release
               VERSION=$(git describe --tags --abbrev=0 | sed 's/v//')
               echo "version=$VERSION" >> $GITHUB_OUTPUT
               echo "new_release=true" >> $GITHUB_OUTPUT
+              echo "tag=v$VERSION" >> $GITHUB_OUTPUT
             fi
           fi
 
@@ -383,26 +392,36 @@ jobs:
           if [ "$VERSION" = "skip" ] || [ -z "$VERSION" ]; then
             echo "version=skip" >> $GITHUB_OUTPUT
             echo "new_release=false" >> $GITHUB_OUTPUT
+            echo "tag=" >> $GITHUB_OUTPUT
           else
             echo "version=$VERSION" >> $GITHUB_OUTPUT
             echo "new_release=${{ steps.semantic.outputs.new_release }}" >> $GITHUB_OUTPUT
+            echo "tag=${{ steps.semantic.outputs.tag }}" >> $GITHUB_OUTPUT
           fi
 
-  # 第三个作业：负责打包和发布NuGet包
-  # 只在推送版本标签时执行发布
+  # 第三个作业：负责打包和发布 NuGet 包
+  # - 推送 v* tag 时发布（该 tag 可能是手动打的，也可能是 version-and-release push 的）
+  # - 或手动 workflow_dispatch 且 version-and-release 判定有新版时发布
+  # 用 always() 规避 needs 中被 skip 的 job（version-and-release 仅在 workflow_dispatch 执行）
   publish-nuget:
     name: Publish to NuGet
     needs: [build-and-test, version-and-release]
     runs-on: ubuntu-latest
     if: |
-      (startsWith(github.ref, 'refs/tags/v') || 
-      (needs.version-and-release.outputs.new_release == 'true'))
+      always() &&
+      needs.build-and-test.result == 'success' &&
+      (startsWith(github.ref, 'refs/tags/v') ||
+       (github.event_name == 'workflow_dispatch' && needs.version-and-release.outputs.new_release == 'true'))
+    environment: release # 需与 NuGet.org Trusted Publishing 策略里填的 Environment 一致
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.ref }}
+          fetch-depth: 0
+          # tag 触发：检出该 tag；手动触发：检出 master（version-and-release 已把新版本 push 到 master）。
+          # 用 needs.version-and-release.outputs.tag 作优先，可精确锁定打包的 commit，避免竞态。
+          ref: ${{ needs.version-and-release.outputs.tag != '' && needs.version-and-release.outputs.tag || github.ref }}
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
@@ -428,6 +447,18 @@ jobs:
       - name: Pack NuGet package
         run: dotnet pack ${{ env.SOLUTION_FILE }} --configuration ${{ env.CONFIGURATION }} --output ./nupkg --no-build
 
-      # 发布：将包推送到 NuGet.org
+      # 关键新增：用 OIDC 换取临时 API Key（NuGet Trusted Publishing）
+      - name: NuGet login (OIDC -> temp API key)
+        uses: NuGet/login@v1
+        id: login
+        with:
+          # 你的 NuGet.org 个人资料名（Profile name），不是邮箱、也不是组织名
+          user: ${{ secrets.NUGET_USER }}
+
+      # 发布：将包推送到 NuGet.org（临时 Key 有效期约 1 小时，绑定仓库/工作流）
       - name: Push to NuGet.org
-        run: dotnet nuget push "./nupkg/*.nupkg" --api-key ${{ steps.login.outputs.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+        run: |
+          dotnet nuget push "./nupkg/*.nupkg" \
+            --api-key ${{ steps.login.outputs.NUGET_API_KEY }} \
+            --source https://api.nuget.org/v3/index.json \
+            --skip-duplicate

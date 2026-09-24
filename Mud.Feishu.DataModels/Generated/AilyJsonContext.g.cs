@@ -8,9 +8,32 @@ namespace Mud.Feishu.DataModels.Aily;
 
 [JsonSourceGenerationOptions(
     PropertyNameCaseInsensitive = true,
-    PropertyNamingPolicy = JsonKnownNamingPolicy.SnakeCaseLower,
+    PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
     WriteIndented = false)]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Aily.AskDataKnowledgeMessage))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Aily.AskDataKnowledgeRequest))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Aily.CreateDataAssetRequest))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Aily.DataAssetChunkSetting))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Aily.DataAssetImportFile))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Aily.DataAssetImportKnowledgeSetting))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Aily.DataAssetImportLarkDoc))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Aily.DataAssetImportLarkHelpdesk))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Aily.DataAssetImportLarkWikiSpace))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Aily.DataAssetImportLarkWikiSpaceSubDoc))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Aily.UploadDataAssetFileRequest))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Aily.DataAsset))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Aily.DataAssetFileInfo))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Aily.DataAssetItem))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Aily.DataAssetItemResource))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Aily.DataAssetOopsResult))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Aily.DataAssetPageListResult))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Aily.DataAssetTag))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Aily.DataAssetTagPageListResult))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Aily.KnowledgeAskEvent))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Aily.KnowledgeAskProcessData))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Aily.KnowledgeFaqResult))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Aily.UploadDataAssetFileResult))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Aily.AilyMention))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Aily.CreateSessionAilyMessageRequest))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Aily.AilyMessage))]
@@ -34,6 +57,7 @@ namespace Mud.Feishu.DataModels.Aily;
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Aily.SkillOopsResult))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Aily.SkillPageListResult))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Aily.StartSkillResult))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Aily.UploadDataAssetFileRequest))]
 internal partial class AilyJsonContext : JsonSerializerContext
 {
 }

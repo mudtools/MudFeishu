@@ -26,6 +26,7 @@ namespace Mud.Feishu.DataModels.Board;
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Board.TableCell))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Board.TableCellMergeInfo))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Board.TableMeta))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Board.TableMetaInfo))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Board.WhiteboardNode))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Board.WhiteboardNodeCompositeShape))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Board.WhiteboardNodeCompositeShapePie))]
@@ -34,7 +35,9 @@ namespace Mud.Feishu.DataModels.Board;
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Board.WhiteboardNodeImage))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Board.WhiteboardNodeLifeline))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Board.WhiteboardNodeMindMapNode))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Board.MindMapNodeInfo))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Board.WhiteboardNodeMindMapRoot))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Board.MindMapRootInfo))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Board.WhiteboardNodePaint))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Board.WhiteboardNodePie))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Board.WhiteboardNodeRichText))]
@@ -56,11 +59,8 @@ namespace Mud.Feishu.DataModels.Board;
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Board.TableMetaInfo))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Board.WhiteboardNodeInfo))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Board.WhiteboardsTheme))]
-[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Board.TableMetaInfo), TypeInfoPropertyName = "Mud_Feishu_DataModels_Board_TableMetaInfo")] // SYSLIB1031 防护：默认 TypeInfo 属性名与本 Context 内其他根冲突，已显式重命名 // 派生类型已注册为独立根；多态（以基类类型序列化）仍需在基类上标注 [JsonDerivedType]
-[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Board.MindMapNodeInfo), TypeInfoPropertyName = "Mud_Feishu_DataModels_Board_MindMapNodeInfo")] // SYSLIB1031 防护：默认 TypeInfo 属性名与本 Context 内其他根冲突，已显式重命名 // 派生类型已注册为独立根；多态（以基类类型序列化）仍需在基类上标注 [JsonDerivedType]
-[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Board.MindMapRootInfo), TypeInfoPropertyName = "Mud_Feishu_DataModels_Board_MindMapRootInfo")] // SYSLIB1031 防护：默认 TypeInfo 属性名与本 Context 内其他根冲突，已显式重命名 // 派生类型已注册为独立根；多态（以基类类型序列化）仍需在基类上标注 [JsonDerivedType]
-[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Board.UpdateWhiteboardThemeRequest), TypeInfoPropertyName = "Mud_Feishu_DataModels_Board_UpdateWhiteboardThemeRequest")] // SYSLIB1031 防护：默认 TypeInfo 属性名与本 Context 内其他根冲突，已显式重命名 // 派生类型已注册为独立根；多态（以基类类型序列化）仍需在基类上标注 [JsonDerivedType]
-[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Board.GetWhiteboardsThemeResult), TypeInfoPropertyName = "Mud_Feishu_DataModels_Board_GetWhiteboardsThemeResult")] // SYSLIB1031 防护：默认 TypeInfo 属性名与本 Context 内其他根冲突，已显式重命名 // 派生类型已注册为独立根；多态（以基类类型序列化）仍需在基类上标注 [JsonDerivedType]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Board.UpdateWhiteboardThemeRequest))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Board.GetWhiteboardsThemeResult))]
 internal partial class BoardJsonContext : JsonSerializerContext
 {
 }

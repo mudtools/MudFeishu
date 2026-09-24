@@ -8,16 +8,15 @@
 namespace Mud.Feishu.DataModels.Aily;
 
 /// <summary>
-/// 发送 Aily 消息 响应体
+/// 列出 Aily 消息 响应体
 /// </summary>
 [HttpJsonSerializable(SerializerClassName = "Aily")]
-public class CreateSessionAilyMessageResult
+public class SessionAilyMessagePageListResult : ApiPageListResult
 {
     /// <summary>
-    /// <para>消息信息</para>
+    /// <para>消息列表</para>
     /// <para>必填：否</para>
     /// </summary>
-    [JsonPropertyName("message")]
-    public AilyMessage? Message { get; set; }
-
+    [JsonPropertyName("messages")]
+    public AilyMessage[]? Messages { get; set; }
 }

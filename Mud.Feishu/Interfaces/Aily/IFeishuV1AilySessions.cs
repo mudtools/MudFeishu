@@ -87,8 +87,45 @@ public interface IFeishuV1AilySessions
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Post("/open-apis/aily/v1/sessions/{aily_session_id}/messages")]
-    Task<FeishuApiResult<CreateSessionAilyMessageResult>?> CreateSessionAilyMessageAsync(
+    Task<FeishuApiResult<SessionAilyMessageOopsResult>?> CreateSessionAilyMessageAsync(
         [Path] string aily_session_id,
         [Body] CreateSessionAilyMessageRequest request,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 获取 Aily 消息
+    /// <para>用于获取与某个飞书 Aily 应用的一条消息（Message）的详细信息。</para>
+    /// <para><see href="https://open.feishu.cn/document/aily-v1/aily_session-aily_message/get">接口文档</see></para>
+    /// </summary>
+    /// <param name="aily_session_id">会话 ID，示例值：session_4dfunz7sp1g8m</param>
+    /// <param name="aily_message_id">消息 ID，示例值：message_4dfunz7sp1g8m</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Get("/open-apis/aily/v1/sessions/{aily_session_id}/messages/{aily_message_id}")]
+    Task<FeishuApiResult<SessionAilyMessageOopsResult>?> GetSessionAilyMessageAsync(
+        [Path] string aily_session_id,
+        [Path] string aily_message_id,
+        CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 获取 Aily 消息
+    /// <para>用于获取与某个飞书 Aily 应用的一条消息（Message）的详细信息。</para>
+    /// <para><see href="https://open.feishu.cn/document/aily-v1/aily_session-aily_message/get">接口文档</see></para>
+    /// </summary>
+    /// <param name="aily_session_id">会话 ID，示例值：session_4dfunz7sp1g8m</param>
+    /// <param name="page_size">分页大小，即本次请求所返回的信息列表内的最大条目数。默认值：500</param>
+    /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
+    /// <param name="run_id">过滤条件，按执行的唯一 ID 筛选,示例值：run_4dfrxvctjqzzj</param>
+    /// <param name="with_partial_message">是否返回正在进行中（即流式输出中）的消息内容</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Get("/open-apis/aily/v1/sessions/{aily_session_id}/messages")]
+    Task<FeishuApiResult<SessionAilyMessagePageListResult>?> GetSessionAilyMessagePageListAsync(
+      [Path] string aily_session_id,
+      [Query("page_size")] int page_size = Consts.PageSize_20,
+      [Query("page_token")] string? page_token = null,
+      [Query] string? run_id = null,
+      [Query] bool? with_partial_message = null,
+      CancellationToken cancellationToken = default);
 }

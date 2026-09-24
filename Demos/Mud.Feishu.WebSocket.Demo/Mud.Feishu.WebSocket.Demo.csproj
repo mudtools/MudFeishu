@@ -23,10 +23,10 @@
   </ItemGroup>-->
 
   <ItemGroup>
-    <PackageReference Include="Mud.Feishu.Abstractions" Version="3.0.0-rc2" />
-    <PackageReference Include="Mud.Feishu.Redis" Version="3.0.0-rc2" />
-    <PackageReference Include="Mud.Feishu.WebSocket" Version="3.0.0-rc2" />
-    <PackageReference Include="Mud.Feishu.EventCallback" Version="3.0.0-rc2" />
+    <PackageReference Include="Mud.Feishu.Abstractions" Version="3.0.0-rc3" />
+    <PackageReference Include="Mud.Feishu.Redis" Version="3.0.0-rc3" />
+    <PackageReference Include="Mud.Feishu.WebSocket" Version="3.0.0-rc3" />
+    <PackageReference Include="Mud.Feishu.EventCallback" Version="3.0.0-rc3" />
   </ItemGroup>
 
   <ItemGroup>

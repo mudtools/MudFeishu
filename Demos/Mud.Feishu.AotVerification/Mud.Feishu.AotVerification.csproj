@@ -20,11 +20,11 @@
 	</ItemGroup>-->
 
 	<ItemGroup>
-		<PackageReference Include="Mud.Feishu.Abstractions" Version="3.0.0-rc2" />
-		<PackageReference Include="Mud.Feishu" Version="3.0.0-rc2" />
-		<PackageReference Include="Mud.Feishu.Authentication" Version="3.0.0-rc2" />
-		<PackageReference Include="Mud.Feishu.Webhook" Version="3.0.0-rc2" />
-		<PackageReference Include="Mud.Feishu.WebSocket" Version="3.0.0-rc2" />
-		<PackageReference Include="Mud.Feishu.EventCallback" Version="3.0.0-rc2" />
+		<PackageReference Include="Mud.Feishu.Abstractions" Version="3.0.0-rc3" />
+		<PackageReference Include="Mud.Feishu" Version="3.0.0-rc3" />
+		<PackageReference Include="Mud.Feishu.Authentication" Version="3.0.0-rc3" />
+		<PackageReference Include="Mud.Feishu.Webhook" Version="3.0.0-rc3" />
+		<PackageReference Include="Mud.Feishu.WebSocket" Version="3.0.0-rc3" />
+		<PackageReference Include="Mud.Feishu.EventCallback" Version="3.0.0-rc3" />
 	</ItemGroup>
 </Project>

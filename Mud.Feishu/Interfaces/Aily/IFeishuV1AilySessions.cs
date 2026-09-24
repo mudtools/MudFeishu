@@ -74,4 +74,21 @@ public interface IFeishuV1AilySessions
     Task<FeishuNullDataApiResult?> DeleteSessionAsync(
          [Path] string aily_session_id,
          CancellationToken cancellationToken = default);
+
+
+
+    /// <summary>
+    /// 发送 Aily 消息
+    /// <para>用于向某个飞书 Aily 应用发送一条消息（Message）；每个消息从属于一个活跃的会话（Session）。</para>
+    /// <para><see href="https://open.feishu.cn/document/aily-v1/aily_session-aily_message/create">接口文档</see></para>
+    /// </summary>
+    /// <param name="aily_session_id">会话 ID，示例值：session_4dfunz7sp1g8m</param>
+    /// <param name="request">创建会话消息请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Post("/open-apis/aily/v1/sessions/{aily_session_id}/messages")]
+    Task<FeishuApiResult<CreateSessionAilyMessageResult>?> CreateSessionAilyMessageAsync(
+        [Path] string aily_session_id,
+        [Body] CreateSessionAilyMessageRequest request,
+        CancellationToken cancellationToken = default);
 }

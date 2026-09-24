@@ -6,9 +6,10 @@
 // -----------------------------------------------------------------------
 
 #if NET8_0_OR_GREATER
-using System.Text.Json.Serialization.Metadata;
 using Mud.Feishu.Abstractions.Utilities;
+using Mud.Feishu.DataModels;
 using Mud.Feishu.DataModels.AI;
+using Mud.Feishu.DataModels.Aily;
 using Mud.Feishu.DataModels.ApprovalComments;
 using Mud.Feishu.DataModels.AttendanceApprovals;
 using Mud.Feishu.DataModels.Bitable;
@@ -16,18 +17,18 @@ using Mud.Feishu.DataModels.Board;
 using Mud.Feishu.DataModels.Calendar;
 using Mud.Feishu.DataModels.CardElements;
 using Mud.Feishu.DataModels.ChatGroupNotice;
-using Mud.Feishu.DataModels;
+using Mud.Feishu.DataModels.DepartmentsV1;
 using Mud.Feishu.DataModels.Docx;
 using Mud.Feishu.DataModels.Drive;
 using Mud.Feishu.DataModels.HelpDesk;
 using Mud.Feishu.DataModels.Mail;
 using Mud.Feishu.DataModels.Messages;
-using Mud.Feishu.DataModels.DepartmentsV1;
 using Mud.Feishu.DataModels.Search;
 using Mud.Feishu.DataModels.Spreadsheets;
 using Mud.Feishu.DataModels.TasksActivitySubscriptions;
 using Mud.Feishu.DataModels.VideoConferencing;
 using Mud.Feishu.DataModels.Wiki;
+using System.Text.Json.Serialization.Metadata;
 
 namespace Mud.Feishu.Extensions;
 
@@ -66,7 +67,8 @@ public static class FeishuJsonResolverExtensions
             SpreadsheetsJsonContext.Default,
             TaskJsonContext.Default,
             VideoConferencingJsonContext.Default,
-            WikiJsonContext.Default
+            WikiJsonContext.Default,
+            AilyJsonContext.Default
         );
 
         // 注入合并后的 DataModels resolver 到 FeishuJsonDefaults

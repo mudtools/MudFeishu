@@ -1,0 +1,23 @@
+// -----------------------------------------------------------------------
+//  作者：Mud Studio  版权所有 (c) Mud Studio 2026
+//  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
+//  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
+//  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
+// -----------------------------------------------------------------------
+
+namespace Mud.Feishu.DataModels.Spark;
+
+/// <summary>
+/// 批量更新数据表中的记录请求体
+/// </summary>
+[HttpJsonSerializable(SerializerClassName = "Spark")]
+public class BatchUpdateTableRecordsRequest
+{
+    /// <summary>
+    /// <para>要更新的数据记录列表（JSON 数组的字符串形式），单次支持最大记录数量 500 条；每行 record 都必须包含主键如 _id，且不同行要更新的字段需保持一致</para>
+    /// <para>必填：是</para>
+    /// <para>示例值：[{\"_id\":\"657fade8-394d-4d86-aa35-0129e3bd7614\",\"age\":10}]</para>
+    /// </summary>
+    [JsonPropertyName("records")]
+    public string Records { get; set; } = string.Empty;
+}

@@ -27,8 +27,24 @@ public interface IFeishuV1AilySessions
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Post("/open-apis/aily/v1/sessions")]
-    Task<FeishuApiResult<CreateSessionResult>?> CreateSessionAsync(
-         [Body] CreateSessionRequest request,
+    Task<FeishuApiResult<SessionOopsResult>?> CreateSessionAsync(
+         [Body] SessionOopsRequest request,
+         CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 更新会话
+    /// <para>用于更新与某个飞书 Aily 应用的一次会话（Session）；当更新会话成功后，可以发送消息、创建运行。</para>
+    /// <para><see href="https://open.feishu.cn/document/aily-v1/aily_session/update">接口文档</see></para>
+    /// </summary>
+    /// <param name="aily_session_id">会话 ID，示例值：session_4dfunz7sp1g8m</param>
+    /// <param name="request">更新会话请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Put("/open-apis/aily/v1/sessions/{aily_session_id}")]
+    Task<FeishuApiResult<SessionOopsResult>?> UpdateSessionAsync(
+         [Path] string aily_session_id,
+         [Body] SessionOopsRequest request,
          CancellationToken cancellationToken = default);
 
 }

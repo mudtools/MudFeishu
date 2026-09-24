@@ -8,10 +8,10 @@
 namespace Mud.Feishu.DataModels.Aily;
 
 /// <summary>
-/// 创建会话请求体
+/// 会话业务操作请求体
 /// </summary>
 [HttpJsonSerializable(SerializerClassName = "Aily")]
-public class CreateSessionRequest
+public class SessionOopsRequest
 {
     /// <summary>
     /// <para>可自行构造的 Context [上下文变量](https://aily.feishu.cn/hc/1u7kleqg/en70bqqj#6a446d5e)；在 Workflow 技能中可消费这部分全局变量</para>

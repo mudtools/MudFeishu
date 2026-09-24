@@ -8,10 +8,10 @@
 namespace Mud.Feishu.DataModels.Aily;
 
 /// <summary>
-/// <para>创建会话结果</para>
+/// <para>会话业务操作结果</para>
 /// </summary>
 [HttpJsonSerializable(SerializerClassName = "Aily")]
-public class CreateSessionResult
+public class SessionOopsResult
 {
     /// <summary>
     /// <para>创建的会话信息</para>

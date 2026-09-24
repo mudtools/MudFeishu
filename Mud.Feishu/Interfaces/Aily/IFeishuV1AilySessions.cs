@@ -128,4 +128,72 @@ public interface IFeishuV1AilySessions
       [Query] string? run_id = null,
       [Query] bool? with_partial_message = null,
       CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 创建运行
+    /// <para>用于在某个飞书 Aily 应用的会话（Session）上创建一次运行（Run）。</para>
+    /// <para><see href="https://open.feishu.cn/document/aily-v1/aily_session-run/create">接口文档</see></para>
+    /// </summary>
+    /// <param name="aily_session_id">会话 ID，示例值：session_4dfunz7sp1g8m</param>
+    /// <param name="request">创建运行请求体</param>
+    /// <param name="x_aily_biz_user_id">可选请求头，唯一的用户身份标识（建议使用内部唯一 ID 或其他唯一字段），最大长度 64</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Post("/open-apis/aily/v1/sessions/{aily_session_id}/runs")]
+    Task<FeishuApiResult<SessionRunOopsResult>?> CreateSessionRunAsync(
+        [Path] string aily_session_id,
+        [Body] CreateSessionRunRequest request,
+        [Header("X-Aily-BizUserID")] string? x_aily_biz_user_id = null,
+        CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 获取运行
+    /// <para>用于获取某个飞书 Aily 应用会话（Session）上一次运行（Run）的详细信息，包括运行状态、结束时间等。</para>
+    /// <para><see href="https://open.feishu.cn/document/aily-v1/aily_session-run/get">接口文档</see></para>
+    /// </summary>
+    /// <param name="aily_session_id">会话 ID，示例值：session_4dfunz7sp1g8m</param>
+    /// <param name="run_id">运行 ID，示例值：run_4dfrxvctjqzzj</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Get("/open-apis/aily/v1/sessions/{aily_session_id}/runs/{run_id}")]
+    Task<FeishuApiResult<SessionRunOopsResult>?> GetSessionRunAsync(
+        [Path] string aily_session_id,
+        [Path] string run_id,
+        CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 列出运行
+    /// <para>用于列出某个飞书 Aily 应用会话（Session）上的运行（Run）详情，包括状态、结束时间等。</para>
+    /// <para><see href="https://open.feishu.cn/document/aily-v1/aily_session-run/list">接口文档</see></para>
+    /// </summary>
+    /// <param name="aily_session_id">会话 ID，示例值：session_4dfunz7sp1g8m</param>
+    /// <param name="page_size">分页大小，即本次请求所返回的信息列表内的最大条目数</param>
+    /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Get("/open-apis/aily/v1/sessions/{aily_session_id}/runs")]
+    Task<FeishuApiResult<SessionRunPageListResult>?> GetSessionRunPageListAsync(
+        [Path] string aily_session_id,
+        [Query("page_size")] int page_size = Consts.PageSize_20,
+        [Query("page_token")] string? page_token = null,
+        CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 取消运行
+    /// <para>用于取消某个飞书 Aily 应用会话（Session）上的一次运行（Run）。</para>
+    /// <para><see href="https://open.feishu.cn/document/aily-v1/aily_session-run/cancel">接口文档</see></para>
+    /// </summary>
+    /// <param name="aily_session_id">会话 ID，示例值：session_4dfunz7sp1g8m</param>
+    /// <param name="run_id">运行 ID，示例值：run_4dfrxvctjqzzj</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Post("/open-apis/aily/v1/sessions/{aily_session_id}/runs/{run_id}/cancel")]
+    Task<FeishuApiResult<SessionRunOopsResult>?> CancelSessionRunAsync(
+        [Path] string aily_session_id,
+        [Path] string run_id,
+        CancellationToken cancellationToken = default);
 }

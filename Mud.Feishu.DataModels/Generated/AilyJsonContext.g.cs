@@ -11,6 +11,14 @@ namespace Mud.Feishu.DataModels.Aily;
     PropertyNamingPolicy = JsonKnownNamingPolicy.SnakeCaseLower,
     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
     WriteIndented = false)]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Aily.AilyMention))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Aily.CreateSessionAilyMessageRequest))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Aily.AilyMessage))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Aily.AilyMessageFile))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Aily.AilyMessageFilePreview))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Aily.AilySender))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Aily.SessionAilyMessageOopsResult))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Aily.SessionAilyMessagePageListResult))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Aily.SessionOopsRequest))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Aily.AilySession))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Aily.SessionOopsResult))]

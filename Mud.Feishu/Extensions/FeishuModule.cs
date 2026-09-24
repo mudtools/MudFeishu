@@ -113,6 +113,11 @@ public enum FeishuModule
     Aily,
 
     /// <summary>
+    /// 飞书妙搭
+    /// </summary>
+    Spark,
+
+    /// <summary>
     /// 所有功能
     /// </summary>
     All

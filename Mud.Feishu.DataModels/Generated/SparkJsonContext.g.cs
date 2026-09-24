@@ -8,9 +8,20 @@ namespace Mud.Feishu.DataModels.Spark;
 
 [JsonSourceGenerationOptions(
     PropertyNameCaseInsensitive = true,
-    PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
+    PropertyNamingPolicy = JsonKnownNamingPolicy.SnakeCaseLower,
     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
     WriteIndented = false)]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Spark.AppEnum))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Spark.GetEnumDetailResult))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Spark.GetEnumListResult))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Spark.ExecuteSqlCommandRequest))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Spark.ExecuteSqlCommandResult))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Spark.UploadStorageCompleteRequest))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Spark.UploadStorageFileRequest))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Spark.UploadStorageInitializeRequest))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Spark.UploadStoragePartRequest))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Spark.UploadStorageInitializeResult))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Spark.UploadStorageResult))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Spark.BatchUpdateTableRecordsRequest))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Spark.PatchTableRecordsRequest))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Spark.PostTableRecordsRequest))]
@@ -19,6 +30,9 @@ namespace Mud.Feishu.DataModels.Spark;
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Spark.GetTableListResult))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Spark.GetTableRecordListResult))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Spark.UpsertTableRecordsResult))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Spark.GetViewRecordListResult))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Spark.UploadStorageFileRequest))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Spark.UploadStoragePartRequest))]
 internal partial class SparkJsonContext : JsonSerializerContext
 {
 }

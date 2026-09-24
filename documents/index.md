@@ -122,6 +122,12 @@ public class MyController : ControllerBase
 | [考勤（Attendance）](./Attendance/index.md) | 考勤组管理、班次管理、打卡记录、考勤统计、请假审批 |
 | [任务（Task）](./Task/index.md)             | 任务创建与管理，清单管理，评论、附件、自定义字段   |
 
+### 人工智能
+
+| 模块 | 说明 |
+| --- | --- |
+| [飞书 Aily（Aily）](./Aily/index.md) | 智能体对话与会话管理、技能调用、数据知识问答与管理 |
+
 ### 跨模块通用主题
 
 | 主题 | 说明 |

@@ -24,6 +24,7 @@ using Mud.Feishu.DataModels.HelpDesk;
 using Mud.Feishu.DataModels.Mail;
 using Mud.Feishu.DataModels.Messages;
 using Mud.Feishu.DataModels.Search;
+using Mud.Feishu.DataModels.Spark;
 using Mud.Feishu.DataModels.Spreadsheets;
 using Mud.Feishu.DataModels.TasksActivitySubscriptions;
 using Mud.Feishu.DataModels.VideoConferencing;
@@ -68,7 +69,8 @@ public static class FeishuJsonResolverExtensions
             TaskJsonContext.Default,
             VideoConferencingJsonContext.Default,
             WikiJsonContext.Default,
-            AilyJsonContext.Default
+            AilyJsonContext.Default,
+            SparkJsonContext.Default
         );
 
         // 注入合并后的 DataModels resolver 到 FeishuJsonDefaults

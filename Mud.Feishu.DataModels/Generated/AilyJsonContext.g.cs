@@ -27,6 +27,13 @@ namespace Mud.Feishu.DataModels.Aily;
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Aily.SessionOopsRequest))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Aily.AilySession))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Aily.SessionOopsResult))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Aily.SkillChannel))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Aily.SkillGlobalVariable))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Aily.StartSkillRequest))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Aily.AilySkill))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Aily.SkillOopsResult))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Aily.SkillPageListResult))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Aily.StartSkillResult))]
 internal partial class AilyJsonContext : JsonSerializerContext
 {
 }

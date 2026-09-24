@@ -16,6 +16,7 @@ using Mud.Feishu.Webhook.Services;
 using Mud.Feishu.Webhook.Utils;
 using Mud.HttpUtils;
 using System.Diagnostics.CodeAnalysis;
+using Microsoft.AspNetCore.Http;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
@@ -753,8 +754,17 @@ public class FeishuWebhookServiceBuilder
         // WHF-R2/C3：中间件注册为 Singleton 使 IHost 关停时 Dispose 可达。
         // UseMiddleware<T> 检测到 DI 注册后从容器解析实例，随容器 Dispose 释放
         // _onChangeSubscription（MultiAppMiddleware）和 _cleanupTimer（RateLimitMiddleware）。
-        _services.TryAddSingleton<FeishuMultiAppMiddleware>();
-        _services.TryAddSingleton<FeishuRateLimitMiddleware>();
+        // 注意：不能用无工厂的 AddSingleton<T>()——Development 宿主默认 ValidateOnBuild=true，
+        // 会尝试构造实例，而 RequestDelegate 无法从 DI 解析，导致启动失败
+        // （开发环境启动即抛 "Unable to resolve service for type 'RequestDelegate'"）。
+        // 这里以工厂提供占位 RequestDelegate 仅供 DI 校验与容器关停 Dispose；
+        // 管道内实例仍由 UseMiddleware 的常规激活路径（ActivatorUtilities）创建。
+        _services.TryAddSingleton<FeishuMultiAppMiddleware>(sp =>
+            ActivatorUtilities.CreateInstance<FeishuMultiAppMiddleware>(
+                sp, (RequestDelegate)(_ => Task.CompletedTask)));
+        _services.TryAddSingleton<FeishuRateLimitMiddleware>(sp =>
+            ActivatorUtilities.CreateInstance<FeishuRateLimitMiddleware>(
+                sp, (RequestDelegate)(_ => Task.CompletedTask)));
 
         // R3-P0-1 + R3-P0-4：去重「实现形态」与「部署形态」绑定检查（**单一** PostConfigure）。
         //

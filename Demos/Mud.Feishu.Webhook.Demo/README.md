@@ -281,11 +281,13 @@ cp appsettings.MultiApp.example.json appsettings.json
     "Apps": {
       "app1": {
         "AppKey": "cli_xxx1",
+        "ExpectedAppId": "cli_xxx1",
         "VerificationToken": "token1",
         "EncryptKey": "key1"
       },
       "app2": {
         "AppKey": "cli_xxx2",
+        "ExpectedAppId": "cli_xxx2",
         "VerificationToken": "token2",
         "EncryptKey": "key2"
       }
@@ -293,6 +295,10 @@ cp appsettings.MultiApp.example.json appsettings.json
   }
 }
 ```
+
+> **3.0.0-rc3 起**：多应用配置（`Apps` > 1）下每个应用**必须**配置 `ExpectedAppId`（填该应用的真实 AppId），
+> 否则启动失败——它是防止 `EncryptKey` 误配导致跨应用事件串扰的唯一兜底。
+> 同时 `Program.cs` 必须注册至少一个不带 appKey 的全局处理器（`AddHandler<T>()`）作为默认处理器。
 
 #### 4. 配置 Webhook 回调地址
 
@@ -477,11 +483,13 @@ curl -X POST http://localhost:5015/test/mock-feishu-event \
     "Apps": {
       "app1": {
         "AppKey": "cli_app1_xxxxxx",
+        "ExpectedAppId": "cli_app1_xxxxxx",
         "VerificationToken": "token1_for_app1",
         "EncryptKey": "encrypt_key1_for_app1"
       },
       "app2": {
         "AppKey": "cli_app2_yyyyyy",
+        "ExpectedAppId": "cli_app2_yyyyyy",
         "VerificationToken": "token2_for_app2",
         "EncryptKey": "encrypt_key2_for_app2"
       }
@@ -557,11 +565,13 @@ curl -X POST http://localhost:5015/test/mock-feishu-event \
     "Apps": {
       "app1": {
         "AppKey": "cli_prod_app1_xxxxxx",
+        "ExpectedAppId": "cli_prod_app1_xxxxxx",
         "VerificationToken": "prod_token1",
         "EncryptKey": "prod_key1"
       },
       "app2": {
         "AppKey": "cli_prod_app2_yyyyyy",
+        "ExpectedAppId": "cli_prod_app2_yyyyyy",
         "VerificationToken": "prod_token2",
         "EncryptKey": "prod_key2"
       }
@@ -610,11 +620,13 @@ curl -X POST http://localhost:5015/test/mock-feishu-event \
     "Apps": {
       "app1": {
         "AppKey": "cli_dev_app1_xxxxxx",
+        "ExpectedAppId": "cli_dev_app1_xxxxxx",
         "VerificationToken": "dev_token1",
         "EncryptKey": "dev_key1"
       },
       "app2": {
         "AppKey": "cli_dev_app2_yyyyyy",
+        "ExpectedAppId": "cli_dev_app2_yyyyyy",
         "VerificationToken": "dev_token2",
         "EncryptKey": "dev_key2"
       }

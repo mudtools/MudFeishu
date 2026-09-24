@@ -47,4 +47,31 @@ public interface IFeishuV1AilySessions
          [Body] SessionOopsRequest request,
          CancellationToken cancellationToken = default);
 
+
+    /// <summary>
+    /// 获取会话
+    /// <para>用于获取与某个飞书 Aily 应用的一次会话（Session）的详细信息。</para>
+    /// <para><see href="https://open.feishu.cn/document/aily-v1/aily_session/get">接口文档</see></para>
+    /// </summary>
+    /// <param name="aily_session_id">会话 ID，示例值：session_4dfunz7sp1g8m</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Get("/open-apis/aily/v1/sessions/{aily_session_id}")]
+    Task<FeishuApiResult<SessionOopsResult>?> GetSessionAsync(
+         [Path] string aily_session_id,
+         CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 删除会话
+    /// <para>用于删除与某个飞书 Aily 应用的一次会话（Session）。</para>
+    /// <para><see href="https://open.feishu.cn/document/aily-v1/aily_session/delete">接口文档</see></para>
+    /// </summary>
+    /// <param name="aily_session_id">会话 ID，示例值：session_4dfunz7sp1g8m</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Delete("/open-apis/aily/v1/sessions/{aily_session_id}")]
+    Task<FeishuNullDataApiResult?> DeleteSessionAsync(
+         [Path] string aily_session_id,
+         CancellationToken cancellationToken = default);
 }

@@ -121,6 +121,7 @@ public class MyController : ControllerBase
 | [审批（Approval）](./Approval/index.md)     | 原生审批与三方审批管理，审批实例创建与查询         |
 | [考勤（Attendance）](./Attendance/index.md) | 考勤组管理、班次管理、打卡记录、考勤统计、请假审批 |
 | [任务（Task）](./Task/index.md)             | 任务创建与管理，清单管理，评论、附件、自定义字段   |
+| [飞书妙搭（Spark）](./Spark/index.md)       | 应用管理与运营数据、自定义枚举、执行 SQL、数据表与记录管理、视图查询、文件存储 |
 
 ### 人工智能
 

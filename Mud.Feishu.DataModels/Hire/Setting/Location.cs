@@ -25,7 +25,7 @@ public class Location
     /// <para>必填：否</para>
     /// </summary>
     [JsonPropertyName("name")]
-    public I18n? Name { get; set; }
+    public I18nName? Name { get; set; }
 
     /// <summary>
     /// <para>区/县</para>

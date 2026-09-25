@@ -144,7 +144,7 @@ public class JobDetailBasicInfo
     /// <para>必填：否</para>
     /// </summary>
     [JsonPropertyName("process_name")]
-    public I18n? ProcessName { get; set; }
+    public I18nName? ProcessName { get; set; }
 
     /// <summary>
     /// <para>自定义字段列表</para>

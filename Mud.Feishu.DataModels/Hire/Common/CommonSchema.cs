@@ -25,14 +25,14 @@ public class CommonSchema
     /// <para>必填：否</para>
     /// </summary>
     [JsonPropertyName("name")]
-    public I18n? Name { get; set; }
+    public I18nName? Name { get; set; }
 
     /// <summary>
     /// <para>模块描述</para>
     /// <para>必填：否</para>
     /// </summary>
     [JsonPropertyName("description")]
-    public I18n? Description { get; set; }
+    public I18nName? Description { get; set; }
 
     /// <summary>
     /// <para>模块信息</para>

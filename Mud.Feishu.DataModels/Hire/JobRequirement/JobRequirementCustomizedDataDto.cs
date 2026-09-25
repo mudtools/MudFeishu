@@ -25,7 +25,7 @@ public class JobRequirementCustomizedDataDto
     /// <para>必填：否</para>
     /// </summary>
     [JsonPropertyName("name")]
-    public I18n? Name { get; set; }
+    public I18nName? Name { get; set; }
 
     /// <summary>
     /// <para>字段类型：1 单行文本 / 2 多行文本 / 3 单选 / 4 多选 / 5 日期 / 6 月份选择 / 7 年份选择 / 8 时间段 / 9 数字 / 10 默认字段 / 11 模块</para>

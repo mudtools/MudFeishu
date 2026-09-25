@@ -216,11 +216,30 @@ All source files must start with the copyright header:
 要点：
 
 - 令牌词 `Tenant`/`User` 在**接口名**中紧随 `IFeishu`（位于 `V{n}` 之前），在**文件名**中改为**后缀** `_Tenant`/`_User`。**禁止**出现「无令牌后缀的单令牌接口文件」（即文件名与接口名只差首字母 `I` 且不构成双令牌基接口）。
-- `{n}{Domain}{Resource}` 忠实映射 OpenAPI 路径（如 `hire/v1/jobs` → `HireJob`）；`{Module}` 与 `FeishuModule` 枚举、`Interfaces/` 目录名一致。
+- `{n}{Domain}{Resource}` 忠实映射 OpenAPI 路径（如 `hire/v1/jobs` → `HireJob`）；`{Module}` 与 `FeishuModule` 枚举、`Interfaces/` 目录名一致。**大模块例外按下方「接口子域合并」执行。**
 - 令牌统一 `[Token(FeishuTokenTypes.TenantAccessToken 或 UserAccessToken, Name = Consts.Authorization)]`。
 - 生成的客户端类名 = 接口名去掉首字母 `I`（`IFeishuTenantV1HireJob` → `FeishuTenantV1HireJob`）；`Add{Module}WebApiHttpClient` 由生成器按 `[HttpClientApi]` 自动产出。
 - 接口文档文件名同样跟随接口名去 `I`：`documents/{Module}/FeishuTenantV{n}{Domain}{Resource}.md`；测试类名为 `{接口名}Tests`（如 `IFeishuTenantV1ApprovalMessageTests`）。
 - 新增接口后需同批更新：`FeishuModule` 枚举、`FeishuServiceBuilder` 注册器 + `Add{Module}Api()`、`FeishuJsonResolverExtensions` 的 JsonContext 合并、`scripts/GenerateJsonContext.ps1` 再生成。
+
+### 接口子域合并（方案 B，Hire 为参照实现）
+
+大模块禁止按 OpenAPI 资源「一资源一接口」无限拆分（Hire 曾拆到 21 个接口、其中 15 个仅含 1 个方法；全仓库一度 307 个接口）。接口按 **「模块 × 令牌类型 × 功能子域」** 组织，每个（模块 × 令牌）组合保留 **3~6 个**子域接口：
+
+| 模块 | 子域接口 | 合并范围 |
+| ---- | -------- | -------- |
+| Hire | `IFeishuTenantV1HireJob` | 职位、职位类别、职能分类、职位模板、职位发布记录、职位广告 |
+| Hire | `IFeishuTenantV1HireJobRequirement` | 招聘需求（创建/更新/查询/删除/需求模板） |
+| Hire | `IFeishuTenantV1HireInterview` | 面试轮次类型、面试反馈表、面试登记表模板、面试官 |
+| Hire | `IFeishuTenantV1HireOffer` | Offer 申请表、Offer 自定义字段、Offer 审批模板 |
+| Hire | `IFeishuTenantV1HireSetting` | 招聘流程、科目、信息登记表、人才标签、地点、角色、用户角色 |
+
+规则：
+
+- 文件名仍遵循上表令牌后缀规则；子域接口的 `{Resource}` 对应**飞书文档的资源分组**（如 `interview-settings` → `Interview`、`offer-settings` → `Offer`），不再要求一个接口只映射单一 OpenAPI 路径；单资源接口仍按路径映射。
+- 合并接口内方法名必须带资源前缀（`GetJobTypeListAsync` 而非 `GetListAsync`），并保证**全接口唯一**（合并前先做重名检查）。
+- `Mud.Feishu.DataModels/{Module}` 按同一子域分文件夹组织（如 `DataModels/Hire/{Common|Job|JobRequirement|Interview|Offer|Setting}/`），**命名空间保持模块级不变**（`Mud.Feishu.DataModels.Hire`）；跨子域共享的基础类型（`I18n`、`IdNameObject`、`CommonSchema*` 等）放 `Common/`。
+- 新模块创建时直接按此规则分组（每模块 3~6 个接口），不再逐资源建接口。
 
 ### Types and Nullability
 

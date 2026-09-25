@@ -8,22 +8,29 @@
 namespace Mud.Feishu.DataModels.Hire;
 
 /// <summary>
-/// 多语言名称（中文/英文）
+/// 获取人才标签列表响应体
 /// </summary>
 [HttpJsonSerializable(SerializerClassName = "Hire")]
-public class I18n
+public class GetTalentTagListResult
 {
     /// <summary>
-    /// <para>中文名称</para>
+    /// <para>标签列表</para>
     /// <para>必填：否</para>
     /// </summary>
-    [JsonPropertyName("zh_cn")]
-    public string? ZhCn { get; set; }
+    [JsonPropertyName("items")]
+    public TalentTag[]? Items { get; set; }
 
     /// <summary>
-    /// <para>英文名称</para>
+    /// <para>是否还有更多项</para>
     /// <para>必填：否</para>
     /// </summary>
-    [JsonPropertyName("en_us")]
-    public string? EnUs { get; set; }
+    [JsonPropertyName("has_more")]
+    public bool? HasMore { get; set; }
+
+    /// <summary>
+    /// <para>分页标记，当 has_more 为 true 时，会同时返回新的 page_token</para>
+    /// <para>必填：否</para>
+    /// </summary>
+    [JsonPropertyName("page_token")]
+    public string? PageToken { get; set; }
 }

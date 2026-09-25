@@ -39,14 +39,14 @@ public class UserRole
     /// <para>必填：否</para>
     /// </summary>
     [JsonPropertyName("role_name")]
-    public I18n? RoleName { get; set; }
+    public I18nName? RoleName { get; set; }
 
     /// <summary>
     /// <para>角色描述</para>
     /// <para>必填：否</para>
     /// </summary>
     [JsonPropertyName("role_description")]
-    public I18n? RoleDescription { get; set; }
+    public I18nName? RoleDescription { get; set; }
 
     /// <summary>
     /// <para>业务管理范围</para>

@@ -25,7 +25,7 @@ public class JobStorefront
     /// <para>必填：否</para>
     /// </summary>
     [JsonPropertyName("name")]
-    public I18n? Name { get; set; }
+    public I18nName? Name { get; set; }
 
     /// <summary>
     /// <para>启用状态</para>
@@ -67,5 +67,5 @@ public class JobStorefront
     /// <para>必填：否</para>
     /// </summary>
     [JsonPropertyName("remark")]
-    public I18n? Remark { get; set; }
+    public I18nName? Remark { get; set; }
 }

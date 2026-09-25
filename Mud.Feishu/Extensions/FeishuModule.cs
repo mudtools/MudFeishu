@@ -118,6 +118,11 @@ public enum FeishuModule
     Spark,
 
     /// <summary>
+    /// 飞书妙记
+    /// </summary>
+    Minutes,
+
+    /// <summary>
     /// 所有功能
     /// </summary>
     All

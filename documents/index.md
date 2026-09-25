@@ -122,6 +122,7 @@ public class MyController : ControllerBase
 | [考勤（Attendance）](./Attendance/index.md) | 考勤组管理、班次管理、打卡记录、考勤统计、请假审批 |
 | [任务（Task）](./Task/index.md)             | 任务创建与管理，清单管理，评论、附件、自定义字段   |
 | [飞书妙搭（Spark）](./Spark/index.md)       | 应用管理与运营数据、用户 ID 转换、产品使用权限、自定义枚举、执行 SQL、数据表与记录管理、视图查询、文件存储 |
+| [飞书妙记（Minutes）](./Minutes/index.md)   | 妙记基础信息、音视频下载、文字记录导出、统计数据、AI 产物、搜索、剪辑与导入生成、事件订阅 |
 
 ### 人工智能
 

@@ -128,6 +128,11 @@ public enum FeishuModule
     Hire,
 
     /// <summary>
+    /// 关联组织（信任方）
+    /// </summary>
+    TrustParty,
+
+    /// <summary>
     /// 所有功能
     /// </summary>
     All

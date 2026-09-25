@@ -56,6 +56,21 @@ public class FailedEventRetryServiceTests
         return monitor.Object;
     }
 
+    /// <summary>
+    /// 确定性等待：轮询直至断言目标副作用被 mock 记录或超时。
+    /// net10 的 BackgroundService.StartAsync 经 Task.Run 异步启动 ExecuteAsync，
+    /// 固定 Task.Delay 在全量并行套件下存在调度竞态（ExecuteAsync 晚于取消窗口
+    /// 启动则首轮轮询被跳过），因此等待 mock 记录到目标调用而非睡固定时长。
+    /// </summary>
+    private static async Task WaitForInvocationAsync(Func<bool> condition, TimeSpan timeout)
+    {
+        var deadline = DateTime.UtcNow + timeout;
+        while (!condition() && DateTime.UtcNow < deadline)
+        {
+            await Task.Delay(20);
+        }
+    }
+
     [Fact]
     public void Constructor_WithValidParameters_ShouldCreateInstance()
     {
@@ -199,11 +214,15 @@ public class FailedEventRetryServiceTests
             _scopeFactory,
             eventStoreMock.Object);
 
-        using var cts = new CancellationTokenSource(500);
+        // CTS 仅作安全网；改为轮询等待 mock 记录到轮询调用（见 WaitForInvocationAsync 注释）
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
 
         // Act
         await service.StartAsync(cts.Token);
-        await Task.Delay(600);
+        await WaitForInvocationAsync(
+            () => eventStoreMock.Invocations.Any(
+                i => i.Method.Name == nameof(IFailedEventStore.GetPendingRetryEventsAsync)),
+            TimeSpan.FromSeconds(10));
         await service.StopAsync(CancellationToken.None);
 
         // Assert
@@ -243,11 +262,15 @@ public class FailedEventRetryServiceTests
             _scopeFactory,
             eventStoreMock.Object);
 
-        using var cts = new CancellationTokenSource(1000);
+        // CTS 仅作安全网；改为轮询等待 mock 记录到移除调用（见 WaitForInvocationAsync 注释）
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
 
         // Act
         await service.StartAsync(cts.Token);
-        await Task.Delay(1200);
+        await WaitForInvocationAsync(
+            () => eventStoreMock.Invocations.Any(
+                i => i.Method.Name == nameof(IFailedEventStore.RemoveFailedEventAsync)),
+            TimeSpan.FromSeconds(10));
         await service.StopAsync(CancellationToken.None);
 
         // Assert
@@ -287,11 +310,15 @@ public class FailedEventRetryServiceTests
             _scopeFactory,
             eventStoreMock.Object);
 
-        using var cts = new CancellationTokenSource(1000);
+        // CTS 仅作安全网；改为轮询等待 mock 记录到更新调用（见 WaitForInvocationAsync 注释）
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
 
         // Act
         await service.StartAsync(cts.Token);
-        await Task.Delay(1200);
+        await WaitForInvocationAsync(
+            () => eventStoreMock.Invocations.Any(
+                i => i.Method.Name == nameof(IFailedEventStore.UpdateFailedEventAsync)),
+            TimeSpan.FromSeconds(10));
         await service.StopAsync(CancellationToken.None);
 
         // Assert
@@ -327,11 +354,15 @@ public class FailedEventRetryServiceTests
             _scopeFactory,
             eventStoreMock.Object);
 
-        using var cts = new CancellationTokenSource(1000);
+        // CTS 仅作安全网；改为轮询等待 mock 记录到移除调用（见 WaitForInvocationAsync 注释）
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
 
         // Act
         await service.StartAsync(cts.Token);
-        await Task.Delay(1200);
+        await WaitForInvocationAsync(
+            () => eventStoreMock.Invocations.Any(
+                i => i.Method.Name == nameof(IFailedEventStore.RemoveFailedEventAsync)),
+            TimeSpan.FromSeconds(10));
         await service.StopAsync(CancellationToken.None);
 
         // Assert - 应该移除事件，因为已达到最大重试次数
@@ -431,11 +462,16 @@ public class FailedEventRetryServiceTests
             _scopeFactory,
             eventStoreMock.Object);
 
-        using var cts = new CancellationTokenSource(1000);
+        // CTS 仅作安全网；改为轮询等待 mock 记录到更新调用（见 WaitForInvocationAsync 注释），
+        // 避免 net10 上 StartAsync 晚启动导致首轮轮询被取消窗口吞掉
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
 
         // Act
         await service.StartAsync(cts.Token);
-        await Task.Delay(1200);
+        await WaitForInvocationAsync(
+            () => eventStoreMock.Invocations.Any(
+                i => i.Method.Name == nameof(IFailedEventStore.UpdateFailedEventAsync)),
+            TimeSpan.FromSeconds(10));
         await service.StopAsync(CancellationToken.None);
 
         // Assert - 无效 JSON 会抛出异常，进入 catch 块，更新重试次数
@@ -475,11 +511,15 @@ public class FailedEventRetryServiceTests
             _scopeFactory,
             eventStoreMock.Object);
 
-        using var cts = new CancellationTokenSource(1000);
+        // CTS 仅作安全网；改为轮询等待 mock 记录到更新调用（见 WaitForInvocationAsync 注释）
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
 
         // Act
         await service.StartAsync(cts.Token);
-        await Task.Delay(1200);
+        await WaitForInvocationAsync(
+            () => eventStoreMock.Invocations.Any(
+                i => i.Method.Name == nameof(IFailedEventStore.UpdateFailedEventAsync)),
+            TimeSpan.FromSeconds(10));
         await service.StopAsync(CancellationToken.None);
 
         // Assert - 应该更新重试次数

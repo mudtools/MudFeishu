@@ -123,6 +123,11 @@ public enum FeishuModule
     Minutes,
 
     /// <summary>
+    /// 飞书招聘
+    /// </summary>
+    Hire,
+
+    /// <summary>
     /// 所有功能
     /// </summary>
     All

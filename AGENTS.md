@@ -203,6 +203,25 @@ All source files must start with the copyright header:
 | Private fields            | `_camelCase`     | `_logger`             |
 | Parameters                | camelCase        | `eventData`           |
 
+### 接口文件与接口命名（Interfaces）
+
+`Mud.Feishu/Interfaces/{Module}/` 下的 SDK 接口有**两套并行的命名**——文件名与接口名**不相同**，必须同时满足：
+
+| 令牌形态   | 文件名（3 个或 1 个）                                                                                                | 接口名                                          | 结构                                                                                                                                                        |
+| ---------- | -------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 双令牌     | `IFeishuV{n}{Domain}{Resource}.cs`<br>`IFeishuV{n}{Domain}{Resource}_Tenant.cs`<br>`IFeishuV{n}{Domain}{Resource}_User.cs` | `IFeishuV{n}{Domain}{Resource}`<br>`IFeishuTenantV{n}{Domain}{Resource}`<br>`IFeishuUserV{n}{Domain}{Resource}` | 基接口 `[HttpClientApi(TokenManage = nameof(IFeishuAppManager), IsAbstract = true)]`（**无** `RegistryGroupName`），方法全部写在基接口；`_Tenant`/`_User` 为**空**派生接口，标 `[HttpClientApi(..., RegistryGroupName = "{Module}", InheritedFrom = nameof(FeishuV{n}{Domain}{Resource}))]`，`_User` 额外 `: ICurrentUserId` |
+| 仅租户令牌 | `IFeishuV{n}{Domain}{Resource}_Tenant.cs`                                                                             | `IFeishuTenantV{n}{Domain}{Resource}`           | 方法直接写在该接口，`: IFeishuAppContextSwitcher`；`[HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "{Module}")]`（**不带** `IsAbstract`/`InheritedFrom`） |
+| 仅用户令牌 | `IFeishuV{n}{Domain}{Resource}_User.cs`                                                                              | `IFeishuUserV{n}{Domain}{Resource}`             | 同上，但接口额外 `: ICurrentUserId`                                                                                                                         |
+
+要点：
+
+- 令牌词 `Tenant`/`User` 在**接口名**中紧随 `IFeishu`（位于 `V{n}` 之前），在**文件名**中改为**后缀** `_Tenant`/`_User`。**禁止**出现「无令牌后缀的单令牌接口文件」（即文件名与接口名只差首字母 `I` 且不构成双令牌基接口）。
+- `{n}{Domain}{Resource}` 忠实映射 OpenAPI 路径（如 `hire/v1/jobs` → `HireJob`）；`{Module}` 与 `FeishuModule` 枚举、`Interfaces/` 目录名一致。
+- 令牌统一 `[Token(FeishuTokenTypes.TenantAccessToken 或 UserAccessToken, Name = Consts.Authorization)]`。
+- 生成的客户端类名 = 接口名去掉首字母 `I`（`IFeishuTenantV1HireJob` → `FeishuTenantV1HireJob`）；`Add{Module}WebApiHttpClient` 由生成器按 `[HttpClientApi]` 自动产出。
+- 接口文档文件名同样跟随接口名去 `I`：`documents/{Module}/FeishuTenantV{n}{Domain}{Resource}.md`；测试类名为 `{接口名}Tests`（如 `IFeishuTenantV1ApprovalMessageTests`）。
+- 新增接口后需同批更新：`FeishuModule` 枚举、`FeishuServiceBuilder` 注册器 + `Add{Module}Api()`、`FeishuJsonResolverExtensions` 的 JsonContext 合并、`scripts/GenerateJsonContext.ps1` 再生成。
+
 ### Types and Nullability
 
 - **Nullable reference types enabled** - use `?` for nullable types

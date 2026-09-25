@@ -11,7 +11,7 @@ namespace Mud.Feishu;
 
 
 /// <summary>
-/// 飞书招聘（Hire）职位 SDK 是一组服务端 OpenAPI 的封装，用于组合创建/更新职位、职位设置（面试轮次、登记表、自助约面）、职位管理人员维护、职位详情与列表查询、职位开放以及职位发布人查询。本接口全部端点仅支持 tenant_access_token 调用。
+/// 飞书招聘（Hire）职位域 SDK 是一组服务端 OpenAPI 的封装，用于职位的组合创建/更新与设置维护、职位管理人员批量维护、职位详情与列表查询、职位开放，以及职位类别、职能分类、职位模板、职位发布记录与职位广告发布。本接口全部端点仅支持 tenant_access_token 调用。
 /// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/hire-v1/recruitment-related-configuration/job/get"/></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Hire")]
@@ -213,5 +213,92 @@ public interface IFeishuTenantV1HireJob : IFeishuAppContextSwitcher
     Task<FeishuApiResult<GetJobRecruiterResult>?> GetJobRecruiterAsync(
         [Path] string job_id,
         [Query("user_id_type")] string? user_id_type = null,
+        CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 获取职位类别列表
+    /// <para>分页获取招聘系统预置的职位类别列表，按创建时间升序返回，并包含节点的父子层级关系（parent_id），可用于构建职位类别树。</para>
+    /// <para>限频：20 次/秒。所需权限：hire:job:readonly（获取职位信息）。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/hire-v1/recruitment-related-configuration/job/list-4">接口文档</see></para>
+    /// </summary>
+    /// <param name="page_size">每页数量，默认 10</param>
+    /// <param name="page_token">分页标记，首次请求不填，翻页时取上一次返回的 page_token</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns>返回职位类别分页列表（items、has_more、page_token）</returns>
+    [Get("/open-apis/hire/v1/job_types")]
+    Task<FeishuApiResult<GetJobTypeListResult>?> GetJobTypeListAsync(
+        [Query("page_size")] int? page_size = null,
+        [Query("page_token")] string? page_token = null,
+        CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 获取职位职能分类列表
+    /// <para>分页获取招聘系统内置的职位职能分类列表（含父级职能分类 ID，可据此构建职能分类树）。</para>
+    /// <para>限频：20 次/秒。所需权限：hire:job:readonly（获取职位信息）。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/hire-v1/recruitment-related-configuration/job/list-3">接口文档</see></para>
+    /// </summary>
+    /// <param name="page_size">每页数量，最大 50</param>
+    /// <param name="page_token">分页标记，首次请求不填，翻页时取上一次返回的 page_token</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns>返回职能分类分页列表（items、has_more、page_token）</returns>
+    [Get("/open-apis/hire/v1/job_functions")]
+    Task<FeishuApiResult<GetJobFunctionListResult>?> GetJobFunctionListAsync(
+        [Query("page_size")] int? page_size = null,
+        [Query("page_token")] string? page_token = null,
+        CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 获取职位模板列表
+    /// <para>按招聘场景（社招/校招）分页获取职位模板列表，返回模板内各模块的字段与选项配置。</para>
+    /// <para>限频：10 次/秒。所需权限：hire:job:readonly（获取职位信息）。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/hire-v1/recruitment-related-configuration/job/list">接口文档</see></para>
+    /// </summary>
+    /// <param name="scenario">招聘场景：1 社招 / 2 校招</param>
+    /// <param name="page_size">每页数量，最大 100</param>
+    /// <param name="page_token">分页标记，首次请求不填，翻页时取上一次返回的 page_token</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns>返回职位模板分页列表（items、has_more、page_token）</returns>
+    [Get("/open-apis/hire/v1/job_schemas")]
+    Task<FeishuApiResult<GetJobSchemaListResult>?> GetJobSchemaListAsync(
+        [Query("scenario")] int? scenario = null,
+        [Query("page_size")] int? page_size = null,
+        [Query("page_token")] string? page_token = null,
+        CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 查询职位发布记录
+    /// <para>按招聘渠道分页查询已发布到官网/拉勾等渠道的职位广告记录（查询参数采用查询对象模式 <see cref="JobPublishRecordSearchQuery"/>，见 AGENTS.md API-2）。</para>
+    /// <para>限频：1000 次/分钟、50 次/秒。所需权限：hire:job:readonly（获取职位信息）或 hire:job（更新职位）。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/hire-v1/recruitment-related-configuration/job/search">接口文档</see></para>
+    /// </summary>
+    /// <param name="request">查询请求体（job_channel_id 渠道 ID，如官网渠道取 "2"、拉勾渠道取 "3"，可通过获取招聘渠道列表接口获取）</param>
+    /// <param name="query">分页与各类 ID 类型查询参数</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns>返回职位发布记录分页列表（items、has_more、page_token）</returns>
+    [Post("/open-apis/hire/v1/job_publish_records/search")]
+    Task<FeishuApiResult<SearchJobPublishRecordResult>?> SearchJobPublishRecordAsync(
+        [Body] SearchJobPublishRecordRequest request,
+        [Query] JobPublishRecordSearchQuery? query = null,
+        CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 发布职位广告
+    /// <para>将指定职位广告发布至所选招聘渠道（如官网招聘渠道）。</para>
+    /// <para>限频：10 次/秒。所需权限：hire:advertisement（获取或更新招聘广告信息）。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/hire-v1/recruitment-related-configuration/job/publish">接口文档</see></para>
+    /// </summary>
+    /// <param name="advertisement_id">职位广告 ID，来自职位创建响应中的 default_job_post.id</param>
+    /// <param name="request">发布请求体（job_channel_id 渠道 ID，可通过获取招聘渠道列表接口获取，如官网渠道为 "3"）</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns>成功时 data 为空对象</returns>
+    [Post("/open-apis/hire/v1/advertisements/{advertisement_id}/publish")]
+    Task<FeishuNullDataApiResult?> PublishAdvertisementAsync(
+        [Path] string advertisement_id,
+        [Body] PublishAdvertisementRequest request,
         CancellationToken cancellationToken = default);
 }

@@ -53,9 +53,14 @@ namespace Mud.Feishu.DataModels.Spark;
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Spark.QueryAnalyticsDataResult))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Spark.UploadAppIconResult))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Spark.UploadHtmlCodeResult))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Spark.UpdateAvailableScopeRequest))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Spark.GetAvailableScopeResult))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Spark.IdConvertRequest))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Spark.IdConvertResult))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Spark.IdMapItem))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Spark.UploadHtmlCodeRequest))]
-[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Spark.UploadStoragePartRequest))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Spark.UploadStorageFileRequest))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Spark.UploadStoragePartRequest))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Spark.UploadAppIconRequest))]
 internal partial class SparkJsonContext : JsonSerializerContext
 {

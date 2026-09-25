@@ -2,9 +2,9 @@
 
 ## 概述
 
-飞书妙搭（Spark）SDK 提供了妙搭应用服务端 OpenAPI 的完整封装，支持自定义枚举查询、SQL 执行、数据表与数据记录管理、视图数据查询以及应用文件资源上传下载等能力，帮助开发者把妙搭应用的数据与文件集成到自己的业务系统中。
+飞书妙搭（Spark）SDK 提供了妙搭应用服务端 OpenAPI 的完整封装，支持自定义枚举查询、SQL 执行、数据表与数据记录管理、视图数据查询、应用文件资源上传下载、应用管理与运营数据查询、用户 ID 转换以及产品使用权限管理等能力，帮助开发者把妙搭应用的数据与文件集成到自己的业务系统中。
 
-> 说明：飞书妙搭 OpenAPI 中，数据表、记录、视图、枚举、SQL、文件存储等端点仅提供 user_access_token（用户身份）调用方式，本模块 SDK 相应只提供用户令牌（`IFeishuUserV1Spark*`）接口；应用管理（Spark App）模块的只读端点（批量查询应用、AI 额度、运营数据）同时支持 tenant_access_token 与 user_access_token，写端点（创建/更新应用、图标上传、HTML 发布、可用范围）为 user-only。
+> 说明：飞书妙搭 OpenAPI 中，数据表、记录、视图、枚举、SQL、文件存储等端点仅提供 user_access_token（用户身份）调用方式，本模块 SDK 相应只提供用户令牌（`IFeishuUserV1Spark*`）接口；应用管理（Spark App）模块的只读端点（批量查询应用、AI 额度、运营数据）与用户 ID 转换（Spark Directory）端点同时支持 tenant_access_token 与 user_access_token，写端点（创建/更新应用、图标上传、HTML 发布、可用范围、产品使用权限修改）为 user-only。
 
 **主要功能：**
 
@@ -14,6 +14,8 @@
 - 视图数据记录查询（支持列筛选、过滤、排序）
 - 文件上传下载（含 20MB 以内直传与分片上传）
 - 应用管理（创建、更新、图标上传、HTML 发布、可用范围）与运营数据查询（AI 额度、总览、趋势）
+- 妙搭与开放平台之间的用户 ID 双向转换
+- 妙搭产品企业级使用权限（可用范围）的获取与修改
 
 **适用场景：**
 
@@ -97,6 +99,15 @@ public class SparkController : ControllerBase
 
 - [应用管理（用户）](./FeishuUserV1SparkApp.md) — 创建/更新应用、图标上传、HTML 发布、可用范围，及双令牌只读端点（应用列表、AI 额度、运营数据）
 - [应用管理（租户）](./FeishuTenantV1SparkApp.md) — 双令牌只读端点：应用列表、AI 额度、运营数据总览与趋势
+
+### 用户目录
+
+- [用户 ID 转换（用户）](./FeishuUserV1SparkDirectoryUser.md) — 妙搭用户 ID 与开放平台 OpenID/UnionID、飞书用户 ID 双向转换
+- [用户 ID 转换（租户）](./FeishuTenantV1SparkDirectoryUser.md) — 同上，以租户令牌调用
+
+### 产品使用权限
+
+- [产品使用权限（用户）](./FeishuUserV1SparkAvailableScope.md) — 获取与修改妙搭产品企业级使用权限（可用范围 + 部门/成员名单）
 
 ### 自定义枚举
 

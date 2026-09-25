@@ -4,7 +4,7 @@
 
 飞书招聘（Hire）SDK 提供了招聘服务端 OpenAPI（hire-v1 招聘配置类端点）的完整封装，支持职位组合创建/更新、职位设置维护、职位管理人员批量更新、职位信息与聚合详情查询、职位列表与发布管理、地址查询、角色与用户角色权限查询以及职位模板/职能分类/职位类别等枚举主数据查询能力。
 
-> 说明：本 SDK 全部 39 个端点均为 **tenant-only**（仅支持 tenant_access_token），令牌类型由接口上的 `[Token(FeishuTokenTypes.TenantAccessToken, ...)]` 声明，调用方无需额外指定。接口已按子域方案（B）合并为 5 个，见下方「API 接口导航」。
+> 说明：本 SDK 全部 56 个端点均为 **tenant-only**（仅支持 tenant_access_token），令牌类型由接口上的 `[Token(FeishuTokenTypes.TenantAccessToken, ...)]` 声明，调用方无需额外指定。接口已按子域方案（B）合并为 6 个，见下方「API 接口导航」。
 
 **主要功能：**
 
@@ -108,6 +108,7 @@ public class HireController : ControllerBase
 | `IFeishuTenantV1HireInterview` | 5 | 面试轮次类型、面试反馈表、面试登记表模板、面试官查询与更新 | — |
 | `IFeishuTenantV1HireOffer` | 4 | Offer 申请表列表/详情、申请表自定义字段更新、Offer 审批模板 | — |
 | `IFeishuTenantV1HireSetting` | 9 | 招聘流程、科目、信息登记表模板、人才标签、地点、角色、用户角色 | [地址](./FeishuTenantV1HireLocation.md)、[角色](./FeishuTenantV1HireRole.md)、[用户角色](./FeishuTenantV1HireUserRole.md) |
+| `IFeishuTenantV1HireCandidate` | 17 | 内推信息与内推官网职位、招聘官网/推广渠道/官网用户/官网职位、官网投递与投递任务、官网申请表模板 | — |
 
 ## 查询对象模式（API-2）
 

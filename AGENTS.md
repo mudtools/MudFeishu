@@ -224,7 +224,7 @@ All source files must start with the copyright header:
 
 ### 接口子域合并（方案 B，Hire 为参照实现）
 
-大模块禁止按 OpenAPI 资源「一资源一接口」无限拆分（Hire 曾拆到 21 个接口、其中 15 个仅含 1 个方法；全仓库一度 307 个接口）。接口按 **「模块 × 令牌类型 × 功能子域」** 组织，每个（模块 × 令牌）组合保留 **3~6 个**子域接口：
+大模块禁止按 OpenAPI 资源「一资源一接口」无限拆分（Hire 曾拆到 21 个接口、其中 15 个仅含 1 个方法；全仓库一度 307 个接口）。接口按 **「模块 × 令牌类型 × 功能子域」** 组织，每个（模块 × 令牌）组合保留 **3~6 个**子域接口（Hire 现为 6 个，已达上限，后续新增资源并入既有子域）：
 
 | 模块 | 子域接口 | 合并范围 |
 | ---- | -------- | -------- |
@@ -233,6 +233,7 @@ All source files must start with the copyright header:
 | Hire | `IFeishuTenantV1HireInterview` | 面试轮次类型、面试反馈表、面试登记表模板、面试官 |
 | Hire | `IFeishuTenantV1HireOffer` | Offer 申请表、Offer 自定义字段、Offer 审批模板 |
 | Hire | `IFeishuTenantV1HireSetting` | 招聘流程、科目、信息登记表、人才标签、地点、角色、用户角色 |
+| Hire | `IFeishuTenantV1HireCandidate` | 内推信息与内推官网职位、招聘官网（列表/推广渠道/官网用户/官网职位）、官网投递与投递任务、官网申请表模板 |
 
 规则：
 

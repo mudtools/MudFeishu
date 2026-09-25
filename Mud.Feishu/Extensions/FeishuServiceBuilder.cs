@@ -57,7 +57,8 @@ public class FeishuServiceBuilder
             [FeishuModule.Spark] = new FeishuModuleRegistrar(FeishuModule.Spark, s => s.AddSparkWebApiHttpClient()),
             [FeishuModule.Minutes] = new FeishuModuleRegistrar(FeishuModule.Minutes, s => s.AddMinutesWebApiHttpClient()),
             [FeishuModule.Hire] = new FeishuModuleRegistrar(FeishuModule.Hire, s => s.AddHireWebApiHttpClient()),
-            [FeishuModule.TrustParty] = new FeishuModuleRegistrar(FeishuModule.TrustParty, s => s.AddTrustPartyWebApiHttpClient())
+            [FeishuModule.TrustParty] = new FeishuModuleRegistrar(FeishuModule.TrustParty, s => s.AddTrustPartyWebApiHttpClient()),
+            [FeishuModule.Acs] = new FeishuModuleRegistrar(FeishuModule.Acs, s => s.AddAcsWebApiHttpClient())
         };
     }
 
@@ -209,6 +210,12 @@ public class FeishuServiceBuilder
     /// </summary>
     /// <returns>建造者实例，支持链式调用</returns>
     public FeishuServiceBuilder AddTrustPartyApi() => AddModule(FeishuModule.TrustParty);
+
+    /// <summary>
+    /// 添加飞书智能门禁 API 服务
+    /// </summary>
+    /// <returns>建造者实例，支持链式调用</returns>
+    public FeishuServiceBuilder AddAcsApi() => AddModule(FeishuModule.Acs);
 
     /// <summary>
     /// 添加所有 API 服务

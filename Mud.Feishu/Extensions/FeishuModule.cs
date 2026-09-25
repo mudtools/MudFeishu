@@ -133,6 +133,11 @@ public enum FeishuModule
     TrustParty,
 
     /// <summary>
+    /// 智能门禁
+    /// </summary>
+    Acs,
+
+    /// <summary>
     /// 所有功能
     /// </summary>
     All

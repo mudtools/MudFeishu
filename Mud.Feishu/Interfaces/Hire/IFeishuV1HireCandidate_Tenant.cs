@@ -11,7 +11,7 @@ namespace Mud.Feishu;
 
 
 /// <summary>
-/// 飞书招聘（Hire）候选人入口域 SDK 是一组服务端 OpenAPI 的封装，用于内推信息与内推官网职位查询、招聘官网（列表/推广渠道/官网用户/官网职位）、官网投递创建与投递任务查询以及官网申请表模板查询。本接口全部端点仅支持 tenant_access_token 调用。
+/// 飞书招聘（Hire）候选人入口域 SDK 是一组服务端 OpenAPI 的封装，用于内推信息与内推官网职位查询、招聘官网（列表/推广渠道/官网用户/官网职位）、官网投递创建与投递任务查询、官网申请表模板查询以及外部系统信息导入（人才外部创建时间、外部投递、外部面试）。本接口全部端点仅支持 tenant_access_token 调用。
 /// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/hire-v1/get-candidates/website/list"/></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Hire")]
@@ -328,5 +328,122 @@ public interface IFeishuTenantV1HireCandidate : IFeishuAppContextSwitcher
     Task<FeishuApiResult<GetWebsiteDeliveryTaskResult>?> GetWebsiteDeliveryTaskAsync(
         [Path] string website_id,
         [Path] string delivery_task_id,
+        CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 创建人才外部信息
+    /// <para>为人才创建外部系统信息（人才在外部系统的创建时间）。</para>
+    /// <para>限频：1000 次/分钟、50 次/秒。所需权限：hire:talent（更新人才信息）。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/hire-v1/get-candidates/import-external-system-information/create-5">接口文档</see></para>
+    /// </summary>
+    /// <param name="talent_id">人才 ID，示例值：7043758982146345223</param>
+    /// <param name="request">创建请求体（external_create_time 必填：人才在外部系统的创建时间，毫秒时间戳）</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns>返回人才外部信息（external_info）</returns>
+    [Post("/open-apis/hire/v1/talents/{talent_id}/external_info")]
+    Task<FeishuApiResult<CreateTalentExternalInfoResult>?> CreateTalentExternalInfoAsync(
+        [Path] string talent_id,
+        [Body] TalentExternalInfoRequest request,
+        CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 更新人才外部信息
+    /// <para>更新人才的外部系统信息（人才在外部系统的创建时间）。</para>
+    /// <para>限频：1000 次/分钟、50 次/秒。所需权限：hire:talent（更新人才信息）。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/hire-v1/get-candidates/import-external-system-information/update">接口文档</see></para>
+    /// </summary>
+    /// <param name="talent_id">人才 ID，示例值：7043758982146345223</param>
+    /// <param name="request">更新请求体（external_create_time 必填：人才在外部系统的创建时间，毫秒时间戳）</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns>返回人才外部信息（external_info）</returns>
+    [Put("/open-apis/hire/v1/talents/{talent_id}/external_info")]
+    Task<FeishuApiResult<UpdateTalentExternalInfoResult>?> UpdateTalentExternalInfoAsync(
+        [Path] string talent_id,
+        [Body] TalentExternalInfoRequest request,
+        CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 创建外部投递
+    /// <para>创建来自外部系统的投递；external_id 为幂等字段，同一 external_id 24 小时内仅可创建一次。</para>
+    /// <para>限频：20 次/秒。所需权限：hire:external_application（更新外部投递信息）。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/hire-v1/get-candidates/import-external-system-information/create">接口文档</see></para>
+    /// </summary>
+    /// <param name="request">创建请求体（talent_id 必填；external_id、职位/简历来源/阶段/终止原因/投递类型/时间字段选填）</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns>返回外部投递信息（external_application）</returns>
+    [Post("/open-apis/hire/v1/external_applications")]
+    Task<FeishuApiResult<CreateExternalApplicationResult>?> CreateExternalApplicationAsync(
+        [Body] CreateExternalApplicationRequest request,
+        CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 更新外部投递
+    /// <para>按外部投递 ID 覆盖更新外部投递的字段。</para>
+    /// <para>限频：20 次/秒。所需权限：hire:external_application（更新外部投递信息）。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/hire-v1/get-candidates/import-external-system-information/update-2">接口文档</see></para>
+    /// </summary>
+    /// <param name="external_application_id">外部投递 ID，示例值：6960663240925956660</param>
+    /// <param name="request">更新请求体（job_recruitment_type、job_title、resume_source、stage、termination_reason、delivery_type、modify_time、create_time、termination_type 选填）</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns>返回外部投递信息（external_application）</returns>
+    [Put("/open-apis/hire/v1/external_applications/{external_application_id}")]
+    Task<FeishuApiResult<UpdateExternalApplicationResult>?> UpdateExternalApplicationAsync(
+        [Path] string external_application_id,
+        [Body] UpdateExternalApplicationRequest request,
+        CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 获取外部投递列表
+    /// <para>按人才 ID 分页获取外部投递信息列表。</para>
+    /// <para>限频：20 次/秒。所需权限：hire:external_application（更新外部投递信息）。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/hire-v1/get-candidates/import-external-system-information/list">接口文档</see></para>
+    /// </summary>
+    /// <param name="talent_id">人才 ID，示例值：6960663240925956660</param>
+    /// <param name="page_size">每页数量，最大 20</param>
+    /// <param name="page_token">分页标记，首次请求不填，翻页时取上一次返回的 page_token</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns>返回外部投递分页列表（items、has_more、page_token）</returns>
+    [Get("/open-apis/hire/v1/external_applications")]
+    Task<FeishuApiResult<GetExternalApplicationListResult>?> GetExternalApplicationListAsync(
+        [Query("talent_id")] string? talent_id = null,
+        [Query("page_size")] int? page_size = null,
+        [Query("page_token")] string? page_token = null,
+        CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 删除外部投递
+    /// <para>按外部投递 ID 删除外部投递。</para>
+    /// <para>限频：20 次/分钟。所需权限：hire:external_application（更新外部投递信息）。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/hire-v1/get-candidates/import-external-system-information/delete">接口文档</see></para>
+    /// </summary>
+    /// <param name="external_application_id">外部投递 ID，示例值：6960663240925956660</param>
+    /// <param name="talent_id">人才 ID，示例值：6960663240925956660</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns>返回被删除的外部投递信息（external_application）</returns>
+    [Delete("/open-apis/hire/v1/external_applications/{external_application_id}")]
+    Task<FeishuApiResult<DeleteExternalApplicationResult>?> DeleteExternalApplicationAsync(
+        [Path] string external_application_id,
+        [Query("talent_id")] string? talent_id = null,
+        CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 创建外部面试
+    /// <para>创建来自外部系统的面试；external_id 为幂等字段，可携带面试评价列表。</para>
+    /// <para>限频：10 次/秒。所需权限：hire:external_application（更新外部投递信息）。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/hire-v1/get-candidates/import-external-system-information/create-3">接口文档</see></para>
+    /// </summary>
+    /// <param name="request">创建请求体（external_application_id 必填；external_id、participate_status、begin_time、end_time、interview_assessments 选填）</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns>返回外部面试信息（external_interview）</returns>
+    [Post("/open-apis/hire/v1/external_interviews")]
+    Task<FeishuApiResult<CreateExternalInterviewResult>?> CreateExternalInterviewAsync(
+        [Body] CreateExternalInterviewRequest request,
         CancellationToken cancellationToken = default);
 }

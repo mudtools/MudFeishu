@@ -153,6 +153,11 @@ public enum FeishuModule
     Security,
 
     /// <summary>
+    /// 主数据管理
+    /// </summary>
+    MDM,
+
+    /// <summary>
     /// 所有功能
     /// </summary>
     All

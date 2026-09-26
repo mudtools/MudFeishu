@@ -61,7 +61,8 @@ public class FeishuServiceBuilder
             [FeishuModule.Acs] = new FeishuModuleRegistrar(FeishuModule.Acs, s => s.AddAcsWebApiHttpClient()),
             [FeishuModule.Lingo] = new FeishuModuleRegistrar(FeishuModule.Lingo, s => s.AddLingoWebApiHttpClient()),
             [FeishuModule.Performance] = new FeishuModuleRegistrar(FeishuModule.Performance, s => s.AddPerformanceWebApiHttpClient()),
-            [FeishuModule.Security] = new FeishuModuleRegistrar(FeishuModule.Security, s => s.AddSecurityWebApiHttpClient())
+            [FeishuModule.Security] = new FeishuModuleRegistrar(FeishuModule.Security, s => s.AddSecurityWebApiHttpClient()),
+            [FeishuModule.MDM] = new FeishuModuleRegistrar(FeishuModule.MDM, s => s.AddMDMWebApiHttpClient())
         };
     }
 
@@ -237,6 +238,12 @@ public class FeishuServiceBuilder
     /// </summary>
     /// <returns>建造者实例，支持链式调用</returns>
     public FeishuServiceBuilder AddSecurityApi() => AddModule(FeishuModule.Security);
+
+    /// <summary>
+    /// 添加主数据管理 API 服务
+    /// </summary>
+    /// <returns>建造者实例，支持链式调用</returns>
+    public FeishuServiceBuilder AddMDMApi() => AddModule(FeishuModule.MDM);
 
     /// <summary>
     /// 添加所有 API 服务

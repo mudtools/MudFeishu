@@ -143,6 +143,11 @@ public enum FeishuModule
     Lingo,
 
     /// <summary>
+    /// 飞书绩效
+    /// </summary>
+    Performance,
+
+    /// <summary>
     /// 所有功能
     /// </summary>
     All

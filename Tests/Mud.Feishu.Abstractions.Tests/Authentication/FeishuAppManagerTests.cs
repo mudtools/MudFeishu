@@ -748,15 +748,32 @@ public class FeishuAppManagerTests
     /// 构造走默认 PerAppFeishuTokenStoreFactory + 真实 IMemoryCache 的服务提供者
     /// （与生产装配一致，store 经 DI 注册的 IFeishuTokenStoreFactory 创建）。
     /// </summary>
-    private static (ServiceProvider Provider, FeishuAppManager Manager, IMemoryCache Cache)
+    /// <remarks>
+    /// TMF-01 回归稳定性：FeishuTokenStore.SharedTenantTypes / FeishuUserTokenStore.SharedUserTypes
+    /// 是<b>进程级静态</b>记账（按 KeyPrefix 隔离）。若使用共享的 <c>AppKeys.Default</c>，
+    /// 其他测试类（RemoveApp / 凭据变更热更新）fire-and-forget 清库会在本测试的轮询窗口内
+    /// 清空 default 前缀的共享记账，使本测试自身的清库 no-op（CI net8.0 偶发失败的根因）。
+    /// 与 <c>FeishuUserTokenStoreTests</c> 的 "prune-*" 前缀同款隔离策略：独立 appKey 隔离静态记账。
+    /// </remarks>
+    private static (ServiceProvider Provider, FeishuAppManager Manager, IMemoryCache Cache, string AppKey)
         CreateManagerWithRealMemoryStore()
     {
         var services = CreateServiceCollection();
-        services.AddFeishuApp(new List<FeishuAppConfig> { CreateDefaultConfig() });
+        var appKey = $"purge-real-{Guid.NewGuid():N}";
+        services.AddFeishuApp(new List<FeishuAppConfig>
+        {
+            new()
+            {
+                AppKey = appKey,
+                AppId = AppConfigs.AppIds.Default,
+                AppSecret = AppConfigs.Secrets.Valid,
+                IsDefault = true
+            }
+        });
         var provider = services.BuildServiceProvider();
         var manager = provider.GetRequiredService<FeishuAppManager>();
         var cache = provider.GetRequiredService<IMemoryCache>();
-        return (provider, manager, cache);
+        return (provider, manager, cache, appKey);
     }
 
     [Fact]
@@ -764,10 +781,9 @@ public class FeishuAppManagerTests
     {
         // Arrange：实例化旧上下文，经工厂实例 A 预写租户+用户令牌。
         // 预写值经 TokenStoreHelper.EncodeStoredToken 编码，与生产持久化格式一致。
-        var (provider, manager, cache) = CreateManagerWithRealMemoryStore();
+        var (provider, manager, _, appKey) = CreateManagerWithRealMemoryStore();
         using var providerLease = provider;
         var factory = provider.GetRequiredService<IFeishuTokenStoreFactory>();
-        var appKey = AppConfigs.AppKeys.Default;
         var tokenType = FeishuTokenTypes.TenantAccessToken;
         var userTokenType = $"UserAccessToken:{appKey}";
         var userId = "ou_test_user";
@@ -829,10 +845,9 @@ public class FeishuAppManagerTests
     public async Task OnConfigurationChanged_ShouldKeepTokens_WhenOnlyTimeOutChanged_RealBackend()
     {
         // Arrange
-        var (provider, manager, unusedCache) = CreateManagerWithRealMemoryStore();
+        var (provider, manager, unusedCache, appKey) = CreateManagerWithRealMemoryStore();
         using var providerLease = provider;
         var factory = provider.GetRequiredService<IFeishuTokenStoreFactory>();
-        var appKey = AppConfigs.AppKeys.Default;
         var tokenType = FeishuTokenTypes.TenantAccessToken;
 
         _ = manager.GetApp(appKey);

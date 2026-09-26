@@ -89,16 +89,8 @@ namespace Mud.Feishu.DataModels.Drive;
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Drive.Media.MediasUploadPrepareRequest))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Drive.Media.TmpDownloadUrl))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Drive.BasePermissionMember))]
-[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Drive.PermissionMember))]
-[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Drive.UpdatePermissionMemberRequest))]
-[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Drive.CreatePermissionMemberRequest))]
-[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Drive.PermissionMemberDetail))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Drive.DrivePermissions))]
-[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Drive.UpdateDrivePermissionsRequest))]
-[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Drive.DrivePermissionsDetail))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Drive.PermissionMember))]
-[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Drive.CreatePermissionMemberRequest))]
-[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Drive.PermissionMemberDetail))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Drive.BatchCreatePermissionMemberRequest))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Drive.CreatePermissionMemberRequest))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Drive.DeletePermissionMemberRequest))]
@@ -120,9 +112,17 @@ namespace Mud.Feishu.DataModels.Drive;
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Drive.FileSubscriptionOOpsResult))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Drive.GetFileSubscribeResult))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Drive.GetUserFileSubscribeResult))]
-[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Drive.Files.UploadAllFileRequest))]
-[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Drive.Media.MediasUploadAllRequest))]
-[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Drive.Files.FilesUploadPartRequest))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Drive.Media.MediasUploadAllRequest), TypeInfoPropertyName = "Mud_Feishu_DataModels_Drive_Media_MediasUploadAllRequest")] // SYSLIB1031 防护：默认 TypeInfo 属性名与本 Context 内其他根冲突，已显式重命名
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Drive.Files.UploadAllFileRequest), TypeInfoPropertyName = "Mud_Feishu_DataModels_Drive_Files_UploadAllFileRequest")] // SYSLIB1031 防护：默认 TypeInfo 属性名与本 Context 内其他根冲突，已显式重命名
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Drive.Files.FilesUploadPartRequest), TypeInfoPropertyName = "Mud_Feishu_DataModels_Drive_Files_FilesUploadPartRequest")] // SYSLIB1031 防护：默认 TypeInfo 属性名与本 Context 内其他根冲突，已显式重命名
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Drive.PermissionMember), TypeInfoPropertyName = "Mud_Feishu_DataModels_Drive_PermissionMember")] // SYSLIB1031 防护：默认 TypeInfo 属性名与本 Context 内其他根冲突，已显式重命名 // 派生类型已注册为独立根；多态（以基类类型序列化）仍需在基类上标注 [JsonDerivedType]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Drive.UpdatePermissionMemberRequest), TypeInfoPropertyName = "Mud_Feishu_DataModels_Drive_UpdatePermissionMemberRequest")] // SYSLIB1031 防护：默认 TypeInfo 属性名与本 Context 内其他根冲突，已显式重命名 // 派生类型已注册为独立根；多态（以基类类型序列化）仍需在基类上标注 [JsonDerivedType]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Drive.CreatePermissionMemberRequest), TypeInfoPropertyName = "Mud_Feishu_DataModels_Drive_CreatePermissionMemberRequest")] // SYSLIB1031 防护：默认 TypeInfo 属性名与本 Context 内其他根冲突，已显式重命名 // 派生类型已注册为独立根；多态（以基类类型序列化）仍需在基类上标注 [JsonDerivedType]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Drive.PermissionMemberDetail), TypeInfoPropertyName = "Mud_Feishu_DataModels_Drive_PermissionMemberDetail")] // SYSLIB1031 防护：默认 TypeInfo 属性名与本 Context 内其他根冲突，已显式重命名 // 派生类型已注册为独立根；多态（以基类类型序列化）仍需在基类上标注 [JsonDerivedType]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Drive.UpdateDrivePermissionsRequest), TypeInfoPropertyName = "Mud_Feishu_DataModels_Drive_UpdateDrivePermissionsRequest")] // SYSLIB1031 防护：默认 TypeInfo 属性名与本 Context 内其他根冲突，已显式重命名 // 派生类型已注册为独立根；多态（以基类类型序列化）仍需在基类上标注 [JsonDerivedType]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Drive.DrivePermissionsDetail), TypeInfoPropertyName = "Mud_Feishu_DataModels_Drive_DrivePermissionsDetail")] // SYSLIB1031 防护：默认 TypeInfo 属性名与本 Context 内其他根冲突，已显式重命名 // 派生类型已注册为独立根；多态（以基类类型序列化）仍需在基类上标注 [JsonDerivedType]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Drive.CreatePermissionMemberRequest), TypeInfoPropertyName = "Mud_Feishu_DataModels_Drive_CreatePermissionMemberRequest_1")] // SYSLIB1031 防护：默认 TypeInfo 属性名与本 Context 内其他根冲突，已显式重命名 // 派生类型已注册为独立根；多态（以基类类型序列化）仍需在基类上标注 [JsonDerivedType]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Drive.PermissionMemberDetail), TypeInfoPropertyName = "Mud_Feishu_DataModels_Drive_PermissionMemberDetail_1")] // SYSLIB1031 防护：默认 TypeInfo 属性名与本 Context 内其他根冲突，已显式重命名 // 派生类型已注册为独立根；多态（以基类类型序列化）仍需在基类上标注 [JsonDerivedType]
 internal partial class DriveJsonContext : JsonSerializerContext
 {
 }

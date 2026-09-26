@@ -108,7 +108,7 @@ public class HireController : ControllerBase
 | `IFeishuTenantV1HireInterview` | 5 | 面试轮次类型、面试反馈表、面试登记表模板、面试官查询与更新 | — |
 | `IFeishuTenantV1HireOffer` | 4 | Offer 申请表列表/详情、申请表自定义字段更新、Offer 审批模板 | — |
 | `IFeishuTenantV1HireSetting` | 9 | 招聘流程、科目、信息登记表模板、人才标签、地点、角色、用户角色 | [地址](./FeishuTenantV1HireLocation.md)、[角色](./FeishuTenantV1HireRole.md)、[用户角色](./FeishuTenantV1HireUserRole.md) |
-| `IFeishuTenantV1HireCandidate` | 17 | 内推信息与内推官网职位、招聘官网/推广渠道/官网用户/官网职位、官网投递与投递任务、官网申请表模板 | — |
+| `IFeishuTenantV1HireCandidate` | 70 | 内推信息与内推官网职位、招聘官网/推广渠道/官网用户/官网职位、官网投递与投递任务、官网申请表模板；人才管理（人才池/文件夹/标签/黑名单/组合创建更新/入职状态）；投递流程管理（面试信息与评价记录、Offer、背调订单、三方协议、入职与员工）；人才备注、评估/阅卷/面试任务、简历来源 | — |
 
 ## 查询对象模式（API-2）
 

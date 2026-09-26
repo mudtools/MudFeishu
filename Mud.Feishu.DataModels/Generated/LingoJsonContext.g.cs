@@ -47,7 +47,7 @@ namespace Mud.Feishu.DataModels.Lingo;
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Lingo.UploadFileRequest))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Lingo.UploadFileResult))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Lingo.GetRepoListResult))]
-[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Lingo.UploadFileRequest), TypeInfoPropertyName = "Mud_Feishu_DataModels_Lingo_UploadFileRequest")] // SYSLIB1031 防护：默认 TypeInfo 属性名与本 Context 内其他根冲突，已显式重命名
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Lingo.UploadFileRequest))]
 internal partial class LingoJsonContext : JsonSerializerContext
 {
 }

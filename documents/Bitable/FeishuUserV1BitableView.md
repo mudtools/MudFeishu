@@ -221,7 +221,7 @@ Task<FeishuApiResult<GetViewResult>?> GetViewAsync(
 **函数签名**：
 
 ```csharp
-Task<FeishuApiResult<GetViewResult>?> DeleteViewAsync(
+Task<FeishuNullDataApiResult?> DeleteViewAsync(
     [Path] string app_token,
     [Path] string table_id,
     [Path] string view_id,

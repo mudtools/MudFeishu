@@ -33,6 +33,15 @@ public class CalendarTimeInfo
     public string? Timestamp { get; set; }
 
     /// <summary>
+    /// <para>时间，非全天日程使用该字段，[RFC 3339](https://datatracker.ietf.org/doc/html/rfc3339) 格式，例如，2018-09-01T10:00:00+08:00。</para>
+    /// <para>**注意**：该参数不能与 `date`、`timestamp` 同时指定。</para>
+    /// <para>必填：否</para>
+    /// <para>示例值：2018-09-01T10:00:00+08:00</para>
+    /// </summary>
+    [JsonPropertyName("date_time")]
+    public string? DateTime { get; set; }
+
+    /// <summary>
     /// <para>时区。使用 IANA Time Zone Database 标准，例如 Asia/Shanghai。</para>
     /// <para>- 全天日程时区固定为UTC +0</para>
     /// <para>- 非全天日程时区默认为 Asia/Shanghai</para>

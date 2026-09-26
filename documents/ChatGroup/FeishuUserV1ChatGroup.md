@@ -14,6 +14,7 @@
 
 | 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
 |---------|---------|---------|----------|
+| CreateChatGroupAsync | 创建群聊 | 用户令牌 | POST |
 | UpdateChatGroupByIdAsync | 更新群信息 | 用户令牌 | PUT |
 | DeleteChatGroupAsync | 解散群组 | 用户令牌 | DELETE |
 | UpdateChatModerationAsync | 更新群发言权限 | 用户令牌 | PUT |
@@ -23,7 +24,7 @@
 | GetChatGroupPageListAsync | 分页获取群列表 | 用户令牌 | GET |
 | GetChatGroupPageListByKeywordAsync | 关键词搜索群列表 | 用户令牌 | GET |
 | GetChatGroupModeratorPageListByIdAsync | 获取群发言模式及名单 | 用户令牌 | GET |
-| GetChatGroupShareLinkByIdAsync | 获取群分享链接 | 用户令牌 | GET |
+| GetChatGroupShareLinkByIdAsync | 获取群分享链接 | 用户令牌 | POST |
 
 ---
 

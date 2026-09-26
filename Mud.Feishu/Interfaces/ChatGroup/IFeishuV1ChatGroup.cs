@@ -11,13 +11,35 @@ namespace Mud.Feishu.Interfaces;
 
 /// <summary>
 /// 飞书群组 OpenAPI 提供了群组管理能力，包括创建群、解散群、更新群信息、获取群信息、管理群置顶以及获取群分享链接等。
+/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/group/chat/intro"/></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), IsAbstract = true)]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]
 public interface IFeishuV1ChatGroup : IFeishuAppContextSwitcher
 {
     /// <summary>
+    /// 创建群聊，创建时支持设置群头像、群名称、群主以及群类型等配置，同时支持邀请群成员、群机器人入群。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/group/chat/create">接口文档</see></para>
+    /// </summary>
+    /// <param name="createChatRequest">创建群聊请求体。</param>
+    /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
+    /// <param name="set_bot_manager">如果在请求体的 owner_id 字段指定了某个用户为群主，可以选择是否同时设置创建此群的机器人为管理员，此标志位用于标记是否设置创建群的机器人为管理员。
+    ///  <para>示例值：false</para>
+    /// </param>
+    /// <param name="uuid">由开发者生成的唯一字符串序列，用于创建群组请求去重；持有相同 uuid + owner_id（若有） 的请求 10 小时内只可成功创建 1 个群聊。不传值表示不进行请求去重，每一次请求成功后都会创建一个群聊。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Post("/open-apis/im/v1/chats")]
+    Task<FeishuApiResult<CreateUpdateChatResult>?> CreateChatGroupAsync(
+        [Body] CreateChatRequest createChatRequest,
+        [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
+        [Query("set_bot_manager")] bool? set_bot_manager = false,
+        [Query("uuid")] string? uuid = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// 更新指定群的信息，包括群头像、群名称、群描述、群配置以及群主等。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/group/chat/update">接口文档</see></para>
     /// </summary>
     /// <param name="chat_id">群 ID。示例值："oc_a0553eda9014c201e6969b478895c230"</param>
     /// <param name="updateChatRequest">更新群聊请求体。</param>
@@ -33,6 +55,7 @@ public interface IFeishuV1ChatGroup : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 通过 chat_id 解散指定群组。通过 API 解散群组后，群聊天记录将不会保存。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/group/chat/delete">接口文档</see></para>
     /// </summary>
     /// <param name="chat_id">群 ID。示例值："oc_a0553eda9014c201e6969b478895c230"</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
@@ -44,6 +67,7 @@ public interface IFeishuV1ChatGroup : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 更新指定群组的发言权限，可设置为所有群成员可发言、仅群主或管理员可发言、指定群成员可发言。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/group/chat/moderation/update">接口文档</see></para>
     /// </summary>
     /// <param name="chat_id">群 ID。 示例值："oc_a0553eda9014c201e6969b478895c230"</param>
     /// <param name="updateChatModerationRequest">更新群发言权限请求体。</param>
@@ -60,6 +84,7 @@ public interface IFeishuV1ChatGroup : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 获取指定群的基本信息，包括群名称、群描述、群头像、群主 ID 以及群权限配置等。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/group/chat/get">接口文档</see></para>
     /// </summary>
     /// <param name="chat_id">群 ID。 示例值："oc_a0553eda9014c201e6969b478895c230"</param>
     /// <param name="user_id_type">用户 ID 类型，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
@@ -73,6 +98,7 @@ public interface IFeishuV1ChatGroup : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 更新群组中的群置顶信息，可以将群中的某一条消息，或群公告置顶展示。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/group/chat-top_notice/put_top_notice">接口文档</see></para>
     /// </summary>
     /// <param name="chat_id">群 ID。 示例值："oc_a0553eda9014c201e6969b478895c230"</param>
     /// <param name="chatTopNoticeRequest">群置顶操作请求体。</param>
@@ -86,6 +112,7 @@ public interface IFeishuV1ChatGroup : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 撤销指定群组中的置顶消息或群公告。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/group/chat-top_notice/delete_top_notice">接口文档</see></para>
     /// </summary>
     /// <param name="chat_id">群 ID。 示例值："oc_a0553eda9014c201e6969b478895c230"</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
@@ -97,6 +124,7 @@ public interface IFeishuV1ChatGroup : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 分页获取当前 access_token 所代表的用户或者机器人所在的群列表。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/group/chat/list">接口文档</see></para>
     /// </summary>
     /// <param name="user_id_type">用户 ID 类型，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
     /// <param name="sort_type">群组排序方式  示例值："ByCreateTimeAsc"
@@ -119,6 +147,7 @@ public interface IFeishuV1ChatGroup : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 分页获取当前身份（用户或机器人）可见的群列表，包括当前身份所在的群、对当前身份公开的群。支持关键词搜索、分页搜索。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/group/chat/search">接口文档</see></para>
     /// </summary>
     /// <param name="query">关键词 示例值："abc"</param>
     /// <param name="user_id_type">用户 ID 类型，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
@@ -143,6 +172,7 @@ public interface IFeishuV1ChatGroup : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 分页获取指定群组的发言模式、可发言用户名单等信息。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/group/chat/moderation/get">接口文档</see></para>
     /// </summary>
     /// <param name="chat_id">群 ID。 示例值："oc_a0553eda9014c201e6969b478895c230"</param>/
     /// <param name="user_id_type">用户 ID 类型，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
@@ -160,12 +190,13 @@ public interface IFeishuV1ChatGroup : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 获取指定群的分享链接，他人点击分享链接后可加入群组。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/group/chat/link">接口文档</see></para>
     /// </summary>
     /// <param name="chat_id">群 ID。 示例值："oc_a0553eda9014c201e6969b478895c230"</param>
     /// <param name="shareLinkRequest">获取群分享链接群分享链接请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Get("/open-apis/im/v1/chats/{chat_id}/link")]
+    [Post("/open-apis/im/v1/chats/{chat_id}/link")]
     Task<FeishuApiResult<ShareLinkDataResult>?> GetChatGroupShareLinkByIdAsync(
      [Path] string chat_id,
      [Body] ShareLinkRequest shareLinkRequest,

@@ -8,30 +8,15 @@
 namespace Mud.Feishu.DataModels.Board;
 
 /// <summary>
-/// 创建节点响应体
+/// 批量删除节点响应体
 /// </summary>
 [HttpJsonSerializable(SerializerClassName = "Board")]
-public class CreateWhiteboardNodeResult
+public class BatchDeleteWhiteboardNodeResult
 {
     /// <summary>
-    /// <para>所创建的节点 id 列表</para>
-    /// <para>必填：是</para>
-    /// </summary>
-    [JsonPropertyName("ids")]
-    public string[] Ids { get; set; } = [];
-
-    /// <summary>
-    /// <para>操作的唯一标识，更新请求中使用此值表示幂等的进行此次更新</para>
+    /// <para>操作的唯一标识，更新请求中使用此值表示幂等的进行此次更新。</para>
     /// <para>必填：否</para>
-    /// <para>示例值：fe599b60-450f-46ff-b2ef-9f6675625b97</para>
     /// </summary>
     [JsonPropertyName("client_token")]
     public string? ClientToken { get; set; }
-
-    /// <summary>
-    /// <para>创建节点前的画板版本号</para>
-    /// <para>必填：否</para>
-    /// </summary>
-    [JsonPropertyName("previous_revision")]
-    public string? PreviousRevision { get; set; }
 }

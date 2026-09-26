@@ -31,7 +31,7 @@
 | AddRoleMembersAsync         | 批量新增协作者 | 租户令牌 | POST      |
 | GetRoleMembersPageListAsync | 分页列出协作者 | 租户令牌 | GET       |
 | DeleteRoleMemberAsync       | 删除协作者     | 租户令牌 | DELETE    |
-| DeleteRoleMembersAsync      | 批量删除协作者 | 租户令牌 | DELETE    |
+| DeleteRoleMembersAsync      | 批量删除协作者 | 租户令牌 | POST      |
 
 ## 函数详细内容
 

@@ -21,6 +21,7 @@ public interface IFeishuTenantV1Card : IFeishuAppContextSwitcher
 {
     /// <summary>
     /// 基于卡片 JSON 代码或卡片搭建工具搭建的卡片，创建卡片实体。用于后续通过卡片实体 ID（card_id）发送卡片、更新卡片等。
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/cardkit-v1/card/create">接口文档</see></para>
     /// </summary>
     /// <param name="createCardRequest">创建卡片实体请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
@@ -32,6 +33,7 @@ public interface IFeishuTenantV1Card : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 更新指定卡片实体的配置，支持卡片配置 config 字段和卡片跳转链接 card_link 字段。
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/cardkit-v1/card/settings">接口文档</see></para>
     /// </summary>
     /// <param name="updateCardRequest">更新卡片实体配置请求体</param>
     /// <param name="card_id">卡片实体 ID。示例值："7355372766134157313"</param>
@@ -45,6 +47,7 @@ public interface IFeishuTenantV1Card : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 更新卡片实体局部内容，包括配置和组件。支持同时对多个组件进行增删改等不同操作。
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/cardkit-v1/card/batch_update">接口文档</see></para>
     /// </summary>
     /// <param name="partialUpdateCardRequest">局部更新卡片实体配置请求体</param>
     /// <param name="card_id">卡片实体 ID。示例值："7355372766134157313"</param>
@@ -58,14 +61,28 @@ public interface IFeishuTenantV1Card : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 传入新的卡片 JSON 代码，覆盖更新指定的卡片实体的所有内容。
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/cardkit-v1/card/update">接口文档</see></para>
     /// </summary>
     /// <param name="card_id">卡片实体 ID。示例值："7355372766134157313"</param>
     /// <param name="updateCardRequest">全量更新卡片实体请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Patch("/open-apis/cardkit/v1/cards/{card_id}")]
+    [Put("/open-apis/cardkit/v1/cards/{card_id}")]
     Task<FeishuNullDataApiResult?> UpdateCardByIdAsync(
        [Path] string card_id,
        [Body] UpdateCardRequest updateCardRequest,
+       CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 将消息 ID（message_id）转换为卡片实体 ID（card_id），以进一步对卡片进行全量更新、局部更新、或文本流式更新操作。
+    /// <para>本接口已不推荐使用。要基于接口创建卡片、发送卡片，推荐先调用创建卡片实体接口获取卡片实体 ID，再调用发送消息接口发送卡片。</para>
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/cardkit-v1/card/id_convert">接口文档</see></para>
+    /// </summary>
+    /// <param name="idConvertCardRequest">转换 ID 请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Post("/open-apis/cardkit/v1/cards/id_convert")]
+    Task<FeishuApiResult<IdConvertCardResult>?> IdConvertCardAsync(
+       [Body] IdConvertCardRequest idConvertCardRequest,
        CancellationToken cancellationToken = default);
 }

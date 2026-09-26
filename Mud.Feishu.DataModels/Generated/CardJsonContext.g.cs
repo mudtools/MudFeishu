@@ -38,6 +38,7 @@ namespace Mud.Feishu.DataModels.CardElements;
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.CardMessageStream.FailedAppMessageCardItem))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.CardMessageStream.UpdateAppCardMessageStreamResult))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Cards.CreateCardRequest))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Cards.IdConvertCardRequest))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Cards.PartialUpdateCardRequest))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Cards.UpdateCardRequest))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Cards.CardData))]
@@ -45,6 +46,7 @@ namespace Mud.Feishu.DataModels.CardElements;
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Cards.BotTimeSentiveResult))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Cards.TimeSentiveFailedReason))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Cards.CreateCardResult))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Cards.IdConvertCardResult))]
 internal partial class CardJsonContext : JsonSerializerContext
 {
 }

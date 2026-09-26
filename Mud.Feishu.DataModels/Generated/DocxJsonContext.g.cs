@@ -18,6 +18,7 @@ namespace Mud.Feishu.DataModels.Docx;
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Docx.CreateBlockRequest))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Docx.CreateDescendantBlockRequest))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Docx.UpdateBlockRequest))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Docx.BatchUpdateBlockRequest))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Docx.UpdateTextElementsRequest))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Docx.UpdateTextStyleRequest))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Docx.UpdateTablePropertyRequest))]
@@ -77,6 +78,8 @@ namespace Mud.Feishu.DataModels.Docx;
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Docx.OkrSuffix))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Docx.BlockOkrObjective))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Docx.BlockOkrKeyResult))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Docx.BlockOkrObjective))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Docx.BlockOkrKeyResult))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Docx.OkrProgressRate))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Docx.TextElement))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Docx.TextElementStyle))]
@@ -95,9 +98,6 @@ namespace Mud.Feishu.DataModels.Docx;
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Docx.DocumentInfo))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Docx.DocumentInfoResult))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Docx.DocumentRawContentResult))]
-[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Docx.BatchUpdateBlockRequest), TypeInfoPropertyName = "Mud_Feishu_DataModels_Docx_BatchUpdateBlockRequest")] // SYSLIB1031 防护：默认 TypeInfo 属性名与本 Context 内其他根冲突，已显式重命名 // 派生类型已注册为独立根；多态（以基类类型序列化）仍需在基类上标注 [JsonDerivedType]
-[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Docx.BlockOkrObjective), TypeInfoPropertyName = "Mud_Feishu_DataModels_Docx_BlockOkrObjective")] // SYSLIB1031 防护：默认 TypeInfo 属性名与本 Context 内其他根冲突，已显式重命名 // 派生类型已注册为独立根；多态（以基类类型序列化）仍需在基类上标注 [JsonDerivedType]
-[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Docx.BlockOkrKeyResult), TypeInfoPropertyName = "Mud_Feishu_DataModels_Docx_BlockOkrKeyResult")] // SYSLIB1031 防护：默认 TypeInfo 属性名与本 Context 内其他根冲突，已显式重命名 // 派生类型已注册为独立根；多态（以基类类型序列化）仍需在基类上标注 [JsonDerivedType]
 internal partial class DocxJsonContext : JsonSerializerContext
 {
 }

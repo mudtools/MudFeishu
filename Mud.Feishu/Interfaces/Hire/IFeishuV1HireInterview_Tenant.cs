@@ -12,7 +12,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 飞书招聘（Hire）面试域 SDK 是一组服务端 OpenAPI 的封装，用于招聘配置中的面试轮次类型、面试反馈表、面试登记表模板的查询与面试官认证信息的维护。本接口全部端点仅支持 tenant_access_token 调用（投递流程中的面试信息与评价记录等见 <see cref="IFeishuTenantV1HireCandidate"/>）。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/hire-v1/recruitment-related-configuration/interview-settings/list-2"/></para>
+/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/hire-v1/recruitment-development-guide"/></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Hire")]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]

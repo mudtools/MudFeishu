@@ -12,7 +12,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 飞书招聘（Hire）Offer 域 SDK 是一组服务端 OpenAPI 的封装，用于招聘配置中的 Offer 申请表列表与模板 Schema 查询、申请表自定义字段更新、Offer 审批模板查询。本接口全部端点仅支持 tenant_access_token 调用（投递流程中的 Offer 创建/更新/查询/列表/状态变更见 <see cref="IFeishuTenantV1HireCandidate"/>）。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/hire-v1/recruitment-related-configuration/offer-settings/offer_application_form/list"/></para>
+/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/hire-v1/recruitment-development-guide"/></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Hire")]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]

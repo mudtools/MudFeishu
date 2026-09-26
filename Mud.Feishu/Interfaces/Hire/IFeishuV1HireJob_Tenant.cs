@@ -12,7 +12,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 飞书招聘（Hire）职位域 SDK 是一组服务端 OpenAPI 的封装，用于职位的组合创建/更新与设置维护、职位管理人员批量维护、职位详情与列表查询、职位开放，以及职位类别、职能分类、职位模板、职位发布记录与职位广告发布。本接口全部端点仅支持 tenant_access_token 调用。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/hire-v1/recruitment-related-configuration/job/get"/></para>
+/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/hire-v1/recruitment-development-guide"/></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Hire")]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]

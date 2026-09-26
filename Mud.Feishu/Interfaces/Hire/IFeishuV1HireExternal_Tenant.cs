@@ -39,7 +39,7 @@ public interface IFeishuTenantV1HireExternal : IFeishuAppContextSwitcher
     /// 更新人才外部信息
     /// <para>更新人才的外部系统信息（人才在外部系统的创建时间）。</para>
     /// <para>限频：1000 次/分钟、50 次/秒。所需权限：hire:talent（更新人才信息）。</para>
-    /// <para><see href="https://open.feishu.cn/document/server-docs/hire-v1/get-candidates/import-external-system-information/update">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/hire-v1/recruitment-development-guide">接口文档</see></para>
     /// </summary>
     /// <param name="talent_id">人才 ID，示例值：7043758982146345223</param>
     /// <param name="request">更新请求体（external_create_time 必填：人才在外部系统的创建时间，毫秒时间戳）</param>

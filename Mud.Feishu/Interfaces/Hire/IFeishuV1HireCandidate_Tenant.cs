@@ -12,7 +12,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 飞书招聘（Hire）候选人入口域 SDK 是一组服务端 OpenAPI 的封装，覆盖飞书文档 candidate-management 分组的全部能力：内推信息与内推官网职位、招聘官网（列表/推广渠道/官网用户/官网职位）、官网投递创建与投递任务、官网申请表模板，人才管理（人才池、人才文件夹、标签、组合创建/更新、黑名单、入职状态、人才查询），投递流程管理（面试信息与评价记录 v1/v2、记录附件、速记明细、满意度问卷，Offer 创建/更新/查询/列表/状态变更，背调订单，三方协议，入职转正/取消与员工信息维护），以及人才备注增删改查、简历评估/笔试阅卷/面试任务列表与简历来源列表查询。本接口全部端点仅支持 tenant_access_token 调用（待办事项批量获取见用户态接口 <see cref="IFeishuUserV1HireCandidate"/>）。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/hire-v1/get-candidates/website/list"/></para>
+/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/hire-v1/recruitment-development-guide"/></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Hire")]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]

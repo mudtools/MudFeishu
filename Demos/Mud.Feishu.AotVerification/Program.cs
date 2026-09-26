@@ -117,11 +117,11 @@ public class Program
                 }
             };
 
-            var json = System.Text.Json.JsonSerializer.Serialize(errorResponse, FeishuJsonOptions.Serialize);
+            var json = FeishuJsonAot.Serialize(errorResponse, FeishuJsonOptions.Serialize);
             Console.WriteLine($"  [PASS] WebhookErrorResponse 序列化成功: {json}");
 
             var emptyResponse = new WebhookEmptyResponse();
-            var emptyJson = System.Text.Json.JsonSerializer.Serialize(emptyResponse, FeishuJsonOptions.Serialize);
+            var emptyJson = FeishuJsonAot.Serialize(emptyResponse, FeishuJsonOptions.Serialize);
             Console.WriteLine($"  [PASS] WebhookEmptyResponse 序列化成功: {emptyJson}");
         }
         catch (Exception ex)
@@ -143,7 +143,7 @@ public class Program
                 Event = System.Text.Json.JsonDocument.Parse("{\"msg\":\"hello\"}").RootElement.Clone()
             };
 
-            var json = System.Text.Json.JsonSerializer.Serialize(eventData, FeishuJsonDefaults.SerializerOptions);
+            var json = FeishuJsonAot.Serialize(eventData, FeishuJsonDefaults.SerializerOptions);
             Console.WriteLine($"  [PASS] EventData 序列化成功 (长度: {json.Length} 字符)");
         }
         catch (Exception ex)
@@ -191,7 +191,11 @@ public class Program
         {
             var widget = Mud.Feishu.DataModels.ApprovalForm.WidgetFactory.CreateWidget(
                 Mud.Feishu.DataModels.ApprovalForm.WidgetType.Input, "test_input");
+            // WidgetFactory.SerializeToJson 是库内置的反射式多态序列化入口（已标注 RequiresUnreferencedCode/RequiresDynamicCode），
+            // 本节的目的就是验证该入口的运行时行为，属预期豁免。
+#pragma warning disable IL2026, IL3050
             var json = Mud.Feishu.DataModels.ApprovalForm.WidgetFactory.SerializeToJson(widget);
+#pragma warning restore IL2026, IL3050
             Console.WriteLine($"  [PASS] IWidget 多态序列化成功: {json}");
 
             var widgets = new List<Mud.Feishu.DataModels.ApprovalForm.IWidget>
@@ -201,7 +205,9 @@ public class Program
                 Mud.Feishu.DataModels.ApprovalForm.WidgetFactory.CreateWidget(
                     Mud.Feishu.DataModels.ApprovalForm.WidgetType.Number, "number_1")
             };
+#pragma warning disable IL2026, IL3050
             var listJson = Mud.Feishu.DataModels.ApprovalForm.WidgetFactory.SerializeToJson(widgets);
+#pragma warning restore IL2026, IL3050
             Console.WriteLine($"  [PASS] List<IWidget> 多态序列化成功 (长度: {listJson.Length})");
         }
         catch (Exception ex)
@@ -265,7 +271,7 @@ public class Program
             // AuthResponseMessage 在 WebSocketJsonContext 中注册（internal），
             // 通过 FeishuJsonDefaults.DeserializerOptions 的合并 resolver 链反序列化
             var authRespJson = """{"code":0,"msg":"success","session_id":"sess_xxx","type":"auth"}""";
-            var authResp = System.Text.Json.JsonSerializer.Deserialize<Mud.Feishu.WebSocket.DataModels.AuthResponseMessage>(
+            var authResp = FeishuJsonAot.Deserialize<Mud.Feishu.WebSocket.DataModels.AuthResponseMessage>(
                 authRespJson, FeishuJsonDefaults.DeserializerOptions);
             if (authResp?.Code != 0 || authResp?.SessionId != "sess_xxx")
                 throw new InvalidOperationException("AuthResponseMessage 反序列化不匹配");
@@ -273,7 +279,7 @@ public class Program
 
             // 验证 PingMessage
             var pingJson = """{"type":"ping"}""";
-            var ping = System.Text.Json.JsonSerializer.Deserialize<Mud.Feishu.WebSocket.DataModels.PingMessage>(
+            var ping = FeishuJsonAot.Deserialize<Mud.Feishu.WebSocket.DataModels.PingMessage>(
                 pingJson, FeishuJsonDefaults.DeserializerOptions);
             if (ping?.Type != "ping")
                 throw new InvalidOperationException("PingMessage 反序列化不匹配");
@@ -293,7 +299,7 @@ public class Program
             // MessageReceiveResult 在 EventCallback 的 IMJsonContext 中注册（internal），
             // 通过 FeishuJsonDefaults.DeserializerOptions 的合并 resolver 链反序列化
             var eventJson = """{"sender":{"sender_id":{"open_id":"ou_xxx","union_id":"on_xxx","user_id":"u_xxx"},"sender_type":"user"},"message":{"message_id":"om_xxx","chat_id":"oc_xxx","message_type":"text","content":"{\"text\":\"hello\"}"}}""";
-            var result = System.Text.Json.JsonSerializer.Deserialize<Mud.Feishu.EventCallback.IM.MessageReceiveResult>(
+            var result = FeishuJsonAot.Deserialize<Mud.Feishu.EventCallback.IM.MessageReceiveResult>(
                 eventJson, FeishuJsonDefaults.DeserializerOptions);
             if (result?.Sender?.SenderId?.OpenId != "ou_xxx")
                 throw new InvalidOperationException("MessageReceiveResult 反序列化不匹配");
@@ -301,7 +307,7 @@ public class Program
 
             // 验证 DriveFileEventHeader 子类反序列化（N-03 联动验证）
             var driveHeaderJson = """{"event_id":"evt_456","event_type":"drive.file.edit_v1","resource_id":"file_xxx","user_list":[{"user_id":"u1"}]}""";
-            var driveHeader = System.Text.Json.JsonSerializer.Deserialize<Mud.Feishu.EventCallback.Drive.DriveFileEventHeader>(
+            var driveHeader = FeishuJsonAot.Deserialize<Mud.Feishu.EventCallback.Drive.DriveFileEventHeader>(
                 driveHeaderJson, FeishuJsonDefaults.DeserializerOptions);
             if (driveHeader?.ResourceId != "file_xxx")
                 throw new InvalidOperationException("DriveFileEventHeader 反序列化不匹配");

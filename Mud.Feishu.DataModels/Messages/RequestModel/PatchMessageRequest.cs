@@ -1,0 +1,24 @@
+// -----------------------------------------------------------------------
+//  作者：Mud Studio  版权所有 (c) Mud Studio 2026   
+//  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
+//  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
+//  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
+// -----------------------------------------------------------------------
+
+namespace Mud.Feishu.DataModels.Messages;
+
+/// <summary>
+/// 更新应用发送的消息卡片请求体
+/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/im-v1/message/patch"/></para>
+/// </summary>
+[HttpJsonSerializable(SerializerClassName = "Messages")]
+public class PatchMessageRequest
+{
+    /// <summary>
+    /// <para>消息卡片的内容，支持卡片 JSON 或搭建工具构建的卡片，需为 JSON 结构序列化后的字符串。</para>
+    /// <para>必填：是</para>
+    /// <para>**注意**：更新的卡片消息最大不能超过 30 KB。</para>
+    /// </summary>
+    [JsonPropertyName("content")]
+    public string? Content { get; set; }
+}

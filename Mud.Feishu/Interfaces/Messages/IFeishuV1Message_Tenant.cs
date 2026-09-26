@@ -21,6 +21,7 @@ public interface IFeishuTenantV1Message : IFeishuV1Message
     /// <summary>
     /// 向指定用户或者群聊发送消息。
     /// <para>支持发送的消息类型包括文本、富文本、卡片、群名片、个人名片、图片、视频、音频、文件以及表情包等。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/im-v1/message/create">接口文档</see></para>
     /// </summary>
     /// <param name="sendMessageRequest">发送消息请求体。</param>
     /// <param name="receive_id_type">用户 ID 类型</param>
@@ -35,6 +36,7 @@ public interface IFeishuTenantV1Message : IFeishuV1Message
     /// <summary>
     /// 回复指定消息。
     /// <para>回复的内容支持文本、富文本、卡片、群名片、个人名片、图片、视频、文件等多种类型。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/im-v1/message/reply">接口文档</see></para>
     /// </summary>
     /// <param name="replyMessageRequest">回复消息请体求。</param>
     /// <param name="message_id">待回复的消息的 ID。示例值："om_dc13264520392913993dd051dba21dcf"</param>
@@ -48,7 +50,8 @@ public interface IFeishuTenantV1Message : IFeishuV1Message
 
     /// <summary>
     /// 编辑已发送的消息内容，支持编辑文本、富文本消息。
-    /// <para>如需编辑卡片消息，请使用更新应用发送的消息卡片<see href="/document/server-docs/im-v1/message-card/patch"/>接口。</para>
+    /// <para>如需编辑卡片消息，请使用<see href="https://open.feishu.cn/document/server-docs/im-v1/message/patch">更新应用发送的消息卡片</see>接口。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/im-v1/message/update">接口文档</see></para>
     /// </summary>
     /// <param name="editMessageRequest">编辑消息请求体。</param>
     /// <param name="message_id">待编辑的消息的 ID。示例值："om_dc13264520392913993dd051dba21dcf"</param>
@@ -62,6 +65,7 @@ public interface IFeishuTenantV1Message : IFeishuV1Message
 
     /// <summary>
     /// 将一条指定的消息转发给用户、群聊或话题。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/im-v1/message/forward">接口文档</see></para>
     /// </summary>
     /// <param name="message_id">待转发的消息 ID。示例值："om_dc13264520392913993dd051dba21dcf"</param>
     /// <param name="receiveMessageRequest">转发消息请求体。</param>
@@ -79,6 +83,7 @@ public interface IFeishuTenantV1Message : IFeishuV1Message
 
     /// <summary>
     /// 将来自同一个会话内的多条消息，合并转发给指定的用户、群聊或话题。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/im-v1/message/merge_forward">接口文档</see></para>
     /// </summary>
     /// <param name="mergeReceiveMessageRequest">合并转发消息请求体。</param>
     /// <param name="receive_id_type">消息接收者 ID 类型。</param>
@@ -94,6 +99,7 @@ public interface IFeishuTenantV1Message : IFeishuV1Message
 
     /// <summary>
     /// 将话题转发至指定的用户、群聊或话题。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/im-v1/thread/forward">接口文档</see></para>
     /// </summary>
     /// <param name="thread_id">要转发的话题ID。示例值："omt_dc132645203"</param>
     /// <param name="receiveMessageRequest">转发消息请求体。</param>
@@ -113,6 +119,7 @@ public interface IFeishuTenantV1Message : IFeishuV1Message
 
     /// <summary>
     /// 在最新一条消息下方添加气泡样式的内容，当消息接收者点击气泡或者新消息到达后，气泡消失。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/im-v1/message/push_follow_up">接口文档</see></para>
     /// </summary>
     /// <param name="message_id">机器人发送的消息 ID。示例值："om_dc13264520392913993dd051dba21dcf"</param>
     /// <param name="messageFollowUpRequest">跟随气泡请求体。</param>
@@ -126,6 +133,7 @@ public interface IFeishuTenantV1Message : IFeishuV1Message
 
     /// <summary>
     /// 查询指定消息是否已读。接口只返回已读用户的信息，不返回未读用户的信息。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/im-v1/message/read_users">接口文档</see></para>
     /// </summary>
     /// <param name="user_id_type">用户 ID 类型</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
@@ -143,6 +151,7 @@ public interface IFeishuTenantV1Message : IFeishuV1Message
 
     /// <summary>
     /// 获取指定会话（包括单聊、群组）内的历史消息（即聊天记录）。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/im-v1/message/list">接口文档</see></para>
     /// </summary>
     /// <param name="container_id_type">容器类型。示例值："chat"，可选值有：
     /// <para>chat：包含单聊（p2p）和群聊（group） </para>
@@ -172,6 +181,7 @@ public interface IFeishuTenantV1Message : IFeishuV1Message
     /// <summary>
     /// 获取指定消息内包含的资源文件，包括音频、视频、图片和文件。成功调用后，返回二进制文件流下载文件。
     /// <para>注意：该函数适用于获取小文件。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/im-v1/message-resource/get">接口文档</see></para>
     /// </summary>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <param name="message_id">待查询的消息 ID。</param>
@@ -203,6 +213,7 @@ public interface IFeishuTenantV1Message : IFeishuV1Message
     /// <summary>
     /// 获取指定消息内包含的资源文件，包括音频、视频、图片和文件。成功调用后，返回二进制文件流下载文件。
     /// <para>注意：该函数适用于获取大文件。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/im-v1/message-resource/get">接口文档</see></para>
     /// </summary>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <param name="message_id">待查询的消息 ID。</param>
@@ -226,21 +237,53 @@ public interface IFeishuTenantV1Message : IFeishuV1Message
 
     /// <summary>
     /// 通过消息的 message_id 查询指定消息的内容。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/im-v1/message/get">接口文档</see></para>
     /// </summary>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <param name="message_id">待查询的消息 ID。</param>  
     /// <param name="user_id_type">用户 ID 类型，示例值："open_id"，默认值：open_id</param>
     /// <returns></returns>
-    [Get("/open-apis/im/v1/messages")]
+    [Get("/open-apis/im/v1/messages/{message_id}")]
     Task<FeishuApiListResult<MessageContentData>?> GetContentListByMessageIdAsync(
         [Path] string message_id,
         [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 通过消息 ID（message_id）更新已发送的消息卡片的内容。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/im-v1/message/patch">接口文档</see></para>
+    /// </summary>
+    /// <param name="message_id">待更新的消息的 ID。示例值："om_dc13264520392913993dd051dba21dcf"</param>
+    /// <param name="patchMessageRequest">更新消息卡片请求体。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Patch("/open-apis/im/v1/messages/{message_id}")]
+    Task<FeishuNullDataApiResult?> PatchMessageAsync(
+       [Path] string message_id,
+       [Body] PatchMessageRequest patchMessageRequest,
+       CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 搜索当前用户（或机器人）可见的单聊、群聊会话中的消息，支持按关键词、会话、发送者、时间等条件过滤。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/im-v1/message/search">接口文档</see></para>
+    /// </summary>
+    /// <param name="searchMessageRequest">搜索消息请求体。</param>
+    /// <param name="page_size">分页大小，即本次请求所返回的信息列表内的最大条目数。默认值：10</param>
+    /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Post("/open-apis/im/v1/messages/search")]
+    Task<FeishuApiResult<SearchMessageResult>?> SearchMessageAsync(
+       [Body] SearchMessageRequest searchMessageRequest,
+       [Query("page_size")] int page_size = Consts.PageSize_10,
+       [Query("page_token")] string? page_token = null,
+       CancellationToken cancellationToken = default);
     #endregion
 
     #region 文件管理
     /// <summary>
     /// 通过已<see cref="UploadFileAsync">上传文件</see>的 Key 下载文件(此函数适应于下载1MB以内的小文件)。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/im-v1/file/get">接口文档</see></para>
     /// </summary>
     /// <param name="file_key">文件的 Key，通过上传文件接口上传文件后，从返回结果中获取。
     /// <para>示例值："file_456a92d6-c6ea-4de4-ac3f-7afcf44ac78g"。</para>
@@ -263,6 +306,7 @@ public interface IFeishuTenantV1Message : IFeishuV1Message
 
     /// <summary>
     /// 通过已<see cref="UploadFileAsync">上传文件</see>的 Key 下载文件(此函数适应于下载大于1MB的大文件)。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/im-v1/file/get">接口文档</see></para>
     /// </summary>
     /// <param name="file_key">文件的 Key，通过上传文件接口上传文件后，从返回结果中获取。
     /// <para>示例值："file_456a92d6-c6ea-4de4-ac3f-7afcf44ac78g"。</para>
@@ -278,6 +322,7 @@ public interface IFeishuTenantV1Message : IFeishuV1Message
 
     /// <summary>
     /// 通过已<see cref="UploadImageAsync">上传图片</see>的 Key 值下载图片。(此函数适应于下载1MB以内的小文件)。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/im-v1/image/get">接口文档</see></para>
     /// </summary>
     /// <param name="image_key">图片的 Key，通过上传图片接口上传图片后，在返回结果中获取。
     /// <para>示例值："img_8d5181ca-0aed-40f0-b0d1-b1452132afbg"。</para>
@@ -300,6 +345,7 @@ public interface IFeishuTenantV1Message : IFeishuV1Message
 
     /// <summary>
     /// 通过已<see cref="UploadImageAsync">上传图片</see>的 Key 值下载图片。(此函数适应于下载1MB以内的小文件)。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/im-v1/image/get">接口文档</see></para>
     /// </summary>
     /// <param name="image_key">图片的 Key，通过上传图片接口上传图片后，在返回结果中获取。
     /// <para>示例值："img_8d5181ca-0aed-40f0-b0d1-b1452132afbg"。</para>
@@ -316,6 +362,7 @@ public interface IFeishuTenantV1Message : IFeishuV1Message
     /// <summary>
     /// 将本地文件上传至开放平台，支持上传音频、视频、文档等文件类型。
     /// <para>上传后接口会返回文件的 Key，使用该 Key 值可以调用其他 OpenAPI。例如，调用发送消息接口，发送文件。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/im-v1/file/create">接口文档</see></para>
     /// </summary>
     /// <param name="uploadFileRequest">文件上传请求体。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
@@ -327,6 +374,7 @@ public interface IFeishuTenantV1Message : IFeishuV1Message
 
     /// <summary>
     /// 将图片上传至飞书开放平台，支持上传 JPG、JPEG、PNG、WEBP、GIF、BMP、ICO、TIFF、HEIC 格式的图片，但需要注意 TIFF、HEIC 上传后会被转为 JPG 格式。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/im-v1/image/create">接口文档</see></para>
     /// </summary>
     /// <param name="uploadImageRequest">文件图片请求体。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
@@ -341,6 +389,7 @@ public interface IFeishuTenantV1Message : IFeishuV1Message
     #region 消息加急
     /// <summary>
     /// 把指定消息加急给目标用户，加急仅在飞书客户端内通知。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/im-v1/message/urgent_app">接口文档</see></para>
     /// </summary>
     /// <param name="sendMessageRequest">消息加急请求体。</param>
     /// <param name="message_id">待加急的消息 ID。</param>
@@ -350,10 +399,12 @@ public interface IFeishuTenantV1Message : IFeishuV1Message
     Task<FeishuApiResult<MessageUrgentResult>?> MessageUrgentAppAsync(
       [Path] string message_id,
       [Body] MessageUrgentRequest sendMessageRequest,
-      [Query("receive_id_type")] string user_id_type = Consts.User_Id_Type,
+      [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
       CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// 把指定消息加急给目标用户，加急将通过飞书客户端和短信进行通知。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/im-v1/message/urgent_sms">接口文档</see></para>
     /// </summary>
     /// <param name="sendMessageRequest">消息加急请求体。</param>
     /// <param name="message_id">待加急的消息 ID。</param>
@@ -363,11 +414,12 @@ public interface IFeishuTenantV1Message : IFeishuV1Message
     Task<FeishuApiResult<MessageUrgentResult>?> MessageUrgentSMSAsync(
       [Path] string message_id,
       [Body] MessageUrgentRequest sendMessageRequest,
-      [Query("receive_id_type")] string user_id_type = Consts.User_Id_Type,
+      [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
       CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 把指定消息加急给目标用户，加急将通过飞书客户端和电话进行通知。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/im-v1/message/urgent_phone">接口文档</see></para>
     /// </summary>
     /// <param name="sendMessageRequest">消息加急请求体。</param>
     /// <param name="message_id">待加急的消息 ID。</param>
@@ -377,13 +429,14 @@ public interface IFeishuTenantV1Message : IFeishuV1Message
     Task<FeishuApiResult<MessageUrgentResult>?> MessageUrgentPhoneAsync(
       [Path] string message_id,
       [Body] MessageUrgentRequest sendMessageRequest,
-      [Query("receive_id_type")] string user_id_type = Consts.User_Id_Type,
+      [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
       CancellationToken cancellationToken = default);
     #endregion
 
     #region URL 预览
     /// <summary>
-    /// 更新 URL 预览
+    /// 更新 URL 预览。
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/im-v2/url_preview/batch_update">接口文档</see></para>
     /// </summary>
     /// <param name="urlPreviewRequest">更新 URL 预览请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>

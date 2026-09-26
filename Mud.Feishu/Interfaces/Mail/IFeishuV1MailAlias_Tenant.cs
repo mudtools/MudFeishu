@@ -112,4 +112,19 @@ public interface IFeishuTenantV1MailAlias : IFeishuAppContextSwitcher
     Task<FeishuApiResult<QueryUserMailboxAddressResult>?> QueryUserMailboxAddressAsync(
           [Body] QueryUserMailboxAddressRequest request,
           CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 查询用户主邮箱地址。
+    /// <para>根据用户邮箱 ID 查询其主邮箱地址；邮箱地址不存在时可通过 not_found_reason 判断未命中原因。</para>
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox/profile">接口文档</see></para>
+    /// </summary>
+    /// <param name="user_mailbox_id">
+    /// <para>用户邮箱地址，作为用户邮箱身份标识。使用 user_access_token 调用时，可使用占位符 `me` 表示当前授权用户的主邮箱。</para>
+    /// <para>示例值：user@example.com</para>
+    /// </param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Get("/open-apis/mail/v1/user_mailboxes/{user_mailbox_id}/profile")]
+    Task<FeishuApiResult<UserMailboxProfileResult>?> GetUserMailboxProfileAsync(
+       [Path] string user_mailbox_id,
+       CancellationToken cancellationToken = default);
 }

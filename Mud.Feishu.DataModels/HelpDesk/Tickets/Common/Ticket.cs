@@ -164,7 +164,7 @@ public class Ticket
     /// <para>示例值：42624.95</para>
     /// </summary>
     [JsonPropertyName("agent_service_duration")]
-    public float? AgentServiceDuration { get; set; }
+    public double? AgentServiceDuration { get; set; }
 
     /// <summary>
     /// <para>客服首次回复时间距离客服进入时间的间隔(秒)</para>
@@ -172,7 +172,7 @@ public class Ticket
     /// <para>示例值：123869</para>
     /// </summary>
     [JsonPropertyName("agent_first_response_duration")]
-    public int? AgentFirstResponseDuration { get; set; }
+    public long? AgentFirstResponseDuration { get; set; }
 
     /// <summary>
     /// <para>机器人服务时间：客服进入时间距离工单创建时间的间隔，单位秒</para>
@@ -180,7 +180,7 @@ public class Ticket
     /// <para>示例值：1</para>
     /// </summary>
     [JsonPropertyName("bot_service_duration")]
-    public int? BotServiceDuration { get; set; }
+    public long? BotServiceDuration { get; set; }
 
     /// <summary>
     /// <para>客服解决时长，从首位客服接入服务到工单关闭的用时，单位秒</para>
@@ -188,7 +188,7 @@ public class Ticket
     /// <para>示例值：66</para>
     /// </summary>
     [JsonPropertyName("agent_resolution_time")]
-    public int? AgentResolutionTime { get; set; }
+    public long? AgentResolutionTime { get; set; }
 
     /// <summary>
     /// <para>工单实际处理时长，处理时长=解决时长-工单待定时长（将工单状态修改为待定后的时间），单位秒</para>
@@ -196,7 +196,7 @@ public class Ticket
     /// <para>示例值：68</para>
     /// </summary>
     [JsonPropertyName("actual_processing_time")]
-    public int? ActualProcessingTime { get; set; }
+    public long? ActualProcessingTime { get; set; }
 
     /// <summary>
     /// <para>客服进入时间，单位毫秒</para>

@@ -123,4 +123,5 @@ public class ApprovalInstancesCcQueryRequest
     /// </summary>
     [JsonPropertyName("locale")]
     public string? Locale { get; set; }
+
 }

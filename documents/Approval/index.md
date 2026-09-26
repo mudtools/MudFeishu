@@ -106,6 +106,10 @@ public class ApprovalController : ControllerBase
 
 - [审批查询接口（租户）](./FeishuV4ApprovalQuery_Tenant.md) — 租户级别的审批数据查询，支持查询审批实例、抄送、任务列表
 - [审批查询接口（用户）](./FeishuV4ApprovalQuery_User.md) — 用户级别的审批数据查询，适用于用户自助查询场景
+- [审批地理库接口（租户）](./FeishuV4ApprovalDistrict_Tenant.md) — 查询/搜索审批地理库区域数据，用于地址控件赋值
+- [审批地理库接口（用户）](./FeishuV4ApprovalDistrict_User.md) — 用户令牌的审批地理库查询
+- [审批实例接口（用户）](./FeishuV4ApprovalInstance_User.md) — 用户身份的审批实例操作：抄送、催办、撤回、已发起列表、实例详情、事件订阅
+- [审批任务接口（用户）](./FeishuV4ApprovalTask_User.md) — 用户身份的审批任务操作：同意、拒绝、转交、退回、加签、任务列表、事件订阅
 
 ### 其他功能
 

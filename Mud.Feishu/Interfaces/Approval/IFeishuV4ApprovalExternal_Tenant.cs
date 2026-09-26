@@ -23,6 +23,7 @@ public interface IFeishuTenantV4ApprovalExternal : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 用于创建三方审批定义，设置审批的名称、描述等基本信息，以及三方审批系统的审批发起页、回调 URL 等信息，使企业员工在飞书审批内即可发起并操作三方审批。
+    /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=create&amp;project=approval&amp;resource=external_approval&amp;version=v4"/></para>
     /// </summary>
     /// <param name="createApprovalRequest">创建三方审批定义请求体。</param>
     /// <param name="user_id_type">用户 ID 类型</param>
@@ -38,6 +39,7 @@ public interface IFeishuTenantV4ApprovalExternal : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 通过三方审批定义 Code 获取审批定义的详细数据，包括三方审批定义的名称、说明、三方审批发起链接、回调 URL 以及审批定义可见人列表等信息。
+    /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=get&amp;project=approval&amp;resource=external_approval&amp;version=v4"/></para>
     /// </summary>
     /// <param name="approval_code">三方审批定义 Code。示例值："7C468A54-8745-2245-9675-08B7C63E7A85"。</param>
     /// <param name="user_id_type">用户 ID 类型</param>
@@ -51,6 +53,7 @@ public interface IFeishuTenantV4ApprovalExternal : IFeishuAppContextSwitcher
     /// <summary>
     /// 用于把三方系统在审批流转后生成的审批实例、审批任务、审批抄送数据同步到审批中心。
     /// <para>审批中心不负责审批的流转，审批的流转在三方系统。</para>
+    /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=create&amp;project=approval&amp;resource=external_instance&amp;version=v4"/></para>
     /// </summary>
     /// <param name="syncApprovalInstancesRequest">同步三方审批实例请求体。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
@@ -62,6 +65,7 @@ public interface IFeishuTenantV4ApprovalExternal : IFeishuAppContextSwitcher
     /// <summary>
     /// 校验三方审批实例数据，用于判断服务端数据是否为最新的。
     /// <para>请求时提交实例最新更新时间，如果服务端不存在该实例，或者服务端实例更新时间不是最新的，则返回对应实例 ID。</para>
+    /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=check&amp;project=approval&amp;resource=external_instance&amp;version=v4"/></para>
     /// </summary>
     /// <param name="checkExternalInstancesRequest">校验三方审批实例请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
@@ -72,6 +76,7 @@ public interface IFeishuTenantV4ApprovalExternal : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 用于分布获取三方审批的状态。用户传入查询条件，接口返回满足条件的审批实例的状态。
+    /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=list&amp;project=approval&amp;resource=external_task&amp;version=v4"/></para>
     /// </summary>
     /// <param name="getExternalInstancesStateRequest">获取三方审批实例状态列表请求体。</param>
     /// <param name="page_size">分页大小。默认值：10。</param>

@@ -56,6 +56,9 @@ builder.Host.UseDefaultServiceProvider(o => o.ValidateOnBuild = false);
 
 // 注册飞书Webhook服务（多应用模式）
 // 注意：多应用模式需要配置多个应用，每个应用有独立的配置
+// 以下注册方法内部使用反射式配置绑定（Configure<TOptions>/ConfigurationBinder.Bind），库侧已标注 RequiresUnreferencedCode/RequiresDynamicCode；
+// 演示程序不参与 AOT 发布与裁剪，属预期豁免（AGENTS.md 规定的 pragma 模式）。
+#pragma warning disable IL2026, IL3050
 builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration, "FeishuWebhook")
     // 添加全局拦截器（所有应用共享）
     .AddInterceptor<LoggingEventInterceptor>() // 日志拦截器（内置）
@@ -81,6 +84,8 @@ builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration, "Feish
     .AddHandler<App2DepartmentDeleteEventHandler>("app2") // App2 部门删除事件处理器
     .AddInterceptor<App2SpecificInterceptor>("app2") // App2 特定的拦截器
 
+
+#pragma warning restore IL2026, IL3050
     .Build();
 
 var app = builder.Build();

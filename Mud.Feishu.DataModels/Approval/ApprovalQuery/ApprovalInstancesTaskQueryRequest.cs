@@ -154,4 +154,5 @@ public class ApprovalInstancesTaskQueryRequest
     /// </summary>
     [JsonPropertyName("order")]
     public int? Order { get; set; }
+
 }

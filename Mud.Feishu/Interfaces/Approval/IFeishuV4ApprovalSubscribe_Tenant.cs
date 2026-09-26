@@ -20,6 +20,7 @@ public interface IFeishuTenantV4ApprovalSubscribe : IFeishuAppContextSwitcher
     /// 订阅审批事件
     /// <para>当应用订阅审批事件后，需要调用该接口指定审批定义 Code（approval_code）开启订阅，开启后应用才可以接收该审批定义对应的事件。</para>
     /// <para><see href="https://open.feishu.cn/document/server-docs/approval-v4/event/event-interface/subscribe">接口文档</see></para>
+    /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=subscribe&amp;project=approval&amp;resource=approval&amp;version=v4"/></para>
     /// </summary>
     /// <param name="approval_code">
     /// <para>审批定义 Code。获取方式：</para>
@@ -38,6 +39,7 @@ public interface IFeishuTenantV4ApprovalSubscribe : IFeishuAppContextSwitcher
     /// 取消订阅审批事件
     /// <para>调用订阅审批事件接口订阅审批定义 Code 后，如果不再需要接收该审批定义下的事件订阅通知，可以调用本接口取消订阅审批定义 Code，取消后应用无法再收到该审批定义对应实例的事件通知。</para>
     /// <para><see href="https://open.feishu.cn/document/server-docs/approval-v4/event/event-interface/unsubscribe">接口文档</see></para>
+    /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=unsubscribe&amp;project=approval&amp;resource=approval&amp;version=v4"/></para>
     /// </summary>
     /// <param name="approval_code">
     /// <para>审批定义 Code。获取方式：</para>

@@ -42,6 +42,12 @@ public class GetApprovalResult
     public string Form { get; set; } = string.Empty;
 
     /// <summary>
+    /// <para>组件之间值关联关系</para>
+    /// </summary>
+    [JsonPropertyName("form_widget_relation")]
+    public string? FormWidgetRelation { get; set; }
+
+    /// <summary>
     /// <para>节点信息</para>
     /// </summary>
     [JsonPropertyName("node_list")]

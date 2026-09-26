@@ -144,6 +144,7 @@ namespace Mud.Feishu.DataModels.AttendanceApprovals;
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.AttendanceUser.UserFileUploadResult))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.AttendanceUser.UserSettingsModifyInfo))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.AttendanceUser.UserSettingsQueryRequest))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.AttendanceUser.UserSettingsQueryResult))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.AttendanceUser.UserSettingsResult))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.AttendanceUser.UploadFileRequest), TypeInfoPropertyName = "Mud_Feishu_DataModels_AttendanceUser_UploadFileRequest")] // SYSLIB1031 防护：默认 TypeInfo 属性名与本 Context 内其他根冲突，已显式重命名
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.AttendanceApprovals.UserAttendanceLeaveInfo), TypeInfoPropertyName = "Mud_Feishu_DataModels_AttendanceApprovals_UserAttendanceLeaveInfo")] // SYSLIB1031 防护：默认 TypeInfo 属性名与本 Context 内其他根冲突，已显式重命名 // 派生类型已注册为独立根；多态（以基类类型序列化）仍需在基类上标注 [JsonDerivedType]

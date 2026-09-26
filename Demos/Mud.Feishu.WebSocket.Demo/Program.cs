@@ -38,12 +38,19 @@ builder.Configuration
     .AddEnvironmentVariables();
 
 // 配置Redis分布式去重服务
+// 以下注册方法内部使用反射式配置绑定（Configure<TOptions>/ConfigurationBinder.Bind），库侧已标注 RequiresUnreferencedCode/RequiresDynamicCode；
+// 演示程序不参与 AOT 发布与裁剪，属预期豁免（AGENTS.md 规定的 pragma 模式）。
+#pragma warning disable IL2026, IL3050
 builder.Services.AddFeishuRedisDeduplicators(builder.Configuration);
+#pragma warning restore IL2026, IL3050
 
 // 注册多应用支持
+#pragma warning disable IL2026, IL3050
 builder.Services.AddFeishuApp(builder.Configuration);
+#pragma warning restore IL2026, IL3050
 
 // 配置飞书WebSocket服务（添加拦截器）
+#pragma warning disable IL2026, IL3050
 builder.Services.CreateFeishuWebSocketServiceBuilder(builder.Configuration, "default")
                 .AddInterceptor<LoggingEventInterceptor>() // 日志拦截器（内置）
                 .AddInterceptor<WebSocketTelemetryInterceptor>() // 遥测拦截器（自定义）
@@ -54,6 +61,7 @@ builder.Services.CreateFeishuWebSocketServiceBuilder(builder.Configuration, "def
                 .AddHandler<DemoDepartmentDeleteEventHandler>()
                 .AddHandler<DemoDepartmentUpdateEventHandler>()
                 .Build();
+#pragma warning restore IL2026, IL3050
 
 // 配置演示服务
 builder.Services.AddSingleton<DemoEventService>();

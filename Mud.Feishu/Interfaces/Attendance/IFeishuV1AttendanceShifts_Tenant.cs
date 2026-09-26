@@ -19,6 +19,7 @@ public interface IFeishuTenantV1AttendanceShifts : IFeishuAppContextSwitcher
 {
     /// <summary>
     /// 创建考勤班次
+    /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=create&amp;project=attendance&amp;resource=shift&amp;version=v1"/></para>
     /// </summary>
     /// <param name="createAttendanceShiftsRequest">创建班次请求体</param>
     /// <param name="employee_type">请求体中的 user_ids 和响应体中的 user_id 的员工ID类型。</param>
@@ -32,6 +33,7 @@ public interface IFeishuTenantV1AttendanceShifts : IFeishuAppContextSwitcher
 
     /// <summary>
     /// <para>通过班次 ID 删除班次。对应功能为假勤设置-班次设置班次列表中操作栏的删除按钮。</para>
+    /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=delete&amp;project=attendance&amp;resource=shift&amp;version=v1"/></para>
     /// </summary>
     /// <param name="shift_id">班次 ID，获取方式：1）按名称查询班次 2）创建班次 示例值："6919358778597097404"</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
@@ -44,6 +46,7 @@ public interface IFeishuTenantV1AttendanceShifts : IFeishuAppContextSwitcher
 
     /// <summary>
     /// <para>通过班次 ID 获取班次详情。对应功能为假勤设置-班次设置班次列表中的具体班次，班次信息可以点击班次名称查看</para>
+    /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=get&amp;project=attendance&amp;resource=shift&amp;version=v1"/></para>
     /// </summary>
     /// <param name="shift_id">班次 ID，获取方式：1）按名称查询班次 2）创建班次 示例值："6919358778597097404"</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
@@ -55,6 +58,7 @@ public interface IFeishuTenantV1AttendanceShifts : IFeishuAppContextSwitcher
 
     /// <summary>
     /// <para>按名称查询班次。对应功能为飞书人事管理后台中假勤设置-班次配置中的搜索班次名称功能，展示班次名称、打卡规则、弹性班次规则、休息规则等</para>
+    /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=query&amp;project=attendance&amp;resource=shift&amp;version=v1"/></para>
     /// </summary>
     /// <param name="shift_name">班次名称 示例值："早班"</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
@@ -68,6 +72,7 @@ public interface IFeishuTenantV1AttendanceShifts : IFeishuAppContextSwitcher
     /// <summary>
     /// 分页查询所有班次。
     /// <para>对应功能为飞书人事管理后台中假勤设置-班次配置中的翻页查询所有班次功能，展示班次名称、打卡规则、弹性班次规则、休息规则等</para>
+    /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=list&amp;project=attendance&amp;resource=shift&amp;version=v1"/></para>
     /// </summary>
     /// <param name="page_size">分页大小，即本次请求所返回的用户信息列表内的最大条目数。默认值：10</param>
     /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>

@@ -21,6 +21,7 @@ public interface IFeishuTenantV2ApprovalFile : IFeishuAppContextSwitcher
     /// <summary>
     /// 当审批表单中有图片或者附件控件时，开发者需要在调用创建审批实例前，
     /// <para>将传入图片或附件控件的文件通过本接口上传到审批系统，接口会返回文件的 code，该 code 用于创建审批实例时为图片或附件控件赋值。</para>
+    /// <para>官方文档：<see href="https://open.feishu.cn/document/server-docs/approval-v4/file/upload"/></para>
     /// </summary>
     /// <param name="uploadFileRequest">文件上传请求体。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>

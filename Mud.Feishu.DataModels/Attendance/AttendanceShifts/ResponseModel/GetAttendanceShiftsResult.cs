@@ -13,9 +13,8 @@ namespace Mud.Feishu.DataModels.AttendanceShifts;
 [HttpJsonSerializable(SerializerClassName = "Attendance")]
 public class GetAttendanceShiftsResult : AttendanceShiftItem
 {
-
     /// <summary>
-    /// <para>应出勤配置</para>
+    /// <para>应出勤配置（灰度中，暂未开放）</para>
     /// <para>必填：否</para>
     /// </summary>
     [JsonPropertyName("shift_attendance_time_config")]
@@ -35,5 +34,4 @@ public class GetAttendanceShiftsResult : AttendanceShiftItem
     /// </summary>
     [JsonPropertyName("rest_time_flexible_configs")]
     public RestTimeFlexibleConfig[]? RestTimeFlexibleConfigs { get; set; }
-
 }

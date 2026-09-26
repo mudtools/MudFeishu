@@ -48,6 +48,11 @@ internal class Consts
     public const int PageSize_50 = 50;
 
     /// <summary>
+    /// 每页的默认100条记录。
+    /// </summary>
+    public const int PageSize_100 = 100;
+
+    /// <summary>
     /// 每页的默认500条记录。
     /// </summary>
     public const int PageSize_500 = 500;

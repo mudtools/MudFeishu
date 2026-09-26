@@ -19,6 +19,7 @@ public interface IFeishuTenantV1AttendanceLeave : IFeishuAppContextSwitcher
 {
     /// <summary>
     /// 通过过期时间获取发放记录，只能获取到对应时间段过期的发放记录。
+    /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=get&amp;project=attendance&amp;resource=leave_employ_expire_record&amp;version=v1"/></para>
     /// </summary>
     /// <param name="leaveEmployExpireRecordsRequest">通过过期时间获取发放记录请求体</param>
     /// <param name="leave_id">假期类型ID，示例值："7111688079785723436"。</param>
@@ -34,6 +35,7 @@ public interface IFeishuTenantV1AttendanceLeave : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 更新发放记录的发放数量和失效日期，对应假勤管理-休假管理-发放记录。
+    /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=patch&amp;project=attendance&amp;resource=leave_accrual_record&amp;version=v1"/></para>
     /// </summary>
     /// <param name="leaveAccrualRecordRequest">修改发放记录请求体</param>
     /// <param name="leave_id">假期类型ID，示例值："7111688079785723436"。</param>

@@ -19,6 +19,7 @@ public interface IFeishuTenantV1AttendanceApprovals : IFeishuAppContextSwitcher
 {
     /// <summary>
     /// 获取员工在某段时间内的请假、加班、外出和出差四种审批数据。
+    /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=query&amp;project=attendance&amp;resource=user_approval&amp;version=v1"/></para>
     /// </summary>
     /// <param name="queryAttendanceApprovalsRequest">获取审批数据请求体</param>
     /// <param name="employee_type">请求体中的 user_id 和响应体中的 user_id 的员工ID类型。</param>
@@ -32,6 +33,7 @@ public interface IFeishuTenantV1AttendanceApprovals : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 对于只使用飞书考勤系统，而未使用飞书审批系统的企业，可以通过本接口将三方审批结果数据回写到飞书考勤系统中。
+    /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=create&amp;project=attendance&amp;resource=user_approval&amp;version=v1"/></para>
     /// </summary>
     /// <param name="writeApprovalsDataRequest">写入审批结果请求体</param>
     /// <param name="employee_type">请求体中的 user_id 和响应体中的 user_id 的员工ID类型。</param>
@@ -45,6 +47,7 @@ public interface IFeishuTenantV1AttendanceApprovals : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 通过该接口更新写入飞书考勤系统中的三方系统审批状态，例如请假、加班、外出、出差、补卡等审批，状态包括通过、不通过、撤销等。
+    /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=process&amp;project=attendance&amp;resource=approval_info&amp;version=v1"/></para>
     /// </summary>
     /// <param name="updateApprovalInfosRequest">通知审批状态更新请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>

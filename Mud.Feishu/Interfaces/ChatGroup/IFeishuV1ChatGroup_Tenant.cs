@@ -18,22 +18,4 @@ namespace Mud.Feishu;
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]
 public interface IFeishuTenantV1ChatGroup : IFeishuV1ChatGroup
 {
-    /// <summary>
-    /// 创建群聊，创建时支持设置群头像、群名称、群主以及群类型等配置，同时支持邀请群成员、群机器人入群。
-    /// </summary>
-    /// <param name="createChatRequest">创建群聊请求体。</param>
-    /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
-    /// <param name="set_bot_manager">如果在请求体的 owner_id 字段指定了某个用户为群主，可以选择是否同时设置创建此群的机器人为管理员，此标志位用于标记是否设置创建群的机器人为管理员。
-    ///  <para>示例值：false</para>
-    /// </param>
-    /// <param name="uuid">由开发者生成的唯一字符串序列，用于创建群组请求去重；持有相同 uuid + owner_id（若有） 的请求 10 小时内只可成功创建 1 个群聊。不传值表示不进行请求去重，每一次请求成功后都会创建一个群聊。</param>
-    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
-    /// <returns></returns>
-    [Post("/open-apis/im/v1/chats")]
-    Task<FeishuApiResult<CreateUpdateChatResult>?> CreateChatGroupAsync(
-       [Body] CreateChatRequest createChatRequest,
-       [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
-       [Query("set_bot_manager")] bool? set_bot_manager = false,
-        [Query("uuid")] string? uuid = null,
-       CancellationToken cancellationToken = default);
 }

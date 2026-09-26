@@ -42,7 +42,7 @@ public class CalendarEventLocation
     /// <para>示例值：1.100000023841858</para>
     /// </summary>
     [JsonPropertyName("latitude")]
-    public float? Latitude { get; set; }
+    public double? Latitude { get; set; }
 
     /// <summary>
     /// <para>地点坐标经度信息。</para>
@@ -52,5 +52,5 @@ public class CalendarEventLocation
     /// <para>示例值：2.200000047683716</para>
     /// </summary>
     [JsonPropertyName("longitude")]
-    public float? Longitude { get; set; }
+    public double? Longitude { get; set; }
 }

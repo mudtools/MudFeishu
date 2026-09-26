@@ -11,6 +11,7 @@ namespace Mud.Feishu.Interfaces;
 
 /// <summary>
 /// 飞书群成员包括用户和机器人。在飞书群组内，支持添加用户或者机器人作为群成员，同时支持将用户或者机器人设置为群管理员。
+/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/group/chat-member/intro"/></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), IsAbstract = true)]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]
@@ -18,6 +19,7 @@ public interface IFeishuV1ChatGroupMember : IFeishuAppContextSwitcher
 {
     /// <summary>
     /// 指定群组，将群内指定的用户或者机器人设置为群管理员。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/group/chat-member/add_managers">接口文档</see></para>
     /// </summary>
     /// <param name="chat_id">群 ID。示例值："oc_a0553eda9014c201e6969b478895c230"</param>
     /// <param name="addGroupManagerRequest">指定群管理员请求体</param>
@@ -33,6 +35,7 @@ public interface IFeishuV1ChatGroupMember : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 指定群组，删除群组内指定的管理员，包括用户类型的管理员和机器人类型的管理员。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/group/chat-member/delete_managers">接口文档</see></para>
     /// </summary>
     /// <param name="chat_id">群 ID。示例值："oc_a0553eda9014c201e6969b478895c230"</param>
     /// <param name="deleteGroupManagerRequest">删除群管理员请求体</param>
@@ -48,6 +51,7 @@ public interface IFeishuV1ChatGroupMember : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 把指定的用户或机器人拉入指定群聊内。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/group/chat-member/create">接口文档</see></para>
     /// </summary>
     /// <param name="chat_id">群 ID。示例值："oc_a0553eda9014c201e6969b478895c230"</param>
     /// <param name="addMemberRequest">将用户或机器人拉入群聊请求体</param>
@@ -59,7 +63,7 @@ public interface IFeishuV1ChatGroupMember : IFeishuAppContextSwitcher
     /// <param name="member_id_type">用户 ID 类型，ID 类型需要与请求体参数中的 member_id_type 类型保持一致。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Post("/open-apis/im/v1/chats/{chat_id}/managers/delete_managers")]
+    [Post("/open-apis/im/v1/chats/{chat_id}/members")]
     Task<FeishuApiResult<AddMemberResult>?> AddMemberAsync(
          [Path] string chat_id,
          [Body] MembersRequest addMemberRequest,
@@ -69,6 +73,7 @@ public interface IFeishuV1ChatGroupMember : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 将当前调用接口的操作者（用户或机器人）加入指定群聊。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/group/chat-member/me_join">接口文档</see></para>
     /// </summary>
     /// <param name="chat_id">群 ID。示例值："oc_a0553eda9014c201e6969b478895c230"</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
@@ -80,6 +85,7 @@ public interface IFeishuV1ChatGroupMember : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 将指定的用户或机器人从群聊中移出。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/group/chat-member/delete">接口文档</see></para>
     /// </summary>
     /// <param name="chat_id">群 ID。示例值："oc_a0553eda9014c201e6969b478895c230"</param>
     /// <param name="membersRequest">移除成员 ID 列表请求体</param>
@@ -96,6 +102,7 @@ public interface IFeishuV1ChatGroupMember : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 分页获取指定群组的成员信息，包括成员名字与 ID。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/group/chat-member/get">接口文档</see></para>
     /// </summary>
     /// <param name="chat_id">群 ID。 示例值："oc_a0553eda9014c201e6969b478895c230"</param>/
     /// <param name="user_id_type">用户 ID 类型，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
@@ -113,6 +120,7 @@ public interface IFeishuV1ChatGroupMember : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 根据使用的 access_token 判断对应的用户或者机器人是否在指定的群里。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/group/chat-member/is_in_chat">接口文档</see></para>
     /// </summary>
     /// <param name="chat_id">群 ID。 示例值："oc_a0553eda9014c201e6969b478895c230"</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>

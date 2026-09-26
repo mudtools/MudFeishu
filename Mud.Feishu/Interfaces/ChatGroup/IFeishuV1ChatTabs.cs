@@ -11,34 +11,29 @@ namespace Mud.Feishu.Interfaces;
 
 /// <summary>
 /// 会话标签页是指飞书客户端某一会话顶部的标签页，通过 OpenAPI 支持添加、删除、更新以及获取会话标签页等操作。
+/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/group/chat-tab/intro"/></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), IsAbstract = true)]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]
 public interface IFeishuV1ChatTabs : IFeishuAppContextSwitcher
 {
     /// <summary>
-    /// 创建群聊，创建时支持设置群头像、群名称、群主以及群类型等配置，同时支持邀请群成员、群机器人入群。
+    /// 在指定会话中添加会话标签页，包括文档类型（doc）、URL 类型（url）和消息类型（message）。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/group/chat-tab/create">接口文档</see></para>
     /// </summary>
     /// <param name="chat_id">群 ID。 示例值："oc_a0553eda9014c201e6969b478895c230"</param>
     /// <param name="createChatTabsRequest">添加会话标签页请求体。</param>
-    /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
-    /// <param name="set_bot_manager">如果在请求体的 owner_id 字段指定了某个用户为群主，可以选择是否同时设置创建此群的机器人为管理员，此标志位用于标记是否设置创建群的机器人为管理员。
-    ///  <para>示例值：false</para>
-    /// </param>
-    /// <param name="uuid">由开发者生成的唯一字符串序列，用于创建群组请求去重；持有相同 uuid + owner_id（若有） 的请求 10 小时内只可成功创建 1 个群聊。不传值表示不进行请求去重，每一次请求成功后都会创建一个群聊。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Post("/open-apis/im/v1/chats/{chat_id}/chat_tabs")]
     Task<FeishuApiResult<ChatTabsCreateResult>?> CreateChatTabsByIdAsync(
           [Path] string chat_id,
           [Body] CreateChatTabsRequest createChatTabsRequest,
-          [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
-          [Query("set_bot_manager")] bool? set_bot_manager = false,
-          [Query("uuid")] string? uuid = null,
           CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 更新指定的会话标签页信息，包括名称、类型以及内容等。仅支持更新文档类型（doc）或 URL （url）类型的标签页。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/group/chat-tab/update_tabs">接口文档</see></para>
     /// </summary>
     /// <param name="chat_id">群 ID。 示例值："oc_a0553eda9014c201e6969b478895c230"</param>
     /// <param name="updateChatTabsRequest">更新会话标签页请求体。</param>
@@ -51,6 +46,7 @@ public interface IFeishuV1ChatTabs : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 删除指定会话内的一个或多个会话标签页。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/group/chat-tab/delete_tabs">接口文档</see></para>
     /// </summary>
     /// <param name="chat_id">群 ID。 示例值："oc_a0553eda9014c201e6969b478895c230"</param>
     /// <param name="deleteChatTabsRequest">删除会话标签页请求体</param>
@@ -64,6 +60,7 @@ public interface IFeishuV1ChatTabs : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 调整指定会话内的多个会话标签页排列顺序。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/group/chat-tab/sort_tabs">接口文档</see></para>
     /// </summary>
     /// <param name="chat_id">群 ID。 示例值："oc_a0553eda9014c201e6969b478895c230"</param>
     /// <param name="chatTabsSortRequest">排序会话标签页请求体</param>
@@ -77,11 +74,12 @@ public interface IFeishuV1ChatTabs : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 获取指定会话内的会话标签页信息，包括 ID、名称、类型以及内容等。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/group/chat-tab/list_tabs">接口文档</see></para>
     /// </summary>
     /// <param name="chat_id">群 ID。 示例值："oc_a0553eda9014c201e6969b478895c230"</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Post("/open-apis/im/v1/chats/{chat_id}/chat_tabs/list_tabs")]
+    [Get("/open-apis/im/v1/chats/{chat_id}/chat_tabs/list_tabs")]
     Task<FeishuApiResult<GetChatTabsResult>?> GetChatTabsListByIdAsync(
     [Path] string chat_id,
     CancellationToken cancellationToken = default);

@@ -105,7 +105,7 @@ public interface IFeishuV2BitableRole : IFeishuAppContextSwitcher
     /// <summary>
     /// 新增协作者
     /// <para>新增多维表格高级权限中自定义角色的协作者。</para>
-    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/bitable-v1/advanced-permission/app-role/delete">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/bitable-v1/advanced-permission/app-role-member/create">接口文档</see></para>
     /// </summary>
     /// <param name="app_token">
     /// <para>多维表格 App 的唯一标识。不同形态的多维表格，其 app_token 的获取方式不同，参考[<see href="https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/bitable-overview">多维表格 app_token 获取方式</see>]获取。</para>
@@ -243,7 +243,7 @@ public interface IFeishuV2BitableRole : IFeishuAppContextSwitcher
     /// </param>
     /// <param name="deleteRoleMembersRequest">批量删除协作者请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
-    [Delete("/open-apis/bitable/v1/apps/{app_token}/roles/{role_id}/members/batch_delete")]
+    [Post("/open-apis/bitable/v1/apps/{app_token}/roles/{role_id}/members/batch_delete")]
     Task<FeishuNullDataApiResult?> DeleteRoleMembersAsync(
          [Path] string app_token,
          [Path] string role_id,

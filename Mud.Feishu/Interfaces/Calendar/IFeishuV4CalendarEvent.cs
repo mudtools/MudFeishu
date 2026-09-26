@@ -557,7 +557,7 @@ public interface IFeishuV4CalendarEvent : IFeishuAppContextSwitcher
     /// </param>
     /// <param name="deleteCalendarEventAttendeeRequest">删除日程参与人请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
-    [Delete("/open-apis/calendar/v4/calendars/{calendar_id}/events/{event_id}/attendees/batch_delete")]
+    [Post("/open-apis/calendar/v4/calendars/{calendar_id}/events/{event_id}/attendees/batch_delete")]
     Task<FeishuNullDataApiResult?> DeleteCalendarEventAttendeeAsync(
         [Path] string calendar_id,
         [Path] string event_id,
@@ -654,5 +654,39 @@ public interface IFeishuV4CalendarEvent : IFeishuAppContextSwitcher
         [Query] int? page_size = Consts.PageSize_20,
         [Query] string? user_id_type = Consts.User_Id_Type,
         CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 订阅日程变更事件
+    /// <para>以用户身份订阅指定日历下的日程变更事件。当前身份必须对日历有 reader、writer 或 owner 权限。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/calendar-v4/calendar-event/subscription">接口文档</see></para>
+    /// </summary> 
+    /// <param name="calendar_id">
+    /// <para>日历 ID。</para>
+    /// <para>创建共享日历时会返回日历 ID。也可以调用以下接口获取某一日历的 ID。</para>
+    /// <para>示例值：feishu.cn_xxxxxxxxxx@group.calendar.feishu.cn</para>
+    /// </param> 
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Post("/open-apis/calendar/v4/calendars/{calendar_id}/events/subscription")]
+    Task<FeishuNullDataApiResult?> SubscribeCalendarEventChangedEventAsync(
+       [Path] string calendar_id,
+       CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 取消订阅日程变更事件
+    /// <para>以用户身份取消订阅指定日历下的日程变更事件。当前身份必须对日历有 reader、writer 或 owner 权限。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/calendar-v4/calendar-event/unsubscription">接口文档</see></para>
+    /// </summary> 
+    /// <param name="calendar_id">
+    /// <para>日历 ID。</para>
+    /// <para>创建共享日历时会返回日历 ID。也可以调用以下接口获取某一日历的 ID。</para>
+    /// <para>示例值：feishu.cn_xxxxxxxxxx@group.calendar.feishu.cn</para>
+    /// </param> 
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Post("/open-apis/calendar/v4/calendars/{calendar_id}/events/unsubscription")]
+    Task<FeishuNullDataApiResult?> UnsubscribeCalendarEventChangedEventAsync(
+       [Path] string calendar_id,
+       CancellationToken cancellationToken = default);
 
 }

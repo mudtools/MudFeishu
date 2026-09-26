@@ -103,10 +103,44 @@ public interface IFeishuV4CalendarAcl : IFeishuAppContextSwitcher
     /// </param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Get("/open-apis/calendar/v4/calendars/{calendar_id}/acls")]
-    Task<FeishuApiResult<GetCalendarEventPageListResult>?> GetCalendarAclsPageListAsync(
+    Task<FeishuApiResult<GetCalendarAclsResult>?> GetCalendarAclsPageListAsync(
         [Path] string calendar_id,
         [Query] int page_size = Consts.PageSize_20,
         [Query] string? page_token = null,
         [Query] string? user_id_type = Consts.User_Id_Type,
+        CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 订阅日历访问控制变更事件
+    /// <para>以用户身份订阅指定日历下的访问控制变更事件。当前用户身份必须对日历有访问权限。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/calendar-v4/calendar-acl/subscription">接口文档</see></para>
+    /// </summary>
+    /// <param name="calendar_id">
+    /// <para>日历 ID。</para>
+    /// <para>创建共享日历时会返回日历 ID。也可以调用以下接口获取某一日历的 ID。</para>
+    /// <para>示例值：feishu.cn_xxxxxxxxxx@group.calendar.feishu.cn</para>
+    /// </param> 
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Post("/open-apis/calendar/v4/calendars/{calendar_id}/acls/subscription")]
+    Task<FeishuNullDataApiResult?> SubscribeCalendarAclChangedEventAsync(
+        [Path] string calendar_id,
+        CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 取消订阅日历访问控制变更事件
+    /// <para>以用户身份取消订阅指定日历下的访问控制变更事件。用户必须对日历有访问权限。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/calendar-v4/calendar-acl/unsubscription">接口文档</see></para>
+    /// </summary>
+    /// <param name="calendar_id">
+    /// <para>日历 ID。</para>
+    /// <para>创建共享日历时会返回日历 ID。也可以调用以下接口获取某一日历的 ID。</para>
+    /// <para>示例值：feishu.cn_xxxxxxxxxx@group.calendar.feishu.cn</para>
+    /// </param> 
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Post("/open-apis/calendar/v4/calendars/{calendar_id}/acls/unsubscription")]
+    Task<FeishuNullDataApiResult?> UnsubscribeCalendarAclChangedEventAsync(
+        [Path] string calendar_id,
         CancellationToken cancellationToken = default);
 }

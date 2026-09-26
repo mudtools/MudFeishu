@@ -27,7 +27,7 @@
 | GetChatGroupPageListAsync              | 分页获取群列表    | 租户令牌 | GET     |
 | GetChatGroupPageListByKeywordAsync     | 关键词搜索群列表   | 租户令牌 | GET     |
 | GetChatGroupModeratorPageListByIdAsync | 获取群发言模式及名单 | 租户令牌 | GET     |
-| GetChatGroupShareLinkByIdAsync         | 获取群分享链接    | 租户令牌 | GET     |
+| GetChatGroupShareLinkByIdAsync         | 获取群分享链接    | 租户令牌 | POST    |
 
 ***
 

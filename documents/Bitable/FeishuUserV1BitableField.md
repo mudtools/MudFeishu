@@ -18,7 +18,7 @@
 | --------------------------- | ------------ | -------- | --------- |
 | AddFieldAsync               | 新增字段     | 用户令牌 | POST      |
 | UpdateFieldAsync            | 更新字段     | 用户令牌 | PUT       |
-| QueryRecordsPageListAsync   | 列出字段     | 用户令牌 | GET       |
+| GetFieldsPageListAsync      | 列出字段     | 用户令牌 | GET       |
 | DeleteFieldAsync            | 删除字段     | 用户令牌 | DELETE    |
 | CreateFieldGroupAsync       | 创建字段编组 | 用户令牌 | POST      |
 
@@ -123,7 +123,7 @@ Task<FeishuApiResult<FieldOpsResult>?> UpdateFieldAsync(
 **函数签名**：
 
 ```csharp
-Task<FeishuApiPageListTotalResult<AppTableFieldInfo>?> QueryRecordsPageListAsync(
+Task<FeishuApiPageListTotalResult<AppTableFieldInfo>?> GetFieldsPageListAsync(
     [Path] string app_token,
     [Path] string table_id,
     [Query("view_id")] string? view_id = null,

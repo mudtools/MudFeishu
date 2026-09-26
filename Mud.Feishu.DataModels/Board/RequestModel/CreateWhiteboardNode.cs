@@ -22,4 +22,12 @@ public class CreateWhiteboardNodeRequest
     [JsonPropertyName("nodes")]
     public WhiteboardNode[]? Nodes { get; set; }
 
+    /// <summary>
+    /// <para>是否覆盖画板内已有的节点。true 表示覆盖，false 表示追加。</para>
+    /// <para>必填：否</para>
+    /// <para>默认值：false</para>
+    /// </summary>
+    [JsonPropertyName("overwrite")]
+    public bool? Overwrite { get; set; }
+
 }

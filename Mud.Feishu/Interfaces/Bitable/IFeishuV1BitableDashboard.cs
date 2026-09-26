@@ -12,7 +12,7 @@ namespace Mud.Feishu.Interfaces;
 /// <summary>
 /// <para>仪表盘 block，仪表盘与数据看板类似，可以从不同的维度统计对多维表格中的数据进行统计。</para>
 /// <para>仪表盘的唯一标识为 block_id，以 blk 开头，可通过多维表格 URL 获取 block_id。</para>
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-dashboard/copy"/></para>
+/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-dashboard/list"/></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), IsAbstract = true)]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]
@@ -43,9 +43,9 @@ public interface IFeishuV1BitableDashboard : IFeishuAppContextSwitcher
 
 
     /// <summary>
-    /// 复制仪表盘
-    /// <para>基于现有仪表盘复制出新的仪表盘。</para>
-    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-dashboard/copy">接口文档</see></para>
+    /// 列出仪表盘
+    /// <para>获取多维表格中的所有仪表盘。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-dashboard/list">接口文档</see></para>
     /// </summary>
     /// <param name="app_token">
     /// <para>多维表格 App 的唯一标识。不同形态的多维表格，其 app_token 的获取方式不同，参考[<see href="https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/bitable-overview">多维表格 app_token 获取方式</see>]获取。</para>

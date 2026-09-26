@@ -18,7 +18,7 @@ public class GetMeetingRoomSummaryRequest
     /// <para>需要查询的日程 Uid 和 Original time 列表。</para>
     /// <para>必填：是</para>
     /// </summary>
-    [JsonPropertyName("EventUids")]
+    [JsonPropertyName("event_uids")]
     public EventUid[] EventUids { get; set; } = [];
 
 }

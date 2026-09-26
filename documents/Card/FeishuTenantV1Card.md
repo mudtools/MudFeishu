@@ -16,7 +16,8 @@
 | CreateCardAsync | 创建卡片实体 | 租户令牌 | POST |
 | UpdateCardSettingsByIdAsync | 更新卡片配置 | 租户令牌 | PATCH |
 | PartialUpdateCardByIdAsync | 局部更新卡片 | 租户令牌 | POST |
-| UpdateCardByIdAsync | 全量更新卡片 | 租户令牌 | PATCH |
+| UpdateCardByIdAsync | 全量更新卡片 | 租户令牌 | PUT |
+| IdConvertCardAsync | 转换 ID | 租户令牌 | POST |
 
 ---
 

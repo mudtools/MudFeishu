@@ -70,4 +70,30 @@ public class CreatePlantumlWhiteboardNodeRequest
     /// </summary>
     [JsonPropertyName("diagram_type")]
     public int? DiagramType { get; set; }
+
+    /// <summary>
+    /// <para>是否覆盖画板内已有的节点。true 表示覆盖，false 表示追加。</para>
+    /// <para>必填：否</para>
+    /// <para>默认值：false</para>
+    /// </summary>
+    [JsonPropertyName("overwrite")]
+    public bool? Overwrite { get; set; }
+
+    /// <summary>
+    /// <para>解析模式</para>
+    /// <para>必填：否</para>
+    /// <para>可选值：<list type="bullet">
+    /// <item>0：未知</item>
+    /// <item>1：普通解析</item>
+    /// </list></para>
+    /// </summary>
+    [JsonPropertyName("parse_mode")]
+    public int? ParseMode { get; set; }
+
+    /// <summary>
+    /// <para>外观类型</para>
+    /// <para>必填：否</para>
+    /// </summary>
+    [JsonPropertyName("look_type")]
+    public int? LookType { get; set; }
 }

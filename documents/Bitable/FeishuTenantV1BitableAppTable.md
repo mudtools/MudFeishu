@@ -21,7 +21,7 @@
 | UpdateAppTableAsync        | 更新数据表     | 租户令牌 | PATCH     |
 | GetAppTablePageListAsync   | 列出数据表     | 租户令牌 | GET       |
 | DeleteAppTableAsync        | 删除一个数据表 | 租户令牌 | DELETE    |
-| DeleteAppTablesAsync       | 删除多个数据表 | 租户令牌 | DELETE    |
+| DeleteAppTablesAsync       | 删除多个数据表 | 租户令牌 | POST      |
 
 ## 函数详细内容
 

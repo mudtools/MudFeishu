@@ -61,8 +61,8 @@ namespace Mud.Feishu.DataModels.Messages;
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Messages.ReadMessageUser))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Messages.ReceiveMessageResult))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Messages.ThreadResult))]
-[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Messages.UploadImageRequest), TypeInfoPropertyName = "Mud_Feishu_DataModels_Messages_UploadImageRequest")] // SYSLIB1031 防护：默认 TypeInfo 属性名与本 Context 内其他根冲突，已显式重命名
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Messages.UploadMessageFileRequest), TypeInfoPropertyName = "Mud_Feishu_DataModels_Messages_UploadMessageFileRequest")] // SYSLIB1031 防护：默认 TypeInfo 属性名与本 Context 内其他根冲突，已显式重命名
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Messages.UploadImageRequest), TypeInfoPropertyName = "Mud_Feishu_DataModels_Messages_UploadImageRequest")] // SYSLIB1031 防护：默认 TypeInfo 属性名与本 Context 内其他根冲突，已显式重命名
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Messages.HistoryMessageData), TypeInfoPropertyName = "Mud_Feishu_DataModels_Messages_HistoryMessageData")] // SYSLIB1031 防护：默认 TypeInfo 属性名与本 Context 内其他根冲突，已显式重命名 // 派生类型已注册为独立根；多态（以基类类型序列化）仍需在基类上标注 [JsonDerivedType]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Messages.MergeReceiveMessageDetail), TypeInfoPropertyName = "Mud_Feishu_DataModels_Messages_MergeReceiveMessageDetail")] // SYSLIB1031 防护：默认 TypeInfo 属性名与本 Context 内其他根冲突，已显式重命名 // 派生类型已注册为独立根；多态（以基类类型序列化）仍需在基类上标注 [JsonDerivedType]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Messages.MessageContentData), TypeInfoPropertyName = "Mud_Feishu_DataModels_Messages_MessageContentData")] // SYSLIB1031 防护：默认 TypeInfo 属性名与本 Context 内其他根冲突，已显式重命名 // 派生类型已注册为独立根；多态（以基类类型序列化）仍需在基类上标注 [JsonDerivedType]

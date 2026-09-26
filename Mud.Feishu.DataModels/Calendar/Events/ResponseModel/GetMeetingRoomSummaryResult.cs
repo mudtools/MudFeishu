@@ -17,7 +17,7 @@ public class GetMeetingRoomSummaryResult
     /// <para>查询到的日程信息。</para>
     /// <para>必填：否</para>
     /// </summary>
-    [JsonPropertyName("EventInfos")]
+    [JsonPropertyName("event_infos")]
     public EventInfo[]? EventInfos { get; set; }
 
 
@@ -26,6 +26,6 @@ public class GetMeetingRoomSummaryResult
     /// <para>没有查询到的日程信息。</para>
     /// <para>必填：否</para>
     /// </summary>
-    [JsonPropertyName("ErrorEventUids")]
+    [JsonPropertyName("error_event_uids")]
     public ErrorEventUid[]? ErrorEventUids { get; set; }
 }

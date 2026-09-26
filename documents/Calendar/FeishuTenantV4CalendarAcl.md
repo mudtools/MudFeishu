@@ -113,7 +113,7 @@ var result = await api.DeleteCalendarAclAsync(
 
 **函数签名**
 ```csharp
-Task<FeishuApiResult<GetCalendarEventPageListResult>?> GetCalendarAclsPageListAsync(
+Task<FeishuApiResult<GetCalendarAclsResult>?> GetCalendarAclsPageListAsync(
     string calendar_id,
     int page_size = 20,
     string? page_token = null,

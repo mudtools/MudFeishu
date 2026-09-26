@@ -21,6 +21,7 @@ public interface IFeishuTenantV2AppCardMessageStream : IFeishuAppContextSwitcher
 {
     /// <summary>
     /// 创建应用消息流卡片
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/im-v2/app_feed_card/create">接口文档</see></para>
     /// </summary>
     /// <param name="appCardMessageStreamRequest">创建应用消息流卡片请求体</param>
     /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
@@ -34,6 +35,7 @@ public interface IFeishuTenantV2AppCardMessageStream : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 更新应用消息流卡片
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/im-v2/app_feed_card/update">接口文档</see></para>
     /// </summary>
     /// <param name="appCardMessageStreamRequest">更新应用消息流卡片请求体</param>
     /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
@@ -47,6 +49,7 @@ public interface IFeishuTenantV2AppCardMessageStream : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 用于删除应用消息流卡片
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/im-v2/app_feed_card/delete">接口文档</see></para>
     /// </summary>
     /// <param name="appCardMessageStreamRequest">删除应用消息流卡片请求体</param>
     /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
@@ -61,6 +64,7 @@ public interface IFeishuTenantV2AppCardMessageStream : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 可将机器人对话在消息列表中置顶展示，打开飞书首页即可处理重要任务。
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/im-v2/feed_card/bot_time_sensitive">接口文档</see></para>
     /// </summary>
     /// <param name="timeSentiveRequest">机器人单聊即时提醒请求体</param>
     /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
@@ -74,6 +78,7 @@ public interface IFeishuTenantV2AppCardMessageStream : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 为群组消息、机器人消息的消息流卡片添加、更新、删除快捷操作按钮。
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/im-v2/chat_button/update">接口文档</see></para>
     /// </summary>
     /// <param name="updateCardMessageStreamButtonRequest">更新消息流卡片按钮请求体</param>
     /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
@@ -88,6 +93,7 @@ public interface IFeishuTenantV2AppCardMessageStream : IFeishuAppContextSwitcher
     /// <summary>
     /// <para>即时提醒能力是飞书在消息列表中提供的强提醒能力，当有重要通知或任务需要及时触达用户，</para>
     /// <para>可将群组或机器人对话在消息列表中置顶展示，打开飞书首页即可处理重要任务。</para>
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/im-v2/feed_card/patch">接口文档</see></para>
     /// </summary>
     /// <param name="feedCardsByFeedCardIdRequest">即时提醒请求体</param>
     /// <param name="feed_card_id">消息流卡片 ID。</param>

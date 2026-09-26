@@ -89,4 +89,12 @@ public class AppRoleMember
     /// </summary>
     [JsonPropertyName("member_type")]
     public string? MemberType { get; set; }
+
+    /// <summary>
+    /// <para>协作者的 ID，需与查询参数 member_id_type 的类型保持一致</para>
+    /// <para>必填：否</para>
+    /// <para>示例值：ou_7dab8a3d3cdcc9da365777c7ad5abcef</para>
+    /// </summary>
+    [JsonPropertyName("member_id")]
+    public string? MemberId { get; set; }
 }

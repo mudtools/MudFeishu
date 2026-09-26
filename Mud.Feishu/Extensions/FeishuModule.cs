@@ -148,6 +148,11 @@ public enum FeishuModule
     Performance,
 
     /// <summary>
+    /// 安全与合规
+    /// </summary>
+    Security,
+
+    /// <summary>
     /// 所有功能
     /// </summary>
     All

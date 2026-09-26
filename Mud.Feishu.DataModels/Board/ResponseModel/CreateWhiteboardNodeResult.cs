@@ -27,4 +27,11 @@ public class CreateWhiteboardNodeResult
     /// </summary>
     [JsonPropertyName("client_token")]
     public string? ClientToken { get; set; }
+
+    /// <summary>
+    /// <para>创建节点前的画板版本号</para>
+    /// <para>必填：否</para>
+    /// </summary>
+    [JsonPropertyName("previous_revision")]
+    public string? PreviousRevision { get; set; }
 }

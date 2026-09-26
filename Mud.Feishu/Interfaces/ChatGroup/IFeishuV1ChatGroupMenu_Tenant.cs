@@ -21,6 +21,7 @@ public interface IFeishuTenantV1ChatGroupMenu : IFeishuAppContextSwitcher
 {
     /// <summary>
     /// 在指定群组中添加一个或多个群菜单。成功调用后接口会返回当前群组内所有群菜单信息。
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/im-v1/chat-menu_tree/create">接口文档</see></para>
     /// </summary>
     /// <param name="chat_id">群 ID。 示例值："oc_a0553eda9014c201e6969b478895c230"</param>
     /// <param name="addChatGroupMenuRequest">添加群菜单请求体。</param>
@@ -34,6 +35,7 @@ public interface IFeishuTenantV1ChatGroupMenu : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 修改指定群组内的某个一级菜单或者二级菜单的元信息，包括图标、名称、国际化名称和跳转链接。
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/im-v1/chat-menu_item/patch">接口文档</see></para>
     /// </summary>
     /// <param name="chat_id">群 ID。 示例值："oc_a0553eda9014c201e6969b478895c230"</param>
     /// <param name="menu_item_id">一级菜单或者二级菜单的 ID。示例值："7156553273518882844"</param>
@@ -49,6 +51,7 @@ public interface IFeishuTenantV1ChatGroupMenu : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 删除指定群内的一级菜单。成功调用后接口会返回群组内最新的群菜单信息。
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/im-v1/chat-menu_tree/delete">接口文档</see></para>
     /// </summary>
     /// <param name="chat_id">群 ID。 示例值："oc_a0553eda9014c201e6969b478895c230"</param>
     /// <param name="deleteMenuIdsRequest">删除群内的一级菜单请求体</param>
@@ -62,6 +65,7 @@ public interface IFeishuTenantV1ChatGroupMenu : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 调整指定群组内的群菜单排列顺序，成功调用后接口会返回群组内所有群菜单信息。
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/im-v1/chat-menu_tree/sort">接口文档</see></para>
     /// </summary>
     /// <param name="chat_id">群 ID。 示例值："oc_a0553eda9014c201e6969b478895c230"</param>
     /// <param name="sortMenuRequest">菜单项目排序请求体</param>
@@ -75,6 +79,7 @@ public interface IFeishuTenantV1ChatGroupMenu : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 获取指定群组内的群菜单信息，包括所有一级或二级菜单的名称、跳转链接、图标等信息。
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/im-v1/chat-menu_tree/get">接口文档</see></para>
     /// </summary>
     /// <param name="chat_id">群 ID。 示例值："oc_a0553eda9014c201e6969b478895c230"</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>

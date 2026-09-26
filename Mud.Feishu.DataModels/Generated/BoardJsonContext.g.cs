@@ -11,6 +11,7 @@ namespace Mud.Feishu.DataModels.Board;
     PropertyNamingPolicy = JsonKnownNamingPolicy.SnakeCaseLower,
     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
     WriteIndented = false)]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Board.BatchDeleteWhiteboardNodeRequest))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Board.CreatePlantumlWhiteboardNodeRequest))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Board.CreateWhiteboardNodeRequest))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Board.ConnectorAttachedObject))]
@@ -45,6 +46,7 @@ namespace Mud.Feishu.DataModels.Board;
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Board.WhiteboardNodeTable))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Board.WhiteboardNodeText))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Board.UpdateWhiteboardThemeRequest))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Board.BatchDeleteWhiteboardNodeResult))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Board.CreateWhiteboardNodeResult))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Board.GetWhiteboardNodesResult))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Board.GetWhiteboardsThemeResult))]

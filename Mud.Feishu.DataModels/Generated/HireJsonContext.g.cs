@@ -58,6 +58,11 @@ namespace Mud.Feishu.DataModels.Hire;
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Hire.TransferOnboardResult))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Hire.TripartiteAgreementInfo))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Hire.UpdateTripartiteAgreementRequest))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Hire.CreateAttachmentRequest))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Hire.CreateAttachmentResult))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Hire.GetAttachmentResult))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Hire.HireAttachmentInfo))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Hire.PreviewAttachmentResult))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Hire.CreateNoteRequest))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Hire.CreateNoteResult))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Hire.CreateWebsiteDeliveryByAttachmentRequest))]
@@ -505,6 +510,7 @@ namespace Mud.Feishu.DataModels.Hire;
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Hire.TalentToFolderResult))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Hire.TalentWorksInfo))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Hire.UpdateTalentOnboardStatusRequest))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Hire.CreateAttachmentRequest), TypeInfoPropertyName = "Mud_Feishu_DataModels_Hire_CreateAttachmentRequest")] // SYSLIB1031 防护：默认 TypeInfo 属性名与本 Context 内其他根冲突，已显式重命名
 internal partial class HireJsonContext : JsonSerializerContext
 {
 }

@@ -11,7 +11,7 @@ namespace Mud.Feishu;
 
 
 /// <summary>
-/// 飞书绩效（Performance）后台配置「周期与项目」SDK 是一组服务端 OpenAPI 的封装，用于查询周期与项目配置、批量查询/导入/删除被评估人补充信息、更新人员组成员，以及查询被评估人与绩效周期人员快照信息。本接口全部端点仅支持 tenant_access_token 调用；除获取周期列表（performance/v1）外，其余端点为 performance/v2。
+/// 飞书绩效（Performance）后台配置 SDK 是一组服务端 OpenAPI 的封装，覆盖「周期与项目」（查询周期与项目配置、批量查询/导入/删除被评估人补充信息、更新人员组成员、查询被评估人与绩效周期人员快照信息）与「评估配置」（绩效模板、评估项、标签填写题）及「指标配置」（指标模板、指标库指标、指标字段、指标标签）。本接口全部端点仅支持 tenant_access_token 调用；除获取周期列表（performance/v1）外，其余端点为 performance/v2。
 /// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/performance-v1/review_config/semester_activity/semester/list"/></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Performance")]
@@ -163,5 +163,138 @@ public interface IFeishuTenantV2PerformanceSemesterActivity : IFeishuAppContextS
         [Body] QueryUserInfoListRequest request,
         [Query("user_id_type")] string? user_id_type = null,
         [Query("department_id_type")] string? department_id_type = null,
+        CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 获取绩效模板
+    /// <para>获取绩效模板信息，包括模版名称、执行角色、填写项类型等；可按模板 ID 列表筛选，不传时分页返回全部。</para>
+    /// <para>限频：10 次/分钟。所需权限（开启任一即可）：performance:performance、performance:performance:readonly、performance:review_template:read（获取评估配置信息）。</para>
+    /// <para><see href="https://open.feishu.cn/document/performance-v1/review_config/review_template/query">接口文档</see></para>
+    /// </summary>
+    /// <param name="request">请求体（review_template_ids 绩效模板 ID 列表 0~50 个，不传返回所有）</param>
+    /// <param name="page_token">分页标记，首次请求不填，翻页时取上一次返回的 page_token</param>
+    /// <param name="page_size">分页大小，默认 20，取值范围 0~50</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns>返回绩效模板分页列表（review_templates：模板名称/描述/状态/环节模板 templates/评估内容 units，has_more、page_token）</returns>
+    [Post("/open-apis/performance/v2/review_templates/query")]
+    Task<FeishuApiResult<QueryReviewTemplateListResult>?> QueryReviewTemplateListAsync(
+        [Body] QueryReviewTemplateListRequest request,
+        [Query("page_token")] string? page_token = null,
+        [Query("page_size")] int? page_size = null,
+        CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 获取标签填写题配置
+    /// <para>获取标签填写题配置信息，包括标签填写题名称、标签列表等；可按标签填写题 ID 列表筛选，不传时分页返回全部。</para>
+    /// <para>限频：10 次/分钟。所需权限（开启任一即可）：performance:performance、performance:performance:readonly、performance:review_template:read（获取评估配置信息）。</para>
+    /// <para><see href="https://open.feishu.cn/document/performance-v1/review_config/review_template/query-2">接口文档</see></para>
+    /// </summary>
+    /// <param name="request">请求体（tag_based_question_ids 标签填写题 ID 列表 0~50 个，不传返回所有）</param>
+    /// <param name="page_token">分页标记，首次请求不填，翻页时取上一次返回的 page_token</param>
+    /// <param name="page_size">分页大小，默认 20，取值范围 0~50</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns>返回标签填写题分页列表（tag_based_questions：question_id/name/tag_items，has_more、page_token）</returns>
+    [Post("/open-apis/performance/v2/questions/query")]
+    Task<FeishuApiResult<QueryTagBasedQuestionListResult>?> QueryTagBasedQuestionListAsync(
+        [Body] QueryTagBasedQuestionListRequest request,
+        [Query("page_token")] string? page_token = null,
+        [Query("page_size")] int? page_size = null,
+        CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 获取评估项列表
+    /// <para>批量获取评估项信息，如评估项名称、评估项类型、评估项等级配置等；可按评估项 ID 列表筛选，不传时分页返回全部评估项。</para>
+    /// <para>限频：10 次/分钟。所需权限（开启任一即可）：performance:performance、performance:performance:readonly、performance:review_template:read（获取评估配置信息）。</para>
+    /// <para><see href="https://open.feishu.cn/document/performance-v1/review_config/review_template/query-3">接口文档</see></para>
+    /// </summary>
+    /// <param name="request">请求体（indicator_ids 评估项 ID 列表 0~50 个，不传返回所有）</param>
+    /// <param name="page_token">分页标记，首次请求不填，翻页时取上一次返回的 page_token</param>
+    /// <param name="page_size">分页大小，默认 20，取值范围 0~50</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns>返回评估项分页列表（indicators：id/name/type/options（含等级代号 lable），has_more、page_token）</returns>
+    [Post("/open-apis/performance/v2/indicators/query")]
+    Task<FeishuApiResult<QueryIndicatorListResult>?> QueryIndicatorListAsync(
+        [Body] QueryIndicatorListRequest request,
+        [Query("page_token")] string? page_token = null,
+        [Query("page_size")] int? page_size = null,
+        CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 获取指标模板列表
+    /// <para>批量获取指标模板的信息，可按模板 ID 列表与状态筛选，参数之间为「与」关系，均不传时分页返回所有指标模版信息。</para>
+    /// <para>限频：20 次/分钟。所需权限（开启任一即可）：performance:metric:write（管理关键指标数据）、performance:metric_lib:read（获取指标配置信息）、performance:metric:read（获取关键指标数据）；字段权限：contact:user.employee_id:readonly（user_id_type 取 user_id 时的返回字段）。</para>
+    /// <para><see href="https://open.feishu.cn/document/performance-v1/review_config/metric_template/query">接口文档</see></para>
+    /// </summary>
+    /// <param name="request">请求体（metrics_template_ids 指标模板 ID 列表 0~50 个；status 模版状态 to_be_configured/to_be_activated/enabled/disabled）</param>
+    /// <param name="user_id_type">用户 ID 类型（open_id/union_id/user_id/people_admin_id），默认 open_id</param>
+    /// <param name="page_token">分页标记，首次请求不填，翻页时取上一次返回的 page_token</param>
+    /// <param name="page_size">分页大小，默认 20，取值范围 1~50</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns>返回指标模板分页列表（items：名称/描述/状态/总分计算方式/指标维度 metric_dimensions/指标 metrics/人群分组 groups，has_more、page_token）</returns>
+    [Post("/open-apis/performance/v2/metric_templates/query")]
+    Task<FeishuApiResult<QueryMetricTemplateListResult>?> QueryMetricTemplateListAsync(
+        [Body] QueryMetricTemplateListRequest request,
+        [Query("user_id_type")] string? user_id_type = null,
+        [Query("page_token")] string? page_token = null,
+        [Query("page_size")] int? page_size = null,
+        CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 获取指标字段列表
+    /// <para>批量获取指标的字段基础信息，如指标字段名称、指标字段类型等；可按字段 ID 列表筛选，不填时获取全部指标字段（该接口无分页）。</para>
+    /// <para>限频：20 次/分钟。所需权限（开启任一即可）：performance:metric:write（管理关键指标数据）、performance:metric_lib:read（获取指标配置信息）、performance:metric:read（获取关键指标数据）。</para>
+    /// <para><see href="https://open.feishu.cn/document/performance-v1/review_config/metric_template/query-2">接口文档</see></para>
+    /// </summary>
+    /// <param name="request">请求体（field_ids 指标字段 ID 列表 0~50 个，不传返回所有）</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns>返回指标字段列表（items：field_id/name/type，无分页字段）</returns>
+    [Post("/open-apis/performance/v2/metric_fields/query")]
+    Task<FeishuApiResult<QueryMetricFieldListResult>?> QueryMetricFieldListAsync(
+        [Body] QueryMetricFieldListRequest request,
+        CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 获取指标列表
+    /// <para>获取指标库中的指标信息，如指标名称、指标类型、指标标签和指标字段等，可按指标启用状态、指标类型、指标可用范围等筛选条件获取指定范围的指标信息。</para>
+    /// <para>限频：20 次/分钟。所需权限（开启任一即可）：performance:metric:write（管理关键指标数据）、performance:metric_lib:read（获取指标配置信息）、performance:metric:read（获取关键指标数据）；字段权限：contact:user.employee_id:readonly（user_id_type 取 user_id 时的返回字段）。</para>
+    /// <para><see href="https://open.feishu.cn/document/performance-v1/review_config/metric_template/query-3">接口文档</see></para>
+    /// </summary>
+    /// <param name="request">请求体（is_active 启用状态；tag_ids 标签 ID 列表 0~99 个；type_ids 指标类型 ID 列表 0~99 个；range_of_availability 可用范围 admins_and_reviewees/only_admins；scoring_setting_type 评分类型 score_manually/score_by_formula）</param>
+    /// <param name="user_id_type">用户 ID 类型（open_id/union_id/user_id/people_admin_id），默认 open_id</param>
+    /// <param name="page_token">分页标记，首次请求不填，翻页时取上一次返回的 page_token</param>
+    /// <param name="page_size">分页大小，默认 20，取值范围 1~50</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns>返回指标库指标分页列表（items：metric_id/name/type_id/tags/fields/评分设置与公式/data_source_inputters/range_of_availability/is_active，has_more、page_token）</returns>
+    [Post("/open-apis/performance/v2/metric_libs/query")]
+    Task<FeishuApiResult<QueryMetricListResult>?> QueryMetricListAsync(
+        [Body] QueryMetricListRequest request,
+        [Query("user_id_type")] string? user_id_type = null,
+        [Query("page_token")] string? page_token = null,
+        [Query("page_size")] int? page_size = null,
+        CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 获取指标标签列表
+    /// <para>批量获取指标的标签信息，如标签名称、创建时间等；传 tag_ids 时不进行分页，不传时分页返回所有数据。</para>
+    /// <para>限频：10 次/秒。所需权限（开启任一即可）：performance:metric:write（管理关键指标数据）、performance:metric_lib:read（获取指标配置信息）、performance:metric:read（获取关键指标数据）。</para>
+    /// <para><see href="https://open.feishu.cn/document/performance-v1/review_config/metric_template/list">接口文档</see></para>
+    /// </summary>
+    /// <param name="page_size">分页大小，默认 20，最大 50</param>
+    /// <param name="page_token">分页标记，首次请求不填，翻页时取上一次返回的 page_token</param>
+    /// <param name="tag_ids">指标标签 ID 列表（0~9999 个），传此参数时不进行分页</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns>返回指标标签分页列表（items：tag_id/tag_name/index/create_time/update_time，page_token、has_more）</returns>
+    [Get("/open-apis/performance/v2/metric_tags")]
+    Task<FeishuApiResult<GetMetricTagListResult>?> GetMetricTagListAsync(
+        [Query("page_size")] int? page_size = null,
+        [Query("page_token")] string? page_token = null,
+        [Query("tag_ids")] string[]? tag_ids = null,
         CancellationToken cancellationToken = default);
 }

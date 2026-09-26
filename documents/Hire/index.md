@@ -2,9 +2,9 @@
 
 ## 概述
 
-飞书招聘（Hire）SDK 提供了招聘服务端 OpenAPI（hire-v1 招聘配置类端点）的完整封装，支持职位组合创建/更新、职位设置维护、职位管理人员批量更新、职位信息与聚合详情查询、职位列表与发布管理、地址查询、角色与用户角色权限查询以及职位模板/职能分类/职位类别等枚举主数据查询能力。
+飞书招聘（Hire）SDK 提供了招聘服务端 OpenAPI（hire-v1 招聘配置类端点与 candidate-management 候选人管理端点）的完整封装，覆盖职位与招聘需求、面试/Offer 配置、设置与字典、招聘官网与内推、人才管理、投递流程管理、外部系统信息导入、生态对接、附件与猎头供应商等招聘全链路能力。
 
-> 说明：本 SDK 全部 56 个端点均为 **tenant-only**（仅支持 tenant_access_token），令牌类型由接口上的 `[Token(FeishuTokenTypes.TenantAccessToken, ...)]` 声明，调用方无需额外指定。接口已按子域方案（B）合并为 6 个，见下方「API 接口导航」。
+> 说明：本 SDK 共 165 个端点，其中 164 个为 **tenant-only**（仅支持 tenant_access_token），1 个为 **user-only**（仅支持 user_access_token，见 `IFeishuUserV1HireCandidate`）；令牌类型由接口上的 `[Token(FeishuTokenTypes.TenantAccessToken | FeishuTokenTypes.UserAccessToken, ...)]` 声明，调用方无需额外指定。接口已按子域方案（B）组织为 12 个（11 个租户态 + 1 个用户态），见下方「API 接口导航」。
 
 **主要功能：**
 
@@ -20,6 +20,14 @@
 - 面试设置：面试轮次类型、面试反馈表、面试登记表模板、面试官认证信息
 - Offer 设置：申请表列表/模板详情、自定义字段更新、审批模板
 - 招聘配置字典：招聘流程、科目、信息登记表模板、人才标签
+- 候选人全链路：内推与内推官网职位、招聘官网（推广渠道/官网用户/官网职位/官网投递与投递任务/申请表模板）
+- 人才管理：人才组合创建/更新、人才池与人才文件夹、标签与黑名单、在职状态、人才字段与列表
+- 投递流程管理：面试信息与评价记录（v1/v2）、面试附件与速记、满意度问卷、Offer 全生命周期、背调订单、三方协议、入职/转正/离职与员工维护
+- 外部系统（ATS/RMS）信息导入：外部投递、外部面试与面评、外部 Offer、外部背调、外部内推奖励
+- 生态对接：背调/笔试服务商的账号自定义字段、背调订单进度与结果回传、背调套餐、笔试安排与结果回传、试卷列表
+- 内推奖励账户：注册、启用/停用、余额查询、全额提现与提现对账
+- 猎头供应商：供应商查询、猎头账号禁用/启用、人才猎头保护期
+- 招聘附件：附件上传、附件元信息、人才简历附件 PDF 下载链接
 
 **适用场景：**
 
@@ -99,16 +107,24 @@ public class HireController : ControllerBase
 
 ## API 接口导航
 
-接口已按「模块 × 令牌 × 功能子域」合并为 5 个（合并规则见 AGENTS.md「接口子域合并」）：
+接口已按「模块 × 令牌 × 功能子域」组织为 12 个（合并规则见 AGENTS.md「接口子域合并」）：
 
-| 子域接口 | 方法数 | 覆盖范围 | 历史单资源文档（接口名以合并后为准） |
-| -------- | ----- | -------- | ------------------------------------ |
-| `IFeishuTenantV1HireJob` | 15 | 职位组合创建/更新、职位设置、管理人员批量更新、职位信息/聚合详情/列表、职位上架、发布人；职位类别、职能分类、职位模板、发布记录搜索、广告发布 | [职位](./FeishuTenantV1HireJob.md)、[发布记录](./FeishuTenantV1HireJobPublishRecord.md)、[广告](./FeishuTenantV1HireAdvertisement.md)、[职位模板](./FeishuTenantV1HireJobSchema.md)、[职能分类](./FeishuTenantV1HireJobFunction.md)、[职位类别](./FeishuTenantV1HireJobType.md) |
-| `IFeishuTenantV1HireJobRequirement` | 6 | 招聘需求创建/更新/按 ID 批量查询/列表/删除、需求模板 | — |
-| `IFeishuTenantV1HireInterview` | 5 | 面试轮次类型、面试反馈表、面试登记表模板、面试官查询与更新 | — |
-| `IFeishuTenantV1HireOffer` | 4 | Offer 申请表列表/详情、申请表自定义字段更新、Offer 审批模板 | — |
-| `IFeishuTenantV1HireSetting` | 9 | 招聘流程、科目、信息登记表模板、人才标签、地点、角色、用户角色 | [地址](./FeishuTenantV1HireLocation.md)、[角色](./FeishuTenantV1HireRole.md)、[用户角色](./FeishuTenantV1HireUserRole.md) |
-| `IFeishuTenantV1HireCandidate` | 70 | 内推信息与内推官网职位、招聘官网/推广渠道/官网用户/官网职位、官网投递与投递任务、官网申请表模板；人才管理（人才池/文件夹/标签/黑名单/组合创建更新/入职状态）；投递流程管理（面试信息与评价记录、Offer、背调订单、三方协议、入职与员工）；人才备注、评估/阅卷/面试任务、简历来源 | — |
+| 子域接口 | 方法数 | 覆盖范围 | 文档 |
+| -------- | ----- | -------- | ---- |
+| `IFeishuTenantV1HireJob` | 15 | 职位组合创建/更新、职位设置、管理人员批量更新、职位信息/聚合详情/列表、职位开放、发布人；职位类别、职能分类、职位模板、发布记录搜索、广告发布 | [职位（租户）](./FeishuTenantV1HireJob.md) |
+| `IFeishuTenantV1HireJobRequirement` | 6 | 招聘需求创建/更新/按 ID 批量查询/列表/删除、需求模板 | [招聘需求（租户）](./FeishuTenantV1HireJobRequirement.md) |
+| `IFeishuTenantV1HireInterview` | 5 | 面试轮次类型、面试反馈表、面试登记表模板、面试官查询与更新 | [面试设置（租户）](./FeishuTenantV1HireInterview.md) |
+| `IFeishuTenantV1HireOffer` | 4 | Offer 申请表列表/详情、申请表自定义字段更新、Offer 审批模板 | [Offer 设置（租户）](./FeishuTenantV1HireOffer.md) |
+| `IFeishuTenantV1HireSetting` | 9 | 招聘流程、科目、信息登记表模板、人才标签、地点、角色、用户角色 | [招聘设置与字典（租户）](./FeishuTenantV1HireSetting.md) |
+| `IFeishuTenantV1HireCandidate` | 70 | 内推信息与内推官网职位、招聘官网/推广渠道/官网用户/官网职位、官网投递与投递任务、官网申请表模板；人才管理（人才池/文件夹/标签/黑名单/组合创建更新/入职状态）；投递流程管理（面试信息与评价记录、Offer、背调订单、三方协议、入职与员工）；人才备注、评估/阅卷/面试任务、简历来源 | [候选人（租户）](./FeishuTenantV1HireCandidate.md) |
+| `IFeishuUserV1HireCandidate` | 1 | 以用户身份批量获取招聘待办事项（评估/Offer/笔试/面试待办） | [候选人（用户）](./FeishuUserV1HireCandidate.md) |
+| `IFeishuTenantV1HireExternal` | 22 | 外部系统信息导入：人才外部信息、外部投递、外部面试与面评、外部 Offer、外部背调、外部内推奖励 | [外部系统信息导入（租户）](./FeishuTenantV1HireExternal.md) |
+| `IFeishuTenantV1HireEco` | 17 | 生态对接：账号自定义字段、背调订单进度/结果回传、背调自定义字段与套餐、笔试安排/结果回传、试卷列表 | [生态对接（租户）](./FeishuTenantV1HireEco.md) |
+| `IFeishuTenantV1HireReferralAccount` | 6 | 内推奖励账户注册、启用/停用、余额查询、全额提现、提现对账 | [内推账户（租户）](./FeishuTenantV1HireReferralAccount.md) |
+| `IFeishuTenantV1HireAgency` | 7 | 猎头供应商查询、猎头账号查询与禁用/取消禁用、猎头保护期设置与查询 | [猎头供应商（租户）](./FeishuTenantV1HireAgency.md) |
+| `IFeishuTenantV1HireAttachment` | 3 | 招聘附件上传、附件元信息查询、人才简历附件 PDF 下载链接 | [招聘附件（租户）](./FeishuTenantV1HireAttachment.md) |
+
+历史单资源文档（接口名以合并后为准，仅供检索）：[发布记录](./FeishuTenantV1HireJobPublishRecord.md)、[广告](./FeishuTenantV1HireAdvertisement.md)、[职位模板](./FeishuTenantV1HireJobSchema.md)、[职能分类](./FeishuTenantV1HireJobFunction.md)、[职位类别](./FeishuTenantV1HireJobType.md)、[地址](./FeishuTenantV1HireLocation.md)、[角色](./FeishuTenantV1HireRole.md)、[用户角色](./FeishuTenantV1HireUserRole.md)
 
 ## 查询对象模式（API-2）
 
@@ -119,6 +135,16 @@ public class HireController : ControllerBase
 | `JobListQuery`           | `IFeishuTenantV1HireJob.GetJobListAsync`           | update_start_time、update_end_time、page_size、page_token、4 个 id_type |
 | `JobPublishRecordSearchQuery` | `IFeishuTenantV1HireJob.SearchJobPublishRecordAsync` | page_token、page_size、4 个 id_type |
 | `UserRoleListQuery`      | `IFeishuTenantV1HireSetting.GetUserRoleListAsync` | page_token、page_size、user_id、role_id、update_start_time、update_end_time、user_id_type |
+| `InterviewerListQuery`   | `IFeishuTenantV1HireInterview.GetInterviewerListAsync` | 分页、面试官 user_id 列表、认证状态、更新时间范围与用户 ID 类型 |
+| `JobRequirementListQuery` | `IFeishuTenantV1HireJobRequirement.GetJobRequirementListAsync` | 分页、职位 ID、创建/更新时间范围与各类 ID 类型 |
+| `TalentTagListQuery`     | `IFeishuTenantV1HireSetting.GetTalentTagListAsync` | 关键词、ID 列表、标签类型、启停状态与分页 |
+| `ReferralWebsiteJobPostListQuery` | `IFeishuTenantV1HireCandidate.GetReferralWebsiteJobPostListAsync` | 流程类型、分页与各类 ID 类型 |
+| `WebsiteJobPostListQuery` | `IFeishuTenantV1HireCandidate.GetWebsiteJobPostListAsync` | 分页、创建/更新时间范围与各类 ID 类型 |
+| `TalentListQuery`        | `IFeishuTenantV1HireCandidate.GetTalentListAsync` | 关键词、更新时间范围、分页、排序与 ID 类型 |
+| `BackgroundCheckOrderListQuery` | `IFeishuTenantV1HireCandidate.GetBackgroundCheckOrderListAsync` | 分页、投递 ID、更新时间范围与用户 ID 类型 |
+| `GetEmployeeByApplicationQuery` | `IFeishuTenantV1HireCandidate.GetEmployeeByApplicationAsync` | 投递 ID（必填）与各类 ID 类型 |
+| `InterviewListQuery`     | `IFeishuTenantV1HireCandidate.GetInterviewListAsync` | 分页、投递/面试 ID、面试开始时间范围与各类 ID 类型 |
+| `InterviewQuestionnaireListQuery` | `IFeishuTenantV1HireCandidate.GetInterviewQuestionnaireListAsync` | 分页、投递/面试 ID 与更新时间范围 |
 
 ## 命名空间与版本信息
 

@@ -96,8 +96,8 @@ namespace Mud.Feishu.DataModels.AI;
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.AI.TranslateTerm))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.AI.TranslateTextRequest))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.AI.TranslateTextResult))]
-[JsonSerializable(typeof(global::Mud.Feishu.DataModels.AI.FileUploadRequest))]
-[JsonSerializable(typeof(global::Mud.Feishu.DataModels.AI.ContractFileUploadRequest))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.AI.ContractFileUploadRequest), TypeInfoPropertyName = "Mud_Feishu_DataModels_AI_ContractFileUploadRequest")] // SYSLIB1031 防护：默认 TypeInfo 属性名与本 Context 内其他根冲突，已显式重命名
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.AI.FileUploadRequest), TypeInfoPropertyName = "Mud_Feishu_DataModels_AI_FileUploadRequest")] // SYSLIB1031 防护：默认 TypeInfo 属性名与本 Context 内其他根冲突，已显式重命名
 internal partial class AIJsonContext : JsonSerializerContext
 {
 }

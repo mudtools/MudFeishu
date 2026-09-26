@@ -21,6 +21,7 @@ public interface IFeishuTenantV1AttendanceUserFlows : IFeishuAppContextSwitcher
     /// <summary>
     /// 导入员工的打卡流水记录。导入后，会根据员工所在的考勤组班次规则，计算最终的打卡状态与结果。
     /// <para>可在打卡管理-打卡记录中查询</para>
+    /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=batch_create&amp;project=attendance&amp;resource=user_flow&amp;version=v1"/></para>
     /// </summary>
     /// <param name="userFlowsBatchCreateRequest">导入打卡流水请求体</param>
     /// <param name="employee_type">请求体中的 user_id 和响应体中的 user_id 的员工ID类型。</param>
@@ -34,6 +35,7 @@ public interface IFeishuTenantV1AttendanceUserFlows : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 通过打卡记录 ID 获取用户的打卡流水记录。
+    /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=get&amp;project=attendance&amp;resource=user_flow&amp;version=v1"/></para>
     /// </summary>
     /// <param name="user_flow_id">打卡流水记录 ID，示例值："6708236686834352397"</param>
     /// <param name="employee_type">请求体中的 user_id 和响应体中的 user_id 的员工ID类型。</param>
@@ -48,6 +50,7 @@ public interface IFeishuTenantV1AttendanceUserFlows : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 通过打卡记录 ID 批量查询打卡流水记录。
+    /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=query&amp;project=attendance&amp;resource=user_flow&amp;version=v1"/></para>
     /// </summary>
     /// <param name="userFlowsQueryRequest">批量查询打卡流水请求体</param>
     /// <param name="include_terminated_user">由于新入职用户可以复用已离职用户的employee_no/employee_id。
@@ -65,6 +68,7 @@ public interface IFeishuTenantV1AttendanceUserFlows : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 删除员工从开放平台导入的打卡记录。删除后会重新计算打卡记录对应考勤任务结果。
+    /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=batch_del&amp;project=attendance&amp;resource=user_flow&amp;version=v1"/></para>
     /// </summary>
     /// <param name="userFlowsBatchDelRequest">删除打卡流水请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
@@ -76,6 +80,7 @@ public interface IFeishuTenantV1AttendanceUserFlows : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 获取企业内员工的实际打卡结果。
+    /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=query&amp;project=attendance&amp;resource=user_task&amp;version=v1"/></para>
     /// </summary>
     /// <param name="userTasksQueryRequest">查询打卡结果请求体</param>
     /// <param name="ignore_invalid_users">是否忽略无效和没有权限的用户，对应employee_type。

@@ -9,9 +9,9 @@ namespace Mud.Feishu;
 
 
 /// <summary>
-/// 归档报表用于对应对应后台假勤管理-考勤统计-报表-归档报表功能。
+/// 归档报表用于对应对应后台假勤管理-考勤统计-报表-归档报表功能（用户令牌）。
 /// <para>归档报表支持引用系统报表，可设置归档时间和数据归档周期，并且支持根据部门/人员、国家/地区、人员类型、工作地点、职级、序列、职务进行人员圈选。</para>
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/attendance-v1/user_task_remedy/create"/></para>
+/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/attendance-v1/archive_rule/list"/></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Attendance", InheritedFrom = nameof(FeishuV1AttendanceArchives))]
 [Token(FeishuTokenTypes.UserAccessToken, Name = Consts.Authorization)]

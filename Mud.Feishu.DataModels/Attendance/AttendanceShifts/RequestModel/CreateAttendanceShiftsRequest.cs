@@ -145,6 +145,13 @@ public class CreateAttendanceShiftsRequest
     [JsonPropertyName("late_off_late_on_setting")]
     public ShiftLateOffLateOnSetting? LateOffLateOnSetting { get; set; }
 
+    /// <summary>
+    /// <para>休息弹性设置</para>
+    /// <para>必填：否</para>
+    /// </summary>
+    [JsonPropertyName("rest_time_flexible_configs")]
+    public RestTimeFlexibleConfig[]? RestTimeFlexibleConfigs { get; set; }
+
 
 
     /// <summary>

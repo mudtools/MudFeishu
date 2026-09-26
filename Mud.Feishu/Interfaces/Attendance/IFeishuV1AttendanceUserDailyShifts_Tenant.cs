@@ -21,6 +21,7 @@ public interface IFeishuTenantV1AttendanceUserDailyShifts : IFeishuAppContextSwi
 {
     /// <summary>
     /// 创建或修改排班表
+    /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=batch_create&amp;project=attendance&amp;resource=user_daily_shift&amp;version=v1"/></para>
     /// </summary>
     /// <param name="userDailyShiftRequest">创建或修改排班表请求体</param>
     /// <param name="employee_type">请求体中的 user_id 和响应体中的 user_id 的员工ID类型。</param>
@@ -36,6 +37,7 @@ public interface IFeishuTenantV1AttendanceUserDailyShifts : IFeishuAppContextSwi
     /// <para>支持查询多个用户的排班情况，注意此接口返回的是用户维度的排班结果，与页面功能并不对应。</para>
     /// <para>可以通过返回结果中的group_id查询考勤组按 ID 查询考勤组 ，shift_id查询班次按 ID 查询班次 。</para>
     /// <para>查询的时间跨度不能超过 30 天。</para>
+    /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=query&amp;project=attendance&amp;resource=user_daily_shift&amp;version=v1"/></para>
     /// </summary>
     /// <param name="userDailyShiftRequest">查询排班表请求体</param>
     /// <param name="employee_type">请求体中的 user_id 和响应体中的 user_id 的员工ID类型。</param>
@@ -52,6 +54,7 @@ public interface IFeishuTenantV1AttendanceUserDailyShifts : IFeishuAppContextSwi
     /// <para>创建或修改临时排班</para>
     /// <para>可在排班表上创建或修改临时班次，并用于排班。目前支持按日期对一位或多位人员进行排临时班次。</para>
     /// <para>临时排班为付费功能，如需使用请联系飞书的客户经理。</para>
+    /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=batch_create_temp&amp;project=attendance&amp;resource=user_daily_shift&amp;version=v1"/></para>
     /// </summary>
     /// <param name="userTmpDailyShiftRequest">创建或修改临时排班请求体</param>
     /// <param name="employee_type">请求体中的 user_id 和响应体中的 user_id 的员工ID类型。</param>

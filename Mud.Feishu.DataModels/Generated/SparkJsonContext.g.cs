@@ -58,10 +58,10 @@ namespace Mud.Feishu.DataModels.Spark;
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Spark.IdConvertRequest))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Spark.IdConvertResult))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Spark.IdMapItem))]
-[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Spark.UploadHtmlCodeRequest))]
-[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Spark.UploadStorageFileRequest))]
-[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Spark.UploadStoragePartRequest))]
-[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Spark.UploadAppIconRequest))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Spark.UploadHtmlCodeRequest), TypeInfoPropertyName = "Mud_Feishu_DataModels_Spark_UploadHtmlCodeRequest")] // SYSLIB1031 防护：默认 TypeInfo 属性名与本 Context 内其他根冲突，已显式重命名
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Spark.UploadStoragePartRequest), TypeInfoPropertyName = "Mud_Feishu_DataModels_Spark_UploadStoragePartRequest")] // SYSLIB1031 防护：默认 TypeInfo 属性名与本 Context 内其他根冲突，已显式重命名
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Spark.UploadStorageFileRequest), TypeInfoPropertyName = "Mud_Feishu_DataModels_Spark_UploadStorageFileRequest")] // SYSLIB1031 防护：默认 TypeInfo 属性名与本 Context 内其他根冲突，已显式重命名
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Spark.UploadAppIconRequest), TypeInfoPropertyName = "Mud_Feishu_DataModels_Spark_UploadAppIconRequest")] // SYSLIB1031 防护：默认 TypeInfo 属性名与本 Context 内其他根冲突，已显式重命名
 internal partial class SparkJsonContext : JsonSerializerContext
 {
 }

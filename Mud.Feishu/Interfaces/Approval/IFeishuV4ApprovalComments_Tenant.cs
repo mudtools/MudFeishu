@@ -19,6 +19,7 @@ public interface IFeishuTenantV4ApprovalComments : IFeishuAppContextSwitcher
 {
     /// <summary>
     /// 在指定审批实例下创建、修改评论或回复评论（不包含审批同意、拒绝、转交等附加的理由或意见）。
+    /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=create&amp;project=approval&amp;resource=instance.comment&amp;version=v4"/></para>
     /// </summary>
     /// <param name="instance_id">审批实例 Code。说明：支持传入自定义审批实例 ID。示例值："6A123516-FB88-470D-A428-9AF58B71B3C0"</param>
     /// <param name="user_id">用户 ID，ID 类型与 user_id_type 取值一致。示例值："e5286g26"</param>
@@ -36,6 +37,7 @@ public interface IFeishuTenantV4ApprovalComments : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 删除某审批实例下的一条评论或评论回复（不包含审批同意、拒绝、转交等附加的理由或意见），删除后在审批中心的审批实例内不再显示评论内容，而是显示 评论已删除。
+    /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=delete&amp;project=approval&amp;resource=instance.comment&amp;version=v4"/></para>
     /// </summary>
     /// <param name="instance_id">审批实例 Code。说明：支持传入自定义审批实例 ID。示例值："6A123516-FB88-470D-A428-9AF58B71B3C0"</param>
     /// <param name="user_id">用户 ID，ID 类型与 user_id_type 取值一致。示例值："e5286g26"</param>
@@ -53,6 +55,7 @@ public interface IFeishuTenantV4ApprovalComments : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 清空某审批实例下的全部评论与评论回复，包括显示为已删除的评论。
+    /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=remove&amp;project=approval&amp;resource=instance.comment&amp;version=v4"/></para>
     /// </summary>
     /// <param name="instance_id">审批实例 Code。说明：支持传入自定义审批实例 ID。示例值："6A123516-FB88-470D-A428-9AF58B71B3C0"</param>
     /// <param name="user_id">用户 ID，ID 类型与 user_id_type 取值一致。示例值："e5286g26"</param>
@@ -68,6 +71,7 @@ public interface IFeishuTenantV4ApprovalComments : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 根据审批实例 Code 获取某个审批实例下，全部评论与评论回复（不包含审批同意、拒绝、转交等附加的理由或意见）。
+    /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=list&amp;project=approval&amp;resource=instance.comment&amp;version=v4"/></para>
     /// </summary>
     /// <param name="instance_id">审批实例 Code。说明：支持传入自定义审批实例 ID。示例值："6A123516-FB88-470D-A428-9AF58B71B3C0"</param>
     /// <param name="user_id">用户 ID，ID 类型与 user_id_type 取值一致。示例值："e5286g26"</param>

@@ -20,7 +20,8 @@ public interface IFeishuTenantV1AttendanceRemedys : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 将在三方审批系统中发起的补卡审批数据，写入到飞书考勤系统中，状态为审批中。
-    /// <para>写入后可以由<seealso cref="IFeishuTenantV1AttendanceApprovals.ProcessApprovalInfoAsync(DataModels.AttendanceApprovals.UpdateApprovalInfosRequest, CancellationToken)">通知审批状态更新</seealso>进行状态更新。</para> 
+    /// <para>写入后可以由<seealso cref="IFeishuTenantV1AttendanceApprovals.ProcessApprovalInfoAsync(DataModels.AttendanceApprovals.UpdateApprovalInfosRequest, CancellationToken)">通知审批状态更新</seealso>进行状态更新。</para>
+    /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=create&amp;project=attendance&amp;resource=user_task_remedy&amp;version=v1"/></para>
     /// </summary>
     /// <param name="attendanceRemedysRequest">通知补卡审批发起请求体</param>
     /// <param name="employee_type">请求体中的 user_id 和响应体中的 user_id 的员工ID类型。</param>
@@ -36,6 +37,7 @@ public interface IFeishuTenantV1AttendanceRemedys : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 获取用户某天可以补的第几次上 / 下班卡的时间。
+    /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=query_user_allowed_remedys&amp;project=attendance&amp;resource=user_task_remedy&amp;version=v1"/></para>
     /// </summary>
     /// <param name="allowedRemedysRequest">获取可补卡时间请求体</param>
     /// <param name="employee_type">请求体中的 user_id 和响应体中的 user_id 的员工ID类型。</param>
@@ -50,6 +52,7 @@ public interface IFeishuTenantV1AttendanceRemedys : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 获取用户补卡记录，补卡记录是用户通过审批的方式，在某一次上/下班的打卡时间范围内，补充一条打卡记录，用以修正用户的考勤结果。
+    /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=query&amp;project=attendance&amp;resource=user_task_remedy&amp;version=v1"/></para>
     /// </summary>
     /// <param name="queryUserRemedysRequest">获取补卡记录请求体</param>
     /// <param name="employee_type">请求体中的 user_id 和响应体中的 user_id 的员工ID类型。</param>

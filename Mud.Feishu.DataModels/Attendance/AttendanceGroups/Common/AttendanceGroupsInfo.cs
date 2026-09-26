@@ -604,4 +604,5 @@ public class AttendanceGroupsInfo
     /// </summary>
     [JsonPropertyName("clock_in_abnormal_settings")]
     public AttendanceGroupClockInAbnormalSettings? ClockInAbnormalSettings { get; set; }
+
 }

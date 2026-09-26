@@ -20,6 +20,7 @@ public interface IFeishuTenantV4ApprovalTask : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 对单个审批任务进行同意操作。同意后审批流程会流转到下一个审批人。
+    /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=approve&amp;project=approval&amp;resource=task&amp;version=v4"/></para>
     /// </summary>
     /// <param name="agreeApprovalTasksRequest">同意审批任务请求体</param>
     /// <param name="user_id_type">用户 ID 类型</param>
@@ -34,6 +35,7 @@ public interface IFeishuTenantV4ApprovalTask : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 对单个审批任务进行拒绝操作。拒绝后审批流程结束。
+    /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=reject&amp;project=approval&amp;resource=task&amp;version=v4"/></para>
     /// </summary>
     /// <param name="rejectApprovalTaskRequest">拒绝审批任务请求体</param>
     /// <param name="user_id_type">用户 ID 类型</param>
@@ -47,6 +49,7 @@ public interface IFeishuTenantV4ApprovalTask : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 对单个审批任务进行转交操作。转交后审批流程流转给被转交人。
+    /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=transfer&amp;project=approval&amp;resource=task&amp;version=v4"/></para>
     /// </summary>
     /// <param name="transferApprovalTasksRequest">转交审批任务请求体</param>
     /// <param name="user_id_type">用户 ID 类型</param>
@@ -61,6 +64,7 @@ public interface IFeishuTenantV4ApprovalTask : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 从当前审批任务，退回到已审批的一个或多个任务节点。退回后，已审批节点重新生成审批任务。
+    /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=specified_rollback&amp;project=approval&amp;resource=instance&amp;version=v4"/></para>
     /// </summary>
     /// <param name="rollbackApprovalInstancesRequest">退回审批任务请求体</param>
     /// <param name="user_id_type">用户 ID 类型</param>
@@ -75,6 +79,7 @@ public interface IFeishuTenantV4ApprovalTask : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 对单个审批任务进行加签操作。
+    /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=add_sign&amp;project=approval&amp;resource=instance&amp;version=v4"/></para>
     /// </summary>
     /// <param name="instancesAddSignRequest">审批任务加签请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
@@ -86,6 +91,7 @@ public interface IFeishuTenantV4ApprovalTask : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 对于退回到发起人的审批任务进行重新发起操作。发起后审批流程会流转到下一个审批人。
+    /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=resubmit&amp;project=approval&amp;resource=task&amp;version=v4"/></para>
     /// </summary>
     /// <param name="instancesAddSignRequest">重新提交审批任务请求体</param>
     /// <param name="user_id_type">用户 ID 类型</param>

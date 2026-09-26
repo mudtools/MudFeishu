@@ -99,10 +99,12 @@ public class AttendanceController : ControllerBase
 - [考勤组管理接口（用户）](./FeishuUserV1AttendanceGroups.md) — 用户令牌的考勤组管理，适用于员工查询自己所在的考勤组信息
 - [考勤班次管理接口](./FeishuTenantV1AttendanceShifts.md) — 管理考勤班次，设置上下班时间、迟到规则、休息规则等
 - [考勤排班管理接口](./FeishuTenantV1AttendanceUserDailyShifts.md) — 管理排班表，为指定人员在指定日期安排班次
+- [考勤排班接口（用户）](./FeishuV1AttendanceUserDailyShifts_User.md) — 用户令牌的临时排班创建/修改
 
 ### 考勤打卡与统计
 
 - [考勤打卡管理接口](./FeishuTenantV1AttendanceUserFlows.md) — 导入、查询、删除员工的打卡流水记录
+- [考勤打卡结果接口（用户）](./FeishuV1AttendanceUserTask_User.md) — 用户令牌的打卡结果查询
 - [考勤统计接口](./FeishuTenantV1AttendanceStats.md) — 定制统计报表表头，查询考勤统计数据
 
 ### 考勤审批与休假

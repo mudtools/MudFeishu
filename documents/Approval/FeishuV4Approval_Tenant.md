@@ -23,6 +23,7 @@
 | `CarbonCopyInstanceAsync` | 抄送审批实例               | 租户令牌 | POST      |
 | `PreviewInstanceAsync`    | 预览审批流程（创建实例前） | 租户令牌 | POST      |
 | `PreviewInstanceAsync`    | 预览审批流程（创建实例后） | 租户令牌 | POST      |
+| `GetInstanceCodePageListAsync` | 批量获取审批实例 ID   | 租户令牌 | GET       |
 | `GetInstanceByIdAsync`    | 获取审批实例详情           | 租户令牌 | GET       |
 
 ## 函数详细内容
@@ -153,6 +154,9 @@ Task<FeishuApiResult<GetApprovalResult>?> GetApprovalByCodeAsync(
     [Query("locale")] string? locale = null,
     [Query("with_admin_id")] bool? with_admin_id = null,
     [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
+    [Query("with_option")] bool? with_option = null,
+    [Query("user_id")] string? user_id = null,
+    [Query("nested_mutable_group")] bool? nested_mutable_group = null,
     CancellationToken cancellationToken = default);
 ```
 
@@ -168,6 +172,9 @@ Task<FeishuApiResult<GetApprovalResult>?> GetApprovalByCodeAsync(
 | `locale`            | ⚪   | `string`            | 语言可选值，默认为审批定义配置的默认语言，示例值：`"zh-CN"`     |
 | `with_admin_id`     | ⚪   | `bool`              | 是否返回有数据管理权限的审批流程管理员 ID 列表                  |
 | `user_id_type`      | ⚪   | `string`            | 用户 ID 类型，默认：`open_id`                                   |
+| `with_option`       | ⚪   | `bool`              | 是否返回外部数据源和假勤控件选项                                |
+| `user_id`           | ⚪   | `string`            | 用户 ID，ID 类型由 user_id_type 指定，用于数据权限校验          |
+| `nested_mutable_group` | ⚪ | `bool`             | 是否返回完整的多维表格控件                                      |
 | `cancellationToken` | ⚪   | `CancellationToken` | 取消操作令牌对象                                                |
 
 #### 响应
@@ -647,6 +654,45 @@ Task<FeishuApiResult<PreviewNodeResult>?> PreviewInstanceAsync(
 
 ---
 
+### 批量获取审批实例 ID
+
+#### 函数签名
+
+```csharp
+[Get("/open-apis/approval/v4/instances")]
+Task<FeishuApiResult<GetInstanceCodePageListResult>?> GetInstanceCodePageListAsync(
+    [Query("approval_code")] string approval_code,
+    [Query("start_time")] string? start_time = null,
+    [Query("end_time")] string? end_time = null,
+    [Query("page_size")] int page_size = Consts.PageSize_100,
+    [Query("page_token")] string? page_token = null,
+    CancellationToken cancellationToken = default);
+```
+
+#### 认证
+
+**租户令牌**（`TenantAccessToken`）
+
+#### 参数
+
+| 参数名 | 必填 | 类型 | 描述 |
+| ------ | ---- | ---- | ---- |
+| `approval_code` | ✅ | `string` | 审批定义 Code |
+| `start_time` | ⚪ | `string` | 开始时间，Unix 时间戳（毫秒） |
+| `end_time` | ⚪ | `string` | 结束时间，Unix 时间戳（毫秒） |
+| `page_size` | ⚪ | `int` | 分页大小，默认：100 |
+| `page_token` | ⚪ | `string` | 分页标记 |
+| `cancellationToken` | ⚪ | `CancellationToken` | 取消操作令牌对象 |
+
+#### 响应
+
+`GetInstanceCodePageListResult`：继承 `ApiPageListResult`（`has_more`/`page_token`），附加 `instance_code_list`（`string[]`，按创建时间排序的审批实例 Code 列表）。
+
+#### 说明
+
+- 根据审批定义的 approval_code 批量获取审批实例的 instance_code，用于拉取企业下某个审批定义的全部审批实例。
+- 默认以审批创建时间先后顺序排列。
+
 ### 获取审批实例详情
 
 #### 函数签名
@@ -655,8 +701,9 @@ Task<FeishuApiResult<PreviewNodeResult>?> PreviewInstanceAsync(
 Task<FeishuApiResult<GetApprovalInstanceResult>?> GetInstanceByIdAsync(
     [Path] string instance_id,
     [Query("locale")] string? locale = null,
-    [Query("user_id")] bool? user_id = null,
+    [Query("user_id")] string? user_id = null,
     [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
+    [Query("nested_mutable_group")] bool? nested_mutable_group = null,
     CancellationToken cancellationToken = default);
 ```
 

@@ -93,11 +93,13 @@ if (result?.Code == 0)
 #### 函数签名
 
 ```csharp
-Task<FeishuApiResult<UserSettingsResult>?> QueryUserSettingAsync(
+Task<FeishuApiResult<UserSettingsQueryResult>?> QueryUserSettingAsync(
     [Body] UserSettingsQueryRequest userSettingsQueryRequest,
-    [Query("employee_type")] string employee_type = "employee_id",
+    [Query("employee_type")] string employee_type = Consts.User_Id_Type,
     CancellationToken cancellationToken = default);
 ```
+
+> 修复说明：该接口响应体为 `user_settings`（列表），此前 SDK 使用的 `UserSettingsResult`（`user_setting` 单数，仅适用于修改接口）无法正确反序列化查询结果，已改为专用类型 `UserSettingsQueryResult`。
 
 #### 认证
 **租户令牌** (TenantAccessToken)
@@ -162,8 +164,11 @@ if (result?.Code == 0)
 ```csharp
 Task<FeishuApiResult<UserFileUploadResult>?> UploadFileAsync(
     [FormContent] UploadFileRequest uploadFileRequest,
+    [Query("file_name")] string file_name,
     CancellationToken cancellationToken = default);
 ```
+
+> 参数说明：`file_name` 为查询参数（照片的文件名，含扩展名），与表单字段 `file_name` 相互独立，对应 Go SDK `UploadFileReqBuilder.FileName`。
 
 #### 认证
 **租户令牌** (TenantAccessToken)

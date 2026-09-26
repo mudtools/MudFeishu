@@ -22,6 +22,7 @@ public interface IFeishuV1AttendanceGroups : IFeishuAppContextSwitcher
 {
     /// <summary>
     /// 查询考勤组下所有成员
+    /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=list_user&amp;project=attendance&amp;resource=group&amp;version=v1"/></para>
     /// </summary>
     /// <param name="group_id">考勤组 ID，示例值：6919358128597097404</param>
     /// <param name="member_clock_type">查询的考勤组成员的打卡类型

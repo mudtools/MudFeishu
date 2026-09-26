@@ -107,7 +107,7 @@ public class AttendanceLocation
 }
 
 /// <summary>
-/// <para>地址列表（仅追加，不会覆盖之前的列表）</para>
+/// <para>地址列表（仅追加，不会覆盖之前的列表），含服务端返回的地址 ID</para>
 /// </summary>
 [HttpJsonSerializable(SerializerClassName = "Attendance")]
 public class AttendanceLocationInfo : AttendanceLocation

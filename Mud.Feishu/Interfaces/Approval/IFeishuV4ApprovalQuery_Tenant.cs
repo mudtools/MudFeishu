@@ -20,6 +20,7 @@ public interface IFeishuTenantV4ApprovalQuery : IFeishuV4ApprovalQuery
 
     /// <summary>
     /// 通过不同条件查询审批系统中符合条件的审批实例列表。
+    /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=query&amp;project=approval&amp;resource=instance&amp;version=v4"/></para>
     /// </summary>
     /// <param name="approvalInstancesQueryRequest">查询实例列表请求体</param>
     /// <param name="page_size">分页大小，即本次请求所返回的用户信息列表内的最大条目数。默认值：10</param>
@@ -37,6 +38,7 @@ public interface IFeishuTenantV4ApprovalQuery : IFeishuV4ApprovalQuery
 
     /// <summary>
     /// 通过不同条件查询审批系统中符合条件的审批抄送列表。
+    /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=search_cc&amp;project=approval&amp;resource=instance&amp;version=v4"/></para>
     /// </summary>
     /// <param name="approvalInstancesCcQueryReques">查询抄送列表请求体</param>
     /// <param name="page_size">分页大小，即本次请求所返回的用户信息列表内的最大条目数。默认值：10</param>
@@ -54,6 +56,7 @@ public interface IFeishuTenantV4ApprovalQuery : IFeishuV4ApprovalQuery
 
     /// <summary>
     /// 通过不同条件查询审批系统中符合条件的审批任务列表。
+    /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=search&amp;project=approval&amp;resource=task&amp;version=v4"/></para>
     /// </summary>
     /// <param name="approvalInstancesTaskQueryRequest">查询任务列表请求体</param>
     /// <param name="page_size">分页大小，即本次请求所返回的用户信息列表内的最大条目数。默认值：10</param>

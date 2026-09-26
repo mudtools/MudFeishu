@@ -18,7 +18,7 @@
 | UpdateChatTabsByIdAsync | 更新会话标签页 | 用户令牌 | POST |
 | DeleteChatTabsByIdAsync | 删除会话标签页 | 用户令牌 | DELETE |
 | ChatTabsSortByIdAsync | 排序会话标签页 | 用户令牌 | POST |
-| GetChatTabsListByIdAsync | 获取会话标签页列表 | 用户令牌 | POST |
+| GetChatTabsListByIdAsync | 获取会话标签页列表 | 用户令牌 | GET |
 
 ---
 
@@ -33,9 +33,6 @@
 Task<FeishuApiResult<ChatTabsCreateResult>?> CreateChatTabsByIdAsync(
     [Path] string chat_id,
     [Body] CreateChatTabsRequest createChatTabsRequest,
-    [Query("user_id_type")] string user_id_type = "open_id",
-    [Query("set_bot_manager")] bool? set_bot_manager = false,
-    [Query("uuid")] string? uuid = null,
     CancellationToken cancellationToken = default);
 ```
 
@@ -47,9 +44,6 @@ Task<FeishuApiResult<ChatTabsCreateResult>?> CreateChatTabsByIdAsync(
 |-----|------|------|------|
 | chat_id | string | ✅ | 群 ID |
 | createChatTabsRequest | CreateChatTabsRequest | ✅ | 添加会话标签页请求体 |
-| user_id_type | string | ⚪ | 用户 ID 类型，默认值："open_id" |
-| set_bot_manager | bool? | ⚪ | 是否设置机器人为管理员，默认值：false |
-| uuid | string? | ⚪ | 去重唯一标识 |
 
 **响应**：
 ```json

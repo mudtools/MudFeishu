@@ -34,7 +34,7 @@ namespace Mud.Feishu.DataModels.Acs;
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Acs.UploadUserFaceRequest))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Acs.CreateVisitorRequest))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Acs.CreateVisitorResult))]
-[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Acs.UploadUserFaceRequest), TypeInfoPropertyName = "Mud_Feishu_DataModels_Acs_UploadUserFaceRequest")] // SYSLIB1031 防护：默认 TypeInfo 属性名与本 Context 内其他根冲突，已显式重命名
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Acs.UploadUserFaceRequest))]
 internal partial class AcsJsonContext : JsonSerializerContext
 {
 }

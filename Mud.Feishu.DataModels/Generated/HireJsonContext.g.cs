@@ -510,7 +510,7 @@ namespace Mud.Feishu.DataModels.Hire;
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Hire.TalentToFolderResult))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Hire.TalentWorksInfo))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Hire.UpdateTalentOnboardStatusRequest))]
-[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Hire.CreateAttachmentRequest), TypeInfoPropertyName = "Mud_Feishu_DataModels_Hire_CreateAttachmentRequest")] // SYSLIB1031 防护：默认 TypeInfo 属性名与本 Context 内其他根冲突，已显式重命名
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Hire.CreateAttachmentRequest))]
 internal partial class HireJsonContext : JsonSerializerContext
 {
 }

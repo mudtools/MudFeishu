@@ -60,8 +60,8 @@ public interface IFeishuV1BitableAppTable : IFeishuAppContextSwitcher
 
 
     /// <summary>
-    /// 新增多个数据表
-    /// <para>新增多个数据表，仅可指定数据表名称。</para>
+    /// 更新数据表
+    /// <para>更新数据表的名称。</para>
     /// <para><see href="https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table/patch">接口文档</see></para>
     /// </summary>
     /// <param name="app_token">
@@ -134,7 +134,7 @@ public interface IFeishuV1BitableAppTable : IFeishuAppContextSwitcher
     /// </param>
     /// <param name="batchDeleteRequest">批量删除多维表格应用数据表记录请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
-    [Delete("/open-apis/bitable/v1/apps/{app_token}/tables/batch_delete")]
+    [Post("/open-apis/bitable/v1/apps/{app_token}/tables/batch_delete")]
     Task<FeishuNullDataApiResult?> DeleteAppTablesAsync(
       [Path] string app_token,
       [Body] BatchDeleteRequest batchDeleteRequest,

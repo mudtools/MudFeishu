@@ -44,9 +44,9 @@ public interface IFeishuV1BitableView : IFeishuAppContextSwitcher
 
 
     /// <summary>
-    /// 新增视图
-    /// <para>在多维表格数据表中新增一个视图，可指定视图类型，包括表格视图、看板视图、画册视图、甘特视图和表单视图。</para>
-    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table-view/create">接口文档</see></para>
+    /// 更新视图
+    /// <para>增量更新视图信息，包括视图名称、属性等，可设置视图的筛选条件。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table-view/patch">接口文档</see></para>
     /// </summary>
     /// <param name="app_token">
     /// <para>多维表格 App 的唯一标识。不同形态的多维表格，其 app_token 的获取方式不同，参考[<see href="https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/bitable-overview">多维表格 app_token 获取方式</see>]获取。</para>
@@ -145,7 +145,7 @@ public interface IFeishuV1BitableView : IFeishuAppContextSwitcher
     /// </param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Delete("/open-apis/bitable/v1/apps/{app_token}/tables/{table_id}/views/{view_id}")]
-    Task<FeishuApiResult<GetViewResult>?> DeleteViewAsync(
+    Task<FeishuNullDataApiResult?> DeleteViewAsync(
           [Path] string app_token,
           [Path] string table_id,
           [Path] string view_id,

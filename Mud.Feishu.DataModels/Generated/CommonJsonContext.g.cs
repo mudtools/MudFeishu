@@ -19,15 +19,15 @@ namespace Mud.Feishu.DataModels;
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.FieldFilter))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.FilterSearchRequest))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.PageListResult))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.DepartmentsV1.DepartmentPageListResult))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Employees.EmployeePageListResult))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.PageRequest))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.PageSearchRequest))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.PhoneValue))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.SearchRequest))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.PageSearchRequest))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.UrlValue))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.UserValue))]
-[JsonSerializable(typeof(global::Mud.Feishu.DataModels.DepartmentsV1.DepartmentPageListResult))] // 派生类型已注册为独立根；多态（以基类类型序列化）仍需在基类上标注 [JsonDerivedType]
-[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Employees.EmployeePageListResult))] // 派生类型已注册为独立根；多态（以基类类型序列化）仍需在基类上标注 [JsonDerivedType]
-[JsonSerializable(typeof(global::Mud.Feishu.DataModels.PageSearchRequest), TypeInfoPropertyName = "Mud_Feishu_DataModels_PageSearchRequest")] // SYSLIB1031 防护：默认 TypeInfo 属性名与本 Context 内其他根冲突，已显式重命名 // 派生类型已注册为独立根；多态（以基类类型序列化）仍需在基类上标注 [JsonDerivedType]
 internal partial class CommonJsonContext : JsonSerializerContext
 {
 }

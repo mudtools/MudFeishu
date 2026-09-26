@@ -5,33 +5,21 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-namespace Mud.Feishu.DataModels.Board;
+namespace Mud.Feishu.DataModels.Cards;
 
 /// <summary>
-/// 创建节点响应体
+/// 转换 ID 请求体
+/// <para>将消息 ID（message_id）转换为卡片实体 ID（card_id）。</para>
+/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/cardkit-v1/card/id_convert"/></para>
 /// </summary>
-[HttpJsonSerializable(SerializerClassName = "Board")]
-public class CreateWhiteboardNodeResult
+[HttpJsonSerializable(SerializerClassName = "Card")]
+public class IdConvertCardRequest
 {
     /// <summary>
-    /// <para>所创建的节点 id 列表</para>
+    /// 消息 ID。通过发送消息等接口获取，其消息类型（msg_type）需为卡片（interactive）。
     /// <para>必填：是</para>
+    /// <para>示例值：om_2ee3f19ff91ed14215db57026d2e0d9d</para>
     /// </summary>
-    [JsonPropertyName("ids")]
-    public string[] Ids { get; set; } = [];
-
-    /// <summary>
-    /// <para>操作的唯一标识，更新请求中使用此值表示幂等的进行此次更新</para>
-    /// <para>必填：否</para>
-    /// <para>示例值：fe599b60-450f-46ff-b2ef-9f6675625b97</para>
-    /// </summary>
-    [JsonPropertyName("client_token")]
-    public string? ClientToken { get; set; }
-
-    /// <summary>
-    /// <para>创建节点前的画板版本号</para>
-    /// <para>必填：否</para>
-    /// </summary>
-    [JsonPropertyName("previous_revision")]
-    public string? PreviousRevision { get; set; }
+    [JsonPropertyName("message_id")]
+    public string? MessageId { get; set; }
 }

@@ -24,7 +24,7 @@
 | CreateCalendarEventMeetingMinuteAsync | 创建会议纪要 | 租户令牌 | POST |
 | QueryMeetingRoomFreebusyAsync | 查询会议室忙闲 | 租户令牌 | GET |
 | CreateCalendarEventAttendeeAsync | 添加日程参与人 | 租户令牌 | POST |
-| DeleteCalendarEventAttendeeAsync | 删除日程参与人 | 租户令牌 | DELETE |
+| DeleteCalendarEventAttendeeAsync | 删除日程参与人 | 租户令牌 | POST |
 | GetCalendarEventAttendeePageListAsync | 分页获取日程参与人列表 | 租户令牌 | GET |
 | GetCalendarEventAttendeeChatMemberPageListAsync | 获取日程参与群成员列表 | 租户令牌 | GET |
 | CreateTimeoffEventAsync | 创建请假日程 | 租户令牌 | POST |

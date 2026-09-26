@@ -38,4 +38,12 @@ public class BitableAppInfo : BitableApp
     [JsonPropertyName("default_table_id")]
     public string? DefaultTableId { get; set; }
 
+    /// <summary>
+    /// <para>多维表格的版本号</para>
+    /// <para>必填：否</para>
+    /// <para>示例值：1</para>
+    /// </summary>
+    [JsonPropertyName("revision")]
+    public int? Revision { get; set; }
+
 }

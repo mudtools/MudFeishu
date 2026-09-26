@@ -21,6 +21,7 @@ public interface IFeishuTenantV1CardElements : IFeishuAppContextSwitcher
 {
     /// <summary>
     /// 为指定卡片实体新增组件，以扩展卡片内容，如在卡片中添加一个点击按钮。
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/cardkit-v1/card-element/create">接口文档</see></para>
     /// </summary>
     /// <param name="card_id">卡片实体 ID。示例值："7355372766134157313"</param>
     /// <param name="cardElementRequest">新增卡片组件请求体</param>
@@ -35,6 +36,7 @@ public interface IFeishuTenantV1CardElements : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 更新卡片实体中的指定组件为新组件。
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/cardkit-v1/card-element/update">接口文档</see></para>
     /// </summary>
     /// <param name="card_id">卡片实体 ID。示例值："7355372766134157313"</param>
     /// <param name="element_id">要更新的组件 ID。对应卡片 JSON 中组件的 element_id 属性，由开发者自定义。示例值："markdown_1"</param>
@@ -50,6 +52,7 @@ public interface IFeishuTenantV1CardElements : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 通过传入 card_id（卡片实体 ID）和 element_id（组件 ID），更新卡片实体中对应组件的属性。
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/cardkit-v1/card-element/patch">接口文档</see></para>
     /// </summary>
     /// <param name="card_id">卡片实体 ID。示例值："7355372766134157313"</param>
     /// <param name="element_id">要更新的组件 ID。对应卡片 JSON 中组件的 element_id 属性，由开发者自定义。示例值："markdown_1"</param>
@@ -64,6 +67,7 @@ public interface IFeishuTenantV1CardElements : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 对卡片中的普通文本元素（tag 为 plain_text 的元素）或富文本组件（tag 为 markdown 的组件）传入全量文本内容，以实现“打字机”式的文字输出效果。
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/cardkit-v1/card-element/content">接口文档</see></para>
     /// </summary>
     /// <param name="card_id">卡片实体 ID。示例值："7355372766134157313"</param>
     /// <param name="element_id">要更新的组件 ID。对应卡片 JSON 中组件的 element_id 属性，由开发者自定义。示例值："markdown_1"</param>
@@ -78,6 +82,7 @@ public interface IFeishuTenantV1CardElements : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 删除指定卡片实体中的组件。
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/cardkit-v1/card-element/delete">接口文档</see></para>
     /// </summary>
     /// <param name="card_id">卡片实体 ID。示例值："7355372766134157313"</param>
     /// <param name="element_id">要更新的组件 ID。对应卡片 JSON 中组件的 element_id 属性，由开发者自定义。示例值："markdown_1"</param>

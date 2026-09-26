@@ -74,8 +74,8 @@ namespace Mud.Feishu.DataModels.Aily;
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Aily.SkillOopsResult))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Aily.SkillPageListResult))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Aily.StartSkillResult))]
-[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Aily.CreateAgentAttachmentRequest), TypeInfoPropertyName = "Mud_Feishu_DataModels_Aily_CreateAgentAttachmentRequest")] // SYSLIB1031 防护：默认 TypeInfo 属性名与本 Context 内其他根冲突，已显式重命名
-[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Aily.UploadDataAssetFileRequest), TypeInfoPropertyName = "Mud_Feishu_DataModels_Aily_UploadDataAssetFileRequest")] // SYSLIB1031 防护：默认 TypeInfo 属性名与本 Context 内其他根冲突，已显式重命名
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Aily.CreateAgentAttachmentRequest))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Aily.UploadDataAssetFileRequest))]
 internal partial class AilyJsonContext : JsonSerializerContext
 {
 }

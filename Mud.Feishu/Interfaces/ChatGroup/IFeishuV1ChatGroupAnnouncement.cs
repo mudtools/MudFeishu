@@ -11,6 +11,7 @@ namespace Mud.Feishu.Interfaces;
 
 /// <summary>
 /// 群公告是群组中的公告文档，采用飞书云文档承载，每个群组只有一个群公告，每篇群公告都有唯一的 chat_id作为标识。
+/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/group/upgraded-group-announcement/group-announcement-overview"/></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), IsAbstract = true)]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]
@@ -18,6 +19,7 @@ public interface IFeishuV1ChatGroupAnnouncement : IFeishuAppContextSwitcher
 {
     /// <summary>
     /// 获取指定群组中的群公告基本信息。
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/docx-v1/chat-announcement/get">接口文档</see></para>
     /// </summary>
     /// <param name="chat_id">群 ID。 示例值："oc_a0553eda9014c201e6969b478895c230"</param>
     /// <param name="user_id_type">用户 ID 类型，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
@@ -31,6 +33,7 @@ public interface IFeishuV1ChatGroupAnnouncement : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 获取群公告所有块的富文本内容并分页返回。
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/docx-v1/chat-announcement-block/list">接口文档</see></para>
     /// </summary>
     /// <param name="chat_id">群 ID。 示例值："oc_a0553eda9014c201e6969b478895c230"</param>
     /// <param name="user_id_type">用户 ID 类型，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
@@ -53,6 +56,7 @@ public interface IFeishuV1ChatGroupAnnouncement : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 在指定块的子块列表中，新创建一批子块，并放置到指定位置。如果操作成功，接口将返回新创建子块的富文本内容。
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/docx-v1/chat-announcement-block-children/create">接口文档</see></para>
     /// </summary>
     /// <param name="chat_id">群 ID。 示例值："oc_a0553eda9014c201e6969b478895c230"</param>
     /// <param name="block_id">父块的block_id，表示为其创建一批子块。如果需要对群公告树根节点创建子块，可将 chat_id 填入此处。
@@ -77,6 +81,7 @@ public interface IFeishuV1ChatGroupAnnouncement : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 批量更新块的富文本内容。
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/docx-v1/chat-announcement-block/batch_update">接口文档</see></para>
     /// </summary>
     /// <param name="chat_id">群 ID。 示例值："oc_a0553eda9014c201e6969b478895c230"</param>
     /// <param name="batchUpdateRequest">批量更新群公告块的内容请求体</param>
@@ -97,6 +102,7 @@ public interface IFeishuV1ChatGroupAnnouncement : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 获取群公告块的富文本内容
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/docx-v1/chat-announcement-block/get">接口文档</see></para>
     /// </summary>
     /// <param name="chat_id">群 ID。 示例值："oc_a0553eda9014c201e6969b478895c230"</param>
     /// <param name="block_id">Block 的唯一标识。 示例值："doxcnO6UW6wAw2qIcYf4hZabcef"</param>
@@ -114,6 +120,7 @@ public interface IFeishuV1ChatGroupAnnouncement : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 获取群公告所有块的富文本内容并分页返回。
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/docx-v1/chat-announcement-block-children/get">接口文档</see></para>
     /// </summary>
     /// <param name="chat_id">群 ID。 示例值："oc_a0553eda9014c201e6969b478895c230"</param>
     /// <param name="block_id">Block 的唯一标识。 示例值："doxcnO6UW6wAw2qIcYf4hZabcef"</param>
@@ -138,6 +145,7 @@ public interface IFeishuV1ChatGroupAnnouncement : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 指定需要操作的块，删除其指定范围的子块。如果操作成功，接口将返回应用删除操作后的群公告版本号。
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/docx-v1/chat-announcement-block-children/batch_delete">接口文档</see></para>
     /// </summary>
     /// <param name="chat_id">群 ID。 示例值："oc_a0553eda9014c201e6969b478895c230"</param>
     /// <param name="block_id">Block 的唯一标识。 示例值："doxcnO6UW6wAw2qIcYf4hZabcef"</param>

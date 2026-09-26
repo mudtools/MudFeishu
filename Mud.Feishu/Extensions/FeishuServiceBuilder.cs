@@ -58,7 +58,8 @@ public class FeishuServiceBuilder
             [FeishuModule.Minutes] = new FeishuModuleRegistrar(FeishuModule.Minutes, s => s.AddMinutesWebApiHttpClient()),
             [FeishuModule.Hire] = new FeishuModuleRegistrar(FeishuModule.Hire, s => s.AddHireWebApiHttpClient()),
             [FeishuModule.TrustParty] = new FeishuModuleRegistrar(FeishuModule.TrustParty, s => s.AddTrustPartyWebApiHttpClient()),
-            [FeishuModule.Acs] = new FeishuModuleRegistrar(FeishuModule.Acs, s => s.AddAcsWebApiHttpClient())
+            [FeishuModule.Acs] = new FeishuModuleRegistrar(FeishuModule.Acs, s => s.AddAcsWebApiHttpClient()),
+            [FeishuModule.Lingo] = new FeishuModuleRegistrar(FeishuModule.Lingo, s => s.AddLingoWebApiHttpClient())
         };
     }
 
@@ -216,6 +217,12 @@ public class FeishuServiceBuilder
     /// </summary>
     /// <returns>建造者实例，支持链式调用</returns>
     public FeishuServiceBuilder AddAcsApi() => AddModule(FeishuModule.Acs);
+
+    /// <summary>
+    /// 添加飞书词典 API 服务
+    /// </summary>
+    /// <returns>建造者实例，支持链式调用</returns>
+    public FeishuServiceBuilder AddLingoApi() => AddModule(FeishuModule.Lingo);
 
     /// <summary>
     /// 添加所有 API 服务

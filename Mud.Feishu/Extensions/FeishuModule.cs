@@ -138,6 +138,11 @@ public enum FeishuModule
     Acs,
 
     /// <summary>
+    /// 飞书词典
+    /// </summary>
+    Lingo,
+
+    /// <summary>
     /// 所有功能
     /// </summary>
     All

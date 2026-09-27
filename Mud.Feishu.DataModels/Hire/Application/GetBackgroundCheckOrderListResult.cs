@@ -11,26 +11,6 @@ namespace Mud.Feishu.DataModels.Hire;
 /// 获取/查询背调信息列表响应体
 /// </summary>
 [HttpJsonSerializable(SerializerClassName = "Hire")]
-public class GetBackgroundCheckOrderListResult
+public class GetBackgroundCheckOrderListResult : ApiPageListResult<BackgroundCheckOrder>
 {
-    /// <summary>
-    /// <para>是否还有更多项</para>
-    /// <para>必填：否</para>
-    /// </summary>
-    [JsonPropertyName("has_more")]
-    public bool? HasMore { get; set; }
-
-    /// <summary>
-    /// <para>分页标记，当 has_more 为 true 时，会同时返回新的 page_token</para>
-    /// <para>必填：否</para>
-    /// </summary>
-    [JsonPropertyName("page_token")]
-    public string? PageToken { get; set; }
-
-    /// <summary>
-    /// <para>背调订单列表</para>
-    /// <para>必填：否</para>
-    /// </summary>
-    [JsonPropertyName("items")]
-    public BackgroundCheckOrder[]? Items { get; set; }
 }

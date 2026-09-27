@@ -34,7 +34,7 @@ public class EcoBackgroundCheckCustomFieldData
     /// <para>必填：是</para>
     /// </summary>
     [JsonPropertyName("name")]
-    public I18n? Name { get; set; }
+    public I18nName? Name { get; set; }
 
     /// <summary>
     /// <para>是否必填</para>
@@ -49,7 +49,7 @@ public class EcoBackgroundCheckCustomFieldData
     /// <para>必填：否</para>
     /// </summary>
     [JsonPropertyName("description")]
-    public I18n? Description { get; set; }
+    public I18nName? Description { get; set; }
 
     /// <summary>
     /// <para>type 为 select 或 multiselect 时必填，单选或多选的选项</para>

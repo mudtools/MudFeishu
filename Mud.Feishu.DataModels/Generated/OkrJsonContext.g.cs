@@ -31,6 +31,7 @@ namespace Mud.Feishu.DataModels.Okr;
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.OkrV2.GetAlignmentResult))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.OkrV2.ListAlignmentsResult))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.OkrV2.ListCategoriesResult))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.OkrV2.ListCyclesResult))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.OkrV2.IndicatorResult))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.OkrV2.PatchIndicatorRequest))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.OkrV2.CreateKeyResultRequest))]
@@ -42,6 +43,15 @@ namespace Mud.Feishu.DataModels.Okr;
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.OkrV2.UpdateKeyResultsPositionRequest))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.OkrV2.UpdateKeyResultsResult))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.OkrV2.UpdateKeyResultsWeightRequest))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.OkrV2.CreateCycleObjectiveRequest))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.OkrV2.CreateCycleObjectiveResult))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.OkrV2.DeleteObjectiveResult))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.OkrV2.GetObjectiveResult))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.OkrV2.ListCycleObjectivesResult))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.OkrV2.PatchObjectiveRequest))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.OkrV2.UpdateCycleObjectivesPositionRequest))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.OkrV2.UpdateCycleObjectivesResult))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.OkrV2.UpdateCycleObjectivesWeightRequest))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.OkrV2.ListProgressesResult))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Okr.UploadProgressRecordImageRequest), TypeInfoPropertyName = "Mud_Feishu_DataModels_Okr_UploadProgressRecordImageRequest")] // SYSLIB1031 防护：默认 TypeInfo 属性名与本 Context 内其他根冲突，已显式重命名
 internal partial class OkrJsonContext : JsonSerializerContext

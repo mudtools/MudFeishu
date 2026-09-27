@@ -11,23 +11,7 @@ namespace Mud.Feishu.DataModels.OkrV2;
 /// 获取 OKR v2 对齐关系列表响应体
 /// </summary>
 [HttpJsonSerializable(SerializerClassName = "Okr")]
-public class ListAlignmentsResult
+public class ListAlignmentsResult : ApiPageListResult<Alignment>
 {
-    /// <summary>
-    /// <para>对齐关系列表</para>
-    /// </summary>
-    [JsonPropertyName("items")]
-    public Alignment[]? Items { get; set; }
 
-    /// <summary>
-    /// <para>分页标记，当 has_more 为 true 时同时返回</para>
-    /// </summary>
-    [JsonPropertyName("page_token")]
-    public string? PageToken { get; set; }
-
-    /// <summary>
-    /// <para>是否还有更多项</para>
-    /// </summary>
-    [JsonPropertyName("has_more")]
-    public bool? HasMore { get; set; }
 }

@@ -11,23 +11,7 @@ namespace Mud.Feishu.DataModels.OkrV2;
 /// 获取 Objective 下关键结果列表响应体
 /// </summary>
 [HttpJsonSerializable(SerializerClassName = "Okr")]
-public class ListObjectiveKeyResultsResult
+public class ListObjectiveKeyResultsResult : ApiPageListResult<KeyResult>
 {
-    /// <summary>
-    /// <para>关键结果列表</para>
-    /// </summary>
-    [JsonPropertyName("items")]
-    public KeyResult[]? Items { get; set; }
 
-    /// <summary>
-    /// <para>分页标记，当 has_more 为 true 时同时返回</para>
-    /// </summary>
-    [JsonPropertyName("page_token")]
-    public string? PageToken { get; set; }
-
-    /// <summary>
-    /// <para>是否还有更多项</para>
-    /// </summary>
-    [JsonPropertyName("has_more")]
-    public bool? HasMore { get; set; }
 }

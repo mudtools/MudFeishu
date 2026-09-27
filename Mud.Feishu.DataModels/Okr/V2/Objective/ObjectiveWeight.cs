@@ -5,27 +5,24 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-namespace Mud.Feishu.DataModels.Hire;
+namespace Mud.Feishu.DataModels.OkrV2;
 
 /// <summary>
-/// 多语言文本对象（中文 + 英文）
+/// OKR v2 Objective 权重项（objective_weights 数组元素）
 /// </summary>
-[HttpJsonSerializable(SerializerClassName = "Hire")]
-public class I18n
+public class ObjectiveWeight
 {
     /// <summary>
-    /// <para>中文名称</para>
-    /// <para>必填：否</para>
-    /// <para>示例值：账号token</para>
+    /// <para>Objective ID，长度 1 ~ 20 字符</para>
+    /// <para>示例值：7342342398472398473</para>
     /// </summary>
-    [JsonPropertyName("zh_cn")]
-    public string? ZhCn { get; set; }
+    [JsonPropertyName("objective_id")]
+    public string? ObjectiveId { get; set; }
 
     /// <summary>
-    /// <para>英文名称</para>
-    /// <para>必填：否</para>
-    /// <para>示例值：Account token</para>
+    /// <para>Objective 权重，取值范围 [0,1]，保留三位小数</para>
+    /// <para>示例值：0.5</para>
     /// </summary>
-    [JsonPropertyName("en_us")]
-    public string? EnUs { get; set; }
+    [JsonPropertyName("weight")]
+    public double? Weight { get; set; }
 }

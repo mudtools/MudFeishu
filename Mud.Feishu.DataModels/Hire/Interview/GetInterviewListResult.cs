@@ -11,26 +11,7 @@ namespace Mud.Feishu.DataModels.Hire;
 /// 获取面试信息响应体
 /// </summary>
 [HttpJsonSerializable(SerializerClassName = "Hire")]
-public class GetInterviewListResult
+public class GetInterviewListResult: ApiPageListResult<InterviewExtend>
 {
-    /// <summary>
-    /// <para>面试信息列表</para>
-    /// <para>必填：否</para>
-    /// </summary>
-    [JsonPropertyName("items")]
-    public InterviewExtend[]? Items { get; set; }
-
-    /// <summary>
-    /// <para>是否还有更多项</para>
-    /// <para>必填：否</para>
-    /// </summary>
-    [JsonPropertyName("has_more")]
-    public bool? HasMore { get; set; }
-
-    /// <summary>
-    /// <para>分页标记，当 has_more 为 true 时，会同时返回新的 page_token</para>
-    /// <para>必填：否</para>
-    /// </summary>
-    [JsonPropertyName("page_token")]
-    public string? PageToken { get; set; }
+    
 }

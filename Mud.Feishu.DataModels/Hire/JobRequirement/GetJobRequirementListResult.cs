@@ -11,26 +11,7 @@ namespace Mud.Feishu.DataModels.Hire;
 /// 获取招聘需求列表响应体
 /// </summary>
 [HttpJsonSerializable(SerializerClassName = "Hire")]
-public class GetJobRequirementListResult
+public class GetJobRequirementListResult : ApiPageListResult<JobRequirement>
 {
-    /// <summary>
-    /// <para>是否还有更多项</para>
-    /// <para>必填：否</para>
-    /// </summary>
-    [JsonPropertyName("has_more")]
-    public bool? HasMore { get; set; }
-
-    /// <summary>
-    /// <para>分页标记，当 has_more 为 true 时，会同时返回新的 page_token</para>
-    /// <para>必填：否</para>
-    /// </summary>
-    [JsonPropertyName("page_token")]
-    public string? PageToken { get; set; }
-
-    /// <summary>
-    /// <para>招聘需求列表</para>
-    /// <para>必填：否</para>
-    /// </summary>
-    [JsonPropertyName("items")]
-    public JobRequirement[]? Items { get; set; }
+    
 }

@@ -97,6 +97,13 @@ public sealed class FeishuAgentOptions
     public int MaxStreamChunkLength { get; set; } = 200;
 
     /// <summary>
+    /// 触发会话历史摘要压缩的历史 token 上限（消费点：<see cref="Conversations.ConversationSummarizer"/>
+    /// token 维度判定——超限时摘要先于条数窗口触发；0 = 不启用，仅按条数阈值判定）。
+    /// </summary>
+    /// <remarks>默认 8000；长消息场景条数窗口失控（50 条 ≠ 50 token 级别）的对策（P2D-3a）。</remarks>
+    public int MaxHistoryTokens { get; set; } = 8000;
+
+    /// <summary>
     /// 触发会话历史摘要压缩的消息数阈值（消费点：<see cref="Conversations.ConversationSummarizer"/>；
     /// 0 = 禁用摘要，仅保留既有历史裁剪窗行为）。
     /// </summary>
@@ -143,5 +150,10 @@ public sealed class FeishuAgentOptions
         if (SummaryThreshold is < 0 or (> 0 and < 4))
             throw new InvalidOperationException(
                 $"FeishuAgent:{nameof(SummaryThreshold)} 为 0（禁用）或 ≥ 4，实际值: {SummaryThreshold.ToString(CultureInfo.InvariantCulture)}");
+
+        // token 上限语义：0 = 不启用（仅条数阈值判定）；启用时须为正数。
+        if (MaxHistoryTokens < 0)
+            throw new InvalidOperationException(
+                $"FeishuAgent:{nameof(MaxHistoryTokens)} 为 0（不启用）或正数，实际值: {MaxHistoryTokens.ToString(CultureInfo.InvariantCulture)}");
     }
 }

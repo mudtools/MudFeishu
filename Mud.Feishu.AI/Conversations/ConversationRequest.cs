@@ -18,14 +18,20 @@ namespace Mud.Feishu.AI.Conversations;
 /// </remarks>
 /// <param name="AppKey">应用唯一标识（租户/应用维度，进入会话键）。</param>
 /// <param name="Scope">会话维度（群聊按 chat、单聊按 user）。</param>
-/// <param name="SubjectId">会话主体 ID（群聊 chat_id / 单聊 user_id）。</param>
+/// <param name="SubjectId">会话主体 ID（群聊 chat_id / 单聊 user_id）；语义收敛为「会话键维度」。</param>
 /// <param name="SenderId">发送者用户 ID。</param>
 /// <param name="MessageId">触发消息 ID（回复定位用）。</param>
 /// <param name="MentionedText">@提及后提取的指令文本（可空）。</param>
+/// <param name="ChatId">回复/流式目标会话 ID（可空；im 事件恒为 message.chat_id，p2p/group 均可用）。
+/// 缺省时流式/工具上下文目标回退既有逻辑（群聊取 <see cref="SubjectId"/>）——单聊流式因此解锁
+/// （AI-FD-D12 P2D-2b：会话键维度与回复目标解耦）。</param>
+/// <param name="ParentId">引用（父）消息 ID（可空；<c>QuoteMessageContextAssembler</c> 消费，P2D-5b）。</param>
 public sealed record ConversationRequest(
     string AppKey,
     ConversationScope Scope,
     string SubjectId,
     string SenderId,
     string MessageId,
-    string? MentionedText);
+    string? MentionedText,
+    string? ChatId = null,
+    string? ParentId = null);

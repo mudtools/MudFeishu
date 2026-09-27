@@ -243,8 +243,42 @@ public class BitableToolsTests
         var result = await CreateTools().QueryRecordsAsync(
             Args(("app_token", "bascnXxx"), ("table_id", "tbl001")), CancellationToken.None);
 
-        result.Length.Should().BeLessThan(5000);
-        result.Should().Contain(ToolResultText.TruncatedMarker, "超 MaxToolResultLength 截断并标记 truncated（防超窗）");
+        result.Should().Contain("\"truncated\":true", "超 MaxToolResultLength 经 JSON 感知截断（P1D-2a）并标记 truncated");
+        result.Should().Contain("page_token", "截断后应提示 page_token 翻页");
+        // 结构完整性：截断后的 JSON 仍可解析（不落在结构中间）。
+        var act = () => System.Text.Json.JsonDocument.Parse(result);
+        act.Should().NotThrow("JSON 感知截断保证结果仍为合法 JSON");
+    }
+
+    [Fact]
+    public async Task QueryRecords_ShouldDropTrailingItems_WhenMultipleItemsExceedLimit()
+    {
+        _recordClient
+            .Setup(c => c.QueryRecordsPageListAsync(
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<QueryRecordsRequest>(),
+                It.IsAny<int>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new FeishuApiPageListTotalResult<AppTableRecord>
+            {
+                Code = 0,
+                Data = new ApiPageListTotalResult<AppTableRecord>
+                {
+                    Items =
+                    [
+                        new AppTableRecord { RecordId = "rec001", Fields = new Dictionary<string, object?> { ["名"] = "甲" } },
+                        new AppTableRecord { RecordId = "rec002", Fields = new Dictionary<string, object?> { ["名"] = "乙" } },
+                        new AppTableRecord { RecordId = "rec003", Fields = new Dictionary<string, object?> { ["名"] = "丙" } },
+                    ],
+                },
+            });
+
+        var result = await CreateTools(maxResultLength: 120).QueryRecordsAsync(
+            Args(("app_token", "bascnXxx"), ("table_id", "tbl001")), CancellationToken.None);
+
+        using var document = System.Text.Json.JsonDocument.Parse(result);
+        var items = document.RootElement.GetProperty("items");
+        items.GetArrayLength().Should().BeLessThan(3, "逐条删除尾部条目直至长度达标（P1D-2a）");
+        items.GetArrayLength().Should().BeGreaterThanOrEqualTo(1, "至少保留 1 条");
+        document.RootElement.GetProperty("truncated").GetBoolean().Should().BeTrue();
     }
 
     [Fact]

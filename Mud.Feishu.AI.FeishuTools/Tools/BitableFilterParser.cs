@@ -19,7 +19,7 @@ namespace Mud.Feishu.AI.FeishuTools;
 /// （Phase 2 扩文法）；解析失败回填「filter 语法不支持」结构化错误。
 /// </para>
 /// <para>
-/// 注意：<see cref="GeneratedRegexAttribute"/> 仅 net7+，本包面向 ns2.0~net10 多 TFM，
+/// 注意：GeneratedRegexAttribute 仅 net7+，本包面向 ns2.0~net10 多 TFM，
 /// 使用经典 <see cref="Regex"/> 静态字段。
 /// </para>
 /// </remarks>

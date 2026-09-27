@@ -34,7 +34,7 @@ internal sealed class SheetsTools(
                 .ConfigureAwait(false));
             if (!outcome.Ok)
             {
-                return FeishuToolBinding.StructuredError(FeishuToolNames.SheetsListSheets, outcome.ErrorText!);
+                return FeishuToolBinding.StructuredError(FeishuToolNames.SheetsListSheets, outcome.Code, outcome.ErrorText!);
             }
 
             var envelope = new JsonObject { ["items"] = new JsonArray() };
@@ -74,7 +74,7 @@ internal sealed class SheetsTools(
                 .ConfigureAwait(false));
             if (!outcome.Ok)
             {
-                return FeishuToolBinding.StructuredError(FeishuToolNames.SheetsGetRangeValues, outcome.ErrorText!);
+                return FeishuToolBinding.StructuredError(FeishuToolNames.SheetsGetRangeValues, outcome.Code, outcome.ErrorText!);
             }
 
             var valueRange = outcome.Data!.ValueRange;

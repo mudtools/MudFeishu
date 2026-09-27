@@ -30,6 +30,29 @@ public sealed record KnowledgeAnswer(
 {
     /// <summary>构造未命中结果（HasAnswer=false）。</summary>
     public static KnowledgeAnswer NoAnswer(string question) => new(question, null, false, []);
+
+    /// <summary>
+    /// 引用回链投影（AI-FD-D12 P2D-4c）：编号来源列表（形如 <c>[1] aily:data_asset_xxx</c>），
+    /// 供回复文本尾注。仅含 <see cref="RetrievedChunk.Source"/> 非空的切片——
+    /// RAG-B（Phase 3 条件交付）天然携带 wiki URL 强回链，本字段即为其契约位。
+    /// </summary>
+    public IReadOnlyList<string> Sources
+    {
+        get
+        {
+            var sources = new List<string>();
+            for (var i = 0; i < Chunks.Count; i++)
+            {
+                var chunk = Chunks[i];
+                if (!string.IsNullOrEmpty(chunk.Source))
+                {
+                    sources.Add($"[{(i + 1).ToString(CultureInfo.InvariantCulture)}] {chunk.Source}");
+                }
+            }
+
+            return sources;
+        }
+    }
 }
 
 /// <summary>

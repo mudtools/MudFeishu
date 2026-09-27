@@ -70,7 +70,23 @@ public interface IFeishuBitableQueryRecordsTool
         [ToolParameter("view_id", "视图 ID（可选）")] string? view_id = null,
         [ToolParameter("field_names", "只返回这些字段（可选，字符串数组；缺省返回全部字段）")] string[]? field_names = null,
         [ToolParameter("filter", "简化筛选式（可选）：字段 = 值 或 字段 contains 值，and 连接，最多 5 个子句，如：status = \"done\" and owner contains 张三")] string? filter = null,
+        [ToolParameter("sort", "排序子句（可选，字符串数组，最多 3 个）：形如 字段:asc 或 字段:desc，如 [\"status:desc\", \"name:asc\"]")] string[]? sort = null,
         [ToolParameter("page_token", "分页游标（可选，来自上一次结果的 page_token）")] string? page_token = null,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>工具接口：bitable.get_records_by_ids（映射 <c>IFeishuTenantV1BitableRecord.GetRecordsAsync</c>）。</summary>
+[FeishuTool("bitable.get_records_by_ids",
+    Description = "按 record_id 批量获取多维表格记录（最多 100 条）——bitable.query_records 翻页后的精取链。只读，需 bitable:app:readonly。",
+    RequiredScopes = ["bitable:app:readonly"])]
+public interface IFeishuBitableRecordsByIdsTool
+{
+    /// <summary>按 ID 批量取记录。</summary>
+    /// <returns>白名单投影后的 JSON 文本（record_id/fields/absent_record_ids），超长截断并标记 truncated。</returns>
+    Task<string> GetRecordsAsync(
+        [ToolParameter("app_token", "多维表格 AppToken（形如 bascnXxx）", Required = true)] string app_token,
+        [ToolParameter("table_id", "数据表 ID（形如 tblXxx）", Required = true)] string table_id,
+        [ToolParameter("record_ids", "记录 ID 数组（形如 recXxx，最多 100 条）", Required = true)] string[] record_ids,
         CancellationToken cancellationToken = default);
 }
 
@@ -87,6 +103,20 @@ public interface IFeishuDocxRawContentTool
     Task<string> GetDocumentRawContentAsync(
         [ToolParameter("document_id", "文档 ID（形如 doxcnXxx；wiki 文档传 wiki.get_node 返回的 obj_token）", Required = true)] string document_id,
         [ToolParameter("lang", "文档语言（可选，0=中文）")] int? lang = null,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>工具接口：docx.get_document_blocks（映射 <c>IFeishuTenantV1Docx.GetDocumentBlocksPageListAsync</c>）。</summary>
+[FeishuTool("docx.get_document_blocks",
+    Description = "分块读取飞书文档结构（block_id/block_type/文本），表格/代码块等结构化场景使用；document_id 可来自 wiki.get_node 的 obj_token。只读，需 docx:document:readonly。",
+    RequiredScopes = ["docx:document:readonly"])]
+public interface IFeishuDocxDocumentBlocksTool
+{
+    /// <summary>分块读取文档（500 块/页）。</summary>
+    /// <returns>白名单投影后的 JSON 文本（items/has_more/page_token），超长截断并标记 truncated。</returns>
+    Task<string> GetDocumentBlocksPageListAsync(
+        [ToolParameter("document_id", "文档 ID（形如 doxcnXxx；wiki 文档传 wiki.get_node 返回的 obj_token）", Required = true)] string document_id,
+        [ToolParameter("page_token", "分页游标（可选，来自上一次结果的 page_token）")] string? page_token = null,
         CancellationToken cancellationToken = default);
 }
 
@@ -155,6 +185,19 @@ public interface IFeishuImHistoryTool
         [ToolParameter("start_time", "起始时间（可选，RFC3339，如 2026-09-27T00:00:00+08:00）")] string? start_time = null,
         [ToolParameter("end_time", "结束时间（可选，RFC3339）")] string? end_time = null,
         [ToolParameter("page_token", "分页游标（可选）")] string? page_token = null,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>工具接口：im.get_message_content（映射 <c>IFeishuTenantV1Message.GetContentListByMessageIdAsync</c>）。</summary>
+[FeishuTool("im.get_message_content",
+    Description = "按 message_id 回查单条消息的完整内容——与 im.get_history_messages 组成两步链（历史消息列表 → 指定消息内容）。只读，需 im:message:readonly。",
+    RequiredScopes = ["im:message:readonly"])]
+public interface IFeishuImMessageContentTool
+{
+    /// <summary>单条消息内容回查。</summary>
+    /// <returns>白名单投影后的 JSON 文本（message_id/msg_type/body/mentions），超长截断并标记 truncated。</returns>
+    Task<string> GetContentAsync(
+        [ToolParameter("message_id", "消息 ID（形如 omXxx，来自 im.get_history_messages 或事件上下文）", Required = true)] string message_id,
         CancellationToken cancellationToken = default);
 }
 

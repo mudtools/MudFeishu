@@ -165,9 +165,12 @@ public sealed class FeishuAgent : AIAgent
             await _summarizer.SummarizeIfNeededAsync(session, cancellationToken).ConfigureAwait(false);
         }
 
+        // 模型调用耗时指标（P1D-5：feishu.agent.llm.duration；维度 agent——原则 8 无键维度）。
+        var llmStopwatch = System.Diagnostics.Stopwatch.StartNew();
         var response = await _innerAgent
             .RunAsync(messages, session, options, cancellationToken)
             .ConfigureAwait(false);
+        FeishuAgentDiagnostics.RecordLlmDuration(_options.Name, llmStopwatch.ElapsedMilliseconds);
 
         FeishuAgentDiagnostics.RecordUsage(activity, response.Usage);
         return response;

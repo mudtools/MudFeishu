@@ -5,6 +5,7 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using Mud.Feishu.AI.FeishuTools.Tools;
 using Mud.Feishu.DataModels.Bitable;
 
 namespace Mud.Feishu.AI.FeishuTools.Internal;
@@ -40,7 +41,7 @@ internal sealed class BitableTools(
                 .ConfigureAwait(false));
             if (!outcome.Ok)
             {
-                return FeishuToolBinding.StructuredError(FeishuToolNames.BitableListTables, outcome.ErrorText!);
+                return FeishuToolBinding.StructuredError(FeishuToolNames.BitableListTables, outcome.Code, outcome.ErrorText!);
             }
 
             var data = outcome.Data!;
@@ -55,7 +56,7 @@ internal sealed class BitableTools(
                 });
             }
 
-            return ToolResultText.Truncate(envelope.ToJsonString(), _maxResultLength);
+            return ToolResultText.TruncateJson(envelope.ToJsonString(), _maxResultLength);
         }
         catch (ArgumentException ex)
         {
@@ -79,7 +80,7 @@ internal sealed class BitableTools(
                 .ConfigureAwait(false));
             if (!outcome.Ok)
             {
-                return FeishuToolBinding.StructuredError(FeishuToolNames.BitableListFields, outcome.ErrorText!);
+                return FeishuToolBinding.StructuredError(FeishuToolNames.BitableListFields, outcome.Code, outcome.ErrorText!);
             }
 
             var data = outcome.Data!;
@@ -96,7 +97,7 @@ internal sealed class BitableTools(
                 });
             }
 
-            return ToolResultText.Truncate(envelope.ToJsonString(), _maxResultLength);
+            return ToolResultText.TruncateJson(envelope.ToJsonString(), _maxResultLength);
         }
         catch (ArgumentException ex)
         {
@@ -104,7 +105,7 @@ internal sealed class BitableTools(
         }
     }
 
-    /// <summary>bitable.query_records：查询记录（filter 简化文法 → <see cref="RecordQueryFilterInfo"/>）。</summary>
+    /// <summary>bitable.query_records：查询记录（filter/sort 简化文法 → 官方过滤/排序结构）。</summary>
     public async Task<string> QueryRecordsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         try
@@ -114,6 +115,7 @@ internal sealed class BitableTools(
             var viewId = ToolArgs.OptionalString(arguments, "view_id");
             var fieldNames = ToolArgs.OptionalStringArray(arguments, "field_names");
             var filter = ToolArgs.OptionalString(arguments, "filter");
+            var sort = ToolArgs.OptionalStringArray(arguments, "sort");
             var pageToken = ToolArgs.OptionalString(arguments, "page_token");
 
             // filter 简化文法（§3.3.3）：解析失败回填「filter 语法不支持」结构化错误。
@@ -122,11 +124,18 @@ internal sealed class BitableTools(
                 return FeishuToolBinding.StructuredError(FeishuToolNames.BitableQueryRecords, filterError!);
             }
 
+            // sort 简化文法（P1D-1b 批次 A）：字段:asc|desc，≤3 个。
+            if (!BitableSortParser.TryParse(sort, out var parsedSort, out var sortError))
+            {
+                return FeishuToolBinding.StructuredError(FeishuToolNames.BitableQueryRecords, sortError!);
+            }
+
             var request = new QueryRecordsRequest
             {
                 ViewId = viewId,
                 FieldNames = fieldNames,
                 Filter = parsedFilter,
+                Sorts = parsedSort,
             };
 
             var outcome = FeishuApiResultReader.Read(await _recordClient
@@ -134,7 +143,7 @@ internal sealed class BitableTools(
                 .ConfigureAwait(false));
             if (!outcome.Ok)
             {
-                return FeishuToolBinding.StructuredError(FeishuToolNames.BitableQueryRecords, outcome.ErrorText!);
+                return FeishuToolBinding.StructuredError(FeishuToolNames.BitableQueryRecords, outcome.Code, outcome.ErrorText!);
             }
 
             var data = outcome.Data!;
@@ -166,11 +175,73 @@ internal sealed class BitableTools(
                 });
             }
 
-            return ToolResultText.Truncate(envelope.ToJsonString(), _maxResultLength);
+            return ToolResultText.TruncateJson(envelope.ToJsonString(), _maxResultLength);
         }
         catch (ArgumentException ex)
         {
             return FeishuToolBinding.StructuredError(FeishuToolNames.BitableQueryRecords, ex.Message);
+        }
+    }
+
+    /// <summary>bitable.get_records_by_ids：按 ID 批量取记录（官方上限 100 条/请求；白名单 record_id/fields）。</summary>
+    public async Task<string> GetRecordsByIdsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var appToken = ToolArgs.RequireString(arguments, "app_token");
+            var tableId = ToolArgs.RequireString(arguments, "table_id");
+            var recordIds = ToolArgs.OptionalStringArray(arguments, "record_ids");
+
+            if (recordIds is null || recordIds.Length == 0)
+            {
+                throw new ArgumentException("缺少必填参数 record_ids");
+            }
+
+            if (recordIds.Length > PageSizes.BitableRecordsByIds)
+            {
+                throw new ArgumentException(
+                    $"record_ids 最多 {PageSizes.BitableRecordsByIds.ToString(CultureInfo.InvariantCulture)} 条，实际 {recordIds.Length.ToString(CultureInfo.InvariantCulture)} 条");
+            }
+
+            var outcome = FeishuApiResultReader.Read(await _recordClient
+                .GetRecordsAsync(appToken, tableId, new GetRecordsRequest { RecordIds = recordIds }, cancellationToken)
+                .ConfigureAwait(false));
+            if (!outcome.Ok)
+            {
+                return FeishuToolBinding.StructuredError(FeishuToolNames.BitableGetRecordsByIds, outcome.Code, outcome.ErrorText!);
+            }
+
+            var data = outcome.Data!;
+            var envelope = new JsonObject { ["items"] = new JsonArray() };
+            foreach (var record in data.Records ?? [])
+            {
+                var fields = new JsonObject();
+                foreach (var pair in record.Fields ?? new Dictionary<string, object?>())
+                {
+                    fields[pair.Key] = ToolResultText.ToJsonNode(pair.Value);
+                }
+
+                envelope["items"]!.AsArray().AddNode(new JsonObject
+                {
+                    ["record_id"] = record.RecordId,
+                    ["fields"] = fields,
+                });
+            }
+
+            if (data.AbsentRecordIds is { Length: > 0 })
+            {
+                envelope["absent_record_ids"] = new JsonArray();
+                foreach (var absent in data.AbsentRecordIds)
+                {
+                    ((IList<JsonNode?>)envelope["absent_record_ids"]!.AsArray()).Add(absent);
+                }
+            }
+
+            return ToolResultText.TruncateJson(envelope.ToJsonString(), _maxResultLength);
+        }
+        catch (ArgumentException ex)
+        {
+            return FeishuToolBinding.StructuredError(FeishuToolNames.BitableGetRecordsByIds, ex.Message);
         }
     }
 

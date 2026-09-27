@@ -132,6 +132,10 @@ public static class FeishuAgentServiceCollectionExtensions
         services.TryAddSingleton<IConversationStore>(static sp => new MemoryConversationStore(
             sp.GetRequiredService<IOptions<FeishuConversationOptions>>().Value.SessionTtl));
 
+        // 默认进程内会话闸门（P2D-1：同键串行，防并发 Run 丢历史）；
+        // 多实例部署经 Mud.Feishu.Redis 的 AddFeishuRedisConversationGate 替换本注册。
+        services.TryAddSingleton<IConversationGate, KeyedConversationGate>();
+
         services.TryAddSingleton(static sp =>
         {
             var options = sp.GetRequiredService<IOptions<FeishuAgentOptions>>().Value;

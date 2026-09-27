@@ -5,11 +5,15 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using System.Text;
+using Mud.Feishu.DataModels.Docx;
+
 namespace Mud.Feishu.AI.FeishuTools.Internal;
 
 /// <summary>
-/// Docx 单工具执行器（<c>docx.get_raw_content</c>）：正文为纯文本，不做字段投影，
-/// 仅按 <see cref="FeishuAgentOptions.MaxToolResultLength"/> 截断并标记（§3.3.3）。
+/// Docx 工具执行器（<c>docx.get_raw_content</c> / <c>docx.get_document_blocks</c>）：
+/// 正文纯文本不做字段投影仅截断；分块读取按白名单 block_id/block_type/text 投影（§3.3.3 +
+/// AI-FD-D12 P1D-1b）。
 /// </summary>
 internal sealed class DocxTools(Mud.Feishu.IFeishuTenantV1Docx docxClient, IOptions<FeishuAgentOptions> options)
 {
@@ -33,7 +37,7 @@ internal sealed class DocxTools(Mud.Feishu.IFeishuTenantV1Docx docxClient, IOpti
                 .ConfigureAwait(false));
             if (!outcome.Ok)
             {
-                return FeishuToolBinding.StructuredError(FeishuToolNames.DocxGetRawContent, outcome.ErrorText!);
+                return FeishuToolBinding.StructuredError(FeishuToolNames.DocxGetRawContent, outcome.Code, outcome.ErrorText!);
             }
 
             return ToolResultText.Truncate(outcome.Data!.Content ?? string.Empty, _maxResultLength);
@@ -43,6 +47,80 @@ internal sealed class DocxTools(Mud.Feishu.IFeishuTenantV1Docx docxClient, IOpti
             return FeishuToolBinding.StructuredError(FeishuToolNames.DocxGetRawContent, ex.Message);
         }
     }
+
+    /// <summary>docx.get_document_blocks：分块读取文档（白名单 block_id/block_type/text；text 取首个非空文本块字段）。</summary>
+    public async Task<string> GetDocumentBlocksAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var documentId = ToolArgs.RequireString(arguments, "document_id");
+            var pageToken = ToolArgs.OptionalString(arguments, "page_token");
+
+            var outcome = FeishuApiResultReader.Read(await _docxClient
+                .GetDocumentBlocksPageListAsync(documentId, page_size: PageSizes.DocxBlocks, page_token: pageToken, cancellationToken: cancellationToken)
+                .ConfigureAwait(false));
+            if (!outcome.Ok)
+            {
+                return FeishuToolBinding.StructuredError(FeishuToolNames.DocxGetDocumentBlocks, outcome.Code, outcome.ErrorText!);
+            }
+
+            var data = outcome.Data!;
+            var envelope = new JsonObject
+            {
+                ["items"] = new JsonArray(),
+                ["has_more"] = data.HasMore,
+            };
+            if (!string.IsNullOrEmpty(data.PageToken))
+            {
+                envelope["page_token"] = data.PageToken;
+            }
+
+            foreach (var block in data.Items ?? [])
+            {
+                envelope["items"]!.AsArray().AddNode(new JsonObject
+                {
+                    ["block_id"] = block.BlockId,
+                    ["block_type"] = block.BlockType,
+                    ["text"] = ToolResultText.Truncate(ExtractText(block) ?? string.Empty, PageSizes.MessagePreviewLength),
+                });
+            }
+
+            return ToolResultText.TruncateJson(envelope.ToJsonString(), _maxResultLength);
+        }
+        catch (ArgumentException ex)
+        {
+            return FeishuToolBinding.StructuredError(FeishuToolNames.DocxGetDocumentBlocks, ex.Message);
+        }
+    }
+
+    /// <summary>取块文本：首个非空文本类字段（页面/正文/标题/列表/代码/引用/公式/待办）的 text_run 拼接。</summary>
+    private static string? ExtractText(Block block)
+    {
+        var textBlock = FirstNonNull(
+            block.Text, block.Page, block.Heading1, block.Heading2, block.Heading3, block.Heading4,
+            block.Heading5, block.Heading6, block.Heading7, block.Heading8, block.Heading9,
+            block.Bullet, block.Ordered, block.Code, block.Quote, block.Equation, block.Todo);
+        if (textBlock is null)
+        {
+            return null;
+        }
+
+        var text = new StringBuilder();
+        foreach (var element in textBlock.Elements ?? [])
+        {
+            // netstandard2.0 的 BCL 缺少流转注解，取局部值显式判空。
+            var content = element?.TextRun?.Content;
+            if (!string.IsNullOrEmpty(content))
+            {
+                text.Append(content);
+            }
+        }
+
+        return text.Length == 0 ? null : text.ToString();
+    }
+
+    private static BlockText? FirstNonNull(params BlockText?[] candidates)
+        => candidates.FirstOrDefault(static c => c is not null);
 
     private static int? ParseLang(string? lang)
     {

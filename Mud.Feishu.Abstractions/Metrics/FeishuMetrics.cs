@@ -51,6 +51,33 @@ public static class FeishuMetrics
         description: "飞书事件处理耗时分布");
 
     /// <summary>
+    /// Agent 工具执行总次数（维度：tool, app_key, outcome）——工具成功率 KPI 数据源（AI-FD-D12 P1D-5）。
+    /// </summary>
+    /// <remarks>高基数纪律（原则 8）：禁止把 conversation_key/chat_id/user_id 加入 tags。</remarks>
+    public static readonly Counter<long> ToolExecutions = Instance.CreateCounter<long>(
+        "feishu.tool.executions",
+        unit: "{execution}",
+        description: "飞书 Agent 工具执行总次数");
+
+    /// <summary>
+    /// Agent 工具执行耗时直方图（毫秒，维度：tool, app_key）——工具延迟 P95（AI-FD-D12 P1D-5）。
+    /// </summary>
+    /// <remarks>高基数纪律（原则 8）：禁止把 conversation_key/chat_id/user_id 加入 tags。</remarks>
+    public static readonly Histogram<double> ToolDuration = Instance.CreateHistogram<double>(
+        "feishu.tool.duration",
+        unit: "ms",
+        description: "飞书 Agent 工具执行耗时分布");
+
+    /// <summary>
+    /// Agent 模型调用耗时直方图（毫秒，维度：agent）——模型延迟 P95（AI-FD-D12 P1D-5）。
+    /// </summary>
+    /// <remarks>token 用量以 Span 属性 <c>feishu.llm.*</c> 聚合为主，不加高基数指标。</remarks>
+    public static readonly Histogram<double> AgentLlmDuration = Instance.CreateHistogram<double>(
+        "feishu.agent.llm.duration",
+        unit: "ms",
+        description: "飞书 Agent 模型调用耗时分布");
+
+    /// <summary>
     /// 事件去重命中计数（维度：app_key, dedup_type, outcome）。
     /// </summary>
     public static readonly Counter<long> EventDeduplicationCount = Instance.CreateCounter<long>(
@@ -512,6 +539,12 @@ public static class FeishuMetrics
         /// <summary>操作结果（success/failure/deduplicated）</summary>
         public const string Outcome = "outcome";
 
+        /// <summary>工具名（<see cref="ToolExecutions"/> / <see cref="ToolDuration"/> 维度）</summary>
+        public const string Tool = "tool";
+
+        /// <summary>Agent 展示名（<see cref="AgentLlmDuration"/> 维度）</summary>
+        public const string Agent = "agent";
+
         /// <summary>错误类型名</summary>
         public const string ErrorType = "error.type";
 
@@ -625,6 +658,21 @@ public static class FeishuMetrics
     /// <summary>
     /// <see cref="Tags.DedupType"/> 的取值（受控枚举）。
     /// </summary>
+    /// <summary>
+    /// <see cref="ToolExecutions"/> 的 outcome 取值（受控枚举；与工具执行链判定一一对应）。
+    /// </summary>
+    public static class ToolOutcomes
+    {
+        /// <summary>放行并执行完成（含业务层返回的结构化错误回填）。</summary>
+        public const string Allowed = "allowed";
+
+        /// <summary>授权门禁拒绝（零调用下游）。</summary>
+        public const string Denied = "denied";
+
+        /// <summary>执行异常（异常归一路径）。</summary>
+        public const string Error = "error";
+    }
+
     public static class DedupTypes
     {
         /// <summary>事件去重（EventId）</summary>

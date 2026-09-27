@@ -1,5 +1,71 @@
 # Mud.Feishu 更新日志
 
+## [Unreleased] - AI-Native Phase 1/2 功能深化（AI-FD-D12 批次 A/B）
+
+> 本轮聚焦 **会话并发正确性、单聊流式解锁、工具面扩容与治理、零自定义接入**。
+> 详细设计见 `.docs/AI/AI-Native-Agent-Deepening-Phase12-Design.md`；实施进度见
+> `documents/AIAgent/AI-Native-实施进度-Phase1-2深化.md`。
+
+### ⚠️ 行为变更登记
+
+- **core 缺陷修复（P1D-1a）**：`IFeishuTenantV1Message.GetContentListByMessageIdAsync` 路由由
+  `[Get("/open-apis/im/v1/messages")]`（缺 `{message_id}` 段，`[Path]` 参数无法展开、调用必然命中
+  错误端点）修正为官方语义 `[Get("/open-apis/im/v1/messages/{message_id}")]`。现路由必然调错端点、
+  无人可能正确依赖，属缺陷修正而非破坏性变更（R5 规则 5 登记精神）。
+- **工具执行器解析语义收敛（P1D-1c）**：`AddFeishuTools` 系注册从「缺任一域客户端启动崩溃」
+  （`GetRequiredService` 硬失败）收敛为「客户端缺席 → 该域工具不进注册表、白名单映射期 fail-fast
+  报『未注册』」。全域入口保留且产物等价（等价性用例锁定）。
+- **工具结果截断升级（P1D-2a）**：JSON 结果超限时按 `items` 数组逐条删除并追加
+  `truncated`/`hint` 标记（截断后仍为合法 JSON）；纯文本维持字符级截断。
+- **工具错误回填分类（P1D-2b）**：错误回填从「裸原因」升级为「分类 + 原因 + 建议」三段式
+  （`retryable`/`invalid_args`/`forbidden`/`api_error`），授权拒绝与参数错误可区分。
+- **工具 scope 定稿（P1D-3a）**：19 个工具的 `required_scopes` 核对回填为开放平台真实权限点
+  （`im.send_message` 由占位 `im:message` 修正为 `im:message:send_as_bot` 等），契约守卫升格为
+  精确值断言。对照表见 `documents/AIAgent/工具权限对照表.md`。
+
+### 🌟 新增
+
+- **会话串行化三层（P2D-1，最高优先级架构修复）**：`IConversationGate` 契约下沉 Abstractions；
+  `KeyedConversationGate` 进程内默认实现（同键串行、跨键并行、空闲回收）；`RedisConversationGate`
+  分布式实现（SET NX 租约 + 比较删除释放 + 有限次重试后快速失败，忙时抛
+  `ConversationBusyException` 由事件层重投递承接）。
+- **流式正解通道（P2D-2a）**：`CardStreamMessageChannel`（应用消息卡片流，Create→Update→终态）+
+  `AddFeishuStreamingChannel` 降级链（卡片流失败自动降级编辑通道，事件处理器零感知）。
+- **会话目标解耦（P2D-2b）**：`ConversationRequest` 新增可空 `ChatId`（回复/流式目标）与
+  `ParentId`（引用消息）——单聊流式解锁。
+- **速率自适应分片（P2D-2c）**：`BufferedMessageChannel` 基类抽取，分片长度 + 最小更新间隔
+  （800ms）双阈值；`EditMessageChannel`/`CardStreamMessageChannel` 缓冲语义同构。
+- **RAG-A 可用性（P2D-4a/b）**：`knowledge.search` 工具化（模型按需检索）+
+  `KnowledgeContextAssembler` 注入桥（`AddFeishuKnowledgeContext`，注入模式）。
+- **零自定义接入（P2D-5a/b）**：`ImMessageConversationalEventHandler` + `AddFeishuImConversationHandler`
+  一行接入（Bot 自激过滤、群聊 @ 过滤安全内建）；内置装配器集（SenderInfo/QuoteMessage/Knowledge 位标记装配）。
+- **工具面扩容 13→19（P1D-1a/b）**：新增 `im.get_message_content`、`docx.get_document_blocks`、
+  `bitable.get_records_by_ids`、`drive.list_folder_files`、`drive.get_file_metas`、`knowledge.search`
+  6 个只读工具；`bitable.query_records` 增 `sort` 简化文法（字段:asc|desc，≤3 个）。
+- **子域注册粒度（P1D-1c）**：`IFeishuToolDomainRegistrar` 逐域注册器；
+  `AddFeishuBitableTools`/`AddFeishuImTools`/`AddFeishuDocxTools`/`AddFeishuWikiTools`/
+  `AddFeishuSearchTools`/`AddFeishuSheetsTools`/`AddFeishuDriveTools`/`AddFeishuKnowledgeTools`/
+  `AddFeishuWriteTools` 按需装配。
+- **结果整形钩子（P1D-2a）**：`IToolResultShaper`（宿主注册后对投影结果最终整形，失败回退默认）。
+- **结构化审计出口（P1D-3b）**：`IToolExecutionAuditSink` + `ToolExecutionAuditRecord`
+  （允许/拒绝/错误均投递；`ArgsDigest` SDK 侧脱敏，宿主 sink 不接触原始参数）。
+- **工具目录与 Schema 导出（P1D-4）**：`IToolCatalog`（注册表之上的稳定目录契约）+
+  `IToolSchemaExporter`（OpenAI-compatible tools JSON 导出）。
+- **工具可观测（P1D-5）**：`feishu.tool.executions` / `feishu.tool.duration` /
+  `feishu.agent.llm.duration` 三指标（高基数纪律：conversation/chat/user 键不入 tags）。
+- **记忆深化（P2D-3a/b）**：`FeishuAgentOptions.MaxHistoryTokens`（token 窗口，默认 8000，
+  条数与 token 双窗口先触发者生效）；摘要输入每条 500 字压缩、摘要调用 30s 超时钳制。
+- **RAG 引用回链（P2D-4c）**：`RetrievedChunk.Source` 按 `DataAssetIds` 填充（弱引用）；
+  `KnowledgeAnswer.Sources` 编号尾注投影。
+
+### ⚙️ 配置面新增（R4/R5 对齐）
+
+| 配置属性 | 配置节 | 默认值 | 消费点 |
+| --- | --- | --- | --- |
+| `MaxHistoryTokens` | `FeishuAgent` | `8000`（0=不启用） | `ConversationSummarizer` |
+| `RequireMentionInGroup` | `FeishuAgent:ImConversation` | `true` | `ImMessageConversationalEventHandler` |
+| `AllowP2pConversation` | `FeishuAgent:ImConversation` | `true` | 同上 |
+
 ## [3.0.0-rc3] - 2026-09-23
 
 > 本版聚焦 **Webhook 多地部署安全加固、令牌/多应用热更新稳定性、Redis 去重与令牌存储正确性、WebSocket 连接可靠性**。包含若干破坏性变更，升级前请务必阅读「升级须知」。

@@ -8,7 +8,7 @@
 namespace Mud.Feishu.AI.FeishuTools;
 
 /// <summary>
-/// 工具名契约表（Phase 1 §3.3.2 的唯一权威，6 域 10 个只读工具）。
+/// 工具名契约表（Phase 1 §3.3.2 + AI-FD-D12 P1D-1b 批次 A 扩容的唯一权威：8 域 16 个只读工具）。
 /// </summary>
 /// <remarks>
 /// 工具名是模型可见契约——注册名、Schema 名与契约表的漂移由契约守卫锁定
@@ -22,11 +22,17 @@ public static class FeishuToolNames
     /// <summary>bitable.list_fields：列出数据表字段定义。</summary>
     public const string BitableListFields = "bitable.list_fields";
 
-    /// <summary>bitable.query_records：查询记录（filter 简化文法）。</summary>
+    /// <summary>bitable.query_records：查询记录（filter/sort 简化文法）。</summary>
     public const string BitableQueryRecords = "bitable.query_records";
+
+    /// <summary>bitable.get_records_by_ids：按 ID 批量取记录（P1D-1b 批次 A）。</summary>
+    public const string BitableGetRecordsByIds = "bitable.get_records_by_ids";
 
     /// <summary>docx.get_raw_content：读取文档纯文本正文。</summary>
     public const string DocxGetRawContent = "docx.get_raw_content";
+
+    /// <summary>docx.get_document_blocks：分块读取文档结构（P1D-1b 批次 A）。</summary>
+    public const string DocxGetDocumentBlocks = "docx.get_document_blocks";
 
     /// <summary>wiki.get_node：解析知识库节点信息。</summary>
     public const string WikiGetNode = "wiki.get_node";
@@ -39,6 +45,18 @@ public static class FeishuToolNames
 
     /// <summary>im.get_history_messages：读取群聊历史消息。</summary>
     public const string ImGetHistoryMessages = "im.get_history_messages";
+
+    /// <summary>im.get_message_content：单条消息内容回查（P1D-1b 批次 A，依赖 P1D-1a 路由修复）。</summary>
+    public const string ImGetMessageContent = "im.get_message_content";
+
+    /// <summary>drive.list_folder_files：列出云空间文件夹内容（P1D-1b 批次 A）。</summary>
+    public const string DriveListFolderFiles = "drive.list_folder_files";
+
+    /// <summary>drive.get_file_metas：文件元信息批量查询（P1D-1b 批次 A）。</summary>
+    public const string DriveGetFileMetas = "drive.get_file_metas";
+
+    /// <summary>knowledge.search：飞书知识库检索（P2D-4b 批次 A）。</summary>
+    public const string KnowledgeSearch = "knowledge.search";
 
     /// <summary>sheets.list_sheets：列出电子表格工作表。</summary>
     public const string SheetsListSheets = "sheets.list_sheets";
@@ -55,17 +73,23 @@ public static class FeishuToolNames
     /// <summary>approval.create_instance：发起审批实例（写，Phase 2）。</summary>
     public const string ApprovalCreateInstance = "approval.create_instance";
 
-    /// <summary>只读契约名（Phase 1 §3.3.2，契约守卫逐一比对）。</summary>
+    /// <summary>只读契约名（Phase 1 §3.3.2 + AI-FD-D12 P1D-1b 批次 A，契约守卫逐一比对）。</summary>
     public static readonly string[] ReadonlyAll =
     [
         BitableListTables,
         BitableListFields,
         BitableQueryRecords,
+        BitableGetRecordsByIds,
         DocxGetRawContent,
+        DocxGetDocumentBlocks,
         WikiGetNode,
         WikiListNodes,
         SearchDocWiki,
         ImGetHistoryMessages,
+        ImGetMessageContent,
+        DriveListFolderFiles,
+        DriveGetFileMetas,
+        KnowledgeSearch,
         SheetsListSheets,
         SheetsGetRangeValues,
     ];
@@ -105,6 +129,18 @@ internal static class PageSizes
 
     /// <summary>im.get_history_messages（默认 10，上限 20）。</summary>
     public const int History = 10;
+
+    /// <summary>docx.get_document_blocks（官方默认 500/页）。</summary>
+    public const int DocxBlocks = 500;
+
+    /// <summary>drive.list_folder_files（绑定层固定页大小，上限 50）。</summary>
+    public const int DriveFiles = 50;
+
+    /// <summary>drive.get_file_metas（官方单请求上限 200）。</summary>
+    public const int DriveMetas = 200;
+
+    /// <summary>bitable.get_records_by_ids（官方单请求上限 100）。</summary>
+    public const int BitableRecordsByIds = 100;
 
     /// <summary>单条消息 content 预览截断长度。</summary>
     public const int MessagePreviewLength = 200;

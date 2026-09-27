@@ -40,9 +40,16 @@ public sealed class ConversationSummarizer
         "你是会话纪要助手。把下面的对话历史压缩成一份简洁的中文要点纪要：保留用户的目标、已确认的事实、"
         + "涉及的飞书资源（表格/文档 ID 等）与未完成的待办；不要评论、不要回答问题，只输出纪要正文。";
 
+    /// <summary>参与摘要的每条历史文本截断长度（P2D-3b 摘要输入压缩：纪要质量由「条数多、要点全」补偿）。</summary>
+    internal const int TranscriptPerMessageLimit = 500;
+
+    /// <summary>摘要模型调用超时钳制（P2D-3b：超时视为失败跳过，不让摘要拖死主对话）。</summary>
+    internal static readonly TimeSpan SummaryCallTimeout = TimeSpan.FromSeconds(30);
+
     private readonly IChatClient _chatClient;
     private readonly int _summaryThreshold;
     private readonly int _retainRecentCount;
+    private readonly int _maxHistoryTokens;
     private readonly ILogger? _logger;
 
     /// <summary>
@@ -59,11 +66,22 @@ public sealed class ConversationSummarizer
             throw new ArgumentNullException(nameof(options));
         _summaryThreshold = options.SummaryThreshold;
         _retainRecentCount = ResolveRetainCount(options);
+        _maxHistoryTokens = options.MaxHistoryTokens;
         _logger = logger;
     }
 
-    /// <summary>会话历史是否需要摘要（阈值判定，0 = 禁用；仅诊断/测试用，主流程直接调 <see cref="SummarizeIfNeededAsync"/>）。</summary>
+    /// <summary>会话历史是否需要摘要（条数阈值判定；仅诊断/测试用，主流程走 token 维度重载）。</summary>
     public bool ShouldSummarize(int historyCount) => _summaryThreshold > 0 && historyCount >= _summaryThreshold;
+
+    /// <summary>
+    /// 会话历史是否需要摘要（AI-FD-D12 P2D-3a：条数与 token 双窗口，<b>先触发者生效</b>——
+    /// 条数阈值 ≤0 视为禁用、token 上限 0 视为不启用；升级不破坏既有条数语义）。
+    /// </summary>
+    /// <param name="historyCount">历史消息条数。</param>
+    /// <param name="historyTokens">历史消息 token 总量（<see cref="ChatTokenCounter"/>）。</param>
+    public bool ShouldSummarize(int historyCount, int historyTokens)
+        => (_summaryThreshold > 0 && historyCount >= _summaryThreshold)
+           || (_maxHistoryTokens > 0 && historyTokens >= _maxHistoryTokens);
 
     /// <summary>
     /// 按需压缩会话历史（阈值未触发时为无副作用 no-op）。
@@ -82,7 +100,13 @@ public sealed class ConversationSummarizer
         }
 
         // netstandard2.0 的 BCL 不带 out 参数的 NotNullWhen 注解，需显式判空（对齐既有风格）。
-        if (history is null || history.Count == 0 || !ShouldSummarize(history.Count))
+        if (history is null || history.Count == 0)
+        {
+            return false;
+        }
+
+        // token 维度判定（P2D-3a）：超限时摘要先于条数窗口触发（先触发者生效）。
+        if (!ShouldSummarize(history.Count, ChatTokenCounter.CountMessages(history)))
         {
             return false;
         }
@@ -93,10 +117,21 @@ public sealed class ConversationSummarizer
 
         using var activity = FeishuAgentDiagnostics.StartSummarizeActivity(older.Count, recent.Count);
 
+        // netstandard2.0 的 BCL 缺少流转注解：历史计数局部化供 catch 路径使用。
+        var historyCount = history!.Count;
+        var retainedCount = history.Count;
+
         string? summaryText;
         try
         {
             summaryText = await SummarizeCoreAsync(older, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            // 摘要调用超时钳制（P2D-3b）：超时视为失败跳过——调用方 token 未取消时不得拖死主对话。
+            _logger?.LogWarning("会话摘要生成超时（{Timeout} 秒），本轮跳过压缩（历史 {Count} 条）",
+                SummaryCallTimeout.TotalSeconds, historyCount);
+            return false;
         }
         catch (OperationCanceledException)
         {
@@ -105,7 +140,7 @@ public sealed class ConversationSummarizer
         catch (Exception ex)
         {
             // 失败隔离：退化为既有裁剪行为，绝不中断主对话（Phase 2 §8 风险应对）。
-            _logger?.LogWarning(ex, "会话摘要生成失败，本轮跳过压缩（历史 {Count} 条）", history.Count);
+            _logger?.LogWarning(ex, "会话摘要生成失败，本轮跳过压缩（历史 {Count} 条）", historyCount);
             return false;
         }
 
@@ -117,7 +152,7 @@ public sealed class ConversationSummarizer
 
         var rebuilt = new List<ChatMessage>(recent.Count + 1)
         {
-            new(ChatRole.System, $"[历史要点纪要]\n{summaryText.Trim()}"),
+            new(ChatRole.System, $"[历史要点纪要]\n{summaryText!.Trim()}"),
         };
         rebuilt.AddRange(recent);
         session.SetInMemoryChatHistory(rebuilt, FeishuAgent.ChatHistoryStateKey, null);
@@ -146,7 +181,9 @@ public sealed class ConversationSummarizer
                 continue;
             }
 
-            transcript.Append('[').Append(message.Role.Value).Append("] ").AppendLine(text);
+            // 摘要输入压缩（P2D-3b）：每条截断，纪要质量由「条数多、要点全」补偿。
+            var compressed = text.Length <= TranscriptPerMessageLimit ? text : text.Substring(0, TranscriptPerMessageLimit);
+            transcript.Append('[').Append(message.Role.Value).Append("] ").AppendLine(compressed);
         }
 
         if (transcript.Length == 0)
@@ -154,12 +191,16 @@ public sealed class ConversationSummarizer
             return null;
         }
 
+        // 摘要调用超时钳制（P2D-3b，常量 30 秒）：链接调用方 token，超时视为失败（外层隔离路径承接）。
+        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeoutCts.CancelAfter(SummaryCallTimeout);
+
         var response = await _chatClient
             .GetResponseAsync(
             [
                 new ChatMessage(ChatRole.System, SummaryInstruction),
                 new ChatMessage(ChatRole.User, transcript.ToString()),
-            ], cancellationToken: cancellationToken)
+            ], cancellationToken: timeoutCts.Token)
             .ConfigureAwait(false);
 
         return response.Text;

@@ -5,6 +5,8 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using Mud.Feishu.Abstractions.Metrics;
+
 namespace Mud.Feishu.AI.FeishuTools;
 
 /// <summary>
@@ -64,5 +66,39 @@ internal static class FeishuToolDiagnostics
                 .SetTag(TagScopes, string.Join(",", requiredScopes))
                 .SetTag(TagIsWrite, isWrite);
         return activity;
+    }
+
+    /// <summary>
+    /// P1D-5：记录一次工具执行计数（<c>feishu.tool.executions</c>；维度 tool/app_key/outcome——
+    /// 高基数纪律（原则 8）：conversation_key/chat_id/user_id 不入 tags）。
+    /// </summary>
+    /// <param name="toolName">工具名。</param>
+    /// <param name="appKey">应用唯一标识。</param>
+    /// <param name="outcome">判定结果（<see cref="FeishuMetrics.ToolOutcomes"/> 受控枚举）。</param>
+    public static void RecordExecution(string toolName, string appKey, string outcome)
+    {
+        var tags = new TagList
+        {
+            { FeishuMetrics.Tags.Tool, toolName },
+            { FeishuMetrics.Tags.AppKey, appKey },
+            { FeishuMetrics.Tags.Outcome, outcome },
+        };
+        FeishuMetrics.ToolExecutions.Add(1, tags);
+    }
+
+    /// <summary>
+    /// P1D-5：记录一次工具执行耗时（<c>feishu.tool.duration</c> 毫秒直方图；维度 tool/app_key）。
+    /// </summary>
+    /// <param name="toolName">工具名。</param>
+    /// <param name="appKey">应用唯一标识。</param>
+    /// <param name="durationMs">耗时毫秒。</param>
+    public static void RecordDuration(string toolName, string appKey, long durationMs)
+    {
+        var tags = new TagList
+        {
+            { FeishuMetrics.Tags.Tool, toolName },
+            { FeishuMetrics.Tags.AppKey, appKey },
+        };
+        FeishuMetrics.ToolDuration.Record(durationMs, tags);
     }
 }

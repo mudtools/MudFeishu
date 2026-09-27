@@ -50,7 +50,7 @@ internal sealed class MessageWriteTools(Mud.Feishu.IFeishuTenantV1Message messag
                 .ConfigureAwait(false));
             if (!outcome.Ok)
             {
-                return FeishuToolBinding.StructuredError(FeishuToolNames.ImSendMessage, outcome.ErrorText!);
+                return FeishuToolBinding.StructuredError(FeishuToolNames.ImSendMessage, outcome.Code, outcome.ErrorText!);
             }
 
             return new JsonObject
@@ -91,7 +91,7 @@ internal sealed class BitableWriteTools(Mud.Feishu.IFeishuTenantV1BitableRecord 
                 .ConfigureAwait(false));
             if (!outcome.Ok)
             {
-                return FeishuToolBinding.StructuredError(FeishuToolNames.BitableAddRecord, outcome.ErrorText!);
+                return FeishuToolBinding.StructuredError(FeishuToolNames.BitableAddRecord, outcome.Code, outcome.ErrorText!);
             }
 
             return new JsonObject
@@ -158,7 +158,7 @@ internal sealed class ApprovalWriteTools(Mud.Feishu.IFeishuTenantV4Approval appr
                 .ConfigureAwait(false));
             if (!outcome.Ok)
             {
-                return FeishuToolBinding.StructuredError(FeishuToolNames.ApprovalCreateInstance, outcome.ErrorText!);
+                return FeishuToolBinding.StructuredError(FeishuToolNames.ApprovalCreateInstance, outcome.Code, outcome.ErrorText!);
             }
 
             return new JsonObject

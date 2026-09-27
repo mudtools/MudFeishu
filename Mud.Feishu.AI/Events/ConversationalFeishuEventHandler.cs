@@ -46,7 +46,8 @@ public abstract class ConversationalFeishuEventHandler<T>(
     ILogger? logger = null,
     IReadOnlyList<IContextAssembler>? contextAssemblers = null,
     IFeishuToolContextAccessor? toolContextAccessor = null,
-    IMessageChannel? messageChannel = null) : IdempotentFeishuEventHandler<T>(businessDeduplicator, logger ?? NullLogger.Instance)
+    IMessageChannel? messageChannel = null,
+    IConversationGate? conversationGate = null) : IdempotentFeishuEventHandler<T>(businessDeduplicator, logger ?? NullLogger.Instance)
     where T : class, IEventResult, new()
 {
     private readonly FeishuAgent _agent = agent ?? throw new ArgumentNullException(nameof(agent));
@@ -59,6 +60,13 @@ public abstract class ConversationalFeishuEventHandler<T>(
 
     /// <summary>流式回复通道（可空；未注入时保持非流式回复路径，Phase 2 §3.1）。</summary>
     protected IMessageChannel? MessageChannel { get; } = messageChannel;
+
+    /// <summary>
+    /// 会话闸门（可空；P2D-1 会话串行化——<c>AddFeishuAgent</c> 默认注册
+    /// <c>KeyedConversationGate</c>，多实例部署可替换 Redis 实现。未注入时不串行化，
+    /// 保持既有行为）。
+    /// </summary>
+    protected IConversationGate? ConversationGate { get; } = conversationGate;
 
     /// <summary>
     /// 把强类型事件规范化为会话请求（群聊/单聊维度选择、会话主体提取）。
@@ -93,25 +101,44 @@ public abstract class ConversationalFeishuEventHandler<T>(
 
         using var activity = FeishuAgentDiagnostics.StartConversationActivity(conversationKey, request.AppKey);
 
-        var session = await _agent.GetOrCreateSessionAsync(conversationKey, cancellationToken).ConfigureAwait(false);
-        var userMessage = await AssembleUserMessageAsync(request, cancellationToken).ConfigureAwait(false);
-
-        // 工具执行上下文沿异步流注入（RunAsync 内模型发起的 tool_call 可读到 appKey/chat/user）。
-        using var _toolScope = ToolContextAccessor?.Begin(new FeishuToolContext(
-            request.AppKey,
-            conversationKey,
-            ChatId: request.Scope.IsGroup ? request.SubjectId : null,
-            UserId: request.SenderId));
-
-        var (responseText, streamed) = await RunConversationAsync(
-            request, session, userMessage, activity, cancellationToken).ConfigureAwait(false);
-
-        await _agent.SaveSessionAsync(conversationKey, session, cancellationToken).ConfigureAwait(false);
-
-        // 流式路径已由通道送达（Begin/Write/Flush），不再走派生类回复。
-        if (!streamed)
+        // 会话闸门（P2D-1）：同键串行、跨键并行；闸门忙时快速失败——
+        // 事件层既有幂等回滚 + 重投递机制承接，不静默排队。等待耗时只进 Span 属性（原则 8：键不进 Metrics tag）。
+        IConversationGateHandle? gateHandle = null;
+        try
         {
-            await ReplyAsync(request, responseText, cancellationToken).ConfigureAwait(false);
+            if (ConversationGate is not null)
+            {
+                var gateStopwatch = System.Diagnostics.Stopwatch.StartNew();
+                gateHandle = await ConversationGate.AcquireAsync(conversationKey, cancellationToken).ConfigureAwait(false);
+                activity?.AddTag(FeishuAgentDiagnostics.TagGateWaitMs, gateStopwatch.Elapsed.TotalMilliseconds.ToString("0.#", CultureInfo.InvariantCulture));
+            }
+
+            var session = await _agent.GetOrCreateSessionAsync(conversationKey, cancellationToken).ConfigureAwait(false);
+            var userMessage = await AssembleUserMessageAsync(request, cancellationToken).ConfigureAwait(false);
+
+            // 工具执行上下文沿异步流注入（RunAsync 内模型发起的 tool_call 可读到 appKey/chat/user）。
+            // 回复目标优先 request.ChatId（P2D-2b），缺省群聊回退 SubjectId。
+            using var _toolScope = ToolContextAccessor?.Begin(new FeishuToolContext(
+                request.AppKey,
+                conversationKey,
+                ChatId: request.ChatId ?? (request.Scope.IsGroup ? request.SubjectId : null),
+                UserId: request.SenderId));
+
+            var (responseText, streamed) = await RunConversationAsync(
+                request, session, userMessage, activity, cancellationToken).ConfigureAwait(false);
+
+            await _agent.SaveSessionAsync(conversationKey, session, cancellationToken).ConfigureAwait(false);
+
+            // 流式路径已由通道送达（Begin/Write/Flush），不再走派生类回复。
+            if (!streamed)
+            {
+                await ReplyAsync(request, responseText, cancellationToken).ConfigureAwait(false);
+            }
+        }
+        finally
+        {
+            // 保存完成后（含失败路径）放行；同键下一事件方可进入。
+            gateHandle?.Dispose();
         }
     }
 
@@ -127,17 +154,21 @@ public abstract class ConversationalFeishuEventHandler<T>(
         Activity? activity,
         CancellationToken cancellationToken)
     {
-        var streamChatId = MessageChannel is not null ? ResolveStreamTargetChatId(request) : null;
-        if (MessageChannel is null || string.IsNullOrEmpty(streamChatId))
+        var streamTarget = MessageChannel is not null ? ResolveStreamTarget(request) : null;
+        if (MessageChannel is null || string.IsNullOrEmpty(streamTarget))
         {
             var response = await _agent.RunAsync(userMessage, session, options: null, cancellationToken).ConfigureAwait(false);
             return (response.Text, false);
         }
 
+        // 环境量携带会话请求：通道降级链内各子通道按自身语义重解析目标（卡片流=open_id、编辑通道=chat_id），
+        // 事件处理器零感知（P2D-2a）。仅流式路径建立，结束即清空。
+        using var _streamContext = StreamingRequestContext.Begin(request);
+
         string messageId;
         try
         {
-            messageId = await MessageChannel.BeginAsync(request.AppKey, streamChatId!, cancellationToken).ConfigureAwait(false);
+            messageId = await MessageChannel.BeginAsync(request.AppKey, streamTarget!, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
@@ -146,8 +177,8 @@ public abstract class ConversationalFeishuEventHandler<T>(
         catch (Exception ex)
         {
             // Begin 失败：模型尚未调用，回退非流式（零重复成本，Phase 2 §3.1）。
-            _logger.LogWarning(ex, "流式占位消息创建失败，回退非流式回复（appKey: {AppKey}, chatId: {ChatId}）",
-                request.AppKey, streamChatId);
+            _logger.LogWarning(ex, "流式占位消息创建失败，回退非流式回复（appKey: {AppKey}, target: {Target}）",
+                request.AppKey, streamTarget);
             var response = await _agent.RunAsync(userMessage, session, options: null, cancellationToken).ConfigureAwait(false);
             return (response.Text, false);
         }
@@ -165,22 +196,36 @@ public abstract class ConversationalFeishuEventHandler<T>(
 
             fullText.Append(delta);
             // 单次写入失败由通道实现隔离（不中断模型流，接口契约）。
-            await MessageChannel.WriteStreamAsync(request.AppKey, streamChatId!, messageId, delta, cancellationToken).ConfigureAwait(false);
+            await MessageChannel.WriteStreamAsync(request.AppKey, streamTarget!, messageId, delta, cancellationToken).ConfigureAwait(false);
         }
 
-        await MessageChannel.FlushAsync(request.AppKey, streamChatId!, messageId, cancellationToken).ConfigureAwait(false);
+        await MessageChannel.FlushAsync(request.AppKey, streamTarget!, messageId, cancellationToken).ConfigureAwait(false);
         activity?.AddTag(FeishuAgentDiagnostics.TagStreamed, true);
         return (fullText.ToString(), true);
     }
 
     /// <summary>
-    /// 解析流式回复的目标 chat_id：群聊默认为会话主体（chat_id）；返回 <see langword="null"/>
-    /// 表示本次事件不适用流式（如单聊未覆写解析），回退非流式路径。
+    /// 解析流式回复目标：通道实现 <see cref="IMessageChannelTargetResolver"/> 时按其语义解析
+    /// （卡片流 = 接收用户 open_id）；否则缺省 <see cref="ResolveStreamTargetChatId"/>
+    /// （<see cref="ConversationRequest.ChatId"/> 优先，群聊回退会话主体）。
+    /// 返回 <see langword="null"/> 表示本次事件不适用流式，回退非流式路径。
+    /// </summary>
+    /// <param name="request">规范化会话请求。</param>
+    /// <returns>流式目标（通道自解释；可空）。</returns>
+    protected virtual string? ResolveStreamTarget(ConversationRequest request)
+        => MessageChannel is IMessageChannelTargetResolver resolver
+            ? resolver.ResolveStreamTarget(request) ?? ResolveStreamTargetChatId(request)
+            : ResolveStreamTargetChatId(request);
+
+    /// <summary>
+    /// 解析流式回复的目标 chat_id：<see cref="ConversationRequest.ChatId"/> 优先（im 事件恒可用，
+    /// 单聊流式因此解锁，P2D-2b）；缺省群聊回退会话主体（chat_id）。返回 <see langword="null"/>
+    /// 表示本次事件不适用流式，回退非流式路径。
     /// </summary>
     /// <param name="request">规范化会话请求。</param>
     /// <returns>目标 chat_id（可空）。</returns>
     protected virtual string? ResolveStreamTargetChatId(ConversationRequest request)
-        => request.Scope.IsGroup ? request.SubjectId : null;
+        => string.IsNullOrWhiteSpace(request.ChatId) ? (request.Scope.IsGroup ? request.SubjectId : null) : request.ChatId;
 
     /// <summary>
     /// 覆写业务去重键：自带命名空间（<c>feishu.agent.conversation:{EventId}</c>），禁止裸 EventId。

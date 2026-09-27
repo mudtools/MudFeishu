@@ -36,6 +36,13 @@ public static class Program
             return;
         }
 
+        // AI-FD-D12 P2D-5a 零自定义接入演示：FEISHU_DEMO_IM_HANDLER=1。
+        if (string.Equals(Environment.GetEnvironmentVariable("FEISHU_DEMO_IM_HANDLER"), "1", StringComparison.Ordinal))
+        {
+            await ImConversationDemo.RunAsync();
+            return;
+        }
+
         var modelId = Environment.GetEnvironmentVariable("FEISHU_AI_MODEL_KEY")
             ?? throw new InvalidOperationException("请先设置 FEISHU_AI_MODEL_KEY");
         var apiKey = Environment.GetEnvironmentVariable("FEISHU_AI_API_KEY")

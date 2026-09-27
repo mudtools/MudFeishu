@@ -30,7 +30,7 @@ internal sealed class WikiTools(Mud.Feishu.IFeishuTenantV2WikiNodes wikiNodesCli
                 .ConfigureAwait(false));
             if (!outcome.Ok)
             {
-                return FeishuToolBinding.StructuredError(FeishuToolNames.WikiGetNode, outcome.ErrorText!);
+                return FeishuToolBinding.StructuredError(FeishuToolNames.WikiGetNode, outcome.Code, outcome.ErrorText!);
             }
 
             var node = outcome.Data!.Node;
@@ -60,7 +60,7 @@ internal sealed class WikiTools(Mud.Feishu.IFeishuTenantV2WikiNodes wikiNodesCli
                 .ConfigureAwait(false));
             if (!outcome.Ok)
             {
-                return FeishuToolBinding.StructuredError(FeishuToolNames.WikiListNodes, outcome.ErrorText!);
+                return FeishuToolBinding.StructuredError(FeishuToolNames.WikiListNodes, outcome.Code, outcome.ErrorText!);
             }
 
             var data = outcome.Data!;

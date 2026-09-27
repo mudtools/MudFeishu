@@ -28,7 +28,7 @@ namespace Mud.Feishu.AI.FeishuTools.Tools;
 /// <summary>工具接口：im.send_message（映射 <c>IFeishuTenantV1Message.SendMessageAsync</c>）。</summary>
 [FeishuTool("im.send_message",
     Description = "发送文本消息到指定群聊或用户。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 im:message。",
-    RequiredScopes = ["im:message"],
+    RequiredScopes = ["im:message:send_as_bot"],
     IsWrite = true)]
 public interface IFeishuImSendMessageTool
 {

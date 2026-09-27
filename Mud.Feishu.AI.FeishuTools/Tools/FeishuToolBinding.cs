@@ -6,6 +6,8 @@
 // -----------------------------------------------------------------------
 
 using Microsoft.Extensions.Logging;
+using Mud.Feishu.Abstractions.Metrics;
+using Mud.Feishu.AI.FeishuTools.Tools;
 
 namespace Mud.Feishu.AI.FeishuTools;
 
@@ -34,6 +36,8 @@ public sealed class FeishuToolBinding
     private readonly IFeishuAppContextScopeFactory _scopeFactory;
     private readonly FeishuAgentOptions _options;
     private readonly IToolExecutionAuthorizer? _authorizer;
+    private readonly IToolResultShaper? _resultShaper;
+    private readonly IToolExecutionAuditSink? _auditSink;
     private readonly ILogger? _logger;
 
     /// <summary>
@@ -42,16 +46,22 @@ public sealed class FeishuToolBinding
     /// <param name="scopeFactory">租户上下文作用域工厂。</param>
     /// <param name="options">Agent 配置（<see cref="FeishuAgentOptions.EnforceToolAuthorization"/> 消费点）。</param>
     /// <param name="authorizer">工具授权钩子（可空；SDK 不内建策略）。</param>
+    /// <param name="resultShaper">结果整形钩子（可空；宿主注册后对投影结果做最终整形，P1D-2a）。</param>
+    /// <param name="auditSink">结构化审计出口（可空；注册后投递允许/拒绝/错误三类审计事件，P1D-3b）。</param>
     /// <param name="logger">日志（可空）。</param>
     public FeishuToolBinding(
         IFeishuAppContextScopeFactory scopeFactory,
         IOptions<FeishuAgentOptions> options,
         IToolExecutionAuthorizer? authorizer = null,
+        IToolResultShaper? resultShaper = null,
+        IToolExecutionAuditSink? auditSink = null,
         ILogger<FeishuToolBinding>? logger = null)
     {
         _scopeFactory = scopeFactory ?? throw new ArgumentNullException(nameof(scopeFactory));
         _options = (options ?? throw new ArgumentNullException(nameof(options))).Value;
         _authorizer = authorizer;
+        _resultShaper = resultShaper;
+        _auditSink = auditSink;
         _logger = logger;
     }
 
@@ -89,12 +99,20 @@ public sealed class FeishuToolBinding
         using var activity = FeishuToolDiagnostics.StartToolActivity(
             tool.Name, context.AppKey, tool.RequiredScopes, tool.IsWrite);
 
+        var executionStopwatch = System.Diagnostics.Stopwatch.StartNew();
+
         // ② 授权门禁：拒绝时零调用下游、不切换租户上下文。
         var gate = await AuthorizeGateAsync(tool, arguments, context, cancellationToken).ConfigureAwait(false);
         activity?.SetTag(FeishuToolDiagnostics.TagDecision,
             gate.Allowed ? FeishuToolDiagnostics.DecisionAllowed : FeishuToolDiagnostics.DecisionDenied);
         if (!gate.Allowed)
         {
+            // 拒绝也是审计事件（P1D-3b）：指标 + 审计出口，零调用下游。
+            FeishuToolDiagnostics.RecordExecution(tool.Name, context.AppKey, FeishuMetrics.ToolOutcomes.Denied);
+            await WriteAuditWithIsolationAsync(
+                tool, context, FeishuMetrics.ToolOutcomes.Denied, gate.Reason,
+                ToolArgsDigester.Digest(arguments), executionStopwatch.ElapsedMilliseconds,
+                cancellationToken).ConfigureAwait(false);
             return StructuredError(tool.Name, gate.Reason);
         }
 
@@ -104,7 +122,16 @@ public sealed class FeishuToolBinding
             using var scope = _scopeFactory.BeginScope(context.AppKey);
             var result = await invokeDownstream(cancellationToken).ConfigureAwait(false);
             activity?.SetTag(FeishuToolDiagnostics.TagTruncated, ToolResultText.IsTruncated(result));
-            return result;
+
+            FeishuToolDiagnostics.RecordDuration(tool.Name, context.AppKey, executionStopwatch.ElapsedMilliseconds);
+            FeishuToolDiagnostics.RecordExecution(tool.Name, context.AppKey, FeishuMetrics.ToolOutcomes.Allowed);
+            await WriteAuditWithIsolationAsync(
+                tool, context, FeishuMetrics.ToolOutcomes.Allowed, null,
+                ToolArgsDigester.Digest(arguments), executionStopwatch.ElapsedMilliseconds,
+                cancellationToken).ConfigureAwait(false);
+
+            // ⑤' 结果整形钩子（P1D-2a）：投影/截断之后、回填之前；失败回退默认（异常隔离）。
+            return await ShapeWithIsolationAsync(tool.Name, result, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
@@ -115,13 +142,102 @@ public sealed class FeishuToolBinding
         {
             // ⑤ 异常归一：结构化错误回填模型，不抛裸异常（总体设计 §4 不变式）。
             _logger?.LogWarning(ex, "工具 {ToolName} 执行失败（appKey: {AppKey}）", tool.Name, context.AppKey);
-            return StructuredError(tool.Name, $"工具执行异常: {ex.Message}");
+            var errorText = StructuredError(tool.Name, ToolErrorClassifier.Classify(ex), $"工具执行异常: {ex.Message}");
+            FeishuToolDiagnostics.RecordExecution(tool.Name, context.AppKey, FeishuMetrics.ToolOutcomes.Error);
+            FeishuToolDiagnostics.RecordDuration(tool.Name, context.AppKey, executionStopwatch.ElapsedMilliseconds);
+            await WriteAuditWithIsolationAsync(
+                tool, context, FeishuMetrics.ToolOutcomes.Error, ex.Message,
+                ToolArgsDigester.Digest(arguments), executionStopwatch.ElapsedMilliseconds,
+                CancellationToken.None).ConfigureAwait(false);
+            return errorText;
+        }
+    }
+
+    /// <summary>
+    /// P1D-3b 审计出口投递（异常隔离：sink 失败只记日志，绝不影响执行链；
+    /// 入参摘要已在 SDK 侧脱敏——宿主 sink 不接触原始参数）。
+    /// </summary>
+    private async Task WriteAuditWithIsolationAsync(
+        FeishuToolDefinition tool,
+        FeishuToolContext context,
+        string decision,
+        string? reason,
+        string argsDigest,
+        long durationMs,
+        CancellationToken cancellationToken)
+    {
+        if (_auditSink is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await _auditSink.WriteAsync(new ToolExecutionAuditRecord(
+                tool.Name,
+                context.AppKey,
+                tool.RequiredScopes,
+                decision,
+                reason,
+                tool.IsWrite,
+                argsDigest,
+                durationMs,
+                context.ConversationKey), cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            // 补偿性投递（对齐 D15 精神）：审计不得被取消中断，也不得影响执行链。
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "工具审计出口投递失败（tool: {ToolName}）——审计事件丢弃", tool.Name);
+        }
+    }
+
+    private async Task<string> ShapeWithIsolationAsync(string toolName, string result, CancellationToken cancellationToken)
+    {
+        if (_resultShaper is null)
+        {
+            return result;
+        }
+
+        try
+        {
+            var shaped = await _resultShaper
+                .ShapeAsync(toolName, result, cancellationToken)
+                .ConfigureAwait(false);
+            return shaped ?? result;
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "工具结果整形钩子失败，回退默认结果（tool: {ToolName}）", toolName);
+            return result;
         }
     }
 
     /// <summary>构造结构化错误文本（模型可读、带工具名前缀）。</summary>
     public static string StructuredError(string toolName, string reason)
         => $"[tool_error] {toolName}: {reason}";
+
+    /// <summary>
+    /// 构造带错误语义分类的结构化错误文本（AI-FD-D12 P1D-2b：分类 + 原因 + 建议——
+    /// 授权拒绝与参数错误可区分，模型据此自我修正：重试 or 换参数 or 放弃）。
+    /// </summary>
+    internal static string StructuredError(string toolName, ToolErrorKind kind, string reason) => kind switch
+    {
+        ToolErrorKind.Retryable => $"[tool_error] {toolName} (retryable): {reason}——服务端繁忙/网络异常，可稍后重试同一调用",
+        ToolErrorKind.InvalidArgs => $"[tool_error] {toolName} (invalid_args): {reason}——请修正参数（如 filter/sort 文法）后重试",
+        ToolErrorKind.Forbidden => $"[tool_error] {toolName} (forbidden): {reason}——授权被拒绝，请放弃或改用只读方案",
+        _ => $"[tool_error] {toolName}: {reason}",
+    };
+
+    /// <summary>按飞书业务 code 分类构造错误回填（<c>FeishuApiOutcome</c> 解包路径共用；分类器 internal，宿主不可见）。</summary>
+    internal static string StructuredError(string toolName, int? apiCode, string reason)
+        => StructuredError(toolName, ToolErrorClassifier.ClassifyCode(apiCode), reason);
 
     private async Task<(bool Allowed, string Reason)> AuthorizeGateAsync(
         FeishuToolDefinition tool,

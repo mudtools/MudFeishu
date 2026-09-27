@@ -41,6 +41,9 @@ public sealed class AilyKnowledgeProvider : IFeishuKnowledgeBase, IRetriever
 {
     private const string StatusFinished = "finished";
 
+    /// <summary>未限定数据资产范围时的默认来源标注（P2D-4c 弱引用）。</summary>
+    private const string DefaultChunkSource = "aily:data-knowledge";
+
     private readonly Mud.Feishu.IFeishuTenantV1AilyDataKnowledge _knowledgeClient;
     private readonly IFeishuAppContextScopeFactory _scopeFactory;
     private readonly IFeishuToolContextAccessor? _contextAccessor;
@@ -86,9 +89,21 @@ public sealed class AilyKnowledgeProvider : IFeishuKnowledgeBase, IRetriever
         }
 
         // FAQ 命中无 chunks 时，答案文本本身即知识单元（标准问答对）。
-        return outcome.Chunks.Count == 0
-            ? [new RetrievedChunk(outcome.AnswerText ?? string.Empty, Source: "aily:faq")]
-            : outcome.Chunks;
+        if (outcome.Chunks.Count == 0)
+        {
+            return [new RetrievedChunk(outcome.AnswerText ?? string.Empty, Source: "aily:faq")];
+        }
+
+        // 引用回链（P2D-4c）：Aily ask SSE 的 chunks 为纯文本（不携带来源元数据）——
+        // 配置了 DataAssetIds 限定范围时标注对应数据资产（弱引用），否则标注 aily:data-knowledge。
+        var assetIds = _options.DataAssetIds;
+        if (assetIds is { Length: > 0 })
+        {
+            var assetSource = "aily:data-knowledge:" + string.Join("|", assetIds);
+            return [.. outcome.Chunks.Select(chunk => chunk with { Source = assetSource })];
+        }
+
+        return [.. outcome.Chunks.Select(static chunk => chunk with { Source = DefaultChunkSource })];
     }
 
     /// <summary>SSE 问答执行：返回（答案文本, hasAnswer, 召回切片）。</summary>

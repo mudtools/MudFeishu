@@ -8,8 +8,9 @@
 namespace Mud.Feishu.AI.FeishuTools.Internal;
 
 /// <summary>
-/// IM 单工具执行器（<c>im.get_history_messages</c>）：RFC3339 → 秒级时间戳转换、
-/// <c>container_id_type=chat</c> 与 <c>sort_type=ByCreateTimeDesc</c> 绑定层注入（§3.3.3）。
+/// IM 工具执行器（<c>im.get_history_messages</c> / <c>im.get_message_content</c>）：
+/// RFC3339 → 秒级时间戳转换、<c>container_id_type=chat</c> 与 <c>sort_type=ByCreateTimeDesc</c>
+/// 绑定层注入（§3.3.3）；消息内容回查依赖 P1D-1a 路由修复（AI-FD-D12）。
 /// </summary>
 internal sealed class ImTools(Mud.Feishu.IFeishuTenantV1Message messageClient, IOptions<FeishuAgentOptions> options)
 {
@@ -43,7 +44,7 @@ internal sealed class ImTools(Mud.Feishu.IFeishuTenantV1Message messageClient, I
                 .ConfigureAwait(false));
             if (!outcome.Ok)
             {
-                return FeishuToolBinding.StructuredError(FeishuToolNames.ImGetHistoryMessages, outcome.ErrorText!);
+                return FeishuToolBinding.StructuredError(FeishuToolNames.ImGetHistoryMessages, outcome.Code, outcome.ErrorText!);
             }
 
             var data = outcome.Data!;
@@ -70,11 +71,53 @@ internal sealed class ImTools(Mud.Feishu.IFeishuTenantV1Message messageClient, I
                 });
             }
 
-            return ToolResultText.Truncate(envelope.ToJsonString(), _maxResultLength);
+            return ToolResultText.TruncateJson(envelope.ToJsonString(), _maxResultLength);
         }
         catch (ArgumentException ex)
         {
             return FeishuToolBinding.StructuredError(FeishuToolNames.ImGetHistoryMessages, ex.Message);
+        }
+    }
+
+    /// <summary>im.get_message_content：单条消息内容回查（白名单 message_id/msg_type/body/mentions）。</summary>
+    public async Task<string> GetContentAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var messageId = ToolArgs.RequireString(arguments, "message_id");
+
+            var outcome = FeishuApiResultReader.Read(await _messageClient
+                .GetContentListByMessageIdAsync(messageId, cancellationToken: cancellationToken)
+                .ConfigureAwait(false));
+            if (!outcome.Ok)
+            {
+                return FeishuToolBinding.StructuredError(FeishuToolNames.ImGetMessageContent, outcome.Code, outcome.ErrorText!);
+            }
+
+            var envelope = new JsonObject { ["items"] = new JsonArray() };
+            foreach (var message in outcome.Data!.Items ?? [])
+            {
+                envelope["items"]!.AsArray().AddNode(new JsonObject
+                {
+                    ["message_id"] = message.MessageId,
+                    ["msg_type"] = message.MsgType,
+                    ["body"] = message.Body?.Content,
+                    ["mentions"] = message.Mentions is { Count: > 0 }
+                        ? new JsonArray([.. message.Mentions.Select(m => (JsonNode?)new JsonObject
+                            {
+                                ["key"] = m.Key,
+                                ["id"] = m.Id,
+                                ["name"] = m.Name,
+                            }).ToArray()])
+                        : null,
+                });
+            }
+
+            return ToolResultText.TruncateJson(envelope.ToJsonString(), _maxResultLength);
+        }
+        catch (ArgumentException ex)
+        {
+            return FeishuToolBinding.StructuredError(FeishuToolNames.ImGetMessageContent, ex.Message);
         }
     }
 
@@ -95,14 +138,16 @@ internal sealed class ImTools(Mud.Feishu.IFeishuTenantV1Message messageClient, I
             return null;
         }
 
+        // netstandard2.0 的 BCL 不带 IsNullOrWhiteSpace 的 NotNullWhen 注解，需显式局部化。
+        var trimmedInput = rfc3339!.Trim();
         if (!DateTimeOffset.TryParseExact(
-                rfc3339.Trim(),
+                trimmedInput,
                 Rfc3339Formats,
                 CultureInfo.InvariantCulture,
                 DateTimeStyles.AllowWhiteSpaces,
                 out var parsed))
         {
-            throw new ArgumentException($"{parameterName} 需为 RFC3339 格式（如 2026-09-27T00:00:00+08:00 或 2026-09-27T00:00:00Z），实际: {rfc3339}");
+            throw new ArgumentException($"{parameterName} 需为 RFC3339 格式（如 2026-09-27T00:00:00+08:00 或 2026-09-27T00:00:00Z），实际: {trimmedInput}");
         }
 
         return parsed.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture);

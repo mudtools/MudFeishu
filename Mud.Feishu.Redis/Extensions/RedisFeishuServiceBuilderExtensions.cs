@@ -442,6 +442,54 @@ public static class RedisFeishuServiceBuilderExtensions
     }
 
     /// <summary>
+    /// 注册 Redis 分布式会话闸门（AI-FD-D12 P2D-1 多实例部署）：
+    /// <see cref="RedisConversationGate"/> 替换 <c>AddFeishuAgent</c> 默认注册的进程内
+    /// <c>KeyedConversationGate</c>——同一会话键跨实例互斥（SET NX 租约），忙时快速失败
+    /// （<see cref="ConversationBusyException"/>），由事件层幂等回滚 + 重投递承接。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 依赖方向（纵向引用治理）：闸门契约（<see cref="IConversationGate"/> 与
+    /// <see cref="FeishuConversationOptions"/>）位于 Mud.Feishu.Abstractions，本包只依赖 Abstractions。
+    /// </para>
+    /// <para>
+    /// 租约 TTL 单一阈值源为 <see cref="FeishuConversationOptions.SessionTtl"/>
+    /// （<c>FeishuConversation</c> 节）：AddFeishuAgent 负责配置节绑定；未调用 AddFeishuAgent
+    /// 时本方法以默认值兜底注册 Options（对齐 D9 阈值同源精神）。
+    /// 若 <see cref="IConnectionMultiplexer"/> 尚未注册（未调用 <c>AddFeishuRedis</c> 系方法），
+    /// 按既有语义补注册连接。
+    /// </para>
+    /// </remarks>
+    /// <param name="services">服务集合</param>
+    /// <param name="registerHealthCheck">
+    /// 补注册 Redis 连接时是否附带健康检查（仅在内部触发 <c>AddFeishuRedis</c> 时生效）。
+    /// </param>
+    /// <param name="gatePrefix">闸门键命名空间前缀（多环境共用 Redis 时隔离键空间）。</param>
+    /// <returns>服务集合</returns>
+    public static IServiceCollection AddFeishuRedisConversationGate(
+        this IServiceCollection services,
+        bool registerHealthCheck = true,
+        string gatePrefix = "feishu:conversation:gate")
+    {
+        // 兜底注册 Options（AddOptions 幂等）：未走 AddFeishuAgent 的宿主也有默认 TTL 可读。
+        services.AddOptions<FeishuConversationOptions>();
+
+        if (!services.Any(s => s.ServiceType == typeof(IConnectionMultiplexer)))
+        {
+            services.AddFeishuRedis(registerHealthCheck);
+        }
+
+        // Replace 而非 TryAdd：显式覆盖 AddFeishuAgent 的 KeyedConversationGate 默认注册。
+        services.Replace(ServiceDescriptor.Singleton<IConversationGate>(sp => new RedisConversationGate(
+            sp.GetRequiredService<IConnectionMultiplexer>(),
+            sp.GetRequiredService<IOptions<FeishuConversationOptions>>(),
+            sp.GetService<ILogger<RedisConversationGate>>() ?? NullLogger<RedisConversationGate>.Instance,
+            gatePrefix)));
+
+        return services;
+    }
+
+    /// <summary>
     /// 注册所有 Redis 分布式去重服务（事件去重、Nonce 去重、SeqID 去重）
     /// </summary>
     /// <param name="services">服务集合</param>

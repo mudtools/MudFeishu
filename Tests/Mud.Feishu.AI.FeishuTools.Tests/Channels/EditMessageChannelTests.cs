@@ -45,6 +45,15 @@ public class EditMessageChannelTests
             _messageClient.Object,
             _scopeFactory.Object,
             Options.Create(new FeishuAgentOptions { Instructions = "test", MaxStreamChunkLength = chunkLength }),
+            NullLogger<EditMessageChannel>.Instance,
+            // 默认 0 间隔：恢复「仅分片阈值」语义（生产默认 800ms 由速率钳制用例单独覆盖）。
+            TimeSpan.Zero);
+
+    private EditMessageChannel CreateRateClampedChannel(int chunkLength = 200)
+        => new(
+            _messageClient.Object,
+            _scopeFactory.Object,
+            Options.Create(new FeishuAgentOptions { Instructions = "test", MaxStreamChunkLength = chunkLength }),
             NullLogger<EditMessageChannel>.Instance);
 
     private void SetupSendMessageOk(string messageId = "om_stream_1")

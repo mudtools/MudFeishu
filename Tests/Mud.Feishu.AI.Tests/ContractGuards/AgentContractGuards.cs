@@ -141,6 +141,33 @@ public class AgentContractGuards
             "FeishuAgentOptions.SummaryThreshold 必须在 ConversationSummarizer 中被消费（渐进式摘要阈值，Phase 2 §3.2）");
     }
 
+    /// <summary>
+    /// AI-FD-D12 批次 A/B 新增配置属性必须有真实消费点（R5 规则 2）：
+    /// <c>MaxHistoryTokens</c>（ConversationSummarizer token 维度判定）、
+    /// <c>RequireMentionInGroup</c>/<c>AllowP2pConversation</c>（ImMessageConversationalEventHandler 过滤）。
+    /// </summary>
+    [Fact]
+    public void FeishuAgentOptions_Phase12Properties_ShouldHaveRealConsumptionPoints()
+    {
+        var summarizerSource = Path.Combine(GetSolutionRoot(), "Mud.Feishu.AI", "Conversations", "ConversationSummarizer.cs");
+        var imHandlerSource = Path.Combine(
+            GetSolutionRoot(), "Mud.Feishu.AI.FeishuTools", "Events", "ImMessageConversationalEventHandler.cs");
+
+        File.Exists(summarizerSource).Should().BeTrue();
+        File.ReadAllText(summarizerSource).Should().Contain(
+            "MaxHistoryTokens",
+            "FeishuAgentOptions.MaxHistoryTokens 必须在 ConversationSummarizer 中被消费（token 维度判定，P2D-3a）");
+
+        File.Exists(imHandlerSource).Should().BeTrue();
+        var handlerContent = File.ReadAllText(imHandlerSource);
+        handlerContent.Should().Contain(
+            "RequireMentionInGroup",
+            "ImConversationOptions.RequireMentionInGroup 必须在事件处理器中被消费（群聊 @ 过滤，P2D-5a）");
+        handlerContent.Should().Contain(
+            "AllowP2pConversation",
+            "ImConversationOptions.AllowP2pConversation 必须在事件处理器中被消费（单聊会话开关，P2D-5a）");
+    }
+
     // ────────────────────────────────────────────────────────────────────
     // 守卫 4：包间纵向引用治理（不允许横向引用）
     // ────────────────────────────────────────────────────────────────────

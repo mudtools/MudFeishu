@@ -47,6 +47,9 @@ internal static class FeishuAgentDiagnostics
     /// <summary>Span 属性：本轮回复是否经流式通道送达。</summary>
     public const string TagStreamed = "feishu.agent.streamed";
 
+    /// <summary>Span 属性：会话闸门获取等待耗时（毫秒；P2D-1——键维度只进 Span，不进 Metrics tag，原则 8）。</summary>
+    public const string TagGateWaitMs = "feishu.conversation.gate_wait_ms";
+
     /// <summary>Span 属性：输入 token 数。</summary>
     public const string TagInputTokens = "feishu.llm.input_tokens";
 
@@ -100,6 +103,18 @@ internal static class FeishuAgentDiagnostics
                 .SetTag("feishu.agent.summarized_messages", summarizedCount)
                 .SetTag("feishu.agent.retained_messages", retainedCount);
         return activity;
+    }
+
+    /// <summary>
+    /// P1D-5：记录模型调用耗时指标（<c>feishu.agent.llm.duration</c> 毫秒直方图；维度 agent——
+    /// 高基数纪律（原则 8）：conversation/chat/user 键不入 tags）。
+    /// </summary>
+    /// <param name="agentName">Agent 展示名。</param>
+    /// <param name="durationMs">耗时毫秒。</param>
+    public static void RecordLlmDuration(string agentName, long durationMs)
+    {
+        var metricsTags = new TagList { { "agent", agentName } };
+        Mud.Feishu.Abstractions.Metrics.FeishuMetrics.AgentLlmDuration.Record(durationMs, metricsTags);
     }
 
     /// <summary>

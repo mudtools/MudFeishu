@@ -65,7 +65,7 @@ internal sealed class SearchTools(Mud.Feishu.IFeishuTenantV2SearchDocWiki search
                 .ConfigureAwait(false));
             if (!outcome.Ok)
             {
-                return FeishuToolBinding.StructuredError(FeishuToolNames.SearchDocWiki, outcome.ErrorText!);
+                return FeishuToolBinding.StructuredError(FeishuToolNames.SearchDocWiki, outcome.Code, outcome.ErrorText!);
             }
 
             var data = outcome.Data!;

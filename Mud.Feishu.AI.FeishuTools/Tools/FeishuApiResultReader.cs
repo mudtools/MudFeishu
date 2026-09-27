@@ -5,6 +5,8 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using System.Text.Json;
+
 namespace Mud.Feishu.AI.FeishuTools;
 
 /// <summary>
@@ -14,13 +16,16 @@ namespace Mud.Feishu.AI.FeishuTools;
 /// <param name="Ok">是否成功（<c>code == 0</c> 且载荷非空）。</param>
 /// <param name="Data">业务载荷（成功时非空）。</param>
 /// <param name="ErrorText">失败原因（可读文本，回填模型）。</param>
-internal sealed record FeishuApiOutcome<T>(bool Ok, T? Data, string? ErrorText) where T : class
+/// <param name="Code">飞书业务 code（错误分类消费；无 code 场景为 null）。</param>
+internal sealed record FeishuApiOutcome<T>(bool Ok, T? Data, string? ErrorText, int? Code = null) where T : class
 {
     /// <summary>构造成功结果。</summary>
     public static FeishuApiOutcome<T> Success(T data) => new(true, data, null);
 
     /// <summary>构造失败结果。</summary>
-    public static FeishuApiOutcome<T> Fail(string errorText) => new(false, null, errorText);
+    /// <param name="errorText">可读错误文本（回填模型）。</param>
+    /// <param name="code">飞书业务 code（P1D-2b 错误分类消费；无 code 场景为 null）。</param>
+    public static FeishuApiOutcome<T> Fail(string errorText, int? code = null) => new(false, null, errorText, code);
 }
 
 /// <summary>
@@ -42,7 +47,9 @@ internal static class FeishuApiResultReader
 
         if (result.Code != 0)
         {
-            return FeishuApiOutcome<T>.Fail($"飞书接口返回错误 code={result.Code.ToString(CultureInfo.InvariantCulture)}, msg={result.Msg ?? "(无错误信息)"}");
+            return FeishuApiOutcome<T>.Fail(
+                $"飞书接口返回错误 code={result.Code.ToString(CultureInfo.InvariantCulture)}, msg={result.Msg ?? "(无错误信息)"}",
+                result.Code);
         }
 
         if (result.Data is null)
@@ -168,9 +175,58 @@ internal static class ToolResultText
             + $"{TruncatedMarker}: 长度 {text.Length.ToString(CultureInfo.InvariantCulture)} 超过上限 {maxLength.ToString(CultureInfo.InvariantCulture)}，请缩小查询范围或用 page_token 翻页]";
     }
 
-    /// <summary>结果文本是否已被截断（OTel 审计属性消费）。</summary>
+    /// <summary>
+    /// JSON 感知截断（AI-FD-D12 P1D-2a 默认行为升级）：对 JSON 文本按 <c>items</c> 数组
+    /// <b>逐条删除</b>直至长度达标，追加 <c>truncated</c>/<c>hint</c> 标记——截断不落在 JSON 结构
+    /// 中间，模型拿到的是合法 JSON；解析失败（纯文本/非法 JSON）或非 items 包络时退回字符截断
+    /// （<see cref="Truncate"/>，既有行为）。
+    /// </summary>
+    /// <remarks>
+    /// 开销为一次 JSON 解析（结果投影路径上，AOT 安全）；
+    /// 仅剩 1 条仍超限时保持合法 JSON 返回（不落到字符截断破坏结构，结构完整性优先于硬上限）。
+    /// </remarks>
+    public static string TruncateJson(string text, int maxLength)
+    {
+        if (maxLength < 1)
+        {
+            maxLength = 1;
+        }
+
+        if (text.Length <= maxLength)
+        {
+            return text;
+        }
+
+        JsonObject? root;
+        try
+        {
+            root = JsonNode.Parse(text) as JsonObject;
+        }
+        catch (JsonException)
+        {
+            root = null; // 非 JSON 文本（如 docx.get_raw_content 的纯文本正文）：退回字符截断。
+        }
+
+        if (root?["items"] is not JsonArray items || items.Count == 0)
+        {
+            return Truncate(text, maxLength);
+        }
+
+        // 逐条删除尾部条目直至整体长度达标（至少保留 1 条，保证「有内容且可读」）。
+        while (items.Count > 1 && root.ToJsonString().Length > maxLength)
+        {
+            ((IList<JsonNode?>)items).RemoveAt(items.Count - 1);
+        }
+
+        root["truncated"] = true;
+        root["hint"] = "结果已按 items 截断——请缩小查询范围或用 page_token 翻页";
+        return root.ToJsonString();
+    }
+
+    /// <summary>结果文本是否已被截断（OTel 审计属性消费；兼容字符截断与 JSON 感知截断两种标记）。</summary>
     public static bool IsTruncated(string text)
-        => text.IndexOf(TruncatedMarker, StringComparison.Ordinal) >= 0;
+        => text.IndexOf(TruncatedMarker, StringComparison.Ordinal) >= 0
+           || text.IndexOf("\"truncated\":true", StringComparison.Ordinal) >= 0;
 
     private static JsonNode? FromJsonElement(System.Text.Json.JsonElement element) => element.ValueKind switch
     {

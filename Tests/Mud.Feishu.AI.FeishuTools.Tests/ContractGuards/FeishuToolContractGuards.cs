@@ -16,10 +16,10 @@ namespace Mud.Feishu.AI.FeishuTools.Tests.ContractGuards;
 public class FeishuToolContractGuards
 {
     [Fact]
-    public void SchemaRegistry_ShouldContainExactlyTheThirteenContractTools()
+    public void SchemaRegistry_ShouldContainExactlyTheNineteenContractTools()
     {
         SchemaByToolName.Keys.Should().BeEquivalentTo(FeishuToolNames.All,
-            "工具清单为 Phase 1 十个只读（§3.3.2）+ Phase 2 三个写类（§3.3），增删/改名必须同批更新契约表与守卫");
+            "工具清单为 Phase 1 十个只读 + Phase 2 三个写类 + AI-FD-D12 批次 A 六个扩容（16 只读 + 3 写），增删/改名必须同批更新契约表与守卫");
     }
 
     [Fact]
@@ -56,6 +56,51 @@ public class FeishuToolContractGuards
         }
     }
 
+    /// <summary>
+    /// AI-FD-D12 P1D-3a scope 契约定稿：19 个工具的 required_scopes 与《工具权限对照表》
+    /// （documents/AIAgent/工具权限对照表.md）逐一<b>精确相等</b>（存在性断言升格为精确值断言，
+    /// 防回归漂移）。变更 scope 必须与对照表同批更新。
+    /// </summary>
+    [Fact]
+    public void ToolScopes_ShouldMatchThePermissionMappingTable_ExactValues()
+    {
+        var expectedScopes = new Dictionary<string, string[]>(StringComparer.Ordinal)
+        {
+            // 只读（16）
+            [FeishuToolNames.BitableListTables] = ["bitable:app:readonly"],
+            [FeishuToolNames.BitableListFields] = ["bitable:app:readonly"],
+            [FeishuToolNames.BitableQueryRecords] = ["bitable:app:readonly"],
+            [FeishuToolNames.BitableGetRecordsByIds] = ["bitable:app:readonly"],
+            [FeishuToolNames.DocxGetRawContent] = ["docx:document:readonly"],
+            [FeishuToolNames.DocxGetDocumentBlocks] = ["docx:document:readonly"],
+            [FeishuToolNames.WikiGetNode] = ["wiki:wiki:readonly"],
+            [FeishuToolNames.WikiListNodes] = ["wiki:wiki:readonly"],
+            [FeishuToolNames.SearchDocWiki] = ["search:docs:readonly"],
+            [FeishuToolNames.ImGetHistoryMessages] = ["im:message:readonly"],
+            [FeishuToolNames.ImGetMessageContent] = ["im:message:readonly"],
+            [FeishuToolNames.DriveListFolderFiles] = ["drive:drive:readonly"],
+            [FeishuToolNames.DriveGetFileMetas] = ["drive:drive:readonly"],
+            [FeishuToolNames.KnowledgeSearch] = ["aily:knowledge:readonly"],
+            [FeishuToolNames.SheetsListSheets] = ["sheets:spreadsheet:readonly"],
+            [FeishuToolNames.SheetsGetRangeValues] = ["sheets:spreadsheet:readonly"],
+            // 写类（3）
+            [FeishuToolNames.ImSendMessage] = ["im:message:send_as_bot"],
+            [FeishuToolNames.BitableAddRecord] = ["bitable:app"],
+            [FeishuToolNames.ApprovalCreateInstance] = ["approval:approval"],
+        };
+
+        foreach (var (toolName, expected) in expectedScopes)
+        {
+            using var document = JsonDocument.Parse(SchemaByToolName[toolName]);
+            var scopes = document.RootElement.GetProperty("x-feishu").GetProperty("required_scopes")
+                .EnumerateArray().Select(e => e.GetString()!).ToArray();
+
+            scopes.Should().BeEquivalentTo(expected, $"工具 {toolName} 的 scope 须与《工具权限对照表》精确一致（P1D-3a 定稿）");
+        }
+
+        expectedScopes.Keys.Should().HaveCount(FeishuToolNames.All.Length, "对照表须覆盖全部契约工具");
+    }
+
     [Fact]
     public void SchemaToolNames_ShouldNeverUseSourceMethodNames_ProtectingContractStability()
     {
@@ -86,10 +131,16 @@ public class FeishuToolContractGuards
 
         sources.Any(path => File.ReadAllText(path).Contains("MaxStreamChunkLength", StringComparison.Ordinal))
             .Should().BeTrue("FeishuAgentOptions.MaxStreamChunkLength 必须在 FeishuTools 包中被消费（流式分片编辑阈值，Phase 2 §3.1）");
+
+        sources.Any(path => File.ReadAllText(path).Contains("RequireMentionInGroup", StringComparison.Ordinal))
+            .Should().BeTrue("ImConversationOptions.RequireMentionInGroup 必须在 FeishuTools 包中被消费（群聊 @ 过滤，AI-FD-D12 P2D-5a）");
+
+        sources.Any(path => File.ReadAllText(path).Contains("AllowP2pConversation", StringComparison.Ordinal))
+            .Should().BeTrue("ImConversationOptions.AllowP2pConversation 必须在 FeishuTools 包中被消费（单聊会话开关，AI-FD-D12 P2D-5a）");
     }
 
     [Fact]
-    public void AddFeishuReadonlyTools_ShouldRegisterExactlyThirteenTools_NoneEnabledByDefault()
+    public void AddFeishuReadonlyTools_ShouldRegisterExactlyNineteenTools_NoneEnabledByDefault()
     {
         using var provider = CreateProvider(_ => { });
 
@@ -165,6 +216,30 @@ public class FeishuToolContractGuards
         schema.GetProperty("parameters").GetProperty("properties").GetProperty("app_token").Should().NotBeNull();
     }
 
+    /// <summary>
+    /// 高基数纪律（AI-FD-D12 §三 原则 8）：AI 侧三指标（feishu.tool.executions / tool.duration /
+    /// agent.llm.duration）的 tags 只允许 tool/app_key/outcome/agent 受控维度——
+    /// conversation_key/chat_id/user_id <b>禁止</b>作为 Metrics tag（只允许进 Span 属性与审计载荷）。
+    /// </summary>
+    /// <remarks>源码扫描锁定：诊断类中的指标记录调用不得引用键维度常量/字面量。</remarks>
+    [Fact]
+    public void ToolMetrics_ShouldNotUseHighCardinalityTags_SourceScan()
+    {
+        var diagnosticsPath = GetFeishuToolsSources()
+            .FirstOrDefault(path => path.EndsWith("FeishuToolDiagnostics.cs", StringComparison.Ordinal));
+
+        diagnosticsPath.Should().NotBeNull("FeishuToolDiagnostics.cs 应存在于 FeishuTools 包");
+        var diagnosticsSource = File.ReadAllText(diagnosticsPath!);
+
+        diagnosticsSource.Should().Contain("FeishuMetrics.ToolExecutions", "工具执行计数指标存在");
+        diagnosticsSource.Should().Contain("FeishuMetrics.ToolDuration", "工具耗时指标存在");
+
+        // 受控维度白名单：tool / app_key / outcome（键维度一旦引入会爆炸指标序列）。
+        diagnosticsSource.Should().NotContain("ConversationKey", "conversation 键不得进 Metrics tag");
+        diagnosticsSource.Should().NotContain("ChatId", "chat_id 不得进 Metrics tag");
+        diagnosticsSource.Should().NotContain("UserId", "user_id 不得进 Metrics tag");
+    }
+
     /// <summary>构造带 mock 飞书客户端的容器（分域执行器解析强类型接口）。</summary>
     private static ServiceProvider CreateProvider(Action<FeishuAgentOptions> configureOptions)
     {
@@ -183,6 +258,9 @@ public class FeishuToolContractGuards
             .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV3Spreadsheets>().Object)
             .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV3SpreadsheetData>().Object)
             .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV4Approval>().Object)
+            .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1DriveFolder>().Object)
+            .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1DriveFiles>().Object)
+            .AddSingleton(new Mock<Mud.Feishu.AI.Knowledge.IRetriever>().Object)
             .AddFeishuReadonlyTools()
             .BuildServiceProvider();
     }

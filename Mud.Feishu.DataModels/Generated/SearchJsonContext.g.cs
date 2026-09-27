@@ -13,15 +13,9 @@ namespace Mud.Feishu.DataModels.Search;
     WriteIndented = false)]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Search.AppDataSourceInfo))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Search.DataItemIndex))]
-[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Search.CreateDataItemIndexRequest))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Search.DataSchema))]
-[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Search.CreateSchemaRequest))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Search.DataSource))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Search.DataSourceInfo))]
-[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Search.CreateDataSourceRequest))]
-[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Search.AppDataSourceInfo))]
-[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Search.DataSourceInfo))]
-[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Search.AppDataSourceInfo))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Search.DateItemAcl))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Search.ItemContent))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Search.ItemMetadata))]
@@ -54,6 +48,12 @@ namespace Mud.Feishu.DataModels.Search;
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Search.WikiFilterParam))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Search.SearchAppRequest))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Search.SearchMessageRequest))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Search.CreateDataItemIndexRequest), TypeInfoPropertyName = "Mud_Feishu_DataModels_Search_CreateDataItemIndexRequest")] // SYSLIB1031 防护：默认 TypeInfo 属性名与本 Context 内其他根冲突，已显式重命名 // 派生类型已注册为独立根；多态（以基类类型序列化）仍需在基类上标注 [JsonDerivedType]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Search.CreateSchemaRequest), TypeInfoPropertyName = "Mud_Feishu_DataModels_Search_CreateSchemaRequest")] // SYSLIB1031 防护：默认 TypeInfo 属性名与本 Context 内其他根冲突，已显式重命名 // 派生类型已注册为独立根；多态（以基类类型序列化）仍需在基类上标注 [JsonDerivedType]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Search.DataSourceInfo), TypeInfoPropertyName = "Mud_Feishu_DataModels_Search_DataSourceInfo")] // SYSLIB1031 防护：默认 TypeInfo 属性名与本 Context 内其他根冲突，已显式重命名 // 派生类型已注册为独立根；多态（以基类类型序列化）仍需在基类上标注 [JsonDerivedType]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Search.CreateDataSourceRequest), TypeInfoPropertyName = "Mud_Feishu_DataModels_Search_CreateDataSourceRequest")] // SYSLIB1031 防护：默认 TypeInfo 属性名与本 Context 内其他根冲突，已显式重命名 // 派生类型已注册为独立根；多态（以基类类型序列化）仍需在基类上标注 [JsonDerivedType]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Search.AppDataSourceInfo), TypeInfoPropertyName = "Mud_Feishu_DataModels_Search_AppDataSourceInfo")] // SYSLIB1031 防护：默认 TypeInfo 属性名与本 Context 内其他根冲突，已显式重命名 // 派生类型已注册为独立根；多态（以基类类型序列化）仍需在基类上标注 [JsonDerivedType]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Search.AppDataSourceInfo), TypeInfoPropertyName = "Mud_Feishu_DataModels_Search_AppDataSourceInfo_1")] // SYSLIB1031 防护：默认 TypeInfo 属性名与本 Context 内其他根冲突，已显式重命名 // 派生类型已注册为独立根；多态（以基类类型序列化）仍需在基类上标注 [JsonDerivedType]
 internal partial class SearchJsonContext : JsonSerializerContext
 {
 }

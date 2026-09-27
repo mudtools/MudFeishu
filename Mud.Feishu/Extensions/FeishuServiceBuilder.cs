@@ -60,7 +60,11 @@ public class FeishuServiceBuilder
             [FeishuModule.TrustParty] = new FeishuModuleRegistrar(FeishuModule.TrustParty, s => s.AddTrustPartyWebApiHttpClient()),
             [FeishuModule.Acs] = new FeishuModuleRegistrar(FeishuModule.Acs, s => s.AddAcsWebApiHttpClient()),
             [FeishuModule.Lingo] = new FeishuModuleRegistrar(FeishuModule.Lingo, s => s.AddLingoWebApiHttpClient()),
-            [FeishuModule.Performance] = new FeishuModuleRegistrar(FeishuModule.Performance, s => s.AddPerformanceWebApiHttpClient())
+            [FeishuModule.Performance] = new FeishuModuleRegistrar(FeishuModule.Performance, s => s.AddPerformanceWebApiHttpClient()),
+            [FeishuModule.Security] = new FeishuModuleRegistrar(FeishuModule.Security, s => s.AddSecurityWebApiHttpClient()),
+            [FeishuModule.MDM] = new FeishuModuleRegistrar(FeishuModule.MDM, s => s.AddMDMWebApiHttpClient()),
+            [FeishuModule.Payroll] = new FeishuModuleRegistrar(FeishuModule.Payroll, s => s.AddPayrollWebApiHttpClient()),
+            [FeishuModule.PersonalSettings] = new FeishuModuleRegistrar(FeishuModule.PersonalSettings, s => s.AddPersonalSettingsWebApiHttpClient())
         };
     }
 
@@ -230,6 +234,30 @@ public class FeishuServiceBuilder
     /// </summary>
     /// <returns>建造者实例，支持链式调用</returns>
     public FeishuServiceBuilder AddPerformanceApi() => AddModule(FeishuModule.Performance);
+
+    /// <summary>
+    /// 添加安全与合规 API 服务
+    /// </summary>
+    /// <returns>建造者实例，支持链式调用</returns>
+    public FeishuServiceBuilder AddSecurityApi() => AddModule(FeishuModule.Security);
+
+    /// <summary>
+    /// 添加主数据管理 API 服务
+    /// </summary>
+    /// <returns>建造者实例，支持链式调用</returns>
+    public FeishuServiceBuilder AddMDMApi() => AddModule(FeishuModule.MDM);
+
+    /// <summary>
+    /// 添加薪酬发放 API 服务
+    /// </summary>
+    /// <returns>建造者实例，支持链式调用</returns>
+    public FeishuServiceBuilder AddPayrollApi() => AddModule(FeishuModule.Payroll);
+
+    /// <summary>
+    /// 添加个人设置 API 服务
+    /// </summary>
+    /// <returns>建造者实例，支持链式调用</returns>
+    public FeishuServiceBuilder AddPersonalSettingsApi() => AddModule(FeishuModule.PersonalSettings);
 
     /// <summary>
     /// 添加所有 API 服务

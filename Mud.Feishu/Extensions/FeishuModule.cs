@@ -148,6 +148,26 @@ public enum FeishuModule
     Performance,
 
     /// <summary>
+    /// 安全与合规
+    /// </summary>
+    Security,
+
+    /// <summary>
+    /// 主数据管理
+    /// </summary>
+    MDM,
+
+    /// <summary>
+    /// 薪酬发放
+    /// </summary>
+    Payroll,
+
+    /// <summary>
+    /// 个人设置
+    /// </summary>
+    PersonalSettings,
+
+    /// <summary>
     /// 所有功能
     /// </summary>
     All

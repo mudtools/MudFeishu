@@ -40,13 +40,12 @@ public class FeishuWebhookConcurrencyService : IAsyncDisposable, IHostedService
         // 从而连带执行 PostConfigure 中的 Validate() 与形态检查。这是**既有事实**，
         // 但**不得**依赖它做 fail-fast——启动期校验由 RegisterOptions() 的 ValidateOnStart() 显式保证。
         // 请勿删除本行的同时假设校验仍在启动期发生。
-        // 处理并发限制值：0 或负数视为无限制
+        // R5.4/F9：Validate 已强制 MaxConcurrentEvents ≥ 1，删除「0/负数=无限制」死分支。
         _currentMaxConcurrentEvents = options.MaxConcurrentEvents;
-        int actualMaxConcurrent = _currentMaxConcurrentEvents > 0 ? _currentMaxConcurrentEvents : int.MaxValue;
-        _semaphore = new SemaphoreSlim(actualMaxConcurrent, actualMaxConcurrent);
+        _semaphore = new SemaphoreSlim(_currentMaxConcurrentEvents, _currentMaxConcurrentEvents);
 
-        _logger.LogInformation("飞书 Webhook 并发控制服务初始化完成，最大并发数: {MaxConcurrentEvents} (实际: {ActualMaxConcurrent})",
-            _currentMaxConcurrentEvents, actualMaxConcurrent);
+        _logger.LogInformation("飞书 Webhook 并发控制服务初始化完成，最大并发数: {MaxConcurrentEvents}",
+            _currentMaxConcurrentEvents);
 
         // 监听配置变更，支持热更新
         // WHF-13：消除 async-void——OnChange 回调必须是同步 void，异步体显式丢弃到线程池并
@@ -129,18 +128,16 @@ public class FeishuWebhookConcurrencyService : IAsyncDisposable, IHostedService
             var oldMax = _currentMaxConcurrentEvents;
             _currentMaxConcurrentEvents = newMaxConcurrent;
 
-            // 处理并发限制值：0 或负数视为无限制
-            int actualMaxConcurrent = _currentMaxConcurrentEvents > 0 ? _currentMaxConcurrentEvents : int.MaxValue;
-
-            _logger.LogInformation("并发控制配置已更新，最大并发数: {OldMax} -> {NewMax} (实际: {ActualMaxConcurrent})",
-                oldMax, newMaxConcurrent, actualMaxConcurrent);
+            _logger.LogInformation("并发控制配置已更新，最大并发数: {OldMax} -> {NewMax}",
+                oldMax, newMaxConcurrent);
 
             // 原子替换信号量并延迟释放旧信号量（修复信号量泄漏）
+            // R5.4/F9：Validate 已强制 ≥ 1，直接使用配置值。
             var oldSemaphore = Interlocked.Exchange(ref _semaphore,
-                new SemaphoreSlim(actualMaxConcurrent, actualMaxConcurrent));
+                new SemaphoreSlim(newMaxConcurrent, newMaxConcurrent));
             var logMessage = _semaphoreUpgraded ? "信号量已重新创建" : "信号量首次创建";
             _semaphoreUpgraded = true;
-            _logger.LogInformation("{Message}，最大并发数: {NewMax} (实际: {ActualMaxConcurrent})", logMessage, newMaxConcurrent, actualMaxConcurrent);
+            _logger.LogInformation("{Message}，最大并发数: {NewMax}", logMessage, newMaxConcurrent);
 
             // 延迟释放旧信号量，等待可能正在使用的请求完成
             // WHF-R2/C4：固定 60s 改为动态——至少 60s 或有效处理超时的 2 倍

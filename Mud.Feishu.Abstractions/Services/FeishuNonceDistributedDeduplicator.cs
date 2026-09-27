@@ -24,7 +24,7 @@ public sealed class FeishuNonceDistributedDeduplicator : MemoryDeduplicator<stri
         TimeSpan? nonceTtl = null,
         TimeSpan? cleanupInterval = null)
         : base(logger,
-            nonceTtl ?? TimeSpan.FromMinutes(5),
+            nonceTtl ?? TimeSpan.FromSeconds(Consts.DefaultNonceTtlSeconds),
             cleanupInterval ?? TimeSpan.FromMinutes(1),
             processingTimeout: null,
             // R3-P2-1：内存 Nonce 去重此前**无容量上限**（maxCacheSize 默认 0）。
@@ -34,7 +34,7 @@ public sealed class FeishuNonceDistributedDeduplicator : MemoryDeduplicator<stri
     {
         logger?.LogInformation(
             "飞书分布式 Nonce 去重服务初始化完成，Nonce TTL: {Ttl}, 清理间隔: {CleanupInterval}, 最大缓存: {MaxCacheSize}",
-            nonceTtl ?? TimeSpan.FromMinutes(5),
+            nonceTtl ?? TimeSpan.FromSeconds(Consts.DefaultNonceTtlSeconds),
             cleanupInterval ?? TimeSpan.FromMinutes(1),
             Consts.DefaultMaxCacheSize);
     }

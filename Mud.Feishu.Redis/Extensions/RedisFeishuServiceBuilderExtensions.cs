@@ -133,33 +133,53 @@ public static class RedisFeishuServiceBuilderExtensions
             var redisOptions = sp.GetRequiredService<RedisOptions>();
             var logger = sp.GetService<ILogger<RedisFeishuEventDistributedDeduplicator>>();
 
+            // R5.4/F2：消费统一节 Mode（此前全文件零读取 → Mode=None 关不掉去重，语义反转）。
+            var mode = ResolveUnifiedMode(sp);
+            if (IsModeNone(mode))
+            {
+                logger?.LogError(
+                    "FeishuDeduplication:Mode=None：已显式关闭事件去重（含 Redis 实现）。" +
+                    "多实例下事件幂等性不成立，请确认这是预期行为。");
+                return new NoopFeishuEventDeduplicator(
+                    sp.GetService<ILogger<NoopFeishuEventDeduplicator>>() ?? NullLogger<NoopFeishuEventDeduplicator>.Instance);
+            }
+            if (IsModeInMemory(mode))
+            {
+                throw new InvalidOperationException(
+                    "FeishuDeduplication:Mode=InMemory 与已注册的 Redis 去重器（AddFeishuRedisDeduplicators）矛盾。" +
+                    "内存去重请勿注册 Redis；分布式去重请设 Mode=Distributed。");
+            }
+
             // 从 DI 解析 DeduplicationOptions（可通过 FeishuRedis:Deduplication 节点配置高级参数）
             // R5/X6: 文件级 #pragma warning disable CS0618 已覆盖 — 本类型为双读回落基座
             var dedupOptions = sp.GetService<IOptions<DeduplicationOptions>>()?.Value ?? DeduplicationOptions.Default;
             var unified = sp.GetService<IOptions<FeishuDeduplicationOptions>>()?.Value;
             var unifiedActive = unified is { IsConfiguredFromConfiguration: true };
-            var profileBase = unified?.ResolveProfileDeduplicationOptions() ?? DeduplicationOptions.Default;
 
-            // C1 双读：FeishuDeduplication 新节存在时字段级优先，否则保持 RedisOptions 覆盖 DeduplicationOptions
-            var effectiveEventTtl = (unifiedActive && unified!.Event?.Ttl is { } uTtl && uTtl > TimeSpan.Zero)
-                ? uTtl
+            // R5.4/F6：统一节激活时走 Profile 解析链（字段级覆盖 > Profile 预设）；
+            // 未激活时保持 RedisOptions / DeduplicationOptions 旧键回落。
+            // 此前 profileBase 分支恒被短路（DeduplicationOptions 默认值恒 > 0），属死代码。
+            var profileBase = unifiedActive
+                ? unified!.ResolveProfileDeduplicationOptions()
+                : DeduplicationOptions.Default;
+
+            var effectiveEventTtl = unifiedActive
+                ? unified!.ResolveEventTtl()
                 : redisOptions.EventCacheExpiration;
             var effectiveEventPrefix = (unifiedActive && !string.IsNullOrEmpty(unified!.Event?.KeyPrefix))
                 ? unified.Event!.KeyPrefix!
                 : redisOptions.EventKeyPrefix;
-            var effectiveProcessing = (unifiedActive && unified!.Event?.ProcessingTimeout is { } uPt && uPt > TimeSpan.Zero)
-                ? uPt
+            var effectiveProcessing = unifiedActive
+                ? unified!.ResolveEventProcessingTimeout()
                 : dedupOptions.ProcessingTimeout > TimeSpan.Zero
                     ? dedupOptions.ProcessingTimeout
                     : profileBase.ProcessingTimeout;
-            var effectiveCleanup = (unifiedActive && unified!.Event?.CleanupInterval is { } uCl && uCl > TimeSpan.Zero)
-                ? uCl
-                : dedupOptions.CleanupInterval > TimeSpan.Zero
-                    ? dedupOptions.CleanupInterval
-                    : profileBase.CleanupInterval;
-            var effectiveMaxCache = (unifiedActive && unified!.Event?.MaxCacheSize is { } uMs)
-                ? uMs
-                : dedupOptions.MaxCacheSize > 0 ? dedupOptions.MaxCacheSize : profileBase.MaxCacheSize;
+            var effectiveCleanup = unifiedActive
+                ? (unified!.Event?.CleanupInterval is { } uCl && uCl > TimeSpan.Zero ? uCl : profileBase.CleanupInterval)
+                : (dedupOptions.CleanupInterval > TimeSpan.Zero ? dedupOptions.CleanupInterval : profileBase.CleanupInterval);
+            var effectiveMaxCache = unifiedActive
+                ? (unified!.Event?.MaxCacheSize ?? profileBase.MaxCacheSize)
+                : (dedupOptions.MaxCacheSize > 0 ? dedupOptions.MaxCacheSize : profileBase.MaxCacheSize);
 
             WarnIfDeduplicationKeysAreIneffective(logger, redisOptions, dedupOptions, unified);
 
@@ -265,8 +285,32 @@ public static class RedisFeishuServiceBuilderExtensions
     private static IServiceCollection AddFeishuRedisNonceDeduplicator(
         this IServiceCollection services)
     {
+        // R5.4/F4（V5 修正）：注册 Nonce TTL 事实 holder，供 Webhook 包跨包读取做重放窗口校验。
+        // 值与 ResolveUnifiedNonceTtl 同源；纯 Webhook 宿主（未引用 Redis 包）不注册 → holder 为 null → 跳过校验。
+        services.AddSingleton<FeishuNonceTtlFact>(sp =>
+        {
+            var options = sp.GetRequiredService<RedisOptions>();
+            return new FeishuNonceTtlFact { NonceTtl = ResolveUnifiedNonceTtl(sp, options) };
+        });
+
         services.AddSingleton<IFeishuNonceDistributedDeduplicator>(sp =>
         {
+            // R5.4/F2：消费统一节 Mode。
+            var mode = ResolveUnifiedMode(sp);
+            if (IsModeNone(mode))
+            {
+                sp.GetService<ILogger<NoopFeishuNonceDeduplicator>>()?.LogError(
+                    "FeishuDeduplication:Mode=None：已显式关闭 Nonce 去重（重放防护失效）。" +
+                    "生产环境须经 FeishuWebhook:AllowInMemoryNonceDedupInProduction 显式承担风险。");
+                return new NoopFeishuNonceDeduplicator(
+                    sp.GetService<ILogger<NoopFeishuNonceDeduplicator>>() ?? NullLogger<NoopFeishuNonceDeduplicator>.Instance);
+            }
+            if (IsModeInMemory(mode))
+            {
+                throw new InvalidOperationException(
+                    "FeishuDeduplication:Mode=InMemory 与已注册的 Redis Nonce 去重器（AddFeishuRedisDeduplicators）矛盾。");
+            }
+
             var redis = sp.GetRequiredService<IConnectionMultiplexer>();
             var options = sp.GetRequiredService<RedisOptions>();
             var logger = sp.GetService<ILogger<RedisFeishuNonceDistributedDeduplicator>>();
@@ -289,6 +333,20 @@ public static class RedisFeishuServiceBuilderExtensions
     {
         services.AddSingleton<IFeishuSeqIDDeduplicator>(sp =>
         {
+            // R5.4/F2：消费统一节 Mode。
+            var mode = ResolveUnifiedMode(sp);
+            if (IsModeNone(mode))
+            {
+                sp.GetService<ILogger<NoopFeishuSeqIdDeduplicator>>()?.LogError(
+                    "FeishuDeduplication:Mode=None：已显式关闭 SeqID 去重（重复消息将不被拦截）。");
+                return new NoopFeishuSeqIdDeduplicator();
+            }
+            if (IsModeInMemory(mode))
+            {
+                throw new InvalidOperationException(
+                    "FeishuDeduplication:Mode=InMemory 与已注册的 Redis SeqID 去重器（AddFeishuRedisDeduplicators）矛盾。");
+            }
+
             var redis = sp.GetRequiredService<IConnectionMultiplexer>();
             var options = sp.GetRequiredService<RedisOptions>();
             var logger = sp.GetService<ILogger<RedisFeishuSeqIDDeduplicator>>();
@@ -455,6 +513,15 @@ public static class RedisFeishuServiceBuilderExtensions
 
     private static FeishuDeduplicationOptions? GetUnifiedDeduplication(IServiceProvider sp) =>
         sp.GetService<IOptions<FeishuDeduplicationOptions>>()?.Value is { IsConfiguredFromConfiguration: true } u ? u : null;
+
+    /// <summary>R5.4/F2：解析统一节 Mode；未激活（无物理节且未走代码配置）时返回 null（按 Distributed 处理）。</summary>
+    private static string? ResolveUnifiedMode(IServiceProvider sp) => GetUnifiedDeduplication(sp)?.Mode;
+
+    private static bool IsModeNone(string? mode) =>
+        mode is not null && string.Equals(mode, FeishuDeduplicationOptions.ModeNone, StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsModeInMemory(string? mode) =>
+        mode is not null && string.Equals(mode, FeishuDeduplicationOptions.ModeInMemory, StringComparison.OrdinalIgnoreCase);
 
     private static TimeSpan ResolveUnifiedNonceTtl(IServiceProvider sp, RedisOptions options)
     {

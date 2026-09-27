@@ -178,4 +178,10 @@ internal class Consts
     /// 飞书开放平台 API 默认 BaseUrl
     /// </summary>
     public const string DefaultFeishuBaseUrl = "https://open.feishu.cn";
+
+    /// <summary>
+    /// 默认 Nonce TTL（秒）：10 分钟。
+    /// <para>R5.4/F4：内存与 Redis 两路径的 Nonce TTL 单一真源。此前内存硬编码 300s、Redis 默认 600s 不同源。</para>
+    /// </summary>
+    public const int DefaultNonceTtlSeconds = 600;
 }

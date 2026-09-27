@@ -120,9 +120,10 @@ public class FeishuDeduplicationOptionsTests
     }
 
     [Theory]
-    [InlineData(300, 300, true, true)]
+    [InlineData(300, 300, true, false)] // R5.4/F4：严格 >，相等 → 零余量 → 拒绝
     [InlineData(120, 300, true, false)] // Nonce < tolerance → fail when production
-    [InlineData(300, 300, false, true)]
+    [InlineData(301, 300, true, true)]  // 严格 > → 有余量 → 通过
+    [InlineData(300, 300, false, true)] // failMode=false → 始终通过（仅 Dev）
     public void Consistency_ShouldValidateNonceTtlAgainstTolerance(int nonceSeconds, int toleranceSeconds, bool failMode, bool expectSuccess)
     {
         var result = FeishuConfigurationConsistency.ValidateNonceTtlAgainstTolerance(

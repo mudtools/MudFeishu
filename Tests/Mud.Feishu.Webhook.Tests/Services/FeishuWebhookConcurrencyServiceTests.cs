@@ -49,8 +49,6 @@ public class FeishuWebhookConcurrencyServiceTests
     [InlineData(3, 1, true, "正常限制，获取1个信号量")]
     [InlineData(3, 3, true, "正常限制，获取3个信号量（达到限制）")]
     [InlineData(3, 4, false, "正常限制，获取4个信号量（超过限制）")]
-    [InlineData(0, 10, true, "无限制（0），获取10个信号量")]
-    [InlineData(-1, 1, true, "负限制（视为无限制），获取1个信号量")]
     [InlineData(100, 50, true, "大限制，获取50个信号量")]
     public async Task AcquireAsync_ShouldHandleDifferentLimitScenarios(
         int maxConcurrentEvents,
@@ -97,8 +95,8 @@ public class FeishuWebhookConcurrencyServiceTests
         // Assert - 检查最后一次尝试的结果
         results.Last().Should().Be(expectedFinalResult, $"场景: {scenarioDescription}");
 
-        // 对于无限制或大限制的情况，所有尝试都应该成功
-        if (maxConcurrentEvents == 0 || (maxConcurrentEvents > 0 && acquireCount <= maxConcurrentEvents))
+        // R5.4/F9：0/负数=无限制分支已删除（Validate 强制 ≥ 1）；仅检查正常限制
+        if (acquireCount <= maxConcurrentEvents)
         {
             results.All(r => r).Should().BeTrue($"场景: {scenarioDescription}");
         }

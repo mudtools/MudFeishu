@@ -139,6 +139,7 @@ public class SeqIdScopeKeyInferenceTests
             unified: new FeishuDeduplicationOptions
             {
                 IsConfiguredFromConfiguration = true,
+                Mode = FeishuDeduplicationOptions.ModeDistributed,
                 SeqId = new SeqIdDeduplicationOptions { ScopeKey = "unified-scope" }
             });
 

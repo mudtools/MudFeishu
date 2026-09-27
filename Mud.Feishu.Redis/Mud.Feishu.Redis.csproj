@@ -35,6 +35,9 @@
 
 	<ItemGroup>
 		<ProjectReference Include="..\Mud.Feishu.Abstractions\Mud.Feishu.Abstractions.csproj" />
+		<!-- 治理约束：包间只允许纵向引用（各实现包 → Abstractions），不允许横向引用。
+		     会话存储契约（IConversationStore/ConversationKeyBuilder/SessionStoreEncoding/
+		     FeishuConversationOptions）位于 Abstractions，本包只依赖契约实现 Redis 后端。 -->
 	</ItemGroup>
 
 	<ItemGroup>

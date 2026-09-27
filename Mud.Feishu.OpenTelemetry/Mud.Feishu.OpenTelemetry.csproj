@@ -30,10 +30,12 @@
     </ItemGroup>
 
     <ItemGroup Condition="'$(TargetFramework)' == 'net6.0' or '$(TargetFramework)' == 'netstandard2.0'">
-        <PackageReference Update="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.0" />
-        <PackageReference Update="Microsoft.Extensions.Options" Version="10.0.0" />
-        <PackageReference Update="Microsoft.Extensions.Configuration.Binder" Version="10.0.0" />
-        <PackageReference Update="Microsoft.Extensions.Logging.Abstractions" Version="10.0.0" />
+        <!-- 与根 Directory.Build.props 的 M.E.* 定版（10.0.11）对齐，消除 Bcl.AsyncInterfaces
+             传递依赖的 MSB3277 版本冲突（Mud.Feishu.AI 引入 MAF 后全仓 M.E.* 统一到 10.0.11）。 -->
+        <PackageReference Update="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.11" />
+        <PackageReference Update="Microsoft.Extensions.Options" Version="10.0.11" />
+        <PackageReference Update="Microsoft.Extensions.Configuration.Binder" Version="10.0.11" />
+        <PackageReference Update="Microsoft.Extensions.Logging.Abstractions" Version="10.0.11" />
     </ItemGroup>
 
     <ItemGroup>

@@ -14,6 +14,8 @@ using Microsoft.Extensions.Options;
 using Mud.Feishu.Abstractions;
 using Mud.Feishu.Abstractions.Configuration;
 using Mud.Feishu.Abstractions.Extensions;
+using Mud.Feishu.Abstractions.Configuration;
+using Mud.Feishu.Abstractions.Conversations;
 using Mud.Feishu.Abstractions.Utilities;
 using Mud.Feishu.Redis.Configuration;
 using Mud.Feishu.Redis.Diagnostics;
@@ -388,6 +390,53 @@ public static class RedisFeishuServiceBuilderExtensions
 
         // E-02（R2-22）：运维诊断门面（聚合三类键空间计数/最大 SeqID/服务端时间）
         services.TryAddSingleton<IRedisDeduplicationDiagnostics, RedisDeduplicationDiagnostics>();
+
+        return services;
+    }
+
+    /// <summary>
+    /// 用 <see cref="RedisConversationStore"/> 替换默认的内存会话存储（Agent 会话持久化的分布式后端）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 依赖方向（纵向引用治理）：会话存储契约（<see cref="IConversationStore"/> 与
+    /// <see cref="FeishuConversationOptions"/>）位于 Mud.Feishu.Abstractions，
+    /// 本包只依赖 Abstractions——包间不允许横向引用。
+    /// </para>
+    /// <para>
+    /// 会话 TTL 单一阈值源为 <see cref="FeishuConversationOptions.SessionTtl"/>
+    /// （<c>FeishuConversation</c> 节）：AddFeishuAgent 负责配置节绑定；未调用 AddFeishuAgent
+    /// 时本方法以默认值兜底注册 Options（两后端不得各设一套，对齐 D9 阈值同源精神）。
+    /// 若 <see cref="IConnectionMultiplexer"/> 尚未注册（未调用 <c>AddFeishuRedis</c> 系方法），
+    /// 按既有语义补注册连接。
+    /// </para>
+    /// </remarks>
+    /// <param name="services">服务集合</param>
+    /// <param name="registerHealthCheck">
+    /// 补注册 Redis 连接时是否附带健康检查（仅在内部触发 <c>AddFeishuRedis</c> 时生效）。
+    /// </param>
+    /// <param name="keyPrefix">Redis 命名空间前缀（多环境共用 Redis 时隔离键空间）。</param>
+    /// <returns>服务集合</returns>
+    public static IServiceCollection AddFeishuRedisConversationStore(
+        this IServiceCollection services,
+        bool registerHealthCheck = true,
+        string keyPrefix = "feishu:conversation")
+    {
+        // 兜底注册 Options（AddOptions 幂等）：未走 AddFeishuAgent 的宿主也有默认 TTL 可读；
+        // 已由 AddFeishuAgent 绑定配置节时不覆盖（Configure 委托按注册顺序依次执行，绑定的值生效）。
+        services.AddOptions<FeishuConversationOptions>();
+
+        if (!services.Any(s => s.ServiceType == typeof(IConnectionMultiplexer)))
+        {
+            services.AddFeishuRedis(registerHealthCheck);
+        }
+
+        // Replace 而非 TryAdd：显式覆盖 AddFeishuAgent 的 MemoryConversationStore 默认注册。
+        services.Replace(ServiceDescriptor.Singleton<IConversationStore>(sp => new RedisConversationStore(
+            sp.GetRequiredService<IConnectionMultiplexer>(),
+            sp.GetRequiredService<IOptions<FeishuConversationOptions>>().Value.SessionTtl,
+            sp.GetService<ILogger<RedisConversationStore>>() ?? NullLogger<RedisConversationStore>.Instance,
+            keyPrefix)));
 
         return services;
     }

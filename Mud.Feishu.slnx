@@ -5,6 +5,7 @@
     <Project Path="Demos/FeishuOAuthDemo/backend/FeishuOAuthDemo.csproj" />
     <Project Path="Demos/FeishuWikiManager/backend/FeishuWikiManager.csproj" />
     <Project Path="Demos/Mud.Feishu.AotVerification/Mud.Feishu.AotVerification.csproj" />
+    <Project Path="Demos/Mud.Feishu.Agent.Demo/Mud.Feishu.Agent.Demo.csproj" />
     <Project Path="Demos/Mud.Feishu.Demo/Mud.Feishu.Demo.csproj" />
     <Project Path="Demos/Mud.Feishu.Webhook.Demo/Mud.Feishu.Webhook.Demo.csproj" Id="33cbe001-6cfc-489d-8f5b-12dea3b659ed" />
     <Project Path="Demos/Mud.Feishu.WebSocket.Demo/Mud.Feishu.WebSocket.Demo.csproj" />
@@ -18,6 +19,8 @@
   </Folder>
   <Folder Name="/Sources/">
     <Project Path="Mud.Feishu.Abstractions/Mud.Feishu.Abstractions.csproj" Id="b04973d2-c477-49a7-a00f-04288a8cabac" />
+    <Project Path="Mud.Feishu.AI/Mud.Feishu.AI.csproj" />
+    <Project Path="Mud.Feishu.AI.Tools/Mud.Feishu.AI.Tools.csproj" />
     <Project Path="Mud.Feishu.Authentication/Mud.Feishu.Authentication.csproj" />
     <Project Path="Mud.Feishu.DataModels/Mud.Feishu.DataModels.csproj" Id="d1068109-7be0-4c64-a97e-c7aba02d132b" />
     <Project Path="Mud.Feishu.EventCallback/Mud.Feishu.EventCallback.csproj" Id="21f330ea-c8c3-4d9e-9f72-0e9e9f4d28c1" />
@@ -30,6 +33,7 @@
   <Folder Name="/Tests/">
     <File Path="Tests/Directory.Build.props" />
     <Project Path="Tests/Mud.Feishu.Abstractions.Tests/Mud.Feishu.Abstractions.Tests.csproj" />
+    <Project Path="Tests/Mud.Feishu.AI.Tests/Mud.Feishu.AI.Tests.csproj" />
     <Project Path="Tests/Mud.Feishu.Authentication.Tests/Mud.Feishu.Authentication.Tests.csproj" />
     <Project Path="Tests/Mud.Feishu.OpenTelemetry.Tests/Mud.Feishu.OpenTelemetry.Tests.csproj" />
     <Project Path="Tests/Mud.Feishu.Redis.IntegrationTests/Mud.Feishu.Redis.IntegrationTests.csproj" />

@@ -47,18 +47,23 @@
     <WarningsAsErrors>$(WarningsAsErrors);IL2026;IL2046;IL2050;IL2057;IL2067;IL2070;IL2072;IL2075;IL2080;IL3050</WarningsAsErrors>
 </PropertyGroup>
 
+	<!-- M.E.* 统一定版于 10.0.11（与 Microsoft.Agents.AI 1.20.0 的传递依赖对齐）。
+	     ns2.0/net6.0 组原为 8.0.x——Mud.Feishu.AI 引入 MAF 后，同图混用 8.x/10.x 会产生
+	     CS1705（Hosting.Abstractions 10 引用 DI.Abstractions 10 而编译引用集落到 8.0.2），
+	     故与 Mud.Feishu.OpenTelemetry 的既有先例一致，低 TFM 组也统一到 10.x（10.x 均提供 ns2.0 资产，
+	     根 props 已为这两个 TFM 设 SuppressTfmSupportBuildWarnings）。 -->
 	<ItemGroup Condition="'$(TargetFramework)' == 'net10.0' or '$(TargetFramework)' == 'net9.0' or '$(TargetFramework)' == 'net8.0'">
-		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.9" />
-		<PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.9" />
-		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.9" />
-		<PackageReference Include="Microsoft.Extensions.Options" Version="10.0.9" />
-		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.9" />
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.11" />
+		<PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.11" />
+		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.11" />
+		<PackageReference Include="Microsoft.Extensions.Options" Version="10.0.11" />
+		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.11" />
 	</ItemGroup>
 	<ItemGroup Condition="'$(TargetFramework)' == 'net6.0'or '$(TargetFramework)' == 'netstandard2.0'">
-		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.2" />
-		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.3" />
-		<PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="8.0.2" />
-		<PackageReference Include="Microsoft.Extensions.Options" Version="8.0.2" />
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.11" />
+		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.11" />
+		<PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.11" />
+		<PackageReference Include="Microsoft.Extensions.Options" Version="10.0.11" />
 	</ItemGroup>
 	<ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
 		<PackageReference Include="System.Text.Json" Version="10.0.9" />

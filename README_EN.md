@@ -822,10 +822,12 @@ dotnet publish -r win-x64 -c Release /p:PublishAot=true
 
 | Package                                       | Version          | Description                                           |
 | --------------------------------------------- | ---------------- | ----------------------------------------------------- |
-| **Mud.HttpUtils**                             | v2.0.7           | HTTP client utilities with source generator (incl. resilience policies) |
-| **Mud.HttpUtils.Generator**                   | v2.0.7           | HTTP client code generator (compile-time)             |
+| **Mud.HttpUtils**                             | v2.0.8           | HTTP client utilities with source generator (incl. resilience policies) |
+| **Mud.HttpUtils.Generator**                   | v2.0.8           | HTTP client code generator (compile-time)             |
 | **System.Text.Json**                          | v10.0.9          | High-performance JSON serialization (netstandard2.0 target) |
-| **Microsoft.Extensions.***                    | v8.0.2 / v10.0.9 | Dependency injection, logging, configuration binding, options |
+| **Microsoft.Extensions.***                    | v10.0.11         | Dependency injection, logging, configuration binding, options |
+| **Microsoft.Agents.AI**                       | v1.20.0          | AI foundation (referenced by Mud.Feishu.AI only; core stays MAF-free) |
+| **Microsoft.Agents.AI.OpenAI**                | v1.20.0          | OpenAI-compatible model access (Mud.Feishu.AI only)   |
 
 ---
 

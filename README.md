@@ -1594,9 +1594,11 @@ dotnet publish -r win-x64 -c Release /p:PublishAot=true
 
 | 包                            | 版本             | 说明                                |
 | ----------------------------- | ---------------- | ----------------------------------- |
-| **Mud.HttpUtils**             | v2.0.7  | HTTP 客户端工具类（含源代码生成器） |
-| **Mud.HttpUtils.Generator**   | v2.0.7  | HTTP 客户端代码生成器（编译时）     |
+| **Mud.HttpUtils**             | v2.0.8  | HTTP 客户端工具类（含源代码生成器） |
+| **Mud.HttpUtils.Generator**   | v2.0.8  | HTTP 客户端代码生成器（编译时）     |
 | **Microsoft.Extensions.Http** | v8.0.1 / v10.0.9 | HTTP 客户端工厂                     |
+| **Microsoft.Agents.AI**       | v1.20.0 | AI 底座（仅 Mud.Feishu.AI 引用；核心项目不依赖） |
+| **Microsoft.Agents.AI.OpenAI** | v1.20.0 | OpenAI-compatible 模型接入（仅 Mud.Feishu.AI 引用） |
 
 ---
 

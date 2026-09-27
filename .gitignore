@@ -44,6 +44,10 @@
 /Mud.Feishu.Authentication/obj
 /Mud.Feishu.OpenTelemetry/bin
 /Mud.Feishu.OpenTelemetry/obj
+/Mud.Feishu.AI/bin
+/Mud.Feishu.AI/obj
+/Mud.Feishu.AI.Tools/bin
+/Mud.Feishu.AI.Tools/obj
 /docs
 /Mud.Feishu.Redis/obj
 /Mud.Feishu.Webhook.Demo/bin
@@ -58,6 +62,8 @@
 /Demos/TaskManageDemo/backend/bin
 /Demos/TaskManageDemo/tests/obj
 /Demos/TaskManageDemo/tests/bin
+/Demos/Mud.Feishu.Agent.Demo/bin
+/Demos/Mud.Feishu.Agent.Demo/obj
 /Demos/Mud.Feishu.AotVerification/obj
 /Demos/Mud.Feishu.AotVerification/bin
 /Tests/Mud.Feishu.Abstractions.Tests/bin
@@ -76,6 +82,9 @@
 /Tests/Mud.Feishu.Redis.IntegrationTests/bin
 /Tests/Mud.Feishu.Redis.IntegrationTests/obj
 /Tests/Mud.Feishu.Redis.IntegrationTests/TestResults    
+/Tests/Mud.Feishu.AI.Tests/bin
+/Tests/Mud.Feishu.AI.Tests/obj
+/Tests/Mud.Feishu.AI.Tests/TestResults
 node_modules
 ################################################################################
 # 敏感配置文件

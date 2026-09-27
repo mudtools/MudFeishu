@@ -1,0 +1,54 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFrameworks>netstandard2.0;net6.0;net8.0;net10.0</TargetFrameworks>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<AssemblyName>Mud.Feishu.AI</AssemblyName>
+		<GenerateDocumentationFile>True</GenerateDocumentationFile>
+		<PackageProjectUrl>http://www.mudtools.cn/</PackageProjectUrl>
+		<RepositoryUrl>https://github.com/mudtools/MudFeishu</RepositoryUrl>
+		<RepositoryType>git</RepositoryType>
+		<PackageIcon>Icon.png</PackageIcon>
+		<Description>Mud.Feishu AI-Native Agent 运行时：基于 Microsoft Agent Framework 的会话管理、模型接入与飞书工具执行链底座，net8.0+ 原生 AOT 兼容。</Description>
+		<PackageTags>Feishu;Lark;飞书;Agent;AI;AIAgent;LLM;ChatClient;AOT;NativeAOT;MudFeishu</PackageTags>
+		<BaseOutputPath>..\bin</BaseOutputPath>
+		<!-- MEAI001：MessageCountingChatReducer 是 MEAI 唯一内置的历史消息计数裁剪器，
+		     是 MaxHistoryMessages 的真实消费点；其「实验性」诊断按有意采用抑制（替代方案为自研裁剪器）。 -->
+		<NoWarn>$(NoWarn);MEAI001</NoWarn>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\Mud.Feishu.Abstractions\Mud.Feishu.Abstractions.csproj" />
+		<!-- [FeishuTool] 源生成器（已决策⑤）：以分析器形态引用，不作为运行时程序集。 -->
+		<ProjectReference Include="..\Mud.Feishu.AI.Tools\Mud.Feishu.AI.Tools.csproj"
+		                 OutputItemType="Analyzer"
+		                 ReferenceOutputAssembly="false" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!-- AI 底座（Microsoft Agent Framework）——全仓单一版本，由契约守卫锁定（见 Tests 契约守卫）。 -->
+		<PackageReference Include="Microsoft.Agents.AI" Version="1.20.0" />
+		<PackageReference Include="Microsoft.Agents.AI.OpenAI" Version="1.20.0" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!-- MAF 1.20.0 传递依赖要求 M.E.* ≥ 10.0.11：为避免 NU1603 版本漂移，本项目内统一 Update 到该版本
+		     （含 netstandard2.0/net6.0——M.E.* 10.x 均提供 ns2.0 兼容资产，根 props 对这两个 TFM 已设
+		     SuppressTfmSupportBuildWarnings）。配置绑定走源生成（net8+ 由根 props 启用）。 -->
+		<PackageReference Update="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.11" />
+		<PackageReference Update="Microsoft.Extensions.Logging.Abstractions" Version="10.0.11" />
+		<PackageReference Update="Microsoft.Extensions.Options" Version="10.0.11" />
+		<PackageReference Update="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.11" />
+		<PackageReference Update="Microsoft.Extensions.Configuration.Binder" Version="10.0.11" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<None Include="..\Icon.png" Pack="true" PackagePath="\" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<InternalsVisibleTo Include="Mud.Feishu.AI.Tests" />
+	</ItemGroup>
+
+</Project>

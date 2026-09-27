@@ -221,6 +221,27 @@ $strictProjects = @($sourceRoots |
     ForEach-Object { Get-ChildItem -Path $_.FullName -Filter '*.csproj' -File -ErrorAction SilentlyContinue } |
     Where-Object { $_.FullName -notmatch '\\(obj|bin)\\' } |
     Sort-Object FullName)
+# 单 TFM 源项目（netstandard2.0 源生成器宿主等，如 Mud.Feishu.AI.Tools）不含 net8.0 目标，
+# 用 -f net8.0 构建会报 NETSDK1005。此处按求值后的 TargetFrameworks 过滤（与步骤 4 同口径），
+# 仅对真正含 net8.0 目标的源项目做严格冒烟。
+$strictProjects = @(foreach ($proj in $strictProjects) {
+    $tfmRaw = (dotnet msbuild $proj.FullName -getProperty:TargetFrameworks -p:Configuration=Release -nologo 2>$null |
+        Where-Object { $_ -match '^net' } | Select-Object -Last 1)
+    if (-not $tfmRaw) {
+        $tfmRaw = (dotnet msbuild $proj.FullName -getProperty:TargetFramework -p:Configuration=Release -nologo 2>$null |
+            Where-Object { $_ -match '^net' } | Select-Object -Last 1)
+    }
+    if (-not $tfmRaw) {
+        Write-Host "  [SKIP] $($proj.Name)：无法解析 TFM，保守跳过（仅 netstandard2.0 单 TFM 项目会出现）" -ForegroundColor Yellow
+        continue
+    }
+    $tfmList = @($tfmRaw.Split(';') | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+    if ($tfmList -notcontains 'net8.0') {
+        Write-Host "  [SKIP] $($proj.Name)：无 net8.0 目标（$($tfmList -join ';')），不适用 AOT 严格冒烟" -ForegroundColor Yellow
+        continue
+    }
+    $proj
+})
 $strictLog = Join-Path $env:TEMP "mudfeishu-verify-strict-$([guid]::NewGuid().ToString('N')).log"
 if ($strictProjects.Count -eq 0) {
     $script:failures.Add('未找到任何源项目，AotStrictMode 冒烟无法执行')

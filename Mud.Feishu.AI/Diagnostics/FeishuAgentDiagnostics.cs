@@ -1,0 +1,97 @@
+// -----------------------------------------------------------------------
+//  作者：Mud Studio  版权所有 (c) Mud Studio 2026
+//  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
+//  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
+//  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
+// -----------------------------------------------------------------------
+
+namespace Mud.Feishu.AI.Diagnostics;
+
+/// <summary>
+/// Agent 运行时遥测：模型调用 Span 与飞书维度属性。
+/// </summary>
+/// <remarks>
+/// <para>
+/// 复用既有 <c>FeishuActivitySource</c>（<c>Mud.Feishu</c>）——宿主经 Mud.Feishu.OpenTelemetry
+/// 的 <c>AddSource</c> 已注册该源，Agent Span 零配置并入既有链路（总体设计 §7.3）。
+/// 飞书维度属性：<c>feishu.agent.name</c>、<c>feishu.agent.operation</c>、
+/// <c>feishu.llm.input_tokens</c> / <c>output_tokens</c> / <c>total_tokens</c>；
+/// 后续阶段在工具/检索 Span 上追加 <c>feishu.app_key</c> / <c>feishu.tenant</c> /
+/// <c>feishu.conversation_id</c> / <c>feishu.tool_name</c>。
+/// </para>
+/// <para>
+/// 敏感治理：Span 属性只允许结构化标量（ID/名称/token 计数），模型输入输出文本<b>不得</b>入属性
+/// （对齐日志最小暴露 D5 精神）。
+/// </para>
+/// </remarks>
+internal static class FeishuAgentDiagnostics
+{
+    /// <summary>Agent 操作名：非流式运行。</summary>
+    public const string OperationRun = "run";
+
+    /// <summary>Agent 操作名：流式运行。</summary>
+    public const string OperationRunStreaming = "run_streaming";
+
+    /// <summary>Span 属性：Agent 展示名。</summary>
+    public const string TagAgentName = "feishu.agent.name";
+
+    /// <summary>Span 属性：操作名。</summary>
+    public const string TagOperation = "feishu.agent.operation";
+
+    /// <summary>Span 属性：输入 token 数。</summary>
+    public const string TagInputTokens = "feishu.llm.input_tokens";
+
+    /// <summary>Span 属性：输出 token 数。</summary>
+    public const string TagOutputTokens = "feishu.llm.output_tokens";
+
+    /// <summary>Span 属性：总 token 数。</summary>
+    public const string TagTotalTokens = "feishu.llm.total_tokens";
+
+    /// <summary>
+    /// 开启一次 Agent 运行 Span（无监听器时 StartActivity 返回 null，调用方须判空）。
+    /// </summary>
+    /// <param name="agentName">Agent 展示名。</param>
+    /// <param name="operation">操作名（<see cref="OperationRun"/> / <see cref="OperationRunStreaming"/>）。</param>
+    /// <returns>Activity（可能为 null）。</returns>
+    public static Activity? StartRunActivity(string agentName, string operation)
+    {
+        var activity = FeishuActivitySource.Instance.StartActivity(
+            $"feishu.agent.{operation}", ActivityKind.Internal);
+        activity?.SetTag(TagAgentName, agentName);
+        activity?.SetTag(TagOperation, operation);
+        return activity;
+    }
+
+    /// <summary>
+    /// 开启一次「事件→会话→模型→回复」会话管线 Span。
+    /// </summary>
+    /// <param name="conversationKey">会话键（由 ConversationKeyBuilder 构造）。</param>
+    /// <param name="appKey">应用唯一标识。</param>
+    /// <returns>Activity（可能为 null）。</returns>
+    public static Activity? StartConversationActivity(string conversationKey, string appKey)
+    {
+        var activity = FeishuActivitySource.Instance.StartActivity(
+            "feishu.agent.conversation", ActivityKind.Internal);
+        activity?.SetTag("feishu.conversation.key", conversationKey)
+                .SetTag("feishu.app_key", appKey);
+        return activity;
+    }
+
+    /// <summary>
+    /// 记录模型返回的 token 用量到 Span。
+    /// </summary>
+    /// <param name="activity">当前 Activity（可为 null）。</param>
+    /// <param name="usage">MAF 返回的用量（可能为 null）。</param>
+    public static void RecordUsage(Activity? activity, UsageDetails? usage)
+    {
+        if (activity is null || usage is null)
+            return;
+
+        if (usage.InputTokenCount is { } input)
+            activity.SetTag(TagInputTokens, input);
+        if (usage.OutputTokenCount is { } output)
+            activity.SetTag(TagOutputTokens, output);
+        if (usage.TotalTokenCount is { } total)
+            activity.SetTag(TagTotalTokens, total);
+    }
+}

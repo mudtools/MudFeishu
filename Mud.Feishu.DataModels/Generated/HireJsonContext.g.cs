@@ -132,7 +132,6 @@ namespace Mud.Feishu.DataModels.Hire;
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Hire.CommonSchemaConfig))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Hire.CommonSchemaOption))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Hire.CommonSchemaSetting))]
-[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Hire.I18n))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Hire.IdNameObject))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Hire.RangeFilter))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Hire.BatchDeleteEcoAccountCustomFieldRequest))]

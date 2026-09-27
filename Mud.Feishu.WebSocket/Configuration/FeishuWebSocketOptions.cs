@@ -6,6 +6,7 @@
 // -----------------------------------------------------------------------
 
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 
 #pragma warning disable CS0618 // R5/X6: Obsolete dual-read fallback base — intentionally references DeduplicationOptions/EventDeduplicationOptions
@@ -150,13 +151,25 @@ public class FeishuWebSocketOptions
     public bool IgnoreUnknownEventTypes { get; set; }
 
     /// <summary>从配置节回填 R3 前的扁平连接/证书键（仅 JSON 兼容）</summary>
-    public void ApplyLegacyFlatKeys(IConfigurationSection section)
+    /// <param name="section">FeishuWebSocket 配置节</param>
+    /// <param name="logger">可选日志；用于「旧扁平键被嵌套段忽略」与幽灵键的一次性告警</param>
+    public void ApplyLegacyFlatKeys(IConfigurationSection section, ILogger? logger = null)
     {
         if (section is null || !section.Exists())
             return;
 
         Reconnect ??= new WebSocketReconnectOptions();
         Certificate ??= new WebSocketCertificateOptions();
+
+        // R5.4/F7：嵌套段显式存在时，旧扁平键整体跳过（优先级单一真源：嵌套 > flat）。
+        // 此前扁平键在嵌套 Bind 之后无条件覆盖，造成「同时配置两者时 flat 反超嵌套」。
+        if (section.GetSection("Reconnect").Exists() || section.GetSection("Certificate").Exists())
+        {
+            logger?.LogWarning(
+                "检测到 FeishuWebSocket:Reconnect/Certificate 嵌套配置，旧扁平键（AutoReconnect/MaxReconnectAttempts/" +
+                "ValidateServerCertificate 等）已忽略。请移除旧扁平键以消除歧义。");
+            return;
+        }
 
         if (bool.TryParse(section["AutoReconnect"], out var auto))
             Reconnect.Auto = auto;
@@ -183,6 +196,8 @@ public class FeishuWebSocketOptions
         if (bool.TryParse(section["EnableLogging"], out _))
         {
             // EnableLogging 已移除；兼容读取但忽略（日志由 ILogger 级别控制）。
+            logger?.LogWarning(
+                "FeishuWebSocket:EnableLogging 已移除且从未被运行时消费，请改用 Logging:LogLevel:Mud.Feishu.WebSocket。");
         }
     }
 
@@ -314,6 +329,12 @@ public class FeishuWebSocketOptions
     public void ValidateCertificateOptions()
     {
         Certificate ??= new WebSocketCertificateOptions();
+
+        // R5.4/F3b：Strict 模式下 ValidateServerCertificate=false 属安全旁路，与 Strict 语义矛盾。
+        // 若需关闭校验，应显式设 Mode=Dev（Dev 分支会独立处理 ValidateServerCertificate=false）。
+        if (Certificate.Mode == CertificateValidationMode.Strict && !Certificate.ValidateServerCertificate)
+            throw new InvalidOperationException(
+                "Certificate.Mode=Strict 时不得 ValidateServerCertificate=false。关闭证书校验请改用 Certificate.Mode=Dev。");
 
         if (Certificate.Mode == CertificateValidationMode.Strict && Certificate.AllowSelfSignedCertificates)
             throw new InvalidOperationException(

@@ -77,7 +77,7 @@ public class FeishuWebhookOptions
     /// </summary>
     /// <remarks>
     /// <para>
-    /// R3-P2-4：**重放窗口不变量** <c>NonceTtlSeconds ≥ TimestampToleranceSeconds</c>。
+    /// R3-P2-4：**重放窗口不变量** <c>NonceTtlSeconds &gt; TimestampToleranceSeconds</c>。
     /// 若 TTL 短于时间戳容差，则"Nonce 已过期、但时间戳仍在容差窗口内"的区间里重放攻击可行。
     /// 此前该不变量只存在于文档，无代码强制，且文档口径与默认实现（内存 Nonce TTL=300s）不一致。
     /// </para>
@@ -85,7 +85,14 @@ public class FeishuWebhookOptions
     /// 显式配置后由 <see cref="Validate"/> 强制该不变量（启动期失败，见 R3-P0-5）；
     /// 留空时不阻断，仅在启动 Summary 日志中打印实际形态供人工核对。
     /// </para>
+    /// <para>
+    /// <b>R5.4/F4</b>：本属性**不控制真实 Nonce TTL**。真实 TTL 来自
+    /// <c>FeishuDeduplication:Nonce:Ttl</c>（统一节），内存路径由 SDK 以同源常量
+    /// <c>Consts.DefaultNonceTtlSeconds</c> 构造。本属性仅保留启动期不变量校验能力，
+    /// 已标 <c>[Obsolete]</c>，下个 major 删除。
+    /// </para>
     /// </remarks>
+    [Obsolete("该键不控制真实 Nonce TTL。真实 TTL 来自 FeishuDeduplication:Nonce:Ttl（内存路径由 SDK 以同源常量构造）。本属性将在下个 major 删除。")]
     public int? NonceTtlSeconds { get; set; }
 
     /// <summary>
@@ -305,8 +312,10 @@ public class FeishuWebhookOptions
         if (MaxRequestBodySize < 1024)
             throw new InvalidOperationException("MaxRequestBodySize 必须至少为 1024 字节");
 
-        // R3-P2-4：重放窗口不变量——显式配置 Nonce TTL 时强制 TTL ≥ 时间戳容差。
+        // R3-P2-4：重放窗口不变量——显式配置 Nonce TTL 时强制 TTL > 时间戳容差。
         // 未配置（null）时不阻断：SDK 无法得知宿主所用去重实现的实际 TTL，仅由启动 Summary 日志提示。
+        // R5.4/F4：NonceTtlSeconds 已 [Obsolete]（不控制真实 TTL），保留校验以维持启动期不变量检查能力。
+#pragma warning disable CS0618
         if (NonceTtlSeconds is { } ttl)
         {
             if (ttl <= 0)
@@ -320,6 +329,7 @@ public class FeishuWebhookOptions
                     $"TimestampToleranceSeconds({TimestampToleranceSeconds}s) 以保留余量。" +
                     "否则在 Nonce 已过期、时间戳仍被接受的区间内重放攻击可行");
         }
+#pragma warning restore CS0618
 
         if (TimestampToleranceSeconds < 0)
             throw new InvalidOperationException("TimestampToleranceSeconds 不能为负数");

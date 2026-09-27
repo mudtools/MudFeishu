@@ -1303,17 +1303,21 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
                 // WS-12 修复：处理名称不匹配 — 仅在显式允许时放行
                 if ((sslPolicyErrors & SslPolicyErrors.RemoteCertificateNameMismatch) != 0)
                 {
+                    // R5.4/F3a：AllowCertificateNameMismatch 已 [Obsolete]（有效组合下不可达：Dev 不读、Strict 拒绝）。
+                    // 此处为运行期防御性读取，保留以拦截运行期被代码改写为 true 的场景。
+#pragma warning disable CS0618
                     if (_options.Certificate.AllowCertificateNameMismatch)
+#pragma warning restore CS0618
                     {
-                                                _logger.LogWarning("允许证书名称不匹配: {Errors}", sslPolicyErrors);
-                    
+                                                 _logger.LogWarning("允许证书名称不匹配: {Errors}", sslPolicyErrors);
+                     
                         // 清除名称不匹配标志，继续检查其他错误
                         sslPolicyErrors &= ~SslPolicyErrors.RemoteCertificateNameMismatch;
                     }
                     else
                     {
-                                                _logger.LogError("SSL证书验证失败（名称不匹配）: {Errors}", sslPolicyErrors);
-                    
+                                                 _logger.LogError("SSL证书验证失败（名称不匹配）: {Errors}", sslPolicyErrors);
+                     
                         return false;
                     }
                 }
@@ -1325,15 +1329,18 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
                 // WS-12 修复：处理链错误 — 仅在「自签名根证书」场景放行
                 if ((sslPolicyErrors & SslPolicyErrors.RemoteCertificateChainErrors) != 0)
                 {
+                    // R5.4/F3a：AllowSelfSignedCertificates 已 [Obsolete]，同上防御性读取。
+#pragma warning disable CS0618
                     if (_options.Certificate.AllowSelfSignedCertificates && IsSelfSignedRoot(chain))
+#pragma warning restore CS0618
                     {
-                                                _logger.LogWarning("允许自签名根证书（仅 UntrustedRoot）: {Errors}", sslPolicyErrors);
-                    
+                                                 _logger.LogWarning("允许自签名根证书（仅 UntrustedRoot）: {Errors}", sslPolicyErrors);
+                     
                         return true;
                     }
 
                                         _logger.LogError("SSL证书验证失败（链错误，非自签名根或含其他链状态）: {Errors}", sslPolicyErrors);
-                
+                 
                     return false;
                 }
 

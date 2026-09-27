@@ -89,10 +89,13 @@ public class FeishuWebSocketServiceBuilder
         var section = sectionName ?? "WebSocket";
         // 使用 IConfigurationSection 重载绑定，确保 IOptionsMonitor<T> 能正确接收配置变更通知
         _services.Configure<FeishuWebSocketOptions>(configuration.GetSection(section));
-        // R4：配置 JSON 兼容——扁平重连/证书键回填到 Reconnect/Certificate
-        _services.Configure<FeishuWebSocketOptions>(o =>
+        // R4：配置 JSON 兼容——扁平重连/证书键回填到 Reconnect/Certificate。
+        // R5.4/F7：改用 PostConfigure<IServiceProvider> 以便解析 ILogger（一次性告警），
+        // 并保持「嵌套 Bind（上方 Configure）先执行、flat 回填后执行」的顺序。
+        var legacySection = configuration.GetSection(section);
+        _services.AddOptions<FeishuWebSocketOptions>().PostConfigure<IServiceProvider>((o, sp) =>
         {
-            o.ApplyLegacyFlatKeys(configuration.GetSection(section));
+            o.ApplyLegacyFlatKeys(legacySection, sp.GetService<ILogger<FeishuWebSocketOptions>>());
         });
         // 设置 AppKey 用于指标维度区分
         _services.Configure<FeishuWebSocketOptions>(o => o.AppKey = appKey);
@@ -267,6 +270,16 @@ public class FeishuWebSocketServiceBuilder
         if (_configured)
             throw new InvalidOperationException("Build() 方法只能调用一次");
 
+        // R5.4/F8：核心服务已注册（典型为第二次 CreateFeishuWebSocketServiceBuilder(...).Build()）。
+        // 此前会静默重复注册 IFeishuWebSocketClient/后台服务并覆盖同一未命名 Options → 此处改为显式失败。
+        if (_services.Any(s => s.ServiceType == typeof(IFeishuWebSocketClient)))
+        {
+            throw new InvalidOperationException(
+                "WebSocket 核心服务已注册（IFeishuWebSocketClient 已存在）。" +
+                "禁止重复调用 CreateFeishuWebSocketServiceBuilder(...).Build()——" +
+                "多次构建会覆盖同一未命名 FeishuWebSocketOptions 并重复注册核心服务/后台服务。");
+        }
+
         ValidateConfiguration();
         RegisterServices();
         _configured = true;
@@ -387,14 +400,17 @@ public class FeishuWebSocketServiceBuilder
                     ? (unified!.Mode ?? Mud.Feishu.Abstractions.Configuration.FeishuDeduplicationOptions.ModeInMemory)
                     : options.EventDeduplication.Mode.ToString();
 
-                var cacheExpiration = unifiedActive && unified!.Event?.Ttl is { } uTtl && uTtl > TimeSpan.Zero
-                    ? uTtl
+                // R5.4/F6：Profile 在 WS 侧此前完全失效（回落只读 EventDeduplication.*）。
+                // 统一节激活时改用 ResolveEventTtl()/ResolveEventProcessingTimeout()——
+                // 其内部已实现「字段级覆盖 > Profile 预设」。
+                var cacheExpiration = unifiedActive
+                    ? unified!.ResolveEventTtl()
                     : options.EventDeduplication.CacheExpiration;
                 var cleanupInterval = unifiedActive && unified!.Event?.CleanupInterval is { } uCl && uCl > TimeSpan.Zero
                     ? uCl
                     : options.EventDeduplication.CleanupInterval;
-                var processingTimeout = unifiedActive && unified!.Event?.ProcessingTimeout is { } uPt && uPt > TimeSpan.Zero
-                    ? uPt
+                var processingTimeout = unifiedActive
+                    ? unified!.ResolveEventProcessingTimeout()
                     : options.EventDeduplication.ProcessingTimeout;
                 var maxCacheSize = unifiedActive && unified!.Event?.MaxCacheSize is { } uMs
                     ? uMs

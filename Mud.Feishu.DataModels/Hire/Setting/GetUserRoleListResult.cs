@@ -11,26 +11,7 @@ namespace Mud.Feishu.DataModels.Hire;
 /// 获取用户角色列表响应体
 /// </summary>
 [HttpJsonSerializable(SerializerClassName = "Hire")]
-public class GetUserRoleListResult
+public class GetUserRoleListResult : ApiPageListResult<UserRole>
 {
-    /// <summary>
-    /// <para>用户角色列表</para>
-    /// <para>必填：否</para>
-    /// </summary>
-    [JsonPropertyName("items")]
-    public UserRole[]? Items { get; set; }
 
-    /// <summary>
-    /// <para>是否还有下一页数据</para>
-    /// <para>必填：否</para>
-    /// </summary>
-    [JsonPropertyName("has_more")]
-    public bool? HasMore { get; set; }
-
-    /// <summary>
-    /// <para>下一页页码</para>
-    /// <para>必填：否</para>
-    /// </summary>
-    [JsonPropertyName("page_token")]
-    public string? PageToken { get; set; }
 }

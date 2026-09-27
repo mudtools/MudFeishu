@@ -168,6 +168,11 @@ public enum FeishuModule
     PersonalSettings,
 
     /// <summary>
+    /// OKR 管理
+    /// </summary>
+    Okr,
+
+    /// <summary>
     /// 所有功能
     /// </summary>
     All

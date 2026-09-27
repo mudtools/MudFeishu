@@ -50,11 +50,18 @@ public class WebSocketCertificateOptions
     /// （本属性不参与 Dev 分支判定）；<c>Mode=Strict</c> 时本属性必须为 false
     /// （由 <c>ValidateCertificateOptions</c> 强制）。保留本属性仅用于 Strict 的一致性校验与
     /// 运行期防御性读取，计划下个 major 删除——新配置请改用 <c>Mode=Dev</c>。
+    /// </para>
+    /// <para><b>R5.4/F3a</b>：本属性在有效组合下不可达（Dev 不读、Strict 拒绝），已标 Obsolete，下个 major 删除。</para>
     /// </remarks>
+    [Obsolete("Certificate.Mode=Dev 已内含放宽自签名/名称不匹配；本属性在有效组合下不可达，下个 major 删除。请改用 Certificate.Mode=Dev。")]
     public bool AllowSelfSignedCertificates { get; set; } = false;
 
     /// <summary>是否允许证书名称不匹配，默认 false</summary>
-    /// <remarks>语义与 <see cref="AllowSelfSignedCertificates"/> 相同（R5/X5 后由 <c>Mode</c> 主导）。</remarks>
+    /// <remarks>
+    /// 语义与 <see cref="AllowSelfSignedCertificates"/> 相同（R5/X5 后由 <c>Mode</c> 主导）。
+    /// <para><b>R5.4/F3a</b>：已标 Obsolete，下个 major 删除。</para>
+    /// </remarks>
+    [Obsolete("Certificate.Mode=Dev 已内含放宽名称不匹配；本属性在有效组合下不可达，下个 major 删除。请改用 Certificate.Mode=Dev。")]
     public bool AllowCertificateNameMismatch { get; set; } = false;
 
     /// <summary>自定义证书回调（仅代码配置；Mode=Custom 时必须提供）</summary>

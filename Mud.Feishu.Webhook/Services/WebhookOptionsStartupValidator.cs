@@ -94,12 +94,14 @@ internal sealed class WebhookOptionsStartupValidator : IHostedService
             : "Distributed";
 
         var tolerance = options.TimestampToleranceSeconds;
+#pragma warning disable CS0618 // R5.4/F4: NonceTtlSeconds 已 Obsolete，保留启动自检读取
         var nonceTtl = options.NonceTtlSeconds;
-        var invariantOk = nonceTtl is null || nonceTtl.Value >= tolerance;
+#pragma warning restore CS0618
+        var invariantOk = nonceTtl is null || nonceTtl.Value > tolerance;
 
         _logger?.LogInformation(
             "飞书 Webhook 启动自检 | Nonce 去重: {NonceForm} | 事件去重: {EventForm} | " +
-            "时间戳容差: {Tolerance}s | Nonce TTL: {NonceTtl} | 重放窗口不变量(TTL ≥ 容差): {Invariant} | 应用数: {AppCount}",
+            "时间戳容差: {Tolerance}s | Nonce TTL: {NonceTtl} | 重放窗口不变量(TTL > 容差): {Invariant} | 应用数: {AppCount}",
             nonceForm,
             eventForm,
             tolerance,

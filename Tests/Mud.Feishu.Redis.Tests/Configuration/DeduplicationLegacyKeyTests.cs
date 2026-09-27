@@ -115,6 +115,7 @@ public class DeduplicationLegacyKeyTests
         services.AddSingleton(Options.Create(new FeishuDeduplicationOptions
         {
             IsConfiguredFromConfiguration = true,
+            Mode = FeishuDeduplicationOptions.ModeDistributed,
             Event = new DeduplicationEntryOptions
             {
                 Ttl = TimeSpan.FromMinutes(30),
@@ -142,6 +143,7 @@ public class DeduplicationLegacyKeyTests
     private static FeishuDeduplicationOptions UnifiedWith(TimeSpan? eventTtl, string? eventPrefix) => new()
     {
         IsConfiguredFromConfiguration = true,
+        Mode = FeishuDeduplicationOptions.ModeDistributed,
         Event = new DeduplicationEntryOptions
         {
             Ttl = eventTtl,

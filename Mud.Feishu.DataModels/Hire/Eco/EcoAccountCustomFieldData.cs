@@ -26,7 +26,7 @@ public class EcoAccountCustomFieldData
     /// <para>必填：是</para>
     /// </summary>
     [JsonPropertyName("name")]
-    public I18n? Name { get; set; }
+    public I18nName? Name { get; set; }
 
     /// <summary>
     /// <para>是否必填。true：必填；false：非必填。注意：该字段在更新接口中暂不生效</para>
@@ -41,5 +41,5 @@ public class EcoAccountCustomFieldData
     /// <para>必填：否</para>
     /// </summary>
     [JsonPropertyName("description")]
-    public I18n? Description { get; set; }
+    public I18nName? Description { get; set; }
 }

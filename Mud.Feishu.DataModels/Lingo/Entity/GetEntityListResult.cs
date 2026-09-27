@@ -11,7 +11,7 @@ namespace Mud.Feishu.DataModels.Lingo;
 /// 获取词条列表响应体
 /// </summary>
 [HttpJsonSerializable(SerializerClassName = "Lingo")]
-public class GetEntityListResult
+public class GetEntityListResult : ApiPageListResult
 {
     /// <summary>
     /// <para>词条列表</para>
@@ -20,19 +20,5 @@ public class GetEntityListResult
     [JsonPropertyName("entities")]
     public LingoEntity[]? Entities { get; set; }
 
-    /// <summary>
-    /// <para>分页标记，当 has_more 为 true 时会同时返回新的 page_token，否则不返回 page_token</para>
-    /// <para>必填：否</para>
-    /// <para>示例值：408ecac018b2e3518db37275e812aad7bb8ad3e755fc886f322ac6c430ba</para>
-    /// </summary>
-    [JsonPropertyName("page_token")]
-    public string? PageToken { get; set; }
 
-    /// <summary>
-    /// <para>是否有下一页</para>
-    /// <para>必填：否</para>
-    /// <para>示例值：true</para>
-    /// </summary>
-    [JsonPropertyName("has_more")]
-    public bool? HasMore { get; set; }
 }

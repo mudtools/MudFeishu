@@ -11,7 +11,7 @@ namespace Mud.Feishu.DataModels.Hire;
 /// 获取面试速记明细响应体
 /// </summary>
 [HttpJsonSerializable(SerializerClassName = "Hire")]
-public class GetInterviewMinutesResult
+public class GetInterviewMinutesResult : ApiPageListResult
 {
     /// <summary>
     /// <para>面试速记</para>
@@ -20,17 +20,5 @@ public class GetInterviewMinutesResult
     [JsonPropertyName("minutes")]
     public InterviewMinutes? Minutes { get; set; }
 
-    /// <summary>
-    /// <para>分页标记，当 has_more 为 true 时，会同时返回新的 page_token</para>
-    /// <para>必填：否</para>
-    /// </summary>
-    [JsonPropertyName("page_token")]
-    public string? PageToken { get; set; }
 
-    /// <summary>
-    /// <para>是否还有更多项</para>
-    /// <para>必填：否</para>
-    /// </summary>
-    [JsonPropertyName("has_more")]
-    public bool? HasMore { get; set; }
 }

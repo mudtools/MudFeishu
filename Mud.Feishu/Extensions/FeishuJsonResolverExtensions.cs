@@ -28,7 +28,9 @@ using Mud.Feishu.DataModels.Mail;
 using Mud.Feishu.DataModels.MDM;
 using Mud.Feishu.DataModels.Messages;
 using Mud.Feishu.DataModels.Minutes;
+using Mud.Feishu.DataModels.Payroll;
 using Mud.Feishu.DataModels.Performance;
+using Mud.Feishu.DataModels.PersonalSettings;
 using Mud.Feishu.DataModels.Search;
 using Mud.Feishu.DataModels.Security;
 using Mud.Feishu.DataModels.Spark;
@@ -43,13 +45,13 @@ namespace Mud.Feishu.Extensions;
 
 /// <summary>
 /// Feishu JSON 解析器扩展，用于配置 DataModels 源生成上下文。
-/// 在 net8.0+ 下将 31 个已生成的 DataModels Context 合并为一个解析器并注入到 FeishuJsonDefaults。
+/// 在 net8.0+ 下将 33 个已生成的 DataModels Context 合并为一个解析器并注入到 FeishuJsonDefaults。
 /// </summary>
 public static class FeishuJsonResolverExtensions
 {
     /// <summary>
     /// 配置 DataModels 的 JSON 解析器。
-    /// 将 31 个已生成的 DataModels Context 合并为一个解析器并注入到 FeishuJsonDefaults。
+    /// 将 33 个已生成的 DataModels Context 合并为一个解析器并注入到 FeishuJsonDefaults。
     /// 必须在应用程序启动时、任何 JSON 序列化/反序列化发生前调用。
     /// </summary>
     public static void ConfigureDataModelsResolver()
@@ -86,7 +88,9 @@ public static class FeishuJsonResolverExtensions
              LingoJsonContext.Default,
              PerformanceJsonContext.Default,
              SecurityJsonContext.Default,
-             MDMJsonContext.Default
+             MDMJsonContext.Default,
+             PayrollJsonContext.Default,
+             PersonalSettingsJsonContext.Default
          );
 
         // 注入合并后的 DataModels resolver 到 FeishuJsonDefaults

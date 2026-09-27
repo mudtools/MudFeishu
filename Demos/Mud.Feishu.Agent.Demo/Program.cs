@@ -29,6 +29,13 @@ public static class Program
 {
     public static async Task Main()
     {
+        // Phase 1 工具模式：FEISHU_DEMO_TOOLS=1 时启用 10 个只读工具 + 飞书客户端。
+        if (string.Equals(Environment.GetEnvironmentVariable("FEISHU_DEMO_TOOLS"), "1", StringComparison.Ordinal))
+        {
+            await ToolsDemo.RunAsync();
+            return;
+        }
+
         var modelId = Environment.GetEnvironmentVariable("FEISHU_AI_MODEL_KEY")
             ?? throw new InvalidOperationException("请先设置 FEISHU_AI_MODEL_KEY");
         var apiKey = Environment.GetEnvironmentVariable("FEISHU_AI_API_KEY")

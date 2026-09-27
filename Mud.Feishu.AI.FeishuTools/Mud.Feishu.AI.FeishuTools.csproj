@@ -1,0 +1,45 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFrameworks>netstandard2.0;net6.0;net8.0;net10.0</TargetFrameworks>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<AssemblyName>Mud.Feishu.AI.FeishuTools</AssemblyName>
+		<GenerateDocumentationFile>True</GenerateDocumentationFile>
+		<PackageProjectUrl>http://www.mudtools.cn/</PackageProjectUrl>
+		<RepositoryUrl>https://github.com/mudtools/MudFeishu</RepositoryUrl>
+		<RepositoryType>git</RepositoryType>
+		<PackageIcon>Icon.png</PackageIcon>
+		<Description>Mud.Feishu AI 飞书工具包：把 Bitable/Docx/Wiki/Search/IM/Sheets 只读接口经 [FeishuTool] 源生成 Schema 暴露为模型 FunctionCall，内置多租户授权执行链（BeginScope + 授权门禁 + 结果裁剪），net8.0+ 原生 AOT 兼容。</Description>
+		<PackageTags>Feishu;Lark;飞书;Agent;AI;FunctionCall;Tool;AOT;NativeAOT;MudFeishu</PackageTags>
+		<BaseOutputPath>..\bin</BaseOutputPath>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<!-- 上层包（DAG 合法层级）：AI（Agent 运行时）+ core（强类型接口载体）+ DataModels（工具出/入 DTO）。
+		     实现包（AI/Redis）仅纵向引用 Abstractions；本包为 Phase 1 规划的「工具执行链承载层」，引用 AI + core。 -->
+		<ProjectReference Include="..\Mud.Feishu.AI\Mud.Feishu.AI.csproj" />
+		<ProjectReference Include="..\Mud.Feishu\Mud.Feishu.csproj" />
+		<ProjectReference Include="..\Mud.Feishu.DataModels\Mud.Feishu.DataModels.csproj" />
+		<!-- [FeishuTool] 源生成器（已决策⑤）：以分析器形态引用，产出本包 10 个工具接口的 Schema 常量。 -->
+		<ProjectReference Include="..\Mud.Feishu.AI.Tools\Mud.Feishu.AI.Tools.csproj"
+		                 OutputItemType="Analyzer"
+		                 ReferenceOutputAssembly="false" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!-- M.E.* 与 Mud.Feishu.AI 同步 Update 到 10.0.11（MAF 1.20.0 传递依赖要求，防 NU1603 版本漂移）。 -->
+		<PackageReference Update="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.11" />
+		<PackageReference Update="Microsoft.Extensions.Logging.Abstractions" Version="10.0.11" />
+		<PackageReference Update="Microsoft.Extensions.Options" Version="10.0.11" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<None Include="..\Icon.png" Pack="true" PackagePath="\" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<InternalsVisibleTo Include="Mud.Feishu.AI.FeishuTools.Tests" />
+	</ItemGroup>
+
+</Project>

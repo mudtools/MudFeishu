@@ -11,6 +11,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using Mud.Feishu.AI.Agents;
 using Mud.Feishu.AI.Conversations;
+using Mud.Feishu.AI.Tools;
 using Mud.Feishu.Abstractions.Configuration;
 using Mud.Feishu.Abstractions.Conversations;
 using OpenAI;
@@ -140,12 +141,19 @@ public static class FeishuAgentServiceCollectionExtensions
                 ? sp.GetRequiredService<IChatClient>()
                 : sp.GetRequiredKeyedService<IChatClient>(options.ModelServiceKey);
 
+            // 工具来源：容器内全部 FeishuAgentToolSource（如 Mud.Feishu.AI.FeishuTools 的白名单桥）。
+            // 未注册工具包时为空集——保持 Phase 0 裸模型行为。
+            var tools = sp.GetServices<FeishuAgentToolSource>()
+                .SelectMany(source => source.GetTools(sp))
+                .ToArray();
+
             return new FeishuAgent(
                 chatClient,
                 options,
                 sp.GetRequiredService<IConversationStore>(),
                 sp.GetService<ILoggerFactory>(),
-                sp);
+                sp,
+                tools);
         });
         services.TryAddSingleton<AIAgent>(static sp => sp.GetRequiredService<FeishuAgent>());
 

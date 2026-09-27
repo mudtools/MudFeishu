@@ -6,6 +6,10 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Mud.Feishu.AI\Mud.Feishu.AI.csproj" />
+    <!-- 样例工具接口（本测试工程内）的 [FeishuTool] 源生成器：显式挂分析器，样例 Schema 随测试编译产出。 -->
+    <ProjectReference Include="..\..\Mud.Feishu.AI.Tools\Mud.Feishu.AI.Tools.csproj"
+                      OutputItemType="Analyzer"
+                      ReferenceOutputAssembly="false" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'net10.0' or '$(TargetFramework)' == 'net9.0' or '$(TargetFramework)' == 'net8.0'">

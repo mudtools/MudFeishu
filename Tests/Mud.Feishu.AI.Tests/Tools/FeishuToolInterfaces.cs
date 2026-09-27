@@ -5,21 +5,21 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-namespace Mud.Feishu.AI.Tools;
+namespace Mud.Feishu.AI.Tests.Tools;
 
 /// <summary>
-/// 工具接口：只声明模型可见 Schema（工具名/描述/扁平参数），不复用 HttpUtils 的
-/// <c>[Path]/[Body]</c> 路由特性（Phase 1 §3.2）。
+/// [FeishuTool] 源生成器闭环验证样例（T1-3）——仅测试载体，不属于生产 API 面。
 /// </summary>
 /// <remarks>
 /// <para>
-/// 编译期由 <c>FeishuToolSchemaGenerator</c> 产出 OpenAI-compatible JSON Schema 与
-/// <c>required_scopes</c> 权限元数据；工具执行链（参数映射 → BeginScope → 授权 →
-/// 强类型调用 → 解包裁剪）由分域映射层实现——本接口只承载模型可见契约。
+/// 样例接口放测试工程而非生产程序集：源生成器在<b>每个</b>引用它的编译中产出同名
+/// <c>FeishuToolSchemas</c>，生产程序集若含工具接口，下游同时引用 AI 与 FeishuTools
+/// 两个程序集时会因同名类型产生 CS0433 歧义。测试工程内的样例随测试编译产出，不影响生产面。
 /// </para>
 /// <para>
-/// scope 字符串为占位，落地时对照开放平台控制台逐工具核对回填（契约守卫只锁
-/// 「工具名↔scope 清单存在性」，不锁具体字符串）。
+/// 接口只声明模型可见 Schema（工具名/描述/扁平参数），不复用 HttpUtils 的
+/// <c>[Path]/[Body]</c> 路由特性（Phase 1 §3.2）。
+/// scope 字符串为占位，落地时对照开放平台控制台逐工具核对回填。
 /// </para>
 /// </remarks>
 [FeishuTool("bitable.query_records",

@@ -45,13 +45,17 @@ public sealed class FeishuAgent : AIAgent
     /// <param name="conversationStore">会话存储；为 <see langword="null"/> 时不持久化（仅内存会话）。</param>
     /// <param name="loggerFactory">日志工厂（可空，MAF 内部日志兜底关闭）。</param>
     /// <param name="services">服务提供器（MAF 工具解析用，可空）。</param>
+    /// <param name="tools">暴露给模型的工具（可空）。来源：容器内全部 <see cref="AIFunction"/>
+    /// 注册（如 <c>Mud.Feishu.AI.FeishuTools</c> 经白名单 MapTool 后桥接产出）；
+    /// 为空/空集时保持 Phase 0 裸模型行为。</param>
     /// <exception cref="InvalidOperationException">配置非法（fail-fast）。</exception>
     public FeishuAgent(
         IChatClient chatClient,
         FeishuAgentOptions options,
         IConversationStore? conversationStore = null,
         ILoggerFactory? loggerFactory = null,
-        IServiceProvider? services = null)
+        IServiceProvider? services = null,
+        IReadOnlyList<AIFunction>? tools = null)
     {
         if (chatClient is null)
             throw new ArgumentNullException(nameof(chatClient));
@@ -69,6 +73,7 @@ public sealed class FeishuAgent : AIAgent
             ChatOptions = new ChatOptions
             {
                 Instructions = options.Instructions,
+                Tools = tools is { Count: > 0 } ? [.. tools] : null,
             },
             ChatHistoryProvider = new InMemoryChatHistoryProvider(new InMemoryChatHistoryProviderOptions
             {

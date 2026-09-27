@@ -48,6 +48,8 @@
 /Mud.Feishu.AI/obj
 /Mud.Feishu.AI.Tools/bin
 /Mud.Feishu.AI.Tools/obj
+/Mud.Feishu.AI.FeishuTools/bin
+/Mud.Feishu.AI.FeishuTools/obj
 /docs
 /Mud.Feishu.Redis/obj
 /Mud.Feishu.Webhook.Demo/bin
@@ -85,6 +87,9 @@
 /Tests/Mud.Feishu.AI.Tests/bin
 /Tests/Mud.Feishu.AI.Tests/obj
 /Tests/Mud.Feishu.AI.Tests/TestResults
+/Tests/Mud.Feishu.AI.FeishuTools.Tests/bin
+/Tests/Mud.Feishu.AI.FeishuTools.Tests/obj
+/Tests/Mud.Feishu.AI.FeishuTools.Tests/TestResults
 node_modules
 ################################################################################
 # 敏感配置文件

@@ -30,17 +30,25 @@ namespace Mud.Feishu.AI.Events;
 /// </para>
 /// </remarks>
 /// <typeparam name="T">强类型事件 DTO（须实现 <see cref="IEventResult"/>）。</typeparam>
+/// <remarks>
+/// 构造注入 <see cref="IFeishuToolContextAccessor"/>（可空）时，模型工具调用期间
+/// 的执行上下文（appKey/chat/user）经异步流注入工具执行链（多租户隔离事实来源，TMA2-20）。
+/// </remarks>
 public abstract class ConversationalFeishuEventHandler<T>(
     FeishuAgent agent,
     IFeishuEventDeduplicator businessDeduplicator,
     ILogger? logger = null,
-    IReadOnlyList<IContextAssembler>? contextAssemblers = null) : IdempotentFeishuEventHandler<T>(businessDeduplicator, logger ?? NullLogger.Instance)
+    IReadOnlyList<IContextAssembler>? contextAssemblers = null,
+    IFeishuToolContextAccessor? toolContextAccessor = null) : IdempotentFeishuEventHandler<T>(businessDeduplicator, logger ?? NullLogger.Instance)
     where T : class, IEventResult, new()
 {
     private readonly FeishuAgent _agent = agent ?? throw new ArgumentNullException(nameof(agent));
 
     /// <summary>已注册的上下文装配器（按 <see cref="IContextAssembler.Order"/> 排序）。</summary>
     protected IReadOnlyList<IContextAssembler> ContextAssemblers { get; } = contextAssemblers ?? [];
+
+    /// <summary>工具执行上下文访问器（可空；未注入时工具链在执行期拿不到上下文会结构化拒绝）。</summary>
+    protected IFeishuToolContextAccessor? ToolContextAccessor { get; } = toolContextAccessor;
 
     /// <summary>
     /// 把强类型事件规范化为会话请求（群聊/单聊维度选择、会话主体提取）。
@@ -77,6 +85,13 @@ public abstract class ConversationalFeishuEventHandler<T>(
 
         var session = await _agent.GetOrCreateSessionAsync(conversationKey, cancellationToken).ConfigureAwait(false);
         var userMessage = await AssembleUserMessageAsync(request, cancellationToken).ConfigureAwait(false);
+
+        // 工具执行上下文沿异步流注入（RunAsync 内模型发起的 tool_call 可读到 appKey/chat/user）。
+        using var _toolScope = ToolContextAccessor?.Begin(new FeishuToolContext(
+            request.AppKey,
+            conversationKey,
+            ChatId: request.Scope.IsGroup ? request.SubjectId : null,
+            UserId: request.SenderId));
 
         var response = await _agent.RunAsync(userMessage, session, options: null, cancellationToken).ConfigureAwait(false);
         await _agent.SaveSessionAsync(conversationKey, session, cancellationToken).ConfigureAwait(false);

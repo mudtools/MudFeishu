@@ -69,15 +69,15 @@ public class FeishuAgentOptionsTests
     {
         var optionsTypes = new[] { typeof(FeishuAgentOptions), typeof(FeishuConversationOptions) };
         foreach (var optionsType in optionsTypes)
-        foreach (var property in optionsType.GetProperties())
-        {
-            var isRequired = property.GetCustomAttributesData()
-                .Any(a => a.AttributeType.FullName == "System.Runtime.CompilerServices.RequiredMemberAttribute")
-                || optionsType.GetCustomAttributesData()
-                    .Any(a => a.AttributeType.FullName == "System.Runtime.CompilerServices.RequiredMemberAttribute");
+            foreach (var property in optionsType.GetProperties())
+            {
+                var isRequired = property.GetCustomAttributesData()
+                    .Any(a => a.AttributeType.FullName == "System.Runtime.CompilerServices.RequiredMemberAttribute")
+                    || optionsType.GetCustomAttributesData()
+                        .Any(a => a.AttributeType.FullName == "System.Runtime.CompilerServices.RequiredMemberAttribute");
 
-            isRequired.Should().BeFalse(
-                $"{optionsType.Name}.{property.Name} 不得标记 required（配置绑定源生成器 CS9035）");
-        }
+                isRequired.Should().BeFalse(
+                    $"{optionsType.Name}.{property.Name} 不得标记 required（配置绑定源生成器 CS9035）");
+            }
     }
 }

@@ -20,6 +20,7 @@
   <Folder Name="/Sources/">
     <Project Path="Mud.Feishu.Abstractions/Mud.Feishu.Abstractions.csproj" Id="b04973d2-c477-49a7-a00f-04288a8cabac" />
     <Project Path="Mud.Feishu.AI/Mud.Feishu.AI.csproj" />
+    <Project Path="Mud.Feishu.AI.FeishuTools/Mud.Feishu.AI.FeishuTools.csproj" />
     <Project Path="Mud.Feishu.AI.Tools/Mud.Feishu.AI.Tools.csproj" />
     <Project Path="Mud.Feishu.Authentication/Mud.Feishu.Authentication.csproj" />
     <Project Path="Mud.Feishu.DataModels/Mud.Feishu.DataModels.csproj" Id="d1068109-7be0-4c64-a97e-c7aba02d132b" />
@@ -33,6 +34,7 @@
   <Folder Name="/Tests/">
     <File Path="Tests/Directory.Build.props" />
     <Project Path="Tests/Mud.Feishu.Abstractions.Tests/Mud.Feishu.Abstractions.Tests.csproj" />
+    <Project Path="Tests/Mud.Feishu.AI.FeishuTools.Tests/Mud.Feishu.AI.FeishuTools.Tests.csproj" />
     <Project Path="Tests/Mud.Feishu.AI.Tests/Mud.Feishu.AI.Tests.csproj" />
     <Project Path="Tests/Mud.Feishu.Authentication.Tests/Mud.Feishu.Authentication.Tests.csproj" />
     <Project Path="Tests/Mud.Feishu.OpenTelemetry.Tests/Mud.Feishu.OpenTelemetry.Tests.csproj" />

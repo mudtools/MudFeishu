@@ -50,6 +50,34 @@ public sealed class FeishuAgentOptions
     public int MaxHistoryMessages { get; set; } = 50;
 
     /// <summary>
+    /// 工具白名单——<c>MapTool</c> 的配置面等价物（消费点：
+    /// <c>Mud.Feishu.AI.FeishuTools</c> 的 <c>AddFeishuReadonlyTools</c> 逐名启用注册表工具）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 值域 = 已注册工具名（Phase 1 为 §3.3.2 的 10 个只读工具名）；工具默认
+    /// 「收进注册表不启用」，仅本名单中的名字被 <c>MapTool</c> 启用后才会暴露给模型。
+    /// 白名单中出现未注册的名字在工具注册期即失败（fail-fast，防配置漂移）。
+    /// </para>
+    /// </remarks>
+    public string[] Tools { get; set; } = [];
+
+    /// <summary>
+    /// 工具结果回填文本的最大长度（消费点：<c>FeishuToolBinding</c> 对下游结果做
+    /// 白名单投影后按此上限截断并标记 <c>truncated</c>——防大结果撑爆模型上下文，Phase 1 §3.3.1）。
+    /// </summary>
+    public int MaxToolResultLength { get; set; } = 4000;
+
+    /// <summary>
+    /// 是否强制工具授权门禁（消费点：<c>FeishuToolBinding</c>——为 <see langword="true"/> 时
+    /// 写类（<c>IsWrite</c>）工具未注册授权器即拒绝、未过授权即不调下游接口；只读工具钩子预留）。
+    /// </summary>
+    /// <remarks>
+    /// 安全默认：与宿主强制门禁语义一致（总体设计 §7.2；与官方 CLI 的自愿 dry-run 相区分，已决策⑥）。
+    /// </remarks>
+    public bool EnforceToolAuthorization { get; set; } = true;
+
+    /// <summary>
     /// 校验配置合法性（注册时与 <see cref="FeishuAgent"/> 构造时双触发，fail-fast）。
     /// </summary>
     /// <exception cref="InvalidOperationException">存在非法取值。</exception>
@@ -65,5 +93,13 @@ public sealed class FeishuAgentOptions
         if (MaxHistoryMessages < 1)
             throw new InvalidOperationException(
                 $"FeishuAgent:{nameof(MaxHistoryMessages)} 须 ≥ 1，实际值: {MaxHistoryMessages.ToString(CultureInfo.InvariantCulture)}");
+
+        if (MaxToolResultLength < 1)
+            throw new InvalidOperationException(
+                $"FeishuAgent:{nameof(MaxToolResultLength)} 须 ≥ 1，实际值: {MaxToolResultLength.ToString(CultureInfo.InvariantCulture)}");
+
+        if (Tools.Any(t => string.IsNullOrWhiteSpace(t)))
+            throw new InvalidOperationException(
+                $"FeishuAgent:{nameof(Tools)} 白名单不能包含空项——工具名是模型可见契约");
     }
 }

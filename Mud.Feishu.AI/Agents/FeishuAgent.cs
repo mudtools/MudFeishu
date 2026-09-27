@@ -31,11 +31,13 @@ namespace Mud.Feishu.AI.Agents;
 public sealed class FeishuAgent : AIAgent
 {
     /// <summary>ChatHistoryProvider 的状态键（会话历史在 MAF 状态袋内的命名空间）。</summary>
-    private const string ChatHistoryStateKey = "feishu.agent.history";
+    /// <remarks>会话摘要器（<c>ConversationSummarizer</c>）经 MAF 扩展按同一键读写历史，键须同源。</remarks>
+    internal const string ChatHistoryStateKey = "feishu.agent.history";
 
     private readonly ChatClientAgent _innerAgent;
     private readonly FeishuAgentOptions _options;
     private readonly IConversationStore? _conversationStore;
+    private readonly ConversationSummarizer? _summarizer;
 
     /// <summary>
     /// 初始化 <see cref="FeishuAgent"/>。
@@ -66,6 +68,12 @@ public sealed class FeishuAgent : AIAgent
         options.Validate();
         _options = options;
         _conversationStore = conversationStore;
+
+        // 渐进式会话摘要（Phase 2 §3.2）：阈值启用（≥4，Validate 保证）时挂载，
+        // 摘要与主对话共用同一模型客户端与历史状态键。
+        _summarizer = options.SummaryThreshold > 0
+            ? new ConversationSummarizer(chatClient, options, loggerFactory?.CreateLogger<ConversationSummarizer>())
+            : null;
 
         var agentOptions = new ChatClientAgentOptions
         {
@@ -151,6 +159,12 @@ public sealed class FeishuAgent : AIAgent
         using var activity = FeishuAgentDiagnostics.StartRunActivity(
             _options.Name, FeishuAgentDiagnostics.OperationRun);
 
+        // 历史越限时先做渐进式摘要（Phase 2 §3.2）：失败隔离，绝不影响主对话。
+        if (_summarizer is not null && session is not null)
+        {
+            await _summarizer.SummarizeIfNeededAsync(session, cancellationToken).ConfigureAwait(false);
+        }
+
         var response = await _innerAgent
             .RunAsync(messages, session, options, cancellationToken)
             .ConfigureAwait(false);
@@ -168,6 +182,11 @@ public sealed class FeishuAgent : AIAgent
     {
         using var activity = FeishuAgentDiagnostics.StartRunActivity(
             _options.Name, FeishuAgentDiagnostics.OperationRunStreaming);
+
+        if (_summarizer is not null && session is not null)
+        {
+            await _summarizer.SummarizeIfNeededAsync(session, cancellationToken).ConfigureAwait(false);
+        }
 
         await foreach (var update in _innerAgent
             .RunStreamingAsync(messages, session, options, cancellationToken)

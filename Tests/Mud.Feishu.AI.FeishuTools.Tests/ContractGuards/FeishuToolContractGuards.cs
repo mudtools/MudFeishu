@@ -10,31 +10,49 @@ using Mud.Feishu.AI.FeishuTools.Tools;
 namespace Mud.Feishu.AI.FeishuTools.Tests.ContractGuards;
 
 /// <summary>
-/// 工具名契约表守卫（Phase 1 §7）：Schema 注册表恰为 §3.3.2 的 10 个契约名，防增删/改名漂移。
+/// 工具名契约表守卫（Phase 1 §7 + Phase 2 §3.3）：Schema 注册表恰为契约名全集
+/// （Phase 1 十个只读 + Phase 2 三个写类），防增删/改名漂移；读写白名单分离语义锁定。
 /// </summary>
 public class FeishuToolContractGuards
 {
     [Fact]
-    public void SchemaRegistry_ShouldContainExactlyTheTenContractTools()
+    public void SchemaRegistry_ShouldContainExactlyTheThirteenContractTools()
     {
         SchemaByToolName.Keys.Should().BeEquivalentTo(FeishuToolNames.All,
-            "Phase 1 工具清单为 6 域 10 个（§3.3.2），增删/改名必须同批更新契约表与守卫");
+            "工具清单为 Phase 1 十个只读（§3.3.2）+ Phase 2 三个写类（§3.3），增删/改名必须同批更新契约表与守卫");
     }
 
     [Fact]
-    public void AllPhase1Tools_ShouldBeReadOnly_WithScopes()
+    public void ReadonlyTools_ShouldBeReadOnly_WithScopes()
     {
-        foreach (var pair in SchemaByToolName)
+        foreach (var name in FeishuToolNames.ReadonlyAll)
         {
-            using var document = JsonDocument.Parse(pair.Value);
+            using var document = JsonDocument.Parse(SchemaByToolName[name]);
             var root = document.RootElement;
 
             root.GetProperty("x-feishu").GetProperty("is_write").GetBoolean().Should()
-                .BeFalse($"{pair.Key} 为 Phase 1 只读工具（写工具属 Phase 2）");
+                .BeFalse($"{name} 为 Phase 1 只读工具");
 
             var scopes = root.GetProperty("x-feishu").GetProperty("required_scopes")
                 .EnumerateArray().Select(e => e.GetString()!).ToArray();
-            scopes.Should().NotBeEmpty($"{pair.Key} 必须声明 required_scopes（已决策⑥：scope 随 Schema 供授权钩子与审计消费）");
+            scopes.Should().NotBeEmpty($"{name} 必须声明 required_scopes（已决策⑥：scope 随 Schema 供授权钩子与审计消费）");
+        }
+    }
+
+    [Fact]
+    public void WriteTools_ShouldBeFlaggedAsWrite_WithScopes()
+    {
+        foreach (var name in FeishuToolNames.WriteAll)
+        {
+            using var document = JsonDocument.Parse(SchemaByToolName[name]);
+            var root = document.RootElement;
+
+            root.GetProperty("x-feishu").GetProperty("is_write").GetBoolean().Should()
+                .BeTrue($"{name} 为 Phase 2 写类工具——执行链据此强制授权门禁（安全默认）");
+
+            var scopes = root.GetProperty("x-feishu").GetProperty("required_scopes")
+                .EnumerateArray().Select(e => e.GetString()!).ToArray();
+            scopes.Should().NotBeEmpty($"{name} 必须声明 required_scopes（已决策⑥）");
         }
     }
 
@@ -50,7 +68,7 @@ public class FeishuToolContractGuards
     [Fact]
     public void ToolOptions_ShouldHaveRealConsumptionPoints_InFeishuToolsSources()
     {
-        // R5 规则 2：新增配置属性必须有真实消费点（FeishuToolBinding / AddFeishuReadonlyTools）。
+        // R5 规则 2：新增配置属性必须有真实消费点（FeishuToolBinding / AddFeishuTools / EditMessageChannel）。
         var sources = GetFeishuToolsSources();
         sources.Should().NotBeEmpty();
 
@@ -62,16 +80,25 @@ public class FeishuToolContractGuards
 
         sources.Any(path => File.ReadAllText(path).Contains(".MapTool(", StringComparison.Ordinal))
             .Should().BeTrue("FeishuAgentOptions.Tools 白名单必须在 FeishuTools 包中被消费（MapTool 等价物）");
+
+        sources.Any(path => File.ReadAllText(path).Contains("WriteAllowList", StringComparison.Ordinal))
+            .Should().BeTrue("FeishuAgentOptions.WriteAllowList 必须在 FeishuTools 包中被消费（写工具白名单单独键控，Phase 2 §4）");
+
+        sources.Any(path => File.ReadAllText(path).Contains("MaxStreamChunkLength", StringComparison.Ordinal))
+            .Should().BeTrue("FeishuAgentOptions.MaxStreamChunkLength 必须在 FeishuTools 包中被消费（流式分片编辑阈值，Phase 2 §3.1）");
     }
 
     [Fact]
-    public void AddFeishuReadonlyTools_ShouldRegisterExactlyTenTools_NoneEnabledByDefault()
+    public void AddFeishuReadonlyTools_ShouldRegisterExactlyThirteenTools_NoneEnabledByDefault()
     {
         using var provider = CreateProvider(_ => { });
 
         var registry = provider.GetRequiredService<FeishuToolRegistry>();
         registry.AllTools.Select(t => t.Name).Should().BeEquivalentTo(FeishuToolNames.All);
         registry.EnabledTools.Should().BeEmpty("工具默认收进注册表不启用，需白名单显式 MapTool（安全默认）");
+        registry.AllTools.Should().OnlyContain(
+            t => FeishuToolNames.IsWriteTool(t.Name) == t.IsWrite,
+            "注册表 IsWrite 元数据与契约表逐一一致");
     }
 
     [Fact]
@@ -92,6 +119,32 @@ public class FeishuToolContractGuards
         };
         unknownInvocation.Should().Throw<InvalidOperationException>(
             "白名单中的未注册名字必须 fail-fast（防配置漂移）");
+    }
+
+    [Fact]
+    public void Whitelists_ShouldEnforceReadWriteSeparation()
+    {
+        // 写工具不得经只读白名单（Tools）启用——写工具必须单独键控且过授权门禁（Phase 2 §4 安全默认）。
+        var writeInReadonlyList = () =>
+        {
+            using var p = CreateProvider(options => options.Tools = [FeishuToolNames.ImSendMessage]);
+            _ = p.GetRequiredService<FeishuToolRegistry>();
+        };
+        writeInReadonlyList.Should().Throw<InvalidOperationException>().WithMessage("*WriteAllowList*");
+
+        // 只读工具不得经写白名单（WriteAllowList）启用。
+        var readonlyInWriteList = () =>
+        {
+            using var p = CreateProvider(options => options.WriteAllowList = [FeishuToolNames.BitableListTables]);
+            _ = p.GetRequiredService<FeishuToolRegistry>();
+        };
+        readonlyInWriteList.Should().Throw<InvalidOperationException>().WithMessage("*只读*");
+
+        // 写白名单可正常启用写工具。
+        using var provider = CreateProvider(options => options.WriteAllowList = [FeishuToolNames.ImSendMessage]);
+        var registry = provider.GetRequiredService<FeishuToolRegistry>();
+        registry.EnabledTools.Select(t => t.Name).Should().BeEquivalentTo(
+            [FeishuToolNames.ImSendMessage], "写工具经 FeishuAgent:WriteAllowList 单独键控启用");
     }
 
     [Fact]
@@ -129,6 +182,7 @@ public class FeishuToolContractGuards
             .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1Message>().Object)
             .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV3Spreadsheets>().Object)
             .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV3SpreadsheetData>().Object)
+            .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV4Approval>().Object)
             .AddFeishuReadonlyTools()
             .BuildServiceProvider();
     }

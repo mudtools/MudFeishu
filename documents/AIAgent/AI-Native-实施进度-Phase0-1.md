@@ -66,6 +66,8 @@
 
 ## 下一批次（Phase 2 待启动项）
 
+> **（2026-09-27 更新）Phase 2 已落地**，进度与偏差记录见 [AI-Native-实施进度-Phase2](./AI-Native-实施进度-Phase2.md)。以下为当时规划快照，仅存档。
+
 1. **T2-1/2 流式回复**：`IMessageChannel` + `IFeishuTenantV1Message.EditMessageAsync` 分片编辑降级实现；`FeishuAgent.RunCoreStreamingAsync` 已具备桥接点（Phase 0 骨架）。
 2. **T2-3 会话裁剪 + 摘要**（`ConversationSummarizer`，渐进式摘要缓存进 session）。
 3. **T2-4/5 写工具 + 授权器真实消费**：`IsWrite` 源生成标记已就绪；`EnforceToolAuthorization` 门禁已在本批执行链内生效（未注册授权器默认拒绝）——Phase 2 补写工具清单与白名单键控（`FeishuAgent:Tools:WriteAllowList`）。

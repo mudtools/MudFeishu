@@ -7,22 +7,22 @@
 
 namespace Mud.Feishu.AI.FeishuTools.Tools;
 
-/// <summary>
-/// Phase 1 只读工具接口集（§3.3.2 清单：6 域 10 个，全部 Tenant 身份）。
-/// </summary>
-/// <remarks>
-/// <para>
-/// 只声明模型可见 Schema（工具名/描述/扁平参数）；强类型接口调用、参数映射、
-/// <c>FeishuApiResult</c> 解包与结果裁剪由执行链（<c>FeishuToolBinding</c> + 分域执行器）承担。
-/// 复杂请求体（<c>QueryRecordsRequest</c>/<c>SearchDocWikiRequest</c>）一律由绑定层构造，
-/// 模型只见标量/标量数组（§3.3.1 原则 2）。
-/// </para>
-/// <para>
-/// <c>page_size</c>/<c>sort_type</c>/<c>container_id_type</c>/<c>user_id_type</c> 等运维性参数
-/// 不进 Schema（绑定层补齐/钳制）；<c>page_token</c> 对模型可见（多页追问）。
-/// scope 字符串为占位，落地时对照开放平台控制台核对回填（契约守卫只锁「工具名↔scope 存在性」）。
-/// </para>
-/// </remarks>
+// <summary>
+// Phase 1 只读工具接口集（§3.3.2 清单：6 域 10 个，全部 Tenant 身份）。
+// </summary>
+// <remarks>
+// <para>
+// 只声明模型可见 Schema（工具名/描述/扁平参数）；强类型接口调用、参数映射、
+// <c>FeishuApiResult</c> 解包与结果裁剪由执行链（<c>FeishuToolBinding</c> + 分域执行器）承担。
+// 复杂请求体（<c>QueryRecordsRequest</c>/<c>SearchDocWikiRequest</c>）一律由绑定层构造，
+// 模型只见标量/标量数组（§3.3.1 原则 2）。
+// </para>
+// <para>
+// <c>page_size</c>/<c>sort_type</c>/<c>container_id_type</c>/<c>user_id_type</c> 等运维性参数
+// 不进 Schema（绑定层补齐/钳制）；<c>page_token</c> 对模型可见（多页追问）。
+// scope 字符串为占位，落地时对照开放平台控制台核对回填（契约守卫只锁「工具名↔scope 存在性」）。
+// </para>
+// </remarks>
 
 // ─────────────────────────── Bitable（3 个） ───────────────────────────
 

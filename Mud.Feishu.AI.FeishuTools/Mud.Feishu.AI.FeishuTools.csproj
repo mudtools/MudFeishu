@@ -10,7 +10,7 @@
 		<RepositoryUrl>https://github.com/mudtools/MudFeishu</RepositoryUrl>
 		<RepositoryType>git</RepositoryType>
 		<PackageIcon>Icon.png</PackageIcon>
-		<Description>Mud.Feishu AI 飞书工具包：把 Bitable/Docx/Wiki/Search/IM/Sheets 只读接口经 [FeishuTool] 源生成 Schema 暴露为模型 FunctionCall，内置多租户授权执行链（BeginScope + 授权门禁 + 结果裁剪），net8.0+ 原生 AOT 兼容。</Description>
+		<Description>Mud.Feishu AI 飞书工具包：把 Bitable/Docx/Wiki/Search/IM/Sheets/Approval 接口经 [FeishuTool] 源生成 Schema 暴露为模型 FunctionCall（含写类工具），内置多租户授权执行链（BeginScope + 授权门禁 + 结果裁剪）、分片编辑流式消息通道与 Aily 托管知识问答（RAG-A），net8.0+ 原生 AOT 兼容。</Description>
 		<PackageTags>Feishu;Lark;飞书;Agent;AI;FunctionCall;Tool;AOT;NativeAOT;MudFeishu</PackageTags>
 		<BaseOutputPath>..\bin</BaseOutputPath>
 	</PropertyGroup>

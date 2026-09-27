@@ -46,8 +46,17 @@ public static class FeishuToolNames
     /// <summary>sheets.get_range_values：读取工作表单元格区域数据。</summary>
     public const string SheetsGetRangeValues = "sheets.get_range_values";
 
-    /// <summary>全部契约名（契约守卫逐一比对）。</summary>
-    public static readonly string[] All =
+    /// <summary>im.send_message：发送文本消息（写，Phase 2）。</summary>
+    public const string ImSendMessage = "im.send_message";
+
+    /// <summary>bitable.add_record：新增记录（写，Phase 2）。</summary>
+    public const string BitableAddRecord = "bitable.add_record";
+
+    /// <summary>approval.create_instance：发起审批实例（写，Phase 2）。</summary>
+    public const string ApprovalCreateInstance = "approval.create_instance";
+
+    /// <summary>只读契约名（Phase 1 §3.3.2，契约守卫逐一比对）。</summary>
+    public static readonly string[] ReadonlyAll =
     [
         BitableListTables,
         BitableListFields,
@@ -60,6 +69,20 @@ public static class FeishuToolNames
         SheetsListSheets,
         SheetsGetRangeValues,
     ];
+
+    /// <summary>写类契约名（Phase 2 §3.3，契约守卫逐一比对；白名单单独键控 WriteAllowList）。</summary>
+    public static readonly string[] WriteAll =
+    [
+        ImSendMessage,
+        BitableAddRecord,
+        ApprovalCreateInstance,
+    ];
+
+    /// <summary>全部契约名（只读 + 写；契约守卫逐一比对）。</summary>
+    public static readonly string[] All = [.. ReadonlyAll, .. WriteAll];
+
+    /// <summary>判断工具名是否写类（白名单读写分离判定）。</summary>
+    public static bool IsWriteTool(string name) => WriteAll.Contains(name, StringComparer.Ordinal);
 }
 
 /// <summary>绑定层固定分页大小（隐藏参数：模型不可见，绑定层给默认值并钳制上限，§3.3.2）。</summary>

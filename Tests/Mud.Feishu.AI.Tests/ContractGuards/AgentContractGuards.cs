@@ -125,6 +125,22 @@ public class AgentContractGuards
             "Agent 构造必须 fail-fast 校验配置（Phase 0 §8）");
     }
 
+    /// <summary>
+    /// Phase 2 新增配置属性（<c>SummaryThreshold</c>）必须在 Mud.Feishu.AI 源码中有真实消费点
+    /// （R5 规则 2；<c>WriteAllowList</c>/<c>MaxStreamChunkLength</c> 消费点在 FeishuTools 包，
+    /// 由 FeishuToolContractGuards 扫描）。
+    /// </summary>
+    [Fact]
+    public void FeishuAgentOptions_Phase2Properties_ShouldHaveRealConsumptionPoints()
+    {
+        var summarizerSource = Path.Combine(GetSolutionRoot(), "Mud.Feishu.AI", "Conversations", "ConversationSummarizer.cs");
+
+        File.Exists(summarizerSource).Should().BeTrue();
+        File.ReadAllText(summarizerSource).Should().Contain(
+            "SummaryThreshold",
+            "FeishuAgentOptions.SummaryThreshold 必须在 ConversationSummarizer 中被消费（渐进式摘要阈值，Phase 2 §3.2）");
+    }
+
     // ────────────────────────────────────────────────────────────────────
     // 守卫 4：包间纵向引用治理（不允许横向引用）
     // ────────────────────────────────────────────────────────────────────

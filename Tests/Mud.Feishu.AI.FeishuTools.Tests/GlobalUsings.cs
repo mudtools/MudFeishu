@@ -14,6 +14,7 @@ global using Mud.Feishu.AI.Agents;
 global using Mud.Feishu.AI.FeishuTools;
 global using Mud.Feishu.AI.FeishuTools.Internal;
 global using Mud.Feishu.AI.FeishuTools.Tools;
+global using Mud.Feishu.AI.Knowledge;
 global using Mud.Feishu.AI.Tools;
 global using Mud.Feishu.AI.Tools.Generated;
 global using Mud.Feishu.Abstractions.Observability;

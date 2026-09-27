@@ -32,11 +32,20 @@ internal static class FeishuAgentDiagnostics
     /// <summary>Agent 操作名：流式运行。</summary>
     public const string OperationRunStreaming = "run_streaming";
 
+    /// <summary>Agent 操作名：会话历史摘要压缩。</summary>
+    public const string OperationSummarize = "summarize";
+
     /// <summary>Span 属性：Agent 展示名。</summary>
     public const string TagAgentName = "feishu.agent.name";
 
     /// <summary>Span 属性：操作名。</summary>
     public const string TagOperation = "feishu.agent.operation";
+
+    /// <summary>Span 属性：本轮是否发生了历史摘要重建。</summary>
+    public const string TagSummarized = "feishu.agent.summarized";
+
+    /// <summary>Span 属性：本轮回复是否经流式通道送达。</summary>
+    public const string TagStreamed = "feishu.agent.streamed";
 
     /// <summary>Span 属性：输入 token 数。</summary>
     public const string TagInputTokens = "feishu.llm.input_tokens";
@@ -74,6 +83,22 @@ internal static class FeishuAgentDiagnostics
             "feishu.agent.conversation", ActivityKind.Internal);
         activity?.SetTag("feishu.conversation.key", conversationKey)
                 .SetTag("feishu.app_key", appKey);
+        return activity;
+    }
+
+    /// <summary>
+    /// 开启一次会话历史摘要 Span（属性只记条数，不记消息内容——日志最小暴露 D5）。
+    /// </summary>
+    /// <param name="summarizedCount">被压缩的旧消息条数。</param>
+    /// <param name="retainedCount">保留的最近消息条数。</param>
+    /// <returns>Activity（可能为 null）。</returns>
+    public static Activity? StartSummarizeActivity(int summarizedCount, int retainedCount)
+    {
+        var activity = FeishuActivitySource.Instance.StartActivity(
+            $"feishu.agent.{OperationSummarize}", ActivityKind.Internal);
+        activity?.SetTag(TagOperation, OperationSummarize)
+                .SetTag("feishu.agent.summarized_messages", summarizedCount)
+                .SetTag("feishu.agent.retained_messages", retainedCount);
         return activity;
     }
 

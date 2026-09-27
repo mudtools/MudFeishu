@@ -78,6 +78,35 @@ public sealed class FeishuAgentOptions
     public bool EnforceToolAuthorization { get; set; } = true;
 
     /// <summary>
+    /// 写类工具白名单（Phase 2 §4：写工具白名单单独键控，默认空=不启用任何写工具；
+    /// 消费点：<c>Mud.Feishu.AI.FeishuTools</c> 注册扩展——仅写类（<c>IsWrite</c>）工具可经本名单
+    /// <c>MapTool</c> 启用，且必须先过 <c>IToolExecutionAuthorizer</c> 强制门禁）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 与 <see cref="Tools"/>（只读白名单）互斥：<see cref="Tools"/> 中的写类工具名、
+    /// 本名单中的只读工具名均在工具注册期 fail-fast（读写分离，防误启用）。
+    /// </para>
+    /// </remarks>
+    public string[] WriteAllowList { get; set; } = [];
+
+    /// <summary>
+    /// 流式回复的分片编辑阈值（字符数；消费点：<c>EditMessageChannel</c>——增量缓冲达到该长度
+    /// 才执行一次消息编辑，避免逐 token 编辑触发飞书频率限制，Phase 2 §3.1）。
+    /// </summary>
+    public int MaxStreamChunkLength { get; set; } = 200;
+
+    /// <summary>
+    /// 触发会话历史摘要压缩的消息数阈值（消费点：<see cref="Conversations.ConversationSummarizer"/>；
+    /// 0 = 禁用摘要，仅保留既有历史裁剪窗行为）。
+    /// </summary>
+    /// <remarks>
+    /// 触发时保留最近 <c>MaxHistoryMessages/2</c> 条（钳制到阈值以下），更早历史压缩为一条系统要点纪要
+    /// （渐进式，摘要驻留会话历史内）。
+    /// </remarks>
+    public int SummaryThreshold { get; set; } = 30;
+
+    /// <summary>
     /// 校验配置合法性（注册时与 <see cref="FeishuAgent"/> 构造时双触发，fail-fast）。
     /// </summary>
     /// <exception cref="InvalidOperationException">存在非法取值。</exception>
@@ -101,5 +130,18 @@ public sealed class FeishuAgentOptions
         if (Tools.Any(t => string.IsNullOrWhiteSpace(t)))
             throw new InvalidOperationException(
                 $"FeishuAgent:{nameof(Tools)} 白名单不能包含空项——工具名是模型可见契约");
+
+        if (WriteAllowList.Any(t => string.IsNullOrWhiteSpace(t)))
+            throw new InvalidOperationException(
+                $"FeishuAgent:{nameof(WriteAllowList)} 白名单不能包含空项——工具名是模型可见契约");
+
+        if (MaxStreamChunkLength < 1)
+            throw new InvalidOperationException(
+                $"FeishuAgent:{nameof(MaxStreamChunkLength)} 须 ≥ 1，实际值: {MaxStreamChunkLength.ToString(CultureInfo.InvariantCulture)}");
+
+        // 阈值语义：0 = 禁用；启用时 ≥ 4 保证「重建后条数（保留窗+1）低于阈值」，防每轮重复摘要。
+        if (SummaryThreshold is < 0 or (> 0 and < 4))
+            throw new InvalidOperationException(
+                $"FeishuAgent:{nameof(SummaryThreshold)} 为 0（禁用）或 ≥ 4，实际值: {SummaryThreshold.ToString(CultureInfo.InvariantCulture)}");
     }
 }

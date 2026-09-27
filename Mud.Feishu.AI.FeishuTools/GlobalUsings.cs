@@ -5,6 +5,13 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+global using Microsoft.Extensions.Logging;
+global using Microsoft.Extensions.Options;
+global using Mud.Feishu.Abstractions.Observability;
+global using Mud.Feishu.AI.Agents;
+global using Mud.Feishu.AI.Tools;
+global using Mud.Feishu.AI.Tools.Generated;
+global using Mud.Feishu.DataModels;
 global using System;
 global using System.Collections.Generic;
 global using System.Diagnostics;
@@ -13,10 +20,3 @@ global using System.Linq;
 global using System.Text.Json.Nodes;
 global using System.Threading;
 global using System.Threading.Tasks;
-global using Microsoft.Extensions.Logging;
-global using Microsoft.Extensions.Options;
-global using Mud.Feishu.AI.Agents;
-global using Mud.Feishu.AI.Tools;
-global using Mud.Feishu.AI.Tools.Generated;
-global using Mud.Feishu.Abstractions.Observability;
-global using Mud.Feishu.DataModels;

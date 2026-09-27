@@ -46,6 +46,63 @@ public class FeishuAgentOptionsTests
         act.Should().Throw<InvalidOperationException>().WithMessage("*MaxHistoryMessages*");
     }
 
+    // ───────────────── Phase 2 新增属性（WriteAllowList / MaxStreamChunkLength / SummaryThreshold） ─────────────────
+
+    [Fact]
+    public void Validate_ShouldRejectEmptyEntryInWriteAllowList()
+    {
+        var act = () => new FeishuAgentOptions
+        {
+            Instructions = "x",
+            WriteAllowList = ["im.send_message", ""],
+        }.Validate();
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*WriteAllowList*");
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-5)]
+    public void Validate_ShouldRejectNonPositiveMaxStreamChunkLength(int chunkLength)
+    {
+        var act = () => new FeishuAgentOptions
+        {
+            Instructions = "x",
+            MaxStreamChunkLength = chunkLength,
+        }.Validate();
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*MaxStreamChunkLength*");
+    }
+
+    [Theory]
+    [InlineData(0)]     // 0 = 禁用摘要（合法）
+    [InlineData(30)]    // 常规阈值
+    public void Validate_ShouldAcceptLegalSummaryThreshold(int summaryThreshold)
+    {
+        var act = () => new FeishuAgentOptions
+        {
+            Instructions = "x",
+            SummaryThreshold = summaryThreshold,
+        }.Validate();
+
+        act.Should().NotThrow();
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(3)]
+    public void Validate_ShouldRejectSummaryThresholdBetweenOneAndThree(int summaryThreshold)
+    {
+        var act = () => new FeishuAgentOptions
+        {
+            Instructions = "x",
+            SummaryThreshold = summaryThreshold,
+        }.Validate();
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*SummaryThreshold*",
+            "阈值 1~3 无法保证「重建后条数低于阈值」，会导致每轮重复摘要——必须 0（禁用）或 ≥ 4");
+    }
+
     /// <summary>
     /// 会话 TTL 阈值归属 <see cref="FeishuConversationOptions"/>（Abstractions——
     /// Memory/Redis 双后端单一阈值源，包间纵向引用治理），不再位于 FeishuAgentOptions。

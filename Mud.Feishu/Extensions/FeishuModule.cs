@@ -158,6 +158,16 @@ public enum FeishuModule
     MDM,
 
     /// <summary>
+    /// 薪酬发放
+    /// </summary>
+    Payroll,
+
+    /// <summary>
+    /// 个人设置
+    /// </summary>
+    PersonalSettings,
+
+    /// <summary>
     /// 所有功能
     /// </summary>
     All

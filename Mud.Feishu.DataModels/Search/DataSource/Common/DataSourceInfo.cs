@@ -18,7 +18,7 @@ public class DataSourceInfo : DataSource
     /// <para>必填：否</para>
     /// </summary>
     [JsonPropertyName("id")]
-    public long? Id { get; set; }
+    public string? Id { get; set; }
 
     /// <summary>
     /// <para>创建时间，使用Unix时间戳，单位为“秒”</para>

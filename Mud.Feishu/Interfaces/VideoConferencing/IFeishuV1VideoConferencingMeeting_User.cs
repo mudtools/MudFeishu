@@ -29,7 +29,7 @@ public interface IFeishuUserV1VideoConferencingMeeting : IFeishuV1VideoConferenc
     /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
     /// <param name="searchMeetingRequest">会议搜索请求模型</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
-    [Get("/open-apis/vc/v1/meetings/search")]
+    [Post("/open-apis/vc/v1/meetings/search")]
     Task<FeishuApiPageListResult<MeetingSearchResult>?> SearchMeetingPageListAsync(
         [Body] SearchMeetingRequest searchMeetingRequest,
         [Query] int page_size = Consts.PageSize_15,

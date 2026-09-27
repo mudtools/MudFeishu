@@ -41,7 +41,7 @@ public interface IFeishuV2SpreadsheetProtected : IFeishuAppContextSwitcher
     /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
     /// <param name="updateProtectedRequest">创建保护范围的请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
-    [Post("/sheets/v2/spreadsheets/{spreadsheet_token}/protected_range_batch_update")]
+    [Post("/open-apis/sheets/v2/spreadsheets/{spreadsheet_token}/protected_range_batch_update")]
     Task<FeishuApiResult<UpdateProtectedResult>?> UpdateProtectedAsync(
       [Path] string spreadsheet_token,
       [Body] UpdateProtectedRequest updateProtectedRequest,
@@ -74,7 +74,7 @@ public interface IFeishuV2SpreadsheetProtected : IFeishuAppContextSwitcher
     /// <para>**示例值**："7379738014546812456,7379738014546812456"</para>
     /// </param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
-    [Delete("/sheets/v2/spreadsheets/{spreadsheet_token}/protected_range_batch_del")]
+    [Delete("/open-apis/sheets/v2/spreadsheets/{spreadsheet_token}/protected_range_batch_del")]
     Task<FeishuApiResult<DeleteProtectedResult>?> DeleteProtectedAsync(
         [Path] string spreadsheet_token,
         [Query("protectIds")] string protectIds,

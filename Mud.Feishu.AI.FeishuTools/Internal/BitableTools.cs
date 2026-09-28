@@ -29,7 +29,7 @@ internal sealed class BitableTools(
     private readonly int _maxResultLength = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
 
     /// <summary>bitable.list_tables：列出数据表（白名单 table_id/name/revision）。</summary>
-    public async Task<string> ListTablesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    public async Task<FeishuToolResult> ListTablesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         try
         {
@@ -41,7 +41,7 @@ internal sealed class BitableTools(
                 .ConfigureAwait(false));
             if (!outcome.Ok)
             {
-                return FeishuToolBinding.StructuredError(FeishuToolNames.BitableListTables, outcome.Code, outcome.ErrorText!);
+                return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(FeishuToolNames.BitableListTables, outcome.Code, outcome.ErrorText!));
             }
 
             var data = outcome.Data!;
@@ -56,17 +56,17 @@ internal sealed class BitableTools(
                 });
             }
 
-            return ToolResultText.TruncateJson(envelope.ToJsonString(), _maxResultLength);
+            return FeishuToolResult.FromText(ToolResultText.TruncateJson(envelope.ToJsonString(), _maxResultLength));
         }
         catch (ArgumentException ex)
         {
-            return FeishuToolBinding.StructuredError(FeishuToolNames.BitableListTables, ex.Message);
+            return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(FeishuToolNames.BitableListTables, ex.Message));
         }
     }
 
     /// <summary>bitable.list_fields：列出字段定义（白名单 field_id/name/type/is_primary/ui_type）。</summary>
     /// <remarks>源码出参 <c>property</c> 为复杂嵌套对象，AOT 安全投影不含反射序列化，故不回填（Phase 2 评估源生成上下文引用）。</remarks>
-    public async Task<string> ListFieldsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    public async Task<FeishuToolResult> ListFieldsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         try
         {
@@ -80,7 +80,7 @@ internal sealed class BitableTools(
                 .ConfigureAwait(false));
             if (!outcome.Ok)
             {
-                return FeishuToolBinding.StructuredError(FeishuToolNames.BitableListFields, outcome.Code, outcome.ErrorText!);
+                return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(FeishuToolNames.BitableListFields, outcome.Code, outcome.ErrorText!));
             }
 
             var data = outcome.Data!;
@@ -97,16 +97,16 @@ internal sealed class BitableTools(
                 });
             }
 
-            return ToolResultText.TruncateJson(envelope.ToJsonString(), _maxResultLength);
+            return FeishuToolResult.FromText(ToolResultText.TruncateJson(envelope.ToJsonString(), _maxResultLength));
         }
         catch (ArgumentException ex)
         {
-            return FeishuToolBinding.StructuredError(FeishuToolNames.BitableListFields, ex.Message);
+            return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(FeishuToolNames.BitableListFields, ex.Message));
         }
     }
 
     /// <summary>bitable.query_records：查询记录（filter/sort 简化文法 → 官方过滤/排序结构）。</summary>
-    public async Task<string> QueryRecordsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    public async Task<FeishuToolResult> QueryRecordsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         try
         {
@@ -121,13 +121,13 @@ internal sealed class BitableTools(
             // filter 简化文法（§3.3.3）：解析失败回填「filter 语法不支持」结构化错误。
             if (!BitableFilterParser.TryParse(filter, out var parsedFilter, out var filterError))
             {
-                return FeishuToolBinding.StructuredError(FeishuToolNames.BitableQueryRecords, filterError!);
+                return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(FeishuToolNames.BitableQueryRecords, filterError!));
             }
 
             // sort 简化文法（P1D-1b 批次 A）：字段:asc|desc，≤3 个。
             if (!BitableSortParser.TryParse(sort, out var parsedSort, out var sortError))
             {
-                return FeishuToolBinding.StructuredError(FeishuToolNames.BitableQueryRecords, sortError!);
+                return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(FeishuToolNames.BitableQueryRecords, sortError!));
             }
 
             var request = new QueryRecordsRequest
@@ -143,7 +143,7 @@ internal sealed class BitableTools(
                 .ConfigureAwait(false));
             if (!outcome.Ok)
             {
-                return FeishuToolBinding.StructuredError(FeishuToolNames.BitableQueryRecords, outcome.Code, outcome.ErrorText!);
+                return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(FeishuToolNames.BitableQueryRecords, outcome.Code, outcome.ErrorText!));
             }
 
             var data = outcome.Data!;
@@ -175,16 +175,16 @@ internal sealed class BitableTools(
                 });
             }
 
-            return ToolResultText.TruncateJson(envelope.ToJsonString(), _maxResultLength);
+            return FeishuToolResult.FromText(ToolResultText.TruncateJson(envelope.ToJsonString(), _maxResultLength));
         }
         catch (ArgumentException ex)
         {
-            return FeishuToolBinding.StructuredError(FeishuToolNames.BitableQueryRecords, ex.Message);
+            return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(FeishuToolNames.BitableQueryRecords, ex.Message));
         }
     }
 
     /// <summary>bitable.get_records_by_ids：按 ID 批量取记录（官方上限 100 条/请求；白名单 record_id/fields）。</summary>
-    public async Task<string> GetRecordsByIdsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    public async Task<FeishuToolResult> GetRecordsByIdsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         try
         {
@@ -208,7 +208,7 @@ internal sealed class BitableTools(
                 .ConfigureAwait(false));
             if (!outcome.Ok)
             {
-                return FeishuToolBinding.StructuredError(FeishuToolNames.BitableGetRecordsByIds, outcome.Code, outcome.ErrorText!);
+                return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(FeishuToolNames.BitableGetRecordsByIds, outcome.Code, outcome.ErrorText!));
             }
 
             var data = outcome.Data!;
@@ -237,11 +237,11 @@ internal sealed class BitableTools(
                 }
             }
 
-            return ToolResultText.TruncateJson(envelope.ToJsonString(), _maxResultLength);
+            return FeishuToolResult.FromText(ToolResultText.TruncateJson(envelope.ToJsonString(), _maxResultLength));
         }
         catch (ArgumentException ex)
         {
-            return FeishuToolBinding.StructuredError(FeishuToolNames.BitableGetRecordsByIds, ex.Message);
+            return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(FeishuToolNames.BitableGetRecordsByIds, ex.Message));
         }
     }
 

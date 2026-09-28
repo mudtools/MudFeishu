@@ -22,7 +22,7 @@ internal sealed class DocxTools(Mud.Feishu.IFeishuTenantV1Docx docxClient, IOpti
     private readonly int _maxResultLength = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
 
     /// <summary>docx.get_raw_content：读取文档纯文本正文。</summary>
-    public async Task<string> GetRawContentAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    public async Task<FeishuToolResult> GetRawContentAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         try
         {
@@ -37,19 +37,19 @@ internal sealed class DocxTools(Mud.Feishu.IFeishuTenantV1Docx docxClient, IOpti
                 .ConfigureAwait(false));
             if (!outcome.Ok)
             {
-                return FeishuToolBinding.StructuredError(FeishuToolNames.DocxGetRawContent, outcome.Code, outcome.ErrorText!);
+                return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(FeishuToolNames.DocxGetRawContent, outcome.Code, outcome.ErrorText!));
             }
 
-            return ToolResultText.Truncate(outcome.Data!.Content ?? string.Empty, _maxResultLength);
+            return FeishuToolResult.FromText(ToolResultText.Truncate(outcome.Data!.Content ?? string.Empty, _maxResultLength));
         }
         catch (ArgumentException ex)
         {
-            return FeishuToolBinding.StructuredError(FeishuToolNames.DocxGetRawContent, ex.Message);
+            return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(FeishuToolNames.DocxGetRawContent, ex.Message));
         }
     }
 
     /// <summary>docx.get_document_blocks：分块读取文档（白名单 block_id/block_type/text；text 取首个非空文本块字段）。</summary>
-    public async Task<string> GetDocumentBlocksAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    public async Task<FeishuToolResult> GetDocumentBlocksAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         try
         {
@@ -61,7 +61,7 @@ internal sealed class DocxTools(Mud.Feishu.IFeishuTenantV1Docx docxClient, IOpti
                 .ConfigureAwait(false));
             if (!outcome.Ok)
             {
-                return FeishuToolBinding.StructuredError(FeishuToolNames.DocxGetDocumentBlocks, outcome.Code, outcome.ErrorText!);
+                return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(FeishuToolNames.DocxGetDocumentBlocks, outcome.Code, outcome.ErrorText!));
             }
 
             var data = outcome.Data!;
@@ -85,11 +85,11 @@ internal sealed class DocxTools(Mud.Feishu.IFeishuTenantV1Docx docxClient, IOpti
                 });
             }
 
-            return ToolResultText.TruncateJson(envelope.ToJsonString(), _maxResultLength);
+            return FeishuToolResult.FromText(ToolResultText.TruncateJson(envelope.ToJsonString(), _maxResultLength));
         }
         catch (ArgumentException ex)
         {
-            return FeishuToolBinding.StructuredError(FeishuToolNames.DocxGetDocumentBlocks, ex.Message);
+            return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(FeishuToolNames.DocxGetDocumentBlocks, ex.Message));
         }
     }
 

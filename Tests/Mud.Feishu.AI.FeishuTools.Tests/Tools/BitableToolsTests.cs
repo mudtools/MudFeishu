@@ -49,7 +49,7 @@ public class BitableToolsTests
         var result = await CreateTools().ListTablesAsync(
             Args(("app_token", "bascnXxx"), ("page_token", "tok1")), CancellationToken.None);
 
-        using var document = JsonDocument.Parse(result);
+        using var document = JsonDocument.Parse(result.ToString()!);
         var root = document.RootElement;
         root.GetProperty("has_more").GetBoolean().Should().BeTrue();
         root.GetProperty("page_token").GetString().Should().Be("tok2", "page_token 透传支撑多页追问");
@@ -70,7 +70,7 @@ public class BitableToolsTests
 
         var result = await CreateTools().ListTablesAsync(Args(("app_token", "bad")), CancellationToken.None);
 
-        result.Should().StartWith("[tool_error] bitable.list_tables")
+        result.ToString().Should().StartWith("[tool_error] bitable.list_tables")
             .And.Contain("99991663")
             .And.Contain("token 无效", "code != 0 转可读文本回填模型，非裸异常（总体设计 §4 不变式）");
     }
@@ -95,7 +95,7 @@ public class BitableToolsTests
         var result = await CreateTools().ListFieldsAsync(
             Args(("app_token", "bascnXxx"), ("table_id", "tbl001")), CancellationToken.None);
 
-        using var document = JsonDocument.Parse(result);
+        using var document = JsonDocument.Parse(result.ToString()!);
         var item = document.RootElement.GetProperty("items")[0];
         item.GetProperty("field_id").GetString().Should().Be("fld001");
         item.GetProperty("name").GetString().Should().Be("状态");
@@ -137,7 +137,7 @@ public class BitableToolsTests
         captured.Filter.Conditions![0].Value.Should().Equal(["done"]);
         captured.Filter.Conditions![1].Operator.Should().Be("contains");
 
-        using var document = JsonDocument.Parse(result);
+        using var document = JsonDocument.Parse(result.ToString()!);
         var item = document.RootElement.GetProperty("items")[0];
         item.GetProperty("record_id").GetString().Should().Be("rec001");
         item.GetProperty("fields").GetProperty("状态").GetString().Should().Be("done");
@@ -175,7 +175,7 @@ public class BitableToolsTests
             Args(("app_token", "bascnXxx"), ("table_id", "tbl001"), ("field_names", new[] { "名称" })),
             CancellationToken.None);
 
-        using var document = JsonDocument.Parse(result);
+        using var document = JsonDocument.Parse(result.ToString()!);
         var fields = document.RootElement.GetProperty("items")[0].GetProperty("fields");
         fields.EnumerateObject().Select(p => p.Name).Should().BeEquivalentTo(
             ["名称"], "field_names 列过滤在绑定层落地");
@@ -188,7 +188,7 @@ public class BitableToolsTests
             Args(("app_token", "bascnXxx"), ("table_id", "tbl001"), ("filter", "a = 1 or b = 2")),
             CancellationToken.None);
 
-        result.Should().StartWith("[tool_error] bitable.query_records").And.Contain("filter 语法不支持");
+        result.ToString().Should().StartWith("[tool_error] bitable.query_records").And.Contain("filter 语法不支持");
         _recordClient.VerifyNoOtherCalls();
     }
 
@@ -243,10 +243,10 @@ public class BitableToolsTests
         var result = await CreateTools().QueryRecordsAsync(
             Args(("app_token", "bascnXxx"), ("table_id", "tbl001")), CancellationToken.None);
 
-        result.Should().Contain("\"truncated\":true", "超 MaxToolResultLength 经 JSON 感知截断（P1D-2a）并标记 truncated");
-        result.Should().Contain("page_token", "截断后应提示 page_token 翻页");
+        result.ToString().Should().Contain("\"truncated\":true", "超 MaxToolResultLength 经 JSON 感知截断（P1D-2a）并标记 truncated");
+        result.ToString().Should().Contain("page_token", "截断后应提示 page_token 翻页");
         // 结构完整性：截断后的 JSON 仍可解析（不落在结构中间）。
-        var act = () => System.Text.Json.JsonDocument.Parse(result);
+        var act = () => System.Text.Json.JsonDocument.Parse(result.ToString()!);
         act.Should().NotThrow("JSON 感知截断保证结果仍为合法 JSON");
     }
 
@@ -274,7 +274,7 @@ public class BitableToolsTests
         var result = await CreateTools(maxResultLength: 120).QueryRecordsAsync(
             Args(("app_token", "bascnXxx"), ("table_id", "tbl001")), CancellationToken.None);
 
-        using var document = System.Text.Json.JsonDocument.Parse(result);
+        using var document = System.Text.Json.JsonDocument.Parse(result.ToString()!);
         var items = document.RootElement.GetProperty("items");
         items.GetArrayLength().Should().BeLessThan(3, "逐条删除尾部条目直至长度达标（P1D-2a）");
         items.GetArrayLength().Should().BeGreaterThanOrEqualTo(1, "至少保留 1 条");
@@ -286,6 +286,6 @@ public class BitableToolsTests
     {
         var result = await CreateTools().QueryRecordsAsync(Args(("app_token", "bascnXxx")), CancellationToken.None);
 
-        result.Should().StartWith("[tool_error] bitable.query_records").And.Contain("table_id");
+        result.ToString().Should().StartWith("[tool_error] bitable.query_records").And.Contain("table_id");
     }
 }

@@ -29,7 +29,7 @@ internal sealed class KnowledgeSearchTools(IRetriever retriever, IOptions<Feishu
     private readonly int _maxResultLength = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
 
     /// <summary>knowledge.search：知识检索（编号切片回填）。</summary>
-    public async Task<string> SearchAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    public async Task<FeishuToolResult> SearchAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         try
         {
@@ -38,7 +38,7 @@ internal sealed class KnowledgeSearchTools(IRetriever retriever, IOptions<Feishu
             var chunks = await _retriever.RetrieveAsync(query, cancellationToken).ConfigureAwait(false);
             if (chunks.Count == 0)
             {
-                return $"{FeishuToolNames.KnowledgeSearch}: 知识库未检索到与问题相关的内容（has_answer=false）——请基于既有上下文作答";
+                return FeishuToolResult.FromText($"{FeishuToolNames.KnowledgeSearch}: 知识库未检索到与问题相关的内容（has_answer=false）——请基于既有上下文作答");
             }
 
             var builder = new StringBuilder();
@@ -52,11 +52,11 @@ internal sealed class KnowledgeSearchTools(IRetriever retriever, IOptions<Feishu
                 }
             }
 
-            return ToolResultText.Truncate(builder.ToString(), _maxResultLength);
+            return FeishuToolResult.FromText(ToolResultText.Truncate(builder.ToString(), _maxResultLength));
         }
         catch (ArgumentException ex)
         {
-            return FeishuToolBinding.StructuredError(FeishuToolNames.KnowledgeSearch, ex.Message);
+            return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(FeishuToolNames.KnowledgeSearch, ex.Message));
         }
     }
 }

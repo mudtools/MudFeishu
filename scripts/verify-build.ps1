@@ -13,7 +13,7 @@
     依次执行：
       步骤 0  依赖缓存新鲜度自检（CACHE-1）
       步骤 1  全 TFM Release 构建 -> 断言 0 错误 / 0 NU1603 / 0 CS1750
-      步骤 2  诊断白名单断言（HTTPCLIENT / MUD / FORM / AOT）
+      步骤 2  诊断白名单断言（HTTPCLIENT / MUD / FORM / AOT / MUDFT 零容忍）
       步骤 3  AotStrictMode 冒烟（net8.0）
       步骤 4  单元测试（按实际失败数断言）
       步骤 5  Redis 集成测试（Docker 可用时逐 (工程, TFM) 运行，断言 total>0 / failed=0 / skipped=0；
@@ -203,6 +203,11 @@ Assert-Zero -Name 'HTTPCLIENT0xx' -Count ((Select-String -Path $buildLog -Patter
 Assert-Zero -Name 'MUD001/002'    -Count ((Select-String -Path $buildLog -Pattern 'MUD00[12]' -AllMatches).Count)
 Assert-Zero -Name 'FORM0xx'       -Count ((Select-String -Path $buildLog -Pattern 'FORM0\d\d' -AllMatches).Count)
 Assert-Zero -Name 'AOT001-007'    -Count ((Select-String -Path $buildLog -Pattern 'AOT00[1-7]' -AllMatches).Count) -Hint 'AOT006 已在 netstandard2.0/net6.0 豁免，net8+ 必须净零'
+
+# AI 工具描述符零容忍诊断（§4.6.5.5）：MUDFT001/002/003/004/008/010/014 == 0。
+# 先断言产出非空（防"没跑到也是 0"的假绿），再断言诊断计数。
+$mudftZero = (Select-String -Path $buildLog -Pattern 'MUDFT(001|002|003|004|008|010|014)' -AllMatches).Count
+Assert-Zero -Name 'MUDFT 零容忍'  -Count $mudftZero -Hint 'AI 工具描述符零容忍集（MUDFT001/002/003/004/008/010/014）'
 
 # ---------------------------------------------------------------- 步骤 3
 Write-Host "[步骤 3] AotStrictMode 冒烟（net8.0，源项目）" -ForegroundColor Cyan

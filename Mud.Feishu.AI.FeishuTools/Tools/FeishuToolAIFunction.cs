@@ -23,7 +23,7 @@ public sealed class FeishuToolAIFunction : AIFunction
 {
     private readonly FeishuToolDefinition _definition;
     private readonly IFeishuToolContextAccessor? _contextAccessor;
-    private readonly string _schemaJson;
+    private readonly JsonElement _cachedJsonSchema;
 
     /// <summary>
     /// 初始化 <see cref="FeishuToolAIFunction"/>。
@@ -37,10 +37,13 @@ public sealed class FeishuToolAIFunction : AIFunction
         IFeishuToolContextAccessor? contextAccessor = null)
     {
         _definition = definition ?? throw new ArgumentNullException(nameof(definition));
-        _schemaJson = string.IsNullOrWhiteSpace(schemaJson)
-            ? throw new ArgumentException("Schema JSON 不能为空", nameof(schemaJson))
-            : schemaJson;
+        if (string.IsNullOrWhiteSpace(schemaJson))
+            throw new ArgumentException("Schema JSON 不能为空", nameof(schemaJson));
+
         _contextAccessor = contextAccessor;
+        // 构造时解析一次并缓存（修复 AI-FD-GAP P0-1 附注：每次调用 JsonDocument.Parse 的性能问题）。
+        using var document = JsonDocument.Parse(schemaJson);
+        _cachedJsonSchema = document.RootElement.Clone();
     }
 
     /// <inheritdoc />
@@ -50,14 +53,7 @@ public sealed class FeishuToolAIFunction : AIFunction
     public override string Description => _definition.Description;
 
     /// <inheritdoc />
-    public override JsonElement JsonSchema
-    {
-        get
-        {
-            using var document = JsonDocument.Parse(_schemaJson);
-            return document.RootElement.Clone();
-        }
-    }
+    public override JsonElement JsonSchema => _cachedJsonSchema;
 
     /// <inheritdoc />
     protected override async ValueTask<object?> InvokeCoreAsync(
@@ -67,9 +63,9 @@ public sealed class FeishuToolAIFunction : AIFunction
         var context = _contextAccessor?.Current;
         if (context is null)
         {
-            return FeishuToolBinding.StructuredError(
+            return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(
                 _definition.Name,
-                "工具执行上下文缺失（未设置 appKey）——请经 ConversationalFeishuEventHandler 或 IFeishuToolContextAccessor.Begin 注入");
+                "工具执行上下文缺失（未设置 appKey）——请经 ConversationalFeishuEventHandler 或 IFeishuToolContextAccessor.Begin 注入"));
         }
 
         // AIFunctionArguments 实现为 IReadOnlyDictionary<string, object?>（可空性注解仅编译期）。

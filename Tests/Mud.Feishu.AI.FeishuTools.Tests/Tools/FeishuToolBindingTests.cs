@@ -66,7 +66,7 @@ public class FeishuToolBindingTests : IDisposable
             "测试工具",
             scopes ?? ["test:read"],
             isWrite,
-            handler ?? ((_, _, _) => Task.FromResult("downstream-result")));
+            handler ?? ((_, _, _) => Task.FromResult(FeishuToolResult.FromText("downstream-result"))));
 
     private static IReadOnlyDictionary<string, object?> Args() => new Dictionary<string, object?> { ["app_token"] = "bascnXxx" };
 
@@ -79,9 +79,9 @@ public class FeishuToolBindingTests : IDisposable
             Definition(),
             Args(),
             new FeishuToolContext("appA"),
-            _ => { _callLog.Add("downstream"); return Task.FromResult("ok"); });
+            _ => { _callLog.Add("downstream"); return Task.FromResult(FeishuToolResult.FromText("ok")); });
 
-        result.Should().Be("ok");
+        result.ToString().Should().Be("ok");
         _callLog.Should().Equal(
             ["scope:appA", "downstream", "scope-release"],
             "BeginScope 必须先于下游调用（租户=应用上下文，TMA2-20），作用域在完成后释放");
@@ -94,9 +94,9 @@ public class FeishuToolBindingTests : IDisposable
         var binding = CreateBinding();
 
         await binding.ExecuteAsync(Definition(), Args(), new FeishuToolContext("appA"),
-            _ => Task.FromResult("from-A"));
+            _ => Task.FromResult(FeishuToolResult.FromText("from-A")));
         await binding.ExecuteAsync(Definition(), Args(), new FeishuToolContext("appB"),
-            _ => Task.FromResult("from-B"));
+            _ => Task.FromResult(FeishuToolResult.FromText("from-B")));
 
         _callLog.Where(c => c.StartsWith("scope:", StringComparison.Ordinal)).Should().Equal(
             ["scope:appA", "scope:appB"],
@@ -122,13 +122,13 @@ public class FeishuToolBindingTests : IDisposable
             Definition(),
             Args(),
             new FeishuToolContext("appA"),
-            _ => { downstreamCalled = true; return Task.FromResult("ok"); });
+            _ => { downstreamCalled = true; return Task.FromResult(FeishuToolResult.FromText("ok")); });
 
         downstreamCalled.Should().BeFalse("拒绝路径不得触碰下游接口");
         _callLog.Should().NotContain(c => c.StartsWith("scope:", StringComparison.Ordinal),
             "拒绝时不切入租户上下文");
-        result.Should().StartWith("[tool_error] test.tool");
-        result.Should().Contain("租户未开通该工具", "拒绝原因结构化回填模型");
+        result.ToString().Should().StartWith("[tool_error] test.tool");
+        result.ToString().Should().Contain("租户未开通该工具", "拒绝原因结构化回填模型");
     }
 
     [Fact]
@@ -141,7 +141,7 @@ public class FeishuToolBindingTests : IDisposable
             Definition(name: "bitable.list_tables", scopes: ["bitable:app:readonly"]),
             Args(),
             new FeishuToolContext("appAudit"),
-            _ => Task.FromResult("ok"));
+            _ => Task.FromResult(FeishuToolResult.FromText("ok")));
 
         var activity = _activities.Should().ContainSingle().Subject;
         activity.GetTagItem(FeishuToolDiagnostics.TagToolName).Should().Be("bitable.list_tables");
@@ -163,7 +163,7 @@ public class FeishuToolBindingTests : IDisposable
 
         var binding = CreateBinding(denied.Object);
         await binding.ExecuteAsync(Definition(), Args(), new FeishuToolContext("appA"),
-            _ => Task.FromResult("ok"));
+            _ => Task.FromResult(FeishuToolResult.FromText("ok")));
 
         var activity = _activities.Should().ContainSingle().Subject;
         activity.GetTagItem(FeishuToolDiagnostics.TagDecision).Should().Be(FeishuToolDiagnostics.DecisionDenied);
@@ -175,9 +175,9 @@ public class FeishuToolBindingTests : IDisposable
         var binding = CreateBinding();
 
         var result = await binding.ExecuteAsync(Definition(), Args(), new FeishuToolContext(string.Empty),
-            _ => Task.FromResult("ok"));
+            _ => Task.FromResult(FeishuToolResult.FromText("ok")));
 
-        result.Should().Contain("缺少 appKey", "多租户隔离禁止默认应用兜底（TMA2-20）");
+        result.ToString().Should().Contain("缺少 appKey", "多租户隔离禁止默认应用兜底（TMA2-20）");
         _callLog.Should().BeEmpty();
     }
 
@@ -190,9 +190,9 @@ public class FeishuToolBindingTests : IDisposable
             Definition(name: "im.send", isWrite: true),
             Args(),
             new FeishuToolContext("appA"),
-            _ => Task.FromResult("ok"));
+            _ => Task.FromResult(FeishuToolResult.FromText("ok")));
 
-        result.Should().Contain("未注册 IToolExecutionAuthorizer");
+        result.ToString().Should().Contain("未注册 IToolExecutionAuthorizer");
         _callLog.Should().NotContain(c => c.StartsWith("scope:", StringComparison.Ordinal));
     }
 
@@ -205,9 +205,9 @@ public class FeishuToolBindingTests : IDisposable
             Definition(name: "im.send", isWrite: true),
             Args(),
             new FeishuToolContext("appA"),
-            _ => Task.FromResult("ok"));
+            _ => Task.FromResult(FeishuToolResult.FromText("ok")));
 
-        result.Should().Be("ok", "EnforceToolAuthorization=false 时写工具不强制（宿主自担风险）");
+        result.ToString().Should().Be("ok", "EnforceToolAuthorization=false 时写工具不强制（宿主自担风险）");
     }
 
     [Fact]
@@ -225,10 +225,10 @@ public class FeishuToolBindingTests : IDisposable
         var downstreamCalled = false;
 
         var result = await binding.ExecuteAsync(Definition(), Args(), new FeishuToolContext("appA"),
-            _ => { downstreamCalled = true; return Task.FromResult("ok"); });
+            _ => { downstreamCalled = true; return Task.FromResult(FeishuToolResult.FromText("ok")); });
 
         downstreamCalled.Should().BeFalse("Phase 1 无 HITL 恢复机制，待确认不执行（Phase 3 交付）");
-        result.Should().Contain("需要用户确认");
+        result.ToString().Should().Contain("需要用户确认");
     }
 
     [Fact]
@@ -239,7 +239,7 @@ public class FeishuToolBindingTests : IDisposable
         var result = await binding.ExecuteAsync(Definition(), Args(), new FeishuToolContext("appA"),
             _ => throw new InvalidOperationException("boom"));
 
-        result.Should().StartWith("[tool_error]").And.Contain("boom");
+        result.ToString().Should().StartWith("[tool_error]").And.Contain("boom");
         _callLog.Should().Contain("scope-release", "异常路径作用域仍释放");
     }
 

@@ -52,7 +52,7 @@ public class WriteToolsTests
             Args(("receive_id", "oc_group1"), ("text", "你好"), ("receive_id_type", "chat_id")),
             CancellationToken.None);
 
-        using var document = JsonDocument.Parse(result);
+        using var document = JsonDocument.Parse(result.ToString()!);
         document.RootElement.GetProperty("message_id").GetString().Should().Be("om_send_1");
         capturedReceiveIdType.Should().Be("chat_id");
         captured.Should().NotBeNull();
@@ -76,12 +76,12 @@ public class WriteToolsTests
 
         var tools = new MessageWriteTools(_messageClient.Object);
         var ok = await tools.SendMessageAsync(Args(("receive_id", "oc_group1"), ("text", "hi")), CancellationToken.None);
-        ok.Should().Contain("om_ok", "缺省 receive_id_type = chat_id");
+        ok.ToString().Should().Contain("om_ok", "缺省 receive_id_type = chat_id");
 
         var rejected = await tools.SendMessageAsync(
             Args(("receive_id", "oc_x"), ("text", "hi"), ("receive_id_type", "user_id; drop table")),
             CancellationToken.None);
-        rejected.Should().StartWith("[tool_error] im.send_message", "白名单外的 receive_id_type 结构化拒绝（防参数注入）");
+        rejected.ToString().Should().StartWith("[tool_error] im.send_message", "白名单外的 receive_id_type 结构化拒绝（防参数注入）");
     }
 
     [Fact]
@@ -94,7 +94,7 @@ public class WriteToolsTests
         var tools = new MessageWriteTools(_messageClient.Object);
         var result = await tools.SendMessageAsync(Args(("receive_id", "oc_x"), ("text", "hi")), CancellationToken.None);
 
-        result.Should().StartWith("[tool_error] im.send_message")
+        result.ToString().Should().StartWith("[tool_error] im.send_message")
             .And.Contain("230001")
             .And.Contain("无发送权限", "code != 0 转可读文本回填模型（总体设计 §4 不变式）");
     }
@@ -122,7 +122,7 @@ public class WriteToolsTests
             Args(("app_token", "bascnXxx"), ("table_id", "tbl001"), ("fields", """{"任务名称":"写周报","优先级":3}""")),
             CancellationToken.None);
 
-        using var document = JsonDocument.Parse(result);
+        using var document = JsonDocument.Parse(result.ToString()!);
         document.RootElement.GetProperty("record_id").GetString().Should().Be("rec_new_1");
         captured.Should().NotBeNull();
         var fields = captured!.Fields.Should().BeOfType<JsonElement>().Subject;
@@ -138,11 +138,11 @@ public class WriteToolsTests
 
         var notJson = await tools.AddRecordAsync(
             Args(("app_token", "b"), ("table_id", "t"), ("fields", "not-json{")), CancellationToken.None);
-        notJson.Should().StartWith("[tool_error] bitable.add_record").And.Contain("fields");
+        notJson.ToString().Should().StartWith("[tool_error] bitable.add_record").And.Contain("fields");
 
         var notObject = await tools.AddRecordAsync(
             Args(("app_token", "b"), ("table_id", "t"), ("fields", "[1,2]")), CancellationToken.None);
-        notObject.Should().StartWith("[tool_error] bitable.add_record").And.Contain("JSON 对象");
+        notObject.ToString().Should().StartWith("[tool_error] bitable.add_record").And.Contain("JSON 对象");
     }
 
     // ───────────────────── approval.create_instance ─────────────────────
@@ -165,7 +165,7 @@ public class WriteToolsTests
             Args(("approval_code", "C4C0E8F0"), ("form", """[{"id":"widget1","type":"input","value":"出差申请"}]"""), ("user_id", "ou_u1")),
             CancellationToken.None);
 
-        using var document = JsonDocument.Parse(result);
+        using var document = JsonDocument.Parse(result.ToString()!);
         document.RootElement.GetProperty("instance_code").GetString().Should().Be("inst_001");
         captured.Should().NotBeNull();
         captured!.ApprovalCode.Should().Be("C4C0E8F0", "approval_code/form 为 CreateInstanceRequest 的 body 字段（Phase 2 §3.3）");
@@ -184,6 +184,6 @@ public class WriteToolsTests
         var result = await tools.CreateInstanceAsync(
             Args(("approval_code", "bad"), ("form", "[]")), CancellationToken.None);
 
-        result.Should().StartWith("[tool_error] approval.create_instance").And.Contain("134003");
+        result.ToString().Should().StartWith("[tool_error] approval.create_instance").And.Contain("134003");
     }
 }

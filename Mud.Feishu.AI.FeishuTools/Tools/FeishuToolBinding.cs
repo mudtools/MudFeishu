@@ -73,12 +73,12 @@ public sealed class FeishuToolBinding
     /// <param name="context">执行上下文（appKey/chat/user，经 <c>IFeishuToolContextAccessor</c> 注入）。</param>
     /// <param name="invokeDownstream">分域下游调用（参数映射 → 强类型接口 → 解包/投影/截断）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
-    /// <returns>回填模型的文本（成功结果或结构化错误）。</returns>
-    public async Task<string> ExecuteAsync(
+    /// <returns>工具执行结果（成功结果或结构化错误）。</returns>
+    public async Task<FeishuToolResult> ExecuteAsync(
         FeishuToolDefinition tool,
         IReadOnlyDictionary<string, object?> arguments,
         FeishuToolContext context,
-        Func<CancellationToken, Task<string>> invokeDownstream,
+        Func<CancellationToken, Task<FeishuToolResult>> invokeDownstream,
         CancellationToken cancellationToken = default)
     {
         if (tool is null)
@@ -93,7 +93,7 @@ public sealed class FeishuToolBinding
         // ① 上下文校验：多租户隔离事实来源，缺 appKey 即失败（TMA2-20）。
         if (string.IsNullOrWhiteSpace(context.AppKey))
         {
-            return StructuredError(tool.Name, "工具执行上下文缺少 appKey——多租户隔离禁止默认应用兜底（TMA2-20）");
+            return FeishuToolResult.FromError(StructuredError(tool.Name, "工具执行上下文缺少 appKey——多租户隔离禁止默认应用兜底（TMA2-20）"));
         }
 
         using var activity = FeishuToolDiagnostics.StartToolActivity(
@@ -113,7 +113,7 @@ public sealed class FeishuToolBinding
                 tool, context, FeishuMetrics.ToolOutcomes.Denied, gate.Reason,
                 ToolArgsDigester.Digest(arguments), executionStopwatch.ElapsedMilliseconds,
                 cancellationToken).ConfigureAwait(false);
-            return StructuredError(tool.Name, gate.Reason);
+            return FeishuToolResult.FromError(StructuredError(tool.Name, gate.Reason));
         }
 
         // ③ 租户上下文切换（先于下游调用，作用域 finally 释放）。
@@ -121,7 +121,7 @@ public sealed class FeishuToolBinding
         {
             using var scope = _scopeFactory.BeginScope(context.AppKey);
             var result = await invokeDownstream(cancellationToken).ConfigureAwait(false);
-            activity?.SetTag(FeishuToolDiagnostics.TagTruncated, ToolResultText.IsTruncated(result));
+            activity?.SetTag(FeishuToolDiagnostics.TagTruncated, result.Truncated || ToolResultText.IsTruncated(result.ToString()));
 
             FeishuToolDiagnostics.RecordDuration(tool.Name, context.AppKey, executionStopwatch.ElapsedMilliseconds);
             FeishuToolDiagnostics.RecordExecution(tool.Name, context.AppKey, FeishuMetrics.ToolOutcomes.Allowed);
@@ -149,7 +149,7 @@ public sealed class FeishuToolBinding
                 tool, context, FeishuMetrics.ToolOutcomes.Error, ex.Message,
                 ToolArgsDigester.Digest(arguments), executionStopwatch.ElapsedMilliseconds,
                 CancellationToken.None).ConfigureAwait(false);
-            return errorText;
+            return FeishuToolResult.FromError(errorText);
         }
     }
 
@@ -194,7 +194,7 @@ public sealed class FeishuToolBinding
         }
     }
 
-    private async Task<string> ShapeWithIsolationAsync(string toolName, string result, CancellationToken cancellationToken)
+    private async Task<FeishuToolResult> ShapeWithIsolationAsync(string toolName, FeishuToolResult result, CancellationToken cancellationToken)
     {
         if (_resultShaper is null)
         {
@@ -203,10 +203,13 @@ public sealed class FeishuToolBinding
 
         try
         {
+            var text = result.ToString();
             var shaped = await _resultShaper
-                .ShapeAsync(toolName, result, cancellationToken)
+                .ShapeAsync(toolName, text, cancellationToken)
                 .ConfigureAwait(false);
-            return shaped ?? result;
+            return shaped is null
+                ? result
+                : FeishuToolResult.FromText(shaped, result.Truncated, result.TruncationReason);
         }
         catch (OperationCanceledException)
         {

@@ -23,7 +23,7 @@ internal sealed class SheetsTools(
     private readonly int _maxResultLength = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
 
     /// <summary>sheets.list_sheets：列出工作表（白名单 sheet_id/title/index）。</summary>
-    public async Task<string> ListSheetsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    public async Task<FeishuToolResult> ListSheetsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         try
         {
@@ -34,7 +34,7 @@ internal sealed class SheetsTools(
                 .ConfigureAwait(false));
             if (!outcome.Ok)
             {
-                return FeishuToolBinding.StructuredError(FeishuToolNames.SheetsListSheets, outcome.Code, outcome.ErrorText!);
+                return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(FeishuToolNames.SheetsListSheets, outcome.Code, outcome.ErrorText!));
             }
 
             var envelope = new JsonObject { ["items"] = new JsonArray() };
@@ -48,16 +48,16 @@ internal sealed class SheetsTools(
                 });
             }
 
-            return ToolResultText.TruncateJson(envelope.ToJsonString(), _maxResultLength);
+            return FeishuToolResult.FromText(ToolResultText.TruncateJson(envelope.ToJsonString(), _maxResultLength));
         }
         catch (ArgumentException ex)
         {
-            return FeishuToolBinding.StructuredError(FeishuToolNames.SheetsListSheets, ex.Message);
+            return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(FeishuToolNames.SheetsListSheets, ex.Message));
         }
     }
 
     /// <summary>sheets.get_range_values：读取单元格区域数据。</summary>
-    public async Task<string> GetRangeValuesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    public async Task<FeishuToolResult> GetRangeValuesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         try
         {
@@ -74,7 +74,7 @@ internal sealed class SheetsTools(
                 .ConfigureAwait(false));
             if (!outcome.Ok)
             {
-                return FeishuToolBinding.StructuredError(FeishuToolNames.SheetsGetRangeValues, outcome.Code, outcome.ErrorText!);
+                return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(FeishuToolNames.SheetsGetRangeValues, outcome.Code, outcome.ErrorText!));
             }
 
             var valueRange = outcome.Data!.ValueRange;
@@ -95,11 +95,11 @@ internal sealed class SheetsTools(
                 ["range"] = valueRange?.Range,
                 ["values"] = values,
             };
-            return ToolResultText.TruncateJson(envelope.ToJsonString(), _maxResultLength);
+            return FeishuToolResult.FromText(ToolResultText.TruncateJson(envelope.ToJsonString(), _maxResultLength));
         }
         catch (ArgumentException ex)
         {
-            return FeishuToolBinding.StructuredError(FeishuToolNames.SheetsGetRangeValues, ex.Message);
+            return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(FeishuToolNames.SheetsGetRangeValues, ex.Message));
         }
     }
 }

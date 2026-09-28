@@ -18,7 +18,7 @@ internal sealed class WikiTools(Mud.Feishu.IFeishuTenantV2WikiNodes wikiNodesCli
     private readonly int _maxResultLength = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
 
     /// <summary>wiki.get_node：解析节点信息（单对象）。</summary>
-    public async Task<string> GetNodeAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    public async Task<FeishuToolResult> GetNodeAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         try
         {
@@ -30,7 +30,7 @@ internal sealed class WikiTools(Mud.Feishu.IFeishuTenantV2WikiNodes wikiNodesCli
                 .ConfigureAwait(false));
             if (!outcome.Ok)
             {
-                return FeishuToolBinding.StructuredError(FeishuToolNames.WikiGetNode, outcome.Code, outcome.ErrorText!);
+                return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(FeishuToolNames.WikiGetNode, outcome.Code, outcome.ErrorText!));
             }
 
             var node = outcome.Data!.Node;
@@ -38,16 +38,16 @@ internal sealed class WikiTools(Mud.Feishu.IFeishuTenantV2WikiNodes wikiNodesCli
             {
                 ["node"] = ProjectNode(node),
             };
-            return ToolResultText.TruncateJson(envelope.ToJsonString(), _maxResultLength);
+            return FeishuToolResult.FromText(ToolResultText.TruncateJson(envelope.ToJsonString(), _maxResultLength));
         }
         catch (ArgumentException ex)
         {
-            return FeishuToolBinding.StructuredError(FeishuToolNames.WikiGetNode, ex.Message);
+            return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(FeishuToolNames.WikiGetNode, ex.Message));
         }
     }
 
     /// <summary>wiki.list_nodes：列出子节点（分页）。</summary>
-    public async Task<string> ListNodesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    public async Task<FeishuToolResult> ListNodesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         try
         {
@@ -60,7 +60,7 @@ internal sealed class WikiTools(Mud.Feishu.IFeishuTenantV2WikiNodes wikiNodesCli
                 .ConfigureAwait(false));
             if (!outcome.Ok)
             {
-                return FeishuToolBinding.StructuredError(FeishuToolNames.WikiListNodes, outcome.Code, outcome.ErrorText!);
+                return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(FeishuToolNames.WikiListNodes, outcome.Code, outcome.ErrorText!));
             }
 
             var data = outcome.Data!;
@@ -79,11 +79,11 @@ internal sealed class WikiTools(Mud.Feishu.IFeishuTenantV2WikiNodes wikiNodesCli
                 envelope["items"]!.AsArray().AddNode(ProjectNode(node));
             }
 
-            return ToolResultText.TruncateJson(envelope.ToJsonString(), _maxResultLength);
+            return FeishuToolResult.FromText(ToolResultText.TruncateJson(envelope.ToJsonString(), _maxResultLength));
         }
         catch (ArgumentException ex)
         {
-            return FeishuToolBinding.StructuredError(FeishuToolNames.WikiListNodes, ex.Message);
+            return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(FeishuToolNames.WikiListNodes, ex.Message));
         }
     }
 

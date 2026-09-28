@@ -22,7 +22,7 @@ internal sealed class ImTools(Mud.Feishu.IFeishuTenantV1Message messageClient, I
     private readonly int _maxResultLength = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
 
     /// <summary>im.get_history_messages：读取历史消息（白名单 message_id/create_time/sender_id/message_type/content 预览）。</summary>
-    public async Task<string> GetHistoryAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    public async Task<FeishuToolResult> GetHistoryAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         try
         {
@@ -44,7 +44,7 @@ internal sealed class ImTools(Mud.Feishu.IFeishuTenantV1Message messageClient, I
                 .ConfigureAwait(false));
             if (!outcome.Ok)
             {
-                return FeishuToolBinding.StructuredError(FeishuToolNames.ImGetHistoryMessages, outcome.Code, outcome.ErrorText!);
+                return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(FeishuToolNames.ImGetHistoryMessages, outcome.Code, outcome.ErrorText!));
             }
 
             var data = outcome.Data!;
@@ -71,16 +71,16 @@ internal sealed class ImTools(Mud.Feishu.IFeishuTenantV1Message messageClient, I
                 });
             }
 
-            return ToolResultText.TruncateJson(envelope.ToJsonString(), _maxResultLength);
+            return FeishuToolResult.FromText(ToolResultText.TruncateJson(envelope.ToJsonString(), _maxResultLength));
         }
         catch (ArgumentException ex)
         {
-            return FeishuToolBinding.StructuredError(FeishuToolNames.ImGetHistoryMessages, ex.Message);
+            return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(FeishuToolNames.ImGetHistoryMessages, ex.Message));
         }
     }
 
     /// <summary>im.get_message_content：单条消息内容回查（白名单 message_id/msg_type/body/mentions）。</summary>
-    public async Task<string> GetContentAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    public async Task<FeishuToolResult> GetContentAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         try
         {
@@ -91,7 +91,7 @@ internal sealed class ImTools(Mud.Feishu.IFeishuTenantV1Message messageClient, I
                 .ConfigureAwait(false));
             if (!outcome.Ok)
             {
-                return FeishuToolBinding.StructuredError(FeishuToolNames.ImGetMessageContent, outcome.Code, outcome.ErrorText!);
+                return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(FeishuToolNames.ImGetMessageContent, outcome.Code, outcome.ErrorText!));
             }
 
             var envelope = new JsonObject { ["items"] = new JsonArray() };
@@ -113,11 +113,11 @@ internal sealed class ImTools(Mud.Feishu.IFeishuTenantV1Message messageClient, I
                 });
             }
 
-            return ToolResultText.TruncateJson(envelope.ToJsonString(), _maxResultLength);
+            return FeishuToolResult.FromText(ToolResultText.TruncateJson(envelope.ToJsonString(), _maxResultLength));
         }
         catch (ArgumentException ex)
         {
-            return FeishuToolBinding.StructuredError(FeishuToolNames.ImGetMessageContent, ex.Message);
+            return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(FeishuToolNames.ImGetMessageContent, ex.Message));
         }
     }
 

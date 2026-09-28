@@ -32,13 +32,3 @@ public sealed class ToolParameterAttribute(string name, string description) : At
     /// <summary>是否必填（模型侧 <c>required</c>；可空参数不纳入 required）。</summary>
     public bool Required { get; init; }
 }
-
-/// <summary>
-/// 对模型隐藏某工具参数（生成器不纳入 Schema）。
-/// </summary>
-[AttributeUsage(AttributeTargets.Method, AllowMultiple = true, Inherited = false)]
-public sealed class ToolHideAttribute(string name) : Attribute
-{
-    /// <summary>被隐藏的参数名。</summary>
-    public string Name { get; } = name;
-}

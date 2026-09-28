@@ -20,7 +20,7 @@ public class FeishuToolRegistryTests
         Description: "desc",
         RequiredScopes: ["bitable:app:readonly"],
         IsWrite: false,
-        Handler: (_, _, _) => Task.FromResult("ok"));
+        Handler: (_, _, _) => Task.FromResult(FeishuToolResult.FromText("ok")));
 
     [Fact]
     public void Register_ThenMapTool_ShouldEnable()

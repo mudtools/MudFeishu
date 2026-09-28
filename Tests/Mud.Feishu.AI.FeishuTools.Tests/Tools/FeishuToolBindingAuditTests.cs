@@ -32,7 +32,7 @@ public class FeishuToolBindingAuditTests
     }
 
     private static FeishuToolDefinition CreateTool(string name = "bitable.query_records", bool isWrite = false)
-        => new(name, "描述", ["bitable:app:readonly"], isWrite, (_, _, _) => Task.FromResult("结果"));
+        => new(name, "描述", ["bitable:app:readonly"], isWrite, (_, _, _) => Task.FromResult(FeishuToolResult.FromText("结果")));
 
     private static FeishuToolContext CreateContext()
         => new("app-a", ConversationKey: "feishu:app-a:conversation:chat:oc_1", ChatId: "oc_1", UserId: "ou_1");
@@ -54,9 +54,9 @@ public class FeishuToolBindingAuditTests
 
         var result = await binding.ExecuteAsync(
             tool, new Dictionary<string, object?> { ["app_token"] = "bascnXxx" }, CreateContext(),
-            _ => Task.FromResult("结果文本"));
+            _ => Task.FromResult(FeishuToolResult.FromText("结果文本")));
 
-        result.Should().Be("结果文本");
+        result.ToString().Should().Be("结果文本");
         records.Should().ContainSingle();
         records[0].Decision.Should().Be("allowed");
         records[0].ToolName.Should().Be("bitable.query_records");
@@ -81,7 +81,7 @@ public class FeishuToolBindingAuditTests
             tool, new Dictionary<string, object?>(), CreateContext(),
             _ => throw new InvalidOperationException("下游不得被调用"));
 
-        result.Should().Contain("[tool_error]", "拒绝结构化回填");
+        result.ToString().Should().Contain("[tool_error]", "拒绝结构化回填");
         records.Should().ContainSingle("拒绝也是审计事件");
         records[0].Decision.Should().Be("denied");
         records[0].Reason.Should().Be("宿主拒绝");
@@ -98,7 +98,7 @@ public class FeishuToolBindingAuditTests
             tool, new Dictionary<string, object?>(), CreateContext(),
             _ => throw new HttpRequestException("网络中断"));
 
-        result.Should().Contain("(retryable)");
+        result.ToString().Should().Contain("(retryable)");
         records.Should().ContainSingle();
         records[0].Decision.Should().Be("error");
         records[0].Reason.Should().NotBeNullOrEmpty();
@@ -112,7 +112,7 @@ public class FeishuToolBindingAuditTests
 
         var act = async () => await binding.ExecuteAsync(
             tool, new Dictionary<string, object?>(), CreateContext(),
-            _ => Task.FromResult("结果文本"));
+            _ => Task.FromResult(FeishuToolResult.FromText("结果文本")));
 
         await act.Should().NotThrowAsync("sink 异常只记日志、绝不影响执行链（异常隔离）");
     }

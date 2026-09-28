@@ -24,7 +24,7 @@ internal sealed class MessageWriteTools(Mud.Feishu.IFeishuTenantV1Message messag
         ?? throw new ArgumentNullException(nameof(messageClient));
 
     /// <summary>im.send_message：发送文本消息。</summary>
-    public async Task<string> SendMessageAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    public async Task<FeishuToolResult> SendMessageAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         try
         {
@@ -50,17 +50,16 @@ internal sealed class MessageWriteTools(Mud.Feishu.IFeishuTenantV1Message messag
                 .ConfigureAwait(false));
             if (!outcome.Ok)
             {
-                return FeishuToolBinding.StructuredError(FeishuToolNames.ImSendMessage, outcome.Code, outcome.ErrorText!);
+                return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(FeishuToolNames.ImSendMessage, outcome.Code, outcome.ErrorText!));
             }
 
-            return new JsonObject
-            {
+            return FeishuToolResult.FromText(new JsonObject {
                 ["message_id"] = outcome.Data!.MessageId,
-            }.ToJsonString();
+            }.ToJsonString());
         }
         catch (ArgumentException ex)
         {
-            return FeishuToolBinding.StructuredError(FeishuToolNames.ImSendMessage, ex.Message);
+            return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(FeishuToolNames.ImSendMessage, ex.Message));
         }
     }
 }
@@ -76,7 +75,7 @@ internal sealed class BitableWriteTools(Mud.Feishu.IFeishuTenantV1BitableRecord 
         ?? throw new ArgumentNullException(nameof(recordClient));
 
     /// <summary>bitable.add_record：新增记录（fields 为「字段名 → 值」JSON 对象字符串）。</summary>
-    public async Task<string> AddRecordAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    public async Task<FeishuToolResult> AddRecordAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         try
         {
@@ -91,17 +90,16 @@ internal sealed class BitableWriteTools(Mud.Feishu.IFeishuTenantV1BitableRecord 
                 .ConfigureAwait(false));
             if (!outcome.Ok)
             {
-                return FeishuToolBinding.StructuredError(FeishuToolNames.BitableAddRecord, outcome.Code, outcome.ErrorText!);
+                return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(FeishuToolNames.BitableAddRecord, outcome.Code, outcome.ErrorText!));
             }
 
-            return new JsonObject
-            {
+            return FeishuToolResult.FromText(new JsonObject {
                 ["record_id"] = outcome.Data!.Record?.RecordId,
-            }.ToJsonString();
+            }.ToJsonString());
         }
         catch (ArgumentException ex)
         {
-            return FeishuToolBinding.StructuredError(FeishuToolNames.BitableAddRecord, ex.Message);
+            return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(FeishuToolNames.BitableAddRecord, ex.Message));
         }
     }
 
@@ -138,7 +136,7 @@ internal sealed class ApprovalWriteTools(Mud.Feishu.IFeishuTenantV4Approval appr
         ?? throw new ArgumentNullException(nameof(approvalClient));
 
     /// <summary>approval.create_instance：发起审批实例。</summary>
-    public async Task<string> CreateInstanceAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    public async Task<FeishuToolResult> CreateInstanceAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         try
         {
@@ -158,17 +156,16 @@ internal sealed class ApprovalWriteTools(Mud.Feishu.IFeishuTenantV4Approval appr
                 .ConfigureAwait(false));
             if (!outcome.Ok)
             {
-                return FeishuToolBinding.StructuredError(FeishuToolNames.ApprovalCreateInstance, outcome.Code, outcome.ErrorText!);
+                return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(FeishuToolNames.ApprovalCreateInstance, outcome.Code, outcome.ErrorText!));
             }
 
-            return new JsonObject
-            {
+            return FeishuToolResult.FromText(new JsonObject {
                 ["instance_code"] = outcome.Data!.InstanceCode,
-            }.ToJsonString();
+            }.ToJsonString());
         }
         catch (ArgumentException ex)
         {
-            return FeishuToolBinding.StructuredError(FeishuToolNames.ApprovalCreateInstance, ex.Message);
+            return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(FeishuToolNames.ApprovalCreateInstance, ex.Message));
         }
     }
 }

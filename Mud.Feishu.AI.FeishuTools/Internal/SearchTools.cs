@@ -21,14 +21,14 @@ internal sealed class SearchTools(Mud.Feishu.IFeishuTenantV2SearchDocWiki search
     private readonly int _maxResultLength = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
 
     /// <summary>search.doc_wiki：云文档与知识库搜索（白名单 title/url/owner/doc_type）。</summary>
-    public async Task<string> SearchAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    public async Task<FeishuToolResult> SearchAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         try
         {
             var query = ToolArgs.RequireString(arguments, "query");
             if (query.Length > 30)
             {
-                return FeishuToolBinding.StructuredError(FeishuToolNames.SearchDocWiki, "query 上限 30 字符，实际 " + query.Length.ToString(CultureInfo.InvariantCulture) + " 字符");
+                return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(FeishuToolNames.SearchDocWiki, "query 上限 30 字符，实际 " + query.Length.ToString(CultureInfo.InvariantCulture) + " 字符"));
             }
 
             var searchIn = (ToolArgs.OptionalString(arguments, "search_in") ?? "both").ToLowerInvariant();
@@ -57,7 +57,7 @@ internal sealed class SearchTools(Mud.Feishu.IFeishuTenantV2SearchDocWiki search
                     request.WikiFilter = new WikiFilterParam { SpaceIds = spaceIds };
                     break;
                 default:
-                    return FeishuToolBinding.StructuredError(FeishuToolNames.SearchDocWiki, $"search_in 仅支持 doc/wiki/both，实际: {searchIn}");
+                    return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(FeishuToolNames.SearchDocWiki, $"search_in 仅支持 doc/wiki/both，实际: {searchIn}"));
             }
 
             var outcome = FeishuApiResultReader.Read(await _searchClient
@@ -65,7 +65,7 @@ internal sealed class SearchTools(Mud.Feishu.IFeishuTenantV2SearchDocWiki search
                 .ConfigureAwait(false));
             if (!outcome.Ok)
             {
-                return FeishuToolBinding.StructuredError(FeishuToolNames.SearchDocWiki, outcome.Code, outcome.ErrorText!);
+                return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(FeishuToolNames.SearchDocWiki, outcome.Code, outcome.ErrorText!));
             }
 
             var data = outcome.Data!;
@@ -96,11 +96,11 @@ internal sealed class SearchTools(Mud.Feishu.IFeishuTenantV2SearchDocWiki search
                 });
             }
 
-            return ToolResultText.TruncateJson(envelope.ToJsonString(), _maxResultLength);
+            return FeishuToolResult.FromText(ToolResultText.TruncateJson(envelope.ToJsonString(), _maxResultLength));
         }
         catch (ArgumentException ex)
         {
-            return FeishuToolBinding.StructuredError(FeishuToolNames.SearchDocWiki, ex.Message);
+            return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(FeishuToolNames.SearchDocWiki, ex.Message));
         }
     }
 }

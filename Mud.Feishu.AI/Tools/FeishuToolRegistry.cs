@@ -14,8 +14,8 @@ namespace Mud.Feishu.AI.Tools;
 /// <param name="arguments">模型 tool_call 的入参字典。</param>
 /// <param name="context">执行上下文（appKey/chat/user）。</param>
 /// <param name="cancellationToken">取消令牌。</param>
-/// <returns>回填模型的文本结果（已投影/裁剪，含 <c>truncated</c>/<c>page_token</c> 标记）。</returns>
-public delegate Task<string> FeishuToolHandler(
+/// <returns>工具执行结果（含文本/截断标记，已投影/裁剪）。</returns>
+public delegate Task<FeishuToolResult> FeishuToolHandler(
     IReadOnlyDictionary<string, object?> arguments,
     FeishuToolContext context,
     CancellationToken cancellationToken);

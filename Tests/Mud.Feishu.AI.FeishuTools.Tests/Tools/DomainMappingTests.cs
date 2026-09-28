@@ -58,7 +58,7 @@ public class DomainMappingTests
         captured.PageSize.Should().Be(PageSizes.Search, "page_size 为绑定层钳制的隐藏参数");
         captured.Query.Should().Be("采购流程");
 
-        using var document = JsonDocument.Parse(result);
+        using var document = JsonDocument.Parse(result.ToString()!);
         var item = document.RootElement.GetProperty("items")[0];
         item.GetProperty("title").GetString().Should().Contain("采购");
         item.GetProperty("url").GetString().Should().Contain("docs");
@@ -101,7 +101,7 @@ public class DomainMappingTests
 
         var result = await tools.SearchAsync(Args(("query", "q"), ("search_in", "all")), CancellationToken.None);
 
-        result.Should().StartWith("[tool_error] search.doc_wiki").And.Contain("doc/wiki/both");
+        result.ToString().Should().StartWith("[tool_error] search.doc_wiki").And.Contain("doc/wiki/both");
         client.VerifyNoOtherCalls();
     }
 
@@ -113,7 +113,7 @@ public class DomainMappingTests
 
         var result = await tools.SearchAsync(Args(("query", new string('长', 31))), CancellationToken.None);
 
-        result.Should().StartWith("[tool_error] search.doc_wiki").And.Contain("30");
+        result.ToString().Should().StartWith("[tool_error] search.doc_wiki").And.Contain("30");
     }
 
     // ───────────────────── im.get_history_messages ─────────────────────
@@ -166,7 +166,7 @@ public class DomainMappingTests
         capturedStart.Should().Be("1790438400", "RFC3339 → 秒级时间戳（§3.3.3）");
         capturedEnd.Should().Be("1790510400");
 
-        using var document = JsonDocument.Parse(result);
+        using var document = JsonDocument.Parse(result.ToString()!);
         var item = document.RootElement.GetProperty("items")[0];
         item.GetProperty("message_id").GetString().Should().Be("om_1");
         item.GetProperty("sender_id").GetString().Should().Be("ou_sender");
@@ -184,7 +184,7 @@ public class DomainMappingTests
             Args(("chat_id", "oc001"), ("start_time", "2026/09/27 00:00")),
             CancellationToken.None);
 
-        result.Should().StartWith("[tool_error] im.get_history_messages").And.Contain("RFC3339");
+        result.ToString().Should().StartWith("[tool_error] im.get_history_messages").And.Contain("RFC3339");
         client.VerifyNoOtherCalls();
     }
 
@@ -219,7 +219,7 @@ public class DomainMappingTests
         var result = await tools.GetNodeAsync(Args(("token", "wikcnNode")), CancellationToken.None);
 
         capturedObjType.Should().Be("wiki", "obj_type 默认 wiki（§3.3.2）");
-        using var document = JsonDocument.Parse(result);
+        using var document = JsonDocument.Parse(result.ToString()!);
         var node = document.RootElement.GetProperty("node");
         node.GetProperty("node_token").GetString().Should().Be("wikcnNode");
         node.GetProperty("obj_token").GetString().Should().Be("doxcnDoc", "obj_token 供 docx.get_raw_content 两步链使用");
@@ -249,7 +249,7 @@ public class DomainMappingTests
             Args(("space_id", "sp1"), ("parent_node_token", "wikcnParent"), ("page_token", "tok1")),
             CancellationToken.None);
 
-        using var document = JsonDocument.Parse(result);
+        using var document = JsonDocument.Parse(result.ToString()!);
         document.RootElement.GetProperty("items")[0].GetProperty("node_token").GetString().Should().Be("wikcnChild");
     }
 
@@ -270,7 +270,7 @@ public class DomainMappingTests
         var tools = new DocxTools(client.Object, Options.Create(NewOptions(maxResultLength: 200)));
         var result = await tools.GetRawContentAsync(Args(("document_id", "doxcn001")), CancellationToken.None);
 
-        result.Should().Contain(ToolResultText.TruncatedMarker, "正文按 MaxToolResultLength 截断并标记");
+        result.ToString().Should().Contain(ToolResultText.TruncatedMarker, "正文按 MaxToolResultLength 截断并标记");
     }
 
     // ───────────────────── sheets.* ─────────────────────
@@ -293,7 +293,7 @@ public class DomainMappingTests
         var tools = new SheetsTools(client.Object, new Mock<Mud.Feishu.IFeishuTenantV3SpreadsheetData>().Object, Options.Create(NewOptions()));
         var result = await tools.ListSheetsAsync(Args(("spreadsheet_token", "shtcn001")), CancellationToken.None);
 
-        using var document = JsonDocument.Parse(result);
+        using var document = JsonDocument.Parse(result.ToString()!);
         var item = document.RootElement.GetProperty("items")[0];
         item.GetProperty("sheet_id").GetString().Should().Be("ShtXxx");
         item.GetProperty("title").GetString().Should().Be("价格表");
@@ -331,7 +331,7 @@ public class DomainMappingTests
             CancellationToken.None);
 
         capturedRenderOption.Should().Be("ToString");
-        using var document = JsonDocument.Parse(result);
+        using var document = JsonDocument.Parse(result.ToString()!);
         document.RootElement.GetProperty("range").GetString().Should().Be("ShtXxx!A1:B2", "range 直通");
         var row = document.RootElement.GetProperty("values")[1];
         row[0].GetString().Should().Be("键盘");

@@ -22,7 +22,7 @@ public class FeishuToolAIFunctionTests
             "按条件查询多维表格记录",
             ["bitable:app:readonly"],
             false,
-            (_, _, _) => Task.FromResult("ok"));
+            (_, _, _) => Task.FromResult(FeishuToolResult.FromText("ok")));
 
         var function = new FeishuToolAIFunction(definition, SchemaOf("bitable.query_records"));
 
@@ -44,8 +44,8 @@ public class FeishuToolAIFunctionTests
         var function = new FeishuToolAIFunction(definition, "{\"name\":\"test.tool\"}", contextAccessor: null);
 
         var result = await function.InvokeAsync(new AIFunctionArguments());
-        result.Should().BeOfType<string>()
-            .Which.Should().StartWith("[tool_error] test.tool").And.Contain("appKey");
+        result.Should().BeOfType<FeishuToolResult>()
+            .Which.ToString().Should().StartWith("[tool_error] test.tool").And.Contain("appKey");
     }
 
     [Fact]
@@ -63,7 +63,7 @@ public class FeishuToolAIFunctionTests
             {
                 seenContext = context;
                 seenArguments = arguments;
-                return Task.FromResult("handler-ok");
+                return Task.FromResult(FeishuToolResult.FromText("handler-ok"));
             });
 
         var function = new FeishuToolAIFunction(definition, "{\"name\":\"test.tool\"}", accessor);
@@ -71,7 +71,7 @@ public class FeishuToolAIFunctionTests
         using (accessor.Begin(new FeishuToolContext("appKeyA", "conv", "chat1", "user1")))
         {
             var result = await function.InvokeAsync(new AIFunctionArguments { ["app_token"] = "bascnXxx" });
-            result.Should().Be("handler-ok");
+            result.Should().BeOfType<FeishuToolResult>().Which.ToString().Should().Be("handler-ok");
         }
 
         seenContext!.AppKey.Should().Be("appKeyA", "上下文经异步流注入（多租户隔离事实来源）");
@@ -80,14 +80,13 @@ public class FeishuToolAIFunctionTests
     }
 
     [Fact]
-    public void Invoke_WithInvalidSchemaConstant_ShouldFailFastOnSchemaAccess()
+    public void Invoke_WithInvalidSchemaConstant_ShouldFailFastOnConstruction()
     {
-        var definition = new FeishuToolDefinition("x", "d", [], false, (_, _, _) => Task.FromResult("ok"));
+        var definition = new FeishuToolDefinition("x", "d", [], false, (_, _, _) => Task.FromResult(FeishuToolResult.FromText("ok")));
 
-        var function = new FeishuToolAIFunction(definition, "not-json");
-        var act = () => function.JsonSchema;
+        var act = () => new FeishuToolAIFunction(definition, "not-json");
 
-        act.Should().Throw<JsonException>("Schema 常量为编译期产物，损坏即 fail-fast");
+        act.Should().Throw<JsonException>("Schema 常量为编译期产物，损坏即 fail-fast（构造期解析）");
     }
 
     private static string SchemaOf(string toolName) => FeishuToolSchemas.SchemaByToolName[toolName];

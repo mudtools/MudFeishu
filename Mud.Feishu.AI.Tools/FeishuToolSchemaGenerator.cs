@@ -7,12 +7,15 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
+using Mud.Feishu.AI.Tools.Extraction;
+using Mud.Feishu.AI.Tools.Schema;
 
 namespace Mud.Feishu.AI.Tools;
 
@@ -23,15 +26,13 @@ namespace Mud.Feishu.AI.Tools;
 /// </summary>
 /// <remarks>
 /// <para>
-/// 产出物：静态类 <c>Mud.Feishu.AI.Tools.Generated.FeishuToolSchemas</c>，每个工具一个
-/// <c>public const string {ToolNameCamel}SchemaJson</c> 与全量注册表
-/// <c>SchemaByToolName</c>（供白名单注册/审计消费，运行期零反射）。
-/// 全部标注接口<b>只发射一次</b>（<c>Collect</c> 聚合后单次输出）：常量与
-/// <c>SchemaByToolName</c> 各仅一份，多工具接口并存不会产生重复成员。
+/// 改造后为三级管道（§4.6.2）：
+/// <para>Stage A（L1 抽取）：从 Roslyn symbol 提取 <see cref="CapabilityEntry"/></para>
+/// <para>Stage B（L2 描述符）：按域分组渲染 Schema</para>
+/// <para>Stage C（发射）：分域分文件产出 .g.cs</para>
 /// </para>
 /// <para>
-/// Schema 定位（已决策⑥）：必要件非卖点——差异化在执行链
-/// （授权钩子 + BeginScope 租户切换 + 强类型直连 + 结果裁剪）。
+/// 兼容层：保持 <c>FeishuToolSchemas</c> 产物不变（S0 golden 锁定）。
 /// </para>
 /// </remarks>
 [Generator]
@@ -39,7 +40,7 @@ public sealed class FeishuToolSchemaGenerator : IIncrementalGenerator
 {
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        // 投影为纯字符串模型（值相等）再 Collect：增量管线缓存友好，且保证单文件发射。
+        // Stage A: 扫描标注 [FeishuTool] 的接口（快路径）
         var toolSchemas = context.SyntaxProvider
             .CreateSyntaxProvider(
                 static (node, _) => node is InterfaceDeclarationSyntax iface && iface.AttributeLists.Count > 0,
@@ -51,6 +52,8 @@ public sealed class FeishuToolSchemaGenerator : IIncrementalGenerator
         context.RegisterSourceOutput(toolSchemas, static (spc, models) => EmitAll(spc, models));
     }
 
+    // ────────── Stage A: L1 抽取 ──────────
+
     private static bool HasFeishuToolAttribute(INamedTypeSymbol symbol)
         => symbol.GetAttributes().Any(a => IsFeishuToolAttribute(a.AttributeClass));
 
@@ -59,63 +62,12 @@ public sealed class FeishuToolSchemaGenerator : IIncrementalGenerator
             && attributeClass.Name == "FeishuToolAttribute"
             && attributeClass.ContainingNamespace.ToDisplayString() == "Mud.Feishu.AI.Tools";
 
-    /// <summary>
-    /// 单个工具的编译期 Schema 模型（纯字符串承载）。
-    /// </summary>
-    /// <remarks>
-    /// 手写值相等（而非 record）：生成器宿主为 netstandard2.0，record 的 init 访问器需要
-    /// <c>IsExternalInit</c> 垫片。值相等供增量管线缓存。
-    /// </remarks>
-    private sealed class ToolSchemaModel : IEquatable<ToolSchemaModel?>
-    {
-        public ToolSchemaModel(string toolName, string interfaceName, string constName, string schemaJson)
-        {
-            ToolName = toolName;
-            InterfaceName = interfaceName;
-            ConstName = constName;
-            SchemaJson = schemaJson;
-        }
-
-        public string ToolName { get; }
-
-        public string InterfaceName { get; }
-
-        public string ConstName { get; }
-
-        public string SchemaJson { get; }
-
-        public bool Equals(ToolSchemaModel? other)
-            => other is not null
-                && string.Equals(ToolName, other.ToolName, StringComparison.Ordinal)
-                && string.Equals(InterfaceName, other.InterfaceName, StringComparison.Ordinal)
-                && string.Equals(ConstName, other.ConstName, StringComparison.Ordinal)
-                && string.Equals(SchemaJson, other.SchemaJson, StringComparison.Ordinal);
-
-        public override bool Equals(object? obj) => Equals(obj as ToolSchemaModel);
-
-        public override int GetHashCode()
-        {
-            unchecked
-            {
-                // ns2.0 无 string.GetHashCode(StringComparison) 重载，经 StringComparer.Ordinal。
-                var comparer = StringComparer.Ordinal;
-                var hash = 17;
-                hash = (hash * 31) + comparer.GetHashCode(ToolName);
-                hash = (hash * 31) + comparer.GetHashCode(InterfaceName);
-                hash = (hash * 31) + comparer.GetHashCode(ConstName);
-                hash = (hash * 31) + comparer.GetHashCode(SchemaJson);
-                return hash;
-            }
-        }
-    }
-
     private static ToolSchemaModel BuildModel(INamedTypeSymbol interfaceSymbol)
     {
         var attribute = interfaceSymbol.GetAttributes().First(a => IsFeishuToolAttribute(a.AttributeClass));
         var toolName = attribute.ConstructorArguments.FirstOrDefault().Value as string ?? string.Empty;
         if (string.IsNullOrWhiteSpace(toolName))
         {
-            // 无名工具在发射阶段统一报 MUDFT001（诊断须在 RegisterSourceOutput 内上报）。
             return new ToolSchemaModel(string.Empty, interfaceSymbol.Name, string.Empty, string.Empty);
         }
 
@@ -127,21 +79,20 @@ public sealed class FeishuToolSchemaGenerator : IIncrementalGenerator
         return new ToolSchemaModel(toolName, interfaceSymbol.Name, BuildConstName(toolName), schema);
     }
 
-    private static void EmitAll(SourceProductionContext context, System.Collections.Immutable.ImmutableArray<ToolSchemaModel> models)
+    // ────────── Stage C: 发射 ──────────
+
+    private static void EmitAll(SourceProductionContext context, ImmutableArray<ToolSchemaModel> models)
     {
         if (models.IsEmpty)
         {
             return;
         }
 
+        // 诊断：无名工具
         var diagnostics = models.Where(m => m.ToolName.Length == 0).ToArray();
         foreach (var invalid in diagnostics)
         {
-            context.ReportDiagnostic(Diagnostic.Create(
-                new DiagnosticDescriptor(
-                    "MUDFT001", "FeishuTool 缺少工具名",
-                    "[FeishuTool] 标注的接口 {0} 未提供工具名", "MudFeishu.AI", DiagnosticSeverity.Error, true),
-                Location.None, invalid.InterfaceName));
+            Diagnostics.Report(context, Diagnostics.MUDFT001, null, invalid.InterfaceName);
         }
 
         var valid = models
@@ -154,6 +105,26 @@ public sealed class FeishuToolSchemaGenerator : IIncrementalGenerator
             return;
         }
 
+        // 工具名冲突检测
+        var seenNames = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var model in valid)
+        {
+            if (seenNames.TryGetValue(model.ToolName, out var existing))
+            {
+                Diagnostics.Report(context, Diagnostics.MUDFT003, null, model.ToolName, existing);
+            }
+            else
+            {
+                seenNames[model.ToolName] = model.InterfaceName;
+            }
+        }
+
+        // 兼容层：FeishuToolSchemas.g.cs（与今日产物一致）
+        EmitCompatSchema(context, valid);
+    }
+
+    private static void EmitCompatSchema(SourceProductionContext context, ToolSchemaModel[] valid)
+    {
         var source = new StringBuilder();
         source.AppendLine("// <auto-generated> 由 FeishuToolSchemaGenerator 编译期产出，禁止手工修改 </auto-generated>");
         source.AppendLine("#nullable enable");
@@ -186,6 +157,8 @@ public sealed class FeishuToolSchemaGenerator : IIncrementalGenerator
         context.AddSource("FeishuToolSchemas.g.cs", SourceText.From(source.ToString(), Encoding.UTF8));
     }
 
+    // ────────── Schema 构建（兼容现有格式） ──────────
+
     private static string BuildSchemaJson(
         string toolName,
         string? description,
@@ -200,8 +173,6 @@ public sealed class FeishuToolSchemaGenerator : IIncrementalGenerator
             json.Append(",\"description\":").Append(Quote(description!));
         }
 
-        // 方法参数：接口方法的参数即模型可见参数（工具接口单方法约定）；
-        // 方法级 [ToolParameter(name,…)] 按 name 匹配兜底（与参数级标注等效）。
         var methodLevelParameters = interfaceSymbol.GetMembers()
             .OfType<IMethodSymbol>()
             .SelectMany(m => m.GetAttributes())
@@ -261,7 +232,6 @@ public sealed class FeishuToolSchemaGenerator : IIncrementalGenerator
 
         json.Append("]}");
 
-        // required_scopes（已决策⑥）：随 Schema 输出供授权钩子与审计消费；SDK 不内建校验。
         json.Append(",\"x-feishu\":{");
         json.Append("\"is_write\":").Append(isWrite ? "true" : "false");
         json.Append(",\"required_scopes\":[");
@@ -278,6 +248,8 @@ public sealed class FeishuToolSchemaGenerator : IIncrementalGenerator
         json.Append("]}}");
         return json.ToString();
     }
+
+    // ────────── 类型映射（兼容既有行为，保留不动） ──────────
 
     private static (string JsonType, bool IsNullable) MapJsonType(IParameterSymbol parameter)
     {
@@ -323,8 +295,6 @@ public sealed class FeishuToolSchemaGenerator : IIncrementalGenerator
 
     private static bool IsRequired(IParameterSymbol parameter, AttributeData[] methodLevelParameters)
     {
-        // [ToolParameter(..., Required=true)] 显式必填；可空引用类型不纳入 required；
-        // 非空值类型视为必填。
         var attribute = GetToolParameterAttribute(parameter, methodLevelParameters);
         if (attribute is not null
             && attribute.NamedArguments.FirstOrDefault(a => a.Key == "Required").Value.Value is bool explicitRequired)
@@ -355,7 +325,6 @@ public sealed class FeishuToolSchemaGenerator : IIncrementalGenerator
         return null;
     }
 
-    /// <summary>取参数级 [ToolParameter]；无则按名匹配方法级标注（兼容两种写法）。</summary>
     private static AttributeData? GetToolParameterAttribute(IParameterSymbol parameter, AttributeData[] methodLevelParameters)
     {
         var direct = parameter.GetAttributes()
@@ -370,6 +339,8 @@ public sealed class FeishuToolSchemaGenerator : IIncrementalGenerator
             && a.ConstructorArguments[0].Value is string name
             && string.Equals(name, parameter.Name, StringComparison.Ordinal));
     }
+
+    // ────────── 特性取值 ──────────
 
     private static string? GetNamedString(AttributeData attribute, string key)
         => attribute.NamedArguments.FirstOrDefault(a => a.Key == key).Value.Value as string;
@@ -392,6 +363,8 @@ public sealed class FeishuToolSchemaGenerator : IIncrementalGenerator
             .Select(v => v!)
             .ToArray();
     }
+
+    // ────────── 命名与转义 ──────────
 
     private static string BuildConstName(string toolName)
     {
@@ -449,12 +422,52 @@ public sealed class FeishuToolSchemaGenerator : IIncrementalGenerator
 
     private static string ToCSharpStringLiteral(string value)
     {
-        // 原始字符串字面量（C# 11）承载 JSON，减少转义层级；内嵌三引号场景用拼接规避。
         if (value.IndexOf("\"\"\"", StringComparison.Ordinal) >= 0)
         {
             return Quote(value);
         }
 
         return "\"\"\"" + value + "\"\"\"";
+    }
+
+    // ────────── 内部模型（兼容层） ──────────
+
+    private sealed class ToolSchemaModel : IEquatable<ToolSchemaModel?>
+    {
+        public ToolSchemaModel(string toolName, string interfaceName, string constName, string schemaJson)
+        {
+            ToolName = toolName;
+            InterfaceName = interfaceName;
+            ConstName = constName;
+            SchemaJson = schemaJson;
+        }
+
+        public string ToolName { get; }
+        public string InterfaceName { get; }
+        public string ConstName { get; }
+        public string SchemaJson { get; }
+
+        public bool Equals(ToolSchemaModel? other)
+            => other is not null
+                && string.Equals(ToolName, other.ToolName, StringComparison.Ordinal)
+                && string.Equals(InterfaceName, other.InterfaceName, StringComparison.Ordinal)
+                && string.Equals(ConstName, other.ConstName, StringComparison.Ordinal)
+                && string.Equals(SchemaJson, other.SchemaJson, StringComparison.Ordinal);
+
+        public override bool Equals(object? obj) => Equals(obj as ToolSchemaModel);
+
+        public override int GetHashCode()
+        {
+            unchecked
+            {
+                var comparer = StringComparer.Ordinal;
+                var hash = 17;
+                hash = (hash * 31) + comparer.GetHashCode(ToolName);
+                hash = (hash * 31) + comparer.GetHashCode(InterfaceName);
+                hash = (hash * 31) + comparer.GetHashCode(ConstName);
+                hash = (hash * 31) + comparer.GetHashCode(SchemaJson);
+                return hash;
+            }
+        }
     }
 }

@@ -54,8 +54,9 @@ namespace Mud.Feishu.AI.Events;
 /// <item>反序（先回复后落库）：落库失败 ⇒ 回滚重投递 ⇒ <b>用户收到两条回复</b>。</item>
 /// </list>
 /// 「用户可见的重复」比「历史内部多一轮（用户不可见）」严重得多，故维持现状。
-/// 根治方案（交付态补发 / outbox：持久化"已生成但未确认送达"的回复文本，重投递优先补发而非重跑模型）
-/// 见 R2 方案 §4.1 P4-4，本轮不实现。
+/// 根治已由 <b>P4-4（outbox）</b>完成：回复在下发<b>之前</b>随会话落盘，重投递时补发同一份文本
+/// 而非重跑模型（见 R2 方案 §4.1「P4-4 实施记录」）。次序仍维持「先落库、后回复」——
+/// outbox 消除的是「重跑模型」这一环，不是重投递本身（exactly-once 做不到，也不该假装有）。
 /// </para>
 /// </remarks>
 /// <typeparam name="T">强类型事件 DTO（须实现 <see cref="IEventResult"/>）。</typeparam>
@@ -219,6 +220,19 @@ public abstract class ConversationalFeishuEventHandler<T>(
 
             var session = await _agent.GetOrCreateSessionAsync(conversationKey, cancellationToken).ConfigureAwait(false);
 
+            // P4-4（outbox）：上一轮「已生成但未确认送达」的回复——本轮重投递命中同一轮次时
+            // **补发**而不是重跑模型。省下一次模型计费，且不往历史里多加一轮（根治 R2-8 的取舍代价）。
+            if (TryTakePendingReply(session, request, out var pendingReply))
+            {
+                activity?.AddTag(FeishuAgentDiagnostics.TagReplayed, true);
+                await ReplyAsync(request, pendingReply!, cancellationToken).ConfigureAwait(false);
+
+                // 补发成功后落库（条目已在内存中摘除）：失败则异常 ⇒ 幂等回滚 ⇒ 再重投递仍会补发，
+                // 语义与既有 at-least-once 一致（不追求 exactly-once，见类注释）。
+                await _agent.SaveSessionAsync(conversationKey, session, cancellationToken).ConfigureAwait(false);
+                return;
+            }
+
             // 工具执行上下文沿异步流注入：必须在上下文装配**之前**生效——
             // 知识/引用类装配器（如 KnowledgeContextAssembler → AilyKnowledgeProvider）经
             // IFeishuToolContextAccessor 读取 appKey 切租户（多租户隔离禁止默认兜底，TMA2-20）；
@@ -245,15 +259,26 @@ public abstract class ConversationalFeishuEventHandler<T>(
             var (responseText, streamed) = await RunConversationAsync(
                 request, session, userMessage, activity, cancellationToken).ConfigureAwait(false);
 
+            // 空模型回复守卫（R2-9）：内容过滤/推理中断时 responseText 为空，
+            // 下发空文本会让飞书 API 报错 → 异常 → 幂等回滚 → 重投递重跑模型（重复计费），
+            // 且可能反复得到空回复。此处按「已消费」处理：历史已落库，仅跳过下发。
+            var shouldDeliver = !streamed && !string.IsNullOrWhiteSpace(responseText);
+
+            // P4-4（outbox）：**下发之前**把待补发文本写进会话一并落盘。
+            // 于是「下发失败 → 幂等回滚 → 重投递」这条既有路径，下一轮会命中补发而不是重跑模型。
+            // 仅非流式：流式已由通道分片段送达，补发整段会与已送达的半截内容重复（其失败语义由
+            // 「补偿 Flush + 回滚」承载，见流式路径注释）。
+            if (shouldDeliver)
+            {
+                SetPendingReply(session, request, responseText);
+            }
+
             // 流式路径回复已部分送达：落库不得使用会被取消的令牌，否则「已送达但未落库」
             // 会与幂等回滚叠加成重复回复。失败路径**不**落库——那是既有 at-least-once 语义
             // （RollbackProcessingAsync → 重投递），改成「失败也落库」等于把「可能重复」换成「确定丢失」。
             await _agent.SaveSessionAsync(
                 conversationKey, session, streamed ? CancellationToken.None : cancellationToken).ConfigureAwait(false);
 
-            // 空模型回复守卫（R2-9）：内容过滤/推理中断时 responseText 为空，
-            // 下发空文本会让飞书 API 报错 → 异常 → 幂等回滚 → 重投递重跑模型（重复计费），
-            // 且可能反复得到空回复。此处按「已消费」处理：历史已落库，仅跳过下发。
             if (!streamed && string.IsNullOrWhiteSpace(responseText))
             {
                 _logger.LogWarning("模型返回空回复，跳过下发（subject: {SubjectId}）", request.SubjectId);
@@ -264,6 +289,12 @@ public abstract class ConversationalFeishuEventHandler<T>(
             if (!streamed)
             {
                 await ReplyAsync(request, responseText, cancellationToken).ConfigureAwait(false);
+
+                // 送达成功 ⇒ 摘除待补发条目并落盘（用不可取消令牌：这一步丢不得，
+                // 否则下一轮重投递会再补发一次，用户收到两条）。
+                ClearPendingReply(session);
+                await _agent.SaveSessionAsync(
+                    conversationKey, session, CancellationToken.None).ConfigureAwait(false);
             }
         }
         finally
@@ -395,6 +426,88 @@ public abstract class ConversationalFeishuEventHandler<T>(
 
         activity?.AddTag(FeishuAgentDiagnostics.TagStreamed, true);
         return (fullText.ToString(), true);
+    }
+
+    /// <summary>
+    /// P4-4（outbox）：本轮「轮次标识」——用于判定重投递事件与待补发条目是否同一轮。
+    /// </summary>
+    /// <remarks>
+    /// 消息 ID 是重投递下最稳定的标识（同一事件重投递携带同一 <c>MessageId</c>）；
+    /// 无消息 ID 的事件（如某些回调）退化为「发送人 + 提及文本」，避免把所有无 ID 事件
+    /// 折叠进同一个补发桶。
+    /// </remarks>
+    private static string TurnKeyOf(ConversationRequest request)
+        => !string.IsNullOrEmpty(request.MessageId)
+            ? request.MessageId
+            : (request.SenderId ?? string.Empty) + "|" + (request.MentionedText ?? string.Empty);
+
+    /// <summary>
+    /// P4-4（outbox）：取出并<b>摘除</b>本轮待补发条目。
+    /// </summary>
+    /// <returns>命中同一轮次且应补发时返回 <see langword="true"/>。</returns>
+    /// <remarks>
+    /// <list type="bullet">
+    /// <item><b>轮次不匹配 ⇒ 陈旧条目</b>：说明用户已发了新消息，补发上一轮的回复属于答非所问 —— 丢弃，
+    /// 由调用方正常走模型（回复丢失的后果与修复前一致，不放大）。</item>
+    /// <item><b>无论命中与否都先摘除</b>：调用方在补发成功 / 正常跑完一轮后都会落库，
+    /// 于是陈旧条目不会在会话里无限驻留。</item>
+    /// <item><b>读取必须防御</b>：状态袋值是惰性反序列化的（R2-2），损坏载荷只在首次类型化读取时抛，
+    /// 不得让本路径成为新的逃逸点。</item>
+    /// </list>
+    /// </remarks>
+    private bool TryTakePendingReply(AgentSession session, ConversationRequest request, out string? pendingReply)
+    {
+        pendingReply = null;
+
+        try
+        {
+            if (!session.StateBag.TryGetValue<string>(
+                    FeishuAgent.PendingReplyStateKey, out var stored, null)
+                || string.IsNullOrEmpty(stored))
+            {
+                return false;
+            }
+
+            // 轮次标识必须**先读再摘除**——摘除后再读恒为 null，会让同一轮次被误判为「陈旧」而丢弃
+            // （本机用例实测：表现为重投递仍然重跑模型，outbox 完全失效且无任何异常）。
+            session.StateBag.TryGetValue<string>(
+                FeishuAgent.PendingReplyTurnStateKey, out var storedTurn, null);
+
+            session.StateBag.TryRemoveValue(FeishuAgent.PendingReplyStateKey);
+            session.StateBag.TryRemoveValue(FeishuAgent.PendingReplyTurnStateKey);
+
+            if (!string.Equals(storedTurn, TurnKeyOf(request), StringComparison.Ordinal))
+            {
+                _logger.LogWarning(
+                    "发现陈旧的待补发条目（轮次不匹配），已丢弃——不补发上一轮回复（subject: {SubjectId}）",
+                    request.SubjectId);
+                return false;
+            }
+
+            pendingReply = stored;
+            return true;
+        }
+        catch (Exception ex) when (ex is JsonException or ArgumentException
+                                     or InvalidOperationException or NotSupportedException)
+        {
+            // 损坏条目：按 miss 处理（与 R2-2 同一哲学——坏值不该毒化会话）。
+            _logger.LogWarning(ex, "待补发条目不可用（已按无待补发处理）");
+            return false;
+        }
+    }
+
+    /// <summary>P4-4（outbox）：把本轮回复写入待补发条目（随下一次落库一起持久化）。</summary>
+    private static void SetPendingReply(AgentSession session, ConversationRequest request, string responseText)
+    {
+        session.StateBag.SetValue(FeishuAgent.PendingReplyStateKey, responseText, null);
+        session.StateBag.SetValue(FeishuAgent.PendingReplyTurnStateKey, TurnKeyOf(request), null);
+    }
+
+    /// <summary>P4-4（outbox）：摘除待补发条目（送达成功后调用）。</summary>
+    private static void ClearPendingReply(AgentSession session)
+    {
+        session.StateBag.TryRemoveValue(FeishuAgent.PendingReplyStateKey);
+        session.StateBag.TryRemoveValue(FeishuAgent.PendingReplyTurnStateKey);
     }
 
     /// <summary>

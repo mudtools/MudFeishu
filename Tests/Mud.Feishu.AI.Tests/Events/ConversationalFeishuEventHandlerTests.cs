@@ -227,8 +227,9 @@ public class ConversationalFeishuEventHandlerTests
         var handler = new ProbeHandler(agent, CreateDeduplicator().Object, accessor);
         await handler.HandleAsync(DemoEventData("evt-appkey-1"), default);
 
-        store.SavedKeys.Should().ContainSingle();
-        store.SavedKeys[0].Should().StartWith($"feishu:app-b:conversation:",
+        // P4-4 起非流式一轮会落库**两次**：下发前（含待补发条目）+ 送达后（摘除条目）。
+        store.SavedKeys.Should().NotBeEmpty();
+        store.SavedKeys.Should().OnlyContain(key => key.StartsWith("feishu:app-b:conversation:", StringComparison.Ordinal),
             "会话键必须携带真实 appKey（否则多应用共用 default 命名空间、历史跨租户混用）");
     }
 
@@ -342,8 +343,7 @@ public class ConversationalFeishuEventHandlerTests
         await handler.HandleAsync(DemoEventData("evt-tools-appkey-4"), default);
 
         handler.LastReply.Should().Be("模型回答");
-        store.SavedKeys.Should().ContainSingle();
-        store.SavedKeys[0].Should().StartWith("feishu:app-c:conversation:");
+        store.SavedKeys.Should().OnlyContain(key => key.StartsWith("feishu:app-c:conversation:", StringComparison.Ordinal));
     }
 
     // ───────────────────── P2-7：空用户消息守卫 ─────────────────────

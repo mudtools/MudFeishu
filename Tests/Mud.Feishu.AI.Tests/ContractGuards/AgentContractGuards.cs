@@ -350,6 +350,16 @@ public class AgentContractGuards
         keys.Should().OnlyHaveUniqueItems("MAF 要求会话状态键全局唯一（重复即运行期异常）");
         keys.Should().Contain("feishu.agent.history", "历史状态键是会话摘要与历史读写的同源锚点");
         source.Should().Contain("StateKey = ChatHistoryStateKey", "状态键必须被 ChatClientAgentOptions 真实消费");
+
+        // P4-4：outbox 状态键必须成对存在且**有真实消费点**——否则键会成为无人读取的僵尸状态，
+        // 占会话存储且给后续维护者造成"这里似乎实现了补发"的误判。
+        keys.Should().Contain("feishu.agent.pending_reply");
+        keys.Should().Contain("feishu.agent.pending_reply_turn");
+
+        var handlerSource = ReadAiSource("Events", "ConversationalFeishuEventHandler.cs");
+        handlerSource.Should().Contain("PendingReplyStateKey",
+            "outbox 状态键必须在会话处理器中被真实消费（补发/写入/摘除）");
+        handlerSource.Should().Contain("PendingReplyTurnStateKey");
     }
 
     // ────────────────────────────────────────────────────────────────────

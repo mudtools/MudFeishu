@@ -69,6 +69,12 @@ internal static class FeishuAgentDiagnostics
     /// <summary>Span 属性：本轮回复是否经流式通道送达。</summary>
     public const string TagStreamed = "feishu.agent.streamed";
 
+    /// <summary>
+    /// Span 属性：本轮是否是 outbox <b>补发</b>（P4-4：重投递命中「已生成但未确认送达」的条目，
+    /// 直接补发而非重跑模型）。宿主据此观测「省下的模型调用」与「补发频率」。
+    /// </summary>
+    public const string TagReplayed = "feishu.agent.replayed";
+
     /// <summary>Span 属性：会话闸门获取等待耗时（毫秒；P2D-1——键维度只进 Span，不进 Metrics tag，原则 8）。</summary>
     public const string TagGateWaitMs = "feishu.conversation.gate_wait_ms";
 

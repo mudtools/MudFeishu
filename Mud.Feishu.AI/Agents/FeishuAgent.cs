@@ -34,6 +34,22 @@ public sealed class FeishuAgent : AIAgent
     /// <remarks>会话摘要器（<c>ConversationSummarizer</c>）经 MAF 扩展按同一键读写历史，键须同源。</remarks>
     internal const string ChatHistoryStateKey = "feishu.agent.history";
 
+    /// <summary>
+    /// P4-4（outbox）：「已生成但未确认送达」的回复文本状态键。
+    /// </summary>
+    /// <remarks>
+    /// 与 <see cref="PendingReplyTurnStateKey"/> 成对使用：后者记录该文本所属的轮次标识，
+    /// 用于判定重投递事件是否就是同一轮（否则是陈旧条目，应丢弃而非补发）。
+    /// 两个键都只存 <see cref="string"/>——刻意不引入自定义类型，避免 AOT 下为它准备
+    /// <c>JsonTypeInfo</c>（状态袋序列化走 MAF 自带解析器）。
+    /// </remarks>
+    internal const string PendingReplyStateKey = "feishu.agent.pending_reply";
+
+    /// <summary>
+    /// P4-4（outbox）：<see cref="PendingReplyStateKey"/> 所属轮次的标识。
+    /// </summary>
+    internal const string PendingReplyTurnStateKey = "feishu.agent.pending_reply_turn";
+
     private readonly ChatClientAgent _innerAgent;
     private readonly FeishuAgentOptions _options;
     private readonly IConversationStore? _conversationStore;

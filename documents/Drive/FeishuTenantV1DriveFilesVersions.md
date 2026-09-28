@@ -1,3 +1,8 @@
+---
+title: 文件版本管理接口（租户令牌）| MudFeishu
+description: 该接口用于以租户身份管理飞书在线文档与电子表格的版本，支持创建、删除和获取版本信息，适用于企业级文档版本控制与历史记录管理。
+---
+
 # 文件版本管理（租户令牌）- FeishuTenantV1DriveFilesVersions
 
 ## 接口名称

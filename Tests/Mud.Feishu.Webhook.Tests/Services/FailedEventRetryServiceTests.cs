@@ -395,6 +395,16 @@ public class FailedEventRetryServiceTests
             .Setup(x => x.GetPendingRetryEventsAsync(It.IsAny<DateTimeOffset>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<FailedEventInfo> { failedEvent });
 
+        // 在调用时刻捕获参数值快照：Moq 的 It.Is 谓词在 Verify 时才对捕获的参数引用求值，
+        // 而 store mock 每轮轮询返回同一 failedEvent 实例、服务失败路径会原地 RetryCount++；
+        // CI 慢机上 StopAsync 前第二轮轮询已把该实例 ++ 到 3，导致 e.RetryCount == 2
+        // 在验证时求值为 false（本地只跑一轮则假绿）。改为记录调用时刻的原始值。
+        var updateCalls = new List<(string EventId, int RetryCount)>();
+        eventStoreMock
+            .Setup(x => x.UpdateFailedEventAsync(It.IsAny<FailedEventInfo>(), It.IsAny<CancellationToken>()))
+            .Callback<FailedEventInfo, CancellationToken>((e, _) => updateCalls.Add((e.EventId, e.RetryCount)))
+            .Returns(Task.CompletedTask);
+
         _webhookServiceMock
             .Setup(x => x.HandleEventAsync(It.IsAny<EventData>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((false, "重放仍失败"));
@@ -426,12 +436,9 @@ public class FailedEventRetryServiceTests
 
         await service.StopAsync(CancellationToken.None);
 
-        // Assert
-        eventStoreMock.Verify(
-            x => x.UpdateFailedEventAsync(
-                It.Is<FailedEventInfo>(e => e.EventId == "event-e10" && e.RetryCount == 2),
-                It.IsAny<CancellationToken>()),
-            Times.AtLeastOnce,
+        // Assert - 以调用时刻的快照断言：1 → 2，不得重置（不受后续轮询对共享实例的 ++ 影响）
+        updateCalls.Should().Contain(
+            c => c.EventId == "event-e10" && c.RetryCount == 2,
             "重放再次失败后 RetryCount 必须在既有值上递增（1 → 2），不得重置");
     }
 

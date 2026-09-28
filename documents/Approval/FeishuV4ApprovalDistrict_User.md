@@ -1,3 +1,8 @@
+---
+title: 审批地理库接口（用户令牌）| MudFeishu
+description: 该接口用于以用户身份获取飞书审批的地理库数据，以便在发起审批时填写地址控件的区域信息，与租户令牌版本功能一致，区别在于使用用户身份令牌（UserAccessToken）调用。
+---
+
 # 审批地理库（用户令牌） - FeishuV4ApprovalDistrict_User
 
 ## 接口名称

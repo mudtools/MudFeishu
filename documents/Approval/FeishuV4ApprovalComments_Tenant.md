@@ -1,3 +1,8 @@
+---
+title: 审批评论接口（租户令牌）| MudFeishu
+description: 该接口用于管理飞书原生审批实例内的评论功能，支持员工在审批实例内进行评论与回复评论，评论内容支持文本、@用户以及添加附件。
+---
+
 # 审批评论接口 -（FeishuV4ApprovalComments_Tenant）
 
 ## 接口名称

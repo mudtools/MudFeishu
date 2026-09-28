@@ -208,7 +208,7 @@ public class AgentContractGuards
                 if (!include.Success)
                     continue;
 
-                var referenced = Path.GetFileName(include.Groups[1].Value.Replace('/', '\\'));
+                var referenced = GetFileNameCrossPlatform(include.Groups[1].Value);
                 if (!string.Equals(referenced, "Mud.Feishu.Abstractions.csproj", StringComparison.OrdinalIgnoreCase))
                     offenders.Add($"{projectName} → {referenced}");
             }
@@ -217,6 +217,20 @@ public class AgentContractGuards
         offenders.Should().BeEmpty(
             "实现包之间不允许横向引用，只允许纵向引用（→ Mud.Feishu.Abstractions）；" +
             "共享契约必须迁移至 Abstractions。违例: " + string.Join("; ", offenders));
+    }
+
+    /// <summary>
+    /// 回归锁：<c>ProjectReference Include</c> 用 Windows 反斜杠书写时，守卫取文件名必须与平台无关
+    /// （Linux CI 上 <see cref="Path.GetFileName(string)"/> 会把整条相对路径当成文件名，
+    /// 使守卫把合法的纵向引用误报为横向引用；本地 Windows 无法复现该缺陷）。
+    /// </summary>
+    [Theory]
+    [InlineData(@"..\Mud.Feishu.Abstractions\Mud.Feishu.Abstractions.csproj")]
+    [InlineData("../Mud.Feishu.Abstractions/Mud.Feishu.Abstractions.csproj")]
+    [InlineData("Mud.Feishu.Abstractions.csproj")]
+    public void GetFileNameCrossPlatform_ShouldHandleBothSeparatorStyles(string include)
+    {
+        GetFileNameCrossPlatform(include).Should().Be("Mud.Feishu.Abstractions.csproj");
     }
 
     // ────────────────────────────────────────────────────────────────────
@@ -245,6 +259,22 @@ public class AgentContractGuards
             })
             .Should().BeTrue("FeishuConversationOptions.SectionName 必须被 GetSection(...) 真正使用（R5/X1）");
     }
+
+    /// <summary>
+    /// 跨平台取文件名。csproj 里的 <c>ProjectReference Include</c> 普遍写成 Windows 反斜杠相对路径
+    /// （如 <c>..\Mud.Feishu.Abstractions\Mud.Feishu.Abstractions.csproj</c>），而
+    /// <see cref="Path.GetFileName(string)"/> 只按 <see cref="Path.DirectorySeparatorChar"/> 切分：
+    /// Linux（CI）上 '/' 才是分隔符、'\' 是合法文件名字符，整条相对路径会被当作文件名返回，
+    /// 使「只允许纵向引用」守卫把合法的 → Abstractions 引用误报为横向引用（本地 Windows 无法复现）。
+    /// 因此这里不依赖平台分隔符，显式按两种分隔符取最后一段。
+    /// </summary>
+    private static string GetFileNameCrossPlatform(string path)
+    {
+        var lastSeparator = path.LastIndexOfAny(PathSeparators);
+        return lastSeparator < 0 ? path : path[(lastSeparator + 1)..];
+    }
+
+    private static readonly char[] PathSeparators = new[] { '\\', '/' };
 
     private static string GetSolutionRoot()
     {

@@ -112,6 +112,7 @@ internal static class SchemaEmitter
         source.AppendLine("namespace Mud.Feishu.AI.Tools.Generated");
         source.AppendLine("{");
         source.AppendLine("    /// <summary>[FeishuTool] 接口编译期产出的工具 Schema（AOT 安全：零运行时反射）。</summary>");
+        source.AppendLine($"    {GeneratedCodeMarker.Attribute}");
         source.AppendLine("    public static partial class FeishuToolSchemas");
         source.AppendLine("    {");
 
@@ -122,6 +123,7 @@ internal static class SchemaEmitter
         }
 
         source.AppendLine("        /// <summary>工具名 → Schema 的注册表快照（供白名单注册、授权审计与目录投影消费）。</summary>");
+        source.AppendLine($"        {GeneratedCodeMarker.Attribute}");
         source.AppendLine("        public static System.Collections.Generic.IReadOnlyDictionary<string, string> SchemaByToolName { get; } =");
         source.AppendLine("            new System.Collections.Generic.Dictionary<string, string>(System.StringComparer.Ordinal)");
         source.AppendLine("            {");
@@ -148,6 +150,7 @@ internal static class SchemaEmitter
         source.AppendLine("namespace Mud.Feishu.AI.FeishuTools");
         source.AppendLine("{");
         source.AppendLine("    /// <summary>工具名契约表（编译期从 [FeishuTool] 特性派生）：模型可见契约的唯一真相源。</summary>");
+        source.AppendLine($"    {GeneratedCodeMarker.Attribute}");
         source.AppendLine("    public static class FeishuToolNames");
         source.AppendLine("    {");
 
@@ -182,10 +185,12 @@ internal static class SchemaEmitter
         source.AppendLine("        public static readonly string[] All = [.. ReadonlyAll, .. WriteAll];");
         source.AppendLine();
         source.AppendLine("        /// <summary>判断工具名是否写类（读写白名单分离与授权门禁的事实来源）。</summary>");
+        source.AppendLine($"        {GeneratedCodeMarker.Attribute}");
         source.AppendLine("        public static bool IsWriteTool(string name)");
         source.AppendLine("            => System.Linq.Enumerable.Contains(WriteAll, name, System.StringComparer.Ordinal);");
         source.AppendLine();
         source.AppendLine("        /// <summary>由工具名求契约常量名（诊断与守卫消费；不是契约本身）。</summary>");
+        source.AppendLine($"        {GeneratedCodeMarker.Attribute}");
         source.AppendLine("        public static string? ToConstantName(string toolName) => toolName switch");
         source.AppendLine("        {");
         foreach (var model in ordered)

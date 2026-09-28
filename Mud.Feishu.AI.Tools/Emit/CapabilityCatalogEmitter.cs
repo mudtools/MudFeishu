@@ -110,6 +110,7 @@ internal static class CapabilityCatalogEmitter
         source.AppendLine("namespace Mud.Feishu.AI.Tools.Generated");
         source.AppendLine("{");
         source.AppendLine("    /// <summary>SDK 能力目录快照（聚合事实；未暴露单元的具体方法名不进产物）。</summary>");
+        source.AppendLine($"    {GeneratedCodeMarker.Attribute}");
         source.AppendLine("    internal static class FeishuCapabilityCatalog");
         source.AppendLine("    {");
         source.AppendLine("        /// <summary>SDK 接口声明的方法总数。</summary>");
@@ -120,6 +121,7 @@ internal static class CapabilityCatalogEmitter
         source.AppendLine($"        public const int DomainCount = {methodsByModule.Count};");
         source.AppendLine();
         source.AppendLine("        /// <summary>按能力分组统计的方法数（分组轴 = 接口名的 domain+resource 段）。</summary>");
+        source.AppendLine($"        {GeneratedCodeMarker.Attribute}");
         source.AppendLine("        public static System.Collections.Generic.IReadOnlyDictionary<string, int> MethodsByDomain { get; } =");
         source.AppendLine("            new System.Collections.Generic.Dictionary<string, int>(System.StringComparer.Ordinal)");
         source.AppendLine("            {");

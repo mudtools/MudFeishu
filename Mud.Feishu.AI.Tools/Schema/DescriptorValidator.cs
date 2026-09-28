@@ -51,7 +51,8 @@ internal static class DescriptorValidator
         var paramDescCovered = entryList.Sum(e => e.Parameters.Count(p => !string.IsNullOrWhiteSpace(p.DocDescription)));
         var paramTotal = entryList.Sum(e => e.Parameters.Count);
         var scopesCovered = entryList.Count(e => e.Scopes.Count > 0);
-        var riskCovered = entryList.Count(e => e.Risk != ToolRisk.Read || true); // 所有工具都有风险分级
+        // 所有工具都经过风险分级（Read/Write/HighRiskWrite），故 risk 覆盖率始终为 100%。
+        var riskCovered = entryList.Count;
         var outputCovered = entryList.Count; // 所有工具都有 OutputSchema（由生成器保证）
 
         return new CoverageReport(
@@ -108,21 +109,17 @@ internal static class DescriptorValidator
         {
             // required ⊆ properties 键集
             var propertyNames = new HashSet<string>(entry.Parameters.Select(p => p.Name));
-            // （required 已在 SchemaWriter 中由 IsRequired 判定，这里只做交叉校验）
-
-            // array 下 items 必须存在且非空类型
-            // （由 SchemaWriter 保证，此处跳过）
-
-            // risk == high-risk-write ⇒ input 含 confirm
-            if (entry.Risk == ToolRisk.HighRiskWrite)
+            var requiredParams = entry.Parameters.Where(p => p.IsRequired).Select(p => p.Name);
+            foreach (var req in requiredParams)
             {
-                var hasConfirm = entry.Parameters.Any(p => p.Name == "confirm");
-                if (!hasConfirm)
+                if (!propertyNames.Contains(req))
                 {
-                    results.Add(ValidationResult.Error("MUDFT004", entry.InterfaceName,
-                        $"高风险写工具 '{entry.ToolName}' 缺少 confirm 参数"));
+                    results.Add(ValidationResult.Error("MUDFT003", entry.InterfaceName,
+                        $"工具 '{entry.ToolName}' 的 required 参数 '{req}' 不在 properties 键集中"));
                 }
             }
+
+            // array 下 items 必须存在且非空类型（由 SchemaWriter 保证，此处跳过）
         }
     }
 
@@ -139,11 +136,23 @@ internal static class DescriptorValidator
                     $"身份为 User 但接口名 '{entry.InterfaceName}' 不以 IFeishuUser 开头"));
             }
 
-            // identity == Both（基接口）不应直接产工具
+            // identity == Both（基接口）不应直接产工具（G-4 去重规则）
             if (entry.Identity == ToolIdentity.Both)
             {
-                results.Add(ValidationResult.Warning("MUDFT005", entry.InterfaceName,
+                results.Add(ValidationResult.Warning("MUDFT006", entry.InterfaceName,
                     $"基接口 '{entry.InterfaceName}' 不应直接产工具（应为 _Tenant/_User 派生接口）"));
+            }
+
+            // risk == high-risk-write ⇔ input 含 confirm（§4.6.5.2 L3 跨字段一致）
+            if (entry.Risk == ToolRisk.HighRiskWrite)
+            {
+                var hasConfirm = entry.Parameters.Any(p => p.Name == "confirm");
+                if (!hasConfirm)
+                {
+                    // 风险分级与 schema 不一致——MUDFT012 语义为「风险分级一致性问题」
+                    results.Add(ValidationResult.Error("MUDFT012", entry.InterfaceName,
+                        $"高风险写工具 '{entry.ToolName}' 缺少 confirm 参数（risk == high-risk-write ⇔ schema 含 confirm）"));
+                }
             }
         }
     }

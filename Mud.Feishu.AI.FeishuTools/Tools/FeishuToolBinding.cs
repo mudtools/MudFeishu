@@ -121,7 +121,7 @@ public sealed class FeishuToolBinding
         {
             using var scope = _scopeFactory.BeginScope(context.AppKey);
             var result = await invokeDownstream(cancellationToken).ConfigureAwait(false);
-            activity?.SetTag(FeishuToolDiagnostics.TagTruncated, result.Truncated || ToolResultText.IsTruncated(result.ToString()));
+            activity?.SetTag(FeishuToolDiagnostics.TagTruncated, result.Truncated);
 
             FeishuToolDiagnostics.RecordDuration(tool.Name, context.AppKey, executionStopwatch.ElapsedMilliseconds);
             FeishuToolDiagnostics.RecordExecution(tool.Name, context.AppKey, FeishuMetrics.ToolOutcomes.Allowed);

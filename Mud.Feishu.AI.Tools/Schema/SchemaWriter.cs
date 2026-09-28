@@ -138,8 +138,8 @@ internal static class SchemaWriter
             json.Append(",\"items\":{\"type\":").Append(Quote(itemType)).Append('}');
         }
 
-        // 文件上传 → format: binary
-        if (param.ParameterKind == "FormContent" || jsonType == "binary")
+        // 文件上传/下载 → format: binary（MapJsonType 不产 "binary"，需直接检查 C# 类型）
+        if (param.ParameterKind == "FormContent" || IsBinaryType(param.CsharpType))
         {
             json.Append(",\"format\":\"binary\"");
         }
@@ -256,6 +256,15 @@ internal static class SchemaWriter
         }
 
         return "string";
+    }
+
+    /// <summary>检测 C# 类型名是否为二进制类型（byte[] / Stream），用于 format: binary 标注。</summary>
+    private static bool IsBinaryType(string csharpType)
+    {
+        var type = csharpType.TrimEnd('?');
+        var shortName = type.Contains('.') ? type.Substring(type.LastIndexOf('.') + 1) : type;
+        return shortName is "Byte[]" or "byte[]"
+            or "Stream" or "FileStream" or "MemoryStream";
     }
 
     private static string Quote(string value)

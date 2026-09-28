@@ -24,13 +24,38 @@ namespace Mud.Feishu.AI.Conversations;
 /// <b>与裁剪窗的关系</b>：<see cref="FeishuAgentOptions.MaxHistoryMessages"/> 由
 /// <c>MessageCountingChatReducer</c> 在每次运行时折叠（模型可见窗口）；本摘要在其之上，
 /// 把「将被折叠丢掉」的内容先压成要点，避免硬截断丢失上下文。保留窗取
-/// <c>MaxHistoryMessages/2</c> 并钳制到 <c>SummaryThreshold-2</c> 以下，保证重建后不再立即越限。
+/// <c>MaxHistoryMessages/2</c>，条数阈值启用时再钳制到 <c>SummaryThreshold-2</c> 以下，
+/// 保证重建后不再立即越限。
+/// </para>
+/// <para>
+/// <b>切片合法性（工具组保护）</b>：切片起点<b>不得</b>落在工具调用组内——
+/// assistant 的 <c>FunctionCallContent</c> 与其后的 <c>FunctionResultContent</c> 必须成对保留，
+/// 否则下发给 OpenAI 兼容端点即 400（tool 消息缺少前驱 tool_calls），且保存不了会话 ⇒
+/// 重投递再次摘要、再次 400，会话永久不可用。故起点遇工具相关消息时向更早处回退，
+/// 全部历史都在工具组内时本轮直接跳过压缩。
+/// </para>
+/// <para>
+/// <b>收敛保证</b>：重建后必须低于 token 预算，否则下一轮立即再次触发摘要（每轮一次模型调用、
+/// 摘要被反复摘要）。两步实现：①保留窗起点取「条数窗口」与「token 预算窗口」的<b>较晚者</b>——
+/// 超预算时收缩保留窗、把被挤出的旧消息交给摘要（而非丢弃最新内容）；
+/// ②重建后仍越限（如摘要本体较大）时从保留窗<b>头部整组回退</b>。边界：
+/// 单条消息即超预算时无法收敛到预算内，兜底收缩到「摘要 + 最后一条」即停，不会死循环。
 /// </para>
 /// <para>
 /// <b>失败隔离</b>：摘要模型调用失败只记日志并跳过本轮压缩（退化为既有裁剪行为），
 /// 绝不中断主对话流程。会话历史读写走 MAF
 /// <c>AgentSessionExtensions.TryGetInMemoryChatHistory/SetInMemoryChatHistory</c>
 /// （MAF 内部源生成序列化，AOT 安全；本类不做任何反射序列化）。
+/// </para>
+/// <para>
+/// <b>为什么不用 MAF 的 Compaction 管线（B3.1 否决，勿重造）</b>：MAF 1.20.0 的
+/// <c>CompactionProvider</c>/<c>PipelineCompactionStrategy</c>/<c>SummarizationCompactionStrategy</c>
+/// 均为 <c>[Experimental]</c>，且二者叠加会造成历史<b>双份无界增长</b>：
+/// <c>InMemoryChatHistoryProvider.StoreChatHistoryAsync</c> 原样追加请求+响应消息，
+/// 若移除其 <c>ChatReducer</c>（Compaction 替换方案的必要前提），<c>State.Messages</c> 只增不减；
+/// 同时 <c>CompactionProvider</c> 把**含被排除组**的 <c>MessageGroups</c> 也写入会话状态袋
+/// ⇒ 落库 JSON 同时保存两份会话历史且均无界（Redis 后端按 key 存整包），违反「落库体积可控」。
+/// 待 MAF 提供「存储侧压缩」语义后再评估迁移。
 /// </para>
 /// </remarks>
 public sealed class ConversationSummarizer
@@ -112,8 +137,29 @@ public sealed class ConversationSummarizer
         }
 
         var retain = Math.Min(_retainRecentCount, history.Count - 1);
-        var older = history.GetRange(0, history.Count - retain);
-        var recent = history.GetRange(history.Count - retain, retain);
+
+        // 保留窗起点 = 条数窗口与 token 预算窗口的**较晚者**（P1-1）：
+        // 若「保留窗自身」已占满预算，重建后必然再次越限 ⇒ 每轮重复摘要且摘要被反复摘要。
+        // 以「把更多旧内容交给摘要」的方式收缩保留窗（而非丢弃最新内容），保留窗 token 量因此天然低于预算。
+        var start = Math.Max(history.Count - retain, ResolveStartByTokenBudget(history));
+
+        // 切片起点只能向「更早」扩张：不得落在工具调用组内（assistant 的 FunctionCallContent
+        // 与其后的 FunctionResultContent 必须成对保留），否则下发给 OpenAI 兼容端点即 400
+        //（tool 消息缺少前驱 tool_calls）⇒ 保存不了会话 ⇒ 重投递再次摘要、再次 400，会话永久不可用。
+        while (start > 0 && IsToolRelated(history[start]))
+        {
+            start--;
+        }
+
+        if (start <= 0)
+        {
+            // 全部历史都在工具调用组内：本轮不压缩（宁可跳过，也不产出非法历史）。
+            _logger?.LogWarning("会话历史整体处于工具调用组内，本轮跳过压缩（历史 {Count} 条）", history.Count);
+            return false;
+        }
+
+        var older = history.GetRange(0, start);
+        var recent = history.GetRange(start, history.Count - start);
 
         using var activity = FeishuAgentDiagnostics.StartSummarizeActivity(older.Count, recent.Count);
 
@@ -155,18 +201,80 @@ public sealed class ConversationSummarizer
             new(ChatRole.System, $"[历史要点纪要]\n{summaryText!.Trim()}"),
         };
         rebuilt.AddRange(recent);
+
+        // 收敛兜底（P1-1）：重建后若仍越限（摘要 + 保留窗合计超预算），从保留窗**头部**整组回退——
+        // 保留最新消息、丢弃最旧的未摘要消息。绝不从尾部删除：那会让模型丢失最新上下文
+        // （指标收敛、语义倒退）。内层循环保证回退后头部不是孤立 tool 消息（§工具组保护）。
+        // 边界：单条消息 token 量 ≥ 预算时无法收敛到预算内，此处收缩到「摘要 + 最后一条」即停，
+        // 不会死循环；下一轮在同一位置再次触发摘要属配置与内容不匹配的必然结果。
+        if (_maxHistoryTokens > 0)
+        {
+            while (rebuilt.Count > 2 && ChatTokenCounter.CountMessages(rebuilt) >= _maxHistoryTokens)
+            {
+                do
+                {
+                    rebuilt.RemoveAt(1);
+                }
+                while (rebuilt.Count > 2 && IsToolRelated(rebuilt[1]));
+            }
+        }
+
         session.SetInMemoryChatHistory(rebuilt, FeishuAgent.ChatHistoryStateKey, null);
 
         activity?.SetTag(FeishuAgentDiagnostics.TagSummarized, true);
         return true;
     }
 
-    /// <summary>保留窗大小：<c>MaxHistoryMessages/2</c>，并钳制到 <c>阈值-2</c> 以下（保证重建后低于阈值，防「每轮重复摘要」）。</summary>
+    /// <summary>
+    /// 按 token 预算求保留窗起点：从最新一条向前累加，取「token 量 &lt; 预算」的后缀的<b>最早</b>起点。
+    /// </summary>
+    /// <remarks>
+    /// 预算维度只会让保留窗<b>变小</b>（起点后移 = 更多旧消息交给摘要），不会变小再变大：
+    /// 调用方以 <c>Math.Max(条数起点, 本方法结果)</c> 合并——保留窗自身的 token 量因此天然 &lt; 预算，
+    /// 重建后不会立即再次越限（P1-1 收敛）。被挤出的消息进入摘要输入而非被丢弃。
+    /// 返回值钳制在 <c>[0, count-1]</c>：至少保留最后一条（当前上下文）。
+    /// </remarks>
+    /// <param name="history">会话历史。</param>
+    /// <returns>预算维度的保留窗起点。</returns>
+    private int ResolveStartByTokenBudget(IReadOnlyList<ChatMessage> history)
+    {
+        if (_maxHistoryTokens <= 0)
+        {
+            return 0;
+        }
+
+        var tokens = 0;
+        var budgetStart = history.Count;
+        for (var i = history.Count - 1; i >= 0; i--)
+        {
+            var next = tokens + ChatTokenCounter.Count(history[i].Text);
+            if (next >= _maxHistoryTokens)
+            {
+                break;
+            }
+
+            tokens = next;
+            budgetStart = i;
+        }
+
+        // 单条即超预算时 budgetStart == count：钳到 count-1，避免保留窗为空（丢掉全部上下文）。
+        return Math.Min(budgetStart, history.Count - 1);
+    }
+
+    /// <summary>消息是否属于工具调用链（tool 结果，或携带工具调用/结果的 assistant/user 消息）。</summary>
+    private static bool IsToolRelated(ChatMessage message)
+        => message.Role == ChatRole.Tool
+           || message.Contents.Any(static content => content is FunctionCallContent or FunctionResultContent);
+
+    /// <summary>保留窗大小：<c>MaxHistoryMessages/2</c>；条数阈值启用时再钳制到 <c>阈值-2</c> 以下（保证重建后低于阈值）。</summary>
     private static int ResolveRetainCount(FeishuAgentOptions options)
     {
-        var threshold = Math.Max(2, options.SummaryThreshold);
         var retain = Math.Max(1, options.MaxHistoryMessages / 2);
-        return Math.Min(retain, Math.Max(1, threshold - 2));
+
+        // token-only 配置（SummaryThreshold=0，P2-6 起合法且生效）不得把保留窗压到 1 条。
+        return options.SummaryThreshold > 0
+            ? Math.Min(retain, Math.Max(1, options.SummaryThreshold - 2))
+            : retain;
     }
 
     /// <summary>一次模型调用生成要点纪要（只取消息文本；工具调用噪声不入摘要输入）。</summary>

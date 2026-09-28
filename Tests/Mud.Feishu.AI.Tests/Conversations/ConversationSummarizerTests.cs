@@ -46,10 +46,16 @@ public class ConversationSummarizerTests
     }
 
     private static ConversationSummarizer CreateSummarizer(
-        Mock<IChatClient>? client = null, int summaryThreshold = 6, int maxHistoryMessages = 8)
+        Mock<IChatClient>? client = null, int summaryThreshold = 6, int maxHistoryMessages = 8, int maxHistoryTokens = 8000)
         => new(
             (client ?? CreateSummaryClient()).Object,
-            new FeishuAgentOptions { Instructions = "x", SummaryThreshold = summaryThreshold, MaxHistoryMessages = maxHistoryMessages },
+            new FeishuAgentOptions
+            {
+                Instructions = "x",
+                SummaryThreshold = summaryThreshold,
+                MaxHistoryMessages = maxHistoryMessages,
+                MaxHistoryTokens = maxHistoryTokens,
+            },
             NullLogger.Instance);
 
     [Fact]
@@ -106,13 +112,26 @@ public class ConversationSummarizerTests
     }
 
     [Fact]
-    public async Task Summarize_ShouldBeDisabled_WhenThresholdZero()
+    public async Task Summarize_ShouldBeDisabled_WhenBothWindowsDisabled()
     {
         var session = await CreateSessionWithHistoryAsync(20);
 
-        var summarized = await CreateSummarizer(summaryThreshold: 0).SummarizeIfNeededAsync(session);
+        // 禁用态 = 条数阈值与 token 预算都为 0（P2-6 前 SummaryThreshold=0 就等价于两者都关，
+        // 该组合会掩盖「token-only 配置静默失效」的缺陷；现在二者必须显式同时为 0）。
+        var summarized = await CreateSummarizer(summaryThreshold: 0, maxHistoryTokens: 0).SummarizeIfNeededAsync(session);
 
-        summarized.Should().BeFalse("SummaryThreshold=0 为禁用态（保持既有历史裁剪窗行为）");
+        summarized.Should().BeFalse("双窗口禁用时不做摘要（保持既有历史裁剪窗行为）");
+    }
+
+    [Fact]
+    public async Task Summarize_ShouldTrigger_WhenOnlyTokenBudgetConfigured()
+    {
+        var session = await CreateSessionWithHistoryAsync(20);
+
+        // token-only（P2-6）：条数阈值 0 + token 预算 1 ⇒ 必然触发，验证配置真的生效。
+        var summarized = await CreateSummarizer(summaryThreshold: 0, maxHistoryTokens: 1).SummarizeIfNeededAsync(session);
+
+        summarized.Should().BeTrue("仅配 token 预算时必须真的启用摘要（否则该配置静默失效）");
     }
 
     [Fact]

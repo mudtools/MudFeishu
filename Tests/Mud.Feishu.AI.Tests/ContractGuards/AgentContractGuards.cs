@@ -260,6 +260,98 @@ public class AgentContractGuards
             .Should().BeTrue("FeishuConversationOptions.SectionName 必须被 GetSection(...) 真正使用（R5/X1）");
     }
 
+    // ────────────────────────────────────────────────────────────────────
+    // 守卫 6：顺序类缺陷回归锁（P0-1 / P2-1 / P2-2）
+    // ────────────────────────────────────────────────────────────────────
+
+    private static string ReadAiSource(params string[] relativeParts)
+    {
+        var parts = new string[relativeParts.Length + 2];
+        parts[0] = GetSolutionRoot();
+        parts[1] = "Mud.Feishu.AI";
+        relativeParts.CopyTo(parts, 2);
+        return File.ReadAllText(Path.Combine(parts));
+    }
+
+    /// <summary>
+    /// 工具执行上下文 <c>Begin</c> 必须前置于上下文装配（P0-1）。
+    /// </summary>
+    /// <remarks>
+    /// 顺序类缺陷最易在重构中复活，且症状是「静默零注入 + 仅一条 Warning」——
+    /// 断言相对顺序（不是绝对行号），行号漂移不会失效。
+    /// </remarks>
+    [Fact]
+    public void ToolContext_Begin_ShouldPrecedeContextAssembly()
+    {
+        var source = ReadAiSource("Events", "ConversationalFeishuEventHandler.cs");
+
+        var beginIndex = source.IndexOf("ToolContextAccessor?.Begin", StringComparison.Ordinal);
+        var assembleCallIndex = source.IndexOf(
+            "await AssembleUserMessageAsync(request, cancellationToken)", StringComparison.Ordinal);
+
+        beginIndex.Should().BeGreaterThan(-1, "必须先建立工具执行上下文");
+        assembleCallIndex.Should().BeGreaterThan(-1, "管线必须装配用户消息");
+        beginIndex.Should().BeLessThan(assembleCallIndex,
+            "工具上下文必须先于上下文装配生效——否则知识/引用类装配器读不到 appKey，RAG 注入模式永久静默失效");
+    }
+
+    /// <summary>
+    /// <c>FeishuAgent.Name</c> 必须 <c>override</c>，禁止用 <c>new</c> 遮蔽（P2-1）。
+    /// </summary>
+    [Fact]
+    public void FeishuAgent_Name_ShouldBeOverrideNotHide()
+    {
+        var source = ReadAiSource("Agents", "FeishuAgent.cs");
+
+        source.Should().Contain("override string? Name",
+            "AIAgent.Name 是 virtual：override 才能让经 AIAgent 引用（含 MAF 内部诊断）取到真实名字");
+        source.Should().NotContain("new string Name", "new 遮蔽会让基类属性恒为 null");
+    }
+
+    /// <summary>
+    /// <c>FeishuAgent.GetService</c> 必须**先判自身**再退内层（P2-2）。
+    /// </summary>
+    [Fact]
+    public void FeishuAgent_GetService_ShouldCheckSelfFirst()
+    {
+        var source = ReadAiSource("Agents", "FeishuAgent.cs");
+
+        var declaration = source.IndexOf("object? GetService(", StringComparison.Ordinal);
+        declaration.Should().BeGreaterThan(-1);
+
+        var body = source[declaration..];
+        var selfCheck = body.IndexOf("IsInstanceOfType(this)", StringComparison.Ordinal);
+        var innerCall = body.IndexOf("_innerAgent.GetService(", StringComparison.Ordinal);
+
+        selfCheck.Should().BeGreaterThan(-1, "必须先判自身");
+        innerCall.Should().BeGreaterThan(-1);
+        selfCheck.Should().BeLessThan(innerCall,
+            "否则 GetService(typeof(AIAgent)) 返回内部 ChatClientAgent，宿主将绕过飞书遥测/摘要");
+    }
+
+    /// <summary>
+    /// MAF 状态键必须唯一且被真实消费（防 ChatHistoryProvider 与 AIContextProvider 状态键冲突）。
+    /// </summary>
+    /// <remarks>
+    /// MAF <c>ChatClientAgent.ValidateAndCollectStateKeys</c> 在运行期对重复状态键直接抛异常；
+    /// 本守卫把该失败提前到测试期。<c>CompactionProvider</c> 已评估后不采用（B3.1 否决），
+    /// 故当前只应存在历史键一个状态键常量。
+    /// </remarks>
+    [Fact]
+    public void AgentStateKeys_ShouldBeUniqueAndConsumed()
+    {
+        var source = ReadAiSource("Agents", "FeishuAgent.cs");
+
+        var keys = Regex.Matches(source, @"const string (\w*StateKey) = ""([^""]+)""")
+            .Select(m => m.Groups[2].Value)
+            .ToList();
+
+        keys.Should().NotBeEmpty("ChatHistoryProvider 的状态键必须显式命名（默认键名随类型名漂移）");
+        keys.Should().OnlyHaveUniqueItems("MAF 要求会话状态键全局唯一（重复即运行期异常）");
+        keys.Should().Contain("feishu.agent.history", "历史状态键是会话摘要与历史读写的同源锚点");
+        source.Should().Contain("StateKey = ChatHistoryStateKey", "状态键必须被 ChatClientAgentOptions 真实消费");
+    }
+
     /// <summary>
     /// 跨平台取文件名。csproj 里的 <c>ProjectReference Include</c> 普遍写成 Windows 反斜杠相对路径
     /// （如 <c>..\Mud.Feishu.Abstractions\Mud.Feishu.Abstractions.csproj</c>），而

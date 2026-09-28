@@ -121,6 +121,49 @@ public class FeishuAgentServiceCollectionExtensionsTests
                 "FeishuConversation 节是 Memory/Redis 双后端的单一 TTL 阈值源");
     }
 
+    /// <summary>探针工具源：记录收到的 <see cref="IServiceProvider"/> 以断言「根作用域」契约。</summary>
+    private sealed class ProbeToolSource : FeishuAgentToolSource
+    {
+        public IServiceProvider? ObservedProvider { get; private set; }
+
+        public override IReadOnlyList<AIFunction> GetTools(IServiceProvider serviceProvider)
+        {
+            ObservedProvider = serviceProvider;
+            return [];
+        }
+    }
+
+    /// <summary>Scoped 协作件（用于验证工具源拿到的是根作用域、解析不到 Scoped 服务）。</summary>
+    private sealed class ScopedProbe;
+
+    /// <summary>
+    /// P2-10：工具源聚合发生在<b>根作用域</b>（Agent 是 Singleton），实现只能解析 Singleton。
+    /// </summary>
+    /// <remarks>
+    /// 原方案建议「聚合点改用 <c>CreateScope()</c>」——那会把「启动期响亮失败」换成
+    /// 「Scoped 实例被单例捕获、scope 释放后悬空」的静默缺陷，故本轮不采用，改为把契约测住：
+    /// 以 <c>ValidateScopes = true</c> 构筑宿主，断言工具源拿到的 provider <b>解析不到</b> Scoped 服务。
+    /// </remarks>
+    [Fact]
+    public void AddFeishuAgent_ToolSource_ShouldReceiveRootScopeOnly()
+    {
+        var services = new ServiceCollection();
+        var mockClient = new Mock<IChatClient>();
+        services.AddSingleton<IChatClient>(mockClient.Object);
+        services.AddScoped<ScopedProbe>();
+        var source = new ProbeToolSource();
+        services.AddSingleton<FeishuAgentToolSource>(source);
+        services.AddFeishuAgent(configure: o => o.Instructions = "x");
+
+        using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
+        provider.GetRequiredService<FeishuAgent>().Should().NotBeNull();
+
+        source.ObservedProvider.Should().NotBeNull("工具源必须被真实调用（否则本守卫是假绿）");
+        var act = () => source.ObservedProvider!.GetService(typeof(ScopedProbe));
+        act.Should().Throw<InvalidOperationException>(
+            "工具源收到的是根作用域：解析 Scoped 协作件必须响亮失败（FeishuAgentToolSource 契约：只能解析 Singleton）");
+    }
+
     [Fact]
     public void AddFeishuOpenAIChatClient_ShouldRejectNonHttpsPublicEndpoint()
     {

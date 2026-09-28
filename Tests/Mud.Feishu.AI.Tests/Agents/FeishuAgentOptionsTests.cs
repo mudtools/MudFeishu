@@ -164,6 +164,35 @@ public class FeishuAgentOptionsTests
         ok.Should().NotThrow();
     }
 
+    /// <summary>
+    /// <c>AllowedIdentities</c> 取值必须落在 <c>x-feishu.identity</c> 闭集内（P2-9）。
+    /// </summary>
+    /// <remarks>
+    /// 拼错的字面量不会命中任何已启用工具的身份，表现为「全部工具被静默拒绝」——
+    /// 宿主会误判为权限问题，故必须在装配期 fail-fast（与 <c>MaxToolRisk</c> 同款治理）。
+    /// </remarks>
+    [Theory]
+    [InlineData("Tenant")]        // 大小写敏感：词汇是 tenant / user
+    [InlineData("users")]
+    [InlineData("app")]
+    public void Validate_ShouldRejectUnknownIdentity(string identity)
+    {
+        var act = () => new FeishuAgentOptions { Instructions = "x", AllowedIdentities = [identity] }.Validate();
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*AllowedIdentities*",
+            "非法身份字面量必须装配期失败，而不是运行期静默拒绝全部工具");
+    }
+
+    [Theory]
+    [InlineData(FeishuToolIdentityNames.Tenant)]
+    [InlineData(FeishuToolIdentityNames.User)]
+    public void Validate_ShouldAcceptLegalIdentity(string identity)
+    {
+        var act = () => new FeishuAgentOptions { Instructions = "x", AllowedIdentities = [identity] }.Validate();
+
+        act.Should().NotThrow($"{identity} 是 Schema 的 x-feishu.identity 合法字面量");
+    }
+
     [Theory]
     [InlineData(ContentSafetyModes.Off)]
     [InlineData(ContentSafetyModes.Warn)]

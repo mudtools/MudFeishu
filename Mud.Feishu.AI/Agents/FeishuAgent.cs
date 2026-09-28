@@ -38,6 +38,7 @@ public sealed class FeishuAgent : AIAgent
     private readonly FeishuAgentOptions _options;
     private readonly IConversationStore? _conversationStore;
     private readonly ConversationSummarizer? _summarizer;
+    private readonly ILogger? _logger;
 
     /// <summary>
     /// 初始化 <see cref="FeishuAgent"/>。
@@ -71,22 +72,28 @@ public sealed class FeishuAgent : AIAgent
         options.Validate();
         _options = options;
         _conversationStore = conversationStore;
+        _logger = loggerFactory?.CreateLogger<FeishuAgent>();
 
-        // 渐进式会话摘要（Phase 2 §3.2）：阈值启用（≥4，Validate 保证）时挂载，
-        // 摘要与主对话共用同一模型客户端与历史状态键。
-        _summarizer = options.SummaryThreshold > 0
+        // 渐进式会话摘要（Phase 2 §3.2）：条数阈值或 token 预算任一启用即挂载（P2-6）——
+        // 否则「仅配 token 阈值」的宿主会静默失去摘要能力。摘要与主对话共用同一模型客户端与历史状态键。
+        _summarizer = options.SummaryThreshold > 0 || options.MaxHistoryTokens > 0
             ? new ConversationSummarizer(chatClient, options, loggerFactory?.CreateLogger<ConversationSummarizer>())
             : null;
 
         // 指令装配的唯一消费点（WP6）：宿主指令 + 已启用域的 guidance。
         // 截断信号落在返回值上（FeishuGuidanceResult.Truncated），此处只把"丢了哪些域"写进日志——
-        // 断言口在 Compose 的返回值上（用例不依赖日志基建）。
+        // 断言口在 Guidance 属性与 Compose 的返回值上（用例不依赖日志基建）。
         var guidance = FeishuGuidanceComposer.Compose(options.Instructions, domainGuidance);
+        Guidance = guidance;
         if (guidance.Truncated)
         {
-            loggerFactory?.CreateLogger<FeishuAgent>()?.LogWarning(
-                "域 guidance 超过上限 {MaxLength} 字符，已丢弃 {OmittedCount} 个域：{OmittedDomains}——请精简 Guidance/*.md 或减少同时启用的域",
+            _logger?.LogWarning(
+                "域 guidance 超过上限 {MaxLength} 字符（宿主指令 {HostLength} 字符，guidance {GuidanceLength} 字符），"
+                + "已丢弃 {OmittedCount} 个域：{OmittedDomains}——请精简 Guidance/*.md 或减少同时启用的域"
+                + "（guidance 段长度含分隔符）",
                 FeishuGuidanceComposer.MaxGuidanceLength,
+                options.Instructions.Length,
+                guidance.Instructions.Length - options.Instructions.Length,
                 guidance.OmittedDomains.Count,
                 string.Join(",", guidance.OmittedDomains));
         }
@@ -109,8 +116,17 @@ public sealed class FeishuAgent : AIAgent
         _innerAgent = new ChatClientAgent(chatClient, agentOptions, loggerFactory, services);
     }
 
-    /// <summary>Agent 展示名。</summary>
-    public new string Name => _options.Name;
+    /// <summary>
+    /// 域 guidance 装配结果（含 <see cref="FeishuGuidanceResult.Truncated"/> 与丢弃清单；构造期一次性求值）。
+    /// </summary>
+    /// <remarks>
+    /// R5 消费点：宿主启动冒烟/健康检查与 <c>FeishuGuidanceComposerTests</c> 的可断言面——
+    /// 超限丢弃不再只以日志形式存在。
+    /// </remarks>
+    public FeishuGuidanceResult Guidance { get; }
+
+    /// <summary>Agent 展示名（覆写 <see cref="AIAgent.Name"/>；不可用 <c>new</c> 遮蔽——那会使经 <see cref="AIAgent"/> 引用取值恒为基类默认 <see langword="null"/>）。</summary>
+    public override string? Name => _options.Name;
 
     /// <summary>
     /// 按会话键读取会话；miss（不存在、TTL 过期、载荷损坏）时创建新会话。
@@ -137,9 +153,18 @@ public sealed class FeishuAgent : AIAgent
                     jsonSerializerOptions: null,
                     cancellationToken).ConfigureAwait(false);
             }
-            catch (JsonException)
+            catch (Exception ex) when (ex is JsonException or ArgumentException or InvalidOperationException or NotSupportedException)
             {
-                // 损坏载荷视为 miss（Phase 0 §8）：丢弃旧数据、重建会话，不让事件循环崩溃。
+                // 损坏/旧格式载荷视为 miss（Phase 0 §8）：**删除坏值** + 重建会话，不让事件循环崩溃。
+                // MAF ChatClientAgentSession.Deserialize 对「合法 JSON 但根不是对象」（"[]"/"123"/"\"str\""）
+                // 抛 ArgumentException；若不纳入 catch 面，坏载荷会在每次重投递时再次失败（毒事件循环，
+                // 且坏数据永不自愈）。InvalidOperationException/NotSupportedException 一并纳入：
+                // 「重建 + 删除」对结构不符/旧格式都是安全处置（丢一轮历史 << 毒事件循环）。
+                _logger?.LogWarning(ex, "会话载荷不可用，已删除并重建（conversationKey: {ConversationKey}）", conversationKey);
+                if (_conversationStore is not null)
+                {
+                    await _conversationStore.DeleteAsync(conversationKey, cancellationToken).ConfigureAwait(false);
+                }
             }
         }
 
@@ -182,14 +207,27 @@ public sealed class FeishuAgent : AIAgent
         }
 
         // 模型调用耗时指标（P1D-5：feishu.agent.llm.duration；维度 agent——原则 8 无键维度）。
+        // 耗时记录放 finally（P2-8）：失败样本同样入直方图，否则 P95/P99 只反映成功路径。
         var llmStopwatch = System.Diagnostics.Stopwatch.StartNew();
-        var response = await _innerAgent
-            .RunAsync(messages, session, options, cancellationToken)
-            .ConfigureAwait(false);
-        FeishuAgentDiagnostics.RecordLlmDuration(_options.Name, llmStopwatch.ElapsedMilliseconds);
+        try
+        {
+            var response = await _innerAgent
+                .RunAsync(messages, session, options, cancellationToken)
+                .ConfigureAwait(false);
 
-        FeishuAgentDiagnostics.RecordUsage(activity, response.Usage);
-        return response;
+            FeishuAgentDiagnostics.RecordUsage(activity, response.Usage);
+            return response;
+        }
+        catch (Exception)
+        {
+            // 失败可见性（P2-8 / B3.3）：Span 标 Error，异常语义原样保留（不包装）。
+            activity?.SetStatus(ActivityStatusCode.Error);
+            throw;
+        }
+        finally
+        {
+            FeishuAgentDiagnostics.RecordLlmDuration(_options.Name, llmStopwatch.ElapsedMilliseconds);
+        }
     }
 
     /// <inheritdoc />
@@ -207,11 +245,48 @@ public sealed class FeishuAgent : AIAgent
             await _summarizer.SummarizeIfNeededAsync(session, cancellationToken).ConfigureAwait(false);
         }
 
-        await foreach (var update in _innerAgent
-            .RunStreamingAsync(messages, session, options, cancellationToken)
+        // 失败可见性（P2-8 / B3.3）：迭代器不能在含 catch 的 try 内 yield（CS1626），
+        // 故把「枚举 + 异常时标记 Span Error」下沉到非迭代器包装层。
+        await foreach (var update in MarkFailureOnEnumerateAsync(
+            _innerAgent.RunStreamingAsync(messages, session, options, cancellationToken), activity)
             .ConfigureAwait(false))
         {
             yield return update;
+        }
+    }
+
+    /// <summary>
+    /// 枚举包装：底层枚举抛出时把 Span 标为 Error 后**原样抛出**（不改异常类型，幂等回滚语义依赖原类型）。
+    /// </summary>
+    /// <param name="source">被包装的流。</param>
+    /// <param name="activity">当前运行 Span（可空）。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    private static async IAsyncEnumerable<AgentResponseUpdate> MarkFailureOnEnumerateAsync(
+        IAsyncEnumerable<AgentResponseUpdate> source,
+        Activity? activity,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        await using var enumerator = source.GetAsyncEnumerator(cancellationToken);
+        while (true)
+        {
+            AgentResponseUpdate current;
+            try
+            {
+                if (!await enumerator.MoveNextAsync().ConfigureAwait(false))
+                {
+                    break;
+                }
+
+                current = enumerator.Current;
+            }
+            catch
+            {
+                activity?.SetStatus(ActivityStatusCode.Error);
+                throw;
+            }
+
+            // yield 位于 catch 之外（CS1626 约束）。
+            yield return current;
         }
     }
 
@@ -238,6 +313,23 @@ public sealed class FeishuAgent : AIAgent
             .ConfigureAwait(false);
 
     /// <inheritdoc />
+    /// <remarks>
+    /// 次序对齐 MAF <see cref="AIAgent.GetService"/>：**先判自身**再退内层。
+    /// 否则 <c>GetService(typeof(AIAgent))</c> 会命中内层 <c>ChatClientAgent</c>（它也是 <see cref="AIAgent"/>），
+    /// 宿主经该引用调用将绕过本类注入的飞书遥测与摘要。
+    /// </remarks>
     public override object? GetService(Type serviceType, object? serviceKey = null)
-        => _innerAgent.GetService(serviceType, serviceKey) ?? base.GetService(serviceType, serviceKey);
+    {
+        if (serviceType is null)
+        {
+            throw new ArgumentNullException(nameof(serviceType));
+        }
+
+        if (serviceKey is null && serviceType.IsInstanceOfType(this))
+        {
+            return this;
+        }
+
+        return _innerAgent.GetService(serviceType, serviceKey) ?? base.GetService(serviceType, serviceKey);
+    }
 }

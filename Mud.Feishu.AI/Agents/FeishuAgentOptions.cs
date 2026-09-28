@@ -216,6 +216,13 @@ public sealed class FeishuAgentOptions
             throw new InvalidOperationException(
                 $"FeishuAgent:{nameof(AllowedIdentities)} 不能为空且不能含空项——空集将拒绝全部工具身份（与 Schema 的 x-feishu.identity 词汇一致：tenant / user）");
 
+        // 身份闭集校验（P2-9）：与 MaxToolRisk / ContentSafetyMode 同款治理——
+        // 拼错的字面量不会命中任何工具身份，表现为「所有工具被静默拒绝」，必须在装配期拦截。
+        if (AllowedIdentities.Any(identity => !FeishuToolIdentityNames.IsValid(identity)))
+            throw new InvalidOperationException(
+                $"FeishuAgent:{nameof(AllowedIdentities)} 取值非法: [{string.Join(",", AllowedIdentities)}]——"
+                + $"合法值为 {FeishuToolIdentityNames.AllowedValuesText}（与 Schema 的 x-feishu.identity 词汇一致）");
+
         // AT-F14 内容安全模式（策略开关，闭集校验防拼写错误静默降级为 off 语义）。
         if (!ContentSafetyModes.IsValid(ContentSafetyMode))
             throw new InvalidOperationException(

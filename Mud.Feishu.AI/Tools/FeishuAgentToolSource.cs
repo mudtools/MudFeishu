@@ -16,6 +16,15 @@ namespace Mud.Feishu.AI.Tools;
 /// 派生本类并注册到容器，<c>AddFeishuAgent</c> 聚合全部工具源产出
 /// <c>ChatOptions.Tools</c>。未注册任何工具源时保持裸模型行为。
 /// </para>
+/// <para>
+/// <b>容器作用域契约（P2-10）</b>：两个方法收到的 <c>serviceProvider</c> 是
+/// <b>根容器</b>——<c>FeishuAgent</c> 自身是 Singleton，聚合在首次解析时一次完成。
+/// 实现<b>只能解析 Singleton</b> 协作件（当前执行链协作件均为 Singleton，
+/// 见 <c>FeishuToolsServiceCollectionExtensions</c>）；解析 Scoped 服务在启用
+/// <c>ValidateScopes</c> 的宿主会启动即失败（响亮失败，符合预期）。
+/// <b>不得</b>在聚合点临时 <c>CreateScope()</c> 后把 Scoped 实例回填给单例——那会把
+/// 启动期响亮失败换成「scope 释放后悬空」的静默缺陷。
+/// </para>
 /// </remarks>
 public abstract class FeishuAgentToolSource
 {

@@ -92,17 +92,57 @@ public class FeishuGuidanceComposerTests
         result.Instructions.Length.Should().BeLessThanOrEqualTo(FeishuGuidanceComposer.MaxGuidanceLength);
     }
 
+    /// <summary>
+    /// 宿主指令超过上限<b>不再</b>导致域资产全丢（P1-6）：额度只计 guidance 本体。
+    /// </summary>
+    /// <remarks>
+    /// 本用例是对旧行为的<b>有意改写</b>：旧实现以 <c>builder.Length</c>（初值 = 宿主指令）为判据，
+    /// 企业 system prompt（常见 &gt; 2048 字符）会让全部域 guidance 静默丢弃——那是缺陷而非契约。
+    /// </remarks>
     [Fact]
-    public void Compose_WhenHostInstructionsAlreadyExceedLimit_ShouldOmitAllDomains()
+    public void Compose_AfterHostOverLimit_ShouldStillRespectGuidanceLimit()
     {
-        var result = FeishuGuidanceComposer.Compose(
-            new string('h', FeishuGuidanceComposer.MaxGuidanceLength + 1),
-            [Block("bitable", "多维表格。")]);
+        var hostOverLimit = new string('h', FeishuGuidanceComposer.MaxGuidanceLength + 1);
 
+        var result = FeishuGuidanceComposer.Compose(hostOverLimit, [Block("bitable", "多维表格。")]);
+
+        result.IncludedDomains.Should().Equal(["bitable"], "宿主指令长度不得挤占域资产预算（P1-6）");
+        result.OmittedDomains.Should().BeEmpty();
+        result.Truncated.Should().BeFalse();
+        result.Instructions.Should().Contain("多维表格。");
+    }
+
+    [Fact]
+    public void Compose_ShouldBudgetGuidanceOnly_NotHostInstructions()
+    {
+        // 域 guidance 自身超限时仍按 2048 截断（不看宿主长度）。
+        var third = new string('x', FeishuGuidanceComposer.MaxGuidanceLength / 3);
+        var result = FeishuGuidanceComposer.Compose(
+            new string('h', 3000),
+            [Block("first", third), Block("second", third), Block("third", third)]);
+
+        result.IncludedDomains.Should().Equal(["first", "second"]);
+        result.OmittedDomains.Should().Equal("third");
         result.Truncated.Should().BeTrue();
-        result.IncludedDomains.Should().BeEmpty();
-        result.OmittedDomains.Should().Equal("bitable");
-        result.Instructions.Should().NotContain("多维表格。", "超限时宁可不注入域资产，也不越界");
+
+        var guidanceLength = result.Instructions.Length - 3000;
+        guidanceLength.Should().BeLessThanOrEqualTo(FeishuGuidanceComposer.MaxGuidanceLength,
+            "上限只约束 guidance 段（含分隔符）");
+    }
+
+    [Fact]
+    public void FeishuAgent_ShouldExposeGuidanceResult_WithOmittedDomains()
+    {
+        var third = new string('x', FeishuGuidanceComposer.MaxGuidanceLength / 3);
+        var agent = new FeishuAgent(
+            CreateMockClient().Object,
+            new FeishuAgentOptions { Instructions = "宿主指令", MaxHistoryMessages = 10 },
+            domainGuidance: [Block("first", third), Block("second", third), Block("third", third)]);
+
+        agent.Guidance.Truncated.Should().BeTrue();
+        agent.Guidance.OmittedDomains.Should().Equal(["third"],
+            "丢弃清单必须可从 Agent 上断言（超限不再只以日志形式存在）");
+        agent.Guidance.IncludedDomains.Should().Equal(["first", "second"]);
     }
 
     // ───────────────────── ④ 端到端：指令装配的唯一消费点 ─────────────────────

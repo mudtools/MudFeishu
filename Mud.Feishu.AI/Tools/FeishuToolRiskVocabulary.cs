@@ -69,6 +69,31 @@ public static class FeishuToolRiskNames
 }
 
 /// <summary>
+/// 工具身份词汇表（AT-B13 Identity 轴）：配置键 <c>FeishuAgent:AllowedIdentities</c> 与 Schema 的
+/// <c>x-feishu.identity</c> <b>共用同一套字面量</b>（同 <see cref="FeishuToolRiskNames"/> 的治理口径）。
+/// </summary>
+/// <remarks>
+/// 闭集校验（P2-9）把「拼写错误静默拒绝全部工具身份」变成装配期可读错误：
+/// <see cref="FeishuAgentOptions.AllowedIdentities"/> 与工具定义 / 策略轴
+/// （<c>FeishuToolBinding</c> 的 <c>identity_mismatch</c> 判定）必须共用本词汇表。
+/// </remarks>
+public static class FeishuToolIdentityNames
+{
+    /// <summary>租户/应用令牌身份（默认）。</summary>
+    public const string Tenant = "tenant";
+
+    /// <summary>用户令牌身份。</summary>
+    public const string User = "user";
+
+    /// <summary>合法取值清单（错误消息用）。</summary>
+    public const string AllowedValuesText = $"{Tenant} / {User}";
+
+    /// <summary>是否合法取值。</summary>
+    /// <param name="identity">身份字面量。</param>
+    public static bool IsValid(string? identity) => identity is Tenant or User;
+}
+
+/// <summary>
 /// 出站内容安全模式闭集（AT-F14；配置键 <c>FeishuAgent:ContentSafetyMode</c>）。
 /// </summary>
 /// <remarks>

@@ -53,6 +53,10 @@ public sealed record FeishuGuidanceResult(
 public static class FeishuGuidanceComposer
 {
     /// <summary>guidance 总长硬上限（字符数；超限按域顺序截断）。</summary>
+    /// <remarks>
+    /// 额度<b>只计域 guidance 本体</b>（含块间分隔符），不含宿主 <c>Instructions</c>——
+    /// 宿主指令长度不该决定域资产是否被注入（P1-6）。
+    /// </remarks>
     public const int MaxGuidanceLength = 2048;
 
     private const string Separator = "\n\n";
@@ -76,6 +80,10 @@ public static class FeishuGuidanceComposer
         var omitted = new List<string>();
         var builder = new StringBuilder(host);
 
+        // 额度只计 **guidance 本体**（P1-6）：宿主 Instructions 不得挤占域资产预算——
+        // 企业 system prompt 普遍 > MaxGuidanceLength，用 builder.Length 作判据会让全部域 guidance 静默丢弃。
+        var guidanceLength = 0;
+
         foreach (var block in blocks)
         {
             if (string.IsNullOrWhiteSpace(block.Content))
@@ -85,7 +93,7 @@ public static class FeishuGuidanceComposer
 
             // 前缀长度：追加前的分隔符 + 正文（宿主指令为空时不额外插入前导空行）。
             var extra = (builder.Length > 0 ? Separator.Length : 0) + block.Content.Length;
-            if (builder.Length + extra > MaxGuidanceLength)
+            if (guidanceLength + extra > MaxGuidanceLength)
             {
                 omitted.Add(block.Domain);
                 continue;
@@ -97,6 +105,7 @@ public static class FeishuGuidanceComposer
             }
 
             builder.Append(block.Content);
+            guidanceLength += extra;
             included.Add(block.Domain);
         }
 

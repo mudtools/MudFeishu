@@ -58,9 +58,10 @@ public sealed class ImMessageConversationalEventHandler(
     IReadOnlyList<IContextAssembler>? contextAssemblers = null,
     IFeishuToolContextAccessor? toolContextAccessor = null,
     IMessageChannel? messageChannel = null,
-    IConversationGate? conversationGate = null)
+    IConversationGate? conversationGate = null,
+    IAppKeyAccessor? appKeyAccessor = null)
     : ConversationalFeishuEventHandler<MessageReceiveResult>(
-        agent, businessDeduplicator, logger, contextAssemblers, toolContextAccessor, messageChannel, conversationGate)
+        agent, businessDeduplicator, logger, contextAssemblers, toolContextAccessor, messageChannel, conversationGate, appKeyAccessor)
 {
     private const string ChatTypeGroup = "group";
     private const string SenderTypeApp = "app";
@@ -97,7 +98,8 @@ public sealed class ImMessageConversationalEventHandler(
         var isGroup = string.Equals(message.ChatType, ChatTypeGroup, StringComparison.OrdinalIgnoreCase);
 
         // 会话键维度（P2D-2b）：群聊按 chat_id、单聊按发送者；回复/流式目标恒为 message.chat_id。
-        // appKey 取自应用键上下文（多应用管线中由事件通道注入；缺失时键构造兜底 default）。
+        // appKey 取自应用键上下文（多应用管线由事件通道经 IAppKeyAccessor 注入，见构造参数 appKeyAccessor）；
+        // 缺失时的处置由基类 AllowMissingAppKey 分级决定（多应用宿主 fail-fast、单应用宿主降级告警）。
         var request = new ConversationRequest(
             AppKey: CurrentAppKey ?? string.Empty,
             Scope: isGroup ? ConversationScope.Group() : ConversationScope.P2P(),

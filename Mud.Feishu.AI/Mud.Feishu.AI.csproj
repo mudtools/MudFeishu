@@ -43,6 +43,14 @@
 		<PackageReference Update="Microsoft.Extensions.Configuration.Binder" Version="10.0.11" />
 	</ItemGroup>
 
+	<ItemGroup Condition="'$(TargetFramework)' == 'net8.0' or '$(TargetFramework)' == 'net10.0'">
+		<!-- 显式声明（P2-5）：ChatTokenCounter 在 net8+ 直接调用 TiktokenTokenizer 计数，
+		     原先依赖 MAF 的传递依赖——直接使用的 API 必须直接声明（否则上游摘除/换实现即静默失效）。
+		     版本与 MAF 1.20.0 的传递解析版本一致（2.0.0），避免 NU1603 版本漂移（门禁断言 = 0）。
+		     netstandard2.0 / net6.0 走字符估算回退，无此依赖。 -->
+		<PackageReference Include="Microsoft.ML.Tokenizers" Version="2.0.0" />
+	</ItemGroup>
+
 	<ItemGroup>
 		<None Include="..\Icon.png" Pack="true" PackagePath="\" />
 	</ItemGroup>

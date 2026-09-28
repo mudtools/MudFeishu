@@ -56,6 +56,73 @@ public class ConversationalFeishuEventHandlerTests
         }
     }
 
+    /// <summary>可写应用键上下文（模拟 Webhook 多应用宿主）。</summary>
+    private sealed class TestAppKeyAccessor : IAppKeyAccessor
+    {
+        public string? CurrentAppKey { get; private set; }
+
+        public void SetAppKey(string appKey) => CurrentAppKey = appKey;
+
+        public void Clear() => CurrentAppKey = null;
+    }
+
+    /// <summary>记录会话键的存储（用于断言 appKey 是否真的进入会话键命名空间）。</summary>
+    private sealed class RecordingConversationStore : IConversationStore
+    {
+        private readonly Dictionary<string, string> _payloads = new(StringComparer.Ordinal);
+
+        public List<string> SavedKeys { get; } = [];
+
+        public Task<string?> GetAsync(string key, CancellationToken cancellationToken = default)
+            => Task.FromResult(_payloads.TryGetValue(key, out var payload) ? payload : null);
+
+        public Task SaveAsync(string key, string serializedSession, CancellationToken cancellationToken = default)
+        {
+            SavedKeys.Add(key);
+            _payloads[key] = serializedSession;
+            return Task.CompletedTask;
+        }
+
+        public Task DeleteAsync(string key, CancellationToken cancellationToken = default)
+        {
+            _payloads.Remove(key);
+            return Task.CompletedTask;
+        }
+    }
+
+    /// <summary>可注入应用键访问器 / 空用户消息 / 强制 fail-fast 的探针处理器（与内置 IM 处理器同款 appKey 取值口径）。</summary>
+    private sealed class ProbeHandler(
+        FeishuAgent agent,
+        IFeishuEventDeduplicator deduplicator,
+        IAppKeyAccessor? accessor,
+        bool emptyUserMessage = false,
+        bool forceFailFast = false) : ConversationalFeishuEventHandler<DemoEvent>(
+            agent, deduplicator, NullLogger.Instance, appKeyAccessor: accessor)
+    {
+        public string? LastReply { get; private set; }
+
+        protected override bool AllowMissingAppKey => forceFailFast ? false : base.AllowMissingAppKey;
+
+        protected override Task<ConversationRequest> BuildRequestAsync(DemoEvent eventData, CancellationToken cancellationToken)
+            => Task.FromResult(new ConversationRequest(
+                // 内置 IM 处理器的既有口径：appKey 取自应用键上下文，缺失时为空串（由基类分级处置）。
+                AppKey: CurrentAppKey ?? string.Empty,
+                Scope: ConversationScope.Group(),
+                SubjectId: "oc_1",
+                SenderId: "ou_sender",
+                MessageId: eventData.MessageId,
+                MentionedText: eventData.Text));
+
+        protected override Task ReplyAsync(ConversationRequest request, string responseText, CancellationToken cancellationToken)
+        {
+            LastReply = responseText;
+            return Task.CompletedTask;
+        }
+
+        protected override Task<string> AssembleUserMessageAsync(ConversationRequest request, CancellationToken cancellationToken)
+            => Task.FromResult(emptyUserMessage ? "   " : "用户消息");
+    }
+
     private static Mock<IFeishuEventDeduplicator> CreateDeduplicator()
     {
         var deduplicator = new Mock<IFeishuEventDeduplicator>();
@@ -130,6 +197,96 @@ public class ConversationalFeishuEventHandlerTests
         mockClient.Verify(c => c.GetResponseAsync(
             It.IsAny<IEnumerable<ChatMessage>>(), It.IsAny<ChatOptions?>(), It.IsAny<CancellationToken>()),
             Times.Never);
+    }
+
+    // ───────────────────── P1-5a / P1-5b：appKey 装配链与分级处置 ─────────────────────
+
+    private static Mock<IChatClient> CreateChatClient(string reply = "模型回答")
+    {
+        var mockClient = new Mock<IChatClient>();
+        mockClient.Setup(c => c.GetResponseAsync(
+                It.IsAny<IEnumerable<ChatMessage>>(), It.IsAny<ChatOptions?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ChatResponse(new ChatMessage(ChatRole.Assistant, reply)));
+        return mockClient;
+    }
+
+    [Fact]
+    public async Task HandleAsync_ShouldUseAccessorAppKey_WhenAccessorRegistered()
+    {
+        var store = new RecordingConversationStore();
+        var accessor = new TestAppKeyAccessor();
+        accessor.SetAppKey("app-b");
+        var agent = new FeishuAgent(CreateChatClient().Object, new FeishuAgentOptions { Instructions = "x" }, store);
+
+        // 事件规范化侧未拿到 appKey（空串）——访问器是唯一事实来源。
+        var handler = new ProbeHandler(agent, CreateDeduplicator().Object, accessor);
+        await handler.HandleAsync(DemoEventData("evt-appkey-1"), default);
+
+        store.SavedKeys.Should().ContainSingle();
+        store.SavedKeys[0].Should().StartWith($"feishu:app-b:conversation:",
+            "会话键必须携带真实 appKey（否则多应用共用 default 命名空间、历史跨租户混用）");
+    }
+
+    [Fact]
+    public async Task HandleAsync_ShouldFailFast_WhenAccessorRegisteredButAppKeyBlank()
+    {
+        var accessor = new TestAppKeyAccessor(); // 已装配但当前值为空（多应用宿主的配置缺陷）
+        var mockClient = CreateChatClient();
+        var agent = new FeishuAgent(mockClient.Object, new FeishuAgentOptions { Instructions = "x" });
+        var handler = new ProbeHandler(agent, CreateDeduplicator().Object, accessor);
+
+        var act = async () => await handler.HandleAsync(DemoEventData("evt-appkey-2"), default);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*AppKey*", "多应用宿主取不到 appKey 属缺陷，必须 fail-fast（TMA2-20）");
+        mockClient.Verify(
+            c => c.GetResponseAsync(It.IsAny<IEnumerable<ChatMessage>>(), It.IsAny<ChatOptions?>(), It.IsAny<CancellationToken>()),
+            Times.Never, "拒绝必须在模型调用之前发生（零成本、零下游调用）");
+        handler.LastReply.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task HandleAsync_ShouldDegrade_WhenNoAccessorRegistered()
+    {
+        // WebSocket 单应用宿主：未注册 IAppKeyAccessor，按既有语义降级（不得打断既有部署）。
+        var mockClient = CreateChatClient();
+        var agent = new FeishuAgent(mockClient.Object, new FeishuAgentOptions { Instructions = "x" });
+        var handler = new ProbeHandler(agent, CreateDeduplicator().Object, accessor: null);
+
+        await handler.HandleAsync(DemoEventData("evt-appkey-3"), default);
+
+        handler.LastReply.Should().Be("模型回答", "单应用宿主降级到 default 命名空间并正常应答");
+    }
+
+    [Fact]
+    public async Task HandleAsync_ShouldFailFast_WhenAllowMissingAppKeyOverriddenToFalse()
+    {
+        var mockClient = CreateChatClient();
+        var agent = new FeishuAgent(mockClient.Object, new FeishuAgentOptions { Instructions = "x" });
+        var handler = new ProbeHandler(
+            agent, CreateDeduplicator().Object, accessor: null, forceFailFast: true);
+
+        var act = async () => await handler.HandleAsync(DemoEventData("evt-appkey-4"), default);
+
+        await act.Should().ThrowAsync<InvalidOperationException>("宿主可覆写钩子强制多应用强校验");
+    }
+
+    // ───────────────────── P2-7：空用户消息守卫 ─────────────────────
+
+    [Fact]
+    public async Task HandleAsync_ShouldSkipModelCall_WhenUserMessageEmpty()
+    {
+        var mockClient = CreateChatClient();
+        var agent = new FeishuAgent(mockClient.Object, new FeishuAgentOptions { Instructions = "x" });
+        var handler = new ProbeHandler(
+            agent, CreateDeduplicator().Object, accessor: null, emptyUserMessage: true);
+
+        await handler.HandleAsync(DemoEventData("evt-empty"), default);
+
+        mockClient.Verify(
+            c => c.GetResponseAsync(It.IsAny<IEnumerable<ChatMessage>>(), It.IsAny<ChatOptions?>(), It.IsAny<CancellationToken>()),
+            Times.Never, "空 user 消息会被端点拒绝（400）且已计费，必须在调用前拦截");
+        handler.LastReply.Should().BeNull();
     }
 
     [Fact]

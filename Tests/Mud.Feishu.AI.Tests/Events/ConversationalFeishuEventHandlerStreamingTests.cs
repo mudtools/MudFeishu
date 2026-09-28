@@ -180,6 +180,56 @@ public class ConversationalFeishuEventHandlerStreamingTests
     }
 
     [Fact]
+    public async Task HandleAsync_ShouldFlushPlaceholder_WhenModelStreamThrows()
+    {
+        // P1-2：模型流中断时占位消息会停留在「上一次成功内容」（通道的既定语义），
+        // 必须用**不可取消**的令牌补一次 FlushAsync 把它落到终结态。
+        var mockClient = new Mock<IChatClient>();
+        mockClient
+            .Setup(c => c.GetStreamingResponseAsync(
+                It.IsAny<IEnumerable<ChatMessage>>(), It.IsAny<ChatOptions?>(), It.IsAny<CancellationToken>()))
+            .Returns((IEnumerable<ChatMessage> _, ChatOptions? __, CancellationToken ___) => YieldThenThrow());
+        var agent = new FeishuAgent(mockClient.Object, new FeishuAgentOptions { Instructions = "x" });
+        var channel = new Mock<IMessageChannel>();
+        channel
+            .Setup(c => c.BeginAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync("om_stream_comp");
+
+        var handler = new RecordingHandler(agent, CreateDeduplicator().Object, channel.Object);
+        var act = async () => await handler.HandleAsync(DemoEventData("evt-stream-comp"), default);
+
+        await act.Should().ThrowAsync<HttpRequestException>("异常仍须向上传播（幂等键回滚，既有语义不变）");
+        channel.Verify(
+            c => c.FlushAsync("app-a", "oc_1", "om_stream_comp", CancellationToken.None),
+            Times.Once,
+            "补偿收尾必须使用不可取消的令牌（否则补偿本身被取消，问题依旧）");
+    }
+
+    [Fact]
+    public async Task HandleAsync_ShouldStillPropagate_WhenCompensationFlushFails()
+    {
+        var mockClient = new Mock<IChatClient>();
+        mockClient
+            .Setup(c => c.GetStreamingResponseAsync(
+                It.IsAny<IEnumerable<ChatMessage>>(), It.IsAny<ChatOptions?>(), It.IsAny<CancellationToken>()))
+            .Returns((IEnumerable<ChatMessage> _, ChatOptions? __, CancellationToken ___) => YieldThenThrow());
+        var agent = new FeishuAgent(mockClient.Object, new FeishuAgentOptions { Instructions = "x" });
+        var channel = new Mock<IMessageChannel>();
+        channel
+            .Setup(c => c.BeginAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync("om_stream_comp2");
+        channel
+            .Setup(c => c.FlushAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("通道故障"));
+
+        var handler = new RecordingHandler(agent, CreateDeduplicator().Object, channel.Object);
+        var act = async () => await handler.HandleAsync(DemoEventData("evt-stream-comp2"), default);
+
+        await act.Should().ThrowAsync<HttpRequestException>(
+            "补偿失败只记 Warning，不得掩盖原始异常类型（幂等回滚按原类型判定）");
+    }
+
+    [Fact]
     public async Task HandleAsync_ShouldKeepNonStreamingPath_WhenChannelNotConfigured()
     {
         var mockClient = new Mock<IChatClient>();

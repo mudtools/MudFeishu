@@ -31,8 +31,8 @@ public interface IMessageChannelTargetResolver
 /// （卡片流要 open_id、编辑通道要 chat_id），降级时需按子通道各自重解析，事件处理器零感知。
 /// </summary>
 /// <remarks>
-/// 仅在事件处理器与 SDK 自带通道之间传递，调用结束后即清空；外部直调通道时环境量为空，
-/// 通道按入参原样使用（契约文档见各通道实现）。
+/// 仅在事件处理器与 SDK 自带通道之间传递，作用域释放时恢复进入前的值（嵌套 Begin 语义正确）；
+/// 外部直调通道时环境量为空，通道按入参原样使用（契约文档见各通道实现）。
 /// </remarks>
 public static class StreamingRequestContext
 {
@@ -41,24 +41,27 @@ public static class StreamingRequestContext
     /// <summary>当前会话请求（无环境时为 <see langword="null"/>）。</summary>
     public static ConversationRequest? Current => CurrentRequest.Value;
 
-    /// <summary>建立环境（事件处理器在流式管线进入前调用；返回值 Dispose 时清空）。</summary>
+    /// <summary>建立环境（事件处理器在流式管线进入前调用；返回值 Dispose 时恢复进入前的值）。</summary>
     /// <param name="request">规范化会话请求。</param>
     /// <returns>作用域释放器。</returns>
     public static IDisposable Begin(ConversationRequest request)
     {
+        var previous = CurrentRequest.Value;
         CurrentRequest.Value = request ?? throw new ArgumentNullException(nameof(request));
-        return new Scope();
+        return new Scope(previous);
     }
 
-    private sealed class Scope : IDisposable
+    private sealed class Scope(ConversationRequest? previous) : IDisposable
     {
         private int _disposed;
 
         public void Dispose()
         {
+            // 嵌套 Begin 时恢复外层值（对齐 FeishuToolContextAccessor.RestoreScope）；
+            // 直接置 null 会让嵌套场景少读一层的环境（P2-3）。
             if (Interlocked.Exchange(ref _disposed, 1) == 0)
             {
-                CurrentRequest.Value = null;
+                CurrentRequest.Value = previous;
             }
         }
     }

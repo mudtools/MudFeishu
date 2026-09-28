@@ -5,7 +5,11 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using System.Collections.Concurrent;
+using System.Diagnostics;
+using System.Diagnostics.Metrics;
 using System.Runtime.CompilerServices;
+using Mud.Feishu.Abstractions.Observability;
 
 namespace Mud.Feishu.AI.Tests.Agents;
 
@@ -145,6 +149,169 @@ public class FeishuAgentTests
             yield return new ChatResponseUpdate(ChatRole.Assistant, chunk);
             await Task.Yield();
         }
+    }
+
+    // ───────────────────── P1-4：坏载荷自愈（毒事件循环） ─────────────────────
+
+    /// <summary>
+    /// 合法 JSON 但根不是对象（<c>"[]"</c>）：MAF <c>ChatClientAgentSession.Deserialize</c> 抛
+    /// <see cref="ArgumentException"/>——若 catch 面只覆盖 <see cref="JsonException"/>，
+    /// 坏载荷会在每次重投递时再次失败（毒事件循环）。
+    /// </summary>
+    [Fact]
+    public async Task GetOrCreateSession_ShouldRebuild_WhenStoredPayloadIsJsonArray()
+    {
+        var mock = CreateMockClient("ok");
+        var store = new MemoryConversationStore();
+        var agent = new FeishuAgent(mock.Object, ValidOptions(), conversationStore: store);
+        var key = ConversationKeyBuilder.Build("app-a", ConversationScope.Group(), "oc_array");
+
+        await store.SaveAsync(key, "[]");
+
+        var session = await agent.GetOrCreateSessionAsync(key);
+
+        session.Should().NotBeNull("非对象根载荷必须按 miss 处理并重建（否则毒事件循环）");
+    }
+
+    [Fact]
+    public async Task GetOrCreateSession_ShouldDeleteCorruptPayload_WhenRebuild()
+    {
+        var mock = CreateMockClient("ok");
+        var store = new MemoryConversationStore();
+        var agent = new FeishuAgent(mock.Object, ValidOptions(), conversationStore: store);
+        var key = ConversationKeyBuilder.Build("app-a", ConversationScope.Group(), "oc_corrupt");
+
+        await store.SaveAsync(key, "[]");
+        await agent.GetOrCreateSessionAsync(key);
+
+        var remaining = await store.GetAsync(key);
+        remaining.Should().BeNull("坏键必须被删除——否则旧格式/坏载荷永远不会自愈");
+    }
+
+    // ───────────────────── P2-1 / P2-2：MAF 基类契约一致性 ─────────────────────
+
+    [Fact]
+    public void Name_ShouldBeConsistent_ThroughAIAgentReference()
+    {
+        var agent = new FeishuAgent(CreateMockClient("ok").Object, ValidOptions());
+
+        AIAgent asBase = agent;
+
+        asBase.Name.Should().Be(ValidOptions().Name,
+            "Name 必须 override：用 new 遮蔽会让经 AIAgent 引用（含 MAF 内部诊断）取到基类默认 null");
+    }
+
+    [Fact]
+    public void GetService_ShouldReturnSelf_ForAIAgentRequest()
+    {
+        var agent = new FeishuAgent(CreateMockClient("ok").Object, ValidOptions());
+
+        agent.GetService(typeof(AIAgent)).Should().BeSameAs(agent,
+            "先判自身：否则返回内部 ChatClientAgent，宿主经该引用将绕过飞书遥测与摘要");
+    }
+
+    // ───────────────────── P2-6：摘要启用条件（token-only 配置） ─────────────────────
+
+    [Fact]
+    public async Task SummaryConfiguration_TokenOnly_ShouldStillSummarize()
+    {
+        var mock = CreateMockClient("纪要：要点。");
+        var agent = new FeishuAgent(mock.Object, new FeishuAgentOptions
+        {
+            Instructions = "x",
+            SummaryThreshold = 0,       // 条数阈值禁用
+            MaxHistoryTokens = 20,      // 仅 token 预算（P2-6 起必须真正生效）
+            MaxHistoryMessages = 8,
+        });
+        var session = await agent.CreateSessionAsync();
+
+        var history = new List<ChatMessage>();
+        for (var i = 0; i < 6; i++)
+        {
+            history.Add(new ChatMessage(
+                i % 2 == 0 ? ChatRole.User : ChatRole.Assistant, $"[{i}]" + new string('x', 100)));
+        }
+
+        session.SetInMemoryChatHistory(history, FeishuAgent.ChatHistoryStateKey, null);
+        await agent.RunAsync("查询", session);
+
+        mock.Verify(
+            c => c.GetResponseAsync(It.IsAny<IEnumerable<ChatMessage>>(), It.IsAny<ChatOptions?>(), It.IsAny<CancellationToken>()),
+            Times.AtLeast(2),
+            "token-only 配置必须挂载摘要器（摘要调用 + 主对话调用）；否则该配置静默失效");
+    }
+
+    [Fact]
+    public async Task SummaryConfiguration_BothDisabled_ShouldNotSummarize()
+    {
+        var mock = CreateMockClient("回答");
+        var agent = new FeishuAgent(mock.Object, new FeishuAgentOptions
+        {
+            Instructions = "x",
+            SummaryThreshold = 0,
+            MaxHistoryTokens = 0,       // 双禁用（既有语义：仅保留裁剪窗行为）
+            MaxHistoryMessages = 8,
+        });
+        var session = await agent.CreateSessionAsync();
+
+        var history = new List<ChatMessage>();
+        for (var i = 0; i < 20; i++)
+        {
+            history.Add(new ChatMessage(
+                i % 2 == 0 ? ChatRole.User : ChatRole.Assistant, $"[{i}]" + new string('x', 100)));
+        }
+
+        session.SetInMemoryChatHistory(history, FeishuAgent.ChatHistoryStateKey, null);
+        await agent.RunAsync("查询", session);
+
+        mock.Verify(
+            c => c.GetResponseAsync(It.IsAny<IEnumerable<ChatMessage>>(), It.IsAny<ChatOptions?>(), It.IsAny<CancellationToken>()),
+            Times.Once, "双禁用时不挂载摘要器（零额外模型调用）");
+    }
+
+    // ───────────────────── P2-8 / B3.3：失败路径可见性 ─────────────────────
+
+    [Fact]
+    public async Task RunAsync_ShouldRecordErrorStatusAndDuration_OnFailure()
+    {
+        var stopped = new ConcurrentQueue<Activity>();
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = source => source.Name == FeishuActivitySource.Name,
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
+            ActivityStopped = activity => stopped.Enqueue(activity),
+        };
+        ActivitySource.AddActivityListener(listener);
+
+        var durations = new ConcurrentQueue<double>();
+        using var meterListener = new MeterListener
+        {
+            InstrumentPublished = (instrument, l) =>
+            {
+                if (instrument.Name == "feishu.agent.llm.duration")
+                {
+                    l.EnableMeasurementEvents(instrument);
+                }
+            },
+        };
+        meterListener.SetMeasurementEventCallback<double>((_, value, _, _) => durations.Enqueue(value));
+        meterListener.Start();
+
+        var mock = new Mock<IChatClient>();
+        mock.Setup(c => c.GetResponseAsync(
+                It.IsAny<IEnumerable<ChatMessage>>(), It.IsAny<ChatOptions?>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new HttpRequestException("模型网关 5xx"));
+        var agent = new FeishuAgent(mock.Object, ValidOptions());
+        var session = await agent.CreateSessionAsync();
+
+        var act = () => agent.RunAsync("失败", session);
+        await act.Should().ThrowAsync<HttpRequestException>("异常语义原样保留（不包装）");
+
+        stopped.Should().Contain(
+            a => a.OperationName == "feishu.agent.run" && a.Status == ActivityStatusCode.Error,
+            "失败路径必须把 Span 标为 Error（否则失败在链路里不可见）");
+        durations.Should().NotBeEmpty(
+            "失败样本也必须进入 feishu.agent.llm.duration（否则 P95/P99 只反映成功路径）");
     }
 
     [Fact]

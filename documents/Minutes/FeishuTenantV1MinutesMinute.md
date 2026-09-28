@@ -1,3 +1,8 @@
+---
+title: 飞书妙记接口（租户令牌）| MudFeishu
+description: 该接口用于以租户身份获取飞书妙记信息，支持妙记基础信息、音视频下载链接、文字记录、统计数据、AI 产物查询与搜索。
+---
+
 # 飞书妙记 - 租户令牌（FeishuTenantV1MinutesMinute）
 
 ## 接口名称

@@ -1,3 +1,8 @@
+---
+title: 序列管理接口（租户 V3）| MudFeishu
+description: 该接口用于以租户身份管理飞书序列（Job Family），支持序列的创建、更新、查询与删除。
+---
+
 # 租户V3序列管理 - FeishuTenantV3JobFamilies
 
 ## 接口名称

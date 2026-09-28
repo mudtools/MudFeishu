@@ -1,3 +1,8 @@
+---
+title: 人员类型管理接口（租户 V3）| MudFeishu
+description: 该接口用于以租户身份管理飞书人员类型，支持人员类型的创建、更新、查询与删除。
+---
+
 # 租户V3人员类型管理 - FeishuTenantV3EmployeeType
 
 ## 接口名称

@@ -1,3 +1,8 @@
+---
+title: 飞书妙记（Minutes）SDK 接口文档 | MudFeishu
+description: 该文档为飞书妙记（Minutes）服务端 OpenAPI 的接口导航总览，涵盖妙记基础信息、音视频下载、文字记录、统计数据、AI 产物、搜索、剪辑、导入生成与事件订阅等能力的入口索引。
+---
+
 # 飞书妙记（Minutes）SDK 接口文档
 
 ## 概述

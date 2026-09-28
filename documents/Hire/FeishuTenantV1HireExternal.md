@@ -1,3 +1,8 @@
+---
+title: 招聘外部系统信息导入接口（租户令牌）| MudFeishu
+description: 该接口用于以租户身份将外部招聘系统（ATS/RMS）中的人才、投递、面试、Offer、背调与内推奖励等数据导入或同步到飞书招聘。
+---
+
 # 外部系统信息导入 - 租户令牌（FeishuTenantV1HireExternal）
 
 ## 接口名称

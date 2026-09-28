@@ -1,3 +1,8 @@
+---
+title: 邮箱文件夹接口（用户令牌）| MudFeishu
+description: 该接口用于以用户身份管理自己的邮箱文件夹，支持文件夹的创建、修改、查询与删除。
+---
+
 # IFeishuUserV1MailFolder - 用户邮箱文件夹API
 
 ## 功能描述

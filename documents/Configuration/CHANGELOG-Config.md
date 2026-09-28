@@ -1,3 +1,8 @@
+---
+title: 配置面变更日志 | MudFeishu
+description: 该文档记录 MudFeishu 配置面的变更日志，涵盖事件路由、Webhook 分发等行为变更与迁移指引。
+---
+
 # 配置面变更日志（CHANGELOG-Config）
 
 ## 2026-09（事件路由 R2）

@@ -1,3 +1,8 @@
+---
+title: 绩效后台配置接口（租户令牌）| MudFeishu
+description: 该接口用于以租户身份读取与维护飞书绩效后台配置，涵盖周期与项目、评估配置（模板/评估项/标签）及指标配置（指标模板/指标库/字段/标签）。
+---
+
 # 绩效后台配置 - 租户令牌（FeishuTenantV2PerformanceSemesterActivity）
 
 ## 接口名称

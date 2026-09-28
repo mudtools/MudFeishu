@@ -1,3 +1,8 @@
+---
+title: 关联组织（TrustParty）SDK 接口文档 | MudFeishu
+description: 该文档为飞书关联组织服务端 OpenAPI 的接口导航总览，涵盖可见关联组织列表与详情查询、组织内可见实体查询、共享成员范围查询以及可搜可见规则管理等能力的入口索引。
+---
+
 # 关联组织（TrustParty）SDK 接口文档
 
 ## 概述

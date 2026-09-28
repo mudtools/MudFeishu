@@ -1,3 +1,8 @@
+---
+title: 部门管理接口（用户 V1）| MudFeishu
+description: 该接口用于以用户身份管理飞书企业组织架构中的部门，支持部门的创建、更新、删除、批量查询、条件筛选与搜索。
+---
+
 # 用户V1部门管理 - FeishuUserV1Departments
 
 ## 接口名称

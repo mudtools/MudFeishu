@@ -1,3 +1,8 @@
+---
+title: 飞书妙搭用户 ID 转换接口（用户令牌）| MudFeishu
+description: 该接口用于以用户身份在飞书妙搭与飞书开放平台之间转换用户 ID，支持妙搭用户 ID 与 OpenID/UnionID、飞书用户 ID 间的双向转换。
+---
+
 # 飞书妙搭用户 ID 转换 - 用户令牌（FeishuUserV1SparkDirectoryUser）
 
 ## 接口名称

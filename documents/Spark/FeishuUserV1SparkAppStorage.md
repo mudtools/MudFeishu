@@ -1,3 +1,8 @@
+---
+title: 飞书妙搭文件存储接口（用户令牌）| MudFeishu
+description: 该接口用于以用户身份管理飞书妙搭应用的文件资源，支持文件上传、下载及分片上传。
+---
+
 # 飞书妙搭文件存储 - 用户令牌（FeishuUserV1SparkAppStorage）
 
 ## 接口名称

@@ -1,3 +1,8 @@
+---
+title: 邮箱邮件接口（用户令牌）| MudFeishu
+description: 该接口用于以用户身份管理自己的邮箱邮件，支持邮件的查询、修改、删除，以及邮件发送。
+---
+
 # IFeishuUserV1MailMessage - 用户邮箱邮件API
 
 ## 功能描述

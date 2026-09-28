@@ -1,3 +1,8 @@
+---
+title: 会议录制接口（租户令牌）| MudFeishu
+description: 该接口用于以租户身份获取租户下会议的录制文件信息。
+---
+
 # 会议录制 - 租户令牌
 **IFeishuTenantV1VideoConferencingRecording**
 

@@ -1,3 +1,8 @@
+---
+title: 招聘广告接口（租户令牌）| MudFeishu
+description: 该接口用于以租户身份将职位广告发布至指定招聘官网渠道（如官网、内推平台），完成职位在招聘门户的上架展示。
+---
+
 # 招聘广告（FeishuTenantV1HireAdvertisement）
 
 ## 接口名称

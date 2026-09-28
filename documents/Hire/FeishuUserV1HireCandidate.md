@@ -1,3 +1,8 @@
+---
+title: 招聘候选人接口（用户令牌）| MudFeishu
+description: 该接口用于以用户身份获取飞书招聘待办事项（评估/Offer/笔试/面试待办），待办事项归属于当前登录用户。
+---
+
 # 候选人 - 用户令牌（FeishuUserV1HireCandidate）
 
 ## 接口名称

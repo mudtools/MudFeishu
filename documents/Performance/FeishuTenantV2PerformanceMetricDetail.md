@@ -1,3 +1,8 @@
+---
+title: 绩效关键指标数据接口（租户令牌）| MudFeishu
+description: 该接口用于以租户身份管理飞书绩效关键指标数据，支持批量获取被评估人的关键指标结果，以及批量录入关键指标数据。
+---
+
 # 关键指标数据 - 租户令牌（FeishuTenantV2PerformanceMetricDetail）
 
 ## 接口名称

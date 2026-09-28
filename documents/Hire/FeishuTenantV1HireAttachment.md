@@ -1,3 +1,8 @@
+---
+title: 招聘附件接口（租户令牌）| MudFeishu
+description: 该接口用于以租户身份管理飞书招聘附件，支持通用附件上传、附件元信息查询，以及人才简历附件的 PDF 格式下载链接获取。
+---
+
 # 招聘附件 - 租户令牌（FeishuTenantV1HireAttachment）
 
 ## 接口名称

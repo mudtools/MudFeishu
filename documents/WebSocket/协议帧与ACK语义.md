@@ -1,3 +1,8 @@
+---
+title: WebSocket 协议帧与 ACK 语义 | MudFeishu
+description: 该文档说明 Mud.Feishu.WebSocket 二进制帧处理链路中的帧结构、ACK 语义、去重与重投关系，明确各类帧的响应规则。
+---
+
 # WebSocket 协议帧与 ACK 语义
 
 > 适用范围：`Mud.Feishu.WebSocket` 的二进制帧处理链路（`BinaryMessageProcessor` / `FrameBuilder` / `MessageRouter`）。

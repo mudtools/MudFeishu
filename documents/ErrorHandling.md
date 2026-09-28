@@ -1,3 +1,8 @@
+---
+title: 错误处理指南 | MudFeishu
+description: 该文档说明 Mud.Feishu SDK 的错误通道设计，重点覆盖文件下载类接口（Task<byte[]?>）的语义差异，以及统一响应模型与错误处理方式。
+---
+
 # 错误处理指南
 
 本文说明 Mud.Feishu SDK 的错误通道设计，重点覆盖**文件下载类接口**（`Task<byte[]?>`）这一

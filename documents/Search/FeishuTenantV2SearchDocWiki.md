@@ -1,3 +1,8 @@
+---
+title: 搜索文档接口（租户令牌）| MudFeishu
+description: 该接口用于以租户身份搜索飞书云文档，根据关键词对当前可见的云文档进行检索。
+---
+
 # 搜索文档 - 租户令牌（FeishuTenantV2SearchDocWiki）
 
 ## 接口名称

@@ -1,3 +1,8 @@
+---
+title: 飞书招聘（Hire）SDK 接口文档 | MudFeishu
+description: 该文档为飞书招聘（Hire）服务端 OpenAPI 的接口导航总览，涵盖职位与招聘需求、面试/Offer 配置、设置与字典、招聘官网与内推、人才管理、投递流程等招聘全链路能力的入口索引。
+---
+
 # 飞书招聘（Hire）SDK 接口文档
 
 ## 概述

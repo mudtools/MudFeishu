@@ -1,3 +1,8 @@
+---
+title: 关联组织接口（用户令牌）| MudFeishu
+description: 该接口用于以用户身份查询飞书关联组织（trust_party/v1）的协作关系，包括可见关联组织列表与详情、组织内可见的部门/成员/用户组信息及部门、成员详情。
+---
+
 # 关联组织 - 用户令牌（FeishuUserV1TrustPartyCollaborationTenant）
 
 ## 接口名称

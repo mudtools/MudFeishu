@@ -1,3 +1,8 @@
+---
+title: 安全与合规（Security）SDK 接口文档 | MudFeishu
+description: 该文档为飞书安全与合规服务端 OpenAPI 的接口导航总览，涵盖行为审计日志、OpenAPI 审计日志、数据驻留与用户迁移，以及设备管理与设备申报等能力的入口索引。
+---
+
 # 安全与合规（Security）SDK 接口文档
 
 ## 概述

@@ -1,3 +1,8 @@
+---
+title: 电子表格范围接口（V3）| MudFeishu
+description: 该接口用于管理飞书电子表格操作的行列范围（range），通过 sheetId 与单元格范围指定数据操作区域。
+---
+
 # 电子表格范围  
 **行列范围操作 - IFeishuV3SpreadsheetRange**
 

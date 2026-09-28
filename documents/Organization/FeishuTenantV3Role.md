@@ -1,3 +1,8 @@
+---
+title: 角色管理接口（租户 V3）| MudFeishu
+description: 该接口用于以租户身份管理飞书角色（Functional Role），支持角色的创建、修改与删除。
+---
+
 # 租户V3角色管理 - FeishuTenantV3Role
 
 ## 接口名称

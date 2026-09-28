@@ -1,3 +1,8 @@
+---
+title: 电子表格浮动图片接口（V3）| MudFeishu
+description: 该接口用于管理飞书电子表格中的浮动图片（悬浮于单元格上方、大小可调），支持浮动图片的相关操作。
+---
+
 # 电子表格浮动图片  
 **浮动图片 - IFeishuV3SpreadsheetFloatImage**
 

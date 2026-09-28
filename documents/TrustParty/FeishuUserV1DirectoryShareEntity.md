@@ -1,3 +1,8 @@
+---
+title: 共享成员范围接口（用户令牌）| MudFeishu
+description: 该接口用于以用户身份查询本组织与对方关联组织之间双向共享的部门、用户组与成员范围，为配置可搜可见规则选取主客体实体提供依据。
+---
+
 # 共享成员范围 - 用户令牌（FeishuUserV1DirectoryShareEntity）
 
 ## 接口名称

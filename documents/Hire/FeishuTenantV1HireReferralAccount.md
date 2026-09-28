@@ -1,3 +1,8 @@
+---
+title: 招聘内推账户接口（租户令牌）| MudFeishu
+description: 该接口用于以租户身份管理飞书招聘内推奖励账户，支持账户注册、启用/停用、余额查询、全额提现，以及按时间段的提现数据对账。
+---
+
 # 内推账户 - 租户令牌（FeishuTenantV1HireReferralAccount）
 
 ## 接口名称

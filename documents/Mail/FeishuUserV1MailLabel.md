@@ -1,3 +1,8 @@
+---
+title: 邮箱标签接口（用户令牌）| MudFeishu
+description: 该接口用于以用户身份管理自己的邮箱标签，支持邮件标签的创建、修改、查询与删除。
+---
+
 # IFeishuUserV1MailLabel - 用户邮箱标签API
 
 ## 功能描述

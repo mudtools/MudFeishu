@@ -1,3 +1,8 @@
+---
+title: 会议导出接口（用户令牌）| MudFeishu
+description: 该接口用于以用户身份导出当前用户相关的会议数据，支持异步导出任务查询与文件下载，仅访问当前用户有权限的数据。
+---
+
 # 会议导出 - 用户令牌
 **IFeishuUserV1VideoConferencingExports**
 

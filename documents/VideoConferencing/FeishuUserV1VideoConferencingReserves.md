@@ -1,3 +1,8 @@
+---
+title: 会议预约接口（用户令牌）| MudFeishu
+description: 该接口用于以用户身份预约飞书会议，可提前设置参会成员与会议权限并获取会议信息，支持预约最近 30 天内的会议。
+---
+
 # 会议预约 - 用户令牌
 **IFeishuUserV1VideoConferencingReserves**
 

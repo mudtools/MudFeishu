@@ -1,3 +1,8 @@
+---
+title: 邮件组接口（租户令牌）| MudFeishu
+description: 该接口用于以租户身份管理企业内所有邮件组，包括邮件组管理、邮件组管理员、成员、别名及权限成员管理等。
+---
+
 # IFeishuTenantV1MailGroup - 租户邮件组API
 
 ## 功能描述

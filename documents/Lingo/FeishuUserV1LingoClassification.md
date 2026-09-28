@@ -1,3 +1,8 @@
+---
+title: 词典分类接口（用户令牌）| MudFeishu
+description: 该接口用于以用户身份分页获取飞书词典的词典分类（一级/二级分类与国际化分类名）。
+---
+
 # 词典分类 - 用户令牌（FeishuUserV1LingoClassification）
 
 ## 接口名称

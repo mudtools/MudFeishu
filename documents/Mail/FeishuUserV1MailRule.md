@@ -1,3 +1,8 @@
+---
+title: 邮箱收信规则接口（用户令牌）| MudFeishu
+description: 该接口用于以用户身份管理自己的邮箱收信规则，支持收信规则的创建、修改、查询与删除。
+---
+
 # IFeshuUserV1MailRule - 用户邮箱收信规则API
 
 ## 功能描述

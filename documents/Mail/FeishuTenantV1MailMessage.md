@@ -1,3 +1,8 @@
+---
+title: 邮箱邮件接口（租户令牌）| MudFeishu
+description: 该接口用于以租户身份管理企业内所有用户的邮箱邮件，支持邮件的查询、修改与删除。
+---
+
 # IFeishuTenantV1MailMessage - 租户邮箱邮件API
 
 ## 功能描述

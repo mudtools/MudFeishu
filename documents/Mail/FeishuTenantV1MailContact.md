@@ -1,3 +1,8 @@
+---
+title: 邮箱联系人接口（租户令牌）| MudFeishu
+description: 该接口用于以租户身份管理企业内所有用户的邮箱联系人，支持邮箱联系人的修改、查询与删除。
+---
+
 # IFeishuTenantV1MailContact - 租户邮箱联系人API
 
 ## 功能描述

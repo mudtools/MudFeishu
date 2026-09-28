@@ -1,3 +1,8 @@
+---
+title: 电子表格筛选接口（V3）| MudFeishu
+description: 该接口用于管理飞书电子表格的筛选，支持为指定列设置筛选条件，包括创建、更新、获取与删除筛选。
+---
+
 # 电子表格筛选  
 **筛选 - IFeishuV3SpreadsheetFilter**
 

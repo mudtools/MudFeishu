@@ -1,3 +1,8 @@
+---
+title: 公共邮箱接口（用户令牌）| MudFeishu
+description: 该接口用于以用户身份访问和管理自己有权限的公共邮箱，包括公共邮箱、成员及别名管理。
+---
+
 # IFeishuUserV1MailPublicMailbox - 用户公共邮箱API
 
 ## 功能描述

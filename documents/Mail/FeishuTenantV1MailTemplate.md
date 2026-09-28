@@ -1,3 +1,8 @@
+---
+title: 邮件模板接口（租户令牌）| MudFeishu
+description: 该接口用于以租户身份管理企业内所有用户的邮件模板，支持邮件模板的查询与更新。
+---
+
 # IFeishuTenantV1MailTemplate - 租户邮件模板API
 
 ## 功能描述

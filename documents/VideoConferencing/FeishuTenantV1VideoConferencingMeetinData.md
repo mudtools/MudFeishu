@@ -1,3 +1,8 @@
+---
+title: 会议数据查询接口（租户令牌）| MudFeishu
+description: 该接口用于以租户身份分页查询租户一段时间内的会议数据，包括会议明细、参会人明细、会议质量、会议室预定及设备告警记录。
+---
+
 # 会议数据查询 - 租户令牌
 **IFeishuTenantV1VideoConferencingMeetinData**
 

@@ -1,3 +1,8 @@
+---
+title: 招聘职位发布记录接口（租户令牌）| MudFeishu
+description: 该接口用于以租户身份按招聘渠道搜索职位发布记录（职位广告），返回官网/三方/内推等渠道下的职位广告列表及状态、薪资、地址等聚合信息。
+---
+
 # 职位发布记录（FeishuTenantV1HireJobPublishRecord）
 
 ## 接口名称

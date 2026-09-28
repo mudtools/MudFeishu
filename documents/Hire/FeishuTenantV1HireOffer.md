@@ -1,3 +1,8 @@
+---
+title: 招聘 Offer 设置接口（租户令牌）| MudFeishu
+description: 该接口用于以租户身份管理飞书招聘 Offer 配置，支持 Offer 申请表列表与模板 Schema 查询、申请表自定义字段更新及 Offer 审批模板查询。
+---
+
 # Offer 设置 - 租户令牌（FeishuTenantV1HireOffer）
 
 ## 接口名称

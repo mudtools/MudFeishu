@@ -1,3 +1,8 @@
+---
+title: 员工管理接口（租户 V1）| MudFeishu
+description: 该接口用于以租户身份管理飞书企业员工的完整生命周期，支持员工创建、信息更新、离职、恢复、状态变更及批量查询与搜索。
+---
+
 # 租户V1员工管理 - FeishuTenantV1Employees
 
 ## 接口名称

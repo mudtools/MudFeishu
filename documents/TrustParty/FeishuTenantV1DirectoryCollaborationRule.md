@@ -1,3 +1,8 @@
+---
+title: 可搜可见规则接口（租户令牌）| MudFeishu
+description: 该接口用于以租户身份管理飞书关联组织间的可搜可见规则，控制双方组织内主体可搜到并看见的客体，支持规则的查询、新增、更新与删除。
+---
+
 # 可搜可见规则 - 租户令牌（FeishuTenantV1DirectoryCollaborationRule）
 
 ## 接口名称

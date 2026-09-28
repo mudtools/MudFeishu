@@ -1,3 +1,8 @@
+---
+title: 招聘需求接口（租户令牌）| MudFeishu
+description: 该接口用于以租户身份管理飞书招聘需求，支持招聘需求的创建/更新/删除、按 ID 或编号批量获取、分页列表查询以及模板获取。
+---
+
 # 招聘需求 - 租户令牌（FeishuTenantV1HireJobRequirement）
 
 ## 接口名称

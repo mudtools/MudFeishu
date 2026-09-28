@@ -1,3 +1,8 @@
+---
+title: 词典草稿接口（用户令牌）| MudFeishu
+description: 该接口用于以用户身份管理飞书词典草稿，支持发起创建新词条或更新现有词条的草稿申请，以及按草稿 ID 更新草稿内容。
+---
+
 # 词典草稿 - 用户令牌（FeishuUserV1LingoDraft）
 
 ## 接口名称

@@ -1,3 +1,8 @@
+---
+title: 词库接口（租户令牌）| MudFeishu
+description: 该接口用于以租户身份（应用身份）获取飞书词典的词库列表。
+---
+
 # 词库 - 租户令牌（FeishuTenantV1LingoRepo）
 
 ## 接口名称

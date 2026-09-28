@@ -1,3 +1,8 @@
+---
+title: 绩效详情数据接口（租户令牌）| MudFeishu
+description: 该接口用于以租户身份获取飞书绩效详情数据，返回被评估人各环节的绩效评估详情（不含校准环节），相比 v1 返回数据更丰富。
+---
+
 # 绩效详情数据 - 租户令牌（FeishuTenantV2PerformanceReviewData）
 
 ## 接口名称

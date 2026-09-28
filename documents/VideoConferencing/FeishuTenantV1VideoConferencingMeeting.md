@@ -1,3 +1,8 @@
+---
+title: 会议管理接口（租户令牌）| MudFeishu
+description: 该接口用于以租户身份管理飞书会议，支持获取会议详情、关联会议列表、设置主持人以及移除参会人等操作。
+---
+
 # 会议管理 - 租户令牌
 **IFeishuTenantV1VideoConferencingMeeting**
 

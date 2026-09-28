@@ -37,9 +37,15 @@ namespace Mud.Feishu.Agent.Demo;
 /// </para>
 /// <para>
 /// 工具执行链租户上下文固定为 <c>demo-app</c>（即下方注册的飞书应用 AppKey）；
-/// 10 个只读工具经只读白名单启用（生产由宿主按需裁剪，Phase 1 §3.3.4）。
+/// 全部只读工具经只读白名单启用（<c>FeishuToolNames.ReadonlyAll</c>，生产由宿主按需裁剪，Phase 1 §3.3.4）。
 /// 写工具默认不启用——示例展示 <c>WriteAllowList</c> 键控位（注释态），启用须同时注册
 /// <c>IToolExecutionAuthorizer</c>（Phase 2 §3.3 安全默认）。
+/// </para>
+/// <para>
+/// R4 起的两个装配约束（示例已按默认值体现）：
+/// ① 只读面含 <c>task.list_my_tasks</c>（identity=user），须在 <c>AllowedIdentities</c> 放行 <c>user</c>，
+/// 否则 <c>AddFeishuTools</c> 装配期 fail-fast；
+/// ② 上传工具 <c>im.send_image</c>/<c>im.send_file</c> 还需宿主实现 <c>IFeishuAttachmentStager</c>（落盘 + 安全域）。
 /// </para>
 /// </remarks>
 public static class ToolsDemo
@@ -78,19 +84,27 @@ public static class ToolsDemo
                 .AddDocxApi()
                 .AddWikiApi()
                 .AddSearchApi()
-                .AddSpreadsheetsApi())
+                .AddSpreadsheetsApi()
+                // R4/WP5 新域：日历（AT-F04）与任务（AT-F17）——域客户端缺席时对应工具不进注册表。
+                .AddCalendarApi()
+                .AddTaskApi())
             .AddFeishuOpenAIChatClient("demo-model", modelId, apiKey, endpoint)
             .AddFeishuAgent(configure: options =>
             {
                 options.ModelServiceKey = "demo-model";
                 options.Name = "FeishuAgentToolsDemo";
                 options.Instructions = "你是嵌入在 .NET 服务里的飞书助手。可使用只读工具查询多维表格、读取文档正文、" +
-                    "遍历知识库、搜索云文档、读取群历史消息与电子表格区域数据；两步链示例：wiki.get_node 解析链接 → " +
-                    "docx.get_raw_content 读正文。用简洁中文回答，引用数据时说明来源工具。";
-                // Demo 启用全部 10 个只读工具；生产由宿主按需裁剪白名单。
+                    "遍历知识库、搜索云文档、读取群历史消息与电子表格区域数据、查询日历忙闲与日程、列出我负责的任务；" +
+                    "两步链示例：wiki.get_node 解析链接 → docx.get_raw_content 读正文。用简洁中文回答，引用数据时说明来源工具。";
+                // Demo 启用全部只读工具（ReadonlyAll，由生成器从 [FeishuTool] 派生）；生产由宿主按需裁剪白名单。
                 options.Tools = [.. FeishuToolNames.ReadonlyAll];
+                // 身份闭集（R4 WP2 / T2-4 决策 D-1 ⓑ）：只读面含 task.list_my_tasks（identity=user），
+                // 必须在 AllowedIdentities 内显式放行，否则装配期 fail-fast（而不是运行期静默 policy_denied）。
+                options.AllowedIdentities = ["tenant", "user"];
                 // Phase 2 写工具示例（默认空=不启用）：显式键控 + 授权器注册后才真正放行。
                 // options.WriteAllowList = [FeishuToolNames.ImSendMessage];
+                // R4/WP7 上传工具（im.send_image / im.send_file）还需宿主注册 IFeishuAttachmentStager
+                // （域名白名单/大小/MIME 校验属宿主安全域）；未注册时两个工具不注册（软缺席）。
             })
             .AddFeishuTools();
 

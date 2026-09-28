@@ -12,6 +12,7 @@ using Microsoft.Extensions.Options;
 using Mud.Feishu.AI.Channels;
 using Mud.Feishu.AI.Events;
 using Mud.Feishu.AI.Knowledge;
+using Mud.Feishu.AI.Tools;
 using Mud.Feishu.AI.FeishuTools.Channels;
 using Mud.Feishu.AI.FeishuTools.Events;
 using Mud.Feishu.AI.FeishuTools.Internal;
@@ -48,7 +49,7 @@ namespace Mud.Feishu.AI.FeishuTools;
 public static class FeishuToolsServiceCollectionExtensions
 {
     /// <summary>
-    /// 注册飞书工具包（21 个只读 + 3 个写工具，共 24 个；全部注册、默认不启用）。
+    /// 注册飞书工具包（全部域：只读 + 写类 + 附件上传；全部注册、默认不启用）。
     /// </summary>
     /// <remarks>「引入全部域」便捷入口，产物与逐域扩展全调等价（等价性由用例锁定）。</remarks>
     /// <param name="services">服务集合。</param>
@@ -66,6 +67,9 @@ public static class FeishuToolsServiceCollectionExtensions
             .AddFeishuSheetsToolsCore()
             .AddFeishuDriveToolsCore()
             .AddFeishuContactToolsCore()
+            .AddFeishuCalendarToolsCore()
+            .AddFeishuTaskToolsCore()
+            .AddFeishuAttachmentToolsCore()
             .AddFeishuKnowledgeToolsCore()
             .AddFeishuCapabilityToolsCore()
             .AddFeishuWriteToolsCore();
@@ -141,6 +145,40 @@ public static class FeishuToolsServiceCollectionExtensions
         this IServiceCollection services,
         Action<FeishuToolRegistry>? configure = null)
         => AddFeishuToolInfrastructure(services, configure).AddFeishuKnowledgeToolsCore();
+
+    /// <summary>
+    /// 按域注册日历工具（WP5 / AT-F04：<c>calendar.create_event</c> 写 + <c>find_free_slots</c>/<c>list_events</c> 只读）。
+    /// </summary>
+    /// <remarks>要求宿主已注册 <c>IFeishuTenantV4CalendarEvent</c> 与 <c>IFeishuTenantV4Calendar</c>（AddCalendarApi）；缺席时整域不注册。</remarks>
+    public static IServiceCollection AddFeishuCalendarTools(
+        this IServiceCollection services,
+        Action<FeishuToolRegistry>? configure = null)
+        => AddFeishuToolInfrastructure(services, configure).AddFeishuCalendarToolsCore();
+
+    /// <summary>
+    /// 按域注册任务工具（WP5 / AT-F17：<c>task.create_task</c> 写 + <c>task.list_my_tasks</c> <b>user 身份</b>）。
+    /// </summary>
+    /// <remarks>
+    /// tenant 客户端（<c>IFeishuTenantV2Task</c>）缺席 → 整域不注册；user 客户端
+    /// （<c>IFeishuUserV2Task</c>）缺席 → 仅 <c>list_my_tasks</c> 缺席（工具级软缺席）。
+    /// <c>list_my_tasks</c> 还要求宿主在执行上下文提供当前用户（<c>FeishuToolContext.UserId</c>）。
+    /// </remarks>
+    public static IServiceCollection AddFeishuTaskTools(
+        this IServiceCollection services,
+        Action<FeishuToolRegistry>? configure = null)
+        => AddFeishuToolInfrastructure(services, configure).AddFeishuTaskToolsCore();
+
+    /// <summary>
+    /// 按域注册附件上传工具（WP7：<c>im.send_image</c> / <c>im.send_file</c>，三步链路 落盘→上传→发送）。
+    /// </summary>
+    /// <remarks>
+    /// 要求宿主注册 <c>IFeishuAttachmentStager</c> 与 <c>IFeishuTenantV1Message</c>；
+    /// <b>落盘器缺席 → 两个工具不注册</b>（软缺席：SDK 不实现下载/落盘，见 U-5）。
+    /// </remarks>
+    public static IServiceCollection AddFeishuAttachmentTools(
+        this IServiceCollection services,
+        Action<FeishuToolRegistry>? configure = null)
+        => AddFeishuToolInfrastructure(services, configure).AddFeishuAttachmentToolsCore();
 
     /// <summary>
     /// 注册写域工具（Phase 2：<c>im.send_message</c>/<c>bitable.add_record</c>/<c>approval.create_instance</c> +
@@ -507,6 +545,48 @@ public static class FeishuToolsServiceCollectionExtensions
         return services;
     }
 
+    private static IServiceCollection AddFeishuCalendarToolsCore(this IServiceCollection services)
+    {
+        services.TryAddSingleton(static sp =>
+            sp.GetService<Mud.Feishu.IFeishuTenantV4CalendarEvent>() is { } eventClient
+            && sp.GetService<Mud.Feishu.IFeishuTenantV4Calendar>() is { } calendarClient
+                ? new CalendarTools(eventClient, calendarClient, sp.GetRequiredService<IOptions<FeishuAgentOptions>>())
+                : null!);
+        services.AddToolDomainRegistrar(static sp => sp.GetService<CalendarTools>() is { } executor
+            ? new CalendarToolDomainRegistrar(executor, sp.GetRequiredService<FeishuToolBinding>())
+            : null);
+        return services;
+    }
+
+    private static IServiceCollection AddFeishuTaskToolsCore(this IServiceCollection services)
+    {
+        // tenant 客户端缺席 → 整域不注册；user 客户端缺席 → TaskTools 可构造（list_my_tasks 工具级报错）。
+        services.TryAddSingleton(static sp =>
+            sp.GetService<Mud.Feishu.IFeishuTenantV2Task>() is { } taskClient
+                ? new TaskTools(
+                    taskClient,
+                    sp.GetService<Mud.Feishu.IFeishuUserV2Task>(),
+                    sp.GetRequiredService<IOptions<FeishuAgentOptions>>())
+                : null!);
+        services.AddToolDomainRegistrar(static sp => sp.GetService<TaskTools>() is { } executor
+            ? new TaskToolDomainRegistrar(executor, sp.GetRequiredService<FeishuToolBinding>())
+            : null);
+        return services;
+    }
+
+    private static IServiceCollection AddFeishuAttachmentToolsCore(this IServiceCollection services)
+    {
+        // 软缺席（WP7）：消息客户端或宿主落盘器缺席 → 注册器不构造 → 两个上传工具不进注册表。
+        services.AddToolDomainRegistrar(static sp =>
+            sp.GetService<Mud.Feishu.IFeishuTenantV1Message>() is { } message
+            && sp.GetService<IFeishuAttachmentStager>() is { } stager
+                ? new AttachmentToolDomainRegistrar(
+                    new AttachmentTools(message, stager),
+                    sp.GetRequiredService<FeishuToolBinding>())
+                : null);
+        return services;
+    }
+
     private static IServiceCollection AddFeishuKnowledgeToolsCore(this IServiceCollection services)
     {
         // IRetriever 未注册（如未调 AddFeishuAilyKnowledge）→ 工具不进注册表（白名单期报错）。
@@ -572,6 +652,25 @@ public static class FeishuToolsServiceCollectionExtensions
         }
 
         configure?.Invoke(registry);
+
+        // 身份白名单的装配期 fail-fast（T2-4 / 决策 D-1 ⓑ，R4.1 评审 R-3）：白名单
+        // （Tools / WriteAllowList / configure 回调）启用了 identity 不在 AllowedIdentities
+        // 闭集内的工具时，启动即抛可读异常——而不是等运行期被策略轴逐请求拒绝
+        // （policy_denied: identity_mismatch，宿主会误判为权限问题）。
+        // 落点说明：FeishuAgentOptions.Validate() 感知不到工具面（身份在注册表、
+        // 白名单映射在装配层），故该校验只能在注册表构建完成后进行。
+        var identityViolations = registry.EnabledTools
+            .Where(t => !options.AllowedIdentities.Contains(t.Identity, StringComparer.Ordinal))
+            .ToArray();
+        if (identityViolations.Length > 0)
+        {
+            throw new InvalidOperationException(
+                $"以下已启用工具的身份不在 {FeishuAgentOptions.SectionName}:{nameof(FeishuAgentOptions.AllowedIdentities)} "
+                + $"闭集 [{string.Join(",", options.AllowedIdentities)}] 内："
+                + string.Join("、", identityViolations.Select(static t => $"{t.Name}(identity={t.Identity})"))
+                + "——请把对应身份加入 AllowedIdentities，或从白名单移除这些工具（装配期 fail-fast，防运行期静默拒绝）");
+        }
+
         return registry;
     }
 

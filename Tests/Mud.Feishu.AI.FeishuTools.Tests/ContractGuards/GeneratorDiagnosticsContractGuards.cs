@@ -105,25 +105,22 @@ public class GeneratorDiagnosticsContractGuards
     }
 
     /// <summary>
-    /// A2（后半）：零容忍诊断必须有<b>可触发的负例用例</b>——当前以<b>显式债务登记</b>形式落地。
+    /// A2（WP1 / R4 方案）：零容忍诊断必须有<b>真实可触发的 driver 负例</b>。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// <b>为什么不是"源码里出现过该 ID 就通过"</b>：那种判定挡不住
-    /// <c>Diagnostics.MUDFT009.Id.Should().Be("MUDFT009")</c> 这类写法——
-    /// 断言里出现了 ID，但没有任何东西被触发（本仓库已有"假门禁"前科，见 <c>MUDFT015</c>）。
+    /// R3 曾以"显式债务登记"替代（<c>PendingTriggerableIds</c>，债务 11 项）——R4 落地
+    /// <c>Tests/Mud.Feishu.AI.Tools.Tests</c>（<c>CSharpGeneratorDriver</c> 驱动生产生成器）后
+    /// <b>债务清零</b>，本用例改为交叉断言：负例工程存在并纳入解决方案、且 <c>ZeroToleranceIds</c>
+    /// 的每一条都在负例工程中有登记的负例方法（方法名以诊断 ID 开头）。
+    /// 新增零容忍项而不同批补负例 → 立即红。
     /// </para>
     /// <para>
-    /// <b>真正的可触发负例需要 Roslyn 驱动</b>（<c>CSharpGeneratorDriver</c> 跑生成器并断言产出的
-    /// Diagnostic），而本测试工程当前<b>无法引用生成器程序集</b>（生成器以
-    /// <c>OutputItemType=Analyzer</c> + <c>ReferenceOutputAssembly=false</c> 引入，
-    /// 且其 <c>Microsoft.CodeAnalysis.CSharp</c> 依赖是 <c>PrivateAssets=all</c>）。
-    /// 落地配方已登记在 R3 方案 §13。
-    /// </para>
-    /// <para>
-    /// 故本用例退一步锁定<b>可控边界</b>：登记表必须与 <c>ZeroToleranceIds</c> 完全一致
-    /// （新增零容忍项而不登记负例状态 → 立即红），且已落地的负例必须真实存在。
-    /// <b>债务预算</b>（<see cref="PendingTriggerableIds"/>）只允许缩小，不允许扩大。
+    /// 本工程无法以符号方式引用生成器程序集（Analyzer 形态 + <c>PrivateAssets=all</c>），
+    /// 故对负例工程的核查采用源码扫描——与仓库既有守卫体例一致；负例本体（driver 运行 + 断言）
+    /// 由 <c>Mud.Feishu.AI.Tools.Tests/GeneratorNegativeCaseTests</c> 真实执行，
+    /// 其元守卫（<c>ZeroToleranceIds_ShouldEachHaveDriverNegativeCase</c>）反向锁定
+    /// <c>ZeroToleranceIds</c> 与负例集的双向一致。
     /// </para>
     /// </remarks>
     [Fact]
@@ -131,46 +128,22 @@ public class GeneratorDiagnosticsContractGuards
     {
         var zeroToleranceIds = ReadZeroToleranceIds();
 
-        var covered = TriggerableCaseRegistry.Keys
-            .Union(PendingTriggerableIds, StringComparer.Ordinal)
-            .OrderBy(static id => id, StringComparer.Ordinal)
-            .ToArray();
+        // ① 负例工程必须存在并已进解决方案（摘除该工程 = 摘除门禁，不允许）。
+        var driverTestsPath = Path.Combine(FindRepositoryRoot(), "Tests", "Mud.Feishu.AI.Tools.Tests");
+        Directory.Exists(driverTestsPath).Should().BeTrue(
+            "生成器 driver 负例工程 Tests/Mud.Feishu.AI.Tools.Tests 必须存在（WP1 交付物，A2 债务清零的载体）");
+        var slnx = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "Mud.Feishu.slnx"));
+        slnx.Should().Contain("Mud.Feishu.AI.Tools.Tests", "driver 负例工程必须纳入解决方案（质量闸门按 slnx 枚举测试）");
 
-        covered.Should().BeEquivalentTo(zeroToleranceIds,
-            "负例登记表（已落地 ∪ 待落地）必须与 ZeroToleranceIds 完全一致——"
-            + "新增零容忍诊断时必须在同一处登记它的负例状态，否则 A2 会静默退化");
-
-        // 已登记的负例必须真实存在（文件 + 方法名都能找到）。
-        var testRoot = Path.Combine(FindRepositoryRoot(), TestProjectDirectory);
-        foreach (var (id, location) in TriggerableCaseRegistry)
+        // ② 每条零容忍 ID 必须有以该 ID 开头的负例方法（登记即义务）。
+        var testSource = File.ReadAllText(Path.Combine(driverTestsPath, "GeneratorNegativeCaseTests.cs"));
+        foreach (var id in zeroToleranceIds)
         {
-            var path = Path.Combine(testRoot, location.FileName);
-            File.Exists(path).Should().BeTrue($"{id} 登记的负例文件不存在：{location.FileName}");
-            File.ReadAllText(path).Should().Contain(location.MethodName,
-                $"{id} 登记的负例方法 {location.MethodName} 在 {location.FileName} 中找不到");
+            testSource.Should().Contain(
+                $"void {id}_",
+                $"零容忍诊断 {id} 在 driver 负例工程中没有登记的负例方法（方法名须以 {id}_ 开头）");
         }
-
-        // 债务预算：只允许缩小。
-        PendingTriggerableIds.Should().HaveCount(11,
-            "A2 的可触发负例尚未落地（见本用例 remarks）——债务数量只允许下降，上调必须经评审并同步 R3 方案 §13");
     }
-
-    /// <summary>已落地的负例：诊断 ID → （测试文件、用例方法名）。</summary>
-    private static readonly Dictionary<string, (string FileName, string MethodName)> TriggerableCaseRegistry = new(StringComparer.Ordinal)
-    {
-        // 说明：生成器诊断的**可触发**负例需要 Roslyn 驱动（见
-        // ZeroToleranceDiagnostics_ShouldEachHaveATriggerableCase 的 remarks），
-        // 本工程当前无法引用生成器程序集，故此处暂时为空；
-        // 已用 PendingTriggerableIds 显式登记 11 项债务。
-    };
-
-    /// <summary>待落地的负例（显式债务；数量只允许下降）。</summary>
-    private static readonly string[] PendingTriggerableIds =
-    [
-        "MUDFT001", "MUDFT002", "MUDFT003", "MUDFT004",
-        "MUDFT008", "MUDFT010", "MUDFT014", "MUDFT015",
-        "MUDFT016", "MUDFT017", "MUDFT019",
-    ];
 
     /// <summary>读取 <c>Diagnostics.cs</c> 中<b>全部</b>诊断的 ID（含非零容忍项）。</summary>
     private static IReadOnlyList<string> ReadDeclaredDiagnosticIds()

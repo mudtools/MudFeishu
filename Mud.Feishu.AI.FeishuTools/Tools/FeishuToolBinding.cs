@@ -6,6 +6,7 @@
 // -----------------------------------------------------------------------
 
 using Microsoft.Extensions.Logging;
+using Mud.Feishu.Abstractions;
 using Mud.Feishu.Abstractions.Metrics;
 using Mud.Feishu.AI.FeishuTools.Tools;
 
@@ -33,12 +34,18 @@ namespace Mud.Feishu.AI.FeishuTools;
 /// </remarks>
 public sealed class FeishuToolBinding
 {
+    /// <summary>user 身份字面量（与契约 <c>identity</c> 派生值一致：tenant / user）。</summary>
+    private const string IdentityUser = "user";
+
     private readonly IFeishuAppContextScopeFactory _scopeFactory;
     private readonly FeishuAgentOptions _options;
     private readonly IToolExecutionAuthorizer? _authorizer;
     private readonly IToolResultShaper? _resultShaper;
     private readonly IToolExecutionAuditSink? _auditSink;
+    private readonly IToolConfirmationTokenSecretProvider? _confirmationTokenSecretProvider;
+    private readonly IFeishuCurrentUserContext? _currentUserContext;
     private readonly ILogger? _logger;
+    private readonly Func<DateTimeOffset> _utcClock;
 
     /// <summary>
     /// 初始化 <see cref="FeishuToolBinding"/>。
@@ -48,21 +55,36 @@ public sealed class FeishuToolBinding
     /// <param name="authorizer">工具授权钩子（可空；SDK 不内建策略）。</param>
     /// <param name="resultShaper">结果整形钩子（可空；宿主注册后对投影结果做最终整形，P1D-2a）。</param>
     /// <param name="auditSink">结构化审计出口（可空；注册后投递允许/拒绝/错误三类审计事件，P1D-3b）。</param>
+    /// <param name="confirmationTokenSecretProvider">
+    /// 确认令牌签名密钥提供者（可空；T4-2/D-3——未注册或返回空 = 确认令牌能力降级为不可用，
+    /// <c>needs_confirmation</c> 维持纯提示文案）。
+    /// </param>
+    /// <param name="currentUserContext">
+    /// 当前用户上下文（可空；WP5 §5.3——user 身份工具执行期在此写入当前用户，
+    /// 使用户令牌缓存查找键可用；<b>执行后必须成对清理</b>，防 AsyncLocal 跨用户泄漏）。
+    /// </param>
     /// <param name="logger">日志（可空）。</param>
+    /// <param name="utcClock">UTC 时钟（可空；确认令牌过期校验用，测试注入固定时钟——R-5）。</param>
     public FeishuToolBinding(
         IFeishuAppContextScopeFactory scopeFactory,
         IOptions<FeishuAgentOptions> options,
         IToolExecutionAuthorizer? authorizer = null,
         IToolResultShaper? resultShaper = null,
         IToolExecutionAuditSink? auditSink = null,
-        ILogger<FeishuToolBinding>? logger = null)
+        IToolConfirmationTokenSecretProvider? confirmationTokenSecretProvider = null,
+        IFeishuCurrentUserContext? currentUserContext = null,
+        ILogger<FeishuToolBinding>? logger = null,
+        Func<DateTimeOffset>? utcClock = null)
     {
         _scopeFactory = scopeFactory ?? throw new ArgumentNullException(nameof(scopeFactory));
         _options = (options ?? throw new ArgumentNullException(nameof(options))).Value;
         _authorizer = authorizer;
         _resultShaper = resultShaper;
         _auditSink = auditSink;
+        _confirmationTokenSecretProvider = confirmationTokenSecretProvider;
+        _currentUserContext = currentUserContext;
         _logger = logger;
+        _utcClock = utcClock ?? (() => DateTimeOffset.UtcNow);
     }
 
     /// <summary>
@@ -132,9 +154,41 @@ public sealed class FeishuToolBinding
         activity?.SetTag(FeishuToolDiagnostics.TagDecision, FeishuToolDiagnostics.DecisionAllowed);
 
         // ④ 租户上下文切换（先于下游调用，作用域 finally 释放）。
+        // ④' user 身份工具（WP5 §5.3）：把当前用户写入 IFeishuCurrentUserContext（AsyncLocal）——
+        //     这是用户令牌缓存查找键的来源；执行后 finally 清理。**tenant 路径不得触碰该上下文**，
+        //     AsyncLocal 泄漏会让同一异步流内后续请求误用上一个人的令牌（本方案最危险的一处）。
+        var userContextRequired = string.Equals(tool.Identity, IdentityUser, StringComparison.Ordinal);
+        if (userContextRequired)
+        {
+            if (_currentUserContext is null)
+            {
+                return await DenyAsync(
+                    tool, context, ToolErrorKind.Forbidden,
+                    "authorization_denied: user 身份工具需要 IFeishuCurrentUserContext——宿主装配缺失（须注册 Abstractions 的当前用户上下文）",
+                    arguments, executionStopwatch, activity, cancellationToken).ConfigureAwait(false);
+            }
+
+            if (string.IsNullOrWhiteSpace(context.UserId))
+            {
+                return await DenyAsync(
+                    tool, context, ToolErrorKind.InvalidArgs,
+                    "invalid_args: user 身份工具要求执行上下文携带当前用户（FeishuToolContext.UserId，取 open_id）——宿主未提供",
+                    arguments, executionStopwatch, activity, cancellationToken).ConfigureAwait(false);
+            }
+        }
+
+        var userContextApplied = false;
         try
         {
             using var scope = _scopeFactory.BeginScope(context.AppKey);
+            if (userContextRequired)
+            {
+                // SetUser 的 openId 形参是令牌缓存查找键（未显式传 userId 时回退 openId）——
+                // 此处把 context.UserId 同时作为两者，保证"查找键 = 宿主提供的身份"。
+                _currentUserContext!.SetUser(context.UserId!, userId: context.UserId);
+                userContextApplied = true;
+            }
+
             var result = await invokeDownstream(cancellationToken).ConfigureAwait(false);
 
             // ⑤ 内容安全（AT-F14）：在净化**之前**扫描原始文本（不变量 A9）——净化会剥离控制字符，
@@ -188,6 +242,14 @@ public sealed class FeishuToolBinding
                 ToolArgsDigester.Digest(arguments), executionStopwatch.ElapsedMilliseconds,
                 CancellationToken.None).ConfigureAwait(false);
             return FeishuToolResult.FromError(errorText);
+        }
+        finally
+        {
+            // user 身份上下文成对清理（设置/清理必须成对，见 ④'）：AsyncLocal 泄漏 = 跨用户令牌误用。
+            if (userContextApplied)
+            {
+                _currentUserContext?.Clear();
+            }
         }
     }
 
@@ -320,7 +382,7 @@ public sealed class FeishuToolBinding
         ToolErrorKind.Retryable => $"[tool_error] {toolName} (retryable): {reason}——服务端繁忙/网络异常，可稍后重试同一调用",
         ToolErrorKind.InvalidArgs => $"[tool_error] {toolName} (invalid_args): {reason}",
         ToolErrorKind.Forbidden => $"[tool_error] {toolName} (forbidden): {reason}——授权被拒绝，请放弃或改用只读方案",
-        ToolErrorKind.NeedsConfirmation => $"[tool_error] {toolName} (needs_confirmation): {reason}——该操作需要用户确认后方可执行；请勿以同一参数重试，改为向用户说明并请求确认",
+        ToolErrorKind.NeedsConfirmation => $"[tool_error] {toolName} (needs_confirmation): {reason}——该操作需要用户确认后方可执行；若结果中提供了确认令牌，以相同参数并将 confirm_token 填为该令牌重试即可继续，否则请向用户说明并请求确认，勿盲目重试",
         _ => $"[tool_error] {toolName}: {reason}",
     };
 
@@ -370,12 +432,65 @@ public sealed class FeishuToolBinding
             AuthorizationDecision.Allowed => GateDecision.Pass(),
             AuthorizationDecision.Denied => GateDecision.Deny(
                 $"authorization_denied: {result.Reason ?? "授权被拒绝"}", ToolErrorKind.Forbidden),
-            AuthorizationDecision.NeedsUserConfirmation => GateDecision.Deny(
-                $"需要用户确认后才能执行（HITL，Phase 3 交付）：{result.Reason ?? "未提供原因"}",
-                ToolErrorKind.NeedsConfirmation),
+            AuthorizationDecision.NeedsUserConfirmation => ResolveNeedsConfirmation(tool, arguments, context, result.Reason),
             _ => GateDecision.Deny(
                 $"authorization_denied: 未知授权判定 {result.Decision}——按拒绝处理（fail-closed）", ToolErrorKind.Forbidden),
         };
+    }
+
+    /// <summary>
+    /// NeedsUserConfirmation 的真挂起解析（T4-2 / 决策 D-3）：
+    /// ① 请求携带<b>有效</b>确认令牌（签名 + 未过期 + 绑定 toolName/参数摘要/appKey/userId）
+    /// → 视为已获用户批准，跳过授权器的 Confirm 分支放行（<b>Denied 与策略轴仍照常生效</b>——
+    /// 令牌只豁免"待确认"，不豁免"被禁止"）；
+    /// ② 无有效令牌 → 拒绝，并在文案中签发新令牌（模型转述给用户，用户同意后以
+    /// <c>confirm_token=&lt;令牌&gt;</c> 重试同一调用）；密钥未配置时降级为纯提示文案（与既有行为一致）。
+    /// </summary>
+    private GateDecision ResolveNeedsConfirmation(
+        FeishuToolDefinition tool,
+        IReadOnlyDictionary<string, object?> arguments,
+        FeishuToolContext context,
+        string? reason)
+    {
+        var reasonText = reason ?? "未提供原因";
+        var secret = _confirmationTokenSecretProvider?.GetSecret();
+        if (string.IsNullOrWhiteSpace(secret))
+        {
+            // 降级：不签发令牌，维持既有提示语义。
+            return GateDecision.Deny($"需要用户确认后才能执行（HITL）：{reasonText}", ToolErrorKind.NeedsConfirmation);
+        }
+
+        var argsDigest = ToolConfirmationToken.ComputeArgumentsDigest(arguments);
+
+        // ① 重试路径：带有效确认令牌 → 放行（仍走后续内容安全/净化/审计，Denied 在这里已被排除）。
+        if (arguments.TryGetValue(ToolConfirmationToken.ArgumentName, out var tokenValue))
+        {
+            var presented = tokenValue switch
+            {
+                string s => s,
+                System.Text.Json.JsonElement { ValueKind: System.Text.Json.JsonValueKind.String } e => e.GetString(),
+                _ => null,
+            };
+            if (ToolConfirmationToken.TryValidate(
+                    presented, secret, tool.Name, argsDigest, context.AppKey, context.UserId, _utcClock()))
+            {
+                return GateDecision.Pass();
+            }
+
+            return GateDecision.Deny(
+                $"需要用户确认后才能执行（HITL）：{reasonText}；confirm_token 无效或已过期（换参数/换应用/换用户/超时都会失效）——请重新向用户确认",
+                ToolErrorKind.NeedsConfirmation);
+        }
+
+        // ② 首次路径：签发令牌并随拒绝文案下发（预演：令牌与本次参数绑定，参数变了即失效）。
+        var issued = ToolConfirmationToken.Issue(
+            secret, tool.Name, argsDigest, context.AppKey, context.UserId, _utcClock());
+        return issued is null
+            ? GateDecision.Deny($"需要用户确认后才能执行（HITL）：{reasonText}", ToolErrorKind.NeedsConfirmation)
+            : GateDecision.Deny(
+                $"需要用户确认后才能执行（HITL）：{reasonText}\n确认令牌: {issued}（请向用户展示并征得同意；"
+                + $"用户同意后以相同参数、并将 confirm_token 填为该令牌重试即可继续；有效期 10 分钟）",
+                ToolErrorKind.NeedsConfirmation);
     }
 
     /// <summary>
@@ -410,7 +525,8 @@ public sealed class FeishuToolBinding
         if (!_options.AllowedIdentities.Contains(tool.Identity, StringComparer.Ordinal))
         {
             return $"identity_mismatch: 工具 '{tool.Name}' 的身份为 '{tool.Identity}'，"
-                + $"不在宿主允许集合 [{string.Join(",", _options.AllowedIdentities)}] 内";
+                + $"不在宿主允许集合 [{string.Join(",", _options.AllowedIdentities)}] 内"
+                + $"（配置键 {FeishuAgentOptions.SectionName}:{nameof(FeishuAgentOptions.AllowedIdentities)}）";
         }
 
         return null;

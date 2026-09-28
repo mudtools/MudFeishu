@@ -39,6 +39,7 @@ public interface IFeishuImSendMessageTool
         [ToolParameter("receive_id", "接收者 ID（群聊 ocXxx 或用户 open_id；open_id 可由 contact.search_user 获取）", Required = true)] string receive_id,
         [ToolParameter("text", "消息文本内容（纯文本）", Required = true)] string text,
         [ToolParameter("receive_id_type", "接收者 ID 类型（可选：chat_id=群聊 / open_id=用户 / user_id / union_id / email，默认 chat_id）")] string? receive_id_type = null,
+        [ToolParameter("idempotency_key", "幂等键（可选）：相同键在 1 小时内至多成功发送一条消息（平台侧去重）；省略时不保证幂等。建议由调用方给出稳定值（如「单据号+动作」），不要用随机数。幂等键不跨工具共享（不同工具的同名键互不影响）。")] string? idempotency_key = null,
         [ToolParameter("dry_run", "仅预演不发送（可选，默认 false）：返回将要下发的 method/path 与请求体字段摘要，不调用下游")] bool? dry_run = null,
         CancellationToken cancellationToken = default);
 }
@@ -59,6 +60,7 @@ public interface IFeishuBitableAddRecordTool
         [ToolParameter("app_token", "多维表格 AppToken（形如 bascnXxx）", Required = true)] string app_token,
         [ToolParameter("table_id", "数据表 ID（形如 tblXxx，来自 bitable.list_tables）", Required = true)] string table_id,
         [ToolParameter("fields", "记录字段 JSON 对象字符串，须是 JSON 对象（非数组/标量），如 {\"任务名称\":\"写周报\",\"状态\":\"待办\"}", Required = true)] string fields,
+        [ToolParameter("idempotency_key", "幂等键（可选）：相同键的重复请求返回同一条记录（不会重复创建）；省略时不保证幂等。建议由调用方给出稳定值（如「单据号+动作」），不要用随机数。幂等键不跨工具共享（不同工具的同名键互不影响）。")] string? idempotency_key = null,
         [ToolParameter("dry_run", "仅预演不写入（可选，默认 false）：返回将要下发的 method/path 与请求体字段摘要，不调用下游")] bool? dry_run = null,
         CancellationToken cancellationToken = default);
 }
@@ -79,6 +81,7 @@ public interface IFeishuApprovalCreateInstanceTool
         [ToolParameter("approval_code", "审批定义 Code", Required = true)] string approval_code,
         [ToolParameter("form", "审批表单 Value（须为 JSON 数组字符串，按审批定义的表单控件结构）", Required = true)] string form,
         [ToolParameter("user_id", "发起人用户 ID（可选；user_id 类型，数据权限校验用）")] string? user_id = null,
+        [ToolParameter("idempotency_key", "幂等键（可选，形如 UUID）：相同键重复创建将返回错误码 60012（含义是「该幂等键已用过」，不是审批功能故障）；省略时不保证幂等。建议由调用方给出稳定值。幂等键不跨工具共享（不同工具的同名键互不影响）。")] string? idempotency_key = null,
         [ToolParameter("dry_run", "仅预演不发起（可选，默认 false）：返回将要下发的 method/path 与请求体字段摘要，不调用下游")] bool? dry_run = null,
         CancellationToken cancellationToken = default);
 }

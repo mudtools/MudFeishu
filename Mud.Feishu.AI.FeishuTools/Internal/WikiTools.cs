@@ -5,12 +5,15 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using Mud.Feishu.DataModels.Wiki;
+
 namespace Mud.Feishu.AI.FeishuTools.Internal;
 
 /// <summary>
 /// Wiki 双工具执行器（<c>wiki.get_node</c> / <c>wiki.list_nodes</c>）：
 /// 节点白名单 node_token/title/obj_type/obj_token/parent_node_token（枢纽定位，§3.3.2）。
 /// </summary>
+/// <remarks>执行骨架（catch/回填/截断）由 <see cref="ToolExecutor"/> 承担（WP3）；本类只保留参数校验与投影语义。</remarks>
 internal sealed class WikiTools(Mud.Feishu.IFeishuTenantV2WikiNodes wikiNodesClient, IOptions<FeishuAgentOptions> options)
 {
     private readonly Mud.Feishu.IFeishuTenantV2WikiNodes _wikiNodesClient = wikiNodesClient
@@ -18,9 +21,10 @@ internal sealed class WikiTools(Mud.Feishu.IFeishuTenantV2WikiNodes wikiNodesCli
     private readonly int _maxResultLength = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
 
     /// <summary>wiki.get_node：解析节点信息（单对象）。</summary>
-    public async Task<FeishuToolResult> GetNodeAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    public Task<FeishuToolResult> GetNodeAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
-        try
+        var executor = new ToolExecutor(FeishuToolNames.WikiGetNode, _maxResultLength);
+        return executor.RunAsync(async () =>
         {
             var token = ToolArgs.RequireString(arguments, "token");
             var objType = ToolArgs.OptionalString(arguments, "obj_type") ?? "wiki";
@@ -28,28 +32,18 @@ internal sealed class WikiTools(Mud.Feishu.IFeishuTenantV2WikiNodes wikiNodesCli
             var outcome = FeishuApiResultReader.Read(await _wikiNodesClient
                 .GetNodeSpaceInfoAsync(token, objType, cancellationToken)
                 .ConfigureAwait(false));
-            if (!outcome.Ok)
+            return executor.FromApi(outcome, static data => new JsonObject
             {
-                return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(FeishuToolNames.WikiGetNode, outcome.Code, outcome.ErrorText!));
-            }
-
-            var node = outcome.Data!.Node;
-            var envelope = new JsonObject
-            {
-                ["node"] = ProjectNode(node),
-            };
-            return FeishuToolResult.FromText(ToolResultText.TruncateJson(envelope.ToJsonString(), _maxResultLength));
-        }
-        catch (ArgumentException ex)
-        {
-            return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(FeishuToolNames.WikiGetNode, ex.Message));
-        }
+                ["node"] = ProjectNode(data.Node),
+            });
+        });
     }
 
     /// <summary>wiki.list_nodes：列出子节点（分页）。</summary>
-    public async Task<FeishuToolResult> ListNodesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    public Task<FeishuToolResult> ListNodesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
-        try
+        var executor = new ToolExecutor(FeishuToolNames.WikiListNodes, _maxResultLength);
+        return executor.RunAsync(async () =>
         {
             var spaceId = ToolArgs.RequireString(arguments, "space_id");
             var parentNodeToken = ToolArgs.OptionalString(arguments, "parent_node_token");
@@ -58,36 +52,32 @@ internal sealed class WikiTools(Mud.Feishu.IFeishuTenantV2WikiNodes wikiNodesCli
             var outcome = FeishuApiResultReader.Read(await _wikiNodesClient
                 .GetSpaceNodesPageListAsync(spaceId, parentNodeToken, PageSizes.WikiNodes, pageToken, cancellationToken)
                 .ConfigureAwait(false));
-            if (!outcome.Ok)
-            {
-                return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(FeishuToolNames.WikiListNodes, outcome.Code, outcome.ErrorText!));
-            }
-
-            var data = outcome.Data!;
-            var envelope = new JsonObject
-            {
-                ["items"] = new JsonArray(),
-                ["has_more"] = data.HasMore,
-            };
-            if (!string.IsNullOrEmpty(data.PageToken))
-            {
-                envelope["page_token"] = data.PageToken;
-            }
-
-            foreach (var node in data.Items ?? [])
-            {
-                envelope["items"]!.AsArray().AddNode(ProjectNode(node));
-            }
-
-            return FeishuToolResult.FromText(ToolResultText.TruncateJson(envelope.ToJsonString(), _maxResultLength));
-        }
-        catch (ArgumentException ex)
-        {
-            return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(FeishuToolNames.WikiListNodes, ex.Message));
-        }
+            return executor.FromApi(outcome, ProjectNodes);
+        });
     }
 
-    private static JsonObject ProjectNode(Mud.Feishu.DataModels.Wiki.SpaceNodeInfo? node) => new()
+    /// <summary>list_nodes 投影：items（节点白名单）+ 翻页契约。</summary>
+    private static JsonObject ProjectNodes(ApiPageListResult<SpaceNodeInfo> data)
+    {
+        var envelope = new JsonObject
+        {
+            ["items"] = new JsonArray(),
+            ["has_more"] = data.HasMore,
+        };
+        if (!string.IsNullOrEmpty(data.PageToken))
+        {
+            envelope["page_token"] = data.PageToken;
+        }
+
+        foreach (var node in data.Items ?? [])
+        {
+            envelope["items"]!.AsArray().AddNode(ProjectNode(node));
+        }
+
+        return envelope;
+    }
+
+    private static JsonObject ProjectNode(SpaceNodeInfo? node) => new()
     {
         ["node_token"] = node?.NodeToken,
         ["title"] = node?.Title,

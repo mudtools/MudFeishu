@@ -147,8 +147,14 @@ public static class FeishuAgentServiceCollectionExtensions
 
             // 工具来源：容器内全部 FeishuAgentToolSource（如 Mud.Feishu.AI.FeishuTools 的白名单桥）。
             // 未注册工具包时为空集——保持 Phase 0 裸模型行为。
-            var tools = sp.GetServices<FeishuAgentToolSource>()
+            var sources = sp.GetServices<FeishuAgentToolSource>().ToArray();
+            var tools = sources
                 .SelectMany(source => source.GetTools(sp))
+                .ToArray();
+
+            // 域 guidance（WP6）：与工具同一来源、同一"已启用"口径——只注入已启用工具所属域的资产。
+            var guidance = sources
+                .SelectMany(source => source.GetGuidance(sp))
                 .ToArray();
 
             return new FeishuAgent(
@@ -157,7 +163,8 @@ public static class FeishuAgentServiceCollectionExtensions
                 sp.GetRequiredService<IConversationStore>(),
                 sp.GetService<ILoggerFactory>(),
                 sp,
-                tools);
+                tools,
+                guidance);
         });
         services.TryAddSingleton<AIAgent>(static sp => sp.GetRequiredService<FeishuAgent>());
 

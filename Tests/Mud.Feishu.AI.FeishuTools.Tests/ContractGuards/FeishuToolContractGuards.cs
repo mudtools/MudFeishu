@@ -6,6 +6,7 @@
 // -----------------------------------------------------------------------
 
 using Mud.Feishu.AI.FeishuTools.Tools;
+using Mud.Feishu.AI.FeishuTools.Tests.Tools;
 
 namespace Mud.Feishu.AI.FeishuTools.Tests.ContractGuards;
 
@@ -119,60 +120,38 @@ public class FeishuToolContractGuards
     }
 
     /// <summary>
-    /// AI-FD-D12 P1D-3a scope 契约定稿：全部 24 个工具的 required_scopes 与《工具权限对照表》
-    /// （documents/AIAgent/工具权限对照表.md）逐一<b>精确相等</b>。变更 scope 必须与对照表同批更新。
+    /// scope 契约的单一真相源（WP2 / R-B 根因落地）：生成器发射的类型化契约表
+    /// （<see cref="FeishuToolContracts"/>）与 Schema 常量出自<b>同一 pass</b>，
+    /// 本守卫锁定二者的 scope 视图不漂移；与《工具权限对照表》的逐行交叉验证
+    /// 由 <c>PermissionMappingDocContractGuards.PermissionDoc_RequiredScopesColumn_ShouldMatchToolContracts</c> 承担。
     /// </summary>
     /// <remarks>
-    /// <b>注意本表是"手抄值"（R3 评审 C-5 已确认）</b>：它并不比 <c>[FeishuTool].RequiredScopes</c>
-    /// 更权威——权威只能来自开放平台控制台逐项核对（方案附录 C-1，当前仍开放）。
-    /// 本表的价值是<b>锁住"代码与文档一致"</b>（防单侧漂移），不是"保证 scope 正确"。
-    /// 若要消除这处双写，见 <c>AT-F15</c>（集中映射表，M5）。
+    /// <para>
+    /// <b>手抄期望表已删除（原 AT-B21 的 24 行字典）</b>：scope 期望值不再存在于守卫代码中——
+    /// 契约侧真相 = 生成器（<c>[FeishuTool]</c> + SDK 符号），文档侧真相 = 对照表（人读），
+    /// 权威清单 = <c>scope-authority.json</c>（<see cref="ScopeAuthorityContractGuards"/> 锁三方关系）。
+    /// </para>
     /// </remarks>
     [Fact]
-    public void ToolScopes_ShouldMatchThePermissionMappingTable_ExactValues()
+    public void ToolScopes_ContractTable_ShouldBeTheSingleScopeSource()
     {
-        var expectedScopes = new Dictionary<string, string[]>(StringComparer.Ordinal)
-        {
-            // 只读-核心域（16）
-            [FeishuToolNames.BitableListTables] = ["bitable:app:readonly"],
-            [FeishuToolNames.BitableListFields] = ["bitable:app:readonly"],
-            [FeishuToolNames.BitableQueryRecords] = ["bitable:app:readonly"],
-            [FeishuToolNames.BitableGetRecordsByIds] = ["bitable:app:readonly"],
-            [FeishuToolNames.DocxGetRawContent] = ["docx:document:readonly"],
-            [FeishuToolNames.DocxGetDocumentBlocks] = ["docx:document:readonly"],
-            [FeishuToolNames.WikiGetNode] = ["wiki:wiki:readonly"],
-            [FeishuToolNames.WikiListNodes] = ["wiki:wiki:readonly"],
-            [FeishuToolNames.SearchDocWiki] = ["search:docs:readonly"],
-            [FeishuToolNames.ImGetHistoryMessages] = ["im:message:readonly"],
-            [FeishuToolNames.ImGetMessageContent] = ["im:message:readonly"],
-            [FeishuToolNames.DriveListFolderFiles] = ["drive:drive:readonly"],
-            [FeishuToolNames.DriveGetFileMetas] = ["drive:drive:readonly"],
-            [FeishuToolNames.KnowledgeSearch] = ["aily:knowledge:readonly"],
-            [FeishuToolNames.SheetsListSheets] = ["sheets:spreadsheet:readonly"],
-            [FeishuToolNames.SheetsGetRangeValues] = ["sheets:spreadsheet:readonly"],
-            // 通讯录（4，P0 补链：姓名/邮箱/关键字 → ID。search_user 为 R3/AT-F11 新增）
-            [FeishuToolNames.ContactResolveUser] = ["contact:user.base:readonly"],
-            [FeishuToolNames.ContactSearchUser] = ["contact:user.base:readonly"],
-            [FeishuToolNames.ContactGetUser] = ["contact:user.base:readonly"],
-            [FeishuToolNames.ContactBatchGet] = ["contact:user.base:readonly"],
-            // 元工具（1，R3/AT-F12）：不映射飞书 API → 无平台 scope（有意为空）
-            [FeishuToolNames.FeishuCapabilityLookup] = [],
-            // 写类（3）
-            [FeishuToolNames.ImSendMessage] = ["im:message:send_as_bot"],
-            [FeishuToolNames.BitableAddRecord] = ["bitable:app"],
-            [FeishuToolNames.ApprovalCreateInstance] = ["approval:approval"],
-        };
+        var contractScopes = FeishuToolContracts.ByToolName.ToDictionary(
+            static kv => kv.Key,
+            static kv => string.Join(",", kv.Value.RequiredScopes),
+            StringComparer.Ordinal);
 
-        foreach (var (toolName, expected) in expectedScopes)
+        foreach (var (toolName, schemaJson) in SchemaByToolName)
         {
-            using var document = JsonDocument.Parse(SchemaByToolName[toolName]);
+            using var document = JsonDocument.Parse(schemaJson);
             var scopes = document.RootElement.GetProperty("x-feishu").GetProperty("required_scopes")
-                .EnumerateArray().Select(e => e.GetString()!).ToArray();
+                .EnumerateArray().Select(static e => e.GetString()!).ToArray();
 
-            scopes.Should().BeEquivalentTo(expected, $"工具 {toolName} 的 scope 须与《工具权限对照表》精确一致（P1D-3a 定稿）");
+            contractScopes.Should().ContainKey(toolName, "契约表与 Schema 注册表必须同键集");
+            contractScopes[toolName].Should().Be(string.Join(",", scopes),
+                $"工具 {toolName} 的契约表 scope 必须与 Schema 常量一致（同一 pass 产物，漂移 = 生成器缺陷）");
         }
 
-        expectedScopes.Keys.Should().HaveCount(FeishuToolNames.All.Length, "对照表须覆盖全部契约工具");
+        contractScopes.Keys.Should().HaveCount(FeishuToolNames.All.Length, "契约表须覆盖全部契约工具");
     }
 
     /// <summary>
@@ -287,6 +266,38 @@ public class FeishuToolContractGuards
             "白名单中的未注册名字必须 fail-fast（防配置漂移）");
     }
 
+    /// <summary>
+    /// T2-4 / 决策 D-1 ⓑ：白名单启用了 <c>identity=user</c> 的工具而 <c>AllowedIdentities</c> 未放行
+    /// 该身份时，<b>装配期</b>即抛可读异常（不是运行期被策略轴静默拒绝）。
+    /// </summary>
+    /// <remarks>
+    /// 落点说明：<c>FeishuAgentOptions.Validate()</c> 感知不到工具面（身份在注册表、白名单映射在装配层），
+    /// 故校验在 <c>BuildRegistry</c> 完成白名单映射之后进行（<c>FeishuToolsServiceCollectionExtensions</c>）。
+    /// </remarks>
+    [Fact]
+    public void EnabledUserIdentityTool_WithoutAllowedIdentity_ShouldFailFastAtAssembly()
+    {
+        var enableUserTool = () =>
+        {
+            using var p = GuardProviderFactory.CreateProvider(o => o.Tools = [FeishuToolNames.TaskListMyTasks]);
+            _ = p.GetRequiredService<FeishuToolRegistry>();
+        };
+
+        enableUserTool.Should().Throw<InvalidOperationException>()
+            .WithMessage("*AllowedIdentities*")
+            .WithMessage("*task.list_my_tasks*");
+
+        // 放行 user 身份后即正常启用（工具面与策略面一致，不存在"配了却用不了"）。
+        using var allowed = GuardProviderFactory.CreateProvider(o =>
+        {
+            o.Tools = [FeishuToolNames.TaskListMyTasks];
+            o.AllowedIdentities = ["tenant", "user"];
+        });
+        allowed.GetRequiredService<FeishuToolRegistry>().EnabledTools
+            .Select(static t => t.Name)
+            .Should().Equal(FeishuToolNames.TaskListMyTasks);
+    }
+
     [Fact]
     public void Whitelists_ShouldEnforceReadWriteSeparation()
     {
@@ -356,30 +367,9 @@ public class FeishuToolContractGuards
     }
 
     /// <summary>构造带 mock 飞书客户端的容器（分域执行器解析强类型接口）。</summary>
+    /// <remarks>与目录/回归用例共用 <see cref="GuardProviderFactory"/>（新增域时只需补一处 mock）。</remarks>
     private static ServiceProvider CreateProvider(Action<FeishuAgentOptions> configureOptions)
-    {
-        var options = new FeishuAgentOptions { Instructions = "test" };
-        configureOptions(options);
-
-        return new ServiceCollection()
-            .AddSingleton(Options.Create(options))
-            .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1BitableAppTable>().Object)
-            .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1BitableField>().Object)
-            .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1BitableRecord>().Object)
-            .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1Docx>().Object)
-            .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV2WikiNodes>().Object)
-            .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV2SearchDocWiki>().Object)
-            .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1Message>().Object)
-            .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV3Spreadsheets>().Object)
-            .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV3SpreadsheetData>().Object)
-            .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV4Approval>().Object)
-            .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1DriveFolder>().Object)
-            .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1DriveFiles>().Object)
-            .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV3User>().Object)
-            .AddSingleton(new Mock<Mud.Feishu.AI.Knowledge.IRetriever>().Object)
-            .AddFeishuReadonlyTools()
-            .BuildServiceProvider();
-    }
+        => GuardProviderFactory.CreateProvider(configureOptions);
 
     private static IReadOnlyDictionary<string, string> SchemaByToolName => FeishuToolSchemas.SchemaByToolName;
 

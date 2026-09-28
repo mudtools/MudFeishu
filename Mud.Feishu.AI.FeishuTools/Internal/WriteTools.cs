@@ -18,15 +18,18 @@ namespace Mud.Feishu.AI.FeishuTools.Internal;
 /// IM 写工具执行器（<c>im.send_message</c>）：模型扁平参数 → <see cref="SendMessageRequest"/>
 /// （msg_type 固定 text、content 经 JsonNode 转义）→ <c>SendMessageAsync</c> → 解包投影。
 /// </summary>
+/// <remarks>执行骨架（catch/回填）由 <see cref="ToolExecutor"/> 承担（WP3）；写工具载荷小、无截断语义。</remarks>
 internal sealed class MessageWriteTools(Mud.Feishu.IFeishuTenantV1Message messageClient)
 {
     private readonly Mud.Feishu.IFeishuTenantV1Message _messageClient = messageClient
         ?? throw new ArgumentNullException(nameof(messageClient));
 
     /// <summary>im.send_message：发送文本消息（<c>dry_run=true</c> 时只预演）。</summary>
-    public async Task<FeishuToolResult> SendMessageAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    /// <remarks>幂等键（T4-1 / F-1）：<c>idempotency_key</c> → <see cref="SendMessageRequest.Uuid"/>（平台侧 1 小时窗口去重）。</remarks>
+    public Task<FeishuToolResult> SendMessageAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
-        try
+        var executor = new ToolExecutor(FeishuToolNames.ImSendMessage);
+        return executor.RunAsync(async () =>
         {
             var receiveId = ToolArgs.RequireString(arguments, "receive_id");
             var text = ToolArgs.RequireString(arguments, "text");
@@ -37,10 +40,12 @@ internal sealed class MessageWriteTools(Mud.Feishu.IFeishuTenantV1Message messag
                     $"receive_id_type 仅支持 {string.Join("/", EditMessageChannel.AllowedReceiveIdTypes)}，实际: {receiveIdType}");
             }
 
+            var idempotencyKey = ToolArgs.OptionalString(arguments, "idempotency_key");
             if (ToolDryRun.IsRequested(arguments))
             {
                 return FeishuToolResult.FromText(ToolDryRun.Describe(
-                    FeishuToolNames.ImSendMessage, "POST", "/open-apis/im/v1/messages",
+                    executor.ToolName, "POST", "/open-apis/im/v1/messages",
+                    ToolDryRun.IdempotencyNote(idempotencyKey),
                     ("receive_id", receiveId.Length), ("text", text.Length), ("receive_id_type", receiveIdType.Length)));
             }
 
@@ -51,23 +56,16 @@ internal sealed class MessageWriteTools(Mud.Feishu.IFeishuTenantV1Message messag
                         ReceiveId = receiveId,
                         MsgType = "text",
                         Content = new JsonObject { ["text"] = text }.ToJsonString(),
+                        Uuid = idempotencyKey,
                     },
                     receiveIdType,
                     cancellationToken)
                 .ConfigureAwait(false));
-            if (!outcome.Ok)
+            return executor.FromApiUntruncated(outcome, data => new JsonObject
             {
-                return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(FeishuToolNames.ImSendMessage, outcome.Code, outcome.ErrorText!));
-            }
-
-            return FeishuToolResult.FromText(new JsonObject {
-                ["message_id"] = outcome.Data!.MessageId,
-            }.ToJsonString());
-        }
-        catch (ArgumentException ex)
-        {
-            return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(FeishuToolNames.ImSendMessage, ex.Message));
-        }
+                ["message_id"] = data.MessageId,
+            });
+        });
     }
 }
 
@@ -82,9 +80,11 @@ internal sealed class BitableWriteTools(Mud.Feishu.IFeishuTenantV1BitableRecord 
         ?? throw new ArgumentNullException(nameof(recordClient));
 
     /// <summary>bitable.add_record：新增记录（fields 为「字段名 → 值」JSON 对象字符串；<c>dry_run=true</c> 时只预演）。</summary>
-    public async Task<FeishuToolResult> AddRecordAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    /// <remarks>幂等键（T4-1 / F-1）：<c>idempotency_key</c> → 透传查询参数 <c>client_token</c>（重复请求返回原记录）。</remarks>
+    public Task<FeishuToolResult> AddRecordAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
-        try
+        var executor = new ToolExecutor(FeishuToolNames.BitableAddRecord);
+        return executor.RunAsync(async () =>
         {
             var appToken = ToolArgs.RequireString(arguments, "app_token");
             var tableId = ToolArgs.RequireString(arguments, "table_id");
@@ -94,33 +94,31 @@ internal sealed class BitableWriteTools(Mud.Feishu.IFeishuTenantV1BitableRecord 
             // 若预演放过了非法 fields，模型会误以为参数没问题而在真实下发时才失败。
             var fields = ParseFieldsObject(fieldsJson);
 
+            var idempotencyKey = ToolArgs.OptionalString(arguments, "idempotency_key");
             if (ToolDryRun.IsRequested(arguments))
             {
                 return FeishuToolResult.FromText(ToolDryRun.Describe(
-                    FeishuToolNames.BitableAddRecord, "POST",
+                    executor.ToolName, "POST",
                     "/open-apis/bitable/v1/apps/{app_token}/tables/{table_id}/records",
+                    ToolDryRun.IdempotencyNote(idempotencyKey),
                     ("app_token", appToken.Length), ("table_id", tableId.Length), ("fields", fieldsJson.Length)));
             }
 
             var outcome = FeishuApiResultReader.Read(await _recordClient
-                .AddRecordAsync(appToken, tableId, new RecordOpsRequest { Fields = fields }, cancellationToken: cancellationToken)
+                .AddRecordAsync(appToken, tableId, new RecordOpsRequest { Fields = fields }, client_token: idempotencyKey, cancellationToken: cancellationToken)
                 .ConfigureAwait(false));
-            if (!outcome.Ok)
+            return executor.FromApiUntruncated(outcome, data => new JsonObject
             {
-                return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(FeishuToolNames.BitableAddRecord, outcome.Code, outcome.ErrorText!));
-            }
-
-            return FeishuToolResult.FromText(new JsonObject {
-                ["record_id"] = outcome.Data!.Record?.RecordId,
-            }.ToJsonString());
-        }
-        catch (ArgumentException ex)
-        {
-            return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(FeishuToolNames.BitableAddRecord, ex.Message));
-        }
+                ["record_id"] = data.Record?.RecordId,
+            });
+        });
     }
 
     /// <summary>fields 参数 → JSON 对象 <see cref="JsonElement"/>（非对象/非法 JSON 转结构化错误）。</summary>
+    /// <remarks>
+    /// 此处 <c>catch (JsonException)</c> 是<b>校验逻辑</b>而非执行骨架（把平台无语义的解析失败
+    /// 翻译成带修复指引的 <see cref="ArgumentException"/>），不在 WP3 骨架收敛范围。
+    /// </remarks>
     private static JsonElement ParseFieldsObject(string fieldsJson)
     {
         JsonNode? node;
@@ -153,9 +151,11 @@ internal sealed class ApprovalWriteTools(Mud.Feishu.IFeishuTenantV4Approval appr
         ?? throw new ArgumentNullException(nameof(approvalClient));
 
     /// <summary>approval.create_instance：发起审批实例（<c>dry_run=true</c> 时只预演）。</summary>
-    public async Task<FeishuToolResult> CreateInstanceAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    /// <remarks>幂等键（T4-1 / F-1）：<c>idempotency_key</c> → <see cref="CreateInstanceRequest.Uuid"/>（冲突返回 60012）。</remarks>
+    public Task<FeishuToolResult> CreateInstanceAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
-        try
+        var executor = new ToolExecutor(FeishuToolNames.ApprovalCreateInstance);
+        return executor.RunAsync(async () =>
         {
             var approvalCode = ToolArgs.RequireString(arguments, "approval_code");
             var form = ToolArgs.RequireString(arguments, "form");
@@ -165,10 +165,12 @@ internal sealed class ApprovalWriteTools(Mud.Feishu.IFeishuTenantV4Approval appr
             // 会被原样下发，飞书侧返回一个语焉不详的 code，模型只能盲试。此处与 fields 同级校验。
             ValidateFormArray(form);
 
+            var idempotencyKey = ToolArgs.OptionalString(arguments, "idempotency_key");
             if (ToolDryRun.IsRequested(arguments))
             {
                 return FeishuToolResult.FromText(ToolDryRun.Describe(
-                    FeishuToolNames.ApprovalCreateInstance, "POST", "/open-apis/approval/v4/instances",
+                    executor.ToolName, "POST", "/open-apis/approval/v4/instances",
+                    ToolDryRun.IdempotencyNote(idempotencyKey),
                     ("approval_code", approvalCode.Length), ("form", form.Length), ("user_id", userId?.Length ?? 0)));
             }
 
@@ -179,26 +181,19 @@ internal sealed class ApprovalWriteTools(Mud.Feishu.IFeishuTenantV4Approval appr
                         ApprovalCode = approvalCode,
                         Form = form,
                         UserId = userId,
+                        Uuid = idempotencyKey,
                     },
                     cancellationToken)
                 .ConfigureAwait(false));
-            if (!outcome.Ok)
+            return executor.FromApiUntruncated(outcome, data => new JsonObject
             {
-                return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(FeishuToolNames.ApprovalCreateInstance, outcome.Code, outcome.ErrorText!));
-            }
-
-            return FeishuToolResult.FromText(new JsonObject {
-                ["instance_code"] = outcome.Data!.InstanceCode,
-            }.ToJsonString());
-        }
-        catch (ArgumentException ex)
-        {
-            return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(FeishuToolNames.ApprovalCreateInstance, ex.Message));
-        }
+                ["instance_code"] = data.InstanceCode,
+            });
+        });
     }
 
     /// <summary>form 参数 → JSON 数组校验（非数组/非法 JSON 转结构化错误，附修复指引）。</summary>
-    /// <remarks>与 <see cref="BitableWriteTools.ParseFieldsObject"/> 同一体例：裸 JSON 参数不得静默下发。</remarks>
+    /// <remarks>与 <see cref="BitableWriteTools.ParseFieldsObject"/> 同一体例：裸 JSON 参数不得静默下发（校验逻辑，非骨架）。</remarks>
     private static void ValidateFormArray(string formJson)
     {
         JsonNode? node;

@@ -19,6 +19,7 @@ namespace Mud.Feishu.AI.FeishuTools.Internal;
 /// appKey 异步流缺失时由 <c>AilyKnowledgeProvider</c> 抛结构化失败（多租户隔离禁止默认应用兜底，
 /// TMA2-20），经执行链异常归一为 <c>[tool_error]</c> 回填——与只读门禁语义一致。
 /// </para>
+/// <para>执行骨架（catch/回填）由 <see cref="ToolExecutor"/> 承担（WP3）；本类只保留参数校验与投影语义。</para>
 /// </remarks>
 internal sealed class KnowledgeSearchTools(IRetriever retriever, IOptions<FeishuAgentOptions> options)
 {
@@ -29,16 +30,17 @@ internal sealed class KnowledgeSearchTools(IRetriever retriever, IOptions<Feishu
     private readonly int _maxResultLength = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
 
     /// <summary>knowledge.search：知识检索（编号切片回填）。</summary>
-    public async Task<FeishuToolResult> SearchAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    public Task<FeishuToolResult> SearchAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
-        try
+        var executor = new ToolExecutor(FeishuToolNames.KnowledgeSearch, _maxResultLength);
+        return executor.RunAsync(async () =>
         {
             var query = ToolArgs.RequireString(arguments, "query");
 
             var chunks = await _retriever.RetrieveAsync(query, cancellationToken).ConfigureAwait(false);
             if (chunks.Count == 0)
             {
-                return FeishuToolResult.FromText($"{FeishuToolNames.KnowledgeSearch}: 知识库未检索到与问题相关的内容（has_answer=false）——请基于既有上下文作答");
+                return FeishuToolResult.FromText($"{executor.ToolName}: 知识库未检索到与问题相关的内容（has_answer=false）——请基于既有上下文作答");
             }
 
             var builder = new StringBuilder();
@@ -53,10 +55,6 @@ internal sealed class KnowledgeSearchTools(IRetriever retriever, IOptions<Feishu
             }
 
             return FeishuToolResult.FromText(ToolResultText.Truncate(builder.ToString(), _maxResultLength));
-        }
-        catch (ArgumentException ex)
-        {
-            return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(FeishuToolNames.KnowledgeSearch, ex.Message));
-        }
+        });
     }
 }

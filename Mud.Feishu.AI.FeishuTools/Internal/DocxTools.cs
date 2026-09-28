@@ -15,6 +15,7 @@ namespace Mud.Feishu.AI.FeishuTools.Internal;
 /// 正文纯文本不做字段投影仅截断；分块读取按白名单 block_id/block_type/text 投影（§3.3.3 +
 /// AI-FD-D12 P1D-1b）。
 /// </summary>
+/// <remarks>执行骨架（catch/回填/截断）由 <see cref="ToolExecutor"/> 承担（WP3）；本类只保留参数校验与投影语义。</remarks>
 internal sealed class DocxTools(Mud.Feishu.IFeishuTenantV1Docx docxClient, IOptions<FeishuAgentOptions> options)
 {
     private readonly Mud.Feishu.IFeishuTenantV1Docx _docxClient = docxClient
@@ -22,9 +23,10 @@ internal sealed class DocxTools(Mud.Feishu.IFeishuTenantV1Docx docxClient, IOpti
     private readonly int _maxResultLength = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
 
     /// <summary>docx.get_raw_content：读取文档纯文本正文。</summary>
-    public async Task<FeishuToolResult> GetRawContentAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    public Task<FeishuToolResult> GetRawContentAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
-        try
+        var executor = new ToolExecutor(FeishuToolNames.DocxGetRawContent, _maxResultLength);
+        return executor.RunAsync(async () =>
         {
             var documentId = ToolArgs.RequireString(arguments, "document_id");
             var lang = ToolArgs.OptionalString(arguments, "lang");
@@ -35,23 +37,15 @@ internal sealed class DocxTools(Mud.Feishu.IFeishuTenantV1Docx docxClient, IOpti
                     ParseLang(lang),
                     cancellationToken)
                 .ConfigureAwait(false));
-            if (!outcome.Ok)
-            {
-                return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(FeishuToolNames.DocxGetRawContent, outcome.Code, outcome.ErrorText!));
-            }
-
-            return FeishuToolResult.FromText(ToolResultText.Truncate(outcome.Data!.Content ?? string.Empty, _maxResultLength));
-        }
-        catch (ArgumentException ex)
-        {
-            return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(FeishuToolNames.DocxGetRawContent, ex.Message));
-        }
+            return executor.FromPlainText(outcome, static data => data.Content);
+        });
     }
 
     /// <summary>docx.get_document_blocks：分块读取文档（白名单 block_id/block_type/text；text 取首个非空文本块字段）。</summary>
-    public async Task<FeishuToolResult> GetDocumentBlocksAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    public Task<FeishuToolResult> GetDocumentBlocksAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
-        try
+        var executor = new ToolExecutor(FeishuToolNames.DocxGetDocumentBlocks, _maxResultLength);
+        return executor.RunAsync(async () =>
         {
             var documentId = ToolArgs.RequireString(arguments, "document_id");
             var pageToken = ToolArgs.OptionalString(arguments, "page_token");
@@ -59,38 +53,34 @@ internal sealed class DocxTools(Mud.Feishu.IFeishuTenantV1Docx docxClient, IOpti
             var outcome = FeishuApiResultReader.Read(await _docxClient
                 .GetDocumentBlocksPageListAsync(documentId, page_size: PageSizes.DocxBlocks, page_token: pageToken, cancellationToken: cancellationToken)
                 .ConfigureAwait(false));
-            if (!outcome.Ok)
-            {
-                return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(FeishuToolNames.DocxGetDocumentBlocks, outcome.Code, outcome.ErrorText!));
-            }
+            return executor.FromApi(outcome, ProjectBlocks);
+        });
+    }
 
-            var data = outcome.Data!;
-            var envelope = new JsonObject
-            {
-                ["items"] = new JsonArray(),
-                ["has_more"] = data.HasMore,
-            };
-            if (!string.IsNullOrEmpty(data.PageToken))
-            {
-                envelope["page_token"] = data.PageToken;
-            }
-
-            foreach (var block in data.Items ?? [])
-            {
-                envelope["items"]!.AsArray().AddNode(new JsonObject
-                {
-                    ["block_id"] = block.BlockId,
-                    ["block_type"] = block.BlockType,
-                    ["text"] = ToolResultText.Truncate(ExtractText(block) ?? string.Empty, PageSizes.MessagePreviewLength),
-                });
-            }
-
-            return FeishuToolResult.FromText(ToolResultText.TruncateJson(envelope.ToJsonString(), _maxResultLength));
-        }
-        catch (ArgumentException ex)
+    /// <summary>get_document_blocks 投影：items（block_id/block_type/text 预览）+ 翻页契约。</summary>
+    private static JsonObject ProjectBlocks(ApiPageListResult<Block> data)
+    {
+        var envelope = new JsonObject
         {
-            return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(FeishuToolNames.DocxGetDocumentBlocks, ex.Message));
+            ["items"] = new JsonArray(),
+            ["has_more"] = data.HasMore,
+        };
+        if (!string.IsNullOrEmpty(data.PageToken))
+        {
+            envelope["page_token"] = data.PageToken;
         }
+
+        foreach (var block in data.Items ?? [])
+        {
+            envelope["items"]!.AsArray().AddNode(new JsonObject
+            {
+                ["block_id"] = block.BlockId,
+                ["block_type"] = block.BlockType,
+                ["text"] = ToolResultText.Truncate(ExtractText(block) ?? string.Empty, PageSizes.MessagePreviewLength),
+            });
+        }
+
+        return envelope;
     }
 
     /// <summary>取块文本：首个非空文本类字段（页面/正文/标题/列表/代码/引用/公式/待办）的 text_run 拼接。</summary>

@@ -31,6 +31,10 @@ namespace Mud.Feishu.AI.Tools;
 /// <list type="bullet">
 /// <item><c>FeishuToolSchemas.g.cs</c> —— Schema 常量 + 注册表快照（已决策⑤）；</item>
 /// <item><c>FeishuToolNames.g.cs</c> —— 工具名契约表（D2 单一真相源，取代手写常量表）；</item>
+/// <item><c>FeishuToolContracts.g.cs</c> —— 类型化契约表（WP2 / R-B：risk/identity/scopes/isWrite/
+/// source 的类型化出口，消费方零运行期解析；只发射进 FeishuTools 程序集）；</item>
+/// <item><c>FeishuToolGuidance.g.cs</c> —— 域级 guidance 资产（WP6：<c>Guidance/{domain}.md</c>
+/// → 编译期字典，装配期按"已启用工具所属域"注入指令；只发射进 FeishuTools 程序集）；</item>
 /// <item><c>FeishuCapabilityCatalog.g.cs</c> —— Tier R 能力目录聚合（<c>build_property.FeishuToolCatalog=true</c> 时）。</item>
 /// </list>
 /// <para>
@@ -75,6 +79,17 @@ public sealed class FeishuToolSchemaGenerator : IIncrementalGenerator
         context.RegisterSourceOutput(
             models.Combine(assemblyName).Combine(golden),
             static (spc, input) => EmitToolSurface(spc, input.Left.Left, input.Left.Right, input.Right));
+
+        // ── WP6：域级 guidance 资产（Guidance/{domain}.md → FeishuToolGuidance.g.cs）──
+        // 与工具面同一 pass、同一发射门槛：素材是 AdditionalFiles（与 golden 同机制），
+        // 域 = 文件名，装配期按"已启用工具所属域"取用（见 FeishuGuidanceComposer）。
+        var guidanceFiles = context.AdditionalTextsProvider
+            .Where(static text => GuidanceEmitter.IsGuidanceFile(text.Path))
+            .Collect();
+
+        context.RegisterSourceOutput(
+            assemblyName.Combine(guidanceFiles),
+            static (spc, input) => GuidanceEmitter.Emit(spc, input.Left, input.Right, spc.CancellationToken));
 
         // ── Tier R：能力目录（聚合；显式 opt-in）──
         var catalogEnabled = context.AnalyzerConfigOptionsProvider.Select(static (provider, _) =>

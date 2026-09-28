@@ -151,6 +151,21 @@ internal static class DescriptorValidator
                         $"required 参数 '{required}' 不在渲染出的 properties 键集中"));
                 }
             }
+
+            // 真实检出③（WP1 driver 测试补强）：[ToolParameter] 声明的参数名（意图源）与渲染键
+            // （实现源）漂移。此前两个"来源"均由 entry.Parameters 恒等派生，本条检出分支
+            // 在任何源码形状下都不可触发（driver 负例构造时发现）；引入意图源后成为真实门禁。
+            foreach (var parameter in entry.Parameters)
+            {
+                if (!string.IsNullOrEmpty(parameter.DeclaredToolParameterName)
+                    && !string.Equals(parameter.DeclaredToolParameterName, parameter.Name, System.StringComparison.Ordinal))
+                {
+                    results.Add(ValidationResult.Error(
+                        Diagnostics.MUDFT015, entry.InterfaceName, entry.ToolName,
+                        $"参数的 [ToolParameter] 名 '{parameter.DeclaredToolParameterName}' 与渲染出的 properties 键 '{parameter.Name}' 不一致"
+                        + "——模型看到的键以渲染产物为准，请让二者一致（工具参数键 = C# 参数名）"));
+                }
+            }
         }
     }
 

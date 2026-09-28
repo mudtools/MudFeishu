@@ -86,7 +86,8 @@ internal static class ParameterSchemaRenderer
                 docDescription: description,
                 isRequired: isRequired,
                 isNullable: isNullable,
-                schemaFragmentJson: fragment));
+                schemaFragmentJson: fragment,
+                declaredToolParameterName: GetDeclaredToolParameterName(parameter, attribute)));
         }
 
         return result;
@@ -312,6 +313,24 @@ internal static class ParameterSchemaRenderer
             a.ConstructorArguments.Length >= 1
             && a.ConstructorArguments[0].Value is string name
             && string.Equals(name, parameter.Name, StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// 取 <c>[ToolParameter]</c> 声明的参数名（意图源）：仅在<b>直接标注在参数上</b>且声明名与
+    /// C# 参数名不同时返回——该漂移由 L4 校验器升级为 MUDFT015（声明名 ≠ 渲染键 = 模型可见契约漂移）。
+    /// 方法级回退匹配本身就要求声明名等于参数名，故恒无漂移，返回 <see langword="null"/>。
+    /// </summary>
+    private static string? GetDeclaredToolParameterName(IParameterSymbol parameter, AttributeData? attribute)
+    {
+        if (attribute is null
+            || attribute.ConstructorArguments.Length < 1
+            || attribute.ConstructorArguments[0].Value is not string declared
+            || string.Equals(declared, parameter.Name, StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        return declared;
     }
 
     private static string? GetParamDoc(IParameterSymbol parameter)

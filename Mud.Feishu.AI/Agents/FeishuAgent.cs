@@ -50,6 +50,8 @@ public sealed class FeishuAgent : AIAgent
     /// <param name="tools">暴露给模型的工具（可空）。来源：容器内全部 <see cref="AIFunction"/>
     /// 注册（如 <c>Mud.Feishu.AI.FeishuTools</c> 经白名单 MapTool 后桥接产出）；
     /// 为空/空集时保持 Phase 0 裸模型行为。</param>
+    /// <param name="domainGuidance">已启用工具所属域的 guidance 资产（可空；WP6 / AT-F09）。
+    /// 追加在宿主 <c>Instructions</c> <b>之后</b>（宿主指令优先）；为空/空集时指令与 Phase 0 完全一致。</param>
     /// <exception cref="InvalidOperationException">配置非法（fail-fast）。</exception>
     public FeishuAgent(
         IChatClient chatClient,
@@ -57,7 +59,8 @@ public sealed class FeishuAgent : AIAgent
         IConversationStore? conversationStore = null,
         ILoggerFactory? loggerFactory = null,
         IServiceProvider? services = null,
-        IReadOnlyList<AIFunction>? tools = null)
+        IReadOnlyList<AIFunction>? tools = null,
+        IReadOnlyList<FeishuGuidanceBlock>? domainGuidance = null)
     {
         if (chatClient is null)
             throw new ArgumentNullException(nameof(chatClient));
@@ -75,12 +78,25 @@ public sealed class FeishuAgent : AIAgent
             ? new ConversationSummarizer(chatClient, options, loggerFactory?.CreateLogger<ConversationSummarizer>())
             : null;
 
+        // 指令装配的唯一消费点（WP6）：宿主指令 + 已启用域的 guidance。
+        // 截断信号落在返回值上（FeishuGuidanceResult.Truncated），此处只把"丢了哪些域"写进日志——
+        // 断言口在 Compose 的返回值上（用例不依赖日志基建）。
+        var guidance = FeishuGuidanceComposer.Compose(options.Instructions, domainGuidance);
+        if (guidance.Truncated)
+        {
+            loggerFactory?.CreateLogger<FeishuAgent>()?.LogWarning(
+                "域 guidance 超过上限 {MaxLength} 字符，已丢弃 {OmittedCount} 个域：{OmittedDomains}——请精简 Guidance/*.md 或减少同时启用的域",
+                FeishuGuidanceComposer.MaxGuidanceLength,
+                guidance.OmittedDomains.Count,
+                string.Join(",", guidance.OmittedDomains));
+        }
+
         var agentOptions = new ChatClientAgentOptions
         {
             Name = options.Name,
             ChatOptions = new ChatOptions
             {
-                Instructions = options.Instructions,
+                Instructions = guidance.Instructions,
                 Tools = tools is { Count: > 0 } ? [.. tools] : null,
             },
             ChatHistoryProvider = new InMemoryChatHistoryProvider(new InMemoryChatHistoryProviderOptions

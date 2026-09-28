@@ -1,0 +1,23 @@
+{
+  "source": "飞书开放平台 · 应用权限（scope 名称与官方文档核对；每次新增工具引入新 scope 时必须同批回填本清单并在「核对」栏留痕）",
+  "lastReviewed": "2026-09-28",
+  "scopes": {
+    "aily:knowledge:readonly": "⚠️ Aily 知识库 · 只读（knowledge.search 使用；scope 名称待核对：控制台二次确认，存疑但暂时保留）",
+    "approval:approval": "审批 · 读写（approval.create_instance 使用）",
+    "bitable:app": "多维表格 · 读写（bitable.add_record 使用）",
+    "bitable:app:readonly": "多维表格 · 只读（bitable.list_tables / list_fields / query_records / get_records_by_ids 使用）",
+    "calendar:calendar": "日历 · 读写（calendar.create_event 使用）",
+    "calendar:calendar:readonly": "日历 · 只读（calendar.find_free_slots / list_events 使用）",
+    "contact:user.base:readonly": "通讯录 · 用户基本信息只读（contact.resolve_user / search_user / get_user / batch_get 使用）",
+    "docx:document:readonly": "云文档 · 只读（docx.get_raw_content / get_document_blocks 使用）",
+    "drive:drive:readonly": "云空间 · 只读（drive.list_folder_files / get_file_metas 使用）",
+    "im:message:readonly": "获取与查看单聊、群组消息 · 只读（im.get_history_messages / get_message_content 使用）",
+    "im:message:send_as_bot": "以应用身份发消息（im.send_message / im.send_image / im.send_file 使用）",
+    "im:resource": "⚠️ 获取与上传图片或文件资源（im.send_image / im.send_file 的上传步骤使用；scope 名称待核对：控制台二次确认）",
+    "search:docs:readonly": "搜索文档 · 只读（search.doc_wiki 使用）",
+    "sheets:spreadsheet:readonly": "电子表格 · 只读（sheets.list_sheets / get_range_values 使用）",
+    "task:task": "任务 · 读写（task.create_task 使用）",
+    "task:task:readonly": "任务 · 只读（task.list_my_tasks 使用）",
+    "wiki:wiki:readonly": "知识库 · 只读（wiki.get_node / list_nodes 使用）"
+  }
+}

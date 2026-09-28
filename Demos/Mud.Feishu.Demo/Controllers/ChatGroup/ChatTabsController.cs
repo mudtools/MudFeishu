@@ -34,26 +34,22 @@ public class ChatTabsController : ControllerBase
     /// </summary>
     /// <param name="chat_id">会话ID，示例值："oc_a0553eda9014c201e6969b478895c230"</param>
     /// <param name="createChatTabsRequest">创建会话标签页请求体</param>
-    /// <param name="user_id_type">用户ID类型，默认为open_id</param>
-    /// <param name="set_bot_manager">是否设置创建群的机器人为管理员</param>
-    /// <param name="uuid">创建群组请求去重的唯一字符串序列</param>
     /// <returns>添加结果</returns>
+    /// <remarks>
+    /// 官方 <c>POST /open-apis/im/v1/chats/{chat_id}/chat_tabs</c> 还支持 <c>user_id_type</c>/
+    /// <c>set_bot_manager</c> 查询参数，SDK 接口（<c>IFeishuV1ChatTabs.cs</c>）暂未映射——
+    /// 登记为独立补全项（见 R4 方案 T0-2/D-5），在 SDK 补齐前此处不对齐。
+    /// </remarks>
     [HttpPost("{chat_id}/tabs")]
     public async Task<IActionResult> CreateChatTabsAsync(
         [FromRoute] string chat_id,
-        [FromBody] CreateChatTabsRequest createChatTabsRequest,
-        [FromQuery] string user_id_type = "open_id",
-        [FromQuery] bool set_bot_manager = false,
-        [FromQuery] string? uuid = null)
+        [FromBody] CreateChatTabsRequest createChatTabsRequest)
     {
         try
         {
             var result = await _chatTabsApi.CreateChatTabsByIdAsync(
                 chat_id,
-                createChatTabsRequest,
-                user_id_type,
-                set_bot_manager,
-                uuid);
+                createChatTabsRequest);
 
             if (result == null)
             {

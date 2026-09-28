@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<!-- WP1（R4 方案）：生成器 driver 测试。TFM 覆盖 Tests/Directory.Build.props 的默认值——
+		     Roslyn driver 需要 net8+ 的 BCL 引用面，net6.0 不参与。 -->
+		<TargetFrameworks>net8.0;net10.0</TargetFrameworks>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<!-- ① 以普通库引用生成器：拿得到 FeishuToolSchemaGenerator 类型（ReferenceOutputAssembly 默认 true，
+		     与消费方"以 Analyzer 形态引用"的既有形态不同——这正是本工程存在的意义）。 -->
+		<ProjectReference Include="..\..\Mud.Feishu.AI.Tools\Mud.Feishu.AI.Tools.csproj" />
+		<!-- ② 生成器的 Roslyn 依赖是 PrivateAssets=all（不传递），测试侧须自带同版本。 -->
+		<PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.11.0" />
+	</ItemGroup>
+
+</Project>

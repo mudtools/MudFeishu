@@ -36,11 +36,13 @@ internal static class ToolDryRun
     /// <param name="toolName">工具名。</param>
     /// <param name="httpMethod">HTTP 方法（来自生成器从 SDK 派生的 <c>x-feishu.source.http</c>）。</param>
     /// <param name="route">路由模板（<c>x-feishu.source.route</c>）。</param>
+    /// <param name="extraNote">附加说明行（如幂等键状态回显，T4-1；可空）。</param>
     /// <param name="bodyFields">请求体字段摘要（字段名 + 值长度；<b>不含值本身</b>）。</param>
     public static string Describe(
         string toolName,
         string httpMethod,
         string route,
+        string? extraNote = null,
         params (string Name, int Length)[] bodyFields)
     {
         var builder = new StringBuilder();
@@ -58,9 +60,23 @@ internal static class ToolDryRun
             }
         }
 
+        if (!string.IsNullOrEmpty(extraNote))
+        {
+            builder.Append('\n').AppendLine(extraNote);
+        }
+
         builder.Append("\n未调用下游接口。确认无误后以 dry_run=false 重放同一参数即可真正执行。");
         return builder.ToString();
     }
+
+    /// <summary>
+    /// 幂等键的预演回显（T4-1）：<c>dry_run=true</c> 时幂等键<b>不消耗</b>（不下发请求），
+    /// 摘要显式回显 provided/omitted，让模型知道"预演不会占坑"。
+    /// </summary>
+    public static string IdempotencyNote(string? idempotencyKey)
+        => idempotencyKey is { Length: > 0 }
+            ? $"幂等键：provided（长度 {idempotencyKey.Length.ToString(CultureInfo.InvariantCulture)}，预演不占坑）"
+            : "幂等键：omitted（本次调用不保证幂等）";
 
     /// <summary>读取 <c>dry_run</c> 参数（缺省 false；语义：仅预演、不下发）。</summary>
     /// <param name="arguments">模型入参。</param>

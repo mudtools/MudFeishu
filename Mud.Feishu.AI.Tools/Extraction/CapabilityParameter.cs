@@ -34,7 +34,8 @@ internal sealed class CapabilityParameter : IEquatable<CapabilityParameter?>
         string? docDescription,
         bool isRequired,
         bool isNullable,
-        string schemaFragmentJson)
+        string schemaFragmentJson,
+        string? declaredToolParameterName = null)
     {
         Name = name;
         CsharpType = csharpType;
@@ -43,10 +44,20 @@ internal sealed class CapabilityParameter : IEquatable<CapabilityParameter?>
         IsRequired = isRequired;
         IsNullable = isNullable;
         SchemaFragmentJson = schemaFragmentJson;
+        DeclaredToolParameterName = declaredToolParameterName;
     }
 
     /// <summary>模型可见参数名（snake_case 契约）。</summary>
+    /// <remarks>即渲染产物的 properties 键——<see cref="DeclaredToolParameterName"/> 与本值的
+    /// 漂移由 L4 校验器检出（MUDFT015 的真实意图源比对）。</remarks>
     public string Name { get; }
+
+    /// <summary>
+    /// <c>[ToolParameter]</c> 声明的参数名（模型可见契约的<b>意图源</b>；未声明时为
+    /// <see langword="null"/>）。它与 <see cref="Name"/>（渲染产物实际使用的键）不一致即
+    /// 声明与实现漂移——模型看到的键是后者，声明的名字只是文档。
+    /// </summary>
+    public string? DeclaredToolParameterName { get; }
 
     /// <summary>C# 类型显示名（仅用于诊断消息，不参与 Schema 推导）。</summary>
     public string CsharpType { get; }
@@ -69,6 +80,7 @@ internal sealed class CapabilityParameter : IEquatable<CapabilityParameter?>
     public bool Equals(CapabilityParameter? other)
         => other is not null
             && string.Equals(Name, other.Name, StringComparison.Ordinal)
+            && string.Equals(DeclaredToolParameterName ?? string.Empty, other.DeclaredToolParameterName ?? string.Empty, StringComparison.Ordinal)
             && string.Equals(CsharpType, other.CsharpType, StringComparison.Ordinal)
             && string.Equals(ParameterKind, other.ParameterKind, StringComparison.Ordinal)
             && string.Equals(DocDescription ?? string.Empty, other.DocDescription ?? string.Empty, StringComparison.Ordinal)
@@ -86,6 +98,7 @@ internal sealed class CapabilityParameter : IEquatable<CapabilityParameter?>
         {
             var hash = 17;
             hash = (hash * 31) + comparer.GetHashCode(Name);
+            hash = (hash * 31) + comparer.GetHashCode(DeclaredToolParameterName ?? string.Empty);
             hash = (hash * 31) + comparer.GetHashCode(CsharpType);
             hash = (hash * 31) + comparer.GetHashCode(ParameterKind);
             hash = (hash * 31) + comparer.GetHashCode(DocDescription ?? string.Empty);

@@ -5,6 +5,7 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using Mud.Feishu.Abstractions.Metrics;
 
@@ -19,7 +20,7 @@ public class FeishuToolBindingTests : IDisposable
 {
     private readonly Mock<IFeishuAppContextScopeFactory> _scopeFactory = new();
     private readonly List<string> _callLog = [];
-    private readonly List<Activity> _activities = [];
+    private readonly ConcurrentQueue<Activity> _activities = new();
     private readonly ActivityListener _listener;
 
     public FeishuToolBindingTests()
@@ -44,7 +45,7 @@ public class FeishuToolBindingTests : IDisposable
         {
             ShouldListenTo = source => source.Name == FeishuActivitySource.Name,
             Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
-            ActivityStopped = activity => _activities.Add(activity),
+            ActivityStopped = activity => _activities.Enqueue(activity),
         };
         ActivitySource.AddActivityListener(_listener);
     }
@@ -149,12 +150,12 @@ public class FeishuToolBindingTests : IDisposable
         await binding.ExecuteAsync(
             Definition(name: "bitable.list_tables", scopes: ["bitable:app:readonly"]),
             Args(),
-            new FeishuToolContext("appAudit"),
+            new FeishuToolContext("appSpanTags"),
             _ => Task.FromResult(FeishuToolResult.FromText("ok")));
 
-        var activity = _activities.Should().ContainSingle().Subject;
+        var activity = SingleActivityFor("appSpanTags");
         activity.GetTagItem(FeishuToolDiagnostics.TagToolName).Should().Be("bitable.list_tables");
-        activity.GetTagItem(FeishuActivitySource.Tags.AppKey).Should().Be("appAudit");
+        activity.GetTagItem(FeishuActivitySource.Tags.AppKey).Should().Be("appSpanTags");
         activity.GetTagItem(FeishuToolDiagnostics.TagScopes).Should().Be("bitable:app:readonly");
         activity.GetTagItem(FeishuToolDiagnostics.TagDecision).Should().Be(FeishuToolDiagnostics.DecisionAllowed);
     }
@@ -171,10 +172,10 @@ public class FeishuToolBindingTests : IDisposable
             .ReturnsAsync(AuthorizationResult.Deny("no"));
 
         var binding = CreateBinding(denied.Object);
-        await binding.ExecuteAsync(Definition(), Args(), new FeishuToolContext("appA"),
+        await binding.ExecuteAsync(Definition(), Args(), new FeishuToolContext("appDeniedSpan"),
             _ => Task.FromResult(FeishuToolResult.FromText("ok")));
 
-        var activity = _activities.Should().ContainSingle().Subject;
+        var activity = SingleActivityFor("appDeniedSpan");
         activity.GetTagItem(FeishuToolDiagnostics.TagDecision).Should().Be(FeishuToolDiagnostics.DecisionDenied);
     }
 
@@ -577,13 +578,27 @@ public class FeishuToolBindingTests : IDisposable
         await binding.ExecuteAsync(
             Definition(name: "im.send", isWrite: true, risk: FeishuToolRisk.HighRiskWrite),
             Args(),
-            new FeishuToolContext("appA"),
+            new FeishuToolContext("appRiskSpan"),
             _ => Task.FromResult(FeishuToolResult.FromText("ok")));
 
-        var activity = _activities.Should().ContainSingle().Subject;
+        var activity = SingleActivityFor("appRiskSpan");
         activity.GetTagItem(FeishuToolDiagnostics.TagRisk).Should().Be("high-risk-write",
             "风险轴必须可观测（AT-B13 ⑤：Span 增 feishu.tool.risk）");
     }
+
+    /// <summary>
+    /// 取本次调用（按 appKey 唯一标识）产生的工具 Span。
+    /// </summary>
+    /// <remarks>
+    /// <b>为什么要按 appKey 过滤</b>：<see cref="ActivityListener"/> 监听的是全局 ActivitySource，
+    /// 与本类并行运行的其他测试类产生的 Span 也会进入本实例的收集队列 ——
+    /// 直接 <c>ContainSingle()</c> 会同时踩到"计数偶发不等"与"枚举时集合被并发修改"两个竞态
+    /// （曾导致质量闸门随机变红）。过滤后断言与外部并发完全解耦。
+    /// </remarks>
+    private Activity SingleActivityFor(string appKey)
+        => _activities
+            .Where(a => string.Equals((string?)a.GetTagItem(FeishuActivitySource.Tags.AppKey), appKey, StringComparison.Ordinal))
+            .Should().ContainSingle($"appKey={appKey} 的调用应恰好产生一个工具 Span").Subject;
 
     private sealed class DisposableAction(Action action) : IDisposable
     {

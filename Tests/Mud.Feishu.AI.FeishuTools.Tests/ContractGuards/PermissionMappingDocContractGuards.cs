@@ -25,9 +25,10 @@ namespace Mud.Feishu.AI.FeishuTools.Tests.ContractGuards;
 /// （正则锚定整格，天然排除表头与正文里的其它反引号片段）。
 /// </para>
 /// <para>
-/// 解析面刻意最小：只解析工具名列，不解析 scope 列（scope 的精确值由
-/// <c>FeishuToolContractGuards.ToolScopes_ShouldMatchThePermissionMappingTable_ExactValues</c> 锁定），
-/// 以免文档格式微调即红（风险 R-8）。
+/// 解析面（WP2 更新）：工具名列 + <b>RequiredScopes 列</b>。scope 列此前刻意不解析
+/// （精确值由守卫内嵌的 24 行手抄字典锁定）——手抄字典已删除（WP2 / R-B 根因），
+/// 改为<b>契约 vs 文档交叉验证</b>：对照表每行的 scope 列必须与
+/// <see cref="FeishuToolContracts"/>（生成器发射的类型化契约）逐一相等。
 /// </para>
 /// </remarks>
 public class PermissionMappingDocContractGuards
@@ -37,6 +38,11 @@ public class PermissionMappingDocContractGuards
     /// <summary>整格匹配"形如 <c>a.b.c</c> 的工具名"（锚定整格，故表头/正文片段不会被误取）。</summary>
     private static readonly Regex ToolNameCell = new(
         @"^`(?<name>[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)+)`$",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    /// <summary>scope 单元格内的反引号 token（scope 名形如 <c>im:message:send_as_bot</c>）。</summary>
+    private static readonly Regex ScopeToken = new(
+        @"`(?<scope>[a-z][a-z0-9_.:\-]*:[a-z0-9_.:\-]+)`",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     /// <summary>对照表列出的工具名集合必须与 <c>FeishuToolNames.All</c> 精确相等（漂移即红）。</summary>
@@ -74,6 +80,61 @@ public class PermissionMappingDocContractGuards
         documented.Should().BeEquivalentTo(FeishuToolNames.All,
             "《工具权限对照表》必须与工具名契约表逐一对应：新增/删除工具时文档与守卫同批更新"
             + "（该声称此前不成立——对照表长期缺 contact 三工具）");
+    }
+
+    /// <summary>
+    /// 契约 vs 文档交叉验证（WP2）：对照表每行的 RequiredScopes 列必须与
+    /// <see cref="FeishuToolContracts"/>（生成器发射的类型化契约）逐一相等。
+    /// </summary>
+    /// <remarks>
+    /// 取代原 <c>FeishuToolContractGuards</c> 中的 24 行手抄期望字典——scope 的代码侧真相
+    /// 只有生成器一处，文档侧由本守卫锁"人读视图与契约不漂移"。
+    /// </remarks>
+    [Fact]
+    public void PermissionDoc_RequiredScopesColumn_ShouldMatchToolContracts()
+    {
+        var docPath = Path.Combine(FindRepositoryRoot(), DocRelativePath.Replace('/', Path.DirectorySeparatorChar));
+        var documentedScopes = new Dictionary<string, string[]>(StringComparer.Ordinal);
+
+        foreach (var line in File.ReadAllLines(docPath))
+        {
+            if (!line.StartsWith('|'))
+            {
+                continue;
+            }
+
+            var cells = line.Split('|');
+            if (cells.Length < 4)
+            {
+                continue;
+            }
+
+            var nameMatch = ToolNameCell.Match(cells[2].Trim());
+            if (!nameMatch.Success)
+            {
+                continue;
+            }
+
+            var scopes = ScopeToken.Matches(cells[3])
+                .Select(static m => m.Groups["scope"].Value)
+                .Distinct(StringComparer.Ordinal)
+                .OrderBy(static s => s, StringComparer.Ordinal)
+                .ToArray();
+
+            documentedScopes[nameMatch.Groups["name"].Value] = scopes;
+        }
+
+        foreach (var (toolName, contract) in FeishuToolContracts.ByToolName)
+        {
+            documentedScopes.Should().ContainKey(toolName, $"对照表缺工具 {toolName} 的行（工具名守卫应先行拦截）");
+            var documented = documentedScopes[toolName]
+                .Distinct(StringComparer.Ordinal)
+                .OrderBy(static s => s, StringComparer.Ordinal)
+                .ToArray();
+
+            documented.Should().BeEquivalentTo(contract.RequiredScopes,
+                $"工具 {toolName} 的对照表 scope 列必须与编译期契约一致（漂移 = 文档过期或契约被改）");
+        }
     }
 
     private static string FindRepositoryRoot()

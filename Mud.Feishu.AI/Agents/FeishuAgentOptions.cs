@@ -134,9 +134,18 @@ public sealed class FeishuAgentOptions
     /// 允许执行的工具身份闭集（AT-B13 Identity 轴；消费点：<c>FeishuToolBinding</c> 策略判定）。
     /// </summary>
     /// <remarks>
-    /// 取值 = Schema 的 <c>x-feishu.identity</c>（<c>tenant</c> / <c>user</c>）。默认仅 <c>tenant</c>：
-    /// 当前工具面全部为租户令牌工具，本键为 AT-F06/F07 引入用户令牌工具**之前**就位的前置闸门
-    /// （不匹配返回 <c>identity_mismatch</c>）。
+    /// <para>
+    /// 取值 = Schema 的 <c>x-feishu.identity</c>（<c>tenant</c> / <c>user</c>）。默认仅 <c>tenant</c>
+    /// （默认最小权限，不匹配返回 <c>identity_mismatch</c>）。
+    /// </para>
+    /// <para>
+    /// <b>引入首个 user 身份工具（<c>task.list_my_tasks</c>）后的语义（R4 WP2 / T2-4，决策 D-1 ⓑ）</b>：
+    /// 默认值保留 <c>["tenant"]</c>，但 <c>AddFeishuTools</c> 在<b>白名单映射完成后</b>做集中校验——
+    /// 凡已启用工具的 <c>Identity</c> 不在本闭集内即抛可读异常（列出工具名与身份）。
+    /// 这把"默认值误伤 user 工具"从<b>运行期静默拒绝</b>（宿主会误判为权限问题）
+    /// 变成<b>装配期可读错误</b>。校验落点必须在装配层：<c>Validate()</c> 感知不到工具面
+    /// （工具身份在注册表、白名单映射在装配层）。
+    /// </para>
     /// </remarks>
     public string[] AllowedIdentities { get; set; } = ["tenant"];
 

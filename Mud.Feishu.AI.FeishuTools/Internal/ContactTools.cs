@@ -21,6 +21,10 @@ namespace Mud.Feishu.AI.FeishuTools.Internal;
 /// 投影白名单遵循统一纪律：<b>只回填模型继续调用的必要标识与判断依据</b>，不回传原始 DTO
 /// （原始 DTO 含大量内部字段与嵌套结构，既浪费上下文又扩大注入面）。
 /// </para>
+/// <para>
+/// 执行骨架（catch/回填/截断）由 <see cref="ToolExecutor"/> 承担（WP3）；本类只保留
+/// 参数校验与投影语义。
+/// </para>
 /// </remarks>
 internal sealed class ContactTools(
     Mud.Feishu.IFeishuTenantV3User userClient,
@@ -34,9 +38,10 @@ internal sealed class ContactTools(
     private readonly int _maxResultLength = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
 
     /// <summary>contact.resolve_user：邮箱/手机号 → 用户 ID。</summary>
-    public async Task<FeishuToolResult> ResolveUsersAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    public Task<FeishuToolResult> ResolveUsersAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
-        try
+        var executor = new ToolExecutor(FeishuToolNames.ContactResolveUser, _maxResultLength);
+        return executor.RunAsync(async () =>
         {
             var emails = ToolArgs.OptionalStringArray(arguments, "emails");
             var mobiles = ToolArgs.OptionalStringArray(arguments, "mobiles");
@@ -65,29 +70,8 @@ internal sealed class ContactTools(
                     user_id_type: DefaultUserIdType,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false));
-            if (!outcome.Ok)
-            {
-                return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(FeishuToolNames.ContactResolveUser, outcome.Code, outcome.ErrorText!));
-            }
-
-            var envelope = new JsonObject { ["items"] = new JsonArray() };
-            foreach (var user in outcome.Data!.UserList ?? [])
-            {
-                envelope["items"]!.AsArray().AddNode(new JsonObject
-                {
-                    ["user_id"] = user.UserId,
-                    ["email"] = user.Email,
-                    ["mobile"] = user.Mobile,
-                    ["status"] = ProjectStatus(user.Status),
-                });
-            }
-
-            return FeishuToolResult.FromText(ToolResultText.TruncateJson(envelope.ToJsonString(), _maxResultLength));
-        }
-        catch (ArgumentException ex)
-        {
-            return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(FeishuToolNames.ContactResolveUser, ex.Message));
-        }
+            return executor.FromApi(outcome, ProjectResolveUsers);
+        });
     }
 
     /// <summary>
@@ -97,9 +81,10 @@ internal sealed class ContactTools(
     /// <b>投影纪律（C-7）</b>：<c>open_id</c> <b>必须</b>回填——它是下一跳
     /// <c>im.send_message(receive_id_type=open_id)</c> 的入参；<c>avatar</c> 有意省略（长 URL，纯上下文开销）。
     /// </remarks>
-    public async Task<FeishuToolResult> SearchUsersAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    public Task<FeishuToolResult> SearchUsersAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
-        try
+        var executor = new ToolExecutor(FeishuToolNames.ContactSearchUser, _maxResultLength);
+        return executor.RunAsync(async () =>
         {
             var query = ToolArgs.RequireString(arguments, "query");
             var pageToken = ToolArgs.OptionalString(arguments, "page_token");
@@ -107,45 +92,15 @@ internal sealed class ContactTools(
             var outcome = FeishuApiResultReader.Read(await _userClient
                 .GetUsersByKeywordAsync(query, PageSizes.ContactSearch, pageToken, cancellationToken)
                 .ConfigureAwait(false));
-            if (!outcome.Ok)
-            {
-                return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(FeishuToolNames.ContactSearchUser, outcome.Code, outcome.ErrorText!));
-            }
-
-            var data = outcome.Data!;
-            var envelope = new JsonObject
-            {
-                ["items"] = new JsonArray(),
-                ["has_more"] = data.HasMore,
-            };
-            if (!string.IsNullOrEmpty(data.PageToken))
-            {
-                envelope["page_token"] = data.PageToken;
-            }
-
-            foreach (var user in data.Users ?? [])
-            {
-                envelope["items"]!.AsArray().AddNode(new JsonObject
-                {
-                    ["open_id"] = user.OpenId,
-                    ["user_id"] = user.UserId,
-                    ["name"] = user.Name,
-                    ["department_ids"] = ProjectStrings(user.DepartmentIds),
-                });
-            }
-
-            return FeishuToolResult.FromText(ToolResultText.TruncateJson(envelope.ToJsonString(), _maxResultLength));
-        }
-        catch (ArgumentException ex)
-        {
-            return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(FeishuToolNames.ContactSearchUser, ex.Message));
-        }
+            return executor.FromApi(outcome, ProjectSearchUsers);
+        });
     }
 
     /// <summary>contact.get_user：单个用户详情。</summary>
-    public async Task<FeishuToolResult> GetUserAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    public Task<FeishuToolResult> GetUserAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
-        try
+        var executor = new ToolExecutor(FeishuToolNames.ContactGetUser, _maxResultLength);
+        return executor.RunAsync(async () =>
         {
             var userId = ToolArgs.RequireString(arguments, "user_id");
             var userIdType = ToolArgs.OptionalString(arguments, "user_id_type") ?? DefaultUserIdType;
@@ -153,24 +108,15 @@ internal sealed class ContactTools(
             var outcome = FeishuApiResultReader.Read(await _userClient
                 .GetUserInfoByIdAsync(userId, user_id_type: userIdType, cancellationToken: cancellationToken)
                 .ConfigureAwait(false));
-            if (!outcome.Ok)
-            {
-                return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(FeishuToolNames.ContactGetUser, outcome.Code, outcome.ErrorText!));
-            }
-
-            var envelope = new JsonObject { ["user"] = ProjectUser(outcome.Data) };
-            return FeishuToolResult.FromText(ToolResultText.TruncateJson(envelope.ToJsonString(), _maxResultLength));
-        }
-        catch (ArgumentException ex)
-        {
-            return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(FeishuToolNames.ContactGetUser, ex.Message));
-        }
+            return executor.FromApi(outcome, data => new JsonObject { ["user"] = ProjectUser(data) });
+        });
     }
 
     /// <summary>contact.batch_get：按 ID 批量取详情。</summary>
-    public async Task<FeishuToolResult> BatchGetUsersAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    public Task<FeishuToolResult> BatchGetUsersAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
-        try
+        var executor = new ToolExecutor(FeishuToolNames.ContactBatchGet, _maxResultLength);
+        return executor.RunAsync(async () =>
         {
             var userIds = ToolArgs.OptionalStringArray(arguments, "user_ids")
                 ?? throw new ArgumentException("缺少必填参数 user_ids");
@@ -185,23 +131,65 @@ internal sealed class ContactTools(
             var outcome = FeishuApiResultReader.Read(await _userClient
                 .GetUserByIdsAsync(userIds, user_id_type: userIdType, cancellationToken: cancellationToken)
                 .ConfigureAwait(false));
-            if (!outcome.Ok)
-            {
-                return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(FeishuToolNames.ContactBatchGet, outcome.Code, outcome.ErrorText!));
-            }
+            return executor.FromApi(outcome, ProjectBatchGetUsers);
+        });
+    }
 
-            var envelope = new JsonObject { ["items"] = new JsonArray() };
-            foreach (var user in outcome.Data!.Items ?? [])
-            {
-                envelope["items"]!.AsArray().AddNode(ProjectUser(user));
-            }
-
-            return FeishuToolResult.FromText(ToolResultText.TruncateJson(envelope.ToJsonString(), _maxResultLength));
-        }
-        catch (ArgumentException ex)
+    /// <summary>resolve_user 投影：items 列表（email/mobile/user_id/status）。</summary>
+    private static JsonObject ProjectResolveUsers(UserQueryListResult data)
+    {
+        var envelope = new JsonObject { ["items"] = new JsonArray() };
+        foreach (var user in data.UserList ?? [])
         {
-            return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(FeishuToolNames.ContactBatchGet, ex.Message));
+            envelope["items"]!.AsArray().AddNode(new JsonObject
+            {
+                ["user_id"] = user.UserId,
+                ["email"] = user.Email,
+                ["mobile"] = user.Mobile,
+                ["status"] = ProjectStatus(user.Status),
+            });
         }
+
+        return envelope;
+    }
+
+    /// <summary>search_user 投影：items + has_more + page_token（翻页契约）。</summary>
+    private static JsonObject ProjectSearchUsers(UserSearchListResult data)
+    {
+        var envelope = new JsonObject
+        {
+            ["items"] = new JsonArray(),
+            ["has_more"] = data.HasMore,
+        };
+        if (!string.IsNullOrEmpty(data.PageToken))
+        {
+            envelope["page_token"] = data.PageToken;
+        }
+
+        foreach (var user in data.Users ?? [])
+        {
+            envelope["items"]!.AsArray().AddNode(new JsonObject
+            {
+                ["open_id"] = user.OpenId,
+                ["user_id"] = user.UserId,
+                ["name"] = user.Name,
+                ["department_ids"] = ProjectStrings(user.DepartmentIds),
+            });
+        }
+
+        return envelope;
+    }
+
+    /// <summary>batch_get 投影：items 列表（完整用户详情白名单）。</summary>
+    private static JsonObject ProjectBatchGetUsers(GetUserInfosResult data)
+    {
+        var envelope = new JsonObject { ["items"] = new JsonArray() };
+        foreach (var user in data.Items ?? [])
+        {
+            envelope["items"]!.AsArray().AddNode(ProjectUser(user));
+        }
+
+        return envelope;
     }
 
     /// <summary>用户详情白名单投影（不含 avatar URL 等长文本字段，避免无谓的上下文占用）。</summary>

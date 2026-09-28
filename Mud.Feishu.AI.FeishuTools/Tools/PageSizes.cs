@@ -52,6 +52,12 @@ internal static class PageSizes
     /// <summary>通讯录按姓名/关键字搜人（官方默认 10；此处取 20 以减少"找不到人"的追问轮次）。</summary>
     public const int ContactSearch = 20;
 
+    /// <summary>calendar.list_events（绑定层固定页大小，上限 50）。</summary>
+    public const int CalendarEvents = 50;
+
+    /// <summary>task.list_my_tasks（官方默认 10；此处取 50 以减少追问轮次）。</summary>
+    public const int TaskList = 50;
+
     /// <summary>tokens 类参数的单请求上限（通用钳制）。</summary>
     public const int TokenBatch = 100;
 

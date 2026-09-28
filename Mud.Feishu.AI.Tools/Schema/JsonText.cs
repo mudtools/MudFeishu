@@ -61,9 +61,31 @@ internal static class JsonText
         return sb.ToString();
     }
 
-    /// <summary>把值转义为 C# 字符串字面量（优先原始字符串字面量，更易读且免转义）。</summary>
+    /// <summary>把值转义为 C# 字符串字面量（内容安全时用原始字符串字面量，否则退回转义形态）。</summary>
+    /// <remarks>
+    /// <para>
+    /// 原始字符串字面量的适用条件（不满足一律退回 <see cref="Quote"/> 的转义形态）：
+    /// <b>非空、无换行、首尾字符不是引号、不含三连引号</b>。
+    /// </para>
+    /// <para>
+    /// <b>为什么空串不能用原始形态</b>：<c>""""""</c>（6 连引号）会被 Roslyn 按"最长引号连跑"
+    /// 整体吞成开头定界符，找不到闭合定界符 → CS8997"未终止的字符串字面量"
+    /// （WP2 契约表的 <c>SdkSource/HttpMethod/Route</c> 空值首次暴露）。
+    /// 首尾引号会被并入定界符扫描，同理不安全；换行会把单行原始字面量变成多行形态
+    /// （开引号后必须换行，行内开启即非法）。
+    /// </para>
+    /// <para>
+    /// 对既有产物（Schema 常量 / 工具名）字节级无影响：JSON 内容以 <c>{</c> 开头 <c>}</c> 结尾、
+    /// 无原始换行；工具名为 <c>域.动作</c> 纯标识符。
+    /// </para>
+    /// </remarks>
     public static string ToCSharpLiteral(string value)
-        => value.IndexOf("\"\"\"", System.StringComparison.Ordinal) >= 0
-            ? Quote(value)
-            : "\"\"\"" + value + "\"\"\"";
+        => value.Length > 0
+            && value[0] != '"'
+            && value[value.Length - 1] != '"'
+            && value.IndexOf('\n') < 0
+            && value.IndexOf('\r') < 0
+            && value.IndexOf("\"\"\"", System.StringComparison.Ordinal) < 0
+            ? "\"\"\"" + value + "\"\"\""
+            : Quote(value);
 }

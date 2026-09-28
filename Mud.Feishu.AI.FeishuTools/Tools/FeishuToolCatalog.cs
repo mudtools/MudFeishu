@@ -36,11 +36,21 @@ public sealed class FeishuToolCatalog : IToolCatalog
             var schemaJson = FeishuToolSchemas.SchemaByToolName.TryGetValue(definition.Name, out var schema)
                 ? schema
                 : string.Empty;
+
+            // SDK 源符号只存在于编译期契约（注册表定义不携带它）——目录补齐 risk/identity/source 三项
+            // （R4/WP2 / F-2：契约事实已有，此前缺类型化出口）。
+            var sdkSource = FeishuToolContracts.ByToolName.TryGetValue(definition.Name, out var contract)
+                ? contract.SdkSource
+                : string.Empty;
+
             var entry = new ToolCatalogEntry(
                 definition.Name,
                 definition.Description,
                 definition.RequiredScopes,
                 definition.IsWrite,
+                definition.Risk,
+                definition.Identity,
+                sdkSource,
                 ExtractParameterSchema(schemaJson));
             entries.Add(entry);
         }

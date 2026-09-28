@@ -10,16 +10,33 @@ namespace Mud.Feishu.AI.Tools;
 /// <summary>
 /// 单个工具的目录条目（稳定目录契约，AI-FD-D12 P1D-4——Phase 4 工具市场/Skills 前置件）。
 /// </summary>
+/// <remarks>
+/// <para>
+/// <b>字段完整化（R4/WP2 / F-2）</b>：此前条目只有 5 个字段，缺 <c>risk</c>/<c>identity</c>/<c>source</c>——
+/// 而这三项<b>早已存在于编译期契约</b>（<c>x-feishu</c> 段），只是没有类型化出口，
+/// 宿主想按政策筛选工具只能自己去解析 Schema JSON（第四个漂移面）。此处把契约事实补齐。
+/// </para>
+/// <para>
+/// 有意<b>不含</b> <c>http</c>/<c>route</c>：请求构造属 SDK 内部事实，对外目录（尤其供模型侧消费的场景）
+/// 不暴露调用形状——与 <c>feishu.capability_lookup</c> 的 D4 边界同一取舍。
+/// </para>
+/// </remarks>
 /// <param name="Name">工具名（契约表名）。</param>
 /// <param name="Description">模型侧描述。</param>
 /// <param name="RequiredScopes">所需权限点清单。</param>
 /// <param name="IsWrite">是否写操作。</param>
+/// <param name="Risk">风险分级（策略轴 <c>MaxToolRisk</c> 的判定输入，由契约 <c>risk</c> 派生）。</param>
+/// <param name="Identity">工具身份（<c>tenant</c> / <c>user</c>，策略轴 <c>AllowedIdentities</c> 的判定输入）。</param>
+/// <param name="SdkSource">SDK 源符号（<c>类型.方法</c>；契约 <c>source.sdk</c>，宿主可据此定位实现与文档）。</param>
 /// <param name="ParameterSchemaJson">参数 JSON Schema（编译期 <c>[FeishuTool]</c> 常量原文）。</param>
 public sealed record ToolCatalogEntry(
     string Name,
     string Description,
     IReadOnlyList<string> RequiredScopes,
     bool IsWrite,
+    FeishuToolRisk Risk,
+    string Identity,
+    string SdkSource,
     string ParameterSchemaJson);
 
 /// <summary>

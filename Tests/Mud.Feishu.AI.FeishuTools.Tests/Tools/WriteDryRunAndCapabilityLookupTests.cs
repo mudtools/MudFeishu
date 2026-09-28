@@ -137,7 +137,11 @@ public class WriteDryRunAndCapabilityLookupTests
         first.GetProperty("group").GetString().Should().Contain("Calendar");
         first.GetProperty("methods").GetInt32().Should().BePositive();
         first.TryGetProperty("module_curated", out var curated).Should().BeTrue();
-        curated.GetBoolean().Should().BeFalse("日历尚未策展为工具——这正是本工具要如实告知模型的事实");
+        curated.GetBoolean().Should().BeTrue("R4/WP5 后日历已策展为工具（calendar.* 三工具）——元工具须如实告知模型");
+
+        root.GetProperty("curated_tools").EnumerateArray()
+            .Select(static e => e.GetString()!)
+            .Should().Contain("calendar.create_event", "已策展模块必须回填真实工具名（模型据此判断‘有没有 / 是否已启用’）");
     }
 
     /// <summary>D4 边界：只回元数据，**不得**回方法名与请求构造。</summary>

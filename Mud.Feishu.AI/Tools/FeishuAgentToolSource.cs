@@ -25,4 +25,23 @@ public abstract class FeishuAgentToolSource
     /// <param name="serviceProvider">服务提供器（解析上下文访问器等协作件）。</param>
     /// <returns>模型可见工具列表。</returns>
     public abstract IReadOnlyList<AIFunction> GetTools(IServiceProvider serviceProvider);
+
+    /// <summary>
+    /// 返回<b>已启用工具所属域</b>的 guidance 资产（WP6 / AT-F09；装配为宿主指令之后的补充）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 默认返回空集（不注入任何域资产）——未注册工具包、或工具包未提供 guidance 时，
+    /// 指令装配与 Phase 0 完全一致（零行为变化）。
+    /// </para>
+    /// <para>
+    /// 为什么由<b>工具源</b>提供而不是让 AI 底座去查域表：域 guidance 的真相源
+    /// （<c>Mud.Feishu.AI.Tools.Generated.FeishuToolGuidance</c>）由生成器发射进工具面实现包，
+    /// AI 底座反向依赖它会破坏依赖方向铁律；此处以纯文本块形式交接，装配与截断由
+    /// <see cref="Agents.FeishuGuidanceComposer"/> 统一负责。
+    /// </para>
+    /// </remarks>
+    /// <param name="serviceProvider">服务提供器。</param>
+    /// <returns>域 guidance 块（顺序即域优先级；空集 = 不注入）。</returns>
+    public virtual IReadOnlyList<Agents.FeishuGuidanceBlock> GetGuidance(IServiceProvider serviceProvider) => [];
 }

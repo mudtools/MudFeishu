@@ -5,6 +5,8 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using Mud.Feishu.DataModels.Messages;
+
 namespace Mud.Feishu.AI.FeishuTools.Internal;
 
 /// <summary>
@@ -12,6 +14,7 @@ namespace Mud.Feishu.AI.FeishuTools.Internal;
 /// RFC3339 → 秒级时间戳转换、<c>container_id_type=chat</c> 与 <c>sort_type=ByCreateTimeDesc</c>
 /// 绑定层注入（§3.3.3）；消息内容回查依赖 P1D-1a 路由修复（AI-FD-D12）。
 /// </summary>
+/// <remarks>执行骨架（catch/回填/截断）由 <see cref="ToolExecutor"/> 承担（WP3）；本类只保留参数校验与投影语义。</remarks>
 internal sealed class ImTools(Mud.Feishu.IFeishuTenantV1Message messageClient, IOptions<FeishuAgentOptions> options)
 {
     private const string ContainerIdTypeChat = "chat";
@@ -22,9 +25,10 @@ internal sealed class ImTools(Mud.Feishu.IFeishuTenantV1Message messageClient, I
     private readonly int _maxResultLength = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
 
     /// <summary>im.get_history_messages：读取历史消息（白名单 message_id/create_time/sender_id/message_type/content 预览）。</summary>
-    public async Task<FeishuToolResult> GetHistoryAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    public Task<FeishuToolResult> GetHistoryAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
-        try
+        var executor = new ToolExecutor(FeishuToolNames.ImGetHistoryMessages, _maxResultLength);
+        return executor.RunAsync(async () =>
         {
             var chatId = ToolArgs.RequireString(arguments, "chat_id");
             var startTime = ToUnixSeconds(ToolArgs.OptionalString(arguments, "start_time"), "start_time");
@@ -42,83 +46,77 @@ internal sealed class ImTools(Mud.Feishu.IFeishuTenantV1Message messageClient, I
                     pageToken,
                     cancellationToken)
                 .ConfigureAwait(false));
-            if (!outcome.Ok)
-            {
-                return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(FeishuToolNames.ImGetHistoryMessages, outcome.Code, outcome.ErrorText!));
-            }
-
-            var data = outcome.Data!;
-            var envelope = new JsonObject
-            {
-                ["items"] = new JsonArray(),
-                ["has_more"] = data.HasMore,
-            };
-            if (!string.IsNullOrEmpty(data.PageToken))
-            {
-                envelope["page_token"] = data.PageToken;
-            }
-
-            foreach (var message in data.Items ?? [])
-            {
-                var content = message.Body?.Content ?? string.Empty;
-                envelope["items"]!.AsArray().AddNode(new JsonObject
-                {
-                    ["message_id"] = message.MessageId,
-                    ["create_time"] = message.CreateTime,
-                    ["sender_id"] = message.Sender?.Id,
-                    ["message_type"] = message.MsgType,
-                    ["content"] = ToolResultText.Truncate(content, PageSizes.MessagePreviewLength),
-                });
-            }
-
-            return FeishuToolResult.FromText(ToolResultText.TruncateJson(envelope.ToJsonString(), _maxResultLength));
-        }
-        catch (ArgumentException ex)
-        {
-            return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(FeishuToolNames.ImGetHistoryMessages, ex.Message));
-        }
+            return executor.FromApi(outcome, ProjectHistory);
+        });
     }
 
     /// <summary>im.get_message_content：单条消息内容回查（白名单 message_id/msg_type/body/mentions）。</summary>
-    public async Task<FeishuToolResult> GetContentAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    public Task<FeishuToolResult> GetContentAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
-        try
+        var executor = new ToolExecutor(FeishuToolNames.ImGetMessageContent, _maxResultLength);
+        return executor.RunAsync(async () =>
         {
             var messageId = ToolArgs.RequireString(arguments, "message_id");
 
             var outcome = FeishuApiResultReader.Read(await _messageClient
                 .GetContentListByMessageIdAsync(messageId, cancellationToken: cancellationToken)
                 .ConfigureAwait(false));
-            if (!outcome.Ok)
-            {
-                return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(FeishuToolNames.ImGetMessageContent, outcome.Code, outcome.ErrorText!));
-            }
+            return executor.FromApi(outcome, ProjectContent);
+        });
+    }
 
-            var envelope = new JsonObject { ["items"] = new JsonArray() };
-            foreach (var message in outcome.Data!.Items ?? [])
-            {
-                envelope["items"]!.AsArray().AddNode(new JsonObject
-                {
-                    ["message_id"] = message.MessageId,
-                    ["msg_type"] = message.MsgType,
-                    ["body"] = message.Body?.Content,
-                    ["mentions"] = message.Mentions is { Count: > 0 }
-                        ? new JsonArray([.. message.Mentions.Select(m => (JsonNode?)new JsonObject
-                            {
-                                ["key"] = m.Key,
-                                ["id"] = m.Id,
-                                ["name"] = m.Name,
-                            }).ToArray()])
-                        : null,
-                });
-            }
-
-            return FeishuToolResult.FromText(ToolResultText.TruncateJson(envelope.ToJsonString(), _maxResultLength));
-        }
-        catch (ArgumentException ex)
+    /// <summary>get_history_messages 投影：items（含 content 预览截断）+ 翻页契约。</summary>
+    private static JsonObject ProjectHistory(ApiPageListResult<HistoryMessageData> data)
+    {
+        var envelope = new JsonObject
         {
-            return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(FeishuToolNames.ImGetMessageContent, ex.Message));
+            ["items"] = new JsonArray(),
+            ["has_more"] = data.HasMore,
+        };
+        if (!string.IsNullOrEmpty(data.PageToken))
+        {
+            envelope["page_token"] = data.PageToken;
         }
+
+        foreach (var message in data.Items ?? [])
+        {
+            var content = message.Body?.Content ?? string.Empty;
+            envelope["items"]!.AsArray().AddNode(new JsonObject
+            {
+                ["message_id"] = message.MessageId,
+                ["create_time"] = message.CreateTime,
+                ["sender_id"] = message.Sender?.Id,
+                ["message_type"] = message.MsgType,
+                ["content"] = ToolResultText.Truncate(content, PageSizes.MessagePreviewLength),
+            });
+        }
+
+        return envelope;
+    }
+
+    /// <summary>get_message_content 投影：items（message_id/msg_type/body/mentions）。</summary>
+    private static JsonObject ProjectContent(ApiListResult<MessageContentData> data)
+    {
+        var envelope = new JsonObject { ["items"] = new JsonArray() };
+        foreach (var message in data.Items ?? [])
+        {
+            envelope["items"]!.AsArray().AddNode(new JsonObject
+            {
+                ["message_id"] = message.MessageId,
+                ["msg_type"] = message.MsgType,
+                ["body"] = message.Body?.Content,
+                ["mentions"] = message.Mentions is { Count: > 0 }
+                    ? new JsonArray([.. message.Mentions.Select(m => (JsonNode?)new JsonObject
+                        {
+                            ["key"] = m.Key,
+                            ["id"] = m.Id,
+                            ["name"] = m.Name,
+                        }).ToArray()])
+                    : null,
+            });
+        }
+
+        return envelope;
     }
 
     /// <summary>RFC3339 → 秒级时间戳字符串（绑定层转换；解析失败抛 <see cref="ArgumentException"/> 结构化回填）。</summary>

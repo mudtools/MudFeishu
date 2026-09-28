@@ -42,7 +42,8 @@ internal sealed class CapabilityLookupTools(IOptions<FeishuAgentOptions> options
     /// <summary>feishu.capability_lookup：按关键字检索能力分组。</summary>
     public Task<FeishuToolResult> LookupAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
-        try
+        var executor = new ToolExecutor(FeishuToolNames.FeishuCapabilityLookup, _maxResultLength);
+        return executor.RunAsync(() =>
         {
             var keyword = ToolArgs.RequireString(arguments, "keyword");
 
@@ -91,12 +92,7 @@ internal sealed class CapabilityLookupTools(IOptions<FeishuAgentOptions> options
 
             return Task.FromResult(FeishuToolResult.FromText(
                 ToolResultText.TruncateJson(envelope.ToJsonString(), _maxResultLength)));
-        }
-        catch (ArgumentException ex)
-        {
-            return Task.FromResult(FeishuToolResult.FromError(
-                FeishuToolBinding.StructuredError(FeishuToolNames.FeishuCapabilityLookup, ex.Message)));
-        }
+        });
     }
 
     /// <summary>构造"模块 → 已策展工具名（有序）"索引。</summary>

@@ -5,7 +5,6 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-using System.Text.Json;
 using Mud.Feishu.AI.FeishuTools.Internal;
 
 namespace Mud.Feishu.AI.FeishuTools.Registration;
@@ -23,19 +22,29 @@ internal interface IFeishuToolDomainRegistrar
     void Register(FeishuToolRegistry registry);
 }
 
-/// <summary>注册表登记助手：从编译期 Schema 常量构造定义并注册（各域注册器共用）。</summary>
+/// <summary>注册表登记助手：从编译期类型化契约构造定义并注册（各域注册器共用）。</summary>
+/// <remarks>
+/// <para>
+/// <b>WP2（R-B 根因）</b>：契约消费点改为 <see cref="FeishuToolContracts"/>（生成器发射的类型化
+/// 契约表，与 Schema JSON 常量出自同一 pass）——此前的 <c>FromSchema</c> 运行期解析
+/// （<c>JsonDocument.Parse</c> + 3 个失败分支）整体删除：契约漏字段现在是<b>编译期错误</b>
+/// 而不是运行期 <c>InvalidOperationException</c>。
+/// </para>
+/// </remarks>
 internal static class FeishuToolRegistration
 {
-    /// <summary>按名注册工具（缺编译期 Schema 即 fail-fast——契约守卫防漂移）。</summary>
+    /// <summary>按名注册工具（缺编译期契约即 fail-fast——契约守卫防漂移）。</summary>
     public static FeishuToolDefinition RegisterTool(FeishuToolRegistry registry, string toolName, FeishuToolHandler handler)
     {
-        if (!FeishuToolSchemas.SchemaByToolName.TryGetValue(toolName, out var schemaJson))
+        if (!FeishuToolContracts.ByToolName.TryGetValue(toolName, out var contract))
         {
             throw new InvalidOperationException(
-                $"工具 '{toolName}' 缺少编译期 Schema——接口须标注 [FeishuTool]（契约守卫防漂移）");
+                $"工具 '{toolName}' 缺少编译期契约——接口须标注 [FeishuTool]（契约守卫防漂移）");
         }
 
-        var definition = FromSchema(schemaJson, handler);
+        var definition = new FeishuToolDefinition(
+            contract.Name, contract.Description, contract.RequiredScopes,
+            contract.IsWrite, contract.Risk, contract.Identity, handler);
         registry.Register(definition);
         return definition;
     }
@@ -73,51 +82,6 @@ internal static class FeishuToolRegistration
         Func<IReadOnlyDictionary<string, object?>, CancellationToken, Task<FeishuToolResult>> executorCall)
         => RegisterTool(registry, toolName, (args, ctx, ct) => binding.ExecuteAsync(
             Def(registry, toolName), args, ctx, token => executorCall(args, token), ct));
-
-    /// <summary>从编译期 Schema 常量提取注册表元数据（单一来源 = [FeishuTool] 特性 + 生成器派生的 SDK 事实）。</summary>
-    /// <remarks>
-    /// <b>fail-fast 纪律（AT-B13 / R3 评审 C-14）</b>：<c>x-feishu.risk</c> 与 <c>x-feishu.identity</c> 是
-    /// 策略判定（<c>MaxToolRisk</c>/<c>AllowedIdentities</c>）的输入，<b>缺字段意味着策略轴静默失效</b>
-    /// （风险轴恒放行）。故此处不用 <c>GetProperty</c>（会抛裸 <c>KeyNotFoundException</c>，对宿主毫无指引），
-    /// 而给出"应做/不应做"的可读异常——那条异常本身就是修复指引。
-    /// </remarks>
-    private static FeishuToolDefinition FromSchema(string schemaJson, FeishuToolHandler handler)
-    {
-        using var document = JsonDocument.Parse(schemaJson);
-        var root = document.RootElement;
-        var name = root.GetProperty("name").GetString()
-            ?? throw new InvalidOperationException("Schema 常量缺少 name");
-        var description = root.TryGetProperty("description", out var descriptionElement)
-            ? descriptionElement.GetString() ?? string.Empty
-            : string.Empty;
-
-        var extension = root.GetProperty("x-feishu");
-        var scopes = extension.GetProperty("required_scopes")
-            .EnumerateArray()
-            .Select(static e => e.GetString() ?? string.Empty)
-            .Where(static s => s.Length > 0)
-            .ToArray();
-        var isWrite = extension.GetProperty("is_write").GetBoolean();
-        var riskLiteral = ReadExtensionString(extension, "risk", name);
-        if (!FeishuToolRiskNames.TryParse(riskLiteral, out var risk))
-        {
-            throw new InvalidOperationException(
-                $"工具 '{name}' 的 x-feishu.risk 取值非法: '{riskLiteral}'——合法值为 {FeishuToolRiskNames.AllowedValuesText}。"
-                + "该字段由源生成器从 SDK 事实派生，请勿手写；取值异常说明生成器产物被破坏。");
-        }
-
-        var identity = ReadExtensionString(extension, "identity", name);
-
-        return new FeishuToolDefinition(name, description, scopes, isWrite, risk, identity, handler);
-    }
-
-    /// <summary>读取 <c>x-feishu</c> 扩展中的必填字符串（缺失时给出可读异常，而非裸 <c>KeyNotFoundException</c>）。</summary>
-    private static string ReadExtensionString(JsonElement extension, string propertyName, string toolName)
-        => extension.TryGetProperty(propertyName, out var element) && element.ValueKind == JsonValueKind.String
-            ? element.GetString() ?? string.Empty
-            : throw new InvalidOperationException(
-                $"工具 '{toolName}' 的 Schema 缺少 x-feishu.{propertyName}——该字段由源生成器从 SDK 事实派生，"
-                + "缺失意味着策略轴（MaxToolRisk / AllowedIdentities）将静默失效；请检查生成器与 golden 快照。");
 }
 
 /// <summary>Bitable 域注册器（构造注入 <see cref="BitableTools"/> 执行器）。</summary>
@@ -265,5 +229,52 @@ internal sealed class WriteToolDomainRegistrar(MessageWriteTools? messageWrite, 
             FeishuToolRegistration.RegisterExecution(registry, FeishuToolNames.ApprovalCreateInstance, binding,
                 (args, ct) => approvalWrite.CreateInstanceAsync(args, ct));
         }
+    }
+}
+
+/// <summary>日历域注册器（WP5 / AT-F04：create_event 写 + find_free_slots/list_events 只读）。</summary>
+internal sealed class CalendarToolDomainRegistrar(CalendarTools executor, FeishuToolBinding binding) : IFeishuToolDomainRegistrar
+{
+    public void Register(FeishuToolRegistry registry)
+    {
+        FeishuToolRegistration.RegisterExecution(registry, FeishuToolNames.CalendarCreateEvent, binding,
+            (args, ct) => executor.CreateEventAsync(args, ct));
+        FeishuToolRegistration.RegisterExecution(registry, FeishuToolNames.CalendarFindFreeSlots, binding,
+            (args, ct) => executor.FindFreeSlotsAsync(args, ct));
+        FeishuToolRegistration.RegisterExecution(registry, FeishuToolNames.CalendarListEvents, binding,
+            (args, ct) => executor.ListEventsAsync(args, ct));
+    }
+}
+
+/// <summary>
+/// 任务域注册器（WP5 / AT-F17：create_task 写 + list_my_tasks <b>user 身份</b>——工具面首个非 tenant 工具）。
+/// </summary>
+/// <remarks>tenant 客户端缺席 → 整域不注册；user 客户端缺席 → create_task 仍注册（list_my_tasks 缺席），软缺席粒度到工具。</remarks>
+internal sealed class TaskToolDomainRegistrar(TaskTools executor, FeishuToolBinding binding) : IFeishuToolDomainRegistrar
+{
+    public void Register(FeishuToolRegistry registry)
+    {
+        FeishuToolRegistration.RegisterExecution(registry, FeishuToolNames.TaskCreateTask, binding,
+            (args, ct) => executor.CreateTaskAsync(args, ct));
+        FeishuToolRegistration.RegisterExecution(registry, FeishuToolNames.TaskListMyTasks, binding,
+            (args, ct) => executor.ListMyTasksAsync(args, ct));
+    }
+}
+
+/// <summary>
+/// 附件上传域注册器（WP7：<c>im.send_image</c> / <c>im.send_file</c>，三步链路 落盘→上传→发送）。
+/// </summary>
+/// <remarks>
+/// <b>软缺席</b>：<c>IFeishuAttachmentStager</c>（宿主落盘器）未注册时，注册器<b>根本不构造</b>——
+/// 两个工具不进注册表，与"域客户端缺席 → 该域工具不进注册表"完全同一语义（不是新机制）。
+/// </remarks>
+internal sealed class AttachmentToolDomainRegistrar(AttachmentTools executor, FeishuToolBinding binding) : IFeishuToolDomainRegistrar
+{
+    public void Register(FeishuToolRegistry registry)
+    {
+        FeishuToolRegistration.RegisterExecution(registry, FeishuToolNames.ImSendImage, binding,
+            (args, ct) => executor.SendImageAsync(args, ct));
+        FeishuToolRegistration.RegisterExecution(registry, FeishuToolNames.ImSendFile, binding,
+            (args, ct) => executor.SendFileAsync(args, ct));
     }
 }

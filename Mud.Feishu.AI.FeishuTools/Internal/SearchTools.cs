@@ -14,6 +14,7 @@ namespace Mud.Feishu.AI.FeishuTools.Internal;
 /// <see cref="SearchDocWikiRequest.DocFilter"/>/<see cref="SearchDocWikiRequest.WikiFilter"/>
 /// 扁平化构造（满足官方「两 filter 至少一个」约束，§3.3.3）。
 /// </summary>
+/// <remarks>执行骨架（catch/回填/截断）由 <see cref="ToolExecutor"/> 承担（WP3）；本类只保留参数校验与投影语义。</remarks>
 internal sealed class SearchTools(Mud.Feishu.IFeishuTenantV2SearchDocWiki searchClient, IOptions<FeishuAgentOptions> options)
 {
     private readonly Mud.Feishu.IFeishuTenantV2SearchDocWiki _searchClient = searchClient
@@ -21,14 +22,15 @@ internal sealed class SearchTools(Mud.Feishu.IFeishuTenantV2SearchDocWiki search
     private readonly int _maxResultLength = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
 
     /// <summary>search.doc_wiki：云文档与知识库搜索（白名单 title/url/owner/doc_type）。</summary>
-    public async Task<FeishuToolResult> SearchAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    public Task<FeishuToolResult> SearchAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
-        try
+        var executor = new ToolExecutor(FeishuToolNames.SearchDocWiki, _maxResultLength);
+        return executor.RunAsync(async () =>
         {
             var query = ToolArgs.RequireString(arguments, "query");
             if (query.Length > 30)
             {
-                return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(FeishuToolNames.SearchDocWiki, "query 上限 30 字符，实际 " + query.Length.ToString(CultureInfo.InvariantCulture) + " 字符"));
+                return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(executor.ToolName, "query 上限 30 字符，实际 " + query.Length.ToString(CultureInfo.InvariantCulture) + " 字符"));
             }
 
             var searchIn = (ToolArgs.OptionalString(arguments, "search_in") ?? "both").ToLowerInvariant();
@@ -57,50 +59,46 @@ internal sealed class SearchTools(Mud.Feishu.IFeishuTenantV2SearchDocWiki search
                     request.WikiFilter = new WikiFilterParam { SpaceIds = spaceIds };
                     break;
                 default:
-                    return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(FeishuToolNames.SearchDocWiki, $"search_in 仅支持 doc/wiki/both，实际: {searchIn}"));
+                    return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(executor.ToolName, $"search_in 仅支持 doc/wiki/both，实际: {searchIn}"));
             }
 
             var outcome = FeishuApiResultReader.Read(await _searchClient
                 .SearchDocWikiAsync(request, cancellationToken)
                 .ConfigureAwait(false));
-            if (!outcome.Ok)
-            {
-                return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(FeishuToolNames.SearchDocWiki, outcome.Code, outcome.ErrorText!));
-            }
+            return executor.FromApi(outcome, ProjectSearch);
+        });
+    }
 
-            var data = outcome.Data!;
-            var envelope = new JsonObject
-            {
-                ["items"] = new JsonArray(),
-                ["has_more"] = data.HasMore,
-            };
-            if (!string.IsNullOrEmpty(data.PageToken))
-            {
-                envelope["page_token"] = data.PageToken;
-            }
-
-            if (data.Total.HasValue)
-            {
-                envelope["total"] = data.Total.Value;
-            }
-
-            foreach (var unit in data.ResUnits ?? [])
-            {
-                envelope["items"]!.AsArray().AddNode(new JsonObject
-                {
-                    ["title"] = unit.TitleHighlighted,
-                    ["url"] = unit.ResultMeta?.Url,
-                    ["owner"] = unit.ResultMeta?.OwnerName,
-                    ["doc_type"] = unit.EntityType,
-                    ["token"] = unit.ResultMeta?.Token,
-                });
-            }
-
-            return FeishuToolResult.FromText(ToolResultText.TruncateJson(envelope.ToJsonString(), _maxResultLength));
-        }
-        catch (ArgumentException ex)
+    /// <summary>search 投影：items（title/url/owner/doc_type/token）+ total + 翻页契约。</summary>
+    private static JsonObject ProjectSearch(SearchDocWikiResult data)
+    {
+        var envelope = new JsonObject
         {
-            return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(FeishuToolNames.SearchDocWiki, ex.Message));
+            ["items"] = new JsonArray(),
+            ["has_more"] = data.HasMore,
+        };
+        if (!string.IsNullOrEmpty(data.PageToken))
+        {
+            envelope["page_token"] = data.PageToken;
         }
+
+        if (data.Total.HasValue)
+        {
+            envelope["total"] = data.Total.Value;
+        }
+
+        foreach (var unit in data.ResUnits ?? [])
+        {
+            envelope["items"]!.AsArray().AddNode(new JsonObject
+            {
+                ["title"] = unit.TitleHighlighted,
+                ["url"] = unit.ResultMeta?.Url,
+                ["owner"] = unit.ResultMeta?.OwnerName,
+                ["doc_type"] = unit.EntityType,
+                ["token"] = unit.ResultMeta?.Token,
+            });
+        }
+
+        return envelope;
     }
 }

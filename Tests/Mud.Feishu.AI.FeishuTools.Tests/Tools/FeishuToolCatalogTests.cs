@@ -44,7 +44,34 @@ public class FeishuToolCatalogTests
         entry.RequiredScopes.Should().Contain("bitable:app:readonly");
         entry.ParameterSchemaJson.Should().NotBeNullOrEmpty();
 
+        // R4/WP2（F-2）：目录条目补齐 risk/identity/source——宿主按政策筛选工具不再需要解析 Schema JSON。
+        entry.Risk.Should().Be(FeishuToolRisk.Read);
+        entry.Identity.Should().Be("tenant");
+        entry.SdkSource.Should().Contain("IFeishu", "SDK 源符号来自编译期契约（宿主据此定位实现）");
+
         catalog.Find("not.a.tool").Should().BeNull();
+    }
+
+    /// <summary>
+    /// 目录条目的 <c>risk</c>/<c>identity</c>/<c>scope</c>/<c>isWrite</c>/<c>source</c> 必须与编译期契约逐一相等
+    /// （R4/WP2 / F-2：契约是唯一真相源，目录只是它的稳定只读视图）。
+    /// </summary>
+    [Fact]
+    public void CatalogEntries_ShouldMirrorTheCompiledContracts()
+    {
+        using var provider = GuardProviderFactory.CreateProvider(_ => { });
+        var catalog = provider.GetRequiredService<IToolCatalog>();
+
+        foreach (var (toolName, contract) in FeishuToolContracts.ByToolName)
+        {
+            var entry = catalog.Find(toolName);
+            entry.Should().NotBeNull($"目录必须覆盖契约工具 {toolName}");
+            entry!.Risk.Should().Be(contract.Risk, $"{toolName} 的 risk 必须来自契约");
+            entry.Identity.Should().Be(contract.Identity, $"{toolName} 的 identity 必须来自契约");
+            entry.IsWrite.Should().Be(contract.IsWrite);
+            entry.RequiredScopes.Should().BeEquivalentTo(contract.RequiredScopes);
+            entry.SdkSource.Should().Be(contract.SdkSource, $"{toolName} 的 SDK 源符号必须来自契约");
+        }
     }
 
     [Fact]
@@ -82,12 +109,18 @@ public class FeishuToolCatalogTests
 /// <summary>守卫/目录测试共用的最小容器工厂（分域 mock 齐备）。</summary>
 internal static class GuardProviderFactory
 {
-    internal static ServiceProvider CreateProvider(Action<FeishuAgentOptions> configureOptions)
+    /// <param name="configureOptions">配置覆盖。</param>
+    /// <param name="withAttachmentStager">
+    /// 是否注册附件落盘器（WP7）：<see langword="false"/> 用于验证"落盘器缺席 → 上传工具软缺席"。
+    /// </param>
+    internal static ServiceProvider CreateProvider(
+        Action<FeishuAgentOptions> configureOptions,
+        bool withAttachmentStager = true)
     {
         var options = new FeishuAgentOptions { Instructions = "test" };
         configureOptions(options);
 
-        return new ServiceCollection()
+        var services = new ServiceCollection()
             .AddSingleton(Options.Create(options))
             .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1BitableAppTable>().Object)
             .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1BitableField>().Object)
@@ -102,8 +135,18 @@ internal static class GuardProviderFactory
             .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1DriveFolder>().Object)
             .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1DriveFiles>().Object)
             .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV3User>().Object)
-            .AddSingleton(new Mock<Mud.Feishu.AI.Knowledge.IRetriever>().Object)
-            .AddFeishuReadonlyTools()
-            .BuildServiceProvider();
+            .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV4CalendarEvent>().Object)
+            .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV4Calendar>().Object)
+            .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV2Task>().Object)
+            .AddSingleton(new Mock<Mud.Feishu.IFeishuUserV2Task>().Object)
+            .AddSingleton(new Mock<Mud.Feishu.AI.Knowledge.IRetriever>().Object);
+
+        if (withAttachmentStager)
+        {
+            // WP7：附件落盘器（宿主注入）——未注册时 im.send_image / im.send_file 不注册（软缺席）。
+            services.AddSingleton(new Mock<Mud.Feishu.AI.Tools.IFeishuAttachmentStager>().Object);
+        }
+
+        return services.AddFeishuReadonlyTools().BuildServiceProvider();
     }
 }

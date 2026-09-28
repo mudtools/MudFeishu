@@ -115,4 +115,56 @@ internal sealed class FeishuToolsToolSource : FeishuAgentToolSource
 
         return tools;
     }
+
+    /// <summary>
+    /// 返回<b>已启用工具所属域</b>的 guidance（WP6 / AT-F09）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 域 = 工具名首个 <c>.</c> 之前的部分（与 <c>CapabilityLookupTools</c> 的模块口径一致）；
+    /// 数据源是生成器从 <c>Guidance/{domain}.md</c> 发射的编译期字典——<b>与工具面同源同 pass</b>，
+    /// 故不存在"md 说的和工具面不一致"的漂移面。
+    /// </para>
+    /// <para>
+    /// 口径与 <see cref="GetTools"/> 完全一致（<see cref="FeishuToolRegistry.EnabledTools"/>）：
+    /// 未启用任何工具 → 无 guidance → 指令装配与 Phase 0 一致。
+    /// </para>
+    /// </remarks>
+    public override IReadOnlyList<FeishuGuidanceBlock> GetGuidance(IServiceProvider serviceProvider)
+    {
+        if (serviceProvider is null)
+            throw new ArgumentNullException(nameof(serviceProvider));
+
+        var registry = serviceProvider.GetService<FeishuToolRegistry>();
+        if (registry is null)
+        {
+            return [];
+        }
+
+        // 按域名排序保证装配确定（同一启用集合 → 同一指令文本，便于 golden 式比对与缓存）。
+        var domains = registry.EnabledTools
+            .Select(static tool => DomainOf(tool.Name))
+            .Where(static domain => domain.Length > 0)
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(static domain => domain, StringComparer.Ordinal);
+
+        var blocks = new List<FeishuGuidanceBlock>();
+        foreach (var domain in domains)
+        {
+            if (FeishuToolGuidance.ByDomain.TryGetValue(domain, out var content))
+            {
+                blocks.Add(new FeishuGuidanceBlock(domain, content));
+            }
+        }
+
+        return blocks;
+    }
+
+    /// <summary>取工具名所属域（首个 <c>.</c> 之前的部分）。</summary>
+    private static string DomainOf(string toolName)
+    {
+        // 注：netstandard2.0 没有 IndexOf(char, StringComparison)，用字符串重载。
+        var index = toolName.IndexOf(".", StringComparison.Ordinal);
+        return index > 0 ? toolName.Substring(0, index) : toolName;
+    }
 }

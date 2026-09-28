@@ -110,11 +110,46 @@ internal sealed class FeishuToolsToolSource : FeishuAgentToolSource
                 continue;
             }
 
-            tools.Add(new FeishuToolAIFunction(definition, schemaJson, accessor));
+            tools.Add(ApplyApprovalGate(new FeishuToolAIFunction(definition, schemaJson, accessor), definition));
         }
 
         return tools;
     }
+
+    /// <summary>
+    /// P4-1：写类工具包一层 MEAI <see cref="ApprovalRequiredAIFunction"/>，
+    /// 把「人工确认」从执行链内部上移到 MAF 审批管线。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>为什么必须在这一层</b>：改之前，拦截发生在 <c>FeishuToolBinding.AuthorizeGateAsync</c>
+    /// （工具**被调用之后**），自研令牌要跨模型上下文往返，因此存在「模型自批复」面（R2-1 已缓解但未根除）。
+    /// MAF 的 <c>FunctionInvokingChatClient</c> 会在**调用之前**把包装工具的调用改写成
+    /// <see cref="ToolApprovalRequestContent"/>，且 <c>ApprovalResponseBindingChatClient</c>
+    /// 只接受与「框架发出的请求」绑定的响应 ⇒ <b>批准只能来自宿主</b>，模型无法自批。
+    /// </para>
+    /// <para>
+    /// <b>实测依据</b>（R2-P4-1 探针，非文档推断）：
+    /// <list type="bullet">
+    /// <item>包装后首轮模型回应为 <c>ToolApprovalRequestContent</c>（<c>RequestId</c> = <c>ficc_{callId}</c>），
+    /// 工具<b>不会</b>被执行；</item>
+    /// <item>把 <c>request.CreateResponse(approved: true, ...)</c> 作为用户消息内容再次 <c>RunAsync</c>，
+    /// 第二轮才真正执行工具（<c>FunctionCallContent → FunctionResultContent → 文本回答</c>）；</item>
+    /// <item>未包装时工具在首轮立即执行——两者对比确认了管线的拦截归因正确。</item>
+    /// </list>
+    /// </para>
+    /// <para>
+    /// <b>判据只用静态可判定项</b>：<see cref="FeishuToolDefinition.IsWrite"/>。
+    /// 「是否包装」在 Agent 构造期一次性决定，而 <c>IToolExecutionAuthorizer</c> 的判定是
+    /// 每次调用动态的——因此授权器在 P4-1 下退化为纯 <c>Allowed</c>/<c>Denied</c> 策略判定，
+    /// <c>NeedsUserConfirmation</c> 由本包装承载。
+    /// </para>
+    /// </remarks>
+    /// <param name="function">原始工具桥。</param>
+    /// <param name="definition">工具定义。</param>
+    /// <returns>包装后的工具（只读工具原样返回）。</returns>
+    private static AIFunction ApplyApprovalGate(AIFunction function, FeishuToolDefinition definition)
+        => definition.IsWrite ? new ApprovalRequiredAIFunction(function) : function;
 
     /// <summary>
     /// 返回<b>已启用工具所属域</b>的 guidance（WP6 / AT-F09）。

@@ -66,6 +66,16 @@ internal static class TokenStorePurgeGate
     private static readonly object Sync = new();
 
     /// <summary>
+    /// 打门世代序号（<b>仅由 <see cref="ResetForTest"/> 递增</b>）。
+    /// </summary>
+    /// <remarks>
+    /// 配合 <see cref="Lease.Epoch"/> 隔离「上一世代遗留的异步撤门」——见
+    /// <see cref="Release"/> 的世代说明。生产路径永不调用 <see cref="ResetForTest"/>，
+    /// 故该值在生产中恒为 0，<b>不影响任何生产语义</b>。
+    /// </remarks>
+    private static long _epoch;
+
+    /// <summary>
     /// 按 appKey 的租约（计数 + 起始时刻，起始时刻取首个打门者）。
     /// </summary>
     private static readonly Dictionary<string, Lease> Leases = new(StringComparer.Ordinal);
@@ -102,13 +112,28 @@ internal static class TokenStorePurgeGate
                 return;
             }
 
-            Leases[appKey!] = new Lease { Count = 1, StartedAtTimestamp = Stopwatch.GetTimestamp() };
+            Leases[appKey!] = new Lease
+            {
+                Count = 1,
+                StartedAtTimestamp = Stopwatch.GetTimestamp(),
+                Epoch = _epoch,
+            };
         }
     }
 
     /// <summary>
     /// 撤门：该 appKey 的租约计数 -1，归零即摘除条目。
     /// </summary>
+    /// <remarks>
+    /// <b>世代隔离（测试确定性专用）</b>：热更新的清库是在
+    /// <c>Task.Run</c> 里 **fire-and-forget** 执行的（刻意不阻塞 <c>OnChange</c> 回调线程），
+    /// 其 <c>finally { Release(...) }</c> 因此可能**跨越测试边界**才落地。
+    /// 若它晚于下一个用例的 <see cref="ResetForTest"/> + <see cref="Mark"/> 才执行，
+    /// 就会把新用例刚打上的门减掉——表现是 `ActiveLeaseCount` / `Query` 断言偶发不符
+    /// （这类 flaky 在串行执行下依然存在，单纯串行化无法根治）。
+    /// 故这里比对世代：只有与当前世代一致的租约才被递减，上一世代的遗留撤门直接忽略。
+    /// 生产路径从不调用 <see cref="ResetForTest"/>，世代恒为同一值 ⇒ 该分支在生产中永不生效。
+    /// </remarks>
     /// <param name="appKey">应用唯一标识（空值/无租约时忽略）。</param>
     public static void Release(string? appKey)
     {
@@ -119,6 +144,12 @@ internal static class TokenStorePurgeGate
         {
             if (!Leases.TryGetValue(appKey!, out var lease))
                 return;
+
+            if (lease.Epoch != _epoch)
+            {
+                // 上一世代遗留的异步撤门：门已随 ResetForTest 被清理，本次递减不得作用于新世代的租约。
+                return;
+            }
 
             lease.Count--;
             if (lease.Count <= 0)
@@ -183,11 +214,17 @@ internal static class TokenStorePurgeGate
     /// <summary>
     /// 测试用：清空全部门（生产路径不调用）。
     /// </summary>
+    /// <remarks>
+    /// 同时递增世代序号，使此前已派发的异步清库任务在其 <c>finally</c> 中调用
+    /// <see cref="Release"/> 时被<b>忽略</b>（详见 <see cref="Release"/> 的世代说明）——
+    /// 否则用例之间会因「跨越测试边界的 fire-and-forget 撤门」相互污染。
+    /// </remarks>
     internal static void ResetForTest()
     {
         lock (Sync)
         {
             Leases.Clear();
+            _epoch++;
         }
     }
 
@@ -201,5 +238,11 @@ internal static class TokenStorePurgeGate
 
         /// <summary>首个打门时刻（<see cref="Stopwatch.GetTimestamp"/>，用于安全超时）。</summary>
         public long StartedAtTimestamp;
+
+        /// <summary>
+        /// 创建该租约时的世代序号（<see cref="_epoch"/>）。
+        /// 晚于下一世代到达的撤门会被 <see cref="Release"/> 忽略。
+        /// </summary>
+        public long Epoch;
     }
 }

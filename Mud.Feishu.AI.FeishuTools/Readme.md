@@ -118,10 +118,23 @@ services.AddFeishuTools();                 // 引入全部域（含元工具）
 > **为什么改**：旧实现把令牌内插进回填模型的拒绝文案，使批准所需的全部要素都进入模型上下文，
 > 而令牌校验只校验签名/有效期/绑定、**不校验批准是否来自人** ⇒ 模型可自行带令牌重试放行写操作，
 > 一次成功的提示注入即可绕过人工确认。
-> **迁移**：若宿主此前按旧文案实现「把令牌抄回去重试」，须改为实现
-> `IFeishuToolApprovalChannel` 由宿主侧回灌；旧路径的令牌从未真正证明"人已批准"，必须废弃。
-> 中长期迁移到 MAF `ApprovalRequiredAIFunction`（框架侧绑定一次性批准请求），见
-> `.docs/AI/Mud.Feishu.AI-审查缺陷修复与能力完善方案-R2.md` §4.1。
+
+### P4-1：改由 MAF 审批管线把关（**当前形态**）
+
+写类工具现在会用 MEAI `ApprovalRequiredAIFunction` 包装，因此**写调用到达拦截点的时序前移**：
+
+| 角色 | 职责 |
+| --- | --- |
+| MAF（`FunctionInvokingChatClient`） | 在调用**之前**把包装工具的调用转成 `ToolApprovalRequestContent`（工具此刻**未执行**） |
+| SDK（`ConversationalFeishuEventHandler`） | 识别该内容 → `IFeishuToolApprovalChannel.RequestFrameworkApprovalAsync` 提交宿主 → 向用户回一条「等待人工确认」；**未注册通道即 fail-closed** |
+| 宿主 | 在自有界面完成批准后，由宿主侧回灌批准响应继续本轮；`ApprovalResponseBindingChatClient` 只接受与框架请求绑定的响应 |
+| 自研 `confirm_token` 路径 | **仍在**（未迁移宿主的兜底），保留至 P4-3 标记 `[Obsolete]` |
+
+**关键安全收益**：批准资格由框架绑定到「框架发出的请求」，模型**无法自批复**——
+这补上了上述 R2-1 方案里"仍需依赖模型自律"的最后一环。
+
+> **迁移**：若宿主此前按旧文案实现「把令牌抄回去重试」，须改为实现 `IFeishuToolApprovalChannel`、
+> 由宿主侧回灌令牌；旧路径的令牌从未真正证明"人已批准"，应予废弃。
 
 ---
 

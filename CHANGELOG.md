@@ -1,5 +1,52 @@
 # Mud.Feishu 更新日志
 
+## [Unreleased] - Phase 4 P4-1：HITL 与 MAF 审批管线对齐（2026-09-29）
+
+> 实施记录与探针证据见 `.docs/AI/Mud.Feishu.AI-审查缺陷修复与能力完善方案-R2.md` §4.1「P4-1 实施记录」。
+
+### ⚠️ 行为变更登记（宿主可感 / 源破坏）
+
+- **写类工具改由 MAF 审批管线把关**：写工具现在会用 MEAI `ApprovalRequiredAIFunction` 包装。
+  模型发出写调用时，**工具不会立即执行**——MAF 的 `FunctionInvokingChatClient` 在调用**之前**
+  把它转成 `ToolApprovalRequestContent`，须由宿主批准后回灌响应才真正执行。
+  **安全收益**：批准资格由 `ApprovalResponseBindingChatClient` 绑定到「框架发出的请求」，
+  模型<b>无法自批复</b>，从根本上弥补了 R2-1 只是封堵-but-仍依赖自律的面。
+- **`IToolExecutionAuthorizer` 退化为策略判定**：`NeedsUserConfirmation` 不再参与动态判定
+  （"是否需要人工确认"已由包装层在构造期决定），授权器只产出 `Allowed` / `Denied`。
+- **未注册批准通道 = fail-closed**：写工具永久停在"等待确认"，不会自动放行，也不会静默——
+  用户会收到一条"等待人工确认"答复。
+- **新增 `ConversationalFeishuEventHandler` 构造可选参数 `approvalChannel`**（追加在末尾，
+  已注入位置不受影响；DI 场景无需显式传参）。
+- **源破坏**：`IFeishuToolApprovalChannel` 新增 `RequestFrameworkApprovalAsync`
+  （netstandard2.0 无默认接口实现，自行实现该接口的宿主需补实现；项目未发布，无兼容负担）。
+
+### 🌟 新增
+
+- **`FrameworkToolApprovalRequest`** record（`Mud.Feishu.AI/Tools/`）：框架原生审批请求要素
+  （`RequestId` / `ToolName` / `ToolCallId` / `AppKey` / `UserId` / `ConversationKey` / `RequiredScopes`）——
+  **不含任何确认令牌**。
+- **`ConversationalFeishuEventHandler.BuildApprovalPendingReply`**（`protected virtual`）：
+  "等待人工确认"答复的可覆写构造点（宿主本地化）。文本刻意**不含** requestId / 入参 / 宿主关联号。
+
+### 🧪 测试
+
+- `FeishuToolApprovalWrappingTests` ×3（写工具被包装 / 只读不包装 / 包装后 Name·Description·JsonSchema 原样委派）。
+- `ConversationalFeishuEventHandlerApprovalTests` ×3（提交宿主通道 / 答复不泄漏批准要素 / 通道抛异常时 fail-closed）。
+- **先坐实后落地**：本轮用两个临时反射探针（API 形状探针 + 管线行为探针）验证了
+  5 个原本只能猜的事实后才动工——探针用完即删。
+  > 探针副产物：`ToolApprovalRequestContent.RequiresConfirmation` 带 `MEAI001`（实验性），
+  > 本仓把该诊断当**错误**处理 ⇒ 生产代码禁止访问该属性。
+
+### 🐛 修复（既有 flaky，非 R2/P4 引入）
+
+- `Mud.Feishu.Abstractions.Tests` 的 `TokenStorePurgeGateTests.Gate_ShouldTrackLeasesPerAppKey`
+  在全量并行负载下偶发失败。根因是**两个正交缺陷面**：
+  ① 清库 `Task.Run` 的 fire-and-forget 撤门会跨越测试边界 → `TokenStorePurgeGate` 增世代隔离；
+  ② 进程级静态门被多测试类并发读写，且变更者集合开放不可枚举 → 该测试程序集禁用测试类并行
+  （代价实测 764 用例 ~2s → ~7s）。新增 2 条用例锁定世代语义。
+
+---
+
 ## [Unreleased] - Mud.Feishu.AI 审查缺陷修复 R2（第二轮审查，2026-09-28）
 
 > 方案与双视角复核裁定见 `.docs/AI/Mud.Feishu.AI-审查缺陷修复与能力完善方案-R2.md`（§0.5 复核裁定）。

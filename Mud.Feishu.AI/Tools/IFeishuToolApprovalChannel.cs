@@ -42,7 +42,60 @@ public interface IFeishuToolApprovalChannel
     /// 通道抛异常时执行链<b>降级为纯提示</b>并记日志，绝不把令牌写进任何回填模型的文本。
     /// </remarks>
     Task<string?> RequestApprovalAsync(ToolApprovalRequest request, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// P4-1：提交一次<b>框架原生</b>待确认的工具调用（写工具经 <c>ApprovalRequiredAIFunction</c> 包装后，
+    /// MAF <c>FunctionInvokingChatClient</c> 在调用<b>之前</b>产出的审批请求）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 与 <see cref="RequestApprovalAsync"/> 的区别：本方法<b>不涉及确认令牌</b>——
+    /// 批准资格由 MAF 的 <c>ApprovalResponseBindingChatClient</c> 保证（只接受与框架请求绑定的响应），
+    /// 因此不再需要「令牌往返模型上下文」这条危险路径。
+    /// </para>
+    /// <para>
+    /// 本方法是会话语义上的<b>异步</b>：宿主在此登记待确认项，随后在自有界面完成批准，
+    /// 再经 <c>ConversationalFeishuEventHandler.ResumeWithApprovalsAsync</c> 回灌结果继续本轮。
+    /// 故实现不应阻塞等待人类点按钮。
+    /// </para>
+    /// <para>
+    /// 通道抛异常时同样 <b>fail-closed</b>：写工具保持未执行，绝不降级为「自动批准」。
+    /// </para>
+    /// </remarks>
+    /// <param name="request">框架审批请求要素。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>宿主侧关联号（可空）。</returns>
+    Task<string?> RequestFrameworkApprovalAsync(
+        FrameworkToolApprovalRequest request,
+        CancellationToken cancellationToken = default);
 }
+
+/// <summary>
+/// P4-1：框架原生审批请求要素（由 MAF <see cref="Microsoft.Extensions.AI.ToolApprovalRequestContent"/>
+/// 投影而来；<b>不含确认令牌</b>——批准资格由框架绑定保证）。
+/// </summary>
+/// <param name="RequestId">
+/// 框架请求标识（实测形如 <c>ficc_{callId}</c>）。回灌响应时必须带回该值，
+/// 否则 <c>ApprovalResponseBindingChatClient</c> 无法把响应绑定到原始请求 ⇒ 批准不生效。
+/// </param>
+/// <param name="ToolName">工具名（注册表契约名）。</param>
+/// <param name="ToolCallId">模型原始调用 ID（可空；排障用）。</param>
+/// <param name="AppKey">应用唯一标识。</param>
+/// <param name="UserId">触发用户（可空）。</param>
+/// <param name="ConversationKey">会话键（可空）。</param>
+/// <param name="ArgumentsDigest">
+/// 入参摘要（可空；供审批界面展示——<b>不得</b>回灌给模型）。
+/// </param>
+/// <param name="RequiredScopes">工具声明的权限点（查不到目录时为空）。</param>
+public sealed record FrameworkToolApprovalRequest(
+    string RequestId,
+    string ToolName,
+    string? ToolCallId,
+    string AppKey,
+    string? UserId,
+    string? ConversationKey,
+    string? ArgumentsDigest,
+    IReadOnlyList<string> RequiredScopes);
 
 /// <summary>
 /// 待人工确认的工具调用要素（入参以摘要形式提供；不含模型原文）。

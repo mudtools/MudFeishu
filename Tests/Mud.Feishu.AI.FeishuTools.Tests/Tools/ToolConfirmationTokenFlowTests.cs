@@ -75,6 +75,8 @@ public class ToolConfirmationTokenFlowTests : IDisposable
     {
         internal List<ToolApprovalRequest> Requests { get; } = [];
 
+        internal List<FrameworkToolApprovalRequest> FrameworkRequests { get; } = [];
+
         public Task<string?> RequestApprovalAsync(ToolApprovalRequest request, CancellationToken cancellationToken = default)
         {
             if (failure is not null)
@@ -83,6 +85,18 @@ public class ToolConfirmationTokenFlowTests : IDisposable
             }
 
             Requests.Add(request);
+            return Task.FromResult<string?>(approvalId);
+        }
+
+        public Task<string?> RequestFrameworkApprovalAsync(
+            FrameworkToolApprovalRequest request, CancellationToken cancellationToken = default)
+        {
+            if (failure is not null)
+            {
+                throw failure;
+            }
+
+            FrameworkRequests.Add(request);
             return Task.FromResult<string?>(approvalId);
         }
     }

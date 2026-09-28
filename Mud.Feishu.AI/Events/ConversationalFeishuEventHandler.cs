@@ -67,7 +67,8 @@ public abstract class ConversationalFeishuEventHandler<T>(
     IFeishuToolContextAccessor? toolContextAccessor = null,
     IMessageChannel? messageChannel = null,
     IConversationGate? conversationGate = null,
-    IAppKeyAccessor? appKeyAccessor = null) : IdempotentFeishuEventHandler<T>(
+    IAppKeyAccessor? appKeyAccessor = null,
+    IFeishuToolApprovalChannel? approvalChannel = null) : IdempotentFeishuEventHandler<T>(
         businessDeduplicator, logger ?? NullLogger.Instance, appKeyAccessor)
     where T : class, IEventResult, new()
 {
@@ -92,6 +93,11 @@ public abstract class ConversationalFeishuEventHandler<T>(
 
     /// <summary>流式回复通道（可空；未注入时保持非流式回复路径，Phase 2 §3.1）。</summary>
     protected IMessageChannel? MessageChannel { get; } = messageChannel;
+
+    /// <summary>
+    /// P4-1：宿主人工批准通道（可空；未注册时写工具停在「等待确认」——fail-closed，绝不自动放行）。
+    /// </summary>
+    protected IFeishuToolApprovalChannel? ApprovalChannel { get; } = approvalChannel;
 
     /// <summary>
     /// 会话闸门（可空；P2D-1 会话串行化——<c>AddFeishuAgent</c> 默认注册
@@ -283,6 +289,17 @@ public abstract class ConversationalFeishuEventHandler<T>(
         if (MessageChannel is null || string.IsNullOrEmpty(streamTarget))
         {
             var response = await _agent.RunAsync(userMessage, session, options: null, cancellationToken).ConfigureAwait(false);
+
+            // P4-1：写工具经 ApprovalRequiredAIFunction 包装后，MAF 会在**调用之前**把该次调用
+            // 改写成 ToolApprovalRequestContent——此刻工具**未执行**，须由宿主批准后继续。
+            // 必须先于 R2-9 空回复守卫判定：这里的语义是「已发起确认」，不是「模型没说话」。
+            var pending = ExtractApprovalRequests(response.Messages, request);
+            if (pending.Count > 0)
+            {
+                await NotifyApprovalRequestsAsync(request, pending, cancellationToken).ConfigureAwait(false);
+                return (BuildApprovalPendingReply(pending), false);
+            }
+
             return (response.Text, false);
         }
 
@@ -309,12 +326,16 @@ public abstract class ConversationalFeishuEventHandler<T>(
         }
 
         var fullText = new StringBuilder();
+        var pendingApprovals = new List<FrameworkToolApprovalRequest>();
         try
         {
             await foreach (var update in _agent
                 .RunStreamingAsync(userMessage, session, options: null, cancellationToken)
                 .ConfigureAwait(false))
             {
+                // 审批请求同样经流式更新下发（内容是 ToolApprovalRequestContent，无文本增量）。
+                CollectApprovalRequests(update.Contents, request, pendingApprovals);
+
                 var delta = update.Text;
                 if (string.IsNullOrEmpty(delta))
                 {
@@ -341,6 +362,14 @@ public abstract class ConversationalFeishuEventHandler<T>(
             }
 
             await MessageChannel.FlushAsync(request.AppKey, streamTarget!, messageId, cancellationToken).ConfigureAwait(false);
+
+            // P4-1：流中出现审批请求时，本轮的下沉内容是「等待确认」而不是模型文本
+            // （占位消息已 Flush 到终结态，故这里返回的文本不再经通道送达，由 HandleAsync 走非流式回复）。
+            if (pendingApprovals.Count > 0)
+            {
+                await NotifyApprovalRequestsAsync(request, pendingApprovals, cancellationToken).ConfigureAwait(false);
+                return (BuildApprovalPendingReply(pendingApprovals), false);
+            }
         }
         catch (OperationCanceledException)
         {
@@ -367,6 +396,118 @@ public abstract class ConversationalFeishuEventHandler<T>(
         activity?.AddTag(FeishuAgentDiagnostics.TagStreamed, true);
         return (fullText.ToString(), true);
     }
+
+    /// <summary>
+    /// P4-1：把一轮模型回应里的 <see cref="ToolApprovalRequestContent"/> 投影为宿主可见的
+    /// <see cref="FrameworkToolApprovalRequest"/>（写工具经 <c>ApprovalRequiredAIFunction</c>
+    /// 包装后，MAF 在<b>调用之前</b>产出该内容，此时工具<b>尚未执行</b>）。
+    /// </summary>
+    /// <param name="messages">模型回应消息集合。</param>
+    /// <param name="request">规范化会话请求（提供 appKey / user / 会话键）。</param>
+    /// <returns>待提交宿主的审批请求（无则空）。</returns>
+    private List<FrameworkToolApprovalRequest> ExtractApprovalRequests(
+        IEnumerable<ChatMessage> messages, ConversationRequest request)
+    {
+        var collected = new List<FrameworkToolApprovalRequest>();
+        if (messages is null)
+        {
+            return collected;
+        }
+
+        foreach (var message in messages)
+        {
+            CollectApprovalRequests(message.Contents, request, collected);
+        }
+
+        return collected;
+    }
+
+    private void CollectApprovalRequests(
+        IList<AIContent>? contents, ConversationRequest request, List<FrameworkToolApprovalRequest> sink)
+    {
+        if (contents is null)
+        {
+            return;
+        }
+
+        foreach (var content in contents)
+        {
+            if (content is not ToolApprovalRequestContent approval)
+            {
+                continue;
+            }
+
+            // ToolCallContent 是基类；具体形态是 FunctionCallContent（含 Name/Arguments）。
+            var toolName = approval.ToolCall is FunctionCallContent call ? call.Name : null;
+
+            sink.Add(new FrameworkToolApprovalRequest(
+                RequestId: approval.RequestId,
+                ToolName: toolName ?? "(unknown)",
+                ToolCallId: approval.ToolCall?.CallId,
+                AppKey: request.AppKey,
+                UserId: request.SenderId,
+                ConversationKey: ConversationKeyBuilder.Build(request.AppKey, request.Scope, request.SubjectId),
+                ArgumentsDigest: null,
+                RequiredScopes: []));
+        }
+    }
+
+    /// <summary>
+    /// P4-1：把待确认项交给宿主批准通道，并记一条 Warning（便于观测「写工具停在等待确认」）。
+    /// </summary>
+    /// <remarks>
+    /// <b>fail-closed</b>：通道未注册 ⇒ 写工具保持未执行，只提示用户「无法发起确认」——
+    /// 绝不自动批准。通道抛异常同理。
+    /// </remarks>
+    private async Task NotifyApprovalRequestsAsync(
+        ConversationRequest request,
+        IReadOnlyList<FrameworkToolApprovalRequest> pending,
+        CancellationToken cancellationToken)
+    {
+        foreach (var item in pending)
+        {
+            _logger.LogWarning(
+                "写工具待人工确认（工具: {ToolName}, requestId: {RequestId}, appKey: {AppKey}）——工具尚未执行，宿主批准后回灌批准响应方可继续",
+                item.ToolName, item.RequestId, item.AppKey);
+        }
+
+        if (ApprovalChannel is null)
+        {
+            return;
+        }
+
+        foreach (var item in pending)
+        {
+            try
+            {
+                await ApprovalChannel
+                    .RequestFrameworkApprovalAsync(item, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                // 与 FeishuToolBinding 同侧哲学：通道故障只降级为「无法发起确认」，不自动放行。
+                _logger.LogWarning(ex,
+                    "宿主批准通道提交失败（工具: {ToolName}, requestId: {RequestId}）——写工具保持未执行",
+                    item.ToolName, item.RequestId);
+            }
+        }
+    }
+
+    /// <summary>
+    /// P4-1：构造「等待人工确认」的用户可见答复。
+    /// </summary>
+    /// <remarks>
+    /// 这是会被下发给用户/发回模型的文本，故必须<b>不含任何批准要素</b>
+    /// （不含 requestId、不含入参原文、不含任何形式的令牌）——否则「批准只能来自宿主」的前提被破坏。
+    /// </remarks>
+    protected virtual string BuildApprovalPendingReply(IReadOnlyList<FrameworkToolApprovalRequest> pending)
+        => $"以下操作需要人工确认后才能执行：{string.Join("、", pending.Select(p => p.ToolName).Distinct(StringComparer.Ordinal))}。"
+           + "已通知审批人，确认后会自动继续。";
 
     /// <summary>
     /// 解析流式回复目标：通道实现 <see cref="IMessageChannelTargetResolver"/> 时按其语义解析

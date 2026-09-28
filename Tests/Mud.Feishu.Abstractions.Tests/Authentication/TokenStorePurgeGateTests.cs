@@ -21,6 +21,13 @@ namespace Mud.Feishu.Abstractions.Tests.Authentication;
 /// 超时路径通过注入"当前时刻"（<c>Query(appKey, nowTimestamp)</c>）确定性覆盖，
 /// 不依赖真实等待（与 <c>FeishuAppContextRetirement.Sweep(DateTimeOffset now)</c> 同一模式）。
 /// </remarks>
+/// <remarks>
+/// <b>隔离边界说明</b>：上述 <c>try/finally</c> 只能隔离**本类内部**（xUnit 串行执行同一类的用例），
+/// **不足以**隔离跨测试类：本程序集还有若干用例经 FeishuAppManager 的凭据轮换热更新间接打门，
+/// 且清库是 <c>Task.Run</c> fire-and-forget、其撤门会跨越测试边界落地。
+/// 前者由本程序集的 <c>AssemblyInfo</c> 禁用并行处理，后者由 <see cref="TokenStorePurgeGate"/>
+/// 的世代隔离（<c>ResetForTest</c> 递增世代、跨世代撤门被忽略）处理——两者缺一都会回到随机红。
+/// </remarks>
 public class TokenStorePurgeGateTests
 {
     private const string AppKey = "app1";
@@ -134,6 +141,61 @@ public class TokenStorePurgeGateTests
             TokenStorePurgeGate.Mark(null);
             TokenStorePurgeGate.Mark(string.Empty);
             TokenStorePurgeGate.ActiveLeaseCount.Should().Be(0, "空 appKey 不建立租约");
+        }
+        finally
+        {
+            TokenStorePurgeGate.ResetForTest();
+        }
+    }
+
+    /// <summary>
+    /// 世代隔离：跨越 <see cref="TokenStorePurgeGate.ResetForTest"/> 才落地的异步撤门
+    /// 必须被忽略，否则它会减掉**下一个用例**刚打上的门。
+    /// </summary>
+    /// <remarks>
+    /// 对应真实故障面：清库在 <c>Task.Run</c> 中 fire-and-forget 执行，
+    /// <c>finally { Release(...) }</c> 可能晚于下一个用例的 <c>ResetForTest</c> + <c>Mark</c>。
+    /// 该缺陷只靠「串行执行」**无法**根治（同一个类的相邻用例之间也会发生）。
+    /// </remarks>
+    [Fact]
+    public void Release_FromPreviousEpoch_ShouldBeIgnored()
+    {
+        TokenStorePurgeGate.ResetForTest();
+        try
+        {
+            TokenStorePurgeGate.Mark(AppKey);
+
+            // Act：模拟用例结束——重置（世代递增）后，上一个用例遗留的异步撤门才到达。
+            TokenStorePurgeGate.ResetForTest();
+            TokenStorePurgeGate.Release(AppKey);
+
+            // Assert：遗留撤门不得留下任何影响（也不得把计数减成负数）。
+            TokenStorePurgeGate.ActiveLeaseCount.Should().Be(0);
+            TokenStorePurgeGate.Query(AppKey).Should().Be(TokenStorePurgeGate.PurgeGateState.NotPending);
+        }
+        finally
+        {
+            TokenStorePurgeGate.ResetForTest();
+        }
+    }
+
+    /// <summary>
+    /// 世代隔离的边界：同一世代内的撤门必须照常生效（不得因隔离而被吞掉）。
+    /// </summary>
+    [Fact]
+    public void Release_WithinSameEpoch_ShouldStillDecrement()
+    {
+        TokenStorePurgeGate.ResetForTest();
+        try
+        {
+            TokenStorePurgeGate.Mark(AppKey);
+            TokenStorePurgeGate.Mark(AppKey);
+
+            TokenStorePurgeGate.Release(AppKey);
+            TokenStorePurgeGate.Query(AppKey).Should().Be(TokenStorePurgeGate.PurgeGateState.Pending);
+
+            TokenStorePurgeGate.Release(AppKey);
+            TokenStorePurgeGate.Query(AppKey).Should().Be(TokenStorePurgeGate.PurgeGateState.NotPending);
         }
         finally
         {

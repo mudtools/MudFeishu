@@ -1,259 +1,168 @@
 @echo off
 REM ===============================================================
-REM Mud.Feishu local publish script (SDK 3.x)
-REM Author: Mud Studio
-REM Date: 2026-09-18
+REM Mud.Feishu publish (SDK 3.x)
 REM
-REM Usage: publish.bat [version] [/preview] [/skipcheck] [/nopause]
-REM
-REM   [version]   Package version, e.g. 3.0.0-rc3.
-REM               Default: the Version property evaluated from
+REM Usage: publish.bat [version] [/preview] [/skipcheck] [/push] [/nopause]
+REM   [version]   Package version (e.g. 3.0.0). Default: <Version> from
 REM               Directory.Build.props.
 REM   /preview    Append "-preview.<yyyyMMdd-HHmmss>" to the version.
-REM   /skipcheck  Skip the scripts\verify-build.ps1 quality gate
-REM               (build + pack only, much faster).
+REM   /skipcheck  Skip scripts\verify-build.ps1 quality gate (faster).
+REM   /push       Push produced packages to nuget.org after packing.
+REM               Requires the NUGET_API_KEY environment variable.
 REM   /nopause    Do not pause at the end (for scripting / CI).
 REM
 REM Notes:
-REM   * v3 ships 9 packages. Mud.Feishu.DataModels and
-REM     Mud.Feishu.OpenTelemetry are new since v2 - without them the
-REM     package set is unusable because Mud.Feishu depends on
-REM     Mud.Feishu.DataModels.
-REM   * Directory.Build.props declares <Version> explicitly, so
-REM     "dotnet pack --version-suffix" is silently ignored by
-REM     MSBuild/NuGet. The version is passed as -p:Version=<value> to
-REM     both the build and the pack so that the assembly version and
-REM     the package version cannot drift apart.
-REM   * The whole solution is built before packing, so a compile error
-REM     in any source project (or demo/test project) aborts the run.
+REM   * All 9 packages are packed into .\artifacts (Mud.Feishu.DataModels
+REM     and Mud.Feishu.OpenTelemetry are required dependencies of Mud.Feishu).
+REM   * Version is passed as -p:Version=... so assembly and package
+REM     versions cannot drift apart (Directory.Build.props pins <Version>,
+REM     which makes --version-suffix silently ignored).
+REM   * The quality gate already builds the whole solution; unless you
+REM     /skipcheck, a compile error anywhere aborts the run.
 REM ===============================================================
-setlocal enabledelayedexpansion
-
+setlocal EnableExtensions EnableDelayedExpansion
 cd /d "%~dp0"
 
 set "OUTPUT_DIR=artifacts"
 set "PROJECTS=Mud.Feishu.Abstractions Mud.Feishu.DataModels Mud.Feishu.EventCallback Mud.Feishu.OpenTelemetry Mud.Feishu.Redis Mud.Feishu.Webhook Mud.Feishu.WebSocket Mud.Feishu.Authentication Mud.Feishu"
-set "VERSION_ARG="
-set "VERSION_SOURCE="
-set "ADD_PREVIEW=0"
+set "VERSION="
+set "PREVIEW=0"
 set "SKIP_CHECK=0"
+set "DO_PUSH=0"
 set "NO_PAUSE=0"
-set "PS_EXE="
-set "EXIT_CODE=0"
+set "EC=0"
 
-REM --------------------------------------------------------------- arguments
+REM ------------------------------------------------------------- args
 :parse_args
 if "%~1"=="" goto :args_done
-set "ARG=%~1"
-if /i "!ARG!"=="/preview" (
-    set "ADD_PREVIEW=1"
-    shift
-    goto :parse_args
-)
-if /i "!ARG!"=="/skipcheck" (
-    set "SKIP_CHECK=1"
-    shift
-    goto :parse_args
-)
-if /i "!ARG!"=="/nopause" (
-    set "NO_PAUSE=1"
-    shift
-    goto :parse_args
-)
-if /i "!ARG!"=="/?" goto :usage
-if /i "!ARG!"=="/help" goto :usage
-if /i "!ARG!"=="-h" goto :usage
-echo !ARG! | findstr /b /c:"/" >nul
-if not errorlevel 1 (
-    echo Error: unknown option !ARG!
+if /i "%~1"=="/preview"   ( set "PREVIEW=1"    & shift & goto :parse_args )
+if /i "%~1"=="/skipcheck" ( set "SKIP_CHECK=1" & shift & goto :parse_args )
+if /i "%~1"=="/push"      ( set "DO_PUSH=1"    & shift & goto :parse_args )
+if /i "%~1"=="/nopause"   ( set "NO_PAUSE=1"   & shift & goto :parse_args )
+if "%~1"=="/?" goto :usage
+if defined VERSION (
+    echo Error: version already set to "%VERSION%" ^(received "%~1"^).
     goto :usage
 )
-if defined VERSION_ARG (
-    echo Error: version already set to !VERSION_ARG! ^(received !ARG! again^)
-    goto :usage
-)
-set "VERSION_ARG=!ARG!"
-set "VERSION_SOURCE=command line"
+set "VERSION=%~1"
 shift
 goto :parse_args
-
 :args_done
-echo ===============================================================
-echo  Mud.Feishu publish
-echo  Working directory : %cd%
-echo  Started at        : %date% %time%
-echo ===============================================================
-echo.
 
-REM ------------------------------------------------------ 1. environment
-echo [1/6] Checking environment...
+REM ---------------------------------------------------------- version
+if not defined VERSION (
+    for /f "usebackq delims=" %%V in (`dotnet msbuild "Mud.Feishu\Mud.Feishu.csproj" -getProperty:Version -nologo`) do set "VERSION=%%V"
+)
+if not defined VERSION (
+    echo Error: cannot resolve the package version. Pass it explicitly, e.g. publish.bat 3.0.0
+    set "EC=1"
+    goto :finish
+)
+if "%PREVIEW%"=="1" (
+    for /f "usebackq delims=" %%T in (`powershell -NoProfile -Command "Get-Date -Format yyyyMMdd-HHmmss"`) do set "TS=%%T"
+    if not defined TS (
+        echo Error: cannot build the preview timestamp.
+        set "EC=1"
+        goto :finish
+    )
+    set "VERSION=!VERSION!-preview.!TS!"
+)
+echo Package version : %VERSION%
+
+REM ---------------------------------------------------------- sanity
 if not exist "Mud.Feishu.slnx" (
-    echo   Error: not running from the repository root ^(Mud.Feishu.slnx not found^).
-    set "EXIT_CODE=1"
+    echo Error: not running from the repository root ^(Mud.Feishu.slnx not found^).
+    set "EC=1"
     goto :finish
 )
-where dotnet >nul 2>nul
-if errorlevel 1 (
-    echo   Error: 'dotnet' was not found. Install the .NET SDK first.
-    set "EXIT_CODE=1"
-    goto :finish
-)
-where pwsh >nul 2>nul
-if not errorlevel 1 set "PS_EXE=pwsh"
-if not defined PS_EXE (
-    where powershell >nul 2>nul
-    if not errorlevel 1 set "PS_EXE=powershell"
-)
-if not defined PS_EXE (
-    echo   Error: PowerShell ^(pwsh / powershell^) was not found.
-    set "EXIT_CODE=1"
-    goto :finish
-)
-echo   dotnet     : OK
-echo   PowerShell : !PS_EXE!
-
-REM ---------------------------------------------------------- 2. version
-echo.
-if not defined VERSION_ARG (
-    for /f "usebackq delims=" %%V in (`dotnet msbuild "Mud.Feishu\Mud.Feishu.csproj" -getProperty:Version -nologo`) do set "VERSION_ARG=%%V"
-    set "VERSION_SOURCE=Directory.Build.props"
-)
-if not defined VERSION_ARG (
-    echo [2/6] Error: cannot evaluate the Version property from Directory.Build.props.
-    set "EXIT_CODE=1"
-    goto :finish
-)
-set "PACKAGE_VERSION=!VERSION_ARG!"
-if "!ADD_PREVIEW!"=="1" (
-    "!PS_EXE!" -NoProfile -Command "Get-Date -Format 'yyyyMMdd-HHmmss'" > "%TEMP%\mudfeishu-timestamp.txt" 2>nul
-    set "TIMESTAMP="
-    set /p TIMESTAMP=<"%TEMP%\mudfeishu-timestamp.txt"
-    del /q "%TEMP%\mudfeishu-timestamp.txt" >nul 2>nul
-    if not defined TIMESTAMP (
-        echo [2/6] Error: cannot build the preview timestamp.
-        set "EXIT_CODE=1"
-        goto :finish
-    )
-    set "PACKAGE_VERSION=!VERSION_ARG!-preview.!TIMESTAMP!"
-)
-echo [2/6] Package version : !PACKAGE_VERSION! ^(from !VERSION_SOURCE!^)
-
-REM ---------------------------------------------------------- 3. restore
-echo.
-echo [3/6] Restoring dependencies...
-dotnet restore "Mud.Feishu.slnx" --nologo
-if errorlevel 1 (
-    echo   Error: restore failed.
-    set "EXIT_CODE=1"
+where dotnet >nul 2>nul || (
+    echo Error: 'dotnet' was not found. Install the .NET SDK first.
+    set "EC=1"
     goto :finish
 )
 
-REM ------------------------------------------------------ 4. quality gate
-echo.
-if "!SKIP_CHECK!"=="1" (
-    echo [4/6] Quality gate SKIPPED ^(/skipcheck^).
+REM ----------------------------------------------------- quality gate
+if "%SKIP_CHECK%"=="1" (
+    echo Quality gate    : SKIPPED ^(/skipcheck^).
 ) else (
-    echo [4/6] Quality gate: scripts\verify-build.ps1
-    echo       ^(build + AOT strict smoke + unit tests + format check^)
-    "!PS_EXE!" -NoProfile -ExecutionPolicy Bypass -File ".\scripts\verify-build.ps1"
-    if errorlevel 1 (
-        echo   Error: quality gate failed - publish aborted.
-        echo          Use /skipcheck only if you know what you are doing.
-        set "EXIT_CODE=1"
+    echo Quality gate    : scripts\verify-build.ps1 ...
+    set "PS="
+    where pwsh >nul 2>nul && set "PS=pwsh"
+    if not defined PS where powershell >nul 2>nul && set "PS=powershell"
+    if not defined PS (
+        echo Error: PowerShell ^(pwsh / powershell^) was not found.
+        set "EC=1"
+        goto :finish
+    )
+    "!PS!" -NoProfile -ExecutionPolicy Bypass -File ".\scripts\verify-build.ps1" -ClearStaleCache || (
+        echo Error: quality gate failed - publish aborted. Use /skipcheck only if you know what you are doing.
+        set "EC=1"
         goto :finish
     )
 )
 
-REM -------------------------------------------------------- 5. build+pack
-echo.
-echo [5/6] Building solution with version !PACKAGE_VERSION!...
-dotnet build "Mud.Feishu.slnx" -c Release --nologo -p:Version=!PACKAGE_VERSION!
-if errorlevel 1 (
-    echo   Error: build failed.
-    set "EXIT_CODE=1"
-    goto :finish
-)
-
-echo.
-echo       Packing packages ^(9 expected^)...
+REM ------------------------------------------------------------- pack
+echo Packing packages ^(9 expected^) ...
 if not exist "%OUTPUT_DIR%" mkdir "%OUTPUT_DIR%"
+del /q "%OUTPUT_DIR%\*%VERSION%.nupkg" 2>nul
+set "FAILED="
 for %%P in (%PROJECTS%) do (
-    if exist "%OUTPUT_DIR%\%%P.!PACKAGE_VERSION!.nupkg" del /q "%OUTPUT_DIR%\%%P.!PACKAGE_VERSION!.nupkg"
+    echo   - %%P
+    dotnet pack "%%P\%%P.csproj" -c Release --nologo -o "%OUTPUT_DIR%" -p:Version=%VERSION% || set "FAILED=!FAILED! %%P"
 )
-set "PACK_FAILED="
-for %%P in (%PROJECTS%) do (
-    echo       - %%P
-    dotnet pack "%%P\%%P.csproj" -c Release --nologo -o "%OUTPUT_DIR%" -p:Version=!PACKAGE_VERSION!
-    if errorlevel 1 set "PACK_FAILED=!PACK_FAILED! %%P"
-)
-if defined PACK_FAILED (
-    echo   Error: packing failed for:!PACK_FAILED!
-    set "EXIT_CODE=1"
+if defined FAILED (
+    echo Error: packing failed for:!FAILED!
+    set "EC=1"
     goto :finish
 )
 
-REM ------------------------------------------------------------ 6. verify
-echo.
-echo [6/6] Verifying packages...
-set "PACKAGE_COUNT=0"
-set "MISSING_PACKAGES="
+set "COUNT=0"
+set "MISSING="
 for %%P in (%PROJECTS%) do (
-    if exist "%OUTPUT_DIR%\%%P.!PACKAGE_VERSION!.nupkg" (
-        set /a PACKAGE_COUNT+=1
-    ) else (
-        set "MISSING_PACKAGES=!MISSING_PACKAGES! %%P"
+    if exist "%OUTPUT_DIR%\%%P.%VERSION%.nupkg" ( set /a COUNT+=1 ) else set "MISSING=!MISSING! %%P"
+)
+if defined MISSING (
+    echo Error: missing packages for:!MISSING!
+    set "EC=1"
+    goto :finish
+)
+echo Produced %COUNT% packages:
+dir /b "%OUTPUT_DIR%\*%VERSION%.nupkg"
+
+REM ------------------------------------------------------------- push
+if "%DO_PUSH%"=="1" (
+    if not defined NUGET_API_KEY (
+        echo Error: /push requires the NUGET_API_KEY environment variable.
+        set "EC=1"
+        goto :finish
+    )
+    echo Pushing to nuget.org ...
+    dotnet nuget push "%OUTPUT_DIR%\*.nupkg" --api-key "%NUGET_API_KEY%" --source https://api.nuget.org/v3/index.json --skip-duplicate || (
+        echo Error: push failed.
+        set "EC=1"
+        goto :finish
     )
 )
-if defined MISSING_PACKAGES (
-    echo   Error: missing packages for:!MISSING_PACKAGES!
-    set "EXIT_CODE=1"
-    goto :finish
-)
-echo   Produced !PACKAGE_COUNT! package^(s^):
-dir "%OUTPUT_DIR%\*!PACKAGE_VERSION!.nupkg" /b
 
-set "STALE_LIST="
-for %%F in ("%OUTPUT_DIR%\*.nupkg") do (
-    echo %%~nxF | findstr /c:"!PACKAGE_VERSION!." >nul
-    if errorlevel 1 set "STALE_LIST=!STALE_LIST! %%~nxF"
-)
-if defined STALE_LIST (
-    echo.
-    echo   Warning: packages of other versions are still in "%OUTPUT_DIR%":
-    echo            !STALE_LIST!
-    echo            Do not push the whole directory blindly.
-)
-
-REM ------------------------------------------------------------- finish
+REM ----------------------------------------------------------- finish
 :finish
 echo.
-if !EXIT_CODE! neq 0 (
-    echo ===============================================================
-    echo  PUBLISH FAILED ^(exit code !EXIT_CODE!^)
-    echo ===============================================================
+if "%EC%"=="0" (
+    echo PUBLISH SUCCEEDED  ^(version %VERSION%, output %cd%\%OUTPUT_DIR%^)
 ) else (
-    echo ===============================================================
-    echo  PUBLISH SUCCEEDED
-    echo  Version : !PACKAGE_VERSION!
-    echo  Output  : %cd%\%OUTPUT_DIR%
-    echo  Finished: %date% %time%
-    echo ===============================================================
-    echo.
-    echo  Next step - push to nuget.org:
-    echo    dotnet nuget push "%OUTPUT_DIR%\*.nupkg" --api-key ^<API_KEY^> --source https://api.nuget.org/v3/index.json --skip-duplicate
+    echo PUBLISH FAILED
 )
-if "!NO_PAUSE!"=="0" pause
-endlocal & exit /b %EXIT_CODE%
+if "%NO_PAUSE%"=="0" pause
+endlocal & exit /b %EC%
 
 :usage
 echo.
-echo Usage: publish.bat [version] [/preview] [/skipcheck] [/nopause]
-echo.
-echo   [version]   Package version, e.g. 3.0.0-rc3.
-echo               Default: the Version evaluated from Directory.Build.props.
-echo   /preview    Append "-preview.<yyyyMMdd-HHmmss>" to the version.
-echo   /skipcheck  Skip the scripts\verify-build.ps1 quality gate.
+echo Usage: publish.bat [version] [/preview] [/skipcheck] [/push] [/nopause]
+echo   [version]   Package version, e.g. 3.0.0. Default: from Directory.Build.props.
+echo   /preview    Append -preview.<timestamp> to the version.
+echo   /skipcheck  Skip the verify-build.ps1 quality gate.
+echo   /push       Push to nuget.org after packing ^(needs NUGET_API_KEY^).
 echo   /nopause    Do not pause at the end.
 echo.
-set "EXIT_CODE=1"
+set "EC=1"
 goto :finish

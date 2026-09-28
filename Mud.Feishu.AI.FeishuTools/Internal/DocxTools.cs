@@ -6,6 +6,7 @@
 // -----------------------------------------------------------------------
 
 using System.Text;
+using Mud.Feishu.AI.FeishuTools.Tools;
 using Mud.Feishu.DataModels.Docx;
 
 namespace Mud.Feishu.AI.FeishuTools.Internal;
@@ -23,6 +24,7 @@ internal sealed class DocxTools(Mud.Feishu.IFeishuTenantV1Docx docxClient, IOpti
     private readonly int _maxResultLength = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
 
     /// <summary>docx.get_raw_content：读取文档纯文本正文。</summary>
+    [FeishuToolHandler(typeof(IFeishuDocxRawContentTool))]
     public Task<FeishuToolResult> GetRawContentAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.DocxGetRawContent, _maxResultLength);
@@ -41,6 +43,7 @@ internal sealed class DocxTools(Mud.Feishu.IFeishuTenantV1Docx docxClient, IOpti
     }
 
     /// <summary>docx.get_document_blocks：分块读取文档（白名单 block_id/block_type/text；text 取首个非空文本块字段）。</summary>
+    [FeishuToolHandler(typeof(IFeishuDocxDocumentBlocksTool))]
     public Task<FeishuToolResult> GetDocumentBlocksAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.DocxGetDocumentBlocks, _maxResultLength);

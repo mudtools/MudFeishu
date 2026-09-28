@@ -17,7 +17,8 @@ namespace Mud.Feishu.AI.Tools;
 /// 零容忍集：<see cref="MUDFT001"/>/<see cref="MUDFT002"/>/<see cref="MUDFT003"/>/
 /// <see cref="MUDFT004"/>/<see cref="MUDFT008"/>/<see cref="MUDFT010"/>/<see cref="MUDFT014"/>/
 /// <see cref="MUDFT015"/>/<see cref="MUDFT016"/>/<see cref="MUDFT017"/>/<see cref="MUDFT019"/>/
-/// <see cref="MUDFT020"/>（见 <see cref="ZeroToleranceIds"/>）。
+/// <see cref="MUDFT020"/>/<see cref="MUDFT022"/>/<see cref="MUDFT023"/>/<see cref="MUDFT024"/>/
+/// <see cref="MUDFT025"/>（见 <see cref="ZeroToleranceIds"/>）。
 /// </para>
 /// <para>
 /// <b>AT-B14 清理记录（R3 评审 C-2）</b>：本表原先还声明了
@@ -194,6 +195,53 @@ internal static class Diagnostics
         defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true);
 
+    // ────────── 注册器 / DI 装配产物（ToolRegistrarEmitter） ──────────
+
+    /// <summary><c>[FeishuTool]</c> 工具没有任何 <c>[FeishuToolHandler]</c> 绑定。</summary>
+    /// <remarks>
+    /// <b>漂移守卫</b>：新增工具时若忘记在某个执行器方法上标注 handler，构建即失败——
+    /// 取代此前「工具不进注册表 → 白名单期 fail-fast」的运行期定位（错误面再提前一层，
+    /// 且不再依赖"注册表完整性"这条测试断言）。
+    /// </remarks>
+    public static readonly DiagnosticDescriptor MUDFT022 = new(
+        id: "MUDFT022",
+        title: "工具未绑定执行器方法",
+        messageFormat: "[FeishuTool] 工具 '{0}' 没有 [FeishuToolHandler] 绑定——每个工具必须恰好绑定一个执行器方法",
+        category: "MudFeishu.AI",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    /// <summary><c>[FeishuToolHandler]</c> 绑定不成立（工具名不在契约表 / 同一工具被多个方法绑定）。</summary>
+    /// <remarks>
+    /// 两种形态都可运行期表现为「注册器把工具注册了两次（工具已注册）」或「绑定了不存在的契约名」，
+    /// 故同属"绑定关系不成立"这一类，用同一 ID + 不同说明区分（避免零容忍集无谓膨胀）。
+    /// </remarks>
+    public static readonly DiagnosticDescriptor MUDFT023 = new(
+        id: "MUDFT023",
+        title: "执行器绑定不成立",
+        messageFormat: "[FeishuToolHandler] 绑定不成立：{0}——{1}",
+        category: "MudFeishu.AI",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    /// <summary>执行器方法签名不符合执行器契约。</summary>
+    public static readonly DiagnosticDescriptor MUDFT024 = new(
+        id: "MUDFT024",
+        title: "执行器方法签名不符",
+        messageFormat: "工具 '{0}' 的执行器方法 {1} 签名不符——应为 public Task<FeishuToolResult> 方法(IReadOnlyDictionary<string, object?> args, CancellationToken ct)，实际 {2}",
+        category: "MudFeishu.AI",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    /// <summary>执行器构造参数无法作为 DI 服务类型解析。</summary>
+    public static readonly DiagnosticDescriptor MUDFT025 = new(
+        id: "MUDFT025",
+        title: "执行器构造参数无法解析",
+        messageFormat: "工具 '{0}' 的执行器 {1} 的构造参数 {2}（类型 {3}）无法作为 DI 服务类型解析——仅支持类/接口（非开放泛型、非元组、非值类型）",
+        category: "MudFeishu.AI",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
     // ────────── 源挂钩与覆盖报告 ──────────
 
     /// <summary>[FeishuTool] 声明的 <c>Source</c>（SDK 能力来源）无法解析。</summary>
@@ -228,7 +276,8 @@ internal static class Diagnostics
     [
         "MUDFT001", "MUDFT002", "MUDFT003", "MUDFT004",
         "MUDFT008", "MUDFT010", "MUDFT014", "MUDFT015",
-        "MUDFT016", "MUDFT017", "MUDFT019", "MUDFT020"
+        "MUDFT016", "MUDFT017", "MUDFT019", "MUDFT020",
+        "MUDFT022", "MUDFT023", "MUDFT024", "MUDFT025"
     ];
 
     // ────────── 集中上报 ──────────

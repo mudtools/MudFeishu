@@ -5,6 +5,7 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using Mud.Feishu.AI.FeishuTools.Tools;
 using Mud.Feishu.DataModels.Users;
 
 namespace Mud.Feishu.AI.FeishuTools.Internal;
@@ -38,6 +39,7 @@ internal sealed class ContactTools(
     private readonly int _maxResultLength = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
 
     /// <summary>contact.resolve_user：邮箱/手机号 → 用户 ID。</summary>
+    [FeishuToolHandler(typeof(IFeishuContactResolveUserTool))]
     public Task<FeishuToolResult> ResolveUsersAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.ContactResolveUser, _maxResultLength);
@@ -82,6 +84,7 @@ internal sealed class ContactTools(
     /// <b>投影纪律（C-7）</b>：<c>open_id</c> <b>必须</b>回填——它是下一跳
     /// <c>im.send_message(receive_id_type=open_id)</c> 的入参；<c>avatar</c> 有意省略（长 URL，纯上下文开销）。
     /// </remarks>
+    [FeishuToolHandler(typeof(IFeishuContactSearchUserTool))]
     public Task<FeishuToolResult> SearchUsersAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.ContactSearchUser, _maxResultLength);
@@ -97,6 +100,7 @@ internal sealed class ContactTools(
     }
 
     /// <summary>contact.get_user：单个用户详情。</summary>
+    [FeishuToolHandler(typeof(IFeishuContactGetUserTool))]
     public Task<FeishuToolResult> GetUserAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.ContactGetUser, _maxResultLength);
@@ -113,6 +117,7 @@ internal sealed class ContactTools(
     }
 
     /// <summary>contact.batch_get：按 ID 批量取详情。</summary>
+    [FeishuToolHandler(typeof(IFeishuContactBatchGetTool))]
     public Task<FeishuToolResult> BatchGetUsersAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.ContactBatchGet, _maxResultLength);

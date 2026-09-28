@@ -72,6 +72,20 @@ public sealed class FeishuToolSchemaGenerator : IIncrementalGenerator
 
         context.RegisterSourceOutput(diagnostics, ReportPendingDiagnostics);
 
+        // ── L1：执行器绑定扫描（[FeishuToolHandler] → 工具名 + 执行器构造签名）──
+        // 与 Tier C 同层同纪律：执行器构造签名在 SemanticModel 内即可完全解析，
+        // **不**引入 CompilationProvider（否则注册产物会退化为编译级粒度，每次编辑重跑）。
+        var handlers = context.SyntaxProvider
+            .CreateSyntaxProvider(IsHandlerCandidate, ScanHandler)
+            .Where(static result => result is not null)
+            .Select(static (result, _) => result!);
+
+        context.RegisterSourceOutput(
+            handlers.SelectMany(static (result, _) => result.Diagnostics).Collect(),
+            ReportPendingDiagnostics);
+
+        var handlerBindings = handlers.Collect();
+
         // ── L2/L4 + golden：Schema 与工具名契约表发射 ──
         var assemblyName = context.CompilationProvider.Select(static (compilation, _) => compilation.AssemblyName);
         var golden = context.AdditionalTextsProvider
@@ -89,6 +103,14 @@ public sealed class FeishuToolSchemaGenerator : IIncrementalGenerator
         context.RegisterSourceOutput(
             models.Combine(assemblyName),
             static (spc, input) => ToolArgsEmitter.Emit(spc, input.Left, input.Right));
+
+        // ── L2：域注册器 + DI 装配（FeishuToolDomainRegistrars.g.cs / FeishuToolsServiceCollectionCoreExtensions.g.cs）──
+        // 同一 pass、同一模型集合 + 执行器绑定集合；owner 门槛同 FeishuToolNames/Contracts/Args。
+        // 注意元组层级：models.Combine(assemblyName) 后再 Combine(handlerBindings)——
+        // 程序集名在 input.Left.Right（R1 §5 曾把它误写为 input.Right，那是一处编译错误）。
+        context.RegisterSourceOutput(
+            models.Combine(assemblyName).Combine(handlerBindings),
+            static (spc, input) => ToolRegistrarEmitter.Emit(spc, input.Left.Left, input.Left.Right, input.Right));
 
         // ── WP6：域级 guidance 资产（Guidance/{domain}.md → FeishuToolGuidance.g.cs）──
         // 与工具面同一 pass、同一发射门槛：素材是 AdditionalFiles（与 golden 同机制），
@@ -127,6 +149,14 @@ public sealed class FeishuToolSchemaGenerator : IIncrementalGenerator
 
     private static bool IsToolCandidate(SyntaxNode node, System.Threading.CancellationToken _)
         => node is InterfaceDeclarationSyntax { AttributeLists.Count: > 0 };
+
+    private static bool IsHandlerCandidate(SyntaxNode node, System.Threading.CancellationToken _)
+        => node is MethodDeclarationSyntax { AttributeLists.Count: > 0 };
+
+    private static ScannedHandler? ScanHandler(
+        GeneratorSyntaxContext context,
+        System.Threading.CancellationToken cancellationToken)
+        => ToolHandlerScanner.Scan(context, cancellationToken);
 
     private static ScannedTool? ScanTool(GeneratorSyntaxContext context, System.Threading.CancellationToken cancellationToken)
     {

@@ -5,6 +5,7 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using Mud.Feishu.AI.FeishuTools.Tools;
 using Mud.Feishu.DataModels.Drive.Files;
 using Mud.Feishu.DataModels.Drive.Folder;
 
@@ -30,6 +31,7 @@ internal sealed class DriveTools(
     private readonly int _maxResultLength = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
 
     /// <summary>drive.list_folder_files：列出文件夹内容（folder_token 缺省=根目录；白名单 token/name/type/url）。</summary>
+    [FeishuToolHandler(typeof(IFeishuDriveFolderFilesTool))]
     public Task<FeishuToolResult> ListFolderFilesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.DriveListFolderFiles, _maxResultLength);
@@ -45,6 +47,7 @@ internal sealed class DriveTools(
     }
 
     /// <summary>drive.get_file_metas：元信息批量查询（官方单请求上限 200；白名单 doc_token/doc_type/title/url/owner_id）。</summary>
+    [FeishuToolHandler(typeof(IFeishuDriveFileMetasTool))]
     public Task<FeishuToolResult> GetFileMetasAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.DriveGetFileMetas, _maxResultLength);

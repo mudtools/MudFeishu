@@ -48,6 +48,7 @@ internal sealed class AttachmentTools(
         ?? throw new ArgumentNullException(nameof(stager));
 
     /// <summary>im.send_image：落盘 → 上传图片 → 发送图片消息（<c>dry_run=true</c> 时只预演）。</summary>
+    [FeishuToolHandler(typeof(IFeishuImSendImageTool))]
     public Task<FeishuToolResult> SendImageAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.ImSendImage);
@@ -99,6 +100,7 @@ internal sealed class AttachmentTools(
     }
 
     /// <summary>im.send_file：落盘 → 上传文件 → 发送文件消息（<c>dry_run=true</c> 时只预演）。</summary>
+    [FeishuToolHandler(typeof(IFeishuImSendFileTool))]
     public Task<FeishuToolResult> SendFileAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.ImSendFile);

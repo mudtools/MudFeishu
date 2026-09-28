@@ -39,6 +39,7 @@ internal sealed class CalendarTools(
 
     /// <summary>calendar.create_event：创建日程（<c>dry_run=true</c> 时只预演）。</summary>
     /// <remarks>幂等键（T4-1 同款）：<c>idempotency_key</c> → 直通平台查询参数（平台原生幂等）。</remarks>
+    [FeishuToolHandler(typeof(IFeishuCalendarCreateEventTool))]
     public Task<FeishuToolResult> CreateEventAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.CalendarCreateEvent, _maxResultLength);
@@ -83,6 +84,7 @@ internal sealed class CalendarTools(
     }
 
     /// <summary>calendar.find_free_slots：查询单用户/会议室忙闲（user_id/room_id 二选一）。</summary>
+    [FeishuToolHandler(typeof(IFeishuCalendarFindFreeSlotsTool))]
     public Task<FeishuToolResult> FindFreeSlotsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.CalendarFindFreeSlots, _maxResultLength);
@@ -114,6 +116,7 @@ internal sealed class CalendarTools(
     }
 
     /// <summary>calendar.list_events：列出日程（分页）。</summary>
+    [FeishuToolHandler(typeof(IFeishuCalendarListEventsTool))]
     public Task<FeishuToolResult> ListEventsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.CalendarListEvents, _maxResultLength);

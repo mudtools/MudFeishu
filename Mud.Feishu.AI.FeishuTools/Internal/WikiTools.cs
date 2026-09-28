@@ -5,6 +5,7 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using Mud.Feishu.AI.FeishuTools.Tools;
 using Mud.Feishu.DataModels.Wiki;
 
 namespace Mud.Feishu.AI.FeishuTools.Internal;
@@ -21,6 +22,7 @@ internal sealed class WikiTools(Mud.Feishu.IFeishuTenantV2WikiNodes wikiNodesCli
     private readonly int _maxResultLength = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
 
     /// <summary>wiki.get_node：解析节点信息（单对象）。</summary>
+    [FeishuToolHandler(typeof(IFeishuWikiGetNodeTool))]
     public Task<FeishuToolResult> GetNodeAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.WikiGetNode, _maxResultLength);
@@ -39,6 +41,7 @@ internal sealed class WikiTools(Mud.Feishu.IFeishuTenantV2WikiNodes wikiNodesCli
     }
 
     /// <summary>wiki.list_nodes：列出子节点（分页）。</summary>
+    [FeishuToolHandler(typeof(IFeishuWikiListNodesTool))]
     public Task<FeishuToolResult> ListNodesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.WikiListNodes, _maxResultLength);

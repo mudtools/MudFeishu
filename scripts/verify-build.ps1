@@ -209,14 +209,16 @@ Assert-Zero -Name 'AOT001-007'    -Count ((Select-String -Path $buildLog -Patter
 #   008 上传参数不可映射 / 010 查询参数展开失败 / 014 golden 漂移
 #   015 Schema 内部不一致 / 016 身份与接口令牌类型不符 / 017 读写分类与 SDK 事实脱钩 / 019 SDK 源无法解析
 #   020 参数类型无解包映射（ToolArgsEmitter/ToolArgs 映射表）
+#   022 工具未绑定执行器 / 023 绑定不成立 / 024 执行器方法签名不符 / 025 执行器构造参数无法解析
+#       （ToolRegistrarEmitter：注册器 + DI 装配产物）
 # 注：本断言是"二次锁"——原先是恒为 0 的假绿（零容忍集里 5 个 ID 当时没有任何上报点）。
 #     缺失上报点已补齐，并由守卫 ZeroToleranceDiagnostics_ShouldHaveReportSites 机械锁定。
 # 只匹配「诊断形态」（warning/error + ID + 冒号），不能只匹配 ID 字符串：
 #   生成器工程自身的 RS2008 警告（"为包含规则“MUDFT015”的分析器项目启用分析器发布跟踪"）
 #   正文里就带这些 ID，只匹配 ID 会让"生成器工程被重新编译"这一无害动作把本条断言变成假红
 #   （实测：全量重建命中 19 处、其中真诊断 0 条）。真诊断的格式恒为 `warning MUDFT0xx: …`。
-$mudftZero = (Select-String -Path $buildLog -Pattern '(?:warning|error) MUDFT(001|002|003|004|008|010|014|015|016|017|019|020):' -AllMatches).Count
-Assert-Zero -Name 'MUDFT 零容忍'  -Count $mudftZero -Hint 'AI 工具描述符零容忍集（001/002/003/004/008/010/014/015/016/017/019/020），见 Diagnostics.ZeroToleranceIds'
+$mudftZero = (Select-String -Path $buildLog -Pattern '(?:warning|error) MUDFT(001|002|003|004|008|010|014|015|016|017|019|020|022|023|024|025):' -AllMatches).Count
+Assert-Zero -Name 'MUDFT 零容忍'  -Count $mudftZero -Hint 'AI 工具描述符零容忍集（001/002/003/004/008/010/014/015/016/017/019/020/022/023/024/025），见 Diagnostics.ZeroToleranceIds'
 
 # golden 快照门禁的"非空"防呆：描述符快照必须存在且被测试消费——
 # 若有人删掉 AdditionalFiles 声明或快照文件，构建期 MUDFT014 会静默失效，

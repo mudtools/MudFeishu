@@ -5,6 +5,7 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using Mud.Feishu.AI.FeishuTools.Tools;
 using Mud.Feishu.DataModels.Messages;
 
 namespace Mud.Feishu.AI.FeishuTools.Internal;
@@ -25,6 +26,7 @@ internal sealed class ImTools(Mud.Feishu.IFeishuTenantV1Message messageClient, I
     private readonly int _maxResultLength = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
 
     /// <summary>im.get_history_messages：读取历史消息（白名单 message_id/create_time/sender_id/message_type/content 预览）。</summary>
+    [FeishuToolHandler(typeof(IFeishuImHistoryTool))]
     public Task<FeishuToolResult> GetHistoryAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.ImGetHistoryMessages, _maxResultLength);
@@ -51,6 +53,7 @@ internal sealed class ImTools(Mud.Feishu.IFeishuTenantV1Message messageClient, I
     }
 
     /// <summary>im.get_message_content：单条消息内容回查（白名单 message_id/msg_type/body/mentions）。</summary>
+    [FeishuToolHandler(typeof(IFeishuImMessageContentTool))]
     public Task<FeishuToolResult> GetContentAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.ImGetMessageContent, _maxResultLength);

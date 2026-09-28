@@ -279,6 +279,127 @@ public class GeneratorNegativeCaseTests
         run.ShouldNotReport("MUDFT021", "owner 门槛下不做必填可空校验");
     }
 
+    [Fact]
+    public void MUDFT022_ToolWithoutHandlerBinding_ShouldBeReported()
+    {
+        var run = GeneratorDriverHost.RunAsOwnerAssembly(
+            SyntheticSources.Attributes,
+            SyntheticSources.HandlerAttribute,
+            OwnerSource("""
+                [FeishuTool("fake.unbound", Description = "没有任何执行器绑定的工具。")]
+                public interface IUnboundTool
+                {
+                    System.Threading.Tasks.Task<string> QueryAsync([ToolParameter("thing_id", "假数据 ID")] string thing_id);
+                }
+                """));
+
+        run.ShouldReport("MUDFT022", "契约工具缺少 [FeishuToolHandler] 绑定必须被上报（注册完备性的编译期守卫）");
+    }
+
+    [Fact]
+    public void MUDFT023_HandlerOnInterfaceWithoutFeishuTool_ShouldBeReported()
+    {
+        var run = GeneratorDriverHost.RunAsOwnerAssembly(
+            SyntheticSources.Attributes,
+            SyntheticSources.HandlerAttribute,
+            OwnerSource("""
+                public interface INotACuratedTool
+                {
+                    System.Threading.Tasks.Task<string> QueryAsync(string thing_id);
+                }
+
+                internal sealed class BadTargetTools
+                {
+                    [FeishuToolHandler(typeof(INotACuratedTool))]
+                    public System.Threading.Tasks.Task<FeishuToolResult> QueryAsync(
+                        System.Collections.Generic.IReadOnlyDictionary<string, object?> args,
+                        System.Threading.CancellationToken ct) => throw new System.NotSupportedException();
+                }
+                """));
+
+        run.ShouldReport("MUDFT023", "handler 指向未标注 [FeishuTool] 的接口（推导不出工具名）必须被上报");
+    }
+
+    [Fact]
+    public void MUDFT023_DuplicateHandlerForSameTool_ShouldBeReported()
+    {
+        var run = GeneratorDriverHost.RunAsOwnerAssembly(
+            SyntheticSources.Attributes,
+            SyntheticSources.HandlerAttribute,
+            OwnerSource("""
+                [FeishuTool("fake.dup_binding", Description = "被两个执行器方法绑定的工具。")]
+                public interface IDupBindingTool
+                {
+                    System.Threading.Tasks.Task<string> QueryAsync([ToolParameter("thing_id", "假数据 ID")] string thing_id);
+                }
+
+                internal sealed class DupBindingTools
+                {
+                    [FeishuToolHandler(typeof(IDupBindingTool))]
+                    public System.Threading.Tasks.Task<FeishuToolResult> QueryAsync(
+                        System.Collections.Generic.IReadOnlyDictionary<string, object?> args,
+                        System.Threading.CancellationToken ct) => throw new System.NotSupportedException();
+
+                    [FeishuToolHandler(typeof(IDupBindingTool))]
+                    public System.Threading.Tasks.Task<FeishuToolResult> QueryAgainAsync(
+                        System.Collections.Generic.IReadOnlyDictionary<string, object?> args,
+                        System.Threading.CancellationToken ct) => throw new System.NotSupportedException();
+                }
+                """));
+
+        run.ShouldReport("MUDFT023", "同一工具被多个执行器方法绑定（产物会重复注册）必须被上报");
+    }
+
+    [Fact]
+    public void MUDFT024_HandlerWithWrongSignature_ShouldBeReported()
+    {
+        var run = GeneratorDriverHost.RunAsOwnerAssembly(
+            SyntheticSources.Attributes,
+            SyntheticSources.HandlerAttribute,
+            OwnerSource("""
+                [FeishuTool("fake.bad_signature", Description = "handler 方法签名不符。")]
+                public interface IBadSignatureTool
+                {
+                    System.Threading.Tasks.Task<string> QueryAsync([ToolParameter("thing_id", "假数据 ID")] string thing_id);
+                }
+
+                internal sealed class BadSignatureTools
+                {
+                    [FeishuToolHandler(typeof(IBadSignatureTool))]
+                    public System.Threading.Tasks.Task<string> QueryAsync(
+                        System.Collections.Generic.IReadOnlyDictionary<string, object?> args,
+                        System.Threading.CancellationToken ct) => throw new System.NotSupportedException();
+                }
+                """));
+
+        run.ShouldReport("MUDFT024", "handler 方法签名不符合执行器契约（返回 Task<string>）必须被上报");
+    }
+
+    [Fact]
+    public void MUDFT025_ExecutorConstructorWithNonServiceParameter_ShouldBeReported()
+    {
+        var run = GeneratorDriverHost.RunAsOwnerAssembly(
+            SyntheticSources.Attributes,
+            SyntheticSources.HandlerAttribute,
+            OwnerSource("""
+                [FeishuTool("fake.bad_dependency", Description = "执行器构造参数不是 DI 服务类型。")]
+                public interface IBadDependencyTool
+                {
+                    System.Threading.Tasks.Task<string> QueryAsync([ToolParameter("thing_id", "假数据 ID")] string thing_id);
+                }
+
+                internal sealed class BadDependencyTools(string connectionString)
+                {
+                    [FeishuToolHandler(typeof(IBadDependencyTool))]
+                    public System.Threading.Tasks.Task<FeishuToolResult> QueryAsync(
+                        System.Collections.Generic.IReadOnlyDictionary<string, object?> args,
+                        System.Threading.CancellationToken ct) => throw new System.NotSupportedException();
+                }
+                """));
+
+        run.ShouldReport("MUDFT025", "执行器构造参数为 BCL 内建类型（string）无法作为 DI 服务类型解析时必须被上报");
+    }
+
     // ────────── 元守卫 ──────────
 
     /// <summary>
@@ -311,6 +432,29 @@ public class GeneratorNegativeCaseTests
         using Mud.Feishu.AI.Tools;
 
         namespace FakeTools;
+
+        {{content}}
+        """;
+
+    /// <summary>
+    /// 工具面<b>实现包侧</b>的合成源码节（执行器 + <c>[FeishuToolHandler]</c> 绑定）。
+    /// </summary>
+    /// <remarks>
+    /// 注册器 / DI 产物消费 FeishuTools 的 <c>internal</c> 成员，故其诊断只在该程序集名下触发
+    /// （<see cref="GeneratorDriverHost.RunAsOwnerAssembly"/>）；本节的类型全部以全限定名书写，
+    /// 避免与 <c>FakeTools</c> 节产生命名冲突。
+    /// </remarks>
+    private static string OwnerSource(string content) => $$"""
+        using System.Threading.Tasks;
+        using Mud.Feishu.AI.FeishuTools;
+        using Mud.Feishu.AI.Tools;
+
+        namespace FakeExecutor;
+
+        /// <summary>执行器返回类型桩（生成器按简单名匹配）。</summary>
+        public sealed class FeishuToolResult
+        {
+        }
 
         {{content}}
         """;
@@ -388,6 +532,27 @@ public static class SyntheticSources
                 public ToolParameterAttribute(string name, string description) { }
 
                 public bool Required { get; set; }
+            }
+        }
+        """;
+
+    /// <summary>
+    /// <c>[FeishuToolHandler]</c> 的最小合成声明——生成器按「命名空间 <c>Mud.Feishu.AI.FeishuTools</c>
+    /// + 类名」识别（<c>ToolHandlerScanner.GetHandlerAttribute</c>），故命名空间与形状必须与真实契约一致。
+    /// </summary>
+    /// <remarks>
+    /// 实参是 <see cref="System.Type"/>（<c>typeof(接口)</c>）：真实特性亦如此——工具名取自被指向接口
+    /// 自身的 <c>[FeishuTool]</c> 声明，<b>不能</b>用生成器本趟产出的 <c>FeishuToolNames</c> 常量。
+    /// </remarks>
+    public const string HandlerAttribute = """
+        namespace Mud.Feishu.AI.FeishuTools
+        {
+            [System.AttributeUsage(System.AttributeTargets.Method, AllowMultiple = false, Inherited = false)]
+            public sealed class FeishuToolHandlerAttribute : System.Attribute
+            {
+                public FeishuToolHandlerAttribute(System.Type toolInterface) => ToolInterface = toolInterface;
+
+                public System.Type ToolInterface { get; }
             }
         }
         """;

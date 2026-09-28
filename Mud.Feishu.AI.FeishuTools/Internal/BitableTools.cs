@@ -30,6 +30,7 @@ internal sealed class BitableTools(
     private readonly int _maxResultLength = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
 
     /// <summary>bitable.list_tables：列出数据表（白名单 table_id/name/revision）。</summary>
+    [FeishuToolHandler(typeof(IFeishuBitableListTablesTool))]
     public Task<FeishuToolResult> ListTablesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.BitableListTables, _maxResultLength);
@@ -46,6 +47,7 @@ internal sealed class BitableTools(
 
     /// <summary>bitable.list_fields：列出字段定义（白名单 field_id/name/type/is_primary/ui_type）。</summary>
     /// <remarks>源码出参 <c>property</c> 为复杂嵌套对象，AOT 安全投影不含反射序列化，故不回填（Phase 2 评估源生成上下文引用）。</remarks>
+    [FeishuToolHandler(typeof(IFeishuBitableListFieldsTool))]
     public Task<FeishuToolResult> ListFieldsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.BitableListFields, _maxResultLength);
@@ -61,6 +63,7 @@ internal sealed class BitableTools(
     }
 
     /// <summary>bitable.query_records：查询记录（filter/sort 简化文法 → 官方过滤/排序结构）。</summary>
+    [FeishuToolHandler(typeof(IFeishuBitableQueryRecordsTool))]
     public Task<FeishuToolResult> QueryRecordsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.BitableQueryRecords, _maxResultLength);
@@ -96,6 +99,7 @@ internal sealed class BitableTools(
     }
 
     /// <summary>bitable.get_records_by_ids：按 ID 批量取记录（官方上限 100 条/请求；白名单 record_id/fields）。</summary>
+    [FeishuToolHandler(typeof(IFeishuBitableRecordsByIdsTool))]
     public Task<FeishuToolResult> GetRecordsByIdsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.BitableGetRecordsByIds, _maxResultLength);

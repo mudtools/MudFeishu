@@ -5,6 +5,7 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using Mud.Feishu.AI.FeishuTools.Tools;
 using Mud.Feishu.DataModels.Spreadsheets;
 
 namespace Mud.Feishu.AI.FeishuTools.Internal;
@@ -26,6 +27,7 @@ internal sealed class SheetsTools(
     private readonly int _maxResultLength = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
 
     /// <summary>sheets.list_sheets：列出工作表（白名单 sheet_id/title/index）。</summary>
+    [FeishuToolHandler(typeof(IFeishuSheetsListTool))]
     public Task<FeishuToolResult> ListSheetsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.SheetsListSheets, _maxResultLength);
@@ -41,6 +43,7 @@ internal sealed class SheetsTools(
     }
 
     /// <summary>sheets.get_range_values：读取单元格区域数据。</summary>
+    [FeishuToolHandler(typeof(IFeishuSheetsRangeTool))]
     public Task<FeishuToolResult> GetRangeValuesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.SheetsGetRangeValues, _maxResultLength);

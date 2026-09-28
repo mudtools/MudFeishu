@@ -113,9 +113,15 @@ internal static class GuardProviderFactory
     /// <param name="withAttachmentStager">
     /// 是否注册附件落盘器（WP7）：<see langword="false"/> 用于验证"落盘器缺席 → 上传工具软缺席"。
     /// </param>
+    /// <param name="withUserTaskClient">
+    /// 是否注册用户令牌任务客户端：<see langword="false"/> 用于验证"<b>可空</b> SDK 客户端缺席
+    /// <b>不</b>触发软缺席"（<c>TaskTools</c> 的 <c>IFeishuUserV2Task?</c> 是可选依赖，
+    /// 缺席时 <c>task.list_my_tasks</c> 仍在位、由执行期回填结构化错误）。
+    /// </param>
     internal static ServiceProvider CreateProvider(
         Action<FeishuAgentOptions> configureOptions,
-        bool withAttachmentStager = true)
+        bool withAttachmentStager = true,
+        bool withUserTaskClient = true)
     {
         var options = new FeishuAgentOptions { Instructions = "test" };
         configureOptions(options);
@@ -138,8 +144,12 @@ internal static class GuardProviderFactory
             .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV4CalendarEvent>().Object)
             .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV4Calendar>().Object)
             .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV2Task>().Object)
-            .AddSingleton(new Mock<Mud.Feishu.IFeishuUserV2Task>().Object)
             .AddSingleton(new Mock<Mud.Feishu.AI.Knowledge.IRetriever>().Object);
+
+        if (withUserTaskClient)
+        {
+            services.AddSingleton(new Mock<Mud.Feishu.IFeishuUserV2Task>().Object);
+        }
 
         if (withAttachmentStager)
         {

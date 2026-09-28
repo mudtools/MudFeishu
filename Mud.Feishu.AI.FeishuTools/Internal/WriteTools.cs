@@ -26,6 +26,7 @@ internal sealed class MessageWriteTools(Mud.Feishu.IFeishuTenantV1Message messag
 
     /// <summary>im.send_message：发送文本消息（<c>dry_run=true</c> 时只预演）。</summary>
     /// <remarks>幂等键（T4-1 / F-1）：<c>idempotency_key</c> → <see cref="SendMessageRequest.Uuid"/>（平台侧 1 小时窗口去重）。</remarks>
+    [FeishuToolHandler(typeof(IFeishuImSendMessageTool))]
     public Task<FeishuToolResult> SendMessageAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.ImSendMessage);
@@ -79,6 +80,7 @@ internal sealed class BitableWriteTools(Mud.Feishu.IFeishuTenantV1BitableRecord 
 
     /// <summary>bitable.add_record：新增记录（fields 为「字段名 → 值」JSON 对象字符串；<c>dry_run=true</c> 时只预演）。</summary>
     /// <remarks>幂等键（T4-1 / F-1）：<c>idempotency_key</c> → 透传查询参数 <c>client_token</c>（重复请求返回原记录）。</remarks>
+    [FeishuToolHandler(typeof(IFeishuBitableAddRecordTool))]
     public Task<FeishuToolResult> AddRecordAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.BitableAddRecord);
@@ -147,6 +149,7 @@ internal sealed class ApprovalWriteTools(Mud.Feishu.IFeishuTenantV4Approval appr
 
     /// <summary>approval.create_instance：发起审批实例（<c>dry_run=true</c> 时只预演）。</summary>
     /// <remarks>幂等键（T4-1 / F-1）：<c>idempotency_key</c> → <see cref="CreateInstanceRequest.Uuid"/>（冲突返回 60012）。</remarks>
+    [FeishuToolHandler(typeof(IFeishuApprovalCreateInstanceTool))]
     public Task<FeishuToolResult> CreateInstanceAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.ApprovalCreateInstance);

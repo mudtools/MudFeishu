@@ -37,6 +37,7 @@ internal sealed class TaskTools(
 
     /// <summary>task.create_task：创建任务（<c>dry_run=true</c> 时只预演）。</summary>
     /// <remarks>幂等键（T4-1 同款）：<c>idempotency_key</c> → <c>CreateTaskRequest.ClientToken</c>（平台原生幂等）。</remarks>
+    [FeishuToolHandler(typeof(IFeishuTaskCreateTaskTool))]
     public Task<FeishuToolResult> CreateTaskAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.TaskCreateTask, _maxResultLength);
@@ -86,6 +87,7 @@ internal sealed class TaskTools(
 
     /// <summary>task.list_my_tasks：以用户令牌身份读取「我负责的」任务（分页）。</summary>
     /// <remarks>用户客户端缺席（宿主未注册 <c>IFeishuUserV2Task</c>）→ 结构化错误（该工具不应被启用）。</remarks>
+    [FeishuToolHandler(typeof(IFeishuUserTaskListMyTasksTool))]
     public Task<FeishuToolResult> ListMyTasksAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.TaskListMyTasks, _maxResultLength);

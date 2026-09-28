@@ -70,9 +70,13 @@ public static class FeishuToolsServiceCollectionExtensions
             .AddFeishuCalendarToolsCore()
             .AddFeishuTaskToolsCore()
             .AddFeishuAttachmentToolsCore()
-            .AddFeishuKnowledgeToolsCore()
-            .AddFeishuCapabilityToolsCore()
-            .AddFeishuWriteToolsCore();
+            .AddFeishuKnowledgeSearchToolsCore()
+            .AddFeishuCapabilityLookupToolsCore()
+            // 写域按执行器拆成三个生成的 DI 核心方法（注册器按「执行器类」聚合，
+            // 「跨 im/bitable/approval 三模块的写域」不再需要特例分支）。
+            .AddFeishuMessageWriteToolsCore()
+            .AddFeishuBitableWriteToolsCore()
+            .AddFeishuApprovalWriteToolsCore();
 
     /// <summary>
     /// 注册只读工具包（Phase 1 兼容入口；现等价 <see cref="AddFeishuTools"/>——写工具同批注册但
@@ -144,7 +148,7 @@ public static class FeishuToolsServiceCollectionExtensions
     public static IServiceCollection AddFeishuKnowledgeTools(
         this IServiceCollection services,
         Action<FeishuToolRegistry>? configure = null)
-        => AddFeishuToolInfrastructure(services, configure).AddFeishuKnowledgeToolsCore();
+        => AddFeishuToolInfrastructure(services, configure).AddFeishuKnowledgeSearchToolsCore();
 
     /// <summary>
     /// 按域注册日历工具（WP5 / AT-F04：<c>calendar.create_event</c> 写 + <c>find_free_slots</c>/<c>list_events</c> 只读）。
@@ -187,7 +191,10 @@ public static class FeishuToolsServiceCollectionExtensions
     public static IServiceCollection AddFeishuWriteTools(
         this IServiceCollection services,
         Action<FeishuToolRegistry>? configure = null)
-        => AddFeishuToolInfrastructure(services, configure).AddFeishuWriteToolsCore();
+        => AddFeishuToolInfrastructure(services, configure)
+            .AddFeishuMessageWriteToolsCore()
+            .AddFeishuBitableWriteToolsCore()
+            .AddFeishuApprovalWriteToolsCore();
 
     /// <summary>
     /// 注册分片编辑流式通道（Phase 2 T2-1 兼容入口，保持不变）：
@@ -429,199 +436,7 @@ public static class FeishuToolsServiceCollectionExtensions
     public static IServiceCollection AddFeishuCapabilityTools(
         this IServiceCollection services,
         Action<FeishuToolRegistry>? configure = null)
-        => AddFeishuToolInfrastructure(services, configure).AddFeishuCapabilityToolsCore();
-
-    private static IServiceCollection AddFeishuCapabilityToolsCore(this IServiceCollection services)
-    {
-        services.TryAddSingleton(static sp => new CapabilityLookupTools(sp.GetRequiredService<IOptions<FeishuAgentOptions>>()));
-        services.AddToolDomainRegistrar(static sp => new CapabilityLookupToolDomainRegistrar(
-            sp.GetRequiredService<CapabilityLookupTools>(),
-            sp.GetRequiredService<FeishuToolBinding>()));
-        return services;
-    }
-
-    private static IServiceCollection AddFeishuBitableToolsCore(this IServiceCollection services)
-    {
-        // 执行器：客户端缺席解析为 null（P1D-1c 软缺席——该域工具不进注册表，白名单期报错）。
-        services.TryAddSingleton(static sp =>
-        {
-            var appTable = sp.GetService<Mud.Feishu.IFeishuTenantV1BitableAppTable>();
-            var field = sp.GetService<Mud.Feishu.IFeishuTenantV1BitableField>();
-            var record = sp.GetService<Mud.Feishu.IFeishuTenantV1BitableRecord>();
-            return appTable is not null && field is not null && record is not null
-                ? new BitableTools(appTable, field, record, sp.GetRequiredService<IOptions<FeishuAgentOptions>>())
-                : null!;
-        });
-        services.AddToolDomainRegistrar(static sp => sp.GetService<BitableTools>() is { } executor
-            ? new BitableToolDomainRegistrar(executor, sp.GetRequiredService<FeishuToolBinding>())
-            : null);
-        return services;
-    }
-
-    private static IServiceCollection AddFeishuDocxToolsCore(this IServiceCollection services)
-    {
-        services.TryAddSingleton(static sp => sp.GetService<Mud.Feishu.IFeishuTenantV1Docx>() is { } client
-            ? new DocxTools(client, sp.GetRequiredService<IOptions<FeishuAgentOptions>>())
-            : null!);
-        services.AddToolDomainRegistrar(static sp => sp.GetService<DocxTools>() is { } executor
-            ? new DocxToolDomainRegistrar(executor, sp.GetRequiredService<FeishuToolBinding>())
-            : null);
-        return services;
-    }
-
-    private static IServiceCollection AddFeishuWikiToolsCore(this IServiceCollection services)
-    {
-        services.TryAddSingleton(static sp => sp.GetService<Mud.Feishu.IFeishuTenantV2WikiNodes>() is { } client
-            ? new WikiTools(client, sp.GetRequiredService<IOptions<FeishuAgentOptions>>())
-            : null!);
-        services.AddToolDomainRegistrar(static sp => sp.GetService<WikiTools>() is { } executor
-            ? new WikiToolDomainRegistrar(executor, sp.GetRequiredService<FeishuToolBinding>())
-            : null);
-        return services;
-    }
-
-    private static IServiceCollection AddFeishuSearchToolsCore(this IServiceCollection services)
-    {
-        services.TryAddSingleton(static sp => sp.GetService<Mud.Feishu.IFeishuTenantV2SearchDocWiki>() is { } client
-            ? new SearchTools(client, sp.GetRequiredService<IOptions<FeishuAgentOptions>>())
-            : null!);
-        services.AddToolDomainRegistrar(static sp => sp.GetService<SearchTools>() is { } executor
-            ? new SearchToolDomainRegistrar(executor, sp.GetRequiredService<FeishuToolBinding>())
-            : null);
-        return services;
-    }
-
-    private static IServiceCollection AddFeishuImToolsCore(this IServiceCollection services)
-    {
-        services.TryAddSingleton(static sp => sp.GetService<Mud.Feishu.IFeishuTenantV1Message>() is { } client
-            ? new ImTools(client, sp.GetRequiredService<IOptions<FeishuAgentOptions>>())
-            : null!);
-        services.AddToolDomainRegistrar(static sp => sp.GetService<ImTools>() is { } executor
-            ? new ImToolDomainRegistrar(executor, sp.GetRequiredService<FeishuToolBinding>())
-            : null);
-        return services;
-    }
-
-    private static IServiceCollection AddFeishuSheetsToolsCore(this IServiceCollection services)
-    {
-        services.TryAddSingleton(static sp =>
-        {
-            var spreadsheets = sp.GetService<Mud.Feishu.IFeishuTenantV3Spreadsheets>();
-            var data = sp.GetService<Mud.Feishu.IFeishuTenantV3SpreadsheetData>();
-            return spreadsheets is not null && data is not null
-                ? new SheetsTools(spreadsheets, data, sp.GetRequiredService<IOptions<FeishuAgentOptions>>())
-                : null!;
-        });
-        services.AddToolDomainRegistrar(static sp => sp.GetService<SheetsTools>() is { } executor
-            ? new SheetsToolDomainRegistrar(executor, sp.GetRequiredService<FeishuToolBinding>())
-            : null);
-        return services;
-    }
-
-    private static IServiceCollection AddFeishuDriveToolsCore(this IServiceCollection services)
-    {
-        services.TryAddSingleton(static sp =>
-        {
-            var folder = sp.GetService<Mud.Feishu.IFeishuTenantV1DriveFolder>();
-            var files = sp.GetService<Mud.Feishu.IFeishuTenantV1DriveFiles>();
-            return folder is not null && files is not null
-                ? new DriveTools(folder, files, sp.GetRequiredService<IOptions<FeishuAgentOptions>>())
-                : null!;
-        });
-        services.AddToolDomainRegistrar(static sp => sp.GetService<DriveTools>() is { } executor
-            ? new DriveToolDomainRegistrar(executor, sp.GetRequiredService<FeishuToolBinding>())
-            : null);
-        return services;
-    }
-
-    private static IServiceCollection AddFeishuContactToolsCore(this IServiceCollection services)
-    {
-        services.TryAddSingleton(static sp => sp.GetService<Mud.Feishu.IFeishuTenantV3User>() is { } client
-            ? new ContactTools(client, sp.GetRequiredService<IOptions<FeishuAgentOptions>>())
-            : null!);
-        services.AddToolDomainRegistrar(static sp => sp.GetService<ContactTools>() is { } executor
-            ? new ContactToolDomainRegistrar(executor, sp.GetRequiredService<FeishuToolBinding>())
-            : null);
-        return services;
-    }
-
-    private static IServiceCollection AddFeishuCalendarToolsCore(this IServiceCollection services)
-    {
-        services.TryAddSingleton(static sp =>
-            sp.GetService<Mud.Feishu.IFeishuTenantV4CalendarEvent>() is { } eventClient
-            && sp.GetService<Mud.Feishu.IFeishuTenantV4Calendar>() is { } calendarClient
-                ? new CalendarTools(eventClient, calendarClient, sp.GetRequiredService<IOptions<FeishuAgentOptions>>())
-                : null!);
-        services.AddToolDomainRegistrar(static sp => sp.GetService<CalendarTools>() is { } executor
-            ? new CalendarToolDomainRegistrar(executor, sp.GetRequiredService<FeishuToolBinding>())
-            : null);
-        return services;
-    }
-
-    private static IServiceCollection AddFeishuTaskToolsCore(this IServiceCollection services)
-    {
-        // tenant 客户端缺席 → 整域不注册；user 客户端缺席 → TaskTools 可构造（list_my_tasks 工具级报错）。
-        services.TryAddSingleton(static sp =>
-            sp.GetService<Mud.Feishu.IFeishuTenantV2Task>() is { } taskClient
-                ? new TaskTools(
-                    taskClient,
-                    sp.GetService<Mud.Feishu.IFeishuUserV2Task>(),
-                    sp.GetRequiredService<IOptions<FeishuAgentOptions>>())
-                : null!);
-        services.AddToolDomainRegistrar(static sp => sp.GetService<TaskTools>() is { } executor
-            ? new TaskToolDomainRegistrar(executor, sp.GetRequiredService<FeishuToolBinding>())
-            : null);
-        return services;
-    }
-
-    private static IServiceCollection AddFeishuAttachmentToolsCore(this IServiceCollection services)
-    {
-        // 软缺席（WP7）：消息客户端或宿主落盘器缺席 → 注册器不构造 → 两个上传工具不进注册表。
-        services.AddToolDomainRegistrar(static sp =>
-            sp.GetService<Mud.Feishu.IFeishuTenantV1Message>() is { } message
-            && sp.GetService<IFeishuAttachmentStager>() is { } stager
-                ? new AttachmentToolDomainRegistrar(
-                    new AttachmentTools(message, stager),
-                    sp.GetRequiredService<FeishuToolBinding>())
-                : null);
-        return services;
-    }
-
-    private static IServiceCollection AddFeishuKnowledgeToolsCore(this IServiceCollection services)
-    {
-        // IRetriever 未注册（如未调 AddFeishuAilyKnowledge）→ 工具不进注册表（白名单期报错）。
-        services.TryAddSingleton(static sp => sp.GetService<IRetriever>() is { } retriever
-            ? new KnowledgeSearchTools(retriever, sp.GetRequiredService<IOptions<FeishuAgentOptions>>())
-            : null!);
-        services.AddToolDomainRegistrar(static sp => sp.GetService<KnowledgeSearchTools>() is { } executor
-            ? new KnowledgeToolDomainRegistrar(executor, sp.GetRequiredService<FeishuToolBinding>())
-            : null);
-        return services;
-    }
-
-    private static IServiceCollection AddFeishuWriteToolsCore(this IServiceCollection services)
-    {
-        // 写执行器（Phase 2）：对应域客户端缺席时解析为 null（写工具不进注册表，白名单期 fail-fast）。
-        services.TryAddSingleton(static sp => sp.GetService<Mud.Feishu.IFeishuTenantV1Message>() is { } message
-            ? new MessageWriteTools(message)
-            : null!);
-        services.TryAddSingleton(static sp => sp.GetService<Mud.Feishu.IFeishuTenantV1BitableRecord>() is { } record
-            ? new BitableWriteTools(record)
-            : null!);
-        services.TryAddSingleton(static sp => sp.GetService<Mud.Feishu.IFeishuTenantV4Approval>() is { } approval
-            ? new ApprovalWriteTools(approval)
-            : null!);
-        services.AddToolDomainRegistrar(static sp => new WriteToolDomainRegistrar(
-            sp.GetService<MessageWriteTools>(),
-            sp.GetService<BitableWriteTools>(),
-            sp.GetService<ApprovalWriteTools>(),
-            sp.GetRequiredService<FeishuToolBinding>()));
-        return services;
-    }
-
-    private static IServiceCollection AddToolDomainRegistrar<T>(this IServiceCollection services, Func<IServiceProvider, T?> factory)
-        where T : class, IFeishuToolDomainRegistrar
-        => services.AddSingleton<IFeishuToolDomainRegistrar>(sp => factory(sp)!);
+        => AddFeishuToolInfrastructure(services, configure).AddFeishuCapabilityLookupToolsCore();
 
     private static FeishuToolRegistry BuildRegistry(IServiceProvider sp, Action<FeishuToolRegistry>? configure)
     {

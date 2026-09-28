@@ -5,7 +5,7 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-using Mud.Feishu.AI.FeishuTools.Internal;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Mud.Feishu.AI.FeishuTools.Registration;
 
@@ -14,7 +14,11 @@ namespace Mud.Feishu.AI.FeishuTools.Registration;
 /// <see cref="FeishuToolRegistry"/>。<b>客户端缺席 → 执行器缺席 → 注册器不注册</b>：域缺失表现为
 /// 「该域工具不在注册表」，白名单映射期 fail-fast 报「未注册」——错误面从启动崩溃收敛为白名单期明确报错。
 /// </summary>
-/// <remarks>均为 FeishuTools 包 internal 实现（依赖方向不变）；<c>AddFeishuTools</c> 扫描全部注册器。</remarks>
+/// <remarks>
+/// 本契约与 <see cref="FeishuToolRegistration"/> 保持手写（稳定契约、单文件、生成无收益）；
+/// <b>实现类</b>（<c>{Executor}ToolDomainRegistrar</c>）由 <c>ToolRegistrarEmitter</c> 编译期产出
+/// （见 <c>FeishuToolDomainRegistrars.g.cs</c>）——手写实现已全部删除，未发布无需过渡期。
+/// </remarks>
 internal interface IFeishuToolDomainRegistrar
 {
     /// <summary>把该域工具注册进注册表（执行器缺席时不注册任何工具）。</summary>
@@ -22,7 +26,9 @@ internal interface IFeishuToolDomainRegistrar
     void Register(FeishuToolRegistry registry);
 }
 
-/// <summary>注册表登记助手：从编译期类型化契约构造定义并注册（各域注册器共用）。</summary>
+/// <summary>
+/// 注册表登记助手：从编译期类型化契约构造定义并注册（各域注册器共用）。
+/// </summary>
 /// <remarks>
 /// <para>
 /// <b>WP2（R-B 根因）</b>：契约消费点改为 <see cref="FeishuToolContracts"/>（生成器发射的类型化
@@ -84,197 +90,30 @@ internal static class FeishuToolRegistration
             Def(registry, toolName), args, ctx, token => executorCall(args, token), ct));
 }
 
-/// <summary>Bitable 域注册器（构造注入 <see cref="BitableTools"/> 执行器）。</summary>
-internal sealed class BitableToolDomainRegistrar(BitableTools executor, FeishuToolBinding binding) : IFeishuToolDomainRegistrar
-{
-    public void Register(FeishuToolRegistry registry)
-    {
-        FeishuToolRegistration.RegisterExecution(registry, FeishuToolNames.BitableListTables, binding,
-            (args, ct) => executor.ListTablesAsync(args, ct));
-        FeishuToolRegistration.RegisterExecution(registry, FeishuToolNames.BitableListFields, binding,
-            (args, ct) => executor.ListFieldsAsync(args, ct));
-        FeishuToolRegistration.RegisterExecution(registry, FeishuToolNames.BitableQueryRecords, binding,
-            (args, ct) => executor.QueryRecordsAsync(args, ct));
-        FeishuToolRegistration.RegisterExecution(registry, FeishuToolNames.BitableGetRecordsByIds, binding,
-            (args, ct) => executor.GetRecordsByIdsAsync(args, ct));
-    }
-}
-
-/// <summary>Docx 域注册器。</summary>
-internal sealed class DocxToolDomainRegistrar(DocxTools executor, FeishuToolBinding binding) : IFeishuToolDomainRegistrar
-{
-    public void Register(FeishuToolRegistry registry)
-    {
-        FeishuToolRegistration.RegisterExecution(registry, FeishuToolNames.DocxGetRawContent, binding,
-            (args, ct) => executor.GetRawContentAsync(args, ct));
-        FeishuToolRegistration.RegisterExecution(registry, FeishuToolNames.DocxGetDocumentBlocks, binding,
-            (args, ct) => executor.GetDocumentBlocksAsync(args, ct));
-    }
-}
-
-/// <summary>Wiki 域注册器。</summary>
-internal sealed class WikiToolDomainRegistrar(WikiTools executor, FeishuToolBinding binding) : IFeishuToolDomainRegistrar
-{
-    public void Register(FeishuToolRegistry registry)
-    {
-        FeishuToolRegistration.RegisterExecution(registry, FeishuToolNames.WikiGetNode, binding,
-            (args, ct) => executor.GetNodeAsync(args, ct));
-        FeishuToolRegistration.RegisterExecution(registry, FeishuToolNames.WikiListNodes, binding,
-            (args, ct) => executor.ListNodesAsync(args, ct));
-    }
-}
-
-/// <summary>Search 域注册器。</summary>
-internal sealed class SearchToolDomainRegistrar(SearchTools executor, FeishuToolBinding binding) : IFeishuToolDomainRegistrar
-{
-    public void Register(FeishuToolRegistry registry)
-        => FeishuToolRegistration.RegisterExecution(registry, FeishuToolNames.SearchDocWiki, binding,
-            (args, ct) => executor.SearchAsync(args, ct));
-}
-
-/// <summary>IM 域注册器（只读两工具；写工具见 <see cref="WriteToolDomainRegistrar"/>）。</summary>
-internal sealed class ImToolDomainRegistrar(ImTools executor, FeishuToolBinding binding) : IFeishuToolDomainRegistrar
-{
-    public void Register(FeishuToolRegistry registry)
-    {
-        FeishuToolRegistration.RegisterExecution(registry, FeishuToolNames.ImGetHistoryMessages, binding,
-            (args, ct) => executor.GetHistoryAsync(args, ct));
-        FeishuToolRegistration.RegisterExecution(registry, FeishuToolNames.ImGetMessageContent, binding,
-            (args, ct) => executor.GetContentAsync(args, ct));
-    }
-}
-
-/// <summary>Sheets 域注册器。</summary>
-internal sealed class SheetsToolDomainRegistrar(SheetsTools executor, FeishuToolBinding binding) : IFeishuToolDomainRegistrar
-{
-    public void Register(FeishuToolRegistry registry)
-    {
-        FeishuToolRegistration.RegisterExecution(registry, FeishuToolNames.SheetsListSheets, binding,
-            (args, ct) => executor.ListSheetsAsync(args, ct));
-        FeishuToolRegistration.RegisterExecution(registry, FeishuToolNames.SheetsGetRangeValues, binding,
-            (args, ct) => executor.GetRangeValuesAsync(args, ct));
-    }
-}
-
-/// <summary>Drive 域注册器（AI-FD-D12 P1D-1b 批次 A 新域）。</summary>
-internal sealed class DriveToolDomainRegistrar(DriveTools executor, FeishuToolBinding binding) : IFeishuToolDomainRegistrar
-{
-    public void Register(FeishuToolRegistry registry)
-    {
-        FeishuToolRegistration.RegisterExecution(registry, FeishuToolNames.DriveListFolderFiles, binding,
-            (args, ct) => executor.ListFolderFilesAsync(args, ct));
-        FeishuToolRegistration.RegisterExecution(registry, FeishuToolNames.DriveGetFileMetas, binding,
-            (args, ct) => executor.GetFileMetasAsync(args, ct));
-    }
-}
-
-/// <summary>Knowledge 域注册器（AI-FD-D12 P2D-4b；绑定 IRetriever 门面，Aily 客户端缺席→不注册）。</summary>
-internal sealed class KnowledgeToolDomainRegistrar(KnowledgeSearchTools executor, FeishuToolBinding binding) : IFeishuToolDomainRegistrar
-{
-    public void Register(FeishuToolRegistry registry)
-        => FeishuToolRegistration.RegisterExecution(registry, FeishuToolNames.KnowledgeSearch, binding,
-            (args, ct) => executor.SearchAsync(args, ct));
-}
-
-/// <summary>通讯录域注册器（P0：把"姓名/邮箱/关键字 → ID"接上，否则写类工具凑不出入参）。</summary>
-internal sealed class ContactToolDomainRegistrar(ContactTools executor, FeishuToolBinding binding) : IFeishuToolDomainRegistrar
-{
-    public void Register(FeishuToolRegistry registry)
-    {
-        FeishuToolRegistration.RegisterExecution(registry, FeishuToolNames.ContactResolveUser, binding,
-            (args, ct) => executor.ResolveUsersAsync(args, ct));
-        FeishuToolRegistration.RegisterExecution(registry, FeishuToolNames.ContactSearchUser, binding,
-            (args, ct) => executor.SearchUsersAsync(args, ct));
-        FeishuToolRegistration.RegisterExecution(registry, FeishuToolNames.ContactGetUser, binding,
-            (args, ct) => executor.GetUserAsync(args, ct));
-        FeishuToolRegistration.RegisterExecution(registry, FeishuToolNames.ContactBatchGet, binding,
-            (args, ct) => executor.BatchGetUsersAsync(args, ct));
-    }
-}
-
 /// <summary>
-/// 能力出处域注册器（AT-F12）：<c>feishu.capability_lookup</c>。
+/// 域注册器登记的稳定 seam（手写装配与<b>生成产物</b>共用）。
 /// </summary>
 /// <remarks>
-/// <b>无软缺席</b>：该工具的数据源是编译期常量（能力目录 + 工具名契约表），不依赖任何飞书客户端，
-/// 故只要装配了工具包它就是<b>已注册</b>的——只是仍然默认<b>不启用</b>（与其他工具一致，
-/// 需 <c>FeishuAgent:Tools</c> 白名单显式启用，见 §10.3 回滚说明）。
+/// <para>
+/// <b>为什么必须是独立类型而不是 <c>FeishuToolsServiceCollectionExtensions</c> 的 private 扩展</b>：
+/// 生成的 DI 核心方法是<b>另一个类型</b>（<c>FeishuToolsServiceCollectionCoreExtensions</c>），
+/// 跨类不可见 private 成员（R1 §4.5 的 <c>CS0122</c> 根因）。把它提为 <c>internal static</c>
+/// 是"生成产物只依赖稳定 seam"的最小代价实现。
+/// </para>
+/// <para>
+/// <b>null 语义</b>：<paramref name="factory"/> 返回 <see langword="null"/> 表示该域执行器缺席
+/// （软缺席），此时仍登记一个返回 <see langword="null"/> 的描述符——<c>BuildRegistry</c> 显式跳过
+/// null（既有行为，未变更）。
+/// </para>
 /// </remarks>
-internal sealed class CapabilityLookupToolDomainRegistrar(CapabilityLookupTools executor, FeishuToolBinding binding) : IFeishuToolDomainRegistrar
+internal static class FeishuToolDomainRegistrars
 {
-    public void Register(FeishuToolRegistry registry)
-        => FeishuToolRegistration.RegisterExecution(registry, FeishuToolNames.FeishuCapabilityLookup, binding,
-            (args, ct) => executor.LookupAsync(args, ct));
-}
-
-/// <summary>写域注册器（Phase 2 三个写工具；对应域客户端缺席时跳过——宿主未接该域则工具不暴露）。</summary>
-internal sealed class WriteToolDomainRegistrar(MessageWriteTools? messageWrite, BitableWriteTools? bitableWrite, ApprovalWriteTools? approvalWrite, FeishuToolBinding binding) : IFeishuToolDomainRegistrar
-{
-    public void Register(FeishuToolRegistry registry)
-    {
-        if (messageWrite is not null)
-        {
-            FeishuToolRegistration.RegisterExecution(registry, FeishuToolNames.ImSendMessage, binding,
-                (args, ct) => messageWrite.SendMessageAsync(args, ct));
-        }
-
-        if (bitableWrite is not null)
-        {
-            FeishuToolRegistration.RegisterExecution(registry, FeishuToolNames.BitableAddRecord, binding,
-                (args, ct) => bitableWrite.AddRecordAsync(args, ct));
-        }
-
-        if (approvalWrite is not null)
-        {
-            FeishuToolRegistration.RegisterExecution(registry, FeishuToolNames.ApprovalCreateInstance, binding,
-                (args, ct) => approvalWrite.CreateInstanceAsync(args, ct));
-        }
-    }
-}
-
-/// <summary>日历域注册器（WP5 / AT-F04：create_event 写 + find_free_slots/list_events 只读）。</summary>
-internal sealed class CalendarToolDomainRegistrar(CalendarTools executor, FeishuToolBinding binding) : IFeishuToolDomainRegistrar
-{
-    public void Register(FeishuToolRegistry registry)
-    {
-        FeishuToolRegistration.RegisterExecution(registry, FeishuToolNames.CalendarCreateEvent, binding,
-            (args, ct) => executor.CreateEventAsync(args, ct));
-        FeishuToolRegistration.RegisterExecution(registry, FeishuToolNames.CalendarFindFreeSlots, binding,
-            (args, ct) => executor.FindFreeSlotsAsync(args, ct));
-        FeishuToolRegistration.RegisterExecution(registry, FeishuToolNames.CalendarListEvents, binding,
-            (args, ct) => executor.ListEventsAsync(args, ct));
-    }
-}
-
-/// <summary>
-/// 任务域注册器（WP5 / AT-F17：create_task 写 + list_my_tasks <b>user 身份</b>——工具面首个非 tenant 工具）。
-/// </summary>
-/// <remarks>tenant 客户端缺席 → 整域不注册；user 客户端缺席 → create_task 仍注册（list_my_tasks 缺席），软缺席粒度到工具。</remarks>
-internal sealed class TaskToolDomainRegistrar(TaskTools executor, FeishuToolBinding binding) : IFeishuToolDomainRegistrar
-{
-    public void Register(FeishuToolRegistry registry)
-    {
-        FeishuToolRegistration.RegisterExecution(registry, FeishuToolNames.TaskCreateTask, binding,
-            (args, ct) => executor.CreateTaskAsync(args, ct));
-        FeishuToolRegistration.RegisterExecution(registry, FeishuToolNames.TaskListMyTasks, binding,
-            (args, ct) => executor.ListMyTasksAsync(args, ct));
-    }
-}
-
-/// <summary>
-/// 附件上传域注册器（WP7：<c>im.send_image</c> / <c>im.send_file</c>，三步链路 落盘→上传→发送）。
-/// </summary>
-/// <remarks>
-/// <b>软缺席</b>：<c>IFeishuAttachmentStager</c>（宿主落盘器）未注册时，注册器<b>根本不构造</b>——
-/// 两个工具不进注册表，与"域客户端缺席 → 该域工具不进注册表"完全同一语义（不是新机制）。
-/// </remarks>
-internal sealed class AttachmentToolDomainRegistrar(AttachmentTools executor, FeishuToolBinding binding) : IFeishuToolDomainRegistrar
-{
-    public void Register(FeishuToolRegistry registry)
-    {
-        FeishuToolRegistration.RegisterExecution(registry, FeishuToolNames.ImSendImage, binding,
-            (args, ct) => executor.SendImageAsync(args, ct));
-        FeishuToolRegistration.RegisterExecution(registry, FeishuToolNames.ImSendFile, binding,
-            (args, ct) => executor.SendFileAsync(args, ct));
-    }
+    /// <summary>登记一个域注册器工厂。</summary>
+    /// <typeparam name="T">域注册器实现类型。</typeparam>
+    /// <param name="services">服务集合。</param>
+    /// <param name="factory">注册器工厂（执行器缺席时返回 <see langword="null"/>）。</param>
+    /// <returns>服务集合。</returns>
+    public static IServiceCollection Add<T>(IServiceCollection services, Func<IServiceProvider, T?> factory)
+        where T : class, IFeishuToolDomainRegistrar
+        => services.AddSingleton<IFeishuToolDomainRegistrar>(sp => factory(sp)!);
 }

@@ -31,32 +31,30 @@ internal sealed class MessageWriteTools(Mud.Feishu.IFeishuTenantV1Message messag
         var executor = new ToolExecutor(FeishuToolNames.ImSendMessage);
         return executor.RunAsync(async () =>
         {
-            var receiveId = ToolArgs.RequireString(arguments, "receive_id");
-            var text = ToolArgs.RequireString(arguments, "text");
-            var receiveIdType = ToolArgs.OptionalString(arguments, "receive_id_type") ?? "chat_id";
+            var args = ImSendMessageArgs.Unpack(arguments);
+            var receiveIdType = args.ReceiveIdType ?? "chat_id";
             if (!EditMessageChannel.AllowedReceiveIdTypes.Contains(receiveIdType, StringComparer.Ordinal))
             {
                 throw new ArgumentException(
                     $"receive_id_type 仅支持 {string.Join("/", EditMessageChannel.AllowedReceiveIdTypes)}，实际: {receiveIdType}");
             }
 
-            var idempotencyKey = ToolArgs.OptionalString(arguments, "idempotency_key");
-            if (ToolDryRun.IsRequested(arguments))
+            if (ToolDryRun.IsRequested(args.DryRun))
             {
                 return FeishuToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "POST", "/open-apis/im/v1/messages",
-                    ToolDryRun.IdempotencyNote(idempotencyKey),
-                    ("receive_id", receiveId.Length), ("text", text.Length), ("receive_id_type", receiveIdType.Length)));
+                    ToolDryRun.IdempotencyNote(args.IdempotencyKey),
+                    ("receive_id", args.ReceiveId.Length), ("text", args.Text.Length), ("receive_id_type", receiveIdType.Length)));
             }
 
             var outcome = FeishuApiResultReader.Read(await _messageClient
                 .SendMessageAsync(
                     new SendMessageRequest
                     {
-                        ReceiveId = receiveId,
+                        ReceiveId = args.ReceiveId,
                         MsgType = "text",
-                        Content = new JsonObject { ["text"] = text }.ToJsonString(),
-                        Uuid = idempotencyKey,
+                        Content = new JsonObject { ["text"] = args.Text }.ToJsonString(),
+                        Uuid = args.IdempotencyKey,
                     },
                     receiveIdType,
                     cancellationToken)
@@ -86,26 +84,23 @@ internal sealed class BitableWriteTools(Mud.Feishu.IFeishuTenantV1BitableRecord 
         var executor = new ToolExecutor(FeishuToolNames.BitableAddRecord);
         return executor.RunAsync(async () =>
         {
-            var appToken = ToolArgs.RequireString(arguments, "app_token");
-            var tableId = ToolArgs.RequireString(arguments, "table_id");
-            var fieldsJson = ToolArgs.RequireString(arguments, "fields");
+            var args = BitableAddRecordArgs.Unpack(arguments);
 
             // 参数合法性校验先于 dry_run 判定：预演的价值在于"能提前发现的问题都提前发现"，
             // 若预演放过了非法 fields，模型会误以为参数没问题而在真实下发时才失败。
-            var fields = ParseFieldsObject(fieldsJson);
+            var fields = ParseFieldsObject(args.Fields);
 
-            var idempotencyKey = ToolArgs.OptionalString(arguments, "idempotency_key");
-            if (ToolDryRun.IsRequested(arguments))
+            if (ToolDryRun.IsRequested(args.DryRun))
             {
                 return FeishuToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "POST",
                     "/open-apis/bitable/v1/apps/{app_token}/tables/{table_id}/records",
-                    ToolDryRun.IdempotencyNote(idempotencyKey),
-                    ("app_token", appToken.Length), ("table_id", tableId.Length), ("fields", fieldsJson.Length)));
+                    ToolDryRun.IdempotencyNote(args.IdempotencyKey),
+                    ("app_token", args.AppToken.Length), ("table_id", args.TableId.Length), ("fields", args.Fields.Length)));
             }
 
             var outcome = FeishuApiResultReader.Read(await _recordClient
-                .AddRecordAsync(appToken, tableId, new RecordOpsRequest { Fields = fields }, client_token: idempotencyKey, cancellationToken: cancellationToken)
+                .AddRecordAsync(args.AppToken, args.TableId, new RecordOpsRequest { Fields = fields }, client_token: args.IdempotencyKey, cancellationToken: cancellationToken)
                 .ConfigureAwait(false));
             return executor.FromApiUntruncated(outcome, data => new JsonObject
             {
@@ -157,31 +152,28 @@ internal sealed class ApprovalWriteTools(Mud.Feishu.IFeishuTenantV4Approval appr
         var executor = new ToolExecutor(FeishuToolNames.ApprovalCreateInstance);
         return executor.RunAsync(async () =>
         {
-            var approvalCode = ToolArgs.RequireString(arguments, "approval_code");
-            var form = ToolArgs.RequireString(arguments, "form");
-            var userId = ToolArgs.OptionalString(arguments, "user_id");
+            var args = ApprovalCreateInstanceArgs.Unpack(arguments);
 
             // AT-F13③：form 是裸 JSON 字符串参数，此前**无任何形状校验**——非 JSON / 非数组
             // 会被原样下发，飞书侧返回一个语焉不详的 code，模型只能盲试。此处与 fields 同级校验。
-            ValidateFormArray(form);
+            ValidateFormArray(args.Form);
 
-            var idempotencyKey = ToolArgs.OptionalString(arguments, "idempotency_key");
-            if (ToolDryRun.IsRequested(arguments))
+            if (ToolDryRun.IsRequested(args.DryRun))
             {
                 return FeishuToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "POST", "/open-apis/approval/v4/instances",
-                    ToolDryRun.IdempotencyNote(idempotencyKey),
-                    ("approval_code", approvalCode.Length), ("form", form.Length), ("user_id", userId?.Length ?? 0)));
+                    ToolDryRun.IdempotencyNote(args.IdempotencyKey),
+                    ("approval_code", args.ApprovalCode.Length), ("form", args.Form.Length), ("user_id", args.UserId?.Length ?? 0)));
             }
 
             var outcome = FeishuApiResultReader.Read(await _approvalClient
                 .CreateInstanceAsync(
                     new CreateInstanceRequest
                     {
-                        ApprovalCode = approvalCode,
-                        Form = form,
-                        UserId = userId,
-                        Uuid = idempotencyKey,
+                        ApprovalCode = args.ApprovalCode,
+                        Form = args.Form,
+                        UserId = args.UserId,
+                        Uuid = args.IdempotencyKey,
                     },
                     cancellationToken)
                 .ConfigureAwait(false));

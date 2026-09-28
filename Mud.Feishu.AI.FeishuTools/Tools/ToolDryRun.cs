@@ -79,7 +79,6 @@ internal static class ToolDryRun
             : "幂等键：omitted（本次调用不保证幂等）";
 
     /// <summary>读取 <c>dry_run</c> 参数（缺省 false；语义：仅预演、不下发）。</summary>
-    /// <param name="arguments">模型入参。</param>
-    public static bool IsRequested(IReadOnlyDictionary<string, object?> arguments)
-        => ToolArgs.OptionalBool(arguments, "dry_run") ?? false;
+    /// <param name="dryRun">已解包的 <c>dry_run</c> 参数值（缺省 <see langword="null"/>）。</param>
+    public static bool IsRequested(bool? dryRun) => dryRun ?? false;
 }

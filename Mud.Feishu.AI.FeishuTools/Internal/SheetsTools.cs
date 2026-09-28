@@ -31,10 +31,10 @@ internal sealed class SheetsTools(
         var executor = new ToolExecutor(FeishuToolNames.SheetsListSheets, _maxResultLength);
         return executor.RunAsync(async () =>
         {
-            var spreadsheetToken = ToolArgs.RequireString(arguments, "spreadsheet_token");
+            var args = SheetsListSheetsArgs.Unpack(arguments);
 
             var outcome = FeishuApiResultReader.Read(await _spreadsheetsClient
-                .GetSpreadsheetSheetsByTokenAsync(spreadsheetToken, cancellationToken)
+                .GetSpreadsheetSheetsByTokenAsync(args.SpreadsheetToken, cancellationToken)
                 .ConfigureAwait(false));
             return executor.FromApi(outcome, ProjectSheets);
         });
@@ -46,15 +46,13 @@ internal sealed class SheetsTools(
         var executor = new ToolExecutor(FeishuToolNames.SheetsGetRangeValues, _maxResultLength);
         return executor.RunAsync(async () =>
         {
-            var spreadsheetToken = ToolArgs.RequireString(arguments, "spreadsheet_token");
-            var range = ToolArgs.RequireString(arguments, "range");
-            var valueRenderOption = ToolArgs.OptionalString(arguments, "value_render_option");
+            var args = SheetsGetRangeValuesArgs.Unpack(arguments);
 
             var outcome = FeishuApiResultReader.Read(await _spreadsheetDataClient
                 .GetRangeDataAsync(
-                    spreadsheetToken,
-                    range,
-                    valueRenderOption,
+                    args.SpreadsheetToken,
+                    args.Range,
+                    args.ValueRenderOption,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false));
             return executor.FromApi(outcome, ProjectRangeValues);

@@ -35,9 +35,9 @@ internal sealed class KnowledgeSearchTools(IRetriever retriever, IOptions<Feishu
         var executor = new ToolExecutor(FeishuToolNames.KnowledgeSearch, _maxResultLength);
         return executor.RunAsync(async () =>
         {
-            var query = ToolArgs.RequireString(arguments, "query");
+            var args = KnowledgeSearchArgs.Unpack(arguments);
 
-            var chunks = await _retriever.RetrieveAsync(query, cancellationToken).ConfigureAwait(false);
+            var chunks = await _retriever.RetrieveAsync(args.Query, cancellationToken).ConfigureAwait(false);
             if (chunks.Count == 0)
             {
                 return FeishuToolResult.FromText($"{executor.ToolName}: 知识库未检索到与问题相关的内容（has_answer=false）——请基于既有上下文作答");

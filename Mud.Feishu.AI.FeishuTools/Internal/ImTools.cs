@@ -30,20 +30,20 @@ internal sealed class ImTools(Mud.Feishu.IFeishuTenantV1Message messageClient, I
         var executor = new ToolExecutor(FeishuToolNames.ImGetHistoryMessages, _maxResultLength);
         return executor.RunAsync(async () =>
         {
-            var chatId = ToolArgs.RequireString(arguments, "chat_id");
-            var startTime = ToUnixSeconds(ToolArgs.OptionalString(arguments, "start_time"), "start_time");
-            var endTime = ToUnixSeconds(ToolArgs.OptionalString(arguments, "end_time"), "end_time");
-            var pageToken = ToolArgs.OptionalString(arguments, "page_token");
+            var args = ImGetHistoryMessagesArgs.Unpack(arguments);
+
+            var startTime = ToUnixSeconds(args.StartTime, "start_time");
+            var endTime = ToUnixSeconds(args.EndTime, "end_time");
 
             var outcome = FeishuApiResultReader.Read(await _messageClient
                 .GetHistoryMessageAsync(
                     ContainerIdTypeChat,
-                    chatId,
+                    args.ChatId,
                     startTime,
                     endTime,
                     SortTypeByCreateTimeDesc,
                     PageSizes.History,
-                    pageToken,
+                    args.PageToken,
                     cancellationToken)
                 .ConfigureAwait(false));
             return executor.FromApi(outcome, ProjectHistory);
@@ -56,10 +56,10 @@ internal sealed class ImTools(Mud.Feishu.IFeishuTenantV1Message messageClient, I
         var executor = new ToolExecutor(FeishuToolNames.ImGetMessageContent, _maxResultLength);
         return executor.RunAsync(async () =>
         {
-            var messageId = ToolArgs.RequireString(arguments, "message_id");
+            var args = ImGetMessageContentArgs.Unpack(arguments);
 
             var outcome = FeishuApiResultReader.Read(await _messageClient
-                .GetContentListByMessageIdAsync(messageId, cancellationToken: cancellationToken)
+                .GetContentListByMessageIdAsync(args.MessageId, cancellationToken: cancellationToken)
                 .ConfigureAwait(false));
             return executor.FromApi(outcome, ProjectContent);
         });

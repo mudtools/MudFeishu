@@ -42,38 +42,34 @@ internal sealed class TaskTools(
         var executor = new ToolExecutor(FeishuToolNames.TaskCreateTask, _maxResultLength);
         return executor.RunAsync(async () =>
         {
-            var summary = ToolArgs.RequireString(arguments, "summary");
-            var description = ToolArgs.OptionalString(arguments, "description");
-            var due = ToolArgs.OptionalString(arguments, "due");
-            var assigneeIds = ToolArgs.OptionalStringArray(arguments, "assignee_ids");
+            var args = TaskCreateTaskArgs.Unpack(arguments);
 
-            var dueMs = due is null ? null : ToUnixMilliseconds(due);
-            var idempotencyKey = ToolArgs.OptionalString(arguments, "idempotency_key");
+            var dueMs = args.Due is null ? null : ToUnixMilliseconds(args.Due);
 
-            if (ToolDryRun.IsRequested(arguments))
+            if (ToolDryRun.IsRequested(args.DryRun))
             {
                 return FeishuToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "POST", "/open-apis/task/v2/tasks",
-                    ToolDryRun.IdempotencyNote(idempotencyKey),
-                    ("summary", summary.Length),
-                    ("due", due?.Length ?? 0),
-                    ("assignee_ids", assigneeIds?.Length ?? 0)));
+                    ToolDryRun.IdempotencyNote(args.IdempotencyKey),
+                    ("summary", args.Summary.Length),
+                    ("due", args.Due?.Length ?? 0),
+                    ("assignee_ids", args.AssigneeIds?.Length ?? 0)));
             }
 
             var request = new CreateTaskRequest
             {
-                Summary = summary,
-                Description = description,
-                ClientToken = idempotencyKey,
+                Summary = args.Summary,
+                Description = args.Description,
+                ClientToken = args.IdempotencyKey,
             };
             if (dueMs is not null)
             {
                 request.Due = new TaskTime { Timestamp = dueMs };
             }
 
-            if (assigneeIds is { Length: > 0 })
+            if (args.AssigneeIds is { Length: > 0 })
             {
-                request.Members = assigneeIds
+                request.Members = args.AssigneeIds
                     .Select(static id => new TaskMemberInfo { Id = id, Type = "open_id", Role = "assignee" })
                     .ToArray();
             }
@@ -101,14 +97,13 @@ internal sealed class TaskTools(
                     "task.list_my_tasks 需要用户令牌客户端 IFeishuUserV2Task——宿主须启用 AddTaskApi 的用户侧客户端并提供当前用户身份");
             }
 
-            var pageToken = ToolArgs.OptionalString(arguments, "page_token");
-            var completed = ToolArgs.OptionalBool(arguments, "completed");
+            var args = TaskListMyTasksArgs.Unpack(arguments);
 
             var outcome = FeishuApiResultReader.Read(await _userTaskClient
                 .GetTasksPageListByIdAsync(
                     page_size: PageSizes.TaskList,
-                    page_token: pageToken,
-                    completed: completed,
+                    page_token: args.PageToken,
+                    completed: args.Completed,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false));
             return executor.FromApi(outcome, ProjectMyTasks);

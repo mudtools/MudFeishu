@@ -16,8 +16,8 @@ namespace Mud.Feishu.AI.Tools;
 /// <para>
 /// 零容忍集：<see cref="MUDFT001"/>/<see cref="MUDFT002"/>/<see cref="MUDFT003"/>/
 /// <see cref="MUDFT004"/>/<see cref="MUDFT008"/>/<see cref="MUDFT010"/>/<see cref="MUDFT014"/>/
-/// <see cref="MUDFT015"/>/<see cref="MUDFT016"/>/<see cref="MUDFT017"/>/<see cref="MUDFT019"/>
-/// （见 <see cref="ZeroToleranceIds"/>）。
+/// <see cref="MUDFT015"/>/<see cref="MUDFT016"/>/<see cref="MUDFT017"/>/<see cref="MUDFT019"/>/
+/// <see cref="MUDFT020"/>（见 <see cref="ZeroToleranceIds"/>）。
 /// </para>
 /// <para>
 /// <b>AT-B14 清理记录（R3 评审 C-2）</b>：本表原先还声明了
@@ -164,6 +164,36 @@ internal static class Diagnostics
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
 
+    // ────────── 参数解包器映射（ToolArgsEmitter 产物） ──────────
+
+    /// <summary>参数 C# 类型不在 <c>ToolArgs</c> 解包映射表内。</summary>
+    /// <remarks>
+    /// <b>扩展触发点</b>：新增参数类型时，先在 <c>ToolArgs</c> 补 helper、再在
+    /// <c>ToolArgsEmitter.TryResolveReader</c> 登记映射，否则构建失败——比运行期
+    /// <c>null</c> 静默穿透更早（生成产物会因缺少读取表达式而根本无法编译）。
+    /// </remarks>
+    public static readonly DiagnosticDescriptor MUDFT020 = new(
+        id: "MUDFT020",
+        title: "参数类型无解包映射",
+        messageFormat: "工具 '{0}' 的参数 {1}（C# 类型 {2}）不在 ToolArgs 解包映射表内——须先在 ToolArgs 补 helper 并在 ToolArgsEmitter 登记映射",
+        category: "MudFeishu.AI",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    /// <summary>必填参数被声明为可空（<c>required</c> 与解包语义不一致）。</summary>
+    /// <remarks>
+    /// Schema 会把它放进 <c>required</c>（模型必须给值），而 <c>Unpack</c> 读的是必填读取器——
+    /// 该组合只在「<c>[ToolParameter(Required = true)]</c> 标在可空参数上」时出现，属声明自相矛盾：
+    /// 要么去掉 <c>Required</c>（真可选），要么把参数类型改为非空（真必填）。
+    /// </remarks>
+    public static readonly DiagnosticDescriptor MUDFT021 = new(
+        id: "MUDFT021",
+        title: "必填参数被声明为可空",
+        messageFormat: "工具 '{0}' 的参数 {1} 同时为 Required=true 与可空——Schema 的 required 与解包语义不一致（二选一：去掉 Required 或改为非空类型）",
+        category: "MudFeishu.AI",
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true);
+
     // ────────── 源挂钩与覆盖报告 ──────────
 
     /// <summary>[FeishuTool] 声明的 <c>Source</c>（SDK 能力来源）无法解析。</summary>
@@ -198,7 +228,7 @@ internal static class Diagnostics
     [
         "MUDFT001", "MUDFT002", "MUDFT003", "MUDFT004",
         "MUDFT008", "MUDFT010", "MUDFT014", "MUDFT015",
-        "MUDFT016", "MUDFT017", "MUDFT019"
+        "MUDFT016", "MUDFT017", "MUDFT019", "MUDFT020"
     ];
 
     // ────────── 集中上报 ──────────

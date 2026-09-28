@@ -102,6 +102,47 @@ internal static class ToolArgs
         };
     }
 
+    /// <summary>读取必填字符串数组参数（缺失或为 <b>空数组</b> → <see cref="ArgumentException"/>，与 <see cref="RequireString"/> 同构）。</summary>
+    /// <remarks>空数组视同缺失：飞书侧所有批量接口对空列表都无有意义语义（返回空结果或报错），
+    /// 在本地拦下比让平台返回语焉不详的 code 更可读。</remarks>
+    /// <exception cref="ArgumentException">缺失或为空。</exception>
+    public static string[] RequireStringArray(IReadOnlyDictionary<string, object?> arguments, string name)
+        => OptionalStringArray(arguments, name) ?? throw new ArgumentException($"缺少必填参数 {name}");
+
+    /// <summary>读取可选整数参数（兼容 JSON <c>Number</c> / 数字字符串 / 已装箱 <see cref="int"/>）。</summary>
+    /// <remarks>
+    /// <b>与 <see cref="OptionalString"/>/<see cref="OptionalBool"/> 的差异（有意）</b>：参数缺失返回
+    /// <see langword="null"/>，但参数<b>存在</b>却无法解析为整数时<b>抛异常</b>——整数参数的「0」与
+    /// 「未提供」是两种语义（如 <c>docx.get_raw_content</c> 的 <c>lang</c>），静默降级会把模型的
+    /// 传参错误变成一次看似成功的默认行为。
+    /// </remarks>
+    /// <exception cref="ArgumentException">参数存在但无法解析为整数。</exception>
+    public static int? OptionalInt(IReadOnlyDictionary<string, object?> arguments, string name)
+    {
+        if (!arguments.TryGetValue(name, out var value) || value is null)
+        {
+            return null;
+        }
+
+        switch (value)
+        {
+            case int number:
+                return number;
+            case long number when number >= int.MinValue && number <= int.MaxValue:
+                return (int)number;
+            case System.Text.Json.JsonElement { ValueKind: System.Text.Json.JsonValueKind.Number } element
+                when element.TryGetInt32(out var parsed):
+                return parsed;
+            case System.Text.Json.JsonElement { ValueKind: System.Text.Json.JsonValueKind.String } element
+                when int.TryParse(element.GetString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed):
+                return parsed;
+            case string text when int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed):
+                return parsed;
+            default:
+                throw new ArgumentException($"参数 {name} 需为整数，实际: {value}");
+        }
+    }
+
     /// <summary>读取可选字符串数组参数。</summary>
     public static string[]? OptionalStringArray(IReadOnlyDictionary<string, object?> arguments, string name)
     {

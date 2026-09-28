@@ -43,9 +43,10 @@ internal sealed class ContactTools(
         var executor = new ToolExecutor(FeishuToolNames.ContactResolveUser, _maxResultLength);
         return executor.RunAsync(async () =>
         {
-            var emails = ToolArgs.OptionalStringArray(arguments, "emails");
-            var mobiles = ToolArgs.OptionalStringArray(arguments, "mobiles");
-            var includeResigned = ToolArgs.OptionalBool(arguments, "include_resigned") ?? false;
+            var args = ContactResolveUserArgs.Unpack(arguments);
+            var emails = args.Emails;
+            var mobiles = args.Mobiles;
+            var includeResigned = args.IncludeResigned ?? false;
 
             if (emails is null && mobiles is null)
             {
@@ -86,11 +87,10 @@ internal sealed class ContactTools(
         var executor = new ToolExecutor(FeishuToolNames.ContactSearchUser, _maxResultLength);
         return executor.RunAsync(async () =>
         {
-            var query = ToolArgs.RequireString(arguments, "query");
-            var pageToken = ToolArgs.OptionalString(arguments, "page_token");
+            var args = ContactSearchUserArgs.Unpack(arguments);
 
             var outcome = FeishuApiResultReader.Read(await _userClient
-                .GetUsersByKeywordAsync(query, PageSizes.ContactSearch, pageToken, cancellationToken)
+                .GetUsersByKeywordAsync(args.Query, PageSizes.ContactSearch, args.PageToken, cancellationToken)
                 .ConfigureAwait(false));
             return executor.FromApi(outcome, ProjectSearchUsers);
         });
@@ -102,11 +102,11 @@ internal sealed class ContactTools(
         var executor = new ToolExecutor(FeishuToolNames.ContactGetUser, _maxResultLength);
         return executor.RunAsync(async () =>
         {
-            var userId = ToolArgs.RequireString(arguments, "user_id");
-            var userIdType = ToolArgs.OptionalString(arguments, "user_id_type") ?? DefaultUserIdType;
+            var args = ContactGetUserArgs.Unpack(arguments);
+            var userIdType = args.UserIdType ?? DefaultUserIdType;
 
             var outcome = FeishuApiResultReader.Read(await _userClient
-                .GetUserInfoByIdAsync(userId, user_id_type: userIdType, cancellationToken: cancellationToken)
+                .GetUserInfoByIdAsync(args.UserId, user_id_type: userIdType, cancellationToken: cancellationToken)
                 .ConfigureAwait(false));
             return executor.FromApi(outcome, data => new JsonObject { ["user"] = ProjectUser(data) });
         });
@@ -118,18 +118,17 @@ internal sealed class ContactTools(
         var executor = new ToolExecutor(FeishuToolNames.ContactBatchGet, _maxResultLength);
         return executor.RunAsync(async () =>
         {
-            var userIds = ToolArgs.OptionalStringArray(arguments, "user_ids")
-                ?? throw new ArgumentException("缺少必填参数 user_ids");
-            var userIdType = ToolArgs.OptionalString(arguments, "user_id_type") ?? DefaultUserIdType;
+            var args = ContactBatchGetArgs.Unpack(arguments);
+            var userIdType = args.UserIdType ?? DefaultUserIdType;
 
-            if (userIds.Length > PageSizes.ContactResolve)
+            if (args.UserIds.Length > PageSizes.ContactResolve)
             {
                 throw new ArgumentException(
-                    $"user_ids 最多 {PageSizes.ContactResolve.ToString(CultureInfo.InvariantCulture)} 个，实际 {userIds.Length.ToString(CultureInfo.InvariantCulture)} 个");
+                    $"user_ids 最多 {PageSizes.ContactResolve.ToString(CultureInfo.InvariantCulture)} 个，实际 {args.UserIds.Length.ToString(CultureInfo.InvariantCulture)} 个");
             }
 
             var outcome = FeishuApiResultReader.Read(await _userClient
-                .GetUserByIdsAsync(userIds, user_id_type: userIdType, cancellationToken: cancellationToken)
+                .GetUserByIdsAsync(args.UserIds, user_id_type: userIdType, cancellationToken: cancellationToken)
                 .ConfigureAwait(false));
             return executor.FromApi(outcome, ProjectBatchGetUsers);
         });

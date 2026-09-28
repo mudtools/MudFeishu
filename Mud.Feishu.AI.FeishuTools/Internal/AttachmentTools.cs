@@ -53,20 +53,19 @@ internal sealed class AttachmentTools(
         var executor = new ToolExecutor(FeishuToolNames.ImSendImage);
         return executor.RunAsync(async () =>
         {
-            var receiveId = ToolArgs.RequireString(arguments, "receive_id");
-            var imageUrl = RequireHttpUrl(arguments, "image_url");
-            var receiveIdType = ResolveReceiveIdType(arguments);
-            var fileName = ToolArgs.OptionalString(arguments, "file_name");
+            var args = ImSendImageArgs.Unpack(arguments);
+            var imageUrl = RequireHttpUrl(args.ImageUrl, "image_url");
+            var receiveIdType = ResolveReceiveIdType(args.ReceiveIdType);
 
-            if (ToolDryRun.IsRequested(arguments))
+            if (ToolDryRun.IsRequested(args.DryRun))
             {
                 return FeishuToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "POST", "/open-apis/im/v1/images → /open-apis/im/v1/messages",
                     ToolDryRun.IdempotencyNote(null),
-                    ("receive_id", receiveId.Length), ("image_url", imageUrl.Length)));
+                    ("receive_id", args.ReceiveId.Length), ("image_url", imageUrl.Length)));
             }
 
-            var staged = await StageAsync(imageUrl, fileName, cancellationToken).ConfigureAwait(false);
+            var staged = await StageAsync(imageUrl, args.FileName, cancellationToken).ConfigureAwait(false);
             try
             {
                 var upload = FeishuApiResultReader.Read(await _messageClient
@@ -80,7 +79,7 @@ internal sealed class AttachmentTools(
                 }
 
                 return await SendWithKeyAsync(
-                    executor, receiveId, receiveIdType, "image", "image_key", upload.Data!.ImageKey, cancellationToken)
+                    executor, args.ReceiveId, receiveIdType, "image", "image_key", upload.Data!.ImageKey, cancellationToken)
                     .ConfigureAwait(false);
             }
             finally
@@ -105,20 +104,19 @@ internal sealed class AttachmentTools(
         var executor = new ToolExecutor(FeishuToolNames.ImSendFile);
         return executor.RunAsync(async () =>
         {
-            var receiveId = ToolArgs.RequireString(arguments, "receive_id");
-            var fileUrl = RequireHttpUrl(arguments, "file_url");
-            var fileName = ToolArgs.RequireString(arguments, "file_name");
-            var receiveIdType = ResolveReceiveIdType(arguments);
+            var args = ImSendFileArgs.Unpack(arguments);
+            var fileUrl = RequireHttpUrl(args.FileUrl, "file_url");
+            var receiveIdType = ResolveReceiveIdType(args.ReceiveIdType);
 
-            if (ToolDryRun.IsRequested(arguments))
+            if (ToolDryRun.IsRequested(args.DryRun))
             {
                 return FeishuToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "POST", "/open-apis/im/v1/files → /open-apis/im/v1/messages",
                     ToolDryRun.IdempotencyNote(null),
-                    ("receive_id", receiveId.Length), ("file_url", fileUrl.Length), ("file_name", fileName.Length)));
+                    ("receive_id", args.ReceiveId.Length), ("file_url", fileUrl.Length), ("file_name", args.FileName.Length)));
             }
 
-            var staged = await StageAsync(fileUrl, fileName, cancellationToken).ConfigureAwait(false);
+            var staged = await StageAsync(fileUrl, args.FileName, cancellationToken).ConfigureAwait(false);
             try
             {
                 var upload = FeishuApiResultReader.Read(await _messageClient
@@ -126,7 +124,7 @@ internal sealed class AttachmentTools(
                         new UploadMessageFileRequest
                         {
                             FileType = StreamFileType,
-                            FileName = fileName,
+                            FileName = args.FileName,
                             FilePath = staged.LocalPath,
                         },
                         cancellationToken)
@@ -137,7 +135,7 @@ internal sealed class AttachmentTools(
                 }
 
                 return await SendWithKeyAsync(
-                    executor, receiveId, receiveIdType, "file", "file_key", upload.Data!.FileKey, cancellationToken)
+                    executor, args.ReceiveId, receiveIdType, "file", "file_key", upload.Data!.FileKey, cancellationToken)
                     .ConfigureAwait(false);
             }
             finally
@@ -201,10 +199,10 @@ internal sealed class AttachmentTools(
             $"附件来源不被宿主允许（宿主安全域拒绝）：{url}——请检查宿主的域名白名单/大小上限/MIME 校验策略");
     }
 
-    /// <summary>读取并校验 URL 参数（<b>只接受 http/https 绝对地址</b>；拒绝本地路径）。</summary>
-    private static string RequireHttpUrl(IReadOnlyDictionary<string, object?> arguments, string parameterName)
+    /// <summary>校验 URL 参数（<b>只接受 http/https 绝对地址</b>；拒绝本地路径）。</summary>
+    /// <remarks>取值由生成的 <c>Args.Unpack</c> 承担（必填校验同源），此处只保留协议白名单——它是业务规则而非解包。</remarks>
+    private static string RequireHttpUrl(string value, string parameterName)
     {
-        var value = ToolArgs.RequireString(arguments, parameterName);
         if (!Uri.TryCreate(value, UriKind.Absolute, out var uri)
             || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
         {
@@ -216,9 +214,9 @@ internal sealed class AttachmentTools(
     }
 
     /// <summary>接收方 ID 类型（缺省 <c>chat_id</c>；闭集校验与发送文本消息共用同一常量）。</summary>
-    private static string ResolveReceiveIdType(IReadOnlyDictionary<string, object?> arguments)
+    private static string ResolveReceiveIdType(string? receiveIdTypeRaw)
     {
-        var receiveIdType = ToolArgs.OptionalString(arguments, "receive_id_type") ?? "chat_id";
+        var receiveIdType = receiveIdTypeRaw ?? "chat_id";
         if (!EditMessageChannel.AllowedReceiveIdTypes.Contains(receiveIdType, StringComparer.Ordinal))
         {
             throw new ArgumentException(

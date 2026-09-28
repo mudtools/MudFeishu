@@ -35,11 +35,10 @@ internal sealed class DriveTools(
         var executor = new ToolExecutor(FeishuToolNames.DriveListFolderFiles, _maxResultLength);
         return executor.RunAsync(async () =>
         {
-            var folderToken = ToolArgs.OptionalString(arguments, "folder_token");
-            var pageToken = ToolArgs.OptionalString(arguments, "page_token");
+            var args = DriveListFolderFilesArgs.Unpack(arguments);
 
             var outcome = FeishuApiResultReader.Read(await _folderClient
-                .GetFilesPageListAsync(folderToken, page_size: PageSizes.DriveFiles, page_token: pageToken, cancellationToken: cancellationToken)
+                .GetFilesPageListAsync(args.FolderToken, page_size: PageSizes.DriveFiles, page_token: args.PageToken, cancellationToken: cancellationToken)
                 .ConfigureAwait(false));
             return executor.FromApi(outcome, ProjectFolderFiles);
         });
@@ -51,13 +50,9 @@ internal sealed class DriveTools(
         var executor = new ToolExecutor(FeishuToolNames.DriveGetFileMetas, _maxResultLength);
         return executor.RunAsync(async () =>
         {
-            var tokens = ToolArgs.OptionalStringArray(arguments, "tokens");
-            var types = ToolArgs.OptionalStringArray(arguments, "types");
-
-            if (tokens is null || tokens.Length == 0)
-            {
-                throw new ArgumentException("缺少必填参数 tokens");
-            }
+            var args = DriveGetFileMetasArgs.Unpack(arguments);
+            var tokens = args.Tokens;
+            var types = args.Types;
 
             if (tokens.Length > PageSizes.DriveMetas)
             {

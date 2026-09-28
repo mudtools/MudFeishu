@@ -12,8 +12,7 @@ namespace Mud.Feishu.AI.FeishuTools.Tests.ContractGuards;
 
 /// <summary>
 /// 工具名契约表守卫（Phase 1 §7 + Phase 2 §3.3）：Schema 注册表恰为契约名全集
-/// （**21 个只读 + 3 个写类 = 24**；R3 新增 <c>contact.search_user</c> 与
-/// <c>feishu.capability_lookup</c>），防增删/改名漂移；读写白名单分离语义锁定。
+/// （当前为 **24 个只读 + 7 个写类 = 31**），防增删/改名漂移；读写白名单分离语义锁定。
 /// </summary>
 /// <remarks>
 /// 数量口径以 <c>FeishuToolNames.All</c>（生成器派生）为准——本类中的任何数字只是说明，

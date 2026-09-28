@@ -35,11 +35,10 @@ internal sealed class BitableTools(
         var executor = new ToolExecutor(FeishuToolNames.BitableListTables, _maxResultLength);
         return executor.RunAsync(async () =>
         {
-            var appToken = ToolArgs.RequireString(arguments, "app_token");
-            var pageToken = ToolArgs.OptionalString(arguments, "page_token");
+            var args = BitableListTablesArgs.Unpack(arguments);
 
             var outcome = FeishuApiResultReader.Read(await _appTableClient
-                .GetAppTablePageListAsync(appToken, PageSizes.BitableTables, pageToken, cancellationToken)
+                .GetAppTablePageListAsync(args.AppToken, PageSizes.BitableTables, args.PageToken, cancellationToken)
                 .ConfigureAwait(false));
             return executor.FromApi(outcome, ProjectTables);
         });
@@ -52,13 +51,10 @@ internal sealed class BitableTools(
         var executor = new ToolExecutor(FeishuToolNames.BitableListFields, _maxResultLength);
         return executor.RunAsync(async () =>
         {
-            var appToken = ToolArgs.RequireString(arguments, "app_token");
-            var tableId = ToolArgs.RequireString(arguments, "table_id");
-            var viewId = ToolArgs.OptionalString(arguments, "view_id");
-            var pageToken = ToolArgs.OptionalString(arguments, "page_token");
+            var args = BitableListFieldsArgs.Unpack(arguments);
 
             var outcome = FeishuApiResultReader.Read(await _fieldClient
-                .GetFieldsPageListAsync(appToken, tableId, viewId, text_field_as_array: null, PageSizes.BitableFields, pageToken, cancellationToken)
+                .GetFieldsPageListAsync(args.AppToken, args.TableId, args.ViewId, text_field_as_array: null, PageSizes.BitableFields, args.PageToken, cancellationToken)
                 .ConfigureAwait(false));
             return executor.FromApi(outcome, ProjectFields);
         });
@@ -70,38 +66,32 @@ internal sealed class BitableTools(
         var executor = new ToolExecutor(FeishuToolNames.BitableQueryRecords, _maxResultLength);
         return executor.RunAsync(async () =>
         {
-            var appToken = ToolArgs.RequireString(arguments, "app_token");
-            var tableId = ToolArgs.RequireString(arguments, "table_id");
-            var viewId = ToolArgs.OptionalString(arguments, "view_id");
-            var fieldNames = ToolArgs.OptionalStringArray(arguments, "field_names");
-            var filter = ToolArgs.OptionalString(arguments, "filter");
-            var sort = ToolArgs.OptionalStringArray(arguments, "sort");
-            var pageToken = ToolArgs.OptionalString(arguments, "page_token");
+            var args = BitableQueryRecordsArgs.Unpack(arguments);
 
             // filter 简化文法（§3.3.3）：解析失败回填「filter 语法不支持」结构化错误。
-            if (!BitableFilterParser.TryParse(filter, out var parsedFilter, out var filterError))
+            if (!BitableFilterParser.TryParse(args.Filter, out var parsedFilter, out var filterError))
             {
                 return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(executor.ToolName, filterError!));
             }
 
             // sort 简化文法（P1D-1b 批次 A）：字段:asc|desc，≤3 个。
-            if (!BitableSortParser.TryParse(sort, out var parsedSort, out var sortError))
+            if (!BitableSortParser.TryParse(args.Sort, out var parsedSort, out var sortError))
             {
                 return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(executor.ToolName, sortError!));
             }
 
             var request = new QueryRecordsRequest
             {
-                ViewId = viewId,
-                FieldNames = fieldNames,
+                ViewId = args.ViewId,
+                FieldNames = args.FieldNames,
                 Filter = parsedFilter,
                 Sorts = parsedSort,
             };
 
             var outcome = FeishuApiResultReader.Read(await _recordClient
-                .QueryRecordsPageListAsync(appToken, tableId, request, PageSizes.BitableRecords, pageToken, cancellationToken: cancellationToken)
+                .QueryRecordsPageListAsync(args.AppToken, args.TableId, request, PageSizes.BitableRecords, args.PageToken, cancellationToken: cancellationToken)
                 .ConfigureAwait(false));
-            return executor.FromApi(outcome, data => ProjectRecords(data, fieldNames));
+            return executor.FromApi(outcome, data => ProjectRecords(data, args.FieldNames));
         });
     }
 
@@ -111,23 +101,16 @@ internal sealed class BitableTools(
         var executor = new ToolExecutor(FeishuToolNames.BitableGetRecordsByIds, _maxResultLength);
         return executor.RunAsync(async () =>
         {
-            var appToken = ToolArgs.RequireString(arguments, "app_token");
-            var tableId = ToolArgs.RequireString(arguments, "table_id");
-            var recordIds = ToolArgs.OptionalStringArray(arguments, "record_ids");
+            var args = BitableGetRecordsByIdsArgs.Unpack(arguments);
 
-            if (recordIds is null || recordIds.Length == 0)
-            {
-                throw new ArgumentException("缺少必填参数 record_ids");
-            }
-
-            if (recordIds.Length > PageSizes.BitableRecordsByIds)
+            if (args.RecordIds.Length > PageSizes.BitableRecordsByIds)
             {
                 throw new ArgumentException(
-                    $"record_ids 最多 {PageSizes.BitableRecordsByIds.ToString(CultureInfo.InvariantCulture)} 条，实际 {recordIds.Length.ToString(CultureInfo.InvariantCulture)} 条");
+                    $"record_ids 最多 {PageSizes.BitableRecordsByIds.ToString(CultureInfo.InvariantCulture)} 条，实际 {args.RecordIds.Length.ToString(CultureInfo.InvariantCulture)} 条");
             }
 
             var outcome = FeishuApiResultReader.Read(await _recordClient
-                .GetRecordsAsync(appToken, tableId, new GetRecordsRequest { RecordIds = recordIds }, cancellationToken)
+                .GetRecordsAsync(args.AppToken, args.TableId, new GetRecordsRequest { RecordIds = args.RecordIds }, cancellationToken)
                 .ConfigureAwait(false));
             return executor.FromApi(outcome, ProjectRecordsByIds);
         });

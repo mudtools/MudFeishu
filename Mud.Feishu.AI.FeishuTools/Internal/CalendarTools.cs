@@ -44,41 +44,36 @@ internal sealed class CalendarTools(
         var executor = new ToolExecutor(FeishuToolNames.CalendarCreateEvent, _maxResultLength);
         return executor.RunAsync(async () =>
         {
-            var calendarId = ToolArgs.RequireString(arguments, "calendar_id");
-            var summary = ToolArgs.RequireString(arguments, "summary");
-            var start = ToolArgs.RequireString(arguments, "start");
-            var end = ToolArgs.RequireString(arguments, "end");
-            var description = ToolArgs.OptionalString(arguments, "description");
-            var timezone = ToolArgs.OptionalString(arguments, "timezone") ?? DefaultTimezone;
+            var args = CalendarCreateEventArgs.Unpack(arguments);
+            var timezone = args.Timezone ?? DefaultTimezone;
 
             // RFC3339 严格校验（带时区），并要求 end 晚于 start——两者都在下发前拦截。
-            var startUtc = ParseRfc3339(start, "start");
-            var endUtc = ParseRfc3339(end, "end");
+            var startUtc = ParseRfc3339(args.Start, "start");
+            var endUtc = ParseRfc3339(args.End, "end");
             if (endUtc <= startUtc)
             {
                 throw new ArgumentException("end 须晚于 start");
             }
 
-            var idempotencyKey = ToolArgs.OptionalString(arguments, "idempotency_key");
-            if (ToolDryRun.IsRequested(arguments))
+            if (ToolDryRun.IsRequested(args.DryRun))
             {
                 return FeishuToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "POST", "/open-apis/calendar/v4/calendars/{calendar_id}/events",
-                    ToolDryRun.IdempotencyNote(idempotencyKey),
-                    ("calendar_id", calendarId.Length), ("summary", summary.Length),
-                    ("start", start.Length), ("end", end.Length)));
+                    ToolDryRun.IdempotencyNote(args.IdempotencyKey),
+                    ("calendar_id", args.CalendarId.Length), ("summary", args.Summary.Length),
+                    ("start", args.Start.Length), ("end", args.End.Length)));
             }
 
             var request = new CreateCalendarEventRequest
             {
-                Summary = summary,
-                Description = description,
-                StartTime = new CalendarTimeInfo { DateTime = start, Timezone = timezone },
-                EndTime = new CalendarTimeInfo { DateTime = end, Timezone = timezone },
+                Summary = args.Summary,
+                Description = args.Description,
+                StartTime = new CalendarTimeInfo { DateTime = args.Start, Timezone = timezone },
+                EndTime = new CalendarTimeInfo { DateTime = args.End, Timezone = timezone },
             };
 
             var outcome = FeishuApiResultReader.Read(await _calendarEventClient
-                .CreateCalendarEventAsync(calendarId, request, idempotency_key: idempotencyKey, cancellationToken: cancellationToken)
+                .CreateCalendarEventAsync(args.CalendarId, request, idempotency_key: args.IdempotencyKey, cancellationToken: cancellationToken)
                 .ConfigureAwait(false));
             return executor.FromApiUntruncated(outcome, data => new JsonObject
             {
@@ -93,15 +88,11 @@ internal sealed class CalendarTools(
         var executor = new ToolExecutor(FeishuToolNames.CalendarFindFreeSlots, _maxResultLength);
         return executor.RunAsync(async () =>
         {
-            var timeMin = ToolArgs.RequireString(arguments, "time_min");
-            var timeMax = ToolArgs.RequireString(arguments, "time_max");
-            var userId = ToolArgs.OptionalString(arguments, "user_id");
-            var roomId = ToolArgs.OptionalString(arguments, "room_id");
-            var onlyBusy = ToolArgs.OptionalBool(arguments, "only_busy");
+            var args = CalendarFindFreeSlotsArgs.Unpack(arguments);
 
-            ParseRfc3339(timeMin, "time_min");
-            ParseRfc3339(timeMax, "time_max");
-            if ((userId is null) == (roomId is null))
+            ParseRfc3339(args.TimeMin, "time_min");
+            ParseRfc3339(args.TimeMax, "time_max");
+            if ((args.UserId is null) == (args.RoomId is null))
             {
                 throw new ArgumentException("user_id 与 room_id 须二选一提供（freebusy 接口不接受用户列表，多人请逐人调用）");
             }
@@ -110,11 +101,11 @@ internal sealed class CalendarTools(
                 .GetFreebusyCalendarAsync(
                     new GetFreebusyCalendarRequest
                     {
-                        TimeMin = timeMin,
-                        TimeMax = timeMax,
-                        UserId = userId,
-                        RoomId = roomId,
-                        OnlyBusy = onlyBusy,
+                        TimeMin = args.TimeMin,
+                        TimeMax = args.TimeMax,
+                        UserId = args.UserId,
+                        RoomId = args.RoomId,
+                        OnlyBusy = args.OnlyBusy,
                     },
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false));
@@ -128,11 +119,10 @@ internal sealed class CalendarTools(
         var executor = new ToolExecutor(FeishuToolNames.CalendarListEvents, _maxResultLength);
         return executor.RunAsync(async () =>
         {
-            var calendarId = ToolArgs.RequireString(arguments, "calendar_id");
-            var pageToken = ToolArgs.OptionalString(arguments, "page_token");
+            var args = CalendarListEventsArgs.Unpack(arguments);
 
             var outcome = FeishuApiResultReader.Read(await _calendarEventClient
-                .GetCalendarEventPageListAsync(calendarId, page_size: PageSizes.CalendarEvents, page_token: pageToken, cancellationToken: cancellationToken)
+                .GetCalendarEventPageListAsync(args.CalendarId, page_size: PageSizes.CalendarEvents, page_token: args.PageToken, cancellationToken: cancellationToken)
                 .ConfigureAwait(false));
             return executor.FromApi(outcome, ProjectEvents);
         });

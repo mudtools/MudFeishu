@@ -45,14 +45,14 @@ internal sealed class CapabilityLookupTools(IOptions<FeishuAgentOptions> options
         var executor = new ToolExecutor(FeishuToolNames.FeishuCapabilityLookup, _maxResultLength);
         return executor.RunAsync(() =>
         {
-            var keyword = ToolArgs.RequireString(arguments, "keyword");
+            var args = FeishuCapabilityLookupArgs.Unpack(arguments);
 
             var curatedByModule = BuildCuratedToolIndex();
             var matched = new JsonArray();
             var matchedModules = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (var pair in FeishuCapabilityCatalog.MethodsByDomain)
             {
-                if (pair.Key.IndexOf(keyword, StringComparison.OrdinalIgnoreCase) < 0)
+                if (pair.Key.IndexOf(args.Keyword, StringComparison.OrdinalIgnoreCase) < 0)
                 {
                     continue;
                 }

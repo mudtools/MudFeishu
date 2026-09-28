@@ -35,6 +35,8 @@ namespace Mud.Feishu.AI.Tools;
 /// source 的类型化出口，消费方零运行期解析；只发射进 FeishuTools 程序集）；</item>
 /// <item><c>FeishuToolGuidance.g.cs</c> —— 域级 guidance 资产（WP6：<c>Guidance/{domain}.md</c>
 /// → 编译期字典，装配期按"已启用工具所属域"注入指令；只发射进 FeishuTools 程序集）；</item>
+/// <item><c>FeishuToolArgs.g.cs</c> —— 参数解包器（每工具一个 <c>{Tool}Args</c> 类型 + <c>Unpack</c>，
+/// 取代执行器首部的逐参 <c>ToolArgs.*</c> 读取；只发射进 FeishuTools 程序集）；</item>
 /// <item><c>FeishuCapabilityCatalog.g.cs</c> —— Tier R 能力目录聚合（<c>build_property.FeishuToolCatalog=true</c> 时）。</item>
 /// </list>
 /// <para>
@@ -79,6 +81,14 @@ public sealed class FeishuToolSchemaGenerator : IIncrementalGenerator
         context.RegisterSourceOutput(
             models.Combine(assemblyName).Combine(golden),
             static (spc, input) => EmitToolSurface(spc, input.Left.Left, input.Left.Right, input.Right));
+
+        // ── L2：参数解包器（FeishuToolArgs.g.cs）──
+        // 与 Schema/契约表同一 pass、同一模型集合（零新增扫描）；发射门槛为**名字契约所有者程序集**——
+        // 产物消费 FeishuTools 的 internal ToolArgs，其他声明样例 [FeishuTool] 接口的工程（AI.Tests）
+        // 若一并发射会因 ToolArgs 不可见而 CS0103。
+        context.RegisterSourceOutput(
+            models.Combine(assemblyName),
+            static (spc, input) => ToolArgsEmitter.Emit(spc, input.Left, input.Right));
 
         // ── WP6：域级 guidance 资产（Guidance/{domain}.md → FeishuToolGuidance.g.cs）──
         // 与工具面同一 pass、同一发射门槛：素材是 AdditionalFiles（与 golden 同机制），

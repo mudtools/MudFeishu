@@ -27,36 +27,34 @@ internal sealed class SearchTools(Mud.Feishu.IFeishuTenantV2SearchDocWiki search
         var executor = new ToolExecutor(FeishuToolNames.SearchDocWiki, _maxResultLength);
         return executor.RunAsync(async () =>
         {
-            var query = ToolArgs.RequireString(arguments, "query");
-            if (query.Length > 30)
+            var args = SearchDocWikiArgs.Unpack(arguments);
+
+            if (args.Query.Length > 30)
             {
-                return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(executor.ToolName, "query 上限 30 字符，实际 " + query.Length.ToString(CultureInfo.InvariantCulture) + " 字符"));
+                return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(executor.ToolName, "query 上限 30 字符，实际 " + args.Query.Length.ToString(CultureInfo.InvariantCulture) + " 字符"));
             }
 
-            var searchIn = (ToolArgs.OptionalString(arguments, "search_in") ?? "both").ToLowerInvariant();
-            var folderTokens = ToolArgs.OptionalStringArray(arguments, "folder_tokens");
-            var spaceIds = ToolArgs.OptionalStringArray(arguments, "space_ids");
-            var pageToken = ToolArgs.OptionalString(arguments, "page_token");
+            var searchIn = (args.SearchIn ?? "both").ToLowerInvariant();
 
             var request = new SearchDocWikiRequest
             {
-                Query = query,
-                PageToken = pageToken,
+                Query = args.Query,
+                PageToken = args.PageToken,
                 PageSize = PageSizes.Search,
             };
 
             switch (searchIn)
             {
                 case "doc":
-                    request.DocFilter = new DocFilterParam { FolderTokens = folderTokens };
+                    request.DocFilter = new DocFilterParam { FolderTokens = args.FolderTokens };
                     break;
                 case "wiki":
-                    request.WikiFilter = new WikiFilterParam { SpaceIds = spaceIds };
+                    request.WikiFilter = new WikiFilterParam { SpaceIds = args.SpaceIds };
                     break;
                 case "both":
                     // 两者都下发（空过滤对象），folder_tokens/space_ids 分别入对应 filter。
-                    request.DocFilter = new DocFilterParam { FolderTokens = folderTokens };
-                    request.WikiFilter = new WikiFilterParam { SpaceIds = spaceIds };
+                    request.DocFilter = new DocFilterParam { FolderTokens = args.FolderTokens };
+                    request.WikiFilter = new WikiFilterParam { SpaceIds = args.SpaceIds };
                     break;
                 default:
                     return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(executor.ToolName, $"search_in 仅支持 doc/wiki/both，实际: {searchIn}"));

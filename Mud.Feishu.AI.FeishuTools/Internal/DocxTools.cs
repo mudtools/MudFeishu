@@ -28,13 +28,12 @@ internal sealed class DocxTools(Mud.Feishu.IFeishuTenantV1Docx docxClient, IOpti
         var executor = new ToolExecutor(FeishuToolNames.DocxGetRawContent, _maxResultLength);
         return executor.RunAsync(async () =>
         {
-            var documentId = ToolArgs.RequireString(arguments, "document_id");
-            var lang = ToolArgs.OptionalString(arguments, "lang");
+            var args = DocxGetRawContentArgs.Unpack(arguments);
 
             var outcome = FeishuApiResultReader.Read(await _docxClient
                 .GetDocumentRawContentAsync(
-                    documentId,
-                    ParseLang(lang),
+                    args.DocumentId,
+                    args.Lang ?? 0, // 默认中文（§3.3.3：lang 默认 0）。
                     cancellationToken)
                 .ConfigureAwait(false));
             return executor.FromPlainText(outcome, static data => data.Content);
@@ -47,11 +46,10 @@ internal sealed class DocxTools(Mud.Feishu.IFeishuTenantV1Docx docxClient, IOpti
         var executor = new ToolExecutor(FeishuToolNames.DocxGetDocumentBlocks, _maxResultLength);
         return executor.RunAsync(async () =>
         {
-            var documentId = ToolArgs.RequireString(arguments, "document_id");
-            var pageToken = ToolArgs.OptionalString(arguments, "page_token");
+            var args = DocxGetDocumentBlocksArgs.Unpack(arguments);
 
             var outcome = FeishuApiResultReader.Read(await _docxClient
-                .GetDocumentBlocksPageListAsync(documentId, page_size: PageSizes.DocxBlocks, page_token: pageToken, cancellationToken: cancellationToken)
+                .GetDocumentBlocksPageListAsync(args.DocumentId, page_size: PageSizes.DocxBlocks, page_token: args.PageToken, cancellationToken: cancellationToken)
                 .ConfigureAwait(false));
             return executor.FromApi(outcome, ProjectBlocks);
         });
@@ -111,19 +109,4 @@ internal sealed class DocxTools(Mud.Feishu.IFeishuTenantV1Docx docxClient, IOpti
 
     private static BlockText? FirstNonNull(params BlockText?[] candidates)
         => candidates.FirstOrDefault(static c => c is not null);
-
-    private static int? ParseLang(string? lang)
-    {
-        if (string.IsNullOrWhiteSpace(lang))
-        {
-            return 0; // 默认中文（§3.3.3：lang 默认 0）。
-        }
-
-        if (!int.TryParse(lang, NumberStyles.Integer, CultureInfo.InvariantCulture, out var value))
-        {
-            throw new ArgumentException($"lang 需为整数（0=中文），实际: {lang}");
-        }
-
-        return value;
-    }
 }

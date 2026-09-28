@@ -229,6 +229,56 @@ public class GeneratorNegativeCaseTests
         run.ShouldReport("MUDFT019", "Source 无法解析（工具面与 SDK 脱钩）必须被上报");
     }
 
+    [Fact]
+    public void MUDFT020_UnmappedParameterType_ShouldBeReported()
+    {
+        // 参数解包产物只发射进工具面实现包（owner 门槛），故须以该程序集名驱动——
+        // 见 GeneratorDriverHost.RunAsOwnerAssembly 的说明。
+        var run = GeneratorDriverHost.RunAsOwnerAssembly(SyntheticSources.Attributes, ToolSource("""
+            [FeishuTool("fake.unmapped_arg", Description = "参数类型不在 ToolArgs 映射表内。")]
+            public interface IUnmappedArgTypeTool
+            {
+                Task<string> QueryAsync([ToolParameter("start_year", "年份（可选）")] long? start_year = null);
+            }
+            """));
+
+        run.ShouldReport("MUDFT020", "参数 C# 类型不在 ToolArgs 解包映射表内必须被上报（否则生成产物无法编译）");
+    }
+
+    [Fact]
+    public void MUDFT021_RequiredNullableParameter_ShouldBeWarned()
+    {
+        var run = GeneratorDriverHost.RunAsOwnerAssembly(SyntheticSources.Attributes, ToolSource("""
+            [FeishuTool("fake.required_nullable", Description = "必填参数被声明为可空。")]
+            public interface IRequiredNullableTool
+            {
+                Task<string> QueryAsync([ToolParameter("thing_id", "假数据 ID", Required = true)] string? thing_id);
+            }
+            """));
+
+        run.ShouldReport("MUDFT021", "Required=true 与可空并存（Schema required 与解包语义不一致）必须被警告");
+    }
+
+    [Fact]
+    public void OwnerGatedArgs_ShouldNotBeEmittedInNonOwnerAssembly()
+    {
+        // 对照：非实现包（默认宿主程序集名）下参数解包产物不发射——否则声明样例 [FeishuTool] 接口的
+        // 测试工程会因 FeishuTools 的 internal ToolArgs 不可见而 CS0103。
+        var run = GeneratorDriverHost.Run(SyntheticSources.Attributes, ToolSource("""
+            [FeishuTool("fake.owner_gate", Description = "owner 门槛对照。")]
+            public interface IOwnerGateTool
+            {
+                Task<string> QueryAsync([ToolParameter("thing_id", "假数据 ID", Required = true)] string thing_id);
+            }
+            """));
+
+        run.GeneratedSources.Should().NotContain(
+            source => source.Contains("class FakeOwnerGateArgs", StringComparison.Ordinal),
+            "非实现包不得发射参数解包产物（ToolArgs 不可见 → CS0103）");
+        run.ShouldNotReport("MUDFT020", "owner 门槛下不做参数类型映射校验");
+        run.ShouldNotReport("MUDFT021", "owner 门槛下不做必填可空校验");
+    }
+
     // ────────── 元守卫 ──────────
 
     /// <summary>

@@ -32,6 +32,12 @@ namespace Mud.Feishu.AI.Tools.Tests;
 /// </remarks>
 public static class GeneratorDriverHost
 {
+    /// <summary>默认宿主程序集名（非工具面实现包 → 名字契约表 / 契约表 / 参数解包器等 owner-gated 产物不发射）。</summary>
+    public const string DefaultAssemblyName = "GeneratorDriverTests";
+
+    /// <summary>工具面实现包程序集名（owner-gated 产物的发射门槛；与生成器的 <c>ToolNamesOwnerAssembly</c> 一致）。</summary>
+    public const string OwnerAssemblyName = "Mud.Feishu.AI.FeishuTools";
+
     /// <summary>驱动生成器（无 AdditionalFiles）并返回运行结果。</summary>
     public static GeneratorRun Run(params string[] sources)
         => RunCore(additionalText: null, sources);
@@ -40,14 +46,28 @@ public static class GeneratorDriverHost
     public static GeneratorRun Run(AdditionalText? additionalText, params string[] sources)
         => RunCore(additionalText, sources);
 
-    private static GeneratorRun RunCore(AdditionalText? additionalText, string[] sources)
+    /// <summary>
+    /// 以<b>工具面实现包</b>的程序集名驱动（参数解包器与工具名/契约表同款 owner 门槛）。
+    /// </summary>
+    /// <remarks>
+    /// 参数解包产物消费 FeishuTools 的 <c>internal</c> 成员，故只在实现包内发射——与其相关的诊断
+    /// （<c>MUDFT020</c>/<c>MUDFT021</c>）必须在本门槛下才能被触发。合成源码无需真的存在
+    /// <c>ToolArgs</c>：本宿主只收集<b>生成器诊断</b>，不编译产物（见下方注释）。
+    /// </remarks>
+    public static GeneratorRun RunAsOwnerAssembly(params string[] sources)
+        => RunCore(additionalText: null, sources, OwnerAssemblyName);
+
+    private static GeneratorRun RunCore(
+        AdditionalText? additionalText,
+        string[] sources,
+        string assemblyName = DefaultAssemblyName)
     {
         var parseOptions = new CSharpParseOptions(
             languageVersion: LanguageVersion.CSharp12,
             documentationMode: DocumentationMode.Parse);
 
         var compilation = CSharpCompilation.Create(
-            "GeneratorDriverTests",
+            assemblyName,
             sources.Select(source => CSharpSyntaxTree.ParseText(source, parseOptions)),
             CreateBclReferences(),
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)

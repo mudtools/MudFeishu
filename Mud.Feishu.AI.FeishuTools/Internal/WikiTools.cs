@@ -26,11 +26,10 @@ internal sealed class WikiTools(Mud.Feishu.IFeishuTenantV2WikiNodes wikiNodesCli
         var executor = new ToolExecutor(FeishuToolNames.WikiGetNode, _maxResultLength);
         return executor.RunAsync(async () =>
         {
-            var token = ToolArgs.RequireString(arguments, "token");
-            var objType = ToolArgs.OptionalString(arguments, "obj_type") ?? "wiki";
+            var args = WikiGetNodeArgs.Unpack(arguments);
 
             var outcome = FeishuApiResultReader.Read(await _wikiNodesClient
-                .GetNodeSpaceInfoAsync(token, objType, cancellationToken)
+                .GetNodeSpaceInfoAsync(args.Token, args.ObjType ?? "wiki", cancellationToken)
                 .ConfigureAwait(false));
             return executor.FromApi(outcome, static data => new JsonObject
             {
@@ -45,12 +44,10 @@ internal sealed class WikiTools(Mud.Feishu.IFeishuTenantV2WikiNodes wikiNodesCli
         var executor = new ToolExecutor(FeishuToolNames.WikiListNodes, _maxResultLength);
         return executor.RunAsync(async () =>
         {
-            var spaceId = ToolArgs.RequireString(arguments, "space_id");
-            var parentNodeToken = ToolArgs.OptionalString(arguments, "parent_node_token");
-            var pageToken = ToolArgs.OptionalString(arguments, "page_token");
+            var args = WikiListNodesArgs.Unpack(arguments);
 
             var outcome = FeishuApiResultReader.Read(await _wikiNodesClient
-                .GetSpaceNodesPageListAsync(spaceId, parentNodeToken, PageSizes.WikiNodes, pageToken, cancellationToken)
+                .GetSpaceNodesPageListAsync(args.SpaceId, args.ParentNodeToken, PageSizes.WikiNodes, args.PageToken, cancellationToken)
                 .ConfigureAwait(false));
             return executor.FromApi(outcome, ProjectNodes);
         });

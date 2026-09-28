@@ -1,5 +1,63 @@
 # Mud.Feishu 更新日志
 
+## [3.0.0] - 2026-09-28
+
+> 3.0 是一次面向**生产可靠性与性能**的全面升级：原生 AOT 一等支持、令牌与多应用管理重构加固、Webhook 安全基线、Redis / WebSocket 稳定性专项，并统一配置结构。包含较多破坏性变更，升级前务必阅读「升级要点」；逐项明细见下方 rc2 / rc3 记录。
+
+### 🌟 核心升级
+
+- **原生 AOT 全面支持**：net8.0+ 全链路源生成 JSON 序列化与配置绑定，AOT 严格模式门禁保证 0 反射告警，附带端到端验证工程（`Demos/Mud.Feishu.AotVerification`）。配置 DTO 不再使用 `required`，校验统一由 `Validate()` 承担。
+- **令牌与多应用管理重构**：多应用配置热更新（`BaseUrl`/`TimeoutSeconds` 运行期生效、按 AppKey 增量应用）、per-app 认证客户端与端点隔离、凭据变更即清库、401 令牌恢复真正生效（级联清 store）、Memory/Redis 令牌键布局统一（`TokenKeyBuilder` 单一真相源）、OAuth 失败可重试性分类、令牌存储加密（可选）。
+- **Webhook 安全基线**：生产环境强制分布式去重、多应用必须声明 `ExpectedAppId`、拦截语义与默认处理器路由收敛、可恢复故障一律 503 触发飞书重推——杜绝跨应用串扰与事件永久丢失。
+- **WebSocket 可靠性专项**：连接生命周期与调用方取消令牌解耦、事件处理失败回 ACK `code=500` 触发服务端重投、并发闸门与重连熔断、僵尸连接消除、消息按 UTF-8 字节统一计量、背压前移到接收路径。
+- **Redis 加固**：`rediss://` 真正启用 TLS、四类键统一构造与转义（`RedisKeyBuilder`）、去重竞态 Lua 原子化、Cluster 全节点覆盖、异常可分类（`FeishuRedisFailureKind`）、SeqID 去重改容量窗口、新增运维诊断门面与指标。
+- **质量门禁**：`verify-build.ps1` 全新门禁（缓存自检、全 TFM 构建 + 诊断白名单、AOT 严格模式冒烟、TRX 测试计数断言），CI 同步接入。
+
+### ⚠️ 升级要点（破坏性变更）
+
+**配置结构**
+
+- 配置统一为嵌套分组：`FeishuWebSocketOptions` → `Reconnect.*` / `Certificate.*`；`FeishuAppConfig` / `RedisOptions` → `HttpRetry.*` / `CircuitBreaker.*` / `Connection.*`。JSON 旧扁平键仍可自动回填，**C# 代码必须改用嵌套 API**；日志开关统一为 `Logging:LogLevel:*`。
+- `nuget.config` 收紧为包来源锁定；依赖钉住 `Mud.HttpUtils` 2.0.7。
+
+**令牌与多应用**
+
+- Redis 令牌键布局变更（`feishu:token:*` → `feishu:{appKey}:token*`），旧键不再读取；`SingletonFeishuTokenStoreFactory` 废弃，改用 `IFeishuTokenStoreFactory.Create(appKey)`；`AddFeishuRedisTokenStore` 不再注册 `ITokenStore`/`IUserTokenStore` 单例。
+- 令牌失效级联清除持久层；租户 401 恢复不再回退用户级；`SetDefaultApp` 运行期切换真正生效。
+- 含特殊字符（`* ? [ ] : \`）的 AppKey 旧令牌键不再可达，受影响部署建议升级后轮换 AppSecret。
+- 注入的 `IFeishuAppContext` 变为无状态转发代理（每次取当前默认应用）；需实例快照语义请设 `FeishuAppOptions.ForwardDefaultAppContext=false`。
+- 配置热更新默认开启（`EnableConfigReload=true`）；如需「变更需重启」的旧语义请显式关闭。
+- OAuth 刷新失败按可重试性分类：`invalid_grant` 等将清除 refresh token 并要求重新授权。
+
+**Webhook**
+
+- 生产环境未注册分布式去重将启动失败（单实例可设 `FeishuWebhook:AllowInMemoryNonceDedupInProduction=true`）；多应用必须配置 `ExpectedAppId`；`Build()` 要求至少注册一个全局默认处理器。
+- `BeforeHandleAsync` 返回 `false` 由 500（可重试）改为 200（已消费）；需「拦截后重推」设 `InterceptionAckMode=Retryable`。拦截器组合默认 `Merge`（旧行为设 `InterceptorFallbackMode=AppOnly`）。
+- 解密超时由 400 改为 503（可恢复故障让飞书重投）。
+
+**WebSocket**
+
+- 终止连接请调用 `DisconnectAsync()` / `DisposeAsync()`（`ConnectAsync` 的令牌只约束建连 + 认证）；`StartReceivingAsync` 已弃用；`MessageReceived` 改为并发派发（可能乱序），需顺序保护请用 `IMessageHandler`。
+- 同步 `Dispose()` 不再停止服务；配置上界收紧并在启动期校验（重连预算、超时、消息大小等）；构造签名变更（移除 `seqIdDeduplicator` / `ProcessingTask` 等死参数）。
+- 指标 API 迁移：`FeishuMetrics.WebSocketConnectionObserver` 等静态可写属性移除，改用 `RegisterWebSocketMetricsSource(...)`。
+- 连接默认白名单 `*.feishu.cn;*.larksuite.com`，自建端点请配置 `AllowedHostSuffixes`。
+
+**DTO 重命名（修复源生成同名冲突 SYSLIB1031）**
+
+- `DepartmentsV1.DepartmentLeader` → `DepartmentLeaderV1`、`DepartmentDetail` → `DepartmentDetailV1`、`ApprovalExternal.ApprovalCreateViewers` → `ExternalCreateViewers` 等 7 组，完整列表见 3.0.0-rc2。
+
+**Redis 去重**
+
+- SeqID 去重键增加 scope 隔离维度（默认 `AppKey|MachineName`），窗口由 TTL 改为容量（`FeishuRedis:SeqIdWindowCapacity`，默认 100000）；`GetCacheCount()` 等语义收窄为窗口内真实值。
+- `RedisOptions` 非法值改为启动期校验失败；`NonceFailureMode` 仅对 Redis 连接类故障生效。
+
+### 🐛 重点修复
+
+- **事件永久丢失**：事件处理失败 ACK 恒 200、Nonce 基础设施故障伪装 403、处理器类型不匹配静默丢失、解密超时吞成 400 等已全部修复，可恢复故障统一 503 触发飞书重推。
+- **令牌正确性**：401 恢复复用被拒令牌、租户重试被注入用户令牌、Redis 过期令牌 TTL=0 永不过期、凭据变更清库在内存后端无效等。
+- **稳定性**：去重工厂自解析 `StackOverflowException`、空前缀清库误删全库、WebSocket 僵尸连接 / 死锁 / `ObjectDisposedException` 竞态、Redis 连接串日志泄漏口令等。
+- 同轮完成 200+ 项次级修复与加固，明细见下方 rc2 / rc3 记录。
+
 ## [3.0.0-rc3] - 2026-09-23
 
 > 本版聚焦 **Webhook 多地部署安全加固、令牌/多应用热更新稳定性、Redis 去重与令牌存储正确性、WebSocket 连接可靠性**。包含若干破坏性变更，升级前请务必阅读「升级须知」。

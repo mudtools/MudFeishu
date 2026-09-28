@@ -1,3 +1,8 @@
+---
+title: Aily 会话接口（租户令牌）| MudFeishu
+description: 该接口用于以租户身份管理飞书 Aily 会话，提供会话与消息的增删改查，以及运行（Run）的创建、查询、列出与取消等能力。
+---
+
 # 飞书 Aily 会话 - 租户令牌（FeishuTenantV1AilySessions）
 
 ## 接口名称

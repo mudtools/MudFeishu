@@ -1,3 +1,8 @@
+---
+title: AI 光学字符识别接口（租户令牌）| MudFeishu
+description: 该接口用于通过飞书 AI 光学字符识别（OCR）能力，识别图片中的文字并按区域划分、分段返回文本列表。支持租户管理员通过租户访问令牌对图片进行文字识别。
+---
+
 # IFeishuTenantV1AIOpticalCharRecognition - 租户AI光学字符识别API
 
 ## 功能描述

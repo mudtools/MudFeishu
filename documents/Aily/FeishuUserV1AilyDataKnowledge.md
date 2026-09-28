@@ -1,3 +1,8 @@
+---
+title: Aily 数据知识接口（用户令牌）| MudFeishu
+description: 该接口用于以用户身份管理飞书 Aily 数据知识，提供数据知识问答（SSE）、文件上传与数据知识创建、查询、删除、列表及分类列表等能力。
+---
+
 # 飞书 Aily 数据知识 - 用户令牌（FeishuUserV1AilyDataKnowledge）
 
 ## 接口名称

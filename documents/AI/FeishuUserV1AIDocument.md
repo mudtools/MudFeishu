@@ -1,3 +1,8 @@
+---
+title: AI 文档识别接口（用户令牌）| MudFeishu
+description: 该接口用于通过飞书 AI 文档识别能力，对简历、身份证、护照、营业执照等各类证件与文档（共 17 种）进行智能识别。支持用户通过用户访问令牌识别上传的文件。
+---
+
 # IFeishuUserV1AIDocument - 用户AI文档识别API
 
 ## 功能描述

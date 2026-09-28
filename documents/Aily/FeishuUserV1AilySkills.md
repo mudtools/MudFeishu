@@ -1,3 +1,8 @@
+---
+title: Aily 技能接口（用户令牌）| MudFeishu
+description: 该接口用于以用户身份调用飞书 Aily 技能，提供技能调用、技能信息获取与技能列表查询等能力。
+---
+
 # 飞书 Aily 技能 - 用户令牌（FeishuUserV1AilySkills）
 
 ## 接口名称

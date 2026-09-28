@@ -44,9 +44,28 @@ public sealed class FeishuAgentOptions
     public string Name { get; set; } = "FeishuAgent";
 
     /// <summary>
-    /// 会话历史裁剪窗（消费点：<c>MessageCountingChatReducer(targetCount)</c> 注入
-    /// <c>InMemoryChatHistoryProvider</c>，超出窗口的旧消息被折叠）。
+    /// 会话历史裁剪窗（<b>非 system 消息</b>条数上限）。
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 消费点：<c>MessageCountingChatReducer(targetCount)</c> 注入 <c>InMemoryChatHistoryProvider</c>
+    /// （<c>FeishuAgent</c> 构造期装配）。
+    /// </para>
+    /// <para>
+    /// <b>实测语义（MEAI 10.9.0，R2 探针；与旧注释「超出窗口的旧消息被折叠」不符，R2-12 校准）</b>：
+    /// <list type="bullet">
+    /// <item>每次取历史时执行，并把裁剪结果<b>写回会话状态（不可逆落库删除）</b>，不是「本次请求视图」；</item>
+    /// <item><b>只统计非 system 消息</b>，且<b>只保留第一条 system 消息</b>；</item>
+    /// <item><b>含 <c>FunctionCallContent</c>/<c>FunctionResultContent</c> 的消息被永久丢弃</b>——
+    /// 宿主若需要保留工具调用轨迹，须改用不裁剪的 <c>ChatReducer</c> 实现（Host 自定义）。</item>
+    /// </list>
+    /// 不理解本语义会误判「模型忘了刚调过的工具」。
+    /// </para>
+    /// <para>
+    /// 另：摘要器的保留窗由本值派生（<c>MaxHistoryMessages / 2</c>，见 <c>ConversationSummarizer</c>）——
+    /// 调小本值会同时收紧摘要保留窗。
+    /// </para>
+    /// </remarks>
     public int MaxHistoryMessages { get; set; } = 50;
 
     /// <summary>

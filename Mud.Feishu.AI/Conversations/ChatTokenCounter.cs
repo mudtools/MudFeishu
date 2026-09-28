@@ -22,15 +22,26 @@ internal static class ChatTokenCounter
     private const int CharsPerToken = 4;
 
 #if NET8_0_OR_GREATER
+    /// <summary>
+    /// 编码器初始化失败原因（成功为 <see langword="null"/>）。
+    /// </summary>
+    /// <remarks>
+    /// R2-4 可观测面：本类是 <c>internal static</c> 工具类，不引入 <c>ILogger</c>（R1 否决 3）；
+    /// 改由持有 logger 的 <c>FeishuAgent</c> 在构造期读取本属性告警一次，
+    /// 并由 <c>ChatTokenCounterTests</c> 断言（替代原先"静默降级不可观测"的状态）。
+    /// </remarks>
+    internal static string? InitializationFailure { get; private set; }
+
     private static readonly Lazy<Microsoft.ML.Tokenizers.Tokenizer?> Tiktoken = new(() =>
     {
         try
         {
             return Microsoft.ML.Tokenizers.TiktokenTokenizer.CreateForModel(EncoderModel);
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // 编码器初始化失败（资源缺失等）→ 静默回退估算；不让 token 窗口成为启动风险。
+            // 编码器初始化失败（词表资源缺失等）→ 保留原因回退估算；不让 token 窗口成为启动风险。
+            InitializationFailure = $"{ex.GetType().Name}: {ex.Message}";
             return null;
         }
     });

@@ -24,12 +24,28 @@ public class TokenWindowTests
     private static readonly FeishuAgent SessionFactoryAgent =
         new(new Mock<IChatClient>().Object, new FeishuAgentOptions { Instructions = "x" });
 
+    /// <summary>
+    /// 估算路径的「4 字符/token」比（<see cref="ChatTokenCounter.Estimate"/>）。
+    /// </summary>
+    /// <remarks>
+    /// R2-4 修正：本用例原先用 <see cref="ChatTokenCounter.Count"/> 断言估算语义——精确计数恒不可用时
+    /// 恰好等价，R2-4 补齐词表包后 <c>Count</c> 走 Tiktoken 真实词表，两者不再相等。
+    /// 估算比是<b>估算路径</b>的契约，必须直接单测 <c>Estimate</c>（net8+ 精确路径下 <c>Count</c> 走不到该分支）。
+    /// </remarks>
     [Theory]
     [InlineData("", 0)]
     [InlineData("abcd", 1)]
     [InlineData("abcdefgh", 2)]
-    public void Count_ShouldEstimateByCharsPerToken(string text, int expected)
-        => ChatTokenCounter.Count(text).Should().Be(expected);
+    public void Estimate_ShouldCountByCharsPerToken(string text, int expected)
+        => ChatTokenCounter.Estimate(text).Should().Be(expected);
+
+    [Theory]
+    [InlineData("", 0)]
+    [InlineData("abcd", 1)]
+    [InlineData("abcdefgh", 6)]
+    public void Count_ShouldBeSane_UnderEitherCountingPath(string text, int maxExpected)
+        => ChatTokenCounter.Count(text).Should().BeLessThanOrEqualTo(maxExpected,
+            "精确/估算两条路径都不得高估到量级之外（8 个 ASCII 字符至多几个 token）");
 
     [Fact]
     public void Count_ShouldBeMonotonic()

@@ -62,6 +62,43 @@ public class ChatTokenCounterTests
         ChatTokenCounter.Count(string.Empty).Should().Be(0);
     }
 
+    // ===== R2-4：精确计数可用性与降级可观测 =====
+
+#if NET8_0_OR_GREATER
+    [Fact]
+    public void ExactCounting_ShouldBeAvailable_OnNet8OrGreater()
+    {
+        ChatTokenCounter.IsExactCount.Should().BeTrue(
+            "net8+ 且已声明 Microsoft.ML.Tokenizers.Data.O200kBase 词表包后必须走 Tiktoken 精确计数；"
+            + "若为 false 说明词表资源缺失，MaxHistoryTokens 维度会静默退化为字符估算"
+            + $"（失败原因：{ChatTokenCounter.InitializationFailure ?? "<未记录>"}）");
+    }
+
+    [Fact]
+    public void InitializationFailure_ShouldBeNull_WhenTokenizerAvailable()
+    {
+        // 精确计数可用时不得残留失败原因（可观测面与状态必须一致）。
+        _ = ChatTokenCounter.IsExactCount;
+
+        ChatTokenCounter.InitializationFailure.Should().BeNull();
+    }
+
+    [Fact]
+    public void Count_ShouldMatchEstimatesOrderOfMagnitude_WithExactTokenizer()
+    {
+        // 精确路径下的中文计数应与估算同一量级（防止词表错配导致数量级偏差）。
+        var exact = ChatTokenCounter.Count(new string('多', 100));
+
+        exact.Should().BeInRange(50, 200);
+    }
+#else
+    [Fact]
+    public void ExactCounting_ShouldBeDisabled_OnLegacyTfm()
+    {
+        ChatTokenCounter.IsExactCount.Should().BeFalse("netstandard2.0 / net6.0 走字符估算回退（无 Tiktoken 依赖）");
+    }
+#endif
+
     [Fact]
     public void CountMessages_ShouldSumTextOnly()
     {

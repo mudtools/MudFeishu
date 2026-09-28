@@ -58,6 +58,33 @@ public class ConversationSummarizerTests
             },
             NullLogger.Instance);
 
+    // ───────────────────── R2-2②：摘要器对损坏历史状态的纵深防御 ─────────────────────
+
+    [Fact]
+    public async Task SummarizeIfNeededAsync_ShouldNotThrow_WhenHistoryStateCorrupted()
+    {
+        // 会话入口（FeishuAgent.GetOrCreateSessionAsync）已做急切校验并删除坏值；
+        // 此处是纵深防御：任何**新的**历史读取入口出现时，异常也不得逃出摘要器毒化会话。
+        var session = await SessionFactoryAgent.CreateSessionAsync();
+        session.SetInMemoryChatHistory(
+            [new ChatMessage(ChatRole.User, "正常消息")], StateKey, null);
+
+        // 把状态袋内的历史值替换为类型不符的载荷（模拟跨版本残留/库中被破坏）。
+        var serialized = await SessionFactoryAgent.SerializeSessionAsync(session, jsonSerializerOptions: null);
+        var corrupted = System.Text.Json.Nodes.JsonNode.Parse(serialized.GetRawText())!;
+        corrupted["stateBag"]![StateKey]!["messages"] = "oops";
+
+        var restored = await SessionFactoryAgent.DeserializeSessionAsync(
+            System.Text.Json.JsonDocument.Parse(corrupted.ToJsonString()).RootElement.Clone(),
+            jsonSerializerOptions: null);
+
+        var act = async () => await CreateSummarizer().SummarizeIfNeededAsync(restored);
+
+        await act.Should().NotThrowAsync(
+            "历史状态损坏时摘要器必须隔离失败并返回 false，不得让异常逃到事件循环毒化会话");
+        (await CreateSummarizer().SummarizeIfNeededAsync(restored)).Should().BeFalse("本轮跳过压缩");
+    }
+
     [Fact]
     public async Task Summarize_ShouldInjectSummaryHead_AndRetainRecentWindow()
     {

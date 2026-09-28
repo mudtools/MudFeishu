@@ -44,6 +44,28 @@ internal static class FeishuAgentDiagnostics
     /// <summary>Span 属性：本轮是否发生了历史摘要重建。</summary>
     public const string TagSummarized = "feishu.agent.summarized";
 
+    /// <summary>
+    /// Span 属性：摘要是否<b>不可收敛</b>（R2-11：单条消息即超 <c>MaxHistoryTokens</c>，
+    /// 收缩到「摘要 + 最后一条」仍越限）。宿主据此区分「配置/内容不匹配」与「摘要失效」。
+    /// </summary>
+    public const string TagSummarizeUnconverged = "feishu.agent.summarize_unconverged";
+
+    /// <summary>Span 属性（OTel GenAI 语义约定附加面）：Agent 名。</summary>
+    /// <remarks>
+    /// 与 <see cref="TagAgentName"/> 同值不同键：后者是项目自有面（宿主仪表盘已依赖，<b>不得改名</b>，
+    /// 改名属破坏性变更——见 R2-13「降级 1」）。本常量只做<b>附加式</b>对齐。
+    /// </remarks>
+    public const string TagGenAiAgentName = "gen_ai.agent.name";
+
+    /// <summary>Span 属性（OTel GenAI 语义约定附加面）：操作名。</summary>
+    public const string TagGenAiOperationName = "gen_ai.operation.name";
+
+    /// <summary>
+    /// OTel GenAI 语义约定的 agent 调用操作名常量：agent 调用不论流式与否恒为 <c>invoke_agent</c>
+    /// （流式与非流式的区分走项目自有面 <see cref="TagOperation"/>）。
+    /// </summary>
+    public const string GenAiOperationInvokeAgent = "invoke_agent";
+
     /// <summary>Span 属性：本轮回复是否经流式通道送达。</summary>
     public const string TagStreamed = "feishu.agent.streamed";
 
@@ -69,8 +91,14 @@ internal static class FeishuAgentDiagnostics
     {
         var activity = FeishuActivitySource.Instance.StartActivity(
             $"feishu.agent.{operation}", ActivityKind.Internal);
-        activity?.SetTag(TagAgentName, agentName);
-        activity?.SetTag(TagOperation, operation);
+
+        // R2-13（可选）：附加 OTel GenAI 语义约定属性（**只增不改**——feishu.* 面保持不变，
+        // 改名会让已依赖它的宿主仪表盘失效）。agent 调用恒为 invoke_agent，
+        // 流式/非流式的区分仍在 feishu.agent.operation 上。
+        activity?.SetTag(TagAgentName, agentName)
+                .SetTag(TagGenAiAgentName, agentName)
+                .SetTag(TagGenAiOperationName, GenAiOperationInvokeAgent)
+                .SetTag(TagOperation, operation);
         return activity;
     }
 

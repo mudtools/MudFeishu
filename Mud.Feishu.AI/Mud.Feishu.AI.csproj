@@ -49,6 +49,12 @@
 		     版本与 MAF 1.20.0 的传递解析版本一致（2.0.0），避免 NU1603 版本漂移（门禁断言 = 0）。
 		     netstandard2.0 / net6.0 走字符估算回退，无此依赖。 -->
 		<PackageReference Include="Microsoft.ML.Tokenizers" Version="2.0.0" />
+		<!-- R2-4：Tiktoken 词表数据（EncoderModel "gpt-4o" → o200k_base）是**独立包**。
+		     缺失时 TiktokenTokenizer.CreateForModel 抛 InvalidOperationException，
+		     被 ChatTokenCounter 的 catch 静默吞掉 ⇒ IsExactCount 恒 false、MaxHistoryTokens 维度
+		     全部退化为字符估算且无任何可观测信号（R1 P2-5 残余缺陷）。
+		     版本与主包**同版本线**（nuget.org 实核 latestVersion = 2.0.0），避免 NU1603 版本漂移。 -->
+		<PackageReference Include="Microsoft.ML.Tokenizers.Data.O200kBase" Version="2.0.0" />
 	</ItemGroup>
 
 	<ItemGroup>

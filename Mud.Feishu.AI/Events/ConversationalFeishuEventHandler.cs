@@ -42,7 +42,20 @@ namespace Mud.Feishu.AI.Events;
 /// <para>
 /// 多租户（TMA2-20）：<see cref="ConversationRequest.AppKey"/> 进入会话键命名空间，
 /// 缺失时的处置由 <see cref="AllowMissingAppKey"/> 分级决定（已装配
-/// <see cref="IAppKeyAccessor"/> 的宿主 fail-fast，未装配的单应用宿主降级并告警）。
+/// <see cref="IAppKeyAccessor"/> 的宿主 fail-fast，未装配的单应用宿主降级并告警）；
+/// 若此时还装配了工具执行链，则由 <see cref="AllowToolsWithoutAppKey"/> 决定是否 fail-fast（R2-3）。
+/// </para>
+/// <para>
+/// <b>落库 / 回复次序的取舍（R2-8，已决策，勿改次序）</b>：非流式路径<b>先持久化会话、再回复</b>。
+/// 两种次序各有失败面，本次序的代价更小——
+/// <list type="bullet">
+/// <item>本次序：回复下发失败 ⇒ 幂等回滚 ⇒ 重投递<b>重跑模型</b>（多一次计费、历史内部多一轮），
+/// 但<b>用户只收到一条</b>回复；</item>
+/// <item>反序（先回复后落库）：落库失败 ⇒ 回滚重投递 ⇒ <b>用户收到两条回复</b>。</item>
+/// </list>
+/// 「用户可见的重复」比「历史内部多一轮（用户不可见）」严重得多，故维持现状。
+/// 根治方案（交付态补发 / outbox：持久化"已生成但未确认送达"的回复文本，重投递优先补发而非重跑模型）
+/// 见 R2 方案 §4.1 P4-4，本轮不实现。
 /// </para>
 /// </remarks>
 /// <typeparam name="T">强类型事件 DTO（须实现 <see cref="IEventResult"/>）。</typeparam>
@@ -120,6 +133,27 @@ public abstract class ConversationalFeishuEventHandler<T>(
     /// </remarks>
     protected virtual bool AllowMissingAppKey => !HasAppKeyContext;
 
+    /// <summary>
+    /// 缺少 <see cref="ConversationRequest.AppKey"/> 时是否允许在<b>已装配工具执行链</b>的情况下继续。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 默认 <see langword="false"/>（fail-closed）：工具执行链依赖<b>非空</b> appKey——
+    /// <c>IFeishuAppContextScopeFactory.BeginScope</c> 显式拒绝空值，多租户隔离禁止默认应用兜底（TMA2-20）。
+    /// 故该形态下工具调用与知识注入<b>必然 100% 失败</b>，若继续则每轮白跑一次模型调用（计费 + 延迟）：
+    /// 这是装配缺陷，不得伪装成「正常降级」。
+    /// </para>
+    /// <para>
+    /// <b>判据与误伤面</b>：<see cref="ToolContextAccessor"/> 非空是「工具链已装配」的代理判据，
+    /// 无法区分「装配但启用 0 个工具」——该类宿主会被误判。仅当宿主明确接受
+    /// 「工具与知识面不可用」时才覆写为 <see langword="true"/>（逃生门）。
+    /// </para>
+    /// <para>
+    /// 另可注册 <c>IAppKeyAccessor</c>（多应用/单应用均可显式提供应用键）从根本上解决（推荐）。
+    /// </para>
+    /// </remarks>
+    protected virtual bool AllowToolsWithoutAppKey => false;
+
     /// <inheritdoc />
     protected override async Task ProcessBusinessLogicAsync(
         EventData eventData,
@@ -142,6 +176,18 @@ public abstract class ConversationalFeishuEventHandler<T>(
                 throw new InvalidOperationException(
                     "会话请求缺少 AppKey——已装配 IAppKeyAccessor 的宿主禁止默认应用兜底（TMA2-20）；"
                     + "请确认事件通道在派发前设置了应用上下文，或覆写 AllowMissingAppKey 显式承担跨租户风险");
+            }
+
+            // 工具执行链已装配 + appKey 缺失 ⇒ fail-fast（R2-3）：工具与知识注入必然 100% 失败，
+            // 继续只会每轮白跑一次模型调用，是装配缺陷而非可接受的降级形态。
+            if (ToolContextAccessor is not null && !AllowToolsWithoutAppKey)
+            {
+                throw new InvalidOperationException(
+                    "会话请求缺少 AppKey，而工具执行链已装配（ToolContextAccessor 非空）——"
+                    + "工具与知识注入依赖非空 appKey（IFeishuAppContextScopeFactory.BeginScope 拒绝空值，TMA2-20），"
+                    + "该形态下所有工具调用与知识注入必然失败。"
+                    + "请注册 IAppKeyAccessor（多应用/单应用均可显式提供应用键），"
+                    + "或覆写 AllowToolsWithoutAppKey => true 显式接受「工具面不可用」的降级语义");
             }
 
             _logger.LogWarning(
@@ -198,6 +244,15 @@ public abstract class ConversationalFeishuEventHandler<T>(
             // （RollbackProcessingAsync → 重投递），改成「失败也落库」等于把「可能重复」换成「确定丢失」。
             await _agent.SaveSessionAsync(
                 conversationKey, session, streamed ? CancellationToken.None : cancellationToken).ConfigureAwait(false);
+
+            // 空模型回复守卫（R2-9）：内容过滤/推理中断时 responseText 为空，
+            // 下发空文本会让飞书 API 报错 → 异常 → 幂等回滚 → 重投递重跑模型（重复计费），
+            // 且可能反复得到空回复。此处按「已消费」处理：历史已落库，仅跳过下发。
+            if (!streamed && string.IsNullOrWhiteSpace(responseText))
+            {
+                _logger.LogWarning("模型返回空回复，跳过下发（subject: {SubjectId}）", request.SubjectId);
+                return;
+            }
 
             // 流式路径已由通道送达（Begin/Write/Flush），不再走派生类回复。
             if (!streamed)
@@ -267,8 +322,22 @@ public abstract class ConversationalFeishuEventHandler<T>(
                 }
 
                 fullText.Append(delta);
-                // 单次写入失败由通道实现隔离（不中断模型流，接口契约）。
-                await MessageChannel.WriteStreamAsync(request.AppKey, streamTarget!, messageId, delta, cancellationToken).ConfigureAwait(false);
+
+                // 调用方兜底（R2-7）：契约要求通道实现自带失败隔离，但第三方通道未必遵守——
+                // 单次写入失败只跳过该分片，绝不升级为"补偿 Flush + 幂等回滚 + 重投递（模型重复计费）"。
+                // 与 BeginAsync 失败「零成本回退非流式」同侧的降级哲学：通道问题不应让模型白跑。
+                try
+                {
+                    await MessageChannel.WriteStreamAsync(request.AppKey, streamTarget!, messageId, delta, cancellationToken).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "流式增量写入失败，已跳过该分片（通道未按契约隔离；messageId: {MessageId}）", messageId);
+                }
             }
 
             await MessageChannel.FlushAsync(request.AppKey, streamTarget!, messageId, cancellationToken).ConfigureAwait(false);

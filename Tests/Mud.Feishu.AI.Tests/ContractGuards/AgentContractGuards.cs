@@ -352,6 +352,163 @@ public class AgentContractGuards
         source.Should().Contain("StateKey = ChatHistoryStateKey", "状态键必须被 ChatClientAgentOptions 真实消费");
     }
 
+    // ────────────────────────────────────────────────────────────────────
+    // 守卫 7：R2 批次缺陷回归锁（R2-1 ~ R2-6 / R2-12）
+    // ────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// R2-1（P0）：确认令牌<b>绝不</b>进入模型可见载荷。
+    /// </summary>
+    /// <remarks>
+    /// 令牌若出现在工具结果文本里，批准所需的全部要素（令牌/原参数/appKey/userId）都进了模型上下文，
+    /// 而令牌校验<b>不校验批准是否来自人</b> ⇒ 模型可自行带令牌重试放行写操作。
+    /// 扫描落在 <c>Mud.Feishu.AI.FeishuTools</c>（执行链唯一实现方）。
+    /// </remarks>
+    [Fact]
+    public void ConfirmationToken_ShouldNeverEnterModelVisiblePayload()
+    {
+        var bindingSource = Path.Combine(
+            GetSolutionRoot(), "Mud.Feishu.AI.FeishuTools", "Tools", "FeishuToolBinding.cs");
+        File.Exists(bindingSource).Should().BeTrue();
+
+        var source = File.ReadAllText(bindingSource);
+
+        // ① 结构化错误文案（模型可见的唯一出口）不得出现令牌提示。
+        var needsConfirmationBranch = source.IndexOf(
+            "ToolErrorKind.NeedsConfirmation =>", StringComparison.Ordinal);
+        needsConfirmationBranch.Should().BeGreaterThan(-1);
+        var branchEnd = source.IndexOf('\n', needsConfirmationBranch);
+        var branch = source[needsConfirmationBranch..branchEnd];
+
+        branch.Should().NotContain("确认令牌", "模型可见文案不得携带/提示确认令牌（R2-1）");
+        branch.Should().NotContain("confirm_token", "不得再指示模型以 confirm_token 重试（那等于把批准要素交给模型）");
+        branch.Should().Contain("需要用户确认", "待确认语义必须保留（三态文案不得退化）");
+
+        // ② 令牌的唯一出口必须是宿主批准通道。
+        source.Should().Contain("ToolApprovalRequest", "令牌必须经 IFeishuToolApprovalChannel 投递给宿主");
+        source.Should().Contain("IFeishuToolApprovalChannel", "必须存在宿主批准通道契约（未注册即 fail-closed）");
+    }
+
+    /// <summary>
+    /// R2-2：会话恢复必须<b>急切</b>校验历史状态（惰性反序列化纳入守护区）。
+    /// </summary>
+    [Fact]
+    public void SessionRestore_ShouldEagerlyValidateHistoryState()
+    {
+        var source = ReadAiSource("Agents", "FeishuAgent.cs");
+
+        var restoreMethod = source.IndexOf("GetOrCreateSessionAsync(string conversationKey", StringComparison.Ordinal);
+        restoreMethod.Should().BeGreaterThan(-1);
+        var body = source[restoreMethod..];
+
+        var eagerRead = body.IndexOf("TryGetInMemoryChatHistory", StringComparison.Ordinal);
+        var guard = body.IndexOf("catch (Exception ex) when (ex is JsonException", StringComparison.Ordinal);
+
+        eagerRead.Should().BeGreaterThan(-1, "会话恢复必须急切触发一次历史状态读取（惰性解析否则逃逸守护区）");
+        guard.Should().BeGreaterThan(-1);
+        eagerRead.Should().BeLessThan(guard,
+            "急切读取必须落在坏值自愈的 catch 面**之内**——否则内层损坏在摘要器/Provider 内抛出，坏值永不删除");
+    }
+
+    /// <summary>
+    /// R2-3：AppKey 缺失 × 工具链已装配 必须 fail-fast（并保留逃生门）。
+    /// </summary>
+    [Fact]
+    public void AppKeyDegrade_ShouldFailFast_WhenToolChainPresent()
+    {
+        var source = ReadAiSource("Events", "ConversationalFeishuEventHandler.cs");
+
+        var degradeBranch = source.IndexOf("if (string.IsNullOrWhiteSpace(request.AppKey))", StringComparison.Ordinal);
+        degradeBranch.Should().BeGreaterThan(-1);
+        var branch = source[degradeBranch..(degradeBranch + 2600)];
+
+        branch.Should().Contain("ToolContextAccessor is not null", "必须以「工具链已装配」为判据");
+        branch.Should().Contain("AllowToolsWithoutAppKey", "必须提供显式逃生门（默认 fail-closed）");
+
+        source.Should().Contain("protected virtual bool AllowToolsWithoutAppKey => false",
+            "默认必须 fail-closed：工具面依赖非空 appKey，降级形态下工具/知识必然 100% 失败");
+    }
+
+    /// <summary>
+    /// R2-4：<c>ChatTokenCounter</c> 的 Tiktoken 词表数据包必须显式声明。
+    /// </summary>
+    /// <remarks>
+    /// 缺该包时 <c>TiktokenTokenizer.CreateForModel</c> 抛异常并被静默吞掉 ⇒
+    /// <c>MaxHistoryTokens</c> 维度全部退化为字符估算且无任何可观测信号。
+    /// </remarks>
+    [Fact]
+    public void ChatTokenCounter_ShouldDeclareTokenizerDataPackage()
+    {
+        var csproj = Path.Combine(GetSolutionRoot(), "Mud.Feishu.AI", "Mud.Feishu.AI.csproj");
+        File.Exists(csproj).Should().BeTrue();
+
+        var content = File.ReadAllText(csproj);
+        content.Should().Contain("Microsoft.ML.Tokenizers\"", "主包必须显式声明（P2-5）");
+        content.Should().Contain("Microsoft.ML.Tokenizers.Data.O200kBase",
+            "gpt-4o 的 o200k_base 词表在独立包中；缺失会让精确计数静默退化为估算（R2-4）");
+
+        // 可观测面：不再静默吞掉。
+        ReadAiSource("Conversations", "ChatTokenCounter.cs").Should().Contain("InitializationFailure",
+            "编码器初始化失败必须留下可观测原因（由 FeishuAgent 构造期告警 + 用例断言）");
+    }
+
+    /// <summary>
+    /// R2-5：<c>MemoryConversationStore</c> 必须清扫不再被读取的过期条目。
+    /// </summary>
+    [Fact]
+    public void MemoryConversationStore_ShouldSweepExpiredEntries()
+    {
+        var source = ReadAiSource("Conversations", "MemoryConversationStore.cs");
+
+        source.Should().Contain("SweepExpired", "必须有过期回收路径（未读键永不到达读侧软过期）");
+
+        var save = source.IndexOf("public Task SaveAsync(", StringComparison.Ordinal);
+        save.Should().BeGreaterThan(-1);
+        var body = source[save..];
+        body.Should().Contain("SweepExpired()", "回收必须由写入路径触发（惰性分摊，不引入后台线程/定时器）");
+        body.Should().Contain("SweepThreshold", "必须按阈值分摊（均摊 O(1)），不得每次写入都全量扫描");
+    }
+
+    /// <summary>
+    /// R2-6：<c>FeishuAgent.IdCore</c> 必须委托内层 Agent（对齐 MAF <c>DelegatingAIAgent</c> 约定）。
+    /// </summary>
+    [Fact]
+    public void FeishuAgent_IdCore_ShouldDelegateToInnerAgent()
+    {
+        var source = ReadAiSource("Agents", "FeishuAgent.cs");
+
+        source.Should().Contain("IdCore => _innerAgent.Id",
+            "FeishuAgent 与内层 ChatClientAgent 是同一逻辑 Agent 的两层：Id 不一致会让 "
+            + "AgentResponse.AgentId 与 FeishuAgent.Id 指向不同标识（遥测/编排按 AgentId 关联时出现「未知 Agent」）");
+    }
+
+    /// <summary>
+    /// R2-12：<c>MaxHistoryMessages</c> 的<b>真实语义</b>必须被文档化。
+    /// </summary>
+    /// <remarks>
+    /// 旧注释称「超出窗口的旧消息被折叠」，实测为「不可逆落库删除 + 工具消息剔除 + 仅保留首条 system」；
+    /// 文档漂移会让宿主误判「模型忘了刚调过的工具」。本守卫防其再次漂移。
+    /// 另补：本属性此前长期<b>没有</b>消费点守卫（既有两条 Phase2/Phase12 守卫均未覆盖）。
+    /// </remarks>
+    [Fact]
+    public void HistoryReducerSemantics_ShouldBeDocumented()
+    {
+        var optionsSource = ReadAiSource("Agents", "FeishuAgentOptions.cs");
+
+        var property = optionsSource.IndexOf("public int MaxHistoryMessages", StringComparison.Ordinal);
+        property.Should().BeGreaterThan(-1);
+        var docs = optionsSource[Math.Max(0, property - 1600)..property];
+
+        docs.Should().Contain("非 system 消息", "必须写明只统计非 system 消息");
+        docs.Should().Contain("不可逆", "必须写明裁剪结果写回会话状态（不可逆落库删除），而非「本次请求视图」");
+        docs.Should().Contain("FunctionCallContent", "必须写明工具调用消息被永久丢弃");
+
+        // 消费点（此前缺失守卫）。
+        ReadAiSource("Agents", "FeishuAgent.cs").Should().Contain(
+            "new MessageCountingChatReducer(options.MaxHistoryMessages)",
+            "MaxHistoryMessages 必须在 FeishuAgent 中被真实消费（MessageCountingChatReducer 裁剪窗）");
+    }
+
     /// <summary>
     /// 跨平台取文件名。csproj 里的 <c>ProjectReference Include</c> 普遍写成 Windows 反斜杠相对路径
     /// （如 <c>..\Mud.Feishu.Abstractions\Mud.Feishu.Abstractions.csproj</c>），而

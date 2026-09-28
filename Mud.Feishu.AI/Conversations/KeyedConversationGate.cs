@@ -23,6 +23,18 @@ namespace Mud.Feishu.AI.Conversations;
 /// <see cref="ConcurrentDictionary{TKey, TValue}"/> 的条件移除（KVP 重载）保证「归零判定 → 移除」
 /// 原子，持有期竞态不会误删活跃闸门。
 /// </para>
+/// <para>
+/// <b>取消语义（R2-10）</b>：等待被取消时只放弃登记、<b>不</b> Release——依赖 .NET
+/// <see cref="SemaphoreSlim"/>「取消与获取竞态时许可不会丢失」的运行时契约（此时再 Release 会
+/// 超出最大计数并抛 <see cref="SemaphoreFullException"/>）。该契约不写死为断言，而由
+/// <c>KeyedConversationGateCancellationStressTests</c> 在每个 TFM 上实证守护；
+/// 若其失败 ⇒ 改用「<c>WaitAsync(CancellationToken.None)</c> + <c>Task.WhenAny</c>」的显式所有权方案。
+/// </para>
+/// <para>
+/// <b>不快速失败</b>：本实现等待直至取得许可（进程内串行语义），等待时长由它所守护的工作
+/// （一次模型回合）决定，无法给出通用正确的超时值。需要「快速失败」的宿主应替换为 Redis 闸门
+/// （<c>ConversationBusyException</c> 的分布式租约语义），而非给本实现加超时配置。
+/// </para>
 /// </remarks>
 public sealed class KeyedConversationGate : IConversationGate
 {
@@ -49,8 +61,13 @@ public sealed class KeyedConversationGate : IConversationGate
         }
         catch (OperationCanceledException)
         {
-            // 取消路径不 Release：.NET 的 WaitAsync 在「取消与获取竞态」时会自行恢复计数，
-            // 此处再 Release 会超出最大计数（SemaphoreFullException）。仅登记等待放弃。
+            // 取消路径不 Release：依赖 .NET SemaphoreSlim「取消与获取竞态时许可不会丢失」的运行时契约
+            // ——此处再 Release 会超出最大计数（SemaphoreFullException）。仅登记等待放弃。
+            //
+            // R2-10：该契约不写死为"断言"，而由 KeyedConversationGateCancellationStressTests
+            // 在每个 TFM 上实证守护（无 SemaphoreFullException / 无许可泄漏 / 无 ObjectDisposedException）。
+            // 若该用例在任一 TFM 失败 ⇒ 改用「WaitAsync(CancellationToken.None) + Task.WhenAny」的
+            // 显式所有权方案（取消后已取得许可则必须 Release），见 R2 方案 §0.5.2。
             AbandonWait(conversationKey, entry);
             throw;
         }

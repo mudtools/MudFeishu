@@ -269,6 +269,77 @@ public class FeishuAgentTests
             Times.Once, "双禁用时不挂载摘要器（零额外模型调用）");
     }
 
+    // ───────────────────── R2-2：会话恢复期急切校验历史状态（闭合 R1 P1-4 残余守护面） ─────────────────────
+
+    /// <summary>
+    /// 状态袋内的历史值损坏（外层 JSON 合法、内层类型不符）——形状与真实落库一致：
+    /// <c>{"stateBag":{"feishu.agent.history":{"messages":[...]}}}</c>。
+    /// 惰性解析使其只在<b>首次类型化读取</b>时才抛，故必须落在会话入口的守护区内。
+    /// </summary>
+    private const string CorruptedInnerStatePayload =
+        "{\"stateBag\":{\"feishu.agent.history\":{\"messages\":\"oops\"}}}";
+
+    [Fact]
+    public async Task GetOrCreateSessionAsync_ShouldDeleteAndRebuild_WhenInnerStateCorrupted()
+    {
+        var mock = CreateMockClient("ok");
+        var store = new MemoryConversationStore();
+        var agent = new FeishuAgent(mock.Object, ValidOptions(), store);
+        var key = ConversationKeyBuilder.Build("app-a", ConversationScope.P2P(), "ou_corrupt");
+
+        // 直接写入「外层合法 + 内层损坏」的载荷（等价于历史数据在库中被破坏/跨版本残留）。
+        await store.SaveAsync(key, CorruptedInnerStatePayload);
+
+        var restored = await agent.GetOrCreateSessionAsync(key);
+
+        restored.Should().NotBeNull("损坏载荷必须按 miss 处理并重建，绝不把异常抛给事件循环");
+        (await store.GetAsync(key)).Should().BeNull(
+            "坏值必须被删除——否则每次重投递都在同一处抛，该会话在 TTL 内永久毒化");
+    }
+
+    [Fact]
+    public async Task GetOrCreateSessionAsync_ShouldKeepUsableHistory_WhenStateIntact()
+    {
+        // 正向锁定：急切校验不得破坏健康会话（防"多读一次"演变成"丢历史"）。
+        var mock = CreateMockClient("ok");
+        var store = new MemoryConversationStore();
+        var agent = new FeishuAgent(mock.Object, ValidOptions(), store);
+        var key = ConversationKeyBuilder.Build("app-a", ConversationScope.P2P(), "ou_intact");
+
+        var session = await agent.GetOrCreateSessionAsync(key);
+        session.SetInMemoryChatHistory(
+            [new ChatMessage(ChatRole.User, "第一轮"), new ChatMessage(ChatRole.Assistant, "回复一")],
+            FeishuAgent.ChatHistoryStateKey, null);
+        await agent.SaveSessionAsync(key, session);
+
+        var restored = await agent.GetOrCreateSessionAsync(key);
+        restored.TryGetInMemoryChatHistory(out var history, FeishuAgent.ChatHistoryStateKey, null)
+            .Should().BeTrue("健康会话的历史必须原样恢复");
+        history!.Should().HaveCount(2);
+        (await store.GetAsync(key)).Should().NotBeNull("健康载荷不得被误删");
+    }
+
+    // ───────────────────── R2-6：Id 对齐 MAF DelegatingAIAgent 约定 ─────────────────────
+
+    [Fact]
+    public async Task Id_ShouldMatchInnerAgent_SoResponseAgentIdIsTraceable()
+    {
+        var mock = CreateMockClient("ok");
+        var agent = new FeishuAgent(mock.Object, ValidOptions());
+
+        var inner = agent.GetService(typeof(ChatClientAgent)) as ChatClientAgent;
+        inner.Should().NotBeNull();
+
+        agent.Id.Should().Be(inner!.Id,
+            "FeishuAgent 与内层 ChatClientAgent 是同一逻辑 Agent 的两层，Id 必须一致（对齐 MAF DelegatingAIAgent.IdCore）");
+
+        var session = await agent.CreateSessionAsync();
+        var response = await agent.RunAsync("你好", session);
+
+        response.AgentId.Should().Be(agent.Id,
+            "AgentResponse.AgentId 由内层 Id 打标；Id 不一致会让宿主按 AgentId 关联指标时得到「未知 Agent」");
+    }
+
     // ───────────────────── P2-8 / B3.3：失败路径可见性 ─────────────────────
 
     [Fact]

@@ -80,6 +80,22 @@ public sealed class FeishuAgent : AIAgent
             ? new ConversationSummarizer(chatClient, options, loggerFactory?.CreateLogger<ConversationSummarizer>())
             : null;
 
+        // 精确计数可观测（R2-4）：原先 ChatTokenCounter 的初始化失败被 catch 静默吞掉，
+        // 「token 预算实际走字符估算」这一配置/依赖不匹配完全不可见。此处借宿主 logger 告警一次
+        //（ChatTokenCounter 是 internal static 工具类，不引入日志面——R1 否决 3）。
+        // 仅在 MaxHistoryTokens 实际启用时告警：未启用时估算与否无后果，避免噪声。
+        if (options.MaxHistoryTokens > 0 && !ChatTokenCounter.IsExactCount)
+        {
+#if NET8_0_OR_GREATER
+            var reason = ChatTokenCounter.InitializationFailure ?? "未知原因（编码器初始化失败）";
+#else
+            const string reason = "当前 TFM 不支持精确计数（netstandard2.0 / net6.0 走字符估算回退）";
+#endif
+            _logger?.LogWarning(
+                "token 精确计数不可用，MaxHistoryTokens={Budget} 的预算将走字符估算（CJK≈1 token/字）：{Reason}",
+                options.MaxHistoryTokens, reason);
+        }
+
         // 指令装配的唯一消费点（WP6）：宿主指令 + 已启用域的 guidance。
         // 截断信号落在返回值上（FeishuGuidanceResult.Truncated），此处只把"丢了哪些域"写进日志——
         // 断言口在 Guidance 属性与 Compose 的返回值上（用例不依赖日志基建）。
@@ -128,6 +144,14 @@ public sealed class FeishuAgent : AIAgent
     /// <summary>Agent 展示名（覆写 <see cref="AIAgent.Name"/>；不可用 <c>new</c> 遮蔽——那会使经 <see cref="AIAgent"/> 引用取值恒为基类默认 <see langword="null"/>）。</summary>
     public override string? Name => _options.Name;
 
+    /// <inheritdoc />
+    /// <remarks>
+    /// 对齐 MAF <c>DelegatingAIAgent.IdCore</c> 的组合约定（委托内层）：本类与内层 <c>ChatClientAgent</c>
+    /// 是同一逻辑 Agent 的两层，Id 必须一致——否则 <c>AgentResponse.AgentId</c>（由内层 Id 打标）
+    /// 与 <c>FeishuAgent.Id</c> 指向不同标识，宿主按 AgentId 关联遥测/编排指标会得到「未知 Agent」。
+    /// </remarks>
+    protected override string? IdCore => _innerAgent.Id;
+
     /// <summary>
     /// 按会话键读取会话；miss（不存在、TTL 过期、载荷损坏）时创建新会话。
     /// </summary>
@@ -148,10 +172,18 @@ public sealed class FeishuAgent : AIAgent
             try
             {
                 using var document = JsonDocument.Parse(stored!);
-                return await DeserializeSessionAsync(
+                var session = await DeserializeSessionAsync(
                     document.RootElement.Clone(),
                     jsonSerializerOptions: null,
                     cancellationToken).ConfigureAwait(false);
+
+                // 急切校验（R2-2）：状态袋的值是**惰性**反序列化的（MAF AgentSessionStateBagValue 只包
+                // JsonElement、不解析）——内层载荷损坏要到首次类型化读取才抛，而首次读取发生在
+                // ConversationSummarizer.SummarizeIfNeededAsync（无 catch）与 Provider 内部，均在本守护区之外。
+                // 不在此触发 ⇒ 异常逃出守护区 ⇒ 坏值永不删除 ⇒ 会话在其 TTL 内永久毒化（每次重投递同点再抛）。
+                // 代价：每次会话恢复多一次历史反序列化（历史经 MessageCountingChatReducer 有界，成本可接受）。
+                _ = session.TryGetInMemoryChatHistory(out _, ChatHistoryStateKey, null);
+                return session;
             }
             catch (Exception ex) when (ex is JsonException or ArgumentException or InvalidOperationException or NotSupportedException)
             {

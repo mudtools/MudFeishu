@@ -44,6 +44,10 @@ public sealed class FeishuToolBinding
     private readonly IToolExecutionAuditSink? _auditSink;
     private readonly IToolConfirmationTokenSecretProvider? _confirmationTokenSecretProvider;
     private readonly IFeishuCurrentUserContext? _currentUserContext;
+
+    /// <summary>宿主人工批准通道（R2-1：确认令牌的唯一出模型面出口；未注册时 HITL 降级为纯提示）。</summary>
+    private readonly IFeishuToolApprovalChannel? _approvalChannel;
+
     private readonly ILogger? _logger;
     private readonly Func<DateTimeOffset> _utcClock;
 
@@ -63,6 +67,11 @@ public sealed class FeishuToolBinding
     /// 当前用户上下文（可空；WP5 §5.3——user 身份工具执行期在此写入当前用户，
     /// 使用户令牌缓存查找键可用；<b>执行后必须成对清理</b>，防 AsyncLocal 跨用户泄漏）。
     /// </param>
+    /// <param name="approvalChannel">
+    /// 宿主人工批准通道（可空；R2-1——<see cref="IFeishuToolApprovalChannel"/> 是确认令牌<b>唯一</b>的
+    /// 出模型面出口。未注册 = HITL 降级为纯提示：模型只会收到"需要用户确认"，拿不到令牌，无法自批复。
+    /// DI 场景无需显式注册：未注册的可空构造参数由容器传 <see langword="null"/>。
+    /// </param>
     /// <param name="logger">日志（可空）。</param>
     /// <param name="utcClock">UTC 时钟（可空；确认令牌过期校验用，测试注入固定时钟——R-5）。</param>
     public FeishuToolBinding(
@@ -73,6 +82,7 @@ public sealed class FeishuToolBinding
         IToolExecutionAuditSink? auditSink = null,
         IToolConfirmationTokenSecretProvider? confirmationTokenSecretProvider = null,
         IFeishuCurrentUserContext? currentUserContext = null,
+        IFeishuToolApprovalChannel? approvalChannel = null,
         ILogger<FeishuToolBinding>? logger = null,
         Func<DateTimeOffset>? utcClock = null)
     {
@@ -83,6 +93,7 @@ public sealed class FeishuToolBinding
         _auditSink = auditSink;
         _confirmationTokenSecretProvider = confirmationTokenSecretProvider;
         _currentUserContext = currentUserContext;
+        _approvalChannel = approvalChannel;
         _logger = logger;
         _utcClock = utcClock ?? (() => DateTimeOffset.UtcNow);
     }
@@ -382,7 +393,11 @@ public sealed class FeishuToolBinding
         ToolErrorKind.Retryable => $"[tool_error] {toolName} (retryable): {reason}——服务端繁忙/网络异常，可稍后重试同一调用",
         ToolErrorKind.InvalidArgs => $"[tool_error] {toolName} (invalid_args): {reason}",
         ToolErrorKind.Forbidden => $"[tool_error] {toolName} (forbidden): {reason}——授权被拒绝，请放弃或改用只读方案",
-        ToolErrorKind.NeedsConfirmation => $"[tool_error] {toolName} (needs_confirmation): {reason}——该操作需要用户确认后方可执行；若结果中提供了确认令牌，以相同参数并将 confirm_token 填为该令牌重试即可继续，否则请向用户说明并请求确认，勿盲目重试",
+        // R2-1（P0）：删除「若结果中提供了确认令牌…重试即可继续」——该文案把批准所需的全部要素
+        // 交给了模型，使模型可自行带令牌重试并放行写操作（HITL 退化为「取决于模型是否听话」）。
+        // 确认令牌只经 IFeishuToolApprovalChannel 交给宿主，模型侧恒为中性语义。
+        ToolErrorKind.NeedsConfirmation => $"[tool_error] {toolName} (needs_confirmation): {reason}——该操作需要用户确认后方可执行；"
+            + "已交由宿主确认通道处理，未获得确认前不得重试同一调用，请告知用户确认进度",
         _ => $"[tool_error] {toolName}: {reason}",
     };
 
@@ -432,38 +447,51 @@ public sealed class FeishuToolBinding
             AuthorizationDecision.Allowed => GateDecision.Pass(),
             AuthorizationDecision.Denied => GateDecision.Deny(
                 $"authorization_denied: {result.Reason ?? "授权被拒绝"}", ToolErrorKind.Forbidden),
-            AuthorizationDecision.NeedsUserConfirmation => ResolveNeedsConfirmation(tool, arguments, context, result.Reason),
+            AuthorizationDecision.NeedsUserConfirmation =>
+                await ResolveNeedsConfirmationAsync(tool, arguments, context, result.Reason, cancellationToken)
+                    .ConfigureAwait(false),
             _ => GateDecision.Deny(
                 $"authorization_denied: 未知授权判定 {result.Decision}——按拒绝处理（fail-closed）", ToolErrorKind.Forbidden),
         };
     }
 
     /// <summary>
-    /// NeedsUserConfirmation 的真挂起解析（T4-2 / 决策 D-3）：
+    /// NeedsUserConfirmation 的真挂起解析（T4-2 / 决策 D-3；<b>R2-1 安全重写</b>）：
     /// ① 请求携带<b>有效</b>确认令牌（签名 + 未过期 + 绑定 toolName/参数摘要/appKey/userId）
     /// → 视为已获用户批准，跳过授权器的 Confirm 分支放行（<b>Denied 与策略轴仍照常生效</b>——
-    /// 令牌只豁免"待确认"，不豁免"被禁止"）；
-    /// ② 无有效令牌 → 拒绝，并在文案中签发新令牌（模型转述给用户，用户同意后以
-    /// <c>confirm_token=&lt;令牌&gt;</c> 重试同一调用）；密钥未配置时降级为纯提示文案（与既有行为一致）。
+    /// 令牌只豁免"待确认"，不豁免"被禁止"）。令牌只能由<b>宿主</b>经自有通道回灌为工具参数，
+    /// 模型侧拿不到它；
+    /// ② 无有效令牌 → 拒绝，并把新签发的令牌<b>只</b>投递给宿主批准通道
+    /// （<see cref="IFeishuToolApprovalChannel"/>）；未注册通道或缺少密钥时降级为纯提示（fail-closed）。
     /// </summary>
-    private GateDecision ResolveNeedsConfirmation(
+    /// <remarks>
+    /// <para>
+    /// <b>R2-1（P0）根因</b>：原实现把令牌内插进拒绝文案（<c>\n确认令牌: {issued}</c>），
+    /// 该文案经 <see cref="StructuredError(string, ToolErrorKind, string)"/> 原样作为工具结果回填模型，
+    /// 使批准所需的全部要素（令牌、原参数、appKey、userId）进入模型上下文；
+    /// 而 <c>ToolConfirmationToken.TryValidate</c> 只校验签名/有效期/绑定，<b>不校验批准是否来自人</b>
+    /// ⇒ 模型可自行带令牌重试并放行写操作。
+    /// </para>
+    /// <para>
+    /// <b>连带闭合</b>：同一 <c>reason</c> 会经 <c>DenyAsync</c> 投递给 <c>IToolExecutionAuditSink</c>，
+    /// 故令牌此前也落审计/日志面——修复后 reason 恒为中性文案，令牌只存在于
+    /// <see cref="ToolApprovalRequest"/>（宿主侧）。
+    /// </para>
+    /// </remarks>
+    private async Task<GateDecision> ResolveNeedsConfirmationAsync(
         FeishuToolDefinition tool,
         IReadOnlyDictionary<string, object?> arguments,
         FeishuToolContext context,
-        string? reason)
+        string? reason,
+        CancellationToken cancellationToken)
     {
         var reasonText = reason ?? "未提供原因";
         var secret = _confirmationTokenSecretProvider?.GetSecret();
-        if (string.IsNullOrWhiteSpace(secret))
-        {
-            // 降级：不签发令牌，维持既有提示语义。
-            return GateDecision.Deny($"需要用户确认后才能执行（HITL）：{reasonText}", ToolErrorKind.NeedsConfirmation);
-        }
-
         var argsDigest = ToolConfirmationToken.ComputeArgumentsDigest(arguments);
 
-        // ① 重试路径：带有效确认令牌 → 放行（仍走后续内容安全/净化/审计，Denied 在这里已被排除）。
-        if (arguments.TryGetValue(ToolConfirmationToken.ArgumentName, out var tokenValue))
+        // ① 宿主已批准后的重试路径（令牌由宿主经自有通道回灌，模型无法自行获得）。
+        if (!string.IsNullOrWhiteSpace(secret)
+            && arguments.TryGetValue(ToolConfirmationToken.ArgumentName, out var tokenValue))
         {
             var presented = tokenValue switch
             {
@@ -472,25 +500,60 @@ public sealed class FeishuToolBinding
                 _ => null,
             };
             if (ToolConfirmationToken.TryValidate(
-                    presented, secret, tool.Name, argsDigest, context.AppKey, context.UserId, _utcClock()))
+                    presented, secret!, tool.Name, argsDigest, context.AppKey, context.UserId, _utcClock()))
             {
+                // 仍走后续内容安全/净化/审计，Denied 在这里已被排除。
                 return GateDecision.Pass();
             }
 
             return GateDecision.Deny(
-                $"需要用户确认后才能执行（HITL）：{reasonText}；confirm_token 无效或已过期（换参数/换应用/换用户/超时都会失效）——请重新向用户确认",
+                $"需要用户确认后才能执行（HITL）：{reasonText}；confirm_token 无效或已过期（换参数/换应用/换用户/超时都会失效）——请重新发起确认",
                 ToolErrorKind.NeedsConfirmation);
         }
 
-        // ② 首次路径：签发令牌并随拒绝文案下发（预演：令牌与本次参数绑定，参数变了即失效）。
+        // ② 首次路径：签发令牌，**只**交给宿主批准通道（未注册则是纯提示，模型拿不到令牌）。
+        if (string.IsNullOrWhiteSpace(secret) || _approvalChannel is null)
+        {
+            return GateDecision.Deny(
+                $"需要用户确认后才能执行（HITL）：{reasonText}", ToolErrorKind.NeedsConfirmation);
+        }
+
         var issued = ToolConfirmationToken.Issue(
             secret, tool.Name, argsDigest, context.AppKey, context.UserId, _utcClock());
-        return issued is null
-            ? GateDecision.Deny($"需要用户确认后才能执行（HITL）：{reasonText}", ToolErrorKind.NeedsConfirmation)
-            : GateDecision.Deny(
-                $"需要用户确认后才能执行（HITL）：{reasonText}\n确认令牌: {issued}（请向用户展示并征得同意；"
-                + $"用户同意后以相同参数、并将 confirm_token 填为该令牌重试即可继续；有效期 10 分钟）",
-                ToolErrorKind.NeedsConfirmation);
+        if (issued is null)
+        {
+            return GateDecision.Deny(
+                $"需要用户确认后才能执行（HITL）：{reasonText}", ToolErrorKind.NeedsConfirmation);
+        }
+
+        string? approvalId = null;
+        try
+        {
+            approvalId = await _approvalChannel.RequestApprovalAsync(
+                new ToolApprovalRequest(
+                    tool.Name,
+                    context.AppKey,
+                    context.UserId,
+                    context.ConversationKey,
+                    argsDigest,
+                    tool.RequiredScopes,
+                    reason,
+                    _utcClock() + ToolConfirmationToken.DefaultLifetime,
+                    issued),
+                cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            // 通道失败必须降级为纯提示，绝不把令牌回填到任何模型可见文本。
+            _logger?.LogWarning(ex, "工具批准通道提交失败，已降级为纯提示（tool: {ToolName}）", tool.Name);
+        }
+
+        return GateDecision.Deny(
+            $"需要用户确认后才能执行（HITL）：{reasonText}"
+            + (approvalId is null
+                ? "；已在宿主侧发起确认，请等待用户批准"
+                : $"；已在宿主侧发起确认（关联号 {approvalId}），请等待用户批准"),
+            ToolErrorKind.NeedsConfirmation);
     }
 
     /// <summary>

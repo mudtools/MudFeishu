@@ -75,7 +75,8 @@ services.AddFeishuTools();                 // 引入全部域（含元工具）
 ①' 入站净化        —— 控制字符/危险 Unicode/独立 CR → 拒绝（invalid_args），零调用下游
 ② 策略轴           —— MaxToolRisk / AllowedIdentities → 拒绝（policy_denied: reason_code）
 ③ 授权门禁         —— IToolExecutionAuthorizer → 拒绝（authorization_denied: ...）；
-                      NeedsUserConfirmation → 签发无状态确认令牌（confirm_token 重试即放行）
+                      NeedsUserConfirmation → 签发无状态确认令牌，并**只**投递给宿主批准通道
+                      （IFeishuToolApprovalChannel）；令牌**不进入模型上下文**（R2-1，见下）
 ④ 租户上下文切换    —— BeginScope(appKey)
 ④' 用户上下文       —— 仅 identity=user 工具：写入 IFeishuCurrentUserContext（AsyncLocal，
                       用户令牌缓存查找键）并在 finally 清理；tenant 路径不触碰
@@ -100,6 +101,27 @@ services.AddFeishuTools();                 // 引入全部域（含元工具）
 - **内容安全默认 `warn` 而非 `block`**：命中即标注 `[untrusted_content: 规则]`，不阻断——
   工具结果里合法出现"忽略上一段"这类字面文本是可能的（例如一份评审文档）。
 - **`dry_run`（写工具）**：只回 `method`/`path` 与请求体字段**长度**摘要，不回原文，也不调用下游。
+
+### 人工确认（HITL）语义（R2-1，**宿主可见的行为变更**）
+
+`IToolExecutionAuthorizer` 返回 `NeedsUserConfirmation` 时，执行链签发一枚无状态确认令牌
+（HMAC，绑定 `toolName` + 参数摘要 + `appKey` + `userId`，默认 10 分钟有效）。
+
+**令牌只交给宿主，绝不进入模型上下文。**
+
+| 角色 | 职责 |
+| --- | --- |
+| SDK（`FeishuToolBinding`） | 签发令牌 → 构造 `ToolApprovalRequest` → 调 `IFeishuToolApprovalChannel.RequestApprovalAsync` → 回填模型的是**中性文案**（`needs_confirmation` + 宿主关联号） |
+| 宿主 | 实现 `IFeishuToolApprovalChannel`，在自有界面（飞书卡片/工单/审批单）展示待确认项；用户批准后把令牌作为工具参数 `confirm_token` 回灌，重新发起调用 |
+| 未注册通道 | HITL **降级为纯提示**（fail-closed）：模型只会收到"需要用户确认"，拿不到令牌 |
+
+> **为什么改**：旧实现把令牌内插进回填模型的拒绝文案，使批准所需的全部要素都进入模型上下文，
+> 而令牌校验只校验签名/有效期/绑定、**不校验批准是否来自人** ⇒ 模型可自行带令牌重试放行写操作，
+> 一次成功的提示注入即可绕过人工确认。
+> **迁移**：若宿主此前按旧文案实现「把令牌抄回去重试」，须改为实现
+> `IFeishuToolApprovalChannel` 由宿主侧回灌；旧路径的令牌从未真正证明"人已批准"，必须废弃。
+> 中长期迁移到 MAF `ApprovalRequiredAIFunction`（框架侧绑定一次性批准请求），见
+> `.docs/AI/Mud.Feishu.AI-审查缺陷修复与能力完善方案-R2.md` §4.1。
 
 ---
 

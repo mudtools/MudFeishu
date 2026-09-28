@@ -101,4 +101,83 @@ public class MemoryConversationStoreTests
 
         await act.Should().ThrowAsync<ArgumentException>();
     }
+
+    // ===== R2-5：未再被读取的过期键必须被惰性分摊清扫回收 =====
+
+    [Fact]
+    public async Task ExpiredEntries_ShouldBeReclaimed_AfterThreshold()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var store = new MemoryConversationStore(ttl: TimeSpan.FromSeconds(10), utcNow: () => now);
+
+        // 写入到阈值：全部条目随后过期，且**不再被读取**（读侧软过期永远够不到它们）。
+        for (var i = 0; i < MemoryConversationStore.SweepThreshold; i++)
+        {
+            await store.SaveAsync($"k{i}", "{\"s\":1}");
+        }
+
+        store.Count.Should().Be(MemoryConversationStore.SweepThreshold);
+
+        now += TimeSpan.FromSeconds(11);
+
+        // 下一次写入触发一次全量过期回收。
+        await store.SaveAsync("trigger", "{\"s\":1}");
+
+        store.Count.Should().Be(1, "达到清扫阈值后的写入必须回收全部已过期条目（否则未读键永不释放）");
+        (await store.GetAsync("k0")).Should().BeNull();
+        (await store.GetAsync("trigger")).Should().Be("{\"s\":1}");
+    }
+
+    [Fact]
+    public async Task SweepExpired_ShouldNotRemoveFreshEntries()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var store = new MemoryConversationStore(ttl: TimeSpan.FromSeconds(10), utcNow: () => now);
+
+        for (var i = 0; i < MemoryConversationStore.SweepThreshold; i++)
+        {
+            await store.SaveAsync($"k{i}", "{\"s\":1}");
+        }
+
+        // 触发清扫但条目仍新鲜：一个都不许删。
+        await store.SaveAsync("trigger", "{\"s\":1}");
+
+        store.Count.Should().Be(MemoryConversationStore.SweepThreshold + 1, "未过期条目不得被清扫误删");
+        (await store.GetAsync("k0")).Should().Be("{\"s\":1}");
+    }
+
+    [Fact]
+    public async Task SweepExpired_ShouldNotRemoveSameKeyNewerValue()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var store = new MemoryConversationStore(ttl: TimeSpan.FromSeconds(10), utcNow: () => now);
+
+        // 构造「同键旧值已过期、新值新鲜」：清扫期间的同键覆盖写入不得被旧 KVP 值匹配误删。
+        await store.SaveAsync("dup", "{\"v\":1}");
+        for (var i = 0; i < MemoryConversationStore.SweepThreshold - 1; i++)
+        {
+            await store.SaveAsync($"k{i}", "{\"s\":1}");
+        }
+
+        now += TimeSpan.FromSeconds(11);
+
+        // 到达阈值边界：先触发回收（此刻 dup 的旧值已过期会被回收），再写入新值。
+        await store.SaveAsync("trigger", "{\"s\":1}");
+        await store.SaveAsync("dup", "{\"v\":2}");
+
+        (await store.GetAsync("dup")).Should().Be("{\"v\":2}", "同键的新值不得被旧条目的值匹配删除误伤");
+    }
+
+    [Fact]
+    public async Task SweepExpired_ShouldNotRun_BelowThreshold()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var store = new MemoryConversationStore(ttl: TimeSpan.FromSeconds(10), utcNow: () => now);
+
+        await store.SaveAsync("k0", "{\"s\":1}");
+        now += TimeSpan.FromSeconds(11);
+        await store.SaveAsync("k1", "{\"s\":1}");
+
+        store.Count.Should().Be(2, "未达阈值不触发清扫（均摊策略：不把 O(n) 成本摊到每次写入）");
+    }
 }

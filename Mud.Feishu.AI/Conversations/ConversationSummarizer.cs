@@ -119,8 +119,20 @@ public sealed class ConversationSummarizer
         if (session is null)
             throw new ArgumentNullException(nameof(session));
 
-        if (!session.TryGetInMemoryChatHistory(out var history, FeishuAgent.ChatHistoryStateKey, null))
+        List<ChatMessage>? history;
+        try
         {
+            // 状态袋的值是**惰性**反序列化的：内层载荷损坏在**首次**类型化读取时才抛。
+            // 会话入口（FeishuAgent.GetOrCreateSessionAsync）已做急切校验并删除坏值（R2-2①），
+            // 此处是纵深防御——未来若出现新的读取入口，也不得让异常逃出摘要器毒化会话。
+            if (!session.TryGetInMemoryChatHistory(out history, FeishuAgent.ChatHistoryStateKey, null))
+            {
+                return false;
+            }
+        }
+        catch (Exception ex) when (ex is JsonException or ArgumentException or InvalidOperationException or NotSupportedException)
+        {
+            _logger?.LogWarning(ex, "会话历史状态不可用，本轮跳过压缩（由会话入口的坏值自愈路径重建）");
             return false;
         }
 
@@ -131,8 +143,23 @@ public sealed class ConversationSummarizer
         }
 
         // token 维度判定（P2D-3a）：超限时摘要先于条数窗口触发（先触发者生效）。
-        if (!ShouldSummarize(history.Count, ChatTokenCounter.CountMessages(history)))
+        var historyTokens = ChatTokenCounter.CountMessages(history);
+        var countTriggered = _summaryThreshold > 0 && history.Count >= _summaryThreshold;
+        var tokenTriggered = _maxHistoryTokens > 0 && historyTokens >= _maxHistoryTokens;
+        if (!countTriggered && !tokenTriggered)
         {
+            return false;
+        }
+
+        // 不可收敛边界（R2-11）：历史已缩到「摘要 + 1 条」且触发者是 token 维度时，
+        // 摘要无法把 token 量降下来——继续摘要只会每轮多一次模型调用，并把"摘要的摘要"反复压缩。
+        // 仅在 token 维度单独触发时短路：条数维度触发时（含 SummaryThreshold ≤ 2 的极端配置）
+        // 压缩仍能降低条数，必须保留原有语义。
+        if (!countTriggered && tokenTriggered && history.Count <= 2)
+        {
+            _logger?.LogWarning(
+                "单条消息即超 token 预算（{Tokens} ≥ {Budget}），摘要无法收敛——本轮跳过压缩；"
+                + "请提高 MaxHistoryTokens 或截断超长消息", historyTokens, _maxHistoryTokens);
             return false;
         }
 
@@ -217,6 +244,16 @@ public sealed class ConversationSummarizer
                 }
                 while (rebuilt.Count > 2 && IsToolRelated(rebuilt[1]));
             }
+        }
+
+        // 不可收敛可观测（R2-11）：收缩到「摘要 + 最后一条」仍越限时标记 Span，
+        // 让宿主能区分「配置/内容不匹配」与「摘要失效」，而不是只看到"每轮都在摘要"。
+        if (_maxHistoryTokens > 0 && rebuilt.Count == 2 && ChatTokenCounter.CountMessages(rebuilt) >= _maxHistoryTokens)
+        {
+            activity?.SetTag(FeishuAgentDiagnostics.TagSummarizeUnconverged, true);
+            _logger?.LogWarning(
+                "单条消息即超 token 预算（{Tokens} ≥ {Budget}），摘要无法收敛——请提高 MaxHistoryTokens 或截断超长消息",
+                ChatTokenCounter.CountMessages(rebuilt), _maxHistoryTokens);
         }
 
         session.SetInMemoryChatHistory(rebuilt, FeishuAgent.ChatHistoryStateKey, null);

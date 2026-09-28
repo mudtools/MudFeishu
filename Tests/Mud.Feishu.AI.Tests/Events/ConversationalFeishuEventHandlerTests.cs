@@ -96,12 +96,17 @@ public class ConversationalFeishuEventHandlerTests
         IFeishuEventDeduplicator deduplicator,
         IAppKeyAccessor? accessor,
         bool emptyUserMessage = false,
-        bool forceFailFast = false) : ConversationalFeishuEventHandler<DemoEvent>(
-            agent, deduplicator, NullLogger.Instance, appKeyAccessor: accessor)
+        bool forceFailFast = false,
+        IFeishuToolContextAccessor? toolContextAccessor = null,
+        bool allowToolsWithoutAppKey = false) : ConversationalFeishuEventHandler<DemoEvent>(
+            agent, deduplicator, NullLogger.Instance, appKeyAccessor: accessor,
+            toolContextAccessor: toolContextAccessor)
     {
         public string? LastReply { get; private set; }
 
         protected override bool AllowMissingAppKey => forceFailFast ? false : base.AllowMissingAppKey;
+
+        protected override bool AllowToolsWithoutAppKey => allowToolsWithoutAppKey;
 
         protected override Task<ConversationRequest> BuildRequestAsync(DemoEvent eventData, CancellationToken cancellationToken)
             => Task.FromResult(new ConversationRequest(
@@ -269,6 +274,76 @@ public class ConversationalFeishuEventHandlerTests
         var act = async () => await handler.HandleAsync(DemoEventData("evt-appkey-4"), default);
 
         await act.Should().ThrowAsync<InvalidOperationException>("宿主可覆写钩子强制多应用强校验");
+    }
+
+    // ───────────────────── R2-3：AppKey 缺失 × 工具执行链已装配 ⇒ fail-fast ─────────────────────
+
+    [Fact]
+    public async Task HandleAsync_ShouldFailFast_WhenToolChainPresent_AndAppKeyMissing()
+    {
+        // 单应用宿主（未注册 IAppKeyAccessor）+ 已装配工具执行链 + appKey 为空
+        // ⇒ 工具/知识注入必然 100% 失败，不得伪装成「正常降级」。
+        var mockClient = CreateChatClient();
+        var agent = new FeishuAgent(mockClient.Object, new FeishuAgentOptions { Instructions = "x" });
+        var handler = new ProbeHandler(
+            agent, CreateDeduplicator().Object, accessor: null,
+            toolContextAccessor: new FeishuToolContextAccessor());
+
+        var act = async () => await handler.HandleAsync(DemoEventData("evt-tools-appkey-1"), default);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*工具执行链已装配*", "异常必须给出可读指引（注册 IAppKeyAccessor 或覆写逃生门）");
+        mockClient.Verify(
+            c => c.GetResponseAsync(It.IsAny<IEnumerable<ChatMessage>>(), It.IsAny<ChatOptions?>(), It.IsAny<CancellationToken>()),
+            Times.Never, "fail-fast 必须发生在模型调用之前（否则白跑一次模型调用）");
+        handler.LastReply.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task HandleAsync_ShouldDegrade_WhenToolChainAbsent_AndAppKeyMissing()
+    {
+        // 无工具执行链：保持 R1 既有降级语义（不回归）。
+        var mockClient = CreateChatClient();
+        var agent = new FeishuAgent(mockClient.Object, new FeishuAgentOptions { Instructions = "x" });
+        var handler = new ProbeHandler(agent, CreateDeduplicator().Object, accessor: null);
+
+        await handler.HandleAsync(DemoEventData("evt-tools-appkey-2"), default);
+
+        handler.LastReply.Should().Be("模型回答", "无工具链时 appKey 缺失仍按既有单应用降级语义处理");
+    }
+
+    [Fact]
+    public async Task HandleAsync_ShouldDegrade_WhenEscapeHatchOverridden()
+    {
+        var mockClient = CreateChatClient();
+        var agent = new FeishuAgent(mockClient.Object, new FeishuAgentOptions { Instructions = "x" });
+        var handler = new ProbeHandler(
+            agent, CreateDeduplicator().Object, accessor: null,
+            toolContextAccessor: new FeishuToolContextAccessor(), allowToolsWithoutAppKey: true);
+
+        await handler.HandleAsync(DemoEventData("evt-tools-appkey-3"), default);
+
+        handler.LastReply.Should().Be("模型回答",
+            "覆写 AllowToolsWithoutAppKey => true 即显式接受「工具面不可用」，按既有降级继续");
+    }
+
+    [Fact]
+    public async Task HandleAsync_ShouldNotFailFast_WhenAppKeyPresent_AndToolChainPresent()
+    {
+        // 有 appKey 时本守卫不得误伤（正向锁定）。
+        var store = new RecordingConversationStore();
+        var accessor = new TestAppKeyAccessor();
+        accessor.SetAppKey("app-c");
+        var agent = new FeishuAgent(CreateChatClient().Object, new FeishuAgentOptions { Instructions = "x" }, store);
+        var handler = new ProbeHandler(
+            agent, CreateDeduplicator().Object, accessor,
+            toolContextAccessor: new FeishuToolContextAccessor());
+
+        await handler.HandleAsync(DemoEventData("evt-tools-appkey-4"), default);
+
+        handler.LastReply.Should().Be("模型回答");
+        store.SavedKeys.Should().ContainSingle();
+        store.SavedKeys[0].Should().StartWith("feishu:app-c:conversation:");
     }
 
     // ───────────────────── P2-7：空用户消息守卫 ─────────────────────

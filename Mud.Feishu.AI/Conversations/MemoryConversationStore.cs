@@ -17,12 +17,26 @@ namespace Mud.Feishu.AI.Conversations;
 /// 读侧有效性判定；Redis 由服务器键过期 + 读侧时间戳双重兜底）。
 /// </para>
 /// <para>
+/// <b>过期回收（R2-5）</b>：软过期只在<b>读同一键</b>时删除，<b>不再被读取</b>的键（一次性会话、
+/// 被移出群的用户）永不回收 ⇒ 长跑宿主的内存随会话数单调增长。故在写入路径按阈值触发一次
+/// <b>惰性分摊清扫</b>：单次 O(n)、均摊 O(1)，<b>不引入后台线程/定时器</b>（保持"纯库、零宿主假设"品格），
+/// 语义与 Redis 服务端过期一致（读侧软过期兜底不变）。
+/// </para>
+/// <para>
+/// <b>能力边界</b>：清扫只回收<b>已过期</b>条目——TTL 窗口内的<b>新鲜</b>条目仍无数量上限
+/// （TTL 缓存的固有语义）。需要按数量/字节上限淘汰的宿主应改用 Redis 后端或自定义实现。
+/// </para>
+/// <para>
 /// 仅适合单实例部署与测试；分布式部署请使用 Mud.Feishu.Redis 的
 /// <c>RedisConversationStore</c>（接口注入替换本实现）。
 /// </para>
 /// </remarks>
 public sealed class MemoryConversationStore : IConversationStore
 {
+    /// <summary>清扫触发阈值（条目数；达到则在下一次写入时做一次全量过期回收）。</summary>
+    /// <remarks>分摊策略：单次 O(n)、均摊 O(1)。值为 2 的幂，便于在用例中构造边界。</remarks>
+    internal const int SweepThreshold = 1024;
+
     private readonly ConcurrentDictionary<string, StoreEntry> _entries = new(StringComparer.Ordinal);
     private readonly TimeSpan _ttl;
     private readonly Func<DateTimeOffset> _utcNow;
@@ -71,6 +85,13 @@ public sealed class MemoryConversationStore : IConversationStore
         if (string.IsNullOrEmpty(serializedSession))
             throw new ArgumentException("会话载荷不能为空", nameof(serializedSession));
 
+        // 惰性分摊清扫（R2-5）：未再被读取的过期键永不到达读侧软过期路径，
+        // 故由写入路径按阈值触发一次全量回收（不引入后台线程/定时器）。
+        if (_entries.Count >= SweepThreshold)
+        {
+            SweepExpired();
+        }
+
         var expireAtMs = _utcNow().ToUnixTimeMilliseconds() + (long)_ttl.TotalMilliseconds;
         _entries[key] = new StoreEntry(serializedSession, expireAtMs);
         return Task.CompletedTask;
@@ -83,6 +104,26 @@ public sealed class MemoryConversationStore : IConversationStore
 
         _entries.TryRemove(key, out _);
         return Task.CompletedTask;
+    }
+
+    /// <summary>当前驻留条目数（含已过期未回收者；诊断与用例观测面）。</summary>
+    internal int Count => _entries.Count;
+
+    /// <summary>回收全部已过期条目（值匹配删除，与读侧软过期同源判定）。</summary>
+    /// <remarks>
+    /// <see cref="ConcurrentDictionary{TKey,TValue}"/> 支持枚举期间移除；KVP 值匹配保证
+    /// 不会误删「同键在枚举期间被覆盖写入」的新值（与读侧软过期同一手法）。
+    /// </remarks>
+    private void SweepExpired()
+    {
+        var nowMs = _utcNow().ToUnixTimeMilliseconds();
+        foreach (var pair in _entries)
+        {
+            if (pair.Value.ExpireAtMs <= nowMs)
+            {
+                ((ICollection<KeyValuePair<string, StoreEntry>>)_entries).Remove(pair);
+            }
+        }
     }
 
     private sealed record StoreEntry(string Payload, long ExpireAtMs);

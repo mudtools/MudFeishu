@@ -1,5 +1,66 @@
 # Mud.Feishu 更新日志
 
+## [Unreleased] - Mud.Feishu.AI 审查缺陷修复 R2（第二轮审查，2026-09-28）
+
+> 方案与双视角复核裁定见 `.docs/AI/Mud.Feishu.AI-审查缺陷修复与能力完善方案-R2.md`（§0.5 复核裁定）。
+> 覆盖 1 个 P0、5 个 P1、7 个 P2；新增配置键 **0**。
+
+### ⚠️ 行为变更登记（宿主可感）
+
+- **【P0 / R2-1】HITL 确认令牌不再进入模型上下文**：`NeedsUserConfirmation` 签发的 `confirm_token`
+  改为**只**经新增契约 `IFeishuToolApprovalChannel` 投递给宿主；回填模型的文案改为中性语义（不含令牌、
+  不再指示"以 `confirm_token` 重试"）。**迁移**：此前按旧文案「抄令牌重试」的宿主须改为实现该通道、
+  由宿主侧回灌令牌；未注册通道时 HITL 降级为纯提示（fail-closed）。
+  背景：旧路径下令牌、原参数、appKey、userId 都在模型上下文内，而令牌校验不校验"批准是否来自人"，
+  模型可自行带令牌重试放行写操作。
+- **【R2-3】新增 fail-fast**：「未装配 `IAppKeyAccessor` 的单应用宿主」+「已装配工具执行链」+ AppKey 缺失
+  时首轮抛 `InvalidOperationException`（原为静默降级后工具/知识 100% 失败）。
+  逃生门：覆写 `ConversationalFeishuEventHandler.AllowToolsWithoutAppKey => true`，
+  或注册 `IAppKeyAccessor`（推荐）。
+- **【R2-6】`FeishuAgent.Id` 取值变化**：由随机 GUID 改为委托内层 `ChatClientAgent.Id`
+  （对齐 MAF `DelegatingAIAgent.IdCore`），使 `AgentResponse.AgentId` 与 `FeishuAgent.Id` 一致。
+  若宿主持久化了旧 Id 做关联，需重建映射。
+- **【R2-5】`MemoryConversationStore` 新增惰性分摊清扫**：只影响回收时机（未读过期键现在会被回收），
+  内存语义与 TTL 不变；**不引入**后台线程/定时器。
+
+### 🐛 修复
+
+- **R2-2**：会话恢复期**急切**校验历史状态——MAF 状态袋惰性反序列化导致内层损坏只在首次类型化读取时抛，
+  逃逸 `GetOrCreateSessionAsync` 的守护区 ⇒ 坏值永不删除、会话在 TTL 内永久毒化。
+  同时在 `ConversationSummarizer` 增加纵深防御。
+- **R2-4**：补齐 `Microsoft.ML.Tokenizers.Data.O200kBase` 词表包（原缺失使 `TiktokenTokenizer` 初始化失败
+  被静默吞掉，`MaxHistoryTokens` 维度恒走字符估算且无任何信号）；新增
+  `ChatTokenCounter.InitializationFailure` 并由 `FeishuAgent` 构造期告警一次（工具类不引入 `ILogger`）。
+- **R2-7**：流式增量写入（`IMessageChannel.WriteStreamAsync`）增加调用方兜底——通道违反契约时只跳过分片，
+  不再升级为"补偿 Flush + 幂等回滚 + 重投递（模型重复计费）"。
+- **R2-9**：空模型回复不再下发（原会触发飞书 API 报错 → 回滚重投递 → 重复计费）。
+- **R2-10**：`KeyedConversationGate` 取消路径由「断言运行时行为」改为「声明所依赖契约」，
+  并由新增的取消竞态压测实证守护（**无代码行为变更**）。
+- **R2-11**：摘要不可收敛边界——历史已缩到「摘要 + 1 条」且由 token 维度触发时跳过压缩，
+  不再每轮一次模型调用并反复压缩"摘要的摘要"；并新增 Span 属性
+  `feishu.agent.summarize_unconverged` 供宿主观测。
+- **R2-12**：`MaxHistoryMessages` 文档校准（实测为**不可逆落库删除** + 工具消息剔除 + 仅保留首条 system，
+  旧注释「折叠」与实测不符）。**无行为变更**。
+
+### 🌟 新增
+
+- **`IFeishuToolApprovalChannel` / `ToolApprovalRequest`**（`Mud.Feishu.AI/Tools/`）：宿主人工批准通道契约
+  （SDK 只定契约、不内实现，与 `IToolExecutionAuthorizer` 同款定位）。
+- **`FeishuAgentDiagnostics`**：`TagSummarizeUnconverged`；OTel GenAI 语义约定附加面
+  `gen_ai.agent.name` / `gen_ai.operation.name`（**只增不改**，`feishu.*` 面保持不变）。
+
+### 🧪 测试与守卫
+
+- 新增/改写用例 30 个（`Mud.Feishu.AI.Tests` 192 → 222，`Mud.Feishu.AI.FeishuTools.Tests` 302 → 306）。
+- 新增契约守卫 **8 条**（含 `MaxHistoryMessages` 消费点守卫——既有两条 Phase2/Phase12 守卫均未覆盖）。
+- 新增 `KeyedConversationGateCancellationStressTests`：闸门取消竞态压测
+  （判定「.NET `SemaphoreSlim` 取消/获取竞态不丢许可」的唯一实证手段）。
+- **修正两处被精确计数暴露的用例**：`TokenWindowTests.Count_ShouldEstimateByCharsPerToken`
+  与 `ConversationSummarizerConvergenceTests` 的条数断言原先按「4 字符/token」**估算**校准，
+  R2-4 使精确计数真正生效后失准；已改为不绑定计数实现。
+
+---
+
 ## [Unreleased] - AI 工具面 R3（对照官方 CLI 审查第三轮，2026-09-28）
 
 > 四维评审结论（PM / 架构师 / 高级程序员 / QA）与逐条落地核验见

@@ -11,26 +11,7 @@ namespace Mud.Feishu.DataModels.Hire;
 /// 批量获取待办事项响应体
 /// </summary>
 [HttpJsonSerializable(SerializerClassName = "Hire")]
-public class GetTodoListResult
+public class GetTodoListResult: ApiPageListResult<Todo>
 {
-    /// <summary>
-    /// <para>待办事项列表</para>
-    /// <para>必填：否</para>
-    /// </summary>
-    [JsonPropertyName("items")]
-    public Todo[]? Items { get; set; }
-
-    /// <summary>
-    /// <para>是否还有下一页数据</para>
-    /// <para>必填：否</para>
-    /// </summary>
-    [JsonPropertyName("has_more")]
-    public bool? HasMore { get; set; }
-
-    /// <summary>
-    /// <para>下一页页码，当 has_more 为 true 时返回</para>
-    /// <para>必填：否</para>
-    /// </summary>
-    [JsonPropertyName("page_token")]
-    public string? PageToken { get; set; }
+    
 }

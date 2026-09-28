@@ -11,28 +11,7 @@ namespace Mud.Feishu.DataModels.Lingo;
 /// 获取词典分类响应体
 /// </summary>
 [HttpJsonSerializable(SerializerClassName = "Lingo")]
-public class GetClassificationListResult
+public class GetClassificationListResult : ApiPageListResult<LingoClassification>
 {
-    /// <summary>
-    /// <para>分类列表</para>
-    /// <para>必填：否</para>
-    /// </summary>
-    [JsonPropertyName("items")]
-    public LingoClassification[]? Items { get; set; }
 
-    /// <summary>
-    /// <para>分页标记，当还有下一页时会返回新的 page_token，否则 page_token 为空</para>
-    /// <para>必填：否</para>
-    /// <para>示例值：408ecac018b2e3518db37275e812aad7bb8ad3e755fc886f322ac6c430ba</para>
-    /// </summary>
-    [JsonPropertyName("page_token")]
-    public string? PageToken { get; set; }
-
-    /// <summary>
-    /// <para>是否有下一页</para>
-    /// <para>必填：否</para>
-    /// <para>示例值：true</para>
-    /// </summary>
-    [JsonPropertyName("has_more")]
-    public bool? HasMore { get; set; }
 }

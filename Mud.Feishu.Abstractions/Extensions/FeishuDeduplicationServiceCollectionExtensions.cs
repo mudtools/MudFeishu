@@ -83,6 +83,11 @@ public static class FeishuDeduplicationServiceCollectionExtensions
                 _ => FeishuDeduplicationOptions.ProfileDefault
             };
             overrideConfigure?.Invoke(options);
+            // R5.4/F1：代码配置即激活统一节。消费端（WS/Webhook/Redis）以
+            // IsConfiguredFromConfiguration 作为唯一激活闸门；此前仅物理配置节路径写入该标志，
+            // 导致 Profile 重载在「appsettings 无物理节」时被整体短路（Profile/字段级配置静默无效）。
+            // 语义：显式调用本 API == 宿主声明「我要用统一节」，与物理节存在等价。
+            options.IsConfiguredFromConfiguration = true;
             options.Validate();
         });
 
@@ -191,10 +196,12 @@ internal sealed class FeishuDeduplicationOptionsValidator : IValidateOptions<Fei
                 options.SeqId?.KeyPrefix
             }.Where(p => !string.IsNullOrEmpty(p)).Select(p => p!).ToList();
 
-            if (prefixes.Count >= 2 && prefixes.Distinct(StringComparer.Ordinal).Count() == 1)
+            // R5.4/F11：TMA2-20 要求三前缀两两互异；此前仅拦「全部相同」（Count==1），
+            // 「两个相同 + 一个不同」可绕过 → 多租户键空间部分重叠。改为任意两个非空前缀相同即失败。
+            if (prefixes.Distinct(StringComparer.Ordinal).Count() < prefixes.Count)
             {
                 return ValidateOptionsResult.Fail(
-                    "FeishuDeduplication 分布式模式下 Event/Nonce/SeqId KeyPrefix 不得相同（TMA2-20 多租户隔离）");
+                    "FeishuDeduplication 分布式模式下 Event/Nonce/SeqId KeyPrefix 必须两两互异（TMA2-20 多租户隔离）");
             }
         }
 

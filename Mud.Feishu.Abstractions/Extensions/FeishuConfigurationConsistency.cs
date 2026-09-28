@@ -39,7 +39,7 @@ public static class FeishuConfigurationConsistency
     public const int MaxTimestampToleranceSeconds = 300;
 
     /// <summary>Nonce TTL 下限建议（秒），与 Webhook 默认容差对齐</summary>
-    public const int DefaultNonceTtlSeconds = 300;
+    public const int DefaultNonceTtlSeconds = 600;
 
     /// <summary>
     /// 校验 NonceTtl ≥ TimestampToleranceSeconds（WHF-03）。
@@ -58,11 +58,14 @@ public static class FeishuConfigurationConsistency
             return failOnValidationError ? ValidateOptionsResult.Fail(capMsg) : ValidateOptionsResult.Success;
         }
 
-        if (nonceTtl < TimeSpan.FromSeconds(timestampToleranceSeconds))
+        // R5.4/F4：口径统一为严格 >（不取 >=）。TTL 与容差相等时余量为零，
+        // 时钟抖动/网络延迟即可让"Nonce 已过期而时间戳仍被接受"的窗口真实存在。
+        // 与 FeishuWebhookOptions.Validate:317 的严格 > 口径一致。
+        if (nonceTtl <= TimeSpan.FromSeconds(timestampToleranceSeconds))
         {
             var msg =
-                $"NonceTtl({nonceTtl}) 必须 >= TimestampToleranceSeconds({timestampToleranceSeconds})（WHF-03）——" +
-                "否则 Nonce 过期后、时间戳容差窗口结束前存在重放窗口";
+                $"NonceTtl({nonceTtl}) 必须严格大于 TimestampToleranceSeconds({timestampToleranceSeconds})（WHF-03）——" +
+                "相等时余量为零，时钟抖动即可打开重放窗口";
             return failOnValidationError ? ValidateOptionsResult.Fail(msg) : ValidateOptionsResult.Success;
         }
 

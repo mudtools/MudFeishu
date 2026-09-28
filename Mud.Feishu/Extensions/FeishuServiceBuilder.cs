@@ -64,7 +64,8 @@ public class FeishuServiceBuilder
             [FeishuModule.Security] = new FeishuModuleRegistrar(FeishuModule.Security, s => s.AddSecurityWebApiHttpClient()),
             [FeishuModule.MDM] = new FeishuModuleRegistrar(FeishuModule.MDM, s => s.AddMDMWebApiHttpClient()),
             [FeishuModule.Payroll] = new FeishuModuleRegistrar(FeishuModule.Payroll, s => s.AddPayrollWebApiHttpClient()),
-            [FeishuModule.PersonalSettings] = new FeishuModuleRegistrar(FeishuModule.PersonalSettings, s => s.AddPersonalSettingsWebApiHttpClient())
+            [FeishuModule.PersonalSettings] = new FeishuModuleRegistrar(FeishuModule.PersonalSettings, s => s.AddPersonalSettingsWebApiHttpClient()),
+            [FeishuModule.Okr] = new FeishuModuleRegistrar(FeishuModule.Okr, s => s.AddOkrWebApiHttpClient())
         };
     }
 
@@ -258,6 +259,12 @@ public class FeishuServiceBuilder
     /// </summary>
     /// <returns>建造者实例，支持链式调用</returns>
     public FeishuServiceBuilder AddPersonalSettingsApi() => AddModule(FeishuModule.PersonalSettings);
+
+    /// <summary>
+    /// 添加 OKR 管理 API 服务
+    /// </summary>
+    /// <returns>建造者实例，支持链式调用</returns>
+    public FeishuServiceBuilder AddOkrApi() => AddModule(FeishuModule.Okr);
 
     /// <summary>
     /// 添加所有 API 服务

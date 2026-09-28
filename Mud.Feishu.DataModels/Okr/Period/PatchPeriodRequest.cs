@@ -5,27 +5,19 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-namespace Mud.Feishu.DataModels.Hire;
+namespace Mud.Feishu.DataModels.Okr;
 
 /// <summary>
-/// 多语言文本对象（中文 + 英文）
+/// 修改 OKR 周期状态请求体
 /// </summary>
-[HttpJsonSerializable(SerializerClassName = "Hire")]
-public class I18n
+[HttpJsonSerializable(SerializerClassName = "Okr")]
+public class PatchPeriodRequest
 {
     /// <summary>
-    /// <para>中文名称</para>
-    /// <para>必填：否</para>
-    /// <para>示例值：账号token</para>
+    /// <para>周期显示状态（必填）：1 正常、2 标记失效、3 隐藏周期</para>
+    /// <para>必填：是</para>
+    /// <para>示例值：1</para>
     /// </summary>
-    [JsonPropertyName("zh_cn")]
-    public string? ZhCn { get; set; }
-
-    /// <summary>
-    /// <para>英文名称</para>
-    /// <para>必填：否</para>
-    /// <para>示例值：Account token</para>
-    /// </summary>
-    [JsonPropertyName("en_us")]
-    public string? EnUs { get; set; }
+    [JsonPropertyName("status")]
+    public int Status { get; set; }
 }

@@ -106,7 +106,15 @@ public class FeishuWebhookServiceBuilder
             throw new ArgumentNullException(nameof(configuration));
 
         var section = sectionName ?? DefaultConfigurationSection;
-        _services.Configure<FeishuWebhookOptions>(options => configuration.GetSection(section).Bind(options));
+        var optionsSection = configuration.GetSection(section);
+        _services.Configure<FeishuWebhookOptions>(options => optionsSection.Bind(options));
+        // R5.4/F5：显式注册变更令牌，使 IOptionsMonitor.OnChange 订阅者
+        // （FeishuMultiAppMiddleware / FeishuWebhookConcurrencyService）真正生效。
+        // 此前用 Configure<T>(Action) 手工 Bind，不会注册 IConfigurationChangeTokenSource，
+        // 导致限流窗口/并发数/白名单「改了不生效」。
+        // 不得改用 Configure<T>(IConfiguration) 重载（反射绑定调用点无法被配置绑定源生成器拦截，见 AOT-3）。
+        _services.AddSingleton<IOptionsChangeTokenSource<FeishuWebhookOptions>>(
+            new ConfigurationChangeTokenSource<FeishuWebhookOptions>(Microsoft.Extensions.Options.Options.DefaultName, optionsSection));
 
         // R5.0.1（X2）：已删除的请求日志开关（该开关从未被运行时读取）。
         // 此处做一次性兼容探测：用户若仍配置该键，给出明确迁移指引，避免「配了但无声无息」。
@@ -705,7 +713,18 @@ public class FeishuWebhookServiceBuilder
                 processingTimeout: TimeSpan.FromMilliseconds(Consts.DefaultProcessingTimeoutMs),
                 maxCacheSize: Consts.DefaultMaxCacheSize);
         });
-        _services.TryAddSingleton<IFeishuNonceDistributedDeduplicator, FeishuNonceDistributedDeduplicator>();
+        // R5.4/F4：Nonce TTL 单一来源化。此前无参构造硬编码 300s，与 Redis 默认 600s 不同源。
+        // 现从统一节 Nonce.Ttl 解析；未激活时回退同源常量 Consts.DefaultNonceTtlSeconds（600s）。
+        _services.TryAddSingleton<IFeishuNonceDistributedDeduplicator>(sp =>
+        {
+            var logger = sp.GetService<ILogger<FeishuNonceDistributedDeduplicator>>();
+            var unified = sp.GetService<IOptions<FeishuDeduplicationOptions>>()?.Value;
+            var ttl = unified is { IsConfiguredFromConfiguration: true }
+                      && unified.Nonce?.Ttl is { } t && t > TimeSpan.Zero
+                ? t
+                : TimeSpan.FromSeconds(Consts.DefaultNonceTtlSeconds);
+            return new FeishuNonceDistributedDeduplicator(logger, ttl);
+        });
 
         // 令牌自动刷新后台服务已在 AddFeishuAppBaseServices 中注册（由 Mud.HttpUtils 提供）。
         // R4：仅 EnableTokenBackgroundRefresh 控制 TokenRefreshBackgroundOptions.Enabled。
@@ -782,11 +801,41 @@ public class FeishuWebhookServiceBuilder
         _services.AddOptions<FeishuWebhookOptions>()
             .PostConfigure<IServiceProvider>((options, sp) =>
             {
+                // R5.4/F4：跨包 Nonce TTL 一致性校验（V5 修正：Webhook 不可引用 RedisOptions）。
+                // Redis 包在 AddFeishuRedisDeduplicators 注册期把实际 Nonce TTL 写入 FeishuNonceTtlFact。
+                // 此处读取并强制严格 > TimestampToleranceSeconds（WHF-03）。
+                // 纯 Webhook 宿主（未引用 Redis 包）→ fact 为 null → 跳过。
+                var nonceTtlFact = sp.GetService<FeishuNonceTtlFact>();
+                if (nonceTtlFact?.NonceTtl is { } redisNonceTtl
+                    && options.TimestampToleranceSeconds > 0
+                    && redisNonceTtl <= TimeSpan.FromSeconds(options.TimestampToleranceSeconds))
+                {
+                    throw new InvalidOperationException(
+                        $"重放窗口不变量不满足：Redis NonceTtl({redisNonceTtl}) 必须严格大于 " +
+                        $"TimestampToleranceSeconds({options.TimestampToleranceSeconds}s) 以保留余量。" +
+                        "请调大 FeishuDeduplication:Nonce:Ttl 或调小 TimestampToleranceSeconds。");
+                }
+
+                // R5.4/F4：NonceTtlSeconds 已 [Obsolete]（不控制真实 TTL），若显式配置则告警。
+#pragma warning disable CS0618
+                if (options.NonceTtlSeconds is not null)
+                {
+                    sp.GetService<ILogger<FeishuWebhookOptions>>()?.LogWarning(
+                        "FeishuWebhook:NonceTtlSeconds 已配置但该键不控制真实 Nonce TTL。" +
+                        "真实 TTL 来自 FeishuDeduplication:Nonce:Ttl（内存路径由 SDK 以同源常量构造）。" +
+                        "本属性将在下个 major 删除，请迁移到统一节。");
+                }
+#pragma warning restore CS0618
+
                 var unified = sp.GetService<IOptions<FeishuDeduplicationOptions>>()?.Value;
                 var isDistributedIntent = unified is { IsConfiguredFromConfiguration: true }
                     && string.Equals(unified.Mode, FeishuDeduplicationOptions.ModeDistributed, StringComparison.OrdinalIgnoreCase);
                 var nonceImpl = sp.GetService<IFeishuNonceDistributedDeduplicator>();
-                var isMemoryNonce = nonceImpl is null or FeishuNonceDistributedDeduplicator;
+                // R5.4/F2：Noop（FeishuDeduplication:Mode=None）同样必须落入「非分布式」判据，
+                // 否则会被误判为「已接入分布式实现」而绕过生产环境非分布式 Nonce 去重阻断。
+                var isMemoryNonce = nonceImpl is null
+                    or FeishuNonceDistributedDeduplicator
+                    or NoopFeishuNonceDeduplicator;
 
                 var logger = sp.GetService<ILogger<FeishuWebhookOptions>>();
 

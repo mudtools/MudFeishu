@@ -26,5 +26,5 @@ public class EcoBackgroundCheckCustomFieldOption
     /// <para>必填：是</para>
     /// </summary>
     [JsonPropertyName("name")]
-    public I18n? Name { get; set; }
+    public I18nName? Name { get; set; }
 }

@@ -145,6 +145,11 @@ public sealed class FeishuToolSchemaGenerator : IIncrementalGenerator
             context.ReportDiagnostic(Diagnostic.Create(result.Descriptor, Location.None, result.Arguments));
         }
 
+        // MUDFT009 上报点（AT-B14 接线）：输出 Schema 被截断（深度超限 / 循环引用）。
+        // **聚合为单条**——SDK 中层级超过上限的 DTO 数量可观，逐处上报会产生成千条警告淹没构建输出
+        // （与 CapabilityCatalogEmitter 的 MUDFT018 同一体例）。
+        ReportOutputSchemaTruncations(context, models);
+
         var goldenText = ReadGolden(goldenTexts, context.CancellationToken);
         var drift = SchemaEmitter.Emit(context, models, assemblyName, goldenText);
         if (drift is not null)
@@ -152,6 +157,54 @@ public sealed class FeishuToolSchemaGenerator : IIncrementalGenerator
             // MUDFT014 上报点：描述符静默漂移（golden 快照不一致）。
             Diagnostics.Report(context, Diagnostics.MUDFT014, null, drift);
         }
+    }
+
+    /// <summary>
+    /// 汇总输出 Schema 的截断情况并上报<b>单条</b> <c>MUDFT009</c>（AT-B14）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 截断本身<b>不是缺陷</b>（递归深度上限是防 Schema 爆炸的有意设计），但它此前是<b>完全静默</b>的：
+    /// 模型看到的 <c>output_schema</c> 少了一层，没有任何人知道。本条把它变成"构建期可见的一个数字"。
+    /// </para>
+    /// <para>
+    /// <b>严重级为 Warning 且不纳入 <c>ZeroToleranceIds</c></b>：当前 SDK 必然存在深层 DTO
+    /// （例如 <c>docx.get_document_blocks</c> 的返回结构天然超过 4 层），纳入零容忍会立即阻断构建。
+    /// </para>
+    /// </remarks>
+    private static void ReportOutputSchemaTruncations(
+        SourceProductionContext context,
+        ImmutableArray<ToolSchemaModel> models)
+    {
+        var affected = new List<string>();
+        foreach (var model in models)
+        {
+            if (model.Entry.OutputSchemaTruncations.Count == 0)
+            {
+                continue;
+            }
+
+            // 只列工具名（+ 截断点数），不列逐条路径：一处截断的路径样本可达数百字符，
+            // 全量展开会让一条 Warning 变成几千字的噪声（路径样本仍保留在 CapabilityEntry 上供测试读取）。
+            affected.Add($"{model.Entry.ToolName}(×{model.Entry.OutputSchemaTruncations.Count})");
+        }
+
+        if (affected.Count == 0)
+        {
+            return;
+        }
+
+        const int MaxListedTools = 5;
+        var listed = affected.Count <= MaxListedTools
+            ? string.Join(" | ", affected)
+            : string.Join(" | ", affected.Take(MaxListedTools)) + $" | …另有 {affected.Count - MaxListedTools} 个工具";
+
+        Diagnostics.Report(
+            context,
+            Diagnostics.MUDFT009,
+            null,
+            $"{affected.Count} 个工具的输出 Schema 被截断（深度超限或循环引用）",
+            listed);
     }
 
     private static string? ReadGolden(ImmutableArray<AdditionalText> texts, System.Threading.CancellationToken cancellationToken)

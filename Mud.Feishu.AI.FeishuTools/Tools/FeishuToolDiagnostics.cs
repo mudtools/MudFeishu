@@ -44,6 +44,9 @@ internal static class FeishuToolDiagnostics
     /// <summary>Span 属性：结果是否被截断。</summary>
     public const string TagTruncated = "feishu.tool.truncated";
 
+    /// <summary>Span 属性：风险分级（AT-B13；取自 Schema 的 <c>x-feishu.risk</c>）。</summary>
+    public const string TagRisk = "feishu.tool.risk";
+
     /// <summary>判定值：放行。</summary>
     public const string DecisionAllowed = "allowed";
 
@@ -57,14 +60,26 @@ internal static class FeishuToolDiagnostics
     /// <param name="appKey">应用唯一标识。</param>
     /// <param name="requiredScopes">所需权限点（审计消费）。</param>
     /// <param name="isWrite">是否写操作。</param>
+    /// <param name="risk">风险分级（AT-B13；传 <see langword="null"/> 时不写该属性）。</param>
     /// <returns>Activity（可能为 null）。</returns>
-    public static Activity? StartToolActivity(string toolName, string appKey, IReadOnlyList<string> requiredScopes, bool isWrite)
+    public static Activity? StartToolActivity(
+        string toolName,
+        string appKey,
+        IReadOnlyList<string> requiredScopes,
+        bool isWrite,
+        FeishuToolRisk? risk = null)
     {
         var activity = FeishuActivitySource.Instance.StartActivity(ActivityName, ActivityKind.Internal);
         activity?.SetTag(TagToolName, toolName)
                 .SetTag(FeishuActivitySource.Tags.AppKey, appKey)
                 .SetTag(TagScopes, string.Join(",", requiredScopes))
                 .SetTag(TagIsWrite, isWrite);
+
+        if (risk is { } value)
+        {
+            activity?.SetTag(TagRisk, FeishuToolRiskNames.ToLiteral(value));
+        }
+
         return activity;
     }
 

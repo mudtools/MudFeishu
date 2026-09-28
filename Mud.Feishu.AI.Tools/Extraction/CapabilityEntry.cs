@@ -35,7 +35,8 @@ internal sealed class CapabilityEntry : IEquatable<CapabilityEntry?>
         bool returnsBinary,
         ToolRisk risk,
         IReadOnlyList<string> scopes,
-        string? outputSchemaJson = null)
+        string? outputSchemaJson = null,
+        IReadOnlyList<string>? outputSchemaTruncations = null)
     {
         InterfaceName = interfaceName;
         ToolName = toolName;
@@ -53,6 +54,7 @@ internal sealed class CapabilityEntry : IEquatable<CapabilityEntry?>
         Risk = risk;
         Scopes = scopes;
         OutputSchemaJson = outputSchemaJson;
+        OutputSchemaTruncations = outputSchemaTruncations ?? [];
     }
 
     public string InterfaceName { get; }
@@ -80,6 +82,15 @@ internal sealed class CapabilityEntry : IEquatable<CapabilityEntry?>
     /// </remarks>
     public string? OutputSchemaJson { get; }
 
+    /// <summary>
+    /// 输出 Schema 推导过程中的截断样本（深度超限 / 循环引用；AT-B14）。
+    /// </summary>
+    /// <remarks>
+    /// 由 <see cref="Schema.TypeSchemaResolver"/> 在推导时记录，生成器在拿到全部模型后<b>聚合为单条</b>
+    /// <c>MUDFT009</c> 上报——逐处上报会因 SDK 中深层 DTO 众多而淹没构建输出。
+    /// </remarks>
+    public IReadOnlyList<string> OutputSchemaTruncations { get; }
+
     public bool Equals(CapabilityEntry? other)
     {
         if (other is null) return false;
@@ -100,11 +111,28 @@ internal sealed class CapabilityEntry : IEquatable<CapabilityEntry?>
             && ReturnsBinary == other.ReturnsBinary
             && Risk == other.Risk
             && ScopesEqual(Scopes, other.Scopes)
-            && string.Equals(OutputSchemaJson ?? string.Empty, other.OutputSchemaJson ?? string.Empty, StringComparison.Ordinal);
+            && string.Equals(OutputSchemaJson ?? string.Empty, other.OutputSchemaJson ?? string.Empty, StringComparison.Ordinal)
+            && StringsEqual(OutputSchemaTruncations, other.OutputSchemaTruncations);
     }
 
     public override bool Equals(object? obj) => Equals(obj as CapabilityEntry);
 
+    /// <summary>
+    /// 哈希必须覆盖 <see cref="Equals(CapabilityEntry?)"/> 认可的<b>全部</b>字段（AT-B16）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>为什么集合字段也必须逐个入哈希</b>：此前实现只取了标量字段，集合与长字符串字段被整个跳过——
+    /// 两个仅在某集合元素上不同的条目会得到<b>相同</b>哈希。本类型是 Roslyn 增量管线的值键，
+    /// 哈希碰撞会让"每个条目都要跑一遍逐字段 <c>Equals</c>"退化，在大型 SDK 上放大为可见的编译开销。
+    /// </para>
+    /// <para>
+    /// <b>刻意不做"计数 + 首元素"的省算优化</b>：那种写法与"完全跳过"在当前碰撞面上等价
+    /// （集合内其余元素变化仍碰撞），属"补了等于没补"；而本类型的入参是编译期元数据
+    /// （集合元素数是个位数到几十），全量遍历的成本可忽略。
+    /// </para>
+    /// <para>契约：<c>Equals</c> 为真 ⇒ 哈希必相等（本实现同时满足，且反向碰撞面已最小化）。</para>
+    /// </remarks>
     public override int GetHashCode()
     {
         var comparer = StringComparer.Ordinal;
@@ -119,9 +147,33 @@ internal sealed class CapabilityEntry : IEquatable<CapabilityEntry?>
             hash = (hash * 31) + comparer.GetHashCode(RouteTemplate);
             hash = (hash * 31) + comparer.GetHashCode(MethodName);
             hash = (hash * 31) + comparer.GetHashCode(ReturnTypeMetadataName);
+
+            hash = (hash * 31) + Parameters.Count;
+            foreach (var parameter in Parameters)
+            {
+                hash = (hash * 31) + parameter.GetHashCode();
+            }
+
+            hash = (hash * 31) + comparer.GetHashCode(DocSummary ?? string.Empty);
+            hash = (hash * 31) + comparer.GetHashCode(DocReturns ?? string.Empty);
             hash = (hash * 31) + (HasFileUpload ? 1 : 0);
             hash = (hash * 31) + (ReturnsBinary ? 1 : 0);
             hash = (hash * 31) + (int)Risk;
+
+            hash = (hash * 31) + Scopes.Count;
+            foreach (var scope in Scopes)
+            {
+                hash = (hash * 31) + comparer.GetHashCode(scope);
+            }
+
+            hash = (hash * 31) + comparer.GetHashCode(OutputSchemaJson ?? string.Empty);
+
+            hash = (hash * 31) + OutputSchemaTruncations.Count;
+            foreach (var truncation in OutputSchemaTruncations)
+            {
+                hash = (hash * 31) + comparer.GetHashCode(truncation);
+            }
+
             return hash;
         }
     }
@@ -137,6 +189,16 @@ internal sealed class CapabilityEntry : IEquatable<CapabilityEntry?>
     }
 
     private static bool ScopesEqual(IReadOnlyList<string> a, IReadOnlyList<string> b)
+    {
+        if (a.Count != b.Count) return false;
+        for (var i = 0; i < a.Count; i++)
+        {
+            if (!string.Equals(a[i], b[i], StringComparison.Ordinal)) return false;
+        }
+        return true;
+    }
+
+    private static bool StringsEqual(IReadOnlyList<string> a, IReadOnlyList<string> b)
     {
         if (a.Count != b.Count) return false;
         for (var i = 0; i < a.Count; i++)

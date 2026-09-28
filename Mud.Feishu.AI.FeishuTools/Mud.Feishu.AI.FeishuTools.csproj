@@ -37,7 +37,7 @@
 		<ProjectReference Include="..\Mud.Feishu.DataModels\Mud.Feishu.DataModels.csproj" />
 		<!-- 内置 IM 会话事件处理器（P2D-5a）的事件 DTO 来源：MessageReceiveResult/MentionUser 强类型面。 -->
 		<ProjectReference Include="..\Mud.Feishu.EventCallback\Mud.Feishu.EventCallback.csproj" />
-		<!-- [FeishuTool] 源生成器（已决策⑤）：以分析器形态引用，产出本包 10 个工具接口的 Schema 常量。 -->
+		<!-- [FeishuTool] 源生成器（已决策⑤）：以分析器形态引用，产出本包 24 个工具接口的 Schema 常量。 -->
 		<ProjectReference Include="..\Mud.Feishu.AI.Tools\Mud.Feishu.AI.Tools.csproj"
 		                 OutputItemType="Analyzer"
 		                 ReferenceOutputAssembly="false" />

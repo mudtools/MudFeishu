@@ -109,6 +109,9 @@ public class DomainRegistrarTests
             .AddFeishuSheetsTools()
             .AddFeishuDriveTools()
             .AddFeishuKnowledgeTools()
+            // 能力出处元工具是一个独立入口（AT-F12）：它不属于任何业务域，
+            // 故"全域 = 逐域联合"的等价性要求这里也显式调一次。
+            .AddFeishuCapabilityTools()
             .AddFeishuWriteTools()
             .BuildServiceProvider();
 

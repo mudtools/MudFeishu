@@ -20,6 +20,8 @@ public class FeishuToolRegistryTests
         Description: "desc",
         RequiredScopes: ["bitable:app:readonly"],
         IsWrite: false,
+        Risk: FeishuToolRisk.Read,
+        Identity: "tenant",
         Handler: (_, _, _) => Task.FromResult(FeishuToolResult.FromText("ok")));
 
     [Fact]

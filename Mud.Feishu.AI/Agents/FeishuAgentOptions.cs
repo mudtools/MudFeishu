@@ -114,6 +114,48 @@ public sealed class FeishuAgentOptions
     public int SummaryThreshold { get; set; } = 30;
 
     /// <summary>
+    /// 工具风险上限（AT-B13 策略轴；消费点：<c>FeishuToolBinding</c> 在授权门禁<b>之前</b>按此判定）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 取值 = 生成器产出的 <c>x-feishu.risk</c> 字面量闭集：<c>read</c> / <c>write</c> /
+    /// <c>high-risk-write</c>（<b>刻意用字符串而非 C# 枚举</b>：Schema 的字面量是连字符风格，
+    /// 枚举绑定无法消费 <c>high-risk-write</c>，字符串可保证"配置词汇 == Schema 词汇"单一来源）。
+    /// 风险超额的工具在校验失败时返回 <c>risk_exceeded</c>，<b>零调用下游、不切租户</b>。
+    /// </para>
+    /// <para>
+    /// <b>默认 <c>high-risk-write</c>（不额外收紧）</b>：现行为 = 写工具需显式 <c>WriteAllowList</c>
+    /// 且过授权门禁（已足够严），本键是宿主的<b>显式收敛工具</b>而非新增默认限制（方案 §10.2 R-1）。
+    /// </para>
+    /// </remarks>
+    public string MaxToolRisk { get; set; } = "high-risk-write";
+
+    /// <summary>
+    /// 允许执行的工具身份闭集（AT-B13 Identity 轴；消费点：<c>FeishuToolBinding</c> 策略判定）。
+    /// </summary>
+    /// <remarks>
+    /// 取值 = Schema 的 <c>x-feishu.identity</c>（<c>tenant</c> / <c>user</c>）。默认仅 <c>tenant</c>：
+    /// 当前工具面全部为租户令牌工具，本键为 AT-F06/F07 引入用户令牌工具**之前**就位的前置闸门
+    /// （不匹配返回 <c>identity_mismatch</c>）。
+    /// </remarks>
+    public string[] AllowedIdentities { get; set; } = ["tenant"];
+
+    /// <summary>
+    /// 出站内容安全模式（AT-F14；消费点：<c>FeishuToolBinding</c> 出站净化<b>之前</b>的扫描阶段）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 取值：<c>off</c>（不扫描）/ <c>warn</c>（<b>默认</b>：命中即在结果前加 <c>[untrusted_content: 规则]</c>
+    /// 标注，不阻断）/ <c>block</c>（命中即返回结构化拒绝，不下发结果）。
+    /// </para>
+    /// <para>
+    /// 与"净化"的区别：净化是<b>安全基线</b>（强制、无开关），内容安全是<b>策略</b>
+    /// （会改变工具语义，故允许 <c>off</c>，默认 <c>warn</c> 比官方 CLI 的默认 <c>off</c> 更安全）。
+    /// </para>
+    /// </remarks>
+    public string ContentSafetyMode { get; set; } = ContentSafetyModes.Warn;
+
+    /// <summary>
     /// 校验配置合法性（注册时与 <see cref="FeishuAgent"/> 构造时双触发，fail-fast）。
     /// </summary>
     /// <exception cref="InvalidOperationException">存在非法取值。</exception>
@@ -155,5 +197,19 @@ public sealed class FeishuAgentOptions
         if (MaxHistoryTokens < 0)
             throw new InvalidOperationException(
                 $"FeishuAgent:{nameof(MaxHistoryTokens)} 为 0（不启用）或正数，实际值: {MaxHistoryTokens.ToString(CultureInfo.InvariantCulture)}");
+
+        // AT-B13 策略轴（取值必须与 Schema 的 x-feishu.risk 词汇一致，否则静默失效）。
+        if (!FeishuToolRiskNames.TryParse(MaxToolRisk, out _))
+            throw new InvalidOperationException(
+                $"FeishuAgent:{nameof(MaxToolRisk)} 取值非法: '{MaxToolRisk}'——合法值为 {FeishuToolRiskNames.AllowedValuesText}（与 Schema 的 x-feishu.risk 词汇一致）");
+
+        if (AllowedIdentities.Length == 0 || AllowedIdentities.Any(string.IsNullOrWhiteSpace))
+            throw new InvalidOperationException(
+                $"FeishuAgent:{nameof(AllowedIdentities)} 不能为空且不能含空项——空集将拒绝全部工具身份（与 Schema 的 x-feishu.identity 词汇一致：tenant / user）");
+
+        // AT-F14 内容安全模式（策略开关，闭集校验防拼写错误静默降级为 off 语义）。
+        if (!ContentSafetyModes.IsValid(ContentSafetyMode))
+            throw new InvalidOperationException(
+                $"FeishuAgent:{nameof(ContentSafetyMode)} 取值非法: '{ContentSafetyMode}'——合法值为 {ContentSafetyModes.AllowedValuesText}");
     }
 }

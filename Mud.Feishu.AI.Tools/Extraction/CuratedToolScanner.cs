@@ -71,6 +71,7 @@ internal static class CuratedToolScanner
         var returnsBinary = false;
         var risk = isWrite ? ToolRisk.Write : ToolRisk.Read;
         var identity = ToolIdentity.Tenant;
+        IReadOnlyList<string> outputSchemaTruncations = [];
 
         if (!string.IsNullOrWhiteSpace(source))
         {
@@ -111,18 +112,36 @@ internal static class CuratedToolScanner
                         Diagnostics.MUDFT017, toolName, source!, httpMethod, RiskToString(derivedRisk)));
                 }
 
-                ValidateReturnType(symbol.Name, method, compilation, diagnostics, out outputSchema);
+                ValidateReturnType(symbol.Name, method, compilation, diagnostics, out outputSchema, out outputSchemaTruncations);
                 ValidateUploadParameters(symbol.Name, method, diagnostics);
             }
         }
 
         ValidateParameterExpansion(symbol.Name, parameters, diagnostics);
 
+        var firstMethod = symbol.GetMembers().OfType<IMethodSymbol>().FirstOrDefault();
         var docSummary = description;
         if (string.IsNullOrWhiteSpace(docSummary))
         {
-            var firstMethod = symbol.GetMembers().OfType<IMethodSymbol>().FirstOrDefault();
             docSummary = firstMethod is null ? null : Extractors.GetDocSummary(firstMethod);
+        }
+
+        // ── MUDFT005/006 上报点（AT-B14 接线）──
+        // 这两条反映的是"模型看到的描述质量"：description 为空 → 模型不知工具干什么；
+        // 参数无说明 → 模型只能靠参数名猜。二者都是真实且此前**静默**的缺口。
+        if (string.IsNullOrWhiteSpace(docSummary))
+        {
+            diagnostics.Add(PendingDiagnostic.Create(
+                Diagnostics.MUDFT005, symbol.Name, firstMethod?.Name ?? symbol.Name));
+        }
+
+        foreach (var parameter in parameters)
+        {
+            if (string.IsNullOrWhiteSpace(parameter.DocDescription))
+            {
+                diagnostics.Add(PendingDiagnostic.Create(
+                    Diagnostics.MUDFT006, symbol.Name, firstMethod?.Name ?? symbol.Name, parameter.Name));
+            }
         }
 
         var entry = new CapabilityEntry(
@@ -141,7 +160,8 @@ internal static class CuratedToolScanner
             returnsBinary: returnsBinary,
             risk: risk,
             scopes: scopes,
-            outputSchemaJson: outputSchema);
+            outputSchemaJson: outputSchema,
+            outputSchemaTruncations: outputSchemaTruncations);
 
         var model = new ToolSchemaModel(entry, BuildConstName(toolName), description, isWrite, source);
         return diagnostics.Count == 0
@@ -156,9 +176,11 @@ internal static class CuratedToolScanner
         IMethodSymbol method,
         Compilation compilation,
         List<PendingDiagnostic> diagnostics,
-        out string? outputSchema)
+        out string? outputSchema,
+        out IReadOnlyList<string> truncations)
     {
         outputSchema = null;
+        truncations = [];
 
         var payload = Extractors.UnwrapTaskType(method.ReturnType);
         if (payload is null || payload.Name == "HttpResponseMessage")
@@ -169,7 +191,11 @@ internal static class CuratedToolScanner
             return;
         }
 
-        outputSchema = new TypeSchemaResolver(compilation).ResolveOutputSchema(payload);
+        // 截断样本由解析器记录、随条目流转，最终由生成器聚合为**单条** MUDFT009
+        // （AT-B14：逐处上报会被 SDK 中大量深层 DTO 淹没）。
+        var resolver = new TypeSchemaResolver(compilation);
+        outputSchema = resolver.ResolveOutputSchema(payload);
+        truncations = resolver.Truncations;
     }
 
     private static void ValidateUploadParameters(

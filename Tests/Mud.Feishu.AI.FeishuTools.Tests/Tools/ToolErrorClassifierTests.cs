@@ -45,13 +45,41 @@ public class ToolErrorClassifierTests
     public void Classify_UnknownException_ShouldBeApiError()
         => ((int)ToolErrorClassifier.Classify(new InvalidOperationException("业务失败"))).Should().Be(ApiErrorKind);
 
+    /// <summary>
+    /// 飞书业务 code → 分类（数值形态进出 Theory：<c>ToolErrorKind</c> 是 internal，且枚举值不能在
+    /// <c>InlineData</c> 里用转换表达式）。
+    /// </summary>
+    /// <remarks>
+    /// 数值：<c>Retryable=0 / InvalidArgs=1 / Forbidden=2 / NeedsConfirmation=3 / ApiError=4</c>。
+    /// <b>AT-B12 新增 <c>NeedsConfirmation=3</c> 后 <c>ApiError</c> 由 3 变 4</b>——本表随之更新
+    /// （这正是"三态语义不得混用"的断言面）。
+    /// </remarks>
     [Theory]
     [InlineData(99991663, 2)]
     [InlineData(99991661, 2)]
-    [InlineData(230001, 3)]
-    [InlineData(null, 3)]
+    [InlineData(230001, 4)]
+    [InlineData(null, 4)]
     public void ClassifyCode_ShouldMapPermissionCodes(int? code, int expectedKind)
         => ((int)ToolErrorClassifier.ClassifyCode(code)).Should().Be(expectedKind);
+
+    /// <summary>
+    /// 三态语义各有一套文案：待确认<b>既不是</b> forbidden（放弃）<b>也不是</b> invalid_args（改参重试）。
+    /// </summary>
+    [Fact]
+    public void StructuredError_NeedsConfirmation_ShouldHaveItsOwnSemantics()
+    {
+        var needsConfirmation = FeishuToolBinding.StructuredError(
+            "approval.create_instance", ToolErrorKind.NeedsConfirmation, "需要用户批准后才可发起");
+
+        needsConfirmation.Should().Contain("(needs_confirmation)");
+        needsConfirmation.Should().Contain("需要用户确认");
+        needsConfirmation.Should().NotContain("(forbidden)");
+        needsConfirmation.Should().NotContain("(invalid_args)");
+        needsConfirmation.Should().NotContain("请修正参数", "待确认 ≠ 参数错：误导会让模型陷入无意义的重试循环");
+
+        ((int)ToolErrorKind.NeedsConfirmation).Should().NotBe(ForbiddenKind,
+            "三态必须是互不相同的枚举成员（否则 switch 分支会互相吞并）");
+    }
 
     [Fact]
     public void StructuredError_ShouldDistinguishForbidden_FromInvalidArgs()

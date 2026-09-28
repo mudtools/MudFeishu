@@ -21,18 +21,44 @@ public delegate Task<FeishuToolResult> FeishuToolHandler(
     CancellationToken cancellationToken);
 
 /// <summary>
+/// 工具风险分级（AT-B13 / R3 评审 D2）：<b>唯一真相源是编译期 Schema 的 <c>x-feishu.risk</c></b>
+/// （由源生成器从 SDK 事实派生：危险词 → <c>high-risk-write</c>；<c>PUT/PATCH/DELETE</c> → <c>write</c>；
+/// 其余 → <c>read</c>）。运行时<b>不得手写</b>本值，否则产生第二真相源并与 golden 脱钩。
+/// </summary>
+/// <remarks>
+/// 取值与生成器内部 <c>ToolRisk</c> 逐一对齐（<c>read</c>=0 / <c>write</c>=1 / <c>high-risk-write</c>=2），
+/// 使"风险单调可比较"——配置键 <c>FeishuAgent:MaxToolRisk</c> 的判定依赖该序关系。
+/// </remarks>
+public enum FeishuToolRisk
+{
+    /// <summary>只读（GET）。</summary>
+    Read = 0,
+
+    /// <summary>写操作（POST/PUT/PATCH/DELETE，未命中危险词）。</summary>
+    Write = 1,
+
+    /// <summary>高风险写操作（命中危险词表：删除/清空/关闭/解散/撤回等）。</summary>
+    HighRiskWrite = 2,
+}
+
+/// <summary>
 /// 单个工具的注册表条目（Schema 元数据 + 执行入口）。
 /// </summary>
 /// <param name="Name">工具名（模型可见契约，如 <c>bitable.query_records</c>）。</param>
 /// <param name="Description">模型侧描述。</param>
 /// <param name="RequiredScopes">权限点清单（审计消费，SDK 不内建校验）。</param>
-/// <param name="IsWrite">是否写操作。</param>
+/// <param name="IsWrite">是否写操作（读写白名单分离的事实来源；由 <c>x-feishu.is_write</c> 派生）。</param>
+/// <param name="Risk">风险分级（由 <c>x-feishu.risk</c> 派生，AT-B13 的策略判定输入；不得手写）。</param>
+/// <param name="Identity">工具身份（由 <c>x-feishu.identity</c> 派生：<c>tenant</c> / <c>user</c>，
+/// AT-B13 Identity 轴输入；同样不得手写）。</param>
 /// <param name="Handler">执行入口（仅启用的工具被调用）。</param>
 public sealed record FeishuToolDefinition(
     string Name,
     string Description,
     IReadOnlyList<string> RequiredScopes,
     bool IsWrite,
+    FeishuToolRisk Risk,
+    string Identity,
     FeishuToolHandler Handler);
 
 /// <summary>

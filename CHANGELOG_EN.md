@@ -1,5 +1,58 @@
 # Mud.Feishu Change Log
 
+## [Unreleased] - AI tool surface R3 (3rd code review round vs. the official CLI, 2026-09-28)
+
+> Four-perspective review (PM / architect / senior engineer / QA) and per-task verification:
+> `.docs/MudFeishu-AI-Tooling-vs-LarkCli-Review-Remediation-Plan-R3.md` (§0.3 review, §13 verification).
+
+### ⚠️ Behaviour changes (model-visible / host-visible)
+
+- **Inbound argument sanitisation (no switch)**: values containing C0/C1 control characters, dangerous
+  invisible Unicode (zero-width / bidi / BOM / U+2028-2029) or a **lone CR** are now **rejected**
+  (`(invalid_args)`, zero downstream calls) instead of being sent silently. `\n`, `\r\n` and Tab still pass;
+  the `U+200D` inside Emoji ZWJ sequences is **not** rejected (the official CLI's blanket rejection cannot be copied).
+- **Denial reasons are now classified**: `authorization_denied:` (give up / switch to a read-only plan),
+  `policy_denied: {reason_code}` (host policy), and a dedicated `(needs_confirmation)` semantics for HITL
+  (previously folded into `forbidden`/`invalid_args`, which pushed the model into the wrong self-repair).
+- **New policy axes (defaults do not tighten anything)**: `FeishuAgent:MaxToolRisk` (default `high-risk-write`)
+  and `FeishuAgent:AllowedIdentities` (default `["tenant"]`), evaluated **before** the authorizer gate —
+  denials make zero downstream calls and do not switch tenant context.
+- **Built-in outbound content safety**: 4 injection rules scanned per line, `FeishuAgent:ContentSafetyMode`
+  = `off|warn|block`, **default `warn`** (annotates with `[untrusted_content: rule]`, does not block).
+- **Source breaking**: `FeishuToolDefinition` gained required `Risk`/`Identity` members whose values may only
+  come from the compile-time schema (`x-feishu.risk` / `x-feishu.identity`).
+
+### 🌟 Added
+
+- **`contact.search_user`** (tool surface 22 → 24): name/keyword → `open_id`, closing the first hop of the
+  "send something to Zhang San" write chain; a two-hop end-to-end test locks
+  `search_user` → `im.send_message(receive_id_type=open_id)`.
+- **`feishu.capability_lookup`**: a read-only metadata tool (disabled by default) that answers
+  "does the SDK have this capability / is it already curated / which tools expose it" — the systematic
+  countermeasure against hallucinated calls. Group-level metadata only; no method names, no request shapes.
+- **`dry_run` for every write tool** (default `false`): returns method/path plus body field **lengths**
+  (never the values, which would turn a rehearsal into an echo channel), without calling downstream.
+- **New diagnostics wired**: `MUDFT005`/`MUDFT006`, plus `MUDFT009` reported as a **single aggregated** warning
+  (currently 7 tools — all previously silent); four "zombie" diagnostics referencing non-existent mechanisms
+  (`MUDFT007/011/012/013`) deleted.
+
+### 🐞 Fixed
+
+- **`MUDFT015` was a fake gate**: `required` and `properties` were derived from the *same* `entry.Parameters`,
+  so the condition was always false. Now two independent sources are compared (intent model vs. rendered
+  artifact text), which also detects **duplicate JSON keys after parameter-name normalisation**.
+- **Subset `GetHashCode`** in 4 generator types (collections and long strings were skipped entirely).
+- **Fake-green capability counters**: `BeGreaterThan(200)`/`BeGreaterThan(100)` replaced by exact values
+  (`1169 / 182 / 24`).
+- Documentation/comment drift: tool counts (16/19/22 → **24**), the permission table missing the contact tools,
+  the misleading `Extractors` "SDK interfaces auto-derive tools" claim, dangling `PageSizes` constants.
+
+### ⏭️ Deliberately not delivered
+
+Tool-level idempotency keys (blocked by decision ⑤ — the Feishu `client_token` parameter requires changing the
+SDK interface signature), calendar/task/docx-write tools (SDK signatures and DTOs unverified; deferred with the
+rationale in plan §6.3), scope mapping table, domain guidance assets, IM/mail/multimodal/long-tail domains.
+
 ## [3.0.0-rc3] - 2026-09-23
 
 > This release focuses on **Webhook multi-region security hardening, token & multi-app hot-reload stability, Redis dedup & token-store correctness, and WebSocket connection reliability**. It includes breaking changes — read "Upgrade Notes" before upgrading.

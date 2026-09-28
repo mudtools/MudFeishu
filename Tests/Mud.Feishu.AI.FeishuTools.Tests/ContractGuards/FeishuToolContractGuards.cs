@@ -11,8 +11,13 @@ namespace Mud.Feishu.AI.FeishuTools.Tests.ContractGuards;
 
 /// <summary>
 /// 工具名契约表守卫（Phase 1 §7 + Phase 2 §3.3）：Schema 注册表恰为契约名全集
-/// （Phase 1 十个只读 + Phase 2 三个写类），防增删/改名漂移；读写白名单分离语义锁定。
+/// （**21 个只读 + 3 个写类 = 24**；R3 新增 <c>contact.search_user</c> 与
+/// <c>feishu.capability_lookup</c>），防增删/改名漂移；读写白名单分离语义锁定。
 /// </summary>
+/// <remarks>
+/// 数量口径以 <c>FeishuToolNames.All</c>（生成器派生）为准——本类中的任何数字只是说明，
+/// <b>不构成断言依据</b>（原注释里的"十个/十九个"曾长期与实际漂移，见 AT-B21）。
+/// </remarks>
 public class FeishuToolContractGuards
 {
     /// <summary>
@@ -32,18 +37,68 @@ public class FeishuToolContractGuards
     [Fact]
     public void ReadonlyTools_ShouldBeReadOnly_WithScopes()
     {
+        // 免 scope 的元工具白名单（AT-F12）：它们不映射任何飞书 API，由
+        // MetadataOnlyTools_ShouldNotDeclarePlatformScopes 反向锁定"scope 必须为空"。
+        var scopeExemptTools = new[] { FeishuToolNames.FeishuCapabilityLookup };
+
         foreach (var name in FeishuToolNames.ReadonlyAll)
         {
             using var document = JsonDocument.Parse(SchemaByToolName[name]);
             var root = document.RootElement;
 
             root.GetProperty("x-feishu").GetProperty("is_write").GetBoolean().Should()
-                .BeFalse($"{name} 为 Phase 1 只读工具");
+                .BeFalse($"{name} 为只读工具");
+
+            if (scopeExemptTools.Contains(name, StringComparer.Ordinal))
+            {
+                continue;
+            }
 
             var scopes = root.GetProperty("x-feishu").GetProperty("required_scopes")
                 .EnumerateArray().Select(e => e.GetString()!).ToArray();
             scopes.Should().NotBeEmpty($"{name} 必须声明 required_scopes（已决策⑥：scope 随 Schema 供授权钩子与审计消费）");
         }
+    }
+
+    /// <summary>
+    /// 不映射飞书 API 的元工具，其 scope 必须为空（AT-F12 收窄，R3 评审）。
+    /// </summary>
+    /// <remarks>
+    /// 与 <see cref="ReadonlyTools_ShouldBeReadOnly_WithScopes"/> 的"必须非空"形成互补约束：
+    /// 元工具（<c>feishu.capability_lookup</c>）只读编译期目录常量、一个飞书请求都不发，
+    /// 给它挂占位 scope 会让宿主审计误以为需要开权限。
+    /// </remarks>
+    [Fact]
+    public void MetadataOnlyTools_ShouldNotDeclarePlatformScopes()
+    {
+        using var document = JsonDocument.Parse(SchemaByToolName[FeishuToolNames.FeishuCapabilityLookup]);
+        var extension = document.RootElement.GetProperty("x-feishu");
+
+        extension.TryGetProperty("source", out _).Should().BeFalse(
+            "能力出处元工具不映射任何飞书 API（无 x-feishu.source）——这是它免 scope 的前提");
+
+        extension.GetProperty("required_scopes").EnumerateArray().Should().BeEmpty(
+            "不映射飞书 API 的工具不得声明平台 scope（会造成审计误导）");
+    }
+
+    /// <summary>
+    /// 能力出处元工具的 <c>Description</c> 必须自述用途与边界（§8.2 #20，C-9 收窄后的落点）。
+    /// </summary>
+    /// <remarks>
+    /// 发现性（"遇到未覆盖能力该去哪问"）此前被设计为"在错误文案里提示"，但那条分支
+    /// <b>不可达</b>（未注册工具不在模型的 tools 列表里，模型无从调用）。故唯一可达的提示位
+    /// 就是该工具自己的描述——它是模型"遇到不知道的域时会去看的东西"。
+    /// </remarks>
+    [Fact]
+    public void CapabilityLookup_Description_ShouldStatePurposeAndBoundary()
+    {
+        using var document = JsonDocument.Parse(SchemaByToolName[FeishuToolNames.FeishuCapabilityLookup]);
+        var description = document.RootElement.GetProperty("description").GetString()!;
+
+        description.Should().Contain("不在当前工具集内",
+            "必须说明它的使用时机（否则模型不知道什么时候该用它）");
+        description.Should().Contain("只返回元数据",
+            "必须说明它的边界（否则模型会把它当成通用 api 工具，踩到决策①/⑤的红线）");
     }
 
     [Fact]
@@ -64,16 +119,21 @@ public class FeishuToolContractGuards
     }
 
     /// <summary>
-    /// AI-FD-D12 P1D-3a scope 契约定稿：19 个工具的 required_scopes 与《工具权限对照表》
-    /// （documents/AIAgent/工具权限对照表.md）逐一<b>精确相等</b>（存在性断言升格为精确值断言，
-    /// 防回归漂移）。变更 scope 必须与对照表同批更新。
+    /// AI-FD-D12 P1D-3a scope 契约定稿：全部 24 个工具的 required_scopes 与《工具权限对照表》
+    /// （documents/AIAgent/工具权限对照表.md）逐一<b>精确相等</b>。变更 scope 必须与对照表同批更新。
     /// </summary>
+    /// <remarks>
+    /// <b>注意本表是"手抄值"（R3 评审 C-5 已确认）</b>：它并不比 <c>[FeishuTool].RequiredScopes</c>
+    /// 更权威——权威只能来自开放平台控制台逐项核对（方案附录 C-1，当前仍开放）。
+    /// 本表的价值是<b>锁住"代码与文档一致"</b>（防单侧漂移），不是"保证 scope 正确"。
+    /// 若要消除这处双写，见 <c>AT-F15</c>（集中映射表，M5）。
+    /// </remarks>
     [Fact]
     public void ToolScopes_ShouldMatchThePermissionMappingTable_ExactValues()
     {
         var expectedScopes = new Dictionary<string, string[]>(StringComparer.Ordinal)
         {
-            // 只读（16）
+            // 只读-核心域（16）
             [FeishuToolNames.BitableListTables] = ["bitable:app:readonly"],
             [FeishuToolNames.BitableListFields] = ["bitable:app:readonly"],
             [FeishuToolNames.BitableQueryRecords] = ["bitable:app:readonly"],
@@ -90,10 +150,13 @@ public class FeishuToolContractGuards
             [FeishuToolNames.KnowledgeSearch] = ["aily:knowledge:readonly"],
             [FeishuToolNames.SheetsListSheets] = ["sheets:spreadsheet:readonly"],
             [FeishuToolNames.SheetsGetRangeValues] = ["sheets:spreadsheet:readonly"],
-            // 通讯录（3，P0 补链：姓名/邮箱 → ID）
+            // 通讯录（4，P0 补链：姓名/邮箱/关键字 → ID。search_user 为 R3/AT-F11 新增）
             [FeishuToolNames.ContactResolveUser] = ["contact:user.base:readonly"],
+            [FeishuToolNames.ContactSearchUser] = ["contact:user.base:readonly"],
             [FeishuToolNames.ContactGetUser] = ["contact:user.base:readonly"],
             [FeishuToolNames.ContactBatchGet] = ["contact:user.base:readonly"],
+            // 元工具（1，R3/AT-F12）：不映射飞书 API → 无平台 scope（有意为空）
+            [FeishuToolNames.FeishuCapabilityLookup] = [],
             // 写类（3）
             [FeishuToolNames.ImSendMessage] = ["im:message:send_as_bot"],
             [FeishuToolNames.BitableAddRecord] = ["bitable:app"],
@@ -110,6 +173,35 @@ public class FeishuToolContractGuards
         }
 
         expectedScopes.Keys.Should().HaveCount(FeishuToolNames.All.Length, "对照表须覆盖全部契约工具");
+    }
+
+    /// <summary>
+    /// 注册表 <c>Risk</c>/<c>Identity</c> 必须与 Schema 的 <c>x-feishu.risk</c>/<c>identity</c> 一致。
+    /// </summary>
+    /// <remarks>
+    /// <b>防 D2 双源（§8.2 #4）</b>：风险分级的唯一真相源是编译期 Schema；一旦有人在注册器里手写
+    /// 风险值（"就地改一下"），策略轴（<c>MaxToolRisk</c>）就会与 golden 快照锁定的契约脱钩——
+    /// 本用例让这种偏离在测试期立刻暴露。
+    /// </remarks>
+    [Fact]
+    public void ToolRiskAndIdentity_ShouldMatchSchemaValues_WhenRegistered()
+    {
+        using var provider = CreateProvider(_ => { });
+        var registry = provider.GetRequiredService<FeishuToolRegistry>();
+
+        registry.AllTools.Should().NotBeEmpty();
+        foreach (var definition in registry.AllTools)
+        {
+            using var document = JsonDocument.Parse(SchemaByToolName[definition.Name]);
+            var extension = document.RootElement.GetProperty("x-feishu");
+
+            var expectedRisk = extension.GetProperty("risk").GetString();
+            FeishuToolRiskNames.ToLiteral(definition.Risk).Should().Be(expectedRisk,
+                $"工具 {definition.Name} 的注册表 Risk 必须来自 Schema 的 x-feishu.risk（D2 单一真相源）");
+
+            extension.GetProperty("identity").GetString().Should().Be(definition.Identity,
+                $"工具 {definition.Name} 的注册表 Identity 必须来自 Schema 的 x-feishu.identity（同上）");
+        }
     }
 
     [Fact]
@@ -148,6 +240,17 @@ public class FeishuToolContractGuards
 
         sources.Any(path => File.ReadAllText(path).Contains("AllowP2pConversation", StringComparison.Ordinal))
             .Should().BeTrue("ImConversationOptions.AllowP2pConversation 必须在 FeishuTools 包中被消费（单聊会话开关，AI-FD-D12 P2D-5a）");
+
+        // R3 新增策略键（AT-B13/AT-F14）：配置面治理要求"每个公开配置属性必须有真实消费点"
+        // ——这三项分别在 ExecuteAsync 的策略判定与出站内容安全阶段被读取，此处把该事实锁住。
+        sources.Any(path => File.ReadAllText(path).Contains("MaxToolRisk", StringComparison.Ordinal))
+            .Should().BeTrue("FeishuAgentOptions.MaxToolRisk 必须在 FeishuTools 包中被消费（策略轴：风险上限，AT-B13）");
+
+        sources.Any(path => File.ReadAllText(path).Contains("AllowedIdentities", StringComparison.Ordinal))
+            .Should().BeTrue("FeishuAgentOptions.AllowedIdentities 必须在 FeishuTools 包中被消费（策略轴：身份闭集，AT-B13）");
+
+        sources.Any(path => File.ReadAllText(path).Contains("ContentSafetyMode", StringComparison.Ordinal))
+            .Should().BeTrue("FeishuAgentOptions.ContentSafetyMode 必须在 FeishuTools 包中被消费（出站内容安全模式，AT-F14）");
     }
 
     [Fact]

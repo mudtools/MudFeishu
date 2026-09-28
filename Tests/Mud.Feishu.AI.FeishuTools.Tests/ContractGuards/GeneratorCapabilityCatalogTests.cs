@@ -19,6 +19,13 @@ namespace Mud.Feishu.AI.FeishuTools.Tests.ContractGuards;
 /// "能力面差距"只能靠人肉统计。现在它是构建期产出的事实，并由本用例在 CI 中锁定。
 /// </para>
 /// <para>
+/// <b>扫描路径的真实分工（AT-B18 修正）</b>：本类锁定的是<b>路径②</b>——SDK 接口
+/// （<c>IFeishu[Tenant|User]V*</c>）<b>仅</b>聚合为能力目录事实，<b>不产任何工具</b>；
+/// 产工具的唯一路径是手写 <c>[FeishuTool]</c> 接口（路径①，经 <c>CuratedToolScanner</c>）。
+/// 原注释/原 <c>Extractors</c> 类注释声称"SDK 接口自动派生 Tier R 工具"，与实现不符——
+/// 该误解会诱导后续开发者按"能力已存在"的错误前提重复建设，故此处显式纠正。
+/// </para>
+/// <para>
 /// 注：<c>FeishuCapabilityCatalog</c> 为 <c>internal</c>（不进入公共 API 面），
 /// 经 <c>InternalsVisibleTo</c> 对测试可见；其发射由
 /// <c>Mud.Feishu.AI.FeishuTools.csproj</c> 的 <c>FeishuToolCatalog=true</c> 开启。
@@ -26,13 +33,35 @@ namespace Mud.Feishu.AI.FeishuTools.Tests.ContractGuards;
 /// </remarks>
 public class GeneratorCapabilityCatalogTests
 {
-    /// <summary>SDK 能力总数必须显著大于"看上去像"的量级——低于此值说明扫描没真正跑起来。</summary>
+    // ──────────────────────────────────────────────────────────────────────────
+    // AT-B17：覆盖数字精确锁定（原为宽松下界断言，SDK 面缩水一半仍绿）
+    // ──────────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// SDK 接口声明的方法总数——<b>精确值</b>。
+    /// </summary>
+    /// <remarks>
+    /// <b>为什么必须精确（AT-B17）</b>：这两个数字是"能力面差距"的<b>唯一量化依据</b>，
+    /// 被上游主方案与对外文档反复引用。原断言是 <c>BeGreaterThan(200)</c>——
+    /// 等于只要扫描器还活着就恒绿，SDK 接口被批量改名/挪出程序集导致能力面缩水一半也照样通过。
+    /// <para>
+    /// <b>变更流程（重要）</b>：本值随 SDK 演进变化属正常，但<b>必须经评审</b>后显式改这一处常量——
+    /// 因为它同时意味着"能力面差距"这一对外口径的变化。禁止改成区间/下界断言
+    /// （那正是本次修复要消除的假绿形态）。
+    /// </para>
+    /// </remarks>
+    private const int ExpectedSdkMethodCount = 1169;
+
+    /// <summary>能力分组个数（分组轴 = 接口名的 domain+resource 段）——精确值（AT-B17）。</summary>
+    private const int ExpectedDomainCount = 182;
+
+    /// <summary>SDK 能力总数与 <c>Mud.Feishu</c> 的实际规模一致（精确锁定，非下界）。</summary>
     [Fact]
-    public void SdkMethodCount_ShouldReflectRealSdkSurface_NotAnEmptyScan()
+    public void SdkMethodCount_ShouldMatchExactExpectedValue()
     {
-        FeishuCapabilityCatalog.SdkMethodCount.Should().BeGreaterThan(200,
-            "Mud.Feishu 的 32 个域 / 383 个接口文件不可能只有寥寥数个方法——" +
-            "低于此值说明 Tier R 扫描没扫到 SDK（生成器又退化成只看 [FeishuTool]）");
+        FeishuCapabilityCatalog.SdkMethodCount.Should().Be(ExpectedSdkMethodCount,
+            "SDK 方法总数是「能力面差距」的量化依据，必须精确锁定（原 BeGreaterThan(200) 是假绿："
+            + "生成器退化成只看 [FeishuTool] 也照样通过）。变更该值须先评审。");
     }
 
     /// <summary>策展工具数必须与契约表一致（两条派生路径同源）。</summary>
@@ -43,33 +72,34 @@ public class GeneratorCapabilityCatalogTests
             "能力目录的策展计数与工具名契约表必须同源（都从 [FeishuTool] 派生）");
     }
 
-    /// <summary>
-    /// 分组分布必须真实，且各组之和等于总数。
-    /// </summary>
-    /// <remarks>
-    /// 分组轴是<b>接口名的 domain+resource 段</b>（如 <c>BitableAppTable</c>/<c>ApprovalTask</c>），
-    /// 比"32 个 Interfaces 目录域"更细——它同时反映资源粒度，故数量显著大于目录域数。
-    /// </remarks>
+    /// <summary>分组数与分布一致性（精确锁定 + 组内求和自洽）。</summary>
     [Fact]
-    public void MethodsByDomain_ShouldBeConsistentAndCoverManyGroups()
+    public void MethodsByDomain_ShouldBeConsistentAndMatchExactDomainCount()
     {
         var byDomain = FeishuCapabilityCatalog.MethodsByDomain;
 
         byDomain.Should().NotBeEmpty();
         FeishuCapabilityCatalog.DomainCount.Should().Be(byDomain.Count);
-        FeishuCapabilityCatalog.DomainCount.Should().BeGreaterThan(100,
-            "能力分组轴 = domain+resource 段，数量应接近接口文件数（数百），远多于 32 个目录域");
+        FeishuCapabilityCatalog.DomainCount.Should().Be(ExpectedDomainCount,
+            "能力分组数（= 接口文件级的 domain+resource 段）必须精确锁定——原 BeGreaterThan(100) 同样是假绿");
         byDomain.Values.Sum().Should().Be(FeishuCapabilityCatalog.SdkMethodCount,
             "各组方法数之和必须等于总量（否则统计口径不一致）");
     }
 
     /// <summary>
-    /// 策展厅远小于能力面——这正是"目录全量、暴露策展"双层决策的量化体现，
-    /// 也让"还差多少能力"从主观判断变成可见数字。
+    /// 非空守卫的"存在性"面：扫描必须真的扫到 SDK（补足精确值"手改常量即通过"的残余风险）。
     /// </summary>
+    /// <remarks>
+    /// 精确值断言能防"缩水"，但防不住"有人把常量改成扫描器的实际产出"。故再用两个<b>与扫描器输出同源</b>
+    /// 的量级事实交叉验证：分组数必须显著多于 <c>Interfaces/</c> 的目录域数（约 32），
+    /// 且策展面必须是能力面的真子集。
+    /// </remarks>
     [Fact]
-    public void CuratedSurface_ShouldBeASmallSubsetOfTheCapabilityCatalog()
+    public void CapabilityCatalog_ShouldBeInternallyCoherent()
     {
+        FeishuCapabilityCatalog.DomainCount.Should().BeGreaterThan(100,
+            "分组轴是 domain+resource 段，数量应接近接口文件数（数百），远多于 32 个目录域");
+
         FeishuCapabilityCatalog.CuratedToolCount.Should().BeLessThan(FeishuCapabilityCatalog.SdkMethodCount,
             "暴露面必须是 SDK 能力面的真子集（无差别全量暴露是明确非目标）");
     }

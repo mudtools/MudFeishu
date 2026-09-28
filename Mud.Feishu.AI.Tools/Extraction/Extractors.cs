@@ -17,9 +17,24 @@ namespace Mud.Feishu.AI.Tools.Extraction;
 /// L1 抽取器：从 Roslyn <see cref="INamedTypeSymbol"/>（接口）提取方法级 <see cref="CapabilityEntry"/>。
 /// </summary>
 /// <remarks>
-/// 两条扫描路径：
-/// <para>① 手写 <c>[FeishuTool]</c> 接口（Tier C 复合工具）——保留既有行为</para>
-/// <para>② SDK 接口（<c>IFeishu[Tenant|User]V*</c>）——自动派生 Tier R 工具</para>
+/// <para>
+/// <b>两条扫描路径的真实分工（AT-B18 修正——原注释声称路径②"自动派生 Tier R 工具"，与实现不符）</b>：
+/// </para>
+/// <para>
+/// ① <b>手写 <c>[FeishuTool]</c> 接口</b>——<b>唯一</b>的"产工具"路径（经
+/// <see cref="CuratedToolScanner"/>）；工具名/描述/scope 由人策展，其余事实（HTTP 路由、风险、返回形状）
+/// 从 SDK 符号派生。
+/// </para>
+/// <para>
+/// ② <b>SDK 接口（<c>IFeishu[Tenant|User]V*</c>）</b>——<b>仅</b>聚合为能力目录事实
+/// （<c>CapabilityCatalogEmitter</c>：方法总数 / 分组分布），<b>不产任何工具</b>。
+/// </para>
+/// <para>
+/// <b>为什么路径②不产工具（请勿按"能力已存在"的错觉重复建设）</b>：执行器承载的是<b>有意的策展</b>
+/// ——哪些字段回填模型、JSON 键怎么命名、错误如何归类——这恰恰是护城河（白名单投影），生成器无从得知。
+/// 逐方法发射 1155 条工具还会把编译期成本与程序集体积推高一个量级。该结论与上游主方案的
+/// <c>AT-F01</c> 撤销决定一致（见本方案 §0.2 定性判断①、§2.2 纠偏表与 §4 D1）。
+/// </para>
 /// </remarks>
 internal static class Extractors
 {

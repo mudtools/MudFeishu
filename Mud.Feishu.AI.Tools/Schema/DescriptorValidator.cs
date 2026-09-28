@@ -97,21 +97,58 @@ internal static class DescriptorValidator
 
     // ────────── L2 类型一致校验 ──────────
 
+    /// <summary>
+    /// L2：<c>required ⊆ properties</c>，两个<b>独立</b>来源比对（AT-B15 / R3 评审 C-2）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>历史缺陷（假门禁）</b>：原实现把 <c>propertyNames</c> 与 <c>required</c> 都取自
+    /// <c>entry.Parameters</c>——同一集合自比，条件恒为假，<c>MUDFT015</c> 从未真正触发过。
+    /// 这类"有上报点的假门禁"比死定义更危险：它让门禁清单看起来已被覆盖。
+    /// </para>
+    /// <para>
+    /// <b>修正后的两个来源</b>：
+    /// ① <b>意图模型</b>——<see cref="CapabilityParameter.IsRequired"/>（来自 <c>[ToolParameter]</c> / C# 可空性）；
+    /// ② <b>渲染产物</b>——<see cref="SchemaWriter.WriteInputSchema"/> 产出的 JSON 字符串，
+    /// 用 <see cref="RenderedPropertiesKeys"/> 从<b>文本</b>中提取 <c>properties</c> 段顶层键。
+    /// </para>
+    /// <para>
+    /// 由此新增的真实检出能力：<b>参数名归一后重名</b>（如 <c>userId</c> 与 <c>user_id</c> 都归一为
+    /// <c>user_id</c>）会让 <c>properties</c> 出现重复键、<c>required</c> 与模型看到的键集不一致——
+    /// 这在原实现下完全静默。
+    /// </para>
+    /// </remarks>
     private static void ValidateL2TypeConsistency(List<CapabilityEntry> entries, List<ValidationResult> results)
     {
         foreach (var entry in entries)
         {
-            // required ⊆ properties 键集（SchemaWriter 与模型契约之间的硬一致）。
-            var propertyNames = new HashSet<string>(entry.Parameters.Select(p => p.Name));
-            foreach (var req in entry.Parameters.Where(p => p.IsRequired).Select(p => p.Name))
+            // 来源②：渲染产物（字符串）中的 properties 顶层键。
+            var renderedJson = SchemaWriter.WriteInputSchema(entry);
+            if (!RenderedPropertiesKeys.TryExtract(renderedJson, out var renderedKeys, out var parseFailure))
             {
-                if (!propertyNames.Contains(req))
+                results.Add(ValidationResult.Error(
+                    Diagnostics.MUDFT015, entry.InterfaceName, entry.ToolName,
+                    $"无法从渲染产物中提取 properties 键集（{parseFailure}）——门禁无法验证，按失败处理"));
+                continue;
+            }
+
+            // 真实检出①：意图模型声明的参数数与渲染出的键数不一致（重复键会被 JSON 丢弃 → 模型看到的属性少了）。
+            if (renderedKeys.Count != entry.Parameters.Count)
+            {
+                results.Add(ValidationResult.Error(
+                    Diagnostics.MUDFT015, entry.InterfaceName, entry.ToolName,
+                    $"渲染出的 properties 键数 {renderedKeys.Count} 与参数数 {entry.Parameters.Count} 不一致"
+                    + "（通常是参数名归一后重名，导致 JSON 重复键被覆盖）"));
+            }
+
+            // 真实检出②：required 的每个名字必须真的出现在渲染出的 properties 中。
+            foreach (var required in entry.Parameters.Where(static p => p.IsRequired).Select(static p => p.Name))
+            {
+                if (!renderedKeys.Contains(required))
                 {
                     results.Add(ValidationResult.Error(
-                        Diagnostics.MUDFT015,
-                        entry.InterfaceName,
-                        entry.ToolName,
-                        $"required 参数 '{req}' 不在 properties 键集中"));
+                        Diagnostics.MUDFT015, entry.InterfaceName, entry.ToolName,
+                        $"required 参数 '{required}' 不在渲染出的 properties 键集中"));
                 }
             }
         }

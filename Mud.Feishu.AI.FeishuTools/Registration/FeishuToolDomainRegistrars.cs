@@ -46,7 +46,41 @@ internal static class FeishuToolRegistration
             ? definition
             : throw new InvalidOperationException($"工具 '{toolName}' 尚未注册（注册顺序错误）");
 
-    /// <summary>从编译期 Schema 常量提取注册表元数据（name/description/scopes/is_write 单一来源 = [FeishuTool] 特性）。</summary>
+    /// <summary>
+    /// 注册一枚"经执行链包裹的执行器方法"工具（AT-F16(a) / R3 评审 C-6：<b>纯样板抽取，零新机制</b>）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 取代此前在 11 个域注册器里逐行重复的三段式写法：
+    /// <c>RegisterTool(registry, X, (args, ctx, ct) =&gt; binding.ExecuteAsync(Def(registry, X), args, ctx, token =&gt; executor.YAsync(args, token), ct))</c>。
+    /// 抽出的只是"取定义 → 执行链包裹 → 传参闭包"这一机械结构，<b>不引入任何新特性、抽象或包</b>
+    /// （对照 `[ToolProjection]` 那类声明式方案——后者属新造机制，已明确另立批次）。
+    /// </para>
+    /// <para>
+    /// <b>定义必须在执行期经 <see cref="Def"/> 反查</b>（而非在注册期捕获）：工具定义本身持有 handler，
+    /// 而 handler 又需要定义来走执行链——捕获会造成初始化循环。注册表在构建期单线程填充、
+    /// 运行期只读，故该反查是纯字典命中，无并发与性能代价。
+    /// </para>
+    /// </remarks>
+    /// <param name="registry">工具注册表。</param>
+    /// <param name="toolName">工具名（须与 <c>[FeishuTool]</c> 派生的契约名一致）。</param>
+    /// <param name="binding">工具执行链。</param>
+    /// <param name="executorCall">分域执行器调用（入参 + 取消令牌 → 已投影/截断的结果）。</param>
+    public static void RegisterExecution(
+        FeishuToolRegistry registry,
+        string toolName,
+        FeishuToolBinding binding,
+        Func<IReadOnlyDictionary<string, object?>, CancellationToken, Task<FeishuToolResult>> executorCall)
+        => RegisterTool(registry, toolName, (args, ctx, ct) => binding.ExecuteAsync(
+            Def(registry, toolName), args, ctx, token => executorCall(args, token), ct));
+
+    /// <summary>从编译期 Schema 常量提取注册表元数据（单一来源 = [FeishuTool] 特性 + 生成器派生的 SDK 事实）。</summary>
+    /// <remarks>
+    /// <b>fail-fast 纪律（AT-B13 / R3 评审 C-14）</b>：<c>x-feishu.risk</c> 与 <c>x-feishu.identity</c> 是
+    /// 策略判定（<c>MaxToolRisk</c>/<c>AllowedIdentities</c>）的输入，<b>缺字段意味着策略轴静默失效</b>
+    /// （风险轴恒放行）。故此处不用 <c>GetProperty</c>（会抛裸 <c>KeyNotFoundException</c>，对宿主毫无指引），
+    /// 而给出"应做/不应做"的可读异常——那条异常本身就是修复指引。
+    /// </remarks>
     private static FeishuToolDefinition FromSchema(string schemaJson, FeishuToolHandler handler)
     {
         using var document = JsonDocument.Parse(schemaJson);
@@ -64,9 +98,26 @@ internal static class FeishuToolRegistration
             .Where(static s => s.Length > 0)
             .ToArray();
         var isWrite = extension.GetProperty("is_write").GetBoolean();
+        var riskLiteral = ReadExtensionString(extension, "risk", name);
+        if (!FeishuToolRiskNames.TryParse(riskLiteral, out var risk))
+        {
+            throw new InvalidOperationException(
+                $"工具 '{name}' 的 x-feishu.risk 取值非法: '{riskLiteral}'——合法值为 {FeishuToolRiskNames.AllowedValuesText}。"
+                + "该字段由源生成器从 SDK 事实派生，请勿手写；取值异常说明生成器产物被破坏。");
+        }
 
-        return new FeishuToolDefinition(name, description, scopes, isWrite, handler);
+        var identity = ReadExtensionString(extension, "identity", name);
+
+        return new FeishuToolDefinition(name, description, scopes, isWrite, risk, identity, handler);
     }
+
+    /// <summary>读取 <c>x-feishu</c> 扩展中的必填字符串（缺失时给出可读异常，而非裸 <c>KeyNotFoundException</c>）。</summary>
+    private static string ReadExtensionString(JsonElement extension, string propertyName, string toolName)
+        => extension.TryGetProperty(propertyName, out var element) && element.ValueKind == JsonValueKind.String
+            ? element.GetString() ?? string.Empty
+            : throw new InvalidOperationException(
+                $"工具 '{toolName}' 的 Schema 缺少 x-feishu.{propertyName}——该字段由源生成器从 SDK 事实派生，"
+                + "缺失意味着策略轴（MaxToolRisk / AllowedIdentities）将静默失效；请检查生成器与 golden 快照。");
 }
 
 /// <summary>Bitable 域注册器（构造注入 <see cref="BitableTools"/> 执行器）。</summary>
@@ -74,18 +125,14 @@ internal sealed class BitableToolDomainRegistrar(BitableTools executor, FeishuTo
 {
     public void Register(FeishuToolRegistry registry)
     {
-        FeishuToolRegistration.RegisterTool(registry, FeishuToolNames.BitableListTables,
-            (args, ctx, ct) => binding.ExecuteAsync(FeishuToolRegistration.Def(registry, FeishuToolNames.BitableListTables), args, ctx,
-                token => executor.ListTablesAsync(args, token), ct));
-        FeishuToolRegistration.RegisterTool(registry, FeishuToolNames.BitableListFields,
-            (args, ctx, ct) => binding.ExecuteAsync(FeishuToolRegistration.Def(registry, FeishuToolNames.BitableListFields), args, ctx,
-                token => executor.ListFieldsAsync(args, token), ct));
-        FeishuToolRegistration.RegisterTool(registry, FeishuToolNames.BitableQueryRecords,
-            (args, ctx, ct) => binding.ExecuteAsync(FeishuToolRegistration.Def(registry, FeishuToolNames.BitableQueryRecords), args, ctx,
-                token => executor.QueryRecordsAsync(args, token), ct));
-        FeishuToolRegistration.RegisterTool(registry, FeishuToolNames.BitableGetRecordsByIds,
-            (args, ctx, ct) => binding.ExecuteAsync(FeishuToolRegistration.Def(registry, FeishuToolNames.BitableGetRecordsByIds), args, ctx,
-                token => executor.GetRecordsByIdsAsync(args, token), ct));
+        FeishuToolRegistration.RegisterExecution(registry, FeishuToolNames.BitableListTables, binding,
+            (args, ct) => executor.ListTablesAsync(args, ct));
+        FeishuToolRegistration.RegisterExecution(registry, FeishuToolNames.BitableListFields, binding,
+            (args, ct) => executor.ListFieldsAsync(args, ct));
+        FeishuToolRegistration.RegisterExecution(registry, FeishuToolNames.BitableQueryRecords, binding,
+            (args, ct) => executor.QueryRecordsAsync(args, ct));
+        FeishuToolRegistration.RegisterExecution(registry, FeishuToolNames.BitableGetRecordsByIds, binding,
+            (args, ct) => executor.GetRecordsByIdsAsync(args, ct));
     }
 }
 
@@ -94,12 +141,10 @@ internal sealed class DocxToolDomainRegistrar(DocxTools executor, FeishuToolBind
 {
     public void Register(FeishuToolRegistry registry)
     {
-        FeishuToolRegistration.RegisterTool(registry, FeishuToolNames.DocxGetRawContent,
-            (args, ctx, ct) => binding.ExecuteAsync(FeishuToolRegistration.Def(registry, FeishuToolNames.DocxGetRawContent), args, ctx,
-                token => executor.GetRawContentAsync(args, token), ct));
-        FeishuToolRegistration.RegisterTool(registry, FeishuToolNames.DocxGetDocumentBlocks,
-            (args, ctx, ct) => binding.ExecuteAsync(FeishuToolRegistration.Def(registry, FeishuToolNames.DocxGetDocumentBlocks), args, ctx,
-                token => executor.GetDocumentBlocksAsync(args, token), ct));
+        FeishuToolRegistration.RegisterExecution(registry, FeishuToolNames.DocxGetRawContent, binding,
+            (args, ct) => executor.GetRawContentAsync(args, ct));
+        FeishuToolRegistration.RegisterExecution(registry, FeishuToolNames.DocxGetDocumentBlocks, binding,
+            (args, ct) => executor.GetDocumentBlocksAsync(args, ct));
     }
 }
 
@@ -108,12 +153,10 @@ internal sealed class WikiToolDomainRegistrar(WikiTools executor, FeishuToolBind
 {
     public void Register(FeishuToolRegistry registry)
     {
-        FeishuToolRegistration.RegisterTool(registry, FeishuToolNames.WikiGetNode,
-            (args, ctx, ct) => binding.ExecuteAsync(FeishuToolRegistration.Def(registry, FeishuToolNames.WikiGetNode), args, ctx,
-                token => executor.GetNodeAsync(args, token), ct));
-        FeishuToolRegistration.RegisterTool(registry, FeishuToolNames.WikiListNodes,
-            (args, ctx, ct) => binding.ExecuteAsync(FeishuToolRegistration.Def(registry, FeishuToolNames.WikiListNodes), args, ctx,
-                token => executor.ListNodesAsync(args, token), ct));
+        FeishuToolRegistration.RegisterExecution(registry, FeishuToolNames.WikiGetNode, binding,
+            (args, ct) => executor.GetNodeAsync(args, ct));
+        FeishuToolRegistration.RegisterExecution(registry, FeishuToolNames.WikiListNodes, binding,
+            (args, ct) => executor.ListNodesAsync(args, ct));
     }
 }
 
@@ -121,11 +164,8 @@ internal sealed class WikiToolDomainRegistrar(WikiTools executor, FeishuToolBind
 internal sealed class SearchToolDomainRegistrar(SearchTools executor, FeishuToolBinding binding) : IFeishuToolDomainRegistrar
 {
     public void Register(FeishuToolRegistry registry)
-    {
-        FeishuToolRegistration.RegisterTool(registry, FeishuToolNames.SearchDocWiki,
-            (args, ctx, ct) => binding.ExecuteAsync(FeishuToolRegistration.Def(registry, FeishuToolNames.SearchDocWiki), args, ctx,
-                token => executor.SearchAsync(args, token), ct));
-    }
+        => FeishuToolRegistration.RegisterExecution(registry, FeishuToolNames.SearchDocWiki, binding,
+            (args, ct) => executor.SearchAsync(args, ct));
 }
 
 /// <summary>IM 域注册器（只读两工具；写工具见 <see cref="WriteToolDomainRegistrar"/>）。</summary>
@@ -133,12 +173,10 @@ internal sealed class ImToolDomainRegistrar(ImTools executor, FeishuToolBinding 
 {
     public void Register(FeishuToolRegistry registry)
     {
-        FeishuToolRegistration.RegisterTool(registry, FeishuToolNames.ImGetHistoryMessages,
-            (args, ctx, ct) => binding.ExecuteAsync(FeishuToolRegistration.Def(registry, FeishuToolNames.ImGetHistoryMessages), args, ctx,
-                token => executor.GetHistoryAsync(args, token), ct));
-        FeishuToolRegistration.RegisterTool(registry, FeishuToolNames.ImGetMessageContent,
-            (args, ctx, ct) => binding.ExecuteAsync(FeishuToolRegistration.Def(registry, FeishuToolNames.ImGetMessageContent), args, ctx,
-                token => executor.GetContentAsync(args, token), ct));
+        FeishuToolRegistration.RegisterExecution(registry, FeishuToolNames.ImGetHistoryMessages, binding,
+            (args, ct) => executor.GetHistoryAsync(args, ct));
+        FeishuToolRegistration.RegisterExecution(registry, FeishuToolNames.ImGetMessageContent, binding,
+            (args, ct) => executor.GetContentAsync(args, ct));
     }
 }
 
@@ -147,12 +185,10 @@ internal sealed class SheetsToolDomainRegistrar(SheetsTools executor, FeishuTool
 {
     public void Register(FeishuToolRegistry registry)
     {
-        FeishuToolRegistration.RegisterTool(registry, FeishuToolNames.SheetsListSheets,
-            (args, ctx, ct) => binding.ExecuteAsync(FeishuToolRegistration.Def(registry, FeishuToolNames.SheetsListSheets), args, ctx,
-                token => executor.ListSheetsAsync(args, token), ct));
-        FeishuToolRegistration.RegisterTool(registry, FeishuToolNames.SheetsGetRangeValues,
-            (args, ctx, ct) => binding.ExecuteAsync(FeishuToolRegistration.Def(registry, FeishuToolNames.SheetsGetRangeValues), args, ctx,
-                token => executor.GetRangeValuesAsync(args, token), ct));
+        FeishuToolRegistration.RegisterExecution(registry, FeishuToolNames.SheetsListSheets, binding,
+            (args, ct) => executor.ListSheetsAsync(args, ct));
+        FeishuToolRegistration.RegisterExecution(registry, FeishuToolNames.SheetsGetRangeValues, binding,
+            (args, ct) => executor.GetRangeValuesAsync(args, ct));
     }
 }
 
@@ -161,12 +197,10 @@ internal sealed class DriveToolDomainRegistrar(DriveTools executor, FeishuToolBi
 {
     public void Register(FeishuToolRegistry registry)
     {
-        FeishuToolRegistration.RegisterTool(registry, FeishuToolNames.DriveListFolderFiles,
-            (args, ctx, ct) => binding.ExecuteAsync(FeishuToolRegistration.Def(registry, FeishuToolNames.DriveListFolderFiles), args, ctx,
-                token => executor.ListFolderFilesAsync(args, token), ct));
-        FeishuToolRegistration.RegisterTool(registry, FeishuToolNames.DriveGetFileMetas,
-            (args, ctx, ct) => binding.ExecuteAsync(FeishuToolRegistration.Def(registry, FeishuToolNames.DriveGetFileMetas), args, ctx,
-                token => executor.GetFileMetasAsync(args, token), ct));
+        FeishuToolRegistration.RegisterExecution(registry, FeishuToolNames.DriveListFolderFiles, binding,
+            (args, ct) => executor.ListFolderFilesAsync(args, ct));
+        FeishuToolRegistration.RegisterExecution(registry, FeishuToolNames.DriveGetFileMetas, binding,
+            (args, ct) => executor.GetFileMetasAsync(args, ct));
     }
 }
 
@@ -174,28 +208,39 @@ internal sealed class DriveToolDomainRegistrar(DriveTools executor, FeishuToolBi
 internal sealed class KnowledgeToolDomainRegistrar(KnowledgeSearchTools executor, FeishuToolBinding binding) : IFeishuToolDomainRegistrar
 {
     public void Register(FeishuToolRegistry registry)
-    {
-        FeishuToolRegistration.RegisterTool(registry, FeishuToolNames.KnowledgeSearch,
-            (args, ctx, ct) => binding.ExecuteAsync(FeishuToolRegistration.Def(registry, FeishuToolNames.KnowledgeSearch), args, ctx,
-                token => executor.SearchAsync(args, token), ct));
-    }
+        => FeishuToolRegistration.RegisterExecution(registry, FeishuToolNames.KnowledgeSearch, binding,
+            (args, ct) => executor.SearchAsync(args, ct));
 }
 
-/// <summary>通讯录域注册器（P0：把"姓名/邮箱 → ID"接上，否则写类工具凑不出入参）。</summary>
+/// <summary>通讯录域注册器（P0：把"姓名/邮箱/关键字 → ID"接上，否则写类工具凑不出入参）。</summary>
 internal sealed class ContactToolDomainRegistrar(ContactTools executor, FeishuToolBinding binding) : IFeishuToolDomainRegistrar
 {
     public void Register(FeishuToolRegistry registry)
     {
-        FeishuToolRegistration.RegisterTool(registry, FeishuToolNames.ContactResolveUser,
-            (args, ctx, ct) => binding.ExecuteAsync(FeishuToolRegistration.Def(registry, FeishuToolNames.ContactResolveUser), args, ctx,
-                token => executor.ResolveUsersAsync(args, token), ct));
-        FeishuToolRegistration.RegisterTool(registry, FeishuToolNames.ContactGetUser,
-            (args, ctx, ct) => binding.ExecuteAsync(FeishuToolRegistration.Def(registry, FeishuToolNames.ContactGetUser), args, ctx,
-                token => executor.GetUserAsync(args, token), ct));
-        FeishuToolRegistration.RegisterTool(registry, FeishuToolNames.ContactBatchGet,
-            (args, ctx, ct) => binding.ExecuteAsync(FeishuToolRegistration.Def(registry, FeishuToolNames.ContactBatchGet), args, ctx,
-                token => executor.BatchGetUsersAsync(args, token), ct));
+        FeishuToolRegistration.RegisterExecution(registry, FeishuToolNames.ContactResolveUser, binding,
+            (args, ct) => executor.ResolveUsersAsync(args, ct));
+        FeishuToolRegistration.RegisterExecution(registry, FeishuToolNames.ContactSearchUser, binding,
+            (args, ct) => executor.SearchUsersAsync(args, ct));
+        FeishuToolRegistration.RegisterExecution(registry, FeishuToolNames.ContactGetUser, binding,
+            (args, ct) => executor.GetUserAsync(args, ct));
+        FeishuToolRegistration.RegisterExecution(registry, FeishuToolNames.ContactBatchGet, binding,
+            (args, ct) => executor.BatchGetUsersAsync(args, ct));
     }
+}
+
+/// <summary>
+/// 能力出处域注册器（AT-F12）：<c>feishu.capability_lookup</c>。
+/// </summary>
+/// <remarks>
+/// <b>无软缺席</b>：该工具的数据源是编译期常量（能力目录 + 工具名契约表），不依赖任何飞书客户端，
+/// 故只要装配了工具包它就是<b>已注册</b>的——只是仍然默认<b>不启用</b>（与其他工具一致，
+/// 需 <c>FeishuAgent:Tools</c> 白名单显式启用，见 §10.3 回滚说明）。
+/// </remarks>
+internal sealed class CapabilityLookupToolDomainRegistrar(CapabilityLookupTools executor, FeishuToolBinding binding) : IFeishuToolDomainRegistrar
+{
+    public void Register(FeishuToolRegistry registry)
+        => FeishuToolRegistration.RegisterExecution(registry, FeishuToolNames.FeishuCapabilityLookup, binding,
+            (args, ct) => executor.LookupAsync(args, ct));
 }
 
 /// <summary>写域注册器（Phase 2 三个写工具；对应域客户端缺席时跳过——宿主未接该域则工具不暴露）。</summary>
@@ -205,23 +250,20 @@ internal sealed class WriteToolDomainRegistrar(MessageWriteTools? messageWrite, 
     {
         if (messageWrite is not null)
         {
-            FeishuToolRegistration.RegisterTool(registry, FeishuToolNames.ImSendMessage,
-                (args, ctx, ct) => binding.ExecuteAsync(FeishuToolRegistration.Def(registry, FeishuToolNames.ImSendMessage), args, ctx,
-                    token => messageWrite.SendMessageAsync(args, token), ct));
+            FeishuToolRegistration.RegisterExecution(registry, FeishuToolNames.ImSendMessage, binding,
+                (args, ct) => messageWrite.SendMessageAsync(args, ct));
         }
 
         if (bitableWrite is not null)
         {
-            FeishuToolRegistration.RegisterTool(registry, FeishuToolNames.BitableAddRecord,
-                (args, ctx, ct) => binding.ExecuteAsync(FeishuToolRegistration.Def(registry, FeishuToolNames.BitableAddRecord), args, ctx,
-                    token => bitableWrite.AddRecordAsync(args, token), ct));
+            FeishuToolRegistration.RegisterExecution(registry, FeishuToolNames.BitableAddRecord, binding,
+                (args, ct) => bitableWrite.AddRecordAsync(args, ct));
         }
 
         if (approvalWrite is not null)
         {
-            FeishuToolRegistration.RegisterTool(registry, FeishuToolNames.ApprovalCreateInstance,
-                (args, ctx, ct) => binding.ExecuteAsync(FeishuToolRegistration.Def(registry, FeishuToolNames.ApprovalCreateInstance), args, ctx,
-                    token => approvalWrite.CreateInstanceAsync(args, token), ct));
+            FeishuToolRegistration.RegisterExecution(registry, FeishuToolNames.ApprovalCreateInstance, binding,
+                (args, ct) => approvalWrite.CreateInstanceAsync(args, ct));
         }
     }
 }

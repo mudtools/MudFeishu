@@ -90,6 +90,58 @@ internal sealed class ContactTools(
         }
     }
 
+    /// <summary>
+    /// contact.search_user：按姓名/关键字搜人（AT-F11 / R3：打通「发给张三」写链路首环）。
+    /// </summary>
+    /// <remarks>
+    /// <b>投影纪律（C-7）</b>：<c>open_id</c> <b>必须</b>回填——它是下一跳
+    /// <c>im.send_message(receive_id_type=open_id)</c> 的入参；<c>avatar</c> 有意省略（长 URL，纯上下文开销）。
+    /// </remarks>
+    public async Task<FeishuToolResult> SearchUsersAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var query = ToolArgs.RequireString(arguments, "query");
+            var pageToken = ToolArgs.OptionalString(arguments, "page_token");
+
+            var outcome = FeishuApiResultReader.Read(await _userClient
+                .GetUsersByKeywordAsync(query, PageSizes.ContactSearch, pageToken, cancellationToken)
+                .ConfigureAwait(false));
+            if (!outcome.Ok)
+            {
+                return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(FeishuToolNames.ContactSearchUser, outcome.Code, outcome.ErrorText!));
+            }
+
+            var data = outcome.Data!;
+            var envelope = new JsonObject
+            {
+                ["items"] = new JsonArray(),
+                ["has_more"] = data.HasMore,
+            };
+            if (!string.IsNullOrEmpty(data.PageToken))
+            {
+                envelope["page_token"] = data.PageToken;
+            }
+
+            foreach (var user in data.Users ?? [])
+            {
+                envelope["items"]!.AsArray().AddNode(new JsonObject
+                {
+                    ["open_id"] = user.OpenId,
+                    ["user_id"] = user.UserId,
+                    ["name"] = user.Name,
+                    ["department_ids"] = ProjectStrings(user.DepartmentIds),
+                });
+            }
+
+            return FeishuToolResult.FromText(ToolResultText.TruncateJson(envelope.ToJsonString(), _maxResultLength));
+        }
+        catch (ArgumentException ex)
+        {
+            return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(FeishuToolNames.ContactSearchUser, ex.Message));
+        }
+    }
+
     /// <summary>contact.get_user：单个用户详情。</summary>
     public async Task<FeishuToolResult> GetUserAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {

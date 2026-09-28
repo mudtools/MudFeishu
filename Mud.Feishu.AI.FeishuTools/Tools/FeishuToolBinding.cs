@@ -97,34 +97,68 @@ public sealed class FeishuToolBinding
         }
 
         using var activity = FeishuToolDiagnostics.StartToolActivity(
-            tool.Name, context.AppKey, tool.RequiredScopes, tool.IsWrite);
+            tool.Name, context.AppKey, tool.RequiredScopes, tool.IsWrite, tool.Risk);
 
         var executionStopwatch = System.Diagnostics.Stopwatch.StartNew();
 
-        // ② 授权门禁：拒绝时零调用下游、不切换租户上下文。
-        var gate = await AuthorizeGateAsync(tool, arguments, context, cancellationToken).ConfigureAwait(false);
-        activity?.SetTag(FeishuToolDiagnostics.TagDecision,
-            gate.Allowed ? FeishuToolDiagnostics.DecisionAllowed : FeishuToolDiagnostics.DecisionDenied);
-        if (!gate.Allowed)
+        // ①' 入站净化（AT-B19）：控制字符/危险 Unicode/独立 CR 一律**拒绝**（不静默剥离）。
+        //     先于授权门禁——授权器可能把参数写审计，审计必须看到已净化形态（不变量 A5）。
+        var argumentFailure = ToolArgumentSanitizer.Validate(arguments);
+        if (argumentFailure is not null)
         {
-            // 拒绝也是审计事件（P1D-3b）：指标 + 审计出口，零调用下游。
-            FeishuToolDiagnostics.RecordExecution(tool.Name, context.AppKey, FeishuMetrics.ToolOutcomes.Denied);
-            await WriteAuditWithIsolationAsync(
-                tool, context, FeishuMetrics.ToolOutcomes.Denied, gate.Reason,
-                ToolArgsDigester.Digest(arguments), executionStopwatch.ElapsedMilliseconds,
-                cancellationToken).ConfigureAwait(false);
-            return FeishuToolResult.FromError(StructuredError(tool.Name, gate.Reason));
+            return await DenyAsync(
+                tool, context, ToolErrorKind.InvalidArgs, $"invalid_args: {argumentFailure}",
+                arguments, executionStopwatch, activity, cancellationToken).ConfigureAwait(false);
         }
 
-        // ③ 租户上下文切换（先于下游调用，作用域 finally 释放）。
+        // ② 策略轴（AT-B13）：风险上限 / 身份闭集——早于授权门禁（优先级见 EvaluatePolicy）。
+        var policyFailure = EvaluatePolicy(tool);
+        if (policyFailure is not null)
+        {
+            return await DenyAsync(
+                tool, context, ToolErrorKind.Forbidden, $"policy_denied: {policyFailure}",
+                arguments, executionStopwatch, activity, cancellationToken).ConfigureAwait(false);
+        }
+
+        // ③ 授权门禁：拒绝时零调用下游、不切换租户上下文。
+        var gate = await AuthorizeGateAsync(tool, arguments, context, cancellationToken).ConfigureAwait(false);
+        if (!gate.Allowed)
+        {
+            return await DenyAsync(
+                tool, context, gate.Kind, gate.Reason,
+                arguments, executionStopwatch, activity, cancellationToken).ConfigureAwait(false);
+        }
+
+        activity?.SetTag(FeishuToolDiagnostics.TagDecision, FeishuToolDiagnostics.DecisionAllowed);
+
+        // ④ 租户上下文切换（先于下游调用，作用域 finally 释放）。
         try
         {
             using var scope = _scopeFactory.BeginScope(context.AppKey);
             var result = await invokeDownstream(cancellationToken).ConfigureAwait(false);
 
-            // ④ 出站净化（强制阶段，不可关闭/不可替换）：工具结果 → 模型上下文是不可撤销出口，
+            // ⑤ 内容安全（AT-F14）：在净化**之前**扫描原始文本（不变量 A9）——净化会剥离控制字符，
+            //    而注入载荷常用不可见字符把关键词拆开，先净化就检测不到了。
+            var safetyHits = ToolResultContentSafety.Scan(result.ToString(), _options.ContentSafetyMode);
+            if (safetyHits.Count > 0 && _options.ContentSafetyMode == ContentSafetyModes.Block)
+            {
+                return await DenyAsync(
+                    tool, context, ToolErrorKind.Forbidden,
+                    $"content_safety_blocked: 工具结果命中内容安全规则 [{string.Join(",", safetyHits)}]",
+                    arguments, executionStopwatch, activity, cancellationToken).ConfigureAwait(false);
+            }
+
+            // ⑥ 出站净化（强制阶段，不可关闭/不可替换）：工具结果 → 模型上下文是不可撤销出口，
             //    手机号/邮箱/凭据一旦进入上下文就无法召回。必须先于整形钩子与审计标记。
             result = SanitizeResult(result);
+
+            // 内容安全命中（warn 模式）：在已净化文本前加标注（标注本身是干净文本，不受净化影响）。
+            var annotation = ToolResultContentSafety.BuildAnnotation(safetyHits);
+            if (annotation.Length > 0)
+            {
+                result = FeishuToolResult.FromText(annotation + result.ToString(), result.Truncated, result.TruncationReason);
+            }
+
             activity?.SetTag(FeishuToolDiagnostics.TagTruncated, result.Truncated);
 
             FeishuToolDiagnostics.RecordDuration(tool.Name, context.AppKey, executionStopwatch.ElapsedMilliseconds);
@@ -134,7 +168,7 @@ public sealed class FeishuToolBinding
                 ToolArgsDigester.Digest(arguments), executionStopwatch.ElapsedMilliseconds,
                 cancellationToken).ConfigureAwait(false);
 
-            // ⑤' 结果整形钩子（P1D-2a）：净化/投影/截断之后、回填之前；失败回退默认（异常隔离）。
+            // ⑦ 结果整形钩子（P1D-2a）：净化/投影/截断之后、回填之前；失败回退默认（异常隔离）。
             return await ShapeWithIsolationAsync(tool.Name, result, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
@@ -155,6 +189,30 @@ public sealed class FeishuToolBinding
                 CancellationToken.None).ConfigureAwait(false);
             return FeishuToolResult.FromError(errorText);
         }
+    }
+
+    /// <summary>
+    /// 统一的拒绝出口（AT-B13 / R3 评审 C-4）：指标 + Span 判定 + 审计投递 + 结构化错误文本，
+    /// <b>零调用下游、不切租户</b>。入站净化 / 策略轴 / 授权门禁 / 内容安全阻断四条路径共用，
+    /// 确保"新增一个拒绝分支必然带上审计"（否则审计会成为可选步骤而被遗漏）。
+    /// </summary>
+    private async Task<FeishuToolResult> DenyAsync(
+        FeishuToolDefinition tool,
+        FeishuToolContext context,
+        ToolErrorKind kind,
+        string reason,
+        IReadOnlyDictionary<string, object?> arguments,
+        System.Diagnostics.Stopwatch executionStopwatch,
+        Activity? activity,
+        CancellationToken cancellationToken)
+    {
+        activity?.SetTag(FeishuToolDiagnostics.TagDecision, FeishuToolDiagnostics.DecisionDenied);
+        FeishuToolDiagnostics.RecordExecution(tool.Name, context.AppKey, FeishuMetrics.ToolOutcomes.Denied);
+        await WriteAuditWithIsolationAsync(
+            tool, context, FeishuMetrics.ToolOutcomes.Denied, reason,
+            ToolArgsDigester.Digest(arguments), executionStopwatch.ElapsedMilliseconds,
+            cancellationToken).ConfigureAwait(false);
+        return FeishuToolResult.FromError(StructuredError(tool.Name, kind, reason));
     }
 
     /// <summary>
@@ -252,11 +310,17 @@ public sealed class FeishuToolBinding
     /// 构造带错误语义分类的结构化错误文本（AI-FD-D12 P1D-2b：分类 + 原因 + 建议——
     /// 授权拒绝与参数错误可区分，模型据此自我修正：重试 or 换参数 or 放弃）。
     /// </summary>
+    /// <remarks>
+    /// AT-B12（R3 评审 C-1）：<see cref="ToolErrorKind.NeedsConfirmation"/> 是<b>独立</b>语义，
+    /// 不得复用 <see cref="ToolErrorKind.InvalidArgs"/> 的"请修正参数"后缀——待确认不是参数错，
+    /// 让模型去改参数会让它陷入无意义的重试循环。
+    /// </remarks>
     internal static string StructuredError(string toolName, ToolErrorKind kind, string reason) => kind switch
     {
         ToolErrorKind.Retryable => $"[tool_error] {toolName} (retryable): {reason}——服务端繁忙/网络异常，可稍后重试同一调用",
-        ToolErrorKind.InvalidArgs => $"[tool_error] {toolName} (invalid_args): {reason}——请修正参数（如 filter/sort 文法）后重试",
+        ToolErrorKind.InvalidArgs => $"[tool_error] {toolName} (invalid_args): {reason}",
         ToolErrorKind.Forbidden => $"[tool_error] {toolName} (forbidden): {reason}——授权被拒绝，请放弃或改用只读方案",
+        ToolErrorKind.NeedsConfirmation => $"[tool_error] {toolName} (needs_confirmation): {reason}——该操作需要用户确认后方可执行；请勿以同一参数重试，改为向用户说明并请求确认",
         _ => $"[tool_error] {toolName}: {reason}",
     };
 
@@ -264,7 +328,17 @@ public sealed class FeishuToolBinding
     internal static string StructuredError(string toolName, int? apiCode, string reason)
         => StructuredError(toolName, ToolErrorClassifier.ClassifyCode(apiCode), reason);
 
-    private async Task<(bool Allowed, string Reason)> AuthorizeGateAsync(
+    /// <summary>授权门禁判定结果（AT-B12：<see cref="ToolErrorKind"/> 随判定一起返回，避免调用方猜测语义）。</summary>
+    private readonly record struct GateDecision(bool Allowed, string Reason, ToolErrorKind Kind)
+    {
+        /// <summary>放行。</summary>
+        public static GateDecision Pass() => new(true, string.Empty, ToolErrorKind.ApiError);
+
+        /// <summary>拒绝（带语义分类）。</summary>
+        public static GateDecision Deny(string reason, ToolErrorKind kind) => new(false, reason, kind);
+    }
+
+    private async Task<GateDecision> AuthorizeGateAsync(
         FeishuToolDefinition tool,
         IReadOnlyDictionary<string, object?> arguments,
         FeishuToolContext context,
@@ -274,11 +348,13 @@ public sealed class FeishuToolBinding
         {
             if (tool.IsWrite && _options.EnforceToolAuthorization)
             {
-                return (false, "写类工具未注册 IToolExecutionAuthorizer，且 EnforceToolAuthorization=true——默认拒绝（安全默认，Phase 1 §3.3.4）");
+                return GateDecision.Deny(
+                    "authorization_denied: 写类工具未注册 IToolExecutionAuthorizer，且 EnforceToolAuthorization=true——默认拒绝（安全默认，Phase 1 §3.3.4）",
+                    ToolErrorKind.Forbidden);
             }
 
             // 只读工具默认 NotRequired（授权钩子预留；scopes 随 Schema 供宿主审计）。
-            return (true, string.Empty);
+            return GateDecision.Pass();
         }
 
         var result = await _authorizer
@@ -286,16 +362,57 @@ public sealed class FeishuToolBinding
             .ConfigureAwait(false);
         if (result is null)
         {
-            return (false, "授权器返回空结果——按拒绝处理（fail-closed）");
+            return GateDecision.Deny("authorization_denied: 授权器返回空结果——按拒绝处理（fail-closed）", ToolErrorKind.Forbidden);
         }
 
         return result.Decision switch
         {
-            AuthorizationDecision.Allowed => (true, string.Empty),
-            AuthorizationDecision.Denied => (false, result.Reason ?? "授权被拒绝"),
-            AuthorizationDecision.NeedsUserConfirmation =>
-                (false, $"需要用户确认后才能执行（HITL，Phase 3 交付）：{result.Reason ?? "未提供原因"}"),
-            _ => (false, $"未知授权判定 {result.Decision}——按拒绝处理（fail-closed）"),
+            AuthorizationDecision.Allowed => GateDecision.Pass(),
+            AuthorizationDecision.Denied => GateDecision.Deny(
+                $"authorization_denied: {result.Reason ?? "授权被拒绝"}", ToolErrorKind.Forbidden),
+            AuthorizationDecision.NeedsUserConfirmation => GateDecision.Deny(
+                $"需要用户确认后才能执行（HITL，Phase 3 交付）：{result.Reason ?? "未提供原因"}",
+                ToolErrorKind.NeedsConfirmation),
+            _ => GateDecision.Deny(
+                $"authorization_denied: 未知授权判定 {result.Decision}——按拒绝处理（fail-closed）", ToolErrorKind.Forbidden),
         };
+    }
+
+    /// <summary>
+    /// 策略轴判定（AT-B13）：风险上限与身份闭集——<b>早于授权门禁</b>，拒绝时零调用下游、不切租户。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 与授权门禁的<b>优先级（R3 评审 C-4）</b>：策略在前——宿主显式收敛（如 <c>MaxToolRisk=read</c>）
+    /// 应当优先于"工具自身是否有授权器"这一执行细节。两者的拒绝文案前缀固定为
+    /// <c>policy_denied:</c> 与 <c>authorization_denied:</c>，使模型/审计可区分"宿主策略禁止"与"授权被拒"。
+    /// </para>
+    /// <para>
+    /// 拒绝原因闭集（写入审计 <c>reason</c> 与模型可见文本）：<c>risk_exceeded</c> / <c>identity_mismatch</c> /
+    /// <c>tool_not_allowed</c>（配置非法时 fail-closed）。
+    /// </para>
+    /// </remarks>
+    private string? EvaluatePolicy(FeishuToolDefinition tool)
+    {
+        if (!FeishuToolRiskNames.TryParse(_options.MaxToolRisk, out var maxRisk))
+        {
+            // 配置非法：fail-closed（Validate() 应在启动期拦住；此处是运行期最后一道）。
+            return $"tool_not_allowed: 宿主配置 {nameof(FeishuAgentOptions.MaxToolRisk)}='{_options.MaxToolRisk}' 非法，"
+                + $"合法值为 {FeishuToolRiskNames.AllowedValuesText}——按 fail-closed 拒绝";
+        }
+
+        if (tool.Risk > maxRisk)
+        {
+            return $"risk_exceeded: 工具 '{tool.Name}' 的风险为 {FeishuToolRiskNames.ToLiteral(tool.Risk)}，"
+                + $"超过宿主配置上限 '{_options.MaxToolRisk}'";
+        }
+
+        if (!_options.AllowedIdentities.Contains(tool.Identity, StringComparer.Ordinal))
+        {
+            return $"identity_mismatch: 工具 '{tool.Name}' 的身份为 '{tool.Identity}'，"
+                + $"不在宿主允许集合 [{string.Join(",", _options.AllowedIdentities)}] 内";
+        }
+
+        return null;
     }
 }

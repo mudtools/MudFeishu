@@ -1,5 +1,79 @@
 # Mud.Feishu 更新日志
 
+## [Unreleased] - AI 工具面 R3（对照官方 CLI 审查第三轮，2026-09-28）
+
+> 四维评审结论（PM / 架构师 / 高级程序员 / QA）与逐条落地核验见
+> `.docs/MudFeishu-AI-Tooling-vs-LarkCli-Review-Remediation-Plan-R3.md`（§0.3 评审、§13 落地核验）。
+> 本轮**不改变已决策①~⑩**，且**不做** Tier R 自动执行器、通用裸 `api` 工具、Skills 导出。
+
+### ⚠️ 行为变更登记（模型可见 / 宿主可感）
+
+- **入站参数净化（无开关）**：含 C0/C1 控制字符、危险不可见 Unicode（零宽 / Bidi / BOM / U+2028-2029）
+  或**独立 CR** 的工具参数将被**拒绝**（返回 `(invalid_args)`，零调用下游），不再静默下发。
+  换行 `\n`、`\r\n`、Tab **照常放行**；Emoji ZWJ 序列中的 `U+200D` **不误伤**
+  （官方 CLI 无差别拒绝 `U+200D` 的做法不可照抄——它是 Emoji 的合法组成）。
+- **授权拒绝文案分类**：拒绝路径统一带语义前缀——`authorization_denied:`（权限被拒，放弃或改只读）、
+  `policy_denied: {reason_code}`（宿主策略禁止）、`invalid_args`（参数问题，可自愈）。
+  **待用户确认**（HITL）改用独立语义 `(needs_confirmation)`，不再复用 `forbidden`/`invalid_args`
+  （原实现会让模型去做错误的自愈动作）。
+- **新增策略轴（默认不收紧现行为）**：`FeishuAgent:MaxToolRisk`（默认 `high-risk-write`）与
+  `FeishuAgent:AllowedIdentities`（默认 `["tenant"]`）在**授权门禁之前**判定，拒绝时零调用下游、不切租户。
+- **内置出站内容安全检测**：4 条注入规则（`instruction_override` / `role_injection` /
+  `system_prompt_leak` / `delimiter_smuggle`）按行扫描工具结果，`FeishuAgent:ContentSafetyMode`
+  = `off|warn|block`，**默认 `warn`**（命中即加 `[untrusted_content: 规则]` 标注，不阻断）。
+- **源破坏（项目未发布，无兼容负担）**：`FeishuToolDefinition` 新增必填参数 `Risk`（`FeishuToolRisk`）
+  与 `Identity`，值**只能**来自编译期 Schema 的 `x-feishu.risk` / `x-feishu.identity`；
+  宿主自行构造该 record 的代码需同步。
+
+### 🌟 新增
+
+- **`contact.search_user`**（工具面 22 → 24）：按姓名/关键字搜人（`GET /open-apis/search/v1/user`），
+  返回 `open_id`/`user_id`/姓名/部门——打通「发给张三」整条写链路的**首环**，
+  并有两跳端到端用例锁定 `search_user` → `im.send_message(receive_id_type=open_id)`。
+- **`feishu.capability_lookup`**：能力出处元工具（只读、**默认不启用**）。回答"这个能力 SDK 里有没有 /
+  是否已策展 / 对应哪些工具"，用于对冲"模型遇到未覆盖能力时凭空臆造调用"。
+  **只返回分组级元数据**（分组名 / 方法数 / 是否已策展 / 工具名清单），不返回方法名、不返回请求构造。
+  独立入口 `AddFeishuCapabilityTools()`（`AddFeishuTools()` 已包含）。
+- **写操作预演 `dry_run`**（三个写工具均支持，默认 `false`）：返回将要下发的 `method`/`path` 与
+  请求体字段摘要（**只回字段名与长度，不回原文**——否则预演会成为绕过净化的回显通道），不调用下游。
+- **`ToolArgumentSanitizer` / `ToolResultContentSafety`**：入站净化与出站内容安全两个阶段
+  （与既有 `ToolResultSanitizer` 构成"内容安全 → 净化 → 整形"的固定顺序，由行为断言锁定）。
+- **新诊断上报点**：`MUDFT005`（缺 XML summary）/`MUDFT006`（参数缺说明）接线；
+  `MUDFT009`（输出 Schema 截断）**聚合为单条**上报（当前命中 7 个工具，此前完全静默）；
+  删除 4 个**引用不存在机制的僵尸诊断**（`MUDFT007/011/012/013`——`[FeishuScopes]`/`[FeishuToolRisk]`
+  等特性在仓库中根本不存在）。
+- **新增契约守卫**：`Diagnostics_ShouldNotDeclareUnreportedDiagnostics`（定义集 == 上报点集）、
+  `ToolRiskAndIdentity_ShouldMatchSchemaValues_WhenRegistered`（防风险/身份双真相源）、
+  `PermissionDoc_ShouldCoverExactlyAllContractTools`（《工具权限对照表》与工具名契约表精确相等）、
+  `ZeroToleranceDiagnostics_ShouldEachHaveATriggerableCase`（负例登记表 + 债务预算）。
+
+### 🐞 修复
+
+- **`MUDFT015` 假门禁**：原实现的 `required` 与 `properties` 取自**同一** `entry.Parameters`
+  （条件恒为假，从未真正触发）。改为**两个独立来源**比对（参数意图模型 ↔ 渲染产物文本，手写最小扫描器），
+  并新增真实检出能力：**参数名归一后重名**导致 JSON 重复键。
+- **`MUDFT005/006/009` 死定义**：有定义无上报点，使"MUDFT 零容忍 == 0"这一断言形同注释。
+- **`GetHashCode` 字段子集**（`CapabilityEntry`/`CapabilityParameter`/`ScannedTool`/`ToolSchemaModel`）：
+  仅哈希标量字段，集合与长字符串被整体跳过——增量管线的值比较会退化为逐字段 `Equals`。
+  现按 `Equals` 认可字段**全量组合**（刻意拒绝"计数 + 首元素"这种补了等于没补的省算写法）。
+- **能力目录覆盖数字的假绿**：`SdkMethodCount`/`DomainCount` 原被 `BeGreaterThan(200)`/`BeGreaterThan(100)`
+  宽松断言，SDK 面缩水一半仍绿。现精确锁定（`1169 / 182 / 24`）。
+- **文档/注释漂移**：工具数（16/19/22 → **24**）、《工具权限对照表》缺 contact 三工具
+  （而守卫却声称"精确相等"）、`Extractors` 双路扫描注释声称"SDK 接口自动派生工具"（与实现不符）、
+  `PageSizes` 悬挂常量（本包无 Calendar/Task 注册器）。
+- **`contact` 自述与实际不符**：接口注释声称覆盖"姓名/关键词"却只实现邮箱/手机号——
+  本轮补上 `search_user` 后改为事实描述。
+- **`approval.create_instance.form` 零校验**：非 JSON / 非数组会被原样下发并换来一个语焉不详的飞书错误码，
+  现与 `bitable.add_record.fields` 同级校验并给出可读修复指引。
+
+### ⏭️ 有意未交付（附理由）
+
+- **工具层幂等键**（`idempotency_key`）：飞书侧幂等参数 `client_token` 需给 `Mud.Feishu` 的写接口加可选查询参数
+  （触碰"不改 SDK 业务签名"的决策⑤）；工具层自建缓存属新机制。**待决策**（方案 §12 D-8）。
+- **日历 / 任务 / 云文档写侧工具**（原 P0）：SDK 签名与 DTO 未核，且应先吃注册器样板降本；
+  见方案 §6.3 的排期重新论证（C-8）。
+- **scope 集中映射表**、**域级 guidance 资产**、**IM 扩容 / 邮件 / 多模态 / 长尾域**：见方案 §13.1。
+
 ## [Unreleased] - AI 工具面契约整改（对照官方 CLI 审查，2026-09-28）
 
 > 评审结论（四视角）与落地状态见

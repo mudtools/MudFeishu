@@ -10,12 +10,28 @@ using Microsoft.CodeAnalysis;
 namespace Mud.Feishu.AI.Tools;
 
 /// <summary>
-/// 诊断描述符常量表（MUDFT001–MUDFT014）。
+/// 诊断描述符常量表。
 /// </summary>
 /// <remarks>
+/// <para>
 /// 零容忍集：<see cref="MUDFT001"/>/<see cref="MUDFT002"/>/<see cref="MUDFT003"/>/
-/// <see cref="MUDFT004"/>/<see cref="MUDFT008"/>/<see cref="MUDFT010"/>/<see cref="MUDFT014"/>。
-/// 其余计入覆盖率报告。
+/// <see cref="MUDFT004"/>/<see cref="MUDFT008"/>/<see cref="MUDFT010"/>/<see cref="MUDFT014"/>/
+/// <see cref="MUDFT015"/>/<see cref="MUDFT016"/>/<see cref="MUDFT017"/>/<see cref="MUDFT019"/>
+/// （见 <see cref="ZeroToleranceIds"/>）。
+/// </para>
+/// <para>
+/// <b>AT-B14 清理记录（R3 评审 C-2）</b>：本表原先还声明了
+/// <c>MUDFT005/006/007/009/011/012/013</c>——其中 <b>007/011/012/013 引用的机制在仓库中根本不存在</b>
+/// （<c>[FeishuScopes]</c> / <c>[FeishuToolRisk]</c> / AOT TypeInfoPropertyName 检测 / JsonPropertyName 裁剪追踪
+/// 在全仓 <c>.cs</c> 中<b>仅命中本文件自身的描述文本</b>），属"指向不存在机制的僵尸定义"，
+/// 已<b>整体删除</b>（死定义会让覆盖集看起来比实际更广）。
+/// <c>005/006/009</c> 有真实消费点，已<b>接线</b>（005/006 见 <c>CuratedToolScanner</c>，
+/// 009 见 <c>FeishuToolSchemaGenerator.ReportOutputSchemaTruncations</c>，聚合为单条）。
+/// </para>
+/// <para>
+/// <b>纪律</b>：本表的定义集必须与生产源码的上报点集<b>完全相等</b>——由契约守卫
+/// <c>Diagnostics_ShouldNotDeclareUnreportedDiagnostics</c> 机械断言（无单侧多余）。
+/// </para>
 /// </remarks>
 internal static class Diagnostics
 {
@@ -104,47 +120,17 @@ internal static class Diagnostics
         defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true);
 
-    /// <summary>缺 [FeishuScopes]。</summary>
-    public static readonly DiagnosticDescriptor MUDFT007 = new(
-        id: "MUDFT007",
-        title: "缺 FeishuScopes 注解",
-        messageFormat: "方法 {0}.{1} 缺少 [FeishuScopes] 注解——_meta.scopes 将为空",
-        category: "MudFeishu.AI",
-        defaultSeverity: DiagnosticSeverity.Warning,
-        isEnabledByDefault: true);
-
-    /// <summary>输出 Schema 深度截断 / 循环引用。</summary>
+    /// <summary>
+    /// 输出 Schema 深度截断 / 循环引用（<b>聚合上报</b>：一次编译最多一条）。
+    /// </summary>
+    /// <remarks>
+    /// <b>保持 Warning 且不纳入 <see cref="ZeroToleranceIds"/></b>：截断是防 Schema 爆炸的有意设计，
+    /// 且当前 SDK 必然存在深层 DTO——纳入零容忍会立即阻断构建（AT-B14 / R3 评审 C-2 的边界约定）。
+    /// </remarks>
     public static readonly DiagnosticDescriptor MUDFT009 = new(
         id: "MUDFT009",
         title: "输出 Schema 深度截断或循环引用",
-        messageFormat: "方法 {0}.{1} 的 OutputSchema 在路径 {2} 处被截断（深度超限或循环引用）",
-        category: "MudFeishu.AI",
-        defaultSeverity: DiagnosticSeverity.Warning,
-        isEnabledByDefault: true);
-
-    /// <summary>AOT TypeInfoPropertyName 重复风险（SYSLIB1031）。</summary>
-    public static readonly DiagnosticDescriptor MUDFT011 = new(
-        id: "MUDFT011",
-        title: "AOT TypeInfoPropertyName 重复风险",
-        messageFormat: "类型 {0} 的 JSON TypeInfo 名称与 {1} 重复——可能触发 SYSLIB1031",
-        category: "MudFeishu.AI",
-        defaultSeverity: DiagnosticSeverity.Warning,
-        isEnabledByDefault: true);
-
-    /// <summary>危险词命中却被 override 为非高风险。</summary>
-    public static readonly DiagnosticDescriptor MUDFT012 = new(
-        id: "MUDFT012",
-        title: "危险词命中但 Risk 被 override 为非高风险",
-        messageFormat: "方法 {0}.{1} 命中危险词 '{2}' 但 [FeishuToolRisk] override 为 {3}——须人工确认",
-        category: "MudFeishu.AI",
-        defaultSeverity: DiagnosticSeverity.Warning,
-        isEnabledByDefault: true);
-
-    /// <summary>声明 [JsonPropertyName] 属性被深度/循环裁剪。</summary>
-    public static readonly DiagnosticDescriptor MUDFT013 = new(
-        id: "MUDFT013",
-        title: "JsonPropertyName 属性被裁剪",
-        messageFormat: "类型 {0} 的属性 {1} 标注了 [JsonPropertyName] 但因深度/循环被裁剪出 OutputSchema",
+        messageFormat: "OutputSchema 截断（深度超限或循环引用）：{0}。样本：{1}",
         category: "MudFeishu.AI",
         defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true);

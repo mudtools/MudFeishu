@@ -19,6 +19,13 @@ internal enum ToolErrorKind
     /// <summary>权限不足：授权拒绝 / code=99991663 等权限类——模型应放弃或改用只读方案。</summary>
     Forbidden,
 
+    /// <summary>
+    /// 待用户确认（HITL）：授权器返回 <c>NeedsUserConfirmation</c>——既不是"权限被拒"（放弃）
+    /// 也不是"参数错"（改参），而是"需人工介入"。AT-B12 新增：本语义原先被混入 <see cref="Forbidden"/>/
+    /// <see cref="InvalidArgs"/> 的文案，会让模型做出错误的自愈动作（原文案含"请修正参数"）。
+    /// </summary>
+    NeedsConfirmation,
+
     /// <summary>其余业务错误（code != 0 等）——现行为语义。</summary>
     ApiError,
 }

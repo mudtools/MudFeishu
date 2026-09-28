@@ -31,6 +31,21 @@ internal sealed class TypeSchemaResolver
 
     private readonly Compilation _compilation;
     private readonly HashSet<string> _recursionStack = new();
+    private readonly List<string> _truncations = [];
+
+    /// <summary>
+    /// 本次解析中被截断的位置（AT-B14：深度超限 / 循环引用）——<b>供上层聚合上报 <c>MUDFT009</c></b>。
+    /// </summary>
+    /// <remarks>
+    /// <b>为什么是"实例内收集 + 上层聚合"而不是"逐处上报"</b>：SDK 中层级超过
+    /// <see cref="MaxOutputDepth"/> 的 DTO 数量可观，逐处上报会产生成千条警告淹没构建输出
+    /// （<c>CapabilityCatalogEmitter</c> 的 <c>MUDFT018</c> 已确立"聚合单条"的体例）。
+    /// 本解析器只负责<b>如实记录</b>，聚合与上报由生成器在拿到全部模型的阶段一次完成。
+    /// </remarks>
+    public IReadOnlyList<string> Truncations => _truncations;
+
+    /// <summary>单个工具最多记录的截断样本数（防"一份深度爆炸的返回类型把诊断撑爆"）。</summary>
+    public const int MaxRecordedTruncations = 5;
 
     // 信封类型名（用 OriginalDefinition.ToDisplayString() 比对）
     private const string FeishuApiResultGeneric = "Mud.Feishu.DataModels.FeishuApiResult<T>";
@@ -98,17 +113,23 @@ internal sealed class TypeSchemaResolver
     /// <summary>
     /// 推导任意 C# 类型的 JSON Schema（递归核心）。
     /// </summary>
-    public string ResolveTypeSchema(ITypeSymbol type, int depth)
+    /// <param name="type">目标类型。</param>
+    /// <param name="depth">当前递归深度。</param>
+    /// <param name="path">当前属性路径（诊断定位用，如 <c>$..items.owner</c>；可空）。</param>
+    public string ResolveTypeSchema(ITypeSymbol type, int depth, string? path = null)
     {
         // 深度上限
         if (depth > MaxOutputDepth)
+        {
+            RecordTruncation(path, "深度超限");
             return "{}";
+        }
 
         // Nullable<T> / 可空引用 → 展开 T 的 schema，不进 required
         if (type is INamedTypeSymbol nullable
             && nullable.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T)
         {
-            return ResolveTypeSchema(nullable.TypeArguments[0], depth);
+            return ResolveTypeSchema(nullable.TypeArguments[0], depth, path);
         }
 
         // 标量类型
@@ -119,7 +140,7 @@ internal sealed class TypeSchemaResolver
         // 数组类型
         if (type.TypeKind == TypeKind.Array && type is IArrayTypeSymbol array)
         {
-            return ResolveArraySchema(array.ElementType, depth);
+            return ResolveArraySchema(array.ElementType, depth, path);
         }
 
         // 集合类型 List<T> / IReadOnlyList<T> / IEnumerable<T>
@@ -128,7 +149,7 @@ internal sealed class TypeSchemaResolver
             && collection.TypeArguments.Length == 1
             && IsCollectionType(collection))
         {
-            return ResolveArraySchema(collection.TypeArguments[0], depth);
+            return ResolveArraySchema(collection.TypeArguments[0], depth, path);
         }
 
         // Dictionary<string, T>
@@ -137,7 +158,7 @@ internal sealed class TypeSchemaResolver
             && dict.TypeArguments.Length == 2
             && IsDictionaryType(dict))
         {
-            var valueSchema = ResolveTypeSchema(dict.TypeArguments[1], depth);
+            var valueSchema = ResolveTypeSchema(dict.TypeArguments[1], depth, path + ".{value}");
             return $"{{\"type\":\"object\",\"additionalProperties\":{valueSchema}}}";
         }
 
@@ -166,11 +187,30 @@ internal sealed class TypeSchemaResolver
         // DataModels 类 → 递归推导 properties
         if (type.TypeKind == TypeKind.Class || type.TypeKind == TypeKind.Struct)
         {
-            return ResolveObjectSchema(type, depth);
+            return ResolveObjectSchema(type, depth, path);
         }
 
-        // 接口 / 抽象类 → 降级为 object
+        // 接口 / 抽象类 → 降级为 object。
+        // 注：**不**上报 MUDFT009——该诊断的语义是"深度截断或循环引用"，而"接口无法推导属性"
+        // 是另一类事实（其形状本就由实现类承载），混报会让 009 的计数失去可解释性。
         return "{}";
+    }
+
+    /// <summary>记录一处截断（去重 + 限量；供上层聚合为单条 <c>MUDFT009</c>）。</summary>
+    private void RecordTruncation(string? path, string reason)
+    {
+        if (_truncations.Count >= MaxRecordedTruncations)
+        {
+            // 已够定位问题；继续累积只会让诊断变长（聚合上报只取样本）。
+            if (_truncations.Count == MaxRecordedTruncations)
+            {
+                _truncations.Add("…（更多同类截断已省略）");
+            }
+
+            return;
+        }
+
+        _truncations.Add($"{path ?? "$"}（{reason}）");
     }
 
     // ────────── 私有推导方法 ──────────
@@ -208,9 +248,9 @@ internal sealed class TypeSchemaResolver
         return null;
     }
 
-    private string ResolveArraySchema(ITypeSymbol elementType, int depth)
+    private string ResolveArraySchema(ITypeSymbol elementType, int depth, string? path)
     {
-        var itemSchema = ResolveTypeSchema(elementType, depth + 1);
+        var itemSchema = ResolveTypeSchema(elementType, depth + 1, (path ?? "$") + "[]");
         return $"{{\"type\":\"array\",\"items\":{itemSchema}}}";
     }
 
@@ -229,13 +269,16 @@ internal sealed class TypeSchemaResolver
         return sb.ToString();
     }
 
-    private string ResolveObjectSchema(ITypeSymbol type, int depth)
+    private string ResolveObjectSchema(ITypeSymbol type, int depth, string? path)
     {
         var metadataName = type.OriginalDefinition.ToDisplayString();
 
         // 循环引用检测
         if (_recursionStack.Contains(metadataName))
+        {
+            RecordTruncation(path, "循环引用");
             return "{}";
+        }
 
         _recursionStack.Add(metadataName);
         try
@@ -255,7 +298,7 @@ internal sealed class TypeSchemaResolver
                 var jsonName = GetJsonPropertyName(prop);
                 sb.Append('"').Append(jsonName).Append("\":");
 
-                var propSchema = ResolveTypeSchema(prop.Type, depth + 1);
+                var propSchema = ResolveTypeSchema(prop.Type, depth + 1, (path ?? "$") + "." + jsonName);
                 sb.Append(propSchema);
 
                 // required 判定：非可空引用类型 / 非 Nullable<T> 值类型

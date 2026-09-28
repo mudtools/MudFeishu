@@ -48,7 +48,7 @@ namespace Mud.Feishu.AI.FeishuTools;
 public static class FeishuToolsServiceCollectionExtensions
 {
     /// <summary>
-    /// 注册飞书工具包（16 个只读 + 3 个写工具，全部注册、默认不启用）。
+    /// 注册飞书工具包（21 个只读 + 3 个写工具，共 24 个；全部注册、默认不启用）。
     /// </summary>
     /// <remarks>「引入全部域」便捷入口，产物与逐域扩展全调等价（等价性由用例锁定）。</remarks>
     /// <param name="services">服务集合。</param>
@@ -67,6 +67,7 @@ public static class FeishuToolsServiceCollectionExtensions
             .AddFeishuDriveToolsCore()
             .AddFeishuContactToolsCore()
             .AddFeishuKnowledgeToolsCore()
+            .AddFeishuCapabilityToolsCore()
             .AddFeishuWriteToolsCore();
 
     /// <summary>
@@ -366,6 +367,38 @@ public static class FeishuToolsServiceCollectionExtensions
         services.TryAddSingleton<IToolCatalog>(static sp => FeishuToolCatalog.From(sp.GetRequiredService<FeishuToolRegistry>()));
         services.TryAddSingleton<IToolSchemaExporter, FeishuToolSchemaExporter>();
 
+        return services;
+    }
+
+    /// <summary>
+    /// 按域注册能力出处元工具（AT-F12）：<c>feishu.capability_lookup</c>（默认不启用）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>不放进基础设施层（有意）</b>：该方法在每公开入口都会被调用一次，若在其中登记域注册器，
+    /// ① 逐域入口（如 <c>AddFeishuBitableTools</c>）会额外得到非本域工具，破坏"单域注册只含该域"的既有契约；
+    /// ② 重复调用会产生多个注册器实例，运行期报"工具已注册"。
+    /// 故本元工具是一个<b>显式入口</b>：全域入口 <see cref="AddFeishuTools"/> 已包含它，
+    /// 只装配单个域的宿主如需"能力出路"可单独调用本方法。
+    /// </para>
+    /// <para>
+    /// 数据源是编译期常量（能力目录 + 工具名契约表），<b>不依赖任何飞书客户端</b>——不随域缺席而软缺席。
+    /// </para>
+    /// </remarks>
+    /// <param name="services">服务集合。</param>
+    /// <param name="configure">注册表回调（可空）。</param>
+    /// <returns>服务集合。</returns>
+    public static IServiceCollection AddFeishuCapabilityTools(
+        this IServiceCollection services,
+        Action<FeishuToolRegistry>? configure = null)
+        => AddFeishuToolInfrastructure(services, configure).AddFeishuCapabilityToolsCore();
+
+    private static IServiceCollection AddFeishuCapabilityToolsCore(this IServiceCollection services)
+    {
+        services.TryAddSingleton(static sp => new CapabilityLookupTools(sp.GetRequiredService<IOptions<FeishuAgentOptions>>()));
+        services.AddToolDomainRegistrar(static sp => new CapabilityLookupToolDomainRegistrar(
+            sp.GetRequiredService<CapabilityLookupTools>(),
+            sp.GetRequiredService<FeishuToolBinding>()));
         return services;
     }
 

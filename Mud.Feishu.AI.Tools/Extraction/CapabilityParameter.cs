@@ -78,6 +78,7 @@ internal sealed class CapabilityParameter : IEquatable<CapabilityParameter?>
 
     public override bool Equals(object? obj) => Equals(obj as CapabilityParameter);
 
+    /// <summary>哈希覆盖 <see cref="Equals(CapabilityParameter?)"/> 的全部字段（AT-B16：原实现漏了文档描述）。</summary>
     public override int GetHashCode()
     {
         var comparer = StringComparer.Ordinal;
@@ -87,6 +88,7 @@ internal sealed class CapabilityParameter : IEquatable<CapabilityParameter?>
             hash = (hash * 31) + comparer.GetHashCode(Name);
             hash = (hash * 31) + comparer.GetHashCode(CsharpType);
             hash = (hash * 31) + comparer.GetHashCode(ParameterKind);
+            hash = (hash * 31) + comparer.GetHashCode(DocDescription ?? string.Empty);
             hash = (hash * 31) + comparer.GetHashCode(SchemaFragmentJson);
             hash = (hash * 31) + (IsRequired ? 1 : 0);
             hash = (hash * 31) + (IsNullable ? 1 : 0);

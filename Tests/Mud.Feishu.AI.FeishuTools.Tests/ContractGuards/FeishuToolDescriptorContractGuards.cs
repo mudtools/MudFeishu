@@ -133,12 +133,21 @@ public class FeishuToolDescriptorContractGuards
     }
 
     /// <summary>
-    /// 每个工具必须声明非空的 required_scopes
-    /// （§4.6.5.5：scope 随 Schema 供授权钩子与审计消费，空 scope 是安全盲区）。
+    /// 每个工具必须声明非空的 required_scopes（§4.6.5.5：scope 随 Schema 供授权钩子与审计消费）。
     /// </summary>
+    /// <remarks>
+    /// <b>豁免（AT-F12 收窄，R3 评审）</b>：唯一豁免是<b>不映射任何飞书 API</b>的元工具
+    /// （<c>feishu.capability_lookup</c> 只读编译期目录常量）。给它挂一个凭空的平台 scope 是
+    /// 对宿主的误导——审计会以为需要开权限，而实际它一个飞书请求都不发。
+    /// 豁免以<b>显式白名单</b>表达（而非"无 source 就放行"），因为 <c>knowledge.search</c> 同样无
+    /// <c>Source</c>（绑定本地 <c>IRetriever</c> 门面）却真实需要 <c>aily:knowledge:readonly</c>。
+    /// </remarks>
     [Fact]
     public void AllTools_ShouldHaveNonEmptyRequiredScopes()
     {
+        // 不映射飞书 API 的元工具白名单（每增一项都要说明"为什么它不需要任何平台权限"）。
+        var scopeExemptTools = new[] { FeishuToolNames.FeishuCapabilityLookup };
+
         foreach (var (toolName, schemaJson) in SchemaByToolName)
         {
             using var document = JsonDocument.Parse(schemaJson);
@@ -147,11 +156,19 @@ public class FeishuToolDescriptorContractGuards
             var scopes = root.GetProperty("x-feishu").GetProperty("required_scopes")
                 .EnumerateArray().Select(e => e.GetString()!).ToArray();
 
-            scopes.Should().NotBeEmpty(
-                $"工具 {toolName} 必须声明非空 required_scopes（授权钩子与审计消费）");
-
             scopes.Should().NotContainNulls(
                 $"工具 {toolName} 的 required_scopes 中不得有 null 元素");
+
+            if (scopeExemptTools.Contains(toolName, StringComparer.Ordinal))
+            {
+                scopes.Should().BeEmpty(
+                    $"工具 {toolName} 不映射飞书 API，其 required_scopes 必须为空——"
+                    + "声明占位 scope 会让宿主审计误以为需要开权限");
+                continue;
+            }
+
+            scopes.Should().NotBeEmpty(
+                $"工具 {toolName} 必须声明非空 required_scopes（授权钩子与审计消费）");
         }
     }
 

@@ -49,14 +49,11 @@ internal static class PageSizes
     /// <summary>通讯录按手机号/邮箱批量查 ID（官方单请求上限 50）。</summary>
     public const int ContactResolve = 50;
 
+    /// <summary>通讯录按姓名/关键字搜人（官方默认 10；此处取 20 以减少"找不到人"的追问轮次）。</summary>
+    public const int ContactSearch = 20;
+
     /// <summary>tokens 类参数的单请求上限（通用钳制）。</summary>
     public const int TokenBatch = 100;
-
-    /// <summary>日历日程列表默认时间窗（天）。</summary>
-    public const int CalendarDefaultWindowDays = 7;
-
-    /// <summary>task.list_mine 默认页大小（默认仅未完成）。</summary>
-    public const int TaskMine = 20;
 
     /// <summary>单条消息 content 预览截断长度。</summary>
     public const int MessagePreviewLength = 200;

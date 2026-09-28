@@ -34,6 +34,7 @@ public class GeneratorDiagnosticsContractGuards
 {
     private const string DiagnosticsFileName = "Diagnostics.cs";
     private const string ToolProjectDirectory = "Mud.Feishu.AI.Tools";
+    private const string TestProjectDirectory = "Tests/Mud.Feishu.AI.FeishuTools.Tests/ContractGuards";
 
     /// <summary>零容忍集内每个 ID 必须有真实上报点（防"定义即死代码"复发）。</summary>
     [Fact]
@@ -72,6 +73,124 @@ public class GeneratorDiagnosticsContractGuards
                 $"{id} 既列入 ZeroToleranceIds（构建期阻断），其 severity 必须是 Error");
         }
     }
+
+    /// <summary>
+    /// <b>定义集必须等于上报点集</b>（AT-B14 的反向锁：无单侧多余项）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 既有守卫只断言了"零容忍集内每个 ID 有上报点"，属<b>单侧</b>约束——它允许 <c>Diagnostics.cs</c> 里
+    /// 长期躺着"没有任何人上报"的定义。R3 复核发现的 <c>MUDFT007/011/012/013</c> 正是这种情形：
+    /// 它们引用的机制（<c>[FeishuScopes]</c> / <c>[FeishuToolRisk]</c> / AOT TypeInfoPropertyName 检测 /
+    /// JsonPropertyName 裁剪追踪）在仓库中<b>根本不存在</b>，是"指向不存在机制的僵尸定义"。
+    /// </para>
+    /// <para>
+    /// 死定义的危害不是"占位"，而是<b>让覆盖集看起来比实际更广</b>——读者会以为这些场景已被监控。
+    /// 故本用例把"定义集 == 上报点集"变成机械约束：要么接线，要么删除，不允许"原地保留 + 只在文档说明"。
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void Diagnostics_ShouldNotDeclareUnreportedDiagnostics()
+    {
+        var declared = ReadDeclaredDiagnosticIds();
+        var reported = ReadReportedDiagnosticIds();
+
+        declared.Should().NotBeEmpty("Diagnostics.cs 的 id 声明必须可解析（解析失败说明结构被改坏）");
+
+        var unreported = declared.Except(reported, StringComparer.Ordinal).OrderBy(static id => id, StringComparer.Ordinal).ToArray();
+        unreported.Should().BeEmpty(
+            "以下诊断有定义但没有任何上报点，属「指向不存在机制的僵尸定义」——"
+            + "必须接线或直接删除定义（死定义会让覆盖集看起来比实际更广）："
+            + string.Join(", ", unreported));
+    }
+
+    /// <summary>
+    /// A2（后半）：零容忍诊断必须有<b>可触发的负例用例</b>——当前以<b>显式债务登记</b>形式落地。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>为什么不是"源码里出现过该 ID 就通过"</b>：那种判定挡不住
+    /// <c>Diagnostics.MUDFT009.Id.Should().Be("MUDFT009")</c> 这类写法——
+    /// 断言里出现了 ID，但没有任何东西被触发（本仓库已有"假门禁"前科，见 <c>MUDFT015</c>）。
+    /// </para>
+    /// <para>
+    /// <b>真正的可触发负例需要 Roslyn 驱动</b>（<c>CSharpGeneratorDriver</c> 跑生成器并断言产出的
+    /// Diagnostic），而本测试工程当前<b>无法引用生成器程序集</b>（生成器以
+    /// <c>OutputItemType=Analyzer</c> + <c>ReferenceOutputAssembly=false</c> 引入，
+    /// 且其 <c>Microsoft.CodeAnalysis.CSharp</c> 依赖是 <c>PrivateAssets=all</c>）。
+    /// 落地配方已登记在 R3 方案 §13。
+    /// </para>
+    /// <para>
+    /// 故本用例退一步锁定<b>可控边界</b>：登记表必须与 <c>ZeroToleranceIds</c> 完全一致
+    /// （新增零容忍项而不登记负例状态 → 立即红），且已落地的负例必须真实存在。
+    /// <b>债务预算</b>（<see cref="PendingTriggerableIds"/>）只允许缩小，不允许扩大。
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void ZeroToleranceDiagnostics_ShouldEachHaveATriggerableCase()
+    {
+        var zeroToleranceIds = ReadZeroToleranceIds();
+
+        var covered = TriggerableCaseRegistry.Keys
+            .Union(PendingTriggerableIds, StringComparer.Ordinal)
+            .OrderBy(static id => id, StringComparer.Ordinal)
+            .ToArray();
+
+        covered.Should().BeEquivalentTo(zeroToleranceIds,
+            "负例登记表（已落地 ∪ 待落地）必须与 ZeroToleranceIds 完全一致——"
+            + "新增零容忍诊断时必须在同一处登记它的负例状态，否则 A2 会静默退化");
+
+        // 已登记的负例必须真实存在（文件 + 方法名都能找到）。
+        var testRoot = Path.Combine(FindRepositoryRoot(), TestProjectDirectory);
+        foreach (var (id, location) in TriggerableCaseRegistry)
+        {
+            var path = Path.Combine(testRoot, location.FileName);
+            File.Exists(path).Should().BeTrue($"{id} 登记的负例文件不存在：{location.FileName}");
+            File.ReadAllText(path).Should().Contain(location.MethodName,
+                $"{id} 登记的负例方法 {location.MethodName} 在 {location.FileName} 中找不到");
+        }
+
+        // 债务预算：只允许缩小。
+        PendingTriggerableIds.Should().HaveCount(11,
+            "A2 的可触发负例尚未落地（见本用例 remarks）——债务数量只允许下降，上调必须经评审并同步 R3 方案 §13");
+    }
+
+    /// <summary>已落地的负例：诊断 ID → （测试文件、用例方法名）。</summary>
+    private static readonly Dictionary<string, (string FileName, string MethodName)> TriggerableCaseRegistry = new(StringComparer.Ordinal)
+    {
+        // 说明：生成器诊断的**可触发**负例需要 Roslyn 驱动（见
+        // ZeroToleranceDiagnostics_ShouldEachHaveATriggerableCase 的 remarks），
+        // 本工程当前无法引用生成器程序集，故此处暂时为空；
+        // 已用 PendingTriggerableIds 显式登记 11 项债务。
+    };
+
+    /// <summary>待落地的负例（显式债务；数量只允许下降）。</summary>
+    private static readonly string[] PendingTriggerableIds =
+    [
+        "MUDFT001", "MUDFT002", "MUDFT003", "MUDFT004",
+        "MUDFT008", "MUDFT010", "MUDFT014", "MUDFT015",
+        "MUDFT016", "MUDFT017", "MUDFT019",
+    ];
+
+    /// <summary>读取 <c>Diagnostics.cs</c> 中<b>全部</b>诊断的 ID（含非零容忍项）。</summary>
+    private static IReadOnlyList<string> ReadDeclaredDiagnosticIds()
+    {
+        var diagnosticsSource = File.ReadAllText(
+            Path.Combine(FindRepositoryRoot(), ToolProjectDirectory, DiagnosticsFileName));
+
+        return Regex.Matches(diagnosticsSource, @"id:\s*""(MUDFT[0-9]{3})""")
+            .Select(static m => m.Groups[1].Value)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+    }
+
+    /// <summary>读取生成器全部源码中<b>被上报</b>的 ID（<c>Diagnostics.&lt;ID&gt;</c> 形态）。</summary>
+    private static IReadOnlyList<string> ReadReportedDiagnosticIds()
+        => ReadGeneratorSources()
+            .SelectMany(source => Regex.Matches(source, @"Diagnostics\.(MUDFT[0-9]{3})\b")
+                .Select(static m => m.Groups[1].Value))
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
 
     /// <summary>
     /// CI 脚本（<c>verify-build.ps1</c>）的 MUDFT 断言正则必须覆盖代码定义的全部零容忍 ID。

@@ -62,6 +62,7 @@ internal sealed class ToolSchemaModel : IEquatable<ToolSchemaModel?>
 
     public override bool Equals(object? obj) => Equals(obj as ToolSchemaModel);
 
+    /// <summary>哈希覆盖 <see cref="Equals(ToolSchemaModel?)"/> 的全部字段（AT-B16：原实现漏了 <see cref="Source"/>）。</summary>
     public override int GetHashCode()
     {
         var comparer = StringComparer.Ordinal;
@@ -72,6 +73,7 @@ internal sealed class ToolSchemaModel : IEquatable<ToolSchemaModel?>
             hash = (hash * 31) + comparer.GetHashCode(ConstName);
             hash = (hash * 31) + comparer.GetHashCode(Description);
             hash = (hash * 31) + (IsWrite ? 1 : 0);
+            hash = (hash * 31) + comparer.GetHashCode(Source ?? string.Empty);
             return hash;
         }
     }

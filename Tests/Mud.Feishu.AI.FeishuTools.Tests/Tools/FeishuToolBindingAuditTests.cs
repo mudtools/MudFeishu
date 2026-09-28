@@ -32,7 +32,9 @@ public class FeishuToolBindingAuditTests
     }
 
     private static FeishuToolDefinition CreateTool(string name = "bitable.query_records", bool isWrite = false)
-        => new(name, "描述", ["bitable:app:readonly"], isWrite, (_, _, _) => Task.FromResult(FeishuToolResult.FromText("结果")));
+        => new(name, "描述", ["bitable:app:readonly"], isWrite,
+            isWrite ? FeishuToolRisk.Write : FeishuToolRisk.Read, "tenant",
+            (_, _, _) => Task.FromResult(FeishuToolResult.FromText("结果")));
 
     private static FeishuToolContext CreateContext()
         => new("app-a", ConversationKey: "feishu:app-a:conversation:chat:oc_1", ChatId: "oc_1", UserId: "ou_1");
@@ -84,7 +86,9 @@ public class FeishuToolBindingAuditTests
         result.ToString().Should().Contain("[tool_error]", "拒绝结构化回填");
         records.Should().ContainSingle("拒绝也是审计事件");
         records[0].Decision.Should().Be("denied");
-        records[0].Reason.Should().Be("宿主拒绝");
+        records[0].Reason.Should().StartWith("authorization_denied:",
+            "审计 reason 必须带拒绝来源前缀（AT-B13：与 policy_denied: 可区分）");
+        records[0].Reason.Should().Contain("宿主拒绝");
     }
 
     [Fact]

@@ -22,6 +22,8 @@ public class FeishuToolAIFunctionTests
             "按条件查询多维表格记录",
             ["bitable:app:readonly"],
             false,
+            FeishuToolRisk.Read,
+            "tenant",
             (_, _, _) => Task.FromResult(FeishuToolResult.FromText("ok")));
 
         var function = new FeishuToolAIFunction(definition, SchemaOf("bitable.query_records"));
@@ -48,7 +50,8 @@ public class FeishuToolAIFunctionTests
     public void JsonSchema_ShouldBePureParameterSchema_NotTheDescriptorEnvelope()
     {
         var definition = new FeishuToolDefinition(
-            "bitable.query_records", "d", [], false, (_, _, _) => Task.FromResult(FeishuToolResult.FromText("ok")));
+            "bitable.query_records", "d", [], false, FeishuToolRisk.Read, "tenant",
+            (_, _, _) => Task.FromResult(FeishuToolResult.FromText("ok")));
 
         var schema = new FeishuToolAIFunction(definition, SchemaOf("bitable.query_records")).JsonSchema;
 
@@ -76,7 +79,8 @@ public class FeishuToolAIFunctionTests
     public async Task Invoke_WithoutAmbientContext_ShouldRefuseStructured()
     {
         var definition = new FeishuToolDefinition(
-            "test.tool", "d", [], false, (_, _, _) => throw new InvalidOperationException("不应执行到 Handler"));
+            "test.tool", "d", [], false, FeishuToolRisk.Read, "tenant",
+            (_, _, _) => throw new InvalidOperationException("不应执行到 Handler"));
 
         var function = new FeishuToolAIFunction(definition, "{\"name\":\"test.tool\"}", contextAccessor: null);
 
@@ -96,6 +100,8 @@ public class FeishuToolAIFunctionTests
             "d",
             [],
             false,
+            FeishuToolRisk.Read,
+            "tenant",
             (arguments, context, _) =>
             {
                 seenContext = context;
@@ -119,7 +125,7 @@ public class FeishuToolAIFunctionTests
     [Fact]
     public void Invoke_WithInvalidSchemaConstant_ShouldFailFastOnConstruction()
     {
-        var definition = new FeishuToolDefinition("x", "d", [], false, (_, _, _) => Task.FromResult(FeishuToolResult.FromText("ok")));
+        var definition = new FeishuToolDefinition("x", "d", [], false, FeishuToolRisk.Read, "tenant", (_, _, _) => Task.FromResult(FeishuToolResult.FromText("ok")));
 
         var act = () => new FeishuToolAIFunction(definition, "not-json");
 

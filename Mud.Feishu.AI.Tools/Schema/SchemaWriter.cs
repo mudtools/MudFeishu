@@ -75,7 +75,11 @@ internal static class SchemaWriter
     /// <summary>
     /// 渲染 <c>parameters</c>（纯参数 JSON Schema）。
     /// </summary>
-    private static string WriteInputSchema(CapabilityEntry entry)
+    /// <remarks>
+    /// <b>可见性</b>：由 <see cref="DescriptorValidator"/> 消费（AT-B15：把"渲染产物"作为
+    /// 与"参数意图模型"独立的第二个真相来源，做 <c>required ⊆ properties</c> 的真实比对）。
+    /// </remarks>
+    internal static string WriteInputSchema(CapabilityEntry entry)
     {
         var json = new StringBuilder();
         json.Append("{\"type\":\"object\",\"properties\":{");

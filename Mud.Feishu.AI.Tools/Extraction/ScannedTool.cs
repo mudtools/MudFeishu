@@ -57,6 +57,11 @@ internal sealed class ScannedTool : IEquatable<ScannedTool?>
 
     public override bool Equals(object? obj) => Equals(obj as ScannedTool);
 
+    /// <summary>哈希覆盖 <see cref="Equals(ScannedTool?)"/> 的全部字段（AT-B16：原实现漏了诊断集合）。</summary>
+    /// <remarks>
+    /// 诊断集合是"是否需要重发"的一部分（诊断变化的接口必须让增量管线判定为已变更），
+    /// 漏掉它会让"只改了诊断"的编辑被增量缓存吞掉。
+    /// </remarks>
     public override int GetHashCode()
     {
         unchecked
@@ -64,6 +69,12 @@ internal sealed class ScannedTool : IEquatable<ScannedTool?>
             var hash = 17;
             hash = (hash * 31) + StringComparer.Ordinal.GetHashCode(InterfaceName);
             hash = (hash * 31) + (Model?.GetHashCode() ?? 0);
+            hash = (hash * 31) + Diagnostics.Count;
+            foreach (var diagnostic in Diagnostics)
+            {
+                hash = (hash * 31) + diagnostic.GetHashCode();
+            }
+
             return hash;
         }
     }

@@ -117,6 +117,94 @@ public class FeishuAgentOptionsTests
         valid.Should().NotThrow();
     }
 
+    // ───────────────── R3/AT-B13 + AT-F14：策略轴配置键（§8.2 #18） ─────────────────
+
+    /// <summary>
+    /// <c>MaxToolRisk</c> 取值必须落在 Schema 的 <c>x-feishu.risk</c> 词汇闭集内。
+    /// </summary>
+    /// <remarks>
+    /// <b>为什么是字符串而不是 C# 枚举</b>：Schema 的字面量是连字符风格（<c>high-risk-write</c>），
+    /// 枚举绑定无法消费它。用字符串 + fail-fast 校验，换来"配置词汇 == Schema 词汇"这一单一来源。
+    /// </remarks>
+    [Theory]
+    [InlineData("read")]
+    [InlineData("write")]
+    [InlineData("high-risk-write")]
+    public void Validate_ShouldAcceptLegalMaxToolRisk(string risk)
+    {
+        var act = () => new FeishuAgentOptions { Instructions = "x", MaxToolRisk = risk }.Validate();
+
+        act.Should().NotThrow($"{risk} 是 Schema 的 x-feishu.risk 合法字面量");
+    }
+
+    [Theory]
+    [InlineData("HighRiskWrite")]   // C# 枚举名（常见误写：来自 ToolRisk 枚举）
+    [InlineData("highriskwrite")]
+    [InlineData("all")]
+    [InlineData("")]
+    public void Validate_ShouldRejectIllegalMaxToolRisk(string risk)
+    {
+        var act = () => new FeishuAgentOptions { Instructions = "x", MaxToolRisk = risk }.Validate();
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*MaxToolRisk*",
+            "非法取值会让风险轴静默失效（枚举名 high-risk-write 与 C# 名 HighRiskWrite 的混淆是最常见的一种）");
+    }
+
+    [Fact]
+    public void Validate_ShouldRejectEmptyAllowedIdentities()
+    {
+        var empty = () => new FeishuAgentOptions { Instructions = "x", AllowedIdentities = [] }.Validate();
+        empty.Should().Throw<InvalidOperationException>().WithMessage("*AllowedIdentities*",
+            "空集会在策略轴上拒绝全部工具（且失败信息指向配置而非能力缺失，极难排查）");
+
+        var blank = () => new FeishuAgentOptions { Instructions = "x", AllowedIdentities = ["tenant", " "] }.Validate();
+        blank.Should().Throw<InvalidOperationException>().WithMessage("*AllowedIdentities*");
+
+        var ok = () => new FeishuAgentOptions { Instructions = "x", AllowedIdentities = ["tenant", "user"] }.Validate();
+        ok.Should().NotThrow();
+    }
+
+    [Theory]
+    [InlineData(ContentSafetyModes.Off)]
+    [InlineData(ContentSafetyModes.Warn)]
+    [InlineData(ContentSafetyModes.Block)]
+    public void Validate_ShouldAcceptLegalContentSafetyMode(string mode)
+    {
+        var act = () => new FeishuAgentOptions { Instructions = "x", ContentSafetyMode = mode }.Validate();
+
+        act.Should().NotThrow();
+    }
+
+    [Theory]
+    [InlineData("Warn")]    // 大小写敏感：拼错会静默降级（warn 与 off 的差别是"标不标注"）
+    [InlineData("blocked")]
+    [InlineData("none")]
+    public void Validate_ShouldRejectIllegalContentSafetyMode(string mode)
+    {
+        var act = () => new FeishuAgentOptions { Instructions = "x", ContentSafetyMode = mode }.Validate();
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*ContentSafetyMode*");
+    }
+
+    /// <summary>
+    /// 策略轴四个新键的<b>默认值必须保持现行为不收紧</b>（方案 §10.2 R-1）。
+    /// </summary>
+    /// <remarks>
+    /// 误把 <c>MaxToolRisk</c> 默认设成 <c>read</c> 会让宿主的写工具<b>突然全部不可用</b>——
+    /// 这是本轮引入的最容易踩的回归，故用断言钉住默认值。
+    /// </remarks>
+    [Fact]
+    public void PolicyDefaults_ShouldNotTightenExistingBehaviour()
+    {
+        var options = new FeishuAgentOptions();
+
+        options.MaxToolRisk.Should().Be(FeishuToolRiskNames.HighRiskWrite,
+            "现行为 = 写工具需显式 WriteAllowList + 授权器（已足够严）；本键是宿主的显式收敛工具，不是新增默认限制");
+        options.AllowedIdentities.Should().Equal(["tenant"], "当前工具面全部为租户令牌工具");
+        options.ContentSafetyMode.Should().Be(ContentSafetyModes.Warn,
+            "默认 warn（比官方 CLI 的默认 off 更安全），且不阻断工具语义");
+    }
+
     /// <summary>
     /// R5：配置 DTO 不得使用 <c>required</c>——源生成配置绑定器经 <c>new T()</c> 构造，
     /// 带 required 会产生 CS9035。反射断言（比源码扫描更硬）。

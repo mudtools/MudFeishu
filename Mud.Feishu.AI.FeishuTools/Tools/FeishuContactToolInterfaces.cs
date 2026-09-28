@@ -18,15 +18,19 @@ namespace Mud.Feishu.AI.FeishuTools.Tools;
 // </para>
 // <para>
 // 三步链（对齐官方 CLI 的 <c>lark-contact</c> 语义）：
-// <c>contact.resolve_user</c>（邮箱/手机号 → ID）或
-// <c>contact.resolve_user</c> 的 keyword 形态不可用时改用部门/搜索，
+// <c>contact.resolve_user</c>（邮箱/手机号 → ID）或 <c>contact.search_user</c>（姓名/关键字 → ID），
 // 再 <c>contact.batch_get</c> 批量取详情；单点详情用 <c>contact.get_user</c>。
+// </para>
+// <para>
+// <b>AT-F11 / R3 评审 C-7 的链路闭环</b>：<c>contact.search_user</c> 的返回值<b>必须</b>含 <c>open_id</c>，
+// 因为"发给张三"的下一跳是 <c>im.send_message(receive_id_type="open_id", receive_id=&lt;open_id&gt;)</c>。
+// 该两跳链路由 <c>DomainMappingTests.SearchUserThenSendMessage_*</c> 端到端锁定。
 // </para>
 // </remarks>
 
 /// <summary>工具接口：contact.resolve_user（映射 <c>IFeishuTenantV3User.GetBatchUsersAsync</c>）。</summary>
 [FeishuTool("contact.resolve_user",
-    Description = "把邮箱或手机号批量换成用户 ID（open_id/user_id/union_id）——发送消息、加群、指派任务前的第一步。emails 与 mobiles 至少填一个，合计不超过 50 项。只读，需 contact:user.base:readonly。",
+    Description = "把邮箱或手机号批量换成用户 ID（open_id/user_id/union_id）——发送消息、加群、指派任务前的第一步。emails 与 mobiles 至少填一个，合计不超过 50 项。已知姓名/昵称而非邮箱手机号时请改用 contact.search_user。只读，需 contact:user.base:readonly。",
     RequiredScopes = ["contact:user.base:readonly"],
     Source = "IFeishuTenantV3User.GetBatchUsersAsync")]
 public interface IFeishuContactResolveUserTool
@@ -37,6 +41,28 @@ public interface IFeishuContactResolveUserTool
         [ToolParameter("emails", "邮箱数组（可选，与 mobiles 至少填一个；如 [\"zhangsan@example.com\"]）")] string[]? emails = null,
         [ToolParameter("mobiles", "手机号数组（可选，与 emails 至少填一个；如 [\"13800138000\"]）")] string[]? mobiles = null,
         [ToolParameter("include_resigned", "是否包含已离职成员（可选，默认 false）")] bool? include_resigned = null,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>
+/// 工具接口：contact.search_user（映射 <c>IFeishuTenantV3User.GetUsersByKeywordAsync</c>）。
+/// </summary>
+/// <remarks>
+/// <b>AT-F11（P0，R3 新增）</b>：这是"发给张三"整条写链路的<b>首环</b>——用户口述的是姓名，
+/// 而飞书全部写接口要的是 ID。SDK 方法早已存在（<c>GET /open-apis/search/v1/user</c>），
+/// 此前只是没有把它接成工具，故本项成本极低而收益直接落在写链路上。
+/// </remarks>
+[FeishuTool("contact.search_user",
+    Description = "按姓名/关键字搜索用户，返回 open_id/user_id/姓名/所属部门——用户说\"发给张三\"时的第一步（拿到 open_id 后交给 im.send_message，receive_id_type 传 open_id）。只读，需 contact:user.base:readonly。",
+    RequiredScopes = ["contact:user.base:readonly"],
+    Source = "IFeishuTenantV3User.GetUsersByKeywordAsync")]
+public interface IFeishuContactSearchUserTool
+{
+    /// <summary>按关键字（姓名/昵称）搜索用户。</summary>
+    /// <returns>白名单投影后的 JSON 文本（items：open_id/user_id/name/department_ids），超长截断并标记 truncated。</returns>
+    Task<string> SearchUsersAsync(
+        [ToolParameter("query", "搜索关键词（姓名/昵称，如 \"张三\"）", Required = true)] string query,
+        [ToolParameter("page_token", "分页游标（可选，来自上一次结果的 page_token）")] string? page_token = null,
         CancellationToken cancellationToken = default);
 }
 

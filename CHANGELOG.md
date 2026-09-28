@@ -1,5 +1,61 @@
 # Mud.Feishu 更新日志
 
+## [Unreleased] - AI 工具面契约整改（对照官方 CLI 审查，2026-09-28）
+
+> 评审结论（四视角）与落地状态见
+> `.docs/MudFeishu-AI-Tooling-vs-LarkCli-Review-Remediation-Plan.md`（§0.5 评审、§12 落地、§11 完整 CHANGELOG 文本）。
+> 下文为该轮**摘要**；完整条目以方案 §11 为准。
+
+### ⚠️ 行为变更登记
+
+- **工具结果出站强制净化**：`FeishuToolBinding` 在执行链内**无条件**净化工具结果
+  （ANSI 转义与控制字符剥离 + 凭据类 JSON 键值脱敏 + 中国大陆手机号脱敏）。
+  **净化点无开关、不可绕过**；邮箱与 `*_token`/`*_id` 标识类字段**有意保留**
+  （邮箱是平台寻址货币——`im.send_message` 的 `receive_id_type=email` 依赖它；
+  标识类字段是多步工具调用链的必需凭据）。
+- **工具描述符形状统一**：`x-feishu` = `{risk, is_write, identity, required_scopes, source, output_schema}`；
+  `is_write` 由 `risk` 单处派生；新增 `source`（工具锚到 SDK 的接口.方法 + HTTP 路由）。
+- **Schema 质量修正（模型可见契约变更）**：数组 `items` 由元素类型真实推导、
+  C# `enum` 产出 `enum` 约束、`DateTimeOffset`/`Guid`/`TimeSpan` 产出 `format`、
+  复合 DTO 展开为对象、`byte[]`/`Stream` 标注 `format:binary`。
+- **`AIFunction.JsonSchema` 口径修正**：由「描述符信封」改为**纯参数 JSON Schema**（MEAI 契约）。
+  信封顶层没有 JSON Schema 的 `type` 关键字，消费方按 Schema 解释时等价于「任意 JSON 可接受」，
+  参数约束全部静默丢失。
+- **源破坏**：`FeishuToolNames` 常量表改由源生成器从 `[FeishuTool]` 派生
+  （手写 `FeishuToolNames.cs` 删除，`PageSizes` 迁至 `Tools/PageSizes.cs`）。
+  常量名与数组名逐一保持不变，消费方无需改动。
+- **新增构建期门禁**：工具描述符 golden 快照 `Mud.Feishu.AI.FeishuTools/FeishuToolSchemas.golden.txt`，
+  漂移即 `MUDFT014` **中断构建**（重新固化路径见 `FeishuToolGoldenTests`）。
+
+### 🌟 新增
+
+- **通讯录三工具（工具面 19 → 22）**：`contact.resolve_user`（邮箱/手机号 → `user_id`/`open_id`）、
+  `contact.get_user`、`contact.batch_get`——打通「用户说『发给张三』 → 模型凑出 `open_id`」的链路首环。
+  新增 `AddFeishuContactTools()` 与 `AddFeishuTools()` 全域入口接入。
+- **`[FeishuTool(Source = "接口.方法")]` 源挂钩**：编译期用 `Mud.Feishu` 符号交叉校验并派生
+  HTTP 路由、风险分级、返回形状；声明与 SDK 不符即 `MUDFT019` 构建失败（工具面不得与 SDK 脱钩）。
+- **Tier R 能力目录**（`build_property.FeishuToolCatalog=true` 开启）：聚合覆盖报告——
+  实测 `SDK 能力 1160 项 / 策展 22 项 / 能力分组 182 个`，使「能力面差距」从主观判断变为构建期事实。
+- **新增诊断**：`MUDFT015`（Schema 内部不一致）/`MUDFT016`（身份与接口令牌类型不符）/
+  `MUDFT017`（读写分类与 SDK 事实脱钩）/`MUDFT018`（能力覆盖报告，Info）/`MUDFT019`（SDK 源无法解析）。
+
+### 🐞 修复
+
+- 源生成器 L1/L2/L4 三层**未接线**（1491 行死代码）——现全量接线为「扫描 → 渲染 → 校验」单管线。
+- 零容忍诊断 `MUDFT002/004/008/010/014` **无上报点**，致 `verify-build.ps1` 的 MUDFT 断言
+  恒为 0（**假绿门禁**）；零容忍集扩至 11 项并补齐上报点，配元守卫机械锁定「定义 ↔ 上报点同源」。
+- `Extractors.UnwrapTaskType` 按字面 `"System.Threading.Tasks.Task<T>"` 比对恒为 false
+  （BCL 泛型参数名为 `TResult`）——死代码期从未暴露，接线后表现为 100% 工具报 `MUDFT004`。
+- 风险推导把 `{app_token}` 等**路由占位符**当危险词、且按 `POST` 判写面，
+  导致几乎全部 Bitable 工具被误判 `high-risk-write`；改为只匹配方法名且 `POST` 不视为写面。
+- `DescriptorValidator` 诊断 ID 与语义错配（`MUDFT012`/`MUDFT002`/`MUDFT003` 被用于无关语义）。
+- 净化顺序缺陷：先剥控制字符会使 ANSI 序列残留为 `[31m` 类残渣（由单元用例当场捕获）。
+- 删除重复/不可用实现：`SchemaWriter.WriteDescriptor`/`WriteMeta`/`MapJsonType`、
+  生成器内第二份 `Quote`、`Extractors.DeriveModuleName`/`TryDeriveToolNameFromSdkInterface`/
+  `DeriveActionFromMethodName`。
+
+---
+
 ## [Unreleased] - AI-Native Phase 1/2 功能深化（AI-FD-D12 批次 A/B）
 
 > 本轮聚焦 **会话并发正确性、单聊流式解锁、工具面扩容与治理、零自定义接入**。

@@ -13,7 +13,21 @@
 		<Description>Mud.Feishu AI 飞书工具包：把 Bitable/Docx/Wiki/Search/IM/Sheets/Approval 接口经 [FeishuTool] 源生成 Schema 暴露为模型 FunctionCall（含写类工具），内置多租户授权执行链（BeginScope + 授权门禁 + 结果裁剪）、分片编辑流式消息通道与 Aily 托管知识问答（RAG-A），net8.0+ 原生 AOT 兼容。</Description>
 		<PackageTags>Feishu;Lark;飞书;Agent;AI;FunctionCall;Tool;AOT;NativeAOT;MudFeishu</PackageTags>
 		<BaseOutputPath>..\bin</BaseOutputPath>
+		<!-- Tier R 能力目录（聚合覆盖报告）：只有本包开启——其余引用生成器的工程（AI 底座、测试）
+		     跳过全程序集扫描，避免拖累日常编辑的增量构建。 -->
+		<FeishuToolCatalog>true</FeishuToolCatalog>
 	</PropertyGroup>
+
+	<ItemGroup>
+		<!-- 工具描述符 golden 快照（门禁）：源生成器逐字节比对，漂移即 MUDFT014 构建失败。
+		     重新固化：以 FeishuToolGoldenUpdate=true 运行 Mud.Feishu.AI.FeishuTools.Tests 的
+		     FeishuToolGoldenTests（见该测试类注释）。 -->
+		<AdditionalFiles Include="FeishuToolSchemas.golden.txt" Condition="Exists('FeishuToolSchemas.golden.txt')" />
+		<!-- 让源生成器经 AnalyzerConfigOptions 读到 FeishuToolCatalog —— MSBuild 属性默认对分析器
+		     不可见，缺此声明时生成器读到的是"未设置"，Tier R 能力目录会静默不产出
+		     （症状：构建通过但没有 FeishuCapabilityCatalog 类型）。 -->
+		<CompilerVisibleProperty Include="FeishuToolCatalog" />
+	</ItemGroup>
 
 	<ItemGroup>
 		<!-- 上层包（DAG 合法层级）：AI（Agent 运行时）+ core（强类型接口载体）+ DataModels（工具出/入 DTO）。

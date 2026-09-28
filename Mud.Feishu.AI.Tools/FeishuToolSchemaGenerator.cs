@@ -6,468 +6,164 @@
 // -----------------------------------------------------------------------
 
 using System;
-using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
-using System.Text;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
+using Mud.Feishu.AI.Tools.Emit;
 using Mud.Feishu.AI.Tools.Extraction;
 using Mud.Feishu.AI.Tools.Schema;
 
 namespace Mud.Feishu.AI.Tools;
 
 /// <summary>
-/// [FeishuTool] 源生成器（已决策⑤）：扫描标注 <see cref="FeishuToolAttribute"/> 的接口，
-/// 编译期产出 OpenAI-compatible 工具 Schema（<c>name/description/parameters/required</c>
-/// + <c>required_scopes</c> 权限元数据，已决策⑥）。
+/// Mud.Feishu 工具面源生成器：把 <c>[FeishuTool]</c> 接口编译为「模型可调用工具」的全部编译期产物。
 /// </summary>
 /// <remarks>
+/// <para><b>管道（L1 → L2 → L4）</b>：</para>
+/// <list type="number">
+/// <item>L1 抽取（<see cref="CuratedToolScanner"/>）：接口符号 + <c>Source</c> 源挂钩 → <see cref="CapabilityEntry"/>；</item>
+/// <item>L2 渲染（<see cref="SchemaWriter"/>）：条目 → 描述符 JSON（纯参数 Schema + <c>x-feishu</c> 元数据）；</item>
+/// <item>L4 校验（<see cref="DescriptorValidator"/>）：结构/类型/跨字段一致 → 诊断。</item>
+/// </list>
+/// <para><b>产物</b>：</para>
+/// <list type="bullet">
+/// <item><c>FeishuToolSchemas.g.cs</c> —— Schema 常量 + 注册表快照（已决策⑤）；</item>
+/// <item><c>FeishuToolNames.g.cs</c> —— 工具名契约表（D2 单一真相源，取代手写常量表）；</item>
+/// <item><c>FeishuCapabilityCatalog.g.cs</c> —— Tier R 能力目录聚合（<c>build_property.FeishuToolCatalog=true</c> 时）。</item>
+/// </list>
 /// <para>
-/// 改造后为三级管道（§4.6.2）：
-/// <para>Stage A（L1 抽取）：从 Roslyn symbol 提取 <see cref="CapabilityEntry"/></para>
-/// <para>Stage B（L2 描述符）：按域分组渲染 Schema</para>
-/// <para>Stage C（发射）：分域分文件产出 .g.cs</para>
-/// </para>
-/// <para>
-/// 兼容层：保持 <c>FeishuToolSchemas</c> 产物不变（S0 golden 锁定）。
+/// <b>增量纪律</b>：Tier C 全程在 <c>SemanticModel</c> 上完成（不引入 <c>CompilationProvider</c>）——
+/// 管线输出是纯值模型，源码不变则不重发；Tier R 需要全程序集扫描，故显式 opt-in，避免拖累
+/// 每个引用本生成器的工程。
 /// </para>
 /// </remarks>
 [Generator]
 public sealed class FeishuToolSchemaGenerator : IIncrementalGenerator
 {
+    /// <summary>Tier R 能力目录的开启开关（MSBuild 属性名）。</summary>
+    public const string CatalogPropertyName = "build_property.FeishuToolCatalog";
+
+    /// <inheritdoc />
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        // Stage A: 扫描标注 [FeishuTool] 的接口（快路径）
-        var toolSchemas = context.SyntaxProvider
-            .CreateSyntaxProvider(
-                static (node, _) => node is InterfaceDeclarationSyntax iface && iface.AttributeLists.Count > 0,
-                static (ctx, _) => ctx.SemanticModel.GetDeclaredSymbol(ctx.Node) as INamedTypeSymbol)
-            .Where(static symbol => symbol is not null && HasFeishuToolAttribute(symbol!))
-            .Select(static (symbol, _) => BuildModel(symbol!))
+        // ── L1：Tier C 扫描（语法候选 → 符号校验 → 值模型）──
+        var scanned = context.SyntaxProvider
+            .CreateSyntaxProvider(IsToolCandidate, ScanTool)
+            .Where(static result => result is not null)
+            .Select(static (result, _) => result!);
+
+        var models = scanned
+            .Where(static result => result.Model is not null)
+            .Select(static (result, _) => result.Model!)
             .Collect();
 
-        context.RegisterSourceOutput(toolSchemas, static (spc, models) => EmitAll(spc, models));
+        // ── L4 诊断出口（与扫描同源，不额外解析符号）──
+        var diagnostics = scanned
+            .SelectMany(static (result, _) => result.Diagnostics)
+            .Collect();
+
+        context.RegisterSourceOutput(diagnostics, ReportPendingDiagnostics);
+
+        // ── L2/L4 + golden：Schema 与工具名契约表发射 ──
+        var assemblyName = context.CompilationProvider.Select(static (compilation, _) => compilation.AssemblyName);
+        var golden = context.AdditionalTextsProvider
+            .Where(static text => text.Path.Replace('\\', '/').EndsWith(SchemaEmitter.GoldenFileName, StringComparison.OrdinalIgnoreCase))
+            .Collect();
+
+        context.RegisterSourceOutput(
+            models.Combine(assemblyName).Combine(golden),
+            static (spc, input) => EmitToolSurface(spc, input.Left.Left, input.Left.Right, input.Right));
+
+        // ── Tier R：能力目录（聚合；显式 opt-in）──
+        var catalogEnabled = context.AnalyzerConfigOptionsProvider.Select(static (provider, _) =>
+            provider.GlobalOptions.TryGetValue(CatalogPropertyName, out var value)
+            && string.Equals(value, "true", StringComparison.OrdinalIgnoreCase));
+
+        // 关闭时投影为常量 null——增量缓存据此判定"无变化"，下游不会随每次编辑重跑。
+        var catalogInput = context.CompilationProvider
+            .Combine(catalogEnabled)
+            .Select(static (pair, _) => pair.Right ? pair.Left : null)
+            .Combine(models);
+
+        context.RegisterSourceOutput(
+            catalogInput,
+            static (spc, pair) =>
+            {
+                if (pair.Left is not null)
+                {
+                    CapabilityCatalogEmitter.Emit(spc, pair.Left, pair.Right);
+                }
+            });
     }
 
-    // ────────── Stage A: L1 抽取 ──────────
+    // ────────── 候选与扫描 ──────────
 
-    private static bool HasFeishuToolAttribute(INamedTypeSymbol symbol)
-        => symbol.GetAttributes().Any(a => IsFeishuToolAttribute(a.AttributeClass));
+    private static bool IsToolCandidate(SyntaxNode node, System.Threading.CancellationToken _)
+        => node is InterfaceDeclarationSyntax { AttributeLists.Count: > 0 };
 
-    private static bool IsFeishuToolAttribute(INamedTypeSymbol? attributeClass)
-        => attributeClass is not null
-            && attributeClass.Name == "FeishuToolAttribute"
-            && attributeClass.ContainingNamespace.ToDisplayString() == "Mud.Feishu.AI.Tools";
-
-    private static ToolSchemaModel BuildModel(INamedTypeSymbol interfaceSymbol)
+    private static ScannedTool? ScanTool(GeneratorSyntaxContext context, System.Threading.CancellationToken cancellationToken)
     {
-        var attribute = interfaceSymbol.GetAttributes().First(a => IsFeishuToolAttribute(a.AttributeClass));
-        var toolName = attribute.ConstructorArguments.FirstOrDefault().Value as string ?? string.Empty;
-        if (string.IsNullOrWhiteSpace(toolName))
+        if (context.SemanticModel.GetDeclaredSymbol(context.Node, cancellationToken) is not INamedTypeSymbol symbol)
         {
-            return new ToolSchemaModel(string.Empty, interfaceSymbol.Name, string.Empty, string.Empty);
+            return null;
         }
 
-        var description = GetNamedString(attribute, "Description");
-        var scopes = GetNamedArray(attribute, "RequiredScopes");
-        var isWrite = GetNamedBool(attribute, "IsWrite");
-
-        var schema = BuildSchemaJson(toolName, description, scopes, isWrite, interfaceSymbol);
-        return new ToolSchemaModel(toolName, interfaceSymbol.Name, BuildConstName(toolName), schema);
+        // 非 [FeishuTool] 接口直接跳过（避免把无关接口变成诊断）。
+        return Extractors.GetFeishuToolAttribute(symbol) is null
+            ? null
+            : CuratedToolScanner.Scan(symbol, context.SemanticModel.Compilation);
     }
 
-    // ────────── Stage C: 发射 ──────────
+    // ────────── 输出 ──────────
 
-    private static void EmitAll(SourceProductionContext context, ImmutableArray<ToolSchemaModel> models)
+    private static void ReportPendingDiagnostics(
+        SourceProductionContext context,
+        ImmutableArray<PendingDiagnostic> diagnostics)
+    {
+        foreach (var pending in diagnostics)
+        {
+            context.ReportDiagnostic(Diagnostic.Create(pending.Descriptor, Location.None, pending.Arguments));
+        }
+    }
+
+    private static void EmitToolSurface(
+        SourceProductionContext context,
+        ImmutableArray<ToolSchemaModel> models,
+        string? assemblyName,
+        ImmutableArray<AdditionalText> goldenTexts)
     {
         if (models.IsEmpty)
         {
             return;
         }
 
-        // 诊断：无名工具
-        var diagnostics = models.Where(m => m.ToolName.Length == 0).ToArray();
-        foreach (var invalid in diagnostics)
+        // L4 校验：结构 / 类型一致 / 跨字段一致（含工具名唯一性 → MUDFT003）。
+        foreach (var result in DescriptorValidator.ValidateAll(models.Select(static m => m.Entry)))
         {
-            Diagnostics.Report(context, Diagnostics.MUDFT001, null, invalid.InterfaceName);
+            context.ReportDiagnostic(Diagnostic.Create(result.Descriptor, Location.None, result.Arguments));
         }
 
-        var valid = models
-            .Where(m => m.ToolName.Length > 0)
-            .OrderBy(m => m.ToolName, StringComparer.Ordinal)
-            .ToArray();
-
-        if (valid.Length == 0)
+        var goldenText = ReadGolden(goldenTexts, context.CancellationToken);
+        var drift = SchemaEmitter.Emit(context, models, assemblyName, goldenText);
+        if (drift is not null)
         {
-            return;
-        }
-
-        // 工具名冲突检测
-        var seenNames = new Dictionary<string, string>(StringComparer.Ordinal);
-        foreach (var model in valid)
-        {
-            if (seenNames.TryGetValue(model.ToolName, out var existing))
-            {
-                Diagnostics.Report(context, Diagnostics.MUDFT003, null, model.ToolName, existing);
-            }
-            else
-            {
-                seenNames[model.ToolName] = model.InterfaceName;
-            }
-        }
-
-        // 兼容层：FeishuToolSchemas.g.cs（与今日产物一致）
-        EmitCompatSchema(context, valid);
-    }
-
-    private static void EmitCompatSchema(SourceProductionContext context, ToolSchemaModel[] valid)
-    {
-        var source = new StringBuilder();
-        source.AppendLine("// <auto-generated> 由 FeishuToolSchemaGenerator 编译期产出，禁止手工修改 </auto-generated>");
-        source.AppendLine("#nullable enable");
-        source.AppendLine("#pragma warning disable CS1591 // 生成代码不逐一补 XML 注释");
-        source.AppendLine("namespace Mud.Feishu.AI.Tools.Generated");
-        source.AppendLine("{");
-        source.AppendLine("    /// <summary>[FeishuTool] 接口编译期产出的工具 Schema（AOT 安全：零运行时反射）。</summary>");
-        source.AppendLine("    public static partial class FeishuToolSchemas");
-        source.AppendLine("    {");
-
-        foreach (var model in valid)
-        {
-            source.AppendLine($"        public const string {model.ConstName} = {ToCSharpStringLiteral(model.SchemaJson)};");
-            source.AppendLine();
-        }
-
-        source.AppendLine("        /// <summary>工具名 → Schema 的注册表快照（供白名单注册与 scope 审计消费）。</summary>");
-        source.AppendLine("        public static System.Collections.Generic.IReadOnlyDictionary<string, string> SchemaByToolName { get; } =");
-        source.AppendLine("            new System.Collections.Generic.Dictionary<string, string>(System.StringComparer.Ordinal)");
-        source.AppendLine("            {");
-        foreach (var model in valid)
-        {
-            source.AppendLine($"                [{ToCSharpStringLiteral(model.ToolName)}] = {model.ConstName},");
-        }
-
-        source.AppendLine("            };");
-        source.AppendLine("    }");
-        source.AppendLine("}");
-
-        context.AddSource("FeishuToolSchemas.g.cs", SourceText.From(source.ToString(), Encoding.UTF8));
-    }
-
-    // ────────── Schema 构建（兼容现有格式） ──────────
-
-    private static string BuildSchemaJson(
-        string toolName,
-        string? description,
-        IReadOnlyList<string> scopes,
-        bool isWrite,
-        INamedTypeSymbol interfaceSymbol)
-    {
-        var json = new StringBuilder();
-        json.Append("{\"name\":").Append(Quote(toolName));
-        if (!string.IsNullOrWhiteSpace(description))
-        {
-            json.Append(",\"description\":").Append(Quote(description!));
-        }
-
-        var methodLevelParameters = interfaceSymbol.GetMembers()
-            .OfType<IMethodSymbol>()
-            .SelectMany(m => m.GetAttributes())
-            .Where(a => a.AttributeClass?.Name == "ToolParameterAttribute")
-            .ToArray();
-        var parameters = interfaceSymbol.GetMembers()
-            .OfType<IMethodSymbol>()
-            .Where(m => m.DeclaredAccessibility == Accessibility.Public && m.MethodKind == MethodKind.Ordinary)
-            .SelectMany(m => m.Parameters)
-            .Where(p => !IsCancellationToken(p.Type))
-            .GroupBy(p => p.Name, StringComparer.Ordinal)
-            .Select(g => g.First())
-            .ToArray();
-
-        json.Append(",\"parameters\":{\"type\":\"object\",\"properties\":{");
-        var required = new List<string>();
-        for (var i = 0; i < parameters.Length; i++)
-        {
-            var parameter = parameters[i];
-            var (jsonType, _) = MapJsonType(parameter);
-            var parameterDescription = GetParameterDescription(parameter, methodLevelParameters);
-
-            if (i > 0)
-            {
-                json.Append(',');
-            }
-
-            json.Append(Quote(parameter.Name)).Append(":{\"type\":").Append(Quote(jsonType));
-            if (jsonType == "array")
-            {
-                json.Append(",\"items\":{\"type\":\"string\"}");
-            }
-
-            if (!string.IsNullOrWhiteSpace(parameterDescription))
-            {
-                json.Append(",\"description\":").Append(Quote(parameterDescription!));
-            }
-
-            json.Append('}');
-
-            if (IsRequired(parameter, methodLevelParameters))
-            {
-                required.Add(parameter.Name);
-            }
-        }
-
-        json.Append("},\"required\":[");
-        for (var i = 0; i < required.Count; i++)
-        {
-            if (i > 0)
-            {
-                json.Append(',');
-            }
-
-            json.Append(Quote(required[i]));
-        }
-
-        json.Append("]}");
-
-        json.Append(",\"x-feishu\":{");
-        json.Append("\"is_write\":").Append(isWrite ? "true" : "false");
-        json.Append(",\"required_scopes\":[");
-        for (var i = 0; i < scopes.Count; i++)
-        {
-            if (i > 0)
-            {
-                json.Append(',');
-            }
-
-            json.Append(Quote(scopes[i]));
-        }
-
-        json.Append("]}}");
-        return json.ToString();
-    }
-
-    // ────────── 类型映射（兼容既有行为，保留不动） ──────────
-
-    private static (string JsonType, bool IsNullable) MapJsonType(IParameterSymbol parameter)
-    {
-        var type = parameter.Type;
-        if (type is INamedTypeSymbol named
-            && named.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T)
-        {
-            return (MapJsonPrimitiveType(named.TypeArguments[0]), true);
-        }
-
-        return (MapJsonPrimitiveType(type), parameter.NullableAnnotation == NullableAnnotation.Annotated);
-    }
-
-    private static string MapJsonPrimitiveType(ITypeSymbol type)
-    {
-        if (type.TypeKind == TypeKind.Array)
-        {
-            return "array";
-        }
-
-        switch (type.SpecialType)
-        {
-            case SpecialType.System_Boolean:
-                return "boolean";
-            case SpecialType.System_Int16:
-            case SpecialType.System_Int32:
-            case SpecialType.System_Int64:
-            case SpecialType.System_UInt16:
-            case SpecialType.System_UInt32:
-            case SpecialType.System_UInt64:
-                return "integer";
-            case SpecialType.System_Single:
-            case SpecialType.System_Double:
-            case SpecialType.System_Decimal:
-                return "number";
-            default:
-                return "string";
+            // MUDFT014 上报点：描述符静默漂移（golden 快照不一致）。
+            Diagnostics.Report(context, Diagnostics.MUDFT014, null, drift);
         }
     }
 
-    private static bool IsCancellationToken(ITypeSymbol type)
-        => type.Name == "CancellationToken";
-
-    private static bool IsRequired(IParameterSymbol parameter, AttributeData[] methodLevelParameters)
+    private static string? ReadGolden(ImmutableArray<AdditionalText> texts, System.Threading.CancellationToken cancellationToken)
     {
-        var attribute = GetToolParameterAttribute(parameter, methodLevelParameters);
-        if (attribute is not null
-            && attribute.NamedArguments.FirstOrDefault(a => a.Key == "Required").Value.Value is bool explicitRequired)
+        foreach (var text in texts)
         {
-            return explicitRequired;
-        }
-
-        if (parameter.NullableAnnotation == NullableAnnotation.Annotated)
-        {
-            return false;
-        }
-
-        return parameter.Type.IsValueType
-            && !(parameter.Type is INamedTypeSymbol named
-                && named.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T);
-    }
-
-    private static string? GetParameterDescription(IParameterSymbol parameter, AttributeData[] methodLevelParameters)
-    {
-        var attribute = GetToolParameterAttribute(parameter, methodLevelParameters);
-        if (attribute is not null
-            && attribute.ConstructorArguments.Length >= 2
-            && attribute.ConstructorArguments[1].Value is string description)
-        {
-            return description;
+            if (text.GetText(cancellationToken) is { } sourceText)
+            {
+                return sourceText.ToString();
+            }
         }
 
         return null;
-    }
-
-    private static AttributeData? GetToolParameterAttribute(IParameterSymbol parameter, AttributeData[] methodLevelParameters)
-    {
-        var direct = parameter.GetAttributes()
-            .FirstOrDefault(a => a.AttributeClass?.Name == "ToolParameterAttribute");
-        if (direct is not null)
-        {
-            return direct;
-        }
-
-        return methodLevelParameters.FirstOrDefault(a =>
-            a.ConstructorArguments.Length >= 1
-            && a.ConstructorArguments[0].Value is string name
-            && string.Equals(name, parameter.Name, StringComparison.Ordinal));
-    }
-
-    // ────────── 特性取值 ──────────
-
-    private static string? GetNamedString(AttributeData attribute, string key)
-        => attribute.NamedArguments.FirstOrDefault(a => a.Key == key).Value.Value as string;
-
-    private static bool GetNamedBool(AttributeData attribute, string key)
-        => attribute.NamedArguments.FirstOrDefault(a => a.Key == key).Value.Value is bool value && value;
-
-    private static IReadOnlyList<string> GetNamedArray(AttributeData attribute, string key)
-    {
-        if (attribute.NamedArguments.FirstOrDefault(a => a.Key == key).Value.Kind != TypedConstantKind.Array)
-        {
-            return [];
-        }
-
-        return attribute.NamedArguments
-            .First(a => a.Key == key).Value
-            .Values
-            .Select(v => v.Value as string)
-            .Where(v => v is not null)
-            .Select(v => v!)
-            .ToArray();
-    }
-
-    // ────────── 命名与转义 ──────────
-
-    private static string BuildConstName(string toolName)
-    {
-        var segments = toolName.Split(new[] { '.' }, StringSplitOptions.RemoveEmptyEntries);
-        var name = string.Join("_", segments).Replace('-', '_');
-        var sb = new StringBuilder(name.Length + 8);
-        foreach (var ch in name)
-        {
-            sb.Append(char.IsLetterOrDigit(ch) || ch == '_' ? ch : '_');
-        }
-
-        return sb.ToString() + "SchemaJson";
-    }
-
-    private static string Quote(string value)
-    {
-        var sb = new StringBuilder(value.Length + 2);
-        sb.Append('"');
-        foreach (var ch in value)
-        {
-            switch (ch)
-            {
-                case '"':
-                    sb.Append("\\\"");
-                    break;
-                case '\\':
-                    sb.Append("\\\\");
-                    break;
-                case '\n':
-                    sb.Append("\\n");
-                    break;
-                case '\r':
-                    sb.Append("\\r");
-                    break;
-                case '\t':
-                    sb.Append("\\t");
-                    break;
-                default:
-                    if (ch < ' ')
-                    {
-                        sb.Append("\\u").Append(((int)ch).ToString("x4"));
-                    }
-                    else
-                    {
-                        sb.Append(ch);
-                    }
-
-                    break;
-            }
-        }
-
-        sb.Append('"');
-        return sb.ToString();
-    }
-
-    private static string ToCSharpStringLiteral(string value)
-    {
-        if (value.IndexOf("\"\"\"", StringComparison.Ordinal) >= 0)
-        {
-            return Quote(value);
-        }
-
-        return "\"\"\"" + value + "\"\"\"";
-    }
-
-    // ────────── 内部模型（兼容层） ──────────
-
-    private sealed class ToolSchemaModel : IEquatable<ToolSchemaModel?>
-    {
-        public ToolSchemaModel(string toolName, string interfaceName, string constName, string schemaJson)
-        {
-            ToolName = toolName;
-            InterfaceName = interfaceName;
-            ConstName = constName;
-            SchemaJson = schemaJson;
-        }
-
-        public string ToolName { get; }
-        public string InterfaceName { get; }
-        public string ConstName { get; }
-        public string SchemaJson { get; }
-
-        public bool Equals(ToolSchemaModel? other)
-            => other is not null
-                && string.Equals(ToolName, other.ToolName, StringComparison.Ordinal)
-                && string.Equals(InterfaceName, other.InterfaceName, StringComparison.Ordinal)
-                && string.Equals(ConstName, other.ConstName, StringComparison.Ordinal)
-                && string.Equals(SchemaJson, other.SchemaJson, StringComparison.Ordinal);
-
-        public override bool Equals(object? obj) => Equals(obj as ToolSchemaModel);
-
-        public override int GetHashCode()
-        {
-            unchecked
-            {
-                var comparer = StringComparer.Ordinal;
-                var hash = 17;
-                hash = (hash * 31) + comparer.GetHashCode(ToolName);
-                hash = (hash * 31) + comparer.GetHashCode(InterfaceName);
-                hash = (hash * 31) + comparer.GetHashCode(ConstName);
-                hash = (hash * 31) + comparer.GetHashCode(SchemaJson);
-                return hash;
-            }
-        }
     }
 }

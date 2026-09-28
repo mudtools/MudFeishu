@@ -15,11 +15,18 @@ namespace Mud.Feishu.AI.FeishuTools.Tests.ContractGuards;
 /// </summary>
 public class FeishuToolContractGuards
 {
+    /// <summary>
+    /// 生成器产出的 Schema 键集必须与<b>编译期派生的</b>工具名契约表（<c>FeishuToolNames</c>）完全一致。
+    /// </summary>
+    /// <remarks>
+    /// 契约表本身由源生成器从 <c>[FeishuTool]</c> 特性派生（D2 单一真相源），故本用例锁定的是
+    /// "生成器两条产物路径（Schema 常量 / 名字表）不漂移"，而非手写清单——手写清单已被删除。
+    /// </remarks>
     [Fact]
-    public void SchemaRegistry_ShouldContainExactlyTheNineteenContractTools()
+    public void SchemaRegistry_ShouldContainExactlyTheContractTools()
     {
         SchemaByToolName.Keys.Should().BeEquivalentTo(FeishuToolNames.All,
-            "工具清单为 Phase 1 十个只读 + Phase 2 三个写类 + AI-FD-D12 批次 A 六个扩容（16 只读 + 3 写），增删/改名必须同批更新契约表与守卫");
+            "Schema 注册表键集必须与 [FeishuTool] 派生的工具名契约表一致（增删/改名必须同批更新守卫与 golden）");
     }
 
     [Fact]
@@ -83,6 +90,10 @@ public class FeishuToolContractGuards
             [FeishuToolNames.KnowledgeSearch] = ["aily:knowledge:readonly"],
             [FeishuToolNames.SheetsListSheets] = ["sheets:spreadsheet:readonly"],
             [FeishuToolNames.SheetsGetRangeValues] = ["sheets:spreadsheet:readonly"],
+            // 通讯录（3，P0 补链：姓名/邮箱 → ID）
+            [FeishuToolNames.ContactResolveUser] = ["contact:user.base:readonly"],
+            [FeishuToolNames.ContactGetUser] = ["contact:user.base:readonly"],
+            [FeishuToolNames.ContactBatchGet] = ["contact:user.base:readonly"],
             // 写类（3）
             [FeishuToolNames.ImSendMessage] = ["im:message:send_as_bot"],
             [FeishuToolNames.BitableAddRecord] = ["bitable:app"],
@@ -140,12 +151,13 @@ public class FeishuToolContractGuards
     }
 
     [Fact]
-    public void AddFeishuReadonlyTools_ShouldRegisterExactlyNineteenTools_NoneEnabledByDefault()
+    public void AddFeishuTools_ShouldRegisterExactlyTheContractTools_NoneEnabledByDefault()
     {
         using var provider = CreateProvider(_ => { });
 
         var registry = provider.GetRequiredService<FeishuToolRegistry>();
-        registry.AllTools.Select(t => t.Name).Should().BeEquivalentTo(FeishuToolNames.All);
+        registry.AllTools.Select(t => t.Name).Should().BeEquivalentTo(FeishuToolNames.All,
+            "全部域的客户端齐备时，注册表恰好覆盖契约表（含 3 个新增通讯录工具）");
         registry.EnabledTools.Should().BeEmpty("工具默认收进注册表不启用，需白名单显式 MapTool（安全默认）");
         registry.AllTools.Should().OnlyContain(
             t => FeishuToolNames.IsWriteTool(t.Name) == t.IsWrite,
@@ -211,9 +223,9 @@ public class FeishuToolContractGuards
         tools[0].Name.Should().Be(FeishuToolNames.BitableListTables);
         tools[0].Description.Should().NotBeNullOrEmpty();
 
+        // JsonSchema 是纯参数 Schema（MEAI 契约，见 FeishuToolAIFunctionTests 的回归守卫）。
         var schema = tools[0].JsonSchema;
-        schema.GetProperty("name").GetString().Should().Be(FeishuToolNames.BitableListTables);
-        schema.GetProperty("parameters").GetProperty("properties").GetProperty("app_token").Should().NotBeNull();
+        schema.GetProperty("properties").GetProperty("app_token").Should().NotBeNull();
     }
 
     /// <summary>
@@ -260,6 +272,7 @@ public class FeishuToolContractGuards
             .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV4Approval>().Object)
             .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1DriveFolder>().Object)
             .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1DriveFiles>().Object)
+            .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV3User>().Object)
             .AddSingleton(new Mock<Mud.Feishu.AI.Knowledge.IRetriever>().Object)
             .AddFeishuReadonlyTools()
             .BuildServiceProvider();

@@ -39,4 +39,22 @@ public sealed class FeishuToolAttribute(string name) : Attribute
     /// 是否写操作：写工具在 <c>EnforceToolAuthorization=true</c> 时必须过授权器（Phase 2 强制）。
     /// </summary>
     public bool IsWrite { get; init; }
+
+    /// <summary>
+    /// 该工具落地的 SDK 能力来源，形如 <c>"IFeishuTenantV3User.GetBatchUsersAsync"</c>（可空）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 声明后，源生成器在<b>编译期</b>用 SDK 符号交叉校验并派生（单一真相源 = SDK，非本特性）：
+    /// </para>
+    /// <list type="bullet">
+    /// <item>HTTP 方法与路由（<c>x-feishu.source</c>，审计与排障用）；</item>
+    /// <item>风险分级（危险词命中 → <c>high-risk-write</c>，覆盖 <see cref="IsWrite"/> 的粗分级）；</item>
+    /// <item>返回类型可映射性（<c>MUDFT004</c>）与上传/下载参数可映射性（<c>MUDFT008</c>）。</item>
+    /// </list>
+    /// <para>
+    /// 无法解析（类型或方法名写错）时报 <c>MUDFT002</c> 并使构建失败——这正是「工具面与 SDK 不脱钩」的机械保证。
+    /// </para>
+    /// </remarks>
+    public string? Source { get; init; }
 }

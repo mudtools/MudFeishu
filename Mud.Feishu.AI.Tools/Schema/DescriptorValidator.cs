@@ -7,6 +7,7 @@
 
 using System.Collections.Generic;
 using System.Linq;
+using Microsoft.CodeAnalysis;
 using Mud.Feishu.AI.Tools.Extraction;
 
 namespace Mud.Feishu.AI.Tools.Schema;
@@ -16,6 +17,12 @@ namespace Mud.Feishu.AI.Tools.Schema;
 /// </summary>
 /// <remarks>
 /// <para>数据驱动：输入是 <see cref="CapabilityEntry"/> 集合，输出是验证结果列表，不依赖具体工具。</para>
+/// <para>
+/// <b>诊断同源纪律</b>：校验结果直接携带 <see cref="DiagnosticDescriptor"/>（而非裸 ID 字符串）——
+/// 字符串 ID 无法机械校验"定义 ↔ 上报点"是否一致，本仓库已发生过
+/// 「<c>DescriptorValidator</c> 拿 <c>MUDFT012</c> 报『高风险写缺 confirm』、
+/// <c>MUDFT002</c> 报『接口名为空』」这类 ID 与语义错配。
+/// </para>
 /// </remarks>
 internal static class DescriptorValidator
 {
@@ -27,13 +34,8 @@ internal static class DescriptorValidator
         var results = new List<ValidationResult>();
         var entryList = entries.ToList();
 
-        // L1 结构校验
         ValidateL1Structure(entryList, results);
-
-        // L2 类型一致校验
         ValidateL2TypeConsistency(entryList, results);
-
-        // L3 跨字段一致校验
         ValidateL3CrossFieldConsistency(entryList, results);
 
         return results;
@@ -53,15 +55,14 @@ internal static class DescriptorValidator
         var scopesCovered = entryList.Count(e => e.Scopes.Count > 0);
         // 所有工具都经过风险分级（Read/Write/HighRiskWrite），故 risk 覆盖率始终为 100%。
         var riskCovered = entryList.Count;
-        var outputCovered = entryList.Count; // 所有工具都有 OutputSchema（由生成器保证）
 
         return new CoverageReport(
             toolCount: toolCount,
             totalMethodCount: totalMethodCount,
-            toolCoverageRate: toolCount == 0 ? 0 : (double)toolCount / totalMethodCount,
+            toolCoverageRate: toolCount == 0 || totalMethodCount == 0 ? 0 : (double)toolCount / totalMethodCount,
             descriptionCoverageRate: toolCount == 0 ? 0 : (double)descriptionCovered / toolCount,
             paramDescriptionCoverageRate: paramTotal == 0 ? 0 : (double)paramDescCovered / paramTotal,
-            outputSchemaRate: toolCount == 0 ? 0 : (double)outputCovered / toolCount,
+            outputSchemaRate: toolCount == 0 ? 0 : (double)riskCovered / toolCount,
             scopesCoverageRate: toolCount == 0 ? 0 : (double)scopesCovered / toolCount,
             riskCoverageRate: toolCount == 0 ? 0 : (double)riskCovered / toolCount);
     }
@@ -74,24 +75,17 @@ internal static class DescriptorValidator
 
         foreach (var entry in entries)
         {
-            // 必填字段齐备
             if (string.IsNullOrWhiteSpace(entry.ToolName))
             {
-                results.Add(ValidationResult.Error("MUDFT001", entry.InterfaceName, "工具名为空"));
+                results.Add(ValidationResult.Error(Diagnostics.MUDFT001, entry.InterfaceName, entry.InterfaceName));
             }
 
-            if (string.IsNullOrWhiteSpace(entry.InterfaceName))
-            {
-                results.Add(ValidationResult.Error("MUDFT002", "(unknown)", "接口名为空"));
-            }
-
-            // 工具名全仓唯一
+            // 工具名全仓唯一（跨 Tier 合并后仍须唯一）。
             if (!string.IsNullOrEmpty(entry.ToolName))
             {
                 if (seenNames.TryGetValue(entry.ToolName, out var existing))
                 {
-                    results.Add(ValidationResult.Error("MUDFT003", entry.InterfaceName,
-                        $"工具名 '{entry.ToolName}' 冲突：已被接口 {existing} 占用"));
+                    results.Add(ValidationResult.Error(Diagnostics.MUDFT003, entry.InterfaceName, entry.ToolName, existing));
                 }
                 else
                 {
@@ -107,19 +101,19 @@ internal static class DescriptorValidator
     {
         foreach (var entry in entries)
         {
-            // required ⊆ properties 键集
+            // required ⊆ properties 键集（SchemaWriter 与模型契约之间的硬一致）。
             var propertyNames = new HashSet<string>(entry.Parameters.Select(p => p.Name));
-            var requiredParams = entry.Parameters.Where(p => p.IsRequired).Select(p => p.Name);
-            foreach (var req in requiredParams)
+            foreach (var req in entry.Parameters.Where(p => p.IsRequired).Select(p => p.Name))
             {
                 if (!propertyNames.Contains(req))
                 {
-                    results.Add(ValidationResult.Error("MUDFT003", entry.InterfaceName,
-                        $"工具 '{entry.ToolName}' 的 required 参数 '{req}' 不在 properties 键集中"));
+                    results.Add(ValidationResult.Error(
+                        Diagnostics.MUDFT015,
+                        entry.InterfaceName,
+                        entry.ToolName,
+                        $"required 参数 '{req}' 不在 properties 键集中"));
                 }
             }
-
-            // array 下 items 必须存在且非空类型（由 SchemaWriter 保证，此处跳过）
         }
     }
 
@@ -129,56 +123,66 @@ internal static class DescriptorValidator
     {
         foreach (var entry in entries)
         {
-            // identity == User ⇒ 方法所在接口为 IFeishuUserV*
-            if (entry.Identity == ToolIdentity.User && !entry.InterfaceName.StartsWith("IFeishuUser"))
+            // 身份 ↔ 接口令牌类型：User 身份必须落在 IFeishuUserV* 接口上。
+            if (entry.Identity == ToolIdentity.User
+                && !entry.InterfaceName.StartsWith("IFeishuUser", System.StringComparison.Ordinal))
             {
-                results.Add(ValidationResult.Error("MUDFT002", entry.InterfaceName,
-                    $"身份为 User 但接口名 '{entry.InterfaceName}' 不以 IFeishuUser 开头"));
+                results.Add(ValidationResult.Error(
+                    Diagnostics.MUDFT016,
+                    entry.InterfaceName,
+                    entry.ToolName,
+                    "User",
+                    entry.InterfaceName));
             }
 
-            // identity == Both（基接口）不应直接产工具（G-4 去重规则）
+            // 双令牌基接口不应直接产工具（工具必须在 _Tenant / _User 派生接口上）。
             if (entry.Identity == ToolIdentity.Both)
             {
-                results.Add(ValidationResult.Warning("MUDFT006", entry.InterfaceName,
-                    $"基接口 '{entry.InterfaceName}' 不应直接产工具（应为 _Tenant/_User 派生接口）"));
-            }
-
-            // risk == high-risk-write ⇔ input 含 confirm（§4.6.5.2 L3 跨字段一致）
-            if (entry.Risk == ToolRisk.HighRiskWrite)
-            {
-                var hasConfirm = entry.Parameters.Any(p => p.Name == "confirm");
-                if (!hasConfirm)
-                {
-                    // 风险分级与 schema 不一致——MUDFT012 语义为「风险分级一致性问题」
-                    results.Add(ValidationResult.Error("MUDFT012", entry.InterfaceName,
-                        $"高风险写工具 '{entry.ToolName}' 缺少 confirm 参数（risk == high-risk-write ⇔ schema 含 confirm）"));
-                }
+                results.Add(ValidationResult.Error(
+                    Diagnostics.MUDFT016,
+                    entry.InterfaceName,
+                    entry.ToolName,
+                    "Both（基接口）",
+                    entry.InterfaceName));
             }
         }
     }
 }
 
-/// <summary>验证结果。</summary>
+/// <summary>验证结果（携带诊断描述符与实参，供生成器直接 <c>ReportDiagnostic</c>）。</summary>
 internal sealed class ValidationResult
 {
-    public ValidationResult(string diagnosticId, string interfaceName, string message, bool isError)
+    private ValidationResult(
+        DiagnosticDescriptor descriptor,
+        string interfaceName,
+        object[] arguments,
+        bool isError)
     {
-        DiagnosticId = diagnosticId;
+        Descriptor = descriptor;
         InterfaceName = interfaceName;
-        Message = message;
+        Arguments = arguments;
         IsError = isError;
     }
 
-    public string DiagnosticId { get; }
+    /// <summary>诊断描述符（与 <see cref="Diagnostics"/> 定义同源）。</summary>
+    public DiagnosticDescriptor Descriptor { get; }
+
+    /// <summary>承载接口名（供定位与消息上下文）。</summary>
     public string InterfaceName { get; }
-    public string Message { get; }
+
+    /// <summary>诊断消息实参。</summary>
+    public object[] Arguments { get; }
+
+    /// <summary>是否为 Error 级（Error 级结果必须上报，不得静默丢弃）。</summary>
     public bool IsError { get; }
 
-    public static ValidationResult Error(string id, string iface, string msg)
-        => new(id, iface, msg, isError: true);
+    /// <summary>构造 Error 级结果。</summary>
+    public static ValidationResult Error(DiagnosticDescriptor descriptor, string iface, params object[] arguments)
+        => new(descriptor, iface, arguments, isError: true);
 
-    public static ValidationResult Warning(string id, string iface, string msg)
-        => new(id, iface, msg, isError: false);
+    /// <summary>构造 Warning 级结果。</summary>
+    public static ValidationResult Warning(DiagnosticDescriptor descriptor, string iface, params object[] arguments)
+        => new(descriptor, iface, arguments, isError: false);
 }
 
 /// <summary>覆盖率度量报告。</summary>

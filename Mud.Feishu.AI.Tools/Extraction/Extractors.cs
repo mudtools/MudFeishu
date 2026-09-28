@@ -26,121 +26,161 @@ internal static class Extractors
     // ────────── 工具名推导 ──────────
 
     /// <summary>
-    /// 从手写 [FeishuTool] 特性取工具名（既有行为，保持兼容）。
+    /// 取 <c>[FeishuTool]</c> 特性数据（唯一识别点：按「简单名 + 命名空间」双重判定，
+    /// 防同名特性误命中）。
     /// </summary>
-    public static string? TryGetToolNameFromAttribute(INamedTypeSymbol symbol)
-    {
-        var attr = symbol.GetAttributes().FirstOrDefault(a =>
+    public static AttributeData? GetFeishuToolAttribute(INamedTypeSymbol symbol)
+        => symbol.GetAttributes().FirstOrDefault(static a =>
             a.AttributeClass is not null
             && a.AttributeClass.Name == "FeishuToolAttribute"
             && a.AttributeClass.ContainingNamespace.ToDisplayString() == "Mud.Feishu.AI.Tools");
-        if (attr is null) return null;
 
-        return attr.ConstructorArguments.FirstOrDefault().Value as string;
+    /// <summary>
+    /// 从手写 [FeishuTool] 特性取工具名（既有行为，保持兼容）。
+    /// </summary>
+    public static string? TryGetToolNameFromAttribute(INamedTypeSymbol symbol)
+        => GetFeishuToolAttribute(symbol)?.ConstructorArguments.FirstOrDefault().Value as string;
+
+    /// <summary>
+    /// 按「接口名.方法名」解析 SDK 成员（源挂钩 <c>[FeishuTool(Source=...)]</c> 的解析器）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 方法查找<b>必须</b>包含 <see cref="INamedTypeSymbol.AllInterfaces"/>：本仓库的令牌派生接口
+    /// （<c>IFeishuTenantV*</c> / <c>IFeishuUserV*</c>）是<b>空</b>接口，全部方法声明在基接口
+    /// （<c>IFeishuV*</c>）上——只查 <c>GetMembers(name)</c> 会恒返回空（这是本方案评审纠正的
+    /// 一处设计硬伤：按"扫描派生接口"实现 Tier R 会产出空条目）。
+    /// </para>
+    /// <para>重载选择：取参数最多者（canonical 形态）。</para>
+    /// </remarks>
+    /// <param name="compilation">当前编译。</param>
+    /// <param name="typeName">接口名（如 <c>IFeishuTenantV3User</c>）。</param>
+    /// <param name="methodName">方法名（如 <c>GetBatchUsersAsync</c>）。</param>
+    /// <param name="failure">失败原因（成功时为 <see langword="null"/>）。</param>
+    /// <returns>解析到的类型与方法；任一环节失败返回 <see langword="null"/>。</returns>
+    public static (INamedTypeSymbol Type, IMethodSymbol Method)? ResolveSourceMember(
+        Compilation compilation,
+        string typeName,
+        string methodName,
+        out string? failure)
+    {
+        failure = null;
+
+        var type = compilation.GetTypeByMetadataName("Mud.Feishu." + typeName)
+                   ?? FindTypeByName(compilation.GlobalNamespace, typeName);
+        if (type is null)
+        {
+            failure = $"未找到 SDK 接口 {typeName}";
+            return null;
+        }
+
+        var method = type.GetMembers(methodName).OfType<IMethodSymbol>()
+            .Concat(type.AllInterfaces.SelectMany(i => i.GetMembers(methodName).OfType<IMethodSymbol>()))
+            .Where(static m => m.MethodKind == MethodKind.Ordinary)
+            .OrderByDescending(static m => m.Parameters.Length)
+            .FirstOrDefault();
+        if (method is null)
+        {
+            failure = $"接口 {typeName} 上未找到方法 {methodName}（已含全部基接口）";
+            return null;
+        }
+
+        return (type, method);
+    }
+
+    private static INamedTypeSymbol? FindTypeByName(INamespaceSymbol ns, string typeName)
+    {
+        foreach (var type in ns.GetTypeMembers(typeName))
+        {
+            return type;
+        }
+
+        foreach (var child in ns.GetNamespaceMembers())
+        {
+            var found = FindTypeByName(child, typeName);
+            if (found is not null)
+            {
+                return found;
+            }
+        }
+
+        return null;
     }
 
     /// <summary>
-    /// 从 SDK 接口名推导工具名（模块.资源.动作）。
+    /// 解析 SDK 接口名的令牌结构（<c>IFeishu[Tenant|User]V{n}{Domain}{Resource}</c>）。
     /// </summary>
-    /// <param name="interfaceName">接口名（如 IFeishuTenantV1HireJob）。</param>
-    /// <param name="moduleName">模块名（如 Hire）。</param>
-    /// <returns>工具名（如 hire.job）或 null（不符合范式）。</returns>
-    public static string? TryDeriveToolNameFromSdkInterface(string interfaceName, string moduleName)
+    /// <remarks>
+    /// <para>
+    /// <b>为什么不从命名空间推导模块名</b>：本仓库 SDK 接口全部落在命名空间 <c>Mud.Feishu</c>
+    /// （模块信息只存在于 <c>Interfaces/{Module}/</c> 目录结构里，Roslyn 符号不可见）——
+    /// 从命名空间取"第三段"会得到 <c>Feishu</c>/<c>Interfaces</c> 之类错误结果。
+    /// 域名（Domain）是符号层唯一可用的能力轴，故工具名与模块统计一律取 Domain。
+    /// </para>
+    /// </remarks>
+    /// <param name="interfaceName">接口名（如 <c>IFeishuTenantV1BitableAppTable</c>）。</param>
+    /// <param name="identity">令牌身份维度。</param>
+    /// <param name="domain">域名段（如 <c>Bitable</c>）。</param>
+    /// <param name="resource">资源段（可为空，如 <c>V3User</c> 只有 Domain）。</param>
+    /// <returns>是否符合 SDK 命名范式。</returns>
+    public static bool TryParseSdkInterfaceName(
+        string interfaceName,
+        out ToolIdentity identity,
+        out string domain,
+        out string resource)
     {
-        // IFeishuTenantV1HireJob → 模块 Hire → 工具名 hire.job
-        // IFeishuUserV2CalendarEvent → 模块 Calendar → 工具名 calendar.event
-        // IFeishuTenantV1BitableAppTable → 模块 Bitable → 工具名 bitable.app_table
+        identity = ToolIdentity.Both;
+        domain = string.Empty;
+        resource = string.Empty;
+
         var match = SdkInterfaceNameRegex.Match(interfaceName);
-        if (!match.Success) return null;
-
-        var domain = match.Groups["domain"].Value;
-        var resource = match.Groups["resource"].Value;
-
-        // 模块名转小写作为前缀
-        var modulePrefix = ToSnakeCase(moduleName);
-
-        // domain+resource 转下划线
-        var resourcePart = string.IsNullOrEmpty(resource)
-            ? ToSnakeCase(domain)
-            : ToSnakeCase(domain) + "." + ToSnakeCase(resource);
-
-        return $"{modulePrefix}.{resourcePart}";
-    }
-
-    /// <summary>
-    /// 从方法名推导工具动作（如 ListJobsAsync → list_jobs）。
-    /// </summary>
-    public static string DeriveActionFromMethodName(string methodName)
-    {
-        // 去掉 Async 后缀
-        var name = methodName;
-        if (name.EndsWith("Async"))
+        if (!match.Success)
         {
-            name = name.Substring(0, name.Length - 5);
+            return false;
         }
 
-        return ToSnakeCase(name);
-    }
+        identity = interfaceName.StartsWith("IFeishuTenant", StringComparison.Ordinal)
+            ? ToolIdentity.Tenant
+            : interfaceName.StartsWith("IFeishuUser", StringComparison.Ordinal)
+                ? ToolIdentity.User
+                : ToolIdentity.Both;
 
-    // ────────── 身份推导 ──────────
-
-    /// <summary>
-    /// 从接口名令牌词推导身份维度。
-    /// </summary>
-    public static ToolIdentity DeriveIdentity(string interfaceName)
-    {
-        if (interfaceName.StartsWith("IFeishuTenant"))
-            return ToolIdentity.Tenant;
-        if (interfaceName.StartsWith("IFeishuUser"))
-            return ToolIdentity.User;
-        if (interfaceName.StartsWith("IFeishuV"))
-            return ToolIdentity.Both; // 基接口，不直接产工具
-        return ToolIdentity.Tenant; // 默认
-    }
-
-    // ────────── 模块名推导 ──────────
-
-    /// <summary>
-    /// 从接口所在目录路径推导模块名。
-    /// </summary>
-    public static string DeriveModuleName(INamedTypeSymbol symbol)
-    {
-        // 从命名空间取模块名：Mud.Feishu.IFaces.Contact → Contact
-        // 或从 ContainingNamespace 的最末段取
-        var ns = symbol.ContainingNamespace.ToDisplayString();
-        var parts = ns.Split('.');
-        // Mud.Feishu.<Module> → 取第三个段
-        if (parts.Length >= 3 && parts[0] == "Mud" && parts[1] == "Feishu")
-        {
-            return parts[2];
-        }
-
-        return symbol.ContainingNamespace.Name;
+        domain = match.Groups["domain"].Value;
+        resource = match.Groups["resource"].Value;
+        return true;
     }
 
     // ────────── 风险分级 ──────────
 
     /// <summary>
-    /// 根据 HTTP 方法和方法名/路径推导风险分级。
+    /// 从 SDK 事实推导风险分级（危险词命中 → <c>high-risk-write</c>；变更动词 → <c>write</c>）。
     /// </summary>
-    public static ToolRisk DeriveRisk(string httpMethod, string methodName, string routeTemplate)
+    /// <remarks>
+    /// <para>
+    /// <b>只匹配方法名，不匹配路由</b>：飞书路由里普遍带 <c>{app_token}</c>/<c>{table_id}</c> 这类
+    /// 占位段，而危险词表含 <c>token</c>/<c>secret</c>——把路由纳入匹配会让几乎全部
+    /// Bitable 工具被误判为 <c>high-risk-write</c>（接线后实测 100% 误报）。
+    /// </para>
+    /// <para>
+    /// <b>POST 不视为写</b>：飞书的只读批量/查询 API 大量使用 POST
+    /// （<c>batch_get_id</c>/<c>records/search</c>/<c>doc_wiki/search</c>），
+    /// 按动词判"写"会把只读工具误判为写面。真正的写面由 <c>[FeishuTool(IsWrite=...)]</c> 声明，
+    /// 本方法只负责<b>升级</b>风险（破坏性动词 / 危险词）。
+    /// </para>
+    /// </remarks>
+    /// <param name="httpMethod">HTTP 方法（GET/POST/PUT/PATCH/DELETE）。</param>
+    /// <param name="methodName">SDK 方法名。</param>
+    /// <returns>推导出的风险分级（<see cref="ToolRisk.Read"/> 表示"无升级信号"）。</returns>
+    public static ToolRisk DeriveRisk(string httpMethod, string methodName)
     {
-        var verb = httpMethod.ToUpperInvariant();
-
-        // GET → read
-        if (verb == "GET")
-            return ToolRisk.Read;
-
-        // 检查危险词表
-        var combined = (methodName + " " + routeTemplate).ToLowerInvariant();
-        foreach (var dangerWord in DangerWords)
+        if (DangerWords.Any(word => ToSnakeCase(methodName).Contains(word)))
         {
-            if (combined.Contains(dangerWord))
-                return ToolRisk.HighRiskWrite;
+            return ToolRisk.HighRiskWrite;
         }
 
-        // 非 GET 且未命中危险词 → write
-        return ToolRisk.Write;
+        return httpMethod.ToUpperInvariant() is "PUT" or "PATCH" or "DELETE"
+            ? ToolRisk.Write
+            : ToolRisk.Read;
     }
 
     // ────────── XML 文档注释 ──────────
@@ -222,34 +262,29 @@ internal static class Extractors
     }
 
     /// <summary>
-    /// 解包返回类型：Task<T> → T 的 DisplayString。
+    /// 解包返回类型：<c>Task&lt;T&gt;</c> / <c>ValueTask&lt;T&gt;</c> → 载荷类型 T。
     /// </summary>
+    /// <remarks>
+    /// <b>按「名称 + 元数 + 命名空间」判定，不比对 DisplayString</b>：BCL 的泛型参数名是
+    /// <c>TResult</c>（<c>System.Threading.Tasks.Task&lt;TResult&gt;</c>），任何
+    /// <c>== "…Task&lt;T&gt;"</c> 的字面比对恒为 false——本方法此前正是这样写的，
+    /// 属"死代码期从未暴露的潜在缺陷"（接线后立刻表现为 100% 工具报 MUDFT004）。
+    /// </remarks>
     public static ITypeSymbol? UnwrapTaskType(ITypeSymbol returnType)
     {
-        // Task<T> → T
-        if (returnType is INamedTypeSymbol named
-            && named.IsGenericType
-            && named.OriginalDefinition.ToDisplayString() == "System.Threading.Tasks.Task<T>")
-        {
-            return named.TypeArguments[0];
-        }
-
-        // Task (non-generic) → null
-        if (returnType is INamedTypeSymbol taskNamed
-            && !taskNamed.IsGenericType
-            && taskNamed.ToDisplayString() == "System.Threading.Tasks.Task")
+        if (returnType is not INamedTypeSymbol named
+            || named.ContainingNamespace?.ToDisplayString() != "System.Threading.Tasks")
         {
             return null;
         }
 
-        // ValueTask<T> → T
-        if (returnType is INamedTypeSymbol valueTaskNamed
-            && valueTaskNamed.OriginalDefinition.Name == "ValueTask"
-            && valueTaskNamed.TypeArguments.Length == 1)
+        // Task<T> / ValueTask<T> → T
+        if (named.Arity == 1 && named.Name is "Task" or "ValueTask")
         {
-            return valueTaskNamed.TypeArguments[0];
+            return named.TypeArguments[0];
         }
 
+        // Task / ValueTask（非泛型）→ 无载荷
         return null;
     }
 
@@ -293,34 +328,38 @@ internal static class Extractors
 
     private static readonly string[] DangerWords =
     [
-        "delete", "remove", "batch_delete", "transfer",
+        "delete", "remove", "transfer",
         "cancel", "revoke", "resign",
-        "permission", "secret", "password", "token",
+        "permission", "reset_secret", "password",
         "dismiss", "purge", "wipe"
     ];
 
+    /// <summary>
+    /// PascalCase → snake_case（危险词匹配与工具名派生的公共拼写规则）。
+    /// </summary>
     private static string ToSnakeCase(string input)
     {
-        if (string.IsNullOrEmpty(input)) return string.Empty;
-
-        var sb = new StringBuilder(input.Length + 4);
-        sb.Append(char.ToLowerInvariant(input[0]));
-
-        for (var i = 1; i < input.Length; i++)
+        if (string.IsNullOrEmpty(input))
         {
-            var c = input[i];
-            if (char.IsUpper(c))
+            return string.Empty;
+        }
+
+        var sb = new StringBuilder(input.Length + 8);
+        for (var i = 0; i < input.Length; i++)
+        {
+            var ch = input[i];
+            if (char.IsUpper(ch))
             {
-                // 检查前一个字符是否也是大写（避免在连续大写中插入下划线）
-                if (i > 0 && !char.IsUpper(input[i - 1]) && input[i - 1] != '_')
+                if (i > 0 && (!char.IsUpper(input[i - 1]) || (i + 1 < input.Length && char.IsLower(input[i + 1]))))
                 {
                     sb.Append('_');
                 }
-                sb.Append(char.ToLowerInvariant(c));
+
+                sb.Append(char.ToLowerInvariant(ch));
             }
             else
             {
-                sb.Append(c);
+                sb.Append(ch);
             }
         }
 

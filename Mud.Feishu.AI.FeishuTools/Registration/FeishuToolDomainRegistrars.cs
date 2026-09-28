@@ -181,6 +181,23 @@ internal sealed class KnowledgeToolDomainRegistrar(KnowledgeSearchTools executor
     }
 }
 
+/// <summary>通讯录域注册器（P0：把"姓名/邮箱 → ID"接上，否则写类工具凑不出入参）。</summary>
+internal sealed class ContactToolDomainRegistrar(ContactTools executor, FeishuToolBinding binding) : IFeishuToolDomainRegistrar
+{
+    public void Register(FeishuToolRegistry registry)
+    {
+        FeishuToolRegistration.RegisterTool(registry, FeishuToolNames.ContactResolveUser,
+            (args, ctx, ct) => binding.ExecuteAsync(FeishuToolRegistration.Def(registry, FeishuToolNames.ContactResolveUser), args, ctx,
+                token => executor.ResolveUsersAsync(args, token), ct));
+        FeishuToolRegistration.RegisterTool(registry, FeishuToolNames.ContactGetUser,
+            (args, ctx, ct) => binding.ExecuteAsync(FeishuToolRegistration.Def(registry, FeishuToolNames.ContactGetUser), args, ctx,
+                token => executor.GetUserAsync(args, token), ct));
+        FeishuToolRegistration.RegisterTool(registry, FeishuToolNames.ContactBatchGet,
+            (args, ctx, ct) => binding.ExecuteAsync(FeishuToolRegistration.Def(registry, FeishuToolNames.ContactBatchGet), args, ctx,
+                token => executor.BatchGetUsersAsync(args, token), ct));
+    }
+}
+
 /// <summary>写域注册器（Phase 2 三个写工具；对应域客户端缺席时跳过——宿主未接该域则工具不暴露）。</summary>
 internal sealed class WriteToolDomainRegistrar(MessageWriteTools? messageWrite, BitableWriteTools? bitableWrite, ApprovalWriteTools? approvalWrite, FeishuToolBinding binding) : IFeishuToolDomainRegistrar
 {

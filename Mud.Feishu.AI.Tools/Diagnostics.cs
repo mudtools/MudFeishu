@@ -30,11 +30,11 @@ internal static class Diagnostics
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
 
-    /// <summary>无法推导工具名（不符合命名范式）。</summary>
+    /// <summary>接口命名不符合 SDK 范式（无法推导工具名 / 无法校验源挂钩）。</summary>
     public static readonly DiagnosticDescriptor MUDFT002 = new(
         id: "MUDFT002",
-        title: "无法推导工具名",
-        messageFormat: "接口 {0} 的命名不符合 Feishu 工具命名范式（IFeishu[Tenant|User]V{n}{Domain}{Resource}），无法自动推导工具名",
+        title: "接口命名不符合 SDK 范式",
+        messageFormat: "接口 {0} 的命名不符合 Feishu SDK 命名范式（IFeishu[Tenant|User]V{n}{Domain}{Resource}），无法推导令牌身份与能力归属",
         category: "MudFeishu.AI",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
@@ -66,11 +66,11 @@ internal static class Diagnostics
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
 
-    /// <summary>IQueryParameter 展开失败。</summary>
+    /// <summary>查询参数对象展开失败（DTO 无可序列化属性，模型无法得知可传字段）。</summary>
     public static readonly DiagnosticDescriptor MUDFT010 = new(
         id: "MUDFT010",
-        title: "IQueryParameter 展开失败",
-        messageFormat: "方法 {0}.{1} 的参数 {2} 实现了 IQueryParameter 但展开失败：{3}",
+        title: "查询参数对象展开失败",
+        messageFormat: "方法 {0}.{1} 的参数 {2}（类型 {3}）为复合查询参数但展开后无任何 [JsonPropertyName] 属性——模型无法得知可传字段",
         category: "MudFeishu.AI",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
@@ -149,13 +149,70 @@ internal static class Diagnostics
         defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true);
 
+    // ────────── Schema 内部一致性（L4 校验器产物；定义与上报点同源） ──────────
+
+    /// <summary>Schema 内部不一致（<c>required</c> 不在 <c>properties</c> 键集内等）。</summary>
+    public static readonly DiagnosticDescriptor MUDFT015 = new(
+        id: "MUDFT015",
+        title: "Schema 内部不一致",
+        messageFormat: "工具 '{0}' 的 Schema 内部不一致：{1}",
+        category: "MudFeishu.AI",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    /// <summary>工具身份与承载接口令牌类型不一致。</summary>
+    public static readonly DiagnosticDescriptor MUDFT016 = new(
+        id: "MUDFT016",
+        title: "工具身份与接口令牌类型不一致",
+        messageFormat: "工具 '{0}' 声明身份 {1}，但承载接口 {2} 的令牌类型不符",
+        category: "MudFeishu.AI",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    /// <summary>读写分类与 SDK 事实脱钩（SDK 源为写/DELETE 但未标记为写工具）。</summary>
+    public static readonly DiagnosticDescriptor MUDFT017 = new(
+        id: "MUDFT017",
+        title: "读写分类与 SDK 事实脱钩",
+        messageFormat: "工具 '{0}' 未标记为写工具，但其 SDK 源 {1} 为 {2}（风险 {3}）——写面必须经授权门禁，不得归类为只读",
+        category: "MudFeishu.AI",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    // ────────── 源挂钩与覆盖报告 ──────────
+
+    /// <summary>[FeishuTool] 声明的 <c>Source</c>（SDK 能力来源）无法解析。</summary>
+    public static readonly DiagnosticDescriptor MUDFT019 = new(
+        id: "MUDFT019",
+        title: "SDK 源无法解析",
+        messageFormat: "[FeishuTool] \"{0}\" 声明的 Source \"{1}\" 无法解析（{2}）——工具面与 SDK 不得脱钩",
+        category: "MudFeishu.AI",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    /// <summary>AI 能力覆盖报告（聚合单条，避免逐方法刷屏）。</summary>
+    public static readonly DiagnosticDescriptor MUDFT018 = new(
+        id: "MUDFT018",
+        title: "AI 能力覆盖报告",
+        messageFormat: "SDK 能力 {0} 项；已策展工具 {1} 项（覆盖率 {2}）；覆盖能力分组 {3} 个。开启 build_property.FeishuToolCatalog 时产出此报告（Info 级，不进构建输出）",
+        category: "MudFeishu.AI",
+        defaultSeverity: DiagnosticSeverity.Info,
+        isEnabledByDefault: true);
+
     // ────────── 零容忍集合 ──────────
 
-    /// <summary>零容忍诊断 ID 集合（构建期阻断）。</summary>
+    /// <summary>
+    /// 零容忍诊断 ID 集合（构建期阻断）。
+    /// </summary>
+    /// <remarks>
+    /// <b>纪律</b>：本集合中每个 ID <b>必须</b>在生产生成器中有真实上报点——由契约守卫
+    /// <c>ZeroToleranceDiagnostics_ShouldHaveReportSites</c> 机械断言（防「定义即死代码」复发）。
+    /// 新增零容忍项须同批补上报点与反例用例。
+    /// </remarks>
     public static readonly string[] ZeroToleranceIds =
     [
         "MUDFT001", "MUDFT002", "MUDFT003", "MUDFT004",
-        "MUDFT008", "MUDFT010", "MUDFT014"
+        "MUDFT008", "MUDFT010", "MUDFT014", "MUDFT015",
+        "MUDFT016", "MUDFT017", "MUDFT019"
     ];
 
     // ────────── 集中上报 ──────────

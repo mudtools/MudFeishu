@@ -8,6 +8,7 @@
 using System.Text.Json;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
+using Mud.Feishu.AI.FeishuTools.Tools;
 
 namespace Mud.Feishu.AI.FeishuTools;
 
@@ -16,20 +17,28 @@ namespace Mud.Feishu.AI.FeishuTools;
 /// （<c>FeishuToolSchemas</c>，零运行时反射），执行经注册表 Handler（→ <see cref="FeishuToolBinding"/>）。
 /// </summary>
 /// <remarks>
+/// <para>
 /// 会话上下文（appKey/chat/user）经 <see cref="IFeishuToolContextAccessor"/> 异步流读取；
 /// 缺失时结构化拒绝（多租户隔离禁止默认应用兜底，TMA2-20）。
+/// </para>
+/// <para>
+/// <b>Schema 口径</b>：<see cref="JsonSchema"/> 必须是<b>纯参数 JSON Schema</b>（MEAI 契约要求，
+/// 见 <see cref="ToolSchemaJson"/>），故构造时从编译期信封常量中提取 <c>parameters</c> 并缓存；
+/// 信封的 <c>name</c>/<c>description</c> 分别由 <see cref="Name"/>/<see cref="Description"/> 承载，
+/// <c>x-feishu</c> 元数据由注册表定义承载——不重复进入 Schema 关键字空间。
+/// </para>
 /// </remarks>
 public sealed class FeishuToolAIFunction : AIFunction
 {
     private readonly FeishuToolDefinition _definition;
     private readonly IFeishuToolContextAccessor? _contextAccessor;
-    private readonly JsonElement _cachedJsonSchema;
+    private readonly JsonElement _cachedParameterSchema;
 
     /// <summary>
     /// 初始化 <see cref="FeishuToolAIFunction"/>。
     /// </summary>
     /// <param name="definition">注册表工具定义（含执行 Handler）。</param>
-    /// <param name="schemaJson">编译期生成的 OpenAI-compatible Schema 常量。</param>
+    /// <param name="schemaJson">编译期生成的工具描述符常量（信封形态，含 <c>parameters</c>）。</param>
     /// <param name="contextAccessor">工具执行上下文访问器（可空；缺失时执行期结构化拒绝）。</param>
     public FeishuToolAIFunction(
         FeishuToolDefinition definition,
@@ -41,9 +50,8 @@ public sealed class FeishuToolAIFunction : AIFunction
             throw new ArgumentException("Schema JSON 不能为空", nameof(schemaJson));
 
         _contextAccessor = contextAccessor;
-        // 构造时解析一次并缓存（修复 AI-FD-GAP P0-1 附注：每次调用 JsonDocument.Parse 的性能问题）。
-        using var document = JsonDocument.Parse(schemaJson);
-        _cachedJsonSchema = document.RootElement.Clone();
+        // 构造时提取一次并缓存（修复 AI-FD-GAP P0-1 附注：每次调用 JsonDocument.Parse 的性能问题）。
+        _cachedParameterSchema = ToolSchemaJson.ExtractParameters(schemaJson);
     }
 
     /// <inheritdoc />
@@ -53,7 +61,7 @@ public sealed class FeishuToolAIFunction : AIFunction
     public override string Description => _definition.Description;
 
     /// <inheritdoc />
-    public override JsonElement JsonSchema => _cachedJsonSchema;
+    public override JsonElement JsonSchema => _cachedParameterSchema;
 
     /// <inheritdoc />
     protected override async ValueTask<object?> InvokeCoreAsync(

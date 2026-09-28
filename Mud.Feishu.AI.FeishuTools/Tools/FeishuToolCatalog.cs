@@ -64,23 +64,24 @@ public sealed class FeishuToolCatalog : IToolCatalog
     public ToolCatalogEntry? Find(string toolName)
         => !string.IsNullOrWhiteSpace(toolName) && _byName.TryGetValue(toolName!, out var entry) ? entry : null;
 
-    /// <summary>从编译期 Schema 常量提取 OpenAI-compatible parameters 对象（缺 Schema 时为空对象）。</summary>
+    /// <summary>
+    /// 从编译期 Schema 常量提取纯参数 JSON Schema（与 <see cref="FeishuToolAIFunction.JsonSchema"/> 同源，
+    /// 见 <see cref="ToolSchemaJson"/>；缺 Schema 时为空对象 Schema）。
+    /// </summary>
     private static string ExtractParameterSchema(string schemaJson)
     {
+        if (string.IsNullOrEmpty(schemaJson))
+        {
+            return ToolSchemaJson.EmptyParametersJson;
+        }
+
         try
         {
-            if (string.IsNullOrEmpty(schemaJson)
-                || JsonNode.Parse(schemaJson) is not JsonObject root
-                || root["parameters"] is not JsonObject parameters)
-            {
-                return "{}";
-            }
-
-            return parameters.ToJsonString();
+            return ToolSchemaJson.ExtractParametersJson(schemaJson);
         }
         catch (JsonException)
         {
-            return "{}";
+            return ToolSchemaJson.EmptyParametersJson;
         }
     }
 }

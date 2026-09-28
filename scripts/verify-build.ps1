@@ -204,10 +204,25 @@ Assert-Zero -Name 'MUD001/002'    -Count ((Select-String -Path $buildLog -Patter
 Assert-Zero -Name 'FORM0xx'       -Count ((Select-String -Path $buildLog -Pattern 'FORM0\d\d' -AllMatches).Count)
 Assert-Zero -Name 'AOT001-007'    -Count ((Select-String -Path $buildLog -Pattern 'AOT00[1-7]' -AllMatches).Count) -Hint 'AOT006 已在 netstandard2.0/net6.0 豁免，net8+ 必须净零'
 
-# AI 工具描述符零容忍诊断（§4.6.5.5）：MUDFT001/002/003/004/008/010/014 == 0。
-# 先断言产出非空（防"没跑到也是 0"的假绿），再断言诊断计数。
-$mudftZero = (Select-String -Path $buildLog -Pattern 'MUDFT(001|002|003|004|008|010|014)' -AllMatches).Count
-Assert-Zero -Name 'MUDFT 零容忍'  -Count $mudftZero -Hint 'AI 工具描述符零容忍集（MUDFT001/002/003/004/008/010/014）'
+# AI 工具描述符零容忍诊断：与 Mud.Feishu.AI.Tools/Diagnostics.cs 的 ZeroToleranceIds 保持同步。
+#   001 缺工具名 / 002 命名不符范式 / 003 工具名冲突 / 004 返回类型不可映射
+#   008 上传参数不可映射 / 010 查询参数展开失败 / 014 golden 漂移
+#   015 Schema 内部不一致 / 016 身份与接口令牌类型不符 / 017 读写分类与 SDK 事实脱钩 / 019 SDK 源无法解析
+# 注：本断言是"二次锁"——原先是恒为 0 的假绿（零容忍集里 5 个 ID 当时没有任何上报点）。
+#     缺失上报点已补齐，并由守卫 ZeroToleranceDiagnostics_ShouldHaveReportSites 机械锁定。
+$mudftZero = (Select-String -Path $buildLog -Pattern 'MUDFT(001|002|003|004|008|010|014|015|016|017|019)' -AllMatches).Count
+Assert-Zero -Name 'MUDFT 零容忍'  -Count $mudftZero -Hint 'AI 工具描述符零容忍集（001/002/003/004/008/010/014/015/016/017/019），见 Diagnostics.ZeroToleranceIds'
+
+# golden 快照门禁的"非空"防呆：描述符快照必须存在且被测试消费——
+# 若有人删掉 AdditionalFiles 声明或快照文件，构建期 MUDFT014 会静默失效，
+# 故此处再断言快照文件存在（防"门禁静默消失"）。
+$goldenSnapshot = Join-Path $PSScriptRoot '..\Mud.Feishu.AI.FeishuTools\FeishuToolSchemas.golden.txt'
+if (-not (Test-Path $goldenSnapshot)) {
+    $script:failures.Add("工具描述符 golden 快照缺失：$goldenSnapshot（门禁会静默失效，见 FeishuToolGoldenTests）")
+    Write-Host "  [FAIL] golden 快照存在" -ForegroundColor Red
+} else {
+    Write-Host "  [ OK ] golden 快照存在" -ForegroundColor Green
+}
 
 # ---------------------------------------------------------------- 步骤 3
 Write-Host "[步骤 3] AotStrictMode 冒烟（net8.0，源项目）" -ForegroundColor Cyan

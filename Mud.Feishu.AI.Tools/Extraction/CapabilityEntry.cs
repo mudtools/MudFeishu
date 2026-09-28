@@ -34,7 +34,8 @@ internal sealed class CapabilityEntry : IEquatable<CapabilityEntry?>
         bool hasFileUpload,
         bool returnsBinary,
         ToolRisk risk,
-        IReadOnlyList<string> scopes)
+        IReadOnlyList<string> scopes,
+        string? outputSchemaJson = null)
     {
         InterfaceName = interfaceName;
         ToolName = toolName;
@@ -51,6 +52,7 @@ internal sealed class CapabilityEntry : IEquatable<CapabilityEntry?>
         ReturnsBinary = returnsBinary;
         Risk = risk;
         Scopes = scopes;
+        OutputSchemaJson = outputSchemaJson;
     }
 
     public string InterfaceName { get; }
@@ -68,6 +70,15 @@ internal sealed class CapabilityEntry : IEquatable<CapabilityEntry?>
     public bool ReturnsBinary { get; }
     public ToolRisk Risk { get; }
     public IReadOnlyList<string> Scopes { get; }
+
+    /// <summary>
+    /// 工具返回值的 JSON Schema（可空；由 <see cref="Schema.TypeSchemaResolver"/> 从 SDK 返回类型推导）。
+    /// </summary>
+    /// <remarks>
+    /// 消费面：<c>x-feishu.output_schema</c> → <c>FeishuToolAIFunction.ReturnJsonSchema</c>
+    /// （MEAI 对返回值的标准表达位），使支持结构化输出的客户端能约束模型看到的返回形状。
+    /// </remarks>
+    public string? OutputSchemaJson { get; }
 
     public bool Equals(CapabilityEntry? other)
     {
@@ -88,7 +99,8 @@ internal sealed class CapabilityEntry : IEquatable<CapabilityEntry?>
             && HasFileUpload == other.HasFileUpload
             && ReturnsBinary == other.ReturnsBinary
             && Risk == other.Risk
-            && ScopesEqual(Scopes, other.Scopes);
+            && ScopesEqual(Scopes, other.Scopes)
+            && string.Equals(OutputSchemaJson ?? string.Empty, other.OutputSchemaJson ?? string.Empty, StringComparison.Ordinal);
     }
 
     public override bool Equals(object? obj) => Equals(obj as CapabilityEntry);
@@ -133,85 +145,4 @@ internal sealed class CapabilityEntry : IEquatable<CapabilityEntry?>
         }
         return true;
     }
-}
-
-/// <summary>
-/// 能力条目的参数描述。
-/// </summary>
-internal sealed class CapabilityParameter : IEquatable<CapabilityParameter?>
-{
-    public CapabilityParameter(
-        string name,
-        string csharpType,
-        string parameterKind, // Path / Query / Body / Header / FormContent
-        string? docDescription,
-        bool isRequired,
-        bool isNullable)
-    {
-        Name = name;
-        CsharpType = csharpType;
-        ParameterKind = parameterKind;
-        DocDescription = docDescription;
-        IsRequired = isRequired;
-        IsNullable = isNullable;
-    }
-
-    public string Name { get; }
-    public string CsharpType { get; }
-    public string ParameterKind { get; }
-    public string? DocDescription { get; }
-    public bool IsRequired { get; }
-    public bool IsNullable { get; }
-
-    public bool Equals(CapabilityParameter? other)
-        => other is not null
-            && string.Equals(Name, other.Name, StringComparison.Ordinal)
-            && string.Equals(CsharpType, other.CsharpType, StringComparison.Ordinal)
-            && string.Equals(ParameterKind, other.ParameterKind, StringComparison.Ordinal)
-            && string.Equals(DocDescription ?? string.Empty, other.DocDescription ?? string.Empty, StringComparison.Ordinal)
-            && IsRequired == other.IsRequired
-            && IsNullable == other.IsNullable;
-
-    public override bool Equals(object? obj) => Equals(obj as CapabilityParameter);
-
-    public override int GetHashCode()
-    {
-        var comparer = StringComparer.Ordinal;
-        unchecked
-        {
-            var hash = 17;
-            hash = (hash * 31) + comparer.GetHashCode(Name);
-            hash = (hash * 31) + comparer.GetHashCode(CsharpType);
-            hash = (hash * 31) + comparer.GetHashCode(ParameterKind);
-            hash = (hash * 31) + (IsRequired ? 1 : 0);
-            hash = (hash * 31) + (IsNullable ? 1 : 0);
-            return hash;
-        }
-    }
-}
-
-/// <summary>工具身份维度（由接口名令牌词推导）。</summary>
-internal enum ToolIdentity
-{
-    /// <summary>租户令牌（IFeishuTenantV*）。</summary>
-    Tenant = 0,
-
-    /// <summary>用户令牌（IFeishuUserV*）。</summary>
-    User = 1,
-
-    /// <summary>双令牌基接口（IFeishuV*，不直接产工具）。</summary>
-    Both = 2,
-}
-
-/// <summary>工具风险分级。</summary>
-internal enum ToolRisk
-{
-    /// <summary>只读（GET）。</summary>
-    Read = 0,
-
-    /// <summary>写操作（POST/PUT/PATCH/DELETE）。</summary>
-    Write = 1,
-
-    /// <summary>高风险写操作（命中危险词表或显式 override）。</summary>
-    HighRiskWrite = 2,
 }

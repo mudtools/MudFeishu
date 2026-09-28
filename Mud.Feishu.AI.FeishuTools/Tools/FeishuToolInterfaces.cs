@@ -8,28 +8,35 @@
 namespace Mud.Feishu.AI.FeishuTools.Tools;
 
 // <summary>
-// Phase 1 只读工具接口集（§3.3.2 清单：6 域 10 个，全部 Tenant 身份）。
+// 只读工具接口集：工具名/描述/scope = 人的策展声明；Source = 该能力落地的 SDK 客户端接口与方法。
 // </summary>
 // <remarks>
 // <para>
 // 只声明模型可见 Schema（工具名/描述/扁平参数）；强类型接口调用、参数映射、
-// <c>FeishuApiResult</c> 解包与结果裁剪由执行链（<c>FeishuToolBinding</c> + 分域执行器）承担。
+// <c>FeishuApiResult</c> 解包与结果白名单投影由执行链（<c>FeishuToolBinding</c> + 分域执行器）承担。
 // 复杂请求体（<c>QueryRecordsRequest</c>/<c>SearchDocWikiRequest</c>）一律由绑定层构造，
 // 模型只见标量/标量数组（§3.3.1 原则 2）。
 // </para>
 // <para>
 // <c>page_size</c>/<c>sort_type</c>/<c>container_id_type</c>/<c>user_id_type</c> 等运维性参数
-// 不进 Schema（绑定层补齐/钳制）；<c>page_token</c> 对模型可见（多页追问）。
-// scope 字符串为占位，落地时对照开放平台控制台核对回填（契约守卫只锁「工具名↔scope 存在性」）。
+// 不进 Schema（绑定层补齐/钳制）。<b>page_token 保留在 Schema</b>：它是多页追问的唯一手段，
+// 且注入「自动翻页」会让单次工具调用把 N 页结果塞进上下文，与 <c>MaxToolResultLength</c> 截断策略冲突
+// （见方案 §6 AT-B09 的处置修订）。
+// </para>
+// <para>
+// <b>Source 挂钩</b>：源生成器据此在编译期交叉校验并派生 HTTP 路由、风险分级与返回形状；
+// 写错即 MUDFT019 构建失败。知识库检索工具（<c>knowledge.search</c>）绑定的是
+// <c>IRetriever</c> 门面而非 SDK 接口，故不声明 Source。
 // </para>
 // </remarks>
 
-// ─────────────────────────── Bitable（3 个） ───────────────────────────
+// ─────────────────────────── Bitable（4 个） ───────────────────────────
 
 /// <summary>工具接口：bitable.list_tables（映射 <c>IFeishuTenantV1BitableAppTable.GetAppTablePageListAsync</c>）。</summary>
 [FeishuTool("bitable.list_tables",
     Description = "列出多维表格中的全部数据表，返回 table_id/name/revision；先于 bitable.list_fields、bitable.query_records 使用。只读，需 bitable:app:readonly。",
-    RequiredScopes = ["bitable:app:readonly"])]
+    RequiredScopes = ["bitable:app:readonly"],
+    Source = "IFeishuTenantV1BitableAppTable.GetAppTablePageListAsync")]
 public interface IFeishuBitableListTablesTool
 {
     /// <summary>列出数据表（分页）。</summary>
@@ -43,7 +50,8 @@ public interface IFeishuBitableListTablesTool
 /// <summary>工具接口：bitable.list_fields（映射 <c>IFeishuTenantV1BitableField.GetFieldsPageListAsync</c>）。</summary>
 [FeishuTool("bitable.list_fields",
     Description = "列出数据表的字段定义（field_id/name/type），查询前先了解字段结构，配合 bitable.query_records 的 field_names/filter 使用。只读，需 bitable:app:readonly。",
-    RequiredScopes = ["bitable:app:readonly"])]
+    RequiredScopes = ["bitable:app:readonly"],
+    Source = "IFeishuTenantV1BitableField.GetFieldsPageListAsync")]
 public interface IFeishuBitableListFieldsTool
 {
     /// <summary>列出字段定义（分页）。</summary>
@@ -59,7 +67,8 @@ public interface IFeishuBitableListFieldsTool
 /// <summary>工具接口：bitable.query_records（映射 <c>IFeishuTenantV1BitableRecord.QueryRecordsPageListAsync</c>）。</summary>
 [FeishuTool("bitable.query_records",
     Description = "按条件查询多维表格记录（先经 bitable.list_tables 获取 table_id，经 bitable.list_fields 了解字段）；filter 为简化筛选式，如 status = \"done\" and owner contains 张三。只读，需 bitable:app:readonly。",
-    RequiredScopes = ["bitable:app:readonly"])]
+    RequiredScopes = ["bitable:app:readonly"],
+    Source = "IFeishuTenantV1BitableRecord.QueryRecordsPageListAsync")]
 public interface IFeishuBitableQueryRecordsTool
 {
     /// <summary>查询记录（分页；filter 简化文法由绑定层解析为官方过滤结构）。</summary>
@@ -78,7 +87,8 @@ public interface IFeishuBitableQueryRecordsTool
 /// <summary>工具接口：bitable.get_records_by_ids（映射 <c>IFeishuTenantV1BitableRecord.GetRecordsAsync</c>）。</summary>
 [FeishuTool("bitable.get_records_by_ids",
     Description = "按 record_id 批量获取多维表格记录（最多 100 条）——bitable.query_records 翻页后的精取链。只读，需 bitable:app:readonly。",
-    RequiredScopes = ["bitable:app:readonly"])]
+    RequiredScopes = ["bitable:app:readonly"],
+    Source = "IFeishuTenantV1BitableRecord.GetRecordsAsync")]
 public interface IFeishuBitableRecordsByIdsTool
 {
     /// <summary>按 ID 批量取记录。</summary>
@@ -90,12 +100,13 @@ public interface IFeishuBitableRecordsByIdsTool
         CancellationToken cancellationToken = default);
 }
 
-// ─────────────────────────── Docx（1 个） ───────────────────────────
+// ─────────────────────────── Docx（2 个） ───────────────────────────
 
 /// <summary>工具接口：docx.get_raw_content（映射 <c>IFeishuTenantV1Docx.GetDocumentRawContentAsync</c>）。</summary>
 [FeishuTool("docx.get_raw_content",
     Description = "读取飞书文档的纯文本正文；document_id 可来自 wiki.get_node 的 obj_token 或 search.doc_wiki 结果的 token。只读，需 docx:document:readonly。",
-    RequiredScopes = ["docx:document:readonly"])]
+    RequiredScopes = ["docx:document:readonly"],
+    Source = "IFeishuTenantV1Docx.GetDocumentRawContentAsync")]
 public interface IFeishuDocxRawContentTool
 {
     /// <summary>读取文档纯文本正文。</summary>
@@ -109,7 +120,8 @@ public interface IFeishuDocxRawContentTool
 /// <summary>工具接口：docx.get_document_blocks（映射 <c>IFeishuTenantV1Docx.GetDocumentBlocksPageListAsync</c>）。</summary>
 [FeishuTool("docx.get_document_blocks",
     Description = "分块读取飞书文档结构（block_id/block_type/文本），表格/代码块等结构化场景使用；document_id 可来自 wiki.get_node 的 obj_token。只读，需 docx:document:readonly。",
-    RequiredScopes = ["docx:document:readonly"])]
+    RequiredScopes = ["docx:document:readonly"],
+    Source = "IFeishuTenantV1Docx.GetDocumentBlocksPageListAsync")]
 public interface IFeishuDocxDocumentBlocksTool
 {
     /// <summary>分块读取文档（500 块/页）。</summary>
@@ -125,7 +137,8 @@ public interface IFeishuDocxDocumentBlocksTool
 /// <summary>工具接口：wiki.get_node（映射 <c>IFeishuTenantV2WikiNodes.GetNodeSpaceInfoAsync</c>）。</summary>
 [FeishuTool("wiki.get_node",
     Description = "解析知识库节点信息（node_token/title/obj_type/obj_token）；obj_token 可传给 docx.get_raw_content 读取正文。只读，需 wiki:wiki:readonly。",
-    RequiredScopes = ["wiki:wiki:readonly"])]
+    RequiredScopes = ["wiki:wiki:readonly"],
+    Source = "IFeishuTenantV2WikiNodes.GetNodeSpaceInfoAsync")]
 public interface IFeishuWikiGetNodeTool
 {
     /// <summary>获取节点信息（单对象）。</summary>
@@ -139,7 +152,8 @@ public interface IFeishuWikiGetNodeTool
 /// <summary>工具接口：wiki.list_nodes（映射 <c>IFeishuTenantV2WikiNodes.GetSpaceNodesPageListAsync</c>）。</summary>
 [FeishuTool("wiki.list_nodes",
     Description = "列出知识空间（或某父节点下）的子节点列表；node_token 可传给 wiki.get_node 解析详情。只读，需 wiki:wiki:readonly。",
-    RequiredScopes = ["wiki:wiki:readonly"])]
+    RequiredScopes = ["wiki:wiki:readonly"],
+    Source = "IFeishuTenantV2WikiNodes.GetSpaceNodesPageListAsync")]
 public interface IFeishuWikiListNodesTool
 {
     /// <summary>列出子节点（分页）。</summary>
@@ -156,7 +170,8 @@ public interface IFeishuWikiListNodesTool
 /// <summary>工具接口：search.doc_wiki（映射 <c>IFeishuTenantV2SearchDocWiki.SearchDocWikiAsync</c>）。</summary>
 [FeishuTool("search.doc_wiki",
     Description = "云文档与知识库全文搜索，返回标题/摘要/URL；结果的 token 可传给 docx.get_raw_content、url 对应节点可传给 wiki.get_node。query 上限 30 字符。只读，需 search:docs:readonly。",
-    RequiredScopes = ["search:docs:readonly"])]
+    RequiredScopes = ["search:docs:readonly"],
+    Source = "IFeishuTenantV2SearchDocWiki.SearchDocWikiAsync")]
 public interface IFeishuSearchDocWikiTool
 {
     /// <summary>云文档/知识库搜索（分页）。</summary>
@@ -170,12 +185,13 @@ public interface IFeishuSearchDocWikiTool
         CancellationToken cancellationToken = default);
 }
 
-// ─────────────────────────── IM（1 个） ───────────────────────────
+// ─────────────────────────── IM（2 个） ───────────────────────────
 
 /// <summary>工具接口：im.get_history_messages（映射 <c>IFeishuTenantV1Message.GetHistoryMessageAsync</c>）。</summary>
 [FeishuTool("im.get_history_messages",
     Description = "读取群聊的历史消息（chat_id 可由事件上下文获得），按创建时间倒序返回最近消息预览。只读，需 im:message:readonly。",
-    RequiredScopes = ["im:message:readonly"])]
+    RequiredScopes = ["im:message:readonly"],
+    Source = "IFeishuTenantV1Message.GetHistoryMessageAsync")]
 public interface IFeishuImHistoryTool
 {
     /// <summary>读取历史消息（分页，按创建时间倒序）。</summary>
@@ -191,7 +207,8 @@ public interface IFeishuImHistoryTool
 /// <summary>工具接口：im.get_message_content（映射 <c>IFeishuTenantV1Message.GetContentListByMessageIdAsync</c>）。</summary>
 [FeishuTool("im.get_message_content",
     Description = "按 message_id 回查单条消息的完整内容——与 im.get_history_messages 组成两步链（历史消息列表 → 指定消息内容）。只读，需 im:message:readonly。",
-    RequiredScopes = ["im:message:readonly"])]
+    RequiredScopes = ["im:message:readonly"],
+    Source = "IFeishuTenantV1Message.GetContentListByMessageIdAsync")]
 public interface IFeishuImMessageContentTool
 {
     /// <summary>单条消息内容回查。</summary>
@@ -206,7 +223,8 @@ public interface IFeishuImMessageContentTool
 /// <summary>工具接口：sheets.list_sheets（映射 <c>IFeishuTenantV3Spreadsheets.GetSpreadsheetSheetsByTokenAsync</c>）。</summary>
 [FeishuTool("sheets.list_sheets",
     Description = "列出电子表格的全部工作表（sheet_id/title/index）；sheet_id 供 sheets.get_range_values 构造 range。只读，需 sheets:spreadsheet:readonly。",
-    RequiredScopes = ["sheets:spreadsheet:readonly"])]
+    RequiredScopes = ["sheets:spreadsheet:readonly"],
+    Source = "IFeishuTenantV3Spreadsheets.GetSpreadsheetSheetsByTokenAsync")]
 public interface IFeishuSheetsListTool
 {
     /// <summary>列出工作表。</summary>
@@ -219,7 +237,8 @@ public interface IFeishuSheetsListTool
 /// <summary>工具接口：sheets.get_range_values（映射 <c>IFeishuTenantV3SpreadsheetData.GetRangeDataAsync</c>）。</summary>
 [FeishuTool("sheets.get_range_values",
     Description = "读取工作表单元格区域数据；range 形如 ShtXxx!A1:C100（sheet_id 来自 sheets.list_sheets），建议先小范围取数。只读，需 sheets:spreadsheet:readonly。",
-    RequiredScopes = ["sheets:spreadsheet:readonly"])]
+    RequiredScopes = ["sheets:spreadsheet:readonly"],
+    Source = "IFeishuTenantV3SpreadsheetData.GetRangeDataAsync")]
 public interface IFeishuSheetsRangeTool
 {
     /// <summary>读取单元格区域数据。</summary>

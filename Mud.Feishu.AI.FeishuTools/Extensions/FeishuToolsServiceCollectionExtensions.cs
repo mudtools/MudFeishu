@@ -65,6 +65,7 @@ public static class FeishuToolsServiceCollectionExtensions
             .AddFeishuImToolsCore()
             .AddFeishuSheetsToolsCore()
             .AddFeishuDriveToolsCore()
+            .AddFeishuContactToolsCore()
             .AddFeishuKnowledgeToolsCore()
             .AddFeishuWriteToolsCore();
 
@@ -124,6 +125,15 @@ public static class FeishuToolsServiceCollectionExtensions
         this IServiceCollection services,
         Action<FeishuToolRegistry>? configure = null)
         => AddFeishuToolInfrastructure(services, configure).AddFeishuDriveToolsCore();
+
+    /// <summary>
+    /// 按域注册通讯录工具（P0：<c>contact.resolve_user</c> / <c>contact.get_user</c> / <c>contact.batch_get</c>）。
+    /// </summary>
+    /// <remarks>要求宿主已注册 <c>IFeishuTenantV3User</c> 客户端；缺席时三工具不进注册表，白名单期 fail-fast。</remarks>
+    public static IServiceCollection AddFeishuContactTools(
+        this IServiceCollection services,
+        Action<FeishuToolRegistry>? configure = null)
+        => AddFeishuToolInfrastructure(services, configure).AddFeishuContactToolsCore();
 
     /// <summary>按域注册 Knowledge 工具（<c>knowledge.search</c>；要求宿主已注册 <see cref="IRetriever"/> 实现，如 <c>AddFeishuAilyKnowledge</c>）。</summary>
     public static IServiceCollection AddFeishuKnowledgeTools(
@@ -449,6 +459,17 @@ public static class FeishuToolsServiceCollectionExtensions
         });
         services.AddToolDomainRegistrar(static sp => sp.GetService<DriveTools>() is { } executor
             ? new DriveToolDomainRegistrar(executor, sp.GetRequiredService<FeishuToolBinding>())
+            : null);
+        return services;
+    }
+
+    private static IServiceCollection AddFeishuContactToolsCore(this IServiceCollection services)
+    {
+        services.TryAddSingleton(static sp => sp.GetService<Mud.Feishu.IFeishuTenantV3User>() is { } client
+            ? new ContactTools(client, sp.GetRequiredService<IOptions<FeishuAgentOptions>>())
+            : null!);
+        services.AddToolDomainRegistrar(static sp => sp.GetService<ContactTools>() is { } executor
+            ? new ContactToolDomainRegistrar(executor, sp.GetRequiredService<FeishuToolBinding>())
             : null);
         return services;
     }

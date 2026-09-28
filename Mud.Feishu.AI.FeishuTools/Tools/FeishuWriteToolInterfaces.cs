@@ -29,7 +29,8 @@ namespace Mud.Feishu.AI.FeishuTools.Tools;
 [FeishuTool("im.send_message",
     Description = "发送文本消息到指定群聊或用户。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 im:message。",
     RequiredScopes = ["im:message:send_as_bot"],
-    IsWrite = true)]
+    IsWrite = true,
+    Source = "IFeishuTenantV1Message.SendMessageAsync")]
 public interface IFeishuImSendMessageTool
 {
     /// <summary>发送文本消息。</summary>
@@ -47,7 +48,8 @@ public interface IFeishuImSendMessageTool
 [FeishuTool("bitable.add_record",
     Description = "向多维表格数据表新增一条记录，fields 为「字段名 → 值」JSON 对象（字段名先经 bitable.list_fields 确认）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 bitable:app。",
     RequiredScopes = ["bitable:app"],
-    IsWrite = true)]
+    IsWrite = true,
+    Source = "IFeishuTenantV1BitableRecord.AddRecordAsync")]
 public interface IFeishuBitableAddRecordTool
 {
     /// <summary>新增记录。</summary>
@@ -65,7 +67,8 @@ public interface IFeishuBitableAddRecordTool
 [FeishuTool("approval.create_instance",
     Description = "按审批定义 Code 发起一个审批实例，form 为审批表单 Value（JSON 数组字符串，按定义的表单控件结构填写）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 approval:approval。",
     RequiredScopes = ["approval:approval"],
-    IsWrite = true)]
+    IsWrite = true,
+    Source = "IFeishuTenantV4Approval.CreateInstanceAsync")]
 public interface IFeishuApprovalCreateInstanceTool
 {
     /// <summary>发起审批实例。</summary>

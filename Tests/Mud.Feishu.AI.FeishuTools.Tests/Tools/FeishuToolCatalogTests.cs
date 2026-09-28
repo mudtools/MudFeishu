@@ -101,6 +101,7 @@ internal static class GuardProviderFactory
             .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV4Approval>().Object)
             .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1DriveFolder>().Object)
             .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1DriveFiles>().Object)
+            .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV3User>().Object)
             .AddSingleton(new Mock<Mud.Feishu.AI.Knowledge.IRetriever>().Object)
             .AddFeishuReadonlyTools()
             .BuildServiceProvider();

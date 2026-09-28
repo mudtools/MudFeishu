@@ -121,6 +121,10 @@ public sealed class FeishuToolBinding
         {
             using var scope = _scopeFactory.BeginScope(context.AppKey);
             var result = await invokeDownstream(cancellationToken).ConfigureAwait(false);
+
+            // ④ 出站净化（强制阶段，不可关闭/不可替换）：工具结果 → 模型上下文是不可撤销出口，
+            //    手机号/邮箱/凭据一旦进入上下文就无法召回。必须先于整形钩子与审计标记。
+            result = SanitizeResult(result);
             activity?.SetTag(FeishuToolDiagnostics.TagTruncated, result.Truncated);
 
             FeishuToolDiagnostics.RecordDuration(tool.Name, context.AppKey, executionStopwatch.ElapsedMilliseconds);
@@ -130,7 +134,7 @@ public sealed class FeishuToolBinding
                 ToolArgsDigester.Digest(arguments), executionStopwatch.ElapsedMilliseconds,
                 cancellationToken).ConfigureAwait(false);
 
-            // ⑤' 结果整形钩子（P1D-2a）：投影/截断之后、回填之前；失败回退默认（异常隔离）。
+            // ⑤' 结果整形钩子（P1D-2a）：净化/投影/截断之后、回填之前；失败回退默认（异常隔离）。
             return await ShapeWithIsolationAsync(tool.Name, result, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
@@ -192,6 +196,24 @@ public sealed class FeishuToolBinding
         {
             _logger?.LogWarning(ex, "工具审计出口投递失败（tool: {ToolName}）——审计事件丢弃", tool.Name);
         }
+    }
+
+    /// <summary>
+    /// 出站净化（P0 安全阶段）：剥离控制字符/ANSI 转义，脱敏凭据与个人敏感信息。
+    /// </summary>
+    /// <remarks>
+    /// 无开关、无接口、不可被宿主绕过——见 <see cref="ToolResultSanitizer"/> 的取舍说明。
+    /// 数据完整性优先：净化保持文本长度不变（掩码与正文等价替换位数可能不同，但不改变 JSON 结构）。
+    /// </remarks>
+    private static FeishuToolResult SanitizeResult(FeishuToolResult result)
+    {
+        var text = result.ToString();
+        var sanitized = ToolResultSanitizer.Sanitize(text);
+
+        // 无变化即复用原实例（避免每次调用都重建对象）。
+        return string.Equals(sanitized, text, StringComparison.Ordinal)
+            ? result
+            : FeishuToolResult.FromText(sanitized, result.Truncated, result.TruncationReason);
     }
 
     private async Task<FeishuToolResult> ShapeWithIsolationAsync(string toolName, FeishuToolResult result, CancellationToken cancellationToken)

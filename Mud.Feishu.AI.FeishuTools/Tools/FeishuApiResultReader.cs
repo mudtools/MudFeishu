@@ -83,6 +83,25 @@ internal static class ToolArgs
     public static string? OptionalString(IReadOnlyDictionary<string, object?> arguments, string name)
         => Convert(arguments.TryGetValue(name, out var value) ? value : null);
 
+    /// <summary>读取可选布尔参数（兼容 JSON <c>true/false</c> 与字符串 <c>"true"/"false"</c>）。</summary>
+    public static bool? OptionalBool(IReadOnlyDictionary<string, object?> arguments, string name)
+    {
+        if (!arguments.TryGetValue(name, out var value) || value is null)
+        {
+            return null;
+        }
+
+        return value switch
+        {
+            bool b => b,
+            System.Text.Json.JsonElement { ValueKind: System.Text.Json.JsonValueKind.True } => true,
+            System.Text.Json.JsonElement { ValueKind: System.Text.Json.JsonValueKind.False } => false,
+            System.Text.Json.JsonElement e => bool.TryParse(e.GetRawText().Trim('"'), out var parsed) ? parsed : null,
+            string s => bool.TryParse(s, out var parsed) ? parsed : null,
+            _ => null,
+        };
+    }
+
     /// <summary>读取可选字符串数组参数。</summary>
     public static string[]? OptionalStringArray(IReadOnlyDictionary<string, object?> arguments, string name)
     {

@@ -254,6 +254,56 @@ public class FeishuToolBindingTests : IDisposable
         await act.Should().ThrowAsync<OperationCanceledException>("取消即时传播（D15）");
     }
 
+    /// <summary>
+    /// 出站净化是执行链的<b>固定阶段</b>：下游回填的凭据/手机号必须被脱敏后才可能到达模型。
+    /// </summary>
+    /// <remarks>
+    /// 本用例锁的是"强制"这一属性——净化点在 <c>FeishuToolBinding</c> 内、先于整形钩子，
+    /// 不提供关闭开关（原方案 §8.3 曾计划 <c>SanitizationMode=Legacy</c> 回退口，
+    /// 与"不可被宿主关闭"的自述矛盾，故实现取"无开关"：安全的默认不可协商）。
+    /// </remarks>
+    [Fact]
+    public async Task Execute_ShouldSanitizeDownstreamResult_BeforeReturningToModel()
+    {
+        var binding = CreateBinding();
+        var rawJson = "{\"app_secret\":\"s3cr3t-value\",\"mobile\":\"13800138000\",\"email\":\"zhangsan@example.com\","
+            + "\"open_id\":\"ou_abc123\",\"page_token\":\"pt_xyz\"}";
+
+        var result = await binding.ExecuteAsync(Definition(), Args(), new FeishuToolContext("appA"),
+            (token => Task.FromResult(FeishuToolResult.FromText(rawJson))));
+
+        var text = result.ToString();
+        text.Should().NotContain("s3cr3t-value", "凭据类字段必须脱敏");
+        text.Should().NotContain("13800138000", "手机号必须脱敏");
+        text.Should().Contain("zhangsan@example.com",
+            "邮箱是飞书平台的寻址货币（im.send_message 的 receive_id_type=email），不得脱敏");
+        text.Should().Contain("ou_abc123", "标识类字段是多步调用链的必需凭据");
+        text.Should().Contain("pt_xyz", "分页游标必须保留，否则翻页链断裂");
+    }
+
+    /// <summary>净化先于宿主整形钩子：钩子拿到的是已脱敏文本（顺序不可颠倒）。</summary>
+    [Fact]
+    public async Task Execute_ShouldSanitizeBeforeResultShaper()
+    {
+        string? seenByShaper = null;
+        var shaper = new Mock<IToolResultShaper>();
+        shaper.Setup(s => s.ShapeAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Callback((string _, string projected, CancellationToken _) => seenByShaper = projected)
+            .ReturnsAsync((string _, string _, CancellationToken _) => null);
+
+        var binding = new FeishuToolBinding(
+            _scopeFactory.Object,
+            Options.Create(new FeishuAgentOptions { Instructions = "test" }),
+            authorizer: null,
+            resultShaper: shaper.Object);
+
+        await binding.ExecuteAsync(Definition(), Args(), new FeishuToolContext("appA"),
+            (token => Task.FromResult(FeishuToolResult.FromText("{\"app_secret\":\"leak-me\"}"))));
+
+        seenByShaper.Should().NotBeNull();
+        seenByShaper!.Should().NotContain("leak-me", "整形钩子不得看到未脱敏的原始结果（净化是前置固定阶段）");
+    }
+
     private sealed class DisposableAction(Action action) : IDisposable
     {
         public void Dispose() => action();

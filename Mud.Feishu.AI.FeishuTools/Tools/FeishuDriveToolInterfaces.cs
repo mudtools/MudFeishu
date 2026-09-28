@@ -14,7 +14,8 @@ namespace Mud.Feishu.AI.FeishuTools.Tools;
 /// <summary>工具接口：drive.list_folder_files（映射 <c>IFeishuTenantV1DriveFolder.GetFilesPageListAsync</c>）。</summary>
 [FeishuTool("drive.list_folder_files",
     Description = "列出云空间文件夹内的文件与子文件夹（token/name/type/url）；folder_token 缺省列根目录。与 search.doc_wiki 互补（浏览 vs 搜索）。只读，需 drive:drive:readonly。",
-    RequiredScopes = ["drive:drive:readonly"])]
+    RequiredScopes = ["drive:drive:readonly"],
+    Source = "IFeishuTenantV1DriveFolder.GetFilesPageListAsync")]
 public interface IFeishuDriveFolderFilesTool
 {
     /// <summary>列出文件夹内容（分页）。</summary>
@@ -28,7 +29,8 @@ public interface IFeishuDriveFolderFilesTool
 /// <summary>工具接口：drive.get_file_metas（映射 <c>IFeishuTenantV1DriveFiles.BatchQueryMetasAsync</c>）。</summary>
 [FeishuTool("drive.get_file_metas",
     Description = "按 token 批量查询文件元信息（类型/标题/链接/所有者，最多 200 个）；支撑后续读文档链（docx.get_raw_content 等）。只读，需 drive:drive:readonly。",
-    RequiredScopes = ["drive:drive:readonly"])]
+    RequiredScopes = ["drive:drive:readonly"],
+    Source = "IFeishuTenantV1DriveFiles.BatchQueryMetasAsync")]
 public interface IFeishuDriveFileMetasTool
 {
     /// <summary>元信息批量查询。</summary>

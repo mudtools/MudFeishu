@@ -1,3 +1,8 @@
+---
+title: 多维表格自动化流程接口（用户令牌）| MudFeishu
+description: 该接口用于以用户身份管理飞书多维表格自动化流程（workflows），即按数据变更自动执行的运行规则，支持列出自动化流程、更新自动化流程状态与列出工作流等。
+---
+
 # 多维表格自动化流程 - 用户令牌（FeishuUserV1BitableWorkflow）
 
 ## 接口名称

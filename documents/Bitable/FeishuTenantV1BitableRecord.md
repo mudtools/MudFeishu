@@ -1,3 +1,8 @@
+---
+title: 多维表格记录接口（租户令牌）| MudFeishu
+description: 该接口用于以租户身份管理飞书多维表格记录（record，即数据表中的每一行），支持新增、更新、查询、删除记录，以及批量操作等。
+---
+
 # 多维表格记录 - 租户令牌（FeishuTenantV1BitableRecord）
 
 ## 接口名称

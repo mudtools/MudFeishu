@@ -1,3 +1,8 @@
+---
+title: 多维表格字段接口（用户令牌）| MudFeishu
+description: 该接口用于以用户身份管理飞书多维表格字段（field，即"列"），支持新增、更新、列出和删除字段，以及创建字段编组等操作。
+---
+
 # 多维表格字段 - 用户令牌（FeishuUserV1BitableField）
 
 ## 接口名称

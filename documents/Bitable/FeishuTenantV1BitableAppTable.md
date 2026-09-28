@@ -1,3 +1,8 @@
+---
+title: 多维表格数据表接口（租户令牌）| MudFeishu
+description: 该接口用于以租户身份管理飞书多维表格数据表（table），数据表是多维表格的数据容器，支持新增、更新、列出和删除数据表等操作。
+---
+
 # 多维表格数据表 - 租户令牌（FeishuTenantV1BitableAppTable）
 
 ## 接口名称

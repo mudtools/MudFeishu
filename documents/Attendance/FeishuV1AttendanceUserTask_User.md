@@ -1,3 +1,8 @@
+---
+title: 考勤打卡结果接口（用户令牌）| MudFeishu
+description: 该接口用于以用户身份获取企业内员工的实际打卡结果，包括打卡任务列表、打卡记录 id、用户信息、考勤组 ID、班次 ID、考勤记录、上下班打卡结果与时间，以及无效和无权限用户 ID 列表。
+---
+
 # 考勤打卡结果（用户令牌） - FeishuV1AttendanceUserTask_User
 
 ## 接口名称

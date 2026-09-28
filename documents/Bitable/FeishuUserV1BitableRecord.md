@@ -1,3 +1,8 @@
+---
+title: 多维表格记录接口（用户令牌）| MudFeishu
+description: 该接口用于以用户身份管理飞书多维表格记录（record），支持新增、更新、查询、删除记录，以及批量操作等。
+---
+
 # 多维表格记录 - 用户令牌（FeishuUserV1BitableRecord）
 
 ## 接口名称

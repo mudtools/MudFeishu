@@ -1,3 +1,8 @@
+---
+title: 日历日程接口（租户令牌）| MudFeishu
+description: 该接口用于以租户身份管理飞书日历日程，提供日程的增删改查、搜索、回复、参与人管理、会议群管理、会议纪要以及请假日程等功能。
+---
+
 # 日历日程 - 租户令牌
 **IFeishuTenantV4CalendarEvent**
 

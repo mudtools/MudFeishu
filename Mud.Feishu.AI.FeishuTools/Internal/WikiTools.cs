@@ -38,7 +38,7 @@ internal sealed class WikiTools(Mud.Feishu.IFeishuTenantV2WikiNodes wikiNodesCli
             {
                 ["node"] = ProjectNode(node),
             };
-            return ToolResultText.Truncate(envelope.ToJsonString(), _maxResultLength);
+            return ToolResultText.TruncateJson(envelope.ToJsonString(), _maxResultLength);
         }
         catch (ArgumentException ex)
         {
@@ -79,7 +79,7 @@ internal sealed class WikiTools(Mud.Feishu.IFeishuTenantV2WikiNodes wikiNodesCli
                 envelope["items"]!.AsArray().AddNode(ProjectNode(node));
             }
 
-            return ToolResultText.Truncate(envelope.ToJsonString(), _maxResultLength);
+            return ToolResultText.TruncateJson(envelope.ToJsonString(), _maxResultLength);
         }
         catch (ArgumentException ex)
         {

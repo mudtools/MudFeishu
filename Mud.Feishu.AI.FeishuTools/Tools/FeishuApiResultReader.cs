@@ -176,10 +176,10 @@ internal static class ToolResultText
     }
 
     /// <summary>
-    /// JSON 感知截断（AI-FD-D12 P1D-2a 默认行为升级）：对 JSON 文本按 <c>items</c> 数组
-    /// <b>逐条删除</b>直至长度达标，追加 <c>truncated</c>/<c>hint</c> 标记——截断不落在 JSON 结构
-    /// 中间，模型拿到的是合法 JSON；解析失败（纯文本/非法 JSON）或非 items 包络时退回字符截断
-    /// （<see cref="Truncate"/>，既有行为）。
+    /// JSON 感知截断（AI-FD-D12 P1D-2a 默认行为升级）：对 JSON 文本按首个数组属性
+    /// （<c>items</c>/<c>values</c>/<c>metas</c> 等）<b>逐条删除</b>直至长度达标，追加
+    /// <c>truncated</c>/<c>hint</c> 标记——截断不落在 JSON 结构中间，模型拿到的是合法 JSON；
+    /// 解析失败（纯文本/非法 JSON）或无数组属性时退回字符截断（<see cref="Truncate"/>，既有行为）。
     /// </summary>
     /// <remarks>
     /// 开销为一次 JSON 解析（结果投影路径上，AOT 安全）；
@@ -207,20 +207,36 @@ internal static class ToolResultText
             root = null; // 非 JSON 文本（如 docx.get_raw_content 的纯文本正文）：退回字符截断。
         }
 
-        if (root?["items"] is not JsonArray items || items.Count == 0)
+        // 查找第一个可截断的数组属性（items/values/metas 等列表型键）。
+        JsonArray? array = null;
+        string? arrayKey = null;
+        if (root is not null)
+        {
+            foreach (var pair in root)
+            {
+                if (pair.Value is JsonArray { Count: > 0 } candidate)
+                {
+                    array = candidate;
+                    arrayKey = pair.Key;
+                    break;
+                }
+            }
+        }
+
+        if (array is null || arrayKey is null)
         {
             return Truncate(text, maxLength);
         }
 
         // 逐条删除尾部条目直至整体长度达标（至少保留 1 条，保证「有内容且可读」）。
-        while (items.Count > 1 && root.ToJsonString().Length > maxLength)
+        while (array.Count > 1 && root!.ToJsonString().Length > maxLength)
         {
-            ((IList<JsonNode?>)items).RemoveAt(items.Count - 1);
+            ((IList<JsonNode?>)array).RemoveAt(array.Count - 1);
         }
 
-        root["truncated"] = true;
-        root["hint"] = "结果已按 items 截断——请缩小查询范围或用 page_token 翻页";
-        return root.ToJsonString();
+        root!["truncated"] = true;
+        root!["hint"] = $"结果已按 {arrayKey} 截断——请缩小查询范围或用 page_token 翻页";
+        return root!.ToJsonString();
     }
 
     /// <summary>结果文本是否已被截断（OTel 审计属性消费；兼容字符截断与 JSON 感知截断两种标记）。</summary>

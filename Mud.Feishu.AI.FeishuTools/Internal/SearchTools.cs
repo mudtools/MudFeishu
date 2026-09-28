@@ -96,7 +96,7 @@ internal sealed class SearchTools(Mud.Feishu.IFeishuTenantV2SearchDocWiki search
                 });
             }
 
-            return ToolResultText.Truncate(envelope.ToJsonString(), _maxResultLength);
+            return ToolResultText.TruncateJson(envelope.ToJsonString(), _maxResultLength);
         }
         catch (ArgumentException ex)
         {

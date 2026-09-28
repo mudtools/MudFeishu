@@ -48,7 +48,7 @@ internal sealed class SheetsTools(
                 });
             }
 
-            return ToolResultText.Truncate(envelope.ToJsonString(), _maxResultLength);
+            return ToolResultText.TruncateJson(envelope.ToJsonString(), _maxResultLength);
         }
         catch (ArgumentException ex)
         {
@@ -95,7 +95,7 @@ internal sealed class SheetsTools(
                 ["range"] = valueRange?.Range,
                 ["values"] = values,
             };
-            return ToolResultText.Truncate(envelope.ToJsonString(), _maxResultLength);
+            return ToolResultText.TruncateJson(envelope.ToJsonString(), _maxResultLength);
         }
         catch (ArgumentException ex)
         {
